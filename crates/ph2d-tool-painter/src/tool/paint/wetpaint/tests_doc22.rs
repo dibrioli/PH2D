@@ -197,20 +197,24 @@ fn wet_paint_opens_at_the_dense_default_spacing() {
 fn a_tuning_knob_setvalue_reaches_the_live_engine() {
     let mut t = wet_tool_fixture();
     stroke(&mut t, 60.0);
-    set(&mut t, crate::ids::wet_tuning_slider_id("leveling"), 1.7);
+    set(&mut t, crate::ids::wet_tuning_slider_id("viscosity"), 1.7);
     t.wetpaint_tick(0.05);
     t.wet_bring_home();
     let sess = t.paint.wetpaint.session.as_ref().expect("session");
-    assert_eq!(sess.engine.tuning.get(Knob::Leveling), 1.7);
-    set(&mut t, crate::ids::wet_tuning_chip_id("brake"), 3.25);
+    assert_eq!(sess.engine.tuning.get(Knob::Viscosity), 1.7);
+    set(&mut t, crate::ids::wet_tuning_chip_id("maxVelocity"), 2.75);
     t.wetpaint_tick(0.05);
     t.wet_bring_home();
     let sess = t.paint.wetpaint.session.as_ref().expect("session");
-    assert_eq!(sess.engine.tuning.get(Knob::Brake), 3.25);
-    set(&mut t, crate::ids::wet_tuning_chip_id("brake"), f64::NAN);
+    assert_eq!(sess.engine.tuning.get(Knob::MaxVelocity), 2.75);
+    set(
+        &mut t,
+        crate::ids::wet_tuning_chip_id("maxVelocity"),
+        f64::NAN,
+    );
     assert_eq!(
-        t.paint.wetpaint.knobs.get(Knob::Brake),
-        KNOB_DEFS[Knob::Brake as usize].default,
+        t.paint.wetpaint.knobs.get(Knob::MaxVelocity),
+        KNOB_DEFS[Knob::MaxVelocity as usize].default,
         "NaN must fall back to the default (the model's law)"
     );
     // Out-of-range clamps to the def's own bounds.
@@ -226,20 +230,20 @@ fn a_tuning_knob_setvalue_reaches_the_live_engine() {
 #[test]
 fn tuning_resets_restore_their_own_scope_only() {
     let mut t = wet_tool_fixture();
-    set(&mut t, crate::ids::wet_tuning_slider_id("leveling"), 1.9);
+    set(&mut t, crate::ids::wet_tuning_slider_id("viscosity"), 1.9);
     set(&mut t, crate::ids::wet_tuning_slider_id("drag"), 0.9);
-    click(&mut t, crate::ids::wet_tuning_reset_id("leveling"));
+    click(&mut t, crate::ids::wet_tuning_reset_id("viscosity"));
     assert_eq!(
-        t.paint.wetpaint.knobs.get(Knob::Leveling),
-        KNOB_DEFS[Knob::Leveling as usize].default
+        t.paint.wetpaint.knobs.get(Knob::Viscosity),
+        KNOB_DEFS[Knob::Viscosity as usize].default
     );
     assert_eq!(t.paint.wetpaint.knobs.get(Knob::Drag), 0.9, "wrong scope");
-    // Group reset: PHYSICS resets leveling's group, never PAINT's drag.
-    set(&mut t, crate::ids::wet_tuning_slider_id("leveling"), 1.9);
+    // Group reset: PHYSICS resets viscosity's group, never PAINT's drag.
+    set(&mut t, crate::ids::wet_tuning_slider_id("viscosity"), 1.9);
     click(&mut t, crate::ids::WET_TUNING_GROUP_RESETS[2]);
     assert_eq!(
-        t.paint.wetpaint.knobs.get(Knob::Leveling),
-        KNOB_DEFS[Knob::Leveling as usize].default
+        t.paint.wetpaint.knobs.get(Knob::Viscosity),
+        KNOB_DEFS[Knob::Viscosity as usize].default
     );
     assert_eq!(t.paint.wetpaint.knobs.get(Knob::Drag), 0.9, "wrong group");
     let _ = KnobGroup::Paint; // (vocabulary anchor)
@@ -600,7 +604,8 @@ fn the_tuning_checkbox_flips_the_snapshot() {
 #[test]
 fn the_section_reset_restores_the_whole_section() {
     let mut t = wet_tool_fixture();
-    set(&mut t, crate::ids::wet_tuning_slider_id("leveling"), 1.9);
+    // O Leveling mora no cartão Wet Paint desde 13/10 (saiu do Tuning): o Reset da secção restaura-o também.
+    set(&mut t, crate::ids::PAINTER_WETPAINT_LEVELING, 1.9);
     click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[6]);
     set(&mut t, crate::ids::PAINTER_WETPAINT_TILT_RING, 8.0);
     click(&mut t, crate::ids::PAINTER_WETPAINT_SHOWWET);

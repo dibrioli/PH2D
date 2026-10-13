@@ -80,6 +80,8 @@ A pergunta da viscosidade: [33](../NewFeaturesWetPaint/33_o_que_regula_a_viscosi
 limiar INVERTIDO; o freio real é o Brake). Bateria: clippy ✓ · painel 239 ✓ · `nextest-impacted` 18 295/18 297 — os 2
 de custo passam sozinhos 3/3 (`load` 55–115).
 
+**5.º commit:** Leveling, Level Clamp, Capillary e Brake saíram do Tuning (28 linhas) para o cartão Wet Paint (doc 33).
+
 ## §5 — Estado e o que fica ABERTO
 
 - O Blend do Wet Paint usa o carimbo do MOTOR (o tapete do Tuning escondido, com os valores do preset) — o Shape

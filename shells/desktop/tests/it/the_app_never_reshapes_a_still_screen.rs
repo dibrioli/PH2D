@@ -59,13 +59,19 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
     // ⚠️ **E o menu Add aberto, pela mesma razão** (2026-10-04): a F3 do Vector tirou o pill VECTOR
     //    e a fileira do painel passou a mostrar só as ferramentas do modo — `1 014` textos. A paleta
     //    do `+` é conteúdo real do app, e é a que o artista abre para criar.
+    // ⚠️ **Com as SETE famílias do menu real** (`render_loop/fase_object_add.rs::FAMILIES`, 2026-10-13): a
+    //    fixtura montava quatro; oito linhas saíram do Tuning do Wet Paint para o Painter (as cerdas para o
+    //    Shape, a física da água para o cartão, fora do ecrã desta fixtura) e ela caiu para `1 017` textos.
     h.store
         .open_command_palette(ph2d_editor_core::object_add::build(
             &[
                 ph2d_editor_core::object_add::CORE,
                 ph2d_app_vec::object_add::ENTRIES,
                 ph2d_app_flip::object_add::ENTRIES,
+                ph2d_app_skeleton::object_add::ENTRIES,
+                ph2d_app_motion::motion_objeto::object_add::ENTRIES,
                 ph2d_app_components::object_add::ENTRIES,
+                ph2d_app_light2d::object_add::ENTRIES,
             ],
             &|_| None,
         ));

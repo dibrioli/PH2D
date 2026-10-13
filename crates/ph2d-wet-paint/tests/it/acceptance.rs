@@ -284,9 +284,11 @@ fn t07_blend_remixes_dry_paint() {
 fn t08_tuning_registry() {
     assert!(KNOB_DEFS.len() >= 39, "only {} knobs", KNOB_DEFS.len());
     let mut t = Tuning::default();
-    t.set_by_key("leveling", 1.7);
+    // Três knobs do grupo Physics (Leveling, Brake, Capillary e Level Clamp foram para o cartão do Painter
+    // a 13/10, grupo Hidden).
+    t.set_by_key("viscosity", 1.7);
     t.set_by_key("gravity", 0.03);
-    t.set_by_key("brake", 0.1);
+    t.set_by_key("maxVelocity", 0.5);
     let changed = t.reset_group(ph2d_wet_paint::tuning::KnobGroup::Physics);
     assert_eq!(
         changed.len(),
@@ -294,7 +296,9 @@ fn t08_tuning_registry() {
         "3 knobs were off-default; each must report"
     );
     assert!(
-        t.get(Knob::Leveling) == 0.5 && t.get(Knob::Gravity) == 0.005 && t.get(Knob::Brake) == 1.5,
+        t.get(Knob::Viscosity) == KNOB_DEFS[Knob::Viscosity as usize].default
+            && t.get(Knob::Gravity) == 0.005
+            && t.get(Knob::MaxVelocity) == KNOB_DEFS[Knob::MaxVelocity as usize].default,
         "group reset did not restore defaults"
     );
     t.set_by_key("waterCap", 999.0); // free numeric input beyond the slider range

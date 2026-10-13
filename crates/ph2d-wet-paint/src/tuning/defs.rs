@@ -245,7 +245,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::Leveling,
-        KnobGroup::Physics,
+        KnobGroup::Hidden, // no cartão Wet Paint do painel do Painter (dono 13/10)
         "leveling",
         0.0,
         2.0,
@@ -255,7 +255,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::Capillary,
-        KnobGroup::Physics,
+        KnobGroup::Hidden, // no cartão Wet Paint do painel do Painter (dono 13/10)
         "capillary",
         0.0,
         1.0,
@@ -265,7 +265,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::Brake,
-        KnobGroup::Physics,
+        KnobGroup::Hidden, // no cartão Wet Paint do painel do Painter (dono 13/10)
         "brake",
         0.0,
         4.0,
@@ -285,7 +285,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::LevelClamp,
-        KnobGroup::Physics,
+        KnobGroup::Hidden, // no cartão Wet Paint do painel do Painter (dono 13/10)
         "levelClamp",
         0.0,
         1.0,

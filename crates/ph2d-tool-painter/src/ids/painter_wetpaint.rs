@@ -155,12 +155,24 @@ pub const PAINTER_WETPAINT_EDGE: NodeId = hash_node_id("painter_brush.wetpaint_e
 /// **Gravity** — the run/drip pull (knob `gravity`, default `0.005`; direction stays straight down).
 pub const PAINTER_WETPAINT_GRAVITY: NodeId = hash_node_id("painter_brush.wetpaint_gravity");
 
+/// **Leveling** — how much the water levels out, deep toward shallow (knob `leveling`; saiu do Tuning a 13/10).
+pub const PAINTER_WETPAINT_LEVELING: NodeId = hash_node_id("painter_brush.wetpaint_leveling");
+
+/// **Level Clamp** — the cap on the leveling push (knob `levelClamp`; saiu do Tuning a 13/10).
+pub const PAINTER_WETPAINT_LEVEL_CLAMP: NodeId = hash_node_id("painter_brush.wetpaint_level_clamp");
+
+/// **Capillary** — the paper tooth's pull on the water (knob `capillary`; saiu do Tuning a 13/10).
+pub const PAINTER_WETPAINT_CAPILLARY: NodeId = hash_node_id("painter_brush.wetpaint_capillary");
+
+/// **Brake** — the absorbency brake that stops water on dry paper (knob `brake`; saiu do Tuning a 13/10).
+pub const PAINTER_WETPAINT_BRAKE: NodeId = hash_node_id("painter_brush.wetpaint_brake");
+
 /// **Erase Strength** — the wet eraser's lift per pass (engine `sliders.erase`, boot `0.4`).
 pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_erase");
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 13] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 17] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -169,6 +181,10 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 13] = [
     PAINTER_WETPAINT_DRY_SPEED,
     PAINTER_WETPAINT_EDGE,
     PAINTER_WETPAINT_GRAVITY,
+    PAINTER_WETPAINT_LEVELING,
+    PAINTER_WETPAINT_LEVEL_CLAMP,
+    PAINTER_WETPAINT_CAPILLARY,
+    PAINTER_WETPAINT_BRAKE,
     PAINTER_WETPAINT_ERASE,
     super::PAINTER_WETPAINT_VOL_SIZE,
     super::PAINTER_WETPAINT_VOL_OPACITY,

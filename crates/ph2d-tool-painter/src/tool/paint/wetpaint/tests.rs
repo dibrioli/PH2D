@@ -1220,6 +1220,47 @@ fn the_wet_section_reset_restores_the_knob_defaults() {
     );
 }
 
+/// **A física da água no cartão** (dono 13/10: *«Leveling, Capillary, Brake e Level Clamp devem sair de Tuning e
+/// ir para o painel painter»*): cada linha do cartão chega ao knob do motor EXACTA, o Tuning já não as mostra,
+/// e cada uma muda a tinta depois de a água correr (um segundo de quadros parados).
+#[test]
+fn a_fisica_da_agua_do_cartao_chega_ao_motor_e_muda_a_tinta() {
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob, KnobGroup};
+    let pinta = |ajuste: Option<(ph2d_a11y::NodeId, f64)>| {
+        let mut t = tool_in_mode("wetpaint");
+        t.set_wet_relogio_fixo(true);
+        if let Some((id, v)) = ajuste {
+            assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(id, v)));
+        }
+        stroke_across(&mut t);
+        for _ in 0..60 {
+            t.on_tick(1000.0 / 60.0);
+        }
+        (t.canvas_rgba.to_vec(), t.wet_knobs())
+    };
+    let (base, _) = pinta(None);
+    for (id, knob, v) in [
+        (crate::ids::PAINTER_WETPAINT_LEVELING, Knob::Leveling, 1.8),
+        (
+            crate::ids::PAINTER_WETPAINT_LEVEL_CLAMP,
+            Knob::LevelClamp,
+            0.9,
+        ),
+        (crate::ids::PAINTER_WETPAINT_CAPILLARY, Knob::Capillary, 0.9),
+        (crate::ids::PAINTER_WETPAINT_BRAKE, Knob::Brake, 0.2),
+    ] {
+        assert_eq!(
+            KNOB_DEFS[knob as usize].group,
+            KnobGroup::Hidden,
+            "{knob:?} ainda no Tuning"
+        );
+        let (px, k) = pinta(Some((id, v)));
+        assert_eq!(k.get(knob), v, "{knob:?}: o cartão não chegou ao motor");
+        assert_ne!(px, base, "{knob:?}: o cartão chegou e a tinta não mudou");
+    }
+}
+
 // ── Doc 21 (deposit-at-commit) — Stage 0 pins ─────────────────────────────
 
 /// Doc 21 G0a: `wet_owns_the_dabs` is FALSE in every non-wet mode, eraser on

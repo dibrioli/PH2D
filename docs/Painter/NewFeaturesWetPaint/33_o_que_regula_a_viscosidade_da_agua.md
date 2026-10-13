@@ -1,7 +1,9 @@
 # 33 — O que regula a «viscosidade» da água no Wet Paint, além do Water (13/10)
 
-> Pergunta do dono (13/10). Fórmulas conferidas no código; todos os knobs abaixo estão VISÍVEIS no Tuning
-> (grupos Physics e Water); nenhum `KnobGroup::Hidden` é a viscosidade.
+> Pergunta do dono (13/10). Fórmulas conferidas no código. ⭐ **Leveling, Level Clamp, Capillary e Brake saíram
+> do Tuning para o cartão Wet Paint do painel do Painter** (ordem do dono, 13/10: ids `PAINTER_WETPAINT_{LEVELING,
+> LEVEL_CLAMP, CAPILLARY, BRAKE}`, faixa e passo da `KNOB_DEFS`; portão
+> `a_fisica_da_agua_do_cartao_chega_ao_motor_e_muda_a_tinta`); o resto continua no Tuning.
 
 | Tuning (chave) | grupo · faixa · fábrica | o que faz (fórmula) |
 |---|---|---|

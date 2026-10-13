@@ -553,7 +553,11 @@ jobs:
       # (meson+ninja) with nasm-assembled SIMD. The `test` job installs these
       # and warms the cache; this job restores it, but a cache miss (seen on
       # ubuntu) rebuilds the -sys crate and needs the tools present too.
-      - name: Install AVIF build tools (meson + ninja + nasm)
+      # ⚠️ (13/10) E o fontconfig/freetype: o `physics_ecs_c9` LIGA-OS desde a W18 do Quadro
+      # (ph2d-ecs → ph2d-asset → ph2d-imageio-registry-init → ph2d-imageio-svg → parley 0.11 →
+      # fontique → yeslogic-fontconfig-sys) — sem eles o link falhou («unable to find library
+      # -lfontconfig / -lfreetype») só aqui; os outros jobs já os instalam pelo mesmo caminho.
+      - name: Install AVIF build tools (meson + ninja + nasm) + fontconfig
         shell: bash
         run: |
           case "${{ runner.os }}" in
@@ -562,7 +566,7 @@ jobs:
                 sudo timeout 120 apt-get update && break || echo "apt-get update lento (tentativa $i)"
                 sleep 5
               done
-              sudo apt-get install -y meson ninja-build nasm
+              sudo apt-get install -y meson ninja-build nasm libfontconfig1-dev libfreetype-dev
               ;;
             macOS)
               brew install meson ninja nasm

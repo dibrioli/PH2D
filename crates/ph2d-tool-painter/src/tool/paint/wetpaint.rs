@@ -488,6 +488,8 @@ mod sonda_camadas; // as sondas das camadas de amarelo sobre azul (prompt 15)
 #[cfg(test)]
 mod sonda_fios; // O3: os fios finos do Rebelle saem dos knobs que o motor já tem?
 #[cfg(test)]
+mod sonda_macro_tests; // as MACROS: reproduzir ao byte contando passos da sim, não segundos
+#[cfg(test)]
 mod sonda_gota; // a varredura da lei da gota contra o Rebelle (W1e, F1+F5)
 #[cfg(test)]
 mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)

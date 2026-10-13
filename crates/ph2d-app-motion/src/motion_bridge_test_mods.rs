@@ -51,6 +51,10 @@ mod lsystem_preset_tests;
 /// no corte que a pergunta desenha: lá *o que a tabela é*, aqui *o que o clique faz*.
 #[path = "motion_bridge_lsystem_selector_tests.rs"]
 mod lsystem_selector_tests;
+/// SONDA da linha Macros: reproduzir um grafo nó a nó pela porta dos intents — `#[ignore]`.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_macro_replay_probe.rs"]
+mod macro_replay_probe;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_param_tests.rs"]
 mod param_tests;

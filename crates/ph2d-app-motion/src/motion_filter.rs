@@ -446,20 +446,27 @@ impl MotionState {
                 Some((buffer, n, runs)) => ph2d_fx_cells::Sprites::Placa { buffer, n, runs },
                 None => ph2d_fx_cells::Sprites::Cpu(cpu),
             };
-            // ⭐ P4 (doc 132 §4): as imagens de um grupo voltam no grupo delas, SEM o filtro das formas.
-            let mut desenha_imagens =
-                |pass: &mut wgpu::RenderPass<'static>, c: &ph2d_shape_gpu::Corrida| {
+            // ⭐ P4 (doc 132 §4.1): as imagens de um grupo são CÉLULAS como as formas — cada uma com o
+            // filtro, pintada pelo passe da placa e devolvida no grupo dela.
+            let mut pinta =
+                |gpu: &ph2d_gpu::GpuContext,
+                 enc: &mut wgpu::CommandEncoder,
+                 alvo: &wgpu::TextureView,
+                 linhas: (ph2d_shape_gpu::ShapeView, &wgpu::Buffer, &[u32])| {
                     if let Some(p) = e.formas {
-                        p.desenha_as_imagens(pass, c);
+                        p.pinta_imagens_isoladas(gpu, enc, alvo, linhas);
                     }
                 };
-            let imagens = e
-                .formas
-                .filter(|p| p.tem_imagens())
-                .map(|p| ph2d_fx_cells::Imagens {
+            let imagens = e.formas.and_then(|p| {
+                let (buffer, n, vista) = p.imagens_das_celulas()?;
+                Some(ph2d_fx_cells::Imagens {
+                    buffer,
+                    n,
+                    vista,
                     corridas: p.corridas_do_quadro(),
-                    desenha: &mut desenha_imagens,
-                });
+                    pinta: &mut pinta,
+                })
+            });
             celulas.corre(ph2d_fx_cells::Entrada {
                 gpu: e.gpu,
                 renderer: e.renderer,

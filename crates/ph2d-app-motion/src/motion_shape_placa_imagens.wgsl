@@ -118,12 +118,8 @@ fn vs_imagem(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -
 }
 
 // O byte CODIFICADO que a textura guarda: a leitura de um `…Srgb` descodifica, e o Vello mistura
-// os bytes crus.
-fn codifica(c: vec3<f32>) -> vec3<f32> {
-    let baixo = c * 12.92;
-    let alto = 1.055 * pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.4)) - 0.055;
-    return select(alto, baixo, c <= vec3<f32>(0.0031308));
-}
+// os bytes crus — `codifica` é a do `ph2d_render::CODIFICA_WGSL` (prefixada), a MESMA da leitura que
+// dá a arte à rota da CPU.
 
 fn texel(ij: vec2<f32>, premultiplicada: u32) -> vec4<f32> {
     let l = textureLoad(arte, vec2<i32>(ij), 0);

@@ -108,8 +108,7 @@ impl LeafImages {
     fn art_synced(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
-        atlas: &ph2d_render::TextureAtlas,
-        individual: &ph2d_render::IndividualTextureStore,
+        renderer: &ph2d_render::SpriteRenderer,
         texture_id: u32,
         uv: [f32; 4],
     ) -> Option<Art> {
@@ -117,16 +116,18 @@ impl LeafImages {
         if let Some(hit) = self.recortes.get(&key) {
             return hit.clone();
         }
-        let art = self.resolve(gpu, atlas, individual, texture_id, uv);
+        let art = self.resolve(gpu, renderer, texture_id, uv);
         self.recortes.insert(key, art.clone());
         art
     }
 
+    /// ⭐ P4 (doc 132 §4.1) — as TRÊS lojas, pela porta de leitura do renderer
+    /// ([`ph2d_render::SpriteRenderer::le_rgba8`]): o átlas, as individuais e as ASSADAS (até ao P4 uma
+    /// textura assada não resolvia aqui, e a placa, que a liga pela porta irmã, desenhava-a).
     pub fn resolve(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
-        atlas: &ph2d_render::TextureAtlas,
-        individual: &ph2d_render::IndividualTextureStore,
+        renderer: &ph2d_render::SpriteRenderer,
         texture_id: u32,
         uv: [f32; 4],
     ) -> Option<Art> {
@@ -138,7 +139,7 @@ impl LeafImages {
             let (side, bytes) = match &self.atlas {
                 Some(hit) => (hit.0, Arc::clone(&hit.1)),
                 None => {
-                    let (side, _, bytes) = atlas.readback_mip(gpu, 0);
+                    let (side, _, bytes) = renderer.le_rgba8(gpu, 0)?;
                     let bytes = Arc::new(bytes);
                     self.atlas = Some((side, Arc::clone(&bytes)));
                     (side, bytes)
@@ -146,7 +147,7 @@ impl LeafImages {
             };
             (side, side, bytes)
         } else {
-            let (w, h, bytes) = individual.readback_rgba8(gpu, texture_id).ok()?;
+            let (w, h, bytes) = renderer.le_rgba8(gpu, texture_id)?;
             (w, h, Arc::new(bytes))
         };
         crop(w, h, &px, uv)
@@ -165,13 +166,11 @@ impl Synced<'_> {
     pub fn art(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
-        atlas: &ph2d_render::TextureAtlas,
-        individual: &ph2d_render::IndividualTextureStore,
+        renderer: &ph2d_render::SpriteRenderer,
         texture_id: u32,
         uv: [f32; 4],
     ) -> Option<Art> {
-        self.cache
-            .art_synced(gpu, atlas, individual, texture_id, uv)
+        self.cache.art_synced(gpu, renderer, texture_id, uv)
     }
 }
 

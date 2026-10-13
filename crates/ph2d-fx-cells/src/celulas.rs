@@ -73,15 +73,53 @@ pub struct Entrada<'a> {
     /// células na ordem de z.
     pub camada: &'a wgpu::TextureView,
     pub tamanho: (u32, u32),
-    /// ⭐ P4 (doc 132 §4 do Motion) — as IMAGENS das corridas da placa (as de uma saída em grupo),
-    /// pelo desenhador dela: voltam SEM o filtro (o `Each Shape` é das formas), no grupo delas.
+    /// ⭐ P4 (doc 132 §4.1 do Motion) — as IMAGENS de grupo da placa: CÉLULAS como as formas (cada uma
+    /// filtrada sozinha) que voltam pela sessão, na corrida delas ([`Corrida::imagens`]).
     pub imagens: Option<Imagens<'a>>,
 }
 
-/// ⭐ P4 — as corridas da placa com as imagens ([`Corrida::imagens`]) e quem as pinta num passe.
+/// Quem pinta as imagens relocadas numa página: o alvo, e `(vista da página, linhas relocadas, a
+/// linha original de cada uma)`.
+pub type PintaImagens<'a> = &'a mut dyn FnMut(
+    &GpuContext,
+    &mut wgpu::CommandEncoder,
+    &wgpu::TextureView,
+    (ShapeView, &wgpu::Buffer, &[u32]),
+);
+
+/// ⭐ P4 — as linhas de imagem de grupo da placa (`[RenderInstance]`, as que o passe dela lê), quantas,
+/// a vista da camada, as corridas da placa e o passe que as pinta.
 pub struct Imagens<'a> {
+    pub buffer: &'a wgpu::Buffer,
+    pub n: u32,
+    pub vista: ShapeView,
     pub corridas: &'a [Corrida],
-    pub desenha: ph2d_shape_gpu::DesenhaImagens<'a>,
+    pub pinta: PintaImagens<'a>,
+}
+
+/// ⭐ P4 — **a ordem das linhas no plano**: as sprites, e depois, corrida a corrida da placa, as
+/// formas e as IMAGENS dela — as células de uma corrida voltam juntas e o grupo dela não se reabre
+/// (com as imagens no fim, um 2.º grupo entre as formas e as imagens do 1.º partia-o em dois). As
+/// linhas que nenhuma corrida nomeia seguem pela ordem delas.
+#[must_use]
+pub fn ordem_das_linhas(n_s: u32, n_f: u32, n_i: u32, corridas: &[Corrida]) -> Vec<u32> {
+    let mut v: Vec<u32> = (0..n_s).collect();
+    let (mut f, mut i) = (vec![false; n_f as usize], vec![false; n_i as usize]);
+    for c in corridas {
+        for k in c.copias.clone().filter(|&k| k < n_f) {
+            if !std::mem::replace(&mut f[k as usize], true) {
+                v.push(n_s + k);
+            }
+        }
+        for k in c.imagens.clone().filter(|&k| k < n_i) {
+            if !std::mem::replace(&mut i[k as usize], true) {
+                v.push(n_s + n_f + k);
+            }
+        }
+    }
+    v.extend((0..n_f).filter(|&k| !f[k as usize]).map(|k| n_s + k));
+    v.extend((0..n_i).filter(|&k| !i[k as usize]).map(|k| n_s + n_f + k));
+    v
 }
 
 /// **O afim mundo → pixel da camada das SPRITES** (`[a, b, c, d, e, f]`, o do kurbo) — porta única: a
@@ -200,6 +238,8 @@ pub struct Celulas {
     atlas: Option<Atlas>,
     /// As caixas do último [`Self::corre`] (sprites ++ formas) — instrumento de gates.
     ultimas_caixas: Vec<Caixa>,
+    /// ⭐ P4 — a linha CRUA (sprites ++ formas ++ imagens) de cada instância do plano ([`ordem_das_linhas`]).
+    ordem: Vec<u32>,
     /// As páginas do último [`Self::corre`] — instrumento de gates e do relógio.
     ultimas_paginas: Vec<Pagina>,
     /// B5: a volta com mistura — nasce no primeiro quadro que a pede.
@@ -268,6 +308,7 @@ impl Celulas {
             colagem: BandBlit::new(gpu, FORMATO),
             atlas: None,
             ultimas_caixas: Vec::new(),
+            ordem: Vec::new(),
             ultimas_paginas: Vec::new(),
             voltas: None,
             variante: Variante::default(),
@@ -333,7 +374,15 @@ impl Celulas {
         let afim = afim_das_sprites(e.camera, e.window, e.scene_viewport);
 
         let relogio = abre(gpu, "fx_cells.caixas");
-        self.ultimas_caixas = self.caixas(gpu, s_buf, n_s, afim, e.formas);
+        let das_imagens = e.imagens.as_ref().map(|i| (i.buffer, i.n, i.vista));
+        let corridas = e.formas.as_ref().map_or_else(
+            || e.imagens.as_ref().map_or(&[][..], |i| i.corridas),
+            |f| f.corridas,
+        );
+        let cruas = self.caixas(gpu, s_buf, n_s, afim, e.formas, das_imagens);
+        let n_f = e.formas.map_or(0, |f| f.n);
+        self.ordem = ordem_das_linhas(n_s, n_f, das_imagens.map_or(0, |i| i.1), corridas);
+        self.ultimas_caixas = self.ordem.iter().map(|&r| cruas[r as usize]).collect();
         fecha(gpu, relogio);
         // A vala cobre o que a pilha ESPALHA para fora de uma forma E o que ela LÊ em volta de cada
         // pixel que escreve ([`Vala`]).
@@ -369,19 +418,11 @@ impl Celulas {
         }
         let usa_mapa = e.ops.iter().any(|o| o.kind == ph2d_fx_op::FxOp::TURBULENCE);
         let mut imagens = e.imagens.take();
-        let corridas = e.formas.as_ref().map_or_else(
-            || imagens.as_ref().map_or(&[][..], |i| i.corridas),
-            |f| f.corridas,
-        );
         let simples = match corridas {
             [] => true,
             [c] => c.mistura == Mistura::Normal && c.grupo == 0 && c.imagens.is_empty(),
             _ => false,
         };
-        let mut volta_das_imagens = imagens.as_mut().map(|i| crate::volta::ImagensDaVolta {
-            cursor: 0,
-            desenha: &mut *i.desenha,
-        });
         // B5: com mistura, as formas voltam à camada PRÓPRIA delas, colada no fim ([`crate::volta`]).
         let mut voltas = (!simples).then(|| {
             let mut v = self
@@ -408,22 +449,14 @@ impl Celulas {
                 &ordenadas,
                 afim,
                 usa_mapa,
-                mistas
-                    .as_mut()
-                    .map(|(p, s)| (*p, s, corridas, volta_das_imagens.as_mut())),
+                mistas.as_mut().map(|(p, s)| (*p, s, corridas)),
+                imagens.as_mut(),
             );
         }
-        if let Some((_, mut sessao)) = mistas {
+        if let Some((_, sessao)) = mistas {
             let mut enc = gpu
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-            // ⭐ P4: as imagens das corridas que nenhuma célula alcançou (sem formas, ou depois da
-            // última) voltam no fim, cada uma no grupo dela.
-            if let Some(im) = volta_das_imagens.as_mut() {
-                let mut resto = Vec::new();
-                im.ate(corridas, corridas.len(), &mut resto);
-                sessao.corridas(&mut enc, &resto, &mut |pass, c| (im.desenha)(pass, c));
-            }
             sessao.fecha(&mut enc);
             gpu.queue.submit([enc.finish()]);
         }
@@ -454,20 +487,28 @@ impl Celulas {
             &crate::volta::Pipes,
             &mut ph2d_shape_gpu::Sessao<'_>,
             &[Corrida],
-            Option<&mut crate::volta::ImagensDaVolta<'_>>,
         )>,
+        mut imagens: Option<&mut Imagens<'_>>,
     ) {
         let gpu = e.gpu;
         let lin_s = [afim[0], afim[1], afim[2], afim[3]];
+        let n_f = e.formas.map_or(0, |f| f.n);
         let (mut idx_s, mut d_s, mut idx_f, mut d_f) =
             (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        let (mut idx_i, mut d_i) = (Vec::new(), Vec::new());
         for c in &pagina.celulas {
-            if c.instancia < n_s {
-                idx_s.push(c.instancia);
+            let r = self.ordem[c.instancia as usize];
+            if r < n_s {
+                idx_s.push(r);
                 d_s.push(no_mundo(lin_s, c.t));
-            } else if let Some(f) = e.formas {
-                idx_f.push(c.instancia - n_s);
-                d_f.push(no_mundo(f.vista.lin.map(f64::from), c.t));
+            } else if r < n_s + n_f {
+                if let Some(f) = e.formas {
+                    idx_f.push(r - n_s);
+                    d_f.push(no_mundo(f.vista.lin.map(f64::from), c.t));
+                }
+            } else if let Some(im) = imagens.as_deref() {
+                idx_i.push(r - n_s - n_f);
+                d_i.push(no_mundo(im.vista.lin.map(f64::from), c.t));
             }
         }
         let relogio = abre(gpu, "fx_cells.reloca");
@@ -513,6 +554,20 @@ impl Celulas {
             )),
             _ => None,
         };
+        // ⭐ P4: as imagens de grupo relocam-se como as sprites (a mesma disposição de linha).
+        let reloc_i = match imagens.as_deref() {
+            Some(im) if !idx_i.is_empty() => Some(reloca(
+                &self.relocar,
+                gpu,
+                &mut enc,
+                im.buffer,
+                &idx_i,
+                &d_i,
+                (PALAVRAS_SPRITE, POS_SPRITE),
+                wgpu::BufferUsages::empty(),
+            )),
+            _ => None,
+        };
         gpu.queue.submit([enc.finish()]);
         fecha(gpu, relogio);
 
@@ -528,7 +583,7 @@ impl Celulas {
         // não muda um bit.
         let salta = self.variante.salta_vazias;
         let com_s = !(salta && idx_s.is_empty());
-        let com_f = !(salta && reloc_f.is_none());
+        let com_f = !(salta && reloc_f.is_none() && reloc_i.is_none());
         let relogio = abre(gpu, "fx_cells.sprites");
         if com_s {
             e.renderer.render_instances_only(
@@ -570,6 +625,16 @@ impl Celulas {
             }
             _ if com_f => limpa(&mut enc, &atlas.formas),
             _ => {}
+        }
+        // ⭐ P4: as imagens de grupo na MESMA página das formas (as células não se tocam), pelo passe
+        // da placa — o tom e a tinta da cena vectorial, cada uma sozinha.
+        if let (Some(b), Some(im)) = (reloc_i.as_ref(), imagens.as_deref_mut()) {
+            #[expect(clippy::cast_precision_loss, reason = "um átlas cabe num f32")]
+            let v = ShapeView {
+                alvo: [alvo.0 as f32, alvo.1 as f32],
+                ..im.vista
+            };
+            (im.pinta)(gpu, &mut enc, &atlas.formas, (v, b, &idx_i));
         }
         limpa(&mut enc, &atlas.camada_view);
         gpu.queue.submit([enc.finish()]);
@@ -623,7 +688,7 @@ impl Celulas {
         );
         fecha(gpu, relogio);
         let relogio = abre(gpu, "fx_cells.volta");
-        let Some((pipes, sessao, corridas, imagens)) = mistas else {
+        let Some((pipes, sessao, corridas)) = mistas else {
             quads(
                 gpu,
                 &self.volta,
@@ -665,7 +730,7 @@ impl Celulas {
             &cels,
             &atlas.saida_view,
             e.tamanho,
-            imagens,
+            (n_f, &self.ordem),
         );
         fecha(gpu, relogio);
     }

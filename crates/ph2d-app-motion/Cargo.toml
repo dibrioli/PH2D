@@ -144,6 +144,8 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # P4: o gate que valida o WGSL das imagens da placa sem adaptador.
 naga = { version = "29.0.4", features = ["wgsl-in"] }
+# P4: o gate da textura ASSADA monta um KTX2 sem compressão (a porta do produto que a carrega).
+ph2d-asset-ktx2 = { path = "../ph2d-asset-ktx2" }
 # ⚠️ Só para o gate do roteiro da cena `=125`, que deriva o nome do cartão dos OSSOS do
 # registo em vez de o escrever à mão. O produto alcança o nó pelo `ph2d-node-registry-init`.
 ph2d-node-rig-bones = { path = "../ph2d-node-rig-bones" }

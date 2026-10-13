@@ -47,11 +47,12 @@ fn prefixo() -> String {
     use std::mem::{offset_of, size_of};
     let w = |o: usize| o / 4;
     format!(
-        "{area}\nconst PALAVRAS: u32 = {n}u;\nconst W_P: u32 = {p}u;\nconst W_SIZE: u32 = {s}u;\n\
+        "{area}{codifica}\nconst PALAVRAS: u32 = {n}u;\nconst W_P: u32 = {p}u;\nconst W_SIZE: u32 = {s}u;\n\
          const W_UV: u32 = {uv}u;\nconst W_TINT: u32 = {tint}u;\nconst W_BASIS: u32 = {b}u;\n\
          const W_PREMUL: u32 = {pm}u;\nconst W_ANCHOR: u32 = {a}u;\nconst W_UV_XFORM: u32 = {x}u;\n\
          const W_SAMPLING: u32 = {smp}u;\n",
         area = ph2d_shape_gpu::AREA_DO_VELLO,
+        codifica = ph2d_render::CODIFICA_WGSL,
         n = size_of::<R>() / 4,
         p = w(offset_of!(R, world_pos)),
         s = w(offset_of!(R, size)),
@@ -94,12 +95,13 @@ pub(crate) struct ImagensDaPlaca {
     tela: wgpu::RenderPipeline,
     /// `None` ⇒ o dispositivo não tem `DUAL_SOURCE_BLENDING` (a ponte não manda o Multiplica cá).
     multiplica: Option<wgpu::RenderPipeline>,
-    vista: wgpu::Buffer,
 }
 
 /// As fontes das imagens de UM quadro: o buffer das linhas, a textura de cada troço e o filtro.
 pub struct FontesDasImagens {
     pub buffer: wgpu::Buffer,
+    /// Quantas linhas o buffer tem.
+    pub linhas: u32,
     pub texturas: Vec<(Range<u32>, wgpu::TextureView)>,
     pub projeto: ph2d_render::ImageFilterMode,
 }
@@ -196,17 +198,13 @@ impl ImagensDaPlaca {
             soma: pipeline(&base, "fs_imagem_mistura", Mistura::Soma),
             tela: pipeline(&base, "fs_imagem_mistura", Mistura::Tela),
             multiplica,
-            vista: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("motion imagens da placa (vista)"),
-                size: std::mem::size_of::<Vista>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
             layout,
         }
     }
 
-    /// A vista e a tabela do filtro deste quadro, e um grupo de ligação por troço de textura.
+    /// A vista e a tabela do filtro, e um grupo de ligação por troço de textura. ⚠️ Um uniforme POR
+    /// ligação: a camada e as páginas das células (`ph2d_fx_cells`) desenham com vistas diferentes no
+    /// mesmo quadro.
     pub(crate) fn liga(
         &self,
         gpu: &GpuContext,
@@ -219,8 +217,13 @@ impl ImagensDaPlaca {
             alvo: vista.alvo,
             ponto: tabela_do_ponto(fontes.projeto),
         };
-        gpu.queue
-            .write_buffer(&self.vista, 0, bytemuck::bytes_of(&v));
+        let uniforme = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("motion imagens da placa (vista)"),
+            size: std::mem::size_of::<Vista>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        gpu.queue.write_buffer(&uniforme, 0, bytemuck::bytes_of(&v));
         Ligacoes(
             fontes
                 .texturas
@@ -232,7 +235,7 @@ impl ImagensDaPlaca {
                         entries: &[
                             wgpu::BindGroupEntry {
                                 binding: 0,
-                                resource: self.vista.as_entire_binding(),
+                                resource: uniforme.as_entire_binding(),
                             },
                             wgpu::BindGroupEntry {
                                 binding: 1,
@@ -284,30 +287,124 @@ impl ImagensDaPlaca {
     }
 }
 
-/// ⭐ **As fontes das imagens do quadro** — o buffer que o cozimento separou e, por troço, a textura
-/// que o renderer liga àquele `texture_id` (`SpriteRenderer::texture_view_and_dims`, a porta única
-/// das três lojas). Um troço cuja textura nenhuma loja conhece não desenha, como na CPU.
+impl ImagensDaPlaca {
+    /// ⭐ **As imagens SOZINHAS** (a página das células do `Each Shape`, `ph2d_fx_cells`): cada linha
+    /// em `Normal` sobre `alvo` (que já tem as formas da página), com a vista da página.
+    pub(crate) fn pinta_isoladas(
+        &self,
+        gpu: &GpuContext,
+        enc: &mut wgpu::CommandEncoder,
+        alvo: &wgpu::TextureView,
+        vista: ShapeView,
+        fontes: &FontesDasImagens,
+    ) {
+        let ligacoes = self.liga(gpu, vista, fontes);
+        let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("motion imagens da placa (celulas)"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: alvo,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(&self.normal);
+        for (linhas, bg) in &ligacoes.0 {
+            pass.set_bind_group(0, bg, &[]);
+            pass.draw(0..6, linhas.clone());
+        }
+    }
+}
+
+/// **As texturas das linhas RELOCADAS** — a linha `j` é a original `indices[j]`: a textura de cada
+/// troço da relocação pela partição original, vizinhos da mesma textura juntos.
+#[must_use]
+pub(crate) fn texturas_relocadas(
+    texturas: &[(Range<u32>, wgpu::TextureView)],
+    indices: &[u32],
+) -> Vec<(Range<u32>, wgpu::TextureView)> {
+    let mut out: Vec<(Range<u32>, usize)> = Vec::new();
+    for (j, i) in (0u32..).zip(indices) {
+        let Some(k) = texturas.iter().position(|(r, _)| r.contains(i)) else {
+            continue;
+        };
+        match out.last_mut() {
+            Some((r, kk)) if *kk == k && r.end == j => r.end = j + 1,
+            _ => out.push((j..j + 1, k)),
+        }
+    }
+    out.into_iter()
+        .map(|(r, k)| (r, texturas[k].1.clone()))
+        .collect()
+}
+
+/// ⭐ **As fontes das imagens do quadro** — as linhas (as que o cozimento separou na rota do
+/// dispositivo, as do [`super::PlacaDeFormas`] na da CPU) e, por troço, a textura que o renderer liga
+/// àquele `texture_id` (`SpriteRenderer::texture_view_and_dims`, a porta única das três lojas: átlas,
+/// individuais e ASSADAS). Um troço cuja textura nenhuma loja conhece não desenha.
 #[must_use]
 pub fn fontes_do_quadro(
+    placa: &super::PlacaDeFormas,
+    gpu: &GpuContext,
     motion: &crate::motion_state::MotionState,
     renderer: &ph2d_render::SpriteRenderer,
     projeto: ph2d_render::ImageFilterMode,
 ) -> Option<FontesDasImagens> {
-    let imagens = motion
+    let vista = |id: u32| {
+        renderer
+            .texture_view_and_dims(id)
+            .map(|(v, _, _)| v.clone())
+    };
+    if let Some(imagens) = motion
         .gpu_cook
         .imagens_do_grupo()
-        .filter(|_| motion.gpu_live)?;
-    let texturas = imagens
-        .texturas()
-        .iter()
-        .filter_map(|(linhas, id)| {
-            let (v, _, _) = renderer.texture_view_and_dims(*id)?;
-            Some((linhas.clone(), v.clone()))
-        })
-        .collect();
+        .filter(|_| motion.gpu_live)
+    {
+        let texturas = imagens
+            .texturas()
+            .iter()
+            .filter_map(|(linhas, id)| Some((linhas.clone(), vista(*id)?)))
+            .collect();
+        return Some(FontesDasImagens {
+            buffer: imagens.buffer().clone(),
+            linhas: imagens.len(),
+            texturas,
+            projeto,
+        });
+    }
+    let linhas = placa.imagens_da_cpu();
+    if linhas.is_empty() {
+        return None;
+    }
+    let mut troços: Vec<(Range<u32>, u32)> = Vec::new();
+    for (j, l) in (0u32..).zip(linhas) {
+        match troços.last_mut() {
+            Some((r, id)) if *id == l.texture_id => r.end = j + 1,
+            _ => troços.push((j..j + 1, l.texture_id)),
+        }
+    }
+    let bytes: &[u8] = bytemuck::cast_slice(linhas);
+    let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("motion imagens da placa (cpu)"),
+        size: bytes.len() as u64,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    gpu.queue.write_buffer(&buffer, 0, bytes);
     Some(FontesDasImagens {
-        buffer: imagens.buffer().clone(),
-        texturas,
+        buffer,
+        linhas: u32::try_from(linhas.len()).unwrap_or(u32::MAX),
+        texturas: troços
+            .into_iter()
+            .filter_map(|(r, id)| Some((r, vista(id)?)))
+            .collect(),
         projeto,
     })
 }

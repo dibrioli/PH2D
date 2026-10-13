@@ -45,11 +45,11 @@ impl crate::App {
             // ⭐⭐⭐ **A ARTE dos quads do passe vectorial** (a terceira média): resolvida
             // aqui porque é aqui que o `renderer` e a GPU estão em mão, e memoizada em
             // [`ph2d_app_motion::motion_leaf_images`] porque cada leitura PARA a GPU.
-            let (gpu, atlas, individual) = (surface.gpu(), renderer.atlas(), renderer.individual());
+            let (gpu, atlas) = (surface.gpu(), renderer.atlas());
             // ⚠️ **O `synced` é a única porta**, e ele recebe o relógio de mudança do
             // atlas — esquecer a sincronização é erro de compilação (§2.5).
             let mut cache = self.motion_shell.leaf_images.synced(atlas.epoch());
-            let mut art = |tex: u32, uv: [f32; 4]| cache.art(gpu, atlas, individual, tex, uv);
+            let mut art = |tex: u32, uv: [f32; 4]| cache.art(gpu, renderer, tex, uv);
             // ⭐⭐⭐ **O ALVO DE RENDER é o recorte** (ordem do dono, 2026-09-21). A cena
             // vectorial é rasterizada a `surface.size()` (`present_chrome`:
             // `render_to_intermediate(.., window_size, ..)`) e o chrome pinta-se DENTRO dela ⇒

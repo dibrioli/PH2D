@@ -67,10 +67,12 @@ pub mod ktx2_format;
 /// per-pixel stack machine; texture-array cache + dirty-rect dispatch. See
 /// [`docs/Painter_projeto/02_layers.md`](../../../docs/Painter_projeto/02_layers.md).
 pub mod layer_compositor;
+pub mod leitura_rgba8;
 /// A lente da câmera sobre o acumulador do mundo (Motion ciclo 20, doc 129).
 pub mod lens;
 pub mod luz_recebida;
 pub mod mipgen;
+pub use leitura_rgba8::{CODIFICA_WGSL, le_rgba8_codificado};
 pub mod motion_fx;
 pub mod nine_slice;
 pub mod picking;

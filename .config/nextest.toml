@@ -133,8 +133,10 @@ max-threads = 2
 # `dev`, load ~1: o interior na grade 513 s (três leis por caso desde a W5n) · o oclusor fino 380 s (W5m §5)
 # · a holográfica junto à face passou na corrida em série (os 4 do GPU em 364 s); na suíte paralela os três
 # estouraram os 180 s. Tecto: 12 × 60 s (~1,4× o mais lento medido sozinho).
+# E (o ship de 12/10, os dois estouraram os 180 s na suíte inteira) a sombra nítida 147,6 s e a face acesa
+# 67,0 s, sozinhos em `ci-test`, `-j 1`, load 1,1–2,4.
 [[profile.default.overrides]]
-filter = 'test(=o_interior_do_opaco::o_interior_do_opaco_nao_depende_da_posicao_na_grade) + test(=o_oclusor_fino::o_oclusor_fino_faz_a_sombra_do_gabarito) + test(=holografica::a_holografica_junto_a_uma_face_e_o_gabarito)'
+filter = 'test(=o_interior_do_opaco::o_interior_do_opaco_nao_depende_da_posicao_na_grade) + test(=o_oclusor_fino::o_oclusor_fino_faz_a_sombra_do_gabarito) + test(=holografica::a_holografica_junto_a_uma_face_e_o_gabarito) + test(=a_escada_da_sombra::a_sombra_nitida_nao_tem_escada) + test(=a_face_acesa_da_parede::a_face_acesa_da_parede_nao_tem_linha_escura)'
 slow-timeout = { period = "60s", terminate-after = 12 }
 
 [[profile.default.overrides]]

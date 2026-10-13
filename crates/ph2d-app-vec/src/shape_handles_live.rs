@@ -74,6 +74,8 @@ struct Target {
     h: f64,
     xf: Xform,
     inv: Xform,
+    /// A escala de mundo (a caneta do traço mede-se sob ela — a caixa do gizmo).
+    scale: [f64; 2],
 }
 
 impl Target {
@@ -89,7 +91,8 @@ impl Target {
         if law::handles_of(kind).is_empty() {
             return None;
         }
-        let xf = xform_of_transform(world_transform(sim, entity));
+        let pose = world_transform(sim, entity);
+        let xf = xform_of_transform(pose);
         Some(Self {
             id,
             entity,
@@ -99,6 +102,7 @@ impl Target {
             h: *h,
             inv: xf.inverse()?,
             xf,
+            scale: [f64::from(pose.scale.x), f64::from(pose.scale.y)],
         })
     }
 
@@ -125,14 +129,38 @@ impl Target {
         v[0].hypot(v[1])
     }
 
-    /// As pegas (onde cada alça se desenha e agarra), em LOCAL.
-    fn grips(&self, px_to_world: f64) -> Vec<Option<[f64; 2]>> {
+    /// ⭐ (F14b) Quanto o que a forma PINTA passa da curva pela DIREITA, em local — o traço (a
+    /// junta, o miter, o Outer), pela MESMA conta da caixa do gizmo
+    /// (`ph2d_vec_render::path_intrinsic_visual_bbox`, a *Use Preview Bounds*): as alças da caixa
+    /// vivem na caixa visual, e a fila de ⇕ mede-se dela (F13 §7.2: com meia caneta ≥ 9 px o ⇕
+    /// encostava na alça do meio).
+    fn paint_margin(&self, scene: &VecScene) -> f64 {
+        let Some(p) = scene.path(self.id) else {
+            return 0.0;
+        };
+        let bare = VecPath {
+            stroke: None,
+            ..p.clone()
+        };
+        match (
+            ph2d_vec_render::path_intrinsic_visual_bbox(p, self.scale),
+            ph2d_vec_render::path_intrinsic_visual_bbox(&bare, self.scale),
+        ) {
+            (Some((_, painted)), Some((_, curve))) => (painted[0] - curve[0]).max(0.0),
+            _ => 0.0,
+        }
+    }
+
+    /// As pegas (onde cada alça se desenha e agarra), em LOCAL. A fila de ⇕ fica à direita da
+    /// caixa VISUAL ([`Self::paint_margin`]).
+    fn grips(&self, scene: &VecScene, px_to_world: f64) -> Vec<Option<[f64; 2]>> {
         let ck = self.cook();
         let park = self.local_len(PARK_PX, px_to_world);
+        let margin = self.paint_margin(scene);
         law::handles_of(self.kind)
             .iter()
             .map(|h| {
-                law::handle_grip(
+                let g = law::handle_grip(
                     self.kind,
                     h,
                     &self.values,
@@ -140,7 +168,12 @@ impl Target {
                     px_to_world,
                     park,
                     &ck,
-                )
+                );
+                if h.spot == law::Spot::Rail {
+                    g.map(|p| [p[0] + margin, p[1]])
+                } else {
+                    g
+                }
             })
             .collect()
     }
@@ -178,6 +211,7 @@ const RING_N: usize = 96;
 #[must_use]
 pub fn view(
     sim: &SimWorld,
+    scene: &VecScene,
     map: &VecEntityMap,
     selection: &[VecPathId],
     gate: Gate,
@@ -186,7 +220,7 @@ pub fn view(
     hover: Option<[f64; 2]>,
 ) -> Option<ShapeHandlesView> {
     let t = Target::of(sim, map, selection, gate)?;
-    let grips = t.grips(px_to_world);
+    let grips = t.grips(scene, px_to_world);
     let world: Vec<Option<[f64; 2]>> = grips.iter().map(|g| g.map(|p| t.xf.apply(p))).collect();
     let hot_handle = grabbed.or_else(|| hover.and_then(|w| hit(&world, w, HIT_PX * px_to_world)));
     let track = hot_handle
@@ -244,6 +278,7 @@ pub fn view(
 pub fn readout(
     vec: &crate::state::VecState,
     sim: &SimWorld,
+    scene: &VecScene,
     px_to_world: f64,
     display: ph2d_editor_core::LengthDisplay,
     hover: Option<[f64; 2]>,
@@ -253,7 +288,7 @@ pub fn readout(
         Some(g) => (t.id == g.id).then_some(g.handle())?,
         None => {
             let world: Vec<Option<[f64; 2]>> = t
-                .grips(px_to_world)
+                .grips(scene, px_to_world)
                 .iter()
                 .map(|g| g.map(|p| t.xf.apply(p)))
                 .collect();
@@ -302,6 +337,7 @@ impl ShapeHandleGrab {
 #[must_use]
 pub fn press(
     sim: &SimWorld,
+    scene: &VecScene,
     map: &VecEntityMap,
     selection: &[VecPathId],
     gate: Gate,
@@ -309,7 +345,7 @@ pub fn press(
     px_to_world: f64,
 ) -> Option<ShapeHandleGrab> {
     let t = Target::of(sim, map, selection, gate)?;
-    let grips = t.grips(px_to_world);
+    let grips = t.grips(scene, px_to_world);
     let world: Vec<Option<[f64; 2]>> = grips.iter().map(|g| g.map(|p| t.xf.apply(p))).collect();
     let k = hit(&world, w, HIT_PX * px_to_world)?;
     // A pega mede-se ao ponto VERDADEIRO, não ao estacionado: agarrar a alça estacionada e não
@@ -387,7 +423,7 @@ pub fn reset_at(world: World<'_>, w: [f64; 2], px_to_world: f64) -> bool {
         selection,
         gate,
     } = world;
-    let Some(g) = press(sim, map, selection, gate, w, px_to_world) else {
+    let Some(g) = press(sim, scene, map, selection, gate, w, px_to_world) else {
         return false;
     };
     let Some(t) = Target::of(sim, map, selection, gate) else {
@@ -424,6 +460,7 @@ impl ShapeHandleInput {
     pub fn press(&mut self, world: World<'_>, w: [f64; 2], px_to_world: f64, now_ns: u128) -> bool {
         let Some(g) = press(
             world.sim,
+            world.scene,
             world.map,
             world.selection,
             world.gate,
@@ -497,6 +534,7 @@ impl ShapeHandleInput {
 pub fn draw(
     vec: &crate::state::VecState,
     sim: &SimWorld,
+    scene: &VecScene,
     px_to_world: f64,
     hover: Option<[f64; 2]>,
     shown: bool,
@@ -511,6 +549,7 @@ pub fn draw(
         .zip(readout(
             vec,
             sim,
+            scene,
             px_to_world,
             ph2d_editor_core::LengthDisplay::of(&hero.project),
             hover,
@@ -526,6 +565,7 @@ pub fn draw(
     let selection = vec.pen.selected_paths();
     if let Some(v) = view(
         sim,
+        scene,
         &vec.entities,
         selection,
         Gate::of(vec),

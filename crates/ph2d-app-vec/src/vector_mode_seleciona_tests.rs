@@ -36,6 +36,7 @@ fn the_scene_selects_with_the_shape_tool_and_brings_the_handles_back() {
             let sel = c.vec.pen.selected_paths();
             view(
                 &c.sim,
+                &c.scene,
                 &c.vec.entities,
                 sel,
                 Gate::of(&c.vec),

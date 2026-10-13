@@ -39,9 +39,17 @@ pub(crate) fn pull(
         return false;
     };
     vec.pen.select_many(&[id]);
-    let Some(at) = view(sim, &vec.entities, &[id], Gate::of(vec), PX, None, None)
-        .and_then(|v| v.points.get(handle).copied())
-    else {
+    let Some(at) = view(
+        sim,
+        scene,
+        &vec.entities,
+        &[id],
+        Gate::of(vec),
+        PX,
+        None,
+        None,
+    )
+    .and_then(|v| v.points.get(handle).copied()) else {
         return false;
     };
     if !on::press(vec, sim, scene, at, PX, 0) {

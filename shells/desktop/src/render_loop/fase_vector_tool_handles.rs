@@ -110,6 +110,7 @@ impl crate::App {
         ph2d_app_vec::shape_handles_live::draw(
             &self.vec,
             sim,
+            vec_scene,
             px,
             hover,
             overlay.shape_handles,

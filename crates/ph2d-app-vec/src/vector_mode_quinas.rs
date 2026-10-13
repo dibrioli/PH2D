@@ -111,18 +111,35 @@ fn round_up(
         return false;
     };
     vec.pen.select_many(&[id]);
-    let Some(at) = view(sim, &vec.entities, &[id], Gate::of(vec), PX, None, None)
-        .and_then(|v| v.points.get(handle).copied())
-    else {
+    let Some(at) = view(
+        sim,
+        scene,
+        &vec.entities,
+        &[id],
+        Gate::of(vec),
+        PX,
+        None,
+        None,
+    )
+    .and_then(|v| v.points.get(handle).copied()) else {
         return false;
     };
     // O ⇕ sobe; o ⊙ anda pelo TRILHO que o cursor por cima dele mostra (o arco a nascer na aresta).
     let d = if handles_of(KINDS[i])[handle].spot == Spot::Rail {
         [0.0, SOBE]
     } else {
-        let track = view(sim, &vec.entities, &[id], Gate::of(vec), PX, None, Some(at))
-            .map(|v| v.track)
-            .unwrap_or_default();
+        let track = view(
+            sim,
+            scene,
+            &vec.entities,
+            &[id],
+            Gate::of(vec),
+            PX,
+            None,
+            Some(at),
+        )
+        .map(|v| v.track)
+        .unwrap_or_default();
         let (Some(a), Some(b)) = (track.first(), track.last()) else {
             return false;
         };

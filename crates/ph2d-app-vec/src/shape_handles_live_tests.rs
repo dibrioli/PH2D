@@ -49,10 +49,10 @@ fn values_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> ShapeValues {
 #[test]
 fn the_handles_follow_the_pose_of_the_shape() {
     let k = ShapeKind::Star;
-    let (sim0, _, map0, id0) = live(k, k.defaults(), [0.0, 0.0], 0.0);
-    let (sim1, _, map1, id1) = live(k, k.defaults(), [5.0, -3.0], 0.7);
-    let a = view(&sim0, &map0, &[id0], G, PX, None, None).expect("alças");
-    let b = view(&sim1, &map1, &[id1], G, PX, None, None).expect("alças");
+    let (sim0, scene0, map0, id0) = live(k, k.defaults(), [0.0, 0.0], 0.0);
+    let (sim1, scene1, map1, id1) = live(k, k.defaults(), [5.0, -3.0], 0.7);
+    let a = view(&sim0, &scene0, &map0, &[id0], G, PX, None, None).expect("alças");
+    let b = view(&sim1, &scene1, &map1, &[id1], G, PX, None, None).expect("alças");
     assert_eq!(a.points.len(), law::handles_of(k).len());
     let (c, s) = (0.7_f64.cos(), 0.7_f64.sin());
     for (p, q) in a.points.iter().zip(&b.points) {
@@ -68,15 +68,26 @@ fn the_handles_follow_the_pose_of_the_shape() {
 #[test]
 fn a_press_grabs_only_on_a_handle() {
     let k = ShapeKind::Polygon;
-    let (sim, _, map, id) = live(k, k.defaults(), [1.0, 1.0], 0.3);
-    let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
+    let (sim, scene, map, id) = live(k, k.defaults(), [1.0, 1.0], 0.3);
+    let v = view(&sim, &scene, &map, &[id], G, PX, None, None).unwrap();
     for (n, p) in v.points.iter().enumerate() {
-        let g = press(&sim, &map, &[id], G, *p, PX).expect("agarra");
+        let g = press(&sim, &scene, &map, &[id], G, *p, PX).expect("agarra");
         assert_eq!(g.handle(), n);
-        assert!(press(&sim, &map, &[id], G, [p[0] + 3.0 * HIT_PX * PX, p[1]], PX).is_none());
+        assert!(
+            press(
+                &sim,
+                &scene,
+                &map,
+                &[id],
+                G,
+                [p[0] + 3.0 * HIT_PX * PX, p[1]],
+                PX
+            )
+            .is_none()
+        );
     }
     assert!(
-        press(&sim, &map, &[], G, v.points[0], PX).is_none(),
+        press(&sim, &scene, &map, &[], G, v.points[0], PX).is_none(),
         "sem seleção não há alças"
     );
 }
@@ -93,8 +104,10 @@ fn a_drag_writes_through_the_one_door_and_esc_and_double_click_restore() {
         .iter()
         .position(|h| h.fields.first() == Some(&1))
         .unwrap();
-    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[inner];
-    let mut g = press(&sim, &map, &[id], G, p, PX).unwrap();
+    let p = view(&sim, &scene, &map, &[id], G, PX, None, None)
+        .unwrap()
+        .points[inner];
+    let mut g = press(&sim, &scene, &map, &[id], G, p, PX).unwrap();
     assert_eq!(g.handle(), inner);
     // Para fora, ao longo do raio: o raio normalizado sobe.
     let c = [2.0, 0.0];
@@ -138,8 +151,10 @@ fn a_drag_writes_through_the_one_door_and_esc_and_double_click_restore() {
 fn a_drag_whose_shape_left_the_selection_writes_nothing() {
     let k = ShapeKind::Star;
     let (mut sim, mut scene, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
-    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[0];
-    let mut g = press(&sim, &map, &[id], G, p, PX).unwrap();
+    let p = view(&sim, &scene, &map, &[id], G, PX, None, None)
+        .unwrap()
+        .points[0];
+    let mut g = press(&sim, &scene, &map, &[id], G, p, PX).unwrap();
     assert!(!drag(
         w(&mut sim, &mut scene, &map, &[]),
         &mut g,
@@ -153,10 +168,10 @@ fn a_drag_whose_shape_left_the_selection_writes_nothing() {
 #[test]
 fn hovering_a_handle_shows_its_track() {
     let k = ShapeKind::RoundRect;
-    let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
-    let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
+    let (sim, scene, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
+    let v = view(&sim, &scene, &map, &[id], G, PX, None, None).unwrap();
     assert!(v.hot.is_none() && v.track.is_empty());
-    let h = view(&sim, &map, &[id], G, PX, None, Some(v.points[0])).unwrap();
+    let h = view(&sim, &scene, &map, &[id], G, PX, None, Some(v.points[0])).unwrap();
     assert_eq!(h.hot, Some(0));
     assert!(h.track.len() >= 2, "{:?}", h.track);
 }
@@ -170,13 +185,15 @@ fn a_parked_handle_grabbed_and_held_still_changes_nothing() {
     let mut v0 = k.defaults();
     v0[0] = 0.0;
     let (mut sim, mut scene, map, id) = live(k, v0, [0.0, 0.0], 0.0);
-    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[0];
+    let p = view(&sim, &scene, &map, &[id], G, PX, None, None)
+        .unwrap()
+        .points[0];
     // O ⊙ do canto de cima à esquerda (−2, 1) estacionou PARK_PX para dentro, na diagonal.
     assert!(
         (p[0] - (-2.0 + PARK_PX * PX)).abs() < 1e-9 && (p[1] - (1.0 - PARK_PX * PX)).abs() < 1e-9,
         "{p:?}"
     );
-    let mut d = press(&sim, &map, &[id], G, p, PX).unwrap();
+    let mut d = press(&sim, &scene, &map, &[id], G, p, PX).unwrap();
     assert!(drag(
         w(&mut sim, &mut scene, &map, &[id]),
         &mut d,
@@ -195,7 +212,7 @@ fn a_parked_handle_grabbed_and_held_still_changes_nothing() {
         Mods::default(),
         PX
     ));
-    let mut g = press(&sim, &map, &[id], G, p, PX).unwrap();
+    let mut g = press(&sim, &scene, &map, &[id], G, p, PX).unwrap();
     assert!(drag(
         w(&mut sim, &mut scene, &map, &[id]),
         &mut g,
@@ -231,7 +248,9 @@ fn a_second_press_on_the_same_handle_inside_the_window_resets_it() {
         .iter()
         .position(|h| h.fields.first() == Some(&1))
         .unwrap();
-    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[inner];
+    let p = view(&sim, &scene, &map, &[id], G, PX, None, None)
+        .unwrap()
+        .points[inner];
     let mut input = ShapeHandleInput::default();
     let sel = [id];
     // Dois presses LONGE no tempo: dois agarrares, nada reposto.
@@ -288,7 +307,9 @@ fn esc_through_the_input_door_restores_the_press_and_ends_the_drag() {
         .iter()
         .position(|h| h.fields.first() == Some(&1))
         .unwrap();
-    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[inner];
+    let p = view(&sim, &scene, &map, &[id], G, PX, None, None)
+        .unwrap()
+        .points[inner];
     let sel = [id];
     let mut input = ShapeHandleInput::default();
     assert!(
@@ -319,8 +340,8 @@ fn esc_through_the_input_door_restores_the_press_and_ends_the_drag() {
 fn a_star_wears_the_illustrator_faces_and_its_radius_drag_draws_the_ring() {
     use ph2d_vec_render::HandleFace::{Corner, Count, Radius};
     let k = ShapeKind::Star;
-    let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
-    let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
+    let (sim, scene, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
+    let v = view(&sim, &scene, &map, &[id], G, PX, None, None).unwrap();
     // F12: a fila de ⇕ (o tipo do canto, a envergadura, o liso e a torção) ao lado das pontas.
     assert_eq!(
         v.faces,
@@ -334,7 +355,7 @@ fn a_star_wears_the_illustrator_faces_and_its_radius_drag_draws_the_ring() {
     let inner = 2;
     let p = v.points[inner];
     let k0 = (p[0] / 2.0).hypot(p[1] / 1.0);
-    let g = view(&sim, &map, &[id], G, PX, Some(inner), None).unwrap();
+    let g = view(&sim, &scene, &map, &[id], G, PX, Some(inner), None).unwrap();
     assert!(g.ring.len() > 32);
     for q in &g.ring {
         assert!(((q[0] / 2.0).hypot(q[1] / 1.0) - k0).abs() < 1e-9, "{q:?}");
@@ -346,8 +367,8 @@ fn a_star_wears_the_illustrator_faces_and_its_radius_drag_draws_the_ring() {
 #[test]
 fn the_pie_angles_ride_a_stem_outside_the_rim() {
     let k = ShapeKind::Pie;
-    let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
-    let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
+    let (sim, scene, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
+    let v = view(&sim, &scene, &map, &[id], G, PX, None, None).unwrap();
     // F12: o furo voltou ao canvas (sem haste); os ângulos têm-na.
     let angles = v
         .faces
@@ -371,7 +392,7 @@ fn the_pie_angles_ride_a_stem_outside_the_rim() {
 #[test]
 fn the_readout_follows_the_grabbed_handle() {
     let k = ShapeKind::Star;
-    let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
+    let (sim, scene, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
     let mut vec = crate::state::VecState {
         entities: map.clone(),
         ..Default::default()
@@ -379,27 +400,34 @@ fn the_readout_follows_the_grabbed_handle() {
     vec.pen.select_many(&[id]);
     vec.draw_config.mode = DrawMode::Shape;
     let display = ph2d_editor_core::LengthDisplay::of(&Default::default());
-    let p = view(&sim, &map, &[id], Gate::of(&vec), PX, None, None)
+    let p = view(&sim, &scene, &map, &[id], Gate::of(&vec), PX, None, None)
         .unwrap()
         .points[0];
     assert_eq!(
-        readout(&vec, &sim, PX, display, None),
+        readout(&vec, &sim, &scene, PX, display, None),
         None,
         "sem arrasto nem cursor, sem etiqueta"
     );
     assert_eq!(
-        readout(&vec, &sim, PX, display, Some([p[0] + 100.0, p[1] + 100.0])),
+        readout(
+            &vec,
+            &sim,
+            &scene,
+            PX,
+            display,
+            Some([p[0] + 100.0, p[1] + 100.0])
+        ),
         None,
         "cursor longe da alça, sem etiqueta"
     );
     let want = format!("{}: 5", ph2d_panel_vector::nomes_do_motor::campo("Points"));
     // F12: sob o cursor a etiqueta já diz qual ⇕ é.
     assert_eq!(
-        readout(&vec, &sim, PX, display, Some(p)),
+        readout(&vec, &sim, &scene, PX, display, Some(p)),
         Some(want.clone())
     );
-    vec.shape_handles.grab = press(&sim, &map, &[id], Gate::of(&vec), p, PX);
-    assert_eq!(readout(&vec, &sim, PX, display, None), Some(want));
+    vec.shape_handles.grab = press(&sim, &scene, &map, &[id], Gate::of(&vec), p, PX);
+    assert_eq!(readout(&vec, &sim, &scene, PX, display, None), Some(want));
 }
 
 /// (F12) O halo QUENTE conta nos pontos desenhados: na elipse inteira a quina da fatia não tem
@@ -409,8 +437,8 @@ fn the_hot_halo_counts_the_drawn_points() {
     let k = ShapeKind::Ellipse;
     let mut v = k.defaults();
     v[2] = 0.5;
-    let (sim, _, map, id) = live(k, v, [0.0, 0.0], 0.0);
-    let all = view(&sim, &map, &[id], G, PX, None, None).unwrap();
+    let (sim, scene, map, id) = live(k, v, [0.0, 0.0], 0.0);
+    let all = view(&sim, &scene, &map, &[id], G, PX, None, None).unwrap();
     assert_eq!(all.points.len(), 3, "a quina some na volta inteira");
     let hole = all
         .faces
@@ -418,6 +446,7 @@ fn the_hot_halo_counts_the_drawn_points() {
         .position(|f| *f == ph2d_vec_render::HandleFace::Radius);
     let hot = view(
         &sim,
+        &scene,
         &map,
         &[id],
         G,
@@ -427,4 +456,42 @@ fn the_hot_halo_counts_the_drawn_points() {
     )
     .unwrap();
     assert_eq!(hot.hot, hole);
+}
+
+/// ⭐ (F14b, F13 §7.2) **A fila de ⇕ mede-se da caixa VISUAL** — a do gizmo, com o traço: com
+/// caneta de 0, 10 e 60 px a distância do ⇕ à borda direita do que a forma PINTA é a MESMA, e
+/// passa do quadrado da alça do meio mais o raio de acerto. Antes, com meia caneta ≥ 9 px o ⇕
+/// encostava na alça do meio (a fila media-se da curva).
+#[test]
+fn the_arrow_row_stands_off_the_painted_box_whatever_the_stroke() {
+    let k = ShapeKind::SpeechRect;
+    let rail = law::handles_of(k)
+        .iter()
+        .position(|h| h.spot == law::Spot::Rail)
+        .expect("o balão tem ⇕");
+    let mut gaps = Vec::new();
+    for px in [0.0, 10.0, 60.0] {
+        let (sim, mut scene, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
+        if px > 0.0 {
+            let p = scene.path_mut(id).expect("caminho");
+            p.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+                ph2d_vec_scene::Rgba8::new(255, 255, 255, 255),
+                px * PX,
+            ));
+        }
+        let at = view(&sim, &scene, &map, &[id], G, PX, None, None)
+            .unwrap()
+            .points[rail];
+        let (_, hi) =
+            ph2d_vec_render::path_intrinsic_visual_bbox(scene.path(id).unwrap(), [1.0, 1.0])
+                .unwrap();
+        gaps.push((at[0] - hi[0]) / PX);
+    }
+    let floor = ph2d_editor_core::HANDLE_SIZE_PX as f64 * 0.5 + HIT_PX;
+    for g in &gaps {
+        assert!(
+            (g - gaps[0]).abs() < 1e-6 && *g > floor,
+            "o ⇕ a {gaps:?} px da caixa visual (mínimo {floor})"
+        );
+    }
 }

@@ -35,6 +35,7 @@ fn the_scene_moves_one_handle_of_each_shape_and_holds_an_arrow_mid_drag() {
         c.vec.pen.select_many(&[ids[k]]);
         let v = view(
             &c.sim,
+            &c.scene,
             &c.vec.entities,
             &[ids[k]],
             Gate::of(&c.vec),
@@ -77,6 +78,7 @@ fn the_scene_moves_one_handle_of_each_shape_and_holds_an_arrow_mid_drag() {
     let tip = alca(FORMAS[3].0, |h| h.law == Law::Winding).unwrap();
     let p = view(
         &c.sim,
+        &c.scene,
         &c.vec.entities,
         &[ids[3]],
         Gate::of(&c.vec),
@@ -105,6 +107,7 @@ fn the_scene_moves_one_handle_of_each_shape_and_holds_an_arrow_mid_drag() {
     );
     let seta = view(
         &c.sim,
+        &c.scene,
         &c.vec.entities,
         &[ids[3]],
         Gate::of(&c.vec),
@@ -114,6 +117,13 @@ fn the_scene_moves_one_handle_of_each_shape_and_holds_an_arrow_mid_drag() {
     )
     .unwrap()
     .points[viva(FORMAS[3].0).unwrap()];
-    let label = readout(&c.vec, &c.sim, 0.01, Default::default(), Some(seta));
+    let label = readout(
+        &c.vec,
+        &c.sim,
+        &c.scene,
+        0.01,
+        Default::default(),
+        Some(seta),
+    );
     assert_eq!(label.as_deref(), Some("Expansion: 0.50"));
 }

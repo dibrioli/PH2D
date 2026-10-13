@@ -91,6 +91,7 @@ impl Mesa {
         let sel = self.vec.pen.selected_paths();
         view(
             &self.sim,
+            &self.scene,
             &self.vec.entities,
             sel,
             Gate::of(&self.vec),

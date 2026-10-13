@@ -98,6 +98,7 @@ impl MotionCookPump {
     /// Mostra no cozimento as entradas de `t` — as da fita onde ela cobre (POR CIMA do publicado,
     /// que fica intacto), as publicadas fora dela. Só troca quando muda.
     pub fn entradas_do_replay(&mut self, replay: &mut Replay, t: u64) {
+        self.historia = self.fita.historia_em(t);
         if self.fita.cobre(t) {
             let mudou = match replay.estado.as_mut() {
                 Some(e) => self.fita.avanca(t, e),
@@ -134,7 +135,22 @@ impl MotionCookPump {
             return None;
         }
         self.cook.set_externals_replay(None);
-        Some(self.grava_entradas(tick))
+        let g = self.grava_entradas(tick);
+        self.historia = self.fita.historia_em(tick);
+        Some(g)
+    }
+
+    /// ⭐ **O que a fita disse do último tique cozido** (doc 132 §2) — `Dobrada` quando o replay
+    /// mostrou a base no lugar da história; o cartão das entradas lê-o.
+    #[must_use]
+    pub fn historia_mostrada(&self) -> Historia {
+        self.historia
+    }
+
+    /// Põe a fita num razão próprio (os gates e a cena de smoke dobram em segundos); esquece-a.
+    pub fn define_o_razao_da_fita(&mut self, razao: std::sync::Arc<crate::Razao>) {
+        self.fita = Fita::no_razao(razao);
+        self.historia = Historia::Verdade;
     }
 
     /// O relógio está a TOCAR? (o shell diz-o a cada quadro; parado, arrastar a fita repete).

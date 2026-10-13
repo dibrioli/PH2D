@@ -24,7 +24,7 @@
 //!   redundant anchor; the first entry's left neighbour is the virtual tick-0
 //!   seed). History degrades in RESOLUTION, never by amputation — which is
 //!   exactly what a loop's next wrap needs to stay cheap.
-//! - **Bytes, not count** ([`CPU_RING_BYTES`]): the old `RECENT_CAPACITY = 300`
+//! - **Bytes, not count** ([`Razao::dos_aneis`]): the old `RECENT_CAPACITY = 300`
 //!   was a COUNT — a multiplier, the ADR-0117 class: 300 checkpoints of a 262k
 //!   particle scene are gigabytes and the cap never blinked. A heavy scene now
 //!   gets a SHORTER window, never a bigger bill. [`MAX_ENTRIES`] remains as an
@@ -37,6 +37,7 @@
 //! [`CheckpointRing::clear`] on `mark_dirty`. The tick-0 seed stays implicit
 //! (empty ring → `(0, default)`), so every past tick remains reachable.
 
+use crate::razao::{Conta, Razao};
 use ph2d_nodegraph::cook::CookCheckpoint;
 
 /// The protected dense-recency window, in ENTRIES of highest tick — the same
@@ -44,11 +45,10 @@ use ph2d_nodegraph::cook::CookCheckpoint;
 /// scrub, now explicit policy rather than a side effect of the count cap.
 pub const RECENT_DENSE: usize = 300;
 
-/// The ring's byte budget — the same class as the GPU ring's `RING_BYTES`
-/// (128 MB of VRAM, ADR-0127 D5): enough for hundreds of light-scene
-/// checkpoints (a few KB each), while a heavy particle scene (a 262k-element
-/// stream is ~15 MB per checkpoint — `measure` test below) gets a handful of
-/// anchors instead of a silent multi-GB bill.
+/// **A RESERVA do tecto dos anéis** — o tecto é [`crate::razao`] ([`Razao::dos_aneis`]): `1/32`
+/// da RAM física, PARTILHADO por todos os anéis do processo (cada emissor de partículas tem uma
+/// bomba); este número só vale onde a RAM não se lê. Um checkpoint de 262k elementos são ~15 MB:
+/// a cena pesada ganha mais âncoras numa máquina maior, nunca uma conta maior que a fração.
 pub const CPU_RING_BYTES: usize = 128 * 1024 * 1024;
 
 /// **De quantos em quantos tiques um grafo com MEMÓRIA regista o ponto de recuo** (doc 121 §9.20).
@@ -58,7 +58,7 @@ pub const CPU_RING_BYTES: usize = 128 * 1024 * 1024;
 pub const MEMO_A_CADA: u64 = 8;
 
 /// Insertion-cost backstop (ordered insert shifts `O(n)`), far above any
-/// real spread — never the budget (that is [`CPU_RING_BYTES`]).
+/// real spread — never the budget (that is the [`Razao::dos_aneis`] ledger).
 pub const MAX_ENTRIES: usize = 2048;
 
 /// One anchor: the state that reproduces frame `tick`, and what it costs to
@@ -75,7 +75,20 @@ pub struct CheckpointRing {
     /// Strictly ascending by tick.
     entries: Vec<Entry>,
     bytes: usize,
+    /// Um tecto PRÓPRIO, além do razão (os gates); `usize::MAX` por omissão.
     budget_bytes: usize,
+    /// O que este anel declara no razão de todos ([`Razao::dos_aneis`]).
+    conta: ContaDoAnel,
+}
+
+/// A [`Conta`] de um anel — nasce no razão do processo.
+#[derive(Debug)]
+struct ContaDoAnel(Conta);
+
+impl Default for ContaDoAnel {
+    fn default() -> Self {
+        Self(Conta::em(Razao::dos_aneis()))
+    }
 }
 
 impl CheckpointRing {
@@ -83,7 +96,17 @@ impl CheckpointRing {
         Self {
             entries: Vec::new(),
             bytes: 0,
-            budget_bytes: CPU_RING_BYTES,
+            budget_bytes: usize::MAX,
+            conta: ContaDoAnel::default(),
+        }
+    }
+
+    /// Um anel num razão dado (os gates).
+    #[must_use]
+    pub fn no_razao(razao: std::sync::Arc<Razao>) -> Self {
+        Self {
+            conta: ContaDoAnel(Conta::em(razao)),
+            ..Self::new()
         }
     }
 
@@ -99,12 +122,16 @@ impl CheckpointRing {
         let bytes = cp.approx_bytes();
         self.bytes += bytes;
         self.entries.insert(at, Entry { tick, cp, bytes });
+        self.conta.0.declara(self.bytes);
         while self.entries.len() > 1
-            && (self.bytes > self.budget_bytes || self.entries.len() > MAX_ENTRIES)
+            && (self.bytes > self.budget_bytes
+                || self.conta.0.acima()
+                || self.entries.len() > MAX_ENTRIES)
         {
             let victim = self.thinning_victim(tick);
             let e = self.entries.remove(victim);
             self.bytes = self.bytes.saturating_sub(e.bytes);
+            self.conta.0.declara(self.bytes);
         }
     }
 
@@ -185,15 +212,17 @@ impl CheckpointRing {
         for e in self.entries.drain(at..) {
             self.bytes = self.bytes.saturating_sub(e.bytes);
         }
+        self.conta.0.declara(self.bytes);
     }
 
     pub fn clear(&mut self) {
         self.entries.clear();
         self.bytes = 0;
+        self.conta.0.declara(0);
     }
 
-    /// Retune the byte budget (default [`CPU_RING_BYTES`]) — tests and future
-    /// budget owners; the knob is bytes because that is the resource.
+    /// A ring-own byte cap on top of the process ledger (default none) — the
+    /// gates squeeze with it; the knob is bytes because that is the resource.
     pub fn set_budget(&mut self, bytes: usize) {
         self.budget_bytes = bytes;
     }

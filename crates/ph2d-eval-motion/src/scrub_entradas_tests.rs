@@ -268,3 +268,30 @@ fn a_second_derivation_in_the_same_tick_keeps_the_pulse() {
         "o pulso do tique 1 continua 1"
     );
 }
+
+/// ⭐ **O REPLAY QUE MOSTRA A BASE DIZ-O** (doc 132 §2): com a fita dobrada, o scrub para antes da
+/// base marca a bomba `Dobrada { desde: base }`; para depois dela, `Verdade`; e tocar de novo grava
+/// e volta a `Verdade`.
+#[test]
+fn o_scrub_para_antes_da_base_marca_a_bomba_como_dobrada() {
+    let (g, c) = grafo();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    pump.define_o_razao_da_fita(crate::Razao::new(4 << 10));
+    #[expect(clippy::cast_precision_loss, reason = "um tique")]
+    toca(&mut pump, &g, c, 0, 300, |t| t as f32);
+    assert_eq!(
+        pump.historia_mostrada(),
+        Historia::Verdade,
+        "a tocar, grava"
+    );
+    let (base, ultimo) = pump.fita().faixa().expect("gravou");
+    assert!(
+        base > 20 && ultimo == 300,
+        "o tecto pequeno dobrou: {base}..{ultimo}"
+    );
+    scrub(&mut pump, &g, c, base / 2);
+    assert_eq!(pump.historia_mostrada(), Historia::Dobrada { desde: base });
+    scrub(&mut pump, &g, c, base + 5);
+    assert_eq!(pump.historia_mostrada(), Historia::Verdade, "o CONTROLO");
+}

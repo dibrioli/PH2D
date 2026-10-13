@@ -422,3 +422,82 @@ fn um_passeio_de_edicao_le_se_como_o_modelo() {
         );
     }
 }
+
+/// Uma fita que já dobrou: `g = t` em todo tique, num razão de `teto` bytes.
+fn dobrada(teto: usize, tiques: u64) -> Fita {
+    let mut f = Fita::no_razao(Razao::new(teto));
+    for t in 0..tiques {
+        #[expect(clippy::cast_precision_loss, reason = "um valor de teste")]
+        f.grava(t, &pub_(&[("g", t as f32)]));
+    }
+    f
+}
+
+/// ⭐ **A HISTÓRIA ANTES DA BASE DIZ QUE FOI DOBRADA** (doc 132 §2) — e depois dela, a verdade (o
+/// CONTROLO: a porta não pode dizer «dobrada» a tudo). A faixa publicada é `[base_ate, ultimo]`.
+#[test]
+fn antes_da_base_a_historia_diz_dobrada_e_depois_dela_a_verdade() {
+    let f = dobrada(4 << 10, 400);
+    let b = f.base_ate.expect("o tecto pequeno dobrou");
+    assert!(b > 10, "dobrou pouco: base {b}");
+    assert_eq!(f.historia_em(3), Historia::Dobrada { desde: b });
+    assert_eq!(f.historia_em(b - 1), Historia::Dobrada { desde: b });
+    assert_eq!(f.historia_em(b), Historia::Verdade, "a base É o tique dela");
+    assert_eq!(f.historia_em(399), Historia::Verdade);
+    // O replay de antes da base devolve a base — e a marca acima é o que o diz.
+    #[expect(clippy::cast_precision_loss, reason = "um tique")]
+    let base = b as f32;
+    assert_eq!(v(&f.estado_em(3).unwrap(), "g"), Some(base));
+    assert_eq!(
+        f.faixa(),
+        Some((b, 399)),
+        "a faixa começa na base, não no 0"
+    );
+    // Sem dobra: a faixa é a história toda, e tudo é verdade.
+    let inteira = dobrada(usize::MAX, 50);
+    assert_eq!(inteira.faixa(), Some((0, 49)));
+    assert_eq!(inteira.historia_em(0), Historia::Verdade);
+}
+
+/// ⭐ **O RAZÃO DE TODAS NUNCA PASSA O TECTO, COM N FITAS** (doc 132 §2 (b)): oito fitas a gravar
+/// em alternância num razão de `T` bytes — o total declarado fica `≤ T` depois de cada gravação,
+/// cada uma dobra a SUA história, e uma fita que morre devolve o que declarava.
+#[test]
+fn o_razao_de_todas_nunca_passa_o_tecto_com_n_fitas() {
+    const N: usize = 8;
+    const TETO: usize = 64 << 10;
+    let r = Razao::new(TETO);
+    let mut fitas: Vec<Fita> = (0..N).map(|_| Fita::no_razao(Arc::clone(&r))).collect();
+    let nomes: Vec<String> = (0..5).map(|e| format!("e{e}")).collect();
+    for t in 0..2_000u64 {
+        for (i, f) in fitas.iter_mut().enumerate() {
+            let agora: All = nomes
+                .iter()
+                .enumerate()
+                .map(|(e, n)| {
+                    #[expect(clippy::cast_precision_loss, reason = "um valor de teste")]
+                    let x = (t as usize * 7 + e + i) as f32;
+                    (n.clone(), ext(x))
+                })
+                .collect();
+            f.grava(t, &agora);
+            assert!(
+                r.usado() <= TETO,
+                "tique {t}, fita {i}: o razão declara {} de {TETO}",
+                r.usado()
+            );
+        }
+    }
+    let soma: usize = fitas.iter().map(Fita::bytes).sum();
+    assert_eq!(r.usado(), soma, "o razão é a soma do que cada uma retém");
+    assert!(
+        fitas.iter().all(|f| f.base_ate.is_some()),
+        "todas dobraram: cada uma paga a sua"
+    );
+    // CONTROLO: uma só, no mesmo tecto, guarda mais história que cada uma das oito.
+    let so = dobrada(TETO, 2_000);
+    let b_so = so.base_ate.expect("dobrou");
+    assert!(fitas.iter().all(|f| f.base_ate.unwrap() > b_so));
+    fitas.truncate(1);
+    assert_eq!(r.usado(), fitas[0].bytes(), "a que morre devolve o seu");
+}

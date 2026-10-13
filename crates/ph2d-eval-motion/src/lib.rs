@@ -50,8 +50,10 @@ use ph2d_render::RenderInstance;
 
 mod checkpoint;
 mod fita;
+pub mod razao;
 mod so_o_estado;
-pub use fita::{FITA_BYTES, Fita, Gravacao};
+pub use fita::{FITA_BYTES, Fita, Gravacao, Historia};
+pub use razao::Razao;
 pub use so_o_estado::nos_com_estado;
 mod entradas;
 pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, MEMO_A_CADA, RECENT_DENSE};
@@ -120,6 +122,8 @@ pub struct MotionCookPump {
     ring: CheckpointRing,
     /// As entradas publicadas em cada tique cozido para a frente — o scrub repete-as (doc 128 §3.3).
     fita: Fita,
+    /// O que a fita disse do último tique cozido — dobrado ou não (doc 132 §2).
+    historia: Historia,
     /// As contagens dos gatilhos, para derivar o pulso de cada tique (doc 128 §3.2).
     pulsos: entradas::Pulsos,
     /// O relógio está a tocar (o shell diz-o); parado, arrastar a fita para a frente repete.
@@ -239,6 +243,7 @@ impl MotionCookPump {
             last_error: None,
             ring: CheckpointRing::new(),
             fita: Fita::new(),
+            historia: Historia::Verdade,
             pulsos: entradas::Pulsos::default(),
             a_tocar: true,
             boundary_streams: Vec::new(),
@@ -287,7 +292,7 @@ impl MotionCookPump {
         self.so_com_forma
     }
 
-    /// Retune the scrub ring's byte budget (default `CPU_RING_BYTES`) — the
+    /// A ring-own byte cap on top of the process ledger (`Razao::dos_aneis`) — the
     /// mirror of `GpuCook::set_ring_budget`, and what lets a gate squeeze the
     /// ring into the eviction regime a real heavy scene lives in (ADR-0137).
     pub fn set_ring_budget(&mut self, bytes: usize) {

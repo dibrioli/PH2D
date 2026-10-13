@@ -12,6 +12,7 @@
 //! `~50`, declarados a `±3 %`). Gravar o tique seguinte parte do cursor; ler um tique qualquer
 //! parte da âncora mais próxima — nenhum dos dois refaz a história.
 
+use crate::razao::{Conta, Razao};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::external::{All, External};
 use std::collections::BTreeMap;
@@ -29,24 +30,22 @@ pub enum Gravacao {
     Ramo,
 }
 
-/// **O orçamento da fita, em bytes de RAM** — o heap que ela retém, com o cabeçalho do `malloc`
-/// (o gate `tests/fita_memoria.rs` prova `bytes()` a `±25 %` do medido). Classe: o anel da CPU
-/// ([`crate::CPU_RING_BYTES`], 128 MiB), que é quem a fita serve no scrub.
-///
-/// A história que cabe (B/tique medido na app — `fila_c_a_fita_por_entrada`,
-/// `measure_the_game_group` — e no gate; uma entrada parada não custa nada; doc 131 §7):
-///
-/// | entradas a mudar | B/tique | tiques | a 60 Hz |
-/// |---|---:|---:|---:|
-/// | o jogo do doc 128 §5.4 (3 a mexer) | 137 | 982 k | 4,5 h |
-/// | 3, em todo tique | 215 | 623 k | 173 min |
-/// | 30, em todo tique | 1 553 | 86 k | 24 min |
-/// | 30 de duas colunas | 4 429 | 30 k | 8,4 min |
-/// | 300, em todo tique | 14 933 | 9,0 k | 2,5 min |
-///
-/// ⚠️ Os «32 MiB» de antes declaravam `~36 B` por mudança e retinham `~640`: o jogo do doc 128
-/// cabia os mesmos `~982 k` tiques, mas em `~600 MB` de RAM. Agora são 128 MiB reais.
+/// **A RESERVA do tecto da fita** — o tecto é [`crate::razao`]: `1/32` da RAM física, partilhado
+/// por todas as fitas do processo; este número só vale onde a RAM não se lê (Windows). `bytes()`
+/// é o heap retido, com o cabeçalho do `malloc` (gate `tests/fita_memoria.rs`, `±25 %`). A história
+/// que cabe por RAM e entradas a mudar: doc 132 §7 (P2).
 pub const FITA_BYTES: usize = 128 * 1024 * 1024;
+
+/// **O que a fita sabe de um tique** (doc 132 §2): o replay de um tique anterior à base mostra a
+/// base, e isto é o que o diz ao artista (a Timeline e o cartão das entradas).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum Historia {
+    /// O que se publicou nesse tique (ou ele não está na fita, e o replay usa o publicado agora).
+    #[default]
+    Verdade,
+    /// A história antes de `desde` foi dobrada na base: o replay mostra o tique `desde`.
+    Dobrada { desde: u64 },
+}
 
 /// De quantas em quantas marcas a fita guarda uma ÂNCORA (o estado inteiro naquele tique): ler um
 /// tique qualquer refaz no máximo esta quantidade de marcas, em vez da história desde a base. Uma
@@ -178,7 +177,20 @@ pub struct Fita {
     /// Marcas, âncoras, as colunas da base e as tabelas; os vetores da base e do cursor somam-se
     /// em [`Self::bytes`].
     bytes: usize,
+    /// Um tecto PRÓPRIO, além do razão (os gates); `usize::MAX` por omissão.
     orcamento: usize,
+    /// O que esta fita declara no razão de todas ([`Razao::da_fita`]).
+    conta: ContaDaFita,
+}
+
+/// A [`Conta`] de uma fita — nasce no razão do processo.
+#[derive(Debug)]
+struct ContaDaFita(Conta);
+
+impl Default for ContaDaFita {
+    fn default() -> Self {
+        Self(Conta::em(Razao::da_fita()))
+    }
 }
 
 fn bloco(n: usize) -> usize {
@@ -329,17 +341,49 @@ fn mesmas_revisoes(nomes: &Tabela, e: &Estado, agora: &All) -> bool {
 }
 
 impl Fita {
+    /// Uma fita no razão do processo ([`Razao::da_fita`]).
     #[must_use]
     pub fn new() -> Self {
+        Self::no_razao(Razao::da_fita())
+    }
+
+    /// Uma fita num razão dado (os gates e a sonda medem com um próprio).
+    #[must_use]
+    pub fn no_razao(razao: Arc<Razao>) -> Self {
         Self {
-            orcamento: FITA_BYTES,
+            orcamento: usize::MAX,
+            conta: ContaDaFita(Conta::em(razao)),
             ..Self::default()
         }
+    }
+
+    /// O razão onde esta fita declara.
+    #[must_use]
+    pub fn razao(&self) -> &Arc<Razao> {
+        self.conta.0.razao()
     }
 
     #[must_use]
     pub fn cobre(&self, t: u64) -> bool {
         matches!((self.primeiro, self.ultimo), (Some(p), Some(u)) if p <= t && t <= u)
+    }
+
+    /// ⭐ **A porta ÚNICA da verdade de um tique** (doc 132 §2): antes de `base_ate` a história
+    /// foi dobrada, e o replay mostra a base.
+    #[must_use]
+    pub fn historia_em(&self, t: u64) -> Historia {
+        match self.base_ate {
+            Some(desde) if t < desde => Historia::Dobrada { desde },
+            _ => Historia::Verdade,
+        }
+    }
+
+    /// **A faixa da história gravada** `[base_ate, ultimo]` (ou desde o primeiro tique, sem dobra)
+    /// — o que a Timeline pinta, no idioma da barra de cache do Blender.
+    #[must_use]
+    pub fn faixa(&self) -> Option<(u64, u64)> {
+        let (p, u) = (self.primeiro?, self.ultimo?);
+        Some((self.base_ate.map_or(p, |b| b.max(p)), u))
     }
 
     /// O heap que a fita retém, com o cabeçalho do `malloc` — o que o orçamento compara.
@@ -416,8 +460,19 @@ impl Fita {
         true
     }
 
-    /// Grava o que está publicado AGORA como o estado de `t`.
+    /// Grava o que está publicado AGORA como o estado de `t`. Acima do tecto (o próprio ou o do
+    /// razão de TODAS as fitas), dobra a história mais velha DESTA fita — quem grava paga.
     pub fn grava(&mut self, t: u64, agora: &All) -> Gravacao {
+        let resultado = self.regista(t, agora);
+        self.conta.0.declara(self.bytes());
+        while (self.bytes() > self.orcamento || self.conta.0.acima()) && !self.marcas.is_empty() {
+            self.dobra();
+            self.conta.0.declara(self.bytes());
+        }
+        resultado
+    }
+
+    fn regista(&mut self, t: u64, agora: &All) -> Gravacao {
         let resultado = if self.cobre(t) {
             self.posiciona(t);
             let em = &self.cursor.as_ref().expect("posicionado").em;
@@ -467,9 +522,6 @@ impl Fita {
         }
         self.primeiro = self.primeiro.or(Some(t));
         self.ultimo = Some(t);
-        while self.bytes() > self.orcamento && !self.marcas.is_empty() {
-            self.dobra();
-        }
         resultado
     }
 
@@ -520,8 +572,8 @@ impl Fita {
         }
     }
 
-    /// ⚠️ **Acima do orçamento, a marca mais velha DOBRA-SE na base**: um scrub para antes dela
-    /// repete o estado da base em vez do que se publicou na época — o limite nomeado (doc 128 §5).
+    /// ⚠️ **Acima do tecto, a marca mais velha DOBRA-SE na base**: um scrub para antes dela repete
+    /// o estado da base — e [`Self::historia_em`] di-lo (doc 132 §2).
     fn dobra(&mut self) {
         let Some((t, m)) = self.marcas.pop_first() else {
             return;
@@ -549,12 +601,16 @@ impl Fita {
         }
     }
 
+    /// Esvazia, com o mesmo tecto próprio e no mesmo razão.
     fn clear_keeping_budget(&mut self) {
         let orcamento = self.orcamento;
+        let conta = std::mem::take(&mut self.conta);
         *self = Self {
             orcamento,
+            conta,
             ..Self::default()
         };
+        self.conta.0.declara(self.bytes());
     }
 
     pub fn clear(&mut self) {

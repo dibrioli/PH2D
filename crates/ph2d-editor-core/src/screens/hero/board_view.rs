@@ -245,7 +245,6 @@ pub fn pointer(
         return false;
     }
     let area = area_of(hero.last_canvas);
-    let theme = hero.theme;
     // c21 — carregar no quadro (clicar, arrastar, pan com o meio ou o espaço) pára de seguir.
     if matches!(kind, PointerKind::Down) && on_canvas && inside(hero.last_canvas, x, y) {
         super::board_nav::team::live_board::unfollow(hero);

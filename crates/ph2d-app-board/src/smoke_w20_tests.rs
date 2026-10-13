@@ -180,7 +180,11 @@ fn the_w20_scene_does_what_its_lessons_say() {
     let count = |h: &HeroScreen| h.documents.active_board().unwrap().doc.live().count();
     let n = count(&h);
     m.click(&mut h, mid(&moved));
-    assert_eq!(h.documents.videos_mut().active, Some(l.video), "a caneta não activou");
+    assert_eq!(
+        h.documents.videos_mut().active,
+        Some(l.video),
+        "a caneta não activou"
+    );
     assert_eq!(
         std::mem::take(&mut h.documents.videos_mut().commands),
         vec![VideoCommand::TogglePlay],
@@ -190,6 +194,10 @@ fn the_w20_scene_does_what_its_lessons_say() {
     let from = [moved.x + 20.0, moved.y + 20.0];
     m.drag(&mut h, from, [from[0] + 200.0, from[1] + 100.0]);
     assert_eq!(count(&h), n + 1, "arrastar com a caneta não desenhou");
-    assert_eq!([el(&h, &l).x, el(&h, &l).y], [moved.x, moved.y], "a caneta moveu o vídeo");
+    assert_eq!(
+        [el(&h, &l).x, el(&h, &l).y],
+        [moved.x, moved.y],
+        "a caneta moveu o vídeo"
+    );
     let _ = l.board;
 }

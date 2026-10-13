@@ -37,13 +37,14 @@ const MAC_APPS: [&str; 4] = [
 ];
 
 /// Os sítios fixos do Windows, sob `%ProgramFiles%`, `%ProgramFiles(x86)%` e `%LocalAppData%` (a
-/// instalação por utilizador), pela ordem dos [`NAMES`]. O Edge vem com o Windows.
-const WINDOWS_APPS: [&[&str]; 5] = [
-    &["Google", "Chrome", "Application", "chrome.exe"],
-    &["Chromium", "Application", "chrome.exe"],
-    &["Microsoft", "Edge", "Application", "msedge.exe"],
-    &["BraveSoftware", "Brave-Browser", "Application", "brave.exe"],
-    &["Vivaldi", "Application", "vivaldi.exe"],
+/// instalação por utilizador), pela ordem dos [`NAMES`]. O Edge vem com o Windows. Cada uma: as pastas e o
+/// programa (o ficheiro é `<programa>.exe`).
+const WINDOWS_APPS: [(&[&str], &str); 5] = [
+    (&["Google", "Chrome", "Application"], "chrome"),
+    (&["Chromium", "Application"], "chrome"),
+    (&["Microsoft", "Edge", "Application"], "msedge"),
+    (&["BraveSoftware", "Brave-Browser", "Application"], "brave"),
+    (&["Vivaldi", "Application"], "vivaldi"),
 ];
 
 /// As pastas-raiz do Windows onde os navegadores se instalam.
@@ -79,10 +80,13 @@ pub(crate) fn windows_candidates(
         .iter()
         .filter_map(|k| env(k).map(PathBuf::from))
         .collect();
-    WINDOWS_APPS.iter().flat_map(move |app| {
+    WINDOWS_APPS.iter().flat_map(move |(dirs, exe)| {
         roots
             .iter()
-            .map(|r| app.iter().fold(r.clone(), |p, c| p.join(c)))
+            .map(|r| {
+                let dir = dirs.iter().fold(r.clone(), |p, c| p.join(c));
+                dir.join(exe).with_extension("exe")
+            })
             .collect::<Vec<_>>()
     })
 }

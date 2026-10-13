@@ -275,7 +275,8 @@ pub(crate) fn pointer_down(
 pub(crate) fn deferred_drag(hero: &mut HeroScreen, x: f32, y: f32) -> Option<[f64; 2]> {
     let live = &mut hero.documents.live;
     let c = live.video_click.filter(|c| c.tool)?;
-    let far = (f64::from(x) - c.at[0]).hypot(f64::from(y) - c.at[1]) > super::board_view::metrics().drag;
+    let far =
+        (f64::from(x) - c.at[0]).hypot(f64::from(y) - c.at[1]) > super::board_view::metrics().drag;
     far.then(|| {
         live.video_click = None;
         c.at

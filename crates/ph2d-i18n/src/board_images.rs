@@ -38,6 +38,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.video.exit_fullscreen" => "Leave full screen (Esc or F)",
         "board.video.open_outside" => "Open on YouTube, where the board stopped",
         "board.video.time" => "{now} / {total}",
+        "board.video.back" => "Previous video",
+        "board.video.forward" => "Next video",
+        "board.video.reset" => "Back to the original video",
         "board.style.gray" => "Black and white",
         "board.style.flip_h" => "Flip horizontal (Shift+H)",
         "board.style.flip_v" => "Flip vertical (Shift+V)",
@@ -136,6 +139,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "board.smoke.w20.l6" => {
             "6. The border goes AROUND the picture, never over it (YouTube's rule); the fill only shows behind"
+        }
+        "board.smoke.w20.l7" => {
+            "7. Pause, click More videos inside it and pick one: it plays in this window. The < > arrows walk back and forth; the circle arrow goes back to the original"
         }
         "board.smoke.w18.board" => "Video and picture fixes",
         "board.smoke.w18.title" => "A YouTube video on the board, and the last picture fixes",

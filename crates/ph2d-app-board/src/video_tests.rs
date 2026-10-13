@@ -77,3 +77,58 @@ fn the_player_size_follows_the_screen_only_once_the_zoom_settles() {
     assert_eq!(settled(&mut asked, last, last, stop + SETTLE * 3), None);
     assert_eq!(asked, None);
 }
+
+/// ⭐⭐ W20 (o dono: «Mais vídeos abre um vídeo no navegador e ambos ficam tocando sobrepostos» — «troca na
+/// mesma janela») — a sugestão (o endereço MEDIDO no tocador, `saidas/w20_mais_videos`) toca aqui; o título e o
+/// «YouTube» (o MESMO vídeo) vão ao navegador e pausam o daqui; o canal vai ao navegador e não pausa.
+#[test]
+fn a_suggested_video_plays_here_and_the_same_video_outside_pauses_this_one() {
+    use super::{Outside, outside};
+    let here = Video::YouTube {
+        id: "aqz-KE-bpKQ".into(),
+        start: 0,
+        vertical: false,
+    };
+    let suggestion = "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen";
+    match outside(&here, suggestion) {
+        Outside::Here(Video::YouTube { id, .. }) => assert_eq!(id, "7CfDEnHxPWA"),
+        o => panic!("a sugestão não toca aqui: {o:?}"),
+    }
+    for same in [
+        "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+        "https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=42s",
+    ] {
+        assert_eq!(
+            outside(&here, same),
+            Outside::Browser { pause: true },
+            "{same}"
+        );
+    }
+    assert_eq!(
+        outside(&here, "https://www.youtube.com/@BlenderOfficial"),
+        Outside::Browser { pause: false }
+    );
+}
+
+/// ⭐ W20 — o tocador recarrega quando o vídeo da MESMA janela muda (a sugestão, as setas, o «voltar ao
+/// original», o desfazer); o mesmo vídeo da mesma janela fica; sem tocador, só arranca se puder estar vivo.
+#[test]
+fn the_player_reloads_when_the_same_window_changes_video() {
+    use super::{Tune, tune};
+    let yt = |id: &str| Video::YouTube {
+        id: id.into(),
+        start: 0,
+        vertical: false,
+    };
+    let (a, b) = (yt("aqz-KE-bpKQ"), yt("7CfDEnHxPWA"));
+    let (w, other) = (ElementId(1), ElementId(2));
+    assert_eq!(tune(Some((w, &a)), w, &a, true), Tune::Keep);
+    assert_eq!(
+        tune(Some((w, &a)), w, &b, true),
+        Tune::Load,
+        "a mesma janela, outro vídeo"
+    );
+    assert_eq!(tune(Some((w, &a)), other, &a, true), Tune::Load);
+    assert_eq!(tune(None, w, &a, true), Tune::Start);
+    assert_eq!(tune(None, w, &a, false), Tune::Wait);
+}

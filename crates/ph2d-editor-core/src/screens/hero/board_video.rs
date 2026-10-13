@@ -41,6 +41,105 @@ pub fn insert_link(hero: &mut HeroScreen, text: &str, at: Option<[f64; 2]>) -> b
     true
 }
 
+/// O vídeo `id` do quadro activo passa a ser `video` (o link canónico; a caixa fica), UM passo de desfazer.
+/// O tocador segue-o (o app recarrega quando o vídeo do mesmo elemento muda). `false` = não é um vídeo.
+fn set_video(hero: &mut HeroScreen, id: ElementId, video: Video) -> bool {
+    let Some((board, live)) = hero.documents.active_parts() else {
+        return false;
+    };
+    let Some(mut el) = board.doc.get(id).cloned() else {
+        return false;
+    };
+    let Some(e) = el.embed_mut() else {
+        return false;
+    };
+    e.link = ph2d_board_embed::canonical_link(&video);
+    e.video = video;
+    let history = live.histories.entry(board.id).or_default();
+    history.apply(&mut board.doc, vec![ph2d_board_model::BoardOp::Put(el)]);
+    true
+}
+
+/// O trilho do vídeo `id` do quadro activo, acertado ao vídeo de agora (`None` = não há, ou o vídeo mudou por
+/// outra via e o trilho caiu). Devolve também o vídeo de agora.
+fn trail_of(hero: &mut HeroScreen, id: ElementId) -> Option<(&mut VideoTrail, Video)> {
+    let (board, live) = hero.documents.active_parts()?;
+    let now = board.doc.get(id)?.embed()?.video.clone();
+    let key = (board.id, id);
+    let ok = live.video_trails.get_mut(&key)?.sync(&now);
+    if !ok {
+        live.video_trails.remove(&key);
+        return None;
+    }
+    Some((live.video_trails.get_mut(&key)?, now))
+}
+
+/// ⭐ W20 (o dono, 13/10: «Mais vídeos abre um vídeo no navegador e ambos ficam tocando sobrepostos» — escolheu
+/// «troca na mesma janela») — o vídeo `id` passa a ser `video` (a sugestão em que se clicou dentro do tocador),
+/// um passo de desfazer, e entra no TRILHO da janela (o que estava à frente dele cai, como num navegador).
+/// `false` = o elemento já não é um vídeo.
+pub fn navigate(hero: &mut HeroScreen, id: ElementId, video: Video) -> bool {
+    let Some(now) = hero
+        .documents
+        .active_board()
+        .and_then(|b| Some(b.doc.get(id)?.embed()?.video.clone()))
+    else {
+        return false;
+    };
+    let _ = trail_of(hero, id);
+    if let Some((board, live)) = hero.documents.active_parts() {
+        let t = live
+            .video_trails
+            .entry((board.id, id))
+            .or_insert_with(|| VideoTrail {
+                items: vec![now],
+                at: 0,
+            });
+        t.items.truncate(t.at + 1);
+        t.items.push(video.clone());
+        t.at = t.items.len() - 1;
+    }
+    set_video(hero, id, video)
+}
+
+/// W20 — as setas da janela: `delta` = −1 o vídeo de antes no trilho, +1 o seguinte (cada passo é um passo de
+/// desfazer). `false` = não há para onde ir.
+pub fn step(hero: &mut HeroScreen, id: ElementId, delta: isize) -> bool {
+    let Some((t, _)) = trail_of(hero, id) else {
+        return false;
+    };
+    let Some(to) =
+        t.at.checked_add_signed(delta)
+            .filter(|i| *i < t.items.len())
+    else {
+        return false;
+    };
+    t.at = to;
+    let video = t.items[to].clone();
+    set_video(hero, id, video)
+}
+
+/// W20 — «voltar ao original»: a janela volta ao 1.º vídeo do trilho e o trilho apaga-se (um passo de
+/// desfazer). `false` = não havia navegação.
+pub fn reset(hero: &mut HeroScreen, id: ElementId) -> bool {
+    let Some((t, now)) = trail_of(hero, id) else {
+        return false;
+    };
+    let first = t.items[0].clone();
+    if let Some((board, live)) = hero.documents.active_parts() {
+        live.video_trails.remove(&(board.id, id));
+    }
+    first == now || set_video(hero, id, first)
+}
+
+/// W20 — o que as setas da janela `id` podem fazer agora: `Some((antes, depois))` se ela navegou.
+#[must_use]
+pub fn trail(hero: &mut HeroScreen, id: ElementId) -> Option<(bool, bool)> {
+    let (t, _) = trail_of(hero, id)?;
+    // Um trilho tem sempre ≥ 2 (nasce com o original e a sugestão; o «voltar ao original» apaga-o).
+    Some((t.at > 0, t.at + 1 < t.items.len()))
+}
+
 fn button(b: PointerButton) -> u8 {
     match b {
         PointerButton::Primary => 0,
@@ -55,7 +154,8 @@ pub fn fullscreen(hero: &HeroScreen) -> bool {
     hero.documents.live.render_cache.videos.fullscreen && hero.documents.active().is_some()
 }
 
-use crate::documents::VideoClick;
+use crate::documents::{VideoClick, VideoTrail};
+use ph2d_board_model::Video;
 
 /// O carregar no quadro. `true` = era do vídeo (só no nosso ecrã inteiro, onde o tocador toma tudo). Os
 /// pans (o botão do meio — também o dos dois dedos —, o Espaço, a mão) nunca são do vídeo; com a ferramenta

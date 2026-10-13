@@ -84,6 +84,12 @@ pub(crate) struct BoardLive {
     /// W20 — o Espaço foi carregado com um vídeo activo e nenhum carregar do rato veio depois: no largar
     /// é tocar/pausar (o atalho do YouTube); com um arrasto pelo meio foi o pan do quadro.
     pub(crate) space_tap: bool,
+    /// W20 — o trilho de cada janela de vídeo que navegou pelo «Mais vídeos» (as setas e o «voltar ao
+    /// original»). Só da sessão: o documento guarda o vídeo de agora.
+    pub(crate) video_trails: std::collections::BTreeMap<
+        (ph2d_board_model::BoardId, ph2d_board_model::ElementId),
+        VideoTrail,
+    >,
     /// W18 — o botão «Video» da barra pediu o link da área de transferência (o app lê-a).
     pub(crate) video_ask: bool,
 }
@@ -101,6 +107,31 @@ pub(crate) struct VideoClick {
     pub(crate) player: Option<[f64; 2]>,
     /// Passou do limiar de arrasto da casa: o gesto foi do editor.
     pub(crate) dragged: bool,
+}
+
+/// ⭐ W20 — os vídeos por onde uma janela passou, por ordem (o 1.º é o ORIGINAL), e onde está. A verdade do
+/// vídeo de agora é o DOCUMENTO: `at` re-acha-se nele a cada uso (o `Ctrl+Z` também anda no trilho), e um
+/// vídeo que não está no trilho (mudado por outra via) apaga-o.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct VideoTrail {
+    pub(crate) items: Vec<ph2d_board_model::Video>,
+    pub(crate) at: usize,
+}
+
+impl VideoTrail {
+    /// Re-acha `at` no vídeo de agora; `false` = ele não está no trilho.
+    pub(crate) fn sync(&mut self, now: &ph2d_board_model::Video) -> bool {
+        if self.items.get(self.at) == Some(now) {
+            return true;
+        }
+        match self.items.iter().position(|v| v == now) {
+            Some(i) => {
+                self.at = i;
+                true
+            }
+            None => false,
+        }
+    }
 }
 
 impl std::fmt::Debug for BoardLive {

@@ -1,0 +1,280 @@
+{
+ "o_que": "W20: o «Mais vídeos» do tocador (sonda_w20_mais_videos.mjs)",
+ "video": "aqz-KE-bpKQ",
+ "versao": "155.0.8059.39",
+ "data": "2026-10-13T20:04:38.150Z",
+ "passos": [
+  {
+   "passo": "0_a_tocar_rato_por_cima",
+   "url": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3",
+   "paused": false,
+   "t": 5.8,
+   "nomes": [
+    {
+     "tag": "BUTTON",
+     "nome": "Ocultar controles do player",
+     "href": null,
+     "alvo": null,
+     "x": 6,
+     "y": 6
+    },
+    {
+     "tag": "A",
+     "nome": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short ",
+     "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+     "alvo": null,
+     "x": 301,
+     "y": 19
+    },
+    {
+     "tag": "A",
+     "nome": "Blender",
+     "href": "/channel/UCSMOQeBJ2RAnuFungnQOxLg",
+     "alvo": null,
+     "x": 301,
+     "y": 45
+    },
+    {
+     "tag": "BUTTON",
+     "nome": "",
+     "href": null,
+     "alvo": null,
+     "x": 42,
+     "y": 32
+    },
+    {
+     "tag": "BUTTON",
+     "nome": "Voltar 10 segundos",
+     "href": null,
+     "alvo": null,
+     "x": 224,
+     "y": 136
+    },
+    {
+     "tag": "BUTTON",
+     "nome": "Pausar vídeo",
+     "href": null,
+     "alvo": null,
+     "x": 280,
+     "y": 158
+    },
+    {
+     "tag": "BUTTON",
+     "nome": "Avançar 10 segundos",
+     "href": null,
+     "alvo": null,
+     "x": 336,
+     "y": 136
+    },
+    {
+     "tag": "BUTTON",
+     "nome": "Copiar link",
+     "href": null,
+     "alvo": null,
+     "x": 58,
+     "y": 279
+    },
+    {
+     "tag": "BUTTON",
+     "nome": "Mais vídeos",
+     "href": null,
+     "alvo": null,
+     "x": 303,
+     "y": 279
+    },
+    {
+     "tag": "A",
+     "nome": "Assistir no YouTube",
+     "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+     "alvo": "_blank",
+     "x": 461,
+     "y": 279
+    },
+    {
+     "tag": "A",
+     "nome": "24:03",
+     "href": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen",
+     "alvo": "_blank",
+     "x": 120,
+     "y": 383
+    },
+    {
+     "tag": "A",
+     "nome": "Dados científicos em superfícies — BCON26\nhá 2 semanas",
+     "href": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen",
+     "alvo": "_blank",
+     "x": 120,
+     "y": 480
+    }
+   ],
+   "abas": [
+    {
+     "t": 1791921876788,
+     "url": "about:blank"
+    }
+   ]
+  },
+  {
+   "passo": "1_painel_aberto",
+   "url": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3",
+   "paused": false,
+   "t": 7.3,
+   "nomes": [
+    {
+     "tag": "BUTTON",
+     "nome": "Ocultar controles do player",
+     "href": null,
+     "alvo": null,
+     "x": 6,
+     "y": 6
+    },
+    {
+     "tag": "BUTTON",
+     "nome": "Close",
+     "href": null,
+     "alvo": null,
+     "x": 528,
+     "y": 24
+    },
+    {
+     "tag": "A",
+     "nome": "24:03",
+     "href": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen",
+     "alvo": "_blank",
+     "x": 120,
+     "y": 155
+    },
+    {
+     "tag": "A",
+     "nome": "Dados científicos em superfícies — BCON26\nhá 2 semanas",
+     "href": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen",
+     "alvo": "_blank",
+     "x": 120,
+     "y": 252
+    }
+   ],
+   "abas": [
+    {
+     "t": 1791921876788,
+     "url": "about:blank"
+    }
+   ],
+   "clicou": {
+    "tag": "BUTTON",
+    "nome": "Mais vídeos",
+    "href": null,
+    "alvo": null,
+    "x": 303,
+    "y": 279
+   }
+  },
+  {
+   "passo": "2_clicou_sugestao",
+   "url": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3",
+   "paused": false,
+   "t": 11.3,
+   "nomes": [
+    {
+     "tag": "BUTTON",
+     "nome": "Mostrar controles do player",
+     "href": null,
+     "alvo": null,
+     "x": 6,
+     "y": 6
+    },
+    {
+     "tag": "BUTTON",
+     "nome": "Close",
+     "href": null,
+     "alvo": null,
+     "x": 528,
+     "y": 24
+    },
+    {
+     "tag": "A",
+     "nome": "24:03",
+     "href": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen",
+     "alvo": "_blank",
+     "x": 120,
+     "y": 155
+    },
+    {
+     "tag": "A",
+     "nome": "Dados científicos em superfícies — BCON26\nhá 2 semanas",
+     "href": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen",
+     "alvo": "_blank",
+     "x": 120,
+     "y": 252
+    }
+   ],
+   "abas": [
+    {
+     "t": 1791921876788,
+     "url": "about:blank"
+    },
+    {
+     "t": 1791921885659,
+     "url": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen"
+    }
+   ],
+   "clicou": {
+    "tag": "A",
+    "nome": "24:03",
+    "href": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen",
+    "alvo": "_blank",
+    "x": 120,
+    "y": 155
+   }
+  },
+  {
+   "passo": "3_depois_3s",
+   "url": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3",
+   "paused": false,
+   "t": 14.4,
+   "nomes": [
+    {
+     "tag": "BUTTON",
+     "nome": "Mostrar controles do player",
+     "href": null,
+     "alvo": null,
+     "x": 6,
+     "y": 6
+    },
+    {
+     "tag": "BUTTON",
+     "nome": "Close",
+     "href": null,
+     "alvo": null,
+     "x": 528,
+     "y": 24
+    },
+    {
+     "tag": "A",
+     "nome": "24:03",
+     "href": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen",
+     "alvo": "_blank",
+     "x": 120,
+     "y": 155
+    },
+    {
+     "tag": "A",
+     "nome": "Dados científicos em superfícies — BCON26\nhá 2 semanas",
+     "href": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen",
+     "alvo": "_blank",
+     "x": 120,
+     "y": 252
+    }
+   ],
+   "abas": [
+    {
+     "t": 1791921876788,
+     "url": "about:blank"
+    },
+    {
+     "t": 1791921885659,
+     "url": "https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen"
+    }
+   ]
+  }
+ ]
+}

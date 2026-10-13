@@ -220,6 +220,51 @@ fn target(vids: &Videos) -> Option<(ElementId, Video, bool, [f64; 2])> {
     Some((id, vids.videos.get(&id)?.clone(), pl.live, pl.screen.size))
 }
 
+/// O que fazer ao tocador neste quadro.
+#[derive(Debug, PartialEq)]
+enum Tune {
+    /// Já tem este vídeo deste elemento.
+    Keep,
+    /// Tem outro: carrega este (outro elemento, OU o mesmo com outro vídeo — W20: a sugestão do «Mais vídeos»,
+    /// as setas, o «voltar ao original», o desfazer).
+    Load,
+    /// Não há tocador: arranca-o.
+    Start,
+    /// Não há tocador e o vídeo não pode estar vivo: espera (senão tocaria com som até a pausa chegar).
+    Wait,
+}
+
+fn tune(tuned: Option<(ElementId, &Video)>, id: ElementId, video: &Video, live: bool) -> Tune {
+    match tuned {
+        Some((t, v)) if t == id && v == video => Tune::Keep,
+        Some(_) => Tune::Load,
+        None if live => Tune::Start,
+        None => Tune::Wait,
+    }
+}
+
+/// Para onde vai um link que o tocador quis abrir numa aba nova.
+#[derive(Debug, PartialEq)]
+enum Outside {
+    /// Outro vídeo do YouTube (uma sugestão do «Mais vídeos»): toca na mesma janela do quadro.
+    Here(Video),
+    /// O navegador do sistema; `pause` = é o vídeo que já toca aqui (o título, «YouTube»).
+    Browser { pause: bool },
+}
+
+/// ⭐ W20 — a lei do link de dentro do tocador (medido, `youtube_motor/saidas/w20_mais_videos`: a sugestão abre
+/// `youtube.com/watch?v=<outro>&feature=endscreen` numa aba nova e o vídeo de origem continua a tocar).
+fn outside(current: &Video, url: &str) -> Outside {
+    let id = |v: &Video| match v {
+        Video::YouTube { id, .. } => id.clone(),
+    };
+    match ph2d_board_embed::youtube(url) {
+        Some(v) if id(&v) == id(current) => Outside::Browser { pause: true },
+        Some(v) => Outside::Here(v),
+        None => Outside::Browser { pause: false },
+    }
+}
+
 fn player(hero: &mut HeroScreen, st: &mut State) {
     let now = Instant::now();
     let vids = hero.documents.videos_mut();
@@ -246,16 +291,16 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
     };
     st.idle_since = None;
     let size = size.map(|v| v.round().max(1.0) as u32);
-    match st.playing.as_mut() {
-        Some(p) if p.id == id => {}
-        Some(p) => {
+    let now_tuned = st.playing.as_ref().map(|p| (p.id, &p.video));
+    match (tune(now_tuned, id, &video, live), st.playing.as_mut()) {
+        (Tune::Keep, _) => {}
+        (Tune::Load, Some(p)) => {
             p.player.load(&video);
             p.player.resize(size);
             (p.id, p.video, p.size, p.held, p.asked) = (id, video.clone(), size, None, None);
         }
-        // Só arranca quando pode estar vivo (senão tocaria com som até a pausa chegar).
-        None if !live => return,
-        None => {
+        (Tune::Wait, _) => return,
+        _ => {
             st.playing = Some(Playing {
                 id,
                 video: video.clone(),
@@ -312,10 +357,21 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
             }
         }
     }
-    // O canal, o título, «YouTube» dentro do tocador: a aba nova fechou-se lá; o link abre-se aqui.
+    // O que o tocador quis abrir numa aba nova (a aba fechou-se lá): W20 — outro vídeo toca AQUI, na mesma
+    // janela; o mesmo vídeo (o título, «YouTube») e o resto (o canal) abrem-se no navegador do sistema — e o
+    // mesmo vídeo lá pausa o daqui (dois a tocar sobrepostos, o dono).
+    let mut here = None;
     for url in p.player.take_outside() {
-        if !ph2d_board_video::open_in_browser(&url) {
-            notice = Some("board.video.cannot_open");
+        match outside(&video, &url) {
+            Outside::Here(v) => here = Some(v),
+            Outside::Browser { pause } => {
+                if pause {
+                    p.player.pause();
+                }
+                if !ph2d_board_video::open_in_browser(&url) {
+                    notice = Some("board.video.cannot_open");
+                }
+            }
         }
     }
     if !live {
@@ -338,6 +394,9 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
         && let Some(img) = image_of(&f)
     {
         vids.frame = Some((img, f.size));
+    }
+    if let Some(v) = here {
+        ph2d_editor_core::screens::hero::board_video::navigate(hero, id, v);
     }
     if let Some(n) = notice {
         hero.documents.warn(n);

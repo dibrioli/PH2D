@@ -173,6 +173,12 @@ fn ctl(t: &T, c: Ctl) -> (f32, f32) {
         .unwrap_or_else(|| panic!("{c:?} não está pintado"))
 }
 
+/// Clica no controlo `c` da NOSSA barra pelo despacho real.
+fn tap(t: &mut T, c: Ctl) {
+    let at = ctl(t, c);
+    press(t, at);
+}
+
 fn commands(t: &mut T) -> Vec<VideoCommand> {
     std::mem::take(&mut t.hero.documents.videos_mut().commands)
 }
@@ -591,6 +597,90 @@ fn the_style_bar_decorates_a_selected_video_like_a_rectangle() {
     );
 }
 
+/// ⭐ W20 («troca na mesma janela», o dono) — a sugestão do «Mais vídeos» troca o vídeo da janela (o link
+/// canónico; a caixa fica) num passo de desfazer: o `Ctrl+Z` volta ao vídeo de antes.
+#[test]
+fn a_suggestion_swaps_the_video_in_its_window_and_undo_brings_it_back() {
+    let mut t = T::new();
+    assert!(paste(&mut t, LINK));
+    let before = video(&t).unwrap();
+    let other =
+        ph2d_board_embed::youtube("https://www.youtube.com/watch?v=7CfDEnHxPWA&feature=endscreen")
+            .unwrap();
+    assert!(board_video::navigate(&mut t.hero, before.id, other.clone()));
+    t.paint();
+    let after = video(&t).unwrap();
+    assert_eq!(after.embed().unwrap().video, other);
+    assert_eq!(
+        after.embed().unwrap().link,
+        ph2d_board_embed::canonical_link(&other)
+    );
+    assert_eq!(
+        [after.x, after.y, after.w, after.h],
+        [before.x, before.y, before.w, before.h]
+    );
+    assert!(t.key(BoardKey::Char('z'), CTRL, None));
+    assert_eq!(
+        video(&t).unwrap().embed(),
+        before.embed(),
+        "o desfazer não voltou ao de antes"
+    );
+}
+
+/// ⭐⭐ W20 (o dono: «além do CTRL+Z, setas <> de navegação dos vídeos tocados, e botão reset para limpar a
+/// navegação e voltar ao vídeo original») — pelo despacho real sobre a NOSSA barra: sem navegação os três não
+/// existem; depois de duas sugestões, ‹ volta, › avança (cada um um passo de desfazer, e o `Ctrl+Z` anda no
+/// MESMO trilho); uma sugestão depois de recuar corta o que estava à frente (como um navegador); o «voltar ao
+/// original» devolve o 1.º vídeo e os três somem.
+#[test]
+fn the_arrows_walk_the_watched_videos_and_reset_brings_the_original_back() {
+    let mut t = T::new();
+    let id = active(&mut t);
+    let video_now = |t: &T| video(t).unwrap().embed().unwrap().video.clone();
+    let original = video_now(&t);
+    for c in [Ctl::Back, Ctl::Forward, Ctl::Reset] {
+        assert!(
+            t.find(board_video_bar::node(c)).is_none(),
+            "{c:?} sem navegação"
+        );
+    }
+    let yt = |s: &str| ph2d_board_embed::youtube(&format!("https://youtu.be/{s}")).unwrap();
+    let (a, b, c) = (yt("7CfDEnHxPWA"), yt("dQw4w9WgXcQ"), yt("kJQP7kiw5Fk"));
+    assert!(board_video::navigate(&mut t.hero, id, a.clone()));
+    assert!(board_video::navigate(&mut t.hero, id, b.clone()));
+    t.paint();
+    assert_eq!(video_now(&t), b);
+    tap(&mut t, Ctl::Back);
+    assert_eq!(video_now(&t), a, "‹");
+    tap(&mut t, Ctl::Back);
+    assert_eq!(video_now(&t), original, "‹ até ao original");
+    tap(&mut t, Ctl::Back);
+    assert_eq!(video_now(&t), original, "‹ no início não faz nada");
+    tap(&mut t, Ctl::Forward);
+    assert_eq!(video_now(&t), a, "›");
+    // O `Ctrl+Z` anda no mesmo trilho: desfaz o › e as setas seguem-no.
+    assert!(t.key(BoardKey::Char('z'), CTRL, None));
+    t.paint();
+    assert_eq!(video_now(&t), original);
+    tap(&mut t, Ctl::Forward);
+    assert_eq!(video_now(&t), a);
+    // Uma sugestão depois de recuar corta o que estava à frente (o `b`).
+    assert!(board_video::navigate(&mut t.hero, id, c.clone()));
+    t.paint();
+    tap(&mut t, Ctl::Forward);
+    assert_eq!(video_now(&t), c, "› no fim não faz nada");
+    tap(&mut t, Ctl::Back);
+    assert_eq!(video_now(&t), a, "o `b` saiu do trilho");
+    tap(&mut t, Ctl::Reset);
+    assert_eq!(video_now(&t), original, "voltar ao original");
+    for c in [Ctl::Back, Ctl::Forward, Ctl::Reset] {
+        assert!(
+            t.find(board_video_bar::node(c)).is_none(),
+            "{c:?} depois de limpar"
+        );
+    }
+}
+
 /// A barra nunca fica à frente do vídeo: por baixo, por cima se em baixo não couber, e nenhuma se não
 /// couber em lado nenhum.
 #[test]
@@ -598,9 +688,9 @@ fn the_bar_goes_under_or_over_the_video_never_on_it() {
     use crate::zones::Rect;
     let area = Rect::new(0.0, 0.0, 1000.0, 600.0);
     let time = 80.0;
-    let under = layout(area, Rect::new(100.0, 100.0, 560.0, 315.0), time).unwrap();
+    let under = layout(area, Rect::new(100.0, 100.0, 560.0, 315.0), time, false).unwrap();
     assert!(under.ctls.iter().all(|(_, r)| r.y >= 415.0));
-    let over = layout(area, Rect::new(100.0, 250.0, 560.0, 340.0), time).unwrap();
+    let over = layout(area, Rect::new(100.0, 250.0, 560.0, 340.0), time, false).unwrap();
     assert!(over.ctls.iter().all(|(_, r)| r.y + r.h <= 250.0));
-    assert!(layout(area, Rect::new(0.0, 10.0, 1000.0, 580.0), time).is_none());
+    assert!(layout(area, Rect::new(0.0, 10.0, 1000.0, 580.0), time, false).is_none());
 }

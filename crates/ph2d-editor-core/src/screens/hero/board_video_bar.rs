@@ -43,15 +43,25 @@ pub enum Ctl {
     Volume,
     Fullscreen,
     Outside,
+    /// W20 — o vídeo de antes no trilho da janela (o «Mais vídeos»).
+    Back,
+    /// W20 — o vídeo seguinte no trilho.
+    Forward,
+    /// W20 — limpar a navegação e voltar ao vídeo original.
+    Reset,
 }
 
-const ALL: [Ctl; 6] = [
+/// ⚠️ A ordem dá o id ([`node`]): um controlo novo entra no FIM.
+const ALL: [Ctl; 9] = [
     Ctl::Play,
     Ctl::Seek,
     Ctl::Mute,
     Ctl::Volume,
     Ctl::Fullscreen,
     Ctl::Outside,
+    Ctl::Back,
+    Ctl::Forward,
+    Ctl::Reset,
 ];
 
 /// O id do controlo `c`.
@@ -100,6 +110,9 @@ fn tooltip(c: Ctl, s: PlayerStatus, full: bool) -> &'static str {
         Ctl::Fullscreen if full => "board.video.exit_fullscreen",
         Ctl::Fullscreen => "board.video.fullscreen",
         Ctl::Outside => "board.video.open_outside",
+        Ctl::Back => "board.video.back",
+        Ctl::Forward => "board.video.forward",
+        Ctl::Reset => "board.video.reset",
     }
 }
 
@@ -129,15 +142,18 @@ pub struct Layout {
 }
 
 /// ⭐ A barra para um vídeo no rectângulo de ecrã `video`, dentro de `area`: por baixo dele, ou por cima
-/// se em baixo não couber — NUNCA à frente dele; `None` se não couber (`time_w` = a largura do tempo).
+/// se em baixo não couber — NUNCA à frente dele; `None` se não couber (`time_w` = a largura do tempo). W20:
+/// `nav` = a janela navegou (as setas e o «voltar ao original» entram à esquerda).
 #[must_use]
-pub fn layout(area: Rect, video: Rect, time_w: f32) -> Option<Layout> {
+pub fn layout(area: Rect, video: Rect, time_w: f32, nav: bool) -> Option<Layout> {
     let s = float_bar::button_px();
     let (pad, gap) = (Spacing::Xs.px(), float_bar::gap());
     let vol_w = Spacing::Xl4.px();
     let seek_min = Spacing::Xl4.px();
     // play · tempo · barra · mudo · volume · ecrã inteiro · abrir fora
     let fixed = 4.0 * s + time_w + vol_w + 6.0 * gap + 2.0 * pad; // LITERAL-PX-OK: 4 botões, 6 vãos, 2 margens
+    let nav_n: f32 = if nav { 3.0 } else { 0.0 }; // LITERAL-PX-OK: as setas e o «voltar ao original»
+    let fixed = fixed + nav_n * (s + gap);
     let w = video.w.max(fixed + seek_min);
     if w > area.w {
         return None;
@@ -162,6 +178,12 @@ pub fn layout(area: Rect, video: Rect, time_w: f32) -> Option<Layout> {
         cx += width + gap;
         r
     };
+    let mut ctls = Vec::new();
+    if nav {
+        for c in [Ctl::Back, Ctl::Forward, Ctl::Reset] {
+            ctls.push((c, put(s)));
+        }
+    }
     let play = put(s);
     let time = put(time_w);
     let seek = put(seek_w);
@@ -169,17 +191,15 @@ pub fn layout(area: Rect, video: Rect, time_w: f32) -> Option<Layout> {
     let volume = put(vol_w);
     let full = put(s);
     let out = put(s);
-    Some(Layout {
-        ctls: vec![
-            (Ctl::Play, play),
-            (Ctl::Seek, seek),
-            (Ctl::Mute, mute),
-            (Ctl::Volume, volume),
-            (Ctl::Fullscreen, full),
-            (Ctl::Outside, out),
-        ],
-        time,
-    })
+    ctls.extend([
+        (Ctl::Play, play),
+        (Ctl::Seek, seek),
+        (Ctl::Mute, mute),
+        (Ctl::Volume, volume),
+        (Ctl::Fullscreen, full),
+        (Ctl::Outside, out),
+    ]);
+    Some(Layout { ctls, time })
 }
 
 /// No ecrã inteiro: o rectângulo do vídeo (a proporção `aspect` = largura/altura) e o da barra por baixo,
@@ -211,6 +231,13 @@ fn screen_rect(pl: &Placement, el_w: f64, el_h: f64) -> Rect {
 /// ⭐ Pinta a barra do vídeo activo (e, no ecrã inteiro, o vídeo a encher a área). `area` = a do quadro.
 pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
     let theme = hero.theme;
+    let nav = hero
+        .documents
+        .live
+        .render_cache
+        .videos
+        .active
+        .and_then(|id| super::board_video::trail(hero, id));
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -272,7 +299,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         .replace("{now}", &clock(status.duration))
         .replace("{total}", &clock(status.duration));
     let time_w = ts.prefix_width(&widest, font) + Spacing::Sm.px();
-    let Some(lay) = layout(area, video, time_w) else {
+    let Some(lay) = layout(area, video, time_w, nav.is_some()) else {
         return;
     };
     float_bar::paint_panel(
@@ -316,6 +343,12 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             paint_slider(&sl, r, scene, theme);
             continue;
         }
+        // W20: a seta sem para onde ir pinta-se apagada (e o clique nela não faz nada).
+        let can = match (c, nav) {
+            (Ctl::Back, Some((back, _))) => back,
+            (Ctl::Forward, Some((_, forward))) => forward,
+            _ => true,
+        };
         let fg = float_bar::paint_button(
             scene,
             hit,
@@ -325,7 +358,11 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
                 id,
                 rect: r,
                 on: false,
-                tint: ColorToken::Text1,
+                tint: if can {
+                    ColorToken::Text1
+                } else {
+                    ColorToken::TextDisabled
+                },
             },
         );
         let icon = match c {
@@ -335,6 +372,9 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             Ctl::Mute => IconId::Audio,
             Ctl::Fullscreen if full => IconId::Minimize,
             Ctl::Fullscreen => IconId::Maximize,
+            Ctl::Back => IconId::ChevronLeft,
+            Ctl::Forward => IconId::ChevronRight,
+            Ctl::Reset => IconId::Reset,
             _ => IconId::Open,
         };
         paint_icon(
@@ -405,6 +445,17 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return true;
     }
     let Some(c) = ctl_of(id) else { return false };
+    // W20: as setas e o «voltar ao original» mudam o DOCUMENTO (o vídeo da janela), não o tocador.
+    if matches!(c, Ctl::Back | Ctl::Forward | Ctl::Reset) {
+        if let Some(v) = hero.documents.live.render_cache.videos.active {
+            let _ = match c {
+                Ctl::Back => super::board_video::step(hero, v, -1),
+                Ctl::Forward => super::board_video::step(hero, v, 1),
+                _ => super::board_video::reset(hero, v),
+            };
+        }
+        return true;
+    }
     let v = hero.store.slider(id).map(|(_, v)| v);
     let Some((_, live)) = hero.documents.active_parts() else {
         return true;

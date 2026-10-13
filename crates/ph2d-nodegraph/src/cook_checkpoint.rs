@@ -69,18 +69,74 @@ pub struct CookCheckpoint {
     memo: BTreeMap<(NodeId, ScopeKey), Arc<dyn DynMemo>>,
 }
 
+/// O que o `malloc` acrescenta a cada pedido (cabeçalho e arredondamento, glibc) — a régua
+/// `ph2d-eval-motion/tests/anel_memoria.rs` mede `bytes + 16 · blocos`.
+const CABECALHO: usize = 16;
+
+fn bloco(n: usize) -> usize {
+    if n == 0 { 0 } else { n + CABECALHO }
+}
+
+/// Os nós de uma `BTreeMap<K, V>` de `n` entradas: as folhas do `std` têm `11` lugares (pai,
+/// índice, contagem e as duas filas), cheias como as deixa um `collect` ordenado — e um clone tem
+/// a forma do original —; acima de uma folha, um nó interno (mais `12` ponteiros) por `11` folhas.
+fn peso_do_mapa<K, V>(n: usize) -> usize {
+    const LUGARES: usize = 11;
+    if n == 0 {
+        return 0;
+    }
+    let folha = (12 + LUGARES * (size_of::<K>() + size_of::<V>())).next_multiple_of(8);
+    let folhas = n.div_ceil(LUGARES);
+    let internos = if folhas > 1 {
+        folhas.div_ceil(LUGARES)
+    } else {
+        0
+    };
+    folhas * bloco(folha) + internos * bloco(folha + (LUGARES + 1) * size_of::<usize>())
+}
+
+/// O que UM valor de saída retém num ponto de recuo: o mapa de colunas do `Stream` e os nomes
+/// (copiados pelo clone) e cada coluna (o `Arc` e os dados — partilhados com o cozimento só até ao
+/// tique seguinte, que escreve colunas novas). Um `Opaque` é apagado de tipo e conta `0`.
+fn peso_do_valor(v: &CookValue) -> usize {
+    let CookValue::Instances(s) = v else {
+        return 0;
+    };
+    let colunas: usize = s
+        .shared_columns()
+        .map(|(nome, c)| {
+            bloco(nome.len())
+                + bloco(2 * size_of::<usize>() + size_of::<crate::attr::Column>())
+                + bloco(c.approx_bytes())
+        })
+        .sum();
+    peso_do_mapa::<String, Arc<crate::attr::Column>>(s.shared_columns().count()) + colunas
+}
+
 impl CookCheckpoint {
-    /// The checkpoint's bytes — what a byte-budgeted ring charges for holding it
-    /// (ADR-0137): the stream columns ([`crate::attr::Column::approx_bytes`]) plus
-    /// what each [`Memo`] declares.
+    /// ⭐ **O heap que este ponto de recuo RETÉM, com o cabeçalho do `malloc`** — o que um anel com
+    /// orçamento em bytes cobra por ele (ADR-0137): os mapas que o clone copia, os vetores de
+    /// saídas, os nomes e as colunas, e cada [`Memo`] (o `Arc` da cópia e o que ela declara). Gate:
+    /// `ph2d-eval-motion/tests/anel_memoria.rs` (`±25 %`; antes desta conta um ponto leve declarava
+    /// só os dados — `8 B` — e retinha `~970`, doc 132 §7). ⚠️ Uma coluna partilhada por dois
+    /// pontos conta nos dois: erra para CIMA, o lado que um orçamento pode errar.
     pub fn approx_bytes(&self) -> usize {
-        let colunas: usize = self
+        let saidas: usize = self
             .prev_outputs
             .values()
-            .flat_map(|vs| vs.iter())
-            .map(CookValue::approx_bytes)
+            .map(|vs| {
+                bloco(size_of_val(vs.as_slice())) + vs.iter().map(peso_do_valor).sum::<usize>()
+            })
             .sum();
-        colunas + self.memo.values().map(|m| m.bytes()).sum::<usize>()
+        let memos: usize = self
+            .memo
+            .values()
+            .map(|m| bloco(2 * size_of::<usize>() + size_of_val(&**m)) + m.bytes())
+            .sum();
+        peso_do_mapa::<NodeId, Vec<CookValue>>(self.prev_outputs.len())
+            + saidas
+            + peso_do_mapa::<(NodeId, ScopeKey), Arc<dyn DynMemo>>(self.memo.len())
+            + memos
     }
 }
 

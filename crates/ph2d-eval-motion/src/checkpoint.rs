@@ -62,7 +62,8 @@ pub const MEMO_A_CADA: u64 = 8;
 pub const MAX_ENTRIES: usize = 2048;
 
 /// One anchor: the state that reproduces frame `tick`, and what it costs to
-/// hold ([`CookCheckpoint::approx_bytes`], charged once at admission).
+/// hold ([`CookCheckpoint::approx_bytes`], charged once at admission; its slot in
+/// the vector is charged by [`CheckpointRing::retido`]).
 struct Entry {
     tick: u64,
     cp: CookCheckpoint,
@@ -74,6 +75,7 @@ struct Entry {
 pub struct CheckpointRing {
     /// Strictly ascending by tick.
     entries: Vec<Entry>,
+    /// The sum of the entries' [`CookCheckpoint::approx_bytes`].
     bytes: usize,
     /// Um tecto PRÓPRIO, além do razão (os gates); `usize::MAX` por omissão.
     budget_bytes: usize,
@@ -122,17 +124,24 @@ impl CheckpointRing {
         let bytes = cp.approx_bytes();
         self.bytes += bytes;
         self.entries.insert(at, Entry { tick, cp, bytes });
-        self.conta.0.declara(self.bytes);
+        self.conta.0.declara(self.retido());
         while self.entries.len() > 1
-            && (self.bytes > self.budget_bytes
+            && (self.retido() > self.budget_bytes
                 || self.conta.0.acima()
                 || self.entries.len() > MAX_ENTRIES)
         {
             let victim = self.thinning_victim(tick);
             let e = self.entries.remove(victim);
             self.bytes = self.bytes.saturating_sub(e.bytes);
-            self.conta.0.declara(self.bytes);
+            self.conta.0.declara(self.retido());
         }
+    }
+
+    /// ⭐ **O heap que o anel RETÉM** — o que ele declara ao razão e o que o tecto compara: os
+    /// pontos ([`CookCheckpoint::approx_bytes`]) e o vetor de entradas pela CAPACIDADE (ele não
+    /// encolhe ao afinar nem ao esvaziar). Gate: `tests/anel_memoria.rs` (`±25 %`, doc 132 §7).
+    fn retido(&self) -> usize {
+        self.bytes + crate::fita::bloco(self.entries.capacity() * size_of::<Entry>())
     }
 
     /// The thinning victim: the evictable entry whose removal creates the
@@ -212,13 +221,13 @@ impl CheckpointRing {
         for e in self.entries.drain(at..) {
             self.bytes = self.bytes.saturating_sub(e.bytes);
         }
-        self.conta.0.declara(self.bytes);
+        self.conta.0.declara(self.retido());
     }
 
     pub fn clear(&mut self) {
         self.entries.clear();
         self.bytes = 0;
-        self.conta.0.declara(0);
+        self.conta.0.declara(self.retido());
     }
 
     /// A ring-own byte cap on top of the process ledger (default none) — the
@@ -312,8 +321,10 @@ mod tests {
     }
 
     /// The byte budget (ADR-0137 §3): entries are charged their checkpoint's
-    /// `approx_bytes`, and a zero-byte checkpoint stream still respects the
-    /// ENTRY backstop — count is a backstop, bytes are the budget.
+    /// `approx_bytes` AND their slot in the vector — an empty checkpoint still
+    /// costs its slot (doc 132 §7), so a zero budget keeps one anchor and no
+    /// more; without a budget the ENTRY backstop bounds them — count is a
+    /// backstop, bytes are the budget.
     #[test]
     fn the_budget_is_bytes_and_the_entry_cap_is_a_backstop() {
         let mut ring = CheckpointRing::new();
@@ -321,12 +332,8 @@ mod tests {
         ring.record(1, cp());
         assert_eq!(ring.len(), 1, "…but the ring never drops below one anchor");
         ring.record(2, cp());
-        // Default checkpoints weigh 0 bytes → nothing is over budget; both stay.
-        assert_eq!(
-            ring.len(),
-            2,
-            "zero-byte states are bounded by the backstop"
-        );
+        assert_eq!(ring.len(), 1, "the slot of an empty checkpoint is not free");
+        assert!(ring.retido() > 0, "and the ring declares it");
     }
 
     #[test]

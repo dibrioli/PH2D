@@ -243,10 +243,20 @@ fn a_loop_wrap_anchors_on_the_previous_laps_backfill() {
     // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
     // toda contagem de instâncias aqui seria zero por construção.
     pump.define_a_lei(false);
-    // The counting state is one Vec2 element (~8 B/checkpoint): 200 B ≈ 25
-    // anchors over 401 ticks ⇒ eviction bites hard (half protected-recent,
-    // half thinned history ⇒ history gap ≈ 33).
-    pump.set_ring_budget(200);
+    // ~25 anchors over 401 ticks ⇒ eviction bites hard (half protected-recent,
+    // half thinned history ⇒ history gap ≈ 33). The counting state is one Vec2
+    // element, but a checkpoint RETAINS its maps, name and column (~1 KB, doc 132
+    // §7 — it used to declare the 8 B of data, and this budget was `200`), and the
+    // entry vector costs ~3 more: 28 checkpoints' worth.
+    let peso = {
+        let mut medida = MotionCookPump::new();
+        medida.define_a_lei(false);
+        for t in 0..=1u64 {
+            medida.advance_or_scrub_scoped(&g, &COps, &[c], t, ph, UV, SIZE, &scopes);
+        }
+        medida.cook.checkpoint().approx_bytes()
+    };
+    pump.set_ring_budget(28 * peso);
     for t in 0..=400u64 {
         pump.advance_or_scrub_scoped(&g, &COps, &[c], t, ph, UV, SIZE, &scopes);
     }

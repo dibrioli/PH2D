@@ -73,13 +73,6 @@ impl crate::App {
         // A decisão vive agora dentro do `ph2d-render`, é
         // `AaConfig::Area` e não é parametrizável. Dois passes
         // (chrome / documento) seria arquitectura, não uma flag.
-        // GPU pass profiler: Vello submits internally (its passes are out of
-        // reach), so bracket the whole call with marker submits — queue order
-        // makes `end − begin` cover everything Vello enqueued. No-op when off.
-        let vello_span = {
-            let g = surface.gpu();
-            ph2d_gpu::pass_profiler::span_begin(&g.device, &g.queue, "render.vello")
-        };
         // ⭐ A metade de CIMA das faixas — ver o cabeçalho do `present_bands`.
         if banded {
             crate::render_loop::present_bands::draw_upper_bands(
@@ -149,6 +142,13 @@ impl crate::App {
         // ⭐⭐⭐ **Uma cena que mistura com o CENÁRIO leva o mundo por baixo** (doc 118 W2): o
         // mundo é o que o compositor poria por baixo do intermédio — o acumulador quando ele o lê,
         // o tonemap no quadro de sempre. ⛔ Sem a marca, o render de sempre, byte a byte.
+        // GPU pass profiler: Vello submits internally, so bracket the render with marker submits.
+        // ⚠️ Só o render: aberto antes da camada filtrada, o `render.vello` contava o filtro inteiro
+        // (a `=138`: 8,9 ms «de Vello» contra 0,7 sem filtro, doc 132 §7). No-op when off.
+        let vello_span = {
+            let g = surface.gpu();
+            ph2d_gpu::pass_profiler::span_begin(&g.device, &g.queue, "render.vello")
+        };
         let feito = if vector_scene.quer_o_mundo_por_baixo() {
             let mundo = if banded || frosting {
                 world_rt.sample_view()

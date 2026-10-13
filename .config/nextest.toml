@@ -139,6 +139,13 @@ max-threads = 2
 filter = 'test(=o_interior_do_opaco::o_interior_do_opaco_nao_depende_da_posicao_na_grade) + test(=o_oclusor_fino::o_oclusor_fino_faz_a_sombra_do_gabarito) + test(=holografica::a_holografica_junto_a_uma_face_e_o_gabarito) + test(=a_escada_da_sombra::a_sombra_nitida_nao_tem_escada) + test(=a_face_acesa_da_parede::a_face_acesa_da_parede_nao_tem_linha_escura)'
 slow-timeout = { period = "60s", terminate-after = 12 }
 
+# O gate que FORÇA a recusa de memória (`SemMemoria` a 2160p, ~1,1 GB pedidos) com outro gate da luz ao lado
+# vira falta de memória de VERDADE para a placa inteira (o atlas do renderer inválido, pânico do wgpu no
+# `get_mapped_range`) — ship de 12/10; sozinho 3/3 verde com 0,6 GB da placa em uso. Corre SOZINHO.
+[[profile.default.overrides]]
+filter = 'test(=os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria)'
+threads-required = "num-test-threads"
+
 # E o RESTO da luz na placa: na suíte inteira (dois por vez na placa, a CPU cheia) um gate custa mais de 2× o
 # que custa sozinho — `as_formas_redondas_nao_saem_em_facetas` 84,2 s sozinho, > 180 s no ship de 12/10. Tecto
 # 6 × 60 s ≈ 2,4× o mais lento fora da lista acima medido sozinho (a sombra nítida, 147,6 s).

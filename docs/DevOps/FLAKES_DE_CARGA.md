@@ -87,6 +87,10 @@ CONCORRÊNCIA desses testes (`[test-groups.luz2d-placa] max-threads = 2` no
 [`.config/nextest.toml`](../../.config/nextest.toml), por pacote: `ph2d-app-light2d` e
 `ph2d-light2d-gpu`), não a faixa isolada do relógio. Medido no portão W5e: 9 de 17 508 reprovaram a
 load 8–34 com ~7 GB da placa já tomados por outros programas; os 9 passaram sozinhos.
+⚠️ **Membro que a faixa de 2 não cura (12/10):** `os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria`
+pede DE PROPÓSITO mais do que a placa dá; com outro gate da luz ao lado a recusa vira falta de memória de
+verdade para a placa inteira (o atlas do renderer inválido, pânico do wgpu). Sozinho 3/3 verde → corre
+SOZINHO (`threads-required = "num-test-threads"` no `nextest.toml`).
 
 ## A outra espécie: a flake de GPU só no Linux do CI
 

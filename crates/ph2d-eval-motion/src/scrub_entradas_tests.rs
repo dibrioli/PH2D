@@ -295,3 +295,35 @@ fn o_scrub_para_antes_da_base_marca_a_bomba_como_dobrada() {
     scrub(&mut pump, &g, c, base + 5);
     assert_eq!(pump.historia_mostrada(), Historia::Verdade, "o CONTROLO");
 }
+
+/// ⭐ **O RAZÃO DOS ANÉIS NUNCA PASSA O TECTO, COM N ANÉIS** (doc 132 §2 (b)): o `CPU_RING_BYTES`
+/// é da família da fita — seis anéis a registar em alternância num razão de `T` bytes ficam `≤ T`
+/// juntos, cada um afina o SEU; e um anel que morre devolve o que declarava.
+#[test]
+fn o_razao_dos_aneis_nunca_passa_o_tecto_com_n_aneis() {
+    let (g, c) = grafo();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    toca(&mut pump, &g, c, 0, 3, |_| 1.0);
+    let cp = pump.cook.checkpoint();
+    let peso = cp.approx_bytes();
+    assert!(peso > 0, "o estado do acumulador pesa");
+    let teto = peso * 60;
+    let r = crate::Razao::new(teto);
+    let mut aneis: Vec<CheckpointRing> = (0..6)
+        .map(|_| CheckpointRing::no_razao(std::sync::Arc::clone(&r)))
+        .collect();
+    for t in 0..200u64 {
+        for (i, a) in aneis.iter_mut().enumerate() {
+            a.record(t, cp.clone());
+            assert!(
+                r.usado() <= teto,
+                "tique {t}, anel {i}: o razão declara {} de {teto}",
+                r.usado()
+            );
+        }
+    }
+    assert!(r.usado() > teto / 2, "os anéis encheram o razão");
+    aneis.truncate(1);
+    assert!(r.usado() < teto / 2, "os que morrem devolvem o seu");
+}

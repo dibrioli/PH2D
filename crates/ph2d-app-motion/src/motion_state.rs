@@ -519,9 +519,10 @@ pub struct MotionState {
     pub ao_painel: PedidosAoPainel,
     /// O retrato do mundo que a cena publicou neste quadro ([`crate::motion_mundo`]).
     pub mundo: crate::motion_mundo::MundoDaCena,
-    /// O segundo que o replay mostrou no lugar da história dobrada (doc 132 §2) — o cartão das
-    /// entradas lê-o. Ver [`crate::motion_historia`].
-    pub historia_dobrada: Option<f64>,
+    /// A queixa do cartão das entradas quando o replay NÃO mostrou o que se publicou (a base de
+    /// uma história dobrada, ou o publicado agora antes do primeiro tique gravado — doc 132 §2).
+    /// Ver [`crate::motion_historia`].
+    pub queixa_da_historia: Option<String>,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the

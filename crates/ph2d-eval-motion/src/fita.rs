@@ -36,15 +36,18 @@ pub enum Gravacao {
 /// que cabe por RAM e entradas a mudar: doc 132 §7 (P2).
 pub const FITA_BYTES: usize = 128 * 1024 * 1024;
 
-/// **O que a fita sabe de um tique** (doc 132 §2): o replay de um tique anterior à base mostra a
-/// base, e isto é o que o diz ao artista (a Timeline e o cartão das entradas).
+/// **O que o replay de um tique MOSTRA** (doc 132 §2) — a mesma pergunta que [`Fita::estado_em`]
+/// responde, dita ao artista (a Timeline e o cartão das entradas).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum Historia {
-    /// O que se publicou nesse tique (ou ele não está na fita, e o replay usa o publicado agora).
+    /// O que se publicou nesse tique.
     #[default]
     Verdade,
     /// A história antes de `desde` foi dobrada na base: o replay mostra o tique `desde`.
     Dobrada { desde: u64 },
+    /// O tique não está na fita (antes do primeiro gravado, dobrada ou não): o replay usa o
+    /// publicado AGORA.
+    NaoGravada,
 }
 
 /// De quantas em quantas marcas a fita guarda uma ÂNCORA (o estado inteiro naquele tique): ler um
@@ -193,7 +196,7 @@ impl Default for ContaDaFita {
     }
 }
 
-fn bloco(n: usize) -> usize {
+pub(crate) fn bloco(n: usize) -> usize {
     if n == 0 { 0 } else { n + CABECALHO }
 }
 
@@ -368,10 +371,14 @@ impl Fita {
         matches!((self.primeiro, self.ultimo), (Some(p), Some(u)) if p <= t && t <= u)
     }
 
-    /// ⭐ **A porta ÚNICA da verdade de um tique** (doc 132 §2): antes de `base_ate` a história
-    /// foi dobrada, e o replay mostra a base.
+    /// ⭐ **A porta ÚNICA da verdade de um tique** (doc 132 §2), pela MESMA pergunta que o replay
+    /// faz ([`Self::cobre`]): fora da fita o replay usa o publicado agora; dentro, antes de
+    /// `base_ate`, mostra a base.
     #[must_use]
     pub fn historia_em(&self, t: u64) -> Historia {
+        if !self.cobre(t) {
+            return Historia::NaoGravada;
+        }
         match self.base_ate {
             Some(desde) if t < desde => Historia::Dobrada { desde },
             _ => Historia::Verdade,

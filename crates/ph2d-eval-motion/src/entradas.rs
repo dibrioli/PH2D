@@ -99,6 +99,7 @@ impl MotionCookPump {
     /// que fica intacto), as publicadas fora dela. Só troca quando muda.
     pub fn entradas_do_replay(&mut self, replay: &mut Replay, t: u64) {
         self.historia = self.fita.historia_em(t);
+        self.tique_das_entradas = Some(t);
         if self.fita.cobre(t) {
             let mudou = match replay.estado.as_mut() {
                 Some(e) => self.fita.avanca(t, e),
@@ -137,11 +138,22 @@ impl MotionCookPump {
         self.cook.set_externals_replay(None);
         let g = self.grava_entradas(tick);
         self.historia = self.fita.historia_em(tick);
+        self.tique_das_entradas = Some(tick);
         Some(g)
     }
 
+    /// **O último tique cujas entradas se mostraram** — o `ultimo` de [`Self::entradas_do_tique`]
+    /// para uma rota que não guarda o último cozido (a placa num grafo sem estado): sem ele, um
+    /// tique antes do primeiro gravado GRAVAVA, era um ramo e esquecia a fita inteira (medido no
+    /// gate do cartão, `motion_bridge_historia_tests`), onde a CPU repete.
+    #[must_use]
+    pub fn tique_das_entradas(&self) -> Option<u64> {
+        self.tique_das_entradas
+    }
+
     /// ⭐ **O que a fita disse do último tique cozido** (doc 132 §2) — `Dobrada` quando o replay
-    /// mostrou a base no lugar da história; o cartão das entradas lê-o.
+    /// mostrou a base no lugar da história, `NaoGravada` quando mostrou o publicado agora; o cartão
+    /// das entradas lê-o.
     #[must_use]
     pub fn historia_mostrada(&self) -> Historia {
         self.historia

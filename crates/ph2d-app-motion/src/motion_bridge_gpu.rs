@@ -406,8 +406,12 @@ pub(super) fn cook_gpu(
             // from. It replaces `ticks_owed` here rather than wrapping it —
             // `ticks_owed` answers `target..=target` for a backwards jump, which
             // for a sim means "cook the past against the future's state".
-            // ⚠️ Lido ANTES do `rewind_for`, que o apaga ao rebobinar.
-            let ja_cozido = motion.gpu_cook.last_cooked_tick();
+            // ⚠️ Lido ANTES do `rewind_for`, que o apaga ao rebobinar. Um plano sem estado não guarda
+            // o último tique: vale o das entradas (a MESMA regra da CPU — um tique para trás repete).
+            let ja_cozido = motion
+                .gpu_cook
+                .last_cooked_tick()
+                .or_else(|| motion.pump.tique_das_entradas());
             let ticks: Vec<u64> = match plan.drives_a_loop() {
                 true => (motion.gpu_cook.rewind_for(target)..=target).collect(),
                 false => vec![target],

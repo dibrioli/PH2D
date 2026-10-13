@@ -98,6 +98,20 @@ pub(crate) fn coze_o_quadro(
     crate::motion_historia::publica(motion, fixed_dt);
 }
 
+/// **O MESMO quadro numa máquina SEM placa** — só os gates: a rota da CPU do produto (o ramo da
+/// placa nem se tenta, como com `gpu_enabled = false`) corre onde não há adapter. ⚠️ O produto tem
+/// sempre placa ([`coze_o_quadro`]); um parâmetro opcional lá tornaria alcançável «passou-se a
+/// coisa errada e a placa sumiu em silêncio» (ver `readout::take_tap`).
+#[cfg(test)]
+pub(crate) fn coze_o_quadro_sem_placa(
+    motion: &mut MotionState,
+    playhead: &ph2d_core::Playhead,
+    fixed_dt: f64,
+) {
+    coze(motion, None, playhead, fixed_dt);
+    crate::motion_historia::publica(motion, fixed_dt);
+}
+
 fn coze(
     motion: &mut MotionState,
     gpu: Option<&ph2d_gpu::GpuContext>,
@@ -169,6 +183,9 @@ fn coze(
     // ⚠️ A bypassed GROUP is short-circuited only on the CPU pump's graph (below),
     // so the GPU path is skipped while one exists — a muted preview must not cook
     // from the un-rewired graph (v1; the group-bypass module documents this).
+    if gpu.is_none() {
+        motion.gpu_live = false;
+    }
     if let Some(gpu) = gpu
         && motion.doc.bypassed_subgraphs.is_empty()
         && let gpu::GpuOutcome::Handled = gpu::cook_gpu(motion, gpu, target, fixed_dt, &scopes)

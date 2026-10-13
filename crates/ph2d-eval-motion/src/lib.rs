@@ -124,6 +124,9 @@ pub struct MotionCookPump {
     fita: Fita,
     /// O que a fita disse do último tique cozido — dobrado ou não (doc 132 §2).
     historia: Historia,
+    /// O último tique cujas entradas se mostraram (gravadas ou repetidas) — o «último cozido» de uma
+    /// rota que não o guarda (a placa sem estado). Ver [`Self::tique_das_entradas`].
+    tique_das_entradas: Option<u64>,
     /// As contagens dos gatilhos, para derivar o pulso de cada tique (doc 128 §3.2).
     pulsos: entradas::Pulsos,
     /// O relógio está a tocar (o shell diz-o); parado, arrastar a fita para a frente repete.
@@ -244,6 +247,7 @@ impl MotionCookPump {
             ring: CheckpointRing::new(),
             fita: Fita::new(),
             historia: Historia::Verdade,
+            tique_das_entradas: None,
             pulsos: entradas::Pulsos::default(),
             a_tocar: true,
             boundary_streams: Vec::new(),

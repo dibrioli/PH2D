@@ -189,6 +189,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_historia.history_folded" => {
             "History before {s} s was folded - showing {s} s"
         }
+        // ⚠️ À MÃO: o scrub antes do primeiro tique gravado da fita — o replay usa o publicado
+        // agora (doc 132 §2).
+        "app.motion.motion_historia.history_not_recorded" => {
+            "Inputs were not recorded here - showing the current values"
+        }
         _ => return None,
     })
 }

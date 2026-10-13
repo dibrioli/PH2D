@@ -459,6 +459,40 @@ fn antes_da_base_a_historia_diz_dobrada_e_depois_dela_a_verdade() {
     assert_eq!(inteira.historia_em(0), Historia::Verdade);
 }
 
+/// ⭐ **ANTES DO PRIMEIRO TIQUE GRAVADO a porta diz `NaoGravada`, dobrada ou não** (doc 132 §2) —
+/// é lá que o replay usa o publicado AGORA (`estado_em` = `None`), nunca a base. O CONTROLO: entre o
+/// primeiro e a base, `Dobrada`; da base em diante, `Verdade`.
+#[test]
+fn antes_do_primeiro_tique_gravado_a_historia_diz_nao_gravada() {
+    let grava_de = |teto: usize, de: u64, ate: u64| {
+        let mut f = Fita::no_razao(Razao::new(teto));
+        for t in de..ate {
+            #[expect(clippy::cast_precision_loss, reason = "um valor de teste")]
+            f.grava(t, &pub_(&[("g", t as f32)]));
+        }
+        f
+    };
+    let f = grava_de(4 << 10, 100, 500);
+    let b = f.base_ate.expect("o tecto pequeno dobrou");
+    assert!(b > 110, "dobrou pouco: base {b}");
+    assert!(
+        f.estado_em(50).is_none(),
+        "o replay de 50 usa o publicado agora"
+    );
+    assert_eq!(f.historia_em(50), Historia::NaoGravada, "e a porta di-lo");
+    assert_eq!(f.historia_em(99), Historia::NaoGravada);
+    assert_eq!(
+        f.historia_em(100),
+        Historia::Dobrada { desde: b },
+        "o CONTROLO"
+    );
+    assert_eq!(f.historia_em(b), Historia::Verdade);
+    // Sem dobra também: antes do primeiro, o publicado agora.
+    let inteira = grava_de(usize::MAX, 100, 150);
+    assert_eq!(inteira.historia_em(99), Historia::NaoGravada);
+    assert_eq!(inteira.historia_em(100), Historia::Verdade);
+}
+
 /// ⭐ **O RAZÃO DE TODAS NUNCA PASSA O TECTO, COM N FITAS** (doc 132 §2 (b)): oito fitas a gravar
 /// em alternância num razão de `T` bytes — o total declarado fica `≤ T` depois de cada gravação,
 /// cada uma dobra a SUA história, e uma fita que morre devolve o que declarava.

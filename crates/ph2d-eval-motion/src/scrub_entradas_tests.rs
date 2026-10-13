@@ -296,6 +296,36 @@ fn o_scrub_para_antes_da_base_marca_a_bomba_como_dobrada() {
     assert_eq!(pump.historia_mostrada(), Historia::Verdade, "o CONTROLO");
 }
 
+/// ⭐ **O REPLAY ANTES DO PRIMEIRO TIQUE GRAVADO DIZ O QUE MOSTRA** (doc 132 §2): a bomba começa no
+/// tique 100 (o salto até lá não grava), dobra, e o scrub para o 40 usa o publicado AGORA — a
+/// bomba diz `NaoGravada`, não `Dobrada`; entre o primeiro e a base, `Dobrada` (o CONTROLO).
+#[test]
+fn o_scrub_para_antes_do_primeiro_gravado_marca_a_bomba_como_nao_gravada() {
+    let (g, c) = grafo();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    pump.define_o_razao_da_fita(crate::Razao::new(4 << 10));
+    #[expect(clippy::cast_precision_loss, reason = "um tique")]
+    toca(&mut pump, &g, c, 100, 400, |t| t as f32);
+    let (base, ultimo) = pump.fita().faixa().expect("gravou");
+    assert!(
+        base > 120 && ultimo == 400,
+        "o tecto pequeno dobrou: {base}..{ultimo}"
+    );
+    scrub(&mut pump, &g, c, 40);
+    assert_eq!(pump.historia_mostrada(), Historia::NaoGravada);
+    assert!(
+        pump.fita().estado_em(40).is_none(),
+        "o replay usou o publicado"
+    );
+    scrub(&mut pump, &g, c, base - 5);
+    assert_eq!(
+        pump.historia_mostrada(),
+        Historia::Dobrada { desde: base },
+        "o CONTROLO"
+    );
+}
+
 /// ⭐ **O RAZÃO DOS ANÉIS NUNCA PASSA O TECTO, COM N ANÉIS** (doc 132 §2 (b)): o `CPU_RING_BYTES`
 /// é da família da fita — seis anéis a registar em alternância num razão de `T` bytes ficam `≤ T`
 /// juntos, cada um afina o SEU; e um anel que morre devolve o que declarava.

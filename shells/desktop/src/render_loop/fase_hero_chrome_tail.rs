@@ -3,7 +3,8 @@
 //! 2026-09-12).
 //!
 //! ⚠️ As barras partilham a coluna dos toasts e empilham-se POR BAIXO deles: recebem a CONTAGEM de
-//! linhas já ocupadas, nunca a geometria. O `PaintCtx` é reconstruído com os três campos do quadro
+//! linhas da coluna que os balões ocuparam (`toast::paint_top_column`), nunca o número de balões. O
+//! `PaintCtx` é reconstruído com os três campos do quadro
 //! (`theme` copiado, `viewport`, `text_system`) — sem `Drop` nem estado, e ninguém escreve o `theme`.
 
 use super::*;
@@ -46,12 +47,10 @@ impl crate::App {
                 viewport: vp,
                 text: text_system,
             };
-            toasts.paint(cena, &mut paint_ctx);
-            // The job bars share the toasts' column and stack UNDER them, so they are handed
-            // the number of rows already spoken for. The count, not the geometry: the column's
-            // ruler lives in `progress::column_row` and neither the shell nor the toast painter
-            // gets to have an opinion about where row N is.
-            jobs.paint_below(toasts.len(), cena, &mut paint_ctx);
+            // The job bars share the toasts' column and stack UNDER them by the ROWS the toasts
+            // took (a long toast spans several) — one door paints both, so neither the shell nor
+            // either painter has an opinion about where row N is.
+            ph2d_editor_core::toast::paint_top_column(toasts, jobs, cena, &mut paint_ctx);
         });
         // Drain frame-local arena AFTER the dispatch + paint pass
         // so any events emitted earlier this frame are still alive

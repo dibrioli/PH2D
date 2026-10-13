@@ -65,7 +65,6 @@ impl crate::App {
         // rationale as the live-mode branch above. Tool palette
         // chrome above remains because it's the click entrypoint
         // to switch tools; the per-tool panel itself is gone.
-        toasts.paint(vector_scene, &mut paint_ctx);
-        jobs.paint_below(toasts.len(), vector_scene, &mut paint_ctx);
+        ph2d_editor_core::toast::paint_top_column(toasts, jobs, vector_scene, &mut paint_ctx);
     }
 }

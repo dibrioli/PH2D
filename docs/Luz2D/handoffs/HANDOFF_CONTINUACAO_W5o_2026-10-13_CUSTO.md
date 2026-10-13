@@ -1,7 +1,8 @@
 # Handoff de continuação — Luz 2D, W5o: o custo da luz (2026-10-13)
 
 > Regras R1–R9: as do [handoff W5f](HANDOFF_CONTINUACAO_W5f_2026-10-11.md). Linha `line/Luz2D` sobre `main`
-> `757afebd58` (tudo da W5n já integrado). Commits: `dc081fa8bc` (o produto, os portões, as sondas) · este (docs).
+> `757afebd58` (tudo da W5n já integrado). Commits: `dc081fa8bc` (o custo: produto, portões, sondas) · `6be9d9348e`
+> `3ce1f68f6e` (docs, clippy da sonda) · `fcab331472` + `5a566833c4` (a PRECISÃO, outra família: §7) · este (docs).
 > Nada integrado, nada enviado. Método de medida: [MEDIR_VELOCIDADE.md](../../DevOps/MEDIR_VELOCIDADE.md) — as
 > variantes são CONFIG EM EXECUÇÃO no mesmo processo, 7 rodadas intercaladas, vale o MÍNIMO (a mediana ao lado).
 > Cache do driver: `__GL_SHADER_DISK_CACHE_SIZE` 16 GiB (o `GLCache` em 1,1 GB, acima do tecto antigo).
@@ -66,7 +67,10 @@ A mesma configuração High, o mesmo shader, a cena vazia: o custo da cascata ho
 Seis instâncias no mesmo processo, criadas em série: 18,46 · 18,47 · 18,52 · 19,81 · 20,16 · 24,55 ms — segue a
 ORDEM de criação, não a variante. O portão `a_nitidez_da_luz` cria o Low antes do High e lê ~30 ms. **Não é o
 miolo** (a W5n não toca na `c2`). ⛔ Acolchoar cada buffer da HRC: 4 KB · 64 KB · 1 MB não mudam nada, 2 MB tira
-~3 ms — não é choque simples de endereços. Próximo passo: os buffers da HRC numa alocação SÓ (offsets nossos) e
+~3 ms — não é choque simples de endereços. Por ETAPA (experimento temporário, revertido: saltar uma etapa da HRC
+e ler a queda; um caso por processo, ⚠️ com a placa partilhada — load 22–43, outra linha com o app aberto e um
+agente a medir relógio —, só a ordem de grandeza vale): no regime lento a «sobe» +3,0 ms e a «desce» +3,3 (as
+fusões entre níveis, que saltam pelos buffers `t`), a «traça» +1,0, soma e saída iguais. Próximo passo: os buffers da HRC numa alocação SÓ (offsets nossos) e
 medir a mesma tabela; mudar as `MemoryHints` da casa é global (todo o app) e pede a sua própria rodada.
 
 ## 4. Os cortes (ambos AO BIT)
@@ -115,12 +119,40 @@ a luz de fora chega pelo entorno — e cena 5, Low e High, 80 quadros; sha256 da
    inteiros do miolo. Saltar ladrilhos sem corpo pede uma lista de ladrilhos e a limpeza do `miolo_fino` velho.
 3. Os 247 despachos que ficam: as relaxações dos níveis 2–6 (32 por nível na cascata) — várias iterações por
    despacho com halo na memória do grupo (a mesma conta, ao bit).
-4. A precisão (outra família, não tocada): a `vis_na_face` (W5g) põe a penumbra 4× mais longe do gabarito (W5n §2).
+4. ✅ A precisão da `vis_na_face` — §7.
 5. Os da W5n §4 (4–5), W5h §3 (4–6) e W5m §4.
+
+## 7. A precisão (commit `fcab331472`, outra família): a face vê a lâmpada do PRÓPRIO ponto
+
+A `vis_na_face` (W5g) marchava a lâmpada a partir de `Q = P + 1,5 texel × normal`: a abertura e os raios saíam de
+`Q`, e na penumbra a visibilidade varia com a posição (W5n §2: 0,001436 contra 0,000292 sem a face). **Cura**
+(`Config::face_pelo_ponto` → `FACE_PELO_PONTO` do `c3_pe.wgsl`, por omissão; `PH2D_LIGHT2D_FACE_PONTO=0`
+compara): a abertura vista de `P` (a metade atrás da tangente tapada como antes) e cada raio de `P` só se testa
+a partir de onde está a `AFASTA_NA_FACE` do plano da face (`pelo_ponto_ate`: `s = h / (u·n)`). No translúcido a
+frente é a mesma; só a metade de TRÁS (a que atravessa o corpo, ∝ τ) marcha de dentro como antes
+(`atras_de_dentro`). ⛔ A 1.ª versão deixava o translúcido inteiro na marcha antiga: o gate batched apanhou
+`o_translucido_da_placa_e_o_do_gabarito` (de α 1 a 0,999 o interior saltava 0,10113, teto 0,01; 3/3 sozinho) —
+`5a566833c4`.
+
+| `sonda_a_face_pelo_ponto` (`miolo: None`, mesmo processo) | face afastada | **pelo ponto** | só o pé | nenhum |
+|---|---|---|---|---|
+| penumbra · fundo | 0,001436 | **0,000182** | 0,000337 | 0,000292 |
+| penumbra · faixa | 0,2009 | **0,0563** | 0,0581 | 0,0771 |
+| faísca · fundo · faixa | 0,000012 · 0,0505 | 0,000012 · 0,0505 | 0,000012 · 0,0505 | 0,000020 · 0,0496 |
+| parede · fundo · faixa | 0,000050 · 0,0062 | 0,000051 · 0,0062 | 0,000050 · 0,0062 | 0,000337 · 0,0062 |
+
+Rodada W5g com a variante (`medida_luz2d_w5g`): cruzamentos ×0 em tudo, TV igual, o desvio do terminador desce
+(polígonos, anel 0,97: 1,2 → 0,9 tx; imagem zoom 1: 0,4 → 0,1; zoom 1,5: 0,5 → 0,2). Custo da C3
+(`medida_luz2d_w5g_custo`, mínimo intercalado, load 3,8): igual nas cenas 1–4 e 6, cena 5 **11,78 → 7,99 ms**.
+Portão `o_interior_de_um_opaco_e_o_exterior_mais_proximo`: tetos da penumbra ao medido + 10 % (fundo 0,00158 →
+0,00020, faixa 0,353 → 0,062), com o controlo da face afastada, que reprova. Verdes sozinhos: `c3_grade_fina`,
+`junto_a_face`, `a_face_acesa_da_parede`, `as_formas_redondas` ×4, `o_interior_do_opaco` ×2,
+`o_miolo_das_formas`, `o_traco_do_flip` ×3. Nas cenas do smoke a diferença é do tamanho do arredondamento (cena 5:
+máx 0,125 numa luz de 122; cena 3: 0): o caso que muda é um corpo MEIO na sombra de outro, com lâmpada grande.
 
 ## Para o integrador
 
-- Foundational tocada: só `ph2d-light2d-gpu` — dois campos PÚBLICOS novos (`Config::so_a_c0`, `Miolo::base_no_grupo`;
+- Foundational tocada: só `ph2d-light2d-gpu` — três campos PÚBLICOS novos (`Config::so_a_c0`, `Config::face_pelo_ponto`, `Miolo::base_no_grupo`;
   todo literal da workspace usa `..`, `grep 'Miolo {'` / `'Config {'`), o buffer `luz2d/buf/miolo` +4 fatias de
   256 B (declarado na `PassList`: o G5 conta-o). Nenhum contrato congelado (§6) tocado.
 - A §5.1 já aponta este handoff (pedido do dono; troca do link só, 684 B).
@@ -150,6 +182,11 @@ sozinho (load 32–44) — flake de carga. Verdes dentro dele: `g5_bytes_declara
 ✓ · clippy `--all-targets -D warnings`: 4 avisos na sonda `medida_luz2d_w5o.rs` (`type_complexity` ×2,
 `unnecessary_sort_by` ×2), curados no commit dos docs e relidos limpos.
 
+**2.º gate batched, sobre a precisão** (`fcab331472`): o único vermelho `o_translucido_da_placa_e_o_do_gabarito`
+(real, curado em `5a566833c4`, §7); check `--workspace` deny ✓, clippy relido ✓, fmt ✓, standalone/workflow ✓.
+**Gate final** (`5a566833c4`, `nextest-impacted`, régua = merge-base, `PH2D_GPU=1`, load 49 → 3): **10 040 / 10 040
+verdes** (3 lentos), 18 819 saltados.
+
 Perfil do loop (`scripts/agent-loop-profile.sh`, as 20 sessões mais recentes da máquina):
 
 ```
@@ -161,10 +198,4 @@ Perfil do loop (`scripts/agent-loop-profile.sh`, as 20 sessões mais recentes da
   ✓ contexto no inicio da sessao               63 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
 ```
 
-Binário do smoke (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida, sobre
-`6be9d9348e`):
-
-```
-▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.54s
-```
+Binário do smoke: no fim (abaixo).

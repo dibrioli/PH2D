@@ -129,3 +129,76 @@ que diz que os parâmetros tiram o «Mais vídeos» envelheceu: em 13/10 ele apa
 **Cena de smoke:** 21 (`PH2D_BOARD_SMOKE=21`, `smoke_w20.rs`, gate `the_w20_scene_does_what_its_lessons_say`). As
 lições da cena 19 (l1: «clique fora para parar») e da 20 (l2: «enquanto 200×200 à vista») ensinavam o contrário e
 foram corrigidas.
+
+## §W21 — segurar parado não é clique; com outra ferramenta o clique é do vídeo (13/10)
+
+Decisão: [ADR-0185 §W21](../architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md).
+Briefing e decisões do dono: [`HANDOFF_CONTINUACAO_W21_…`](handoffs/HANDOFF_CONTINUACAO_W21_VIDEO_CLIQUE_FERRAMENTAS_WINDOWS_2026-10-13.md).
+Oráculo: [`ferramentas/excalidraw_oracle/sonda_w21.mjs`](ferramentas/excalidraw_oracle/sonda_w21.mjs) (Excalidraw 0.18.1,
+Playwright, YouTube real, a página como `https://ph2d.local/`; 24 sondas em `saidas/w21/w21_sondas.json`; ficaram só as
+fotos de rectangle/freedraw/text/arrow — o JSON ainda nomeia as podadas). A duração do segurar conta-se no relógio da
+PÁGINA (`event.timeStamp` de pointerdown→pointerup), não no `waitForTimeout` do Node: a máquina estava a `load` 10–130.
+
+**O que o oráculo faz**
+
+| pergunta | o oráculo (medido) |
+|---|---|
+| vídeo NÃO seleccionado, clique de 68 ms no meio / 607,6 ms | activa / não activa (T0) |
+| vídeo seleccionado, segurar parado no meio, 13 tempos a subir e a descer | activa a 82 · 153 · 203 · 253 · 283,5 ms; NÃO activa a 303,3 · 324 · 354 · 403 · 455 · 502 · 605 · 807 ms; idêntico nos dois sentidos ⇒ a fronteira está em (283,5; 303,3] ms, «perto de 300 ms» (T1) |
+| 11 ferramentas (rectangle, ellipse, diamond, arrow, line, freedraw, text, eraser, laser, hand, frame) sobre o vídeo parado e sobre o activo a tocar | a ferramenta faz SEMPRE o seu por cima e nunca activa o vídeo. Clique sem mexer: arrow/line/freedraw criam um elemento, text abre o editor, rectangle/ellipse/diamond/frame nada (tamanho zero); arrasto: cria o elemento por cima (F) |
+| escolher outra ferramenta com o vídeo activo | desactiva-o (`activeEmbeddable` → `null`) mas ELE CONTINUA A TOCAR, mesmo com um rectângulo desenhado por cima (ignora a regra do YouTube de nada à frente do tocador; nós pausamos, ADR-0185) |
+| borracha · mão · laser | APAGA o vídeo (o iframe desaparece e ele pára; a nossa só apaga traços da caneta) · faz pan · não desenha |
+
+**A medida não decidia o item 2.** O oráculo não faz nem (a) «clique = play/pause com qualquer ferramenta, o arrasto é
+da ferramenta» nem (b) «sobre o vídeo a ferramenta não começa»: faz o que nós já fazíamos. Perguntado ao dono com as
+duas opções e um desenho de cada, escolheu **(a)**.
+
+| pergunta | o oráculo | aqui (W21) |
+|---|---|---|
+| segurar parado num vídeo e largar | não activa depois de ≈ 300 ms | não activa a partir de `HOLD_NS` = **400 ms** |
+| outra ferramenta, clique rápido num vídeo | a ferramenta faz o seu (não activa) | **é do vídeo**: activa/selecciona, activo e vivo vai ao tocador, o que o tocador já tem dá tocar/pausar |
+| outra ferramenta, arrastar a partir do vídeo | desenha por cima | igual: desenha a partir de onde se carregou; o vídeo não se move |
+| outra ferramenta, segurar parado e largar | a ferramenta faz o seu clique | igual (o frame põe um frame do tamanho de nascença) |
+| laser · mão | não desenha · pan | ficam de fora (o laser não toma o carregar; a mão já saltava o vídeo) |
+
+**1. O clique longo** (`b4c03a4e8a`). O largar sem arrasto só é clique se `now_ns − at_ns < HOLD_NS`, com
+`HOLD_NS = crate::interaction::LONG_PRESS_THRESHOLD_NS` (400 ms): o «segurar» do rato da casa, o long-press da
+Hierarchy que o dono escolheu em 26/05. A casa tem também `DOUBLE_CLICK_WINDOW_NS` (350 ms) e o `LONG_PRESS_NS` do
+toque (500 ms). **Uma lei da casa vence uma constante nova**: o mesmo segurar em todo o app; o oráculo (≈ 300 ms)
+fica registado, e a diferença é que segurar 300–400 ms ainda é clique aqui. `documents::VideoClick` ganhou `at_ns` (o
+`board_view::Input::now_ns` do carregar, nunca `Instant::now()`); `board_nav::pointer_{down,up}` e
+`board_video::pointer_{down,up}` recebem o `now_ns`. Parado: segurar no play não activa; activo e vivo: segurar dentro
+não chega ao tocador; desactivado com o tocador a segurá-lo: segurar não dá `TogglePlay`.
+
+**2. Outra ferramenta.** Em `board_video::pointer_down`, `other = !select && tool != Laser`. Com `other` e o botão
+principal num ponto do tocador de um vídeo (parado: qualquer ponto do tocador, não só o play; activo e vivo: o ponto
+do tocador), guarda um `VideoClick { tool: true }` e CONSOME o carregar — o editor não o vê. Três saídas:
+- **clique rápido** (< `HOLD_NS`, sem passar `metrics().drag`): é do vídeo (`click`); o largar é consumido;
+- **vira arrasto**: `board_video::deferred_drag` devolve o ponto onde carregou e `board_view::pointer_move`
+  reentrega-o ao editor por `board_view::canvas_down` (o Down do quadro, extraído de `pointer` para isto) — a
+  ferramenta desenha a partir de onde se carregou;
+- **largado parado depois de `HOLD_NS`**: `board_video::deferred_hold` faz o mesmo no `Up` e a ferramenta faz o seu
+  clique.
+
+**Gates** (`crates/ph2d-editor-core/src/screens/hero/board_video_tests.rs`):
+- `a_long_still_press_on_a_video_is_not_a_click` — o caso parado, o activo e vivo, o desactivado; `HOLD_NS − 1`
+  activa. Mutação: apagar a condição de tempo sangra («segurou e activou»). Mutar só o VALOR (10 s) sobrevive e é
+  equivalente (o teste segura `HOLD_NS`); por isso o teste fixa `HOLD_NS == LONG_PRESS_THRESHOLD_NS`.
+- `with_another_tool_a_click_on_a_video_is_the_videos_and_a_drag_is_the_tools` — caneta, rectângulo, nota, seta,
+  frame, mapa mental e borracha: o clique activa e nada se desenha; activo, o clique vai ao tocador como Down+Up;
+  caneta/rectângulo/seta/frame: arrastar desenha 1 elemento e o vídeo não se move; o frame segurado `HOLD_NS` põe um
+  frame e não activa. Mutação `other = false` sangra («o clique não activou»).
+
+**Testes antigos.** Os ajudantes `click` dos testes do vídeo passaram a largar 80 ms depois de carregar
+(`hold`/`QUICK_NS`): o `inp` dos testes do quadro anda 1 s por evento, e com 1 s todo clique seria «segurado».
+`cargo test -p ph2d-editor-core --lib screens::hero` 444/444 ✓; `cargo test -p ph2d-app-board` 74 ✓ + 7 ignorados.
+
+**Cena de smoke:** continua a 21 (nenhuma cena nova; o roteador mantém `max_level` 21). Lições 8 («Hold the mouse still
+on the video for a moment, then let go: nothing happens. Only a quick click plays or pauses») e 9 («Pick the pen (P) or
+a shape: a quick click on the video still plays or pauses. Drag to draw over it») — `LESSONS` 7 → 9 (três linhas de
+três); o gate `the_w20_scene_does_what_its_lessons_say` conduz as duas com `Mouse::hold` (novo, em
+`smoke_w16_tests.rs`). Commit `d14f8c5276`.
+
+## §W21.3 — o tocador no Windows
+
+(a escrever quando a medida chegar)

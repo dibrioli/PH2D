@@ -208,3 +208,22 @@ com o YouTube real, saídas em `excalidraw_oracle/saidas/w20/`); mecanismo:
    original»** na nossa barra, só quando a janela navegou; o trilho é da sessão (o documento guarda o vídeo de agora,
    e cada passo é um passo de desfazer que o `Ctrl+Z` partilha). ⚠️ A W19 tinha medido que os nossos parâmetros
    tiravam o «Mais vídeos»: em 13/10 ele aparece (a foto do dono e `saidas/w20_pausa/`).
+
+## §W21 — emenda: segurar parado não é clique; com outra ferramenta o clique é do vídeo (13/10)
+
+Pedidos do dono (13/10, «clique longo e outra ferramenta: corrija»). Oráculo:
+[`sonda_w21.mjs`](../../MiroClone/ferramentas/excalidraw_oracle/sonda_w21.mjs) (Excalidraw 0.18.1, YouTube real, 24
+sondas); mecanismo, tabelas e gates: [`10_video_do_youtube.md`](../../MiroClone/10_video_do_youtube.md) §W21.
+
+1. **Segurar parado num vídeo não o activa.** O oráculo activa até 283,5 ms e deixa de activar a partir de 303,3 ms
+   (relógio da página, nos dois sentidos). Aqui o limite é o «segurar» do rato da casa,
+   `LONG_PRESS_THRESHOLD_NS` = 400 ms: **uma lei da casa vence uma constante nova** — o mesmo segurar em todo o app.
+   A diferença para o oráculo (300–400 ms ainda é clique) fica registada.
+2. **Com outra ferramenta, o clique rápido num vídeo é do vídeo e o arrasto é da ferramenta.** O oráculo não decide:
+   a ferramenta faz sempre o seu por cima e nunca activa o vídeo (11 ferramentas medidas), que é o que nós já
+   fazíamos. Perguntado ao dono com as duas opções e um desenho de cada — (a) «clique = play/pause com qualquer
+   ferramenta, o arrasto é da ferramenta» ou (b) «sobre o vídeo a ferramenta não começa» —, escolheu **(a)**: o
+   carregar fica à espera (consumido); vira arrasto ⇒ o editor recebe-o no ponto onde se carregou; parado além de
+   `HOLD_NS` ⇒ a ferramenta faz o seu clique. O laser e a mão ficam de fora.
+3. **Não copiamos** do oráculo: o vídeo que continua a tocar com um rectângulo à frente (nós pausamos, acima) nem a
+   borracha que apaga o vídeo (a nossa só apaga traços da caneta).

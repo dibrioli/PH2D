@@ -596,3 +596,7 @@ links colados não se guardam (o JSON tem tudo); as do caminho `Z01..Z05` sim.
 | `.excalidraw` | `type: "embeddable"`, `link`, `roundness: {type: 3}`, `strokeColor`/`backgroundColor` `transparent`; sem `validated` gravado |
 | abrir um gravado | `validated` ausente, `true` ou `false` — os três mostram o iframe |
 | sem rede | o rectângulo vazio, só o ícone ↗ no canto; com rede o tocador oficial (o vídeo de teste `dQw4…` diz «This video is unavailable» no Chromium do Playwright) |
+
+### W21 — o clique longo num vídeo e as outras ferramentas sobre ele: `sonda_w21.mjs`
+
+`sonda_w21.mjs` (como a `sonda_w20.mjs`: Playwright, YouTube real, a página como `https://ph2d.local/`); saída `saidas/w21/w21_sondas.json` (24 sondas; só as fotos de rectangle/freedraw/text/arrow ficaram, o JSON nomeia as podadas). A duração conta-se no relógio da PÁGINA (`event.timeStamp`), não no do Node. Medido: segurar parado num vídeo seleccionado activa até 283,5 ms e não activa desde 303,3 ms (nos dois sentidos); com qualquer das 11 ferramentas o clique/arrasto faz o da ferramenta e nunca activa o vídeo; a borracha apaga o vídeo. Leitura e decisão: [`10_video_do_youtube.md`](../../10_video_do_youtube.md) §W21.

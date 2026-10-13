@@ -22,4 +22,4 @@ mod volta;
 pub use celulas::{
     Celulas, Entrada, FORMATO, Formas, LADO_MAX, Sprites, Variante, afim_das_sprites,
 };
-pub use plano::{Caixa, Celula, Pagina, Vala, planeia};
+pub use plano::{Caixa, Celula, Pagina, Vala, planeia, planeia_com_par};

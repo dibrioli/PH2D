@@ -92,6 +92,22 @@ fn recorta(r: [i32; 4], janela: [u32; 2]) -> [i32; 4] {
 /// a saída cabe na célula e a vala até à vizinha é `A + max(L, A) + 1`.
 #[must_use]
 pub fn planeia(caixas: &[Caixa], janela: [u32; 2], vala: Vala, lado_max: u32) -> Vec<Pagina> {
+    planeia_com_par(caixas, janela, vala, lado_max, 0)
+}
+
+/// [`planeia`] com a translação PAR nas instâncias `[0, par)` (as sprites): a célula ganha um pixel
+/// de folga por eixo e o conteúdo anda um pixel dentro dela quando a translação sairia ímpar. O
+/// sampler das sprites (trilinear, anisotropia 16) lê as derivadas do quadrado 2×2 de pixels, e uma
+/// translação ímpar troca o quadrado de cada pixel da aresta: 75 texels da silhueta de cinco
+/// sprites mudavam entre «cada forma» e «a camada inteira» (doc 132 §6, P6).
+#[must_use]
+pub fn planeia_com_par(
+    caixas: &[Caixa],
+    janela: [u32; 2],
+    vala: Vala,
+    lado_max: u32,
+    par: u32,
+) -> Vec<Pagina> {
     #[expect(clippy::cast_possible_wrap, reason = "uma margem cabe num i32")]
     let [al, at, ar, ab] = vala.alcance.map(|v| v as i32);
     let antes = al.max(at).max(ar).max(ab);
@@ -107,13 +123,14 @@ pub fn planeia(caixas: &[Caixa], janela: [u32; 2], vala: Vala, lado_max: u32) ->
             vivas.push((i as u32, r));
         }
     }
+    let folga = |i: u32| i32::from(i < par);
     #[expect(clippy::cast_sign_loss, reason = "x1 ≥ x0")]
     let tamanhos: Vec<(u32, u32)> = vivas
         .iter()
-        .map(|(_, r)| {
+        .map(|&(i, r)| {
             (
-                ((r[2] - r[0]) + antes + depois) as u32,
-                ((r[3] - r[1]) + antes + depois) as u32,
+                ((r[2] - r[0]) + antes + depois + folga(i)) as u32,
+                ((r[3] - r[1]) + antes + depois + folga(i)) as u32,
             )
         })
         .collect();
@@ -133,10 +150,12 @@ pub fn planeia(caixas: &[Caixa], janela: [u32; 2], vala: Vala, lado_max: u32) ->
                     let t = if sozinha {
                         [0, 0]
                     } else {
-                        [
+                        let f = folga(i);
+                        let t = [
                             p.org[0] as i32 + antes - r[0],
                             p.org[1] as i32 + antes - r[1],
-                        ]
+                        ];
+                        t.map(|v| v + (v & f))
                     };
                     let c = &caixas[i as usize];
                     #[expect(clippy::cast_precision_loss, reason = "pixels de ecrã")]

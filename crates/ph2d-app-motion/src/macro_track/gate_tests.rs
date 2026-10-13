@@ -446,7 +446,9 @@ fn posicoes(r: &[u32]) -> Vec<[f32; 2]> {
         .position(|w| *w == u32::MAX)
         .map_or(r.len(), |i| i + 1);
     r[ini..]
-        .chunks_exact(13)
+        .as_chunks::<13>()
+        .0
+        .iter()
         .map(|c| [f32::from_bits(c[1]), f32::from_bits(c[2])])
         .collect()
 }

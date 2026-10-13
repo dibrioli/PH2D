@@ -65,7 +65,9 @@ pub(crate) fn o_quadro(
     motion.macro_cozeu();
 }
 
-/// Coze o quadro do `playhead`: as membranas, e então a placa (`cook_gpu`) ou a bomba da CPU.
+/// Coze o quadro do `playhead`: as membranas, e então a placa (`cook_gpu`) ou a bomba da CPU — sem os
+/// sinks e as tomadas do [`o_quadro`], para os arneses que os armam à mão.
+#[cfg(test)]
 pub(crate) fn coze_o_quadro(
     motion: &mut MotionState,
     gpu: &ph2d_gpu::GpuContext,

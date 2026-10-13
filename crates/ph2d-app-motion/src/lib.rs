@@ -32,10 +32,10 @@
 /// ⭐⭐⭐ **A LEI DA APARÊNCIA, do lado do dispositivo** — uma corrente que não veio de uma forma
 /// não vira pixel. A lei mora no avaliador; aqui está a metade que pergunta ao `MotionState`.
 pub mod lei_da_aparencia;
-/// ⭐⭐ O Motion como OBJECTO (doc ObjectsAndComponents 01 §13, F5).
-pub mod motion_objeto;
 /// A trilha do Motion numa macro (ADR-0186): gravar nos drenos, tocar num palco.
 pub mod macro_track;
+/// ⭐⭐ O Motion como OBJECTO (doc ObjectsAndComponents 01 §13, F5).
+pub mod motion_objeto;
 /// O mundo da 1.ª cópia da placa para `PH2D_PAN_DIAG` (doc 123 §8).
 pub mod pan_diag_tap;
 pub mod ponto_gizmo;

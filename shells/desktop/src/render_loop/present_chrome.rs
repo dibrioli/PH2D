@@ -111,10 +111,10 @@ impl crate::App {
             mundo: world_rt,
             band_blit,
         });
-        if let (false, Some(camada)) = (filtrada, placa.camada()) {
-            let (alvo, formas) = (world_rt.blend_view(), ph2d_render::BandSource::Formas);
-            let gpu = surface.gpu();
-            band_blit.blit_pousa(gpu, alvo, camada, formas, None, placa.pousa());
+        if !filtrada {
+            let (placa, gpu) = (&mut self.motion_shell.placa, surface.gpu());
+            let alvo = world_rt.blend_view();
+            ph2d_app_motion::motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);
         }
         // ⭐ **A LENTE** (ciclo 20) — depois da última escrita do mundo, antes do vidro e do chrome.
         let cena = hero_screen

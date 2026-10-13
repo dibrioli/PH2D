@@ -3,16 +3,17 @@
 //!
 //! ⭐ Uma linha de IMAGEM numa corrida de GRUPO (`Copies`, `Everything`, o `Scene`, a linha com modo
 //! próprio) vai à placa — o MESMO passe que o dispositivo usa (`imagens`), logo as duas rotas dão a
-//! mesma imagem, também nas células do `Each Shape`. Aqui a ordem das linhas é CONHECIDA: uma corrida
-//! leva UMA média, e mudar de média abre outra (o grupo continua aberto entre elas) — por isso o
-//! `Scene` com imagens, que o dispositivo não sabe ordenar, vai à placa por esta rota. Uma imagem fora
+//! mesma imagem, também nas células do `Each Shape`. Aqui a ordem das linhas é CONHECIDA: numa corrida
+//! `Normal` (o `Scene`) mudar de média abre outra (o grupo continua aberto entre elas) — por isso o
+//! `Scene` com imagens, que o dispositivo não sabe ordenar, vai à placa por esta rota; nas misturas
+//! comutativas as duas médias partilham a corrida, como no dispositivo. Uma imagem fora
 //! de grupo (a folha da terceira média, em `Normal`) continua a devolver o quadro ao Vello.
 
 use ph2d_eval_motion::VectorInstance;
 use ph2d_render::RenderInstance;
 use ph2d_shape_gpu::{Corrida, Mistura, ShapeInstance};
 
-use super::{GeometriasDaPlaca, Misturas, PlacaDeFormas, PousaDoQuadro, Veredito};
+use super::{GeometriasDaPlaca, Misturas, PlacaDeFormas, Segmentos, Veredito};
 use crate::motion_shape_gen::VecPathStore;
 
 /// A linha de imagem como o passe a lê: a disposição do [`RenderInstance`], com os campos que a cena
@@ -48,15 +49,12 @@ impl PlacaDeFormas {
         self.motivo = None;
         self.fonte.clear();
         self.imagens_cpu.clear();
-        self.pousa = ph2d_render::Pousa::Normal;
-        let mut pousa = PousaDoQuadro::default();
+        self.pousas.clear();
+        let mut segmentos = Segmentos::default();
         // ⚠️ Um handle que o store largou nunca volta (não é reciclado) — a entrada dele é lixo.
         geometrias.varre(store);
         for (k, inst) in insts.iter().enumerate() {
-            let c = misturas
-                .composicao(inst.blend_linha, &inst.mistura)
-                .and_then(|c| pousa.junta(&c).map(|()| c));
-            let c = match c {
+            let c = match misturas.composicao(inst.blend_linha, &inst.mistura) {
                 Ok(c) => c,
                 Err(motivo) => {
                     self.motivo = Some(motivo);
@@ -65,6 +63,12 @@ impl PlacaDeFormas {
             };
             let (mistura, grupo) = (c.mistura, c.grupo);
             let i = u32::try_from(self.copias.len()).unwrap_or(u32::MAX);
+            // ⭐ P4 (b): uma cópia que partiria a pousa abre um SEGMENTO (e uma corrida nova).
+            let novo = segmentos.junta(&c, self.corridas.len());
+            // As misturas de grupo (Soma, Tela, Multiplica) são comutativas: formas e imagens na MESMA
+            // corrida, como no dispositivo. Só a `Normal` (o `Scene`) parte a corrida a cada troca de
+            // média — medido: `~0,02 ms` por corrida (doc 132 §7 P4), logo partir sem precisar é caro.
+            let comutativa = mistura != Mistura::Normal;
             if inst.geometry_id == 0 {
                 let em_grupo = grupo != 0 || mistura != Mistura::Normal || c.cena.is_some();
                 if !em_grupo {
@@ -72,8 +76,18 @@ impl PlacaDeFormas {
                 }
                 let j = u32::try_from(self.imagens_cpu.len()).unwrap_or(u32::MAX);
                 match self.corridas.last_mut() {
-                    Some(r) if r.mistura == mistura && r.grupo == grupo && r.copias.is_empty() => {
-                        r.imagens.end = j + 1;
+                    Some(r)
+                        if !novo
+                            && r.mistura == mistura
+                            && r.grupo == grupo
+                            && (comutativa || r.copias.is_empty()) =>
+                    {
+                        let ini = if r.imagens.is_empty() {
+                            j
+                        } else {
+                            r.imagens.start
+                        };
+                        r.imagens = ini..j + 1;
                     }
                     _ => self.corridas.push(Corrida {
                         copias: i..i,
@@ -92,9 +106,17 @@ impl PlacaDeFormas {
                 Veredito::Pronta => {
                     match self.corridas.last_mut() {
                         Some(r)
-                            if r.mistura == mistura && r.grupo == grupo && r.imagens.is_empty() =>
+                            if !novo
+                                && r.mistura == mistura
+                                && r.grupo == grupo
+                                && (comutativa || r.imagens.is_empty()) =>
                         {
-                            r.copias.end = i + 1;
+                            let ini = if r.copias.is_empty() {
+                                i
+                            } else {
+                                r.copias.start
+                            };
+                            r.copias = ini..i + 1;
                         }
                         _ => self.corridas.push(Corrida {
                             copias: i..i + 1,
@@ -116,7 +138,7 @@ impl PlacaDeFormas {
                 }
             }
         }
-        self.pousa = pousa.pousa();
+        self.pousas = segmentos.pousas;
         true
     }
 }

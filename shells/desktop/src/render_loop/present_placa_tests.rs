@@ -36,12 +36,8 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     assert!(chrome.contains("ph2d_render::BandSource::Formas"));
     // ⭐ P4 (b): a camada pousa no mundo com a mistura do quadro (o `Everything`/`Scene` fora da
     // camada isolada) — com o `blit` de sempre ela pousaria em `Normal`.
-    assert!(
-        chrome.contains("band_blit.blit_pousa(gpu, alvo, camada, formas, None, placa.pousa());")
-    );
-    assert!(chrome.contains(
-        "let (alvo, formas) = (world_rt.blend_view(), ph2d_render::BandSource::Formas);"
-    ));
+    // ⭐ e segmento a segmento (P4 (b): pousas diferentes no mesmo quadro).
+    assert!(chrome.contains("motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);"));
 }
 
 /// ⭐⭐⭐ **A rota do DISPOSITIVO chega ao quadro** (doc 121 W3 · P4): a decisão e o desenho são as

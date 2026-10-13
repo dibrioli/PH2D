@@ -37,8 +37,7 @@ use std::sync::OnceLock;
 use ph2d_eval_motion::VectorInstance;
 use ph2d_gpu::GpuContext;
 use ph2d_shape_gpu::{
-    Copias, Corrida, FillRule, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass, ShapeView,
-    StrokeInput,
+    Corrida, FillRule, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass, ShapeView, StrokeInput,
 };
 use ph2d_vec_scene::VecPath;
 use ph2d_vector::{Affine, Fill};
@@ -208,9 +207,9 @@ pub fn contorno_por_ordem() -> bool {
 #[path = "motion_shape_placa_mistura.rs"]
 mod mistura;
 pub use mistura::{
-    Composicao, FaixaDoSink, Misturas, MotivoDoVello, PousaDoQuadro, corridas_das_faixas,
-    corridas_do_dispositivo, corridas_por_faixa, faixas_do_dispositivo, mistura_no_quadro,
-    misturas_do_quadro,
+    Composicao, FaixaDoSink, Misturas, MotivoDoVello, PousaDoQuadro, Pousas, Segmentos,
+    corridas_das_faixas, corridas_do_dispositivo, corridas_por_faixa, faixas_do_dispositivo,
+    mistura_no_quadro, misturas_do_quadro,
 };
 
 /// O lado da placa: o passe e a camada, criados na primeira vez que um quadro vai lá.
@@ -283,7 +282,7 @@ pub struct PlacaDeFormas {
     luz_copias: Option<wgpu::Buffer>,
     /// ⭐ P4 (b): como a camada deste quadro POUSA no mundo ([`PousaDoQuadro`]) — o presente cola-a
     /// com esta mistura de hardware ([`Self::pousa`]).
-    pousa: ph2d_render::Pousa,
+    pousas: Pousas,
     /// ⭐ P4 (doc 132 §4): o segundo desenhador das corridas — as IMAGENS das saídas em grupo.
     imagens: Option<imagens::ImagensDaPlaca>,
     /// As fontes das imagens DESTE quadro ([`Self::com_imagens`]) — o desenho e as células as leem.
@@ -304,7 +303,7 @@ pub(crate) use monta::linha_da_imagem;
 // ⭐ P4 — a decisão e o desenho do quadro que a shell compõe.
 #[path = "motion_shape_placa_quadro.rs"]
 mod quadro;
-pub use quadro::{decide_o_quadro, desenha_o_quadro};
+pub use quadro::{cola_no_mundo, decide_o_quadro, desenha_o_quadro};
 
 /// ⭐ W5e — as formas do Motion na luz 2D (ficheiro irmão).
 #[path = "motion_shape_luz.rs"]
@@ -344,7 +343,7 @@ impl PlacaDeFormas {
             self.copias.clear();
             self.corridas.clear();
             self.fonte.clear();
-            self.pousa = ph2d_render::Pousa::Normal;
+            self.pousas.clear();
         }
         self.diz(insts.len(), geometrias.len());
         self.ativa
@@ -442,7 +441,6 @@ impl PlacaDeFormas {
         // passa o buffer com o cozimento vivo, e colar cópias velhas seria pior que não desenhar.
         // ⚠️ Um clone do handle (o `wgpu::Buffer` é contado por referência): o `draw` muta o passe
         // (o contorno, doc 121 §9.5) e não pode receber um empréstimo dele próprio.
-        let corridas = &self.corridas[..];
         // ⭐ P4: na rota do dispositivo um quadro só de imagens não tem buffer de formas.
         let formas = match self.do_dispositivo {
             Some(0) => None,
@@ -464,38 +462,11 @@ impl PlacaDeFormas {
             t: [c[4] as f32, c[5] as f32],
             alvo: [tamanho.0.max(1) as f32, tamanho.1.max(1) as f32],
         };
-        let mut enc = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        let ligacoes = self.fontes.as_ref().map(|f| {
-            self.imagens
-                .get_or_insert_with(|| imagens::ImagensDaPlaca::new(gpu, FORMATO_DA_CAMADA))
-                .liga(gpu, vista, f)
-        });
-        let imagens = self.imagens.as_ref().zip(ligacoes.as_ref());
-        let mut desenha_imagens = |pass: &mut wgpu::RenderPass<'static>, c: &Corrida| {
-            if let Some((p, ligacoes)) = imagens {
-                p.desenha(pass, ligacoes, c);
-            }
-        };
-        g.passe.draw_em_corridas_com(
-            gpu,
-            &mut enc,
-            &g.vista,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-            vista,
-            formas.as_ref().map(|(buffer, count)| Copias {
-                buffer,
-                count: *count,
-            }),
-            corridas,
-            imagens.is_some().then_some(&mut desenha_imagens),
-        );
-        gpu.queue.submit([enc.finish()]);
-        self.desenhou = true;
         self.ultimas = formas.map(|(buffer, count)| (buffer, count, vista));
         self.vista_do_quadro = Some(vista);
-        self.gpu.as_ref().map(|g| &g.vista)
+        // ⭐ P4 (b): o 1.º SEGMENTO de pousa; os seguintes desenham-se na colagem (`cola_no_mundo`).
+        self.desenhou = true;
+        self.pinta_segmento(gpu, 0)
     }
 
     /// Por que o último [`Self::decide_com_misturas`] deixou o quadro no Vello por causa de uma
@@ -644,3 +615,6 @@ mod assada_gpu_tests;
 #[cfg(test)]
 #[path = "motion_shape_placa_pousa_gpu_tests.rs"]
 mod pousa_gpu_tests;
+#[cfg(test)]
+#[path = "motion_shape_placa_sondas_p4_tests.rs"]
+mod sondas_p4_tests;

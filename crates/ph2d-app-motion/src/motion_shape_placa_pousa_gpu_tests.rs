@@ -99,8 +99,9 @@ enum Rota {
     Dispositivo,
 }
 
-/// A placa desenha as duas cópias e a camada pousa no mundo `B` — com a pousa do quadro, ou com
-/// `forca` (o controlo). `None` se a placa recusa.
+/// A placa desenha as cópias e a camada pousa no mundo `B` pela porta do presente
+/// ([`super::cola_no_mundo`], segmento a segmento) — ou toda com `forca` (o controlo). `None` se a
+/// placa recusa. Na rota do dispositivo cada cópia é a faixa de um sink com a mistura DELA.
 fn pela_placa(
     gpu: &GpuContext,
     blit: &BandBlit,
@@ -119,15 +120,17 @@ fn pela_placa(
             placa.decide_com_misturas(true, insts, &store, &mut geos, Affine::IDENTITY, misturas)
         }
         Rota::Dispositivo => {
-            // O sink do dispositivo: a mistura dele por faixa, sem modo por linha (a coluna `blend`
-            // com formas recusa o cozimento).
             let mut g = ph2d_nodegraph::graph::Graph::new();
-            let sink = g.add_node("motion.output");
-            let m = insts[0].mistura;
-            let n = u32::try_from(insts.len()).expect("poucas");
-            let r = corridas_das_faixas(&[(sink, 0..n, 0..0)], |_| m, misturas).ok()?;
+            let sinks: Vec<_> = insts.iter().map(|_| g.add_node("motion.output")).collect();
+            let faixas: Vec<_> = (0u32..)
+                .zip(&sinks)
+                .map(|(k, &s)| (s, k..k + 1, 0..0))
+                .collect();
+            let de = |s| insts[sinks.iter().position(|&x| x == s).unwrap_or(0)].mistura;
+            let r = corridas_das_faixas(&faixas, de, misturas).ok()?;
             buffer = Some(buffer_do_cozimento(gpu, insts));
             let vivas: Vec<u32> = insts.iter().map(|i| i.geometry_id).collect();
+            let n = u32::try_from(insts.len()).expect("poucas");
             placa.decide_do_dispositivo_com_pousa(
                 true,
                 n,
@@ -144,19 +147,23 @@ fn pela_placa(
     }
     let pousa = placa.pousa();
     let camada = placa.desenha(gpu, (W, H), &geos, buffer.as_ref())?.clone();
-    Some((
-        pousa_no_mundo(gpu, blit, &camada, forca.unwrap_or(pousa)),
-        pousa,
-    ))
+    let mundo = mundo_b(gpu);
+    match forca {
+        Some(f) => blit.blit_pousa(
+            gpu,
+            mundo.blend_view(),
+            &camada,
+            BandSource::Formas,
+            None,
+            f,
+        ),
+        None => super::cola_no_mundo(&mut placa, gpu, blit, mundo.blend_view()),
+    }
+    Some((le_colunas(gpu, &mundo), pousa))
 }
 
-/// O mundo limpo a `B` e a camada pousada nele pela porta do presente.
-fn pousa_no_mundo(
-    gpu: &GpuContext,
-    blit: &BandBlit,
-    camada: &wgpu::TextureView,
-    pousa: Pousa,
-) -> [i32; 4] {
+/// O mundo limpo a `B`.
+fn mundo_b(gpu: &GpuContext) -> WorldRt {
     let mundo = WorldRt::new(gpu, (W, H));
     let b = srgb_para_linear(f64::from(B));
     mundo.clear_linear(
@@ -168,15 +175,76 @@ fn pousa_no_mundo(
             a: 1.0,
         },
     );
-    blit.blit_pousa(
-        gpu,
-        mundo.blend_view(),
-        camada,
-        BandSource::Formas,
-        None,
-        pousa,
-    );
-    le_colunas(gpu, &mundo)
+    mundo
+}
+
+/// ⭐⭐ **P4 (b) — pousas diferentes no mesmo quadro, por SEGMENTOS** (doc 132 §4.1): a camada
+/// desenha cada segmento e pousa-o por sua vez, na ordem das linhas. Fixtura: a A (`A1`) e a B (`A2`)
+/// em sinks DIFERENTES — um `Everything` em `f` e um `Normal` (as duas ordens), e dois `Scene` em `f`.
+/// Tabela fechada: `[f(B, A1), A2, A2, B]` · `[A1, f(A1, A2), f(B, A2), B]` · `[f(B, A1), f(f(B, A1),
+/// A2), f(B, A2), B]`. ⚠️ Controlo: a camada inteira pousada no modo da 1.ª sai da tabela.
+#[test]
+#[ignore = "placa: precisa de adapter de GPU"]
+fn as_pousas_diferentes_pousam_por_segmentos() {
+    let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
+        panic!("sem adapter — este gate mede a placa");
+    };
+    let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
+    let mut casos = 0;
+    for tag in [1u8, 3, 4] {
+        let ms = |blend, com, sink| MisturaDoSink { blend, com, sink };
+        let f = |x, y| crate::motion_shape_gen::mistura::gpu_tests::f(tag, x, y);
+        let arranjos = [
+            (
+                "Everything + Normal",
+                [
+                    ms(tag, BlendWith::Everything, 0),
+                    ms(0, BlendWith::Copies, 1),
+                ],
+                [f(B, A1), A2, A2, B],
+            ),
+            (
+                "Normal + Everything",
+                [
+                    ms(0, BlendWith::Copies, 0),
+                    ms(tag, BlendWith::Everything, 1),
+                ],
+                [A1, f(A1, A2), f(B, A2), B],
+            ),
+            (
+                "Scene + Scene",
+                [ms(tag, BlendWith::Scene, 0), ms(tag, BlendWith::Scene, 1)],
+                [f(B, A1), f(f(B, A1), A2), f(B, A2), B],
+            ),
+        ];
+        for (nome, [ma, mb], quer) in arranjos {
+            let insts = [
+                copia(16.0, 24.0, A1, ma, None),
+                copia(32.0, 24.0, A2, mb, None),
+            ];
+            let quer = quer.map(byte);
+            for rota in [Rota::Cpu, Rota::Dispositivo] {
+                let caso = format!("tag {tag} {nome} {rota:?}");
+                let (lido, pousa) = pela_placa(&gpu, &blit, &insts, rota, None)
+                    .unwrap_or_else(|| panic!("{caso}: a placa compõe-no"));
+                let (inteira, _) = pela_placa(&gpu, &blit, &insts, rota, Some(pousa)).expect("ctl");
+                eprintln!("{caso}: placa {lido:?} · tabela {quer:?} · camada inteira {inteira:?}");
+                assert!(
+                    lido.iter().zip(&quer).all(|(l, q)| (l - q).abs() <= BARRA),
+                    "{caso}: {lido:?} contra a tabela {quer:?}"
+                );
+                assert!(
+                    inteira
+                        .iter()
+                        .zip(&quer)
+                        .any(|(l, q)| (l - q).abs() > 4 * BARRA),
+                    "{caso}: CONTROLO — uma pousa só tem de sair da tabela ({inteira:?})"
+                );
+                casos += 1;
+            }
+        }
+    }
+    assert_eq!(casos, 18);
 }
 
 /// ⭐⭐⭐ **O `Everything`, o `Scene` e a linha sem grupo fora da camada isolada: a placa pousa no mundo
@@ -370,5 +438,72 @@ fn sonda_o_preco_de_ler_o_mundo_contra_a_pousa() {
             );
         }
         println!("  carga: {}", carga());
+    }
+}
+
+/// ⭐⭐ **O `Scene` com imagens pela rota da CPU: a ordem das linhas** (doc 132 §4.1). As cópias de um
+/// `Scene` juntam-se em `Normal` — a de cima TAPA a de baixo —, e a CPU, que sabe a média de cada linha,
+/// parte a corrida a cada troca de média. Fixtura: a A IMAGEM (`A1`) e a B FORMA (`A2`), por esta ordem:
+/// a sobreposição é a FORMA (`f(B, A2)`); com as imagens desenhadas depois das formas sairia a imagem.
+#[test]
+#[ignore = "placa: precisa de adapter de GPU"]
+fn o_scene_com_imagens_pela_cpu_guarda_a_ordem_das_linhas() {
+    let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
+        panic!("sem adapter — este gate mede a placa");
+    };
+    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+    let v = byte(A1) as u8;
+    atlas
+        .insert(&gpu, 1, 4, 4, &[v, v, v, 255].repeat(16))
+        .expect("cabe");
+    let renderer =
+        ph2d_render::SpriteRenderer::new(gpu.clone(), ph2d_render::GameRt::FORMAT, atlas, 8);
+    let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
+    for tag in [1u8, 3, 4] {
+        let m = MisturaDoSink {
+            blend: tag,
+            com: BlendWith::Scene,
+            sink: 0,
+        };
+        let mut a = copia(16.0, 24.0, A1, m, Some(0));
+        a.atlas_uv = renderer.atlas().region_uv(1);
+        let insts = [a, copia(32.0, 24.0, A2, m, None)];
+        let mut store = VecPathStore::default();
+        let _ = store.push(ph2d_vec_scene::rectangle([-0.5, -0.5], [0.5, 0.5]));
+        let mut placa = PlacaDeFormas::default();
+        let mut geos = GeometriasDaPlaca::default();
+        assert!(placa.decide_com_misturas(
+            true,
+            &insts,
+            &store,
+            &mut geos,
+            Affine::IDENTITY,
+            Misturas::do_quadro(&gpu, false),
+        ));
+        assert!(
+            placa.corridas_do_quadro().len() >= 2,
+            "uma corrida por média"
+        );
+        let mm = crate::motion_state::MotionState::new();
+        let fontes = super::imagens::fontes_do_quadro(
+            &placa,
+            &gpu,
+            &mm,
+            &renderer,
+            ph2d_render::ImageFilterMode::Smooth,
+        );
+        placa.com_imagens(fontes);
+        let _ = placa.desenha(&gpu, (W, H), &geos, None).expect("desenha");
+        let mundo = mundo_b(&gpu);
+        super::cola_no_mundo(&mut placa, &gpu, &blit, mundo.blend_view());
+        let lido = le_colunas(&gpu, &mundo);
+        let f = |x, y| crate::motion_shape_gen::mistura::gpu_tests::f(tag, x, y);
+        let quer = [f(B, A1), f(B, A2), f(B, A2), B].map(byte);
+        eprintln!("Scene {tag}: lido {lido:?} · tabela {quer:?}");
+        assert!(
+            lido.iter().zip(&quer).all(|(l, q)| (l - q).abs() <= BARRA),
+            "tag {tag}: {lido:?} contra {quer:?}"
+        );
     }
 }

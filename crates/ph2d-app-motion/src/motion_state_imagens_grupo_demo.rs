@@ -71,7 +71,16 @@ fn coluna(g: &mut Graph, k: usize) -> Option<NodeId> {
         ph2d_eval_motion::SINK_BLEND_WITH_PARAM,
         copias as f32,
     );
-    liga(g, (lugar, 0), saida, 0, false)?;
+    // ⭐ P4 (doc 132 §4.1): à ESQUERDA um `Filter` em CADA forma (o relevo, `Bevel`) — cada estrela E
+    // cada quadrado de imagem levam-no sozinhos, e só depois se misturam no grupo.
+    if k == 0 {
+        let relevo = no(g, ph2d_node_fx_filter::TYPE_NAME, 550.0, 120.0);
+        ph2d_node_fx_filter::switch_kind(g, relevo, ph2d_ecs::FxOp::BEVEL);
+        liga(g, (lugar, 0), relevo, 0, false)?;
+        liga(g, (relevo, 0), saida, 0, false)?;
+    } else {
+        liga(g, (lugar, 0), saida, 0, false)?;
+    }
     Some(saida)
 }
 
@@ -137,6 +146,9 @@ pub(super) fn announce() {
          (3) Aproxime o grafo (roda do rato) ate' ler o cartao `Output` da galaxia de CIMA e mude\n    \
          `Blend` para `Normal`: os quadrados passam a TAPAR-SE uns aos outros, sem clarear.\n    \
          Volte a `Screen`.\n\
+         (3b) A da ESQUERDA tem um cartao `Filter` (Bevel, `Each Shape`): CADA estrela e CADA\n    \
+         quadrado laranja tem o seu relevo, e so' depois se misturam. Mude `Apply To` para\n    \
+         `Whole Layer`: o relevo passa a ser UM so', da galaxia inteira.\n\
          (4) Aberta com `PH2D_MOTION_ROUTE_LOG=1`, o terminal diz `[motion-route] device: ...`\n    \
          e `[formas] ... pela PLACA (do dispositivo)` - imagens e formas cozem na PLACA.\n\
          \n\

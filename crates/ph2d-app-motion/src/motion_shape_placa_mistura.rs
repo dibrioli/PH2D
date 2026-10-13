@@ -180,6 +180,33 @@ impl PousaDoQuadro {
     }
 }
 
+/// ⭐ P4 (b) — **os SEGMENTOS de pousa do quadro**: `(a 1.ª corrida dele, como pousa)`, por ordem. Vazio
+/// = um segmento só, em `Normal`. Cada segmento desenha-se na camada e pousa no mundo por sua vez
+/// (`motion_shape_placa::cola_no_mundo`): `N × (o mundo com os anteriores) ∘ f`.
+pub type Pousas = Vec<(usize, Pousa)>;
+
+/// ⭐ P4 (b) — **a partição em segmentos**: o [`PousaDoQuadro`] de cada um; uma cópia que o partiria
+/// abre o seguinte. Medido (doc 132 §7 P4): um segmento a mais custa uma limpeza, o desenho das corridas
+/// dele e uma colagem — `+0,06–0,09 ms` a 1080p/4K, contra a cena inteira no Vello.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Segmentos {
+    atual: PousaDoQuadro,
+    pub pousas: Pousas,
+}
+
+impl Segmentos {
+    /// Junta a cópia que abre (ou continua) a corrida `corrida` — `true` se ela abre um segmento.
+    pub fn junta(&mut self, c: &Composicao, corrida: usize) -> bool {
+        let novo = self.pousas.is_empty() || self.atual.junta(c).is_err();
+        if novo {
+            self.atual = PousaDoQuadro::default();
+            let _ = self.atual.junta(c);
+            self.pousas.push((corrida, c.pousa));
+        }
+        novo && self.pousas.len() > 1
+    }
+}
+
 /// A faixa de um sink nos dois buffers do cozimento: as cópias de forma e as linhas de imagem.
 pub type FaixaDoSink = (NodeId, Range<u32>, Range<u32>);
 
@@ -197,15 +224,16 @@ pub fn corridas_por_faixa(
 }
 
 /// ⭐ P4 — o [`corridas_por_faixa`] com as IMAGENS de cada sink ([`ph2d_shape_gpu::Corrida::imagens`])
-/// e a POUSA do quadro. ⛔ Um `Scene` com imagens recusa ([`MotivoDoVello::CenaComImagens`]): as cópias
-/// dele juntam-se em `Normal`, e a placa desenha as imagens DEPOIS das formas da corrida.
+/// e os SEGMENTOS de pousa ([`Segmentos`]). ⛔ Um `Scene` com imagens recusa
+/// ([`MotivoDoVello::CenaComImagens`]): as cópias dele juntam-se em `Normal`, e a placa desenha as
+/// imagens DEPOIS das formas da corrida.
 pub fn corridas_das_faixas(
     faixas: &[FaixaDoSink],
     mistura_de: impl Fn(NodeId) -> ph2d_eval_motion::MisturaDoSink,
     misturas: Misturas,
-) -> Result<(Vec<ph2d_shape_gpu::Corrida>, Pousa), MotivoDoVello> {
+) -> Result<(Vec<ph2d_shape_gpu::Corrida>, Pousas), MotivoDoVello> {
     let mut corridas: Vec<ph2d_shape_gpu::Corrida> = Vec::with_capacity(faixas.len());
-    let mut pousa = PousaDoQuadro::default();
+    let mut segmentos = Segmentos::default();
     for (sink, copias, imagens) in faixas {
         // Um sink sem formas nem imagens não desenha nada, e não pede mistura nenhuma.
         if copias.is_empty() && imagens.is_empty() {
@@ -215,9 +243,10 @@ pub fn corridas_das_faixas(
         if !imagens.is_empty() && c.cena.is_some() {
             return Err(MotivoDoVello::CenaComImagens);
         }
-        pousa.junta(&c)?;
+        let novo = segmentos.junta(&c, corridas.len());
         let junta = |k: &ph2d_shape_gpu::Corrida| {
-            k.mistura == c.mistura
+            !novo
+                && k.mistura == c.mistura
                 && k.grupo == c.grupo
                 && k.copias.end == copias.start
                 && (imagens.is_empty() || k.imagens.is_empty() || k.imagens.end == imagens.start)
@@ -245,10 +274,12 @@ pub fn corridas_das_faixas(
     if corridas
         .iter()
         .all(|c| c.mistura == Mistura::Normal && c.grupo == 0 && c.imagens.is_empty())
+        && segmentos.pousas.iter().all(|p| p.1 == Pousa::Normal)
     {
         corridas.clear();
+        segmentos.pousas.clear();
     }
-    Ok((corridas, pousa.pousa()))
+    Ok((corridas, segmentos.pousas))
 }
 
 /// **A mistura de um sink neste quadro** — a regra da bomba (`MotionCookPump::pump`) para quem não
@@ -305,7 +336,7 @@ pub fn faixas_do_dispositivo(motion: &crate::motion_state::MotionState) -> Vec<F
 pub fn corridas_do_dispositivo(
     motion: &crate::motion_state::MotionState,
     misturas: Misturas,
-) -> (Vec<ph2d_shape_gpu::Corrida>, Pousa) {
+) -> (Vec<ph2d_shape_gpu::Corrida>, Pousas) {
     let isolada = motion.pump.camada_isolada();
     corridas_das_faixas(
         &faixas_do_dispositivo(motion),
@@ -314,7 +345,7 @@ pub fn corridas_do_dispositivo(
     )
     .unwrap_or_else(|m| {
         debug_assert!(false, "a ponte devia ter recusado esta mistura ({m:?})");
-        (Vec::new(), Pousa::Normal)
+        (Vec::new(), Pousas::new())
     })
 }
 
@@ -325,12 +356,12 @@ pub fn corridas_do_dispositivo(
 pub fn misturas_do_quadro(
     gpu: &GpuContext,
     motion: &crate::motion_state::MotionState,
-) -> (Misturas, Vec<ph2d_shape_gpu::Corrida>, Pousa) {
+) -> (Misturas, Vec<ph2d_shape_gpu::Corrida>, Pousas) {
     let misturas = Misturas::do_quadro(gpu, motion.pump.camada_isolada());
     let (corridas, pousa) = if motion.gpu_live {
         corridas_do_dispositivo(motion, misturas)
     } else {
-        (Vec::new(), Pousa::Normal)
+        (Vec::new(), Pousas::new())
     };
     (misturas, corridas, pousa)
 }
@@ -518,8 +549,11 @@ mod tests {
         let todo = |_| m(1, BlendWith::Everything, 0);
         let (c, p) =
             corridas_das_faixas(&[(a, 0..2, 0..0), (b, 2..3, 0..0)], todo, fora).expect("compõe");
-        assert_eq!((c.len(), c[0].mistura, p), (1, Mistura::Soma, Pousa::Soma));
-        // Um sink `Normal` ao lado parte a pousa.
+        assert_eq!(
+            (c.len(), c[0].mistura, p),
+            (1, Mistura::Soma, vec![(0, Pousa::Soma)])
+        );
+        // Um sink `Normal` ao lado abre um SEGMENTO (P4 (b)): duas corridas, duas pousas.
         let mista = |s| {
             if s == a {
                 m(1, BlendWith::Everything, 0)
@@ -527,10 +561,16 @@ mod tests {
                 m(0, BlendWith::Copies, 1)
             }
         };
-        assert_eq!(
-            corridas_das_faixas(&[(a, 0..2, 0..0), (d, 2..3, 0..0)], mista, fora).err(),
-            Some(MotivoDoVello::MundoPartido)
-        );
+        let (c, p) =
+            corridas_das_faixas(&[(a, 0..2, 0..0), (d, 2..3, 0..0)], mista, fora).expect("parte");
+        assert_eq!(c.len(), 2);
+        assert_eq!(p, vec![(0, Pousa::Soma), (1, Pousa::Normal)]);
+        // Dois `Scene` do mesmo modo: dois segmentos (as cópias de cada um juntas em Normal), e as
+        // corridas NÃO se juntam entre eles.
+        let cenas = |s| m(4, BlendWith::Scene, if s == a { 0 } else { 1 });
+        let (c, p) =
+            corridas_das_faixas(&[(a, 0..2, 0..0), (b, 2..3, 0..0)], cenas, fora).expect("parte");
+        assert_eq!((c.len(), p), (2, vec![(0, Pousa::Tela), (1, Pousa::Tela)]));
         // ⭐ P4 — as IMAGENS de cada sink vão na corrida dele; um sink só de imagens também corre.
         let (c, _) =
             corridas_das_faixas(&[(a, 0..3, 0..4), (b, 3..3, 4..6)], de, placa).expect("compõe");

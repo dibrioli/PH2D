@@ -1,4 +1,28 @@
 use super::*;
+
+/// ⭐ P4 — **as células de uma corrida voltam juntas**: as sprites primeiro, e depois, corrida a
+/// corrida, as formas e as IMAGENS dela; o que nenhuma corrida nomeia vai no fim, pela ordem.
+/// ⚠️ Com as imagens todas no fim (a ordem crua), a 2.ª corrida meter-se-ia entre as formas e as
+/// imagens da 1.ª, e o grupo dela reabria-se num 2.º rascunho.
+#[test]
+fn as_celulas_de_uma_corrida_voltam_juntas() {
+    let c = |copias: std::ops::Range<u32>, imagens: std::ops::Range<u32>, grupo| Corrida {
+        copias,
+        mistura: Mistura::Soma,
+        grupo,
+        imagens,
+    };
+    // 1 sprite (0) · 3 formas (1..4) · 2 imagens (4..6).
+    let corridas = [c(0..2, 0..1, 1), c(2..3, 1..2, 2)];
+    assert_eq!(ordem_das_linhas(1, 3, 2, &corridas), vec![0, 1, 2, 4, 3, 5]);
+    // Sem corridas: a ordem crua.
+    assert_eq!(ordem_das_linhas(1, 2, 1, &[]), vec![0, 1, 2, 3]);
+    // Uma imagem que nenhuma corrida nomeia vai no fim.
+    assert_eq!(
+        ordem_das_linhas(0, 1, 2, &[c(0..1, 0..1, 1)]),
+        vec![0, 1, 2]
+    );
+}
 use crate::passes::{buffer, compute, reloca, vazio};
 
 /// ⭐ **A relocação na placa É a soma da CPU**: a instância `idx` copiada palavra a palavra, só

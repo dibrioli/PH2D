@@ -7,7 +7,8 @@ use ph2d_gpu::GpuContext;
 use ph2d_vector::Affine;
 
 use super::{
-    Corrida, GeometriasDaPlaca, PlacaDeFormas, ShapeView, VecPathStore, imagens, misturas_do_quadro,
+    Corrida, GeometriasDaPlaca, PlacaDeFormas, Pousas, ShapeView, VecPathStore, imagens,
+    misturas_do_quadro,
 };
 use crate::motion_state::MotionState;
 
@@ -66,6 +67,29 @@ pub fn desenha_o_quadro<'p>(
     placa.desenha(gpu, tamanho, &motion.placa_geometrias, buffer)
 }
 
+/// ⭐ P4 (b) — **pousa a camada no mundo, segmento a segmento** (o presente, fora da camada isolada):
+/// o 1.º segmento é a camada que o [`desenha_o_quadro`] desenhou; cada seguinte desenha-se na MESMA
+/// camada (limpa) e pousa por sua vez — `f₂(f₁(W, S₁), S₂)`, a ordem das linhas que o Vello compõe.
+pub fn cola_no_mundo(
+    placa: &mut PlacaDeFormas,
+    gpu: &GpuContext,
+    band_blit: &ph2d_render::BandBlit,
+    alvo: &wgpu::TextureView,
+) {
+    let formas = ph2d_render::BandSource::Formas;
+    for k in 0..placa.segmentos() {
+        let pousa = placa.pousa_do_segmento(k);
+        let camada = if k == 0 {
+            placa.camada()
+        } else {
+            placa.pinta_segmento(gpu, k)
+        };
+        if let Some(camada) = camada {
+            band_blit.blit_pousa(gpu, alvo, camada, formas, None, pousa);
+        }
+    }
+}
+
 /// ⭐ P4 — a decisão do dispositivo com a pousa, a pousa e as imagens do quadro (cortadas do
 /// `motion_shape_placa.rs` pelo tecto de LOC: são a metade do quadro que esta porta compõe).
 impl PlacaDeFormas {
@@ -98,7 +122,7 @@ impl PlacaDeFormas {
             store,
             geometrias,
             cam,
-            (corridas, ph2d_render::Pousa::Normal),
+            (corridas, Pousas::new()),
         )
     }
 
@@ -112,12 +136,12 @@ impl PlacaDeFormas {
         store: &VecPathStore,
         geometrias: &mut GeometriasDaPlaca,
         cam: Affine,
-        (corridas, pousa): (Vec<Corrida>, ph2d_render::Pousa),
+        (corridas, pousas): (Vec<Corrida>, Pousas),
     ) -> bool {
         self.cam = cam;
         self.copias.clear();
         self.corridas = corridas;
-        self.pousa = pousa;
+        self.pousas = pousas;
         self.fonte.clear();
         for &h in vivas {
             let _ = geometrias.veredito(h, store);
@@ -126,7 +150,7 @@ impl PlacaDeFormas {
         self.ativa = ligada && (n > 0 || self.corridas.iter().any(|c| !c.imagens.is_empty()));
         if !self.ativa {
             self.corridas.clear();
-            self.pousa = ph2d_render::Pousa::Normal;
+            self.pousas.clear();
         }
         self.do_dispositivo = self.ativa.then_some(n);
         self.diz(n as usize, geometrias.len());
@@ -138,7 +162,72 @@ impl PlacaDeFormas {
     /// ela (`ph2d_render::BandBlit::blit_pousa`).
     #[must_use]
     pub fn pousa(&self) -> ph2d_render::Pousa {
-        self.pousa
+        self.pousas
+            .first()
+            .map_or(ph2d_render::Pousa::Normal, |p| p.1)
+    }
+
+    /// ⭐ P4 (b) — **quantos SEGMENTOS de pousa** a camada deste quadro tem (`1` sem partição).
+    #[must_use]
+    pub fn segmentos(&self) -> usize {
+        self.pousas.len().max(1)
+    }
+
+    /// As corridas do segmento `k` (todas, sem partição).
+    fn corridas_do_segmento(&self, k: usize) -> std::ops::Range<usize> {
+        if self.pousas.is_empty() {
+            return 0..self.corridas.len();
+        }
+        let ini = self.pousas.get(k).map_or(self.corridas.len(), |p| p.0);
+        let fim = self.pousas.get(k + 1).map_or(self.corridas.len(), |p| p.0);
+        ini..fim
+    }
+
+    /// ⭐ P4 (b) — **desenha o segmento `k` na camada** (limpa), com as formas, as imagens e a vista do
+    /// [`Self::desenha`] deste quadro — e devolve-a, para pousar com [`Self::pousa_do_segmento`].
+    pub fn pinta_segmento(&mut self, gpu: &GpuContext, k: usize) -> Option<&wgpu::TextureView> {
+        let vista = self.vista_do_quadro?;
+        let faixa = self.corridas_do_segmento(k);
+        let ligacoes = self.fontes.as_ref().map(|f| {
+            self.imagens
+                .get_or_insert_with(|| imagens::ImagensDaPlaca::new(gpu, super::FORMATO_DA_CAMADA))
+                .liga(gpu, vista, f)
+        });
+        let imagens = self.imagens.as_ref().zip(ligacoes.as_ref());
+        let mut desenha_imagens = |pass: &mut wgpu::RenderPass<'static>, c: &Corrida| {
+            if let Some((p, ligacoes)) = imagens {
+                p.desenha(pass, ligacoes, c);
+            }
+        };
+        let g = self.gpu.as_mut()?;
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        g.passe.draw_em_corridas_com(
+            gpu,
+            &mut enc,
+            &g.vista,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+            vista,
+            self.ultimas
+                .as_ref()
+                .map(|(buffer, count, _)| ph2d_shape_gpu::Copias {
+                    buffer,
+                    count: *count,
+                }),
+            &self.corridas[faixa],
+            imagens.is_some().then_some(&mut desenha_imagens),
+        );
+        gpu.queue.submit([enc.finish()]);
+        self.gpu.as_ref().map(|g| &g.vista)
+    }
+
+    /// A pousa do segmento `k`.
+    #[must_use]
+    pub fn pousa_do_segmento(&self, k: usize) -> ph2d_render::Pousa {
+        self.pousas
+            .get(k)
+            .map_or(ph2d_render::Pousa::Normal, |p| p.1)
     }
 
     /// ⭐ P4 — **as imagens do quadro para as CÉLULAS do `Each Shape`** (`ph2d_fx_cells::Imagens`): as

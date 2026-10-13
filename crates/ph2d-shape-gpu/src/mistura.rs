@@ -238,9 +238,13 @@ impl ShapePass {
         mut imagens: Option<DesenhaImagens<'_>>,
     ) {
         let com_imagens = imagens.is_some() && corridas.iter().any(|c| !c.imagens.is_empty());
+        // ⚠️ Uma corrida só `Normal` é o `draw` de sempre SÓ quando cobre o buffer inteiro: um SEGMENTO
+        // de pousa (P4 (b)) é uma fatia, e o `draw` desenharia as cópias dos outros.
+        let todas =
+            |c: &Corrida| copias.is_none_or(|k| c.copias.start == 0 && c.copias.end >= k.count);
         let simples = match corridas {
             [] => true,
-            [c] => c.mistura == Mistura::Normal && c.grupo == 0,
+            [c] => c.mistura == Mistura::Normal && c.grupo == 0 && todas(c),
             _ => false,
         };
         let formas = copias.filter(|c| c.count > 0 && !self.carregadas.is_empty());

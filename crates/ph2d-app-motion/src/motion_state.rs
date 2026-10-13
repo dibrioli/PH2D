@@ -161,6 +161,10 @@ pub(crate) mod aviso_demo;
 /// A cena `=139` — a fita das entradas que dobra (doc 132 §2, P2). Ver o cabeçalho dela.
 #[path = "motion_state_fita_demo.rs"]
 mod fita_demo;
+/// A cena `=138` (e a `PH2D_MOTION_OBJ_SMOKE=18`) — o filtro em cada forma, a cair num campo (doc
+/// 132 §1 e §6). Ver o cabeçalho. ⚠️ A `=139`, a `=140` e a `=141` são de OUTRAS linhas (doc 132 §0).
+#[path = "motion_state_cada_forma_demo.rs"]
+pub(crate) mod cada_forma_demo;
 
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]

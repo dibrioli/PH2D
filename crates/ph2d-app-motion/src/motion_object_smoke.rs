@@ -52,6 +52,9 @@ pub mod times;
 /// ⭐ O modo `=13` — A MISTURA NA PLACA: a única cena que vai à placa E desenha uma imagem.
 #[path = "motion_object_smoke_blend.rs"]
 mod blend;
+/// ⭐ O modo `=18` — A SOMBRA EM CADA SPRITE: cópias de uma imagem a cair num campo (doc 132 §6).
+#[path = "motion_object_smoke_cada_sprite.rs"]
+mod cada_sprite;
 /// ⭐⭐⭐ O modo `=16` — O ENXAME: formas + simulação com campos + duas saídas na placa (ciclos 10/11).
 #[path = "motion_object_smoke_enxame.rs"]
 mod enxame;
@@ -142,7 +145,8 @@ static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0
 /// MISTURA NA PLACA (ver `motion_object_smoke_blend`) · `14` a MISTURA EM GRUPO (ver
 /// `motion_object_smoke_grupo`) · `15` O MODO DE UMA LINHA (ver `motion_object_smoke_linha`) ·
 /// `16` o ENXAME (ver `motion_object_smoke_enxame`) · `17` A ESCADA DOS TECTOS (ciclo 12 — ver
-/// `motion_object_smoke_escada`).
+/// `motion_object_smoke_escada`) · `18` A SOMBRA EM CADA SPRITE (doc 132 §6 — ver
+/// `motion_object_smoke_cada_sprite`).
 ///
 /// ⚠️ **O `16` e o `17` também faltavam** (auditoria do fecho, 2026-09-24) — a mesma forma do `12`
 /// abaixo, duas vezes mais.
@@ -219,6 +223,7 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
         15 if f == 3 => linha::run(cx),
         16 if f == 3 => enxame::run(cx),
         17 if f == 3 => escada::run(cx),
+        18 if f == 3 => cada_sprite::run(cx),
         11 if f == 3 => {
             holds::spawn_art(cx.flip);
         }

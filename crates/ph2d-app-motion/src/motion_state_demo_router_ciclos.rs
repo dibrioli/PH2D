@@ -19,7 +19,7 @@ use ph2d_nodegraph::graph::NodeId;
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
 const CICLOS: &[&str] = &[
     "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "130", "131", "132",
-    "133", "134", "135", "136", "137", "139", "141",
+    "133", "134", "135", "136", "137", "138", "139", "141",
 ];
 
 /// Este nível é uma cena de ciclo?
@@ -202,6 +202,14 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::colisor_nome_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::colisor_nome_demo::captions());
             super::colisor_nome_demo::announce();
+            sinks
+        }
+        // ⭐ **O BRILHO EM CADA FORMA** (doc 132 §1, P1): 4 096 discos a cair num campo, `Outer Glow`
+        // em `Each Shape`.
+        "138" => {
+            let sinks = super::cada_forma_demo::build_discos(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::cada_forma_demo::captions());
+            super::cada_forma_demo::announce_discos();
             sinks
         }
         // ⭐ **A FITA QUE DOBRA** (doc 132 §2, P2): a galáxia simulada com dezasseis gatilhos a

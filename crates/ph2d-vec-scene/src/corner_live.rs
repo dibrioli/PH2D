@@ -105,8 +105,6 @@ pub fn round_authored_corners_styled(
     style: crate::CornerStyle,
 ) -> Option<Vec<VecVertex>> {
     let n = verts.len();
-    // Dois vértices FECHADOS são dois troços e duas quinas (o coração, F14); um vaivém recto é
-    // «dobrado» e o predicado recusa-o.
     if n < 2 || !verts.iter().any(|v| v.corner_size() > EPS) {
         return None; // nada a arredondar → a fonte é a saída
     }
@@ -679,9 +677,7 @@ fn neg(p: [f64; 2]) -> [f64; 2] {
     [-p[0], -p[1]]
 }
 
-/// Colinear (a direito) ou dobrada sobre si: o SENO pelo produto vetorial dos versores. O ângulo
-/// pelo `acos` não serve aqui — perto de ±1 ele só resolve `~1,5e-8` rad, e o vértice liso de
-/// uma elipse esticada (seno `0` exacto) lia-se como quina de `2e-8` (F14, doc 24 §1).
+/// Colinear ou dobrada: pelo SENO (o `acos` perto de ±1 só resolve `~1,5e-8` rad — doc 24 §1).
 pub(crate) fn straight_or_folded(ua: [f64; 2], ub: [f64; 2]) -> bool {
     (ua[0] * ub[1] - ua[1] * ub[0]).abs() <= EPS
 }

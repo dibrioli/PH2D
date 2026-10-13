@@ -8,7 +8,60 @@
 //! faixa): não arredondam, e a ponta que tocava um contorno arredondado segue-o pela própria
 //! direcção. Doc: `docs/UI_New_and_Simple/vetor_nova_ui/24_arredondar_as_quinas.md`.
 
-use crate::{VecPath, VecVertex};
+use crate::{ShapeKind, VecPath, VecVertex};
+
+impl ShapeKind {
+    /// ⭐ (F14) O índice do campo «Corner round» desta forma — o ÚLTIMO dela, apenso e neutro em
+    /// zero —, que o [`crate::cook`] passa à [`crate::round_shape_corners`]. `None` = não há
+    /// quina viva, ou a forma já tem quem a arredonde (o raio do polígono, as pontas da estrela, o filete da
+    /// nuvem). A lista das que ficam de fora, com a medida: doc 24 §2 e o censo
+    /// `every_live_corner_has_a_rounder` (`ph2d-tool-vector`).
+    #[must_use]
+    pub const fn corner_round_field(self) -> Option<usize> {
+        use ShapeKind as K;
+        Some(match self {
+            K::Rectangle | K::Delay => 0,
+            K::Diamond
+            | K::Parallelogram
+            | K::HexagonFlat
+            | K::Document
+            | K::Display
+            | K::PredefinedProcess
+            | K::OffPage
+            | K::NoteBracket
+            | K::Bolt
+            | K::Drop
+            | K::Shield
+            | K::Cross
+            | K::Check
+            | K::Banner
+            | K::Bone
+            | K::Heart => 1,
+            K::Segment
+            | K::Chevron
+            | K::Trapezoid
+            | K::TrapezoidFlip
+            | K::Tag
+            | K::IsoCone
+            | K::RopeSegment => 2,
+            K::Ellipse | K::Pie | K::ArrowRight | K::ArrowDouble | K::IsoCube | K::IsoPyramid => 3,
+            K::ArrowBent | K::SpeechOval | K::Thought | K::Burst => 4,
+            K::SpeechRect | K::Gear => 5,
+            K::RoundRect
+            | K::Polygon
+            | K::Star
+            | K::Spiral
+            | K::Line
+            | K::Arc
+            | K::Pill
+            | K::Cylinder
+            | K::Junction
+            | K::Brace
+            | K::Cloud
+            | K::Moon => return None,
+        })
+    }
+}
 
 /// Arredonda as quinas vivas de `p` pelo raio `r` (mundo). `r ≤ 0` (ou NaN) = `p` intacto.
 #[must_use]

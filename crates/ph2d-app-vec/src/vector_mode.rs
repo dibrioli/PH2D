@@ -386,8 +386,7 @@ pub fn smoke_step(
     // a estrela — 80–84 em `vector_mode_estrela`); 3 = a 17 (F11, o traço — 90–93 em
     // `vector_mode_stroke`); 4 = a 18 (F12 A, o traço das formas — 100–103 em `vector_mode_tracos`);
     // 5 = a 19 (F12, as setas lado a lado — 110–120 em `vector_mode_setas`); 6 = a 20 (F13, o
-    // modo Forma selecciona — 130–136 em `vector_mode_seleciona`); 7 = a 21 (F14, as quinas
-    // arredondadas — 140–213 em `vector_mode_quinas`).
+    // modo Forma selecciona — 130–136 em `vector_mode_seleciona`); 7 = a 21 (F14, `vector_mode_quinas`).
     static HANDLES: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
@@ -602,7 +601,6 @@ pub fn smoke_step(
                 go(next);
             }
         }
-        // A cena 21 (F14): as quinas arredondadas em toda forma — `vector_mode_quinas`.
         s @ crate::vector_mode_quinas::FIRST..=crate::vector_mode_quinas::LAST => {
             if let Some(next) = crate::vector_mode_quinas::step(s, vec, scene, sim, hero) {
                 go(next);
@@ -697,7 +695,6 @@ mod setas_tests;
 #[path = "vector_mode_seleciona_tests.rs"]
 mod seleciona_tests;
 
-/// A cena 21 (F14) faz o que diz — irmão pelo tecto de LOC.
 #[cfg(test)]
 #[path = "vector_mode_quinas_tests.rs"]
 mod quinas_tests;

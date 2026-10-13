@@ -191,3 +191,11 @@ Verdes também: check `--workspace --all-targets` deny, clippy `-D warnings`, fm
   ✗ contexto relido por passo (media)         375 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
   ✓ contexto no inicio da sessao               63 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
 ```
+
+Binário do smoke (2.ª corrida, sobre `1223309913`) e o cache de shaders do dono AQUECIDO (o app no ecrã virtual
+com o cache real, cena 5, as duas variantes do smoke: a luz acende em 0,06 s):
+
+```
+▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.51s
+```

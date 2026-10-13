@@ -1,6 +1,7 @@
 //! **O estado inicial** da trilha do Motion: o documento ao armar (texto canónico + o `next_id`, que o
-//! texto não guarda) e as configurações que as portas gravadas leem — o nível, a ajuda dos nós, a lei
-//! da bomba, o retângulo e o tamanho de omissão do cozimento.
+//! texto não guarda) e as configurações que o cozimento lê — a lei da bomba, o retângulo e o tamanho de
+//! omissão. O nível e a ajuda dos nós viajam em CADA lote do grafo, o único que os lê (uma porta só); a
+//! etiqueta `3` fica reservada.
 //!
 //! O palco ([`palco`]) é um `MotionState` PRÓPRIO nesse estado: o documento autorado nunca é tocado.
 
@@ -22,8 +23,6 @@ pub struct Inicial {
     pub doc: MotionDoc,
     /// O `next_id` do grafo ao armar — a base dos nós criados a gravar ([`super::passo::Alvo`]).
     pub base: u32,
-    pub nivel: Option<u32>,
-    pub ajuda: bool,
     pub lei: bool,
     pub uv: [f32; 4],
     pub tamanho: [f32; 2],
@@ -35,11 +34,7 @@ pub fn captura(m: &MotionState) -> Vec<u8> {
     let mut r = Record::new();
     r.str(1, &m.doc.to_text())
         .varint(2, u64::from(m.doc.graph.next_id()))
-        .bool(4, m.node_help_enabled)
         .bool(5, m.pump.a_lei());
-    if let Some(n) = m.level {
-        r.varint(3, u64::from(n));
-    }
     for (i, v) in m.default_uv_rect.iter().enumerate() {
         r.f32(6 + i as u32, *v);
     }
@@ -73,8 +68,6 @@ pub fn le(bytes: &[u8]) -> Result<Inicial, ErroDoInicial> {
     Ok(Inicial {
         doc,
         base: u32_de(precisa(2)?)?,
-        nivel: um(3).map(u32_de).transpose()?,
-        ajuda: rec::as_bool(precisa(4)?).map_err(reg)?,
         lei: rec::as_bool(precisa(5)?).map_err(reg)?,
         uv: [f32_de(6)?, f32_de(7)?, f32_de(8)?, f32_de(9)?],
         tamanho: [f32_de(10)?, f32_de(11)?],
@@ -88,8 +81,6 @@ pub fn palco(ini: &Inicial) -> MotionState {
     m.doc = ini.doc.clone();
     m.doc.graph.restore_next_id(ini.base);
     m.sinks.clear();
-    m.level = ini.nivel;
-    m.node_help_enabled = ini.ajuda;
     m.pump.define_a_lei(ini.lei);
     m.default_uv_rect = ini.uv;
     m.default_size = ini.tamanho;

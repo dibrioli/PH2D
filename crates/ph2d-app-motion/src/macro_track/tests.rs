@@ -185,8 +185,6 @@ fn o_que_este_leitor_nao_conhece_para_o_tocador_em_voz_alta() {
 #[test]
 fn o_estado_inicial_vai_e_volta() {
     let mut m = super::estado_de_teste();
-    m.level = Some(3);
-    m.node_help_enabled = false;
     m.default_uv_rect = [0.25, 0.0, 0.75, 1.0];
     m.default_size = [2.0, 0.5];
     let a = m.doc.graph.add_node("source.shape");
@@ -207,18 +205,8 @@ fn o_estado_inicial_vai_e_volta() {
     let p = inicial::palco(&ini);
     assert_eq!(p.doc, m.doc, "o palco é o documento ao armar, ao bit");
     assert_eq!(
-        (
-            p.level,
-            p.node_help_enabled,
-            p.default_uv_rect,
-            p.default_size
-        ),
-        (
-            m.level,
-            m.node_help_enabled,
-            m.default_uv_rect,
-            m.default_size
-        )
+        (p.default_uv_rect, p.default_size),
+        (m.default_uv_rect, m.default_size)
     );
     assert_eq!(p.pump.a_lei(), m.pump.a_lei());
 }

@@ -110,6 +110,32 @@ pub fn captions() -> Vec<Caption> {
     LEGEND.lock().map(|s| s.clone()).unwrap_or_default()
 }
 
+thread_local! {
+    /// O segundo em que a cena pede ao relógio do editor que PARE ([`pede_paragem`]).
+    static PARAGEM: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+}
+
+/// **Uma cena que ENCENA o relógio** (a `=139`, doc 132 §2): a ferramenta Motion toca o relógio
+/// do editor ao entrar, e a cena pede que ele pare no segundo `t` — o que ela mostra cabe na régua
+/// e fica lá para a foto. Uma vez: tocar de novo depois disso é do artista.
+pub fn pede_paragem(t: f64) {
+    PARAGEM.with(|p| p.set(Some(t)));
+}
+
+/// Por quadro, ANTES do cozimento: o relógio a tocar que chegou ao segundo pedido pára nele.
+pub(crate) fn encena_a_paragem(playhead: &mut ph2d_core::Playhead) {
+    PARAGEM.with(|p| {
+        if let Some(t) = p.get()
+            && playhead.is_playing()
+            && playhead.time() >= t
+        {
+            playhead.pause();
+            playhead.seek(t);
+            p.set(None);
+        }
+    });
+}
+
 /// A legenda presa ao DONO dos nós que a geram — irmã por responsabilidade.
 #[path = "motion_demo_legend_dono.rs"]
 mod dono;

@@ -4,8 +4,14 @@ use super::*;
 use crate::motion_state::MotionState;
 use ph2d_eval_motion::{Historia, Razao};
 
-/// O tecto do gate: `4 s` a 60 Hz — o roteiro diz «espere ~5 s».
-const MAX_TIQUES: u64 = 240;
+/// O tecto do gate: a dobra tem de chegar ≥ 1 s antes de o relógio parar ([`PARA_EM_S`]), para a
+/// faixa parada ter largura na régua.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "segundos inteiros"
+)]
+const MAX_TIQUES: u64 = ((PARA_EM_S - 1.0) * 60.0) as u64;
 
 /// ⭐ **A CENA MONTA E, COM O TECTO PEQUENO, DOBRA EM MENOS DE [`MAX_TIQUES`]** — pelo caminho da
 /// CPU do produto (publica, escopos, bomba). Os gatilhos `sinal_*` são o que a enche: sem eles
@@ -68,5 +74,49 @@ fn a_cena_monta_e_com_o_tecto_pequeno_dobra_em_segundos() {
     assert!(
         corre(false).is_none_or(|sem| sem > t),
         "CONTROLO: os gatilhos `sinal_*` são o que enche a fita"
+    );
+}
+
+/// ⭐ **O RELÓGIO PÁRA AOS [`PARA_EM_S`] E A FAIXA FICA NA RÉGUA** — a ferramenta toca o relógio do
+/// editor ao entrar, e sem a paragem a faixa seguia-o para fora do ecrã (foto do coordenador, 13/10:
+/// 25 s depois de abrir, a faixa em `[22, 25]` s numa régua de 0 a 6). Pela porta do `dispatch`
+/// ([`crate::motion_demo_legend::encena_a_paragem`]), quadro a quadro como o produto; e o CONTROLO:
+/// sem a cena montada, o relógio não pára.
+#[test]
+fn o_relogio_da_cena_para_aos_cinco_segundos() {
+    let corre = |monta_a_cena: bool| {
+        if monta_a_cena {
+            let mut doc = MotionDoc::new();
+            let mut reg = NodeRegistry::new();
+            ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
+            assert!(build(&mut doc, &reg).is_some(), "a cena monta");
+        }
+        let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+        ph.play();
+        for _ in 0..1_500 {
+            ph.advance();
+            crate::motion_demo_legend::encena_a_paragem(&mut ph);
+        }
+        ph
+    };
+    let ph = corre(true);
+    assert!(!ph.is_playing(), "a cena pára o relógio");
+    assert!(
+        (ph.time() - PARA_EM_S).abs() < 1e-9,
+        "parou em {}",
+        ph.time()
+    );
+    // Uma vez só: tocar de novo é do artista.
+    let mut de_novo = ph;
+    de_novo.play();
+    for _ in 0..60 {
+        de_novo.advance();
+        crate::motion_demo_legend::encena_a_paragem(&mut de_novo);
+    }
+    assert!(de_novo.is_playing() && de_novo.time() > PARA_EM_S + 0.9);
+    let sem = corre(false);
+    assert!(
+        sem.is_playing() && sem.time() > 20.0,
+        "CONTROLO: sem a cena, nada pára"
     );
 }

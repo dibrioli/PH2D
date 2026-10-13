@@ -17,6 +17,11 @@ use ph2d_nodegraph::graph::NodeId;
 pub(crate) const GATILHOS: usize = 16;
 /// O tecto que o roteiro põe na linha de comando: a dobra chega em ~2–3 s a 60 Hz (o gate mede).
 pub(crate) const TECTO_DO_ROTEIRO: &str = "384k";
+/// ⭐ **O segundo em que a cena PÁRA o relógio.** A ferramenta Motion toca o relógio do editor ao
+/// entrar, e a fita grava os tiques DELE: sem paragem, 25 s depois de abrir a faixa está em
+/// `[22, 25]` s, fora da régua — a cena ensinaria que ela não existe. Parado aqui, a faixa
+/// `[~2,7 s, 5 s]` fica na régua para sempre (até o artista tocar de novo).
+pub(crate) const PARA_EM_S: f64 = 5.0;
 
 /// O nó que o roteador e o gate leem.
 pub(crate) struct Cena {
@@ -97,6 +102,7 @@ pub(crate) fn monta(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Cena> {
 }
 
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
+    crate::motion_demo_legend::pede_paragem(PARA_EM_S);
     monta(doc, reg).map(|c| vec![c.saida])
 }
 
@@ -104,7 +110,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![crate::motion_demo_legend::Caption::new(
         [0.0, -2.6],
-        "fita das entradas: play ~5 s; a faixa verde da Timeline comeca depois do 0".to_string(),
+        "fita das entradas: toca 5 s e para; a faixa verde da Timeline comeca depois do 0"
+            .to_string(),
     )]
 }
 
@@ -118,17 +125,18 @@ pub(super) fn announce() {
          a fita das entradas guarda o que se publicou em cada tique, para o scrub o repetir.\n\
          Tecto da fita agora: {tecto} bytes (lance com {var}={TECTO_DO_ROTEIRO} para dobrar em segundos).\n\
          \n\
-         (1) De PLAY e espere ~5 s. Na Timeline, por baixo dos segundos da regua, cresce uma\n    \
-         FAIXA VERDE: e' a historia gravada. Depois de ~3 s ela deixa de comecar no 0 - o\n    \
-         inicio dela anda para a direita: o que ficou para tras foi DOBRADO.\n\
-         (2) De PAUSA. Arraste a regua para DENTRO da faixa: os cartoes `Input` mostram o\n    \
-         numero de sempre.\n\
+         (1) NAO carregue em nada: a cena TOCA sozinha 5 s e PARA. Na Timeline, por baixo dos\n    \
+         segundos da regua, cresce uma FAIXA VERDE: e' a historia gravada. Aos ~3 s ela deixa\n    \
+         de comecar no 0 - o que ficou para tras foi DOBRADO. Parada, a faixa fica de ~2,7 s a 5 s.\n\
+         (2) Na Timeline, clique na aba `Arrange` (e' a regua que mexe o relogio do Motion; a da\n    \
+         aba `Keys` mexe o relogio do clip). Arraste a regua para DENTRO da faixa: os cartoes\n    \
+         `Input` mostram o numero de sempre.\n\
          (3) Arraste a regua para ANTES do inicio da faixa: o cartao de cada `Input` diz\n    \
          `History before X s was folded - showing X s` - o replay mostra o segundo X, nao o\n    \
          que se publicou ali.\n\
          \n\
-         DEU ERRADO se: a faixa comecar sempre no 0 com o tecto pequeno; ou o cartao ficar\n\
-         calado antes da faixa; ou o aviso aparecer DENTRO dela.\n"
+         DEU ERRADO se: a faixa nao aparecer ou comecar no 0 com o tecto pequeno; o relogio\n\
+         nao parar aos 5 s; o cartao ficar calado antes da faixa; ou o aviso aparecer DENTRO dela.\n"
     );
 }
 

@@ -544,8 +544,16 @@ impl SpriteRenderer {
     /// key (W3.T3.11): the atlas texture + a sampler with the resolved
     /// filter/repeat. The bind group keeps the sampler alive internally,
     /// so the local handle can drop.
+    ///
+    /// ⚠️ **O `SAMPLING_DEFAULT` não ganha grupo próprio**: é «o sampler do PROJECTO», e o
+    /// `material_bg` cai no `material_bind_group` — a mesma lei do gémeo das texturas individuais
+    /// ([`crate::individual_sampling`]) e da partição VAZIA do buffer da placa. Com grupo próprio
+    /// (o `sampler_from_tags(0, 0)`: linear, um nível, isotrópico) a MESMA sprite do Motion saía com
+    /// dois samplers conforme a rota: 61 texels da silhueta a até 29 níveis (doc 132 §6, P6).
     fn ensure_atlas_sampler_bg(&mut self, sampling: u32) {
-        if self.atlas_sampler_bgs.contains_key(&sampling) {
+        if sampling == RenderInstance::SAMPLING_DEFAULT
+            || self.atlas_sampler_bgs.contains_key(&sampling)
+        {
             return;
         }
         let (filter_tag, repeat_tag) = RenderInstance::unpack_sampling(sampling);

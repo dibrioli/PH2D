@@ -75,8 +75,15 @@ pub(crate) struct BoardLive {
     pub(crate) fac: fac::Fac,
     /// A equipa e a saída (W8): comentar, versões, apresentar, exportar.
     pub(crate) team: team::Team,
-    /// W18 — o carregar em curso é do tocador de um vídeo (o mover e o largar também).
+    /// W18 — o carregar em curso é do tocador de um vídeo (o mover e o largar também). W20: só no ecrã
+    /// inteiro; no quadro o carregar num vídeo espera pelo largar ([`Self::video_click`]).
     pub(crate) video_press: bool,
+    /// W20 — um carregar num vídeo à espera do largar: sem arrasto é um clique (activar / o tocador), com
+    /// arrasto foi do editor (moveu o vídeo).
+    pub(crate) video_click: Option<crate::screens::hero::board_video::Pending>,
+    /// W20 — o Espaço foi carregado com um vídeo activo e nenhum carregar do rato veio depois: no largar
+    /// é tocar/pausar (o atalho do YouTube); com um arrasto pelo meio foi o pan do quadro.
+    pub(crate) space_tap: bool,
     /// W18 — o botão «Video» da barra pediu o link da área de transferência (o app lê-a).
     pub(crate) video_ask: bool,
 }

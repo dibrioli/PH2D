@@ -247,8 +247,21 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         }
         r
     } else {
-        match vids.on_screen.get(&id) {
-            Some(pl) if pl.live => screen_rect(pl, el_w, el_h),
+        match (vids.on_screen.get(&id), el.embed()) {
+            // W20: a barra fica fora da CAIXA e da borda dela (o recuo do tocador é o alcance da moldura,
+            // que sai da caixa no máximo isso).
+            (Some(pl), Some(e)) if pl.live => {
+                let (reach, inner) = ph2d_board_render::player_in_box(el, e);
+                let tb = pl.to_screen * inner.inverse();
+                let a = tb * Point::new(-reach, -reach);
+                let b = tb * Point::new(el_w + reach, el_h + reach);
+                Rect::new(
+                    a.x.min(b.x) as f32,
+                    a.y.min(b.y) as f32,
+                    (b.x - a.x).abs() as f32,
+                    (b.y - a.y).abs() as f32,
+                )
+            }
             _ => return,
         }
     };
@@ -376,8 +389,7 @@ fn show_click(hero: &mut HeroScreen, id: NodeId) -> bool {
     if vids.active == Some(el) {
         vids.commands.push(VideoCommand::TogglePlay);
     } else {
-        vids.active = Some(el);
-        vids.frame = None;
+        vids.activate(el);
     }
     true
 }

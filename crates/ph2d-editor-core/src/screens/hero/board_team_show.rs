@@ -124,6 +124,7 @@ pub fn stop(hero: &mut HeroScreen) {
     // W19 — o vídeo que tocava na apresentação pára (no quadro volta a ser só o lugar com o play).
     let vids = hero.documents.videos_mut();
     vids.active = None;
+    vids.player = None;
     vids.frame = None;
     vids.fullscreen = false;
     if let Some(b) = hero

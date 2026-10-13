@@ -172,6 +172,9 @@ pub(super) fn selected_kind(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Op
     if !els.is_empty() && els.iter().all(|el| el.image().is_some()) {
         return Some(Selected::Images);
     }
+    if !els.is_empty() && els.iter().all(|el| el.embed().is_some()) {
+        return Some(Selected::Videos);
+    }
     let arrows = els.iter().any(|el| el.connector().is_some());
     let shapes = els.iter().any(|el| el.shape().is_some());
     let inks = els.iter().any(|el| el.ink().is_some());

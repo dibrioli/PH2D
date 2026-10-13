@@ -1,8 +1,53 @@
-//! W19 — o tamanho do tocador segue o do ecrã só quando o zoom ASSENTA.
+//! W19 — o tamanho do tocador segue o do ecrã só quando o zoom ASSENTA. W20 — o tocador segue o vídeo que
+//! TEM, não o activo.
 
 use std::time::{Duration, Instant};
 
-use super::{SETTLE, settled};
+use super::{SETTLE, settled, target};
+use ph2d_board_embed::OnScreen;
+use ph2d_board_model::{ElementId, Video};
+use ph2d_board_render::{Placement, Videos};
+use ph2d_vector::Affine;
+
+/// ⭐⭐ W20 — desactivado (clicou fora: `active = None`), o vídeo que o tocador tem continua o alvo — vivo,
+/// não pausa; todo fora da vista deixa de ser (pausa); sem tocador, nada.
+#[test]
+fn the_player_follows_the_video_it_holds_not_the_active_one() {
+    let id = ElementId(7);
+    let mut v = Videos::default();
+    v.activate(id);
+    let size = [560.0, 315.0];
+    v.on_screen.insert(
+        id,
+        Placement {
+            screen: OnScreen {
+                size,
+                angle: 0.0,
+                covered: false,
+                visible: size,
+            },
+            live: true,
+            to_screen: Affine::IDENTITY,
+        },
+    );
+    let video = Video::YouTube {
+        id: "aqz-KE-bpKQ".into(),
+        start: 0,
+        vertical: false,
+    };
+    v.videos.insert(id, video.clone());
+    assert_eq!(target(&v), Some((id, video.clone(), true, size)));
+    v.active = None;
+    assert_eq!(
+        target(&v),
+        Some((id, video, true, size)),
+        "desactivado, o tocador largou o vídeo (pausava)"
+    );
+    v.on_screen.clear();
+    assert_eq!(target(&v), None, "todo fora da vista: pausa");
+    v.player = None;
+    assert_eq!(target(&v), None);
+}
 
 /// ⭐ Um zoom contínuo não muda o tocador a cada quadro: só o último tamanho, [`SETTLE`] depois de parar.
 #[test]

@@ -1,11 +1,15 @@
 //! W18 ([ADR-0185]) — **o vídeo no quadro, do lado do editor**: um link do YouTube colado (ou largado, ou
-//! dado à barra) vira um vídeo; o clique no PLAY (ou num vídeo já seleccionado) activa-o; activo, o rato
+//! dado à barra) vira um vídeo; o clique no PLAY (ou num vídeo já seleccionado) activa-o; activo, o clique
 //! dentro dele vai para o tocador (`Videos::inbox`), as teclas são dos NOSSOS controles (W19: o tocador vem
-//! com `disablekb=1`) e clicar fora desactiva-o (o oráculo). No nosso ecrã inteiro o vídeo toma todos os
-//! cliques e teclas; o `Esc` sai dele. Quem toca é o app (`ph2d-app-board::video`).
+//! com `disablekb=1`) e clicar fora desactiva-o (o oráculo). W20: o clique decide-se no LARGAR — segurar e
+//! arrastar move o vídeo (activo ou não); desactivar tira o rato e as teclas, não a imagem (o tocador
+//! continua com ele, `Videos::player`); os pans nunca chegam ao vídeo. No nosso ecrã inteiro o vídeo toma
+//! todos os cliques e teclas; o `Esc` sai dele. Quem toca é o app (`ph2d-app-board::video`).
 //!
 //! [ADR-0185]: ../../../../../docs/architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md
 
+use ph2d_board_edit::Tool;
+use ph2d_board_model::ElementId;
 use ph2d_board_render::{PlayerInput, VideoCommand};
 use ph2d_host::{Modifiers, PointerButton};
 
@@ -51,25 +55,45 @@ pub fn fullscreen(hero: &HeroScreen) -> bool {
     hero.documents.live.render_cache.videos.fullscreen && hero.documents.active().is_some()
 }
 
-/// O carregar no quadro. `true` = era do vídeo (activá-lo, ou o tocador activo).
+/// ⭐ W20 — um carregar num vídeo à espera do largar (o dono: «segurar e arrastar move, apenas clicar dá
+/// play/pause»). O carregar segue para o editor (seleccionar, e o arrasto move o vídeo); o largar sem
+/// arrasto é o clique. O oráculo também decide no largar (`sonda_w20.mjs` A2).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Pending {
+    id: ElementId,
+    /// Onde carregou (ecrã).
+    at: [f64; 2],
+    /// Dentro do tocador vivo do vídeo activo: o ponto em píxeis do tocador (o clique vai para ele). `None`
+    /// = o clique activa o vídeo.
+    player: Option<[f64; 2]>,
+    /// Passou do limiar de arrasto da casa: o gesto foi do editor.
+    dragged: bool,
+}
+
+/// O carregar no quadro. `true` = era do vídeo (só no nosso ecrã inteiro, onde o tocador toma tudo). Os
+/// pans (o botão do meio — também o dos dois dedos —, o Espaço, a mão) nunca são do vídeo; com a ferramenta
+/// de seleccionar, o carregar num vídeo fica à espera do largar ([`Pending`]); com outra, a ferramenta faz
+/// o seu por cima dele. Carregar fora do vídeo activo desactiva-o — tira-lhe o rato, não a imagem (W20).
 pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButton) -> bool {
     let p = [f64::from(x), f64::from(y)];
+    let space = hero.documents.live.space;
     let Some((board, live)) = hero.documents.active_parts() else {
         return false;
     };
+    live.space_tap = false;
+    live.video_click = None;
+    let tool = live.editor.as_ref().map(|e| e.tool);
     let vids = &mut live.render_cache.videos;
-    if let Some(id) = vids.active {
+    let player_at = |vids: &ph2d_board_render::Videos, id: ElementId| {
         let live_now = vids.on_screen.get(&id).is_some_and(|pl| pl.live);
-        let inside = board
-            .doc
-            .get(id)
-            .and_then(|el| vids.player_point(id, el, p))
-            .filter(|_| live_now);
-        // No ecrã inteiro nada chega ao quadro por baixo.
-        if vids.fullscreen && inside.is_none() {
-            return true;
-        }
-        if let Some([px, py]) = inside {
+        let el = board.doc.get(id)?;
+        vids.player_point(id, el, p).filter(|_| live_now)
+    };
+    if vids.fullscreen {
+        // No ecrã inteiro nada chega ao quadro por baixo; dentro do vídeo, o carregar é do tocador.
+        if let Some(id) = vids.active
+            && let Some([px, py]) = player_at(vids, id)
+        {
             vids.inbox.push(PlayerInput::Down {
                 x: px,
                 y: py,
@@ -77,11 +101,41 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
                 clicks: 1,
             });
             live.video_press = true;
-            return true;
         }
-        // Fora (ou o tocador não está vivo): desactiva; o clique segue para o quadro.
-        vids.active = None;
-        vids.frame = None;
+        return true;
+    }
+    if b == PointerButton::Middle || space || tool == Some(Tool::Hand) {
+        return false;
+    }
+    let select = matches!(tool, None | Some(Tool::Select));
+    if let Some(id) = vids.active {
+        match player_at(vids, id) {
+            Some(pt) if select && b == PointerButton::Primary => {
+                live.video_click = Some(Pending {
+                    id,
+                    at: p,
+                    player: Some(pt),
+                    dragged: false,
+                });
+                return false;
+            }
+            Some(_) if !select => return false,
+            // O botão direito é do tocador no carregar (o menu dele).
+            Some([px, py]) => {
+                vids.inbox.push(PlayerInput::Down {
+                    x: px,
+                    y: py,
+                    button: button(b),
+                    clicks: 1,
+                });
+                live.video_press = true;
+                return true;
+            }
+            None => vids.active = None,
+        }
+    }
+    if !select || b != PointerButton::Primary {
+        return false;
     }
     let selected = live
         .editor
@@ -95,51 +149,89 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
         let zc = board.doc.get(*c).map(|e| e.z.clone());
         zc.cmp(&za)
     });
-    for id in ids {
-        let Some(el) = board.doc.get(id) else {
-            continue;
-        };
-        let again =
-            selected.len() == 1 && selected.contains(&id) && vids.player_point(id, el, p).is_some();
-        if b == PointerButton::Primary && (vids.on_play(id, el, p) || again) {
-            vids.active = Some(id);
-            vids.frame = None;
-            let s = vids.on_screen[&id].screen;
-            let aabb = el.aabb();
-            if let Some(ed) = live.editor.as_mut() {
-                ed.select(&board.doc, [id]);
-            }
-            // As regras do YouTube: tapado ou rodado não toca — diz-se porquê; com menos de 200×200 px à
-            // vista, a vista vai até ele (o quadro enquadra-o inteiro).
-            if s.covered {
-                live.notice = Some(("board.video.covered", std::time::Instant::now()));
-            } else if s.angle != 0.0 {
-                live.notice = Some(("board.video.rotated", std::time::Instant::now()));
-            } else if s.visible[0].min(s.visible[1]) < ph2d_board_embed::MIN_LIVE_SIDE {
-                let [x0, y0, x1, y1] = aabb;
-                let pad = (x1 - x0).max(y1 - y0) * FRAME_PAD;
-                super::board_nav::show_box(
-                    hero,
-                    false,
-                    false,
-                    [x0 - pad, y0 - pad, x1 + pad, y1 + pad],
-                );
-            }
-            return true;
-        }
-    }
+    let hit = ids.into_iter().find(|&id| {
+        board.doc.get(id).is_some_and(|el| {
+            let again = selected.len() == 1
+                && selected.contains(&id)
+                && vids.player_point(id, el, p).is_some();
+            vids.on_play(id, el, p) || again
+        })
+    });
+    live.video_click = hit.map(|id| Pending {
+        id,
+        at: p,
+        player: None,
+        dragged: false,
+    });
     false
+}
+
+/// O clique (sem arrasto) num vídeo: activo e vivo, vai ao tocador; senão activa-o — e o clique num vídeo
+/// que o tocador já tem é tocar/pausar (o clique é sempre play/pause, W20).
+fn click(hero: &mut HeroScreen, c: Pending) {
+    let Some((board, live)) = hero.documents.active_parts() else {
+        return;
+    };
+    let Some(el) = board.doc.get(c.id) else {
+        return;
+    };
+    let vids = &mut live.render_cache.videos;
+    if let Some([x, y]) = c.player {
+        if vids.active == Some(c.id) {
+            vids.inbox.push(PlayerInput::Down {
+                x,
+                y,
+                button: 0,
+                clicks: 1,
+            });
+            vids.inbox.push(PlayerInput::Up {
+                x,
+                y,
+                button: 0,
+                clicks: 1,
+            });
+        }
+        return;
+    }
+    let Some(pl) = vids.on_screen.get(&c.id).copied() else {
+        return;
+    };
+    if vids.player == Some(c.id) && pl.live {
+        vids.commands.push(VideoCommand::TogglePlay);
+    }
+    vids.activate(c.id);
+    let s = pl.screen;
+    let aabb = el.aabb();
+    if let Some(ed) = live.editor.as_mut() {
+        ed.select(&board.doc, [c.id]);
+    }
+    // As regras do YouTube: tapado ou rodado não toca — diz-se porquê; com o tocador abaixo de 200×200 px,
+    // a vista vai até ele (o quadro enquadra-o inteiro).
+    if s.covered {
+        live.notice = Some(("board.video.covered", std::time::Instant::now()));
+    } else if s.angle != 0.0 {
+        live.notice = Some(("board.video.rotated", std::time::Instant::now()));
+    } else if s.size[0].min(s.size[1]) < ph2d_board_embed::MIN_LIVE_SIDE {
+        let [x0, y0, x1, y1] = aabb;
+        let pad = (x1 - x0).max(y1 - y0) * FRAME_PAD;
+        super::board_nav::fit_now(hero, [x0 - pad, y0 - pad, x1 + pad, y1 + pad]);
+    }
 }
 
 /// A folga à volta de um vídeo que a vista vai buscar (fracção do lado maior dele).
 const FRAME_PAD: f64 = 0.1; // LITERAL-PX-OK: proporção da folga, não um píxel
 
 /// O mover: com o botão em baixo dentro do tocador, ou só a passar por cima dele. `true` = era do vídeo.
+/// Um carregar à espera ([`Pending`]) só mede o arrasto: o mover segue para o editor.
 pub(crate) fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     let p = [f64::from(x), f64::from(y)];
     let Some((board, live)) = hero.documents.active_parts() else {
         return false;
     };
+    if let Some(c) = live.video_click.as_mut() {
+        c.dragged |= (p[0] - c.at[0]).hypot(p[1] - c.at[1]) > super::board_view::metrics().drag;
+        return false;
+    }
     let vids = &mut live.render_cache.videos;
     let Some(id) = vids.active else { return false };
     let Some(el) = board.doc.get(id) else {
@@ -154,12 +246,19 @@ pub(crate) fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     }
 }
 
-/// O largar de um carregar que foi do tocador. `true` = era dele.
+/// O largar de um carregar que foi do tocador (`true` = era dele), ou de um à espera ([`Pending`]): sem
+/// arrasto é o clique; o largar segue para o editor (que fecha o gesto dele).
 pub(crate) fn pointer_up(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     let p = [f64::from(x), f64::from(y)];
     let Some((board, live)) = hero.documents.active_parts() else {
         return false;
     };
+    if let Some(c) = live.video_click.take() {
+        if !c.dragged {
+            click(hero, c);
+        }
+        return false;
+    }
     if !std::mem::take(&mut live.video_press) {
         return false;
     }
@@ -191,12 +290,28 @@ pub(crate) fn key(hero: &mut HeroScreen, k: BoardKey, mods: Modifiers, pressed: 
     let Some((_, live)) = hero.documents.active_parts() else {
         return false;
     };
-    let vids = &mut live.render_cache.videos;
-    let Some(id) = vids.active else { return false };
-    let full = vids.fullscreen;
+    let Some(id) = live.render_cache.videos.active else {
+        return false;
+    };
+    let full = live.render_cache.videos.fullscreen;
     if mods.ctrl || mods.meta || mods.alt {
         return full;
     }
+    // W20 — no quadro o Espaço é também o pan («Pan pausa o vídeo»): tocar/pausar só no LARGAR de um toque
+    // sem nenhum carregar do rato pelo meio (`pointer_down` desarma-o); a tecla segue para o quadro.
+    if k == BoardKey::Space && !full {
+        if pressed {
+            live.space_tap |= !live.space;
+        } else if std::mem::take(&mut live.space_tap) {
+            let vids = &mut live.render_cache.videos;
+            let live_now = vids.on_screen.get(&id).is_some_and(|pl| pl.live);
+            if live_now && vids.status.is_some() {
+                vids.commands.push(VideoCommand::TogglePlay);
+            }
+        }
+        return false;
+    }
+    let vids = &mut live.render_cache.videos;
     if full && k == BoardKey::Escape {
         if pressed {
             vids.fullscreen = false;

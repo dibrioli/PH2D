@@ -106,7 +106,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "1. Click the red play: the video plays and our controls show UNDER it (YouTube lets nothing cover it)"
         }
         "board.smoke.w19.l2" => {
-            "2. Zoom with the wheel: the video keeps playing while 200 x 200 of it is in view"
+            "2. Zoom with the wheel: the video keeps playing while any part of it is in view"
         }
         "board.smoke.w19.l3" => {
             "3. Click the channel name inside the video: it opens in your browser, the video keeps playing"
@@ -117,6 +117,26 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.w19.l5" => {
             "5. Space or K plays/pauses, arrows jump, M mutes. Present: click the video on the slide"
         }
+        "board.smoke.w20.board" => "Move and dress the video",
+        "board.smoke.w20.title" => "Pan, drag and dress a YouTube video",
+        "board.smoke.w20.l1" => {
+            "1. Click the video: it plays. Click it again: it pauses. A click is always play or pause"
+        }
+        "board.smoke.w20.l2" => {
+            "2. Hold and drag the video: it moves, stopped or playing. Only a click without moving plays"
+        }
+        "board.smoke.w20.l3" => {
+            "3. While it plays, move the view: Space and drag, the middle button, the hand or two fingers. It keeps playing"
+        }
+        "board.smoke.w20.l4" => {
+            "4. Click away from it: it keeps playing. Move the view until it is all out of sight: it pauses; bring it back: it plays"
+        }
+        "board.smoke.w20.l5" => {
+            "5. Select the video: the style bar has the border, its colour, width and dashes, the fill, the corners and opacity"
+        }
+        "board.smoke.w20.l6" => {
+            "6. The border goes AROUND the picture, never over it (YouTube's rule); the fill only shows behind"
+        }
         "board.smoke.w18.board" => "Video and picture fixes",
         "board.smoke.w18.title" => "A YouTube video on the board, and the last picture fixes",
         "board.smoke.w18.youtube" => "YouTube",
@@ -124,7 +144,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.w18.svg" => "SVG text",
         "board.smoke.w18.cut" => "Cut picture",
         "board.smoke.w18.l1" => {
-            "1. Click the red play: the YouTube video plays right here, with sound. Click outside it to stop."
+            "1. Click the red play: the YouTube video plays right here, with sound. Click it again to pause."
         }
         "board.smoke.w18.l2" => {
             "2. Put a note over the video, or rotate it: it pauses and shows the play again (YouTube's rule)."

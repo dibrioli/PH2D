@@ -191,12 +191,19 @@ pub struct OnScreen {
 }
 
 /// ⭐ O tocador pode estar VIVO no canvas (senão, a miniatura): as regras do YouTube para o tocador
-/// embutido — nada à frente de nenhuma parte dele, a aparência dele não se modifica (sem rodar), e pelo
-/// menos [`MIN_LIVE_SIDE`] × [`MIN_LIVE_SIDE`] VISÍVEIS. Meio fora da vista não viola nada (W19: exigir o
-/// vídeo inteiro pausava-o a cada zoom).
+/// embutido — nada à frente de nenhuma parte dele, a aparência dele não se modifica (sem rodar), o TOCADOR
+/// com pelo menos [`MIN_LIVE_SIDE`] × [`MIN_LIVE_SIDE`] — e algum pedaço dele à vista. W20 (o dono: «só
+/// pausar fora da área visível»): o mínimo é do tamanho do tocador, não do pedaço à vista — um embed numa
+/// página que rola fica meio fora e toca (o oráculo, `sonda_w20.mjs` P_fora_da_vista: toca com 150 px e
+/// todo fora).
 #[must_use]
 pub fn live_allowed(s: OnScreen) -> bool {
-    !s.covered && s.angle == 0.0 && s.visible[0] >= MIN_LIVE_SIDE && s.visible[1] >= MIN_LIVE_SIDE
+    !s.covered
+        && s.angle == 0.0
+        && s.size[0] >= MIN_LIVE_SIDE
+        && s.size[1] >= MIN_LIVE_SIDE
+        && s.visible[0] > 0.0
+        && s.visible[1] > 0.0
 }
 
 #[cfg(test)]

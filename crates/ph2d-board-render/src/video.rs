@@ -1,6 +1,6 @@
 //! W18 ([ADR-0185]) — **desenhar um VÍDEO do quadro**: o quadro do tocador (o navegador da pessoa,
-//! projectado) quando ele está activo e as regras do YouTube o deixam vivo ([`ph2d_board_embed::live_allowed`]:
-//! descoberto, sem rodar, ≥ 200×200 px à vista); senão o último quadro que se viu, ou a miniatura
+//! projectado) quando o tocador o tem e as regras do YouTube o deixam vivo ([`ph2d_board_embed::live_allowed`]:
+//! descoberto, sem rodar, tocador ≥ 200×200 px, algum pedaço à vista); senão o último quadro que se viu, ou a miniatura
 //! (cortada a encher a caixa), ou o lugar vazio — sempre com o símbolo de play quando não está vivo.
 //! Quem toca, busca a miniatura e encaminha o rato é o app (`ph2d-app-board`); aqui só se desenha e se
 //! diz ONDE cada vídeo ficou ([`Videos::on_screen`]).
@@ -11,11 +11,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Mutex, OnceLock};
 
 use ph2d_board_embed::{OnScreen, live_allowed};
-use ph2d_board_geom::to_world;
+use ph2d_board_geom::{corner_radius, to_world};
 use ph2d_board_model::{BoardDoc, Element, ElementId, Embed, Video};
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{
-    Affine, Brush, Circle, ImageQuality, Point, Shape as _, StableImage, VectorScene, VelloBlend,
+    Affine, Brush, Circle, ImageQuality, Point, Rect, RoundedRect, Shape as _, StableImage,
+    VectorScene, VelloBlend,
 };
 
 use crate::{RenderCache, token};
@@ -112,8 +113,11 @@ pub struct Placement {
 /// editor lhe manda e onde cada vídeo ficou.
 #[derive(Default)]
 pub struct Videos {
-    /// O vídeo ACTIVADO (um tocador vivo de cada vez).
+    /// O vídeo ACTIVADO: o rato dentro dele e as teclas são do tocador.
     pub active: Option<ElementId>,
+    /// O vídeo que o tocador tem (um de cada vez). W20: fica depois de desactivado e continua a tocar
+    /// enquanto as regras o deixam vivo — desactivar tira o rato, não a imagem (o oráculo).
+    pub player: Option<ElementId>,
     /// O quadro do tocador mais novo (o app põe-no).
     pub frame: Option<(StableImage, [u32; 2])>,
     /// O que o editor mandou ao tocador (o app esvazia).
@@ -135,6 +139,16 @@ pub struct Videos {
 }
 
 impl Videos {
+    /// Activa `id`: o tocador passa a ter este vídeo (o quadro do anterior esquece-se) e o rato e as teclas
+    /// passam a ser dele.
+    pub fn activate(&mut self, id: ElementId) {
+        if self.player != Some(id) {
+            self.frame = None;
+        }
+        self.active = Some(id);
+        self.player = Some(id);
+    }
+
     /// O ponto de ecrã `p` em píxeis do tocador de `id` (`None` = fora dele, ou não está à vista).
     #[must_use]
     pub fn player_point(&self, id: ElementId, el: &Element, p: [f64; 2]) -> Option<[f64; 2]> {
@@ -182,7 +196,33 @@ fn covered(doc: &BoardDoc, el: &Element) -> bool {
     })
 }
 
-/// Pinta o vídeo `e` de `el` (`v` = mundo → ecrã; `area` = a vista).
+/// ⭐ W20 — a caixa e o TOCADOR dentro dela: sem borda são a mesma; com borda o tocador recua para dentro
+/// dela pelo alcance da moldura (o Excalidraw recua o iframe pela largura do traço, `saidas/w20` E2) — o
+/// traço, que é centrado no contorno, nunca fica por cima do vídeo (as regras do YouTube). Devolve o
+/// recuo (unidades da caixa) e o afim do local do tocador, normalizado a `0..el.w × 0..el.h`, à caixa.
+#[must_use]
+pub fn player_in_box(el: &Element, e: &Embed) -> (f64, Affine) {
+    let st = &e.style;
+    let framed = st.stroke.is_some() && st.stroke_width > 0.0;
+    let inset = if framed {
+        crate::image_frame::reach(el, st)
+    } else {
+        0.0
+    };
+    let (w, h) = (el.w.max(f64::EPSILON), el.h.max(f64::EPSILON));
+    let k = [
+        (el.w - 2.0 * inset).max(0.0) / w,
+        (el.h - 2.0 * inset).max(0.0) / h,
+    ];
+    (
+        inset,
+        Affine::translate((inset, inset)) * Affine::scale_non_uniform(k[0], k[1]),
+    )
+}
+
+/// Pinta o vídeo `e` de `el` (`v` = mundo → ecrã; `area` = a vista). W20: com o estilo de um rectângulo —
+/// o fundo POR TRÁS do tocador (nunca o tapa), o tocador recuado ([`player_in_box`]) e a moldura das
+/// formas no contorno; a opacidade é do conjunto.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint(
     scene: &mut VectorScene,
@@ -193,8 +233,11 @@ pub(crate) fn paint(
     v: Affine,
     area: [f64; 4],
     theme: Theme,
+    board: u64,
 ) {
-    let t = v * to_world(el);
+    let tb = v * to_world(el);
+    let (inset, inner) = player_in_box(el, e);
+    let t = tb * inner;
     let corners =
         [[0.0, 0.0], [el.w, 0.0], [0.0, el.h], [el.w, el.h]].map(|[x, y]| t * Point::new(x, y));
     // A parte à vista: a caixa de ecrã dos cantos cortada pela vista (sem rodar é o retângulo exacto; rodado
@@ -219,7 +262,7 @@ pub(crate) fn paint(
         visible: [span(|c| c.x, x, x + w), span(|c| c.y, y, y + h)],
     };
     let on_screen = cache.export.is_none() || cache.videos.presenting;
-    let active = on_screen && cache.videos.active == Some(el.id);
+    let active = on_screen && cache.videos.player == Some(el.id);
     let live = active && live_allowed(screen);
     if on_screen {
         cache.videos.on_screen.insert(
@@ -232,10 +275,32 @@ pub(crate) fn paint(
         );
         cache.videos.videos.insert(el.id, e.video.clone());
     }
-    let alpha = f32::from(e.style.opacity.min(100)) / 100.0;
-    let shape = crate::image::box_path(el, e.style.round);
-    scene.push_layer_shape(VelloBlend::default(), alpha, t, &shape);
-    scene.fill_path(&shape, &Brush::Solid(token(ColorToken::Bg3, theme)), t);
+    let st = &e.style;
+    let alpha = f32::from(st.opacity.min(100)) / 100.0;
+    if alpha < 1.0 {
+        let [x0, y0, x1, y1] = el.aabb();
+        let pad = crate::image_frame::reach(el, st);
+        let p0 = v * Point::new(x0 - pad, y0 - pad);
+        let p1 = v * Point::new(x1 + pad, y1 + pad);
+        scene.push_object_layer(&Rect::from_points(p0, p1), VelloBlend::default(), alpha);
+    }
+    let outer = crate::image::box_path(el, st.round);
+    scene.push_layer_shape(VelloBlend::default(), 1.0, tb, &outer);
+    let bg = st
+        .fill
+        .map_or_else(|| token(ColorToken::Bg3, theme), crate::doc_color);
+    scene.fill_path(&outer, &Brush::Solid(bg), tb);
+    // O tocador recortado no SEU rectângulo (os cantos concêntricos aos da caixa: o traço, metade para
+    // dentro, fica a ≥ meio traço dele).
+    if inset > 0.0 {
+        let r = if st.round {
+            corner_radius(el.w.min(el.h))
+        } else {
+            0.0
+        };
+        let inner_box = RoundedRect::new(inset, inset, el.w - inset, el.h - inset, r).to_path(0.1);
+        scene.push_layer_shape(VelloBlend::default(), 1.0, tb, &inner_box);
+    }
     // O quadro do tocador (vivo, ou o último que se viu ao deixar de o estar); senão a miniatura.
     let frame = cache.videos.frame.clone().filter(|_| active);
     let key = video_key(&e.video);
@@ -248,9 +313,16 @@ pub(crate) fn paint(
             cache.videos.wanted.insert(key);
         }
     }
+    if inset > 0.0 {
+        scene.pop_layer();
+    }
     scene.pop_layer();
     if !live {
         play_mark(scene, el, t, theme);
+    }
+    crate::image_frame::paint(scene, cache, el, st, tb, board);
+    if alpha < 1.0 {
+        scene.pop_layer();
     }
 }
 

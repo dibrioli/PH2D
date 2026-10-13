@@ -167,6 +167,8 @@ pub enum Selected {
     Mind,
     /// Só imagens (W14).
     Images,
+    /// Só vídeos (W20).
+    Videos,
 }
 
 /// Os atalhos da barra curta, na ordem em que se pintam (a Nota logo a seguir à mão: é o coração
@@ -210,6 +212,7 @@ pub fn items() -> Vec<Item> {
         Selected::Frames,
         Selected::Mind,
         Selected::Images,
+        Selected::Videos,
     ]
     .into_iter()
     .flat_map(style_groups)
@@ -314,6 +317,17 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             opacity,
             vec![Item::Gray],
             vec![Item::Flip(0), Item::Flip(1), Item::Crop],
+        ],
+        // W20 (o dono: «as opções de decoração como um retângulo») — os grupos do rectângulo que o
+        // Excalidraw dá a um `embeddable` (`sonda_w20.mjs` E1: Background, Stroke, width, style, Edges,
+        // Opacity). O fundo fica por trás do tocador e a borda à volta dele (`ph2d-board-render::video`).
+        Selected::Videos => vec![
+            fill,
+            stroke,
+            width,
+            dash,
+            vec![Item::Round(false), Item::Round(true)],
+            opacity,
         ],
     };
     groups.extend(org);

@@ -623,7 +623,7 @@ pub(crate) fn paint(
     let group = framed && alpha < 1.0;
     if group {
         let [x0, y0, x1, y1] = el.aabb();
-        let pad = crate::image_frame::reach(el, img);
+        let pad = crate::image_frame::reach(el, &img.style);
         let p0 = v * Point::new(x0 - pad, y0 - pad);
         let p1 = v * Point::new(x1 + pad, y1 + pad);
         scene.push_object_layer(&Rect::from_points(p0, p1), VelloBlend::default(), alpha);
@@ -676,7 +676,7 @@ pub(crate) fn paint(
         }
     }
     if framed {
-        crate::image_frame::paint(scene, cache, el, img, t, board);
+        crate::image_frame::paint(scene, cache, el, &img.style, t, board);
     }
     if group {
         scene.pop_layer();

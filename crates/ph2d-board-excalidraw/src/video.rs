@@ -1,7 +1,8 @@
 //! W18 (ADR-0185) — **o vídeo de ida e volta**: o `embeddable` do Excalidraw com um `link` do YouTube
 //! (o esquema medido no oráculo, `saidas/w18/w18_offline_Z04_gravado.excalidraw`: `type`, `link`,
 //! `roundness: {type: 3}`, contorno e fundo transparentes). Um `embeddable` que não é um vídeo do YouTube
-//! (outro site) continua a saltar com o aviso.
+//! (outro site) continua a saltar com o aviso. W20: a decoração (borda, fundo, traço, opacidade, cantos)
+//! viaja como a de um rectângulo, nos dois sentidos.
 
 use ph2d_board_model::{Element, ElementId, Embed, FracKey, Style};
 use serde_json::{Map, Value, json};
@@ -13,8 +14,12 @@ use crate::style::{num, style_of};
 pub(crate) fn foreign(v: &Value, id: ElementId, z: FracKey) -> Option<Element> {
     let link = v["link"].as_str()?;
     let video = ph2d_board_embed::youtube(link)?;
+    // W20: a borda e o fundo são os do rectângulo (o oráculo grava-os, `saidas/w20/w20_E2_gravado`); os
+    // de nascença lá são `transparent` — sem borda e sem fundo, como aqui. Sem a chave, também sem.
     let mut style: Style = style_of(v);
-    (style.fill, style.stroke) = (None, None);
+    if v["strokeColor"].as_str().is_none() {
+        style.stroke = None;
+    }
     style.round = !v["roundness"].is_null();
     let bx = [
         num(v, "x").unwrap_or(0.0),

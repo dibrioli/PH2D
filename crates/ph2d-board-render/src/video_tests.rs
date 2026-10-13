@@ -126,7 +126,7 @@ fn the_player_is_live_only_when_uncovered() {
     for (note, live) in [(false, true), (true, false)] {
         let b = board("AAAAAAAAAA2", note);
         let mut c = RenderCache::default();
-        c.videos.active = Some(vid_of(&b));
+        c.videos.activate(vid_of(&b));
         c.videos.frame = Some((flat([1, 2, 3, 255], 560, 315), [560, 315]));
         let o = ops(&b, &mut c);
         let p = c.videos.on_screen[&vid_of(&b)];
@@ -183,7 +183,7 @@ fn frame_rect(o: &[DrawOp], color: [u8; 4]) -> [f64; 4] {
 fn a_frame_of_another_shape_draws_with_bands_never_stretched() {
     let b = board("AAAAAAAAAA4", false);
     let mut c = RenderCache::default();
-    c.videos.active = Some(vid_of(&b));
+    c.videos.activate(vid_of(&b));
     c.videos.frame = Some((flat([4, 5, 6, 255], 420, 315), [420, 315]));
     let o = ops(&b, &mut c);
     let box_ = c.videos.on_screen[&vid_of(&b)].to_screen * ph2d_vector::Point::new(0.0, 0.0);
@@ -210,14 +210,78 @@ fn a_frame_of_another_shape_draws_with_bands_never_stretched() {
     );
 }
 
-/// ⭐⭐ W19 (smoke do dono, defeito 2): com o zoom, o vídeo MEIO FORA da vista continua vivo enquanto
-/// houver ≥ 200×200 px dele à vista (a regra do YouTube), e a parte visível é a medida.
+/// ⭐⭐ W20 (o dono: «a janela de vídeo deve ter as opções de decoração como um retângulo») — com borda e
+/// fundo: o fundo pinta-se ANTES do quadro do tocador (por trás), a borda DEPOIS e no contorno da caixa, e
+/// o tocador recua pela borda — nenhum píxel do traço (metade dele para dentro do contorno) cai no quadro
+/// do tocador (as regras do YouTube); o tocador no ecrã tem o tamanho do rectângulo recuado. O oráculo
+/// (`sonda_w20.mjs` E2): o iframe recua pela largura do traço.
+#[test]
+fn a_framed_video_keeps_its_border_and_fill_around_the_player_never_on_it() {
+    let mut b = board("AAAAAAAAAA6", false);
+    let id = vid_of(&b);
+    let (red, yellow) = (Rgba([224, 49, 49, 255]), Rgba([255, 236, 153, 255]));
+    let mut el = b.doc.get(id).unwrap().clone();
+    let st = el.style_mut();
+    (st.stroke, st.stroke_width, st.fill) = (Some(red), 4.0, Some(yellow));
+    st.dash = ph2d_board_model::Dash::Dashed;
+    let _ = BoardOp::Put(el).apply(&mut b.doc);
+    let mut c = RenderCache::default();
+    c.videos.activate(id);
+    c.videos.frame = Some((flat([7, 7, 7, 255], 560, 315), [560, 315]));
+    let o = ops(&b, &mut c);
+    let at = |want: &dyn Fn(&DrawOp) -> bool, what: &str| {
+        o.iter()
+            .position(want)
+            .unwrap_or_else(|| panic!("{what} não se desenhou"))
+    };
+    let fill = at(
+        &|d| matches!(d, DrawOp::Fill { brush: Brush::Solid(k), .. } if *k == crate::doc_color(yellow)),
+        "o fundo",
+    );
+    let frame = at(
+        &|d| matches!(d, DrawOp::Image(i) if i.image.rgba()[..4] == [7, 7, 7, 255]),
+        "o quadro do tocador",
+    );
+    let border = at(&|d| matches!(d, DrawOp::Stroke { .. }), "a borda");
+    assert!(
+        fill < frame && frame < border,
+        "a ordem: fundo {fill}, tocador {frame}, borda {border}"
+    );
+    // A caixa no ecrã: zoom 1, o meio dela no meio da vista de 1280×800.
+    let (x0, y0) = (640.0 - 280.0, 400.0 - 157.5);
+    let [x, y, w, h] = frame_rect(&o, [7, 7, 7, 255]);
+    let eps = 1e-6;
+    assert!(
+        x >= x0 + 4.0 - eps
+            && y >= y0 + 4.0 - eps
+            && x + w <= x0 + 556.0 + eps
+            && y + h <= y0 + 311.0 + eps,
+        "o quadro do tocador {x},{y} {w}×{h} não recuou pela borda de 4 (a caixa em {x0},{y0})"
+    );
+    let p = c.videos.on_screen[&id];
+    assert!(
+        (p.screen.size[0] - 552.0).abs() < eps && (p.screen.size[1] - 307.0).abs() < eps,
+        "o tocador é o rectângulo recuado: {:?}",
+        p.screen.size
+    );
+    assert!(p.live, "decorado continua vivo");
+    let DrawOp::Stroke { style, .. } = &o[border] else {
+        unreachable!()
+    };
+    assert!(
+        (style.width - 4.0).abs() < eps && !style.dash_pattern.is_empty(),
+        "{style:?}"
+    );
+}
+
+/// ⭐⭐ W19 (smoke do dono, defeito 2): com o zoom, o vídeo MEIO FORA da vista continua vivo (W20: até
+/// sair todo), e a parte visível é a medida.
 #[test]
 fn a_video_half_out_of_view_stays_live() {
     let mut b = board("AAAAAAAAAA5", false);
     let mut c = RenderCache::default();
     let id = vid_of(&b);
-    c.videos.active = Some(id);
+    c.videos.activate(id);
     // O meio do vídeo no canto de cima à esquerda da vista de 1280×800, ao zoom 2: só um quarto à vista.
     b.camera.zoom = 2.0;
     b.camera.center_x = 280.0 + 640.0 / 2.0;

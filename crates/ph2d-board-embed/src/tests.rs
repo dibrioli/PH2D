@@ -116,8 +116,8 @@ fn natural_size_and_canonical_link_round_trip() {
     assert_eq!(youtube(&canonical_link(&s)), Some(s));
 }
 
-/// ⭐ As regras do YouTube: vivo só descoberto, sem rodar e com ≥ 200×200 px VISÍVEIS (W19: meio fora da
-/// vista não pausa).
+/// ⭐ As regras do YouTube: vivo só descoberto, sem rodar, com o TOCADOR ≥ 200×200 px e algum pedaço à
+/// vista (W19: meio fora da vista não pausa; W20: só todo fora pausa).
 #[test]
 fn the_player_is_live_only_where_youtube_allows_it() {
     let ok = OnScreen {
@@ -144,13 +144,25 @@ fn the_player_is_live_only_where_youtube_allows_it() {
         "meio fora da vista com 700×200 à vista (o zoom do smoke do dono)"
     );
     assert!(
-        !live_allowed(OnScreen {
-            size: [1600.0, 900.0],
-            visible: [700.0, 199.9],
+        live_allowed(OnScreen {
+            visible: [150.0, 315.0],
             ..ok
         }),
-        "menos de 200 px à vista"
+        "W20: 150 px à vista (o oráculo toca; o dono: só pausa fora da vista)"
     );
+    assert!(
+        live_allowed(OnScreen {
+            visible: [1.0, 1.0],
+            ..ok
+        }),
+        "um pedaço à vista"
+    );
+    for visible in [[0.0, 315.0], [560.0, 0.0], [0.0, 0.0]] {
+        assert!(
+            !live_allowed(OnScreen { visible, ..ok }),
+            "todo fora da vista: {visible:?}"
+        );
+    }
     assert!(
         !live_allowed(OnScreen {
             size: [356.0, 199.9],

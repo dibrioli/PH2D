@@ -31,7 +31,8 @@ pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvag
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;
 pub use video::{
-    Placement, PlayerInput, PlayerStatus, Thumb, VideoCommand, Videos, set_thumbnail, video_key,
+    Placement, PlayerInput, PlayerStatus, Thumb, VideoCommand, Videos, player_in_box,
+    set_thumbnail, video_key,
 };
 
 pub use sketch::{HIGHLIGHTER_ALPHA, ink_outline};
@@ -360,7 +361,7 @@ pub fn paint(
             continue;
         }
         if let Some(e) = el.embed() {
-            video::paint(scene, cache, &board.doc, el, e, v, area, theme);
+            video::paint(scene, cache, &board.doc, el, e, v, area, theme, board.id.0);
             continue;
         }
         let Some(shape) = el.shape() else {

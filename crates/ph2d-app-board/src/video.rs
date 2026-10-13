@@ -2,8 +2,9 @@
 //! - as miniaturas que o desenho pediu buscam-se num fio cada (com prazo, e a cache em disco);
 //! - o vídeo ACTIVADO toca no navegador da pessoa ([`ph2d_board_video::Player`]): arranca, segue o tamanho
 //!   dele no ecrã, recebe o rato, e os quadros dele voltam para o desenho;
-//! - deixar de estar vivo (tapado, rodado, menos de 200×200 px à vista) ou desactivar PAUSA (as regras do
-//!   YouTube) e, de volta, retoma só se estava a tocar; o navegador fecha um minuto depois do último vídeo;
+//! - deixar de estar vivo (tapado, rodado, tocador abaixo de 200×200 px, todo fora da vista) PAUSA (as
+//!   regras do YouTube) e, de volta, retoma só se estava a tocar; W20: desactivar NÃO pausa (o tocador
+//!   continua com o vídeo, `Videos::player`); o navegador fecha um minuto depois de o vídeo sair da vista;
 //! - W19: os NOSSOS controles (`Videos::commands`) e o estado do tocador para eles (`Videos::status`); os
 //!   links que o tocador quis abrir (o canal, o título) vão para o navegador do sistema; o tamanho do
 //!   tocador só segue o do ecrã quando o zoom assenta ([`SETTLE`]);
@@ -17,7 +18,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use ph2d_board_model::{ElementId, Video};
-use ph2d_board_render::{PlayerInput, PlayerStatus, Thumb, VideoCommand, set_thumbnail, video_key};
+use ph2d_board_render::{
+    PlayerInput, PlayerStatus, Thumb, VideoCommand, Videos, set_thumbnail, video_key,
+};
 use ph2d_board_video::{Button, Mouse, Player, PlayerState};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_vector::StableImage;
@@ -208,27 +211,36 @@ fn settled(
     }
 }
 
+/// ⭐ W20 — o que o tocador segue: o vídeo que ele TEM, activo ou não (desactivar não pausa — o oráculo; o
+/// dono: «só deve pausar se o quadro estiver fora da área visível»), à vista neste desenho: o id, o vídeo,
+/// se as regras o deixam vivo e o tamanho no ecrã. `None` = fora da vista (ou nenhum): pausa.
+fn target(vids: &Videos) -> Option<(ElementId, Video, bool, [f64; 2])> {
+    let id = vids.player?;
+    let pl = vids.on_screen.get(&id)?;
+    Some((id, vids.videos.get(&id)?.clone(), pl.live, pl.screen.size))
+}
+
 fn player(hero: &mut HeroScreen, st: &mut State) {
     let now = Instant::now();
     let vids = hero.documents.videos_mut();
     let inbox = std::mem::take(&mut vids.inbox);
     let commands = std::mem::take(&mut vids.commands);
-    let target = vids.active.and_then(|id| {
-        let pl = vids.on_screen.get(&id)?;
-        Some((id, vids.videos.get(&id)?.clone(), pl.live, pl.screen.size))
-    });
-    // Desactivado (ou o vídeo saiu da vista): pausa, e o navegador fica um minuto.
+    if vids.active.is_none() {
+        vids.fullscreen = false;
+    }
+    let target = target(vids);
+    // O vídeo saiu da vista (ou do quadro): pausa, e o navegador fica um minuto; depois fecha e o vídeo
+    // volta a ser só o lugar com o play (de volta não arranca sozinho do início).
     let Some((id, video, live, size)) = target else {
         vids.status = None;
         if let Some(p) = st.playing.as_mut() {
             hold(p);
         }
-        if vids.active.is_none() {
-            vids.fullscreen = false;
-            let since = *st.idle_since.get_or_insert_with(Instant::now);
-            if since.elapsed() > LINGER {
-                st.playing = None;
-            }
+        let since = *st.idle_since.get_or_insert_with(Instant::now);
+        if since.elapsed() > LINGER {
+            st.playing = None;
+            vids.player = None;
+            vids.active = None;
         }
         return;
     };
@@ -260,6 +272,7 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
             let no = p.player.state() == PlayerState::NoBrowser;
             st.playing = None;
             vids.active = None;
+            vids.player = None;
             vids.frame = None;
             vids.status = None;
             vids.fullscreen = false;

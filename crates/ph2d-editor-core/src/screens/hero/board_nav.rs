@@ -190,6 +190,15 @@ fn fit_margin() -> f64 {
     f64::from(Spacing::Xl4.px())
 }
 
+/// W20 — enquadra a caixa `world` JÁ, no evento (como a roda), sem tocar nos painéis: o desenho deste
+/// quadro já a vê ([`show_box`] espera pelo fim do próximo desenho e fecha o minimapa e os Frames).
+pub(crate) fn fit_now(hero: &mut HeroScreen, world: [f64; 4]) {
+    let a = super::board_view::area_of(hero.last_canvas);
+    if let Some(board) = hero.documents.active_board_mut() {
+        board.camera.fit(a, world, fit_margin());
+    }
+}
+
 /// `Alt+1`: o quadro inteiro à vista.
 pub fn fit_all(board: &mut Board, area: [f64; 4]) {
     if let Some(e) = board.doc.extent() {

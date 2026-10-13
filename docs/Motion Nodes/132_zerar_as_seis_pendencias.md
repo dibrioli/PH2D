@@ -213,75 +213,39 @@ Lote D (P1 · P3 · P6), RTX 5060 Ti, `--release`, uma rodada back-to-back (`loa
 compilava a meio da P3). As variantes no MESMO processo, por interruptor em execução, blocos com a ordem rodada,
 o MÍNIMO.
 
-### P1 — o degrau de FORA: a causa é o custo POR PIXEL do borrão
+> **Cortado (13/10, `doc-split.py`, sha256):** a decomposição, a régua intercalada, a vala por lado e a `=138` no
+> app do P1 estão em [`archive/132_zerar_as_seis_pendencias/parte_1.md`](archive/132_zerar_as_seis_pendencias/parte_1.md).
+> O que vale delas: a causa é o custo POR PIXEL do borrão (H + V = 83 % da pilha, `0,24 ms/Mpx`); o borrão por
+> GRUPO é o único (Glow 4 096 discos `3,57 → 2,96 ms`, Drop Shadow `4,92 → 3,93`); a vala POR LADO (Drop Shadow
+> longa `6,53 → 3,38 ms`, 7 → 3 páginas); no app a `=138` fazia 11 páginas/11 ms porque cada forma pagava uma célula
+> a mais (a linha CALADA, §7 P4 «A linha calada»): 7 páginas, `fx_cells.pilha` ~6–7 ms, o resto (discos de 18 px,
+> Glow σ 9 ⇒ ~25 Mpx) é o custo real.
 
-**Decomposição** (`relogio_c10_decomposicao`, 4 096 discos de 12 px a 1600×972, ms de placa por quadro; o
-relógio por PASSE da pilha é novo — `fx.*`):
+### P5 — o aviso (13/10; `0735c811b7`, `17553abb83`, `7407808dd1`, `3cf4cc4c3a`, `f5ad2a9d85`)
 
-| pilha | A · L | célula · saída | pág. | Mpx | placa | pilha (H · V · resolve · ingest) | formas | volta | colagem |
-|---|---|---|---:|---:|---:|---|---:|---:|---:|
-| Inner Shadow (dentro) | 0 · 23 | 38 · 14 | 2 | 6,0 | 2,15 | 1,39 (0,64 · 0,55 · 0,07 · 0,07) | 0,30 | 0,06 | 0,08 |
-| Outer Glow σ 5,3 | 16 · 17 | 48 · 46 | 3 | 9,5 | 3,60 | 2,29 (1,03 · 0,87 · 0,16 · 0,11) | 0,54 | 0,19 | 0,14 |
-| Drop Shadow 6/6 (fora) | 16–22 · 23 | 60 · 52 | 4 | 14,8 | 4,88 | 3,45 (1,60 · 1,36 · 0,17 · 0,17) | 0,49 | 0,24 | 0,16 |
-| camada inteira (qualquer) | — | — | 1 | 1,56 | 0,37 | (0,17 · 0,14 · 0,02 · 0,02) | | | |
+Quebra até 7 linhas, UM orçamento (284 → 300 px, sem o 2.º desconto), `ttl = máx(3 s, palavras·60/238)` (Brysbaert
+2019); as barras de trabalho descem pelas LINHAS, não por balões. Censo por consumidor: **432 frases / 383 sítios,
+244 cortavam → 0**. A cura do aviso da corrente por-elemento nomeava `audio.bands` (o 1.º de 13 candidatos que
+aceitam a corrente pela CONTAGEM) com o nome cru: agora o `Attribute` pelo nome do menu. Cena `=141`
+(`PH2D_MOTION_AVISO_AUTO=1`), fotos antes/depois. Mutações: 10/10 + «desconto escondido na porta» (sobrevivia: o
+gate media-se na própria porta; agora medido no CARTÃO, 284 × 300) + «barras por balões» (sobrevivia: gate novo da
+pintura da coluna).
 
-A pilha é linear na área (`0,24 ms/Mpx`, as células e a camada inteira igual), a área já é ≈ Σ das saídas (Glow:
-`46²` de `48²`), a colagem é 4 % ⇒ hipótese 1: o custo por pixel, e ele é o BORRÃO (H + V = 83 % da pilha).
-
-**A cura:** o borrão por GRUPO (`ph2d-render/src/fx_stack_borrao_grupo.rs`) — 64 pixels de uma linha (coluna)
-carregam UMA vez os `64 + 2h` taps e os `2h + 1` pesos na memória do grupo; o de sempre fazia, por pixel,
-`2h + 1` leituras E `2h + 1` exponenciais. Os mesmos taps, pesos e ordem: o MESMO byte em 8 pilhas
-(`o_borrao_por_grupo_da_o_mesmo_byte`, `2cfacfe11f`), e `the_c10_variants_give_the_same_pixels` (com as pilhas de
-fora) igual ao byte.
-
-**Régua intercalada** (`relogio_c10_intercalado`, placa por quadro, o MÍNIMO de 7 rodadas; `load 9,1 → 7,9`):
-
-| discos | Inner Shadow: produto → grupo | Outer Glow | Drop Shadow (fora) |
-|---:|---:|---:|---:|
-| 256 | 0,38 → 0,36 | 0,54 → 0,50 | 0,61 → 0,55 |
-| 1 024 | 0,69 → 0,60 | 1,02 → 0,88 | 1,31 → 1,07 |
-| 2 048 | 1,08 → 0,90 | 1,95 → 1,71 | 2,47 → 2,01 |
-| 4 096 | 2,18 → 1,83 | 3,57 → 2,96 | 4,92 → 3,93 |
-| 8 192 | 3,98 → 3,28 | 6,81 → 5,65 | 9,46 → 7,70 |
-
-A camada inteira (1600×972): `0,37 → 0,28 ms`. **O borrão por grupo é o único** (`4609c19ec6`).
-
-| ⛔ Recusas MEDIDAS | porquê |
+| ⛔ Recusas MEDIDAS deste ciclo (13/10) | o número |
 |---|---|
-| o borrão por PIXEL (`blur_h_at` + `cs_op_v` de sempre) | perde nas 15 linhas da régua (o grupo tira até `19 %` a 8 192) e dá o mesmo byte |
-| colar/desenhar só a caixa da saída | a saída já é `92 %` da célula (Glow `46²`/`48²`); a colagem é `4 %` da placa |
-| o borrão na pirâmide abaixo de `MAX_HALF/3` | não construído: o borrão por grupo ganha com paridade AO BYTE; a pirâmide paga a caixa+tenda contra o oráculo Φ |
+| `corrige` em quatro matrizes de 9 / cadeia de `if`s (Ramos) | nuvem 2 048 um grupo `33,93` / `27,90` × `19,26 ms` (Escolha) |
+| borrão por PIXEL | perde nas 15 linhas da régua; o grupo tira até `19 %` a 8 192, mesmo byte |
+| vala simétrica | Drop Shadow longa `6,53` × `3,38 ms` (7 × 3 páginas); empata sem deslocamento |
+| ler o backdrop do mundo | cópia `+0,10–0,16 ms` a 1080p, `+0,30–0,33 ms` a 4K; a pousa com o modo custa o mesmo que `Normal` |
+| `Scene` no dispositivo, uma chamada por linha | `23,8 / 97,5 / 312 ms` × por média `2,0 / 2,4 / 4,9 ms` a 1k/4k/16k |
+| relógio livre na `=139` | 25 s depois de abrir a faixa está em `[22, 25] s`, fora da régua 0–6 s (a cena pára aos 5 s) |
+| tecto da fita a 1/16 por cache | 512 MiB a 8 GiB: `1 GiB` aos dois caches, numa memória unificada com a placa; `1/32` já dobra a história (2,5 → 5 min) |
 
-**A vala POR LADO** (fechada na mesma sessão, `plano::Vala`): `leitura` passa a ser `[l, t, r, b]`
-(`ph2d_render::stack_read_por_lado`: o pixel lê em volta de `p − off`, o lado para onde o deslocamento aponta
-paga-o, o oposto desconta-o) e a vala entre vizinhas em `x` é `max(A_r + L_r, A_l + L_l, A_l + A_r) + 1`
-(idem em `y`). Gates: `the_tight_trench_keeps_every_read_off_the_neighbour` (por lado, e as saídas disjuntas)
-e `the_c10_variants_give_the_same_pixels` com as pilhas de fora + a Drop Shadow LONGA `14/0` — tudo na faixa da
-referência, `0` texels da silhueta.
-
-| pilha (A · L por lado) | célula de um disco de 14 px | 4 096 discos: simétrica → por lado | 8 192 |
-|---|---|---:|---:|
-| Inner Shadow 6/6 (0 · 23/23/11/11) | 38×38 = 38×38 | 1,79 → 1,80 | 3,35 → 3,36 |
-| Outer Glow (16 · 17) — o controlo | 48×48 = 48×48 | 3,13 → 3,07 | 6,01 → 5,99 |
-| Drop Shadow 6/6 (16/16/22/22 · 23/23/11/11) | 60×60 → 54×54 | 4,18 → 3,35 (4 → 3 pág.) | 7,93 → 6,67 |
-| Drop Shadow longa 14/0 (16/16/30/16 · 31/17/3/17) | 76×76 → 62×48 | 6,53 → 3,38 (7 → 3 pág.) | 12,48 → 6,75 |
-
-(`relogio_c10_intercalado`, as variantes no mesmo processo, 7 rodadas com a ordem rodada, o MÍNIMO da placa em
-ms; `load 27,8 → 24,1`.) Ganha onde há deslocamento e empata onde não há ⇒ **a vala por lado é a lei**; a
-simétrica sai (não há variante: a `dupla` do W3b continua como a régua de referência dos gates).
-
-**A `=138` no PRODUTO** (app `--profile smoke`, 1600×944, `PH2D_FLUID_PROFILE=1`): a sonda dizia 3 páginas e o app
-fazia 10–11 (`fx_cells.pilha` 11 ms ×11). Mecanismo, medido no app: `caixas 8192 · vivas 8138` — cada disco pagava
-DUAS células, a dele e a da sprite CALADA que a placa põe por cada linha de forma (a cura é a do `001077631a`, a
-linha calada não é célula). Régua no caminho do produto (a variante trocada a cada 120 quadros no MESMO processo,
-15 janelas, o mínimo; `load 26 → 68`): placa `14,05 → 9,34 ms`, pilha `9,93 → 6,07 ms`, `10 → 7` páginas. O que
-SOBRA é o custo verdadeiro da cena: discos de ~18 px com o Glow da cena (raio `0,1` ⇒ σ `9,05` px: alcance 28,
-leitura 29, célula ~78 px) — 4 096 × ~6 kpx = 25 Mpx, `0,24 ms/Mpx`; fora do viewport só ~30 discos. ⇒ a sonda de
-12 px / σ 5,3 não era a cena. Gate `a_138_paga_as_paginas_dos_discos` (4 096 discos de 18 px + 4 096 caladas da
-placa, o Glow da cena): 7 páginas e 4 096 células = só os discos; o controlo sem a regra dá **11 páginas e 8 192
-células** (o número do app). ⚠️ E o `render.vello` de 15 ms não eram discos no Vello: o span abria ANTES da camada
-filtrada e somava o filtro inteiro (=137 sem filtro: `0,68 ms`); fechado só sobre o render, a `=138` mostra
-`render.vello 0,30 ms` · `fx_cells.pilha 6,14 ms (×7)` · `gpu-busy 9,7 ms`. O roteiro da `=138` diz estes números.
+**ABERTO (13/10):** na aba Keys o Motion não segue o relógio que o artista arrasta (desenho do módulo — a faixa só
+vive na Arrange); `Scene` na placa por UM pipeline que desenhe as duas médias na ordem do buffer (escrito, não
+construído); cadeia 16·4096 do `corrige` (mínimo pior, mediana melhor: não decidida); 5 sítios de aviso fora do
+censo (texto só em execução: `component_attach.rs:199`, `fase_physics_step.rs:113`, `fase_view_frame.rs:49`,
+`fase_sprite_pixel_smokes.rs:49/51`). Handoff: [ZERAR 132](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-13_ZERAR_132.md).
 
 ### P3 — o `corrige` em registos (`select`) ganha; `PECAS_PARA_UM_GRUPO` 1024 → 1536
 

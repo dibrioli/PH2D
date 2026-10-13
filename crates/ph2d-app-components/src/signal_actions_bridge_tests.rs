@@ -325,7 +325,12 @@ fn a_dica_do_argumento_diz_o_que_ele_e() {
         (SignalVerb::StartNavigation, ActionArgHint::ObjectName),
         (SignalVerb::PlayClip, ActionArgHint::ClipName),
     ] {
-        assert_eq!(dica_do_argumento(v), esperado, "{}", ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key()));
+        assert_eq!(
+            dica_do_argumento(v),
+            esperado,
+            "{}",
+            ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key())
+        );
     }
 }
 

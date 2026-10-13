@@ -54,7 +54,11 @@ fn every_verb_has_a_distinct_english_label() {
     let mut vistos = std::collections::BTreeSet::new();
     for v in SignalVerb::ALL {
         let palavra = ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key());
-        assert!(!palavra.is_empty(), "{}: um verbo sem rotulo", v.label_key());
+        assert!(
+            !palavra.is_empty(),
+            "{}: um verbo sem rotulo",
+            v.label_key()
+        );
         assert!(
             vistos.insert(palavra),
             "dois verbos com o rotulo '{palavra}'"

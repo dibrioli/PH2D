@@ -367,7 +367,11 @@ fn gradientes_conjugados(viz: &[[Viz; 4]], kh2: f64) -> Vec<[f64; 3]> {
         }
         // Começa no pré-condicionado (`b / diag`): a borda já está lá.
         let mut x: Vec<f64> = b.iter().zip(&diag).map(|(b, d)| b / d).collect();
-        let mut r: Vec<f64> = b.iter().enumerate().map(|(k, b)| b - linha(&x, k)).collect();
+        let mut r: Vec<f64> = b
+            .iter()
+            .enumerate()
+            .map(|(k, b)| b - linha(&x, k))
+            .collect();
         let mut z: Vec<f64> = r.iter().zip(&diag).map(|(r, d)| r / d).collect();
         let mut p = z.clone();
         let mut rz: f64 = r.iter().zip(&z).map(|(a, b)| a * b).sum();

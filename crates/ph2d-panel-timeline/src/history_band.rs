@@ -56,7 +56,7 @@ pub(crate) fn paint(
         fill_rounded_rect(
             ctx.scene,
             r,
-            Radius::Xs.px(),
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
             resolve(ColorToken::Success, theme),
         );
     }

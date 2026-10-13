@@ -57,14 +57,9 @@
 
 use ph2d_gpu::GpuContext;
 
-use crate::fx_stack_field::FIELD_WGSL;
-use crate::fx_stack_noise::{NOISE_WGSL, WARP_WGSL};
 pub use crate::fx_stack_piramide::SIGMA_ALCANCAVEL;
-use crate::fx_stack_piramide::{PIRAMIDE_WGSL, escreve_piramide};
+use crate::fx_stack_piramide::escreve_piramide;
 use crate::fx_stack_res::{Globals, Tex, dispatch, write_at};
-use crate::fx_stack_shader::{
-    FX_STACK_MID_WGSL, FX_STACK_OUT_WGSL, FX_STACK_WGSL, kind_consts_wgsl,
-};
 
 /// Meia-largura MÁXIMA do kernel (o laço do shader é limitado por ela). `96` cobre `sigma ≈ 32`
 /// px com suporte de 3σ. Acima disso o borrão desce na PIRÂMIDE ([`crate::fx_stack_piramide`],
@@ -150,44 +145,7 @@ pub struct FxStackPass {
     work: Option<[Tex; 4]>,
 }
 
-/// **Os dois módulos WGSL que a pilha compila** — porta ÚNICA, com dois consumidores: o
-/// [`FxStackPass::new`] (que os manda ao dispositivo) e o gate de naga (que os valida sem GPU).
-///
-/// ⚠️ **É porta única por um motivo que já mordeu este repositório:** um gate que montasse a sua
-/// própria concatenação ficaria VERDE sobre um produto que deixou de prefixar o bloco
-/// compartilhado — validar-se-ia a si mesmo. Aqui o gate valida exactamente a string que o
-/// dispositivo recebe.
-///
-/// ⚠️ **As leis de mistura vêm do MESMO arquivo que o compositor de camadas compila** — o
-/// `blend_modes.wgsl` foi extraído dele quando ganhou este segundo consumidor. *Como duas cores se
-/// combinam* é pergunta já respondida e pinada bit a bit contra o Rust; uma cópia aqui divergiria
-/// no único lugar onde ninguém lê um número: uma captura de tela.
-fn module_sources() -> [(&'static str, String); 2] {
-    let kinds = kind_consts_wgsl();
-    let blend = crate::layer_compositor::BLEND_MODES_WGSL;
-    // ⚠️ **O ajuste de cor vem do arquivo COMPARTILHADO**, o mesmo movimento das leis de
-    // mistura: a lei do Color Adjust É a do `AdjustmentKind::HueSaturationBrightness` do
-    // Painter, e uma cópia local seria a segunda resposta que este prefixo existe para não
-    // ter (há gate).
-    let adjust = crate::layer_compositor::COLOUR_ADJUST_WGSL;
-    let grupo = crate::fx_stack_borrao_grupo::borrao_grupo_wgsl();
-    [
-        (
-            "mid",
-            // ⚠️ O RUÍDO entra ANTES do fold (o `cs_op_warp` do `WARP_WGSL` chama o `fbm`) e o
-            // WARP depois dele (ele chama o `tap_img`). A ordem é a das dependências, não gosto.
-            format!(
-                "{blend}\n{adjust}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{FIELD_WGSL}{WARP_WGSL}{PIRAMIDE_WGSL}{grupo}"
-            ),
-        ),
-        (
-            "out",
-            // O módulo de SAÍDA escreve noutro formato de storage e não tem o `dst` que o warp
-            // usa — ele não recebe o passe, só o campo de que o resto do fold não depende.
-            format!("{blend}\n{adjust}\n{kinds}{FX_STACK_WGSL}{FX_STACK_OUT_WGSL}"),
-        ),
-    ]
-}
+use crate::fx_stack_modulos::module_sources;
 
 impl FxStackPass {
     /// Constrói os três pipelines. Barato — nenhuma textura até o 1º [`Self::run`].
@@ -563,14 +521,8 @@ impl FxStackPass {
         // volta a ler `src`**: `cur` nasce em `Some(0)` e nunca mais é `None`. É isso que garante
         // que a convenção linear não tem furo — não sobra um caminho que leia sRGB por engano.
         let bg_in = self.bind(gpu, &self.bgl_mid, &src_view, &src_view, &work[0].view);
-        dispatch(
-            &mut encoder,
-            (&self.pipeline_ingest, "fx.ingest"),
-            &bg_in,
-            0,
-            gx,
-            gy,
-        );
+        let p = (&self.pipeline_ingest, "fx.ingest");
+        dispatch(&mut encoder, p, &bg_in, 0, gx, gy);
         let mut cur: usize = 0;
         let mut slot = 1u32;
         for op in ops {
@@ -580,14 +532,8 @@ impl FxStackPass {
                 Plan::Point => {
                     // Pontual: lê a entrada e escreve o resultado — sem intermediário.
                     let bg = self.bind(gpu, &self.bgl_mid, input, input, &work[next].view);
-                    dispatch(
-                        &mut encoder,
-                        (&self.pipeline_point, "fx.ponto"),
-                        &bg,
-                        slot,
-                        gx,
-                        gy,
-                    );
+                    let p = (&self.pipeline_point, "fx.ponto");
+                    dispatch(&mut encoder, p, &bg, slot, gx, gy);
                     slot += 1;
                 }
                 Plan::Warp => {
@@ -599,14 +545,8 @@ impl FxStackPass {
                         _ => input,
                     };
                     let bg = self.bind(gpu, &self.bgl_mid, input, t1, &work[next].view);
-                    dispatch(
-                        &mut encoder,
-                        (&self.pipeline_warp, "fx.warp"),
-                        &bg,
-                        slot,
-                        gx,
-                        gy,
-                    );
+                    let p = (&self.pipeline_warp, "fx.warp");
+                    dispatch(&mut encoder, p, &bg, slot, gx, gy);
                     slot += 1;
                 }
                 Plan::Blur { niveis } if niveis > 0 => {
@@ -629,14 +569,8 @@ impl FxStackPass {
                     let mut field = 2usize;
                     if raster_seed {
                         let bg_seed = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
-                        dispatch(
-                            &mut encoder,
-                            (&self.pipeline_seed, "fx.semente"),
-                            &bg_seed,
-                            slot,
-                            gx,
-                            gy,
-                        );
+                        let p = (&self.pipeline_seed, "fx.semente");
+                        dispatch(&mut encoder, p, &bg_seed, slot, gx, gy);
                         slot += 1;
                     }
                     // Ping/pong 2 <-> 3: o salto `i` lê de onde o anterior escreveu.
@@ -644,14 +578,8 @@ impl FxStackPass {
                         let to = 5 - field; // 2 <-> 3
                         let bg =
                             self.bind(gpu, &self.bgl_mid, input, &work[field].view, &work[to].view);
-                        dispatch(
-                            &mut encoder,
-                            (&self.pipeline_jump, "fx.salto"),
-                            &bg,
-                            slot,
-                            gx,
-                            gy,
-                        );
+                        let p = (&self.pipeline_jump, "fx.salto");
+                        dispatch(&mut encoder, p, &bg, slot, gx, gy);
                         slot += 1;
                         field = to;
                     }
@@ -662,14 +590,8 @@ impl FxStackPass {
                         &work[field].view,
                         &work[next].view,
                     );
-                    dispatch(
-                        &mut encoder,
-                        (&self.pipeline_field, "fx.campo"),
-                        &bg,
-                        slot,
-                        gx,
-                        gy,
-                    );
+                    let p = (&self.pipeline_field, "fx.campo");
+                    dispatch(&mut encoder, p, &bg, slot, gx, gy);
                     slot += 1;
                 }
             }
@@ -677,14 +599,8 @@ impl FxStackPass {
         }
         let last = &work[cur].view;
         let bg_out = self.bind(gpu, &self.bgl_out, last, last, &dst_view);
-        dispatch(
-            &mut encoder,
-            (&self.pipeline_out, "fx.resolve"),
-            &bg_out,
-            slot,
-            gx,
-            gy,
-        );
+        let p = (&self.pipeline_out, "fx.resolve");
+        dispatch(&mut encoder, p, &bg_out, slot, gx, gy);
         gpu.queue.submit([encoder.finish()]);
     }
 

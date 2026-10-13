@@ -40,6 +40,7 @@ mod fx_stack_borrao_grupo;
 mod fx_stack_camada;
 /// O WGSL da pilha de FX (irmão do `fx_stack` pelo teto de LOC — o que o device executa).
 mod fx_stack_field;
+mod fx_stack_modulos;
 mod fx_stack_noise;
 mod fx_stack_op;
 mod fx_stack_piramide;

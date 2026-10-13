@@ -8,6 +8,7 @@
 //! vão deixava passar até a máquina do smoke.
 
 use super::*;
+use crate::fx_stack_shader::{FX_STACK_MID_WGSL, FX_STACK_OUT_WGSL, FX_STACK_WGSL};
 use ph2d_ecs::FxOp;
 
 /// **Os dois módulos da pilha PARSEIAM e VALIDAM.** Parse pega sintaxe; validação pega o resto (um

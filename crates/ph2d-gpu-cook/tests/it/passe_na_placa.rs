@@ -256,6 +256,72 @@ fn compara_por_passo(gpu: &ph2d_gpu::GpuContext, cook: &mut GpuCook, caminho: &s
     }
 }
 
+/// ⭐⭐ **A ORDEM DA SOMA dos contactos é a da CPU (índice crescente), AO BIT** (doc 132 §3).
+///
+/// A régua de paridade (`TOL`) não vê a ordem: trocá-la muda `|ΔP|` em ULPs, dentro dela (a mutação
+/// «fusão pela maior cabeça» sobrevivia). Esta fixtura faz a ordem mudar o resultado INTEIRO: a peça
+/// `0` (disco de raio `0,5` na origem) toca três discos MINÚSCULOS (penetração `2⁻²³`, empurrão
+/// `−2⁻²⁴` cada, índices `1..=3`, na mesma célula) e um GRANDE (raio `8` a `x = −0,5`, empurrão
+/// `+4`, índice `4`, na célula vizinha). Toda a aritmética é exacta (eixo `x`, distâncias `1` e
+/// `0,5`, massas `1`, quatro contactos), menos a soma:
+///
+/// - crescente: `((−t − t) − t) + 4 = 4 − 2⁻²²` ⇒ `x = 1 − 2⁻²⁴`;
+/// - o grande primeiro: `((4 − t) − t) − t = 4` (cada `t` cai abaixo de meio ULP) ⇒ `x = 1`.
+#[test]
+fn a_ordem_da_soma_dos_contactos_e_a_da_cpu_ao_bit() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let t = 2f32.powi(-24);
+    // O controlo da fixtura: as duas ordens divergem em f32.
+    let crescente = ((-t - t) - t) + 4.0;
+    let grande_primeiro = ((4.0 - t) - t) - t;
+    assert_ne!(
+        crescente.to_bits(),
+        grande_primeiro.to_bits(),
+        "a fixtura não separa as ordens"
+    );
+    let esperado = crescente / 4.0;
+    let mut s = corrente(vec![
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 0.0],
+        [-0.5, 0.0],
+    ]);
+    let minusculo = 0.5 + 2f32.powi(-23);
+    esc(
+        &mut s,
+        COLLIDER_COLUMN,
+        vec![0.5, minusculo, minusculo, minusculo, 8.0],
+    );
+    let (cpu, _) = separa_com_relatorio(&s, 1);
+    let cpu = coluna_p(&cpu.expect("a CPU separa"));
+    let mut cook = GpuCook::default();
+    for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
+        cook.passe_um_grupo_ate(Some(tecto));
+        let (gp, _, _) = cook
+            .separa_e_le(&gpu, &s, 1, ph2d_contact::REPOUSO_VISIVEL)
+            .expect("a placa separa");
+        eprintln!(
+            "{caminho}: peça 0 em x = CPU {:e} · placa {:e} · a ordem crescente dá {esperado:e}",
+            cpu[0][0], gp[0][0]
+        );
+        assert_eq!(
+            cpu[0][0].to_bits(),
+            esperado.to_bits(),
+            "a CPU soma por índice crescente"
+        );
+        assert_eq!(
+            gp[0][0].to_bits(),
+            cpu[0][0].to_bits(),
+            "{caminho}: a placa somou os contactos noutra ordem ({:e} × {:e})",
+            gp[0][0],
+            cpu[0][0]
+        );
+    }
+}
+
 /// ⭐ **E a separação EXISTE** — controlo de que o gate acima não compara duas cópias da entrada:
 /// a fixtura dos discos sai da placa com as peças afastadas.
 #[test]

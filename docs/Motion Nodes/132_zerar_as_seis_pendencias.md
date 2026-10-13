@@ -155,6 +155,116 @@ Cenas do smoke, contadas no roteador (`motion_state_demo_router.rs:34`, `MAX_DEM
 
 ## §7 — Medições (preenchidas ao correr)
 
+Lote D (P1 · P3 · P6), RTX 5060 Ti, `--release`, uma rodada back-to-back (`loadavg` 10,5 → 15,0; outra linha
+compilava a meio da P3). As variantes no MESMO processo, por interruptor em execução, blocos com a ordem rodada,
+o MÍNIMO.
+
+### P1 — o degrau de FORA: a causa é o custo POR PIXEL do borrão
+
+**Decomposição** (`relogio_c10_decomposicao`, 4 096 discos de 12 px a 1600×972, ms de placa por quadro; o
+relógio por PASSE da pilha é novo — `fx.*`):
+
+| pilha | A · L | célula · saída | pág. | Mpx | placa | pilha (H · V · resolve · ingest) | formas | volta | colagem |
+|---|---|---|---:|---:|---:|---|---:|---:|---:|
+| Inner Shadow (dentro) | 0 · 23 | 38 · 14 | 2 | 6,0 | 2,15 | 1,39 (0,64 · 0,55 · 0,07 · 0,07) | 0,30 | 0,06 | 0,08 |
+| Outer Glow σ 5,3 | 16 · 17 | 48 · 46 | 3 | 9,5 | 3,60 | 2,29 (1,03 · 0,87 · 0,16 · 0,11) | 0,54 | 0,19 | 0,14 |
+| Drop Shadow 6/6 (fora) | 16–22 · 23 | 60 · 52 | 4 | 14,8 | 4,88 | 3,45 (1,60 · 1,36 · 0,17 · 0,17) | 0,49 | 0,24 | 0,16 |
+| camada inteira (qualquer) | — | — | 1 | 1,56 | 0,37 | (0,17 · 0,14 · 0,02 · 0,02) | | | |
+
+A pilha é linear na área (`0,24 ms/Mpx`, as células e a camada inteira igual), a área já é ≈ Σ das saídas (Glow:
+`46²` de `48²`), a colagem é 4 % ⇒ hipótese 1: o custo por pixel, e ele é o BORRÃO (H + V = 83 % da pilha).
+
+**A cura:** o borrão por GRUPO (`ph2d-render/src/fx_stack_borrao_grupo.rs`) — 64 pixels de uma linha (coluna)
+carregam UMA vez os `64 + 2h` taps e os `2h + 1` pesos na memória do grupo; o de sempre fazia, por pixel,
+`2h + 1` leituras E `2h + 1` exponenciais. Os mesmos taps, pesos e ordem: o MESMO byte em 8 pilhas
+(`o_borrao_por_grupo_da_o_mesmo_byte`, `2cfacfe11f`), e `the_c10_variants_give_the_same_pixels` (com as pilhas de
+fora) igual ao byte.
+
+**Régua intercalada** (`relogio_c10_intercalado`, placa por quadro, o MÍNIMO de 7 rodadas; `load 9,1 → 7,9`):
+
+| discos | Inner Shadow: produto → grupo | Outer Glow | Drop Shadow (fora) |
+|---:|---:|---:|---:|
+| 256 | 0,38 → 0,36 | 0,54 → 0,50 | 0,61 → 0,55 |
+| 1 024 | 0,69 → 0,60 | 1,02 → 0,88 | 1,31 → 1,07 |
+| 2 048 | 1,08 → 0,90 | 1,95 → 1,71 | 2,47 → 2,01 |
+| 4 096 | 2,18 → 1,83 | 3,57 → 2,96 | 4,92 → 3,93 |
+| 8 192 | 3,98 → 3,28 | 6,81 → 5,65 | 9,46 → 7,70 |
+
+A camada inteira (1600×972): `0,37 → 0,28 ms`. **O borrão por grupo é o único** (`4609c19ec6`).
+
+| ⛔ Recusas MEDIDAS | porquê |
+|---|---|
+| o borrão por PIXEL (`blur_h_at` + `cs_op_v` de sempre) | perde nas 15 linhas da régua (o grupo tira até `19 %` a 8 192) e dá o mesmo byte |
+| colar/desenhar só a caixa da saída | a saída já é `92 %` da célula (Glow `46²`/`48²`); a colagem é `4 %` da placa |
+| o borrão na pirâmide abaixo de `MAX_HALF/3` | não construído: o borrão por grupo ganha com paridade AO BYTE; a pirâmide paga a caixa+tenda contra o oráculo Φ |
+
+Aberto (com número): a vala de uma Drop Shadow é SIMÉTRICA (`antes = max(A)` dos quatro lados, `L` sem direção):
+célula `60` px para uma saída de `52`. Com a leitura por direção (`L` à esquerda `23`, à direita `11`) o passo
+seria `54` px — `−19 %` de área na Drop Shadow; zero na Glow.
+
+### P3 — o `corrige` em registos (`select`) ganha; `PECAS_PARA_UM_GRUPO` 1024 → 1536
+
+`measure_a_cadeia_cpu_contra_placa`, as três formas × os dois caminhos, o MÍNIMO de 15 blocos (ms, total da ida e
+volta; `load 7,9 → 20,4`):
+
+| linha | CPU | um grupo: Matriz · Ramos · **Escolha** | despachos: Matriz · Ramos · **Escolha** |
+|---|---:|---|---|
+| cadeia 16 · 1024 | 1,87 | 11,13 · 11,78 · **11,13** | 104,2 · 104,8 · 107,0 |
+| cadeia 16 · 4096 | 3,35 | 19,67 · 21,95 · **21,48** | 514,3 · 509,4 · 515,7 |
+| cadeia 32 · 4096 | 15,21 | 49,92 · 50,05 · **47,71** | 547,6 · 548,3 · 544,1 |
+| cadeia 256 · 1024 | 13,36 | 23,94 · 24,19 · **23,22** | 153,4 · 156,5 · 154,4 |
+| nuvem 512 · 64 | 2,11 | 11,98 · 11,68 · **9,72** | 19,89 · 17,59 · 20,02 |
+| nuvem 1024 · 64 | 4,50 | 18,16 · 16,22 · **12,29** | 17,98 · 17,44 · 16,47 |
+| nuvem 2048 · 64 | 6,76 | 33,93 · 27,90 · **19,26** | 19,85 · 19,49 · **18,35** |
+
+A cadeia 16 · 4096 é a única pior no mínimo (`+9 %`), e a mediana diz o contrário (`24,49 → 23,65`, 3 rodadas):
+a régua não decide essa linha. **Paridade:** as três dão a MESMA soma AO BIT (`P`, `rot` e varreduras; 11
+fixturas × 1/8/64 varreduras × as duas rotas) — e a CPU na tolerância de sempre (pior `2,84e-6 · alc`).
+
+**O ponto** (`measure_o_ponto_do_um_grupo`, 3 rodadas de 30 blocos, o mínimo; um grupo × despachos): 1 280
+`7,57 × 9,10` · **1 536 `9,65 × 9,98`** · 1 792 `11,25 × 9,85` · 2 048 `13,26 × 10,24` ⇒ `1536`. ⚠️ Os despachos
+pagam a CARGA da máquina (o mínimo deles vai de `10,2` a `18,4 ms` a 2 048 entre rodadas; o de um grupo, de `13,3`
+a `19,3`): sob carga o ponto sobe.
+
+| ⛔ Recusas MEDIDAS (código em `38c9767ea5`) | o número |
+|---|---|
+| `corrige` em quatro matrizes de 9 (a do doc 130) | nuvem 2 048 um grupo `33,93` × `19,26 ms` |
+| `corrige` desenrolado com cadeia de `if`s | `27,90` × `19,26`; cadeia 16·4096 `21,95` |
+
+### P6 — a silhueta das sprites: dois defeitos, as duas curas ao texel
+
+`medida_p6_a_silhueta_das_sprites` (cinco sprites rodadas 30°, sub-pixel, 21 122 texels pintados; texels a > 1
+nível):
+
+| comparação | antes | depois |
+|---|---:|---:|
+| crua, placa × CPU | 61 (pior 29) | **0** |
+| filtrada, camada inteira, placa × CPU | 50 | **0** |
+| rota CPU, cada forma × camada inteira | 0 | **0** |
+| rota placa, cada forma × camada inteira | 75 (pior 21) | **0** |
+
+ONDE: só na silhueta, nenhum fora; `≤ 0,75 px` da aresta do quad (`4` a `< 0,01`, `51` a `< 0,1`, `20` a
+`< 0,75`). A CAUSA não era o quad nem o meio texel: (1) **o sampler** — o tag `0` (`SAMPLING_DEFAULT`) ligava na
+CPU um grupo próprio (`sampler_from_tags(0, 0)`: linear, um nível, isotrópico) e a partição vazia da placa o do
+projecto (trilinear, anisotropia 16); a faixa explícita do tag `0` na placa dava `0` texels; (2) **a paridade da
+translação** — com o sampler do projecto nas DUAS rotas, as células de translação ÍMPAR trocam o quadrado 2×2 das
+derivadas da aresta: `75` texels nas duas rotas, `0` com a translação par.
+
+Curas: o tag `0` do átlas cai no grupo do projecto (`5224436632`, a lei do gémeo das texturas individuais) e as
+sprites planeiam-se com a translação PAR (`planeia_com_par`, `c8e708f5d2`, um pixel de folga por eixo).
+`a_lone_sprite_is_the_same_under_both_scopes_on_both_routes` passa a cinco sprites, exige as rotas iguais e a
+barra da silhueta é a medida: `0` (era `≤ 0,5 %`). A paridade C.10 das 24 sprites também foi a `0` texels.
+
+**Mutações:** a fusão pela maior cabeça (P3) **sobrevive** — muda `|Δrot|` em `≤ 0,6e-6°` e `|ΔP|` em nada,
+dentro da tolerância: a ORDEM não se vê na régua de paridade (o limite é da régua). Bordo do borrão: o tap
+deslocado um pixel → 3 gates vermelhos; o último tap fora → 1 (`the_layer_blur_is_the_oracles`). O tag `0` com
+grupo próprio → o gate das rotas vermelho. A translação sem paridade → a barra `0` vermelha. A vala sem `L` → 2.
+
+**Cenas:** `=138` (4 096 discos a cair num campo, Outer Glow em cada forma; o custo com `PH2D_FLUID_PROFILE=1`).
+⚠️ O P6 **não é a `=142`**: a lei da aparência só desenha uma corrente de forma ou de OBJECTO, e o objecto mora na
+hierarquia (medido: a chuva com o ladrilho de uma grelha desenha `0` sprites) ⇒ `PH2D_MOTION_OBJ_SMOKE=18`.
+`MAX_DEMO_LEVEL` `137 → 138`.
+
 ### P2 — a fita contra a RAM (13/10, workstation, `dev`, `loadavg` 2,8–5)
 
 Sonda `fila_c_a_fita_por_entrada` (`motion_bridge_gpu_fila_c_probe.rs`): `grid → output` + `K` cartões `Input`, as

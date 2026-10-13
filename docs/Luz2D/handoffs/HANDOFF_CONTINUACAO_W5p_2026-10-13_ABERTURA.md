@@ -82,13 +82,29 @@ resto (`solver_c3.rs`); a C3 inteira num fio ao lado do miolo, da captura fina e
 
 O caminho crítico que sobra: c0–c2 (0,2 s) + a fina e o anel (~0,9 s cada a frio, sozinhos).
 
-## 6. ABERTO, na ordem
+## 6. A `c2` do High: a holográfica nasce DUAS vezes — −5,4 ms por quadro no High
 
-1. **A `c2` do High e o alocador (W5o §3)** — o experimento escrito foi feito e **recusado** (tabela abaixo). O que
-   a matriz ensina: a alocação única e grande cai SEMPRE no regime lento (26,6 ms, o mesmo dos blocos de 4 MB
-   dedicados da W5o); os buffers separados ficam rápidos só em memória já usada e largada (18,4). Hipótese para a
-   próxima rodada: o regime lento é memória NOVA (dedicada, nunca tocada pela placa); medir uma escrita de
-   aquecimento dos buffers da HRC ao nascer (`clear_buffer` ou um passe), e o mesmo com a arena.
+`Config::hrc_nasce_duas_vezes` (por omissão; `PH2D_LIGHT2D_HRC_DUAS=0` no app compara): os `t`, os `r` e o
+acumulado nascem, largam-se (com `poll` de espera) e nascem de novo — caem em memória já usada e largada, o
+regime rápido. ⚠️ O mecanismo dentro do `gpu-allocator`/driver NÃO está provado (escrever antes de largar dá o
+mesmo: não é a 1.ª escrita); o efeito é medido e repetível. `medida_luz2d_w5o_lastro` (`PH2D_W5P_DUAS=0` = o
+antes), 2×, a placa só da linha, load 38–44, `c2` High mín ms:
+
+| | processo novo | Low vivo | Low criado e largado |
+|---|---|---|---|
+| uma vez | 24,7 · 24,7 | 21,4 · 21,3 | 18,4 · 18,4 |
+| **duas vezes** | **19,0 · 19,0** | **19,9 · 19,9** | 18,4 · 18,4 |
+| duas, escritos antes de largar | 19,1 · 19,0 | 19,9 · 19,9 | 18,4 · 18,4 |
+
+Pelo caminho do PRODUTO (`a_nitidez_da_luz`, `LuzDoQuadro`, 3× alternado, um processo por corrida, load 14–16):
+**High 28,95 · 28,96 · 28,93 → 23,39 · 23,60 · 23,58 ms**; Low 2,8 igual. Verdes por nome: os 7 da `holografica`
+(o `g4_o_custo_da_holografica…` incluído, load 14) e o G5 (o primeiro nascimento larga-se antes da contagem).
+
+## 6b. ABERTO, na ordem
+
+1. **O resto da `c2` do High** (19,0 contra 18,4 do melhor caso): o mecanismo do regime lento. A arena da W5o §3 foi
+   feita e **recusada** (tabela abaixo: a alocação única e grande cai SEMPRE no lento, 26,6 ms, como os blocos de
+   4 MB dedicados da W5o).
 2. Medir a C3 (§3) com a placa só da linha e gravar o número no portão `a_nitidez_da_luz`/`o_custo_do_miolo` se
    a razão mudar.
 3. O anel só nos ladrilhos com corpo (W5o §6.2) e os 247 despachos do miolo (W5o §6.3) — não começados.
@@ -113,6 +129,7 @@ controlo prova que isso não pesa. O código do experimento saiu da árvore; a r
 | laços com limite opaco ao compilador (raios, bissecções, o pé, a de trás, a c0 da face) | fina 4,02 → 4,05 s: nada |
 | contar o custo do compilador pelas voltas (1 raio, 1 bissecção) | 4,02 → 3,79 s: o custo são os sítios |
 | os buffers da HRC numa alocação só (W5o §3, o próximo passo escrito) | 26,6 ms em todo estado (separados: 18,4–24,6) |
+| escrever os buffers da HRC antes de os largar (a 1.ª escrita como causa) | igual a só largar: 19,0 |
 | ler um tempo da placa com outra linha na placa ou a placa sem exclusão | a matriz da W5p esperou ~25 min por 4 apps de 3 linhas |
 
 ## Para o integrador
@@ -152,3 +169,7 @@ de `aa30e1cc97`):
 3. Esperado: N abaixo de 0,5 s (o cache já foi aquecido para esta versão). Antes desta onda, a primeira vez depois
    de uma atualização levava ~10 s; agora, numa atualização que mexe na luz, ~2 s — e as seguintes, imediatas.
 4. Errado: N acima de 1 s nesta abertura, ou a cena diferente da de ontem (a imagem tem de ser a MESMA).
+5. O custo do High: abra o mesmo comando com `PH2D_LIGHT2D_HRC_DUAS=0` à frente (o ANTES) e depois sem ele (o
+   DEPOIS). Em cada um: **Settings ▸ 2D Light**, **High**, desligue **Automatic**, clique a **Lâmpada**; no
+   Inspector, «Quality: High (manual), **NN ms of GPU per frame**» — medido ~29 antes, ~23,5 depois. A luz é a
+   MESMA nos dois. Errado: o número igual nos dois.

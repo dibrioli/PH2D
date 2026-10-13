@@ -232,6 +232,20 @@ impl Holografica {
             })
             .collect();
 
+        // ⭐ W5p (`Config::hrc_nasce_duas_vezes`): os buffers grandes nascem, largam-se e nascem de novo —
+        // a `c2` do High é rápida quando eles caem em memória já usada e largada (escrevê-los antes: igual).
+        if e.cfg.hrc_nasce_duas_vezes {
+            let n_t = Quadrante::de(0, grade).n.max(Quadrante::de(1, grade).n) as usize + 1;
+            let primeiros: Vec<wgpu::Buffer> = hrc::NOMES_T[..n_t]
+                .iter()
+                .copied()
+                .chain(hrc::NOMES_R)
+                .chain([hrc::NOME_ACUMULADO])
+                .map(|n| (e.buffer)(n))
+                .collect();
+            drop(primeiros);
+            let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        }
         let t: Vec<wgpu::Buffer> = (0..=Quadrante::de(0, grade).n.max(Quadrante::de(1, grade).n))
             .map(|n| (e.buffer)(hrc::NOMES_T[n as usize]))
             .collect();

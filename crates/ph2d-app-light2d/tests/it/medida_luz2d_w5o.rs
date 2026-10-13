@@ -419,15 +419,23 @@ fn medida_luz2d_w5o_lastro() {
     let caso = std::env::var("PH2D_W5O_LASTRO").unwrap_or_else(|_| "0".into());
     let (_, vazia) = cenas().remove(0);
     let a = fabrica(FHD);
+    // ⭐ W5p: `PH2D_W5P_DUAS=0` — o High sem o `Config::hrc_nasce_duas_vezes` (o antes).
+    let ensaio = std::env::var("PH2D_W5P_DUAS").as_deref() != Ok("0");
     let cfgs = |nivel| {
         let produto = config_do_produto(a, FHD, degrau_do(nivel)).expect("grade");
         let aritmetica = Config::padrao_para(&gpu.device, produto.grade).aritmetica;
+        let hrc_nasce_duas_vezes = nivel != NivelDaLuz::Alta || ensaio;
         (
             Config {
                 aritmetica,
+                hrc_nasce_duas_vezes,
                 ..produto
             },
-            config_do_entorno(a, FHD, degrau_do(nivel)).map(|c| Config { aritmetica, ..c }),
+            config_do_entorno(a, FHD, degrau_do(nivel)).map(|c| Config {
+                aritmetica,
+                hrc_nasce_duas_vezes,
+                ..c
+            }),
         )
     };
     let mut lastro = Vec::new();
@@ -515,7 +523,7 @@ fn medida_luz2d_w5o_lastro() {
         c2.push(p.tempos(&gpu).0.c2_total());
     }
     eprintln!(
-        "C dicas {dicas:?} lastro {caso} ({} texturas, vivo {}) · c2 High mín {:.3} · med {:.3} ms",
+        "C dicas {dicas:?} duas vezes {ensaio} lastro {caso} ({} texturas, vivo {}) · c2 High mín {:.3} · med {:.3} ms",
         lastro.len(),
         vivo.is_some(),
         minimo(&c2),

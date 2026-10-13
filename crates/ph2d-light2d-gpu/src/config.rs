@@ -192,6 +192,10 @@ pub struct Config {
     /// ([`crate::fonte_do_rc`]) — a régua «antes × depois» de uma reescrita do WGSL no MESMO processo
     /// (o compilador do driver, o relógio da placa e a imagem). `None` no produto.
     pub modulo_rc: Option<&'static str>,
+    /// ⭐ W5p — os buffers da cascata holográfica nascem, largam-se e nascem de novo (em memória já usada
+    /// e largada): a `c2` do High num processo novo 24,7 → 19,0 ms (`medida_luz2d_w5o_lastro`, handoff W5p
+    /// §7). `false` = uma vez (`PH2D_LIGHT2D_HRC_DUAS=0` no app compara).
+    pub hrc_nasce_duas_vezes: bool,
 }
 
 /// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
@@ -396,6 +400,7 @@ impl Config {
             so_a_c0: false,
             holografica: None,
             modulo_rc: None,
+            hrc_nasce_duas_vezes: true,
         }
     }
 

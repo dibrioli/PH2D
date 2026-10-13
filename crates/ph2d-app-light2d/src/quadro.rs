@@ -189,6 +189,8 @@ impl LuzDoQuadro {
             vis_na_face: env("PH2D_LIGHT2D_FACE"),
             // ⭐ W5o: `=0` volta à marcha a partir do ponto afastado (a penumbra deslocada, comparar).
             face_pelo_ponto: env("PH2D_LIGHT2D_FACE_PONTO"),
+            // ⭐ W5p: `=0` — a holográfica nasce uma vez (a `c2` do High mais lenta, comparar).
+            hrc_nasce_duas_vezes: env("PH2D_LIGHT2D_HRC_DUAS"),
             miolo: miolo_do_ambiente(),
             ..crate::teto::config_do_quadro(g, self.mundo_para_tela, dg, rebote_ligado())
         }

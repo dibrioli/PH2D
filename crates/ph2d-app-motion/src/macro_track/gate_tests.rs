@@ -136,8 +136,8 @@ enum Acao {
     Vai(u64),
     Desfaz,
     Refaz,
-    /// Um gizmo de canvas escreve um param (como o do campo: `set_param` + `mark_dirty`).
-    Gizmo,
+    /// Um gizmo de canvas escreve a altura da caixa (como o do campo: `set_param` + `mark_dirty`).
+    Gizmo(f32),
     /// Arrastar um nó: o documento muda, o cozimento não.
     MoveNo,
     /// A bomba suja sem edição (o LOD da forma).
@@ -161,7 +161,7 @@ fn roteiro() -> Vec<(u32, Acao)> {
     for (k, i) in (15..=19).enumerate() {
         r.push((53 + 3 * k as u32, Acao::Gesto(i)));
     }
-    r.push((68, Acao::Gizmo));
+    r.push((68, Acao::Gizmo(0.6)));
     r.push((70, Acao::MoveNo));
     r.push((72, Acao::Suja));
     r.push((74, Acao::Vai(40)));
@@ -171,6 +171,14 @@ fn roteiro() -> Vec<(u32, Acao)> {
     // Um recuo DEPOIS da última edição (tique 52): o scrub restaura do anel um estado que carrega a
     // história desde ela — o palco só o repete se limpou o anel quando o produto o limpou.
     r.push((120, Acao::Vai(70)));
+    // Uma escrita de fora DEPOIS da última edição (tique 75) e um recuo para antes dela (72): o
+    // produto limpou o anel, logo re-simula; um palco que não o limpasse restauraria o tique 72 de
+    // antes do gizmo.
+    r.push((125, Acao::Gizmo(0.4)));
+    r.push((135, Acao::Vai(72)));
+    // A bomba suja sem edição logo depois de um quadro que chegou sujo (a edição do quadro 86): a
+    // gravação só a vê se fechou o estado da bomba DEPOIS de cozer.
+    r.push((87, Acao::Suja));
     r
 }
 
@@ -217,8 +225,8 @@ fn sessao() -> Gravada {
                     m.doc = next;
                     m.pump.mark_dirty();
                 }
-                Acao::Gizmo => {
-                    m.doc.graph.set_param(slots[CAIXA], "height", 0.6);
+                Acao::Gizmo(h) => {
+                    m.doc.graph.set_param(slots[CAIXA], "height", h);
                     m.pump.mark_dirty();
                 }
                 Acao::MoveNo => {
@@ -393,39 +401,54 @@ fn a_fixture_contem_cada_especie_de_passo() {
 
 #[test]
 fn sem_os_tiques_a_reproducao_cai_noutro_sitio() {
+    // CONTROLO: os mesmos passos com o relógio congelado (cada quadro no tique 0, parado) — o que uma
+    // macro sem o tique da cena faria. Quadro a quadro, a reprodução tem de cair noutro sítio.
     let g = sessao();
-    // Os mesmos passos, mas um cozimento só, no fim (o relógio da sessão fora da macro).
     let mut t = TocadorDoMotion::novo(&g.inicial, Modo::Fiel).expect("o inicial lê-se");
-    let mut ultimo = None;
+    let (mut k, mut diferem, mut maior) = (0, 0, 0.0f32);
     for c in g.quadros.iter().flatten() {
-        if let Ok(Passo::Quadro {
-            tempo, a_tocar, dt, ..
-        }) = Passo::descodifica(c)
-        {
-            ultimo = Some((tempo, a_tocar, dt));
-        } else {
-            t.aplica(c).expect("o passo aplica-se");
+        match Passo::descodifica(c) {
+            Ok(Passo::Quadro { dt, .. }) => {
+                let congelado = Passo::Quadro {
+                    tempo: 0.0,
+                    a_tocar: false,
+                    dt,
+                    sujo: t.palco().pump.is_dirty(),
+                };
+                t.aplica(&congelado.codifica()).expect("o quadro coze");
+                let r = retrato(t.palco());
+                if r != g.retratos[k] {
+                    diferem += 1;
+                }
+                for (p, q) in posicoes(&r).iter().zip(posicoes(&g.retratos[k])) {
+                    maior = maior.max((p[0] - q[0]).abs()).max((p[1] - q[1]).abs());
+                }
+                k += 1;
+            }
+            _ => t.aplica(c).expect("o passo aplica-se"),
         }
     }
-    let (tempo, a_tocar, dt) = ultimo.expect("há quadros");
-    let fim = Passo::Quadro {
-        tempo,
-        a_tocar,
-        dt,
-        sujo: t.palco().pump.is_dirty(),
-    };
-    t.aplica(&fim.codifica()).expect("o quadro coze");
-    let d = desvio(t.palco(), &g.fim);
-    eprintln!("sem os tiques: max |Δpos| = {d:.4}");
-    assert_ne!(
-        retrato(t.palco()),
-        retrato(&g.fim),
-        "sem os tiques a reprodução coincidiu — a fixture não exerce o relógio"
+    eprintln!("sem os tiques: {diferem} de {k} quadros diferem · max |Δpos| = {maior:.4}");
+    assert!(
+        diferem * 2 > k,
+        "sem os tiques só {diferem} de {k} quadros diferem — a fixture não exerce o relógio"
     );
     assert!(
-        d > 0.1,
-        "o desvio sem os tiques é pequeno demais para medir o relógio: {d}"
+        maior > 0.1,
+        "o desvio sem os tiques é pequeno demais: {maior}"
     );
+}
+
+/// As posições das instâncias vectoriais de um [`retrato`] (13 palavras cada, depois do marco).
+fn posicoes(r: &[u32]) -> Vec<[f32; 2]> {
+    let ini = r
+        .iter()
+        .position(|w| *w == u32::MAX)
+        .map_or(r.len(), |i| i + 1);
+    r[ini..]
+        .chunks_exact(13)
+        .map(|c| [f32::from_bits(c[1]), f32::from_bits(c[2])])
+        .collect()
 }
 
 #[test]

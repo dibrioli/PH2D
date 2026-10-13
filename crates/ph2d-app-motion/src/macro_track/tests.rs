@@ -616,6 +616,69 @@ mod rotas {
     }
 
     #[test]
+    fn copiar_e_colar_dentro_da_gravacao_toca() {
+        let mut m = super::super::estado_de_teste();
+        let a = m.doc.graph.add_node("source.shape");
+        let ini = m.macro_grava().expect("arma");
+        push_intent(GraphIntent::CopySelection { nodes: vec![a.0] });
+        quadro(&mut m);
+        push_intent(GraphIntent::Paste);
+        quadro(&mut m);
+        let cargas = m.macro_passos();
+        assert_eq!(
+            m.doc.graph.nodes().len(),
+            2,
+            "CONTROLO: a colagem criou o nó"
+        );
+        assert!(
+            !cargas
+                .iter()
+                .any(|c| matches!(Passo::descodifica(c), Ok(Passo::Recusada(_)))),
+            "a cópia foi gravada, logo a colagem também"
+        );
+        let t = toca(&ini, &cargas);
+        assert_eq!(t.palco().doc, m.doc);
+    }
+
+    #[test]
+    fn a_ajuda_dos_nos_decide_a_cura_no_palco_como_na_sessao() {
+        // `grid → wind` e ligar o vento à saída: com a ajuda ligada o lote cura-se (um integrador).
+        let mut m = super::super::estado_de_teste();
+        m.pump.define_a_lei(false);
+        let grid = m.doc.graph.add_node("motion.grid");
+        let wind = m.doc.graph.add_node("force.wind");
+        let out = m.doc.graph.add_node("motion.output");
+        m.doc
+            .graph
+            .connect(ph2d_nodegraph::graph::Edge {
+                from: (grid, 0),
+                to: (wind, 0),
+                delayed: false,
+            })
+            .expect("liga");
+        assert!(m.node_help_enabled, "a ajuda nasce ligada");
+        let ini = m.macro_grava().expect("arma");
+        push_intent(GraphIntent::Connect {
+            from_node: wind.0,
+            from_port: 0,
+            to_node: out.0,
+            to_port: 0,
+        });
+        quadro(&mut m);
+        let cargas = m.macro_passos();
+        assert!(
+            m.doc
+                .graph
+                .nodes()
+                .iter()
+                .any(|n| n.type_name == "motion.integrate"),
+            "CONTROLO: na sessão o lote curou-se"
+        );
+        let t = toca(&ini, &cargas);
+        assert_eq!(t.palco().doc, m.doc, "no palco também");
+    }
+
+    #[test]
     fn a_forma_que_o_botao_viu_chega_ao_palco() {
         let mut m = super::super::estado_de_teste();
         let n = m.doc.graph.add_node("source.shape");

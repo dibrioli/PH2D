@@ -32,10 +32,11 @@ pub enum Dependente {
     SemPapel,
     QuandoDoRandomize,
     CerdasDaAgua,
+    FollowSemNada,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 18] = [
+    pub const TODOS: [Dependente; 19] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -54,6 +55,7 @@ impl Dependente {
         Dependente::SemPapel,
         Dependente::QuandoDoRandomize,
         Dependente::CerdasDaAgua,
+        Dependente::FollowSemNada,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -83,6 +85,7 @@ impl Dependente {
             ],
             Dependente::QuandoDoRandomize => &ids::PAINTER_BRUSH_COLOR_JITTER_SCOPES,
             Dependente::CerdasDaAgua => &CERDAS,
+            Dependente::FollowSemNada => &[ids::PAINTER_SHAPE_FOLLOW],
         }
     }
 
@@ -109,6 +112,7 @@ impl Dependente {
             Dependente::SemPapel => "panel.painter_layers.inerte.paper_chosen",
             Dependente::QuandoDoRandomize => "panel.painter_layers.inerte.randomize_above_zero",
             Dependente::CerdasDaAgua => "panel.painter_layers.inerte.bristles_no_grain",
+            Dependente::FollowSemNada => "panel.painter_layers.inerte.follow_nothing_to_turn",
         }
     }
 
@@ -264,6 +268,20 @@ impl PainterTool {
                     && (b.grain_samples(self.paint.texture_image.is_some())
                         || (!self.paint.eraser
                             && self.paint.wetpaint.tool != super::WetTool::Paint)),
+            ),
+            // O Follow roda a pegada INTEIRA do dab (`BrushSpec::dab_rotor`): sem textura no Shape, sem ponta
+            // achatada e sem um Grain preso ao dab, a ponta redonda não tem ângulo para mostrar.
+            (
+                Dependente::FollowSemNada,
+                !b.shape_silhouette_active(self.paint.shape_image.is_some())
+                    && b.shape.kind != ph2d_painter_brush::TextureKind::Bristles
+                    && b.dab_flatten <= 0.0
+                    && !(b.grain_samples(self.paint.texture_image.is_some())
+                        && matches!(
+                            b.texture.mapping,
+                            ph2d_painter_brush::TextureMapping::ViewPlane
+                                | ph2d_painter_brush::TextureMapping::Random
+                        )),
             ),
         ];
         Inercias {

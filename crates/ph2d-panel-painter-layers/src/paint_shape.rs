@@ -153,6 +153,9 @@ pub(crate) fn paint_shape_section(
     // and the Shape colour ramp on, it's the colourised silhouette), re-rendered each frame from the
     // snapshot so it tracks Falloff / Angle / Offset / Size + the ramp live (Enio 2026-06-25).
     y = paint_shape_preview(ctx, theme, x, content_w, y, brush);
+    // O Follow roda a pegada INTEIRA do dab — o achatamento, o Grain preso ao dab, as cerdas —, então
+    // existe com ou sem textura no Shape (dono 13/10); onde não tem o que rodar, esmaece.
+    y = paint_shape_follow(ctx, theme, x, content_w, y, brush);
     if kind != TextureKind::None {
         y = paint_shape_transform_controls(ctx, theme, x, content_w, y, brush);
         if !is_image {
@@ -243,7 +246,7 @@ fn paint_shape_deposit_rows(
 /// The Shape **frame** controls — Rake / Angle / Offset X·Y / Size X·Y — shared by the Image and
 /// procedural branches (they rotate/offset/scale the silhouette frame either way). Returns the next `y`.
 /// (A random per-dab spin is the Stroke **Jitter Rotate**, which turns the whole stamp — Enio 2026-07-19.)
-fn paint_shape_transform_controls(
+fn paint_shape_follow(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
@@ -273,6 +276,17 @@ fn paint_shape_transform_controls(
     if let Some(r) = open {
         state::set_pending_brush_shape_follow_dd(Some((r, brush.shape_follow)));
     }
+    y
+}
+
+fn paint_shape_transform_controls(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    brush: BrushSettings,
+) -> f32 {
     let sec = seccao_da_forma(ctx);
     y = crate::number_field::paint_num_row(
         ctx,

@@ -306,3 +306,37 @@ fn os_presets_antigos_chegam_com_as_cerdas_no_shape() {
         "a ponta lisa virou cerdas"
     );
 }
+
+/// **O Follow existe sem textura no Shape** (dono 13/10): ele roda a pegada inteira do dab. Com o Shape vazio
+/// e a ponta ACHATADA, o Rake muda o arco e a linha está viva; com a ponta redonda e nada que siga o dab, o
+/// Rake não muda nada e a linha esmaece (`Dependente::FollowSemNada`) — esmaecida ⇔ inerte, nos três meios.
+#[test]
+fn o_follow_age_sem_textura_onde_ha_o_que_rodar() {
+    use super::super::inercia::Dependente;
+    for media in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        for achatada in [false, true] {
+            let fresco = || {
+                let mut t = pincel(media, TextureKind::None);
+                t.set_brush_shape_kind(TextureKind::None.to_u8());
+                if achatada {
+                    t.set_brush_dab_flatten(0.6);
+                }
+                t
+            };
+            let base = arco(&mut fresco());
+            let mut rake = fresco();
+            rake.set_brush_shape_follow(1);
+            let esmaecida = rake.inercias().inerte(Dependente::FollowSemNada);
+            let mudou = arco(&mut rake) != base;
+            assert_eq!(
+                (mudou, esmaecida),
+                (achatada, !achatada),
+                "{media:?} achatada={achatada}: mudou={mudou} esmaecida={esmaecida}"
+            );
+        }
+    }
+}

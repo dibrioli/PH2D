@@ -13,21 +13,13 @@
 
 ## §1 — Coordenadas
 
-Sobre `0d8487ce0f` (o `main` não andou: merge-base `757afebd58`). Três commits desta janela (W0+W1; o smoke do dono; W2 + a investigação do Spacing). Sem push.
+Sobre `0d8487ce0f` (o `main` não andou: merge-base `757afebd58`). Quatro commits desta janela (W0+W1; o smoke; W2 + Spacing; Follow + viscosidade). Sem push.
 
 ## §2 — W0 (medir, sem mudar o produto) — tudo no [27 §6](../NewFeaturesWetPaint/27_plano_shape_casa_dos_pinceis.md)
 
-- **Tabela do #47 inteira** (`wetpaint/sonda_shape_casa.rs::sonda_shape_casa_tinta_por_tipo`): o #47 é uma FAMÍLIA —
-  Noise 0,004 · Clouds 0,013 · Musgrave 0,005 · Stucci 0,002 · Voronoi 0,048 do redondo no Wet Paint; no Digital
-  0,15–0,94.
-- **Leis candidatas** (`sonda_shape_casa_leis_do_dente`, pigmento que pousa, dab real pelo `on_dab`): a lei **B**
-  (o padrão do Shape DEPOIS do portão) deixa todo redondo ao bit e leva o Noise do Wet Round de 0,004 a 0,093; a
-  **A** (portão × envolvente) muda os redondos (Wet Round +36 %, pastéis ×2,7) — recusada. O resto do Noise sob B é
-  a correlação cerdas × padrão (ambos presos ao centro do dab).
-- **Oráculo** (Rebelle, WebSocket; fixtures `fixtures/rebelle/ponta_textura_*`, script `ferramentas/ponta_textura_rebelle.*`):
-  ponta texturada comum MULTIPLICA e acumula, sem limiar; o limiar só aparece onde o autor escureceu o grão.
-  ⛔ O papel não desenha sob Wine (D6 ponta × dente e D7 Shape × Grain não se medem lá).
-- **Censo:** `BrushShape::{Flat, Fan}` mortos no produto (saem na W5); os 4 knobs das cerdas e onde se escondem — 27 §6.4.
+Tabela do #47 inteira (o #47 é uma família no Wet Paint), as leis candidatas (B = o padrão depois do portão, a única
+que deixa os redondos ao bit; A recusada), o oráculo Rebelle (`fixtures/rebelle/ponta_textura_*`: ponta texturada
+multiplica, sem limiar; ⛔ o papel não desenha sob Wine) e o censo (Flat/Fan mortos). Sondas em `wetpaint/sonda_shape_casa.rs`.
 
 ## §3 — W1: Bristles é o 30.º tipo do Shape (e do Grain)
 
@@ -43,7 +35,6 @@ Sobre `0d8487ce0f` (o `main` não andou: merge-base `757afebd58`). Três commits
   carimbo independente do raio guarda as cerdas).
 - **Padrão do tipo = o tapete do Wet Round com a Strength 2** (não 1): a 1 os picos (0,16–0,32) ficam sob o
   `height_film::W_TAIL` 0,35 e o traço do Impasto sai VAZIO (medido 0 · 1,5 → 43 688 · 2 → 192 835).
-- i18n: `texture_kind.bristles` + `pattern_param.{bristle_count, bristle_strength, bristle_size, felt}`.
 
 ## §4 — Portões
 
@@ -80,6 +71,14 @@ depois o [prompt 30](../NewFeaturesWetPaint/30_PROMPT_janela_shape_casa_W3_W4.md
 Bateria W2: fmt ✓ · clippy `-D warnings` ✓ (com `panel-painter-layers`) · `nextest-impacted` 18 295/18 296 (1 prazo a
 `load` alto) e, de novo a `load` 116–237, 2 de relógio (`the_mask_stroke_cost…`, `the_authoring_pause…`): sozinhos 2/3 e 3/3
 — família de carga (o caminho da máscara não passa pelo diff).
+
+## §4d — 4.º commit: o Follow sem textura; a viscosidade
+
+O Follow (Rake/Flow) pinta-se com ou sem textura no Shape (`paint_shape_follow`): ele roda a pegada inteira do dab;
+onde não há o que rodar esmaece (`Dependente::FollowSemNada`, portão `o_follow_age_sem_textura_onde_ha_o_que_rodar`).
+A pergunta da viscosidade: [33](../NewFeaturesWetPaint/33_o_que_regula_a_viscosidade_da_agua.md) (o «Viscosity» é um
+limiar INVERTIDO; o freio real é o Brake). Bateria: clippy ✓ · painel 239 ✓ · `nextest-impacted` 18 295/18 297 — os 2
+de custo passam sozinhos 3/3 (`load` 55–115).
 
 ## §5 — Estado e o que fica ABERTO
 

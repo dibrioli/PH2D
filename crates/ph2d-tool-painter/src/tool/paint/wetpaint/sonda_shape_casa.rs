@@ -317,11 +317,16 @@ fn sonda_spacing_por_meio() {
                 .collect();
             let max = perfil.iter().copied().fold(0.0, f64::max).max(1.0);
             let min = perfil.iter().copied().fold(f64::MAX, f64::min);
-            let vales = perfil.iter().filter(|v| **v < max / 2.0).count() as f64 / perfil.len() as f64;
+            let vales =
+                perfil.iter().filter(|v| **v < max / 2.0).count() as f64 / perfil.len() as f64;
             let n = *dabs.lock().unwrap();
             println!(
                 "| {media:?} | {sp} | {} | {:.3} | {:.3} | {} |",
-                if media == PaintMedia::WetPaint { n.to_string() } else { "—".into() },
+                if media == PaintMedia::WetPaint {
+                    n.to_string()
+                } else {
+                    "—".into()
+                },
                 (max - min) / max,
                 vales,
                 tinta(&t)
@@ -350,7 +355,8 @@ fn sonda_pontilhado_das_cerdas() {
                 }
                 if kind == TextureKind::Bristles {
                     // As cerdas do Wet Round nos dois meios (Strength 1), para a comparação ser a mesma ponta.
-                    t.paint.brush.shape = crate::tool::paint::WetKnobs::DEFAULT.cerdas_no_shape(t.paint.brush.shape);
+                    t.paint.brush.shape =
+                        crate::tool::paint::WetKnobs::DEFAULT.cerdas_no_shape(t.paint.brush.shape);
                 }
                 let dabs: Arc<Mutex<usize>> = Arc::default();
                 if media == PaintMedia::WetPaint {
@@ -371,14 +377,19 @@ fn sonda_pontilhado_das_cerdas() {
                         .collect();
                     let m = linha.iter().sum::<f64>() / linha.len() as f64;
                     if m > 1.0 {
-                        let v = linha.iter().map(|a| (a - m) * (a - m)).sum::<f64>() / linha.len() as f64;
+                        let v = linha.iter().map(|a| (a - m) * (a - m)).sum::<f64>()
+                            / linha.len() as f64;
                         cvs.push(v.sqrt() / m);
                     }
                 }
                 let cv = cvs.iter().sum::<f64>() / cvs.len().max(1) as f64;
                 println!(
                     "| {media:?} | {kind:?} | {sp} | {} | {cv:.3} | {} |",
-                    if media == PaintMedia::WetPaint { dabs.lock().unwrap().to_string() } else { "—".into() },
+                    if media == PaintMedia::WetPaint {
+                        dabs.lock().unwrap().to_string()
+                    } else {
+                        "—".into()
+                    },
                     tinta(&t)
                 );
                 if let Ok(dir) = std::env::var("PH2D_SONDA_OUT") {
@@ -386,7 +397,8 @@ fn sonda_pontilhado_das_cerdas() {
                     for k in 0..(W * H) as usize {
                         ppm.extend_from_slice(&t.canvas_rgba[k * 4..k * 4 + 3]);
                     }
-                    std::fs::write(format!("{dir}/pont_{media:?}_{kind:?}_{sp}.ppm"), ppm).expect("grava");
+                    std::fs::write(format!("{dir}/pont_{media:?}_{kind:?}_{sp}.ppm"), ppm)
+                        .expect("grava");
                 }
             }
         }

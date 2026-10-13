@@ -136,7 +136,7 @@ falha e a decisão volta ao dono (o Servo é o plano B).
    ⇒ o Premium não teria o que tirar; a parte NÃO se constrói (o perfil persistente com a sessão da pessoa
    custaria privacidade e abriria o risco do item 8 por nada) e a decisão volta ao dono com a medida: se ele vir
    um anúncio num vídeo do quadro, esse vídeo é a entrada da medição seguinte.
-8. **Windows** (aberto da W18): ~~continua sem tocador (abre no navegador)~~ — **resolvido na W21, §W21.4**. A porta TCP (`--remote-debugging-port`)
+8. **Windows** (aberto da W18): ~~continua sem tocador (abre no navegador)~~ — **resolvido na W21, §W21 item 4**. A porta TCP (`--remote-debugging-port`)
    fica RECUSADA: qualquer processo local mandaria no navegador — e, com o perfil persistente do item 7, na
    sessão do YouTube da pessoa. A rota é o tubo com handles herdados (`--remote-debugging-io-pipes`), que pede
    marcar dois handles como herdáveis; não há Windows nesta bancada para o medir.

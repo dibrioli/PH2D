@@ -201,4 +201,11 @@ três); o gate `the_w20_scene_does_what_its_lessons_say` conduz as duas com `Mou
 
 ## §W21.3 — o tocador no Windows
 
-(a escrever quando a medida chegar)
+O mecanismo, as medidas e o que falta medir estão no
+[ADR-0185 §W21 item 4](../architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md):
+o CDP por dois handles herdados (`--remote-debugging-io-pipes=<leitura>,<escrita>`; a porta TCP continua recusada),
+lançado pela crate de FFI `ph2d-win-pipe-spawn` (`PROC_THREAD_ATTRIBUTE_HANDLE_LIST` + um job
+`KILL_ON_JOB_CLOSE`). Sob o Wine 11.19 com o Chrome for Testing 155 win64 os testes reais do tocador passam
+(30,6 q/s, clique → quadro 28,7 ms). **Por medir num Windows real**: o Edge, o sandbox ligado (no Wine só corre com
+`--no-sandbox`, que existe SÓ nos testes) e os órfãos do fecho (2 em 11 no Wine). O recuo «abrir no navegador» fica
+para quando não há navegador.

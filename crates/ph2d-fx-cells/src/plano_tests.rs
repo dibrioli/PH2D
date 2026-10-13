@@ -13,7 +13,7 @@ fn caixa(x: f32, y: f32, w: f32, h: f32) -> Caixa {
 fn larga(m: u32) -> Vala {
     Vala {
         alcance: [m; 4],
-        leitura: m,
+        leitura: [m; 4],
     }
 }
 
@@ -146,20 +146,29 @@ fn the_tight_trench_keeps_every_read_off_the_neighbour() {
     for vala in [
         Vala {
             alcance: [0; 4],
-            leitura: 23,
+            leitura: [23; 4],
         },
         Vala {
             alcance: [3, 0, 9, 2],
-            leitura: 12,
+            leitura: [12; 4],
         },
         Vala {
             alcance: [5; 4],
-            leitura: 5,
+            leitura: [5; 4],
+        },
+        // POR LADO (doc 132 §1): a Drop Shadow para baixo-direita e uma pilha torta.
+        Vala {
+            alcance: [16, 16, 22, 22],
+            leitura: [23, 23, 11, 11],
+        },
+        Vala {
+            alcance: [3, 0, 9, 2],
+            leitura: [3, 20, 30, 1],
         },
     ] {
         let paginas = planeia(&caixas, [1600, 900], vala, 160);
         assert!(paginas.len() > 1, "a fixtura exerce mais de uma página");
-        let l = vala.leitura as i32;
+        let [ll, lt, lr, lb] = vala.leitura.map(|v| v as i32);
         for p in &paginas {
             for (a, ca) in p.celulas.iter().enumerate() {
                 let s = no_atlas(ca);
@@ -173,14 +182,17 @@ fn the_tight_trench_keeps_every_read_off_the_neighbour() {
                         r[2] + cb.t[0],
                         r[3] + cb.t[1],
                     ];
-                    let sep = (c[0] - s[2])
-                        .max(s[0] - c[2])
-                        .max(c[1] - s[3])
-                        .max(s[1] - c[3]);
-                    assert!(
-                        sep >= l,
-                        "{vala:?}: a saída de {a} lê o conteúdo de {b} ({sep} < {l})"
-                    );
+                    // A caixa que a saída de `a` LÊ (por lado) não toca o conteúdo de `b`.
+                    let longe = c[0] - s[2] >= lr
+                        || s[0] - c[2] >= ll
+                        || c[1] - s[3] >= lb
+                        || s[1] - c[3] >= lt;
+                    assert!(longe, "{vala:?}: a saída de {a} lê o conteúdo de {b}");
+                    // E as duas saídas não se sobrepõem.
+                    let sb = no_atlas(cb);
+                    let disjuntas =
+                        sb[0] >= s[2] || s[0] >= sb[2] || sb[1] >= s[3] || s[1] >= sb[3];
+                    assert!(disjuntas, "{vala:?}: as saídas de {a} e {b} sobrepõem-se");
                 }
             }
         }
@@ -188,7 +200,7 @@ fn the_tight_trench_keeps_every_read_off_the_neighbour() {
     // A vala justa de um degrau de dentro é MENOR que a do W3b — o que a rodada C.10 mede.
     let justa = Vala {
         alcance: [0; 4],
-        leitura: 23,
+        leitura: [23; 4],
     };
     let area = |v: Vala| -> u64 {
         planeia(&caixas, [1600, 900], v, 320)

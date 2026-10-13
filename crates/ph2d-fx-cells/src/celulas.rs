@@ -5,7 +5,7 @@ use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 use ph2d_render::{
     BandBlit, BandSource, Camera2d, FxOpGpu, FxStackPass, GpuTexRun, Origem, RenderInstance,
-    SpriteRenderer, sort_render_order, stack_reach, stack_read,
+    SpriteRenderer, sort_render_order, stack_reach, stack_read_por_lado,
 };
 use ph2d_shape_gpu::{Copias, Corrida, Mistura, ShapeInstance, ShapePass, ShapeView};
 
@@ -331,7 +331,7 @@ impl Celulas {
         let (l, t, r, b) = stack_reach(e.ops);
         let vala = Vala {
             alcance: [l, t, r, b],
-            leitura: stack_read(e.ops),
+            leitura: stack_read_por_lado(e.ops),
         };
         let vala = if self.variante.vala_justa {
             vala

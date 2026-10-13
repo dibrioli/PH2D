@@ -94,7 +94,8 @@ fn textura(gpu: &GpuContext) -> wgpu::Texture {
     })
 }
 
-/// As quatro variantes da rodada C.10 (doc 131 §7): a vala (dupla · justa) × saltar o alvo vazio.
+/// As quatro variantes da rodada C.10 (doc 131 §7): a vala (dupla · justa — por lado desde o doc 132
+/// §1) × saltar o alvo vazio.
 const VARIANTES: [Variante; 4] = [
     Variante {
         vala_justa: false,
@@ -1018,14 +1019,18 @@ fn relogio_c10_decomposicao() {
     for (pilha, ops) in pilhas_de_fora() {
         let ops = ops.as_slice();
         let (al, at, ar, ab) = ph2d_render::stack_reach(ops);
-        let leitura = ph2d_render::stack_read(ops);
-        let antes = al.max(at).max(ar).max(ab);
-        // O disco de 12 px é um conteúdo de 14 (a folga de anti-aliasing).
+        let [ll, lt, lr, lb] = ph2d_render::stack_read_por_lado(ops);
+        // O disco de 12 px é um conteúdo de 14 (a folga de anti-aliasing); a vala por lado.
+        let vala_x = (ar + lr).max(al + ll).max(al + ar) + 1;
+        let vala_y = (ab + lb).max(at + lt).max(at + ab) + 1;
         eprintln!(
-            "[c10] ══ {pilha}: A {:?} · L {leitura} px · célula {} px · saída {} px",
+            "[c10] ══ {pilha}: A {:?} · L {:?} px · célula {}×{} px · saída {}×{} px",
             (al, at, ar, ab),
-            14 + antes + leitura.max(antes) + 1,
-            14 + al + ar
+            [ll, lt, lr, lb],
+            14 + vala_x,
+            14 + vala_y,
+            14 + al + ar,
+            14 + at + ab
         );
         camada_inteira_decomposta(&mut b, &mesa, ops);
         decompoe(&mut b, &mesa, ops, &POPULACOES);
@@ -1050,6 +1055,11 @@ fn pilhas_de_fora() -> Vec<(&'static str, Vec<FxOpGpu>)> {
         (
             "Drop Shadow (fora)",
             vec![fora(FxOp::DROP_SHADOW, [6.0, 6.0])],
+        ),
+        // Longa para UM lado (doc 132 §1, a vala por lado): o lado oposto quase não lê.
+        (
+            "Drop Shadow longa (→)",
+            vec![fora(FxOp::DROP_SHADOW, [14.0, 0.0])],
         ),
     ]
 }

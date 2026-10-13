@@ -30,27 +30,36 @@ pub struct Celula {
     pub org: [f32; 2],
 }
 
-/// **A vala entre células**: o que a pilha ESPALHA para fora do conteúdo (por lado, `[l, t, r, b]`,
-/// [`ph2d_render::stack_reach`]) e o que ela LÊ em volta de um pixel que escreve
-/// ([`ph2d_render::stack_read`]).
+/// **A vala entre células, POR LADO** (`[l, t, r, b]`): o que a pilha ESPALHA para fora do conteúdo
+/// ([`ph2d_render::stack_reach`]) e o que ela LÊ em volta de um pixel que escreve
+/// ([`ph2d_render::stack_read_por_lado`]).
 ///
-/// ⭐ A vala é `A + L + 1`, com `A` o maior alcance, e não `2·max(A, L) + 1` (o W3b): um degrau de
-/// DENTRO (sombra interna, `A = 0`, `L = 23`) separava as formas por 47 px quando 24 bastam — e a
-/// pilha custa pela ÁREA das páginas (`0,244 ms/Mpx`, doc 131 §7 C.10).
+/// ⭐ Entre os conteúdos de duas células vizinhas em `x` bastam
+/// `max(A_r + L_r, A_l + L_l, A_l + A_r) + 1`: a leitura de cada saída para o lado da vizinha, e as
+/// duas saídas sem se tocarem (em `y`, o mesmo com `t`/`b`). Não `2·max(A, L) + 1` (o W3b: um degrau de DENTRO, `A = 0`, `L = 23`,
+/// separava as formas por 47 px quando 24 bastam, doc 131 §7 C.10), nem `A + L + 1` com `L` igual
+/// nos quatro lados: uma Drop Shadow lê pouco para o lado OPOSTO ao deslocamento (6/6: a célula de um
+/// disco de 14 px `60×60 → 54×54`; a longa `14/0`: `76×76 → 62×48`, doc 132 §7) — e a pilha custa
+/// pela ÁREA das páginas.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Vala {
     pub alcance: [u32; 4],
-    pub leitura: u32,
+    pub leitura: [u32; 4],
 }
 
 impl Vala {
     /// A vala do W3b: `M = max(A, L)` dos quatro lados e para ler — a forma «dupla» (`2M + 1`).
     #[must_use]
     pub fn dupla(self) -> Self {
-        let m = self.alcance.iter().copied().fold(self.leitura, u32::max);
+        let m = self
+            .alcance
+            .iter()
+            .chain(&self.leitura)
+            .copied()
+            .fold(0, u32::max);
         Self {
             alcance: [m; 4],
-            leitura: m,
+            leitura: [m; 4],
         }
     }
 }
@@ -110,9 +119,13 @@ pub fn planeia_com_par(
 ) -> Vec<Pagina> {
     #[expect(clippy::cast_possible_wrap, reason = "uma margem cabe num i32")]
     let [al, at, ar, ab] = vala.alcance.map(|v| v as i32);
-    let antes = al.max(at).max(ar).max(ab);
+    // `(antes, depois)` por eixo: o conteúdo começa a `antes` do canto da célula e acaba a `depois`
+    // do fim — a vala até à vizinha é `antes + depois`.
     #[expect(clippy::cast_possible_wrap, reason = "uma margem cabe num i32")]
-    let depois = (vala.leitura as i32).max(antes) + 1;
+    let [ll, lt, lr, lb] = vala.leitura.map(|v| v as i32);
+    let vala_x = (ar + lr).max(al + ll).max(al + ar) + 1;
+    let vala_y = (ab + lb).max(at + lt).max(at + ab) + 1;
+    let (antes, depois) = ([al, at], [vala_x - al, vala_y - at]);
     let saida = |c: [i32; 4]| recorta([c[0] - al, c[1] - at, c[2] + ar, c[3] + ab], janela);
     let mut vivas: Vec<(u32, [i32; 4])> = Vec::new();
     for (i, c) in caixas.iter().enumerate() {
@@ -129,8 +142,8 @@ pub fn planeia_com_par(
         .iter()
         .map(|&(i, r)| {
             (
-                ((r[2] - r[0]) + antes + depois + folga(i)) as u32,
-                ((r[3] - r[1]) + antes + depois + folga(i)) as u32,
+                ((r[2] - r[0]) + antes[0] + depois[0] + folga(i)) as u32,
+                ((r[3] - r[1]) + antes[1] + depois[1] + folga(i)) as u32,
             )
         })
         .collect();
@@ -152,8 +165,8 @@ pub fn planeia_com_par(
                     } else {
                         let f = folga(i);
                         let t = [
-                            p.org[0] as i32 + antes - r[0],
-                            p.org[1] as i32 + antes - r[1],
+                            p.org[0] as i32 + antes[0] - r[0],
+                            p.org[1] as i32 + antes[1] - r[1],
                         ];
                         t.map(|v| v + (v & f))
                     };

@@ -77,6 +77,20 @@ fn o_gesto_do_roteiro_dispara_o_aviso_longo_e_nao_liga() {
         msg.len() > cabeca_do_aviso().len(),
         "o aviso perdeu a CURA (o nó a inserir): {msg:?}"
     );
+    // A cura nomeia o nó que LÊ os valores, pelo nome que o menu mostra (doc 132 §5: a ordem do
+    // registo nomeava o `audio.bands`, com o nome cru do tipo).
+    let no_do_menu = ph2d_i18n::tr(
+        m.registry
+            .manifests()
+            .find(|t| t.name == ph2d_node_value_attribute::MANIFEST.name)
+            .and_then(|t| m.registry.ui_manifest(t.id))
+            .expect("o Attribute tem nome no menu")
+            .display_key,
+    );
+    assert!(
+        msg.contains(no_do_menu) && !msg.contains("audio.") && !msg.contains("value."),
+        "a cura não nomeia o nó do menu que lê a corrente: {msg:?}"
+    );
     eprintln!("cena 141: o aviso = {msg:?} ({} caracteres)", msg.len());
     assert!(!conduzido(&m, c.transform), "o fio recusado ficou ligado");
 

@@ -8,7 +8,7 @@ use ph2d_text::{FontWeight, TextSystem};
 fn aviso_do_dono() -> String {
     let cura = ph2d_i18n::tr_with(
         "app.motion.motion_bridge_subgraph.insert_a_to_read_one_number_from_it",
-        &[("ty", &"value.attribute")],
+        &[("ty", &"Attribute")],
     );
     ph2d_i18n::tr_with(
         "app.motion.motion_bridge_subgraph.can_t_drive_that_output_is_a_per_element_stream",

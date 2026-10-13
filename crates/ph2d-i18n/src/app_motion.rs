@@ -167,7 +167,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Can't drive: that output is a per-element stream, not a value{cura}"
         }
         "app.motion.motion_bridge_subgraph.insert_a_to_read_one_number_from_it" => {
-            " — insert a `{ty}` to read one number from it"
+            " — read one number from it with an {ty} node"
         }
         // ph2d-migrar-texto:end
         // ⚠️ Escrita À MÃO e FORA dos marcadores, como o cabeçalho manda — a recusa da troca de

@@ -146,7 +146,7 @@ pub(super) fn drive(
         let cura = converter_from(motion, from).map_or_else(String::new, |ty| {
             ph2d_i18n::tr_with(
                 "app.motion.motion_bridge_subgraph.insert_a_to_read_one_number_from_it",
-                &[("ty", &ty)],
+                &[("ty", &nome_no_menu(motion, ty))],
             )
         });
         toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr_with(
@@ -245,29 +245,15 @@ pub(super) fn grupo_de_cor(
     None
 }
 
-/// ⭐⭐⭐ **O NÓ QUE CONVERTE esta saída num valor — DERIVADO do registry, nunca uma tabela.**
+/// ⭐⭐⭐ **O NÓ QUE CONVERTE esta saída num valor: LER uma coluna dela — o `value.attribute`.**
 ///
-/// ⛔⛔ **É a diferença com ele:** o Mini Cavalry tem **23 conversões escritas à mão**
-/// (`shape->point`, `value->color`, …) — uma segunda lista, que pode discordar do catálogo no
-/// dia em que um nó mudar de portas. Esta **procura no registry** um tipo cuja entrada aceita o
-/// que a fonte emite e cuja saída é um escalar. *A resposta não pode nomear um nó que não faça
-/// aquilo, porque é o manifesto dele que a produz.*
-///
-/// ⚠️ **A ORDEM do catálogo decide o empate**, e é determinística (o registry é um `BTreeMap`):
-/// entre dois conversores igualmente válidos sai sempre o mesmo, em toda máquina — que é o que
-/// faz a mensagem ser a mesma no ecrã do artista e no gate.
-///
-/// `None` quando nenhum tipo converte — e aí a recusa fica só com o «porquê», que continua a
-/// ser mais do que o silêncio que havia antes de 01/09.
-///
-/// ⚠️⚠️ **A cerca do TIPO DE ENTRADA é hoje INFALSIFICÁVEL, e isso está declarado em vez de
-/// escondido:** a mutação que a apaga (`i.ty == saida` → `is_some()`) **SOBREVIVE** ao gate.
-/// Não é redundância — é que o catálogo inteiro deste módulo só tem **uma** forma
-/// não-conduzível (`Instances/Vec2`: o censo diz `Domain::Instances` em 100% das 138 portas),
-/// então não há um segundo caso contra o qual ela possa discriminar. Ela fica porque é
-/// correcta, e torna-se falsificável no dia em que um porto de `Vector`/`Field`/`Signal`
-/// entrar num grafo de Motion. *Uma mutação sobrevivente tem três leituras, não duas: falta um
-/// gate, a linha é redundante, ou o mundo ainda não tem o caso que a distingue.*
+/// ⛔⛔ **A derivação pelo manifesto nomeava o nó ERRADO** (doc 132 §5, medido 13/10): 13 nós de
+/// valor aceitam a corrente na 1.ª porta e emitem um escalar — mas aceitam-na pela CONTAGEM (o
+/// `value.lfo`, o `value.noise`…), e a ordem do registo escolhia o `audio.bands`, que lê um
+/// ficheiro de áudio. O manifesto não distingue quem lê os VALORES de quem lê o tamanho; o
+/// `value.attribute` é o que lê uma coluna da corrente (o *Named Attribute* do Blender). O
+/// manifesto continua a ser conferido: se o nó deixar de aceitar o que a fonte emite, a recusa
+/// fica só com o «porquê».
 pub(super) fn converter_from(motion: &MotionState, from: (NodeId, u16)) -> Option<&'static str> {
     use ph2d_nodegraph::port::Dim;
     let saida = super::fold::manifest_of(motion, from.0)?
@@ -277,11 +263,22 @@ pub(super) fn converter_from(motion: &MotionState, from: (NodeId, u16)) -> Optio
     motion
         .registry
         .manifests()
-        .find(|m| {
+        .find(|m| m.name == ph2d_node_value_attribute::MANIFEST.name)
+        .filter(|m| {
             m.inputs.first().is_some_and(|i| i.ty == saida)
                 && m.outputs.first().is_some_and(|o| o.ty.dim == Dim::Scalar)
         })
         .map(|m| m.name)
+}
+
+/// O nome do tipo como o MENU o mostra (a mesma porta do catálogo, `library::build_catalog`).
+pub(super) fn nome_no_menu(motion: &MotionState, tipo: &'static str) -> String {
+    motion
+        .registry
+        .manifests()
+        .find(|m| m.name == tipo)
+        .and_then(|m| motion.registry.ui_manifest(m.id))
+        .map_or_else(|| tipo.to_string(), |u| ph2d_i18n::tr(u.display_key).to_string())
 }
 
 /// **Esta saída produz um VALOR?** — a pergunta que separa um condutor de uma corrente.

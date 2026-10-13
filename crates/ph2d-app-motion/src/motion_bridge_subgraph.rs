@@ -278,7 +278,10 @@ pub(super) fn nome_no_menu(motion: &MotionState, tipo: &'static str) -> String {
         .manifests()
         .find(|m| m.name == tipo)
         .and_then(|m| motion.registry.ui_manifest(m.id))
-        .map_or_else(|| tipo.to_string(), |u| ph2d_i18n::tr(u.display_key).to_string())
+        .map_or_else(
+            || tipo.to_string(),
+            |u| ph2d_i18n::tr(u.display_key).to_string(),
+        )
 }
 
 /// **Esta saída produz um VALOR?** — a pergunta que separa um condutor de uma corrente.

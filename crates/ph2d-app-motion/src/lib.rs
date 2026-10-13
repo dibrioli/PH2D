@@ -203,8 +203,6 @@ pub use motion_bridge::objects::colisor::migra_o_collide_da_saida;
 /// Ciclo 19: as entradas que o jogo publica para o grafo (`value.input`).
 pub mod motion_entradas;
 pub mod motion_externals;
-/// doc 132 §2: a história da fita dita na Timeline (a faixa) e no cartão das entradas.
-pub mod motion_historia;
 pub mod motion_filter;
 /// **A MÁSCARA DE SUJIDADE do halo**, resolvida contra a cena (doc 89 folha 11) — o nó guarda
 /// um NOME, o passe de tela quer uma `TextureView`, e este é o único sítio onde a cena, o atlas
@@ -214,6 +212,8 @@ pub mod motion_glow_dirt;
 /// instâncias do passe de isolamento, que é a camada MOTION inteira e não só o
 /// passe de sprites — a metade vetorial viva entra pelo tile assado.
 pub mod motion_glow_layer;
+/// doc 132 §2: a história da fita dita na Timeline (a faixa) e no cartão das entradas.
+pub mod motion_historia;
 pub mod motion_lens;
 /// ADR-0154: the shell half of `source.shape` — build each shape's `VecPath` from
 /// its node params, publish it into the cook, and draw the cooked instances as

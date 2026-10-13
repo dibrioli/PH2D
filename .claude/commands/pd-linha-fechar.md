@@ -5,7 +5,7 @@ argument-hint: [Nome da linha]
 Feche a linha `$1`.
 
 1. Gate batched, 1× sobre o diff acumulado (nunca por task):
-   - `BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh` — a régua é o merge-base;
+   - `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh` — a régua é o merge-base;
      o default `origin/main` mede também o que ainda não foi enviado. Ele já força os gates
      GLOBAIS (tectos de ficheiro, o tecto da shell, o censo de órfãos)
    - `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` — um `dead_code` que só a

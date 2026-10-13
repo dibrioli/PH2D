@@ -187,16 +187,40 @@ _arvore="$(cp "$(git rev-parse --git-dir)/index" "$_indice" 2>/dev/null; GIT_IND
 rm -f "$_indice"
 # ⚠️ Fora da chave só o que não muda o veredito de uma corrida VERDE: o `NO_FAIL_FAST` (o
 # `fail-fast = false` já é o default) e os botões de RECURSO da porta (placa, prazo, CPU, memória).
-_chave="$(printf '%s\n%s\n%s\n%s\n' "$_arvore" "$EXPR" "$*" "$(env | grep '^PH2D_' | grep -vE '^PH2D_(PORTAO_FORCAR|NA_PORTA|PRAZO|GPU|GPU_ESPERA|CPU_PCT|MEM_MAX)=' | sort)" | sha256sum | cut -c1-32)"
+_chave="$(printf '%s\n%s\n%s\n%s\n' "$_arvore" "$EXPR" "$*" "$(env | grep '^PH2D_' | grep -vE '^PH2D_(PORTAO_FORCAR|NA_PORTA|PRAZO|GPU|GPU_ESPERA|CPU_PCT|MEM_MAX|SUITE|SUITE_CADA)=' | sort)" | sha256sum | cut -c1-32)"
 _selos="${CARGO_TARGET_DIR:-$_raiz/target}/portao-verde"
 if [ -n "$_arvore" ] && [ -f "$_selos/$_chave" ] && [ "${PH2D_PORTAO_FORCAR:-0}" != "1" ]; then
     echo "[nextest-impacted] ✓ esta árvore ($_arvore) com este filtro JÁ PASSOU em $(cat "$_selos/$_chave") — não corre de novo."
     echo "[nextest-impacted]   (PH2D_PORTAO_FORCAR=1 corre na mesma)"
     exit 0
 fi
+# ⭐⭐ **A CADÊNCIA (dono 2026-10-13: «se a cada mínima implementação temos testes de 10 min, nunca
+# acabaremos»).** Medido no mesmo dia: 36 corridas em 7 linhas, ~5,4 h; uma linha correu 20 vezes, uma a
+# cada pedido do dono. A suíte corre SÓ quando é imprescindível:
+#   PH2D_SUITE=fecho              — o fecho da linha (/pd-linha-fechar, /pd-gate-fechamento) e a integração;
+#   PH2D_SUITE="motivo: <texto>"  — imprescindível JÁ (ex.: mexeu num contrato/crate de que muitas dependem);
+#   ou ≥ PH2D_SUITE_CADA (5) commits desde a última suíte VERDE desta linha (sem ela, desde o merge-base).
+# Fora disso RECUSA (exit 3): no meio do trabalho, os testes do item POR NOME (`cargo-test-narrow.sh`).
+_cada="${PH2D_SUITE_CADA:-5}"
+_marca="$(git rev-parse --git-dir)/ph2d-ultima-suite-verde"
+_desde="$(cat "$_marca" 2>/dev/null || git merge-base main HEAD 2>/dev/null)"
+_feitos="$(git rev-list --count "${_desde}..HEAD" 2>/dev/null || echo "$_cada")"
+case "${PH2D_SUITE:-}" in
+    fecho) echo "[nextest-impacted] cadência: o FECHO — corre." ;;
+    motivo:*) echo "[nextest-impacted] cadência: imprescindível —${PH2D_SUITE#motivo:}" ;;
+    *)
+        if [ "$_feitos" -lt "$_cada" ]; then
+            echo "[nextest-impacted] ✗ CADÊNCIA: $_feitos commit(s) desde a última suíte verde (o passo é $_cada)." >&2
+            echo "[nextest-impacted]   No meio do trabalho, os testes do item POR NOME: bash scripts/cargo-test-narrow.sh <crate> <filtro>" >&2
+            echo "[nextest-impacted]   O fecho da linha: PH2D_SUITE=fecho · imprescindível agora: PH2D_SUITE=\"motivo: <porquê>\"" >&2
+            exit 3
+        fi
+        echo "[nextest-impacted] cadência: $_feitos commits desde a última suíte verde (≥ $_cada) — corre." ;;
+esac
 cargo nextest run "${FAIL_MODE[@]}" -E "$EXPR" --cargo-profile ci-test "$@"
 _saida=$?
 if [ "$_saida" = 0 ] && [ -n "$_arvore" ]; then
     mkdir -p "$_selos" && date '+%Y-%m-%d %H:%M' > "$_selos/$_chave"
+    git rev-parse HEAD > "$_marca" 2>/dev/null
 fi
 exit "$_saida"

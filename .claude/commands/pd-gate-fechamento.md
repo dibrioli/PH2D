@@ -4,7 +4,8 @@ argument-hint: [Crate ou paths]
 ---
 Rode o gate batched de fechamento sobre o diff acumulado, 1× só:
 
-1. `bash scripts/nextest-impacted.sh` (o perfil `ci-test` tem `incremental = false` e o
+1. `PH2D_SUITE=fecho bash scripts/nextest-impacted.sh` (sem o `PH2D_SUITE=fecho` a CADÊNCIA recusa antes de 5
+   commits desde a última suíte verde — dono 13/10; o perfil `ci-test` tem `incremental = false` e o
    `.config/nextest.toml` tem tecto global de 180 s e `fail-fast = false` desde 10/09 —
    os prefixos `CARGO_INCREMENTAL=0` e `--no-fail-fast` deixaram de ser necessários)
 2. clippy `--all-targets` + features

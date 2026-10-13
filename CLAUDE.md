@@ -121,8 +121,11 @@ contexto*. As alavancas, por ordem:
   prazo 30 min; `PH2D_GPU=1` = exclusão na placa). O guarda recusa vigia de fundo sem prazo.
   Tectos e porquê: [TETOS_DE_RECURSO_POR_LINHA.md](docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
 - **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria,
-  **1× sobre o diff acumulado**. Ao fechar a linha: `bash scripts/agent-loop-profile.sh` (as réguas
-  deste §2, com o alvo de cada uma) e `rm -rf target/*/incremental`.
+  **1× sobre o diff acumulado**. ⛔ **A suíte tem CADÊNCIA, no script** (dono 13/10: *«a cada mínima
+  implementação 10 min de testes, nunca acabaremos»*): ela RECUSA antes de 5 commits desde a última verde,
+  salvo `PH2D_SUITE=fecho` (o fecho, a integração) ou `PH2D_SUITE="motivo: …"`. Por pedido do dono:
+  testes por NOME. Ao fechar a linha: `bash scripts/agent-loop-profile.sh` (as réguas deste §2, com o
+  alvo de cada uma) e `rm -rf target/*/incremental`.
 - **Comentário de código curto.** O porquê histórico (o que foi medido, o que foi recusado) vive no doc
   ou no handoff, com link; o código diz a lei. Medido: 29 % das linhas `.rs` são comentário, e cada
   leitura de código paga por elas.

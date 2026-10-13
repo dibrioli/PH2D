@@ -16,7 +16,8 @@ Regras do repositório que valem para si:
   Nunca vigie processos com `pgrep` em laço; nunca deixe vigia de fundo sem prazo.
 - Inner loop: `bash scripts/cargo-check-narrow.sh <crate>`. Teste dirigido:
   `bash scripts/cargo-test-narrow.sh <crate> [filtro]` (exit `0` verde · `1` vermelho · `2` não
-  compilou). Portão de fecho: `BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh`,
+  compilou). Portão de fecho: `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh`
+  (SÓ no fecho da linha ou com um motivo escrito em `PH2D_SUITE="motivo: …"` — a CADÊNCIA recusa o resto),
   `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets`, clippy `--all-targets -D warnings`,
   `cargo fmt --all --check`, `bash scripts/censos-da-arvore-combinada.sh`.
 - Nunca canalize a saída de um portão por `| head`/`| tail` sem preservar o código de saída: leia o

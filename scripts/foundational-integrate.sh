@@ -132,7 +132,7 @@ fi
 
 # ---------- 5. impacted tests, then land ----------
 echo "▸ [5/5] impacted tests"
-BASE=main bash scripts/nextest-impacted.sh
+PH2D_SUITE=fecho BASE=main bash scripts/nextest-impacted.sh
 
 echo "▸ merge --ff-only into main"
 if git -C "$PRIMARY" merge --ff-only "$BRANCH"; then

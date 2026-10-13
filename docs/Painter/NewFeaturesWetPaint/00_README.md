@@ -21,6 +21,7 @@
 
 | Doc | O que tem |
 |---|---|
+| [28_PROMPT_janela_shape_casa_W0_W1.md](28_PROMPT_janela_shape_casa_W0_W1.md) | **O prompt da PRÓXIMA janela** (13/10): a W0 do plano 27 (medir num lote: os 30 tipos do Shape no Wet Paint × Digital, o Rebelle com pontas texturadas, a lei candidata do #47) e a W1 (Bristles como tipo do Shape, ao bit) |
 | [26_ABERTOS.md](26_ABERTOS.md) | **A lista ÚNICA do que está aberto no Painter** (13/10, pedido do dono): em trabalho, por decidir pelo dono, defeitos técnicos conhecidos — cada item com a fonte |
 | [27_plano_shape_casa_dos_pinceis.md](27_plano_shape_casa_dos_pinceis.md) | **O plano em curso** (13/10): a seção Shape vira a casa dos pincéis em todas as mídias — as cerdas do Wet Paint (hoje um gerador escondido com 4 knobs no Tuning) viram um tipo do Shape; o Bug #47 curado na lei pela medida contra o Rebelle; as ondas W0–W5 com o portão de cada uma |
 | [19_PROMPT_janela_linha_rapida.md](19_PROMPT_janela_linha_rapida.md) | **O prompt da PRÓXIMA janela** (dono 11/10): a onda da velocidade — `opt-level` para `ph2d-wet-paint`/`ph2d-pigment`, os testes > 10 s (incluindo os dois portões da fábrica de 11/10), o gerador em paralelo, o 05 partido com o índice no mesmo nome |

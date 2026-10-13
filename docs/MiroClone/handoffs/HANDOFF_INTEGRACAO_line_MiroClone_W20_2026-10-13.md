@@ -140,4 +140,4 @@ PH2D_BOARD_SMOKE=21 ./target/smoke/ph2d-host-desktop
 Precisa de rede e de um navegador da família Chrome. Prova do binário: ver o fim deste ficheiro.
 
 **Prova do binário** (2.ª compilação, a mesma linha de comando, depois de reclamar ~28 GB de `target/*/incremental`):
-`Finished smoke profile [optimized] target(s) in 0.25s`, zero `Compiling`.
+`Finished smoke profile [optimized] target(s) in 0.27s`, zero `Compiling` (refeita depois da cura do ▶, `8099a1da18`).

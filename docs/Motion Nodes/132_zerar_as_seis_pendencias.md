@@ -198,9 +198,23 @@ A camada inteira (1600×972): `0,37 → 0,28 ms`. **O borrão por grupo é o ún
 | colar/desenhar só a caixa da saída | a saída já é `92 %` da célula (Glow `46²`/`48²`); a colagem é `4 %` da placa |
 | o borrão na pirâmide abaixo de `MAX_HALF/3` | não construído: o borrão por grupo ganha com paridade AO BYTE; a pirâmide paga a caixa+tenda contra o oráculo Φ |
 
-Aberto (com número): a vala de uma Drop Shadow é SIMÉTRICA (`antes = max(A)` dos quatro lados, `L` sem direção):
-célula `60` px para uma saída de `52`. Com a leitura por direção (`L` à esquerda `23`, à direita `11`) o passo
-seria `54` px — `−19 %` de área na Drop Shadow; zero na Glow.
+**A vala POR LADO** (fechada na mesma sessão, `plano::Vala`): `leitura` passa a ser `[l, t, r, b]`
+(`ph2d_render::stack_read_por_lado`: o pixel lê em volta de `p − off`, o lado para onde o deslocamento aponta
+paga-o, o oposto desconta-o) e a vala entre vizinhas em `x` é `max(A_r + L_r, A_l + L_l, A_l + A_r) + 1`
+(idem em `y`). Gates: `the_tight_trench_keeps_every_read_off_the_neighbour` (por lado, e as saídas disjuntas)
+e `the_c10_variants_give_the_same_pixels` com as pilhas de fora + a Drop Shadow LONGA `14/0` — tudo na faixa da
+referência, `0` texels da silhueta.
+
+| pilha (A · L por lado) | célula de um disco de 14 px | 4 096 discos: simétrica → por lado | 8 192 |
+|---|---|---:|---:|
+| Inner Shadow 6/6 (0 · 23/23/11/11) | 38×38 = 38×38 | 1,79 → 1,80 | 3,35 → 3,36 |
+| Outer Glow (16 · 17) — o controlo | 48×48 = 48×48 | 3,13 → 3,07 | 6,01 → 5,99 |
+| Drop Shadow 6/6 (16/16/22/22 · 23/23/11/11) | 60×60 → 54×54 | 4,18 → 3,35 (4 → 3 pág.) | 7,93 → 6,67 |
+| Drop Shadow longa 14/0 (16/16/30/16 · 31/17/3/17) | 76×76 → 62×48 | 6,53 → 3,38 (7 → 3 pág.) | 12,48 → 6,75 |
+
+(`relogio_c10_intercalado`, as variantes no mesmo processo, 7 rodadas com a ordem rodada, o MÍNIMO da placa em
+ms; `load 27,8 → 24,1`.) Ganha onde há deslocamento e empata onde não há ⇒ **a vala por lado é a lei**; a
+simétrica sai (não há variante: a `dupla` do W3b continua como a régua de referência dos gates).
 
 ### P3 — o `corrige` em registos (`select`) ganha; `PECAS_PARA_UM_GRUPO` 1024 → 1536
 
@@ -231,6 +245,9 @@ a `19,3`): sob carga o ponto sobe.
 | `corrige` em quatro matrizes de 9 (a do doc 130) | nuvem 2 048 um grupo `33,93` × `19,26 ms` |
 | `corrige` desenrolado com cadeia de `if`s | `27,90` × `19,26`; cadeia 16·4096 `21,95` |
 
+**A ordem da soma tem gate:** `a_ordem_da_soma_dos_contactos_e_a_da_cpu_ao_bit` (ver as mutações abaixo) — a
+régua de paridade não a via.
+
 ### P6 — a silhueta das sprites: dois defeitos, as duas curas ao texel
 
 `medida_p6_a_silhueta_das_sprites` (cinco sprites rodadas 30°, sub-pixel, 21 122 texels pintados; texels a > 1
@@ -255,8 +272,12 @@ sprites planeiam-se com a translação PAR (`planeia_com_par`, `c8e708f5d2`, um 
 `a_lone_sprite_is_the_same_under_both_scopes_on_both_routes` passa a cinco sprites, exige as rotas iguais e a
 barra da silhueta é a medida: `0` (era `≤ 0,5 %`). A paridade C.10 das 24 sprites também foi a `0` texels.
 
-**Mutações:** a fusão pela maior cabeça (P3) **sobrevive** — muda `|Δrot|` em `≤ 0,6e-6°` e `|ΔP|` em nada,
-dentro da tolerância: a ORDEM não se vê na régua de paridade (o limite é da régua). Bordo do borrão: o tap
+**Mutações:** a fusão pela maior cabeça (P3) sobrevivia à régua de paridade (muda `|Δrot|` em `≤ 0,6e-6°` e
+`|ΔP|` em nada, dentro da `TOL`). ✅ Fechado: `a_ordem_da_soma_dos_contactos_e_a_da_cpu_ao_bit` — a peça `0`
+toca três discos minúsculos (empurrão `−2⁻²⁴`, índices `1..=3`, mesma célula) e um grande (`+4`, índice `4`,
+célula vizinha), toda a aritmética exacta menos a soma: crescente ⇒ `x = 1 − 2⁻²⁴`, o grande primeiro ⇒ `x = 1`.
+Verde nas duas rotas (placa = CPU = `0.99999994` ao bit); com a mutação VERMELHO (`placa 1e0 × CPU
+9.9999994e-1`), os outros 5 gates do passe verdes; restaurado. Bordo do borrão: o tap
 deslocado um pixel → 3 gates vermelhos; o último tap fora → 1 (`the_layer_blur_is_the_oracles`). O tag `0` com
 grupo próprio → o gate das rotas vermelho. A translação sem paridade → a barra `0` vermelha. A vala sem `L` → 2.
 

@@ -155,6 +155,10 @@ mod dano_demo;
 #[path = "motion_state_colisor_nome_demo.rs"]
 mod colisor_nome_demo;
 
+/// A cena `=141` — o aviso que se lê inteiro (doc 132 §5, P5). Ver o cabeçalho dela.
+#[path = "motion_state_aviso_demo.rs"]
+pub(crate) mod aviso_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

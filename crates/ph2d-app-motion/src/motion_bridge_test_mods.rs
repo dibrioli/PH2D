@@ -47,6 +47,10 @@ mod lsystem_complaint_tests;
 #[path = "motion_bridge_lsystem_preset_tests.rs"]
 mod lsystem_preset_tests;
 
+/// A cena `=141` (doc 132 §5): o gesto do roteiro dá o aviso longo — pela fila real do painel.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_aviso_demo_tests.rs"]
+mod aviso_demo_tests;
 /// O SELECTOR de moldes pelo despacho REAL — irmão cortado pelo teto de LOC (HR-18),
 /// no corte que a pergunta desenha: lá *o que a tabela é*, aqui *o que o clique faz*.
 #[path = "motion_bridge_lsystem_selector_tests.rs"]

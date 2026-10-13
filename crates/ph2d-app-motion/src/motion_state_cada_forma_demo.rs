@@ -179,9 +179,10 @@ pub(super) fn announce_discos() {
          peca e o brilho passa a contornar o grupo. Volte para `Each Shape`.\n\
          (3) O CUSTO: abra o app com `PH2D_FLUID_PROFILE=1` antes do comando. A cada 2 segundos o\n    \
          terminal imprime uma linha `[gpu]`; procure `fx_cells.pilha`, `fx.borrao_h` e\n    \
-         `fx.borrao_v` (os ms da placa por quadro). Medido nesta maquina com 4096 discos: o filtro\n    \
-         inteiro em `Each Shape` custava 3,57 ms e agora 2,96 ms (o borrao le da memoria do grupo);\n    \
-         em `Whole Layer` a pilha e' ~0,3 ms.\n\
+         `fx.borrao_v` (os ms da placa por quadro). Com a chuva cheia (4096 discos) o terminal diz\n    \
+         `fx_cells.pilha` perto de 6 ms com `(x7.0)`: sete paginas por quadro. Antes desta versao\n    \
+         eram ~10 ms e `(x10.0)` - cada disco pagava duas celulas. `render.vello` fica abaixo de 1 ms\n    \
+         (antes ele somava o filtro inteiro).\n\
          \n\
          DEU ERRADO se: os discos nao cairem; nao acelerarem dentro do circulo; o brilho tremer ou\n\
          sumir num disco que se encosta a outro em `Each Shape`; ou nao aparecer `fx_cells.pilha` na\n\

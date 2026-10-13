@@ -270,6 +270,19 @@ referência, `0` texels da silhueta.
 ms; `load 27,8 → 24,1`.) Ganha onde há deslocamento e empata onde não há ⇒ **a vala por lado é a lei**; a
 simétrica sai (não há variante: a `dupla` do W3b continua como a régua de referência dos gates).
 
+**A `=138` no PRODUTO** (app `--profile smoke`, 1600×944, `PH2D_FLUID_PROFILE=1`): a sonda dizia 3 páginas e o app
+fazia 10–11 (`fx_cells.pilha` 11 ms ×11). Mecanismo, medido no app: `caixas 8192 · vivas 8138` — cada disco pagava
+DUAS células, a dele e a da sprite CALADA que a placa põe por cada linha de forma (a cura é a do `001077631a`, a
+linha calada não é célula). Régua no caminho do produto (a variante trocada a cada 120 quadros no MESMO processo,
+15 janelas, o mínimo; `load 26 → 68`): placa `14,05 → 9,34 ms`, pilha `9,93 → 6,07 ms`, `10 → 7` páginas. O que
+SOBRA é o custo verdadeiro da cena: discos de ~18 px com o Glow da cena (raio `0,1` ⇒ σ `9,05` px: alcance 28,
+leitura 29, célula ~78 px) — 4 096 × ~6 kpx = 25 Mpx, `0,24 ms/Mpx`; fora do viewport só ~30 discos. ⇒ a sonda de
+12 px / σ 5,3 não era a cena. Gate `a_138_paga_as_paginas_dos_discos` (4 096 discos de 18 px + 4 096 caladas da
+placa, o Glow da cena): 7 páginas e 4 096 células = só os discos; o controlo sem a regra dá **11 páginas e 8 192
+células** (o número do app). ⚠️ E o `render.vello` de 15 ms não eram discos no Vello: o span abria ANTES da camada
+filtrada e somava o filtro inteiro (=137 sem filtro: `0,68 ms`); fechado só sobre o render, a `=138` mostra
+`render.vello 0,30 ms` · `fx_cells.pilha 6,14 ms (×7)` · `gpu-busy 9,7 ms`. O roteiro da `=138` diz estes números.
+
 ### P3 — o `corrige` em registos (`select`) ganha; `PECAS_PARA_UM_GRUPO` 1024 → 1536
 
 `measure_a_cadeia_cpu_contra_placa`, as três formas × os dois caminhos, o MÍNIMO de 15 blocos (ms, total da ida e

@@ -10,7 +10,9 @@
 
 | # | O quê | Fonte | Estado |
 |---|---|---|---|
-| A1 | **A seção Shape vira a CASA dos pincéis em todas as mídias** — os pincéis do Wet Paint (hoje dentro do motor, invisíveis) passam a aparecer e a configurar-se no Shape; as texturas deles no dropdown; os knobs de ponta saem do Tuning. Engloba o **Bug #47** (Shape Noise no Wet Paint quase não pinta). | ordem do dono 13/10 · [plano 27](27_plano_shape_casa_dos_pinceis.md) · [BUGS #47](../BUGS_painter.md) | **W0 medida + W1 feita (13/10)**: tabela, oráculo e decisões no [27 §6](27_plano_shape_casa_dos_pinceis.md); D6 = lei B. Próxima: W2 ([prompt 29](29_PROMPT_janela_shape_casa_W2.md)) |
+| A1 | **A seção Shape vira a CASA dos pincéis em todas as mídias** — os pincéis do Wet Paint (hoje dentro do motor, invisíveis) passam a aparecer e a configurar-se no Shape; as texturas deles no dropdown; os knobs de ponta saem do Tuning. Engloba o **Bug #47** (Shape Noise no Wet Paint quase não pinta). | ordem do dono 13/10 · [plano 27](27_plano_shape_casa_dos_pinceis.md) · [BUGS #47](../BUGS_painter.md) | **W0, W1 e W2 feitas (13/10)**: o Wet Paint lê as cerdas do Shape, presets migrados ao byte, a família do #47 pinta — [27 §6](27_plano_shape_casa_dos_pinceis.md). Próxima: W3 a lei B para o Shape sobre o Grain + W4 o painel por mídia ([prompt 30](30_PROMPT_janela_shape_casa_W3_W4.md)) |
+| A2 | **O Spacing pontilha no Digital e não no Wet Paint** — medido: as cerdas repetem o MESMO tapete a cada dab (o Wet Paint esconde-o pelo Spacing 0,025 de fábrica, o rasto e a água); e o mesmo Spacing dá 3,2× menos dabs no Wet Paint (a lei da largura). Desenho: as cerdas que arrastam (custo igual) + dab-cápsula opcional. | relato do dono 13/10 · [31](31_spacing_por_meio_o_pontilhado.md) | medido; próxima janela ([prompt 32](32_PROMPT_janela_spacing_continuo.md)) |
+
 
 ## B — Por decidir (do DONO)
 

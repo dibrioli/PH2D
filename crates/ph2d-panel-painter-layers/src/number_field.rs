@@ -227,22 +227,27 @@ pub(crate) fn paint_num_xy(
         arm_field(store, id_x, vx, min, max, step, decimals);
         arm_field(store, id_y, vy, min, max, step, decimals);
     }
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    ph2d_editor_core::property_row::paint_fields_row(
-        ctx.scene,
-        ctx.text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        content_w,
-        y,
-        label_txt,
-        &[id_x, id_y],
-        step,
-        None,
-        sec,
-    )
+    // Esmaece como a fileira de um número só: sem isto o Offset e o Size das cerdas, inertes sob um Grain
+    // no Wet Paint, pintavam-se vivos (censo `a_linha_esmaecida_e_a_que_nao_age`, 13/10).
+    let area = Rect::new(x, y, content_w, ph2d_tokens::row_pitch_px());
+    crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id_x, id_y], |ctx| {
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        ph2d_editor_core::property_row::paint_fields_row(
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            content_w,
+            y,
+            label_txt,
+            &[id_x, id_y],
+            step,
+            None,
+            sec,
+        )
+    })
 }
 
 /// Per-pattern params (all `0..1`, step `0.01`): pair two consecutive SHORT-label params on one line

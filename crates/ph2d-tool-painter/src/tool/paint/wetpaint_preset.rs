@@ -379,6 +379,15 @@ impl PainterTool {
             };
         }
         k.water = water;
+        // Um preset de antes da W2 do plano 27 traz as cerdas no mapa do MOTOR e o Shape vazio: elas passam
+        // ao Shape, com os mesmos valores (o traço é o mesmo, ao bit — a miniatura de fábrica é o portão).
+        // Um preset gravado depois já não as traz no mapa ([`Self::wet_preset_capturar`]).
+        let traz_cerdas = ph2d_wet_paint::brush::BRISTLE_UNIT_KNOBS
+            .iter()
+            .any(|kn| prm.engine.contains_key(KNOB_DEFS[*kn as usize].key));
+        if traz_cerdas && self.paint.brush.shape.kind == TextureKind::None {
+            self.paint.brush.shape = k.cerdas_no_shape(self.paint.brush.shape);
+        }
         self.paint.wetpaint.knobs = k;
 
         if let Some(m) = prm.paint_mode.as_deref() {
@@ -477,8 +486,16 @@ impl PainterTool {
         p.brush
             .extend(json::pincel_para_json(&self.paint.brush, &CAMPOS_DO_PINCEL));
         let k = &self.paint.wetpaint.knobs;
-        for def in &KNOB_DEFS {
+        // As cerdas moram no Shape (plano 27 W2): o mapa do motor não as grava — e a ausência delas é o
+        // que diz ao [`Self::wet_preset_aplicar`] que o Shape do ficheiro já é a verdade.
+        for def in KNOB_DEFS
+            .iter()
+            .filter(|d| !ph2d_wet_paint::brush::BRISTLE_UNIT_KNOBS.contains(&d.knob))
+        {
             p.engine.insert(def.key.to_owned(), k.get(def.knob));
+        }
+        for kn in ph2d_wet_paint::brush::BRISTLE_UNIT_KNOBS {
+            p.engine.remove(KNOB_DEFS[kn as usize].key);
         }
         p.engine.insert(CHAVE_ERASE.to_owned(), k.erase);
         let v = self.wet_preset_volumes();

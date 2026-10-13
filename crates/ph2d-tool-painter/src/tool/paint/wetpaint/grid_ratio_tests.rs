@@ -45,6 +45,9 @@ fn wet_tool(ratio: u8) -> PainterTool {
     t.paint.brush = b;
     t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("wetpaint");
+    // O pincel à mão nasce com o Shape vazio = a ponta LISA (plano 27 W2); estes portões medem as cerdas
+    // de sempre, que agora moram no Shape.
+    t.paint.brush.shape = t.paint.wetpaint.knobs.cerdas_no_shape(t.paint.brush.shape);
     // A física mede-se no carimbo do motor de sempre: a W2 só re-rotula o número do painel.
     t.set_wet_largura_crua(1.0);
     // A cor CHEIA: estes gates medem a grade e o composite, não a diluição da Opacity.

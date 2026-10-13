@@ -22,7 +22,7 @@ pub(crate) mod patterns;
 mod shape;
 mod stencil;
 mod tiled;
-pub use bristles::{bristle_knobs, bristle_tile};
+pub use bristles::{bristle_knobs, bristle_tile, bristles_at};
 pub use kind::TextureKind;
 pub use shape::{
     ImageRgb, compose_shape_silhouette_kind, image_tip_extent, image_tip_radius, remap_shape_value,

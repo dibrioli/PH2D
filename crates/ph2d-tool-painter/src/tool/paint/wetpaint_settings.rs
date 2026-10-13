@@ -83,6 +83,30 @@ impl WetKnobs {
         self.knobs[knob as usize]
     }
 
+    /// ⭐ **As cerdas destes knobs como a ponta do Shape** (plano 27 W2): `forma` com o tipo Bristles e os
+    /// quatro sliders exactos destes valores (`BristleKnobs::to_unit`, ida-e-volta ao bit) — o resto da
+    /// forma (Angle, Size, Follow…) fica como estava.
+    #[must_use]
+    pub fn cerdas_no_shape(
+        &self,
+        forma: ph2d_painter_brush::TextureSettings,
+    ) -> ph2d_painter_brush::TextureSettings {
+        let u = ph2d_wet_paint::brush::BristleKnobs {
+            felt: self.get(Knob::Felt),
+            bristle_count: self.get(Knob::BristleCount),
+            bristle_strength: self.get(Knob::BristleStrength),
+            bristle_size: self.get(Knob::BristleSize),
+        }
+        .to_unit();
+        let mut params = forma.params;
+        params[..4].copy_from_slice(&u);
+        ph2d_painter_brush::TextureSettings {
+            kind: ph2d_painter_brush::TextureKind::Bristles,
+            params,
+            ..forma
+        }
+    }
+
     /// Write one registry knob: NaN (a garbled numeric input) falls back to
     /// the def's default — the model's own law — and everything else clamps
     /// to the def's bounds (const literals, table-order gated in the engine).

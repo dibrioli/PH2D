@@ -184,3 +184,32 @@ a tangente não gira, então ele lê-se «morto» a olho.
 - **Portões:** `cada_transformacao_do_shape_muda_a_ponta_de_cerdas` (num arco; Bristles e o CONTROLO Noise ×
   Digital · Impasto · Wet Paint × 8 gestos; mutação «lei antiga» → 21 mortos, todos nas cerdas) ·
   `nenhum_nome_da_secao_shape_se_repete` · `as_cerdas_digitam_se_nas_unidades_do_tuning`.
+
+### 6.7 — W2 feita (13/10): o Wet Paint lê as cerdas do Shape
+
+Smoke do dono: *«em Wet Paint, Shape ainda não aparece configurado»* — era a W2.
+
+- **Rota** (`wetpaint/dab_route.rs`): Shape = Bristles ⇒ a silhueta é só o contorno (falloff × pegada) e as cerdas
+  entram como o `texv` do motor pela porta do Grain, lidas por `texture::bristles_at` em CÉLULAS (`x − cx`, como o
+  motor) com a transformação do Shape; um Grain armado continua a substituí-las (W2.4). Shape ≠ Bristles ⇒ ponta
+  LISA (`texv = 1`, D4). O tapete do próprio motor deixa de ser lido pelo produto (fica para o Blend, que usa o
+  carimbo do motor).
+- **A cerda segue só a rotação POR DAB** (`FootprintDeform::so_o_rotor`: Jitter Rotate, Rake/Flow), não a pegada
+  fixa do pincel (achatar + ângulo): um pincel chato é a mesma cerda numa pegada estreita. Medido: com a pegada
+  inteira o **Oil Bristle** (achatado 0,68 a 90°) mudava 14 502 px da miniatura; com o rotor, os 12 ao byte.
+- **Fábrica e migração:** o pincel Wet Paint nasce com o Shape em Bristles e as cerdas do Wet Round
+  (`WetKnobs::cerdas_no_shape`); um preset de ANTES (as cerdas no mapa `engine`, o Shape vazio) chega com o Shape em
+  Bristles e os mesmos valores; gravar já não põe as cerdas no mapa — a ausência delas diz que o Shape é a verdade.
+  O Tuning esconde os 4 (`KnobGroup::Hidden`).
+- **Painel honesto:** `Dependente::CerdasDaAgua` — os sliders e a transformação das cerdas esmaecem no Wet Paint
+  com um Grain armado ou uma ferramenta da água que não deposita.
+- **D7 decidido:** o Grain SUBSTITUI as cerdas (não multiplica). As cerdas têm média ~0,02 e são calibradas para
+  ser o `texv` inteiro com a intensidade 3: multiplicá-las pelo grão apagaria os pastéis (que hoje pintam pelo grão).
+- **Tinta por tipo depois da W2** (mesma sonda de 6.1, Wet ÷ None, onde None é agora a ponta LISA = 1 192 616, 4,7×
+  as cerdas de fábrica): Noise 0,337 · Clouds 0,702 · Voronoi 0,825 · Musgrave 0,469 · Stucci 0,119 · Bristles
+  (Strength 2) 0,464 — **a família do #47 pinta**, nas proporções do Digital. A lei B (W3) fica para o Shape
+  procedural SOBRE um Grain (o `texv` é o grão e o portão continua a cortar o padrão).
+- **Portões:** `presets_de_fabrica::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` (os 12 ao byte pela rota
+  nova) · `o_wet_paint_le_as_cerdas_do_shape` (Count muda; o `felt` do motor já NÃO — o controlo) ·
+  `os_presets_antigos_chegam_com_as_cerdas_no_shape` (antigo → Bristles exacto; gravado sem as chaves; ida-e-volta;
+  None gravado continua None).

@@ -38,9 +38,9 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     for m in [Digital, Impasto, WetPaint] {
         v.push((m, painter_brush_texture_kind_option_id(5), imagem));
     }
-    for m in [Digital, WetPaint] {
-        v.push((m, painter_shape_kind_option_id(5), imagem));
-    }
+    // O Wet Paint saiu a 13/10: ele nasce com as cerdas no Shape (plano 27 W2), e o Image sem imagem
+    // troca-as pela ponta lisa.
+    v.push((Digital, painter_shape_kind_option_id(5), imagem));
     for luz in [
         PAINTER_IMPASTO_LIGHT_2,
         PAINTER_IMPASTO_LIGHT_3,
@@ -67,10 +67,9 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     let rodar = "o carimbo redondo sem Shape nem Grain que siga o carimbo não tem ângulo para mostrar. NÃO \
                  esmaece: o gate do esmaecido mediu a tinta a mudar por ACIDENTE em vários estados (o sorteio \
                  do ângulo desloca o fluxo das outras variações; a pegada rodada arredonda diferente)";
-    for m in [Watercolor, WetPaint] {
-        v.push((m, PAINTER_BRUSH_JITTER_ROTATE, rodar));
-        v.push((m, PAINTER_BRUSH_JITTER_ROTATE_CHIP, rodar));
-    }
+    // O Wet Paint saiu a 13/10: as cerdas do Shape giram com o Rotate (plano 27, 27 §6.6).
+    v.push((Watercolor, PAINTER_BRUSH_JITTER_ROTATE, rodar));
+    v.push((Watercolor, PAINTER_BRUSH_JITTER_ROTATE_CHIP, rodar));
     v.push((
         WetPaint,
         painter_brush_dab_handle_id(1),

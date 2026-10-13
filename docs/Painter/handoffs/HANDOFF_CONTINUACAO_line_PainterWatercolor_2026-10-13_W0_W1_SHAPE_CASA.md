@@ -13,7 +13,7 @@
 
 ## §1 — Coordenadas
 
-Sobre `0d8487ce0f` (o `main` não andou: merge-base `757afebd58`). Dois commits desta janela (W0+W1; o smoke do dono). Sem push.
+Sobre `0d8487ce0f` (o `main` não andou: merge-base `757afebd58`). Três commits desta janela (W0+W1; o smoke do dono; W2 + a investigação do Spacing). Sem push.
 
 ## §2 — W0 (medir, sem mudar o produto) — tudo no [27 §6](../NewFeaturesWetPaint/27_plano_shape_casa_dos_pinceis.md)
 
@@ -65,10 +65,26 @@ nas unidades do Tuning (`param_escala`, as 4 portas: Shape, Grain, camada de tex
 Bateria do 2.º commit: fmt ✓ · clippy `-D warnings --all-targets` ✓ · `nextest-impacted` **18 294/18 294** ✓ (489 s) ·
 suítes do painel 239 ✓ · censo das cerdas: zero controlo do Shape morto nos três meios.
 
+## §4c — W2 (3.º commit): o Wet Paint lê as cerdas do Shape
+
+Shape Bristles = o `texv` do motor pela porta do Grain (`texture::bristles_at` em células; a cerda segue só o rotor
+por dab, `FootprintDeform::so_o_rotor`); Shape ≠ Bristles = ponta lisa. Fábrica e presets antigos chegam com o Shape
+em Bristles; gravar não põe as cerdas no mapa; o Tuning esconde os 4; `Dependente::CerdasDaAgua`. **As 12 miniaturas
+de fábrica ao byte pela rota nova.** Fixturas de teste do Wet Paint com o Shape vazio passaram a pôr as cerdas (o
+vazio é agora a ponta lisa) — passaram sem mudar nenhum número. Censos: as linhas do Rotate e do Image no Wet Paint
+saíram da lista dos inertes (agem); o Offset/Size XY passaram a esmaecer (`paint_num_xy`); o Follow NÃO é das cerdas
+(roda o Grain). Detalhe e tinta por tipo: [27 §6.7](../NewFeaturesWetPaint/27_plano_shape_casa_dos_pinceis.md).
+**Investigação do Spacing** (relato do dono): [31](../NewFeaturesWetPaint/31_spacing_por_meio_o_pontilhado.md) —
+medida, causa e desenho; próxima janela = [prompt 32](../NewFeaturesWetPaint/32_PROMPT_janela_spacing_continuo.md),
+depois o [prompt 30](../NewFeaturesWetPaint/30_PROMPT_janela_shape_casa_W3_W4.md).
+Bateria W2: fmt ✓ · clippy `-D warnings` ✓ (com `panel-painter-layers`) · `nextest-impacted` 18 295/18 296 (1 prazo a
+`load` alto) e, de novo a `load` 116–237, 2 de relógio (`the_mask_stroke_cost…`, `the_authoring_pause…`): sozinhos 2/3 e 3/3
+— família de carga (o caminho da máscara não passa pelo diff).
+
 ## §5 — Estado e o que fica ABERTO
 
-- **Wet Paint com Shape = Bristles** já pinta (0,144 do redondo), mas como SILHUETA (falloff × cerdas) sobre as
-  cerdas do motor — a **W2** passa-o para o papel de textura. Prompt: [29](../NewFeaturesWetPaint/29_PROMPT_janela_shape_casa_W2.md).
+- O Blend do Wet Paint usa o carimbo do MOTOR (o tapete do Tuning escondido, com os valores do preset) — o Shape
+  não o alcança; a ponta lisa deposita 4,7× a tinta das cerdas (conferir no smoke, prompt 30).
 - O Paper do Watercolor também lista o Bristles (o dropdown deriva de `TextureKind::COUNT`); mídia congelada, sem
   dano — a ponta não muda o papel de quem não o escolhe.
 - W3 = a lei B no motor (um 3.º canal `sv` em `stamp_row_shaped`); W4 o painel por mídia (C1); W5 Flat/Fan + doc.

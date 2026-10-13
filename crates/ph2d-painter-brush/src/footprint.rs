@@ -104,6 +104,9 @@ pub struct FootprintDeform {
     /// ⭐ A curvatura da arte debaixo do dab ([`FootprintCurve`]). Plana em tudo o que não é arte
     /// deformada — e aí esta struct comporta-se AO BIT como antes de ela existir.
     curve: FootprintCurve,
+    /// A rotação POR DAB que [`Self::rotated_by`] compôs (Jitter Rotate, a tangente do Rake/Flow), sem a
+    /// pegada fixa do pincel — o referencial das cerdas ([`Self::so_o_rotor`]). Não entra no `apply`.
+    rotor: [f32; 2],
 }
 
 impl FootprintDeform {
@@ -115,6 +118,7 @@ impl FootprintDeform {
             sin: 0.0,
             inv_minor: 1.0,
             curve: FootprintCurve::flat(),
+            rotor: [1.0, 0.0],
         }
     }
 
@@ -129,6 +133,7 @@ impl FootprintDeform {
             sin,
             inv_minor: 1.0 / (1.0 - f),
             curve: FootprintCurve::flat(),
+            rotor: [1.0, 0.0],
         }
     }
 
@@ -171,7 +176,19 @@ impl FootprintDeform {
             sin: self.cos * rotor[1] + self.sin * rotor[0],
             inv_minor: self.inv_minor,
             curve: self.curve,
+            rotor: [
+                self.rotor[0] * rotor[0] - self.rotor[1] * rotor[1],
+                self.rotor[0] * rotor[1] + self.rotor[1] * rotor[0],
+            ],
         }
+    }
+
+    /// ⭐ **Só a rotação por dab** — sem o achatamento, o ângulo fixo do pincel nem a curvatura: o referencial
+    /// das CERDAS (plano 27). Um pincel chato é a mesma cerda numa pegada estreita; o Jitter Rotate e o
+    /// Rake/Flow giram-na. Sem rotação por dab ⇒ a identidade.
+    #[must_use]
+    pub fn so_o_rotor(self) -> Self {
+        Self::identity().rotated_by(self.rotor)
     }
 
     /// Apply to a footprint unit coord `[u, v]` (pixel offset ÷ radius): rotate by `-angle` into the

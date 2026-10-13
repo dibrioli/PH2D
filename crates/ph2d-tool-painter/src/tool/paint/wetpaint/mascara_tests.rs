@@ -27,6 +27,9 @@ fn agua(raio: f32) -> PainterTool {
     t.paint.brush = b;
     t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("wetpaint");
+    // O pincel à mão nasce com o Shape vazio = a ponta LISA (plano 27 W2); estes portões medem as cerdas
+    // de sempre, que agora moram no Shape.
+    t.paint.brush.shape = t.paint.wetpaint.knobs.cerdas_no_shape(t.paint.brush.shape);
     t
 }
 

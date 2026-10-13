@@ -174,7 +174,11 @@ impl PainterTool {
         let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
             && self.paint.shape_color_ramp_bw)
             .then_some(self.paint.shape_ramp_lut.as_slice());
-        let shape_active = brush.shape_silhouette_active(shape_image.is_some());
+        // ⭐ **A ponta de CERDAS não é silhueta** (plano 27 W2): o Shape Bristles é a TEXTURA do motor (o
+        // `texv`, que hoje vinha do tapete do próprio motor) — a silhueta fica o contorno da ponta. Um Shape
+        // que não é Bristles não tem cerdas: a ponta é LISA (`texv = 1`, D4).
+        let cerdas = brush.shape.kind == ph2d_painter_brush::TextureKind::Bristles;
+        let shape_active = brush.shape_silhouette_active(shape_image.is_some()) && !cerdas;
         // The artist's GRAIN replaces the engine's bristle texture (W2.4).
         // The bristle IS the fluid's default grain, so an armed Grain slot
         // takes its place outright — two textures multiplying would
@@ -297,7 +301,7 @@ impl PainterTool {
             let fp = spec.dab_footprint(rotor);
             let dab_index = didx;
             let tex_rng = dab_rng.enter(&groups, dab_index);
-            let shape_basis = shape_active.then(|| {
+            let shape_basis = (shape_active || cerdas).then(|| {
                 ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,
                     &mut *tex_rng,
@@ -309,13 +313,13 @@ impl PainterTool {
                     },
                 )
             });
-            let shape_input = shape_basis
-                .as_ref()
-                .map(|sb| ph2d_painter_brush::ShapeInput {
+            let shape_input = shape_basis.as_ref().filter(|_| shape_active).map(|sb| {
+                ph2d_painter_brush::ShapeInput {
                     basis: sb,
                     image: shape_image.as_ref(),
                     ramp_lut: shape_ramp_lut,
-                });
+                }
+            });
             // O alcance da ponta de imagem (Bug #52): o motor percorre `r · reach` células, e a
             // janela do rasto cabe o máximo do traço (com rotação por dab, o disco de qualquer ângulo).
             let reach = spec.dab_tip_reach(shape_basis.as_ref());
@@ -395,9 +399,37 @@ impl PainterTool {
                     ))
                 }
             });
-            let grain_arg = grain
-                .as_ref()
-                .map(|g| g as ph2d_wet_paint::brush::CellFn<'_>);
+            // As cerdas do Shape, pela MESMA porta do Grain e no referencial do motor: o desvio em células ao
+            // centro do dab (`x − cx`, como `brush.rs::stamp_row_shaped`) — no neutro, o `sample_bristle` do
+            // motor ao bit. Um Grain armado continua a tomar o lugar delas (W2.4; D7 medido no 27 §6.7).
+            let (centro_x, centro_y) = (
+                grid_map::px_to_cell(f64::from(x), ratio),
+                grid_map::px_to_cell(f64::from(y), ratio),
+            );
+            let cerdas_sb = shape_basis.as_ref().filter(|_| cerdas && grain.is_none());
+            let cerdas_fn = cerdas_sb.map(|sb| {
+                let forma = &spec_ref.shape;
+                let px_por_celula = f64::from(ratio);
+                let raio = d.radius_px;
+                move |cx: i32, cy: i32| -> f64 {
+                    let (fx, fy) = (f64::from(cx), f64::from(cy));
+                    ph2d_painter_brush::texture::bristles_at(
+                        forma,
+                        sb,
+                        [fx - centro_x, fy - centro_y],
+                        [fx, fy],
+                        px_por_celula,
+                        raio,
+                    )
+                }
+            });
+            let lisa = |_: i32, _: i32| -> f64 { 1.0 };
+            let grain_arg: Option<ph2d_wet_paint::brush::CellFn<'_>> =
+                Some(match (grain.as_ref(), cerdas_fn.as_ref()) {
+                    (Some(g), _) => g,
+                    (None, Some(c)) => c,
+                    (None, None) => &lisa,
+                });
             // O ponto e o raio, em CÉLULAS — as duas coisas que o motor mede
             // na sua própria grade. O `d.radius_px` continua sendo o raio da
             // silhueta (em pixels), e é assim que o pincel não muda de tamanho

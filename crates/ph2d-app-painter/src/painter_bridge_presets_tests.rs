@@ -57,7 +57,18 @@ fn escolher_poe_o_preset_no_pincel_e_lembra_o_ativo() {
         21.0,
         "o Wash do 02 §6.9 (calibrado contra o Rebelle 10/10)"
     );
-    assert_eq!(knob(&t, "bristleCount"), 3000.0);
+    // As cerdas moram no Shape (plano 27 W2): o Wash de antes chega com o Shape em Bristles e as dele.
+    let b = t.brush_settings();
+    assert_eq!(
+        b.shape_kind,
+        ph2d_painter_brush::TextureKind::Bristles.to_u8()
+    );
+    let mut prm = [0.5; ph2d_painter_brush::MAX_TEX_PARAMS];
+    prm.copy_from_slice(&b.shape_params);
+    assert_eq!(
+        ph2d_painter_brush::texture::bristle_knobs(&prm).bristle_count,
+        3000.0
+    );
     assert_eq!(p.vista.ativo.as_deref(), Some(WASH));
     // Reaberto (outra sessão): o pincel abre com o Wash.
     let mut t2 = PainterTool::default();

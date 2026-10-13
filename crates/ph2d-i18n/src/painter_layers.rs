@@ -48,6 +48,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.same_as_paper_off" => "Acts when Same as Paper is off",
         "panel.painter_layers.inerte.charge_below_full" => "Acts when Charge is below 100%",
         "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
+        "panel.painter_layers.inerte.bristles_no_grain" => {
+            "Acts with Grain None and the Paint tool or the Eraser"
+        }
         "panel.painter_layers.inerte.eraser_on" => "Acts with the Eraser",
         "panel.painter_layers.inerte.wet_paint_tool" => "Acts with the Paint tool and the Eraser",
         "panel.painter_layers.inerte.tilt_on" => "Acts when Tilt is on",

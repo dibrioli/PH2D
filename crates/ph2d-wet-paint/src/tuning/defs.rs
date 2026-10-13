@@ -63,7 +63,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::Felt,
-        KnobGroup::Paint,
+        KnobGroup::Hidden, // a ponta mora no Shape (plano 27 W2): o tipo Bristles
         "felt",
         0.0,
         0.2,
@@ -73,7 +73,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::BristleCount,
-        KnobGroup::Paint,
+        KnobGroup::Hidden, // a ponta mora no Shape (plano 27 W2): o tipo Bristles
         "bristleCount",
         0.0,
         4000.0,
@@ -113,7 +113,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::BristleStrength,
-        KnobGroup::Paint,
+        KnobGroup::Hidden, // a ponta mora no Shape (plano 27 W2): o tipo Bristles
         "bristleStrength",
         0.0,
         4.0,
@@ -123,7 +123,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::BristleSize,
-        KnobGroup::Paint,
+        KnobGroup::Hidden, // a ponta mora no Shape (plano 27 W2): o tipo Bristles
         "bristleSize",
         0.2,
         4.0,

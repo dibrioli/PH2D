@@ -205,3 +205,104 @@ fn as_cerdas_digitam_se_nas_unidades_do_tuning() {
     ));
     assert_eq!(t.paint.brush.shape.params[2], 0.3);
 }
+
+fn wet_round() -> ph2d_brush_presets::Preset {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    ph2d_brush_presets::Biblioteca::carregar(&raiz, None)
+        .entradas
+        .into_iter()
+        .find(|e| e.preset.parametros.name == "Wet Round")
+        .expect("o Wet Round de fábrica")
+        .preset
+}
+
+/// ⭐ **O Wet Paint lê as cerdas do SHAPE** (plano 27 W2): o pincel de fábrica nasce com o Shape em Bristles
+/// e as cerdas do Wet Round; o Bristle Count do Shape muda o traço; o knob `felt` do motor (agora escondido
+/// do Tuning) já NÃO muda — o CONTROLO de que a fonte mudou de casa. A ponta lisa (Shape None) pinta outra
+/// coisa.
+#[test]
+fn o_wet_paint_le_as_cerdas_do_shape() {
+    use ph2d_wet_paint::tuning::Knob;
+    let mut f = PainterTool::default();
+    f.set_source(vec![255u8; (N * N * 4) as usize], N, N);
+    f.set_paint_media(PaintMedia::WetPaint);
+    let forma = f.paint.brush.shape;
+    assert_eq!(
+        forma.kind,
+        TextureKind::Bristles,
+        "o Wet Paint nasce com cerdas"
+    );
+    let k = ph2d_painter_brush::texture::bristle_knobs(&forma.params);
+    assert_eq!(
+        [k.bristle_count, k.bristle_strength, k.bristle_size, k.felt],
+        [2000.0, 1.0, 2.0, 0.03]
+    );
+    let fresco = || {
+        let mut t = pincel(PaintMedia::WetPaint, TextureKind::None);
+        t.paint.brush.shape = forma;
+        t
+    };
+    let base = arco(&mut fresco());
+    assert_eq!(base, arco(&mut fresco()), "ruído");
+    let mut menos = fresco();
+    menos.set_brush_shape_param_norm(0, 0.1);
+    assert_ne!(
+        arco(&mut menos),
+        base,
+        "o Bristle Count do Shape não mudou o Wet Paint"
+    );
+    let mut felt = fresco();
+    felt.paint.wetpaint.knobs.set(Knob::Felt, 0.15);
+    assert_eq!(
+        arco(&mut felt),
+        base,
+        "o felt do motor ainda manda nas cerdas"
+    );
+    let mut lisa = fresco();
+    lisa.set_brush_shape_kind(TextureKind::None.to_u8());
+    assert_ne!(arco(&mut lisa), base, "a ponta lisa pinta igual às cerdas");
+}
+
+/// ⭐ **A migração dos presets** (plano 27 W2, D4): um preset de antes (as cerdas no mapa do motor, o Shape
+/// vazio) chega com o Shape em Bristles e os MESMOS valores; gravado de novo, o mapa já não as traz e a
+/// ida-e-volta guarda o Shape; um Shape None gravado depois continua None (a ponta lisa não vira cerdas).
+#[test]
+fn os_presets_antigos_chegam_com_as_cerdas_no_shape() {
+    let p = wet_round();
+    assert!(
+        p.parametros.engine.contains_key("bristleCount"),
+        "a fixtura é um preset de antes"
+    );
+    let mut t = pincel(PaintMedia::WetPaint, TextureKind::None);
+    assert!(t.wet_preset_aplicar(&p).is_empty());
+    let forma = t.paint.brush.shape;
+    assert_eq!(forma.kind, TextureKind::Bristles);
+    let k = ph2d_painter_brush::texture::bristle_knobs(&forma.params);
+    assert_eq!(
+        [k.bristle_count, k.bristle_strength, k.bristle_size, k.felt],
+        [2000.0, 1.0, 2.0, 0.03]
+    );
+    let (gravado, _) = t.wet_preset_capturar(&p.parametros);
+    for chave in ["felt", "bristleCount", "bristleStrength", "bristleSize"] {
+        assert!(
+            !gravado.engine.contains_key(chave),
+            "o mapa ainda grava {chave}"
+        );
+    }
+    let mut de_novo = p.clone();
+    de_novo.parametros = gravado;
+    let mut u = pincel(PaintMedia::WetPaint, TextureKind::None);
+    assert!(u.wet_preset_aplicar(&de_novo).is_empty());
+    assert_eq!(u.paint.brush.shape, forma, "a ida-e-volta perdeu o Shape");
+    u.set_brush_shape_kind(TextureKind::None.to_u8());
+    let (lisa, _) = u.wet_preset_capturar(&de_novo.parametros);
+    let mut lisa_p = p;
+    lisa_p.parametros = lisa;
+    let mut v = pincel(PaintMedia::WetPaint, TextureKind::Bristles);
+    assert!(v.wet_preset_aplicar(&lisa_p).is_empty());
+    assert_eq!(
+        v.paint.brush.shape.kind,
+        TextureKind::None,
+        "a ponta lisa virou cerdas"
+    );
+}

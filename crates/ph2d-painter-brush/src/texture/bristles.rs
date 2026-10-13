@@ -51,11 +51,7 @@ fn sample_px(params: &[f32; MAX_TEX_PARAMS], dx: f64, dy: f64) -> f32 {
     sample_bristle(&bristle_tile(params), dx, dy).clamp(0.0, 1.0) as f32
 }
 
-/// The bristles of a live dab under the slot's WHOLE transform, measured in PIXELS (never in the tip's
-/// scale): the dab frame (Flatten & Rotate, Jitter Rotate, the Rake/Flow tangent), the slot Angle, Size
-/// along the pattern's own axes, then Offset (and the Random mapping's jitter) in [`UNIT_TEXELS`] per unit.
-/// Flow lays the tile along the stroke's arc length, Tiled anchors it to the canvas. At the neutral
-/// transform every step is exact (`× 1`, `+ 0`), so the dab reads the engine's tile at its raw offset.
+/// The bristles of a live dab at canvas pixel `(px, py)` — [`bristles_at`] with 1 texel = 1 px, clamped.
 #[must_use]
 pub(super) fn sample_dab(
     s: &TextureSettings,
@@ -65,21 +61,42 @@ pub(super) fn sample_dab(
     center: [f32; 2],
     radius: f32,
 ) -> f32 {
-    let d = [
-        px as f64 + 0.5 - f64::from(center[0]),
-        py as f64 + 0.5 - f64::from(center[1]),
-    ];
+    let p = [px as f64 + 0.5, py as f64 + 0.5];
+    let d = [p[0] - f64::from(center[0]), p[1] - f64::from(center[1])];
+    bristles_at(s, b, d, p, 1.0, radius).clamp(0.0, 1.0) as f32
+}
+
+/// ⭐ **The bristles of a live dab under the slot's WHOLE transform**, in TEXELS (never in the tip's
+/// scale) — the one door the Digital stamp and the Wet Paint host both read. `d` is the offset from the
+/// dab centre and `p` the absolute position, in texels; `px_per_texel` converts the stroke facts (radius,
+/// arc length), `1` on the canvas and the grid ratio in the Wet Paint engine (1 texel = 1 cell there).
+///
+/// The order: the per-dab rotation ([`crate::FootprintDeform::so_o_rotor`]: Jitter Rotate and the Rake/Flow
+/// tangent — NOT the brush's fixed Flatten & Rotate, so a flat preset keeps its round hairs; radius units,
+/// so in, rotate, back), the slot Angle, Size along the pattern's own axes, then
+/// Offset (and the Random mapping's jitter) in [`UNIT_TEXELS`] per unit; Flow lays the tile along the arc
+/// length, Tiled anchors it to `p`. At the neutral transform every step is exact (`× 1`, `+ 0`): the raw
+/// engine sample `sample_bristle(tile, d)`, unclamped like the engine's `texv`.
+#[must_use]
+pub fn bristles_at(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    d: [f64; 2],
+    p: [f64; 2],
+    px_per_texel: f64,
+    radius_px: f32,
+) -> f64 {
+    let fp = b.footprint.so_o_rotor();
     let rel = if s.mapping == TextureMapping::Tiled {
-        [px as f64 + 0.5, py as f64 + 0.5]
-    } else if b.footprint.is_identity() && !s.flow {
+        p
+    } else if fp.is_identity() && !s.flow {
         d
     } else {
-        // The footprint speaks radius units (its bend is a function of them): in, deform, back to px.
-        let r = f64::from(radius.max(1e-3));
-        let f = b.footprint.apply([(d[0] / r) as f32, (d[1] / r) as f32]);
+        let r = f64::from(radius_px.max(1e-3)) / px_per_texel;
+        let f = fp.apply([(d[0] / r) as f32, (d[1] / r) as f32]);
         let f = [f64::from(f[0]) * r, f64::from(f[1]) * r];
         if s.flow {
-            [f64::from(b.frame.parts().0) + f[0], f[1]]
+            [f64::from(b.frame.parts().0) / px_per_texel + f[0], f[1]]
         } else {
             f
         }
@@ -88,8 +105,8 @@ pub(super) fn sample_dab(
     let sx = f64::from(s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX));
     let sy = f64::from(s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX));
     let shift = |o: f32, j: f32| (f64::from(o) + f64::from(j)) * UNIT_TEXELS;
-    sample_px(
-        &s.params,
+    sample_bristle(
+        &bristle_tile(&s.params),
         (rel[0] * u[0] + rel[1] * u[1]) * sx + shift(s.offset[0], b.jitter[0]),
         (rel[0] * v[0] + rel[1] * v[1]) * sy + shift(s.offset[1], b.jitter[1]),
     )

@@ -280,3 +280,115 @@ fn sonda_shape_casa_leis_do_dente() {
         );
     }
 }
+
+/// **O Spacing por meio** (dono 13/10: *«Spacing em wet paint produz traços mais uniformes que em digital
+/// (que fica pontilhado)»*): o mesmo traço recto, raio 10, cada Spacing, nos quatro meios. Por traço: os
+/// dabs que o MOTOR recebeu (Wet Paint, pelo `on_dab`), e o perfil da tinta no EIXO do traço (x 70–250):
+/// a ondulação `(máx − mín)/máx` e a fração de vales abaixo de metade do máximo — o «pontilhado».
+#[test]
+#[ignore = "sonda: o Spacing por meio (dono 13/10)"]
+fn sonda_spacing_por_meio() {
+    println!("| meio | spacing | dabs no motor | ondulação | vales < ½ | Σ tinta |");
+    println!("|---|---:|---:|---:|---:|---:|");
+    for media in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::Watercolor,
+        PaintMedia::WetPaint,
+    ] {
+        for sp in [0.05f32, 0.25, 0.5, 1.0, 1.5] {
+            let mut t = tela(media);
+            t.set_brush_size_px(20.0);
+            t.set_brush_spacing(sp);
+            let dabs: Arc<Mutex<usize>> = Arc::default();
+            if media == PaintMedia::WetPaint {
+                assert!(t.ensure_wet_session());
+                let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+                let d2 = Arc::clone(&dabs);
+                s.engine.on_dab = Some(Box::new(move |_, _| *d2.lock().unwrap() += 1));
+            }
+            traco(&mut t);
+            let y = (H / 2) as usize;
+            let perfil: Vec<f64> = (70..250usize)
+                .map(|x| {
+                    let p = &t.canvas_rgba[(y * W as usize + x) * 4..][..3];
+                    f64::from(255 - p[0].min(p[1]).min(p[2]))
+                })
+                .collect();
+            let max = perfil.iter().copied().fold(0.0, f64::max).max(1.0);
+            let min = perfil.iter().copied().fold(f64::MAX, f64::min);
+            let vales = perfil.iter().filter(|v| **v < max / 2.0).count() as f64 / perfil.len() as f64;
+            let n = *dabs.lock().unwrap();
+            println!(
+                "| {media:?} | {sp} | {} | {:.3} | {:.3} | {} |",
+                if media == PaintMedia::WetPaint { n.to_string() } else { "—".into() },
+                (max - min) / max,
+                vales,
+                tinta(&t)
+            );
+        }
+    }
+}
+
+/// **O pontilhado das cerdas** (o relato do Spacing, 13/10): Bristles e a redonda × Digital e Wet Paint ×
+/// Spacing, raio 20. A régua: o coeficiente de variação da tinta AO LONGO de cada linha do miolo do traço
+/// (`|y − eixo| < r/2`, x 90–230), médio — riscas contínuas dão pouco, filas de pontos dão muito. Com
+/// `PH2D_SONDA_OUT=<pasta>` grava cada tela em PPM.
+#[test]
+#[ignore = "sonda: o pontilhado das cerdas por Spacing"]
+fn sonda_pontilhado_das_cerdas() {
+    println!("| meio | ponta | spacing | dabs no motor | CV ao longo | Σ tinta |");
+    println!("|---|---|---:|---:|---:|---:|");
+    for media in [PaintMedia::Digital, PaintMedia::WetPaint] {
+        for kind in [TextureKind::None, TextureKind::Bristles] {
+            for sp in [0.025f32, 0.1, 0.25, 0.5] {
+                let mut t = tela(media);
+                t.set_brush_size_px(40.0);
+                t.set_brush_spacing(sp);
+                if kind == TextureKind::Bristles || media == PaintMedia::Digital {
+                    t.set_brush_shape_kind(kind.to_u8());
+                }
+                if kind == TextureKind::Bristles {
+                    // As cerdas do Wet Round nos dois meios (Strength 1), para a comparação ser a mesma ponta.
+                    t.paint.brush.shape = crate::tool::paint::WetKnobs::DEFAULT.cerdas_no_shape(t.paint.brush.shape);
+                }
+                let dabs: Arc<Mutex<usize>> = Arc::default();
+                if media == PaintMedia::WetPaint {
+                    assert!(t.ensure_wet_session());
+                    let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+                    let d2 = Arc::clone(&dabs);
+                    s.engine.on_dab = Some(Box::new(move |_, _| *d2.lock().unwrap() += 1));
+                }
+                traco(&mut t);
+                let eixo = (H / 2) as i64;
+                let mut cvs = Vec::new();
+                for y in (eixo - 9)..=(eixo + 9) {
+                    let linha: Vec<f64> = (90..230usize)
+                        .map(|x| {
+                            let p = &t.canvas_rgba[(y as usize * W as usize + x) * 4..][..3];
+                            f64::from(255 - p[0].min(p[1]).min(p[2]))
+                        })
+                        .collect();
+                    let m = linha.iter().sum::<f64>() / linha.len() as f64;
+                    if m > 1.0 {
+                        let v = linha.iter().map(|a| (a - m) * (a - m)).sum::<f64>() / linha.len() as f64;
+                        cvs.push(v.sqrt() / m);
+                    }
+                }
+                let cv = cvs.iter().sum::<f64>() / cvs.len().max(1) as f64;
+                println!(
+                    "| {media:?} | {kind:?} | {sp} | {} | {cv:.3} | {} |",
+                    if media == PaintMedia::WetPaint { dabs.lock().unwrap().to_string() } else { "—".into() },
+                    tinta(&t)
+                );
+                if let Ok(dir) = std::env::var("PH2D_SONDA_OUT") {
+                    let mut ppm = format!("P6 {W} {H} 255\n").into_bytes();
+                    for k in 0..(W * H) as usize {
+                        ppm.extend_from_slice(&t.canvas_rgba[k * 4..k * 4 + 3]);
+                    }
+                    std::fs::write(format!("{dir}/pont_{media:?}_{kind:?}_{sp}.ppm"), ppm).expect("grava");
+                }
+            }
+        }
+    }
+}

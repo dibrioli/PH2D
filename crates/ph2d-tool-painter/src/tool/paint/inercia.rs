@@ -31,10 +31,11 @@ pub enum Dependente {
     BordaSemTilt,
     SemPapel,
     QuandoDoRandomize,
+    CerdasDaAgua,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 17] = [
+    pub const TODOS: [Dependente; 18] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -52,6 +53,7 @@ impl Dependente {
         Dependente::BordaSemTilt,
         Dependente::SemPapel,
         Dependente::QuandoDoRandomize,
+        Dependente::CerdasDaAgua,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -80,6 +82,7 @@ impl Dependente {
                 ids::PAINTER_WETPAINT_PAPER_VISUAL,
             ],
             Dependente::QuandoDoRandomize => &ids::PAINTER_BRUSH_COLOR_JITTER_SCOPES,
+            Dependente::CerdasDaAgua => &CERDAS,
         }
     }
 
@@ -105,6 +108,7 @@ impl Dependente {
             Dependente::BordaSemTilt => "panel.painter_layers.inerte.tilt_on",
             Dependente::SemPapel => "panel.painter_layers.inerte.paper_chosen",
             Dependente::QuandoDoRandomize => "panel.painter_layers.inerte.randomize_above_zero",
+            Dependente::CerdasDaAgua => "panel.painter_layers.inerte.bristles_no_grain",
         }
     }
 
@@ -122,6 +126,21 @@ const GRAIN: [NodeId; 7] = [
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[3],
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[4],
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[5],
+];
+
+/// As cerdas do Shape: os quatro sliders e a transformação (Angle, Offset, Size) — no Wet Paint elas SÃO a
+/// ponta (o `texv`). ⛔ O Follow NÃO: ele roda o referencial do DAB inteiro, e com um Grain armado roda o
+/// Grain (medido pelo censo, 13/10).
+const CERDAS: [NodeId; 9] = [
+    ids::PAINTER_SHAPE_PARAMS[0],
+    ids::PAINTER_SHAPE_PARAMS[1],
+    ids::PAINTER_SHAPE_PARAMS[2],
+    ids::PAINTER_SHAPE_PARAMS[3],
+    ids::PAINTER_SHAPE_ANGLE,
+    ids::PAINTER_SHAPE_OFFSET_X,
+    ids::PAINTER_SHAPE_OFFSET_Y,
+    ids::PAINTER_SHAPE_SIZE_X,
+    ids::PAINTER_SHAPE_SIZE_Y,
 ];
 
 /// A dica do parâmetro de um padrão (Grain ou Shape) que está inerte.
@@ -237,6 +256,15 @@ impl PainterTool {
             // «Every Dab / Every Stroke» escolhe QUANDO o Randomize Color sorteia — sem Hue/Sat/Value não
             // há sorteio (`jitter::colour_draw`).
             (Dependente::QuandoDoRandomize, !b.has_colour_jitter_amount()),
+            // As cerdas do Shape entram no motor como o `texv` (`wetpaint/dab_route.rs`): um Grain armado
+            // toma o lugar delas (W2.4), e as ferramentas da água que não depositam não as lêem.
+            (
+                Dependente::CerdasDaAgua,
+                agua && b.shape.kind == ph2d_painter_brush::TextureKind::Bristles
+                    && (b.grain_samples(self.paint.texture_image.is_some())
+                        || (!self.paint.eraser
+                            && self.paint.wetpaint.tool != super::WetTool::Paint)),
+            ),
         ];
         Inercias {
             dependentes: leis

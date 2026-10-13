@@ -130,7 +130,7 @@ Cenas do smoke, contadas no roteador (`motion_state_demo_router.rs:34`, `MAX_DEM
   a ordem das linhas porque Soma, Tela e Multiplica são COMUTATIVAS e ASSOCIATIVAS. Saíram `RECUSA_IMAGEM_EM_GRUPO`,
   `RECUSA_GRUPO_SEM_MEMORIA`, a memória da CPU (`linhas_todas_forma`) e a vigia (`vigia.rs`, o contador no
   baixamento das formas). Nova recusa do cozimento: `ModoDaLinhaEmGrupo` (a coluna `blend` numa saída em grupo).
-  O `Each Shape` (células do `fx.filter`) recebe as imagens na volta, no grupo delas, SEM o filtro das formas.
+  O `Each Shape` (células do `fx.filter`): cada imagem é uma CÉLULA, com o filtro (2.ª ronda, item 1 abaixo).
 - **(c) A janela desapareceu**: antes 1–2 quadros pelas sprites (a vigia lia no quadro N+1/N+2); depois **0 em 6**
   quadros contados pela porta do produto (`coze_o_quadro`, sem espera entre quadros).
 - **(b) O mundo por baixo, SEM o ler.** O mundo existe como textura (`WorldRt`) mas é o ALVO da colagem (não se lê e
@@ -138,16 +138,31 @@ Cenas do smoke, contadas no roteador (`motion_state_demo_router.rs:34`, `MAX_DEM
   +0,30–0,33 ms a 4K**. Não é precisa: as leis pré-multiplicadas Soma/Tela/Multiplica são associativas, logo
   `f(f(W, c₁), c₂) = f(W, f(c₁, c₂))` — o `Everything` (e a linha sem grupo) é cada cópia em `f` na camada vazia, o
   `Scene` é o grupo em `Normal` na camada, e a CAMADA POUSA em `f` pela mistura de HARDWARE (`blit_pousa`, que lê o
-  destino): o mesmo preço da colagem `Normal` de sempre (Multiplica `+0,01–0,04 ms`, dois passes). Lei: `Misturas::composicao` + `PousaDoQuadro` — a camada pousa UMA vez; dois `Scene`, um
-  `Scene` com `Everything`, ou uma pousa `Normal` ao lado partem-na (`MotivoDoVello::MundoPartido` → Vello). ⛔ No
+  destino): o mesmo preço da colagem `Normal` de sempre (Multiplica `+0,01–0,04 ms`, dois passes). Lei: `Misturas::composicao` + `PousaDoQuadro` — dentro de um SEGMENTO a camada pousa
+  uma vez; dois `Scene`, um `Scene` com `Everything`, ou uma pousa `Normal` ao lado abrem o seguinte (item 4 abaixo). ⛔ No
   DISPOSITIVO o `Scene` fica na CPU (`RECUSA_SCENE_NO_DISPOSITIVO`): as cópias juntam-se em `Normal`, e a ordem
   entre imagens e formas é a das linhas, que o dispositivo separa em dois buffers.
-- **Aberto (declarado):** (1) `Scene` fora da camada isolada no dispositivo — pede a ordem das linhas entre as duas
-  médias (um desenho intercalado por linha, ou as imagens como cópias da placa de formas com uma geometria-quad); (2) num
-  `Each Shape` as imagens do grupo voltam SEM o filtro das formas — e a rota da CPU, com uma imagem no grupo, leva o grupo
-  INTEIRO ao Vello da camada e larga o filtro também das formas: as rotas só concordam sem imagens; (3) uma textura
-  ASSADA (`is_cooked_texture_id`) a rota da CPU não a resolve (`LeafImages` só lê o átlas e as individuais) e a placa
-  sim; (4) as camadas que pousam de modos diferentes no mesmo quadro (`MundoPartido`) pedem uma colagem por segmento.
+- **Os quatro abertos, fechados (2.ª ronda, 13/10):**
+  1. **`Each Shape` com imagens no grupo — VERDE, as duas rotas.** Lei: cada elemento do grupo, forma OU imagem, é uma
+     CÉLULA (`ph2d_fx_cells::Imagens`: as caixas pela vista da placa, a relocação das linhas `RenderInstance`, o passe das
+     imagens a pintá-las sozinhas na página, a volta na corrida delas; `ordem_das_linhas` devolve juntas as células de
+     uma corrida). A rota da CPU leva a imagem de grupo à placa (`motion_shape_placa_monta.rs`) pelo MESMO passe — já
+     não ao Vello da camada. Gate `cada_elemento_do_grupo_leva_o_filtro_nas_duas_rotas` (3 arranjos × 3 modos): as duas
+     rotas na tabela `[x, f(x, x), x, B]` com desvio ≤ 1, e iguais entre si.
+  2. **A textura ASSADA — VERDE.** `SpriteRenderer::le_rgba8` (`ph2d-render/leitura_rgba8.rs`): as três lojas, a assada
+     pela leitura da placa (`textureLoad` + `CODIFICA_WGSL`, a conta partilhada com o passe das imagens); a
+     `motion_leaf_images` resolve por ela. Gate `a_textura_assada_da_a_mesma_imagem_nas_duas_rotas`: a arte ao byte
+     (±1) e Vello × placa alfa 1, cor 3, 0 px > 16.
+  3. **O `Scene` no dispositivo — LEI com número.** Sem a média de cada linha no host, a ordem exacta seria um desenho
+     por linha: `+0,019–0,023 ms` por linha — `23,8 ms` a 1k, `97,5 ms` a 4k, `312 ms` a 16k, contra `2,0 / 2,4 / 4,9 ms`
+     por média (`sonda_o_preco_de_um_desenho_por_linha`). ⇒ fica na CPU (`RECUSA_SCENE_NO_DISPOSITIVO`), que SABE a média
+     e parte a corrida `Normal` a cada troca (gate `o_scene_com_imagens_pela_cpu_guarda_a_ordem_das_linhas`); nas
+     misturas comutativas as duas médias partilham a corrida, como no dispositivo. A porta do hardware é UM pipeline
+     que desenhe as duas médias na ordem do buffer (as imagens como cópias da placa de formas) — não construída.
+  4. **`MundoPartido` — VERDE, por segmentos.** A camada desenha cada SEGMENTO de pousa e pousa-o por sua vez
+     (`Segmentos`, `cola_no_mundo`): `+0,12 ms` por segmento a 1080p e a 4K (`sonda_o_preco_de_um_segmento_de_pousa`),
+     contra o quadro inteiro no Vello. Gate `as_pousas_diferentes_pousam_por_segmentos` (Everything+Normal,
+     Normal+Everything, Scene+Scene; 3 modos × 2 rotas) na tabela fechada, ≤ 1 byte.
 
 ## §5 — P5: o aviso cortado (a peça partilhada, `ph2d-editor-core`)
 
@@ -411,6 +426,10 @@ CALMA a placa sobe de relógio só sob trabalho e cada espera paga um piso de `~
 
 ⇒ ler o mundo custa `+0,10–0,16 ms` a 1080p e `+0,30–0,33 ms` a 4K; pousar com o modo custa o mesmo que pousar em
 `Normal` (o Multiplica, dois passes, `+0,01–0,04 ms`).
+
+**Mutações da 2.ª ronda (7/7 VERMELHAS, sobre o verde):** as imagens não pintadas na página das células · a CPU a
+devolver a imagem de grupo ao Vello · a assada sem leitura na CPU · só o 1.º segmento pousa · a pousa que nunca parte ·
+o `Scene` sem partir a corrida por média · a ordem das linhas crua (`as_celulas_de_uma_corrida_voltam_juntas`).
 
 **Mutações (9/9 VERMELHAS):** o tom ignorado (sem recodificar: cor 111) · a mistura da imagem sempre `Normal`
 (alfa 62, cor 195) · a tinta ignorada (alfa 85, cor 189) · sem pré-multiplicar (cor 131) · a cobertura do quad ignorada

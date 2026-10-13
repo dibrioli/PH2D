@@ -288,21 +288,15 @@ impl C3 {
             vista(4, &e.vistas[FLUENCIA]),
         ];
         // ⭐ W5p: a luz de um texel tem UM laço de lâmpadas para a fina e a exata (`luz_das_lampadas`),
-        // que cita as visibilidades: sem o passe delas, uma textura de 1 × 1 que nunca se lê.
+        // que cita as visibilidades: sem o passe delas, as SEMENTES (inteiras, nunca se leem aqui) — uma
+        // textura nova a mais é uma alocação que a `PassList` não declara (o G5).
         entradas.push(entrada_textura(2, wgpu::TextureSampleType::Uint));
-        let sem_visibilidades = visibilidade.is_none().then(|| {
-            textura_vazia(
-                device.device,
-                "luz2d/tex/visibilidades_vazia",
-                wgpu::TextureFormat::Rg32Uint,
-                wgpu::TextureUsages::TEXTURE_BINDING,
-            )
-        });
         grupo.push(vista(
             2,
-            sem_visibilidades
-                .as_ref()
-                .unwrap_or_else(|| &e.vistas[op.visibilidade.expect("usa_visibilidade")]),
+            &e.vistas[op
+                .visibilidade
+                .filter(|_| visibilidade.is_some())
+                .unwrap_or(e.sementes_finais)],
         ));
         // ⭐ W5a (F3): o preenchimento (sem ele, as sementes do campo ocupam o lugar: o
         // `PREENCHE = false` nunca as lê).

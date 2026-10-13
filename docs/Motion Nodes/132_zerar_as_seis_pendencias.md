@@ -117,6 +117,38 @@ Cenas do smoke, contadas no roteador (`motion_state_demo_router.rs:34`, `MAX_DEM
 - **Mutações:** o tom da imagem no grupo ignorado · o backdrop lido do quadro anterior.
 - **Smoke `=140`:** uma imagem e formas num grupo que mistura, sobre um fundo, a cair num campo; o terminal diz a rota.
 
+### §4.1 — P4 FEITO (13/10): a lei, com os números (§7 P4)
+
+- **(a) A imagem num grupo vai à PLACA.** O cozimento tira as faixas das saídas em grupo do buffer das sprites
+  (cópia para `GpuImagensDoGrupo`, `clear_buffer` nas sprites — `ph2d-gpu-cook/src/imagens_do_grupo.rs`), DEPOIS da
+  origem do dono e antes do passe de sprites (`motion_bridge_quadro.rs`). A placa pinta-as como SEGUNDO desenhador
+  das corridas (`ShapePass::draw_em_corridas_com`, `Corrida::imagens`), no passe e na mistura da corrida, pela conta
+  da cena vectorial da CPU (`motion_shape_placa_imagens.wgsl`): a cobertura do quad pela `contribuicao` do Vello
+  (`area_do_vello.wgsl`, partilhada), a amostra do `fine.wgsl` (`Low`/`Medium`, `Pad`, presa ao recorte do `crop`),
+  os bytes CODIFICADOS (o átlas `Srgb` descodifica e a conta recodifica), e a tinta da W6 à letra (a cor em 8 bits,
+  `Multiply`+`SrcIn`, cada camada × a máscara do quad). ⚠️ As imagens desenham-se depois das formas da corrida — só é
+  a ordem das linhas porque Soma, Tela e Multiplica são COMUTATIVAS e ASSOCIATIVAS. Saíram `RECUSA_IMAGEM_EM_GRUPO`,
+  `RECUSA_GRUPO_SEM_MEMORIA`, a memória da CPU (`linhas_todas_forma`) e a vigia (`vigia.rs`, o contador no
+  baixamento das formas). Nova recusa do cozimento: `ModoDaLinhaEmGrupo` (a coluna `blend` numa saída em grupo).
+  O `Each Shape` (células do `fx.filter`) recebe as imagens na volta, no grupo delas, SEM o filtro das formas.
+- **(c) A janela desapareceu**: antes 1–2 quadros pelas sprites (a vigia lia no quadro N+1/N+2); depois **0 em 6**
+  quadros contados pela porta do produto (`coze_o_quadro`, sem espera entre quadros).
+- **(b) O mundo por baixo, SEM o ler.** O mundo existe como textura (`WorldRt`) mas é o ALVO da colagem (não se lê e
+  escreve num passe, e nem tem `COPY_SRC`); a cópia que a rota da CPU paga no Vello custa **+0,10–0,16 ms a 1080p e
+  +0,30–0,33 ms a 4K**. Não é precisa: as leis pré-multiplicadas Soma/Tela/Multiplica são associativas, logo
+  `f(f(W, c₁), c₂) = f(W, f(c₁, c₂))` — o `Everything` (e a linha sem grupo) é cada cópia em `f` na camada vazia, o
+  `Scene` é o grupo em `Normal` na camada, e a CAMADA POUSA em `f` pela mistura de HARDWARE (`blit_pousa`, que lê o
+  destino): o mesmo preço da colagem `Normal` de sempre (Multiplica `+0,01–0,04 ms`, dois passes). Lei: `Misturas::composicao` + `PousaDoQuadro` — a camada pousa UMA vez; dois `Scene`, um
+  `Scene` com `Everything`, ou uma pousa `Normal` ao lado partem-na (`MotivoDoVello::MundoPartido` → Vello). ⛔ No
+  DISPOSITIVO o `Scene` fica na CPU (`RECUSA_SCENE_NO_DISPOSITIVO`): as cópias juntam-se em `Normal`, e a ordem
+  entre imagens e formas é a das linhas, que o dispositivo separa em dois buffers.
+- **Aberto (declarado):** (1) `Scene` fora da camada isolada no dispositivo — pede a ordem das linhas entre as duas
+  médias (um desenho intercalado por linha, ou as imagens como cópias da placa de formas com uma geometria-quad); (2) num
+  `Each Shape` as imagens do grupo voltam SEM o filtro das formas — e a rota da CPU, com uma imagem no grupo, leva o grupo
+  INTEIRO ao Vello da camada e larga o filtro também das formas: as rotas só concordam sem imagens; (3) uma textura
+  ASSADA (`is_cooked_texture_id`) a rota da CPU não a resolve (`LeafImages` só lê o átlas e as individuais) e a placa
+  sim; (4) as camadas que pousam de modos diferentes no mesmo quadro (`MundoPartido`) pedem uma colagem por segmento.
+
 ## §5 — P5: o aviso cortado (a peça partilhada, `ph2d-editor-core`)
 
 - **Estado (código):** `ToastQueue::paint` (`toast.rs:202-294`) pinta UMA linha numa coluna FIXA de 360 px
@@ -341,3 +373,49 @@ da CPU SEMPRE (`quadro::coze_o_quadro_sem_placa`, só dos testes) e a da placa o
 um defeito vizinho: um grafo sem estado não guarda o último tique cozido, então arrastar para antes do primeiro
 gravado GRAVAVA, era um ramo e esquecia a fita inteira. A rota usa agora o último tique cujas entradas se mostraram
 (`MotionCookPump::tique_das_entradas`), a regra da CPU.
+
+### §7 P4 — imagens num grupo e o mundo por baixo (13/10, RTX, `--release`)
+
+**Paridade (gates de placa, `#[ignore]`):**
+
+| gate | casos | alfa máx. | cor máx. | px `> 16` | controlo |
+|---|---|---:|---:|---:|---|
+| `a_imagem_de_um_grupo_pelo_dispositivo_desenha_o_que_a_cpu_desenha` (só imagens, rodadas, tinta de cor, anel de meia alfa; dispositivo × Vello) | 3 modos × (`Copies` fora/dentro, `Everything` dentro) | 1 | 2 | 0 | outro modo: `> 16` em 1 786–1 981 px |
+| `imagens_e_formas_no_mesmo_grupo_pelo_dispositivo` (estrelas + imagens; barra das formas × Vello `100·100·5 %`) | `Add`, `Screen` | 1 | 4 | 0 | sem as imagens: `> 500` px |
+| `a_mistura_em_grupo_pelo_dispositivo_desenha_o_que_a_cpu_desenha` (B6, as duas placas, e as POUSAS iguais) | 15 | 0 | 1 | 0 | o `Normal`: `> 16` em ~12 400 px |
+| `o_mundo_por_baixo_pousa_pela_placa_como_o_vello_o_pinta` (b: tabela 118 §1 e Vello, colunas) | 3 modos × (`Everything`, `Scene`, linha) × rotas = 15 | — | ≤ 1 byte | — | pousada em `Normal`: sai da tabela por 50–154 (o pior canal) |
+| `as_imagens_de_um_grupo_voltam_nas_celulas_do_each_shape` (as imagens na volta das células, `Color Overlay` em cada forma) | 3 modos × (só imagens; forma + imagem na mesma corrida) | — | ≤ 1 byte | — | a forma leva o efeito `x`, a imagem não |
+| `nenhum_quadro_desenha_a_imagem_do_grupo_pelas_sprites` (c) | 9 quadros, a imagem ligada no 4.º | — | — | — | quadros pelas sprites: **0** (antes, B6: 1–2) |
+
+**Custo** (`o_preco_das_imagens_de_um_grupo_cpu_contra_placa`, `Add · Copies`, grelha a mexer, quadro inteiro com
+espera da placa, 12 blocos × 2 variantes intercalados, MÍNIMO). Duas corridas, a carga ao lado — ⚠️ com a máquina
+CALMA a placa sobe de relógio só sob trabalho e cada espera paga um piso de `~1,1 ms` (a mesma colagem sozinha lê
+`1,17 ms` calma e `0,05 ms` sob carga): o que se compara é a DIFERENÇA, não o absoluto.
+
+| imagens | CPU (bomba + Vello), carga 3,4 | placa, carga 3,4 | CPU, carga 41 | placa, carga 41 |
+|---:|---:|---:|---:|---:|
+| 1 024 | 6,98 ms | 1,24 ms | 4,22 ms | 0,16 ms |
+| 4 096 | 25,07 ms | 1,28 ms | 21,25 ms | 0,24 ms |
+| 16 384 | 90,50 ms | 1,25 ms | 63,67 ms | 0,24 ms |
+
+⇒ a placa é PLANA de 1k a 16k (o piso da espera, ou `~0,2 ms` sob carga); a CPU cresce com `N` — `~5,5 µs` por imagem
+(a bomba, o `encode` com duas camadas de tinta por imagem, e o Vello).
+
+**Ler o mundo × pousar** (`sonda_o_preco_de_ler_o_mundo_contra_a_pousa`, as mesmas duas corridas):
+
+| | 1080p (3,4 · 41) | 4K (3,4 · 41) |
+|---|---:|---:|
+| Vello, cena vazia, SEM o mundo | 1,288 · 0,286 ms | 1,325 · 0,326 ms |
+| Vello, cena vazia, COM o mundo por baixo (a cópia da rota da CPU) | 1,384 · 0,447 ms | 1,651 · 0,630 ms |
+| `blit_pousa` Normal / Soma / Multiplica | 1,173 / 1,175 / 1,183 · 0,051 / 0,045 / 0,054 ms | 1,200 / 1,202 / 1,238 · 0,073 / 0,069 / 0,105 ms |
+
+⇒ ler o mundo custa `+0,10–0,16 ms` a 1080p e `+0,30–0,33 ms` a 4K; pousar com o modo custa o mesmo que pousar em
+`Normal` (o Multiplica, dois passes, `+0,01–0,04 ms`).
+
+**Mutações (9/9 VERMELHAS):** o tom ignorado (sem recodificar: cor 111) · a mistura da imagem sempre `Normal`
+(alfa 62, cor 195) · a tinta ignorada (alfa 85, cor 189) · sem pré-multiplicar (cor 131) · a cobertura do quad ignorada
+(alfa 218) · a separação não corre (o quadro do fio sem as imagens na placa) · a pousa do dispositivo `Normal` (as duas
+rotas pousam diferente; a tabela) · o `Everything` fora da camada isolada a pousar `Normal` · a volta das células sem as
+imagens (`as_imagens_de_um_grupo_voltam_nas_celulas_do_each_shape`, a forma e a imagem na mesma corrida: `[203, 203,
+153]` contra `[203, 255, 77]` — o arranjo só de imagens, que volta no fim da sessão, SOBREVIVIA sozinho e foi por isso
+que o gate ganhou o 2.º arranjo).

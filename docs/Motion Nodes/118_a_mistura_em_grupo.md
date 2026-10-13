@@ -166,6 +166,13 @@ sprites não sabe o alcance) e diz-se `CPU: uma linha de IMAGEM num sink que mis
 corridas saem por faixa de sink (`corridas_por_faixa`), sem leitura de volta. Números e gates: o
 [handoff B6](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-12_ZERAR_FAMILIA_B_B6.md).
 
+**P4 (13/10) — a imagem do grupo também vai à placa, e o mundo por baixo pousa.** As linhas de imagem de uma saída
+em grupo saem do buffer das sprites para a placa de formas, que as pinta na corrida delas com o alcance e o tom das
+formas (a conta da cena vectorial, ao byte `≤ 2`); a vigia, a memória da CPU e a janela de 1–2 quadros saíram. Fora
+da camada isolada o `Everything`, o `Scene` e a linha sem grupo deixam de pedir o mundo: a camada POUSA no mundo com
+o modo (associatividade das leis pré-multiplicadas; o hardware lê o destino). Lei, números e o que ficou na CPU:
+[doc 132 §4.1 e §7 P4](132_zerar_as_seis_pendencias.md).
+
 **W5 — a cena `=14`** ([`motion_object_smoke_grupo.rs`](../../crates/ph2d-app-motion/src/motion_object_smoke_grupo.rs)):
 quatro colunas (controlo `Normal` · `Multiply` em `Everything` · `Copies` · `Scene`), cada uma com uma
 fileira de IMAGENS e uma de FORMAS, 2×2 cópias SOBREPOSTAS (`PASSO < LADO_COPIA` é erro de

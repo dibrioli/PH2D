@@ -23,6 +23,11 @@ Leia SÓ: [31](31_spacing_por_meio_o_pontilhado.md) inteiro (medido, o porquê, 
 3. **O Spacing do Wet Paint com o significado do Digital** (31 §2.3): meça o passo efetivo contra o pedido nos 12
    presets; proponha a lei e a prancha antes/depois (muda o traço com Spacing ≠ fábrica — prancha para o dono).
 
+## Testes — a CADÊNCIA (dono 13/10)
+Por item e por pedido do dono: `cargo-check-narrow.sh` + os testes do item POR NOME (`cargo-test-narrow.sh`).
+A suíte inteira só no fecho (`PH2D_SUITE=fecho`), com 5 commits desde a última verde, ou com um motivo escrito
+(`PH2D_SUITE="motivo: …"`) — o `nextest-impacted.sh` recusa o resto. Corrida longa: no fundo, sem a esperar.
+
 ## Fecho
 R1 ~150 chamadas · `verificador` (fmt, clippy `-D warnings --all-targets`, `nextest-impacted`) · handoff ≤ 8 KB ·
 atualizar o 26 e o 31 · commit por caminho, nunca push · smoke ao dono em passos numerados (Digital ▸ Shape ▸

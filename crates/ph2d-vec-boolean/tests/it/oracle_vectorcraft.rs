@@ -374,21 +374,8 @@ const DISAGREE: &[(&str, &str, &str, &str, &str)] = &[
         "PH2D CERTO: é a união das normais (W2); VC e resvg cancelam a dobra da ponta (3,01 %)",
     ),
     ("offset", "Moon", "miter", "0.4", "idem"),
-    (
-        "offset",
-        "SpeechRect",
-        "bevel",
-        "0.4",
-        "PH2D CERTO: a cúspide da cauda — 334 dos 363 px a mais são da união das normais, o \
-         resto na linha da normal; VC (0,403) e resvg cancelam a dobra, como na Lua (BUGS #39)",
-    ),
-    (
-        "offset",
-        "SpeechRect",
-        "miter",
-        "0.4",
-        "idem (VC 0,000 · PH2D 0,492 %)",
-    ),
+    // As duas do SpeechRect (a cúspide da cauda) saíram na F14b: o bico ganhou ângulo e os dois
+    // concordam (fixture regravada a 13/10 — só as linhas dos balões mudaram).
     (
         "offset",
         "Star",

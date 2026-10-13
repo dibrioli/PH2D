@@ -188,6 +188,10 @@ pub struct Config {
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
+    /// ⭐ W5p — INSTRUMENTO: o texto do módulo das cascatas por cima do da casa
+    /// ([`crate::fonte_do_rc`]) — a régua «antes × depois» de uma reescrita do WGSL no MESMO processo
+    /// (o compilador do driver, o relógio da placa e a imagem). `None` no produto.
+    pub modulo_rc: Option<&'static str>,
 }
 
 /// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
@@ -391,6 +395,7 @@ impl Config {
             anel_fora_da_regiao: true,
             so_a_c0: false,
             holografica: None,
+            modulo_rc: None,
         }
     }
 

@@ -30,6 +30,7 @@ mod medida_luz2d_w5d_rebote;
 mod medida_luz2d_w5e;
 mod medida_luz2d_w5g;
 mod medida_luz2d_w5o;
+mod medida_luz2d_w5p;
 mod o_gizmo_da_luz;
 mod o_interior_do_opaco;
 mod o_miolo_das_formas;

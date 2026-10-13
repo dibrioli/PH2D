@@ -169,11 +169,7 @@ fn pelo_ponto_ate(P: vec2<f32>, nf: vec2<f32>, h: f32, dj: vec2<f32>, B: vec2<f3
     if s >= distance(P, B) {
         return 1.0;
     }
-    let t = f32(marchar(P, P + dj * s, B).t);
-    if t <= 0.0 || !DISTANTES {
-        return t;
-    }
-    return t * fora_da_grade(P, B, k);
+    return transmissao_de(P, P + dj * s, B, k);
 }
 
 // ⭐ W5o — o [`visibilidade_na_face`] com a abertura vista do próprio `P` (opaco): a metade atrás da
@@ -200,33 +196,7 @@ fn visibilidade_pelo_ponto(P: vec2<f32>, nf: vec2<f32>, h: f32, k: u32) -> f32 {
     }
     let n = RAIOS_DIRETOS;
     let largura = (hi - lo) / f32(n);
-    var a0 = base + lo;
-    var t0 = pelo_ponto_ao_disco(P, nf, h, v, d, L.raio, a0, k);
-    var soma = 0.0;
-    for (var i = 0u; i < n; i++) {
-        let a1 = a0 + largura;
-        let t1 = pelo_ponto_ao_disco(P, nf, h, v, d, L.raio, a1, k);
-        if abs(t1 - t0) < 1e-4 {
-            soma += 0.5 * (t0 + t1) * largura;
-        } else {
-            var lo_b = a0;
-            var hi_b = a1;
-            for (var b = 0u; b < BISSECOES; b++) {
-                let m = 0.5 * (lo_b + hi_b);
-                let tm = pelo_ponto_ao_disco(P, nf, h, v, d, L.raio, m, k);
-                if abs(tm - t0) <= abs(tm - t1) {
-                    lo_b = m;
-                } else {
-                    hi_b = m;
-                }
-            }
-            let borda = 0.5 * (lo_b + hi_b);
-            soma += t0 * (borda - a0) + t1 * (a1 - borda);
-        }
-        a0 = a1;
-        t0 = t1;
-    }
-    return soma / (2.0 * alfa);
+    return soma_da_abertura(P, nf, h, true, v, d, L.raio, base + lo, largura, n, k) / (2.0 * alfa);
 }
 
 // ⭐ W5o — a metade de TRÁS da abertura num translúcido (a que atravessa o corpo, ∝ τ), como no
@@ -260,39 +230,6 @@ fn atras_de_dentro(P: vec2<f32>, afasta: vec2<f32>, nf: vec2<f32>, k: u32) -> f3
         }
     }
     return visto;
-}
-
-// O [`ate_o_disco`] pelo [`pelo_ponto_ate`].
-fn pelo_ponto_ao_disco(P: vec2<f32>, nf: vec2<f32>, h: f32, v: vec2<f32>, d: f32, raio: f32, a: f32, k: u32) -> f32 {
-    let dj = vec2<f32>(cos(a), sin(a));
-    let b = dot(dj, v);
-    let t = b - sqrt(max(b * b - (d * d - raio * raio), 0.0));
-    return pelo_ponto_ate(P, nf, h, dj, P + dj * max(t - ANTES_DO_DISCO, 0.0), k);
-}
-
-// A visibilidade da lâmpada `k` no ponto de fronteira `P` que o texel `P0` (dentro) lê.
-fn visibilidade_remapeada(P: vec2<f32>, P0: vec2<f32>, k: u32) -> f32 {
-    if VIS_NA_FACE {
-        var nf = normal_secante(P, P0, 1.0 / f32(fina.fina));
-        if all(nf == vec2<f32>(0.0)) {
-            // No canto a face não corta a abertura numa reta: a marcha do ponto rente, como antes.
-            return visibilidade(P, k, 0.0);
-        }
-        return visibilidade_na_face(P, nf, k, meio(P0).tau > 0.0);
-    }
-    return visibilidade(P, k, 0.0);
-}
-
-// O [`luz_exata`] do ponto de fronteira `P` que o texel `P0` (dentro) lê.
-fn luz_exata_remapeada(P: vec2<f32>, P0: vec2<f32>) -> vec3<f32> {
-    var soma = c0_em(P);
-    for (var k = 0u; k < lampadas.n; k++) {
-        let s = sem_sombra(P, lampadas.itens[k]);
-        if any(s > vec3<f32>(0.0)) {
-            soma += s * visibilidade_remapeada(P, P0, k);
-        }
-    }
-    return soma;
 }
 
 // ⭐ A normal de fora no ponto de fronteira `q` achado de `P0`, pela SECANTE: de um ponto 3 texels finos

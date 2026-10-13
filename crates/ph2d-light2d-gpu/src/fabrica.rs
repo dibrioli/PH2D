@@ -179,14 +179,7 @@ impl Placa<'_> {
             || {
                 let t0 = std::time::Instant::now();
                 let p = self.device.create_compute_pipeline(desc);
-                // ⭐ W5o: `PH2D_LIGHT2D_COMPILA=1` — o tempo de cada pipeline (a frio, segundos).
-                if std::env::var_os("PH2D_LIGHT2D_COMPILA").is_some() {
-                    let ms = t0.elapsed().as_secs_f64() * 1e3;
-                    eprintln!(
-                        "[luz2d] compilou {ms:.1} ms {:?} {:?}",
-                        desc.label, desc.entry_point
-                    );
-                }
+                registar(t0, desc.label, desc.entry_point);
                 p
             },
         )
@@ -203,7 +196,27 @@ impl Placa<'_> {
             |m, k, p| {
                 m.renders.insert(k, p);
             },
-            || self.device.create_render_pipeline(desc),
+            || {
+                let t0 = std::time::Instant::now();
+                let p = self.device.create_render_pipeline(desc);
+                registar(t0, desc.label, desc.vertex.entry_point);
+                p
+            },
         )
     }
+}
+
+/// ⭐ W5o: `PH2D_LIGHT2D_COMPILA=1` — o tempo de cada pipeline (a frio, segundos); W5p: com o início
+/// (desde a 1.ª compilação do processo) e o fio — a linha do tempo da montagem.
+fn registar(t0: std::time::Instant, rotulo: Option<&str>, entrada: Option<&str>) {
+    if std::env::var_os("PH2D_LIGHT2D_COMPILA").is_none() {
+        return;
+    }
+    static ZERO: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let inicio = t0.duration_since(*ZERO.get_or_init(|| t0)).as_secs_f64();
+    let ms = t0.elapsed().as_secs_f64() * 1e3;
+    eprintln!(
+        "[luz2d] compilou {ms:.1} ms {rotulo:?} {entrada:?} · início {inicio:.3} s · {:?}",
+        std::thread::current().id()
+    );
 }

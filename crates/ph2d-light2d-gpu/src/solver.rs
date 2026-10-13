@@ -25,6 +25,7 @@ mod c2;
 /// ⭐ C3 na grade fina (W4b) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_c3.rs"]
 mod c3;
+pub use c3::constantes::{comuns as constantes_comuns_da_c3, da_fina as constantes_da_fina};
 /// ⭐ O mundo fora da grade na placa (W5b, F4) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_distantes.rs"]
 mod distantes;
@@ -457,7 +458,11 @@ impl Solver {
         // ── C2 ──
         let rc_modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("luz2d c2_rc.wgsl"),
-            source: wgpu::ShaderSource::Wgsl(shaders::rc(cfg.aritmetica, cfg.armazenamento).into()),
+            source: wgpu::ShaderSource::Wgsl(
+                cfg.modulo_rc
+                    .unwrap_or_else(|| shaders::rc(cfg.aritmetica, cfg.armazenamento))
+                    .into(),
+            ),
         });
         // ⭐ C3 — as lâmpadas diretas, no grupo 1 (o buffer é fixo: o teto de lâmpadas), e o mundo
         // fora da grade (W5b, F4: objetos, arestas, índices e a atlas das máscaras).
@@ -523,49 +528,55 @@ impl Solver {
                 buffer: &buffer,
             })
         });
-        let c3 = c3::C3::novo(&c3::Entradas {
-            placa: device,
-            cfg: &cfg,
-            lista: &lista,
-            vistas: &vistas,
-            modulo: &rc_modulo,
-            lampadas_layout: &lampadas_layout,
-            uni_cascatas: &uni_cascatas,
-            uni_c3: &uni_c3,
-            uni_preenche: uni_preenche.as_ref(),
-            sementes_finais,
-            vizinhos: &vizinhos,
-        });
-        let miolo = cfg.niveis_do_miolo().and_then(|_| {
-            miolo::DoMiolo::novo(&miolo::Entradas {
-                placa: device,
-                cfg: &cfg,
-                texturas: &texturas,
-                vistas: &vistas,
-                uniforme: buffer("luz2d/buf/miolo"),
-            })
-        });
-        let fina = op.captura.map(|c| {
-            fina::CapturaFina::novo(
-                device,
-                &c0_modulo,
-                &c0_pl,
-                buffer("luz2d/buf/c0_fina"),
-                [vistas[c[0]].clone(), vistas[c[1]].clone()],
-                formatos_c0,
-                cfg.grade_da_captura(),
-                &gpu.queue,
-                cfg.borda_exata,
-            )
+        // ⭐ W5p: a C3 (a fina e o anel: segundos a frio no driver) monta-se num fio ao lado do resto.
+        let (c3, miolo, fina, rebote) = std::thread::scope(|s| {
+            let c3 = s.spawn(|| {
+                c3::C3::novo(&c3::Entradas {
+                    placa: device,
+                    cfg: &cfg,
+                    lista: &lista,
+                    vistas: &vistas,
+                    modulo: &rc_modulo,
+                    lampadas_layout: &lampadas_layout,
+                    uni_cascatas: &uni_cascatas,
+                    uni_c3: &uni_c3,
+                    uni_preenche: uni_preenche.as_ref(),
+                    sementes_finais,
+                    vizinhos: &vizinhos,
+                })
+            });
+            let miolo = cfg.niveis_do_miolo().and_then(|_| {
+                miolo::DoMiolo::novo(&miolo::Entradas {
+                    placa: device,
+                    cfg: &cfg,
+                    texturas: &texturas,
+                    vistas: &vistas,
+                    uniforme: buffer("luz2d/buf/miolo"),
+                })
+            });
+            let fina = op.captura.map(|c| {
+                fina::CapturaFina::novo(
+                    device,
+                    &c0_modulo,
+                    &c0_pl,
+                    buffer("luz2d/buf/c0_fina"),
+                    [vistas[c[0]].clone(), vistas[c[1]].clone()],
+                    formatos_c0,
+                    cfg.grade_da_captura(),
+                    &gpu.queue,
+                    cfg.borda_exata,
+                )
+            });
+            let rebote = op.rebote.map(|r| {
+                let fonte = (buffer("luz2d/buf/rebote"), texturas[r[1]].clone());
+                let mesma = op
+                    .emissao_base
+                    .map(|_| (buffer("luz2d/buf/rebote_mesma"), &cfg.grade, &*gpu.queue));
+                rebote::SomaDoRebote::novo(device, &lista, &vistas, r, fonte, mesma)
+            });
+            (c3.join().expect("a montagem da C3"), miolo, fina, rebote)
         });
 
-        let rebote = op.rebote.map(|r| {
-            let fonte = (buffer("luz2d/buf/rebote"), texturas[r[1]].clone());
-            let mesma = op
-                .emissao_base
-                .map(|_| (buffer("luz2d/buf/rebote_mesma"), &cfg.grade, &*gpu.queue));
-            rebote::SomaDoRebote::novo(device, &lista, &vistas, r, fonte, mesma)
-        });
         gpu.queue.write_buffer(
             &uni_c0,
             0,

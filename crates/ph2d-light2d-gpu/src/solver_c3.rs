@@ -48,6 +48,9 @@ struct Preenchimento {
 #[path = "solver_c3_par.rs"]
 mod par;
 use par::Par;
+/// ⭐ W5p: as constantes `override` da C3 (a montagem e a régua do compilador).
+#[path = "solver_c3_constantes.rs"]
+pub(crate) mod constantes;
 
 /// O que os passes C3 pegam do solver ao nascer.
 pub(super) struct Entradas<'a> {
@@ -97,6 +100,31 @@ fn layout(
         label: Some(rotulo),
         entries: entradas,
     })
+}
+
+/// Uma textura de 1 × 1 para uma ligação que o shader cita e este solver não alimenta.
+fn textura_vazia(
+    device: &wgpu::Device,
+    rotulo: &str,
+    formato: wgpu::TextureFormat,
+    uso: wgpu::TextureUsages,
+) -> wgpu::TextureView {
+    device
+        .create_texture(&wgpu::TextureDescriptor {
+            label: Some(rotulo),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: formato,
+            usage: uso,
+            view_formats: &[],
+        })
+        .create_view(&wgpu::TextureViewDescriptor::default())
 }
 
 fn vista(binding: u32, v: &wgpu::TextureView) -> wgpu::BindGroupEntry<'_> {
@@ -154,42 +182,8 @@ impl C3 {
                 },
             ],
         });
-        // O passo da marcha da luz direta: `passo_direto` texels FINOS (o das cascatas sem o passo
-        // fino); junto à borda, a fração `passo_na_borda` dele.
-        let fino = |passo_fino: bool| {
-            f64::from(cfg.passo_perto)
-                * if passo_fino {
-                    f64::from(cfg.passo_direto) / f64::from(cfg.fina)
-                } else {
-                    1.0
-                }
-        };
-        // As constantes de TODO passe da C3: a captura ligada e o preenchimento.
-        let comuns = [
-            ("ESCALA_DA_CAPTURA", f64::from(cfg.escala_da_captura())),
-            ("COM_LUZ", 0.0),
-            ("PASSO_NA_BORDA", f64::from(cfg.passo_na_borda)),
-            (
-                "PREENCHE_A_GRADE_INTEIRA",
-                f64::from(u8::from(cfg.preenche_a_grade_inteira)),
-            ),
-            ("PREENCHE", f64::from(u8::from(cfg.preenchimento.is_some()))),
-            ("CELULA_PREENCHE", f64::from(cfg.preenchimento.unwrap_or(1))),
-            ("MEDIA_NO_EIXO", f64::from(u8::from(cfg.media_no_eixo))),
-            ("C0_AO_LONGO_DA_FACE", f64::from(cfg.c0_ao_longo_da_face)),
-            (
-                "C0_AO_LONGO_MEDIANA",
-                f64::from(u8::from(cfg.c0_ao_longo_mediana)),
-            ),
-            ("BORDA_EXATA", f64::from(u8::from(cfg.borda_exata))),
-            ("PE_NA_BORDA", f64::from(u8::from(cfg.pe_na_borda))),
-            ("VIS_NA_FACE", f64::from(u8::from(cfg.vis_na_face))),
-            ("FACE_PELO_PONTO", f64::from(u8::from(cfg.face_pelo_ponto))),
-            (
-                "MIOLO",
-                f64::from(u8::from(cfg.niveis_do_miolo().is_some())),
-            ),
-        ];
+        let fino = |passo_fino: bool| constantes::passo(cfg, passo_fino);
+        let comuns = constantes::comuns(cfg);
         let bordas = match cfg.refino {
             Refino::Bordas(b) => Some(b),
             Refino::Tudo => None,
@@ -293,10 +287,23 @@ impl C3 {
             vista(1, &e.vistas[c0]),
             vista(4, &e.vistas[FLUENCIA]),
         ];
-        if let (Some(_), Some(v)) = (&visibilidade, op.visibilidade) {
-            entradas.push(entrada_textura(2, wgpu::TextureSampleType::Uint));
-            grupo.push(vista(2, &e.vistas[v]));
-        }
+        // ⭐ W5p: a luz de um texel tem UM laço de lâmpadas para a fina e a exata (`luz_das_lampadas`),
+        // que cita as visibilidades: sem o passe delas, uma textura de 1 × 1 que nunca se lê.
+        entradas.push(entrada_textura(2, wgpu::TextureSampleType::Uint));
+        let sem_visibilidades = visibilidade.is_none().then(|| {
+            textura_vazia(
+                device.device,
+                "luz2d/tex/visibilidades_vazia",
+                wgpu::TextureFormat::Rg32Uint,
+                wgpu::TextureUsages::TEXTURE_BINDING,
+            )
+        });
+        grupo.push(vista(
+            2,
+            sem_visibilidades
+                .as_ref()
+                .unwrap_or_else(|| &e.vistas[op.visibilidade.expect("usa_visibilidade")]),
+        ));
         // ⭐ W5a (F3): o preenchimento (sem ele, as sementes do campo ocupam o lugar: o
         // `PREENCHE = false` nunca as lê).
         entradas.push(entrada_textura(5, wgpu::TextureSampleType::Uint));
@@ -309,22 +316,12 @@ impl C3 {
         entradas.push(entrada_escrita(6, formato));
         let transmitida = Opcionais::de(cfg).miolo.map(|m| m[4]);
         let vazia = transmitida.is_none().then(|| {
-            device
-                .create_texture(&wgpu::TextureDescriptor {
-                    label: Some("luz2d/tex/transmitida_vazia"),
-                    size: wgpu::Extent3d {
-                        width: 1,
-                        height: 1,
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: formato,
-                    usage: wgpu::TextureUsages::STORAGE_BINDING,
-                    view_formats: &[],
-                })
-                .create_view(&wgpu::TextureViewDescriptor::default())
+            textura_vazia(
+                device.device,
+                "luz2d/tex/transmitida_vazia",
+                formato,
+                wgpu::TextureUsages::STORAGE_BINDING,
+            )
         });
         grupo.push(vista(
             6,
@@ -339,173 +336,166 @@ impl C3 {
         // ⭐ Os raios da luz direta marcham no passo da grade FINA: com o das cascatas as amostras
         // entram e saem do canto do oclusor conforme o texel fino anda, e a borda ondula (medido na
         // W4b, Low: 0,53 → 0,06 px no contorno de 50 %).
-        let (entrada_fina, constantes_fina) = match bordas.filter(|_| visibilidade.is_some()) {
-            Some(b) => (
-                "c3_fina",
-                vec![
-                    ("PASSO", fino(true)),
-                    ("RAIOS_DIRETOS", f64::from(b.raios)),
-                    ("BISSECOES", f64::from(b.bissecoes)),
-                    ("JOELHO", f64::from(u8::from(b.joelho))),
-                    ("CURVATURA", f64::from(u8::from(b.curvatura))),
-                ],
-            ),
-            None => ("c3_fina_exata", vec![("PASSO", fino(true))]),
-        };
+        debug_assert_eq!(visibilidade.is_some(), constantes::com_visibilidade(cfg));
+        let (entrada_fina, constantes_fina) = constantes::da_fina(cfg);
         // ⭐ W5o: a fina e o anel compilam ao mesmo tempo; o entorno (`so_a_c0`) não os tem.
         let grupos_anel = op
             .miolo
             .filter(|_| cfg.anel_fora_da_regiao)
             .map(|m| super::miolo::grupo_do_anel(device, &entradas, &grupo, e.vistas, m[0]));
         let entrada_anel = format!("{entrada_fina}_anel");
-        let (fina, anel) = std::thread::scope(|s| {
-            let h = grupos_anel.as_ref().map(|(l, _)| {
+        // ⭐ W5p: a fina e o anel (os únicos que levam segundos a frio no compilador do driver) compilam
+        // nos seus fios enquanto este monta o resto da C3 (a abertura em série: +0,3 s).
+        let (fina, anel, preenchimento, rebote, borda) = std::thread::scope(|s| {
+            let anel = grupos_anel.as_ref().map(|(l, _)| {
                 s.spawn(|| pipeline("luz2d c3 anel", l, &entrada_anel, &constantes_fina))
             });
-            let fina = (!cfg.so_a_c0)
-                .then(|| pipeline("luz2d c3 fina", &g2, entrada_fina, &constantes_fina));
-            (fina, h.map(|h| h.join().expect("a compilação do anel")))
-        });
-        let anel = anel.zip(grupos_anel.map(|(_, g)| g));
+            let fina = (!cfg.so_a_c0).then(|| {
+                s.spawn(|| pipeline("luz2d c3 fina", &g2, entrada_fina, &constantes_fina))
+            });
+            // ⭐ W5a (F3): o JFA do complemento — grupo 3 (o 1 e o 2 ficam vazios).
+            let preenchimento = cfg
+                .grade_do_preenchimento()
+                .zip(op.preenche)
+                .zip(e.uni_preenche)
+                .map(|(((celulas, saltos), p), uniforme)| {
+                    let g3 = layout(
+                        device,
+                        "luz2d c3 preenche",
+                        &[
+                            entrada_uniforme(0, wgpu::ShaderStages::COMPUTE),
+                            entrada_textura(1, wgpu::TextureSampleType::Uint),
+                            entrada_escrita(2, wgpu::TextureFormat::R32Uint),
+                        ],
+                    );
+                    let grupos = [Some(&cena_layout), None, None, Some(&g3)];
+                    let bytes = size_of::<UniformePreenche>() as u64;
+                    let grupo = |j: usize, entrada: usize, saida: usize| {
+                        device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("luz2d c3 preenche"),
+                            layout: &g3,
+                            entries: &[
+                                wgpu::BindGroupEntry {
+                                    binding: 0,
+                                    resource: fatia_uniforme(uniforme, j as u64, bytes),
+                                },
+                                vista(1, &e.vistas[entrada]),
+                                vista(2, &e.vistas[saida]),
+                            ],
+                        })
+                    };
+                    // A semente escreve a 1.ª (e liga a 2.ª como entrada, que ela não lê); o salto j lê
+                    // j % 2 e escreve a outra.
+                    let mut gs = vec![grupo(0, p[1], p[0])];
+                    for j in 0..saltos.len() {
+                        gs.push(grupo(j + 1, p[j % 2], p[(j + 1) % 2]));
+                    }
+                    Preenchimento {
+                        semente: pipeline_em(
+                            "luz2d c3 preenche semente",
+                            &grupos,
+                            "c3_preenche_semente",
+                            &[],
+                        ),
+                        salto: pipeline_em(
+                            "luz2d c3 preenche salto",
+                            &grupos,
+                            "c3_preenche_salto",
+                            &[],
+                        ),
+                        grupos: gs,
+                        uniforme: uniforme.clone(),
+                        saltos,
+                        u: UniformePreenche {
+                            celulas,
+                            inicio: [0; 2],
+                            fim: celulas,
+                            celula: cfg.preenchimento.unwrap_or(1),
+                            salto: 0,
+                            fina: cfg.fina,
+                            _p: [0; 3],
+                        },
+                    }
+                });
 
-        // ⭐ W5a (F3): o JFA do complemento — grupo 3 (o 1 e o 2 ficam vazios).
-        let preenchimento = cfg
-            .grade_do_preenchimento()
-            .zip(op.preenche)
-            .zip(e.uni_preenche)
-            .map(|(((celulas, saltos), p), uniforme)| {
+            // ⭐ W5c: a fonte do rebote, na grade das cascatas inteira (a marcha e o passo da luz direta).
+            let rebote = op.rebote.map(|[_, fonte]| {
+                let g2 = layout(device, "luz2d c3 rebote c0", &[entrada_textura(1, FLOAT)]);
                 let g3 = layout(
                     device,
-                    "luz2d c3 preenche",
-                    &[
-                        entrada_uniforme(0, wgpu::ShaderStages::COMPUTE),
-                        entrada_textura(1, wgpu::TextureSampleType::Uint),
-                        entrada_escrita(2, wgpu::TextureFormat::R32Uint),
-                    ],
+                    "luz2d c3 rebote saida",
+                    &[entrada_escrita(3, wgpu::TextureFormat::Rgba16Float)],
                 );
-                let grupos = [Some(&cena_layout), None, None, Some(&g3)];
-                let bytes = size_of::<UniformePreenche>() as u64;
-                let grupo = |j: usize, entrada: usize, saida: usize| {
+                let grupo = |l: &wgpu::BindGroupLayout, b: u32, v: usize| {
                     device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("luz2d c3 preenche"),
-                        layout: &g3,
-                        entries: &[
-                            wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: fatia_uniforme(uniforme, j as u64, bytes),
-                            },
-                            vista(1, &e.vistas[entrada]),
-                            vista(2, &e.vistas[saida]),
-                        ],
+                        label: Some("luz2d c3 rebote"),
+                        layout: l,
+                        entries: &[vista(b, &e.vistas[v])],
                     })
                 };
-                // A semente escreve a 1.ª (e liga a 2.ª como entrada, que ela não lê); o salto j lê
-                // j % 2 e escreve a outra.
-                let mut gs = vec![grupo(0, p[1], p[0])];
-                for j in 0..saltos.len() {
-                    gs.push(grupo(j + 1, p[j % 2], p[(j + 1) % 2]));
+                let grupos = [grupo(&g2, 1, c0), grupo(&g3, 3, fonte)];
+                let mut constantes = vec![("PASSO", fino(true))];
+                if let Some(b) = bordas {
+                    constantes.push(("RAIOS_DIRETOS", f64::from(b.raios)));
+                    constantes.push(("BISSECOES", f64::from(b.bissecoes)));
                 }
-                Preenchimento {
-                    semente: pipeline_em(
-                        "luz2d c3 preenche semente",
-                        &grupos,
-                        "c3_preenche_semente",
-                        &[],
-                    ),
-                    salto: pipeline_em(
-                        "luz2d c3 preenche salto",
-                        &grupos,
-                        "c3_preenche_salto",
-                        &[],
-                    ),
-                    grupos: gs,
-                    uniforme: uniforme.clone(),
-                    saltos,
-                    u: UniformePreenche {
-                        celulas,
-                        inicio: [0; 2],
-                        fim: celulas,
-                        celula: cfg.preenchimento.unwrap_or(1),
-                        salto: 0,
-                        fina: cfg.fina,
-                        _p: [0; 3],
-                    },
-                }
+                let em = |d: f64| {
+                    let c: Vec<(&str, f64)> = constantes
+                        .iter()
+                        .copied()
+                        .chain([("DISTANTES", d)])
+                        .collect();
+                    pipeline_em(
+                        "luz2d c3 rebote",
+                        &[
+                            Some(&cena_layout),
+                            Some(e.lampadas_layout),
+                            Some(&g2),
+                            Some(&g3),
+                        ],
+                        "c3_rebote",
+                        &c,
+                    )
+                };
+                (Par::em_paralelo(cfg.distantes, em), grupos)
             });
 
-        // ⭐ W5c: a fonte do rebote, na grade das cascatas inteira (a marcha e o passo da luz direta).
-        let rebote = op.rebote.map(|[_, fonte]| {
-            let g2 = layout(device, "luz2d c3 rebote c0", &[entrada_textura(1, FLOAT)]);
-            let g3 = layout(
-                device,
-                "luz2d c3 rebote saida",
-                &[entrada_escrita(3, wgpu::TextureFormat::Rgba16Float)],
-            );
-            let grupo = |l: &wgpu::BindGroupLayout, b: u32, v: usize| {
-                device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("luz2d c3 rebote"),
-                    layout: l,
-                    entries: &[vista(b, &e.vistas[v])],
-                })
-            };
-            let grupos = [grupo(&g2, 1, c0), grupo(&g3, 3, fonte)];
-            let mut constantes = vec![("PASSO", fino(true))];
-            if let Some(b) = bordas {
-                constantes.push(("RAIOS_DIRETOS", f64::from(b.raios)));
-                constantes.push(("BISSECOES", f64::from(b.bissecoes)));
-            }
-            let em = |d: f64| {
-                let c: Vec<(&str, f64)> = constantes
-                    .iter()
-                    .copied()
-                    .chain([("DISTANTES", d)])
-                    .collect();
-                pipeline_em(
-                    "luz2d c3 rebote",
-                    &[
-                        Some(&cena_layout),
-                        Some(e.lampadas_layout),
-                        Some(&g2),
-                        Some(&g3),
-                    ],
-                    "c3_rebote",
-                    &c,
-                )
-            };
-            let par = Par {
-                sem: em(0.0),
-                com: cfg.distantes.then(|| em(1.0)),
-            };
-            (par, grupos)
-        });
-
-        // ⭐ W5d: a borda exata — lê a cobertura crua, escreve a da C3 (grupo 3, bindings 12–13).
-        let borda = op.borda.map(|b| {
-            let g3 = layout(
-                device,
-                "luz2d c3 borda",
-                &[
-                    entrada_textura(12, FLOAT),
-                    entrada_escrita(13, wgpu::TextureFormat::Rgba16Float),
-                ],
-            );
-            let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("luz2d c3 borda"),
-                layout: &g3,
-                entries: &[vista(12, &e.vistas[cob]), vista(13, &e.vistas[b])],
-            });
-            let t = &e.lista.texturas[b].tamanho;
-            (
-                pipeline_em(
+            // ⭐ W5d: a borda exata — lê a cobertura crua, escreve a da C3 (grupo 3, bindings 12–13).
+            let borda = op.borda.map(|b| {
+                let g3 = layout(
+                    device,
                     "luz2d c3 borda",
-                    &[None, None, None, Some(&g3)],
-                    "c3_borda",
-                    &[],
-                ),
-                grupo,
-                *t,
+                    &[
+                        entrada_textura(12, FLOAT),
+                        entrada_escrita(13, wgpu::TextureFormat::Rgba16Float),
+                    ],
+                );
+                let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("luz2d c3 borda"),
+                    layout: &g3,
+                    entries: &[vista(12, &e.vistas[cob]), vista(13, &e.vistas[b])],
+                });
+                let t = &e.lista.texturas[b].tamanho;
+                (
+                    pipeline_em(
+                        "luz2d c3 borda",
+                        &[None, None, None, Some(&g3)],
+                        "c3_borda",
+                        &[],
+                    ),
+                    grupo,
+                    *t,
+                )
+            });
+            (
+                fina.map(|h| h.join().expect("a compilação da fina")),
+                anel.map(|h| h.join().expect("a compilação do anel")),
+                preenchimento,
+                rebote,
+                borda,
             )
         });
+        let anel = anel.zip(grupos_anel.map(|(_, g)| g));
 
         let gf = cfg.grade_da_fluencia();
         let mut c3 = Self {

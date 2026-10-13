@@ -303,53 +303,113 @@ fn cone_livre_fora(P: vec2<f32>, dir: vec2<f32>, fim: f32, tg: f32, folga: f32, 
 // A transmissão de P até B (o meio entre eles; o emissor de chegada fica de fora), e o trecho fora
 // da grade pelos objetos distantes da lâmpada `k`.
 fn transmissao(P: vec2<f32>, B: vec2<f32>, k: u32) -> f32 {
-    let t = f32(marchar(P, P, B).t);
+    return transmissao_de(P, P, B, k);
+}
+
+// ⭐ W5p — a [`transmissao`] com a marcha a partir de `A` (no raio de P a B). O compilador do driver
+// EMBUTE cada chamada da marcha: o tempo de compilar segue o número de sítios dela, não o de voltas
+// (handoff W5p §1) — por isso a abertura chama-a de UM sítio.
+fn transmissao_de(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>, k: u32) -> f32 {
+    let t = f32(marchar(P, A, B).t);
     if t <= 0.0 || !DISTANTES {
         return t;
     }
     return t * fora_da_grade(P, B, k);
 }
 
-// A transmissão de P até o DISCO pelo ângulo `a` (a marcha para antes dele).
-fn ate_o_disco(P: vec2<f32>, v: vec2<f32>, d: f32, raio: f32, a: f32, k: u32) -> f32 {
+// A transmissão de P até o DISCO pelo ângulo `a` (a marcha para antes dele); `pelo_ponto` (W5o): o
+// raio só se testa a partir de onde está a `h` do plano da face (normal de fora `nf`) — 1 se lá já
+// passou do disco.
+fn raio_ao_disco(P: vec2<f32>, nf: vec2<f32>, h: f32, pelo_ponto: bool, v: vec2<f32>, d: f32, raio: f32, a: f32, k: u32) -> f32 {
     let dj = vec2<f32>(cos(a), sin(a));
     let b = dot(dj, v);
     let t = b - sqrt(max(b * b - (d * d - raio * raio), 0.0));
-    return transmissao(P, P + dj * max(t - ANTES_DO_DISCO, 0.0), k);
+    let B = P + dj * max(t - ANTES_DO_DISCO, 0.0);
+    var A = P;
+    if pelo_ponto {
+        let s = h / max(dot(dj, nf), 1e-4);
+        if s >= distance(P, B) {
+            return 1.0;
+        }
+        A = P + dj * s;
+    }
+    return transmissao_de(P, A, B, k);
 }
 
-// A fração VISÍVEL da abertura [base − α, base + α]: raios fixos nas fronteiras das fatias e, onde
-// a transmissão muda, a bissecção da borda.
+// ⭐ W5p — a SOMA da transmissão sobre `n` fatias de `largura` a partir do ângulo `a_ini`: raios fixos
+// nas fronteiras das fatias e, numa fatia em que a transmissão muda, `BISSECOES` passos de bissecção
+// da borda. Uma máquina de estados com UM sítio do raio (o laço de antes tinha três: o primeiro, o de
+// cada fronteira e o da bissecção) — os mesmos raios, a mesma soma, na mesma ordem.
+fn soma_da_abertura(P: vec2<f32>, nf: vec2<f32>, h: f32, pelo_ponto: bool, v: vec2<f32>, d: f32, raio: f32, a_ini: f32, largura: f32, n: u32, k: u32) -> f32 {
+    var a0 = a_ini;
+    var a1 = a_ini;
+    var t0 = 0.0;
+    var t1 = 0.0;
+    var lo = 0.0;
+    var hi = 0.0;
+    var b = 0u;
+    var i = 0u;
+    var soma = 0.0;
+    // 0: o raio de `a0` · 1: o da fronteira seguinte · 2: um passo da bissecção.
+    var fase = 0u;
+    loop {
+        var a = a0;
+        if fase == 1u {
+            a1 = a0 + largura;
+            a = a1;
+        } else if fase == 2u {
+            a = 0.5 * (lo + hi);
+        }
+        let t = raio_ao_disco(P, nf, h, pelo_ponto, v, d, raio, a, k);
+        var fatia_feita = false;
+        if fase == 0u {
+            t0 = t;
+            fase = 1u;
+            if n == 0u {
+                break;
+            }
+        } else if fase == 1u {
+            t1 = t;
+            if abs(t1 - t0) < 1e-4 {
+                soma += 0.5 * (t0 + t1) * largura;
+                fatia_feita = true;
+            } else {
+                lo = a0;
+                hi = a1;
+                b = 0u;
+                fase = 2u;
+            }
+        } else {
+            if abs(t - t0) <= abs(t - t1) {
+                lo = a;
+            } else {
+                hi = a;
+            }
+            b++;
+        }
+        if fase == 2u && b >= BISSECOES {
+            let borda = 0.5 * (lo + hi);
+            soma += t0 * (borda - a0) + t1 * (a1 - borda);
+            fatia_feita = true;
+        }
+        if fatia_feita {
+            a0 = a1;
+            t0 = t1;
+            fase = 1u;
+            i++;
+            if i >= n {
+                break;
+            }
+        }
+    }
+    return soma;
+}
+
+// A fração VISÍVEL da abertura [base − α, base + α].
 fn visivel_do_disco(P: vec2<f32>, v: vec2<f32>, d: f32, raio: f32, base: f32, alfa: f32, k: u32) -> f32 {
     let n = RAIOS_DIRETOS;
     let largura = 2.0 * alfa / f32(n);
-    var a0 = base - alfa;
-    var t0 = ate_o_disco(P, v, d, raio, a0, k);
-    var soma = 0.0;
-    for (var i = 0u; i < n; i++) {
-        let a1 = a0 + largura;
-        let t1 = ate_o_disco(P, v, d, raio, a1, k);
-        if abs(t1 - t0) < 1e-4 {
-            soma += 0.5 * (t0 + t1) * largura;
-        } else {
-            var lo = a0;
-            var hi = a1;
-            for (var b = 0u; b < BISSECOES; b++) {
-                let m = 0.5 * (lo + hi);
-                let tm = ate_o_disco(P, v, d, raio, m, k);
-                if abs(tm - t0) <= abs(tm - t1) {
-                    lo = m;
-                } else {
-                    hi = m;
-                }
-            }
-            let borda = 0.5 * (lo + hi);
-            soma += t0 * (borda - a0) + t1 * (a1 - borda);
-        }
-        a0 = a1;
-        t0 = t1;
-    }
-    return soma / (2.0 * alfa);
+    return soma_da_abertura(P, vec2<f32>(0.0), 0.0, false, v, d, raio, base - alfa, largura, n, k) / (2.0 * alfa);
 }
 
 // O cone de P ao disco está LIVRE? — nenhum ponto «dentro» a menos da meia-largura do cone mais
@@ -834,14 +894,8 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
     borda_aqui = true;
     let tau = meio(ponto_fino(alvo)).tau;
     let onde = onde_calcular(alvo);
-    var l = luz_fina(alvo, onde);
-    var t = vec3<f32>(0.0);
-    if onde.remapeado && tau > 0.0 {
-        c0_tau = tau;
-        t = luz_fina(alvo, Onde(ponto_fino(alvo), false, ponto_fino(alvo), 0.0));
-        c0_tau = 1.0;
-    }
-    guardar_fina(alvo, onde, l, t, tau);
+    let lt = luz_do_texel(alvo, onde, tau, false, true);
+    guardar_fina(alvo, onde, lt.l, lt.t, tau);
 }
 
 // ⭐ W5k — a fluência do texel e, dentro de um corpo de opacidade `α = 1 − τ < 1`, a TRANSMITIDA `t`
@@ -860,13 +914,22 @@ fn guardar_fina(alvo: vec2<u32>, onde: Onde, l: vec3<f32>, t: vec3<f32>, tau: f3
     textureStore(fina_saida, alvo, vec4<f32>(saida, alfa_do_miolo(onde)));
 }
 
-// A luz do texel fino `alvo` calculada em `onde`, com as duas faces.
-fn luz_fina(alvo: vec2<u32>, onde: Onde) -> vec3<f32> {
-    // O texel remapeado (dentro de um opaco) MEDE a visibilidade: as sondas em volta do exterior mais
-    // próximo podem estar fora da região.
-    let remapeado = onde.remapeado;
-    borda_aqui = remapeado;
-    let P = onde.p;
+fn alfa_do_miolo(onde: Onde) -> f32 {
+    return select(1.0, 0.0, MIOLO && onde.remapeado);
+}
+
+// O modo da visibilidade num passo da luz ([`luz_das_lampadas`]).
+// A da grade fina: interpolada das sondas, medida no texel onde a penumbra o pede.
+const PELA_GRADE: u32 = 0u;
+// A exata: medida em todo ponto.
+const EXATA: u32 = 1u;
+// A remapeada: `P` na fronteira, o texel `P0` dentro (a face, W5g/W5o).
+const REMAPEADA: u32 = 2u;
+
+// ⭐ W5p — `inicial` mais a luz de cada lâmpada vista de `P`, a visibilidade pelo `modo`. O compilador
+// do driver EMBUTE cada chamada (handoff W5p §1): este é o ÚNICO laço de lâmpadas da luz de um texel,
+// com UM sítio da `visibilidade` e um da `visibilidade_na_face`.
+fn luz_das_lampadas(P: vec2<f32>, P0: vec2<f32>, modo: u32, inicial: vec3<f32>) -> vec3<f32> {
     let u = P - 0.5;
     let base = vec2<i32>(floor(u));
     let fr = u - vec2<f32>(base);
@@ -874,85 +937,146 @@ fn luz_fina(alvo: vec2<u32>, onde: Onde) -> vec3<f32> {
     let q = clamp(base, vec2<i32>(0), ultimo);
     let r = clamp(base + 1, vec2<i32>(0), ultimo);
     // (q.x, q.y) · (r.x, q.y) · (q.x, r.y) · (r.x, r.y)
-    let w0 = textureLoad(visibilidades, q, 0).xy;
-    let w1 = textureLoad(visibilidades, vec2<i32>(r.x, q.y), 0).xy;
-    let w2 = textureLoad(visibilidades, vec2<i32>(q.x, r.y), 0).xy;
-    let w3 = textureLoad(visibilidades, r, 0).xy;
-    var soma: vec3<f32>;
-    if remapeado {
-        soma = c0_ao_longo_da_face(P, ponto_fino(alvo));
-    } else {
-        soma = c0_em(P);
+    var w0 = vec2<u32>(0u);
+    var w1 = vec2<u32>(0u);
+    var w2 = vec2<u32>(0u);
+    var w3 = vec2<u32>(0u);
+    if modo == PELA_GRADE {
+        w0 = textureLoad(visibilidades, q, 0).xy;
+        w1 = textureLoad(visibilidades, vec2<i32>(r.x, q.y), 0).xy;
+        w2 = textureLoad(visibilidades, vec2<i32>(q.x, r.y), 0).xy;
+        w3 = textureLoad(visibilidades, r, 0).xy;
     }
+    var soma = inicial;
     for (var k = 0u; k < lampadas.n; k++) {
         let L = lampadas.itens[k];
         let s = sem_sombra(P, L);
         if all(s <= vec3<f32>(0.0)) {
             continue;
         }
-        let desl = 8u * (k % 4u);
-        let lado = k < 4u;
-        let c = (vec4<u32>(
-            select(w0.y, w0.x, lado),
-            select(w1.y, w1.x, lado),
-            select(w2.y, w2.x, lado),
-            select(w3.y, w3.x, lado),
-        ) >> vec4<u32>(desl)) & vec4<u32>(0xffu);
         var v = 1.0;
-        if remapeado {
-            v = visibilidade_remapeada(P, ponto_fino(alvo), k);
-        } else if any(c != vec4<u32>(CERTA)) {
-            let f = vec4<f32>(min(c, vec4<u32>(INTEIRA))) / f32(INTEIRA);
-            let lo = min(min(f.x, f.y), min(f.z, f.w));
-            let hi = max(max(f.x, f.y), max(f.z, f.w));
-            // O JOELHO da penumbra (onde ela começa ou acaba) não é linear: uma célula que mistura
-            // um canto na sombra ou à vista inteira com um canto parcial mede-se no texel.
-            let extremo = (f <= vec4<f32>(0.0)) | (f >= vec4<f32>(1.0));
-            if hi - lo > fina.limiar || lo >= 1.0 || (JOELHO && any(extremo) && !all(extremo))
-                || (CURVATURA && curvatura(q, r, f, k) > fina.limiar) {
-                v = visibilidade(P, k, 0.0);
-            } else {
-                v = mix(mix(f.x, f.y, fr.x), mix(f.z, f.w, fr.x), fr.y);
+        var medir = modo == EXATA;
+        if modo == REMAPEADA {
+            // O texel remapeado (dentro de um opaco) MEDE a visibilidade: as sondas em volta do
+            // exterior mais próximo podem estar fora da região.
+            medir = true;
+            if VIS_NA_FACE {
+                let nf = normal_secante(P, P0, 1.0 / f32(fina.fina));
+                // No canto a face não corta a abertura numa reta: a marcha do ponto rente.
+                if any(nf != vec2<f32>(0.0)) {
+                    medir = false;
+                    v = visibilidade_na_face(P, nf, k, meio(P0).tau > 0.0);
+                }
+            }
+        } else if modo == PELA_GRADE {
+            let desl = 8u * (k % 4u);
+            let lado = k < 4u;
+            let c = (vec4<u32>(
+                select(w0.y, w0.x, lado),
+                select(w1.y, w1.x, lado),
+                select(w2.y, w2.x, lado),
+                select(w3.y, w3.x, lado),
+            ) >> vec4<u32>(desl)) & vec4<u32>(0xffu);
+            if any(c != vec4<u32>(CERTA)) {
+                let f = vec4<f32>(min(c, vec4<u32>(INTEIRA))) / f32(INTEIRA);
+                let lo = min(min(f.x, f.y), min(f.z, f.w));
+                let hi = max(max(f.x, f.y), max(f.z, f.w));
+                // O JOELHO da penumbra (onde ela começa ou acaba) não é linear: uma célula que mistura
+                // um canto na sombra ou à vista inteira com um canto parcial mede-se no texel.
+                let extremo = (f <= vec4<f32>(0.0)) | (f >= vec4<f32>(1.0));
+                if hi - lo > fina.limiar || lo >= 1.0 || (JOELHO && any(extremo) && !all(extremo))
+                    || (CURVATURA && curvatura(q, r, f, k) > fina.limiar) {
+                    medir = true;
+                } else {
+                    v = mix(mix(f.x, f.y, fr.x), mix(f.z, f.w, fr.x), fr.y);
+                }
             }
         }
-        soma += s * v;
-    }
-    return nas_faces(soma, onde);
-}
-
-fn alfa_do_miolo(onde: Onde) -> f32 {
-    return select(1.0, 0.0, MIOLO && onde.remapeado);
-}
-
-// A luz do texel: `l` (a da face mais perto) misturada com a da outra face na área dela.
-fn nas_faces(l: vec3<f32>, onde: Onde) -> vec3<f32> {
-    if onde.f2 <= 0.0 {
-        return l;
-    }
-    return mix(l, luz_exata(onde.p2), onde.f2);
-}
-
-// A luz em P com a visibilidade de cada lâmpada medida no ponto.
-fn luz_exata(P: vec2<f32>) -> vec3<f32> {
-    var soma = c0_em(P);
-    for (var k = 0u; k < lampadas.n; k++) {
-        let s = sem_sombra(P, lampadas.itens[k]);
-        if any(s > vec3<f32>(0.0)) {
-            soma += s * visibilidade(P, k, 0.0);
+        if medir {
+            v = visibilidade(P, k, 0.0);
         }
+        soma += s * v;
     }
     return soma;
 }
 
-// A luz do texel fino `id` pela visibilidade exata em `onde` (sem a outra face: `nas_faces`).
-fn luz_exata_no_onde(id: vec2<u32>, onde: Onde) -> vec3<f32> {
-    borda_aqui = onde.remapeado;
-    var l = luz_exata(onde.p);
-    if onde.remapeado {
-        l = luz_exata_remapeada(onde.p, ponto_fino(id));
-        l += c0_ao_longo_da_face(onde.p, ponto_fino(id)) - c0_em(onde.p);
+// A luz de um texel e (num translúcido) a transmitida.
+struct LuzDoTexel {
+    l: vec3<f32>,
+    t: vec3<f32>,
+}
+
+// ⭐ W5p — a luz do texel fino `alvo` calculada em `onde`, com as duas faces, e (`transmitida`, num
+// translúcido) a que o atravessa até ele: os passos de [`luz_das_lampadas`] num laço — UM sítio dela
+// (antes eram quatro: o ponto, o ponto remapeado, a outra face e a transmitida). `exata` = a
+// visibilidade medida em todo ponto (o `Refino::Tudo`); senão a da grade fina. A mesma conta, com o
+// `borda_aqui` e o `c0_tau` que cada passo tinha.
+fn luz_do_texel(alvo: vec2<u32>, onde: Onde, tau: f32, exata: bool, transmitida: bool) -> LuzDoTexel {
+    let translucido = onde.remapeado && tau > 0.0;
+    let pf = ponto_fino(alvo);
+    // 0: o ponto (`onde.p`) · 1: a outra face (`onde.p2`) · 2: a transmitida (`pf`, de dentro).
+    var passos: array<u32, 3>;
+    var n = 1u;
+    passos[0] = 0u;
+    if onde.f2 > 0.0 {
+        passos[n] = 1u;
+        n++;
     }
-    return l;
+    if transmitida && translucido {
+        passos[n] = 2u;
+        n++;
+    }
+    var l = vec3<f32>(0.0);
+    var face = vec3<f32>(0.0);
+    var t = vec3<f32>(0.0);
+    for (var i = 0u; i < n; i++) {
+        let passo = passos[i];
+        var P = onde.p;
+        var modo = select(PELA_GRADE, EXATA, exata);
+        // O ponto remapeado lê a c0 ao longo da face (W5d); na exata, somada por cima da do ponto.
+        var longo = false;
+        c0_tau = 1.0;
+        if passo == 0u {
+            borda_aqui = onde.remapeado;
+            if onde.remapeado {
+                modo = REMAPEADA;
+                longo = true;
+            }
+        } else if passo == 1u {
+            // A outra face lia o `borda_aqui` do passo anterior (na exata, a transmitida desligava-o).
+            P = onde.p2;
+            borda_aqui = onde.remapeado && !(exata && translucido);
+            modo = EXATA;
+        } else {
+            P = pf;
+            borda_aqui = false;
+            c0_tau = tau;
+        }
+        var c0l = vec3<f32>(0.0);
+        if longo {
+            c0l = c0_ao_longo_da_face(P, pf);
+        }
+        var c0e = vec3<f32>(0.0);
+        if !longo || exata {
+            c0e = c0_em(P);
+        }
+        var x = luz_das_lampadas(P, pf, modo, select(c0e, c0l, longo && !exata));
+        if longo && exata {
+            x += c0l - c0e;
+        }
+        if passo == 0u {
+            l = x;
+        } else if passo == 1u {
+            face = x;
+        } else {
+            t = x;
+        }
+    }
+    c0_tau = 1.0;
+    if onde.f2 > 0.0 {
+        l = mix(l, face, onde.f2);
+    }
+    return LuzDoTexel(l, t);
 }
 
 @compute @workgroup_size(8, 8)
@@ -964,13 +1088,6 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
     borda_aqui = true;
     let tau = meio(ponto_fino(id)).tau;
     let onde = onde_calcular(id);
-    let l = luz_exata_no_onde(id, onde);
-    var t = vec3<f32>(0.0);
-    if onde.remapeado && tau > 0.0 {
-        borda_aqui = false;
-        c0_tau = tau;
-        t = luz_exata(ponto_fino(id));
-        c0_tau = 1.0;
-    }
-    guardar_fina(id, onde, nas_faces(l, onde), t, tau);
+    let lt = luz_do_texel(id, onde, tau, true, true);
+    guardar_fina(id, onde, lt.l, lt.t, tau);
 }

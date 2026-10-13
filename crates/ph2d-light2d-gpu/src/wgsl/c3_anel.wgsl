@@ -82,10 +82,10 @@ fn c3_fina_anel(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     var k = a.k;
     if a.calcular {
-        // A sequência da `c3_fina`.
+        // A sequência da `c3_fina` (sem a transmitida).
         borda_aqui = true;
         let onde = onde_calcular(gid.xy);
-        k = vec4<f32>(luz_fina(gid.xy, onde), 1.0);
+        k = vec4<f32>(luz_do_texel(gid.xy, onde, 0.0, false, false).l, 1.0);
     }
     textureStore(fina_saida, gid.xy, k);
 }
@@ -102,11 +102,7 @@ fn c3_fina_exata_anel(@builtin(global_invocation_id) gid: vec3<u32>) {
         borda_aqui = true;
         let tau = meio(ponto_fino(gid.xy)).tau;
         let onde = onde_calcular(gid.xy);
-        let l = luz_exata_no_onde(gid.xy, onde);
-        if onde.remapeado && tau > 0.0 {
-            borda_aqui = false;
-        }
-        k = vec4<f32>(nas_faces(l, onde), 1.0);
+        k = vec4<f32>(luz_do_texel(gid.xy, onde, tau, true, false).l, 1.0);
     }
     textureStore(fina_saida, gid.xy, k);
 }

@@ -160,3 +160,11 @@ Perfil do loop (`scripts/agent-loop-profile.sh`, as 20 sessões mais recentes da
   ✗ contexto relido por passo (media)         366 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
   ✓ contexto no inicio da sessao               63 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
 ```
+
+Binário do smoke (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida, sobre
+`6be9d9348e`):
+
+```
+▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.54s
+```

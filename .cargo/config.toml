@@ -25,3 +25,13 @@ linker = "rust-lld.exe"
 # fica fora (lá `floor` já é a instrução `frintm`).
 [target.'cfg(target_arch = "x86_64")']
 rustflags = ["-C", "target-cpu=x86-64-v2"]
+
+# O CACHE DE SHADERS DO DRIVER NVIDIA para tudo o que o cargo lança (testes, nextest, `cargo run`).
+# O tecto por omissão é 1 GiB e o nosso estava CHEIO (1023 MB em 13/10): o driver despejava e
+# recompilava as mesmas pipelines a cada processo. Medido no gate `um_emissor_de_duas_cores…` da
+# Luz 2D, o mesmo binário: 52,7 s com o tecto de fábrica · 0,6 s com este, cache quente — o gate
+# `o_oclusor_fino` passava ~640 s dentro do `_nv002nvvm` (docs/DevOps/VELOCIDADE_DOS_PORTOES.md).
+# O recurso é o DISCO de `~/.cache` (483 GB livres); a limpeza do driver continua a valer neste tecto.
+# Fora da NVIDIA a variável não é lida.
+[env]
+__GL_SHADER_DISK_CACHE_SIZE = "17179869184"

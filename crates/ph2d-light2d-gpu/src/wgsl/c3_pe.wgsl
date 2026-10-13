@@ -114,8 +114,12 @@ fn normal_de_fora(P: vec2<f32>, P0: vec2<f32>) -> vec2<f32> {
 fn visibilidade_na_face(P: vec2<f32>, nf: vec2<f32>, k: u32, translucido: bool) -> f32 {
     let L = lampadas.itens[k];
     let afasta = nf * AFASTA_NA_FACE * max(1.0 / ESCALA_DA_CAPTURA, 1.0 / f32(fina.fina));
-    if FACE_PELO_PONTO && !translucido {
-        return visibilidade_pelo_ponto(P, nf, length(afasta), k);
+    if FACE_PELO_PONTO {
+        var frente = visibilidade_pelo_ponto(P, nf, length(afasta), k);
+        if translucido {
+            frente += atras_de_dentro(P, afasta, nf, k);
+        }
+        return frente;
     }
     let Q = P + afasta;
     let v = L.centro - Q;
@@ -223,6 +227,39 @@ fn visibilidade_pelo_ponto(P: vec2<f32>, nf: vec2<f32>, h: f32, k: u32) -> f32 {
         t0 = t1;
     }
     return soma / (2.0 * alfa);
+}
+
+// ⭐ W5o — a metade de TRÁS da abertura num translúcido (a que atravessa o corpo, ∝ τ), como no
+// [`visibilidade_na_face`] antigo: pelos ângulos vistos do ponto afastado, marchada de dentro.
+fn atras_de_dentro(P: vec2<f32>, afasta: vec2<f32>, nf: vec2<f32>, k: u32) -> f32 {
+    let L = lampadas.itens[k];
+    let Q = P + afasta;
+    let v = L.centro - Q;
+    let d = length(v);
+    if L.raio <= 0.0 || d <= L.raio {
+        if dot(L.centro - P, nf) <= 0.0 {
+            return visibilidade(P - afasta, k, 0.0);
+        }
+        return 0.0;
+    }
+    let alfa = asin(min(L.raio / d, 1.0));
+    let base = atan2(v.y, v.x);
+    var delta = atan2(nf.y, nf.x) - base;
+    delta -= TAU * round(delta / TAU);
+    let lo = max(-alfa, delta - 0.25 * TAU);
+    let hi = min(alfa, delta + 0.25 * TAU);
+    let Qd = P - afasta;
+    let vd = L.centro - Qd;
+    let dd = length(vd);
+    let tras = array<vec2<f32>, 2>(vec2<f32>(-alfa, min(lo, alfa)), vec2<f32>(max(hi, -alfa), alfa));
+    var visto = 0.0;
+    for (var i = 0u; i < 2u; i++) {
+        let meia = 0.5 * (tras[i].y - tras[i].x);
+        if meia > 0.0 {
+            visto += visivel_do_disco(Qd, vd, dd, L.raio, base + 0.5 * (tras[i].x + tras[i].y), meia, k) * meia / alfa;
+        }
+    }
+    return visto;
 }
 
 // O [`ate_o_disco`] pelo [`pelo_ponto_ate`].

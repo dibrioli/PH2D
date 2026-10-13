@@ -155,4 +155,36 @@ Cenas do smoke, contadas no roteador (`motion_state_demo_router.rs:34`, `MAX_DEM
 
 ## §7 — Medições (preenchidas ao correr)
 
-(vazio)
+### P2 — a fita contra a RAM (13/10, workstation, `dev`, `loadavg` 2,8–5)
+
+Sonda `fila_c_a_fita_por_entrada` (`motion_bridge_gpu_fila_c_probe.rs`): `grid → output` + `K` cartões `Input`, as
+`K` entradas a mudar em todo tique, 3 000 tiques pelo caminho da CPU do produto, **um processo por `K`**
+(`PH2D_SONDA_ENTRADAS`). O RSS do último terço é o que conta: até ao tique 2 048 o processo também enche o anel
+(ver «aberto» abaixo; com `K = 0` o RSS sobe `1 348 B/tique` no total e `184` no último terço).
+
+| entradas a mudar | declara B/tique | RSS B/tique, último terço | RSS ÷ declarado | RSS do processo |
+|---:|---:|---:|---:|---:|
+| 3 | 214,5 | 225,3 | 1,05× | 37 MB |
+| 30 | 1 545,8 | 1 552,4 | 1,00× | 41 MB |
+| 300 | 14 859,9 | 14 843,9 | 1,00× | 80 MB |
+
+**O tecto e a história que cabe a 60 Hz** (`tecto ÷ B/tique`; a RAM lida pelo `/proc/meminfo`):
+
+| RAM | fração | tecto da fita | 3 entradas | 30 entradas | 300 entradas |
+|---|---|---:|---:|---:|---:|
+| 8 GiB (máquina pequena) | 1/64 (= o número fixo de antes) | 128 MiB | 174 min | 24 min | 2,5 min |
+| 8 GiB | **1/32** | **256 MiB** | **348 min** | **48 min** | **5,0 min** |
+| 8 GiB | 1/16 | 512 MiB | 695 min | 96 min | 10,0 min |
+| 128 GB (`MemTotal` 123,2 GiB, esta) | **1/32** | **3,85 GiB** | **89 h** | **12,4 h** | **77 min** |
+
+**Escolha: `1/32` da RAM física por cache do scrub** (`FRACAO_DA_RAM`, `razao.rs`), a fita e o anel da CPU cada um
+com o seu razão — os dois juntos `1/16`. O recurso é a RAM física da máquina, partilhada por TODAS as fitas (e por
+todos os anéis) do processo: cem objectos não pedem cem tectos. `1/16` por cache daria `1 GiB` aos dois na máquina
+de 8 GiB, cuja memória é unificada com a placa; `1/32` dobra a história de antes nela (2,5 → 5 min a 300 entradas)
+e dá 30× na estação. Sem leitura da RAM (Windows: o `GlobalMemoryStatusEx` pede o `windows-sys`, que a crate não
+tem) vale a reserva de antes, 128 MiB. `PH2D_MOTION_FITA_BYTES` (lida uma vez) põe um tecto à mão — a cena `=139`.
+
+**Aberto (o anel, não a fita):** o `CookCheckpoint::approx_bytes` conta colunas e memos e declara `0 B` para um
+checkpoint leve; o processo ganha `~1,9 KB` por checkpoint (`K = 0`: 3,9 MB até o anel encher, 184 B/tique
+depois). Limitado pelo `MAX_ENTRIES = 2048` (`~4 MB`), logo inofensivo; a régua do anel contra o heap (o irmão do
+`tests/fita_memoria.rs`) não existe.

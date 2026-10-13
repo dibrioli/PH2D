@@ -163,6 +163,13 @@ Cenas do smoke, contadas no roteador (`motion_state_demo_router.rs:34`, `MAX_DEM
      (`Segmentos`, `cola_no_mundo`): `+0,12 ms` por segmento a 1080p e a 4K (`sonda_o_preco_de_um_segmento_de_pousa`),
      contra o quadro inteiro no Vello. Gate `as_pousas_diferentes_pousam_por_segmentos` (Everything+Normal,
      Normal+Everything, Scene+Scene; 3 modos × 2 rotas) na tabela fechada, ≤ 1 byte.
+  5. **A linha CALADA não é célula — VERDE (3.ª ronda, 13/10).** O quad de tamanho zero (a linha de forma que a placa
+     cala nas sprites desde o doc 121 W3, `584688eee8`; e, desde o P4, a imagem que a separação limpa e a linha de forma
+     calada que ela leva com a faixa) dava uma célula de ~2 px mais a vala — relocada, desenhada e devolvida a pintar
+     nada. **Pré-existente:** o `Each Shape` do dispositivo recebe o buffer inteiro das sprites (`gi.len()`), logo cada
+     forma pagava uma célula fantasma desde o W3; o P4 triplicou-as na `=140`. Lei: o passe de limites dá caixa VAZIA ao
+     quad de tamanho zero (`Variante::calada_vazia`, a mesma regra para as sprites e as imagens, nas duas rotas). Gate
+     `uma_linha_calada_nao_e_celula`; a régua na §7 P4.
 
 ## §5 — P5: o aviso cortado (a peça partilhada, `ph2d-editor-core`)
 
@@ -430,6 +437,32 @@ CALMA a placa sobe de relógio só sob trabalho e cada espera paga um piso de `~
 **Mutações da 2.ª ronda (7/7 VERMELHAS, sobre o verde):** as imagens não pintadas na página das células · a CPU a
 devolver a imagem de grupo ao Vello · a assada sem leitura na CPU · só o 1.º segmento pousa · a pousa que nunca parte ·
 o `Scene` sem partir a corrida por média · a ordem das linhas crua (`as_celulas_de_uma_corrida_voltam_juntas`).
+
+**A linha calada (3.ª ronda, `relogio_das_linhas_caladas`, `--release`, as duas variantes no MESMO processo, 7 rodadas
+× 10 quadros com a ordem rodada, o MÍNIMO; `loadavg` 9,7 → 8,0).** Discos «cada forma» na bancada da C.10
+(1600×972) com `r·n` caladas no buffer da placa: `r = 1` é a forma calada nas sprites (antes do P4), `r = 3` a
+composição da `=140`.
+
+| pilha | discos + caladas | células sem → com | páginas | placa sem → com | parede sem → com |
+|---|---|---:|---:|---:|---:|
+| Inner Shadow | 512 + 512 | 1 024 → 512 | 1 → 1 | 0,63 → 0,47 ms | 0,61 → 0,49 ms |
+| Inner Shadow | 512 + 1 536 | 2 048 → 512 | 1 → 1 | 0,74 → 0,48 ms | 0,76 → 0,50 ms |
+| Inner Shadow | 4 096 + 4 096 | 8 192 → 4 096 | 3 → 2 | 5,02 → 1,92 ms | 2,73 → 1,83 ms |
+| Inner Shadow | 4 096 + 12 288 | 16 384 → 4 096 | 4 → 2 | 7,80 → 1,97 ms | 4,14 → 1,93 ms |
+| Outer Glow | 512 + 512 | 1 024 → 512 | 1 → 1 | 0,86 → 0,68 ms | 0,88 → 0,70 ms |
+| Outer Glow | 512 + 1 536 | 2 048 → 512 | 1 → 1 | 1,18 → 0,69 ms | 1,14 → 0,70 ms |
+| Outer Glow | 4 096 + 4 096 | 8 192 → 4 096 | 4 → 3 | 4,66 → 3,15 ms | 4,29 → 3,06 ms |
+| Outer Glow | 4 096 + 12 288 | 16 384 → 4 096 | 7 → 3 | 7,28 → 3,18 ms | 7,22 → 3,09 ms |
+| Drop Shadow | 512 + 512 | 1 024 → 512 | 1 → 1 | 3,51 → 2,60 ms | 3,89 → 0,73 ms |
+| Drop Shadow | 512 + 1 536 | 2 048 → 512 | 2 → 1 | 8,51 → 1,12 ms | 7,86 → 0,73 ms |
+| Drop Shadow | 4 096 + 4 096 | 8 192 → 4 096 | 5 → 3 | 10,01 → 5,60 ms | 6,30 → 3,36 ms |
+| Drop Shadow | 4 096 + 12 288 | 16 384 → 4 096 | 9 → 3 | 10,08 → 3,76 ms | 9,49 → 3,53 ms |
+
+⇒ PAGA em todas as linhas: as células passam a ser só as que desenham, e a placa cai `1,3–7,6×` (o maior ganho onde
+as fantasmas abriam páginas: a vala da Drop Shadow). Os pixels são iguais ao byte com e sem as caladas, nas duas rotas
+das sprites (`uma_linha_calada_nao_e_celula`, 6 discos + 1 sprite + 12 caladas: 7 células; sem a regra 19).
+Mutações (2/2 VERMELHAS, sobre o verde): o passe de limites sem a regra (19 células contra 7) · o interruptor que nunca
+chega ao passe (o uniforme a `0`: 19 contra 7).
 
 **Mutações (9/9 VERMELHAS):** o tom ignorado (sem recodificar: cor 111) · a mistura da imagem sempre `Normal`
 (alfa 62, cor 195) · a tinta ignorada (alfa 85, cor 189) · sem pré-multiplicar (cor 131) · a cobertura do quad ignorada

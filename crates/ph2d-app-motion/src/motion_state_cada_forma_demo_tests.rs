@@ -51,19 +51,17 @@ fn coze(
 fn as_cenas_do_p1_e_do_p6_montam_com_o_filtro_em_cada_forma() {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
-    let discos = |d: &mut MotionDoc, r: &NodeRegistry| monta_discos(d, r);
-    let sprites = |d: &mut MotionDoc, r: &NodeRegistry| monta_sprites(d, r, OBJETO);
-    let cenas: [(
-        &str,
-        &dyn Fn(&mut MotionDoc, &NodeRegistry) -> Option<Cena>,
-        u8,
-    ); 2] = [
-        ("=138", &discos, ph2d_ecs::FxOp::GLOW),
-        ("OBJ_SMOKE=18", &sprites, ph2d_ecs::FxOp::DROP_SHADOW),
-    ];
-    for (nome, cena, tipo) in cenas {
+    for (nome, tipo) in [
+        ("=138", ph2d_ecs::FxOp::GLOW),
+        ("OBJ_SMOKE=18", ph2d_ecs::FxOp::DROP_SHADOW),
+    ] {
         let mut doc = MotionDoc::new();
-        let c = cena(&mut doc, &reg).unwrap_or_else(|| panic!("a {nome} monta"));
+        let c = if nome == "=138" {
+            monta_discos(&mut doc, &reg)
+        } else {
+            monta_sprites(&mut doc, &reg, OBJETO)
+        }
+        .unwrap_or_else(|| panic!("a {nome} monta"));
         let g = &doc.graph;
         let le = |n: NodeId, k: &str| g.node_param_overrides(n).and_then(|m| m.get(k).copied());
         // Um param sem override é o default do manifesto: `0` = `Each Shape`.

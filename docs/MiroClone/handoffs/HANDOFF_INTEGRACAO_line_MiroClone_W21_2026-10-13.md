@@ -118,7 +118,14 @@ desenha*. TRAÇO: `board_video::pointer_down` (`other`, devolve `true` ⇒ o Dow
 `canvas_down(at)`; segurar: `board_view::pointer` (Up) → `deferred_hold` → `canvas_down(at)` → `ed.pointer_up`.
 ASSERÇÃO-VERMELHA: `with_another_tool_…`. **NÃO-CHECADO-PELA-COMPILAÇÃO**: (3) o tocador num Windows real.
 
-**Re-corrido depois de `0cb5eede4f`: (a preencher)** — o portão acima é o de ANTES da 2.ª volta.
+**Re-corrido depois de `0cb5eede4f`** (verificador, BASE=`757afebd58`, `loadavg` 9 → 20–90 → 106, outras linhas a
+correr): `nextest-impacted` 17 760/17 761 — o único vermelho é um **TIMEOUT de 180 s** em
+`ph2d-tool-painter::…::achatamento_tests::o_escorrimento_do_s_nao_se_corta_em_rectangulos`, crate que esta linha NÃO
+toca (`git diff 757afebd58 HEAD -- crates/ph2d-tool-painter` = 0 linhas); re-corrido SOZINHO a `load` 92–107: ✓.
+Candidato à família de [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md) (não está na tabela; promovê-lo é da linha
+do Painter). `CARGO_BUILD_WARNINGS=deny check` ✓ · clippy do `ship.sh` ✓ · fmt · typos · machete · deny · audit ✓ ·
+censos ✓ · `check-standalone-optional` ✓ · `check-workflow-packages` ✓ · clippy Windows ✓. Pela regra da cadência
+do dono (13/10) a suíte não se re-corre por um vermelho alheio.
 
 ### Windows: o que foi medido (e a receita, que NÃO está no repo)
 
@@ -191,4 +198,6 @@ nessa fase não faz nada (o vídeo toca sozinho); (b) uma nota, forma ou traço 
 ATRÁS dele e o vídeo continua a tocar; só outro vídeo por cima o pausa (aviso «Another video covers this one…»).
 Errado: o vídeo pausa por ter uma nota/traço por cima, ou fica parado depois de vários cliques.
 
-**Prova do binário:** (a preencher) — o binário de `ea6810f233` já não é o do HEAD (`0cb5eede4f` mexeu em código).
+**Prova do binário** (depois de reclamar ~22 GB de `target/*/incremental`; a 2.ª compilação, a mesma linha de
+comando `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`): `Finished smoke profile
+[optimized] target(s) in 0.32s`, zero `Compiling`. O binário é o de `0cb5eede4f` (os commits seguintes são só docs).

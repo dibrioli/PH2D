@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-macro"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O núcleo das macros (ADR-0186) — PURO e sem dependências: sem ECS, sem UI, sem relógio de parede.
+# Cada família codifica a carga dos seus passos; este crate só guarda, versiona e despacha por tempo.
+[dependencies]
+
+[lints]
+workspace = true

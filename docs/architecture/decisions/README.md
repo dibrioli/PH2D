@@ -199,10 +199,11 @@
 | [0183](0183-o-historico-das-votacoes-e-um-instantaneo-da-equipa.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O histórico das votações é um INSTANTÂNEO na equipa do quadro, e o selo deriva da sessão mostrada |
 | [0184](0184-a-imagem-do-quadro-e-um-ficheiro-por-conteudo-que-viaja-sozinho.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | A imagem do quadro é um FICHEIRO por conteúdo, guardado no quadro e que viaja sozinho |
 | [0185](0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md) | Accepted — decisão do DONO (12/10, *«Sim, janela virtual»*, depois de ver as medições; … | O vídeo do YouTube no quadro toca no navegador da PESSOA, invisível, projectado no canvas |
+| [0186](0186-a-macro-grava-comandos-resolvidos-no-relogio-da-macro.md) | Accepted — o PRODUTO é decisão do DONO (13/10: *«tocará em tudo e em qualquer lug… | A macro grava COMANDOS RESOLVIDOS no relógio da macro, e cada família garante a sua exatidão |
 
 ---
 
-**190 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**191 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

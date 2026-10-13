@@ -125,8 +125,30 @@ controlo prova que isso não pesa. O código do experimento saiu da árvore; a r
 
 ## Gate e binário
 
-(preenchido no fecho)
+Gate batched do fecho (verificador, régua = merge-base, `PH2D_GPU=1`, load 36–69): fmt, check `--workspace
+--all-targets` deny, clippy `-D warnings` (forma do `ship.sh`), censos 117/117 e 12/12 — verdes. `nextest-impacted`
+**10 038/10 040**: (1) `g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara` — defeito real (a 1×1 nova), curado em
+`aa30e1cc97` e verde por nome; (2) `g4_o_custo_da_holografica_nao_depende_do_numero_de_luzes` — a família de flakes
+de carga ([FLAKES_DE_CARGA.md](../../DevOps/FLAKES_DE_CARGA.md)): 5,8 % na suíte (load 52), 1/3 sozinho com load
+60–65 o tempo todo; o diff não toca no relógio das cascatas. ⚠️ Falta vê-lo sozinho com load baixo (a máquina não
+desceu de 80 até ao fecho). A suíte correu SEM o prefixo `PH2D_SUITE=fecho` (a regra chegou depois); não se
+relançou (regra do dono 13/10: uma vez no fecho).
+
+App real, cache do driver REAL, as preferências do dono (`fotografa_cena.sh`, `HOME` com a cópia do
+`~/.ph2d/prefs.txt`, `PH2D_LIGHT2D_SMOKE=5`, load 87): a 1.ª abertura depois dos shaders novos **2,18 s** (W5o:
+9,6 s), a 2.ª **0,05 s** — o cache do dono fica AQUECIDO para este binário. Binário do smoke (2.ª corrida, depois
+de `aa30e1cc97`):
+
+```
+▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.22s
+```
 
 ## Smoke do dono
 
-(preenchido no fecho)
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_TEMPO=1 PH2D_LIGHT2D_SMOKE=5 cargo run -p ph2d-host-desktop --profile smoke`
+2. Olhe o centro da cena: a luz da lâmpada e as sombras das oito formas aparecem logo. No terminal, a linha
+   «a luz acendeu N s».
+3. Esperado: N abaixo de 0,5 s (o cache já foi aquecido para esta versão). Antes desta onda, a primeira vez depois
+   de uma atualização levava ~10 s; agora, numa atualização que mexe na luz, ~2 s — e as seguintes, imediatas.
+4. Errado: N acima de 1 s nesta abertura, ou a cena diferente da de ontem (a imagem tem de ser a MESMA).

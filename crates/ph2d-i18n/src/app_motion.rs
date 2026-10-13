@@ -185,6 +185,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_bridge_subgraph.r_g_b_a_only_on_a_color_input" => {
             "Can't wire: R G B A need an Input of Kind Color"
         }
+        // ⚠️ À MÃO: o scrub antes da base da fita das entradas (doc 132 §2).
+        "app.motion.motion_historia.history_folded" => {
+            "History before {s} s was folded - showing {s} s"
+        }
         _ => return None,
     })
 }

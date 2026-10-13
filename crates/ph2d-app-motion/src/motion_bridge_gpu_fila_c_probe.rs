@@ -233,18 +233,40 @@ fn fila_c_a_troca_de_rota() {
     );
 }
 
-/// ⭐ **C.11 — A FITA por entrada** (doc 128 §7: *«com MUITOS objectos a mexer são minutos — por
-/// medir»*): `K` entradas a mudar em todo tique, os bytes por tique da fita e quanto tempo de história
-/// cabe no orçamento `FITA_BYTES`.
+/// ⭐ **C.11 / doc 132 §7 — A FITA por entrada, contra a RAM** (doc 128 §7: *«com MUITOS objectos a
+/// mexer são minutos — por medir»*): `K` entradas a mudar em todo tique — os bytes por tique que a
+/// fita declara, o que o PROCESSO ganhou de RSS, e quanto tempo de história cabe no tecto (`1/32` da
+/// RAM) desta máquina e da pequena (8 GiB). `PH2D_SONDA_ENTRADAS=<k>` corre um `K` só (um processo
+/// por `K`: a memória que um devolve não se lê no seguinte).
 #[test]
 #[ignore = "sonda: CPU"]
 fn fila_c_a_fita_por_entrada() {
     use ph2d_ecs::motion_inputs::{Escritor, Valor};
+    use ph2d_eval_motion::razao::{ram_fisica, tecto_pela_ram};
+    let rss = || {
+        std::fs::read_to_string("/proc/self/statm")
+            .ok()
+            .and_then(|s| s.split_whitespace().nth(1)?.parse::<usize>().ok())
+            .map_or(0, |paginas| paginas * 4096)
+    };
+    let ram = ram_fisica();
+    let tectos = [
+        ("esta", tecto_pela_ram(ram, ph2d_eval_motion::FITA_BYTES)),
+        (
+            "8 GiB",
+            tecto_pela_ram(Some(8 << 30), ph2d_eval_motion::FITA_BYTES),
+        ),
+    ];
     println!(
-        "\n=== C.11 · a fita por entrada (orçamento {} MiB) ===",
-        ph2d_eval_motion::FITA_BYTES >> 20
+        "\n=== a fita por entrada · RAM {:?} B · tectos {tectos:?} · RSS de partida {} MB ===",
+        ram,
+        rss() >> 20
     );
-    for k in [3usize, 30, 300] {
+    let ks: Vec<usize> = match std::env::var("PH2D_SONDA_ENTRADAS") {
+        Ok(k) => vec![k.parse().expect("um K")],
+        Err(_) => vec![3, 30, 300],
+    };
+    for k in ks {
         let mut m = MotionState::new();
         let g = &mut m.doc.graph;
         let grade = g.add_node("motion.grid");
@@ -260,9 +282,24 @@ fn fila_c_a_fita_por_entrada() {
         }
         m.sinks = vec![out];
         m.pump.define_a_lei(true);
+        // Sem tecto nesta medição (o razão é da sonda, e nada dobra); `PH2D_SONDA_TECTO=<bytes>`
+        // põe um, e a fita fica constante: o RSS que ainda cresce não é dela (o CONTROLO).
+        let tecto = std::env::var("PH2D_SONDA_TECTO")
+            .ok()
+            .and_then(|t| t.parse().ok())
+            .unwrap_or(usize::MAX);
+        m.pump
+            .define_o_razao_da_fita(ph2d_eval_motion::Razao::new(tecto));
         let scopes = ph2d_node_motion_time_remap::time_scopes(&m.doc.graph, &m.registry);
-        const TIQUES: u64 = 600;
+        const TIQUES: u64 = 3_000;
+        let antes = rss();
+        // O RSS a 2/3: o anel pára em `MAX_ENTRIES = 2048` checkpoints, e o que cresce DEPOIS
+        // disso é a fita (e o resto que cresça por tique).
+        let mut a_dois_tercos = 0;
         for t in 0..TIQUES {
+            if t == TIQUES * 2 / 3 {
+                a_dois_tercos = rss();
+            }
             for e in 0..k {
                 #[expect(clippy::cast_precision_loss, reason = "um valor de teste")]
                 m.entradas.jogo.set(
@@ -283,13 +320,28 @@ fn fila_c_a_fita_por_entrada() {
                 &scopes,
             );
         }
-        let bytes = m.pump.fita().bytes();
+        let ganho = rss().saturating_sub(antes);
+        let fim = rss().saturating_sub(a_dois_tercos);
         #[expect(clippy::cast_precision_loss, reason = "uma razão")]
-        let por_tique = bytes as f64 / TIQUES as f64;
+        let fim_por_tique = fim as f64 / (TIQUES - TIQUES * 2 / 3) as f64;
         #[expect(clippy::cast_precision_loss, reason = "uma razão")]
-        let minutos = ph2d_eval_motion::FITA_BYTES as f64 / por_tique / 60.0 / 60.0;
+        let (por_tique, rss_por_tique) = (
+            m.pump.fita().bytes() as f64 / TIQUES as f64,
+            ganho as f64 / TIQUES as f64,
+        );
+        let minutos = |tecto: usize| {
+            #[expect(clippy::cast_precision_loss, reason = "uma razão")]
+            let t = tecto as f64;
+            t / por_tique / 60.0 / 60.0
+        };
         println!(
-            "  {k:>4} entradas a mudar: {por_tique:.1} B/tique · {minutos:.1} min de história a 60 Hz"
+            "  {k:>4} entradas a mudar: declara {por_tique:.1} B/tique · RSS {rss_por_tique:.1} B/tique ({:.2}×; no último terço, já com o anel cheio, {fim_por_tique:.1}) · RSS do processo {} MB · história a 60 Hz: {:.0} min ({}) · {:.0} min ({})",
+            rss_por_tique / por_tique,
+            rss() >> 20,
+            minutos(tectos[0].1),
+            tectos[0].0,
+            minutos(tectos[1].1),
+            tectos[1].0,
         );
     }
 }

@@ -81,6 +81,8 @@ ph2d-pan-diag = { path = "../ph2d-pan-diag" }
 ph2d-table = { path = "../ph2d-table" }
 ph2d-thumbnail = { path = "../ph2d-thumbnail" }
 ph2d-timeline = { path = "../ph2d-timeline", features = ["render", "physics"] }
+# doc 132 §2: a faixa da história gravada (a fita das entradas) publica-se ao painel da Timeline.
+ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 ph2d-vec-art-live = { path = "../ph2d-vec-art-live" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vector = { path = "../ph2d-vector" }
@@ -138,7 +140,6 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bytemuck = { version = "1", features = ["extern_crate_alloc"] }
-ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # ⚠️ Só para o gate do roteiro da cena `=125`, que deriva o nome do cartão dos OSSOS do
 # registo em vez de o escrever à mão. O produto alcança o nó pelo `ph2d-node-registry-init`.
 ph2d-node-rig-bones = { path = "../ph2d-node-rig-bones" }

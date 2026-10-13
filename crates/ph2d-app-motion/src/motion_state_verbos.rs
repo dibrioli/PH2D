@@ -106,6 +106,7 @@ impl MotionState {
             // ADR-0155: the node-help system is ON by default; the toolbar chip toggles it.
             node_help_enabled: true,
             ui_now: 0.0,
+            historia_dobrada: None,
             piscada: None,
             objeto: Default::default(),
             macro_gravacao: None,
@@ -176,6 +177,7 @@ impl MotionState {
         let lei = self.pump.a_lei();
         self.pump = Self::pump_do_motion();
         self.pump.define_a_lei(lei);
+        self.historia_dobrada = None;
         self.history = MotionHistory::new();
         self.sinks.clear();
         self.probe = None;

@@ -210,6 +210,9 @@ pub(crate) use intents::apply_graph_intents;
 #[path = "motion_bridge_gizmo_tap_tests.rs"]
 mod gizmo_tap_tests;
 #[cfg(test)]
+#[path = "motion_bridge_historia_tests.rs"]
+mod historia_tests;
+#[cfg(test)]
 #[path = "motion_bridge_visibility_tests.rs"]
 mod visibility_tests;
 
@@ -370,12 +373,16 @@ pub fn dispatch(
 
     // ⭐ Um objecto Motion visível cozinha e desenha sem a ferramenta (doc ObjectsAndComponents 01 §13).
     if !motion_active && !motion.objeto.desenha() {
+        crate::motion_historia::limpa();
         return;
     }
 
     // ── 3. O quadro: os sinks e as tomadas, e o cozimento no tique do PLAYHEAD (W4.T7) ────
     let mao = quadro::MaoDoEditor::do_painel();
     quadro::o_quadro(motion, Some(gpu), playhead, fixed_dt, mao);
+    // A fita dita ao artista (doc 132 §2) — só o quadro do PRODUTO: o palco de uma macro cozem pelo
+    // `o_quadro` e não tem Timeline a que publicar.
+    crate::motion_historia::publica(motion, fixed_dt);
 }
 
 /// **Re-derive everything the graph's SHAPE implies**, after any structural edit —

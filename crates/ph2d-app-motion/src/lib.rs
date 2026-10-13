@@ -203,6 +203,8 @@ pub use motion_bridge::objects::colisor::migra_o_collide_da_saida;
 /// Ciclo 19: as entradas que o jogo publica para o grafo (`value.input`).
 pub mod motion_entradas;
 pub mod motion_externals;
+/// doc 132 §2: a história da fita dita na Timeline (a faixa) e no cartão das entradas.
+pub mod motion_historia;
 pub mod motion_filter;
 /// **A MÁSCARA DE SUJIDADE do halo**, resolvida contra a cena (doc 89 folha 11) — o nó guarda
 /// um NOME, o passe de tela quer uma `TextureView`, e este é o único sítio onde a cena, o atlas

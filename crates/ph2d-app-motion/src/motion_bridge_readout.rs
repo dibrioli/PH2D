@@ -331,6 +331,15 @@ pub(super) fn stamp(
         if let Some(queixa) = motion.lente.queixa(id).or_else(|| motion.filtro.queixa(id)) {
             node.readout = Some(queixa);
         }
+        // O scrub antes da base da fita, no cartão das entradas (doc 132 §2).
+        if let Some(queixa) = motion
+            .doc
+            .graph
+            .node(id)
+            .and_then(|n| crate::motion_historia::queixa(motion, &n.type_name))
+        {
+            node.readout = Some(queixa);
+        }
         // The wire's mass — see `exact` above. Without it every wire flattens to
         // the same thread the moment the device takes over, and the taper — the
         // panel's one answer to "how much is moving?" — dies exactly where the

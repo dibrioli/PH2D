@@ -85,7 +85,8 @@ pub(crate) fn o_quadro(
 }
 
 /// Coze o quadro do `playhead`: as membranas, e então a placa (`cook_gpu`) ou a bomba da CPU — sem os
-/// sinks e as tomadas do [`o_quadro`], para os arneses que os armam à mão.
+/// sinks e as tomadas do [`o_quadro`], para os arneses que os armam à mão; e diz o que a fita
+/// guardou (a faixa da Timeline e o cartão das entradas, doc 132 §2).
 #[cfg(test)]
 pub(crate) fn coze_o_quadro(
     motion: &mut MotionState,
@@ -94,6 +95,7 @@ pub(crate) fn coze_o_quadro(
     fixed_dt: f64,
 ) {
     coze(motion, Some(gpu), playhead, fixed_dt);
+    crate::motion_historia::publica(motion, fixed_dt);
 }
 
 fn coze(

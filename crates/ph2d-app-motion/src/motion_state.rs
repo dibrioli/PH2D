@@ -158,6 +158,9 @@ mod colisor_nome_demo;
 /// A cena `=141` — o aviso que se lê inteiro (doc 132 §5, P5). Ver o cabeçalho dela.
 #[path = "motion_state_aviso_demo.rs"]
 pub(crate) mod aviso_demo;
+/// A cena `=139` — a fita das entradas que dobra (doc 132 §2, P2). Ver o cabeçalho dela.
+#[path = "motion_state_fita_demo.rs"]
+mod fita_demo;
 
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
@@ -512,6 +515,9 @@ pub struct MotionState {
     pub ao_painel: PedidosAoPainel,
     /// O retrato do mundo que a cena publicou neste quadro ([`crate::motion_mundo`]).
     pub mundo: crate::motion_mundo::MundoDaCena,
+    /// O segundo que o replay mostrou no lugar da história dobrada (doc 132 §2) — o cartão das
+    /// entradas lê-o. Ver [`crate::motion_historia`].
+    pub historia_dobrada: Option<f64>,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the

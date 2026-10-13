@@ -379,6 +379,12 @@ pub fn dispatch(
 
     // ── 3. O quadro: os sinks e as tomadas, e o cozimento no tique do PLAYHEAD (W4.T7) ────
     crate::motion_demo_legend::encena_a_paragem(playhead);
+    crate::motion_demo_legend::encena_a_aba(
+        hero.panel_visibility
+            .get(ph2d_editor_core::screens::hero::PANEL_TIMELINE)
+            .copied()
+            .unwrap_or(false),
+    );
     let mao = quadro::MaoDoEditor::do_painel();
     quadro::o_quadro(motion, Some(gpu), playhead, fixed_dt, mao);
     // A fita dita ao artista (doc 132 §2) — só o quadro do PRODUTO: o palco de uma macro cozem pelo

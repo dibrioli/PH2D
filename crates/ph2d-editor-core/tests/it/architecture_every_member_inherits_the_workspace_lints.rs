@@ -56,6 +56,12 @@ const EXCECOES: &[(&str, &[&str], &str)] = &[
         "a `wl_display`/`wl_surface` do winit por ponteiro (`raw-window-handle`): sem DnD no winit \
          0.30, soltar ficheiros no Wayland é um receptor na MESMA ligação — MiroClone W14",
     ),
+    (
+        "ph2d-win-pipe-spawn",
+        &["src/spawn.rs"],
+        "o Win32 (`CreatePipe`/`CreateProcessW` com `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`): o tubo do CDP \
+         no Windows são dois handles herdados, que o `std::process` não passa — MiroClone W21, ADR-0185",
+    ),
 ];
 
 fn root() -> PathBuf {

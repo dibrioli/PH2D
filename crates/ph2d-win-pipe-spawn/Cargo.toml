@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-win-pipe-spawn"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# W21 (ADR-0185 §W19.8) — lançar um processo no Windows herdando SÓ dois tubos anónimos (o CDP do
+# navegador do quadro por `--remote-debugging-io-pipes`). O `std::process::Command` não passa handles
+# arbitrários; a ABI do Win32 é `unsafe` por construção, e esta crate existe para a isolar.
+[target.'cfg(windows)'.dependencies]
+# A versão que o lockfile já tem (transitiva) — nunca uma segunda cópia; `windows-link` = raw-dylib, sem
+# bibliotecas de importação.
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_JobObjects",
+    "Win32_System_Pipes",
+    "Win32_System_Threading",
+] }
+
+[lints.rust]
+# ⚠️ NÃO herda `[lints] workspace = true`: excepção nomeada do gate
+# `architecture_every_member_inherits_the_workspace_lints` — `CreatePipe`/`CreateProcessW` com
+# `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`. `deny`: só o `src/spawn.rs` o autoriza por escrito.
+unsafe_code = "deny"

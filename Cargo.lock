@@ -5610,6 +5610,7 @@ dependencies = [
  "base64 0.22.1",
  "ph2d-board-embed",
  "ph2d-board-model",
+ "ph2d-win-pipe-spawn",
  "rustls-native-certs",
  "serde_json",
  "ureq",
@@ -9531,6 +9532,13 @@ dependencies = [
 [[package]]
 name = "ph2d-widget-sync"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-win-pipe-spawn"
+version = "0.0.0"
+dependencies = [
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "pico-args"

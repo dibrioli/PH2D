@@ -79,6 +79,64 @@ fn stale_browser_profiles_of_dead_processes_are_swept() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// No Windows procura-se o Chrome e o Edge nos sítios fixos de cada raiz conhecida (W21).
+#[test]
+fn windows_candidates_cover_chrome_and_edge_under_each_known_root() {
+    let env = |k: &str| match k {
+        "ProgramFiles" => Some("PF".into()),
+        "LocalAppData" => Some("LAD".into()),
+        _ => None,
+    };
+    let c: Vec<std::path::PathBuf> = browser::windows_candidates(env).collect();
+    let p = |parts: &[&str]| parts.iter().collect::<std::path::PathBuf>();
+    assert_eq!(c.len(), 5 * 2, "5 navegadores × 2 raízes conhecidas");
+    assert_eq!(
+        c[0],
+        p(&["PF", "Google", "Chrome", "Application", "chrome.exe"])
+    );
+    assert_eq!(
+        c[1],
+        p(&["LAD", "Google", "Chrome", "Application", "chrome.exe"])
+    );
+    assert!(c.contains(&p(&[
+        "PF",
+        "Microsoft",
+        "Edge",
+        "Application",
+        "msedge.exe"
+    ])));
+    assert_eq!(browser::windows_candidates(|_| None).count(), 0);
+}
+
+/// O tubo nos dois sentidos com o navegador desta máquina (no Windows: os handles herdados, W21):
+/// `Browser.getVersion` vai e a resposta volta. Sob o Wine: `PH2D_TEST_BROWSER_ARGS=--no-sandbox`.
+#[test]
+#[ignore = "navegador real: corre à mão"]
+fn the_browser_answers_through_the_pipe() {
+    let exe = browser::find().expect("um navegador da família Chrome (ou PH2D_BROWSER)");
+    let (tx, rx) = std::sync::mpsc::channel();
+    let t0 = Instant::now();
+    let mut b = browser::Browser::spawn(&exe, move |m| {
+        let _ = tx.send(m);
+    })
+    .expect("lançou");
+    let id = b.send("Browser.getVersion", json!({}), None);
+    let v = loop {
+        let m = rx
+            .recv_timeout(Duration::from_secs(60))
+            .expect("a resposta pelo tubo");
+        if m["id"].as_u64() == Some(id) {
+            break m;
+        }
+    };
+    let product = v["result"]["product"]
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
+    println!("{} → {product} em {:?}", exe.display(), t0.elapsed());
+    assert!(product.contains('/'), "a versão: {v}");
+}
+
 /// A miniatura de verdade, pela rede (e a 2.ª vez pelo disco).
 #[test]
 #[ignore = "rede: corre à mão"]

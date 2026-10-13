@@ -280,7 +280,7 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
     };
     *lock(&s.html) = page(video);
     let (resp_tx, resp_rx) = channel::<Value>();
-    let writer: Arc<OnceLock<Arc<Mutex<std::process::ChildStdin>>>> = Arc::new(OnceLock::new());
+    let writer: Arc<OnceLock<Arc<Mutex<crate::browser::PipeOut>>>> = Arc::new(OnceLock::new());
     let reader_ids = Arc::new(AtomicU64::new(READER_IDS));
     let (sr, w2) = (s.clone(), writer.clone());
     let browser = Browser::spawn(&exe, move |m| {
@@ -496,7 +496,7 @@ pub(crate) fn next_reader_id(ids: &AtomicU64) -> u64 {
 
 fn on_message(
     s: &Shared,
-    writer: &OnceLock<Arc<Mutex<std::process::ChildStdin>>>,
+    writer: &OnceLock<Arc<Mutex<crate::browser::PipeOut>>>,
     ids: &AtomicU64,
     resp: &Sender<Value>,
     m: Value,

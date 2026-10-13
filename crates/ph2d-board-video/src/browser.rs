@@ -1,12 +1,13 @@
 //! O navegador da PESSOA (família Chrome) sem ecrã, conduzido pelo CDP num TUBO (`--remote-debugging-pipe`:
-//! nenhuma porta TCP que outro processo local pudesse usar). Lança-se por `sh -c 'exec … 3<&0 4>&1'`: o tubo
-//! do PH2D é a entrada e a saída do `sh`, e o `sh` dá-lho nos descritores 3 e 4 que o Chrome lê — sem
-//! `unsafe` no PH2D. Quando o PH2D morre o tubo fecha e o navegador sai sozinho (medido: 0,05 s,
-//! `youtube_motor/sonda_tubo.py`).
+//! nenhuma porta TCP que outro processo local pudesse usar). Fora do Windows lança-se por
+//! `sh -c 'exec … 3<&0 4>&1'`: o tubo do PH2D é a entrada e a saída do `sh`, e o `sh` dá-lho nos
+//! descritores 3 e 4 que o Chrome lê — sem `unsafe` no PH2D. No Windows (W21) os dois tubos são handles
+//! herdados que o Chrome recebe por `--remote-debugging-io-pipes=<leitura>,<escrita>`
+//! (`ph2d-win-pipe-spawn`, o único `unsafe`). Quando o PH2D morre o tubo fecha e o navegador sai sozinho
+//! (medido no Linux: 0,05 s, `youtube_motor/sonda_tubo.py`).
 
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
@@ -35,8 +36,21 @@ const MAC_APPS: [&str; 4] = [
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
 ];
 
-/// O navegador da família Chrome desta máquina: `PH2D_BROWSER`, depois o `PATH`, depois as apps do macOS.
-/// `None` = não há (o vídeo mostra a miniatura e «Abrir no navegador»).
+/// Os sítios fixos do Windows, sob `%ProgramFiles%`, `%ProgramFiles(x86)%` e `%LocalAppData%` (a
+/// instalação por utilizador), pela ordem dos [`NAMES`]. O Edge vem com o Windows.
+const WINDOWS_APPS: [&[&str]; 5] = [
+    &["Google", "Chrome", "Application", "chrome.exe"],
+    &["Chromium", "Application", "chrome.exe"],
+    &["Microsoft", "Edge", "Application", "msedge.exe"],
+    &["BraveSoftware", "Brave-Browser", "Application", "brave.exe"],
+    &["Vivaldi", "Application", "vivaldi.exe"],
+];
+
+/// As pastas-raiz do Windows onde os navegadores se instalam.
+const WINDOWS_ROOTS: [&str; 3] = ["ProgramFiles", "ProgramFiles(x86)", "LocalAppData"];
+
+/// O navegador da família Chrome desta máquina: `PH2D_BROWSER`, depois o `PATH`, depois as apps do macOS
+/// ou os sítios fixos do Windows. `None` = não há (o vídeo mostra a miniatura e «Abrir no navegador»).
 #[must_use]
 pub fn find() -> Option<PathBuf> {
     if let Some(p) = std::env::var_os("PH2D_BROWSER").map(PathBuf::from) {
@@ -45,22 +59,52 @@ pub fn find() -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
     for name in NAMES {
         for dir in std::env::split_paths(&path) {
-            let p = dir.join(name);
+            let p = dir.join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
             if p.is_file() {
                 return Some(p);
             }
         }
     }
+    if cfg!(windows) {
+        return windows_candidates(|k| std::env::var_os(k)).find(|p| p.is_file());
+    }
     MAC_APPS.iter().map(PathBuf::from).find(|p| p.is_file())
+}
+
+/// Cada aplicação de [`WINDOWS_APPS`] sob cada raiz de [`WINDOWS_ROOTS`] que `env` conhece.
+pub(crate) fn windows_candidates(
+    env: impl Fn(&str) -> Option<std::ffi::OsString>,
+) -> impl Iterator<Item = PathBuf> {
+    let roots: Vec<PathBuf> = WINDOWS_ROOTS
+        .iter()
+        .filter_map(|k| env(k).map(PathBuf::from))
+        .collect();
+    WINDOWS_APPS.iter().flat_map(move |app| {
+        roots
+            .iter()
+            .map(|r| app.iter().fold(r.clone(), |p, c| p.join(c)))
+            .collect::<Vec<_>>()
+    })
 }
 
 /// Uma mensagem que o navegador mandou.
 pub(crate) type Incoming = Value;
 
+/// O lado de escrita do tubo (o que o navegador lê).
+#[cfg(not(windows))]
+pub(crate) type PipeOut = std::process::ChildStdin;
+#[cfg(windows)]
+pub(crate) type PipeOut = std::fs::File;
+
+#[cfg(not(windows))]
+type Process = std::process::Child;
+#[cfg(windows)]
+type Process = ph2d_win_pipe_spawn::Child;
+
 /// O processo e o lado de escrita do tubo; quem lê é um fio ([`Browser::spawn`] entrega as mensagens).
 pub(crate) struct Browser {
-    child: Child,
-    stdin: Arc<Mutex<ChildStdin>>,
+    child: Process,
+    stdin: Arc<Mutex<PipeOut>>,
     profile: PathBuf,
     next_id: u64,
 }
@@ -76,29 +120,7 @@ impl Browser {
         let profile =
             std::env::temp_dir().join(format!("ph2d-cdp-{}-{}", std::process::id(), unique()));
         std::fs::create_dir_all(&profile)?;
-        let q = |p: &Path| format!("'{}'", p.display().to_string().replace('\'', r"'\''"));
-        let cmd = format!(
-            "exec {} --headless --remote-debugging-pipe --user-data-dir={} --no-first-run \
-             --no-default-browser-check --autoplay-policy=no-user-gesture-required \
-             --hide-scrollbars about:blank 3<&0 4>&1 </dev/null >/dev/null 2>/dev/null",
-            q(exe),
-            q(&profile)
-        );
-        let mut child = Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()?;
-        let stdin = child
-            .stdin
-            .take()
-            .ok_or_else(|| std::io::Error::other("sem stdin"))?;
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or_else(|| std::io::Error::other("sem stdout"))?;
+        let (child, stdin, stdout) = launch(exe, &profile)?;
         std::thread::Builder::new()
             .name("ph2d-cdp-ler".into())
             .spawn(move || read_messages(stdout, on_message))?;
@@ -111,7 +133,7 @@ impl Browser {
     }
 
     /// O lado de escrita (o fio de leitura também responde por ele: o `ack` de cada quadro).
-    pub(crate) fn writer(&self) -> Arc<Mutex<ChildStdin>> {
+    pub(crate) fn writer(&self) -> Arc<Mutex<PipeOut>> {
         self.stdin.clone()
     }
 
@@ -131,9 +153,91 @@ impl Drop for Browser {
     }
 }
 
+/// Os argumentos do navegador; os descritores ou handles do tubo são de cada SO ([`launch`]).
+fn args(profile: &Path) -> Vec<std::ffi::OsString> {
+    let mut dir = std::ffi::OsString::from("--user-data-dir=");
+    dir.push(profile);
+    let mut a: Vec<std::ffi::OsString> =
+        vec!["--headless".into(), "--remote-debugging-pipe".into(), dir];
+    a.extend(
+        [
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--autoplay-policy=no-user-gesture-required",
+            "--hide-scrollbars",
+        ]
+        .map(Into::into),
+    );
+    #[cfg(test)]
+    a.extend(test_args());
+    a.push("about:blank".into());
+    a
+}
+
+/// Só nos testes: argumentos a mais (`PH2D_TEST_BROWSER_ARGS`, separados por espaço) — o `--no-sandbox` que
+/// o Chrome pede sob o Wine. O produto nunca os lê.
+#[cfg(test)]
+fn test_args() -> Vec<std::ffi::OsString> {
+    std::env::var("PH2D_TEST_BROWSER_ARGS")
+        .unwrap_or_default()
+        .split_whitespace()
+        .map(Into::into)
+        .collect()
+}
+
+/// Fora do Windows: o `sh` dá o tubo ao navegador nos descritores 3 e 4.
+#[cfg(not(windows))]
+fn launch(
+    exe: &Path,
+    profile: &Path,
+) -> std::io::Result<(Process, PipeOut, impl Read + Send + 'static)> {
+    use std::process::{Command, Stdio};
+    let q = |p: &std::ffi::OsStr| format!("'{}'", p.to_string_lossy().replace('\'', r"'\''"));
+    let argv: Vec<String> = args(profile).iter().map(|a| q(a)).collect();
+    let cmd = format!(
+        "exec {} {} 3<&0 4>&1 </dev/null >/dev/null 2>/dev/null",
+        q(exe.as_os_str()),
+        argv.join(" ")
+    );
+    let mut child = Command::new("sh")
+        .arg("-c")
+        .arg(cmd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| std::io::Error::other("sem stdin"))?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| std::io::Error::other("sem stdout"))?;
+    Ok((child, stdin, stdout))
+}
+
+/// No Windows: dois handles herdados, os valores no `--remote-debugging-io-pipes` (leitura do navegador
+/// primeiro). Nenhuma porta TCP — ADR-0185 §W19.8.
+#[cfg(windows)]
+fn launch(
+    exe: &Path,
+    profile: &Path,
+) -> std::io::Result<(Process, PipeOut, impl Read + Send + 'static)> {
+    let s = ph2d_win_pipe_spawn::spawn(exe, |read, write| {
+        let mut a = args(profile);
+        a.insert(
+            2,
+            format!("--remote-debugging-io-pipes={read},{write}").into(),
+        );
+        a
+    })?;
+    Ok((s.child, s.to_child, s.from_child))
+}
+
 /// Escreve uma mensagem no tubo (JSON + NUL). Um tubo partido (o navegador saiu) não pára ninguém.
 pub(crate) fn send_on(
-    stdin: &Mutex<ChildStdin>,
+    stdin: &Mutex<PipeOut>,
     id: u64,
     method: &str,
     params: Value,
@@ -170,8 +274,9 @@ fn read_messages(stdout: impl Read, mut on_message: impl FnMut(Incoming)) {
 }
 
 /// Os perfis que um PH2D que já MORREU deixou em `dir` (`ph2d-cdp-<pid>-…`, o pid sem processo): um
-/// fecho abrupto fecha o navegador (o tubo fecha) mas não apaga a pasta. Só onde há `/proc`.
+/// fecho abrupto fecha o navegador (o tubo fecha) mas não apaga a pasta. Onde há `/proc`, e no Windows.
 pub(crate) fn sweep_stale_profiles(dir: &Path) {
+    #[cfg(not(windows))]
     if !Path::new("/proc/self").exists() {
         return;
     }
@@ -188,10 +293,20 @@ pub(crate) fn sweep_stale_profiles(dir: &Path) {
         else {
             continue;
         };
-        if pid != std::process::id() && !Path::new(&format!("/proc/{pid}")).exists() {
+        if pid != std::process::id() && !alive(pid) {
             let _ = std::fs::remove_dir_all(e.path());
         }
     }
+}
+
+#[cfg(not(windows))]
+fn alive(pid: u32) -> bool {
+    Path::new(&format!("/proc/{pid}")).exists()
+}
+
+#[cfg(windows)]
+fn alive(pid: u32) -> bool {
+    ph2d_win_pipe_spawn::is_alive(pid)
 }
 
 fn unique() -> u128 {

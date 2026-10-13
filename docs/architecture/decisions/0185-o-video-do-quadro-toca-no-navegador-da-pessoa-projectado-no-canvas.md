@@ -136,7 +136,7 @@ falha e a decisão volta ao dono (o Servo é o plano B).
    ⇒ o Premium não teria o que tirar; a parte NÃO se constrói (o perfil persistente com a sessão da pessoa
    custaria privacidade e abriria o risco do item 8 por nada) e a decisão volta ao dono com a medida: se ele vir
    um anúncio num vídeo do quadro, esse vídeo é a entrada da medição seguinte.
-8. **Windows** (aberto da W18): ⛔ continua sem tocador (abre no navegador). A porta TCP (`--remote-debugging-port`)
+8. **Windows** (aberto da W18): ~~continua sem tocador (abre no navegador)~~ — **resolvido na W21, §W21.4**. A porta TCP (`--remote-debugging-port`)
    fica RECUSADA: qualquer processo local mandaria no navegador — e, com o perfil persistente do item 7, na
    sessão do YouTube da pessoa. A rota é o tubo com handles herdados (`--remote-debugging-io-pipes`), que pede
    marcar dois handles como herdáveis; não há Windows nesta bancada para o medir.
@@ -227,3 +227,18 @@ sondas); mecanismo, tabelas e gates: [`10_video_do_youtube.md`](../../MiroClone/
    `HOLD_NS` ⇒ a ferramenta faz o seu clique. O laser e a mão ficam de fora.
 3. **Não copiamos** do oráculo: o vídeo que continua a tocar com um rectângulo à frente (nós pausamos, acima) nem a
    borracha que apaga o vídeo (a nossa só apaga traços da caneta).
+4. **O tocador no Windows** (decisão do dono, «implemente»): o mesmo CDP+NUL do Linux, por dois tubos anónimos cujos
+   handles o navegador herda e recebe em `--remote-debugging-io-pipes=<o que ele lê>,<o que ele escreve>` (decimal; o
+   formato é o do lançador do .NET Aspire, MIT). A porta TCP continua RECUSADA, nem como recuo. O `std::process` não
+   passa handles ⇒ o Win32 (`CreatePipe` ×2 + `CreateProcessW` com `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`: o filho herda
+   SÓ esses dois) numa crate de FFI própria, `ph2d-win-pipe-spawn` (excepção nomeada do gate dos lints; `unsafe` só em
+   `src/spawn.rs`); um job `KILL_ON_JOB_CLOSE` leva a árvore do navegador quando o tocador cai ou o PH2D morre. A
+   procura acha o Chrome/Chromium/Edge/Brave/Vivaldi em `%ProgramFiles%`, `%ProgramFiles(x86)%` e `%LocalAppData%`;
+   sem nenhum, o recuo de sempre (miniatura + «Abrir no navegador»). O caminho Unix (`sh … 3<&0 4>&1`) não mudou.
+   **Medido (13/10) sob o Wine 11.19** com o binário Windows (`x86_64-pc-windows-gnu`) e o Chrome for Testing 155
+   win64 (`--no-sandbox` só no teste: o sandbox do Chrome não arranca no Wine): `Browser.getVersion` pelo tubo em
+   0,9 s; o Big Buck Bunny a **30,6 quadros distintos/s**, clique → quadro 21–29 ms; os nossos controles (salto,
+   volume, mudo, pausa) confirmados pelo tocador. ⚠️ **Por medir num Windows real** (o Edge, o sandbox, um
+   antivírus). No Wine, com o job, 2 de 11 fechos deixaram um processo `--type=renderer` órfão (0 de 2 quando antes
+   se manda `Browser.close`); por medir se é do Wine/`--no-sandbox` ou também do Windows — se for, o fecho passa a
+   mandar `Browser.close` antes de matar.

@@ -25,5 +25,9 @@ base64 = "0.22"
 zune-jpeg = "0.5"
 zune-core = "0.5"
 
+[target.'cfg(windows)'.dependencies]
+# W21: no Windows o tubo do CDP são dois handles herdados — o `unsafe` do Win32 isolado nesta crate.
+ph2d-win-pipe-spawn = { path = "../ph2d-win-pipe-spawn" }
+
 [lints]
 workspace = true

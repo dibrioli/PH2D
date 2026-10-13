@@ -75,8 +75,20 @@ Gravar `GraphIntent` e reaplicar pela API pública de `Graph` **não encosta** n
 8. **Transporte pela Timeline** (play/pausa/scrub/velocidade) e a macro como **componente do objeto**
    (encaixa no modelo «a Animação é do objeto»).
 
-## 4. Perguntas de produto ao dono (bloqueiam o plano)
-- «Runtime» = o Play dentro do PH2D (não há jogo exportado hoje)?
-- Primeira família: Painter, Motion ou as duas juntas?
-- O jogo pode depender da simulação ao vivo (varia por máquina) ou deve tocar a versão assada?
-- Tutorial: o app FAZ os passos para o aluno ver, espera o aluno FAZER, ou os dois?
+## 4. Decisões do dono (13/10)
+- **Toca em tudo e em qualquer lugar, inclusive dentro dos jogos** ⇒ o tocador NÃO pode depender da
+  shell/UI do editor: dirige os motores diretamente (painter-brush, wet-paint, nodegraph…) e cada família
+  pluga o seu tipo de passo (ECS, drop-crate). Hoje o «jogo» é o Play do PH2D; o tocador nasce pronto para
+  viajar com o export quando ele existir.
+- **Tutorial: os dois** — o app faz o passo para o aluno ver E espera o aluno fazer (portão de estado).
+- **Simulação ao vivo, idêntica pelo tempo gravado** (o dono: «se o caminho do traço e o tempo da
+  simulação — o quanto o usuário espera para a próxima ação — forem considerados, os resultados são iguais»).
+  Medido no código, a forma exata disto:
+  - o Wet Paint já tem as duas portas: o **worker** (padrão do app, anda no relógio dele) e o
+    **`relogio_fixo`** (síncrono, passos = dívida de `dt`; `crates/ph2d-tool-painter/src/tool/paint/wetpaint.rs:356`;
+    hoje só os testes o armam, `set_wet_relogio_fixo`). A sim é CPU pura (sem `wgpu` em `ph2d-wet-paint`).
+  - ⇒ **gravar o CONTADOR de passos da sim** (`sess.sim_steps()`, atômico) junto de cada ação, não só os
+    segundos: o worker pode ter dado menos passos que o relógio pedia (máquina carregada), e é o contador
+    que reproduz o que o artista VIU. Na reprodução: `relogio_fixo` + exatamente esse número de passos.
+  - `dt` sozinho mantém a VELOCIDADE certa, não o resultado igual; o que dá a igualdade é contar passos fixos.
+- **Pendente:** por que família começar (proposta: núcleo + Painter/Wet Paint + Motion, os dois exemplos do dono).

@@ -34,6 +34,11 @@
 
 ## Lembretes medidos da W19
 
+- **Reaberta em 13/10** sobre o `main` `757afebd58` (`git reset --keep main`: os commits da linha já estavam todos
+  lá). Depois da integração entrou a UIUX F9 (`e5cf9785f8`, as alças das formas): mexeu em 2 linhas do
+  `hero/board_view.rs` e na cadeia do `Esc` da shell (`input_dispatch/keyboard_escapes.rs`) — leia-as antes de
+  mexer no arrastar do vídeo (item 3) e no `Esc` do nosso ecrã inteiro.
+
 - O enquadramento das cenas não desconta os painéis laterais (aberto (f) do handoff W19).
 - Os testes do navegador real: `bash scripts/ph2d-run.sh cargo test -p ph2d-board-video --release --lib -- --ignored --nocapture`.
 - A foto da cena: `PH2D_GPU=1 bash scripts/ph2d-run.sh bash docs/MiroClone/ferramentas/soltar_wayland/no_app.sh <nome> PH2D_BOARD_SMOKE=<n>`.

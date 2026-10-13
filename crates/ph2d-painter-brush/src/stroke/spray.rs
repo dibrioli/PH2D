@@ -121,6 +121,7 @@ impl Stroke {
     ) {
         // O arremesso é do CAMINHO: uma vez por ponto, e é ele que abre o vão que o `emit` preenche.
         let thrown = self.throw(pos, arc);
+        self.advance_step(thrown);
         // O desvio do `Rough` é do CAMINHO pela mesma razão, e vem DEPOIS do arremesso porque os dois
         // são translações e o arremesso é quem decide onde a tinta desta passada nasce.
         // ⚠️ A passada 0 é a de sempre, então com o tipo desarmado o `roughen` devolve `thrown` e o

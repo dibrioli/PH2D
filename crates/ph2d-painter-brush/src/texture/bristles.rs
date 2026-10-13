@@ -5,7 +5,9 @@
 use super::{
     MAX_TEX_PARAMS, TEX_SIZE_MAX, TEX_SIZE_MIN, TexDabBasis, TextureMapping, TextureSettings,
 };
-use ph2d_wet_paint::brush::{BRISTLE_SIZE, BristleKnobs, build_bristle_texture, sample_bristle};
+use ph2d_wet_paint::brush::{
+    BRISTLE_SIZE, BristleKnobs, bristle_index, bristle_round, build_bristle_texture, sample_bristle,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -51,7 +53,16 @@ fn sample_px(params: &[f32; MAX_TEX_PARAMS], dx: f64, dy: f64) -> f32 {
     sample_bristle(&bristle_tile(params), dx, dy).clamp(0.0, 1.0) as f32
 }
 
-/// The bristles of a live dab at canvas pixel `(px, py)` — [`bristles_at`] with 1 texel = 1 px, clamped.
+/// The bristles of a live dab at canvas pixel `(px, py)` — [`bristles_at`] with 1 texel = 1 px, clamped,
+/// and **swept** over the dab's path step `D` (tile texels): the MEAN of the tile over the `n = máx|D|`
+/// texels the dab travelled, centred (`off_k = round(k·D/n) − D/2`, `k < n`). Each hair lays its ink
+/// along the streak instead of the same dot once per dab (doc 31 §2.1, §3): the `n` dabs a 1-px Spacing
+/// would put there leave, summed, the exposure this one dab leaves — the ink of today, spread evenly.
+/// ⛔ The MAX over the sweep was measured and refused (CV 0,15 at Spacing 0,1): a hair wider than one
+/// texel is crossed by two neighbouring sweeps, and the overlap paints twice with the step's period.
+/// At `n = 1` (Spacing ≈ 1 px), no step (the first dab, a Static frame), Tiled or Flow (anchored, nothing
+/// repeats) ⇒ exactly the unswept sample. The Wet Paint host reads [`bristles_at`], never this: its water joins the
+/// hairs on its own.
 #[must_use]
 pub(super) fn sample_dab(
     s: &TextureSettings,
@@ -63,7 +74,114 @@ pub(super) fn sample_dab(
 ) -> f32 {
     let p = [px as f64 + 0.5, py as f64 + 0.5];
     let d = [p[0] - f64::from(center[0]), p[1] - f64::from(center[1])];
-    bristles_at(s, b, d, p, 1.0, radius).clamp(0.0, 1.0) as f32
+    let q = tile_coord(s, b, d, p, 1.0, radius);
+    let v = match b.sweep {
+        [0, 0] => sample_bristle(&bristle_tile(&s.params), q[0], q[1]),
+        sweep => swept(&s.params, sweep, bristle_round(q[0]), bristle_round(q[1])),
+    };
+    v.clamp(0.0, 1.0) as f32
+}
+
+/// The sweep is bounded by the tile's PERIOD ([`BRISTLE_SIZE`] texels per axis): a longer one wraps onto
+/// texels it already crossed, so it only costs reads.
+const SWEEP_MAX: i32 = BRISTLE_SIZE as i32;
+
+/// The dab's path step in tile texels (the slot's LINEAR map — rotor, Angle, Size — applied to
+/// [`crate::Dab::step`]), rounded; once per dab, by [`super::shape_basis`]. A sweep of one texel is the
+/// unswept read (its one offset is `0`), so it answers `[0, 0]` and keeps today's path.
+pub(super) fn sweep_texels(s: &TextureSettings, b: &TexDabBasis) -> [i32; 2] {
+    let st = b.frame.step();
+    if st == [0.0, 0.0] || s.mapping == TextureMapping::Tiled || s.flow {
+        return [0, 0];
+    }
+    // The rotor is a rotation, so the radius cancels: any unit gives the same linear map.
+    let z = tile_coord(s, b, [0.0, 0.0], [0.0, 0.0], 1.0, 1.0);
+    let e = tile_coord(s, b, st.map(f64::from), [0.0, 0.0], 1.0, 1.0);
+    let mut v = [e[0] - z[0], e[1] - z[1]];
+    let m = v[0].abs().max(v[1].abs());
+    if m > f64::from(SWEEP_MAX) {
+        v = v.map(|c| c * f64::from(SWEEP_MAX) / m);
+    }
+    let v = v.map(|c| c.round() as i32);
+    if v[0].abs().max(v[1].abs()) <= 1 {
+        [0, 0]
+    } else {
+        v
+    }
+}
+
+/// A swept tile: the texel offsets of the centred sweep and the texels filled so far — a texel is
+/// filled when its mark equals the slot's generation, so a new sweep in the slot costs one increment,
+/// not a whole-tile clear.
+struct Varrido {
+    key: ([u32; 4], [i32; 2]),
+    offs: Vec<[i32; 2]>,
+    texels: Vec<f32>,
+    marca: Vec<u32>,
+    geracao: u32,
+}
+
+/// Swept tiles kept per thread — a curve, or a symmetry's mirrored copies, alternate a few sweeps.
+const VARRIDOS: usize = 8;
+
+thread_local! {
+    /// Filled texel by texel on demand: a straight stroke reuses one sweep for every dab, a curve pays
+    /// only the texels its dabs touch — never a whole-tile bake per dab.
+    static SWEPT: RefCell<(Vec<Varrido>, usize)> = const { RefCell::new((Vec::new(), 0)) };
+}
+
+/// `Σ_k tile(q + off_k) / n` over the centred sweep's texels, memoised per `(sliders, sweep)`.
+fn swept(params: &[f32; MAX_TEX_PARAMS], sweep: [i32; 2], x: i32, y: i32) -> f64 {
+    let key = (
+        [params[0], params[1], params[2], params[3]].map(f32::to_bits),
+        sweep,
+    );
+    SWEPT.with(|c| {
+        let (lista, prox) = &mut *c.borrow_mut();
+        let i = if let Some(i) = lista.iter().position(|v| v.key == key) {
+            i
+        } else {
+            let n = sweep[0].abs().max(sweep[1].abs());
+            let along = |k: i32, c: i32| (f64::from(k * c) / f64::from(n)).round() as i32 - c / 2;
+            let offs = (0..n)
+                .map(|k| [along(k, sweep[0]), along(k, sweep[1])])
+                .collect();
+            if lista.len() < VARRIDOS {
+                lista.push(Varrido {
+                    key,
+                    offs,
+                    texels: vec![0.0; BRISTLE_SIZE * BRISTLE_SIZE],
+                    marca: vec![0; BRISTLE_SIZE * BRISTLE_SIZE],
+                    geracao: 1,
+                });
+                lista.len() - 1
+            } else {
+                let i = *prox;
+                *prox = (i + 1) % VARRIDOS;
+                let v = &mut lista[i];
+                (v.key, v.offs) = (key, offs);
+                v.geracao = v.geracao.wrapping_add(1);
+                if v.geracao == 0 {
+                    v.marca.fill(0);
+                    v.geracao = 1;
+                }
+                i
+            }
+        };
+        let v = &mut lista[i];
+        let idx = bristle_index(x, y);
+        if v.marca[idx] != v.geracao {
+            v.marca[idx] = v.geracao;
+            let tile = bristle_tile(params);
+            let soma: f32 = v
+                .offs
+                .iter()
+                .map(|o| tile[bristle_index(x + o[0], y + o[1])])
+                .sum();
+            v.texels[idx] = soma / v.offs.len() as f32;
+        }
+        f64::from(v.texels[idx])
+    })
 }
 
 /// ⭐ **The bristles of a live dab under the slot's WHOLE transform**, in TEXELS (never in the tip's
@@ -86,6 +204,19 @@ pub fn bristles_at(
     px_per_texel: f64,
     radius_px: f32,
 ) -> f64 {
+    let q = tile_coord(s, b, d, p, px_per_texel, radius_px);
+    sample_bristle(&bristle_tile(&s.params), q[0], q[1])
+}
+
+/// The tile coordinate [`bristles_at`] samples (before the nearest-texel rounding).
+fn tile_coord(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    d: [f64; 2],
+    p: [f64; 2],
+    px_per_texel: f64,
+    radius_px: f32,
+) -> [f64; 2] {
     let fp = b.footprint.so_o_rotor();
     let rel = if s.mapping == TextureMapping::Tiled {
         p
@@ -105,11 +236,10 @@ pub fn bristles_at(
     let sx = f64::from(s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX));
     let sy = f64::from(s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX));
     let shift = |o: f32, j: f32| (f64::from(o) + f64::from(j)) * UNIT_TEXELS;
-    sample_bristle(
-        &bristle_tile(&s.params),
+    [
         (rel[0] * u[0] + rel[1] * u[1]) * sx + shift(s.offset[0], b.jitter[0]),
         (rel[0] * v[0] + rel[1] * v[1]) * sy + shift(s.offset[1], b.jitter[1]),
-    )
+    ]
 }
 
 /// The same tile read at a footprint coordinate (`u, v` in footprint units — previews only).
@@ -121,6 +251,10 @@ pub(super) fn sample_unit(params: &[f32; MAX_TEX_PARAMS], u: f32, v: f32) -> f32
         f64::from(v) * UNIT_TEXELS,
     )
 }
+
+#[cfg(test)]
+#[path = "bristles_sweep_tests.rs"]
+mod sweep_tests;
 
 #[cfg(test)]
 mod tests {

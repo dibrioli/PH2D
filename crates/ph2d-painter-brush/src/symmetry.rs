@@ -278,6 +278,7 @@ fn reflect_dab(dab: Dab, a: [f32; 2], d: [f32; 2]) -> Dab {
         center: [a[0] + r[0], a[1] + r[1]],
         rotation: reflect_vec(dab.rotation, d),
         dir: reflect_vec(dab.dir, d),
+        step: reflect_vec(dab.step, d),
         ..dab
     }
 }
@@ -291,6 +292,7 @@ fn rotate_dab_about(dab: Dab, c: [f32; 2], r: [f32; 2]) -> Dab {
         center: [c[0] + rv[0], c[1] + rv[1]],
         rotation: crate::heading::rotate(dab.rotation, r),
         dir: crate::heading::rotate(dab.dir, r),
+        step: crate::heading::rotate(dab.step, r),
         ..dab
     }
 }
@@ -349,6 +351,7 @@ mod tests {
             dir: [1.0, 0.0],
             arc_len: 0.0,
             stroke_radius_px: 10.0,
+            step: [0.0, 0.0],
         }
     }
 

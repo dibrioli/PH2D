@@ -365,6 +365,7 @@ fn the_footprint_of_the_batch_is_the_footprint_of_each_dab() {
             dir: [1.0, 0.0],
             arc_len: 0.0,
             stroke_radius_px: 9.0,
+            step: [0.0, 0.0],
         })
         .collect();
     for (d, dev) in dabs.iter().zip(device_dabs(&dabs, &brush)) {
@@ -405,6 +406,7 @@ fn a_spread_out_batch_stays_on_the_cpu_and_a_stacked_one_does_not() {
         dir: [1.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: r,
+        step: [0.0, 0.0],
     };
     // EMPILHADOS: 60 discos de raio 100 num arco de raio 120 — muita visita, região pequena.
     let stacked: Vec<Dab> = (0..60)
@@ -482,6 +484,7 @@ fn the_bridge_publishes_the_linear_part_and_carries_the_fold_beside_it() {
         dir: [1.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 8.0,
+        step: [0.0, 0.0],
     };
     let saiu = device_dabs(std::slice::from_ref(&dab), &brush);
     let d = &saiu[0];
@@ -557,6 +560,7 @@ fn a_ponte_leva_a_opacidade_que_a_cpu_carimba() {
                 dir: [1.0, 0.0],
                 arc_len: 0.0,
                 stroke_radius_px: 9.0,
+                step: [0.0, 0.0],
             })
             .collect();
         let sem_flow = BrushSpec { flow: 1.0, ..brush };

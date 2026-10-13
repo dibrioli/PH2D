@@ -212,6 +212,7 @@ fn o_tamanho_da_camada_chega_ao_barro_e_a_lista_dela_encolhe() {
             dir: [1.0, 0.0],
             arc_len: f32::from(i) * 1.6,
             stroke_radius_px: 8.0,
+            step: [0.0, 0.0],
         })
         .collect();
     t.paint.composite[0].size = 4.0;

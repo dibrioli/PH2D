@@ -60,6 +60,7 @@ fn flow_probe(
         dir: tan,
         arc_len,
         stroke_radius_px,
+        step: [0.0, 0.0],
     };
     let fp = spec.dab_footprint(spec.dab_rotor(&d));
     let b = shape_basis(
@@ -70,6 +71,7 @@ fn flow_probe(
         ShapeFrame::Stroke {
             arc_len,
             unit_px: stroke_radius_px,
+            step: [0.0, 0.0],
         },
     );
     sample(&spec.shape, &b, px, py, center, radius_px, None)
@@ -216,6 +218,7 @@ fn a_following_tip_turns_the_flattened_footprint_with_the_stroke() {
             dir,
             arc_len: 0.0,
             stroke_radius_px: 10.0,
+            step: [0.0, 0.0],
         };
         spec.dab_footprint(spec.dab_rotor(&d))
     };
@@ -246,6 +249,7 @@ fn a_following_tip_turns_the_flattened_footprint_with_the_stroke() {
             dir,
             arc_len: 0.0,
             stroke_radius_px: 10.0,
+            step: [0.0, 0.0],
         };
         still.dab_footprint(still.dab_rotor(&d))
     };
@@ -273,6 +277,7 @@ fn the_shape_frame_reaches_the_sampler_and_is_inert_without_flow() {
     let stroke = ShapeFrame::Stroke {
         arc_len: 6.0,
         unit_px: 12.0,
+        step: [0.0, 0.0],
     };
     let (mut flow_max, mut off_max) = (0.0f32, 0.0f32);
     for py in 24..=36 {
@@ -455,6 +460,7 @@ fn rake_turns_the_sampled_pattern_with_the_stroke() {
             dir,
             arc_len: 0.0,
             stroke_radius_px: 12.0,
+            step: [0.0, 0.0],
         };
         let fp = sp.dab_footprint(sp.dab_rotor(&d));
         let bs = shape_basis(&sp.shape, &mut 0u64, [64.0, 64.0], fp, ShapeFrame::Static);
@@ -554,6 +560,7 @@ fn jitter_rotate_composes_on_top_of_the_follow_rotor() {
         dir: heading,
         arc_len: 0.0,
         stroke_radius_px: 10.0,
+        step: [0.0, 0.0],
     };
     let got = sp.dab_rotor(&dab(extra));
     let want = [

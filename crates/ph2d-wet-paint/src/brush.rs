@@ -125,8 +125,21 @@ pub fn build_bristle_texture(knobs: BristleKnobs) -> Vec<f32> {
 /// Nearest-texel wrap sample, offsets in canvas px from the dab center.
 #[inline]
 pub fn sample_bristle(tex: &[f32], dx_px: f64, dy_px: f64) -> f64 {
-    tex[wrap_mask(js_round(dy_px) as i32, BMASK) * BRISTLE_SIZE
-        + wrap_mask(js_round(dx_px) as i32, BMASK)] as f64
+    tex[bristle_index(bristle_round(dx_px), bristle_round(dy_px))] as f64
+}
+
+/// The texel [`sample_bristle`] reads for the rounded offset `(x, y)` (wrapped).
+#[inline]
+#[must_use]
+pub fn bristle_index(x: i32, y: i32) -> usize {
+    wrap_mask(y, BMASK) * BRISTLE_SIZE + wrap_mask(x, BMASK)
+}
+
+/// The rounding [`sample_bristle`] applies to an offset (JS `Math.round`).
+#[inline]
+#[must_use]
+pub fn bristle_round(v: f64) -> i32 {
+    js_round(v) as i32
 }
 
 /// Radial falloff: a = (1-d)*hardness; 1 when a>=1, else smoothstep(a).

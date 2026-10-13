@@ -37,6 +37,7 @@ fn per_layer_color_top_layer_paints_above_all_lower_painting_across_the_stroke()
         dir: [0.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 6.0,
+        step: [0.0, 0.0],
     };
     t.stamp_dabs(&[dab(20.0)]); // batch 1 (dab A)
     t.stamp_dabs(&[dab(26.0)]); // batch 2 (dab B overlapping A's right half from the left)
@@ -72,6 +73,7 @@ fn per_layer_color_respects_brush_blend_mode() {
         dir: [0.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 6.0,
+        step: [0.0, 0.0],
     };
     t.stamp_dabs(&[dab]);
     let [r, g, b, _] = px(&t, 64, 32, 32);
@@ -105,6 +107,7 @@ fn per_layer_color_dynamic_randomize_color_tints_per_dab() {
         dir: [0.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 6.0,
+        step: [0.0, 0.0],
     };
     t.stamp_dabs(&[dab(16.0, 0.0)]); // red dab
     t.stamp_dabs(&[dab(48.0, 2.0 / 3.0)]); // blue dab
@@ -142,6 +145,7 @@ fn per_layer_color_fill_method_uses_canvas_base_and_self_clears() {
         dir: [0.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 6.0,
+        step: [0.0, 0.0],
     };
     let pristine = (*t.canvas_rgba).clone(); // the pre-shape the drag preview restores to
     t.stamp_dabs(&[dab]); // first fill
@@ -184,6 +188,7 @@ fn live_dab(x: f32) -> ph2d_painter_brush::Dab {
         dir: [1.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 6.0,
+        step: [0.0, 0.0],
     }
 }
 
@@ -243,6 +248,7 @@ fn flipping_per_layer_color_mid_stroke_keeps_what_was_already_painted() {
         dir: [1.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 8.0,
+        step: [0.0, 0.0],
     };
     t.stamp_dabs(&[dab(16.0, 1.0)]); // per-layer ON — this seeds `pre` (the canvas BEFORE it: all white)
     t.toggle_brush_shape_per_layer_color(); // OFF, stroke still live
@@ -340,6 +346,7 @@ fn per_layer_color_grain_random_offset_takes_the_per_dab_route() {
         dir: [1.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 9.0,
+        step: [0.0, 0.0],
     };
     t.stamp_dabs(&[dab(18.0), dab(46.0)]);
     assert_eq!(
@@ -474,6 +481,7 @@ fn per_layer_color_randomize_jitters_custom_layer_colours() {
         dir: [0.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 6.0,
+        step: [0.0, 0.0],
     };
     t.stamp_dabs(&[dab(16.0, 0.1)]);
     t.stamp_dabs(&[dab(48.0, 0.4)]);

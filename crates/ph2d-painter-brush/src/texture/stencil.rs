@@ -48,6 +48,7 @@ pub(super) fn stencil_basis(s: &TextureSettings, canvas: [f32; 2]) -> TexDabBasi
         footprint: crate::footprint::FootprintDeform::identity(),
         // Stencil is a Grain mapping; it never flows (Flow is Shape-only).
         frame: super::ShapeFrame::Static,
+        sweep: [0, 0],
     }
 }
 

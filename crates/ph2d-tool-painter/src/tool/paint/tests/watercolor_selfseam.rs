@@ -466,6 +466,7 @@ fn the_level_planes_do_not_depend_on_how_the_dabs_are_batched() {
             dir: [0.0, 1.0],
             arc_len: 3.0 * i as f32,
             stroke_radius_px: u.r,
+            step: [0.0, 0.0],
         })
         .collect();
     let planes = |cuts: &[usize]| {

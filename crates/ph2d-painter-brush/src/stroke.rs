@@ -66,6 +66,12 @@ pub struct Dab {
     /// time the pressure wobbles. It rides the DAB because the engine is the only thing that can know it
     /// and cannot get it wrong — the same reason [`Self::arc_len`] does.
     pub stroke_radius_px: f32,
+    /// The path **step** that brought this dab: its centre minus the previous dab's, measured on the
+    /// path where the paint lands (pre-jitter), in image px. `[0, 0]` = no previous dab (the first one,
+    /// and the deliberate single marks: Drag Dot, Anchored, Grid Stamp). The Shape **Bristles** drag their
+    /// hairs across it so each hair draws a streak, not a row of dots
+    /// ([`crate::texture::ShapeFrame::Stroke`], doc 31 §3).
+    pub step: [f32; 2],
 }
 
 /// Incremental stroke state. Feed it pointer samples; it emits dabs per the brush's stroke method.
@@ -125,6 +131,10 @@ pub struct Stroke {
     /// Onde a tinta do dab ATUAL caiu; vira o `fill_from` do próximo. Um par, não dois campos, porque
     /// as duas metades são a mesma resposta (*onde e quando esta tinta caiu*).
     last_thrown: Option<([f32; 2], f32)>,
+    /// Where the previous dab's paint landed on the path (pre-jitter) and the step to the current one —
+    /// the [`Dab::step`] every mark of this path point carries. Written only by `advance_step`.
+    step_from: Option<[f32; 2]>,
+    dab_step: [f32; 2],
     /// The point *before* `last_pos` — the trailing neighbour the Catmull-Rom smoother needs for the
     /// centred tangent at the start of each segment. `None` until the second move after
     /// [`Stroke::begin`] (the first segment has no trailing neighbour, so it starts straight).
@@ -282,6 +292,8 @@ impl Stroke {
             throw_dir: [0.0, 0.0],
             fill_from: None,
             last_thrown: None,
+            step_from: None,
+            dab_step: [0.0, 0.0],
             prev_prev: None,
             ribbon_pos: [0.0, 0.0],
             ribbon_vel: [0.0, 0.0],
@@ -330,6 +342,8 @@ impl Stroke {
         self.throw_dir = [0.0, 0.0];
         self.fill_from = None;
         self.last_thrown = None; // traço novo: nenhuma tinta anterior a que ligar a primeira
+        self.step_from = None;
+        self.dab_step = [0.0, 0.0];
         self.prev_prev = None;
         // A fita comeca PARADA sob o dedo: sem isto ela chegaria voando do traco anterior.
         self.ribbon_pos = p.pos;
@@ -576,27 +590,6 @@ impl Stroke {
     fn emit_single(&mut self, pos: [f32; 2], pressure: f32, arc: f32, out: &mut Vec<Dab>) {
         self.stamp_at(pos, pressure, 1.0, arc, out);
         self.tot_samples = self.tot_samples.wrapping_add(1);
-    }
-
-    /// Build the Anchored stamp's single dab at `center` with the drag-defined `radius_px`. No
-    /// jitter (Blender disables it for Anchored, `paint_stroke_use_jitter`), full pressure
-    /// (coverage = strength); the falloff / hardness / blend / colour come from the spec at stamp
-    /// time, like every dab — so the anchored stamp wears the brush profile, just sized by the drag.
-    fn anchored_dab(&self, center: [f32; 2], radius_px: f32, dir: [f32; 2]) -> Dab {
-        Dab {
-            center,
-            radius_px: radius_px.clamp(0.0, MAX_BRUSH_RADIUS_PX),
-            coverage: self.spec.strength.clamp(0.0, 1.0),
-            // Anchored opts out of all per-dab jitter (like position jitter): a deliberate stamp.
-            color: self.spec.color,
-            color_shift: [0.0; 3],
-            rotation: [1.0, 0.0],
-            // The Rake heading is the drag direction (anchor → cursor), set by the caller.
-            dir,
-            // Anchored is a single pinned stamp — there is no travel, so the Flow along-coordinate is 0.
-            arc_len: 0.0,
-            stroke_radius_px: self.spec.clamped_radius(),
-        }
     }
 
     /// Move the spacing/spring anchor to `target` without resetting the spacing residual (used by

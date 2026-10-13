@@ -27,7 +27,21 @@ impl Stroke {
     /// MARCA (acontece uma vez por cópia do spray) — ver [`mod@super::spray`].
     pub(super) fn dab_at(&mut self, pos: [f32; 2], pressure: f32, overlap: f32, arc: f32) -> Dab {
         let thrown = self.throw(pos, arc);
+        self.advance_step(thrown);
         self.dab_from(thrown, pressure, overlap, arc)
+    }
+
+    /// The path step to `thrown` from the previous path point ([`Dab::step`]) — once per path point,
+    /// so the spray copies and Rough passes of that point share it. Zero for the deliberate single
+    /// marks (no jitter ⇒ Drag Dot / Anchored / Grid Stamp): a pinned stamp has no travel to sweep.
+    pub(super) fn advance_step(&mut self, thrown: [f32; 2]) {
+        let from = self.step_from.replace(thrown);
+        self.dab_step = match from {
+            Some(f) if self.spec.stroke_method.allows_jitter() => {
+                [thrown[0] - f[0], thrown[1] - f[1]]
+            }
+            _ => [0.0, 0.0],
+        };
     }
 
     /// Constrói UMA marca na posição onde a tinta já caiu (pós-arremesso) — a metade de
@@ -80,6 +94,7 @@ impl Stroke {
             dir: self.heading,
             arc_len: arc,
             stroke_radius_px: self.spec.clamped_radius(),
+            step: self.dab_step,
         };
         // The TAPER, applied here and ONLY here, to every dab this engine emits — the instant it is
         // emitted, at the position the pointer put it. ⚠️ Nothing is ever held back: a taper is a
@@ -111,5 +126,27 @@ impl Stroke {
         }
         let (dx, dy) = crate::jitter::disc_sample(&mut self.rng);
         [pos[0] + dx * max_offset, pos[1] + dy * max_offset]
+    }
+
+    /// Build the Anchored stamp's single dab at `center` with the drag-defined `radius_px`. No
+    /// jitter (Blender disables it for Anchored, `paint_stroke_use_jitter`), full pressure
+    /// (coverage = strength); the falloff / hardness / blend / colour come from the spec at stamp
+    /// time, like every dab — so the anchored stamp wears the brush profile, just sized by the drag.
+    pub(super) fn anchored_dab(&self, center: [f32; 2], radius_px: f32, dir: [f32; 2]) -> Dab {
+        Dab {
+            center,
+            radius_px: radius_px.clamp(0.0, MAX_BRUSH_RADIUS_PX),
+            coverage: self.spec.strength.clamp(0.0, 1.0),
+            // Anchored opts out of all per-dab jitter (like position jitter): a deliberate stamp.
+            color: self.spec.color,
+            color_shift: [0.0; 3],
+            rotation: [1.0, 0.0],
+            // The Rake heading is the drag direction (anchor → cursor), set by the caller.
+            dir,
+            // Anchored is a single pinned stamp — there is no travel, so the Flow along-coordinate is 0.
+            arc_len: 0.0,
+            stroke_radius_px: self.spec.clamped_radius(),
+            step: [0.0, 0.0],
+        }
     }
 }

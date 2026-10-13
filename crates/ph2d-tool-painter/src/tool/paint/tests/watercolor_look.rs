@@ -587,6 +587,7 @@ fn watercolor_editor_stamp_deposits_without_an_open_stroke() {
         dir: [0.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 8.0,
+        step: [0.0, 0.0],
     };
     t.stamp_dabs(&[dab]);
     assert_ne!(

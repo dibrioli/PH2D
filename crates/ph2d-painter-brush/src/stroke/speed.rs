@@ -183,9 +183,11 @@ impl Stroke {
     /// curva tracada e continua por construcao, seja qual for a distancia entre os pontos gravados.
     /// Num motor de dabs o equivalente e este: **os pontos arremessados formam um caminho, e o
     /// espacamento e honrado ONDE A TINTA CAI, nunca onde a mao passou**.
-    pub(super) fn emit(&mut self, dab: Dab, out: &mut Vec<Dab>) {
+    pub(super) fn emit(&mut self, mut dab: Dab, out: &mut Vec<Dab>) {
         self.note_thread_point(&dab);
-        self.fill_thrown_gap(&dab, out);
+        if let Some(sub) = self.fill_thrown_gap(&dab, out) {
+            dab.step = sub; // the fills split the gap: this dab's travel is the last sub-step
+        }
         crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
     }
 
@@ -198,19 +200,24 @@ impl Stroke {
     /// ⚠️ **O jitter e sorteado por dab preenchido**, nao copiado: a interpolacao corre nas posicoes
     /// ARREMESSADAS (pre-jitter), entao um pincel com scatter continua a espalhar em vez de desenhar
     /// uma fileira alinhada dentro do proprio vao.
-    fn fill_thrown_gap(&mut self, dab: &Dab, out: &mut Vec<Dab>) {
+    ///
+    /// Returns the sub-step the fills split the gap into ([`Dab::step`] of every fill and of `dab`), or
+    /// `None` when nothing was filled.
+    fn fill_thrown_gap(&mut self, dab: &Dab, out: &mut Vec<Dab>) -> Option<[f32; 2]> {
         let (Some((from, from_arc)), Some((to, to_arc))) = (self.fill_from, self.last_thrown)
         else {
-            return;
+            return None;
         };
         let d = [to[0] - from[0], to[1] - from[1]];
         let gap = (d[0] * d[0] + d[1] * d[1]).sqrt();
         let step = (2.0 * dab.radius_px * self.spec.spacing).max(1.0);
         if gap <= step {
-            return;
+            return None;
         }
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let n = ((gap / step).ceil() as usize).saturating_sub(1);
+        #[allow(clippy::cast_precision_loss)]
+        let sub = [d[0] / (n + 1) as f32, d[1] / (n + 1) as f32];
         for k in 1..=n {
             #[allow(clippy::cast_precision_loss)]
             let t = k as f32 / (n + 1) as f32;
@@ -218,7 +225,9 @@ impl Stroke {
             let mut fill = *dab;
             fill.center = self.apply_jitter(p, dab.radius_px);
             fill.arc_len = from_arc + (to_arc - from_arc) * t;
+            fill.step = sub;
             crate::symmetry::push_symmetric(out, fill, &self.spec.symmetry);
         }
+        Some(sub)
     }
 }

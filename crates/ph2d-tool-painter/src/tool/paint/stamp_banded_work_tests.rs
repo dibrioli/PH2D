@@ -192,6 +192,7 @@ fn spreading_the_same_batch_does_not_make_it_cost_more() {
                     dir: [co, s],
                     arc_len: 0.0,
                     stroke_radius_px: 40.0,
+                    step: [0.0, 0.0],
                 }
             })
             .collect()

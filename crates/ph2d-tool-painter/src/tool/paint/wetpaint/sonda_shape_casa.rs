@@ -201,6 +201,7 @@ fn sonda_shape_casa_leis_do_dente() {
                     ShapeFrame::Stroke {
                         arc_len: j as f32 * passo,
                         unit_px: r,
+                        step: [0.0, 0.0],
                     },
                 );
                 let gb = texture::dab_basis(&spec.texture, &mut rng, [W as f32, H as f32], fp);
@@ -400,6 +401,99 @@ fn sonda_pontilhado_das_cerdas() {
                     std::fs::write(format!("{dir}/pont_{media:?}_{kind:?}_{sp}.ppm"), ppm)
                         .expect("grava");
                 }
+            }
+        }
+    }
+}
+
+/// **O passo do Wet Paint contra o pedido** (prompt 32 item 3, doc 31 §2.3): cada preset de fábrica no
+/// traço recto de 220 px, ao Spacing de fábrica e a 0,1 e 0,25. O passo EFETIVO é o percurso sobre os
+/// intervalos entre os dabs que o motor recebeu; o PEDIDO é `spacing · 2 · raio do painel` (o do Digital).
+#[test]
+#[ignore = "sonda: o passo do Wet Paint por preset"]
+fn sonda_passo_do_wet_paint() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let bib = Biblioteca::carregar(&raiz, None);
+    println!(
+        "| preset | raio painel | raio motor | spacing | dabs | passo efetivo (px) | pedido (px) | efetivo ÷ pedido |"
+    );
+    println!("|---|---:|---:|---:|---:|---:|---:|---:|");
+    for e in bib
+        .entradas
+        .iter()
+        .filter(|e| e.relativo.starts_with("WetPainter"))
+    {
+        let mut fabrica = None;
+        for sp in [None, Some(0.1f32), Some(0.25)] {
+            let mut t = tela(PaintMedia::WetPaint);
+            assert!(t.wet_preset_aplicar(&e.preset).is_empty());
+            t.wet_preset_aplicar_volumes(&e.preset.parametros.volumes);
+            t.paint.wetpaint.tilt_on = false;
+            let sp = sp.unwrap_or(t.paint.brush.spacing);
+            if fabrica.is_none() {
+                fabrica = Some(sp);
+            } else if fabrica == Some(sp) {
+                continue;
+            }
+            t.set_brush_spacing(sp);
+            let xs: Arc<Mutex<Vec<f64>>> = Arc::default();
+            assert!(t.ensure_wet_session());
+            {
+                let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+                let d2 = Arc::clone(&xs);
+                s.engine.on_dab = Some(Box::new(move |_, d| d2.lock().unwrap().push(d.x)));
+            }
+            traco(&mut t);
+            let n = xs.lock().unwrap().len();
+            let r = t.paint.brush.radius_px;
+            let motor = t.authored_spec().radius_px;
+            let efetivo = f64::from(COMPRIMENTO) / (n.max(2) - 1) as f64;
+            let pedido = f64::from((sp * 2.0 * r).max(1.0));
+            println!(
+                "| {} | {r:.1} | {motor:.1} | {sp} | {n} | {efetivo:.2} | {pedido:.2} | {:.2} |",
+                e.relativo,
+                efetivo / pedido
+            );
+        }
+    }
+}
+
+/// **A prancha da lei proposta** (prompt 32 item 3): o traço de cada preset a Spacing 0,1 e 0,25 HOJE e
+/// com o passo medido sobre o raio do PAINEL (o Spacing escalado por `raio painel ÷ raio motor`, que é o
+/// efeito exacto da lei sobre o caminhador). `PH2D_SONDA_OUT=<pasta>` grava `passo_<preset>_<sp>_<lei>.ppm`.
+#[test]
+#[ignore = "sonda: a prancha do passo do Wet Paint"]
+fn sonda_prancha_passo_wet() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let bib = Biblioteca::carregar(&raiz, None);
+    let dir = std::env::var("PH2D_SONDA_OUT").expect("PH2D_SONDA_OUT");
+    for nome in ["Wet Round", "Charcoal", "Soft Pastel", "Oil Pastel"] {
+        let e = bib
+            .entradas
+            .iter()
+            .find(|e| e.relativo.contains(&format!("/{nome}.")))
+            .expect("preset");
+        for sp in [0.1f32, 0.25] {
+            for lei in ["hoje", "proposta"] {
+                let mut t = tela(PaintMedia::WetPaint);
+                assert!(t.wet_preset_aplicar(&e.preset).is_empty());
+                t.wet_preset_aplicar_volumes(&e.preset.parametros.volumes);
+                t.paint.wetpaint.tilt_on = false;
+                let r = t.paint.brush.radius_px;
+                let escala = if lei == "hoje" {
+                    1.0
+                } else {
+                    r / t.authored_spec().radius_px
+                };
+                t.set_brush_spacing(sp * escala);
+                traco(&mut t);
+                t.wet_bring_home();
+                let mut ppm = format!("P6 {W} {H} 255\n").into_bytes();
+                for k in 0..(W * H) as usize {
+                    ppm.extend_from_slice(&t.canvas_rgba[k * 4..k * 4 + 3]);
+                }
+                let arq = nome.replace(' ', "_");
+                std::fs::write(format!("{dir}/passo_{arq}_{sp}_{lei}.ppm"), ppm).expect("grava");
             }
         }
     }

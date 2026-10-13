@@ -429,6 +429,7 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
             dir: d,
             arc_len: 0.0,
             stroke_radius_px: r,
+            step: [0.0, 0.0],
         }
     }
     // ⚠️ **O RAIO é o segundo eixo, e sem ele a tabela decide errado sobre o piso.** A rota serial

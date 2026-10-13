@@ -57,7 +57,7 @@ impl Celulas {
                 a[4] as f32,
                 a[5] as f32,
                 f32::from_bits(n),
-                0.0,
+                f32::from_bits(u32::from(self.variante.calada_vazia)),
             ];
             let u = buffer(
                 gpu,

@@ -100,18 +100,22 @@ const VARIANTES: [Variante; 4] = [
     Variante {
         vala_justa: false,
         salta_vazias: false,
+        calada_vazia: true,
     },
     Variante {
         vala_justa: true,
         salta_vazias: false,
+        calada_vazia: true,
     },
     Variante {
         vala_justa: false,
         salta_vazias: true,
+        calada_vazia: true,
     },
     Variante {
         vala_justa: true,
         salta_vazias: true,
+        calada_vazia: true,
     },
 ];
 
@@ -1449,3 +1453,6 @@ fn regua(b: &mut Banca, mesa: &Mesa, pilha: &str, ops: &[FxOpGpu], ds: Vec<Shape
 
 #[path = "celulas_gpu_silhueta.rs"]
 mod silhueta;
+
+#[path = "celulas_gpu_caladas.rs"]
+mod caladas;

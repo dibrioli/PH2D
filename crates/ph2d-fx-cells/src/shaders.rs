@@ -10,7 +10,9 @@ const fn palavra(bytes: usize) -> usize {
 
 /// **As caixas das SPRITES no ecrã** — a pose do `sprite.wgsl` (`mundo = pos + basis·(anchor +
 /// q·size)`, `q ∈ [−½, ½]²`) pelo afim mundo → pixel da camada. Dois `vec4` por instância, como o
-/// `cs_caixas` das formas. Gate de paridade: `the_sprite_box_holds_every_pixel_it_draws`.
+/// `cs_caixas` das formas. Gate de paridade: `the_sprite_box_holds_every_pixel_it_draws`. ⭐ O quad de
+/// tamanho ZERO (a linha calada) não cobre pixel nenhum: caixa vazia (`lo > hi`), fora do plano —
+/// gate `uma_linha_calada_nao_e_celula`.
 pub(crate) fn limites_wgsl() -> String {
     format!(
         r"
@@ -19,7 +21,7 @@ const WP: u32 = {wp}u;
 const SZ: u32 = {sz}u;
 const BA: u32 = {ba}u;
 const AN: u32 = {an}u;
-struct P {{ lin: vec4<f32>, t: vec2<f32>, n: u32, _p: u32 }};
+struct P {{ lin: vec4<f32>, t: vec2<f32>, n: u32, calada_vazia: u32 }};
 @group(0) @binding(0) var<uniform> p: P;
 @group(0) @binding(1) var<storage, read> inst: array<u32>;
 @group(0) @binding(2) var<storage, read_write> caixas: array<vec4<f32>>;
@@ -38,6 +40,11 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>) {{
     let size = vec2<f32>(f(b + SZ), f(b + SZ + 1u));
     let ba = vec4<f32>(f(b + BA), f(b + BA + 1u), f(b + BA + 2u), f(b + BA + 3u));
     let an = vec2<f32>(f(b + AN), f(b + AN + 1u));
+    if p.calada_vazia != 0u && size.x == 0.0 && size.y == 0.0 {{
+        caixas[2u * i] = vec4<f32>(1.0e30, 1.0e30, -1.0e30, -1.0e30);
+        caixas[2u * i + 1u] = vec4<f32>(px(pos), 0.0, 0.0);
+        return;
+    }}
     var lo = vec2<f32>(1.0e30);
     var hi = vec2<f32>(-1.0e30);
     for (var k = 0u; k < 4u; k = k + 1u) {{

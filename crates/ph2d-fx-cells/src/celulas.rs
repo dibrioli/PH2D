@@ -206,6 +206,10 @@ pub struct Variante {
     pub vala_justa: bool,
     /// Uma página sem sprites (ou sem formas) não desenha nem cola o alvo vazio.
     pub salta_vazias: bool,
+    /// ⭐ Uma linha CALADA (o quad de tamanho zero: a linha de forma que a placa cala nas sprites, a
+    /// imagem que a separação do grupo limpou) dá caixa VAZIA e não entra no plano — `false` = a
+    /// célula de ~2 px mais a vala que ela pagava sem pintar nada (doc 132 §7 P4).
+    pub calada_vazia: bool,
 }
 
 /// ⭐ As duas ligadas: o mesmo pixel (`the_c10_variants_give_the_same_pixels`) e, a 4 096 formas,
@@ -215,6 +219,7 @@ impl Default for Variante {
         Self {
             vala_justa: true,
             salta_vazias: true,
+            calada_vazia: true,
         }
     }
 }

@@ -20,6 +20,7 @@ UI/UX: «… o «Corner round» em toda forma com quina (F14) e o bico dos balõ
 | `8edf9c75a0` | **1** `spots::rail_grip` (1.ª redacção, substituída por `801a9d58d9`): a fila saltava para fora quando um grip chegava perto. **2** `spots::snap_to_ends`: campo contínuo (Nearest/Radial) arrastado a menos de meio pixel do ecrã da ponta vai à ponta (`0` exacto). **3** `bubbles_ring::TIP_OPEN = 0,8`: o bico do balão deixa de ser agulha (0° → 41,9° rect / 34,8° oval). **4** o censo das pontas (lista escrita). Ficheiros: `ph2d-tool-vector` `shape_handles*.rs`, `ph2d-vec-scene` `bubbles_ring.rs` |
 | `d49dd02b16` | O oráculo VectorCraft (`ph2d-vec-boolean`, `oracle_vectorcraft`) **regravado** sobre os balões novos (receita do `oraculo_vc.py`; só as 36 linhas dos dois balões mudaram, o resto byte a byte): as duas discordâncias do SpeechRect `offset … 0.4` (a cúspide da cauda, BUGS_vector #39) concordam agora e saem do `DISAGREE`. Apanhado pela suíte do fecho (1/18 900) |
 | `801a9d58d9` | **2.ª redacção do relato 1** (o dono, com duas fotos: «não fixou afastado um do outro. a posição está variando»): a fila de ⇕ num lugar FIXO — `RAIL_OUT = 1,5` passo à direita da caixa VISÍVEL (`visible_bbox`, com os sub-contornos), a `h/4` do topo; nenhum grip do catálogo passa dessa borda (medido), par mais perto 32,8 px |
+| `a42d00d407` + `fa54cadd6a` | **F13 §7.2 curado** (o dono: «corrija logo o 1»): a fila de ⇕ mede-se da caixa VISUAL — `shape_handles_live::Target::grips` (a porta única do desenho, do press e da etiqueta) soma aos ⇕ quanto o que a forma PINTA passa da curva pela direita, pela conta da caixa do gizmo (`path_intrinsic_visual_bbox`); `view`/`press`/`readout`/`draw` recebem a `VecScene` (o traço vive no caminho, não no ECS; a shell passa `vec_scene`). Gate `the_arrow_row_stands_off_the_painted_box_whatever_the_stroke`: caneta 0/10/60 px → 40,5 px da caixa visual nas três (mutação sem a margem: 10,5 px a 60 px) |
 
 ## §2 — Medido e decidido
 
@@ -74,7 +75,7 @@ Binário: `--profile smoke`. Fotos de hoje: `/var/tmp/ph2d_F14b/fotos/` (cópias
 1. **As orelhas do «Radius 0»**: não reproduzidas; pedir ao dono a foto de novo / a confirmação no passo 5.
 2. **Pontas finas com Miter** (Burst 16–25°, Bolt 21,9°, Cloud 23,0°, Thought 26,4°): pergunta ao dono —
    querê-las pontudas pede subir o limite do Miter (recusado antes, doc 19).
-3. Herdados da F14 §7 (F13 §7: *Cutout* do polígono, seta dobrada com *Tail* > *Head width*, degrau do ✓, fila de ⇕ com traço grosso).
+3. Herdados da F14 §7 (F13 §7: *Cutout* do polígono, seta dobrada com *Tail* > *Head width*, degrau do ✓) — o dono, 13/10: «não vamos mexer por enquanto» (vale também para o 2). A fila de ⇕ com traço grosso: CURADA (`a42d00d407`).
 4. A integração (só por ordem do dono).
 
 ## §8 — Portão, binário e cadência
@@ -87,4 +88,7 @@ Binário: `--profile smoke`. Fotos de hoje: `/var/tmp/ph2d_F14b/fotos/` (cópias
 - **`801a9d58d9` depois do portão** (2.ª redacção do relato 1, só `ph2d-tool-vector`): pela regra de 13/10, só os
   testes por nome — `shape_handles` 40/40, clippy da crate `-D warnings` ✓, `fmt` ✓ (1 commit desde a suíte verde).
 - **Binário de smoke** (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`), 2.ª
-  corrida, HEAD `801a9d58d9`: `Finished \`smoke\` profile [optimized] target(s) in 0.29s` (zero `Compiling`).
+  corrida, HEAD `fa54cadd6a`: `Finished \`smoke\` profile [optimized] target(s) in 0.38s` (zero `Compiling`).
+- **`a42d00d407`/`fa54cadd6a`** (só `ph2d-app-vec` + 1 linha da shell): testes por nome — `shape_handles_live` 21/21,
+  `vector_mode` 21/21, o costura da shell `the_shape_handles_are_drawn…` 2/2, `the_shell_only_shrinks` ✓; clippy
+  `-D warnings` de `ph2d-app-vec` + `ph2d-host-desktop` ✓; `fmt` ✓ (3 commits de código desde a suíte verde).

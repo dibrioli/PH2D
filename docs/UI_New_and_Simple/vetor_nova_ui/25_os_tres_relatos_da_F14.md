@@ -22,6 +22,9 @@
   Medido antes de escolher: nenhum grip do catálogo passa da borda direita da caixa visível, em todo
   valor de cada campo, a 100×95,4 · 200×100 · 200×400 · 60×200 px. Depois: o par ⇕↔grip mais perto a
   **32,8 px**; a fila nunca anda quando outra alça anda. Custo: zero (não lê as outras alças).
+- **Com traço** (F13 §7.2): a caixa das alças da caixa é a VISUAL (com o traço); a fila soma a margem do
+  que a forma pinta (`shape_handles_live::Target::paint_margin`, a conta do gizmo) — caneta 0/10/60 px →
+  sempre 40,5 px da caixa visual. Gate `the_arrow_row_stands_off_the_painted_box_whatever_the_stroke`.
 - **Gates**: `the_arrow_row_has_a_fixed_place_beside_the_visible_box` (todo valor de cada campo;
   vermelho com a caixa só do contorno principal) e `no_arrow_lands_on_another_handle` (vermelho com
   `RAIL_OUT = 0`: 332). Foto: [`f14b_01`](fotos/f14b_01_cena21_o_speech_com_o_seta_um_passo_por_fora.png).

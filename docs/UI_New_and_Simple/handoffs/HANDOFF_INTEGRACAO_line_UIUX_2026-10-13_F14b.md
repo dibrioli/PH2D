@@ -17,13 +17,15 @@ UI/UX: «… o «Corner round» em toda forma com quina (F14) e o bico dos balõ
 
 | commit | o quê |
 |---|---|
-| `8edf9c75a0` | **1** `spots::rail_grip`: a fila de ⇕ anda um passo (`RAIL_PITCH·park_at` = 27 px) para fora, até `RAIL_SHIFTS = 3`, enquanto algum ⇕ ficar a menos de um passo de um grip não-⇕ (300 casos → 0). **2** `spots::snap_to_ends`: campo contínuo (Nearest/Radial) arrastado a menos de meio pixel do ecrã da ponta vai à ponta (`0` exacto). **3** `bubbles_ring::TIP_OPEN = 0,8`: o bico do balão deixa de ser agulha (0° → 41,9° rect / 34,8° oval). **4** o censo das pontas (lista escrita). Ficheiros: `ph2d-tool-vector` `shape_handles*.rs`, `ph2d-vec-scene` `bubbles_ring.rs` |
+| `8edf9c75a0` | **1** `spots::rail_grip` (1.ª redacção, substituída por `801a9d58d9`): a fila saltava para fora quando um grip chegava perto. **2** `spots::snap_to_ends`: campo contínuo (Nearest/Radial) arrastado a menos de meio pixel do ecrã da ponta vai à ponta (`0` exacto). **3** `bubbles_ring::TIP_OPEN = 0,8`: o bico do balão deixa de ser agulha (0° → 41,9° rect / 34,8° oval). **4** o censo das pontas (lista escrita). Ficheiros: `ph2d-tool-vector` `shape_handles*.rs`, `ph2d-vec-scene` `bubbles_ring.rs` |
 | `d49dd02b16` | O oráculo VectorCraft (`ph2d-vec-boolean`, `oracle_vectorcraft`) **regravado** sobre os balões novos (receita do `oraculo_vc.py`; só as 36 linhas dos dois balões mudaram, o resto byte a byte): as duas discordâncias do SpeechRect `offset … 0.4` (a cúspide da cauda, BUGS_vector #39) concordam agora e saem do `DISAGREE`. Apanhado pela suíte do fecho (1/18 900) |
+| `801a9d58d9` | **2.ª redacção do relato 1** (o dono, com duas fotos: «não fixou afastado um do outro. a posição está variando»): a fila de ⇕ num lugar FIXO — `RAIL_OUT = 1,5` passo à direita da caixa VISÍVEL (`visible_bbox`, com os sub-contornos), a `h/4` do topo; nenhum grip do catálogo passa dessa borda (medido), par mais perto 32,8 px |
 
 ## §2 — Medido e decidido
 
-- **Leitura pelos trilhos recusada** para a fila de ⇕: 0,27–21 ms/quadro (Star 21 ms), 4–38× os grips.
-  Custo da cura (debug): SpeechRect 110 → 90 µs · Star 0,55 → 1,27 ms · Gear 0,50 → 0,42 ms · IsoCube 49 → 34 µs.
+- **A fila que salta foi RECUSADA pelo dono** (*«não fixou afastado um do outro. a posição está variando»*):
+  a cura é um lugar FIXO (doc 25 §1). Recusadas também: a leitura pelos trilhos (0,27–21 ms/quadro) e
+  qualquer posição que leia as outras alças (muda com o arrasto).
 - **Radius no canto** guardava `3,9e-8`–`2e-5` px (mínimo plano + desempate pelo valor do PRESS); com isso o
   Corner round da F14 deixava de arredondar o canto. O encaixe mede pela TAXA junto da ponta: trilho
   saturado nunca encaixa.
@@ -52,7 +54,8 @@ UI/UX: «… o «Corner round» em toda forma com quina (F14) e o bico dos balõ
 
 | mutação | vermelho em |
 |---|---|
-| `RAIL_SHIFTS 3 → 0` | `no_arrow_lands_on_another_handle`: 319 ⇕ sobre um grip (a 1.ª redacção ficou vermelha pelo CONTROLO; a ordem dos asserts foi trocada para a lei vir primeiro) |
+| `RAIL_OUT 1,5 → 0` | `no_arrow_lands_on_another_handle`: 332 ⇕ sobre um grip |
+| `visible_bbox` → `curve_bbox` no `rail_grip` | `the_arrow_row_has_a_fixed_place_beside_the_visible_box`: o pensamento (as bolhas fora da caixa do contorno principal) |
 | encaixe desligado (`if false && !int`) | `a_rounding_dragged_to_the_corner_is_exactly_zero`: «SpeechRect alça 0: a quina guardou 3,88e-8» |
 | `TIP_OPEN 0,8 → 0` | `the_speech_tips_have_an_angle` (0,0°) e `the_zero_angle_cusps_are_the_written_list` (com SpeechRect/SpeechOval) |
 
@@ -62,7 +65,7 @@ Binário: `--profile smoke`. Fotos de hoje: `/var/tmp/ph2d_F14b/fotos/` (cópias
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && PH2D_OBJECT_MODE_SMOKE=21 PH2D_CENA21_FICA=18 ./target/smoke/ph2d-host-desktop`
 2. Na tela: o balão de fala (Speech) já vem seleccionado. Olhe as setas ⇕ à direita.
-3. Tem de acontecer: as setas ficam UM PASSO por fora da caixa, longe do círculo do *Radius*. Deu errado se alguma seta cobre um círculo.
+3. Tem de acontecer: a seta fica a ~40 px à direita da caixa, no MESMO lugar enquanto se arrasta o círculo do *Radius* para cima e para baixo. Deu errado se ela salta ou cobre um círculo.
 4. Repita com `PH2D_OBJECT_MODE_SMOKE=18` (traço 16 px, ponta em bico): o rabo do balão termina em PONTA, não em toco quadrado.
 5. Na cena 21, arraste o círculo do *Radius* até o canto e além: o campo mostra `0` e os quatro cantos do corpo continuam redondos pelo *Corner round* que a cena subiu (~20 px) — antes ficavam VIVOS (o raio guardado era uma fracção que o *Corner round* não arredondava). **Se aparecerem orelhas no traço, fotografe e mande** (ABERTO 1).
 
@@ -81,5 +84,7 @@ Binário: `--profile smoke`. Fotos de hoje: `/var/tmp/ph2d_F14b/fotos/` (cópias
   **18 899 / 18 900** — o vermelho era o oráculo VectorCraft (3/3 sozinho a `load` 32–44, não flake) ⇒
   `d49dd02b16`; 2.ª e última: **`nextest-impacted` 18 900 / 18 900** (9 967 pulados, 475 s). Clippy do
   `ship.sh` (`--workspace --all-targets -D warnings`) ✓ · `fmt --check` ✓ · `check --workspace --all-targets` ✓.
+- **`801a9d58d9` depois do portão** (2.ª redacção do relato 1, só `ph2d-tool-vector`): pela regra de 13/10, só os
+  testes por nome — `shape_handles` 40/40, clippy da crate `-D warnings` ✓, `fmt` ✓ (1 commit desde a suíte verde).
 - **Binário de smoke** (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`), 2.ª
-  corrida: `Finished \`smoke\` profile [optimized] target(s) in 0.24s` (zero `Compiling`).
+  corrida, HEAD `801a9d58d9`: `Finished \`smoke\` profile [optimized] target(s) in 0.29s` (zero `Compiling`).

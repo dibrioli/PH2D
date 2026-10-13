@@ -13,12 +13,18 @@
   **300 casos** de ⇕ a menos de 24 px do grip de outra alça, em 9 formas. SpeechRect 47/55 (pior 5,8 px,
   no padrão), RoundRect 34/46 (18,9 px), IsoCube 37/37 a **0,0 px** (o vértice 0 da profundidade É o
   sítio do 1.º ⇕), mais Drop, IsoCone, IsoPyramid, Star, Spiral, ArrowDouble, Thought, Burst.
-- **Cura** (`spots::rail_grip`): a fila INTEIRA anda um passo (`RAIL_PITCH·park_at` = 27 px) para fora,
-  até `RAIL_SHIFTS = 3`, enquanto algum ⇕ ficar a menos de um passo de um grip não-⇕. Depois: **0**. O
-  F13 D (caixa baixa → meia altura por fora) fica.
-- **Custo** (debug, por quadro): SpeechRect 110 → 90 µs · Star 0,55 → 1,27 ms · IsoCube 49 → 34 µs.
-- **Gates**: `no_arrow_lands_on_another_handle`; `the_arrows_stand_side_by_side_outwards` aceita passos
-  inteiros por fora (0..3). Foto: [`f14b_01`](fotos/f14b_01_cena21_o_speech_com_o_seta_um_passo_por_fora.png).
+- **1.ª cura, RECUSADA pelo dono** (`801a9d58d9` a substitui): a fila andava um passo para fora (até 3)
+  só quando um grip chegava perto — 300 → 0, mas *«não fixou afastado um do outro. a posição está
+  variando»* (duas fotos: o ⇕ saltava da borda para fora ao arrastar o *Radius*).
+- **Cura** (`spots::rail_grip`): a fila tem um lugar FIXO na caixa VISÍVEL (`visible_bbox`: o contorno
+  E os sub-contornos — a do contorno principal deixava as bolhas do pensamento 68 px fora):
+  `RAIL_OUT = 1,5` passo (40 px) à direita da borda, a `h/4` do topo (caixa baixa: meia altura, F13 D).
+  Medido antes de escolher: nenhum grip do catálogo passa da borda direita da caixa visível, em todo
+  valor de cada campo, a 100×95,4 · 200×100 · 200×400 · 60×200 px. Depois: o par ⇕↔grip mais perto a
+  **32,8 px**; a fila nunca anda quando outra alça anda. Custo: zero (não lê as outras alças).
+- **Gates**: `the_arrow_row_has_a_fixed_place_beside_the_visible_box` (todo valor de cada campo;
+  vermelho com a caixa só do contorno principal) e `no_arrow_lands_on_another_handle` (vermelho com
+  `RAIL_OUT = 0`: 332). Foto: [`f14b_01`](fotos/f14b_01_cena21_o_speech_com_o_seta_um_passo_por_fora.png).
 
 ## §2 — «Radius 0» e as orelhas
 

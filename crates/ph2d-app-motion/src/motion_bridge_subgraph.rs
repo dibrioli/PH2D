@@ -643,7 +643,7 @@ pub(super) fn params_snapshot(motion: &MotionState) -> Option<crate::ParamsSnaps
         sections: Vec::new(),
         folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Text(TextRow {
-            name: "title",
+            name: super::backdrops::TITULO,
             label: ph2d_i18n::tr("app.motion.motion_bridge_subgraph.name").to_string(),
             value: s.title.clone(),
             problem: None,
@@ -662,7 +662,7 @@ pub(super) fn apply_param_intent(
     use crate::MotionParamIntent as I;
     if let Some(sid) = subgraph_of(view)
         && let I::SetTextParam {
-            param: "title",
+            param: super::backdrops::TITULO,
             value,
             ..
         } = intent

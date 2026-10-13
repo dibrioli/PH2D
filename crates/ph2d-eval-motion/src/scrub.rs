@@ -191,7 +191,9 @@ impl MotionCookPump {
             self.ring.clear();
         }
         self.so_o_cone = !inteiro;
+        let re_sim = std::mem::take(&mut self.re_sim_pendente);
         let forward = !ressincroniza
+            && !re_sim
             && match self.last_cooked_tick {
                 None => tick == 0,
                 Some(last) => tick == last || tick == last + 1,

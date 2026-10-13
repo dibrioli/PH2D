@@ -101,6 +101,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Select a drawing first — on the canvas or in the Hierarchy"
         }
         "app.motion.motion_bridge_intents.path_set_to" => "Path set to '{nome}'",
+        "app.motion.macro_track.paste_of_a_copy_made_before_recording" => {
+            "The macro stops here: it pastes what was copied before recording, and the clipboard does not travel with it"
+        }
+        "app.motion.macro_track.the_document_changed_in_a_way_its_text_cannot_keep" => {
+            "The macro stops here: the graph changed in a way its saved text cannot reproduce"
+        }
         "app.motion.motion_bridge_params_edit.unlinked_the_preset_needs_its_own" => {
             "Unlinked {join} - the preset needs its own"
         }

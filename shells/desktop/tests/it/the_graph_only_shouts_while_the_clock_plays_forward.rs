@@ -27,6 +27,8 @@ static LOOP: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(crate::frame_text::render_frame);
 const MOTION: &str = include_str!("../../../../crates/ph2d-app-motion/src/motion_bridge.rs");
 const TIMELINE: &str = include_str!("../../src/render_loop/timeline_bridge.rs");
+/// O fim do `dispatch` — os sinks, as tomadas e o cozimento — mora no quadro (`quadro::o_quadro`).
+const QUADRO: &str = include_str!("../../../../crates/ph2d-app-motion/src/motion_bridge_quadro.rs");
 
 /// **Controle positivo.** Um `include_str!` apontando para um arquivo que um corte de LOC
 /// esvaziou deixaria toda busca abaixo devolver *"não achei"* — e o gate falaria com confiança
@@ -139,7 +141,12 @@ fn a_publicacao_e_gateada_pela_lei() {
 /// quadro zera o que publica.
 #[test]
 fn a_ponte_arma_as_tomadas_e_zera_o_livro() {
-    let (_, motion, _) = sources();
+    let (_, ponte, _) = sources();
+    assert!(
+        ponte.contains("quadro::o_quadro(") && QUADRO.contains("pub(crate) fn o_quadro("),
+        "CONTROLO: o dispatch acaba no quadro, e o quadro foi lido"
+    );
+    let motion = QUADRO;
     assert!(
         motion.contains("motion.pump.set_taps("),
         "a tomada é ARMADA na bomba — é isso que a faz cavalgar qualquer rota de marcha"

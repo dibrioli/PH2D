@@ -30,7 +30,7 @@ use std::collections::BTreeSet;
 /// A gesture that can COMPLETE a wrong setup (add a node / a wire). The heal fires
 /// only after a batch that has one of these and no [`is_destructive`] intent — so
 /// deleting the integrator to rewire never triggers a re-insert.
-pub(super) fn is_constructive(i: &GraphIntent) -> bool {
+pub(crate) fn is_constructive(i: &GraphIntent) -> bool {
     matches!(
         i,
         GraphIntent::Connect { .. }
@@ -46,7 +46,7 @@ pub(super) fn is_constructive(i: &GraphIntent) -> bool {
 
 /// A gesture that REMOVES nodes/edges — never a reason to heal (the artist is taking
 /// the graph apart, possibly to rewire it by hand).
-pub(super) fn is_destructive(i: &GraphIntent) -> bool {
+pub(crate) fn is_destructive(i: &GraphIntent) -> bool {
     matches!(
         i,
         GraphIntent::Disconnect { .. }

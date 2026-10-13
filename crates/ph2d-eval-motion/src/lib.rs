@@ -104,6 +104,10 @@ pub struct MotionCookPump {
     last_cooked_tick: Option<u64>,
     /// Set by a graph edit so the next frame re-cooks even at the same tick.
     dirty: bool,
+    /// Quantos [`Self::mark_dirty`] já houve — ver [`Self::edicoes`].
+    edicoes: u64,
+    /// O próximo cozimento re-simula da semente — ver [`Self::re_simula_da_semente`].
+    re_sim_pendente: bool,
     /// The last cook error, if this frame's cook refused a sink. Kept so the
     /// shell can explain a dark scene instead of leaving the artist guessing.
     last_error: Option<CookError>,
@@ -226,6 +230,8 @@ impl MotionCookPump {
             vector_instances: Vec::new(),
             last_cooked_tick: None,
             dirty: true,
+            edicoes: 0,
+            re_sim_pendente: false,
             last_error: None,
             ring: CheckpointRing::new(),
             fita: Fita::new(),
@@ -289,7 +295,24 @@ impl MotionCookPump {
 
     pub fn mark_dirty(&mut self) {
         self.dirty = true;
+        self.edicoes += 1;
         self.ring.clear();
+    }
+
+    /// Quantos [`Self::mark_dirty`] esta bomba já recebeu. O anel guarda a história desde o último,
+    /// e um scrub restaura-a: o tocador de uma macro (ADR-0186) repete cada limpeza que o produto fez,
+    /// e é por esta contagem que a gravação a vê.
+    #[must_use]
+    pub fn edicoes(&self) -> u64 {
+        self.edicoes
+    }
+
+    /// **O próximo cozimento re-simula da semente**, mesmo no tique em que a bomba já está — o modo
+    /// explicativo de uma macro (ADR-0186): o efeito do grafo de agora como se ele sempre lá estivesse.
+    /// É uma edição (limpa o anel) e o cozimento seguinte toma a porta do scrub.
+    pub fn re_simula_da_semente(&mut self) {
+        self.mark_dirty();
+        self.re_sim_pendente = true;
     }
 
     /// ⭐⭐⭐ **Marca sujo SEM deitar fora o anel de scrub** — para quem precisa de re-cozinhar por

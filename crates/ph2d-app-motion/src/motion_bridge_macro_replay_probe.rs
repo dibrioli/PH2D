@@ -19,88 +19,12 @@
 use super::{apply_graph_intents, output_nodes, params};
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::graph::{Edge, NodeId};
-use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
+use ph2d_panel_motion_graph::push_intent;
+// A macro e o retrato são os do gate 3 (`macro_track::gate_tests`): a sonda mede o que o gate prova.
+use crate::macro_track::gate_tests::{Gesto as Passo, MACRO, estado, intent_de, retrato};
 
 const DT: f64 = 1.0 / 60.0;
 const RODADAS: usize = 15;
-
-/// Um passo da macro. Os nós referem-se por ORDEM DE CRIAÇÃO (slot), não por id: a macro
-/// gravada tem de sobreviver a um documento que já tenha nós.
-#[derive(Clone, Copy, Debug)]
-enum Passo {
-    Add(&'static str),
-    Liga(usize, u16, usize, u16),
-    Param(usize, &'static str, f32),
-}
-
-const FORMA: usize = 0;
-const GRADE: usize = 1;
-const DUP: usize = 2;
-const SAIDA: usize = 3;
-const INTEG: usize = 4;
-const VENTO: usize = 5;
-const CAIXA: usize = 6;
-const ARRASTO: usize = 7;
-
-/// A macro de tutorial: 8 nós, 24 passos.
-const MACRO: &[Passo] = &[
-    Passo::Add("source.shape"),
-    Passo::Param(FORMA, "size", 0.35),
-    Passo::Add("motion.grid"),
-    Passo::Param(GRADE, "rows", 6.0),
-    Passo::Param(GRADE, "cols", 6.0),
-    Passo::Param(GRADE, "gap_x", 0.5),
-    Passo::Param(GRADE, "gap_y", 0.5),
-    Passo::Add("motion.duplicator"),
-    Passo::Liga(FORMA, 0, DUP, 0),
-    Passo::Liga(GRADE, 0, DUP, 1),
-    Passo::Add("motion.output"),
-    Passo::Liga(DUP, 0, SAIDA, 0),
-    Passo::Add("motion.integrate"),
-    Passo::Liga(GRADE, 0, INTEG, 0),
-    Passo::Liga(INTEG, 0, DUP, 1),
-    Passo::Add("force.wind"),
-    Passo::Liga(VENTO, 0, INTEG, 1),
-    Passo::Add("field.box"),
-    Passo::Param(CAIXA, "width", 1.0),
-    Passo::Liga(CAIXA, 0, VENTO, 0),
-    Passo::Add("force.drag"),
-    Passo::Liga(VENTO, 0, ARRASTO, 0),
-    Passo::Liga(ARRASTO, 0, INTEG, 1),
-    Passo::Param(VENTO, "strength", 6.0),
-];
-
-fn estado() -> MotionState {
-    let mut m = MotionState::new();
-    m.doc = ph2d_motion_doc::MotionDoc::new();
-    m.sinks.clear();
-    // Sem placa: a sonda mede a CPU.
-    m.gpu_enabled = false;
-    let _ = drain_intents();
-    let _ = crate::drain_param_intents();
-    m
-}
-
-fn intent_de(p: Passo, slots: &[NodeId], i: usize) -> GraphIntent {
-    match p {
-        Passo::Add(t) => GraphIntent::AddNode {
-            type_name: t,
-            x: i as f32 * 120.0,
-            y: 0.0,
-        },
-        Passo::Liga(a, ap, b, bp) => GraphIntent::Connect {
-            from_node: slots[a].0,
-            from_port: ap,
-            to_node: slots[b].0,
-            to_port: bp,
-        },
-        Passo::Param(n, k, v) => GraphIntent::SetParam {
-            node: slots[n].0,
-            param: k,
-            value: v,
-        },
-    }
-}
 
 /// Um QUADRO do produto: drena as intenções do grafo e depois as dos params (a ordem do
 /// `dispatch`). Devolve os nós que nasceram.
@@ -187,27 +111,6 @@ fn coze_com(m: &mut MotionState, tick: u64, resim: bool) -> bool {
         );
     }
     cozeu
-}
-
-/// O que se VÊ, ao bit: cada instância (quad e vector) com posição, tamanho e o resto.
-fn retrato(m: &MotionState) -> Vec<u32> {
-    let mut v = Vec::new();
-    for i in &m.pump.instances {
-        v.extend(i.world_pos.iter().chain(&i.size).map(|f| f.to_bits()));
-    }
-    v.push(u32::MAX);
-    for i in &m.pump.vector_instances {
-        v.push(i.geometry_id);
-        v.extend(
-            i.world_pos
-                .iter()
-                .chain(&i.size)
-                .chain(&i.basis)
-                .chain(&i.tint)
-                .map(|f| f.to_bits()),
-        );
-    }
-    v
 }
 
 fn fnv(v: &[u32]) -> u64 {

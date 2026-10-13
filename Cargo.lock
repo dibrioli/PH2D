@@ -5020,6 +5020,7 @@ dependencies = [
  "ph2d-label-census",
  "ph2d-lens",
  "ph2d-light2d-gpu",
+ "ph2d-macro",
  "ph2d-motion-diagnose",
  "ph2d-motion-doc",
  "ph2d-node-audio-bands",

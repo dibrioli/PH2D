@@ -129,7 +129,12 @@ mod tests {
     /// bomba (`uma_tomada_de_gizmo_so_coze_no_tique_desenhado`).
     #[test]
     fn a_ponte_diz_quais_tomadas_sao_por_tique() {
-        const PONTE: &str = include_str!("motion_bridge.rs");
+        // As tomadas armam-se no quadro (`quadro::o_quadro`), a porta do `dispatch` e do tocador.
+        const PONTE: &str = include_str!("motion_bridge_quadro.rs");
+        assert!(
+            PONTE.contains("pub(crate) fn o_quadro("),
+            "CONTROLO: o quadro foi lido"
+        );
         assert!(
             PONTE.contains("motion.pump.set_taps_por_tique(motion.signal_taps.len())"),
             "a ponte deixou de separar as tomadas dos sinais (por tique) das dos gizmos"

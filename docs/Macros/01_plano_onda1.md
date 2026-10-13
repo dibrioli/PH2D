@@ -76,6 +76,12 @@ Reprodução em dois modos: **fiel** (aplica no tique gravado — reproduz o que
 **explicativo** (re-simula do tique 0 após cada passo — mostra o efeito real de cada nó; `0,7 ms` por
 passo medido). O tocador corre os DOIS drenos na ordem do quadro e o `publish_all` antes de cozinhar.
 
+✅ **Feito na W3** ([ADR-0186 §Emenda W3](../architecture/decisions/0186-a-macro-grava-comandos-resolvidos-no-relogio-da-macro.md)).
+O «tique da cena» grava-se como o RELÓGIO do quadro: o tempo do playhead, se toca e o `dt`, um passo por
+quadro. O que muda o documento por fora dos drenos (desfazer, gizmos, o conta-gotas) grava-o uma
+testemunha: as escritas de params, ou o documento inteiro. O anel de checkpoints carrega história, e o
+palco repete cada limpeza dele.
+
 **Tocador no jogo:** não há player exportado; hoje o jogo é o Play do PH2D (mesmo `SimWorld`,
 `playhead.is_playing()`). O tocador dirige só os motores (Painter headless por objeto, palco do
 Motion) — nenhuma dependência da shell nem da ferramenta ativa — para viajar com o export quando nascer.
@@ -121,7 +127,7 @@ no seu tutorial é CONTEÚDO do documento, não UI.
    Controlo positivo: um passo a menos ⇒ ≠ 0 (medido 9 912 / 35 267).
 2. **Semente e `dt`.** Traço com jitter e Airbrush com tiques irregulares reproduzem ao byte;
    vermelho se a semente ou um tique não forem gravados.
-3. **Motion fiel = o que o artista viu.** As 24 intenções da sonda tocadas nos tiques gravados = a
+3. ✅ (W3: 150 quadros ao bit; sem os tiques `0,87`) **Motion fiel = o que o artista viu.** As 24 intenções da sonda tocadas nos tiques gravados = a
    sessão original; vermelho sem os tiques (medido: 3,59 unidades de desvio). **Explicativo** = a
    construção de uma vez, ao bit (medido: igual).
 4. **Gravabilidade.** Censo: toda variante de `GraphIntent` que muda o documento e toda porta pública do

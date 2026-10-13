@@ -5,10 +5,79 @@
 
 use super::*;
 
+/// **O quadro inteiro** — os sinks e as tomadas que o grafo implica, e o cozimento. É a porta do
+/// [`super::dispatch`] e a do tocador de uma macro ([`crate::macro_track::tocar`]), que a chama sem
+/// placa (`None` = a bomba da CPU): uma sequência, dois chamadores. A gravação regista o relógio do
+/// quadro aqui (ADR-0186).
+pub(crate) fn o_quadro(
+    motion: &mut MotionState,
+    gpu: Option<&ph2d_gpu::GpuContext>,
+    playhead: &ph2d_core::Playhead,
+    fixed_dt: f64,
+) {
+    // The render output IS the Output node — the sink follows the graph (wire a
+    // chain into an Output node and it draws). `None` (no Output node) → the pump
+    // renders nothing. Recomputed each frame so add/delete/rewire just works.
+    motion.sinks = crate::motion_objeto::sinks_visiveis(motion, output_nodes(&motion.doc.graph));
+    // As TOMADAS, recomputadas pelo mesmo motivo dos sinks: elas se curam sozinhas depois
+    // de um load, um undo ou uma edição do grafo.
+    motion.signal_taps = signal_nodes(&motion.doc.graph);
+    // ⚠️ **ARMADAS na bomba, não passadas na chamada** — a marcha tem mais de uma porta (a
+    // rota da GPU híbrida marcha por `advance_or_scrub_to_nodes_scoped`), e enquanto a tomada
+    // era argumento da porta de sinks um documento híbrido cozinhava, desenhava e **não
+    // gritava nada**, com a suíte verde. Medido: a cena `=26` planeja HÍBRIDA.
+    // ⚠️ **As tomadas são a UNIÃO de dois pedidos, e cada um mantém o seu nome.** Os
+    // sinais precisam das suas; o gizmo de canvas dos deformadores de quadrilátero precisa
+    // do stream que ENTRA no nó seleccionado (a caixa a que os offsets dele se referem).
+    // Juntar aqui, e não alargar o `signal_taps`, é o que impede o dreno de sinais de um
+    // dia ver um nó que não é um `pulse.signal` — *o canal é partilhado, o significado não*.
+    let mut taps = motion.signal_taps.clone();
+    for n in crate::warp_gizmo::taps_for(motion)
+        .into_iter()
+        .chain(crate::collider_gizmo::taps_for(motion))
+        // ⭐ E o gizmo de uma corrente de POSIÇÕES (ordem do dono, 2026-09-19): ele pede os sinks
+        // cujo desenho a PLACA ainda não resolveu — *«esta corrente tem aparência?»* é pergunta
+        // do cozido, e quando o dispositivo desenhou o quadro anterior a resposta já está no
+        // registo dele (ver o `ponto_gizmo::taps_for`: sem isto a tomada recozinhava a simulação
+        // inteira na CPU, ciclo 12).
+        .chain(crate::ponto_gizmo::taps_for(motion, motion.pump.a_lei()))
+        // ⭐ E o gizmo do PIVÔ (ordem do dono, 2026-09-19): a saída da forma cujo `Pivot X`/`Y`
+        // está a ser arrastado AGORA — a forma e o sink dela, e só durante o gesto. ⚠️ Ele pede o
+        // sink ELE PRÓPRIO: o irmão acima deixou de pedir os que a placa já desenhou.
+        .chain(crate::pivot_gizmo::taps_for(motion))
+    {
+        if !taps.contains(&n) {
+            taps.push(n);
+        }
+    }
+    motion.pump.set_taps(&taps);
+    // Só as dos sinais cozem em todo tique; as dos gizmos, só no tique desenhado.
+    motion.pump.set_taps_por_tique(motion.signal_taps.len());
+    // O que este quadro gritou, e o livro-razão de onde isso sai. Limpos aqui, não no dreno:
+    // um quadro em que o shell não drena (a ferramenta saiu de foco) não pode deixar o grito
+    // de ontem para amanhã.
+    motion.signals_out.clear();
+    motion.pump.clear_tap_fires();
+    // As MEMBRANAS: post-drain, pre-cook. O instante e' propriedade do GRUPO, entao
+    // as tres moram numa porta so (`motion_externals`).
+    motion.macro_quadro(playhead, fixed_dt);
+    coze(motion, gpu, playhead, fixed_dt);
+    motion.macro_cozeu();
+}
+
 /// Coze o quadro do `playhead`: as membranas, e então a placa (`cook_gpu`) ou a bomba da CPU.
 pub(crate) fn coze_o_quadro(
     motion: &mut MotionState,
     gpu: &ph2d_gpu::GpuContext,
+    playhead: &ph2d_core::Playhead,
+    fixed_dt: f64,
+) {
+    coze(motion, Some(gpu), playhead, fixed_dt);
+}
+
+fn coze(
+    motion: &mut MotionState,
+    gpu: Option<&ph2d_gpu::GpuContext>,
     playhead: &ph2d_core::Playhead,
     fixed_dt: f64,
 ) {
@@ -77,7 +146,8 @@ pub(crate) fn coze_o_quadro(
     // ⚠️ A bypassed GROUP is short-circuited only on the CPU pump's graph (below),
     // so the GPU path is skipped while one exists — a muted preview must not cook
     // from the un-rewired graph (v1; the group-bypass module documents this).
-    if motion.doc.bypassed_subgraphs.is_empty()
+    if let Some(gpu) = gpu
+        && motion.doc.bypassed_subgraphs.is_empty()
         && let gpu::GpuOutcome::Handled = gpu::cook_gpu(motion, gpu, target, fixed_dt, &scopes)
     {
         // ⭐ A origem de cada objecto Motion, na placa (doc ObjectsAndComponents 01 §13).

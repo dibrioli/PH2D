@@ -29,18 +29,34 @@ use ph2d_editor_core::screens::layout::CenterSplit;
 ///   `Graph::connect` (cycle / occupied-input) then `Graph::validate` (typing /
 ///   membrane), and the edit is kept only when the new edge is legal — else a
 ///   refusal toast is raised and the document is untouched.
-pub(super) fn apply_graph_intents(
+pub(crate) fn apply_graph_intents(
     motion: &mut MotionState,
     playhead: &mut ph2d_core::Playhead,
     toasts: &mut ToastQueue,
     split: &mut CenterSplit,
+) {
+    let intents = ph2d_panel_motion_graph::drain_intents();
+    // A macro grava o lote já resolvido (ADR-0186) — antes de o aplicar, que é quando os ids de
+    // vista ainda dizem o que o painel viu.
+    motion.macro_lote_de_grafo(&intents);
+    apply_graph_batch(motion, playhead, toasts, split, intents);
+    motion.macro_fecha();
+}
+
+/// **Um lote de intenções do grafo**, aplicado pela ordem — a porta do dreno acima e a do tocador
+/// de uma macro ([`crate::macro_track::tocar`]), que lhe entrega os lotes gravados.
+pub(crate) fn apply_graph_batch(
+    motion: &mut MotionState,
+    playhead: &mut ph2d_core::Playhead,
+    toasts: &mut ToastQueue,
+    split: &mut CenterSplit,
+    intents: Vec<ph2d_panel_motion_graph::GraphIntent>,
 ) {
     use ph2d_nodegraph::graph::{NodeId, Pos};
     use ph2d_panel_motion_graph::GraphIntent;
     // ADR-0155 W2 — the heal fires only after a batch that COMPLETES a setup (adds a
     // node/wire) and removes nothing, so deleting the integrator to rewire is never
     // fought. Classified before the loop consumes the intents.
-    let intents = ph2d_panel_motion_graph::drain_intents();
     let heal_ok = intents.iter().any(super::heal::is_constructive)
         && !intents.iter().any(super::heal::is_destructive);
     for intent in intents {

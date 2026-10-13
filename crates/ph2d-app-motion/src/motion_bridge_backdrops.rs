@@ -162,7 +162,7 @@ pub(super) fn params_snapshot(motion: &MotionState) -> Option<crate::ParamsSnaps
         folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![
             ParamRow::Text(TextRow {
-                name: "title",
+                name: TITULO,
                 label: ph2d_i18n::tr("panel.motion_graph.backdrop.title_row").to_string(),
                 value: b.title.clone(),
                 // Um título de backdrop é texto livre: não há nada que possa estar "errado".
@@ -171,7 +171,7 @@ pub(super) fn params_snapshot(motion: &MotionState) -> Option<crate::ParamsSnaps
                 help: None,
             }),
             ParamRow::Enum(EnumRow {
-                name: "color",
+                name: COR,
                 label: ph2d_i18n::tr("panel.motion_graph.backdrop.color_row").to_string(),
                 selected: (b.color as usize).min(COLOR_KEYS.len() - 1),
                 labels: color_labels(),
@@ -183,6 +183,14 @@ pub(super) fn params_snapshot(motion: &MotionState) -> Option<crate::ParamsSnaps
 /// Route one params-panel edit to the selected backdrop. Undo is the params
 /// bridge's session bracket (a rename is one step, not one per keystroke), and
 /// nothing here re-cooks.
+/// O nome da linha do título de um fundo — e da do cartão de um grupo, a única que ele tem. A row e o
+/// aplicador leem a MESMA constante, e o tocador de uma macro devolve o nome gravado por ela.
+pub(crate) const TITULO: &str = "title";
+/// O nome da linha da cor de um fundo.
+pub(crate) const COR: &str = "color";
+/// As linhas da decoração, para quem devolve um nome gravado ao `&'static` dele.
+pub(crate) const LINHAS: [&str; 2] = [TITULO, COR];
+
 pub(super) fn apply_param_intent(
     motion: &mut MotionState,
     id: u32,
@@ -191,12 +199,10 @@ pub(super) fn apply_param_intent(
     use crate::MotionParamIntent as I;
     match intent {
         I::SetParam {
-            param: "color",
-            value,
-            ..
+            param: COR, value, ..
         } => set_color(motion, id, value.max(0.0) as u8),
         I::SetTextParam {
-            param: "title",
+            param: TITULO,
             value,
             ..
         } => set_title(motion, id, value),

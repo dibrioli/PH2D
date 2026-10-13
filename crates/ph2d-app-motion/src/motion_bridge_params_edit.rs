@@ -9,6 +9,7 @@
 //! through the middle of one thing rather than along a seam.
 
 use super::params_file;
+use crate::macro_track::Destino;
 use crate::motion_bridge::{backdrops, color, gpu, subgraph};
 use crate::motion_state::MotionState;
 
@@ -49,8 +50,6 @@ pub(super) fn apply_param_edits(
     store: &ph2d_editor_core::interaction::WidgetStore,
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
-    use crate::MotionParamIntent;
-    use ph2d_nodegraph::graph::NodeId;
     use std::sync::atomic::{AtomicBool, Ordering};
     static PARAM_EDITING: AtomicBool = AtomicBool::new(false);
 
@@ -82,6 +81,8 @@ pub(super) fn apply_param_edits(
     // (sRGB→linear), re-cooking only on an actual change (the picker stays open across idle
     // frames). One door in `color.rs` (the sRGB↔linear boundary).
     color::apply_picker_readback(motion, store);
+    // O conta-gotas escreve fora das intenções: a gravação de uma macro vê-o aqui (ADR-0186).
+    motion.macro_testemunha();
 
     // Scalar slider / chip + enum edits.
     let intents = crate::drain_param_intents();
@@ -97,213 +98,237 @@ pub(super) fn apply_param_edits(
         // over from a previous frame carries an id from the old subject, and a node
         // id and a backdrop id are both just `u32` — reusing it would let a stale
         // rename land on whatever node happened to share the number.
-        let backdrop = ph2d_panel_motion_graph::current_graph_backdrop_selection();
-        // Same rule for a selected CARD (doc 57): a subgraph has no manifest, so its
-        // one row (the name) is routed to the document's nesting, never to a node.
-        let card = subgraph::selected_card();
+        let destino = match (
+            ph2d_panel_motion_graph::current_graph_backdrop_selection(),
+            subgraph::selected_card(),
+        ) {
+            (Some(bid), _) => Destino::Fundo(bid),
+            (None, Some(sid)) => Destino::Cartao(sid),
+            (None, None) => Destino::No,
+        };
         for intent in intents {
-            // A backdrop edit never touches a node and never re-cooks (decoration
-            // cannot change what the graph cooks).
-            if let Some(bid) = backdrop {
-                backdrops::apply_param_intent(motion, bid, intent);
+            let Some(intent) = resolve_file_pick(motion, destino, intent) else {
                 continue;
-            }
-            if let Some(sid) = card {
-                subgraph::apply_param_intent(motion, subgraph::view_id(sid), intent);
-                continue;
-            }
-            // ⚠️ **O nó que esta intenção TOCOU**, para a reparação a seguir. Os braços que
-            // saem por `continue` não tocaram nada (nó inexistente, backdrop, card), e é isso
-            // que os mantém fora da reparação sem uma condição extra.
-            let touched = match intent {
-                MotionParamIntent::SetParam { node, param, value } => {
-                    let nid = NodeId(node);
-                    let Some(inst) = motion.doc.graph.node(nid) else {
-                        continue;
-                    };
-                    // A `channel` switch on a behaviour also resets its magnitude to that
-                    // channel's sensible default (world units vs degrees vs scale) — same
-                    // undo step, so Ctrl+Z restores the old values.
-                    let channel_switch = param == "channel"
-                        && (param_value(motion, nid, "channel") - value as f32).abs()
-                            > f32::EPSILON;
-                    let type_name = channel_switch.then(|| inst.type_name.clone());
-                    // ⭐ **O MOLDE do L-System**: escolher um escreve as duas caixas de texto.
-                    // A mesma família do preset de canal — um param que reescreve OUTROS —, e
-                    // pelo mesmo motivo dentro do MESMO passo de undo.
-                    let preset_pick = (param == ph2d_node_source_lsystem::param::PRESET
-                        && (param_value(motion, nid, param) - value as f32).abs() > f32::EPSILON)
-                        .then(|| inst.type_name.clone());
-                    // ⭐ **A CONVERSÃO do L-System**: sair de `Guided` para `Grammar` assa a
-                    // gramática que os sliders estavam a fazer. Medida AQUI, antes do
-                    // `set_param`, porque é uma TRANSIÇÃO — depois dele os dois lados do
-                    // «de onde para onde» leriam o mesmo valor.
-                    let bake_grammar = (param == ph2d_node_source_lsystem::param::MODE
-                        && (value as f32).round() as i32 == ph2d_node_source_lsystem::MODE_GRAMMAR
-                        && param_value(motion, nid, param).round() as i32
-                            != ph2d_node_source_lsystem::MODE_GRAMMAR)
-                        .then(|| inst.type_name.clone());
-                    // ⭐⭐ **A METADE DE VOLTA — e ela faltava** (auditoria de seis lentes, §3.2).
-                    //
-                    // O `bake` acima já marcava `Custom` ao converter `Guided → Grammar` (*«o
-                    // texto assado não é molde nenhum»*). Ao voltar aos sliders quem desenha
-                    // passa a ser a gramática DERIVADA — que também não é molde nenhum —, e
-                    // nada repunha o `preset`.
-                    //
-                    // ⛔⛔ **Não é um selector desalinhado: os `ParamGate` do *Width Scale* e
-                    // do *Length Scale* leem `param::PRESET`, que é lido em QUALQUER modo.**
-                    // Com um molde encalhado eles respondem sobre a gramática errada, o
-                    // `Visibility::mode_hides` diz `true`, e o `drop_hidden_drivers` **solta o
-                    // fio** na primeira edição seguinte — com um toast a dizer *«this shape has
-                    // no such control»* sobre um controlo que a gramática LÊ.
-                    //
-                    // ⚠️ **Medido** (`examples/probe_guided_reads.rs`): no guiado o *Width
-                    // Scale* leva a coluna `size` de `1,000` a `3,375` (pelo `!`, presente em
-                    // 270/270 células) e o *Length Scale* move a bbox `8,85` (pela EXPRESSÃO
-                    // `s*length_scale` — rota que o `Reads::of` **não conhece**).
-                    //
-                    // ⚠️ **Só na TRANSIÇÃO**, como a ida: a cada edição com o modo já em
-                    // `Guided` isto reescreveria o `preset` do artista a cada mexida de slider.
-                    let forget_preset = (param == ph2d_node_source_lsystem::param::MODE
-                        && (value as f32).round() as i32 == ph2d_node_source_lsystem::MODE_GUIDED
-                        && param_value(motion, nid, param).round() as i32
-                            != ph2d_node_source_lsystem::MODE_GUIDED)
-                        .then(|| inst.type_name.clone());
-                    // ADR-0130 D7: an edit that re-numbers the emitter's ids
-                    // (rate/life/max) moves the id↔particle map, so the GPU sim's
-                    // paired state would mispair the new window against the old.
-                    // Decided BEFORE `set_param` consumes `param`, and only when
-                    // the value actually MOVES — a slider re-emits its intent every
-                    // frame of a gesture, and restarting the sim on a value that
-                    // did not change would keep it pinned at the seed.
-                    let renumbers_sim = gpu::edit_renumbers_emitter(&inst.type_name, param)
-                        && (param_value(motion, nid, param) - value as f32).abs() > f32::EPSILON;
-                    // ⭐ **O TIPO do `fx.filter`** (doc 129 §5.5 A2/A5): trocar de tipo escreve os
-                    // defaults do novo nos knobs que o artista não mexeu — o mesmo passo de undo.
-                    if param == ph2d_node_fx_filter::param::KIND
-                        && inst.type_name == ph2d_node_fx_filter::TYPE_NAME
-                    {
-                        #[expect(
-                            clippy::cast_possible_truncation,
-                            clippy::cast_sign_loss,
-                            reason = "código de tipo, < 15"
-                        )]
-                        let novo = value.round().clamp(0.0, f64::from(u8::MAX)) as u8;
-                        ph2d_node_fx_filter::switch_kind(&mut motion.doc.graph, nid, novo);
-                    }
-                    motion.doc.graph.set_param(nid, param, value as f32);
-                    if let Some(tn) = type_name {
-                        super::apply_channel_presets(motion, nid, &tn, value as f32);
-                    }
-                    if let Some(tn) = preset_pick {
-                        super::apply_lsystem_preset(motion, nid, &tn, value as f32);
-                        drop_preset_drivers(motion, nid, &tn, toasts);
-                    }
-                    if let Some(tn) = bake_grammar {
-                        super::bake_lsystem_grammar(motion, nid, &tn);
-                    }
-                    if let Some(tn) = forget_preset {
-                        super::mark_lsystem_custom(motion, nid, &tn);
-                    }
-                    motion.pump.mark_dirty();
-                    if renumbers_sim {
-                        // RESTART from the tick on screen — never `forget_state`,
-                        // whose re-derive is O(current tick) and freezes a drag.
-                        motion.gpu_cook.reseed_from_next_tick();
-                    }
-                    nid
-                }
-                // A formula edit (a `motion.expression` text param) — the additive text
-                // channel (docs/Motion Nodes/32-33).
-                MotionParamIntent::SetTextParam { node, param, value } => {
-                    let nid = NodeId(node);
-                    let Some(inst) = motion.doc.graph.node(nid) else {
-                        continue;
-                    };
-                    // ⭐ Editar a gramática à mão faz o selector de moldes aterrar em `Custom`
-                    // — ele nomeava um molde cujo texto já não estava lá (auditoria 29/08).
-                    let type_name = (param == ph2d_node_source_lsystem::AXIOM_PARAM
-                        || param == ph2d_node_source_lsystem::RULES_PARAM)
-                        .then(|| inst.type_name.clone());
-                    // ⭐⭐ **O caminho DIGITADO recarrega tanto quanto o escolhido.** Uma
-                    // auditoria mediu o buraco: escrever o caminho à mão ANTES de o ficheiro
-                    // existir memoizava-o como vazio **para sempre**, e a marca de ausência do
-                    // painel — que corre `Path::exists()` ao vivo — deixava de acusar; o nó
-                    // desenhava nada e nada dizia porquê. *Uma lei implementada num braço do
-                    // `match` e não no outro é meia lei.*
-                    forget_table_if_it_is_one(motion, nid, param, &value);
-                    motion.doc.graph.set_text_param(nid, param, value);
-                    if let Some(tn) = type_name {
-                        super::mark_lsystem_custom(motion, nid, &tn);
-                    }
-                    motion.pump.mark_dirty();
-                    nid
-                }
-                // Devolver um param ao default é REMOVER o override, nunca escrever o default
-                // por cima (`Graph::clear_param` explica o porquê: um override que por acaso
-                // vale o default fossiliza o número no dia em que o nó mudar de default).
-                //
-                // Os DOIS canais são limpos com o mesmo nome porque um param viaja por um só
-                // — e qual deles é conhecimento que apodrece se a UI o carregar. Limpar o que
-                // não existe custa uma busca falhada.
-                // **Escolher um ficheiro** — o painel PEDE, a shell abre. O diálogo congela o
-                // loop, e por isso passa pela porta que o declara (`modal::pick_file`, via
-                // `params_file::pick`); o filtro sai da espécie que o `ParamUiHint` declara,
-                // nunca de uma lista escrita aqui.
-                //
-                // ⚠️ Cancelar não escreve nada e não toca o nó: sai por `continue`, então nem
-                // a reparação de fios órfãos corre. *Um gesto abandonado não é uma edição.*
-                MotionParamIntent::PickFile { node, param } => {
-                    let nid = NodeId(node);
-                    if motion.doc.graph.node(nid).is_none() {
-                        continue;
-                    }
-                    let Some(path) = params_file::pick(motion, nid, param) else {
-                        continue;
-                    };
-                    // ⭐⭐ **ESCOLHER É RECARREGAR** — o *Reload File* do TouchDesigner, preso
-                    // ao controlo que já existe. O cache de tabelas é endereçado pelo CAMINHO,
-                    // então re-escolher o mesmo ficheiro acertaria no cache e o artista, que
-                    // acabou de o gravar no Excel, veria os números velhos **sem nada a dizer
-                    // porquê**. ⛔ Um observador de disco foi recusado: um ficheiro que se relê
-                    // sozinho faz o mesmo projeto, no mesmo instante, desenhar coisas
-                    // diferentes, e o scrub deixa de ser exacto. Recarregar é um GESTO.
-                    // ⚠️ **Condicionado à ESPÉCIE.** A 1.ª redacção esquecia a tabela em TODA
-                    // escolha de ficheiro, inclusive a de um `.wav` — e o cache de áudio não tem
-                    // `forget` nenhum, então re-escolher um som re-analisado no Reaper continua
-                    // a não recarregar. *Um braço, duas espécies, e só uma curada.*
-                    forget_table_if_it_is_one(motion, nid, param, &path);
-                    motion.doc.graph.set_text_param(nid, param, path);
-                    motion.pump.mark_dirty();
-                    nid
-                }
-                MotionParamIntent::ResetParam { node, param } => {
-                    let nid = NodeId(node);
-                    if motion.doc.graph.node(nid).is_none() {
-                        continue;
-                    }
-                    let a = motion.doc.graph.clear_param(nid, &param);
-                    let b = motion.doc.graph.clear_text_param(nid, &param);
-                    if a || b {
-                        motion.pump.mark_dirty();
-                    }
-                    nid
-                }
             };
-            // **A REPARAÇÃO**, uma vez por intenção que tocou um nó — nunca três cópias, uma
-            // por braço: um braço novo sem ela seria uma quarta porta pela qual o fio órfão
-            // volta, e ninguém o veria porque o defeito é silencioso por natureza.
-            drop_hidden_drivers(motion, touched, toasts);
+            // A macro grava a edição já resolvida: o destino e o caminho escolhido (ADR-0186).
+            motion.macro_param(destino, &intent);
+            apply_param_intent(motion, destino, intent, toasts);
         }
         if discrete {
             motion.history.commit_if_changed(&motion.doc);
         }
     }
+    motion.macro_fecha();
 
     // Close the session bracket on the true→false edge (one step for the gesture).
     if !editing && was {
         motion.history.commit_if_changed(&motion.doc);
     }
+}
+
+/// **Um `PickFile` no nó abre o diálogo AQUI**, e a escolha volta como o caminho digitado
+/// (`SetTextParam`); cancelar devolve `None`. Os outros destinos ignoram o pedido, e o resto passa.
+///
+/// ⭐⭐ **ESCOLHER É RECARREGAR** — o *Reload File* do TouchDesigner, preso ao controlo que já existe:
+/// o braço do caminho digitado esquece a tabela daquele caminho, então re-escolher o mesmo ficheiro
+/// relê-o. ⛔ Um observador de disco foi recusado: um ficheiro que se relê sozinho faz o mesmo
+/// projeto, no mesmo instante, desenhar coisas diferentes, e o scrub deixa de ser exacto.
+fn resolve_file_pick(
+    motion: &mut MotionState,
+    destino: Destino,
+    intent: crate::MotionParamIntent,
+) -> Option<crate::MotionParamIntent> {
+    use crate::MotionParamIntent;
+    match intent {
+        MotionParamIntent::PickFile { node, param } if destino == Destino::No => {
+            let nid = ph2d_nodegraph::graph::NodeId(node);
+            motion.doc.graph.node(nid)?;
+            let value = params_file::pick(motion, nid, param)?;
+            Some(MotionParamIntent::SetTextParam { node, param, value })
+        }
+        other => Some(other),
+    }
+}
+
+/// **Uma edição de param, no destino já resolvido** — a porta do dreno acima e a do tocador de uma
+/// macro ([`crate::macro_track::tocar`]). Um fundo ou um cartão recebem as linhas deles; um nó, o
+/// valor, as leis que o acompanham e a reparação dos fios.
+pub(crate) fn apply_param_intent(
+    motion: &mut MotionState,
+    destino: Destino,
+    intent: crate::MotionParamIntent,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    use crate::MotionParamIntent;
+    use ph2d_nodegraph::graph::NodeId;
+    // A backdrop edit never touches a node and never re-cooks (decoration cannot change what the
+    // graph cooks).
+    match destino {
+        Destino::Fundo(bid) => return backdrops::apply_param_intent(motion, bid, intent),
+        Destino::Cartao(sid) => {
+            return subgraph::apply_param_intent(motion, subgraph::view_id(sid), intent);
+        }
+        Destino::No => {}
+    }
+    // ⚠️ **O nó que esta intenção TOCOU**, para a reparação a seguir. Os braços que
+    // saem por `return` não tocaram nada (nó inexistente, backdrop, card), e é isso
+    // que os mantém fora da reparação sem uma condição extra.
+    let touched = match intent {
+        MotionParamIntent::SetParam { node, param, value } => {
+            let nid = NodeId(node);
+            let Some(inst) = motion.doc.graph.node(nid) else {
+                return;
+            };
+            // A `channel` switch on a behaviour also resets its magnitude to that
+            // channel's sensible default (world units vs degrees vs scale) — same
+            // undo step, so Ctrl+Z restores the old values.
+            let channel_switch = param == "channel"
+                && (param_value(motion, nid, "channel") - value as f32).abs() > f32::EPSILON;
+            let type_name = channel_switch.then(|| inst.type_name.clone());
+            // ⭐ **O MOLDE do L-System**: escolher um escreve as duas caixas de texto.
+            // A mesma família do preset de canal — um param que reescreve OUTROS —, e
+            // pelo mesmo motivo dentro do MESMO passo de undo.
+            let preset_pick = (param == ph2d_node_source_lsystem::param::PRESET
+                && (param_value(motion, nid, param) - value as f32).abs() > f32::EPSILON)
+                .then(|| inst.type_name.clone());
+            // ⭐ **A CONVERSÃO do L-System**: sair de `Guided` para `Grammar` assa a
+            // gramática que os sliders estavam a fazer. Medida AQUI, antes do
+            // `set_param`, porque é uma TRANSIÇÃO — depois dele os dois lados do
+            // «de onde para onde» leriam o mesmo valor.
+            let bake_grammar = (param == ph2d_node_source_lsystem::param::MODE
+                && (value as f32).round() as i32 == ph2d_node_source_lsystem::MODE_GRAMMAR
+                && param_value(motion, nid, param).round() as i32
+                    != ph2d_node_source_lsystem::MODE_GRAMMAR)
+                .then(|| inst.type_name.clone());
+            // ⭐⭐ **A METADE DE VOLTA — e ela faltava** (auditoria de seis lentes, §3.2).
+            //
+            // O `bake` acima já marcava `Custom` ao converter `Guided → Grammar` (*«o
+            // texto assado não é molde nenhum»*). Ao voltar aos sliders quem desenha
+            // passa a ser a gramática DERIVADA — que também não é molde nenhum —, e
+            // nada repunha o `preset`.
+            //
+            // ⛔⛔ **Não é um selector desalinhado: os `ParamGate` do *Width Scale* e
+            // do *Length Scale* leem `param::PRESET`, que é lido em QUALQUER modo.**
+            // Com um molde encalhado eles respondem sobre a gramática errada, o
+            // `Visibility::mode_hides` diz `true`, e o `drop_hidden_drivers` **solta o
+            // fio** na primeira edição seguinte — com um toast a dizer *«this shape has
+            // no such control»* sobre um controlo que a gramática LÊ.
+            //
+            // ⚠️ **Medido** (`examples/probe_guided_reads.rs`): no guiado o *Width
+            // Scale* leva a coluna `size` de `1,000` a `3,375` (pelo `!`, presente em
+            // 270/270 células) e o *Length Scale* move a bbox `8,85` (pela EXPRESSÃO
+            // `s*length_scale` — rota que o `Reads::of` **não conhece**).
+            //
+            // ⚠️ **Só na TRANSIÇÃO**, como a ida: a cada edição com o modo já em
+            // `Guided` isto reescreveria o `preset` do artista a cada mexida de slider.
+            let forget_preset = (param == ph2d_node_source_lsystem::param::MODE
+                && (value as f32).round() as i32 == ph2d_node_source_lsystem::MODE_GUIDED
+                && param_value(motion, nid, param).round() as i32
+                    != ph2d_node_source_lsystem::MODE_GUIDED)
+                .then(|| inst.type_name.clone());
+            // ADR-0130 D7: an edit that re-numbers the emitter's ids
+            // (rate/life/max) moves the id↔particle map, so the GPU sim's
+            // paired state would mispair the new window against the old.
+            // Decided BEFORE `set_param` consumes `param`, and only when
+            // the value actually MOVES — a slider re-emits its intent every
+            // frame of a gesture, and restarting the sim on a value that
+            // did not change would keep it pinned at the seed.
+            let renumbers_sim = gpu::edit_renumbers_emitter(&inst.type_name, param)
+                && (param_value(motion, nid, param) - value as f32).abs() > f32::EPSILON;
+            // ⭐ **O TIPO do `fx.filter`** (doc 129 §5.5 A2/A5): trocar de tipo escreve os
+            // defaults do novo nos knobs que o artista não mexeu — o mesmo passo de undo.
+            if param == ph2d_node_fx_filter::param::KIND
+                && inst.type_name == ph2d_node_fx_filter::TYPE_NAME
+            {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "código de tipo, < 15"
+                )]
+                let novo = value.round().clamp(0.0, f64::from(u8::MAX)) as u8;
+                ph2d_node_fx_filter::switch_kind(&mut motion.doc.graph, nid, novo);
+            }
+            motion.doc.graph.set_param(nid, param, value as f32);
+            if let Some(tn) = type_name {
+                super::apply_channel_presets(motion, nid, &tn, value as f32);
+            }
+            if let Some(tn) = preset_pick {
+                super::apply_lsystem_preset(motion, nid, &tn, value as f32);
+                drop_preset_drivers(motion, nid, &tn, toasts);
+            }
+            if let Some(tn) = bake_grammar {
+                super::bake_lsystem_grammar(motion, nid, &tn);
+            }
+            if let Some(tn) = forget_preset {
+                super::mark_lsystem_custom(motion, nid, &tn);
+            }
+            motion.pump.mark_dirty();
+            if renumbers_sim {
+                // RESTART from the tick on screen — never `forget_state`,
+                // whose re-derive is O(current tick) and freezes a drag.
+                motion.gpu_cook.reseed_from_next_tick();
+            }
+            nid
+        }
+        // A formula edit (a `motion.expression` text param) — the additive text
+        // channel (docs/Motion Nodes/32-33).
+        MotionParamIntent::SetTextParam { node, param, value } => {
+            let nid = NodeId(node);
+            let Some(inst) = motion.doc.graph.node(nid) else {
+                return;
+            };
+            // ⭐ Editar a gramática à mão faz o selector de moldes aterrar em `Custom`
+            // — ele nomeava um molde cujo texto já não estava lá (auditoria 29/08).
+            let type_name = (param == ph2d_node_source_lsystem::AXIOM_PARAM
+                || param == ph2d_node_source_lsystem::RULES_PARAM)
+                .then(|| inst.type_name.clone());
+            // ⭐⭐ **O caminho DIGITADO recarrega tanto quanto o escolhido.** Uma
+            // auditoria mediu o buraco: escrever o caminho à mão ANTES de o ficheiro
+            // existir memoizava-o como vazio **para sempre**, e a marca de ausência do
+            // painel — que corre `Path::exists()` ao vivo — deixava de acusar; o nó
+            // desenhava nada e nada dizia porquê. *Uma lei implementada num braço do
+            // `match` e não no outro é meia lei.*
+            forget_table_if_it_is_one(motion, nid, param, &value);
+            motion.doc.graph.set_text_param(nid, param, value);
+            if let Some(tn) = type_name {
+                super::mark_lsystem_custom(motion, nid, &tn);
+            }
+            motion.pump.mark_dirty();
+            nid
+        }
+        // **Escolher um ficheiro** — resolvido pela porta única do diálogo
+        // ([`resolve_file_pick`]) e aplicado como o caminho digitado: quem aplica nunca abre o
+        // diálogo duas vezes, e um tocador que só leva caminhos resolvidos nunca o abre.
+        MotionParamIntent::PickFile { .. } => {
+            if let Some(resolved) = resolve_file_pick(motion, Destino::No, intent) {
+                apply_param_intent(motion, Destino::No, resolved, toasts);
+            }
+            return;
+        }
+        // Devolver um param ao default é REMOVER o override, nunca escrever o default
+        // por cima (`Graph::clear_param` explica o porquê: um override que por acaso
+        // vale o default fossiliza o número no dia em que o nó mudar de default).
+        //
+        // Os DOIS canais são limpos com o mesmo nome porque um param viaja por um só
+        // — e qual deles é conhecimento que apodrece se a UI o carregar. Limpar o que
+        // não existe custa uma busca falhada.
+        MotionParamIntent::ResetParam { node, param } => {
+            let nid = NodeId(node);
+            if motion.doc.graph.node(nid).is_none() {
+                return;
+            }
+            let a = motion.doc.graph.clear_param(nid, &param);
+            let b = motion.doc.graph.clear_text_param(nid, &param);
+            if a || b {
+                motion.pump.mark_dirty();
+            }
+            nid
+        }
+    };
+    // **A REPARAÇÃO**, uma vez por intenção que tocou um nó — nunca três cópias, uma
+    // por braço: um braço novo sem ela seria uma quarta porta pela qual o fio órfão
+    // volta, e ninguém o veria porque o defeito é silencioso por natureza.
+    drop_hidden_drivers(motion, touched, toasts);
 }
 
 /// The current value of one param on a node (per-instance override, else the

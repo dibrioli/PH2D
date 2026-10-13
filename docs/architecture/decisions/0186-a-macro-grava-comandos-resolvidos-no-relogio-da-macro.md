@@ -4,7 +4,7 @@
   dentro dos jogos»* · tutorial *«os dois»* · *«se o caminho do traço e o tempo da simulação forem considerados
   pela macro, teremos resultados iguais»*); o desenho técnico é delegado.
 - **Data:** 2026-10-13
-- **Linha:** `line/Macros-Automação` (onda 1, W1; emenda da W2 — a trilha do Painter — na §Emenda W2)
+- **Linha:** `line/Macros-Automação` (onda 1, W1; emendas da W2 — a trilha do Painter — e da W3 — a trilha do Motion)
 - **Amparo:** [estudo](../../Macros/00_estudo_inicial.md) · [plano da onda 1](../../Macros/01_plano_onda1.md)
   (estado da arte com fontes, números das sondas) · sondas `#[ignore]` no commit `84523b5c6e`.
 
@@ -93,3 +93,53 @@ a 1024²); o Motion dá resultados diferentes conforme o número de tiques entre
   o traço pousa no mesmo lugar relativo (o tamanho do pincel continua em pixels).
 - O núcleo ganhou `ph2d_macro::rec` — a lei dos campos etiquetados do ficheiro, aberta às famílias (uma
   porta só: o `codec` usa-a também).
+
+## Emenda W3 (2026-10-13) — a trilha do Motion
+
+- **Os dois drenos gravam o lote RESOLVIDO** (`crates/ph2d-app-motion/src/macro_track/`). O do grafo grava,
+  antes de aplicar, cada intenção com os ids de vista decodificados: um nó pela **ordem de criação**
+  (`Alvo::Existente(id)` para quem existia ao armar, `Alvo::Criado(id − next_id ao armar)` para quem nasceu a
+  gravar) e um cartão pelo id do grupo. Também grava o nível e a ajuda dos nós de então, que são entradas
+  do `adopt_new` e da cura do lote. O de params grava cada edição no destino que a selecção decidiu
+  (`Destino::{No, Fundo, Cartao}`; a selecção não viaja). O `PickFile` já vai como o caminho escolhido: o
+  diálogo abre-se num sítio só (`resolve_file_pick`), e quem aplica nunca o abre. O `PickSelection` leva a
+  forma que o botão viu. Os nomes viajam como texto e voltam ao `&'static` pelo registo (`Nomes`), e as
+  linhas da decoração pela constante única (`backdrops::TITULO`/`COR`).
+- **O censo** (`intencao::decide`, `match` sem curinga + gate do fonte): as 45 variantes de `GraphIntent`.
+  34 gravam; 5 encaminham-se ao dreno de params (`SetParam`, `SetTextParam`, `PickFile`, `StepChoice`,
+  `PickChoice`), que as grava resolvidas — gravá-las nos dois lados aplicá-las-ia duas vezes; 6 são de vista
+  ou transporte. Colar o que se copiou ANTES de armar recusa-se, porque a área de transferência não viaja.
+  Um gate prova que o que não se grava não pesa na cura do lote (`is_constructive`/`is_destructive`).
+- **A testemunha.** O documento muda também por fora dos drenos: o desfazer e o refazer da shell, os três
+  gizmos de canvas, o read-back da cor e o `motion_objeto::upkeep`. Antes de cada lote e de cada quadro, o
+  documento é comparado com o que os passos explicam:
+  - só mudaram params → `Escritas` (o diff, provado ao aplicá-lo);
+  - senão → `Documento` (texto canónico + `next_id` + a ordem viva das arestas, que o texto ordena; provado
+    igual ao bit, senão recusa).
+
+  O que tocou a bomba vai como `Toque`. ⚠️ **O anel de checkpoints NÃO é um cache puro**: um scrub restaura
+  um estado que carrega a história desde o último `mark_dirty`. Por isso o palco repete cada limpeza que o
+  produto fez, e a bomba ganhou o contador `edicoes()` para a gravação a ver.
+- **O quadro.** O fim do `dispatch` (sinks, tomadas, cozimento) passou para `quadro::o_quadro`: uma
+  sequência, dois chamadores. Cada quadro grava `Quadro { tempo do playhead, a tocar, dt, a bomba suja }`
+  (as três entradas do relógio que o cozimento lê). O tocador coze pela MESMA porta, sem placa. O modo
+  **fiel** confere a cada quadro que a bomba chegou como chegou na gravação (`Divergiu`). O modo
+  **explicativo** re-simula da semente a cada mudança (`MotionCookPump::re_simula_da_semente`, que leva o
+  próximo cozimento à porta do scrub).
+- **Foundational, só acréscimos, comportamento igual por omissão:**
+  - `Graph::{next_id, restore_next_id, order_edges_as}` (`ph2d-nodegraph`);
+  - `MotionCookPump::{edicoes, re_simula_da_semente}` (`ph2d-eval-motion`).
+
+  Nenhum contrato congelado foi encostado.
+- **Medido** (gate 3, `macro_track/gate_tests.rs`): a sessão de 150 quadros reproduz-se AO BIT, quadro a
+  quadro. Ela tem o relógio a tocar, uma pausa com edições, desfazer e refazer, um recuo depois da última
+  edição, um salto, um gizmo, um nó arrastado e a bomba suja sem edição. Sem os tiques, o palco cai a
+  `0,87` unidades da sessão (a sonda mediu `3,59` noutra agenda). O explicativo é o documento final cozido
+  da semente, ao bit; as 24 intenções num lote são o explicativo, ao bit.
+- **A fronteira do palco (W4):**
+  - o palco coze na CPU; o produto coze na placa por omissão. O palco em cena recebe a placa;
+  - o que o mundo publica (caminhos do Vetor por nome, entradas do jogo, origem e visibilidade dos objetos)
+    entra pela cena viva na hora de tocar;
+  - os aplicadores escrevem estado GLOBAL do painel (pedidos de selecção, flash; ~9 sítios em
+    `motion_bridge_{intents,edit,subgraph,rewire,heal,choices}.rs`). Um palco que viva na app tem de os
+    isolar, ou guia o painel do editor.

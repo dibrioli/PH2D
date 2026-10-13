@@ -502,6 +502,8 @@ pub struct MotionState {
     /// ⭐⭐ **O Motion como OBJECTO** (doc ObjectsAndComponents 01 §13, F5) — os objectos Motion
     /// vivos, o dono em edição e a origem aplicada. Ver [`crate::motion_objeto`].
     pub objeto: crate::motion_objeto::ObjetoState,
+    /// A gravação de uma macro em curso (ADR-0186, [`crate::macro_track`]); `None` fora dela.
+    pub macro_gravacao: Option<Box<crate::macro_track::Gravacao>>,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the

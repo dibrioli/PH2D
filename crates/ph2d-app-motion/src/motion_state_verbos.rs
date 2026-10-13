@@ -108,6 +108,7 @@ impl MotionState {
             ui_now: 0.0,
             piscada: None,
             objeto: Default::default(),
+            macro_gravacao: None,
         }
     }
 

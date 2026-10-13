@@ -66,6 +66,8 @@ mod plumbing;
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_backdrops.rs"]
 mod backdrops;
+#[cfg(feature = "panel-motion-graph")]
+pub(crate) use backdrops::LINHAS as LINHAS_DA_DECORACAO;
 
 #[path = "motion_bridge_shapes.rs"]
 mod shapes;
@@ -143,6 +145,9 @@ pub mod columns;
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_heal.rs"]
 mod heal;
+/// A classificação da cura, para o censo das intenções de uma macro (`macro_track`).
+#[cfg(all(test, feature = "panel-motion-graph"))]
+pub(crate) use heal::{is_constructive, is_destructive};
 
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_fold.rs"]
@@ -198,7 +203,9 @@ mod intents;
 #[path = "motion_bridge_test_mods.rs"]
 mod test_mods;
 #[cfg(feature = "panel-motion-graph")]
-use intents::apply_graph_intents;
+pub(crate) use intents::apply_graph_batch;
+#[cfg(feature = "panel-motion-graph")]
+pub(crate) use intents::apply_graph_intents;
 #[cfg(test)]
 #[path = "motion_bridge_gizmo_tap_tests.rs"]
 mod gizmo_tap_tests;
@@ -363,53 +370,8 @@ pub fn dispatch(
         return;
     }
 
-    // ── 3. Cook the sink at the tick the PLAYHEAD is on (W4.T7: one clock) ────
-    // The render output IS the Output node — the sink follows the graph (wire a
-    // chain into an Output node and it draws). `None` (no Output node) → the pump
-    // renders nothing. Recomputed each frame so add/delete/rewire just works.
-    motion.sinks = crate::motion_objeto::sinks_visiveis(motion, output_nodes(&motion.doc.graph));
-    // As TOMADAS, recomputadas pelo mesmo motivo dos sinks: elas se curam sozinhas depois
-    // de um load, um undo ou uma edição do grafo.
-    motion.signal_taps = signal_nodes(&motion.doc.graph);
-    // ⚠️ **ARMADAS na bomba, não passadas na chamada** — a marcha tem mais de uma porta (a
-    // rota da GPU híbrida marcha por `advance_or_scrub_to_nodes_scoped`), e enquanto a tomada
-    // era argumento da porta de sinks um documento híbrido cozinhava, desenhava e **não
-    // gritava nada**, com a suíte verde. Medido: a cena `=26` planeja HÍBRIDA.
-    // ⚠️ **As tomadas são a UNIÃO de dois pedidos, e cada um mantém o seu nome.** Os
-    // sinais precisam das suas; o gizmo de canvas dos deformadores de quadrilátero precisa
-    // do stream que ENTRA no nó seleccionado (a caixa a que os offsets dele se referem).
-    // Juntar aqui, e não alargar o `signal_taps`, é o que impede o dreno de sinais de um
-    // dia ver um nó que não é um `pulse.signal` — *o canal é partilhado, o significado não*.
-    let mut taps = motion.signal_taps.clone();
-    for n in super::warp_gizmo::taps_for(motion)
-        .into_iter()
-        .chain(super::collider_gizmo::taps_for(motion))
-        // ⭐ E o gizmo de uma corrente de POSIÇÕES (ordem do dono, 2026-09-19): ele pede os sinks
-        // cujo desenho a PLACA ainda não resolveu — *«esta corrente tem aparência?»* é pergunta
-        // do cozido, e quando o dispositivo desenhou o quadro anterior a resposta já está no
-        // registo dele (ver o `ponto_gizmo::taps_for`: sem isto a tomada recozinhava a simulação
-        // inteira na CPU, ciclo 12).
-        .chain(super::ponto_gizmo::taps_for(motion, motion.pump.a_lei()))
-        // ⭐ E o gizmo do PIVÔ (ordem do dono, 2026-09-19): a saída da forma cujo `Pivot X`/`Y`
-        // está a ser arrastado AGORA — a forma e o sink dela, e só durante o gesto. ⚠️ Ele pede o
-        // sink ELE PRÓPRIO: o irmão acima deixou de pedir os que a placa já desenhou.
-        .chain(super::pivot_gizmo::taps_for(motion))
-    {
-        if !taps.contains(&n) {
-            taps.push(n);
-        }
-    }
-    motion.pump.set_taps(&taps);
-    // Só as dos sinais cozem em todo tique; as dos gizmos, só no tique desenhado.
-    motion.pump.set_taps_por_tique(motion.signal_taps.len());
-    // O que este quadro gritou, e o livro-razão de onde isso sai. Limpos aqui, não no dreno:
-    // um quadro em que o shell não drena (a ferramenta saiu de foco) não pode deixar o grito
-    // de ontem para amanhã.
-    motion.signals_out.clear();
-    motion.pump.clear_tap_fires();
-    // As MEMBRANAS: post-drain, pre-cook. O instante e' propriedade do GRUPO, entao
-    // as tres moram numa porta so (`motion_externals`).
-    quadro::coze_o_quadro(motion, gpu, playhead, fixed_dt);
+    // ── 3. O quadro: os sinks e as tomadas, e o cozimento no tique do PLAYHEAD (W4.T7) ────
+    quadro::o_quadro(motion, Some(gpu), playhead, fixed_dt);
 }
 
 /// **Re-derive everything the graph's SHAPE implies**, after any structural edit —

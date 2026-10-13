@@ -131,8 +131,8 @@ fn pan_diag_a_sonda_desligada_nao_le_nada_da_placa() {
         );
     }
 
-    // (3) a lista de tomadas da bomba não tem pedido da sonda.
-    let b = sem_comentarios(include_str!("motion_bridge.rs"));
+    // (3) a lista de tomadas da bomba não tem pedido da sonda (arma-se em `quadro::o_quadro`).
+    let b = sem_comentarios(include_str!("motion_bridge_quadro.rs"));
     let ini = b
         .iter()
         .position(|l| l.contains("let mut taps = motion.signal_taps.clone();"))

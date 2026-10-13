@@ -94,6 +94,8 @@ ph2d-gpu = { path = "../ph2d-gpu" }
 # a luz desenham-se aqui; a luz não depende do Motion.
 ph2d-light2d-gpu = { path = "../ph2d-light2d-gpu" }
 ph2d-motion-doc = { path = "../ph2d-motion-doc" }
+# A trilha do Motion numa macro (`src/macro_track/`, ADR-0186): o formato e os registos etiquetados.
+ph2d-macro = { path = "../ph2d-macro" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-render = { path = "../ph2d-render" }

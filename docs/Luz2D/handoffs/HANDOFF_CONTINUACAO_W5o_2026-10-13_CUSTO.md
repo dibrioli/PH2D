@@ -2,18 +2,16 @@
 
 > Regras R1–R9: as do [handoff W5f](HANDOFF_CONTINUACAO_W5f_2026-10-11.md). Linha `line/Luz2D` sobre `main`
 > `757afebd58` (tudo da W5n já integrado). Commits: `dc081fa8bc` (o custo: produto, portões, sondas) · `6be9d9348e`
-> `3ce1f68f6e` (docs, clippy da sonda) · `fcab331472` + `5a566833c4` (a PRECISÃO, outra família: §7) · este (docs).
+> `3ce1f68f6e` (docs, clippy da sonda) · `fcab331472` + `5a566833c4` (a PRECISÃO, outra família: §7) · `5049f0f0e9`
+> (a ABERTURA: §8) · os de docs.
 > Nada integrado, nada enviado. Método de medida: [MEDIR_VELOCIDADE.md](../../DevOps/MEDIR_VELOCIDADE.md) — as
 > variantes são CONFIG EM EXECUÇÃO no mesmo processo, 7 rodadas intercaladas, vale o MÍNIMO (a mediana ao lado).
 > Cache do driver: `__GL_SHADER_DISK_CACHE_SIZE` 16 GiB (o `GLCache` em 1,1 GB, acima do tecto antigo).
 
 ## 1. Onde estavam os «~4,4 ms do Low» — em lado nenhum
 
-A adenda da W5n leu `Low 8,87 → 13,3 · High 22,3 → 30,1 ms` no portão `a_nitidez_da_luz` **dentro da corrida do
-integrador** (o grupo `luz2d-placa`, 2 testes de placa por vez: os carimbos de um contam a fila do outro). O
-mesmo portão SOZINHO (load 4–10, 2×): **Low 3,85 · High 30,15** (sem o miolo 2,76 · 25,49). A régua por passe
-(rodada `medida_luz2d_w5o`) dá o Low da W5h **2,69** → W5n **3,89 ms**: o miolo da vista +0,66, o anel +0,23
-(`c3_fina`) e o miolo do ENTORNO +0,33. O High não segue a W5n: segue a `c2` (§3).
+A adenda da W5n leu o `a_nitidez_da_luz` na corrida do integrador (2 testes de placa por vez). Sozinho: **Low 3,85
+· High 30,15** (sem o miolo 2,76 · 25,49); por passe, o Low da W5h 2,69 → W5n 3,89 ms. O High segue a `c2` (§3).
 
 ## 2. A tabela por passe, antes × depois (RTX 5060 Ti, `smoke`, 1080p, vista de fábrica, sem o Automático)
 
@@ -32,20 +30,9 @@ Por passe (vazia · Low, a vista): `c2` 1,05 · `c3_fina` (+anel) 0,207 → 0,44
 `c3_miolo` W5n **1,067** → W5o **0,720**; entorno W5n 0,874 (miolo 0,544) → 0,306. Cena 5 · High: o entorno
 **8,70 → 2,82 ms** (a grade fina dele, que ninguém lê, custava ~5,9 ms).
 
-Fases do miolo da vista (o instrumento, vazia · Low, ms / despachos):
-
-| fase | W5n | W5o |
-|---|---|---|
-| classifica + puxa | 0,064 / 10 | 0,064 / 10 |
-| cascata: mais grosso | 0,079 / 65 | 0,030 / **1** |
-| cascata: desce | 0,340 / 196 | 0,261 / 130 |
-| ciclo: defeito + restringe | 0,086 / 27 | 0,076 / 21 |
-| ciclo: mais grosso | 0,235 / 195 | 0,056 / **3** |
-| ciclo: sobe | 0,191 / 105 | 0,155 / 75 |
-| ciclo: soma · final | 0,091 / 7 | 0,092 / 7 |
-| **soma** | **1,087 / 605** | **0,733 / 247** |
-
-O miolo é limitado pelo NÚMERO de despachos (~1,2 µs cada nos níveis minúsculos; um nível de 5×3 levava 64 por
+Fases do miolo da vista (o instrumento, vazia · Low, ms / despachos, W5n → W5o): cascata mais grosso 0,079/65 →
+0,030/**1** · cascata desce 0,340/196 → 0,261/130 · ciclo mais grosso 0,235/195 → 0,056/**3** · ciclo sobe 0,191/105
+→ 0,155/75 · o resto igual; **soma 1,087/605 → 0,733/247**. O miolo é limitado pelo NÚMERO de despachos (~1,2 µs cada nos níveis minúsculos; um nível de 5×3 levava 64 por
 ciclo), não pelo trabalho.
 
 ## 3. ⚠️ ABERTO, o maior: a `c2` do High muda 18,4–26,6 ms com o estado do ALOCADOR
@@ -54,15 +41,9 @@ A mesma configuração High, o mesmo shader, a cena vazia: o custo da cascata ho
 `gpu-allocator` põe os buffers dela (todos < 128 MB, sub-alocados: `hrc_t0`/`hrc_acumulado` 56 MB, `hrc_t1..t12`,
 `hrc_r0/r1` 31–46 MB). Um caso por PROCESSO (`medida_luz2d_w5o_lastro`, mínimo de 12 quadros, 2× cada):
 
-| antes de criar o High | `c2` |
-|---|---|
-| nada (processo novo) | 24,6 ms |
-| 1 GiB de texturas VIVAS (lastro) · 256 MB · 3 GiB | 24,6 |
-| um Low criado e LARGADO · um High criado e largado · 1 GiB escrito e largado | **18,4** |
-| um Low VIVO | 21,2 |
-| `MemoryHints::MemoryUsage` (blocos 8→64 MB) | 20,8 |
-| blocos fixos de 256 MB | 21,3 |
-| blocos de 4 MB (toda textura grande dedicada) | 26,6 |
+Antes de criar o High: nada (processo novo) **24,6 ms** · 256 MB–3 GiB de texturas VIVAS 24,6 · um Low ou um High
+criado e LARGADO, ou 1 GiB escrito e largado **18,4** · um Low vivo 21,2 · `MemoryUsage` (blocos 8→64 MB) 20,8 ·
+blocos fixos de 256 MB 21,3 · de 4 MB (tudo dedicado) 26,6.
 
 Seis instâncias no mesmo processo, criadas em série: 18,46 · 18,47 · 18,52 · 19,81 · 20,16 · 24,55 ms — segue a
 ORDEM de criação, não a variante. O portão `a_nitidez_da_luz` cria o Low antes do High e lê ~30 ms. **Não é o
@@ -85,15 +66,12 @@ medir a mesma tabela; mudar as `MemoryHints` da casa é global (todo o app) e pe
    partir do defeito do nível `b`). A 1080p `b` = 7 (315 texels, CAP 315 com o limite de 16 KiB). Jacobi não soma
    ENTRE texels: a mesma conta, na mesma ordem, dá o mesmo bit.
 
-Provas (fluência da vista pelo caminho do PRODUTO, `sonda_grava_as_fluencias_w5o`: cena 3 com a câmera em x = 2 —
-a luz de fora chega pelo entorno — e cena 5, Low e High, 80 quadros; sha256 da base `417916a7…84609d`, 2× igual):
-- corte 1, corte 1 + 2, `PH2D_LIGHT2D_CORTES=0`: `cmp` = 0 bytes. A da α = 1 (`sonda_grava_a_fluencia_a_alfa_1`)
-  também — mas ⚠️ ela NÃO vê o entorno (sem ele, 0 bytes mudam: na cena 7 tudo está na vista) nem prova a base.
-- controlos: sem o entorno 28 642 988 bytes mudam; sem o miolo 1 968 043.
-- a base corre: mutação na relaxação da cascata da base → 17 967 bytes; o `AMORTECE` da base não muda NADA nas
-  cenas 3/5 (todo texel grosso sobre um corpo tem algum filho conhecido: o erro está preso a zero nos níveis da
-  base) — por isso `sonda_grava_a_caixa_w5o`: a caixa do `o_interior_do_opaco` no zoom 2,5 (o corpo enche a
-  vista), base desligada × ligada `cmp` = 0; a mesma mutação do `AMORTECE` → 695 414 bytes.
+Provas (`sonda_grava_as_fluencias_w5o`, a fluência da vista pelo caminho do PRODUTO: cena 3 com a câmera em x = 2 —
+a luz de fora chega pelo entorno — e cena 5, Low e High, 80 quadros; a base 2× com o mesmo sha256): corte 1,
+corte 1 + 2 e `PH2D_LIGHT2D_CORTES=0` dão 0 bytes de diferença; controlos: sem o entorno mudam 28,6 M bytes, sem o
+miolo 2,0 M. ⚠️ A da α = 1 não vê o entorno (sem ele, 0 bytes mudam). A base corre: uma mutação na relaxação dela
+muda 17 967 bytes; o `AMORTECE` só se vê com um corpo a encher a vista (nas cenas 3/5 o erro grosso está preso a
+zero) — `sonda_grava_a_caixa_w5o` (a caixa no zoom 2,5): base desligada × ligada 0 bytes, a mutação 695 414.
 
 ## 5. Portões
 
@@ -138,8 +116,7 @@ frente é a mesma; só a metade de TRÁS (a que atravessa o corpo, ∝ τ) march
 |---|---|---|---|---|
 | penumbra · fundo | 0,001436 | **0,000182** | 0,000337 | 0,000292 |
 | penumbra · faixa | 0,2009 | **0,0563** | 0,0581 | 0,0771 |
-| faísca · fundo · faixa | 0,000012 · 0,0505 | 0,000012 · 0,0505 | 0,000012 · 0,0505 | 0,000020 · 0,0496 |
-| parede · fundo · faixa | 0,000050 · 0,0062 | 0,000051 · 0,0062 | 0,000050 · 0,0062 | 0,000337 · 0,0062 |
+| faísca · parede (fundo) | 0,000012 · 0,000050 | 0,000012 · 0,000051 | 0,000012 · 0,000050 | 0,000020 · 0,000337 |
 
 Rodada W5g com a variante (`medida_luz2d_w5g`): cruzamentos ×0 em tudo, TV igual, o desvio do terminador desce
 (polígonos, anel 0,97: 1,2 → 0,9 tx; imagem zoom 1: 0,4 → 0,1; zoom 1,5: 0,5 → 0,2). Custo da C3
@@ -150,15 +127,44 @@ Portão `o_interior_de_um_opaco_e_o_exterior_mais_proximo`: tetos da penumbra ao
 `o_miolo_das_formas`, `o_traco_do_flip` ×3. Nas cenas do smoke a diferença é do tamanho do arredondamento (cena 5:
 máx 0,125 numa luz de 122; cena 3: 0): o caso que muda é um corpo MEIO na sombra de outro, com lâmpada grande.
 
+## 8. A abertura (commit `5049f0f0e9`): «do abrir o app até simular a luz demora muitíssimo» (dono, 13/10)
+
+`medida_luz2d_w5o_abertura` (a luz do produto com a estufa, cena 5, 1080p) e o app real num ecrã virtual
+(`fotografa_cena.sh` com `PH2D_LIGHT2D_TEMPO=1`; ⚠️ ele isola o `HOME`, logo o cache do driver: aponte
+`__GL_SHADER_DISK_CACHE_PATH=/home/enio/.cache/nvidia` para medir o cache real):
+
+| | primeira luz | estufa inteira |
+|---|---|---|
+| cache do driver QUENTE (antes e depois) | 0,06 s | 0,12 s |
+| frio, antes (uma configuração por vez, em série) | 14–20 s | 47–55 s |
+| frio, depois (load 8–12) | **6,2–6,7 s** | ~13 s |
+| app real, cache real: 1.ª abertura depois de shaders novos · 2.ª | 9,6 s · **0,06 s** | — |
+
+O frio acontece só quando os SHADERS mudam (toda build que os toca): zoom e janela não mudam as constantes
+(`medida_luz2d_w5o_constantes_do_zoom`: (fina, captura) = (4,8) · (2,4) · (1,2) por nível em 1280–2560 px e 64
+zooms), e o cache é um só para todos os programas (`~/.cache/nvidia/GLCache`). Onde ia o tempo
+(`PH2D_LIGHT2D_COMPILA=1`): 63 pipelines, 14 delas (a fina e o anel) ~45 s, 2–4,7 s cada.
+
+Cortes: a fina e o anel (e as duas variantes dos distantes) compilam em paralelo (`Par::em_paralelo`,
+`solver_c3_par.rs`); o entorno não cria o que não corre; a estufa monta até ¼ dos núcleos de configurações ao
+mesmo tempo, e as PEDIDAS montam sozinhas (primeira luz 7,4–8,2 → 6,2 s, alternado); a fábrica espera por uma
+pipeline que outro fio já compila (116–124 → 58 compilações). ⛔ **A régua estava errada**:
+`pipelines_compiladas_ao_nascer` era a conta da FÁBRICA inteira na janela do nascimento — com a estufa a
+compilar noutros fios, o solver do nível inicial herdava as compilações dela (`a_luz_nasce_na_estufa`: 1 em 3–4,
+«1–2 pipelines» sem nenhuma compilação depois da estufa ociosa; bisseção com 6–8 corridas por variante: só o C3
+em paralelo a mostrava — uma corrida por variante tinha acusado a fábrica). Cura: `Placa::conta`, cada montagem
+conta o que ELA compilou; 10/10. ⛔ O que falta para «imediato» a frio é o custo de compilar a própria grade
+fina (2–4,7 s por pipeline): o próximo passo é medir o que nela pesa no compilador (os laços com limites
+constantes — `RAIOS_DIRETOS`, `BISSECOES` — desenrolados?) antes de mexer.
+
 ## Para o integrador
 
 - Foundational tocada: só `ph2d-light2d-gpu` — três campos PÚBLICOS novos (`Config::so_a_c0`, `Config::face_pelo_ponto`, `Miolo::base_no_grupo`;
   todo literal da workspace usa `..`, `grep 'Miolo {'` / `'Config {'`), o buffer `luz2d/buf/miolo` +4 fatias de
   256 B (declarado na `PassList`: o G5 conta-o). Nenhum contrato congelado (§6) tocado.
 - A §5.1 já aponta este handoff (pedido do dono; troca do link só, 684 B).
-- Instrumentos versionados: `crates/ph2d-app-light2d/tests/it/medida_luz2d_w5o.rs` (a rodada, a série e as
-  instâncias, o lastro com `PH2D_W5O_LASTRO=<mb>[-largado]|low|low-vivo|high`, `PH2D_W5O_DICAS=memoria|256|4`,
-  `PH2D_W5O_LISTA=1`; as duas sondas que gravam) e `Solver::medir_fases_do_miolo`.
+- Instrumentos versionados: `tests/it/medida_luz2d_w5o.rs` do app (as rodadas e as duas sondas que gravam; as
+  variáveis no cabeçalho de cada teste), `Solver::medir_fases_do_miolo`, `PH2D_LIGHT2D_TEMPO=1` e `_COMPILA=1`.
 
 ## Smoke do dono
 
@@ -172,36 +178,16 @@ máx 0,125 numa luz de 122; cena 3: 0): o caso que muda é um corpo MEIO na somb
 
 ## Gate e binário
 
-Gate batched 1× (verificador, `dc081fa8bc`, load 9 → 130 — outras linhas a compilar): `nextest-impacted` (régua
-= merge-base, `PH2D_GPU=1`) 10 040 corridos, 10 039 verdes; o vermelho `ph2d-physics-ecs`
-`the_cost_of_a_player_is_linear_in_their_number` (12,46× contra ~7×) é de outra crate, fora do diff, e passa 3/3
-sozinho (load 32–44) — flake de carga. Verdes dentro dele: `g5_bytes_declarados`, `o_custo_do_miolo` ×2,
-`c3_grade_fina` ×6, `o_interior_do_opaco_nao_depende_da_posicao_na_grade`, `o_rebote_nao_depende_da_oitava`,
-`as_formas_redondas` ×4, `a_nitidez_da_luz` ×6, `architecture_workspace_file_loc_cap`. `cargo check --workspace
---all-targets` com warnings = deny ✓ · `check-standalone-optional` ✓ · `check-workflow-packages` ✓ · `fmt --check`
-✓ · clippy `--all-targets -D warnings`: 4 avisos na sonda `medida_luz2d_w5o.rs` (`type_complexity` ×2,
-`unnecessary_sort_by` ×2), curados no commit dos docs e relidos limpos.
-
-**2.º gate batched, sobre a precisão** (`fcab331472`): o único vermelho `o_translucido_da_placa_e_o_do_gabarito`
-(real, curado em `5a566833c4`, §7); check `--workspace` deny ✓, clippy relido ✓, fmt ✓, standalone/workflow ✓.
-**Gate final** (`5a566833c4`, `nextest-impacted`, régua = merge-base, `PH2D_GPU=1`, load 49 → 3): **10 040 / 10 040
-verdes** (3 lentos), 18 819 saltados.
-
-Perfil do loop (`scripts/agent-loop-profile.sh`, as 20 sessões mais recentes da máquina):
+Gates batched (`nextest-impacted`, régua = merge-base, `PH2D_GPU=1`): sobre `5a566833c4` **10 040/10 040**; sobre
+`5049f0f0e9` 10 038/10 040 com load 62–95 — os 2 vermelhos (`g4_o_custo_do_rc_nao_depende_do_numero_de_luzes`,
+`g4_o_custo_da_holografica_…`: relógio das cascatas, que o diff não toca) passam **3/3 sozinhos** (load ~20).
+Verdes também: check `--workspace --all-targets` deny, clippy `-D warnings`, fmt, standalone/workflow. Perfil:
 
 ```
-  ✗ paralelismo de ferramenta              1.13/passo   alvo: >= 1,5  (10% dos passos com 2+ chamadas)
-  ✓ respostas por sessao (mediana)                154   alvo: <= 800  (uma janela nova por onda de trabalho)
-  ✗ cargo test : cargo check                550 : 128   alvo: <= 1,0  razao 4.3x (baseline: 4,3x)
-  ✗ edicoes pela ferramenta Edit                  45%   alvo: >= 80%  (583 por script; baseline: 48%)
-  ✗ contexto relido por passo (media)         366 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
+  ✗ paralelismo de ferramenta              1.13/passo   alvo: >= 1,5  (9% dos passos com 2+ chamadas)
+  ✓ respostas por sessao (mediana)                200   alvo: <= 800  (uma janela nova por onda de trabalho)
+  ✗ cargo test : cargo check                666 : 158   alvo: <= 1,0  razao 4.2x (baseline: 4,3x)
+  ✗ edicoes pela ferramenta Edit                  43%   alvo: >= 80%  (702 por script; baseline: 48%)
+  ✗ contexto relido por passo (media)         375 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
   ✓ contexto no inicio da sessao               63 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
-```
-
-Binário do smoke (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida, sobre
-`5f4c968e57`):
-
-```
-▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.22s
 ```

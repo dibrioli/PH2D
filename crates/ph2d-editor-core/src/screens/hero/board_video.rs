@@ -157,11 +157,23 @@ pub fn fullscreen(hero: &HeroScreen) -> bool {
 use crate::documents::{VideoClick, VideoTrail};
 use ph2d_board_model::Video;
 
-/// O carregar no quadro. `true` = era do vídeo (só no nosso ecrã inteiro, onde o tocador toma tudo). Os
-/// pans (o botão do meio — também o dos dois dedos —, o Espaço, a mão) nunca são do vídeo; com a ferramenta
-/// de seleccionar, o carregar num vídeo fica à espera do largar ([`VideoClick`]); com outra, a ferramenta faz
-/// o seu por cima dele. Carregar fora do vídeo activo desactiva-o — tira-lhe o rato, não a imagem (W20).
-pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButton) -> bool {
+/// W21 — segurar parado mais do que isto e largar não é um clique: o «segurar» do rato da casa (o oráculo
+/// fica perto de 300 ms, `sonda_w21.mjs` T1; a casa vence, `10_video_do_youtube.md` §W21).
+pub(crate) const HOLD_NS: u128 = crate::interaction::LONG_PRESS_THRESHOLD_NS;
+
+/// O carregar no quadro. `true` = era do vídeo (no nosso ecrã inteiro, onde o tocador toma tudo, e o de outra
+/// ferramenta à espera). Os pans (o botão do meio — também o dos dois dedos —, o Espaço, a mão) nunca são do
+/// vídeo. Num vídeo, o carregar fica à espera do largar ([`VideoClick`]): com a ferramenta de seleccionar
+/// segue também para o editor; com outra (W21, o dono: «clique = play/pause»), o editor só o recebe se virar
+/// arrasto ou segurar ([`deferred_drag`], [`deferred_hold`]). O laser aponta, não é do vídeo. Carregar fora
+/// do vídeo activo desactiva-o — tira-lhe o rato, não a imagem (W20).
+pub(crate) fn pointer_down(
+    hero: &mut HeroScreen,
+    x: f32,
+    y: f32,
+    b: PointerButton,
+    now_ns: u128,
+) -> bool {
     let p = [f64::from(x), f64::from(y)];
     let space = hero.documents.live.space;
     let Some((board, live)) = hero.documents.active_parts() else {
@@ -195,16 +207,19 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
         return false;
     }
     let select = matches!(tool, None | Some(Tool::Select));
+    let other = !select && tool != Some(Tool::Laser);
     if let Some(id) = vids.active {
         match player_at(vids, id) {
-            Some(pt) if select && b == PointerButton::Primary => {
+            Some(pt) if (select || other) && b == PointerButton::Primary => {
                 live.video_click = Some(VideoClick {
                     id,
                     at: p,
                     player: Some(pt),
                     dragged: false,
+                    at_ns: now_ns,
+                    tool: other,
                 });
-                return false;
+                return other;
             }
             Some(_) if !select => return false,
             // O botão direito é do tocador no carregar (o menu dele).
@@ -221,7 +236,7 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
             None => vids.active = None,
         }
     }
-    if !select || b != PointerButton::Primary {
+    if !(select || other) || b != PointerButton::Primary {
         return false;
     }
     let selected = live
@@ -236,12 +251,12 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
         let zc = board.doc.get(*c).map(|e| e.z.clone());
         zc.cmp(&za)
     });
+    // Com a selecção, o play ou um vídeo já seleccionado; com outra ferramenta, qualquer ponto do tocador.
     let hit = ids.into_iter().find(|&id| {
         board.doc.get(id).is_some_and(|el| {
-            let again = selected.len() == 1
-                && selected.contains(&id)
-                && vids.player_point(id, el, p).is_some();
-            vids.on_play(id, el, p) || again
+            let inside = vids.player_point(id, el, p).is_some();
+            let again = selected.len() == 1 && selected.contains(&id) && inside;
+            (other && inside) || vids.on_play(id, el, p) || again
         })
     });
     live.video_click = hit.map(|id| VideoClick {
@@ -249,8 +264,33 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
         at: p,
         player: None,
         dragged: false,
+        at_ns: now_ns,
+        tool: other,
     });
-    false
+    other && hit.is_some()
+}
+
+/// W21 — um carregar num vídeo com outra ferramenta na mão passou o limiar de arrasto em `(x, y)`: deixa de
+/// ser um clique e o ponto onde carregou (ecrã) vai para o editor.
+pub(crate) fn deferred_drag(hero: &mut HeroScreen, x: f32, y: f32) -> Option<[f64; 2]> {
+    let live = &mut hero.documents.live;
+    let c = live.video_click.filter(|c| c.tool)?;
+    let far = (f64::from(x) - c.at[0]).hypot(f64::from(y) - c.at[1]) > super::board_view::metrics().drag;
+    far.then(|| {
+        live.video_click = None;
+        c.at
+    })
+}
+
+/// W21 — o largar de um carregar num vídeo com outra ferramenta, segurado parado além de [`HOLD_NS`]: não é
+/// clique, e o ponto onde carregou vai para o editor (a ferramenta faz o seu clique).
+pub(crate) fn deferred_hold(hero: &mut HeroScreen, now_ns: u128) -> Option<[f64; 2]> {
+    let live = &mut hero.documents.live;
+    let c = live
+        .video_click
+        .filter(|c| c.tool && now_ns.saturating_sub(c.at_ns) >= HOLD_NS)?;
+    live.video_click = None;
+    Some(c.at)
 }
 
 /// O clique (sem arrasto) num vídeo: activo e vivo, vai ao tocador; senão activa-o — e o clique num vídeo
@@ -335,16 +375,17 @@ pub(crate) fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
 
 /// O largar de um carregar que foi do tocador (`true` = era dele), ou de um à espera ([`VideoClick`]): sem
 /// arrasto é o clique; o largar segue para o editor (que fecha o gesto dele).
-pub(crate) fn pointer_up(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
+pub(crate) fn pointer_up(hero: &mut HeroScreen, x: f32, y: f32, now_ns: u128) -> bool {
     let p = [f64::from(x), f64::from(y)];
     let Some((board, live)) = hero.documents.active_parts() else {
         return false;
     };
     if let Some(c) = live.video_click.take() {
-        if !c.dragged {
+        if !c.dragged && now_ns.saturating_sub(c.at_ns) < HOLD_NS {
             click(hero, c);
         }
-        return false;
+        // Com outra ferramenta o editor nunca viu o carregar: o largar é todo do vídeo.
+        return c.tool;
     }
     if !std::mem::take(&mut live.video_press) {
         return false;

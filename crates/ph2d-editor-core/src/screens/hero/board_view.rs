@@ -171,6 +171,64 @@ pub fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
     true
 }
 
+/// O carregar no quadro que é do editor (ou do pan). Também o de um carregar num vídeo com outra ferramenta
+/// na mão, entregue depois, quando o gesto deixou de ser um clique (`board_video::deferred_*`, W21).
+fn canvas_down(
+    hero: &mut HeroScreen,
+    input: Input<'_>,
+    button: PointerButton,
+    x: f32,
+    y: f32,
+) -> bool {
+    let area = area_of(hero.last_canvas);
+    let theme = hero.theme;
+    // Um clique no quadro fecha a galeria dos modelos (W6).
+    hero.documents.live.templates_open = false;
+    // ⚠️ Tomar o Down antes do despacho herda a obrigação dele de largar o foco: sem isto o
+    // campo de renomear uma aba (ou qualquer campo do chrome) ficava com o teclado.
+    let arena = bumpalo::Bump::new();
+    for e in hero.blur_focus(&arena).to_vec() {
+        hero.apply_event(e);
+    }
+    let space = hero.documents.live.space;
+    let Some((board, live)) = hero.documents.active_parts() else {
+        return false;
+    };
+    let pan = |hero: &mut HeroScreen| {
+        hero.documents.pan_from = Some([f64::from(x), f64::from(y)]);
+        true
+    };
+    match button {
+        PointerButton::Middle => return pan(hero),
+        PointerButton::Primary if space => return pan(hero),
+        PointerButton::Primary => {}
+        _ => return true,
+    }
+    let p = world_pointer(board, area, x, y, input.mods);
+    let view = view_rect(board, area);
+    let double = live.last_down.is_some_and(|(t, at)| {
+        input.now_ns.saturating_sub(t) < DOUBLE_CLICK_NS
+            && (at[0] - x).hypot(at[1] - y) <= crate::interaction::TAB_DRAG_THRESHOLD_PX
+    });
+    live.last_down = (!double).then_some((input.now_ns, [x, y]));
+    let history = live.histories.entry(board.id).or_default();
+    let ed = editor(&mut live.editor, theme);
+    // Um gesto pendurado fecha-se antes de o novo começar.
+    ed.finish_gesture(&mut board.doc, history);
+    // O que nasce num quadro em rascunho nasce à mão (W4).
+    ed.style.sketch = board.sketch;
+    if double && ed.double_click(&mut board.doc, history, input.text, p) {
+        live.gesture = ed.is_busy();
+        return true;
+    }
+    if ed.pointer_down(&mut board.doc, history, input.text, p, view) == Down::Pan {
+        live.gesture = false;
+        return pan(hero);
+    }
+    live.gesture = ed.is_busy();
+    true
+}
+
 /// Um botão sobre a área de um quadro activo. `on_canvas` = nenhum painel nem controlo por baixo.
 /// `true` = consumido.
 #[allow(clippy::too_many_arguments)]
@@ -195,55 +253,13 @@ pub fn pointer(
     match kind {
         // K2 — uma bolha de comentário (um controlo, não o quadro) arrasta-se para outro sítio.
         PointerKind::Down if super::board_nav::team::bubble_down(hero, x, y, button) => true,
-        PointerKind::Down if on_canvas && super::board_nav::pointer_down(hero, x, y, button) => {
+        PointerKind::Down
+            if on_canvas && super::board_nav::pointer_down(hero, x, y, button, input.now_ns) =>
+        {
             true
         }
         PointerKind::Down if on_canvas && inside(hero.last_canvas, x, y) => {
-            // Um clique no quadro fecha a galeria dos modelos (W6).
-            hero.documents.live.templates_open = false;
-            // ⚠️ Tomar o Down antes do despacho herda a obrigação dele de largar o foco: sem isto o
-            // campo de renomear uma aba (ou qualquer campo do chrome) ficava com o teclado.
-            let arena = bumpalo::Bump::new();
-            for e in hero.blur_focus(&arena).to_vec() {
-                hero.apply_event(e);
-            }
-            let space = hero.documents.live.space;
-            let Some((board, live)) = hero.documents.active_parts() else {
-                return false;
-            };
-            let pan = |hero: &mut HeroScreen| {
-                hero.documents.pan_from = Some([f64::from(x), f64::from(y)]);
-                true
-            };
-            match button {
-                PointerButton::Middle => return pan(hero),
-                PointerButton::Primary if space => return pan(hero),
-                PointerButton::Primary => {}
-                _ => return true,
-            }
-            let p = world_pointer(board, area, x, y, input.mods);
-            let view = view_rect(board, area);
-            let double = live.last_down.is_some_and(|(t, at)| {
-                input.now_ns.saturating_sub(t) < DOUBLE_CLICK_NS
-                    && (at[0] - x).hypot(at[1] - y) <= crate::interaction::TAB_DRAG_THRESHOLD_PX
-            });
-            live.last_down = (!double).then_some((input.now_ns, [x, y]));
-            let history = live.histories.entry(board.id).or_default();
-            let ed = editor(&mut live.editor, theme);
-            // Um gesto pendurado fecha-se antes de o novo começar.
-            ed.finish_gesture(&mut board.doc, history);
-            // O que nasce num quadro em rascunho nasce à mão (W4).
-            ed.style.sketch = board.sketch;
-            if double && ed.double_click(&mut board.doc, history, input.text, p) {
-                live.gesture = ed.is_busy();
-                return true;
-            }
-            if ed.pointer_down(&mut board.doc, history, input.text, p, view) == Down::Pan {
-                live.gesture = false;
-                return pan(hero);
-            }
-            live.gesture = ed.is_busy();
-            true
+            canvas_down(hero, input, button, x, y)
         }
         PointerKind::Down => {
             // Um carregar FORA do quadro (um botão da barra, um painel): um gesto pendurado fecha-se
@@ -259,8 +275,18 @@ pub fn pointer(
             false
         }
         PointerKind::Up => {
-            if hero.documents.pan_from.take().is_some() || super::board_nav::pointer_up(hero, x, y)
-            {
+            if hero.documents.pan_from.take().is_some() {
+                return true;
+            }
+            // W21 — segurado parado num vídeo com outra ferramenta: não foi clique, é da ferramenta.
+            if let Some([ax, ay]) = super::board_video::deferred_hold(hero, input.now_ns) {
+                let replay = Input {
+                    text: &mut *input.text,
+                    mods: input.mods,
+                    now_ns: input.now_ns,
+                };
+                canvas_down(hero, replay, PointerButton::Primary, ax as f32, ay as f32);
+            } else if super::board_nav::pointer_up(hero, x, y, input.now_ns) {
                 return true;
             }
             let Some((board, live)) = hero.documents.active_parts() else {
@@ -286,6 +312,15 @@ pub fn pointer(
 pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> bool {
     // W11 — o meu cursor no quadro da sala (a família manda-o aos outros).
     super::board_nav::team::live_board::cursor(hero, x, y);
+    // W21 — um carregar num vídeo com outra ferramenta virou arrasto: a ferramenta começa onde carregou.
+    if let Some([ax, ay]) = super::board_video::deferred_drag(hero, x, y) {
+        let replay = Input {
+            text: &mut *input.text,
+            mods: input.mods,
+            now_ns: input.now_ns,
+        };
+        canvas_down(hero, replay, PointerButton::Primary, ax as f32, ay as f32);
+    }
     if super::board_nav::pointer_move(hero, x, y) {
         return true;
     }

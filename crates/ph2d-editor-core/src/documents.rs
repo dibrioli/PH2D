@@ -107,6 +107,12 @@ pub(crate) struct VideoClick {
     pub(crate) player: Option<[f64; 2]>,
     /// Passou do limiar de arrasto da casa: o gesto foi do editor.
     pub(crate) dragged: bool,
+    /// W21 — o relógio do carregar (`board_view::Input::now_ns`): segurado parado além do clique longo, o
+    /// largar não é clique.
+    pub(crate) at_ns: u128,
+    /// W21 — com outra ferramenta na mão: o editor ainda não viu o carregar (recebe-o se o gesto deixar de
+    /// ser um clique).
+    pub(crate) tool: bool,
 }
 
 /// ⭐ W20 — os vídeos por onde uma janela passou, por ordem (o 1.º é o ORIGINAL), e onde está. A verdade do

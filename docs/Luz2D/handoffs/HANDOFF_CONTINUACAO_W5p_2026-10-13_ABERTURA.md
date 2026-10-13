@@ -107,8 +107,11 @@ Pelo caminho do PRODUTO (`a_nitidez_da_luz`, `LuzDoQuadro`, 3× alternado, um pr
    `__GL_SHADER_DISK_CACHE_SIZE` (um binário corrido direto, ou os testes de uma linha cuja base ainda não tem o
    `[env]` do `.cargo/config.toml` — a motion-value às 14:57) apara-o e despeja a luz: o app real, aquecido,
    abriu de novo a FRIO minutos depois (2,18 → 0,05 → 1,56 → 0,05 → 2,33 s). O `fotografa_cena.sh` passou a
-   correr com os 16 GiB. A cura que pega todas as linhas é a variável na SESSÃO do dono
-   (`~/.config/environment.d/`) — decisão dele (perguntada).
+   correr com os 16 GiB. A cura que pega todas as linhas: a variável na SESSÃO do dono — FEITA com o sim dele
+   (`~/.config/environment.d/60-nvidia-shader-cache.conf`, 16 GiB; vale para o que nascer depois de ele sair e
+   entrar de novo). ⚠️ Um `systemctl --user import-environment` SEM argumentos copiou o ambiente inteiro do agente
+   para o gestor da sessão (`ELECTRON_RUN_AS_NODE`, `CLAUDE_*`, `VSCODE_*`…) — desfeito variável a variável (126 →
+   82); nunca o corra sem nomes.
 1. **O resto da `c2` do High** (19,0 contra 18,4 do melhor caso): o mecanismo do regime lento. A arena da W5o §3 foi
    feita e **recusada** (tabela abaixo: a alocação única e grande cai SEMPRE no lento, 26,6 ms, como os blocos de
    4 MB dedicados da W5o).

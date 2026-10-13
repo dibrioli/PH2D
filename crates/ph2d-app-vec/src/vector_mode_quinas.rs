@@ -55,10 +55,12 @@ pub(crate) const KINDS: [ShapeKind; 36] = [
     K::RopeSegment,
 ];
 
-/// Nove por fila, quatro filas (m).
+/// Nove por fila, quatro filas (m), deslocadas para a área livre entre a paleta e o Inspector
+/// (fotografado a 1930 × 1040: livre de −5 m a +6,4 m).
 const COLS: usize = 9;
-const PITCH: f64 = 1.55;
-pub(crate) const MEIA: f64 = 0.55;
+const PITCH: f64 = 1.25;
+const DX: f64 = 0.7;
+pub(crate) const MEIA: f64 = 0.5;
 
 /// Metros por pixel da vista de omissão — o mesmo das outras cenas.
 const PX: f64 = 0.01;
@@ -78,7 +80,7 @@ pub(crate) fn centre(i: usize) -> [f64; 2] {
     let (col, row) = ((i % COLS) as f64, (i / COLS) as f64);
     let rows = KINDS.len().div_ceil(COLS) as f64;
     [
-        (col - (COLS as f64 - 1.0) * 0.5) * PITCH,
+        (col - (COLS as f64 - 1.0) * 0.5) * PITCH + DX,
         ((rows - 1.0) * 0.5 - row) * PITCH,
     ]
 }

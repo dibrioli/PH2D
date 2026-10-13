@@ -112,11 +112,8 @@ fn a_shape_field_recooks_the_selected_live_shape_in_place() {
 fn a_field_that_the_shape_does_not_have_leaves_it_alone() {
     // A pílula não declara parâmetro nenhum (o rectângulo ganhou o raio na F14): TODO campo tem de
     // ser recusado.
-    let (mut sim, mut scene, map, id) = live_shape(
-        ShapeKind::Pill,
-        ShapeKind::Pill.defaults(),
-        [0.0, 0.0],
-    );
+    let (mut sim, mut scene, map, id) =
+        live_shape(ShapeKind::Pill, ShapeKind::Pill.defaults(), [0.0, 0.0]);
     let before = anchors(&scene, id);
     let edited = edit_selected_shape(
         &mut sim,

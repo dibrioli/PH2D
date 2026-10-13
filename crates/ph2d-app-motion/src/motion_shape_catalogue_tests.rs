@@ -436,3 +436,28 @@ fn which_kinds_the_corner_moves() {
   e' curta de proposito: sao as formas sem quina nenhuma."
     );
 }
+
+/// F14: o `corner` do Motion É o «Corner round» do Vetor — a mesma porta
+/// (`round_shape_corners`), sub-contornos e linhas da face incluídos, em toda espécie cuja
+/// receita não tem raio próprio.
+#[test]
+fn the_corner_is_the_vector_corner_round() {
+    for kind in ALL_KINDS {
+        if CORNER_IN_THE_RECIPE.contains(kind) {
+            continue;
+        }
+        let p = ShapeParams {
+            kind: *kind,
+            corner: 0.3,
+            ..neutral()
+        };
+        let (k, a, b, v) = vec_recipe(&p);
+        let want = ph2d_vec_scene::round_shape_corners(
+            ph2d_vec_scene::cook(k, a, b, &v),
+            f64::from(p.corner) * f64::from(p.size),
+        );
+        let got = build_shape_path(&p);
+        assert_eq!(got.verts, want.verts, "{kind:?}");
+        assert_eq!(got.subpaths, want.subpaths, "{kind:?}");
+    }
+}

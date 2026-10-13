@@ -225,3 +225,25 @@ fn the_engine_sees_every_corner_the_geometry_has() {
         }
     }
 }
+
+/// Um FURO com quinas (um sub-contorno fechado) arredonda como o contorno de fora.
+#[test]
+fn a_closed_hole_rounds_too() {
+    let square = |lo: f64, hi: f64| -> Vec<VecVertex> {
+        [[lo, lo], [hi, lo], [hi, hi], [lo, hi]]
+            .into_iter()
+            .map(VecVertex::corner)
+            .collect()
+    };
+    let p = VecPath {
+        verts: square(0.0, 4.0),
+        closed: true,
+        subpaths: vec![crate::Contour::new_closed(square(1.0, 3.0))],
+        ..VecPath::default()
+    };
+    let out = round_shape_corners(p, 0.3);
+    for (vs, closed) in rounded_contours(&out) {
+        assert_eq!(vs.len(), 8, "quatro quinas, dois pontos cada");
+        assert!((0..vs.len()).all(|i| corner_at(vs, closed, i).is_none()));
+    }
+}

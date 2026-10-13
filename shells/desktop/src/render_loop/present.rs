@@ -394,6 +394,7 @@ impl crate::App {
             // ADR-0111: o `Transform` de cada objeto Flip vem do ECS; o passe o dobra
             // no `world_to_clip` (a arte é LOCAL). Identidade = sem custo.
             sim,
+            hero_screen,
             ..
         } = gfx;
         // Pass 1b: Flip (ADR-0114 W1) composto por-camada (blend/opacity via
@@ -438,15 +439,15 @@ impl crate::App {
             scene_viewport,
             surface.gpu(),
         );
-        // ⭐⭐⭐ **AS FORMAS DO MOTION, pela placa** (doc 121 W2/W3) — DESENHADAS aqui, antes do halo
-        // que as redesenha (§9.14), e COLADAS no mundo onde sempre foram (`present_chrome`). ⚠️ O buffer
-        // do DISPOSITIVO só com o cozimento vivo — o mesmo `gpu_live` que o passe de sprites pergunta.
-        let do_dispositivo = motion.gpu_cook.formas().filter(|_| motion.gpu_live);
+        // ⭐⭐⭐ **AS FORMAS DO MOTION, pela placa** (doc 121 W2/W3, P4) — DESENHADAS aqui, antes do halo
+        // que as redesenha (§9.14), e COLADAS no mundo onde sempre foram (`present_chrome`).
+        let projeto = hero_screen.as_ref().map(|h| h.project.image_filter);
         let tamanho = (window_size.width, window_size.height);
-        let geos = &motion.placa_geometrias;
-        let buffer = do_dispositivo.map(|f| f.buffer());
         let placa = &mut self.motion_shell.placa;
-        let _ = placa.desenha(surface.gpu(), tamanho, geos, buffer);
+        let (gpu, filtro) = (surface.gpu(), projeto.unwrap_or_default());
+        let _ = ph2d_app_motion::motion_shape_placa::desenha_o_quadro(
+            placa, gpu, tamanho, motion, renderer, filtro,
+        );
         // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
         // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o
         // corte é por RESPONSABILIDADE: os dois somam luz sobre o `game_rt` antes do

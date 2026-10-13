@@ -4995,6 +4995,7 @@ name = "ph2d-app-motion"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
+ "naga",
  "ph2d-anim",
  "ph2d-app-host",
  "ph2d-asset",

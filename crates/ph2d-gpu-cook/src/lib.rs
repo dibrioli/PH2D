@@ -80,6 +80,7 @@ pub mod reduce_stage;
 pub mod ring;
 mod saidas;
 pub use saidas::ordem_reproduzivel;
+pub mod imagens_do_grupo;
 pub mod scan;
 pub mod shape;
 pub mod stream;
@@ -87,11 +88,11 @@ mod stream_op;
 pub mod tap;
 mod tap_voo;
 mod tex_runs;
-mod vigia;
 pub mod voronoi;
 
-pub use debug_read::{read_formas, read_instances};
+pub use debug_read::{read_formas, read_imagens_do_grupo, read_instances};
 pub use error::GpuCookError;
+pub use imagens_do_grupo::GpuImagensDoGrupo;
 pub use instances::GpuInstances;
 pub use plan::{
     DrivenParams, GpuPlan, GpuSource, GpuStage, device_driven_params, plan, plan_driven,
@@ -647,10 +648,8 @@ impl GpuCook {
         )?;
         // ⭐ A leitura dos cartões vai no MESMO submit (doc 122 §5) — ver `crate::tap_voo`.
         let tap = self.tap_no_cozimento(gpu, &mut encoder);
-        let vigia = self.vigia_no_cozimento(gpu, &mut encoder);
         gpu.queue.submit(Some(encoder.finish()));
         self.tap_depois_do_submit(tap);
-        self.vigia_depois_do_submit(vigia);
 
         // D1 — the ping-pong: hold the `Arc`s of every node a `pre` edge reads,
         // by the SAME rule the CPU pump uses (`Cook::advance_tick_scoped`

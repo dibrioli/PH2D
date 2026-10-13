@@ -52,9 +52,16 @@ const FORA: &[Isento] = &[
         // (isento acima) e a cerca da mistura em grupo saiu para um ficheiro próprio, partida nos
         // cinco motivos que ela agora distingue — a mesma porta `say_route`.
         "motion_bridge_gpu_mistura.rs",
-        "as RAZÕES da cerca da mistura em grupo (sem memória da CPU · imagem no grupo · o mundo \
-         por baixo · Multiply sem a 2.ª saída · misturas desligadas), irmãs das de cima e pela \
-         mesma porta `say_route` — impressas atrás de `PH2D_MOTION_ROUTE_LOG`, nunca no ecrã",
+        "as RAZÕES da cerca da mistura em grupo (o mundo partido · o Scene no dispositivo · \
+         Multiply sem a 2.ª saída · misturas desligadas), irmãs das de cima e pela mesma porta \
+         `say_route` — impressas atrás de `PH2D_MOTION_ROUTE_LOG`, nunca no ecrã",
+    ),
+    (
+        // P4 (doc 132 §4): o passe das IMAGENS de um grupo na placa — o módulo WGSL monta-se em
+        // Rust (as palavras do `RenderInstance` contadas pelo `offset_of!`, a variante do Multiplica).
+        "motion_shape_placa_imagens.rs",
+        "os pedaços de WGSL do módulo das imagens da placa e os RÓTULOS de depuração do wgpu (o \
+         que aparece no RenderDoc) — código de shader, nunca o ecrã",
     ),
     (
         "motion_glow_layer.rs",

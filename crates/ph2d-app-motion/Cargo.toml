@@ -107,6 +107,8 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-shape-gpu = { path = "../ph2d-shape-gpu" }
+# P4 (doc 132 §4): o uniforme das imagens de um grupo na placa de formas.
+bytemuck = { version = "1", features = ["derive"] }
 ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
 ph2d-system-fonts = { path = "../ph2d-system-fonts" }
 ph2d-vec-text = { path = "../ph2d-vec-text" }
@@ -140,6 +142,8 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bytemuck = { version = "1", features = ["extern_crate_alloc"] }
+# P4: o gate que valida o WGSL das imagens da placa sem adaptador.
+naga = { version = "29.0.4", features = ["wgsl-in"] }
 # ⚠️ Só para o gate do roteiro da cena `=125`, que deriva o nome do cartão dos OSSOS do
 # registo em vez de o escrever à mão. O produto alcança o nó pelo `ph2d-node-registry-init`.
 ph2d-node-rig-bones = { path = "../ph2d-node-rig-bones" }

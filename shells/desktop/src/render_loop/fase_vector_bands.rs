@@ -120,27 +120,16 @@ impl crate::App {
         // ⭐⭐⭐ **AS FORMAS DO MOTION NA PLACA?** (doc 121 W2/W3, B5) — decidido antes de o documento
         // ser codificado (com elas na placa ele vai às FAIXAS); no DISPOSITIVO o buffer é o dele.
         let por_ordem = ph2d_app_motion::motion_shape_placa::por_ordem();
-        let (misturas, corridas) =
-            ph2d_app_motion::motion_shape_placa::misturas_do_quadro(surface.gpu(), motion);
-        let placa = match motion.gpu_cook.formas().filter(|_| motion.gpu_live) {
-            Some(f) => self.motion_shell.placa.decide_do_dispositivo(
+        let placa = ph2d_app_motion::motion_shape_placa::decide_o_quadro(
+            &mut self.motion_shell.placa,
+            surface.gpu(),
+            motion,
+            (
                 motion_tool_active && por_ordem,
-                f.len(),
-                &motion.formas_no_dispositivo,
-                &motion.shape_store,
-                &mut motion.placa_geometrias,
-                cam_affine,
-                corridas,
-            ),
-            None => self.motion_shell.placa.decide_com_misturas(
                 motion_tool_active && !*frosting && por_ordem,
-                &motion.pump.vector_instances,
-                &motion.shape_store,
-                &mut motion.placa_geometrias,
-                cam_affine,
-                misturas,
             ),
-        };
+            cam_affine,
+        );
         // ⭐ A LUZ 2D (W3): acesa, o documento vai às FAIXAS (a colagem acende-o); sem `Luz`, `false`.
         let docs = (&mut *vec_scene, &vec_xf, &mut *flip);
         let luz_acesa = luz2d.codificar(sim.world_mut(), surface, cam_affine, docs);

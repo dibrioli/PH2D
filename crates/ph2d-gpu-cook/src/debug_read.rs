@@ -144,7 +144,20 @@ pub fn read_instances(
     gpu: &GpuContext,
     instances: &GpuInstances,
 ) -> Vec<ph2d_render::RenderInstance> {
-    let n = instances.len as usize;
+    le_linhas(gpu, &instances.buffer, instances.len)
+}
+
+/// ⭐ P4 — **as linhas de imagem que as saídas em grupo entregaram à placa**, como
+/// [`ph2d_render::RenderInstance`]. A mesma regra do [`read_instances`].
+pub fn read_imagens_do_grupo(
+    gpu: &GpuContext,
+    imagens: &crate::imagens_do_grupo::GpuImagensDoGrupo,
+) -> Vec<ph2d_render::RenderInstance> {
+    le_linhas(gpu, imagens.buffer(), imagens.len())
+}
+
+fn le_linhas(gpu: &GpuContext, buffer: &wgpu::Buffer, n: u32) -> Vec<ph2d_render::RenderInstance> {
+    let n = n as usize;
     if n == 0 {
         return Vec::new();
     }
@@ -158,7 +171,7 @@ pub fn read_instances(
     let mut encoder = gpu
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-    encoder.copy_buffer_to_buffer(&instances.buffer, 0, &staging, 0, bytes);
+    encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, bytes);
     gpu.queue.submit(Some(encoder.finish()));
     let slice = staging.slice(..);
     let (tx, rx) = std::sync::mpsc::channel();

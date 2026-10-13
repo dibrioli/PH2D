@@ -263,7 +263,9 @@ impl GpuCook {
             size: u64::from(capacity) * u64::from(lower::INSTANCE_WORDS) * 4,
             usage: wgpu::BufferUsages::VERTEX
                 | wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_SRC,
+                | wgpu::BufferUsages::COPY_SRC
+                // P4: as faixas das saídas em grupo limpam-se depois de ir à placa de formas.
+                | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         self.instances = Some(GpuInstances {

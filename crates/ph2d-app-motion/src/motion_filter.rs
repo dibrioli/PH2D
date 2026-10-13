@@ -446,6 +446,20 @@ impl MotionState {
                 Some((buffer, n, runs)) => ph2d_fx_cells::Sprites::Placa { buffer, n, runs },
                 None => ph2d_fx_cells::Sprites::Cpu(cpu),
             };
+            // ⭐ P4 (doc 132 §4): as imagens de um grupo voltam no grupo delas, SEM o filtro das formas.
+            let mut desenha_imagens =
+                |pass: &mut wgpu::RenderPass<'static>, c: &ph2d_shape_gpu::Corrida| {
+                    if let Some(p) = e.formas {
+                        p.desenha_as_imagens(pass, c);
+                    }
+                };
+            let imagens = e
+                .formas
+                .filter(|p| p.tem_imagens())
+                .map(|p| ph2d_fx_cells::Imagens {
+                    corridas: p.corridas_do_quadro(),
+                    desenha: &mut desenha_imagens,
+                });
             celulas.corre(ph2d_fx_cells::Entrada {
                 gpu: e.gpu,
                 renderer: e.renderer,
@@ -458,6 +472,7 @@ impl MotionState {
                 pilha,
                 camada: &alvos.camada_view,
                 tamanho,
+                imagens,
             });
         }
         // ⭐ As formas que a placa não leva (a mistura em grupo, o `Blend` por linha, a geometria
@@ -566,3 +581,7 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_filter_mistura_gpu_tests.rs"]
 mod mistura_gpu_tests;
+
+#[cfg(test)]
+#[path = "motion_filter_imagens_gpu_tests.rs"]
+mod imagens_gpu_tests;

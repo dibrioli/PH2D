@@ -19,7 +19,7 @@ use crate::motion_shape_gen::{VecPathStore, encode};
 use crate::motion_shape_placa::{Misturas, PlacaDeFormas};
 use crate::motion_state::MotionState;
 
-fn srgb_para_linear(c: f64) -> f64 {
+pub(super) fn srgb_para_linear(c: f64) -> f64 {
     if c <= 0.04045 {
         c / 12.92
     } else {
@@ -27,7 +27,7 @@ fn srgb_para_linear(c: f64) -> f64 {
     }
 }
 
-fn le_linha(gpu: &ph2d_gpu::GpuContext, mundo: &WorldRt) -> [i32; 4] {
+pub(super) fn le_linha(gpu: &ph2d_gpu::GpuContext, mundo: &WorldRt) -> [i32; 4] {
     let alinhado =
         (W * 4).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
     let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
@@ -66,7 +66,7 @@ fn le_linha(gpu: &ph2d_gpu::GpuContext, mundo: &WorldRt) -> [i32; 4] {
 
 /// O `Output` com o modo e o alcance, um `fx.filter` `Each Shape` (um borrão de raio `raio`; zero =
 /// NEUTRO) no fio.
-fn motion_com_filtro(tag: u8, com: BlendWith, raio: f32) -> MotionState {
+pub(super) fn motion_com_filtro(tag: u8, com: BlendWith, raio: f32) -> MotionState {
     let mut m = MotionState::new();
     let g = &mut m.doc.graph;
     let filtro = g.add_node(ph2d_node_fx_filter::TYPE_NAME.to_string());
@@ -105,7 +105,7 @@ enum Rota {
 }
 
 /// As cópias como o cozimento as escreve: `[ShapeInstance]` num buffer `STORAGE`.
-fn buffer_do_cozimento(
+pub(super) fn buffer_do_cozimento(
     gpu: &ph2d_gpu::GpuContext,
     insts: &[ph2d_eval_motion::VectorInstance],
 ) -> wgpu::Buffer {

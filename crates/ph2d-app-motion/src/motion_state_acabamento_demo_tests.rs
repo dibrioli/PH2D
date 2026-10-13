@@ -485,9 +485,9 @@ fn the_copies_steps_go_to_the_plate() {
     }
 }
 
-/// ⭐⭐ **Os passos (12) e (13) cozem no DISPOSITIVO** (B6): a cena do smoke pela porta do quadro do
-/// produto (`coze_o_quadro`), com os filtros no fio. O 1.º quadro cai para a CPU (sem memória dela o
-/// grupo não sabe se tem imagens — e di-lo); os seguintes vão à placa, com as corridas da mistura.
+/// ⭐⭐ **Os passos (12) e (13) cozem no DISPOSITIVO** (B6 · P4): a cena do smoke pela porta do quadro
+/// do produto (`coze_o_quadro`), com os filtros no fio — desde o 1.º quadro (P4: as imagens de um grupo
+/// também vão à placa, e a decisão deixou de pedir a memória da CPU), com as corridas da mistura.
 #[test]
 #[ignore = "placa: precisa de GPU"]
 fn the_copies_steps_cook_on_the_device() {
@@ -513,7 +513,8 @@ fn the_copies_steps_cook_on_the_device() {
             rotas.push((m.route_said.unwrap_or(""), m.gpu_live));
             if m.gpu_live {
                 corridas =
-                    corridas_do_dispositivo(&m, Misturas::do_quadro(&gpu, m.pump.camada_isolada()));
+                    corridas_do_dispositivo(&m, Misturas::do_quadro(&gpu, m.pump.camada_isolada()))
+                        .0;
             }
         }
         println!("passo {n}: {rotas:?}");
@@ -521,16 +522,11 @@ fn the_copies_steps_cook_on_the_device() {
             m.pump.camada_isolada(),
             "passo {n}: os filtros isolam a camada"
         );
-        assert_eq!(
-            rotas[0].0,
-            crate::motion_bridge::gpu::mistura::RECUSA_GRUPO_SEM_MEMORIA,
-            "passo {n}: o 1.º quadro não tem a memória da CPU"
-        );
         assert!(
-            rotas[1..]
+            rotas
                 .iter()
                 .all(|(r, vivo)| *vivo && r.starts_with("device")),
-            "passo {n}: depois do 1.º, a placa coze: {rotas:?}"
+            "passo {n}: a placa coze desde o 1.º quadro: {rotas:?}"
         );
         assert!(
             !corridas.is_empty(),

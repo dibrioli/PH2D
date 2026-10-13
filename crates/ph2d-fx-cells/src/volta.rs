@@ -86,9 +86,37 @@ impl Voltas {
     }
 }
 
+/// ⭐ P4 (doc 132 §4 do Motion) — **as IMAGENS das corridas da placa** (as de uma saída em grupo):
+/// não passam pelas células (o `Each Shape` é das FORMAS), mas voltam na MESMA sessão, no grupo da
+/// corrida delas, ANTES da 1.ª célula dela — as misturas de grupo são comutativas, logo o lugar dentro
+/// do grupo não muda a cor. `cursor` = a próxima corrida da placa cujas imagens ainda não voltaram.
+pub(crate) struct ImagensDaVolta<'a> {
+    pub(crate) cursor: usize,
+    pub(crate) desenha: ph2d_shape_gpu::DesenhaImagens<'a>,
+}
+
+impl ImagensDaVolta<'_> {
+    /// As corridas só de imagens da placa até `ate` (exclusive), por ordem, a partir do cursor.
+    pub(crate) fn ate(&mut self, corridas: &[Corrida], ate: usize, out: &mut Vec<Corrida>) {
+        while self.cursor < ate.min(corridas.len()) {
+            let q = &corridas[self.cursor];
+            if !q.imagens.is_empty() {
+                out.push(Corrida {
+                    copias: 0..0,
+                    mistura: q.mistura,
+                    grupo: q.grupo,
+                    imagens: q.imagens.clone(),
+                });
+            }
+            self.cursor += 1;
+        }
+    }
+}
+
 impl Pipes {
     /// As células `formas` (índices na página) das cópias de forma, pela `sessao`: cada célula com a
-    /// mistura e o grupo da corrida da SUA cópia (`instancia − n_s`).
+    /// mistura e o grupo da corrida da SUA cópia (`instancia − n_s`); e, com `imagens`, as imagens de
+    /// cada corrida da placa antes da 1.ª célula dela ([`ImagensDaVolta`]).
     #[expect(clippy::too_many_arguments, reason = "a página, a cópia e o alvo")]
     pub(crate) fn volta(
         &self,
@@ -101,22 +129,27 @@ impl Pipes {
         cels: &wgpu::Buffer,
         atlas: &wgpu::TextureView,
         tamanho: (u32, u32),
+        mut imagens: Option<&mut ImagensDaVolta<'_>>,
     ) {
-        let da_copia = |copia: u32| {
-            corridas
-                .iter()
-                .find(|c| c.copias.contains(&copia))
-                .map_or((Mistura::Normal, 0), |c| (c.mistura, c.grupo))
-        };
+        let da_copia = |copia: u32| corridas.iter().position(|c| c.copias.contains(&copia));
         let mut das_celulas: Vec<Corrida> = Vec::new();
         for i in formas {
-            let (mistura, grupo) = da_copia(celulas[i as usize].instancia - n_s);
+            let p = da_copia(celulas[i as usize].instancia - n_s);
+            if let (Some(p), Some(im)) = (p, imagens.as_deref_mut()) {
+                im.ate(corridas, p + 1, &mut das_celulas);
+            }
+            let (mistura, grupo) = p.map_or((Mistura::Normal, 0), |p| {
+                (corridas[p].mistura, corridas[p].grupo)
+            });
             match das_celulas.last_mut() {
-                Some(c) if c.mistura == mistura && c.grupo == grupo => c.copias.end = i + 1,
+                Some(c) if c.mistura == mistura && c.grupo == grupo && c.imagens.is_empty() => {
+                    c.copias.end = i + 1;
+                }
                 _ => das_celulas.push(Corrida {
                     copias: i..i + 1,
                     mistura,
                     grupo,
+                    ..Default::default()
                 }),
             }
         }
@@ -136,10 +169,17 @@ impl Pipes {
                 );
                 return;
             };
-            let bg = grupo_dos_quads(gpu, pipeline, cels, atlas, tamanho, false);
-            pass.set_pipeline(pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.draw(0..6, c.copias.clone());
+            if !c.copias.is_empty() {
+                let bg = grupo_dos_quads(gpu, pipeline, cels, atlas, tamanho, false);
+                pass.set_pipeline(pipeline);
+                pass.set_bind_group(0, &bg, &[]);
+                pass.draw(0..6, c.copias.clone());
+            }
+            if let Some(im) = imagens.as_deref_mut()
+                && !c.imagens.is_empty()
+            {
+                (im.desenha)(pass, c);
+            }
         };
         sessao.corridas(&mut enc, &das_celulas, &mut desenha);
         gpu.queue.submit([enc.finish()]);

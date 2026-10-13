@@ -64,8 +64,6 @@ pub(super) fn say_route(motion: &mut MotionState, reason: &'static str) {
 /// com o seu motivo, e nenhuma delas alcançável de fora.
 fn fell(motion: &mut MotionState, reason: &'static str) -> GpuOutcome {
     say_route(motion, reason);
-    // A vigia é DESTE caminho: uma leitura de antes de cair não decide o regresso.
-    motion.gpu_cook.descarta_a_vigia();
     GpuOutcome::FellThrough
 }
 
@@ -239,8 +237,6 @@ pub(super) fn cook_gpu(
     scopes: &TimeScopes,
 ) -> GpuOutcome {
     motion.gpu_live = false;
-    // ⭐ B6 — a vigia do quadro anterior (sem esperar): uma imagem num sink que mistura em grupo.
-    let imagens_vistas = motion.gpu_cook.toma_imagens_vigiadas(gpu);
     // Fast-path guard so a GPU-off or sinkless document never plans.
     // ⚠️ **Os dois motivos separam-se aqui de propósito:** eles leem-se iguais numa recusa
     // («a CPU desenhou») e um deles é uma ESCOLHA do artista (`PH2D_GPU_COOK=0`) enquanto o
@@ -291,9 +287,9 @@ pub(super) fn cook_gpu(
         .set_passe(colisor::varreduras_do_passe(motion));
     // A tomada de um sink (o gizmo do colisor) vê a corrente separada em qualquer rota.
     motion.pump.set_sinks_do_desenho(&motion.sinks);
-    // ⭐⭐⭐ **Um sink que mistura EM GRUPO** (doc 118 W3/W4 · B6): as imagens iriam ao passe de
-    // sprites (luz linear, sem alcance) ⇒ só vai ao dispositivo um sink de FORMAS cuja mistura a
-    // placa compõe; o resto cai para a CPU, que o baixa inteiro para a cena vectorial. Ver [`mistura`].
+    // ⭐⭐⭐ **Um sink que mistura EM GRUPO** (doc 118 W3/W4 · B6 · P4): formas E imagens vão à placa
+    // de formas, que compõe o alcance no tom das formas; cai para a CPU o que a placa não compõe.
+    // Ver [`mistura`].
     let em_grupo: Vec<bool> = motion
         .sinks
         .iter()
@@ -301,12 +297,10 @@ pub(super) fn cook_gpu(
         .collect();
     let misturas =
         crate::motion_shape_placa::Misturas::do_quadro(gpu, motion.pump.camada_isolada());
-    if let Some(porque) =
-        mistura::recusa_da_mistura_em_grupo(motion, misturas, &em_grupo, imagens_vistas)
-    {
+    if let Some(porque) = mistura::recusa_da_mistura_em_grupo(motion, misturas, &em_grupo) {
         return fell(motion, porque);
     }
-    motion.gpu_cook.set_vigia_de_imagens(em_grupo);
+    motion.gpu_cook.set_saidas_em_grupo(em_grupo);
     // A `source.object` that resolves to a live VECTOR publishes a `geometry_id`
     // external (ADR-0154 reused for objects, so a stamped vector stays crisp). The
     // GPU cook has no `geometry_id` route — it would draw a blank atlas quad — so
@@ -679,10 +673,16 @@ mod deriva_129_tests;
 #[path = "motion_bridge_gpu_formas_tests.rs"]
 mod formas_tests;
 
-/// ⭐⭐⭐ **A mistura em grupo pela rota do DISPOSITIVO** (B6): paridade com a CPU e o controlo da imagem.
+/// ⭐⭐⭐ **A mistura em grupo pela rota do DISPOSITIVO** (B6): paridade com a CPU e as pousas.
 #[cfg(test)]
 #[path = "motion_bridge_gpu_mistura_tests.rs"]
 mod mistura_tests;
+
+/// ⭐⭐⭐ **As IMAGENS de um grupo na placa** (P4, doc 132 §4): paridade com a cena vectorial da CPU,
+/// nenhum quadro pelas sprites, e o preço.
+#[cfg(test)]
+#[path = "motion_bridge_gpu_mistura_imagens_tests.rs"]
+mod mistura_imagens_tests;
 
 /// ⭐⭐⭐ **O `Collide` na placa** (doc 130): as cenas do passe aceites e iguais à CPU.
 #[cfg(test)]

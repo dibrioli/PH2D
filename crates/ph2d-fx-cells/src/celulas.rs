@@ -73,6 +73,15 @@ pub struct Entrada<'a> {
     /// células na ordem de z.
     pub camada: &'a wgpu::TextureView,
     pub tamanho: (u32, u32),
+    /// ⭐ P4 (doc 132 §4 do Motion) — as IMAGENS das corridas da placa (as de uma saída em grupo),
+    /// pelo desenhador dela: voltam SEM o filtro (o `Each Shape` é das formas), no grupo delas.
+    pub imagens: Option<Imagens<'a>>,
+}
+
+/// ⭐ P4 — as corridas da placa com as imagens ([`Corrida::imagens`]) e quem as pinta num passe.
+pub struct Imagens<'a> {
+    pub corridas: &'a [Corrida],
+    pub desenha: ph2d_shape_gpu::DesenhaImagens<'a>,
 }
 
 /// **O afim mundo → pixel da camada das SPRITES** (`[a, b, c, d, e, f]`, o do kurbo) — porta única: a
@@ -359,12 +368,20 @@ impl Celulas {
             self.atlas = Some(Atlas::new(gpu, (w, h)));
         }
         let usa_mapa = e.ops.iter().any(|o| o.kind == ph2d_fx_op::FxOp::TURBULENCE);
-        let corridas = e.formas.as_ref().map_or(&[][..], |f| f.corridas);
+        let mut imagens = e.imagens.take();
+        let corridas = e.formas.as_ref().map_or_else(
+            || imagens.as_ref().map_or(&[][..], |i| i.corridas),
+            |f| f.corridas,
+        );
         let simples = match corridas {
             [] => true,
-            [c] => c.mistura == Mistura::Normal && c.grupo == 0,
+            [c] => c.mistura == Mistura::Normal && c.grupo == 0 && c.imagens.is_empty(),
             _ => false,
         };
+        let mut volta_das_imagens = imagens.as_mut().map(|i| crate::volta::ImagensDaVolta {
+            cursor: 0,
+            desenha: &mut *i.desenha,
+        });
         // B5: com mistura, as formas voltam à camada PRÓPRIA delas, colada no fim ([`crate::volta`]).
         let mut voltas = (!simples).then(|| {
             let mut v = self
@@ -391,13 +408,22 @@ impl Celulas {
                 &ordenadas,
                 afim,
                 usa_mapa,
-                mistas.as_mut().map(|(p, s)| (*p, s, corridas)),
+                mistas
+                    .as_mut()
+                    .map(|(p, s)| (*p, s, corridas, volta_das_imagens.as_mut())),
             );
         }
-        if let Some((_, sessao)) = mistas {
+        if let Some((_, mut sessao)) = mistas {
             let mut enc = gpu
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            // ⭐ P4: as imagens das corridas que nenhuma célula alcançou (sem formas, ou depois da
+            // última) voltam no fim, cada uma no grupo dela.
+            if let Some(im) = volta_das_imagens.as_mut() {
+                let mut resto = Vec::new();
+                im.ate(corridas, corridas.len(), &mut resto);
+                sessao.corridas(&mut enc, &resto, &mut |pass, c| (im.desenha)(pass, c));
+            }
             sessao.fecha(&mut enc);
             gpu.queue.submit([enc.finish()]);
         }
@@ -428,6 +454,7 @@ impl Celulas {
             &crate::volta::Pipes,
             &mut ph2d_shape_gpu::Sessao<'_>,
             &[Corrida],
+            Option<&mut crate::volta::ImagensDaVolta<'_>>,
         )>,
     ) {
         let gpu = e.gpu;
@@ -596,7 +623,7 @@ impl Celulas {
         );
         fecha(gpu, relogio);
         let relogio = abre(gpu, "fx_cells.volta");
-        let Some((pipes, sessao, corridas)) = mistas else {
+        let Some((pipes, sessao, corridas, imagens)) = mistas else {
             quads(
                 gpu,
                 &self.volta,
@@ -638,6 +665,7 @@ impl Celulas {
             &cels,
             &atlas.saida_view,
             e.tamanho,
+            imagens,
         );
         fecha(gpu, relogio);
     }

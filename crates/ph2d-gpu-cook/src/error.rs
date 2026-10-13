@@ -67,8 +67,8 @@ pub enum GpuCookError {
     /// pergunta é a PRESENÇA da coluna (ler o valor custaria uma descarga por quadro), e a recusa
     /// cai para o lado conservador — a CPU desenha o quadro, como a rota dela faria.
     FormaComMistura,
-    /// ⭐ **Uma saída VIGIADA (mistura em grupo, B6) sem a coluna `geometry_id`** — todas as linhas
-    /// são imagens, e uma imagem iria ao passe de sprites (luz linear, sem alcance). Sabe-se no
-    /// HOST, logo recusa-se JÁ; uma imagem misturada com formas conta-se na placa ([`crate::vigia`]).
-    ImagemEmGrupo,
+    /// ⭐ **Uma saída que mistura em GRUPO traz a coluna `blend`** (P4, doc 132 §4) — o modo por
+    /// LINHA substitui o do grupo cópia a cópia, e a placa de formas compõe a mistura por corrida. A
+    /// pergunta é a PRESENÇA da coluna, como no [`Self::FormaComMistura`]: a CPU desenha o quadro.
+    ModoDaLinhaEmGrupo,
 }

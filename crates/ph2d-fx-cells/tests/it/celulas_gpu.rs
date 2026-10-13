@@ -304,6 +304,7 @@ impl Banca {
             pilha: &mut self.pilha,
             camada: &vista_camada,
             tamanho: (W, H),
+            imagens: None,
         });
         let out = make_output_texture(&self.gpu, W, H);
         self.pilha
@@ -824,6 +825,7 @@ fn relogio_cada_forma_contra_camada_inteira() {
                     pilha: &mut b.pilha,
                     camada: &vc,
                     tamanho: (lw, lh),
+                    imagens: None,
                 });
                 b.pilha
                     .run_layer(&b.gpu, &camada, &saida, lw, lh, &[], Origem::Margem);
@@ -997,6 +999,7 @@ impl Mesa {
             pilha: &mut b.pilha,
             camada: &self.vc,
             tamanho: (self.lw, self.lh),
+            imagens: None,
         });
     }
 }

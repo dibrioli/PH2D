@@ -192,6 +192,9 @@ fn coze(
     {
         // ⭐ A origem de cada objecto Motion, na placa (doc ObjectsAndComponents 01 §13).
         crate::motion_objeto::origem::aplica_gpu(motion, gpu);
+        // ⭐ P4 (doc 132 §4): as imagens das saídas em grupo saem das sprites para a placa de formas
+        // — DEPOIS da origem (que reescreve o buffer no sítio) e antes do passe de sprites.
+        motion.gpu_cook.separa_as_imagens_do_grupo(gpu);
         if ph2d_pan_diag::on() {
             let c = &motion.gpu_cook;
             ph2d_pan_diag::note_device(

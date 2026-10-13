@@ -26,7 +26,7 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     // ⭐ doc 121 §9.14 — a camada DESENHA-SE antes dos passes de luz (o halo redesenha-a).
     let em_present = |agulha: &str| present.find(agulha).expect(agulha);
     assert!(
-        em_present("let _ = placa.desenha(") < em_present("super::present_fx::run("),
+        em_present("motion_shape_placa::desenha_o_quadro(") < em_present("super::present_fx::run("),
         "as formas desenham-se ANTES do halo que as redesenha"
     );
     assert!(
@@ -34,23 +34,28 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
         "as formas vão DEPOIS do mundo (as faixas de cima) e ANTES do chrome (a cena Vello)"
     );
     assert!(chrome.contains("ph2d_render::BandSource::Formas"));
+    // ⭐ P4 (b): a camada pousa no mundo com a mistura do quadro (o `Everything`/`Scene` fora da
+    // camada isolada) — com o `blit` de sempre ela pousaria em `Normal`.
+    assert!(
+        chrome.contains("band_blit.blit_pousa(gpu, alvo, camada, formas, None, placa.pousa());")
+    );
+    assert!(chrome.contains(
+        "let (alvo, formas) = (world_rt.blend_view(), ph2d_render::BandSource::Formas);"
+    ));
 }
 
-/// ⭐⭐⭐ **A rota do DISPOSITIVO chega ao quadro** (doc 121 W3): a decisão lê as formas do
-/// cozimento e o presente passa o buffer dele à placa — os dois SÓ com o cozimento vivo, que é a
-/// pergunta que o passe de sprites já faz (`motion.gpu_live`). *Mutações: apagar o `filter` de uma
-/// das pontas (um quadro que caiu para a CPU desenharia as formas do ANTERIOR) · decidir sempre
-/// pela CPU (as formas do dispositivo, caladas nas sprites, não se desenhariam em sítio nenhum).*
+/// ⭐⭐⭐ **A rota do DISPOSITIVO chega ao quadro** (doc 121 W3 · P4): a decisão e o desenho são as
+/// portas da família (`motion_shape_placa::{decide_o_quadro, desenha_o_quadro}`, com o gate de
+/// texto delas a prender o `gpu_live` das duas pontas); a shell só as compõe — e o desenho recebe o
+/// renderer (as texturas das imagens de um grupo) e o filtro do projecto.
 #[test]
 fn a_rota_do_dispositivo_chega_ao_quadro() {
     let bandas = include_str!("fase_vector_bands.rs");
-    assert!(bandas.contains(".formas().filter(|_| motion.gpu_live)"));
-    assert!(bandas.contains("self.motion_shell.placa.decide_do_dispositivo("));
-    // ⭐ B6 — o dispositivo recebe as misturas por faixa de sink (senão um grupo desenha em Normal).
-    assert!(bandas.contains("motion_shape_placa::misturas_do_quadro(surface.gpu(), motion)"));
+    assert!(bandas.contains("ph2d_app_motion::motion_shape_placa::decide_o_quadro("));
     let present = include_str!("present.rs");
-    assert!(present.contains(".formas().filter(|_| motion.gpu_live)"));
-    assert!(present.contains("let buffer = do_dispositivo.map(|f| f.buffer());"));
+    assert!(present.contains("motion_shape_placa::desenha_o_quadro("));
+    assert!(present.contains("placa, gpu, tamanho, motion, renderer, filtro,"));
+    assert!(present.contains("hero_screen.as_ref().map(|h| h.project.image_filter)"));
 }
 
 /// ⭐ doc 121 §9.14 (c) — **O HALO DO `fx.glow` PELA ROTA DO QUADRO.** A LEI (que listas, que buffer)

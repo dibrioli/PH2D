@@ -41,7 +41,12 @@ pub use geometry::{
     FLAG_EVEN_ODD, FLAG_SO_CONFORME, FillRule, GeometryRecord, LEVELS, ShapeGeometry, ShapeInput,
     StrokeInput, TOL_BASE, TOL_STEP, contorno_conforme, eixo_do_nivel, extensao, tolerancia,
 };
-pub use pass::mistura::{Corrida, Mistura, multiplica_no_dispositivo};
+pub use pass::mistura::{Corrida, DesenhaImagens, Mistura, multiplica_no_dispositivo};
+
+/// ⭐ P4 (doc 132 §4) — **a área de um pixel à lei do Vello** (`contribuicao`), em WGSL, para quem
+/// desenha outra média na MESMA camada (as imagens de um grupo, `ph2d-app-motion`): o quad de uma
+/// imagem é um caminho de quatro rectas, e a cobertura dele tem de ser a das formas.
+pub const AREA_DO_VELLO: &str = include_str!("area_do_vello.wgsl");
 pub use pass::{
     CONSTANTES_DO_CONTORNO, Copias, ShapeInstance, ShapePass, ShapeView, VarianteDoPasse,
 };

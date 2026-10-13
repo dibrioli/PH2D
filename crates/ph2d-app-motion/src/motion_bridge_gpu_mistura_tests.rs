@@ -1,22 +1,23 @@
-//! ⭐⭐⭐ **A MISTURA EM GRUPO PELA ROTA DO DISPOSITIVO** (B6) — a MESMA cena de estrelas
+//! ⭐⭐⭐ **A MISTURA EM GRUPO PELA ROTA DO DISPOSITIVO** (B6 · P4) — a MESMA cena de estrelas
 //! SOBREPOSTAS, com o `Output` a misturar, cozida pelas duas rotas da ponte e desenhada pela placa de
-//! formas: as duas camadas comparam-se pixel a pixel, em cada modo × alcance × camada isolada.
+//! formas: as duas camadas comparam-se pixel a pixel, em cada modo × alcance × camada isolada, e as
+//! duas pousas (P4 (b)) também. As IMAGENS de um grupo têm o irmão `mistura_imagens_tests`.
 //!
 //! ⚠️ As metades que a paridade sozinha não diz: o dispositivo tem de ter sido TOMADO (senão o gate
 //! mede a CPU contra si mesma), as corridas têm de levar a mistura (senão o Normal das duas rotas
-//! também empata — por isso a CPU é comparada também com o `Normal`, que tem de DIFERIR), e onde a
-//! placa da CPU recusa (o mundo por baixo) o dispositivo recusa pelo MESMO motivo.
+//! também empata — por isso a CPU é comparada também com o `Normal`, que tem de DIFERIR), e onde o
+//! dispositivo recusa (o `Scene` fora da camada isolada) di-lo pelo nome.
 //!
 //! `#[ignore]`: precisa de adaptador real.
 //!   `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --lib --release \
 //!        mistura_tests -- --ignored --nocapture`
 
-use super::mistura::{
-    RECUSA_GRUPO_SEM_MEMORIA, RECUSA_IMAGEM_EM_GRUPO, RECUSA_MISTURA_PEDE_O_MUNDO,
-};
+use super::mistura::RECUSA_SCENE_NO_DISPOSITIVO;
 use super::{GpuOutcome, cook_gpu};
 use crate::motion_shape_placa::gpu_tests::{LADO, camara, compara, le_a_camada};
-use crate::motion_shape_placa::{Misturas, PlacaDeFormas, corridas_do_dispositivo};
+use crate::motion_shape_placa::{
+    Misturas, PlacaDeFormas, corridas_do_dispositivo, decide_o_quadro, desenha_o_quadro,
+};
 use crate::motion_state::MotionState;
 use ph2d_eval_motion::BlendWith;
 use ph2d_gpu::GpuContext;
@@ -159,8 +160,13 @@ pub(super) fn coze(m: &mut MotionState, gpu: &GpuContext, t: u64) -> bool {
     matches!(cook_gpu(m, gpu, t, DT, &scopes), GpuOutcome::Handled) && m.gpu_live
 }
 
-/// A camada da placa pela rota da CPU — `None` se a placa recusa (o Vello desenharia).
-fn pela_cpu(gpu: &GpuContext, tag: u8, com: BlendWith, isolada: bool) -> Option<Vec<u8>> {
+/// A camada da placa pela rota da CPU e a pousa dela — `None` se a placa recusa (o Vello desenharia).
+fn pela_cpu(
+    gpu: &GpuContext,
+    tag: u8,
+    com: BlendWith,
+    isolada: bool,
+) -> Option<(Vec<u8>, ph2d_render::Pousa)> {
     let (mut cpu, _, _) = estado(tag, com, isolada, false);
     cpu.gpu_enabled = false;
     marcha_a_cpu(&mut cpu, TIQUE);
@@ -179,43 +185,58 @@ fn pela_cpu(gpu: &GpuContext, tag: u8, com: BlendWith, isolada: bool) -> Option<
             placa
                 .desenha(gpu, (LADO, LADO), &cpu.placa_geometrias, None)
                 .expect("a placa da CPU desenha");
-            le_a_camada(gpu, &placa)
+            (le_a_camada(gpu, &placa), placa.pousa())
         })
 }
 
-/// A camada da placa pela rota do DISPOSITIVO, com as corridas por faixa.
-fn pelo_dispositivo(gpu: &GpuContext, m: &mut MotionState) -> (Vec<u8>, usize) {
-    let corridas = corridas_do_dispositivo(m, Misturas::do_quadro(gpu, m.pump.camada_isolada()));
+/// A camada da placa pela rota do DISPOSITIVO, pelas portas do quadro do produto (a separação das
+/// imagens do grupo, a decisão e o desenho) — com as corridas e a pousa.
+pub(super) fn pelo_dispositivo(
+    gpu: &GpuContext,
+    m: &mut MotionState,
+    renderer: &ph2d_render::SpriteRenderer,
+) -> (Vec<u8>, usize, ph2d_render::Pousa) {
+    m.gpu_cook.separa_as_imagens_do_grupo(gpu);
+    let (corridas, _) =
+        corridas_do_dispositivo(m, Misturas::do_quadro(gpu, m.pump.camada_isolada()));
     let n_corridas = corridas.len();
-    let formas = m.gpu_cook.formas().expect("o cozimento escreveu as formas");
-    let n = formas.len();
-    let sprites = ph2d_gpu_cook::read_instances(gpu, m.gpu_cook.instances().expect("sprites"));
-    assert!(
-        sprites
-            .iter()
-            .all(|s| s.size == [0.0, 0.0] && s.opacity == 0.0),
-        "uma estrela no buffer das sprites misturaria em luz linear por baixo dela"
-    );
+    if let Some(i) = m.gpu_cook.instances() {
+        let sprites = ph2d_gpu_cook::read_instances(gpu, i);
+        assert!(
+            sprites
+                .iter()
+                .all(|s| s.size == [0.0, 0.0] && s.opacity == 0.0),
+            "uma linha do grupo no buffer das sprites misturaria em luz linear por baixo dele"
+        );
+    }
     let mut placa = PlacaDeFormas::default();
-    assert!(placa.decide_do_dispositivo(
-        true,
-        n,
-        &m.formas_no_dispositivo,
-        &m.shape_store,
-        &mut m.placa_geometrias,
-        camara(),
-        corridas,
-    ));
-    let buffer = m.gpu_cook.formas().map(|f| f.buffer());
-    placa
-        .desenha(gpu, (LADO, LADO), &m.placa_geometrias, buffer)
-        .expect("a placa do dispositivo desenha");
-    (le_a_camada(gpu, &placa), n_corridas)
+    assert!(decide_o_quadro(&mut placa, gpu, m, (true, true), camara()));
+    desenha_o_quadro(
+        &mut placa,
+        gpu,
+        (LADO, LADO),
+        m,
+        renderer,
+        ph2d_render::ImageFilterMode::Smooth,
+    )
+    .expect("a placa do dispositivo desenha");
+    (le_a_camada(gpu, &placa), n_corridas, placa.pousa())
+}
+
+/// Um renderer com o átlas de teste (as texturas das imagens da placa vêm da porta dele).
+pub(super) fn renderer(gpu: &GpuContext) -> ph2d_render::SpriteRenderer {
+    ph2d_render::SpriteRenderer::new(
+        gpu.clone(),
+        ph2d_render::GameRt::FORMAT,
+        ph2d_render::TextureAtlas::new(gpu, 64),
+        8,
+    )
 }
 
 /// ⭐⭐⭐ **Cada modo × alcance × camada isolada: o dispositivo desenha o que a CPU desenha, ou
-/// recusa pelo MESMO motivo.** Sem memória da CPU, o 1.º cozimento de um grupo cai (a CPU coze
-/// primeiro); com ela, vai à placa com as corridas da mistura.
+/// recusa pelo motivo dele.** Desde o P4 sem memória da CPU: o 1.º cozimento de um grupo já vai à
+/// placa. Fora da camada isolada o `Everything` vai às DUAS placas e pousa com o modo (P4 (b)); o
+/// `Scene` vai à da CPU e o dispositivo recusa-o pelo nome (`RECUSA_SCENE_NO_DISPOSITIVO`).
 ///
 /// **A barra, MEDIDA** — ver a tabela no handoff B6 (`alfa`/`cor` máx. e pixels `> 16`).
 #[test]
@@ -224,46 +245,51 @@ fn a_mistura_em_grupo_pelo_dispositivo_desenha_o_que_a_cpu_desenha() {
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adapter — este gate mede a rota do device e nao tem versao de CPU");
     };
-    let normal = pela_cpu(&gpu, 0, BlendWith::Copies, false).expect("o Normal vai à placa");
+    let renderer = renderer(&gpu);
+    let (normal, _) = pela_cpu(&gpu, 0, BlendWith::Copies, false).expect("o Normal vai à placa");
     let mut comparados = 0;
     for tag in [1u8, 3, 4] {
         for com in BlendWith::ALL {
             for isolada in [false, true] {
                 let caso = format!("tag {tag} {com:?} isolada={isolada}");
-                let da_cpu = pela_cpu(&gpu, tag, com, isolada);
+                let (da_cpu, pousa_cpu) = pela_cpu(&gpu, tag, com, isolada)
+                    .expect("desde o P4 a placa da CPU compõe-nas");
                 let (mut m, _, _) = estado(tag, com, isolada, false);
                 let em_grupo = super::sink_mistura_em_grupo(&m.doc.graph, m.sinks[0], isolada);
                 let primeira = coze(&mut m, &gpu, TIQUE - 1);
-                let Some(da_cpu) = da_cpu else {
-                    // A placa da CPU recusa (o mundo por baixo): o dispositivo também, pelo nome.
+                if com == BlendWith::Scene && !isolada {
                     assert!(!primeira, "{caso}");
-                    assert_eq!(m.route_said, Some(RECUSA_MISTURA_PEDE_O_MUNDO), "{caso}");
-                    continue;
-                };
-                if em_grupo {
-                    assert!(!primeira, "{caso}: sem memória da CPU");
-                    assert_eq!(m.route_said, Some(RECUSA_GRUPO_SEM_MEMORIA), "{caso}");
-                    marcha_a_cpu(&mut m, TIQUE - 1);
-                    assert!(
-                        coze(&mut m, &gpu, TIQUE),
-                        "{caso}: com a memória da CPU o grupo de formas vai à placa ({:?})",
-                        m.route_said
+                    assert_eq!(m.route_said, Some(RECUSA_SCENE_NO_DISPOSITIVO), "{caso}");
+                    assert_ne!(
+                        pousa_cpu,
+                        ph2d_render::Pousa::Normal,
+                        "{caso}: a CPU pousa-o"
                     );
-                } else {
-                    assert!(primeira, "{caso}: sem grupo ({:?})", m.route_said);
-                    assert!(coze(&mut m, &gpu, TIQUE), "{caso}");
+                    continue;
                 }
-                let (do_dev, corridas) = pelo_dispositivo(&gpu, &mut m);
+                assert!(
+                    primeira,
+                    "{caso}: o 1.º quadro já vai à placa ({:?})",
+                    m.route_said
+                );
+                assert!(coze(&mut m, &gpu, TIQUE), "{caso}");
+                let (do_dev, corridas, pousa_dev) = pelo_dispositivo(&gpu, &mut m, &renderer);
                 assert_eq!(
                     corridas > 0,
                     em_grupo,
                     "{caso}: as corridas levam a mistura"
                 );
+                assert_eq!(pousa_dev, pousa_cpu, "{caso}: as duas rotas pousam igual");
+                assert_eq!(
+                    pousa_dev == ph2d_render::Pousa::Normal,
+                    isolada || com == BlendWith::Copies,
+                    "{caso}: fora da camada isolada o Everything pousa com o modo"
+                );
                 let (alfa, cor, nc, nd, fora) = compara(&da_cpu, &do_dev);
                 let (_, cor_n, _, _, fora_n) = compara(&normal, &da_cpu);
                 eprintln!(
                     "{caso}: alfa max {alfa} · cor max {cor} · pixels {nc}/{nd} · > 16: {fora} \
-                     (contra o Normal: cor {cor_n}, > 16: {fora_n})"
+                     · pousa {pousa_dev:?} (contra o Normal: cor {cor_n}, > 16: {fora_n})"
                 );
                 assert!(nc > 5_000, "{caso}: a cena pinta ({nc} pixels)");
                 assert!(
@@ -281,61 +307,7 @@ fn a_mistura_em_grupo_pelo_dispositivo_desenha_o_que_a_cpu_desenha() {
             }
         }
     }
-    assert!(comparados >= 9, "a tabela mediu {comparados} casos");
-}
-
-/// ⛔ **O CONTROLO: uma imagem no sink que mistura em grupo fica na CPU e di-lo** — sem memória,
-/// com memória (a corrente não tem `geometry_id`), e quando ela APARECE depois de o grupo ter ido à
-/// placa: a memória da CPU é velha, o dispositivo coze, a vigia conta-a e o quadro seguinte cai.
-#[test]
-#[ignore = "placa: precisa de adapter de GPU"]
-fn uma_imagem_no_sink_que_mistura_em_grupo_fica_na_cpu_e_di_lo() {
-    let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
-        panic!("sem adapter — este gate mede a rota do device e nao tem versao de CPU");
-    };
-    // (1) Só imagens no grupo: a grelha no lugar das estrelas.
-    let (mut m, junta, imagens) = estado(1, BlendWith::Copies, false, true);
-    let _ = m.doc.graph.disconnect(junta, 0);
-    liga(&mut m, imagens, junta, 0);
-    assert!(!coze(&mut m, &gpu, 1));
-    assert_eq!(m.route_said, Some(RECUSA_GRUPO_SEM_MEMORIA), "sem memória");
-    marcha_a_cpu(&mut m, 1);
-    assert!(!coze(&mut m, &gpu, 2));
-    assert_eq!(
-        m.route_said,
-        Some(RECUSA_IMAGEM_EM_GRUPO),
-        "a memória mostra as imagens"
-    );
-
-    // (2) A imagem chega DEPOIS: o grupo de formas foi à placa; liga-se a grelha ao `combine`.
-    let (mut m, junta, imagens) = estado(1, BlendWith::Copies, false, true);
-    assert!(!coze(&mut m, &gpu, 1), "sem memória");
-    marcha_a_cpu(&mut m, 1);
-    assert!(
-        coze(&mut m, &gpu, 2),
-        "só formas: placa ({:?})",
-        m.route_said
-    );
-    // A leitura do quadro anterior acaba (o produto recolhe-a no seguinte), e o quadro do fio
-    // encomenda a SUA — um pedido em voo de cada vez.
-    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    liga(&mut m, imagens, junta, 1);
-    assert!(
-        coze(&mut m, &gpu, 3),
-        "a memória da CPU é de antes do fio: o dispositivo coze, e a vigia conta ({:?})",
-        m.route_said
-    );
-    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    assert!(!coze(&mut m, &gpu, 4));
-    assert_eq!(
-        m.route_said,
-        Some(RECUSA_IMAGEM_EM_GRUPO),
-        "a vigia devolve-o à CPU"
-    );
-    // E a CPU, agora com memória fresca, segura-o.
-    marcha_a_cpu(&mut m, 4);
-    assert!(!coze(&mut m, &gpu, 5));
-    assert_eq!(m.route_said, Some(RECUSA_IMAGEM_EM_GRUPO));
+    assert!(comparados >= 12, "a tabela mediu {comparados} casos");
 }
 
 /// As barras do veredito — as do irmão `formas_tests` (o MESMO passe e as MESMAS geometrias; só as
@@ -367,9 +339,8 @@ fn o_preco_da_mistura_em_grupo_cpu_contra_placa() {
         let (mut cpu, _, _) = estado_de(lado, true, 1, BlendWith::Copies, false, false);
         cpu.gpu_enabled = false;
         let (mut dev, _, _) = estado_de(lado, true, 1, BlendWith::Copies, false, false);
-        assert!(!coze(&mut dev, &gpu, 1), "sem memória");
         marcha_a_cpu(&mut dev, 1);
-        // O CONTROLO do preço do B6: o mesmo dispositivo em `Normal` — sem vigia nem corridas.
+        // O CONTROLO do preço do B6: o mesmo dispositivo em `Normal` — sem corridas.
         let (mut nor, _, _) = estado_de(lado, true, 0, BlendWith::Copies, false, false);
         marcha_a_cpu(&mut nor, 1);
         let mut placa_cpu = PlacaDeFormas::default();
@@ -407,7 +378,7 @@ fn o_preco_da_mistura_em_grupo_cpu_contra_placa() {
         let mut quadro_dev = |dev: &mut MotionState| {
             assert!(coze(dev, &gpu, t_dev), "{:?}", dev.route_said);
             t_dev += 1;
-            let corridas = corridas_do_dispositivo(dev, misturas);
+            let (corridas, _) = corridas_do_dispositivo(dev, misturas);
             let n = dev.gpu_cook.formas().map_or(0, |f| f.len());
             assert!(placa_dev.decide_do_dispositivo(
                 true,
@@ -466,7 +437,7 @@ fn o_preco_da_mistura_em_grupo_cpu_contra_placa() {
         let n = (lado * lado) as u32;
         println!(
             "  {n:>6} estrelas a mexer ({}) · Add Copies: CPU {min_cpu:.3} ms/quadro · placa {min_dev:.3} ms/quadro \
-             · {:.1}× (a placa em Normal, sem vigia nem corridas: {min_nor:.3})",
+             · {:.1}× (a placa em Normal, sem corridas: {min_nor:.3})",
             dev.route_said.unwrap_or(""),
             min_cpu / min_dev
         );

@@ -78,7 +78,11 @@ pub struct ShapePass {
 
 /// O shader: o desenho e os passes de cálculo do contorno num MÓDULO só — os dois lêem a mesma
 /// `copia_de` e a mesma geometria do traço (`bissectriz`), e escritas duas vezes elas divergiriam.
-const SHADER: &str = concat!(include_str!("shape.wgsl"), include_str!("contorno.wgsl"));
+const SHADER: &str = concat!(
+    include_str!("area_do_vello.wgsl"),
+    include_str!("shape.wgsl"),
+    include_str!("contorno.wgsl")
+);
 /// doc 121 §9.15 (d) — o `cs_varre` por subgrupo, num módulo à parte: um módulo com operações de
 /// subgrupo não valida num dispositivo sem `Features::SUBGROUP`.
 const SUBGRUPO: &str = include_str!("contorno_subgrupo.wgsl");

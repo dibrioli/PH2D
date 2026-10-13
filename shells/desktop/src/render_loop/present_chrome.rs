@@ -112,8 +112,9 @@ impl crate::App {
             band_blit,
         });
         if let (false, Some(camada)) = (filtrada, placa.camada()) {
-            let formas = ph2d_render::BandSource::Formas;
-            band_blit.blit(surface.gpu(), world_rt.blend_view(), camada, formas);
+            let (alvo, formas) = (world_rt.blend_view(), ph2d_render::BandSource::Formas);
+            let gpu = surface.gpu();
+            band_blit.blit_pousa(gpu, alvo, camada, formas, None, placa.pousa());
         }
         // ⭐ **A LENTE** (ciclo 20) — depois da última escrita do mundo, antes do vidro e do chrome.
         let cena = hero_screen

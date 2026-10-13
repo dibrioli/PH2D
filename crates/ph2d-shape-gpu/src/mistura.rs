@@ -82,12 +82,23 @@ pub fn multiplica_no_dispositivo(device: &wgpu::Device) -> bool {
 
 /// Uma CORRIDA: as cópias `copias` (índices no buffer) desenhadas com `mistura`. `grupo != 0` ⇒ as
 /// corridas vizinhas com o mesmo `grupo` formam um grupo ISOLADO (`Copies`).
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// ⭐ P4 (doc 132 §4) — `imagens`: as linhas de IMAGEM da corrida noutro buffer (o do segundo
+/// desenhador de [`ShapePass::draw_em_corridas_com`]), desenhadas no MESMO passe e com a MESMA
+/// mistura, depois das formas. ⚠️ A ordem entre as duas médias dentro de uma corrida só não importa
+/// porque as misturas de grupo (Soma, Tela, Multiplica) são comutativas e associativas — uma
+/// corrida `Normal` com imagens trocaria a ordem das linhas.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Corrida {
     pub copias: Range<u32>,
     pub mistura: Mistura,
     pub grupo: u32,
+    pub imagens: Range<u32>,
 }
+
+/// ⭐ P4 — o SEGUNDO desenhador de [`ShapePass::draw_em_corridas_com`]: pinta as
+/// [`Corrida::imagens`] de uma corrida no passe dela.
+pub type DesenhaImagens<'a> = &'a mut dyn FnMut(&mut wgpu::RenderPass<'static>, &Corrida);
 
 /// O pipeline de desenho das cópias com o fragmento `fs` e a mistura `m` — a porta única dos cinco.
 pub(super) fn pipeline_de(
@@ -196,21 +207,62 @@ impl ShapePass {
         copias: Copias<'_>,
         corridas: &[Corrida],
     ) {
+        self.draw_em_corridas_com(
+            gpu,
+            encoder,
+            target,
+            load,
+            view,
+            Some(copias),
+            corridas,
+            None,
+        );
+    }
+
+    /// ⭐ P4 (doc 132 §4) — o [`Self::draw_em_corridas`] com um SEGUNDO desenhador: `imagens` pinta,
+    /// no passe de cada corrida e depois das formas dela, as [`Corrida::imagens`] (o pipeline da
+    /// mesma mistura é dele). `copias = None` ⇒ a corrida só tem imagens (um quadro sem formas).
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "o draw de sempre, as corridas e o segundo desenhador"
+    )]
+    pub fn draw_em_corridas_com(
+        &mut self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        load: wgpu::LoadOp<wgpu::Color>,
+        view: ShapeView,
+        copias: Option<Copias<'_>>,
+        corridas: &[Corrida],
+        mut imagens: Option<DesenhaImagens<'_>>,
+    ) {
+        let com_imagens = imagens.is_some() && corridas.iter().any(|c| !c.imagens.is_empty());
         let simples = match corridas {
             [] => true,
             [c] => c.mistura == Mistura::Normal && c.grupo == 0,
             _ => false,
         };
-        if simples || copias.count == 0 || self.carregadas.is_empty() {
-            return self.draw(gpu, encoder, target, load, view, copias);
+        let formas = copias.filter(|c| c.count > 0 && !self.carregadas.is_empty());
+        if !com_imagens && (simples || formas.is_none()) {
+            if let Some(copias) = copias {
+                self.draw(gpu, encoder, target, load, view, copias);
+            }
+            return;
         }
         gpu.queue
             .write_buffer(&self.view_buf, 0, bytemuck::bytes_of(&view));
-        let bg = self.liga(gpu, copias.buffer);
-        self.contorno
-            .calcula(gpu, encoder, &bg, copias.count, self.tracejado);
-        self.ultimo = Some((bg.clone(), copias.count));
-        let leitura = self.contorno.grupo_de_leitura(gpu);
+        let ligadas = formas.map(|c| {
+            let bg = self.liga(gpu, c.buffer);
+            self.contorno
+                .calcula(gpu, encoder, &bg, c.count, self.tracejado);
+            (bg, c.count)
+        });
+        // ⚠️ Um quadro só de imagens não deixa o halo (`redesenha`) repetir as formas de outro.
+        self.ultimo.clone_from(&ligadas);
+        let leitura = ligadas
+            .as_ref()
+            .map(|_| self.contorno.grupo_de_leitura(gpu));
         #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
@@ -221,22 +273,31 @@ impl ShapePass {
         let (normal, m) = (&self.pipeline, &mut self.misturas);
         let (soma, tela, multiplica) = (&m.soma, &m.tela, m.multiplica.as_ref());
         let mut desenha = |pass: &mut wgpu::RenderPass<'static>, c: &Corrida| {
-            let variantes = match c.mistura {
-                Mistura::Normal => Some(normal),
-                Mistura::Soma => Some(soma),
-                Mistura::Tela => Some(tela),
-                Mistura::Multiplica => multiplica,
-            };
-            let Some(variantes) = variantes else {
-                eprintln!(
-                    "[formas] Multiplica pedido num dispositivo sem DUAL_SOURCE_BLENDING: a corrida nao desenha"
-                );
-                return;
-            };
-            pass.set_pipeline(variantes.de(completa));
-            pass.set_bind_group(0, &bg, &[]);
-            pass.set_bind_group(1, &leitura, &[]);
-            pass.draw(0..6, c.copias.clone());
+            if let (Some((bg, _)), Some(leitura)) = (&ligadas, &leitura)
+                && !c.copias.is_empty()
+            {
+                let variantes = match c.mistura {
+                    Mistura::Normal => Some(normal),
+                    Mistura::Soma => Some(soma),
+                    Mistura::Tela => Some(tela),
+                    Mistura::Multiplica => multiplica,
+                };
+                let Some(variantes) = variantes else {
+                    eprintln!(
+                        "[formas] Multiplica pedido num dispositivo sem DUAL_SOURCE_BLENDING: a corrida nao desenha"
+                    );
+                    return;
+                };
+                pass.set_pipeline(variantes.de(completa));
+                pass.set_bind_group(0, bg, &[]);
+                pass.set_bind_group(1, leitura, &[]);
+                pass.draw(0..6, c.copias.clone());
+            }
+            if let Some(imagens) = imagens.as_mut()
+                && !c.imagens.is_empty()
+            {
+                imagens(pass, c);
+            }
         };
         let mut sessao = m.compositor.sessao(gpu, target, tamanho, load);
         sessao.corridas(encoder, corridas, &mut desenha);

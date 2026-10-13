@@ -147,16 +147,15 @@ impl GpuCook {
         {
             return Err(GpuCookError::FormaComMistura);
         }
-        // ⭐ B6 — uma saída vigiada sem `geometry_id` com linhas é toda imagens: sabe-se aqui.
+        // ⭐ P4 — numa saída em grupo as IMAGENS vão à placa de formas com a mistura do GRUPO; o modo
+        // por LINHA (a coluna `blend`) substitui-a cópia a cópia, e só a cena vectorial o compõe.
         if saidas
             .iter()
-            .zip(&com_forma)
             .enumerate()
-            .any(|(k, (s, &f))| self.vigia.vigia(k) && !f && s.count > 0)
+            .any(|(k, s)| self.grupo.em_grupo(k) && s.cols.contains_key("blend"))
         {
-            return Err(GpuCookError::ImagemEmGrupo);
+            return Err(GpuCookError::ModoDaLinhaEmGrupo);
         }
-        self.vigia_no_inicio(gpu, encoder);
         let total_formas: u64 = saidas
             .iter()
             .zip(&com_forma)
@@ -213,8 +212,7 @@ impl GpuCook {
                 // A vaga das formas vive PARA LÁ das das sprites (`2·stages + k`, `k < saídas`):
                 // duas escritas na mesma vaga chegariam ambas à última.
                 let vaga_forma = 2 * plan.stages.len() + saidas.len() + 1 + k;
-                let conta = self.vigia.vigia(k);
-                self.encode_formas(gpu, encoder, vaga_forma, stream, style.pivot, conta);
+                self.encode_formas(gpu, encoder, vaga_forma, stream, style.pivot);
             }
             let escrito = self
                 .instances

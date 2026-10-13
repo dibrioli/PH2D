@@ -218,6 +218,7 @@ fn corrida(copias: std::ops::Range<u32>, mistura: Mistura, grupo: u32) -> Corrid
         copias,
         mistura,
         grupo,
+        ..Default::default()
     }
 }
 

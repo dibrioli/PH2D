@@ -47,10 +47,8 @@ const OMISSOES: [&str; 5] = [
     "0.0",                           // geometry_id — sem coluna, nenhuma linha é forma
 ];
 
-/// O módulo WGSL para um conjunto concreto de colunas e um pivô. Ligação 0 =
-/// `{count, primeiro, conta}`, ligação 1 = as cópias, ligação 2 = o contador da vigia
-/// ([`crate::vigia`]: `conta ≠ 0` soma as linhas que NÃO são forma); depois uma ligação `read` por
-/// coluna presente.
+/// O módulo WGSL para um conjunto concreto de colunas e um pivô. Ligação 0 = `{count, primeiro}`,
+/// ligação 1 = as cópias; depois uma ligação `read` por coluna presente.
 #[must_use]
 pub fn forma_module(present: [bool; 5], pivot: [f32; 2]) -> String {
     let ancora = if pivot == [0.0, 0.0] {
@@ -67,14 +65,11 @@ pub fn forma_module(present: [bool; 5], pivot: [f32; 2]) -> String {
         "struct FormaParams {\n\
          \x20   count: u32,\n\
          \x20   primeiro: u32,\n\
-         \x20   conta: u32,\n\
-         \x20   _pad: u32,\n\
          }\n\
          @group(0) @binding(0) var<uniform> params: FormaParams;\n\
-         @group(0) @binding(1) var<storage, read_write> instances: array<u32>;\n\
-         @group(0) @binding(2) var<storage, read_write> imagens: atomic<u32>;\n",
+         @group(0) @binding(1) var<storage, read_write> instances: array<u32>;\n",
     );
-    let mut slot = 3u32;
+    let mut slot = 2u32;
     for (i, col) in FORMA_COLUMNS.iter().enumerate() {
         if present[i] {
             src.push_str(&format!(
@@ -129,8 +124,6 @@ pub fn forma_module(present: [bool; 5], pivot: [f32; 2]) -> String {
         \x20   var h = {SEM_GEOMETRIA}u;\n\
         \x20   if (g > 0.5) {{\n\
         \x20       h = u32(g);\n\
-        \x20   }} else if (params.conta != 0u) {{\n\
-        \x20       atomicAdd(&imagens, 1u);\n\
         \x20   }}\n\
         \x20   instances[base + 10u] = h;\n\
         \x20   instances[base + 11u] = 0u;\n\

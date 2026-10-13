@@ -372,9 +372,10 @@ fn every_gpu_cook_call_receives_the_style() {
     );
 }
 
-/// ⭐⭐⭐ **UM SINK QUE MISTURA EM GRUPO SÓ VAI À PLACA PELA CERCA** (doc 118 W4 · B6) — e a cerca
-/// pergunta à MESMA porta que a cena e o pump perguntam (`sink_mistura_em_grupo` →
-/// `MisturaDoSink::tem_camada`), depois as regras da placa e a vigia das imagens.
+/// ⭐⭐⭐ **UM SINK QUE MISTURA EM GRUPO SÓ VAI À PLACA PELA CERCA** (doc 118 W4 · B6 · P4) — e a
+/// cerca pergunta à MESMA porta que a cena e o pump perguntam (`sink_mistura_em_grupo` →
+/// `MisturaDoSink::tem_camada`), depois as regras da placa; as saídas em grupo passam ao cozimento,
+/// que entrega as IMAGENS delas à placa de formas (P4, doc 132 §4).
 ///
 /// ⚠️ **Um gate de TEXTO, e porquê:** o `cook` da rota da placa pede um `GpuContext` vivo; a lei tem
 /// os gates de placa dela (`ph2d-app-motion`, `motion_bridge_gpu_mistura_tests`, `#[ignore]` sem
@@ -385,12 +386,9 @@ fn a_rota_da_placa_recusa_um_sink_que_mistura_em_grupo() {
     // ⚠️ Desde o doc 119 W3 a pergunta é feita a CADA saída — basta uma que misture em grupo.
     // ⭐ Desde a W4b do ciclo 20 a cerca pergunta também pela camada filtrada (o `Scene` pousa nela).
     for fio in [
-        "let imagens_vistas = motion.gpu_cook.toma_imagens_vigiadas(gpu);",
         ".map(|&s| sink_mistura_em_grupo(&motion.doc.graph, s, motion.pump.camada_isolada()))",
-        "mistura::recusa_da_mistura_em_grupo(motion, misturas, &em_grupo, imagens_vistas)\n    {\n        return fell(motion, porque);",
-        "motion.gpu_cook.set_vigia_de_imagens(em_grupo);",
-        // A leitura em voo é DESTE caminho: cair esquece-a (um regresso não lê um quadro velho).
-        "say_route(motion, reason);\n    // A vigia é DESTE caminho: uma leitura de antes de cair não decide o regresso.\n    motion.gpu_cook.descarta_a_vigia();",
+        "if let Some(porque) = mistura::recusa_da_mistura_em_grupo(motion, misturas, &em_grupo) {\n        return fell(motion, porque);",
+        "motion.gpu_cook.set_saidas_em_grupo(em_grupo);",
     ] {
         assert_eq!(
             GPU_BRIDGE.matches(fio).count(),

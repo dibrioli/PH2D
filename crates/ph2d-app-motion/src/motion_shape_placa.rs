@@ -208,7 +208,8 @@ pub fn contorno_por_ordem() -> bool {
 #[path = "motion_shape_placa_mistura.rs"]
 mod mistura;
 pub use mistura::{
-    Misturas, MotivoDoVello, corridas_do_dispositivo, corridas_por_faixa, mistura_no_quadro,
+    Composicao, FaixaDoSink, Misturas, MotivoDoVello, PousaDoQuadro, corridas_das_faixas,
+    corridas_do_dispositivo, corridas_por_faixa, faixas_do_dispositivo, mistura_no_quadro,
     misturas_do_quadro,
 };
 
@@ -280,7 +281,25 @@ pub struct PlacaDeFormas {
     luz: Option<ShapePass>,
     /// ⭐ W5j: as cópias do dispositivo dos objetos que bloqueiam, quando nem todos bloqueiam.
     luz_copias: Option<wgpu::Buffer>,
+    /// ⭐ P4 (b): como a camada deste quadro POUSA no mundo ([`PousaDoQuadro`]) — o presente cola-a
+    /// com esta mistura de hardware ([`Self::pousa`]).
+    pousa: ph2d_render::Pousa,
+    /// ⭐ P4 (doc 132 §4): o segundo desenhador das corridas — as IMAGENS das saídas em grupo.
+    imagens: Option<imagens::ImagensDaPlaca>,
+    /// As fontes das imagens DESTE quadro ([`Self::com_imagens`]), consumidas pelo [`Self::desenha`].
+    fontes: Option<imagens::FontesDasImagens>,
+    /// As ligações das imagens que o [`Self::desenha`] deste quadro fez — a volta das células as repete.
+    ligacoes: Option<imagens::Ligacoes>,
 }
+
+/// ⭐ P4 (doc 132 §4) — as imagens de um grupo na placa (ficheiro irmão).
+#[path = "motion_shape_placa_imagens.rs"]
+pub mod imagens;
+
+// ⭐ P4 — a decisão e o desenho do quadro que a shell compõe.
+#[path = "motion_shape_placa_quadro.rs"]
+mod quadro;
+pub use quadro::{decide_o_quadro, desenha_o_quadro};
 
 /// ⭐ W5e — as formas do Motion na luz 2D (ficheiro irmão).
 #[path = "motion_shape_luz.rs"]
@@ -320,46 +339,9 @@ impl PlacaDeFormas {
             self.copias.clear();
             self.corridas.clear();
             self.fonte.clear();
+            self.pousa = ph2d_render::Pousa::Normal;
         }
         self.diz(insts.len(), geometrias.len());
-        self.ativa
-    }
-
-    /// ⭐⭐⭐ **As cópias vêm do DISPOSITIVO** (doc 121 W3) — o cozimento escreveu `n` cópias no
-    /// buffer dele, e a ponte já perguntou handle a handle se a placa as desenha
-    /// ([`GeometriasDaPlaca::veredito`], a MESMA porta). Aqui só se garante que cada geometria viva
-    /// está preparada para o passe.
-    ///
-    /// ⚠️ **`ligada` NÃO pergunta pelo vidro**, e é de propósito: o dispositivo já CALOU as formas
-    /// no buffer das sprites, logo com a placa desligada elas não se desenhariam em sítio nenhum.
-    /// Com o vidro subido, as formas desenham-se por baixo dele, como o resto do mundo.
-    ///
-    /// ⭐ `corridas` = as misturas por FAIXA de sink ([`corridas_por_faixa`], B6) — vazias, o
-    /// `draw` de sempre em `Normal`.
-    #[allow(clippy::too_many_arguments)] // a decisão do quadro: o buffer, as formas, a vista e as misturas
-    pub fn decide_do_dispositivo(
-        &mut self,
-        ligada: bool,
-        n: u32,
-        vivas: &[u32],
-        store: &VecPathStore,
-        geometrias: &mut GeometriasDaPlaca,
-        cam: Affine,
-        corridas: Vec<Corrida>,
-    ) -> bool {
-        self.cam = cam;
-        self.copias.clear();
-        self.corridas = corridas;
-        self.fonte.clear();
-        for &h in vivas {
-            let _ = geometrias.veredito(h, store);
-        }
-        self.ativa = ligada && n > 0;
-        if !self.ativa {
-            self.corridas.clear();
-        }
-        self.do_dispositivo = self.ativa.then_some(n);
-        self.diz(n as usize, geometrias.len());
         self.ativa
     }
 
@@ -381,8 +363,8 @@ impl PlacaDeFormas {
                     Some(MotivoDoVello::Desligadas) => eprintln!(
                         "[formas] {n} copias de {geometrias} geometrias pela cena Vello: misturas por copia desligadas"
                     ),
-                    Some(MotivoDoVello::PedeOMundo) => eprintln!(
-                        "[formas] {n} copias de {geometrias} geometrias pela cena Vello: a mistura pede o mundo por baixo (fora da camada isolada do Motion)"
+                    Some(MotivoDoVello::MundoPartido | MotivoDoVello::CenaComImagens) => eprintln!(
+                        "[formas] {n} copias de {geometrias} geometrias pela cena Vello: a mistura com o mundo pede mais de uma colagem (fora da camada isolada do Motion)"
                     ),
                     Some(MotivoDoVello::SemMultiplica) => eprintln!(
                         "[formas] {n} copias de {geometrias} geometrias pela cena Vello: Multiply sem DUAL_SOURCE_BLENDING neste dispositivo"
@@ -408,14 +390,19 @@ impl PlacaDeFormas {
         self.corridas.clear();
         self.motivo = None;
         self.fonte.clear();
+        self.pousa = ph2d_render::Pousa::Normal;
+        let mut pousa = PousaDoQuadro::default();
         // ⚠️ Um handle que o store largou nunca volta (não é reciclado) — a entrada dele é lixo.
         geometrias.varre(store);
         for (k, inst) in insts.iter().enumerate() {
             if inst.geometry_id == 0 {
                 return false;
             }
-            let (mistura, grupo) = match misturas.da_copia(inst) {
-                Ok(m) => m,
+            let c = misturas
+                .composicao(inst.blend_linha, &inst.mistura)
+                .and_then(|c| pousa.junta(&c).map(|()| c));
+            let (mistura, grupo) = match c {
+                Ok(c) => (c.mistura, c.grupo),
                 Err(motivo) => {
                     self.motivo = Some(motivo);
                     return false;
@@ -433,6 +420,7 @@ impl PlacaDeFormas {
                             copias: i..i + 1,
                             mistura,
                             grupo,
+                            ..Corrida::default()
                         }),
                     }
                     self.fonte.push(u32::try_from(k).unwrap_or(u32::MAX));
@@ -448,6 +436,7 @@ impl PlacaDeFormas {
                 }
             }
         }
+        self.pousa = pousa.pousa();
         true
     }
 
@@ -480,6 +469,7 @@ impl PlacaDeFormas {
         // do herói, que é onde ela corre) volta ao caminho de sempre em vez de colar as cópias velhas.
         self.desenhou = false;
         self.ultimas = None;
+        self.ligacoes = None;
         if !std::mem::take(&mut self.ativa) {
             return None;
         }
@@ -510,14 +500,16 @@ impl PlacaDeFormas {
         // ⚠️ Um clone do handle (o `wgpu::Buffer` é contado por referência): o `draw` muta o passe
         // (o contorno, doc 121 §9.5) e não pode receber um empréstimo dele próprio.
         let corridas = &self.corridas[..];
-        let (buffer, count) = match self.do_dispositivo {
-            Some(n) => (dispositivo?.clone(), n),
+        // ⭐ P4: na rota do dispositivo um quadro só de imagens não tem buffer de formas.
+        let formas = match self.do_dispositivo {
+            Some(0) => None,
+            Some(n) => Some((dispositivo?.clone(), n)),
             None => {
                 g.passe.upload_instances(gpu, &self.copias);
-                (
+                Some((
                     g.passe.uploaded()?.clone(),
                     u32::try_from(self.copias.len()).ok()?,
-                )
+                ))
             }
         };
         let c = self.cam.as_coeffs();
@@ -531,21 +523,34 @@ impl PlacaDeFormas {
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        g.passe.draw_em_corridas(
+        let fontes = self.fontes.take().filter(|_| self.do_dispositivo.is_some());
+        self.ligacoes = fontes.as_ref().map(|f| {
+            self.imagens
+                .get_or_insert_with(|| imagens::ImagensDaPlaca::new(gpu, FORMATO_DA_CAMADA))
+                .liga(gpu, vista, f)
+        });
+        let imagens = self.imagens.as_ref().zip(self.ligacoes.as_ref());
+        let mut desenha_imagens = |pass: &mut wgpu::RenderPass<'static>, c: &Corrida| {
+            if let Some((p, ligacoes)) = imagens {
+                p.desenha(pass, ligacoes, c);
+            }
+        };
+        g.passe.draw_em_corridas_com(
             gpu,
             &mut enc,
             &g.vista,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             vista,
-            Copias {
-                buffer: &buffer,
-                count,
-            },
+            formas.as_ref().map(|(buffer, count)| Copias {
+                buffer,
+                count: *count,
+            }),
             corridas,
+            imagens.is_some().then_some(&mut desenha_imagens),
         );
         gpu.queue.submit([enc.finish()]);
         self.desenhou = true;
-        self.ultimas = Some((buffer, count, vista));
+        self.ultimas = formas.map(|(buffer, count)| (buffer, count, vista));
         self.gpu.as_ref().map(|g| &g.vista)
     }
 
@@ -688,3 +693,7 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_shape_placa_gpu_tests.rs"]
 pub(crate) mod gpu_tests;
+
+#[cfg(test)]
+#[path = "motion_shape_placa_pousa_gpu_tests.rs"]
+mod pousa_gpu_tests;

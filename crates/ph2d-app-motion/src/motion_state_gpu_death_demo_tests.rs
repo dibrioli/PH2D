@@ -263,7 +263,7 @@ fn the_sparks_draw_legible_stars_on_both_routes() {
             let mut p = PlacaDeFormas::default();
             let dispositivo = m.gpu_cook.formas().filter(|_| m.gpu_live);
             let n = dispositivo.map_or(m.pump.vector_instances.len(), |f| f.len() as usize);
-            let corridas = crate::motion_shape_placa::corridas_do_dispositivo(
+            let (corridas, _) = crate::motion_shape_placa::corridas_do_dispositivo(
                 &m,
                 crate::motion_shape_placa::Misturas::do_quadro(&gpu, m.pump.camada_isolada()),
             );

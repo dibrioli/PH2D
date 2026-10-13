@@ -20,6 +20,6 @@ mod shaders;
 mod volta;
 
 pub use celulas::{
-    Celulas, Entrada, FORMATO, Formas, LADO_MAX, Sprites, Variante, afim_das_sprites,
+    Celulas, Entrada, FORMATO, Formas, Imagens, LADO_MAX, Sprites, Variante, afim_das_sprites,
 };
 pub use plano::{Caixa, Celula, Pagina, Vala, planeia, planeia_com_par};

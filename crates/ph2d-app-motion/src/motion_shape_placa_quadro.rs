@@ -295,6 +295,9 @@ mod tests {
             "placa.decide_do_dispositivo_com_pousa(",
             ".filter(|_| motion.gpu_live)\n        .map(|f| f.buffer());",
             "let fontes = imagens::fontes_do_quadro(placa, gpu, motion, renderer, projeto);",
+            // A colagem no mundo: a convenção das formas e a pousa de cada segmento.
+            "let formas = ph2d_render::BandSource::Formas;",
+            "band_blit.blit_pousa(gpu, alvo, camada, formas, None, pousa);",
         ] {
             assert_eq!(corpo.matches(fio).count(), 1, "{fio}");
         }

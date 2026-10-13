@@ -33,10 +33,8 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
         cima < placa && placa < vello,
         "as formas vão DEPOIS do mundo (as faixas de cima) e ANTES do chrome (a cena Vello)"
     );
-    assert!(chrome.contains("ph2d_render::BandSource::Formas"));
-    // ⭐ P4 (b): a camada pousa no mundo com a mistura do quadro (o `Everything`/`Scene` fora da
-    // camada isolada) — com o `blit` de sempre ela pousaria em `Normal`.
-    // ⭐ e segmento a segmento (P4 (b): pousas diferentes no mesmo quadro).
+    // ⭐ P4 (b): a camada pousa no mundo com a mistura de cada SEGMENTO (`cola_no_mundo`, a porta da
+    // família: a `BandSource::Formas` e o `blit_pousa` estão no gate de texto dela).
     assert!(chrome.contains("motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);"));
 }
 

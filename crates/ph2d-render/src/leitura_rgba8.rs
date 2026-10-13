@@ -37,8 +37,7 @@ fn fs(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
 
 /// **Lê `vista` (`w × h`, o nível 0) em RGBA de 8 bits CODIFICADO**, linha a linha sem folga — pela
 /// placa, à espera dela (uma leitura de ferramenta, nunca do quadro).
-#[must_use]
-pub fn le_rgba8_codificado(gpu: &GpuContext, vista: &wgpu::TextureView, w: u32, h: u32) -> Vec<u8> {
+fn le_rgba8_codificado(gpu: &GpuContext, vista: &wgpu::TextureView, w: u32, h: u32) -> Vec<u8> {
     let device = &gpu.device;
     let modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("ph2d-render leitura rgba8"),
@@ -174,7 +173,7 @@ pub fn le_rgba8_codificado(gpu: &GpuContext, vista: &wgpu::TextureView, w: u32, 
 impl crate::SpriteRenderer {
     /// ⭐ **Os bytes RGBA8 codificados por trás de um `texture_id`** — as três lojas: o átlas e as
     /// individuais pela cópia de sempre (já são bytes de 8 bits; a individual de 16 bits converte), a
-    /// ASSADA pela leitura da placa ([`le_rgba8_codificado`]). `None` para um id que nenhuma conhece.
+    /// ASSADA pela leitura da placa (`le_rgba8_codificado`). `None` para um id que nenhuma conhece.
     #[must_use]
     pub fn le_rgba8(&self, gpu: &GpuContext, texture_id: u32) -> Option<(u32, u32, Vec<u8>)> {
         if texture_id == crate::RenderInstance::ATLAS_TEXTURE_ID {

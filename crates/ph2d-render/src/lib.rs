@@ -72,7 +72,7 @@ pub mod leitura_rgba8;
 pub mod lens;
 pub mod luz_recebida;
 pub mod mipgen;
-pub use leitura_rgba8::{CODIFICA_WGSL, le_rgba8_codificado};
+pub use leitura_rgba8::CODIFICA_WGSL;
 pub mod motion_fx;
 pub mod nine_slice;
 pub mod picking;

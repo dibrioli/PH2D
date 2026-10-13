@@ -156,3 +156,56 @@ fn o_tempo_de_vida_e_o_de_ler_a_frase() {
     }
     assert!(q.is_empty(), "o longo sobreviveu ao tempo de leitura");
 }
+
+/// ⭐ **A pintura da coluna põe as barras onde a régua diz** — por baixo das LINHAS que os avisos
+/// ocupam, não do número de balões. A geometria (`top_column`) tem gate próprio; este prova que
+/// o pintor que a shell chama (`paint_top_column`) a usa. Controlo: a barra na linha do número de
+/// balões pinta outra cena (a fixtura discrimina).
+#[test]
+fn a_pintura_da_coluna_poe_as_barras_debaixo_das_linhas_dos_avisos() {
+    use crate::progress::{JobQueue, Progress, column_row, paint_bar};
+    use ph2d_tokens::Theme;
+    let viewport = Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let mut q = ToastQueue::new();
+    q.push(Toast::warning(aviso_do_dono()));
+    let mut jobs = JobQueue::new();
+    jobs.push(Progress::new("A trabalhar"));
+    let mut ts = TextSystem::without_system_fonts();
+    let col = top_column(&q, 1, &mut ts, viewport);
+    assert!(
+        col.rows > q.len(),
+        "a fixtura precisa de um aviso de 2+ linhas"
+    );
+
+    let pinta = |barra: Option<Rect>| {
+        let mut text = TextSystem::without_system_fonts();
+        let mut scene = VectorScene::new();
+        let mut ctx = PaintCtx {
+            theme: Theme::Sunstone,
+            viewport,
+            text: &mut text,
+        };
+        match barra {
+            None => paint_top_column(&q, &jobs, &mut scene, &mut ctx),
+            Some(r) => {
+                q.paint(&mut scene, &mut ctx);
+                for p in jobs.iter() {
+                    paint_bar(p, r, &mut scene, &mut ctx);
+                }
+            }
+        }
+        let e = scene.inner().encoding();
+        (e.path_data.clone(), e.draw_data.clone())
+    };
+    let pintada = pinta(None);
+    assert_eq!(
+        pintada,
+        pinta(Some(col.bars[0])),
+        "a barra não está debaixo das linhas dos avisos"
+    );
+    assert_ne!(
+        pintada,
+        pinta(Some(column_row(viewport, q.len()))),
+        "controlo: a barra na linha do número de balões teria de pintar outra cena"
+    );
+}

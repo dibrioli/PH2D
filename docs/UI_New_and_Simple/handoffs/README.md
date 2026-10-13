@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**60 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **60** são handoffs (registro **morto**).
+**61 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **61** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -74,7 +74,8 @@
 | 2026-10-12 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-12_F12c.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-12_F12c.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 12/10 — F12 depois da 3.ª janela (B · C · D · F feitas) |
 | 2026-10-12 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-12_F13.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-12_F13.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 12/10 — F13 a meio (o A curado; o Polígono auditado) |
 | 2026-10-12 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F12_SETAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F12_SETAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-12 — F12: O CARTÃO SAI, AS SETAS ⇕ NA LATERAL, O TRAÇO SEM SALTO,… |
-| 2026-10-12 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F13_SELECIONAR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F13_SELECIONAR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-12 — F13: O MODO FORMA SELECCIONA, A *RESIZE BOX* GUARDA O TRAÇO,… |
+| 2026-10-12 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F13_SELECIONAR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F13_SELECIONAR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-12 — F13: O MODO FORMA SELECCIONA, A *RESIZE BOX* GUARDA O TRAÇO,… |
+| 2026-10-13 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-13_F14_QUINAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-13_F14_QUINAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-13 — F14: O «CORNER ROUND» EM TODA FORMA QUE TEM QUINA |
 
 ---
 

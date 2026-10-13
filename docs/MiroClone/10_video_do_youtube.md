@@ -106,6 +106,18 @@ moldura, `image_frame::reach`) e o afim do tocador normalizado à caixa — a co
 do tocador, por isso o ponto do clique, o play e a barra seguem-no sem mudar; a moldura no rascunho nunca preenche
 (lê o estilo do elemento).
 
+**Pausado, o ▶ não chegava ao quadro** (o dono, depois do smoke da W20). Sonda
+[`ferramentas/youtube_motor/sonda_w20_pausa.mjs`](ferramentas/youtube_motor/sonda_w20_pausa.mjs) (fotos directas da aba,
+`saidas/w20_pausa/` e `saidas/w20_pausa_montagem_ph2d/` — a nossa montagem: contexto por omissão, 2.ª aba):
+
+| depois da pausa confirmada | screencast | foto directa (`captureScreenshot`) |
+|---|---|---|
+| Playwright, contexto novo | 1 quadro e silêncio | ▶ |
+| Playwright, a NOSSA montagem | 1 quadro e silêncio | ▶ |
+| o nosso `Player` | 0–1 quadros (a aba visível, com foco, `rAF` a 60/s) | — |
+| o nosso `Player` + foco emulado / + flags anti-«background» | 0–1 (recusadas) | — |
+| o nosso `Player` + as fotos +150/+500/+1200 ms (a cura) | 12–15 quadros em 2 s, ▶ à vista | ✓ |
+
 **Cena de smoke:** 21 (`PH2D_BOARD_SMOKE=21`, `smoke_w20.rs`, gate `the_w20_scene_does_what_its_lessons_say`). As
 lições da cena 19 (l1: «clique fora para parar») e da 20 (l2: «enquanto 200×200 à vista») ensinavam o contrário e
 foram corrigidas.

@@ -413,3 +413,63 @@ fn loading_another_video_forgets_the_previous_ones_state() {
     let b = p.playback();
     assert_eq!((b.time, b.duration, b.want), (0.0, 0.0, None), "{b:?}");
 }
+
+/// ⭐⭐ W20 (o dono, 13/10: «ao apertar o botão de pause, o ícone de play deveria aparecer») — pausado, a aba
+/// continua a chegar ao quadro: pela API (a NOSSA barra) e pelo clique ao meio, depois de o tocador CONFIRMAR
+/// a pausa chegam quadros novos (a camada do tocador com o ▶). Antes: o screencast mandava 1 quadro e calava-se
+/// (a mudança é dentro da moldura do YouTube), e o quadro ficava o de quando tocava
+/// (`youtube_motor/saidas/w20_pausa*`). Os quadros ficam em `target/prova/w20_pausa/*.ppm` para os olhos.
+#[test]
+#[ignore = "rede + Chrome"]
+fn pausing_brings_the_player_s_play_mark_to_the_board() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/prova/w20_pausa");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut last: Option<crate::Frame> = None;
+    // Lê os quadros durante `wait` ms; devolve quantos chegaram e grava o último.
+    let mut grab = |p: &mut Player, name: &str, wait: u64| -> u32 {
+        let t = Instant::now();
+        let mut n = 0;
+        while t.elapsed() < Duration::from_millis(wait) {
+            if let Some(f) = p.take_frame() {
+                last = Some(f);
+                n += 1;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let f = last.as_ref().expect("nenhum quadro");
+        let mut out = format!("P6\n{} {}\n255\n", f.size[0], f.size[1]).into_bytes();
+        for px in f.rgba.as_chunks::<4>().0 {
+            out.extend_from_slice(&px[..3]);
+        }
+        std::fs::write(dir.join(format!("{name}.ppm")), out).unwrap();
+        n
+    };
+    // Espera que o TOCADOR confirme a pausa (a fase lida, não a pedida) e conta os quadros dali para a frente.
+    let confirmed = |p: &Player| {
+        let t = Instant::now();
+        while p.playback().phase != Phase::Paused {
+            assert!(t.elapsed() < Duration::from_secs(5), "a pausa não chegou");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    };
+    let mut p = playing([560, 315], 3);
+    let _ = grab(&mut p, "0_a_tocar", 300);
+    p.pause();
+    confirmed(&p);
+    let n = grab(&mut p, "1_pausa_api", 2000);
+    println!("pela API: {n} quadros depois da pausa confirmada (2 s)");
+    assert!(
+        n >= 2,
+        "pausado pela API, só {n} quadro(s) depois da pausa: o ▶ não chega ao quadro"
+    );
+    p.play();
+    let _ = grab(&mut p, "2_de_novo_a_tocar", 3000);
+    click(&p, 280.0, 157.0);
+    confirmed(&p);
+    let n = grab(&mut p, "3_pausa_clique", 2000);
+    println!("pelo clique: {n} quadros depois da pausa confirmada (2 s)");
+    assert!(
+        n >= 2,
+        "pausado pelo clique, só {n} quadro(s) depois da pausa: o ▶ não chega ao quadro"
+    );
+}

@@ -46,6 +46,15 @@
 5. As lições das cenas 19 (l1: «clique fora para parar») e 20 (l2: «enquanto 200×200 à vista») ensinavam o
    contrário e foram corrigidas.
 
+6. **Depois do smoke do dono (13/10): «ao apertar o botão de pause, o ícone de play deveria aparecer».** Pausado, a
+   página do tocador mostra o ▶, mas o screencast manda 1 quadro e cala-se (a mudança é dentro da moldura do YouTube).
+   Por isso o quadro ficava o de quando tocava, com o «‖». Medido no Playwright e na nossa montagem; a emulação de
+   foco e as flags anti-«background» foram recusadas por medida. Cura em `ph2d-board-video::Player`: fotos directas
+   (`Page.captureScreenshot`) a +150/+500/+1200 ms depois de cada ordem, clique, `load` e `onStateChange`, que entram
+   como quadros. Portão real `pausing_brings_the_player_s_play_mark_to_the_board` (12–15 quadros depois da pausa
+   confirmada; sangra para 1 com as fotos desligadas). Os 13 testes do tocador passam no navegador real: régua da
+   W18 30,00 q/s, clique → quadro 9,5 ms.
+
 ## 2. Foundational / partilhado tocado
 
 | onde | o quê | merge |
@@ -57,6 +66,7 @@
 | `ph2d-board-render` | `Videos::player` + `Videos::activate`; `player_in_box` exportado; `image_frame::{reach,paint}` recebem `&Style`; `video::paint` recebe o id do quadro | `Videos` só se constrói por `Default` (grep: nenhum literal) |
 | `ph2d-board-embed` | `live_allowed`: a LEI mudou (tamanho do tocador + algum pedaço à vista) | 2 leitores (render, a barra no ecrã inteiro), os dois do quadro |
 | `ph2d-board-excalidraw` `video.rs` | `foreign` deixa de zerar fundo/borda | só MiroClone |
+| `ph2d-board-video` `player.rs` | as fotos directas (`Shared::{shots, changed}`, `SHOTS_AFTER`) | só MiroClone |
 | `ph2d-i18n` `board_images.rs` | 8 chaves `board.smoke.w20.*`; 2 textos de lições corrigidos | aditivo |
 
 **Roteador de smoke**: `PH2D_BOARD_SMOKE` `max_level` 20 → **21** (a cena 21 conta-se no `match`; se outra linha também

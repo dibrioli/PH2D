@@ -184,3 +184,14 @@ com o YouTube real, saídas em `excalidraw_oracle/saidas/w20/`); mecanismo:
    gate é o ficheiro que o oráculo gravou, `w20_E2_gravado.excalidraw`).
 6. **O enquadrar de um vídeo pequeno é no evento** (`board_nav::fit_now`): o clique já o vê vivo no mesmo desenho;
    o `show_box` antigo esperava pelo fim do desenho seguinte e fechava o minimapa e o painel de Frames.
+7. **Pausado, o ▶ do tocador chega ao quadro** (o dono, 13/10, depois do smoke da W20: «ao apertar o botão de pause,
+   o ícone de play deveria aparecer»). Medido ([`sonda_w20_pausa.mjs`](../../MiroClone/ferramentas/youtube_motor/sonda_w20_pausa.mjs)
+   e o teste real `pausing_brings_the_player_s_play_mark_to_the_board`): a PÁGINA mostra o ▶ ao pausar (pela API e
+   pelo clique; o botão do meio passa de «Pausar vídeo» a «Assistir vídeo»), mas o screencast manda 1 quadro e
+   CALA-SE — a mudança é dentro da moldura do YouTube e, sem vídeo a correr, a aba não emite quadro (no Playwright
+   também, e na NOSSA montagem também; a aba está visível, com foco, e o `requestAnimationFrame` corre a 60/s). O
+   quadro ficava o de quando tocava, com o «‖». Recusadas por MEDIDA (zero quadros na mesma): a emulação de foco e
+   as flags `--disable-renderer-backgrounding`/`--disable-background-timer-throttling`/`--disable-backgrounding-occluded-windows`.
+   Cura: depois de algo que muda a imagem (uma ordem, um clique, outro vídeo, o `onStateChange`), o tocador tira
+   fotos DIRECTAS (`Page.captureScreenshot`) a +150/+500/+1200 ms e elas entram como quadros (0 → 12–15 quadros nos
+   2 s depois da pausa confirmada; o portão real sangra com as fotos desligadas: 1 quadro).

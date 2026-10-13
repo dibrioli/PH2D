@@ -98,6 +98,10 @@ struct Shared {
     target: OnceLock<String>,
     /// As abas novas já fechadas.
     popups: Mutex<BTreeSet<String>>,
+    /// W20 — os ids dos `Page.captureScreenshot` pedidos: a resposta é um quadro ([`SHOTS_AFTER`]).
+    shots: Mutex<BTreeSet<u64>>,
+    /// W20 — o tocador disse que mudou de estado (`onStateChange`): o fio de controlo tira as fotos.
+    changed: std::sync::atomic::AtomicBool,
 }
 
 /// O tocador (o navegador fecha quando ele cai).
@@ -353,15 +357,28 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
     b.send("Page.navigate", json!({ "url": ORIGIN }), sess);
     screencast(&mut b, sess, size);
     *lock(&s.state) = Some(PlayerState::Playing);
+    // W20: as fotos que faltam tirar (quando).
+    let mut shots: Vec<Instant> = Vec::new();
+    let after = |shots: &mut Vec<Instant>| {
+        let now = Instant::now();
+        shots.extend(SHOTS_AFTER.iter().map(|d| now + *d));
+    };
     loop {
-        match rx.recv_timeout(Duration::from_secs(1)) {
+        let wait = shots
+            .iter()
+            .min()
+            .map_or(IDLE_TICK, |t| t.saturating_duration_since(Instant::now()))
+            .min(IDLE_TICK);
+        match rx.recv_timeout(wait) {
             Ok(Cmd::Load(v)) => {
                 *lock(&s.html) = page(&v);
                 b.send("Page.navigate", json!({ "url": ORIGIN }), sess);
+                after(&mut shots);
             }
             Ok(Cmd::Call(func, args)) => {
                 let js = format!("self.ph2dCall?.('{func}', {args})");
                 b.send("Runtime.evaluate", json!({ "expression": js }), sess);
+                after(&mut shots);
             }
             Ok(Cmd::Resize(sz)) => {
                 let sz = metrics(&mut b, sess, sz);
@@ -371,12 +388,49 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
             Ok(Cmd::Mouse(m)) => {
                 let (method, p) = mouse_params(m);
                 b.send(method, p, sess);
+                match m {
+                    // Passar por cima mostra/esconde a camada do tocador: uma foto por onda de movimentos.
+                    Mouse::Move { .. } if shots.is_empty() => {
+                        shots.push(Instant::now() + SHOTS_AFTER[1]);
+                    }
+                    Mouse::Move { .. } => {}
+                    _ => after(&mut shots),
+                }
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return PlayerState::Starting,
         }
+        if s.changed.swap(false, Ordering::AcqRel) {
+            after(&mut shots);
+        }
+        let now = Instant::now();
+        if shots.iter().any(|t| *t <= now) {
+            shots.retain(|t| *t > now);
+            // O id entra no conjunto ANTES de a resposta poder chegar ao fio de leitura.
+            let mut pending = lock(&s.shots);
+            let id = b.send(
+                "Page.captureScreenshot",
+                json!({ "format": "jpeg", "quality": 85 }),
+                sess,
+            );
+            pending.insert(id);
+        }
     }
 }
+
+/// ⭐ W20 — quando tirar uma foto DIRECTA da aba depois de algo que muda a imagem (uma ordem, um clique,
+/// outro vídeo, o tocador a mudar de estado). Medido (`youtube_motor/saidas/w20_pausa*`): PAUSADO, o
+/// screencast manda 1 quadro e CALA-SE — a mudança é dentro da moldura do YouTube e a aba não pede quadro
+/// novo — enquanto a página mostra o ▶ (`Page.captureScreenshot`, no Playwright e na NOSSA montagem); o
+/// dono via o «‖» de quando tocava. 150 ms apanha a camada do tocador a aparecer; 500 e 1200 ms, a fase
+/// que o YouTube confirma em ~630 ms (`pauseVideo`, W19) e a camada a assentar.
+const SHOTS_AFTER: [Duration; 3] = [
+    Duration::from_millis(150),
+    Duration::from_millis(500),
+    Duration::from_millis(1200),
+];
+/// O passo do fio de controlo sem nada a fazer (vê se o tocador mudou de estado).
+const IDLE_TICK: Duration = Duration::from_millis(100);
 
 /// O tamanho da aba E do «ecrã» dela: sem o ecrã, o navegador sem ecrã imagina um de 800×600 e um ecrã
 /// inteiro manda quadros 4:3 (W19, medido: 420×315 numa caixa 560×315).
@@ -447,7 +501,20 @@ fn on_message(
     resp: &Sender<Value>,
     m: Value,
 ) {
-    if m.get("id").is_some() {
+    if let Some(id) = m["id"].as_u64() {
+        // W20: a foto directa é um quadro como os do screencast. (Medido: pedi-la também acorda o screencast —
+        // sem a descodificar chegaram 6–8 quadros; descodifica-se pela certeza, e a resposta, ~50 KB, não fica
+        // a acumular no canal das respostas.)
+        if lock(&s.shots).remove(&id) {
+            if let Some(f) = m["result"]["data"]
+                .as_str()
+                .and_then(|d| decode_jpeg(&STANDARD.decode(d).ok()?))
+            {
+                *lock(&s.frame) = Some(f);
+                s.seq.fetch_add(1, Ordering::Release);
+            }
+            return;
+        }
         let _ = resp.send(m);
         return;
     }
@@ -460,6 +527,9 @@ fn on_message(
                 .as_str()
                 .and_then(|t| serde_json::from_str::<Value>(t).ok())
             {
+                if v["event"] == "onStateChange" {
+                    s.changed.store(true, Ordering::Release);
+                }
                 lock(&s.playback).apply(&v, Instant::now());
             }
         }

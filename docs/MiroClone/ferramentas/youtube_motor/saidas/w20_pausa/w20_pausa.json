@@ -1,0 +1,187 @@
+{
+ "o_que": "W20: o que o tocador mostra ao PAUSAR (sonda_w20_pausa.mjs)",
+ "video": "aqz-KE-bpKQ",
+ "versao": "155.0.8059.39",
+ "data": "2026-10-13T19:45:24.084Z",
+ "passos": [
+  {
+   "passo": "0_a_tocar",
+   "paused": false,
+   "t": 5,
+   "meio": [
+    {
+     "nome": "Voltar 10 segundos",
+     "x": 224,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    },
+    {
+     "nome": "Pausar vídeo",
+     "x": 280,
+     "y": 158,
+     "w": 56,
+     "vis": true
+    },
+    {
+     "nome": "Avançar 10 segundos",
+     "x": 336,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    }
+   ],
+   "quadros_screencast_ate_aqui": 166
+  },
+  {
+   "passo": "1_api_1s",
+   "paused": true,
+   "t": 5,
+   "meio": [
+    {
+     "nome": "Voltar 10 segundos",
+     "x": 224,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    },
+    {
+     "nome": "Assistir vídeo",
+     "x": 280,
+     "y": 158,
+     "w": 56,
+     "vis": true
+    },
+    {
+     "nome": "Avançar 10 segundos",
+     "x": 336,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    }
+   ],
+   "quadros_screencast_ate_aqui": 179,
+   "quadros_no_segundo": 12
+  },
+  {
+   "passo": "2_api_5s",
+   "paused": true,
+   "t": 5,
+   "meio": [
+    {
+     "nome": "Voltar 10 segundos",
+     "x": 224,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    },
+    {
+     "nome": "Assistir vídeo",
+     "x": 280,
+     "y": 158,
+     "w": 56,
+     "vis": true
+    },
+    {
+     "nome": "Avançar 10 segundos",
+     "x": 336,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    }
+   ],
+   "quadros_screencast_ate_aqui": 180,
+   "quadros_nos_4s": 0
+  },
+  {
+   "passo": "3_clique_1s",
+   "paused": true,
+   "t": 9,
+   "meio": [
+    {
+     "nome": "Voltar 10 segundos",
+     "x": 224,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    },
+    {
+     "nome": "Assistir vídeo",
+     "x": 280,
+     "y": 158,
+     "w": 56,
+     "vis": true
+    },
+    {
+     "nome": "Avançar 10 segundos",
+     "x": 336,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    }
+   ],
+   "quadros_screencast_ate_aqui": 310,
+   "quadros_no_segundo": 1
+  },
+  {
+   "passo": "4_clique_5s_rato_fora",
+   "paused": true,
+   "t": 9,
+   "meio": [
+    {
+     "nome": "Voltar 10 segundos",
+     "x": 224,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    },
+    {
+     "nome": "Assistir vídeo",
+     "x": 280,
+     "y": 158,
+     "w": 56,
+     "vis": true
+    },
+    {
+     "nome": "Avançar 10 segundos",
+     "x": 336,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    }
+   ],
+   "quadros_screencast_ate_aqui": 311,
+   "quadros_nos_4s": 0
+  },
+  {
+   "passo": "5_rato_por_cima_pausado",
+   "paused": true,
+   "t": 9,
+   "meio": [
+    {
+     "nome": "Voltar 10 segundos",
+     "x": 224,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    },
+    {
+     "nome": "Assistir vídeo",
+     "x": 280,
+     "y": 158,
+     "w": 56,
+     "vis": true
+    },
+    {
+     "nome": "Avançar 10 segundos",
+     "x": 336,
+     "y": 136,
+     "w": 12,
+     "vis": true
+    }
+   ],
+   "quadros_screencast_ate_aqui": 312,
+   "quadros": 0
+  }
+ ]
+}

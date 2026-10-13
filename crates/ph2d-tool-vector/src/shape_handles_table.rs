@@ -77,6 +77,22 @@ const fn round_corner(
     }
 }
 
+/// ⭐ (F14) O «Corner round» da forma: um ⊙ DENTRO da quina `corner` (convexa, entre duas arestas
+/// RECTAS em toda variante), o idioma do rectângulo arredondado — arrastar arredonda TODAS.
+const fn corner_round(field: usize, corner: usize, next: bool) -> HandleDesc {
+    let mut d = parked(h(
+        std::slice::from_ref(&ROUND_FIELDS[field]),
+        Spot::Rounding { corner, next },
+        Law::Nearest,
+    ));
+    d.sharp = std::slice::from_ref(&ROUND_FIELDS[field]);
+    d.in_corner = true;
+    d
+}
+
+/// Os índices possíveis do campo (um `&'static [usize]` de um elemento por índice).
+const ROUND_FIELDS: [usize; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+
 /// Os vértices do rectângulo vivo (`shapes::rectangle`, Y-para-CIMA): 0 = BL, 1 = BR, 2 = TR,
 /// 3 = TL. Os campos do `round_rect_radii`: 0 = raio base (o TL), 1/2/3 = desvio TR/BR/BL.
 /// O tipo do canto (5) no ⇕ (F12 — o dono: «Corner … com a mesma seta das pontas»); o *Smoothing*
@@ -190,6 +206,29 @@ const ROUND: &[HandleDesc] = &[
 /// O arco aberto e o segmento: só o início e o fim.
 const ARC: &[HandleDesc] = &[ARC_START, ARC_END];
 
+/// F14: o segmento circular arredonda as duas quinas da corda — o ⊙ da pizza, na ponta do início.
+const SEGMENT: &[HandleDesc] = &[
+    parked(on_sharp(
+        h(
+            &[2],
+            Spot::Rounding {
+                corner: 0,
+                next: false,
+            },
+            Law::Nearest,
+        ),
+        &[2],
+    )),
+    ARC_START,
+    ARC_END,
+];
+
+/// F14: o rectângulo tem raio de canto (o Affinity) — o ⊙ do rectângulo arredondado, no de cima
+/// à esquerda; a conta é a mesma (`the_rectangle_corner_round_is_the_round_rect_radius`).
+const RECTANGLE: &[HandleDesc] = &[corner_round(0, 3, false)];
+
+const DELAY: &[HandleDesc] = &[corner_round(0, 0, true)];
+
 /// A espiral (`shapes::spiral`): as VOLTAS na ponta de fora, por volta inteira do ponteiro; a
 /// divergência e o raio interno na fila de ⇕ (F12, o dono).
 const SPIRAL: &[HandleDesc] = &[
@@ -202,14 +241,16 @@ const SPIRAL: &[HandleDesc] = &[
 /// da cabeça, 2 = largura da cabeça. A espessura da haste no canto de trás dela (vértice 0); a
 /// cabeça pela quina de trás (vértice 2) — um eixo cada.
 const ARROW_RIGHT: &[HandleDesc] = &[
-    h(&[0], Spot::Vertex(0), Law::Nearest),
-    h(&[1, 2], Spot::Vertex(2), Law::Nearest),
+    on_sharp(h(&[0], Spot::Vertex(0), Law::Nearest), &[3]),
+    on_sharp(h(&[1, 2], Spot::Vertex(2), Law::Nearest), &[3]),
+    corner_round(3, 3, false),
 ];
 
 /// A seta dupla (`arrows::arrow_double`): a haste pelo vértice 2, a cabeça da direita pelo 4.
 const ARROW_DOUBLE: &[HandleDesc] = &[
-    h(&[0], Spot::Vertex(2), Law::Nearest),
-    h(&[1, 2], Spot::Vertex(4), Law::Nearest),
+    on_sharp(h(&[0], Spot::Vertex(2), Law::Nearest), &[3]),
+    on_sharp(h(&[1, 2], Spot::Vertex(4), Law::Nearest), &[3]),
+    arrow(&[3]),
 ];
 
 /// A seta dobrada (`arrows::arrow_bent`: a cauda sai do canto BL, sobe pela haste e a ponta aponta
@@ -220,54 +261,79 @@ const ARROW_DOUBLE: &[HandleDesc] = &[
 /// seta recta; o cotovelo no 1.º vértice, onde o arco de fora começa na aresta de baixo (com raio
 /// zero é a própria quina — o mesmo ponto, contínuo).
 const ARROW_BENT: &[HandleDesc] = &[
-    h(&[0], Spot::FromEnd(0), Law::Nearest),
-    on_sharp(at(&[1, 2], 5), &[3]),
-    at(&[3], 1),
+    on_sharp(h(&[0], Spot::FromEnd(0), Law::Nearest), &[4]),
+    on_sharp(at(&[1, 2], 5), &[3, 4]),
+    on_sharp(at(&[3], 1), &[4]),
+    arrow(&[4]),
 ];
 
 /// A divisa (`arrows::chevron`): 0 = profundidade da ponta (o ombro de cima, vértice 1), 1 = o
 /// entalhe (vértice 5, no eixo — no mínimo cai no meio da aresta esquerda, a alça de escala).
-const CHEVRON: &[HandleDesc] = &[parked(at(&[0], 1)), parked(at(&[1], 5))];
+const CHEVRON: &[HandleDesc] = &[
+    on_sharp(parked(at(&[0], 1)), &[2]),
+    on_sharp(parked(at(&[1], 5)), &[2]),
+    corner_round(2, 0, true),
+];
 
 /// O paralelogramo (`flow::parallelogram`): a inclinação na quina de cima à esquerda (vértice 0 —
 /// com zero é o canto da caixa).
-const PARALLELOGRAM: &[HandleDesc] = &[parked(at(&[0], 0))];
+const PARALLELOGRAM: &[HandleDesc] = &[
+    on_sharp(parked(at(&[0], 0)), &[1]),
+    corner_round(1, 1, false),
+];
 
 /// O trapézio (`flow::trapezoid`): as DUAS quinas de cima (vértices 0 e 1) andam na horizontal —
 /// o *Trapezoid* do Affinity; sem Alt as duas juntas (simétrico), com Alt só a agarrada (o
 /// *Left/Right point*, F10): a esquerda escreve o recuo e devolve a diferença ao desvio da direita.
 const TRAPEZOID: &[HandleDesc] = &[
-    alone(parked(at(&[0], 0)), &[0], &[1]),
-    alone(parked(at(&[0], 1)), &[1], &[]),
+    on_sharp(alone(parked(at(&[0], 0)), &[0], &[1]), &[2]),
+    on_sharp(alone(parked(at(&[0], 1)), &[1], &[]), &[2]),
+    corner_round(2, 3, false),
 ];
 /// O trapézio invertido: as quinas de BAIXO (vértices 2 = direita e 3 = esquerda).
 const TRAPEZOID_FLIP: &[HandleDesc] = &[
-    alone(parked(at(&[0], 2)), &[1], &[]),
-    alone(parked(at(&[0], 3)), &[0], &[1]),
+    on_sharp(alone(parked(at(&[0], 2)), &[1], &[]), &[2]),
+    on_sharp(alone(parked(at(&[0], 3)), &[0], &[1]), &[2]),
+    corner_round(2, 0, true),
 ];
 
 /// O MEIO do losango (F10, o *Mid point* do Affinity) no vértice da direita — que vive sobre a
 /// aresta da caixa, onde mora a alça de escala: desenha-se para dentro.
-const DIAMOND: &[HandleDesc] = &[inset(at(&[0], 1))];
+const DIAMOND: &[HandleDesc] = &[on_sharp(inset(at(&[0], 1)), &[1]), corner_round(1, 0, true)];
 
 /// O hexágono achatado (`flow::hexagon_flat`): o corte na quina de cima à direita (vértice 1).
-const HEXAGON_FLAT: &[HandleDesc] = &[parked(at(&[0], 1))];
+const HEXAGON_FLAT: &[HandleDesc] = &[
+    on_sharp(parked(at(&[0], 1)), &[1]),
+    corner_round(1, 0, false),
+];
 
 /// O cilindro (`flow::cylinder`, a tampa de cima é o arco 0..2): a altura da tampa no fim dela, à
 /// direita (vértice 2), na vertical.
 const CYLINDER: &[HandleDesc] = &[parked(at(&[0], 2))];
 
 /// O documento (`flow::document`): a onda na ponta direita dela (vértice 2, `(1, 1 − wave)`).
-const DOCUMENT: &[HandleDesc] = &[parked(at(&[0], 2))];
+const DOCUMENT: &[HandleDesc] = &[
+    on_sharp(parked(at(&[0], 2)), &[1]),
+    corner_round(1, 0, true),
+];
 
 /// O ecrã (`flow::display`, o bico à esquerda): o nariz no início da aresta de cima (vértice 0).
-const DISPLAY: &[HandleDesc] = &[parked(at(&[0], 0))];
+const DISPLAY: &[HandleDesc] = &[
+    on_sharp(parked(at(&[0], 0)), &[1]),
+    corner_round(1, 5, true),
+];
 
 /// O conector de página (`flow::offpage`): a ponta no ombro direito (vértice 2, na vertical).
-const OFF_PAGE: &[HandleDesc] = &[parked(at(&[0], 2))];
+const OFF_PAGE: &[HandleDesc] = &[
+    on_sharp(parked(at(&[0], 2)), &[1]),
+    corner_round(1, 0, true),
+];
 
 /// O colchete de nota (`flow::note_bracket`, aberto): a aba no fim de cima (vértice 0).
-const NOTE_BRACKET: &[HandleDesc] = &[parked(at(&[0], 0))];
+const NOTE_BRACKET: &[HandleDesc] = &[
+    on_sharp(parked(at(&[0], 0)), &[1]),
+    corner_round(1, 2, false),
+];
 
 /// O balão rectangular (`bubbles::speech_rect`, lido no contorno com os cantos VIVOS — os arcos
 /// mudam a contagem: 0 = canto, 1 = canto oposto, 2 = flanco `pa` da base, 3 = BICO, 4 = `pb`; o
@@ -288,10 +354,11 @@ const SPEECH_RECT: &[HandleDesc] = &[
             },
             Law::Nearest,
         ),
-        &[0],
+        &[0, 5],
     )),
-    on_sharp(at(&[3, 4], 2), &[0]),
-    on_sharp(h(&[1, 2], Spot::Vertex(3), Law::BoxPoint), &[0]),
+    on_sharp(at(&[3, 4], 2), &[0, 5]),
+    on_sharp(h(&[1, 2], Spot::Vertex(3), Law::BoxPoint), &[0, 5]),
+    arrow(&[5]),
 ];
 
 /// O balão oval (`bubbles::speech_oval`): a meia-abertura no flanco `P(tb)` (vértice 0, desliza
@@ -299,9 +366,10 @@ const SPEECH_RECT: &[HandleDesc] = &[
 /// faixa do rabo no ⇕ (F12): encolhe a elipse inteira e move o flanco junto com a abertura (o par
 /// no flanco é acoplado: 1,3e-4 de erro nas 3 rondas) — nenhum vértice anda só com ela.
 const SPEECH_OVAL: &[HandleDesc] = &[
-    at(&[2], 0),
-    h(&[0, 1], Spot::FromEnd(0), Law::BoxPoint),
+    on_sharp(at(&[2], 0), &[4]),
+    on_sharp(h(&[0, 1], Spot::FromEnd(0), Law::BoxPoint), &[4]),
     arrow(&[3]),
+    arrow(&[4]),
 ];
 
 /// O pensamento (`bubbles::thought`): o corpo (a nuvem) é o contorno principal, as bolhas os
@@ -310,9 +378,10 @@ const SPEECH_OVAL: &[HandleDesc] = &[
 /// o BICO 2-D no 1.º vértice da bolha 0. O número de bolhas no ⇕ (F12): a bolha 0 não muda com
 /// ele, e qualquer outra deixa de existir com uma bolha só.
 const THOUGHT: &[HandleDesc] = &[
-    h(&[3], Spot::Vertex(6), Law::Count),
-    h(&[0, 1], Spot::Sub(0, 0), Law::BoxPoint),
+    on_sharp(h(&[3], Spot::Vertex(6), Law::Count), &[4]),
+    on_sharp(h(&[0, 1], Spot::Sub(0, 0), Law::BoxPoint), &[4]),
     arrow(&[2]),
+    arrow(&[4]),
 ];
 
 /// A explosão (`bubbles::burst`, pontas nos pares, vales nos ímpares): as PONTAS pelo ângulo do
@@ -320,10 +389,11 @@ const THOUGHT: &[HandleDesc] = &[
 /// faixa 5..30, o do 8 duas, de < 1°, e cobre 235° em vez de 61°); o raio interior no 1.º vale
 /// (distância ao centro, como a estrela); a desordem radial e angular no ⇕ (F12).
 const BURST: &[HandleDesc] = &[
-    h(&[0], Spot::Vertex(8), Law::Count),
-    parked(h(&[1], Spot::Vertex(1), Law::Radial)),
+    on_sharp(h(&[0], Spot::Vertex(8), Law::Count), &[4]),
+    on_sharp(parked(h(&[1], Spot::Vertex(1), Law::Radial)), &[4]),
     arrow(&[2]),
     arrow(&[3]),
+    arrow(&[4]),
 ];
 
 /// A chaveta (`bubbles::brace`, aberta; o BICO à esquerda): o aperto no bico (vértice 3, na
@@ -333,7 +403,7 @@ const BRACE: &[HandleDesc] = &[at(&[1], 3), at(&[2, 0], 1)];
 
 /// O coração (`symbols::heart`, dois vértices): a fenda no vértice 0, na vertical (o *Heart* do
 /// Affinity).
-const HEART: &[HandleDesc] = &[at(&[0], 0)];
+const HEART: &[HandleDesc] = &[on_sharp(at(&[0], 0), &[1]), arrow(&[1])];
 
 /// A nuvem (`bubbles::cloud`): os gomos pelo ângulo do vértice 6 (medido 5..24 com a
 /// irregularidade de fábrica: o único de 4/6/8/10 sem recuo). O fofo, a suavização e a irregularidade no ⇕ (F12) — o `refit`
@@ -348,7 +418,7 @@ const CLOUD: &[HandleDesc] = &[
 ];
 
 /// O raio (`symbols::bolt`): a cintura pelo degrau do meio (vértice 2, o par 2–8 abre com ela).
-const BOLT: &[HandleDesc] = &[at(&[0], 2)];
+const BOLT: &[HandleDesc] = &[on_sharp(at(&[0], 2), &[1]), corner_round(1, 0, true)];
 
 /// A lua (`symbols::moon`): a fase no meio do terminador (vértice 3), no eixo horizontal — o
 /// *Crescent* do Affinity.
@@ -356,62 +426,86 @@ const MOON: &[HandleDesc] = &[at(&[0], 3)];
 
 /// A gota (`symbols::drop`): o ápice é fixo; a ponta é o ponto de tangência T₊ (vértice 1), que
 /// desliza pela barriga com ela (o arco muda de contagem; o 1 é sempre o início dele).
-const DROP: &[HandleDesc] = &[at(&[0], 1)];
+const DROP: &[HandleDesc] = &[on_sharp(at(&[0], 1), &[1]), arrow(&[1])];
 
 /// O escudo (`symbols::shield`): a curva no fim do ombro direito (vértice 2), na vertical.
-const SHIELD: &[HandleDesc] = &[at(&[0], 2)];
+const SHIELD: &[HandleDesc] = &[on_sharp(at(&[0], 2), &[1]), corner_round(1, 0, true)];
 
 /// A etiqueta (`symbols::tag`): a ponta no início da aresta de cima (vértice 1); o furo no 1.º
 /// vértice do olho (sub-contorno 0, às 3h dele — anda na horizontal; o olho não é centrado na
 /// caixa). Com furo zero o olho não existe e a alça dele some.
-const TAG: &[HandleDesc] = &[parked(at(&[0], 1)), h(&[1], Spot::Sub(0, 0), Law::Nearest)];
+const TAG: &[HandleDesc] = &[
+    on_sharp(parked(at(&[0], 1)), &[2]),
+    on_sharp(h(&[1], Spot::Sub(0, 0), Law::Nearest), &[2]),
+    corner_round(2, 0, true),
+];
 
 /// A engrenagem (`symbols::gear`, 1.º dente às 12h): os DENTES pelo ângulo da 2.ª ponta (vértice 4
 /// — monótono 4..30); a profundidade no 1.º vale (vértice 2, distância ao centro); o furo no 1.º
 /// vértice do eixo (sub-contorno 0, às 3h — o *Hole radius* do Affinity, distância ao centro). Sem
 /// `park`: com furo zero o eixo não existe e não há ponto onde estacionar.
 const GEAR: &[HandleDesc] = &[
-    h(&[0], Spot::Vertex(4), Law::Count),
-    h(&[1], Spot::Vertex(2), Law::Radial),
-    h(&[2], Spot::Sub(0, 0), Law::Radial),
+    on_sharp(h(&[0], Spot::Vertex(4), Law::Count), &[5]),
+    on_sharp(h(&[1], Spot::Vertex(2), Law::Radial), &[5]),
+    on_sharp(h(&[2], Spot::Sub(0, 0), Law::Radial), &[5]),
     // F10: a LARGURA do dente no fim do topo do 1.º; a envergadura dos flancos no ⇕ (F12).
-    at(&[3], 1),
+    on_sharp(at(&[3], 1), &[5]),
     arrow(&[4]),
+    arrow(&[5]),
 ];
 
 /// A cruz (`symbols::cross`): o braço na quina INTERIOR de cima à direita (vértice 4), na diagonal
 /// — no mínimo cai junto do centro (o pivô).
-const CROSS: &[HandleDesc] = &[parked(at(&[0], 4))];
+const CROSS: &[HandleDesc] = &[
+    on_sharp(parked(at(&[0], 4)), &[1]),
+    corner_round(1, 2, true),
+];
 
 /// O visto (`symbols::check`): a espessura no cotovelo de dentro (vértice 1).
-const CHECK: &[HandleDesc] = &[at(&[0], 1)];
+const CHECK: &[HandleDesc] = &[on_sharp(at(&[0], 1), &[1]), corner_round(1, 2, false)];
 
 /// A faixa (`symbols::banner`): o entalhe no «V» da cauda direita (vértice 8), na horizontal.
-const BANNER: &[HandleDesc] = &[at(&[0], 8)];
+const BANNER: &[HandleDesc] = &[on_sharp(at(&[0], 8), &[1]), corner_round(1, 0, true)];
 
 /// O cubo (`iso::iso_cube`, o hexágono 0 = topo, 1 = ombro direito): a inclinação no topo (na
 /// horizontal), a altura no ombro (na vertical); o ponto de vista (uma escolha de dois) no ⇕.
-const ISO_CUBE: &[HandleDesc] = &[at(&[1], 0), at(&[0], 1), arrow_down(&[2])];
+const ISO_CUBE: &[HandleDesc] = &[
+    on_sharp(at(&[1], 0), &[3]),
+    on_sharp(at(&[0], 1), &[3]),
+    arrow_down(&[2]),
+    corner_round(3, 5, false),
+];
 
 /// O cone (`iso::iso_cone`): o ápice é fixo; a boca é o ponto de tangência do lado direito
 /// (vértice 1, o início do arco da base).
-const ISO_CONE: &[HandleDesc] = &[at(&[0], 1), arrow_down(&[1])];
+const ISO_CONE: &[HandleDesc] = &[on_sharp(at(&[0], 1), &[2]), arrow_down(&[1]), arrow(&[2])];
 
 /// A pirâmide (`iso::iso_pyramid`: ápice, direita, frente, esquerda): a altura no lado direito, a
 /// inclinação na frente (na horizontal).
-const ISO_PYRAMID: &[HandleDesc] = &[at(&[0], 1), at(&[1], 2), arrow_down(&[2])];
+const ISO_PYRAMID: &[HandleDesc] = &[
+    on_sharp(at(&[0], 1), &[3]),
+    on_sharp(at(&[1], 2), &[3]),
+    arrow_down(&[2]),
+    corner_round(3, 3, false),
+];
 
 /// O processo pré-definido (`flow::predefined_process`): as barras são sub-contornos (rectas); a
 /// largura no topo da barra esquerda (sub-contorno 0, vértice 0), na horizontal.
-const PREDEFINED_PROCESS: &[HandleDesc] = &[parked(h(&[0], Spot::Sub(0, 0), Law::Nearest))];
+const PREDEFINED_PROCESS: &[HandleDesc] = &[
+    on_sharp(parked(h(&[0], Spot::Sub(0, 0), Law::Nearest)), &[1]),
+    corner_round(1, 3, false),
+];
 
 /// O osso (`symbols_rig::bone`): o olho no 1.º vértice dele (sub-contorno 0, às 3h — o olho está no
 /// ombro, não no centro da caixa).
-const BONE: &[HandleDesc] = &[h(&[0], Spot::Sub(0, 0), Law::Nearest)];
+const BONE: &[HandleDesc] = &[
+    on_sharp(h(&[0], Spot::Sub(0, 0), Law::Nearest), &[1]),
+    corner_round(1, 1, false),
+];
 
 /// O segmento de corda (`symbols_rig::rope_segment`): a quina interior de cima à esquerda (vértice
 /// 2 = `(nó, 0,5 − corda/2)`) — a corda num eixo, o nó no outro.
-const ROPE_SEGMENT: &[HandleDesc] = &[at(&[0, 1], 2)];
+const ROPE_SEGMENT: &[HandleDesc] = &[on_sharp(at(&[0, 1], 2), &[2]), corner_round(2, 0, true)];
 
 /// As alças de `kind` (vazio = a forma não tem parâmetro com gesto natural).
 #[must_use]
@@ -422,7 +516,10 @@ pub(crate) fn of(kind: ShapeKind) -> &'static [HandleDesc] {
         K::Polygon => POLYGON,
         K::Star => STAR,
         K::Ellipse | K::Pie => ROUND,
-        K::Arc | K::Segment => ARC,
+        K::Arc => ARC,
+        K::Segment => SEGMENT,
+        K::Rectangle => RECTANGLE,
+        K::Delay => DELAY,
         K::Spiral => SPIRAL,
         K::ArrowRight => ARROW_RIGHT,
         K::ArrowDouble => ARROW_DOUBLE,
@@ -460,7 +557,7 @@ pub(crate) fn of(kind: ShapeKind) -> &'static [HandleDesc] {
         K::RopeSegment => ROPE_SEGMENT,
         K::PredefinedProcess => PREDEFINED_PROCESS,
         K::Bone => BONE,
-        // Sem campo: Rectangle, Line, Diamond, Pill, Delay, Junction.
+        // Sem campo: Line, Pill, Junction.
         _ => &[],
     }
 }

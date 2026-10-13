@@ -487,7 +487,7 @@ fn smoothing_a_sharp_corner_is_a_no_op() {
 fn a_negative_slice_radius_leaves_the_slice_intact() {
     for (start, sweep, hole) in [(0.0, 70.0, 0.0), (30.0, 220.0, 0.5)] {
         let p = crate::ellipse_sweep([0.0; 2], 1.0, 1.0, start, sweep, hole);
-        assert_eq!(crate::round_slice_corners(p.clone(), -0.1), p, "{sweep}°");
+        assert_eq!(crate::round_shape_corners(p.clone(), -0.1), p, "{sweep}°");
     }
 }
 
@@ -504,7 +504,7 @@ fn only_the_slice_corners_round_the_smooth_arc_vertices_stay() {
     };
     for (start, sweep, hole) in [(0.0, 100.0, 0.0), (0.0, 100.0, 0.5), (17.0, 271.0, 0.5)] {
         let p = crate::ellipse_sweep([0.3, -7.0], 2.5, 13.0, start, sweep, hole);
-        let r = crate::round_slice_corners(p.clone(), 0.125);
+        let r = crate::round_shape_corners(p.clone(), 0.125);
         let kept = smooth(&r);
         for a in smooth(&p) {
             assert!(

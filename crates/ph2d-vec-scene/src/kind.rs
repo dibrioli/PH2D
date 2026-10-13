@@ -177,6 +177,57 @@ impl ShapeKind {
         )
     }
 
+    /// ⭐ (F14) O índice do campo «Corner round» desta forma — o ÚLTIMO dela, apenso e neutro em
+    /// zero —, que o [`cook`] passa à [`crate::round_shape_corners`]. `None` = não há quina viva,
+    /// ou a forma já tem quem a arredonde (o raio do polígono, as pontas da estrela, o filete da
+    /// nuvem). A lista das que ficam de fora, com a medida: doc 24 §2 e o censo
+    /// `every_live_corner_has_a_rounder` (`ph2d-tool-vector`).
+    #[must_use]
+    pub const fn corner_round_field(self) -> Option<usize> {
+        use ShapeKind as K;
+        Some(match self {
+            K::Rectangle | K::Delay => 0,
+            K::Diamond
+            | K::Parallelogram
+            | K::HexagonFlat
+            | K::Document
+            | K::Display
+            | K::PredefinedProcess
+            | K::OffPage
+            | K::NoteBracket
+            | K::Bolt
+            | K::Drop
+            | K::Shield
+            | K::Cross
+            | K::Check
+            | K::Banner
+            | K::Bone
+            | K::Heart => 1,
+            K::Segment
+            | K::Chevron
+            | K::Trapezoid
+            | K::TrapezoidFlip
+            | K::Tag
+            | K::IsoCone
+            | K::RopeSegment => 2,
+            K::Ellipse | K::Pie | K::ArrowRight | K::ArrowDouble | K::IsoCube | K::IsoPyramid => 3,
+            K::ArrowBent | K::SpeechOval | K::Thought | K::Burst => 4,
+            K::SpeechRect | K::Gear => 5,
+            K::RoundRect
+            | K::Polygon
+            | K::Star
+            | K::Spiral
+            | K::Line
+            | K::Arc
+            | K::Pill
+            | K::Cylinder
+            | K::Junction
+            | K::Brace
+            | K::Cloud
+            | K::Moon => return None,
+        })
+    }
+
     /// Os valores default desta forma (o que uma forma nova nasce valendo). É a MESMA
     /// tabela que o catálogo de UI publica como `default` de cada campo — uma verdade só.
     #[must_use]
@@ -362,8 +413,17 @@ fn f(v: &[f64], i: usize) -> f64 {
 /// semi-eixos dela. É a ÚNICA porta de geometria paramétrica: o `ShapeTool` (preview do
 /// arrasto) e o re-cook da forma viva passam os dois por aqui, então o que se desenha e
 /// o que se guarda nunca divergem.
+/// F14: o «Corner round» ([`ShapeKind::corner_round_field`]) corre por cima, sobre o contorno feito.
 #[must_use]
 pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
+    let p = cook_sharp(kind, a, b, v);
+    match kind.corner_round_field() {
+        Some(i) => crate::round_shape_corners(p, f(v, i)),
+        None => p,
+    }
+}
+
+fn cook_sharp(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
     let c = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5];
     let rx = (b[0] - a[0]).abs() * 0.5;
     let ry = (b[1] - a[1]).abs() * 0.5;
@@ -383,11 +443,10 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ),
         // A família do círculo: `sweep` + `start` + `inner` dão elipse, pizza, rosquinha
         // e anel parcial (crate::round). Pie é a mesma forma com outros defaults.
-        // F12: o 4.º campo arredonda as quinas da fatia (neutro em zero).
-        ShapeKind::Ellipse | ShapeKind::Pie => crate::round_slice_corners(
-            crate::ellipse_sweep(c, rx, ry, f(v, 1), f(v, 0), f(v, 2)),
-            f(v, 3),
-        ),
+        // F12: o 4.º campo arredonda as quinas da fatia — o «Corner round» (F14: no `cook`).
+        ShapeKind::Ellipse | ShapeKind::Pie => {
+            crate::ellipse_sweep(c, rx, ry, f(v, 1), f(v, 0), f(v, 2))
+        }
         ShapeKind::Segment => crate::ellipse_chord(c, rx, ry, f(v, 1), f(v, 0)),
         // F10: tipo do canto, envergadura, liso (e a torção da estrela) — `crate::polystar`.
         ShapeKind::Polygon => crate::polystar(

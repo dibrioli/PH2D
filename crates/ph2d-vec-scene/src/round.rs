@@ -142,27 +142,6 @@ pub fn ellipse_sweep(
     }
 }
 
-/// ⭐ (F12, o dono: «um ponto para ajustar os raios das quinas quando o círculo não está
-/// inteiro») **As quinas de uma fatia arredondadas** pelo `r` — as pontas do arco, o centro da pizza
-/// ou as pontas do arco interno do anel, pelo motor da quina viva (`corner_live`: G1 entre o arco e
-/// a borda recta, saturação sem pânico). `r ≤ 0` ou sem quina (a volta inteira) = o caminho intacto.
-#[must_use]
-pub fn round_slice_corners(mut p: VecPath, r: f64) -> VecPath {
-    if r <= 0.0 {
-        return p;
-    }
-    for v in &mut p.verts {
-        if v.kind == VertexKind::Corner {
-            v.corner_radius = r;
-        }
-    }
-    match crate::corner_live::round_authored_corners(&p.verts, p.closed) {
-        Some(verts) => p.verts = verts,
-        None => p.verts.iter_mut().for_each(|v| v.corner_radius = 0.0),
-    }
-    p
-}
-
 /// **Segmento circular** (a corda): o arco fechado por uma linha RETA entre as pontas —
 /// não pelo centro, que é o que o distingue da pizza.
 #[must_use]
@@ -436,8 +415,12 @@ mod cap_tests {
             ("anel", 30.0, 220.0, 0.5),
         ] {
             let p = ellipse_sweep(c, 1.0, 1.0, start, sweep, hole);
-            assert_eq!(round_slice_corners(p.clone(), 0.0), p, "{name}: zero");
-            let r = round_slice_corners(p.clone(), 0.1);
+            assert_eq!(
+                crate::round_shape_corners(p.clone(), 0.0),
+                p,
+                "{name}: zero"
+            );
+            let r = crate::round_shape_corners(p.clone(), 0.1);
             assert_eq!(count(&r), 0, "{name}: as quinas arredondaram");
             assert!(r.verts.len() > p.verts.len(), "{name}");
             for v in &r.verts {
@@ -448,7 +431,7 @@ mod cap_tests {
                 );
                 assert_eq!(v.corner_radius, 0.0, "{name}: nada pendente");
             }
-            let huge = round_slice_corners(p, 50.0);
+            let huge = crate::round_shape_corners(p, 50.0);
             assert!(
                 huge.verts
                     .iter()
@@ -458,7 +441,7 @@ mod cap_tests {
         for hole in [0.0, 0.55] {
             let full = ellipse_sweep(c, 1.0, 1.0, 0.0, 360.0, hole);
             assert_eq!(
-                round_slice_corners(full.clone(), 0.3),
+                crate::round_shape_corners(full.clone(), 0.3),
                 full,
                 "volta inteira"
             );

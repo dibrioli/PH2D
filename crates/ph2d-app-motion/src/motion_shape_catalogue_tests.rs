@@ -88,8 +88,9 @@ fn the_eight_that_shipped_cook_exactly_what_they_cooked() {
                     // trocar o `kind` de uma caixa que já o tinha. Com o arredondamento geral
                     // ele passou a mover a engrenagem, e varrê-lo aqui seria comparar contra
                     // um construtor congelado que nunca soube dele. O que continua prendido
-                    // é o que o artista de facto tinha: `corner = 0`.
-                    let corners: &[f32] = if kind == ShapeKind::Gear {
+                    // é o que o artista de facto tinha: `corner = 0`. O CORAÇÃO idem desde a
+                    // F14: o motor passou a ver as duas quinas dele (contorno de 2 vértices).
+                    let corners: &[f32] = if matches!(kind, ShapeKind::Gear | ShapeKind::Heart) {
                         &[0.0]
                     } else {
                         &[0.0, 0.37, 1.0]

@@ -105,7 +105,9 @@ pub fn round_authored_corners_styled(
     style: crate::CornerStyle,
 ) -> Option<Vec<VecVertex>> {
     let n = verts.len();
-    if n < 3 || !verts.iter().any(|v| v.corner_size() > EPS) {
+    // Dois vértices FECHADOS são dois troços e duas quinas (o coração, F14); um vaivém recto é
+    // «dobrado» e o predicado recusa-o.
+    if n < 2 || !verts.iter().any(|v| v.corner_size() > EPS) {
         return None; // nada a arredondar → a fonte é a saída
     }
     // Os segmentos, na convenção do caminho: `seg[i]` vai do vértice `i` ao `i + 1`
@@ -298,7 +300,7 @@ fn corner_setback(segs: &[Cubic], i: usize, n: usize, closed: bool, r: f64) -> O
     }
     let theta = dot(ua, ub).clamp(-1.0, 1.0).acos();
     let half = theta * 0.5;
-    if half <= EPS || (std::f64::consts::PI - theta) <= EPS {
+    if half <= EPS || (std::f64::consts::PI - theta) <= EPS || straight_or_folded(ua, ub) {
         return None; // colinear, ou dobrada sobre si
     }
     // O MESMO teto que a alça enxerga (`CornerFrame::max_setback`) — cozimento e gizmo
@@ -313,7 +315,7 @@ fn corner_setback(segs: &[Cubic], i: usize, n: usize, closed: bool, r: f64) -> O
 #[must_use]
 pub fn corner_at(verts: &[VecVertex], closed: bool, i: usize) -> Option<CornerFrame> {
     let n = verts.len();
-    if n < 3 || i >= n {
+    if n < 2 || i >= n {
         return None;
     }
     let seg_count = if closed { n } else { n - 1 };
@@ -325,7 +327,7 @@ pub fn corner_at(verts: &[VecVertex], closed: bool, i: usize) -> Option<CornerFr
     let (ua, ub) = (unit(ua)?, unit(ub)?);
     let theta = dot(ua, ub).clamp(-1.0, 1.0).acos();
     let half = theta * 0.5;
-    if half <= EPS || (std::f64::consts::PI - theta) <= EPS {
+    if half <= EPS || (std::f64::consts::PI - theta) <= EPS || straight_or_folded(ua, ub) {
         return None;
     }
     // A bissetriz aponta para DENTRO da quina (a média dos dois versores que saem dela).
@@ -675,6 +677,13 @@ fn sub(p: [f64; 2], q: [f64; 2]) -> [f64; 2] {
 
 fn neg(p: [f64; 2]) -> [f64; 2] {
     [-p[0], -p[1]]
+}
+
+/// Colinear (a direito) ou dobrada sobre si: o SENO pelo produto vetorial dos versores. O ângulo
+/// pelo `acos` não serve aqui — perto de ±1 ele só resolve `~1,5e-8` rad, e o vértice liso de
+/// uma elipse esticada (seno `0` exacto) lia-se como quina de `2e-8` (F14, doc 24 §1).
+pub(crate) fn straight_or_folded(ua: [f64; 2], ub: [f64; 2]) -> bool {
+    (ua[0] * ub[1] - ua[1] * ub[0]).abs() <= EPS
 }
 
 fn dot(p: [f64; 2], q: [f64; 2]) -> f64 {

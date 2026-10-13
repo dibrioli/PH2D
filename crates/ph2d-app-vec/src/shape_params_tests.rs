@@ -110,10 +110,11 @@ fn a_shape_field_recooks_the_selected_live_shape_in_place() {
 /// caminho recusa por construção).
 #[test]
 fn a_field_that_the_shape_does_not_have_leaves_it_alone() {
-    // O retângulo não declara parâmetro nenhum: TODO campo tem de ser recusado.
+    // A pílula não declara parâmetro nenhum (o rectângulo ganhou o raio na F14): TODO campo tem de
+    // ser recusado.
     let (mut sim, mut scene, map, id) = live_shape(
-        ShapeKind::Rectangle,
-        ShapeKind::Rectangle.defaults(),
+        ShapeKind::Pill,
+        ShapeKind::Pill.defaults(),
         [0.0, 0.0],
     );
     let before = anchors(&scene, id);
@@ -126,7 +127,7 @@ fn a_field_that_the_shape_does_not_have_leaves_it_alone() {
         false,
         |k, v| apply_shape_field(k, v, field(0), 9.0, 1.0),
     );
-    assert!(!edited, "o retangulo nao tem campo 0");
+    assert!(!edited, "a pilula nao tem campo 0");
     assert_eq!(anchors(&scene, id), before, "a geometria nao foi re-cozida");
 }
 

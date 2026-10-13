@@ -211,7 +211,7 @@ fn path_of(kind: ShapeKind, v: &ShapeValues, aspect: f64) -> BezPath {
     ph2d_vec_render::build_bezpath(&p.cooked())
 }
 
-fn sweep(d: &ShapeDesc, i: usize) -> Vec<f64> {
+pub(crate) fn sweep(d: &ShapeDesc, i: usize) -> Vec<f64> {
     let f = &d.fields[i];
     match f.unit {
         FieldUnit::Count | FieldUnit::Choice(_) => {

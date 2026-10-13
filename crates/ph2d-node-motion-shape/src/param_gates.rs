@@ -82,9 +82,11 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
     //
     // ⚠️ **A lista é DERIVADA, não escrita de cabeça:** a sonda
     // `which_kinds_the_corner_moves` empurra o número em cada espécie e imprime quem responde.
-    // São **38** — as 5 de fora (Heart · Pill · Cylinder · Junction · Moon) não têm quina
+    // São **39** — as 4 de fora (Pill · Cylinder · Junction · Moon) não têm quina
     // nenhuma, e mostrar-lhes o slider seria o botão morto que o gate
-    // `no_kind_hides_a_live_knob_or_shows_a_dead_one` recusa nos dois sentidos.
+    // `no_kind_hides_a_live_knob_or_shows_a_dead_one` recusa nos dois sentidos. O coração entrou
+    // na F14 (13/10): as duas quinas dele eram invisíveis ao motor, que recusava todo contorno de
+    // menos de 3 vértices (doc 24 do UI/UX §1).
     //
     // ⚠️ **O `Circle` e a `Ellipse` estão aqui, e foram a CORREÇÃO** (Enio, 2026-08-19: *"não
     // há opções de corner na UI"*). Um círculo INTEIRO não tem quina; o MESMO círculo com
@@ -102,6 +104,7 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
             ShapeKind::Rectangle as i32,
             ShapeKind::Polygon as i32,
             ShapeKind::Star as i32,
+            ShapeKind::Heart as i32,
             ShapeKind::Gear as i32,
             ShapeKind::Pie as i32,
             ShapeKind::Segment as i32,

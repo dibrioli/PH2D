@@ -140,6 +140,10 @@ pub mod corner_live;
 pub mod corner_style;
 pub use corner_style::CornerStyle;
 
+/// ⭐ (F14) **O «Corner round» de qualquer forma**: a porta única por cima do `cook`.
+mod corner_round;
+pub use corner_round::round_shape_corners;
+
 /// **Polígono, estrela e espiral com os parâmetros da F10** (liso, envergadura, torção, tipo do
 /// canto; divergência e raio interno) — irmão de `shapes`, que continua a ser o neutro.
 mod polystar;
@@ -252,7 +256,7 @@ pub(crate) mod space;
 /// A família do CÍRCULO (elipse · arco · pizza · rosquinha · segmento) — pontos do
 /// mesmo espaço de três parâmetros, não cinco primitivas. Módulo irmão de `shapes`.
 pub(crate) mod round;
-pub use round::{FULL_TURN, arc_open, ellipse_chord, ellipse_sweep, round_slice_corners};
+pub use round::{FULL_TURN, arc_open, ellipse_chord, ellipse_sweep};
 
 /// As setas em BLOCO (forma preenchível) — não confundir com as pontas de traço
 /// (arrowheads), que são propriedade do stroke. Módulo irmão de `shapes`.

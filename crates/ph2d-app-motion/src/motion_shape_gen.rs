@@ -382,19 +382,12 @@ pub fn build_shape_path(p: &ShapeParams) -> VecPath {
     // por construção — medido, a rosquinha e a elipse inteira saem com **zero** quinas
     // arredondadas enquanto a seta ganha 7 e a cruz 12. Uma lista de índices por espécie
     // apodreceria na primeira forma nova; esta regra não tem o que envelhecer.
+    //
+    // F14: é a porta do «Corner round» do Vetor (`round_shape_corners`) — a mesma lei, que também
+    // arredonda os sub-contornos fechados e leva as linhas sobre a face com o contorno.
     if !CORNER_IN_THE_RECIPE.contains(&p.kind) {
         let r = f64::from(p.corner.clamp(0.0, 1.0)) * f64::from(p.size.max(0.01));
-        if r > 0.0 {
-            let mut verts = path.verts.clone();
-            for vt in &mut verts {
-                vt.corner_radius = r;
-            }
-            if let Some(rounded) =
-                ph2d_vec_scene::corner_live::round_authored_corners(&verts, path.closed)
-            {
-                path.verts = rounded;
-            }
-        }
+        path = ph2d_vec_scene::round_shape_corners(path, r);
     }
     // ⚠️ **O TRAÇO** (doc 89 folha 14, P0). O renderer já o desenha — o
     // `tessellate_shape_instance` ramifica em `fill.is_some() || stroke.is_some()`

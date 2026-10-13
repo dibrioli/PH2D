@@ -441,9 +441,11 @@ fn the_fields_without_a_gesture_are_counted_not_listed() {
             .iter()
             .any(|h| h.fields.contains(&4))
     );
-    // As formas sem campo não têm alça nenhuma.
-    for k in [K::Rectangle, K::Line, K::Pill, K::Delay, K::Junction] {
-        assert!(handles_of(k).is_empty(), "{k:?}");
+    // As formas sem campo não têm alça nenhuma (F14: o rectângulo e o atraso ganharam o raio).
+    for &k in ALL_SHAPES {
+        if shapes::desc(k).fields.is_empty() {
+            assert!(handles_of(k).is_empty(), "{k:?}");
+        }
     }
 }
 

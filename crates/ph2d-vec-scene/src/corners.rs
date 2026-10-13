@@ -88,7 +88,10 @@ fn rounded_corner(a: [f64; 2], v: [f64; 2], b: [f64; 2], r: f64) -> Option<Vec<V
     // Ângulo interno da quina (o que as duas arestas abrem entre si), em [0, π].
     let theta = dot(ua, ub).clamp(-1.0, 1.0).acos();
     let half = theta * 0.5;
-    if half <= EPS || (std::f64::consts::PI - theta) <= EPS {
+    if half <= EPS
+        || (std::f64::consts::PI - theta) <= EPS
+        || crate::corner_live::straight_or_folded(ua, ub)
+    {
         return None; // colinear (nada a arredondar) ou aresta dobrada sobre si
     }
     // Recuo pedido pelo raio, clampado a meia-aresta de cada lado: assim duas quinas

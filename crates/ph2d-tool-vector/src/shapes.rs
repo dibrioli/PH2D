@@ -109,7 +109,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Rectangle,
         label: "Rect",
         group: ShapeGroup::Basic,
-        fields: &[],
+        fields: &[radius("Corner round")],
     },
     // O raio é o MESTRE (move os quatro cantos); cada canto pode se afastar dele por um
     // desvio, e `Smoothing` troca o arco de círculo pelo squircle. Os quatro campos foram
@@ -187,7 +187,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Segment,
         label: "Segment",
         group: ShapeGroup::Round,
-        fields: &[SWEEP, START],
+        fields: &[SWEEP, START, radius("Corner round")],
     },
     // ── Setas ────────────────────────────────────────────────────────────────
     ShapeDesc {
@@ -198,6 +198,7 @@ pub const SHAPES: &[ShapeDesc] = &[
             frac("Tail", 0.02, 1.0),
             frac("Head len", 0.02, 1.0),
             frac("Head width", 0.05, 1.0),
+            radius("Corner round"),
         ],
     },
     ShapeDesc {
@@ -208,6 +209,7 @@ pub const SHAPES: &[ShapeDesc] = &[
             frac("Tail", 0.02, 1.0),
             frac("Head len", 0.02, 0.5),
             frac("Head width", 0.05, 1.0),
+            radius("Corner round"),
         ],
     },
     // `Corner` é o raio EXTERNO do cotovelo; o interno acompanha (arcos concêntricos, que
@@ -221,20 +223,25 @@ pub const SHAPES: &[ShapeDesc] = &[
             frac("Head len", 0.05, 0.6),
             frac("Head width", 0.05, 1.0),
             frac("Corner", 0.0, 1.0),
+            radius("Corner round"),
         ],
     },
     ShapeDesc {
         kind: ShapeKind::Chevron,
         label: "Chevron",
         group: ShapeGroup::Arrows,
-        fields: &[frac("Point", 0.02, 0.9), frac("Notch", 0.0, 0.9)],
+        fields: &[
+            frac("Point", 0.02, 0.9),
+            frac("Notch", 0.0, 0.9),
+            radius("Corner round"),
+        ],
     },
     // ── Fluxograma ───────────────────────────────────────────────────────────
     ShapeDesc {
         kind: ShapeKind::Diamond,
         label: "Decision",
         group: ShapeGroup::Flow,
-        fields: &[frac("Mid", -0.45, 0.45)],
+        fields: &[frac("Mid", -0.45, 0.45), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Pill,
@@ -246,25 +253,33 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Parallelogram,
         label: "Data",
         group: ShapeGroup::Flow,
-        fields: &[frac("Slant", 0.0, 0.9)],
+        fields: &[frac("Slant", 0.0, 0.9), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Trapezoid,
         label: "Manual in",
         group: ShapeGroup::Flow,
-        fields: &[frac("Slant", 0.0, 0.49), frac("Right", -0.49, 0.49)],
+        fields: &[
+            frac("Slant", 0.0, 0.49),
+            frac("Right", -0.49, 0.49),
+            radius("Corner round"),
+        ],
     },
     ShapeDesc {
         kind: ShapeKind::TrapezoidFlip,
         label: "Manual op",
         group: ShapeGroup::Flow,
-        fields: &[frac("Slant", 0.0, 0.49), frac("Right", -0.49, 0.49)],
+        fields: &[
+            frac("Slant", 0.0, 0.49),
+            frac("Right", -0.49, 0.49),
+            radius("Corner round"),
+        ],
     },
     ShapeDesc {
         kind: ShapeKind::HexagonFlat,
         label: "Prepare",
         group: ShapeGroup::Flow,
-        fields: &[frac("Cut", 0.02, 0.49)],
+        fields: &[frac("Cut", 0.02, 0.49), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Cylinder,
@@ -276,31 +291,31 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Document,
         label: "Document",
         group: ShapeGroup::Flow,
-        fields: &[frac("Wave", 0.02, 0.5)],
+        fields: &[frac("Wave", 0.02, 0.5), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Delay,
         label: "Delay",
         group: ShapeGroup::Flow,
-        fields: &[],
+        fields: &[radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Display,
         label: "Display",
         group: ShapeGroup::Flow,
-        fields: &[frac("Nose", 0.02, 0.45)],
+        fields: &[frac("Nose", 0.02, 0.45), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::PredefinedProcess,
         label: "Subroutine",
         group: ShapeGroup::Flow,
-        fields: &[frac("Bars", 0.02, 0.4)],
+        fields: &[frac("Bars", 0.02, 0.4), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::OffPage,
         label: "Off-page",
         group: ShapeGroup::Flow,
-        fields: &[frac("Tip", 0.05, 0.9)],
+        fields: &[frac("Tip", 0.05, 0.9), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Junction,
@@ -312,7 +327,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::NoteBracket,
         label: "Note",
         group: ShapeGroup::Flow,
-        fields: &[frac("Lip", 0.05, 1.0)],
+        fields: &[frac("Lip", 0.05, 1.0), radius("Corner round")],
     },
     // ── Balões + símbolos ────────────────────────────────────────────────────
     // O BICO dos balões é um ponto 2D livre na caixa (`Tip x`/`Tip y`) — o setor dele
@@ -328,6 +343,7 @@ pub const SHAPES: &[ShapeDesc] = &[
             frac("Tip y", 0.0, 1.0),
             frac("Base", 0.05, 0.6),
             frac("Room", 0.05, 0.6),
+            radius("Corner round"),
         ],
     },
     ShapeDesc {
@@ -345,6 +361,7 @@ pub const SHAPES: &[ShapeDesc] = &[
                 unit: FieldUnit::Degrees,
             },
             frac("Room", 0.05, 0.6),
+            radius("Corner round"),
         ],
     },
     ShapeDesc {
@@ -362,6 +379,7 @@ pub const SHAPES: &[ShapeDesc] = &[
                 unit: FieldUnit::Count,
             },
             BUMPS,
+            radius("Corner round"),
         ],
     },
     ShapeDesc {
@@ -379,6 +397,7 @@ pub const SHAPES: &[ShapeDesc] = &[
             frac("Inner", 0.2, 0.9),
             frac("Radial", 0.0, 0.6),
             frac("Angular", 0.0, 0.9),
+            radius("Corner round"),
         ],
     },
     ShapeDesc {
@@ -395,7 +414,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Heart,
         label: "Heart",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Cleft", 0.0, 0.5)],
+        fields: &[frac("Cleft", 0.0, 0.5), radius("Corner round")],
     },
     // `Puff` é o raio da bolha em frações do passo da espinha — **abaixo de 0,5 as bolhas
     // vizinhas não se sobrepõem** e o join (a interseção círculo-círculo) deixa de existir;
@@ -422,7 +441,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Bolt,
         label: "Bolt",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Waist", 0.05, 0.8)],
+        fields: &[frac("Waist", 0.05, 0.8), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Moon,
@@ -434,19 +453,23 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Drop,
         label: "Drop",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Tip", 0.1, 0.9)],
+        fields: &[frac("Tip", 0.1, 0.9), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Shield,
         label: "Shield",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Curve", 0.0, 1.0)],
+        fields: &[frac("Curve", 0.0, 1.0), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Tag,
         label: "Tag",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Point", 0.05, 0.6), frac("Hole", 0.0, 0.4)],
+        fields: &[
+            frac("Point", 0.05, 0.6),
+            frac("Hole", 0.0, 0.4),
+            radius("Corner round"),
+        ],
     },
     ShapeDesc {
         kind: ShapeKind::Gear,
@@ -464,25 +487,26 @@ pub const SHAPES: &[ShapeDesc] = &[
             frac("Hole", 0.0, 0.8),
             frac("Tooth", -0.35, 0.4),
             frac("Curvature", -0.5, 0.5),
+            radius("Corner round"),
         ],
     },
     ShapeDesc {
         kind: ShapeKind::Cross,
         label: "Cross",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Arm", 0.05, 0.95)],
+        fields: &[frac("Arm", 0.05, 0.95), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Check,
         label: "Check",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Weight", 0.05, 0.6)],
+        fields: &[frac("Weight", 0.05, 0.6), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Banner,
         label: "Banner",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Notch", 0.02, 0.4)],
+        fields: &[frac("Notch", 0.02, 0.4), radius("Corner round")],
     },
     // ── Isométricas ──────────────────────────────────────────────────────────
     // `Rise` inclina os eixos da projeção (é a altura do vértice interno) e `Skew` reparte
@@ -491,19 +515,29 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::IsoCube,
         label: "Cube",
         group: ShapeGroup::Iso,
-        fields: &[frac("Rise", 0.1, 0.9), frac("Skew", 0.1, 0.9), VIEWED],
+        fields: &[
+            frac("Rise", 0.1, 0.9),
+            frac("Skew", 0.1, 0.9),
+            VIEWED,
+            radius("Corner round"),
+        ],
     },
     ShapeDesc {
         kind: ShapeKind::IsoCone,
         label: "Cone",
         group: ShapeGroup::Iso,
-        fields: &[frac("Lip", 0.05, 0.45), VIEWED],
+        fields: &[frac("Lip", 0.05, 0.45), VIEWED, radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::IsoPyramid,
         label: "Pyramid",
         group: ShapeGroup::Iso,
-        fields: &[frac("Rise", 0.1, 0.9), frac("Skew", 0.1, 0.9), VIEWED],
+        fields: &[
+            frac("Rise", 0.1, 0.9),
+            frac("Skew", 0.1, 0.9),
+            VIEWED,
+            radius("Corner round"),
+        ],
     },
     // ── Rig — o que os gizmos dos nós de posição desenhavam até 2026-09-19 ────────────────
     //
@@ -516,13 +550,17 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Bone,
         label: "Bone",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Eye", 0.0, 1.0)],
+        fields: &[frac("Eye", 0.0, 1.0), radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::RopeSegment,
         label: "Rope Segment",
         group: ShapeGroup::Symbols,
-        fields: &[frac("Cord", 0.05, 0.95), frac("Node", 0.05, 0.45)],
+        fields: &[
+            frac("Cord", 0.05, 0.95),
+            frac("Node", 0.05, 0.45),
+            radius("Corner round"),
+        ],
     },
 ];
 
@@ -539,3 +577,7 @@ mod tests;
 #[cfg(test)]
 #[path = "stroke_census_tests.rs"]
 mod stroke_census_tests;
+
+#[cfg(test)]
+#[path = "corner_round_census_tests.rs"]
+mod corner_round_census_tests;

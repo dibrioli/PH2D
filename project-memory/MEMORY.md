@@ -79,6 +79,7 @@
 - [TRÊS membros novos da família de flakes de carga (o 3.º passa 3/3 a `load 19` ⇒ o discriminador é o FAN-OUT, não o relógio)](reference_flip_fit_cache_ratio_is_a_load_flake.md)
 - [Cadência de processo + CI (19)](reference_topic_process_cadence.md)
 - ⛔ [`sccache` herdava o cadeado da placa — `9>&-`](feedback_a_daemon_born_under_the_gpu_door_inherits_its_lock.md)
+- ⛔⛔ [Gate de placa lento: o cache de shaders NVIDIA estava CHEIO (1 GiB) — 52,7 s → 0,6 s](project_speed_study_2026_10_12_gate_critical_path.md)
 - 📚 [Ship / CI / integração: mais (25) lições](reference_topic_ship_ci_integration_lessons.md)
 
 ## Auditoria (famílias — 2 saltos)

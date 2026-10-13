@@ -1,20 +1,29 @@
 ---
 name: project-speed-study-2026-10-12-gate-critical-path
-description: Medição de 12/10 de onde vai o tempo de fecho/integração — caminho crítico do gate é o grupo luz2d-placa; vermelho aceito no main paga-se 3×; ph2d-ecs→ph2d-i18n infla o impactado
+description: Estudo de velocidade 12–13/10 — gate de placa lento = cache de shaders NVIDIA CHEIO (1 GiB); gabarito Luz2D 3× ao bit; seletor de impacto preciso; selo do verde; main só verde
 metadata:
   node_type: memory
   type: project
   originSessionId: d00af5bf-c31f-4689-9602-ebc38343104d
-  modified: 2026-10-12T21:35:30.525Z
+  modified: 2026-10-13T11:15:31.436Z
 ---
 
-Estudo de velocidade (12/10/2026), pedido pelo dono após «Batched closing gate F13» 39 min e «Fix the 13 Luz2D red tests» 41 min.
+Estudo pedido pelo dono (12/10) após «Batched closing gate F13» 39 min e «Fix the 13 Luz2D red tests» 2 h 50.
+Linha `line/Velocidade`; detalhe e tabelas em `docs/DevOps/VELOCIDADE_DOS_PORTOES.md`.
 
-- Gate F13: 37,6 de 38,9 min = espera de comando. `nextest-impacted` 19 950 testes, 1 190 s, compilar só 1m44s. **O grupo `luz2d-placa` (max-threads=2, 125 testes) ≈ 1 157 s = o caminho crítico**; a máquina usou ~5 de 32 núcleos. 31 testes ≥ 60 s = 51 % dos test-segundos. Testes da Luz 2D a FHD com varreduras e gabarito CPU sem cache.
-- **A UI arrasta a Luz 2D pela aresta `ph2d-ecs → ph2d-i18n`** (só 2 chamadas `tr_em(Ingles, label_key())` em `audio_2d.rs:112`, `signal_actions.rs:233`). Fan-in: tokens 104, i18n 117, editor-core 91 de 392.
-- **Vermelho aceito no main pagou-se 3×**: Luz2D integrou com vermelhos conhecidos (b1dd77e477), MiroClone e UIUX re-provaram «herdado», depois 41 min a curar.
-- 14 dias de transcrições: polling 38 h; reruns de teste sem edição 47,7 h (filtros diferentes, em série); 76 de 146 cortes de 10 min pediram timeout > 10 min (ignorado); test:check 2,9; reruns de nextest-impacted/clippy/censos na mesma sessão ≈ 21 h. Rebase (4,2 h) e ship.sh (0,5 h) NÃO são gargalo. Tempo por passo do modelo ~3 s — o custo é o número de passos.
-- Cada linha roda a suíte impactada 3–4× (fecho, integração, ship, CI).
+- ⭐⭐⭐ **Gate de placa lento ⇒ olhe primeiro o `~/.cache/nvidia/GLCache`.** Estava em 1 023 MB = tecto de fábrica
+  1 GiB: o driver recompilava as mesmas pipelines a cada processo. Mesmo gate: 52,7 s cheio → 0,6 s com
+  `__GL_SHADER_DISK_CACHE_SIZE` 16 GiB (agora no `[env]` do `.cargo/config.toml`). `o_oclusor_fino` ~640 s
+  estava todo em `_nv002nvvm` (amostras de pilha por `gdb` com o teste como FILHO — `ptrace_scope=1`; o `samply`
+  pede `perf_event_paranoid ≤ 1`, sem sudo).
+- O caminho crítico do gate era o grupo `luz2d-placa` (2 por vez); a máquina ficava a ~5 de 32 núcleos.
+- Gabarito Luz 2D (CG do miolo): canais em paralelo + vizinhança compacta + passagens fundidas, MESMO bit
+  (impressão `9bdb5b2ed184a704`): 61 → 20 s num gate.
+- `rdeps()` do nextest segue dev-arestas EM CADEIA (`ph2d-render` tem pintura/editor-core como dev-deps) →
+  `scripts/impacto-preciso.py` + corte `ph2d-ecs → ph2d-i18n`: F13 151 → 127 pacotes, sai a Luz 2D na placa.
+- Vermelho aceito no main pagou-se 3× ⇒ regra «main só verde» (DIRETRIZ §1.5.3).
+- Laços de espera dos agentes (38 h/14 dias) eram espera pelos testes — proibi-los não poupa relógio.
 
-**Why:** o dono quer integração/implementação mais rápidas sem perder qualidade.
-**How to apply:** antes de mexer em velocidade, comece pelo grupo `luz2d-placa` (encolher com prova de mutação, cachear gabarito), recusar vermelho no main, e cortar `ph2d-ecs → ph2d-i18n`. Ver [[feedback_plan_every_measurement_upfront_and_batch_it]].
+**Why:** o dono quer implementação/integração mais rápidas sem perder qualidade.
+**How to apply:** régua de velocidade de gate de placa nomeia o estado do cache (quente/frio); antes de dar
+prazo a um teste lento, cronometre as fases ou amostre a pilha. Ver [[feedback_plan_every_measurement_upfront_and_batch_it]].

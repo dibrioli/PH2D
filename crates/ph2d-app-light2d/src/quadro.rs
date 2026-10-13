@@ -663,6 +663,7 @@ fn miolo_do_ambiente() -> Option<ph2d_light2d_gpu::Miolo> {
         penetracao_m: num("PH2D_LIGHT2D_PENETRACAO")
             .filter(|p| *p > 0.0)
             .unwrap_or(padrao.penetracao_m),
+        base_no_grupo: cortes_ligados(),
         ..padrao
     })
 }
@@ -670,4 +671,10 @@ fn miolo_do_ambiente() -> Option<ph2d_light2d_gpu::Miolo> {
 /// `PH2D_LIGHT2D_REBOTE=0` desliga-o (a comparação da cena 3).
 fn rebote_ligado() -> bool {
     std::env::var("PH2D_LIGHT2D_REBOTE").map_or(true, |v| v.trim() != "0")
+}
+
+/// ⭐ W5o — `PH2D_LIGHT2D_CORTES=0` volta ao custo da W5n (a mesma imagem): a base do miolo um
+/// despacho por relaxação e o entorno com a grade fina e o miolo que ninguém lê.
+fn cortes_ligados() -> bool {
+    std::env::var("PH2D_LIGHT2D_CORTES").map_or(true, |v| v.trim() != "0")
 }

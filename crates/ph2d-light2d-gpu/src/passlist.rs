@@ -83,6 +83,8 @@ impl Opcionais {
 /// O passo entre as entradas de um buffer de uniformes por passe (o alinhamento de offset que o
 /// WebGPU garante, `min_uniform_buffer_offset_alignment`).
 pub(crate) const PASSO_UNIFORME: u64 = 256;
+/// ⭐ W5o — as fatias do uniforme do miolo que levam a `Base` do `c3_miolo_base.wgsl` (832 B).
+pub(crate) const FATIAS_DA_BASE: u64 = 4;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Textura {
@@ -402,7 +404,7 @@ impl PassList {
         if let Some(l) = cfg.niveis_do_miolo() {
             buffers.push(Buffer {
                 nome: "luz2d/buf/miolo",
-                bytes: PASSO_UNIFORME * 2 * u64::from(l + 1),
+                bytes: PASSO_UNIFORME * (2 * u64::from(l + 1) + FATIAS_DA_BASE),
                 usos: uniforme,
             });
         }

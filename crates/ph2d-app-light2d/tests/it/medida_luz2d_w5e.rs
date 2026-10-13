@@ -61,6 +61,7 @@ pub(crate) fn config_do_entorno(a: Affine, alvo: (u32, u32), dg: Degrau) -> Opti
     Some(Config {
         holografica: Some(HOLOGRAFICA_PADRAO),
         rebote: true,
+        so_a_c0: true,
         ..Config::padrao(g)
     })
 }

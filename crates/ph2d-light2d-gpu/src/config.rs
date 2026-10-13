@@ -178,6 +178,9 @@ pub struct Config {
     /// região (`c3_anel.wgsl`) e a pirâmide na grade inteira nos níveis que a região lê; `false` = só
     /// na região, com Neumann na borda dela (a W5h: o interior mudava com o enquadramento).
     pub anel_fora_da_regiao: bool,
+    /// ⭐ W5o — ninguém lê a FLUÊNCIA deste solver (o entorno: só a c0 dele soma-se à da vista): a
+    /// visibilidade das lâmpadas, a grade fina, o anel e o miolo não correm (nem alocam).
+    pub so_a_c0: bool,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
@@ -203,6 +206,9 @@ pub struct Miolo {
     pub ciclos: u32,
     /// ⭐ W5n — os pares de relaxações do erro em cada nível do V-ciclo, a subir.
     pub suaviza: u32,
+    /// ⭐ W5o — os níveis mais grossos que cabem na memória de grupo resolvem-se num despacho só
+    /// (`c3_miolo_base.wgsl`, a mesma conta); `false` = um despacho por relaxação (a W5n).
+    pub base_no_grupo: bool,
 }
 
 /// ⭐ W5h — a escolha do dono (11/10: a difusão inteira, até ao centro); as relaxações MEDIDAS na
@@ -214,6 +220,7 @@ pub const MIOLO_PADRAO: Miolo = Miolo {
     relaxa_max: 32,
     ciclos: 3,
     suaviza: 2,
+    base_no_grupo: true,
 };
 
 /// ⭐ W5c — as escolhas da cascata holográfica.
@@ -377,6 +384,7 @@ impl Config {
             vis_na_face: true,
             miolo: Some(MIOLO_PADRAO),
             anel_fora_da_regiao: true,
+            so_a_c0: false,
             holografica: None,
         }
     }
@@ -425,11 +433,11 @@ impl Config {
     }
 
     /// ⭐ W5h — os níveis da pirâmide do miolo acima da grade fina (o mais grosso com 4–7 texels no
-    /// lado maior); `None` sem o miolo, sem o preenchimento (que marca o interior) ou numa grade fina
-    /// de menos de 8 texels.
+    /// lado maior); `None` sem o miolo, sem o preenchimento (que marca o interior), com
+    /// [`Self::so_a_c0`] ou numa grade fina de menos de 8 texels.
     #[must_use]
     pub fn niveis_do_miolo(&self) -> Option<u32> {
-        self.miolo?;
+        self.miolo.filter(|_| !self.so_a_c0)?;
         self.preenchimento?;
         let g = self.grade_da_fluencia();
         let l = g.largura.max(g.altura).max(1).ilog2().checked_sub(2)?;

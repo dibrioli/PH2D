@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::config::Miolo;
-use crate::passlist::{FLUENCIA, Opcionais};
+use crate::passlist::{FATIAS_DA_BASE, FLUENCIA, Opcionais};
 
 /// O espelho de `Nivel` do `c3_miolo.wgsl` (48 B).
 #[repr(C)]
@@ -20,6 +20,41 @@ struct UniformeNivel {
     moldura: f32,
     _p: f32,
 }
+
+/// ⭐ W5o — o instrumento das fases (ficheiro irmão pelo tecto de 700 LOC).
+#[path = "solver_miolo_fases.rs"]
+mod fases;
+use fases::Fases;
+
+/// ⭐ W5o — o espelho de `NivelBase` do `c3_miolo_base.wgsl` (48 B).
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct UniformeNivelBase {
+    inicio: [u32; 2],
+    fim: [u32; 2],
+    tamanho: [u32; 2],
+    kh2: f32,
+    pares: u32,
+    deslocamento: u32,
+    _p: [u32; 3],
+}
+
+/// ⭐ W5o — os níveis que a `Base` leva (índice = o nível).
+const NIVEIS_DA_BASE: usize = 17;
+
+/// ⭐ W5o — o espelho de `Base` do `c3_miolo_base.wgsl` (832 B).
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct UniformeBase {
+    b: u32,
+    l: u32,
+    suaviza: u32,
+    _p: u32,
+    niveis: [UniformeNivelBase; NIVEIS_DA_BASE],
+}
+
+/// ⭐ W5o — a memória de grupo por texel da base: 13 `f32` (o conhecido, os dois lados, o defeito).
+const BYTES_POR_TEXEL_DA_BASE: u32 = 52;
 
 /// Uma caixa `[inicio, fim)` num nível.
 type Caixa = ([u32; 2], [u32; 2]);
@@ -39,6 +74,9 @@ enum Tipo {
     ErroRelaxa,
     ErroSobe,
     Soma,
+    // ⭐ W5o: a base num despacho (`c3_miolo_base.wgsl`).
+    Base,
+    ErroBase,
 }
 
 /// As entradas do `c3_miolo.wgsl`, na ordem de [`Tipo`].
@@ -60,6 +98,8 @@ const ENTRADAS: [&str; 12] = [
 struct Passo {
     tipo: Tipo,
     nivel: u32,
+    /// O índice em [`FASES`].
+    fase: usize,
     grupo: wgpu::BindGroup,
 }
 
@@ -71,9 +111,14 @@ pub(super) struct DoMiolo {
     miolo: Miolo,
     /// ⭐ W5n: o [`Config::anel_fora_da_regiao`].
     anel: bool,
+    /// ⭐ W5o: o nível `b` de onde a base resolve num despacho (`None` = um despacho por relaxação).
+    base: Option<u32>,
+    /// Os pares de relaxações da cascata por nível (índice = o nível).
+    pares: Vec<u32>,
     /// O tamanho da grade fina e a região dela neste quadro.
     tamanho: [u32; 2],
     regiao: Caixa,
+    fases: Option<Fases>,
 }
 
 pub(super) struct Entradas<'a> {
@@ -160,7 +205,7 @@ impl DoMiolo {
             Tipo::Puxa => f16,
             _ => f32,
         };
-        let pipelines = (0..ENTRADAS.len())
+        let mut pipelines: Vec<wgpu::ComputePipeline> = (0..ENTRADAS.len())
             .map(|i| {
                 let formato = match i {
                     0 | 5 => fluencia,
@@ -170,6 +215,22 @@ impl DoMiolo {
                 pipeline(ENTRADAS[i], formato)
             })
             .collect();
+        // ⭐ W5o: a base — o nível mais fino `b ≥ 2` de onde os níveis até ao topo cabem na memória de
+        // grupo do dispositivo.
+        let gf = cfg.grade_da_fluencia();
+        let tamanho_em =
+            |l: u32| [gf.largura, gf.altura].map(|x| ((x >> 1).max(1) >> (l - 1)).max(1));
+        let cap = device.limits().max_compute_workgroup_storage_size / BYTES_POR_TEXEL_DA_BASE;
+        let base = (miolo.base_no_grupo && niveis >= 2 && (niveis as usize) < NIVEIS_DA_BASE)
+            .then(|| {
+                (2..=niveis).find(|&b| {
+                    (b..=niveis)
+                        .map(|l| tamanho_em(l)[0] * tamanho_em(l)[1])
+                        .sum::<u32>()
+                        <= cap
+                })
+            })
+            .flatten();
         // As pirâmides começam no nível 1: o mip `l − 1` é o nível `l`.
         let piramide = |t: usize| -> Vec<wgpu::TextureView> {
             (1..=niveis).map(|l| mip(&e.texturas[t], l - 1)).collect()
@@ -184,6 +245,63 @@ impl DoMiolo {
         let b = |l: u32| &bv[l as usize - 1];
         let d = |l: u32| &dv[l as usize - 1];
         let tam = size_of::<UniformeNivel>() as u64;
+        let base_grupo = base.map(|b| {
+            let modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("luz2d c3 miolo base"),
+                source: wgpu::ShaderSource::Wgsl(
+                    shaders::C3_MIOLO_BASE
+                        .replace("CAP", &cap.to_string())
+                        .into(),
+                ),
+            });
+            let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("luz2d c3 miolo base"),
+                entries: &[
+                    entrada_uniforme(0, wgpu::ShaderStages::COMPUTE),
+                    entrada_textura(1, FLOAT),
+                    entrada_textura(2, FLOAT),
+                    entrada_escrita(3, f32),
+                ],
+            });
+            let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("luz2d c3 miolo base"),
+                bind_group_layouts: &[Some(&layout)],
+                immediate_size: 0,
+            });
+            for entrada in ["miolo_base", "miolo_erro_base"] {
+                pipelines.push(
+                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some(entrada),
+                        layout: Some(&pl),
+                        module: &modulo,
+                        entry_point: Some(entrada),
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                        cache: None,
+                    }),
+                );
+            }
+            let vista = |binding, v| wgpu::BindGroupEntry {
+                binding,
+                resource: wgpu::BindingResource::TextureView(v),
+            };
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("luz2d c3 miolo base"),
+                layout: &layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: fatia_uniforme(
+                            &e.uniforme,
+                            2 * u64::from(niveis + 1),
+                            size_of::<UniformeBase>() as u64,
+                        ),
+                    },
+                    vista(1, &e.vistas[ik]),
+                    vista(2, &e.vistas[id]),
+                    vista(3, a(b)),
+                ],
+            })
+        });
         // As fatias: `2l` lê a região do nível de BAIXO no par «outro» (puxa); `2l + 1`, a de cima.
         // O binding 5 é a transmitida — ou, na `miolo_soma`, a solução u do nível 1.
         let grupo = |tipo: Tipo, fatia: u64, v: [&wgpu::TextureView; 4]| {
@@ -215,21 +333,26 @@ impl DoMiolo {
         };
         let resto = |l: u32| 2 * u64::from(l) + 1;
         let mut passos = Vec::new();
-        let mut por = |tipo: Tipo, nivel: u32, v: [&wgpu::TextureView; 4]| {
+        let mut por = |tipo: Tipo, nivel: u32, fase: usize, v: [&wgpu::TextureView; 4]| {
             let fatia = if matches!(tipo, Tipo::Puxa | Tipo::Restringe) {
                 2 * u64::from(nivel)
             } else {
                 resto(nivel)
             };
+            let grupo = match (tipo, &base_grupo) {
+                (Tipo::Base | Tipo::ErroBase, Some(g)) => g.clone(),
+                _ => grupo(tipo, fatia, v),
+            };
             passos.push(Passo {
                 tipo,
                 nivel,
-                grupo: grupo(tipo, fatia, v),
+                fase,
+                grupo,
             });
         };
-        por(Tipo::Classifica, 0, [fl, a(1), a(1), k0]);
+        por(Tipo::Classifica, 0, 0, [fl, a(1), a(1), k0]);
         for l in 1..=niveis {
-            por(Tipo::Puxa, l, [k(l - 1), a(1), a(1), k(l)]);
+            por(Tipo::Puxa, l, 0, [k(l - 1), a(1), a(1), k(l)]);
         }
         // Um par de relaxações no nível `l` (a → b → a): o resultado fica na `a`.
         let no_nivel = |l: u32| {
@@ -240,47 +363,64 @@ impl DoMiolo {
             if l == niveis { 2 * n } else { n }
         };
         let pares = |l: u32| no_nivel(l).div_ceil(2);
-        por(
-            Tipo::Inicia,
-            niveis,
-            [k(niveis - 1), k(niveis), k(niveis), a(niveis)],
-        );
-        for l in (1..=niveis).rev() {
+        // ⭐ W5o: com a base, os níveis `[b, topo]` saem dela; os despachos fazem de `b − 1` para baixo.
+        let fora = base.map_or(niveis, |b| b - 1);
+        match base {
+            Some(b) => por(Tipo::Base, b, 1, [k0; 4]),
+            None => por(
+                Tipo::Inicia,
+                niveis,
+                1,
+                [k(niveis - 1), k(niveis), k(niveis), a(niveis)],
+            ),
+        }
+        for l in (1..=fora).rev() {
             if l < niveis {
-                por(Tipo::Desce, l, [a(l + 1), k(l), k(l + 1), a(l)]);
+                por(Tipo::Desce, l, 2, [a(l + 1), k(l), k(l + 1), a(l)]);
             }
+            let fase = if l == niveis { 1 } else { 2 };
             for _ in 0..pares(l) {
-                por(Tipo::Relaxa, l, [a(l), k(l), k(l), b(l)]);
-                por(Tipo::Relaxa, l, [b(l), k(l), k(l), a(l)]);
+                por(Tipo::Relaxa, l, fase, [a(l), k(l), k(l), b(l)]);
+                por(Tipo::Relaxa, l, fase, [b(l), k(l), k(l), a(l)]);
             }
         }
         // ⭐ W5n: os V-ciclos sobre a solução do nível 1 (os níveis acima guardam o ERRO na a/b).
         let ciclos = if niveis > 1 { miolo.ciclos } else { 0 };
         for _ in 0..ciclos {
-            por(Tipo::Defeito, 1, [a(1), k(1), k(1), d(1)]);
-            for l in 2..=niveis {
-                por(Tipo::Restringe, l, [d(l - 1), k(l), k(l - 1), d(l)]);
+            por(Tipo::Defeito, 1, 3, [a(1), k(1), k(1), d(1)]);
+            for l in 2..=base.unwrap_or(niveis) {
+                por(Tipo::Restringe, l, 3, [d(l - 1), k(l), k(l - 1), d(l)]);
             }
-            por(
-                Tipo::ErroInicia,
-                niveis,
-                [d(niveis), k(niveis), k(niveis), a(niveis)],
-            );
-            for l in (2..=niveis).rev() {
+            match base {
+                Some(b) => por(Tipo::ErroBase, b, 4, [k0; 4]),
+                None => por(
+                    Tipo::ErroInicia,
+                    niveis,
+                    4,
+                    [d(niveis), k(niveis), k(niveis), a(niveis)],
+                ),
+            }
+            for l in (2..=fora).rev() {
                 if l < niveis {
-                    por(Tipo::ErroSobe, l, [a(l + 1), k(l), k(l + 1), a(l)]);
+                    por(Tipo::ErroSobe, l, 5, [a(l + 1), k(l), k(l + 1), a(l)]);
                 }
-                let n = if l == niveis { pares(l) } else { miolo.suaviza };
+                let (n, fase) = if l == niveis {
+                    (pares(l), 4)
+                } else {
+                    (miolo.suaviza, 5)
+                };
                 for _ in 0..n {
-                    por(Tipo::ErroRelaxa, l, [a(l), k(l), d(l), b(l)]);
-                    por(Tipo::ErroRelaxa, l, [b(l), k(l), d(l), a(l)]);
+                    por(Tipo::ErroRelaxa, l, fase, [a(l), k(l), d(l), b(l)]);
+                    por(Tipo::ErroRelaxa, l, fase, [b(l), k(l), d(l), a(l)]);
                 }
             }
-            por(Tipo::Soma, 1, [a(2), k(1), k(2), b(1)]);
-            por(Tipo::Relaxa, 1, [b(1), k(1), k(1), a(1)]);
+            por(Tipo::Soma, 1, 6, [a(2), k(1), k(2), b(1)]);
+            por(Tipo::Relaxa, 1, 6, [b(1), k(1), k(1), a(1)]);
         }
-        por(Tipo::Final, 0, [a(1), k0, k(1), fl]);
-        let gf = cfg.grade_da_fluencia();
+        por(Tipo::Final, 0, 7, [a(1), k0, k(1), fl]);
+        let pares = (0..=niveis)
+            .map(|l| if l == 0 { 0 } else { pares(l) })
+            .collect();
         Some(Self {
             pipelines,
             passos,
@@ -288,8 +428,11 @@ impl DoMiolo {
             niveis,
             miolo,
             anel: cfg.anel_fora_da_regiao,
+            base,
+            pares,
             tamanho: [gf.largura, gf.altura],
             regiao: ([0; 2], [gf.largura, gf.altura]),
+            fases: None,
         })
     }
 
@@ -343,17 +486,46 @@ impl DoMiolo {
         texel_m: f64,
         tempos: Option<&Tempos>,
     ) {
-        let mut uni = vec![0u8; (PASSO_UNIFORME * 2 * u64::from(self.niveis + 1)) as usize];
+        let fatias = 2 * u64::from(self.niveis + 1);
+        let mut uni = vec![0u8; (PASSO_UNIFORME * (fatias + FATIAS_DA_BASE)) as usize];
         let pen = f64::from(self.miolo.penetracao_m);
         let regioes = self.regioes();
         let inteira = |l: u32| self.conhecido_em(l);
-        for l in 0..=self.niveis {
+        let kh2_em = |l: u32| {
             let h = texel_m * f64::from(1u32 << l);
-            let kh2 = if pen.is_finite() && pen > 0.0 {
+            if pen.is_finite() && pen > 0.0 {
                 (h / pen).powi(2) as f32
             } else {
                 0.0
+            }
+        };
+        if let Some(b) = self.base {
+            let mut u = UniformeBase {
+                b,
+                l: self.niveis,
+                suaviza: self.miolo.suaviza,
+                ..Zeroable::zeroed()
             };
+            let mut deslocamento = 0;
+            for l in b..=self.niveis {
+                let tamanho = self.tamanho_em(l);
+                let (inicio, fim) = regioes[l as usize];
+                u.niveis[l as usize] = UniformeNivelBase {
+                    inicio,
+                    fim,
+                    tamanho,
+                    kh2: kh2_em(l),
+                    pares: self.pares[l as usize],
+                    deslocamento,
+                    _p: [0; 3],
+                };
+                deslocamento += tamanho[0] * tamanho[1];
+            }
+            let o = (fatias * PASSO_UNIFORME) as usize;
+            uni[o..o + size_of::<UniformeBase>()].copy_from_slice(bytemuck::bytes_of(&u));
+        }
+        for l in 0..=self.niveis {
+            let kh2 = kh2_em(l);
             // A fatia `2l` (puxa) sobe o conhecido da grade inteira; a `2l + 1` resolve a caixa do
             // nível e lê a do de cima (desce).
             let acima = regioes[(l + 1).min(self.niveis) as usize];
@@ -376,23 +548,47 @@ impl DoMiolo {
             }
         }
         gpu.queue.write_buffer(&self.uniforme, 0, &uni);
-        let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("luz2d C3 miolo"),
-            timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_MIOLO)),
-        });
-        for passo in &self.passos {
-            let (inicio, fim) = match passo.tipo {
-                Tipo::Puxa => inteira(passo.nivel),
-                _ => regioes[passo.nivel as usize],
-            };
-            let w = fim[0].saturating_sub(inicio[0]);
-            let h = fim[1].saturating_sub(inicio[1]);
-            if w == 0 || h == 0 {
-                continue;
+        let tudo = [(0, 0..self.passos.len())];
+        let corridas = self.fases.as_ref().map_or(&tudo[..], |f| &f.corridas[..]);
+        for (c, (_, r)) in corridas.iter().enumerate() {
+            let par = 2 * c as u32;
+            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("luz2d C3 miolo"),
+                timestamp_writes: match &self.fases {
+                    Some(f) => Some(wgpu::ComputePassTimestampWrites {
+                        query_set: &f.set,
+                        beginning_of_pass_write_index: Some(par),
+                        end_of_pass_write_index: Some(par + 1),
+                    }),
+                    None => tempos.map(|t| t.escrita_compute(tempos::C3_MIOLO)),
+                },
+            });
+            for passo in &self.passos[r.clone()] {
+                if matches!(passo.tipo, Tipo::Base | Tipo::ErroBase) {
+                    p.set_pipeline(&self.pipelines[passo.tipo as usize]);
+                    p.set_bind_group(0, &passo.grupo, &[]);
+                    p.dispatch_workgroups(1, 1, 1);
+                    continue;
+                }
+                let (inicio, fim) = match passo.tipo {
+                    Tipo::Puxa => inteira(passo.nivel),
+                    _ => regioes[passo.nivel as usize],
+                };
+                let w = fim[0].saturating_sub(inicio[0]);
+                let h = fim[1].saturating_sub(inicio[1]);
+                if w == 0 || h == 0 {
+                    continue;
+                }
+                p.set_pipeline(&self.pipelines[passo.tipo as usize]);
+                p.set_bind_group(0, &passo.grupo, &[]);
+                p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
             }
-            p.set_pipeline(&self.pipelines[passo.tipo as usize]);
-            p.set_bind_group(0, &passo.grupo, &[]);
-            p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+        }
+        if let Some(f) = &self.fases {
+            let n = 2 * f.corridas.len() as u32;
+            enc.resolve_query_set(&f.set, 0..n, &f.resolve, 0);
+            enc.copy_buffer_to_buffer(&f.resolve, 0, &f.leitura, 0, u64::from(n) * 8);
+            super::rebote::carimbos_vazios(enc, tempos, tempos::C3_MIOLO);
         }
     }
 }

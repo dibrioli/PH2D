@@ -29,6 +29,8 @@ impl super::LuzDoQuadro {
         Some(Config {
             holografica,
             rebote: super::rebote_ligado(),
+            // ⭐ W5o: da vista só se lê a c0 do entorno (`Solver::somar_entorno`).
+            so_a_c0: super::cortes_ligados(),
             ..Config::padrao_para(&gpu.device, ge)
         })
     }

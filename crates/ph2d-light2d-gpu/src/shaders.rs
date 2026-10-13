@@ -22,6 +22,8 @@ pub(crate) const C1: &str = include_str!("wgsl/c1_jfa.wgsl");
 pub(crate) const C0_REBOTE: &str = include_str!("wgsl/c0_rebote.wgsl");
 /// ⭐ W5h: o miolo dos opacos pela difusão (o `FORMATO` troca-se pelo da fluência).
 pub(crate) const C3_MIOLO: &str = include_str!("wgsl/c3_miolo.wgsl");
+/// ⭐ W5o — a base da pirâmide do miolo num despacho só.
+pub(crate) const C3_MIOLO_BASE: &str = include_str!("wgsl/c3_miolo_base.wgsl");
 /// ⭐ W5b (F4): as máscaras dos sprites distantes.
 pub(crate) const C3_MASCARA: &str = include_str!("wgsl/c3_mascara.wgsl");
 

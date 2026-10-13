@@ -88,6 +88,8 @@ pub(super) struct C3 {
     grupo_fina: wgpu::BindGroup,
     /// ⭐ W5n: o anel fora da região (o miolo no corpo inteiro, `c3_anel.wgsl`).
     anel: Option<(Par, wgpu::BindGroup)>,
+    /// ⭐ W5o: o [`Config::so_a_c0`] — a visibilidade e a grade fina não correm.
+    so_a_c0: bool,
     /// ⭐ W5c: a FONTE do rebote (a luz que cada superfície recebe, para o quadro seguinte) — os
     /// grupos 2 (a c0) e 3 (a saída).
     rebote: Option<(Par, [wgpu::BindGroup; 2])>,
@@ -519,6 +521,7 @@ impl C3 {
             fina,
             grupo_fina,
             anel,
+            so_a_c0: cfg.so_a_c0,
             rebote,
             borda,
             tamanho_grosso: [cfg.grade.largura, cfg.grade.altura],
@@ -646,7 +649,7 @@ impl C3 {
                 label: Some("luz2d C3 visibilidade"),
                 timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_VISIBILIDADE)),
             });
-            if let Some((pipe, g2)) = &self.visibilidade {
+            if let Some((pipe, g2)) = self.visibilidade.as_ref().filter(|_| !self.so_a_c0) {
                 p.set_pipeline(pipe.de(distantes));
                 p.set_bind_group(0, &self.cena, &[]);
                 p.set_bind_group(1, lampadas, &[]);
@@ -673,6 +676,9 @@ impl C3 {
             label: Some("luz2d C3 fina"),
             timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_FINA)),
         });
+        if self.so_a_c0 {
+            return;
+        }
         p.set_pipeline(self.fina.de(distantes));
         p.set_bind_group(0, &self.cena, &[]);
         p.set_bind_group(1, lampadas, &[]);

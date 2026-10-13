@@ -209,6 +209,10 @@ const RING_N: usize = 96;
 /// As alças da forma seleccionada (fora do `gate`, nenhuma). `grabbed` (o arrasto vivo) manda no
 /// quente; sem ele, a alça sob `hover` (mundo) — a guia aparece ANTES do arrasto, como no Affinity.
 #[must_use]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "o alvo (mundo, cena, mapa, selecção, portão) e o quadro (escala, agarrada, cursor)"
+)]
 pub fn view(
     sim: &SimWorld,
     scene: &VecScene,

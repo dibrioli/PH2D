@@ -148,14 +148,14 @@ fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
 }
 
 impl Editor {
-    /// O elemento de cima em `p` (o que um clique apanha): uma forma pelo contorno, uma seta pela
-    /// linha (a menos de meia pega, mais meia espessura).
+    /// O elemento de cima em `p` (o que um clique apanha), na ordem do que se VÊ (os vídeos por cima, W21):
+    /// uma forma pelo contorno, uma seta pela linha (a menos de meia pega, mais meia espessura).
     pub fn hit(&mut self, doc: &BoardDoc, p: Pointer) -> Option<ElementId> {
         let tol = self.metrics.handle / 2.0 * p.px;
         self.routes.sync(doc);
         let routes = &self.routes;
         let found = doc
-            .live_in_z_order()
+            .live_in_paint_order()
             .into_iter()
             .rev()
             .filter(|el| el.as_frame().is_none() && !doc.connector_hidden(el))

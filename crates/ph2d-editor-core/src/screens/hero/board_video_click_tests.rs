@@ -242,3 +242,48 @@ fn with_another_tool_a_click_on_a_video_is_the_videos_and_a_drag_is_the_tools() 
         "segurar activou"
     );
 }
+
+/// ⭐⭐ W21 (o dono, 13/10: «se alguma forma como notas, traços de caneta ou shapes sobrepõe parcialmente o
+/// vídeo, o vídeo não toca») — um rectângulo e um traço da caneta desenhados por cima de parte do vídeo: o
+/// clique no play toca-o (vivo), e o clique na parte sobreposta apanha o VÍDEO (ele está à frente, como se
+/// vê), não o que ficou escondido atrás dele.
+#[test]
+fn shapes_over_part_of_a_video_never_stop_it_and_the_video_takes_the_click() {
+    use ph2d_board_model::Pen;
+    let mut t = T::new();
+    assert!(paste(&mut t, LINK));
+    let id = video(&t).unwrap().id;
+    let out = t.at(0.02, 0.98);
+    click(&mut t, out);
+    let n = t.elements().len();
+    let corner = on_video(&mut t, id, 0.0, 0.0);
+    let inside = on_video(&mut t, id, 0.3, 0.3);
+    for tool in [Tool::Shape(ShapeType::Rectangle), Tool::Pen(Pen::Pen)] {
+        t.hero.documents.live.editor.as_mut().unwrap().tool = tool;
+        t.drag((corner.0 - 40.0, corner.1 - 40.0), inside);
+    }
+    assert_eq!(t.elements().len(), n + 2, "o rectângulo e o traço");
+    t.hero.documents.live.editor.as_mut().unwrap().tool = Tool::Select;
+    click(&mut t, out);
+    let play = on_video(&mut t, id, 0.5, 0.5);
+    click(&mut t, play);
+    assert_eq!(t.hero.documents.videos_mut().active, Some(id));
+    assert!(live(&mut t, id), "tapado em parte e não toca");
+    click(&mut t, out);
+    let over = on_video(&mut t, id, 0.2, 0.2);
+    click(&mut t, over);
+    let sel = t
+        .hero
+        .documents
+        .live
+        .editor
+        .as_ref()
+        .unwrap()
+        .selection()
+        .clone();
+    assert_eq!(
+        sel,
+        [id].into(),
+        "o clique na parte sobreposta não apanhou o vídeo"
+    );
+}

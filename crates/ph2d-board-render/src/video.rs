@@ -84,6 +84,9 @@ pub struct PlayerStatus {
     /// `0..=100`.
     pub volume: u8,
     pub muted: bool,
+    /// W21 — o tocador ainda está a ARRANCAR (vai tocar sozinho): o vídeo mostra «a carregar» e os cliques
+    /// nele não chegam à página.
+    pub starting: bool,
 }
 
 /// Uma ordem dos NOSSOS controles para o tocador (o app executa-a).
@@ -184,11 +187,12 @@ fn play_radius(el: &Element) -> f64 {
     el.w.min(el.h) * 0.12
 }
 
-/// Algum elemento desenhado DEPOIS de `el` (por cima, os frames não contam) toca a caixa dele.
+/// Outro VÍDEO desenhado depois de `el` toca a caixa dele. W21: o resto desenha-se sempre por baixo dos vídeos
+/// (`BoardDoc::live_in_paint_order`), por isso só um vídeo pode tapar outro.
 fn covered(doc: &BoardDoc, el: &Element) -> bool {
     let [x0, y0, x1, y1] = el.aabb();
     doc.live().any(|o| {
-        if o.id == el.id || o.as_frame().is_some() || o.z <= el.z {
+        if o.id == el.id || o.embed().is_none() || o.z <= el.z {
             return false;
         }
         let [a0, b0, a1, b1] = o.aabb();
@@ -319,6 +323,9 @@ pub(crate) fn paint(
     scene.pop_layer();
     if !live {
         play_mark(scene, el, t, theme);
+    } else if cache.videos.status.is_none_or(|s| s.starting) {
+        // W21 — o tocador está a arrancar (vai tocar sozinho): «a carregar», para ninguém clicar de novo.
+        loading_mark(scene, el, t, theme, cache.frame);
     }
     crate::image_frame::paint(scene, cache, el, st, tb, board);
     if alpha < 1.0 {
@@ -364,6 +371,44 @@ fn play_mark(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme) {
     tri.line_to((c.x - r * 0.35, c.y + r * 0.45));
     tri.close_path();
     scene.fill_path(&tri, &Brush::Solid(token(ColorToken::Text1, theme)), t);
+}
+
+/// Os desenhos por volta do anel de «a carregar» (gira com os desenhos do quadro).
+const LOADING_STEPS: u64 = 48;
+
+/// W21 — «a carregar»: no lugar do play, um disco escuro com um arco que gira a cada desenho.
+fn loading_mark(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme, frame: u64) {
+    let r = play_radius(el);
+    if r <= 0.0 {
+        return;
+    }
+    let c = Point::new(el.w / 2.0, el.h / 2.0);
+    scene.fill_path(
+        &Circle::new(c, r).to_path(0.1),
+        &Brush::Solid(token(ColorToken::BgScrim, theme)),
+        t,
+    );
+    let turn = std::f64::consts::TAU;
+    let start = (frame % LOADING_STEPS) as f64 / LOADING_STEPS as f64 * turn;
+    // Três quartos de volta em segmentos curtos.
+    let (ring, n) = (r * 0.55, 36);
+    let mut path = ph2d_vector::BezPath::new();
+    for i in 0..=n {
+        let a = start + turn * 0.75 * f64::from(i) / f64::from(n);
+        let p = (c.x + ring * a.cos(), c.y + ring * a.sin());
+        if i == 0 {
+            path.move_to(p);
+        } else {
+            path.line_to(p);
+        }
+    }
+    let stroke = ph2d_vector::Stroke::new(r * 0.16).with_caps(ph2d_vector::Cap::Round);
+    scene.stroke_path(
+        &stroke,
+        t,
+        &Brush::Solid(token(ColorToken::Text1, theme)),
+        &path,
+    );
 }
 
 #[cfg(test)]

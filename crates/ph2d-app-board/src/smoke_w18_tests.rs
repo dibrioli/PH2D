@@ -36,7 +36,7 @@ fn the_w18_scene_does_what_its_lessons_say() {
     assert_eq!(h.documents.videos_mut().active, Some(l.video));
     let pl = h.documents.videos_mut().on_screen[&l.video];
     assert!(pl.live, "vivo na vista da cena: {:?}", pl.screen);
-    // Lição 2: uma nota POR CIMA tira-o de vivo (as regras do YouTube).
+    // Lição 2 (W21): uma nota por cima de parte dele não o tira de vivo — o vídeo fica à frente dela.
     {
         let b = h.documents.active_board_mut().unwrap();
         let s = Shape {
@@ -54,9 +54,27 @@ fn the_w18_scene_does_what_its_lessons_say() {
     }
     Hand::new().paint(&mut h);
     assert!(
-        !h.documents.videos_mut().on_screen[&l.video].live,
-        "tapado não está vivo"
+        h.documents.videos_mut().on_screen[&l.video].live,
+        "uma nota por cima de parte do vídeo e ele parou"
     );
+    // Rodado, não está vivo (as regras do YouTube).
+    {
+        let b = h.documents.active_board_mut().unwrap();
+        let mut v = b.doc.get(l.video).unwrap().clone();
+        v.angle = 0.3;
+        let _ = BoardOp::Put(v).apply(&mut b.doc);
+    }
+    Hand::new().paint(&mut h);
+    assert!(
+        !h.documents.videos_mut().on_screen[&l.video].live,
+        "rodado e vivo"
+    );
+    {
+        let b = h.documents.active_board_mut().unwrap();
+        let mut v = b.doc.get(l.video).unwrap().clone();
+        v.angle = 0.0;
+        let _ = BoardOp::Put(v).apply(&mut b.doc);
+    }
     // Lição 3: colar um link faz OUTRO vídeo.
     let before = embeds(&h);
     let mut ts = ph2d_text::TextSystem::without_system_fonts();

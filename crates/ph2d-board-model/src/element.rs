@@ -649,6 +649,17 @@ impl BoardDoc {
         v
     }
 
+    /// ⭐ W21 — o que se VÊ, de trás para a frente: a ordem de z com os vídeos por cima de tudo o resto (entre
+    /// eles, a ordem de z). Nada fica à frente de um tocador (as regras do YouTube), e é o que o oráculo faz:
+    /// o que se desenha por cima de um vídeo fica escondido atrás dele (`sonda_w21.mjs`, F_*). O desenho e o
+    /// clique («o de cima») leem esta ordem.
+    #[must_use]
+    pub fn live_in_paint_order(&self) -> Vec<&Element> {
+        let mut v = self.live_in_z_order();
+        v.sort_by_key(|e| e.embed().is_some());
+        v
+    }
+
     /// Quantos elementos vivos e à vista.
     #[must_use]
     pub fn live_len(&self) -> usize {

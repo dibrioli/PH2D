@@ -59,6 +59,10 @@ pub struct Playback {
     pub heard_at: Option<Instant>,
     /// A fase que a pessoa pediu (e quando), até o tocador a confirmar.
     pub want: Option<(Phase, Instant)>,
+    /// W21 — o tocador já chegou a tocar, pausado, no fim ou à espera de play (`Cued`): acabou o ARRANQUE.
+    /// Antes disso o vídeo vai tocar sozinho (`autoplay=1`) e um clique na página pausá-lo-ia mal começasse
+    /// (medido: `a_click_while_the_player_starts_never_stops_its_autoplay`).
+    pub started: bool,
 }
 
 impl Default for Playback {
@@ -73,6 +77,7 @@ impl Default for Playback {
             read_at: None,
             heard_at: None,
             want: None,
+            started: false,
         }
     }
 }
@@ -115,6 +120,10 @@ impl Playback {
 
     fn set_phase(&mut self, p: Phase) {
         self.phase = p;
+        self.started |= matches!(
+            p,
+            Phase::Playing | Phase::Paused | Phase::Ended | Phase::Cued
+        );
         if self.want.is_some_and(|(w, _)| w.running() == p.running()) {
             self.want = None;
         }

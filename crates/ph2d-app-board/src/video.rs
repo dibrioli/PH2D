@@ -339,6 +339,7 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
         playing: b.shown(now).running(),
         volume: b.volume,
         muted: b.muted,
+        starting: !b.started,
     });
     let mut notice = None;
     for c in commands {

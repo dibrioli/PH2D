@@ -105,6 +105,7 @@ fn the_w19_scene_does_what_its_lessons_say() {
         playing: true,
         volume: 100,
         muted: false,
+        starting: false,
     });
     Hand::new().paint(&mut h);
     assert_eq!(h.documents.videos_mut().active, Some(l.video));

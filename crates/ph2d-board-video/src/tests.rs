@@ -531,3 +531,83 @@ fn pausing_brings_the_player_s_play_mark_to_the_board() {
         "pausado pelo clique, só {n} quadro(s) depois da pausa: o ▶ não chega ao quadro"
     );
 }
+
+/// ⭐ W21 (o dono, 13/10: «nem sempre o primeiro clique toca o vídeo; às vezes preciso clicar muitas
+/// vezes») — o 1.º clique arranca o tocador (`autoplay=1`); durante o arranque nada se mexe e a pessoa clica
+/// de novo. Um clique no meio do tocador ANTES de ele começar a tocar nunca pode parar o vídeo que ia tocar
+/// sozinho. Variantes no MESMO processo: sem clique (o controlo), um clique 0,3 s depois de arrancar e um no
+/// instante em que o tocador passa a `Buffering` (a janela de risco: medido, um clique depois de `Playing`
+/// pausa, e um em `Unstarted` não faz nada); cada uma acaba a tocar.
+#[test]
+#[ignore = "navegador real: corre à mão"]
+fn a_click_while_the_player_starts_never_stops_its_autoplay() {
+    use playback::Phase;
+    let click = |p: &Player| {
+        for m in [
+            Mouse::Down {
+                x: 280.0,
+                y: 157.0,
+                button: Button::Left,
+                clicks: 1,
+            },
+            Mouse::Up {
+                x: 280.0,
+                y: 157.0,
+                button: Button::Left,
+                clicks: 1,
+            },
+        ] {
+            p.mouse(m);
+        }
+    };
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    enum When {
+        Never,
+        At(u64),
+        Buffering,
+    }
+    let mut wrong = Vec::new();
+    for when in [When::Never, When::At(300), When::Buffering] {
+        let p = Player::start(&bunny(), [560, 315]);
+        let t0 = Instant::now();
+        let mut log: Vec<(u128, String)> = Vec::new();
+        let mut clicked = false;
+        while t0.elapsed() < Duration::from_secs(10) {
+            let ph = p.playback().phase;
+            let due = match when {
+                When::Never => false,
+                When::At(ms) => t0.elapsed() >= Duration::from_millis(ms),
+                When::Buffering => ph == Phase::Buffering,
+            };
+            if due && !clicked {
+                click(&p);
+                clicked = true;
+                log.push((t0.elapsed().as_millis(), "CLIQUE".into()));
+            }
+            let s = format!("{ph:?}");
+            if log
+                .iter()
+                .rev()
+                .find(|(_, e)| e != "CLIQUE")
+                .is_none_or(|(_, e)| *e != s)
+            {
+                log.push((t0.elapsed().as_millis(), s));
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let end = p.playback().phase;
+        println!(
+            "{when:?} · clicou {clicked} · fim {end:?} · {log:?} · load {}",
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
+        );
+        if end != Phase::Playing || (when != When::Never && !clicked) {
+            wrong.push((when, clicked, end));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "um clique no arranque parou o vídeo (ou não se deu): {wrong:?}"
+    );
+}

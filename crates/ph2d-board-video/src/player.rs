@@ -237,8 +237,13 @@ impl Player {
         let _ = self.cmd.send(Cmd::Resize(size));
     }
 
+    /// O rato na página do tocador. W21: só depois do ARRANQUE ([`Playback::started`]) — antes disso o vídeo vai
+    /// tocar sozinho, e um clique no instante em que ele começa a carregar devolve-o a `Unstarted`, de onde não
+    /// sai (medido, `a_click_while_the_player_starts_never_stops_its_autoplay`).
     pub fn mouse(&self, m: Mouse) {
-        let _ = self.cmd.send(Cmd::Mouse(m));
+        if lock(&self.shared.playback).started {
+            let _ = self.cmd.send(Cmd::Mouse(m));
+        }
     }
 }
 

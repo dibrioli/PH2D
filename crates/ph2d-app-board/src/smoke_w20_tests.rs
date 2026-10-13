@@ -15,6 +15,7 @@ const STATUS: PlayerStatus = PlayerStatus {
     playing: true,
     volume: 100,
     muted: false,
+    starting: false,
 };
 
 fn el(h: &HeroScreen, l: &Lessons) -> Element {
@@ -199,5 +200,8 @@ fn the_w20_scene_does_what_its_lessons_say() {
         [moved.x, moved.y],
         "a caneta moveu o vídeo"
     );
+    // O traço sobrepõe-no e ele continua vivo (fica à frente do traço, W21).
+    Hand::new().paint(&mut h);
+    assert!(live(&mut h, &l), "o traço por cima parou o vídeo");
     let _ = l.board;
 }

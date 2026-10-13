@@ -290,7 +290,7 @@ pub fn paint(
     let framed = board.doc.has_frames();
     let board_ink = cache.ink;
     let badges = cache.vote_badges(board);
-    for el in board.doc.live_in_z_order() {
+    for el in board.doc.live_in_paint_order() {
         if framed {
             if el.as_frame().is_some() {
                 continue;

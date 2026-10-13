@@ -119,21 +119,91 @@ fn a_video_asks_for_its_thumbnail_and_then_draws_it() {
     assert!(has_play(&then), "parado: o play por cima da miniatura");
 }
 
-/// ⭐⭐ Activo e descoberto: o quadro do tocador e NENHUM play; com uma nota por cima (as regras do
-/// YouTube), o tocador não está vivo — o último quadro fica, com o play.
+/// ⭐⭐ W21 (o dono, 13/10: «se alguma forma sobrepõe parcialmente o vídeo, o vídeo não toca. Corrija») —
+/// o vídeo desenha-se por cima do que o sobrepõe (nada à frente do tocador: as regras do YouTube; o oráculo
+/// esconde atrás do vídeo o que se desenha por cima dele, `sonda_w21.mjs` F_*). Uma nota mais acima no z
+/// pinta-se ANTES do quadro do tocador e ele continua vivo, sem play; só outro VÍDEO por cima o tapa.
 #[test]
-fn the_player_is_live_only_when_uncovered() {
-    for (note, live) in [(false, true), (true, false)] {
+fn a_video_draws_over_what_overlaps_it_and_only_another_video_covers_it() {
+    let yellow = Brush::Solid(crate::doc_color(Rgba([255, 230, 0, 255])));
+    for note in [false, true] {
         let b = board("AAAAAAAAAA2", note);
         let mut c = RenderCache::default();
         c.videos.activate(vid_of(&b));
+        c.videos.status = Some(PlayerStatus::default());
         c.videos.frame = Some((flat([1, 2, 3, 255], 560, 315), [560, 315]));
         let o = ops(&b, &mut c);
         let p = c.videos.on_screen[&vid_of(&b)];
-        assert_eq!(p.live, live, "nota por cima = {note}");
-        assert_eq!(p.screen.covered, note);
-        assert!(image_colors(&o).contains(&[1, 2, 3, 255]));
-        assert_eq!(has_play(&o), !live);
+        assert!(p.live, "nota por cima = {note}: o tocador parou");
+        assert!(!p.screen.covered);
+        assert!(!has_play(&o));
+        let player = o
+            .iter()
+            .position(|d| matches!(d, DrawOp::Image(i) if i.image.rgba()[..4] == [1, 2, 3, 255]))
+            .expect("o quadro do tocador");
+        if note {
+            let n = o
+                .iter()
+                .position(|d| matches!(d, DrawOp::Fill { brush, .. } if *brush == yellow))
+                .expect("a nota");
+            assert!(
+                n < player,
+                "a nota pintou-se por cima do tocador ({n} > {player})"
+            );
+        }
+    }
+    // Outro vídeo mais acima no z, a sobrepô-lo: esse sim tapa-o.
+    let mut b = board("AAAAAAAAAA2", false);
+    let e = Embed {
+        link: "https://youtu.be/AAAAAAAAAA3".into(),
+        video: video("AAAAAAAAAA3"),
+        style: Style::new(None, None, Rgba([0, 0, 0, 255])),
+    };
+    let over = Element::new_embed(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        e,
+        [400.0, 200.0, 560.0, 315.0],
+    );
+    let _ = BoardOp::Put(over).apply(&mut b.doc);
+    let first = b.doc.live_in_z_order()[0].id;
+    let mut c = RenderCache::default();
+    c.videos.activate(first);
+    let _ = ops(&b, &mut c);
+    let p = c.videos.on_screen[&first];
+    assert!(
+        p.screen.covered && !p.live,
+        "outro vídeo por cima e ainda vivo"
+    );
+}
+
+/// W21 — com o tocador a ARRANCAR (vai tocar sozinho), o vídeo mostra «a carregar» no lugar do play; quando
+/// o tocador começou, nada.
+#[test]
+fn a_starting_player_shows_it_is_loading() {
+    let scrim = Brush::Solid(crate::token(ColorToken::BgScrim, Theme::Forge));
+    let loading = |o: &[DrawOp]| {
+        o.iter()
+            .any(|d| matches!(d, DrawOp::Fill { brush, .. } if *brush == scrim))
+    };
+    let b = board("AAAAAAAAAA4", false);
+    for (status, want) in [
+        (None, true),
+        (
+            Some(PlayerStatus {
+                starting: true,
+                ..PlayerStatus::default()
+            }),
+            true,
+        ),
+        (Some(PlayerStatus::default()), false),
+    ] {
+        let mut c = RenderCache::default();
+        c.videos.activate(vid_of(&b));
+        c.videos.status = status;
+        let o = ops(&b, &mut c);
+        assert_eq!(loading(&o), want, "{status:?}");
+        assert!(!has_play(&o), "vivo: sem o play");
     }
 }
 
@@ -227,6 +297,7 @@ fn a_framed_video_keeps_its_border_and_fill_around_the_player_never_on_it() {
     let _ = BoardOp::Put(el).apply(&mut b.doc);
     let mut c = RenderCache::default();
     c.videos.activate(id);
+    c.videos.status = Some(PlayerStatus::default());
     c.videos.frame = Some((flat([7, 7, 7, 255], 560, 315), [560, 315]));
     let o = ops(&b, &mut c);
     let at = |want: &dyn Fn(&DrawOp) -> bool, what: &str| {

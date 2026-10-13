@@ -7,7 +7,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // W17 — o cabeçalho leu-se, os dados não: a imagem fica partida no quadro.
         "board.images.unreadable" => "A picture on this board is damaged and cannot be shown",
         "board.video.covered" => {
-            "Something covers the video: YouTube only plays it uncovered \u{2014} move it out"
+            "Another video covers this one: YouTube only plays it uncovered \u{2014} move one of them"
         }
         "board.video.rotated" => {
             "A rotated video cannot play (YouTube's rule): set its angle back to 0"
@@ -147,7 +147,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "8. Hold the mouse still on the video for a moment, then let go: nothing happens. Only a quick click plays or pauses"
         }
         "board.smoke.w20.l9" => {
-            "9. Pick the pen (P) or a shape: a quick click on the video still plays or pauses. Drag to draw over it"
+            "9. Pick the pen (P) or a shape: a quick click on the video plays or pauses. Drag across it: the video stays in front and keeps playing"
         }
         "board.smoke.w18.board" => "Video and picture fixes",
         "board.smoke.w18.title" => "A YouTube video on the board, and the last picture fixes",
@@ -159,7 +159,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "1. Click the red play: the YouTube video plays right here, with sound. Click it again to pause."
         }
         "board.smoke.w18.l2" => {
-            "2. Put a note over the video, or rotate it: it pauses and shows the play again (YouTube's rule)."
+            "2. Put a note over part of the video: the video stays in front and keeps playing. Rotate it: it pauses (YouTube's rule)."
         }
         "board.smoke.w18.l3" => {
             "3. Copy any YouTube link and press Ctrl+V on the board, or click Video at the end of the left bar."

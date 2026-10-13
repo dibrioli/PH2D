@@ -163,6 +163,7 @@ const STATUS: PlayerStatus = PlayerStatus {
     playing: true,
     volume: 80,
     muted: false,
+    starting: false,
 };
 
 /// Um vídeo colado, activado pelo play, com o estado do tocador (como o app o deixa).

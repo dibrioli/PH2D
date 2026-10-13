@@ -547,6 +547,7 @@ fn a_video_on_a_slide_plays_in_the_presentation_with_our_controls() {
         playing: true,
         volume: 100,
         muted: false,
+        starting: false,
     });
     t.paint();
     let pl = t.hero.documents.videos_mut().on_screen[&vid];

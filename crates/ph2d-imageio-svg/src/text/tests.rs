@@ -7,6 +7,23 @@ fn svg(body: &str) -> String {
     format!("{HEAD}{body}</svg>")
 }
 
+/// As famílias que um gate pede estão nesta máquina? A resolução é a do SISTEMA (o Chromium no
+/// Linux, o oráculo): sem elas a lei não se mede — o gate SALTA e diz quais faltam, como um gate de
+/// placa sem placa (os runners do CI não têm a DejaVu nem a Liberation).
+fn fontes(nomes: &[&str]) -> bool {
+    let faltam: Vec<&str> = fonts::with_shaper(|s| {
+        nomes
+            .iter()
+            .copied()
+            .filter(|n| s.installed(n).is_none())
+            .collect()
+    });
+    if !faltam.is_empty() {
+        eprintln!("⚠️ gate SALTADO — fontes ausentes nesta máquina: {faltam:?}");
+    }
+    faltam.is_empty()
+}
+
 /// Os píxeis com alguma tinta, e os de tinta azul dominante.
 fn ink(src: &str) -> (usize, usize) {
     let px = raster::rasterize(&raster::parse(src.as_bytes()).unwrap(), [200, 60]).unwrap();
@@ -30,6 +47,9 @@ fn an_svg_without_text_pays_nothing() {
 /// também.
 #[test]
 fn a_missing_family_is_named() {
+    if !fontes(&["DejaVu Serif", "DejaVu Sans", "Arial"]) {
+        return;
+    }
     let g = |f: &str| text_gaps(svg(&format!(r#"<text font-family="{f}">a</text>"#)).as_bytes());
     assert_eq!(g("Nao Existe Font").missing_families, ["Nao Existe Font"]);
     assert_eq!(
@@ -84,6 +104,9 @@ fn the_undrawn_constructs_are_reported() {
 /// cor e o tamanho.
 #[test]
 fn a_type_selector_rule_still_applies() {
+    if !fontes(&["DejaVu Sans"]) {
+        return;
+    }
     let css = svg(
         r#"<style>text { fill: #0000ff; font-size: 40px; font-family: 'DejaVu Sans' }</style><text x="5" y="45">Hi</text>"#,
     );
@@ -177,6 +200,12 @@ fn the_pass_is_kept_per_file() {
 /// não tem): desenha-se, não sai o `.notdef`.
 #[test]
 fn a_character_the_family_lacks_falls_back() {
+    // Pré-condição MEDIDA: alguma fonte da máquina desenha o 漢 (o runner Linux do CI não tem CJK).
+    let cjk = lay_out_texts(&svg(r#"<text x="5" y="40" font-size="30">漢</text>"#))[0].notdef == 0;
+    if !fontes(&["DejaVu Sans"]) || !cjk {
+        eprintln!("⚠️ gate SALTADO — sem fonte para o 漢: {}", !cjk);
+        return;
+    }
     let s = svg(r#"<text x="5" y="40" font-family="DejaVu Sans" font-size="30">a漢é</text>"#);
     let t = &lay_out_texts(&s)[0];
     assert_eq!(t.at.len(), 3);

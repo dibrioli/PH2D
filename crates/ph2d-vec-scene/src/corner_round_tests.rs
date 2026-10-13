@@ -129,6 +129,39 @@ fn distance(vs: &[VecVertex], e: [f64; 2]) -> f64 {
     best
 }
 
+/// Quantas vezes o segmento aberto `a → b` (sem as pontas) atravessa o contorno fechado `vs`.
+fn crossings(vs: &[VecVertex], a: [f64; 2], b: [f64; 2]) -> usize {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let len = dx.hypot(dy);
+    if len < 1e-9 {
+        return 0;
+    }
+    let shrink = 1e-6 / len;
+    let (a, b) = (
+        [a[0] + dx * shrink, a[1] + dy * shrink],
+        [b[0] - dx * shrink, b[1] - dy * shrink],
+    );
+    let side = |p: [f64; 2], q: [f64; 2], r: [f64; 2]| {
+        (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    };
+    let n = vs.len();
+    let mut count = 0;
+    for i in 0..n {
+        let (u, w) = (&vs[i], &vs[(i + 1) % n]);
+        let c = [u.anchor, u.out_handle, w.in_handle, w.anchor];
+        for s in 0..256 {
+            let (p, q) = (
+                super::bezier(&c, s as f64 / 256.0),
+                super::bezier(&c, (s + 1) as f64 / 256.0),
+            );
+            if side(a, b, p) * side(a, b, q) < 0.0 && side(p, q, a) * side(p, q, b) < 0.0 {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
 /// ⭐ As linhas desenhadas sobre a face (as arestas do cubo e da pirâmide, as dobras da faixa,
 /// as barras da sub-rotina): a ponta que tocava um contorno continua a tocá-lo — nem fica no
 /// ar dentro do canto arredondado, nem espeta para fora dele.
@@ -161,6 +194,14 @@ fn the_lines_on_the_face_keep_touching_the_outline() {
                         assert!(
                             d < 1e-6,
                             "{k:?} aspecto {aspect} r {r}: a ponta {end} a {d}"
+                        );
+                        // E é o corte MAIS PERTO: entre a ponta de antes e a de agora não há
+                        // contorno (a recta da aresta do cubo corta-o também do outro lado).
+                        let (a, b) = (s.verts[end].anchor, t.verts[end].anchor);
+                        assert_eq!(
+                            crossings(&outlines(&out)[o], a, b),
+                            0,
+                            "{k:?} aspecto {aspect} r {r}: a ponta {end} saltou o contorno"
                         );
                     }
                 }

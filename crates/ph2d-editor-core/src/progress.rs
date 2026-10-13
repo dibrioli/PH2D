@@ -105,6 +105,23 @@ pub(crate) fn column_row(viewport: Rect, index: usize) -> Rect {
     }
 }
 
+/// `rows` linhas da coluna a partir da `first`, como UM cartão: abarca as linhas e os vãos entre
+/// elas, logo o cartão seguinte começa em `column_row(first + rows)` — a régua continua uniforme.
+pub(crate) fn column_span(viewport: Rect, first: usize, rows: usize) -> Rect {
+    let r = column_row(viewport, first);
+    Rect {
+        h: column_span_h(rows),
+        ..r
+    }
+}
+
+/// A altura de um cartão de `rows` linhas (ver [`column_span`]).
+#[must_use]
+pub fn column_span_h(rows: usize) -> f32 {
+    let rows = rows.max(1) as f32;
+    ROW_H * rows + Spacing::Md.px() * (rows - 1.0)
+}
+
 // ---------------------------------------------------------------------------
 // Progress — the shared number
 // ---------------------------------------------------------------------------
@@ -413,7 +430,7 @@ fn track_rect(r: Rect) -> Rect {
 /// retunes the widget the job bars would quietly keep the old look. The card around it (the
 /// elevated surface, the border, the label) is the *column's* chrome and is this module's to
 /// own — it is what makes a bar sit in the same stack as a toast.
-fn paint_bar(p: &Progress, r: Rect, scene: &mut VectorScene, ctx: &mut PaintCtx) {
+pub(crate) fn paint_bar(p: &Progress, r: Rect, scene: &mut VectorScene, ctx: &mut PaintCtx) {
     // Same body as a toast — same column, same surface, so the two read as one stack.
     fill_rounded_rect(
         scene,

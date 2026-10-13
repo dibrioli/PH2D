@@ -85,6 +85,8 @@ pub mod screens;
 pub mod tether;
 pub mod text_elide;
 pub mod toast;
+/// A lei de LEITURA de um aviso: quebra, linhas da coluna, tempo de vida (doc 132 §5).
+pub mod toast_reading;
 pub mod ui_scale;
 
 /// Test-only helpers exposed for integration tests + downstream

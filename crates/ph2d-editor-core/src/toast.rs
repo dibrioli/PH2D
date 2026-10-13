@@ -5,7 +5,8 @@
 //! interromper."
 //!
 //! - **Stack** at the top-center of the canvas (above all panels).
-//! - **Auto-dismiss** after `Toast::ttl_s` (default 3 s, de relógio de PAREDE).
+//! - **Auto-dismiss** after `Toast::ttl_s` — o tempo de LER a frase, nunca abaixo de 3 s, de
+//!   relógio de PAREDE ([`crate::toast_reading::reading_ttl_s`]).
 //! - **Live region** in the a11y tree (per ADR-0023 §10) so screen
 //!   readers announce the latest toast without stealing focus.
 //! - **Bounded queue** (32 entries) — runaway notifications get
@@ -13,7 +14,7 @@
 //!   `ph2d_script::WriteQueue`).
 
 use crate::paint::{
-    Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text_centered, rect_to_vello, resolve,
+    Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text_block, rect_to_vello, resolve,
 };
 use crate::zones::Rect;
 use ph2d_a11y::{Live, Node, NodeBuilder, Role};
@@ -59,13 +60,16 @@ impl Toast {
     /// um arquivo adiante, com o motivo escrito no comentário do `wall_dt`
     /// (`render_loop/mod.rs`: *"…which made the sprites race + jitter"*) — *o conhecimento existia
     /// no prédio e não tinha atravessado a porta*.
-    pub const DEFAULT_TTL_S: f32 = 3.0;
+    pub const DEFAULT_TTL_S: f32 = crate::toast_reading::MIN_TTL_S;
 
+    /// O tempo de vida é o de LER a frase ([`crate::toast_reading::reading_ttl_s`]); o
+    /// [`Self::ttl_seconds`] do chamador manda sobre ele.
     pub fn new(message: impl Into<String>, severity: ToastSeverity) -> Self {
+        let message = message.into();
         Self {
-            message: message.into(),
+            ttl_s: crate::toast_reading::reading_ttl_s(&message),
+            message,
             severity,
-            ttl_s: Self::DEFAULT_TTL_S,
             age_s: 0.0,
         }
     }
@@ -143,14 +147,14 @@ impl ToastQueue {
 
     /// Anda `dt` **segundos de parede**; larga os expirados.
     ///
-    /// ⚠️ **Segundos, nunca quadros** — ver [`Toast::DEFAULT_TTL_S`].
+    /// ⚠️ **Segundos, nunca quadros** — ver [`Toast::DEFAULT_TTL_S`]. `retain` e não «tira da
+    /// frente»: com o tempo de vida a crescer com a frase, um aviso curto atrás de um longo expira
+    /// primeiro.
     pub fn tick(&mut self, dt: f32) {
         for t in &mut self.inner {
             t.age_s += dt;
         }
-        while self.inner.front().is_some_and(|t| t.age_s >= t.ttl_s) {
-            self.inner.pop_front();
-        }
+        self.inner.retain(|t| t.age_s < t.ttl_s);
     }
 
     pub fn len(&self) -> usize {
@@ -168,129 +172,155 @@ impl ToastQueue {
 // ⚠️ **O pintor da fila mora com a fila** (auditoria A10, 2026-09-12). Vivia no `paint.rs`, e
 // era por ele que a pintura da fundação dependia do `toast` e do `progress` (a régua da coluna,
 // `progress::column_row`, é partilhada com as barras de trabalho) — duas das arestas que fechavam o
-// ciclo entre os módulos da fundação. O corpo não mudou uma linha.
+// ciclo entre os módulos da fundação.
 
-/// O lado do ícone de severidade de um balão de aviso.
-///
-/// ⚠️ **Não há token para este tamanho, e a ausência é a nota:** o `chrome.inline-icon` (14) é o
-/// glifo de uma linha e o `chrome.icon-btn-size` (36) é um botão — este está no meio, num balão
-/// que não é nem linha nem botão. Fica NOMEADO em vez de escrito no meio da pintura.
-const TOAST_ICON_PX: f32 = 24.0;
-/// ⭐⭐⭐ **O ORÇAMENTO DE TEXTO de um balão de aviso** — a largura, em píxeis, em que a mensagem
-/// tem de caber para ser LIDA.
-///
-/// ⛔⛔ **Ela existe por um report do dono** (22/09, sobre o aviso da exportação da escultura):
-/// *«as mensagens estão cortadas com … não consigo ler tudo»*. A fila vive numa coluna de
-/// [`crate::progress`] com largura FIXA, e o que sobra para o texto depois da faixa, do ícone e
-/// dos dois recuos é bem menos do que ela — *uma mensagem que não cabe é elidida, e um balão vive
-/// três segundos: chegar lá com o rato para ver o balão da elisão não é uma cura*.
-///
-/// ⚠️ **UMA régua, DOIS consumidores:** o pintor abaixo e quem quiser PERGUNTAR se a frase dele
-/// cabe. Escrita duas vezes, a resposta do gate e a do produto divergem no dia em que um dos
-/// recuos mudar de token — e a que o artista vê é a errada.
-#[must_use]
-pub fn text_budget_px() -> f32 {
-    use ph2d_tokens::Spacing;
-    (crate::progress::toast_column_w()
-        - Spacing::Xl.px() * 2.0
-        - TOAST_ICON_PX
-        - ph2d_tokens::icon_label_gap_px())
-    .max(0.0)
+/// A porta do orçamento de texto mora na lei de leitura; este é o endereço de sempre.
+pub use crate::toast_reading::text_budget_px;
+use crate::toast_reading::{ICON_PX as TOAST_ICON_PX, Shown};
+
+/// Onde cada balão e cada barra da COLUNA DO TOPO ficam — a conta única que a pintura e os gates
+/// leem.
+#[derive(Clone, Debug)]
+pub struct TopColumn {
+    /// O cartão de cada aviso, pela ordem da fila, e o texto que ele pinta.
+    pub toasts: Vec<(Rect, Shown)>,
+    /// O cartão de cada barra de trabalho, por baixo dos avisos.
+    pub bars: Vec<Rect>,
+    /// As linhas da coluna que os avisos ocupam.
+    pub rows: usize,
 }
-// LITERAL-PX-OK: lado do ícone de severidade do balão de aviso
+
+/// ⭐ **A coluna do topo**: os avisos de cima para baixo, cada um com as linhas que a altura do
+/// texto dele pede ([`crate::toast_reading::rows_for_height`]), e `bars` barras de trabalho por
+/// baixo — pela CONTAGEM DE LINHAS ocupadas, nunca pelo número de avisos.
+///
+/// Os avisos são donos do TOPO: um aviso tem uma oportunidade de ser lido, e o lugar dele não se
+/// move porque um trabalho de fundo arrancou; a barra é persistente e mexe-se, pode descer.
+pub fn top_column(
+    toasts: &ToastQueue,
+    bars: usize,
+    ts: &mut ph2d_text::TextSystem,
+    viewport: Rect,
+) -> TopColumn {
+    let mut row = 0;
+    let mut out = Vec::with_capacity(toasts.len());
+    for toast in toasts.iter() {
+        let primeira = crate::progress::column_row(viewport, row);
+        let shown = crate::text_elide::balao::na_area(primeira, || {
+            crate::toast_reading::shown(ts, &toast.message)
+        });
+        let rows = crate::toast_reading::rows_for_height(shown.height);
+        out.push((crate::progress::column_span(viewport, row, rows), shown));
+        row += rows;
+    }
+    TopColumn {
+        toasts: out,
+        bars: (0..bars)
+            .map(|i| crate::progress::column_row(viewport, row + i))
+            .collect(),
+        rows: row,
+    }
+}
+
+/// ⭐ **Pinta a coluna do topo inteira** — os avisos e, por baixo, as barras de trabalho, nos
+/// lugares do [`top_column`]. A shell chama ISTO, nunca os dois pintores à parte.
+pub fn paint_top_column(
+    toasts: &ToastQueue,
+    jobs: &crate::progress::JobQueue,
+    scene: &mut VectorScene,
+    ctx: &mut PaintCtx,
+) {
+    let col = top_column(toasts, jobs.len(), ctx.text, ctx.viewport);
+    for (toast, (r, shown)) in toasts.iter().zip(&col.toasts) {
+        paint_toast(toast, *r, shown, scene, ctx);
+    }
+    for (p, r) in jobs.iter().zip(&col.bars) {
+        crate::progress::paint_bar(p, *r, scene, ctx);
+    }
+}
 
 impl Paint for ToastQueue {
     fn paint(&self, scene: &mut VectorScene, ctx: &mut PaintCtx) {
-        use crate::toast::ToastSeverity;
-        use ph2d_tokens::{Radius, Spacing, StrokeToken, TypeToken};
-        // The toast stream owns the TOP of the top-center column and the job bars
-        // (`progress::JobQueue`) stack under it — a toast lives three seconds and gets one
-        // chance to be read, so its slot must not move because some background job happens to
-        // be running. `column_row` is the shared ruler for both tenants; it lives over there
-        // because this file is at its frozen LOC ceiling (see the workspace LOC-cap gate).
-        let radius = crate::paint::frame_radius(ctx.theme, Radius::Md.px());
-        for (i, toast) in self.iter().enumerate() {
-            let r = crate::progress::column_row(ctx.viewport, i);
-            // Body uses BgElev so the toast lifts off the canvas
-            // independently of its severity tint; the severity color
-            // is reserved for the icon + accent stripe on the left.
-            fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, ctx.theme));
-            // ⭐ **Pela porta do tema** (wave 26): até aqui isto era um `stroke_rounded_rect` cru
-            //    a 1 px, logo o balão desenhava num tema moderno o contorno que a pele plana
-            //    apagou em toda a casa. ⛔ E o censo da moldura não o via: o `paint.rs` está
-            //    ISENTO com o motivo *«é a PORTA»* — verdade para o corpo do `stroke_frame`, e o
-            //    balão vive 290 linhas abaixo, no mesmo ficheiro.
-            crate::paint::stroke_frame(
-                scene,
-                r,
-                radius,
-                ctx.theme,
-                ph2d_tokens::visuals::Feel::Rest,
-                StrokeToken::Thin.px(),
-                resolve(ColorToken::Border, ctx.theme),
-            );
-
-            let (severity_token, icon) = match toast.severity {
-                ToastSeverity::Info => (ColorToken::Info, crate::icons::IconId::Info),
-                ToastSeverity::Success => (ColorToken::Success, crate::icons::IconId::Check),
-                ToastSeverity::Warning => (ColorToken::Warn, crate::icons::IconId::Warning),
-                ToastSeverity::ErrorState => (ColorToken::Danger, crate::icons::IconId::Error),
-            };
-            let severity_color = resolve(severity_token, ctx.theme);
-
-            // Faixa de acento à esquerda, na cor da severidade. ⚠️ O recuo dela é a LARGURA DA
-            // MOLDURA do tema — num tema moderno não há moldura, e a faixa passa a encostar à
-            // borda em vez de deixar um fio do fundo a aparecer.
-            let inset = ph2d_tokens::visuals::Chrome::of(ctx.theme)
-                .panel_border
-                .width;
-            let stripe = Rect::new(
-                r.x + inset,
-                r.y + inset,
-                Spacing::Xs.px(),
-                r.h - inset * 2.0,
-            );
-            scene.fill_rect(rect_to_vello(stripe), severity_color);
-
-            // Ícone da severidade, centrado depois da faixa.
-            let icon_rect = Rect::new(
-                r.x + Spacing::Xl.px(),
-                r.y + (r.h - TOAST_ICON_PX) * 0.5,
-                TOAST_ICON_PX,
-                TOAST_ICON_PX,
-            );
-            paint_icon(
-                scene,
-                icon,
-                icon_rect,
-                severity_color,
-                StrokeToken::Default.px(),
-            );
-
-            // Message text fills the rest, left-aligned with padding.
-            let text_x = icon_rect.x + TOAST_ICON_PX + ph2d_tokens::icon_label_gap_px();
-            // ⚠️ A largura sai da PORTA (`text_budget_px`), que é a mesma que um gate pode
-            //   perguntar. O `debug_assert` é o controlo de que as duas contas não derivaram.
-            let text_rect = Rect {
-                x: text_x,
-                y: r.y,
-                w: (r.x + r.w - text_x - Spacing::Xl.px()).max(0.0),
-                h: r.h,
-            };
-            debug_assert!(
-                (text_rect.w - text_budget_px()).abs() < 0.5,
-                "a porta do orçamento e a conta do pintor divergiram"
-            );
-            paint_text_centered(
-                ctx.text,
-                scene,
-                &toast.message,
-                text_rect,
-                TypeToken::Base.px(),
-                resolve(ColorToken::Text1, ctx.theme),
-            );
+        let col = top_column(self, 0, ctx.text, ctx.viewport);
+        for (toast, (r, shown)) in self.iter().zip(&col.toasts) {
+            paint_toast(toast, *r, shown, scene, ctx);
         }
     }
+}
+
+/// Um balão no cartão `r`, com o texto que a lei de leitura deu (`shown`).
+fn paint_toast(toast: &Toast, r: Rect, shown: &Shown, scene: &mut VectorScene, ctx: &mut PaintCtx) {
+    use ph2d_tokens::{Radius, Spacing, StrokeToken};
+    let radius = crate::paint::frame_radius(ctx.theme, Radius::Md.px());
+    // Body uses BgElev so the toast lifts off the canvas
+    // independently of its severity tint; the severity color
+    // is reserved for the icon + accent stripe on the left.
+    fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, ctx.theme));
+    // ⭐ **Pela porta do tema** (wave 26): a moldura do tema moderno é nenhuma em repouso.
+    crate::paint::stroke_frame(
+        scene,
+        r,
+        radius,
+        ctx.theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        StrokeToken::Thin.px(),
+        resolve(ColorToken::Border, ctx.theme),
+    );
+
+    let (severity_token, icon) = match toast.severity {
+        ToastSeverity::Info => (ColorToken::Info, crate::icons::IconId::Info),
+        ToastSeverity::Success => (ColorToken::Success, crate::icons::IconId::Check),
+        ToastSeverity::Warning => (ColorToken::Warn, crate::icons::IconId::Warning),
+        ToastSeverity::ErrorState => (ColorToken::Danger, crate::icons::IconId::Error),
+    };
+    let severity_color = resolve(severity_token, ctx.theme);
+
+    // Faixa de acento à esquerda, na cor da severidade. ⚠️ O recuo dela é a LARGURA DA
+    // MOLDURA do tema — num tema moderno não há moldura, e a faixa encosta à borda.
+    let inset = ph2d_tokens::visuals::Chrome::of(ctx.theme)
+        .panel_border
+        .width;
+    let stripe = Rect::new(
+        r.x + inset,
+        r.y + inset,
+        Spacing::Xs.px(),
+        r.h - inset * 2.0,
+    );
+    scene.fill_rect(rect_to_vello(stripe), severity_color);
+
+    // Ícone da severidade, depois da faixa, centrado na 1.ª linha do texto.
+    let (text_y, meio_da_1a) = crate::toast_reading::text_y(r, shown);
+    let icon_rect = Rect::new(
+        r.x + Spacing::Xl.px(),
+        meio_da_1a - TOAST_ICON_PX * 0.5,
+        TOAST_ICON_PX,
+        TOAST_ICON_PX,
+    );
+    paint_icon(
+        scene,
+        icon,
+        icon_rect,
+        severity_color,
+        StrokeToken::Default.px(),
+    );
+
+    // A mensagem enche o resto, alinhada à esquerda, QUEBRADA à largura com que a lei de leitura
+    // a mediu — um orçamento só: o `debug_assert` confere essa largura contra o cartão.
+    let text_x = icon_rect.x + TOAST_ICON_PX + ph2d_tokens::icon_label_gap_px();
+    debug_assert!(
+        ((r.x + r.w - text_x - Spacing::Xl.px()) - shown.width).abs() < 0.5,
+        "a porta do orçamento e a conta do pintor divergiram"
+    );
+    paint_text_block(
+        ctx.text,
+        scene,
+        &shown.text,
+        text_x,
+        text_y,
+        crate::toast_reading::font_px(),
+        shown.width,
+        resolve(ColorToken::Text1, ctx.theme),
+    );
 }
 
 #[cfg(test)]
@@ -442,3 +472,7 @@ mod paint_tests {
         q.paint(&mut scene, &mut ctx);
     }
 }
+
+#[cfg(test)]
+#[path = "toast_column_tests.rs"]
+mod column_tests;

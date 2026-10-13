@@ -112,8 +112,13 @@ fn mediana(v: &[f64]) -> f64 {
     s[s.len() / 2]
 }
 
+/// Uma coluna por passe: o nome e a leitura.
+type Coluna = (&'static str, fn(&TemposMs) -> f64);
+/// As fases do miolo de um quadro: (nome, ms, despachos).
+type Fases = Vec<(&'static str, f64, usize)>;
+
 /// As colunas por passe da vista.
-const PASSES: [(&str, fn(&TemposMs) -> f64); 11] = [
+const PASSES: [Coluna; 11] = [
     ("c0", |t| t.c0),
     ("c1", |t| t.c1),
     ("c2", TemposMs::c2_total),
@@ -203,7 +208,7 @@ fn medida_luz2d_w5o() {
             let np = pares.len();
             let n = np + fases.len();
             let mut amostras: Vec<Vec<(TemposMs, Option<TemposMs>)>> = vec![Vec::new(); np];
-            let mut f_vista: Vec<Vec<Vec<(&str, f64, usize)>>> = vec![Vec::new(); fases.len()];
+            let mut f_vista: Vec<Vec<Fases>> = vec![Vec::new(); fases.len()];
             for r in 0..RODADAS {
                 for o in 0..n {
                     let k = (o + r) % n;
@@ -486,7 +491,7 @@ fn medida_luz2d_w5o_lastro() {
             .iter()
             .map(|t| (t.bytes(), t.nome, t.tamanho, t.formato, t.mips))
             .collect();
-        t.sort_by(|a, b| b.0.cmp(&a.0));
+        t.sort_by_key(|x| std::cmp::Reverse(x.0));
         for (b, n, tam, f, m) in t.iter().take(14) {
             eprintln!(
                 "T {:>7.1} MB {n} {tam:?} {f:?} mips {m}",
@@ -498,7 +503,7 @@ fn medida_luz2d_w5o_lastro() {
             .iter()
             .map(|b| (b.bytes, b.nome))
             .collect();
-        bs.sort_by(|a, b| b.0.cmp(&a.0));
+        bs.sort_by_key(|x| std::cmp::Reverse(x.0));
         for (b, n) in bs.iter().take(10) {
             eprintln!("B {:>7.1} MB {n}", *b as f64 / MB as f64);
         }

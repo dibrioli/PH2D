@@ -15,34 +15,36 @@ fn rail_of(kind: ShapeKind, field: usize) -> usize {
         .unwrap_or_else(|| panic!("{kind:?}: sem ⇕ para o campo {field}"))
 }
 
-/// ⭐ Os ⇕ ficam UM AO LADO DO OUTRO: o 1.º na borda direita da caixa visível (ou passos inteiros
-/// por fora dela, F14b), os seguintes para FORA, à mesma altura, a `RAIL_PITCH · park_at` — em
-/// todas as formas.
+/// ⭐ (F14b, o dono: «não fixou afastado um do outro. a posição está variando») **A fila de ⇕ tem um
+/// lugar FIXO na caixa visível**: o 1.º `RAIL_OUT` passos à direita da borda, a `h/4` do topo; os
+/// seguintes mais um passo cada, à mesma altura — em toda forma, em TODO valor de cada campo (o
+/// arrasto de outra alça nunca a move). Antes da 2.ª redacção a fila saltava um passo quando o ⊙
+/// do *Radius* do balão passava perto.
 #[test]
-fn the_arrows_stand_side_by_side_outwards() {
+fn the_arrow_row_has_a_fixed_place_beside_the_visible_box() {
+    let pitch = RAIL_PITCH * PARK;
     for &k in ALL_SHAPES {
         let ck = cooker(k, HALF);
-        let v = k.defaults();
-        let rails: Vec<[f64; 2]> = handles_of(k)
-            .iter()
-            .filter(|h| h.spot == Spot::Rail)
-            .map(|h| handle_grip(k, h, &v, HALF, 1.0, PARK, &ck).expect("grip"))
-            .collect();
-        let Some(first) = rails.first() else { continue };
-        let (_, hi) = spots::curve_bbox(&ck(&v)).expect("caixa");
-        let steps = (first[0] - hi[0]) / (RAIL_PITCH * PARK);
-        assert!(
-            steps > -1e-9 && (steps - steps.round()).abs() < 1e-9 && steps.round() <= 3.0,
-            "{k:?}: o 1.º na borda ou passos inteiros por fora ({steps})"
-        );
-        for (n, p) in rails.iter().enumerate() {
-            #[expect(clippy::cast_precision_loss, reason = "n pequeno")]
-            let want = first[0] + n as f64 * RAIL_PITCH * PARK;
-            assert!((p[0] - want).abs() < 1e-9, "{k:?}: o ⇕ {n} em x {p:?}");
-            assert!(
-                (p[1] - first[1]).abs() < 1e-12,
-                "{k:?}: o ⇕ {n} fora da fila"
-            );
+        for v in super::f14b_tests::sweep(k) {
+            let rails: Vec<[f64; 2]> = handles_of(k)
+                .iter()
+                .filter(|h| h.spot == Spot::Rail)
+                .map(|h| handle_grip(k, h, &v, HALF, 1.0, PARK, &ck).expect("grip"))
+                .collect();
+            if rails.is_empty() {
+                break;
+            }
+            let (lo, hi) = spots::visible_bbox(&ck(&v)).expect("caixa");
+            let y = hi[1] - (hi[1] - lo[1]) * 0.25;
+            for (n, p) in rails.iter().enumerate() {
+                #[expect(clippy::cast_precision_loss, reason = "n pequeno")]
+                let x = hi[0] + (spots::RAIL_OUT + n as f64) * pitch;
+                assert!(
+                    (p[0] - x).abs() < 1e-9 && (p[1] - y).abs() < 1e-9,
+                    "{k:?} {v:?}: o ⇕ {n} em {p:?}, o lugar é {:?}",
+                    [x, y]
+                );
+            }
         }
     }
 }
@@ -134,14 +136,14 @@ fn the_viewed_arrow_goes_up_to_from_above() {
 /// ⭐ (F13 D) **Nenhum ⇕ toca uma alça da caixa nem a ④, de 20 a 400 px de altura**: em toda forma
 /// com fila, o disco de acerto de cada ⇕ (`HIT` = 12 px) fica fora dos 8 quadrados de escala (lado
 /// 12 px) e dentro da banda vertical da caixa ± a folga da ④ (24 px, que flutua por cima ou por
-/// baixo dela). Controlo: as duas moradas (na borda a `h/4` e por fora à meia altura) são visitadas.
+/// baixo dela). Controlo: as duas moradas (a `h/4` e, na caixa baixa, à meia altura) são visitadas.
 #[test]
 fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
     const HIT: f64 = 12.0;
     const SQ: f64 = 6.0;
     const GAP: f64 = 24.0;
     let park = SQ + HIT;
-    let (mut na_borda, mut por_fora) = (0, 0);
+    let (mut a_um_quarto, mut a_meio) = (0, 0);
     for &k in ALL_SHAPES {
         if !handles_of(k).iter().any(|h| h.spot == Spot::Rail) {
             continue;
@@ -150,7 +152,7 @@ fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
             let half = [100.0, f64::from(alto) * 0.5];
             let ck = cooker(k, half);
             let v = k.defaults();
-            let Some((lo, hi)) = spots::curve_bbox(&ck(&v)) else {
+            let Some((lo, hi)) = spots::visible_bbox(&ck(&v)) else {
                 continue;
             };
             let mid = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
@@ -161,10 +163,10 @@ fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
                 .collect();
             for h in handles_of(k).iter().filter(|h| h.spot == Spot::Rail) {
                 let p = handle_grip(k, h, &v, half, 1.0, park, &ck).expect("grip");
-                if (p[0] - hi[0]).abs() < 1e-9 {
-                    na_borda += 1;
+                if (p[1] - (hi[1] - (hi[1] - lo[1]) * 0.25)).abs() < 1e-9 {
+                    a_um_quarto += 1;
                 } else if (p[1] - mid[1]).abs() < 1e-9 {
-                    por_fora += 1;
+                    a_meio += 1;
                 }
                 for a in &alcas {
                     let dx = ((p[0] - a[0]).abs() - SQ).max(0.0);
@@ -182,8 +184,8 @@ fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
         }
     }
     assert!(
-        na_borda > 0 && por_fora > 0,
-        "{na_borda} na borda, {por_fora} por fora"
+        a_um_quarto > 0 && a_meio > 0,
+        "{a_um_quarto} a h/4, {a_meio} à meia altura"
     );
 }
 
@@ -191,10 +193,10 @@ fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
 /// grip de outra alça**: em toda forma com fila, cada campo varrido na faixa inteira, em três caixas
 /// (a do smoke, 100 × 95 px; larga; alta), cada ⇕ fica a pelo menos um passo da fila de cada grip
 /// das outras alças. Antes: 300 casos (o *Speech* a 5,8 px do ⊙ do *Radius*; o cubo isométrico a 0).
-/// Controlo: a fila andou para fora em algum caso.
+/// Controlo: o par mais perto existe e é medido.
 #[test]
 fn no_arrow_lands_on_another_handle() {
-    let (mut hits, mut checked, mut moved) = (Vec::new(), 0, 0);
+    let (mut hits, mut checked, mut nearest) = (Vec::new(), 0, f64::INFINITY);
     for &k in ALL_SHAPES {
         let hs = handles_of(k);
         if !hs.iter().any(|h| h.spot == Spot::Rail) {
@@ -213,15 +215,11 @@ fn no_arrow_lands_on_another_handle() {
                         .filter(|h| h.spot == Spot::Rail)
                         .filter_map(g)
                         .collect();
-                    let (Some(first), Some((lo, hi))) = (rails.first(), spots::curve_bbox(&ck(&v)))
-                    else {
-                        continue;
-                    };
-                    moved += usize::from((hi[1] - lo[1]) * 0.25 >= 18.0 && first[0] > hi[0] + 1e-9);
                     for o in hs.iter().filter(|h| h.spot != Spot::Rail).filter_map(g) {
                         for r in &rails {
                             checked += 1;
                             let d = (r[0] - o[0]).hypot(r[1] - o[1]);
+                            nearest = nearest.min(d);
                             if d < RAIL_PITCH * 18.0 - 1e-9 {
                                 hits.push(format!("{k:?} {half:?} f{i}={:.3}: {d:.1} px", v[i]));
                             }
@@ -238,9 +236,10 @@ fn no_arrow_lands_on_another_handle() {
         &hits[..hits.len().min(8)]
     );
     assert!(
-        checked > 2000 && moved > 0,
-        "controlo: {checked} pares, {moved} filas andaram"
+        checked > 2000 && nearest.is_finite(),
+        "controlo: {checked} pares"
     );
+    eprintln!("[fila] {checked} pares, o mais perto a {nearest:.1} px");
 }
 
 /// ⭐ (F13, o dono: «tem dois controles para a mesma coisa: curve») **Um campo, um controlo**: o ⇕

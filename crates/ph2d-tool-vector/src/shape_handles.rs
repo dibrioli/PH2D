@@ -298,16 +298,7 @@ pub fn handle_grip(
 ) -> Option<[f64; 2]> {
     let at = handle_point(h, values, half, cook)?;
     if h.spot == Spot::Rail {
-        return Some(rail_grip(
-            kind,
-            h,
-            at,
-            values,
-            half,
-            px_to_world,
-            park_at,
-            cook,
-        ));
+        return rail_grip(kind, h, values, park_at, cook).or(Some(at));
     }
     // ⭐ As alças de ÂNGULO vivem `park_at` para DENTRO do aro, sobre o raio delas: no aro da
     // elipse os pontos cardeais SÃO as alças do meio das arestas da caixa (medido na foto da cena

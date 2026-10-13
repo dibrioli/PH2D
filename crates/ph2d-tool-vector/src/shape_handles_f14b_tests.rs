@@ -95,7 +95,7 @@ fn inner_angles(p: &VecPath) -> Vec<f64> {
 }
 
 /// O padrão e cada campo varrido na faixa inteira (9 valores).
-fn sweep(k: ShapeKind) -> Vec<ShapeValues> {
+pub(super) fn sweep(k: ShapeKind) -> Vec<ShapeValues> {
     let mut out = vec![k.defaults()];
     for i in shapes::shown_fields(k) {
         let f = &shapes::desc(k).fields[i];

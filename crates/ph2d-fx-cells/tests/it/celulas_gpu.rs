@@ -94,23 +94,33 @@ fn textura(gpu: &GpuContext) -> wgpu::Texture {
     })
 }
 
-/// As quatro variantes da rodada C.10 (doc 131 §7): a vala (dupla · justa) × saltar o alvo vazio.
-const VARIANTES: [Variante; 4] = [
+/// As variantes da rodada C.10 (doc 131 §7): a vala (dupla · justa) × saltar o alvo vazio; e a do
+/// P1 (doc 132 §1): o produto com o borrão por GRUPO.
+const VARIANTES: [Variante; 5] = [
     Variante {
         vala_justa: false,
         salta_vazias: false,
+        borrao_grupo: false,
     },
     Variante {
         vala_justa: true,
         salta_vazias: false,
+        borrao_grupo: false,
     },
     Variante {
         vala_justa: false,
         salta_vazias: true,
+        borrao_grupo: false,
     },
     Variante {
         vala_justa: true,
         salta_vazias: true,
+        borrao_grupo: false,
+    },
+    Variante {
+        vala_justa: true,
+        salta_vazias: true,
+        borrao_grupo: true,
     },
 ];
 
@@ -196,6 +206,9 @@ struct Banca {
     placa: ShapePass,
     pilha: FxStackPass,
     colagem: BandBlit,
+    /// A rota da placa com UMA faixa explícita de amostragem (`Some(tag)`) em vez da partição
+    /// vazia (P6, doc 132 §6).
+    faixa: Option<u32>,
 }
 
 impl Banca {
@@ -209,6 +222,7 @@ impl Banca {
             placa: passe(&gpu),
             pilha: FxStackPass::new(&gpu),
             colagem: BandBlit::new(&gpu, FORMATO),
+            faixa: None,
             renderer,
             gpu,
         }
@@ -228,6 +242,21 @@ impl Banca {
         b
     }
 
+    /// As faixas da rota da placa: vazias (o átlas no sampler do projecto) ou uma explícita.
+    fn faixas(&self, n: usize) -> Vec<ph2d_render::GpuTexRun> {
+        #[expect(clippy::cast_possible_truncation, reason = "poucas sprites")]
+        self.faixa
+            .map(|sampling| ph2d_render::GpuTexRun {
+                texture_id: 0,
+                start: 0,
+                end: n as u32,
+                blend: 0,
+                sampling,
+            })
+            .into_iter()
+            .collect()
+    }
+
     fn copias(&self, ds: &[ShapeInstance]) -> wgpu::Buffer {
         let b = self.gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
@@ -245,16 +274,17 @@ impl Banca {
     }
 
     fn cada_um(&mut self, ds: &[ShapeInstance], sprites: Rota<'_>, ops: &[FxOpGpu]) -> Vec<u8> {
-        let placa_s;
+        let (placa_s, faixas);
         let sprites = match sprites {
             Rota::Cpu(v) => Sprites::Cpu(v),
             Rota::Placa(v) => {
                 placa_s = self.sprites_na_placa(v);
+                faixas = self.faixas(v.len());
                 #[expect(clippy::cast_possible_truncation, reason = "poucas sprites")]
                 Sprites::Placa {
                     buffer: &placa_s,
                     n: v.len() as u32,
-                    runs: &[],
+                    runs: &faixas,
                 }
             }
         };
@@ -311,6 +341,7 @@ impl Banca {
             Rota::Placa(v) => v.len() as u32,
             Rota::Cpu(_) => 0,
         };
+        let faixas = self.faixas(n as usize);
         self.renderer.render_instances_only(
             &vl,
             &camera(),
@@ -320,7 +351,7 @@ impl Banca {
             },
             wgpu::Color::TRANSPARENT,
             cpu,
-            placa.as_ref().map(|b| (b, n, &[][..])),
+            placa.as_ref().map(|b| (b, n, faixas.as_slice())),
             None,
         );
         let buf = self.copias(ds);
@@ -548,20 +579,39 @@ fn a_lone_sprite_is_the_same_under_both_scopes_on_both_routes() {
     };
     let mut b = Banca::new(gpu);
     let um = [sprite(&b, 0.37, -0.45)];
+    // A sozinha e mais quatro, rodadas, em posições sub-pixel (as translações das células saem
+    // pares e ímpares antes da lei).
+    let cena = silhueta::cena(&b);
     let mut sombra = sombra_interna(false);
     sombra.kind = FxOp::DROP_SHADOW;
     sombra.offset_px = [2.5, 3.25];
     let ops = [sombra];
     // A silhueta: os texels da sprite crua com um vizinho vazio, ou vazios com um vizinho pintado.
     let crua = b.inteira(&[], &um, &[]);
-    let a = |x: u32, y: u32| crua[((y * W + x) * 4 + 3) as usize] > 0;
+    let crua_cena = b.inteira(&[], &cena, &[]);
+    let a = |x: u32, y: u32| crua_cena[((y * W + x) * 4 + 3) as usize] > 0;
     let na_silhueta = |x: u32, y: u32| {
         let v = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)];
         v.iter().any(|&(i, j)| a(i, j) != a(x, y))
     };
+    // ⭐ As duas ROTAS dão o mesmo texel (doc 132 §6, P6): a partição vazia do buffer da placa e o
+    // `SAMPLING_DEFAULT` da fatia da CPU ligam o MESMO sampler, o do projecto. Antes: 61 texels da
+    // silhueta a até 29 níveis.
+    let muda = |p: &[u8], q: &[u8]| {
+        p.chunks(4)
+            .zip(q.chunks(4))
+            .filter(|(x, y)| x.iter().zip(*y).any(|(i, j)| i.abs_diff(*j) > 1))
+            .count()
+    };
+    let placa_crua = b.inteira_por(&[], Rota::Placa(&cena), &[]);
+    let placa = b.inteira_por(&[], Rota::Placa(&cena), &ops);
+    let cpu = b.inteira_por(&[], Rota::Cpu(&cena), &ops);
+    let (rc, rf) = (muda(&placa_crua, &crua_cena), muda(&placa, &cpu));
+    eprintln!("[sprite] rotas placa × cpu: crua {rc} texels · filtrada {rf} texels");
+    assert_eq!((rc, rf), (0, 0), "as duas rotas desenham a mesma sprite");
     for ((rota, r, r2), v) in [
-        ("placa", Rota::Placa(&um), Rota::Placa(&um)),
-        ("cpu", Rota::Cpu(&um), Rota::Cpu(&um)),
+        ("placa", Rota::Placa(&cena), Rota::Placa(&cena)),
+        ("cpu", Rota::Cpu(&cena), Rota::Cpu(&cena)),
     ]
     .into_iter()
     .flat_map(|x| VARIANTES.map(|v| (x, v)))
@@ -592,17 +642,15 @@ fn a_lone_sprite_is_the_same_under_both_scopes_on_both_routes() {
         assert!(tinta > 100, "a sprite desenhou");
         assert!(
             pior_dentro <= 1,
-            "rota {rota}: a sprite sozinha desvia {pior_dentro} níveis"
+            "rota {rota}: a sprite desvia {pior_dentro} níveis"
         );
-        // ⚠️ Um quad SEM anti-aliasing inclui o pixel cujo CENTRO cai dentro: a relocação em `f32`
-        // move a aresta ~10⁻⁵ px, e um centro que está sobre ela muda de lado — a mesma natureza de
-        // qualquer movimento sub-pixel da sprite.
-        // ⚠️ E a rota da PLACA do desenhador tem uma sensibilidade própria na silhueta: as duas
-        // rotas da camada inteira já diferem em 13 texels desta sprite (doc 129 §7). Medido: CPU 0,
-        // placa 17 de 8 716 (0,2 %).
-        assert!(
-            na_borda * 200 <= tinta,
-            "rota {rota}: {na_borda} texels da silhueta mudam"
+        // ⭐ A barra é a MEDIDA: zero texels da silhueta (doc 132 §6, P6). O sampler do projecto
+        // (trilinear, anisotropia 16) lê as derivadas do quadrado 2×2 de pixels, e a célula com
+        // translação ÍMPAR trocava o quadrado da aresta: 75 texels a até 21 níveis nesta cena. A
+        // translação das sprites sai PAR ([`ph2d_fx_cells::planeia_com_par`]).
+        assert_eq!(
+            na_borda, 0,
+            "rota {rota} · {v:?}: {na_borda} texels da silhueta mudam"
         );
     }
     // A caixa contra os pixels que a sprite REALMENTE desenha (sem filtro).
@@ -976,25 +1024,119 @@ fn relogio_c10_decomposicao() {
     ph2d_gpu::pass_profiler::init_forced(&gpu.device, &gpu.queue);
     let mut b = Banca::new(gpu);
     let mesa = Mesa::new(&b.gpu);
-    let ops = [sombra_interna(false)];
-    eprintln!(
-        "[c10] alcance {:?} · leitura {} px",
-        ph2d_render::stack_reach(&ops),
-        ph2d_render::stack_read(&ops)
+    eprintln!("[c10] load no início {}", carga());
+    for (pilha, ops) in pilhas_de_fora() {
+        let ops = ops.as_slice();
+        let (al, at, ar, ab) = ph2d_render::stack_reach(ops);
+        let leitura = ph2d_render::stack_read(ops);
+        let antes = al.max(at).max(ar).max(ab);
+        // O disco de 12 px é um conteúdo de 14 (a folga de anti-aliasing).
+        eprintln!(
+            "[c10] ══ {pilha}: A {:?} · L {leitura} px · célula {} px · saída {} px",
+            (al, at, ar, ab),
+            14 + antes + leitura.max(antes) + 1,
+            14 + al + ar
+        );
+        for grupo in [false, true] {
+            b.pilha.borrao_em_grupo(grupo);
+            camada_inteira_decomposta(&mut b, &mesa, ops, grupo);
+        }
+        b.celulas.escolhe(Variante::default());
+        decompoe(&mut b, &mesa, ops, &POPULACOES);
+        b.celulas.escolhe(Variante {
+            borrao_grupo: true,
+            ..Variante::default()
+        });
+        eprintln!("[c10] ── com o borrão por GRUPO");
+        decompoe(&mut b, &mesa, ops, &[(64, 64)]);
+        b.celulas.escolhe(Variante::default());
+    }
+    ph2d_gpu::pass_profiler::shutdown();
+}
+
+/// As pilhas da decomposição do P1 (doc 132 §1): o controlo de DENTRO (a sombra interna da C.10) e
+/// os dois degraus de FORA — o Outer Glow (alcance ≈ leitura, `16`/`17`) e a Drop Shadow deslocada.
+fn pilhas_de_fora() -> Vec<(&'static str, Vec<FxOpGpu>)> {
+    let fora = |kind, offset_px| FxOpGpu {
+        kind,
+        sigma_px: 5.3,
+        offset_px,
+        tint: [1.0, 0.8, 0.2, 1.0],
+        mode: FxOp::MODE_PROXIMITY,
+        ..sombra_interna(false)
+    };
+    vec![
+        ("Inner Shadow (dentro)", vec![sombra_interna(false)]),
+        ("Outer Glow", vec![fora(FxOp::GLOW, [0.0; 2])]),
+        (
+            "Drop Shadow (fora)",
+            vec![fora(FxOp::DROP_SHADOW, [6.0, 6.0])],
+        ),
+    ]
+}
+
+/// A pilha da CAMADA INTEIRA na mesma janela (1600×972), por passe — o termo de comparação.
+fn camada_inteira_decomposta(b: &mut Banca, mesa: &Mesa, ops: &[FxOpGpu], grupo: bool) {
+    let out = make_output_texture(&b.gpu, mesa.lw, mesa.lh);
+    for _ in 0..3 {
+        b.pilha.run_layer(
+            &b.gpu,
+            &mesa.camada,
+            &out,
+            mesa.lw,
+            mesa.lh,
+            ops,
+            Origem::Margem,
+        );
+        ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
+    }
+    let _ = ph2d_gpu::pass_profiler::drain(&b.gpu.device);
+    for _ in 0..20 {
+        b.pilha.run_layer(
+            &b.gpu,
+            &mesa.camada,
+            &out,
+            mesa.lw,
+            mesa.lh,
+            ops,
+            Origem::Margem,
+        );
+        ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
+    }
+    let t = ph2d_gpu::pass_profiler::drain(&b.gpu.device).unwrap_or_default();
+    let f = f64::from(t.frames.max(1));
+    let mut linha = format!(
+        "[c10] camada inteira (borrão por grupo: {grupo}) {:.2} Mpx · placa {:.3} ms\n[c10]   ",
+        f64::from(mesa.lw * mesa.lh) / 1e6,
+        t.span_ns as f64 / f / 1e6
     );
-    for (cols, rows) in POPULACOES {
+    let mut fases = t.per_label.clone();
+    fases.sort_by_key(|f| std::cmp::Reverse(f.1));
+    for (rotulo, ns, k) in fases {
+        linha.push_str(&format!(
+            "{rotulo}={:.3} ms(×{:.0}) ",
+            ns as f64 / f / 1e6,
+            f64::from(k) / f
+        ));
+    }
+    eprintln!("{linha}");
+}
+
+/// «Cada forma» por população, por fase e por passe da pilha.
+fn decompoe(b: &mut Banca, mesa: &Mesa, ops: &[FxOpGpu], populacoes: &[(i32, i32)]) {
+    for &(cols, rows) in populacoes {
         let ds = grelha_de(cols, rows);
         let buf = b.copias(&ds);
         let n = ds.len() as u32;
         let (mut submete, mut total) = (f64::MAX, f64::MAX);
         for _ in 0..3 {
-            mesa.corre(&mut b, &buf, n, &[], &ops);
+            mesa.corre(b, &buf, n, &[], ops);
             ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
         }
         let _ = ph2d_gpu::pass_profiler::drain(&b.gpu.device);
         for _ in 0..20 {
             let t0 = std::time::Instant::now();
-            mesa.corre(&mut b, &buf, n, &[], &ops);
+            mesa.corre(b, &buf, n, &[], ops);
             submete = submete.min(t0.elapsed().as_secs_f64() * 1e3);
             let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
             total = total.min(t0.elapsed().as_secs_f64() * 1e3);
@@ -1029,7 +1171,6 @@ fn relogio_c10_decomposicao() {
         }
         eprintln!("{linha}");
     }
-    ph2d_gpu::pass_profiler::shutdown();
 }
 
 /// Os degraus da paridade entre variantes: de DENTRO (alcance nulo — onde a vala justa encolhe), de
@@ -1077,6 +1218,10 @@ fn degraus_da_paridade() -> Vec<(&'static str, Vec<FxOpGpu>)> {
             ],
         ),
     ]
+    .into_iter()
+    // As pilhas de FORA da decomposição do P1 (doc 132 §1): alcance ≈ leitura.
+    .chain(pilhas_de_fora().into_iter().skip(1))
+    .collect()
 }
 
 /// A faixa `[min, max]` por canal que as instâncias IGUAIS de uma cena dão a cada pixel relativo ao
@@ -1230,10 +1375,10 @@ fn the_c10_variants_give_the_same_pixels() {
     }
 }
 
-/// **C.10 — a régua intercalada das variantes** (doc 131 §4 / §7, `MEDIR_VELOCIDADE.md`): as
-/// quatro [`VARIANTES`] × as cinco [`POPULACOES`], blocos de 10 quadros com a ordem RODADA, 7
-/// rodadas; por variante, o MÍNIMO (e a mediana) da placa ocupada por quadro (`pass_profiler`) e da
-/// parede até a placa acabar. Imprime; não reprova.
+/// **C.10 — a régua intercalada das variantes** (doc 131 §4 / §7, doc 132 §1, `MEDIR_VELOCIDADE.md`):
+/// as [`VARIANTES`] × as cinco [`POPULACOES`] × as três [`pilhas_de_fora`], blocos de 10 quadros com
+/// a ordem RODADA, 7 rodadas; por variante, o MÍNIMO (e a mediana) da placa ocupada por quadro
+/// (`pass_profiler`) e da parede até a placa acabar. Imprime; não reprova.
 ///
 /// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --release -p ph2d-fx-cells --test it relogio_c10_intercalado -- --ignored --nocapture`
 #[test]
@@ -1245,58 +1390,71 @@ fn relogio_c10_intercalado() {
     ph2d_gpu::pass_profiler::init_forced(&gpu.device, &gpu.queue);
     let mut b = Banca::new(gpu);
     let mesa = Mesa::new(&b.gpu);
-    let ops = [sombra_interna(false)];
     let carga0 = carga();
-    for (cols, rows) in POPULACOES {
-        let ds = grelha_de(cols, rows);
-        let buf = b.copias(&ds);
-        let n = ds.len() as u32;
-        // O aquecimento de cada variante (átlas e pilha no tamanho), fora da régua.
-        for v in VARIANTES {
-            b.celulas.escolhe(v);
-            for _ in 0..3 {
-                mesa.corre(&mut b, &buf, n, &[], &ops);
-                ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
-            }
+    for (pilha, ops) in pilhas_de_fora() {
+        for (cols, rows) in POPULACOES {
+            regua(&mut b, &mesa, pilha, &ops, grelha_de(cols, rows));
         }
-        let _ = ph2d_gpu::pass_profiler::drain(&b.gpu.device);
-        let mut placa: [Vec<f64>; 4] = Default::default();
-        let mut parede: [Vec<f64>; 4] = Default::default();
-        let mut paginas = [0usize; 4];
-        for rodada in 0..7 {
-            for k in 0..4 {
-                let i = (k + rodada) % 4;
-                b.celulas.escolhe(VARIANTES[i]);
-                let mut minimo = f64::MAX;
-                for _ in 0..10 {
-                    let t0 = std::time::Instant::now();
-                    mesa.corre(&mut b, &buf, n, &[], &ops);
-                    let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
-                    minimo = minimo.min(t0.elapsed().as_secs_f64() * 1e3);
-                    ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
-                }
-                let t = ph2d_gpu::pass_profiler::drain(&b.gpu.device).unwrap_or_default();
-                placa[i].push(t.span_ns as f64 / f64::from(t.frames.max(1)) / 1e6);
-                parede[i].push(minimo);
-                paginas[i] = b.celulas.ultimas_paginas().len();
-            }
-        }
-        let resumo = |v: &mut Vec<f64>| {
-            v.sort_by(f64::total_cmp);
-            (v[0], v[v.len() / 2])
-        };
-        let mut linha = format!("[c10 régua] {n} discos:");
-        for i in 0..4 {
-            let (pm, pmed) = resumo(&mut placa[i]);
-            let (wm, wmed) = resumo(&mut parede[i]);
-            linha.push_str(&format!(
-                "\n[c10 régua]   {:?} {} pág · placa {pm:.2} (med {pmed:.2}) ms · parede {wm:.2} \
-                 (med {wmed:.2}) ms",
-                VARIANTES[i], paginas[i]
-            ));
-        }
-        eprintln!("{linha}");
     }
     eprintln!("[c10 régua] load {carga0} → {}", carga());
     ph2d_gpu::pass_profiler::shutdown();
 }
+
+/// Uma população de uma pilha: as [`VARIANTES`] intercaladas.
+fn regua(b: &mut Banca, mesa: &Mesa, pilha: &str, ops: &[FxOpGpu], ds: Vec<ShapeInstance>) {
+    const N: usize = VARIANTES.len();
+    let buf = b.copias(&ds);
+    let n = ds.len() as u32;
+    // O aquecimento de cada variante (átlas e pilha no tamanho), fora da régua.
+    for v in VARIANTES {
+        b.celulas.escolhe(v);
+        for _ in 0..3 {
+            mesa.corre(b, &buf, n, &[], ops);
+            ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
+        }
+    }
+    let _ = ph2d_gpu::pass_profiler::drain(&b.gpu.device);
+    let mut placa: [Vec<f64>; N] = Default::default();
+    let mut parede: [Vec<f64>; N] = Default::default();
+    let mut paginas = [0usize; N];
+    for rodada in 0..7 {
+        for k in 0..N {
+            let i = (k + rodada) % N;
+            b.celulas.escolhe(VARIANTES[i]);
+            let mut minimo = f64::MAX;
+            for _ in 0..10 {
+                let t0 = std::time::Instant::now();
+                mesa.corre(b, &buf, n, &[], ops);
+                let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                minimo = minimo.min(t0.elapsed().as_secs_f64() * 1e3);
+                ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
+            }
+            let t = ph2d_gpu::pass_profiler::drain(&b.gpu.device).unwrap_or_default();
+            placa[i].push(t.span_ns as f64 / f64::from(t.frames.max(1)) / 1e6);
+            parede[i].push(minimo);
+            paginas[i] = b.celulas.ultimas_paginas().len();
+        }
+    }
+    let resumo = |v: &mut Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        (v[0], v[v.len() / 2])
+    };
+    let mut linha = format!("[c10 régua] {pilha} · {n} discos (load {}):", carga());
+    for i in 0..N {
+        let (pm, pmed) = resumo(&mut placa[i]);
+        let (wm, wmed) = resumo(&mut parede[i]);
+        let v = VARIANTES[i];
+        linha.push_str(&format!(
+            "\n[c10 régua]   justa {} salta {} grupo {} · {} pág · placa {pm:.2} (med {pmed:.2}) ms · \
+             parede {wm:.2} (med {wmed:.2}) ms",
+            u8::from(v.vala_justa),
+            u8::from(v.salta_vazias),
+            u8::from(v.borrao_grupo),
+            paginas[i]
+        ));
+    }
+    eprintln!("{linha}");
+}
+
+#[path = "celulas_gpu_silhueta.rs"]
+mod silhueta;

@@ -12,7 +12,7 @@ use ph2d_shape_gpu::{Copias, Corrida, Mistura, ShapeInstance, ShapePass, ShapeVi
 use crate::passes::{
     CelGpu, abre, buffer, compute, faixas_da_pagina, fecha, limpa, quads, reloca, render,
 };
-use crate::plano::{Caixa, Pagina, Vala, planeia};
+use crate::plano::{Caixa, Pagina, Vala, planeia_com_par};
 use crate::shaders::{COMPOE_WGSL, RELOCAR_WGSL, limites_wgsl};
 
 /// O formato da camada e das texturas do átlas (o da camada do Motion).
@@ -207,6 +207,8 @@ pub struct Variante {
     pub vala_justa: bool,
     /// Uma página sem sprites (ou sem formas) não desenha nem cola o alvo vazio.
     pub salta_vazias: bool,
+    /// O borrão da pilha por GRUPO ([`FxStackPass::borrao_em_grupo`], doc 132 §1 — o P1).
+    pub borrao_grupo: bool,
 }
 
 /// ⭐ As duas ligadas: o mesmo pixel (`the_c10_variants_give_the_same_pixels`) e, a 4 096 formas,
@@ -216,6 +218,7 @@ impl Default for Variante {
         Self {
             vala_justa: true,
             salta_vazias: true,
+            borrao_grupo: false,
         }
     }
 }
@@ -338,11 +341,12 @@ impl Celulas {
         } else {
             vala.dupla()
         };
-        let paginas = planeia(
+        let paginas = planeia_com_par(
             &self.ultimas_caixas,
             [e.tamanho.0, e.tamanho.1],
             vala,
             LADO_MAX,
+            n_s,
         );
         let precisa = paginas.iter().fold((1u32, 1u32), |(w, h), p| {
             (w.max(p.tamanho[0]), h.max(p.tamanho[1]))
@@ -567,6 +571,7 @@ impl Celulas {
         #[expect(clippy::cast_possible_truncation, reason = "uma página cabe num u32")]
         let n_cel = pagina.celulas.len() as u32;
         let relogio = abre(gpu, "fx_cells.pilha");
+        e.pilha.borrao_em_grupo(self.variante.borrao_grupo);
         if usa_mapa {
             quads(
                 gpu,

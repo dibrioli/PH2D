@@ -956,6 +956,9 @@ fn luz_das_lampadas(P: vec2<f32>, P0: vec2<f32>, modo: u32, inicial: vec3<f32>) 
         }
         var v = 1.0;
         var medir = modo == EXATA;
+        // Onde a `visibilidade` se mede e se ela SOMA ao `v` (a de trás de um translúcido, W5p).
+        var em = P;
+        var somar = false;
         if modo == REMAPEADA {
             // O texel remapeado (dentro de um opaco) MEDE a visibilidade: as sondas em volta do
             // exterior mais próximo podem estar fora da região.
@@ -965,7 +968,16 @@ fn luz_das_lampadas(P: vec2<f32>, P0: vec2<f32>, modo: u32, inicial: vec3<f32>) 
                 // No canto a face não corta a abertura numa reta: a marcha do ponto rente.
                 if any(nf != vec2<f32>(0.0)) {
                     medir = false;
-                    v = visibilidade_na_face(P, nf, k, meio(P0).tau > 0.0);
+                    let translucido = meio(P0).tau > 0.0;
+                    if FACE_PELO_PONTO {
+                        let f = na_face_pelo_ponto(P, nf, k, translucido);
+                        v = f.v;
+                        medir = f.medir;
+                        em = f.em;
+                        somar = true;
+                    } else {
+                        v = visibilidade_na_face(P, nf, k, translucido);
+                    }
                 }
             }
         } else if modo == PELA_GRADE {
@@ -993,7 +1005,8 @@ fn luz_das_lampadas(P: vec2<f32>, P0: vec2<f32>, modo: u32, inicial: vec3<f32>) 
             }
         }
         if medir {
-            v = visibilidade(P, k, 0.0);
+            let x = visibilidade(em, k, 0.0);
+            v = select(x, v + x, somar);
         }
         soma += s * v;
     }

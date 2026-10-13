@@ -107,20 +107,14 @@ fn normal_de_fora(P: vec2<f32>, P0: vec2<f32>) -> vec2<f32> {
 }
 
 // A fração à vista da lâmpada `k` do ponto de fronteira `P` com a normal de fora `nf`: a abertura
-// cortada pela tangente, a marcha a partir de meio texel da captura para fora.
+// cortada pela tangente, a marcha a partir de meio texel da captura para fora (a W5g; com
+// `FACE_PELO_PONTO`, a do produto, é a [`na_face_pelo_ponto`]).
 // ⭐ W5k: `translucido` — o corpo atrás da face deixa passar a sua parte (τ > 0): a metade de trás
 // da abertura não é tapada, marcha-se a partir do ponto espelhado DENTRO (a partida de dentro conta a
 // entrada × τ, a lei do gabarito). De `Q`, fora, o raio quase rente a uma face convexa nunca entra.
 fn visibilidade_na_face(P: vec2<f32>, nf: vec2<f32>, k: u32, translucido: bool) -> f32 {
     let L = lampadas.itens[k];
     let afasta = nf * AFASTA_NA_FACE * max(1.0 / ESCALA_DA_CAPTURA, 1.0 / f32(fina.fina));
-    if FACE_PELO_PONTO {
-        var frente = visibilidade_pelo_ponto(P, nf, length(afasta), k);
-        if translucido {
-            frente += atras_de_dentro(P, afasta, nf, k);
-        }
-        return frente;
-    }
     let Q = P + afasta;
     let v = L.centro - Q;
     let d = length(v);
@@ -172,64 +166,113 @@ fn pelo_ponto_ate(P: vec2<f32>, nf: vec2<f32>, h: f32, dj: vec2<f32>, B: vec2<f3
     return transmissao_de(P, P + dj * s, B, k);
 }
 
-// ⭐ W5o — o [`visibilidade_na_face`] com a abertura vista do próprio `P` (opaco): a metade atrás da
-// tangente tapada, os raios da frente pelo [`pelo_ponto_ate`] — a fração à vista integrada como no
-// `visivel_do_disco` (fatias fixas, a bissecção onde a transmissão muda).
-fn visibilidade_pelo_ponto(P: vec2<f32>, nf: vec2<f32>, h: f32, k: u32) -> f32 {
+// ⭐ W5p — um TROÇO da abertura a integrar ([`soma_da_abertura`]) e a conta com que entra:
+// `soma / den * mul / div` — a de cada sítio de antes, na mesma ordem.
+struct Troco {
+    P: vec2<f32>,
+    nf: vec2<f32>,
+    h: f32,
+    pelo_ponto: bool,
+    v: vec2<f32>,
+    d: f32,
+    a_ini: f32,
+    largura: f32,
+    den: f32,
+    mul: f32,
+    div: f32,
+}
+
+// O que a face deixa ao chamador: `v` e, com `medir`, a visibilidade inteira em `em` a SOMAR-lhe (a de
+// trás de um translúcido quando a lâmpada, vista do ponto afastado, é um ponto).
+struct NaFace {
+    v: f32,
+    medir: bool,
+    em: vec2<f32>,
+}
+
+// ⭐ W5o/W5p — a [`visibilidade_na_face`] com a abertura vista do próprio `P` (opaco): a metade atrás
+// da tangente tapada, cada raio da frente testado a partir de onde está a `h` do plano da face; num
+// `translucido` (W5k), a metade de TRÁS (∝ τ) pelos ângulos vistos do ponto afastado, marchada de
+// dentro. Os troços das duas num laço com UM sítio da [`soma_da_abertura`] (antes: três, e uma
+// `visibilidade` inteira só para a de trás — o compilador do driver embute cada sítio, handoff W5p).
+fn na_face_pelo_ponto(P: vec2<f32>, nf: vec2<f32>, k: u32, translucido: bool) -> NaFace {
     let L = lampadas.itens[k];
+    let afasta = nf * AFASTA_NA_FACE * max(1.0 / ESCALA_DA_CAPTURA, 1.0 / f32(fina.fina));
+    let h = length(afasta);
+    let n = RAIOS_DIRETOS;
+    var trocos: array<Troco, 3>;
+    var nt = 0u;
+    // A frente.
+    var frente = 0.0;
     let v = L.centro - P;
     let d = length(v);
     if L.raio <= 0.0 || d <= L.raio {
         if dot(v, nf) <= 0.0 || d <= 0.0 {
-            return select(0.0, 1.0, d <= L.raio && L.raio > 0.0);
+            frente = select(0.0, 1.0, d <= L.raio && L.raio > 0.0);
+        } else {
+            frente = pelo_ponto_ate(P, nf, h, v / d, L.centro, k);
         }
-        return pelo_ponto_ate(P, nf, h, v / d, L.centro, k);
-    }
-    let alfa = asin(min(L.raio / d, 1.0));
-    let base = atan2(v.y, v.x);
-    var delta = atan2(nf.y, nf.x) - base;
-    delta -= TAU * round(delta / TAU);
-    let lo = max(-alfa, delta - 0.25 * TAU);
-    let hi = min(alfa, delta + 0.25 * TAU);
-    if hi <= lo {
-        return 0.0;
-    }
-    let n = RAIOS_DIRETOS;
-    let largura = (hi - lo) / f32(n);
-    return soma_da_abertura(P, nf, h, true, v, d, L.raio, base + lo, largura, n, k) / (2.0 * alfa);
-}
-
-// ⭐ W5o — a metade de TRÁS da abertura num translúcido (a que atravessa o corpo, ∝ τ), como no
-// [`visibilidade_na_face`] antigo: pelos ângulos vistos do ponto afastado, marchada de dentro.
-fn atras_de_dentro(P: vec2<f32>, afasta: vec2<f32>, nf: vec2<f32>, k: u32) -> f32 {
-    let L = lampadas.itens[k];
-    let Q = P + afasta;
-    let v = L.centro - Q;
-    let d = length(v);
-    if L.raio <= 0.0 || d <= L.raio {
-        if dot(L.centro - P, nf) <= 0.0 {
-            return visibilidade(P - afasta, k, 0.0);
+    } else {
+        let alfa = asin(min(L.raio / d, 1.0));
+        let base = atan2(v.y, v.x);
+        var delta = atan2(nf.y, nf.x) - base;
+        delta -= TAU * round(delta / TAU);
+        let lo = max(-alfa, delta - 0.25 * TAU);
+        let hi = min(alfa, delta + 0.25 * TAU);
+        if hi > lo {
+            trocos[nt] = Troco(P, nf, h, true, v, d, base + lo, (hi - lo) / f32(n), 2.0 * alfa, 1.0, 1.0);
+            nt++;
         }
-        return 0.0;
     }
-    let alfa = asin(min(L.raio / d, 1.0));
-    let base = atan2(v.y, v.x);
-    var delta = atan2(nf.y, nf.x) - base;
-    delta -= TAU * round(delta / TAU);
-    let lo = max(-alfa, delta - 0.25 * TAU);
-    let hi = min(alfa, delta + 0.25 * TAU);
-    let Qd = P - afasta;
-    let vd = L.centro - Qd;
-    let dd = length(vd);
-    let tras = array<vec2<f32>, 2>(vec2<f32>(-alfa, min(lo, alfa)), vec2<f32>(max(hi, -alfa), alfa));
+    let n_frente = nt;
+    // A de trás.
+    var r = NaFace(0.0, false, P);
+    if translucido {
+        let Q = P + afasta;
+        let vq = L.centro - Q;
+        let dq = length(vq);
+        if L.raio <= 0.0 || dq <= L.raio {
+            if dot(L.centro - P, nf) <= 0.0 {
+                r.medir = true;
+                r.em = P - afasta;
+            }
+        } else {
+            let alfa = asin(min(L.raio / dq, 1.0));
+            let base = atan2(vq.y, vq.x);
+            var delta = atan2(nf.y, nf.x) - base;
+            delta -= TAU * round(delta / TAU);
+            let lo = max(-alfa, delta - 0.25 * TAU);
+            let hi = min(alfa, delta + 0.25 * TAU);
+            let Qd = P - afasta;
+            let vd = L.centro - Qd;
+            let dd = length(vd);
+            // As duas pontas, [−α, lo) e (hi, α] (uma vazia quando a face corta a abertura de um lado).
+            let tras = array<vec2<f32>, 2>(vec2<f32>(-alfa, min(lo, alfa)), vec2<f32>(max(hi, -alfa), alfa));
+            for (var i = 0u; i < 2u; i++) {
+                let meia = 0.5 * (tras[i].y - tras[i].x);
+                if meia > 0.0 {
+                    let meio_da_ponta = base + 0.5 * (tras[i].x + tras[i].y);
+                    trocos[nt] = Troco(Qd, vec2<f32>(0.0), 0.0, false, vd, dd, meio_da_ponta - meia, 2.0 * meia / f32(n), 2.0 * meia, meia, alfa);
+                    nt++;
+                }
+            }
+        }
+    }
     var visto = 0.0;
-    for (var i = 0u; i < 2u; i++) {
-        let meia = 0.5 * (tras[i].y - tras[i].x);
-        if meia > 0.0 {
-            visto += visivel_do_disco(Qd, vd, dd, L.raio, base + 0.5 * (tras[i].x + tras[i].y), meia, k) * meia / alfa;
+    for (var j = 0u; j < nt; j++) {
+        let t = trocos[j];
+        let x = soma_da_abertura(t.P, t.nf, t.h, t.pelo_ponto, t.v, t.d, L.raio, t.a_ini, t.largura, n, k) / t.den * t.mul / t.div;
+        if j < n_frente {
+            frente = x;
+        } else {
+            visto += x;
         }
     }
-    return visto;
+    r.v = frente;
+    if translucido && !r.medir {
+        r.v += visto;
+    }
+    return r;
 }
 
 // ⭐ A normal de fora no ponto de fronteira `q` achado de `P0`, pela SECANTE: de um ponto 3 texels finos

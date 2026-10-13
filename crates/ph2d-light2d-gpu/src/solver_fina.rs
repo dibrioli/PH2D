@@ -113,6 +113,7 @@ impl CapturaFina {
                         crate::Placa {
                             device: &gpu.device,
                             fabrica: &self.fabrica,
+                            conta: None,
                         },
                         &solver_sprite::alvos_c0_opacos(formatos),
                         "luz2d/buf/sprites_fina",

@@ -39,6 +39,7 @@ impl Solver {
         let placa = crate::Placa {
             device: &gpu.device,
             fabrica: &self.fabrica,
+            conta: None,
         };
         match entorno.filter(|e| e.hrc.is_some()) {
             Some(e) => {

@@ -145,6 +145,7 @@ impl Solver {
                         crate::Placa {
                             device: &gpu.device,
                             fabrica: &self.fabrica,
+                            conta: None,
                         },
                         &solver_sprite::alvos_c0(formatos),
                         "luz2d/buf/sprites",

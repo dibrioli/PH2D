@@ -621,3 +621,70 @@ fn sonda_grava_a_caixa_w5o() {
     }
     std::fs::write(saida, bytes).expect("gravar");
 }
+
+/// ⭐ W5o — **a abertura** (smoke do dono, 13/10: «do abrir o app até simular a luz demora
+/// muitíssimo»): a luz do produto com a montagem em FUNDO (a estufa), a cena 5 a 1080p, a preferência
+/// de fábrica; os segundos até a primeira luz e até a estufa acabar, e as pipelines compiladas.
+/// Corre-se com o cache do driver quente e frio (`__GL_SHADER_DISK_CACHE_PATH` numa pasta vazia).
+#[test]
+#[ignore = "rodada de medição W5o: o tempo de abrir a luz"]
+fn medida_luz2d_w5o_abertura() {
+    use ph2d_app_light2d::LuzDoQuadro;
+    use ph2d_ecs::PresentWorld;
+    use std::time::{Duration, Instant};
+    let t0 = Instant::now();
+    let Some(gpu) = crate::comum::gpu() else {
+        return;
+    };
+    let t_placa = t0.elapsed().as_secs_f64();
+    let mut w = World::new();
+    assert!(ph2d_app_light2d::smoke::encenar(&mut w, 5));
+    let r = crate::comum::renderer(&gpu);
+    let a = fabrica(FHD);
+    let mut l = LuzDoQuadro::new().com_montagem_em_fundo();
+    let t1 = Instant::now();
+    let quadro = |l: &mut LuzDoQuadro| {
+        l.preferir(Default::default());
+        l.preparar(&w, a, FHD);
+        l.gravar(&gpu, &mut PresentWorld::new(), &r);
+    };
+    let prazo = Instant::now() + Duration::from_secs(600);
+    let mut acesa = None;
+    while Instant::now() < prazo {
+        quadro(&mut l);
+        if acesa.is_none() && l.acesa() {
+            acesa = Some(t1.elapsed().as_secs_f64());
+        }
+        if acesa.is_some() && l.estufa_ociosa() {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(16));
+    }
+    eprintln!(
+        "ABERTURA · placa {t_placa:.2} s · primeira luz {:.2} s · estufa ociosa {:.2} s · cache {}",
+        acesa.unwrap_or(f64::NAN),
+        t1.elapsed().as_secs_f64(),
+        std::env::var("__GL_SHADER_DISK_CACHE_PATH").unwrap_or_else(|_| "o da casa".into())
+    );
+}
+
+/// ⭐ W5o — que (fina, captura) a vista pede por nível, em 64 zooms de 6 oitavas e três janelas: cada
+/// par distinto é um conjunto de pipelines (as duas entram como constantes).
+#[test]
+#[ignore = "rodada de medição W5o: as constantes que o zoom muda"]
+fn medida_luz2d_w5o_constantes_do_zoom() {
+    use ph2d_app_light2d::{captura_do_quadro, fina_do_quadro};
+    for alvo in [(1280u32, 720u32), (1920, 1080), (2560, 1440)] {
+        for nivel in [NivelDaLuz::Baixa, NivelDaLuz::Media, NivelDaLuz::Alta] {
+            let dg = degrau_do(nivel);
+            let mut pares = std::collections::BTreeSet::new();
+            for k in 0..64 {
+                let altura = 0.5 * 2f32.powf(k as f32 / 10.5);
+                let a = ph2d_render::Camera2d::new([0.0, 0.0], altura)
+                    .world_to_screen_affine(ph2d_host::WindowSize::new(alvo.0, alvo.1));
+                pares.insert((fina_do_quadro(a, dg), captura_do_quadro(a, dg)));
+            }
+            eprintln!("ZOOM {alvo:?} {nivel:?}: {pares:?}");
+        }
+    }
+}

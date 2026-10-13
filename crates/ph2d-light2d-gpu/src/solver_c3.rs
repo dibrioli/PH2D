@@ -44,23 +44,10 @@ struct Preenchimento {
     u: UniformePreenche,
 }
 
-/// ⭐ W5b (F4): a mesma entrada SEM e COM o mundo fora da grade (`DISTANTES`). O quadro sem nenhum
-/// objeto distante corre a sem: o código dele custa mesmo com as listas vazias (+2,5 % a +6 % no
-/// Low, +1,3 % a +2,3 % no High — rodada `medida_luz2d_w5b`, A2).
-struct Par {
-    sem: wgpu::ComputePipeline,
-    com: Option<wgpu::ComputePipeline>,
-}
-
-impl Par {
-    fn de(&self, com: bool) -> &wgpu::ComputePipeline {
-        if com {
-            self.com.as_ref().unwrap_or(&self.sem)
-        } else {
-            &self.sem
-        }
-    }
-}
+/// A entrada sem e com os distantes (ficheiro irmão pelo tecto de 700 LOC).
+#[path = "solver_c3_par.rs"]
+mod par;
+use par::Par;
 
 /// O que os passes C3 pegam do solver ao nascer.
 pub(super) struct Entradas<'a> {
@@ -84,11 +71,10 @@ pub(super) struct C3 {
     cena: wgpu::BindGroup,
     visibilidade: Option<(Par, wgpu::BindGroup)>,
     preenchimento: Option<Preenchimento>,
-    fina: Par,
+    fina: Option<Par>,
     grupo_fina: wgpu::BindGroup,
     /// ⭐ W5n: o anel fora da região (o miolo no corpo inteiro, `c3_anel.wgsl`).
     anel: Option<(Par, wgpu::BindGroup)>,
-    so_a_c0: bool,
     /// ⭐ W5c: a FONTE do rebote (a luz que cada superfície recebe, para o quadro seguinte) — os
     /// grupos 2 (a c0) e 3 (a saída).
     rebote: Option<(Par, [wgpu::BindGroup; 2])>,
@@ -247,51 +233,50 @@ impl C3 {
                     &c,
                 )
             };
-            Par {
-                sem: em(0.0),
-                com: cfg.distantes.then(|| em(1.0)),
-            }
+            Par::em_paralelo(cfg.distantes, em)
         };
 
-        let visibilidade = bordas.filter(|_| cfg.usa_visibilidade()).map(|b| {
-            let g2 = layout(
-                device,
-                "luz2d c3 visibilidade",
-                &[
-                    entrada_uniforme(0, wgpu::ShaderStages::COMPUTE),
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::StorageTexture {
-                            access: wgpu::StorageTextureAccess::WriteOnly,
-                            format: wgpu::TextureFormat::Rg32Uint,
-                            view_dimension: wgpu::TextureViewDimension::D2,
+        let visibilidade = bordas
+            .filter(|_| cfg.usa_visibilidade() && !cfg.so_a_c0)
+            .map(|b| {
+                let g2 = layout(
+                    device,
+                    "luz2d c3 visibilidade",
+                    &[
+                        entrada_uniforme(0, wgpu::ShaderStages::COMPUTE),
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::StorageTexture {
+                                access: wgpu::StorageTextureAccess::WriteOnly,
+                                format: wgpu::TextureFormat::Rg32Uint,
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            );
-            let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("luz2d c3 visibilidade"),
-                layout: &g2,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: e.uni_c3.as_entire_binding(),
-                    },
-                    vista(3, &e.vistas[op.visibilidade.expect("usa_visibilidade")]),
-                ],
+                    ],
+                );
+                let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("luz2d c3 visibilidade"),
+                    layout: &g2,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: e.uni_c3.as_entire_binding(),
+                        },
+                        vista(3, &e.vistas[op.visibilidade.expect("usa_visibilidade")]),
+                    ],
+                });
+                let constantes = [
+                    ("PASSO", fino(b.visibilidade_no_passo_fino)),
+                    ("RAIOS_DIRETOS", f64::from(b.raios)),
+                    ("BISSECOES", f64::from(b.bissecoes)),
+                ];
+                (
+                    pipeline("luz2d c3 visibilidade", &g2, "c3_visibilidade", &constantes),
+                    grupo,
+                )
             });
-            let constantes = [
-                ("PASSO", fino(b.visibilidade_no_passo_fino)),
-                ("RAIOS_DIRETOS", f64::from(b.raios)),
-                ("BISSECOES", f64::from(b.bissecoes)),
-            ];
-            (
-                pipeline("luz2d c3 visibilidade", &g2, "c3_visibilidade", &constantes),
-                grupo,
-            )
-        });
 
         let c0 = PassList::indice_da_c0(cfg);
         let formato = e.lista.texturas[FLUENCIA].formato;
@@ -367,12 +352,21 @@ impl C3 {
             ),
             None => ("c3_fina_exata", vec![("PASSO", fino(true))]),
         };
-        let fina = pipeline("luz2d c3 fina", &g2, entrada_fina, &constantes_fina);
-        let anel = op.miolo.filter(|_| cfg.anel_fora_da_regiao).map(|m| {
-            let (l, g) = super::miolo::grupo_do_anel(device, &entradas, &grupo, e.vistas, m[0]);
-            let entrada = format!("{entrada_fina}_anel");
-            (pipeline("luz2d c3 anel", &l, &entrada, &constantes_fina), g)
+        // ⭐ W5o: a fina e o anel compilam ao mesmo tempo; o entorno (`so_a_c0`) não os tem.
+        let grupos_anel = op
+            .miolo
+            .filter(|_| cfg.anel_fora_da_regiao)
+            .map(|m| super::miolo::grupo_do_anel(device, &entradas, &grupo, e.vistas, m[0]));
+        let entrada_anel = format!("{entrada_fina}_anel");
+        let (fina, anel) = std::thread::scope(|s| {
+            let h = grupos_anel.as_ref().map(|(l, _)| {
+                s.spawn(|| pipeline("luz2d c3 anel", l, &entrada_anel, &constantes_fina))
+            });
+            let fina = (!cfg.so_a_c0)
+                .then(|| pipeline("luz2d c3 fina", &g2, entrada_fina, &constantes_fina));
+            (fina, h.map(|h| h.join().expect("a compilação do anel")))
         });
+        let anel = anel.zip(grupos_anel.map(|(_, g)| g));
 
         // ⭐ W5a (F3): o JFA do complemento — grupo 3 (o 1 e o 2 ficam vazios).
         let preenchimento = cfg
@@ -521,7 +515,6 @@ impl C3 {
             fina,
             grupo_fina,
             anel,
-            so_a_c0: cfg.so_a_c0,
             rebote,
             borda,
             tamanho_grosso: [cfg.grade.largura, cfg.grade.altura],
@@ -649,7 +642,7 @@ impl C3 {
                 label: Some("luz2d C3 visibilidade"),
                 timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_VISIBILIDADE)),
             });
-            if let Some((pipe, g2)) = self.visibilidade.as_ref().filter(|_| !self.so_a_c0) {
+            if let Some((pipe, g2)) = &self.visibilidade {
                 p.set_pipeline(pipe.de(distantes));
                 p.set_bind_group(0, &self.cena, &[]);
                 p.set_bind_group(1, lampadas, &[]);
@@ -676,10 +669,9 @@ impl C3 {
             label: Some("luz2d C3 fina"),
             timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_FINA)),
         });
-        if self.so_a_c0 {
-            return;
-        }
-        p.set_pipeline(self.fina.de(distantes));
+        // O entorno (`so_a_c0`) não tem a fina.
+        let Some(par) = &self.fina else { return };
+        p.set_pipeline(par.de(distantes));
         p.set_bind_group(0, &self.cena, &[]);
         p.set_bind_group(1, lampadas, &[]);
         p.set_bind_group(2, &self.grupo_fina, &[]);

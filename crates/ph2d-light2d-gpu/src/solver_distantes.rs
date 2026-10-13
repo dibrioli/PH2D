@@ -374,6 +374,7 @@ impl Distantes {
                 Pintor::novo(crate::Placa {
                     device,
                     fabrica: &self.fabrica,
+                    conta: None,
                 })
             })
             .desenhar(

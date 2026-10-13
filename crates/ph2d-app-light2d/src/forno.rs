@@ -35,7 +35,18 @@ pub(crate) struct Forno {
     pub(crate) ligado: bool,
     prontas: Arc<Mutex<BTreeSet<String>>>,
     fila: VecDeque<Config>,
-    em_curso: Option<JoinHandle<()>>,
+    /// ⭐ W5o: várias configurações montam ao mesmo tempo (a frio, cada uma leva segundos no
+    /// compilador do driver — rodada `medida_luz2d_w5o_abertura`), até [`paralelas`].
+    em_curso: Vec<(JoinHandle<()>, bool)>,
+    /// ⭐ W5o: as configurações que o quadro PEDIU (espera por elas, apagado): montam sozinhas, com os
+    /// núcleos todos; as adiantadas só começam quando nenhuma pedida está em curso.
+    pedidas: BTreeSet<String>,
+}
+
+/// Quantas configurações a estufa monta ao mesmo tempo: cada uma já compila as pipelines pesadas
+/// em 2–4 fios (`Par::em_paralelo`, a fina com o anel), por isso um quarto dos núcleos, de 1 a 4.
+fn paralelas() -> usize {
+    std::thread::available_parallelism().map_or(1, |n| (n.get() / 4).clamp(1, 4))
 }
 
 impl Forno {
@@ -56,6 +67,7 @@ impl Forno {
         let k = chave(&cfg);
         self.fila.retain(|c| chave(c) != k);
         self.fila.push_front(cfg);
+        self.pedidas.insert(k);
     }
 
     /// Adianta `cfg` no fim da fila (um nível que o quadro ainda não pediu).
@@ -69,18 +81,24 @@ impl Forno {
     /// Nada na fila nem a montar.
     #[must_use]
     pub(crate) fn ociosa(&self) -> bool {
-        self.fila.is_empty() && self.em_curso.as_ref().is_none_or(JoinHandle::is_finished)
+        self.fila.is_empty() && self.em_curso.iter().all(|(h, _)| h.is_finished())
     }
 
-    /// Um passo, a cada quadro: recolhe a montagem acabada e começa a próxima da fila.
+    /// Um passo, a cada quadro: recolhe as montagens acabadas e começa as próximas da fila.
     pub(crate) fn andar(&mut self, gpu: &GpuContext, fabrica: &Fabrica) {
-        if self.em_curso.as_ref().is_some_and(|h| !h.is_finished()) {
-            return;
-        }
-        if let Some(h) = self.em_curso.take() {
+        let (acabadas, seguem): (Vec<_>, Vec<_>) = std::mem::take(&mut self.em_curso)
+            .into_iter()
+            .partition(|(h, _)| h.is_finished());
+        self.em_curso = seguem;
+        for (h, _) in acabadas {
             let _ = h.join();
         }
-        while let Some(cfg) = self.fila.pop_front() {
+        while self.em_curso.len() < paralelas()
+            && !self.em_curso.iter().any(|(_, pedida)| *pedida)
+            && let Some(cfg) = self.fila.pop_front()
+        {
+            let k = chave(&cfg);
+            let pedida = self.pedidas.remove(&k);
             if self.pronta(&cfg) {
                 continue;
             }
@@ -93,8 +111,7 @@ impl Forno {
                 },
                 ..cfg
             };
-            let k = chave(&cfg);
-            self.em_curso = std::thread::Builder::new()
+            let fio = std::thread::Builder::new()
                 .name("luz2d-estufa".into())
                 .spawn(move || {
                     // A recusa (memória, validação) volta no quadro, que monta a grade de verdade.
@@ -105,11 +122,14 @@ impl Forno {
                         .insert(k);
                 })
                 .ok();
-            if self.em_curso.is_none() {
-                // Sem fio, o quadro monta sozinho (síncrono): nunca fica apagado à espera.
-                self.ligado = false;
+            match fio {
+                Some(h) => self.em_curso.push((h, pedida)),
+                None => {
+                    // Sem fio, o quadro monta sozinho (síncrono): nunca fica apagado à espera.
+                    self.ligado = false;
+                    return;
+                }
             }
-            return;
         }
     }
 }

@@ -234,10 +234,11 @@ impl Solver {
         fabrica: &crate::Fabrica,
     ) -> Result<Self, ErroSolver> {
         pedido.validar()?;
-        let compiladas_antes = fabrica.pipelines_criadas();
+        let conta = std::sync::atomic::AtomicU64::new(0);
         let device = crate::Placa {
             device: &gpu.device,
             fabrica,
+            conta: Some(&conta),
         };
         if pedido.aritmetica == Precisao::F16
             && !device.features().contains(wgpu::Features::SHADER_F16)
@@ -582,7 +583,7 @@ impl Solver {
         Ok(Self {
             cfg,
             fabrica: fabrica.clone(),
-            compiladas_ao_nascer: fabrica.pipelines_criadas() - compiladas_antes,
+            compiladas_ao_nascer: conta.load(std::sync::atomic::Ordering::Relaxed),
             n,
             lista,
             texturas,

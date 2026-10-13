@@ -101,6 +101,8 @@ pub struct LuzDoQuadro {
     aquecendo: bool,
     /// ⭐ W5i: os outros níveis já foram adiantados à estufa.
     adiantado: bool,
+    /// ⭐ W5o: `PH2D_LIGHT2D_TEMPO=1` — o 1.º quadro e se a luz já acendeu (a linha do tempo de abrir).
+    tempo: Option<(std::time::Instant, bool)>,
 }
 
 impl Default for LuzDoQuadro {
@@ -153,6 +155,7 @@ impl LuzDoQuadro {
             forno: crate::forno::Forno::default(),
             aquecendo: false,
             adiantado: false,
+            tempo: None,
         }
     }
 
@@ -401,6 +404,9 @@ impl LuzDoQuadro {
         familias: &mut [&mut dyn ph2d_light2d_gpu::CamadaDeOclusao],
     ) {
         self.lado_max = gpu.device.limits().max_texture_dimension_2d;
+        if std::env::var_os("PH2D_LIGHT2D_TEMPO").is_some() {
+            self.tempo.get_or_insert((std::time::Instant::now(), false));
+        }
         self.forno.andar(gpu, &self.fabrica);
         self.aquecendo = false;
         let Some(g) = self.grade.filter(|_| !self.sem_luz_no_quadro) else {
@@ -546,6 +552,14 @@ impl LuzDoQuadro {
                 .gravar_com_sprites(gpu, &mut enc, &self.cena, &sprites),
         );
         gpu.queue.submit([enc.finish()]);
+        if let Some((t0, acesa @ false)) = &mut self.tempo {
+            *acesa = true;
+            eprintln!(
+                "[luz2d] a luz acendeu {:.2} s depois do 1.º quadro ({} pipelines compiladas)",
+                t0.elapsed().as_secs_f64(),
+                self.fabrica.pipelines_criadas()
+            );
+        }
         // ⭐ O custo de placa lê-se SEM ESPERAR (de há poucos quadros) sempre que há preferência do
         // editor — o Inspector mostra-o em todo nível; com o Automático desligado ficava congelado
         // no último nível automático (smoke do dono, 10/10). Só o governador depende do Automático.

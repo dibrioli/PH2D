@@ -350,11 +350,17 @@ fn turning_the_layer_on_in_the_same_tick_relowers() {
 
 /// ⭐⭐ **A rota cai da placa a meio e a cena NÃO salta** (11/10, report do dono: ligar o `Collide`
 /// mudava a imagem) — a `=135` corre na placa (híbrida) até ao quadro 90, onde a saída passa a `Add`
-/// com tudo (a recusa do grupo manda-a à CPU). Cada quadro tem de ser o da MESMA edição feita numa
-/// corrida toda na CPU. ⚠️ O controlo: o salto que a cura apaga é muito maior que a barra.
+/// com tudo e a rota cai para a CPU. Cada quadro tem de ser o da MESMA edição feita numa corrida toda
+/// na CPU. ⚠️ O controlo: o salto que a cura apaga é muito maior que a barra.
+///
+/// ⚠️ **O gatilho da queda é a PORTA de pedir a CPU** (`cpu_pedida`, a da cena de demo), não uma
+/// recusa de mistura: até ao P4 o `Add` com tudo recusava (a camada pedia o mundo), e o P4 (b) curou-o
+/// — a placa pousa a camada com o modo, e o quadro 90 ficava na placa (doc 132 §4.1). Um gatilho de
+/// recusa encolhe a cada cura; o que este gate mede é a QUEDA, venha de onde vier.
 #[test]
 #[ignore = "placa: precisa de GPU"]
 fn the_scene_does_not_jump_when_the_route_leaves_the_device() {
+    const PEDE_A_CPU: &str = "CPU: o gate pede a CPU a meio da corrida";
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
         return;
     };
@@ -371,6 +377,7 @@ fn the_scene_does_not_jump_when_the_route_leaves_the_device() {
                     m.doc
                         .graph
                         .set_param(cena.saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0);
+                    m.cpu_pedida = Some(PEDE_A_CPU);
                     m.pump.mark_dirty();
                 }
                 #[expect(clippy::cast_precision_loss, reason = "um quadro")]

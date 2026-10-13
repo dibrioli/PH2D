@@ -20,6 +20,15 @@
 //! dispositivo contra as `VectorInstance` da CPU. ⛔ A 1.ª redacção deste gate (anterior à W3)
 //! tratava toda `VectorInstance` da CPU como defeito, e reprovou 14 cenas com `Δ = 0`.
 //!
+//! ⭐ **P4 (doc 132 §4.1): as IMAGENS de uma saída em grupo são uma TERCEIRA lista** — a placa de formas
+//! pinta-as nas duas rotas. No dispositivo a porta do quadro tira-as das sprites
+//! (`separa_as_imagens_do_grupo`, que este gate chama como o quadro chama); na CPU são as
+//! `VectorInstance` sem geometria (`geometry_id == 0`). ⛔ Sem a separação, a `=140` lia 512 quads na
+//! placa contra 0 na CPU, e 513 formas contra 1 025 — as mesmas 512 imagens, contadas em listas trocadas.
+//! A separação leva a FAIXA inteira de uma saída em grupo, e com ela as linhas de forma CALADAS (a
+//! saída das formas da `=140`: 1 024 linhas na placa contra 512 imagens) — e o quad calado sai das
+//! duas contas, como nas sprites.
+//!
 //! `#[ignore]`: precisa de adapter real.
 //!   cargo test -p ph2d-app-motion --lib -- --ignored --nocapture as_cenas_de_varias_saidas
 
@@ -140,10 +149,36 @@ fn formas_da_cpu(m: &MotionState) -> Vec<[f32; 2]> {
         .pump
         .vector_instances
         .iter()
+        .filter(|i| i.geometry_id != 0)
         .map(|i| i.world_pos)
         .collect();
     v.sort_by(|a, b| a.partial_cmp(b).expect("finito"));
     v
+}
+
+/// ⭐ P4 — as imagens das saídas em grupo, ordenadas: as que a separação entregou à placa, e as
+/// `VectorInstance` sem geometria da CPU.
+fn imagens_do_grupo(gpu: &GpuContext, m: &MotionState, cpu: &MotionState) -> [Vec<[f32; 2]>; 2] {
+    let mut placa: Vec<[f32; 2]> = m
+        .gpu_cook
+        .imagens_do_grupo()
+        .map(|i| ph2d_gpu_cook::read_imagens_do_grupo(gpu, i))
+        .unwrap_or_default()
+        .iter()
+        .filter(|i| desenha(i))
+        .map(|i| i.world_pos)
+        .collect();
+    let mut na_cpu: Vec<[f32; 2]> = cpu
+        .pump
+        .vector_instances
+        .iter()
+        .filter(|i| i.geometry_id == 0)
+        .map(|i| i.world_pos)
+        .collect();
+    for v in [&mut placa, &mut na_cpu] {
+        v.sort_by(|a, b| a.partial_cmp(b).expect("finito"));
+    }
+    [placa, na_cpu]
 }
 
 /// A coluna `P` de cada saída, pela placa — a corrente que o plano da UNIÃO produziu.
@@ -205,6 +240,7 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
     let mut erradas: Vec<String> = Vec::new();
     let mut linhas_p = 0usize;
     let mut formas_p = 0usize;
+    let mut imagens_p = 0usize;
     for level in 1..=MAX_DEMO_LEVEL {
         let Some(mut m) = estado(level) else { continue };
         let Some(mut cpu) = estado(level) else {
@@ -220,16 +256,23 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
             recusadas.push((level, m.route_said.unwrap_or("?")));
             continue;
         }
+        // Como a porta do quadro: as imagens das saídas em grupo saem das sprites para a placa.
+        m.gpu_cook.separa_as_imagens_do_grupo(&gpu);
         let p = da_placa(&gpu, &m);
         let c = da_cpu(&mut cpu);
         let (fp, fc) = (formas_da_placa(&gpu, &m), formas_da_cpu(&cpu));
-        let pior_forma = fp
-            .iter()
-            .zip(&fc)
-            .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
-            .fold(0.0f32, f32::max);
-        let formas_erradas = fp.len() != fc.len() || pior_forma > EPS;
+        let [ip, ic] = imagens_do_grupo(&gpu, &m, &cpu);
+        let pior_lista = |a: &[[f32; 2]], b: &[[f32; 2]]| {
+            a.iter()
+                .zip(b)
+                .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+                .fold(0.0f32, f32::max)
+        };
+        let (pior_forma, pior_imagem) = (pior_lista(&fp, &fc), pior_lista(&ip, &ic));
+        let formas_erradas =
+            fp.len() != fc.len() || pior_forma > EPS || ip.len() != ic.len() || pior_imagem > EPS;
         formas_p += fp.len();
+        imagens_p += ip.len();
         let dif = |a: &[f32; 2], b: &[f32; 2]| (a[0] - b[0]).abs().max((a[1] - b[1]).abs());
         let pior = p
             .iter()
@@ -303,11 +346,13 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
         if p.len() != c.len() || pior > EPS || fora_da_barra || formas_erradas || !p_iguais {
             eprintln!("  ={level} por saída: {por_saida:#?}");
             erradas.push(format!(
-                "={level}: placa {} linhas · cpu {} linhas · formas placa {} cpu {} (pior {pior_forma:e}) · P por saída placa {:?} cpu {:?} · pior |Δ| desenho {pior:e} · P {pior_p:e} · {:?}",
+                "={level}: placa {} linhas · cpu {} linhas · formas placa {} cpu {} (pior {pior_forma:e}) · imagens do grupo placa {} cpu {} (pior {pior_imagem:e}) · P por saída placa {:?} cpu {:?} · pior |Δ| desenho {pior:e} · P {pior_p:e} · {:?}",
                 p.len(),
                 c.len(),
                 fp.len(),
                 fc.len(),
+                ip.len(),
+                ic.len(),
                 pp.iter().map(Vec::len).collect::<Vec<_>>(),
                 pc.iter().map(Vec::len).collect::<Vec<_>>(),
                 m.route_said
@@ -335,7 +380,9 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
     );
     // O PISO, nas duas grandezas: se nenhuma cena de várias saídas fosse à placa, ou se as que
     // vão não tivessem posições, o gate seria verde a medir nada.
-    eprintln!("  posições P comparadas: {linhas_p} · formas comparadas: {formas_p}");
+    eprintln!(
+        "  posições P comparadas: {linhas_p} · formas comparadas: {formas_p} · imagens do grupo: {imagens_p}"
+    );
     assert!(
         julgadas.len() >= 20 && linhas_p >= 1000,
         "só {} cenas de várias saídas foram à placa, com {linhas_p} posições — o gate deixou de medir",
@@ -346,6 +393,12 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
     assert!(
         formas_p >= 100,
         "só {formas_p} formas comparadas — a metade das formas deixou de medir"
+    );
+    // ⭐ P4 — e a das imagens do grupo (a `=140`): sem piso, uma separação que nunca entregasse nada
+    // passaria com as duas listas vazias.
+    assert!(
+        imagens_p >= 100,
+        "só {imagens_p} imagens do grupo comparadas — a 3.ª lista deixou de medir"
     );
 }
 

@@ -10,6 +10,7 @@ metadata:
 > Cada linha é uma memória com o gancho ORIGINAL do índice; abra o ficheiro para o mecanismo.
 > Dobradas aqui porque o `MEMORY.md` passou o teto suportado (32 KB > 24 KB): ficam a dois saltos.
 
+- ⛔⛔ [A suíte inteira é 1× por LINHA, nunca por pedido do dono — por item, testes por nome (dono 13/10: «nunca acabaremos»)](feedback_the_full_suite_is_once_per_line_never_per_owner_request.md)
 - [Ship = Enio-only](feedback_ship_only_enio_end_of_all_lines.md) · [integração = Enio-only](feedback_integration_only_enio_command_end_of_all_lines.md)
 - ⭐ [Duas linhas refactoram o MESMO bloco de maneiras diferentes: funde limpo e deixa a cópia MORTA (4× num dia; só `dead_code` a vê)](feedback_two_lines_can_refactor_the_same_code_differently_and_both_survive_the_merge.md)
 - ⭐ [E o veredito «MORTO» de uma linha EXPIRA quando outra o liga no mesmo dia — o painel ficou vivo e inalcançável](feedback_a_dead_code_verdict_from_a_parallel_line_expires_the_moment_another_line_wires_it.md)

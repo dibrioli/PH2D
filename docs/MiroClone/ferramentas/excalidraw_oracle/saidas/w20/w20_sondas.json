@@ -1,0 +1,5134 @@
+{
+ "oraculo": "@excalidraw/excalidraw",
+ "versao": "0.18.1",
+ "licenca": "MIT",
+ "playwright": "1.63.0",
+ "data": "2026-10-13T17:38:21.989Z",
+ "loadavg_inicio": [
+  9.72,
+  5.72,
+  5.13
+ ],
+ "loadavg_fim": [
+  9.53,
+  8.89,
+  6.62
+ ],
+ "comando": "node sonda_w20.mjs",
+ "script_sha256": "11642983dbc584a335e617ddf8e4346aa63ddd5954f4899035074cc8df39b5ed",
+ "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+ "ambiente": {
+  "janela": [
+   1280,
+   800
+  ],
+  "deviceScaleFactor": 1,
+  "rede": "só os domínios do YouTube/Google",
+  "pedidos_bloqueados": 0
+ },
+ "falhas": 0,
+ "sondas": [
+  {
+   "sonda": "A1_arrasta_parado",
+   "pergunta": "Vídeo NÃO seleccionado: carregar no play do meio e arrastar +150,+80. Move? Activa?",
+   "passos": [
+    {
+     "passo": "antes",
+     "el": {
+      "id": "ehLvec2FAU1FcZm5AYERo",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [],
+     "cursor": "",
+     "foto": "w20_A1_arrasta_parado_00_antes.png"
+    },
+    {
+     "passo": "carregou",
+     "el": {
+      "id": "ehLvec2FAU1FcZm5AYERo",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [
+      "ehLvec2FAU1FcZm5AYERo"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "pointer"
+    },
+    {
+     "passo": "moveu",
+     "el": {
+      "id": "ehLvec2FAU1FcZm5AYERo",
+      "x": 790,
+      "y": 480,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [
+      "ehLvec2FAU1FcZm5AYERo"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        792,
+        480,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "pointer"
+    },
+    {
+     "passo": "largou",
+     "el": {
+      "id": "ehLvec2FAU1FcZm5AYERo",
+      "x": 790,
+      "y": 480,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [
+      "ehLvec2FAU1FcZm5AYERo"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        792,
+        480,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_A1_arrasta_parado_03_largou.png"
+    }
+   ],
+   "ms": 8764,
+   "load": [
+    10.35,
+    5.99,
+    5.22
+   ]
+  },
+  {
+   "sonda": "A2_clique_seleccionado",
+   "pergunta": "Vídeo SELECCIONADO: carregar no meio (sem mexer), medir, largar, medir. O activar é no carregar ou no largar?",
+   "passos": [
+    {
+     "passo": "seleccionado",
+     "el": {
+      "id": "fomc_iicNU3xA6L8Od9gS",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [
+      "fomc_iicNU3xA6L8Od9gS"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "por_cima",
+     "el": {
+      "id": "fomc_iicNU3xA6L8Od9gS",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "fomc_iicNU3xA6L8Od9gS",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 867777867,
+       "version": 2,
+       "versionNonce": 1836863717,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912887775,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "hover"
+     },
+     "selected": [
+      "fomc_iicNU3xA6L8Od9gS"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "pointer"
+    },
+    {
+     "passo": "rapido_largou",
+     "estado_logo_apos_o_down": "hover",
+     "tocador": {
+      "paused": false,
+      "t": 1.04,
+      "ready": 4,
+      "ad": false
+     },
+     "el": {
+      "id": "fomc_iicNU3xA6L8Od9gS",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "fomc_iicNU3xA6L8Od9gS",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 867777867,
+       "version": 2,
+       "versionNonce": 1836863717,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912887775,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "fomc_iicNU3xA6L8Od9gS"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_A2_clique_seleccionado_02_rapido_largou.png"
+    },
+    {
+     "passo": "lento_carregado",
+     "el": {
+      "id": "fomc_iicNU3xA6L8Od9gS",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "fomc_iicNU3xA6L8Od9gS",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 867777867,
+       "version": 2,
+       "versionNonce": 1836863717,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912887775,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "hover"
+     },
+     "selected": [
+      "fomc_iicNU3xA6L8Od9gS"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "pointer"
+    },
+    {
+     "passo": "lento_largou",
+     "el": {
+      "id": "fomc_iicNU3xA6L8Od9gS",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "fomc_iicNU3xA6L8Od9gS",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 867777867,
+       "version": 2,
+       "versionNonce": 1836863717,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912887775,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "hover"
+     },
+     "selected": [
+      "fomc_iicNU3xA6L8Od9gS"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "clique_no_quarto_seleccionado",
+     "el": {
+      "id": "fomc_iicNU3xA6L8Od9gS",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [
+      "fomc_iicNU3xA6L8Od9gS"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    }
+   ],
+   "ms": 15803,
+   "load": [
+    8.48,
+    5.79,
+    5.17
+   ]
+  },
+  {
+   "sonda": "A3_arrasta_seleccionado",
+   "pergunta": "Vídeo SELECCIONADO: carregar no meio e arrastar +150,+80 — move ou activa? E carregar fora do play (quarto) e arrastar?",
+   "passos": [
+    {
+     "passo": "meio_carregou",
+     "el": {
+      "id": "9me3XiymddWDf7sNwkUAy",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9me3XiymddWDf7sNwkUAy",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 464951109,
+       "version": 2,
+       "versionNonce": 303377291,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912903550,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "hover"
+     },
+     "selected": [
+      "9me3XiymddWDf7sNwkUAy"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "pointer"
+    },
+    {
+     "passo": "meio_moveu",
+     "el": {
+      "id": "9me3XiymddWDf7sNwkUAy",
+      "x": 790,
+      "y": 480,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9me3XiymddWDf7sNwkUAy",
+       "type": "embeddable",
+       "x": 790,
+       "y": 480,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 464951109,
+       "version": 14,
+       "versionNonce": 1215984101,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912910597,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "hover"
+     },
+     "selected": [
+      "9me3XiymddWDf7sNwkUAy"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        792,
+        480,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "pointer"
+    },
+    {
+     "passo": "meio_largou",
+     "el": {
+      "id": "9me3XiymddWDf7sNwkUAy",
+      "x": 790,
+      "y": 480,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9me3XiymddWDf7sNwkUAy",
+       "type": "embeddable",
+       "x": 790,
+       "y": 480,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 464951109,
+       "version": 14,
+       "versionNonce": 1215984101,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912910597,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "hover"
+     },
+     "selected": [
+      "9me3XiymddWDf7sNwkUAy"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        792,
+        480,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "quarto_carregou",
+     "el": {
+      "id": "9me3XiymddWDf7sNwkUAy",
+      "x": 790,
+      "y": 480,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [
+      "9me3XiymddWDf7sNwkUAy"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        792,
+        480,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "move"
+    },
+    {
+     "passo": "quarto_moveu",
+     "el": {
+      "id": "9me3XiymddWDf7sNwkUAy",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [
+      "9me3XiymddWDf7sNwkUAy"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "move"
+    },
+    {
+     "passo": "quarto_largou",
+     "el": {
+      "id": "9me3XiymddWDf7sNwkUAy",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [
+      "9me3XiymddWDf7sNwkUAy"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    }
+   ],
+   "ms": 9897,
+   "load": [
+    7.93,
+    5.77,
+    5.17
+   ]
+  },
+  {
+   "sonda": "A4_arrasta_activo",
+   "pergunta": "Vídeo ACTIVO e a tocar: arrastar de DENTRO (quarto) +150,+80; arrastar pela BORDA (2 px dentro da caixa); pelas pegas? Move?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "9VQyZ15vLwxpfDkdRUNc_",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1525123045,
+       "version": 2,
+       "versionNonce": 1327568107,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912913449,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.25,
+      "ready": 4,
+      "ad": false
+     },
+     "el": {
+      "id": "9VQyZ15vLwxpfDkdRUNc_",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9VQyZ15vLwxpfDkdRUNc_",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1525123045,
+       "version": 2,
+       "versionNonce": 1327568107,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912913449,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "9VQyZ15vLwxpfDkdRUNc_"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_A4_arrasta_activo_00_a_tocar.png"
+    },
+    {
+     "passo": "dentro_carregou",
+     "el": {
+      "id": "9VQyZ15vLwxpfDkdRUNc_",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9VQyZ15vLwxpfDkdRUNc_",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1525123045,
+       "version": 2,
+       "versionNonce": 1327568107,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912913449,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "9VQyZ15vLwxpfDkdRUNc_"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "dentro_moveu",
+     "el": {
+      "id": "9VQyZ15vLwxpfDkdRUNc_",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9VQyZ15vLwxpfDkdRUNc_",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1525123045,
+       "version": 2,
+       "versionNonce": 1327568107,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912913449,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "9VQyZ15vLwxpfDkdRUNc_"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "dentro_largou",
+     "tocador": {
+      "paused": true,
+      "t": 3.22,
+      "ready": 4,
+      "ad": false
+     },
+     "el": {
+      "id": "9VQyZ15vLwxpfDkdRUNc_",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9VQyZ15vLwxpfDkdRUNc_",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1525123045,
+       "version": 2,
+       "versionNonce": 1327568107,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912913449,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "9VQyZ15vLwxpfDkdRUNc_"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "borda_carregou",
+     "el": {
+      "id": "9VQyZ15vLwxpfDkdRUNc_",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9VQyZ15vLwxpfDkdRUNc_",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1525123045,
+       "version": 2,
+       "versionNonce": 1327568107,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912913449,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "9VQyZ15vLwxpfDkdRUNc_"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "borda_moveu",
+     "el": {
+      "id": "9VQyZ15vLwxpfDkdRUNc_",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9VQyZ15vLwxpfDkdRUNc_",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1525123045,
+       "version": 2,
+       "versionNonce": 1327568107,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912913449,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "9VQyZ15vLwxpfDkdRUNc_"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "borda_largou",
+     "tocador": {
+      "paused": true,
+      "t": 3.22,
+      "ready": 4,
+      "ad": false
+     },
+     "el": {
+      "id": "9VQyZ15vLwxpfDkdRUNc_",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "9VQyZ15vLwxpfDkdRUNc_",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1525123045,
+       "version": 2,
+       "versionNonce": 1327568107,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912913449,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "9VQyZ15vLwxpfDkdRUNc_"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_A4_arrasta_activo_06_borda_largou.png"
+    }
+   ],
+   "ms": 12526,
+   "load": [
+    7.1,
+    5.66,
+    5.14
+   ]
+  },
+  {
+   "sonda": "P_espaco_vazio",
+   "pergunta": "Vídeo activo a tocar; pan «espaco» começado no quadro vazio −120,−60: desactiva? pausa?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "hz9_v3dKcfodl2h5PBgf5",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1142923787,
+       "version": 2,
+       "versionNonce": 1219205157,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912925983,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.24,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.24,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.74,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "hz9_v3dKcfodl2h5PBgf5",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "hz9_v3dKcfodl2h5PBgf5",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1142923787,
+       "version": 2,
+       "versionNonce": 1219205157,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912925983,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "hz9_v3dKcfodl2h5PBgf5"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "depois_do_pan",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 4.63,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 6.63,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "hz9_v3dKcfodl2h5PBgf5",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "hz9_v3dKcfodl2h5PBgf5",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1142923787,
+       "version": 2,
+       "versionNonce": 1219205157,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912925983,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "hz9_v3dKcfodl2h5PBgf5"
+     ],
+     "scroll": [
+      -120,
+      -60
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        522,
+        340,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_P_espaco_vazio_01_depois_do_pan.png"
+    }
+   ],
+   "ms": 14759,
+   "load": [
+    10.1,
+    6.34,
+    5.37
+   ]
+  },
+  {
+   "sonda": "P_espaco_sobre",
+   "pergunta": "Vídeo activo a tocar; pan «espaco» começado SOBRE o vídeo (quarto) −120,−60: desactiva? pausa?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "ssmQuEMA5MJ8jJu7Tr8cq",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 114221317,
+       "version": 2,
+       "versionNonce": 986668491,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912940732,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.24,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.24,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.74,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "ssmQuEMA5MJ8jJu7Tr8cq",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "ssmQuEMA5MJ8jJu7Tr8cq",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 114221317,
+       "version": 2,
+       "versionNonce": 986668491,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912940732,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "ssmQuEMA5MJ8jJu7Tr8cq"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "depois_do_pan",
+     "anda": {
+      "antes": {
+       "paused": true,
+       "t": 4.39,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": true,
+       "t": 4.39,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": false
+     },
+     "el": {
+      "id": "ssmQuEMA5MJ8jJu7Tr8cq",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "ssmQuEMA5MJ8jJu7Tr8cq",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 114221317,
+       "version": 2,
+       "versionNonce": 986668491,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912940732,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "ssmQuEMA5MJ8jJu7Tr8cq"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "grab",
+     "foto": "w20_P_espaco_sobre_01_depois_do_pan.png"
+    }
+   ],
+   "ms": 14699,
+   "load": [
+    10.92,
+    6.67,
+    5.49
+   ]
+  },
+  {
+   "sonda": "P_meio_vazio",
+   "pergunta": "Vídeo activo a tocar; pan «meio» começado no quadro vazio −120,−60: desactiva? pausa?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "qmVE0X0VSkQDwkvO7Y4fp",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 2036621035,
+       "version": 2,
+       "versionNonce": 80058693,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912955431,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.26,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.26,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.76,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "qmVE0X0VSkQDwkvO7Y4fp",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "qmVE0X0VSkQDwkvO7Y4fp",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 2036621035,
+       "version": 2,
+       "versionNonce": 80058693,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912955431,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "qmVE0X0VSkQDwkvO7Y4fp"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "depois_do_pan",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 4.57,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 6.58,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "qmVE0X0VSkQDwkvO7Y4fp",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "qmVE0X0VSkQDwkvO7Y4fp",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 2036621035,
+       "version": 2,
+       "versionNonce": 80058693,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912955431,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "qmVE0X0VSkQDwkvO7Y4fp"
+     ],
+     "scroll": [
+      -120,
+      -60
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        522,
+        340,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_P_meio_vazio_01_depois_do_pan.png"
+    }
+   ],
+   "ms": 14659,
+   "load": [
+    13.17,
+    7.32,
+    5.72
+   ]
+  },
+  {
+   "sonda": "P_meio_sobre",
+   "pergunta": "Vídeo activo a tocar; pan «meio» começado SOBRE o vídeo (quarto) −120,−60: desactiva? pausa?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "DYARTrBwxTRmTfE6cw1VZ",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1625566757,
+       "version": 2,
+       "versionNonce": 827912875,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912970135,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.22,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.22,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.72,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "DYARTrBwxTRmTfE6cw1VZ",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "DYARTrBwxTRmTfE6cw1VZ",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1625566757,
+       "version": 2,
+       "versionNonce": 827912875,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912970135,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "DYARTrBwxTRmTfE6cw1VZ"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "depois_do_pan",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 4.52,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 6.53,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "DYARTrBwxTRmTfE6cw1VZ",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "DYARTrBwxTRmTfE6cw1VZ",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1625566757,
+       "version": 2,
+       "versionNonce": 827912875,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912970135,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "DYARTrBwxTRmTfE6cw1VZ"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_P_meio_sobre_01_depois_do_pan.png"
+    }
+   ],
+   "ms": 14681,
+   "load": [
+    23.78,
+    10.09,
+    6.66
+   ]
+  },
+  {
+   "sonda": "P_mao_vazio",
+   "pergunta": "Vídeo activo a tocar; pan «mao» começado no quadro vazio −120,−60: desactiva? pausa?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "Op6U_jOIvcevbOWNNnuos",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 183822283,
+       "version": 2,
+       "versionNonce": 2030472805,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912984780,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.26,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.26,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.76,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "Op6U_jOIvcevbOWNNnuos",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "Op6U_jOIvcevbOWNNnuos",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 183822283,
+       "version": 2,
+       "versionNonce": 2030472805,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912984780,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "Op6U_jOIvcevbOWNNnuos"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "depois_do_pan",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 4.72,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 6.72,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "Op6U_jOIvcevbOWNNnuos",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [],
+     "scroll": [
+      -120,
+      -60
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        522,
+        340,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [],
+     "cursor": "",
+     "foto": "w20_P_mao_vazio_01_depois_do_pan.png"
+    }
+   ],
+   "ms": 14777,
+   "load": [
+    20.38,
+    9.99,
+    6.68
+   ]
+  },
+  {
+   "sonda": "P_mao_sobre",
+   "pergunta": "Vídeo activo a tocar; pan «mao» começado SOBRE o vídeo (quarto) −120,−60: desactiva? pausa?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "D9bsOsx_bVSe6eJ2P_JDb",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 944238405,
+       "version": 2,
+       "versionNonce": 1139102603,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912999563,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.23,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.23,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.73,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "D9bsOsx_bVSe6eJ2P_JDb",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "D9bsOsx_bVSe6eJ2P_JDb",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 944238405,
+       "version": 2,
+       "versionNonce": 1139102603,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791912999563,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "D9bsOsx_bVSe6eJ2P_JDb"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "depois_do_pan",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 4.67,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 6.67,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "D9bsOsx_bVSe6eJ2P_JDb",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [],
+     "scroll": [
+      -120,
+      -60
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        522,
+        340,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [],
+     "cursor": "",
+     "foto": "w20_P_mao_sobre_01_depois_do_pan.png"
+    }
+   ],
+   "ms": 14768,
+   "load": [
+    17.76,
+    9.93,
+    6.71
+   ]
+  },
+  {
+   "sonda": "P_roda_vazio",
+   "pergunta": "Vídeo activo a tocar; pan «roda» começado no quadro vazio −120,−60: desactiva? pausa?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "-sT31ZXRe3t9KItcqUHcm",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1632156843,
+       "version": 2,
+       "versionNonce": 1110374277,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913014345,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.24,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.24,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.74,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "-sT31ZXRe3t9KItcqUHcm",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "-sT31ZXRe3t9KItcqUHcm",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1632156843,
+       "version": 2,
+       "versionNonce": 1110374277,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913014345,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "-sT31ZXRe3t9KItcqUHcm"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "depois_do_pan",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 3.97,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 5.99,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "-sT31ZXRe3t9KItcqUHcm",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "-sT31ZXRe3t9KItcqUHcm",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1632156843,
+       "version": 2,
+       "versionNonce": 1110374277,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913014345,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "-sT31ZXRe3t9KItcqUHcm"
+     ],
+     "scroll": [
+      -120,
+      -60
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        522,
+        340,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "nwse-resize",
+     "foto": "w20_P_roda_vazio_01_depois_do_pan.png"
+    }
+   ],
+   "ms": 14080,
+   "load": [
+    14.87,
+    9.68,
+    6.68
+   ]
+  },
+  {
+   "sonda": "P_roda_sobre",
+   "pergunta": "Vídeo activo a tocar; pan «roda» começado SOBRE o vídeo (quarto) −120,−60: desactiva? pausa?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "wx8vnt593xesmhTQ6dpUi",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 560637029,
+       "version": 2,
+       "versionNonce": 2068578411,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913028428,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.26,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.26,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.78,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "wx8vnt593xesmhTQ6dpUi",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "wx8vnt593xesmhTQ6dpUi",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 560637029,
+       "version": 2,
+       "versionNonce": 2068578411,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913028428,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "wx8vnt593xesmhTQ6dpUi"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "depois_do_pan",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 4.02,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 6,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "wx8vnt593xesmhTQ6dpUi",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "wx8vnt593xesmhTQ6dpUi",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 560637029,
+       "version": 2,
+       "versionNonce": 2068578411,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913028428,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "wx8vnt593xesmhTQ6dpUi"
+     ],
+     "scroll": [
+      -120,
+      -60
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        522,
+        340,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "nwse-resize",
+     "foto": "w20_P_roda_sobre_01_depois_do_pan.png"
+    }
+   ],
+   "ms": 14076,
+   "load": [
+    12.96,
+    9.52,
+    6.68
+   ]
+  },
+  {
+   "sonda": "P_clique_fora",
+   "pergunta": "Vídeo activo a tocar; clique no quadro vazio: desactiva? o vídeo PAUSA?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "o2O_XQuRvHxWlGiX3lnJe",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 243752331,
+       "version": 2,
+       "versionNonce": 105862309,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913042494,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.24,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.24,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.74,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "o2O_XQuRvHxWlGiX3lnJe",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "o2O_XQuRvHxWlGiX3lnJe",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 243752331,
+       "version": 2,
+       "versionNonce": 105862309,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913042494,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "o2O_XQuRvHxWlGiX3lnJe"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "clicou_fora",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 4.26,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 6.27,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "o2O_XQuRvHxWlGiX3lnJe",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [],
+     "cursor": "",
+     "foto": "w20_P_clique_fora_01_clicou_fora.png"
+    }
+   ],
+   "ms": 14352,
+   "load": [
+    10.16,
+    9.07,
+    6.58
+   ]
+  },
+  {
+   "sonda": "P_fora_da_vista",
+   "pergunta": "Vídeo a tocar; a vista leva-o meio fora, todo fora, e de volta (scroll pela API): o iframe fica? o tempo anda?",
+   "passos": [
+    {
+     "passo": "a_tocar",
+     "activo": {
+      "element": {
+       "id": "5KQ1mpwhcGcohcK5fXqKU",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 102005067,
+       "version": 2,
+       "versionNonce": 1854067941,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913056859,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.23,
+      "ready": 4,
+      "ad": false
+     },
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 2.23,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 3.73,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "5KQ1mpwhcGcohcK5fXqKU",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "5KQ1mpwhcGcohcK5fXqKU",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 102005067,
+       "version": 2,
+       "versionNonce": 1854067941,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913056859,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "5KQ1mpwhcGcohcK5fXqKU"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "meio_fora",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 4.24,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 6.25,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "5KQ1mpwhcGcohcK5fXqKU",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "5KQ1mpwhcGcohcK5fXqKU",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 102005067,
+       "version": 2,
+       "versionNonce": 1854067941,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913056859,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "5KQ1mpwhcGcohcK5fXqKU"
+     ],
+     "scroll": [
+      -920,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        -278,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_P_fora_da_vista_01_meio_fora.png"
+    },
+    {
+     "passo": "so_150px_a_vista",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 6.77,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 8.78,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "5KQ1mpwhcGcohcK5fXqKU",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "5KQ1mpwhcGcohcK5fXqKU",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 102005067,
+       "version": 2,
+       "versionNonce": 1854067941,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913056859,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "5KQ1mpwhcGcohcK5fXqKU"
+     ],
+     "scroll": [
+      -1050,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        -408,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": ""
+    },
+    {
+     "passo": "todo_fora",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 9.49,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 11.5,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "5KQ1mpwhcGcohcK5fXqKU",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "5KQ1mpwhcGcohcK5fXqKU",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 102005067,
+       "version": 2,
+       "versionNonce": 1854067941,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913056859,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "5KQ1mpwhcGcohcK5fXqKU"
+     ],
+     "scroll": [
+      -1400,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        0,
+        0,
+        0,
+        0
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_P_fora_da_vista_03_todo_fora.png"
+    },
+    {
+     "passo": "de_volta",
+     "anda": {
+      "antes": {
+       "paused": false,
+       "t": 15.53,
+       "ready": 4,
+       "ad": false
+      },
+      "depois": {
+       "paused": false,
+       "t": 18.04,
+       "ready": 4,
+       "ad": false
+      },
+      "anda": true
+     },
+     "el": {
+      "id": "5KQ1mpwhcGcohcK5fXqKU",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "5KQ1mpwhcGcohcK5fXqKU",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid",
+       "strokeWidth": 2,
+       "strokeStyle": "solid",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 102005067,
+       "version": 2,
+       "versionNonce": 1854067941,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913056859,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "5KQ1mpwhcGcohcK5fXqKU"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_P_fora_da_vista_04_de_volta.png"
+    }
+   ],
+   "ms": 26144,
+   "load": [
+    7.25,
+    8.47,
+    6.44
+   ]
+  },
+  {
+   "sonda": "E1_painel",
+   "pergunta": "Vídeo seleccionado: que grupos tem o painel de propriedades? (comparado com um rectângulo)",
+   "passos": [
+    {
+     "passo": "video_seleccionado",
+     "el": {
+      "id": "NsdPOV8VMvBOjMX7jAfbT",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [
+      "NsdPOV8VMvBOjMX7jAfbT"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_E1_painel_00_video_seleccionado.png"
+    },
+    {
+     "passo": "rectangulo_seleccionado",
+     "el": {
+      "id": "NsdPOV8VMvBOjMX7jAfbT",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "rectangle",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers"
+     ],
+     "cursor": "crosshair",
+     "foto": "w20_E1_painel_01_rectangulo_seleccionado.png"
+    }
+   ],
+   "ms": 8963,
+   "load": [
+    7.56,
+    8.49,
+    6.47
+   ]
+  },
+  {
+   "sonda": "E2_estilo",
+   "pergunta": "Vídeo com stroke vermelho 4 tracejado, fundo amarelo sólido, opacidade 50, cantos rectos/redondos (API): onde se desenha cada um? E activo?",
+   "passos": [
+    {
+     "passo": "stroke_fundo",
+     "el": {
+      "id": "IMkwOoQxrsQFhWVfVSF7q",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "#e03131",
+      "backgroundColor": "#ffec99",
+      "strokeWidth": 4,
+      "strokeStyle": "dashed",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        644,
+        400,
+        552,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [],
+     "cursor": "",
+     "foto": "w20_E2_estilo_00_stroke_fundo.png"
+    },
+    {
+     "passo": "cantos_rectos",
+     "el": {
+      "id": "IMkwOoQxrsQFhWVfVSF7q",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "#e03131",
+      "backgroundColor": "#ffec99",
+      "strokeWidth": 4,
+      "strokeStyle": "dashed",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": null,
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        644,
+        400,
+        552,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "0px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [],
+     "cursor": "",
+     "foto": "w20_E2_estilo_01_cantos_rectos.png"
+    },
+    {
+     "passo": "opacidade_50",
+     "el": {
+      "id": "IMkwOoQxrsQFhWVfVSF7q",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "#e03131",
+      "backgroundColor": "#ffec99",
+      "strokeWidth": 4,
+      "strokeStyle": "dashed",
+      "fillStyle": "solid",
+      "opacity": 50,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": null,
+     "selected": [],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        644,
+        400,
+        552,
+        315
+       ],
+       "pointerEvents": "none",
+       "pai_pointerEvents": "none",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [],
+     "cursor": "",
+     "foto": "w20_E2_estilo_02_opacidade_50.png"
+    },
+    {
+     "passo": "activo_a_tocar",
+     "activo": {
+      "element": {
+       "id": "IMkwOoQxrsQFhWVfVSF7q",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "#e03131",
+       "backgroundColor": "#ffec99",
+       "fillStyle": "solid",
+       "strokeWidth": 4,
+       "strokeStyle": "dashed",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1370770949,
+       "version": 6,
+       "versionNonce": 218317007,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913091959,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "tocador": {
+      "paused": false,
+      "t": 2.23,
+      "ready": 4,
+      "ad": false
+     },
+     "el": {
+      "id": "IMkwOoQxrsQFhWVfVSF7q",
+      "x": 640,
+      "y": 400,
+      "w": 560,
+      "h": 315,
+      "strokeColor": "#e03131",
+      "backgroundColor": "#ffec99",
+      "strokeWidth": 4,
+      "strokeStyle": "dashed",
+      "fillStyle": "solid",
+      "opacity": 100,
+      "roundness": {
+       "type": 3
+      },
+      "roughness": 1
+     },
+     "activeEmbeddable": {
+      "element": {
+       "id": "IMkwOoQxrsQFhWVfVSF7q",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "strokeColor": "#e03131",
+       "backgroundColor": "#ffec99",
+       "fillStyle": "solid",
+       "strokeWidth": 4,
+       "strokeStyle": "dashed",
+       "roughness": 1,
+       "opacity": 100,
+       "groupIds": [],
+       "frameId": null,
+       "index": "a0",
+       "roundness": {
+        "type": 3
+       },
+       "seed": 1370770949,
+       "version": 6,
+       "versionNonce": 218317007,
+       "isDeleted": false,
+       "boundElements": null,
+       "updated": 1791913091959,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "locked": false
+      },
+      "state": "active"
+     },
+     "selected": [
+      "IMkwOoQxrsQFhWVfVSF7q"
+     ],
+     "scroll": [
+      0,
+      0
+     ],
+     "zoom": 1,
+     "tool": "selection",
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "rect": [
+        644,
+        400,
+        552,
+        315
+       ],
+       "pointerEvents": "all",
+       "pai_pointerEvents": "all",
+       "border": "0px none rgb(27, 27, 31)",
+       "borderRadius": "32px",
+       "pai_borderRadius": "0px",
+       "pai_overflow": "visible"
+      }
+     ],
+     "grupos_do_painel": [
+      "Stroke",
+      "Background",
+      "Fill",
+      "Stroke width",
+      "Stroke style",
+      "Sloppiness",
+      "Edges",
+      "Layers",
+      "Actions"
+     ],
+     "cursor": "",
+     "foto": "w20_E2_estilo_03_activo_a_tocar.png"
+    }
+   ],
+   "ms": 10988,
+   "load": [
+    9.53,
+    8.89,
+    6.62
+   ]
+  }
+ ]
+}

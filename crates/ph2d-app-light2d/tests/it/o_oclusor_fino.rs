@@ -136,19 +136,30 @@ fn o_oclusor_fino_faz_a_sombra_do_gabarito() {
     for (lnome, raio) in LAMPADAS {
         let sem = mundo(raio, None);
         let gab_sem = cena_de_luz(&sem);
+        let ref_sem = ph2d_light2d_ref::Gabarito::novo(&gab_sem);
         for caso in &CASOS {
             let com = mundo(raio, Some(caso.lados));
             let gab_com = cena_de_luz(&com);
-            let gab = |p: [f64; 2]| {
-                ph2d_light2d_ref::fluencia(&gab_com, p)[1]
-                    / ph2d_light2d_ref::fluencia(&gab_sem, p)[1].max(1e-12)
-            };
+            // O gabarito não depende do nível: a sombra dele mede-se UMA vez por corte, os três
+            // cortes em paralelo, e o `Gabarito` montado aqui (o mesmo que o `fluencia` guarda,
+            // sem a procura da cena a cada ponto) — o mesmo bit, docs/DevOps/VELOCIDADE_DOS_PORTOES.md.
+            let ref_com = ph2d_light2d_ref::Gabarito::novo(&gab_com);
+            let gab = |p: [f64; 2]| ref_com.fluencia(p)[1] / ref_sem.fluencia(p)[1].max(1e-12);
+            let do_gabarito: Vec<(f64, f64)> = std::thread::scope(|s| {
+                let fios: Vec<_> = caso
+                    .xs
+                    .map(|x| s.spawn(move || sombra(gab, x, caso.ys, ppm)))
+                    .into_iter()
+                    .collect();
+                fios.into_iter()
+                    .map(|f| f.join().expect("um corte do gabarito"))
+                    .collect()
+            });
             for (nome, degrau) in crate::a_escada_da_sombra::degraus() {
                 let (fc, fs) = (luz(&gpu, degrau, &com), luz(&gpu, degrau, &sem));
                 let placa = |p: [f64; 2]| fc.amostra(p) / fs.amostra(p).max(1e-12);
-                for x in caso.xs {
+                for (&x, &(mg, fg)) in caso.xs.iter().zip(&do_gabarito) {
                     let (mp, fp) = sombra(placa, x, caso.ys, ppm);
-                    let (mg, fg) = sombra(gab, x, caso.ys, ppm);
                     eprintln!(
                         "F2 · {lnome} · {} · {nome} · x {x}: massa {mp:.4} × {mg:.4} m · fundo {fp:.3} × {fg:.3}",
                         caso.nome

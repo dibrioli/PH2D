@@ -309,7 +309,10 @@ impl Miolo {
 }
 
 /// `A u = b` com `A` a matriz de Gibou (simétrica, definida positiva) e o pré-condicionador de Jacobi,
-/// por canal.
+/// por canal — os três canais em paralelo, a vizinhança compacta (16 B por nó) e três passagens por
+/// iteração em vez de seis (o produto com o `p·Ap`; a atualização com o `r·z` e o `r·r`); a ordem de
+/// cada soma é a de sempre, logo o resultado é o mesmo bit
+/// (`docs/DevOps/VELOCIDADE_DOS_PORTOES.md`).
 fn gradientes_conjugados(viz: &[[Viz; 4]], kh2: f64) -> Vec<[f64; 3]> {
     let n = viz.len();
     let diag: Vec<f64> = viz
@@ -324,19 +327,29 @@ fn gradientes_conjugados(viz: &[[Viz; 4]], kh2: f64) -> Vec<[f64; 3]> {
                 .sum::<f64>()
         })
         .collect();
-    let aplicar = |x: &[f64], y: &mut [f64]| {
-        for (k, v) in viz.iter().enumerate() {
-            let mut s = diag[k] * x[k];
-            for w in v {
-                if let Viz::Dentro(m) = w {
-                    s -= x[*m as usize];
-                }
+    let dentro: Vec<[u32; 4]> = viz
+        .iter()
+        .map(|v| {
+            v.map(|w| match w {
+                Viz::Dentro(m) => m,
+                Viz::Borda { .. } => FORA_DA_UNIAO,
+            })
+        })
+        .collect();
+    // A linha `k` de `A x`, na ordem das quatro direções de sempre.
+    let linha = |x: &[f64], k: usize| {
+        let mut s = diag[k] * x[k];
+        for &m in &dentro[k] {
+            if m != FORA_DA_UNIAO {
+                s -= x[m as usize];
             }
-            y[k] = s;
         }
+        s
     };
-    let mut u = vec![[0.0; 3]; n];
-    for c in 0..3 {
+    // O zero de onde parte o `Sum` de `f64`: as somas fundidas nas passagens abaixo partem dele e
+    // somam na mesma ordem que os `.sum()` separados, logo dão o mesmo bit.
+    let zero: f64 = std::iter::empty::<f64>().sum();
+    let canal = |c: usize| -> Option<Vec<f64>> {
         let b: Vec<f64> = viz
             .iter()
             .map(|v| {
@@ -350,38 +363,52 @@ fn gradientes_conjugados(viz: &[[Viz; 4]], kh2: f64) -> Vec<[f64; 3]> {
             .collect();
         let norma_b = b.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norma_b == 0.0 {
-            continue;
+            return None;
         }
         // Começa no pré-condicionado (`b / diag`): a borda já está lá.
         let mut x: Vec<f64> = b.iter().zip(&diag).map(|(b, d)| b / d).collect();
-        let mut ax = vec![0.0; n];
-        aplicar(&x, &mut ax);
-        let mut r: Vec<f64> = b.iter().zip(&ax).map(|(b, a)| b - a).collect();
+        let mut r: Vec<f64> = b.iter().enumerate().map(|(k, b)| b - linha(&x, k)).collect();
         let mut z: Vec<f64> = r.iter().zip(&diag).map(|(r, d)| r / d).collect();
         let mut p = z.clone();
         let mut rz: f64 = r.iter().zip(&z).map(|(a, b)| a * b).sum();
+        let mut rr: f64 = r.iter().map(|x| x * x).sum();
         let mut ap = vec![0.0; n];
         for _ in 0..(20 * n).max(100) {
-            let nr = r.iter().map(|x| x * x).sum::<f64>().sqrt();
-            if nr <= TOLERANCIA * norma_b {
+            if rr.sqrt() <= TOLERANCIA * norma_b {
                 break;
             }
-            aplicar(&p, &mut ap);
-            let alfa = rz / p.iter().zip(&ap).map(|(a, b)| a * b).sum::<f64>();
+            let mut pap = zero;
+            for k in 0..n {
+                ap[k] = linha(&p, k);
+                pap += p[k] * ap[k];
+            }
+            let alfa = rz / pap;
+            let (mut rz_novo, mut rr_novo) = (zero, zero);
             for k in 0..n {
                 x[k] += alfa * p[k];
                 r[k] -= alfa * ap[k];
                 z[k] = r[k] / diag[k];
+                rz_novo += r[k] * z[k];
+                rr_novo += r[k] * r[k];
             }
-            let rz_novo: f64 = r.iter().zip(&z).map(|(a, b)| a * b).sum();
             let beta = rz_novo / rz;
-            rz = rz_novo;
+            (rz, rr) = (rz_novo, rr_novo);
             for k in 0..n {
                 p[k] = z[k] + beta * p[k];
             }
         }
-        for k in 0..n {
-            u[k][c] = x[k];
+        Some(x)
+    };
+    let xs: Vec<Option<Vec<f64>>> = std::thread::scope(|s| {
+        let fios: Vec<_> = (0..3).map(|c| s.spawn(move || canal(c))).collect();
+        fios.into_iter()
+            .map(|f| f.join().expect("um canal do miolo"))
+            .collect()
+    });
+    let mut u = vec![[0.0; 3]; n];
+    for (c, x) in xs.into_iter().enumerate() {
+        for (uk, xk) in u.iter_mut().zip(x.unwrap_or_else(|| vec![0.0; n])) {
+            uk[c] = xk;
         }
     }
     u

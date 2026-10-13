@@ -20,6 +20,10 @@ use ph2d_nodegraph::attr::{
 use ph2d_nodegraph::port::Dim;
 use std::sync::Arc;
 
+#[path = "passe_na_placa_corrige.rs"]
+mod corrige;
+pub use corrige::Corrige;
+
 const WG: u32 = crate::codegen::WORKGROUP_SIZE;
 /// Até quantas peças o passe corre num só grupo (doc 130 §3.1). MEDIDO (11/10, release, as duas
 /// variantes no mesmo processo): a `1 000` peças empatam (`14,4` × `14,4 ms` a 64 varreduras); a
@@ -63,6 +67,8 @@ pub(crate) struct Passe {
     /// O tecto do caminho de UM grupo — `None` = [`PECAS_PARA_UM_GRUPO`]; só a sonda o muda (as
     /// duas variantes no MESMO processo, `MEDIR_VELOCIDADE.md`).
     pub(crate) um_grupo_ate: Option<u32>,
+    /// A forma do `corrige` ([`Corrige`]) — só a sonda e o gate a mudam.
+    pub(crate) corrige: Corrige,
     /// Quanto o processador levou a ENCOMENDAR o último passe (a sonda lê).
     pub(crate) encode: std::time::Duration,
     /// O `ctrl` do último passe (`[alcance_max, andou, parado, varreduras, candidatos]`).
@@ -97,9 +103,10 @@ struct Pipes {
     gira: wgpu::ComputePipeline,
     espalha: wgpu::ComputePipeline,
     ordena: wgpu::ComputePipeline,
-    corrige: wgpu::ComputePipeline,
+    /// Por [`Corrige::indice`]: o passo do caminho de despachos e o caminho de um grupo.
+    corrige: Vec<wgpu::ComputePipeline>,
     decide: wgpu::ComputePipeline,
-    uno: wgpu::ComputePipeline,
+    uno: Vec<wgpu::ComputePipeline>,
     escreve: wgpu::ComputePipeline,
     scan: crate::scan::Scan,
 }
@@ -141,6 +148,34 @@ const VARREDURA: [(&str, &str); 7] = [
     ("ctrl: array<atomic<u32>>", RW),
 ];
 const FNS: &str = include_str!("passe_na_placa_varredura.wgsl");
+
+/// As funções da varredura com o `corrige` na forma `c`.
+fn fns(c: Corrige) -> String {
+    format!("{FNS}\n{}", c.fonte())
+}
+
+/// O passo `corrige` do caminho de despachos e o módulo de um grupo, com o `corrige` na forma `c`.
+fn fontes_do_corrige(c: Corrige) -> (String, String) {
+    let corrige = modulo(
+        &VARREDURA,
+        "    pnp_toca();\n    let alc_max = bitcast<f32>(atomicLoad(&ctrl[0]));\n\
+         \x20   if (i >= u.n) { return; }\n\
+         \x20   if (atomicLoad(&ctrl[2]) != 0u) {\n\
+         \x20       est[u.bo + i] = est[u.bi + i];\n\
+         \x20       return;\n\
+         \x20   }\n\
+         \x20   let a = pnp_corrige(i, u.bi, u.bo, alc_max);\n\
+         \x20   if (a >= 0.0) { atomicMax(&ctrl[1], pnp_bits(a)); }",
+        &fns(c),
+    );
+    let uno = format!(
+        "{}{}\n{}",
+        cabeca(&VARREDURA),
+        fns(c),
+        include_str!("passe_na_placa_uno.wgsl")
+    );
+    (corrige, uno)
+}
 
 fn fontes() -> [(&'static str, String); 10] {
     let forma = modulo(
@@ -200,15 +235,7 @@ fn fontes() -> [(&'static str, String); 10] {
     let ordena = passo(
         "    if (i >= u.num_buckets || atomicLoad(&ctrl[2]) != 0u) { return; }\n    pnp_ordena(i);",
     );
-    let corrige = passo(
-        "    if (i >= u.n) { return; }\n\
-         \x20   if (atomicLoad(&ctrl[2]) != 0u) {\n\
-         \x20       est[u.bo + i] = est[u.bi + i];\n\
-         \x20       return;\n\
-         \x20   }\n\
-         \x20   let a = pnp_corrige(i, u.bi, u.bo, alc_max);\n\
-         \x20   if (a >= 0.0) { atomicMax(&ctrl[1], pnp_bits(a)); }",
-    );
+    let (corrige, uno) = fontes_do_corrige(Corrige::default());
     let decide = modulo(
         &[("ctrl: array<atomic<u32>>", RW)],
         "    if (i != 0u || atomicLoad(&ctrl[2]) != 0u) { return; }\n\
@@ -218,11 +245,6 @@ fn fontes() -> [(&'static str, String); 10] {
          \x20   atomicStore(&ctrl[1], 0u);\n\
          \x20   if (m == 0.0 || m < u.repouso * alc) { atomicStore(&ctrl[2], 1u); }",
         "",
-    );
-    let uno = format!(
-        "{}{FNS}\n{}",
-        cabeca(&VARREDURA),
-        include_str!("passe_na_placa_uno.wgsl")
     );
     let escreve = modulo(
         &[
@@ -267,13 +289,30 @@ fn fontes() -> [(&'static str, String); 10] {
 #[doc(hidden)]
 #[must_use]
 pub fn fontes_wgsl() -> Vec<(&'static str, String)> {
-    fontes().into()
+    let mut v: Vec<_> = fontes().into();
+    for c in Corrige::TODAS {
+        let (corrige, uno) = fontes_do_corrige(c);
+        let nome = match c {
+            Corrige::Matriz => continue,
+            Corrige::Ramos => ["corrige · ramos", "uno · ramos"],
+            Corrige::Escolha => ["corrige · escolha", "uno · escolha"],
+        };
+        v.extend([(nome[0], corrige), (nome[1], uno)]);
+    }
+    v
 }
 
 impl Pipes {
     fn new(gpu: &GpuContext) -> Self {
-        let [f, m, i, g, e, o, c, d, un, w] = fontes();
+        let [f, m, i, g, e, o, _, d, _, w] = fontes();
         let p = |(nome, src): (&str, String)| create_pipeline(gpu, &src, nome);
+        let (corrige, uno): (Vec<_>, Vec<_>) = Corrige::TODAS
+            .iter()
+            .map(|&c| {
+                let (corrige, uno) = fontes_do_corrige(c);
+                (p(("corrige", corrige)), p(("uno", uno)))
+            })
+            .unzip();
         Self {
             forma: p(f),
             massa: p(m),
@@ -281,9 +320,9 @@ impl Pipes {
             gira: p(g),
             espalha: p(e),
             ordena: p(o),
-            corrige: p(c),
+            corrige,
             decide: p(d),
-            uno: p(un),
+            uno,
             escreve: p(w),
             scan: crate::scan::Scan::new(gpu),
         }
@@ -336,6 +375,12 @@ impl GpuCook {
     #[doc(hidden)]
     pub fn passe_um_grupo_ate(&mut self, n: Option<u32>) {
         self.passe.um_grupo_ate = n;
+    }
+
+    /// A forma do `corrige` das próximas corridas ([`Corrige`]) — só a sonda e o gate.
+    #[doc(hidden)]
+    pub fn passe_corrige(&mut self, c: Corrige) {
+        self.passe.corrige = c;
     }
 
     /// ⭐ **O `Relatorio` do passe na placa** (doc 130 §5) — o que o perfilador do quadro mostra
@@ -501,7 +546,8 @@ impl GpuCook {
             )
         };
         if um_grupo {
-            despacha(enc, &pipes.uno, &varre(&pipes.uno, &u0), 1);
+            let uno = &pipes.uno[self.passe.corrige.indice()];
+            despacha(enc, uno, &varre(uno, &u0), 1);
         } else {
             // As duas fases do ping-pong, ligadas UMA vez por passe.
             let fases = [&u0, &u1].map(|u| {
@@ -509,7 +555,7 @@ impl GpuCook {
                     varre(&pipes.gira, u),
                     varre(&pipes.espalha, u),
                     varre(&pipes.ordena, u),
-                    varre(&pipes.corrige, u),
+                    varre(&pipes.corrige[self.passe.corrige.indice()], u),
                 )
             });
             let gd = g(&pipes.decide, &[&u0, &ctrl]);
@@ -523,7 +569,7 @@ impl GpuCook {
                     .exclusive(gpu, enc, &starts, nb + 1, &mut scratch);
                 despacha(enc, &pipes.espalha, ge, n);
                 despacha(enc, &pipes.ordena, go, nb);
-                despacha(enc, &pipes.corrige, gc, n);
+                despacha(enc, &pipes.corrige[self.passe.corrige.indice()], gc, n);
                 despacha(enc, &pipes.decide, &gd, 1);
             }
         }

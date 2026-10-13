@@ -6,6 +6,7 @@
 
 use ph2d_contact::passe::separa_com_relatorio;
 use ph2d_gpu_cook::GpuCook;
+use ph2d_gpu_cook::passe_na_placa::Corrige;
 use ph2d_nodegraph::attr::{
     COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
     Stream,
@@ -206,10 +207,67 @@ fn o_passe_na_placa_segue_a_cpu_por_passo() {
         return;
     };
     let mut cook = GpuCook::default();
-    // Os DOIS caminhos (doc 130 §3.1): vários despachos e um só grupo.
+    // Os DOIS caminhos (doc 130 §3.1): vários despachos e um só grupo; e cada forma do `corrige`
+    // (doc 132 §3).
+    for c in Corrige::TODAS {
+        cook.passe_corrige(c);
+        for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
+            cook.passe_um_grupo_ate(Some(tecto));
+            eprintln!("— {c:?}");
+            compara_por_passo(&gpu, &mut cook, caminho);
+        }
+    }
+}
+
+/// Sonda (não afirma nada): as formas do `corrige` contra a `Matriz`, AO BIT — `P`, `rot` e as
+/// varreduras, por fixtura, passo e caminho (doc 132 §3: o compilador contrai igual?).
+#[test]
+#[ignore = "sonda: mede, não julga"]
+fn measure_o_corrige_ao_bit() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut cook = GpuCook::default();
+    let mut lista = fixturas();
+    lista.extend([("nuvem 1024", nuvem(1024)), ("nuvem 2048", nuvem(2048))]);
     for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
         cook.passe_um_grupo_ate(Some(tecto));
-        compara_por_passo(&gpu, &mut cook, caminho);
+        for (nome, s) in &lista {
+            for v in [1u32, 8, 64] {
+                let mut lido = Vec::new();
+                for c in Corrige::TODAS {
+                    cook.passe_corrige(c);
+                    lido.push(
+                        cook.separa_e_le(&gpu, s, v, ph2d_contact::REPOUSO_VISIVEL)
+                            .expect("corre"),
+                    );
+                }
+                let (p0, r0, v0) = &lido[0];
+                let alc = alcance_max(s);
+                let mut linha = format!("{caminho:<9} {nome:<28} v={v:<2}");
+                for (c, (p, r, vv)) in Corrige::TODAS.iter().zip(&lido).skip(1) {
+                    let bits = |a: f32, b: f32| a.to_bits() != b.to_bits();
+                    let dif_p = p0
+                        .iter()
+                        .zip(p)
+                        .filter(|(a, b)| bits(a[0], b[0]) || bits(a[1], b[1]))
+                        .count();
+                    let dif_r = r0.iter().zip(r).filter(|(a, b)| bits(**a, **b)).count();
+                    let pior = p0
+                        .iter()
+                        .zip(p)
+                        .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+                        .filter(|d| d.is_finite())
+                        .fold(0.0f32, f32::max);
+                    linha += &format!(
+                        " · {c:?}: P {dif_p}/{} rot {dif_r} (|ΔP|/alc {:.1e}) varr {v0}→{vv}",
+                        p0.len(),
+                        pior / alc
+                    );
+                }
+                eprintln!("{linha}");
+            }
+        }
     }
 }
 
@@ -404,8 +462,14 @@ fn measure_a_cadeia_cpu_contra_placa() {
         par(&mut s, COLLIDER_BOX_COLUMN, vec![[0.5, 0.5]; n]);
         s
     };
-    // (nome, tecto do caminho de um grupo)
-    let variantes = [("despachos", 0), ("um grupo", u32::MAX)];
+    // (nome, tecto do caminho de um grupo, forma do `corrige`) — doc 132 §3.
+    let variantes: Vec<(String, u32, Corrige)> = Corrige::TODAS
+        .iter()
+        .flat_map(|&c| {
+            [("despachos", 0), ("um grupo", u32::MAX)]
+                .map(|(nome, tecto)| (format!("{nome}·{c:?}"), tecto, c))
+        })
+        .collect();
     let linhas = [
         ("cadeia", 16usize, 1024u32),
         ("cadeia", 16, 4096),
@@ -439,6 +503,7 @@ fn measure_a_cadeia_cpu_contra_placa() {
                     continue;
                 }
                 cook.passe_um_grupo_ate(Some(variantes[qual - 1].1));
+                cook.passe_corrige(variantes[qual - 1].2);
                 let t = std::time::Instant::now();
                 let g = cook
                     .separa_e_le(&gpu, &s, v, ph2d_contact::REPOUSO_VISIVEL)
@@ -452,7 +517,7 @@ fn measure_a_cadeia_cpu_contra_placa() {
             "{forma} {n:>4} · tecto {v:>4} ({vc} varr. CPU, {vg} placa): CPU {:.2}",
             total[0] * 1e3
         );
-        for (i, (nome, _)) in variantes.iter().enumerate() {
+        for (i, (nome, _, _)) in variantes.iter().enumerate() {
             linha += &format!(
                 " · {nome} {:.2} ({:.3})",
                 total[i + 1] * 1e3,

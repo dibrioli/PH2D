@@ -99,6 +99,10 @@ pub(crate) fn paint(
     if clock.loop_band {
         paint_loop_band(ctx, theme, region, &time_to_x, snap);
     }
+    // The recorded-history band (Blender's cache bar) is in TIMELINE seconds, like the markers.
+    if clock.markers {
+        crate::history_band::paint(ctx, theme, region, RULER_H, &time_to_x);
+    }
 
     // Minor + major ticks (+ labels on majors).
     paint_ticks(

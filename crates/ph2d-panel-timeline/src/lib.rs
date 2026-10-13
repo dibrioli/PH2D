@@ -51,6 +51,8 @@ mod geom;
 mod graph;
 mod graph_paint;
 pub mod hier;
+mod history_band;
+pub use history_band::{recorded_history, set_recorded_history};
 pub mod ids;
 mod interact;
 mod key_drag;

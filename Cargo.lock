@@ -8005,6 +8005,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-label-census",
  "ph2d-pigment",
+ "ph2d-wet-paint",
  "rayon",
 ]
 

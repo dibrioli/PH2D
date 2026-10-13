@@ -29,3 +29,22 @@ Recorte 1000×640 da janela a zoom 100 % (`SAVE` não existe por WebSocket), est
 | `charcoal.png` | PENCIL | Charcoal/Charcoal | 40 | 100 | — | 7 | Default/EX00 White Simple | `dda2aebbdeccf670` |
 | `oilpastel2.png` | PASTEL | Pastel Oil/Oil Pastel 2 | 40 | 100 | — | 7 | Default/EX00 White Simple | `c7708d9d52c5d92f` |
 | `markerbullet.png` | MARKER | Marker/Bullet | 40 | 100 | — | 7 | Default/EX00 White Simple | `132547dd52971561` |
+
+## Pontas texturadas (sessão de 2026-10-13, plano 27 W0)
+
+Gerado por `ferramentas/ponta_textura_rebelle.sh` (+ `ponta_textura_rebelle.py`: eventos, montagem, cabeçalhos e a
+régua, que mede SÓ estas fixtures). Watercolor, azul-escuro (20, 30, 120), opacidade 70 em todos, traço recto de
+220 px a pressão 1. `ponta_textura_<preset>_<20|40>.png` = grelha 2×2 de células 320×100 (colunas: molhado ~2 s ·
+SIMULATION 400 + DRY; linhas: água 10 · 50). `ponta_textura_opacidade_*_40.png` = a tela inteira, opacidade
+100 · 85 · 70 · 55 · 40 de cima para baixo. Porque cada ponta é texturada: estatística da imagem `Shape_0` do
+preset, calculada em memória (nada extraído). Cabeçalhos completos em `cabecalhos.json`.
+
+| ficheiro | preset | ponta |
+|---|---|---|
+| `ponta_textura_round_{20,40}.png` | Watercolor/Round | controlo: disco liso |
+| `ponta_textura_fan_{20,40}.png` | Watercolor/Fan | leque de cerdas (miolo média 0,44, 50 % vazio) |
+| `ponta_textura_gouachedry_{20,40}.png` | Gouache/Gouache Dry | manchas de pincel seco (média 0,12, 74 % vazio) |
+| `ponta_textura_granulation_{20,40}.png` | Granulation/Granulation | grão (média 0,57, 28 % vazio); grão com brilho −0,65 |
+| `ponta_textura_flatdry_{20,40}.png` | Watercolor/Flat Dry | forma cheia + ruído de média 0,49 (o seco vem do papel, que não se desenha sob Wine) |
+| `ponta_textura_opacidade_granulation_40.png` | Granulation/Granulation | varredura da opacidade |
+| `ponta_textura_opacidade_gouachedry_fan_round_40.png` | Gouache Dry · Fan · Round | varredura da opacidade (colunas) |

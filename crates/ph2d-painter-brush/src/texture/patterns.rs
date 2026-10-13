@@ -85,6 +85,8 @@ pub(super) fn sample_kind_t(
         TextureKind::PaperCold => paper_tile::sample(0, u, v),
         TextureKind::PaperRough => paper_tile::sample(1, u, v),
         TextureKind::PaperHot => paper_tile::sample(2, u, v),
+        // No tone slots: the four sliders are the bristle knobs.
+        TextureKind::Bristles => return super::bristles::sample_unit(&params, u, v),
         TextureKind::Image => match image {
             Some(img) => sample_image(img, u, v),
             None => 1.0, // kind is Image but no pixels supplied → inert

@@ -52,6 +52,8 @@ rayon = "1"
 # tinta É uma transferência sRGB, e quem moveu o número reconfere a nota (§0.0). O que a razão
 # antiga protegia — *nada de UI, de editor-core, de contrato nem de GPU* — continua de pé.
 ph2d-pigment = { path = "../ph2d-pigment" }
+# O tapete de cerdas do Wet Paint (o tipo Bristles do Shape, plano 27 D1): um só gerador, o do motor.
+ph2d-wet-paint = { path = "../ph2d-wet-paint" }
 
 [dev-dependencies]
 # A régua lexical do HR-15, para o censo deste motor.

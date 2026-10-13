@@ -308,7 +308,8 @@ impl BrushSpec {
                 self.shape.mapping,
                 crate::texture::TextureMapping::ViewPlane
             ) && !self.shape.rake
-                && !self.shape.flow);
+                && !self.shape.flow
+                && !self.shape.kind.samples_in_pixels());
         // Film AA (BUGS #16) is measured in CANVAS texels, and the cached mask is radius-independent —
         // a baked AA rim would be wrong at every other radius, so an AA'd film routes per-pixel.
         shape_static

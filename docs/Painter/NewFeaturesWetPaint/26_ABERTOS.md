@@ -10,7 +10,7 @@
 
 | # | O quê | Fonte | Estado |
 |---|---|---|---|
-| A1 | **A seção Shape vira a CASA dos pincéis em todas as mídias** — os pincéis do Wet Paint (hoje dentro do motor, invisíveis) passam a aparecer e a configurar-se no Shape; as texturas deles no dropdown; os knobs de ponta saem do Tuning. Engloba o **Bug #47** (Shape Noise no Wet Paint quase não pinta). | ordem do dono 13/10 · [plano 27](27_plano_shape_casa_dos_pinceis.md) · [BUGS #47](../BUGS_painter.md) | plano |
+| A1 | **A seção Shape vira a CASA dos pincéis em todas as mídias** — os pincéis do Wet Paint (hoje dentro do motor, invisíveis) passam a aparecer e a configurar-se no Shape; as texturas deles no dropdown; os knobs de ponta saem do Tuning. Engloba o **Bug #47** (Shape Noise no Wet Paint quase não pinta). | ordem do dono 13/10 · [plano 27](27_plano_shape_casa_dos_pinceis.md) · [BUGS #47](../BUGS_painter.md) | **W0 medida + W1 feita (13/10)**: tabela, oráculo e decisões no [27 §6](27_plano_shape_casa_dos_pinceis.md); D6 = lei B. Próxima: W2 ([prompt 29](29_PROMPT_janela_shape_casa_W2.md)) |
 
 ## B — Por decidir (do DONO)
 

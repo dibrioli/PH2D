@@ -83,3 +83,83 @@ a física (água, pigmento, papel ficam no Tuning) — muda **quem é dono da po
 
 - **Bristles também no Digital/Impasto** — o plano diz SIM (o Shape define o pincel igual em toda mídia).
 - **Biblioteca de pontas em PNG** (D5) — depois desta onda.
+
+## §6 — W0 medido (13/10) e W1 feita
+
+Sondas: `crates/ph2d-tool-painter/src/tool/paint/wetpaint/sonda_shape_casa.rs` (`#[ignore]`, `--profile smoke`).
+Números crus: a saída das duas sondas está reproduzível pelo comando no topo do ficheiro.
+
+### 6.1 — A tabela do #47 inteira (produto real: tela branca 320×96, pincel de fábrica, traço de 220 px, `Σ(255 − min(rgb))`)
+
+| tipo | Wet ÷ None | Digital ÷ None | | tipo | Wet ÷ None | Digital ÷ None |
+|---|---:|---:|---|---|---:|---:|
+| **None** (cerdas de hoje) | 1 (252 240) | 1 (834 982) | | Crosshatch | 0,153 | 0,522 |
+| **Noise** | **0,004** | 0,448 | | Dots | 0,160 | 0,270 |
+| Checker | 0,403 | 0,847 | | Grid | 0,136 | 0,331 |
+| Voronoi | 0,048 | 0,756 | | Bricks | 0,701 | 0,936 |
+| Stripes | 0,415 | 0,728 | | Waves | 0,194 | 0,715 |
+| Clouds | 0,013 | 0,642 | | Chevron | 0,625 | 0,692 |
+| DistortedNoise | 0,050 | 0,668 | | Diamonds | 0,417 | 0,862 |
+| Magic | 0,234 | 0,810 | | Triangles | 0,509 | 0,759 |
+| Marble | 0,267 | 0,809 | | Hexagons | 0,523 | 0,937 |
+| Musgrave | 0,005 | 0,504 | | Scales | 0,615 | 0,942 |
+| Wood | 0,516 | 0,828 | | Weave | 0,452 | 0,937 |
+| Stucci | 0,002 | 0,150 | | PaperCold/Rough/Hot | 0,216 / 0,226 / 0,223 | 0,80 |
+| Gradient | 0,228 | 0,836 | | **Bristles** (W1) | 0,144 | 0,461 |
+| Grain | 0,183 | 0,790 | | | | |
+
+⇒ o #47 é uma FAMÍLIA: todo tipo de média baixa e contínua (Noise, Clouds, Musgrave, Stucci, Voronoi,
+DistortedNoise) some no Wet Paint (≤ 5 %); no Digital nenhum passa de ~6× abaixo do redondo.
+
+### 6.2 — As leis candidatas (D6), no pigmento que POUSA (sem a água)
+
+`stamp = env · sv · texv · I`, `g = (1 − dente)·gate + dry_gate·ext·0,6`. **Hoje:** `stamp − g`. **A:** `stamp − g·env`.
+**B:** `(env·texv·I − g) · sv` — o padrão do Shape DEPOIS do portão. Dab real do motor (gancho `on_dab`), portão,
+papel e cerdas de cada preset de fábrica. A coluna «hoje» reproduz o produto (Wet Round Noise: 0,004 nos dois).
+
+| preset | Noise ÷ None hoje · A · B | Clouds hoje · A · B | redondo: A ÷ hoje (Σ · píxeis) |
+|---|---|---|---|
+| Wet Round | 0,004 · 0,011 · **0,093** | 0,029 · 0,060 · 0,228 | **1,358 · 1,748** |
+| Wet Wash | 0,006 · 0,032 · 0,110 | 0,051 · 0,119 · 0,240 | (≈ Wet Round) |
+| Wet Dry Brush | 0,004 · 0,014 · 0,093 | 0,022 · 0,052 · 0,242 | 1,447 · 2,081 |
+| Wet Drip | 0,009 · 0,031 · 0,101 | 0,083 · 0,131 · 0,236 | 1,251 · 1,791 |
+| Wet Liner | 0,219 · 0,221 · 0,265 | 0,305 · 0,307 · 0,352 | 1,006 · 1,003 |
+| Soft/Oil Pastel, Charcoal, Graphite (Grain) | ≈ 0,008 · 0,018 · 0,086 | ≈ 0,021 · 0,028 · 0,211 | **2,7–2,9 · 2,4–2,6** |
+| Express Oil, Oil Bristle, Acrylic (gate 0) | 0,25–0,36 · igual · 0,23–0,28 | 0,37–0,50 · igual · 0,33–0,38 | 1 · 1 |
+
+- **B** não muda NENHUM preset redondo (`× 1` exacto — por construção) e multiplica o Noise por ~23 no Wet Round.
+  O resto (0,093 e não ~0,4) é a CORRELAÇÃO: as cerdas e o padrão View estão os dois presos ao centro do dab, e as
+  poucas pontas que passam o portão leem sempre o mesmo valor do padrão.
+- **A** muda todo traço redondo dos meios com portão (Wet Round +36 % de pigmento e +75 % de píxeis; pastéis ×2,7).
+
+### 6.3 — O oráculo (Rebelle 8.3.4, WebSocket sob Wine, os NOSSOS gestos; fixtures `fixtures/rebelle/ponta_textura_*`)
+
+Ponta texturada comum ⇒ **multiplica e ACUMULA, sem corte**: Fan 0,72–1,05× do redondo, Gouache Dry (74 % de
+buracos na ponta) 0,77–1,91× com 2 % de miolo vazio; a tinta cai em linha recta com a Opacity e nunca zera. O
+limiar duro só aparece no Granulation, cujo grão o AUTOR do preset escureceu (brilho −0,65): zero a ≤ 55 %.
+Script `ferramentas/ponta_textura_rebelle.{sh,py}`. ⛔ O papel não se desenha sob Wine ⇒ D6 (ponta × dente) e D7
+(Shape × Grain) não se medem no oráculo; o 1.º traço depois de trocar de preset às vezes sai com o anterior
+(aquecimento + 2,5 s).
+
+### 6.4 — Censo (D5/W5)
+
+`BrushShape::{Flat, Fan}` do motor: MORTOS no produto — só `Round` é construído (`painter.rs:173`); o elipse
+(`brush.rs:283-348`) só corre no ramo sem silhueta, e o hospedeiro passa sempre `Some(&sil)` (`dab_route.rs:419,433`).
+Os 4 knobs das cerdas: lidos só por `painter.rs:207` → `build_bristle_texture`; escritos pelo mapa `engine` dos 12
+presets (valores em `receitas_de_fabrica.rs`); esconder = `KnobGroup::Hidden` em `tuning/defs.rs` (os dois filtros
+`ph2d-panel-wet-tuning/src/rows.rs:73` e `wetpaint_settings.rs:530` seguem). A cerda entra no produto num só sítio:
+o `None` de `brush.rs:236` (`stamp_row_shaped`).
+
+### 6.5 — As decisões
+
+| D | decisão (pela medida) |
+|---|---|
+| D1 | ✅ **feita (W1)**: `TextureKind::Bristles` (29, o 30.º do dropdown), sliders Count · Strength · Size · Felt; UM gerador (`ph2d_wet_paint::brush::build_bristle_texture`, o `ph2d-painter-brush` depende do motor); amostrado em píxeis (`texture::sample` → `sample_bristle`); nunca no carimbo cacheado. Padrão = o tapete do Wet Round com a **Strength 2**: a 1 os picos (0,16–0,32) ficam sob o `W_TAIL` 0,35 do filme do Impasto e o traço do Impasto sai VAZIO (Strength 1 → 0 · 1,5 → 43 688 · 2 → 192 835). |
+| D2/D4 | sem mudança — W2. A lei unidade↔knob (`brush/unidade.rs`) encaixa no passo do Tuning e faz a ida-e-volta AO BIT em todo passo e nos 12 presets: a migração pode gravar só no Shape. |
+| D6 | **Lei B** (o padrão procedural do Shape multiplica DEPOIS do portão; a envolvente e a imagem ficam antes). Único candidato que deixa todo redondo ao bit; é a forma do oráculo (multiplica, sem limiar). A W3 implementa-a pela porta `stamp_row_shaped` (um terceiro canal `sv`). A lei A está **recusada** (muda os redondos 25–190 %). |
+| D7 | não mensurável no oráculo (o papel não desenha sob Wine). A W2 decide medindo o «escurece em dobro» com a lei B; a referência escrita continua a do doc 02 (o Rebelle multiplica Shape × Grain). |
+| C2 | sem pedido novo da W0. |
+| Flat/Fan | mortos — saem na W5. |
+
+**Estado da W1 no Wet Paint:** o Shape Bristles já aparece e pinta (0,144 do redondo), mas como SILHUETA
+(falloff × cerdas) sobre as cerdas do motor — a W2 passa-o para o papel de textura (`texv`).

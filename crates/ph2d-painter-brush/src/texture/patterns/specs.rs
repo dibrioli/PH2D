@@ -200,5 +200,15 @@ pub fn param_specs(kind: TextureKind) -> &'static [ParamSpec] {
         // Watercolor papers: the preset (cold / rough / hot) IS the character; Contrast tunes the tooth
         // depth, Size x/y the scale + anisotropy, Angle the fibre orientation — so no redundant knobs.
         PaperCold | PaperRough | PaperHot => &[CONTRAST, BRIGHTNESS],
+        // The engine's bristle knobs, no tone slots (Strength is the level): the slider order is
+        // `ph2d_wet_paint::brush::BRISTLE_UNIT_KNOBS`; defaults = the Wet Round tile at the oil presets'
+        // Strength 2 — at 1 its peaks (0,16–0,32) sit under the Impasto film tail (`height_film::W_TAIL`
+        // 0,35) and the Impasto stroke is EMPTY (measured: 0 · Strength 1,5 → 43 688 · 2 → 192 835).
+        Bristles => &[
+            p!("paint_brush.pattern_param.bristle_count", 0.5),
+            p!("paint_brush.pattern_param.bristle_strength", 0.5),
+            p!("paint_brush.pattern_param.bristle_size", 36.0 / 76.0),
+            p!("paint_brush.pattern_param.felt", 0.15),
+        ],
     }
 }

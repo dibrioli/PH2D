@@ -219,6 +219,7 @@ mod ponta_cortada; // a ponta da Shape cortada sob Jitter Rotate (smoke 12/10)
 mod protection_and_layer_mask;
 mod reset_de_fabrica; // o Reset de uma secção devolve o pincel com que ESTE modo nasce (doc 45)
 mod selection_editing;
+mod shape_bristles; // o tapete de cerdas do Wet Paint como tipo do Shape (plano 27 W1)
 mod shape_per_layer_color;
 mod shape_silhouette;
 mod solid_carimbos; // o Solid com imagem no Shape enche-se de carimbos (smoke 12/10)

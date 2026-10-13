@@ -68,6 +68,10 @@ pub enum TextureKind {
     PaperRough,
     /// **Hot-press** watercolor paper — a fine, smooth grain with a soft felt mottle (minimal tooth).
     PaperHot,
+    /// **Bristles** — the Wet Paint engine's bristle tile (`ph2d_wet_paint::brush::build_bristle_texture`,
+    /// one generator), shaped by Count · Strength · Size · Felt. A PIXEL law: 1 texel = 1 canvas px from
+    /// the dab centre at every brush size ([`Self::samples_in_pixels`]).
+    Bristles,
 }
 
 impl TextureKind {
@@ -104,6 +108,7 @@ impl TextureKind {
             Self::PaperCold => 26,
             Self::PaperRough => 27,
             Self::PaperHot => 28,
+            Self::Bristles => 29,
         }
     }
 
@@ -139,12 +144,13 @@ impl TextureKind {
             26 => Self::PaperCold,
             27 => Self::PaperRough,
             28 => Self::PaperHot,
+            29 => Self::Bristles,
             _ => Self::None,
         }
     }
 
     /// Number of selectable kinds (drives the dropdown decode range; includes `None`).
-    pub const COUNT: u8 = 29;
+    pub const COUNT: u8 = 30;
 
     /// English label for the picker (HR-15 / app-UI-english-only).
     #[must_use]
@@ -179,6 +185,14 @@ impl TextureKind {
             Self::PaperCold => "paint_brush.texture_kind.paper_cold",
             Self::PaperRough => "paint_brush.texture_kind.paper_rough",
             Self::PaperHot => "paint_brush.texture_kind.paper_hot",
+            Self::Bristles => "paint_brush.texture_kind.bristles",
         }
+    }
+
+    /// Sampled in canvas PIXELS from the dab centre, not in footprint units — the size never scales it,
+    /// so no radius-independent cached stamp can hold it ([`crate::TextureSettings::is_cacheable`]).
+    #[must_use]
+    pub fn samples_in_pixels(self) -> bool {
+        self == Self::Bristles
     }
 }

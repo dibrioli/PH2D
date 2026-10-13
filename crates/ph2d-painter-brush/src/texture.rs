@@ -16,11 +16,13 @@
 //! angle (as in `stroke/ellipse.rs` / `stroke/polygon.rs`). **Angle** rotates `(1,0)` by repeated
 //! application of the baked 1° step [`DEG_STEP`]. The sampler uses only `floor`/`*`/`+`/`sqrt`.
 
+mod bristles;
 mod kind;
 pub(crate) mod patterns;
 mod shape;
 mod stencil;
 mod tiled;
+pub use bristles::{bristle_knobs, bristle_tile};
 pub use kind::TextureKind;
 pub use shape::{
     ImageRgb, compose_shape_silhouette_kind, image_tip_extent, image_tip_radius, remap_shape_value,
@@ -210,7 +212,10 @@ impl TextureSettings {
     #[must_use]
     pub fn is_cacheable(&self) -> bool {
         !self.is_active()
-            || (matches!(self.mapping, TextureMapping::ViewPlane) && !self.rake && !self.flow)
+            || (matches!(self.mapping, TextureMapping::ViewPlane)
+                && !self.rake
+                && !self.flow
+                && !self.kind.samples_in_pixels())
     }
 
     /// Texture is canvas-fixed + dab-independent → cache each canvas pixel once per stroke
@@ -224,6 +229,7 @@ impl TextureSettings {
             )
             && !self.rake
             && !self.flow
+            && !self.kind.samples_in_pixels()
     }
 }
 
@@ -425,6 +431,14 @@ pub fn sample(
 ) -> f32 {
     if !s.is_active() {
         return 1.0;
+    }
+    if s.kind.samples_in_pixels() {
+        // The engine's pixel law: no mapping, Size, Angle or Offset — the tile rides the dab centre.
+        return bristles::sample_px(
+            &s.params,
+            px as f64 + 0.5 - f64::from(center[0]),
+            py as f64 + 0.5 - f64::from(center[1]),
+        );
     }
     // Pixel centre, in canvas pixels.
     let p = [px as f32 + 0.5, py as f32 + 0.5];

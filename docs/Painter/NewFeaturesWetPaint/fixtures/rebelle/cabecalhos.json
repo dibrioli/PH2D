@@ -714,5 +714,565 @@
    "SIMULATION": 1
   },
   "sha256": "132547dd5297156102409f6553db4913b6d8d8a9aec03bee8150753f989b3e85"
+ },
+ "ponta_textura_round_20": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Watercolor/Round",
+  "size_px": 20.0,
+  "size_slider": 16.4,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "controlo: Shape_0 = disco liso (miolo 1,00, dp 0,00)",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "de87d600a531511985d0a135bdd137632333b5e2433208910a292add05b3d268"
+ },
+ "ponta_textura_round_40": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Watercolor/Round",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "controlo: Shape_0 = disco liso (miolo 1,00, dp 0,00)",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "67f4a5f21f352c9e15c7ff5ee0d1169ecbfc72232a49623b87e9a68203b46db4"
+ },
+ "ponta_textura_fan_20": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Watercolor/Fan",
+  "size_px": 20.0,
+  "size_slider": 16.4,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "Shape_0 = leque de cerdas (miolo: média 0,44, 50 % vazio)",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "6f48527a4c5aeda199b96b64282a235f02d6a50da20fbde3852e91d3473637f6"
+ },
+ "ponta_textura_fan_40": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Watercolor/Fan",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "Shape_0 = leque de cerdas (miolo: média 0,44, 50 % vazio)",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "740bd44699ee8974a075ba310ad373c8d2938e20d8ea4cf812a93291166ca1b7"
+ },
+ "ponta_textura_gouachedry_20": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Gouache/Gouache Dry",
+  "size_px": 20.0,
+  "size_slider": 16.4,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "Shape_0 = manchas de pincel seco (miolo: média 0,12, 74 % vazio)",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "ebefd36052483df8dbce09aebeccbcd4f5f0c49a8c22cd17f201bee90bf68cf3"
+ },
+ "ponta_textura_gouachedry_40": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Gouache/Gouache Dry",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "Shape_0 = manchas de pincel seco (miolo: média 0,12, 74 % vazio)",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "c9232832c2ec8324ef52d240a1c655cdf39a3343785b3870d2805b58eaec43a8"
+ },
+ "ponta_textura_granulation_20": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Granulation/Granulation",
+  "size_px": 20.0,
+  "size_slider": 9.3,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "Shape_0 = grão/salpico (miolo: média 0,57, 28 % vazio)",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "f4cdd4e1475876d59fc10672d88910ca6a086d6a3013727639547b8641787cb8"
+ },
+ "ponta_textura_granulation_40": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Granulation/Granulation",
+  "size_px": 40.0,
+  "size_slider": 14.8,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "Shape_0 = grão/salpico (miolo: média 0,57, 28 % vazio)",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "2b45c5237b01a25b6104eaa34de6a54d774066b2c1b815180fa8037a43f5a73a"
+ },
+ "ponta_textura_flatdry_20": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Watercolor/Flat Dry",
+  "size_px": 20.0,
+  "size_slider": 16.4,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "Shape_0 cheio (miolo 0,91) + Texture_0 ruído de média 0,49 dentro",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "3e842a110bd565801cac544c3831151d269ad90a3c2303002941ae1cbb722a9c"
+ },
+ "ponta_textura_flatdry_40": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": "Watercolor/Flat Dry",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "extras": {
+   "opacity": 70.0,
+   "water": {
+    "baixa": 10.0,
+    "alta": 50.0
+   }
+  },
+  "ponta": "Shape_0 cheio (miolo 0,91) + Texture_0 ruído de média 0,49 dentro",
+  "gesto": "recto horizontal de 220 px (x 390→610, ponto a cada 3 px, pressão 1,0); SET_BRUSH completo antes de cada gesto, aquecimento de 2,5 s depois da troca de preset",
+  "layout": "grelha 2×2 de células 320×100 recortadas da tela a zoom 100 % (x 340–660, eixo ± 50): colunas a = molhado ~2 s depois do último Up | b = SIMULATION 400 + DRY; linhas água baixa (10) | alta (50); o traço fica em x 50–270, y 50 de cada célula",
+  "simulation": [
+   400
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 292,
+   "POINTER_PRESS": 4,
+   "POINTER_RELEASE": 4,
+   "SET_BRUSH": 5,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1,
+   "DRY": 1
+  },
+  "sha256": "397812731dec8396dd3e286943a2702b6d32c37c99439435458dd68627c332f1"
+ },
+ "ponta_textura_opacidade_granulation_40": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": [
+   "Granulation/Granulation"
+  ],
+  "size_px": 40.0,
+  "size_slider": [
+   14.8
+  ],
+  "extras": {
+   "water": 10.0,
+   "opacity": [
+    100.0,
+    85.0,
+    70.0,
+    55.0,
+    40.0
+   ]
+  },
+  "gesto": "recto horizontal de 220 px (74 pontos a 3 px), pressão 1,0, um por opacidade",
+  "layout": "a tela inteira 1000×640 a zoom 100 %, molhado (~2 s depois do último Up, sem simulação); linhas y [80, 200, 320, 440, 560] = opacidade [100.0, 85.0, 70.0, 55.0, 40.0]; colunas x0 [390] = ['granulation']",
+  "simulation": [],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 365,
+   "POINTER_PRESS": 5,
+   "POINTER_RELEASE": 5,
+   "SET_BRUSH": 6,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1
+  },
+  "sha256": "e09fd727eac6ab4aeb6bbaf06a192beba45b1107c9ad82abe998dbd7cee670d4"
+ },
+ "ponta_textura_opacidade_gouachedry_fan_round_40": {
+  "tool": "WATERCOLOR",
+  "pressure": 100,
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "cor": [
+   20,
+   30,
+   120
+  ],
+  "data": "2026-10-13",
+  "rebelle": "8.3.4 (teste, sob Wine 11, porta WebSocket)",
+  "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/ponta_textura_rebelle.sh",
+  "preset": [
+   "Gouache/Gouache Dry",
+   "Watercolor/Fan",
+   "Watercolor/Round"
+  ],
+  "size_px": 40.0,
+  "size_slider": [
+   26.1,
+   26.1,
+   26.1
+  ],
+  "extras": {
+   "water": 10.0,
+   "opacity": [
+    100.0,
+    85.0,
+    70.0,
+    55.0,
+    40.0
+   ]
+  },
+  "gesto": "recto horizontal de 220 px (74 pontos a 3 px), pressão 1,0, um por opacidade",
+  "layout": "a tela inteira 1000×640 a zoom 100 %, molhado (~2 s depois do último Up, sem simulação); linhas y [80, 200, 320, 440, 560] = opacidade [100.0, 85.0, 70.0, 55.0, 40.0]; colunas x0 [60, 390, 720] = ['gouachedry', 'fan', 'round']",
+  "simulation": [],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 1095,
+   "POINTER_PRESS": 15,
+   "POINTER_RELEASE": 15,
+   "SET_BRUSH": 18,
+   "SET_CANVAS_TILT": 1,
+   "SET_RANDOM_SEED": 1
+  },
+  "sha256": "ea5af02ba283651a8c8af7f49eb6de82559b19e2c079834aa25f37f50e2f0df2"
  }
 }

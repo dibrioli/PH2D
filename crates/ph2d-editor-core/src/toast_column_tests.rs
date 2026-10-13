@@ -85,6 +85,16 @@ fn um_balao_longo_nao_tapa_o_seguinte_nem_a_barra_de_baixo() {
 fn a_frase_quebra_a_largura_da_porta_sem_segundo_desconto() {
     let mut ts = TextSystem::without_system_fonts();
     let porta = text_budget_px();
+    // A porta é o que sobra do CARTÃO pintado depois do recuo, do ícone, da folga e do recuo da
+    // direita — medida no cartão, não na própria porta (senão um desconto escondido nela mover-se-ia
+    // com o gate).
+    let cartao = crate::progress::column_row(Rect::new(0.0, 0.0, 1280.0, 800.0), 0);
+    let xl = ph2d_tokens::Spacing::Xl.px();
+    let sobra = cartao.w - xl - TOAST_ICON_PX - ph2d_tokens::icon_label_gap_px() - xl;
+    assert!(
+        (porta - sobra).abs() < 0.01,
+        "a porta ({porta:.1}) não é o que o cartão deixa ao texto ({sobra:.1})"
+    );
     let com_desconto = crate::paint::label_budget(porta);
     let f = crate::toast_reading::font_px();
     let mut frase = String::from("Saved");

@@ -58,6 +58,22 @@ Mecanismo, medidas e gates: [`10_video_do_youtube.md` §W21.4](../10_video_do_yo
 
 Testes e mutação: [§W21.4](../10_video_do_youtube.md) (model 124 · render 54 · edit 218 · video 16/16 real · app-board 74 · hero 445).
 
+## 1c. «Instale um navegador» — commit `197671fb8d` (pedido do dono, 13/10)
+
+O dono pediu «uma mensagem no quadro sugerindo a instalação de um navegador compatível» e escolheu (pergunta com três
+desenhos) **«frase fixa sob o vídeo»**. Antes só havia o aviso passageiro `board.video.no_browser` DEPOIS de clicar.
+Agora `Videos::no_browser` (`ph2d-board-render`, campo pub novo, `Default` = false) é posto pelo app
+(`ph2d-app-board::video::browser`: procura o navegador quando há vídeos à vista, e de novo a cada `BROWSER_RECHECK` = 5 s
+enquanto não houver; o `NoBrowser` do tocador também o liga), e `board_video_bar::paint_install` pinta por baixo de
+cada vídeo à vista (por cima se em baixo não couber; nunca à frente; `install_rect`) um ⓘ e
+`board.video.install` («To play videos inside the board, install Chrome, Edge, Brave or Chromium»), a caixa pela lei
+do rótulo (`rect_for_label(prefix_width)` — a 1.ª versão cortava em «Chro…» na foto). Gate:
+`without_a_browser_each_video_says_to_install_one_below_it` (nenhuma frase com navegador; uma por vídeo sem ele, fora
+da caixa, por baixo, INTEIRA); mutação (desligar a guarda) sangra. Foto: `ferramentas/soltar_wayland/quadro21_sem_navegador_depois.png`
+(`PH2D_BROWSER=/nenhum` simula a falta: o `find` lê-o primeiro e um caminho que não existe dá «nenhum»). Pela cadência
+do dono (13/10), só os testes do item por nome (19 do vídeo, `ph2d-i18n`, censos de chaves/glifos, `ph2d-app-board` 74,
+clippy `-p ph2d-editor-core`); a suíte inteira não se re-correu (3 commits desde a última).
+
 ## 2. Foundational / partilhado tocado (W21; os da W20 estão no handoff dela)
 
 | onde | o quê | merge |
@@ -197,7 +213,9 @@ com a caneta, um clique rápido no vídeo deixa um ponto/traço em vez de tocar.
 nessa fase não faz nada (o vídeo toca sozinho); (b) uma nota, forma ou traço desenhado sobre parte do vídeo fica
 ATRÁS dele e o vídeo continua a tocar; só outro vídeo por cima o pausa (aviso «Another video covers this one…»).
 Errado: o vídeo pausa por ter uma nota/traço por cima, ou fica parado depois de vários cliques.
+**«Instale um navegador»** (§1c): `PH2D_BROWSER=/nenhum PH2D_BOARD_SMOKE=21 ./target/smoke/ph2d-host-desktop` — por
+baixo do vídeo, a frase inteira com o ⓘ; errado: sem frase, frase cortada, ou frase por cima do vídeo.
 
 **Prova do binário** (depois de reclamar ~22 GB de `target/*/incremental`; a 2.ª compilação, a mesma linha de
 comando `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`): `Finished smoke profile
-[optimized] target(s) in 0.32s`, zero `Compiling`. O binário é o de `0cb5eede4f` (os commits seguintes são só docs).
+[optimized] target(s) in 0.42s`, zero `Compiling`. O binário é o de `197671fb8d` (os commits seguintes são só docs).

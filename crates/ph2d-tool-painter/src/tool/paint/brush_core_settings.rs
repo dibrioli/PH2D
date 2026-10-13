@@ -264,6 +264,11 @@ impl PainterTool {
         self.paint.brush.space_attenuation = !self.paint.brush.space_attenuation;
     }
 
+    /// Toggle **Continuous Spacing** (the Shape Bristles drag along each dab's step).
+    pub fn toggle_brush_continuous_spacing(&mut self) {
+        self.paint.brush.continuous_spacing = !self.paint.brush.continuous_spacing;
+    }
+
     /// Toggle **Accumulate** (off caps a stroke at Strength; on lets overlapping dabs build up).
     pub fn toggle_brush_accumulate(&mut self) {
         self.paint.brush.accumulate = !self.paint.brush.accumulate;

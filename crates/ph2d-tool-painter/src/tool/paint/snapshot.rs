@@ -281,6 +281,7 @@ impl PainterTool {
             // Ellipse/Polygon converted via Edit) — gates the Save-As-Object button.
             has_drawn_curve: self.paint.curve.as_ref().is_some_and(|ed| ed.editing),
             space_attenuation: b.space_attenuation,
+            continuous_spacing: b.continuous_spacing,
             accumulate: b.accumulate,
             style_solid: b.style_solid,
             solid_owns_the_gesture: self.solid_owns_the_gesture(),

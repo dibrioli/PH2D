@@ -370,7 +370,8 @@ impl Stroke {
                 || self.spec.shape.rake
                 || self.spec.shape.flow
                 || self.spec.needs_heading
-                || self.spec.effective_impasto_push() > 0.0);
+                || self.spec.effective_impasto_push() > 0.0
+                || self.spec.drags_bristles());
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method == StrokeMethod::GridStamp {

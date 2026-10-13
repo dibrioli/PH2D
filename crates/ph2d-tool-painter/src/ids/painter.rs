@@ -197,6 +197,10 @@ pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");
 
 /// "Adjust Strength for Spacing" toggle (Blender `BRUSH_SPACE_ATTEN`). `Click` → `set_brush_space_attenuation`.
 pub const PAINTER_BRUSH_SPACE_ATTEN: NodeId = hash_node_id("painter_brush.space_atten");
+/// **Continuous Spacing** toggle (the Shape Bristles drag along each dab's step). `Click` →
+/// `toggle_brush_continuous_spacing`.
+pub const PAINTER_BRUSH_CONTINUOUS_SPACING: NodeId =
+    hash_node_id("painter_brush.continuous_spacing");
 
 /// "Accumulate" toggle (Blender `BRUSH_ACCUMULATE`): off caps a stroke at Strength. `Click` → toggle.
 pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumulate");

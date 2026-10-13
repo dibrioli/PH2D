@@ -393,6 +393,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || ph2d_tool_painter::ids::PAINTER_BRUSH_TILING.contains(&id)
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_REPEAT_IMAGE
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_CONTINUOUS_SPACING
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE
                 || id == ph2d_tool_painter::ids::PAINTER_LINE_SOLID
                 || id == ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY

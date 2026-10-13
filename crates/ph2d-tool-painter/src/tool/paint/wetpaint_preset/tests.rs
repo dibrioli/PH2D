@@ -204,6 +204,7 @@ fn pincel_mexido() -> BrushSpec {
         accumulate: !d.accumulate,
         airbrush_rate_s: 0.05,
         space_attenuation: !d.space_attenuation,
+        continuous_spacing: !d.continuous_spacing,
     }
 }
 

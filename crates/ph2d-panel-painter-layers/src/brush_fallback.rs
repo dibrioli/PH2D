@@ -164,6 +164,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     can_simplify: false,      // no curve editor in the fallback snapshot
     has_drawn_curve: false,   // no drawn curve in the fallback snapshot
     space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24; mirrors BrushSpec::default)
+    continuous_spacing: false,
     accumulate: false,
     style_solid: false,
     solid_owns_the_gesture: false,

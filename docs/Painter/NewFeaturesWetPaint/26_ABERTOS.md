@@ -11,7 +11,7 @@
 | # | O quê | Fonte | Estado |
 |---|---|---|---|
 | A1 | **A seção Shape vira a CASA dos pincéis em todas as mídias** — os pincéis do Wet Paint (hoje dentro do motor, invisíveis) passam a aparecer e a configurar-se no Shape; as texturas deles no dropdown; os knobs de ponta saem do Tuning. Engloba o **Bug #47** (Shape Noise no Wet Paint quase não pinta). | ordem do dono 13/10 · [plano 27](27_plano_shape_casa_dos_pinceis.md) · [BUGS #47](../BUGS_painter.md) | **W0, W1 e W2 feitas (13/10)**: o Wet Paint lê as cerdas do Shape, presets migrados ao byte, a família do #47 pinta — [27 §6](27_plano_shape_casa_dos_pinceis.md). Próxima: W3 a lei B para o Shape sobre o Grain + W4 o painel por mídia ([prompt 30](30_PROMPT_janela_shape_casa_W3_W4.md)) |
-| A2 | ~~**O Spacing pontilha no Digital e não no Wet Paint**~~ — **feito (prompt 32, 13/10):** as cerdas do Digital/Impasto ARRASTAM pelo passo do dab (a média do tapete ao longo do passo, `Dab::step` → `ShapeFrame::Stroke`); CV ao longo a Spacing 0,1 / 0,25 / 0,5: 0,206 → **0,014** · 0,513 → **0,052** · 0,763 → **0,102**; a tinta é a de hoje (± 1 %); o Wet Paint ao byte. Dab-cápsula da redonda: **não entra** (medido). Restos: B5, C10, C11. | relato do dono 13/10 · [31 §4](31_spacing_por_meio_o_pontilhado.md) | feito |
+| A2 | ~~**O Spacing pontilha no Digital e não no Wet Paint**~~ — **feito (prompt 32, 13/10):** as cerdas do Digital/Impasto ARRASTAM pelo passo do dab (a média do tapete ao longo do passo, `Dab::step` → `ShapeFrame::Stroke`); CV ao longo a Spacing 0,1 / 0,25 / 0,5: 0,206 → **0,014** · 0,513 → **0,052** · 0,763 → **0,102**; a tinta é a de hoje (± 1 %); o Wet Paint ao byte. **Smoke do dono:** virou a OPÇÃO **Continuous** (caixa no Stroke, desligada por omissão), também no Wet Paint (pelo máximo) e com o 1.º dab arrastado ([31 §4.4](31_spacing_por_meio_o_pontilhado.md)). Dab-cápsula da redonda: **não entra** (medido). Restos: B5, C11. | relato do dono 13/10 · [31 §4](31_spacing_por_meio_o_pontilhado.md) | feito |
 
 
 ## B — Por decidir (do DONO)
@@ -37,8 +37,9 @@
 | C7 | **A cegueira do #25 sob Simetria/Spray/Rough** (o Composite). | [BUGS #25](../BUGS_painter.md) |
 | C8 | **A Ribbon não se mede sem relógio entre eventos** (a mola não anda: 32 px redonda, 34 com folha) — os portões dos Types não a alcançam. | [handoff #53 §6](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-12_BUG53_SOLID_DE_CARIMBOS.md) |
 | C9 | **O Flow do Shape continua com a caixa do raio** (é a largura do traço; o comprimento ladrilha) — por desenho, a confirmar com o dono quando o Flow for revisto. | [handoff #52 §7](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-12_BUG52_PONTA_CORTADA.md) |
-| C10 | **O 1.º dab de um traço com cerdas no Digital sai em pontos** (ainda não tem passo; a 0,25–0,5 vê-se um tufo no início). Cura sem atraso não há: o passo só existe no 2.º dab. | [31 §4.1](31_spacing_por_meio_o_pontilhado.md) |
+| C10 | ~~**O 1.º dab de um traço com cerdas sai em pontos**~~ — curado com a opção ligada: o traço aquece como o Rake e o dab de abertura recebe um passo nominal ([31 §4.4](31_spacing_por_meio_o_pontilhado.md)). | feito |
 | C11 | **O arrasto custa ~15 % numa CURVA a Spacing 0,25** (o passo em texels muda de dab para dab e cada um refaz os texels que toca; recto e os outros Spacings ≤ hoje). | [31 §4.1](31_spacing_por_meio_o_pontilhado.md) |
+| C12 | **Wet Paint com Continuous a Spacing 0,25: uma costura vertical fina entre dois dabs** (vê-se na prancha; o rasto de cada dab acaba no meio do passo e a água não a apaga). | [31 §4.4](31_spacing_por_meio_o_pontilhado.md) · [prancha](32_prancha_continuous_desligada_ligada.png) |
 
 ## D — Processo
 

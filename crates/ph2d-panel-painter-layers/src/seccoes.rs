@@ -336,6 +336,7 @@ pub(crate) const STROKE: &[&str] = &[
     "panel.painter_layers.stroke.dimensions",
     "panel.painter_layers.stroke.edge_to_edge",
     "panel.painter_layers.stroke.adjust_strength",
+    "panel.painter_layers.stroke.continuous_spacing",
     "panel.painter_layers.stroke.tiling_x",
     "panel.painter_layers.stroke.tiling_y",
     "panel.painter_layers.stroke.repeat_image",

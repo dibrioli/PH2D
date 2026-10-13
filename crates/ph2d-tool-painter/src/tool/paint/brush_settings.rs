@@ -238,6 +238,8 @@ pub struct BrushSettings {
     pub has_drawn_curve: bool,
     /// "Adjust Strength for Spacing" on/off.
     pub space_attenuation: bool,
+    /// **Continuous Spacing** on/off (the Shape Bristles drag along each dab's step; doc 31 §4).
+    pub continuous_spacing: bool,
     /// **Accumulate** on/off: off (default) caps a stroke at Strength.
     pub accumulate: bool,
     /// **Style: Solid** on/off — o checkbox do card Line. Desmarcado (default) o traço é a linha de

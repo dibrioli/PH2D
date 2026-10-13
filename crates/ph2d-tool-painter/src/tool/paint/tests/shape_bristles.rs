@@ -340,3 +340,87 @@ fn o_follow_age_sem_textura_onde_ha_o_que_rodar() {
         }
     }
 }
+
+/// O traço recto do Spacing contínuo: 20 → 140 px a meia altura, um quadro por evento, e a água assenta.
+fn recta(t: &mut PainterTool) -> Vec<u8> {
+    t.on_canvas_pointer(cp([20.0, 80.0], PointerPhase::Down));
+    t.on_tick(1000.0 / 60.0);
+    for k in 1..=24 {
+        t.on_canvas_pointer(cp([20.0 + 5.0 * k as f32, 80.0], PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(cp([140.0, 80.0], PointerPhase::Up));
+    for _ in 0..20 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.canvas_rgba.to_vec()
+}
+
+/// O CV da tinta ao longo das linhas do miolo (`|y − 80| ≤ 9`, x 50–110) — riscas ≈ 0, pontos ≫ 0.
+fn cv_ao_longo(px: &[u8]) -> f64 {
+    let mut cvs = Vec::new();
+    for y in 71..=89usize {
+        let linha: Vec<f64> = (50..110usize)
+            .map(|x| {
+                let p = &px[(y * N as usize + x) * 4..][..3];
+                f64::from(255 - p[0].min(p[1]).min(p[2]))
+            })
+            .collect();
+        let m = linha.iter().sum::<f64>() / linha.len() as f64;
+        if m > 1.0 {
+            let v = linha.iter().map(|a| (a - m) * (a - m)).sum::<f64>() / linha.len() as f64;
+            cvs.push(v.sqrt() / m);
+        }
+    }
+    cvs.iter().sum::<f64>() / cvs.len().max(1) as f64
+}
+
+/// ⭐ **Continuous Spacing é uma OPÇÃO e age nos dois meios** (dono 13/10: *«não parece funcionar»* —
+/// era o Wet Paint, que não varria — e *«não pode substituir a antiga»*): desligada por omissão; ligada
+/// pela caixa do Stroke, as cerdas a Spacing 0,25 riscam no Digital e no Wet Paint, sem esvaziar o traço.
+/// CONTROLO: a ponta lisa não muda com a caixa.
+#[test]
+fn o_spacing_continuo_risca_no_digital_e_no_wet_paint() {
+    let forma_wet = {
+        let mut f = PainterTool::default();
+        f.set_source(vec![255u8; (N * N * 4) as usize], N, N);
+        f.set_paint_media(PaintMedia::WetPaint);
+        f.paint.brush.shape
+    };
+    for media in [PaintMedia::Digital, PaintMedia::WetPaint] {
+        let traco = |continuo: bool, kind: TextureKind| {
+            let mut t = pincel(media, kind);
+            if media == PaintMedia::WetPaint && kind == TextureKind::Bristles {
+                t.paint.brush.shape = forma_wet;
+            }
+            t.set_brush_size_px(40.0);
+            t.set_brush_spacing(0.25);
+            assert!(
+                !t.paint.brush.continuous_spacing,
+                "{media:?}: ligado por omissão"
+            );
+            if continuo {
+                t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
+                    crate::ids::PAINTER_BRUSH_CONTINUOUS_SPACING,
+                ));
+                assert!(t.paint.brush.continuous_spacing, "a caixa não liga");
+            }
+            recta(&mut t)
+        };
+        let (off, on) = (
+            traco(false, TextureKind::Bristles),
+            traco(true, TextureKind::Bristles),
+        );
+        let (co, cn) = (cv_ao_longo(&off), cv_ao_longo(&on));
+        let (to, tn) = (tinta(&off) as f64, tinta(&on) as f64);
+        println!("{media:?}: CV {co:.3} → {cn:.3} · tinta {to} → {tn}");
+        assert!(co > 0.3, "{media:?}: o controlo não pontilha ({co:.3})");
+        assert!(cn < co / 3.0, "{media:?}: CV {co:.3} → {cn:.3}");
+        assert!(tn > 0.9 * to, "{media:?}: o traço esvaziou ({to} → {tn})");
+        assert_eq!(
+            traco(false, TextureKind::None),
+            traco(true, TextureKind::None),
+            "{media:?}: a ponta lisa mudou com a caixa"
+        );
+    }
+}

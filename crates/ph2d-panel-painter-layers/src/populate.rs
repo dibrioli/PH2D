@@ -376,6 +376,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_Y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_REPEAT_IMAGE,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_CONTINUOUS_SPACING,
         ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE,
         // Card Line: o checkbox Solid (sem ele o widget pinta, registra hit e fica MORTO sob o mouse).
         ph2d_tool_painter::ids::PAINTER_LINE_SOLID,

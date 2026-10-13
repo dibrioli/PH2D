@@ -7,7 +7,7 @@
 
 ## §1 — Coordenadas
 
-Sobre `048e52d69a` (merge-base com o `main` `757afebd58`; o `main` não andou). Um commit desta janela. Sem push.
+Sobre `048e52d69a` (merge-base com o `main` `757afebd58`; o `main` não andou). Dois commits desta janela (o 2.º, o smoke do dono). Sem push.
 Próxima janela: o [prompt 30](../NewFeaturesWetPaint/30_PROMPT_janela_shape_casa_W3_W4.md) (W3/W4 do plano 27).
 
 ## §2 — Item 1: as cerdas que ARRASTAM (feito)
@@ -29,6 +29,24 @@ Próxima janela: o [prompt 30](../NewFeaturesWetPaint/30_PROMPT_janela_shape_cas
   2–5× a tinta) e o varrimento fechado — [31 §4.1](../NewFeaturesWetPaint/31_spacing_por_meio_o_pontilhado.md).
 - Custo (variantes intercaladas no mesmo processo, mínimo de 9, `load` 10–16): recto 0,96–0,99×; curva ≤ 1,00×
   salvo Spacing 0,25: **1,15×** (C11 do [26](../NewFeaturesWetPaint/26_ABERTOS.md)). Aberto: o 1.º dab em pontos (C10).
+
+## §2b — Smoke do dono (2.º commit): a caixa **Continuous**, também no Wet Paint
+
+O dono (captura de tufos repetidos, pincel grande): *«não parece funcionar»* e *«não pode substituir a antiga mas
+ser uma opção a mais»*. Causas: o Wet Paint não varria; o 1.º dab, sem passo, ficava em pontos (~100 px a raio 45).
+- `BrushSpec::continuous_spacing` (OFF ⇒ `Dab::step` zero em `advance_step` ⇒ o traço de antes ao bit). Caixa no
+  Stroke abaixo do Spacing, todo meio (`ids::PAINTER_BRUSH_CONTINUOUS_SPACING`, `paint_stroke.rs`, `populate.rs`,
+  `event.rs`, `trait_impls.rs`, `seccoes::STROKE`, i18n); esmaece por `Dependente::ContinuoSemCerdas` = `!drags_bristles` (o censo reprovou esmaecê-la onde a água não lê as cerdas: o aquecimento muda a tinta); o preset do
+  Wet Paint leva-a (`CAMPOS_DO_PINCEL` 30, `json.rs`).
+- `BrushSpec::drags_bristles` (opção + Bristles) arma o aquecimento do Rake (`warmup.rs`): o dab de abertura recebe
+  `heading · dab_spacing_px`.
+- `bristles_at` varre também (escala pela razão da grelha), pela lei `Varre::Maximo`: o depósito do Wet Paint
+  subtrai um portão de papel e a média esvaziava o traço (medido). O carimbo continua `Varre::Media`.
+- Portões: `o_spacing_continuo_risca_no_digital_e_no_wet_paint` (pela caixa; Digital CV 0,559 → 0,055, Wet Paint
+  0,762 → 0,081, nenhum esvazia; CONTROLO a ponta lisa igual) · `o_passo_continuo_e_uma_opcao_desligada_por_omissao`
+  · a lei ao bit agora confere a média (carimbo) e o máximo (Wet Paint). Censos do painel 181/181 (o nome curto
+  «Continuous» cabe na coluna). Aberto: a costura do Wet Paint a 0,25 (C12). Prancha:
+  [`32_prancha_continuous_desligada_ligada.png`](../NewFeaturesWetPaint/32_prancha_continuous_desligada_ligada.png). Detalhe: [31 §4.4](../NewFeaturesWetPaint/31_spacing_por_meio_o_pontilhado.md).
 
 ## §3 — Item 2: o dab-cápsula da redonda — NÃO entra
 

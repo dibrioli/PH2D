@@ -143,6 +143,9 @@ impl PainterTool {
             PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_SPACE_ATTEN => {
                 self.toggle_brush_space_attenuation();
             }
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_CONTINUOUS_SPACING => {
+                self.toggle_brush_continuous_spacing();
+            }
             PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_ACCUMULATE => {
                 self.toggle_brush_accumulate();
             }

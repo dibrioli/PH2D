@@ -33,10 +33,11 @@ pub enum Dependente {
     QuandoDoRandomize,
     CerdasDaAgua,
     FollowSemNada,
+    ContinuoSemCerdas,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 19] = [
+    pub const TODOS: [Dependente; 20] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -56,6 +57,7 @@ impl Dependente {
         Dependente::QuandoDoRandomize,
         Dependente::CerdasDaAgua,
         Dependente::FollowSemNada,
+        Dependente::ContinuoSemCerdas,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -86,6 +88,7 @@ impl Dependente {
             Dependente::QuandoDoRandomize => &ids::PAINTER_BRUSH_COLOR_JITTER_SCOPES,
             Dependente::CerdasDaAgua => &CERDAS,
             Dependente::FollowSemNada => &[ids::PAINTER_SHAPE_FOLLOW],
+            Dependente::ContinuoSemCerdas => &[ids::PAINTER_BRUSH_CONTINUOUS_SPACING],
         }
     }
 
@@ -113,6 +116,7 @@ impl Dependente {
             Dependente::QuandoDoRandomize => "panel.painter_layers.inerte.randomize_above_zero",
             Dependente::CerdasDaAgua => "panel.painter_layers.inerte.bristles_no_grain",
             Dependente::FollowSemNada => "panel.painter_layers.inerte.follow_nothing_to_turn",
+            Dependente::ContinuoSemCerdas => "panel.painter_layers.inerte.bristles_in_shape",
         }
     }
 
@@ -282,6 +286,16 @@ impl PainterTool {
                             ph2d_painter_brush::TextureMapping::ViewPlane
                                 | ph2d_painter_brush::TextureMapping::Random
                         )),
+            ),
+            // O passo só é lido pelas cerdas do Shape presas ao dab — a mesma pergunta que arma o
+            // aquecimento (`drags_bristles`), que sozinho já muda a tinta da água (o censo mediu-o).
+            (
+                Dependente::ContinuoSemCerdas,
+                !BrushSpec {
+                    continuous_spacing: true,
+                    ..*b
+                }
+                .drags_bristles(),
             ),
         ];
         Inercias {

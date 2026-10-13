@@ -400,7 +400,7 @@ pub fn shape_basis(
     let mut b = dab_basis(s, rng, canvas, footprint);
     b.frame = frame;
     if s.kind == TextureKind::Bristles {
-        b.sweep = bristles::sweep_texels(s, &b);
+        b.sweep = bristles::sweep_texels(s, &b, 1.0);
     }
     b
 }

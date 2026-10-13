@@ -461,6 +461,17 @@ fn paint_spacing_rows(
         ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING_CHIP,
         brush.spacing,
     );
+    // O Continuous Spacing (as cerdas que arrastam, doc 31 §4) age em todo meio: logo abaixo do Spacing.
+    y = paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_CONTINUOUS_SPACING,
+        "panel.painter_layers.stroke.continuous_spacing",
+        brush.continuous_spacing,
+    );
     // O Space Attenuation só existe com o Accumulate (`space_overlap_factor` exige os dois): onde o
     // meio não oferece o Accumulate, a linha não aparece (doc 46 §1).
     if !brush.accumulate_offered() {

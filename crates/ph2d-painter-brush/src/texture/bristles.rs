@@ -60,9 +60,9 @@ fn sample_px(params: &[f32; MAX_TEX_PARAMS], dx: f64, dy: f64) -> f32 {
 /// would put there leave, summed, the exposure this one dab leaves — the ink of today, spread evenly.
 /// ⛔ The MAX over the sweep was measured and refused (CV 0,15 at Spacing 0,1): a hair wider than one
 /// texel is crossed by two neighbouring sweeps, and the overlap paints twice with the step's period.
-/// At `n = 1` (Spacing ≈ 1 px), no step (the first dab, a Static frame), Tiled or Flow (anchored, nothing
-/// repeats) ⇒ exactly the unswept sample. The Wet Paint host reads [`bristles_at`], never this: its water joins the
-/// hairs on its own.
+/// At `n = 1` (Spacing ≈ 1 px), no step (**Continuous Spacing** off, a Static frame), Tiled or Flow
+/// (anchored, nothing repeats) ⇒ exactly the unswept sample. The Wet Paint host sweeps the same way
+/// through [`bristles_at`].
 #[must_use]
 pub(super) fn sample_dab(
     s: &TextureSettings,
@@ -77,7 +77,13 @@ pub(super) fn sample_dab(
     let q = tile_coord(s, b, d, p, 1.0, radius);
     let v = match b.sweep {
         [0, 0] => sample_bristle(&bristle_tile(&s.params), q[0], q[1]),
-        sweep => swept(&s.params, sweep, bristle_round(q[0]), bristle_round(q[1])),
+        sweep => swept(
+            &s.params,
+            sweep,
+            Varre::Media,
+            bristle_round(q[0]),
+            bristle_round(q[1]),
+        ),
     };
     v.clamp(0.0, 1.0) as f32
 }
@@ -89,14 +95,15 @@ const SWEEP_MAX: i32 = BRISTLE_SIZE as i32;
 /// The dab's path step in tile texels (the slot's LINEAR map — rotor, Angle, Size — applied to
 /// [`crate::Dab::step`]), rounded; once per dab, by [`super::shape_basis`]. A sweep of one texel is the
 /// unswept read (its one offset is `0`), so it answers `[0, 0]` and keeps today's path.
-pub(super) fn sweep_texels(s: &TextureSettings, b: &TexDabBasis) -> [i32; 2] {
+pub(super) fn sweep_texels(s: &TextureSettings, b: &TexDabBasis, px_per_texel: f64) -> [i32; 2] {
     let st = b.frame.step();
     if st == [0.0, 0.0] || s.mapping == TextureMapping::Tiled || s.flow {
         return [0, 0];
     }
     // The rotor is a rotation, so the radius cancels: any unit gives the same linear map.
-    let z = tile_coord(s, b, [0.0, 0.0], [0.0, 0.0], 1.0, 1.0);
-    let e = tile_coord(s, b, st.map(f64::from), [0.0, 0.0], 1.0, 1.0);
+    let z = tile_coord(s, b, [0.0, 0.0], [0.0, 0.0], px_per_texel, 1.0);
+    let st = st.map(|c| f64::from(c) / px_per_texel);
+    let e = tile_coord(s, b, st, [0.0, 0.0], px_per_texel, 1.0);
     let mut v = [e[0] - z[0], e[1] - z[1]];
     let m = v[0].abs().max(v[1].abs());
     if m > f64::from(SWEEP_MAX) {
@@ -114,7 +121,7 @@ pub(super) fn sweep_texels(s: &TextureSettings, b: &TexDabBasis) -> [i32; 2] {
 /// filled when its mark equals the slot's generation, so a new sweep in the slot costs one increment,
 /// not a whole-tile clear.
 struct Varrido {
-    key: ([u32; 4], [i32; 2]),
+    key: ([u32; 4], [i32; 2], Varre),
     offs: Vec<[i32; 2]>,
     texels: Vec<f32>,
     marca: Vec<u32>,
@@ -130,11 +137,23 @@ thread_local! {
     static SWEPT: RefCell<(Vec<Varrido>, usize)> = const { RefCell::new((Vec::new(), 0)) };
 }
 
-/// `Σ_k tile(q + off_k) / n` over the centred sweep's texels, memoised per `(sliders, sweep)`.
-fn swept(params: &[f32; MAX_TEX_PARAMS], sweep: [i32; 2], x: i32, y: i32) -> f64 {
+/// How a sweep folds the texels it crossed — per DOOR, because the two readers deposit differently.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Varre {
+    /// The carimbo composes dab over dab: the mean keeps the exposure (and the ink) of today.
+    Media,
+    /// The Wet Paint deposit subtracts a paper GATE from `fall · texv` (`trail/deposit.rs::cell`): a mean
+    /// dilutes the hairs under the gate and the stroke empties (measured: half the ink at Spacing 0,1);
+    /// the max keeps each hair at its own strength along the streak.
+    Maximo,
+}
+
+/// The fold `lei` of `tile(q + off_k)` over the centred sweep's texels, memoised per `(sliders, sweep, lei)`.
+fn swept(params: &[f32; MAX_TEX_PARAMS], sweep: [i32; 2], lei: Varre, x: i32, y: i32) -> f64 {
     let key = (
         [params[0], params[1], params[2], params[3]].map(f32::to_bits),
         sweep,
+        lei,
     );
     SWEPT.with(|c| {
         let (lista, prox) = &mut *c.borrow_mut();
@@ -173,12 +192,14 @@ fn swept(params: &[f32; MAX_TEX_PARAMS], sweep: [i32; 2], x: i32, y: i32) -> f64
         if v.marca[idx] != v.geracao {
             v.marca[idx] = v.geracao;
             let tile = bristle_tile(params);
-            let soma: f32 = v
+            let lidos = v
                 .offs
                 .iter()
-                .map(|o| tile[bristle_index(x + o[0], y + o[1])])
-                .sum();
-            v.texels[idx] = soma / v.offs.len() as f32;
+                .map(|o| tile[bristle_index(x + o[0], y + o[1])]);
+            v.texels[idx] = match lei {
+                Varre::Media => lidos.sum::<f32>() / v.offs.len() as f32,
+                Varre::Maximo => lidos.fold(f32::NEG_INFINITY, f32::max),
+            };
         }
         f64::from(v.texels[idx])
     })
@@ -194,7 +215,8 @@ fn swept(params: &[f32; MAX_TEX_PARAMS], sweep: [i32; 2], x: i32, y: i32) -> f64
 /// so in, rotate, back), the slot Angle, Size along the pattern's own axes, then
 /// Offset (and the Random mapping's jitter) in [`UNIT_TEXELS`] per unit; Flow lays the tile along the arc
 /// length, Tiled anchors it to `p`. At the neutral transform every step is exact (`× 1`, `+ 0`): the raw
-/// engine sample `sample_bristle(tile, d)`, unclamped like the engine's `texv`.
+/// engine sample `sample_bristle(tile, d)`, unclamped like the engine's `texv`. With a path step
+/// (Continuous Spacing) it is the sweep of [`sample_dab`], in this door's texels.
 #[must_use]
 pub fn bristles_at(
     s: &TextureSettings,
@@ -205,7 +227,21 @@ pub fn bristles_at(
     radius_px: f32,
 ) -> f64 {
     let q = tile_coord(s, b, d, p, px_per_texel, radius_px);
-    sample_bristle(&bristle_tile(&s.params), q[0], q[1])
+    let sweep = if px_per_texel == 1.0 {
+        b.sweep
+    } else {
+        sweep_texels(s, b, px_per_texel)
+    };
+    match sweep {
+        [0, 0] => sample_bristle(&bristle_tile(&s.params), q[0], q[1]),
+        sweep => swept(
+            &s.params,
+            sweep,
+            Varre::Maximo,
+            bristle_round(q[0]),
+            bristle_round(q[1]),
+        ),
+    }
 }
 
 /// The tile coordinate [`bristles_at`] samples (before the nearest-texel rounding).

@@ -32,7 +32,7 @@ fn base(s: &TextureSettings, step: [f32; 2]) -> TexDabBasis {
 
 /// ⭐ **A lei, ao bit:** com um passo, o Digital lê a MÉDIA de `tile(round(q) + off_k)` sobre os `máx|D|`
 /// texels do varrimento centrado (a referência aqui é escrita à parte); sem passo, Tiled e Flow, a leitura de sempre; o
-/// `bristles_at` (o Wet Paint) nunca varre.
+/// `bristles_at` (o Wet Paint) varre pelo máximo.
 #[test]
 fn o_arrasto_e_a_media_ao_longo_do_passo_centrado() {
     let s = cerdas();
@@ -44,10 +44,11 @@ fn o_arrasto_e_a_media_ao_longo_do_passo_centrado() {
         for px in 80..120i64 {
             let (dx, dy) = (px as f64 + 0.5 - 100.25, py as f64 + 0.5 - 80.75);
             let (x, y) = (bristle_round(dx), bristle_round(dy));
-            let mut soma = 0.0f32;
+            let (mut soma, mut maximo) = (0.0f32, f32::NEG_INFINITY);
             for k in 0..9 {
                 let o = [k - 4, ((k * 4) as f64 / 9.0).round() as i32 - 2];
                 soma += tile[bristle_index(x + o[0], y + o[1])];
+                maximo = maximo.max(tile[bristle_index(x + o[0], y + o[1])]);
             }
             let m = soma / 9.0;
             let v = sample_dab(&s, &com, px, py, c, 20.0);
@@ -58,12 +59,17 @@ fn o_arrasto_e_a_media_ao_longo_do_passo_centrado() {
                 (sample_bristle(&tile, dx, dy).clamp(0.0, 1.0) as f32).to_bits()
             );
             mudou += usize::from(v != liso);
-            // O Wet Paint lê sem varrer, com ou sem passo.
+            // O Wet Paint varre pelo MÁXIMO (o portão de papel do depósito dele apagaria a média), sem o
+            // clamp do carimbo; sem passo lê o de antes.
             let d = [dx, dy];
             let p = [px as f64 + 0.5, py as f64 + 0.5];
             assert_eq!(
                 bristles_at(&s, &com, d, p, 1.0, 20.0).to_bits(),
-                bristles_at(&s, &sem, d, p, 1.0, 20.0).to_bits()
+                f64::from(maximo).to_bits()
+            );
+            assert_eq!(
+                bristles_at(&s, &sem, d, p, 1.0, 20.0).to_bits(),
+                sample_bristle(&tile, dx, dy).to_bits()
             );
         }
     }
@@ -99,6 +105,7 @@ fn traco(spacing: f32, varre: bool, curva: bool) -> Vec<u8> {
         color: [0.0, 0.0, 0.0],
         stabilizer: 0.0,
         shape: cerdas(),
+        continuous_spacing: true,
         ..BrushSpec::default()
     };
     let dynamics = Dynamics {
@@ -249,4 +256,52 @@ fn measure_custo_do_arrasto() {
             );
         }
     }
+}
+
+/// ⭐ **A opção é uma OPÇÃO** (dono 13/10: *«não pode substituir a antiga»*): desligada (a omissão), nenhum
+/// dab leva passo — o traço de antes, ao bit. Ligada com as cerdas, todos levam, o de ABERTURA também (o
+/// aquecimento dá-lhe um passo nominal na direcção assente; sem isso os pontos dele saltavam à vista).
+/// CONTROLO: ligada sem as cerdas, nada a ler o passo, nada a aquecer.
+#[test]
+fn o_passo_continuo_e_uma_opcao_desligada_por_omissao() {
+    let dabs = |continuo: bool, kind: TextureKind| {
+        let spec = BrushSpec {
+            radius_px: 20.0,
+            spacing: 0.25,
+            stabilizer: 0.0,
+            continuous_spacing: continuo,
+            shape: TextureSettings { kind, ..cerdas() },
+            ..BrushSpec::default()
+        };
+        let mut stroke = Stroke::new(spec, Dynamics::default(), 1);
+        let (mut todos, mut out) = (Vec::new(), Vec::new());
+        let p = |x: f32| StrokePoint {
+            pos: [x, 48.0],
+            pressure: 1.0,
+        };
+        stroke.begin(p(40.0), &mut out);
+        todos.extend_from_slice(&out);
+        for k in 1..=30 {
+            stroke.extend(p(40.0 + 5.0 * k as f32), &mut out);
+            todos.extend_from_slice(&out);
+        }
+        todos
+    };
+    assert!(!BrushSpec::default().continuous_spacing);
+    let off = dabs(false, TextureKind::Bristles);
+    assert!(off.len() > 10 && off.iter().all(|d| d.step == [0.0, 0.0]));
+    let on = dabs(true, TextureKind::Bristles);
+    assert!(
+        on.iter().all(|d| d.step[0] > 5.0 && d.step[1].abs() < 1e-3),
+        "{:?}",
+        on.iter().map(|d| d.step).collect::<Vec<_>>()
+    );
+    let liso = dabs(true, TextureKind::None);
+    assert_eq!(
+        liso.iter().map(|d| d.center).collect::<Vec<_>>(),
+        dabs(false, TextureKind::None)
+            .iter()
+            .map(|d| d.center)
+            .collect::<Vec<_>>()
+    );
 }

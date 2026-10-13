@@ -41,6 +41,7 @@ impl Default for BrushSpec {
             grid_offset_px: [0.0, 0.0],
             grid_fit: 0.0,
             space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
+            continuous_spacing: false,
             accumulate: false,
             style_solid: false,
             line_kind: LineKind::None,

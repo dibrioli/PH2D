@@ -345,12 +345,23 @@ fn sonda_spacing_por_meio() {
 fn sonda_pontilhado_das_cerdas() {
     println!("| meio | ponta | spacing | dabs no motor | CV ao longo | Σ tinta |");
     println!("|---|---|---:|---:|---:|---:|");
-    for media in [PaintMedia::Digital, PaintMedia::WetPaint] {
+    // `PH2D_SONDA_TAM=<px>` troca o diâmetro (40 por omissão).
+    let tam: f32 = std::env::var("PH2D_SONDA_TAM")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(40.0);
+    for media in [
+        PaintMedia::Digital,
+        PaintMedia::Watercolor,
+        PaintMedia::WetPaint,
+    ] {
         for kind in [TextureKind::None, TextureKind::Bristles] {
             for sp in [0.025f32, 0.1, 0.25, 0.5] {
                 let mut t = tela(media);
-                t.set_brush_size_px(40.0);
+                t.set_brush_size_px(tam);
                 t.set_brush_spacing(sp);
+                // `PH2D_SONDA_CONTINUO=1` liga o Continuous Spacing.
+                t.paint.brush.continuous_spacing = std::env::var("PH2D_SONDA_CONTINUO").is_ok();
                 if kind == TextureKind::Bristles || media == PaintMedia::Digital {
                     t.set_brush_shape_kind(kind.to_u8());
                 }
@@ -398,8 +409,14 @@ fn sonda_pontilhado_das_cerdas() {
                     for k in 0..(W * H) as usize {
                         ppm.extend_from_slice(&t.canvas_rgba[k * 4..k * 4 + 3]);
                     }
-                    std::fs::write(format!("{dir}/pont_{media:?}_{kind:?}_{sp}.ppm"), ppm)
-                        .expect("grava");
+                    std::fs::write(
+                        format!(
+                            "{dir}/pont_{media:?}_{kind:?}_{sp}_{}.ppm",
+                            t.paint.brush.continuous_spacing
+                        ),
+                        ppm,
+                    )
+                    .expect("grava");
                 }
             }
         }

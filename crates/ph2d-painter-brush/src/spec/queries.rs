@@ -334,6 +334,18 @@ impl BrushSpec {
         (self.spacing.max(0.01) * 2.0 * self.clamped_radius()).max(1.0)
     }
 
+    /// **Continuous Spacing** is armed: the option is on and the Shape is the Bristles held to the dab —
+    /// the only kind that sweeps over [`crate::Dab::step`] (Tiled and Flow are anchored and never sweep).
+    /// It also arms the warm-up (the opening dab's step), so the panel greys the box exactly when this is
+    /// false: in the Wet Paint the warm-up moves WHEN a dab lands, and that alone changes the paint.
+    #[must_use]
+    pub fn drags_bristles(&self) -> bool {
+        self.continuous_spacing
+            && self.shape.kind == crate::texture::TextureKind::Bristles
+            && self.shape.mapping != crate::texture::TextureMapping::Tiled
+            && !self.shape.flow
+    }
+
     /// Whether the dab at dash-slot `slot` is painted, given the dash pattern.
     ///
     /// Behavioural reference — Blender's per-step dash gate: `dash = (slot % dash_samples) /

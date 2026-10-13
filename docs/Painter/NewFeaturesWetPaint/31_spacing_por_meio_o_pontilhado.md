@@ -126,3 +126,30 @@ Wet Dry Brush e o Oil Bristle pela razão dele) — a menos que se re-autorem os
 é lido pelo Accumulate, o Space Attenuation, o `solid_carimbos` e o arremesso (`speed.rs`): a escala aplica-se só ao
 spec do caminhador. Prancha: [`32_prancha_spacing_wet_hoje_proposta.png`](32_prancha_spacing_wet_hoje_proposta.png)
 (Wet Round, Charcoal, Soft Pastel, Oil Pastel × 0,1 / 0,25; à esquerda hoje, à direita a lei — `sonda_prancha_passo_wet`).
+
+### §4.4 — Smoke do dono (13/10): «não parece funcionar» + «uma opção a mais» — a caixa **Continuous**
+
+- **O que o dono viu** (a captura: tufos rosa repetidos, pincel grande): o arrasto só existia no Digital, e o Wet
+  Paint (`bristles_at`) não varria — a 0,25 com o pincel grande chegam 3 dabs ao motor. E o 1.º dab, sem passo,
+  deixava os pontos dele nítidos numa boa parte do início (raio 45: ~100 px).
+- **Agora é uma OPÇÃO:** `BrushSpec::continuous_spacing` (omissão OFF ⇒ todo `Dab::step` é zero ⇒ o traço de antes
+  ao bit, nos quatro meios). Caixa **Continuous** logo abaixo do Spacing (Stroke), em todo meio; esmaece
+  (`Dependente::ContinuoSemCerdas`) exatamente quando o arrasto não se arma (`drags_bristles`: sem as cerdas, Tiled,
+  Flow) — ⛔ esmaecê-la também onde o Wet Paint não lê as cerdas (Grain armado, ferramenta que não deposita) foi
+  REPROVADO pelo censo `a_linha_esmaecida_e_a_que_nao_age`: o aquecimento sozinho muda o momento em que a água
+  recebe os dabs, e a tinta muda. O preset
+  leva-a (`CAMPOS_DO_PINCEL`, 30).
+- **O 1.º dab:** com a opção e as cerdas (`BrushSpec::drags_bristles`), o traço AQUECE como o Rake (`warmup.rs`) e
+  o dab de abertura recebe um passo nominal (`dab_spacing_px`) na direcção assente. Preço: o atraso do aquecimento
+  do Rake (`heading::warmup_len`), só com a caixa ligada e as cerdas.
+- **A lei por PORTA (`Varre`):** o carimbo (Digital/Impasto/…) usa a MÉDIA (§4.1); o Wet Paint usa o MÁXIMO — o
+  depósito dele subtrai um portão de papel de `fall · texv` (`trail/deposit.rs::cell`), e a média dilui os pelos
+  abaixo do portão: medido, metade da tinta a 0,1 e o traço quase vazio a 0,25.
+- **Medido pelo produto** (`o_spacing_continuo_risca_no_digital_e_no_wet_paint`, raio 20, Spacing 0,25, desligada →
+  ligada): Digital CV 0,559 → **0,055**, tinta 387 k → 394 k · Wet Paint CV 0,762 → **0,081**, tinta 49 k → 231 k
+  (o traço desligado é tufos com vãos; ligado, riscas cheias). Sonda `sonda_pontilhado_das_cerdas` com
+  `PH2D_SONDA_CONTINUO=1`, raio 20 — Wet Paint CV 0,1 / 0,25: 0,185 → 0,081 · 0,587 → 0,079; Digital (raio 45)
+  0,5: 0,763 → 0,058 (o tufo do 1.º dab já não está).
+- Prancha: [`32_prancha_continuous_desligada_ligada.png`](32_prancha_continuous_desligada_ligada.png) (Digital e Wet Paint, raio 20, 0,1 / 0,25, desligada e ligada).
+- **Aberto:** no Wet Paint a 0,25 ligado vê-se uma COSTURA vertical fina entre dois dabs (C12). Com pincel grande a 0,25–0,5 o Wet Paint recebe pouquíssimos dabs (o passo sai do raio do MOTOR, B5)
+  e o traço acaba antes da mão; a caixa não cura isso — a lei do B5 sim.

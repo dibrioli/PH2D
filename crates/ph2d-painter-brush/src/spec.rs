@@ -111,6 +111,10 @@ pub struct BrushSpec {
     /// stroke doesn't pile up to full opacity (Blender `BRUSH_SPACE_ATTEN`, default ON, verified
     /// in-tree). Only applies for spacing < 100% (see [`Self::space_overlap_factor`]).
     pub space_attenuation: bool,
+    /// **Continuous Spacing** (dono 13/10, default OFF): the Shape **Bristles** drag their hairs along each
+    /// dab's path step ([`crate::Dab::step`]) — streaks instead of the same constellation of dots once per
+    /// dab (doc 31 §4). OFF ⇒ every dab carries a zero step and the stroke is the one of before, AO BIT.
+    pub continuous_spacing: bool,
     /// **Accumulate** (Blender `BRUSH_ACCUMULATE`, bit 13, default OFF): when OFF, a single stroke is
     /// capped at [`Self::strength`] — overlapping dabs (incl. passing the brush back over itself) do
     /// NOT build past Strength (a per-stroke coverage mask, the classic "alpha mask"). When ON, every

@@ -554,10 +554,13 @@ impl LuzDoQuadro {
         gpu.queue.submit([enc.finish()]);
         if let Some((t0, acesa @ false)) = &mut self.tempo {
             *acesa = true;
+            let placa = gpu.adapter.get_info();
             eprintln!(
-                "[luz2d] a luz acendeu {:.2} s depois do 1.º quadro ({} pipelines compiladas)",
+                "[luz2d] a luz acendeu {:.2} s depois do 1.º quadro ({} pipelines compiladas, {} · {:?})",
                 t0.elapsed().as_secs_f64(),
-                self.fabrica.pipelines_criadas()
+                self.fabrica.pipelines_criadas(),
+                placa.name,
+                placa.backend
             );
         }
         // ⭐ O custo de placa lê-se SEM ESPERAR (de há poucos quadros) sempre que há preferência do

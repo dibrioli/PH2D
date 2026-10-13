@@ -4,10 +4,11 @@
 //! `0.10000000149011612`); enums pelo NOME da variante (reordenar o enum não estraga um preset);
 //! chave ausente ou ilegível = o valor de `base` (o preset diz o que fixa, o resto é o de fábrica).
 
+use ph2d_painter_brush::line_kind::LineKind;
 use ph2d_painter_brush::{
     BrushBlend, BrushSpec, ColorJitterScope, Falloff, FalloffCurve, FalloffPoint, FootprintCurve,
-    HandleType, JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, TextureKind, TextureMapping,
-    TextureSettings,
+    HandleType, JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, MirrorAxis, StrokeMethod,
+    TextureKind, TextureMapping, TextureSettings,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -200,6 +201,103 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "pigment" => json!(b.pigment),
         "pigment_mix" => num(b.pigment_mix),
         "paper_depth" => num(b.paper_depth),
+        outro => ler_campo_da_obra(b, outro),
+    }
+}
+
+/// Os campos que o preset deixa de fora e a MACRO leva ([`super::CAMPOS_DA_MACRO`]).
+fn ler_campo_da_obra(b: &BrushSpec, campo: &str) -> Value {
+    match campo {
+        "radius_px" => num(b.radius_px),
+        "strength" => num(b.strength),
+        "color" => json!([num(b.color[0]), num(b.color[1]), num(b.color[2])]),
+        "paper" => textura_para_json(&b.paper),
+        "symmetry" => json!({
+            "enabled": b.symmetry.enabled,
+            "circular": b.symmetry.circular,
+            "axis": nome(b.symmetry.axis),
+            "radial_segments": b.symmetry.radial_segments,
+            "center": par(b.symmetry.center),
+            "custom_dir": par(b.symmetry.custom_dir),
+        }),
+        "stroke_method" => nome(b.stroke_method),
+        "grid_cell_px" => par(b.grid_cell_px),
+        "grid_offset_px" => par(b.grid_offset_px),
+        "grid_fit" => num(b.grid_fit),
+        "edge_to_edge" => json!(b.edge_to_edge),
+        "line_kind" => nome(b.line_kind),
+        "style_solid" => json!(b.style_solid),
+        "sketchy_reach" => num(b.sketchy_reach),
+        "sketchy_density" => num(b.sketchy_density),
+        "thread_width_px" => num(b.thread_width_px),
+        "thread_opacity" => num(b.thread_opacity),
+        "sketchy_magnetify" => json!(b.sketchy_magnetify),
+        "wire_history" => num(b.wire_history),
+        "wire_connection_line" => json!(b.wire_connection_line),
+        "ribbon_weight" => num(b.ribbon_weight),
+        "ribbon_friction" => num(b.ribbon_friction),
+        "ribbon_gravity" => num(b.ribbon_gravity),
+        "ribbon_rungs" => num(b.ribbon_rungs),
+        "rough_amount" => num(b.rough_amount),
+        "rough_bowing" => num(b.rough_bowing),
+        "rough_passes" => json!(b.rough_passes),
+        "dash_ratio" => num(b.dash_ratio),
+        "dash_samples" => json!(b.dash_samples),
+        outro => unreachable!("campo do pincel sem conversão: {outro}"),
+    }
+}
+
+fn escrever_campo_da_obra(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
+    match campo {
+        "radius_px" => b.radius_px = f(v, b.radius_px),
+        "strength" => b.strength = f(v, b.strength),
+        "color" => {
+            let a = v.and_then(Value::as_array);
+            for (i, c) in b.color.iter_mut().enumerate() {
+                *c = f(a.and_then(|a| a.get(i)), *c);
+            }
+        }
+        "paper" => b.paper = textura_de_json(v, b.paper),
+        "symmetry" => {
+            let o = v.and_then(Value::as_object);
+            let g = |k: &str| o.and_then(|o| o.get(k));
+            let s = &mut b.symmetry;
+            s.enabled = booleano(g("enabled"), s.enabled);
+            s.circular = booleano(g("circular"), s.circular);
+            s.axis = de_nome(g("axis"), (0..3).map(MirrorAxis::from_u8), s.axis);
+            s.radial_segments = inteiro(g("radial_segments"), s.radial_segments);
+            s.center = f2(g("center"), s.center);
+            s.custom_dir = f2(g("custom_dir"), s.custom_dir);
+        }
+        "stroke_method" => {
+            b.stroke_method = de_nome(
+                v,
+                (0..StrokeMethod::COUNT).map(StrokeMethod::from_u8),
+                b.stroke_method,
+            );
+        }
+        "grid_cell_px" => b.grid_cell_px = f2(v, b.grid_cell_px),
+        "grid_offset_px" => b.grid_offset_px = f2(v, b.grid_offset_px),
+        "grid_fit" => b.grid_fit = f(v, b.grid_fit),
+        "edge_to_edge" => b.edge_to_edge = booleano(v, b.edge_to_edge),
+        "line_kind" => b.line_kind = de_nome(v, (0..6).map(LineKind::from_wire), b.line_kind),
+        "style_solid" => b.style_solid = booleano(v, b.style_solid),
+        "sketchy_reach" => b.sketchy_reach = f(v, b.sketchy_reach),
+        "sketchy_density" => b.sketchy_density = f(v, b.sketchy_density),
+        "thread_width_px" => b.thread_width_px = f(v, b.thread_width_px),
+        "thread_opacity" => b.thread_opacity = f(v, b.thread_opacity),
+        "sketchy_magnetify" => b.sketchy_magnetify = booleano(v, b.sketchy_magnetify),
+        "wire_history" => b.wire_history = f(v, b.wire_history),
+        "wire_connection_line" => b.wire_connection_line = booleano(v, b.wire_connection_line),
+        "ribbon_weight" => b.ribbon_weight = f(v, b.ribbon_weight),
+        "ribbon_friction" => b.ribbon_friction = f(v, b.ribbon_friction),
+        "ribbon_gravity" => b.ribbon_gravity = f(v, b.ribbon_gravity),
+        "ribbon_rungs" => b.ribbon_rungs = f(v, b.ribbon_rungs),
+        "rough_amount" => b.rough_amount = f(v, b.rough_amount),
+        "rough_bowing" => b.rough_bowing = f(v, b.rough_bowing),
+        "rough_passes" => b.rough_passes = inteiro(v, b.rough_passes),
+        "dash_ratio" => b.dash_ratio = f(v, b.dash_ratio),
+        "dash_samples" => b.dash_samples = inteiro(v, b.dash_samples),
         outro => unreachable!("campo do pincel sem conversão: {outro}"),
     }
 }
@@ -256,12 +354,12 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "pigment" => b.pigment = booleano(v, b.pigment),
         "pigment_mix" => b.pigment_mix = f(v, b.pigment_mix),
         "paper_depth" => b.paper_depth = f(v, b.paper_depth),
-        outro => unreachable!("campo do pincel sem conversão: {outro}"),
+        outro => escrever_campo_da_obra(b, outro, v),
     }
 }
 
 /// O sub-conjunto do pincel que o preset leva, por nome.
-pub(super) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<String, Value> {
+pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<String, Value> {
     campos
         .iter()
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
@@ -270,7 +368,7 @@ pub(super) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
 
 /// `base` com os campos que o JSON fixa. Chaves fora de `campos` (de ondas futuras) são ignoradas
 /// aqui e sobrevivem no [`ph2d_brush_presets::Parametros`].
-pub(super) fn pincel_de_json(
+pub(crate) fn pincel_de_json(
     m: &BTreeMap<String, Value>,
     campos: &[&str],
     base: BrushSpec,

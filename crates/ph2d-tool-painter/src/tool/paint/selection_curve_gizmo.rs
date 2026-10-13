@@ -96,6 +96,7 @@ impl PainterTool {
     /// selection on the others so exactly one anchor is active — the shell's secondary-click before opening
     /// the handle-kind menu. `true` iff a point was hit. Mirrors the stroke `curve_select_point_at`.
     pub fn selection_curve_select_point_at(&mut self, pos: [f32; 2], tol: f32) -> bool {
+        self.macro_recusa("selection_curve_select_point_at");
         let mut hit = false;
         for e in self.paint.selection_shapes.iter_mut().rev() {
             if let SelectionShape::Freehand { model, .. } = &mut e.shape
@@ -114,6 +115,7 @@ impl PainterTool {
     /// Set the selected converted-curve anchor's **handle kind** from the menu's wire `u8` (`0=Free 1=Aligned
     /// 2=Vector 3=Auto 4=Symmetric`), recomposite, one undo entry. Mirrors the stroke `set_curve_handle_kind`.
     pub fn set_selection_curve_handle_kind(&mut self, wire: u8) -> bool {
+        self.macro_recusa("set_selection_curve_handle_kind");
         let Some(i) = self.selection_curve_active_index() else {
             return false;
         };
@@ -132,6 +134,7 @@ impl PainterTool {
     /// Delete the selected anchor of the active converted curve (Delete key). Keeps `≥ 2` points, recomposite,
     /// one undo entry. `true` when one was removed. Mirrors the stroke `curve_delete_selected`.
     pub fn selection_curve_delete_selected_point(&mut self) -> bool {
+        self.macro_recusa("selection_curve_delete_selected_point");
         let Some(i) = self.selection_curve_active_index() else {
             return false;
         };

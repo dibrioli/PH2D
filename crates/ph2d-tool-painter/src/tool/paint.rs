@@ -134,8 +134,11 @@ pub(crate) use symmetry::SymmetryPick;
 mod tiling;
 mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
+pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
+mod macro_estado;
 mod wetpaint_commit;
-pub mod wetpaint_preset; // o preset do Wet Painter: aplicar / capturar / miniatura (W1, NewFeaturesWetPaint/02 §5)
+pub mod wetpaint_preset; // o preset do Wet Painter: aplicar / capturar / miniatura (W1, NewFeaturesWetPaint/02 §5) // as configurações que o estado inicial de uma macro leva (crate::macro_track)
+pub(crate) use macro_estado::ErroDoEstado;
 mod wetpaint_settings; // Wet Paint authored state (checkbox + W3 knobs + routing) — LOC-cap sibling // Wet Paint deposit-at-commit door (doc 21) — LOC-cap sibling
 pub use self::{curve_gizmo::TransformGizmo, curve_tangent::TangentHandles};
 pub use curve::CurveOverlay;

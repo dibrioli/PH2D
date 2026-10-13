@@ -463,6 +463,7 @@ impl PainterTool {
     /// então re-compõe a peça para valer. Commitar sobre a tela já composta gravaria um passo cujo
     /// `before` JÁ tem a peça — e o Ctrl+Z não a tiraria.
     pub fn paste_commit(&mut self) -> bool {
+        self.macro_recusa("paste_commit");
         let Some(patch) = self.paint.paste_patch.take() else {
             return false;
         };
@@ -480,6 +481,7 @@ impl PainterTool {
     /// **Esc — descarta a peça.** Nada foi commitado, então não há undo a gravar: basta devolver o
     /// pristino.
     pub fn paste_cancel(&mut self) -> bool {
+        self.macro_recusa("paste_cancel");
         if self.paint.paste_patch.take().is_none() {
             return false;
         }

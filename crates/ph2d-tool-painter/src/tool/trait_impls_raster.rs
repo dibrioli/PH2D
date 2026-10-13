@@ -7,6 +7,7 @@ impl RasterEditTool for PainterTool {
     /// Initialize the working canvas from the sprite source. RGBA8 straight; it
     /// is the base of the single-raster layer stack the layers panel grows from.
     fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
+        self.macro_recusa("set_source");
         assert_eq!(
             rgba.len(),
             (width as usize) * (height as usize) * 4,
@@ -70,6 +71,10 @@ impl RasterEditTool for PainterTool {
 
     /// Borrow the current composite iff it changed (drains `preview_dirty`); trivial → `canvas_rgba`.
     fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
+        // Grava-se e fecha-se já: o corpo devolve um empréstimo do tool e não chama outra porta.
+        if self.macro_entra(|_| crate::macro_track::Passo::PreviewAtual) {
+            self.macro_sai();
+        }
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
             return None;
         }
@@ -109,12 +114,27 @@ impl RasterEditTool for PainterTool {
     }
 
     fn take_pending_commit(&mut self) -> bool {
-        std::mem::take(&mut self.pending_commit)
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TiraCommit, {
+            std::mem::take(&mut self.pending_commit)
+        })
     }
 
     /// Bake the final canvas for commit (Apply): the full layer COMPOSITE (base + every layer's
     /// opacity / blend / visibility / adjustments) — exactly what the live preview shows.
     fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Completo, {
+            self.run_full_corpo()
+        })
+    }
+
+    fn deactivate(&mut self) {
+        self.macro_recusa("deactivate");
+        self.deactivate_corpo();
+    }
+}
+
+impl PainterTool {
+    fn run_full_corpo(&mut self) -> (Vec<u8>, u32, u32) {
         let (w, h) = self.source_size;
         // Apply flattens the stack into the SPRITE, which is RGBA and nothing else — the height field
         // does not survive it. So the shading has to be baked in, or Apply would silently throw the
@@ -149,7 +169,7 @@ impl RasterEditTool for PainterTool {
         (rgba, w, h)
     }
 
-    fn deactivate(&mut self) {
+    fn deactivate_corpo(&mut self) {
         self.replace_canvas(Arc::new(Vec::new()));
         self.source_size = (0, 0);
         self.preview_dirty = false;

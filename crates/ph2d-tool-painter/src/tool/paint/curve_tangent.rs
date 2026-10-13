@@ -127,6 +127,7 @@ impl super::PainterTool {
     /// Select the control point under `pos` (within `tol`) — the shell's secondary-click before opening
     /// the handle-kind menu, so the pick applies to the right point. `true` iff a point was hit.
     pub fn curve_select_point_at(&mut self, pos: [f32; 2], tol: f32) -> bool {
+        self.macro_recusa("curve_select_point_at");
         let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing) else {
             return false;
         };

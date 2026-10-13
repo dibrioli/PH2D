@@ -27,6 +27,18 @@ impl PainterTool {
     /// Move `Custom` falloff control point `id` to `(distance, strength)` in `[0, 1]²` — may pass its
     /// neighbours (curve re-sorts; the stable `id` keeps the handle grabbed). Pure brush state.
     pub fn set_brush_falloff_point(&mut self, id: u8, distance: f32, strength: f32) {
+        crate::macro_track::porta!(
+            self,
+            |_| crate::macro_track::Passo::FalloffPonto {
+                id,
+                d: distance,
+                s: strength
+            },
+            { self.set_brush_falloff_point_corpo(id, distance, strength) }
+        )
+    }
+
+    fn set_brush_falloff_point_corpo(&mut self, id: u8, distance: f32, strength: f32) {
         self.paint
             .brush
             .custom_falloff
@@ -41,6 +53,17 @@ impl PainterTool {
     /// Insert a `Custom` falloff control point at `(distance, strength)` — where the artist clicked.
     /// Returns the new stable id, or `None` at the point cap.
     pub fn add_brush_falloff_point_at(&mut self, distance: f32, strength: f32) -> Option<u8> {
+        crate::macro_track::porta!(
+            self,
+            |_| crate::macro_track::Passo::FalloffAcrescenta {
+                d: distance,
+                s: strength
+            },
+            { self.add_brush_falloff_point_at_corpo(distance, strength) }
+        )
+    }
+
+    fn add_brush_falloff_point_at_corpo(&mut self, distance: f32, strength: f32) -> Option<u8> {
         self.paint
             .brush
             .custom_falloff
@@ -49,6 +72,14 @@ impl PainterTool {
 
     /// Set the handle type of `Custom` falloff control point `id` (`0` = Auto, `1` = Vector; right-click menu).
     pub fn set_brush_falloff_point_handle(&mut self, id: u8, handle: u8) {
+        crate::macro_track::porta!(
+            self,
+            |_| crate::macro_track::Passo::FalloffPega { id, handle },
+            { self.set_brush_falloff_point_handle_corpo(id, handle) }
+        )
+    }
+
+    fn set_brush_falloff_point_handle_corpo(&mut self, id: u8, handle: u8) {
         self.paint
             .brush
             .custom_falloff
@@ -57,6 +88,12 @@ impl PainterTool {
 
     /// Remove `Custom` falloff control point `id` (no-op when only the two endpoints remain; "−" / Delete).
     pub fn remove_brush_falloff_point(&mut self, id: u8) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::FalloffTira(id), {
+            self.remove_brush_falloff_point_corpo(id)
+        })
+    }
+
+    fn remove_brush_falloff_point_corpo(&mut self, id: u8) {
         self.paint.brush.custom_falloff.remove_point(id);
     }
 
@@ -67,6 +104,12 @@ impl PainterTool {
 
     /// Toggle eraser mode (overrides the blend with Erase Alpha while on).
     pub fn toggle_brush_eraser(&mut self) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Borracha, {
+            self.toggle_brush_eraser_corpo()
+        })
+    }
+
+    fn toggle_brush_eraser_corpo(&mut self) {
         self.paint.eraser = !self.paint.eraser;
     }
 
@@ -74,6 +117,12 @@ impl PainterTool {
 
     /// Set the brush radius in pixels, clamped to the interactive size range.
     pub fn set_brush_size_px(&mut self, px: f32) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TamanhoPx(px), {
+            self.set_brush_size_px_corpo(px)
+        })
+    }
+
+    fn set_brush_size_px_corpo(&mut self, px: f32) {
         self.paint.brush.radius_px = px.clamp(BRUSH_SIZE_MIN_PX, BRUSH_SIZE_MAX_PX);
     }
 
@@ -85,6 +134,12 @@ impl PainterTool {
     /// Nudge the brush radius by one step — `[` (`dir < 0`) / `]` (`dir >= 0`). Multiplicative (constant
     /// perceptual step) with a ±1 px floor so the smallest brushes still change. Returns the new px.
     pub fn nudge_brush_size(&mut self, dir: i32) -> f32 {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::EmpurraTamanho(dir), {
+            self.nudge_brush_size_corpo(dir)
+        })
+    }
+
+    fn nudge_brush_size_corpo(&mut self, dir: i32) -> f32 {
         const STEP: f32 = 1.15;
         let cur = self.paint.brush.radius_px;
         let next = if dir >= 0 {
@@ -161,6 +216,12 @@ impl PainterTool {
     /// edge to catch the final pick that closes the picker), so brush = Fill = picker are always the one
     /// colour and Fill never applies the previous colour (Enio 2026-07-03).
     pub fn set_brush_color_srgb8(&mut self, rgb: [u8; 3]) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Cor(rgb), {
+            self.set_brush_color_srgb8_corpo(rgb)
+        })
+    }
+
+    fn set_brush_color_srgb8_corpo(&mut self, rgb: [u8; 3]) {
         self.set_brush_color_rgb(rgb.map(|v| f32::from(v) / 255.0));
     }
 

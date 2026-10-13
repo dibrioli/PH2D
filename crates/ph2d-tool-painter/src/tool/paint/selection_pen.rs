@@ -244,6 +244,7 @@ impl PainterTool {
     /// ⚠️ Uma sessão com menos de três âncoras é **descartada**, não entregue: ela não delimita área
     /// nenhuma, e commitá-la gravaria um passo de undo cujo efeito é zero.
     pub fn selection_pen_commit(&mut self) -> bool {
+        self.macro_recusa("selection_pen_commit");
         let Some(pen) = self.paint.selection_pen.take() else {
             return false;
         };
@@ -292,6 +293,7 @@ impl PainterTool {
     /// Nada foi commitado, então não há passo de undo a gastar — o `stroke_undo` guardado no início da
     /// sessão é o estado a reinstalar, não um passo a gravar (a mesma economia da peça colada).
     pub fn selection_pen_cancel(&mut self) -> bool {
+        self.macro_recusa("selection_pen_cancel");
         if self.paint.selection_pen.take().is_none() {
             return false;
         }

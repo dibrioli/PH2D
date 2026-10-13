@@ -18,6 +18,12 @@ impl PainterTool {
     /// flat (measured: Noise / Voronoi showed no grain inside a 28-px stroke). Only on a class change, so
     /// a Size the artist tuned survives a switch between two procedurals.
     pub fn set_brush_texture_kind(&mut self, k: u8) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TipoDaTextura(k), {
+            self.set_brush_texture_kind_corpo(k)
+        })
+    }
+
+    fn set_brush_texture_kind_corpo(&mut self, k: u8) {
         let old = self.paint.brush.texture.kind;
         let was_none = old == TextureKind::None;
         let kind = TextureKind::from_u8(k);

@@ -217,6 +217,13 @@ impl Sim {
         self.pending.is_some()
     }
 
+    /// O próximo estágio do passo em voo (`≥ 1`), ou `None` sem passo em voo. Com [`Sim::frame`] é o
+    /// ESTADO da água entre dois estágios — a marca que uma macro grava quando o motor volta do worker.
+    #[must_use]
+    pub fn stage_in_flight(&self) -> Option<u8> {
+        self.pending.as_ref().map(|c| c.stage)
+    }
+
     /// **Termina um passo em voo** — a porta que toda operação de CANVAS chama primeiro.
     ///
     /// O grid entre dois estágios é intermediário: `wet_canvas`/`dry_canvas`/`fast_dry`/`clear` e o

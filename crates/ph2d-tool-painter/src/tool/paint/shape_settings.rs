@@ -16,6 +16,18 @@ impl PainterTool {
     /// Store an imported grayscale `lum` image (`width × height`, row-major) as the brush **Grain** and
     /// switch the kind to Image. Called by the shell after a file pick + decode.
     pub fn set_brush_texture_image(&mut self, lum: Vec<u8>, width: u32, height: u32) {
+        crate::macro_track::porta!(
+            self,
+            |_| crate::macro_track::Passo::TexturaGrao {
+                lum: lum.clone(),
+                w: width,
+                h: height
+            },
+            { self.set_brush_texture_image_corpo(lum, width, height) }
+        )
+    }
+
+    fn set_brush_texture_image_corpo(&mut self, lum: Vec<u8>, width: u32, height: u32) {
         let was_none = self.paint.brush.texture.kind == TextureKind::None;
         self.paint.texture_image = Some(BrushTextureImage::new(lum, width, height));
         self.paint.brush.texture.kind = TextureKind::Image;
@@ -35,6 +47,12 @@ impl PainterTool {
     /// Take (and clear) the "the user picked Image — open a file picker" request. The shell polls
     /// this each frame; on a successful pick it calls [`Self::set_brush_texture_image`].
     pub fn take_brush_texture_image_request(&mut self) -> bool {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TiraPedidoGrao, {
+            self.take_brush_texture_image_request_corpo()
+        })
+    }
+
+    fn take_brush_texture_image_request_corpo(&mut self) -> bool {
         std::mem::take(&mut self.paint.texture_image_pending)
     }
 
@@ -85,6 +103,30 @@ impl PainterTool {
     /// re-capturaria as camadas do documento ATIVO por cima do sprite que o artista escolheu. Com ele,
     /// o refresh só acontece se o artista de fato abrir aquele sprite no Painter, que é o certo.
     pub fn set_brush_shape_image_rgba(
+        &mut self,
+        rgba: &[u8],
+        width: u32,
+        height: u32,
+        source_doc: Option<u64>,
+    ) {
+        crate::macro_track::porta!(
+            self,
+            |_| if source_doc.is_some() {
+                crate::macro_track::Passo::Recusada(
+                    "set_brush_shape_image_rgba (ligada a um documento)".to_owned(),
+                )
+            } else {
+                crate::macro_track::Passo::FormaRgba {
+                    rgba: rgba.to_vec(),
+                    w: width,
+                    h: height,
+                }
+            },
+            { self.set_brush_shape_image_rgba_corpo(rgba, width, height, source_doc) }
+        )
+    }
+
+    fn set_brush_shape_image_rgba_corpo(
         &mut self,
         rgba: &[u8],
         width: u32,
@@ -145,6 +187,12 @@ impl PainterTool {
     /// kind installs that pattern (masked by the falloff) and resets its params to the kind's defaults.
     /// All three drop any previously-imported image (a procedural Shape never reads pixels).
     pub fn set_brush_shape_kind(&mut self, k: u8) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TipoDaForma(k), {
+            self.set_brush_shape_kind_corpo(k)
+        })
+    }
+
+    fn set_brush_shape_kind_corpo(&mut self, k: u8) {
         let kind = TextureKind::from_u8(k);
         self.paint.brush.shape.kind = kind;
         // Changing the Shape source (None / procedural / a fresh single Image pick) invalidates any
@@ -180,6 +228,12 @@ impl PainterTool {
     /// Take (and clear) the "the user picked Image in the Shape dropdown — open a file picker" request.
     /// The shell polls this each frame; on a successful pick it calls [`Self::set_brush_shape_image`].
     pub fn take_brush_shape_image_request(&mut self) -> bool {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TiraPedidoForma, {
+            self.take_brush_shape_image_request_corpo()
+        })
+    }
+
+    fn take_brush_shape_image_request_corpo(&mut self) -> bool {
         std::mem::take(&mut self.paint.shape_image_pending)
     }
 
@@ -200,6 +254,7 @@ impl PainterTool {
     /// the live buffers (`canvas_rgba` for the active layer, `images` for the rest). A no-op with no
     /// visible raster layers. Groups / non-raster layers are skipped (top-level rasters only, v1).
     pub fn capture_layers_as_brush_shape(&mut self) {
+        self.macro_recusa("capture_layers_as_brush_shape");
         self.capture_layers(false);
     }
 
@@ -322,6 +377,12 @@ impl PainterTool {
     /// **opacity**, visibility, **undo/redo**, …) updates the brush Shape without a manual re-capture.
     /// Skipped mid-stroke (waits for pointer-up) so a drag re-captures once, not per dab.
     pub fn refresh_shape_source_if_changed(&mut self) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::RefrescaFonteDaForma, {
+            self.refresh_shape_source_if_changed_corpo()
+        })
+    }
+
+    fn refresh_shape_source_if_changed_corpo(&mut self) {
         // Run while the captured Shape source IS the current document (equality holds even when both are
         // the unbound `None` doc — so the box ⇄ Layers-panel sync still works without a document binding).
         if self.shape_source_doc != self.bound_doc

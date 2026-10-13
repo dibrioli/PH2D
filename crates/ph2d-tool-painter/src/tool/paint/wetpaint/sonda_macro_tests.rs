@@ -43,10 +43,26 @@ struct Traco {
 }
 
 const SPLASH: [Traco; 4] = [
-    Traco { de: [150.0, 400.0], ate: [850.0, 400.0], cor: [0.8, 0.2, 0.1] },
-    Traco { de: [200.0, 200.0], ate: [800.0, 700.0], cor: [0.1, 0.3, 0.8] },
-    Traco { de: [520.0, 150.0], ate: [520.0, 850.0], cor: [0.9, 0.8, 0.1] },
-    Traco { de: [150.0, 600.0], ate: [850.0, 620.0], cor: [0.2, 0.7, 0.3] },
+    Traco {
+        de: [150.0, 400.0],
+        ate: [850.0, 400.0],
+        cor: [0.8, 0.2, 0.1],
+    },
+    Traco {
+        de: [200.0, 200.0],
+        ate: [800.0, 700.0],
+        cor: [0.1, 0.3, 0.8],
+    },
+    Traco {
+        de: [520.0, 150.0],
+        ate: [520.0, 850.0],
+        cor: [0.9, 0.8, 0.1],
+    },
+    Traco {
+        de: [150.0, 600.0],
+        ate: [850.0, 620.0],
+        cor: [0.2, 0.7, 0.3],
+    },
 ];
 
 /// O relógio da água DESLIGADO: `relogio_fixo = NaN` ⇒ o tique nunca entrega o motor ao worker e
@@ -131,9 +147,17 @@ fn espera(t: &mut PainterTool, ms: u64) {
 /// O estado do contador com o motor EM CASA: `(sim.frame, passo em voo?, sim_steps() do worker)`.
 fn contador(t: &mut PainterTool) -> (u64, bool, u64) {
     t.wet_bring_home();
-    t.paint.wetpaint.session.as_ref().map_or((0, false, 0), |s| {
-        (s.engine.sim.frame, s.engine.sim.step_pending(), s.sim_steps())
-    })
+    t.paint
+        .wetpaint
+        .session
+        .as_ref()
+        .map_or((0, false, 0), |s| {
+            (
+                s.engine.sim.frame,
+                s.engine.sim.step_pending(),
+                s.sim_steps(),
+            )
+        })
 }
 
 fn drena(t: &mut PainterTool) {
@@ -257,7 +281,11 @@ fn sonda_macro_a_custo() {
             let k = (r + i) % 4;
             if k == 3 {
                 let y = 100.0 + 120.0 * r as f32;
-                let tr = Traco { de: [100.0, y], ate: [900.0, y + 30.0], cor: [0.5, 0.1, 0.6] };
+                let tr = Traco {
+                    de: [100.0, y],
+                    ate: [900.0, y + 30.0],
+                    cor: [0.5, 0.1, 0.6],
+                };
                 let a = Instant::now();
                 let pq = traco(&mut repro, tr, N, false);
                 repro.paint_tick(1.0 / 60.0);
@@ -303,7 +331,11 @@ fn sonda_macro_a_custo() {
 fn sonda_macro_bcd_reproducao() {
     println!("[macro bcd] load antes {}", carga());
     for drena_no_down in [false, true] {
-        let nome = if drena_no_down { "DRENA no Down" } else { "produto (sem drenar)" };
+        let nome = if drena_no_down {
+            "DRENA no Down"
+        } else {
+            "produto (sem drenar)"
+        };
         let mut corridas = Vec::new();
         for _ in 0..4 {
             corridas.push(corrida_worker(drena_no_down));

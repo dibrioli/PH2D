@@ -115,6 +115,7 @@ impl PainterTool {
         width: u32,
         height: u32,
     ) {
+        self.macro_recusa("bind_document");
         // ⚠️ **A torn-down canvas is not a document.** `RasterEditTool::deactivate` empties the pixels
         // but leaves `bound_doc` and the layer stack standing, so every "am I already bound?" answer
         // below would be a stale YES — and both of them refuse to re-seed. Enio, 2026-07-22: *"o app sai
@@ -320,6 +321,12 @@ impl PainterTool {
     /// Clears the dirty flag. `None` when not dirty / no stashed source / it has zero size. The bridge
     /// uploads the result into a per-sprite preview slot so the non-selected sprite reflects the edit live.
     pub fn take_shape_source_preview(&mut self) -> Option<(Vec<u8>, u32, u32)> {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TiraPreviewDaFonte, {
+            self.take_shape_source_preview_corpo()
+        })
+    }
+
+    fn take_shape_source_preview_corpo(&mut self) -> Option<(Vec<u8>, u32, u32)> {
         if !self.shape_source_preview_dirty {
             return None;
         }

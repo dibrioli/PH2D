@@ -125,6 +125,12 @@ impl PainterTool {
     /// snap** while dragging a new point (its incoming segment is guided to a 15°-graduated ray from the
     /// previous point). Out-of-band, like [`PainterTool::set_line_constrain`].
     pub fn set_line_snap(&mut self, on: bool) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::SnapDaLinha(on), {
+            self.set_line_snap_corpo(on)
+        })
+    }
+
+    fn set_line_snap_corpo(&mut self, on: bool) {
         self.paint.line_snap = on;
     }
 
@@ -132,6 +138,19 @@ impl PainterTool {
     /// `GridSnapState::snap_world` in world space, then maps back to image px) — `None` when grid snap is
     /// off. Out-of-band, like [`PainterTool::set_line_snap`]; drawing-tool point placement uses it.
     pub fn set_grid_snap(&mut self, pos: Option<[f32; 2]>) {
+        crate::macro_track::porta!(
+            self,
+            |t| {
+                let (w, h) = t.macro_referencia();
+                crate::macro_track::Passo::GridSnap(
+                    pos.map(|p| crate::macro_track::passo::rel(p, w, h)),
+                )
+            },
+            { self.set_grid_snap_corpo(pos) }
+        )
+    }
+
+    fn set_grid_snap_corpo(&mut self, pos: Option<[f32; 2]>) {
         self.paint.grid_snap_pos = pos;
     }
 

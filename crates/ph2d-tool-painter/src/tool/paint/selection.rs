@@ -137,6 +137,7 @@ impl PainterTool {
     /// **Clear** (deselect) — no active selection, painting unrestricted again. Records one structural undo
     /// entry (no-op when there is nothing selected). Also drops the shape list + hides the gizmos.
     pub fn clear_selection(&mut self) {
+        self.macro_recusa("clear_selection");
         if !self.paint.selection_active {
             return;
         }

@@ -326,6 +326,8 @@ pub struct PainterTool {
     /// The layer-system mask whose GRAYSCALE the canvas shows (its row's "view" eye is open); `None` (the
     /// default) shows the masked effect. View-only, transient (not saved). See `layers::mask_view`.
     mask_view_grayscale: Option<RtLayerId>,
+    /// A gravação de uma macro em curso ([`crate::macro_track`]); `None` = nada a gravar.
+    pub(crate) macro_gravacao: Option<Box<crate::macro_track::Gravacao>>,
 }
 
 /// Which arm the last preview drain ([`PainterTool::take_preview_arc`]) took. A `PH2D_PAINT_PERF`
@@ -415,6 +417,7 @@ impl Default for PainterTool {
             shape_source_revision: 0,
             shape_source_preview_dirty: false,
             mask_view_grayscale: None,
+            macro_gravacao: None,
         }
     }
 }

@@ -34,6 +34,7 @@ impl PainterTool {
     /// Mesma família dos três acima e pela mesma razão não é guardado por `!stroke_active`: mexe
     /// num campo do [`Layer`], nunca em buffers.
     pub fn set_layer_name(&mut self, id: RtLayerId, name: impl Into<String>) {
+        self.macro_recusa("set_layer_name");
         if let Some(layer) = self.layers.get_mut(id) {
             layer.name = name.into();
         }
@@ -149,6 +150,7 @@ impl PainterTool {
         dragged: ph2d_a11y::NodeId,
         drop: ph2d_editor_core::interaction::PanelRowDrop,
     ) {
+        self.macro_recusa("handle_layer_reparent");
         if reparent_in(&mut self.layers, dragged, drop) {
             self.invalidate_composite();
         }
@@ -297,6 +299,7 @@ impl PainterTool {
         name: impl Into<String>,
         rgba: Vec<u8>, // COLOR-RAW-OK: bytes de sprite, entregues verbatim como no `set_source`
     ) -> Option<RtLayerId> {
+        self.macro_recusa("add_raster_layer_with_pixels");
         let (w, h) = self.source_size;
         // ⚠️ A conferência ANTES de mexer em coisa nenhuma: `add_raster_layer` faz um passo
         // estrutural (flush da activa, undo, selecção), e descobrir o tamanho errado depois dele
@@ -316,6 +319,7 @@ impl PainterTool {
     /// stroke). No-op (`None`) mid-stroke, if the active layer isn't a raster,
     /// if it already has a mask, or at the hard cap.
     pub fn add_mask_to_active(&mut self) -> Option<RtLayerId> {
+        self.macro_recusa("add_mask_to_active");
         let active = self.layers.active()?;
         // A raster OR a texture layer can take a mask (the compositor multiplies the layer's alpha by
         // the mask for both). A texture has no dims in its spec, so source the canvas dims here.

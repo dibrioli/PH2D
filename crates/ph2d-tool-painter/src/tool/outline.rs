@@ -32,6 +32,7 @@ impl PainterTool {
     /// modo acabou de abrir e a ligação vem no mesmo quadro, mais adiante): então fica pendente e
     /// o [`Self::bind_document`] cumpre-o. `false` = a camada já não existe.
     pub fn open_layer_of(&mut self, entity: u64, layer: u64) -> bool {
+        self.macro_recusa("open_layer_of");
         let id = RtLayerId(layer);
         if self.bound_doc == Some(entity) && !self.canvas_rgba.is_empty() {
             let there = self.layers.get(id).is_some();
@@ -60,6 +61,7 @@ impl PainterTool {
 
     /// ⭐ **Larga o pedido** — o Paint que o fez saiu antes de o documento ligar (`paint_mode::leave`).
     pub fn forget_pending_layer(&mut self) {
+        self.macro_recusa("forget_pending_layer");
         self.pending_layer = None;
     }
 }

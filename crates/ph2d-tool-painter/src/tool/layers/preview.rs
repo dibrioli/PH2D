@@ -99,6 +99,12 @@ impl PainterTool {
     /// pixels everywhere else (display gate `the_screen_survives_the_gpu_to_cpu_producer_handoff`).
     #[must_use]
     pub fn take_preview_dirty(&mut self) -> bool {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::PreviewSujo, {
+            self.take_preview_dirty_corpo()
+        })
+    }
+
+    fn take_preview_dirty_corpo(&mut self) -> bool {
         if self.canvas_rgba.is_empty() {
             return false;
         }

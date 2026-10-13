@@ -159,6 +159,8 @@ pub(crate) struct WetPaintState {
     /// **A largura prometida (W2)**: a lei raio do motor → largura do pincel de agora (a do preset; sem
     /// preset, a do Wet Round, que é o pincel de fábrica). `None` = a lei CRUA — só a sonda que a mede.
     pub(super) largura: Option<largura::LeiDaLargura>,
+    /// A fita da macro ([`fita`]) que cada sessão nova herda.
+    pub(super) fita: Option<fita::FitaPartilhada>,
 }
 
 /// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
@@ -197,6 +199,7 @@ impl Default for WetPaintState {
             relogio_fixo: None,
             preset_pedido: None,
             largura: Some(largura::LeiDaLargura::de_omissao()),
+            fita: None,
         }
     }
 }
@@ -208,6 +211,21 @@ impl PainterTool {
     /// thread própria (`wetpaint/offthread.rs`).
     pub fn set_wet_relogio_fixo(&mut self, ligado: bool) {
         self.paint.wetpaint.relogio_fixo = ligado.then_some(0.0);
+    }
+
+    /// Instala (ou tira) a fita da macro: no estado, para as sessões que nascerem, e na sessão viva.
+    pub(crate) fn wet_instala_fita(&mut self, f: Option<fita::FitaPartilhada>) {
+        if let Some(s) = self.paint.wetpaint.session.as_mut() {
+            s.fita.clone_from(&f);
+        }
+        self.paint.wetpaint.fita = f;
+    }
+
+    /// O motor da água volta para casa (bloqueia ≤ um estágio) — o fim de uma gravação, nos dois lados.
+    pub(crate) fn wet_traz_para_casa(&mut self) {
+        if let Some(s) = self.paint.wetpaint.session.as_mut() {
+            s.bring_home();
+        }
     }
 
     /// **A lei CRUA da largura** — o carimbo chega ao motor com `escala ×` o raio pedido, sem a promessa
@@ -232,6 +250,7 @@ impl PainterTool {
 }
 
 mod dab_route; // a ROTA DO DAB (pincel -> fluido) — filho por LOC
+pub(crate) mod fita; // a FITA do worker: a água de uma macro idêntica à gravada
 pub(super) mod grid_map; // a grade do fluido != a grade de PIXELS — filho por LOC
 pub(super) mod largura; // a LARGURA PROMETIDA (W2): o raio do motor sai da tabela do preset
 mod session; // what a wet SESSION is (data model) — child file (LOC cap)
@@ -488,9 +507,9 @@ mod sonda_camadas; // as sondas das camadas de amarelo sobre azul (prompt 15)
 #[cfg(test)]
 mod sonda_fios; // O3: os fios finos do Rebelle saem dos knobs que o motor já tem?
 #[cfg(test)]
-mod sonda_macro_tests; // as MACROS: reproduzir ao byte contando passos da sim, não segundos
-#[cfg(test)]
 mod sonda_gota; // a varredura da lei da gota contra o Rebelle (W1e, F1+F5)
+#[cfg(test)]
+mod sonda_macro_tests; // as MACROS: reproduzir ao byte contando passos da sim, não segundos
 #[cfg(test)]
 mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
 #[cfg(test)]

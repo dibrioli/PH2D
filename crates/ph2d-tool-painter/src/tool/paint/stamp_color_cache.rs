@@ -482,6 +482,12 @@ impl PainterTool {
     /// frame. Returns `true` when the cache changed (the host then re-publishes it to the panel). Keyed
     /// by the same [`ColorStampKey`] as the paint stamps, at the fixed [`PREVIEW_SIZE`].
     pub fn refresh_shape_color_preview(&mut self) -> bool {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::RefrescaCorDaForma, {
+            self.refresh_shape_color_preview_corpo()
+        })
+    }
+
+    fn refresh_shape_color_preview_corpo(&mut self) -> bool {
         let color_mode = self.paint.shape_layers.is_color_mode();
         let brush = self.paint.brush;
         // Only touch the Grain ramp LUT in colour mode, so the per-frame preview never flips the ramp

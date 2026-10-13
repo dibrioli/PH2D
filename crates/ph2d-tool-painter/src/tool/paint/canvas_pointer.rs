@@ -9,6 +9,19 @@ use ph2d_painter_brush::StrokeMethod;
 
 impl CanvasPaintTool for PainterTool {
     fn on_canvas_pointer(&mut self, ev: CanvasPointer) -> bool {
+        crate::macro_track::porta!(
+            self,
+            |t| {
+                let (w, h) = t.macro_referencia();
+                crate::macro_track::Passo::de_ponteiro(ev, w, h)
+            },
+            { self.on_canvas_pointer_corpo(ev) }
+        )
+    }
+}
+
+impl PainterTool {
+    fn on_canvas_pointer_corpo(&mut self, ev: CanvasPointer) -> bool {
         if ev.phase == PointerPhase::Hover {
             return false; // hover is cursor/preview only
         }
@@ -118,6 +131,12 @@ impl PainterTool {
     /// shell forwards the live Alt state before each [`CanvasPaintTool::on_canvas_pointer`], since the
     /// frozen `CanvasPointer` carries no modifiers. No effect on the other methods.
     pub fn set_line_constrain(&mut self, on: bool) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::RestringeLinha(on), {
+            self.set_line_constrain_corpo(on)
+        })
+    }
+
+    fn set_line_constrain_corpo(&mut self, on: bool) {
         self.paint.line_constrain = on;
     }
 
@@ -125,6 +144,12 @@ impl PainterTool {
     /// screen-constant value scaled by the sprite footprint, so the hit targets stay the same size at
     /// any zoom). Shared by Curve and Ellipse.
     pub fn set_shape_grab_tol_px(&mut self, px: f32) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TolDePega(px), {
+            self.set_shape_grab_tol_px_corpo(px)
+        })
+    }
+
+    fn set_shape_grab_tol_px_corpo(&mut self, px: f32) {
         self.paint.shape_grab_tol_px = px.max(1.0);
     }
 
@@ -133,6 +158,12 @@ impl PainterTool {
     /// [`Self::set_shape_grab_tol_px`]. Identidade = arte sem deformação, e aí tudo o que este
     /// módulo faz é byte a byte o que era.
     pub fn set_canvas_warp(&mut self, warp: ph2d_painter_brush::canvas_warp::CanvasWarp) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Warp(warp), {
+            self.set_canvas_warp_corpo(warp)
+        })
+    }
+
+    fn set_canvas_warp_corpo(&mut self, warp: ph2d_painter_brush::canvas_warp::CanvasWarp) {
         self.paint.canvas_warp = warp;
     }
 }

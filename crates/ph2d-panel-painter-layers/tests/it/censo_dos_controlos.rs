@@ -342,7 +342,7 @@ fn traco_um(t: &mut PainterTool, ultima: &mut Option<Vec<u8>>) {
 ///
 /// ⚠️ **A segunda cor é a régua dos controlos que MISTURAM.** Com os dois traços da mesma cor, o
 /// Pickup do Wet Paint apanhava azul de cima de azul e lia-se «morto» (2026-10-03).
-fn risca(t: &mut PainterTool) -> Vec<u8> {
+pub(crate) fn risca(t: &mut PainterTool) -> Vec<u8> {
     let mut ultima = None;
     traco_um(t, &mut ultima);
     for _ in 0..4 {
@@ -407,7 +407,7 @@ fn mede(media: PaintMedia, armar: &[Gesto], gesto: &Gesto) -> (Vec<u8>, Entrega)
 
 /// A ferramenta e o painel de UM ensaio, depois das PRÉ-CONDIÇÕES (`armar`) aplicadas pela mesma porta.
 pub(crate) struct Bancada {
-    tool: PainterTool,
+    pub(crate) tool: PainterTool,
     pub(crate) host: MockPanelHost,
     st: PainterLayersPanelState,
     rects: Vec<(NodeId, Rect)>,
@@ -441,7 +441,7 @@ impl Bancada {
     }
 
     /// Um gesto pela porta do ponteiro, dois quadros do app, e o painel re-pintado com o resultado.
-    fn aplica(&mut self, gesto: &Gesto, entrega: &mut Entrega) {
+    pub(crate) fn aplica(&mut self, gesto: &Gesto, entrega: &mut Entrega) {
         let eventos = conduz(&mut self.host, &mut self.st, &self.rects, gesto);
         for ev in eventos {
             let _ = self

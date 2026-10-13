@@ -23,11 +23,57 @@ impl Tool for PainterTool {
     }
 
     fn on_activate(&mut self) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Ativa, {
+            self.on_activate_corpo()
+        })
+    }
+
+    fn on_deactivate(&mut self) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Desativa, {
+            self.on_deactivate_corpo()
+        })
+    }
+
+    fn handle_panel_event(&mut self, event: ph2d_editor_core::tool::PanelEvent) {
+        let ev = event.clone();
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Painel(ev), {
+            self.handle_panel_event_corpo(event)
+        })
+    }
+
+    /// Per-frame heartbeat (ADR-0040-amendment-2): airbrush timer + stabilizer catch-up; `dt_ms` = real wall ms since last frame.
+    fn on_tick(&mut self, dt_ms: f32) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Tique(dt_ms), {
+            self.paint_tick(dt_ms * 1e-3)
+        })
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn as_raster_edit_mut(&mut self) -> Option<&mut dyn RasterEditTool> {
+        Some(self)
+    }
+
+    /// The painter consumes canvas pointer samples to paint dabs (ADR-0040 Amendment 3; [`crate::tool::paint`]).
+    fn as_canvas_paint_mut(&mut self) -> Option<&mut dyn CanvasPaintTool> {
+        Some(self)
+    }
+
+    fn is_default(&self) -> bool {
+        false
+    }
+}
+
+/// Os corpos das portas do `Tool` (a porta grava a macro e chama-os — `crate::macro_track`).
+impl PainterTool {
+    fn on_activate_corpo(&mut self) {
         // Install the takeover UI (suppresses the normal PH2D chrome; ADR-0043 §1.1).
         self.params.takeover_active = true;
     }
 
-    fn on_deactivate(&mut self) {
+    fn on_deactivate_corpo(&mut self) {
         self.params.takeover_active = false;
         // BAKE any live Deform Transform float (commit it as one undo entry) — switching tools must persist
         // the transform AND keep it undoable, like the open-shape bake below. No-op outside Transform.
@@ -47,7 +93,7 @@ impl Tool for PainterTool {
         }
     }
 
-    fn handle_panel_event(&mut self, event: ph2d_editor_core::tool::PanelEvent) {
+    fn handle_panel_event_corpo(&mut self, event: ph2d_editor_core::tool::PanelEvent) {
         // The frozen generic channel (ADR-0040 TG-B): the layers panel emits PanelEvent::{Click,
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
         use ph2d_editor_core::ids as core_ids;
@@ -377,27 +423,5 @@ impl Tool for PainterTool {
             PanelEvent::Toggle(_, _) => {}
         }
         self.refill_if_appearance_changed(appearance_before);
-    }
-
-    /// Per-frame heartbeat (ADR-0040-amendment-2): airbrush timer + stabilizer catch-up; `dt_ms` = real wall ms since last frame.
-    fn on_tick(&mut self, dt_ms: f32) {
-        self.paint_tick(dt_ms * 1e-3);
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn as_raster_edit_mut(&mut self) -> Option<&mut dyn RasterEditTool> {
-        Some(self)
-    }
-
-    /// The painter consumes canvas pointer samples to paint dabs (ADR-0040 Amendment 3; [`crate::tool::paint`]).
-    fn as_canvas_paint_mut(&mut self) -> Option<&mut dyn CanvasPaintTool> {
-        Some(self)
-    }
-
-    fn is_default(&self) -> bool {
-        false
     }
 }

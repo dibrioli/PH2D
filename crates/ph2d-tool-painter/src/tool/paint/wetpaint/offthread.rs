@@ -36,6 +36,7 @@
 //! A aritmética do motor, a ordem dos estágios e o fingerprint pinado — só **quem chama**
 //! `step_stage` muda. A suíte de aceitação dirige o engine direto e não vê esta camada.
 
+use super::fita::{self, Divergencia, MarcaDaAgua, Pergunta, RespostaDoWorker};
 use ph2d_wet_paint::painter::Engine;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -88,6 +89,9 @@ pub(in crate::tool::paint) enum EngineSlot {
     Here(Box<Engine>),
     /// Com o worker.
     Away,
+    /// A tocar uma macro: o motor está «com o worker» do roteiro — fica nesta thread e anda, quando
+    /// volta, até a marca gravada ([`super::fita`]). Lê-se como [`Self::Away`] em todo o resto.
+    Roteiro(Box<Engine>),
 }
 
 /// O worker vivo de uma sessão: os dois canais e o pedido de volta.
@@ -136,7 +140,7 @@ impl std::ops::Deref for EngineSlot {
     fn deref(&self) -> &Engine {
         match self {
             Self::Here(e) => e,
-            Self::Away => panic!(
+            Self::Away | Self::Roteiro(_) => panic!(
                 "leitura imutavel do engine com ele no worker: \
                  chame `sess.bring_home()` na porta que abriu este caminho"
             ),
@@ -146,19 +150,15 @@ impl std::ops::Deref for EngineSlot {
 
 impl std::ops::DerefMut for EngineSlot {
     fn deref_mut(&mut self) -> &mut Engine {
-        if matches!(self, Self::Away) {
-            // Só o dono da sessão sabe pedir de volta (os canais moram no
-            // `SimWorker`), então este braço é inalcançável: o `bring_home` da
-            // porta já rodou. Ele existe para o caso de alguém adicionar uma
-            // porta nova e esquecer — e aí o pânico nomeia o conserto.
-            panic!(
-                "escrita no engine com ele no worker: \
-                 chame `sess.bring_home()` na porta que abriu este caminho"
-            );
-        }
+        // Só o dono da sessão sabe pedir de volta (os canais moram no `SimWorker`), então o braço fora
+        // de casa é inalcançável: o `bring_home` da porta já rodou. Ele existe para o caso de alguém
+        // adicionar uma porta nova e esquecer — e aí o pânico nomeia o conserto.
         match self {
             Self::Here(e) => e,
-            Self::Away => unreachable!(),
+            Self::Away | Self::Roteiro(_) => panic!(
+                "escrita no engine com ele no worker: \
+                 chame `sess.bring_home()` na porta que abriu este caminho"
+            ),
         }
     }
 }
@@ -286,8 +286,13 @@ impl super::WetSession {
     /// que é exatamente o que o passo interrompível comprou (3-10 ms em vez dos
     /// 33-38 de um passo atômico).
     pub(in crate::tool::paint) fn bring_home(&mut self) {
-        if !matches!(self.engine, EngineSlot::Away) {
-            return;
+        match self.engine {
+            EngineSlot::Here(_) => return,
+            EngineSlot::Roteiro(_) => {
+                self.volta_do_roteiro(Pergunta::Volta);
+                return;
+            }
+            EngineSlot::Away => {}
         }
         let w = self
             .worker
@@ -299,6 +304,7 @@ impl super::WetSession {
         // invariante em vez de o esconder.
         let engine = w.back.recv().expect("o worker devolve o engine");
         self.engine = EngineSlot::Here(engine);
+        self.grava_que_voltou();
     }
 
     /// **Pede o motor e NÃO espera** — a porta do TICK.
@@ -315,8 +321,10 @@ impl super::WetSession {
     /// **têm** de bloquear: elas vão ESCREVER no motor, e não há "no frame
     /// seguinte" para um evento do artista.
     pub(in crate::tool::paint) fn try_bring_home(&mut self) -> bool {
-        if !matches!(self.engine, EngineSlot::Away) {
-            return true;
+        match self.engine {
+            EngineSlot::Here(_) => return true,
+            EngineSlot::Roteiro(_) => return self.volta_do_roteiro(Pergunta::TentaVoltar),
+            EngineSlot::Away => {}
         }
         let Some(w) = self.worker.as_ref() else {
             return false;
@@ -324,40 +332,88 @@ impl super::WetSession {
         w.want.store(true, Ordering::Release);
         // Se ele ainda não chegou, o motor está no canal — o `try_recv` do
         // próximo frame o encontra. Nada se perde: `want` já está armado.
-        match w.back.recv_timeout(TICK_WAIT) {
-            Ok(engine) => {
-                self.engine = EngineSlot::Here(engine);
-                true
-            }
-            Err(_) => false,
-        }
+        let voltou = w.back.recv_timeout(TICK_WAIT).ok();
+        self.recebe(voltou)
     }
 
     /// **Pede o motor sem esperar NADA** — a porta do evento de ponteiro com o traço aberto (W1e, F6):
     /// esperar o estágio em voo custava o quadro a pintar `1,3 → 11,9 ms` (pior `19`) na poça pesada a
     /// 4096²; o lote que não o encontra espera na fila da sessão e pousa no tick.
     pub(in crate::tool::paint) fn try_bring_home_now(&mut self) -> bool {
-        if !matches!(self.engine, EngineSlot::Away) {
-            return true;
+        match self.engine {
+            EngineSlot::Here(_) => return true,
+            EngineSlot::Roteiro(_) => return self.volta_do_roteiro(Pergunta::TentaVoltar),
+            EngineSlot::Away => {}
         }
         let Some(w) = self.worker.as_ref() else {
             return false;
         };
         w.want.store(true, Ordering::Release);
-        match w.back.try_recv() {
-            Ok(engine) => {
-                self.engine = EngineSlot::Here(engine);
-                true
+        let voltou = w.back.try_recv().ok();
+        self.recebe(voltou)
+    }
+
+    /// O resultado de um pedido sem espera: o motor (se veio) vai para casa, e a fita grava a resposta.
+    fn recebe(&mut self, voltou: Option<Box<Engine>>) -> bool {
+        let Some(engine) = voltou else {
+            if let Some(f) = &self.fita {
+                fita::trava(f).grava(RespostaDoWorker::NaoVoltou);
             }
-            Err(_) => false,
+            return false;
+        };
+        self.engine = EngineSlot::Here(engine);
+        self.grava_que_voltou();
+        true
+    }
+
+    fn grava_que_voltou(&self) {
+        if let Some(f) = &self.fita {
+            fita::trava(f).grava(RespostaDoWorker::Voltou(MarcaDaAgua::de(&self.engine)));
         }
+    }
+
+    /// O motor volta do worker do ROTEIRO: a fita diz se voltou e em que estado; o motor local anda até
+    /// lá. Uma divergência fica registada na fita e o motor volta como está — quem toca nunca pendura.
+    fn volta_do_roteiro(&mut self, p: Pergunta) -> bool {
+        let Some(f) = self.fita.clone() else {
+            unreachable!("o motor só fica no roteiro com uma fita a tocar")
+        };
+        let mut ft = fita::trava(&f);
+        let alvo = match ft.responde(p) {
+            Some(RespostaDoWorker::NaoVoltou) => return false,
+            Some(RespostaDoWorker::Voltou(m)) => Some(m),
+            _ => None,
+        };
+        let EngineSlot::Roteiro(mut engine) = std::mem::replace(&mut self.engine, EngineSlot::Away)
+        else {
+            unreachable!("checado por quem chama")
+        };
+        if let Some(m) = alvo
+            && !fita::anda_ate(&mut engine, m)
+        {
+            ft.diverge(Divergencia::MarcaInalcancavel(m));
+        }
+        self.engine = EngineSlot::Here(engine);
+        true
     }
 
     /// **Quantos passos a sim completou** — `0` quando nunca houve worker.
     pub(in crate::tool::paint) fn sim_steps(&self) -> u64 {
-        self.worker
-            .as_ref()
-            .map_or(0, |w| w.steps.load(Ordering::Acquire))
+        if self.roteiro_teve_worker {
+            let f = self.fita.as_ref().expect("roteiro sem fita");
+            return match fita::trava(f).responde(Pergunta::Passos) {
+                Some(RespostaDoWorker::Passos(n)) => n,
+                _ => self.seen_steps,
+            };
+        }
+        let Some(w) = self.worker.as_ref() else {
+            return 0;
+        };
+        let n = w.steps.load(Ordering::Acquire);
+        if let Some(f) = &self.fita {
+            fita::trava(f).grava(RespostaDoWorker::Passos(n));
+        }
+        n
     }
 
     /// **Devolve o engine ao worker** — o tick faz isto no FIM, uma vez. No-op
@@ -370,6 +426,15 @@ impl super::WetSession {
         if !matches!(self.engine, EngineSlot::Here(_))
             || (self.stroke_open && !self.engine.sim.sim_while_painting)
         {
+            return;
+        }
+        if self.fita.as_ref().is_some_and(|f| fita::trava(f).tocando()) {
+            let EngineSlot::Here(engine) = std::mem::replace(&mut self.engine, EngineSlot::Away)
+            else {
+                unreachable!("checado acima")
+            };
+            self.engine = EngineSlot::Roteiro(engine);
+            self.roteiro_teve_worker = true;
             return;
         }
         let w = self.worker.get_or_insert_with(SimWorker::spawn);

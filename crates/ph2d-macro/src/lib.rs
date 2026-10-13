@@ -14,6 +14,7 @@
 pub mod codec;
 mod doc;
 mod player;
+pub mod rec;
 mod recordable;
 mod recorder;
 

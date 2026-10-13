@@ -81,6 +81,8 @@ impl PainterTool {
             applied: WetEngineFacts::BOOT,
             preview: None,
             adiados: Vec::new(),
+            fita: self.paint.wetpaint.fita.clone(),
+            roteiro_teve_worker: false,
         });
         true
     }

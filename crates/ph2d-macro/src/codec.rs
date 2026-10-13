@@ -14,6 +14,7 @@
 //! Etiqueta repetida de campo único: vence a última.
 
 use crate::doc::{Event, MacroDoc, MacroTime, RefRect, Track};
+use crate::rec::{Cursor, put_field, varint_bytes};
 
 pub const MAGIC: &[u8; 9] = b"PH2DMACRO";
 pub const MAJOR: u16 = 1;
@@ -74,30 +75,6 @@ fn write_track(tr: &Track) -> Vec<u8> {
     }
     rec.push(0);
     rec
-}
-
-fn put_field(out: &mut Vec<u8>, tag: u32, bytes: &[u8]) {
-    put_varint(out, u64::from(tag));
-    put_varint(out, bytes.len() as u64);
-    out.extend_from_slice(bytes);
-}
-
-fn put_varint(out: &mut Vec<u8>, mut v: u64) {
-    loop {
-        let b = (v & 0x7f) as u8;
-        v >>= 7;
-        if v == 0 {
-            out.push(b);
-            return;
-        }
-        out.push(b | 0x80);
-    }
-}
-
-fn varint_bytes(v: u64) -> Vec<u8> {
-    let mut b = Vec::with_capacity(10);
-    put_varint(&mut b, v);
-    b
 }
 
 // ── leitura ─────────────────────────────────────────────────────────────────
@@ -201,44 +178,4 @@ fn read_event(bytes: &[u8]) -> Result<Event, CodecError> {
         })?,
         payload,
     })
-}
-
-struct Cursor<'a>(&'a [u8]);
-
-impl<'a> Cursor<'a> {
-    fn varint(&mut self) -> Result<u64, CodecError> {
-        let mut v: u64 = 0;
-        for i in 0..10 {
-            let (&b, rest) = self.0.split_first().ok_or(CodecError::Truncated)?;
-            self.0 = rest;
-            let bits = u64::from(b & 0x7f);
-            if i == 9 && b > 1 {
-                return Err(CodecError::BadVarint);
-            }
-            v |= bits << (7 * i);
-            if b & 0x80 == 0 {
-                return Ok(v);
-            }
-        }
-        Err(CodecError::BadVarint)
-    }
-
-    /// Os campos de um registo até à etiqueta `0`.
-    fn record(&mut self) -> Result<Vec<(u32, &'a [u8])>, CodecError> {
-        let mut fields = Vec::new();
-        loop {
-            let tag = self.varint()?;
-            if tag == 0 {
-                return Ok(fields);
-            }
-            let tag = u32::try_from(tag).map_err(|_| CodecError::BadVarint)?;
-            let len = usize::try_from(self.varint()?).map_err(|_| CodecError::Truncated)?;
-            if len > self.0.len() {
-                return Err(CodecError::Truncated);
-            }
-            let (body, rest) = self.0.split_at(len);
-            self.0 = rest;
-            fields.push((tag, body));
-        }
-    }
 }

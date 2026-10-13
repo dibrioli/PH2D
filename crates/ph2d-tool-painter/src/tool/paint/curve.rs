@@ -347,6 +347,7 @@ impl PainterTool {
 
     /// Delete the selected control point (Delete key). Keeps `≥ 2` points; `true` when one was removed.
     pub fn curve_delete_selected(&mut self) -> bool {
+        self.macro_recusa("curve_delete_selected");
         let deletable = self.paint.curve.as_ref().is_some_and(|ed| {
             ed.editing
                 && ed
@@ -509,6 +510,7 @@ impl PainterTool {
     /// Set the selected point's **handle kind** from the right-click menu's wire `u8` (`0=Free 1=Aligned
     /// 2=Vector 3=Auto`); re-derives the geometry (a sharp point → manual seeds smooth tangents) + re-fills.
     pub fn set_curve_handle_kind(&mut self, wire: u8) -> bool {
+        self.macro_recusa("set_curve_handle_kind");
         if HandleKind::from_wire(wire).is_none() {
             return false;
         }

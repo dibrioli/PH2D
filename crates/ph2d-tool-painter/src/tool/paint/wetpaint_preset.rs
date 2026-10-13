@@ -19,7 +19,7 @@ use std::collections::BTreeMap;
 /// `pigmentPerDab` de cada preset, dono 10/10: «o correto para clarear não seria usar pigment?»).
 pub const OPACIDADE_DE_FABRICA: f32 = 1.0;
 
-mod json;
+pub(in crate::tool::paint) mod json;
 #[cfg(test)]
 mod medida_preview;
 mod miniatura;
@@ -72,6 +72,40 @@ pub const CAMPOS_DO_PINCEL: [&str; 29] = [
     "pigment",
     "pigment_mix",
     "paper_depth",
+];
+
+/// Os campos de [`CAMPOS_FORA`] que o traço do Wet Paint LÊ — o volume, a obra e o gesto — e que o
+/// estado inicial de uma MACRO leva por cima do preset (`crate::macro_track::inicial`). Os restantes de
+/// fora são de outros meios, e o gate `o_pincel_guardado_pinta_o_mesmo_traco` prova que não o mudam.
+pub const CAMPOS_DA_MACRO: [&str; 28] = [
+    "radius_px",
+    "strength",
+    "color",
+    "paper",
+    "symmetry",
+    "stroke_method",
+    "grid_cell_px",
+    "grid_offset_px",
+    "grid_fit",
+    "edge_to_edge",
+    "line_kind",
+    "style_solid",
+    "sketchy_reach",
+    "sketchy_density",
+    "thread_width_px",
+    "thread_opacity",
+    "sketchy_magnetify",
+    "wire_history",
+    "wire_connection_line",
+    "ribbon_weight",
+    "ribbon_friction",
+    "ribbon_gravity",
+    "ribbon_rungs",
+    "rough_amount",
+    "rough_bowing",
+    "rough_passes",
+    "dash_ratio",
+    "dash_samples",
 ];
 
 const VOLUME: &str = "volume do topo (Size px = 2·raio, Opacity = força)";
@@ -283,6 +317,12 @@ impl PainterTool {
 
     /// Tira (e limpa) o pedido do bloco de presets — a ponte da app chama-o a cada quadro.
     pub fn take_wet_preset_request(&mut self) -> Option<PedidoPreset> {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TiraPedidoPreset, {
+            self.take_wet_preset_request_corpo()
+        })
+    }
+
+    fn take_wet_preset_request_corpo(&mut self) -> Option<PedidoPreset> {
         self.paint.wetpaint.preset_pedido.take()
     }
 
@@ -293,6 +333,21 @@ impl PainterTool {
     /// Devolve as texturas que o ficheiro pedia e não se leram (o slot fica sem imagem): quem chama
     /// di-lo ao artista — nunca em silêncio.
     pub fn wet_preset_aplicar(&mut self, p: &Preset) -> Vec<String> {
+        crate::macro_track::porta!(
+            self,
+            |_| crate::macro_track::Passo::PresetAplica {
+                parametros: serde_json::to_string(&p.parametros).unwrap_or_default(),
+                texturas: p
+                    .texturas
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect()
+            },
+            { self.wet_preset_aplicar_corpo(p) }
+        )
+    }
+
+    fn wet_preset_aplicar_corpo(&mut self, p: &Preset) -> Vec<String> {
         if !self.paint.wetpaint.armed {
             self.set_paint_media(PaintMedia::WetPaint);
         }
@@ -356,6 +411,16 @@ impl PainterTool {
     /// Os volumes que `v` fixa (a política «lembrar volumes» passa por aqui também). Pressure e Length
     /// ainda não têm leitor (W6/W5): viajam no ficheiro e não mexem em nada.
     pub fn wet_preset_aplicar_volumes(&mut self, v: &Volumes) {
+        crate::macro_track::porta!(
+            self,
+            |_| crate::macro_track::Passo::PresetVolumes(
+                serde_json::to_string(v).unwrap_or_default()
+            ),
+            { self.wet_preset_aplicar_volumes_corpo(v) }
+        )
+    }
+
+    fn wet_preset_aplicar_volumes_corpo(&mut self, v: &Volumes) {
         if let Some(d) = v.size_px.filter(|d| d.is_finite()) {
             self.set_brush_size_px(d as f32 * 0.5);
         }
@@ -369,6 +434,14 @@ impl PainterTool {
 
     /// O modo (a ferramenta molhada) pelo nome que o preset guarda; um nome desconhecido não muda nada.
     pub fn wet_preset_aplicar_modo(&mut self, modo: &str) {
+        crate::macro_track::porta!(
+            self,
+            |_| crate::macro_track::Passo::PresetModo(modo.to_owned()),
+            { self.wet_preset_aplicar_modo_corpo(modo) }
+        )
+    }
+
+    fn wet_preset_aplicar_modo_corpo(&mut self, modo: &str) {
         if let Some(t) = FERRAMENTAS.iter().find(|t| format!("{t:?}") == modo) {
             self.pick_wet_tool(indice_da_ferramenta(*t));
         }

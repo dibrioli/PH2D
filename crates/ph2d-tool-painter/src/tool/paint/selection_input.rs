@@ -143,6 +143,7 @@ impl PainterTool {
     /// **Invert** the whole selection (`255 − coverage`), sizing the mask to the canvas first. One undo entry.
     /// The inverse is non-parametric, so the shape list collapses to a single `Raster` entry.
     pub fn invert_selection(&mut self) {
+        self.macro_recusa("invert_selection");
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return;

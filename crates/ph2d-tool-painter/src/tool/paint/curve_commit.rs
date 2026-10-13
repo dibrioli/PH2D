@@ -46,6 +46,7 @@ impl PainterTool {
     /// todas de uma vez" (Enio 2026-07-04). No parked shapes ⇒ byte-identical to the former single-shape Apply.
     /// Returns `true` when something committed (an editable active shape OR any parked shape).
     pub fn commit_open_shape(&mut self) -> bool {
+        self.macro_recusa("commit_open_shape");
         if !self.is_editing_shape() && !self.has_parked_shapes() {
             return false; // nothing open / mid initial-drag — nothing to bake yet
         }
@@ -68,6 +69,7 @@ impl PainterTool {
     /// Cancel the whole MULTI-SHAPE set (Esc / leaving the method): revert every shape's preview to pristine
     /// and drop them all. Returns `true` when a set was open.
     pub fn cancel_open_shape(&mut self) -> bool {
+        self.macro_recusa("cancel_open_shape");
         // The pixels are peeled back to pristine — so the relief has to go with them. A cancelled shape
         // whose envelope survived would be a ridge the light shades over paint that is no longer there:
         // the same ghost the Eraser gate refuses, arriving through the Esc key.

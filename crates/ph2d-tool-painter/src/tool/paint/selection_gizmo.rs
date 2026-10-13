@@ -263,6 +263,14 @@ impl PainterTool {
     /// trava a razão de aspecto numa quina, **Ctrl/Cmd** troca a âncora do escalonamento para o CENTRO
     /// (o default é a quina oposta). No macOS o Cmd conta como Ctrl, a mesma convenção do outro gizmo.
     pub fn set_gizmo_modifiers(&mut self, shift: bool, ctrl: bool, alt: bool) {
+        crate::macro_track::porta!(
+            self,
+            |_| crate::macro_track::Passo::Modificadores([shift, ctrl, alt]),
+            { self.set_gizmo_modifiers_corpo(shift, ctrl, alt) }
+        )
+    }
+
+    fn set_gizmo_modifiers_corpo(&mut self, shift: bool, ctrl: bool, alt: bool) {
         self.paint.gizmo_mods = ph2d_editor_core::GizmoModifiers { shift, ctrl, alt };
     }
 

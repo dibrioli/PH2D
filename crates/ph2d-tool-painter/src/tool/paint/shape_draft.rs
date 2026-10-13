@@ -76,6 +76,12 @@ impl PainterTool {
     /// ⚠️ **Soltar ASSENTA** — e é isto que fecha o ciclo: sem o `settle` a figura ficaria invisível
     /// até o próximo evento que a re-carimbasse, que é o pior modo de falha desta lei.
     pub fn set_shape_draft_hold(&mut self, held: bool) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::SeguraRascunho(held), {
+            self.set_shape_draft_hold_corpo(held)
+        })
+    }
+
+    fn set_shape_draft_hold_corpo(&mut self, held: bool) {
         if held {
             self.paint.shape_draft_hold = true;
         } else if self.paint.shape_draft_hold {

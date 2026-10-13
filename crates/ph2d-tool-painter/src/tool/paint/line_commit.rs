@@ -9,6 +9,7 @@ impl PainterTool {
     /// End point-creation without baking (right-click / Esc-to-edit): enter the editing phase as its own
     /// undo step. No-op if idle, already editing, or too short (< 2 points) to be a line.
     pub fn line_finish_points(&mut self) -> bool {
+        self.macro_recusa("line_finish_points");
         let can = self
             .paint
             .line

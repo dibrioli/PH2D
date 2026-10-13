@@ -133,6 +133,11 @@ pub(in crate::tool::paint) struct WetSession {
     /// mesma rota, pela ordem, no tick seguinte (ou no lote seguinte, ou no fim do traço). Moram na
     /// sessão porque descrevem a água DELA.
     pub(super) adiados: Vec<LoteAdiado>,
+    /// A fita da macro ([`super::fita`]), herdada do tool no nascimento: grava as respostas do worker,
+    /// ou responde por ele ao tocar. `None` = nem uma coisa nem outra (custo zero).
+    pub(super) fita: Option<super::fita::FitaPartilhada>,
+    /// A tocar: o motor já foi ao worker do roteiro (o equivalente de `worker.is_some()`).
+    pub(super) roteiro_teve_worker: bool,
 }
 
 /// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.

@@ -136,6 +136,7 @@ impl PainterTool {
     /// **Apply**: bake the current (possibly ringed) selection as a plain `Raster` shape and leave offset
     /// mode (slider re-centred, rings dropped). One structural undo entry.
     pub fn selection_offset_apply(&mut self) {
+        self.macro_recusa("selection_offset_apply");
         if self.paint.selection_offset_source.is_empty() || !self.paint.selection_active {
             return;
         }

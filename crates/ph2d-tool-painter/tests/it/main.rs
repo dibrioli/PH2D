@@ -9,6 +9,10 @@
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
 mod a_luz_do_impasto_e_a_de_antes_da_poda;
+mod macro_agua;
+mod macro_comum;
+mod macro_portas;
+mod macro_traco;
 mod measure_undo_capacity;
 mod midias_de_fabrica;
 mod os_outros_meios_nao_mudam;
@@ -17,6 +21,7 @@ mod receitas_de_fabrica;
 mod regua_midia;
 mod sonda_gestos;
 mod sonda_largura;
+mod sonda_macro_custo;
 mod sonda_midias;
 mod sonda_tilt_do_preset;
 mod sonda_tracos_por_meio;

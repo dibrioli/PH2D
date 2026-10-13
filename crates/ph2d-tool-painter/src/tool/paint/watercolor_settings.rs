@@ -548,6 +548,7 @@ impl PainterTool {
     /// **A porta do menu da Hierarquia** ("Use as …"): instala a luminância da linha no slot que o
     /// [`UsoDaCamada`] nomeia. A shell só lê os pixels e entrega — QUAL slot e QUE aviso são desta família.
     pub fn use_layers_as(&mut self, uso: UsoDaCamada, lum: Vec<u8>, width: u32, height: u32) {
+        self.macro_recusa("use_layers_as");
         match uso {
             UsoDaCamada::Papel => self.use_layers_as_watercolor_paper(lum, width, height),
             UsoDaCamada::Granulacao => self.use_layers_as_granulation(lum, width, height),

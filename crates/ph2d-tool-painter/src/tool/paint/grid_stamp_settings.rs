@@ -143,6 +143,12 @@ impl PainterTool {
     /// `CanvasPointer` dele não carrega botão, então o botão viaja fora de banda como os
     /// modificadores (o precedente exato do `set_line_constrain`).
     pub fn set_grid_stamp_erase(&mut self, on: bool) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::GridApaga(on), {
+            self.set_grid_stamp_erase_corpo(on)
+        })
+    }
+
+    fn set_grid_stamp_erase_corpo(&mut self, on: bool) {
         self.paint.grid_erase = on;
     }
 

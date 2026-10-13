@@ -39,8 +39,8 @@
 |---|---|
 | Que passo aconteceu? | `MacroRecorder::push(track, step)` — o único escritor da gravação |
 | Quando? | o **relógio da macro**: tique da cena (Motion) e ms da gravação + marca da água (Painter). O tocador NUNCA lê o relógio de parede |
-| Quantos passos de água entre duas ações? | `engine.sim.frame` (`crates/ph2d-wet-paint/src/sim.rs:77`), lido num só sítio: o 1.º lote molhado do traço, depois de `bring_home` + `drain_step` (`crates/ph2d-tool-painter/src/tool/paint/wetpaint/dab_route.rs:73`). ⛔ **Não** o `sim_steps()` do worker: ele não vê passos fechados por outra porta (medido: frame 34 × contador 33) |
-| Que semente tinha o traço? | `paint.seed` lido no `begin` (`stroke_lifecycle.rs:186`) e gravado no passo |
+| Quantos passos de água entre duas ações? | **a fita do worker** (W2, `crates/ph2d-tool-painter/src/tool/paint/wetpaint/fita.rs`): cada resposta da thread da água — voltou em `(sim.frame, estágio em voo)`, não voltou, o contador — gravada nas portas do `WetSession`, pela ordem em que se pedem; o tocador anda o motor até cada marca. ⛔ **Não** o `sim_steps()` sozinho: ele não vê passos fechados por outra porta (medido: frame 34 × contador 33) |
+| Que semente tinha o traço? | `paint.seed` no ESTADO INICIAL (W2): ela avança por gesto de forma determinística, então a de armar basta (gate `sem_a_semente_ou_sem_um_tique_a_reproducao_muda`) |
 | Onde fica o traço noutro canvas? | uma função de normalização pelo **retângulo de referência** gravado (Corel) |
 | O que é gravável? | declaração por porta (`Recordable` / `Refused{why}`) + censo que a reprova sem decisão |
 | A macro toca agora, e onde? | a Timeline: um clip com dono (`NamedClip.owner`, Autoplay) e o `playhead` (`crates/ph2d-core/src/playhead.rs`) |
@@ -60,11 +60,12 @@ Watercolor dependem do `dt`: `stroke.rs:536`, `watercolor_dry.rs:23`) · `handle
 primeiro; «limpar desfeitos» é uma transformação posterior, com gate) · os setters diretos
 (`set_line_constrain`, `set_canvas_warp`, `set_wet_*`). A marca da água entra em cada traço.
 
-**Lei nova do Wet Paint (vale sempre, não só a gravar):** o 1.º lote molhado de um traço **drena o
-passo em voo** antes de pousar. Hoje o dab cai numa grelha a meio do passo e o resto corre depois do
-Up — é o mecanismo da divergência entre corridas (1 em 4 Downs a 1024²). Uma só lei para gravar e para
-pintar; custo: no máximo UM passo, só quando há passo em voo (mín. medido `1,67 ms` a 1024², `39,5 ms`
-a 4096²).
+⛔ **Recusada na W2: a «lei nova» de drenar o passo em voo no 1.º lote molhado** (o desenho da W1). Ela
+mudava a pintura de todos para a gravação caber — até um passo de espera no toque (`39,5 ms` a 4096²) — e
+não cobria a Água ao vivo nem o knob que o tique reconcilia com a água a correr. A fita do worker é exacta
+por construção e não muda lei nenhuma ([ADR-0186 §Emenda W2](../architecture/decisions/0186-a-macro-grava-comandos-resolvidos-no-relogio-da-macro.md)). O mecanismo
+medido continua verdade: o dab cai a meio do passo quando o toque apanha o worker A CORRER um (ele dorme
+entre passos) — é esse caso que a fixture do gate 1 exige.
 
 **Motion — o que se grava:** as intenções que mudam o documento (lista em
 `crates/ph2d-panel-motion-graph/src/snapshot_intent.rs:26`; as de vista ficam de fora), **já

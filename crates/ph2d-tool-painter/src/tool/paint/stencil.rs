@@ -151,6 +151,12 @@ impl PainterTool {
     /// Set whether a Stencil corner scale is UNIFORM (Shift held) this event — the shell forwards the live
     /// Shift state before each pointer event, like [`PainterTool::set_line_constrain`].
     pub fn set_uniform_scale(&mut self, on: bool) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::EscalaUniforme(on), {
+            self.set_uniform_scale_corpo(on)
+        })
+    }
+
+    fn set_uniform_scale_corpo(&mut self, on: bool) {
         self.paint.scale_uniform = on;
     }
 

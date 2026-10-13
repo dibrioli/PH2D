@@ -46,6 +46,12 @@ impl PainterTool {
     /// Returns `true` if an edit was undone. Driven by the shell's undo gesture /
     /// shortcut.
     pub fn undo_last(&mut self) -> bool {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Desfaz, {
+            self.undo_last_corpo()
+        })
+    }
+
+    fn undo_last_corpo(&mut self) -> bool {
         // A LIVE Deform Transform owns undo while it's up: step the gizmo back through its gestures (and
         // finally un-lift), all WITHOUT touching the structural timeline — the whole transform is one
         // structural entry, committed only when it ends (Enio 2026-07-04).
@@ -92,6 +98,12 @@ impl PainterTool {
 
     /// Redo the most recently undone edit on the unified timeline. Returns `true` if an edit was redone.
     pub fn redo_last(&mut self) -> bool {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Refaz, {
+            self.redo_last_corpo()
+        })
+    }
+
+    fn redo_last_corpo(&mut self) -> bool {
         // A live / just-un-lifted Transform owns redo: re-lift the gizmo (recreate it) or step a gizmo pose
         // FORWARD — mirroring transform_undo_step, WITHOUT touching the structural timeline (Enio 2026-07-04).
         if self.transform_redo_step() {
@@ -192,6 +204,12 @@ impl PainterTool {
     /// next frame, which calls `run_full` to bake the layer composite into the
     /// sprite.
     pub fn request_commit(&mut self) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::PedeCommit, {
+            self.request_commit_corpo()
+        })
+    }
+
+    fn request_commit_corpo(&mut self) {
         self.pending_commit = true;
     }
 
@@ -206,6 +224,12 @@ impl PainterTool {
     /// Mark the working canvas as fully baked into the sprite — clears the unbaked-edits flag without
     /// touching the canvas (the shell calls this right after a successful auto-bake).
     pub fn mark_baked(&mut self) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Assado, {
+            self.mark_baked_corpo()
+        })
+    }
+
+    fn mark_baked_corpo(&mut self) {
         self.edited_since_bind = false;
     }
 
@@ -213,6 +237,12 @@ impl PainterTool {
     /// `on_deactivate` when it kept the canvas. `true` → the shell must bake the kept canvas back to
     /// the last-bound sprite, then call `deactivate()` to finish the teardown.
     pub fn take_deferred_bake(&mut self) -> bool {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TiraAssadoAdiado, {
+            self.take_deferred_bake_corpo()
+        })
+    }
+
+    fn take_deferred_bake_corpo(&mut self) -> bool {
         std::mem::take(&mut self.deferred_bake)
     }
 
@@ -306,6 +336,12 @@ impl PainterTool {
     /// bridge stashes this Arc in its `painter_preview` cache.
     #[must_use]
     pub fn take_preview_arc(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Preview, {
+            self.take_preview_arc_corpo()
+        })
+    }
+
+    fn take_preview_arc_corpo(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
         // ⚠️ **ANTES do portão do `preview_dirty`, e a ordem é a metade que o artista vê.** O dente do
         // papel é canvas-inteiro, e nenhum dos nove knobs que o produzem levanta o `preview_dirty`
         // sozinho — reconciliar depois do portão deixaria a tela parada até a pincelada seguinte, que é
@@ -474,6 +510,12 @@ impl PainterTool {
     /// — `Some` iff that drain was a partial fast-lane update the bridge may
     /// upload as a sub-rect; `None` = upload the full texture.
     pub fn take_preview_upload_bbox(&mut self) -> Option<(u32, u32, u32, u32)> {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::PreviewBbox, {
+            self.take_preview_upload_bbox_corpo()
+        })
+    }
+
+    fn take_preview_upload_bbox_corpo(&mut self) -> Option<(u32, u32, u32, u32)> {
         self.preview_upload_bbox
             .take()
             .map(|r| (r.x, r.y, r.w, r.h))

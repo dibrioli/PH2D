@@ -79,6 +79,10 @@ serde = { version = "1", features = ["derive"] }
 # dos campos do pincel (`serde_json` já está no grafo).
 ph2d-brush-presets = { path = "../ph2d-brush-presets" }
 serde_json = "1"
+# A trilha do Painter numa macro (`src/macro_track/`, ADR-0186): o núcleo (formato, registos etiquetados)
+# e o documento do estado inicial pelo wire canónico do projeto (postcard), o MESMO recorte que o disco guarda.
+ph2d-macro = { path = "../ph2d-macro" }
+postcard = { version = "1", features = ["alloc"] }
 # Data-parallel watercolor composite (ADR-0109 exception to the no-rayon default): the per-pixel optical
 # reconstruction is embarrassingly parallel + byte-identical (disjoint output rows, no reduction, no RNG),
 # so it distributes over the thread pool without touching deterministic replay.
@@ -96,10 +100,6 @@ rayon = "1"
 # O undo estrutural do painter guarda `ModelSnapshot`s canvas-shaped e o cap dele é por CONTAGEM
 # (`DEFAULT_MAX_DEPTH = 300`), que é multiplicador e não teto: `tests/measure_undo_memory.rs`.
 dhat = "0.3"
-
-# O round-trip do documento pintado é provado no formato REAL do projeto (postcard, o wire canônico do
-# repo) — um teste que serializasse com outro formato não provaria o arquivo que o artista salva.
-postcard = { version = "1", features = ["alloc"] }
 
 # ⚠️ O KILL-CRITERION do ADR-0157 mede o cook do Liquify no DEVICE, e o oráculo dele é
 # `warp::field::compose_at`, que é `pub(super)`. Uma crate irmã só o alcançaria alargando a superfície

@@ -24,6 +24,8 @@ pub mod compositor;
 pub mod icon;
 pub mod ids;
 pub mod layers;
+/// A trilha do Painter numa macro (ADR-0186): gravar as portas e tocá-las num tool próprio.
+pub mod macro_track;
 pub mod params;
 /// Copiar um plano canvas-shaped, em paralelo — o primitivo que a porta de fork e o motor de delta
 /// compartilham.

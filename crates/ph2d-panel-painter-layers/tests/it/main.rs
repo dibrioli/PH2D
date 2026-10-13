@@ -14,6 +14,7 @@ mod curve_handle_menu_e2e;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
+mod macro_estado_inicial; // o estado inicial de uma macro leva cada controlo do Wet Paint
 mod o_censo_so_encolhe; // o que muda o ajuste e não a tinta: esmaecido ou com motivo na lista
 mod seam;
 mod seam_accumulate_por_meio; // o Accumulate e o Space Attenuation só onde o meio os oferece

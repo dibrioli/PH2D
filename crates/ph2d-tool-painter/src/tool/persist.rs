@@ -98,40 +98,7 @@ impl PainterTool {
         if let Some(bound) = self.bound_doc
             && let Some(&id) = ids.get(&bound)
         {
-            out.push(PaintedDocument {
-                id,
-                layers: self.layers.clone(),
-                canvas_rgba: self.canvas_rgba.as_ref().clone(),
-                images: self
-                    .images
-                    .iter()
-                    .map(|(k, v)| (*k, v.as_ref().clone()))
-                    .collect(),
-                // Plain vectors on the disk: the `Arc` is a runtime sharing device (an undo snapshot is
-                // a refcount bump, not an 80 MB copy at 4096 px), never a wire format.
-                heights: self
-                    .heights
-                    .iter()
-                    .map(|(k, v)| (*k, v.as_ref().clone()))
-                    .collect(),
-                covers: self
-                    .covers
-                    .iter()
-                    .map(|(k, v)| (*k, v.as_ref().clone()))
-                    .collect(),
-                mats: self
-                    .mats
-                    .iter()
-                    .map(|(k, v)| (*k, v.as_ref().clone()))
-                    .collect(),
-                size: self.source_size,
-                papel: self.papel,
-                vidros: self
-                    .vidros
-                    .iter()
-                    .map(|(k, v)| (*k, v.as_ref().clone()))
-                    .collect(),
-            });
+            out.push(self.documento_vivo(id));
         }
         for (bits, doc) in &self.doc_cache {
             if let Some(&id) = ids.get(bits) {
@@ -140,6 +107,46 @@ impl PainterTool {
         }
         out.sort_by_key(|d| d.id);
         out
+    }
+
+    /// O documento LIGADO como o disco o guarda, com a identidade `id` — a porta que a coleta do projeto
+    /// e o estado inicial de uma macro (`crate::macro_track::inicial`) partilham.
+    #[must_use]
+    pub(crate) fn documento_vivo(&self, id: u32) -> PaintedDocument {
+        PaintedDocument {
+            id,
+            layers: self.layers.clone(),
+            canvas_rgba: self.canvas_rgba.as_ref().clone(),
+            images: self
+                .images
+                .iter()
+                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .collect(),
+            // Plain vectors on the disk: the `Arc` is a runtime sharing device (an undo snapshot is
+            // a refcount bump, not an 80 MB copy at 4096 px), never a wire format.
+            heights: self
+                .heights
+                .iter()
+                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .collect(),
+            covers: self
+                .covers
+                .iter()
+                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .collect(),
+            mats: self
+                .mats
+                .iter()
+                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .collect(),
+            size: self.source_size,
+            papel: self.papel,
+            vidros: self
+                .vidros
+                .iter()
+                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .collect(),
+        }
     }
 
     /// As entidades para as quais o Painter tem documento: a LIGADA e as guardadas. É a lista que a
@@ -163,6 +170,7 @@ impl PainterTool {
     /// frente, pelo caminho normal. Assim o load não precisa saber nada sobre qual documento está
     /// ligado, e não existe um segundo caminho de restore para divergir do primeiro.
     pub fn install_document(&mut self, entity: u64, doc: PaintedDocument) {
+        self.macro_recusa("install_document");
         self.doc_cache.insert(
             entity,
             crate::tool::documents::StashedDoc::from_painted(doc),
@@ -186,6 +194,7 @@ impl PainterTool {
     /// `None` quando não há documento instalado para essa entidade (ou o canvas é vazio).
     #[must_use]
     pub fn baked_document_pixels(&mut self, entity: u64) -> Option<(Vec<u8>, u32, u32)> {
+        self.macro_recusa("baked_document_pixels");
         let (w, h) = self.doc_cache.get(&entity)?.size();
         if w == 0 || h == 0 {
             return None;

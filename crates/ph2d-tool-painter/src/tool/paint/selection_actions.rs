@@ -125,6 +125,7 @@ impl PainterTool {
     /// marquee do tamanho da tela carregaria um gizmo de transformação nas bordas do documento, e
     /// arrastá-lo por acidente encolheria a seleção "de tudo" sem que ninguém tivesse pedido.
     pub fn selection_select_all(&mut self) {
+        self.macro_recusa("selection_select_all");
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         if w == 0 || h == 0 {
             return;
@@ -151,6 +152,7 @@ impl PainterTool {
     /// cópia e a limpeza — um `selection_copy()` seguido de um `selection_erase()` daria a MESMA imagem
     /// e DOIS passos de undo, e o artista desfaria um Cut pela metade.
     pub fn selection_cut(&mut self) {
+        self.macro_recusa("selection_cut");
         if !self.selection_restricts_paint() {
             return;
         }
@@ -227,6 +229,7 @@ impl PainterTool {
     /// **Copy**: capture the selected pixels (coverage-premultiplied) into the in-memory clipboard. No undo
     /// entry (a read-only capture). No-op without a live selection.
     pub fn selection_copy(&mut self) {
+        self.macro_recusa("selection_copy");
         if !self.selection_restricts_paint() {
             return;
         }
@@ -325,6 +328,7 @@ impl PainterTool {
     /// ali mesmo — colar e querer mover custava um Ctrl+Z. Agora nada é commitado até o Enter, e é por
     /// isso que o Esc não precisa de undo nenhum: não há o que desfazer.
     pub fn selection_paste(&mut self) {
+        self.macro_recusa("selection_paste");
         self.arm_paste_patch();
     }
 }

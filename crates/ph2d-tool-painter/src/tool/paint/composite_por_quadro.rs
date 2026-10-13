@@ -67,6 +67,12 @@ impl PainterTool {
     /// ⚠️ Semeado pela ponte do app (`ph2d-app-painter`); um hospedeiro que não drena por quadro
     /// deixa-o desligado, e a pilha compõe no evento como antes.
     pub fn set_compor_por_quadro(&mut self, on: bool) {
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::ComporPorQuadro(on), {
+            self.set_compor_por_quadro_corpo(on)
+        })
+    }
+
+    fn set_compor_por_quadro_corpo(&mut self, on: bool) {
         if !on {
             self.compoe_o_pendente();
         }

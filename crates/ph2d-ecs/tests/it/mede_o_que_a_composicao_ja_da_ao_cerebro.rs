@@ -91,7 +91,7 @@ fn mede_o_que_a_composicao_ja_da_ao_cerebro() {
         .collect();
     println!("C) Os verbos com sink real hoje: {}", SignalVerb::ALL.len());
     for v in SignalVerb::ALL {
-        println!("      · {}", v.label());
+        println!("      · {}", v.label_key());
     }
     println!("   verbos que EMITEM um sinal: {}", emite.len());
     println!(

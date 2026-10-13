@@ -91,7 +91,7 @@ fn declara_dependencia(manifesto: &str, crate_: &str) -> bool {
 fn censo_dos_verbos() -> Vec<(&'static str, bool)> {
     ph2d_ecs::SignalVerb::ALL
         .iter()
-        .map(|v| (v.label(), v.uses_arg()))
+        .map(|v| (ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key()), v.uses_arg()))
         .collect()
 }
 

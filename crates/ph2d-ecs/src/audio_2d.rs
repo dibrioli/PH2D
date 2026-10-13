@@ -101,19 +101,11 @@ impl AudioBus {
         AudioBus::Master,
     ];
 
-    /// O rótulo que o artista lê, em INGLÊS. ⚠️ **Ele viaja no snapshot** — o painel não conhece
-    /// este enum.
-    ///
-    /// ⭐ Desde 2026-09-19 é um ACESSÓRIO derivado da tabela (a lei do [`super::i18n_key`]): quem
-    /// pinta chama o [`Self::label_key`] e o [`ph2d_i18n::tr`]; quem compara palavras (os testes)
-    /// continua a ler inglês, e há **uma** lei só.
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
-    }
+    // ⛔ **A `label()` FOI APAGADA (2026-10-13)**, como as irmãs de 2026-09-19: a palavra inglesa
+    // resolve-se em quem pinta (`ph2d_i18n::tr_em(Idioma::Ingles, b.label_key())`).
 
     /// ⭐⭐ **A CHAVE do rótulo** — `ecs.audio_bus.<variante>`, e é ela que a shell passa ao
-    /// [`ph2d_i18n::tr`] ao montar o `bus_labels` do snapshot do Inspector.
+    /// `ph2d_i18n::tr` ao montar o `bus_labels` do snapshot do Inspector.
     ///
     /// ⚠️ **A chave deriva da VARIANTE e nunca da palavra inglesa** — é a forma forte, a mesma do
     /// `group_i18n_key` do painel de Vector: uma ponte que casa por palavra dá a `Master` do

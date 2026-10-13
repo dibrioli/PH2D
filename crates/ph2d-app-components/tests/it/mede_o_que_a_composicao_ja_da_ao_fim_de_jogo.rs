@@ -103,7 +103,7 @@ fn mede_o_que_a_composicao_ja_da_ao_fim_de_jogo() {
         SignalVerb::ALL.len(),
         SignalVerb::ALL
             .iter()
-            .map(|v| v.label())
+            .map(|v| ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key()))
             .collect::<Vec<_>>()
     );
     eprintln!(

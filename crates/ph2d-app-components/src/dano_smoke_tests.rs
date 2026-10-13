@@ -211,7 +211,7 @@ fn o_roteiro_nomeia_rotulos_que_existem() {
         ph2d_i18n::tr("panel.inspector.actions.from_myself"),
         ph2d_i18n::tr("panel.inspector.actions.from_anyone"),
         ph2d_i18n::tr("panel.inspector.actions.who_hit"),
-        SignalVerb::Destroy.label(),
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, SignalVerb::Destroy.label_key()),
         // ⭐⭐ **Os dois chips do TRANSPORTE que o passo (5) nomeia** — `Reset` e `Play`, pintados
         // com o rótulo por cima (`topbar/cluster_painter.rs`, `TopBarCluster::Play`).
         //

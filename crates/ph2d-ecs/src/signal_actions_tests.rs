@@ -256,7 +256,7 @@ fn so_estes_verbos_leem_o_argumento() {
             v.uses_arg(),
             esperado,
             "{}: uses_arg discorda da familia do verbo",
-            v.label()
+            v.label_key()
         );
     }
 }
@@ -276,7 +276,7 @@ fn cada_verbo_diz_o_que_o_argumento_e() {
             SignalVerb::PlayClip => ArgKind::ClipName,
             _ => ArgKind::None,
         };
-        assert_eq!(v.arg_kind(), esperado, "{}", v.label());
+        assert_eq!(v.arg_kind(), esperado, "{}", v.label_key());
     }
 }
 
@@ -291,7 +291,7 @@ fn the_verb_tag_is_its_position_and_it_round_trips() {
             usize::from(v.tag()),
             i,
             "{}: a tag nao e' a posicao",
-            v.label()
+            v.label_key()
         );
         assert_eq!(SignalVerb::from_tag(v.tag()), *v, "a ida-e-volta partiu-se");
     }
@@ -299,16 +299,17 @@ fn the_verb_tag_is_its_position_and_it_round_trips() {
     assert_eq!(SignalVerb::from_tag(200), SignalVerb::default());
 }
 
-/// **Todo verbo tem rótulo, e nenhum se repete** — a lista é o que o artista vê.
+/// **Todo verbo tem chave de rótulo, e nenhuma se repete** — a palavra inglesa distinta mede-se
+/// onde ela chega ao pixel (`ph2d-app-components`, `every_verb_has_a_distinct_english_label`).
 #[test]
-fn every_verb_has_a_distinct_label() {
+fn every_verb_has_a_distinct_label_key() {
     let mut vistos = std::collections::BTreeSet::new();
     for v in SignalVerb::ALL {
-        assert!(!v.label().is_empty(), "um verbo sem rotulo");
+        assert!(!v.label_key().is_empty(), "um verbo sem rotulo");
         assert!(
-            vistos.insert(v.label()),
+            vistos.insert(v.label_key()),
             "dois verbos com o rotulo '{}'",
-            v.label()
+            v.label_key()
         );
     }
 }

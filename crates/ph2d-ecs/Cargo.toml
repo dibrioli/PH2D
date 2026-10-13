@@ -10,10 +10,9 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-# ⭐ A TABELA DE STRINGS — folha de ZERO dependências. Ela entra aqui porque o vocabulário
-# que esta crate PUBLICA (os barramentos de áudio, os verbos de sinal) é pintado por outra,
-# e a fronteira entre as duas é cega por construção às 30 réguas lexicais do HR-15.
-ph2d-i18n = { path = "../ph2d-i18n" }
+# ⛔ **Sem a `ph2d-i18n` (2026-10-13):** esta crate publica só a CHAVE do rótulo (`label_key`) e
+# quem pinta resolve-a. A aresta trazia a fundação inteira para o `rdeps` da tabela de strings:
+# um texto novo de UI corria os portões da Luz 2D (docs/DevOps/VELOCIDADE_DOS_PORTOES.md).
 # ⭐ **O grafo autorado da maquina de estados do Morph** (plano 32). O componente
 # `VecMorphMachine` guarda-o, e o tipo tem de estar aqui porque o registo de componentes vive
 # nesta crate, ao lado do `VecMorph` que ele conduz.

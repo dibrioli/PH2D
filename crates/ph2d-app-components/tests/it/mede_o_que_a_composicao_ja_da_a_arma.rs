@@ -266,7 +266,7 @@ fn mede_o_que_a_composicao_ja_da_a_arma() {
     let escrevem: Vec<&str> = SignalVerb::ALL
         .iter()
         .filter(|v| matches!(v, SignalVerb::AddToCounter))
-        .map(|v| v.label())
+        .map(|v| ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key()))
         .collect();
     eprintln!("(E) A RECARGA — existe verbo que REPONHA um contador?");
     eprintln!(

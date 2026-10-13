@@ -47,6 +47,21 @@ fn an_object_without_the_component_has_no_section() {
     assert!(build_action_info(sim.world(), &sem_tags(), e.to_bits(), 1).is_none());
 }
 
+/// **Todo verbo tem palavra inglesa, e nenhuma se repete** — a lista é o que o artista vê (veio do
+/// `ph2d-ecs` com a `label()` apagada em 2026-10-13: a palavra mede-se onde chega ao pixel).
+#[test]
+fn every_verb_has_a_distinct_english_label() {
+    let mut vistos = std::collections::BTreeSet::new();
+    for v in SignalVerb::ALL {
+        let palavra = ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key());
+        assert!(!palavra.is_empty(), "{}: um verbo sem rotulo", v.label_key());
+        assert!(
+            vistos.insert(palavra),
+            "dois verbos com o rotulo '{palavra}'"
+        );
+    }
+}
+
 /// ⭐⭐ **Os RÓTULOS do painel saem de `SignalVerb::ALL`, que é a fonte.**
 ///
 /// ⚠️ Copiá-los para o painel envelheceria no primeiro verbo novo — e o artista leria o nome
@@ -60,7 +75,7 @@ fn the_verb_labels_come_from_the_engines_own_list() {
     let i = info(&sim, e);
     let esperado: Vec<String> = SignalVerb::ALL
         .iter()
-        .map(|v| v.label().to_string())
+        .map(|v| ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key()).to_string())
         .collect();
     assert_eq!(i.verb_labels, esperado, "os rotulos divergiram da fonte");
     assert_eq!(
@@ -86,7 +101,7 @@ fn the_argument_field_follows_the_verb() {
             info(&sim, e).rows[0].uses_arg,
             v.uses_arg(),
             "{}: o campo do parametro discorda do verbo",
-            v.label()
+            ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key())
         );
     }
 }

@@ -226,12 +226,8 @@ impl SignalVerb {
         SignalVerb::PlayClip,
     ];
 
-    /// O rótulo que o artista lê, em INGLÊS — um ACESSÓRIO derivado da tabela desde 2026-09-19
-    /// (ver [`Self::label_key`]).
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
-    }
+    // ⛔ **A `label()` FOI APAGADA (2026-10-13)**, como as irmãs de 2026-09-19: a palavra inglesa
+    // resolve-se em quem pinta (`ph2d_i18n::tr_em(Idioma::Ingles, v.label_key())`).
 
     /// ⭐⭐ **A CHAVE do rótulo** — `ecs.signal_verb.<variante>`. A shell resolve-a ao montar o
     /// `verb_labels` do snapshot (`ph2d-app-components/src/signal_actions_inspector.rs`), que é o único sítio onde

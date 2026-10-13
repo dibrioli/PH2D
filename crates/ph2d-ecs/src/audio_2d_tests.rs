@@ -466,7 +466,7 @@ fn the_bus_tag_is_its_position_in_the_list() {
 fn the_chrome_bus_is_not_reachable_from_the_scene() {
     for b in AudioBus::ALL {
         assert!(
-            !b.label().eq_ignore_ascii_case("ui"),
+            !b.label_key().ends_with(".ui"),
             "o barramento do chrome ficou alcancavel pela cena"
         );
     }

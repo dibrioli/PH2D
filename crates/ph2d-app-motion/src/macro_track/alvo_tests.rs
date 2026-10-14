@@ -75,3 +75,44 @@ fn o_palco_da_trilha_coze_so_o_objecto_dela() {
         "o palco coze só o objecto da trilha"
     );
 }
+
+/// Um nó que o artista CRIA durante a gravação é do objecto em edição — e no palco também: o palco
+/// edita o objecto da trilha, senão o nó nasce sem dono e o filtro do dono larga-o.
+#[cfg(feature = "panel-motion-graph")]
+#[test]
+fn o_no_criado_durante_a_gravacao_e_do_objecto_da_trilha_no_palco() {
+    let (mut m, sa, _) = dois_objectos();
+    let mut rec = gravador();
+    let tr = m.gravacao_abre(&mut rec).expect("abre");
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    crate::motion_bridge::aplica_e_grava(
+        &mut m,
+        &mut ph,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
+        vec![ph2d_panel_motion_graph::GraphIntent::AddNode {
+            type_name: "motion.output",
+            x: 0.0,
+            y: 0.0,
+        }],
+    );
+    let novo = *m.doc.graph.nodes().iter().map(|n| &n.id).max().expect("um nó");
+    assert_eq!(m.doc.owner_of(novo), Some(A), "CONTROLO: no editor, o novo é do A");
+    crate::motion_bridge::quadro::o_quadro(
+        &mut m,
+        None,
+        &ph,
+        1.0 / 60.0,
+        crate::motion_bridge::quadro::MaoDoEditor::default(),
+    );
+    for c in m.gravacao_passos().into_iter().chain(m.gravacao_para()) {
+        rec.push(tr, 0, c).expect("tempo não decrescente");
+    }
+    let doc = rec.finish();
+    let mut t = TocadorDoMotion::da_trilha(&doc.tracks[tr.0], Modo::Fiel).expect("o inicial lê-se");
+    for ev in &doc.tracks[tr.0].events {
+        t.aplica(&ev.payload, None).expect("o passo aplica-se");
+    }
+    assert_eq!(t.palco().doc.owner_of(novo), Some(A));
+    assert_eq!(t.palco().sinks, vec![sa, novo]);
+}

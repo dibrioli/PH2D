@@ -212,7 +212,7 @@ mod test_mods;
 #[cfg(feature = "panel-motion-graph")]
 pub(crate) use intents::apply_graph_batch;
 #[cfg(feature = "panel-motion-graph")]
-pub(crate) use intents::apply_graph_intents;
+pub(crate) use intents::{aplica_e_grava, apply_graph_intents};
 #[cfg(test)]
 #[path = "motion_bridge_gizmo_tap_tests.rs"]
 mod gizmo_tap_tests;

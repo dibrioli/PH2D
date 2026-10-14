@@ -36,12 +36,24 @@ pub(crate) fn apply_graph_intents(
     split: &mut CenterSplit,
 ) {
     let intents = ph2d_panel_motion_graph::drain_intents();
+    aplica_e_grava(motion, playhead, toasts, split, intents);
+    publica_no_painel(motion);
+}
+
+/// **Um lote do painel, aplicado e gravado** — o dreno do editor e a gravação por script de uma cena
+/// (`macro_track::smoke`), que não passa pela fila global nem publica no painel.
+pub(crate) fn aplica_e_grava(
+    motion: &mut MotionState,
+    playhead: &mut ph2d_core::Playhead,
+    toasts: &mut ToastQueue,
+    split: &mut CenterSplit,
+    intents: Vec<ph2d_panel_motion_graph::GraphIntent>,
+) {
     // A macro grava o lote já resolvido (ADR-0186) — antes de o aplicar, que é quando os ids de
     // vista ainda dizem o que o painel viu.
     motion.macro_lote_de_grafo(&intents);
     apply_graph_batch(motion, playhead, toasts, split, intents);
     motion.macro_fecha();
-    publica_no_painel(motion);
 }
 
 /// **Publica no painel o que as portas lhe pediram** ([`crate::motion_state::PedidosAoPainel`]) — só

@@ -200,6 +200,9 @@ impl PlacaDeFormas {
             }
         };
         let g = self.gpu.as_mut()?;
+        if let Some((p, _)) = imagens {
+            p.regista_no(gpu, &mut g.passe);
+        }
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());

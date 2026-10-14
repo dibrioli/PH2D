@@ -482,9 +482,13 @@ fn an_each_shape_step_runs_on_the_shapes_the_vector_path_draws() {
         let no = m.filtro.pilha()[0].no;
         let q = m.filtro.queixa(no);
         if rota == Rota::Vello {
-            assert!(
-                q.as_deref().is_some_and(|q| q.contains("one piece")),
-                "{q:?}"
+            // Pela CHAVE: a frase foi reescrita para caber no cartão (`cfc4d5911c`), e o pedaço
+            // «one piece» que este gate procurava saiu com ela.
+            assert_eq!(
+                q.as_deref(),
+                Some(ph2d_i18n::tr(
+                    "app.motion.motion_filter.each_shape_sees_the_vector_path_as_one"
+                )),
             );
         } else {
             assert!(q.is_none(), "a placa leva cada forma à sua célula: {q:?}");

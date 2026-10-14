@@ -367,7 +367,7 @@ impl PlacaDeFormas {
                     Some(MotivoDoVello::Desligadas) => eprintln!(
                         "[formas] {n} copias de {geometrias} geometrias pela cena Vello: misturas por copia desligadas"
                     ),
-                    Some(MotivoDoVello::MundoPartido | MotivoDoVello::CenaComImagens) => eprintln!(
+                    Some(MotivoDoVello::MundoPartido) => eprintln!(
                         "[formas] {n} copias de {geometrias} geometrias pela cena Vello: a mistura com o mundo pede mais de uma colagem (fora da camada isolada do Motion)"
                     ),
                     Some(MotivoDoVello::SemMultiplica) => eprintln!(

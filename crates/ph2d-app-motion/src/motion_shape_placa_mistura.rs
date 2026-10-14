@@ -224,9 +224,8 @@ pub fn corridas_por_faixa(
 }
 
 /// ⭐ P4 — o [`corridas_por_faixa`] com as IMAGENS de cada sink ([`ph2d_shape_gpu::Corrida::imagens`])
-/// e os SEGMENTOS de pousa ([`Segmentos`]). ⛔ Um `Scene` com imagens recusa
-/// ([`MotivoDoVello::CenaComImagens`]): as cópias dele juntam-se em `Normal`, e a placa desenha as
-/// imagens DEPOIS das formas da corrida.
+/// e os SEGMENTOS de pousa ([`Segmentos`]). Um `Scene` com imagens junta as cópias em `Normal`: a
+/// corrida dele é ORDENADA (doc 132 §4.1 (3), um desenho na ordem das linhas).
 pub fn corridas_das_faixas(
     faixas: &[FaixaDoSink],
     mistura_de: impl Fn(NodeId) -> ph2d_eval_motion::MisturaDoSink,
@@ -240,12 +239,13 @@ pub fn corridas_das_faixas(
             continue;
         }
         let c = misturas.composicao(0, &mistura_de(*sink))?;
-        if !imagens.is_empty() && c.cena.is_some() {
-            return Err(MotivoDoVello::CenaComImagens);
-        }
         let novo = segmentos.junta(&c, corridas.len());
+        // doc 132 §4.1 (3): uma corrida `Normal` com imagens é ORDENADA (`Corrida::ordenada`) — a
+        // faixa do sink nos dois buffers, a mesma linha à mesma distância; não se junta a vizinhas.
+        let ordem = c.mistura == Mistura::Normal;
         let junta = |k: &ph2d_shape_gpu::Corrida| {
             !novo
+                && !(ordem && (!imagens.is_empty() || !k.imagens.is_empty()))
                 && k.mistura == c.mistura
                 && k.grupo == c.grupo
                 && k.copias.end == copias.start
@@ -373,9 +373,6 @@ pub enum MotivoDoVello {
     Desligadas,
     /// ⛔ P4 (b) — a camada teria de pousar no mundo mais de uma vez ([`PousaDoQuadro`]).
     MundoPartido,
-    /// ⛔ P4 — um `Scene` com imagens no dispositivo: as cópias juntam-se em `Normal`, e a ordem
-    /// entre imagens e formas é a das linhas.
-    CenaComImagens,
     /// Multiply sem `DUAL_SOURCE_BLENDING` neste dispositivo.
     SemMultiplica,
 }
@@ -579,11 +576,18 @@ mod tests {
             .map(|r| (r.copias.clone(), r.imagens.clone(), r.grupo))
             .collect();
         assert_eq!(vistas, vec![(0..3, 0..4, 1), (3..3, 4..6, 2)]);
-        // ⛔ Um `Scene` com imagens no dispositivo.
+        // ⭐ doc 132 §4.1 (3) — um `Scene` com imagens é UMA corrida `Normal` ORDENADA, que não se
+        // junta à vizinha (a faixa dele tem de ser a mesma nos dois buffers).
         let cena = |_| m(4, BlendWith::Scene, 0);
-        assert_eq!(
-            corridas_das_faixas(&[(a, 0..2, 0..1)], cena, fora).err(),
-            Some(MotivoDoVello::CenaComImagens)
+        let (c, _) = corridas_das_faixas(&[(a, 0..2, 5..7)], cena, fora).expect("ordenada");
+        assert_eq!(c.len(), 1);
+        assert!(c[0].ordenada() && c[0].copias == (0..2) && c[0].imagens == (5..7));
+        let normal = |s| m(if s == a { 4 } else { 0 }, BlendWith::Scene, 0);
+        let (c, _) = corridas_das_faixas(&[(a, 0..2, 5..7), (b, 2..4, 0..0)], normal, fora)
+            .expect("compõe");
+        assert!(
+            c.iter().all(|k| !k.ordenada() || k.copias == (0..2)),
+            "a corrida ordenada não engole a vizinha: {c:?}"
         );
         assert!(corridas_das_faixas(&[(a, 0..2, 0..0)], cena, fora).is_ok());
     }

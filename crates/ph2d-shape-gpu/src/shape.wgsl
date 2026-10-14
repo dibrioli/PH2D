@@ -246,6 +246,11 @@ fn cs_caixas(@builtin(global_invocation_id) id: vec3<u32>) {
 
 @vertex
 fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut {
+    return vs_da_copia(vi, ii);
+}
+
+// O vértice `vi` (0..6) do quad da cópia `ii` — o `vs_main`, e a forma do `vs_ordenado` (`ordenado.wgsl`).
+fn vs_da_copia(vi: u32, ii: u32) -> VsOut {
     var out: VsOut;
     let cp = copia_de(ii);
     if cp.r == 0xffffffffu {

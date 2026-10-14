@@ -12,7 +12,6 @@
 //!   `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --lib --release \
 //!        mistura_tests -- --ignored --nocapture`
 
-use super::mistura::RECUSA_SCENE_NO_DISPOSITIVO;
 use super::{GpuOutcome, cook_gpu};
 use crate::motion_shape_placa::gpu_tests::{LADO, camara, compara, le_a_camada};
 use crate::motion_shape_placa::{
@@ -233,10 +232,10 @@ pub(super) fn renderer(gpu: &GpuContext) -> ph2d_render::SpriteRenderer {
     )
 }
 
-/// ⭐⭐⭐ **Cada modo × alcance × camada isolada: o dispositivo desenha o que a CPU desenha, ou
-/// recusa pelo motivo dele.** Desde o P4 sem memória da CPU: o 1.º cozimento de um grupo já vai à
-/// placa. Fora da camada isolada o `Everything` vai às DUAS placas e pousa com o modo (P4 (b)); o
-/// `Scene` vai à da CPU e o dispositivo recusa-o pelo nome (`RECUSA_SCENE_NO_DISPOSITIVO`).
+/// ⭐⭐⭐ **Cada modo × alcance × camada isolada: o dispositivo desenha o que a CPU desenha.** Desde o
+/// P4 sem memória da CPU: o 1.º cozimento de um grupo já vai à placa. Fora da camada isolada o
+/// `Everything` e o `Scene` vão às DUAS placas e pousam com o modo (P4 (b)); o `Scene` junta as
+/// cópias em `Normal` (doc 132 §4.1 (3): a corrida ordenada, aqui só de formas).
 ///
 /// **A barra, MEDIDA** — ver a tabela no handoff B6 (`alfa`/`cor` máx. e pixels `> 16`).
 #[test]
@@ -257,16 +256,6 @@ fn a_mistura_em_grupo_pelo_dispositivo_desenha_o_que_a_cpu_desenha() {
                 let (mut m, _, _) = estado(tag, com, isolada, false);
                 let em_grupo = super::sink_mistura_em_grupo(&m.doc.graph, m.sinks[0], isolada);
                 let primeira = coze(&mut m, &gpu, TIQUE - 1);
-                if com == BlendWith::Scene && !isolada {
-                    assert!(!primeira, "{caso}");
-                    assert_eq!(m.route_said, Some(RECUSA_SCENE_NO_DISPOSITIVO), "{caso}");
-                    assert_ne!(
-                        pousa_cpu,
-                        ph2d_render::Pousa::Normal,
-                        "{caso}: a CPU pousa-o"
-                    );
-                    continue;
-                }
                 assert!(
                     primeira,
                     "{caso}: o 1.º quadro já vai à placa ({:?})",
@@ -283,7 +272,7 @@ fn a_mistura_em_grupo_pelo_dispositivo_desenha_o_que_a_cpu_desenha() {
                 assert_eq!(
                     pousa_dev == ph2d_render::Pousa::Normal,
                     isolada || com == BlendWith::Copies,
-                    "{caso}: fora da camada isolada o Everything pousa com o modo"
+                    "{caso}: fora da camada isolada o Everything e o Scene pousam com o modo"
                 );
                 let (alfa, cor, nc, nd, fora) = compara(&da_cpu, &do_dev);
                 let (_, cor_n, _, _, fora_n) = compara(&normal, &da_cpu);
@@ -297,7 +286,9 @@ fn a_mistura_em_grupo_pelo_dispositivo_desenha_o_que_a_cpu_desenha() {
                     "{caso}: alfa {alfa} cor {cor}"
                 );
                 assert_eq!(fora, FORA_MAX, "{caso}: {fora} pixels desviam mais de 16");
-                if em_grupo {
+                // O `Scene` fora da camada isolada mistura ao POUSAR (a camada é o grupo em `Normal`):
+                // a pousa dele já se viu acima, igual nas duas rotas e diferente de `Normal`.
+                if em_grupo && !(com == BlendWith::Scene && !isolada) {
                     assert!(
                         fora_n > 1_000,
                         "{caso}: a mistura tem de se VER contra o Normal"
@@ -307,7 +298,11 @@ fn a_mistura_em_grupo_pelo_dispositivo_desenha_o_que_a_cpu_desenha() {
             }
         }
     }
-    assert!(comparados >= 12, "a tabela mediu {comparados} casos");
+    assert_eq!(
+        comparados,
+        3 * BlendWith::ALL.len() * 2,
+        "a tabela mede todo caso (o Scene também)"
+    );
 }
 
 /// As barras do veredito — as do irmão `formas_tests` (o MESMO passe e as MESMAS geometrias; só as

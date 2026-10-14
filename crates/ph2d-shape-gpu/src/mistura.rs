@@ -86,8 +86,8 @@ pub fn multiplica_no_dispositivo(device: &wgpu::Device) -> bool {
 /// ⭐ P4 (doc 132 §4) — `imagens`: as linhas de IMAGEM da corrida noutro buffer (o do segundo
 /// desenhador de [`ShapePass::draw_em_corridas_com`]), desenhadas no MESMO passe e com a MESMA
 /// mistura, depois das formas. ⚠️ A ordem entre as duas médias dentro de uma corrida só não importa
-/// porque as misturas de grupo (Soma, Tela, Multiplica) são comutativas e associativas — uma
-/// corrida `Normal` com imagens trocaria a ordem das linhas.
+/// porque as misturas de grupo (Soma, Tela, Multiplica) são comutativas e associativas — a corrida
+/// `Normal` com as duas ([`Self::ordenada`]) desenha-as num desenho só, na ordem das linhas.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Corrida {
     pub copias: Range<u32>,
@@ -100,6 +100,18 @@ pub struct Corrida {
 /// [`Corrida::imagens`] de uma corrida no passe dela.
 pub type DesenhaImagens<'a> = &'a mut dyn FnMut(&mut wgpu::RenderPass<'static>, &Corrida);
 
+impl Corrida {
+    /// ⭐ doc 132 §4.1 (3) — **a corrida desenha as duas médias NA ORDEM DAS LINHAS**: `Normal` (o
+    /// `Scene`, cujas cópias se juntam em `Normal` — a de cima tapa a de baixo) com formas E imagens.
+    /// As duas faixas são então a MESMA faixa do sink nos dois buffers (a linha `k` em
+    /// `copias.start + k` e em `imagens.start + k`, a do outro meio muda), e um desenho só as percorre
+    /// ([`ShapePass::com_segundo_meio`]).
+    #[must_use]
+    pub fn ordenada(&self) -> bool {
+        self.mistura == Mistura::Normal && !self.copias.is_empty() && !self.imagens.is_empty()
+    }
+}
+
 /// O pipeline de desenho das cópias com o fragmento `fs` e a mistura `m` — a porta única dos cinco.
 pub(super) fn pipeline_de(
     device: &wgpu::Device,
@@ -110,12 +122,25 @@ pub(super) fn pipeline_de(
     format: wgpu::TextureFormat,
     opcoes: wgpu::PipelineCompilationOptions<'_>,
 ) -> wgpu::RenderPipeline {
+    pipeline_com_vertice(device, pl, module, ("vs_main", fs), m, format, opcoes)
+}
+
+/// O [`pipeline_de`] com o vértice também escolhido (o `vs_ordenado` do segundo meio).
+pub(super) fn pipeline_com_vertice(
+    device: &wgpu::Device,
+    pl: &wgpu::PipelineLayout,
+    module: &wgpu::ShaderModule,
+    (vs, fs): (&str, &str),
+    m: Mistura,
+    format: wgpu::TextureFormat,
+    opcoes: wgpu::PipelineCompilationOptions<'_>,
+) -> wgpu::RenderPipeline {
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("ph2d-shape-gpu"),
         layout: Some(pl),
         vertex: wgpu::VertexState {
             module,
-            entry_point: Some("vs_main"),
+            entry_point: Some(vs),
             compilation_options: opcoes.clone(),
             buffers: &[],
         },
@@ -276,7 +301,24 @@ impl ShapePass {
         let completa = self.tracejado;
         let (normal, m) = (&self.pipeline, &mut self.misturas);
         let (soma, tela, multiplica) = (&m.soma, &m.tela, m.multiplica.as_ref());
+        let ordenado = self.ordenado.as_ref();
         let mut desenha = |pass: &mut wgpu::RenderPass<'static>, c: &Corrida| {
+            // doc 132 §4.1 (3): as duas médias num desenho, na ordem das linhas — o segundo
+            // desenhador liga o grupo `2` e desenha.
+            if c.ordenada()
+                && let (Some(ordenado), Some((bg, _)), Some(leitura), Some(imagens)) =
+                    (ordenado, &ligadas, &leitura, imagens.as_mut())
+            {
+                pass.set_pipeline(ordenado.de(completa));
+                pass.set_bind_group(0, bg, &[]);
+                pass.set_bind_group(1, leitura, &[]);
+                imagens(pass, c);
+                return;
+            }
+            debug_assert!(
+                !c.ordenada() || ordenado.is_some(),
+                "uma corrida ordenada sem o segundo meio desenharia as imagens por cima das formas"
+            );
             if let (Some((bg, _)), Some(leitura)) = (&ligadas, &leitura)
                 && !c.copias.is_empty()
             {

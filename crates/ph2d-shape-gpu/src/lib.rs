@@ -49,4 +49,5 @@ pub use pass::mistura::{Corrida, DesenhaImagens, Mistura, multiplica_no_disposit
 pub const AREA_DO_VELLO: &str = include_str!("area_do_vello.wgsl");
 pub use pass::{
     CONSTANTES_DO_CONTORNO, Copias, ShapeInstance, ShapePass, ShapeView, VarianteDoPasse,
+    primeiro_vertice_ordenado,
 };

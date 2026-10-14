@@ -9,6 +9,9 @@ use crate::geometry::{GeometryRecord, ShapeGeometry};
 // B5 — a mistura por cópia (Soma, Tela, Multiplica) e as corridas.
 #[path = "mistura.rs"]
 pub(crate) mod mistura;
+#[path = "pass_ordenado.rs"]
+mod ordenado;
+pub use ordenado::primeiro_vertice_ordenado;
 
 /// A projecção mundo → pixel do alvo: `pixel = lin · mundo + t`, com `lin = [[a, c], [b, d]]`
 /// guardado como `(a, b, c, d)` — os mesmos coeficientes de um `Affine` do kurbo.
@@ -74,7 +77,13 @@ pub struct ShapePass {
     caixas: (wgpu::ComputePipeline, wgpu::BindGroupLayout),
     /// B5 — os pipelines das corridas com mistura ([`mistura`]).
     misturas: mistura::Misturas,
+    /// O formato do alvo (o do pipeline ordenado, criado depois).
+    formato: wgpu::TextureFormat,
+    /// doc 132 §4.1 (3) — o desenho das corridas ORDENADAS, com o segundo meio
+    /// ([`Self::com_segundo_meio`]); `None` até um meio se registar.
+    ordenado: Option<crate::contorno::Variantes<wgpu::RenderPipeline>>,
 }
+
 
 /// O shader: o desenho e os passes de cálculo do contorno num MÓDULO só — os dois lêem a mesma
 /// `copia_de` e a mesma geometria do traço (`bissectriz`), e escritas duas vezes elas divergiriam.
@@ -270,6 +279,8 @@ impl ShapePass {
             ultimo: None,
             caixas,
             misturas,
+            formato: format,
+            ordenado: None,
         }
     }
 

@@ -22,6 +22,16 @@ fn as_celulas_de_uma_corrida_voltam_juntas() {
         ordem_das_linhas(0, 1, 2, &[c(0..1, 0..1, 1)]),
         vec![0, 1, 2]
     );
+    // doc 132 §4.1 (3) — a corrida ORDENADA (`Normal`, a mesma faixa nos dois buffers) volta LINHA a
+    // linha: forma 0, imagem 0, forma 1, imagem 1, … (o meio que não é a linha é uma célula vazia).
+    let ordenada = Corrida {
+        mistura: Mistura::Normal,
+        ..c(0..3, 2..5, 0)
+    };
+    assert_eq!(
+        ordem_das_linhas(1, 3, 5, &[ordenada]),
+        vec![0, 1, 6, 2, 7, 3, 8, 4, 5]
+    );
 }
 use crate::passes::{buffer, compute, reloca, vazio};
 

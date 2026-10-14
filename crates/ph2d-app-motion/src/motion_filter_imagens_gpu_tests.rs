@@ -67,25 +67,47 @@ fn pela_rota(
     let _ = store.push(ph2d_vec_scene::rectangle([-0.5, -0.5], [0.5, 0.5]));
     let misturas = Misturas::do_quadro(gpu, m.pump.camada_isolada());
     let mut placa = PlacaDeFormas::default();
-    let (formas, imagens): (Vec<_>, Vec<_>) =
-        insts.iter().copied().partition(|i| i.geometry_id > 0);
     let mut buf_formas = None;
     if dispositivo {
-        let linhas: Vec<RenderInstance> = imagens
+        // A disposição do COZIMENTO: a faixa inteira do sink nos dois buffers — a linha de imagem sem
+        // geometria nas formas (`SEM_GEOMETRIA`), a de forma com tamanho zero nas imagens (a calada).
+        let linhas: Vec<RenderInstance> = insts
             .iter()
-            .map(crate::motion_shape_placa::linha_da_imagem)
+            .map(|i| {
+                let mut l = crate::motion_shape_placa::linha_da_imagem(i);
+                if i.geometry_id > 0 {
+                    l.size = [0.0, 0.0];
+                }
+                l
+            })
             .collect();
-        let n_f = u32::try_from(formas.len()).expect("poucas");
-        let n_i = u32::try_from(linhas.len()).expect("poucas");
+        let com_formas = insts.iter().any(|i| i.geometry_id > 0);
+        let n = u32::try_from(insts.len()).expect("poucas");
+        let n_f = if com_formas { n } else { 0 };
         let mistura = insts[0].mistura;
         let corridas = crate::motion_shape_placa::corridas_das_faixas(
-            &[(m.sinks[0], 0..n_f, 0..n_i)],
+            &[(m.sinks[0], 0..n_f, 0..n)],
             |_| mistura,
             misturas,
         )
         .expect("a placa compõe-na");
-        buf_formas = (!formas.is_empty()).then(|| buffer_do_cozimento(gpu, &formas));
-        let vivas: Vec<u32> = formas.iter().map(|i| i.geometry_id).collect();
+        let formas: Vec<VectorInstance> = insts
+            .iter()
+            .map(|i| VectorInstance {
+                geometry_id: if i.geometry_id > 0 {
+                    i.geometry_id
+                } else {
+                    ph2d_gpu_cook::lower_forma::SEM_GEOMETRIA
+                },
+                ..*i
+            })
+            .collect();
+        buf_formas = com_formas.then(|| buffer_do_cozimento(gpu, &formas));
+        let vivas: Vec<u32> = insts
+            .iter()
+            .filter(|i| i.geometry_id > 0)
+            .map(|i| i.geometry_id)
+            .collect();
         let bytes: &[u8] = bytemuck::cast_slice(&linhas);
         let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("test imagens do grupo"),
@@ -110,8 +132,8 @@ fn pela_rota(
         ));
         placa.com_imagens(Some(crate::motion_shape_placa::imagens::FontesDasImagens {
             buffer,
-            linhas: n_i,
-            texturas: vec![(0..n_i, atlas)],
+            linhas: n,
+            texturas: vec![(0..n, atlas)],
             projeto: ph2d_render::ImageFilterMode::Smooth,
         }));
     } else {
@@ -229,4 +251,84 @@ fn cada_elemento_do_grupo_leva_o_filtro_nas_duas_rotas() {
     }
     assert_eq!(casos, 9);
     let _ = (A1, A2);
+}
+
+/// ⭐⭐ doc 132 §4.1 (3) — **o `Scene` com imagens nas CÉLULAS guarda a ordem das linhas, nas duas
+/// rotas**: as cópias juntam-se em `Normal` (a de cima tapa), e no dispositivo a corrida é ORDENADA —
+/// as células voltam linha a linha (`ph2d_fx_cells::ordem_das_linhas`). Fixtura: as duas cópias da
+/// tabela, um `Color Overlay` FRACO em cada forma (cada elemento guarda uma cor sua), fora da camada
+/// isolada, nos três arranjos. A sobreposição tem de ser a da cópia de CIMA (a coluna dela sozinha),
+/// e as duas rotas iguais. ⚠️ Controlo: a coluna da cópia de baixo DIFERE da de cima — senão a fixtura
+/// não distingue a ordem.
+#[test]
+#[ignore = "placa: precisa de GPU"]
+fn o_scene_com_imagens_nas_celulas_guarda_a_ordem_das_linhas() {
+    let Some(gpu) = try_headless_gpu() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    for (k, cinza) in [(1u32, A1), (2, A2)] {
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+        let v = byte(cinza) as u8;
+        atlas
+            .insert(&gpu, k, 4, 4, &[v, v, v, 255].repeat(16))
+            .expect("cabe");
+    }
+    let mut renderer =
+        ph2d_render::SpriteRenderer::new(gpu.clone(), ph2d_render::GameRt::FORMAT, atlas, 8);
+    let uvs = [renderer.atlas().region_uv(1), renderer.atlas().region_uv(2)];
+    let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
+    let mut casos = 0;
+    for imagens in [[false, true], [true, true], [true, false]] {
+        // Sem a Soma: sobre o mundo `B` ela satura as duas cópias a 255 e nenhuma ordem se vê.
+        for tag in [3u8, 4] {
+            let mistura = MisturaDoSink {
+                blend: tag,
+                com: BlendWith::Scene,
+                sink: 0,
+            };
+            let insts = copias(mistura, imagens, uvs);
+            let mut lidos = Vec::new();
+            for dispositivo in [false, true] {
+                let mut m = motion_com_filtro(tag, BlendWith::Scene, 0.0);
+                let no = m.filtro.pilha()[0].no;
+                let g = &mut m.doc.graph;
+                ph2d_node_fx_filter::switch_kind(g, no, ph2d_ecs::FxOp::COLOR_OVERLAY);
+                for (k, v) in ph2d_node_fx_filter::param::COLOR
+                    .into_iter()
+                    .zip([EFEITO, EFEITO, EFEITO, 1.0])
+                {
+                    g.set_param(no, k, v);
+                }
+                // A 10 %: o efeito corre em cada célula, e cada elemento guarda o contraste dele.
+                g.set_param(no, ph2d_node_fx_filter::param::OPACITY, 0.1);
+                m.pump.isola_na_camada(false);
+                m.filtro.prepara(&m.doc.graph, &m.sinks);
+                let lido = pela_rota(&gpu, &mut renderer, &blit, &mut m, &insts, dispositivo);
+                println!(
+                    "  Scene imagens {imagens:?} tag {tag} dispositivo={dispositivo}: lido {lido:?}"
+                );
+                let caso = format!("imagens {imagens:?} tag {tag} dispositivo={dispositivo}");
+                assert!(
+                    (lido[0] - lido[2]).abs() > 4 * BARRA,
+                    "{caso}: as duas cópias têm de se distinguir ({lido:?})"
+                );
+                assert!(
+                    (lido[1] - lido[2]).abs() <= BARRA,
+                    "{caso}: a sobreposição é a cópia de CIMA ({lido:?})"
+                );
+                lidos.push(lido);
+            }
+            assert!(
+                lidos[0]
+                    .iter()
+                    .zip(&lidos[1])
+                    .all(|(a, b)| (a - b).abs() <= 1),
+                "as duas rotas: {lidos:?}"
+            );
+            casos += 1;
+        }
+    }
+    assert_eq!(casos, 6);
 }

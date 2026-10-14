@@ -33,6 +33,19 @@ pub fn ordem_das_linhas(n_s: u32, n_f: u32, n_i: u32, corridas: &[Corrida]) -> V
     let mut v: Vec<u32> = (0..n_s).collect();
     let (mut f, mut i) = (vec![false; n_f as usize], vec![false; n_i as usize]);
     for c in corridas {
+        // doc 132 §4.1 (3): a corrida ORDENADA é a mesma faixa nos dois buffers (a linha `j` em
+        // `copias.start + j` e `imagens.start + j`, a do outro meio vazia) — linha a linha.
+        if c.ordenada() {
+            for (kf, ki) in c.copias.clone().zip(c.imagens.clone()) {
+                if kf < n_f && !std::mem::replace(&mut f[kf as usize], true) {
+                    v.push(n_s + kf);
+                }
+                if ki < n_i && !std::mem::replace(&mut i[ki as usize], true) {
+                    v.push(n_s + n_f + ki);
+                }
+            }
+            continue;
+        }
         for k in c.copias.clone().filter(|&k| k < n_f) {
             if !std::mem::replace(&mut f[k as usize], true) {
                 v.push(n_s + k);

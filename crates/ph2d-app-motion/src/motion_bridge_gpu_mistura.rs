@@ -8,9 +8,9 @@
 //! memória da CPU nem a vigia que devolvia o sink um a dois quadros depois. Um sink em grupo vai ao
 //! dispositivo quando a placa compõe a mistura dele ([`Misturas::composicao`] — as MESMAS regras da
 //! rota da CPU) — a camada pousa no mundo segmento a segmento ([`crate::motion_shape_placa::Segmentos`]),
-//! logo pousas diferentes no mesmo quadro já não recusam; o `Scene` fora da camada
-//! isolada fica na CPU (as cópias juntam-se em `Normal`, e a ordem entre imagens e formas é a das
-//! linhas, que o dispositivo separa).
+//! logo pousas diferentes no mesmo quadro já não recusam; o `Scene` fora da camada isolada junta
+//! as cópias em `Normal`, e a corrida dele desenha imagens e formas NUM desenho, na ordem das linhas
+//! (doc 132 §4.1 (3), [`ph2d_shape_gpu::Corrida::ordenada`]).
 //!
 //! As corridas (uma por faixa de sink nos buffers das formas e das imagens) saem de
 //! [`crate::motion_shape_placa::corridas_do_dispositivo`], sem leitura de volta.
@@ -21,8 +21,6 @@ use crate::motion_state::MotionState;
 /// Um `Scene` na camada isolada que a bomba não fez pousar (a cerca a falhar).
 pub(crate) const RECUSA_MUNDO_PARTIDO: &str =
     "CPU: um Scene chegou a camada isolada sem pousar nela -- a cena vectorial desenha-o (doc 132)";
-/// O `Scene` fora da camada isolada: a ordem das linhas entre imagens e formas.
-pub(crate) const RECUSA_SCENE_NO_DISPOSITIVO: &str = "CPU: o sink mistura o grupo com o mundo (Scene) -- as copias juntam-se em Normal pela ordem das linhas, e o dispositivo separa imagens de formas (doc 132)";
 /// Multiply sem a 2.ª saída do fragmento.
 pub(crate) const RECUSA_MULTIPLY_SEM_SEGUNDA_SAIDA: &str =
     "CPU: o sink multiplica em grupo e este dispositivo nao tem DUAL_SOURCE_BLENDING";
@@ -41,17 +39,15 @@ pub(crate) fn recusa_da_mistura_em_grupo(
         return None;
     }
     let isolada = motion.pump.camada_isolada();
-    for (&sink, &grupo) in motion.sinks.iter().zip(em_grupo) {
+    for &sink in &motion.sinks {
         let mistura = crate::motion_shape_placa::mistura_no_quadro(
             &motion.doc.graph,
             &motion.sinks,
             sink,
             isolada,
         );
-        match misturas.composicao(0, &mistura) {
-            Ok(c) if grupo && c.cena.is_some() => return Some(RECUSA_SCENE_NO_DISPOSITIVO),
-            Ok(_) => {}
-            Err(m) => return Some(motivo(m)),
+        if let Err(m) = misturas.composicao(0, &mistura) {
+            return Some(motivo(m));
         }
     }
     None
@@ -61,7 +57,6 @@ fn motivo(m: MotivoDoVello) -> &'static str {
     match m {
         MotivoDoVello::Desligadas => RECUSA_MISTURAS_DESLIGADAS,
         MotivoDoVello::MundoPartido => RECUSA_MUNDO_PARTIDO,
-        MotivoDoVello::CenaComImagens => RECUSA_SCENE_NO_DISPOSITIVO,
         MotivoDoVello::SemMultiplica => RECUSA_MULTIPLY_SEM_SEGUNDA_SAIDA,
     }
 }

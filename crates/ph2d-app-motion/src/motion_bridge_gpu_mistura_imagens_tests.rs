@@ -279,15 +279,7 @@ fn imagens_e_formas_no_mesmo_grupo_pelo_dispositivo() {
     };
     let a = atlas(&gpu);
     for tag in [1u8, 4] {
-        let mista = |a: &Atlas| {
-            let (mut m, combina, imagens) =
-                estado_de(4.0, false, tag, BlendWith::Copies, false, true);
-            let ramo = ramo_de_imagens(&mut m, imagens, 1.6);
-            liga(&mut m, ramo, combina, 1);
-            m.default_uv_rect = a.uv;
-            m
-        };
-        let da_cpu = pela_cpu(&gpu, mista(&a), &a);
+        let da_cpu = pela_cpu(&gpu, mista(&a, tag, BlendWith::Copies, false), &a);
         // O CONTROLO: sem o ramo das imagens a cena tem de DIFERIR (as imagens pintam).
         let (mut so_formas, _, _) = estado_de(4.0, false, tag, BlendWith::Copies, false, true);
         so_formas.default_uv_rect = a.uv;
@@ -296,7 +288,7 @@ fn imagens_e_formas_no_mesmo_grupo_pelo_dispositivo() {
         let sem_imagens = pelo_vello(&gpu, &so_formas, &a);
         let (_, _, _, _, fora_i) = compara(&sem_imagens, &da_cpu);
         assert!(fora_i > 500, "as imagens têm de se VER ({fora_i} pixels)");
-        let mut m = mista(&a);
+        let mut m = mista(&a, tag, BlendWith::Copies, false);
         let do_dev = pela_placa(&gpu, &mut m, &a);
         let (alfa, cor, nc, nd, fora) = compara(&da_cpu, &do_dev);
         fotografa(&format!("mista_{tag}"), &da_cpu, &do_dev);
@@ -306,6 +298,70 @@ fn imagens_e_formas_no_mesmo_grupo_pelo_dispositivo() {
         assert!(
             fora * 20 <= nc,
             "{fora} pixels desviam > 16 — acima de 5 % dos {nc}"
+        );
+    }
+}
+
+/// A cena mista com o alcance `com`; `imagens_primeiro` ⇒ as IMAGENS entram no `combine` pela porta
+/// `0` (as linhas delas vêm antes das formas), senão pela `1` (a fixtura do `=140`).
+fn mista(a: &Atlas, tag: u8, com: BlendWith, imagens_primeiro: bool) -> MotionState {
+    let (mut m, combina, imagens) = estado_de(4.0, false, tag, com, false, true);
+    let ramo = ramo_de_imagens(&mut m, imagens, 1.6);
+    if imagens_primeiro {
+        let formas = m.doc.graph.disconnect(combina, 0).expect("as formas na porta 0");
+        liga(&mut m, formas.from.0, combina, 1);
+        liga(&mut m, ramo, combina, 0);
+    } else {
+        liga(&mut m, ramo, combina, 1);
+    }
+    m.default_uv_rect = a.uv;
+    m
+}
+
+/// ⭐⭐⭐ doc 132 §4.1 (3) — **o `Scene` com imagens PELO DISPOSITIVO guarda a ordem das linhas**: as
+/// cópias juntam-se em `Normal` (a de cima TAPA a de baixo), e a corrida ordenada desenha as duas médias
+/// num desenho só. Fixtura: as IMAGENS antes das formas (o `combine` invertido), sobrepostas — as
+/// FORMAS tapam. ⭐ O controlo vem primeiro: a MESMA cena com as formas antes (o que o desenho de
+/// formas-depois-imagens daria) tem de REPROVAR a barra — senão a fixtura não distingue a ordem.
+#[test]
+#[ignore = "placa: precisa de adapter de GPU"]
+fn o_scene_com_imagens_pelo_dispositivo_guarda_a_ordem_das_linhas() {
+    let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
+        panic!("sem adapter — este gate mede a rota do device e nao tem versao de CPU");
+    };
+    let a = atlas(&gpu);
+    for tag in [1u8, 3, 4] {
+        let caso = format!("Scene tag {tag}");
+        let certa = pela_cpu(&gpu, mista(&a, tag, BlendWith::Scene, true), &a);
+        let errada = pela_cpu(&gpu, mista(&a, tag, BlendWith::Scene, false), &a);
+        let (_, _, nc_c, _, fora_c) = compara(&certa, &errada);
+        assert!(
+            fora_c * 20 > nc_c,
+            "{caso}: a ordem tem de se VER ({fora_c} de {nc_c} pixels desviam > 16)"
+        );
+        let mut m = mista(&a, tag, BlendWith::Scene, true);
+        let do_dev = pela_placa(&gpu, &mut m, &a);
+        assert!(
+            m.route_said.is_some_and(|r| r.starts_with("device")),
+            "{caso}: {:?}",
+            m.route_said
+        );
+        let (alfa, cor, nc, nd, fora) = compara(&certa, &do_dev);
+        let (_, _, _, _, fora_e) = compara(&errada, &do_dev);
+        fotografa(&format!("scene_ordenado_{tag}"), &certa, &do_dev);
+        eprintln!(
+            "{caso}: alfa max {alfa} · cor max {cor} · pixels {nc}/{nd} · > 16: {fora} \
+             (contra a ordem errada: > 16: {fora_e}; o controlo: {fora_c})"
+        );
+        assert!(nc > 10_000, "{caso}: a cena pinta ({nc} pixels)");
+        assert!(alfa <= 100 && cor <= 100, "{caso}: alfa {alfa} cor {cor}");
+        assert!(
+            fora * 20 <= nc,
+            "{caso}: {fora} pixels desviam > 16 — acima de 5 % dos {nc}"
+        );
+        assert!(
+            fora_e * 20 > nc,
+            "{caso}: o dispositivo tem de DIFERIR da ordem errada ({fora_e})"
         );
     }
 }

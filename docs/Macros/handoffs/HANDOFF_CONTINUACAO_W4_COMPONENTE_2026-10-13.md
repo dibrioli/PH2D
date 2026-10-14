@@ -42,7 +42,7 @@
   mão: o `seek(0)` do núcleo despacharia os passos do instante 0 com um aplicador vazio). Erro pára e fica
   guardado; recuar limpa-o. `ErroDaMacro::Ficheiro(CodecError)` novo. Gate
   `gate_tests::a_macro_em_cena_segue_o_relogio_e_recuar_e_tocar_do_zero_ate_la` (150 quadros ao bit; recuo ==
-  tocar do zero até lá, com o controlo fim ≠ meio). ⚠️ Prova de mutação deste gate por fazer (no fecho).
+  tocar do zero até lá, com o controlo fim ≠ meio). Mutação `recomeca_se` nunca recua: sangra (14/10).
 - ⚠️ **Controlo por agora sem efeito visível:** o «Macro Time» escreve o `MacroTempo` e ninguém em cena o lê
   até ao 5.5. A linha não fecha antes do 5.5.
 
@@ -164,12 +164,14 @@ Smokes da placa (comando inteiro):
   tocados (`skeleton_shell_seam`, `as_barras_de_vida`, `o_cerebro_fala`, `o_lod_da_forma`,
   `the_frame_partition`, `the_light_table`, `the_sink_style`, `queixas_cabem`, `grid_tests`) e
   `the_shell_only_shrinks`. Shell: +20 linhas líquidas (o código encolheu, o gate cresceu).
-- ⚠️ **Prova de mutação por fazer** (controlos verdes: F1 `palcos_tests` 2, F2 `a_macro_em_cena_segue`
-  1, F3 `present_bands::placa_tests` 4). As 10 planeadas: tirar `!tocado` do filtro; tirar o
-  `mark_dirty_keeping_ring`; tirar o `increment_change_tick`; `fresco = true`; tirar o `retain`;
-  `toca = true`; `recomeca_se` nunca recua (F2); tirar o laço de palcos do `present_fx`; tirar
-  `palcos.lentes`; mover `palcos.segue` para depois do `dispatch` (F1/F3). O subagente `mutacao` teve
-  a ferramenta Edit recusada pelas permissões e não a contornou.
+- ✅ **Prova de mutação 10/10 sangram** (14/10, HEAD `bb2584e678`; controlos verdes antes: F1
+  `macro_track::palcos_tests` 2, F2 `a_macro_em_cena_segue…` 1, F3 `ph2d-host-desktop`
+  `render_loop::present_bands::placa_tests` 4, F4 `motion_glow_passe::tests` 1 — este não guardou
+  nenhuma). F1 apanha: tirar `!tocado` do filtro; tirar o `mark_dirty_keeping_ring`; tirar o
+  `increment_change_tick`; `fresco` sempre; tirar o `retain`; `toca = true`. F2: `recomeca_se` nunca
+  recua (fecha também a prova do gate do 5.4). F3: o laço do `present_fx` sem `passe`; tirar
+  `palcos.lentes`; `palcos.segue` + `tocados_por_macro` depois do `dispatch`. Âncoras 1× cada (pré-voo),
+  restauro `checkout` + `touch`, árvore limpa no fim.
 - ⚠️ Não medido: custo do quadro com N palcos (placa); nenhuma cena de smoke ainda.
 
 ## ABERTO — item 5.5 D (o Painter em cena), a prova do bloco, e 5.6

@@ -36,10 +36,21 @@ fn raiz() -> PathBuf {
 
 /// O pincel de fábrica do meio inteiro, com os knobs da receita. Tamanho e opacidade NÃO são fixados
 /// (a tabela não os tem): fica o do artista.
+///
+/// ⚠️ **Parte do ficheiro de fábrica que JÁ existe** (prompt 35): desde a W2 do plano 27 as cerdas vivem no
+/// Shape (`WetKnobs::cerdas_no_shape`) e gravar não as põe no motor — capturar de fresco perdia a ponta de
+/// cada preset. Só um preset sem ficheiro nasce da captura.
 fn parametros(r: &Receita) -> Parametros {
-    let mut t = PainterTool::default();
-    t.set_paint_media(PaintMedia::WetPaint);
-    let (mut p, _) = t.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, r.grupo, r.nome));
+    let rel = caminho_relativo(MOTOR_DOS_PRESETS, r.meio, r.grupo, r.nome);
+    let mut p = match std::fs::read(raiz().join(&rel)) {
+        Ok(bytes) => ler(&bytes).expect("o ficheiro de fábrica lê-se").parametros,
+        Err(_) => {
+            let mut t = PainterTool::default();
+            t.set_paint_media(PaintMedia::WetPaint);
+            t.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, r.grupo, r.nome))
+                .0
+        }
+    };
     p.volumes.size_px = r.size_px;
     p.volumes.opacity = Some(r.opacity);
     p.volumes.water = Some(r.water);
@@ -85,8 +96,6 @@ fn parametros(r: &Receita) -> Parametros {
         ("evaporation", r.evaporation),
         ("pickup", d.get(Knob::Pickup) * r.pickup),
         ("edgeDarkening", r.edge),
-        ("bristleSize", r.bristle_size),
-        ("bristleCount", r.bristle_count),
     ]
     .into_iter()
     .chain(r.extras.iter().copied())
@@ -95,6 +104,15 @@ fn parametros(r: &Receita) -> Parametros {
             p.engine.insert(chave.to_owned(), v).is_some(),
             "knob {chave} existe"
         );
+    }
+    // As cerdas: no motor só num ficheiro de antes da W2; depois dela estão no Shape, e o ficheiro é a fonte.
+    for (chave, v) in [
+        ("bristleSize", r.bristle_size),
+        ("bristleCount", r.bristle_count),
+    ] {
+        if let Some(antigo) = p.engine.get_mut(chave) {
+            *antigo = v;
+        }
     }
     p
 }

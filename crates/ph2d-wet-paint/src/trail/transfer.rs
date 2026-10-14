@@ -4,6 +4,33 @@
 
 use super::*;
 
+/// O piso de água de uma célula que recebeu tinta (`transfer_paint_impl`, «the wet map must know»): até
+/// ele a célula está SECA.
+const FILM_TRACO: f32 = 0.00001;
+
+/// **Pousa `v` de pigmento da ponta SECA na camada assente** da célula `i` — a mesma composição de
+/// opacidade e a mesma mistura do pigmento suspenso, sobre `sett`.
+fn pousa_seco(g: &mut Grid, i: usize, v: f64, tip: [f32; 3], p: &Params, out: &mut [f64; 3]) {
+    let old = g.sett[i] as f64;
+    if old <= 0.0 {
+        g.sett_rgb[i] = tip;
+        g.sett[i] = v as f32;
+        return;
+    }
+    let (in_a, a_old) = (alpha_of_mass(v), alpha_of_mass(old));
+    let e9 = a_old * (1.0 - in_a);
+    if e9 + in_a > 0.0 {
+        let wgt = in_a / (e9 + in_a);
+        let uc = g.sett_rgb[i].map(f64::from);
+        let tip = tip.map(f64::from);
+        p.mix
+            .mix(uc[0], uc[1], uc[2], tip[0], tip[1], tip[2], wgt, out);
+        crate::colorops::velatura(out, wgt, p.glaze, a_old, uc, tip);
+        g.sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
+    }
+    g.sett[i] = (old + v) as f32;
+}
+
 impl Trail {
     /// Land the paint window on the canvas (SPEC §10 "transfer"), then roll
     /// it. Returns the touched canvas rect or None.
@@ -157,6 +184,9 @@ impl Trail {
             0.0
         };
 
+        // A ponta SECA é a JANELA inteira sem água (um pincel de Water 0) — não o texel: a orla de uma ponta
+        // pouco molhada leva pigmento sem água e continua molhada (o Express Oil ao byte).
+        let ponta_seca = count > 0 && sum_water <= 0.0;
         // 4. Land the window + 5. paint drag.
         let drag = p.k(Knob::Drag);
         let drag_w1 = (drag * 255.0).trunc() as i32; // integer byte weights: they
@@ -188,6 +218,22 @@ impl Trail {
                 if r_old != relevo {
                     let m_old = g.susp[i] as f64 + g.sett[i] as f64;
                     g.relevo[i] = ((r_old as f64 * m_old + relevo as f64 * v) / (m_old + v)) as f32;
+                }
+                // ⭐ **A ponta SECA** (prompt 35, contra o Rebelle Dry Thin): sem água na ponta e sem água
+                // na célula, o pigmento pousa já ASSENTE e não há película para arrastar — um pastel não se
+                // mexe depois do traço (medido: o suspenso andava 2 passos depois do pen-up) nem risca.
+                let seco = ponta_seca && g.film[i] <= FILM_TRACO;
+                if seco {
+                    pousa_seco(g, i, v, [self.tip_r[l], self.tip_g[l], self.tip_b[l]], p, &mut out);
+                    if g.sett[i] as f64 > 3000.0 {
+                        let ns = g.sett[i] as f64 - shed_pig;
+                        g.sett[i] = if ns < 0.0 { 0.0 } else { ns as f32 };
+                    }
+                    rx0 = rx0.min(cx);
+                    rx1 = rx1.max(cx);
+                    ry0 = ry0.min(cy);
+                    ry1 = ry1.max(cy);
+                    continue;
                 }
                 let in_a = alpha_of_mass(v);
                 let old = g.susp[i] as f64;

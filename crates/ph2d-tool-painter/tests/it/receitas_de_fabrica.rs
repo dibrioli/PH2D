@@ -291,25 +291,28 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         spacing: None,
         achatado: None,
     },
-    // Pastel › Pastel Dry › Dry Thin: grão fino e regular.
+    // Pastel › Pastel Dry › Dry Thin: grão fino e regular. Prompt 35 (14/10), contra o Rebelle NO TEMPO e à
+    // mesma largura vista (`ferramentas/pastel_regua.py`, nota 4,76 → 1,38): o grão Noise 0,4 era uma mancha
+    // de ~640 px (a largura ia de 15 a 34 px conforme a ALTURA na tela) — Noise 100 é o grão de 2–4 px; o
+    // papel 0,8 ondulava a borda; a carga 400 enchia o miolo (0,98 contra 0,91).
     Receita {
         meio: "Pastel",
         grupo: "Dry",
         nome: "Soft Pastel",
         water: 0.0,
         opacity: 1.0,
-        pigment: 400.0,
+        pigment: 100.0,
         pickup: 1.0,
-        gate: 0.8,
+        gate: 0.4,
         evaporation: 1.0,
         edge: 0.0,
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
-        hardness: 0.0,
+        hardness: 0.2,
         size_px: Some(29.0),
         extras: &[("felt", 0.0)],
-        grao: Some(("Noise", 0.4)),
+        grao: Some(("Noise", 100.0)),
         spacing: None,
         achatado: None,
     },

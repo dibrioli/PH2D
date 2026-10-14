@@ -1,0 +1,1 @@
+{"frames": [{"events": [{"event_type": "NEW_ARTWORK", "width": 1000, "height": 640, "units": "px", "dpi": 72, "paper": {"preset": "Default/EX00 White Simple", "color": {"r": 255, "g": 255, "b": 255}, "deckled_edges": false, "paper_scale": 100, "visible": true}}, {"event_type": "SET_RANDOM_SEED", "seed": 7}]}]}

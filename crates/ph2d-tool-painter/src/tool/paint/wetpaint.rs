@@ -555,6 +555,10 @@ mod sonda_opcoes; // as opções da W1g numa rodada só
 #[cfg(test)]
 mod sonda_papel_seco;
 #[cfg(test)]
+mod pastel_seco_tests; // o Soft Pastel não se mexe depois do traço e não depende da altura (prompt 35)
+#[cfg(test)]
+mod sonda_pastel_tempo; // o Soft Pastel no TEMPO contra o Rebelle Dry Thin (prompt 35)
+#[cfg(test)]
 mod sonda_presets;
 #[cfg(test)]
 mod sonda_shape_casa; // W0 do plano 27: a tinta de cada tipo do Shape e as leis candidatas do #47 // o Wet Drip com as caixas K–M e a lei de antes (prompt 16, Fases B–E) // os 4 pincéis de fábrica na bancada do Rebelle (conferência do dono 10/10) // o pincel seco nos picos do papel (dono 09/10) // a barra da meia inclinação e a tela direita ao byte (W1e, F1)

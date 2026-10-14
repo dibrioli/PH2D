@@ -138,7 +138,62 @@ Smokes da placa (comando inteiro):
 - Crates `ph2d-app-*` não dependem umas das outras (só `ph2d-app-registry-init`) ⇒ a «ponte do Play» não pode ser uma crate que chame Motion e Painter: cada família toca a SUA trilha lendo o componente.
 - O cartão PINTADO no Inspector (`ph2d-panel-inspector` sections/sync/populate/event/ids + editor-core `action_bus` + shell `fase_bus_inspector`…) é W5 (molde `a777f2f541`); a W4 entregou o modelo.
 
-## ABERTO — item 5.5 (a cena, UM bloco) e 5.6; os itens 5.1–5.4 estão FEITOS (acima)
+## 14/10 (tarde) — 5.5 A+B+C FEITOS (`412aba04da`; não reconstruir)
+
+- **A** `crates/ph2d-app-motion/src/macro_track/palcos.rs::PalcosDasMacros` (campo `palcos` do
+  `MotionShellState`): `segue(world, &motion.mundo, Some(gpu)) -> BTreeSet<u64>` corre em
+  `fase_motion_bridge.rs` entre `publica_o_mundo` e `dispatch`. Palco por entidade (bits), recriado só
+  quando `get_change_ticks::<Macro>().changed` muda; a leitura faz `world.increment_change_tick()`
+  (a shell não corre `Schedule` por quadro: sem isto dois quadros partilham o tique). `Macro.doc`
+  vazio = `Ok(None)`; erro de leitura fica em `Lido.palco = Err` (sem leitor até à W5). Sem
+  `MacroTempo` = em cache, não toca.
+- **B** `ObjetoState.tocados_por_macro` (`0` = todos) em `sinks_visiveis`;
+  `motion_objeto::tocados_por_macro` faz `mark_dirty_keeping_ring` quando o conjunto muda (a
+  testemunha grava-o como `Toque`).
+- **C** cada palco pelas portas do editor: `fase_vector_fx_recook` (os 3 assados), `fase_vector_bands`
+  (`palcos.decide`, OR nas faixas do documento), `fase_vector_overlays` (`palcos.codifica` na cena da
+  camada, `MotionFiltro::cena_da_camada_sempre`), `present.rs` (`palcos.liga()` =
+  `MotionFiltro::liga_em_camada` + lente; `banded |= palcos`; `palcos.desenha` antes do halo),
+  `present_fx` (halo por fonte: o bloco saiu para `ph2d_app_motion::motion_glow_passe::passe`),
+  `present_chrome` (`palcos.pousa` = `filtra_a_camada` com pilha vazia, depois do editor e antes do
+  chrome; `palcos.lentes` depois da lente do editor), `present_luz` (`palcos.com_oclusoes`). Uma camada
+  por palco. Gizmos: só o editor.
+- Gates: `macro_track::palcos_tests` (2), `motion_glow_passe::tests` (o gate de texto do halo, saiu de
+  `present_placa_tests`), `present_bands::placa_tests` reescrito para N fontes +
+  `os_palcos_das_macros_passam_por_cada_sitio_do_quadro`. Verdes também os gates que leem os ficheiros
+  tocados (`skeleton_shell_seam`, `as_barras_de_vida`, `o_cerebro_fala`, `o_lod_da_forma`,
+  `the_frame_partition`, `the_light_table`, `the_sink_style`, `queixas_cabem`, `grid_tests`) e
+  `the_shell_only_shrinks`. Shell: +20 linhas líquidas (o código encolheu, o gate cresceu).
+- ⚠️ **Prova de mutação por fazer** (controlos verdes: F1 `palcos_tests` 2, F2 `a_macro_em_cena_segue`
+  1, F3 `present_bands::placa_tests` 4). As 10 planeadas: tirar `!tocado` do filtro; tirar o
+  `mark_dirty_keeping_ring`; tirar o `increment_change_tick`; `fresco = true`; tirar o `retain`;
+  `toca = true`; `recomeca_se` nunca recua (F2); tirar o laço de palcos do `present_fx`; tirar
+  `palcos.lentes`; mover `palcos.segue` para depois do `dispatch` (F1/F3). O subagente `mutacao` teve
+  a ferramenta Edit recusada pelas permissões e não a contornou.
+- ⚠️ Não medido: custo do quadro com N palcos (placa); nenhuma cena de smoke ainda.
+
+## ABERTO — item 5.5 D (o Painter em cena), a prova do bloco, e 5.6
+
+**Mapa do D medido a 14/10 (explorador, endereços do HEAD `412aba04da`)** — o desenho D abaixo fica
+corrigido por isto:
+- `TocadorDoPainter` (`ph2d-tool-painter/src/macro_track/tocar.rs:30`): `novo(inicial, cargas)` `:41`,
+  `sobre_tela(inicial, cargas, rgba, w, h)` `:54`, `aplica(carga)` `:106` (um passo, sem relógio, só
+  avança). Resultado: `tool().canvas_rgba` (straight; `take_preview_arc`, `tool/runtime.rs:338-401`).
+  Visibilidade de `canvas_rgba` fora da crate e dependência do worker da água: por confirmar.
+- Gravação: `PainterTool::macro_grava() -> Result<(Vec<u8>, (u32,u32)), Recusa>` (`mod.rs:61`) sem alvo
+  e sem chamador de produto (só testes); falta o irmão de `MotionState::gravacao_abre`
+  (`ph2d-app-motion/src/macro_track/mod.rs:126`) com o `StableId` do sprite.
+- ⭐ **O ponto de troca JÁ EXISTE**: `PreviewOverride { entity_bits, texture_id, premultiplied }`
+  (`shells/desktop/src/render_loop/sim_extract.rs:175`, aplicado em `:331-334`); a lista monta-se em
+  `fase_extract_inputs.rs:77-115` ao lado de `painter_preview_override` (`:90`, o traço em curso:
+  `painter_bridge_upload.rs:76` sobe para um `PainterPreviewGpu`) e do `bgremoval_preview_override`.
+  ⚠️ `find` apanha o primeiro override da entidade.
+- Renderer: `acquire_individual(w,h,rgba)` (`renderer_individual.rs:22`), `replace_individual_pixels`
+  (`:198`), `individual_mut().release(id)`; `Rgba8UnormSrgb`, pixels PREMULTIPLICADOS.
+- Casa do sistema: `crates/ph2d-app-painter/src/macro_track/` (novo; deps já lá: `ph2d-tool-painter`,
+  `ph2d-ecs`, `ph2d-render`, `ph2d-preview-slot`; falta `ph2d-macro`). Não há `PainterShellState`: o
+  estado do Painter vive em parâmetros de `fase_painter_dispatch.rs`. Corre antes do
+  `fase_extract_inputs` (a Timeline já escreveu o `MacroTempo`, `ph2d-timeline/src/apply_prop.rs:112`).
 
 O desenho abaixo foi medido por leitura a 14/10 (dois exploradores; endereços do HEAD `1f4e85547b`).
 ⛔ **Excluir o dono sem desenhar o palco é pior que não existir** (o objecto sumiria no Play): A, B, C e D

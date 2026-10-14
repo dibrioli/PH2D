@@ -123,3 +123,28 @@ pub fn grava_o_splash(lado: u32, alvo: u64) -> Option<(Vec<u8>, f64)> {
     }
     Some((ph2d_macro::codec::write(&rec.finish()), f64::from(q) / 60.0))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::grava_o_splash;
+    use crate::macro_track::em_cena::MacroEmCena;
+
+    /// A cena `PH2D_MACRO_SMOKE=1` ensina o que acontece: o Splash tocado até ao fim pinta as quatro
+    /// cores na tela branca, e o início é a tela branca.
+    #[test]
+    fn o_splash_tocado_pinta_a_tela_e_o_inicio_e_branco() {
+        let (bytes, d) = grava_o_splash(128, 0).expect("arma no Wet Paint");
+        let mut m = MacroEmCena::de(&bytes).expect("lê-se").expect("tem trilha do Painter");
+        // Antes de qualquer passo (o instante 0 já traz o 1.º toque do pincel).
+        let (inicio, _, _) = m.toma_a_tela().expect("a tela inicial mostra-se");
+        assert!(inicio.iter().all(|&b| b == 255), "o início é a tela branca");
+        m.segue(d).expect("toca até ao fim");
+        assert!(m.erro().is_none(), "{:?}", m.erro());
+        let (fim, _, _) = m.toma_a_tela().expect("a tela mudou");
+        let pintados = fim.as_chunks::<4>().0.iter().filter(|p| p[..3] != [255; 3]).count();
+        let azuis = fim.as_chunks::<4>().0.iter().filter(|p| u16::from(p[2]) > u16::from(p[0]) + 20).count();
+        let vermelhos = fim.as_chunks::<4>().0.iter().filter(|p| u16::from(p[0]) > u16::from(p[2]) + 20).count();
+        assert!(pintados > 128 * 128 / 5, "pintou {pintados} texels");
+        assert!(azuis > 0 && vermelhos > 0, "azul {azuis}, vermelho {vermelhos}");
+    }
+}

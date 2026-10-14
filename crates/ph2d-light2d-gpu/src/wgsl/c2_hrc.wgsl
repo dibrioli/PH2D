@@ -61,6 +61,10 @@ override BORRAO_HRC: bool = true;
 // partilhadas entre quadrantes) — salvo quando a sonda adiante cai DENTRO de um opaco (junto a uma
 // face: lá lê-se no próprio u; com o «+1» cego o texel colado à face saía −43 %, medido W5c).
 override MAIS_UM_HRC: bool = true;
+// ⭐ W5r — T e R por COLUNAS: v é o índice mais rápido (`((k·nx + xi)·Y + v)`), e os fios seguem a mesma
+// ordem — as leituras «em diagonal» (a linha v + 2k − 2ⁿ) ficam contíguas entre fios vizinhos. Só os
+// endereços mudam: a conta de cada entrada é a mesma (handoff W5r). `false` = por linhas (o antes).
+override COLUNAS_HRC: bool = true;
 
 struct Par {
     r: vec3<f32>,
@@ -152,10 +156,16 @@ fn arco(n: u32, m: u32) -> f32 {
 }
 
 fn indice_t(nx: u32, n: u32, xi: u32, v: u32, k: u32) -> u32 {
+    if COLUNAS_HRC {
+        return (k * nx + xi) * hrc.eixo.y + v;
+    }
     return (v * nx + xi) * ((1u << n) + 1u) + k;
 }
 
 fn indice_r(nx: u32, n: u32, xi: u32, v: u32, m: u32) -> u32 {
+    if COLUNAS_HRC {
+        return (m * nx + xi) * hrc.eixo.y + v;
+    }
     return (v * nx + xi) * (1u << n) + m;
 }
 
@@ -193,6 +203,17 @@ fn entrada(gid: vec3<u32>, nw: vec3<u32>) -> u32 {
     return gid.x + gid.y * nw.x * 64u;
 }
 
+// A entrada `e` de T ou R com `nk` intervalos (ou cones) por sonda → `(k, xi, v)`, na ordem do armazenamento
+// (`t_saida[e]`/`r_saida[e]` é o índice dela).
+fn decompor(e: u32, nk: u32) -> vec3<u32> {
+    if COLUNAS_HRC {
+        let resto = e / hrc.eixo.y;
+        return vec3<u32>(resto / hrc.nx, resto % hrc.nx, e % hrc.eixo.y);
+    }
+    let resto = e / nk;
+    return vec3<u32>(e % nk, resto % hrc.nx, resto / hrc.nx);
+}
+
 // ── T0, T1, T2: traçados ──
 @compute @workgroup_size(64)
 fn hrc_traca(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
@@ -201,11 +222,10 @@ fn hrc_traca(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
         return;
     }
     let n = hrc.nivel;
-    let ks = (1u << n) + 1u;
-    let k = e % ks;
-    let resto = e / ks;
-    let xi = resto % hrc.nx;
-    let v = resto / hrc.nx;
+    let d = decompor(e, (1u << n) + 1u);
+    let k = d.x;
+    let xi = d.y;
+    let v = d.z;
     let u = f32(xi << n);
     let lado = f32(1u << n);
     let A = na_grade(u, f32(v));
@@ -221,11 +241,10 @@ fn hrc_sobe(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
         return;
     }
     let n = hrc.nivel;
-    let ks = (1u << n) + 1u;
-    let k = e % ks;
-    let resto = e / ks;
-    let xi = resto % hrc.nx;
-    let v = i32(resto / hrc.nx);
+    let d = decompor(e, (1u << n) + 1u);
+    let k = d.x;
+    let xi = d.y;
+    let v = i32(d.z);
     let h = i32(1u << (n - 1u));
     var par: Par;
     if k % 2u == 0u {
@@ -250,10 +269,10 @@ fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
     }
     let n = hrc.nivel;
     let cones = 1u << n;
-    let m = e % cones;
-    let resto = e / cones;
-    let xi = resto % hrc.nx;
-    let v = resto / hrc.nx;
+    let d = decompor(e, cones);
+    let m = d.x;
+    let xi = d.y;
+    let v = d.z;
     let lado = i32(cones);
     var soma = vec3<f32>(0.0);
     for (var lado_do_cone = 0u; lado_do_cone < 2u; lado_do_cone++) {
@@ -292,8 +311,20 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     if e >= hrc.total {
         return;
     }
-    let u = e % hrc.eixo.x;
-    let v = e / hrc.eixo.x;
+    var u = e % hrc.eixo.x;
+    var v = e / hrc.eixo.x;
+    if COLUNAS_HRC {
+        // Um grupo = um ladrilho 8×8 de (u, v): oito v seguidos do R0 (por colunas) e oito texels
+        // seguidos do acumulado em qualquer quadrante. O `total` conta os ladrilhos inteiros.
+        let ladrilho = e / 64u;
+        let l = e % 64u;
+        let lu = (hrc.eixo.x + 7u) / 8u;
+        u = (ladrilho % lu) * 8u + l / 8u;
+        v = (ladrilho / lu) * 8u + l % 8u;
+        if u >= hrc.eixo.x || v >= hrc.eixo.y {
+            return;
+        }
+    }
     // ⭐ W5m: o «+1» só no mesmo meio ou para um mais claro; para DENTRO de um corpo (translúcido
     // também) lê-se o próprio u — a sonda de dentro não conta a entrada, logo não vê o brilho da face
     // que u vê (misturá-la por τ perdia τ·brilho: a sala a 0,99, −1 %; handoff W5m §2).

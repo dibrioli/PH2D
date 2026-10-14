@@ -43,3 +43,8 @@ pub(super) fn cortes_ligados() -> bool {
 pub(super) fn hrc_duas_vezes() -> bool {
     ligado("PH2D_LIGHT2D_HRC_DUAS")
 }
+
+/// ⭐ W5r — `PH2D_LIGHT2D_HRC_COLUNAS=0`: a holográfica por linhas (o mesmo bit, mais lento; comparar).
+pub(super) fn hrc_por_colunas() -> bool {
+    ligado("PH2D_LIGHT2D_HRC_COLUNAS")
+}

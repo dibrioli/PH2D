@@ -199,6 +199,9 @@ pub struct Config {
     /// e largada): a `c2` do High num processo novo 24,7 → 19,0 ms (`medida_luz2d_w5o_lastro`, handoff W5p
     /// §7). `false` = uma vez (`PH2D_LIGHT2D_HRC_DUAS=0` no app compara).
     pub hrc_nasce_duas_vezes: bool,
+    /// ⭐ W5r — os T e os R da cascata holográfica por COLUNAS (`v` o índice mais rápido): as leituras
+    /// em diagonal ficam contíguas — o mesmo bit, outros endereços (handoff W5r). `false` = por linhas.
+    pub hrc_por_colunas: bool,
 }
 
 /// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
@@ -409,6 +412,7 @@ impl Config {
             holografica: None,
             modulo_rc: None,
             hrc_nasce_duas_vezes: true,
+            hrc_por_colunas: true,
         }
     }
 

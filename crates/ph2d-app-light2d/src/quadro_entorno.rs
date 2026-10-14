@@ -32,6 +32,7 @@ impl super::LuzDoQuadro {
             // ⭐ W5o: da vista só se lê a c0 do entorno (`Solver::somar_entorno`).
             so_a_c0: super::cortes_ligados(),
             hrc_nasce_duas_vezes: super::hrc_duas_vezes(),
+            hrc_por_colunas: super::hrc_por_colunas(),
             ..Config::padrao_para(&gpu.device, ge)
         })
     }

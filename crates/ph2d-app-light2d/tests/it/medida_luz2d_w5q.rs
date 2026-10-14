@@ -146,11 +146,11 @@ fn medida_luz2d_w5q_ladrilhos() {
 }
 
 /// (rótulo, a cena da 1.ª e da 2.ª metade dos quadros, a câmera).
-type Caso = (String, CenaDeLuz, CenaDeLuz, kurbo::Affine);
+pub(crate) type Caso = (String, CenaDeLuz, CenaDeLuz, kurbo::Affine);
 
 /// Os casos das réguas W5q: cenas 1–7 na vista de fábrica, a 3 com a câmera em x = 2, a 4 e a 5 de
 /// perto, a 5 que vira a 4 a meio, e a caixa do `o_interior_do_opaco` a 2,5 parada e a andar.
-fn casos() -> Vec<Caso> {
+pub(crate) fn casos() -> Vec<Caso> {
     let cena_de = |n| {
         let mut w = bevy_ecs::world::World::new();
         assert!(ph2d_app_light2d::smoke::encenar(&mut w, n));

@@ -26,7 +26,9 @@ mod ambiente;
 /// Os avisos ao artista — ficheiro irmão pelo tecto de 700 LOC (W5e).
 #[path = "quadro_avisos.rs"]
 mod avisos;
-use ambiente::{cortes_ligados, hrc_duas_vezes, miolo_do_ambiente, rebote_ligado};
+use ambiente::{
+    cortes_ligados, hrc_duas_vezes, hrc_por_colunas, miolo_do_ambiente, rebote_ligado,
+};
 #[path = "quadro_entorno.rs"]
 mod entorno;
 #[path = "quadro_leituras.rs"]
@@ -195,6 +197,7 @@ impl LuzDoQuadro {
             hrc_nasce_duas_vezes: hrc_duas_vezes(),
             // ⭐ W5q: `=0` = o anel na grade inteira (o mesmo bit, mais lento; comparar).
             anel_por_ladrilhos: env("PH2D_LIGHT2D_LADRILHOS"),
+            hrc_por_colunas: hrc_por_colunas(),
             miolo: miolo_do_ambiente(),
             ..crate::teto::config_do_quadro(g, self.mundo_para_tela, dg, rebote_ligado())
         }

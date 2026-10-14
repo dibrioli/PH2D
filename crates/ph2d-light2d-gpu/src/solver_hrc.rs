@@ -215,6 +215,7 @@ impl Holografica {
                 "MASCARA_C0",
                 f64::from(u8::from(e.cfg.preenchimento.is_some())),
             ),
+            ("COLUNAS_HRC", f64::from(u8::from(e.cfg.hrc_por_colunas))),
         ];
         let pipelines = ENTRADAS
             .iter()
@@ -356,7 +357,12 @@ impl Holografica {
                     grupos_1d(total),
                 );
             }
-            let total = u64::from(quad.x) * u64::from(quad.y);
+            // ⭐ W5r: por colunas, um grupo por ladrilho 8×8 (o `hrc_soma`).
+            let total = if e.cfg.hrc_por_colunas {
+                64 * u64::from(quad.x.div_ceil(8)) * u64::from(quad.y.div_ceil(8))
+            } else {
+                u64::from(quad.x) * u64::from(quad.y)
+            };
             let u = UniformeHrc {
                 nx: nx(0),
                 total: total as u32,

@@ -97,6 +97,55 @@ fn sonda_shape_casa_tinta_por_tipo() {
     }
 }
 
+/// **W3: a tinta de cada tipo do Shape sobre cada preset de fábrica, no PRODUTO** (`Σ(255 − min(rgb))`):
+/// a linha do preset como vem (Bristles, ou o Grain dele) e cada tipo contra o `None` do mesmo preset —
+/// nos presets com Grain o `texv` é o grão (o caso da lei B), nos outros a ponta lisa.
+#[test]
+#[ignore = "sonda W3 do plano 27: corre-se à mão"]
+fn sonda_shape_casa_tinta_por_preset() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let bib = Biblioteca::carregar(&raiz, None);
+    let tipos = [
+        TextureKind::Noise,
+        TextureKind::Clouds,
+        TextureKind::Voronoi,
+        TextureKind::Musgrave,
+        TextureKind::Stucci,
+        TextureKind::Checker,
+        TextureKind::Dots,
+    ];
+    print!("| preset | grão | como vem | None |");
+    for k in tipos {
+        print!(" {} |", nome(k));
+    }
+    println!();
+    for e in bib
+        .entradas
+        .iter()
+        .filter(|e| e.relativo.starts_with("WetPainter"))
+    {
+        let mede = |k: Option<TextureKind>| {
+            let mut t = tela(PaintMedia::WetPaint);
+            assert!(t.wet_preset_aplicar(&e.preset).is_empty());
+            t.wet_preset_aplicar_volumes(&e.preset.parametros.volumes);
+            t.paint.wetpaint.tilt_on = false;
+            if let Some(k) = k {
+                t.set_brush_shape_kind(k.to_u8());
+            }
+            let grao = t.paint.brush.grain_samples(false);
+            traco(&mut t);
+            (tinta(&t), grao)
+        };
+        let (vem, grao) = mede(None);
+        let (none, _) = mede(Some(TextureKind::None));
+        print!("| {} | {grao} | {vem} | {none} |", e.preset.parametros.name);
+        for k in tipos {
+            print!(" {:.3} |", mede(Some(k)).0 as f64 / none.max(1) as f64);
+        }
+        println!();
+    }
+}
+
 /// As três leis da célula, sobre `stamp = env · sv · texv · I` e o portão `g = (1 − dente)·gate`:
 /// `[hoje, A, B]` — A = o portão proporcional à envolvente, B = o padrão do Shape DEPOIS do portão.
 fn leis(env: f64, sv: f64, texv: f64, i: f64, g: f64) -> [f64; 3] {

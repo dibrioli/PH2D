@@ -298,3 +298,104 @@ fn diag_a_mancha_de_1000px() {
         }
     }
 }
+
+/// O desvio-padrão do vermelho no miolo `[54, 74)²` — a TEXTURA da mancha (a lisa é plana).
+fn desvio_no_miolo(c: &[u8]) -> f64 {
+    let v: Vec<f64> = (54..74usize)
+        .flat_map(|y| (54..74usize).map(move |x| f64::from(c[(y * LADO as usize + x) * 4])))
+        .collect();
+    #[allow(clippy::cast_precision_loss)]
+    let n = v.len() as f64;
+    let m = v.iter().sum::<f64>() / n;
+    (v.iter().map(|x| (x - m) * (x - m)).sum::<f64>() / n).sqrt()
+}
+
+/// Uma ponta de IMAGEM 16², um disco opaco — a ponta que enche o Solid de carimbos.
+fn ponta_disco(t: &mut PainterTool) {
+    const L: u32 = 16;
+    let mut px = vec![0u8; (L * L * 4) as usize];
+    for (i, p) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+        #[allow(clippy::cast_precision_loss)]
+        let (x, y) = ((i as u32 % L) as f32 - 7.5, (i as u32 / L) as f32 - 7.5);
+        if x * x + y * y < 49.0 {
+            *p = [30, 30, 30, 255];
+        }
+    }
+    t.set_brush_shape_image_rgba(&px, L, L, Some(7));
+}
+
+/// **Com ponta de IMAGEM a mancha da água é de CARIMBOS da ponta** (26 C2, plano 27 W4), como no Digital
+/// (Bug #53) — pela MÁSCARA do motor com a forma da união deles: o miolo enche (a densidade da mancha) e
+/// tem a textura dos discos. CONTROLO: a ponta redonda enche liso.
+///
+/// **Mutações que sangram:** tirar o ramo dos carimbos em `enche_a_mancha_na_agua` ⇒ o miolo liso; os
+/// carimbos dab a dab pela rota do traço (a 1.ª versão) ⇒ 39 de 400 píxeis tingidos.
+#[test]
+fn com_ponta_de_imagem_a_mancha_da_agua_e_de_carimbos() {
+    let mede = |imagem: bool| {
+        let mut t = agua(6.0);
+        t.paint.brush.style_solid = true;
+        if imagem {
+            ponta_disco(&mut t);
+            assert!(t.stroke_spec().solid_fills_with_stamps(true));
+        }
+        gesto(&mut t, &LACO, 10);
+        (tingidos_em(&t, 54, 54, 20), desvio_no_miolo(&t.canvas_rgba))
+    };
+    let (cheia, plana) = mede(false);
+    assert_eq!(cheia, 400, "controlo: a ponta redonda não encheu o miolo");
+    let (tinta, textura) = mede(true);
+    assert!(
+        tinta > 300,
+        "os carimbos não encheram o miolo ({tinta}/400)"
+    );
+    assert!(
+        textura > 2.0 * plana + 1.0,
+        "o miolo dos carimbos é liso como a mancha redonda (desvio {textura:.2} × {plana:.2})"
+    );
+}
+
+#[test]
+/// A mancha lisa × a de carimbos (26 C2): tinta e píxeis diferentes no miolo; `PH2D_SONDA_OUT` grava os PPM.
+#[ignore = "diag C2"]
+fn diag_c2_mancha_de_carimbos() {
+    let mede = |imagem: bool| {
+        let mut t = agua(6.0);
+        t.paint.brush.style_solid = true;
+        if imagem {
+            ponta_disco(&mut t);
+        }
+        gesto(&mut t, &LACO, 10);
+        t.canvas_rgba.clone()
+    };
+    let (lisa, carimbos) = (mede(false), mede(true));
+    let miolo = |c: &[u8]| -> (usize, u64) {
+        let v: Vec<u8> = (30..98usize)
+            .flat_map(|y| (30..98usize).map(move |x| (y * LADO as usize + x) * 4))
+            .map(|i| c[i])
+            .collect();
+        (
+            v.iter().filter(|r| **r < 240).count(),
+            v.iter().map(|r| u64::from(255 - r)).sum(),
+        )
+    };
+    let dif = (30..98usize)
+        .flat_map(|y| (30..98usize).map(move |x| (y * LADO as usize + x) * 4))
+        .filter(|&i| lisa[i].abs_diff(carimbos[i]) > 8)
+        .count();
+    eprintln!(
+        "lisa {:?} carimbos {:?} dif>8 {dif} de {}",
+        miolo(&lisa),
+        miolo(&carimbos),
+        68 * 68
+    );
+    if let Ok(dir) = std::env::var("PH2D_SONDA_OUT") {
+        for (n, c) in [("lisa", &lisa), ("carimbos", &carimbos)] {
+            let mut ppm = format!("P6 {LADO} {LADO} 255\n").into_bytes();
+            for p in c.as_chunks::<4>().0 {
+                ppm.extend_from_slice(&p[..3]);
+            }
+            std::fs::write(format!("{dir}/c2_{n}.ppm"), ppm).expect("grava");
+        }
+    }
+}

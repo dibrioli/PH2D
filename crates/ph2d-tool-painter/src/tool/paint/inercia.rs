@@ -34,10 +34,11 @@ pub enum Dependente {
     CerdasDaAgua,
     FollowSemNada,
     ContinuoSemPasso,
+    CorDaTexturaSemLeitor,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 20] = [
+    pub const TODOS: [Dependente; 21] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -58,6 +59,7 @@ impl Dependente {
         Dependente::CerdasDaAgua,
         Dependente::FollowSemNada,
         Dependente::ContinuoSemPasso,
+        Dependente::CorDaTexturaSemLeitor,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -89,6 +91,7 @@ impl Dependente {
             Dependente::CerdasDaAgua => &CERDAS,
             Dependente::FollowSemNada => &[ids::PAINTER_SHAPE_FOLLOW],
             Dependente::ContinuoSemPasso => &[ids::PAINTER_BRUSH_CONTINUOUS_SPACING],
+            Dependente::CorDaTexturaSemLeitor => &[ids::PAINTER_SHAPE_PER_LAYER_COLOR],
         }
     }
 
@@ -117,6 +120,7 @@ impl Dependente {
             Dependente::CerdasDaAgua => "panel.painter_layers.inerte.bristles_no_grain",
             Dependente::FollowSemNada => "panel.painter_layers.inerte.follow_nothing_to_turn",
             Dependente::ContinuoSemPasso => "panel.painter_layers.inerte.method_lays_a_path",
+            Dependente::CorDaTexturaSemLeitor => "panel.painter_layers.inerte.texture_colors_media",
         }
     }
 
@@ -305,6 +309,10 @@ impl PainterTool {
                 !s.lays_capsules()
                     || (agua && s.dab_spacing_px() <= f32::from(self.paint.wetpaint.grid_ratio))
             }),
+            // A cor da textura só a pintam as rotas do carimbo (`stamp_route.rs`, `is_color_mode`): a água
+            // deposita a cor do pincel pela silhueta (`wet_owns_the_dabs`) e a aguada reconstrói-se da cor
+            // do pincel (`watercolor_render_active`) — as duas saem antes dessas rotas (26 C1).
+            (Dependente::CorDaTexturaSemLeitor, agua || aquarela),
         ];
         Inercias {
             dependentes: leis

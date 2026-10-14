@@ -522,6 +522,8 @@ mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
 #[cfg(test)]
 mod gota_tests;
 #[cfg(test)]
+mod lei_b_tests; // plano 27 W3: o padrão do Shape multiplica DEPOIS do portão do papel
+#[cfg(test)]
 mod medida_undo; // o Ctrl+Z com as opções da W1g (dono 10/10)
 #[cfg(test)]
 mod mistura_camadas_tests; // N camadas de amarelo sobre azul seco convergem sem preto (prompt 15)

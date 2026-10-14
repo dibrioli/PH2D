@@ -62,8 +62,17 @@ fn mede(r: f64) -> ((f64, f64), (f64, f64)) {
     for _ in 0..AMOSTRAS {
         for (k, mode) in [Rows::Serial, Rows::Parallel].into_iter().enumerate() {
             let t0 = Instant::now();
-            let _ =
-                t.accumulate_paint_shaped_rows(g, &p, &tex, &dab(c, c, r), false, &sil, None, mode);
+            let _ = t.accumulate_paint_shaped_rows(
+                g,
+                &p,
+                &tex,
+                &dab(c, c, r),
+                false,
+                &sil,
+                None,
+                None,
+                mode,
+            );
             melhor[k] = melhor[k].min(t0.elapsed().as_secs_f64() * 1e3);
             let t1 = Instant::now();
             let _ = t.transfer_paint_rows(g, &p, mode);

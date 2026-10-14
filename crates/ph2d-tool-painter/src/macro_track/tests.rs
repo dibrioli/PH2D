@@ -183,7 +183,7 @@ fn o_motor_anda_ate_a_marca_e_recusa_a_inalcancavel() {
     e.begin_direct_stroke(0, 16.0, 24.0);
     for x in [16.0, 20.0, 24.0, 28.0, 32.0] {
         e.direct_segment(0, 4.0);
-        e.dispatch_pressure_dab_lane(0, x, 24.0, 5.0, 1.0, 0.0, 8.0, None, None);
+        e.dispatch_pressure_dab_lane(0, x, 24.0, 5.0, 1.0, 0.0, 8.0, None, None, None);
     }
     e.end_direct_stroke();
     let alvo = MarcaDaAgua {

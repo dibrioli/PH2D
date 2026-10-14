@@ -53,21 +53,37 @@ pub fn silhouette_at(
     radius: f32,
 ) -> f32 {
     match shape {
-        Some(sh) => {
-            let raw = crate::texture::sample_shape_silhouette(
-                &spec.shape,
-                sh.basis,
-                px,
-                py,
-                center,
-                radius,
-                sh.image,
-            );
-            let sv = crate::texture::remap_shape_value(raw, sh.ramp_lut);
-            spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
-        }
+        Some(sh) => spec.compose_shape_silhouette(
+            shape_value_at(spec, sh, px, py, center, radius),
+            spec.falloff_weight(t),
+        ),
         None => spec.falloff_weight(t),
     }
+}
+
+/// The Shape's value at one canvas pixel, through its ramp — what [`silhouette_at`] composes with the
+/// falloff. The Wet Paint deposit reads it APART for a procedural Shape (the plan-27 law B: the
+/// pattern multiplies after the paper gate, `ph2d_wet_paint::brush::stamp_row_shaped`).
+#[inline]
+#[must_use]
+pub fn shape_value_at(
+    spec: &BrushSpec,
+    sh: ShapeInput<'_>,
+    px: i64,
+    py: i64,
+    center: [f32; 2],
+    radius: f32,
+) -> f32 {
+    let raw = crate::texture::sample_shape_silhouette(
+        &spec.shape,
+        sh.basis,
+        px,
+        py,
+        center,
+        radius,
+        sh.image,
+    );
+    crate::texture::remap_shape_value(raw, sh.ramp_lut)
 }
 
 /// ⭐ **The dab-CAPSULE's silhouette** at one canvas pixel ([`crate::capsula`], Continuous Spacing): the

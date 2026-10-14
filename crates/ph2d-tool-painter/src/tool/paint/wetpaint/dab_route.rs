@@ -372,6 +372,13 @@ impl PainterTool {
             } else {
                 fp
             };
+            // ⭐ **Lei B** (plano 27 W3): o padrão PROCEDURAL do Shape não entra na silhueta que o dente do
+            // papel corta — vai ao motor no canal `padrao`, que multiplica DEPOIS do portão. A ponta de
+            // imagem fica na silhueta (ela é o contorno), e a borracha apaga pela silhueta inteira.
+            let padrao_a_parte = shape_input.is_some()
+                && spec.shape.kind != ph2d_painter_brush::TextureKind::Image
+                && !erasing;
+            let sil_input = shape_input.filter(|_| !padrao_a_parte);
             let sil = |cx: i32, cy: i32| -> f64 {
                 let mut acc = 0.0f32;
                 for j in 0..aa_n {
@@ -382,7 +389,7 @@ impl PainterTool {
                             .falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
                         acc += ph2d_painter_brush::dab::silhouette_at(
                             &spec,
-                            shape_input,
+                            sil_input,
                             t,
                             sx.floor() as i64,
                             sy.floor() as i64,
@@ -396,6 +403,29 @@ impl PainterTool {
             // Per-dab grain closure (armed slot only): replaces the bristle
             // sample inside the shaped stamp, cell − 1 = px like `sil`.
             let spec_ref = &spec;
+            let padrao = shape_input.filter(|_| padrao_a_parte).map(|si| {
+                move |cx: i32, cy: i32| -> f64 {
+                    let mut acc = 0.0f32;
+                    for j in 0..aa_n {
+                        let sy = grid_map::cell_subsample_px(cy, ratio, j, aa_step);
+                        for i in 0..aa_n {
+                            let sx = grid_map::cell_subsample_px(cx, ratio, i, aa_step);
+                            acc += ph2d_painter_brush::dab::shape_value_at(
+                                spec_ref,
+                                si,
+                                sx.floor() as i64,
+                                sy.floor() as i64,
+                                d.center,
+                                d.radius_px,
+                            );
+                        }
+                    }
+                    f64::from(acc * aa_inv)
+                }
+            });
+            let padrao_arg = padrao
+                .as_ref()
+                .map(|p| p as ph2d_wet_paint::brush::CellFn<'_>);
             let gimg = grain_image.as_ref();
             let grain = grain_basis.as_ref().map(|gb| {
                 move |cx: i32, cy: i32| -> f64 {
@@ -477,6 +507,7 @@ impl PainterTool {
                     cell_r,
                     Some(&sil),
                     grain_arg,
+                    padrao_arg,
                 ),
                 // Blend keeps the engine's own fixed-hardness stamp (the
                 // model's tools ignore the brush silhouette on purpose).

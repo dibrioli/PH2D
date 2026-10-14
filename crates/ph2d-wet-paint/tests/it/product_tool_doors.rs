@@ -25,7 +25,7 @@ fn seeded_engine(color: [f64; 3]) -> Engine {
     while x < 76.0 {
         x += 4.0;
         e.direct_segment(0, 4.0);
-        e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 1.0, 0.0, 10.0, None, None);
+        e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 1.0, 0.0, 10.0, None, None, None);
     }
     e.end_direct_stroke();
     for _ in 0..8 {
@@ -100,7 +100,7 @@ fn the_blend_lane_door_remixes_settled_paint() {
         while x < x0 + 24.0 {
             x += 4.0;
             e.direct_segment(0, 4.0);
-            e.dispatch_pressure_dab_lane(0, x, 48.0, 6.0, 1.0, 0.0, 10.0, None, None);
+            e.dispatch_pressure_dab_lane(0, x, 48.0, 6.0, 1.0, 0.0, 10.0, None, None, None);
         }
         e.end_direct_stroke();
     }
@@ -284,7 +284,7 @@ fn the_glaze_stacks_the_film_over_the_dried_paint() {
     while x < 66.0 {
         x += 4.0;
         e.direct_segment(0, 4.0);
-        e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 1.0, 0.0, 10.0, None, None);
+        e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 1.0, 0.0, 10.0, None, None, None);
     }
     e.end_direct_stroke();
     e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;

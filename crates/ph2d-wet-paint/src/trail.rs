@@ -371,7 +371,8 @@ impl Trail {
     /// [`Self::accumulate_paint`] with the HOST's silhouette (the shaped
     /// product door): `sil(x, y)` replaces the engine's falloff + footprint;
     /// `grain(x, y)`, when the host's Grain slot is armed, replaces the
-    /// bristle as the texture factor (`None` = the bristle stays). ONE cell
+    /// bristle as the texture factor (`None` = the bristle stays); `padrao(x, y)`, the host's
+    /// procedural Shape pattern, multiplies AFTER the paper gate (plan 27 law B). ONE cell
     /// law serves both faces ([`deposit::DepositLaw::cell`]) — the fingerprint
     /// pins that the port's own path did not move a bit.
     ///
@@ -389,8 +390,9 @@ impl Trail {
         ext_bypass: bool,
         sil: CellFn<'_>,
         grain: Option<CellFn<'_>>,
+        padrao: Option<CellFn<'_>>,
     ) -> Accumulated {
-        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, None)
+        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, padrao, None)
     }
 
     /// [`Self::accumulate_paint_shaped`] with the row route FORCED — the door
@@ -405,9 +407,10 @@ impl Trail {
         ext_bypass: bool,
         sil: CellFn<'_>,
         grain: Option<CellFn<'_>>,
+        padrao: Option<CellFn<'_>>,
         mode: crate::par::Rows,
     ) -> Accumulated {
-        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, Some(mode))
+        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, padrao, Some(mode))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -420,11 +423,12 @@ impl Trail {
         ext_bypass: bool,
         sil: CellFn<'_>,
         grain: Option<CellFn<'_>>,
+        padrao: Option<CellFn<'_>>,
         mode: Option<crate::par::Rows>,
     ) -> Accumulated {
         self.anchor_first_dab(dab);
         let law = deposit::DepositLaw::new(p, dab, ext_bypass);
-        let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, mode);
+        let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, padrao, mode);
         self.accumulated(wrote)
     }
 
@@ -479,7 +483,8 @@ impl Trail {
             ..
         } = g;
         let body = |i: usize, x: i32, y: i32, fall: f64, texv: f64| {
-            let Some((deposit, wb)) = law.cell(susp[i], sett[i], paper[i], film[i], fall, texv)
+            let Some((deposit, wb)) =
+                law.cell(susp[i], sett[i], paper[i], film[i], fall, texv, 1.0)
             else {
                 return;
             };

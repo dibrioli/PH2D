@@ -84,6 +84,12 @@ impl DepositLaw {
 
     /// **A lei de UMA célula**: `Some((depósito, byte de umidade))`, ou `None` quando nada pousa —
     /// e então nem a umidade é carimbada.
+    ///
+    /// `sv` é o padrão procedural do Shape (plano 27 W3, **lei B**): multiplica o que PASSOU o portão,
+    /// nunca entra no `stamp` que o dente corta — um padrão de média baixa (o Noise, ~0,4) sobre o grão
+    /// dos pastéis pousava 0,000 do redondo, porque `env·sv·grão·I` nunca vencia o portão. `1` = o
+    /// redondo ao bit (medido: [27 §6.2](../../../../docs/Painter/NewFeaturesWetPaint/27_plano_shape_casa_dos_pinceis.md)).
+    #[allow(clippy::too_many_arguments)]
     #[inline]
     pub(super) fn cell(
         &self,
@@ -93,6 +99,7 @@ impl DepositLaw {
         film: f32,
         fall: f64,
         texv: f64,
+        sv: f64,
     ) -> Option<(f64, u8)> {
         let mut stamp = fall * texv * self.intensity;
         if stamp > 1.0 {
@@ -117,6 +124,7 @@ impl DepositLaw {
         if deposit <= 0.0 {
             return None;
         }
+        deposit *= sv;
         if !self.ext_bypass {
             // Wet-edge softening extension: thin the rim on wet paper.
             let softness = (film as f64 / 3.0).min(1.0) * self.ext_wet_soften;
@@ -147,6 +155,7 @@ impl Trail {
         law: DepositLaw,
         sil: CellFn<'_>,
         grain: Option<CellFn<'_>>,
+        padrao: Option<CellFn<'_>>,
         mode: Option<Rows>,
     ) -> (i32, i32, i32, i32) {
         let Some((x0, y0, x1, y1)) = shaped_bounds(g.w, g.h, dab.x, dab.y, dab.r * dab.reach)
@@ -202,28 +211,40 @@ impl Trail {
             let ly = y - ay + half;
             let mut ext = VAZIA;
             let mut wrote = VAZIA;
-            stamp_row_shaped(y, x0, x1, tex, dab.x, dab.y, sil, grain, |x, fall, texv| {
-                let i = base + x as usize;
-                let Some((deposit, wb)) = law.cell(susp[i], sett[i], paper[i], film[i], fall, texv)
-                else {
-                    return;
-                };
-                // ⚠️ **Esta é uma escrita no DOCUMENTO** — ver o doc do pai: é dela que o véu do
-                // Show Wet se alimenta, e acontece mesmo fora da janela do rasto.
-                wet_row[x as usize] = wb;
-                touch_ext(&mut wrote, x, y);
-                let lx = x - ax + half;
-                if !(0..size).contains(&lx) {
-                    return;
-                }
-                let Some((pig_row, water_row)) = win.as_mut() else {
-                    return;
-                };
-                let l = lx as usize;
-                pig_row[l] = (pig_row[l] as f64 + deposit * gain) as f32;
-                water_row[l] = (water_row[l] as f64 + deposit * law.water_amount) as f32;
-                touch_ext(&mut ext, lx, ly);
-            });
+            stamp_row_shaped(
+                y,
+                x0,
+                x1,
+                tex,
+                dab.x,
+                dab.y,
+                sil,
+                grain,
+                padrao,
+                |x, fall, texv, sv| {
+                    let i = base + x as usize;
+                    let Some((deposit, wb)) =
+                        law.cell(susp[i], sett[i], paper[i], film[i], fall, texv, sv)
+                    else {
+                        return;
+                    };
+                    // ⚠️ **Esta é uma escrita no DOCUMENTO** — ver o doc do pai: é dela que o véu do
+                    // Show Wet se alimenta, e acontece mesmo fora da janela do rasto.
+                    wet_row[x as usize] = wb;
+                    touch_ext(&mut wrote, x, y);
+                    let lx = x - ax + half;
+                    if !(0..size).contains(&lx) {
+                        return;
+                    }
+                    let Some((pig_row, water_row)) = win.as_mut() else {
+                        return;
+                    };
+                    let l = lx as usize;
+                    pig_row[l] = (pig_row[l] as f64 + deposit * gain) as f32;
+                    water_row[l] = (water_row[l] as f64 + deposit * law.water_amount) as f32;
+                    touch_ext(&mut ext, lx, ly);
+                },
+            );
             (ext, wrote)
         };
         let (ext, wrote) =

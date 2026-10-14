@@ -213,3 +213,46 @@ Smoke do dono: *«em Wet Paint, Shape ainda não aparece configurado»* — era 
   nova) · `o_wet_paint_le_as_cerdas_do_shape` (Count muda; o `felt` do motor já NÃO — o controlo) ·
   `os_presets_antigos_chegam_com_as_cerdas_no_shape` (antigo → Bristles exacto; gravado sem as chaves; ida-e-volta;
   None gravado continua None).
+
+### 6.8 — W3 feita (14/10): a lei B — o padrão do Shape multiplica DEPOIS do portão (fecha o #47)
+
+Medido antes (sonda `sonda_shape_casa_tinta_por_preset`, o produto, os 12 presets de fábrica × 7 tipos, `÷ None`):
+sobre o GRÃO (Soft/Oil Pastel, Charcoal, Graphite 8B) o portão ainda comia o padrão — Noise **0,000–0,001**, Clouds
+0,002–0,004, Musgrave/Stucci 0,000.
+
+- **Lei** (`ph2d-wet-paint`): `stamp_row_shaped` ganhou o 3.º canal `padrao: Option<CellFn>`; `DepositLaw::cell(…, sv)`
+  faz `depósito = (min(env·texv·I, 1) − g)·sv` — o `sv` fora do `stamp` que o dente corta. `None` = `1` ⇒ o redondo ao bit
+  (`× 1.0` exacto). O caminho do próprio motor passa `1.0`; a borracha e a máscara passam `None`.
+- **Produto** (`wetpaint/dab_route.rs`): Shape PROCEDURAL ⇒ a silhueta é só a envolvente (falloff × pegada) e o padrão vai
+  no canal, pela porta nova `ph2d_painter_brush::dab::shape_value_at` (a mesma que a `silhouette_at` compõe; AA por
+  média das sub-amostras). A ponta de IMAGEM fica na silhueta (é contorno); a BORRACHA apaga pela silhueta inteira.
+- **Depois** (mesma sonda): os 12 «como vem» e «None» **iguais ao byte de antes**; pastéis Noise 0,08–0,12 · Clouds
+  0,22–0,31 · Voronoi 0,29–0,39 · Musgrave 0,13–0,19 · Dots 0,37–0,46 (era 0,14–0,18); Wet Round (ponta lisa) Noise
+  0,246 → 0,450 · Musgrave 0,344 → 0,490; pincel padrão Noise 0,337 → 0,605. Onde o portão não cortava (Express Oil,
+  gate 0) o padrão passou a pesar inteiro (Noise 0,904 → 0,642): antes o `min(·, 1)` saturava-o.
+- ⚠️ **Resíduo medido, não defeito do portão:** sobre o grão o padrão rende 4–5× menos que sobre a ponta lisa (Noise 0,11
+  × 0,45–0,60) — o que W0 previu (§6.2, B = 0,086): só os picos do grão passam, e o padrão nesses píxeis não é a média
+  dele. Se o dono o achar fraco no smoke, a pergunta é a do D7 (Shape × Grain), não a do portão.
+- **Portões:** `presets_de_fabrica::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` (12 ao byte) · `deposit_rows`,
+  `fingerprint`, `product_doors` (33 ✓) · `lei_b_tests::o_padrao_do_shape_pinta_sobre_o_grao_dos_pasteis` (Noise > 0,05,
+  Clouds > 0,15, ambos < 1) · `…_sobre_a_ponta_lisa_nao_perde_os_vales` (Noise ≥ 0,5). ⛔ A comparação «a água pesa o
+  que o Digital pesa» foi COINCIDÊNCIA do Wet Round (0,450 × 0,448): o pincel padrão dá 0,605 — composições diferentes.
+
+### 6.9 — W4 feita (14/10): o painel por mídia (C1) e o Solid de carimbos na água (C2)
+
+- **C1 — «Use Texture Colors» esmaece no Wet Paint e na Watercolor:** `Dependente::CorDaTexturaSemLeitor` (o id
+  `PAINTER_SHAPE_PER_LAYER_COLOR`, os dois rótulos), lei `agua || aquarela` — as mesmas portas que tiram esses meios das
+  rotas do carimbo antes do `is_color_mode` (`wet_owns_the_dabs`, `watercolor_render_active`). Dica
+  `inerte.texture_colors_media`. O censo ganhou o gesto `PontaColorida` (a ponta de imagem colorida que o «Use as Brush
+  Shape» instala) e a pré-condição nos três meios: Digital e Impasto AGEM, Wet Paint esmaece e é inerte.
+  ⚠️ As linhas «Layer N Color» (multi-camada com Per-Layer ligado) NÃO esmaecem: ids de fábrica, fora do censo.
+- **C2 — medido:** na água a mancha do Solid ia sempre LISA pela máscara (`pousa_na_agua` nunca lia o Shape), e no
+  Digital uma ponta de IMAGEM enche de carimbos (#53). **Decisão:** a mesma lei na água — `enche_a_mancha_na_agua`
+  pede os carimbos (`solid_fill_stamps`) e pousa pela MÁSCARA a União `1 − Π(1 − c·s)` das silhuetas deles
+  (`cobertura_dos_carimbos`, a `silhouette_at` de cada carimbo com rotação e pegada; Tiling dá a volta). ⛔ **Recusado,
+  medido:** os carimbos dab a dab pela rota do traço — cada dab isolado pousa ~1/10 da tinta de um traço (o traço
+  sobrepõe ~10 por ponto): 39 de 400 píxeis do miolo. Pela máscara: tinta do miolo 119 176 × 125 449 da mancha lisa,
+  com a forma dos discos. Portão `mascara_tests::com_ponta_de_imagem_a_mancha_da_agua_e_de_carimbos` (enche > 300/400 e
+  desvio > 2× o da lisa; CONTROLO a redonda 400/400 lisa); `diag_c2_mancha_de_carimbos` grava os PPM.
+- **A ponta LISA × as cerdas** (§6.7: a lisa deposita 4,7–6,2× as cerdas de fábrica): fica para o SMOKE do dono — se não
+  for a lisa que ele espera, a calibração é um número só (`texv = 1`), contra `fixtures/rebelle/ponta_textura_round_*`.

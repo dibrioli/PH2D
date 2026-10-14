@@ -105,6 +105,20 @@ fn ferramenta(media: PaintMedia) -> PainterTool {
     t
 }
 
+/// Uma ponta de imagem de UMA camada, 16², opaca, com as cores a variar por texel (o vermelho e o verde
+/// em rampa) — a cor da textura que o «Use Texture Colors» pinta onde a mídia a lê.
+fn ponta_colorida(t: &mut PainterTool) {
+    const L: u32 = 16;
+    let mut px = vec![255u8; (L * L * 4) as usize];
+    for (i, p) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+        let (x, y) = (i as u32 % L, i as u32 / L);
+        p[0] = (x * 16) as u8;
+        p[1] = (y * 16) as u8;
+        p[2] = 60;
+    }
+    t.set_brush_shape_image_rgba(&px, L, L, Some(7));
+}
+
 /// Pinta o painel do pincel como a ponte o publica, com TODA secção aberta.
 fn pinta(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_brush(Some(tool.brush_settings()));
@@ -141,6 +155,9 @@ pub(crate) enum Gesto {
     /// Um traço na tela (o [`traco_um`]) com a ferramenta como está — para ARMAR um controlo que só
     /// age sobre tinta que já lá está (a borracha da água).
     Traco,
+    /// Instalar uma ponta de IMAGEM colorida de uma camada (a rota do «Use as Brush Shape» da Hierarchy,
+    /// que não é deste painel) — para ARMAR o «Use Texture Colors».
+    PontaColorida,
     /// Arrastar a pega de uma curva até `(fx, fy)` da ÁREA da curva (`0..1`, `y` para baixo).
     Arrasto(NodeId, f32, f32),
     /// Abrir o menu e clicar na opção `k` de `n`.
@@ -150,7 +167,7 @@ pub(crate) enum Gesto {
 impl Gesto {
     pub(crate) fn id(&self) -> Option<NodeId> {
         match self {
-            Gesto::Nenhum | Gesto::Traco => None,
+            Gesto::Nenhum | Gesto::Traco | Gesto::PontaColorida => None,
             Gesto::Numero(id, _)
             | Gesto::Slider(id, _)
             | Gesto::Clique(id)
@@ -226,7 +243,7 @@ fn conduz(
 ) -> Vec<WidgetEvent> {
     let rect = |id: NodeId| rects.iter().find(|(i, _)| *i == id).map(|(_, r)| *r);
     match gesto {
-        Gesto::Nenhum | Gesto::Traco => Vec::new(),
+        Gesto::Nenhum | Gesto::Traco | Gesto::PontaColorida => Vec::new(),
         Gesto::Numero(id, v) => {
             // ⚠️ O alvo recalcula-se se o chip JÁ mostra esse valor: um commit igual não emite nada, e
             // o estado do painel que sobrevive entre ensaios no mesmo fio (o stop seleccionado da
@@ -430,6 +447,12 @@ impl Bancada {
                 traco_um(&mut b.tool, &mut ultima);
                 continue;
             }
+            if matches!(a, Gesto::PontaColorida) {
+                ponta_colorida(&mut b.tool);
+                set_current_brush(Some(b.tool.brush_settings()));
+                b.rects = vivos(b.host.paint::<PainterLayersPanel>(&mut b.st, viewport()));
+                continue;
+            }
             b.aplica(a, &mut lixo);
             assert!(
                 lixo.ao_tool > 0,
@@ -578,6 +601,7 @@ fn tipo_do_gesto(g: &Gesto) -> &'static str {
     match g {
         Gesto::Nenhum => "nenhum",
         Gesto::Traco => "traço",
+        Gesto::PontaColorida => "ponta colorida",
         Gesto::Numero(..) => "número",
         Gesto::Slider(..) => "slider",
         Gesto::Clique(..) => "clique",
@@ -1111,6 +1135,17 @@ fn pre_condicoes() -> Vec<Linha> {
         ],
         true,
     ));
+    // «Use Texture Colors» (26 C1): só aparece com uma ponta de imagem colorida; a água não lê a cor
+    // da textura (o motor deposita a cor do pincel pela silhueta).
+    for m in [Digital, Impasto, WetPaint] {
+        v.push((
+            m,
+            "ponta de imagem colorida (Use as Brush Shape)",
+            vec![Gesto::PontaColorida],
+            vec![Alvo::Id(PAINTER_SHAPE_PER_LAYER_COLOR)],
+            false,
+        ));
+    }
     let ferramenta_wet = |k: usize| PAINTER_WETPAINT_TOOL_IDS[k];
     v.push((
         WetPaint,

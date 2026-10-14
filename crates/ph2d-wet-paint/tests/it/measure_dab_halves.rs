@@ -175,7 +175,7 @@ fn measure_what_the_hosts_silhouette_costs_over_the_engines_own() {
                             ph2d_wet_paint::brush::radial_falloff(dist, d.hardness)
                         }
                     };
-                    t.accumulate_paint_shaped(g, &p, &tex, &d, false, &sil, None)
+                    t.accumulate_paint_shaped(g, &p, &tex, &d, false, &sil, None, None)
                 } else {
                     t.accumulate_paint(g, &p, &tex, &d, false)
                 };

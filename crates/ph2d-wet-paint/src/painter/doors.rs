@@ -110,8 +110,9 @@ impl Engine {
     /// falloff/footprint step aside). `grain`: the host's per-dab Grain — it
     /// REPLACES the engine's bristle texture (the bristle is the fluid's
     /// default grain, and two textures multiplying would double-darken);
-    /// only honoured on the shaped path. `None`/`None` = the engine's round
-    /// bristled stamp.
+    /// only honoured on the shaped path. `padrao`: the host's procedural Shape
+    /// pattern, kept OUT of `sil` and multiplied after the paper gate (plan 27
+    /// law B). `None`/`None` = the engine's round bristled stamp.
     #[allow(clippy::too_many_arguments)]
     pub fn dispatch_pressure_dab_lane(
         &mut self,
@@ -124,6 +125,7 @@ impl Engine {
         r: f64,
         sil: Option<crate::brush::CellFn<'_>>,
         grain: Option<crate::brush::CellFn<'_>>,
+        padrao: Option<crate::brush::CellFn<'_>>,
     ) {
         let p = self
             .sim
@@ -153,6 +155,7 @@ impl Engine {
                 ext_bypass,
                 sil,
                 grain,
+                padrao,
             ),
             None => trail.accumulate_paint(&mut layer.grid, &p, &tex, &dab, ext_bypass),
         };

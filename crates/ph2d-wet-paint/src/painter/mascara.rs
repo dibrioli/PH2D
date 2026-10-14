@@ -55,8 +55,16 @@ impl Engine {
         let grain = Some(grain.unwrap_or(&plano));
         let mut trail = Trail::default();
         trail.start_stroke(x, y, color, TrailMode::Paint);
-        let acc =
-            trail.accumulate_paint_shaped(&mut layer.grid, &p, &tex, &dab, ext_bypass, sil, grain);
+        let acc = trail.accumulate_paint_shaped(
+            &mut layer.grid,
+            &p,
+            &tex,
+            &dab,
+            ext_bypass,
+            sil,
+            grain,
+            None,
+        );
         let landed = trail.transfer_paint(&mut layer.grid, &p);
         self.brush_tex = Some(tex);
         if let Some(rc) = TouchedRect::union(acc.wrote, landed) {

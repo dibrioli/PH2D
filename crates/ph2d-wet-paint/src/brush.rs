@@ -225,8 +225,12 @@ pub(crate) fn shaped_bounds(
     (x0 <= x1 && y0 <= y1).then_some((x0, y0, x1, y1))
 }
 
-/// UMA linha `y` do caminho com forma, de `x0` a `x1`: chama `cb(x, falloff, textura)` em cada
-/// célula que a silhueta e a textura deixam pousar.
+/// UMA linha `y` do caminho com forma, de `x0` a `x1`: chama `cb(x, falloff, textura, padrão)` em
+/// cada célula que a silhueta, o padrão e a textura deixam pousar.
+///
+/// O terceiro canal, `padrao`, é o padrão procedural do Shape do hospedeiro (plano 27 W3, a lei B):
+/// ele NÃO entra no `stamp` que o dente do papel corta — o depósito multiplica-o DEPOIS do portão
+/// ([`crate::trail`]`::deposit`). `None` = `1` (o redondo, ao bit).
 ///
 /// ⭐ **É a lei da célula, escrita UMA vez** — [`for_each_stamp_pixel_shaped`] é esta função num
 /// laço de linhas, e o depósito paralelo é esta função em várias threads. Não existe «versão
@@ -242,17 +246,22 @@ pub(crate) fn stamp_row_shaped(
     cy: f64,
     sil: CellFn<'_>,
     grain: Option<CellFn<'_>>,
-    mut cb: impl FnMut(i32, f64, f64),
+    padrao: Option<CellFn<'_>>,
+    mut cb: impl FnMut(i32, f64, f64, f64),
 ) {
     for x in x0..=x1 {
         let fall = sil(x, y);
         if fall > 0.0 {
+            let sv = padrao.map_or(1.0, |p| p(x, y));
+            if sv <= 0.0 {
+                continue;
+            }
             let texv = match grain {
                 Some(gr) => gr(x, y),
                 None => sample_bristle(tex, x as f64 - cx, y as f64 - cy),
             };
             if texv > 0.0 {
-                cb(x, fall, texv);
+                cb(x, fall, texv, sv);
             }
         }
     }
@@ -289,9 +298,20 @@ pub fn for_each_stamp_pixel_shaped(
     };
     for y in y0..=y1 {
         let row = y as usize * s;
-        stamp_row_shaped(y, x0, x1, tex, cx, cy, sil, grain, |x, fall, texv| {
-            cb(x as usize + row, x, y, fall, texv);
-        });
+        stamp_row_shaped(
+            y,
+            x0,
+            x1,
+            tex,
+            cx,
+            cy,
+            sil,
+            grain,
+            None,
+            |x, fall, texv, _| {
+                cb(x as usize + row, x, y, fall, texv);
+            },
+        );
     }
 }
 

@@ -457,30 +457,32 @@ fn sonda_hrc_escolhas() {
 
 /// ⭐ **G4 (K3) na holográfica** — gate de RELÓGIO (a faixa dos flakes de carga): o custo das
 /// cascatas com 1 · 10 · 100 · 1 000 · 10 000 luzes na MESMA geometria varia ≤ 5 %.
+///
+/// ⚠️ **As cinco cenas no MESMO solver** (14/10): com um solver por contagem, desde os buffers do miolo
+/// (W5h, `f9c8110287`, por bissecção) o de 100 luzes fica ~3 % mais rápido pelo sítio onde os buffers dele
+/// caem — 5,9–6,0 % medidos, contra 2,3–2,4 % no mesmo solver (`sonda_g4_holografica`, no mesmo
+/// processo; mudar a disposição dos buffers, p. ex. sem nascer duas vezes, também o tira). A lei é sobre
+/// o número de LUZES; os buffers ficam fixos.
 #[test]
 fn g4_o_custo_da_holografica_nao_depende_do_numero_de_luzes() {
     use crate::cenas::enxame_de_luzes;
-    use crate::medicao::{Caso, loadavg, rodadas};
+    use crate::medicao::{loadavg, rc_no_mesmo_solver};
     let Some(gpu) = gpu() else { return };
     let (_, lado, texel) = DEGRAUS[0];
-    let mut casos: Vec<Caso> = [1u32, 10, 100, 1_000, 10_000]
+    let mut solver = Solver::novo(
+        &gpu,
+        com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO)),
+    )
+    .expect("solver");
+    let cenas: Vec<_> = [1u32, 10, 100, 1_000, 10_000]
         .iter()
-        .map(|&n| Caso {
-            nome: format!("{n} luzes"),
-            solver: Solver::novo(
-                &gpu,
-                com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO)),
-            )
-            .expect("solver"),
-            cena: enxame_de_luzes(n),
-        })
+        .map(|&n| enxame_de_luzes(n))
         .collect();
     let carga = loadavg();
-    let Some(r) = rodadas(&gpu, &mut casos, 15) else {
+    let Some(rc) = rc_no_mesmo_solver(&gpu, &mut solver, &cenas, 15) else {
         eprintln!("G4 holográfica: sem TIMESTAMP_QUERY — saltado");
         return;
     };
-    let rc: Vec<f64> = r.iter().map(|x| x.rc[0]).collect();
     let (min, max) = rc
         .iter()
         .fold((f64::INFINITY, 0.0_f64), |(a, b), &v| (a.min(v), b.max(v)));

@@ -85,3 +85,33 @@ pub fn perfil() -> &'static str {
         "de build otimizado (smoke/release)"
     }
 }
+
+/// **As cenas no MESMO solver** (os mesmos buffers): o mínimo do RC (C1 + C2) de cada cena, em ms,
+/// intercaladas com a ordem rodada. Para uma lei sobre a CENA (o custo não depende do número de
+/// luzes) — com um solver por cena, o sítio onde os buffers de cada um caem na placa entra na régua
+/// (a holográfica desde a W5h: um dos cinco ~3 % mais rápido, `sonda_g4_holografica`).
+/// Cada medição faz duas voltas: a primeira depois da troca aquece o que a cena muda. `None` se a
+/// placa não tem `TIMESTAMP_QUERY`.
+pub fn rc_no_mesmo_solver(
+    gpu: &GpuContext,
+    solver: &mut Solver,
+    cenas: &[CenaDeLuz],
+    rodadas: usize,
+) -> Option<Vec<f64>> {
+    let n = cenas.len();
+    let mut minimo = vec![f64::INFINITY; n];
+    for r in 0..=rodadas {
+        for o in 0..n {
+            let k = (o + r) % n;
+            solver.quadro(gpu, &cenas[k]);
+            solver.tempos(gpu)?;
+            solver.quadro(gpu, &cenas[k]);
+            let t = solver.tempos(gpu)?;
+            // A rodada 0 é o aquecimento.
+            if r > 0 {
+                minimo[k] = minimo[k].min(t.rc());
+            }
+        }
+    }
+    Some(minimo)
+}

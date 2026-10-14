@@ -14,6 +14,7 @@ pub mod intencao;
 pub mod passo;
 mod passo_grafo;
 pub mod tocar;
+pub mod em_cena;
 
 #[cfg(test)]
 mod alvo_tests;

@@ -84,3 +84,54 @@ fn sem_macro_o_canal_e_inerte() {
         "o canal escreveu um MacroTempo num objecto sem Macro"
     );
 }
+
+/// ⭐ **A porta do Gravar ▸ Parar**: o clipe nasce do dono, com a faixa em chaves lineares
+/// `(0, 0) → (D, D)` e a duração cortada em `D` — tocado no relógio do objecto, a macro está no
+/// instante do clipe e pára no fim. O clipe activo não muda.
+#[test]
+fn o_clipe_da_macro_nasce_do_dono_com_a_duracao_da_gravacao() {
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            Name::new("Gravado"),
+            ph2d_ecs::Macro::default(),
+        ))
+        .id()
+        .to_bits();
+    let mut st = TimelineState::new();
+    let doc = &mut st.doc;
+    let antes = doc.active_index();
+    let c = doc
+        .add_macro_clip("Macro".into(), e, 2.0)
+        .expect("cabe um clipe");
+    assert_eq!(doc.active_index(), antes, "a porta trocou o clipe activo");
+    assert!(doc.clips_of(e).any(|i| i == c), "o clipe nao e' do dono");
+    assert_eq!(doc.clip_length_override(c), Some(2.0));
+    for (t, esperado) in [(0.5, 0.5), (1.5, 1.5), (3.0, 2.0)] {
+        let local = doc.clip_local_time(c, t);
+        ph2d_timeline::apply_one_clip(sim.world_mut(), doc, c, local);
+        let got = tempo_de(&sim, e).expect("o clipe nao escreveu o tempo da macro");
+        assert!(
+            (got - esperado).abs() < 1e-5,
+            "t={t}: a macro esta em {got}, nao {esperado}"
+        );
+    }
+}
+
+/// A animação cheia recusa com o motivo (a UI di-lo), em vez de criar um clipe que ninguém vê.
+#[test]
+fn a_animacao_cheia_recusa_o_clipe_da_macro_com_o_motivo() {
+    let mut st = TimelineState::new();
+    let e = 7_u64 << 32 | 1;
+    for k in 0..ph2d_timeline::MAX_CLIPS {
+        if st.doc.add_clip_for(format!("c{k}"), e).is_none() {
+            break;
+        }
+    }
+    assert_eq!(
+        st.doc.add_macro_clip("Macro".into(), e, 1.0),
+        Err(ph2d_timeline::ClipRefusal::AnimationFull)
+    );
+}

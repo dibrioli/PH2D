@@ -572,3 +572,46 @@ fn as_24_intencoes_de_uma_vez_sao_o_explicativo_da_sessao_so_com_elas() {
         "o explicativo é a construção de uma vez"
     );
 }
+
+/// ⭐ **A macro EM CENA segue o relógio da Timeline** (item 5 da W4, [`super::em_cena`]): a seguir
+/// quadro a quadro, cada retrato é o que o artista viu; e um RECUO dá ao bit o retrato de tocar do
+/// zero até lá (o scrub para trás recomeça do estado inicial gravado).
+#[test]
+fn a_macro_em_cena_segue_o_relogio_e_recuar_e_tocar_do_zero_ate_la() {
+    use super::em_cena::MacroEmCena;
+    let g = sessao();
+    let bytes = ph2d_macro::codec::write(&pelo_nucleo(&g));
+    let mundo = crate::motion_mundo::MundoDaCena::default();
+    let em = |q: u32| f64::from(q) * 0.016;
+    let nova = || {
+        MacroEmCena::de(&bytes, Modo::Fiel)
+            .expect("lê-se")
+            .expect("tem a trilha do Motion")
+    };
+
+    let mut seguida = nova();
+    for q in 0..QUADROS {
+        seguida.segue(em(q), &mundo, None).expect("toca");
+        assert_eq!(
+            retrato(seguida.palco()),
+            g.retratos[q as usize],
+            "o quadro {q} da macro em cena não é o que o artista viu"
+        );
+    }
+
+    let meio = QUADROS / 2;
+    let mut direta = nova();
+    direta.segue(em(meio), &mundo, None).expect("toca");
+    assert_ne!(
+        retrato(seguida.palco()),
+        retrato(direta.palco()),
+        "controlo: o fim e o meio têm de diferir, senão o recuo abaixo não mede nada"
+    );
+    seguida.segue(em(meio), &mundo, None).expect("recua");
+    assert_eq!(
+        retrato(seguida.palco()),
+        retrato(direta.palco()),
+        "recuar até ao meio não dá o retrato de tocar do zero até lá"
+    );
+    assert_eq!(retrato(direta.palco()), g.retratos[meio as usize]);
+}

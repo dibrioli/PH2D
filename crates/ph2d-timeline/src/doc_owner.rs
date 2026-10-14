@@ -128,6 +128,39 @@ impl TimelineDoc {
         Some(self.push_clip(name, scope_of(owner)))
     }
 
+    /// ⭐ **O clipe de uma macro** (ADR-0186, item 5 da W4) — a porta que o Gravar ▸ Parar chama: um
+    /// clip de `owner` com a faixa [`PropKind::MacroTime`] em chaves LINEARES `(0, 0) → (D, D)` (a
+    /// macro no próprio instante do clipe) e a duração cortada em `D` segundos. Uma gravação de
+    /// duração zero leva uma só chave. O clip activo não muda; laço e Autoplay são do artista.
+    ///
+    /// # Errors
+    /// A [`crate::ClipRefusal`] de [`Self::clip_room`], para a UI dizer porquê.
+    pub fn add_macro_clip(
+        &mut self,
+        name: String,
+        owner: u64,
+        duracao_s: f64,
+    ) -> Result<usize, crate::ClipRefusal> {
+        self.clip_room(owner)?;
+        let c = self.push_clip(name, scope_of(owner));
+        let antes = self.active_index();
+        self.set_active(c);
+        let d = if duracao_s.is_finite() { duracao_s.max(0.0) } else { 0.0 };
+        let chaves: &[f64] = if d > 0.0 { &[0.0, d] } else { &[0.0] };
+        for &t in chaves {
+            self.upsert_key(
+                owner,
+                PropKind::MacroTime,
+                RationalTime::from_seconds(t),
+                AnimValue::Float(t as f32),
+                Interp::Linear,
+            );
+        }
+        self.set_clip_length_override(c, Some(d));
+        self.set_active(antes);
+        Ok(c)
+    }
+
     /// ⭐ **Cabe mais um clip na animação de `owner`?** — a porta única do tecto, que criar e
     /// copiar consultam e que quem aplica as intenções lê para DIZER porque não (onda 4, item 4).
     pub fn clip_room(&self, owner: u64) -> Result<(), crate::ClipRefusal> {

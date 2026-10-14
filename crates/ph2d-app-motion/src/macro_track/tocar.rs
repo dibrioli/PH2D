@@ -43,6 +43,8 @@ pub enum ErroDaMacro {
     Divergiu,
     /// Este build não tem o painel do grafo (a feature `panel-motion-graph`).
     SemGrafo,
+    /// O `Macro.doc` não se lê (cabeçalho, versão mais nova, dano).
+    Ficheiro(CodecError),
 }
 
 /// Os nomes `&'static` que este build conhece — tipos de nó, params e as linhas da decoração —, para

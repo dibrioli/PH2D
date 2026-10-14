@@ -1,6 +1,6 @@
 //! ⭐⭐ **UMA QUEIXA DE CARTÃO É LIDA INTEIRA** (doc 132 §5, a lei do P5, no CARTÃO): a linha de
 //! leitura (`readout`) é UMA linha de largura fixa e o pintor corta com reticências — a foto do
-//! tutorial 14 lia «History before 2.32 s was folde…».
+//! tutorial 14 lia a frase cortada a meio da palavra «folded» («History before 2.32 s was …»).
 //!
 //! ⚠️ **Porque nenhum censo a via:** a varredura das elisões (`nenhum_rotulo_do_app_pinta_nada`)
 //! pinta o painel do grafo no estado de FÁBRICA — sem cartões —, e estas frases só existem em

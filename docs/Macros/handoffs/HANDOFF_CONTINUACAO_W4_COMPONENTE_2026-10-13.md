@@ -1,4 +1,4 @@
-# Continuação — line/Macros-Automação, W4 itens 1–4 fechados (fronteira do palco, alvo, componente) → item 5 (Timeline, Play, o desenho dos palcos)
+# Continuação — line/Macros-Automação, W4 itens 1–4 e 5.1–5.4 fechados → item 5.5 (a cena: palcos, exclusão, present de N fontes, Painter)
 
 > Para a PRÓXIMA janela. Branch `line/Macros-Automação`, worktree `Worktrees/line-Macros-Automação/`, base
 > `0aab2c1cb6` (reaberta a 14/10 depois da integração; ver «Reaberta» abaixo). Leia antes de agir:
@@ -14,6 +14,37 @@
 | `02d083459a` | o alvo: a trilha abre com o objecto em edição; o palco coze só o dono |
 | `53b6fd7cff` | o componente `Macro`; `PROJECT_SCHEMA` 188 → 189 |
 | `75afc54516` | os vermelhos da suíte (contagens dos registadores, censo do Inspector) |
+| `5b0328fada` | **14/10, item 5.1–5.2**: `PropKind::MacroTime = 18` → `MacroTempo` (runtime), limpo por quadro |
+| `1f4e85547b` | **14/10, item 5.3–5.4**: `add_macro_clip` (a porta do Gravar ▸ Parar) e `MacroEmCena` |
+
+### 14/10 — itens 5.1 a 5.4 (o que existe; não reconstruir)
+
+- **O canal** (`5b0328fada`): `PropKind::MacroTime = 18` (fio; `from_target`, `i18n_suffix` `macro_time`,
+  `from_expr_name`, LINEAR, `Sum`); fora de `ALL`/`AUTOKEYED`; **no «+ Track»** («Macro Time»: re-cronometrar
+  a macro ou recriar a faixa). `write_prop` insere `ph2d_ecs::MacroTempo { segundos: f64 }` (sem `Serialize`,
+  fora do save/undo; o ledger `ph2d-timeline-preview` não o vê, e não tem de ver) **só numa entidade com
+  `Macro`**; `read_prop_kind` devolve `MacroTempo` ou `0` (o `rest`), `None` sem `Macro`.
+  `ph2d_timeline::clear_macro_clocks(world)` corre em `render_loop/timeline_bridge.rs` antes dos três ramos do
+  apply e do `toca_os_objectos`. ⚠️ No Arrange um canal que nenhum strip cobre NÃO se escreve (`eval_frame`
+  devolve `touched.then_some`), logo a macro só toca onde um clipe a conduz. K: conduzida = o instante que
+  mostra; sem faixa = `key_time` (identidade, a lei do Time); sem `Macro` = recusa
+  (`timeline_bridge_keys.rs::key_value_for`). Gates: `macro_time_conduz` (5), `o_tempo_da_macro_chega_a_lista`,
+  `o_tempo_da_macro_some_quando_a_faixa_deixa_de_conduzir`, `k_no_tempo_da_macro_cai_no_relogio_que_ela_mostra`;
+  `prop_readback`/`clip_stack_autokey` cobrem o canal. **Mutações 6/6 sangram** (id 18, valor, cerca do `Macro`,
+  a limpeza, a cerca do K, a linha do «+ Track»).
+- **A porta do clipe** (`1f4e85547b`): `TimelineDoc::add_macro_clip(name, owner, D) -> Result<usize,
+  ClipRefusal>` (`doc_owner.rs`): clip do dono, chaves LINEARES `(0,0)→(D,D)`, `length_override = D`, clip
+  activo intacto, D ≤ 0 = uma chave. Laço (`keys_loop_range` do clip) e Autoplay ficam ao artista. Ninguém a
+  chama ainda: o Gravar ▸ Parar é W5.
+- **A macro em cena** (`1f4e85547b`): `ph2d_app_motion::macro_track::em_cena::MacroEmCena { de(bytes, modo),
+  segue(segundos, &MundoDaCena, placa), palco, tempo, erro }` + `instante(s) -> MacroTime` (µs). Só a 1.ª
+  trilha `"motion"`; recuar = palco novo (`da_trilha`) + cursor novo + avançar (a lei do `MacroPlayer::seek`, à
+  mão: o `seek(0)` do núcleo despacharia os passos do instante 0 com um aplicador vazio). Erro pára e fica
+  guardado; recuar limpa-o. `ErroDaMacro::Ficheiro(CodecError)` novo. Gate
+  `gate_tests::a_macro_em_cena_segue_o_relogio_e_recuar_e_tocar_do_zero_ate_la` (150 quadros ao bit; recuo ==
+  tocar do zero até lá, com o controlo fim ≠ meio). ⚠️ Prova de mutação deste gate por fazer (no fecho).
+- ⚠️ **Controlo por agora sem efeito visível:** o «Macro Time» escreve o `MacroTempo` e ninguém em cena o lê
+  até ao 5.5. A linha não fecha antes do 5.5.
 
 ## O que existe (não reconstruir)
 
@@ -107,36 +138,58 @@ Smokes da placa (comando inteiro):
 - Crates `ph2d-app-*` não dependem umas das outras (só `ph2d-app-registry-init`) ⇒ a «ponte do Play» não pode ser uma crate que chame Motion e Painter: cada família toca a SUA trilha lendo o componente.
 - O cartão PINTADO no Inspector (`ph2d-panel-inspector` sections/sync/populate/event/ids + editor-core `action_bus` + shell `fase_bus_inspector`…) é W5 (molde `a777f2f541`); a W4 entregou o modelo.
 
-## ABERTO — item 5 (próxima janela), com o desenho já medido por leitura
+## ABERTO — item 5.5 (a cena, UM bloco) e 5.6; os itens 5.1–5.4 estão FEITOS (acima)
 
-1. **A Timeline dirige o tempo.** `PropKind::MacroTime = 18` (appended; `prop.rs from_target` COM a linha 18 — o
-   `_ => None` engole variantes, ver o comentário do 17 —, `i18n_suffix`, fora de `ALL` e `AUTOKEYED`; rótulo
-   em `ph2d-panel-timeline` `tracks_label.rs`; molde do commit `52174a7d35` IkBendSide). Sem `DOC_VERSION`
-   (variante não é campo posicional). `write_prop` (`crates/ph2d-timeline/src/apply_prop.rs:23`) insere um
-   componente de RUNTIME não registado `ph2d_ecs::MacroTempo { segundos }` (molde `VecDrivenStyle`: sem
-   Serialize, fora do save/undo).
-2. ⚠️ **A peça SEM precedente:** quando a Timeline deixa de dirigir, NADA repõe nem remove (o ledger da
-   preview cobre só Transform/tint/VecMorph/PhysicsJoint; `settle` promove o vivo a documento) ⇒ limpar o
-   `MacroTempo` uma vez por quadro ANTES do apply, no início da aplicação da timeline na shell
-   (`timeline_bridge.rs`, antes do `if let Some(c) = container`; o `toca_os_objectos` do Play corre no mesmo
-   fluxo), e ver que a fase corre todo quadro.
-3. **A porta de criação do clipe:** `add_clip_for(name, owner)` → `set_active` → `bind(MacroTime, owner)` →
-   keys LINEARES `(0,0),(D,D)` → `set_clip_length_override(D)`; laço no Play = `keys_loop_range` (o
-   `clip_local_time` dobra pelo keys_loop, NÃO pelo loop_range); armadilha: um `TimeRemap` no dono remapeia.
-   Molde `shells/desktop/src/render_loop/animacao_smoke.rs:14-30,115-161`. O Arrange (`stack_eval`) não foi auditado.
-4. **O tocador segue o tempo:** avançar (`MacroPlayer::advance_to`) e para trás `MacroPlayer::seek` (reset =
-   `TocadorDoMotion::da_trilha` de novo). Gate: scrub para trás dá o mesmo retrato que tocar do zero até lá.
-   Os instantâneos que encurtam o seek ficam por MEDIR (plano «Abertos»).
-5. **A cena (um bloco, nunca em partes):** o sistema do Motion `toca_as_macros(editor_motion, world, gpu)`
-   (palcos por entidade em `MotionState`, só com `Macro`+`MacroTempo`); o editor EXCLUI os sinks do dono cujo
-   palco toca; e ⚠️ **O DESENHO:** o quadro desenha hoje UMA saída do Motion em vários passes
-   (`fase_vector_bands.rs:120-145` placa/misturas, `present.rs:444` formas do dispositivo, `present_fx` glow,
-   `present_luz`; os gates `present_placa_tests` leem o fonte). Decisão técnica (padrão-ouro): o present
-   aprende a desenhar cada fonte do Motion (editor + palcos) pelas MESMAS portas (uma `PlacaDeFormas` por
-   palco). ⛔ Excluir o dono sem desenhar o palco é pior que não existir (o objecto sumiria no Play). Também o
-   Painter: o `TocadorDoPainter` em cena por objecto (a imagem do objecto).
-6. Da W3/W2 ainda abertos: recusas/erros chegam ao artista pela UI da W5; os outros meios do Painter;
-   re-medir o custo do quadro a tocar com a máquina calma.
+O desenho abaixo foi medido por leitura a 14/10 (dois exploradores; endereços do HEAD `1f4e85547b`).
+⛔ **Excluir o dono sem desenhar o palco é pior que não existir** (o objecto sumiria no Play): A, B, C e D
+entram juntos.
+
+**A — o sistema (crate `ph2d-app-motion`, nunca a shell).** `PalcosDasMacros` em `MotionShellState`
+(`motion_shell_state.rs:51`, ao lado do `placa: PlacaDeFormas`, que é estado POR FONTE e hoje singular):
+`BTreeMap<bits, PalcoEmCena { macro: MacroEmCena, placa: PlacaDeFormas, tick }>`. Por quadro, depois de
+`publica_o_mundo` e antes do `dispatch` do editor (`fase_motion_bridge.rs:48`→`:72`): para cada entidade com
+`Macro` + `MacroTempo`, (re)cria o palco quando o `Macro` mudou (o `ComponentTicks::changed` do bevy, O(1) —
+nunca comparar os bytes por quadro), `segue(segundos, &motion.mundo, gpu)`; palco sem `MacroTempo` neste
+quadro sai do conjunto de quem toca (mas pode ficar em cache para não recozer do zero). O dono do palco é o
+`StableId` da entidade (o `target` da trilha é `StableId`, `macro_doc.rs:36`; `objeto.editing` também), logo a
+macro sobrevive a salvar e reabrir.
+
+**B — o editor exclui.** Hoje NÃO há mecanismo: `sinks_visiveis` (`motion_objeto.rs:475-488`) só filtra o olho
+(`escondido`) e o `so_o_dono` do palco. Acrescentar `ObjetoState.tocados_por_macro: BTreeSet<u64>` (escrito por A
+a cada quadro) e `!tocados.contains(dono)` no filtro. Gate red-first: com um palco a tocar, o editor não coze os
+sinks do dono; sem `MacroTempo`, coze.
+
+**C — o present desenha N fontes pelas MESMAS portas.** Cada palco É um `MotionState`, logo toda porta que
+recebe `&MotionState` serve; o que é por fonte é o `PlacaDeFormas`. Costura: um iterador
+`motion_shell.fontes(&editor) -> (editor, &placa) + palcos` e um laço em cada sítio (todos hoje globais):
+`fase_vector_bands.rs:123` (`decide_o_quadro`), `present.rs:448` (`desenha_o_quadro`), `present_chrome`
+(`cola_no_mundo`), `present_fx.rs:36,98` (`halo_do_quadro`; o glow lê `doc.graph` — por fonte), `present_luz.rs:39`
+(`OclusaoDoMotion::do_quadro` — os bloqueadores SOMAM entre fontes), `fase_vector_fx_recook.rs:160-260`
+(tiles/LOD sobre `pump.*`), `fase_vector_overlays.rs:63-71` (rota CPU, `motion_shape_gen::encode`), gizmos
+`fase_motion_gizmos.rs:49-85` (só o editor — o palco não tem mão). ⚠️ Os gates `present_placa_tests.rs` são
+`include_str!` sobre o fonte: as strings que afirmam (`plan.banded |= self.motion_shell.placa.ativa();`,
+`decide_o_quadro(`, `doc_bands_of(frame_order, placa || luz_acesa)`, `if motion_tool_active &&
+!self.motion_shell.placa.ativa() {`, `cola_no_mundo(placa, gpu, band_blit, alvo);`, `halo_do_quadro(g.motion,
+g.formas.desenhou())`) mudam com o laço — reescrevê-las para a forma N, nunca apagá-las. ⚠️ Tectos: a shell só
+encolhe (`the_shell_only_shrinks`, teto 189 041 + folga 4 000): o laço vive numa função da crate e a shell
+troca uma chamada por outra; `app_state.rs` já tem 923 linhas (não lhe acrescente campos — o estado vai no
+`MotionShellState`).
+
+**D — o Painter em cena.** O `TocadorDoPainter` (`ph2d-tool-painter/src/macro_track/tocar.rs:41`) é CPU, só
+avança (recuar = `novo` + reaplicar); o resultado é o `canvas_rgba` do `PainterTool` próprio. O objecto-imagem é
+um `Sprite` com `SpriteSource::Individual { texture_id }`; override sem tocar no ECS = `replace_pixels` num id
+PRÓPRIO do palco (`individual_read.rs:128`; `acquire` em `individual.rs:190`) e trocar o id na aparência do
+quadro (`appearance_of`, `motion_bridge_objects_appearance.rs:~60-78`, ou o passe de sprites `present.rs:166`).
+⚠️ Falta à trilha do Painter o `target`: `macro_grava` (`ph2d-tool-painter/src/macro_track/mod.rs:61`) não
+recebe alvo (no produto ninguém o chama — W5); dar-lhe o `gravacao_abre` irmão do Motion. Custo: upload RGBA por
+quadro só quando o tocador avançou; medir 1024²/2048² com a máquina calma (o número da W2 foi a load 61–66).
+
+**Prova do bloco:** a cena de smoke (formas + simulação, `CLAUDE.md §0.8`) com uma macro gravada por script
+(o `sessao()` dos gates) e um clipe `add_macro_clip` com Autoplay; fotografar Play e scrub para trás.
+Medir o custo do quadro com N palcos (placa) antes de escrever qualquer limite.
+
+**5.6** Da W3/W2: recusas/erros chegam ao artista pela UI da W5 (`MacroEmCena::erro`); os outros meios do
+Painter; re-medir o custo do quadro a tocar com a máquina calma.
 
 ## Régua do laço do agente
 

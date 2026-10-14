@@ -34,6 +34,8 @@ mod palcos_tests;
 mod placa_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 mod smoke_tests;
+#[cfg(all(test, feature = "panel-motion-graph"))]
+mod palcos_custo_tests;
 #[cfg(test)]
 mod tests;
 

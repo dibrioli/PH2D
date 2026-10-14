@@ -3,7 +3,8 @@
 //! interpolações cheias pelo argumento mais longo plausível — medida com a fonte real ao orçamento
 //! do balão, em todo estilo de texto.
 //!
-//! Correr o relatório: `cargo test -p ph2d-editor-core --lib toast_reading_census -- --nocapture`.
+//! Correr o relatório: `cargo test -p ph2d-editor-core --lib toda_mensagem_de_aviso_da_tabela_cabe_inteira -- --nocapture`
+//! (o módulo é `toast_reading::census`: o filtro `toast_reading_census` casa ZERO testes).
 
 use super::*;
 use ph2d_i18n::{Idioma, tr_em};
@@ -88,6 +89,7 @@ fn sitios() -> Vec<Sitio> {
                 let mut chaves: Vec<String> =
                     literais(arg).into_iter().filter(|l| e_chave(l)).collect();
                 let mut indirecto = false;
+                let mut crus_ligados = Vec::new();
                 let inicio = s[..i].rfind("fn ").unwrap_or(0);
                 let corpo = &s[inicio..i + ag.len() + arg.len()];
                 let escopo: Vec<String> =
@@ -106,6 +108,7 @@ fn sitios() -> Vec<Sitio> {
                         let seguidos: Vec<&String> = nomes
                             .iter()
                             .flat_map(|f| corpos.get(f.as_str()).into_iter().flatten())
+                            .map(|(_, c)| c)
                             .collect();
                         chaves = seguidos
                             .iter()
@@ -142,6 +145,27 @@ fn sitios() -> Vec<Sitio> {
                                 }
                             }
                         }
+                        // Uma VARIÁVEL (`Toast::warning(msg)`): o texto vem do que a liga e das
+                        // funções que isso chama; a prosa crua só do primeiro salto.
+                        if chaves.is_empty() {
+                            for e in ligacoes(corpo, arg) {
+                                let mut pedacos = vec![(0, e)];
+                                pedacos.extend(fonte::seguidos(&corpos, p, e, 3));
+                                for (salto, c) in pedacos {
+                                    chaves.extend(literais(c).into_iter().filter(|l| e_chave(l)));
+                                    for k in maiusculas(c) {
+                                        for def in consts.get(&k).into_iter().flatten() {
+                                            chaves.extend(
+                                                literais(def).into_iter().filter(|l| e_chave(l)),
+                                            );
+                                        }
+                                    }
+                                    if salto <= 1 {
+                                        crus_ligados.extend(prosa(c));
+                                    }
+                                }
+                            }
+                        }
                     }
                     indirecto = true;
                 }
@@ -152,6 +176,7 @@ fn sitios() -> Vec<Sitio> {
                     crus: literais(arg)
                         .into_iter()
                         .filter(|l| l.contains(' ') && !e_chave(l))
+                        .chain(crus_ligados)
                         .collect(),
                     chaves,
                     escopo,
@@ -350,7 +375,11 @@ fn exemplo(nome: &str) -> String {
 /// A frase de uma chave em inglês, cada marcador cheio. Um `{cura}` (a cura do Motion) leva a
 /// frase mais longa das OUTRAS chaves do mesmo sítio — é dali que o chamador a monta.
 fn frase(chave: &str, irmas: &[String]) -> String {
-    let t = tr_em(Idioma::Ingles, chave);
+    encher(&tr_em(Idioma::Ingles, chave), chave, irmas)
+}
+
+/// Um molde (da tabela ou um `format!` cru) com cada marcador cheio; `{}` e `{:.0}` são números.
+fn encher(t: &str, chave: &str, irmas: &[String]) -> String {
     let mut out = String::new();
     let mut resto = t;
     while let Some(a) = resto.find('{') {
@@ -361,8 +390,10 @@ fn frase(chave: &str, irmas: &[String]) -> String {
             resto = "";
             break;
         };
-        let nome = &depois[..f];
-        if nome == "cura" {
+        let nome = depois[..f].split(':').next().unwrap_or_default();
+        if nome.is_empty() {
+            out.push_str("4096");
+        } else if nome == "cura" {
             let maior = irmas
                 .iter()
                 .filter(|k| k.as_str() != chave)
@@ -390,18 +421,15 @@ fn mensagens() -> (Vec<Mensagem>, Vec<String>, usize) {
     let mut vistas = BTreeMap::new();
     let mut sem_chave = Vec::new();
     for s in &todos {
-        if s.chaves.is_empty() {
-            if s.crus.is_empty() {
-                sem_chave.push(s.onde.clone());
-            }
-            for (i, c) in s.crus.iter().enumerate() {
-                vistas.entry(format!("(cru #{i}) {}", s.onde)).or_insert((
-                    s.familia,
-                    c.replace("{}", "4096"),
-                    s.onde.clone(),
-                ));
-            }
-            continue;
+        if s.chaves.is_empty() && s.crus.is_empty() {
+            sem_chave.push(s.onde.clone());
+        }
+        for (i, c) in s.crus.iter().enumerate() {
+            vistas.entry(format!("(cru #{i}) {}", s.onde)).or_insert((
+                s.familia,
+                encher(c, "", &[]),
+                s.onde.clone(),
+            ));
         }
         for k in &s.chaves {
             let f = frase(k, &s.escopo);
@@ -507,6 +535,10 @@ fn toda_mensagem_de_aviso_da_tabela_cabe_inteira() {
     assert!(n_sitios >= 300, "o censo achou só {n_sitios} sítios");
     assert!(msgs.len() >= 150, "o censo achou só {} frases", msgs.len());
     assert!(
+        sem_chave.is_empty(),
+        "avisos cujo texto o censo não lê (nem chave, nem prosa, nem a variável até quem a liga): {sem_chave:?}"
+    );
+    assert!(
         falhas.is_empty(),
         "avisos que não se leem inteiros:\n{}",
         falhas.join("\n")
@@ -520,4 +552,58 @@ fn o_censo_acusa_uma_frase_longa_demais() {
     let frase = "word ".repeat(400);
     let (n, _) = lines_needed(&mut ts, &frase);
     assert!(n > MAX_LINES, "a régua não viu {n} linhas");
+}
+
+/// Controlo das ligações: a variável do aviso segue pela cadeia até à chamada que a produz, e o
+/// `if let Err(msg) = f(..) {` liga `msg` a `f(..)`.
+#[test]
+fn a_variavel_do_aviso_segue_ate_quem_a_liga() {
+    let corpo = "fn fase() { let FrameGfx { sim, .. } = FrameGfx::of(gfx);
+        if let Some((bits, lines)) = crate::smoke::spawn(sim, \"x = y\") {
+            for (i, line) in lines.into_iter().enumerate() { toasts.push(Toast::warning(";
+    assert_eq!(
+        ligacoes(corpo, "line"),
+        ["lines.into_iter().enumerate()", "crate::smoke::spawn(sim, \"x = y\")"]
+    );
+    let corpo = "fn f() { if let Err(msg) = attach_by_name(sim, *bits) { toasts.push(";
+    assert_eq!(ligacoes(corpo, "msg"), ["attach_by_name(sim, *bits)"]);
+    assert!(ligacoes(corpo, "outra").is_empty());
+    // A sombra: vale o último `let` antes do aviso.
+    let corpo = "fn f() { let msg = velho(); let msg = novo(); toasts.push(";
+    assert_eq!(ligacoes(corpo, "msg"), ["novo()"]);
+    // A prosa que só o terminal lê não é aviso.
+    let corpo = "{ eprintln!(\"only the terminal sees\"); format!(\"the artist reads this\") }";
+    assert_eq!(prosa(corpo), ["the artist reads this"]);
+}
+
+/// Controlo da resolução: o módulo que qualifica a chamada escolhe entre homónimos, a chamada
+/// livre fica no ficheiro, e um homónimo ambíguo não se segue.
+#[test]
+fn a_chamada_segue_o_modulo_que_a_qualifica() {
+    let mut corpos = Corpos::new();
+    for (p, c) in [
+        ("a/view_request.rs", "{ \"certo\" }"),
+        ("a/outro.rs", "{ \"errado\" }"),
+    ] {
+        corpos
+            .entry("resolve".into())
+            .or_default()
+            .push((PathBuf::from(p), c.into()));
+    }
+    corpos
+        .entry("ajuda".into())
+        .or_default()
+        .push((PathBuf::from("a/view_request.rs"), "{ \"fundo\" }".into()));
+    let aqui = Path::new("b/fase.rs");
+    let alvo = seguidos(&corpos, aqui, "view_request::resolve(k)", 3);
+    assert_eq!(alvo, [(1, "{ \"certo\" }")]);
+    assert!(seguidos(&corpos, aqui, "resolve(k)", 3).is_empty());
+    let unico = seguidos(&corpos, aqui, "ajuda(k)", 3);
+    assert_eq!(unico, [(1, "{ \"fundo\" }")]);
+    // O `;` de `[f32; 2]` não faz da assinatura uma declaração (o `import_ase` sumia assim).
+    let lidos = corpos_das_funcoes(&[(
+        PathBuf::from("a/x.rs"),
+        "fn g(a: u8);\nfn f(a: [f32; 2]) -> u8 { 1 }".into(),
+    )]);
+    assert!(lidos.contains_key("f") && !lidos.contains_key("g"));
 }

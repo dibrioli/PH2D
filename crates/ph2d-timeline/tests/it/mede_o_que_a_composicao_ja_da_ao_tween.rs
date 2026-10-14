@@ -88,16 +88,26 @@ fn declara_dependencia(manifesto: &str, crate_: &str) -> bool {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// O que cada verbo faz com o `arg` — a única porta por onde um número entra numa acção.
-fn censo_dos_verbos() -> Vec<(&'static str, bool)> {
+fn censo_dos_verbos() -> Vec<(&'static str, ph2d_ecs::ArgKind)> {
     ph2d_ecs::SignalVerb::ALL
         .iter()
         .map(|v| {
             (
                 ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, v.label_key()),
-                v.uses_arg(),
+                v.arg_kind(),
             )
         })
         .collect()
+}
+
+/// ⚠️ **Sem `_`, de propósito:** um `ArgKind` novo é erro de compilação AQUI até alguém dizer se
+/// ele é uma duração — a 1.ª redacção comparava a lista de rótulos, e envelheceu a cada verbo
+/// novo (Damage, Heal, Start Navigation, Play Clip) sem que a resposta mudasse.
+fn e_uma_duracao(k: ph2d_ecs::ArgKind) -> bool {
+    use ph2d_ecs::ArgKind as K;
+    match k {
+        K::None | K::TimerName | K::Count | K::Amount | K::ObjectName | K::ClipName => false,
+    }
 }
 
 #[test]
@@ -105,20 +115,28 @@ fn censo_dos_verbos() -> Vec<(&'static str, bool)> {
 fn a_o_sinal_sabe_dizer_ao_longo_de_n_segundos() {
     println!("\n══════ (A) o que um SINAL sabe mandar fazer ══════");
     let verbos = censo_dos_verbos();
-    for (label, usa_arg) in &verbos {
-        println!("  {label:<20} lê o argumento: {usa_arg}");
+    for (label, k) in &verbos {
+        println!("  {label:<20} o argumento é: {k:?}");
     }
     println!("  ⇒ {} verbos", verbos.len());
 
-    // Os três que leem o `arg` leem-no como NOME DE RELÓGIO ou como DELTA DE CONTADOR — nunca
-    // como uma duração. A prova é o produto: pôr `"0.5"` num `Show` não muda nada, porque o
-    // `Show` nem lhe toca.
-    let com_arg: Vec<&str> = verbos.iter().filter(|(_, u)| *u).map(|(l, _)| *l).collect();
-    println!("  os que leem o argumento: {com_arg:?}");
-    assert_eq!(
-        com_arg,
-        vec!["Start Timer", "Stop Timer", "Add to Counter"],
-        "a sonda tem de ser recontada: a lista dos verbos com argumento mudou"
+    // Os que leem o `arg` leem-no como NOME (relógio, objecto, clipe), CONTAGEM ou QUANTIDADE —
+    // nunca como uma duração. A prova é o produto: pôr `"0.5"` num `Show` não muda nada, porque
+    // o `Show` nem lhe toca.
+    let com_arg = verbos
+        .iter()
+        .filter(|(_, k)| *k != ph2d_ecs::ArgKind::None)
+        .count();
+    println!("  {com_arg} leem o argumento");
+    assert!(com_arg >= 3, "controlo: o censo dos verbos leu {com_arg}");
+    let duracoes: Vec<&str> = verbos
+        .iter()
+        .filter(|(_, k)| e_uma_duracao(*k))
+        .map(|(l, _)| *l)
+        .collect();
+    assert!(
+        duracoes.is_empty(),
+        "a sonda tem de ser recontada: há verbos que carregam uma DURAÇÃO: {duracoes:?}"
     );
     println!(
         "  ⛔ NENHUM verbo carrega uma DURAÇÃO — `Show` e `Hide` são um degrau, não uma rampa."
@@ -386,11 +404,16 @@ fn f_o_motor_de_curvas_existe_e_quem_o_ve() {
             && declara_dependencia(MANIFESTO_FAMILIA, "ph2d-core"),
         "controlo positivo: a régua de manifesto não está a ler a secção `[dependencies]`"
     );
+    // A aresta foi a DECISÃO que esta sonda pedia, tomada pela wave do Tween: a lei vive na
+    // folha `ph2d-tween` (`serde` + `ph2d-anim`) sob o `ph2d-ecs` (`4d372d1e13`), e a secção do
+    // Inspector pôs o `ph2d-anim` na família (`16a23f87eb`). O que se recontam são essas arestas.
+    let ecs_ve_a_lei = declara_dependencia(MANIFESTO_ECS, "ph2d-tween");
+    println!("  `ph2d-ecs` vê a folha `ph2d-tween`?     {ecs_ve_a_lei}");
     assert!(
-        !ecs_ve && !familia_ve,
-        "a sonda tem de ser recontada: alguém já ligou o motor de curvas a estas crates"
+        !ecs_ve && ecs_ve_a_lei && familia_ve,
+        "a sonda tem de ser recontada: as arestas do motor de curvas mudaram desde o Tween"
     );
-    println!("  ⛔ nenhuma das duas o vê hoje ⇒ a aresta é uma DECISÃO desta wave, não um acaso.");
+    println!("  ⭐ o `ph2d-ecs` chega às curvas SÓ pela folha da lei; a família vê-as direto.");
 }
 
 /// ⚠️ **Sem a feature `render` esta sonda corre pela METADE**, e o silêncio leria-se como

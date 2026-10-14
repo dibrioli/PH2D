@@ -50,6 +50,8 @@ const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/luz2d.rs",
     // A SEXTA: a secção MOTION INPUT (ciclo 19 do Motion), pela mesma lei.
     "crates/ph2d-i18n/src/inspector_motion_input.rs",
+    // A SÉTIMA: a secção MACRO (ADR-0186), pela mesma lei.
+    "crates/ph2d-i18n/src/inspector_macro.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.

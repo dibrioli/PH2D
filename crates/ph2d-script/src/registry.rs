@@ -126,7 +126,9 @@ mod tests {
         //   doc ObjectsAndComponents 01 §13, F5). Quem integrar conta o DELTA, nunca o literal.
         // ⚠️ **2026-10-10: `107` -> `108`, delta +1** -- o `MotionInput` (ciclo 19 do Motion, doc
         //   128 §3.6), registado no ECS. Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 108);
+        // ⚠️ **2026-10-13: `108` -> `109`, delta +1** -- o `Macro` (ADR-0186), registado no ECS.
+        //   Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 109);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

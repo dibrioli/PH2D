@@ -25,6 +25,8 @@ pub mod tocar;
 #[cfg(test)]
 mod alvo_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
+mod etapas_sonda_tests;
+#[cfg(all(test, feature = "panel-motion-graph"))]
 pub(crate) mod gate_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 mod painel_tests;

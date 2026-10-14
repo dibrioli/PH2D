@@ -221,6 +221,19 @@ impl PainterTool {
         self.paint.wetpaint.fita = f;
     }
 
+    /// **A água de uma reprodução passa ao relógio fixo** e larga a fita: depois de uma etapa editada,
+    /// as respostas gravadas do worker já não são as desta tinta. O worker corre `STEP_S` de sim por
+    /// `STEP_S` de parede — o relógio fixo é a cadência que ele perseguia.
+    pub(crate) fn wet_passa_ao_relogio_fixo(&mut self) {
+        if let Some(s) = self.paint.wetpaint.session.as_mut() {
+            s.solta_o_roteiro();
+        }
+        self.paint.wetpaint.fita = None;
+        if self.paint.wetpaint.relogio_fixo.is_none() {
+            self.paint.wetpaint.relogio_fixo = Some(0.0);
+        }
+    }
+
     /// O motor da água volta para casa (bloqueia ≤ um estágio) — o fim de uma gravação, nos dois lados.
     pub(crate) fn wet_traz_para_casa(&mut self) {
         if let Some(s) = self.paint.wetpaint.session.as_mut() {

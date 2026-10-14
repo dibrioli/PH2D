@@ -397,6 +397,17 @@ impl super::WetSession {
         true
     }
 
+    /// **A macro deixa de tocar pela fita** (uma etapa editada: a gravação já não diz o que o worker
+    /// responderia dali em diante) — o motor do roteiro fica nesta thread, e nada mais pergunta à fita.
+    pub(in crate::tool::paint) fn solta_o_roteiro(&mut self) {
+        self.engine = match std::mem::replace(&mut self.engine, EngineSlot::Away) {
+            EngineSlot::Roteiro(e) => EngineSlot::Here(e),
+            outro => outro,
+        };
+        self.fita = None;
+        self.roteiro_teve_worker = false;
+    }
+
     /// **Quantos passos a sim completou** — `0` quando nunca houve worker.
     pub(in crate::tool::paint) fn sim_steps(&self) -> u64 {
         if self.roteiro_teve_worker {

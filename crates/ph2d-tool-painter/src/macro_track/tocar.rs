@@ -120,6 +120,16 @@ impl TocadorDoPainter {
         }
     }
 
+    /// **Daqui em diante a água corre no relógio fixo**, sem a fita (a reprodução de uma etapa editada:
+    /// [`TocadorDoPainter::aplica`] deixa de conferir as respostas gravadas do worker).
+    pub fn passa_ao_relogio_fixo(&mut self) {
+        self.tool.wet_passa_ao_relogio_fixo();
+        *fita::trava(&self.fita) = Fita::Toca {
+            fila: VecDeque::new(),
+            divergiu: None,
+        };
+    }
+
     /// Aplica UMA carga da trilha.
     ///
     /// # Errors

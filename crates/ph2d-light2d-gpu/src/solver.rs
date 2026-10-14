@@ -19,6 +19,9 @@ use crate::tempos::{self, Tempos, TemposMs};
 
 pub use crate::erro::ErroSolver;
 
+/// ⭐ O campo de distância (C1) — ficheiro irmão pelo mesmo tecto (W5q).
+#[path = "solver_c1.rs"]
+mod c1;
 /// ⭐ A montagem das cascatas (C2) — ficheiro irmão pelo mesmo tecto (W5c).
 #[path = "solver_c2.rs"]
 mod c2;
@@ -293,169 +296,9 @@ impl Solver {
             .map(|t| t.create_view(&wgpu::TextureViewDescriptor::default()))
             .collect();
 
-        // ── C0 ──
-        let c0_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("luz2d c0"),
-            entries: &[
-                entrada_uniforme(0, wgpu::ShaderStages::VERTEX),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-        let c0_modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("luz2d c0_captura.wgsl"),
-            source: wgpu::ShaderSource::Wgsl(shaders::C0.into()),
-        });
-        let c0_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("luz2d c0"),
-            bind_group_layouts: &[Some(&c0_layout)],
-            immediate_size: 0,
-        });
-        // Os alvos e a mistura da C0 — a lei única das duas pipelines (formas e sprites).
-        let op = crate::passlist::Opcionais::de(&cfg);
-        let formatos_c0 = [
-            Some(lista.texturas[EMISSAO].formato),
-            Some(lista.texturas[COBERTURA].formato),
-            Some(lista.texturas[TAU_DENTRO].formato),
-            op.rebote.map(|r| lista.texturas[r[0]].formato),
-        ];
-        let c0 = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("luz2d c0 captura"),
-            layout: Some(&c0_pl),
-            vertex: wgpu::VertexState {
-                module: &c0_modulo,
-                entry_point: Some("vs"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &c0_modulo,
-                entry_point: Some("fs"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &solver_sprite::alvos_c0(formatos_c0),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleStrip,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        });
-
-        // ── C1 ──
-        let jfa_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("luz2d c1"),
-            entries: &[
-                entrada_uniforme(0, wgpu::ShaderStages::COMPUTE),
-                entrada_textura(1, FLOAT),
-                entrada_textura(2, wgpu::TextureSampleType::Uint),
-                entrada_escrita(3, wgpu::TextureFormat::R32Uint),
-            ],
-        });
-        let jfa_modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("luz2d c1_jfa.wgsl"),
-            source: wgpu::ShaderSource::Wgsl(shaders::C1.into()),
-        });
-        let jfa_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("luz2d c1"),
-            bind_group_layouts: &[Some(&jfa_layout)],
-            immediate_size: 0,
-        });
-        let compute = |rotulo,
-                       pl: &wgpu::PipelineLayout,
-                       modulo: &wgpu::ShaderModule,
-                       entrada,
-                       constantes: &[(&str, f64)]| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(rotulo),
-                layout: Some(pl),
-                module: modulo,
-                entry_point: Some(entrada),
-                compilation_options: wgpu::PipelineCompilationOptions {
-                    constants: constantes,
-                    zero_initialize_workgroup_memory: true,
-                },
-                cache: None,
-            })
-        };
-        let jfa_semente = compute("luz2d c1 semente", &jfa_pl, &jfa_modulo, "semente", &[]);
-        let jfa_salto = compute("luz2d c1 salto", &jfa_pl, &jfa_modulo, "salto", &[]);
-        let jfa_tamanho = cfg.grade_jfa();
         let fino = [cfg.grade.largura, cfg.grade.altura];
-        let mut uni = vec![0u8; (PASSO_UNIFORME * (saltos.len() as u64 + 1)) as usize];
-        for (j, salto) in std::iter::once(0).chain(saltos.iter().copied()).enumerate() {
-            let u = UniformeJfa {
-                fino,
-                tamanho: jfa_tamanho,
-                fator: cfg.fator_jfa,
-                salto,
-                _pad: [0; 2],
-            };
-            let o = j * PASSO_UNIFORME as usize;
-            uni[o..o + size_of::<UniformeJfa>()].copy_from_slice(bytemuck::bytes_of(&u));
-        }
-        gpu.queue.write_buffer(&uni_jfa, 0, &uni);
-        let jfa_grupo = |j: usize, entrada: usize, saida: usize| {
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("luz2d c1"),
-                layout: &jfa_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: fatia_uniforme(
-                            &uni_jfa,
-                            j as u64,
-                            size_of::<UniformeJfa>() as u64,
-                        ),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::TextureView(&vistas[COBERTURA]),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::TextureView(&vistas[entrada]),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wgpu::BindingResource::TextureView(&vistas[saida]),
-                    },
-                ],
-            })
-        };
-        // A semente escreve A (e liga B como entrada, que ela não lê); o salto j lê j%2 e escreve o outro.
-        let mut jfa_grupos = vec![jfa_grupo(0, SEMENTES[1], SEMENTES[0])];
-        for j in 0..saltos.len() {
-            jfa_grupos.push(jfa_grupo(j + 1, SEMENTES[j % 2], SEMENTES[(j + 1) % 2]));
-        }
         let sementes_finais = SEMENTES[saltos.len() % 2];
-
-        // ── C2 ──
+        // ── C2 e C3: o módulo, as lâmpadas e a amostra que a C3 lê ──
         let rc_modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("luz2d c2_rc.wgsl"),
             source: wgpu::ShaderSource::Wgsl(
@@ -486,50 +329,27 @@ impl Solver {
                 entrada_textura(4, FLOAT),
             ],
         });
-        let atlas = lista
-            .texturas
-            .iter()
-            .position(|t| t.nome == NOME_DA_ATLAS)
-            .expect("a PassList declara a atlas");
-        let distantes = distantes::Distantes::novo(
-            NOMES_DISTANTES.map(buffer),
-            texturas[atlas].clone(),
-            fabrica.clone(),
-        );
-        let lampadas_grupo =
-            distantes::grupo_das_lampadas(&device, &lampadas_layout, &lampadas, &distantes);
         // O `textureGather` dos 4 vizinhos da cobertura; a borda prende-se ao texel da borda.
         let vizinhos = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("luz2d c2 vizinhos"),
             ..Default::default()
         });
-        let (rc, rc_grupos) = c2::cascatas(&c2::Entradas {
-            device,
-            cfg: &cfg,
-            lista: &lista,
-            vistas: &vistas,
-            modulo: &rc_modulo,
-            lampadas_layout: &lampadas_layout,
-            uni_cascatas: &uni_cascatas,
-            sementes_finais,
-            vizinhos: &vizinhos,
-        });
-        let hrc = cfg.holografica.map(|escolhas| {
-            holo::Holografica::novo(&holo::Entradas {
-                device,
-                queue: &gpu.queue,
-                cfg: &cfg,
-                escolhas,
-                lista: &lista,
-                vistas: &vistas,
-                modulo: &rc_modulo,
-                uni_cascatas: &uni_cascatas,
-                vizinhos: &vizinhos,
-                buffer: &buffer,
-            })
-        });
-        // ⭐ W5p: a C3 (a fina e o anel: segundos a frio no driver) monta-se num fio ao lado do resto.
-        let (c3, miolo, fina, rebote) = std::thread::scope(|s| {
+        // ⭐ W5p: a C3 (a fina e o anel: segundos a frio no driver) monta-se num fio ao lado do resto;
+        // ⭐ W5q: e começa ANTES de c0–c2 (0,2 s a frio), que correm ao lado dela.
+        let (
+            c0_layout,
+            c0,
+            formatos_c0,
+            jfa,
+            (rc, rc_grupos),
+            lampadas_grupo,
+            distantes,
+            hrc,
+            c3,
+            miolo,
+            fina,
+            rebote,
+        ) = std::thread::scope(|s| {
             let c3 = s.spawn(|| {
                 c3::C3::novo(&c3::Entradas {
                     placa: device,
@@ -543,6 +363,120 @@ impl Solver {
                     uni_preenche: uni_preenche.as_ref(),
                     sementes_finais,
                     vizinhos: &vizinhos,
+                })
+            });
+            // ── C0 ──
+            let c0_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("luz2d c0"),
+                entries: &[
+                    entrada_uniforme(0, wgpu::ShaderStages::VERTEX),
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+            let c0_modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("luz2d c0_captura.wgsl"),
+                source: wgpu::ShaderSource::Wgsl(shaders::C0.into()),
+            });
+            let c0_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("luz2d c0"),
+                bind_group_layouts: &[Some(&c0_layout)],
+                immediate_size: 0,
+            });
+            // Os alvos e a mistura da C0 — a lei única das duas pipelines (formas e sprites).
+            let op = crate::passlist::Opcionais::de(&cfg);
+            let formatos_c0 = [
+                Some(lista.texturas[EMISSAO].formato),
+                Some(lista.texturas[COBERTURA].formato),
+                Some(lista.texturas[TAU_DENTRO].formato),
+                op.rebote.map(|r| lista.texturas[r[0]].formato),
+            ];
+            let c0 = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("luz2d c0 captura"),
+                layout: Some(&c0_pl),
+                vertex: wgpu::VertexState {
+                    module: &c0_modulo,
+                    entry_point: Some("vs"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    buffers: &[],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &c0_modulo,
+                    entry_point: Some("fs"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    targets: &solver_sprite::alvos_c0(formatos_c0),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleStrip,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: None,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+                cache: None,
+            });
+
+            // ── C1 ──
+            let jfa = c1::montar(device, &gpu.queue, &cfg, &saltos, &vistas, &uni_jfa);
+
+            let atlas = lista
+                .texturas
+                .iter()
+                .position(|t| t.nome == NOME_DA_ATLAS)
+                .expect("a PassList declara a atlas");
+            let distantes = distantes::Distantes::novo(
+                NOMES_DISTANTES.map(buffer),
+                texturas[atlas].clone(),
+                fabrica.clone(),
+            );
+            let lampadas_grupo =
+                distantes::grupo_das_lampadas(&device, &lampadas_layout, &lampadas, &distantes);
+            let (rc, rc_grupos) = c2::cascatas(&c2::Entradas {
+                device,
+                cfg: &cfg,
+                lista: &lista,
+                vistas: &vistas,
+                modulo: &rc_modulo,
+                lampadas_layout: &lampadas_layout,
+                uni_cascatas: &uni_cascatas,
+                sementes_finais,
+                vizinhos: &vizinhos,
+            });
+            let hrc = cfg.holografica.map(|escolhas| {
+                holo::Holografica::novo(&holo::Entradas {
+                    device,
+                    queue: &gpu.queue,
+                    cfg: &cfg,
+                    escolhas,
+                    lista: &lista,
+                    vistas: &vistas,
+                    modulo: &rc_modulo,
+                    uni_cascatas: &uni_cascatas,
+                    vizinhos: &vizinhos,
+                    buffer: &buffer,
                 })
             });
             let miolo = cfg.niveis_do_miolo().and_then(|_| {
@@ -574,7 +508,21 @@ impl Solver {
                     .map(|_| (buffer("luz2d/buf/rebote_mesma"), &cfg.grade, &*gpu.queue));
                 rebote::SomaDoRebote::novo(device, &lista, &vistas, r, fonte, mesma)
             });
-            (c3.join().expect("a montagem da C3"), miolo, fina, rebote)
+            let c3 = c3.join().expect("a montagem da C3");
+            (
+                c0_layout,
+                c0,
+                formatos_c0,
+                jfa,
+                (rc, rc_grupos),
+                lampadas_grupo,
+                distantes,
+                hrc,
+                c3,
+                miolo,
+                fina,
+                rebote,
+            )
         });
 
         gpu.queue.write_buffer(
@@ -606,9 +554,9 @@ impl Solver {
             geometria: None,
             formatos_c0,
             c0_sprites: None,
-            jfa_semente,
-            jfa_salto,
-            jfa_grupos,
+            jfa_semente: jfa.semente,
+            jfa_salto: jfa.salto,
+            jfa_grupos: jfa.grupos,
             rc,
             rc_grupos,
             lampadas,

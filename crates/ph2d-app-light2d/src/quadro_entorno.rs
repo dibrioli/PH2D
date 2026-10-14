@@ -31,8 +31,7 @@ impl super::LuzDoQuadro {
             rebote: super::rebote_ligado(),
             // ⭐ W5o: da vista só se lê a c0 do entorno (`Solver::somar_entorno`).
             so_a_c0: super::cortes_ligados(),
-            hrc_nasce_duas_vezes: std::env::var("PH2D_LIGHT2D_HRC_DUAS")
-                .map_or(true, |v| v.trim() != "0"),
+            hrc_nasce_duas_vezes: super::hrc_duas_vezes(),
             ..Config::padrao_para(&gpu.device, ge)
         })
     }

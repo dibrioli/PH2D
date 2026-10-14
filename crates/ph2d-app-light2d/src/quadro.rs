@@ -20,10 +20,13 @@ use crate::grade::{
     DEGRAU_PADRAO, Degrau, captura_do_quadro, fina_do_quadro, grade_do_quadro, tela_para_mundo,
 };
 
+/// O entorno e as leituras do quadro — ficheiros irmãos pelo tecto de 700 LOC (W5j).
+#[path = "quadro_ambiente.rs"]
+mod ambiente;
 /// Os avisos ao artista — ficheiro irmão pelo tecto de 700 LOC (W5e).
 #[path = "quadro_avisos.rs"]
 mod avisos;
-/// O entorno e as leituras do quadro — ficheiros irmãos pelo tecto de 700 LOC (W5j).
+use ambiente::{cortes_ligados, hrc_duas_vezes, miolo_do_ambiente, rebote_ligado};
 #[path = "quadro_entorno.rs"]
 mod entorno;
 #[path = "quadro_leituras.rs"]
@@ -189,8 +192,7 @@ impl LuzDoQuadro {
             vis_na_face: env("PH2D_LIGHT2D_FACE"),
             // ⭐ W5o: `=0` volta à marcha a partir do ponto afastado (a penumbra deslocada, comparar).
             face_pelo_ponto: env("PH2D_LIGHT2D_FACE_PONTO"),
-            // ⭐ W5p: `=0` — a holográfica nasce uma vez (a `c2` do High mais lenta, comparar).
-            hrc_nasce_duas_vezes: env("PH2D_LIGHT2D_HRC_DUAS"),
+            hrc_nasce_duas_vezes: hrc_duas_vezes(),
             miolo: miolo_do_ambiente(),
             ..crate::teto::config_do_quadro(g, self.mundo_para_tela, dg, rebote_ligado())
         }
@@ -664,38 +666,4 @@ impl LuzDoQuadro {
     pub fn solver(&self) -> Option<&Solver> {
         self.resolvido.as_ref().map(|r| &r.solver)
     }
-}
-
-/// ⭐ W5c: o rebote em todo nível (sem nenhum corpo que reflita, os passes dele saltam);
-/// ⭐ W5h — o miolo dos opacos: `PH2D_LIGHT2D_MIOLO=0` volta ao exterior mais próximo (comparar);
-/// `PH2D_LIGHT2D_SUAVIDADE` (0–1) e `PH2D_LIGHT2D_PENETRACAO` (metros) até o controlo por objeto.
-fn miolo_do_ambiente() -> Option<ph2d_light2d_gpu::Miolo> {
-    if std::env::var("PH2D_LIGHT2D_MIOLO").is_ok_and(|v| v.trim() == "0") {
-        return None;
-    }
-    let num = |k: &str| {
-        std::env::var(k)
-            .ok()
-            .and_then(|v| v.trim().parse::<f32>().ok())
-    };
-    let padrao = ph2d_light2d_gpu::MIOLO_PADRAO;
-    Some(ph2d_light2d_gpu::Miolo {
-        suavidade: num("PH2D_LIGHT2D_SUAVIDADE").map_or(padrao.suavidade, |s| s.clamp(0.0, 1.0)),
-        penetracao_m: num("PH2D_LIGHT2D_PENETRACAO")
-            .filter(|p| *p > 0.0)
-            .unwrap_or(padrao.penetracao_m),
-        base_no_grupo: cortes_ligados(),
-        ..padrao
-    })
-}
-
-/// `PH2D_LIGHT2D_REBOTE=0` desliga-o (a comparação da cena 3).
-fn rebote_ligado() -> bool {
-    std::env::var("PH2D_LIGHT2D_REBOTE").map_or(true, |v| v.trim() != "0")
-}
-
-/// ⭐ W5o — `PH2D_LIGHT2D_CORTES=0` volta ao custo da W5n (a mesma imagem): a base do miolo um
-/// despacho por relaxação e o entorno com a grade fina e o miolo que ninguém lê.
-fn cortes_ligados() -> bool {
-    std::env::var("PH2D_LIGHT2D_CORTES").map_or(true, |v| v.trim() != "0")
 }

@@ -17,7 +17,7 @@
 | item | lei / cura | medido |
 |---|---|---|
 | **P5** aviso | quebra até 7 linhas, orçamento único (284 → 300 px), `ttl = máx(3 s, palavras·60/238)` (Brysbaert 2019); as barras descem pelas LINHAS. A cura do aviso nomeava `audio.bands` (1.º de 13 candidatos que aceitam a corrente pela CONTAGEM) com o nome cru: agora o `Attribute` pelo nome do menu (`7407808dd1`) | censo 432 frases/383 sítios: 244 cortavam → 0 |
-| **P2** fita | `Historia::{Verdade, Dobrada, NaoGravada}`; faixa na régua SÓ da aba Arrange (`RulerClock::history`): o Motion lê o relógio do EDITOR, a régua da Keys sem pilha mexe o do CLIP — a faixa lá mentia. Tecto = 1/32 da RAM física, razão partilhado (fitas e anéis) | 8 GiB → 256 MiB (300 entradas: 5 min); 128 GB → 3,85 GiB (77 min) |
+| **P2** fita | `Historia::{Verdade, Dobrada, NaoGravada}`; faixa só na régua que mexe o relógio do Motion (`RulerClock::history`; ver «a Keys mexe o Motion»). Tecto = 1/32 da RAM física, razão partilhado (fitas e anéis) | 8 GiB → 256 MiB (300 entradas: 5 min); 128 GB → 3,85 GiB (77 min) |
 | **P2** anel | declarava 0 B por checkpoint leve e retinha ~1,9 KB: régua dhat do anel; o gate do cartão corria só com placa, agora CPU sempre; na placa arrastar antes do 1.º gravado esquecia a fita (`tique_das_entradas`) | declarado ÷ retido 1,00× |
 | **P1** borrão | causa = custo por pixel (83 % da pilha); borrão por GRUPO (memória partilhada) é o único; vala POR LADO | Glow 4 096 discos `3,57 → 2,96 ms`, Drop Shadow `4,92 → 3,93`; Drop Shadow longa `6,53 → 3,38` (7 → 3 pág.) |
 | **P1** `=138` no app | fazia 11 págs/11 ms: cada forma pagava uma célula a mais — a linha CALADA (quad 0) do buffer das sprites desde o W3 `584688eee8` (`001077631a`, `Variante::calada_vazia`). O resto é custo real (discos 18 px, Glow σ 9 ⇒ ~25 Mpx). O span `render.vello` somava a camada filtrada | placa 1,3–7,6×; 7 págs; `fx_cells.pilha` ~6–7 ms; `render.vello` 15 → 0,3 ms |
@@ -33,7 +33,6 @@ vermelhos) + 2/2 (calada).
 
 ## Aberto
 
-- Na aba Keys o Motion não segue o relógio que o artista arrasta (desenho do módulo).
 - `Scene` na placa por UM pipeline que desenhe os dois meios na ordem do buffer (escrito, não construído).
 - Cadeia 16·4096 do `corrige`: mínimo pior, mediana melhor — não decidida.
 - 5 sítios de aviso fora do censo (texto só em execução): `component_attach.rs:199`, `fase_physics_step.rs:113`,
@@ -42,7 +41,8 @@ vermelhos) + 2/2 (calada).
   `o_preco_das_imagens_de_um_grupo_cpu_contra_placa` (medida sem nome de sonda).
 - Flake de carga de OUTRA linha (`line/PainterWatercolor`): `ph2d-tool-painter … a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs`
   (PASS/FAIL/PASS a load 45, sem diff) — candidato à família do [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md).
-- U2 continua (a unidade é do PROJECTO, não deste nó).
+- Da `line/Luz2D` (falha também no `main` `757afebd58`, placa exclusiva, load 4–7): `ph2d-light2d-gpu … g4_o_custo_da_holografica_nao_depende_do_numero_de_luzes` dá K3 = 6,0–6,4 % contra a barra 5 %.
+- Sondas da `ph2d-timeline` (`mede_o_que_a_composicao_ja_da_ao_tween`) pedem recontagem: deriva herdada.
 
 ## Smoke ao dono (cenas fotografadas, 1600×944)
 
@@ -61,8 +61,7 @@ Deu errado se: aviso cortado com «…»; a faixa da fita AUSENTE na régua da a
 
 ## Depois do smoke: a Keys mexe o Motion (13/10, `65a853a5e8`)
 
-Pedido do dono: *«na aba Keys arrastar a régua e dar play tem de mexer a simulação»*. A linha P2 acima
-(«faixa SÓ na Arrange») é a lei VELHA: o defeito era a Keys sem pilha dirigir o `clip_playhead`
+Pedido do dono: *«na aba Keys arrastar a régua e dar play tem de mexer a simulação»*. O defeito era a Keys sem pilha dirigir o `clip_playhead`
 (o `keys_mode` de 07-27 é o ESCOPO e levava o relógio junto). Agora `ph2d_timeline::ViewClock` —
 o clip só sob pilha; sob pilha o editor segue o clip que toca UMA vez (`follow_clip_clock`), e onde
 toca 0/2 vezes a barra diz `scene stays: …`. Lei, desvio e gates: ADR-0115 R8 emenda 3. Foto da `=139`
@@ -70,10 +69,10 @@ na Keys com a faixa: verificada (scratchpad da janela, `139_keys.png`).
 
 ## Fecho desta janela
 
-HEAD `b23e0156f9`, load 37–47. `PH2D_SUITE=fecho` nextest-impacted **20 486/20 487** (a falha = o flake acima) ·
+2.ª suíte (HEAD `adbd2431f2`, depois da Keys; 3 catracas/gate de texto da shell curados num bloco): **20 499/20 500** (a falha = a da Luz2D acima); clippy/fmt ✓. 1.ª: HEAD `b23e0156f9`, load 37–47. `PH2D_SUITE=fecho` nextest-impacted **20 486/20 487** (a falha = o flake acima) ·
 check warnings=deny ✓ · clippy forma do `ship.sh` ✓ · fmt/typos/machete ✓ · GPU não-sonda 288/295 (4
 `smoke_fixture_renderable::w2..w5` `unimplemented!` pré-existentes + 3 timeouts que passam sozinhos em 146–152 s) ·
-gpu-cook 250/250 · censos 117/117 + 12/12 · doc-index e adr-index ✓. Doc 132 cortado por `doc-split.py` (sha256) abaixo de 40 KB.
+gpu-cook 250/250 · censos 117/117 + 12/12 · doc-index e adr-index ✓.
 
 binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida):
-`Finished smoke profile [optimized] target(s) in 0.24s` (depois de `cc74ff8412`) — zero `Compiling`.
+`Finished smoke profile [optimized] target(s) in 0.21s` (depois de `adbd2431f2`) — zero `Compiling`.

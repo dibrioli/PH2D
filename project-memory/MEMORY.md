@@ -80,8 +80,7 @@
 - [Cadência de processo + CI (19)](reference_topic_process_cadence.md)
 - ⛔ [`sccache` herdava o cadeado da placa — `9>&-`](feedback_a_daemon_born_under_the_gpu_door_inherits_its_lock.md)
 - ⛔⛔ [Gate de placa lento: o cache de shaders NVIDIA estava CHEIO (1 GiB) — 52,7 s → 0,6 s](project_speed_study_2026_10_12_gate_critical_path.md)
-- ⛔⛔ [Qualquer processo sem o tecto APARA o cache de todos — o app do dono reabre a frio; nunca `import-environment` cru](feedback_the_shader_cache_is_trimmed_by_any_process_without_the_cap.md)
-- 📚 [Ship / CI / integração: mais (25) lições](reference_topic_ship_ci_integration_lessons.md)
+- 📚 [Ship / CI / integração: mais (26) lições](reference_topic_ship_ci_integration_lessons.md)
 
 ## Auditoria (famílias — 2 saltos)
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)

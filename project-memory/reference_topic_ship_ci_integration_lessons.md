@@ -38,3 +38,4 @@ metadata:
 - ⛔ [Crate apagada deixa a PASTA com ignorados noutro checkout → `crates/*` morre](feedback_a_deleted_crate_leaves_ignored_files_that_break_the_workspace_glob.md)
 - ⛔⛔ [Portão série × paralelo verde em `dev` não prova o `ci-test`: o LLVM 21–22 vectoriza `tile[base + ((x−1) & mask)]` como cópia contígua com overflow-checks a o2 (o `paper_rows`, 11/10) — copie os troços](feedback_a_serial_parallel_gate_must_run_in_the_ship_profile.md)
 - ⭐ [Estudo de velocidade 12–13/10: gate de placa lento = cache NVIDIA cheio; gabarito ao bit 3×; seletor preciso; main só verde](project_speed_study_2026_10_12_gate_critical_path.md)
+- ⛔⛔ [Qualquer processo sem o tecto APARA o cache de todos — o app do dono reabre a frio; nunca `import-environment` cru](feedback_the_shader_cache_is_trimmed_by_any_process_without_the_cap.md)

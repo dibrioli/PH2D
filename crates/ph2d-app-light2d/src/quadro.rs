@@ -26,9 +26,7 @@ mod ambiente;
 /// Os avisos ao artista — ficheiro irmão pelo tecto de 700 LOC (W5e).
 #[path = "quadro_avisos.rs"]
 mod avisos;
-use ambiente::{
-    cortes_ligados, hrc_duas_vezes, hrc_por_colunas, miolo_do_ambiente, rebote_ligado,
-};
+use ambiente::{cortes_ligados, hrc_duas_vezes, hrc_por_colunas, miolo_do_ambiente, rebote_ligado};
 #[path = "quadro_entorno.rs"]
 mod entorno;
 #[path = "quadro_leituras.rs"]

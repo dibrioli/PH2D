@@ -217,7 +217,10 @@ impl Holografica {
                 f64::from(u8::from(e.cfg.preenchimento.is_some())),
             ),
             ("COLUNAS_HRC", f64::from(u8::from(e.cfg.hrc_por_colunas))),
-            ("ARCOS_TABELA", f64::from(u8::from(e.cfg.hrc_arcos_em_tabela))),
+            (
+                "ARCOS_TABELA",
+                f64::from(u8::from(e.cfg.hrc_arcos_em_tabela)),
+            ),
         ];
         let pipelines = ENTRADAS
             .iter()

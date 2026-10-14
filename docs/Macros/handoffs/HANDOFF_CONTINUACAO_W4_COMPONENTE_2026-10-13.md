@@ -19,6 +19,11 @@
 | `412aba04da` | **14/10, item 5.5 A+B+C**: palcos do Motion por entidade, o editor larga o dono, N fontes no quadro |
 | `4efd97012b` | prova de mutação do A+B+C: 10/10 |
 | `dbf89c60db` | **14/10, item 5.5 D**: o Painter em cena (prova 14/14) |
+| `86192e1559` | **14/10 (fim)**: o palco edita o objecto da trilha (nós criados na gravação já desenham) |
+| `11c5c20ef1` | as cenas `PH2D_MACRO_SMOKE=1` (Splash) e `=2` (Motion nó a nó) |
+| `037a08b75b` | `fotografa_cena.sh`: cache de shaders real, a crase que corria, rajada `FOTO_RAJADA` |
+| `b2c5ba08b3` | sondas do custo do quadro com N palcos (`#[ignore]`, placa) |
+| `819e04a6bb` | gate `o_splash_tocado_pinta_a_tela_e_o_inicio_e_branco` |
 
 ### 14/10 — itens 5.1 a 5.4 (o que existe; não reconstruir)
 
@@ -214,34 +219,116 @@ Smokes da placa (comando inteiro):
   composição 1024² ≈ 2,4 ms está no plano §6); a sprite resolve-se por varredura O(entidades) por palco
   que toca.
 
-## ABERTO — a prova do bloco (cenas de smoke + medição) e 5.6
+## 14/10 (fim) — a prova do bloco FEITA (não reconstruir)
 
-**Mapa das cenas medido a 14/10 (explorador):** o plano (`01_plano_onda1.md` §6) reserva
-`PH2D_MACRO_SMOKE=1` (Splash: imagem 1024² + `Macro` com Autoplay, 3–5 pinceladas Wet Paint) e `=2`
-(Motion nó a nó, formas + simulação com vento, modo explicativo); nenhum código lê a variável ainda.
-- Moldes: `crates/ph2d-app-motion/src/motion_objeto_smoke.rs` (`PH2D_MOTION_OBJETO_SMOKE`, grafo 114
-  «Pile» + `enxame()` com `force.*`; `FEITO: AtomicBool`; recebe `MotionSceneCtx`);
-  `shells/desktop/src/render_loop/animacao_smoke.rs` (escreve em `self.timeline.doc`, `set_autoplay(idx,
-  true)`, `TimelineIntent::RunScene` para o Play); roteadores por família em `ph2d-app-host/src/family.rs`
-  (Painter: `wetpaint_smoke::NIVEIS`, `ph2d-app-painter/src/lib.rs:174`).
-- Gravar por script: Motion = `gravacao_abre` + `push_intent(GraphIntent…)` + `gravacao_passos` por quadro
-  (o laço de `gate_tests::sessao_em`, que é `cfg(test)`: copiar o laço ou subir os auxiliares a
-  `pub(crate)` sob a feature); Painter = `macro_abre` + o laço de `macro_track/palcos_tests.rs::gravada`.
-  Bytes = `ph2d_macro::codec::write`. As cenas serão o 1.º chamador de produto das duas portas.
-- ⚠️ Decidir: `ph2d-app-painter` não depende de `ph2d-timeline` — o clipe (`add_macro_clip` + Autoplay)
-  monta-se na shell (molde `animacao_smoke.rs`) com o `StableId` que a cena da família devolve.
-- Fotografia: `docs/Components/ferramentas/fotografa_cena.sh <VAR=v> <w> <h> <saida.png> [espera_s]`
-  (kwin virtual, `import -window`); sem eventos sintéticos: Play e scrub são da própria cena (código), e
-  dois instantes = duas corridas com `espera_s` diferente.
-- Medir o custo do quadro com N palcos (Motion na placa + Painter upload 1024²/2048²) ANTES de qualquer
-  limite (`MEDIR_VELOCIDADE.md`: variantes no mesmo processo, intercaladas, o mínimo).
+Fecho (`0e11ec111d`): `PH2D_SUITE=fecho BASE=0aab2c1cb6 nextest-impacted` 18 470/18 474 (508 s, load
+23–43). Os 4 vermelhos, curados no `0e11ec111d` e re-corridos verdes por nome: `fn_loc_caps`
+(`main.rs::new` 212 e `fase_vector_overlays` 207 — do 5.5 C/D), `the_app_only_sheds_fields` (173
+campos — o `App.painter_macros` do 5.5 D foi para o `AppGfx`: as ranhuras são do `renderer`),
+`the_frame_hands_the_project_filter_to_the_motion_encoder` (o encode do editor recebe
+`hero.project.image_filter` por extenso; os palcos ficam com `filtro`, que o gate
+`os_palcos_das_macros_passam_por_cada_sitio_do_quadro` lê), `macro_portas::toda_porta_do_painter_tem_decisao`
+(`macro_abre` nas INTERNAS). Clippy `--all-targets -D warnings` verde nas 4 crates (a MACRO do gate 3
+voltou ao `gate_tests`: só os testes a leem); `cargo fmt` aplicado. Os dois de custo da máscara do
+`ph2d-tool-painter` são da [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md): 3/3 sozinhos a load 11.
+⚠️ A suíte INTEIRA não correu depois do `0e11ec111d` (só os vermelhos por nome) — o integrador corre-a.
+Fotos refeitas depois do `0e11ec111d`: as duas cenas iguais; numa rajada a load ~25 a cena =2 parou ~5 s
+em 6,48 s e a =1 1–1,5 s, e com a máquina calma (load 3) a mesma rajada avança regular do início à volta
+do laço ⇒ carga, não defeito.
 
-**Prova do bloco:** a cena de smoke (formas + simulação, `CLAUDE.md §0.8`) com uma macro gravada por script
-(o `sessao()` dos gates) e um clipe `add_macro_clip` com Autoplay; fotografar Play e scrub para trás.
-Medir o custo do quadro com N palcos (placa) antes de escrever qualquer limite.
+**Cenas** (`11c5c20ef1`): `PH2D_MACRO_SMOKE=1` (Splash, Painter) e `=2` (Motion nó a nó). As famílias montam o
+objecto e gravam a macro por script pelas portas do editor; `shells/desktop/src/render_loop/macro_smoke.rs`
+(chamado de `fase_app_scene_smokes.rs` depois de `animacao_smoke`) monta o clipe: `add_macro_clip`,
+`set_active`, `set_active_loop_for(keys,[0,D])`, `set_autoplay`, `TimelineIntent::RunScene`; cada volta do
+laço recua a macro (palco novo + avançar). A env var é roteada pela shell e NÃO está em nenhuma FAMILY (como
+`PH2D_ANIMACAO_SMOKE`: os dois níveis são de duas famílias e `no_two_families_claim_the_same_router` proíbe
+partilhar).
+- `=1`: `ph2d_app_painter::macro_track::smoke::monta` (tela branca 1024², bg 2 como `PH2D_WETPAINT_SMOKE` — o
+  plano dizia transparente; branco = o fundo da aguarela) + `ph2d_tool_painter::macro_track::roteiro::grava_o_splash(lado, alvo)`
+  (4 pinceladas Wet Paint; meio e relógio da água fixo definidos ANTES de armar — `set_paint_media`/`set_wet_relogio_fixo`
+  são portas INTERNAS, só dentro de `ph2d-tool-painter`, gate `nenhuma_porta_interna_tem_chamador_de_fora`; cor/tamanho
+  pelas portas gravadas). Fiel, 4,47 s.
+- `=2`: `ph2d_app_motion::macro_track::smoke` (objecto «Wind tutorial» sem nós do editor, Macro Explicativo, 23
+  gestos de `roteiro::CENA`, um a cada 0,5 s, 14,5 s). `roteiro.rs`: o `MACRO` do gate 3 saiu de `gate_tests` (uma
+  fonte; `gate_tests` re-exporta) e `CENA` é uma ordem visível à parte (a ordem do fixture `MACRO` deixava a tela
+  vazia ~6,5 de 10,25 s: saída ligada aos 3,25 s e o vento levava tudo antes do arrasto).
+- `motion_bridge_params_edit.rs::aplica_lote_de_params` (o dreno de params e a gravação por script partilham-na; o
+  grafo deixa `SetParam` em `ao_painel.params`, que no editor vão pela fila global). Sem ela a cena gravava zero
+  params (medido: grelha 3×3 por omissão = 9 cópias; tamanho da forma 1,0).
+- Gates: `smoke_tests::a_macro_da_cena_coze_formas_e_o_vento_as_move` (os dois modos; 60 cópias; o vento move-as);
+  `roteiro::tests::o_splash_tocado_pinta_a_tela_e_o_inicio_e_branco` (`819e04a6bb`).
 
-**5.6** Da W3/W2: recusas/erros chegam ao artista pela UI da W5 (`MacroEmCena::erro`); os outros meios do
-Painter; re-medir o custo do quadro a tocar com a máquina calma.
+**Defeito achado pela cena (5.5)** (`86192e1559`): `TocadorDoMotion::da_trilha`
+(`crates/ph2d-app-motion/src/macro_track/tocar.rs`) só punha `so_o_dono`; sem `objeto.editing` o `adopt_new` do
+palco deixava órfão todo nó CRIADO durante a gravação e o filtro de dono (`sinks_visiveis`) largava-o — uma macro
+que constrói o grafo de um objecto não desenhava nada (cena `=2`: `sinks=0`). O gate do alvo só usava nós
+existentes ao armar. Gate novo, visto vermelho primeiro: `alvo_tests::o_no_criado_durante_a_gravacao_e_do_objecto_da_trilha_no_palco`
+(`None ≠ Some(11)`). `motion_bridge_intents.rs`: `aplica_e_grava` (lote de grafo aplicado+gravado) saiu de `apply_graph_intents`.
+
+**fotografa_cena.sh** (`037a08b75b`): (a) o HOME isolado levava o cache de shaders da NVIDIA para um tmp vazio —
+cada foto recompilava tudo (o 1.º quadro de um palco do Motion parava 25 s em `libnvidia-gpucomp`, visto com gdb;
+as fotos pareciam congeladas); agora `__GL_SHADER_DISK_CACHE_PATH`/`MESA_SHADER_CACHE_DIR` = o cache real do runner;
+(b) um comentário DENTRO do heredoc tinha crases e executava `[env]` e `.cargo/config.toml` a cada foto (o guarda
+só vê o script expandido); (c) `FOTO_RAJADA=<n> FOTO_INTERVALO=<s>`: n fotos na mesma sessão (`<saida>_02.png`…).
+
+**Custo com N palcos** (`b2c5ba08b3`, `#[ignore]`, placa; método MEDIR_VELOCIDADE: 7 rondas × blocos de 20
+intercalados, MÍNIMO com a mediana ao lado, GPU sincronizada no fim do quadro; o Painter repete o MESMO segmento
+por bloco com recuo não cronometrado porque a água gravada chega em lotes — o mínimo por quadro dava ~0). Sondas:
+`crates/ph2d-app-motion/src/macro_track/palcos_custo_tests.rs::sonda_n_palcos_do_motion`,
+`crates/ph2d-app-painter/src/macro_track/palcos_custo_tests.rs::{sonda_n_palcos_do_painter,sonda_o_quadro_mais_caro_do_splash}`.
+Comando (por crate, `cd` na worktree): `PH2D_GPU=1 __GL_SHADER_DISK_CACHE=0 bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --profile smoke --lib -- --ignored --nocapture macro_track::palcos_custo` (e `-p ph2d-app-painter`).
+Medido 14/10, perfil smoke, load 11–55:
+
+| | N=1 | N=4 | N=16 | por palco |
+|---|---|---|---|---|
+| Motion (cena `=2` desde 11 s), ms mín. (med.) | 0,336 (0,423) | 1,100 (1,338) | 4,282 (5,719) | ≈ 0,27, linear |
+| Painter 1024², ms mín. · med. | 4,264 · 5,809 | 16,125 · 21,241 | 61,983 · 89,802 | 4,26 · 4,03 · 3,87 |
+| Painter 2048², ms mín. · med. | 11,059 · 16,959 | 42,814 · 57,593 | 170,652 · 222,852 | 11,06 · 10,70 · 10,67 |
+
+- Painter, segue+sobe ao mínimo: 1024² N=1 2,378+1,887 · N=16 39,564+22,419; 2048² N=1 5,006+6,054 · N=16 78,066+92,586.
+  Só custa enquanto a tela muda.
+- Motion: 1.º quadro a saltar 0→11 s = 338 ms (N=1), 2210 ms (N=16) — o explicativo re-simula da semente.
+- Gravar: 1024² 1111 ms (doc 4114 KiB); 2048² 2362 ms (16402 KiB). Pior quadro do Splash 1024²: 30–45 ms
+  (t=3,783 s 44,8 ms, segue 40,0) — repetição da água em lote; recuo do laço 13,5 ms.
+- ⇒ **NENHUM tecto escrito** (CLAUDE.md §0.0): o recurso é a CPU da thread principal (repetir a água +
+  premultiplicar/subir); a 60 Hz ≈ 3 palcos Painter 1024² ou 1 a 2048² a pintar; Motion ≈ 50 palcos de cook. O
+  desenho de cada palco do Motion (camada, filtros, present) NÃO está na sonda — o relógio da app: cena `=2` a
+  61 fps com 1 palco (load ~66).
+
+**Prova de mutação 14/10: 7/7 sangram** (controlos verdes: F1 `ph2d-app-motion` alvo_tests+smoke_tests+gate_tests,
+10 testes; F2 `o_splash_tocado`, 1; âncoras pré-voadas 1× cada): M1 `editing` fora do `tocar` → alvo_tests:116 +
+smoke_tests:32 · M2 lote de params saltado na cena → smoke_tests:34 (9≠60) · M3 `macro_param` fora de
+`aplica_lote_de_params` → 5 gate_tests + smoke_tests (gate_tests:502, o grafo perdeu as linhas de params) · M4
+`macro_lote_de_grafo` fora de `aplica_e_grava` → 8 testes · M5 linhas de `CENA` 6→3 → smoke_tests:34 (30≠60) · M6
+cor do pincel fora → roteiro.rs:147 (azul 0, vermelho 0) · M7 sem passos gravados → roteiro.rs:147 (pintou 0).
+
+**Fotografias** (`fotografa_cena.sh` com rajada; folhas de contacto da tela + campo Time da Timeline): `=1` certa
+em todos os instantes, incl. depois da volta do laço (0,233 s: só o início da 1.ª pincelada). `=2`: vazia até
+~3,5 s · grelha 3×3 a 4,3 s · 6×10 espalhada a 5,5 s · compacta a 6,2 s · ~5 s sem mudança visível (integrar/arrastar/caixa/vento
+acrescentados) · a 11,7 s o vento leva só a coluna dentro da caixa e as formas empilham à direita · o último gesto
+alarga a caixa · volta do laço → grafo vazio a 0,07 s. Numa rajada a load 54 viu-se uma paragem de ~2 s perto do fim do
+laço de `=1` (Time preso em 4,033 durante 4 fotos), NÃO reproduzida sem janela (pior 45 ms) ⇒ atribuída a carga/outras
+linhas na placa; não provado.
+
+Binário do smoke JÁ compilado (2.ª corrida, sem `Compiling`):
+`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` →
+«Finished `smoke` profile [optimized] target(s) in 0.47s». Smoke do dono:
+`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && PH2D_MACRO_SMOKE=2 ./target/smoke/ph2d-host-desktop`
+(e `=1`).
+
+## ABERTO — o que falta (5.6 e o que a medição abriu)
+
+1. **5.6** Da W3/W2: recusas/erros chegam ao artista pela UI da W5 (`MacroEmCena::erro`); os outros meios do
+   Painter; re-medir o custo do quadro com a máquina calma.
+2. **Perf aberta pela medição (não é defeito):** picos de 30–45 ms na repetição da água do Painter quando a água
+   gravada chega em lotes (compor UMA vez por quadro / espalhar a repetição); premultiplicar+subir ≈ 1,9 ms a
+   1024² e 6 ms a 2048² por palco, na CPU (premultiplicar na GPU ou subir só o rect sujo); salto/scrub do
+   explicativo do Motion = 338 ms até 11 s (instantâneos — o aberto do plano «Memória dos instantâneos para scrub
+   para trás»).
+3. **Cena `=2`:** ~5 s sem mudança visível enquanto a cadeia de forças se constrói — o editor de nós não mostra o
+   grafo do palco (W5: o chrome do tutorial / cena `=3`).
+4. **Compilação fria dos shaders** dos pipelines do palco do Motion: ~17–25 s com cache frio (UI parada) —
+   propriedade antiga da família Motion, agora no cache real.
 
 ## Régua do laço do agente
 

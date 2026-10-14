@@ -154,6 +154,11 @@ no seu tutorial é CONTEÚDO do documento, não UI.
 (não por passo) entra nesta onda e mede-se antes de qualquer tecto; o nível «assado» fica como saída
 para o jogo publicado.
 
+> **14/10:** as cenas `=1` (Splash, tela branca 1024², 4 pinceladas) e `=2` (Motion nó a nó, 23 gestos, 14,5 s) existem;
+> mecanismo, fotos e mutações em [handoff W4](handoffs/HANDOFF_CONTINUACAO_W4_COMPONENTE_2026-10-13.md#1410-fim--a-prova-do-bloco-feita-não-reconstruir).
+> Custo por palco (mín., smoke, load 11–55): Motion ≈ 0,27 ms (N=1..16, linear) · Painter 1024² ≈ 4 ms · 2048² ≈ 11 ms
+> por quadro enquanto a tela muda (3 e 1 palcos a 60 Hz). Nenhum tecto escrito.
+
 - `PH2D_MACRO_SMOKE=1` — **Splash**: objeto com imagem transparente 1024² e componente Macro (Autoplay);
   no Play, 3–5 pinceladas de Wet Paint pousam e a água escorre entre elas.
 - `PH2D_MACRO_SMOKE=2` — **Motion nó a nó**: formas + simulação com vento num campo; o grafo monta-se um

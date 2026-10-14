@@ -39,6 +39,7 @@ mod follow_an_unbound_object;
 mod gap_fade_out;
 #[cfg(feature = "skeleton")]
 mod ik_bend_side_anima;
+mod macro_time_conduz;
 mod intents;
 mod lead_in;
 mod lone_fade;

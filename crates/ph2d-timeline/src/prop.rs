@@ -182,6 +182,15 @@ pub enum PropKind {
     /// move no canvas. *Pô-lo lá faria toda troca de chip virar uma chave, inclusive a que o
     /// artista fez para ver como fica.* Appended — the discriminant is a frozen wire value.
     IkBendSide = 17,
+    /// **O relógio de uma MACRO** (ADR-0186, item 5 da W4): o instante, em segundos do relógio da
+    /// macro, que o tocador do objecto mostra neste quadro. Escreve `ph2d_ecs::MacroTempo`, que é
+    /// de RUNTIME (fora do save e do undo) e só existe numa entidade com `ph2d_ecs::Macro`.
+    ///
+    /// O clipe que o Gravar ▸ Parar cria liga-o com chaves LINEARES `(0, 0) → (D, D)`; re-keyá-lo é
+    /// re-cronometrar a macro (lenta, parada, ao contrário), por isso está no «+ Track». Fora do
+    /// [`PropKind::ALL`] e do [`PropKind::AUTOKEYED`]: não é pose nem nada que a mão arraste.
+    /// Appended — the discriminant is a frozen wire value.
+    MacroTime = 18,
 }
 
 impl PropKind {
@@ -277,6 +286,7 @@ impl PropKind {
             // ⚠️ *Um `match` com wildcard é onde uma variante nova desaparece* — e o preço aqui é a
             // persistência, não a compilação.
             17 => Some(PropKind::IkBendSide),
+            18 => Some(PropKind::MacroTime),
             _ => None,
         }
     }
@@ -305,6 +315,7 @@ impl PropKind {
             PropKind::BoneBendOutX => "bone_bend_out_x",
             PropKind::BoneBendOutY => "bone_bend_out_y",
             PropKind::IkBendSide => "ik_bend_side",
+            PropKind::MacroTime => "macro_time",
         }
     }
 
@@ -344,6 +355,7 @@ impl PropKind {
             // ⭐ O lado da dobra, por expressão. ⚠️ O alias entra aqui **e** no `expr_alias` do
             // gate exaustivo da suíte: sem o par, o canal fica sem nome que o artista escreva.
             "ik_bend_side" | "bendside" | "bend_side" => Some(PropKind::IkBendSide),
+            "macro_time" | "macrotime" => Some(PropKind::MacroTime),
             _ => None,
         }
     }
@@ -379,7 +391,9 @@ impl PropKind {
             | PropKind::BoneBendOutX
             | PropKind::BoneBendOutY
             // ⭐ E o LADO DA DOBRA mora no `IkGoal` da entidade-OSSO da ponta — mesmo resolver.
-            | PropKind::IkBendSide => None,
+            | PropKind::IkBendSide
+            // O relógio da macro mora no `MacroTempo` da entidade dona — `crate::apply_prop`.
+            | PropKind::MacroTime => None,
         }
     }
 
@@ -436,7 +450,10 @@ impl PropKind {
             // ⚠️ **LINEAR, e o que ele carrega é um SINAL** (a convenção do Spine: `>= 0` é
             // anti-horário). Um `bounded(-1, 1)` seria mais bonito e MENTIRIA: o canal não é uma
             // fracção, e apertar a amplitude não muda o que o consumidor lê.
-            | PropKind::IkBendSide => ph2d_anim::FitChannel::LINEAR,
+            | PropKind::IkBendSide
+            // Segundos de um relógio: escalar sem fronteira (recuar abaixo de 0 é o tocador que
+            // satura, não o ajuste).
+            | PropKind::MacroTime => ph2d_anim::FitChannel::LINEAR,
         }
     }
 
@@ -493,6 +510,9 @@ impl PropKind {
             // que é o que um bit precisa. ⛔ Por RAZÃO, `+1` e `−1` dariam `−1` e um empate ficaria
             // a depender da ordem das lanes.
             PropKind::IkBendSide => Algebra::Sum,
+            // Um instante: neutro 0, e uma lane aditiva quer dizer «adianta a macro um tanto» —
+            // o argumento do `TimeRemap`.
+            PropKind::MacroTime => Algebra::Sum,
         }
     }
 }

@@ -27,3 +27,18 @@ pub struct Macro {
     pub doc: Vec<u8>,
     pub modo: ModoDaMacro,
 }
+
+/// **Onde a Timeline pôs a macro NESTE quadro** — o instante, em segundos do relógio da macro, que
+/// a faixa `MacroTime` do clipe do dono escreveu. Ausente = ninguém a conduz: a macro não toca e o
+/// objecto mostra-se como o editor o tem.
+///
+/// ⛔ RUNTIME, como o [`crate::VecDrivenStyle`]: sem `Serialize` (logo `register_default` não
+/// compila), fora do save e do undo — senão tocar 3 s a 60 fps seriam 180 passos de Ctrl+Z. A
+/// shell apaga-o todo quadro ANTES de a Timeline aplicar: quando a faixa deixa de conduzir, ele
+/// desaparece em vez de ficar preso no último valor.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq)]
+pub struct MacroTempo {
+    pub segundos: f64,
+}
+
+impl crate::SimComponent for MacroTempo {}

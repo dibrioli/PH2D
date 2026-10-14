@@ -387,6 +387,10 @@ pub const TIMELINE_ADDPROP_BONE_BEND_OUT_Y: NodeId =
 /// alcança. *O artista não lhe chega.*
 pub const TIMELINE_ADDPROP_IK_BEND_SIDE: NodeId = hash_node_id("timeline.addprop.ik_bend_side");
 
+/// "+Track" -> **Macro Time**: o instante da gravação (`ph2d_ecs::MacroTempo`) — re-cronometrar a
+/// macro, ou recriar a faixa que o Gravar ▸ Parar fez.
+pub const TIMELINE_ADDPROP_MACRO_TIME: NodeId = hash_node_id("timeline.addprop.macro_time");
+
 /// The drag grip at the veil's left edge (the authored-duration end) — resizing
 /// the composition duration by dragging on the ruler.
 pub const TIMELINE_DUR_HANDLE: NodeId = hash_node_id("timeline.dur_handle");

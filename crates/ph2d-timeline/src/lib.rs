@@ -86,6 +86,7 @@ pub use apply::{
 /// a explica são os DOIS leitores dela.
 #[cfg(feature = "skeleton")]
 pub use apply_prop::bone_bend_refusal;
+pub use apply_prop::clear_macro_clocks;
 pub use apply_views::{apply_active_clip, apply_container};
 pub use autokey::{
     AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, key_value_in_active_clip,

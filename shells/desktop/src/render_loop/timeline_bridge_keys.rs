@@ -114,6 +114,8 @@ pub(crate) fn sample_prop_value(
                 1.0
             },
         ),
+        // O relógio da macro: o instante que a faixa pôs neste quadro. Sem ele, `key_value_for`.
+        PropKind::MacroTime => Float(world.get::<ph2d_ecs::MacroTempo>(e)?.segundos as f32),
     })
 }
 
@@ -136,6 +138,14 @@ pub(crate) fn key_value_for(
     if prop == PropKind::TimeRemap {
         let source = ph2d_timeline::remapped_time(&timeline.doc, entity, t_secs);
         return Some(ph2d_anim::AnimValue::Float(source as f32));
+    }
+    // Macro sem faixa a conduzi-la: a 1.ª chave cai no relógio do objecto (a lei do Time acima);
+    // sem `Macro` não há o que cronometrar e o K recusa.
+    let e = ph2d_ecs::Entity::from_bits(entity);
+    if prop == PropKind::MacroTime && world.get::<ph2d_ecs::MacroTempo>(e).is_none() {
+        world.get::<ph2d_ecs::Macro>(e)?;
+        let t = ph2d_timeline::key_time(&timeline.doc, entity, t_secs)?;
+        return Some(ph2d_anim::AnimValue::Float(t as f32));
     }
     // The live pose is what the animator SEES. Under a clip stack it is a blend,
     // so the number the track must hold to produce it is the blend's inverse —

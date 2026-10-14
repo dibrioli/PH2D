@@ -218,6 +218,9 @@ pub(crate) fn run(
     // **O ESTADO DE ANTES** — o porquê inteiro vive no [`crate::timeline_preview`], que é o dono
     // do conceito; aqui fica só a ordem, que é o que pode estar errado neste ficheiro.
     let bound_before = crate::timeline_preview::state_of_bindings(world, &timeline.doc);
+    // O tempo de cada macro é o que uma faixa escreve NESTE quadro (ADR-0186): limpo antes dos
+    // três ramos e do `toca_os_objectos`, que são quem o reescreve.
+    ph2d_timeline::clear_macro_clocks(world);
     if let Some(c) = container {
         ph2d_timeline::apply_container(world, &mut timeline.doc, c, playhead.time(), skip);
     } else if solo {

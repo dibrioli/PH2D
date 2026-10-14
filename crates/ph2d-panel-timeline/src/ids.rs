@@ -17,7 +17,7 @@
 /// TranslationX + TranslationY, e por isso fica fora de `ALL` como o Time Remap. Entra
 /// no FIM porque a ordem desta tabela é a ordem que o artista lê, e as seis da pose são
 /// o que ele procura primeiro.
-pub const ADDPROP_BUTTONS: [(ph2d_a11y::NodeId, ph2d_timeline::PropKind); 18] = [
+pub const ADDPROP_BUTTONS: [(ph2d_a11y::NodeId, ph2d_timeline::PropKind); 19] = [
     (TIMELINE_ADDPROP_TX, ph2d_timeline::PropKind::TranslationX),
     (TIMELINE_ADDPROP_TY, ph2d_timeline::PropKind::TranslationY),
     (TIMELINE_ADDPROP_ROT, ph2d_timeline::PropKind::Rotation),
@@ -62,6 +62,10 @@ pub const ADDPROP_BUTTONS: [(ph2d_a11y::NodeId, ph2d_timeline::PropKind); 18] = 
     (
         TIMELINE_ADDPROP_IK_BEND_SIDE,
         ph2d_timeline::PropKind::IkBendSide,
+    ),
+    (
+        TIMELINE_ADDPROP_MACRO_TIME,
+        ph2d_timeline::PropKind::MacroTime,
     ),
 ];
 

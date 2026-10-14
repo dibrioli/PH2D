@@ -102,6 +102,19 @@ pub(crate) fn write_prop(
         };
         return;
     }
+    // ⭐ **O RELÓGIO DE UMA MACRO** (ADR-0186). ⛔ Sem `Macro` não se escreve: uma faixa sobre um
+    // objecto sem gravação não inventa um tempo que nenhum tocador lê — a cerca do `IkGoal` acima.
+    // `MacroTempo` é runtime, como o `VecDrivenStyle` abaixo; a shell apaga-o antes de cada apply.
+    if prop == PropKind::MacroTime {
+        if let AnimValue::Float(f) = v
+            && world.get::<ph2d_ecs::Macro>(entity).is_some()
+        {
+            world.entity_mut(entity).insert(ph2d_ecs::MacroTempo {
+                segundos: f64::from(f),
+            });
+        }
+        return;
+    }
     // ⭐⭐⭐ **A OPACIDADE DE UM CAMINHO VETORIAL** — o mesmo canal, o outro substrato.
     //
     // ⛔⛔ Até 2026-09-04 este canal era **MUDO** num vetor: o braço abaixo exige um
@@ -143,6 +156,19 @@ pub(crate) fn write_prop(
     }
     #[cfg(not(feature = "render"))]
     let _ = (world, entity, prop);
+}
+
+/// ⭐ **Apaga todo `ph2d_ecs::MacroTempo`** — chamado UMA vez por quadro, ANTES de a Timeline
+/// aplicar. O tempo de uma macro é o que uma faixa escreveu NESTE quadro: quando ela deixa de
+/// conduzir (o clipe acabou, a faixa foi apagada, a vista sola outro clipe), nada o repõe — o
+/// ledger da pré-visualização só cobre o que é registado —, e sem esta limpeza a macro ficaria
+/// presa no último instante.
+pub fn clear_macro_clocks(world: &mut World) {
+    let mut q = world.query_filtered::<Entity, bevy_ecs::query::With<ph2d_ecs::MacroTempo>>();
+    let com: Vec<Entity> = q.iter(world).collect();
+    for e in com {
+        world.entity_mut(e).remove::<ph2d_ecs::MacroTempo>();
+    }
 }
 
 /// Read one property back out of an entity — the exact inverse of
@@ -239,6 +265,16 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
                 1.0
             }
         });
+    }
+    // O relógio da macro — o braço espelho do `write_prop`. Ausente = ninguém o conduz, e o `rest`
+    // de uma faixa nova é o início da macro (`0`), não um valor inventado sobre um objecto sem ela.
+    if prop == PropKind::MacroTime {
+        world.get::<ph2d_ecs::Macro>(entity)?;
+        return Some(
+            world
+                .get::<ph2d_ecs::MacroTempo>(entity)
+                .map_or(0.0, |m| m.segundos as f32),
+        );
     }
     // ⭐ A opacidade de um caminho vetorial — o braço espelho do `write_prop`, e ele vem PRIMEIRO
     // pela mesma razão que lá: a entidade é um vetor ou é uma sprite, nunca as duas, e perguntar

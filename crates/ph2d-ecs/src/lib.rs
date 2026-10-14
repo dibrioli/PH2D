@@ -70,7 +70,7 @@ pub mod instantiate;
 pub mod lifetime;
 /// ⭐ A gravação de um objecto (ADR-0186).
 pub mod macro_doc;
-pub use macro_doc::{Macro, ModoDaMacro};
+pub use macro_doc::{Macro, MacroTempo, ModoDaMacro};
 pub mod masking;
 pub mod master;
 /// ⭐ O objecto Motion (doc ObjectsAndComponents 01 §13, F5).

@@ -303,6 +303,7 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
             PropKind::BoneBendOutX => "bend_out_x",
             PropKind::BoneBendOutY => "bend_out_y",
             PropKind::IkBendSide => "bend_side",
+            PropKind::MacroTime => "macro_time",
         }
     }
 
@@ -394,6 +395,10 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
         sim.world_mut()
             .entity_mut(Entity::from_bits(e))
             .insert(ph2d_skeleton_ecs::IkGoal::default());
+        // E o relógio da macro: sem `Macro` na entidade o braço nem escreve nem lê.
+        sim.world_mut()
+            .entity_mut(Entity::from_bits(e))
+            .insert(ph2d_ecs::Macro::default());
 
         let mut st = TimelineState::new();
         let doc = &mut st.doc;

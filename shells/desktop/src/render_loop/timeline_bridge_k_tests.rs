@@ -382,3 +382,95 @@ fn solo_k_beyond_the_cut_keys_at_the_boundary() {
 fn st_doc_active_is_right(st: &TimelineState) {
     assert_eq!(st.doc.clips()[st.doc.active_index()].name, "Right");
 }
+
+/// ⭐ **O tempo de uma macro é o que a faixa escreveu NESTE quadro** (ADR-0186): com a faixa a
+/// conduzir, o objecto tem-no; quando a vista sola um clipe sem ela, ele DESAPARECE em vez de ficar
+/// preso no último instante. Mutação que sangra: tirar o `clear_macro_clocks` do `run`.
+#[test]
+fn o_tempo_da_macro_some_quando_a_faixa_deixa_de_conduzir() {
+    use ph2d_anim::AnimValue::Float;
+    use ph2d_ecs::{SimWorld, Transform};
+    let mut sim = SimWorld::new();
+    let bits = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            ph2d_ecs::Name::new("Gravado"),
+            ph2d_ecs::Macro::default(),
+        ))
+        .id()
+        .to_bits();
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    for t in [0.0, 2.0] {
+        ph2d_timeline::apply_intent(
+            &mut st,
+            &mut ph,
+            TimelineIntent::AddKey {
+                entity: bits,
+                prop: PropKind::MacroTime,
+                t: ph2d_anim::RationalTime::from_seconds(t),
+                value: Float(t as f32),
+                interp: ph2d_anim::Interp::Linear,
+            },
+        );
+    }
+    let mut ak = crate::render_loop::autokey_pass::AutokeyState::default();
+    ph.pause();
+    ph.seek(1.0);
+    let mut quadro = |sim: &mut SimWorld, st: &mut TimelineState| {
+        super::run(
+            sim.world_mut(),
+            st,
+            &mut ph,
+            &mut Vec::new(),
+            &[],
+            &mut ak,
+            true,
+            None,
+            &mut super::SignalEmitter::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
+        );
+        sim.world()
+            .get::<ph2d_ecs::MacroTempo>(ph2d_ecs::Entity::from_bits(bits))
+            .map(|m| m.segundos)
+    };
+    let conduzido = quadro(&mut sim, &mut st).expect("a faixa nao escreveu o tempo da macro");
+    assert!((conduzido - 1.0).abs() < 1e-5, "a macro esta em {conduzido}");
+
+    let vazio = st.doc.add_clip("Sem macro".into());
+    st.doc.set_active(vazio);
+    assert_eq!(
+        quadro(&mut sim, &mut st),
+        None,
+        "a faixa deixou de conduzir e o tempo da macro ficou preso no ultimo quadro"
+    );
+}
+
+/// O K sobre o relógio de uma macro: sem faixa a conduzi-la, a 1.ª chave cai no relógio do
+/// objecto (a identidade, como o Time); com a faixa, no instante que ela mostra; sem `Macro`, recusa.
+#[test]
+fn k_no_tempo_da_macro_cai_no_relogio_que_ela_mostra() {
+    use ph2d_anim::AnimValue::Float;
+    let mut w = ph2d_ecs::World::new();
+    let st = TimelineState::new();
+    let sem = w.spawn(ph2d_ecs::Transform::default()).id();
+    assert_eq!(
+        key_value_for(&w, &st, sem.to_bits(), PropKind::MacroTime, 1.5),
+        None,
+        "K num objecto sem Macro inventou um tempo"
+    );
+    let com = w.spawn(ph2d_ecs::Macro::default()).id();
+    assert_eq!(
+        key_value_for(&w, &st, com.to_bits(), PropKind::MacroTime, 1.5),
+        Some(Float(1.5)),
+        "macro sem faixa: a 1.a chave cai no relogio do objecto"
+    );
+    w.entity_mut(com)
+        .insert(ph2d_ecs::MacroTempo { segundos: 0.25 });
+    assert_eq!(
+        key_value_for(&w, &st, com.to_bits(), PropKind::MacroTime, 1.5),
+        Some(Float(0.25)),
+        "macro conduzida: a chave guarda o instante que ela mostra"
+    );
+}

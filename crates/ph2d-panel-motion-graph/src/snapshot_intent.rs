@@ -50,6 +50,15 @@ pub enum GraphIntent {
         to_node: u32,
         param: &'static str,
     },
+    /// **Um fio solto no CORPO de um nó (ou cartão) que não o aceita** — nenhuma entrada livre
+    /// compatível e nenhuma fileira no menu. O painel não tem toasts: ele diz o que o artista fez
+    /// e a shell diz PORQUÊ (smoke da `=141`, 13/10: a largada abria a paleta). `to_node` é um id
+    /// de VISTA, como no [`Self::DriveParam`]. Nada se liga, nada abre; sem passo de undo.
+    DropRefused {
+        from_node: u32,
+        from_port: u16,
+        to_node: u32,
+    },
     /// **O ARTISTA ARRASTOU UM PARAM NO CARTÃO** (ciclo 1). O nome é `&'static` — vem do
     /// `ParamUiHint` do registry, pela vista do cartão —, e a shell aplica-o pela **mesma
     /// porta** que a row do painel usa (`Graph::set_param`), para que o undo, o memo do cook e

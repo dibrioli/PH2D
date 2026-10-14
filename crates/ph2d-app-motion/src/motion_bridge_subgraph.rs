@@ -138,21 +138,10 @@ pub(super) fn drive(
     // ⚠️ **A regra é a MESMA que o menu usa** (`param_choices` declara o alvo como
     // `Instances/Scalar`): uma segunda formulação seria o defeito com o sinal trocado.
     if !source_can_drive(motion, from) {
-        // ⭐⭐ **A recusa NOMEIA A CURA** (estudo do Mini Cavalry, doc 99 §10e). Ele resolve
-        // isto convertendo em silêncio (23 conversões entre os 7 tipos dele) — o que inventa
-        // um resultado que ninguém autorou: *de uma corrente para um número há várias
-        // respostas (a média? o máximo? o primeiro?) e ele escolhe uma sem dizer*. Aqui o
-        // artista escolhe, e o nó que converte fica **à vista e ajustável**.
-        let cura = converter_from(motion, from).map_or_else(String::new, |ty| {
-            ph2d_i18n::tr_with(
-                "app.motion.motion_bridge_subgraph.insert_a_to_read_one_number_from_it",
-                &[("ty", &nome_no_menu(motion, ty))],
-            )
-        });
-        toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr_with(
-            "app.motion.motion_bridge_subgraph.can_t_drive_that_output_is_a_per_element_stream",
-            &[("cura", &cura)],
-        )));
+        // A frase (com a cura) é a da recusa no CORPO do nó também: uma porta só.
+        toasts.push(ph2d_editor_core::Toast::warning(
+            super::recusa::aviso_da_corrente(motion, from),
+        ));
         return;
     }
     if saida_morta(motion, from) {

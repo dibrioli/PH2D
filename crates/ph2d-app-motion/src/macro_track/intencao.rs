@@ -101,7 +101,10 @@ pub fn decide(i: &GraphIntent, base: u32, forma: &FormaEscolhida, clip_gravado: 
         | G::SetSplit { .. }
         | G::SetSplitVertical { .. }
         | G::TogglePlay
-        | G::SetProbe { .. } => return Decisao::Vista,
+        | G::SetProbe { .. }
+        // A recusa de uma largada no corpo de um nó só diz PORQUÊ ao artista (um aviso): o documento
+        // não muda, e o palco não tem a quem avisar.
+        | G::DropRefused { .. } => return Decisao::Vista,
         G::Connect {
             from_node,
             from_port,

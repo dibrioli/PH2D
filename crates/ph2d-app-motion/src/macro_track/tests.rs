@@ -244,6 +244,11 @@ pub(super) mod censo {
                 to_node: c,
                 param: "size",
             },
+            G::DropRefused {
+                from_node: e,
+                from_port: 0,
+                to_node: g,
+            },
             G::SetParam {
                 node: c,
                 param: "size",

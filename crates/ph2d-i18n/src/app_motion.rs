@@ -194,6 +194,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_historia.history_not_recorded" => {
             "Inputs were not recorded here - showing the current values"
         }
+        // ⚠️ À MÃO: um fio solto no CORPO de um nó que não o aceita (smoke do dono da `=141`, 13/10:
+        // a largada abria a paleta de nós em vez de dizer porquê).
+        "app.motion.motion_bridge_recusa.nothing_on_takes_this_wire" => {
+            "Nothing on {no} takes this wire"
+        }
         _ => return None,
     })
 }

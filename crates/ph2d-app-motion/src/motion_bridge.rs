@@ -165,6 +165,10 @@ pub mod medida;
 mod subgraph;
 
 #[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_recusa.rs"]
+mod recusa;
+
+#[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_group_bypass.rs"]
 mod group_bypass;
 // Without the graph panel there is no way to mute a group, so the cook always reads the
@@ -268,8 +272,8 @@ pub fn dispatch(
             // frame), then — after the drain — open the palette any gesture asked for. Both live in
             // `library` (add / smart-connect / splice routing + the compatible-filtered open).
             library::route_palette_pick(hero, motion);
-            // A cena `=141` com `PH2D_MOTION_AVISO_AUTO=1`: o gesto do roteiro, pela mesma fila.
-            crate::motion_state::aviso_demo::auto_gesto(&motion.doc.graph, toasts);
+            // A cena `=141` com `PH2D_MOTION_AVISO_AUTO=<s>`: o gesto do roteiro, UMA vez, pela mesma fila.
+            crate::motion_state::aviso_demo::auto_gesto(&motion.doc.graph);
             apply_graph_intents(motion, playhead, toasts, &mut hero.view.center_split);
             library::open_pending_palette(hero, motion);
             // The level the artist is standing in can stop existing under their feet

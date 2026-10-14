@@ -146,6 +146,19 @@ pub(crate) fn apply_graph_batch(
                     subgraph::drive(motion, toasts, (f, fp), t, param);
                 }
             }
+            // **Um fio solto no CORPO de um nó que não o aceita** (smoke da `=141`, 13/10): diz
+            // porquê, e nada se liga nem se abre.
+            GraphIntent::DropRefused {
+                from_node,
+                from_port,
+                to_node,
+            } => {
+                if let Some(from) = subgraph::resolve_port(motion, from_node, from_port, false) {
+                    toasts.push(ph2d_editor_core::Toast::warning(super::recusa::no_corpo(
+                        motion, from, to_node,
+                    )));
+                }
+            }
             // ⭐⭐ **O ARTISTA ARRASTOU UM PARAM NO CARTÃO** (ciclo 1, doc 103).
             //
             // ⚠️ **Não aplica aqui: reencaminha para a fila do PAINEL.** O

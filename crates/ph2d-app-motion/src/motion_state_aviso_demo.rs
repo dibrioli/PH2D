@@ -2,22 +2,19 @@
 //!
 //! Uma galáxia SIMULADA (os campos da `=132`) de estrelas; um `Oscillator` ondula cada estrela (uma
 //! corrente POR ELEMENTO) e um `Transform` leva-as ao `Output`. O gesto do roteiro — um fio da saída
-//! do `Oscillator` para o `Scale` do `Transform` — é recusado com o aviso mais longo do Motion
-//! (`can_t_drive_that_output_is_a_per_element_stream` + a cura). O `LFO` ao lado é o contraste: um
-//! VALOR, e o mesmo fio dele liga.
+//! do `Oscillator` solto no CORPO do `Transform` — não liga, não abre menu nenhum, e diz porquê com o
+//! aviso mais longo do Motion (`can_t_drive_that_output_is_a_per_element_stream` + a cura). O `LFO`
+//! ao lado é o contraste: um VALOR, e o mesmo fio dele abre o menu dos params do `Transform`.
 //!
-//! `PH2D_MOTION_AVISO_AUTO=1` faz o gesto sozinho pelo MESMO caminho (um `GraphIntent::DriveParam`
-//! na fila do painel), e repete-o sempre que o aviso sai do ecrã — para a foto.
+//! `PH2D_MOTION_AVISO_AUTO=<segundos>` faz o gesto sozinho UMA vez, pelo MESMO caminho (o
+//! `GraphIntent::DropRefused` que o painel emite ao soltar o fio), para a foto.
 
 use super::jogo_demo::{forma, liga, no_em};
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Graph, NodeId};
+use std::time::Duration;
 
-/// O param escalar que o gesto tenta conduzir.
-pub(crate) const PARAM: &str = "scale";
-/// Quadros com a ferramenta em mãos antes do 1.º gesto automático (~1 s a 60 Hz).
-pub(crate) const ESPERA_QUADROS: u32 = 60;
 const ESTRELA: f32 = 0.13;
 const ONDA: f32 = 0.06;
 
@@ -77,42 +74,39 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![crate::motion_demo_legend::Caption::new(
         [0.0, -3.2],
-        "fio do Oscillator no Scale do Transform: o aviso tem de se ler inteiro".to_string(),
+        "fio do Oscillator solto no Transform: nao liga, nao abre menu, o aviso diz porque"
+            .to_string(),
     )]
 }
 
-/// **O roteiro que o dono segue** (`CLAUDE.md` §0.8).
+/// **O roteiro que o dono segue** (`CLAUDE.md` §0.8) — o gesto REAL (o fio solto no CORPO do
+/// cartão), não o menu que o fio de uma corrente nunca abre.
 pub(super) fn announce() {
     eprintln!(
         "\n[aviso inteiro] UMA galaxia de estrelas DOURADAS a girar (uma SIMULACAO com campos); o\n\
          cartao `Oscillator` faz cada estrela ondular - uma onda POR ESTRELA, nao um numero.\n\
          \n\
          (1) De PLAY: as estrelas giram e tremem de leve.\n\
-         (2) Aproxime o grafo (roda do rato) ate' ler o cartao `Oscillator`. Puxe um fio da saida\n    \
-         `Out` dele e solte-o em cima do cartao `Transform`: abre um menu; escolha\n    \
-         `Transform: Scale`. NAO liga, e aparece no TOPO um aviso amarelo. Leia-o INTEIRO: ele\n    \
-         diz que aquela saida e' uma corrente por estrela, nao um valor, e diz que no' inserir\n    \
-         para ler um numero dela. Ele fica no ecra' o tempo de o ler.\n\
-         (3) Faca o mesmo a partir da saida `Out` do cartao `LFO` (em cima): este LIGA, e as\n    \
-         estrelas passam a crescer e encolher juntas.\n\
-         (Com `PH2D_MOTION_AVISO_AUTO=1` o passo (2) faz-se sozinho ~1 s depois de a cena abrir,\n    \
-         e repete-se sempre que o aviso sai do ecra'.)\n\
+         (2) Aproxime o grafo (roda do rato) ate' ler os cartoes. Puxe um fio da saida `Out` do\n    \
+         cartao `Oscillator` e solte-o em cima do cartao `Transform`: NAO liga, NAO abre nenhum\n    \
+         menu, e aparece no TOPO um aviso amarelo INTEIRO: diz que aquela saida e' uma corrente\n    \
+         por estrela, nao um valor, e que no' usar para ler um numero dela (`Attribute`). Some\n    \
+         sozinho em ~5 s.\n\
+         (3) O controlo: puxe um fio da saida `Out` do cartao `LFO` (em cima) e solte-o em cima do\n    \
+         cartao `Transform`: abre um menu com os parametros dele; escolha `Transform: Scale`.\n    \
+         Este LIGA, e as estrelas passam a crescer e encolher juntas.\n\
+         (Com `PH2D_MOTION_AVISO_AUTO=<segundos>` o passo (2) faz-se sozinho UMA vez, nesse\n    \
+         instante depois de a cena abrir.)\n\
          \n\
-         DEU ERRADO se: o aviso acabar em `...` (cortado); sumir antes de o acabar de ler; tapar\n\
-         uma barra de progresso; ou o fio do passo (2) ficar desenhado.\n"
+         DEU ERRADO se: o passo (2) abrir a janela de escolher nos ou um menu; o aviso acabar em\n\
+         `...` (cortado); sumir antes de o acabar de ler; NAO sumir (ou voltar); ou o fio do\n\
+         passo (2) ficar desenhado.\n"
     );
 }
 
-/// O começo do aviso, sem a cura — o que o gesto automático procura na fila.
-#[must_use]
-pub(crate) fn cabeca_do_aviso() -> String {
-    ph2d_i18n::tr_with(
-        "app.motion.motion_bridge_subgraph.can_t_drive_that_output_is_a_per_element_stream",
-        &[("cura", &"")],
-    )
-}
-
-/// O gesto do passo (2), como o painel o emite ao escolher `Transform: Scale` no menu.
+/// O gesto do passo (2), como o painel o emite ao soltar o fio da saída `Out` do `Oscillator` no
+/// CORPO do `Transform` (`interact_drop::resolve_loose_output_drop`: nenhuma entrada livre
+/// compatível, nenhuma fileira no menu ⇒ `DropRefused`).
 #[must_use]
 pub(crate) fn o_gesto(g: &Graph) -> Option<ph2d_panel_motion_graph::GraphIntent> {
     let de = |tipo: &str| {
@@ -121,49 +115,69 @@ pub(crate) fn o_gesto(g: &Graph) -> Option<ph2d_panel_motion_graph::GraphIntent>
             .find(|n| n.type_name == tipo)
             .map(|n| n.id.0)
     };
-    Some(ph2d_panel_motion_graph::GraphIntent::DriveParam {
+    Some(ph2d_panel_motion_graph::GraphIntent::DropRefused {
         from_node: de("motion.oscillator")?,
         from_port: 0,
         to_node: de("motion.transform")?,
-        param: PARAM,
     })
 }
 
-/// A lei do gesto automático, sem ambiente nem relógio: depois da espera, e só quando o aviso
-/// não está no ecrã.
+/// O instante do gesto automático: `PH2D_MOTION_AVISO_AUTO=<segundos>` (`1` ≈ 1 s), só na `=141`.
 #[must_use]
-pub(crate) fn gesto_se_mudo(
-    g: &Graph,
-    toasts: &ph2d_editor_core::ToastQueue,
-    quadro: u32,
-) -> Option<ph2d_panel_motion_graph::GraphIntent> {
-    if quadro < ESPERA_QUADROS {
-        return None;
-    }
-    let cabeca = cabeca_do_aviso();
-    if toasts.iter().any(|t| t.message.starts_with(&cabeca)) {
-        return None;
-    }
-    o_gesto(g)
+pub(crate) fn espera_do_ambiente(auto: Option<&str>, cena: Option<&str>) -> Option<Duration> {
+    let s: f32 = auto?.trim().parse().ok()?;
+    (cena == Some("141") && s.is_finite() && s > 0.0).then(|| Duration::from_secs_f32(s))
 }
 
-fn auto_ligado() -> bool {
-    static L: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *L.get_or_init(|| {
-        std::env::var("PH2D_MOTION_AVISO_AUTO").is_ok_and(|v| v == "1")
-            && std::env::var("PH2D_GPU_COOK_DEMO").is_ok_and(|v| v == "141")
-    })
+/// ⛔ **O gesto automático dispara UMA vez** (smoke do dono, 13/10: *«o aviso não some só»* — ele
+/// repetia-se sempre que o aviso saía do ecrã, e o aviso nunca sumia). A lei, sem ambiente nem
+/// relógio de parede.
+pub(crate) struct GestoAuto {
+    espera: Duration,
+    feito: bool,
 }
 
-/// Chamado pela ponte, com a ferramenta Motion em mãos, ANTES de drenar os gestos do quadro.
-pub(crate) fn auto_gesto(g: &Graph, toasts: &ph2d_editor_core::ToastQueue) {
-    use std::sync::atomic::{AtomicU32, Ordering};
-    static QUADRO: AtomicU32 = AtomicU32::new(0);
-    if !auto_ligado() {
+impl GestoAuto {
+    pub(crate) fn novo(espera: Duration) -> Self {
+        Self {
+            espera,
+            feito: false,
+        }
+    }
+
+    /// O gesto, no primeiro passo em que `decorrido` alcança a espera — e nunca mais.
+    pub(crate) fn passo(
+        &mut self,
+        g: &Graph,
+        decorrido: Duration,
+    ) -> Option<ph2d_panel_motion_graph::GraphIntent> {
+        if self.feito || decorrido < self.espera {
+            return None;
+        }
+        let gesto = o_gesto(g)?;
+        self.feito = true;
+        Some(gesto)
+    }
+}
+
+/// Chamado pela ponte, com a ferramenta Motion em mãos, ANTES de drenar os gestos do quadro. O
+/// relógio conta da primeira chamada (a ferramenta em mãos), em segundos de parede.
+pub(crate) fn auto_gesto(g: &Graph) {
+    use std::sync::{Mutex, OnceLock, PoisonError};
+    use std::time::Instant;
+    static ESPERA: OnceLock<Option<Duration>> = OnceLock::new();
+    static ESTADO: Mutex<Option<(Instant, GestoAuto)>> = Mutex::new(None);
+    let Some(espera) = *ESPERA.get_or_init(|| {
+        espera_do_ambiente(
+            std::env::var("PH2D_MOTION_AVISO_AUTO").ok().as_deref(),
+            std::env::var("PH2D_GPU_COOK_DEMO").ok().as_deref(),
+        )
+    }) else {
         return;
-    }
-    let q = QUADRO.fetch_add(1, Ordering::Relaxed);
-    if let Some(gesto) = gesto_se_mudo(g, toasts, q) {
+    };
+    let mut estado = ESTADO.lock().unwrap_or_else(PoisonError::into_inner);
+    let (t0, auto) = estado.get_or_insert_with(|| (Instant::now(), GestoAuto::novo(espera)));
+    if let Some(gesto) = auto.passo(g, t0.elapsed()) {
         ph2d_panel_motion_graph::push_intent(gesto);
     }
 }

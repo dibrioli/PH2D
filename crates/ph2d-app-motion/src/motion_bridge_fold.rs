@@ -316,7 +316,8 @@ fn hidden_ports(
         }
         // The members' undriven PARAMS are hidden by the card too (doc 58): a wire dropped
         // on a closed group can drive a parameter three storeys down without opening a door.
-        out.inputs.extend(param_choices(motion, n, v));
+        out.inputs
+            .extend(param_choices(motion, n, (&v.display_name, v.category)));
     }
     out
 }
@@ -327,7 +328,7 @@ fn node_param_targets(motion: &MotionState, nodes: &[GraphNodeView]) -> BTreeMap
     nodes
         .iter()
         .filter_map(|v| {
-            let params = param_choices(motion, NodeId(v.id), v);
+            let params = param_choices(motion, NodeId(v.id), (&v.display_name, v.category));
             (!params.is_empty()).then(|| {
                 (
                     v.id,
@@ -339,6 +340,11 @@ fn node_param_targets(motion: &MotionState, nodes: &[GraphNodeView]) -> BTreeMap
             })
         })
         .collect()
+}
+
+/// `n` tem um param que um fio de VALOR conduziria — as MESMAS fileiras que o corpo oferece.
+pub(super) fn tem_param_conduzivel(motion: &MotionState, n: NodeId) -> bool {
+    !param_choices(motion, n, ("", ph2d_node_registry::NodeUiCategory::Utility)).is_empty()
 }
 
 /// **The parameters of `n` that no wire drives** (doc 58) — the rows a wire dropped on its
@@ -363,7 +369,11 @@ fn node_param_targets(motion: &MotionState, nodes: &[GraphNodeView]) -> BTreeMap
 /// ⚠️ **A resposta vem da MESMA porta que o painel usa** (`params_visible::shown_params`):
 /// uma segunda implementação da conjunção dos três gates é como um param passa a aparecer num
 /// sítio do app e não noutro — que é o defeito em si, com o sinal trocado.
-fn param_choices(motion: &MotionState, n: NodeId, v: &GraphNodeView) -> Vec<PortChoice> {
+fn param_choices(
+    motion: &MotionState,
+    n: NodeId,
+    (titulo, category): (&str, ph2d_node_registry::NodeUiCategory),
+) -> Vec<PortChoice> {
     use ph2d_panel_motion_graph::PortView;
     let Some(manifest) = manifest_of(motion, n) else {
         return Vec::new();
@@ -390,8 +400,8 @@ fn param_choices(motion: &MotionState, n: NodeId, v: &GraphNodeView) -> Vec<Port
             PortChoice {
                 node: n.0,
                 target: ChoiceTarget::Param(p.name),
-                label: format!("{}: {}", v.display_name, label),
-                category: v.category,
+                label: format!("{titulo}: {label}"),
+                category,
                 port_type: PortView {
                     name: p.name,
                     domain: ph2d_nodegraph::port::Domain::Instances,

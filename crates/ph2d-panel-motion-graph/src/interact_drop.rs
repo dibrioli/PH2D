@@ -9,6 +9,10 @@
 //! - **A regular node's BODY** — connect to its first FREE compatible input. Blender and Nuke let
 //!   a wire dropped anywhere on a node land on its first open input, so the artist need not hit
 //!   the exact socket; the magnet only covers a halo around each one.
+//! - **A body that takes NOTHING of this wire** — say why (`GraphIntent::DropRefused`; the shell
+//!   words it). ⛔ It used to fall through to the palette below (smoke of `=141`, 13/10: *«o modal
+//!   de nós se abre»*): a drop ON a node is aimed at that node, never a request for a new one.
+//!   The wire's own source is the one body that is neither — letting go there is a cancel.
 //! - **Empty canvas** — smart-connect: open the add-menu filtered to what THIS wire can feed, and
 //!   wire it on the pick (dropping in space used to be a silent no-op).
 
@@ -52,6 +56,17 @@ pub(super) fn resolve_loose_output_drop(
         });
         return;
     }
+    // A body that takes nothing of this wire: refuse, and say why (the shell words it).
+    if let Some(body) = body_at(snap, view, x, y) {
+        if body != from_node {
+            push_intent(GraphIntent::DropRefused {
+                from_node,
+                from_port,
+                to_node: body,
+            });
+        }
+        return;
+    }
     // Empty canvas — smart-connect: the gesture already said what it wanted (a consumer for THIS
     // wire), so open the full-screen palette FILTERED to the node types that can take this output,
     // and wire it on the pick. The compatible list is the SAME `menu_catalog` filter the old
@@ -70,6 +85,15 @@ pub(super) fn resolve_loose_output_drop(
         splice: None,
         compatible,
     });
+}
+
+/// The card (node, group or ghost) whose body contains `(x, y)` — the same first-hit order the
+/// card menu and [`node_body_target`] use, so the three answer about the SAME card.
+fn body_at(snap: &GraphViewSnapshot, view: &View, x: f32, y: f32) -> Option<u32> {
+    snap.nodes
+        .iter()
+        .find(|n| geom::card_rect(n, view).contains(x, y))
+        .map(|n| n.id)
 }
 
 /// The first FREE input of the regular node whose card body contains `(x, y)`, type-compatible
@@ -141,3 +165,7 @@ pub(super) fn node_body_source(
         compat.then_some((node.id, i as u16))
     })
 }
+
+#[cfg(test)]
+#[path = "interact_drop_refused_tests.rs"]
+mod refused_tests;

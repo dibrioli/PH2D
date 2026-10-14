@@ -123,17 +123,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_lens.lut_1d" => "LUT: only 3D LUTs (this one is 1D)",
         "app.motion.motion_lens.lut_no_size" => "LUT: no LUT_3D_SIZE line",
         "app.motion.motion_lens.lut_bad_size" => "LUT: size {n} is outside 2-256",
-        "app.motion.motion_lens.lut_bad_line" => "LUT: line {linha} is not three numbers",
-        "app.motion.motion_lens.lut_count" => "LUT: {lido} entries, {esperado} expected",
-        "app.motion.motion_filter.off_the_wire" => "Not on the wire to an Output - filters nothing",
-        "app.motion.motion_filter.after_whole_layer" => {
-            "After a Whole Layer filter - runs on the whole layer, not on each shape"
-        }
-        "app.motion.motion_filter.outputs_land_differently" => {
-            "The Outputs blend with the scene in different modes - the filtered layer lands with the first Output's"
-        }
+        "app.motion.motion_lens.lut_bad_line" => "LUT: line {linha} is not R G B",
+        "app.motion.motion_lens.lut_count" => "LUT: {lido}/{esperado} rows",
+        "app.motion.motion_filter.off_the_wire" => "Not wired to an Output: no effect",
+        "app.motion.motion_filter.after_whole_layer" => "After Whole Layer: not per shape",
+        "app.motion.motion_filter.outputs_land_differently" => "Blends differ: uses 1st Output's",
         "app.motion.motion_filter.each_shape_sees_the_vector_path_as_one" => {
-            "Some shapes draw by the vector path (a Blend with Everything or Copies, a Blend per row, a shape the GPU refuses) - Each Shape treats them as one piece"
+            "Vector-path shapes filter as one"
         }
         "app.motion.motion_bridge_params_text_rows.rule_problem" => {
             "\u{ab}{rule}\u{bb}: {say} (+{queixas} more)"
@@ -185,15 +181,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_bridge_subgraph.r_g_b_a_only_on_a_color_input" => {
             "Can't wire: R G B A need an Input of Kind Color"
         }
-        // ⚠️ À MÃO: o scrub antes da base da fita das entradas (doc 132 §2).
-        "app.motion.motion_historia.history_folded" => {
-            "History before {s} s was folded - showing {s} s"
-        }
+        // ⚠️ À MÃO: o scrub antes da base da fita das entradas (doc 132 §2). ⛔ UMA linha do
+        // cartão (178 px a 11 px): cabe com o pior segundo, gate `queixas_cabem_tests`.
+        "app.motion.motion_historia.history_folded" => "History folded: shows {s} s",
         // ⚠️ À MÃO: o scrub antes do primeiro tique gravado da fita — o replay usa o publicado
         // agora (doc 132 §2).
-        "app.motion.motion_historia.history_not_recorded" => {
-            "Inputs were not recorded here - showing the current values"
-        }
+        "app.motion.motion_historia.history_not_recorded" => "Not recorded: shows live inputs",
         // ⚠️ À MÃO: um fio solto no CORPO de um nó que não o aceita (smoke do dono da `=141`, 13/10:
         // a largada abria a paleta de nós em vez de dizer porquê).
         "app.motion.motion_bridge_recusa.nothing_on_takes_this_wire" => {

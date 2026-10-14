@@ -28,12 +28,16 @@ pub(crate) fn publica(motion: &mut MotionState, fixed_dt: f64) {
     ph2d_panel_timeline::set_recorded_history(faixa);
     motion.queixa_da_historia = match motion.pump.historia_mostrada() {
         Historia::Verdade => None,
-        Historia::Dobrada { desde } => Some(ph2d_i18n::tr_with(
-            CHAVE_DA_QUEIXA,
-            &[("s", &format!("{:.2}", s(desde)))],
-        )),
+        Historia::Dobrada { desde } => Some(frase_dobrada(s(desde))),
         Historia::NaoGravada => Some(ph2d_i18n::tr(CHAVE_NAO_GRAVADA).to_owned()),
     };
+}
+
+/// A queixa da história dobrada no segundo `segundos` — a frase que o cartão pinta, e a que o gate
+/// de largura mede com o pior segundo.
+#[must_use]
+pub fn frase_dobrada(segundos: f64) -> String {
+    ph2d_i18n::tr_with(CHAVE_DA_QUEIXA, &[("s", &format!("{segundos:.2}"))])
 }
 
 /// Nada cozeu neste quadro (o Motion fora de cena): sem faixa.

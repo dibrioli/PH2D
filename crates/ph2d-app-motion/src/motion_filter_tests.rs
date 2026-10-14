@@ -194,16 +194,20 @@ fn shapes_drawn_by_the_vector_path_are_named_on_every_each_shape_card() {
     f.formas_no_vello = true;
     for no in [um, dois] {
         let q = f.queixa(no).expect("o cartão diz");
-        assert!(q.contains("Blend") && q.contains("one piece"), "{q}");
+        assert_eq!(
+            q,
+            ph2d_i18n::tr("app.motion.motion_filter.each_shape_sees_the_vector_path_as_one")
+        );
     }
     assert!(
         f.queixa(inteira).is_none(),
         "o `Whole Layer` filtra as formas do Vello — o cartão dele cala"
     );
     let q = f.queixa(solto).expect("o solto diz o seu");
-    assert!(
-        q.contains("Not on the wire"),
-        "a queixa de fora do fio vem primeiro: {q}"
+    assert_eq!(
+        q,
+        ph2d_i18n::tr("app.motion.motion_filter.off_the_wire"),
+        "a queixa de fora do fio vem primeiro"
     );
     // O quadro seguinte sem o Motion na cena apaga-a.
     assert!(!f.liga(false));
@@ -322,7 +326,10 @@ fn two_outputs_that_land_differently_are_named_on_every_filter_card() {
     f.prepara(&g, &[a, b]);
     assert_eq!(f.pousa(), Pousa::Soma, "a primeira manda");
     let q = f.queixa(filtro).expect("o cartão diz");
-    assert!(q.contains("different modes"), "{q}");
+    assert_eq!(
+        q,
+        ph2d_i18n::tr("app.motion.motion_filter.outputs_land_differently")
+    );
 }
 
 /// ⭐⭐ **A rota da PLACA pergunta a mesma regra** (doc 129 §3.5): com a camada isolada, um `Output`

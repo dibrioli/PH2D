@@ -43,6 +43,9 @@ mod library_tests;
 /// A costura da queixa: uma regra que o parser deita fora chega à row do painel.
 #[path = "motion_bridge_lsystem_complaint_tests.rs"]
 mod lsystem_complaint_tests;
+/// Toda queixa da linha de leitura de um cartão cabe inteira (doc 132 §5, no cartão).
+#[path = "motion_bridge_queixas_cabem_tests.rs"]
+mod queixas_cabem_tests;
 
 #[path = "motion_bridge_lsystem_preset_tests.rs"]
 mod lsystem_preset_tests;

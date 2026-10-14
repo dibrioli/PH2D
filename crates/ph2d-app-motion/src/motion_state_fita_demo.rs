@@ -134,7 +134,7 @@ pub(super) fn announce() {
          (2) Arraste a regua para DENTRO da faixa: os cartoes `Input` mostram o numero de sempre.\n    \
          (Na aba `Arrange` a faixa e o relogio sao os MESMOS: sem pistas, as duas abas mexem um so relogio.)\n\
          (3) Arraste a regua para ANTES do inicio da faixa: o cartao de cada `Input` diz\n    \
-         `History before X s was folded - showing X s` - o replay mostra o segundo X, nao o\n    \
+         `History folded: shows X s` - o replay mostra o segundo X, nao o\n    \
          que se publicou ali. A faixa FICA (solte a regua e espere: nao some).\n    \
          (Para ler o cartao: clique num `Input` e carregue F - o grafo aproxima-o.)\n    \
          (Com `PH2D_MOTION_FITA_SCRUB=<segundo>` o passo (3) e o F fazem-se sozinhos UMA vez,\n    \

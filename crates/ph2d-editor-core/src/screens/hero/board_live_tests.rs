@@ -473,3 +473,69 @@ fn a_tall_panel_never_swallows_the_avatar_click() {
     t.live_click(Hit::Avatar(1));
     assert_eq!(t.following(), Some(2), "o clique no avatar caiu no cartão");
 }
+
+/// ⭐ ADR-0187 — um link COLADO no campo do código (o caminho do Ctrl+V da shell: inserir e
+/// `TextChanged`) fica como está — a chave distingue maiúsculas —, e «Join by link», o «Join» e o
+/// Enter pedem para entrar com ele inteiro. Um texto que não é link não pede e diz porquê.
+#[test]
+fn a_pasted_link_keeps_its_case_and_joins_by_link() {
+    const CODE: NodeId = crate::ids::BOARD_LIVE_CODE_INPUT;
+    let link = "ph2d-board://v1/127.0.0.1:5000#AbCdEfGhIjKlMnOpQrStUv";
+    let mut t = T::new();
+    t.open_live();
+    t.asked();
+    t.live_click(Hit::Button(LiveButton::JoinLink));
+    assert!(t.asked().is_empty(), "sem link pediu para entrar");
+    assert_eq!(
+        t.hero.documents.live.notice.map(|n| n.0),
+        Some("board.live.link_bad")
+    );
+    t.shell_click_id(CODE, "o campo do código");
+    assert!(crate::interaction::apply_clipboard_paste(
+        &mut t.hero.store,
+        CODE,
+        link
+    ));
+    t.hero.apply_event(WidgetEvent::TextChanged(CODE));
+    t.paint();
+    let shown = crate::screens::hero::board_nav::field_text_for_tests(&t.hero, CODE);
+    assert_eq!(shown, link, "o link colado passou a maiúsculas");
+    let want = vec![LiveRequest::JoinLink { link: link.into() }];
+    t.live_click(Hit::Button(LiveButton::JoinLink));
+    assert_eq!(t.asked(), want);
+    t.live_click(Hit::Button(LiveButton::Join));
+    assert_eq!(t.asked(), want, "o «Join» com um link entra pelo link");
+    t.shell_click_id(CODE, "o campo do código");
+    t.enter();
+    assert_eq!(t.asked(), want, "o Enter também");
+}
+
+/// ADR-0187 — o anfitrião vê «Invite over the internet» e ele pede a entrada pela internet; a
+/// preparar, o botão sai e fica a frase; pronta, «Copy the link again» pede o mesmo.
+#[test]
+fn the_host_invites_over_the_internet_and_copies_again() {
+    use crate::documents::live::LiveInternet;
+    let mut t = T::new();
+    t.open_live();
+    t.room(LiveRole::Hosting {
+        code: "ABCDEF".into(),
+        addrs: vec!["10.0.0.5:47320".into()],
+    });
+    t.paint();
+    t.asked();
+    t.live_click(Hit::Button(LiveButton::InviteInternet));
+    assert_eq!(t.asked(), vec![LiveRequest::InviteInternet]);
+    t.hero.documents.live_view_mut().internet = LiveInternet::Preparing;
+    t.paint();
+    let id = live_node(Hit::Button(LiveButton::InviteInternet));
+    assert!(
+        t.find(id).is_none(),
+        "a preparar, o botão não se clica"
+    );
+    t.hero.documents.live_view_mut().internet = LiveInternet::Ready {
+        link: "ph2d-board://v1/#x".into(),
+    };
+    t.paint();
+    t.live_click(Hit::Button(LiveButton::InviteInternet));
+    assert_eq!(t.asked(), vec![LiveRequest::InviteInternet]);
+}

@@ -15,6 +15,10 @@ pub enum LiveRequest {
     Host,
     /// Entrar no quadro de `addr` (`None` = o primeiro achado na rede) com o código.
     Join { addr: Option<String>, code: String },
+    /// ADR-0187 — abrir a sala também à internet e copiar o convite (de novo, se já estiver aberta).
+    InviteInternet,
+    /// ADR-0187 — entrar pelo link de convite colado.
+    JoinLink { link: String },
     /// Procurar quadros abertos na rede.
     Discover,
     /// Sair (o convidado) ou fechar a sala (o anfitrião).
@@ -62,6 +66,19 @@ pub enum LiveRole {
     Joining,
     /// Dentro da sala de outra pessoa.
     Guest { host: String },
+}
+
+/// ADR-0187 — a entrada pela internet do anfitrião, como o painel a mostra.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum LiveInternet {
+    #[default]
+    Off,
+    /// A preparar (o endereço de fora, o ponto de encontro).
+    Preparing,
+    /// Aberta: o link foi copiado.
+    Ready { link: String },
+    /// Não abriu (a frase do erro).
+    Failed(String),
 }
 
 /// Uma pessoa na sala.
@@ -165,6 +182,8 @@ pub struct LiveView {
     /// Onde está o MEU rato no mundo do quadro da sala (o ecrã escreve-o).
     pub my_cursor: Option<[f64; 2]>,
     pub firewall: LiveFirewall,
+    /// ADR-0187 — a entrada pela internet (só o anfitrião).
+    pub internet: LiveInternet,
     /// ADR-0182 — o modo privado e a votação da sala, como os desenho.
     pub fac: LiveFac,
     requests: Vec<LiveRequest>,

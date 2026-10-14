@@ -54,10 +54,14 @@ pub enum LiveButton {
     FirewallAllow,
     /// «Remover a permissão».
     FirewallRemove,
+    /// `Hosting` — ADR-0187: abrir à internet e copiar o link (outra vez, se já aberta).
+    InviteInternet,
+    /// `Off` — ADR-0187: entrar pelo link colado no campo do código.
+    JoinLink,
 }
 
 /// ⛔ Só se ACRESCENTA no fim: o id de um botão é a posição dele aqui.
-const ALL: [LiveButton; 12] = [
+const ALL: [LiveButton; 14] = [
     LiveButton::Close,
     LiveButton::Surface,
     LiveButton::Open,
@@ -70,6 +74,8 @@ const ALL: [LiveButton; 12] = [
     LiveButton::Badge,
     LiveButton::FirewallAllow,
     LiveButton::FirewallRemove,
+    LiveButton::InviteInternet,
+    LiveButton::JoinLink,
 ];
 
 /// O que um id derivado é.
@@ -127,6 +133,8 @@ fn tooltip_key(b: LiveButton) -> &'static str {
         LiveButton::Unfollow => "board.live.unfollow_tip",
         LiveButton::FirewallAllow => "board.live.fw_allow_tip",
         LiveButton::FirewallRemove => "board.live.fw_remove_tip",
+        LiveButton::InviteInternet => "board.live.invite_net_tip",
+        LiveButton::JoinLink => "board.live.join_link_tip",
     }
 }
 
@@ -283,8 +291,37 @@ fn field(hero: &HeroScreen, id: NodeId) -> String {
     super::super::field_text(&hero.store, id)
 }
 
-/// «Join»: o código normalizado (6 caracteres, senão a frase que o diz) e o endereço escolhido.
+/// ADR-0187 — o texto é um link de convite (`ph2d-board://…`), não um código.
+#[must_use]
+pub fn is_link(s: &str) -> bool {
+    s.trim_start()
+        .get(..LINK_SCHEME.len())
+        .is_some_and(|p| p.eq_ignore_ascii_case(LINK_SCHEME))
+}
+
+/// O começo de todo convite (o mesmo de `ph2d_board_net::SCHEME`, provado no teste da família: o
+/// ecrã não depende da rede).
+pub const LINK_SCHEME: &str = "ph2d-board://";
+
+/// «Join by link»: o link colado no campo do código vai inteiro à família (a chave distingue
+/// maiúsculas: nunca se normaliza).
+fn join_link(hero: &mut HeroScreen) {
+    let link = field(hero, crate::ids::BOARD_LIVE_CODE_INPUT);
+    if !is_link(&link) {
+        super::notice(hero, "board.live.link_bad");
+        return;
+    }
+    hero.store.set_focus(None);
+    hero.documents.ask_live(LiveRequest::JoinLink { link });
+}
+
+/// «Join»: o código normalizado (6 caracteres, senão a frase que o diz) e o endereço escolhido; um
+/// link colado no lugar do código entra como link.
 fn join(hero: &mut HeroScreen) {
+    if is_link(&field(hero, crate::ids::BOARD_LIVE_CODE_INPUT)) {
+        join_link(hero);
+        return;
+    }
     let code = normalize_code(&field(hero, crate::ids::BOARD_LIVE_CODE_INPUT));
     if code.len() != CODE_LEN {
         super::notice(hero, "board.live.code_short");
@@ -304,7 +341,8 @@ fn upper_code(store: &mut WidgetStore) {
         store.get_mut(crate::ids::BOARD_LIVE_CODE_INPUT)
     {
         let up = text.to_ascii_uppercase();
-        if *text != up {
+        // Um link colado fica como está: a chave dele distingue maiúsculas.
+        if *text != up && !is_link(text) {
             *text = up;
         }
     }
@@ -376,6 +414,8 @@ fn button(hero: &mut HeroScreen, b: LiveButton) {
         LiveButton::Unfollow => unfollow(hero),
         LiveButton::FirewallAllow => ask(hero, LiveRequest::FirewallAllow),
         LiveButton::FirewallRemove => ask(hero, LiveRequest::FirewallRemove),
+        LiveButton::InviteInternet => ask(hero, LiveRequest::InviteInternet),
+        LiveButton::JoinLink => join_link(hero),
         LiveButton::Surface | LiveButton::Badge => {}
     }
 }

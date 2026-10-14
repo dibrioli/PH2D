@@ -33,6 +33,11 @@ const SMALL: f64 = 150.0;
 
 /// Monta a retrospectiva em `b`.
 pub(crate) fn build(b: &mut Board) -> Lessons {
+    build_with(b, "board.smoke.live")
+}
+
+/// A retrospectiva com as lições e o título de `prefix` (`<prefix>.l1..l6`, `<prefix>.title`).
+fn build_with(b: &mut Board, prefix: &str) -> Lessons {
     let side = STICKY_SIDE;
     let width = 6.0 * side + 5.0 * GAP;
     let frame = super::organize::frame(
@@ -68,7 +73,7 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
     arrow(b, flow[1], flow[2]);
     let y = 320.0 + GAP;
     let lessons: [ElementId; 6] = std::array::from_fn(|i| {
-        let key = format!("board.smoke.live.l{}", i + 1);
+        let key = format!("{prefix}.l{}", i + 1);
         note(
             b,
             &key,
@@ -81,7 +86,7 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
     let title = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(None, None, INK),
-        text: RichText::plain(&tr("board.smoke.live.title")),
+        text: RichText::plain(&tr(&format!("{prefix}.title"))),
     };
     let t = Element::new_shape(
         b.doc.mint_id(),
@@ -113,6 +118,22 @@ pub(super) fn scene_live(hero: &mut HeroScreen) -> Lessons {
     board_nav::show_box(hero, false, false, l.view);
     live_board::toggle(hero);
     hero.documents.ask_live(LiveRequest::Host);
+    l
+}
+
+/// A cena 22 (ADR-0187): a mesma «Retro» aberta à rede E à internet — o link já copiado para mandar —
+/// com as seis lições do convite pela internet. A 2.ª janela cola o link e clica «Join by link».
+/// `PH2D_BOARD_INTERNET=local` ensaia sem sair para a rede pública.
+pub(super) fn scene_internet(hero: &mut HeroScreen) -> Lessons {
+    let mut set = BoardSet::default();
+    let id = set.create(tr("board.smoke.net.board"));
+    let l = build_with(set.get_mut(id).expect("acabou de nascer"), "board.smoke.net");
+    document_tabs::load(hero, set);
+    hero.documents.activate(Some(id));
+    board_nav::show_box(hero, false, false, l.view);
+    live_board::toggle(hero);
+    hero.documents.ask_live(LiveRequest::Host);
+    hero.documents.ask_live(LiveRequest::InviteInternet);
     l
 }
 

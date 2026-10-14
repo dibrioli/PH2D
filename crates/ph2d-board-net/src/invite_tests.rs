@@ -29,6 +29,20 @@ fn colado_partido_em_linhas_ainda_e_o_convite() {
 }
 
 #[test]
+fn o_esquema_em_maiusculas_serve_mas_a_chave_nao_muda() {
+    let link = sample().link().replacen("ph2d-board", "PH2D-BOARD", 1);
+    assert_eq!(Invite::parse(&link), Ok(sample()));
+    let link = sample().link();
+    let (head, key) = link.split_once('#').unwrap();
+    let upper_key = format!("{head}#{}", key.to_ascii_uppercase());
+    assert_ne!(
+        Invite::parse(&upper_key).map(|i| i.key),
+        Ok(sample().key),
+        "a chave distingue maiúsculas"
+    );
+}
+
+#[test]
 fn sem_enderecos_e_valido() {
     let inv = Invite {
         key: InviteKey::random(),

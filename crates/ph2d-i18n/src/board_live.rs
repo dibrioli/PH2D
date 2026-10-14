@@ -19,6 +19,23 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.live.address" => "Address (optional)",
         "board.live.join" => "Join",
         "board.live.join_tip" => "Join the board with this code",
+        // ADR-0187 — pela internet.
+        "board.live.invite_net" => "Invite over the internet",
+        "board.live.invite_net_tip" => {
+            "Make a link that people in other houses can use to join. It is copied for you to send"
+        }
+        "board.live.invite_net_busy" => "Preparing the internet link…",
+        "board.live.invite_net_ready" => "Link copied. Send it to whoever will join",
+        "board.live.invite_net_again" => "Copy the link again",
+        "board.live.invite_net_copied" => "Internet link copied",
+        "board.live.invite_net_failed" => "Couldn't open to the internet: {error}",
+        "board.live.link_hint" => "Got a link? Paste it in the code field",
+        "board.live.join_link" => "Join by link",
+        "board.live.join_link_tip" => "Join with the link you pasted in the code field",
+        "board.live.link_bad" => "That isn't a PH2D board link",
+        "board.live.link_unreachable" => {
+            "Couldn't reach the board of that link. Is the other person still hosting it?"
+        }
         "board.live.code_short" => "The code has 6 letters and numbers",
         "board.live.connecting" => "Connecting…",
         "board.live.cancel" => "Cancel",
@@ -101,6 +118,29 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "board.smoke.live.l6" => {
             "6. Bring everyone here: all views jump to yours. End session: the others keep a copy."
+        }
+        // ── a cena 22 (PH2D_BOARD_SMOKE=22, ADR-0187): pela internet ──
+        "board.smoke.net.title" => {
+            "Live over the internet: invite someone in another house with a link"
+        }
+        "board.smoke.net.board" => "Retro online",
+        "board.smoke.net.l1" => {
+            "1. This board is open and the Live panel already made the internet link: it is copied."
+        }
+        "board.smoke.net.l2" => {
+            "2. Send that link (chat or e-mail). It is the key of this room: whoever has it can join."
+        }
+        "board.smoke.net.l3" => {
+            "3. In the other PH2D: press Live, paste the link in the code field, click Join by link."
+        }
+        "board.smoke.net.l4" => {
+            "4. It can take up to 30 seconds: the two houses find each other, then the board arrives."
+        }
+        "board.smoke.net.l5" => {
+            "5. Draw together just like at home: notes, shapes, arrows, following, bringing everyone."
+        }
+        "board.smoke.net.l6" => {
+            "6. End session closes it for all. The next invitation makes a new link; this one stops."
         }
         _ => return None,
     })

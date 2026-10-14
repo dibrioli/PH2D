@@ -3,7 +3,7 @@
 
 use super::super::super::super::HeroScreen;
 use super::{Hit, LiveButton, ensure_fields, node, register, show_code};
-use crate::documents::live::LiveRole;
+use crate::documents::live::{LiveInternet, LiveRole};
 use crate::icons::IconId;
 use crate::paint::{
     fill_circle, fill_rounded_rect, paint_text_centered, paint_text_elided, resolve,
@@ -292,6 +292,33 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
         }
         v
     };
+    // ADR-0187 — a entrada pela internet do anfitrião.
+    let internet = || -> Vec<Row> {
+        match &lv.internet {
+            LiveInternet::Off => vec![button(
+                LiveButton::InviteInternet,
+                "board.live.invite_net",
+                false,
+            )],
+            LiveInternet::Preparing => vec![text(
+                "board.live.invite_net_busy",
+                TypeToken::Xs,
+                ColorToken::Text2,
+            )],
+            LiveInternet::Ready { .. } => vec![
+                text("board.live.invite_net_ready", TypeToken::Xs, ColorToken::Text2),
+                button(
+                    LiveButton::InviteInternet,
+                    "board.live.invite_net_again",
+                    false,
+                ),
+            ],
+            LiveInternet::Failed(why) => vec![
+                Row::Text(why.clone(), TypeToken::Xs, ColorToken::Text2),
+                button(LiveButton::InviteInternet, "board.live.invite_net", false),
+            ],
+        }
+    };
     let mut out = Vec::new();
     match &lv.role {
         LiveRole::Off => {
@@ -318,6 +345,12 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
             }
             out.extend(FIELDS.iter().map(|(k, id)| Row::Field(k, *id)));
             out.push(button(LiveButton::Join, "board.live.join", true));
+            out.push(text(
+                "board.live.link_hint",
+                TypeToken::Xs,
+                ColorToken::Text3,
+            ));
+            out.push(button(LiveButton::JoinLink, "board.live.join_link", false));
         }
         LiveRole::Joining => {
             out.push(text(
@@ -333,6 +366,7 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
             for a in addrs {
                 out.push(Row::Text(a.clone(), TypeToken::Xs, ColorToken::Text3));
             }
+            out.extend(internet());
             out.extend(firewall());
             out.extend(people());
             out.push(button(LiveButton::Summon, "board.live.summon", false));

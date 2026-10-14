@@ -11,12 +11,13 @@ use std::sync::mpsc;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
+use ph2d_board_internet::{DhtMode, InternetConfig, InternetHost};
 use ph2d_board_model::BoardId;
 use ph2d_board_net as net;
 use ph2d_board_net::firewall::Change;
 use ph2d_board_sync::{self as sync, Event, Msg, Presence};
 use ph2d_editor_core::documents::live::{
-    LiveFac, LiveFound, LiveOther, LivePeer, LiveRequest, LiveRole,
+    LiveFac, LiveFound, LiveInternet, LiveOther, LivePeer, LiveRequest, LiveRole,
 };
 use ph2d_editor_core::screens::HeroScreen;
 use ph2d_editor_core::screens::hero::document_tabs;
@@ -31,6 +32,27 @@ const RECONNECT_EVERY: Duration = Duration::from_secs(2);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(4);
 /// A procura na rede pára sozinha se o painel deixar de a pedir.
 const DISCOVER_FOR: Duration = Duration::from_secs(10);
+/// ADR-0187 — o prazo de uma tentativa pelo link: o ponto de encontro (a DHT) leva segundos a dar os
+/// endereços, e o anfitrião fura a cada volta dele (2 s).
+const LINK_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Por onde o convidado entra (e volta a entrar se cair).
+#[derive(Clone)]
+enum Route {
+    /// A rede local: o endereço e o código curto.
+    Lan { addr: SocketAddr, code: String },
+    /// ADR-0187 — a internet: o convite (candidatos + chave); `local` = só esta máquina (testes).
+    Link { invite: net::Invite, local: bool },
+}
+
+/// ADR-0187 — a entrada pela internet do anfitrião.
+#[derive(Default)]
+enum Internet {
+    #[default]
+    Off,
+    Preparing(mpsc::Receiver<std::io::Result<InternetHost>>),
+    On(InternetHost),
+}
 
 enum Live {
     Host {
@@ -42,8 +64,7 @@ enum Live {
         net: Option<net::Guest>,
         s: sync::Guest,
         board: Option<BoardId>,
-        addr: SocketAddr,
-        code: String,
+        route: Route,
         /// Uma tentativa de ligar a decorrer (numa thread) e o seu resultado.
         dialing: Option<mpsc::Receiver<Result<net::Guest, net::JoinError>>>,
         /// Desde quando está caída (`None` = ligada, ou a 1.ª entrada).
@@ -64,6 +85,9 @@ struct State {
     live: Option<Live>,
     discovery: Option<(net::Discovery, Instant)>,
     fw: firewall::Fw,
+    internet: Internet,
+    /// Os testes: a entrada pela internet sem STUN nem DHT (só os endereços desta máquina).
+    internet_local: bool,
 }
 
 thread_local! {
@@ -99,10 +123,89 @@ pub fn service(hero: &mut HeroScreen) {
             Some(g @ Live::Guest { .. }) => st.live = guest_tick(hero, g, now),
             None => {}
         }
+        internet_tick(st, hero);
         if st.live.is_none() && hero.documents.live_view().role != LiveRole::Off {
             stop(hero);
         }
     });
+}
+
+/// ADR-0187 — a configuração da internet: a sério, ou só esta máquina (os testes, e
+/// `PH2D_BOARD_INTERNET=local` para ensaiar sem rede).
+fn internet_config(local: bool) -> InternetConfig {
+    let local = local || std::env::var("PH2D_BOARD_INTERNET").is_ok_and(|v| v.trim() == "local");
+    if local {
+        InternetConfig {
+            stun: vec![],
+            dht: DhtMode::Off,
+            v6: false,
+            port: 0,
+            via: None,
+        }
+    } else {
+        InternetConfig::public()
+    }
+}
+
+/// ADR-0187 — «Invite over the internet»: prepara numa thread (DNS, STUN); já aberta, copia outra vez.
+fn invite_internet(st: &mut State, hero: &mut HeroScreen) {
+    if !matches!(st.live, Some(Live::Host { .. })) {
+        return;
+    }
+    match &st.internet {
+        Internet::On(ih) => {
+            hero.store.set_clipboard_copy(ih.link());
+            hero.documents
+                .tell(tr("board.live.invite_net_copied").to_owned());
+        }
+        Internet::Preparing(_) => {}
+        Internet::Off => {
+            let (tx, rx) = mpsc::channel();
+            let local = st.internet_local;
+            std::thread::spawn(move || {
+                let _ = tx.send(InternetHost::prepare(&internet_config(local)));
+            });
+            st.internet = Internet::Preparing(rx);
+            hero.documents.live_view_mut().internet = LiveInternet::Preparing;
+        }
+    }
+}
+
+/// ADR-0187 — a preparação acabou: a entrada abre no anfitrião e o link vai para a área de
+/// transferência. Sem sala de anfitrião, a entrada fecha.
+fn internet_tick(st: &mut State, hero: &mut HeroScreen) {
+    let Some(Live::Host { net, .. }) = &mut st.live else {
+        st.internet = Internet::Off;
+        return;
+    };
+    let Internet::Preparing(rx) = &st.internet else {
+        return;
+    };
+    let got = match rx.try_recv() {
+        Ok(r) => r,
+        Err(mpsc::TryRecvError::Empty) => return,
+        Err(mpsc::TryRecvError::Disconnected) => Err(std::io::ErrorKind::BrokenPipe.into()),
+    };
+    match got {
+        Ok(ih) => {
+            ih.attach(net);
+            let link = ih.link();
+            hero.store.set_clipboard_copy(link.clone());
+            hero.documents.live_view_mut().internet = LiveInternet::Ready { link };
+            hero.documents
+                .tell(tr("board.live.invite_net_ready").to_owned());
+            st.internet = Internet::On(ih);
+        }
+        Err(e) => {
+            let why = tr_with(
+                "board.live.invite_net_failed",
+                &[("error", &e.to_string())],
+            );
+            hero.documents.live_view_mut().internet = LiveInternet::Failed(why.clone());
+            hero.documents.tell(why);
+            st.internet = Internet::Off;
+        }
+    }
 }
 
 fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
@@ -170,19 +273,21 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
                 hero.documents.tell(tr("board.live.unreachable").to_owned());
                 return;
             };
-            let me = hero.documents.author().to_owned();
-            st.live = Some(Live::Guest {
-                net: None,
-                s: sync::Guest::new(random(), me, random(), random()),
-                board: None,
-                dialing: Some(dial(addr, &code)),
-                addr,
-                code,
-                lost: None,
-                last_try: Some(Instant::now()),
-            });
-            hero.documents.live_view_mut().role = LiveRole::Joining;
+            join_by(st, hero, Route::Lan { addr, code });
         }
+        LiveRequest::JoinLink { link } => {
+            if st.live.is_some() {
+                return;
+            }
+            match net::Invite::parse(&link) {
+                Ok(invite) => {
+                    let local = st.internet_local;
+                    join_by(st, hero, Route::Link { invite, local });
+                }
+                Err(_) => hero.documents.tell(tr("board.live.link_bad").to_owned()),
+            }
+        }
+        LiveRequest::InviteInternet => invite_internet(st, hero),
         LiveRequest::FirewallAllow => st.fw.request(hero, Change::Allow),
         LiveRequest::FirewallRemove => st.fw.request(hero, Change::Remove),
         LiveRequest::Discover => {
@@ -258,12 +363,38 @@ pub fn shutdown(hero: &mut HeroScreen) {
     });
 }
 
+fn join_by(st: &mut State, hero: &mut HeroScreen, route: Route) {
+    let me = hero.documents.author().to_owned();
+    st.live = Some(Live::Guest {
+        net: None,
+        s: sync::Guest::new(random(), me, random(), random()),
+        board: None,
+        dialing: Some(dial(&route)),
+        route,
+        lost: None,
+        last_try: Some(Instant::now()),
+    });
+    hero.documents.live_view_mut().role = LiveRole::Joining;
+}
+
 /// Liga numa thread à parte: o ecrã nunca espera pela rede.
-fn dial(addr: SocketAddr, code: &str) -> mpsc::Receiver<Result<net::Guest, net::JoinError>> {
+fn dial(route: &Route) -> mpsc::Receiver<Result<net::Guest, net::JoinError>> {
     let (tx, rx) = mpsc::channel();
-    let code = code.to_owned();
+    let route = route.clone();
     std::thread::spawn(move || {
-        let _ = tx.send(net::Guest::connect(addr, &code, CONNECT_TIMEOUT, waker()));
+        let r = match route {
+            Route::Lan { addr, code } => {
+                net::Guest::connect(addr, &code, CONNECT_TIMEOUT, waker())
+            }
+            Route::Link { invite, local } => ph2d_board_internet::join(
+                &invite,
+                &internet_config(local),
+                LINK_TIMEOUT,
+                net::Liveness::default(),
+                waker(),
+            ),
+        };
+        let _ = tx.send(r);
     });
     rx
 }
@@ -386,8 +517,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
         mut net,
         mut s,
         mut board,
-        addr,
-        code,
+        route,
         mut dialing,
         mut lost,
         mut last_try,
@@ -409,7 +539,15 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
                 }
             }
             Err(e) if board.is_none() => {
-                hero.documents.tell(join_error(&e));
+                let link_lost = matches!(
+                    (&route, &e),
+                    (Route::Link { .. }, net::JoinError::Unreachable(_))
+                );
+                hero.documents.tell(if link_lost {
+                    tr("board.live.link_unreachable").to_owned()
+                } else {
+                    join_error(&e)
+                });
                 return None;
             }
             // Acaba já, com a cópia (antes gastava o minuto e os códigos velhos travavam a sala nova).
@@ -482,7 +620,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
             return None;
         }
         if last_try.is_none_or(|l| l.elapsed() >= RECONNECT_EVERY) {
-            dialing = Some(dial(addr, &code));
+            dialing = Some(dial(&route));
             last_try = Some(Instant::now());
         }
     }
@@ -524,8 +662,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
         net,
         s,
         board,
-        addr,
-        code,
+        route,
         dialing,
         lost,
         last_try,
@@ -651,6 +788,7 @@ fn stop(hero: &mut HeroScreen) {
     v.peers.clear();
     v.others.clear();
     v.fac = LiveFac::default();
+    v.internet = LiveInternet::Off;
     v.following = None;
     if let Some(b) = board.and_then(|id| hero.documents.board_mut(id)) {
         b.set_session(None);
@@ -676,6 +814,12 @@ pub(crate) fn fake_firewall_for_tests(
 #[doc(hidden)]
 pub fn reset_for_tests() {
     STATE.with_borrow_mut(|st| *st = State::default());
+}
+
+/// ADR-0187 — nesta thread, a internet é só esta máquina (sem STUN nem DHT: os testes não saem
+/// para a rede pública).
+pub fn internet_local_for_tests() {
+    STATE.with_borrow_mut(|st| st.internet_local = true);
 }
 
 #[cfg(test)]

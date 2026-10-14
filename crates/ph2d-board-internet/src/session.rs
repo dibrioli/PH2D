@@ -91,18 +91,28 @@ pub struct InternetHost {
 }
 
 impl InternetHost {
-    /// Abre a entrada pela internet em `host`. BLOQUEIA o STUN (até 2 s): chame-a fora da UI.
+    /// [`InternetHost::prepare`] e [`InternetHost::attach`] de uma vez.
     ///
     /// # Errors
     /// O socket UDP não abriu.
     pub fn open(host: &mut Host, cfg: &InternetConfig) -> io::Result<Self> {
+        let ih = Self::prepare(cfg)?;
+        ih.attach(host);
+        Ok(ih)
+    }
+
+    /// O nó, o STUN, o convite e a vigia do ponto de encontro. BLOQUEIA o STUN (até 2 s): numa
+    /// thread, fora da UI. Quem chegar antes do [`InternetHost::attach`] é recusado e volta a tentar.
+    ///
+    /// # Errors
+    /// O socket UDP não abriu.
+    pub fn prepare(cfg: &InternetConfig) -> io::Result<Self> {
         let node = cfg.node()?;
         let seen = node.stun(&cfg.stun, STUN_WAIT);
         let invite = Invite {
             key: InviteKey::random(),
             addrs: candidates(&node, &seen),
         };
-        host.open_door(node.door(), invite.key.clone());
         let stop = Arc::new(AtomicBool::new(false));
         let rv = Rendezvous::new(&cfg.dht, &invite.key).ok().flatten();
         let dht = rv.is_some();
@@ -118,6 +128,11 @@ impl InternetHost {
             stop,
             watcher,
         })
+    }
+
+    /// Abre a entrada no `host` (instantâneo): quem tiver o link entra.
+    pub fn attach(&self, host: &mut Host) {
+        host.open_door(self.node.door(), self.invite.key.clone());
     }
 
     /// O link a mandar a quem entra.

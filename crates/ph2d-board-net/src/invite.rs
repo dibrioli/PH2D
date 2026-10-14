@@ -96,8 +96,11 @@ impl Invite {
     /// Ver [`InviteError`].
     pub fn parse(text: &str) -> Result<Self, InviteError> {
         let text: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+        // O esquema não distingue maiúsculas (um link escrito à mão); a chave sim.
         let rest = text
-            .strip_prefix(SCHEME)
+            .get(..SCHEME.len())
+            .filter(|p| p.eq_ignore_ascii_case(SCHEME))
+            .and_then(|_| text.get(SCHEME.len()..))
             .ok_or(InviteError::NotALink)?;
         let (path, key) = rest.split_once('#').ok_or(InviteError::NotALink)?;
         let (version, addrs) = path.split_once('/').unwrap_or((path, ""));

@@ -5062,6 +5062,7 @@ dependencies = [
  "ph2d-board-excalidraw",
  "ph2d-board-export",
  "ph2d-board-geom",
+ "ph2d-board-internet",
  "ph2d-board-model",
  "ph2d-board-net",
  "ph2d-board-render",

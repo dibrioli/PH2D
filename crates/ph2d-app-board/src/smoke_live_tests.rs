@@ -363,3 +363,80 @@ fn fotos_dos_estados_da_cena_12() {
     to_bia.send(()).unwrap();
     bia.join().unwrap();
 }
+
+/// ⭐ A cena 22 (ADR-0187) ARMA o convite pela internet: a sala aberta, o link COPIADO (o que o
+/// painel mostra é o mesmo), e a 2.ª janela cola-o e recebe a «Retro online» pelo fio da internet
+/// (QUIC sobre UDP, sem STUN nem DHT: só os endereços desta máquina, que vão no link).
+#[test]
+fn the_internet_scene_copies_a_link_and_a_second_window_joins_by_it() {
+    use crate::live::internet_local_for_tests;
+    use ph2d_editor_core::documents::live::LiveInternet;
+    reset_for_tests();
+    internet_local_for_tests();
+    fake_firewall_for_tests(Probe::default(), vec![]);
+    let mut host = hero("Ana");
+    let l = scene_internet(&mut host);
+    assert!(
+        until(&mut host, 10, |h| matches!(
+            h.documents.live_view().internet,
+            LiveInternet::Ready { .. }
+        )),
+        "o link não ficou pronto: {:?}",
+        host.documents.live_view().internet
+    );
+    let link = host.store.take_clipboard_copy().expect("o link foi copiado");
+    assert!(link.starts_with(ph2d_board_net::SCHEME), "{link}");
+    assert_eq!(
+        ph2d_editor_core::screens::hero::board_nav::team::live_board::LINK_SCHEME,
+        ph2d_board_net::SCHEME,
+        "o ecrã reconhece o link pelo mesmo começo"
+    );
+    assert_eq!(
+        host.documents.live_view().internet,
+        LiveInternet::Ready { link: link.clone() }
+    );
+    assert!(matches!(
+        host.documents.live_view().role,
+        LiveRole::Hosting { .. }
+    ));
+    assert_eq!(host.documents.active(), Some(l.board));
+    let n = count(&mut host);
+
+    let (to_host, from_guest) = mpsc::channel();
+    let (to_guest, from_host) = mpsc::channel::<()>();
+    let guest = std::thread::spawn(move || {
+        reset_for_tests();
+        internet_local_for_tests();
+        let mut g = hero("Bia");
+        g.documents.ask_live(LiveRequest::JoinLink { link });
+        let got = until(&mut g, 20, |g| count(g) == n);
+        let _ = to_host.send((got, g.documents.live_view().role.clone()));
+        // Fica na sala até o anfitrião a ver.
+        until(&mut g, 10, |_| from_host.try_recv().is_ok());
+    });
+    let mut seen = None;
+    while seen.is_none() && !guest.is_finished() {
+        service(&mut host);
+        seen = from_guest.try_recv().ok();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let (got, role) = seen.expect("a 2.ª janela parou sem responder");
+    assert!(got, "a 2.ª janela não recebeu a «Retro online»: {role:?}");
+    assert!(matches!(role, LiveRole::Guest { .. }), "{role:?}");
+    let both = until(&mut host, 5, |h| h.documents.live_view().peers.len() == 2);
+    let _ = to_guest.send(());
+    guest.join().unwrap();
+    assert!(both, "o anfitrião não vê a Bia");
+}
+
+#[test]
+fn a_link_that_is_not_ours_is_refused_with_its_sentence() {
+    reset_for_tests();
+    let mut g = hero("Bia");
+    g.documents.ask_live(LiveRequest::JoinLink {
+        link: "ph2d-board://v9/#AAAA".into(),
+    });
+    service(&mut g);
+    assert_eq!(g.documents.live_view().role, LiveRole::Off);
+    assert_eq!(g.documents.told(), Some(tr("board.live.link_bad").as_str()));
+}

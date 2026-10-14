@@ -15,6 +15,8 @@ mod candidates;
 mod driver;
 mod node;
 mod pipe;
+mod rendezvous;
+mod session;
 mod stun;
 mod tls;
 
@@ -25,4 +27,6 @@ mod test_net;
 
 pub use candidates::{Mapping, STUN_SERVERS, candidates, mapping, resolve};
 pub use driver::CLOSE_GRACE;
-pub use node::{Dialer, Node, NodeConfig, Reflexive, decode_via, encode_via};
+pub use node::{DialAdder, Dialer, Node, NodeConfig, Reflexive, decode_via, encode_via};
+pub use rendezvous::{DhtMode, Rendezvous, Role};
+pub use session::{InternetConfig, InternetHost, PUNCH_FOR, join};

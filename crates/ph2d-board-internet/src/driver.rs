@@ -262,6 +262,9 @@ impl Driver {
                 return;
             };
             (src, BytesMut::from(p))
+        } else if self.net.via.is_some() {
+            // Atrás do NAT simulado nada chega por fora dele.
+            return;
         } else {
             (from, data)
         };

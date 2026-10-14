@@ -83,6 +83,11 @@ pub fn candidates(node: &Node, seen: &[Reflexive]) -> Vec<SocketAddr> {
             .collect()
     });
     let mut out = Vec::new();
+    if node.simulated() {
+        out.extend(seen.iter().map(|r| r.mapped));
+        out.dedup();
+        return out;
+    }
     for a in v6
         .into_iter()
         .chain(seen.iter().map(|r| r.mapped))

@@ -2332,6 +2332,8 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e139bc46ca777eb5efaf62df0ab8cc5fd400866427e56c68b22e414e53bd3be"
 dependencies = [
+ "futures-core",
+ "futures-sink",
  "spin 0.9.9",
 ]
 
@@ -3861,6 +3863,7 @@ dependencies = [
  "dyn-clone",
  "ed25519-dalek",
  "flume",
+ "futures-lite",
  "getrandom 0.4.3",
  "lru",
  "serde",
@@ -5800,6 +5803,7 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chacha20poly1305",
+ "futures-lite",
  "hkdf",
  "if-addrs",
  "mainline",

@@ -62,6 +62,7 @@ pub(crate) struct Inner {
     tx: Sender<Msg>,
     v4: SocketAddr,
     v6: Option<SocketAddr>,
+    via: bool,
     next_dial: AtomicU64,
     threads: Mutex<Vec<JoinHandle<()>>>,
 }
@@ -149,6 +150,7 @@ impl Node {
                 tx,
                 v4,
                 v6,
+                via: cfg.via.is_some(),
                 next_dial: AtomicU64::new(1),
                 threads: Mutex::new(threads),
             }
@@ -160,6 +162,12 @@ impl Node {
     #[must_use]
     pub fn port(&self) -> u16 {
         self.inner.v4.port()
+    }
+
+    /// Atrás do NAT simulado dos testes (os endereços das interfaces não contam).
+    #[must_use]
+    pub(crate) fn simulated(&self) -> bool {
+        self.inner.via
     }
 
     /// A porta IPv6 local, se o IPv6 abriu.
@@ -242,14 +250,30 @@ impl Node {
     }
 }
 
-impl Dialer {
-    /// Mais endereços para a mesma tentativa (o ponto de encontro trouxe-os depois).
+/// Junta endereços a uma tentativa em curso, de outra thread (o ponto de encontro trouxe-os depois).
+#[derive(Clone)]
+pub struct DialAdder {
+    node: Arc<Inner>,
+    id: u64,
+}
+
+impl DialAdder {
     pub fn add(&self, addrs: &[SocketAddr]) {
         self.node.send(Msg::Dial {
             id: self.id,
             addrs: addrs.to_vec(),
             reply: None,
         });
+    }
+}
+
+impl Dialer {
+    #[must_use]
+    pub fn adder(&self) -> DialAdder {
+        DialAdder {
+            node: Arc::clone(&self.node),
+            id: self.id,
+        }
     }
 
     /// Espera o primeiro fio.

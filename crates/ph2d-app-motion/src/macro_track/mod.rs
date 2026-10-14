@@ -15,10 +15,10 @@ pub mod passo;
 mod passo_grafo;
 pub mod tocar;
 
-#[cfg(all(test, feature = "panel-motion-graph"))]
-pub(crate) mod gate_tests;
 #[cfg(test)]
 mod alvo_tests;
+#[cfg(all(test, feature = "panel-motion-graph"))]
+pub(crate) mod gate_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 mod painel_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]

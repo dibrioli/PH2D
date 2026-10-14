@@ -19,9 +19,12 @@ const LARGURA: u32 = 2560;
 const ALTURA: u32 = 1536;
 const TEXEL_M: f64 = 0.004;
 
-/// Os despachos do miolo por quadro com a base no grupo — MEDIDO 247 (sem ela 605); o teto é o medido
-/// + 5 %.
+/// Os despachos do miolo por quadro com a base no grupo, uma relaxação por despacho — MEDIDO 247 (sem
+/// ela 605); o teto é o medido + 5 %.
 const TETO_DESPACHOS: usize = 260;
+/// ⭐ W5q — com o bloco também (`Miolo::bloco` = 4 nos níveis pequenos) — MEDIDO 157 (sem ele 247); o
+/// teto é o medido + 5 %.
+const TETO_DESPACHOS_DO_BLOCO: usize = 165;
 /// O `c3_miolo` com a base ÷ sem ela, no mesmo processo — MEDIDO ×0,68–×0,69; o teto deixa folga para
 /// o ruído do relógio (o controlo, a razão 1 do custo antigo, reprova).
 const TETO_RAZAO: f64 = 0.8;
@@ -47,7 +50,8 @@ fn cena() -> CenaDeLuz {
     }
 }
 
-fn solver(gpu: &ph2d_gpu::GpuContext, base: bool, so_a_c0: bool) -> Solver {
+/// `bloco` = o `Miolo::bloco` (1 = uma relaxação por despacho: a lei da base isolada).
+fn solver(gpu: &ph2d_gpu::GpuContext, base: bool, so_a_c0: bool, bloco: u32) -> Solver {
     let g = Grade {
         origem_m: [0.0, 0.0],
         texel_m: TEXEL_M,
@@ -58,6 +62,7 @@ fn solver(gpu: &ph2d_gpu::GpuContext, base: bool, so_a_c0: bool) -> Solver {
         holografica: Some(HOLOGRAFICA_PADRAO),
         miolo: Some(Miolo {
             base_no_grupo: base,
+            bloco,
             ..MIOLO_PADRAO
         }),
         so_a_c0,
@@ -75,7 +80,8 @@ fn tem_relogio(gpu: &ph2d_gpu::GpuContext) -> bool {
 }
 
 /// ⭐⭐ **GATE — o miolo grava poucos despachos**: com a base no grupo (`c3_miolo_base.wgsl`) ≤
-/// [`TETO_DESPACHOS`]; o controlo (um despacho por relaxação, a W5n) passa dele.
+/// [`TETO_DESPACHOS`]; o controlo (um despacho por relaxação, a W5n) passa dele. ⭐ W5q: e com o bloco ≤
+/// [`TETO_DESPACHOS_DO_BLOCO`], o controlo (sem ele) acima.
 #[test]
 fn a_base_do_miolo_corta_os_despachos() {
     let Some(gpu) = gpu() else { return };
@@ -84,15 +90,24 @@ fn a_base_do_miolo_corta_os_despachos() {
         return;
     }
     let c = cena();
-    let despachos = |base: bool| {
-        let mut s = solver(&gpu, base, false);
+    let despachos = |base: bool, bloco: u32| {
+        let mut s = solver(&gpu, base, false, bloco);
         assert!(s.medir_fases_do_miolo(&gpu));
         s.quadro(&gpu, &c);
         let f = s.fases_do_miolo(&gpu).expect("fases");
         f.iter().map(|(_, _, n)| n).sum::<usize>()
     };
-    let (com, sem) = (despachos(true), despachos(false));
-    eprintln!("despachos do miolo: com a base {com} · sem ela {sem}");
+    let (com, sem) = (despachos(true, 1), despachos(false, 1));
+    let bloco = despachos(true, MIOLO_PADRAO.bloco);
+    eprintln!("despachos do miolo: com a base {com} · sem ela {sem} · com a base e o bloco {bloco}");
+    assert!(
+        com > TETO_DESPACHOS_DO_BLOCO,
+        "controlo: sem o bloco o miolo grava {com} despachos — o teto do bloco não o separa"
+    );
+    assert!(
+        bloco <= TETO_DESPACHOS_DO_BLOCO,
+        "com o bloco o miolo grava {bloco} despachos por quadro (teto {TETO_DESPACHOS_DO_BLOCO})"
+    );
     assert!(
         sem > TETO_DESPACHOS,
         "controlo: sem a base o miolo grava {sem} despachos — o teto não o separa"
@@ -116,11 +131,11 @@ fn o_custo_do_miolo_desce_com_a_base() {
     let c = cena();
     // [com a base, sem ela, sem ela (o controlo), entorno com a flag, entorno sem ela].
     let mut s = [
-        solver(&gpu, true, false),
-        solver(&gpu, false, false),
-        solver(&gpu, false, false),
-        solver(&gpu, true, true),
-        solver(&gpu, true, false),
+        solver(&gpu, true, false, 1),
+        solver(&gpu, false, false, 1),
+        solver(&gpu, false, false, 1),
+        solver(&gpu, true, true, 1),
+        solver(&gpu, true, false, 1),
     ];
     let medir = |t: &ph2d_light2d_gpu::TemposMs, k: usize| {
         if k >= 3 {

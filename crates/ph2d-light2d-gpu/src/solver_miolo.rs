@@ -20,6 +20,9 @@ struct UniformeNivel {
     moldura: f32,
     /// ⭐ W5q: 1 = o `puxa` do nível 1 lê um ladrilho apagado como fora ([`crate::ladrilhos`]).
     ladrilhos: f32,
+    /// ⭐ W5q: as relaxações por despacho do bloco neste nível (a solução, o erro; 0 = sem bloco).
+    blocos: [u32; 2],
+    _q: [u32; 2],
 }
 
 /// ⭐ W5o — o instrumento das fases (ficheiro irmão pelo tecto de 700 LOC).
@@ -57,6 +60,13 @@ struct UniformeBase {
 /// ⭐ W5o — a memória de grupo por texel da base: 13 `f32` (o conhecido, os dois lados, o defeito).
 const BYTES_POR_TEXEL_DA_BASE: u32 = 52;
 
+/// ⭐ W5q — o bloco (K relaxações por despacho, a borda repetida) só nos níveis de até tantos texels: nos
+/// grandes a borda custa mais que o despacho poupado. Medido (`medida_luz2d_w5q_bloco`, 1080p, RTX
+/// 5060 Ti, K = 4, o miolo mín ms, Low cena 5 · High cena 5 · caixa Low; o nível 3 tem 57 408 texels,
+/// o 4 14 352): sem bloco 0,827 · 0,809 · 0,934; desde o 1 0,921 · 0,898 · 1,038; desde o 3 0,792 ·
+/// 0,774 · 0,910; **desde o 4 0,784 · 0,764 · 0,896**; desde o 5 0,795 · 0,784 · 0,906.
+const BLOCO_ATE_TEXELS: u32 = 16_384;
+
 /// Uma caixa `[inicio, fim)` num nível.
 type Caixa = ([u32; 2], [u32; 2]);
 
@@ -75,13 +85,16 @@ enum Tipo {
     ErroRelaxa,
     ErroSobe,
     Soma,
+    // ⭐ W5q: K relaxações num despacho (o bloco 16×16).
+    RelaxaBloco,
+    ErroBloco,
     // ⭐ W5o: a base num despacho (`c3_miolo_base.wgsl`).
     Base,
     ErroBase,
 }
 
 /// As entradas do `c3_miolo.wgsl`, na ordem de [`Tipo`].
-const ENTRADAS: [&str; 12] = [
+const ENTRADAS: [&str; 14] = [
     "miolo_classifica",
     "miolo_puxa",
     "miolo_inicia",
@@ -94,6 +107,8 @@ const ENTRADAS: [&str; 12] = [
     "miolo_erro_relaxa",
     "miolo_erro_sobe",
     "miolo_soma",
+    "miolo_relaxa_bloco",
+    "miolo_erro_relaxa_bloco",
 ];
 
 struct Passo {
@@ -116,6 +131,8 @@ pub(super) struct DoMiolo {
     base: Option<u32>,
     /// Os pares de relaxações da cascata por nível (índice = o nível).
     pares: Vec<u32>,
+    /// ⭐ W5q: as relaxações por despacho do bloco por nível (a solução, o erro; 0 = sem bloco).
+    blocos: Vec<[u32; 2]>,
     /// O tamanho da grade fina e a região dela neste quadro.
     tamanho: [u32; 2],
     regiao: Caixa,
@@ -386,6 +403,17 @@ impl DoMiolo {
         let pares = |l: u32| no_nivel(l).div_ceil(2);
         // ⭐ W5o: com a base, os níveis `[b, topo]` saem dela; os despachos fazem de `b − 1` para baixo.
         let fora = base.map_or(niveis, |b| b - 1);
+        // ⭐ W5q: `n` pares de relaxações em blocos de K (o maior de 4 e 2 até `miolo.bloco` que deixa
+        // os despachos em número par: o resultado fica na `a`) nos níveis de até
+        // [`BLOCO_ATE_TEXELS`] — (tipo, pares de despachos, K).
+        let pequeno = |l: u32| tamanho_em(l)[0] * tamanho_em(l)[1] <= BLOCO_ATE_TEXELS;
+        let em_blocos = |l: u32, n: u32, so: Tipo, bloco: Tipo| {
+            [4, 2]
+                .into_iter()
+                .find(|&k| pequeno(l) && k <= miolo.bloco && n % k == 0)
+                .map_or((so, n, 0), |k| (bloco, n / k, k))
+        };
+        let mut blocos = vec![[0; 2]; niveis as usize + 1];
         match base {
             Some(b) => por(Tipo::Base, b, 1, [k0; 4]),
             None => por(
@@ -400,9 +428,11 @@ impl DoMiolo {
                 por(Tipo::Desce, l, 2, [a(l + 1), k(l), k(l + 1), a(l)]);
             }
             let fase = if l == niveis { 1 } else { 2 };
-            for _ in 0..pares(l) {
-                por(Tipo::Relaxa, l, fase, [a(l), k(l), k(l), b(l)]);
-                por(Tipo::Relaxa, l, fase, [b(l), k(l), k(l), a(l)]);
+            let (tipo, n, kb) = em_blocos(l, pares(l), Tipo::Relaxa, Tipo::RelaxaBloco);
+            blocos[l as usize][0] = kb;
+            for _ in 0..n {
+                por(tipo, l, fase, [a(l), k(l), k(l), b(l)]);
+                por(tipo, l, fase, [b(l), k(l), k(l), a(l)]);
             }
         }
         // ⭐ W5n: os V-ciclos sobre a solução do nível 1 (os níveis acima guardam o ERRO na a/b).
@@ -430,9 +460,11 @@ impl DoMiolo {
                 } else {
                     (miolo.suaviza, 5)
                 };
+                let (tipo, n, kb) = em_blocos(l, n, Tipo::ErroRelaxa, Tipo::ErroBloco);
+                blocos[l as usize][1] = kb;
                 for _ in 0..n {
-                    por(Tipo::ErroRelaxa, l, fase, [a(l), k(l), d(l), b(l)]);
-                    por(Tipo::ErroRelaxa, l, fase, [b(l), k(l), d(l), a(l)]);
+                    por(tipo, l, fase, [a(l), k(l), d(l), b(l)]);
+                    por(tipo, l, fase, [b(l), k(l), d(l), a(l)]);
                 }
             }
             por(Tipo::Soma, 1, 6, [a(2), k(1), k(2), b(1)]);
@@ -451,6 +483,7 @@ impl DoMiolo {
             anel: cfg.anel_fora_da_regiao,
             base,
             pares,
+            blocos,
             tamanho: [gf.largura, gf.altura],
             regiao: ([0; 2], [gf.largura, gf.altura]),
             fases: None,
@@ -563,6 +596,8 @@ impl DoMiolo {
                     suavidade: self.miolo.suavidade.clamp(0.0, 1.0),
                     moldura: f32::from(u8::from(self.parcial())),
                     ladrilhos: f32::from(u8::from(fatia == 2 && self.parcial())),
+                    blocos: self.blocos[l as usize],
+                    _q: [0; 2],
                 };
                 let o = fatia as usize * PASSO_UNIFORME as usize;
                 uni[o..o + size_of::<UniformeNivel>()].copy_from_slice(bytemuck::bytes_of(&u));
@@ -600,9 +635,13 @@ impl DoMiolo {
                 if w == 0 || h == 0 {
                     continue;
                 }
+                let lado = match passo.tipo {
+                    Tipo::RelaxaBloco | Tipo::ErroBloco => 16,
+                    _ => 8,
+                };
                 p.set_pipeline(&self.pipelines[passo.tipo as usize]);
                 p.set_bind_group(0, &passo.grupo, &[]);
-                p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+                p.dispatch_workgroups(w.div_ceil(lado), h.div_ceil(lado), 1);
             }
         }
         if let Some(f) = &self.fases {

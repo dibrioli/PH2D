@@ -224,6 +224,9 @@ pub struct Miolo {
     /// ⭐ W5o — os níveis mais grossos que cabem na memória de grupo resolvem-se num despacho só
     /// (`c3_miolo_base.wgsl`, a mesma conta); `false` = um despacho por relaxação (a W5n).
     pub base_no_grupo: bool,
+    /// ⭐ W5q — até `bloco` relaxações por despacho (4 ou 2, o bloco 16×16 com a borda na memória de
+    /// grupo, a mesma conta ao bit); ≤ 1 = uma por despacho (a W5o).
+    pub bloco: u32,
 }
 
 /// ⭐ W5h — a escolha do dono (11/10: a difusão inteira, até ao centro); as relaxações MEDIDAS na
@@ -236,6 +239,7 @@ pub const MIOLO_PADRAO: Miolo = Miolo {
     ciclos: 3,
     suaviza: 2,
     base_no_grupo: true,
+    bloco: 4,
 };
 
 /// ⭐ W5c — as escolhas da cascata holográfica.

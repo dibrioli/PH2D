@@ -30,6 +30,11 @@ struct Nivel {
     moldura: f32,
     // ⭐ W5q: 1 = o `puxa` do nível 1 lê um ladrilho apagado da fina como fora (o −1 do anel).
     ladrilhos: f32,
+    // ⭐ W5q: as relaxações por despacho do BLOCO neste nível (a solução e o erro; 0 = sem bloco).
+    bloco_relaxa: u32,
+    bloco_erro: u32,
+    _q0: u32,
+    _q1: u32,
 }
 
 @group(0) @binding(0) var<uniform> nv: Nivel;
@@ -146,8 +151,23 @@ fn relaxado(t: vec2<i32>, k: vec4<f32>) -> vec3<f32> {
             m += 1.0;
         }
     }
+    return relaxado_de(k, soma, m);
+}
+
+// ⭐ W5q — a conta de um texel do Jacobi dadas as vizinhas presentes (`soma`, `m`): a ÚNICA, do passe
+// por texel e do bloco.
+fn relaxado_de(k: vec4<f32>, soma: vec3<f32>, m: f32) -> vec3<f32> {
     let livre = select(k.rgb, soma / (m + nv.kh2), m > 0.0);
     return mix(livre, k.rgb, k.a);
+}
+
+// ⭐ W5q — a do erro (o defeito `d`, o erro anterior `e` do texel): a ÚNICA, do passe e do bloco.
+fn erro_relaxado_de(k: vec4<f32>, soma: vec3<f32>, m: f32, d: vec3<f32>, e: vec3<f32>) -> vec3<f32> {
+    var livre = d;
+    if m > 0.0 {
+        livre = (1.0 - k.a) * soma / (m + nv.kh2) + d;
+    }
+    return mix(e, livre, AMORTECE);
 }
 
 @compute @workgroup_size(8, 8)
@@ -356,11 +376,7 @@ fn miolo_erro_relaxa(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let d = textureLoad(conhecido_acima, t, 0).rgb;
     let e = textureLoad(entrada, t, 0).rgb;
-    var livre = d;
-    if m > 0.0 {
-        livre = (1.0 - k.a) * soma / (m + nv.kh2) + d;
-    }
-    textureStore(saida, t, vec4<f32>(mix(e, livre, AMORTECE), 1.0));
+    textureStore(saida, t, vec4<f32>(erro_relaxado_de(k, soma, m, d, e), 1.0));
 }
 
 // O erro de cima pela bilinear: `entrada` = e de cima, `conhecido_acima` = o conhecido de cima.
@@ -398,4 +414,110 @@ fn miolo_soma(@builtin(global_invocation_id) gid: vec3<u32>) {
         e = select(vec3<f32>(0.0), g.rgb, g.a > 0.0);
     }
     textureStore(saida, t, vec4<f32>(u + e, 1.0));
+}
+
+// ⭐ W5q — o BLOCO: `nv.bloco_relaxa` (ou `_erro`) relaxações num despacho. Cada grupo de 256 fios
+// resolve 16×16 texels e lê-os com uma borda de K na memória do grupo (cada varrida encolhe a parte
+// válida um texel); a conta de cada texel é a do passe por texel (`relaxado_de`, `erro_relaxado_de`),
+// as vizinhas na mesma ordem. K ≤ 4: (16 + 8)² texels × 2 lados × 3 `f32` = 13,8 KB (o limite de
+// fábrica do wgpu é 16 KB).
+const BLOCO_T: i32 = 16;
+const BLOCO_N: u32 = 576u;
+var<workgroup> bloco_r: array<f32, 1152>;
+var<workgroup> bloco_g: array<f32, 1152>;
+var<workgroup> bloco_b: array<f32, 1152>;
+
+fn bloco_ler(lado: u32, c: u32) -> vec3<f32> {
+    let i = lado * BLOCO_N + c;
+    return vec3<f32>(bloco_r[i], bloco_g[i], bloco_b[i]);
+}
+
+fn bloco_escrever(lado: u32, c: u32, v: vec3<f32>) {
+    let i = lado * BLOCO_N + c;
+    bloco_r[i] = v.r;
+    bloco_g[i] = v.g;
+    bloco_b[i] = v.b;
+}
+
+// Um texel `l` (no bloco de `lado`, em `g` no nível) na varrida que lê o lado `de`.
+fn bloco_texel(l: vec2<i32>, g: vec2<i32>, lado: i32, de: u32, erro: bool) -> vec3<f32> {
+    let k = textureLoad(conhecido, g, 0);
+    let c = u32(l.y * lado + l.x);
+    if (erro && k.a != 0.0) || (!erro && k.a < 0.0) {
+        return vec3<f32>(0.0);
+    }
+    if !erro && k.a >= 1.0 {
+        return k.rgb;
+    }
+    var soma = vec3<f32>(0.0);
+    var m = 0.0;
+    for (var j = 0; j < 4; j++) {
+        let v = g + VIZ[j];
+        if na_regiao(v) && textureLoad(conhecido, v, 0).a >= 0.0 {
+            let lv = l + VIZ[j];
+            soma += bloco_ler(de, u32(lv.y * lado + lv.x));
+            m += 1.0;
+        }
+    }
+    if erro {
+        let d = textureLoad(conhecido_acima, g, 0).rgb;
+        return erro_relaxado_de(k, soma, m, d, bloco_ler(de, c));
+    }
+    return relaxado_de(k, soma, m);
+}
+
+fn bloco(wg: vec2<u32>, lid: u32, n_k: u32, erro: bool) {
+    let kk = i32(n_k);
+    let lado = BLOCO_T + 2 * kk;
+    let n = u32(lado * lado);
+    let origem = vec2<i32>(wg) * BLOCO_T - kk + vec2<i32>(nv.inicio);
+    for (var c = lid; c < n; c += 256u) {
+        let g = origem + vec2<i32>(i32(c) % lado, i32(c) / lado);
+        var v = vec3<f32>(0.0);
+        if na_regiao(g) {
+            v = textureLoad(entrada, g, 0).rgb;
+        }
+        bloco_escrever(0u, c, v);
+    }
+    workgroupBarrier();
+    for (var s = 1; s <= kk; s++) {
+        let de = u32(s - 1) & 1u;
+        for (var c = lid; c < n; c += 256u) {
+            let l = vec2<i32>(i32(c) % lado, i32(c) / lado);
+            let g = origem + l;
+            if all(l >= vec2<i32>(s)) && all(l < vec2<i32>(lado - s)) && na_regiao(g) {
+                bloco_escrever(1u - de, c, bloco_texel(l, g, lado, de, erro));
+            }
+        }
+        workgroupBarrier();
+    }
+    let fim = n_k & 1u;
+    for (var c = lid; c < u32(BLOCO_T * BLOCO_T); c += 256u) {
+        let l = vec2<i32>(i32(c) % BLOCO_T, i32(c) / BLOCO_T) + kk;
+        let g = origem + l;
+        if !na_regiao(g) {
+            continue;
+        }
+        let k = textureLoad(conhecido, g, 0);
+        // O alfa da saída do passe por texel: 0 onde ele grava zero.
+        let zero = (erro && k.a != 0.0) || (!erro && k.a < 0.0);
+        let v = bloco_ler(fim, u32(l.y * lado + l.x));
+        textureStore(saida, g, select(vec4<f32>(v, 1.0), vec4<f32>(0.0), zero));
+    }
+}
+
+@compute @workgroup_size(256)
+fn miolo_relaxa_bloco(
+    @builtin(workgroup_id) wg: vec3<u32>,
+    @builtin(local_invocation_index) lid: u32,
+) {
+    bloco(wg.xy, lid, nv.bloco_relaxa, false);
+}
+
+@compute @workgroup_size(256)
+fn miolo_erro_relaxa_bloco(
+    @builtin(workgroup_id) wg: vec3<u32>,
+    @builtin(local_invocation_index) lid: u32,
+) {
+    bloco(wg.xy, lid, nv.bloco_erro, true);
 }

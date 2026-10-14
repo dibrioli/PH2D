@@ -130,16 +130,122 @@ pub(super) fn announce() {
          (1) NAO carregue em nada: a cena TOCA sozinha 5 s e PARA, com a Timeline na aba\n    \
          `Keys` (a que abre; a regua dela mexe o relogio que o Motion le). Por baixo dos segundos cresce\n    \
          uma FAIXA VERDE: e' a historia gravada. Aos ~3 s ela deixa de comecar no 0 - o que\n    \
-         ficou para tras foi DOBRADO. Parada, a faixa fica de ~2,7 s a 5 s.\n\
+         ficou para tras foi DOBRADO. Parada, a faixa fica de ~2,3 s a 5 s.\n\
          (2) Arraste a regua para DENTRO da faixa: os cartoes `Input` mostram o numero de sempre.\n    \
          (Na aba `Arrange` a faixa e o relogio sao os MESMOS: sem pistas, as duas abas mexem um so relogio.)\n\
          (3) Arraste a regua para ANTES do inicio da faixa: o cartao de cada `Input` diz\n    \
          `History before X s was folded - showing X s` - o replay mostra o segundo X, nao o\n    \
-         que se publicou ali.\n\
+         que se publicou ali. A faixa FICA (solte a regua e espere: nao some).\n    \
+         (Para ler o cartao: clique num `Input` e carregue F - o grafo aproxima-o.)\n    \
+         (Com `PH2D_MOTION_FITA_SCRUB=<segundo>` o passo (3) e o F fazem-se sozinhos UMA vez,\n    \
+         depois da paragem - so para a foto.)\n\
          \n\
          DEU ERRADO se: a faixa nao aparecer ou comecar no 0 com o tecto pequeno; o relogio\n\
-         nao parar aos 5 s; o cartao ficar calado antes da faixa; ou o aviso aparecer DENTRO dela.\n"
+         nao parar aos 5 s; o cartao ficar calado antes da faixa; o aviso aparecer DENTRO dela;\n\
+         ou a faixa SUMIR depois de arrastar para tras.\n"
     );
+}
+
+/// `PH2D_MOTION_FITA_SCRUB=<segundo>` — a FOTO do passo (3) do roteiro (tutorial 14): a janela
+/// virtual não recebe rato, e o aviso do cartão só aparece com a régua antes da faixa.
+pub(crate) const VAR_DO_SCRUB: &str = "PH2D_MOTION_FITA_SCRUB";
+
+/// O segundo pedido, só na `=139` (`None` em qualquer outra cena ou valor que não é um segundo).
+#[must_use]
+pub(crate) fn segundo_do_ambiente(scrub: Option<&str>, cena: Option<&str>) -> Option<f64> {
+    let s: f64 = scrub?.trim().parse().ok()?;
+    (cena == Some("139") && s.is_finite() && s >= 0.0).then_some(s)
+}
+
+/// ⭐ **O arrasto da régua, à letra**: o evento que `ph2d_panel_timeline` empurra no barramento ao
+/// `ValueChanged(TIMELINE_RULER)` — o shell fá-lo `TimelineIntent::Scrub` no relógio da vista.
+#[must_use]
+pub(crate) fn o_arrasto(segundo: f64) -> ph2d_editor_core::action_bus::EditorAction {
+    ph2d_editor_core::action_bus::EditorAction::TimelinePanelEvent(
+        ph2d_editor_core::tool::PanelEvent::SetValue(
+            ph2d_panel_timeline::ids::TIMELINE_RULER,
+            segundo,
+        ),
+    )
+}
+
+/// O cartão que a foto aproxima: o `Input` da batida (todo `Input` diz o mesmo aviso).
+pub(crate) const CARTAO_DA_FOTO: &str = "batida";
+
+/// Os dois gestos da foto, em quadros seguidos.
+#[derive(Debug, PartialEq)]
+pub(crate) enum Passo {
+    /// O arrasto da régua ([`o_arrasto`]).
+    Arrasta(ph2d_editor_core::action_bus::EditorAction),
+    /// Clicar o cartão [`CARTAO_DA_FOTO`] e carregar `F` (o grafo aproxima-o: o aviso lê-se).
+    Enquadra,
+}
+
+/// Os gestos automáticos: DEPOIS da paragem ([`PARA_EM_S`]), UMA vez cada (depois são do artista).
+pub(crate) struct ScrubAuto {
+    segundo: f64,
+    feitos: u8,
+}
+
+impl ScrubAuto {
+    pub(crate) fn novo(segundo: f64) -> Self {
+        Self { segundo, feitos: 0 }
+    }
+
+    /// O arrasto no primeiro quadro com o relógio PARADO no segundo da paragem; o enquadramento no
+    /// quadro seguinte; e nunca mais.
+    pub(crate) fn passo(&mut self, playhead: &ph2d_core::Playhead) -> Option<Passo> {
+        let passo = match self.feitos {
+            0 if !playhead.is_playing() && playhead.time() >= PARA_EM_S - 1e-9 => {
+                Passo::Arrasta(o_arrasto(self.segundo))
+            }
+            1 => Passo::Enquadra,
+            _ => return None,
+        };
+        self.feitos += 1;
+        Some(passo)
+    }
+}
+
+/// Chamado pela ponte depois de [`crate::motion_demo_legend::encena_a_paragem`]: o arrasto no MESMO
+/// barramento em que a régua o empurra; o clique pelo canal da selecção do painel e o `F` na MESMA
+/// fila em que a tecla o põe.
+pub(crate) fn auto_scrub(
+    hero: &mut ph2d_editor_core::HeroScreen,
+    g: &ph2d_nodegraph::graph::Graph,
+    playhead: &ph2d_core::Playhead,
+) {
+    use std::sync::{Mutex, OnceLock, PoisonError};
+    static SEGUNDO: OnceLock<Option<f64>> = OnceLock::new();
+    static ESTADO: Mutex<Option<ScrubAuto>> = Mutex::new(None);
+    let Some(segundo) = *SEGUNDO.get_or_init(|| {
+        segundo_do_ambiente(
+            std::env::var(VAR_DO_SCRUB).ok().as_deref(),
+            std::env::var("PH2D_GPU_COOK_DEMO").ok().as_deref(),
+        )
+    }) else {
+        return;
+    };
+    let mut estado = ESTADO.lock().unwrap_or_else(PoisonError::into_inner);
+    match estado
+        .get_or_insert_with(|| ScrubAuto::novo(segundo))
+        .passo(playhead)
+    {
+        Some(Passo::Arrasta(arrasto)) => hero.bus.push(arrasto),
+        Some(Passo::Enquadra) => {
+            let cartao = g.nodes().iter().find(|n| {
+                g.node_text_param_overrides(n.id)
+                    .and_then(|t| t.get(ph2d_node_value_input::NAME_KEY))
+                    .is_some_and(|s| s == CARTAO_DA_FOTO)
+            });
+            if let Some(n) = cartao {
+                ph2d_panel_motion_graph::request_graph_selection(vec![n.id.0]);
+                hero.store
+                    .push_graph_key(ph2d_editor_core::interaction::GraphKey::Fit);
+            }
+        }
+        None => {}
+    }
 }
 
 #[cfg(test)]

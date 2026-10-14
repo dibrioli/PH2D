@@ -164,7 +164,7 @@ pub(crate) mod aviso_demo;
 pub(crate) mod cada_forma_demo;
 /// A cena `=139` — a fita das entradas que dobra (doc 132 §2, P2). Ver o cabeçalho dela.
 #[path = "motion_state_fita_demo.rs"]
-mod fita_demo;
+pub(crate) mod fita_demo;
 /// A cena `=140` — imagens e formas num grupo que mistura, na placa (doc 132 §4, P4).
 #[path = "motion_state_imagens_grupo_demo.rs"]
 mod imagens_grupo_demo;

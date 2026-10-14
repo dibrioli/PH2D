@@ -243,6 +243,43 @@ fn with_the_clock_stopped_dragging_forward_replays_the_recorded_inputs() {
     );
 }
 
+/// ⭐ **PARADO, RE-COZER O MESMO TIQUE SEM EDITAR CONTINUA A REPETIR** (tutorial 14, a `=139`): depois
+/// de arrastar para trás, o quadro seguinte no MESMO tique (um re-cozimento: a placa coze todo
+/// quadro, uma edição de outro nó suja a bomba) gravava o publicado de AGORA como um ramo — a fita
+/// esquecia o futuro e a base, a faixa da Timeline sumia e o cartão calava-se ao fim de UM quadro.
+/// Editar é o PUBLICADO mudar; sem isso o tique repete. O CONTROLO é o fim do teste acima: o
+/// publicado muda no mesmo tique e grava o ramo.
+#[test]
+fn parado_um_re_cozimento_sem_edicao_repete_a_fita() {
+    let (g, c) = grafo();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    let visto = toca(&mut pump, &g, c, 0, 40, entrada_da_corrida);
+    let faixa = pump.fita().faixa();
+    pump.define_a_tocar(false);
+    publica(&mut pump, 99.0);
+    let mut antes = scrub(&mut pump, &g, c, 10);
+    assert_eq!(antes, visto[10], "o scrub repete");
+    for quadro in 0..3 {
+        publica(&mut pump, 99.0);
+        pump.mark_dirty_keeping_ring();
+        // Cada re-cozimento parte do estado já avançado (a lei de sempre da bomba) e soma a entrada
+        // da FITA (1), nunca a publicada agora (99).
+        let x = scrub(&mut pump, &g, c, 10);
+        assert_eq!(
+            x - antes,
+            entrada_da_corrida(10),
+            "quadro {quadro}: o re-cozimento repete a fita"
+        );
+        antes = x;
+        assert_eq!(
+            pump.fita().faixa(),
+            faixa,
+            "quadro {quadro}: a fita intacta"
+        );
+    }
+}
+
 /// ⭐ **Derivar duas vezes no MESMO tique dá o MESMO pulso** — as sub-passadas da placa e um
 /// re-cozimento do mesmo tique voltam a derivar; o pulso compara com as contagens de ANTES do tique,
 /// nunca com as que a própria derivação acabou de guardar.

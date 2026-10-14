@@ -13,6 +13,19 @@ pub struct Pulsos {
     antes: BTreeMap<String, Vec<f32>>,
     agora: BTreeMap<String, Vec<f32>>,
     tique: Option<u64>,
+    /// A impressão do PUBLICADO no tique anterior (nome × revisão): parado, editar é ela mudar.
+    publicado: Option<u64>,
+}
+
+/// O publicado, em um número: os nomes e as revisões (a revisão É o conteúdo).
+fn impressao(all: &All) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::hash::DefaultHasher::new();
+    for (nome, e) in all {
+        nome.hash(&mut h);
+        e.rev.hash(&mut h);
+    }
+    h.finish()
 }
 
 fn contagens(all: &All) -> BTreeMap<String, Vec<f32>> {
@@ -98,6 +111,7 @@ impl MotionCookPump {
     /// Mostra no cozimento as entradas de `t` — as da fita onde ela cobre (POR CIMA do publicado,
     /// que fica intacto), as publicadas fora dela. Só troca quando muda.
     pub fn entradas_do_replay(&mut self, replay: &mut Replay, t: u64) {
+        self.pulsos.publicado = Some(impressao(self.cook.externals()));
         self.historia = self.fita.historia_em(t);
         self.tique_das_entradas = Some(t);
         if self.fita.cobre(t) {
@@ -120,16 +134,19 @@ impl MotionCookPump {
 
     /// ⭐ **A regra de cada tique** (doc 128 §3.3), a MESMA nas duas rotas: um tique antes do último
     /// cozido, ou — com o relógio PARADO — um tique já gravado que não é o último (arrastar a fita
-    /// para a frente) REPETE a fita; o resto (tocar, e editar no mesmo tique) GRAVA o publicado,
-    /// e um ramo novo esquece o futuro. Devolve a gravação, se gravou.
+    /// para a frente) ou que se re-coze SEM edição (o publicado igual ao do tique anterior) REPETE a
+    /// fita; o resto (tocar, e editar no mesmo tique) GRAVA o publicado, e um ramo novo esquece o
+    /// futuro. Devolve a gravação, se gravou.
     pub fn entradas_do_tique(
         &mut self,
         replay: &mut Replay,
         tick: u64,
         ultimo: Option<u64>,
     ) -> Option<Gravacao> {
+        let agora = impressao(self.cook.externals());
+        let editou = self.pulsos.publicado.replace(agora) != Some(agora);
         let repete = ultimo.is_some_and(|u| tick < u)
-            || (!self.a_tocar && ultimo != Some(tick) && self.fita.cobre(tick));
+            || (!self.a_tocar && (ultimo != Some(tick) || !editou) && self.fita.cobre(tick));
         if repete {
             self.entradas_do_replay(replay, tick);
             self.pulsos_depois_do_scrub(tick);

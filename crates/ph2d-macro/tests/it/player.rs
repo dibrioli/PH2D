@@ -15,6 +15,7 @@ fn track(family: &str, times_ms: &[u64]) -> Track {
                 payload: vec![i as u8],
             })
             .collect(),
+        edicoes: vec![],
     }
 }
 

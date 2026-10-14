@@ -44,8 +44,10 @@ pub struct Track {
     pub target: u64,
     /// O estado inicial que a família restaura antes do 1.º passo (MyPaint, Corel «Initial State»).
     pub initial: Vec<u8>,
-    /// Por tempo NÃO decrescente (o codec e o gravador recusam o contrário).
+    /// Por tempo NÃO decrescente (o codec e o gravador recusam o contrário). A GRAVAÇÃO: nunca muda.
     pub events: Vec<Event>,
+    /// As edições das etapas ([`crate::etapa`]): a trilha que toca é [`Track::tocavel`].
+    pub edicoes: Vec<crate::etapa::EdicaoDeEtapa>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

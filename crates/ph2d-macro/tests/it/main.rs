@@ -1,3 +1,4 @@
+mod etapas;
 mod format;
 mod player;
 mod recorder;

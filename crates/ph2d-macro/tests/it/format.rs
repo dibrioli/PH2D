@@ -20,6 +20,7 @@ fn expected() -> MacroDoc {
                 t: MacroTime(1000),
                 payload: vec![1, 2],
             }],
+            edicoes: vec![],
         }],
     }
 }
@@ -162,12 +163,14 @@ fn a_rich_document_round_trips_to_the_byte() {
                         payload: vec![i as u8; (i % 7) as usize],
                     })
                     .collect(),
+                edicoes: vec![],
             },
             Track {
                 family: "motion".into(),
                 target: 0,
                 initial: vec![],
                 events: vec![],
+                edicoes: vec![],
             },
         ],
     };

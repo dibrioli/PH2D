@@ -13,6 +13,7 @@
 
 pub mod codec;
 mod doc;
+pub mod etapa;
 mod player;
 pub mod rec;
 mod recordable;
@@ -20,6 +21,7 @@ mod recorder;
 
 pub use codec::{CodecError, MAJOR, MINOR};
 pub use doc::{Event, MacroDoc, MacroTime, RefRect, Track};
+pub use etapa::{EdicaoDeEtapa, ErroDeEdicao, Etapa, LeitorDaFamilia};
 pub use player::MacroPlayer;
 pub use recordable::{Door, Recordability, orphans, undecided};
 pub use recorder::{MacroRecorder, RecordError, TrackId};

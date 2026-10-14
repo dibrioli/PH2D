@@ -115,6 +115,17 @@ impl TocadorDoMotion {
         })
     }
 
+    /// O tocador de uma `Track` do Motion: o palco coze só os sinks do objecto dela (`target`; `0` =
+    /// todos).
+    ///
+    /// # Errors
+    /// [`ErroDaMacro::Inicial`].
+    pub fn da_trilha(trilha: &ph2d_macro::Track, modo: Modo) -> Result<Self, ErroDaMacro> {
+        let mut t = Self::novo(&trilha.initial, modo)?;
+        t.palco.objeto.so_o_dono = (trilha.target != 0).then_some(trilha.target);
+        Ok(t)
+    }
+
     #[must_use]
     pub fn palco(&self) -> &MotionState {
         &self.palco

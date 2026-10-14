@@ -67,6 +67,9 @@ pub struct ObjetoState {
     pub editing: Option<u64>,
     /// Os objectos Motion vivos neste quadro, por `StableId`.
     pub donos: BTreeMap<u64, Dono>,
+    /// Só os sinks deste objecto cozem — o palco de uma macro, que toca a trilha de um objecto
+    /// (`None` = todos, o editor).
+    pub so_o_dono: Option<u64>,
     /// Os vivos do quadro anterior — só quem estava vivo pode MORRER (a purga).
     vivos_antes: BTreeSet<u64>,
     /// ⭐ A origem aplicada às cópias (ver [`origem`]).
@@ -467,14 +470,19 @@ pub fn motion_na_cadeia(world: &World, bits: u64) -> Option<u64> {
     None
 }
 
-/// ⭐ **Os sinks que cozinham**: os de todos os objectos visíveis (o olho esconde os do dono).
+/// ⭐ **Os sinks que cozinham**: os de todos os objectos visíveis (o olho esconde os do dono), ou só
+/// os do [`ObjetoState::so_o_dono`].
 pub fn sinks_visiveis(
     motion: &MotionState,
     sinks: Vec<ph2d_nodegraph::graph::NodeId>,
 ) -> Vec<ph2d_nodegraph::graph::NodeId> {
+    let so = motion.objeto.so_o_dono;
     sinks
         .into_iter()
-        .filter(|s| !motion.objeto.escondido(motion.doc.owner_of(*s)))
+        .filter(|s| {
+            let dono = motion.doc.owner_of(*s);
+            !motion.objeto.escondido(dono) && so.is_none_or(|o| dono == Some(o))
+        })
         .collect()
 }
 

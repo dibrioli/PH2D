@@ -17,6 +17,8 @@ pub mod tocar;
 
 #[cfg(all(test, feature = "panel-motion-graph"))]
 pub(crate) mod gate_tests;
+#[cfg(test)]
+mod alvo_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 mod painel_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
@@ -109,6 +111,20 @@ impl MotionState {
             clip_gravado: false,
         }));
         Ok(estado)
+    }
+
+    /// **Abre a trilha do Motion** em `rec`: arma a gravação ([`Self::gravacao_arma`]) e abre a
+    /// `Track` com o `StableId` do objecto Motion em edição — o dono dos nós novos
+    /// (`objeto.editing`; `0` sem nenhum).
+    ///
+    /// # Errors
+    /// [`Recusa`].
+    pub fn gravacao_abre(
+        &mut self,
+        rec: &mut ph2d_macro::MacroRecorder,
+    ) -> Result<ph2d_macro::TrackId, Recusa> {
+        let inicial = self.gravacao_arma()?;
+        Ok(rec.open_track(FAMILIA, self.objeto.editing.unwrap_or(0), inicial))
     }
 
     #[must_use]

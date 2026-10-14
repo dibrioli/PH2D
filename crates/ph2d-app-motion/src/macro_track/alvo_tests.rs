@@ -96,8 +96,19 @@ fn o_no_criado_durante_a_gravacao_e_do_objecto_da_trilha_no_palco() {
             y: 0.0,
         }],
     );
-    let novo = *m.doc.graph.nodes().iter().map(|n| &n.id).max().expect("um nó");
-    assert_eq!(m.doc.owner_of(novo), Some(A), "CONTROLO: no editor, o novo é do A");
+    let novo = *m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .map(|n| &n.id)
+        .max()
+        .expect("um nó");
+    assert_eq!(
+        m.doc.owner_of(novo),
+        Some(A),
+        "CONTROLO: no editor, o novo é do A"
+    );
     crate::motion_bridge::quadro::o_quadro(
         &mut m,
         None,

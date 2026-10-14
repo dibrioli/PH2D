@@ -98,6 +98,7 @@ pub(super) struct FrameGfx<'a> {
     pub(super) frost_front_scene: &'a mut ph2d_vector::VectorScene,
     pub(super) frosting: &'a mut bool,
     pub(super) luz2d: &'a mut ph2d_app_light2d::LuzDoQuadro,
+    pub(super) painter_macros: &'a mut ph2d_app_painter::macro_track::PalcosDoPainter,
 }
 
 impl<'a> FrameGfx<'a> {
@@ -221,6 +222,7 @@ impl<'a> FrameGfx<'a> {
             grid_behind_scene: _,
             // ⭐ A luz 2D: a codificação do documento decide se acende (as faixas dependem disso).
             luz2d,
+            painter_macros,
         } = gfx;
         Self {
             doc_guides,
@@ -287,6 +289,7 @@ impl<'a> FrameGfx<'a> {
             frost_front_scene,
             frosting,
             luz2d,
+            painter_macros,
         }
     }
 }

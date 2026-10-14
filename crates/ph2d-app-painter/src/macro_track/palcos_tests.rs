@@ -96,14 +96,18 @@ fn so_a_timeline_acorda_o_palco_e_a_troca_vai_a_sprite_alvo() {
     let (doc, quadros) = gravada(7);
     let mut w = World::new();
     let sprite = w.spawn(StableId(7)).id();
-    let dono = w.spawn(Macro {
-        doc,
-        modo: ModoDaMacro::Fiel,
-    })
-    .id();
+    let dono = w
+        .spawn(Macro {
+            doc,
+            modo: ModoDaMacro::Fiel,
+        })
+        .id();
     let (mut p, mut placa) = (PalcosDoPainter::default(), Placa::default());
 
-    assert!(quadro(&mut p, &mut w, &mut placa).is_empty(), "sem relógio não toca");
+    assert!(
+        quadro(&mut p, &mut w, &mut placa).is_empty(),
+        "sem relógio não toca"
+    );
     assert!(placa.adquiridas.is_empty());
 
     w.entity_mut(dono).insert(em(quadros / 2));
@@ -164,7 +168,10 @@ fn o_palco_que_renasce_ou_morre_devolve_a_ranhura() {
     // O `Macro` muda (outra gravação): o palco renasce numa ranhura nova e a velha volta.
     w.entity_mut(dono).insert(m);
     let trocas = quadro(&mut p, &mut w, &mut placa);
-    assert_eq!((placa.adquiridas.as_slice(), placa.soltas.as_slice()), (&[1, 2][..], &[1][..]));
+    assert_eq!(
+        (placa.adquiridas.as_slice(), placa.soltas.as_slice()),
+        (&[1, 2][..], &[1][..])
+    );
     assert_eq!(trocas[0].texture_id, 2);
 
     w.despawn(dono);

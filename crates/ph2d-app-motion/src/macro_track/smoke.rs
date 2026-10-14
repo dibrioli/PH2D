@@ -84,10 +84,7 @@ pub fn grava_o_tutorial(dono: u64) -> Option<(Vec<u8>, f64)> {
     for c in m.gravacao_para() {
         rec.push(trilha, agora, c).ok()?;
     }
-    Some((
-        ph2d_macro::codec::write(&rec.finish()),
-        f64::from(fim) * DT,
-    ))
+    Some((ph2d_macro::codec::write(&rec.finish()), f64::from(fim) * DT))
 }
 
 /// **A cena**: o objecto «Wind tutorial» com o `Macro` gravado. Devolve os bits da entidade e a

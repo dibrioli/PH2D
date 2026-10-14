@@ -15,11 +15,11 @@ use ph2d_tool_painter::macro_track::tocar::ErroDaMacro;
 use std::collections::BTreeMap;
 
 #[cfg(test)]
-#[path = "palcos_tests.rs"]
-mod palcos_tests;
-#[cfg(test)]
 #[path = "palcos_custo_tests.rs"]
 mod palcos_custo_tests;
+#[cfg(test)]
+#[path = "palcos_tests.rs"]
+mod palcos_tests;
 /// `PH2D_MACRO_SMOKE=1` — a cena do Splash.
 pub mod smoke;
 

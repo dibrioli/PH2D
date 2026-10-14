@@ -436,7 +436,10 @@ fn o_tempo_da_macro_some_quando_a_faixa_deixa_de_conduzir() {
             .map(|m| m.segundos)
     };
     let conduzido = quadro(&mut sim, &mut st).expect("a faixa nao escreveu o tempo da macro");
-    assert!((conduzido - 1.0).abs() < 1e-5, "a macro esta em {conduzido}");
+    assert!(
+        (conduzido - 1.0).abs() < 1e-5,
+        "a macro esta em {conduzido}"
+    );
 
     let vazio = st.doc.add_clip("Sem macro".into());
     st.doc.set_active(vazio);

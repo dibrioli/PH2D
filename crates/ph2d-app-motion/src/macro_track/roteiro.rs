@@ -1,7 +1,7 @@
-//! **A macro de tutorial do Motion**: os 24 gestos de um artista que monta FORMAS (`source.shape` →
-//! `motion.duplicator`) e uma SIMULAÇÃO com campo (`motion.integrate` ⇄ `field.box` → `force.wind` →
-//! `force.drag`). Uma fonte, dois leitores: a fixture do gate 3 (`gate_tests`) e a cena
-//! `PH2D_MACRO_SMOKE=2` ([`super::smoke`]).
+//! **Os gestos de uma macro de tutorial do Motion** — FORMAS (`source.shape` → `motion.duplicator`) e
+//! uma SIMULAÇÃO com campo (`motion.integrate` ⇄ `field.box` → `force.wind` → `force.drag`): o gesto,
+//! a intenção que o painel emitiria, e a [`CENA`] de `PH2D_MACRO_SMOKE=2` ([`super::smoke`]). A
+//! fixture do gate 3 (`gate_tests::MACRO`) usa os mesmos gestos.
 
 use ph2d_nodegraph::graph::NodeId;
 use ph2d_panel_motion_graph::GraphIntent;
@@ -13,43 +13,6 @@ pub(crate) enum Gesto {
     Liga(usize, u16, usize, u16),
     Param(usize, &'static str, f32),
 }
-
-pub(crate) const FORMA: usize = 0;
-pub(crate) const GRADE: usize = 1;
-pub(crate) const DUP: usize = 2;
-pub(crate) const SAIDA: usize = 3;
-pub(crate) const INTEG: usize = 4;
-pub(crate) const VENTO: usize = 5;
-pub(crate) const CAIXA: usize = 6;
-pub(crate) const ARRASTO: usize = 7;
-
-/// A macro de tutorial: 8 nós, 24 gestos.
-pub(crate) const MACRO: &[Gesto] = &[
-    Gesto::Add("source.shape"),
-    Gesto::Param(FORMA, "size", 0.35),
-    Gesto::Add("motion.grid"),
-    Gesto::Param(GRADE, "rows", 6.0),
-    Gesto::Param(GRADE, "cols", 6.0),
-    Gesto::Param(GRADE, "gap_x", 0.5),
-    Gesto::Param(GRADE, "gap_y", 0.5),
-    Gesto::Add("motion.duplicator"),
-    Gesto::Liga(FORMA, 0, DUP, 0),
-    Gesto::Liga(GRADE, 0, DUP, 1),
-    Gesto::Add("motion.output"),
-    Gesto::Liga(DUP, 0, SAIDA, 0),
-    Gesto::Add("motion.integrate"),
-    Gesto::Liga(GRADE, 0, INTEG, 0),
-    Gesto::Liga(INTEG, 0, DUP, 1),
-    Gesto::Add("force.wind"),
-    Gesto::Liga(VENTO, 0, INTEG, 1),
-    Gesto::Add("field.box"),
-    Gesto::Param(CAIXA, "width", 1.0),
-    Gesto::Liga(CAIXA, 0, VENTO, 0),
-    Gesto::Add("force.drag"),
-    Gesto::Liga(VENTO, 0, ARRASTO, 0),
-    Gesto::Liga(ARRASTO, 0, INTEG, 1),
-    Gesto::Param(VENTO, "strength", 6.0),
-];
 
 /// **A macro da cena `PH2D_MACRO_SMOKE=2`** — os mesmos oito nós, por uma ordem em que cada gesto se
 /// vê: a saída liga-se cedo (uma forma, depois a grelha), e o vento só sopra quando a caixa e o

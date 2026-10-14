@@ -76,7 +76,10 @@ pub fn grava_o_splash(lado: u32, alvo: u64) -> Option<(Vec<u8>, f64)> {
     t.set_source(vec![255u8; n * n * 4], lado, lado);
     t.set_paint_media(PaintMedia::WetPaint);
     t.set_wet_relogio_fixo(true);
-    #[expect(clippy::cast_precision_loss, reason = "o lado de uma tela cabe num f32")]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "o lado de uma tela cabe num f32"
+    )]
     let l = lado as f32;
     let mut rec = MacroRecorder::new(RefRect { w: l, h: l }, 0);
     let trilha = t.macro_abre(&mut rec, alvo).ok()?;
@@ -134,17 +137,37 @@ mod tests {
     #[test]
     fn o_splash_tocado_pinta_a_tela_e_o_inicio_e_branco() {
         let (bytes, d) = grava_o_splash(128, 0).expect("arma no Wet Paint");
-        let mut m = MacroEmCena::de(&bytes).expect("lê-se").expect("tem trilha do Painter");
+        let mut m = MacroEmCena::de(&bytes)
+            .expect("lê-se")
+            .expect("tem trilha do Painter");
         // Antes de qualquer passo (o instante 0 já traz o 1.º toque do pincel).
         let (inicio, _, _) = m.toma_a_tela().expect("a tela inicial mostra-se");
         assert!(inicio.iter().all(|&b| b == 255), "o início é a tela branca");
         m.segue(d).expect("toca até ao fim");
         assert!(m.erro().is_none(), "{:?}", m.erro());
         let (fim, _, _) = m.toma_a_tela().expect("a tela mudou");
-        let pintados = fim.as_chunks::<4>().0.iter().filter(|p| p[..3] != [255; 3]).count();
-        let azuis = fim.as_chunks::<4>().0.iter().filter(|p| u16::from(p[2]) > u16::from(p[0]) + 20).count();
-        let vermelhos = fim.as_chunks::<4>().0.iter().filter(|p| u16::from(p[0]) > u16::from(p[2]) + 20).count();
+        let pintados = fim
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[..3] != [255; 3])
+            .count();
+        let azuis = fim
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| u16::from(p[2]) > u16::from(p[0]) + 20)
+            .count();
+        let vermelhos = fim
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| u16::from(p[0]) > u16::from(p[2]) + 20)
+            .count();
         assert!(pintados > 128 * 128 / 5, "pintou {pintados} texels");
-        assert!(azuis > 0 && vermelhos > 0, "azul {azuis}, vermelho {vermelhos}");
+        assert!(
+            azuis > 0 && vermelhos > 0,
+            "azul {azuis}, vermelho {vermelhos}"
+        );
     }
 }

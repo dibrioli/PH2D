@@ -34,14 +34,9 @@ impl crate::App {
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let hero = hero_screen.as_mut()?;
-        // ADR-0154: the live GPU shapes of the Motion scene. Gated on the
-        // Motion tool like the Motion sprites (present.rs) — a `source.shape`'s
-        // `geometry_id` instances are drawn into the SAME scene the vector
-        // document rides in, so they composite behind the chrome and over the
-        // sprites (Fase 1: vector over sprite), aligned with the Motion sprites
-        // by the same `cam_affine`.
-        // ⭐⭐⭐ Com as formas na PLACA (doc 121, W2) a cena Vello não as leva — o presente cola-as.
-        // ⭐ E as dos palcos das macros em cena (ADR-0186), na camada de cada um, com a MESMA arte.
+        // ADR-0154: as formas do Motion na MESMA cena do documento vectorial (atrás do chrome, sobre as
+        // sprites, pelo mesmo `cam_affine`). ⭐⭐⭐ Na PLACA (doc 121, W2) o presente cola-as; as dos
+        // palcos das macros (ADR-0186) vão na camada de cada um, com a MESMA arte.
         let do_editor = motion_tool_active && !self.motion_shell.placa.ativa();
         if do_editor || self.motion_shell.palcos.tocam() {
             // ⭐⭐⭐ **A ARTE dos quads do passe vectorial** (a terceira média): resolvida
@@ -61,8 +56,7 @@ impl crate::App {
             let alvo = surface.size();
             let janela =
                 ph2d_vector::Rect::new(0.0, 0.0, f64::from(alvo.width), f64::from(alvo.height));
-            // ⭐ O filtro do PROJECTO — o MESMO que o `fase_extract_inputs` dá a uma sprite
-            // `Inherit` (doc 118 §8): uma folha não muda de filtro por mudar de média.
+            // ⭐ O filtro do PROJECTO, o MESMO de uma sprite `Inherit` (doc 118 §8).
             let filtro = hero.project.image_filter;
             let palcos = &mut self.motion_shell.palcos;
             palcos.codifica(&mut art, cam_affine, Some(janela), filtro);
@@ -73,13 +67,12 @@ impl crate::App {
                     &mut art,
                     cam_affine,
                     Some(janela),
-                    filtro,
+                    hero.project.image_filter,
                     motion.filtro.alvo_da_cena(motion_tool_active, vector_scene),
                 );
             }
-            // ⛔⛔ **LARGAR O ATLAS** (auditoria §2.5): a cópia em CPU dele é `268 MB` e
-            // ficava retida pela vida do processo. Os RECORTES ficam — eles são a resposta
-            // memoizada e são pequenos.
+            // ⛔⛔ **LARGAR O ATLAS** (auditoria §2.5): a cópia em CPU dele são `268 MB`, retidos pela
+            // vida do processo. Os RECORTES ficam (a resposta memoizada, pequena).
             self.motion_shell.leaf_images.end_frame();
         }
         // ⭐⭐⭐ **OS GIZMOS DE NÓ, LOGO A SEGUIR À ARTE QUE ELES MANIPULAM** (doc 109 §6 — report do

@@ -45,7 +45,8 @@ fn gravada(pista: Pista) -> (Vec<u8>, u64) {
         }
         t.on_tick(16.0);
         for c in t.macro_passos() {
-            rec.push(trilha, *q * QUADRO_US, c).expect("tempo crescente");
+            rec.push(trilha, *q * QUADRO_US, c)
+                .expect("tempo crescente");
         }
         *q += 1;
     };
@@ -88,7 +89,10 @@ fn em_cena(bytes: &[u8]) -> MacroEmCena {
 fn tela_em(bytes: &[u8], q: u64) -> Vec<u8> {
     let mut m = em_cena(bytes);
     m.segue(segundos(q)).expect("toca");
-    m.toma_a_tela().expect("a tela nasce por mostrar").0.to_vec()
+    m.toma_a_tela()
+        .expect("a tela nasce por mostrar")
+        .0
+        .to_vec()
 }
 
 #[test]
@@ -96,7 +100,11 @@ fn ler_a_cena_nao_muda_a_reproducao() {
     let (bytes, quadros) = gravada(Pista::Cpu);
     let mut lida = em_cena(&bytes);
     assert_eq!(lida.alvo(), ALVO, "a trilha leva a sprite pintada");
-    let inicial = lida.toma_a_tela().expect("a tela inicial mostra-se").0.to_vec();
+    let inicial = lida
+        .toma_a_tela()
+        .expect("a tela inicial mostra-se")
+        .0
+        .to_vec();
     let (mut ultima, mut vistas) = (inicial.clone(), 0);
     for q in 0..=quadros {
         lida.segue(segundos(q)).expect("toca");
@@ -108,8 +116,14 @@ fn ler_a_cena_nao_muda_a_reproducao() {
     assert!(lida.erro().is_none());
     assert_eq!(lida.tocador().respostas_por_pedir(), 0);
     // Controlos: a pincelada chegou à cena, e quadros parados não recompõem.
-    assert!(texels_diferentes(&ultima, &inicial) > 0, "a cena mostra a pincelada");
-    assert!(vistas > 1 && vistas <= quadros, "vistas {vistas} de {quadros}");
+    assert!(
+        texels_diferentes(&ultima, &inicial) > 0,
+        "a cena mostra a pincelada"
+    );
+    assert!(
+        vistas > 1 && vistas <= quadros,
+        "vistas {vistas} de {quadros}"
+    );
     let d = texels_diferentes(&ultima, &tela_em(&bytes, quadros));
     assert_eq!(d, 0, "ler a cena mudou a reprodução ({d} texels)");
 }
@@ -123,7 +137,10 @@ fn recuar_e_tocar_do_zero_ate_la() {
     let fim = m.toma_a_tela().expect("mudou").0.to_vec();
     m.segue(segundos(meio)).expect("recua");
     let recuada = m.toma_a_tela().expect("recuar mostra de novo").0.to_vec();
-    assert!(texels_diferentes(&fim, &recuada) > 0, "controlo: o fim não é o meio");
+    assert!(
+        texels_diferentes(&fim, &recuada) > 0,
+        "controlo: o fim não é o meio"
+    );
     let d = texels_diferentes(&recuada, &tela_em(&bytes, meio));
     assert_eq!(d, 0, "recuar ≠ tocar do zero até lá ({d} texels)");
 }
@@ -134,8 +151,15 @@ fn a_pista_da_placa_tambem_acorda_a_cena() {
     let mut m = em_cena(&bytes);
     let inicial = m.toma_a_tela().expect("inicial").0.to_vec();
     m.segue(segundos(quadros / 4)).expect("toca");
-    let a_meio = m.toma_a_tela().expect("a pista da placa acordou a cena").0.to_vec();
+    let a_meio = m
+        .toma_a_tela()
+        .expect("a pista da placa acordou a cena")
+        .0
+        .to_vec();
     assert!(texels_diferentes(&a_meio, &inicial) > 0);
-    let d = texels_diferentes(&tela_em(&bytes, quadros), &tela_em(&gravada(Pista::Cpu).0, quadros));
+    let d = texels_diferentes(
+        &tela_em(&bytes, quadros),
+        &tela_em(&gravada(Pista::Cpu).0, quadros),
+    );
     assert_eq!(d, 0, "as duas pistas pintam o mesmo ({d} texels)");
 }

@@ -45,6 +45,7 @@ pub const INTERNAS: &[&str] = &[
     "line_cancel",
     "line_commit",
     "line_commit_keep",
+    "macro_abre",
     "macro_grava",
     "macro_para",
     "macro_passos",

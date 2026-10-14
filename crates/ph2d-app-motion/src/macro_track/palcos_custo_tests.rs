@@ -66,9 +66,7 @@ fn sonda_n_palcos_do_motion() {
                         doc: bytes.clone(),
                         modo: ModoDaMacro::Explicativo,
                     },
-                    MacroTempo {
-                        segundos: INICIO_S,
-                    },
+                    MacroTempo { segundos: INICIO_S },
                 ));
             }
             Variante {

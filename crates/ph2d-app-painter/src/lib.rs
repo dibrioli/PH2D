@@ -45,6 +45,8 @@ pub mod canvas_map;
 // ─────────────────────────────────────────────────────────────────────────
 /// ⭐⭐ Image ▸ Paint — o modo que esta família declara (spec/06 F2).
 pub mod image_edit_mode;
+/// As macros do Painter em cena (ADR-0186, W4 item 5.5 D).
+pub mod macro_track;
 pub mod paint_mode;
 /// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
 ///
@@ -103,8 +105,6 @@ pub mod painter_bridge_shape_preview;
 /// On-canvas wetness sheen veil (Watercolor render-path), split from `painter_bridge_overlays` for the
 /// HR-18 file-LOC cap.
 pub mod painter_bridge_upload;
-/// As macros do Painter em cena (ADR-0186, W4 item 5.5 D).
-pub mod macro_track;
 pub mod painter_bridge_wetness;
 pub mod painter_gpu_preview;
 /// Display gates, producer-handoff half (upload-plan refusals + the CPU→GPU→CPU dance on real

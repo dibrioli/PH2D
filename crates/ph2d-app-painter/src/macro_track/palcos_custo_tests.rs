@@ -80,9 +80,7 @@ fn sonda_n_palcos_do_painter() {
                         doc: bytes.clone(),
                         modo: ModoDaMacro::Fiel,
                     },
-                    MacroTempo {
-                        segundos: INICIO_S,
-                    },
+                    MacroTempo { segundos: INICIO_S },
                 ));
             }
             vs.push(Variante {

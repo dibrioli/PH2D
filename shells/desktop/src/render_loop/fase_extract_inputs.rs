@@ -39,10 +39,11 @@ impl crate::App {
             renderer,
             sim,
             toasts,
+            painter_macros,
             ..
         } = FrameGfx::of(gfx);
-        self.painter_macros.segue(sim.world_mut());
-        let palcos = self.painter_macros.sobe(renderer, toasts);
+        painter_macros.segue(sim.world_mut());
+        let palcos = painter_macros.sobe(renderer, toasts);
         palcos
             .into_iter()
             .map(|t| sim_extract::PreviewOverride {

@@ -12,10 +12,7 @@ impl crate::App {
         let Ok(nivel) = std::env::var("PH2D_MACRO_SMOKE") else {
             return;
         };
-        if self
-            .gfx
-            .as_ref()
-            .is_none_or(|g| g.hero_screen.is_none())
+        if self.gfx.as_ref().is_none_or(|g| g.hero_screen.is_none())
             || FEITO.swap(true, std::sync::atomic::Ordering::Relaxed)
         {
             return; // ainda sem ecrã; tenta no próximo quadro

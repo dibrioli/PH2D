@@ -96,11 +96,11 @@ mod text_rows;
 #[path = "motion_bridge_params_edit.rs"]
 mod params_edit;
 use params_edit::apply_param_edits;
-pub(crate) use params_edit::{aplica_lote_de_params, apply_param_intent};
 /// Re-exported under its old path: `param_value` is read from OUTSIDE this module
 /// (`field_gizmo`, and two sibling test modules) as `params::param_value`, so the
 /// split must not move where callers name it.
 pub use params_edit::param_value;
+pub(crate) use params_edit::{aplica_lote_de_params, apply_param_intent};
 
 /// O número que um fio põe num param, para a SONDA de uma cena de smoke — a mesma porta
 /// que a row dirigida lê (`params_stream::driven_value`), nunca uma segunda avaliação: uma

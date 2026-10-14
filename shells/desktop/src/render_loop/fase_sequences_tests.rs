@@ -358,11 +358,14 @@ fn o_play_de_cima_chega_a_timeline_antes_do_relogio_da_vista() {
     let snap = dreno
         .rfind("let active_playhead")
         .expect("o relógio do painel");
+    // A lei «a correr ⇒ o relógio da cena» mora na porta `TimelineState::view_clock` (ADR-0115
+    // emenda 3, gate `the_clip_clock_exists_only_under_a_stack`); aqui prova-se que o painel PASSA
+    // por ela.
     assert!(
         dreno[snap..]
             .lines()
             .take(3)
-            .any(|l| l.contains("self.timeline.runtime")),
+            .any(|l| l.contains("self.timeline.view_clock()")),
         "o painel lê o relógio da cena com ela a correr"
     );
 }

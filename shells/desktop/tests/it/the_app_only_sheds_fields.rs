@@ -30,7 +30,10 @@
 ///
 /// ⭐ **174 → 173 em 2026-10-08** (`line/UIUX`, D10.2): o menu de roda saiu por ordem do dono, e com
 /// ele a poeira de UI (`ui_burst`), cujo único gatilho era a roda.
-const TETO_CAMPOS: usize = 173;
+///
+/// ⭐ **173 → 172 em 2026-10-13** (`line/motion-value`, ADR-0115 emenda 3): o `last_timeline_keys_mode`
+/// saiu — o loop de cada vista arma-se no `TimelineState::arm_view_loop`.
+const TETO_CAMPOS: usize = 172;
 
 const APP_STATE: &str = include_str!("../../src/app_state.rs");
 

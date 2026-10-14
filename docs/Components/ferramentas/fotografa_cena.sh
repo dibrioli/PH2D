@@ -43,6 +43,11 @@ LARG="${2:?largura}"
 ALT="${3:?altura}"
 SAIDA="${4:?saida.png}"
 ESPERA="${5:-9}"
+# Rajada: FOTO_RAJADA=<n> fotos na MESMA sessao, uma a cada FOTO_INTERVALO=<s> (1 por omissao): a
+# 1.a e' <saida.png>, as seguintes <saida>_02.png, … — dois instantes de uma cena que corre sem
+# que o arranque (que varia com a carga) mude a distancia entre eles.
+RAJADA="${FOTO_RAJADA:-1}"
+INTERVALO="${FOTO_INTERVALO:-1}"
 RAIZ="$(cd "$(dirname "$0")/../../.." && pwd)"
 # ⚠️ O PERFIL, e ele é `smoke` por omissão — a lei do `CLAUDE.md` §5 (o `release` optimiza a shell
 # num só thread e cada correcção pós-smoke custava 161 s contra 3).
@@ -211,6 +216,10 @@ if ! aceso "$SAIDA"; then
   echo "RECUSA: a foto saiu toda a ZEROS depois de a janela ter acendido - nao a entrego" >> "$TMP/log"
   rm -f "$SAIDA"
 fi
+for i in \$(seq 2 $RAJADA); do
+  sleep $INTERVALO
+  import -display "\$DISPLAY" -window "\$WIN" "${SAIDA%.png}_\$(printf %02d \$i).png" >> "$TMP/log" 2>&1
+done
 kill -9 \$APP 2>/dev/null
 EOF
 chmod +x "$TMP/sessao.sh"

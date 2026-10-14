@@ -18,7 +18,8 @@ struct UniformeNivel {
     suavidade: f32,
     /// ⭐ W5n: 1 = a região é menor que a grade (o `miolo_classifica` deixa a moldura ao anel).
     moldura: f32,
-    _p: f32,
+    /// ⭐ W5q: 1 = o `puxa` do nível 1 lê um ladrilho apagado como fora ([`crate::ladrilhos`]).
+    ladrilhos: f32,
 }
 
 /// ⭐ W5o — o instrumento das fases (ficheiro irmão pelo tecto de 700 LOC).
@@ -127,6 +128,21 @@ pub(super) struct Entradas<'a> {
     pub texturas: &'a [wgpu::Texture],
     pub vistas: &'a [wgpu::TextureView],
     pub uniforme: wgpu::Buffer,
+    pub ladrilhos: &'a wgpu::Buffer,
+}
+
+/// O buffer dos ladrilhos, só leitura (o miolo e o anel).
+fn de_leitura(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
 }
 
 fn mip(t: &wgpu::Texture, nivel: u32) -> wgpu::TextureView {
@@ -163,6 +179,7 @@ impl DoMiolo {
                     entrada_textura(3, FLOAT),
                     entrada_escrita(4, formato),
                     entrada_textura(5, FLOAT),
+                    de_leitura(6),
                 ],
             });
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -328,6 +345,10 @@ impl DoMiolo {
                     entrada(3, v[2]),
                     entrada(4, v[3]),
                     entrada(5, quinto),
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: e.ladrilhos.as_entire_binding(),
+                    },
                 ],
             })
         };
@@ -541,7 +562,7 @@ impl DoMiolo {
                     kh2,
                     suavidade: self.miolo.suavidade.clamp(0.0, 1.0),
                     moldura: f32::from(u8::from(self.parcial())),
-                    _p: 0.0,
+                    ladrilhos: f32::from(u8::from(fatia == 2 && self.parcial())),
                 };
                 let o = fatia as usize * PASSO_UNIFORME as usize;
                 uni[o..o + size_of::<UniformeNivel>()].copy_from_slice(bytemuck::bytes_of(&u));
@@ -601,9 +622,11 @@ pub(super) fn grupo_do_anel(
     grupo: &[wgpu::BindGroupEntry<'_>],
     vistas: &[wgpu::TextureView],
     k0: usize,
+    ladrilhos: &wgpu::Buffer,
 ) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
     let mut e = entradas.to_vec();
     e.push(entrada_textura(7, FLOAT));
+    e.push(de_leitura(8));
     let layout = placa.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("luz2d c3 anel"),
         entries: &e,
@@ -616,6 +639,10 @@ pub(super) fn grupo_do_anel(
         grupo.iter().filter(|x| x.binding != 4).cloned().collect();
     g.push(vista(4, &vistas[k0]));
     g.push(vista(7, &vistas[FLUENCIA]));
+    g.push(wgpu::BindGroupEntry {
+        binding: 8,
+        resource: ladrilhos.as_entire_binding(),
+    });
     let grupo = placa.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("luz2d c3 anel"),
         layout: &layout,

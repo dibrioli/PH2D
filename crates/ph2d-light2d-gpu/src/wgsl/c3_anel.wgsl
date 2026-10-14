@@ -7,6 +7,8 @@
 
 // A fluência que a `c3_fina` acabou de escrever (a luz e o alfa do interior na região).
 @group(2) @binding(7) var fluencia_lida: texture_2d<f32>;
+// ⭐ W5q: os ladrilhos com corpo (`ladrilhos.wgsl`); fora deles o passe não corre.
+@group(2) @binding(8) var<storage, read> ladrilhos: array<u32>;
 
 const VIZ_ANEL: array<vec2<i32>, 4> = array<vec2<i32>, 4>(
     vec2<i32>(1, 0), vec2<i32>(-1, 0), vec2<i32>(0, 1), vec2<i32>(0, -1)
@@ -39,7 +41,7 @@ struct Anel {
 fn anel_do_texel(alvo: vec2<u32>) -> Anel {
     let t = vec2<i32>(alvo);
     var r = Anel(vec4<f32>(0.0, 0.0, 0.0, -1.0), false, true);
-    if !na_grade_fina(t) {
+    if !na_grade_fina(t) || !ladrilho_aceso(t, i32(fina.tamanho.x)) {
         return r;
     }
     let dentro = na_janela(t);

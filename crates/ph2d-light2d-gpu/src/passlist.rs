@@ -9,6 +9,8 @@ pub(crate) const EMISSAO: usize = 0;
 pub(crate) const COBERTURA: usize = 1;
 pub(crate) const TAU_DENTRO: usize = 2;
 pub(crate) const SEMENTES: [usize; 2] = [3, 4];
+/// ⭐ W5q: o buffer dos ladrilhos do anel ([`crate::ladrilhos`]).
+pub(crate) const NOME_LADRILHOS: &str = "luz2d/buf/ladrilhos";
 pub(crate) const CASCATAS: [usize; 2] = [5, 6];
 /// ⭐ C3 (W4b): a fluência FINAL, na grade fina — a que os receptores leem.
 pub(crate) const FLUENCIA: usize = 7;
@@ -406,6 +408,13 @@ impl PassList {
                 nome: "luz2d/buf/miolo",
                 bytes: PASSO_UNIFORME * (2 * u64::from(l + 1) + FATIAS_DA_BASE),
                 usos: uniforme,
+            });
+            // ⭐ W5q: os ladrilhos do anel (um bit cada; o miolo e o anel leem-nos).
+            let gf = cfg.grade_da_fluencia();
+            buffers.push(Buffer {
+                nome: NOME_LADRILHOS,
+                bytes: crate::ladrilhos::bytes([gf.largura, gf.altura]),
+                usos: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             });
         }
         // ⭐ W5c: a cascata holográfica (os T, o par R, o acumulado, o uniforme e os vazios).

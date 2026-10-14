@@ -67,6 +67,8 @@ pub(super) struct Entradas<'a> {
     pub uni_preenche: Option<&'a wgpu::Buffer>,
     pub sementes_finais: usize,
     pub vizinhos: &'a wgpu::Sampler,
+    /// ⭐ W5q: os ladrilhos do anel (com o miolo).
+    pub ladrilhos: Option<&'a wgpu::Buffer>,
 }
 
 pub(super) struct C3 {
@@ -335,8 +337,11 @@ impl C3 {
         // ⭐ W5o: a fina e o anel compilam ao mesmo tempo; o entorno (`so_a_c0`) não os tem.
         let grupos_anel = op
             .miolo
+            .zip(e.ladrilhos)
             .filter(|_| cfg.anel_fora_da_regiao)
-            .map(|m| super::miolo::grupo_do_anel(device, &entradas, &grupo, e.vistas, m[0]));
+            .map(|(m, l)| {
+                super::miolo::grupo_do_anel(device, &entradas, &grupo, e.vistas, m[0], l)
+            });
         let entrada_anel = format!("{entrada_fina}_anel");
         // ⭐ W5p: a fina e o anel (os únicos que levam segundos a frio no compilador do driver) compilam
         // nos seus fios enquanto este monta o resto da C3 (a abertura em série: +0,3 s).

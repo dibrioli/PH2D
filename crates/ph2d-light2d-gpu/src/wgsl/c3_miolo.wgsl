@@ -28,7 +28,8 @@ struct Nivel {
     // ⭐ W5n: 1 = a região é menor que a grade — a moldura dela é do `c3_anel.wgsl` (que vê as vizinhas
     // de fora), e o `classifica` deixa-a.
     moldura: f32,
-    _p: f32,
+    // ⭐ W5q: 1 = o `puxa` do nível 1 lê um ladrilho apagado da fina como fora (o −1 do anel).
+    ladrilhos: f32,
 }
 
 @group(0) @binding(0) var<uniform> nv: Nivel;
@@ -43,6 +44,8 @@ struct Nivel {
 // ⭐ W5k: num texel de dentro, a luz que atravessa o corpo até ele (rgb) e a opacidade `α` (a); a
 // `c3_fina` escreve-a em todo texel remapeado (`α = 1` no opaco).
 @group(0) @binding(5) var transmitida: texture_2d<f32>;
+// ⭐ W5q: os ladrilhos da fina que o anel resolveu (`ladrilhos.wgsl`).
+@group(0) @binding(6) var<storage, read> ladrilhos: array<u32>;
 
 const AUSENTE: f32 = -1.0;
 
@@ -111,7 +114,7 @@ fn miolo_puxa(@builtin(global_invocation_id) gid: vec3<u32>) {
     var presentes = 0.0;
     for (var k = 0; k < 4; k++) {
         let c = 2 * t + vec2<i32>(k & 1, k >> 1);
-        if any(c >= n) || !na_outra(c) {
+        if any(c >= n) || !na_outra(c) || (nv.ladrilhos > 0.5 && !ladrilho_aceso(c, n.x)) {
             continue;
         }
         let f = textureLoad(entrada, c, 0);

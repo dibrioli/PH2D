@@ -80,8 +80,8 @@ impl CapturaFina {
         }
     }
 
-    /// Captura `cena` e `sprites` na grade `g` (a da captura). Devolve os bytes de geometria que
-    /// subiram.
+    /// Captura `cena` e `sprites` na grade `g` (a da captura) e acende os `ladrilhos` das caixas que
+    /// desenha (W5q). Devolve os bytes de geometria que subiram.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn gravar(
         &mut self,
@@ -92,6 +92,7 @@ impl CapturaFina {
         sprites: &CapturaDeSprites<'_>,
         g: Grade,
         tempos: Option<&Tempos>,
+        ladrilhos: Option<&mut crate::ladrilhos::Ladrilhos>,
     ) -> u64 {
         let cap = capturar_opacos(cena, &g, &sprites.substituidos);
         subir_geometria(
@@ -103,6 +104,12 @@ impl CapturaFina {
             &cap.vertices,
         );
         let (formas_sprite, lotes) = captura_sprite::na_grade(sprites, &g);
+        if let Some(l) = ladrilhos {
+            let caixas = cap.formas.iter().map(|f| f.caixa);
+            for c in caixas.chain(formas_sprite.iter().map(|f| f.caixa)) {
+                l.caixa_da_captura(c);
+            }
+        }
         let lotes = if formas_sprite.is_empty() {
             Vec::new()
         } else {

@@ -11,7 +11,8 @@ use crate::captura::{Forma, RelatorioC0, capturar_sem};
 use crate::captura_sprite::{self, CapturaDeSprites};
 use crate::config::{Config, Precisao};
 use crate::passlist::{
-    CASCATAS, COBERTURA, EMISSAO, PASSO_UNIFORME, PassList, SEMENTES, TAU_DENTRO, Textura,
+    CASCATAS, COBERTURA, EMISSAO, NOME_LADRILHOS, PASSO_UNIFORME, PassList, SEMENTES, TAU_DENTRO,
+    Textura,
 };
 use crate::shaders;
 use crate::solver_sprite;
@@ -170,6 +171,8 @@ pub struct Solver {
     fina: Option<fina::CapturaFina>,
     rebote: Option<rebote::SomaDoRebote>,
     hrc: Option<holo::Holografica>,
+    /// ⭐ W5q: os ladrilhos do anel (com o miolo).
+    ladrilhos: Option<crate::ladrilhos::Ladrilhos>,
     tempos: Option<Tempos>,
 }
 
@@ -297,6 +300,7 @@ impl Solver {
             .collect();
 
         let fino = [cfg.grade.largura, cfg.grade.altura];
+        let ladrilhos = cfg.niveis_do_miolo().map(|_| buffer(NOME_LADRILHOS));
         let sementes_finais = SEMENTES[saltos.len() % 2];
         // ── C2 e C3: o módulo, as lâmpadas e a amostra que a C3 lê ──
         let rc_modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -363,6 +367,7 @@ impl Solver {
                     uni_preenche: uni_preenche.as_ref(),
                     sementes_finais,
                     vizinhos: &vizinhos,
+                    ladrilhos: ladrilhos.as_ref(),
                 })
             });
             // ── C0 ──
@@ -486,6 +491,7 @@ impl Solver {
                     texturas: &texturas,
                     vistas: &vistas,
                     uniforme: buffer("luz2d/buf/miolo"),
+                    ladrilhos: ladrilhos.as_ref()?,
                 })
             });
             let fina = op.captura.map(|c| {
@@ -534,6 +540,10 @@ impl Solver {
             }),
         );
 
+        let ladrilhos = ladrilhos.map(|b| {
+            let (f, c) = (cfg.grade_da_fluencia(), cfg.grade_da_captura());
+            crate::ladrilhos::Ladrilhos::novo(b, [f.largura, f.altura], [c.largura, c.altura])
+        });
         let alvos_c0 = [
             vistas[EMISSAO].clone(),
             vistas[COBERTURA].clone(),
@@ -568,6 +578,7 @@ impl Solver {
             fina,
             rebote,
             hrc,
+            ladrilhos,
             tempos,
         })
     }

@@ -182,6 +182,9 @@ pub struct Config {
     /// região (`c3_anel.wgsl`) e a pirâmide na grade inteira nos níveis que a região lê; `false` = só
     /// na região, com Neumann na borda dela (a W5h: o interior mudava com o enquadramento).
     pub anel_fora_da_regiao: bool,
+    /// ⭐ W5q — o anel só nos ladrilhos 8×8 com corpo da captura fina (ou a janela); `false` = na
+    /// grade inteira (o antes: o mesmo bit, com um teste de corpo e uma escrita em cada texel).
+    pub anel_por_ladrilhos: bool,
     /// ⭐ W5o — ninguém lê a FLUÊNCIA deste solver (o entorno: só a c0 dele soma-se à da vista): a
     /// visibilidade das lâmpadas, a grade fina, o anel e o miolo não correm (nem alocam).
     pub so_a_c0: bool,
@@ -397,6 +400,7 @@ impl Config {
             face_pelo_ponto: true,
             miolo: Some(MIOLO_PADRAO),
             anel_fora_da_regiao: true,
+            anel_por_ladrilhos: true,
             so_a_c0: false,
             holografica: None,
             modulo_rc: None,

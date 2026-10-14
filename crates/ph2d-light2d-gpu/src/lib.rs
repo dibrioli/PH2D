@@ -20,6 +20,7 @@ mod distantes;
 mod erro;
 mod fabrica;
 mod hrc;
+mod ladrilhos;
 mod oclusao;
 mod passlist;
 mod shaders;

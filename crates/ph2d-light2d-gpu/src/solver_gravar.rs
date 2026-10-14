@@ -247,7 +247,12 @@ impl Solver {
             }
         }
         // ⭐ W5a: a captura FINA dos opacos (a luz direta marcha nela).
+        // ⭐ W5q: os ladrilhos do anel — as caixas que a captura fina desenha (sem ela, todos).
         let mut bytes_finos = 0;
+        let por_caixas = self.cfg.anel_por_ladrilhos && self.fina.is_some();
+        if let Some(l) = &mut self.ladrilhos {
+            l.comecar(!por_caixas);
+        }
         if let Some(f) = &mut self.fina {
             bytes_finos = f.gravar(
                 gpu,
@@ -257,6 +262,7 @@ impl Solver {
                 sprites,
                 self.cfg.grade_da_captura(),
                 self.tempos.as_ref(),
+                self.ladrilhos.as_mut().filter(|_| por_caixas),
             );
         } else if let Some(t) = &self.tempos {
             // Sem ela, um passe vazio escreve os carimbos dela (valem 0; nenhum fica por escrever).
@@ -264,6 +270,9 @@ impl Solver {
                 label: Some("luz2d C0 captura fina (vazia)"),
                 timestamp_writes: Some(t.escrita_compute(tempos::C0_FINA)),
             });
+        }
+        if let Some(l) = &mut self.ladrilhos {
+            l.enviar(&gpu.queue);
         }
         // ⭐ W5c: a emissão ganha a luz que cada superfície refletora recebeu no quadro anterior.
         // Sem nenhum corpo que reflita, os dois passes do rebote saltam (e a fonte esquece-se).
@@ -438,6 +447,18 @@ impl Solver {
         self.c3.regiao(&self.cfg, inicio, fim);
         if let Some(m) = &mut self.miolo {
             m.regiao(inicio, fim);
+        }
+        if let Some(l) = &mut self.ladrilhos {
+            l.janela(inicio, fim);
+        }
+    }
+
+    /// ⭐ W5q — INSTRUMENTO (o controlo de `medida_luz2d_w5q_ladrilhos`): os ladrilhos do anel só na
+    /// janela, sem os corpos — a fluência TEM de mudar onde um corpo atravessa a janela.
+    #[doc(hidden)]
+    pub fn ladrilhos_so_da_janela(&mut self) {
+        if let Some(l) = &mut self.ladrilhos {
+            l.so_a_janela = true;
         }
     }
 

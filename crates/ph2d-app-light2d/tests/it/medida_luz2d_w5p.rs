@@ -180,13 +180,14 @@ pub(crate) const ANTES: &str = "2565d66bbf";
 /// Os ficheiros do módulo das cascatas pela ordem do `rc!` (`ph2d-light2d-gpu/src/shaders.rs`) com
 /// a aritmética f32 e o armazenamento f16 (o `Config::padrao`); [`modulo_antes`] confere a lista
 /// contra o módulo de hoje.
-const FICHEIROS_DO_RC: [&str; 11] = [
+const FICHEIROS_DO_RC: [&str; 12] = [
     "real_f32",
     "saida_f16",
     "queda",
     "c2_rc",
     "c3_direta",
     "c3_anel",
+    "ladrilhos",
     "c3_preenche",
     "c4_rebote",
     "c3_borda",
@@ -219,6 +220,10 @@ pub(crate) fn modulo_antes() -> &'static str {
                     .arg(format!("{ANTES}:crates/ph2d-light2d-gpu/src/wgsl/{f}.wgsl"))
                     .output()
                     .expect("git show");
+                // ⭐ W5q: os ladrilhos nasceram depois do ANTES (lá, nenhum texto).
+                if *f == "ladrilhos" && !o.status.success() {
+                    return String::new();
+                }
                 assert!(o.status.success(), "git show {f}");
                 String::from_utf8(o.stdout).expect("utf-8")
             })
@@ -449,8 +454,8 @@ fn medida_luz2d_w5p_compilador() {
 }
 
 /// A vista do produto e o entorno dela (o `Par` da W5o com a câmera `a`).
-struct Vista {
-    vista: ph2d_light2d_gpu::Solver,
+pub(crate) struct Vista {
+    pub(crate) vista: ph2d_light2d_gpu::Solver,
     entorno: Option<ph2d_light2d_gpu::Solver>,
 }
 
@@ -461,12 +466,21 @@ impl Vista {
         nivel: NivelDaLuz,
         modulo: Option<&'static str>,
     ) -> Self {
-        use ph2d_light2d_gpu::Solver;
-        let dg = degrau_do(nivel);
-        let com = |c: Config| Config {
+        Self::nova_com(gpu, a, nivel, &|c| Config {
             modulo_rc: modulo,
             ..c
-        };
+        })
+    }
+
+    /// ⭐ W5q: a vista com a configuração do produto trocada por `com` (a vista e o entorno).
+    pub(crate) fn nova_com(
+        gpu: &ph2d_gpu::GpuContext,
+        a: kurbo::Affine,
+        nivel: NivelDaLuz,
+        com: &dyn Fn(Config) -> Config,
+    ) -> Self {
+        use ph2d_light2d_gpu::Solver;
+        let dg = degrau_do(nivel);
         let cfg = com(config_do_produto(a, FHD, dg).expect("a vista"));
         assert_eq!(
             (cfg.aritmetica, cfg.armazenamento),
@@ -500,7 +514,11 @@ impl Vista {
         }
     }
 
-    fn quadro(&mut self, gpu: &ph2d_gpu::GpuContext, cena: &ph2d_light2d_ecs::CenaDeLuz) {
+    pub(crate) fn quadro(
+        &mut self,
+        gpu: &ph2d_gpu::GpuContext,
+        cena: &ph2d_light2d_ecs::CenaDeLuz,
+    ) {
         if let Some(e) = self.entorno.as_mut() {
             let sem_ceu = ph2d_light2d_ecs::CenaDeLuz {
                 ceu: [0.0; 3],

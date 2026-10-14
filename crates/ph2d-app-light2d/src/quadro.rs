@@ -193,6 +193,8 @@ impl LuzDoQuadro {
             // ⭐ W5o: `=0` volta à marcha a partir do ponto afastado (a penumbra deslocada, comparar).
             face_pelo_ponto: env("PH2D_LIGHT2D_FACE_PONTO"),
             hrc_nasce_duas_vezes: hrc_duas_vezes(),
+            // ⭐ W5q: `=0` = o anel na grade inteira (o mesmo bit, mais lento; comparar).
+            anel_por_ladrilhos: env("PH2D_LIGHT2D_LADRILHOS"),
             miolo: miolo_do_ambiente(),
             ..crate::teto::config_do_quadro(g, self.mundo_para_tela, dg, rebote_ligado())
         }

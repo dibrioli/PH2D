@@ -21,7 +21,10 @@ pub(crate) const C1: &str = include_str!("wgsl/c1_jfa.wgsl");
 /// ⭐ W5c: a soma do rebote na emissão (o passe depois da C0).
 pub(crate) const C0_REBOTE: &str = include_str!("wgsl/c0_rebote.wgsl");
 /// ⭐ W5h: o miolo dos opacos pela difusão (o `FORMATO` troca-se pelo da fluência).
-pub(crate) const C3_MIOLO: &str = include_str!("wgsl/c3_miolo.wgsl");
+pub(crate) const C3_MIOLO: &str = concat!(
+    include_str!("wgsl/c3_miolo.wgsl"),
+    include_str!("wgsl/ladrilhos.wgsl")
+);
 /// ⭐ W5o — a base da pirâmide do miolo num despacho só.
 pub(crate) const C3_MIOLO_BASE: &str = include_str!("wgsl/c3_miolo_base.wgsl");
 /// ⭐ W5b (F4): as máscaras dos sprites distantes.
@@ -36,6 +39,7 @@ macro_rules! rc {
             include_str!("wgsl/c2_rc.wgsl"),
             include_str!("wgsl/c3_direta.wgsl"),
             include_str!("wgsl/c3_anel.wgsl"),
+            include_str!("wgsl/ladrilhos.wgsl"),
             include_str!("wgsl/c3_preenche.wgsl"),
             include_str!("wgsl/c4_rebote.wgsl"),
             include_str!("wgsl/c3_borda.wgsl"),

@@ -1,0 +1,112 @@
+{
+  "_cabecalho": {
+    "o_que": "sonda só de leitura da rede (W22): UPnP-IGD, NAT-PMP, PCP, STUN v4/v6",
+    "rotulo": "casa-enio-wifi",
+    "quando": "2026-10-14T19:22:42+00:00",
+    "maquina": "desktop-linux",
+    "ferramenta": "docs/MiroClone/ferramentas/internet_oracle/sonda_rede.py"
+  },
+  "ipv4_local": "192.168.15.7",
+  "gateway_v4": "192.168.15.1",
+  "upnp": {
+    "multicast": [],
+    "unicast_ao_gateway": [],
+    "unicast_ssdp_all": [],
+    "igd": null
+  },
+  "natpmp": {
+    "responde": false,
+    "detalhe": "timed out"
+  },
+  "pcp": {
+    "responde": false,
+    "detalhe": "timed out"
+  },
+  "stun_v4": {
+    "familia": "ipv4",
+    "porta_local": 34775,
+    "respostas": [
+      {
+        "servidor": "stun.l.google.com",
+        "destino": "74.125.250.129",
+        "ms": 44.9,
+        "ip": "191.34.x.x",
+        "porta": 34775
+      },
+      {
+        "servidor": "stun1.l.google.com",
+        "destino": "74.125.250.129",
+        "ms": 46.3,
+        "ip": "191.34.x.x",
+        "porta": 34775
+      },
+      {
+        "servidor": "stun.cloudflare.com",
+        "destino": "162.159.207.0",
+        "ms": 40.9,
+        "ip": "191.34.x.x",
+        "porta": 34775
+      },
+      {
+        "servidor": "global.stun.twilio.com",
+        "destino": "177.71.206.240",
+        "ms": 61.5,
+        "ip": "191.34.x.x",
+        "porta": 34775
+      }
+    ],
+    "destinos_distintos": 3,
+    "mapeamento": "independente_do_destino",
+    "porta_preservada": true,
+    "ips_publicos": [
+      "191.34.x.x"
+    ]
+  },
+  "stun_v6": {
+    "familia": "ipv6",
+    "porta_local": 60022,
+    "respostas": [
+      {
+        "servidor": "stun.l.google.com",
+        "destino": "2001:4860:4864:5:8000::1",
+        "ms": 46.8,
+        "ip": "2804:07f7::x",
+        "porta": 60022
+      },
+      {
+        "servidor": "stun1.l.google.com",
+        "destino": "2001:4860:4864:5:8000::1",
+        "ms": 45.5,
+        "ip": "2804:07f7::x",
+        "porta": 60022
+      },
+      {
+        "servidor": "stun.cloudflare.com",
+        "destino": "2606:4700:49::",
+        "ms": 39.9,
+        "ip": "2804:07f7::x",
+        "porta": 60022
+      },
+      {
+        "servidor": "global.stun.twilio.com",
+        "erro": "dns: [Errno -5] No address associated with hostname"
+      }
+    ],
+    "destinos_distintos": 2,
+    "mapeamento": "independente_do_destino",
+    "porta_preservada": true,
+    "ips_publicos": [
+      "2804:07f7::x"
+    ]
+  },
+  "veredito": {
+    "upnp_existe": false,
+    "upnp_so_por_unicast": false,
+    "natpmp_existe": false,
+    "ip_do_router": null,
+    "ip_visto_pelo_stun": "191.34.x.x",
+    "nat_duplo_ou_cgnat": null,
+    "mapeamento_v4": "independente_do_destino",
+    "ipv6_global": true
+  }
+}

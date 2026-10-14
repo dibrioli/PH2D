@@ -289,3 +289,42 @@ fn fechar_o_no_solta_a_porta() {
         thread::sleep(Duration::from_millis(20));
     }
 }
+
+/// MEDIDA (à mão): vazão do fio QUIC contra o TCP em 127.0.0.1, 64 MiB, intercalados, o MÍNIMO de 3.
+/// `bash scripts/cargo-test-narrow.sh ph2d-board-internet --profile smoke -- --ignored --nocapture medida_vazao`
+#[test]
+#[ignore = "medida, à mão"]
+fn medida_vazao() {
+    const N: usize = 64 << 20;
+    let data = Arc::new(pattern(N));
+    let run = |mut tx: Box<dyn Wire>, mut rx: Box<dyn Wire>| -> Duration {
+        let d = Arc::clone(&data);
+        let t = Instant::now();
+        let w = thread::spawn(move || tx.write_all(&d).unwrap());
+        let mut got = vec![0u8; N];
+        rx.set_read_timeout(Some(Duration::from_secs(60))).unwrap();
+        rx.read_exact(&mut got).unwrap();
+        w.join().unwrap();
+        let e = t.elapsed();
+        assert!(got == *data);
+        e
+    };
+    let (mut q, mut t) = (Vec::new(), Vec::new());
+    for _ in 0..3 {
+        let (a, b) = (node(false), node(false));
+        let (sw, cw) = pair(&a, &b, loop4(&a));
+        q.push(run(cw, sw));
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let c = std::net::TcpStream::connect(l.local_addr().unwrap()).unwrap();
+        let (s, _) = l.accept().unwrap();
+        t.push(run(Box::new(c), Box::new(s)));
+    }
+    let mb = |d: &Duration| N as f64 / 1_048_576.0 / d.as_secs_f64();
+    let (qm, tm) = (q.iter().min().unwrap(), t.iter().min().unwrap());
+    println!(
+        "vazão 64 MiB (mínimo de 3): QUIC {:.0} MiB/s ({qm:?}) · TCP {:.0} MiB/s ({tm:?}) · carga {}",
+        mb(qm),
+        mb(tm),
+        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+    );
+}

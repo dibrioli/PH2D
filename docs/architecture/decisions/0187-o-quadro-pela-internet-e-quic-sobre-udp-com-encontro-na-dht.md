@@ -88,6 +88,13 @@ sobe como **pergunta de produto** ao dono, com os custos lado a lado (servidor p
 de terceiros × degrau 1 onde o router o aceitar). A cifra ponta a ponta (decisão 1) já deixa esse
 retransmissor cego.
 
+## Medições (14/10, esta máquina, perfil `smoke`)
+
+| o quê | resultado | nota |
+|---|---|---|
+| vazão do fio em `127.0.0.1`, 64 MiB, mínimo de 3 intercalados (`medida_vazao`, `#[ignore]`) | QUIC **378 MiB/s** · TCP 5 256 MiB/s | `loadavg` 17 (outras linhas): o absoluto é pessimista; o que importa é a ordem — ~30× uma internet de casa de 100 Mbit (~12 MiB/s), por isso os tubos de 4 MiB (`RECV_HIGH`/`SEND_HIGH`, RAM por ligação) nunca são o gargalo e o retrato de 57,5 MiB (`MAX_FRAME`, 10/10) leva ~0,15 s em loopback |
+| a crate inteira (25 testes, inclui a DHT local e as duas casas atrás de NAT) | ~3–17 s | 3 corridas seguidas verdes |
+
 ## Consequências
 
 - Crate nova `ph2d-board-internet` (drop-crate): `Node`, `InternetHost`, `join`, `Rendezvous`; a

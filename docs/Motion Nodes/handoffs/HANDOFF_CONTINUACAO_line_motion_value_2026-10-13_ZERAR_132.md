@@ -53,7 +53,7 @@ Comando base (cada passo muda só as variáveis):
 2. `PH2D_GPU_COOK_DEMO=139 PH2D_MOTION_FITA_BYTES=384k` — abra a aba **Arrange**, arraste a régua para trás: a faixa
    da história começa mais tarde e o cartão das entradas avisa ao passar do começo dela.
 3. `PH2D_GPU_COOK_DEMO=140 PH2D_MOTION_ROUTE_LOG=1` — imagens e formas misturando num grupo; o terminal diz a rota.
-4. `PH2D_GPU_COOK_DEMO=141 PH2D_MOTION_AVISO_AUTO=1` — o aviso longo aparece INTEIRO, em várias linhas (antes/depois nas fotos).
+4. `PH2D_GPU_COOK_DEMO=141` — o fio do `Oscillator` solto no CORPO do `Transform` não liga nem abre menu: o aviso longo inteiro, ~5 s. ⚠️ 1.º report do dono (13/10): «o aviso não some e o modal de nós se abre» — o automático repetia-se, e o gesto do roteiro não existia (o `card_port_menu` filtra por `same_type` ⇒ menu vazio ⇒ a paleta). Curado em `cc74ff8412`: `GraphIntent::DropRefused` (o corpo que não aceita diz porquê; a paleta só no vazio), uma porta para a frase (`motion_bridge_recusa.rs`), `PH2D_MOTION_AVISO_AUTO=<s>` dispara UMA vez (só para a foto). ⏳ Re-smoke `=141`.
 5. `PH2D_MOTION_OBJ_SMOKE=18` — cópias de uma sprite a cair com sombra em cada uma.
 
 Deu errado se: aviso cortado com «…»; a faixa da fita na régua da aba Keys; a `=138` a pedir 10–11 páginas.
@@ -66,4 +66,4 @@ check warnings=deny ✓ · clippy forma do `ship.sh` ✓ · fmt/typos/machete �
 gpu-cook 250/250 · censos 117/117 + 12/12 · doc-index e adr-index ✓. Doc 132 cortado por `doc-split.py` (sha256) abaixo de 40 KB.
 
 binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida):
-`Finished smoke profile [optimized] target(s) in 0.24s` (depois de `4dc67e4599`) — zero `Compiling`.
+`Finished smoke profile [optimized] target(s) in 0.24s` (depois de `cc74ff8412`) — zero `Compiling`.

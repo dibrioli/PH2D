@@ -27,9 +27,14 @@ pub fn upstream_of(graph: &Graph, node: NodeId) -> Option<NodeId> {
         .map(|e| e.from.0)
 }
 
-/// O nó de warp seleccionado e o que ele oferece, ou `None`.
+/// O nó de warp seleccionado no painel e o que ele oferece, ou `None`.
 pub fn selected_warp(motion: &MotionState) -> Option<(NodeId, WarpGizmoSpec)> {
-    let nid = crate::motion_bridge::params::selected_motion_node().map(NodeId)?;
+    warp_de(motion, crate::motion_bridge::params::selected_motion_node())
+}
+
+/// O `selecionado`, se for um warp, e o que ele oferece.
+pub fn warp_de(motion: &MotionState, selecionado: Option<u32>) -> Option<(NodeId, WarpGizmoSpec)> {
+    let nid = NodeId(selecionado?);
     let ty = motion.doc.graph.node(nid)?.type_id();
     Some((nid, spec_for(ty)?))
 }
@@ -41,8 +46,8 @@ pub fn selected_warp(motion: &MotionState) -> Option<(NodeId, WarpGizmoSpec)> {
 /// cozinhar o nó de cima por conta própria — e aí haveria DOIS cozimentos do mesmo
 /// estado, que é a lei que esta casa já pagou. A bomba já retém streams por nó; o gizmo
 /// entra na lista que existe.
-pub fn taps_for(motion: &MotionState) -> Vec<NodeId> {
-    let Some((nid, _)) = selected_warp(motion) else {
+pub fn taps_for(motion: &MotionState, selecionado: Option<u32>) -> Vec<NodeId> {
+    let Some((nid, _)) = warp_de(motion, selecionado) else {
         return Vec::new();
     };
     let g = &motion.doc.graph;

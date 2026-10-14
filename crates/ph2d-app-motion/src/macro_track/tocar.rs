@@ -259,7 +259,13 @@ impl TocadorDoMotion {
         } else {
             playhead.pause();
         }
-        crate::motion_bridge::quadro::o_quadro(&mut self.palco, None, &playhead, dt);
+        crate::motion_bridge::quadro::o_quadro(
+            &mut self.palco,
+            None,
+            &playhead,
+            dt,
+            crate::motion_bridge::quadro::MaoDoEditor::default(),
+        );
         Ok(())
     }
 }

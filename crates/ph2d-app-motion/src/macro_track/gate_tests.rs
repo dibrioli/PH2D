@@ -11,7 +11,7 @@
 
 use super::passo::Passo;
 use super::tocar::{ErroDaMacro, Modo, TocadorDoMotion};
-use crate::motion_bridge::quadro::o_quadro;
+use crate::motion_bridge::quadro::{MaoDoEditor, o_quadro};
 use crate::motion_state::MotionState;
 use ph2d_macro::{MacroPlayer, MacroRecorder, MacroTime, RefRect};
 use ph2d_nodegraph::graph::{NodeId, Pos};
@@ -246,7 +246,7 @@ fn sessao() -> Gravada {
         ph.seek(tick as f64 * DT);
         crate::motion_bridge::apply_graph_intents(&mut m, &mut ph, &mut toasts, &mut split);
         crate::motion_bridge::params::apply_param_edits_for_tests(&mut m, &store, &mut toasts);
-        o_quadro(&mut m, None, &ph, DT);
+        o_quadro(&mut m, None, &ph, DT, MaoDoEditor::do_painel());
         retratos.push(retrato(&m));
         quadros.push(m.gravacao_passos());
         let mut novos: Vec<NodeId> = m
@@ -478,7 +478,7 @@ fn o_modo_explicativo_da_o_documento_final_cozido_da_semente_ao_bit() {
     if !fim.1 {
         ph.pause();
     }
-    o_quadro(&mut b, None, &ph, fim.2);
+    o_quadro(&mut b, None, &ph, fim.2, MaoDoEditor::default());
     assert!(!b.pump.vector_instances.is_empty());
     assert_eq!(
         retrato(t.palco()),
@@ -507,7 +507,7 @@ fn as_24_intencoes_de_uma_vez_sao_o_explicativo_da_sessao_so_com_elas() {
         ph.seek((i as u64 * 4) as f64 * DT);
         crate::motion_bridge::apply_graph_intents(&mut m, &mut ph, &mut toasts, &mut split);
         crate::motion_bridge::params::apply_param_edits_for_tests(&mut m, &store, &mut toasts);
-        o_quadro(&mut m, None, &ph, DT);
+        o_quadro(&mut m, None, &ph, DT, MaoDoEditor::do_painel());
         cargas.extend(m.gravacao_passos());
         slots.extend(
             m.doc
@@ -532,7 +532,7 @@ fn as_24_intencoes_de_uma_vez_sao_o_explicativo_da_sessao_so_com_elas() {
     ph_b.play();
     crate::motion_bridge::apply_graph_intents(&mut b, &mut ph_b, &mut toasts, &mut split);
     crate::motion_bridge::params::apply_param_edits_for_tests(&mut b, &store, &mut toasts);
-    o_quadro(&mut b, None, &ph_b, DT);
+    o_quadro(&mut b, None, &ph_b, DT, MaoDoEditor::default());
     assert_eq!(t.palco().doc.to_text(), b.doc.to_text(), "o mesmo grafo");
     assert_eq!(
         retrato(t.palco()),

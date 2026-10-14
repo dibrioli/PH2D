@@ -29,7 +29,7 @@ pub(super) fn trava() -> MutexGuard<'static, ()> {
 
 /// Arma as tomadas do gizmo pela MESMA porta e na MESMA ordem do `motion_bridge`.
 fn arma(m: &mut MotionState) {
-    let taps = warp_gizmo::taps_for(m);
+    let taps = warp_gizmo::taps_for(m, crate::motion_bridge::params::selected_motion_node());
     m.pump.set_taps(&taps);
     m.pump.clear_tap_fires();
 }

@@ -401,7 +401,7 @@ pub(super) fn group(motion: &mut MotionState, views: Vec<u32>) {
     motion.history.push_undo(pre);
     // NO mark_dirty: the graph is untouched. (If this line ever appears here, the
     // feature has stopped being a fold and become a lie about the cook.)
-    ph2d_panel_motion_graph::request_graph_selection(vec![view_id(sid)]);
+    motion.pede_selecao(vec![view_id(sid)]);
 }
 
 /// **Dissolve a subgraph** (Ctrl+Alt+G), lifting its members into its parent. Nothing
@@ -474,7 +474,7 @@ pub(super) fn ungroup(motion: &mut MotionState, sid: u32) {
         set_level(motion, parent);
     }
     motion.history.push_undo(pre);
-    ph2d_panel_motion_graph::request_graph_selection(freed);
+    motion.pede_selecao(freed);
 }
 
 /// **Delete a card and everything inside it** — the members, the nests below them,
@@ -560,7 +560,7 @@ pub(super) fn set_level(motion: &mut MotionState, level: Option<u32>) {
     let next = if valid { level } else { None };
     if motion.level != next {
         motion.level = next;
-        ph2d_panel_motion_graph::request_graph_selection(Vec::new());
+        motion.pede_selecao(Vec::new());
     }
 }
 

@@ -504,6 +504,8 @@ pub struct MotionState {
     pub objeto: crate::motion_objeto::ObjetoState,
     /// A gravação de uma macro em curso (ADR-0186, [`crate::macro_track`]); `None` fora dela.
     pub macro_gravacao: Option<Box<crate::macro_track::Gravacao>>,
+    /// O que as portas pediram ao painel do editor neste quadro — ver [`PedidosAoPainel`].
+    pub ao_painel: PedidosAoPainel,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the
@@ -530,6 +532,10 @@ pub struct LibraryOpen {
 #[path = "motion_state_piscada.rs"]
 mod piscada;
 pub use piscada::PiscadaPendente;
+
+#[path = "motion_state_ao_painel.rs"]
+mod ao_painel;
+pub use ao_painel::PedidosAoPainel;
 
 /// **O que o QUADRO lê e publica** (o sinal disparado, a forma seleccionada) — irmão pelo cap
 /// de 600 LOC (HR-18), pelo mesmo corte por assunto do `clip` abaixo.

@@ -20,7 +20,7 @@ const OFFSET_Y: f32 = 40.0; // LITERAL-PX-OK: duplicate offset (graph space)
 /// somebody else's upstream. (Blender's Ctrl+D and Nuke's copy/paste both keep the
 /// internal links and drop the external ones.)
 ///
-/// The copies become the SELECTION (`request_graph_selection`) — only the shell
+/// The copies become the SELECTION (`MotionState::pede_selecao`) — only the shell
 /// knows the ids it just minted, and if the originals stayed selected, the drag
 /// that naturally follows a Ctrl+D would move the originals instead of the copies.
 ///
@@ -111,7 +111,7 @@ pub(super) fn duplicate(
     motion.pump.mark_dirty();
 
     let copies: Vec<u32> = copy_of.values().map(|id| id.0).collect();
-    ph2d_panel_motion_graph::request_graph_selection(copies);
+    motion.pede_selecao(copies);
     copy_of
 }
 
@@ -288,7 +288,7 @@ pub(super) fn paste(motion: &mut MotionState) {
     motion.history.push_undo(pre);
     motion.pump.mark_dirty();
 
-    ph2d_panel_motion_graph::request_graph_selection(selection);
+    motion.pede_selecao(selection);
 
     // Cascade the NEXT paste one offset further (the clip stays, so paste-many works).
     if let Some(c) = motion.clip.as_mut() {

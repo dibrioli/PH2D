@@ -54,7 +54,8 @@ fn the_fully_gpu_route_cooks_the_taps_it_never_marched() {
     let scopes = TimeScopes::new();
     for (rotulo, depois) in [("ANTES do mirror", false), ("DEPOIS do mirror", true)] {
         let (mut m, bw) = fx::cena_do_dono(depois);
-        let armadas = warp_gizmo::taps_for(&m);
+        let armadas =
+            warp_gizmo::taps_for(&m, crate::motion_bridge::params::selected_motion_node());
         assert!(
             !armadas.is_empty(),
             "{rotulo}: a fixtura tem de ARMAR a tomada, senao o gate e' vacuo"

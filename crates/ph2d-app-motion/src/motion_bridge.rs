@@ -272,6 +272,7 @@ pub fn dispatch(
             // arrives as one — and before anything is published, so the fold never
             // runs against a room that is not there.
             subgraph::clamp_level(motion);
+            intents::publica_no_painel(motion);
             // Publish the addable-node catalog for the add-menu. Rebuilt each
             // active frame (cheap: ~dozens of `Copy` entries) alongside the
             // snapshot; memoizing it is a follow-up like the snapshot's own
@@ -371,7 +372,8 @@ pub fn dispatch(
     }
 
     // ── 3. O quadro: os sinks e as tomadas, e o cozimento no tique do PLAYHEAD (W4.T7) ────
-    quadro::o_quadro(motion, Some(gpu), playhead, fixed_dt);
+    let mao = quadro::MaoDoEditor::do_painel();
+    quadro::o_quadro(motion, Some(gpu), playhead, fixed_dt, mao);
 }
 
 /// **Re-derive everything the graph's SHAPE implies**, after any structural edit —

@@ -109,6 +109,7 @@ impl MotionState {
             piscada: None,
             objeto: Default::default(),
             macro_gravacao: None,
+            ao_painel: Default::default(),
         }
     }
 

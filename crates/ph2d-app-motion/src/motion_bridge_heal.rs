@@ -147,7 +147,7 @@ pub(super) fn heal_setup(motion: &mut MotionState, toasts: &mut ToastQueue) -> u
     reconcile(motion, &pre.graph);
     motion.history.push_undo(pre);
     motion.pump.mark_dirty();
-    ph2d_panel_motion_graph::request_graph_selection(inserted.iter().map(|n| n.0).collect());
+    motion.pede_selecao(inserted.iter().map(|n| n.0).collect());
     toasts.push(Toast::info(if inserted.len() == 1 {
         ph2d_i18n::tr(
             "app.motion.motion_bridge_heal.wired_the_force_through_integrate_so_it_moves_th",
@@ -232,7 +232,7 @@ pub(super) fn heal_one(motion: &mut MotionState, toasts: &mut ToastQueue, node: 
             .into_iter()
             .find(|u| u.node == node)
         {
-            ph2d_panel_motion_graph::request_graph_selection(vec![node.0]);
+            motion.pede_selecao(vec![node.0]);
             toasts.push(Toast::info(ph2d_i18n::tr_with(
                 "app.motion.motion_bridge_heal.nothing_upstream_carries_a_column_called_so_this",
                 &[("column", &(u.column))],
@@ -259,7 +259,7 @@ pub(super) fn heal_one(motion: &mut MotionState, toasts: &mut ToastQueue, node: 
             reconcile(motion, &pre.graph);
             motion.history.push_undo(pre);
             motion.pump.mark_dirty();
-            ph2d_panel_motion_graph::request_graph_selection(vec![integ.0]);
+            motion.pede_selecao(vec![integ.0]);
             toasts.push(Toast::info(ph2d_i18n::tr(
                 "app.motion.motion_bridge_heal.wired_the_force_through_integrate_so_it_moves_th",
             )));
@@ -268,7 +268,7 @@ pub(super) fn heal_one(motion: &mut MotionState, toasts: &mut ToastQueue, node: 
     }
     // No canonical fix: point the artist at the node and say what it needs. Guessing a
     // solver / a reorder here is exactly what the ADR forbids.
-    ph2d_panel_motion_graph::request_graph_selection(vec![node.0]);
+    motion.pede_selecao(vec![node.0]);
     toasts.push(Toast::info(explain(&d)));
 }
 

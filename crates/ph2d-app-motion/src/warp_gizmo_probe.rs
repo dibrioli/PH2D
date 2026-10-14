@@ -74,7 +74,7 @@ fn relatorio(m: &MotionState, no: NodeId) {
     eprintln!("  3. no' a montante ................. {up:?}");
     eprintln!(
         "  4. TOMADAS armadas ................ {:?}",
-        warp_gizmo::taps_for(m)
+        warp_gizmo::taps_for(m, crate::motion_bridge::params::selected_motion_node())
     );
     let tapped: Vec<NodeId> = m.pump.tap_streams().iter().map(|(n, _)| *n).collect();
     eprintln!("  5. tomadas que DISPARARAM ......... {tapped:?}");
@@ -111,7 +111,7 @@ fn why_the_warp_gizmo_is_not_there() {
         eprintln!("  3. no' a montante ................. {up:?}");
         eprintln!(
             "  4. TOMADAS armadas ................ {:?}",
-            warp_gizmo::taps_for(&m)
+            warp_gizmo::taps_for(&m, crate::motion_bridge::params::selected_motion_node())
         );
         let tapped: Vec<NodeId> = m.pump.tap_streams().iter().map(|(n, _)| *n).collect();
         eprintln!("  5. tomadas que DISPARARAM ......... {tapped:?}");

@@ -39,7 +39,10 @@ fn copy_then_paste_recreates_the_chain_with_params_and_internal_wires_only() {
 
     // The pastes are the selection, and their ids are NEW — copy is decoupled from
     // the originals (a stored id would have collided or dangled).
-    let pasted: Vec<NodeId> = ph2d_panel_motion_graph::pending_graph_selection()
+    let pasted: Vec<NodeId> = motion
+        .ao_painel
+        .selecao
+        .clone()
         .expect("the pastes were handed back as the selection")
         .into_iter()
         .map(NodeId)
@@ -175,9 +178,9 @@ fn paste_many_from_one_copy_makes_independent_cascaded_copies() {
 
     edit::copy_selection(&mut motion, vec![grid.0], vec![]);
     edit::paste(&mut motion);
-    let first = NodeId(ph2d_panel_motion_graph::pending_graph_selection().unwrap()[0]);
+    let first = NodeId(motion.ao_painel.selecao.clone().unwrap()[0]);
     edit::paste(&mut motion);
-    let second = NodeId(ph2d_panel_motion_graph::pending_graph_selection().unwrap()[0]);
+    let second = NodeId(motion.ao_painel.selecao.clone().unwrap()[0]);
 
     assert_eq!(
         motion.doc.graph.nodes().len(),
@@ -288,7 +291,7 @@ fn paste_rebuilds_the_copied_groups_nesting() {
     }
 
     // The selection is the pasted CARD (one view id), not the two loose member nodes.
-    let sel = ph2d_panel_motion_graph::pending_graph_selection().expect("a selection");
+    let sel = motion.ao_painel.selecao.clone().expect("a selection");
     assert_eq!(
         sel.len(),
         1,

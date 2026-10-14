@@ -180,7 +180,10 @@ fn ungroup_hands_the_freed_contents_back_as_the_selection() {
     let outer = m.doc.subgraphs.iter().find(|s| s.id != inner).unwrap().id;
 
     super::subgraph::ungroup(&mut m, outer);
-    let mut got = ph2d_panel_motion_graph::pending_graph_selection()
+    let mut got = m
+        .ao_painel
+        .selecao
+        .clone()
         .expect("ungroup must hand a selection back - an empty hand is the bug");
     got.sort_unstable();
     let mut want = vec![n1.0, super::subgraph::view_id(inner)];
@@ -200,7 +203,7 @@ fn ungroup_hands_the_freed_contents_back_as_the_selection() {
         "the room is gone, so you are back at the root"
     );
     assert_eq!(
-        ph2d_panel_motion_graph::pending_graph_selection(),
+        m.ao_painel.selecao.clone(),
         Some(vec![n0.0]),
         "the node that was in the dissolved room is selected, not nothing"
     );

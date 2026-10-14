@@ -90,7 +90,7 @@ fn text_of(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId, param: &str
 /// ⚠️ **Um canal escreve DUAS coisas** (a coluna e o `mode`) e uma fonte escreve uma; a diferença
 /// é do substrato, e é por isso que a resolução vive na shell e não no cartão.
 pub fn step_choice(
-    motion: &MotionState,
+    motion: &mut MotionState,
     nid: ph2d_nodegraph::graph::NodeId,
     param: &'static str,
     delta: i8,
@@ -103,7 +103,7 @@ pub fn step_choice(
             let atual = text_of(motion, nid, param);
             let opcoes = source_options_live(motion);
             if let Some(proxima) = next_source_for(&opcoes, &atual, delta) {
-                write_source(nid, param, proxima);
+                write_source(motion, nid, param, proxima);
             }
         }
         W::Channels {
@@ -112,7 +112,7 @@ pub fn step_choice(
         } => {
             if let Some(escolha) = next_channel_for(motion, nid, param, mode_param, channels, delta)
             {
-                write_channel(nid, param, mode_param, escolha);
+                write_channel(motion, nid, param, mode_param, escolha);
             }
         }
         _ => {}
@@ -122,7 +122,7 @@ pub fn step_choice(
 /// ⭐⭐ **UMA LINHA DA LISTA** — o índice é contra a lista que [`publish_card_choices`] publicou e
 /// o popup desenhou, resolvido aqui pela MESMA porta que a produziu.
 pub fn pick_choice(
-    motion: &MotionState,
+    motion: &mut MotionState,
     nid: ph2d_nodegraph::graph::NodeId,
     param: &'static str,
     index: u16,
@@ -134,7 +134,7 @@ pub fn pick_choice(
     match widget {
         W::Source => {
             if let Some(nome) = source_options_live(motion).get(i).cloned() {
-                write_source(nid, param, nome);
+                write_source(motion, nid, param, nome);
             }
         }
         W::Channels {
@@ -142,7 +142,7 @@ pub fn pick_choice(
             channels,
         } => {
             if let Some(escolha) = channel_choice_at(motion, nid, param, mode_param, channels, i) {
-                write_channel(nid, param, mode_param, escolha);
+                write_channel(motion, nid, param, mode_param, escolha);
             }
         }
         _ => {}
@@ -160,8 +160,13 @@ fn widget_of(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId, param: &s
         .map(|h| h.widget)
 }
 
-fn write_source(nid: ph2d_nodegraph::graph::NodeId, param: &'static str, value: String) {
-    crate::push_param_intent(crate::MotionParamIntent::SetTextParam {
+fn write_source(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &'static str,
+    value: String,
+) {
+    motion.encaminha_param(crate::MotionParamIntent::SetTextParam {
         node: nid.0,
         param,
         value,
@@ -172,13 +177,14 @@ fn write_source(nid: ph2d_nodegraph::graph::NodeId, param: &'static str, value: 
 /// no modo errado, que é ler **zeros em silêncio** — o defeito que a própria lista de canais do
 /// `value.attribute` existe para não ter.
 fn write_channel(
+    motion: &mut MotionState,
     nid: ph2d_nodegraph::graph::NodeId,
     param: &'static str,
     mode_param: &'static str,
     (coluna, modo): (String, i32),
 ) {
-    write_source(nid, param, coluna);
-    crate::push_param_intent(crate::MotionParamIntent::SetParam {
+    write_source(motion, nid, param, coluna);
+    motion.encaminha_param(crate::MotionParamIntent::SetParam {
         node: nid.0,
         param: mode_param,
         value: f64::from(modo),

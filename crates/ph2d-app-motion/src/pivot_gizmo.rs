@@ -52,7 +52,16 @@ pub struct PivotGizmoView {
 /// chama ninguém (ADR-0075).
 #[must_use]
 pub fn forma_com_pivot_em_arrasto(motion: &MotionState) -> Option<NodeId> {
-    let (node, param) = ph2d_panel_motion_graph::current_graph_param_scrub()?;
+    forma_com_pivot(motion, ph2d_panel_motion_graph::current_graph_param_scrub())
+}
+
+/// A forma de `arrasto`, se o param arrastado for o pivô dela.
+#[must_use]
+pub fn forma_com_pivot(
+    motion: &MotionState,
+    arrasto: Option<(u32, &'static str)>,
+) -> Option<NodeId> {
+    let (node, param) = arrasto?;
     // ⚠️ **Os dois nomes, e não um prefixo `pivot_`:** um `starts_with` acenderia o gizmo no dia
     // em que outro nó ganhasse um `pivot_angle`, e a resposta seria acender sobre a forma errada.
     if param != ph2d_node_motion_shape::param::PIVOT_X
@@ -81,8 +90,8 @@ pub fn forma_com_pivot_em_arrasto(motion: &MotionState) -> Option<NodeId> {
 ///
 /// [doc 120 §8.5]: ../../../docs/Motion%20Nodes/120_ciclo_12_os_tectos_confortaveis.md
 #[must_use]
-pub fn taps_for(motion: &MotionState) -> Vec<NodeId> {
-    let Some(node) = forma_com_pivot_em_arrasto(motion) else {
+pub fn taps_for(motion: &MotionState, arrasto: Option<(u32, &'static str)>) -> Vec<NodeId> {
+    let Some(node) = forma_com_pivot(motion, arrasto) else {
         return Vec::new();
     };
     std::iter::once(node)

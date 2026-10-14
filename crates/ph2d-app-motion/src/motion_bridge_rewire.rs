@@ -169,7 +169,7 @@ fn splice_into_wire(
     super::reconcile(motion, &pre.graph);
     motion.history.push_undo(pre);
     motion.pump.mark_dirty(); // a spliced node is IN the graph — the graph changed
-    ph2d_panel_motion_graph::request_graph_selection(vec![node.0]);
+    motion.pede_selecao(vec![node.0]);
 }
 
 pub(super) fn splice_reroute(

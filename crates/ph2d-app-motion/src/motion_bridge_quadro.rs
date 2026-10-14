@@ -5,15 +5,34 @@
 
 use super::*;
 
+/// **A mão do artista no painel do editor**, que o quadro lê para as tomadas dos gizmos: o nó
+/// seleccionado (o dos deformadores) e o param em arrasto (o do pivô). O palco de uma macro não tem
+/// mão — `MaoDoEditor::default()` —, e assim nunca coze pelo que o artista faz no editor.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct MaoDoEditor {
+    pub(crate) selecionado: Option<u32>,
+    pub(crate) arrasto: Option<(u32, &'static str)>,
+}
+
+impl MaoDoEditor {
+    /// O que o painel publicou neste quadro.
+    pub(crate) fn do_painel() -> Self {
+        Self {
+            selecionado: params::selected_motion_node(),
+            arrasto: ph2d_panel_motion_graph::current_graph_param_scrub(),
+        }
+    }
+}
+
 /// **O quadro inteiro** — os sinks e as tomadas que o grafo implica, e o cozimento. É a porta do
-/// [`super::dispatch`] e a do tocador de uma macro ([`crate::macro_track::tocar`]), que a chama sem
-/// placa (`None` = a bomba da CPU): uma sequência, dois chamadores. A gravação regista o relógio do
-/// quadro aqui (ADR-0186).
+/// [`super::dispatch`] e a do tocador de uma macro ([`crate::macro_track::tocar`]): uma sequência,
+/// dois chamadores. A gravação regista o relógio do quadro aqui (ADR-0186).
 pub(crate) fn o_quadro(
     motion: &mut MotionState,
     gpu: Option<&ph2d_gpu::GpuContext>,
     playhead: &ph2d_core::Playhead,
     fixed_dt: f64,
+    mao: MaoDoEditor,
 ) {
     // The render output IS the Output node — the sink follows the graph (wire a
     // chain into an Output node and it draws). `None` (no Output node) → the pump
@@ -32,7 +51,7 @@ pub(crate) fn o_quadro(
     // Juntar aqui, e não alargar o `signal_taps`, é o que impede o dreno de sinais de um
     // dia ver um nó que não é um `pulse.signal` — *o canal é partilhado, o significado não*.
     let mut taps = motion.signal_taps.clone();
-    for n in crate::warp_gizmo::taps_for(motion)
+    for n in crate::warp_gizmo::taps_for(motion, mao.selecionado)
         .into_iter()
         .chain(crate::collider_gizmo::taps_for(motion))
         // ⭐ E o gizmo de uma corrente de POSIÇÕES (ordem do dono, 2026-09-19): ele pede os sinks
@@ -44,7 +63,7 @@ pub(crate) fn o_quadro(
         // ⭐ E o gizmo do PIVÔ (ordem do dono, 2026-09-19): a saída da forma cujo `Pivot X`/`Y`
         // está a ser arrastado AGORA — a forma e o sink dela, e só durante o gesto. ⚠️ Ele pede o
         // sink ELE PRÓPRIO: o irmão acima deixou de pedir os que a placa já desenhou.
-        .chain(crate::pivot_gizmo::taps_for(motion))
+        .chain(crate::pivot_gizmo::taps_for(motion, mao.arrasto))
     {
         if !taps.contains(&n) {
             taps.push(n);

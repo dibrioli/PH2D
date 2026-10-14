@@ -531,7 +531,13 @@ mod rotas {
         let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
         crate::motion_bridge::apply_graph_intents(m, &mut ph, &mut toasts, &mut split);
         crate::motion_bridge::params::apply_param_edits_for_tests(m, &store, &mut toasts);
-        crate::motion_bridge::quadro::o_quadro(m, None, &ph, 1.0 / 60.0);
+        crate::motion_bridge::quadro::o_quadro(
+            m,
+            None,
+            &ph,
+            1.0 / 60.0,
+            crate::motion_bridge::quadro::MaoDoEditor::do_painel(),
+        );
     }
 
     fn toca(inicial: &[u8], cargas: &[Vec<u8>]) -> TocadorDoMotion {

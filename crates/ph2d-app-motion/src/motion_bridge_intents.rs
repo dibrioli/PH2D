@@ -41,6 +41,18 @@ pub(crate) fn apply_graph_intents(
     motion.macro_lote_de_grafo(&intents);
     apply_graph_batch(motion, playhead, toasts, split, intents);
     motion.macro_fecha();
+    publica_no_painel(motion);
+}
+
+/// **Publica no painel o que as portas lhe pediram** ([`crate::motion_state::PedidosAoPainel`]) — só
+/// a porta do editor: o palco de uma macro corre o [`apply_graph_batch`] e nunca isto.
+pub(crate) fn publica_no_painel(motion: &mut MotionState) {
+    if let Some(nos) = motion.ao_painel.selecao.take() {
+        ph2d_panel_motion_graph::request_graph_selection(nos);
+    }
+    for intent in motion.ao_painel.params.drain(..) {
+        crate::push_param_intent(intent);
+    }
 }
 
 /// **Um lote de intenções do grafo**, aplicado pela ordem — a porta do dreno acima e a do tocador
@@ -167,7 +179,7 @@ pub(crate) fn apply_graph_batch(
             }
             GraphIntent::SetParam { node, param, value } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
-                    crate::push_param_intent(crate::MotionParamIntent::SetParam {
+                    motion.encaminha_param(crate::MotionParamIntent::SetParam {
                         node: n.0,
                         param,
                         value: f64::from(value),
@@ -235,10 +247,7 @@ pub(crate) fn apply_graph_batch(
             }
             GraphIntent::PickFile { node, param } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
-                    crate::push_param_intent(crate::MotionParamIntent::PickFile {
-                        node: n.0,
-                        param,
-                    });
+                    motion.encaminha_param(crate::MotionParamIntent::PickFile { node: n.0, param });
                 }
             }
             // ⭐⭐ **UMA SETA DE UM SELECTOR** — o cartão pede *«a anterior»* / *«a seguinte»*,
@@ -261,7 +270,7 @@ pub(crate) fn apply_graph_batch(
             // chip de uma fonte e o campo de uma fórmula usam.
             GraphIntent::SetTextParam { node, param, value } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
-                    crate::push_param_intent(crate::MotionParamIntent::SetTextParam {
+                    motion.encaminha_param(crate::MotionParamIntent::SetTextParam {
                         node: n.0,
                         param,
                         value,
@@ -336,7 +345,7 @@ pub(crate) fn apply_graph_batch(
                 if !copy_of.is_empty() {
                     // Same undo step: `duplicate` snapshotted the doc BEFORE any of it.
                     let selection = subgraph::duplicate_nesting(motion, &cards, &copy_of);
-                    ph2d_panel_motion_graph::request_graph_selection(selection);
+                    motion.pede_selecao(selection);
                 }
             }
             // Ctrl+C — snapshot the selection into the graph clipboard. A card

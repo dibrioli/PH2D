@@ -101,7 +101,10 @@ fn o_alvo_so_acende_no_arrasto_de_um_pivot() {
             "arrastar o {p} da forma ACENDE"
         );
         // E a tomada que ele pede é exactamente essa forma.
-        assert_eq!(super::taps_for(&m), vec![forma]);
+        assert_eq!(
+            super::taps_for(&m, ph2d_panel_motion_graph::current_graph_param_scrub()),
+            vec![forma]
+        );
     }
     // ⛔⛔ **E com a forma a chegar a um SINK, ele pede o sink TAMBÉM** (ciclo 12): o
     // `ponto_gizmo::taps_for` deixou de pedir o sink que a placa já desenhou, e uma forma com
@@ -116,6 +119,9 @@ fn o_alvo_so_acende_no_arrasto_de_um_pivot() {
         })
         .expect("forma -> output");
     ph(Some((forma.0, ph2d_node_motion_shape::param::PIVOT_X)));
-    assert_eq!(super::taps_for(&m), vec![forma, out]);
+    assert_eq!(
+        super::taps_for(&m, ph2d_panel_motion_graph::current_graph_param_scrub()),
+        vec![forma, out]
+    );
     ph(None);
 }

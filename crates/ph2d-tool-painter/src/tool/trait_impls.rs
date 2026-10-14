@@ -101,6 +101,12 @@ impl PainterTool {
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
         use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
+        // Uma linha que o meio de agora nunca lê não aceita o clique (`inercia::Natureza::MeioNaoLe`).
+        if let PanelEvent::Click(id) = &event
+            && self.inercias().recusa_clique(*id)
+        {
+            return;
+        }
         let appearance_before = self.appearance_sig(); // re-fill an open shape live on any appearance change
         if self.route_texture_layer_event(&event)
             || self.route_brush_jitter_event(&event)

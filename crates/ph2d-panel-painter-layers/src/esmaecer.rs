@@ -5,6 +5,8 @@
 //! editável — o artista prepara o valor antes de ligar o que o acorda. Quem decide se a linha está
 //! inerte é a ferramenta, pela lei que o motor usa ([`ph2d_tool_painter::Inercias`]); aqui só se pinta
 //! e se põe a dica (o que liga o controlo) no id. O gate é o censo: dica ⇔ a sonda mede inerte.
+//! ⚠️ A linha que o MEIO nunca lê ([`ph2d_tool_painter::Natureza::MeioNaoLe`]) pinta-se igual, e a
+//! ferramenta recusa-lhe o clique na porta dos eventos — a dica continua visível sob o rato.
 //!
 //! Vive nos quatro pintores de linha do painel (número, metade de um par, slider com chip, caixa de
 //! marcar, menu) e não em cada sítio que os chama: um controlo dependente novo precisa só da LEI.

@@ -228,3 +228,46 @@ fn the_alpha_source_sits_above_the_texture_colour_checkbox() {
         colour.y
     );
 }
+
+/// **No meio que nunca lê a cor da textura a linha esmaecida RECUSA o clique** (smoke do dono 14/10:
+/// *«Use Texture Colors está apagada mas permite que o usuário check ela»*). A água pinta a cor do
+/// pincel pela silhueta — mude-se o que se mudar nela — ⇒ `Natureza::MeioNaoLe`, a espécie do Color
+/// inativo do Bug #51 (a aquarela nem oferece a linha). O clique vai pelo ponteiro; Digital e Impasto
+/// são o controlo (o mesmo clique liga).
+///
+/// Mutação que tem de sangrar: a recusa da porta dos eventos (`trait_impls.rs`) apagada, ou a
+/// `natureza` do `CorDaTexturaSemLeitor` devolvida a `DependeDeOutro`.
+#[test]
+fn a_texture_colour_line_the_medium_never_reads_refuses_the_click() {
+    use ph2d_tool_painter::PaintMedia;
+    for (meio, aceita) in [
+        (PaintMedia::Digital, true),
+        (PaintMedia::Impasto, true),
+        (PaintMedia::WetPaint, false),
+    ] {
+        let mut tool = tool_with_shape_layers(1);
+        tool.set_paint_media(meio);
+        let (mut host, mut st, rects) = painted(&tool);
+        let r = rect_of(
+            &rects,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
+        )
+        .unwrap_or_else(|| panic!("{meio:?}: a linha «Use Texture Colors» não foi pintada"));
+        assert!(
+            !tool.brush_settings().shape_per_layer_color,
+            "{meio:?}: controlo — o modo nasce desligado"
+        );
+        click_through(&mut host, &mut st, &mut tool, r);
+        assert_eq!(
+            tool.brush_settings().shape_per_layer_color,
+            aceita,
+            "{meio:?}: o clique {} — a linha {}",
+            if aceita { "não chegou" } else { "marcou" },
+            if aceita {
+                "viva morreu"
+            } else {
+                "esmaecida que o meio nunca lê aceita o clique"
+            }
+        );
+    }
+}

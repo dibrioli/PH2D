@@ -454,7 +454,7 @@ pub use paint::{
     StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, UsoDaCamada,
     WetKnobs, WetTool, brush_falloff_weight_at, render_classic_flow_preview,
 };
-pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias};
+pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};
 mod layer_edit;
 /// O papel do documento: a cor sob as camadas (pedido do dono, 2026-10-05).
 mod papel;

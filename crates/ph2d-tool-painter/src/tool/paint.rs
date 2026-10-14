@@ -286,7 +286,7 @@ mod paste_patch;
 mod fabrica;
 /// Os controlos que dependem de outro — o painel esmaece-os (doc 46 §2-3).
 mod inercia;
-pub use inercia::{DICA_DO_PARAMETRO, Dependente, Inercias};
+pub use inercia::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};
 pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::tool` for the undo snapshot
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;

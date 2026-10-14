@@ -124,9 +124,28 @@ impl Dependente {
         }
     }
 
+    /// **Porque está inerte** — o que decide se a linha esmaecida ainda aceita o clique.
+    #[must_use]
+    pub fn natureza(self) -> Natureza {
+        match self {
+            Dependente::CorDaTexturaSemLeitor => Natureza::MeioNaoLe,
+            _ => Natureza::DependeDeOutro,
+        }
+    }
+
     fn bit(self) -> u32 {
         1 << (self as u32)
     }
+}
+
+/// As duas espécies de linha esmaecida (prompt 35).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Natureza {
+    /// Age quando o artista mudar OUTRO controlo do mesmo meio: continua editável, ele prepara o valor
+    /// (o `active = False` do Blender).
+    DependeDeOutro,
+    /// Este meio nunca o lê, mude-se o que se mudar nele: não aceita clique (o Color inativo do Bug #51).
+    MeioNaoLe,
 }
 
 /// O Grain inteiro: o menu e os seis parâmetros.
@@ -181,6 +200,15 @@ impl Inercias {
         self.dependentes & d.bit() != 0
     }
 
+    /// **O clique neste id é recusado** — ele está inerte por um meio que nunca o lê
+    /// ([`Natureza::MeioNaoLe`]). A porta dos eventos do painel pergunta-o antes de rotear.
+    #[must_use]
+    pub fn recusa_clique(self, id: NodeId) -> bool {
+        Dependente::TODOS.into_iter().any(|d| {
+            self.inerte(d) && d.natureza() == Natureza::MeioNaoLe && d.ids().contains(&id)
+        })
+    }
+
     /// **A dica de um id pintado, se ele está inerte** — a pergunta única do painel.
     #[must_use]
     pub fn dica_de(self, id: NodeId) -> Option<&'static str> {
@@ -209,7 +237,7 @@ fn params_inertes(t: &ph2d_painter_brush::TextureSettings) -> u8 {
 
 impl PainterTool {
     /// O que está inerte com o pincel de AGORA — cada linha pela lei que o motor usa.
-    pub(super) fn inercias(&self) -> Inercias {
+    pub(crate) fn inercias(&self) -> Inercias {
         let b = &self.paint.brush;
         let aquarela = self.watercolor_render_active();
         let agua = self.paint.wetpaint.armed;

@@ -9,6 +9,7 @@
 //! Escopo (W2): o meio **Wet Paint**. Armar noutro meio recusa-se ([`Recusa::Meio`]); o estado inicial
 //! dos outros meios não viaja ainda.
 
+pub mod em_cena;
 pub mod inicial;
 pub mod passo;
 pub mod portas;
@@ -84,6 +85,20 @@ impl PainterTool {
             saiu_do_meio: false,
         }));
         Ok((estado, (w, h)))
+    }
+
+    /// **Abre a trilha do Painter** em `rec`: arma a gravação ([`Self::macro_grava`]) e abre a `Track`
+    /// com o `StableId` da sprite pintada (`alvo`) — irmã do `MotionState::gravacao_abre`.
+    ///
+    /// # Errors
+    /// [`Recusa`].
+    pub fn macro_abre(
+        &mut self,
+        rec: &mut ph2d_macro::MacroRecorder,
+        alvo: u64,
+    ) -> Result<ph2d_macro::TrackId, Recusa> {
+        let (inicial, _) = self.macro_grava()?;
+        Ok(rec.open_track(FAMILIA, alvo, inicial))
     }
 
     /// Está a gravar?

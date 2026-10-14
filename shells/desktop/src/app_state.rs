@@ -548,6 +548,8 @@ pub(crate) struct App {
     /// independent slot/override from [`Self::painter_preview_gpu`] (the active sprite): the painter bridge
     /// composites the stashed Shape-source document into it. `None` when no non-selected Shape source.
     pub(crate) painter_shape_source_preview_gpu: Option<PainterPreviewGpu>,
+    /// As macros do Painter em cena (ADR-0186): trocam a textura da sprite-alvo À FRENTE das de cima.
+    pub(crate) painter_macros: ph2d_app_painter::macro_track::PalcosDoPainter,
     /// GPU live-preview session for the Painter (ADR-0045 Phase 3 step 2):
     /// holds the `LayerCompositor` + straight→premul blit. Lazily built on the
     /// first GPU-representable frame and reused for the tool session; drives the

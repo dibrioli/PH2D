@@ -11,6 +11,13 @@ impl MacroTime {
     pub const fn from_ms(ms: u64) -> Self {
         MacroTime(ms * 1_000)
     }
+
+    /// Segundos do relógio da macro (o `ph2d_ecs::MacroTempo` que a Timeline escreve) → µs. Antes do
+    /// início é o início.
+    #[must_use]
+    pub fn from_secs_f64(segundos: f64) -> Self {
+        MacroTime((segundos.max(0.0) * 1e6).round() as u64)
+    }
 }
 
 /// O quadro de referência da gravação (Corel Painter): as famílias guardam posições

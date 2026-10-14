@@ -5144,6 +5144,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-image-import",
  "ph2d-label-census",
+ "ph2d-macro",
  "ph2d-paint-gpu",
  "ph2d-painter-brush",
  "ph2d-painter-effects",

@@ -341,6 +341,14 @@ impl PainterTool {
         })
     }
 
+    /// **A tela composta para a CENA** (o palco de uma macro, ADR-0186): o corpo do
+    /// [`Self::take_preview_arc`] — a MESMA composição que o editor mostra —, sem a porta gravada e
+    /// sem o portão do `preview_dirty`, que os passos gravados (`Preview`/`PreviewSujo`) já drenaram.
+    pub(crate) fn composto_da_cena(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
+        self.preview_dirty = true;
+        self.take_preview_arc_corpo()
+    }
+
     fn take_preview_arc_corpo(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
         // ⚠️ **ANTES do portão do `preview_dirty`, e a ordem é a metade que o artista vê.** O dente do
         // papel é canvas-inteiro, e nenhum dos nove knobs que o produzem levanta o `preview_dirty`

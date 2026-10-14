@@ -16,6 +16,8 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ErroDaMacro {
+    /// O `ph2d_ecs::Macro.doc` não se lê.
+    Ficheiro(ph2d_macro::CodecError),
     Inicial(ErroDoInicial),
     Passo(ph2d_macro::CodecError),
     /// A gravação passou por uma porta que a macro não reproduz.
@@ -30,6 +32,9 @@ pub enum ErroDaMacro {
 pub struct TocadorDoPainter {
     tool: PainterTool,
     fita: FitaPartilhada,
+    /// Um passo de pré-visualização viu a tela mudar desde o último [`Self::toma_a_tela`] (nasce
+    /// `true`: a tela inicial também se mostra).
+    mudou: bool,
 }
 
 impl TocadorDoPainter {
@@ -78,7 +83,23 @@ impl TocadorDoPainter {
             divergiu: None,
         }));
         tool.wet_instala_fita(Some(Arc::clone(&fita)));
-        Ok(Self { tool, fita })
+        Ok(Self {
+            tool,
+            fita,
+            mudou: true,
+        })
+    }
+
+    /// **A tela para a cena**, se mudou desde a última vez: a composição do editor
+    /// ([`PainterTool::take_preview_arc`]), straight, `w × h`. O sinal de mudança é o do editor — os
+    /// passos `Preview` (pista CPU) e `PreviewSujo` (pista da placa) que a gravação drenou —, logo só
+    /// recompõe quando o artista viu a tela mudar. Ler não muda a reprodução (gate
+    /// `macro_em_cena::ler_a_cena_nao_muda_a_reproducao`).
+    pub fn toma_a_tela(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
+        if !std::mem::take(&mut self.mudou) {
+            return None;
+        }
+        self.tool.composto_da_cena()
     }
 
     #[must_use]
@@ -153,15 +174,11 @@ impl TocadorDoPainter {
             Passo::TiraAssadoAdiado => {
                 t.take_deferred_bake();
             }
-            Passo::Preview => {
-                let _ = t.take_preview_arc();
-            }
+            Passo::Preview => self.mudou |= t.take_preview_arc().is_some(),
             Passo::PreviewBbox => {
                 t.take_preview_upload_bbox();
             }
-            Passo::PreviewSujo => {
-                let _ = t.take_preview_dirty();
-            }
+            Passo::PreviewSujo => self.mudou |= t.take_preview_dirty(),
             Passo::PreviewAtual => {
                 let _ = t.current_preview();
             }
@@ -229,7 +246,11 @@ impl TocadorDoPainter {
             Passo::TiraPreviewDaFonte => {
                 t.take_shape_source_preview();
             }
-            Passo::Para => t.wet_traz_para_casa(),
+            Passo::Para => {
+                // O fim da gravação assenta a água na tela e nenhum dreno gravado vem depois dele.
+                t.wet_traz_para_casa();
+                self.mudou = true;
+            }
             Passo::TipoDaTextura(k) => t.set_brush_texture_kind(k),
             Passo::TipoDaForma(k) => t.set_brush_shape_kind(k),
             Passo::SnapDaLinha(b) => t.set_line_snap(b),

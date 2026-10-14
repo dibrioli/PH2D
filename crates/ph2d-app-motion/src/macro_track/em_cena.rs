@@ -21,10 +21,10 @@ pub struct MacroEmCena {
     erro: Option<ErroDaMacro>,
 }
 
-/// Segundos do relógio da macro → o tempo do núcleo (µs). Antes do início é o início.
+/// Segundos do relógio da macro → o tempo do núcleo ([`MacroTime::from_secs_f64`]).
 #[must_use]
 pub fn instante(segundos: f64) -> MacroTime {
-    MacroTime((segundos.max(0.0) * 1e6).round() as u64)
+    MacroTime::from_secs_f64(segundos)
 }
 
 impl MacroEmCena {

@@ -25,6 +25,35 @@ pub(super) struct ExtractInputs {
 }
 
 impl crate::App {
+    /// **As macros do Painter em cena** (ADR-0186): a tela de cada palco que a Timeline conduz troca a
+    /// textura da sprite-alvo, À FRENTE das pré-visualizações do editor — o extract fica com o primeiro
+    /// override de cada entidade, e uma sprite que a macro toca mostra a macro.
+    pub(super) fn fase_macros_do_painter(
+        &mut self,
+        do_editor: Vec<sim_extract::PreviewOverride>,
+    ) -> Vec<sim_extract::PreviewOverride> {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return do_editor;
+        };
+        let FrameGfx {
+            renderer,
+            sim,
+            toasts,
+            ..
+        } = FrameGfx::of(gfx);
+        self.painter_macros.segue(sim.world_mut());
+        let palcos = self.painter_macros.sobe(renderer, toasts);
+        palcos
+            .into_iter()
+            .map(|t| sim_extract::PreviewOverride {
+                entity_bits: t.entity_bits,
+                texture_id: t.texture_id,
+                premultiplied: true,
+            })
+            .chain(do_editor)
+            .collect()
+    }
+
     /// Ver o cabeçalho do módulo. O `None` é inalcançável (os guardas correram na `fase_chrome_clock`).
     pub(super) fn fase_extract_inputs(&mut self, wall_dt: f64) -> Option<ExtractInputs> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.

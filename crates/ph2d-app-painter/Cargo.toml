@@ -70,6 +70,8 @@ panel-painter-layers = ["dep:ph2d-panel-painter-layers", "dep:ph2d-brush-presets
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
+# Os gates dos palcos gravam uma macro (`macro_track/palcos_tests.rs`).
+ph2d-macro = { path = "../ph2d-macro" }
 
 [lints]
 workspace = true

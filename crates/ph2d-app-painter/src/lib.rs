@@ -103,6 +103,8 @@ pub mod painter_bridge_shape_preview;
 /// On-canvas wetness sheen veil (Watercolor render-path), split from `painter_bridge_overlays` for the
 /// HR-18 file-LOC cap.
 pub mod painter_bridge_upload;
+/// As macros do Painter em cena (ADR-0186, W4 item 5.5 D).
+pub mod macro_track;
 pub mod painter_bridge_wetness;
 pub mod painter_gpu_preview;
 /// Display gates, producer-handoff half (upload-plan refusals + the CPU→GPU→CPU dance on real

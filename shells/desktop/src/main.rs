@@ -815,6 +815,7 @@ impl App {
             painter_preview: None,
             painter_preview_gpu: None,
             painter_shape_source_preview_gpu: None,
+            painter_macros: Default::default(),
             painter_gpu_preview: None,
             painter_commit_requested: false,
             painter_undo_requested: false,

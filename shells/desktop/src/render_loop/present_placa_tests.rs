@@ -119,3 +119,19 @@ fn os_palcos_das_macros_passam_por_cada_sitio_do_quadro() {
     let luz = include_str!("present_luz.rs");
     assert!(luz.contains(".com_oclusoes(&mut [&mut flip_luz, &mut motion_luz], |familias| {"));
 }
+
+/// **As macros do Painter em cena** (W4 item 5.5 D): o palco segue o `MacroTempo` que o dreno da
+/// timeline escreveu NESTE quadro, antes do extract, e a troca dele vai À FRENTE das pré-visualizações
+/// do editor (o extract fica com o primeiro override de cada sprite). *Mutações: chamar antes do dreno
+/// (a pintura um quadro atrás do Motion) · `do_editor` à frente (o traço do editor tapa a macro).*
+#[test]
+fn as_macros_do_painter_trocam_a_sprite_antes_do_extract_e_a_frente_do_editor() {
+    let abre = include_str!("fase_frame_open.rs");
+    let em = |agulha: &str| abre.find(agulha).expect(agulha);
+    assert!(
+        em("self.fase_timeline_drain(") < em("self.fase_macros_do_painter(preview_overrides)")
+            && em("self.fase_macros_do_painter(preview_overrides)") < em("self.fase_sim_extract("),
+    );
+    let insumos = include_str!("fase_extract_inputs.rs");
+    assert!(insumos.contains("            .chain(do_editor)\n"));
+}

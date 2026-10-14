@@ -1,0 +1,249 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Voltar no tempo</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .steps > li.parte { break-inside:auto; }
+  .wide.estreita img { width:68%; margin:0 auto; }
+  .wide figcaption { font-size:11px; color:var(--t2); margin-top:6px; text-align:center; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+<h1>Voltar no tempo
+  <small>PH2D · Motion Nodes · tutorial 14 — a <b>fita das entradas</b> e a <b>faixa da história</b>
+  na Timeline: arrastar a régua repete a simulação, e o cartão diz quando o que mostra já não é o
+  que aconteceu</small></h1>
+
+<h2>O que você vai fazer</h2>
+<p>No tutorial 12 o grafo passou a ouvir o <b>jogo</b> (os cartões <code>Input</code>), e o que o
+jogo mandou fica <b>gravado</b> numa fita, para que voltar atrás repita o que se viu. Aqui você vai
+<b>ver</b> essa fita: uma <b>faixa verde</b> por baixo dos segundos da Timeline mostra até onde vai a
+história guardada. A fita tem um <b>tecto</b> de memória; quando enche, o começo da história é
+<b>dobrado</b> (resumido num valor só) e a faixa passa a começar mais tarde. Arrastar a régua para
+<b>antes</b> da faixa continua a funcionar, e o cartão <code>Input</code> <b>avisa</b> que ali mostra
+as entradas do começo da faixa, não as daquele segundo.</p>
+
+<figure class="wide estreita"><img src="../fig/fita_cena.png" alt="a galaxia de estrelas douradas, o grafo e a Timeline com a faixa verde de 2,3 a 5 s">
+  <figcaption>A cena 5 s depois de abrir: o relógio parou sozinho no 5, e a faixa verde da Timeline
+  vai de ~2,3 s a 5 s. O que veio antes foi dobrado.</figcaption></figure>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos. O <code>384k</code> é um tecto <b>de propósito pequeno</b>, para a fita encher em
+segundos em vez de horas.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_MOTION_FITA_BYTES=384k PH2D_GPU_COOK_DEMO=139 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps">
+  <li><b>Não carregue em nada durante 5 segundos.</b>
+      <div class="out">Uma <b>galáxia de estrelas douradas</b> gira e, de 1,5 em 1,5 s, dá um
+      <b>solavanco</b>: é uma <b>simulação</b> (um núcleo, um redemoinho e um íman, como no
+      tutorial 10) que o gatilho <code>batida</code> sacode. Por baixo, o grafo tem uma grelha de
+      16 cartões <code>Input</code> (<code>sinal_0</code> … <code>sinal_15</code>) que disparam a
+      cada instante — são o «jogo» desta cena: muitas entradas a mudar sempre. Ao fim de 5 s o
+      relógio <b>pára sozinho</b> e o campo <code>Time(s)</code> da Timeline diz <code>5</code>.</div>
+      <div class="bad">Se o relógio não parar aos 5 s, avise.</div></li>
+  <li><b>Olhe a Timeline, em baixo.</b> Ela abre na aba <b>Keys</b> (o primeiro dos três
+      separadores <code>Keys</code> · <code>Contain…</code> · <code>Arrange</code> — não confundir
+      com a caixa <code>Keys</code> mais abaixo, que é do Onion).
+      <div class="out">Logo por baixo dos números dos segundos há uma <b>linha verde fina</b>: a
+      história gravada. Enquanto a cena tocava ela começava no 0 e crescia; perto dos 2,3 s o
+      começo <b>descolou</b> do 0 — a fita encheu e dobrou o princípio. Parada, a faixa fica de
+      <b>~2,3 s a 5 s</b>.</div>
+      <div class="bad">Se não houver faixa verde, ou se ela começar no 0, avise.</div></li>
+</ol>
+
+<figure class="wide"><img src="../fig/fita_faixa.png" alt="a Timeline na aba Keys com a faixa verde de 2,3 a 5 s">
+  <figcaption>A régua da aba <code>Keys</code>: a faixa verde (a história guardada) começa em ~2,3 s.
+  A zona escura depois do 4 é o fim da duração da Timeline (<code>Dur(s)</code> = 4), não a
+  fita.</figcaption></figure>
+
+<h2>2 · Voltar no tempo dentro da faixa</h2>
+<ol class="steps">
+  <li><b>Na aba <code>Keys</code>, arraste a régua</b> (a tira com os números 0 1 2 3…) até ao
+      <b>3,5</b> e solte.
+      <div class="out">A linha azul do tempo vai para o 3,5, o <code>Time(s)</code> diz
+      <code>3.500</code>, e as estrelas voltam à posição que tinham aos 3,5 s — a simulação é
+      repetida, com o que o jogo mandou naquele instante. A faixa verde fica onde estava.</div>
+      <div class="bad">Se as estrelas ficarem paradas onde estavam aos 5 s, avise: a régua não está a
+      mexer o relógio do Motion.</div></li>
+  <li><b>Arraste devagar para a frente e para trás</b> dentro da faixa.
+      <div class="out">A galáxia anda para a frente e para trás contigo, solavancos incluídos, nos
+      mesmos instantes em que aconteceram.</div></li>
+</ol>
+
+<h2>3 · Antes da faixa: o cartão avisa</h2>
+<ol class="steps">
+  <li><b>Arraste a régua para o 1</b> (antes do começo da faixa) e solte.
+      <div class="out">A galáxia mostra o segundo 1 — mas as entradas desse segundo já não existem
+      (foram dobradas): para antes da faixa a fita só tem <b>um valor</b>, o do começo dela. A faixa
+      verde <b>continua lá</b>, de ~2,3 s a 5 s, depois de soltar.</div>
+      <div class="bad">Se a faixa verde sumir depois de soltar a régua, avise.</div></li>
+  <li><b>Leia um cartão <code>Input</code>.</b> Os nomes e as linhas dos cartões só se leem com o
+      grafo <b>aproximado</b>: clique num cartão <code>Input</code> e, com o rato sobre o grafo,
+      carregue <kbd>F</kbd> — o grafo aproxima esse cartão. (Se ele continuar uma pílula sem
+      linhas, o painel do grafo está baixo: use a roda do rato sobre o grafo para aproximar mais.)
+      <div class="out">Na última linha do cartão aparece o aviso
+      <b><code>History before 2.32 s was folded - showing 2.32 s</code></b>: a história antes de
+      2,32 s foi dobrada, e o que se vê usa as entradas de 2,32 s. ⚠️ O cartão corta a frase na
+      largura dele — lê-se <code>History before 2.32 s was folde…</code>. Todos os cartões
+      <code>Input</code> dizem o mesmo (a fita é uma só).</div>
+      <div class="bad">Se o cartão ficar calado antes da faixa, ou se o aviso aparecer com a régua
+      DENTRO da faixa, avise.</div></li>
+</ol>
+
+<figure class="wide"><img src="../fig/fita_aviso.png" alt="o cartao Input batida aproximado com o aviso History before 2.32 s was folded, a regua no 1 e a faixa verde intacta">
+  <figcaption>A régua no 1 (antes da faixa): o cartão <code>Input</code> da <code>batida</code>,
+  aproximado com <kbd>F</kbd>, diz <code>History before 2.32 s was folde…</code>; a faixa verde
+  continua de ~2,3 s a 5 s.</figcaption></figure>
+
+<figure class="wide"><img src="../fig/fita_dentro.png" alt="o mesmo cartao com a regua no 3,5: sem aviso, Fire On">
+  <figcaption>O controlo: a régua no 3,5 (dentro da faixa). O cartão não se queixa — mostra o que
+  o jogo mandou ali (<code>Fire</code> = <code>On</code>).</figcaption></figure>
+
+<h2>4 · A aba Arrange: o mesmo relógio</h2>
+<ol class="steps">
+  <li><b>Clique na aba <code>Arrange</code></b> e arraste a régua.
+      <div class="out">A mesma faixa verde, nos mesmos segundos, e a galáxia repete-se como na
+      <code>Keys</code>. Sem pistas na <code>Arrange</code> há <b>um relógio só</b>: as duas abas
+      mexem o mesmo tempo, e o aviso do cartão aparece igual.</div>
+      <div class="bad">Se numa das abas a régua andar e as estrelas não, diga qual.</div></li>
+</ol>
+
+<h2>5 · O tecto da fita</h2>
+<p>Sem o <code>PH2D_MOTION_FITA_BYTES</code>, o tecto é <b>1/32 da memória do computador</b>,
+partilhado por todas as fitas abertas. Nesta máquina (128 GB) isso dá <b>3,85 GB</b> de fita; num
+computador de 8 GB, <b>256 MB</b>. Por isso, sem a variável, esta cena não dobra em 5 s: a faixa
+começa no 0.</p>
+<ol class="steps">
+  <li><b>Feche o app e abra-o sem o tecto pequeno:</b>
+      <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=139 cargo run -p ph2d-host-desktop --profile smoke</div>
+      <div class="out">A mesma cena, mas a faixa verde vai do <b>0</b> ao <b>5</b> e o cartão nunca
+      avisa. No terminal, a linha <code>Tecto da fita agora: … bytes</code> diz o tecto que valeu
+      (com <code>384k</code> ela diz <code>393216</code>).</div></li>
+</ol>
+
+<figure class="wide"><img src="../fig/fita_faixa_sem_tecto.png" alt="a Timeline com a faixa verde de 0 a 5 s">
+  <figcaption>Sem o tecto pequeno: a faixa verde começa no 0 — nada foi dobrado.</figcaption></figure>
+
+<h2>6 · O que cada coisa faz</h2>
+<table>
+  <tr><th>o quê</th><th>onde</th><th>o que faz</th></tr>
+  <tr><td>a faixa verde</td><td>régua da Timeline</td><td>a história guardada: do começo dela (o
+      fim da parte dobrada) ao último segundo gravado</td></tr>
+  <tr><td>aba <code>Keys</code></td><td>Timeline</td><td>sem pistas na <code>Arrange</code>, a régua
+      mexe o relógio da cena — o que o Motion lê</td></tr>
+  <tr><td>aba <code>Arrange</code></td><td>Timeline</td><td>a régua da cena; sem pistas, o MESMO
+      relógio da <code>Keys</code></td></tr>
+  <tr><td><code>History before X s was folded - showing X s</code></td><td>cartão
+      <code>Input</code></td><td>a régua está antes da faixa: o que se vê usa as entradas do
+      segundo X</td></tr>
+  <tr><td><code>Inputs were not recorded here - showing the current values</code></td><td>cartão
+      <code>Input</code></td><td>a régua está num segundo que a fita nunca gravou: usa os valores de
+      agora (nesta cena a fita grava desde o 0, por isso não aparece)</td></tr>
+  <tr><td><code>scene stays: clip not in Arrange</code> · <code>scene stays: clip plays 2x in
+      Arrange</code></td><td>barra da Timeline, aba <code>Keys</code></td><td>com um clip aberto, a
+      cena não segue a régua: o clip não toca na <code>Arrange</code>, ou toca duas vezes (ver
+      «Vá além»)</td></tr>
+  <tr><td><code>PH2D_MOTION_FITA_BYTES</code></td><td>linha de comando</td><td>o tecto da fita à mão:
+      <code>384k</code>, <code>4m</code>, <code>1g</code>; sem ela, 1/32 da memória</td></tr>
+  <tr><td><code>PH2D_MOTION_FITA_SCRUB</code></td><td>linha de comando</td><td>só para fotografar:
+      depois da paragem, leva a régua a esse segundo e aproxima o cartão da <code>batida</code>, uma
+      vez</td></tr>
+</table>
+
+<h2>7 · Vá além</h2>
+<ol class="steps">
+  <li><b>Um tecto ainda menor.</b> Abra com <code>PH2D_MOTION_FITA_BYTES=128k</code> no lugar do
+      <code>384k</code>: a faixa descola do 0 mais cedo e fica mais curta.</li>
+  <li class="parte"><b>Um clip aberto (a «pilha»).</b> <i>Sem foto: esta parte usa a cena da composição de clips,
+      não a do Motion.</i>
+      <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_STACK_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
+      Um quadrado laranja (<code>StackDemo</code>) com dois clips, <code>Left</code> e
+      <code>Right</code>, numa pista <code>Lane 1</code> da <code>Arrange</code>:
+      <code>Left</code> toca de 0 a 3 s, <code>Right</code> de 2 a 5 s. Pare o relógio (o botão
+      ▷ do meio da Timeline). Na aba <code>Keys</code>, no menu do clip escolha <code>Right</code>
+      e arraste a régua para o <b>1</b>.
+      <div class="out">Agora a régua da <code>Keys</code> é a do <b>clip</b> (0 = o começo do
+      clip), e a cena vai ao segundo certo: <b>3 s</b> (o clip começa no 2 da cena, mais 1). Clique
+      em <code>Arrange</code>: a linha do tempo está no 3.</div>
+      Na <code>Arrange</code>, clique com o botão direito na faixa <code>Right</code> →
+      <code>Duplicate Strip</code> (a cópia fica logo a seguir, de 5 a 8 s). Volte à
+      <code>Keys</code> e arraste a régua.
+      <div class="out">O clip toca <b>duas vezes</b> — não há um segundo só da cena para onde ir. A
+      cena fica parada e a barra da Timeline diz <code>scene stays: clip plays 2x in Arrange</code>.
+      Apague as duas faixas <code>Right</code> (botão direito → <code>Delete Strip</code>) e
+      arraste outra vez: <code>scene stays: clip not in Arrange</code>.</div></li>
+</ol>
+
+<h2>8 · O que isto custa</h2>
+<p>Medido nesta máquina (doc 132, com o computador ocupado — vale como ordem de grandeza): a fita
+guarda só o que <b>muda</b>, a cada instante (60 por segundo).</p>
+<table>
+  <tr><th>entradas a mudar sempre</th><th>bytes por instante</th><th>história com 8 GB (fita de 256 MB)</th><th>história com 128 GB (fita de 3,85 GB)</th></tr>
+  <tr><td class="n">3</td><td class="n">215</td><td class="n">348 min</td><td class="n">89 h</td></tr>
+  <tr><td class="n">30</td><td class="n">1 546</td><td class="n">48 min</td><td class="n">12,4 h</td></tr>
+  <tr><td class="n">300</td><td class="n">14 860</td><td class="n">5 min</td><td class="n">77 min</td></tr>
+</table>
+<p>O tecto é <b>um só para todas as fitas</b> do app: cem objectos Motion não pedem cem tectos.</p>
+
+<h2>9 · Se algo não bater</h2>
+<table>
+  <tr><th>o que você vê</th><th>o que reportar</th></tr>
+  <tr><td>não há faixa verde, ou ela começa no 0 com o <code>384k</code></td><td>uma foto da
+      Timeline e a linha <code>Tecto da fita agora</code> do terminal</td></tr>
+  <tr><td>a faixa some depois de arrastar a régua para trás</td><td>para que segundo arrastou, e em
+      que aba</td></tr>
+  <tr><td>a régua anda e as estrelas não</td><td>a aba (<code>Keys</code> ou
+      <code>Arrange</code>)</td></tr>
+  <tr><td>o cartão não avisa antes da faixa, ou avisa dentro dela</td><td>o segundo da régua e o
+      começo da faixa</td></tr>
+  <tr><td>o aviso do cartão acaba em <code>folde…</code></td><td>já conhecido: o cartão corta a
+      frase na largura dele (a frase inteira está na secção 3)</td></tr>
+  <tr><td>com um clip aberto a cena não vai ao segundo certo</td><td>onde estão as faixas do clip
+      na <code>Arrange</code> e o que diz a barra</td></tr>
+</table>
+
+<footer>PH2D · Motion Nodes · ciclo «ZERAR 132» (doc 132 §2, P2) · cena
+<code>PH2D_GPU_COOK_DEMO=139</code> · a régua da <code>Keys</code> sem pilha mexe o relógio do
+editor (ADR-0115 R8 emenda 3) · fotos tiradas do app numa tela virtual</footer>

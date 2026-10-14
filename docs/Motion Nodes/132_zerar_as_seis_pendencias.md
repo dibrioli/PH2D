@@ -1,5 +1,7 @@
 # 132 — ZERAR as seis pendências do 131 (P1–P6): plano, 13/10
 
+> 📄 **Tutorial (o smoke do P2):** [14 — Voltar no tempo](tutoriais/14_voltar_no_tempo.pdf) ([fonte](tutoriais/src/14_voltar_no_tempo.html)), cena `=139`.
+
 > Ordem do dono (13/10): TODAS as pendências do
 > [handoff ZERAR_131](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-12_ZERAR_131.md) num ÚNICO ciclo
 > (`CLAUDE.md` §0.10). Linha `line/motion-value`, alinhada ao `main` `757afebd58` (nada por integrar).

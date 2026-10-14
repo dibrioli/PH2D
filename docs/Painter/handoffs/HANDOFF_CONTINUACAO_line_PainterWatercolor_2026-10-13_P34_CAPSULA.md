@@ -62,8 +62,9 @@ Raio 20 / 45, redonda e cerdas, cinco meios: a 0,25 com a caixa **≤ 0,017** (h
   sozinho ✓ 1/1 — família de carga, falta o 3/3 calmo. Tectos de LOC ✓ (`stamp_cache.rs` 700/700,
   `stroke.rs` 698 — o próximo campo corta).
 
-## §5 — Aberto
+## §5 — Aberto (smoke do dono ✓ 13/10: *«funciona muito bem»*)
 
 C13 do [26](../NewFeaturesWetPaint/26_ABERTOS.md): a rota das camadas de COR do Shape (Per-Layer Color) não lê a
 cápsula; o AA do filme (Smooth Edges) desliga-se nela. B5 (o Spacing do Wet Paint pelo raio do motor) continua do
-dono — por ele o «alvo» do Wet Paint é mais ralo do que o painel pede.
+dono — por ele o «alvo» do Wet Paint é mais ralo do que o painel pede. C14 (o custo do Wet Paint, calmo), C15 (os
+tectos de LOC). O flake wgpu da Luz 2D (§4) é da linha dela: falta o 3/3 calmo.

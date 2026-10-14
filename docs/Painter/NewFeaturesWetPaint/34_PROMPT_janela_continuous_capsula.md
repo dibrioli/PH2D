@@ -11,6 +11,17 @@ do handoff W0/W1). ⚠️ «faça como achar melhor e pare de me fazer perguntas
 pigment (isso é normal) mas por criar algo como RETÂNGULOS e deixar o traço MENOS NÍTIDO.»* A captura grande mostra
 blocos com costura vertical a cada dab e tracinhos dentro de cada bloco (o C12 do [26](26_ABERTOS.md), generalizado).
 
+## ⭐ Pedido do dono (13/10, mesma rodada): *«continuous deve estar disponível para os outros modos de pintura também»*
+
+Hoje a caixa APARECE em todo meio mas só se ARMA com o Shape Bristles preso ao dab (`BrushSpec::drags_bristles`), e
+esmaece no resto; e a Watercolor não lê o passo (sonda: CV das cerdas 0,037 a todo Spacing — confirme a rota em
+`watercolor_accum.rs`). A cápsula é uma lei da PONTA, não das cerdas: ela vale para QUALQUER ponta (a redonda, as
+texturas do Shape, a imagem) e tem de agir nos cinco meios — Digital, Impasto, Watercolor, Wet Paint, Composite.
+⇒ `drags_bristles` dá lugar a «a caixa ligada e o método espaça dabs» (Drag Dot/Anchored/Grid continuam fora);
+`Dependente::ContinuoSemCerdas` passa a esmaecer só onde nada a lê (meça com o censo
+`a_linha_esmaecida_e_a_que_nao_age` em cada meio). O dab-cápsula da redonda, recusado no [31 §4.2](31_spacing_por_meio_o_pontilhado.md)
+como opção NOVA, entra aqui DENTRO da caixa que o dono pediu — reescreva essa recusa com o porquê.
+
 ## O mecanismo (a confirmar por medida no passo 1)
 
 O traço denso (passo 1 px) dá a cada píxel `Σ_k w(h_k)·tile(h_k)` — cada pelo pesado pela queda (`w`, falloff) da
@@ -44,11 +55,11 @@ pequeno; só a composição (1 em vez de `n`) difere — a «tinta menor» que o
    reprova); `o_spacing_continuo_risca_no_digital_e_no_wet_paint` continua; desligada = ao bit.
 3. **Custo** (MEDIR_VELOCIDADE, variantes no mesmo processo): a 0,25 com a caixa ≤ o traço a 0,025 sem ela (o motivo
    de existir); recto e curva; com pressão (o raio muda por dab ⇒ o memo falha).
-4. Prancha ao dono: alvo 0,025 · 0,25 hoje · 0,25 cápsula, nos dois meios.
+4. Prancha ao dono: alvo 0,025 · 0,25 hoje · 0,25 cápsula, nos cinco meios, com a redonda e com as cerdas.
 
 ## Testes — a CADÊNCIA (dono 13/10)
 Por item: `cargo-check-narrow.sh` + os testes do item POR NOME. A suíte só no fecho (`PH2D_SUITE=fecho`).
 
 ## Fecho
 R1 ~150 chamadas · `verificador` · handoff ≤ 8 KB · atualizar o 26 e o 31 · commit por caminho, nunca push · smoke ao
-dono em passos numerados (Wet Paint e Digital, Spacing 0,025 contra 0,25 com Continuous: o mesmo desenho).
+dono em passos numerados (cada meio, redonda e cerdas, Spacing 0,025 contra 0,25 com Continuous: o mesmo desenho).

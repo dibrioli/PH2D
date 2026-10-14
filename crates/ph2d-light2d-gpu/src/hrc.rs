@@ -34,6 +34,8 @@ pub(crate) const NOMES_T: [&str; NIVEIS_MAX] = [
 pub(crate) const NOMES_R: [&str; 2] = ["luz2d/buf/hrc_r0", "luz2d/buf/hrc_r1"];
 pub(crate) const NOME_ACUMULADO: &str = "luz2d/buf/hrc_acumulado";
 pub(crate) const NOME_UNIFORME: &str = "luz2d/buf/hrc_uniforme";
+/// ⭐ W5r — o arco de cada cone, `arcos[2ⁿ + m]` para n = 0..=N (a placa escreve-o uma vez, ao nascer).
+pub(crate) const NOME_ARCOS: &str = "luz2d/buf/hrc_arcos";
 /// Os buffers que ocupam as ligações que um passe não usa (leitura; escrita de T; escrita de R).
 pub(crate) const NOMES_VAZIOS: [&str; 3] = [
     "luz2d/buf/hrc_vazio_l",
@@ -112,6 +114,11 @@ pub(crate) fn buffers([w, h]: [u32; 2], passes: u64) -> Vec<Buffer> {
     v.push(Buffer {
         nome: NOME_ACUMULADO,
         bytes: 16 * u64::from(w) * u64::from(h),
+        usos: armazenado,
+    });
+    v.push(Buffer {
+        nome: NOME_ARCOS,
+        bytes: 4 << (n_max + 1),
         usos: armazenado,
     });
     v.push(Buffer {

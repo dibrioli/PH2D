@@ -172,6 +172,7 @@ impl Holografica {
                 armazenado(9, false),
                 armazenado(10, false),
                 entrada_escrita(11, e.lista.texturas[c0].formato),
+                armazenado(12, true),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -216,6 +217,7 @@ impl Holografica {
                 f64::from(u8::from(e.cfg.preenchimento.is_some())),
             ),
             ("COLUNAS_HRC", f64::from(u8::from(e.cfg.hrc_por_colunas))),
+            ("ARCOS_TABELA", f64::from(u8::from(e.cfg.hrc_arcos_em_tabela))),
         ];
         let pipelines = ENTRADAS
             .iter()
@@ -262,6 +264,10 @@ impl Holografica {
         let r = hrc::NOMES_R.map(|nome| (e.buffer)(nome));
         let acumulado = cedo.unwrap_or_else(|| (e.buffer)(hrc::NOME_ACUMULADO));
         let uniforme = (e.buffer)(hrc::NOME_UNIFORME);
+        let arcos = (e.buffer)(hrc::NOME_ARCOS);
+        if e.cfg.hrc_arcos_em_tabela {
+            escrever_arcos(e, &arcos);
+        }
         let [vazio_l, vazio_t, vazio_r] = hrc::NOMES_VAZIOS.map(|nome| (e.buffer)(nome));
 
         let mut uniformes = Vec::new();
@@ -285,6 +291,7 @@ impl Holografica {
                         buf(9, ligados[4]),
                         buf(10, &acumulado),
                         vista(11, &e.vistas[c0]),
+                        buf(12, &arcos),
                     ],
                 });
                 passos.push((etapa, grupo, grupos));
@@ -468,6 +475,43 @@ impl Holografica {
             p.dispatch_workgroups(*x, *y, 1);
         }
     }
+}
+
+/// ⭐ W5r — a tabela dos arcos (`hrc_arcos`), uma vez: um despacho no seu próprio envio.
+fn escrever_arcos(e: &Entradas<'_>, arcos: &wgpu::Buffer) {
+    let device = e.device;
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("luz2d c2 holográfica arcos"),
+        entries: &[armazenado(13, false)],
+    });
+    let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("luz2d c2 holográfica arcos"),
+        bind_group_layouts: &[None, None, None, Some(&layout)],
+        immediate_size: 0,
+    });
+    let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: Some("hrc_arcos"),
+        layout: Some(&pl),
+        module: e.modulo,
+        entry_point: Some("hrc_arcos"),
+        compilation_options: Default::default(),
+        cache: None,
+    });
+    let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("luz2d c2 holográfica arcos"),
+        layout: &layout,
+        entries: &[buf(13, arcos)],
+    });
+    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("luz2d c2 holográfica arcos"),
+    });
+    {
+        let mut p = enc.begin_compute_pass(&Default::default());
+        p.set_pipeline(&pipeline);
+        p.set_bind_group(3, &grupo, &[]);
+        p.dispatch_workgroups(((arcos.size() / 4) as u32).div_ceil(64), 1, 1);
+    }
+    e.queue.submit([enc.finish()]);
 }
 
 fn g2_de(

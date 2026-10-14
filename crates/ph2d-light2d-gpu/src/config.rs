@@ -202,6 +202,9 @@ pub struct Config {
     /// ⭐ W5r — os T e os R da cascata holográfica por COLUNAS (`v` o índice mais rápido): as leituras
     /// em diagonal ficam contíguas — o mesmo bit, outros endereços (handoff W5r). `false` = por linhas.
     pub hrc_por_colunas: bool,
+    /// ⭐ W5r — o arco de cada cone numa tabela que a placa escreve uma vez (não dois `atan` por fio na
+    /// descida): o mesmo bit. `false` = recalculado por fio.
+    pub hrc_arcos_em_tabela: bool,
 }
 
 /// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
@@ -413,6 +416,7 @@ impl Config {
             modulo_rc: None,
             hrc_nasce_duas_vezes: true,
             hrc_por_colunas: true,
+            hrc_arcos_em_tabela: true,
         }
     }
 

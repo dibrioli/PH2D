@@ -48,6 +48,9 @@ struct Hrc {
 @group(3) @binding(8) var<storage, read> r_cima: array<vec2<u32>>;
 @group(3) @binding(9) var<storage, read_write> r_saida: array<vec2<u32>>;
 @group(3) @binding(10) var<storage, read_write> acumulado: array<vec4<f32>>;
+// ⭐ W5r: o arco de cada cone (`arcos[2ⁿ + m]`), escrito uma vez pelo `hrc_arcos` (binding 13).
+@group(3) @binding(12) var<storage, read> arcos: array<f32>;
+@group(3) @binding(13) var<storage, read_write> arcos_escrita: array<f32>;
 // ⭐ W5d: a c0 do entorno (só a saída a lê).
 @group(2) @binding(14) var entorno_c0: texture_2d<f32>;
 @group(2) @binding(15) var entorno_amostra: sampler;
@@ -65,6 +68,8 @@ override MAIS_UM_HRC: bool = true;
 // ordem — as leituras «em diagonal» (a linha v + 2k − 2ⁿ) ficam contíguas entre fios vizinhos. Só os
 // endereços mudam: a conta de cada entrada é a mesma (handoff W5r). `false` = por linhas (o antes).
 override COLUNAS_HRC: bool = true;
+// ⭐ W5r — o arco lido da tabela (`arcos`), não recalculado por fio: a MESMA conta, feita uma vez na placa.
+override ARCOS_TABELA: bool = true;
 
 struct Par {
     r: vec3<f32>,
@@ -151,6 +156,13 @@ fn tracar(A: vec2<f32>, B: vec2<f32>) -> Par {
 
 // O arco do cone m da cascata n (Eq. 13): entre as arestas v_n(m) e v_n(m+1).
 fn arco(n: u32, m: u32) -> f32 {
+    if ARCOS_TABELA {
+        return arcos[(1u << n) + m];
+    }
+    return arco_conta(n, m);
+}
+
+fn arco_conta(n: u32, m: u32) -> f32 {
     let lado = f32(1u << n);
     return atan((2.0 * f32(m + 1u) - lado) / lado) - atan((2.0 * f32(m) - lado) / lado);
 }
@@ -212,6 +224,17 @@ fn decompor(e: u32, nk: u32) -> vec3<u32> {
     }
     let resto = e / nk;
     return vec3<u32>(e % nk, resto % hrc.nx, resto / hrc.nx);
+}
+
+// ── ⭐ W5r: a tabela dos arcos, uma vez ao nascer ──
+@compute @workgroup_size(64)
+fn hrc_arcos(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let i = gid.x;
+    if i == 0u || i >= arrayLength(&arcos_escrita) {
+        return;
+    }
+    let n = firstLeadingBit(i);
+    arcos_escrita[i] = arco_conta(n, i - (1u << n));
 }
 
 // ── T0, T1, T2: traçados ──

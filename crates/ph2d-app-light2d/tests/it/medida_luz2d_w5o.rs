@@ -427,17 +427,21 @@ fn medida_luz2d_w5o_lastro() {
         let hrc_nasce_duas_vezes = nivel != NivelDaLuz::Alta || ensaio;
         // ⭐ W5r: `PH2D_W5R_COLUNAS=0` — a holográfica por linhas (o antes).
         let hrc_por_colunas = std::env::var("PH2D_W5R_COLUNAS").as_deref() != Ok("0");
+        // ⭐ W5r: `PH2D_W5R_TABELA=0` — os arcos recalculados por fio.
+        let hrc_arcos_em_tabela = std::env::var("PH2D_W5R_TABELA").as_deref() != Ok("0");
         (
             Config {
                 aritmetica,
                 hrc_nasce_duas_vezes,
                 hrc_por_colunas,
+                hrc_arcos_em_tabela,
                 ..produto
             },
             config_do_entorno(a, FHD, degrau_do(nivel)).map(|c| Config {
                 aritmetica,
                 hrc_nasce_duas_vezes,
                 hrc_por_colunas,
+                hrc_arcos_em_tabela,
                 ..c
             }),
         )

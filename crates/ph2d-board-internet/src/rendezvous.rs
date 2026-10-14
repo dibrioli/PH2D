@@ -11,9 +11,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
-use hkdf::Hkdf;
 use futures_lite::StreamExt as _;
 use futures_lite::future::block_on;
+use hkdf::Hkdf;
 use mainline::async_dht::AsyncDht;
 use mainline::{Dht, MutableItem, SigningKey};
 use ph2d_board_net::{InviteKey, MAX_ADDRS, random_u64};

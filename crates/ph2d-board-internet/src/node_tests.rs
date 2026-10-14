@@ -3,9 +3,9 @@
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, UdpSocket};
+use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::{self, Receiver};
-use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -92,7 +92,10 @@ fn exchange(mut sw: Box<dyn Wire>, mut cw: Box<dyn Wire>, big: usize) {
     cw.shutdown();
     let mut after = [0u8; 1];
     assert_eq!(cw.read(&mut after).unwrap(), 0, "fechado deste lado: fim");
-    assert!(cw.write_all(b"x").is_err(), "fechado deste lado: não escreve");
+    assert!(
+        cw.write_all(b"x").is_err(),
+        "fechado deste lado: não escreve"
+    );
     let got = reader.join().unwrap();
     assert!(got == data, "o quadro grande chegou trocado");
 }
@@ -107,7 +110,9 @@ fn um_fio_nos_dois_sentidos_em_127_0_0_1() {
 #[test]
 fn um_fio_nos_dois_sentidos_em_ipv6_loopback() {
     let (a, b) = (node(true), node(true));
-    let port = a.port_v6().expect("o IPv6 abriu (::1 tem de existir na máquina de teste)");
+    let port = a
+        .port_v6()
+        .expect("o IPv6 abriu (::1 tem de existir na máquina de teste)");
     assert!(b.port_v6().is_some());
     let (sw, cw) = pair(&a, &b, (Ipv6Addr::LOCALHOST, port).into());
     exchange(sw, cw, 2 << 20);
@@ -119,14 +124,18 @@ fn com_pacotes_perdidos_chega_tudo_e_na_ordem() {
     let (via, lost, _svc) = lossy(loop4(&a), 7);
     let (sw, cw) = pair(&a, &b, via);
     exchange(sw, cw, 2 << 20);
-    assert!(lost.load(Ordering::Relaxed) > 10, "o caminho perdeu de facto");
+    assert!(
+        lost.load(Ordering::Relaxed) > 10,
+        "o caminho perdeu de facto"
+    );
 }
 
 #[test]
 fn o_tempo_de_leitura_esgota_como_no_tcp() {
     let (a, b) = (node(false), node(false));
     let (_sw, mut cw) = pair(&a, &b, loop4(&a));
-    cw.set_read_timeout(Some(Duration::from_millis(150))).unwrap();
+    cw.set_read_timeout(Some(Duration::from_millis(150)))
+        .unwrap();
     let t = Instant::now();
     let e = cw.read(&mut [0u8; 4]).unwrap_err();
     assert_eq!(e.kind(), ErrorKind::TimedOut);
@@ -201,7 +210,10 @@ fn anfitriao_e_convidado_pela_internet_e_o_adeus_chega_antes_do_corte() {
     let (wire, _) = b.dial(&[loop4(&a)]).wait(T).unwrap();
     let (w, _) = bell();
     let g = Guest::join_with_key(wire, &key, T, Liveness::default(), w).expect("a chave entra");
-    let ev = gather(|| h.poll(), |e| e.iter().any(|x| matches!(x, NetEvent::Joined(..))));
+    let ev = gather(
+        || h.poll(),
+        |e| e.iter().any(|x| matches!(x, NetEvent::Joined(..))),
+    );
     let Some(NetEvent::Joined(id, _)) = ev.iter().find(|x| matches!(x, NetEvent::Joined(..)))
     else {
         panic!("{ev:?}");
@@ -234,7 +246,13 @@ fn chave_errada_pela_internet_nao_entra() {
 }
 
 /// Dois nós, cada um atrás do seu NAT de casa; o anfitrião sabe o seu endereço de fora pelo STUN.
-fn two_homes() -> (crate::test_net::Nat, crate::test_net::Nat, Node, Node, SocketAddr) {
+fn two_homes() -> (
+    crate::test_net::Nat,
+    crate::test_net::Nat,
+    Node,
+    Node,
+    SocketAddr,
+) {
     let (na, nb) = (nat(), nat());
     let (a, b) = (behind(na.inside), behind(nb.inside));
     let (srv, svc) = stun_server();
@@ -272,7 +290,10 @@ fn com_furo_o_convidado_entra_pelo_nat_do_anfitriao() {
     sw.set_read_timeout(Some(T)).unwrap();
     sw.read_exact(&mut got).unwrap();
     assert_eq!(&got, b"pelo furo");
-    assert!(na.dropped.load(Ordering::Relaxed) > 0, "antes do furo, barrado");
+    assert!(
+        na.dropped.load(Ordering::Relaxed) > 0,
+        "antes do furo, barrado"
+    );
 }
 
 #[test]
@@ -325,6 +346,8 @@ fn medida_vazao() {
         "vazão 64 MiB (mínimo de 3): QUIC {:.0} MiB/s ({qm:?}) · TCP {:.0} MiB/s ({tm:?}) · carga {}",
         mb(qm),
         mb(tm),
-        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
     );
 }

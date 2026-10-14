@@ -45,14 +45,20 @@ fn joined_and_talk(h: &Host, g: &ph2d_board_net::Guest) {
         ev.extend(h.poll());
         thread::sleep(Duration::from_millis(10));
     }
-    assert!(ev.iter().any(|e| matches!(e, NetEvent::Joined(..))), "{ev:?}");
+    assert!(
+        ev.iter().any(|e| matches!(e, NetEvent::Joined(..))),
+        "{ev:?}"
+    );
     g.send(b"oi".to_vec()).unwrap();
     let mut got = Vec::new();
     while got.is_empty() && Instant::now() < end {
         got.extend(h.poll());
         thread::sleep(Duration::from_millis(10));
     }
-    assert!(matches!(&got[..], [NetEvent::Frame(_, b)] if b == b"oi"), "{got:?}");
+    assert!(
+        matches!(&got[..], [NetEvent::Frame(_, b)] if b == b"oi"),
+        "{got:?}"
+    );
 }
 
 #[test]
@@ -60,7 +66,10 @@ fn pelo_link_copiado_entra_sem_ponto_de_encontro() {
     let mut h = lan_host();
     let ih = InternetHost::open(&mut h, &offline()).unwrap();
     assert!(!ih.rendezvous());
-    assert!(!ih.invite().addrs.is_empty(), "os endereços desta máquina vão no link");
+    assert!(
+        !ih.invite().addrs.is_empty(),
+        "os endereços desta máquina vão no link"
+    );
     let pasted = Invite::parse(&ih.link()).unwrap();
     let g = join(
         &pasted,

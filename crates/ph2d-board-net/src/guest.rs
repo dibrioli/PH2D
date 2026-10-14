@@ -9,10 +9,10 @@ use std::time::{Duration, Instant};
 
 use crate::code::Code;
 use crate::handshake;
-use crate::invite::InviteKey;
 use crate::host::{
     JOIN_DEADLINE, Liveness, Out, WRITE_TIMEOUT, check, join_until, read_loop, write_loop,
 };
+use crate::invite::InviteKey;
 use crate::lan::is_lan;
 use crate::link::Wire;
 use crate::{JoinError, NetEvent, SendError, Waker};

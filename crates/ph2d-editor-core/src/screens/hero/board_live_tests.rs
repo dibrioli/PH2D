@@ -528,10 +528,7 @@ fn the_host_invites_over_the_internet_and_copies_again() {
     t.hero.documents.live_view_mut().internet = LiveInternet::Preparing;
     t.paint();
     let id = live_node(Hit::Button(LiveButton::InviteInternet));
-    assert!(
-        t.find(id).is_none(),
-        "a preparar, o botão não se clica"
-    );
+    assert!(t.find(id).is_none(), "a preparar, o botão não se clica");
     t.hero.documents.live_view_mut().internet = LiveInternet::Ready {
         link: "ph2d-board://v1/#x".into(),
     };

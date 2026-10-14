@@ -127,7 +127,10 @@ pub(super) fn scene_live(hero: &mut HeroScreen) -> Lessons {
 pub(super) fn scene_internet(hero: &mut HeroScreen) -> Lessons {
     let mut set = BoardSet::default();
     let id = set.create(tr("board.smoke.net.board"));
-    let l = build_with(set.get_mut(id).expect("acabou de nascer"), "board.smoke.net");
+    let l = build_with(
+        set.get_mut(id).expect("acabou de nascer"),
+        "board.smoke.net",
+    );
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
     board_nav::show_box(hero, false, false, l.view);

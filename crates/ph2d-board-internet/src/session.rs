@@ -177,8 +177,7 @@ impl Drop for InternetHost {
 fn watch_guests(rv: &Rendezvous, node: &Node, mine: &[SocketAddr], stop: &AtomicBool) {
     let (mut published, mut seen) = (None::<Instant>, None);
     while !stop.load(Ordering::Acquire) {
-        if published.is_none_or(|t| t.elapsed() >= HOST_REPUBLISH) && rv.publish(Role::Host, mine)
-        {
+        if published.is_none_or(|t| t.elapsed() >= HOST_REPUBLISH) && rv.publish(Role::Host, mine) {
             published = Some(Instant::now());
         }
         if let Some((seq, addrs)) = rv.fetch(Role::Guest, seen) {

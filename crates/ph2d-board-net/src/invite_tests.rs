@@ -64,10 +64,7 @@ fn o_que_nao_e_convite_diz_porque() {
         Err(InviteError::OtherVersion)
     );
     // Uma letra a menos na chave: 127 bits não são a chave.
-    assert_eq!(
-        Invite::parse(&ok[..ok.len() - 1]),
-        Err(InviteError::BadKey)
-    );
+    assert_eq!(Invite::parse(&ok[..ok.len() - 1]), Err(InviteError::BadKey));
     assert_eq!(
         Invite::parse(&ok.replace("203.0.113.5", "203.0.113")),
         Err(InviteError::BadAddr)

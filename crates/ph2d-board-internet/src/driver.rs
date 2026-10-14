@@ -185,14 +185,14 @@ impl Driver {
             }
             let now = Instant::now();
             self.drive(now, node);
-            if let Some(end) = self.stopping {
-                if now >= end || self.conns.values().all(|c| c.closed) {
-                    for c in self.conns.values_mut() {
-                        c.close(now);
-                    }
-                    self.drive(now, node);
-                    break;
+            if let Some(end) = self.stopping
+                && (now >= end || self.conns.values().all(|c| c.closed))
+            {
+                for c in self.conns.values_mut() {
+                    c.close(now);
                 }
+                self.drive(now, node);
+                break;
             }
         }
         self.stop.store(true, Ordering::Release);
@@ -271,10 +271,10 @@ impl Driver {
         let from = canonical(from);
         if data.first().is_none_or(|b| b & 0xC0 == 0) {
             // Não é QUIC: uma resposta STUN, ou um furo (que só serve para abrir o caminho).
-            if let Some((id, mapped)) = stun::response(&data) {
-                if let Some((r, _)) = self.stuns.remove(&id) {
-                    let _ = r.send((id, mapped));
-                }
+            if let Some((id, mapped)) = stun::response(&data)
+                && let Some((r, _)) = self.stuns.remove(&id)
+            {
+                let _ = r.send((id, mapped));
             }
             return;
         }
@@ -309,12 +309,7 @@ impl Driver {
         }
     }
 
-    fn dial(
-        &mut self,
-        id: u64,
-        addrs: &[SocketAddr],
-        reply: Option<Sender<io::Result<Accepted>>>,
-    ) {
+    fn dial(&mut self, id: u64, addrs: &[SocketAddr], reply: Option<Sender<io::Result<Accepted>>>) {
         if self.stopping.is_some() {
             if let Some(r) = reply {
                 let _ = r.send(Err(ErrorKind::BrokenPipe.into()));
@@ -411,10 +406,8 @@ impl Driver {
                 self.net.send(t.destination, &self.buf[..t.size]);
             }
         }
-        if drained {
-            if let Some((_, p)) = self.conns.remove(&h).and_then(|c| c.stream) {
-                p.lose();
-            }
+        if drained && let Some((_, p)) = self.conns.remove(&h).and_then(|c| c.stream) {
+            p.lose();
         }
     }
 

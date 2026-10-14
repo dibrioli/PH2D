@@ -80,7 +80,8 @@ impl Drop for Inner {
     fn drop(&mut self) {
         self.send(Msg::Stop);
         let me = thread::current().id();
-        let threads = std::mem::take(&mut *self.threads.lock().unwrap_or_else(PoisonError::into_inner));
+        let threads =
+            std::mem::take(&mut *self.threads.lock().unwrap_or_else(PoisonError::into_inner));
         for t in threads.into_iter().filter(|t| t.thread().id() != me) {
             if t.is_finished() {
                 let _ = t.join();
@@ -299,17 +300,13 @@ impl Drop for Dialer {
 fn recv_loop(s: &UdpSocket, tx: &Sender<Msg>, stop: &AtomicBool) {
     let mut buf = vec![0u8; MAX_DATAGRAM];
     while !stop.load(Ordering::Acquire) {
-        match s.recv_from(&mut buf) {
-            Ok((n, from)) => {
-                if tx
-                    .send(Msg::Datagram(from, BytesMut::from(&buf[..n])))
-                    .is_err()
-                {
-                    break;
-                }
-            }
-            // Prazo sem nada, ou um ICMP de porta fechada (o Windows devolve-o no `recv`).
-            Err(_) => {}
+        // Um erro é um prazo sem nada, ou um ICMP de porta fechada (o Windows devolve-o no `recv`).
+        if let Ok((n, from)) = s.recv_from(&mut buf)
+            && tx
+                .send(Msg::Datagram(from, BytesMut::from(&buf[..n])))
+                .is_err()
+        {
+            break;
         }
     }
 }

@@ -30,9 +30,16 @@ fn outro_convite_ou_outro_papel_nao_abre() {
 fn as_chaves_de_encontro_sao_do_convite() {
     let inv = InviteKey::random();
     let (a, b) = (keys(&inv), keys(&inv));
-    assert_eq!(a.host.to_bytes(), b.host.to_bytes(), "os dois lados derivam igual");
+    assert_eq!(
+        a.host.to_bytes(),
+        b.host.to_bytes(),
+        "os dois lados derivam igual"
+    );
     assert_ne!(a.host.to_bytes(), a.guest.to_bytes());
-    assert_ne!(a.host.to_bytes(), keys(&InviteKey::random()).host.to_bytes());
+    assert_ne!(
+        a.host.to_bytes(),
+        keys(&InviteKey::random()).host.to_bytes()
+    );
 }
 
 /// Uma DHT própria em 127.0.0.1: o anfitrião publica, o convidado acha; e o contrário.
@@ -44,7 +51,9 @@ fn encontram_se_numa_dht_local() {
     let host = Rendezvous::new(&mode, &inv).unwrap().unwrap();
     let guest = Rendezvous::new(&mode, &inv).unwrap().unwrap();
     assert!(host.publish(Role::Host, &addrs()));
-    let (seq, got) = guest.fetch(Role::Host, None).expect("o convidado acha o anfitrião");
+    let (seq, got) = guest
+        .fetch(Role::Host, None)
+        .expect("o convidado acha o anfitrião");
     assert_eq!(got, addrs());
     assert_eq!(guest.fetch(Role::Host, Some(seq)), None, "nada mais novo");
 
@@ -53,6 +62,8 @@ fn encontram_se_numa_dht_local() {
     assert_eq!(host.fetch(Role::Guest, None).map(|f| f.1), Some(mine));
 
     // Outro convite na mesma DHT não vê nada.
-    let other = Rendezvous::new(&mode, &InviteKey::random()).unwrap().unwrap();
+    let other = Rendezvous::new(&mode, &InviteKey::random())
+        .unwrap()
+        .unwrap();
     assert_eq!(other.fetch(Role::Host, None), None);
 }

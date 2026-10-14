@@ -384,7 +384,10 @@ fn the_internet_scene_copies_a_link_and_a_second_window_joins_by_it() {
         "o link não ficou pronto: {:?}",
         host.documents.live_view().internet
     );
-    let link = host.store.take_clipboard_copy().expect("o link foi copiado");
+    let link = host
+        .store
+        .take_clipboard_copy()
+        .expect("o link foi copiado");
     assert!(link.starts_with(ph2d_board_net::SCHEME), "{link}");
     assert_eq!(
         ph2d_editor_core::screens::hero::board_nav::team::live_board::LINK_SCHEME,

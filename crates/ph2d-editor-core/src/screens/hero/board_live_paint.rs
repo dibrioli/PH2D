@@ -306,7 +306,11 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
                 ColorToken::Text2,
             )],
             LiveInternet::Ready { .. } => vec![
-                text("board.live.invite_net_ready", TypeToken::Xs, ColorToken::Text2),
+                text(
+                    "board.live.invite_net_ready",
+                    TypeToken::Xs,
+                    ColorToken::Text2,
+                ),
                 button(
                     LiveButton::InviteInternet,
                     "board.live.invite_net_again",

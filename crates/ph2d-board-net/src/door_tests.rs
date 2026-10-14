@@ -78,7 +78,10 @@ fn a_chave_entra_pela_sua_porta_e_o_codigo_pela_dele() {
     let ev = gather(&h, &hb, |e| joined(e).len() == 2);
     let ids = joined(&ev);
     assert_eq!(ids.len(), 2, "{ev:?}");
-    assert_ne!(ids[0], ids[1], "um só contador de ligações para as duas portas");
+    assert_ne!(
+        ids[0], ids[1],
+        "um só contador de ligações para as duas portas"
+    );
 
     // Os dois são iguais para o anfitrião: o `broadcast` chega a ambos.
     h.broadcast(b"todos".to_vec(), None).unwrap();

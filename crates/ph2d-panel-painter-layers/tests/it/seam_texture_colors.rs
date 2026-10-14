@@ -271,3 +271,37 @@ fn a_texture_colour_line_the_medium_never_reads_refuses_the_click() {
         );
     }
 }
+
+/// **E as linhas «Layer N Color» da Shape de várias camadas** (26 C16): a cor de cada camada também não
+/// age na água — a linha esmaece com a dica e recusa o clique; no Digital (o controlo) o clique liga.
+///
+/// Mutação que tem de sangrar: `Dependente::cobre` sem o ramo das linhas de camada.
+#[test]
+fn the_layer_colour_rows_refuse_the_click_where_the_medium_never_reads_them() {
+    use ph2d_tool_painter::PaintMedia;
+    for (meio, aceita) in [(PaintMedia::Digital, true), (PaintMedia::WetPaint, false)] {
+        let mut tool = tool_with_shape_layers(2);
+        tool.toggle_brush_shape_per_layer_color();
+        tool.set_paint_media(meio);
+        let (mut host, mut st, rects) = painted(&tool);
+        let id = ph2d_tool_painter::ids::painter_shape_layer_color_check_id(0);
+        let r = rect_of(&rects, id)
+            .unwrap_or_else(|| panic!("{meio:?}: a linha «Layer 1 Color» não foi pintada"));
+        assert_eq!(
+            host.store().tooltip_for(id).is_some(),
+            !aceita,
+            "{meio:?}: a dica da linha inerte"
+        );
+        assert!(
+            !tool.brush_settings().shape_layer_color_on[0],
+            "{meio:?}: controlo — a cor da camada nasce desligada"
+        );
+        click_through(&mut host, &mut st, &mut tool, r);
+        assert_eq!(
+            tool.brush_settings().shape_layer_color_on[0],
+            aceita,
+            "{meio:?}: o clique em «Layer 1 Color» {}",
+            if aceita { "não chegou" } else { "marcou uma cor que a água nunca lê" }
+        );
+    }
+}

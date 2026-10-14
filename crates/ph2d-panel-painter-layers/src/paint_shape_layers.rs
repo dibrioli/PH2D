@@ -149,7 +149,10 @@ pub(crate) fn paint_shape_per_layer_color(
         })
         .seccao(seccao);
         let cb_rect = Rect::new(x, y, cb_w, ROW_H_PX);
-        paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
+        // Na água a cor de cada camada não age (26 C16): a linha esmaece como a do pai.
+        crate::esmaecer::talvez_esmaecido(ctx, theme, cb_rect, &[check_id], |ctx| {
+            paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
+        });
         register_button(ctx.host.store_mut(), check_id);
         ctx.host.hit_index_mut().register(check_id, cb_rect);
         if let Some(sr) = box_rect {

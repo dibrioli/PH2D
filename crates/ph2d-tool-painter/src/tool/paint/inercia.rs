@@ -124,6 +124,18 @@ impl Dependente {
         }
     }
 
+    /// Este id é uma linha deste controlo — os de [`Self::ids`] e, na cor da textura, as linhas «Layer N
+    /// Color» de uma Shape de várias camadas (ids de fábrica, o 26 C16).
+    #[must_use]
+    pub fn cobre(self, id: NodeId) -> bool {
+        self.ids().contains(&id)
+            || (self == Dependente::CorDaTexturaSemLeitor
+                && (0..super::shape_layers::MAX_SHAPE_LAYERS as u8).any(|i| {
+                    id == ids::painter_shape_layer_color_check_id(i)
+                        || id == ids::painter_shape_layer_color_swatch_id(i)
+                }))
+    }
+
     /// **Porque está inerte** — o que decide se a linha esmaecida ainda aceita o clique.
     #[must_use]
     pub fn natureza(self) -> Natureza {
@@ -205,7 +217,7 @@ impl Inercias {
     #[must_use]
     pub fn recusa_clique(self, id: NodeId) -> bool {
         Dependente::TODOS.into_iter().any(|d| {
-            self.inerte(d) && d.natureza() == Natureza::MeioNaoLe && d.ids().contains(&id)
+            self.inerte(d) && d.natureza() == Natureza::MeioNaoLe && d.cobre(id)
         })
     }
 
@@ -214,7 +226,7 @@ impl Inercias {
     pub fn dica_de(self, id: NodeId) -> Option<&'static str> {
         if let Some(d) = Dependente::TODOS
             .into_iter()
-            .find(|d| self.inerte(*d) && d.ids().contains(&id))
+            .find(|d| self.inerte(*d) && d.cobre(id))
         {
             return Some(d.dica());
         }

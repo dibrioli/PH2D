@@ -61,6 +61,20 @@ enum Secret {
     Key(InviteKey),
 }
 
+/// Apertos de mão AO MESMO TEMPO na entrada da chave (sem o travão, cada um é uma thread até
+/// `SHAKE_TIMEOUT`). Recurso: threads do sistema; quem entra de verdade é uma pessoa a colar um link,
+/// e 32 a colar nos mesmos 5 s já não é uso. Acima disto o fio fecha sem thread.
+pub const MAX_KEY_SHAKES: usize = 32;
+
+/// Um aperto em curso na entrada da chave; larga a vaga ao cair.
+struct Slot(Arc<std::sync::atomic::AtomicUsize>);
+
+impl Drop for Slot {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
 /// Onde e como abrir.
 #[derive(Clone, Debug)]
 pub struct HostConfig {
@@ -284,6 +298,7 @@ pub(crate) fn check(len: usize) -> Result<(), SendError> {
 }
 
 fn accept_loop(door: &dyn Door, sh: &Arc<Shared>, secret: &Secret) {
+    let shaking = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     loop {
         let got = door.accept();
         if sh.state().stop {
@@ -296,6 +311,17 @@ fn accept_loop(door: &dyn Door, sh: &Arc<Shared>, secret: &Secret) {
                 // Sem descritores, por exemplo: não girar a seco.
                 thread::sleep(Duration::from_millis(50));
                 continue;
+            }
+        };
+        let slot = match secret {
+            Secret::Lan => None,
+            Secret::Key(_) => {
+                if shaking.fetch_add(1, Ordering::AcqRel) >= MAX_KEY_SHAKES {
+                    shaking.fetch_sub(1, Ordering::AcqRel);
+                    wire.shutdown();
+                    continue;
+                }
+                Some(Slot(Arc::clone(&shaking)))
             }
         };
         let id = sh.next.fetch_add(1, Ordering::Relaxed);
@@ -311,17 +337,25 @@ fn accept_loop(door: &dyn Door, sh: &Arc<Shared>, secret: &Secret) {
             Secret::Lan => Secret::Lan,
             Secret::Key(k) => Secret::Key(k.clone()),
         };
-        sh.spawn(move || serve(&s2, id, wire, peer, &secret));
+        sh.spawn(move || serve(&s2, id, wire, peer, &secret, slot));
     }
 }
 
-fn serve(sh: &Arc<Shared>, id: ConnId, mut wire: Box<dyn Wire>, peer: SocketAddr, secret: &Secret) {
+fn serve(
+    sh: &Arc<Shared>,
+    id: ConnId,
+    mut wire: Box<dyn Wire>,
+    peer: SocketAddr,
+    secret: &Secret,
+    slot: Option<Slot>,
+) {
     let _ = wire.set_read_timeout(Some(SHAKE_TIMEOUT));
     let _ = wire.set_write_timeout(Some(SHAKE_TIMEOUT));
     let shake = match secret {
         Secret::Lan => handshake::host(&mut wire, &sh.code, &sh.gate, &Instant::now),
         Secret::Key(k) => handshake::host_with(&mut wire, k.bytes(), None, &Instant::now),
     };
+    drop(slot);
     let keys = match shake {
         HostShake::Joined(k) => k,
         HostShake::Wrong => {

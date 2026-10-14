@@ -87,9 +87,17 @@ impl Guest {
     ) -> Result<Self, JoinError> {
         let _ = wire.set_read_timeout(Some(timeout));
         let _ = wire.set_write_timeout(Some(timeout));
-        let keys = handshake::guest_with(&mut wire, secret)?;
+        let keys = match handshake::guest_with(&mut wire, secret) {
+            Ok(k) => k,
+            Err(e) => {
+                // O fio é nosso: fecha já (pela internet ficava aberto até ao prazo do QUIC).
+                wire.shutdown();
+                return Err(e);
+            }
+        };
         let _ = wire.set_write_timeout(Some(WRITE_TIMEOUT));
         let (Ok(rd), Ok(wr)) = (wire.try_clone(), wire.try_clone()) else {
+            wire.shutdown();
             return Err(JoinError::Broken);
         };
 

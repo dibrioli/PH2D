@@ -25,8 +25,8 @@ use crate::pipe::{Accepted, Pipe, QuicWire, RECV_HIGH};
 use crate::stun::{self, TxId};
 use crate::tls;
 
-/// O prazo do fecho com graça (o outro lado confirmar e acabar o seu envio) — o mesmo tecto que o
-/// `Host` dá às suas threads para acabarem, com folga para um ida-e-volta lento.
+/// O prazo do fecho com graça (o outro lado confirmar e acabar o seu envio). Corre no motor, que os
+/// fios mantêm vivo: não pesa no `JOIN_DEADLINE` do `Host`. Folga para um ida-e-volta lento.
 pub const CLOSE_GRACE: Duration = Duration::from_secs(3);
 /// Um furo a cada tanto, enquanto durar o pedido. Recurso: pacotes de ~10 B por candidato.
 const PUNCH_EVERY: Duration = Duration::from_millis(200);
@@ -319,6 +319,11 @@ impl Driver {
             if let Some(r) = reply {
                 let _ = r.send(Err(ErrorKind::BrokenPipe.into()));
             }
+            return;
+        }
+        // Endereços que chegam depois de a tentativa acabar (o ponto de encontro é lento) não a
+        // ressuscitam.
+        if reply.is_none() && !self.dials.contains_key(&id) {
             return;
         }
         let now = Instant::now();

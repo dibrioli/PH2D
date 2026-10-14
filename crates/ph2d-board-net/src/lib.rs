@@ -43,7 +43,7 @@ pub use code::{ALPHABET, CODE_LEN, LOCKOUT, MAX_FAILS};
 pub use discover::{Discovery, Found, SERVICE, discover};
 pub use firewall::Subnet;
 pub use guest::Guest;
-pub use host::{Host, HostConfig, Liveness, PORT, PORT_TRIES};
+pub use host::{Host, HostConfig, Liveness, MAX_KEY_SHAKES, PORT, PORT_TRIES};
 pub use invite::{Invite, InviteError, InviteKey, KEY_LEN, MAX_ADDRS, SCHEME};
 pub use lan::{is_lan, lan_addrs, lan_subnets};
 pub use link::{Door, Wire};

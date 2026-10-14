@@ -257,6 +257,50 @@ v1 deste ADR era dívida escondida disfarçada de simplificação.
 > Gates: `apply_active_clip` (6, em `solo_apply.rs`) · `run(solo)`+`key_authoring_solo` (bridge) ·
 > `RulerClock` (ruler::tests) · publish (view_tabs_seam). 6 mutações, 6 vermelhos.
 
+> **R8 — emenda 3 (2026-10-13): sem pilha há UM relógio — o do editor; com pilha, o editor SEGUE
+> o clip onde ele toca uma vez.**
+>
+> O Enio (13/10): *«na aba Keys da Timeline, arrastar a régua (e dar play) tem de mexer a simulação
+> do Motion»* — só a Arrange a mexia.
+>
+> **O desvio.** A emenda 2 escreveu *«sem pilha `keys_mode` é FALSO… um playhead só, Motion e
+> timeline no mesmo relógio»* e citou o gate `keys_mode_is_published_only...` — que **nunca existiu**.
+> Em 2026-07-27 o Enio separou o ESCOPO das abas (Keys = o clip a solo e a Dur dele; Arrange = a
+> cena; `paint.rs` publica `keys_mode = tab.shows_keys()`, gate
+> `keys_mode_follows_the_keys_tab_regardless_of_a_stack`). A decisão era sobre o escopo, mas o
+> RELÓGIO ia no mesmo booleano: a shell escolhia o `clip_playhead` por `keys_mode`. Daí a aba Keys
+> sem pilha arrastava um segundo `Playhead` no mesmo eixo, e o Motion, a física, o Flip e as
+> sprites — que leem o do editor — não se mexiam. Sem o gate citado, nada reprovou.
+>
+> **A lei restaurada (sem tocar no escopo de 07-27):** o relógio é outra pergunta, com uma porta
+> só — `ph2d_timeline::ViewClock` (`TimelineState::view_clock`, `view_clock.rs`): Keys **sob pilha**
+> → o do clip; contêiner aberto → o dele; tudo o resto, **a Keys sem pilha incluída**, → o do
+> editor (e o do editor sempre que a cena CORRE). O dreno, o snapshot, o auto-key e o K escolhem o
+> relógio por ela. O loop continua POR VISTA: `arm_view_loop` arma o relógio da vista com o loop
+> dela no flanco (sem pilha o do editor leva o loop da Keys na Keys e o da Arrange na Arrange);
+> substitui o `last_timeline_keys_mode` da shell.
+>
+> **Com pilha**, a Keys fica com o relógio do clip (o precomp da emenda 2), e o editor **segue**:
+> `clip_scene_map` é o inverso (o mesmo `window_of` do `ContainerMap`, descendo pelos contêineres)
+> e `follow_clip_clock` leva o editor ao segundo da cena onde o clip lê o segundo da régua — só
+> quando o relógio do clip MEXEU (scrub ou play). O clip a tocar **zero** vezes (fora da Arrange)
+> ou **duas** (duas strips, contêiner instanciado duas vezes, strip que dá a volta) não tem inverso:
+> o editor não se move e a barra DIZ porquê (`breadcrumb::Status::SceneHeld`,
+> `panel.timeline.scene_held_*`), e a faixa da história do Motion não se pinta (mentiria). Onde
+> segue, a faixa pinta-se mapeada para o eixo do clip (`RulerClock::history:
+> Option<HistoryAxis>`).
+>
+> **Gates:** `the_clip_clock_exists_only_under_a_stack` (o que a emenda 2 citava, agora sobre o
+> RELÓGIO) · `the_one_clock_carries_the_loop_of_the_tab_on_screen` ·
+> `a_clip_that_plays_once_carries_the_editor_clock` ·
+> `a_clip_that_plays_twice_or_nowhere_leaves_the_editor_clock` ·
+> `a_clip_inside_a_container_is_mapped_through_the_instance` (`ph2d-timeline`, `view_clock_tests`)
+> · `keys_ruler_moves_the_editor_clock_seam` (3, pelo evento real da régua) ·
+> `without_a_stack_both_tabs_rule_the_one_clock_there_is` e
+> `the_history_band_rides_only_a_ruler_that_moves_the_editor_clock` (`ruler_clock`) ·
+> `the_keys_tab_says_why_the_scene_stays` (`breadcrumb`) ·
+> `a_regua_que_mexe_o_relogio_do_motion_pinta_a_faixa` (`ph2d-app-motion`, que fixava o contrário).
+
 **R10 — A LACUNA não é silêncio: é o strip anterior SEGURANDO** (2026-07-16, Enio).
 *"O fade das strips quando não há sobreposição ainda provoca saltos — a sprite não faz a transição a
 partir de onde está mas pula para mais perto da posição inicial da outra strip."* **Medido:** `Left[0,3)`,

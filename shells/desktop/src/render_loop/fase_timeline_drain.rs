@@ -23,8 +23,8 @@ impl crate::App {
         let FrameGfx { sim, toasts, .. } = FrameGfx::of(gfx);
 
         // General timeline (W1): drain the panel/K intents into the document, then apply it to
-        // the scene. Three clocks, one per view: Keys = the CLIP playhead (solo the clip); in a
-        // container its own; Arrange the timeline's (blend the stack). Skips the dragged entity.
+        // the scene, on the clock of the view (`ViewClock`, ADR-0115 R8 emenda 3: Keys rules the
+        // CLIP clock only under a stack, else the editor's). Skips the dragged entity.
         // ⭐ A cena a CORRER (o Play de cima) avalia a CENA no relógio dela, em qualquer aba.
         ph2d_timeline::take_runtime(
             &mut self.timeline,
@@ -37,13 +37,12 @@ impl crate::App {
         } else {
             (keys_mode, container)
         };
-        let active_playhead = if vista_keys {
-            &mut self.clip_playhead
-        } else if vista_cont.is_some() {
-            &mut self.container_playhead
-        } else {
-            &mut self.playhead
-        };
+        let vista = self.timeline.view_clock();
+        let active_playhead = vista.pick(
+            &mut self.playhead,
+            &mut self.clip_playhead,
+            &mut self.container_playhead,
+        );
         // ⛔⛔⛔ **A MÃO ESTÁ NO CURSOR DO TEMPO?** — o sinal HONESTO do gesto, lido antes de o
         // dreno o consumir (report do dono, 2026-09-17: *«criando keys de todo modo ao arrastar o
         // tempo da timeline»*, com a foto de quatro tracks inundadas).
@@ -81,6 +80,11 @@ impl crate::App {
             // escrevem enquanto o playhead toca não é uma edição (`crate::timeline_preview`).
             &mut self.preview_drive,
         );
+        // Sob pilha, o relógio do EDITOR segue o da Keys onde o clip toca uma vez (emenda 3).
+        if vista == ph2d_timeline::ViewClock::Clip {
+            let (doc, scrub) = (&self.timeline.doc, self.autokey.scrub_now);
+            ph2d_timeline::follow_clip_clock(doc, &self.clip_playhead, &mut self.playhead, scrub);
+        }
         // A recusa de um clip novo (o `+` cheio) DITA num toast — onda 4, item 4.
         ph2d_panel_timeline::speak_clip_refusals(&mut self.timeline, toasts);
         if timeline_reset {
@@ -117,20 +121,14 @@ impl crate::App {
         if std::mem::take(&mut self.timeline_reveal_after_apply) {
             ph2d_panel_timeline::request_reveal_playhead();
         }
-        // Publish the view snapshot the docked timeline panel paints (transport
-        // state; tracks/keys from E3+). Rebuilt from the ACTIVE playhead (the clip
-        // clock in Keys mode, the CONTAINER clock inside one, the timeline clock in
-        // Arrange), so the whole transport reflects the clock the panel is showing.
+        // Publish the view snapshot the docked timeline panel paints, rebuilt from the
+        // clock of the view (the same `ViewClock`), so the whole transport reflects it.
         // ⭐ Com a cena a correr o transporte mostra o relógio da CENA (o ▶/⏸ é o dela).
-        let active_playhead = if self.timeline.runtime {
-            &self.playhead
-        } else if keys_mode {
-            &self.clip_playhead
-        } else if container.is_some() {
-            &self.container_playhead
-        } else {
-            &self.playhead
-        };
+        let active_playhead = self.timeline.view_clock().pick(
+            &self.playhead,
+            &self.clip_playhead,
+            &self.container_playhead,
+        );
         self.timeline_view
             .rebuild(&mut self.timeline, active_playhead, keys_mode);
         // The Motion Path toggle reflects the SELECTED object's position mode, so

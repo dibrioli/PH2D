@@ -304,3 +304,97 @@ pub fn entry_reach(doc: &TimelineDoc, path: &[EnterStep]) -> Option<(f64, f64)> 
         }
     })
 }
+
+/// **Where the clip on the Keys tab plays in the SCENE** — the inverse the Keys ruler needs to
+/// carry the editor's clock (ADR-0115 R8 emenda 3): `host_time(u)` is the scene second at
+/// which `clip` reads its own second `u`.
+///
+/// Every placement of `clip` in the document's stack counts, walked down through the
+/// containers that instance it (a clip inside a container instanced twice plays twice).
+/// `Ok` only for exactly ONE placement that is a bijection; zero placements is
+/// [`KeyRefusal::NotPlaying`](crate::KeyRefusal::NotPlaying), and two — or one that wraps,
+/// where one clip second recurs at several scene seconds — is
+/// [`KeyRefusal::PlaysTwice`](crate::KeyRefusal::PlaysTwice). The same refusals `K` speaks.
+pub fn clip_scene_map(doc: &TimelineDoc, clip: usize) -> Result<ContainerMap, crate::KeyRefusal> {
+    let mut found = Vec::new();
+    placements(doc, doc.stack(), Axis::Scene, clip, 0, &mut found);
+    match found.as_slice() {
+        [] => Err(crate::KeyRefusal::NotPlaying),
+        [Some((t0, t1, u0, u1))] => Ok(ContainerMap {
+            t0: *t0,
+            t1: *t1,
+            u0: *u0,
+            u1: *u1,
+        }),
+        _ => Err(crate::KeyRefusal::PlaysTwice),
+    }
+}
+
+type Window = (f64, f64, f64, f64);
+
+/// The clock a stack's strips are laid out in, relative to the scene.
+#[derive(Clone, Copy)]
+enum Axis {
+    /// The document's own stack: its seconds ARE the scene's.
+    Scene,
+    /// A container interior, playing once: `(t0, t1)` scene seconds ↔ `(u0, u1)` its own.
+    Window(Window),
+    /// A container interior that wraps: each of its seconds recurs in the scene.
+    Folds,
+}
+
+/// Collect every placement of `clip` under `lanes` (laid out in `axis`) — `Some(window)` in
+/// scene seconds for a bijective one, `None` for one that folds. `depth` beyond the container
+/// count can only be a cycle (pigeonhole), so the walk stops there.
+fn placements(
+    doc: &TimelineDoc,
+    lanes: &[crate::ClipLane],
+    axis: Axis,
+    clip: usize,
+    depth: usize,
+    out: &mut Vec<Option<Window>>,
+) {
+    if depth > doc.containers().len() {
+        return;
+    }
+    for s in lanes.iter().filter(|l| !l.muted).flat_map(|l| &l.strips) {
+        let here = match (axis, window_of(s)) {
+            (Axis::Folds, _) | (_, None) => Axis::Folds,
+            (Axis::Scene, Some(w)) => Axis::Window(w),
+            (Axis::Window(p), Some(w)) => match within(p, w) {
+                Some(c) => Axis::Window(c),
+                None => continue, // the parent's slice never reaches this strip
+            },
+        };
+        match s.source {
+            crate::StripSource::Clip(i) if usize::from(i) == clip => out.push(match here {
+                Axis::Window(w) => Some(w),
+                _ => None,
+            }),
+            crate::StripSource::Container(c) => {
+                if let Some(inner) = doc.container_stack(usize::from(c)) {
+                    placements(doc, inner, here, clip, depth + 1, out);
+                }
+            }
+            crate::StripSource::Clip(_) => {}
+        }
+    }
+}
+
+/// A child window `w` (laid out in the parent's own clock) seen from the scene through the
+/// parent's window `p` — intersected with the part of the parent that actually plays, so the
+/// two ends stay in step. `None` when they do not overlap.
+fn within(p: Window, w: Window) -> Option<Window> {
+    let (pt0, pt1, pu0, pu1) = p;
+    let (t0, t1, u0, u1) = w;
+    let (a, b) = (t0.max(pu0), t1.min(pu1));
+    if b <= a {
+        return None;
+    }
+    Some((
+        remap(a, pu0, pu1, pt0, pt1),
+        remap(b, pu0, pu1, pt0, pt1),
+        remap(a, t0, t1, u0, u1),
+        remap(b, t0, t1, u0, u1),
+    ))
+}

@@ -24,8 +24,9 @@
 //! scene's second, the ruler counts the interior's. Seeing `8.00` in the chip and the
 //! playhead at `4` on the ruler is a contradiction until you know where the instance starts.
 //! AE answers with a second stacked ruler; we do not need it — what is missing is the
-//! RELATION between the two, which is [`status`], one line of text. A no-op at the root and
-//! on the Keys tab, where that ruler is not on screen.
+//! RELATION between the two, which is [`status`], one line of text. A no-op at the root; on
+//! the Keys tab it speaks only when the scene's clock cannot follow the clip's (ADR-0115 R8
+//! emenda 3).
 //!
 //! [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 
@@ -41,6 +42,8 @@ use crate::ids;
 /// number would reflow the whole bar every time the playhead crossed into or out of
 /// the instance.
 const STATUS_W: f32 = 132.0; // LITERAL-PX-OK: host-window readout width
+/// The Keys-tab readout is a sentence, not a window — it needs the room to be read whole.
+const HELD_W: f32 = 196.0; // LITERAL-PX-OK: scene-held readout width
 
 /// **Which depth the segment in slot `slot` pops to**, for a path `len` containers deep — the
 /// elision rule, as a function of a LENGTH and nothing else.
@@ -113,7 +116,17 @@ pub(crate) fn trail(snap: &TimelineViewSnapshot) -> Vec<(usize, String)> {
 /// ruler already refuses to draw a playhead there ([`crate::ruler_clock`]); an absent marker
 /// with no explanation reads as broken, and naming the refusal is this module's whole idiom.
 pub(crate) fn status(snap: &TimelineViewSnapshot) -> Option<Status> {
-    if snap.crumbs.is_empty() || snap.keys_mode {
+    // **The Keys tab under a stack whose clip plays zero/two times** (ADR-0115 R8 emenda 3):
+    // the ruler moves the clip clock and the scene — the Motion, the physics — stays, because
+    // there is no single scene second to carry it to. Said here, where the eye already reads
+    // what relates the clocks on screen; never only in a terminal.
+    if snap.keys_mode {
+        return match snap.keys_scene {
+            Some(Err(r)) => Some(Status::SceneHeld(r)),
+            _ => None,
+        };
+    }
+    if snap.crumbs.is_empty() {
         // The readout states a fact about the ARRANGE ruler (where the instance plays on
         // it). On the Keys tab that ruler is not on screen and the host readouts publish
         // `None` — printing "not playing here" there was a wrong statement standing next
@@ -144,6 +157,9 @@ pub(crate) enum Status {
     /// The container is instanced NOWHERE. Its interior is still authorable (the ruler counts
     /// its own seconds), but there is no scene window to name.
     NotPlaced,
+    /// The Keys tab's clip has no single scene second (zero or two placements): the scene's
+    /// clock does not follow the Keys ruler.
+    SceneHeld(ph2d_timeline::KeyRefusal),
 }
 
 impl Status {
@@ -155,19 +171,23 @@ impl Status {
             ),
             Self::NotPlaying => ph2d_i18n::tr("panel.timeline.host_not_playing").to_owned(),
             Self::NotPlaced => ph2d_i18n::tr("panel.timeline.host_not_placed").to_owned(),
+            Self::SceneHeld(ph2d_timeline::KeyRefusal::NotPlaying) => {
+                ph2d_i18n::tr("panel.timeline.scene_held_not_arranged").to_owned()
+            }
+            Self::SceneHeld(_) => ph2d_i18n::tr("panel.timeline.scene_held_plays_twice").to_owned(),
         }
     }
 }
 
 /// How wide the STATUS readout paints — the single source the transport flow measures
-/// against. Zero when there is no status (the root, or the Keys tab). The trail's own
+/// against. Zero when there is no status (the root, or a Keys tab the scene follows). The trail's own
 /// segments moved into the tab strip (`transport_tabs`); this module keeps only the
 /// readout that RELATES the two clocks on screen.
 pub(crate) fn width(snap: &TimelineViewSnapshot) -> f32 {
-    if status(snap).is_some() {
-        STATUS_W
-    } else {
-        0.0
+    match status(snap) {
+        Some(Status::SceneHeld(_)) => HELD_W,
+        Some(_) => STATUS_W,
+        None => 0.0,
     }
 }
 
@@ -175,7 +195,7 @@ pub(crate) fn width(snap: &TimelineViewSnapshot) -> f32 {
 /// `not placed`) — a READOUT, not a control: no id, no hit. The trail's clickable
 /// segments are now tabs in the strip (`transport_tabs`); what stays here is the one
 /// line that says WHERE the open container plays on the scene ruler, which no tab can
-/// carry. A no-op at the root and on the Keys tab (`status` returns `None`).
+/// carry. A no-op wherever `status` returns `None`.
 pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &TimelineViewSnapshot) {
     let Some(st) = status(snap) else {
         return;
@@ -189,7 +209,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &Tim
         x,
         y + (ROW_H_PX - font) * 0.5,
         font,
-        STATUS_W,
+        width(snap),
         resolve(ColorToken::Text3, theme),
     );
 }
@@ -261,6 +281,37 @@ mod tests {
             Some(Status::NotPlaying),
             "de volta ao Arrange, ele fala"
         );
+    }
+
+    /// ⭐ **(iii) The Keys tab SAYS why the scene stays** (ADR-0115 R8 emenda 3): under a stack
+    /// whose clip plays zero/two times the editor's clock cannot follow the Keys ruler, and an
+    /// unmoved simulation with no sentence reads as broken. Each reason its own sentence; a
+    /// clip that plays once (`Ok`) is followed and prints nothing.
+    #[test]
+    fn the_keys_tab_says_why_the_scene_stays() {
+        use ph2d_timeline::KeyRefusal;
+        let mut s = snap(false, None);
+        s.keys_mode = true;
+        s.keys_scene = Some(Err(KeyRefusal::PlaysTwice));
+        assert_eq!(status(&s), Some(Status::SceneHeld(KeyRefusal::PlaysTwice)));
+        assert!(width(&s) > 0.0, "the bar makes room for it");
+        let twice = status(&s).unwrap().text();
+        s.keys_scene = Some(Err(KeyRefusal::NotPlaying));
+        let nowhere = status(&s).unwrap().text();
+        assert_ne!(twice, nowhere, "two reasons, two sentences");
+        for t in [&twice, &nowhere] {
+            assert!(
+                !t.starts_with("panel."),
+                "a translated sentence, not a key: {t}"
+            );
+        }
+        s.keys_scene = Some(Ok(ph2d_timeline::ContainerMap {
+            t0: 2.0,
+            t1: 5.0,
+            u0: 0.0,
+            u1: 3.0,
+        }));
+        assert_eq!(status(&s), None, "followed: nothing to say");
     }
 
     /// **When it is not playing here, the readout SAYS so.**

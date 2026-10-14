@@ -131,14 +131,42 @@ fn o_cartao_das_entradas_avisa_ao_arrastar_para_antes_da_base() {
     }
 }
 
-/// ⭐ **SÓ A RÉGUA QUE REPETE A FITA PINTA A FAIXA** (doc 132 §2). Pelo EVENTO REAL do painel — o
-/// arrasto da régua (`WidgetEvent::ValueChanged(TIMELINE_RULER)` → `PanelEvent::SetValue`, que a
-/// shell traduz em `TimelineIntent::Scrub`, `timeline_bridge.rs` `intent_for_transport`) aplicado
-/// ao relógio que cada aba recebe da shell (`fase_timeline_drain.rs`: `Arrange` → o do EDITOR, que
-/// o Motion lê; `Keys` → o do CLIP, mesmo sem pilha). Na `Arrange` a faixa pinta-se e arrastar para
-/// antes da base faz o cartão avisar; na `Keys` nem faixa, nem aviso — o Motion não se mexeu.
+/// Um documento de timeline: sem `pilha`, nada; com ela, o clip 0 (3 s) tocado em cada segundo.
+fn estado_da_timeline(pilha: &[f64]) -> ph2d_timeline::TimelineState {
+    let mut estado = ph2d_timeline::TimelineState::default();
+    if pilha.is_empty() {
+        return estado;
+    }
+    for t in [0.0, 3.0] {
+        estado.doc.upsert_key(
+            7,
+            ph2d_timeline::PropKind::TranslationX,
+            ph2d_anim::RationalTime::from_seconds(t),
+            ph2d_timeline::AnimValue::Float(1.0),
+            ph2d_timeline::Interp::Linear,
+        );
+    }
+    let lane = estado.doc.add_lane("L".into()).expect("uma lane");
+    for &t in pilha {
+        estado
+            .doc
+            .add_strip(lane, 0, t, t + 3.0)
+            .expect("uma strip");
+    }
+    estado
+}
+
+/// ⭐ **A RÉGUA QUE MEXE O RELÓGIO DO MOTION PINTA A FAIXA** (doc 132 §2 + ADR-0115 R8 emenda 3).
+/// Pelo EVENTO REAL do painel — o arrasto da régua (`WidgetEvent::ValueChanged(TIMELINE_RULER)`
+/// → `PanelEvent::SetValue`, que a shell traduz em `TimelineIntent::Scrub`) aplicado ao relógio
+/// que a shell escolhe pela MESMA porta (`TimelineState::view_clock`) e ao passo de seguir
+/// (`follow_clip_clock`). ⚠️ Fixava o CONTRÁRIO até 13/10 («na `Keys` nem faixa, nem aviso»): a
+/// Keys sem pilha arrastava um SEGUNDO relógio e o Motion não se mexia — o pedido do dono foi
+/// que mexesse. Agora: `Keys` sem pilha e `Arrange` pintam a faixa e o cartão avisa; o CONTROLO
+/// é a `Keys` sob uma pilha cujo clip toca DUAS vezes — sem inverso, o editor não se move, sem
+/// faixa e sem aviso.
 #[test]
-fn so_a_regua_que_repete_a_fita_pinta_a_faixa() {
+fn a_regua_que_mexe_o_relogio_do_motion_pinta_a_faixa() {
     use ph2d_editor_core::action_bus::EditorAction;
     use ph2d_editor_core::interaction::WidgetEvent;
     use ph2d_editor_core::tool::PanelEvent;
@@ -166,20 +194,34 @@ fn so_a_regua_que_repete_a_fita_pinta_a_faixa() {
         crate::motion_historia::CHAVE_DA_QUEIXA,
         &[("s", &format!("{:.2}", segundos(base)))],
     );
-    let mut clip = ph2d_core::Playhead::new(DT);
-    let mut estado = ph2d_timeline::TimelineState::default();
-    for (tab, e_a_do_editor) in [(Tab::Keys, false), (Tab::Arrange, true)] {
-        // A FAIXA: o retrato que a shell constrói com o relógio desta aba.
+    let (mut clip, mut cont) = (ph2d_core::Playhead::new(DT), ph2d_core::Playhead::new(DT));
+    clip.pause();
+    cont.pause();
+    let casos: [(Tab, &[f64], bool); 3] = [
+        (Tab::Keys, &[], true),
+        (Tab::Arrange, &[], true),
+        (Tab::Keys, &[0.0, 4.0], false),
+    ];
+    for (tab, pilha, mexe) in casos {
+        // De volta ao fim da fita: dentro da faixa o cartão não se queixa.
+        editor.seek(segundos(300));
+        quadro(&mut m, None, &editor, e0);
+        let mut estado = estado_da_timeline(pilha);
+        estado.keys_mode = tab == Tab::Keys;
+        let vista = estado.view_clock();
+        // A FAIXA: o retrato que a shell constrói com o relógio desta vista.
         let mut snap = ph2d_timeline::TimelineViewSnapshot::default();
         snap.rebuild(
             &mut estado,
-            if e_a_do_editor { &editor } else { &clip },
+            vista.pick(&editor, &clip, &cont),
             tab == Tab::Keys,
         );
         assert_eq!(
-            ph2d_panel_timeline::ruler_clock_for_tests(tab, &snap).history,
-            e_a_do_editor,
-            "{tab:?}: a faixa pinta-se só na régua do relógio do Motion"
+            ph2d_panel_timeline::ruler_clock_for_tests(tab, &snap)
+                .history
+                .is_some(),
+            mexe,
+            "{tab:?} pilha {pilha:?}: a faixa pinta-se só na régua que mexe o relógio do Motion"
         );
         // O ARRASTO para antes da base, pelo painel.
         let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<TimelinePanel>();
@@ -208,21 +250,19 @@ fn so_a_regua_que_repete_a_fita_pinta_a_faixa() {
                 _ => None,
             })
             .expect("a régua pede um Scrub");
-        let relogio = if e_a_do_editor {
-            &mut editor
-        } else {
-            &mut clip
-        };
         ph2d_timeline::apply_intent(
             &mut estado,
-            relogio,
+            vista.pick(&mut editor, &mut clip, &mut cont),
             ph2d_timeline::TimelineIntent::Scrub(alvo),
         );
+        if vista == ph2d_timeline::ViewClock::Clip {
+            ph2d_timeline::follow_clip_clock(&estado.doc, &clip, &mut editor, true);
+        }
         let cartao = quadro(&mut m, None, &editor, e0);
         assert_eq!(
             cartao.as_deref() == Some(dobrada.as_str()),
-            e_a_do_editor,
-            "{tab:?}: o arrasto para antes da base só faz o cartão avisar se mexe o relógio do Motion ({cartao:?})"
+            mexe,
+            "{tab:?} pilha {pilha:?}: o arrasto para antes da base só faz o cartão avisar se mexe o relógio do Motion ({cartao:?})"
         );
     }
 }

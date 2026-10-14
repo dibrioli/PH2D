@@ -698,7 +698,6 @@ impl App {
                 ph.pause();
                 ph
             },
-            last_timeline_keys_mode: false,
             last_timeline_container: None,
             timeline_last_selected: None,
             // A 4 s composition on open, not an open-ended one pinned at t = 0 (Enio,

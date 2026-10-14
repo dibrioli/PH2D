@@ -19,7 +19,7 @@ impl crate::App {
         }
 
         // Entering / switching / leaving a container arms the CONTAINER clock with its
-        // OWN loop (edge-triggered, the nav mirror of the `keys_mode` sync below). The
+        // OWN loop (edge-triggered, the nav mirror of `arm_view_loop` below). The
         // scene clock is deliberately NOT touched — the Arrange loop survives the visit.
         if container != self.last_timeline_container {
             self.last_timeline_container = container;
@@ -29,18 +29,11 @@ impl crate::App {
                 &mut self.container_playhead,
             );
         }
-        if keys_mode != self.last_timeline_keys_mode {
-            self.last_timeline_keys_mode = keys_mode;
-            if keys_mode {
-                ph2d_timeline::sync_transport_loop(
-                    &self.timeline.doc,
-                    &mut self.clip_playhead,
-                    true,
-                );
-            } else {
-                ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.playhead, false);
-            }
-        }
+        ph2d_timeline::arm_view_loop(
+            &mut self.timeline,
+            &mut self.playhead,
+            &mut self.clip_playhead,
+        );
         self.fase_timeline_key_insert(container, keys_mode);
         // **O quadro da saída de sinais vira AQUI — antes do primeiro produtor.**
         //

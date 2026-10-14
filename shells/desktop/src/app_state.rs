@@ -91,8 +91,9 @@ pub(crate) struct App {
     /// **The Keys view's own clip-time playhead** (ADR-0115 R8 amendment, Enio
     /// 2026-07-16). While the timeline panel is on the Keys tab, the transport
     /// drives THIS clock instead of [`Self::playhead`], the scene shows the active
-    /// clip SOLOED at it (`apply_active_clip`), and K keys there. It is independent
-    /// of [`Self::playhead`] — the AE precomp model: editing a clip's keys happens in
+    /// clip SOLOED at it (`apply_active_clip`), and K keys there — under a stack only;
+    /// without one the Keys tab rules [`Self::playhead`] (`ph2d_timeline::ViewClock`).
+    /// Independent of [`Self::playhead`] — the AE precomp model: editing a clip's keys happens in
     /// the clip's own time, not the timeline's. Advanced alongside `playhead` each
     /// tick (each only moves when its own transport is playing).
     pub(crate) clip_playhead: Playhead,
@@ -105,13 +106,9 @@ pub(crate) struct App {
     /// (`NamedContainer.loop_range`), so cycling here never touches the Arrange's.
     /// Advanced alongside the others each tick (each moves only when its transport plays).
     pub(crate) container_playhead: Playhead,
-    /// The Keys-tab state the shell saw LAST frame, so it can detect a tab switch and
-    /// hand the now-active clock its own view's loop (a tab switch is not an intent,
-    /// so nothing else would sync it). See `render_loop`.
-    pub(crate) last_timeline_keys_mode: bool,
     /// The container the shell was editing LAST frame (`Some(c)` inside container `c`),
     /// so it can detect entering/leaving/switching a container and hand the container
-    /// clock its own loop — the nav mirror of [`Self::last_timeline_keys_mode`].
+    /// clock its own loop — the nav mirror of `ph2d_timeline::arm_view_loop`.
     pub(crate) last_timeline_container: Option<usize>,
     /// The primary selected entity the shell saw LAST frame — the other half of the
     /// selection EDGE (`timeline_bridge::selection_jumps_to_keys`): a NEW selection

@@ -103,8 +103,8 @@ pub(crate) fn monta(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Cena> {
 
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     crate::motion_demo_legend::pede_paragem(PARA_EM_S);
-    // A régua que repete a fita é a da `Arrange` (o relógio do editor); a `Keys` não a pinta.
-    crate::motion_demo_legend::pede_a_aba_arrange();
+    // Sem pilha a régua da `Keys` (a aba que abre) É a do relógio do editor (ADR-0115 R8
+    // emenda 3): a faixa pinta-se ali, sem pedir a `Arrange`.
     monta(doc, reg).map(|c| vec![c.saida])
 }
 
@@ -128,11 +128,11 @@ pub(super) fn announce() {
          Tecto da fita agora: {tecto} bytes (lance com {var}={TECTO_DO_ROTEIRO} para dobrar em segundos).\n\
          \n\
          (1) NAO carregue em nada: a cena TOCA sozinha 5 s e PARA, com a Timeline na aba\n    \
-         `Arrange` (a regua do relogio que o Motion le). Por baixo dos segundos da regua cresce\n    \
+         `Keys` (a que abre; a regua dela mexe o relogio que o Motion le). Por baixo dos segundos cresce\n    \
          uma FAIXA VERDE: e' a historia gravada. Aos ~3 s ela deixa de comecar no 0 - o que\n    \
          ficou para tras foi DOBRADO. Parada, a faixa fica de ~2,7 s a 5 s.\n\
          (2) Arraste a regua para DENTRO da faixa: os cartoes `Input` mostram o numero de sempre.\n    \
-         (Na aba `Keys` a faixa SOME: aquela regua mexe o relogio do clip, nao o do Motion.)\n\
+         (Na aba `Arrange` a faixa e o relogio sao os MESMOS: sem pistas, as duas abas mexem um so relogio.)\n\
          (3) Arraste a regua para ANTES do inicio da faixa: o cartao de cada `Input` diz\n    \
          `History before X s was folded - showing X s` - o replay mostra o segundo X, nao o\n    \
          que se publicou ali.\n\

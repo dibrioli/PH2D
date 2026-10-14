@@ -44,14 +44,15 @@ impl crate::App {
             hero_screen,
             ..
         } = FrameGfx::of(gfx);
-        // The K clock is the clock the animator is watching: the container's
-        // inside one, the scene's on Arrange. Keys solos and reads the clip
-        // directly (no scratch). The value/time helpers below read the same clock.
-        let k_time = if container.is_some() {
-            self.container_playhead.time()
-        } else {
-            self.playhead.time()
-        };
+        // The K clock is the clock the animator is watching — the view's (`ViewClock`): the
+        // container's inside one, the clip's on Keys under a stack, else the editor's. The
+        // value/time helpers below read the same clock.
+        let k_time = self.timeline.view_clock().pick(
+            &self.playhead,
+            &self.clip_playhead,
+            &self.container_playhead,
+        );
+        let k_time = k_time.time();
         // The scratch must describe THIS instant before the Arrange/container K asks
         // it where a key lands or whether the pose is reachable — ROOTED at whatever
         // stack the animator is looking at (the scene's, or the container's interior;
@@ -120,11 +121,7 @@ impl crate::App {
                         // pose a saltar de volta); fora dela é uma RECUSA com motivo,
                         // dita em voz alta. O `key_insert_time` respondia por este
                         // caso e responde a outra pergunta (*onde esta STRIP toca?*).
-                        match timeline_bridge::path_key_time(
-                            &self.timeline,
-                            entity,
-                            self.clip_playhead.time(),
-                        ) {
+                        match timeline_bridge::path_key_time(&self.timeline, entity, k_time) {
                             Ok(t) => self.timeline_intents.push(
                                 ph2d_timeline::TimelineIntent::AddPathKey {
                                     entity,
@@ -171,7 +168,7 @@ impl crate::App {
                         &self.timeline,
                         entity,
                         prop,
-                        self.clip_playhead.time(),
+                        k_time,
                     )
                 } else {
                     // Arrange OR inside a container — both read the stack (rooted at

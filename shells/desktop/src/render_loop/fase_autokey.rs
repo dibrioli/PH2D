@@ -26,19 +26,14 @@ impl crate::App {
         // selected sprite and keys only what left its curve. Placed after the
         // apply pass too, so an undo/paste/scrub — which the apply writes back
         // to the world — reads world == curve and keys nothing.
-        // The pass authors on the clock the APPLY drove this parent: the clip
-        // playhead in Keys, the CONTAINER playhead inside one, the timeline's on
-        // Arrange — the same three-way pick `timeline_bridge::run` made above, from
-        // the same stamped facts (`keys_mode` / `container_open`, which the pass
-        // reads to root its scratch). Handing it the wrong clock while a solo drives
-        // the pose is how one strip in a lane killed auto-key (2026-07-22).
-        let autokey_clock = if self.timeline.keys_mode {
-            &self.clip_playhead
-        } else if self.timeline.container_open.is_some() {
-            &self.container_playhead
-        } else {
-            &self.playhead
-        };
+        // The pass authors on the clock the APPLY drove — the same `ViewClock` the drain
+        // picked. Handing it the wrong clock while a solo drives the pose is how one strip in
+        // a lane killed auto-key (2026-07-22).
+        let autokey_clock = self.timeline.view_clock().pick(
+            &self.playhead,
+            &self.clip_playhead,
+            &self.container_playhead,
+        );
         autokey_pass::run(
             &mut self.timeline,
             autokey_clock,

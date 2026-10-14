@@ -40,6 +40,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // rather than relating them to any. Printing "plays 0.00 - 3.00" here would label the
         // container's own axis with the scene's name.
         "panel.timeline.host_not_placed" => "not placed",
+        // The Keys tab under a stack: its ruler moves the clip, and the scene (the Motion, the
+        // physics) cannot follow — the clip has no single scene second (ADR-0115 R8 emenda 3).
+        "panel.timeline.scene_held_not_arranged" => "scene stays: clip not in Arrange",
+        "panel.timeline.scene_held_plays_twice" => "scene stays: clip plays 2x in Arrange",
         "panel.timeline.add_marker" => "+M",
         "panel.timeline.time_seconds" => "Time(s)",
         "panel.timeline.length" => "Dur(s)",

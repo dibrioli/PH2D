@@ -75,6 +75,7 @@ mod stack_weight;
 pub mod state;
 mod strip_edge_edit;
 pub mod track_values;
+mod view_clock;
 
 pub use apply::{
     apply_from_doc, apply_from_doc_except, apply_scene, clip_playhead, key_home, key_time,
@@ -110,7 +111,9 @@ pub use intent_apply::{apply_intent, snap_time, sync_container_loop, sync_transp
 pub use nest::{
     EMPTY_CONTAINER_SECONDS, MAX_CONTAINERS, NamedContainer, StackHost, container_bar_seconds,
 };
-pub use nest_map::{ContainerMap, EnterStep, HostClock, entry_clock, entry_map, entry_reach};
+pub use nest_map::{
+    ContainerMap, EnterStep, HostClock, clip_scene_map, entry_clock, entry_map, entry_reach,
+};
 pub use onion::{OnionMode, OnionSettings};
 pub use path::{MotionPath, PathAnchor, PathSample, TangentKind};
 pub use path_convert::{ConversionReport, PositionKeyMode};
@@ -135,3 +138,4 @@ pub use ph2d_anim::{
 };
 pub use sprite::{SpriteAnimation, SpriteProp, apply_sprite_animations};
 pub use state::{SelectedKey, Selection, TimelineFlags, TimelineState};
+pub use view_clock::{ViewClock, arm_view_loop, follow_clip_clock};

@@ -100,9 +100,10 @@ pub(crate) fn paint(
         paint_loop_band(ctx, theme, region, &time_to_x, snap);
     }
     // The recorded-history band (Blender's cache bar): only on the ruler whose drag moves the
-    // clock the history was recorded on (`RulerClock::history`).
-    if clock.history {
-        crate::history_band::paint(ctx, theme, region, RULER_H, &time_to_x);
+    // clock the history was recorded on (`RulerClock::history`), on this ruler's axis.
+    if let Some(axis) = clock.history {
+        let on_axis = |t: f64| time_to_x(axis.ruler_time(t));
+        crate::history_band::paint(ctx, theme, region, RULER_H, &on_axis);
     }
 
     // Minor + major ticks (+ labels on majors).

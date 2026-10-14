@@ -26,12 +26,34 @@ pub struct RulerClock {
     /// Gates the BAND and the BRACES together: an invisible band with live grips
     /// would be a control you can grab and cannot see.
     pub loop_band: bool,
-    /// This ruler measures — and its drag moves — the EDITOR's clock, the one a scene
-    /// simulation (the Motion) reads: so it, and only it, carries the recorded-history band
-    /// (Motion Nodes doc 132 §2). Arrange outside a container. ⚠️ NOT the Keys ruler, even
-    /// without a stack: there the shell drives the CLIP playhead (`fase_timeline_drain`), a
-    /// second clock on the same axis, and a drag on it never replays the Motion's tape.
-    pub history: bool,
+    /// This ruler's drag moves the EDITOR's clock, the one a scene simulation (the Motion)
+    /// reads — so it carries the recorded-history band (Motion Nodes doc 132 §2), on the axis
+    /// [`HistoryAxis`] says. Arrange at the scene root; Keys without a stack (the ONE clock,
+    /// `ph2d_timeline::ViewClock`); Keys under a stack only where its clip plays ONCE (the
+    /// editor follows through that map — ADR-0115 R8 emenda 3). `None` where the drag cannot
+    /// reach the editor's clock: the band would mark seconds the drag never replays.
+    pub history: Option<HistoryAxis>,
+}
+
+/// How the editor's seconds — the band's — land on this ruler's axis.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum HistoryAxis {
+    /// The ruler measures the editor's clock itself.
+    Editor,
+    /// The ruler measures a clip that plays once: the editor's second `t` is clip second
+    /// `map.local_time(t)` (clamped to where the clip plays).
+    Clip(ph2d_timeline::ContainerMap),
+}
+
+impl HistoryAxis {
+    /// The second on this ruler where the editor's second `t` lies.
+    #[must_use]
+    pub fn ruler_time(self, t: f64) -> f64 {
+        match self {
+            Self::Editor => t,
+            Self::Clip(map) => map.local_time(t),
+        }
+    }
 }
 
 /// **Which clock this tab's ruler measures.** Pure, and tested as such.
@@ -55,7 +77,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
             scrub: false,
             markers: true,
             loop_band: false,
-            history: false,
+            history: None,
         };
     }
     if tab.shows_lanes() {
@@ -71,7 +93,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
                 scrub: true,
                 markers: false,
                 loop_band: true,
-                history: false,
+                history: None,
             };
         }
         // Arrange IS the timeline: the transport's playhead, and it owns the markers
@@ -81,7 +103,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
             scrub: true,
             markers: true,
             loop_band: true,
-            history: true,
+            history: Some(HistoryAxis::Editor),
         };
     }
     // Keys scrubs the active clip's own clock (published as `clip_time`). It carries
@@ -89,13 +111,19 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
     // one clock, and the Keys ruler is the timeline ruler it has always been. Under a
     // stack the clip clock ≠ the timeline clock, so timeline markers would sit at the
     // wrong second and belong on the Arrange ruler only. Its LOOP, however, is the
-    // clip's own and is always drawn.
+    // clip's own and is always drawn. Without a stack its clock IS the editor's; under one,
+    // the editor follows only where the clip plays once (`snap.keys_scene`).
+    let history = if snap.stacked() {
+        snap.keys_scene.and_then(Result::ok).map(HistoryAxis::Clip)
+    } else {
+        Some(HistoryAxis::Editor)
+    };
     RulerClock {
         now: snap.clip_time,
         scrub: true,
         markers: !snap.stacked(),
         loop_band: true,
-        history: false,
+        history,
     }
 }
 
@@ -122,13 +150,26 @@ mod tests {
     }
     use super::*;
     use crate::tab::Tab;
+    /// ⭐ **Without a stack both tabs rule the ONE clock there is** (ADR-0115 R8 emenda 3) —
+    /// proven through the door the shell uses (`TimelineState::view_clock`), not asserted on a
+    /// hand-built snapshot: with the editor at 1.25 s and a stale clip clock at 9 s, BOTH rulers
+    /// read 1.25 and both carry the history band on the editor's own axis.
     #[test]
     fn without_a_stack_both_tabs_rule_the_one_clock_there_is() {
-        // ⚠️ «One clock» is the AXIS and the snapshot's clock: both tabs read and scrub the
-        // clock the shell hands the snapshot. The shell hands Keys the CLIP playhead and
-        // Arrange the EDITOR's — two `Playhead`s — so only Arrange carries the history band.
-        let s = snap(false, 1.25, Some(1.25));
-        for (tab, history) in [(Tab::Keys, false), (Tab::Arrange, true)] {
+        let (mut editor, mut clip, mut cont) = (
+            ph2d_core::Playhead::new(1.0 / 60.0),
+            ph2d_core::Playhead::new(1.0 / 60.0),
+            ph2d_core::Playhead::new(1.0 / 60.0),
+        );
+        editor.seek(1.25);
+        clip.seek(9.0);
+        cont.seek(9.0);
+        let mut st = ph2d_timeline::TimelineState::new();
+        for tab in [Tab::Keys, Tab::Arrange] {
+            st.keys_mode = tab == Tab::Keys;
+            let clock = st.view_clock().pick(&editor, &clip, &cont);
+            let mut s = TimelineViewSnapshot::default();
+            s.rebuild(&mut st, clock, tab == Tab::Keys);
             assert_eq!(
                 clock_for(tab, &s),
                 RulerClock {
@@ -136,26 +177,56 @@ mod tests {
                     scrub: true,
                     markers: true,
                     loop_band: true,
-                    history,
+                    history: Some(HistoryAxis::Editor),
                 },
-                "{tab:?} lost the ruler it always had"
+                "{tab:?} must rule the editor's clock"
             );
         }
     }
-    /// ⭐ **The recorded-history band rides ONLY the ruler of the editor's clock** (Motion
-    /// Nodes doc 132 §2): Arrange at the scene root. Not Keys — stacked or not, its drag moves
-    /// the clip playhead, which the Motion never reads; not inside a container.
+    /// ⭐ **The recorded-history band rides the ruler whose drag moves the editor's clock**
+    /// (Motion Nodes doc 132 §2 + ADR-0115 R8 emenda 3): Arrange at the scene root, Keys
+    /// without a stack, Keys under a stack ONLY where the clip plays once (mapped onto the
+    /// clip's axis). Not where the clip plays zero/two times, not inside a container.
     #[test]
-    fn the_history_band_rides_only_the_ruler_of_the_editor_clock() {
+    fn the_history_band_rides_only_a_ruler_that_moves_the_editor_clock() {
         for stacked in [false, true] {
             let s = snap(stacked, 4.0, Some(2.0));
-            assert!(clock_for(Tab::Arrange, &s).history, "stacked={stacked}");
-            assert!(!clock_for(Tab::Keys, &s).history, "stacked={stacked}");
+            assert_eq!(
+                clock_for(Tab::Arrange, &s).history,
+                Some(HistoryAxis::Editor)
+            );
+        }
+        assert_eq!(
+            clock_for(Tab::Keys, &snap(false, 4.0, Some(4.0))).history,
+            Some(HistoryAxis::Editor),
+            "Keys without a stack: the one clock"
+        );
+        let map = ph2d_timeline::ContainerMap {
+            t0: 2.0,
+            t1: 5.0,
+            u0: 0.0,
+            u1: 3.0,
+        };
+        let mut once = snap(true, 4.0, Some(2.0));
+        once.keys_scene = Some(Ok(map));
+        assert_eq!(
+            clock_for(Tab::Keys, &once).history,
+            Some(HistoryAxis::Clip(map))
+        );
+        assert!((HistoryAxis::Clip(map).ruler_time(3.5) - 1.5).abs() < 1e-12);
+        for r in [
+            ph2d_timeline::KeyRefusal::PlaysTwice,
+            ph2d_timeline::KeyRefusal::NotPlaying,
+        ] {
+            let mut held = snap(true, 4.0, Some(2.0));
+            held.keys_scene = Some(Err(r));
+            assert_eq!(clock_for(Tab::Keys, &held).history, None, "{r:?}");
         }
         let mut dentro = snap(false, 4.0, Some(2.0));
         dentro.container_open = Some(0);
-        assert!(
-            !clock_for(Tab::Arrange, &dentro).history,
+        assert_eq!(
+            clock_for(Tab::Arrange, &dentro).history,
+            None,
             "a container's own clock"
         );
     }

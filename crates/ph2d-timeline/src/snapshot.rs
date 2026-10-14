@@ -252,8 +252,11 @@ pub struct TimelineViewSnapshot {
     /// ([`crate::apply_active_clip`]), the ruler scrubs the clip clock, and K keys
     /// there. It is a mirror of the panel's tab (a frame may lag on a switch), and
     /// it is what makes [`Self::time_seconds`] a CLIP time rather than a timeline
-    /// one.
+    /// one — under a stack; without one it is the editor's (`crate::ViewClock`).
     pub keys_mode: bool,
+    /// The Keys tab under a stack: where its clip plays in the scene ([`crate::clip_scene_map`]),
+    /// or why the editor's clock cannot follow it. `None` elsewhere (ADR-0115 R8 emenda 3).
+    pub keys_scene: Option<Result<crate::ContainerMap, crate::KeyRefusal>>,
     /// Track rows, in the **active clip's** own time — see [`Self::clip_time`].
     pub tracks: Vec<TrackView>,
     /// Markers as `(seconds, label, signal)` — the signal name (ADR-0143) is `Some`
@@ -432,6 +435,8 @@ impl TimelineViewSnapshot {
         // 2026-07-23). The container branch below overwrites this for a container view.
         self.view_length_explicit = doc.view_authored_end(None, keys_mode).is_some();
         self.keys_mode = keys_mode;
+        self.keys_scene = (keys_mode && !doc.stack().is_empty())
+            .then(|| crate::clip_scene_map(doc, doc.active_index()));
         // The KEYS ruler's playhead. In Keys mode the active playhead already IS the
         // clip clock, so publish it verbatim — the transport is the clip's. Outside
         // it, ask `clip_playhead` where the active clip is playing on the timeline

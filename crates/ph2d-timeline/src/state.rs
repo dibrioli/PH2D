@@ -209,6 +209,9 @@ pub struct TimelineState {
     /// here (`prime_rooted`), so keying inside a container reads the CONTAINER's blend
     /// and lands on the CONTAINER's clock, not the scene's.
     pub container_open: Option<usize>,
+    /// The view whose loop the clocks carry — `(keys_mode, on the clip clock)` as of the last
+    /// [`crate::arm_view_loop`], which re-arms on the edge. Session state; starts at Arrange.
+    pub(crate) armed_view: (bool, bool),
     /// **How deep into the nesting the animator has walked** — outermost first, empty at the
     /// scene root (ADR-0133 §5).
     ///

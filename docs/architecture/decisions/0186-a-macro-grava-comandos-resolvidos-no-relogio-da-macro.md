@@ -143,3 +143,42 @@ a 1024²); o Motion dá resultados diferentes conforme o número de tiques entre
   - os aplicadores escrevem estado GLOBAL do painel (pedidos de selecção, flash; ~9 sítios em
     `motion_bridge_{intents,edit,subgraph,rewire,heal,choices}.rs`). Um palco que viva na app tem de os
     isolar, ou guia o painel do editor.
+
+## Emenda W4 (2026-10-13) — a fronteira do palco, o alvo, o componente
+
+Fecha a «fronteira do palco» da Emenda W3 e entrega o componente. Itens 1–4 da W4; o item 5 (Timeline,
+Play, o desenho dos palcos) fica no [handoff](../../Macros/handoffs/HANDOFF_CONTINUACAO_W4_COMPONENTE_2026-10-13.md).
+
+**(a) Os efeitos do painel vivem na INSTÂNCIA; só o editor publica.** Os aplicadores já não escrevem estado
+global do painel: pedidos de selecção e de params vão para `MotionState.ao_painel` (`PedidosAoPainel`,
+`pede_selecao`, `encaminha_param`). Só o editor os publica (`intents::publica_no_painel`, no fim do
+`apply_graph_intents` e do `dispatch`). A mão do editor (nó seleccionado, arrasto) deixa de ser lida do
+global e passa a ARGUMENTO do quadro (`quadro::MaoDoEditor`; `do_painel()` no dispatch, `default()` no
+palco). Um palco a tocar não guia o painel nem é guiado por ele. Censo: flash e `set_card_*` não são
+alcançáveis do palco; os gizmos só se vêem pela sua publicação.
+
+**(b) O mundo: um produtor, um retrato, N palcos.** `publica_o_mundo` (porta do editor) publica o que a cena
+tem (formas do Vetor por nome, entradas do jogo, origem/visibilidade dos objectos) e guarda `MundoDaCena`
+em `motion.mundo`; cada palco lê o retrato (`recebe_o_mundo`). O palco nasce com o `gpu_enabled` do produto
+e `aplica` recebe a placa. Recusado: cada palco reproduzir a publicação (N produtores divergem).
+
+**(c) O modo fiel confere as MARCAS da bomba, não o `is_dirty`.** `MotionCookPump::sujidades()` é um
+contador de marcações; o passo `Quadro` grava «marcada desde o quadro anterior» (campo `sujo` → `sujou`,
+etiqueta 5 mantida, semântica nova). Rota-independente: na placa o `is_dirty` ficava preso e escondia
+marcas sem edição. Mudou antes de existir qualquer `MacroDoc` persistido — depois seria versão nova.
+
+**(d) O alvo da trilha é o objecto em edição.** `MotionState::gravacao_abre` = arma + `open_track(FAMILIA,
+objeto.editing.unwrap_or(0), …)`, a porta única do início. O palco da trilha coze só o dono
+(`so_o_dono`; `sinks_visiveis` filtra por ele).
+
+**(e) O componente guarda a gravação e o modo, nada mais.** `ph2d_ecs::Macro { doc: Vec<u8>, modo }`: o
+`doc` é o `MacroDoc` pelo codec do `ph2d-macro` (versão própria no cabeçalho `PH2DMACRO`, o molde do
+`TimelineDoc`, que é blob em `ProjectFile`, não componente). Descritor intrínseco (nasce do Gravar▸Parar).
+`PROJECT_SCHEMA` 188 → 189.
+- Recusado: Autoplay, laço, velocidade e duração no componente — são do clipe na Timeline; duas verdades
+  divergiriam. O «quando/onde» é `PropKind::MacroTime` (item 5).
+- Recusado: uma crate «ponte do Play» que chame Motion e Painter — `ph2d-app-*` não dependem umas das
+  outras; cada família toca a SUA trilha lendo o componente (ECS, ADR-0075).
+
+**Contratos congelados:** nenhum encostado. Foundational acrescentado: `ph2d-eval-motion` (`sujidade.rs`),
+`ph2d-ecs` (`Macro`, registo 107 → 108), `ph2d-component-desc`, `ph2d-i18n`, `ph2d-editor-core`.

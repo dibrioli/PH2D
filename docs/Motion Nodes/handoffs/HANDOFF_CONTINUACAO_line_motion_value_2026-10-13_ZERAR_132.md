@@ -8,7 +8,7 @@
 ## Onde a linha está
 
 - Worktree `Worktrees/line-motion-value`, branch `line/motion-value`, HEAD `b23e0156f9`, base = `main`
-  `757afebd58` (`git log 757afebd58..HEAD`: 49 commits). **Nada integrado nem enviado.**
+  `757afebd58` (`git log 757afebd58..HEAD`: 49 commits). ✅ **No main 14/10** (árvore combinada 20 608/20 608).
 - `MAX_DEMO_LEVEL = 141` (`motion_state_demo_router.rs:34`): cenas novas `=138`…`=141` + `PH2D_MOTION_OBJ_SMOKE=18`.
   Cena nova que outra linha criar tem de recontar o número no roteador.
 

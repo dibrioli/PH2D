@@ -8,7 +8,7 @@
 ## §1 — Coordenadas
 
 Sobre `048e52d69a` (merge-base com o `main` `757afebd58`; o `main` não andou). Dois commits desta janela (o 2.º, o smoke do dono). Sem push.
-Próxima janela: o [prompt 30](../NewFeaturesWetPaint/30_PROMPT_janela_shape_casa_W3_W4.md) (W3/W4 do plano 27).
+Próxima janela: o [prompt 34](../NewFeaturesWetPaint/34_PROMPT_janela_continuous_capsula.md) (3.ª rodada do smoke: o Continuous faz retângulos — o mecanismo e a lei estão lá), depois o [prompt 30](../NewFeaturesWetPaint/30_PROMPT_janela_shape_casa_W3_W4.md) (W3/W4 do plano 27).
 
 ## §2 — Item 1: as cerdas que ARRASTAM (feito)
 

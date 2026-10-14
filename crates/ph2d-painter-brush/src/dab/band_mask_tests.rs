@@ -171,6 +171,7 @@ fn the_cap_is_written_where_the_paint_landed_not_displaced() {
         None,
         Some(&mut mask),
         [1.0, 0.0],
+        None,
     )
     .expect("o dab pintou");
     assert!(rect.y > 0, "a fixture TEM de ter o dab longe da linha 0");

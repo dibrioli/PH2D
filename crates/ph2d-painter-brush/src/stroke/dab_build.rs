@@ -33,14 +33,12 @@ impl Stroke {
 
     /// The path step to `thrown` from the previous path point ([`Dab::step`]) — once per path point,
     /// so the spray copies and Rough passes of that point share it. Zero unless **Continuous Spacing** is
-    /// armed ([`BrushSpec::drags_bristles`]), and for the deliberate single marks (Drag Dot / Anchored /
+    /// on ([`BrushSpec::continuous_spacing`]), and for the deliberate single marks (Drag Dot / Anchored /
     /// Grid Stamp).
     pub(super) fn advance_step(&mut self, thrown: [f32; 2]) {
         let from = self.step_from.replace(thrown);
         self.dab_step = match from {
-            Some(f) if self.spec.drags_bristles() && self.spec.stroke_method.allows_jitter() => {
-                [thrown[0] - f[0], thrown[1] - f[1]]
-            }
+            Some(f) if self.spec.lays_capsules() => [thrown[0] - f[0], thrown[1] - f[1]],
             _ => [0.0, 0.0],
         };
     }

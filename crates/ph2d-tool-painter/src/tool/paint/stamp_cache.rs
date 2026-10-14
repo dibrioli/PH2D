@@ -391,7 +391,6 @@ impl PainterTool {
                     ph2d_painter_brush::texture::ShapeFrame::Stroke {
                         arc_len: d.arc_len,
                         unit_px: d.stroke_radius_px,
-                        step: d.step,
                     },
                 )
             });
@@ -425,6 +424,7 @@ impl PainterTool {
                 alpha_mode,
                 mask.as_deref_mut(),
                 rotor,
+                d.capsula(),
             ) {
                 let rect = Region {
                     x: r.x,
@@ -497,7 +497,8 @@ impl PainterTool {
         // cap de Accumulate ele **não** transcreve. Enquanto as duas moraram num `plain` só, o cap
         // — que dispara em `strength < 1` e em TODO pincel de impasto pelo AA do filme — tirava o
         // lote da CPU paralela junto com o device, e um re-stamp de forma rodava num núcleo.
-        let banded_ok = !textured && !shape_active && image.is_none();
+        // A cápsula (Continuous) é por dab e a banda e o dispositivo não a transcrevem.
+        let banded_ok = !textured && !shape_active && image.is_none() && !brush.lays_capsules();
         let device = (banded_ok
             && !accumulate_cap
             && self.device_stamp.is_some()
@@ -604,7 +605,6 @@ impl PainterTool {
                     ph2d_painter_brush::texture::ShapeFrame::Stroke {
                         arc_len: d.arc_len,
                         unit_px: d.stroke_radius_px,
-                        step: d.step,
                     },
                 )
             });
@@ -636,6 +636,7 @@ impl PainterTool {
                 shape_in,
                 mask.as_deref_mut(),
                 rotor,
+                d.capsula(),
             ) {
                 let rect = Region {
                     x: r.x,

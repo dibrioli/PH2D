@@ -486,13 +486,17 @@ impl PainterTool {
         // critical for the Line/Curve/Ellipse/Polygon fills, which re-stamp the WHOLE shape every move).
         // Per-pixel otherwise: a Grain to index, per-dab rotation, or the Accumulate cap (Enio 2026-06-26).
         let grain_active = brush.texture.is_active();
+        // The dab-capsule (Continuous Spacing) is per dab: no baked or canvas cache carries its step.
+        let capsulas = brush.lays_capsules();
         let owner = self.color_ramp_owner(grain_active);
         if owner != RampLutOwner::None {
             // `dab_mask_cacheable` already covers the no-Shape falloff case (a static View silhouette);
             // requiring `shape_silhouette_active` here needlessly forced a colour ramp on a plain brush
             // onto the per-pixel path — the cause of the slow ramped fills (Enio 2026-06-26).
-            let static_ok =
-                brush.dab_mask_cacheable(has_shape_image) && !per_dab_rotation && !accumulate_cap;
+            let static_ok = brush.dab_mask_cacheable(has_shape_image)
+                && !per_dab_rotation
+                && !accumulate_cap
+                && !capsulas;
             // TextureAlpha mode punches the sprite alpha (a different blend) → keep it per-pixel; the
             // coloured stamp bakes coverage straight, so it serves None / Strength.
             let bakeable_alpha = !matches!(
@@ -521,13 +525,15 @@ impl PainterTool {
             && brush.dab_mask_cacheable(has_shape_image)
             && !per_dab_rotation
             && !accumulate_cap
+            && !capsulas
         {
             self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h);
             return;
         }
         // Grain Tiled / Stencil is canvas-fixed but dab-independent — cache each canvas pixel's Grain
         // once per stroke + look it up per dab; the silhouette (Shape or falloff) stays per-pixel.
-        if brush.texture.is_canvas_cacheable() && !per_dab_rotation && !accumulate_cap {
+        if brush.texture.is_canvas_cacheable() && !per_dab_rotation && !accumulate_cap && !capsulas
+        {
             self.stamp_dabs_canvas_cached(dabs, &brush, alpha_locked, w, h);
             return;
         }

@@ -287,6 +287,7 @@ fn every_kernel(spec: &BrushSpec, dab_deg: f32) -> Vec<Escrita> {
         }),
         None,
         rotor,
+        None,
     );
     out.push(("stamp_dab_textured_masked", true, written_box(&canvas, 4)));
     let mut accs = vec![vec![0u8; n * 4]];
@@ -540,6 +541,7 @@ fn measure_o_custo_do_alcance() {
                     }),
                     None,
                     [c, s],
+                    None,
                 ) {
                     area = u64::from(r.w) * u64::from(r.h);
                 }

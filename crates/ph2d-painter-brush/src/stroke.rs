@@ -68,10 +68,18 @@ pub struct Dab {
     pub stroke_radius_px: f32,
     /// The path **step** that brought this dab: its centre minus the previous dab's, measured on the
     /// path where the paint lands (pre-jitter), in image px. `[0, 0]` = no previous dab (the first one,
-    /// and the deliberate single marks: Drag Dot, Anchored, Grid Stamp). The Shape **Bristles** drag their
-    /// hairs across it so each hair draws a streak, not a row of dots
-    /// ([`crate::texture::ShapeFrame::Stroke`], doc 31 §3).
+    /// and the deliberate single marks: Drag Dot, Anchored, Grid Stamp) and with Continuous Spacing off.
+    /// With it on, the dab is a CAPSULE back to the previous centre ([`Dab::capsula`], doc 31 §5).
     pub step: [f32; 2],
+}
+
+impl Dab {
+    /// The dab-capsule ([`crate::capsula`]) its [`Self::step`] lays, at the product's sub-step; `None`
+    /// with no step (Continuous Spacing off, the opening dab, the single marks).
+    #[must_use]
+    pub fn capsula(&self) -> Option<crate::capsula::Capsula> {
+        crate::capsula::Capsula::new(self.step, crate::capsula::sub_passo_px(self.radius_px))
+    }
 }
 
 /// Incremental stroke state. Feed it pointer samples; it emits dabs per the brush's stroke method.
@@ -370,8 +378,7 @@ impl Stroke {
                 || self.spec.shape.rake
                 || self.spec.shape.flow
                 || self.spec.needs_heading
-                || self.spec.effective_impasto_push() > 0.0
-                || self.spec.drags_bristles());
+                || self.spec.effective_impasto_push() > 0.0);
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method == StrokeMethod::GridStamp {

@@ -64,7 +64,7 @@ miolo (riscas contínuas ≈ 0; filas de pontos ≫ 0). A prancha: [`31_prancha_
 
 ## §4 — Feito (prompt 32, 13/10)
 
-### §4.1 — As cerdas que ARRASTAM (Digital, Impasto e toda rota que amostra o Shape pela `texture::sample`)
+### §4.1 — As cerdas que ARRASTAM (Digital, Impasto e toda rota que amostra o Shape pela `texture::sample`) — ⚠️ substituída pela cápsula (§5)
 
 - **O passo chega pela porta do Flow:** `Dab::step` (o centro menos o do dab anterior, no caminho onde a tinta cai,
   pré-jitter; `[0, 0]` no 1.º dab e nas marcas deliberadas — Drag Dot, Anchored, Grid Stamp) → `ShapeFrame::Stroke
@@ -92,11 +92,13 @@ miolo (riscas contínuas ≈ 0; filas de pontos ≫ 0). A prancha: [`31_prancha_
   cada sweep novo refaz os texels que toca — C11 do [26](26_ABERTOS.md)). Antes da cura «1× por dab» o custo era 1,6×.
 - **Aberto:** o 1.º dab sai em pontos (C10).
 
-### §4.2 — O dab-cápsula da redonda: NÃO entra (medido)
+### §4.2 — O dab-cápsula da redonda: recusado como opção NOVA — ⚠️ entrou DENTRO da caixa (§5)
 
-A redonda do Digital já é contínua até 0,25 (CV 0 / 0 / 0,005 a 0,025 / 0,1 / 0,25 — default 0,1); só a 0,5–1 as
-contas aparecem, e aí o pontilhado é muitas vezes o que o artista pediu. Uma opção nova no Stroke por um caso que
-ninguém relatou é um controlo a mais sem dono.
+A recusa era de um controlo a mais sem dono: a redonda é contínua até 0,25 pelo CV ao longo (0 / 0 / 0,005). Duas
+coisas a desfizeram (prompt 34): (1) o dono pediu a caixa Continuous para TODA ponta e meio — a cápsula vive dentro
+dela, sem controlo novo; (2) a régua estava errada — o CV ao longo não vê a FORMA: contra o traço a 0,025
+normalizado pela tinta, a redonda do Digital a 0,25 difere **0,118** (o denso satura mais nas bordas) e a do
+Impasto faz contas na borda. ⛔ O CV ao longo NÃO é régua de igualdade de traço.
 
 ### §4.3 — O Spacing do Wet Paint: o passo efetivo contra o pedido (`sonda_passo_do_wet_paint`)
 
@@ -127,7 +129,7 @@ Wet Dry Brush e o Oil Bristle pela razão dele) — a menos que se re-autorem os
 spec do caminhador. Prancha: [`32_prancha_spacing_wet_hoje_proposta.png`](32_prancha_spacing_wet_hoje_proposta.png)
 (Wet Round, Charcoal, Soft Pastel, Oil Pastel × 0,1 / 0,25; à esquerda hoje, à direita a lei — `sonda_prancha_passo_wet`).
 
-### §4.4 — Smoke do dono (13/10): «não parece funcionar» + «uma opção a mais» — a caixa **Continuous**
+### §4.4 — Smoke do dono (13/10): «não parece funcionar» + «uma opção a mais» — a caixa **Continuous** (a caixa fica; a lei e o aquecimento: §5)
 
 - **O que o dono viu** (a captura: tufos rosa repetidos, pincel grande): o arrasto só existia no Digital, e o Wet
   Paint (`bristles_at`) não varria — a 0,25 com o pincel grande chegam 3 dabs ao motor. E o 1.º dab, sem passo,
@@ -153,3 +155,60 @@ spec do caminhador. Prancha: [`32_prancha_spacing_wet_hoje_proposta.png`](32_pra
 - Prancha: [`32_prancha_continuous_desligada_ligada.png`](32_prancha_continuous_desligada_ligada.png) (Digital e Wet Paint, raio 20, 0,1 / 0,25, desligada e ligada).
 - **Aberto:** no Wet Paint a 0,25 ligado vê-se uma COSTURA vertical fina entre dois dabs (C12). Com pincel grande a 0,25–0,5 o Wet Paint recebe pouquíssimos dabs (o passo sai do raio do MOTOR, B5)
   e o traço acaba antes da mão; a caixa não cura isso — a lei do B5 sim.
+
+## §5 — O dab-CÁPSULA (prompt 34, 13/10): o Continuous IGUALA o Spacing pequeno, qualquer ponta, cinco meios
+
+Relato (3.ª rodada): *«fica diferente do traço com spacing menor … RETÂNGULOS … MENOS NÍTIDO»* e *«continuous
+deve estar disponível para os outros modos»*. Sonda `tests/capsula.rs::sonda_capsula` (o mesmo traço recto a
+0,025 sem a caixa = o ALVO, contra 0,25; raio 20 e 45; régua = `Σ|â − t̂| / Σ t̂` com cada tela dividida pela sua
+tinta média no miolo, mais a COSTURA = a tinta das colunas dobrada em 8 fases do passo).
+
+### §5.1 — O mecanismo, medido
+
+As duas leis do prompt 32 pesavam a ponta pela queda do CENTRO do dab (`w(o)·média(tile)` no carimbo,
+`w(o)·máx(tile)` no Wet Paint) — o salto a meio do passo é o retângulo. Hoje (raio 20, cerdas): Digital 0,210 ·
+Impasto 0,200 (e o código do prompt 32 ESVAZIAVA o Impasto: a média dilui os pelos sob o `W_TAIL` do filme) · Wet
+Paint 0,08–0,15 com blocos e o traço a acabar antes da mão.
+
+### §5.2 — A lei (`ph2d-painter-brush/src/capsula.rs`)
+
+O dab leva o passo (`Dab::step`) e a ponta INTEIRA (queda + pegada + Shape) é avaliada nos `n` sub-dabs de volta
+ao centro ANTERIOR, `off_k = −D·k/n`, a `SUB_SPACING = 0,025` do diâmetro (piso 1 px) — o 1.º dab do traço é um só,
+como no denso (o aquecimento e o passo nominal do prompt 32 saíram). A composição é a do meio:
+- **Carimbo** (Digital, cor do Impasto, Composite — `dab::silhouette_capsula`): `w = (1 − Π(1 − c·x_k)) / c`, com
+  `c` a opacidade do dab (`1` sob o cap de Accumulate, onde `w` é uma taxa); `n` passagens da mesma cor = uma.
+- **Watercolor** (máximo por píxel): os sub-dabs percorridos dentro do dab, do mais antigo ao próprio.
+- **Wet Paint**: os sub-dabs ENTREGUES ao motor (`capsula::sub_dabs`), porque o depósito subtrai o portão de papel
+  a CADA dab (`trail/deposit.rs::cell`) — compor no hospedeiro dilui sob ele ou alarga o traço (medido abaixo).
+A varredura do ladrilho (`TexDabBasis::sweep`, `Varre`, `ShapeFrame::Stroke.step`) saiu. A caixa arma-se com
+`BrushSpec::lays_capsules` (a opção + um método que percorre caminho + um passo mais largo que o sub-passo);
+`Dependente::ContinuoSemPasso` esmaece-a por essa pergunta e, na água, quando o passo não passa de uma célula do
+motor (o censo `a_linha_esmaecida_e_a_que_nao_age` reprovou-a acesa no Wet Paint de fábrica, onde não age).
+
+| raio 20 | redonda: sem a caixa → cápsula | cerdas: hoje → cápsula | tinta ÷ alvo |
+|---|---:|---:|---:|
+| Digital / Composite | 0,118 → **0,001** | 0,210 → **0,003** | 1,00 |
+| Impasto | 0,000 → 0,000 | 0,200 → **0,000** | 1,00 |
+| Watercolor | 0,049 → **0,000** | 0,209 (sem) → **0,000** | 1,00 |
+| Wet Paint | 0,095 (sem) → **0,004** | 0,083 → **0,017** | 1,00 / 1,03 |
+
+Raio 45: ≤ 0,014 em todos; costura = a do alvo; abertura ≤ 0,016. Prancha:
+[`34_prancha_continuous_capsula.png`](34_prancha_continuous_capsula.png) (a «caixa de antes» do Impasto é a lei
+emulada; o código do prompt 32 dava traço vazio).
+
+### §5.3 — Custo (`measure_custo_da_capsula`, raio 45, intercalado, mínimo de 5; `load` 13–120)
+
+A 0,25 com a caixa ÷ o traço a 0,025: Digital 0,26–0,52 · Impasto 0,18–0,57 · Watercolor 0,32–0,46 · Composite
+0,24–0,52 · Wet Paint 0,53–0,90 (pressão 1,43 sob `load` 120 — reconfirmar calmo); recto, curva e pressão.
+
+### §5.4 — ⛔ Recusas MEDIDAS e aberto
+
+| proposta | medido | porquê |
+|---|---|---|
+| a MÉDIA `Σx_k/n` (o prompt 34) | Digital cerdas 0,234, tinta 0,26; Wet 0,27 | dilui; e na borda satura menos que o denso |
+| sub-passo 1 px | 0,07 (cerdas) e custo 1,1–1,4× (Wet 8–10×) | mais denso que o alvo; o Wet anda pelo raio do motor |
+| sub-passo 0,05 | 0,12 / 0,25 (Impasto) | ralo demais |
+| União COMPOSTA no hospedeiro do Wet Paint | 0,195 / 0,125, traço mais largo | as bordas fracas somadas passam o portão |
+
+Aberto (C13 do [26](26_ABERTOS.md)): a rota das camadas de COR do Shape (Per-Layer Color) não lê a cápsula; o AA
+do filme (Smooth Edges) desliga-se nela (cada sub-dab leva o corte, sem o anel). B5 continua do dono.

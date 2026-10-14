@@ -104,7 +104,6 @@ impl PainterTool {
                     ph2d_painter_brush::texture::ShapeFrame::Stroke {
                         arc_len: d.arc_len,
                         unit_px: d.stroke_radius_px,
-                        step: d.step,
                     },
                 )
             });

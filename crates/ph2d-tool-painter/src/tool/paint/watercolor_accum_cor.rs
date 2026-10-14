@@ -129,107 +129,114 @@ impl PainterTool {
                 (dcol[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
             ];
             let inv_r = 1.0 / r;
-            let (cx, cy) = (d.center[0], d.center[1]);
-            let x0 = (cx - r).floor().max(0.0) as usize;
-            let y0 = (cy - r).floor().max(0.0) as usize;
-            let x1 = ((cx + r).ceil() as i64).clamp(0, fw as i64) as usize;
-            let y1 = ((cy + r).ceil() as i64).clamp(0, fh as i64) as usize;
-            for y in y0..y1 {
-                let dy = (y as f32 + 0.5) - cy;
-                let base = y * fw;
-                for x in x0..x1 {
-                    let dx = (x as f32 + 0.5) - cx;
-                    let dn = (dx * dx + dy * dy).sqrt() * inv_r;
-                    if dn >= 1.0 {
-                        continue;
-                    }
-                    let keep = if gated {
-                        splat_keep(
-                            sel.as_deref().map(Vec::as_slice),
-                            prot.as_deref().map(Vec::as_slice),
-                            alock.as_deref().map(Vec::as_slice),
-                            base + x,
-                        )
-                    } else {
-                        1.0
-                    };
-                    // source alpha = silhouette weight × deposit priority × the paint gates —
-                    // the SAME weight as the coverage splat (manual Shape stamp or the feather),
-                    // so the deposited colour and the silhouette always agree.
-                    let wgt = match (&stamp, &frame) {
-                        (Some(st), Some((fp, basis))) => {
-                            st.sample(
-                                WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
-                                basis.as_ref(),
-                                shape_img_owned.as_ref(),
-                                [x, y],
-                                d.center,
-                                r,
+            // The dab-CAPSULE (Continuous): its sub-dabs back to the previous centre, oldest first — the
+            // dense stroke's own passes over each pixel (the wash is a MAX union, the colour source-over).
+            let capsula = d.capsula();
+            for k in (0..capsula.map_or(1, |c| c.n())).rev() {
+                let o = capsula.map_or([0.0, 0.0], |c| c.off(k));
+                let (cx, cy) = (d.center[0] + o[0], d.center[1] + o[1]);
+                let centro = [cx, cy];
+                let x0 = (cx - r).floor().max(0.0) as usize;
+                let y0 = (cy - r).floor().max(0.0) as usize;
+                let x1 = ((cx + r).ceil() as i64).clamp(0, fw as i64) as usize;
+                let y1 = ((cy + r).ceil() as i64).clamp(0, fh as i64) as usize;
+                for y in y0..y1 {
+                    let dy = (y as f32 + 0.5) - cy;
+                    let base = y * fw;
+                    for x in x0..x1 {
+                        let dx = (x as f32 + 0.5) - cx;
+                        let dn = (dx * dx + dy * dy).sqrt() * inv_r;
+                        if dn >= 1.0 {
+                            continue;
+                        }
+                        let keep = if gated {
+                            splat_keep(
+                                sel.as_deref().map(Vec::as_slice),
+                                prot.as_deref().map(Vec::as_slice),
+                                alock.as_deref().map(Vec::as_slice),
+                                base + x,
                             )
-                            .0
+                        } else {
+                            1.0
+                        };
+                        // source alpha = silhouette weight × deposit priority × the paint gates —
+                        // the SAME weight as the coverage splat (manual Shape stamp or the feather),
+                        // so the deposited colour and the silhouette always agree.
+                        let wgt = match (&stamp, &frame) {
+                            (Some(st), Some((fp, basis))) => {
+                                st.sample(
+                                    WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
+                                    basis.as_ref(),
+                                    shape_img_owned.as_ref(),
+                                    [x, y],
+                                    centro,
+                                    r,
+                                )
+                                .0
+                            }
+                            _ => feather(dn),
+                        };
+                        // A Shape Color Ramp ([`RampaDaAguada`]): a cor do dab troca-se pela da rampa
+                        // NESTE texel.
+                        let (col, wgt) = match &rampa {
+                            Some(RampaDaAguada { lut, alfa_pesa }) if wgt > 0.0 => {
+                                let c = lut[(wgt.clamp(0.0, 1.0) * 255.0 + 0.5) as usize];
+                                let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                                (
+                                    [byte(c[0]), byte(c[1]), byte(c[2])],
+                                    if *alfa_pesa { wgt * c[3] } else { wgt },
+                                )
+                            }
+                            _ => (col, wgt),
+                        };
+                        let idx = (base + x) * 4;
+                        if mistura > 0.0 {
+                            // ⚠️ O `Pigment` deposita a tinta que a brocha LARGA (`depl`), SEM a prioridade
+                            // do mixer (`prio = pickup × carga`): sobre tinta molhada da própria sessão o
+                            // mixer não apanha nada (ele lê a base CONGELADA), a prioridade é zero, e com
+                            // ela no peso o `Charge < 1` não gravava tinta nenhuma — a mistura ficava sem
+                            // parceiro e o botão virava inerte AO BIT (report do dono, 2026-09-29; doc 44 §2).
+                            // O Smudge SEM `Pigment` guarda a prioridade: ele não pediu mistura de tinta, e
+                            // a poça do Wet Mix (dono, 2026-07-07) vale para ele como para o traço comum
+                            // (`watercolor_color_change_junction_is_soft` reprovava sem isto). ⚠️ E o arrasto
+                            // não fica escondido por ela: sobre a tinta molhada o mixer APANHA (lê a base do
+                            // traço, que já traz a união da sessão), logo a prioridade ali não é zero —
+                            // medido, recompor também os texels sem depósito não mudava um byte a Charge
+                            // `1`, `0,5`, `0,326`, `0,2` nem `0`.
+                            let prio_do_deposito = if pigment { 1.0 } else { prio };
+                            let a = peak * wgt * prio_do_deposito * depl * keep;
+                            if a > 0.0 {
+                                let parceiro = dissolucao.as_ref().map(|dis| {
+                                    let de = if planos.capturado[base + x] {
+                                        &planos.antes[idx..idx + 4]
+                                    } else {
+                                        &buf[idx..idx + 4]
+                                    };
+                                    dis.parceiro([de[0], de[1], de[2], de[3]], x, y)
+                                });
+                                super::watercolor_mistura::deposita(
+                                    buf, planos, idx, col, a, pesos, parceiro,
+                                );
+                            }
+                            continue;
                         }
-                        _ => feather(dn),
-                    };
-                    // A Shape Color Ramp ([`RampaDaAguada`]): a cor do dab troca-se pela da rampa
-                    // NESTE texel.
-                    let (col, wgt) = match &rampa {
-                        Some(RampaDaAguada { lut, alfa_pesa }) if wgt > 0.0 => {
-                            let c = lut[(wgt.clamp(0.0, 1.0) * 255.0 + 0.5) as usize];
-                            let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-                            (
-                                [byte(c[0]), byte(c[1]), byte(c[2])],
-                                if *alfa_pesa { wgt * c[3] } else { wgt },
-                            )
+                        let a = peak * wgt * prio * depl * keep;
+                        if a <= 0.0 {
+                            continue;
                         }
-                        _ => (col, wgt),
-                    };
-                    let idx = (base + x) * 4;
-                    if mistura > 0.0 {
-                        // ⚠️ O `Pigment` deposita a tinta que a brocha LARGA (`depl`), SEM a prioridade
-                        // do mixer (`prio = pickup × carga`): sobre tinta molhada da própria sessão o
-                        // mixer não apanha nada (ele lê a base CONGELADA), a prioridade é zero, e com
-                        // ela no peso o `Charge < 1` não gravava tinta nenhuma — a mistura ficava sem
-                        // parceiro e o botão virava inerte AO BIT (report do dono, 2026-09-29; doc 44 §2).
-                        // O Smudge SEM `Pigment` guarda a prioridade: ele não pediu mistura de tinta, e
-                        // a poça do Wet Mix (dono, 2026-07-07) vale para ele como para o traço comum
-                        // (`watercolor_color_change_junction_is_soft` reprovava sem isto). ⚠️ E o arrasto
-                        // não fica escondido por ela: sobre a tinta molhada o mixer APANHA (lê a base do
-                        // traço, que já traz a união da sessão), logo a prioridade ali não é zero —
-                        // medido, recompor também os texels sem depósito não mudava um byte a Charge
-                        // `1`, `0,5`, `0,326`, `0,2` nem `0`.
-                        let prio_do_deposito = if pigment { 1.0 } else { prio };
-                        let a = peak * wgt * prio_do_deposito * depl * keep;
-                        if a > 0.0 {
-                            let parceiro = dissolucao.as_ref().map(|dis| {
-                                let de = if planos.capturado[base + x] {
-                                    &planos.antes[idx..idx + 4]
-                                } else {
-                                    &buf[idx..idx + 4]
-                                };
-                                dis.parceiro([de[0], de[1], de[2], de[3]], x, y)
-                            });
-                            super::watercolor_mistura::deposita(
-                                buf, planos, idx, col, a, pesos, parceiro,
-                            );
+                        let da = f32::from(buf[idx + 3]) / 255.0;
+                        let na = a + da * (1.0 - a); // straight-alpha over
+                        if na <= 0.0 {
+                            continue;
                         }
-                        continue;
+                        for c in 0..3 {
+                            let dc = f32::from(buf[idx + c]) / 255.0;
+                            let sc = f32::from(col[c]) / 255.0;
+                            let out = (sc * a + dc * da * (1.0 - a)) / na;
+                            buf[idx + c] = (out * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
+                        }
+                        buf[idx + 3] = (na * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
                     }
-                    let a = peak * wgt * prio * depl * keep;
-                    if a <= 0.0 {
-                        continue;
-                    }
-                    let da = f32::from(buf[idx + 3]) / 255.0;
-                    let na = a + da * (1.0 - a); // straight-alpha over
-                    if na <= 0.0 {
-                        continue;
-                    }
-                    for c in 0..3 {
-                        let dc = f32::from(buf[idx + c]) / 255.0;
-                        let sc = f32::from(col[c]) / 255.0;
-                        let out = (sc * a + dc * da * (1.0 - a)) / na;
-                        buf[idx + c] = (out * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
-                    }
-                    buf[idx + 3] = (na * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
                 }
             }
         }

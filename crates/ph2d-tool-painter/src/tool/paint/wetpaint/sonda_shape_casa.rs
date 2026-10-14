@@ -201,7 +201,6 @@ fn sonda_shape_casa_leis_do_dente() {
                     ShapeFrame::Stroke {
                         arc_len: j as f32 * passo,
                         unit_px: r,
-                        step: [0.0, 0.0],
                     },
                 );
                 let gb = texture::dab_basis(&spec.texture, &mut rng, [W as f32, H as f32], fp);

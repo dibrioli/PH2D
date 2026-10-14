@@ -334,16 +334,15 @@ impl BrushSpec {
         (self.spacing.max(0.01) * 2.0 * self.clamped_radius()).max(1.0)
     }
 
-    /// **Continuous Spacing** is armed: the option is on and the Shape is the Bristles held to the dab —
-    /// the only kind that sweeps over [`crate::Dab::step`] (Tiled and Flow are anchored and never sweep).
-    /// It also arms the warm-up (the opening dab's step), so the panel greys the box exactly when this is
-    /// false: in the Wet Paint the warm-up moves WHEN a dab lands, and that alone changes the paint.
+    /// **Continuous Spacing** is armed: the option is on, the method spaces dabs along a path, and the
+    /// step is wider than the capsule's sub-step — every dab then lays a CAPSULE ([`crate::capsula`]),
+    /// with ANY tip. The deliberate single marks (Drag Dot, Anchored, Grid Stamp) lay no path, and a
+    /// Spacing already as fine as [`crate::capsula::SUB_SPACING`] has nothing to fill.
     #[must_use]
-    pub fn drags_bristles(&self) -> bool {
+    pub fn lays_capsules(&self) -> bool {
         self.continuous_spacing
-            && self.shape.kind == crate::texture::TextureKind::Bristles
-            && self.shape.mapping != crate::texture::TextureMapping::Tiled
-            && !self.shape.flow
+            && self.stroke_method.allows_jitter()
+            && self.dab_spacing_px() > crate::capsula::sub_passo_px(self.clamped_radius())
     }
 
     /// Whether the dab at dash-slot `slot` is painted, given the dash pattern.

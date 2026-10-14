@@ -306,6 +306,9 @@ pub(super) struct DabCtx<'a> {
     /// The AA's pre-convolved table + deformed basis (plano 26 §9.6), when the brush admits it.
     /// `None` ⇒ the AA samples the silhouette chain nine times, as it always did.
     pub(super) lut: Option<crate::height_film::FilmLutPlan<'a>>,
+    /// The dab-capsule ([`crate::capsula`]) and its law, read once per dab; `None` ⇒ the plain dab.
+    pub(super) capsula: Option<crate::capsula::Capsula>,
+    pub(super) lei: crate::capsula::Lei,
 }
 
 /// Stamp the dab's pixels for the full-width row band `dst` whose first row is `band_y0` (so global
@@ -339,8 +342,22 @@ pub(super) fn stamp_band(
             // funnel below (grain, Accumulate-OFF cap, ramps) inherits the cut with no arithmetic.
             // With Smooth Edges ([`crate::height_film::FilmAa`], BUGS #16) the film at a rim texel is
             // its fractional AREA coverage — every funnel inherits the anti-aliased cut the same way.
-            let w = match &ctx.film_aa {
-                Some(aa) => aa.film_at_planned(
+            // A capsule composes its sub-dabs at the pass opacity: the dab's own, or — under the
+            // Accumulate cap, where `w` is a RATE toward the ceiling — `1` (`n` rates telescope into one).
+            let w = match (ctx.capsula, &ctx.film_aa) {
+                (Some(cap), _) => crate::dab::silhouette_capsula(
+                    ctx.spec,
+                    ctx.shape,
+                    ctx.footprint,
+                    cap,
+                    ctx.lei,
+                    if mask.is_some() { 1.0 } else { ctx.coverage },
+                    px,
+                    py,
+                    ctx.center,
+                    ctx.radius,
+                ),
+                (None, Some(aa)) => aa.film_at_planned(
                     ctx.lut.as_ref(),
                     t,
                     wv,
@@ -353,7 +370,7 @@ pub(super) fn stamp_band(
                         )
                     },
                 ),
-                None => crate::height::film_coverage(
+                (None, None) => crate::height::film_coverage(
                     ctx.spec.deposits_height(),
                     silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
                 ),
@@ -564,6 +581,8 @@ mod lut_ab_tests {
             stride,
             film_aa,
             lut,
+            capsula: None,
+            lei: crate::capsula::Lei::Uniao,
         };
         stamp_band(&ctx, &mut dst, None, 0);
         dst

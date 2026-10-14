@@ -207,6 +207,7 @@ mod watercolor_smudge_gate_tests; // o smudge não forka o canvas (doc 28 §5.73
 
 mod acumulacao_por_meio; // Accumulate e Space Attenuation só onde o meio os oferece (doc 46)
 mod brush_panel;
+mod capsula; // o Continuous que iguala o Spacing pequeno: a régua contra o alvo (prompt 34)
 mod curve_editor;
 mod deform;
 mod edit_modes;

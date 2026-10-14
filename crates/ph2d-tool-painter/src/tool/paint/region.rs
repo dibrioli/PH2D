@@ -304,12 +304,17 @@ pub(super) fn grow_region(r: Region, pad: u32, w: u32, h: u32) -> Option<Region>
 #[must_use]
 ///
 /// `reach` é o alcance da ponta em raios ([`ph2d_painter_brush::BrushSpec::tip_reach`], Bug #52): a
-/// ponta de imagem rodada ou de Size < 1 escreve além de `± raio`.
+/// ponta de imagem rodada ou de Size < 1 escreve além de `± raio`. Um dab com passo (a cápsula do
+/// Continuous) escreve também até ao centro anterior.
 pub(super) fn dabs_bounds(dabs: &[Dab], w: u32, h: u32, reach: f32) -> Option<Region> {
     let mut acc: Option<Region> = None;
-    for d in dabs {
-        let Some(r) = ph2d_painter_brush::dab_write_bounds(d.center, d.radius_px * reach, w, h)
-        else {
+    let atras = |d: &Dab| [d.center[0] - d.step[0], d.center[1] - d.step[1]];
+    for (d, c) in dabs.iter().flat_map(|d| {
+        [(d, d.center)]
+            .into_iter()
+            .chain((d.step != [0.0, 0.0]).then(|| (d, atras(d))))
+    }) {
+        let Some(r) = ph2d_painter_brush::dab_write_bounds(c, d.radius_px * reach, w, h) else {
             continue;
         };
         let r = Region {

@@ -34,6 +34,7 @@ pub mod blur_grain;
 pub mod blur_peso;
 pub mod canvas_warp;
 mod canvas_warp_curve;
+pub mod capsula;
 pub mod clone;
 pub mod clone_grain;
 pub mod curve_fit;

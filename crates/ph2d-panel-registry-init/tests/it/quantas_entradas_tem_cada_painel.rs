@@ -2128,7 +2128,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
 
     //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
     //    `set_collapsed_if_unchosen` de ninguém.
-    ("painter_layers", 1605.0),
+    // ⬆️ `1 605 → 1 630` em 2026-10-13, e NÃO é uma secção a nascer aberta: é a fileira **Continuous**
+    //    do Stroke (smoke do dono 13/10, *«uma opção a mais»*, commit `72a6ee6bc1`), uma caixa abaixo do
+    //    Spacing: `ROW_H_PX (25)` exactos — medido pela porta deste gate no commit dela, sem o resto da
+    //    linha. ⚠️ Recolher o Stroke esconderia o controlo que o dono está a smokar.
+    ("painter_layers", 1630.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

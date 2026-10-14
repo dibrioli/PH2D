@@ -267,9 +267,6 @@ pub struct TexDabBasis {
     /// The stroke frame the **Flow** mapping lays its pattern in — see [`ShapeFrame`]. Only the Shape
     /// door ([`shape_basis`]) can supply it, so it can never be silently omitted; ignored unless `flow`.
     frame: ShapeFrame,
-    /// The **Bristles** sweep: the frame's path step in tile texels, resolved once per dab by
-    /// [`shape_basis`] (`[0, 0]` = none, and for every other kind).
-    sweep: [i32; 2],
 }
 
 /// The stroke facts the Shape **Flow** mapping needs to lay a pattern in the STROKE's frame rather than
@@ -294,9 +291,6 @@ pub enum ShapeFrame {
         arc_len: f32,
         /// The stroke-constant length one pattern tile spans (px) — the brush's nominal dab radius.
         unit_px: f32,
-        /// The path step that brought the dab ([`crate::Dab::step`], px; `[0, 0]` = none). The Digital
-        /// **Bristles** sweep their hairs over it ([`bristles`]); every other kind ignores it.
-        step: [f32; 2],
     },
     /// No stroke: the panel preview and the scale-invariant cached stamp bake. Flow is inert here (it is
     /// never cached — [`TextureSettings::is_cacheable`] refuses it — and a preview has no path).
@@ -312,15 +306,6 @@ impl ShapeFrame {
                 arc_len, unit_px, ..
             } => (arc_len, unit_px.max(1e-3)),
             Self::Static => (0.0, 1.0),
-        }
-    }
-
-    /// The path step that brought the dab (`[0, 0]` for `Static`).
-    #[must_use]
-    fn step(self) -> [f32; 2] {
-        match self {
-            Self::Stroke { step, .. } => step,
-            Self::Static => [0.0, 0.0],
         }
     }
 }
@@ -339,7 +324,6 @@ impl TexDabBasis {
             stencil_v: [0.0, 1.0],
             footprint: crate::footprint::FootprintDeform::identity(),
             frame: ShapeFrame::Static,
-            sweep: [0, 0],
         }
     }
 }
@@ -380,7 +364,6 @@ pub fn dab_basis(
         stencil_v: [0.0, 1.0],
         footprint,
         frame: ShapeFrame::Static,
-        sweep: [0, 0],
     }
 }
 
@@ -399,9 +382,6 @@ pub fn shape_basis(
 ) -> TexDabBasis {
     let mut b = dab_basis(s, rng, canvas, footprint);
     b.frame = frame;
-    if s.kind == TextureKind::Bristles {
-        b.sweep = bristles::sweep_texels(s, &b, 1.0);
-    }
     b
 }
 

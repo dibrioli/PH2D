@@ -537,6 +537,7 @@ fn a_ponte_leva_a_opacidade_que_a_cpu_carimba() {
             None,
             None,
             [1.0, 0.0],
+            None,
         );
         buf
     };

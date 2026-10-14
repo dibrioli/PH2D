@@ -29,19 +29,8 @@ impl Stroke {
     /// Flush the held start-up dabs into `out`, stamping the settled `heading` on each so the stroke opens
     /// already at the correct Rake angle, and end the warm-up (later dabs flow with the live heading).
     pub(super) fn release_warmup(&mut self, out: &mut Vec<Dab>) {
-        // The opening dab has no previous one: Continuous Spacing sweeps it over one nominal step along
-        // the settled heading, or its unswept dots stand out against the streaks (dono 13/10).
-        let abre = if self.spec.drags_bristles() {
-            let l = self.spec.dab_spacing_px();
-            [self.heading[0] * l, self.heading[1] * l]
-        } else {
-            [0.0, 0.0]
-        };
         for mut d in self.warm_buf.drain(..) {
             d.dir = self.heading;
-            if d.step == [0.0, 0.0] {
-                d.step = abre;
-            }
             out.push(d);
         }
         self.warming = false;

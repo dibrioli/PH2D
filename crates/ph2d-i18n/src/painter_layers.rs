@@ -51,8 +51,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.follow_nothing_to_turn" => {
             "Acts with a Shape texture, a flattened tip or a Grain that follows the dab"
         }
-        "panel.painter_layers.inerte.bristles_in_shape" => {
-            "Acts when the Shape is Bristles, not Tiled and without Flow"
+        "panel.painter_layers.inerte.method_lays_a_path" => {
+            "Acts on a path, with Spacing above 2.5%"
         }
         "panel.painter_layers.inerte.bristles_no_grain" => {
             "Acts with Grain None and the Paint tool or the Eraser"

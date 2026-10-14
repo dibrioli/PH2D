@@ -188,7 +188,6 @@ impl WetShapeStamp {
                 ph2d_painter_brush::texture::ShapeFrame::Stroke {
                     arc_len: d.arc_len,
                     unit_px: d.stroke_radius_px,
-                    step: d.step,
                 },
             )
         });
@@ -471,92 +470,99 @@ impl PainterTool {
                 continue;
             }
             let inv_r = 1.0 / r;
-            let (cx, cy) = (d.center[0], d.center[1]);
-            let x0 = (cx - r).floor().max(0.0) as usize;
-            let y0 = (cy - r).floor().max(0.0) as usize;
-            let x1 = ((cx + r).ceil() as i64).clamp(0, fw as i64) as usize;
-            let y1 = ((cy + r).ceil() as i64).clamp(0, fh as i64) as usize;
-            for y in y0..y1 {
-                let dy = (y as f32 + 0.5) - cy;
-                let base = y * fw;
-                for x in x0..x1 {
-                    let dx = (x as f32 + 0.5) - cx;
-                    let dn = (dx * dx + dy * dy).sqrt() * inv_r;
-                    if dn >= 1.0 {
-                        continue;
-                    }
-                    let idx = base + x;
-                    let keep = if gated {
-                        splat_keep(
-                            sel.as_deref().map(Vec::as_slice),
-                            prot.as_deref().map(Vec::as_slice),
-                            alock.as_deref().map(Vec::as_slice),
-                            idx,
-                        )
-                    } else {
-                        1.0
-                    };
-                    if keep <= 0.0 {
-                        continue;
-                    }
-                    let (wgt, dens) = match (&stamp, &frame) {
-                        (Some(s), Some((fp, basis))) => s.sample(
-                            WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
-                            basis.as_ref(),
-                            shape_img_owned.as_ref(),
-                            [x, y],
-                            d.center,
-                            r,
-                        ),
-                        _ => (feather(dn), 1.0),
-                    };
-                    let v = (peak * keep * wgt * 255.0) as u8;
-                    if v > cov[idx] {
-                        cov[idx] = v;
-                    }
-                    // Tip density (textured tip only): max-blend, matching the coverage's "one pass"
-                    // union — the composite multiplies it into the interior fill.
-                    if textured_tip && wgt > 0.0 {
-                        let dv = (dens * 255.0) as u8;
-                        if dv > dens_buf[idx] {
-                            dens_buf[idx] = dv;
+            // The dab-CAPSULE (Continuous): its sub-dabs back to the previous centre, oldest first — the
+            // dense stroke's own passes over each pixel (the wash is a MAX union, the colour source-over).
+            let capsula = d.capsula();
+            for k in (0..capsula.map_or(1, |c| c.n())).rev() {
+                let o = capsula.map_or([0.0, 0.0], |c| c.off(k));
+                let (cx, cy) = (d.center[0] + o[0], d.center[1] + o[1]);
+                let centro = [cx, cy];
+                let x0 = (cx - r).floor().max(0.0) as usize;
+                let y0 = (cy - r).floor().max(0.0) as usize;
+                let x1 = ((cx + r).ceil() as i64).clamp(0, fw as i64) as usize;
+                let y1 = ((cy + r).ceil() as i64).clamp(0, fh as i64) as usize;
+                for y in y0..y1 {
+                    let dy = (y as f32 + 0.5) - cy;
+                    let base = y * fw;
+                    for x in x0..x1 {
+                        let dx = (x as f32 + 0.5) - cx;
+                        let dn = (dx * dx + dy * dy).sqrt() * inv_r;
+                        if dn >= 1.0 {
+                            continue;
                         }
-                    }
-                    // Carried water (EDGE-2): max-blend into the session WATER pool — the
-                    // composite's backrun ring + lift read it. Feathered by the disc + gates.
-                    if water > 0.0 && wgt > 0.0 {
-                        let s = (water * wgt * keep * 255.0) as u8;
-                        if s > water_buf[idx] {
-                            water_buf[idx] = s;
+                        let idx = base + x;
+                        let keep = if gated {
+                            splat_keep(
+                                sel.as_deref().map(Vec::as_slice),
+                                prot.as_deref().map(Vec::as_slice),
+                                alock.as_deref().map(Vec::as_slice),
+                                idx,
+                            )
+                        } else {
+                            1.0
+                        };
+                        if keep <= 0.0 {
+                            continue;
                         }
-                        // Px VIRGEM ganha o dono da água (o anel resolve o estilo do traço
-                        // d'água PRA SEMPRE, nunca o brush vivo — estabilidade de re-render);
-                        // px com pigmento mantém o dono (a água não rouba o estilo de baixo).
+                        let (wgt, dens) = match (&stamp, &frame) {
+                            (Some(s), Some((fp, basis))) => s.sample(
+                                WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
+                                basis.as_ref(),
+                                shape_img_owned.as_ref(),
+                                [x, y],
+                                centro,
+                                r,
+                            ),
+                            _ => (feather(dn), 1.0),
+                        };
+                        let v = (peak * keep * wgt * 255.0) as u8;
+                        if v > cov[idx] {
+                            cov[idx] = v;
+                        }
+                        // Tip density (textured tip only): max-blend, matching the coverage's "one pass"
+                        // union — the composite multiplies it into the interior fill.
+                        if textured_tip && wgt > 0.0 {
+                            let dv = (dens * 255.0) as u8;
+                            if dv > dens_buf[idx] {
+                                dens_buf[idx] = dv;
+                            }
+                        }
+                        // Carried water (EDGE-2): max-blend into the session WATER pool — the
+                        // composite's backrun ring + lift read it. Feathered by the disc + gates.
+                        if water > 0.0 && wgt > 0.0 {
+                            let s = (water * wgt * keep * 255.0) as u8;
+                            if s > water_buf[idx] {
+                                water_buf[idx] = s;
+                            }
+                            // Px VIRGEM ganha o dono da água (o anel resolve o estilo do traço
+                            // d'água PRA SEMPRE, nunca o brush vivo — estabilidade de re-render);
+                            // px com pigmento mantém o dono (a água não rouba o estilo de baixo).
+                            if let Some(o) = own_v
+                                && own_buf[idx] == 0
+                            {
+                                own_buf[idx] = o;
+                            }
+                        }
+                        // Pigment reserve (MIX-1): a disputa do nível wherever the dab touches (see above).
+                        if let Some(dv) = depl_v
+                            && peak > 0.0
+                            && wgt > 0.0
+                        {
+                            super::watercolor_reserve::splat_level(
+                                &mut depl_buf[idx],
+                                &mut prox_buf[idx],
+                                dn,
+                                dv,
+                            );
+                        }
+                        // Style owner (recency overwrite — see the map's sizing above). A water-only
+                        // dab deposits no pigment and must not steal the style of the wash beneath.
                         if let Some(o) = own_v
-                            && own_buf[idx] == 0
+                            && peak > 0.0
+                            && wgt > 0.0
                         {
                             own_buf[idx] = o;
                         }
-                    }
-                    // Pigment reserve (MIX-1): a disputa do nível wherever the dab touches (see above).
-                    if let Some(dv) = depl_v
-                        && peak > 0.0
-                        && wgt > 0.0
-                    {
-                        super::watercolor_reserve::splat_level(
-                            &mut depl_buf[idx],
-                            &mut prox_buf[idx],
-                            dn,
-                            dv,
-                        );
-                    }
-                    // Style owner (recency overwrite — see the map's sizing above). A water-only
-                    // dab deposits no pigment and must not steal the style of the wash beneath.
-                    if let Some(o) = own_v
-                        && peak > 0.0
-                        && wgt > 0.0
-                    {
-                        own_buf[idx] = o;
                     }
                 }
             }

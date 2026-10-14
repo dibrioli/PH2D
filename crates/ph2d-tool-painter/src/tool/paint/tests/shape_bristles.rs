@@ -378,7 +378,8 @@ fn cv_ao_longo(px: &[u8]) -> f64 {
 /// ⭐ **Continuous Spacing é uma OPÇÃO e age nos dois meios** (dono 13/10: *«não parece funcionar»* —
 /// era o Wet Paint, que não varria — e *«não pode substituir a antiga»*): desligada por omissão; ligada
 /// pela caixa do Stroke, as cerdas a Spacing 0,25 riscam no Digital e no Wet Paint, sem esvaziar o traço.
-/// CONTROLO: a ponta lisa não muda com a caixa.
+/// A caixa age também na ponta lisa (a cápsula é uma lei da PONTA — dono 13/10: *«continuous deve estar
+/// disponível para os outros modos»*; a igualdade com o Spacing pequeno é o portão de `tests/capsula.rs`).
 #[test]
 fn o_spacing_continuo_risca_no_digital_e_no_wet_paint() {
     let forma_wet = {
@@ -417,10 +418,10 @@ fn o_spacing_continuo_risca_no_digital_e_no_wet_paint() {
         assert!(co > 0.3, "{media:?}: o controlo não pontilha ({co:.3})");
         assert!(cn < co / 3.0, "{media:?}: CV {co:.3} → {cn:.3}");
         assert!(tn > 0.9 * to, "{media:?}: o traço esvaziou ({to} → {tn})");
-        assert_eq!(
+        assert_ne!(
             traco(false, TextureKind::None),
             traco(true, TextureKind::None),
-            "{media:?}: a ponta lisa mudou com a caixa"
+            "{media:?}: a caixa não age na ponta lisa"
         );
     }
 }

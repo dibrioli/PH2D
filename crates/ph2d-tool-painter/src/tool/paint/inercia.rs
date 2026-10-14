@@ -33,7 +33,7 @@ pub enum Dependente {
     QuandoDoRandomize,
     CerdasDaAgua,
     FollowSemNada,
-    ContinuoSemCerdas,
+    ContinuoSemPasso,
 }
 
 impl Dependente {
@@ -57,7 +57,7 @@ impl Dependente {
         Dependente::QuandoDoRandomize,
         Dependente::CerdasDaAgua,
         Dependente::FollowSemNada,
-        Dependente::ContinuoSemCerdas,
+        Dependente::ContinuoSemPasso,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -88,7 +88,7 @@ impl Dependente {
             Dependente::QuandoDoRandomize => &ids::PAINTER_BRUSH_COLOR_JITTER_SCOPES,
             Dependente::CerdasDaAgua => &CERDAS,
             Dependente::FollowSemNada => &[ids::PAINTER_SHAPE_FOLLOW],
-            Dependente::ContinuoSemCerdas => &[ids::PAINTER_BRUSH_CONTINUOUS_SPACING],
+            Dependente::ContinuoSemPasso => &[ids::PAINTER_BRUSH_CONTINUOUS_SPACING],
         }
     }
 
@@ -116,7 +116,7 @@ impl Dependente {
             Dependente::QuandoDoRandomize => "panel.painter_layers.inerte.randomize_above_zero",
             Dependente::CerdasDaAgua => "panel.painter_layers.inerte.bristles_no_grain",
             Dependente::FollowSemNada => "panel.painter_layers.inerte.follow_nothing_to_turn",
-            Dependente::ContinuoSemCerdas => "panel.painter_layers.inerte.bristles_in_shape",
+            Dependente::ContinuoSemPasso => "panel.painter_layers.inerte.method_lays_a_path",
         }
     }
 
@@ -287,16 +287,24 @@ impl PainterTool {
                                 | ph2d_painter_brush::TextureMapping::Random
                         )),
             ),
-            // O passo só é lido pelas cerdas do Shape presas ao dab — a mesma pergunta que arma o
-            // aquecimento (`drags_bristles`), que sozinho já muda a tinta da água (o censo mediu-o).
-            (
-                Dependente::ContinuoSemCerdas,
-                !BrushSpec {
+            // A cápsula é uma lei da PONTA, em todo meio: não age num método sem caminho (Drag Dot,
+            // Anchored, Grid Stamp), num Spacing já tão fino quanto o sub-passo, nem — na água — num
+            // passo que não passa de uma célula do motor (`wetpaint/dab_route.rs`).
+            (Dependente::ContinuoSemPasso, {
+                // O raio do traço: na água o do MOTOR (a lei da largura, `dab_spec.rs`). ⛔ Não o
+                // `stroke_spec()`: ele pergunta ao painel e voltava aqui (estouro de pilha, medido).
+                let raio = match (agua, &self.paint.wetpaint.largura) {
+                    (true, Some(lei)) => lei.raio_do_motor(b.radius_px),
+                    _ => b.radius_px,
+                };
+                let s = BrushSpec {
                     continuous_spacing: true,
+                    radius_px: raio,
                     ..*b
-                }
-                .drags_bristles(),
-            ),
+                };
+                !s.lays_capsules()
+                    || (agua && s.dab_spacing_px() <= f32::from(self.paint.wetpaint.grid_ratio))
+            }),
         ];
         Inercias {
             dependentes: leis

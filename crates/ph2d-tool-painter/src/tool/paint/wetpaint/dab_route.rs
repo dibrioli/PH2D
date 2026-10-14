@@ -220,7 +220,20 @@ impl PainterTool {
         }
         let strength = brush.strength.clamp(1e-3, 1.0);
         let t_dep = std::time::Instant::now();
-        for (didx, d) in dabs.iter().enumerate() {
+        // ⭐ The dab-CAPSULE (Continuous, [`ph2d_painter_brush::capsula`]) reaches the engine as its
+        // sub-dabs, oldest first, at least one engine cell apart: the deposit gates each against the
+        // paper (`trail/deposit.rs::cell`), so only the sub-dabs themselves lay the dense stroke —
+        // a capsule composed host-side either dilutes under the gate or widens past it (measured).
+        let sub_dabs: Vec<(usize, Dab)> = dabs
+            .iter()
+            .enumerate()
+            .flat_map(|(i, d)| {
+                let sub =
+                    ph2d_painter_brush::capsula::sub_passo_px(d.radius_px).max(f32::from(ratio));
+                ph2d_painter_brush::capsula::sub_dabs(d, sub).map(move |s| (i, s))
+            })
+            .collect();
+        for (didx, d) in sub_dabs.iter().map(|(i, d)| (*i, d)) {
             let [x, y] = d.center;
             // LANE matching, geometric: the dab belongs to the lane whose
             // last position is within its own radius (consecutive dabs of one
@@ -310,7 +323,6 @@ impl PainterTool {
                     ph2d_painter_brush::texture::ShapeFrame::Stroke {
                         arc_len: d.arc_len,
                         unit_px: d.stroke_radius_px,
-                        step: d.step,
                     },
                 )
             });

@@ -70,6 +70,54 @@ pub fn silhouette_at(
     }
 }
 
+/// ⭐ **The dab-CAPSULE's silhouette** at one canvas pixel ([`crate::capsula`], Continuous Spacing): the
+/// [`silhouette_at`] of each sub-dab — the falloff, the footprint and the Shape all shifted to the
+/// sub-dab's centre `center + off_k` — through the film cut, composed by `lei` with the per-pass opacity
+/// `c`. A procedural Shape under a zero falloff is skipped (it multiplies); an Image tip never is.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn silhouette_capsula(
+    spec: &BrushSpec,
+    shape: Option<ShapeInput<'_>>,
+    footprint: crate::footprint::FootprintDeform,
+    cap: crate::capsula::Capsula,
+    lei: crate::capsula::Lei,
+    c: f32,
+    px: i64,
+    py: i64,
+    center: [f32; 2],
+    radius: f32,
+) -> f32 {
+    let inv = 1.0 / radius;
+    let (dx, dy) = (px as f32 + 0.5 - center[0], py as f32 + 0.5 - center[1]);
+    let corpo = spec.deposits_height();
+    let imagem = spec.shape.kind == crate::texture::TextureKind::Image;
+    let mut j = crate::capsula::Junta::new(lei, c);
+    for k in 0..cap.n() {
+        let o = cap.off(k);
+        let queda = spec.falloff_weight(footprint.falloff_t((dx - o[0]) * inv, (dy - o[1]) * inv));
+        let (x, forma) = match shape {
+            Some(sh) if queda > 0.0 || imagem => {
+                let raw = crate::texture::sample_shape_silhouette(
+                    &spec.shape,
+                    sh.basis,
+                    px,
+                    py,
+                    [center[0] + o[0], center[1] + o[1]],
+                    radius,
+                    sh.image,
+                );
+                let sv = crate::texture::remap_shape_value(raw, sh.ramp_lut);
+                (spec.compose_shape_silhouette(sv, queda), sv)
+            }
+            Some(_) => (0.0, 0.0),
+            None => (queda, 1.0),
+        };
+        j.mais(crate::height::film_coverage(corpo, x), queda, forma);
+    }
+    j.fim()
+}
+
 /// The dab's **grain** coverage factor at one canvas pixel — the `g` of the funnel. Folds Grain Depth,
 /// the watercolor Granulation gate and the Stencil rect, in that order. The colour kernel inlines this
 /// same sequence (it needs the raw sample first, to index a Colour Ramp); the height kernel calls it
@@ -170,6 +218,7 @@ pub fn stamp_dab_textured(
         None,
         [1.0, 0.0],
         PARALLEL_MIN_AREA,
+        None,
     )
 }
 
@@ -192,6 +241,7 @@ pub fn stamp_dab_textured_masked(
     shape: Option<ShapeInput>,
     mask: Option<&mut [u8]>,
     dab_rotation: [f32; 2],
+    capsula: Option<crate::capsula::Capsula>,
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
@@ -209,6 +259,7 @@ pub fn stamp_dab_textured_masked(
         mask,
         dab_rotation,
         PARALLEL_MIN_AREA,
+        capsula,
     )
 }
 
@@ -255,6 +306,7 @@ pub fn stamp_dab_textured_masked_with(
         mask,
         dab_rotation,
         min_area,
+        None,
     )
 }
 
@@ -282,6 +334,7 @@ pub fn stamp_dab_ramped(
     // uncapped), Enio 2026-06-25.
     mask: Option<&mut [u8]>,
     dab_rotation: [f32; 2],
+    capsula: Option<crate::capsula::Capsula>,
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
@@ -299,6 +352,7 @@ pub fn stamp_dab_ramped(
         mask,
         dab_rotation,
         PARALLEL_MIN_AREA,
+        capsula,
     )
 }
 
@@ -331,6 +385,8 @@ fn stamp_dab_inner(
     // este kernel rodava antes de 2026-08-04 -- e' isso que torna o oraculo dele **o codigo que
     // shipava**, e nao uma segunda implementacao escrita para o teste.
     min_area: usize,
+    // The dab-capsule (Continuous Spacing, [`crate::capsula`]); `None` ⇒ the plain dab, unchanged.
+    capsula: Option<crate::capsula::Capsula>,
 ) -> Option<DirtyRect> {
     // Contract guard (sweep 2026-07-12): was `debug_assert!`, i.e. absent from the build the artist runs.
     if buf.len() < (width as usize) * (height as usize) * 4 {
@@ -349,11 +405,13 @@ fn stamp_dab_inner(
 
     // Screen-space AA of the film silhouette (BUGS #16, impasto half) — hoisted once per dab;
     // `None` = the single-sample `film_of` path, byte-identical (checkbox off / no body / Shape tip).
+    // The capsule's sub-dabs already average along the step, and each takes the film cut itself.
     let film_aa = crate::height_film::FilmAa::for_dab(
         spec,
         shape.filter(|_| spec.shape.is_active()).is_some(),
         radius,
-    );
+    )
+    .filter(|_| capsula.is_none());
     // The AA's outermost fractional ring can live one texel past the geometric rim (a texel whose
     // CENTRE is outside can still be partially covered) — pad the bbox so it is not clipped.
     let aa_pad = crate::height_film::FilmAa::pad_px(&film_aa);
@@ -387,10 +445,12 @@ fn stamp_dab_inner(
             .map(|s| s.basis),
     );
     let (reach_x, reach_y) = (radius * ext_x + aa_pad, radius * ext_y + aa_pad);
-    let x0 = (cx - reach_x).floor().max(0.0) as i64;
-    let y0 = (cy - reach_y).floor().max(0.0) as i64;
-    let x1 = ((cx + reach_x).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + reach_y).ceil() as i64 + 1).min(height as i64);
+    // The capsule's box reaches back to its farthest sub-dab.
+    let (lo, hi) = capsula.map_or(([0.0; 2], [0.0; 2]), crate::capsula::Capsula::caixa);
+    let x0 = (cx + lo[0] - reach_x).floor().max(0.0) as i64;
+    let y0 = (cy + lo[1] - reach_y).floor().max(0.0) as i64;
+    let x1 = ((cx + hi[0] + reach_x).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + hi[1] + reach_y).ceil() as i64 + 1).min(height as i64);
     if x0 >= x1 || y0 >= y1 {
         return None;
     }
@@ -421,6 +481,8 @@ fn stamp_dab_inner(
         stride,
         film_aa,
         lut,
+        capsula,
+        lei: crate::capsula::lei(),
     };
 
     // The per-pixel work is independent, so a LARGE dab (e.g. a big Anchored stamp re-drawn every

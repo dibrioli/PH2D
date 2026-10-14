@@ -71,7 +71,6 @@ fn flow_probe(
         ShapeFrame::Stroke {
             arc_len,
             unit_px: stroke_radius_px,
-            step: [0.0, 0.0],
         },
     );
     sample(&spec.shape, &b, px, py, center, radius_px, None)
@@ -277,7 +276,6 @@ fn the_shape_frame_reaches_the_sampler_and_is_inert_without_flow() {
     let stroke = ShapeFrame::Stroke {
         arc_len: 6.0,
         unit_px: 12.0,
-        step: [0.0, 0.0],
     };
     let (mut flow_max, mut off_max) = (0.0f32, 0.0f32);
     for py in 24..=36 {

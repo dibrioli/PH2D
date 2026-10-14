@@ -133,6 +133,8 @@ Cache do dono (`fotografa_cena.sh` com `__GL_SHADER_DISK_CACHE_PATH=/home/enio/.
 
 ## Smoke do dono
 
+✅ **Smoke OK pelo dono (14/10).**
+
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_TEMPO=1 PH2D_LIGHT2D_SMOKE=5 cargo run -p ph2d-host-desktop --profile smoke`
 2. A cena: a lâmpada no centro, oito formas coloridas com sombra e o interior delas iluminado. No terminal, «a luz
    acendeu N s» — N abaixo de 0,5 s (cache aquecido: 0,08 s).

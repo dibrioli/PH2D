@@ -50,13 +50,23 @@ Comando base (cada passo muda só as variáveis):
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && <VARS> cargo run -p ph2d-host-desktop --profile smoke`
 
 1. `PH2D_GPU_COOK_DEMO=138 PH2D_FLUID_PROFILE=1` — milhares de discos a cair; o terminal mostra o custo (~7 páginas).
-2. `PH2D_GPU_COOK_DEMO=139 PH2D_MOTION_FITA_BYTES=384k` — abra a aba **Arrange**, arraste a régua para trás: a faixa
+2. `PH2D_GPU_COOK_DEMO=139 PH2D_MOTION_FITA_BYTES=384k` — na aba **Keys** (a que abre; desde 13/10 — ADR-0115 R8
+   emenda 3 — a régua dela mexe o relógio do Motion sem pilha) arraste a régua para trás: a faixa
    da história começa mais tarde e o cartão das entradas avisa ao passar do começo dela.
 3. `PH2D_GPU_COOK_DEMO=140 PH2D_MOTION_ROUTE_LOG=1` — imagens e formas misturando num grupo; o terminal diz a rota.
 4. `PH2D_GPU_COOK_DEMO=141` — o fio do `Oscillator` solto no CORPO do `Transform` não liga nem abre menu: o aviso longo inteiro, ~5 s. ⚠️ 1.º report do dono (13/10): «o aviso não some e o modal de nós se abre» — o automático repetia-se, e o gesto do roteiro não existia (o `card_port_menu` filtra por `same_type` ⇒ menu vazio ⇒ a paleta). Curado em `cc74ff8412`: `GraphIntent::DropRefused` (o corpo que não aceita diz porquê; a paleta só no vazio), uma porta para a frase (`motion_bridge_recusa.rs`), `PH2D_MOTION_AVISO_AUTO=<s>` dispara UMA vez (só para a foto). ✅ Smoke do dono OK (13/10): `=138`–`=141` e `PH2D_MOTION_OBJ_SMOKE=18`.
 5. `PH2D_MOTION_OBJ_SMOKE=18` — cópias de uma sprite a cair com sombra em cada uma.
 
-Deu errado se: aviso cortado com «…»; a faixa da fita na régua da aba Keys; a `=138` a pedir 10–11 páginas.
+Deu errado se: aviso cortado com «…»; a faixa da fita AUSENTE na régua da aba Keys (sem pilha); a `=138` a pedir 10–11 páginas.
+
+## Depois do smoke: a Keys mexe o Motion (13/10, `65a853a5e8`)
+
+Pedido do dono: *«na aba Keys arrastar a régua e dar play tem de mexer a simulação»*. A linha P2 acima
+(«faixa SÓ na Arrange») é a lei VELHA: o defeito era a Keys sem pilha dirigir o `clip_playhead`
+(o `keys_mode` de 07-27 é o ESCOPO e levava o relógio junto). Agora `ph2d_timeline::ViewClock` —
+o clip só sob pilha; sob pilha o editor segue o clip que toca UMA vez (`follow_clip_clock`), e onde
+toca 0/2 vezes a barra diz `scene stays: …`. Lei, desvio e gates: ADR-0115 R8 emenda 3. Foto da `=139`
+na Keys com a faixa: verificada (scratchpad da janela, `139_keys.png`).
 
 ## Fecho desta janela
 

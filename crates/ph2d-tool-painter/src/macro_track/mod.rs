@@ -14,6 +14,7 @@ pub mod inicial;
 pub mod passo;
 pub mod portas;
 mod portas_internas;
+pub mod roteiro;
 pub mod tocar;
 
 #[cfg(test)]

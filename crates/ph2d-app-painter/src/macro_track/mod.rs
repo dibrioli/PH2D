@@ -17,6 +17,8 @@ use std::collections::BTreeMap;
 #[cfg(test)]
 #[path = "palcos_tests.rs"]
 mod palcos_tests;
+/// `PH2D_MACRO_SMOKE=1` — a cena do Splash.
+pub mod smoke;
 
 /// As ranhuras de textura da cena (o `IndividualTextureStore` do renderer; um duplo nos gates).
 pub trait RanhurasDaCena {

@@ -6,6 +6,9 @@
 /// `PH2D_ANIMACAO_SMOKE` — mora sob o roteador que o chama (os tectos da `App` e do `main.rs`).
 #[path = "animacao_smoke.rs"]
 mod animacao_smoke;
+/// `PH2D_MACRO_SMOKE` — idem: o clipe da macro é da Timeline, e as duas cenas são de famílias diferentes.
+#[path = "macro_smoke.rs"]
+mod macro_smoke;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -17,6 +20,7 @@ impl crate::App {
         self.build_smoke();
         self.stack_smoke();
         self.animacao_smoke();
+        self.macro_smoke();
         self.with_motion_scene(ph2d_app_motion::motion_path_smoke::motion_path_smoke);
         self.with_motion_scene(ph2d_app_motion::motion_objeto::smoke::motion_objeto_smoke);
         self.harmony_smoke();

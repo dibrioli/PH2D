@@ -96,7 +96,7 @@ mod text_rows;
 #[path = "motion_bridge_params_edit.rs"]
 mod params_edit;
 use params_edit::apply_param_edits;
-pub(crate) use params_edit::apply_param_intent;
+pub(crate) use params_edit::{aplica_lote_de_params, apply_param_intent};
 /// Re-exported under its old path: `param_value` is read from OUTSIDE this module
 /// (`field_gizmo`, and two sibling test modules) as `params::param_value`, so the
 /// split must not move where callers name it.

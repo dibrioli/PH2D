@@ -10,81 +10,15 @@
 //! sítio (o controlo `sem_os_tiques_a_reproducao_cai_noutro_sitio`; a sonda mediu `3,59`).
 
 use super::passo::Passo;
+pub(crate) use super::roteiro::*;
 use super::tocar::{ErroDaMacro, Modo, TocadorDoMotion};
 use crate::motion_bridge::quadro::{MaoDoEditor, o_quadro};
 use crate::motion_state::MotionState;
 use ph2d_macro::{MacroPlayer, MacroRecorder, MacroTime, RefRect};
 use ph2d_nodegraph::graph::{NodeId, Pos};
-use ph2d_panel_motion_graph::{GraphIntent, push_intent};
+use ph2d_panel_motion_graph::push_intent;
 
 const DT: f64 = 1.0 / 60.0;
-
-/// Um gesto da macro da sonda. Os nós referem-se por ORDEM DE CRIAÇÃO (slot).
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum Gesto {
-    Add(&'static str),
-    Liga(usize, u16, usize, u16),
-    Param(usize, &'static str, f32),
-}
-
-pub(crate) const FORMA: usize = 0;
-pub(crate) const GRADE: usize = 1;
-pub(crate) const DUP: usize = 2;
-pub(crate) const SAIDA: usize = 3;
-pub(crate) const INTEG: usize = 4;
-pub(crate) const VENTO: usize = 5;
-pub(crate) const CAIXA: usize = 6;
-pub(crate) const ARRASTO: usize = 7;
-
-/// A macro de tutorial: 8 nós, 24 gestos.
-pub(crate) const MACRO: &[Gesto] = &[
-    Gesto::Add("source.shape"),
-    Gesto::Param(FORMA, "size", 0.35),
-    Gesto::Add("motion.grid"),
-    Gesto::Param(GRADE, "rows", 6.0),
-    Gesto::Param(GRADE, "cols", 6.0),
-    Gesto::Param(GRADE, "gap_x", 0.5),
-    Gesto::Param(GRADE, "gap_y", 0.5),
-    Gesto::Add("motion.duplicator"),
-    Gesto::Liga(FORMA, 0, DUP, 0),
-    Gesto::Liga(GRADE, 0, DUP, 1),
-    Gesto::Add("motion.output"),
-    Gesto::Liga(DUP, 0, SAIDA, 0),
-    Gesto::Add("motion.integrate"),
-    Gesto::Liga(GRADE, 0, INTEG, 0),
-    Gesto::Liga(INTEG, 0, DUP, 1),
-    Gesto::Add("force.wind"),
-    Gesto::Liga(VENTO, 0, INTEG, 1),
-    Gesto::Add("field.box"),
-    Gesto::Param(CAIXA, "width", 1.0),
-    Gesto::Liga(CAIXA, 0, VENTO, 0),
-    Gesto::Add("force.drag"),
-    Gesto::Liga(VENTO, 0, ARRASTO, 0),
-    Gesto::Liga(ARRASTO, 0, INTEG, 1),
-    Gesto::Param(VENTO, "strength", 6.0),
-];
-
-/// A intenção que o painel emitiria para o gesto `i`, com os ids da sessão.
-pub(crate) fn intent_de(g: Gesto, slots: &[NodeId], i: usize) -> GraphIntent {
-    match g {
-        Gesto::Add(t) => GraphIntent::AddNode {
-            type_name: t,
-            x: i as f32 * 120.0,
-            y: 0.0,
-        },
-        Gesto::Liga(a, ap, b, bp) => GraphIntent::Connect {
-            from_node: slots[a].0,
-            from_port: ap,
-            to_node: slots[b].0,
-            to_port: bp,
-        },
-        Gesto::Param(n, k, v) => GraphIntent::SetParam {
-            node: slots[n].0,
-            param: k,
-            value: v,
-        },
-    }
-}
 
 /// O que se VÊ, ao bit: cada instância (quad e vector) com posição, tamanho e o resto.
 pub(crate) fn retrato(m: &MotionState) -> Vec<u32> {

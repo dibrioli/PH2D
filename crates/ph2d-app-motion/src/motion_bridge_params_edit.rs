@@ -87,11 +87,6 @@ pub(super) fn apply_param_edits(
     // Scalar slider / chip + enum edits.
     let intents = crate::drain_param_intents();
     if !intents.is_empty() {
-        // A discrete (typed) commit arrives with no bracket open → its own step.
-        let discrete = !editing && !was;
-        if discrete {
-            motion.history.begin(&motion.doc);
-        }
         // When the subject is a BACKDROP, the rows are its own (title / colour) and
         // the edits go to the document's decoration, never to a node. Routed by the
         // live SELECTION rather than by the intent's `node` field: an intent left
@@ -106,22 +101,39 @@ pub(super) fn apply_param_edits(
             (None, Some(sid)) => Destino::Cartao(sid),
             (None, None) => Destino::No,
         };
-        for intent in intents {
-            let Some(intent) = resolve_file_pick(motion, destino, intent) else {
-                continue;
-            };
-            // A macro grava a edição já resolvida: o destino e o caminho escolhido (ADR-0186).
-            motion.macro_param(destino, &intent);
-            apply_param_intent(motion, destino, intent, toasts);
-        }
-        if discrete {
-            motion.history.commit_if_changed(&motion.doc);
-        }
+        // A discrete (typed) commit arrives with no bracket open → its own step.
+        aplica_lote_de_params(motion, destino, intents, !editing && !was, toasts);
     }
     motion.macro_fecha();
 
     // Close the session bracket on the true→false edge (one step for the gesture).
     if !editing && was {
+        motion.history.commit_if_changed(&motion.doc);
+    }
+}
+
+/// **Um lote de edições de param no destino já resolvido**, gravado e aplicado; `discreto` = o seu
+/// próprio passo de undo. O dreno acima e a gravação por script de uma cena (`macro_track::smoke`),
+/// que recebe os pedidos que o grafo deixa ao painel sem os pôr na fila global.
+pub(crate) fn aplica_lote_de_params(
+    motion: &mut MotionState,
+    destino: Destino,
+    intents: Vec<crate::MotionParamIntent>,
+    discreto: bool,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    if discreto {
+        motion.history.begin(&motion.doc);
+    }
+    for intent in intents {
+        let Some(intent) = resolve_file_pick(motion, destino, intent) else {
+            continue;
+        };
+        // A macro grava a edição já resolvida: o destino e o caminho escolhido (ADR-0186).
+        motion.macro_param(destino, &intent);
+        apply_param_intent(motion, destino, intent, toasts);
+    }
+    if discreto {
         motion.history.commit_if_changed(&motion.doc);
     }
 }

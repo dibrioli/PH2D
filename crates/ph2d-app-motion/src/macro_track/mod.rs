@@ -15,6 +15,11 @@ pub mod intencao;
 pub mod palcos;
 pub mod passo;
 mod passo_grafo;
+#[cfg(feature = "panel-motion-graph")]
+pub(crate) mod roteiro;
+/// `PH2D_MACRO_SMOKE=2` — a cena do Motion nó a nó.
+#[cfg(feature = "panel-motion-graph")]
+pub mod smoke;
 pub mod tocar;
 
 #[cfg(test)]
@@ -27,6 +32,8 @@ mod painel_tests;
 mod palcos_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 mod placa_tests;
+#[cfg(all(test, feature = "panel-motion-graph"))]
+mod smoke_tests;
 #[cfg(test)]
 mod tests;
 

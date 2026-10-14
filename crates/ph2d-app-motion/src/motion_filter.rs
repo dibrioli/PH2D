@@ -183,6 +183,21 @@ impl MotionFiltro {
         self.ligada
     }
 
+    /// **A camada SEMPRE**, com ou sem pilha (o palco de uma macro em cena,
+    /// [`crate::macro_track::palcos`]): o Motion inteiro desenha-se à parte e pousa no mundo pela
+    /// [`MotionState::filtra_a_camada`]; sem `fx.filter` a pilha vazia é só a conversão para o mundo.
+    pub fn liga_em_camada(&mut self) {
+        self.desenha = true;
+        self.ligada = true;
+    }
+
+    /// A cena vectorial DENTRO da camada, limpa — onde a shell codifica as formas que a placa não
+    /// leva quando a camada é sempre ([`Self::liga_em_camada`]).
+    pub fn cena_da_camada_sempre(&mut self) -> &mut VectorScene {
+        self.cena.reset();
+        &mut self.cena
+    }
+
     /// Os filtros correm neste quadro (a última resposta do [`Self::liga`]).
     #[must_use]
     pub fn ligada(&self) -> bool {

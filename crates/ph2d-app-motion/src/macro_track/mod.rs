@@ -8,13 +8,14 @@
 //! - **Tocar** = um palco ([`inicial::palco`]: um `MotionState` próprio, o autorado não se toca) recebe
 //!   cada passo pelas MESMAS portas — o lote do grafo, o lote de params, o quadro ([`tocar`]).
 
+pub mod em_cena;
 pub mod inicial;
 #[cfg(feature = "panel-motion-graph")]
 pub mod intencao;
+pub mod palcos;
 pub mod passo;
 mod passo_grafo;
 pub mod tocar;
-pub mod em_cena;
 
 #[cfg(test)]
 mod alvo_tests;
@@ -22,6 +23,8 @@ mod alvo_tests;
 pub(crate) mod gate_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 mod painel_tests;
+#[cfg(all(test, feature = "panel-motion-graph"))]
+mod palcos_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 mod placa_tests;
 #[cfg(test)]

@@ -232,6 +232,8 @@ impl crate::App {
         // CAMADA — com filtros, o Motion sai deste passe e é desenhado à parte (`motion_filter`).
         let lente = motion.lente.liga(motion_active);
         let filtrada = motion.filtro.liga(motion_active);
+        // ⭐ Os palcos das macros em cena: cada um numa camada própria, que pousa no mundo.
+        let palcos = self.motion_shell.palcos.liga();
         let (motion_gpu, motion_slice) = motion.sprites_da_camada(motion_active && !filtrada);
         // O slot `extra` do passe carrega TRÊS produtores CPU: os fantasmas do onion (ADR-0142),
         // o stream do Motion e — desde o TOP-20 #18 — as PARTÍCULAS dos objectos.
@@ -304,7 +306,7 @@ impl crate::App {
         //    codificação) — o vetor recebe a luz na colagem delas (o solver: `present_luz`).
         plan.banded |= luz2d.grade().is_some();
         // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
-        plan.banded |= lente || filtrada;
+        plan.banded |= lente || filtrada || palcos;
         let banded = plan.banded;
         // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
         // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são
@@ -448,6 +450,8 @@ impl crate::App {
         let _ = ph2d_app_motion::motion_shape_placa::desenha_o_quadro(
             placa, gpu, tamanho, motion, renderer, filtro,
         );
+        let palcos = &mut self.motion_shell.palcos;
+        palcos.desenha(gpu, tamanho, renderer, filtro);
         // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
         // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o
         // corte é por RESPONSABILIDADE: os dois somam luz sobre o `game_rt` antes do
@@ -467,6 +471,7 @@ impl crate::App {
                 present,
                 instances: &mut self.emissive_instances,
                 formas: &self.motion_shell.placa,
+                palcos: &self.motion_shell.palcos,
             },
         );
     }

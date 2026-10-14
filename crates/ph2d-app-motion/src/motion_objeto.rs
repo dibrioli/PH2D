@@ -70,6 +70,9 @@ pub struct ObjetoState {
     /// Só os sinks deste objecto cozem — o palco de uma macro, que toca a trilha de um objecto
     /// (`None` = todos, o editor).
     pub so_o_dono: Option<u64>,
+    /// ⭐ Os objectos que o palco de uma macro toca neste quadro ([`crate::macro_track::palcos`]): o
+    /// editor não coze os sinks deles (`0` = todos). Escrito por [`tocados_por_macro`].
+    pub tocados_por_macro: BTreeSet<u64>,
     /// Os vivos do quadro anterior — só quem estava vivo pode MORRER (a purga).
     vivos_antes: BTreeSet<u64>,
     /// ⭐ A origem aplicada às cópias (ver [`origem`]).
@@ -471,19 +474,31 @@ pub fn motion_na_cadeia(world: &World, bits: u64) -> Option<u64> {
 }
 
 /// ⭐ **Os sinks que cozinham**: os de todos os objectos visíveis (o olho esconde os do dono), ou só
-/// os do [`ObjetoState::so_o_dono`].
+/// os do [`ObjetoState::so_o_dono`] — e nunca os de um objecto que o palco de uma macro toca.
 pub fn sinks_visiveis(
     motion: &MotionState,
     sinks: Vec<ph2d_nodegraph::graph::NodeId>,
 ) -> Vec<ph2d_nodegraph::graph::NodeId> {
     let so = motion.objeto.so_o_dono;
+    let tocados = &motion.objeto.tocados_por_macro;
     sinks
         .into_iter()
         .filter(|s| {
             let dono = motion.doc.owner_of(*s);
-            !motion.objeto.escondido(dono) && so.is_none_or(|o| dono == Some(o))
+            let tocado = tocados.contains(&0) || dono.is_some_and(|d| tocados.contains(&d));
+            !tocado && !motion.objeto.escondido(dono) && so.is_none_or(|o| dono == Some(o))
         })
         .collect()
+}
+
+/// **Os objectos que os palcos das macros tocam neste quadro**, antes do `dispatch` do editor. Um
+/// conjunto que muda re-coze o editor sem deitar fora o anel (o documento é o mesmo; a gravação
+/// em curso guarda a marca como um `Toque`).
+pub fn tocados_por_macro(motion: &mut MotionState, tocados: BTreeSet<u64>) {
+    if motion.objeto.tocados_por_macro != tocados {
+        motion.objeto.tocados_por_macro = tocados;
+        motion.pump.mark_dirty_keeping_ring();
+    }
 }
 
 #[cfg(test)]

@@ -65,6 +65,11 @@ impl crate::App {
                 janela: surface.size(),
             },
         );
+        // ⭐ As macros em cena (ADR-0186): cada palco segue o relógio que a Timeline escreveu, com o
+        // mundo deste quadro, e o editor deixa de cozer os objectos que eles tocam.
+        let palcos = &mut self.motion_shell.palcos;
+        let tocados = palcos.segue(sim.world_mut(), &motion.mundo, Some(surface.gpu()));
+        ph2d_app_motion::motion_objeto::tocados_por_macro(motion, tocados);
         ph2d_app_motion::motion_bridge::dispatch(
             hero,
             tools,

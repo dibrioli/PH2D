@@ -146,6 +146,17 @@ impl crate::App {
             renderer,
             sim,
         );
+        // ⭐ E os mesmos três assados para cada palco de uma macro em cena (ADR-0186).
+        let (gpu, fmt) = (surface.gpu(), surface.format());
+        for (palco, _) in self.motion_shell.palcos.fontes_mut() {
+            let (ents, xf, live) = (&self.vec.entities, &vec_xf, &vec_live);
+            let bake = ph2d_app_motion::motion_bridge::bake_objects;
+            bake(palco, vec_scene, ents, xf, live, gpu, renderer, fmt, sim);
+            assa_e_particiona_tiles_de_forma(palco, cam_affine, gpu, renderer, fmt);
+            let (fe, ph) = (&self.flip_state.entities, &self.playhead);
+            let flip_bake = ph2d_app_motion::motion_bridge::bake_flip_objects;
+            flip_bake(palco, flip, fe, ph, gpu, renderer, sim);
+        }
         Some((vec_view, vec_xf, cam_affine, vec_live))
     }
 }

@@ -103,6 +103,16 @@ impl MacroEmCena {
         self.tocador.palco()
     }
 
+    pub fn palco_mut(&mut self) -> &mut MotionState {
+        self.tocador.palco_mut()
+    }
+
+    /// O objecto que o palco toca (o `target` da trilha, `StableId`; `0` = todos).
+    #[must_use]
+    pub fn dono(&self) -> u64 {
+        self.doc.tracks[0].target
+    }
+
     /// O tempo até onde a macro já tocou.
     #[must_use]
     pub fn tempo(&self) -> MacroTime {

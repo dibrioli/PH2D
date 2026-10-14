@@ -49,4 +49,7 @@ pub struct MotionShellState {
     /// ⭐⭐⭐ **As formas a caminho da PLACA** (doc 121, W2) — o cache de geometria, as cópias do
     /// quadro e a camada onde o passe instanciado as desenha. Vive aqui porque sobrevive ao quadro.
     pub placa: crate::motion_shape_placa::PlacaDeFormas,
+
+    /// ⭐ **Os palcos das macros em cena** (ADR-0186): cada um com a sua placa, ao lado da do editor.
+    pub palcos: crate::macro_track::palcos::PalcosDasMacros,
 }

@@ -182,7 +182,7 @@ fn roteiro() -> Vec<(u32, Acao)> {
     r
 }
 
-const QUADROS: u32 = 150;
+pub(super) const QUADROS: u32 = 150;
 
 /// A sessão gravada.
 pub(super) struct Gravada {

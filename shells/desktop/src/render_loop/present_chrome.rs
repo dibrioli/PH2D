@@ -109,11 +109,23 @@ impl crate::App {
             let alvo = world_rt.blend_view();
             ph2d_app_motion::motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);
         }
+        // ⭐ E cada palco de uma macro em cena pousa a sua camada (ADR-0186), por cima da do editor.
+        let palcos = &mut self.motion_shell.palcos;
+        palcos.pousa(ph2d_app_motion::macro_track::palcos::Colagem {
+            gpu: surface.gpu(),
+            renderer,
+            camera,
+            window: window_size,
+            scene_viewport,
+            mundo: world_rt,
+            band_blit,
+        });
         // ⭐ **A LENTE** (ciclo 20) — depois da última escrita do mundo, antes do vidro e do chrome.
         let cena = hero_screen
             .as_ref()
             .and_then(|h| h.cena_visivel(scene_viewport));
         motion.lente.aplica(surface.gpu(), world_rt, cena);
+        palcos.lentes(surface.gpu(), world_rt, cena);
         // ⭐⭐⭐ **O VIDRO** — entre o mundo e a receita, e ANTES da cena de chrome de
         // propósito: os painéis entram pelo compositor, acima de tudo, e é isso que os
         // deixa nítidos sem uma máscara os nomear. Ver [`crate::render_loop::present_frost`].

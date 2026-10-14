@@ -34,6 +34,8 @@ pub(super) struct FxGear<'a> {
     pub instances: &'a mut ph2d_render::LiftedInstances,
     /// As formas do Motion deste quadro, já desenhadas pela placa (doc 121 §9.14).
     pub formas: &'a ph2d_app_motion::motion_shape_placa::PlacaDeFormas,
+    /// Os palcos das macros em cena — cada um brilha pelo MESMO passe.
+    pub palcos: &'a ph2d_app_motion::macro_track::palcos::PalcosDasMacros,
 }
 
 /// Corre os dois passes, nesta ordem.
@@ -77,101 +79,20 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
             None,
         );
     }
-    // Pass 1c: Motion glow (doc 67, Option B) — the Motion module's
-    //   OWN HDR effect, authored as an `fx.glow` node in the graph.
-    //   Only runs when the artist has dropped that node (and dialed
-    //   intensity > 0); otherwise this whole block is skipped and the
-    //   frame is byte-identical (the fused sprite+Motion pass and the
-    //   tonemap are untouched → blast radius zero). Re-render the
-    //   Motion instances IN ISOLATION into `motion_fx`'s own Rgba16Float
-    //   RT, bright-pass + blur them, and ADD the glow over `game_rt`
-    //   (before the tonemap, so the glow tonemaps with everything
-    //   else). Additive = emitted light, so it bleeds over whatever is
-    //   in front — the sparks look lit, not pasted.
-    let glow = ph2d_node_fx_glow::from_graph(&g.motion.doc.graph);
-    // ⚠️ **Lida FORA do `if` de propósito**: dentro dele o `glow` já foi movido. Ela assa-se uma
-    // vez por texto (`bake_halo_lut` guarda a última).
-    let halo_lut = ph2d_node_fx_glow::bake_halo_lut(&g.motion.doc.graph);
-    // ⚠️ **A LISTA DO GLOW É A CAMADA MOTION, e não o passe de sprites** (bug do Enio, 2026-08-20:
-    // *"tudo deve brilhar"*) — pela rota do quadro: ver [`ph2d_app_motion::motion_glow_layer::Halo`]
-    // (doc 121 §9.14: num quadro do DISPOSITIVO as listas da CPU são de um quadro velho).
-    let halo = ph2d_app_motion::motion_glow_layer::halo_do_quadro(g.motion, g.formas.desenhou());
-    // ⚠️ **`PH2D_GLOW_DIAG=1`** — de que é feito o halo, quando muda («o halo não aparece» tem cinco
-    // causas indistinguíveis a olho; ver o doc de [`ph2d_app_motion::motion_glow_layer::diag`]).
-    ph2d_app_motion::motion_glow_layer::diag(g.motion, &halo, glow.as_ref().map(|k| k.intensity));
-    if let Some(glow) = glow
-        && g.motion_active
-        && glow.intensity > 0.0
-        && !halo.vazio()
-    {
-        g.renderer.render_instances_only(
-            g.motion_fx.rt_view(),
-            g.camera,
-            g.window_size,
-            wgpu::Color::TRANSPARENT,
-            &halo.cpu,
-            halo.placa,
-            // SAME sub-rect the fused scene used above — or the glow
-            // desyncs from the sparks (the halo floats away).
-            g.scene_viewport,
-        );
-        let tamanho = (g.window_size.width, g.window_size.height);
-        if halo.formas_da_placa && !g.formas.redesenha_em(gpu, g.motion_fx.rt_view(), tamanho) {
-            eprintln!(
-                "[glow-diag] (!) as formas da placa nao entraram no halo (outro tamanho de alvo)"
-            );
-        }
-        // **A MÁSCARA DE SUJIDADE** (doc 89 folha 11) — o nó guarda o NOME de um
-        // objecto da cena e o passe de tela quer uma `TextureView`. As duas metades
-        // encontram-se aqui, DEPOIS do passe de isolamento: aquele leva o renderer
-        // emprestado mutável, e a resolução só o lê.
-        //
-        // ⚠️ **A resolução corre só quando há nome autorado.** Sem ele o `resolve`
-        // nem é chamado — uma varredura da cena por quadro para responder *"nada"*
-        // é o custo que o caminho de sempre não pode pagar.
-        let dirt_cooked = |id| g.renderer.cooked_texture_id(id);
-        let dirt = ph2d_node_fx_glow::dirt::source(&g.motion.doc.graph).and_then(|n| {
-            ph2d_app_motion::motion_glow_dirt::resolve(
-                g.sim,
-                ph2d_app_motion::motion_bridge::Appearance {
-                    atlas: g.renderer.atlas(),
-                    cooked: &dirt_cooked,
-                },
-                &n,
-            )
-            .or_else(|| {
-                // ⚠️ **Um nome que não resolve é a SEXTA causa indistinguível a
-                // olho** desta família (ver `motion_glow_layer::diag`, que já
-                // documenta cinco). Ele é legítimo — um nome pode ser escrito antes
-                // de a sprite existir —, então não é erro; mas ficar mudo é o que
-                // torna *"escrevi o nome e não aconteceu nada"* indiagnosticável.
-                ph2d_app_motion::motion_glow_dirt::diag_unresolved(&n);
-                None
-            })
-        });
-        let dirt = dirt.and_then(|r| ph2d_app_motion::motion_glow_dirt::mask(r, g.renderer));
-        g.motion_fx.bloom_over(
-            gpu,
-            g.game_rt.view(),
-            &ph2d_render::BloomParams {
-                threshold: glow.threshold,
-                knee: glow.knee,
-                intensity: glow.intensity,
-                radius: glow.radius,
-                saturation: glow.saturation,
-                tint: glow.tint,
-                stretch: glow.stretch,
-                angle: glow.angle,
-                clamp: glow.clamp,
-                operation: glow.operation,
-                source: glow.source,
-                dirt_intensity: glow.dirt_intensity,
-            },
-            // **A RAMPA DO HALO** (doc 89 folha 11) — assada pelo nó, que é quem
-            // possui a semântica do gradiente; aqui ela só atravessa. `None` quando
-            // o artista não desenhou nenhuma, e aí o `tint` constante manda.
-            halo_lut.as_deref(),
-            dirt,
-        );
+    // Pass 1c: o `fx.glow` do Motion — uma vez por FONTE, o editor e cada palco de uma macro em cena
+    //   (a lei e o porquê vivem em `ph2d_app_motion::motion_glow_passe`; depois da sprite emissiva).
+    let (motion, formas, ativo, palcos) = (g.motion, g.formas, g.motion_active, g.palcos);
+    let mut brilho = ph2d_app_motion::motion_glow_passe::Brilho {
+        renderer: g.renderer,
+        motion_fx: g.motion_fx,
+        game_rt: g.game_rt,
+        camera: g.camera,
+        window_size: g.window_size,
+        scene_viewport: g.scene_viewport,
+        sim: g.sim,
+    };
+    ph2d_app_motion::motion_glow_passe::passe(gpu, &mut brilho, motion, formas, ativo);
+    for (palco, placa) in palcos.fontes() {
+        ph2d_app_motion::motion_glow_passe::passe(gpu, &mut brilho, palco, placa, true);
     }
 }

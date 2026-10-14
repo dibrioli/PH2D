@@ -3,19 +3,25 @@
 //! (`motion_shape_placa`, com os gates de decisão e de paridade de pixel) e *este elo* são as duas
 //! metades, e cada uma reprova por um motivo diferente.
 //!
+//! ⭐ Desde a W4 das Macros (item 5.5) o elo é de N FONTES: o editor e cada palco de uma macro em cena
+//! (`ph2d_app_motion::macro_track::palcos`) passam pelas MESMAS portas em cada sítio.
+//!
 //! *Mutações: apagar o `|=` (a camada é colada num acumulador que o compositor não lê) · não
 //! forçar as faixas do documento (o documento fica na cena Vello, POR CIMA das formas) · apagar o
 //! `!…ativa()` (as formas desenhadas DUAS vezes) · mover a colagem para depois do chrome (as formas
 //! por cima dos gizmos) · desenhar a camada DEPOIS do halo (doc 121 §9.14: o halo redesenha as
-//! formas DESTE quadro, e leria as do anterior).*
+//! formas DESTE quadro, e leria as do anterior) · esquecer um palco num dos sítios.*
 #[test]
 fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     let present = include_str!("present.rs");
     assert!(present.contains("plan.banded |= self.motion_shell.placa.ativa();"));
     let bandas = include_str!("fase_vector_bands.rs");
-    assert!(bandas.contains("doc_bands_of(frame_order, placa || luz_acesa)"));
+    assert!(bandas.contains("doc_bands_of(frame_order, placa || palcos || luz_acesa)"));
     let overlays = include_str!("fase_vector_overlays.rs");
-    assert!(overlays.contains("if motion_tool_active && !self.motion_shell.placa.ativa() {"));
+    assert!(
+        overlays
+            .contains("let do_editor = motion_tool_active && !self.motion_shell.placa.ativa();")
+    );
     let chrome = include_str!("present_chrome.rs");
     let em = |agulha: &str| chrome.find(agulha).expect(agulha);
     let (cima, placa, vello) = (
@@ -52,17 +58,64 @@ fn a_rota_do_dispositivo_chega_ao_quadro() {
     assert!(present.contains("hero_screen.as_ref().map(|h| h.project.image_filter)"));
 }
 
-/// ⭐ doc 121 §9.14 (c) — **O HALO DO `fx.glow` PELA ROTA DO QUADRO.** A LEI (que listas, que buffer)
-/// é a `motion_glow_layer::halo_do_quadro`, com gates puros; este é o elo: o passe de isolamento
-/// recebe o buffer do DISPOSITIVO e as formas entram pelo redesenho da camada. *Mutações: passar
-/// `None` em vez do buffer (num quadro do dispositivo as sprites não brilham) · não redesenhar as
-/// formas (a forma deixa de brilhar na placa).*
+/// ⭐ doc 121 §9.14 (c) — **o halo, uma vez por FONTE**: o passe (e o gate de texto dele) vive em
+/// `ph2d_app_motion::motion_glow_passe`; a shell chama-o para o editor e para cada palco, com a placa
+/// de cada um. *Mutação: apagar o laço (a macro em cena deixa de brilhar).*
 #[test]
-fn o_halo_recebe_o_buffer_da_placa_e_a_camada_das_formas() {
+fn o_halo_corre_para_o_editor_e_para_cada_palco() {
     let fx = include_str!("present_fx.rs");
-    assert!(fx.contains("halo_do_quadro(g.motion, g.formas.desenhou())"));
-    assert!(fx.contains("            &halo.cpu,\n            halo.placa,"));
-    assert!(fx.contains(
-        "if halo.formas_da_placa && !g.formas.redesenha_em(gpu, g.motion_fx.rt_view(), tamanho)"
-    ));
+    assert!(fx.contains("motion_glow_passe::passe(gpu, &mut brilho, motion, formas, ativo);"));
+    assert!(fx.contains("for (palco, placa) in palcos.fontes() {"));
+    assert!(fx.contains("motion_glow_passe::passe(gpu, &mut brilho, palco, placa, true);"));
+}
+
+/// ⭐ **AS MACROS EM CENA** (ADR-0186, W4 item 5.5): os palcos seguem o relógio DEPOIS de o mundo ser
+/// publicado e ANTES de o editor cozer (que larga os donos deles), e passam por cada sítio do quadro
+/// — os assados, a decisão da placa, as formas da CPU, o planeamento, o desenho, a colagem por cima
+/// da do editor e antes do chrome, a lente e a luz. ⛔ Excluir o dono sem desenhar o palco faria o
+/// objecto SUMIR no Play: as duas metades estão no mesmo gate.
+#[test]
+fn os_palcos_das_macros_passam_por_cada_sitio_do_quadro() {
+    let ponte = include_str!("fase_motion_bridge.rs");
+    let em = |agulha: &str| ponte.find(agulha).expect(agulha);
+    assert!(
+        em("motion_mundo::publica_o_mundo(") < em("palcos.segue(")
+            && em("palcos.segue(") < em("motion_bridge::dispatch("),
+        "o palco segue com o mundo deste quadro, antes de o editor cozer"
+    );
+    assert!(ponte.contains("motion_objeto::tocados_por_macro(motion, tocados);"));
+    let recook = include_str!("fase_vector_fx_recook.rs");
+    assert!(recook.contains("for (palco, _) in self.motion_shell.palcos.fontes_mut() {"));
+    let bandas = include_str!("fase_vector_bands.rs");
+    assert!(bandas.contains(".decide(surface.gpu(), ligadas, cam_affine);"));
+    let overlays = include_str!("fase_vector_overlays.rs");
+    assert!(overlays.contains("if do_editor || self.motion_shell.palcos.tocam() {"));
+    assert!(overlays.contains("palcos.codifica(&mut art, cam_affine, Some(janela), filtro);"));
+    let present = include_str!("present.rs");
+    assert!(present.contains("let palcos = self.motion_shell.palcos.liga();"));
+    assert!(present.contains("plan.banded |= lente || filtrada || palcos;"));
+    let em_present = |agulha: &str| present.find(agulha).expect(agulha);
+    assert!(
+        em_present("palcos.desenha(gpu, tamanho, renderer, filtro);")
+            < em_present("super::present_fx::run("),
+        "a camada de cada palco desenha-se antes do halo que a redesenha"
+    );
+    assert!(present.contains("palcos: &self.motion_shell.palcos,"));
+    let chrome = include_str!("present_chrome.rs");
+    let em_chrome = |agulha: &str| chrome.find(agulha).expect(agulha);
+    let (editor, palcos, vello) = (
+        em_chrome("motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);"),
+        em_chrome("palcos.pousa(ph2d_app_motion::macro_track::palcos::Colagem {"),
+        em_chrome("vello_pass.render_to_intermediate("),
+    );
+    assert!(
+        editor < palcos && palcos < vello,
+        "os palcos pousam depois do editor e antes do chrome"
+    );
+    assert!(
+        em_chrome("motion.lente.aplica(")
+            < em_chrome("palcos.lentes(surface.gpu(), world_rt, cena);")
+    );
+    let luz = include_str!("present_luz.rs");
+    assert!(luz.contains(".com_oclusoes(&mut [&mut flip_luz, &mut motion_luz], |familias| {"));
 }

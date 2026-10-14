@@ -37,12 +37,12 @@ impl crate::App {
         let placa = &mut self.motion_shell.placa;
         let mut motion_luz =
             ph2d_app_motion::motion_shape_placa::luz::OclusaoDoMotion::do_quadro(placa, motion);
-        luz2d.gravar_com(
-            surface.gpu(),
-            present,
-            renderer,
-            &mut [&mut flip_luz, &mut motion_luz],
-        );
+        // ⭐ E as formas de cada palco de uma macro em cena (ADR-0186), pela MESMA porta.
+        self.motion_shell
+            .palcos
+            .com_oclusoes(&mut [&mut flip_luz, &mut motion_luz], |familias| {
+                luz2d.gravar_com(surface.gpu(), present, renderer, familias)
+            });
         luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
         let na_tela = luz2d.na_tela();
         flip_compose.receber_luz(surface.gpu(), na_tela.as_ref().map(|(l, m)| (l, *m)));

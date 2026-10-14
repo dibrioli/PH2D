@@ -214,6 +214,8 @@ pub mod motion_glow_dirt;
 /// instâncias do passe de isolamento, que é a camada MOTION inteira e não só o
 /// passe de sprites — a metade vetorial viva entra pelo tile assado.
 pub mod motion_glow_layer;
+/// O passe do `fx.glow`, uma vez por fonte (o editor e cada palco de uma macro em cena).
+pub mod motion_glow_passe;
 /// doc 132 §2: a história da fita dita na Timeline (a faixa) e no cartão das entradas.
 pub mod motion_historia;
 pub mod motion_lens;

@@ -133,6 +133,11 @@ impl TocadorDoMotion {
         &self.palco
     }
 
+    /// O palco para as portas do presente que guardam estado por quadro (a camada, a lente).
+    pub fn palco_mut(&mut self) -> &mut MotionState {
+        &mut self.palco
+    }
+
     /// **O mundo que a cena publicou** neste quadro ([`crate::motion_mundo`]) — antes dos passos do
     /// quadro, como o editor o recebe antes do `dispatch`.
     pub fn recebe_o_mundo(&mut self, mundo: &crate::motion_mundo::MundoDaCena) {

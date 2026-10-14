@@ -1,4 +1,4 @@
-# Continuação — line/Macros-Automação, W4 itens 1–4 e 5.1–5.4 fechados → item 5.5 (a cena: palcos, exclusão, present de N fontes, Painter)
+# Continuação — line/Macros-Automação, W4 itens 1–4 e 5.1–5.5 (A+B+C+D) fechados → a prova do bloco (cenas de smoke + medição)
 
 > Para a PRÓXIMA janela. Branch `line/Macros-Automação`, worktree `Worktrees/line-Macros-Automação/`, base
 > `0aab2c1cb6` (reaberta a 14/10 depois da integração; ver «Reaberta» abaixo). Leia antes de agir:
@@ -16,6 +16,9 @@
 | `75afc54516` | os vermelhos da suíte (contagens dos registadores, censo do Inspector) |
 | `5b0328fada` | **14/10, item 5.1–5.2**: `PropKind::MacroTime = 18` → `MacroTempo` (runtime), limpo por quadro |
 | `1f4e85547b` | **14/10, item 5.3–5.4**: `add_macro_clip` (a porta do Gravar ▸ Parar) e `MacroEmCena` |
+| `412aba04da` | **14/10, item 5.5 A+B+C**: palcos do Motion por entidade, o editor larga o dono, N fontes no quadro |
+| `4efd97012b` | prova de mutação do A+B+C: 10/10 |
+| `dbf89c60db` | **14/10, item 5.5 D**: o Painter em cena (prova 14/14) |
 
 ### 14/10 — itens 5.1 a 5.4 (o que existe; não reconstruir)
 
@@ -93,7 +96,7 @@
 `ph2d-component-desc` (descritor) · `ph2d-i18n` (chaves + ficheiro) · `ph2d-editor-core` (`macro_edits.rs`) ·
 `ph2d-app-components` (`macro_inspector` + dep `ph2d-macro`) · `ph2d-panel-inspector` (só a lista do teste de
 censo) · `ph2d-render`/`ph2d-script` (contagens) · `shells/desktop`: `fase_motion_bridge.rs` encolheu (delta
-negativo), `project_schema(.rs/_tests.rs)`. Contratos congelados encostados: **nenhum**.
+negativo), `project_schema(.rs/_tests.rs)`. 5.5 D: `ph2d-macro` (`MacroTime::from_secs_f64`) · `ph2d-tool-painter` (`runtime.rs::composto_da_cena`, `macro_track/em_cena.rs` novo) · `shells/desktop` (`App.painter_macros`, `fase_macros_do_painter`; +≈35 linhas com o gate). Contratos congelados encostados: **nenhum**.
 
 **Contadores como delta:** `PROJECT_SCHEMA` 188 → 189 (escada + tripla `(189,13,22)`); registo ECS +1
 (107 → 108; render/script 108 → 109). ⚠️ `python3 scripts/schema-recount.py` NÃO conta: só renumera um
@@ -174,72 +177,64 @@ Smokes da placa (comando inteiro):
   restauro `checkout` + `touch`, árvore limpa no fim.
 - ⚠️ Não medido: custo do quadro com N palcos (placa); nenhuma cena de smoke ainda.
 
-## ABERTO — item 5.5 D (o Painter em cena), a prova do bloco, e 5.6
+## 14/10 (noite) — 5.5 D FEITO (`dbf89c60db`; não reconstruir)
 
-**Mapa do D medido a 14/10 (explorador, endereços do HEAD `412aba04da`)** — o desenho D abaixo fica
-corrigido por isto:
-- `TocadorDoPainter` (`ph2d-tool-painter/src/macro_track/tocar.rs:30`): `novo(inicial, cargas)` `:41`,
-  `sobre_tela(inicial, cargas, rgba, w, h)` `:54`, `aplica(carga)` `:106` (um passo, sem relógio, só
-  avança). Resultado: `tool().canvas_rgba` (straight; `take_preview_arc`, `tool/runtime.rs:338-401`).
-  Visibilidade de `canvas_rgba` fora da crate e dependência do worker da água: por confirmar.
-- Gravação: `PainterTool::macro_grava() -> Result<(Vec<u8>, (u32,u32)), Recusa>` (`mod.rs:61`) sem alvo
-  e sem chamador de produto (só testes); falta o irmão de `MotionState::gravacao_abre`
-  (`ph2d-app-motion/src/macro_track/mod.rs:126`) com o `StableId` do sprite.
-- ⭐ **O ponto de troca JÁ EXISTE**: `PreviewOverride { entity_bits, texture_id, premultiplied }`
-  (`shells/desktop/src/render_loop/sim_extract.rs:175`, aplicado em `:331-334`); a lista monta-se em
-  `fase_extract_inputs.rs:77-115` ao lado de `painter_preview_override` (`:90`, o traço em curso:
-  `painter_bridge_upload.rs:76` sobe para um `PainterPreviewGpu`) e do `bgremoval_preview_override`.
-  ⚠️ `find` apanha o primeiro override da entidade.
-- Renderer: `acquire_individual(w,h,rgba)` (`renderer_individual.rs:22`), `replace_individual_pixels`
-  (`:198`), `individual_mut().release(id)`; `Rgba8UnormSrgb`, pixels PREMULTIPLICADOS.
-- Casa do sistema: `crates/ph2d-app-painter/src/macro_track/` (novo; deps já lá: `ph2d-tool-painter`,
-  `ph2d-ecs`, `ph2d-render`, `ph2d-preview-slot`; falta `ph2d-macro`). Não há `PainterShellState`: o
-  estado do Painter vive em parâmetros de `fase_painter_dispatch.rs`. Corre antes do
-  `fase_extract_inputs` (a Timeline já escreveu o `MacroTempo`, `ph2d-timeline/src/apply_prop.rs:112`).
+- `ph2d_tool_painter::macro_track::em_cena::MacroEmCena` (irmã da do Motion): só a 1.ª trilha
+  `"painter"`; `segue(segundos)` (recuar = `TocadorDoPainter::novo` + `MacroPlayer::new` + avançar; erro
+  guardado, recuar limpa); `alvo()` = `target` (`StableId` da sprite; `0` = a entidade do próprio `Macro`).
+  `PainterTool::macro_abre(rec, alvo)` = irmã do `gravacao_abre` (sem chamador de produto: W5).
+  `ErroDaMacro::Ficheiro(CodecError)` novo. `MacroTime::from_secs_f64` (ph2d-macro) é a conta única; o
+  `instante` do Motion delega.
+- **A tela da cena** = a MESMA composição do editor: `PainterTool::composto_da_cena` (pub(crate)) =
+  `preview_dirty = true` + `take_preview_arc_corpo` (sem a porta, sem o portão). Medido: no editor uma
+  pilha de várias camadas vai à PLACA (`painter_gpu_preview::try_drive` drena `take_preview_dirty`), logo
+  a gravação pode não levar imagem nenhuma — copiar a composição (papel, vidro, relevo, máscara) seria uma
+  2.ª lei. `TocadorDoPainter::toma_a_tela` recompõe só quando `mudou`: os drenos gravados `Preview`
+  (CPU) e `PreviewSujo` (placa) e o `Para` (o fim assenta a água e nenhum dreno vem depois — o gate viu
+  978 texels a faltar sem ele). Nasce `true` (a tela inicial mostra-se).
+- `ph2d_app_painter::macro_track::PalcosDoPainter` (campo `App.painter_macros`, +2 linhas no
+  `app_state.rs`): palco por entidade com `Macro`, renasce pelo tique (`increment_change_tick` como o do
+  Motion), sprite resolvida por `entity_with_stable_id` a cada quadro em que toca; ranhura própria
+  (`RanhurasDaCena`: o `SpriteRenderer`, um duplo nos gates), upload premultiplicado só quando a tela mudou,
+  ranhuras de palcos que morrem/renascem devolvidas no `sobe` seguinte; falha de upload = toast
+  `app.painter.painter_bridge_upload.preview_upload_failed`. Shell: `fase_macros_do_painter`
+  (`fase_extract_inputs.rs`) chamada em `fase_frame_open.rs` DEPOIS do `fase_timeline_drain` e antes do
+  `fase_sim_extract`, com as trocas À FRENTE das do editor (o extract usa o 1.º override por sprite: uma
+  sprite que a macro toca mostra a macro).
+- Gates: `ph2d-tool-painter` `macro_em_cena` (3: ler a cena não muda a reprodução, ao bit; recuar ==
+  tocar do zero; a pista da placa acorda a cena e pinta o mesmo que a CPU), `ph2d-app-painter`
+  `macro_track::palcos_tests` (3), `ph2d-host-desktop` `placa_tests::as_macros_do_painter_trocam_a_sprite_
+  antes_do_extract_e_a_frente_do_editor`. Verdes também `the_shell_only_shrinks`,
+  `architecture_workspace_file_loc_cap`, `architecture_no_orphan_source_file`, `file_loc_caps`.
+  **Mutações 14/14 sangram** (os 3 sinais de `mudou`, o `preview_dirty` forçado, `toma_a_tela` sempre,
+  nunca recuar, `toca = true`, as duas devoluções de ranhura, o alvo `0`, o tique, adquirir em vez de
+  substituir, a ordem da junção e a da fase).
+- Deps: `ph2d-app-painter` dev-dep `ph2d-macro` (Cargo.lock +1 linha).
+- ⚠️ Não medido: custo do upload a 1024²/2048² por quadro com N palcos (só sobe quando muda; a
+  composição 1024² ≈ 2,4 ms está no plano §6); a sprite resolve-se por varredura O(entidades) por palco
+  que toca.
 
-O desenho abaixo foi medido por leitura a 14/10 (dois exploradores; endereços do HEAD `1f4e85547b`).
-⛔ **Excluir o dono sem desenhar o palco é pior que não existir** (o objecto sumiria no Play): A, B, C e D
-entram juntos.
+## ABERTO — a prova do bloco (cenas de smoke + medição) e 5.6
 
-**A — o sistema (crate `ph2d-app-motion`, nunca a shell).** `PalcosDasMacros` em `MotionShellState`
-(`motion_shell_state.rs:51`, ao lado do `placa: PlacaDeFormas`, que é estado POR FONTE e hoje singular):
-`BTreeMap<bits, PalcoEmCena { macro: MacroEmCena, placa: PlacaDeFormas, tick }>`. Por quadro, depois de
-`publica_o_mundo` e antes do `dispatch` do editor (`fase_motion_bridge.rs:48`→`:72`): para cada entidade com
-`Macro` + `MacroTempo`, (re)cria o palco quando o `Macro` mudou (o `ComponentTicks::changed` do bevy, O(1) —
-nunca comparar os bytes por quadro), `segue(segundos, &motion.mundo, gpu)`; palco sem `MacroTempo` neste
-quadro sai do conjunto de quem toca (mas pode ficar em cache para não recozer do zero). O dono do palco é o
-`StableId` da entidade (o `target` da trilha é `StableId`, `macro_doc.rs:36`; `objeto.editing` também), logo a
-macro sobrevive a salvar e reabrir.
-
-**B — o editor exclui.** Hoje NÃO há mecanismo: `sinks_visiveis` (`motion_objeto.rs:475-488`) só filtra o olho
-(`escondido`) e o `so_o_dono` do palco. Acrescentar `ObjetoState.tocados_por_macro: BTreeSet<u64>` (escrito por A
-a cada quadro) e `!tocados.contains(dono)` no filtro. Gate red-first: com um palco a tocar, o editor não coze os
-sinks do dono; sem `MacroTempo`, coze.
-
-**C — o present desenha N fontes pelas MESMAS portas.** Cada palco É um `MotionState`, logo toda porta que
-recebe `&MotionState` serve; o que é por fonte é o `PlacaDeFormas`. Costura: um iterador
-`motion_shell.fontes(&editor) -> (editor, &placa) + palcos` e um laço em cada sítio (todos hoje globais):
-`fase_vector_bands.rs:123` (`decide_o_quadro`), `present.rs:448` (`desenha_o_quadro`), `present_chrome`
-(`cola_no_mundo`), `present_fx.rs:36,98` (`halo_do_quadro`; o glow lê `doc.graph` — por fonte), `present_luz.rs:39`
-(`OclusaoDoMotion::do_quadro` — os bloqueadores SOMAM entre fontes), `fase_vector_fx_recook.rs:160-260`
-(tiles/LOD sobre `pump.*`), `fase_vector_overlays.rs:63-71` (rota CPU, `motion_shape_gen::encode`), gizmos
-`fase_motion_gizmos.rs:49-85` (só o editor — o palco não tem mão). ⚠️ Os gates `present_placa_tests.rs` são
-`include_str!` sobre o fonte: as strings que afirmam (`plan.banded |= self.motion_shell.placa.ativa();`,
-`decide_o_quadro(`, `doc_bands_of(frame_order, placa || luz_acesa)`, `if motion_tool_active &&
-!self.motion_shell.placa.ativa() {`, `cola_no_mundo(placa, gpu, band_blit, alvo);`, `halo_do_quadro(g.motion,
-g.formas.desenhou())`) mudam com o laço — reescrevê-las para a forma N, nunca apagá-las. ⚠️ Tectos: a shell só
-encolhe (`the_shell_only_shrinks`, teto 189 041 + folga 4 000): o laço vive numa função da crate e a shell
-troca uma chamada por outra; `app_state.rs` já tem 923 linhas (não lhe acrescente campos — o estado vai no
-`MotionShellState`).
-
-**D — o Painter em cena.** O `TocadorDoPainter` (`ph2d-tool-painter/src/macro_track/tocar.rs:41`) é CPU, só
-avança (recuar = `novo` + reaplicar); o resultado é o `canvas_rgba` do `PainterTool` próprio. O objecto-imagem é
-um `Sprite` com `SpriteSource::Individual { texture_id }`; override sem tocar no ECS = `replace_pixels` num id
-PRÓPRIO do palco (`individual_read.rs:128`; `acquire` em `individual.rs:190`) e trocar o id na aparência do
-quadro (`appearance_of`, `motion_bridge_objects_appearance.rs:~60-78`, ou o passe de sprites `present.rs:166`).
-⚠️ Falta à trilha do Painter o `target`: `macro_grava` (`ph2d-tool-painter/src/macro_track/mod.rs:61`) não
-recebe alvo (no produto ninguém o chama — W5); dar-lhe o `gravacao_abre` irmão do Motion. Custo: upload RGBA por
-quadro só quando o tocador avançou; medir 1024²/2048² com a máquina calma (o número da W2 foi a load 61–66).
+**Mapa das cenas medido a 14/10 (explorador):** o plano (`01_plano_onda1.md` §6) reserva
+`PH2D_MACRO_SMOKE=1` (Splash: imagem 1024² + `Macro` com Autoplay, 3–5 pinceladas Wet Paint) e `=2`
+(Motion nó a nó, formas + simulação com vento, modo explicativo); nenhum código lê a variável ainda.
+- Moldes: `crates/ph2d-app-motion/src/motion_objeto_smoke.rs` (`PH2D_MOTION_OBJETO_SMOKE`, grafo 114
+  «Pile» + `enxame()` com `force.*`; `FEITO: AtomicBool`; recebe `MotionSceneCtx`);
+  `shells/desktop/src/render_loop/animacao_smoke.rs` (escreve em `self.timeline.doc`, `set_autoplay(idx,
+  true)`, `TimelineIntent::RunScene` para o Play); roteadores por família em `ph2d-app-host/src/family.rs`
+  (Painter: `wetpaint_smoke::NIVEIS`, `ph2d-app-painter/src/lib.rs:174`).
+- Gravar por script: Motion = `gravacao_abre` + `push_intent(GraphIntent…)` + `gravacao_passos` por quadro
+  (o laço de `gate_tests::sessao_em`, que é `cfg(test)`: copiar o laço ou subir os auxiliares a
+  `pub(crate)` sob a feature); Painter = `macro_abre` + o laço de `macro_track/palcos_tests.rs::gravada`.
+  Bytes = `ph2d_macro::codec::write`. As cenas serão o 1.º chamador de produto das duas portas.
+- ⚠️ Decidir: `ph2d-app-painter` não depende de `ph2d-timeline` — o clipe (`add_macro_clip` + Autoplay)
+  monta-se na shell (molde `animacao_smoke.rs`) com o `StableId` que a cena da família devolve.
+- Fotografia: `docs/Components/ferramentas/fotografa_cena.sh <VAR=v> <w> <h> <saida.png> [espera_s]`
+  (kwin virtual, `import -window`); sem eventos sintéticos: Play e scrub são da própria cena (código), e
+  dois instantes = duas corridas com `espera_s` diferente.
+- Medir o custo do quadro com N palcos (Motion na placa + Painter upload 1024²/2048²) ANTES de qualquer
+  limite (`MEDIR_VELOCIDADE.md`: variantes no mesmo processo, intercaladas, o mínimo).
 
 **Prova do bloco:** a cena de smoke (formas + simulação, `CLAUDE.md §0.8`) com uma macro gravada por script
 (o `sessao()` dos gates) e um clipe `add_macro_clip` com Autoplay; fotografar Play e scrub para trás.

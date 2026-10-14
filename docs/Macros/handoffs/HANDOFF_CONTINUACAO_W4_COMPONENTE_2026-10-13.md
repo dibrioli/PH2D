@@ -1,7 +1,7 @@
 # Continuação — line/Macros-Automação, W4 itens 1–4 fechados (fronteira do palco, alvo, componente) → item 5 (Timeline, Play, o desenho dos palcos)
 
 > Para a PRÓXIMA janela. Branch `line/Macros-Automação`, worktree `Worktrees/line-Macros-Automação/`, base
-> `757afebd58`. Leia antes de agir:
+> `0aab2c1cb6` (reaberta a 14/10 depois da integração; ver «Reaberta» abaixo). Leia antes de agir:
 > - o [ADR-0186 §Emenda W4](../../architecture/decisions/0186-a-macro-grava-comandos-resolvidos-no-relogio-da-macro.md) (e a W3);
 > - o [handoff da W3](HANDOFF_CONTINUACAO_W3_MOTION_2026-10-13.md) e o [plano da onda 1](../01_plano_onda1.md).
 
@@ -79,8 +79,21 @@ quem escreva `Quadro.sujo`.
 **Suíte** (`PH2D_SUITE=5-commits`, HEAD `53b6fd7cff`): `20 839/20 843` em `659 s`, loadavg 33–59 (outra
 linha corria a suíte). 3 vermelhos reais, curados em `75afc54516`. O 4.º, `ph2d-light2d-gpu
 g4_o_custo_do_rc_nao_depende_do_numero_de_luzes` (8,25 % > 5 %), é flake de carga ([FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md)):
-verde sozinho a load 25. ⇒ **a última suíte VERDE da linha continua a ser `dbcca83405`**; desde ela, 6
-commits de código ⇒ a próxima janela corre a suíte cedo (ou no fecho), com `PH2D_SUITE=…`.
+verde sozinho a load 25.
+
+**Integrada no main a 14/10** (`foundational-integrate.sh`, 4.ª corrida): suíte da árvore combinada
+**`20 874 / 20 874`** (HEAD `c5c074ff92`) — esta é a última suíte VERDE da linha. As três primeiras reprovaram
+no G4 da holográfica (curado na linha em `c5c074ff92`: a régua de um solver por contagem media o sítio dos
+buffers desde a W5h `f9c8110287`; ver FLAKES_DE_CARGA) e num gate de placa da luz com a placa ocupada.
+
+## Reaberta a 14/10 sobre o main novo (`0aab2c1cb6`, `reset --keep`: tudo já estava no main)
+
+- **Regras novas do main** (vivem no `CLAUDE.md §2`, carregado — não se copiam para aqui): suíte só a cada
+  10 commits ou `PH2D_SUITE=fecho`; no meio do trabalho, teste POR NOME (guarda R5); clippy só no fecho (R7);
+  edição por script tem de provar que casou (R6).
+- ⚠️ **Muda o desenho do item 5:** a aba Keys sem pilha passou a dirigir o relógio do EDITOR e o Motion segue-o
+  (ADR-0115 R8 emenda 3; `fix(timeline)` + handoff ZERAR_132 do Motion). Ler isso ANTES de desenhar o
+  `PropKind::MacroTime` e a limpeza por quadro abaixo — o relógio que a macro segue na Keys pode já ser este.
 
 Smokes da placa (comando inteiro):
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --profile smoke -- --ignored macro_track::placa`

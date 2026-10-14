@@ -4,7 +4,7 @@
 //! fechado. Fotos a meio do gesto, no pen-up e 0,5 · 1 · 3 · 6 s depois, em `PH2D_SONDA_OUT` como
 //! `pastel_<gesto>_<instante>.ppm`. A régua: `ferramentas/pastel_regua.py`.
 //!
-//! `PH2D_SONDA_PRESET=<nome>` troca o preset (por omissão «Soft Pastel»).
+//! `PH2D_SONDA_PRESET=<nome>` troca o preset (por omissão «Soft Pastel»); `PH2D_SONDA_TAMANHO=<px>` a largura.
 use crate::tool::PainterTool;
 use ph2d_brush_presets::Biblioteca;
 use ph2d_editor_core::Tool;
@@ -133,7 +133,12 @@ fn sonda_pastel_no_tempo() {
     t.set_paint_tool_mode("wetpaint");
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
-    t.wet_preset_aplicar_volumes(&p.parametros.volumes);
+    // `PH2D_SONDA_TAMANHO=<px>`: a largura do painel por cima da do preset (comparar à MESMA largura vista).
+    let mut volumes = p.parametros.volumes.clone();
+    if let Ok(d) = std::env::var("PH2D_SONDA_TAMANHO") {
+        volumes.size_px = Some(d.parse().expect("tamanho"));
+    }
+    t.wet_preset_aplicar_volumes(&volumes);
     t.paint.wetpaint.tilt_on = false;
     // `PH2D_SONDA_KNOBS=drag=0;pickup=0`: os botões do motor por cima do preset (as variantes da Fase 1).
     for par in std::env::var("PH2D_SONDA_KNOBS").unwrap_or_default().split(';') {

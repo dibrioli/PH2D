@@ -15,6 +15,10 @@ timeout 60 node "$F/ws_eventos.mjs" "$S/setup.json" 4000 2 > /dev/null
 # A tela nova abre ENCAIXADA (141 %) e o Rebelle mede o tamanho do pincel no ECRÃ: o zoom vai a 100 % pelo
 # campo do Navigator (coordenadas da janela de 1920×1080; `ZOOM_XY` troca-as) — a tela fica em (480, 220).
 timeout 30 bash inj.sh "click ${ZOOM_XY:-1851 236}; key ctrl+a; type 100; key enter; wait 1500" > /dev/null
+# O SET_BRUSH que TROCA de preset pinta o 1.º gesto com o tamanho velho (medido 14/10: Graphite 8B a 4 px
+# depois do Oil Pastel saiu com 38 px no recto e 4 no zig-zague): um SET_BRUSH sozinho antes, e espera.
+python3 -I -c "import json,sys;e=json.load(open(sys.argv[1]))['frames'][0]['events'][0];json.dump({'frames':[{'events':[e]}]},open(sys.argv[2],'w'))" "$S/recto_a.json" "$S/escova.json"
+timeout 60 node "$F/ws_eventos.mjs" "$S/escova.json" 2000 2 > /dev/null
 foto vazio "$(agora)"
 for g in recto zigue; do
   timeout 60 node "$F/ws_eventos.mjs" "$S/${g}_a.json" 100 16 > /dev/null

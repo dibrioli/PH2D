@@ -69,3 +69,38 @@ do Bug #51** (`paint_brush.rs:458`, `esmaecer::esmaecido`: não age e não aceit
 
 O handoff ≤ 8 KB e a lista 26 atualizada. O smoke vai ao dono com a PRANCHA lado a lado e os números de cada régua,
 nunca só com passos.
+
+## Resultado (14/10, a janela do prompt)
+
+**Bancada (Fase 0):** `ferramentas/pastel_eventos.py` + `pastel_tela.sh` (Rebelle, tela virtual, zoom 100 %, fotos a
+meio · pen-up · 0,5 · 1 · 3 · 6 s) · `sonda_pastel_no_tempo` (os MESMOS gestos, PPM por instante; envs para cada
+variante) · `pastel_regua.py` (controlo: o Rebelle borrado a σ 1,5). Fixtures `fixtures/rebelle/pastel_dry_thin_{29,70}`.
+⚠️ No Rebelle `size_px` não é a largura vista: o Dry Thin a 29 mostra **13 px** (60 → 25). Compara-se à MESMA largura
+vista (Rebelle 70 ≈ 30 px). O Rebelle **não muda nada** de 0,5 a 6 s depois do traço.
+
+**Mecanismos (Fase 1), medidos:**
+| o dono viu | mecanismo | prova |
+|---|---|---|
+| ruído no mouse up | a ponta de Water 0 pousava o pigmento SUSPENSO; o 4.º/5.º passo da água depois do pen-up advectava-o (1 854 px no recto, só no 1.º traço da sessão) | `Σsusp` igual, hash do `susp` muda nos quadros 6–7 |
+| smear (riscas) | o arrasto da película (`Drag` 0,16) puxa o pigmento da âncora anterior ao longo do traço | `drag=0` tira as riscas |
+| sem craquelado | o grão Noise 0,4 em `Tiled` (base 256 px) é um ladrilho de ~640 px — uma MANCHA, não um grão: o mesmo traço sai com 15 px a y=40 e 34 a y=450 | varredura por altura |
+| Noise no Shape pálido | o Size de fábrica (1) põe UM ladrilho de ruído na ponta inteira: 0,43 da tinta; Size ≥ 4 → 0,74–0,78 | por desenho — não se mexeu |
+
+**Cura (Fase 2):** a lei da PONTA SECA no motor (`trail/transfer.rs`: janela sem água sobre célula seca ⇒ pousa em
+`sett`, sem arrasto) + o Soft Pastel Noise 100 · papel 0,4 · carga 100 · dureza 0,2, escolhido por nota (soma de
+|log(nosso/Rebelle)| em textura, buracos, miolo, ondulação e subida da borda, mancha grossa):
+
+| régua (recto · zigue) | Rebelle | hoje | depois |
+|---|---|---|---|
+| textura 2–8 px | 0,114 · 0,104 | 0,282 · 0,154 | 0,115 · 0,124 |
+| buracos | 0,024 · 0,037 | 0,115 · 0,051 | 0,023 · 0,041 |
+| miolo (zigue) | 0,914 | 0,983 | 0,974 |
+| ondulação da borda (px) | 0,46 | 1,45 | 0,72 |
+| subida 10→90 % (px) | 9,0 | 11,5 | 5,5 |
+| deriva depois do pen-up (px) | 0 | 1 854 | **0** |
+| **nota** | — | 4,76 | **1,40** |
+
+[Prancha](35_prancha_rebelle_antes_depois.png): Rebelle · hoje · depois, à mesma escala. **Fica diferente:** a poeira
+fora do traço (Rebelle 0,011, nós 0), o miolo um pouco mais cheio, a borda mais firme (5,5 contra 9) e o cruzamento de
+dois traços (no Rebelle o segundo passa mais transparente). O painel: «Use Texture Colors» e as linhas «Layer N Color»
+recusam o clique no Wet Paint (`inercia::Natureza::MeioNaoLe`).

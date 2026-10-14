@@ -14,5 +14,17 @@
 `size_px 29` o bastão mostra **13 px** de largura (é fino: `size_px 60` → 25). Ver o doc
 [35](../../35_PROMPT_janela_pastel_contra_o_rebelle.md) e o handoff da linha para os números de cada régua.
 
+**Os irmãos secos (14/10, a mesma bancada; `pastel_tela.sh --tool … --preset … --max … --size_px N`):**
+
+- `graphite_8b_9/` — `PENCIL` · `Graphite Pencil/8B` (max 80), `size_px 9` → **7 px** vistos (o nosso Graphite 8B promete 6,5).
+- `graphite_8b_27/` — o mesmo a `size_px 27` → **20 px** vistos: a largura comum da régua (a 6,5 px não há textura que medir).
+- `charcoal_64/` — `PENCIL` · `Charcoal/Charcoal` (max 100), `size_px 64` → **38 px** vistos (o nosso Charcoal: 37); ralo, miolo 0,62.
+- `oil_pastel_2_100/` — `PASTEL` · `Pastel Oil/Oil Pastel 2` (max 200), `size_px 100` → **74 px** (média) / 77 (local) vistos (o nosso Oil Pastel: 77); estrias ao longo do traço.
+
+Nos quatro, 0 píxeis mudam de 0,5 a 6 s depois do traço. ⚠️ O `SET_BRUSH` que TROCA de preset pinta o 1.º gesto
+com o tamanho velho (Graphite 8B a `size_px 4` depois do Oil Pastel: 38 px no recto, 4 no zig-zague) — o
+`pastel_tela.sh` manda agora um `SET_BRUSH` sozinho antes (`escova.json`). Nas do Dry Thin, o `29` tem recto e
+zig-zague com a mesma largura (13 px); o `70` não se prova assim (os segmentos do zig-zague juntam-se a essa largura).
+
 ⚠️ O Rebelle desenha o fim do traço com atraso: a foto logo após o RELEASE ainda não tinha os últimos 140 px
 (a 70 px de pincel) — por isso o `up` espera duas fotos iguais.

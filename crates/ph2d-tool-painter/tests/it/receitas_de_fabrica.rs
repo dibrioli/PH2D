@@ -247,16 +247,18 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         spacing: Some(0.01),
         achatado: None,
     },
-    // Pencil › Graphite 8B: sem água, o grão do papel a abrir na orla.
+    // Pencil › Graphite 8B: sem água, o grão do papel a abrir na orla. Prompt 35 (14/10), contra o Rebelle
+    // «Graphite Pencil/8B» a 20 px vistos (`pastel_regua.py`, nota 4,21 → 1,15): o Noise 0,4 era a mancha de
+    // ~640 px do Soft Pastel (5 px a y = 40, 8 a 450) — Noise 32; papel 0,6 e carga 125 (o miolo cheio do 8B).
     Receita {
         meio: "Pencil",
         grupo: "Graphite",
         nome: "Graphite 8B",
         water: 0.0,
         opacity: 1.0,
-        pigment: 500.0,
+        pigment: 125.0,
         pickup: 1.0,
-        gate: 0.8,
+        gate: 0.6,
         evaporation: 1.0,
         edge: 0.0,
         tilt: DIREITA,
@@ -265,29 +267,31 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         hardness: 0.0,
         size_px: Some(6.5),
         extras: &[("felt", 0.0)],
-        grao: Some(("Noise", 0.4)),
+        grao: Some(("Noise", 32.0)),
         spacing: None,
         achatado: None,
     },
-    // Pencil › Charcoal: pouca carga, orla larga.
+    // Pencil › Charcoal: pouca carga, orla larga. Prompt 35 (14/10), contra o Rebelle «Charcoal/Charcoal» a
+    // 37 px vistos (nota 12,03 → 3,35): o Noise 0,15 era uma mancha (25 px a y = 40, 36 a 450) — Noise 48; o
+    // carvão do Rebelle é RALO (miolo 0,64): carga 12, papel 0,2, dureza 0,5.
     Receita {
         meio: "Pencil",
         grupo: "Charcoal",
         nome: "Charcoal",
         water: 0.0,
         opacity: 1.0,
-        pigment: 100.0,
+        pigment: 12.0,
         pickup: 1.0,
-        gate: 0.8,
+        gate: 0.2,
         evaporation: 1.0,
         edge: 0.0,
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
-        hardness: 0.0,
+        hardness: 0.5,
         size_px: Some(37.0),
         extras: &[("felt", 0.0)],
-        grao: Some(("Noise", 0.15)),
+        grao: Some(("Noise", 48.0)),
         spacing: None,
         achatado: None,
     },
@@ -317,14 +321,16 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         achatado: None,
     },
     // Pastel › Pastel Oil › Oil Pastel 2 (o giz de cera): grão mais fino e mais carregado que o seco (o
-    // Voronoi passava as métricas, mas a largura variava até 42 % com a posição — medido 11/10).
+    // Voronoi passava as métricas, mas a largura variava até 42 % com a posição — medido 11/10). Prompt 35
+    // (14/10), contra o Rebelle «Pastel Oil/Oil Pastel 2» a 77 px vistos (nota 5,06 → 1,41): o Noise 0,15
+    // também era mancha (42 px a y = 40, 68 a 450) — Noise 100 e carga 200.
     Receita {
         meio: "Pastel",
         grupo: "Oil",
         nome: "Oil Pastel",
         water: 0.0,
         opacity: 1.0,
-        pigment: 400.0,
+        pigment: 200.0,
         pickup: 1.0,
         gate: 0.8,
         evaporation: 1.0,
@@ -335,7 +341,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         hardness: 0.0,
         size_px: Some(77.0),
         extras: &[("felt", 0.0)],
-        grao: Some(("Noise", 0.15)),
+        grao: Some(("Noise", 100.0)),
         spacing: None,
         achatado: None,
     },

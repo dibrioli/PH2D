@@ -1,6 +1,6 @@
 //! **O transporte do quadro ao vivo na rede local** ([ADR-0181] §7–§8). Move QUADROS DE BYTES opacos
 //! entre um anfitrião e os convidados, cifrados; não conhece o quadro nem o protocolo (isso é a
-//! `ph2d-board-sync`). A internet implementará a mesma porta depois.
+//! `ph2d-board-sync`). A internet implementa a mesma porta ([`Wire`]/[`Door`]) na `ph2d-board-internet`.
 //!
 //! - **Quem entra** encontra o quadro pelo nome anunciado (mDNS, [`discover`]) e escreve o código curto
 //!   que o anfitrião mostra ([`Host::code`]). O código autentica por SPAKE2 e a chave que sai cifra
@@ -19,6 +19,7 @@ pub mod firewall;
 mod guest;
 mod handshake;
 mod host;
+mod invite;
 mod lan;
 mod link;
 mod tcp;
@@ -26,6 +27,8 @@ mod wire;
 
 #[cfg(test)]
 mod code_tests;
+#[cfg(test)]
+mod door_tests;
 #[cfg(test)]
 mod firewall_tests;
 #[cfg(test)]
@@ -41,7 +44,9 @@ pub use discover::{Discovery, Found, SERVICE, discover};
 pub use firewall::Subnet;
 pub use guest::Guest;
 pub use host::{Host, HostConfig, Liveness, PORT, PORT_TRIES};
+pub use invite::{Invite, InviteError, InviteKey, KEY_LEN, MAX_ADDRS, SCHEME};
 pub use lan::{is_lan, lan_addrs, lan_subnets};
+pub use link::{Door, Wire};
 pub use wire::MAX_FRAME;
 
 /// Um número ao acaso do sistema operativo (as identidades da sessão: quem sou, as sementes dos ids).

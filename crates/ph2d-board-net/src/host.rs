@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use crate::code::{Code, Gate};
 use crate::discover::Announcer;
 use crate::handshake::{self, HostShake};
+use crate::invite::InviteKey;
 use crate::lan::lan_addrs;
 use crate::link::{Door, Wire};
 use crate::tcp::TcpDoor;
@@ -52,6 +53,13 @@ impl Default for Liveness {
 }
 
 pub(crate) type Out = Arc<Vec<u8>>;
+
+/// O segredo de uma ENTRADA: a rede local usa o código curto com o travão; a internet, a chave do
+/// convite sem ele.
+enum Secret {
+    Lan,
+    Key(InviteKey),
+}
 
 /// Onde e como abrir.
 #[derive(Clone, Debug)]
@@ -158,7 +166,7 @@ impl Host {
             live: cfg.live,
         });
         let (sh, d) = (Arc::clone(&shared), Arc::clone(&door));
-        let accept = thread::spawn(move || accept_loop(d.as_ref(), &sh));
+        let accept = thread::spawn(move || accept_loop(d.as_ref(), &sh, &Secret::Lan));
         let (announcer, mdns_error) = if cfg.mdns {
             match Announcer::start(announce, port) {
                 Ok(a) => (Some(a), None),
@@ -176,6 +184,16 @@ impl Host {
             announcer,
             mdns_error,
         })
+    }
+
+    /// Abre mais uma entrada (a da internet) cujo segredo é `key`. Quem entra por ela é igual aos
+    /// outros: mesmos [`ConnId`], mesmos eventos, mesmo sinal de vida.
+    pub fn open_door(&mut self, door: Arc<dyn Door>, key: InviteKey) {
+        let (sh, d) = (Arc::clone(&self.shared), Arc::clone(&door));
+        let secret = Secret::Key(key);
+        self.accepts
+            .push(thread::spawn(move || accept_loop(d.as_ref(), &sh, &secret)));
+        self.doors.push(door);
     }
 
     /// O código a mostrar, `ABC-DEF`.
@@ -265,7 +283,7 @@ pub(crate) fn check(len: usize) -> Result<(), SendError> {
     Ok(())
 }
 
-fn accept_loop(door: &dyn Door, sh: &Arc<Shared>) {
+fn accept_loop(door: &dyn Door, sh: &Arc<Shared>, secret: &Secret) {
     loop {
         let got = door.accept();
         if sh.state().stop {
@@ -289,14 +307,22 @@ fn accept_loop(door: &dyn Door, sh: &Arc<Shared>) {
             st.wires.insert(id, clone);
         }
         let s2 = Arc::clone(sh);
-        sh.spawn(move || serve(&s2, id, wire, peer));
+        let secret = match secret {
+            Secret::Lan => Secret::Lan,
+            Secret::Key(k) => Secret::Key(k.clone()),
+        };
+        sh.spawn(move || serve(&s2, id, wire, peer, &secret));
     }
 }
 
-fn serve(sh: &Arc<Shared>, id: ConnId, mut wire: Box<dyn Wire>, peer: SocketAddr) {
+fn serve(sh: &Arc<Shared>, id: ConnId, mut wire: Box<dyn Wire>, peer: SocketAddr, secret: &Secret) {
     let _ = wire.set_read_timeout(Some(SHAKE_TIMEOUT));
     let _ = wire.set_write_timeout(Some(SHAKE_TIMEOUT));
-    let keys = match handshake::host(&mut wire, &sh.code, &sh.gate, &Instant::now) {
+    let shake = match secret {
+        Secret::Lan => handshake::host(&mut wire, &sh.code, &sh.gate, &Instant::now),
+        Secret::Key(k) => handshake::host_with(&mut wire, k.bytes(), None, &Instant::now),
+    };
+    let keys = match shake {
         HostShake::Joined(k) => k,
         HostShake::Wrong => {
             forget(sh, id);

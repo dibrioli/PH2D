@@ -75,8 +75,14 @@ fn with<T>(gate: &Mutex<Gate>, f: impl FnOnce(&mut Gate) -> T) -> T {
         .unwrap_or_else(std::sync::PoisonError::into_inner))
 }
 
+#[cfg(test)]
 fn password(code: &Code) -> Password {
     Password::new(code.bytes())
+}
+
+/// Um travão opcional: a entrada pela internet (chave longa) não tem — trancá-la seria um DoS.
+fn begin(gate: Option<&Mutex<Gate>>, now: Instant) -> Result<(), Duration> {
+    gate.map_or(Ok(()), |g| with(g, |g| g.begin(now)))
 }
 
 /// Como acabou o aperto de mão no anfitrião.
@@ -94,6 +100,17 @@ pub(crate) fn host(
     gate: &Mutex<Gate>,
     now: &dyn Fn() -> Instant,
 ) -> HostShake {
+    host_with(s, code.bytes(), Some(gate), now)
+}
+
+/// O aperto de mão do anfitrião com o segredo da ENTRADA (o código curto com o travão, ou a chave do
+/// convite sem ele).
+pub(crate) fn host_with(
+    s: &mut (impl Read + Write),
+    secret: &[u8],
+    gate: Option<&Mutex<Gate>>,
+    now: &dyn Fn() -> Instant,
+) -> HostShake {
     let Ok(hello) = read_frame(s, MAX_SHAKE) else {
         return HostShake::Refused;
     };
@@ -104,7 +121,7 @@ pub(crate) fn host(
         let _ = s.write_all(&frame(&[OTHER, VERSION]));
         return HostShake::Refused;
     }
-    if let Err(wait) = with(gate, |g| g.begin(now())) {
+    if let Err(wait) = begin(gate, now()) {
         let secs = u32::try_from(wait.as_secs() + 1).unwrap_or(u32::MAX);
         let mut reply = vec![LOCKED];
         reply.extend_from_slice(&secs.to_le_bytes());
@@ -114,12 +131,14 @@ pub(crate) fn host(
 
     let msg_a = &hello[MAGIC.len() + 1..];
     let (sp, msg_b) = Spake2::<Ed25519Group>::start_b(
-        &password(code),
+        &Password::new(secret),
         &Identity::new(ID_GUEST),
         &Identity::new(ID_HOST),
     );
     let Ok(k) = sp.finish(msg_a) else {
-        with(gate, Gate::abandon);
+        if let Some(g) = gate {
+            with(g, Gate::abandon);
+        }
         return HostShake::Refused;
     };
     let transcript = [msg_a, &msg_b].concat();
@@ -131,7 +150,9 @@ pub(crate) fn host(
     let ok = s.write_all(&frame(&reply)).is_ok()
         && read_frame(s, MAX_SHAKE)
             .is_ok_and(|m| mac(&d.conf_g, &transcript).verify_slice(&m).is_ok());
-    with(gate, |g| g.end(ok, now()));
+    if let Some(g) = gate {
+        with(g, |g| g.end(ok, now()));
+    }
     if !ok {
         return HostShake::Wrong;
     }
@@ -142,8 +163,12 @@ pub(crate) fn host(
 }
 
 pub(crate) fn guest(s: &mut (impl Read + Write), code: &Code) -> Result<Keys, JoinError> {
+    guest_with(s, code.bytes())
+}
+
+pub(crate) fn guest_with(s: &mut (impl Read + Write), secret: &[u8]) -> Result<Keys, JoinError> {
     let (sp, msg_a) = Spake2::<Ed25519Group>::start_a(
-        &password(code),
+        &Password::new(secret),
         &Identity::new(ID_GUEST),
         &Identity::new(ID_HOST),
     );

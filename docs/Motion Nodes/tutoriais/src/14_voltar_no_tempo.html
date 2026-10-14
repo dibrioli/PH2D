@@ -124,17 +124,16 @@ segundos em vez de horas.</p>
       carregue <kbd>F</kbd> — o grafo aproxima esse cartão. (Se ele continuar uma pílula sem
       linhas, o painel do grafo está baixo: use a roda do rato sobre o grafo para aproximar mais.)
       <div class="out">Na última linha do cartão aparece o aviso
-      <b><code>History before 2.32 s was folded - showing 2.32 s</code></b>: a história antes de
-      2,32 s foi dobrada, e o que se vê usa as entradas de 2,32 s. ⚠️ O cartão corta a frase na
-      largura dele — lê-se <code>History before 2.32 s was folde…</code>. Todos os cartões
-      <code>Input</code> dizem o mesmo (a fita é uma só).</div>
+      <b><code>History folded: shows 2.33 s</code></b>: a história antes de 2,33 s foi dobrada, e o
+      que se vê usa as entradas de 2,33 s. Todos os cartões <code>Input</code> dizem o mesmo (a
+      fita é uma só).</div>
       <div class="bad">Se o cartão ficar calado antes da faixa, ou se o aviso aparecer com a régua
       DENTRO da faixa, avise.</div></li>
 </ol>
 
-<figure class="wide"><img src="../fig/fita_aviso.png" alt="o cartao Input batida aproximado com o aviso History before 2.32 s was folded, a regua no 1 e a faixa verde intacta">
+<figure class="wide"><img src="../fig/fita_aviso.png" alt="o cartao Input batida aproximado com o aviso History folded: shows 2.33 s, a regua no 1 e a faixa verde intacta">
   <figcaption>A régua no 1 (antes da faixa): o cartão <code>Input</code> da <code>batida</code>,
-  aproximado com <kbd>F</kbd>, diz <code>History before 2.32 s was folde…</code>; a faixa verde
+  aproximado com <kbd>F</kbd>, diz <code>History folded: shows 2.33 s</code>, inteiro; a faixa verde
   continua de ~2,3 s a 5 s.</figcaption></figure>
 
 <figure class="wide"><img src="../fig/fita_dentro.png" alt="o mesmo cartao com a regua no 3,5: sem aviso, Fire On">
@@ -175,10 +174,10 @@ começa no 0.</p>
       mexe o relógio da cena — o que o Motion lê</td></tr>
   <tr><td>aba <code>Arrange</code></td><td>Timeline</td><td>a régua da cena; sem pistas, o MESMO
       relógio da <code>Keys</code></td></tr>
-  <tr><td><code>History before X s was folded - showing X s</code></td><td>cartão
+  <tr><td><code>History folded: shows X s</code></td><td>cartão
       <code>Input</code></td><td>a régua está antes da faixa: o que se vê usa as entradas do
       segundo X</td></tr>
-  <tr><td><code>Inputs were not recorded here - showing the current values</code></td><td>cartão
+  <tr><td><code>Not recorded: shows live inputs</code></td><td>cartão
       <code>Input</code></td><td>a régua está num segundo que a fita nunca gravou: usa os valores de
       agora (nesta cena a fita grava desde o 0, por isso não aparece)</td></tr>
   <tr><td><code>scene stays: clip not in Arrange</code> · <code>scene stays: clip plays 2x in
@@ -238,8 +237,8 @@ guarda só o que <b>muda</b>, a cada instante (60 por segundo).</p>
       <code>Arrange</code>)</td></tr>
   <tr><td>o cartão não avisa antes da faixa, ou avisa dentro dela</td><td>o segundo da régua e o
       começo da faixa</td></tr>
-  <tr><td>o aviso do cartão acaba em <code>folde…</code></td><td>já conhecido: o cartão corta a
-      frase na largura dele (a frase inteira está na secção 3)</td></tr>
+  <tr><td>o aviso do cartão acaba em <code>…</code> (cortado)</td><td>uma foto do cartão: o aviso
+      tem de se ler inteiro</td></tr>
   <tr><td>com um clip aberto a cena não vai ao segundo certo</td><td>onde estão as faixas do clip
       na <code>Arrange</code> e o que diz a barra</td></tr>
 </table>

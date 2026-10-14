@@ -316,6 +316,15 @@ Binário do smoke JÁ compilado (2.ª corrida, sem `Compiling`):
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && PH2D_MACRO_SMOKE=2 ./target/smoke/ph2d-host-desktop`
 (e `=1`).
 
+## ⭐ DONO, 14/10 (depois do smoke): as duas faltas que definem a W5
+
+1. **Não há keyframe por ETAPA:** a Timeline só tem `(0,0)→(D,D)` no «Macro Time», logo nada se
+   reajusta no tempo. Cada etapa tem de ser uma chave que se arrasta (re-cronometrar a etapa).
+2. **Não há painel de ETAPAS nomeadas** com as propriedades de cada uma, editáveis pelo artista (o
+   valor de um param, a cor/tamanho de uma pincelada…).
+O plano §4 só previa «Lista de passos (scrub, apagar, marcar portão)»: o dono pede MAIS — nome,
+propriedades editáveis e o tempo de cada etapa na Timeline. Isto é o desenho da W5.
+
 ## ABERTO — o que falta (5.6 e o que a medição abriu)
 
 1. **5.6** Da W3/W2: recusas/erros chegam ao artista pela UI da W5 (`MacroEmCena::erro`); os outros meios do

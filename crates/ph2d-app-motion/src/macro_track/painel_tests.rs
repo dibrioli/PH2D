@@ -104,7 +104,7 @@ fn o_palco_a_tocar_nao_troca_o_pedido_de_seleccao_do_editor() {
     for (i, c) in s.cargas.iter().enumerate() {
         let do_editor = vec![DO_EDITOR + i as u32];
         request_graph_selection(do_editor.clone());
-        t.aplica(c).expect("o passo aplica-se");
+        t.aplica(c, None).expect("o passo aplica-se");
         assert_eq!(
             pending_graph_selection(),
             Some(do_editor),
@@ -119,7 +119,7 @@ fn tomadas_por_quadro(s: &Sessao, painel: impl Fn(usize)) -> Vec<Vec<NodeId>> {
     let mut out = Vec::new();
     for (i, c) in s.cargas.iter().enumerate() {
         painel(i);
-        t.aplica(c).expect("o passo aplica-se");
+        t.aplica(c, None).expect("o passo aplica-se");
         out.push(
             t.palco()
                 .pump

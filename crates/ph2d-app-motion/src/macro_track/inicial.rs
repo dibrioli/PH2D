@@ -74,7 +74,7 @@ pub fn le(bytes: &[u8]) -> Result<Inicial, ErroDoInicial> {
     })
 }
 
-/// **O palco**: um `MotionState` próprio no estado inicial, a cozer na CPU.
+/// **O palco**: um `MotionState` próprio no estado inicial (coze na placa quando o tocador lha dá).
 #[must_use]
 pub fn palco(ini: &Inicial) -> MotionState {
     let mut m = MotionState::new();
@@ -84,6 +84,5 @@ pub fn palco(ini: &Inicial) -> MotionState {
     m.pump.define_a_lei(ini.lei);
     m.default_uv_rect = ini.uv;
     m.default_size = ini.tamanho;
-    m.gpu_enabled = false;
     m
 }

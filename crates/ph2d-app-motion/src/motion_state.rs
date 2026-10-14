@@ -506,6 +506,8 @@ pub struct MotionState {
     pub macro_gravacao: Option<Box<crate::macro_track::Gravacao>>,
     /// O que as portas pediram ao painel do editor neste quadro — ver [`PedidosAoPainel`].
     pub ao_painel: PedidosAoPainel,
+    /// O retrato do mundo que a cena publicou neste quadro ([`crate::motion_mundo`]).
+    pub mundo: crate::motion_mundo::MundoDaCena,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the

@@ -110,6 +110,7 @@ impl MotionState {
             objeto: Default::default(),
             macro_gravacao: None,
             ao_painel: Default::default(),
+            mundo: Default::default(),
         }
     }
 

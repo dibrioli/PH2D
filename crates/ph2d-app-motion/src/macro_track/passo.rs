@@ -123,7 +123,7 @@ pub enum Escrita {
 pub struct Toque {
     /// Houve um `mark_dirty` (uma edição: o anel do scrub foi deitado fora).
     pub editou: bool,
-    /// A bomba ficou suja sem edição (`mark_dirty_keeping_ring`).
+    /// A bomba foi marcada sem edição (`mark_dirty_keeping_ring`).
     pub sujou: bool,
 }
 
@@ -158,12 +158,13 @@ pub enum Passo {
     },
     /// A bomba foi tocada por fora de um lote.
     Toque(Toque),
-    /// O cozimento de um quadro: o relógio do playhead, e se a bomba chegou suja.
+    /// O cozimento de um quadro: o relógio do playhead, e se a bomba foi marcada desde o quadro
+    /// anterior (`MotionCookPump::sujidades`: a resposta é a mesma na placa e na CPU).
     Quadro {
         tempo: f64,
         a_tocar: bool,
         dt: f64,
-        sujo: bool,
+        sujou: bool,
     },
     /// Uma porta que a macro não reproduz foi usada a gravar (o porquê).
     Recusada(String),
@@ -347,13 +348,13 @@ impl Passo {
                 tempo,
                 a_tocar,
                 dt,
-                sujo,
+                sujou,
             } => {
                 r.varint(1, P_QUADRO)
                     .f64(2, *tempo)
                     .bool(3, *a_tocar)
                     .f64(4, *dt)
-                    .bool(5, *sujo);
+                    .bool(5, *sujou);
             }
             Passo::Recusada(porta) => {
                 r.varint(1, P_RECUSADA).str(2, porta);
@@ -419,7 +420,7 @@ impl Passo {
                 tempo: rec::as_f64(c.precisa(2)?)?,
                 a_tocar: c.bool(3)?,
                 dt: rec::as_f64(c.precisa(4)?)?,
-                sujo: c.bool(5)?,
+                sujou: c.bool(5)?,
             },
             P_RECUSADA => Passo::Recusada(c.string(2)?),
             n => Passo::Desconhecido(n),

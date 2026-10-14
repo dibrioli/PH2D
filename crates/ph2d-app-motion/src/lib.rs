@@ -222,6 +222,8 @@ pub mod motion_lsystem_rows;
 #[cfg(test)]
 #[path = "motion_lsystem_testkit.rs"]
 pub mod motion_lsystem_testkit;
+/// O mundo que a cena publica, e o retrato que cada palco de uma macro recebe (ADR-0186).
+pub mod motion_mundo;
 /// A trajetória do objeto selecionado no canvas (ADR-0141, Fatia 3).
 pub mod motion_path_overlay;
 pub mod motion_shape_gen;

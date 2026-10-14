@@ -19,6 +19,8 @@ pub mod tocar;
 pub(crate) mod gate_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 mod painel_tests;
+#[cfg(all(test, feature = "panel-motion-graph"))]
+mod placa_tests;
 #[cfg(test)]
 mod tests;
 
@@ -68,7 +70,9 @@ pub struct Gravacao {
     esperado: MotionDoc,
     /// A bomba quando o `esperado` foi fechado.
     edicoes: u64,
-    sujo: bool,
+    sujidades: u64,
+    /// As marcas da bomba no último quadro gravado.
+    sujidades_no_quadro: u64,
     /// O lote de params em curso (fecha com o dreno).
     params: Option<(Destino, Vec<IntencaoDeParam>)>,
     /// A área de transferência do grafo veio de uma cópia GRAVADA (o palco também a tem).
@@ -99,7 +103,8 @@ impl MotionState {
             base: self.doc.graph.next_id(),
             esperado: self.doc.clone(),
             edicoes: self.pump.edicoes(),
-            sujo: self.pump.is_dirty(),
+            sujidades: self.pump.sujidades(),
+            sujidades_no_quadro: self.pump.sujidades(),
             params: None,
             clip_gravado: false,
         }));
@@ -140,7 +145,7 @@ impl MotionState {
         }
         let t = Toque {
             editou: self.pump.edicoes() != g.edicoes,
-            sujou: self.pump.is_dirty() && !g.sujo,
+            sujou: self.pump.sujidades() != g.sujidades,
         };
         if !t.vazio() {
             g.passos.push(Passo::Toque(t));
@@ -195,14 +200,15 @@ impl MotionState {
     /// O quadro vai cozer: o relógio do playhead e o estado da bomba.
     pub(crate) fn macro_quadro(&mut self, playhead: &ph2d_core::Playhead, dt: f64) {
         self.macro_testemunha();
-        let sujo = self.pump.is_dirty();
+        let agora = self.pump.sujidades();
         if let Some(g) = self.macro_gravacao.as_deref_mut() {
             g.passos.push(Passo::Quadro {
                 tempo: playhead.time(),
                 a_tocar: playhead.is_playing(),
                 dt,
-                sujo,
+                sujou: agora != g.sujidades_no_quadro,
             });
+            g.sujidades_no_quadro = agora;
         }
     }
 
@@ -252,7 +258,7 @@ fn fecha(g: &mut Gravacao, doc: &MotionDoc, pump: &ph2d_eval_motion::MotionCookP
         g.esperado = doc.clone();
     }
     g.edicoes = pump.edicoes();
-    g.sujo = pump.is_dirty();
+    g.sujidades = pump.sujidades();
 }
 
 /// O que mudou de `antes` para `agora`: as escritas de params, se o resto ficou igual; senão o

@@ -185,18 +185,26 @@ fn roteiro() -> Vec<(u32, Acao)> {
 const QUADROS: u32 = 150;
 
 /// A sessão gravada.
-struct Gravada {
+pub(super) struct Gravada {
     inicial: Vec<u8>,
     /// As cargas de cada quadro, pela ordem.
     quadros: Vec<Vec<Vec<u8>>>,
     /// O que se viu em cada quadro.
-    retratos: Vec<Vec<u32>>,
-    fim: MotionState,
+    pub(super) retratos: Vec<Vec<u32>>,
+    pub(super) fim: MotionState,
+    /// Quantos quadros a placa cozeu.
+    pub(super) na_placa: usize,
 }
 
 /// **O artista**: cada quadro passa pelas portas do produto — o dreno do grafo, o de params, o quadro.
 fn sessao() -> Gravada {
+    sessao_em(None)
+}
+
+/// [`sessao`], a cozer na `placa` quando há uma.
+pub(super) fn sessao_em(placa: Option<&ph2d_gpu::GpuContext>) -> Gravada {
     let mut m = estado();
+    m.gpu_enabled = placa.is_some();
     let mut toasts = ph2d_editor_core::ToastQueue::default();
     let store = ph2d_editor_core::interaction::WidgetStore::default();
     let mut split = ph2d_editor_core::screens::layout::CenterSplit::None;
@@ -206,7 +214,7 @@ fn sessao() -> Gravada {
     let inicial = m.gravacao_arma().expect("arma");
     let roteiro = roteiro();
     let mut slots: Vec<NodeId> = Vec::new();
-    let (mut quadros, mut retratos) = (Vec::new(), Vec::new());
+    let (mut quadros, mut retratos, mut na_placa) = (Vec::new(), Vec::new(), 0);
     for q in 0..QUADROS {
         let antes: Vec<NodeId> = m.doc.graph.nodes().iter().map(|n| n.id).collect();
         for (_, a) in roteiro.iter().filter(|(f, _)| *f == q) {
@@ -246,8 +254,9 @@ fn sessao() -> Gravada {
         ph.seek(tick as f64 * DT);
         crate::motion_bridge::apply_graph_intents(&mut m, &mut ph, &mut toasts, &mut split);
         crate::motion_bridge::params::apply_param_edits_for_tests(&mut m, &store, &mut toasts);
-        o_quadro(&mut m, None, &ph, DT, MaoDoEditor::do_painel());
-        retratos.push(retrato(&m));
+        o_quadro(&mut m, placa, &ph, DT, MaoDoEditor::do_painel());
+        na_placa += usize::from(m.gpu_live);
+        retratos.push(retrato_visto(&m, placa));
         quadros.push(m.gravacao_passos());
         let mut novos: Vec<NodeId> = m
             .doc
@@ -267,7 +276,7 @@ fn sessao() -> Gravada {
     assert!(resto.is_empty(), "nada mudou depois do último quadro");
     assert_eq!(slots.len(), 8, "a macro cria oito nós");
     assert!(
-        !m.pump.vector_instances.is_empty(),
+        retratos.last().is_some_and(|r| r.len() > 1),
         "a cena cozeu VAZIA — a comparação ao bit seria sobre nada"
     );
     Gravada {
@@ -275,7 +284,28 @@ fn sessao() -> Gravada {
         quadros,
         retratos,
         fim: m,
+        na_placa,
     }
+}
+
+/// O que se VÊ, ao bit, também quando a placa cozeu o quadro: as cópias que ela escreveu.
+pub(super) fn retrato_visto(m: &MotionState, placa: Option<&ph2d_gpu::GpuContext>) -> Vec<u32> {
+    let Some(gpu) = placa.filter(|_| m.gpu_live) else {
+        return retrato(m);
+    };
+    let mut v: Vec<u32> = m
+        .gpu_cook
+        .instances()
+        .map(|i| ph2d_gpu_cook::read_instances(gpu, i))
+        .unwrap_or_default()
+        .iter()
+        .flat_map(|i| i.world_pos.iter().chain(&i.size).map(|f| f.to_bits()))
+        .collect();
+    v.push(u32::MAX);
+    if let Some(f) = m.gpu_cook.formas() {
+        v.extend(ph2d_gpu_cook::read_formas(gpu, f));
+    }
+    v
 }
 
 fn eh_quadro(c: &[u8]) -> bool {
@@ -284,7 +314,7 @@ fn eh_quadro(c: &[u8]) -> bool {
 
 /// A sessão pelo núcleo: o gravador (um evento por carga, no tempo do quadro), o ficheiro escrito e
 /// lido, e o tocador do núcleo a despachar.
-fn pelo_nucleo(g: &Gravada) -> ph2d_macro::MacroDoc {
+pub(super) fn pelo_nucleo(g: &Gravada) -> ph2d_macro::MacroDoc {
     let mut rec = MacroRecorder::new(RefRect { w: 1.0, h: 1.0 }, 0);
     let tr = rec.open_track(super::FAMILIA, 0, g.inicial.clone());
     for (q, cargas) in g.quadros.iter().enumerate() {
@@ -298,9 +328,10 @@ fn pelo_nucleo(g: &Gravada) -> ph2d_macro::MacroDoc {
 }
 
 /// Toca `doc` no palco; depois de cada quadro, `cada(k, palco)`.
-fn toca(
+pub(super) fn toca(
     doc: &ph2d_macro::MacroDoc,
     modo: Modo,
+    placa: Option<&ph2d_gpu::GpuContext>,
     mut cada: impl FnMut(usize, &MotionState),
 ) -> Result<TocadorDoMotion, ErroDaMacro> {
     let tr = &doc.tracks[0];
@@ -308,7 +339,7 @@ fn toca(
     let mut k = 0;
     let mut player = MacroPlayer::new(doc);
     player.advance_to(doc, doc.duration(), |_, _, ev| {
-        t.aplica(&ev.payload)?;
+        t.aplica(&ev.payload, placa)?;
         if eh_quadro(&ev.payload) {
             cada(k, t.palco());
             k += 1;
@@ -325,7 +356,7 @@ fn o_modo_fiel_reproduz_cada_quadro_que_o_artista_viu_ao_bit() {
     let autorado = g.fim.doc.to_text();
     let doc = pelo_nucleo(&g);
     let mut vistos = 0;
-    let t = toca(&doc, Modo::Fiel, |k, palco| {
+    let t = toca(&doc, Modo::Fiel, None, |k, palco| {
         assert_eq!(
             retrato(palco),
             g.retratos[k],
@@ -408,14 +439,15 @@ fn sem_os_tiques_a_reproducao_cai_noutro_sitio() {
     let (mut k, mut diferem, mut maior) = (0, 0, 0.0f32);
     for c in g.quadros.iter().flatten() {
         match Passo::descodifica(c) {
-            Ok(Passo::Quadro { dt, .. }) => {
+            Ok(Passo::Quadro { dt, sujou, .. }) => {
                 let congelado = Passo::Quadro {
                     tempo: 0.0,
                     a_tocar: false,
                     dt,
-                    sujo: t.palco().pump.is_dirty(),
+                    sujou,
                 };
-                t.aplica(&congelado.codifica()).expect("o quadro coze");
+                t.aplica(&congelado.codifica(), None)
+                    .expect("o quadro coze");
                 let r = retrato(t.palco());
                 if r != g.retratos[k] {
                     diferem += 1;
@@ -425,7 +457,7 @@ fn sem_os_tiques_a_reproducao_cai_noutro_sitio() {
                 }
                 k += 1;
             }
-            _ => t.aplica(c).expect("o passo aplica-se"),
+            _ => t.aplica(c, None).expect("o passo aplica-se"),
         }
     }
     eprintln!("sem os tiques: {diferem} de {k} quadros diferem · max |Δpos| = {maior:.4}");
@@ -457,7 +489,7 @@ fn posicoes(r: &[u32]) -> Vec<[f32; 2]> {
 fn o_modo_explicativo_da_o_documento_final_cozido_da_semente_ao_bit() {
     let g = sessao();
     let doc = pelo_nucleo(&g);
-    let t = toca(&doc, Modo::Explicativo, |_, _| {}).expect("a macro toca até ao fim");
+    let t = toca(&doc, Modo::Explicativo, None, |_, _| {}).expect("a macro toca até ao fim");
     // A construção de uma vez: o documento final, cozido da semente no último tique.
     let mut b = estado();
     b.doc = g.fim.doc.clone();
@@ -520,7 +552,7 @@ fn as_24_intencoes_de_uma_vez_sao_o_explicativo_da_sessao_so_com_elas() {
     }
     let mut t = TocadorDoMotion::novo(&inicial, Modo::Explicativo).expect("o inicial lê-se");
     for c in &cargas {
-        t.aplica(c).expect("o passo aplica-se");
+        t.aplica(c, None).expect("o passo aplica-se");
     }
     let mut b = estado();
     for (i, gst) in MACRO.iter().enumerate() {

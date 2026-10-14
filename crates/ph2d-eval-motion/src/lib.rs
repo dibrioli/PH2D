@@ -106,6 +106,8 @@ pub struct MotionCookPump {
     dirty: bool,
     /// Quantos [`Self::mark_dirty`] já houve — ver [`Self::edicoes`].
     edicoes: u64,
+    /// Quantas marcas o próximo cozimento já recebeu — ver [`Self::sujidades`].
+    sujidades: u64,
     /// O próximo cozimento re-simula da semente — ver [`Self::re_simula_da_semente`].
     re_sim_pendente: bool,
     /// The last cook error, if this frame's cook refused a sink. Kept so the
@@ -205,6 +207,7 @@ pub struct MotionCookPump {
 mod cook_target;
 mod marcha;
 mod scrub;
+mod sujidade;
 /// A caixa de saída dos TAPS — o readout inline do doc 43, num irmão.
 mod taps;
 use cook_target::CookTarget;
@@ -231,6 +234,7 @@ impl MotionCookPump {
             last_cooked_tick: None,
             dirty: true,
             edicoes: 0,
+            sujidades: 0,
             re_sim_pendente: false,
             last_error: None,
             ring: CheckpointRing::new(),
@@ -255,7 +259,9 @@ impl MotionCookPump {
     /// Liga a camada isolada — ver o campo `camada_isolada`. Por quadro, pelo dono dos filtros.
     pub fn isola_na_camada(&mut self, isolada: bool) {
         // Muda o lowering de um sink ⇒ o mesmo tique tem de recompor (não só uma edição do grafo).
-        self.dirty |= self.camada_isolada != isolada;
+        if self.camada_isolada != isolada {
+            self.mark_dirty_keeping_ring();
+        }
         self.camada_isolada = isolada;
     }
 
@@ -281,49 +287,11 @@ impl MotionCookPump {
         self.so_com_forma
     }
 
-    /// Force a re-cook on the next [`Self::pump`], even at the same tick (call
-    /// after editing the graph while paused). The M1 graph-edit path. Also
-    /// **invalidates the scrub cache**: the recorded checkpoints are the sim of
-    /// the OLD graph, so a later scrub must re-sim from the tick-0 seed under the
-    /// edited graph (Blender/Houdini "edit invalidates the cache").
     /// Retune the scrub ring's byte budget (default `CPU_RING_BYTES`) — the
     /// mirror of `GpuCook::set_ring_budget`, and what lets a gate squeeze the
     /// ring into the eviction regime a real heavy scene lives in (ADR-0137).
     pub fn set_ring_budget(&mut self, bytes: usize) {
         self.ring.set_budget(bytes);
-    }
-
-    pub fn mark_dirty(&mut self) {
-        self.dirty = true;
-        self.edicoes += 1;
-        self.ring.clear();
-    }
-
-    /// ⭐⭐⭐ **Marca sujo SEM deitar fora o anel de scrub** — para quem precisa de re-cozinhar por
-    /// uma razão que NÃO é uma edição do documento.
-    ///
-    /// O [`Self::mark_dirty`] existe para uma EDIÇÃO: o grafo mudou, logo tudo o que o anel
-    /// guardava descreve outro documento e tem de sair. O LOD da forma
-    /// ([`ph2d_app_motion::motion_shape_lod`]) precisa do contrário — o documento é o MESMO e o
-    /// que mudou foi a CÂMARA: ele esvazia o lado crisp ao particionar, e sem um re-cozimento no
-    /// quadro seguinte não há instâncias para ele mudar de ideias sobre, logo APROXIMAR nunca
-    /// devolveria o desenho.
-    ///
-    /// ⚠️ **Usar o `mark_dirty` ali seria limpar o anel a cada quadro em que o LOD está armado** —
-    /// e o doc do [`Self::is_dirty`] nomeia esse defeito por escrito (*«a stray `mark_dirty` …
-    /// would re-cook the whole graph every frame of the gesture»*). O anel é o cache do scrub:
-    /// deitá-lo fora por uma razão que não o invalidou faz o scrub seguinte cozinhar do zero.
-    pub fn mark_dirty_keeping_ring(&mut self) {
-        self.dirty = true;
-    }
-
-    /// Whether the next [`Self::pump`] will re-cook. Exposed so an edit that must
-    /// NOT re-cook can prove it: the editor's decoration (the graph panel's group
-    /// backdrops) is document state but cannot change what the graph cooks, and a
-    /// stray `mark_dirty` on a backdrop drag would re-cook the whole graph every
-    /// frame of the gesture. A test asserts this stays `false` across such an edit.
-    pub fn is_dirty(&self) -> bool {
-        self.dirty
     }
 
     /// Re-cook every sink in `sinks` into `instances` at `playhead` **iff** the

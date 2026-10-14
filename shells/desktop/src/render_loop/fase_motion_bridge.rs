@@ -40,53 +40,29 @@ impl crate::App {
         // the instances it cooks both land this frame). Cooks the graph into
         // `motion.instances` (present injects them via `render_with_extra`)
         // and drives the center split + docked-panel visibility.
-        // The drawn shapes go into the cook BEFORE it runs (doc 65): every named vector path
-        // becomes an external the graph can walk (`motion.path`). Here, because this is the
-        // one place the document, the world, the entity map and the transforms are all in
-        // hand at once.
-        ph2d_app_motion::motion_bridge::publish_shapes(
-            motion,
-            sim,
-            vec_scene,
-            &self.vec.entities,
-            &vec_xf_ops,
-            hero.gizmo.selection,
-        );
-        // ADR-0154: `source.shape` geometry is NOT published here — it is published
-        // by the bridge POST-drain, pre-cook (a param edit is drained inside the
-        // bridge, so publishing here would set the pre-edit key while the cook reads
-        // the post-edit key ⇒ a 1-frame vanish = flicker). See `motion_bridge`.
-        // doc 86 §2: and the engine OBJECTS (named sprites) into the same
-        // external table — AFTER shapes (which clears it), so the cook sees
-        // both curves and objects. The atlas resolves each sprite's tile.
-        // ⚠️ **As DUAS lojas de aparência**, não só o atlas — ver `Appearance`: um sprite
-        // KTX2 assado era fonte INVISÍVEL só porque quem o resolvia não estava em mão
-        // aqui dentro, e ele está: é o mesmo `renderer` de onde sai o atlas.
+        // O mundo vai para o cozimento ANTES dele (doc 65, doc 86 §2): os caminhos do Vetor por
+        // nome, os objectos (as DUAS lojas de aparência, o mesmo `renderer` do atlas), as entradas
+        // do jogo, o cursor e a vista — aqui, o único sítio com o documento, o mundo, o mapa e as
+        // afins em mão. A ordem e o retrato que cada palco de uma macro recebe vivem na porta.
         let cooked = |id| renderer.cooked_texture_id(id);
-        ph2d_app_motion::motion_bridge::publish_objects(
+        ph2d_app_motion::motion_mundo::publica_o_mundo(
             motion,
-            sim,
-            ph2d_app_motion::motion_bridge::Appearance {
-                atlas: renderer.atlas(),
-                cooked: &cooked,
+            ph2d_app_motion::motion_mundo::Cena {
+                sim,
+                vec_scene,
+                entidades: &self.vec.entities,
+                xforms: &vec_xf_ops,
+                selecao: hero.gizmo.selection,
+                aparencia: ph2d_app_motion::motion_bridge::Appearance {
+                    atlas: renderer.atlas(),
+                    cooked: &cooked,
+                },
+                segundos: self.playhead.time(),
+                camera,
+                cursor: self.last_cursor,
+                split: hero.view.center_split,
+                janela: surface.size(),
             },
-            // ⚠️ O relógio, porque o canal DESLOCADO resolve um param que pode vir de um
-            // fio — e um param conduzido só tem valor num INSTANTE (doc 58).
-            self.playhead.time(),
-        );
-        // ...and the editor's own values (the CURSOR and the VIEW), last, into the same
-        // table (`ph2d_nodegraph::external`).
-        // It is not a document value — it is an editor input that changes every
-        // frame — so publishing it is what lets `motion.look_at` aim at the mouse
-        // without the node learning what a window or a camera is. Last, because
-        // `publish_shapes` CLEARS and the objects append; and in the reserved `$`
-        // namespace, which the artist-name publishes above refuse.
-        ph2d_app_motion::motion_bridge::publish_editor_inputs(
-            motion,
-            camera,
-            self.last_cursor,
-            hero.view.center_split,
-            surface.size(),
         );
         ph2d_app_motion::motion_bridge::dispatch(
             hero,

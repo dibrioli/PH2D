@@ -88,7 +88,7 @@ fn passos_de_amostra() -> Vec<Passo> {
             tempo: 1.25,
             a_tocar: true,
             dt: 1.0 / 60.0,
-            sujo: false,
+            sujou: false,
         },
         Passo::Recusada("uma porta".into()),
     ];
@@ -164,12 +164,12 @@ fn o_que_este_leitor_nao_conhece_para_o_tocador_em_voz_alta() {
     let mut r = ph2d_macro::rec::Record::new();
     r.varint(1, 99);
     assert_eq!(
-        t.aplica(&r.finish()),
+        t.aplica(&r.finish(), None),
         Err(ErroDaMacro::PassoDesconhecido(99))
     );
     let p = Passo::Recusada("a porta".into());
     assert_eq!(
-        t.aplica(&p.codifica()),
+        t.aplica(&p.codifica(), None),
         Err(ErroDaMacro::PortaRecusada("a porta".into()))
     );
     let p = Passo::Params {
@@ -177,7 +177,7 @@ fn o_que_este_leitor_nao_conhece_para_o_tocador_em_voz_alta() {
         intencoes: vec![IntencaoDeParam::Desconhecida(77)],
     };
     assert_eq!(
-        t.aplica(&p.codifica()),
+        t.aplica(&p.codifica(), None),
         Err(ErroDaMacro::IntencaoDesconhecida(77))
     );
 }
@@ -543,7 +543,7 @@ mod rotas {
     fn toca(inicial: &[u8], cargas: &[Vec<u8>]) -> TocadorDoMotion {
         let mut t = TocadorDoMotion::novo(inicial, Modo::Fiel).expect("o inicial lê-se");
         for c in cargas {
-            t.aplica(c).expect("o passo aplica-se");
+            t.aplica(c, None).expect("o passo aplica-se");
         }
         t
     }
@@ -738,19 +738,19 @@ mod rotas {
                     tempo,
                     a_tocar,
                     dt,
-                    sujo,
+                    sujou,
                 }) => Passo::Quadro {
                     tempo,
                     a_tocar,
                     dt,
-                    sujo: !sujo,
+                    sujou: !sujou,
                 }
                 .codifica(),
                 _ => c,
             })
             .collect();
         let mut t = TocadorDoMotion::novo(&ini, Modo::Fiel).expect("o inicial lê-se");
-        let r: Result<(), _> = cargas.iter().try_for_each(|c| t.aplica(c));
+        let r: Result<(), _> = cargas.iter().try_for_each(|c| t.aplica(c, None));
         assert_eq!(r, Err(super::super::tocar::ErroDaMacro::Divergiu));
     }
 }

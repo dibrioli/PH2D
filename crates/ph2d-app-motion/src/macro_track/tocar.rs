@@ -1,6 +1,6 @@
 //! **O tocador da trilha do Motion**: um palco ([`super::inicial::palco`]) que recebe cada passo pelas
 //! MESMAS portas que o gravaram — o lote do grafo (`apply_graph_batch`), cada edição de param
-//! (`apply_param_intent`), o quadro (`quadro::o_quadro`, sem placa).
+//! (`apply_param_intent`), o quadro (`quadro::o_quadro`), com o mundo que a cena publica.
 //!
 //! - [`Modo::Fiel`] coze cada quadro no relógio gravado: reproduz o que o artista viu, e confere a
 //!   cada quadro que a bomba chegou como chegou na gravação.
@@ -90,6 +90,8 @@ pub struct TocadorDoMotion {
     toasts: ph2d_editor_core::ToastQueue,
     /// O documento mudou desde o último quadro (o explicativo re-simula).
     mudou: bool,
+    /// As marcas da bomba do palco no último quadro (o fiel confere as do quadro gravado).
+    sujidades_no_quadro: u64,
 }
 
 impl TocadorDoMotion {
@@ -101,6 +103,7 @@ impl TocadorDoMotion {
         let ini = inicial::le(inicial).map_err(ErroDaMacro::Inicial)?;
         let palco = inicial::palco(&ini);
         let nomes = Nomes::de(&palco.registry);
+        let sujidades_no_quadro = palco.pump.sujidades();
         Ok(Self {
             palco,
             modo,
@@ -108,6 +111,7 @@ impl TocadorDoMotion {
             nomes,
             toasts: ph2d_editor_core::ToastQueue::default(),
             mudou: true,
+            sujidades_no_quadro,
         })
     }
 
@@ -116,11 +120,22 @@ impl TocadorDoMotion {
         &self.palco
     }
 
-    /// **Um passo**, pela porta que o gravou.
+    /// **O mundo que a cena publicou** neste quadro ([`crate::motion_mundo`]) — antes dos passos do
+    /// quadro, como o editor o recebe antes do `dispatch`.
+    pub fn recebe_o_mundo(&mut self, mundo: &crate::motion_mundo::MundoDaCena) {
+        self.palco.recebe_o_mundo(mundo);
+    }
+
+    /// **Um passo**, pela porta que o gravou; o quadro coze na `placa` quando há uma (o produto), e
+    /// na CPU sem ela.
     ///
     /// # Errors
     /// [`ErroDaMacro`] — o tocador pára neste passo.
-    pub fn aplica(&mut self, carga: &[u8]) -> Result<(), ErroDaMacro> {
+    pub fn aplica(
+        &mut self,
+        carga: &[u8],
+        placa: Option<&ph2d_gpu::GpuContext>,
+    ) -> Result<(), ErroDaMacro> {
         match Passo::descodifica(carga).map_err(ErroDaMacro::Passo)? {
             Passo::Grafo {
                 nivel,
@@ -163,8 +178,8 @@ impl TocadorDoMotion {
                 tempo,
                 a_tocar,
                 dt,
-                sujo,
-            } => self.quadro(tempo, a_tocar, dt, sujo)?,
+                sujou,
+            } => self.quadro(tempo, a_tocar, dt, sujou, placa)?,
             Passo::Recusada(porta) => return Err(ErroDaMacro::PortaRecusada(porta)),
             Passo::Desconhecido(n) => return Err(ErroDaMacro::PassoDesconhecido(n)),
         }
@@ -238,11 +253,12 @@ impl TocadorDoMotion {
         tempo: f64,
         a_tocar: bool,
         dt: f64,
-        sujo: bool,
+        sujou: bool,
+        placa: Option<&ph2d_gpu::GpuContext>,
     ) -> Result<(), ErroDaMacro> {
         match self.modo {
             Modo::Fiel => {
-                if self.palco.pump.is_dirty() != sujo {
+                if (self.palco.pump.sujidades() != self.sujidades_no_quadro) != sujou {
                     return Err(ErroDaMacro::Divergiu);
                 }
             }
@@ -252,6 +268,7 @@ impl TocadorDoMotion {
                 }
             }
         }
+        self.sujidades_no_quadro = self.palco.pump.sujidades();
         let mut playhead = ph2d_core::Playhead::new(dt);
         playhead.seek(tempo);
         if a_tocar {
@@ -261,7 +278,7 @@ impl TocadorDoMotion {
         }
         crate::motion_bridge::quadro::o_quadro(
             &mut self.palco,
-            None,
+            placa,
             &playhead,
             dt,
             crate::motion_bridge::quadro::MaoDoEditor::default(),

@@ -410,7 +410,7 @@ impl DoMiolo {
         let em_blocos = |l: u32, n: u32, so: Tipo, bloco: Tipo| {
             [4, 2]
                 .into_iter()
-                .find(|&k| pequeno(l) && k <= miolo.bloco && n % k == 0)
+                .find(|&k| pequeno(l) && k <= miolo.bloco && n.is_multiple_of(k))
                 .map_or((so, n, 0), |k| (bloco, n / k, k))
         };
         let mut blocos = vec![[0; 2]; niveis as usize + 1];

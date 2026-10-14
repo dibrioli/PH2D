@@ -99,7 +99,9 @@ fn a_base_do_miolo_corta_os_despachos() {
     };
     let (com, sem) = (despachos(true, 1), despachos(false, 1));
     let bloco = despachos(true, MIOLO_PADRAO.bloco);
-    eprintln!("despachos do miolo: com a base {com} · sem ela {sem} · com a base e o bloco {bloco}");
+    eprintln!(
+        "despachos do miolo: com a base {com} · sem ela {sem} · com a base e o bloco {bloco}"
+    );
     assert!(
         com > TETO_DESPACHOS_DO_BLOCO,
         "controlo: sem o bloco o miolo grava {com} despachos — o teto do bloco não o separa"

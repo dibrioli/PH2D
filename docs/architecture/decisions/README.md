@@ -200,11 +200,12 @@
 | [0184](0184-a-imagem-do-quadro-e-um-ficheiro-por-conteudo-que-viaja-sozinho.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | A imagem do quadro é um FICHEIRO por conteúdo, guardado no quadro e que viaja sozinho |
 | [0185](0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md) | Accepted — decisão do DONO (12/10, *«Sim, janela virtual»*, depois de ver as medições; … | O vídeo do YouTube no quadro toca no navegador da PESSOA, invisível, projectado no canvas |
 | [0186](0186-a-macro-grava-comandos-resolvidos-no-relogio-da-macro.md) | Accepted — o PRODUTO é decisão do DONO (13/10: *«tocará em tudo e em qualquer lug… | A macro grava COMANDOS RESOLVIDOS no relógio da macro, e cada família garante a sua exatidão |
+| [0187](0187-o-quadro-pela-internet-e-quic-sobre-udp-com-encontro-na-dht.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O quadro ao vivo PELA INTERNET é QUIC sobre UDP, com encontro na DHT e furo no NAT |
 | [0188](0188-o-editor-de-scripts-mora-no-ph2d-e-o-script-mora-no-projeto.md) | Accepted — o PRODUTO é decisão do DONO (15/10: script *«dentro»* do projeto | O editor de scripts mora no PH2D, e o script mora no projeto |
 
 ---
 
-**192 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**193 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

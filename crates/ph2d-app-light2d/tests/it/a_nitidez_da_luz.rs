@@ -242,9 +242,10 @@ fn com_o_automatico_desligado_o_custo_e_o_do_nivel_escolhido() {
     // O defeito guardado é o custo CONGELADO (razão 1). A parte que segue 1/célula² já não domina:
     // desde a W5c todo nível paga a cascata holográfica, o rebote e o miolo. Medido a 1080p, RTX
     // 5060 Ti, SOZINHO na placa (W5o): W5a 1,57 × 19,5 ms (×12); W5n 3,85 × 30,15 (×7,8); W5o
-    // 3,10–3,37 × 30,6; sem o miolo 2,05 × 26,35. ⚠️ Os «8,87 × 22,32» da W5n eram com dois portões
-    // na placa ao mesmo tempo; o High segue a `c2`, que muda 18,4–26,6 ms com o estado do alocador
-    // (handoff W5o §3).
+    // 3,10–3,37 × 30,6; sem o miolo 2,05 × 26,35; W5q (a C3 da W5p, a holográfica nasce duas vezes com o
+    // acumulado primeiro) 2,82–2,84 × 23,08–23,11 (×8,2; `PH2D_LIGHT2D_HRC_DUAS=0` 28,91–28,94). ⚠️ Os
+    // «8,87 × 22,32» da W5n eram com dois portões na placa ao mesmo tempo; o High segue a `c2`, que muda
+    // 18,4–26,6 ms com o estado do alocador (handoffs W5o §3, W5q §1).
     assert!(
         alta > 1.5 * baixa,
         "o custo não seguiu o nível: Low {baixa:.2} · High {alta:.2} ms"

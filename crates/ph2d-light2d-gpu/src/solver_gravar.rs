@@ -319,14 +319,18 @@ impl Solver {
         // ⭐ W5c: a holográfica escreve a c0 num passe só (os carimbos da cascata 0); os das outras
         // cascatas ficam em passes vazios.
         if let Some(h) = &self.hrc {
-            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("luz2d C2 holográfica"),
-                timestamp_writes: self
-                    .tempos
-                    .as_ref()
-                    .map(|t| t.escrita_compute(tempos::da_cascata(0))),
-            });
-            h.gravar(&mut p);
+            if h.gravar_por_fase(enc, 0) {
+                rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::da_cascata(0));
+            } else {
+                let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("luz2d C2 holográfica"),
+                    timestamp_writes: self
+                        .tempos
+                        .as_ref()
+                        .map(|t| t.escrita_compute(tempos::da_cascata(0))),
+                });
+                h.gravar(&mut p);
+            }
         }
         // ⭐ W5d: os rebotes a mais do quadro — a fonte com esta cascata, a emissão de base de novo com a
         // soma da fonte nova, e a cascata outra vez (o campo de distância não muda: é da cobertura).
@@ -346,6 +350,10 @@ impl Solver {
                     self.texturas[EMISSAO].size(),
                 );
                 r.gravar_na_mesma(enc, &self.alvos_c0[0]);
+                if h.gravar_por_fase(enc, k) {
+                    rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::da_cascata(k));
+                    continue;
+                }
                 let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("luz2d C2 holográfica (rebote a mais)"),
                     timestamp_writes: self
@@ -355,6 +363,9 @@ impl Solver {
                 });
                 h.gravar(&mut p);
             }
+        }
+        if let Some(h) = &self.hrc {
+            h.resolver_fases(enc);
         }
         for i in (0..self.n).rev() {
             if self.hrc.is_some() {

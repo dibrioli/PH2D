@@ -7,6 +7,10 @@ use super::*;
 use crate::config::Holografica as Escolhas;
 use crate::hrc::{self, Quadrante};
 
+/// ⭐ W5q — o instrumento das etapas (ficheiro irmão).
+#[path = "solver_hrc_fases.rs"]
+mod fases;
+
 /// O espelho de `Hrc` do `c2_hrc.wgsl` (56 B).
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -78,6 +82,7 @@ pub(super) struct Holografica {
     g2: wgpu::BindGroup,
     amostra: wgpu::Sampler,
     vazia: wgpu::TextureView,
+    fases: Option<fases::FasesHrc>,
 }
 
 fn armazenado(binding: u32, leitura: bool) -> wgpu::BindGroupLayoutEntry {
@@ -234,8 +239,10 @@ impl Holografica {
 
         // ⭐ W5p (`Config::hrc_nasce_duas_vezes`): os buffers grandes nascem, largam-se e nascem de novo —
         // a `c2` do High é rápida quando eles caem em memória já usada e largada (escrevê-los antes: igual).
+        // ⭐ W5q: o acumulado renasce PRIMEIRO — por último era o único no regime lento (a soma 1,40 contra
+        // 0,83 ms; handoff W5q §1).
+        let n_t = Quadrante::de(0, grade).n.max(Quadrante::de(1, grade).n) as usize + 1;
         if e.cfg.hrc_nasce_duas_vezes {
-            let n_t = Quadrante::de(0, grade).n.max(Quadrante::de(1, grade).n) as usize + 1;
             let primeiros: Vec<wgpu::Buffer> = hrc::NOMES_T[..n_t]
                 .iter()
                 .copied()
@@ -246,11 +253,13 @@ impl Holografica {
             drop(primeiros);
             let _ = device.poll(wgpu::PollType::wait_indefinitely());
         }
-        let t: Vec<wgpu::Buffer> = (0..=Quadrante::de(0, grade).n.max(Quadrante::de(1, grade).n))
-            .map(|n| (e.buffer)(hrc::NOMES_T[n as usize]))
-            .collect();
+        let cedo = e
+            .cfg
+            .hrc_nasce_duas_vezes
+            .then(|| (e.buffer)(hrc::NOME_ACUMULADO));
+        let t: Vec<wgpu::Buffer> = hrc::NOMES_T[..n_t].iter().map(|&n| (e.buffer)(n)).collect();
         let r = hrc::NOMES_R.map(|nome| (e.buffer)(nome));
-        let acumulado = (e.buffer)(hrc::NOME_ACUMULADO);
+        let acumulado = cedo.unwrap_or_else(|| (e.buffer)(hrc::NOME_ACUMULADO));
         let uniforme = (e.buffer)(hrc::NOME_UNIFORME);
         let [vazio_l, vazio_t, vazio_r] = hrc::NOMES_VAZIOS.map(|nome| (e.buffer)(nome));
 
@@ -391,6 +400,7 @@ impl Holografica {
             g2,
             amostra,
             vazia,
+            fases: None,
         };
         h.escrever(e.queue);
         h

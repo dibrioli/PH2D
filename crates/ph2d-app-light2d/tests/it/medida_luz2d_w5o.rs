@@ -50,8 +50,8 @@ fn variante(cfg: Config, (_, ciclos, anel, base, so_c0): Variante) -> Config {
     }
 }
 
-struct Par {
-    vista: Solver,
+pub(crate) struct Par {
+    pub(crate) vista: Solver,
     entorno: Option<Solver>,
 }
 
@@ -81,7 +81,7 @@ impl Par {
         }
     }
 
-    fn quadro(&mut self, gpu: &ph2d_gpu::GpuContext, cena: &CenaDeLuz) {
+    pub(crate) fn quadro(&mut self, gpu: &ph2d_gpu::GpuContext, cena: &CenaDeLuz) {
         if let Some(e) = self.entorno.as_mut() {
             let sem_ceu = CenaDeLuz {
                 ceu: [0.0; 3],
@@ -92,7 +92,7 @@ impl Par {
         self.vista.quadro(gpu, cena);
     }
 
-    fn tempos(&self, gpu: &ph2d_gpu::GpuContext) -> (TemposMs, Option<TemposMs>) {
+    pub(crate) fn tempos(&self, gpu: &ph2d_gpu::GpuContext) -> (TemposMs, Option<TemposMs>) {
         (
             self.vista.tempos(gpu).expect("TIMESTAMP_QUERY"),
             self.entorno
@@ -102,11 +102,11 @@ impl Par {
     }
 }
 
-fn minimo(v: &[f64]) -> f64 {
+pub(crate) fn minimo(v: &[f64]) -> f64 {
     v.iter().copied().fold(f64::INFINITY, f64::min)
 }
 
-fn mediana(v: &[f64]) -> f64 {
+pub(crate) fn mediana(v: &[f64]) -> f64 {
     let mut s = v.to_vec();
     s.sort_by(f64::total_cmp);
     s[s.len() / 2]
@@ -516,19 +516,12 @@ fn medida_luz2d_w5o_lastro() {
             eprintln!("B {:>7.1} MB {n}", *b as f64 / MB as f64);
         }
     }
-    let mut p = Par::novo(&gpu, v, e);
-    let mut c2 = Vec::new();
-    for _ in 0..12 {
-        p.quadro(&gpu, &vazia);
-        c2.push(p.tempos(&gpu).0.c2_total());
-    }
-    eprintln!(
-        "C dicas {dicas:?} duas vezes {ensaio} lastro {caso} ({} texturas, vivo {}) · c2 High mín {:.3} · med {:.3} ms",
+    let rotulo = format!(
+        "dicas {dicas:?} duas vezes {ensaio} lastro {caso} ({} texturas, vivo {})",
         lastro.len(),
-        vivo.is_some(),
-        minimo(&c2),
-        mediana(&c2)
+        vivo.is_some()
     );
+    crate::medida_luz2d_w5q::a_c2_e_as_etapas(&gpu, Par::novo(&gpu, v, e), &vazia, &rotulo);
 }
 
 /// ⭐ W5o — INSTRUMENTO da prova ao bit: grava em `$PH2D_W5O_SAIDA` as fluências da vista pelo

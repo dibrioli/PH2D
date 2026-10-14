@@ -1,8 +1,9 @@
 //! O anfitrião: ouve na porta fixa, autentica quem entra pelo código e é o retransmissor (estrela).
 
 use std::collections::BTreeMap;
-use std::io::{self, BufReader, Write};
-use std::net::{Ipv4Addr, Shutdown, SocketAddr, TcpListener, TcpStream};
+use std::io::{self, BufReader, ErrorKind, Write};
+use std::net::SocketAddr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread::{self, JoinHandle};
@@ -11,7 +12,9 @@ use std::time::{Duration, Instant};
 use crate::code::{Code, Gate};
 use crate::discover::Announcer;
 use crate::handshake::{self, HostShake};
-use crate::lan::{is_lan, lan_addrs};
+use crate::lan::lan_addrs;
+use crate::link::{Door, Wire};
+use crate::tcp::TcpDoor;
 use crate::wire::{MAX_FRAME, Open, Seal};
 use crate::{Announce, ConnId, NetEvent, SendError, Waker};
 
@@ -76,7 +79,7 @@ impl Default for HostConfig {
 struct State {
     stop: bool,
     /// Todos os fios aceites (para o `kick` e para o `Drop` os fecharem).
-    wires: BTreeMap<ConnId, TcpStream>,
+    wires: BTreeMap<ConnId, Box<dyn Wire>>,
     /// O canal do escritor de cada ligação autenticada.
     senders: BTreeMap<ConnId, Sender<Out>>,
     threads: Vec<JoinHandle<()>>,
@@ -84,6 +87,8 @@ struct State {
 
 struct Shared {
     state: Mutex<State>,
+    /// O próximo [`ConnId`], partilhado por todas as entradas.
+    next: AtomicU64,
     gate: Mutex<Gate>,
     code: Code,
     events: Mutex<Sender<NetEvent>>,
@@ -120,7 +125,9 @@ pub struct Host {
     shared: Arc<Shared>,
     events: Receiver<NetEvent>,
     port: u16,
-    accept: Option<JoinHandle<()>>,
+    /// As entradas abertas (o `Drop` acorda-as) e a thread de `accept` de cada uma.
+    doors: Vec<Arc<dyn Door>>,
+    accepts: Vec<JoinHandle<()>>,
     announcer: Option<Announcer>,
     mdns_error: Option<String>,
 }
@@ -137,19 +144,21 @@ impl Host {
     /// # Errors
     /// Nenhuma porta livre na faixa.
     pub fn open_with(announce: &Announce, cfg: &HostConfig, waker: Waker) -> io::Result<Self> {
-        let listener = bind(cfg)?;
-        let port = listener.local_addr()?.port();
+        let door = TcpDoor::bind(cfg.port, cfg.tries)?;
+        let port = door.port();
+        let door: Arc<dyn Door> = Arc::new(door);
         let (tx, events) = mpsc::channel();
         let shared = Arc::new(Shared {
             state: Mutex::new(State::default()),
+            next: AtomicU64::new(1),
             gate: Mutex::new(Gate::default()),
             code: Code::random(),
             events: Mutex::new(tx),
             waker,
             live: cfg.live,
         });
-        let sh = Arc::clone(&shared);
-        let accept = thread::spawn(move || accept_loop(&listener, &sh));
+        let (sh, d) = (Arc::clone(&shared), Arc::clone(&door));
+        let accept = thread::spawn(move || accept_loop(d.as_ref(), &sh));
         let (announcer, mdns_error) = if cfg.mdns {
             match Announcer::start(announce, port) {
                 Ok(a) => (Some(a), None),
@@ -162,7 +171,8 @@ impl Host {
             shared,
             events,
             port,
-            accept: Some(accept),
+            doors: vec![door],
+            accepts: vec![accept],
             announcer,
             mdns_error,
         })
@@ -237,7 +247,7 @@ impl Host {
     /// Expulsa: o fio fecha e chega o `Left`.
     pub fn kick(&self, id: ConnId) {
         if let Some(w) = self.shared.state().wires.get(&id) {
-            let _ = w.shutdown(Shutdown::Both);
+            w.shutdown();
         }
     }
 }
@@ -255,56 +265,38 @@ pub(crate) fn check(len: usize) -> Result<(), SendError> {
     Ok(())
 }
 
-fn bind(cfg: &HostConfig) -> io::Result<TcpListener> {
-    if cfg.port == 0 {
-        return TcpListener::bind((Ipv4Addr::UNSPECIFIED, 0));
-    }
-    let mut last = io::Error::from(io::ErrorKind::AddrInUse);
-    for p in (0..cfg.tries.max(1)).filter_map(|i| cfg.port.checked_add(i)) {
-        match TcpListener::bind((Ipv4Addr::UNSPECIFIED, p)) {
-            Ok(l) => return Ok(l),
-            Err(e) => last = e,
-        }
-    }
-    Err(last)
-}
-
-fn accept_loop(listener: &TcpListener, sh: &Arc<Shared>) {
-    let mut next: ConnId = 1;
-    for stream in listener.incoming() {
+fn accept_loop(door: &dyn Door, sh: &Arc<Shared>) {
+    loop {
+        let got = door.accept();
         if sh.state().stop {
             break;
         }
-        let Ok(stream) = stream else {
-            // Sem descritores, por exemplo: não girar a seco.
-            thread::sleep(Duration::from_millis(50));
-            continue;
+        let (wire, peer) = match got {
+            Ok(w) => w,
+            Err(e) if e.kind() == ErrorKind::BrokenPipe => break,
+            Err(_) => {
+                // Sem descritores, por exemplo: não girar a seco.
+                thread::sleep(Duration::from_millis(50));
+                continue;
+            }
         };
-        let Ok(peer) = stream.peer_addr() else {
-            continue;
-        };
-        if !is_lan(peer.ip()) {
-            continue;
-        }
-        let id = next;
-        next += 1;
+        let id = sh.next.fetch_add(1, Ordering::Relaxed);
         {
             let mut st = sh.state();
-            let Ok(clone) = stream.try_clone() else {
+            let Ok(clone) = wire.try_clone() else {
                 continue;
             };
             st.wires.insert(id, clone);
         }
         let s2 = Arc::clone(sh);
-        sh.spawn(move || serve(&s2, id, stream, peer));
+        sh.spawn(move || serve(&s2, id, wire, peer));
     }
 }
 
-fn serve(sh: &Arc<Shared>, id: ConnId, mut stream: TcpStream, peer: SocketAddr) {
-    let _ = stream.set_nodelay(true);
-    let _ = stream.set_read_timeout(Some(SHAKE_TIMEOUT));
-    let _ = stream.set_write_timeout(Some(SHAKE_TIMEOUT));
-    let keys = match handshake::host(&mut stream, &sh.code, &sh.gate, &Instant::now) {
+fn serve(sh: &Arc<Shared>, id: ConnId, mut wire: Box<dyn Wire>, peer: SocketAddr) {
+    let _ = wire.set_read_timeout(Some(SHAKE_TIMEOUT));
+    let _ = wire.set_write_timeout(Some(SHAKE_TIMEOUT));
+    let keys = match handshake::host(&mut wire, &sh.code, &sh.gate, &Instant::now) {
         HostShake::Joined(k) => k,
         HostShake::Wrong => {
             forget(sh, id);
@@ -316,8 +308,8 @@ fn serve(sh: &Arc<Shared>, id: ConnId, mut stream: TcpStream, peer: SocketAddr) 
             return;
         }
     };
-    let _ = stream.set_write_timeout(Some(WRITE_TIMEOUT));
-    let Ok(out) = stream.try_clone() else {
+    let _ = wire.set_write_timeout(Some(WRITE_TIMEOUT));
+    let Ok(out) = wire.try_clone() else {
         forget(sh, id);
         return;
     };
@@ -332,8 +324,8 @@ fn serve(sh: &Arc<Shared>, id: ConnId, mut stream: TcpStream, peer: SocketAddr) 
     let (seal, live) = (keys.seal, sh.live);
     sh.spawn(move || write_loop(out, seal, &rx, live.beat));
     sh.emit(NetEvent::Joined(id, peer));
-    read_loop(&stream, keys.open, live.silence, |bytes| {
-        sh.emit(NetEvent::Frame(id, bytes))
+    read_loop(wire, keys.open, live.silence, |bytes| {
+        sh.emit(NetEvent::Frame(id, bytes));
     });
     forget(sh, id);
     sh.emit(NetEvent::Left(id));
@@ -344,32 +336,34 @@ fn forget(sh: &Shared, id: ConnId) {
     let mut st = sh.state();
     st.senders.remove(&id);
     if let Some(w) = st.wires.remove(&id) {
-        let _ = w.shutdown(Shutdown::Both);
+        w.shutdown();
     }
 }
 
 /// Lê até o fio fechar, chegar um quadro que não abre, ou nada chegar em `silence`; fecha o fio ao
 /// sair. O quadro vazio é o sinal de vida: conta como chegada e não se entrega.
 pub(crate) fn read_loop(
-    stream: &TcpStream,
+    mut wire: Box<dyn Wire>,
     mut open: Open,
     silence: Duration,
     mut on: impl FnMut(Vec<u8>),
 ) {
-    let _ = stream.set_read_timeout(Some(silence));
-    let mut r = BufReader::with_capacity(64 << 10, stream);
-    while let Ok(bytes) = open.read(&mut r) {
-        if !bytes.is_empty() {
-            on(bytes);
+    let _ = wire.set_read_timeout(Some(silence));
+    {
+        let mut r = BufReader::with_capacity(64 << 10, &mut wire);
+        while let Ok(bytes) = open.read(&mut r) {
+            if !bytes.is_empty() {
+                on(bytes);
+            }
         }
     }
-    let _ = stream.shutdown(Shutdown::Both);
+    wire.shutdown();
 }
 
 /// Escreve o que chega pelo canal, e o sinal de vida quando nada chega em `beat`; sai quando o canal
 /// fecha ou o fio falha.
 pub(crate) fn write_loop(
-    mut stream: TcpStream,
+    mut wire: Box<dyn Wire>,
     mut seal: Seal,
     rx: &Receiver<Out>,
     beat: Duration,
@@ -382,13 +376,13 @@ pub(crate) fn write_loop(
         };
         if seal
             .seal(&bytes)
-            .and_then(|w| stream.write_all(&w))
+            .and_then(|w| wire.write_all(&w).and_then(|()| wire.flush()))
             .is_err()
         {
             break;
         }
     }
-    let _ = stream.shutdown(Shutdown::Both);
+    wire.shutdown();
 }
 
 /// Espera as threads até ao prazo; as que ainda correm ficam soltas (os fios delas já fecharam).
@@ -416,19 +410,18 @@ impl Drop for Host {
             let mut st = self.shared.state();
             st.stop = true;
             for w in st.wires.values() {
-                let _ = w.shutdown(Shutdown::Both);
+                w.shutdown();
             }
             st.wires.clear();
             st.senders.clear();
             std::mem::take(&mut st.threads)
         };
-        // O `accept` está bloqueado: uma ligação a nós próprios acorda-o para ver o `stop`.
-        let _ = TcpStream::connect_timeout(
-            &SocketAddr::from((Ipv4Addr::LOCALHOST, self.port)),
-            Duration::from_millis(200),
-        );
+        // Cada `accept` está bloqueado: acordá-lo para ver o `stop`.
+        for d in &self.doors {
+            d.wake();
+        }
         let mut all = threads;
-        all.extend(self.accept.take());
+        all.append(&mut self.accepts);
         join_until(all, deadline);
     }
 }

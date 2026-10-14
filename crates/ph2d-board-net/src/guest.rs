@@ -1,6 +1,6 @@
 //! O convidado: liga-se ao anfitrião, prova o código e troca quadros só com ele.
 
-use std::net::{Shutdown, SocketAddr, TcpStream};
+use std::net::{SocketAddr, TcpStream};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -13,6 +13,7 @@ use crate::host::{
     JOIN_DEADLINE, Liveness, Out, WRITE_TIMEOUT, check, join_until, read_loop, write_loop,
 };
 use crate::lan::is_lan;
+use crate::link::Wire;
 use crate::{JoinError, NetEvent, SendError, Waker};
 
 pub struct Guest {
@@ -20,7 +21,7 @@ pub struct Guest {
     /// Desliga quando a leitura acaba (o escritor só o descobriria na próxima escrita).
     alive: Arc<AtomicBool>,
     events: Receiver<NetEvent>,
-    wire: TcpStream,
+    wire: Box<dyn Wire>,
     threads: Vec<JoinHandle<()>>,
 }
 
@@ -54,14 +55,25 @@ impl Guest {
         if !is_lan(addr.ip()) {
             return Err(JoinError::NotLan);
         }
-        let mut stream = TcpStream::connect_timeout(&addr, timeout)
+        let stream = TcpStream::connect_timeout(&addr, timeout)
             .map_err(|e| JoinError::Unreachable(e.kind()))?;
         let _ = stream.set_nodelay(true);
-        let _ = stream.set_read_timeout(Some(timeout));
-        let _ = stream.set_write_timeout(Some(timeout));
-        let keys = handshake::guest(&mut stream, &code)?;
-        let _ = stream.set_write_timeout(Some(WRITE_TIMEOUT));
-        let (Ok(rd), Ok(wr)) = (stream.try_clone(), stream.try_clone()) else {
+        Self::join(Box::new(stream), &code, timeout, live, waker)
+    }
+
+    /// Entra por um fio já aberto (de qualquer transporte): aperto de mão, e as threads.
+    pub(crate) fn join(
+        mut wire: Box<dyn Wire>,
+        code: &Code,
+        timeout: Duration,
+        live: Liveness,
+        waker: Waker,
+    ) -> Result<Self, JoinError> {
+        let _ = wire.set_read_timeout(Some(timeout));
+        let _ = wire.set_write_timeout(Some(timeout));
+        let keys = handshake::guest(&mut wire, code)?;
+        let _ = wire.set_write_timeout(Some(WRITE_TIMEOUT));
+        let (Ok(rd), Ok(wr)) = (wire.try_clone(), wire.try_clone()) else {
             return Err(JoinError::Broken);
         };
 
@@ -73,7 +85,7 @@ impl Guest {
         let up = Arc::clone(&alive);
         let writer = thread::spawn(move || write_loop(wr, seal, &rx, live.beat));
         let reader = thread::spawn(move || {
-            read_loop(&rd, open, live.silence, |bytes| {
+            read_loop(rd, open, live.silence, |bytes| {
                 let _ = ev_tx.send(NetEvent::Frame(0, bytes));
                 waker();
             });
@@ -85,7 +97,7 @@ impl Guest {
             tx: Some(tx),
             alive,
             events,
-            wire: stream,
+            wire,
             threads: vec![writer, reader],
         })
     }
@@ -110,7 +122,7 @@ impl Guest {
 impl Drop for Guest {
     fn drop(&mut self) {
         let deadline = Instant::now() + JOIN_DEADLINE;
-        let _ = self.wire.shutdown(Shutdown::Both);
+        self.wire.shutdown();
         self.tx = None;
         join_until(std::mem::take(&mut self.threads), deadline);
     }

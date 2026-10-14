@@ -20,6 +20,8 @@ mod guest;
 mod handshake;
 mod host;
 mod lan;
+mod link;
+mod tcp;
 mod wire;
 
 #[cfg(test)]

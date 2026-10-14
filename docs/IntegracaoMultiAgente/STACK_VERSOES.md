@@ -60,6 +60,6 @@
 cd /home/enio/Documentos/Projetos/PH2D
 bash scripts/hw-profile.sh                     # o tier decide o MODO (L ou C) e a concorrência
 bash scripts/cargo-check-narrow.sh <crate>     # inner loop — só isto
-bash scripts/cargo-test-narrow.sh <crate>      # corrida dirigida de teste
+bash scripts/cargo-test-narrow.sh <crate> <nome>   # corrida dirigida de teste (sem nome: só com PH2D_SUITE="motivo: …")
 bash scripts/stack-audit.sh --tetos            # ANTES de responder sobre versões
 ```

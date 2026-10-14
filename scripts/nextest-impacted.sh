@@ -196,18 +196,24 @@ if [ -n "$_arvore" ] && [ -f "$_selos/$_chave" ] && [ "${PH2D_PORTAO_FORCAR:-0}"
 fi
 # ⭐⭐ **A CADÊNCIA (dono 2026-10-13: «se a cada mínima implementação temos testes de 10 min, nunca
 # acabaremos»).** Medido no mesmo dia: 36 corridas em 7 linhas, ~5,4 h; uma linha correu 20 vezes, uma a
-# cada pedido do dono. A suíte corre SÓ quando é imprescindível:
+# cada pedido do dono. 14/10 o dono alargou o passo de 5 para 10: na semana medida a suíte inteira foi
+# 8,7 h de espera e o `cargo test` de crate INTEIRA no meio do trabalho, 17 h (esse é a R5 do guarda,
+# `.claude/hooks/tecto-de-recursos.sh`). A suíte corre SÓ quando é imprescindível:
 #   PH2D_SUITE=fecho              — o fecho da linha (/pd-linha-fechar, /pd-gate-fechamento) e a integração;
-#   PH2D_SUITE="motivo: <texto>"  — imprescindível JÁ (ex.: mexeu num contrato/crate de que muitas dependem);
-#   ou ≥ PH2D_SUITE_CADA (5) commits desde a última suíte VERDE desta linha (sem ela, desde o merge-base).
+#   PH2D_SUITE="motivo: <texto>"  — imprescindível JÁ, e só nos casos da lista (uma fonte só: DIRETRIZ
+#                                   §6.2 «A cadência dos testes»; o CLAUDE.md §2 e o guarda R5 resumem-na);
+#   ou ≥ PH2D_SUITE_CADA (10) commits desde a última suíte VERDE desta linha (sem ela, desde o merge-base).
 # Fora disso RECUSA (exit 3): no meio do trabalho, os testes do item POR NOME (`cargo-test-narrow.sh`).
-_cada="${PH2D_SUITE_CADA:-5}"
+# Cada «motivo» fica registado em `.git/ph2d-suite-motivos.log` — a auditoria lê se a porta virou hábito.
+_cada="${PH2D_SUITE_CADA:-10}"
 _marca="$(git rev-parse --git-dir)/ph2d-ultima-suite-verde"
 _desde="$(cat "$_marca" 2>/dev/null || git merge-base main HEAD 2>/dev/null)"
 _feitos="$(git rev-list --count "${_desde}..HEAD" 2>/dev/null || echo "$_cada")"
 case "${PH2D_SUITE:-}" in
     fecho) echo "[nextest-impacted] cadência: o FECHO — corre." ;;
-    motivo:*) echo "[nextest-impacted] cadência: imprescindível —${PH2D_SUITE#motivo:}" ;;
+    motivo:*) echo "[nextest-impacted] cadência: imprescindível —${PH2D_SUITE#motivo:}"
+        printf '%s · %s · %s commit(s) desde a última verde ·%s\n' "$(date '+%F %R')" "$(git branch --show-current 2>/dev/null)" \
+            "$_feitos" "${PH2D_SUITE#motivo:}" >> "$(git rev-parse --git-common-dir)/ph2d-suite-motivos.log" 2>/dev/null ;;
     *)
         if [ "$_feitos" -lt "$_cada" ]; then
             echo "[nextest-impacted] ✗ CADÊNCIA: $_feitos commit(s) desde a última suíte verde (o passo é $_cada)." >&2

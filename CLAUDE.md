@@ -114,7 +114,7 @@ contexto*. As alavancas, por ordem:
   em blocos rodados, resumo = o MÍNIMO; uma compilação `smoke`; zero espera de calma. Medido em 05/10: a mesma
   rodada em `37 s` contra `4`–`5 h` (doc 121 §9.16).
 - **Inner loop = `bash scripts/cargo-check-narrow.sh <crate>`.** O teste não responde «a minha edição
-  entrou?». **Corrida dirigida = `bash scripts/cargo-test-narrow.sh <crate>`** (corre `check` na frente;
+  entrou?». **Corrida dirigida = `bash scripts/cargo-test-narrow.sh <crate> <nome>`** (corre `check` na frente;
   exit `0` verde · `1` vermelho · `2` não compilou). Medido em 02/10: `cargo test` ainda corre **~3×**
   mais que `check` (alvo ≤ 1), e é a maior parte do relógio de ferramentas.
 - ⛔ **Comando pesado vai por `bash scripts/ph2d-run.sh <cmd>`** (fatia da LINHA: CPU ≤ 50 %, RAM ≤ 24G,
@@ -122,10 +122,14 @@ contexto*. As alavancas, por ordem:
   Tectos e porquê: [TETOS_DE_RECURSO_POR_LINHA.md](docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
 - **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria,
   **1× sobre o diff acumulado**. ⛔ **A suíte tem CADÊNCIA, no script** (dono 13/10: *«a cada mínima
-  implementação 10 min de testes, nunca acabaremos»*): ela RECUSA antes de 5 commits desde a última verde,
-  salvo `PH2D_SUITE=fecho` (o fecho, a integração) ou `PH2D_SUITE="motivo: …"`. Por pedido do dono:
-  testes por NOME. Ao fechar a linha: `bash scripts/agent-loop-profile.sh` (as réguas deste §2, com o
-  alvo de cada uma) e `rm -rf target/*/incremental`.
+  implementação 10 min de testes, nunca acabaremos»*; 14/10: *«a cada 10 commits na linha ou quando
+  forem de facto essenciais»*): ela RECUSA antes de **10** commits desde a última verde, salvo
+  `PH2D_SUITE=fecho` (o fecho, a integração) ou `PH2D_SUITE="motivo: …"`. ⛔ **No meio do trabalho,
+  teste POR NOME** — o guarda (R5) recusa a crate INTEIRA sem nome (medido 14/10: 17 h/semana, o dobro
+  da suíte). **Imprescindível** (o único `motivo:` válido): contrato §6 ou crate de que muitas dependem ·
+  formato gravado · deps/features de `Cargo.toml` · código movido entre crates · crate NOVA · gate de
+  registo de tool/node/painel · prova de mutação ([DIRETRIZ §6.2](docs/IntegracaoMultiAgente/DIRETRIZ.md)). Ao fechar a linha: `bash scripts/agent-loop-profile.sh` (as réguas deste
+  §2, com o alvo de cada uma) e `rm -rf target/*/incremental`.
 - **Comentário de código curto.** O porquê histórico (o que foi medido, o que foi recusado) vive no doc
   ou no handoff, com link; o código diz a lei. Medido: 29 % das linhas `.rs` são comentário, e cada
   leitura de código paga por elas.

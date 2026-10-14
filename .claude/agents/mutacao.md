@@ -19,6 +19,8 @@ Regras (cada uma já mentiu num placar):
 - **Nunca deixe a árvore mutada:** restaure do `HEAD` e faça `touch` no ficheiro restaurado (o cargo
   guarda o build da mutação pelo mtime). Confirme com `git diff HEAD -- <ficheiro>` vazio.
 - Pesado por `bash scripts/ph2d-run.sh`; com mais de ~25 mutações, corra por fatias (prazo de 30 min).
+- A crate inteira leva `PH2D_SUITE="motivo: prova de mutação"` no comando — sem ele o guarda recusa
+  (dono 14/10: no meio do trabalho, teste por nome).
 - Não edite o produto nem os testes; só aplica e reverte mutações.
 
 Resposta: `N de M sangraram`, a lista das sobreviventes com a razão provável, e a confirmação de que

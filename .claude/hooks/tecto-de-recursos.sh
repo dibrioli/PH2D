@@ -61,6 +61,65 @@ Runbook: docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md"
   fi
 fi
 
+# ── R5 · no meio do trabalho, teste POR NOME ──────────────────────────────────
+# Dono 13/10 e 14/10: *«testes apenas a cada 10 commits na linha ou quando forem de facto
+# essenciais»*. A suíte já tem cadência no `nextest-impacted.sh`, mas medido em 14/10 (7 dias,
+# ~900 sessões): o `cargo test` da crate INTEIRA, sem nome de teste, custou **17 h** de espera
+# (1 559 corridas a 26 s + 269 em `--release` a 74 s) contra **8,7 h** da suíte — a mini-suíte a
+# cada edição era o maior custo, e a DIRETRIZ ainda a mandava. O teste do ITEM, por nome, passa.
+# ⚠️ Falha ABERTA como o resto: qualquer palavra solta conta como nome de teste.
+tem_nome_de_teste() { # $1 = argumentos depois de `test`/`nextest run`/do crate do narrow
+  local t espera=0
+  case "$1" in *test\(*|*--no-run*|*--list*|*--help*) return 0 ;; esac
+  for t in $1; do
+    if [ "$espera" = 1 ]; then espera=0; continue; fi
+    case "$t" in
+      --|';'|'&'|'|'|')') ;;
+      --*=*) ;;
+      -p|--package|-F|--features|--test|--bench|--example|--bin|-j|--jobs|--profile|--cargo-profile|\
+      --target|--target-dir|--manifest-path|--color|--message-format|-Z|--config|-E|--filterset|\
+      --partition|--test-threads|--retries|--run-ignored|--format|--skip|--logfile|--exclude) espera=1 ;;
+      -*) ;;
+      *) return 0 ;;
+    esac
+  done
+  return 1
+}
+if ! printf '%s' "$cmd" | grep -qE 'PH2D_SUITE='; then
+  # Os redireccionamentos saem antes (`2>/dev/null` não é nome de teste).
+  limpo="$(printf '%s' "$cmd" | sed -E 's/[0-9]*[<>]+&?[[:space:]]*[^[:space:]]+//g')"
+  while IFS= read -r seg; do
+    [ -n "$seg" ] || continue
+    if printf '%s' "$seg" | grep -qE 'cargo-test-narrow'; then
+      args="$(printf '%s' "$seg" | sed -E 's/.*cargo-test-narrow\.sh[[:space:]]*[^[:space:]]*//')"
+    else
+      args="$(printf '%s' "$seg" | sed -E 's/.*cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?(test|nextest[[:space:]]+run)//')"
+    fi
+    tem_nome_de_teste "$args" && continue
+    recusa "⛔ Testes da crate INTEIRA no meio do trabalho.
+
+Regra do dono (14/10): testes só a cada 10 commits da linha, ou quando forem de facto
+essenciais. Medido na semana de 14/10: rodar a crate inteira sem nome de teste custou 17 h
+de espera — o dobro da suíte inteira." \
+"No meio do trabalho, rode o teste do ITEM pelo nome:
+
+  bash scripts/cargo-test-narrow.sh <crate> <nome_ou_pedaço_do_nome>
+
+A crate inteira só quando é imprescindível — e diga porquê (fica no comando):
+
+  PH2D_SUITE=\"motivo: <porquê>\" ${cmd}
+
+Imprescindível é: contrato congelado (CLAUDE.md §6) ou crate de que muitas dependem; formato
+gravado (schema, blob com versão); dependências/features de um Cargo.toml; código movido
+entre crates; crate NOVA; o gate de registo de uma tool/node/painel nova; prova de mutação.
+(A lista, com o porquê: DIRETRIZ §6.2 «A cadência dos testes».)
+A suíte do diff: \`bash scripts/nextest-impacted.sh\` (corre sozinha a cada 10 commits);
+o fecho da linha: PH2D_SUITE=fecho."
+  # Só em POSIÇÃO de comando: `grep "cargo test" docs/` menciona, não corre.
+  done < <(printf '%s' "$limpo" | grep -oE \
+    '(^|[;&|(`[:space:]])cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?(test|nextest[[:space:]]+run)([[:space:]][^;&|]*|[;&|)]|$)|(^|[;&|(`]|bash)[[:space:]]*[^[:space:];&|]*scripts/cargo-test-narrow\.sh[^;&|]*')
+fi
+
 # ── R2 · vigia de fundo tem de ter prazo ──────────────────────────────────────
 # Um `until …; do sleep 60; done` em segundo plano nunca termina sozinho: se a
 # condição não chegar, ele fica a girar para sempre e a sua ausência de saída

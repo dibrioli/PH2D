@@ -33,6 +33,14 @@ t "kill \$PPID"           'kill $PPID'                                      fals
 _sd=$(pgrep -u "$(id -u)" -x systemd | head -1)
 [ -n "$_sd" ] && t "kill do systemd --user ($_sd)" "kill $_sd"             false deny
 t "kill -9 do PID 1"      'kill -9 1'                                       false deny
+# ⭐ R5 — a crate INTEIRA no meio do trabalho (dono 14/10).
+t "crate inteira pela porta" 'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs'   false deny
+t "crate inteira --release"  'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs --release 2>&1 | tail -20' false deny
+t "só o binário it"       'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs --test it -- --nocapture' false deny
+t "narrow sem nome"       'bash scripts/cargo-test-narrow.sh ph2d-timeline'  false deny
+t "narrow caminho absoluto" 'cd /x && bash /home/enio/Documentos/Projetos/PH2D/scripts/cargo-test-narrow.sh ph2d-ecs 2>/dev/null' false deny
+t "nextest de uma crate"  'bash scripts/ph2d-run.sh cargo nextest run -p ph2d-ecs --cargo-profile ci-test' false deny
+t "seguido de ;"          'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs; echo fim' false deny
 t "kill -9 -1"            'kill -9 -1'                                      false deny
 t "pkill -u"              'pkill -u enio'                                   false deny
 t "pkill do kwin"         'pkill -f kwin_wayland'                           false deny
@@ -45,9 +53,16 @@ echo "— tem de passar —"
 t "LAÇO INTERNO: check"   'cargo check -p ph2d-field-eval --all-targets'    false passa
 t "cargo fmt"             'cargo fmt --all -- --check'                      false passa
 t "cargo tree"            'cargo tree -p ph2d-field-eval'                   false passa
-t "já pela porta"         'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs' false passa
-t "porta com a placa"     'PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-field-gpu' false passa
-t "teste dirigido"        'bash scripts/cargo-test-narrow.sh ph2d-timeline' false passa
+t "já pela porta"         'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs weapon' false passa
+t "porta com a placa"     'PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-field-gpu -- --ignored lente' false passa
+t "teste dirigido"        'bash scripts/cargo-test-narrow.sh ph2d-timeline nesting' false passa
+t "nome depois do --"     'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs --test it -- --exact it::weapon::g2' false passa
+t "nextest com test()"    "bash scripts/ph2d-run.sh cargo nextest run -p ph2d-ecs -E 'test(weapon)'" false passa
+t "crate inteira COM motivo" 'PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-node-x' false passa
+t "o fecho"               'PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo test -p ph2d-ecs' false passa
+t "só compilar os testes" 'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs --no-run' false passa
+t "a suíte do diff"       'bash scripts/nextest-impacted.sh'                false passa
+t "grep que MENCIONA narrow" 'grep -rn cargo-test-narrow.sh docs/'         false passa
 t "o portão de envio"     'bash scripts/ship.sh'                            false passa
 t "git"                   'git status --short'                              false passa
 t "vigia COM prazo"       "timeout 900 bash -c 'until test -f /tmp/x; do sleep 30; done'" true passa

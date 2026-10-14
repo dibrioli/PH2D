@@ -40,10 +40,11 @@
 # diff acumulado (CLAUDE.md §2). Este script é para a corrida dirigida — o gate
 # red-first, a prova de mutação, o «este teste passou?».
 #
-# USO
-#   bash scripts/cargo-test-narrow.sh ph2d-timeline
-#   bash scripts/cargo-test-narrow.sh ph2d-tool-painter --release -- --ignored
-#   PH2D_SKIP_CHECK=1 bash scripts/cargo-test-narrow.sh ph2d-ecs   # pula a porta
+# USO — sempre com o NOME do teste (dono 14/10; sem nome o guarda R5 recusa):
+#   bash scripts/cargo-test-narrow.sh ph2d-timeline nesting
+#   bash scripts/cargo-test-narrow.sh ph2d-tool-painter --release -- --ignored dab_
+#   PH2D_SKIP_CHECK=1 bash scripts/cargo-test-narrow.sh ph2d-ecs weapon   # pula a porta
+#   PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-node-x   # a crate inteira
 set -uo pipefail
 
 # ── A PORTA DE RECURSOS ────────────────────────────────────────────────────────

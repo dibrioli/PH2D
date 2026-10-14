@@ -11,7 +11,8 @@ Mutações **por lei, não por linha**: o bastante para cada cláusula sangrar (
 Delegue a execução ao agente `mutacao` (Sonnet) com a lista de mutações e as âncoras; a janela
 principal decide QUAIS mutações e lê o placar.
 
-Protocolo (rode SEMPRE por `bash scripts/cargo-test-narrow.sh <crate>` — ele põe o
+Protocolo (rode SEMPRE por `PH2D_SUITE="motivo: prova de mutação" bash scripts/cargo-test-narrow.sh <crate>`
+— a crate inteira, porque o passo 2 confere que só o gate certo sangra; sem o motivo o guarda recusa; ele põe o
 `check` na frente, e o exit `2` distingue *não compilou* de *o gate sangrou*, que é
 a distinção inteira desta prova):
 1. Rode e mostre VERDE primeiro (RED sobre nunca-visto-verde não prova nada).

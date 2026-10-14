@@ -15,7 +15,8 @@ Regras do repositório que valem para si:
   RAM ≤ 24G, prazo 30 min). Toca na placa de vídeo? `PH2D_GPU=1 bash scripts/ph2d-run.sh …`.
   Nunca vigie processos com `pgrep` em laço; nunca deixe vigia de fundo sem prazo.
 - Inner loop: `bash scripts/cargo-check-narrow.sh <crate>`. Teste dirigido:
-  `bash scripts/cargo-test-narrow.sh <crate> [filtro]` (exit `0` verde · `1` vermelho · `2` não
+  `bash scripts/cargo-test-narrow.sh <crate> <nome>` — sem nome o guarda recusa (crate inteira só com
+  `PH2D_SUITE="motivo: …"`, CLAUDE.md §2) (exit `0` verde · `1` vermelho · `2` não
   compilou). Portão de fecho: `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh`
   (SÓ no fecho da linha ou com um motivo escrito em `PH2D_SUITE="motivo: …"` — a CADÊNCIA recusa o resto),
   `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets`, clippy `--all-targets -D warnings`,

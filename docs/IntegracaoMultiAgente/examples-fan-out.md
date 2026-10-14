@@ -90,11 +90,11 @@ O QUE VOCÊ NÃO TOCA:
 
 WIRING (sem colisão):
   cargo run -p ph2d-node-sync       # regenera register_all_nodes + deps
-  cargo test -p ph2d-node-registry-init   # staleness gate fecha
+  PH2D_SUITE="motivo: gate de registo" bash scripts/cargo-test-narrow.sh ph2d-node-registry-init
 
 VALIDAÇÃO (codificação rápida):
   cargo check -p ph2d-node-shader-blur
-  cargo test  -p ph2d-node-shader-blur
+  PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-node-shader-blur
   cargo clippy -p ph2d-node-shader-blur --all-targets -- -D warnings
   cargo fmt -p ph2d-node-shader-blur
 
@@ -228,8 +228,8 @@ mod tests {
 
 ```bash
 cargo run  -p ph2d-node-sync               # regenera wiring
-cargo test -p ph2d-node-shader-blur        # crate-local
-cargo test -p ph2d-node-registry-init      # staleness + collision gates
+PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-node-shader-blur
+PH2D_SUITE="motivo: gate de registo" bash scripts/cargo-test-narrow.sh ph2d-node-registry-init
 ```
 
 Saída esperada do sync:
@@ -324,11 +324,11 @@ WIRING (sem colisão):
                                           # (incl. image_tools order
                                           #  list + icon_slug match arms
                                           #  derivados do design TOML)
-  cargo test -p ph2d-tool-registry-init   # 6 staleness gates fecham
+  PH2D_SUITE="motivo: gate de registo" bash scripts/cargo-test-narrow.sh ph2d-tool-registry-init
 
 VALIDAÇÃO:
   cargo check -p ph2d-tool-grayscale
-  cargo test  -p ph2d-tool-grayscale
+  PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-tool-grayscale
   cargo clippy -p ph2d-tool-grayscale --all-targets -- -D warnings
 
 QUANDO TERMINAR, reporte:
@@ -553,8 +553,8 @@ heap_script_mb = 0
 
 ```bash
 cargo run  -p ph2d-tool-sync               # regenera 5 superfícies
-cargo test -p ph2d-tool-grayscale          # crate-local (algorithm + manifest)
-cargo test -p ph2d-tool-registry-init      # 6 staleness gates + 3 design-sync
+PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-tool-grayscale
+PH2D_SUITE="motivo: gate de registo" bash scripts/cargo-test-narrow.sh ph2d-tool-registry-init
 ```
 
 Saída esperada do sync:

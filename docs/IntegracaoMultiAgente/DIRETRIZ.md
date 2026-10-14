@@ -664,13 +664,13 @@ O QUE VOCÊ NÃO TOCA:
 - Cargo.toml raiz.
 
 WIRING (sem colisão, sem edit central):
-  cargo run -p ph2d-<family>-sync          # regenera tudo
-  cargo test -p ph2d-<family>-registry-init  # staleness fecha
+  bash scripts/ph2d-run.sh cargo run -p ph2d-<family>-sync   # regenera tudo
+  PH2D_SUITE="motivo: gate de registo" bash scripts/cargo-test-narrow.sh ph2d-<family>-registry-init
 
-VALIDAÇÃO (§6):
-  cargo check  -p ph2d-<family>-<slug>
-  cargo test   -p ph2d-<family>-<slug>
-  cargo clippy -p ... --all-targets -- -D warnings
+VALIDAÇÃO (§6; a crate é NOVA, então os testes dela são todos do item):
+  bash scripts/cargo-check-narrow.sh ph2d-<family>-<slug>
+  PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-<family>-<slug>
+  cargo clippy -p ... --all-targets -- -D warnings   # pela porta (ph2d-run.sh), 1× no fim
   cargo fmt -p ...
 
 NOMES (gates ativos):
@@ -822,7 +822,7 @@ Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por naturez
 > "Você toca tests em vários crates conforme os achados. Exceção autorizada à regra de uma pasta isolada (DIRETRIZ §1.4). Cada commit ainda fica T1 single-crate sempre que possível."
 
 **Regras:**
-1. Cada commit valida-se sozinho (`cargo test -p <crate>` verde antes).
+1. Cada commit valida-se sozinho: `cargo-check-narrow.sh <crate>` verde e os testes que o commit toca, **por nome** (`cargo-test-narrow.sh <crate> <nome>`). A crate inteira e a suíte seguem a cadência do §6.2 (dono 14/10).
 2. Não tocar production code de foundational sem motivo claro — em audit de tests, só `tests/` + `#[cfg(test)]`.
 3. Documentar risk surface no relatório final.
 
@@ -971,11 +971,12 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
 | Situação | Comando | Tempo |
 |---|---|---|
 | Editou 1 arquivo, quer ver se compila | `cargo check -p <crate>` | 3-15s |
-| Editou crate, quer rodar testes | `bash scripts/cargo-test-narrow.sh <crate>` (tecto de 900 s, varre órfãos) | 5-30s |
-| Quer rodar UM teste | `bash scripts/cargo-test-narrow.sh <crate> <pattern>` | 1-5s |
-| Teste PESADO (malha, campo, física) | `cargo nextest run -p <crate> --cargo-profile ci-test` — no `dev` uma suíte custou 55 min | — |
+| Quer rodar o teste do ITEM | `bash scripts/cargo-test-narrow.sh <crate> <nome_ou_pedaço>` (tecto de 900 s, varre órfãos) | 1-5s |
+| Quer a crate INTEIRA | só se for **imprescindível** (lista abaixo): `PH2D_SUITE="motivo: <porquê>" bash scripts/cargo-test-narrow.sh <crate>` — sem o motivo o guarda recusa | 5-75s |
+| Teste PESADO (malha, campo, física) | `bash scripts/ph2d-run.sh cargo nextest run -p <crate> --cargo-profile ci-test -E 'test(<nome>)'` — no `dev` uma suíte custou 55 min | — |
+| A suíte do diff | `bash scripts/nextest-impacted.sh` — corre a cada **10 commits** da linha; antes disso recusa | 1-20 min |
 | Editou foundational, quer ver downstream | `cargo check --workspace` | 30-60s warm |
-| Vai commitar (T2 hook vai rodar) | **nada** — deixa o hook validar | 0s |
+| Vai commitar | **nada** — não há hook de commit (conferido 14/10: nenhum `pre-commit` instalado); a validação é a cadência do §6.2 | 0s |
 | **Antes do push (obrigatório)** | `./scripts/ship.sh` | 3-8min warm |
 | Só mudou `.md` | **nada** — hook é T0 (skip) | 0s |
 
@@ -990,11 +991,32 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
 
 **Não rode `cargo test` durante editing burst.** Só no hook ou em diagnóstico de falha específica.
 
+**A cadência dos testes (dono 13/10 e 14/10: *«testes apenas a cada 10 commits na linha ou quando forem
+de facto essenciais depois de uma implementação»*)** — e ela está nos scripts, não só aqui:
+
+| Quando | O quê | Quem o faz valer |
+|---|---|---|
+| No meio do trabalho | os testes do item, **por nome** | o guarda (`.claude/hooks/tecto-de-recursos.sh`, R5) recusa a crate inteira sem nome |
+| A cada **10 commits** da linha | `bash scripts/nextest-impacted.sh` (a suíte do diff) | o script recusa antes disso (exit 3, em ~2 s) |
+| Imprescindível | crate inteira ou suíte com `PH2D_SUITE="motivo: <porquê>"` | o motivo fica no comando e no `.git/ph2d-suite-motivos.log` |
+| Fecho da linha · integração | `PH2D_SUITE=fecho …` | `/pd-linha-fechar`, `/pd-gate-fechamento`, `foundational-integrate.sh` |
+
+**Imprescindível é só isto:** mexeu num contrato congelado (CLAUDE.md §6) ou numa crate de que muitas
+dependem · mudou um formato gravado (schema, blob com versão) · mudou dependências/features de um
+`Cargo.toml` · moveu código entre crates · a crate é NOVA (todos os testes dela são do item) · o gate de
+registo de uma tool/node/painel nova · prova de mutação (`/pd-mutacao`: ela confere que SÓ o gate certo
+sangra, e isso pede a crate inteira). Esta é a fonte da lista; o CLAUDE.md §2 e o guarda resumem-na.
+«Para confirmar», «antes de entregar» e «para ver se está tudo
+bem» não são motivo — é para isso que existe o passo de 10 e o fecho.
+Medido em 14/10 (7 dias, ~900 sessões): a crate inteira sem nome custou **17 h** de espera, a suíte
+**8,7 h**; o teste por nome, **1–5 s**.
+
 ### 6.3 O que NÃO fazer
 
 - ❌ `cargo test --workspace` depois de cada edit
 - ❌ `cargo clippy --workspace --all-targets` a cada COMMIT (SIM antes do PUSH via ship.sh)
 - ❌ Re-rodar testes que já passaram pra "confirmar"
+- ❌ A crate inteira (`cargo test -p <crate>` sem nome) a cada edição ou a cada commit — §6.2
 - ❌ Validar baseline no início da sessão se último commit já está verde
 - ❌ `cargo build` antes de `cargo test` (test já compila)
 - ❌ Re-`Read` arquivo que acabou de editar
@@ -1344,14 +1366,13 @@ de medir — a re-quebra de linhas do fmt reexpande o arquivo depois do corte.
 ### 10.3 Comandos mais usados
 
 ```bash
-# Implementador — durante edição
-cargo check -p ph2d-<family>-<slug>
-cargo test  -p ph2d-<family>-<slug>
-cargo test  -p ph2d-<family>-<slug> -- some_pattern
+# Implementador — durante edição (testes POR NOME; §6.2 tem a cadência)
+bash scripts/cargo-check-narrow.sh ph2d-<family>-<slug>
+bash scripts/cargo-test-narrow.sh  ph2d-<family>-<slug> some_pattern
 
 # Drop-crate fan-out — Implementador roda após criar a pasta
-cargo run  -p ph2d-<family>-sync          # regenera wiring
-cargo test -p ph2d-<family>-registry-init # staleness fecha
+bash scripts/ph2d-run.sh cargo run -p ph2d-<family>-sync   # regenera wiring
+PH2D_SUITE="motivo: gate de registo" bash scripts/cargo-test-narrow.sh ph2d-<family>-registry-init
 
 # Coordenador — antes do push (paridade-CI completa, obrigatório)
 ./scripts/ship.sh

@@ -95,7 +95,7 @@ WIRING (sem colisão):
 VALIDAÇÃO (codificação rápida):
   cargo check -p ph2d-node-shader-blur
   PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-node-shader-blur
-  cargo clippy -p ph2d-node-shader-blur --all-targets -- -D warnings
+  PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy -p ph2d-node-shader-blur --all-targets -- -D warnings   # 1× no fecho
   cargo fmt -p ph2d-node-shader-blur
 
 NOMES (gates ativos):
@@ -329,7 +329,7 @@ WIRING (sem colisão):
 VALIDAÇÃO:
   cargo check -p ph2d-tool-grayscale
   PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-tool-grayscale
-  cargo clippy -p ph2d-tool-grayscale --all-targets -- -D warnings
+  PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy -p ph2d-tool-grayscale --all-targets -- -D warnings   # 1× no fecho
 
 QUANDO TERMINAR, reporte:
   "Tool grayscale (sabor 1) pronto. Commit local: <sha>. cargo test

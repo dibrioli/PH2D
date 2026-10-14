@@ -19,7 +19,8 @@ Regras do repositório que valem para si:
   `PH2D_SUITE="motivo: …"`, CLAUDE.md §2) (exit `0` verde · `1` vermelho · `2` não
   compilou). Portão de fecho: `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh`
   (SÓ no fecho da linha ou com um motivo escrito em `PH2D_SUITE="motivo: …"` — a CADÊNCIA recusa o resto),
-  `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets`, clippy `--all-targets -D warnings`,
+  `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets`, clippy `--all-targets -D warnings`
+  (com `PH2D_SUITE=fecho` na frente — fora do fecho o guarda recusa o clippy),
   `cargo fmt --all --check`, `bash scripts/censos-da-arvore-combinada.sh`.
 - Nunca canalize a saída de um portão por `| head`/`| tail` sem preservar o código de saída: leia o
   `Summary`/`test result:` e o exit code.

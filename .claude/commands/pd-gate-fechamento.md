@@ -8,7 +8,8 @@ Rode o gate batched de fechamento sobre o diff acumulado, 1× só:
    commits desde a última suíte verde — dono 13/10 e 14/10; o perfil `ci-test` tem `incremental = false` e o
    `.config/nextest.toml` tem tecto global de 180 s e `fail-fast = false` desde 10/09 —
    os prefixos `CARGO_INCREMENTAL=0` e `--no-fail-fast` deixaram de ser necessários)
-2. clippy `--all-targets` + features
+2. `PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings` + features
+   (sem o `PH2D_SUITE=fecho` o guarda recusa — clippy é só do fecho, dono 14/10)
 3. `shells/desktop/tests/it/file_loc_caps.rs` + `arch_safe_clamp_only`
 4. auditoria ≥2 lentes
 

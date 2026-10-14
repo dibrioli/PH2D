@@ -41,6 +41,20 @@ t "narrow sem nome"       'bash scripts/cargo-test-narrow.sh ph2d-timeline'  fal
 t "narrow caminho absoluto" 'cd /x && bash /home/enio/Documentos/Projetos/PH2D/scripts/cargo-test-narrow.sh ph2d-ecs 2>/dev/null' false deny
 t "nextest de uma crate"  'bash scripts/ph2d-run.sh cargo nextest run -p ph2d-ecs --cargo-profile ci-test' false deny
 t "seguido de ;"          'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs; echo fim' false deny
+# ⭐ R7 — clippy no meio do trabalho; R6 — edição que não prova que casou (dono 14/10).
+t "clippy de uma crate"   'bash scripts/ph2d-run.sh cargo clippy -p ph2d-ecs --all-targets' false deny
+t "clippy do workspace"   'bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings' false deny
+t "sed -i"                "sed -i 's/velho/novo/' crates/x/src/lib.rs"     false deny
+t "sed -E -i.bak"         "cd crates && sed -E -i.bak 's/a/b/' x.rs"         false deny
+t "perl -pi"              "perl -pi -e 's/a/b/' x.rs"                        false deny
+t "python replace SEM assert" "python3 - <<'PY'
+from pathlib import Path
+p = Path('x.rs'); s = p.read_text()
+p.write_text(s.replace('a', 'b'))
+PY"                                                                           false deny
+t "heredoc a BASH corre"  "bash <<'EOF'
+cargo test -p ph2d-ecs
+EOF"                                                                          false deny
 t "kill -9 -1"            'kill -9 -1'                                      false deny
 t "pkill -u"              'pkill -u enio'                                   false deny
 t "pkill do kwin"         'pkill -f kwin_wayland'                           false deny
@@ -63,6 +77,30 @@ t "o fecho"               'PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo test 
 t "só compilar os testes" 'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs --no-run' false passa
 t "a suíte do diff"       'bash scripts/nextest-impacted.sh'                false passa
 t "grep que MENCIONA narrow" 'grep -rn cargo-test-narrow.sh docs/'         false passa
+t "clippy no FECHO"       'PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings' false passa
+t "sed -n (ler)"          'sed -n 1,40p crates/x/src/lib.rs'                false passa
+t "sed para OUTRO ficheiro" "sed -e 's/a/b/' x.rs > y.rs"                   false passa
+t "grep que MENCIONA sed -i" "grep -rn 'sed -i' docs/"                     false passa
+t "sed -i CONFERIDO"      "sed -i 's/a/b/' x.rs && grep -c 'b' x.rs"         false passa
+t "python com .index()"   "python3 - <<'PY'
+p = 'x.rs'; s = open(p).read(); i = s.index('fn a')
+open(p, 'w').write(s.replace('fn a', 'fn b'))
+PY"                                                                           false passa
+t "--test de um ficheiro" 'bash scripts/ph2d-run.sh cargo test -p ph2d-eval-motion --test anel_memoria -- --nocapture' false passa
+t "python replace COM assert" "python3 - <<'PY'
+from pathlib import Path
+p = Path('x.rs'); s = p.read_text(); assert s.count('a') == 1
+p.write_text(s.replace('a', 'b'))
+PY"                                                                           false passa
+t "python re.subn + raise" "python3 - <<'PY'
+import re, pathlib
+p = pathlib.Path('x'); s, n = re.subn('a', 'b', p.read_text())
+if n != 2: raise SystemExit(n)
+p.write_text(s)
+PY"                                                                           false passa
+t "heredoc a python MENCIONA cargo test" "python3 - <<'PY'
+print('cargo test -p ph2d-ecs e cargo clippy -p x')
+PY"                                                                           false passa
 t "o portão de envio"     'bash scripts/ship.sh'                            false passa
 t "git"                   'git status --short'                              false passa
 t "vigia COM prazo"       "timeout 900 bash -c 'until test -f /tmp/x; do sleep 30; done'" true passa

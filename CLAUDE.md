@@ -108,7 +108,11 @@ contexto*. As alavancas, por ordem:
   **mesma** mensagem. Medido em 02/10: só 5 % dos passos fazem mais de uma coisa.
 - **EDITE pela ferramenta `Edit`**, não por `python3`/`sed` — um `replace()` que não casa é no-op
   SILENCIOSO; o `Edit` falha alto. Script só onde é a forma certa (mutação, renomear em N arquivos),
-  sempre com `assert` de contagem.
+  sempre com `assert` de contagem. ⛔ O guarda (R6, 14/10) recusa `sed -i`/`perl -i` sem `grep -c` na
+  mesma linha e o `replace()`/`re.sub()` que grava sem `assert`/`.index()` — eram 6 % das edições.
+- **Conversa grande avisa o Enio** (`.claude/hooks/tamanho-da-conversa.sh`, a partir de 300 mil por
+  passo): ao receber o aviso, delegue; se o pedido é outra onda, diga-lhe que uma janela nova sai mais
+  barata — ⛔ sem encurtar a conversa à força (resumir a meio de uma tarefa perde detalhe).
 - ⛔ **Comparar velocidade NÃO espera horas** ([MEDIR_VELOCIDADE.md](docs/DevOps/MEDIR_VELOCIDADE.md)): as
   variantes são caminhos do MESMO processo (`override`/flag em execução, nunca `const` recompilada), intercalados
   em blocos rodados, resumo = o MÍNIMO; uma compilação `smoke`; zero espera de calma. Medido em 05/10: a mesma
@@ -121,7 +125,8 @@ contexto*. As alavancas, por ordem:
   prazo 30 min; `PH2D_GPU=1` = exclusão na placa). O guarda recusa vigia de fundo sem prazo.
   Tectos e porquê: [TETOS_DE_RECURSO_POR_LINHA.md](docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
 - **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria,
-  **1× sobre o diff acumulado**. ⛔ **A suíte tem CADÊNCIA, no script** (dono 13/10: *«a cada mínima
+  **1× sobre o diff acumulado**. ⛔ **clippy só no fecho** (`PH2D_SUITE=fecho …`; o guarda R7 recusa o
+  resto — medido 14/10: 1 161 corridas a meio, 8 h/semana). ⛔ **A suíte tem CADÊNCIA, no script** (dono 13/10: *«a cada mínima
   implementação 10 min de testes, nunca acabaremos»*; 14/10: *«a cada 10 commits na linha ou quando
   forem de facto essenciais»*): ela RECUSA antes de **10** commits desde a última verde, salvo
   `PH2D_SUITE=fecho` (o fecho, a integração) ou `PH2D_SUITE="motivo: …"`. ⛔ **No meio do trabalho,

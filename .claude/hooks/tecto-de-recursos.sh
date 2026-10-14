@@ -34,13 +34,24 @@ recusa() { # $1 = porquê · $2 = a correcção
   exit 0
 }
 
+# O que o shell EXECUTA: o corpo de um heredoc dado a python/cat/tee é texto, não comando. Sem isto
+# um `python3 - <<'PY'` que substitui «cargo test» num doc era recusado pela R1 (14/10, na sessão que
+# escreveu a R5). Heredoc dado a `bash`/`sh` fica — esse corpo corre. R3 e R6 leem o `cmd` inteiro.
+exe="$(printf '%s\n' "$cmd" | awk '
+  fim != "" { if ($0 ~ "^[[:space:]]*" fim "[[:space:]]*$") { fim = ""; print } ; next }
+  { print
+    if (match($0, /<<-?[[:space:]]*[\047"]?[A-Za-z_][A-Za-z0-9_]*[\047"]?/) &&
+        $0 !~ /(^|[;&|[:space:]])(ba|z|da)?sh([[:space:]]+-[a-z]+)*[[:space:]]*<</) {
+      d = substr($0, RSTART, RLENGTH); gsub(/<<-?[[:space:]]*|[\047"]/, "", d); fim = d } }' 2>/dev/null)" || exe="$cmd"
+[ -n "$exe" ] || exe="$cmd"
+
 # ── R1 · comando pesado tem de passar pela porta ──────────────────────────────
 # ⚠️ O laço interno NÃO entra aqui: `cargo check/fmt/tree/metadata` custam 1–3 s e
 # são a resposta certa a «a minha edição entrou?» (CLAUDE.md §2). Encarecê-los
 # empurraria os agentes de volta para o `cargo test`, que é o defeito 4,3:1 que o
 # repo já mediu.
-if printf '%s' "$cmd" | grep -qE '(^|[;&|[:space:]])cargo[[:space:]]+([^;&|]*[[:space:]])?(test|nextest|build|run|bench|clippy)([[:space:]]|$)'; then
-  if ! printf '%s' "$cmd" | grep -q 'ph2d-run\.sh'; then
+if printf '%s' "$exe" | grep -qE '(^|[;&|[:space:]])cargo[[:space:]]+([^;&|]*[[:space:]])?(test|nextest|build|run|bench|clippy)([[:space:]]|$)'; then
+  if ! printf '%s' "$exe" | grep -q 'ph2d-run\.sh'; then
     recusa "⛔ Comando pesado fora da porta de recursos.
 
 Sem a porta, esta linha pode tomar a máquina inteira — e foi isso que estragou os
@@ -72,11 +83,14 @@ tem_nome_de_teste() { # $1 = argumentos depois de `test`/`nextest run`/do crate 
   local t espera=0
   case "$1" in *test\(*|*--no-run*|*--list*|*--help*) return 0 ;; esac
   for t in $1; do
+    # `--test <ficheiro>` escolhe UM binário de integração — selecção, salvo o `it`, que É a crate.
+    if [ "$espera" = 2 ]; then [ "$t" = it ] || return 0; espera=0; continue; fi
     if [ "$espera" = 1 ]; then espera=0; continue; fi
     case "$t" in
+      --test) espera=2 ;;
       --|';'|'&'|'|'|')') ;;
       --*=*) ;;
-      -p|--package|-F|--features|--test|--bench|--example|--bin|-j|--jobs|--profile|--cargo-profile|\
+      -p|--package|-F|--features|--bench|--example|--bin|-j|--jobs|--profile|--cargo-profile|\
       --target|--target-dir|--manifest-path|--color|--message-format|-Z|--config|-E|--filterset|\
       --partition|--test-threads|--retries|--run-ignored|--format|--skip|--logfile|--exclude) espera=1 ;;
       -*) ;;
@@ -85,9 +99,9 @@ tem_nome_de_teste() { # $1 = argumentos depois de `test`/`nextest run`/do crate 
   done
   return 1
 }
-if ! printf '%s' "$cmd" | grep -qE 'PH2D_SUITE='; then
+if ! printf '%s' "$exe" | grep -qE 'PH2D_SUITE='; then
   # Os redireccionamentos saem antes (`2>/dev/null` não é nome de teste).
-  limpo="$(printf '%s' "$cmd" | sed -E 's/[0-9]*[<>]+&?[[:space:]]*[^[:space:]]+//g')"
+  limpo="$(printf '%s' "$exe" | sed -E 's/[0-9]*[<>]+&?[[:space:]]*[^[:space:]]+//g')"
   while IFS= read -r seg; do
     [ -n "$seg" ] || continue
     if printf '%s' "$seg" | grep -qE 'cargo-test-narrow'; then
@@ -118,6 +132,66 @@ o fecho da linha: PH2D_SUITE=fecho."
   # Só em POSIÇÃO de comando: `grep "cargo test" docs/` menciona, não corre.
   done < <(printf '%s' "$limpo" | grep -oE \
     '(^|[;&|(`[:space:]])cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?(test|nextest[[:space:]]+run)([[:space:]][^;&|]*|[;&|)]|$)|(^|[;&|(`]|bash)[[:space:]]*[^[:space:];&|]*scripts/cargo-test-narrow\.sh[^;&|]*')
+fi
+
+# ── R7 · clippy é do FECHO ────────────────────────────────────────────────────
+# CLAUDE.md §0.5 já dizia «teste/clippy/auditoria 1× no fecho»; medido em 14/10 (7 dias): 955 clippy
+# de UMA crate no meio do trabalho (5,1 h) + 206 do workspace (3 h). O que ele apanha continua a ser
+# apanhado antes de entregar: no fecho da linha e no `ship.sh` (que o corre por dentro, fora desta regra).
+if printf '%s' "$exe" | grep -qE '(^|[;&|(`[:space:]])cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?clippy([[:space:]]|$)' \
+   && ! printf '%s' "$exe" | grep -qE 'PH2D_SUITE='; then
+  recusa "⛔ clippy no meio do trabalho.
+
+Regra (CLAUDE.md §0.5, dono 14/10): clippy corre 1× no FECHO da linha, sobre tudo o que
+a linha mudou. Medido na semana de 14/10: 1 161 corridas no meio do trabalho, 8 h de espera." \
+"No meio do trabalho, o laço é a compilação:
+
+  bash scripts/cargo-check-narrow.sh <crate>
+
+No fecho da linha (/pd-linha-fechar, /pd-gate-fechamento):
+
+  PH2D_SUITE=fecho ${cmd}
+
+Imprescindível agora (ex.: a linha mudou uma regra de lint): PH2D_SUITE=\"motivo: <porquê>\" ${cmd}"
+fi
+
+# ── R6 · edição por script tem de PROVAR que casou ────────────────────────────
+# Um `str.replace()` / `re.sub()` que não casa e um `sed -i` cujo padrão não existe são no-ops
+# SILENCIOSOS: o script diz «ok» e o ficheiro não mudou (CLAUDE.md §2). Medido em 14/10 (7 dias):
+# 6 804 edições python COM `assert` (a forma certa, passa) contra 504 SEM e 1 177 `sed -i`/`perl -i`.
+# ⚠️ Conferir DEPOIS também prova: `sed -i … && grep -c NOVO f` sai ≠ 0 quando o texto novo não está
+# lá, e em python um `s.index(…)` levanta quando a âncora falta. Esses passam (replay de 14/10).
+if printf '%s' "$exe" | grep -qE '(^|[;&|(`[:space:]])(sed[[:space:]]([^;&|]*[[:space:]])?(-[a-zA-Z]*i[a-zA-Z.]*|--in-place)|perl[[:space:]]([^;&|]*[[:space:]])?-[a-zA-Z]*i)([[:space:]=]|$)' \
+   && ! printf '%s' "$exe" | grep -qE '(^|[;&|[:space:]])grep[[:space:]]+(-[a-zA-Z]*[cq][a-zA-Z]*)'; then
+  recusa "⛔ Edição com \`sed -i\`/\`perl -i\`.
+
+Se o padrão não casar, o ficheiro fica igual e o comando diz que deu certo — o erro
+silencioso que o CLAUDE.md §2 proíbe. A ferramenta Edit falha alto quando não casa." \
+"Use a ferramenta Edit (um ou poucos ficheiros) — ou confira na MESMA linha:
+
+  sed -i 's/VELHO/NOVO/' f && grep -c 'NOVO' f
+
+Muitos ficheiros (renomear em N)? Um script que CONFERE a contagem:
+
+  python3 - <<'PY'
+  from pathlib import Path
+  for p in [...]:
+      s = Path(p).read_text(); n = s.count(VELHO)
+      assert n == ESPERADO, (p, n)
+      Path(p).write_text(s.replace(VELHO, NOVO))
+  PY"
+fi
+if printf '%s' "$cmd" | grep -qE '(^|[;&|(`[:space:]])python3?([[:space:]]|$)' \
+   && printf '%s' "$cmd" | grep -qE '\.replace\(|re\.subn?\(' \
+   && printf '%s' "$cmd" | grep -qE "write_text\(|\.write\(|open\([^)]*['\"][wa]['\"]" \
+   && ! printf '%s' "$cmd" | grep -qE '(^|[^a-z_])(assert|raise|sys\.exit)([^a-z_]|$)|\.index\('; then
+  recusa "⛔ Script que substitui texto e grava SEM conferir que casou.
+
+Um \`.replace()\`/\`re.sub()\` que não encontra o texto devolve o original, o script grava e
+imprime sucesso — o ficheiro não mudou e ninguém sabe (CLAUDE.md §2)." \
+"Use a ferramenta Edit; ou ponha a conferência antes de gravar:
+
+  n = s.count(VELHO); assert n == 1, n      # ou: s, n = re.subn(...); assert n == 3, n"
 fi
 
 # ── R2 · vigia de fundo tem de ter prazo ──────────────────────────────────────

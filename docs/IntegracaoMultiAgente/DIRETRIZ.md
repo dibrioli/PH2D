@@ -670,7 +670,7 @@ WIRING (sem colisão, sem edit central):
 VALIDAÇÃO (§6; a crate é NOVA, então os testes dela são todos do item):
   bash scripts/cargo-check-narrow.sh ph2d-<family>-<slug>
   PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-<family>-<slug>
-  cargo clippy -p ... --all-targets -- -D warnings   # pela porta (ph2d-run.sh), 1× no fim
+  PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy -p ... --all-targets -- -D warnings   # 1× no fecho
   cargo fmt -p ...
 
 NOMES (gates ativos):
@@ -1017,6 +1017,12 @@ Medido em 14/10 (7 dias, ~900 sessões): a crate inteira sem nome custou **17 h*
 - ❌ `cargo clippy --workspace --all-targets` a cada COMMIT (SIM antes do PUSH via ship.sh)
 - ❌ Re-rodar testes que já passaram pra "confirmar"
 - ❌ A crate inteira (`cargo test -p <crate>` sem nome) a cada edição ou a cada commit — §6.2
+- ❌ `cargo clippy` no meio do trabalho, mesmo de uma crate — é do FECHO (`PH2D_SUITE=fecho …`); o guarda
+  (R7) recusa o resto. Medido 14/10: 1 161 corridas a meio, 8 h/semana
+- ❌ `sed -i`/`perl -i` sem `grep -c` na mesma linha, ou `replace()`/`re.sub()` que grava sem `assert` —
+  no-op silencioso; o guarda (R6) recusa. Use a ferramenta Edit
+- ❌ Seguir numa conversa enorme para um assunto NOVO — o aviso `tamanho-da-conversa.sh` (≥ 300 mil por
+  passo) diz ao Enio; uma janela nova custa ~63 mil por passo
 - ❌ Validar baseline no início da sessão se último commit já está verde
 - ❌ `cargo build` antes de `cargo test` (test já compila)
 - ❌ Re-`Read` arquivo que acabou de editar

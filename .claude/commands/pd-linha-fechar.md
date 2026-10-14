@@ -14,7 +14,8 @@ Feche a linha `$1`.
      crate opcional que não compila sozinha · pacote apagado/renomeado que um workflow cita por `-p`
    - moveu código da shell? `git grep -n 'shells/desktop/src' -- crates tools`: cada leitor por
      caminho é gate seu, e corre no fecho
-   - clippy `--all-targets` + features
+   - `PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings`
+     (+ features) — sem o `PH2D_SUITE=fecho` o guarda recusa: clippy é só do fecho (R7, dono 14/10)
    - `cargo machete` — ⚠️ **obrigatório se a linha MOVEU código**: mudar código de casa não muda a linha do `Cargo.toml`, nada disso falha a compilar, e o CI reprova. Medido na W2 (12/09): **79** dependências mortas deixadas pelas mudanças de casa, que nenhuma linha correu ao fechar (HOWTO §2.18)
    - `shells/desktop/tests/it/file_loc_caps.rs` (o gate da shell; o workspace_file_loc_cap
      cobre só crates/ — essa lacuna já deixou vermelho latente 2×)

@@ -102,9 +102,10 @@ D. git rebase main no início de cada jornada e antes de integrar, com o
    não é prova: numa lista partilhada ele larga a remoção de um lado
    (13/09, 2 de 130) — `git range-diff ORIG_HEAD...HEAD` antes de seguir.
 E. Fechamento do módulo = `/pd-linha-fechar` (DIRETRIZ §1.5.9): gate
-   batched 1× — `BASE=$(git merge-base main HEAD) bash
+   batched 1× — `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash
    scripts/nextest-impacted.sh` · `CARGO_BUILD_WARNINGS=deny cargo check
-   --workspace --all-targets` · clippy --all-targets · `cargo machete` ·
+   --workspace --all-targets` · `PH2D_SUITE=fecho` clippy --all-targets
+   (fora do fecho o guarda recusa clippy e teste de crate inteira) · `cargo machete` ·
    `bash scripts/check-standalone-optional.sh` · `bash
    scripts/check-workflow-packages.sh` · auditoria ≥2 lentes + DIRETIVA
    §3-§5. Então PARE — NÃO integre nem faça ship por conta própria. Quem funde

@@ -92,6 +92,11 @@ for fp in paths:
                 if re.search(r"open\([^)]*['\"][wa]['\"]|\.write\(|write_text\(", cmd) \
                    or re.search(r'\bsed -i\b|\bperl -i\b', cmd):
                     edits['script'] += 1
+                    # O DEFEITO é o script que não prova que casou (a mesma lei da R6 do guarda).
+                    prova = re.search(r'(^|[^a-z_])(assert|raise|sys\.exit)([^a-z_]|$)|\.index\(', cmd) \
+                        or re.search(r'(^|[;&|\s])grep\s+-[a-zA-Z]*[cq]', cmd)
+                    if not prova:
+                        edits['sem_prova'] += 1
                 if re.search(r'cargo (\+\S+ )?(test|nextest)\b|cargo-test-narrow|nextest-impacted', cmd):
                     cargo['test'] += 1
                 elif re.search(r'cargo (\+\S+ )?check\b|cargo-check-narrow', cmd):
@@ -123,10 +128,12 @@ raz = t / ck if ck else float('inf')
 linha("cargo test : cargo check", f"{t} : {ck}", "<= 1,0", raz <= 1.0,
       f"  razao {raz:.1f}x (baseline: 4,3x)")
 
-ef, es = edits['ferramenta'], edits['script']
-pct = 100 * ef / (ef + es) if (ef + es) else 0
-linha("edicoes pela ferramenta Edit", f"{pct:.0f}%", ">= 80%", pct >= 80,
-      f"  ({es} por script; baseline: 48%)")
+# ⚠️ 14/10: a régua antiga («≥ 80 % pela ferramenta Edit») contava como defeito o script COM `assert`,
+# que é a forma certa — eram 6 804 de ~8 000. O defeito é a edição que não prova que casou.
+ef, es, sp = edits['ferramenta'], edits['script'], edits['sem_prova']
+pct = 100 * sp / (ef + es) if (ef + es) else 0
+linha("edicoes SEM conferir que casaram", f"{pct:.1f}%", "<= 2%", pct <= 2,
+      f"  ({sp} de {ef + es}; o guarda R6 recusa-as desde 14/10)")
 
 mc = st.mean(ctx_passo) if ctx_passo else 0
 linha("contexto relido por passo (media)", f"{mc/1000:.0f} mil", "<= 250 mil", mc <= 250_000,

@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-board-internet"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O quadro ao vivo PELA INTERNET (W22b, ADR-0187): a mesma porta (`Wire`/`Door`) da `ph2d-board-net`
+# sobre UDP — um socket por família, STUN próprio, furos no NAT, e um fio fiável por `quinn-proto` (QUIC
+# SEM I/O, conduzido por UMA thread nossa; o `quinn`/`iroh` puxam `tokio`, recusado no ADR-0181).
+# O aperto de mão SPAKE2 e a cifra ChaCha20 continuam POR CIMA (os da `ph2d-board-net`): o TLS do QUIC
+# é só o envelope, com certificado auto-assinado e sem verificação.
+ph2d-board-net = { path = "../ph2d-board-net" }
+quinn-proto = { version = "0.11.19", default-features = false, features = ["rustls"] }
+rcgen = { version = "0.14", default-features = false, features = ["ring", "crypto"] }
+bytes = "1"
+socket2 = "0.6"
+if-addrs = "0.15"
+# O ponto de encontro sem servidor nosso: a DHT do BitTorrent (BEP 44). Só `node` (síncrono, threads):
+# `full`/`async` traz `futures-lite`. Verificado 14/10: a árvore NÃO tem `tokio`.
+mainline = { version = "8.0.1", default-features = false, features = ["node"] }
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
+rand_core = { version = "0.6", features = ["getrandom"] }
+
+[lints]
+workspace = true

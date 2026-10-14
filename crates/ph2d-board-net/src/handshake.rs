@@ -162,6 +162,7 @@ pub(crate) fn host_with(
     })
 }
 
+#[cfg(test)]
 pub(crate) fn guest(s: &mut (impl Read + Write), code: &Code) -> Result<Keys, JoinError> {
     guest_with(s, code.bytes())
 }

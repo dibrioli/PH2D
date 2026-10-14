@@ -26,6 +26,8 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 # `[workspace.dependencies]`, e herdar dele não compila.
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# ADR-0186: o cartão da `Macro` lê a gravação (o formato, sem UI).
+ph2d-macro = { path = "../ph2d-macro" }
 # ⭐ O GATILHO (suplente #24): a ponte que resolve o teclado em acções NOMEADAS vive aqui,
 # porque é pura — a shell fica só com a cerca do relógio e a publicação. `ph2d-input` é folha.
 ph2d-input = { path = "../ph2d-input" }

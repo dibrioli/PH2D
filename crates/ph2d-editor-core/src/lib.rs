@@ -148,6 +148,7 @@ pub mod hud_edits;
 /// ⭐ **O vocabulário da secção LUZ** (Luz 2D, W4) — ver o cabeçalho dele.
 pub mod luz_edits;
 /// O vocabulário da secção MOTION INPUT (ciclo 19 do Motion).
+pub mod macro_edits;
 pub mod motion_input_edits;
 /// ⭐⭐⭐ O vocabulário das secções NAV REGION e NAV AGENT (plano 30, W4).
 pub mod nav_edits;

@@ -666,6 +666,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::ParticleEmitter>("ph2d::ecs::ParticleEmitter");
     // Ciclo 19 (doc 128 §3.6): o objecto que publica uma entrada para o grafo do Motion.
     reg.register_default::<crate::MotionInput>("ph2d::ecs::MotionInput");
+    // ADR-0186: a gravação de um objecto — o conteúdo viaja como blob com versão própria.
+    reg.register_default::<crate::Macro>("ph2d::ecs::Macro");
     reg.register_default::<crate::AudioSource2D>("ph2d::ecs::AudioSource2D");
     // ⚠️ **Um MARCADOR ainda tem de se registar**: a presença É o valor, e sem ele um Ctrl+Z ou um
     // reabrir devolveriam a cena SEM orelhas — que é a única maneira de tudo ficar mudo de uma vez.

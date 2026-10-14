@@ -129,6 +129,8 @@ pub mod instance_variant;
 pub mod instance_verbs;
 pub mod instance_verbs_walk;
 pub mod instantiate;
+/// ADR-0186: a secção MACRO do Inspector.
+pub mod macro_inspector;
 pub mod master_editing;
 /// Ciclo 19 do Motion: o `Motion Input` e os sinais publicam as entradas do grafo.
 pub mod motion_input_bridge;

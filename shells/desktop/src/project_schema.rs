@@ -438,4 +438,13 @@
 /// degrau de migração**, pela decisão de sempre — um v187 é recusado em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 188;
+///
+/// # `188 → 189` — **o `Macro`** (`line/Macros-Automação`, W4, 2026-10-13)
+///
+/// `ph2d_ecs::Macro` REGISTADO (ECS `+1`; os dois espelhos chamam o registador do ECS e não se
+/// mexem): a gravação de um objecto (ADR-0186). O conteúdo é um blob com versão PRÓPRIA (o cabeçalho
+/// do `MacroDoc`), que muda sem tocar este número. ⛔ **Sem degrau de migração**, pela decisão de
+/// sempre — um v188 é recusado em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 189;

@@ -68,6 +68,9 @@ pub mod instantiate;
 /// ⭐⭐⭐ **O CICLO DE VIDA** — os itens #12 do TOP-20 (`Lifetime`, `DestroyOutside`) e o marcador
 /// [`lifetime::Spawned`], que é a lei *«o que nasce numa corrida não é documento»*.
 pub mod lifetime;
+/// ⭐ A gravação de um objecto (ADR-0186).
+pub mod macro_doc;
+pub use macro_doc::{Macro, ModoDaMacro};
 pub mod masking;
 pub mod master;
 /// ⭐ O objecto Motion (doc ObjectsAndComponents 01 §13, F5).

@@ -108,6 +108,9 @@ const LIFETIME_FIELDS: &[FieldDesc] = &[
     f(2, "component.field.lifetime_fields.2", K::Text),
 ];
 
+/// ADR-0186: o `Macro` descreve só o modo — o campo 1 é a gravação, que nenhum controlo edita.
+const MACRO_FIELDS: &[FieldDesc] = &[f(2, "component.field.macro_fields.2", K::Enum)];
+
 /// ⭐ Ciclo 19 do Motion (doc 128 §3.6): os campos do `Motion Input`, na ordem da struct.
 const MOTION_INPUT_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.motion_input_fields.1", K::Text),
@@ -338,6 +341,14 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         LIFETIME_FIELDS,
+    ),
+    // ⭐ ADR-0186: a gravação de um objecto. Chega com o gesto Gravar ▸ Parar; anexá-la pela paleta
+    // daria uma macro que não toca nada. Entre o `Lifetime` e o `MotionInput` (a busca binária).
+    D::intrinsic(
+        "ph2d::ecs::Macro",
+        "component.macro.name",
+        C::Animation,
+        MACRO_FIELDS,
     ),
     // ⭐ Ciclo 19 do Motion: o objecto que PUBLICA uma entrada para o grafo (o `value.input` com o
     // mesmo nome). Entre o `Lifetime` e o `PathFollow` (a busca binária).

@@ -4884,6 +4884,7 @@ dependencies = [
  "ph2d-inspector-ordering",
  "ph2d-label-census",
  "ph2d-light2d-ecs",
+ "ph2d-macro",
  "ph2d-nav",
  "ph2d-node-registry",
  "ph2d-panel-asset-browser",

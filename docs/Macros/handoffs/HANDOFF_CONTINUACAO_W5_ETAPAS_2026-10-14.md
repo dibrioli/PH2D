@@ -1,4 +1,4 @@
-# Continuação — line/Macros-Automação, W5 (ETAPAS): W5a + W5b + W5c feitas → W5d (UI)
+# Continuação — line/Macros-Automação, W5 (ETAPAS): W5a..W5d feitas → W5e
 
 > Para a PRÓXIMA janela. Branch `line/Macros-Automação`, worktree `Worktrees/line-Macros-Automação/`, base
 > `0aab2c1cb6` (= `main` a 14/10, 0 atrás). Leia antes de agir: o **plano** [`02_plano_W5.md`](../02_plano_W5.md)
@@ -21,6 +21,12 @@
 | `a6567f06fe` | W5c: `Clone` do `Engine` (sem `on_dab`), o `SolverScratch` nasce vazio na cópia, `bytes_retidos` |
 | `898aa276c9` | W5c: `PainterTool::instantaneo` (padrão sem `..`), `SemInstantaneo`, `derive(Clone)` em 52 tipos de dados |
 | `8c92e9cd19` | W5c: `MacroEmCena` com instantâneos por etapa, `reedita`, a dobra no razão; `MacroPlayer::advance_to_limit`; o palco reedita; gates + dhat |
+| `d21a072d6b` | W5d: Gravar ▸ Parar; crates NOVAS `ph2d-app-macros` + `ph2d-panel-macros`; `Gravadora`; gate 7 |
+| `a704aaa8aa` | W5d: rustfmt (só formato) |
+| `9d4ffcf755` | W5d: a linha «Macro steps» na Timeline (arrastar re-cronometra a etapa e as seguintes) |
+| `2329d6ddcf` | W5d: 3 ficheiros da W5c que os `derive(Clone)` levaram a 701/702 voltam a ≤ 700 por corte de comentário (`ph2d-wet-paint/src/painter.rs`, `tool/paint/state.rs`, `tool/paint/stamp_cache.rs`; gate `workspace_src_files_under_loc_cap`) |
+| `e2f1455e9a` | W5d: cartão Macro no Inspector, undo das duas pilhas, o Parar que chega ao Painter |
+| `a3475fb6fb` | W5d: as sobreviventes da mutação fechadas (M6/M8, M17, M11) → 18/18 |
 
 ## O que existe (não reconstruir)
 
@@ -88,18 +94,62 @@ agora ~3,5 instantâneos com água e o espaçamento confere-se a cada quadro (M1
 em 2`). As outras: o `Sim`, o `Roteiro`, a fila e a guarda da fita reeditada, o prefixo comum, a dobra, o
 recuo, a régua do pigmento (dhat), o instante do `advance_to_limit`.
 
+## W5d — feito (14/10)
+
+Mecanismo, undo medido e decisões: [plano §5.1](../02_plano_W5.md#51-w5d--o-que-se-mediu-e-decidiu-1410).
+
+- `ph2d_macro::Gravadora` (abre/passos/para) — `PainterTool` (alvo 0 = a sprite da Macro) e `MotionState` (o
+  objecto em edição). Censo do Painter: `macro_abre/passos/para` = PORTAS `Decisao::Ambiente`.
+  `PainterTool::bound_document`; `etapas::tela_no_fim` pública.
+- **`ph2d-app-macros`** (crate nova): estado da família num `thread_local` (`com`); `Macros::{pede, quadro, info,
+  etapas_na_linha, resumo, sincroniza}`; `Familias { painter (SEMPRE), painter_activo (só armar), motion }`,
+  `Cena { sim, timeline, intents }`; módulos `sessao` (MacroRecorder, passos por quadro com o relógio do
+  chamador), `instala` (Parar ⇒ Macro{Fiel p/ Painter, Explicativo p/ Motion} + clipe Autoplay, laço [0,D],
+  activo; UM passo da pilha da Timeline), `etapas` (vistas com cache pelos bytes; edita cor/tamanho/valor/
+  espera/nome; conferência `assenta` adiada ao 1.º quadro sem edição nova), `erros` (5.6: `panel.macros.error.*`).
+- **`ph2d-panel-macros`** (crate nova; Window → Macros, ícone `Macro`, barra 851): Gravar/Parar (Gravar só se
+  pinta com quem grave; senão a frase diz porquê), etapas nomeadas pelo i18n (`nomes.rs`), propriedades
+  (renomear, Wait before, cor pelo selector partilhado, Size, Value), erro. Clicar numa etapa = Scrub ao fim dela.
+- **Timeline:** `TimelineViewSnapshot::macro_etapas` (`EtapaDaMacroView`), `TimelineHitKind::MacroStep{index}`,
+  `ph2d-panel-timeline/src/macro_steps.rs` (linha na vista Keys depois da última faixa; arrastar mostra a etapa
+  e as seguintes a andar; ao largar `Espera(antiga+Δ)` por `EditorAction::Macro`; clicar = Scrub ao início).
+  `TimelineDoc::{macro_clip_identity_end, retime_macro_clip}`.
+- **Inspector:** secção MACRO (família Animação): modo Faithful/Explanatory, resumo, «Edited from step N», erro,
+  «Edit steps…» abre o painel; `ComponentEdit::Macro`; LIVE_SECTIONS 51; comandos do Inspector 87→88.
+- **editor-core:** `macro_edits` (EtapaView, MacroPanelInfo, MacroRequest, CampoDaEtapa, ErroDaMacroView,
+  recusas), `EditorAction::Macro` (+2 linhas; o reflow de +78 do aviso do `action_bus.rs` já não acontece).
+- **Shell:** `render_loop/fase_macros.rs` (composição, depois de `fase_painter_dispatch`), dreno do pedido em
+  `fase_bus_inspector.rs`, publicação da linha em `fase_timeline_drain.rs`.
+
+Gates (verdes, por nome, 14/10): `ph2d-app-macros --test it gate7` (4: Gravar→3 pinceladas→Parar ⇒ Macro + clipe
+activo + Autoplay + 3 etapas, Scrub ao fim, cor pelo selector só naquela pincelada, arrastar na Timeline move a
+etapa 2 e a 3 ~0,5 s e o clipe acompanha, undo do mundo devolve a duração, undo da Timeline tira o clipe; trocar
+de ferramenta a meio e Parar fecha a gravação do Painter; a conferência adiada corre só no quadro seguinte e o erro
+chega ao painel; a câmara lenta do artista não é re-cronometrada, com controlo) · `ph2d-panel-macros --test it`
+(seam 4 + censo 3) · `ph2d-panel-timeline --lib macro_steps` (2) · `ph2d-panel-inspector --test it a_seccao_macro`
+(4) · `ph2d-tool-painter --test it macro_portas` (5) · registry-init (armação do painel MACROS;
+`nenhum_painel_e_medido_vazio_sem_o_declarar`) · editor-core arquitectura (every_panel_is_painted, icons, scrollbar,
+menu, chrome_dispatch_in_sync, hr12, interactive_crate_has_behavioral_test, panel_wiring_parity,
+hit_indexed_ids_are_registered, foundation dag, the_shell_only_shrinks, cycle_prevention, hr15, no_literal_color,
+loc_cap).
+
+**Prova de mutação W5d (14/10, agente `mutacao` + 4 re-corridas): 1.ª ronda 15/18; fechadas → 18/18 vistas a
+sangrar.** Sobreviventes: **M6/M8** (a conferência adiada nunca correr / nunca ser pedida — a fixture em relógio
+fixo não diverge: gate novo), **M17** (a forma do clipe ignorada: gate novo com a câmara lenta), **M11** (o valor
+da espera só na Timeline: passou a ser lido no gate 7).
+
+⚠️ **Riscos para o smoke (não exercidos em gate):** o palco em cena do Painter e o `PainterTool` vivo apontam a
+mesma sprite depois do Parar; a gravação do Motion ao vivo depende de o Motion gravar `Quadro` a `Quadro` no
+editor (só as cenas a exercem).
+
 ## ABERTO — a ordem
 
-1. **W5d — UI** (plano §5): `ph2d-panel-macros` (Gravar ▸ Parar nas duas famílias — `macro_abre` do Painter passa
-   de INTERNA a pública com decisão no censo `macro_portas`; lista de etapas; propriedades; renomear; erro 5.6),
-   a linha de etapas na Timeline (campo novo no snapshot; losangos como `paint_lane_keys`; arrastar = evento lido
-   pela família; ripple + D′/laço/`length_override` numa transação), cartão Macro no Inspector (molde
-   `a777f2f541`), undo (o `Macro` pelo diff do mundo, o clipe pelo histórico PRÓPRIO da Timeline — medir o
-   Ctrl+Z das duas pilhas). Gate 7 na ui-testkit.
-2. **W5e** — cenas `=1`/`=2` com as etapas à vista, fotos com a máquina calma, perf (compor 1× por quadro;
-   premultiplicar/subir; a reprodução para editar pode saltar as composições intermédias), fecho batched, handoff
-   de integração, binário do smoke.
-3. Fica de antes: 5.6 (erros na UI — vem com o painel), os outros meios do Painter.
+1. **W5e** — cenas `=1`/`=2` com as etapas à vista, fotos com a máquina calma, perf (compor 1× por quadro;
+   premultiplicar/subir; a reprodução para editar pode saltar as composições intermédias; o custo da conferência
+   adiada numa macro longa — ainda NÃO medido), fecho batched (clippy), handoff de integração, binário do smoke.
+2. **Por decidir com o dono:** APAGAR uma etapa (plano §5 cita-o; fora do pedido da W5d; precisa da lei do que
+   acontece à água/relógio).
+3. Fica de antes: os outros meios do Painter. (5.6, erros na UI: feito na W5d.)
 
 ## Foundational / partilhado tocado (para o integrador)
 
@@ -117,6 +167,17 @@ reedita). ⚠️ **Com `line/PainterWatercolor`** (toca `tool/mod.rs`, `wetpaint
 `derive`/`mod` minhas nesses três; um CAMPO novo que ela acrescente ao `PainterTool`, `WetSession` ou `Engine` não
 compila na árvore combinada até entrar no padrão do `instantaneo`/`clone` — é o gate a funcionar, e a cura é
 decidir se o campo viaja na cópia. Shell e contratos congelados: **nenhum**. Schema: não muda.
+
+**W5d:** `ph2d-macro` (`gravadora.rs`) · `ph2d-editor-core` (`macro_edits`, `action_bus` +variante, `interaction/types`
++`TimelineHitKind::MacroStep`, `ids/chrome/macros.rs`, `chrome/macros_toggle.rs`, menus, ícone, `scrollbar_ids` 851,
+LIVE_SECTIONS, `ComponentEdit::Macro`) · `ph2d-timeline` (snapshot +campo; `doc_owner` retime/identity) ·
+`ph2d-panel-timeline` (`macro_steps`, state/state_drags, interact, geom, tracks, ids) · `ph2d-panel-inspector`
+(secção macro) · `ph2d-app-components` (`macro_inspector`) · `ph2d-i18n` (`macros.rs` novo, timeline, chrome_menus,
+inspector_macro) · `ph2d-tool-painter` (portas, `bound_document`, `tela_no_fim`, `impl Gravadora`) ·
+`ph2d-app-motion` (`impl Gravadora`, palcos `erro_de`) · `ph2d-app-painter` (`erro_de`) · `registry-init` (registo +
+fixturas) · shell (`Cargo` +2 deps/feature, `fase_macros`, drenos) · cortes de comentário em `ph2d-wet-paint`
+(`painter.rs`) e `tool/paint/{state,stamp_cache}.rs`. Crates novas: `ph2d-app-macros`, `ph2d-panel-macros`.
+Contratos congelados: **nenhum**. Schema: não muda.
 
 ## Medido (W5a, 14/10, smoke, load 17–28)
 

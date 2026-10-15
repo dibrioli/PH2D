@@ -136,6 +136,28 @@ seguintes. Suíte com `motivo: formato gravado`.
   (`BeginEdit/EndEdit`, `intent_apply.rs:348`) — duas pilhas: medir na W5d o que o Ctrl+Z faz com as duas.
 - **Cartão Macro no Inspector** (molde `a777f2f541`, Motion Input): modo, «editada desde a etapa N», erro.
 
+### 5.1 W5d — o que se mediu e decidiu (14/10)
+
+- **Undo medido (antes):** o clipe não entrava em pilha nenhuma; o Ctrl+Z global tirava a Macro e deixava o clipe;
+  com o painel da Timeline aberto o Ctrl+Z vai à pilha dela primeiro (`keyboard_timeline.rs:41-49`), antes do
+  Painter e do Global. **Decisão** (lei do doc ObjectsAndComponents §12: o undo dos clipes é o da Timeline, uma
+  verdade só): o clipe é DERIVADO e o Parar (criar/re-cronometrar o clipe) é UM passo da pilha da Timeline; a
+  Macro é do diff do mundo. Estados intermédios inofensivos (clipe sem macro não toca; macro sem clipe não corre).
+- **Duração do clipe derivada:** `Macros::sincroniza` re-cronometra a cada quadro enquanto o clipe tiver a forma
+  do Parar (`TimelineDoc::macro_clip_identity_end`: faixa Macro Time identidade (0,0)→(D,D) linear, duração = D,
+  tolerância relativa ao f32); câmara lenta do artista não é re-cronometrada (gate com controlo). D = a duração da
+  trilha QUE TOCA (`instala::segundos` pela `tocavel`). ⚠️ `MacroDoc::duration` lê a gravação imutável: uma espera
+  não a muda — o gate apanhou (o clipe ficava em 0,87 s).
+- **Conferência adiada:** a edição de VALOR do Painter corre o `assenta` no 1.º quadro sem edição nova (o selector
+  manda uma cor por quadro; conferir custa tocar a macro inteira). O custo numa macro longa NÃO está medido (W5e).
+- **Gravadora:** `ph2d_macro::Gravadora` (abre/passos/para), implementada pelo `PainterTool` (alvo 0 = a sprite
+  da Macro) e pelo `MotionState` (o objecto em edição). `macro_abre/passos/para` do Painter passaram de internas
+  a PORTAS com `Decisao::Ambiente` no censo (controlam a gravação, não são passo da obra). O Parar chega sempre
+  ao Painter (`Familias.painter`), mesmo com outra ferramenta activa; só o armar exige `painter_activo`.
+- **Recusa de escala:** arrastar a escala de uma etapa sem faixa — a família recusa e o painel diz.
+- **Apagar uma etapa:** NÃO feito (não estava no pedido; precisa da lei do que acontece à água/relógio) — por
+  decidir com o dono.
+
 ## 6. Ondas
 
 | Onda | O quê | Gates (vermelho primeiro + mutação) |
@@ -144,7 +166,7 @@ seguintes. Suíte com `motivo: formato gravado`.
 | W5b ✅ (`9b40399255`..`95ca6db68e`) | núcleo + Painter + Motion; mutação 21/21 | [handoff W5](handoffs/HANDOFF_CONTINUACAO_W5_ETAPAS_2026-10-14.md) |
 | W5b | segmentação + nomes + `edicoes`/`exige` + deslocamento com relógio sintetizado + edição de valor | cena `=2` = N etapas, Splash = 4; antes da etapa editada = original ao bit; espera = a água/o vento continuam; recuar == do zero com edições; formato ida-e-volta, 1.0 lê |
 | W5c ✅ (`ff001e1bc7`..`8c92e9cd19`) | instantâneos do Painter por etapa (§3.1), razão da RAM no core, o palco reedita | continuar = do zero ao bit; recuo e edição = palco novo ao bit; dobra; fita reeditada; dhat retido ÷ declarado ∈ [1; 1,15] |
-| W5d | painel, linha de etapas na Timeline, Gravar ▸ Parar, cartão | gate 7 (ui-testkit): Gravar → pincelar → Parar ⇒ componente + clipe + N etapas; arrastar ⇒ etapa move; editar cor ⇒ tela muda |
+| W5d ✅ (`d21a072d6b`..`a3475fb6fb`) | painel, linha de etapas na Timeline, Gravar ▸ Parar, cartão, undo; mutação 18/18 (§5.1) | `ph2d-app-macros --test it gate7` (4): Gravar → pincelar → Parar ⇒ Macro + clipe + N etapas; arrastar ⇒ etapa move; editar cor ⇒ só aquela pincelada; undo das duas pilhas |
 | W5e | cenas `=1`/`=2` com etapas, fotos com a máquina calma, perf (compor 1× por quadro, premultiplicar/subir), fecho | fecho batched, handoff, binário do smoke |
 
 Tutorial «fazer» (balão, realce, cena `=3`): W6.

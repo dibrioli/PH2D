@@ -492,40 +492,25 @@ fn wire_ph2d_api(
         .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.despawn: {e}")))
     })?;
 
-    // ph2d.attach_script(entity, asset_id_hex) — queue a LuauScript
-    // component attachment. Accepts the 64-char hex form of the
-    // bytecode AssetId (the only stable, script-visible form);
-    // host parses it back to a 32-byte digest on apply.
-    let attach_script_fn = lua.create_function(
-        |lua, (entity, asset_hex): (f64, String)| -> mlua::Result<()> {
+    // ph2d.attach_script(entity, script_name) — queue attaching a PROJECT script, named by its
+    // unique name in the `ScriptLibrary` (ADR-0188 §2; the bytecode `AssetId` it took is gone).
+    let attach_script_fn =
+        lua.create_function(|lua, (entity, script): (f64, String)| -> mlua::Result<()> {
             let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
                 mlua::Error::RuntimeError("ph2d.attach_script: SpawnQueue not registered".into())
             })?;
-            if asset_hex.len() != 64 {
+            if script.trim().is_empty() {
                 return Err(mlua::Error::RuntimeError(
-                    "ph2d.attach_script: bytecode id must be 64-char hex".into(),
+                    "ph2d.attach_script: needs the name of a project script (e.g. \"bob.luau\")"
+                        .into(),
                 ));
-            }
-            let mut digest = [0u8; 32];
-            for (i, chunk) in asset_hex.as_bytes().as_chunks::<2>().0.iter().enumerate() {
-                let s = std::str::from_utf8(chunk).map_err(|_| {
-                    mlua::Error::RuntimeError(
-                        "ph2d.attach_script: bytecode id is not ASCII hex".into(),
-                    )
-                })?;
-                digest[i] = u8::from_str_radix(s, 16).map_err(|_| {
-                    mlua::Error::RuntimeError(
-                        "ph2d.attach_script: bytecode id is not valid hex".into(),
-                    )
-                })?;
             }
             q.push(SpawnCommand::AttachScript {
                 entity: entity as u64,
-                bytecode: digest,
+                script,
             })
             .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.attach_script: {e}")))
-        },
-    )?;
+        })?;
 
     // ph2d.find_by_name(name) — resolve a Name component to an
     // entity id. Reads from a NameSnapshot the host populates each

@@ -151,12 +151,13 @@ jobs:
         run: typos
 
       - name: ph2d-bindgen --check (HR-10 parity)
-        # The MCP catalog (crates/ph2d-mcp/src/catalog.rs) is the
-        # source of truth for both runtime/luau/ph2d.d.luau and
-        # runtime/mcp/schema.json. After editing the catalog, the
-        # developer must run `cargo run -p ph2d-bindgen -- --write`
-        # and commit. This step regenerates in memory and diffs
-        # against the committed files; drift fails the build.
+        # Two sources, two artifacts: runtime/luau/ph2d.d.luau comes from
+        # the Luau API table (crates/ph2d-script/src/api_table.rs, ADR-0188
+        # §3) and runtime/mcp/schema.json from the MCP catalog
+        # (crates/ph2d-mcp/src/catalog.rs). After editing either, run
+        # `cargo run -p ph2d-bindgen -- --write` and commit. This step
+        # regenerates in memory and diffs against the committed files;
+        # drift fails the build.
         run: cargo run -p ph2d-bindgen --locked -- --check
 
   # --------------------------------------------------------------------------

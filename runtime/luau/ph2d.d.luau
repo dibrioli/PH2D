@@ -47,8 +47,8 @@ declare ph2d: {
     spawn_named: (name: string) -> (),
     --- Queues the removal of an object.
     despawn: (entity: Entity) -> (),
-    --- Queues attaching a compiled script, named by its 64-character hex id.
-    attach_script: (entity: Entity, bytecode_id: string) -> (),
+    --- Queues attaching a project script, named by its name in the project (e.g. "bob.luau").
+    attach_script: (entity: Entity, script: string) -> (),
     --- Declares an Inspector property; only at the top of the script.
     property: (name: string, default: PropertyDefault, options: PropertyOptions?) -> (),
     --- A position value.

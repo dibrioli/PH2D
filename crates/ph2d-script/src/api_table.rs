@@ -172,8 +172,8 @@ pub const API: &[ApiEntry] = &[
     ApiEntry {
         table: "ph2d",
         name: "attach_script",
-        luau_type: "(entity: Entity, bytecode_id: string) -> ()",
-        doc: "Queues attaching a compiled script, named by its 64-character hex id.",
+        luau_type: "(entity: Entity, script: string) -> ()",
+        doc: "Queues attaching a project script, named by its name in the project (e.g. \"bob.luau\").",
     },
     // ── ph2d: as declarações e os valores ──
     ApiEntry {

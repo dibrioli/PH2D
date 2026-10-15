@@ -59,41 +59,34 @@ fn luau_despawn_carries_entity_bits() {
     assert_eq!(cmds[0], SpawnCommand::Despawn { entity: 12345 });
 }
 
+/// (ADR-0188) `attach_script` nomeia um script DO PROJETO pelo nome único.
 #[test]
-fn luau_attach_script_parses_hex_bytecode() {
+fn luau_attach_script_names_a_project_script() {
     let host = ScriptHost::new().unwrap();
-    // 64 chars of hex = 32 bytes — must match the AssetId::to_hex form.
-    let hex = "deadbeef".repeat(8); // = 64 chars
-    let script = format!("ph2d.attach_script(7, '{}')", hex);
-    host.runtime().eval(script.as_str()).unwrap();
-    let cmds = host.drain_spawns();
-    assert_eq!(cmds.len(), 1);
-    let expected_digest = {
-        let mut d = [0u8; 32];
-        for (i, chunk) in hex.as_bytes().as_chunks::<2>().0.iter().enumerate() {
-            let s = std::str::from_utf8(chunk).unwrap();
-            d[i] = u8::from_str_radix(s, 16).unwrap();
-        }
-        d
-    };
+    host.runtime()
+        .eval("ph2d.attach_script(7, 'bob.luau')")
+        .unwrap();
     assert_eq!(
-        cmds[0],
-        SpawnCommand::AttachScript {
+        host.drain_spawns(),
+        vec![SpawnCommand::AttachScript {
             entity: 7,
-            bytecode: expected_digest
-        }
+            script: "bob.luau".into()
+        }]
     );
 }
 
 #[test]
-fn luau_attach_script_rejects_non_64_char_hex() {
+fn luau_attach_script_rejects_an_empty_name() {
     let host = ScriptHost::new().unwrap();
     let err = host
         .runtime()
-        .eval("ph2d.attach_script(1, 'short')")
+        .eval("ph2d.attach_script(1, '  ')")
         .unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("64-char hex"), "got: {msg}");
+    assert!(
+        msg.contains("needs the name of a project script"),
+        "got: {msg}"
+    );
 }
 
 #[test]

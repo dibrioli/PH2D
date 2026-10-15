@@ -271,13 +271,9 @@ pub enum SpawnCommand {
     /// Despawn an entity by `Entity::to_bits()` value. Silently
     /// ignored if the entity no longer exists.
     Despawn { entity: u64 },
-    /// Attach a `LuauScript` to an existing entity. `lateral_key` is
-    /// derived deterministically on the host side via
-    /// `LuauScript::derive_lateral_key` so the state survives reload.
-    AttachScript {
-        entity: u64,
-        bytecode: [u8; 32], // raw blake3 digest — AssetId postcard tail
-    },
+    /// Attach a `LuauScript` to an existing entity: the project script with this unique name
+    /// (`ScriptLibrary::by_name`; an unknown name ⇒ `ScriptSource::Unimported`, the card's refusal).
+    AttachScript { entity: u64, script: String },
 }
 
 /// Backpressure error returned by [`SpawnQueue::push`] when the cap

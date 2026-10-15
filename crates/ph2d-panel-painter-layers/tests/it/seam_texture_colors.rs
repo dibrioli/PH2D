@@ -301,7 +301,11 @@ fn the_layer_colour_rows_refuse_the_click_where_the_medium_never_reads_them() {
             tool.brush_settings().shape_layer_color_on[0],
             aceita,
             "{meio:?}: o clique em «Layer 1 Color» {}",
-            if aceita { "não chegou" } else { "marcou uma cor que a água nunca lê" }
+            if aceita {
+                "não chegou"
+            } else {
+                "marcou uma cor que a água nunca lê"
+            }
         );
     }
 }

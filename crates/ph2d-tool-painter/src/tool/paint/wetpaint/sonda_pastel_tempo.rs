@@ -51,7 +51,9 @@ pub(super) fn amostra(pts: &[[f32; 2]]) -> Vec<[f32; 2]> {
     let mut out = vec![pts[0]];
     for par in pts.windows(2) {
         let (a, b) = (par[0], par[1]);
-        let n = ((b[0] - a[0]).hypot(b[1] - a[1]) / PASSO_PX).ceil().max(1.0) as usize;
+        let n = ((b[0] - a[0]).hypot(b[1] - a[1]) / PASSO_PX)
+            .ceil()
+            .max(1.0) as usize;
         for k in 1..=n {
             let f = k as f32 / n as f32;
             out.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
@@ -98,11 +100,24 @@ fn planos(t: &mut PainterTool) -> (f64, f64, f64, bool) {
     let g = &e.layers[e.active_layer].grid;
     let soma = |v: &[f32]| v.iter().map(|x| f64::from(*x)).sum::<f64>();
     let n8 = |v: &[u8]| v.iter().filter(|x| **x != 0).count();
-    let h = |v: &[f32]| v.iter().fold(0u64, |a, x| a.rotate_left(5) ^ u64::from(x.to_bits()));
-    let h3 = |v: &[[f32; 3]]| v.iter().flatten().fold(0u64, |a, x| a.rotate_left(5) ^ u64::from(x.to_bits()));
+    let h = |v: &[f32]| {
+        v.iter()
+            .fold(0u64, |a, x| a.rotate_left(5) ^ u64::from(x.to_bits()))
+    };
+    let h3 = |v: &[[f32; 3]]| {
+        v.iter()
+            .flatten()
+            .fold(0u64, |a, x| a.rotate_left(5) ^ u64::from(x.to_bits()))
+    };
     println!(
         "    hash susp {:x} susp_rgb {:x} sett {:x} sett_rgb {:x} relevo {:x} paper {:x} film {:x}",
-        h(&g.susp), h3(&g.susp_rgb), h(&g.sett), h3(&g.sett_rgb), h(&g.relevo), h(&g.paper), h(&g.film)
+        h(&g.susp),
+        h3(&g.susp_rgb),
+        h(&g.sett),
+        h3(&g.sett_rgb),
+        h(&g.relevo),
+        h(&g.paper),
+        h(&g.film)
     );
     println!(
         "    wet {} · active {} · bloom {} · frame {} · bbox {:?}",
@@ -141,7 +156,10 @@ fn sonda_pastel_no_tempo() {
     t.wet_preset_aplicar_volumes(&volumes);
     t.paint.wetpaint.tilt_on = false;
     // `PH2D_SONDA_KNOBS=drag=0;pickup=0`: os botões do motor por cima do preset (as variantes da Fase 1).
-    for par in std::env::var("PH2D_SONDA_KNOBS").unwrap_or_default().split(';') {
+    for par in std::env::var("PH2D_SONDA_KNOBS")
+        .unwrap_or_default()
+        .split(';')
+    {
         if let Some((k, v)) = par.split_once('=') {
             let v: f64 = v.parse().expect("valor do botão");
             let d = ph2d_wet_paint::tuning::Tuning::def_of_key(k).expect("botão");
@@ -166,6 +184,16 @@ fn sonda_pastel_no_tempo() {
     }
     if let Ok(d) = std::env::var("PH2D_SONDA_DUREZA") {
         t.paint.brush.hardness = d.parse().expect("dureza");
+    }
+    // `PH2D_SONDA_FALLOFF=Sharp` e `PH2D_SONDA_JITTER=<0..1>`: o perfil e o espalhamento do carimbo.
+    if let Ok(nome) = std::env::var("PH2D_SONDA_FALLOFF") {
+        t.paint.brush.falloff = ph2d_painter_brush::Falloff::ALL
+            .into_iter()
+            .find(|f| format!("{f:?}") == nome)
+            .expect("falloff");
+    }
+    if let Ok(j) = std::env::var("PH2D_SONDA_JITTER") {
+        t.paint.brush.jitter = j.parse().expect("jitter");
     }
     // `PH2D_SONDA_SHAPE=Noise:8`: o Shape (tipo e Size) por cima do preset — o Noise do smoke do dono.
     if let Some((nome, lado)) = std::env::var("PH2D_SONDA_SHAPE").ok().and_then(|v| {
@@ -199,7 +227,9 @@ fn sonda_pastel_no_tempo() {
             }
         }
         let (su, se, fi, hf) = planos(&mut t);
-        println!("  {g}: antes do Up · Σsusp {su:.1} · Σsett {se:.1} · Σfilm {fi:.2} · has_fluid {hf}");
+        println!(
+            "  {g}: antes do Up · Σsusp {su:.1} · Σsett {se:.1} · Σfilm {fi:.2} · has_fluid {hf}"
+        );
         t.on_canvas_pointer(cp(*s.last().expect("pontos"), PointerPhase::Up));
         let (su, se, fi, hf) = planos(&mut t);
         println!("  {g}: no Up · Σsusp {su:.1} · Σsett {se:.1} · Σfilm {fi:.2} · has_fluid {hf}");

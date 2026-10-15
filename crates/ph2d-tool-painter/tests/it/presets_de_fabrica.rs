@@ -82,6 +82,13 @@ fn parametros(r: &Receita) -> Parametros {
             );
         }
     }
+    for (campo, json) in r.pincel {
+        let v: serde_json::Value = serde_json::from_str(json).expect("o JSON do campo");
+        assert!(
+            p.brush.insert((*campo).to_owned(), v).is_some(),
+            "campo {campo} existe"
+        );
+    }
     if let Some((kind, lado)) = r.grao {
         assert!(
             p.brush

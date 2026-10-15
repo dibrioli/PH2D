@@ -52,6 +52,9 @@ pub struct Receita {
     /// O pincel CHATO (`BrushSpec::dab_flatten`, `dab_angle_deg`): a pegada achatada e o ângulo dela, FIXO
     /// na tela (não segue o traço) — o Bristle Flat do Rebelle é largo deitado e fino de pé.
     pub achatado: Option<(f64, u16)>,
+    /// Outros campos do `BrushSpec` que o preset FIXA (`CAMPOS_DO_PINCEL`), pelo nome e em JSON: o perfil
+    /// (`falloff`) e o espalhamento (`jitter`) da família seca (prompt 35).
+    pub pincel: &'static [(&'static str, &'static str)],
 }
 
 /// A tela direita, com o dial guardado no meio e para baixo (para quando o artista a ligar).
@@ -82,6 +85,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         grao: None,
         spacing: None,
         achatado: None,
+        pincel: &[],
     },
     Receita {
         meio: "Watercolor",
@@ -103,6 +107,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         grao: None,
         spacing: None,
         achatado: None,
+        pincel: &[],
     },
     Receita {
         meio: "Watercolor",
@@ -124,6 +129,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         grao: None,
         spacing: None,
         achatado: None,
+        pincel: &[],
     },
     Receita {
         meio: "Watercolor",
@@ -149,6 +155,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         grao: None,
         spacing: None,
         achatado: None,
+        pincel: &[],
     },
     // ⭐ O 1.º da Fase C (prompt 17, 05 §4b «Presets de todas as mídias»): o Liner do Rebelle
     // (`Watercolor/Liner`: duro, carregado, papel 0,10 — o grão quase não fura, 28,86 px). Medido contra
@@ -173,6 +180,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         grao: None,
         spacing: None,
         achatado: None,
+        pincel: &[],
     },
     // ⭐ O 2.º lote (11/10, depois da reavaliação pedida pelo dono — 18 §3: pigmento alto, o relevo de volta
     // e o grão no lugar das cerdas). Cada um medido contra a foto do seu preset-oráculo do Rebelle, seco, à
@@ -200,6 +208,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         grao: None,
         spacing: Some(0.01),
         achatado: Some((0.68, 90)),
+        pincel: &[],
     },
     // Oil & Acrylic › Round Hard (a acrílica do Rebelle é esta ferramenta).
     Receita {
@@ -222,6 +231,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         grao: None,
         spacing: Some(0.01),
         achatado: None,
+        pincel: &[],
     },
     // Express Oil › Hairy: claro e liso, tufos (prompt 23, aceite do dono 12/10). A claridade é POUCO
     // pigmento — com o Spacing 0,01 cada célula leva ~100 carimbos, por isso 60 e não 250; sem água (a água
@@ -246,10 +256,14 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         grao: None,
         spacing: Some(0.01),
         achatado: None,
+        pincel: &[],
     },
     // Pencil › Graphite 8B: sem água, o grão do papel a abrir na orla. Prompt 35 (14/10), contra o Rebelle
     // «Graphite Pencil/8B» a 20 px vistos (`pastel_regua.py`, nota 4,21 → 1,15): o Noise 0,4 era a mancha de
     // ~640 px do Soft Pastel (5 px a y = 40, 8 a 450) — Noise 32; papel 0,6 e carga 125 (o miolo cheio do 8B).
+    // Com o arrasto na ponta seca (o motor deixou de o zerar): o portão das mídias reprovava a Textura (7,65
+    // contra 9,09 ± 0,66) e o arrasto só a BAIXA (0,16 → 3,25) — não são as estrias. Varridos 1 368 + 594 na
+    // bancada: perfil Linear, jitter 0,1 (a borda ondulada do 8B), arrasto 0,05, papel 0,65 — nota 1,25 → 0,64.
     Receita {
         meio: "Pencil",
         grupo: "Graphite",
@@ -258,7 +272,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         opacity: 1.0,
         pigment: 125.0,
         pickup: 1.0,
-        gate: 0.6,
+        gate: 0.65,
         evaporation: 1.0,
         edge: 0.0,
         tilt: DIREITA,
@@ -266,34 +280,39 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.0,
         size_px: Some(6.5),
-        extras: &[("felt", 0.0)],
+        extras: &[("felt", 0.0), ("drag", 0.05)],
         grao: Some(("Noise", 32.0)),
         spacing: None,
         achatado: None,
+        pincel: &[("falloff", "\"Linear\""), ("jitter", "0.1")],
     },
     // Pencil › Charcoal: pouca carga, orla larga. Prompt 35 (14/10), contra o Rebelle «Charcoal/Charcoal» a
     // 37 px vistos (nota 12,03 → 3,35): o Noise 0,15 era uma mancha (25 px a y = 40, 36 a 450) — Noise 48; o
-    // carvão do Rebelle é RALO (miolo 0,64): carga 12, papel 0,2, dureza 0,5.
+    // carvão do Rebelle é RALO (miolo 0,64). A orla do Rebelle (15 px a 21 de largura, 25 px de subida a 38)
+    // não cabe na dureza: a 0,5 o portão das mídias lia 7, e nenhuma dureza/papel/carga/arrasto passa de 9
+    // (1 755 variantes). O perfil Sharp (p², a cauda longa) e o jitter 0,2 dão 10 e a poeira do carvão:
+    // dureza 0,1, papel 0, carga 24, arrasto 0,02 — nota 3,31 → 0,79.
     Receita {
         meio: "Pencil",
         grupo: "Charcoal",
         nome: "Charcoal",
         water: 0.0,
         opacity: 1.0,
-        pigment: 12.0,
+        pigment: 24.0,
         pickup: 1.0,
-        gate: 0.2,
+        gate: 0.0,
         evaporation: 1.0,
         edge: 0.0,
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
-        hardness: 0.5,
+        hardness: 0.1,
         size_px: Some(37.0),
-        extras: &[("felt", 0.0)],
+        extras: &[("felt", 0.0), ("drag", 0.02)],
         grao: Some(("Noise", 48.0)),
         spacing: None,
         achatado: None,
+        pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2")],
     },
     // Pastel › Pastel Dry › Dry Thin: grão fino e regular. Prompt 35 (14/10), contra o Rebelle NO TEMPO e à
     // mesma largura vista (`ferramentas/pastel_regua.py`, nota 4,76 → 1,38): o grão Noise 0,4 era uma mancha
@@ -315,22 +334,26 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.2,
         size_px: Some(29.0),
-        extras: &[("felt", 0.0)],
+        extras: &[("felt", 0.0), ("drag", 0.0)],
         grao: Some(("Noise", 100.0)),
         spacing: None,
         achatado: None,
+        pincel: &[],
     },
     // Pastel › Pastel Oil › Oil Pastel 2 (o giz de cera): grão mais fino e mais carregado que o seco (o
     // Voronoi passava as métricas, mas a largura variava até 42 % com a posição — medido 11/10). Prompt 35
     // (14/10), contra o Rebelle «Pastel Oil/Oil Pastel 2» a 77 px vistos (nota 5,06 → 1,41): o Noise 0,15
-    // também era mancha (42 px a y = 40, 68 a 450) — Noise 100 e carga 200.
+    // também era mancha (42 px a y = 40, 68 a 450) — Noise 100. Com o arrasto na ponta seca: o portão das
+    // mídias reprovava Textura (9,7 contra > 12,6) e Orla (4 contra > 6); o arrasto as BAIXA (0,3: Textura
+    // 12,9 só com papel 1,2) e não faz as estrias do Rebelle (a prancha: ele alisa). Carga 100, jitter 0,1,
+    // arrasto 0,05 — nota 1,45 → 1,05. ABERTO: as estrias ao longo do traço não vêm de nenhum destes botões.
     Receita {
         meio: "Pastel",
         grupo: "Oil",
         nome: "Oil Pastel",
         water: 0.0,
         opacity: 1.0,
-        pigment: 200.0,
+        pigment: 100.0,
         pickup: 1.0,
         gate: 0.8,
         evaporation: 1.0,
@@ -340,9 +363,10 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.0,
         size_px: Some(77.0),
-        extras: &[("felt", 0.0)],
+        extras: &[("felt", 0.0), ("drag", 0.05)],
         grao: Some(("Noise", 100.0)),
         spacing: None,
         achatado: None,
+        pincel: &[("jitter", "0.1")],
     },
 ];

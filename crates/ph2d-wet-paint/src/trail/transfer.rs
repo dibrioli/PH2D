@@ -220,83 +220,87 @@ impl Trail {
                     g.relevo[i] = ((r_old as f64 * m_old + relevo as f64 * v) / (m_old + v)) as f32;
                 }
                 // ⭐ **A ponta SECA** (prompt 35, contra o Rebelle Dry Thin): sem água na ponta e sem água
-                // na célula, o pigmento pousa já ASSENTE e não há película para arrastar — um pastel não se
-                // mexe depois do traço (medido: o suspenso andava 2 passos depois do pen-up) nem risca.
+                // na célula, o pigmento pousa já ASSENTE — um pastel não se mexe depois do traço (medido: o
+                // suspenso andava 2 passos depois do pen-up). O arrasto abaixo continua do PRESET (`Drag`): o
+                // pastel seco não arrasta, o de óleo risca (as estrias do Oil Pastel 2 do Rebelle).
                 let seco = ponta_seca && g.film[i] <= FILM_TRACO;
                 if seco {
-                    pousa_seco(g, i, v, [self.tip_r[l], self.tip_g[l], self.tip_b[l]], p, &mut out);
+                    pousa_seco(
+                        g,
+                        i,
+                        v,
+                        [self.tip_r[l], self.tip_g[l], self.tip_b[l]],
+                        p,
+                        &mut out,
+                    );
                     if g.sett[i] as f64 > 3000.0 {
                         let ns = g.sett[i] as f64 - shed_pig;
                         g.sett[i] = if ns < 0.0 { 0.0 } else { ns as f32 };
                     }
-                    rx0 = rx0.min(cx);
-                    rx1 = rx1.max(cx);
-                    ry0 = ry0.min(cy);
-                    ry1 = ry1.max(cy);
-                    continue;
-                }
-                let in_a = alpha_of_mass(v);
-                let old = g.susp[i] as f64;
-                if old > 0.0 {
-                    // Opacity composite of the (possibly dirty) tip over the
-                    // resident. (Sub-unit masses read alpha 0 from the table;
-                    // guard the 0/0 case.)
-                    let a_old = alpha_of_mass(old);
-                    let e9 = a_old * (1.0 - in_a);
-                    if e9 + in_a > 0.0 {
-                        let wgt = in_a / (e9 + in_a);
-                        let uc = g.susp_rgb[i];
-                        let tip = [self.tip_r[l], self.tip_g[l], self.tip_b[l]].map(f64::from);
-                        mix.mix(
-                            uc[0] as f64,
-                            uc[1] as f64,
-                            uc[2] as f64,
-                            tip[0],
-                            tip[1],
-                            tip[2],
-                            wgt,
-                            &mut out,
-                        );
-                        // Duas tintas na MESMA água: os pigmentos somam a absorção (W1e, F6).
-                        crate::colorops::velatura(
-                            &mut out,
-                            wgt,
-                            p.glaze,
-                            a_old,
-                            uc.map(f64::from),
-                            tip,
-                        );
-                        g.susp_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
-                    }
-                    // Soft cap: past 3000 the cell sheds the window mean
-                    // instead of clamping, so heavy paint hovers at the cap.
-                    let nm = if old < 3000.0 {
-                        old + v
+                } else {
+                    let in_a = alpha_of_mass(v);
+                    let old = g.susp[i] as f64;
+                    if old > 0.0 {
+                        // Opacity composite of the (possibly dirty) tip over the
+                        // resident. (Sub-unit masses read alpha 0 from the table;
+                        // guard the 0/0 case.)
+                        let a_old = alpha_of_mass(old);
+                        let e9 = a_old * (1.0 - in_a);
+                        if e9 + in_a > 0.0 {
+                            let wgt = in_a / (e9 + in_a);
+                            let uc = g.susp_rgb[i];
+                            let tip = [self.tip_r[l], self.tip_g[l], self.tip_b[l]].map(f64::from);
+                            mix.mix(
+                                uc[0] as f64,
+                                uc[1] as f64,
+                                uc[2] as f64,
+                                tip[0],
+                                tip[1],
+                                tip[2],
+                                wgt,
+                                &mut out,
+                            );
+                            // Duas tintas na MESMA água: os pigmentos somam a absorção (W1e, F6).
+                            crate::colorops::velatura(
+                                &mut out,
+                                wgt,
+                                p.glaze,
+                                a_old,
+                                uc.map(f64::from),
+                                tip,
+                            );
+                            g.susp_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
+                        }
+                        // Soft cap: past 3000 the cell sheds the window mean
+                        // instead of clamping, so heavy paint hovers at the cap.
+                        let nm = if old < 3000.0 {
+                            old + v
+                        } else {
+                            old + v - shed_pig
+                        };
+                        g.susp[i] = if nm < 0.0 { 0.0 } else { nm as f32 };
                     } else {
-                        old + v - shed_pig
+                        // Virgin cell: takes the tip color outright, and drinks
+                        // its first wetting twice (this add + the general below).
+                        g.susp_rgb[i] = [self.tip_r[l], self.tip_g[l], self.tip_b[l]];
+                        g.susp[i] = v as f32;
+                        g.film[i] = (g.film[i] as f64 + self.water[l] as f64) as f32;
+                    }
+                    if g.sett[i] as f64 > 3000.0 {
+                        let ns = g.sett[i] as f64 - shed_pig;
+                        g.sett[i] = if ns < 0.0 { 0.0 } else { ns as f32 };
+                    }
+                    let film_i = g.film[i] as f64;
+                    let mut nf = if film_i < water_cap {
+                        film_i + self.water[l] as f64
+                    } else {
+                        film_i + self.water[l] as f64 - shed_water
                     };
-                    g.susp[i] = if nm < 0.0 { 0.0 } else { nm as f32 };
-                } else {
-                    // Virgin cell: takes the tip color outright, and drinks
-                    // its first wetting twice (this add + the general below).
-                    g.susp_rgb[i] = [self.tip_r[l], self.tip_g[l], self.tip_b[l]];
-                    g.susp[i] = v as f32;
-                    g.film[i] = (g.film[i] as f64 + self.water[l] as f64) as f32;
+                    if nf < 0.00001 {
+                        nf = 0.00001; // trace floor: the wet map must know
+                    }
+                    g.film[i] = nf as f32;
                 }
-                if g.sett[i] as f64 > 3000.0 {
-                    let ns = g.sett[i] as f64 - shed_pig;
-                    g.sett[i] = if ns < 0.0 { 0.0 } else { ns as f32 };
-                }
-                let film_i = g.film[i] as f64;
-                let mut nf = if film_i < water_cap {
-                    film_i + self.water[l] as f64
-                } else {
-                    film_i + self.water[l] as f64 - shed_water
-                };
-                if nf < 0.00001 {
-                    nf = 0.00001; // trace floor: the wet map must know
-                }
-                g.film[i] = nf as f32;
                 // 5. Paint drag: pull from the same window offset at the
                 // PREVIOUS anchor — the film gets tugged along under the
                 // stroke.

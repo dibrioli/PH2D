@@ -216,9 +216,9 @@ impl Inercias {
     /// ([`Natureza::MeioNaoLe`]). A porta dos eventos do painel pergunta-o antes de rotear.
     #[must_use]
     pub fn recusa_clique(self, id: NodeId) -> bool {
-        Dependente::TODOS.into_iter().any(|d| {
-            self.inerte(d) && d.natureza() == Natureza::MeioNaoLe && d.cobre(id)
-        })
+        Dependente::TODOS
+            .into_iter()
+            .any(|d| self.inerte(d) && d.natureza() == Natureza::MeioNaoLe && d.cobre(id))
     }
 
     /// **A dica de um id pintado, se ele está inerte** — a pergunta única do painel.

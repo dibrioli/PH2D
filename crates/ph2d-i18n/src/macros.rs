@@ -19,6 +19,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.summary" => "{steps} steps \u{b7} {seconds} s",
         "panel.macros.edited_since" => "Edited from step {n}",
         "panel.macros.rename" => "Rename",
+        "panel.macros.delete_step" => "Delete step",
         "panel.macros.field.wait" => "Wait before (s)",
         "panel.macros.field.size" => "Size (px)",
         "panel.macros.field.value" => "Value",

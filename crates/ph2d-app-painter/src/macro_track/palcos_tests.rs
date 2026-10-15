@@ -66,18 +66,39 @@ struct Placa {
     proxima: u32,
     adquiridas: Vec<u32>,
     substituidas: usize,
+    regioes: usize,
     soltas: Vec<u32>,
+    /// O que cada ranhura tem: (largura, rgba premultiplicado).
+    texturas: std::collections::BTreeMap<u32, (u32, Vec<u8>)>,
 }
 
 impl RanhurasDaCena for Placa {
-    fn adquire(&mut self, _: u32, _: u32, _: &[u8]) -> Result<u32, String> {
+    fn adquire(&mut self, w: u32, _: u32, rgba: &[u8]) -> Result<u32, String> {
         self.proxima += 1;
         self.adquiridas.push(self.proxima);
+        self.texturas.insert(self.proxima, (w, rgba.to_vec()));
         Ok(self.proxima)
     }
 
-    fn substitui(&mut self, _: u32, _: u32, _: u32, _: &[u8]) -> Result<(), String> {
+    fn substitui(&mut self, id: u32, w: u32, _: u32, rgba: &[u8]) -> Result<(), String> {
         self.substituidas += 1;
+        self.texturas.insert(id, (w, rgba.to_vec()));
+        Ok(())
+    }
+
+    fn substitui_regiao(
+        &mut self,
+        id: u32,
+        (x, y, w, h): (u32, u32, u32, u32),
+        rgba: &[u8],
+    ) -> Result<(), String> {
+        self.regioes += 1;
+        let (lw, t) = self.texturas.get_mut(&id).ok_or("ranhura desconhecida")?;
+        let (lw, x, w) = (*lw as usize, x as usize, w as usize);
+        for (j, linha) in rgba.chunks_exact(w * 4).enumerate().take(h as usize) {
+            let a = ((y as usize + j) * lw + x) * 4;
+            t[a..a + w * 4].copy_from_slice(linha);
+        }
         Ok(())
     }
 
@@ -121,11 +142,17 @@ fn so_a_timeline_acorda_o_palco_e_a_troca_vai_a_sprite_alvo() {
     );
     // O mesmo instante: a tela não mudou, não sobe outra vez, e a troca continua.
     assert_eq!(quadro(&mut p, &mut w, &mut placa), trocas);
-    assert_eq!((placa.adquiridas.len(), placa.substituidas), (1, 0));
-    // Para a frente, a pincelada sobe pela MESMA ranhura.
+    assert_eq!(
+        (placa.adquiridas.len(), placa.substituidas + placa.regioes),
+        (1, 0)
+    );
+    // Para a frente, a pincelada sobe pela MESMA ranhura (inteira ou só o que mudou).
     w.entity_mut(dono).insert(em(quadros));
     assert_eq!(quadro(&mut p, &mut w, &mut placa), trocas);
-    assert_eq!((placa.adquiridas.len(), placa.substituidas), (1, 1));
+    assert_eq!(
+        (placa.adquiridas.len(), placa.substituidas + placa.regioes),
+        (1, 1)
+    );
     // A Timeline deixa de conduzir: a sprite volta a ser a dela, e o palco fica em cache.
     w.entity_mut(dono).remove::<MacroTempo>();
     assert!(quadro(&mut p, &mut w, &mut placa).is_empty());
@@ -200,4 +227,51 @@ fn o_palco_que_muda_reedita_na_mesma_ranhura_e_o_que_morre_a_devolve() {
     w.despawn(dono);
     assert!(quadro(&mut p, &mut w, &mut placa).is_empty());
     assert_eq!(placa.soltas, [1, 2]);
+}
+
+/// W5e — a ranhura recebe só o retângulo que mudou desde a subida anterior e fica, em cada quadro, igual
+/// à tela inteira premultiplicada (a tela com PAPEL, a composição parcial).
+#[test]
+fn a_ranhura_recebe_so_o_que_mudou_e_fica_igual_a_tela() {
+    use ph2d_tool_painter::macro_track::em_cena::MacroEmCena;
+    let (doc, d) = ph2d_tool_painter::macro_track::roteiro::grava_no_papel(64, 0, 2).expect("arma");
+    let mut world = World::new();
+    let e = world
+        .spawn((
+            Macro {
+                doc: doc.clone(),
+                modo: ModoDaMacro::Fiel,
+            },
+            MacroTempo { segundos: 0.0 },
+        ))
+        .id();
+    let mut palcos = PalcosDoPainter::default();
+    let mut placa = Placa::default();
+    let mut verdade = MacroEmCena::de(&doc).expect("lê-se").expect("trilha");
+    let mut tela = Vec::new();
+    let mut q = 0u32;
+    while f64::from(q) / 60.0 <= d + 0.05 {
+        let t = f64::from(q) / 60.0;
+        world.get_mut::<MacroTempo>(e).expect("tempo").segundos = t;
+        palcos.segue(&mut world);
+        let trocas = palcos.sobe(&mut placa, &mut ToastQueue::default());
+        verdade.segue(t).expect("toca");
+        if let Some((a, _, _)) = verdade.toma_a_tela() {
+            tela = a.to_vec();
+            ph2d_render::premul::premultiply_rgba8(&mut tela);
+        }
+        let id = trocas[0].texture_id;
+        assert!(
+            placa.texturas[&id].1 == tela,
+            "quadro {q}: a ranhura não é a tela"
+        );
+        q += 1;
+    }
+    // Uma composição inteira (a ferramenta invalidou a cache) sobe inteira.
+    assert!(
+        placa.regioes > placa.substituidas,
+        "controlo: {} subidas parciais, {} inteiras depois da 1.ª",
+        placa.regioes,
+        placa.substituidas
+    );
 }

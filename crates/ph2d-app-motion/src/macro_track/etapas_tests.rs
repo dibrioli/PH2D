@@ -97,6 +97,28 @@ fn uma_espera_antes_de_um_gesto_e_grava_lo_mais_tarde() {
 }
 
 #[test]
+fn apagar_um_gesto_e_grava_lo_sem_ele() {
+    let original = gravado(CENA, &[]);
+    let k = 10;
+    let sem: Vec<Gesto> = CENA
+        .iter()
+        .enumerate()
+        .filter_map(|(i, g)| (i != k).then_some(*g))
+        .collect();
+    // O gesto dura um quadro: fechar o tempo dele não move os seguintes.
+    let mut mais = vec![0; sem.len()];
+    mais[k] = super::smoke::ENTRE;
+    let verdade = gravado(&sem, &mais);
+    let mut editado = original.0.clone();
+    etapas::apaga(&mut editado.tracks[0], k).expect("a etapa existe");
+    bate(&editado, &verdade, &original);
+    let e = etapas::etapas(&editado.tracks[0]).expect("lê-se");
+    assert_eq!(e.len(), CENA.len() - 1, "a etapa apagada não se mostra");
+    assert!(e.iter().all(|x| x.k != k), "e as outras não se renumeram");
+    assert_eq!(e[k].k, k + 1);
+}
+
+#[test]
 fn encurtar_a_espera_antes_de_um_gesto_e_grava_lo_mais_cedo() {
     let mut antes = vec![0; CENA.len()];
     antes[15] = 40;
@@ -252,6 +274,41 @@ mod leitor {
         assert!(
             tempos.windows(2).all(|w| (w[1] - w[0] - DT).abs() < 1e-9),
             "o relógio de dentro não salta nem pára: {tempos:?}"
+        );
+    }
+
+    #[test]
+    fn apagar_um_arrasto_fecha_os_quadros_dele_e_o_relogio_de_dentro_nao_salta() {
+        let mut tr = fixture();
+        let e = LeitorDoMotion.etapas(&tr.events);
+        let dentro = tr.events[e[0].inicio..=e[0].fim]
+            .iter()
+            .filter(|x| LeitorDoMotion.e_relogio(&x.payload))
+            .count();
+        assert!(dentro > 0, "a fixture: o arrasto atravessa quadros");
+        super::super::etapas::apaga(&mut tr, 0).expect("a etapa existe");
+        let ev = ph2d_macro::etapa::efetiva(&tr, &LeitorDoMotion).expect("aplica");
+        let tempos: Vec<f64> = ev
+            .iter()
+            .filter_map(|x| match Passo::descodifica(&x.payload) {
+                Ok(Passo::Quadro { tempo, .. }) => Some(tempo),
+                _ => None,
+            })
+            .collect();
+        let gravados = tr
+            .events
+            .iter()
+            .filter(|x| LeitorDoMotion.e_relogio(&x.payload))
+            .count();
+        assert_eq!(tempos.len(), gravados - dentro, "os quadros de dentro saem");
+        assert!(
+            tempos.windows(2).all(|w| (w[1] - w[0] - DT).abs() < 1e-9),
+            "o relógio de dentro não salta: {tempos:?}"
+        );
+        assert_eq!(
+            LeitorDoMotion.etapas(&ev).len(),
+            3,
+            "fica uma etapa a menos"
         );
     }
 

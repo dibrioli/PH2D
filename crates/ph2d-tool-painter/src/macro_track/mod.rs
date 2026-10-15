@@ -20,6 +20,10 @@ pub mod roteiro;
 pub mod tocar;
 
 #[cfg(test)]
+mod composicao_tests;
+#[cfg(test)]
+mod custo_w5e_tests;
+#[cfg(test)]
 mod etapas_tests;
 #[cfg(test)]
 mod tests;

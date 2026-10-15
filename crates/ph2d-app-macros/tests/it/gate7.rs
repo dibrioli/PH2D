@@ -536,3 +536,62 @@ fn gate7_o_clipe_com_a_camara_lenta_do_artista_nao_se_re_cronometra() {
         "controlo: o clipe da forma do Parar segue a espera: {dc}"
     );
 }
+
+/// W5e — **apagar uma etapa** (decisão do dono, 15/10: o tempo dela fecha-se): o painel e a linha da
+/// Timeline deixam de a mostrar, as outras não se renumeram, o clipe encurta a duração dela e o cartão
+/// diz «editada» desde a etapa que ficou no lugar.
+#[test]
+fn gate7_apagar_uma_etapa_fecha_o_tempo_dela_e_o_clipe_encurta() {
+    let mut b = Banca::nova();
+    b.pinta();
+    b.carrega(ids::MACROS_RECORD);
+    b.quadro();
+    let l = LADO as f32;
+    b.pincelada([0.1 * l, 0.2 * l], [0.9 * l, 0.25 * l]);
+    b.pincelada([0.2 * l, 0.5 * l], [0.8 * l, 0.55 * l]);
+    b.pincelada([0.1 * l, 0.8 * l], [0.9 * l, 0.75 * l]);
+    b.pinta();
+    b.carrega(ids::MACROS_STOP);
+    b.quadro();
+    let clip =
+        b.tl.doc
+            .clip_named(b.bits, ph2d_i18n::tr("app.macros.clip_name"))
+            .expect("Parar cria o clipe");
+    let d0 = b.tl.doc.clip_length_override(clip).unwrap();
+    let antes = b.m.etapas_na_linha(&b.sim, &b.tl.doc);
+    assert_eq!(antes.len(), 3);
+    b.pinta();
+    let vistas = ph2d_panel_macros::current_macros().objeto.unwrap().etapas;
+    let fechou = vistas[1].t1_s - vistas[1].t0_s;
+    b.m.pede(MacroRequest::Apaga {
+        entity_bits: b.bits,
+        trilha: 0,
+        k: 1,
+    });
+    b.quadro();
+    b.pinta();
+    let o = ph2d_panel_macros::current_macros().objeto.unwrap();
+    assert_eq!(o.erro, None);
+    assert_eq!(
+        o.etapas.iter().map(|e| e.k).collect::<Vec<_>>(),
+        [0, 2],
+        "a apagada sai e as outras não se renumeram"
+    );
+    assert_eq!(
+        o.editada_desde,
+        Some(1),
+        "editada desde a que ficou no lugar"
+    );
+    let depois = b.m.etapas_na_linha(&b.sim, &b.tl.doc);
+    assert_eq!(depois.len(), 2, "a linha da Timeline também");
+    assert!(fechou > 0.1, "a pincelada durava: {fechou}");
+    let d = b.tl.doc.clip_length_override(clip).unwrap();
+    assert!(
+        (d - (d0 - fechou)).abs() < 1e-6,
+        "o clipe encurta a duração da etapa: {d0} → {d}"
+    );
+    assert!(
+        (depois[1].t0 - (antes[2].t0 - fechou)).abs() < 1e-6,
+        "a seguinte recua a duração da apagada"
+    );
+}

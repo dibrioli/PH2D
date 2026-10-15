@@ -114,6 +114,9 @@ pub enum TipoDaEtapa {
 /// propriedades da pincelada no toque.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EtapaDoPainter {
+    /// A etapa a contar da GRAVAÇÃO — o endereço de toda edição (uma apagada não se mostra, mas não
+    /// renumera as outras).
+    pub k: usize,
     pub etapa: Etapa,
     pub tipo: TipoDaEtapa,
     /// Início e fim na trilha QUE TOCA (com as esperas editadas).
@@ -173,7 +176,8 @@ fn pinceis(tocavel: &Track) -> Result<Vec<([u8; 3], f32)>, ErroDaMacro> {
     Ok(out)
 }
 
-/// **As etapas de uma trilha do Painter**, com as edições dela aplicadas.
+/// **As etapas VIVAS de uma trilha do Painter**, com as edições dela aplicadas (uma apagada sai; a
+/// numeração das pinceladas é a da gravação).
 ///
 /// # Errors
 /// [`ErroDaMacro`] (uma edição que não cabe, um estado inicial que não se lê).
@@ -182,11 +186,11 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
         .tocavel(&LeitorDoPainter)
         .map_err(ErroDaMacro::Edicao)?;
     let gravadas = LeitorDoPainter.etapas(&track.events);
-    let tocadas = LeitorDoPainter.etapas(&tocavel.events);
-    let pinceis = pinceis(&tocavel)?;
+    let mut tocadas = LeitorDoPainter.etapas(&tocavel.events).into_iter();
+    let mut pinceis = pinceis(&tocavel)?.into_iter();
     let mut n = 0;
     let mut out = Vec::with_capacity(gravadas.len());
-    for (g, t) in gravadas.iter().zip(&tocadas) {
+    for (k, g) in gravadas.iter().enumerate() {
         let tipo = match passo(&track.events[g.fim].payload) {
             Some(Passo::Recusada(porta)) => TipoDaEtapa::Recusada(porta),
             _ => {
@@ -194,11 +198,16 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
                 TipoDaEtapa::Pincelada(n)
             }
         };
+        if apagada(track, g) {
+            continue;
+        }
+        let Some(t) = tocadas.next() else { break };
         let (cor, tamanho_px) = match tipo {
-            TipoDaEtapa::Pincelada(i) => pinceis.get(i - 1).copied().unwrap_or(([0; 3], 0.0)),
+            TipoDaEtapa::Pincelada(_) => pinceis.next().unwrap_or(([0; 3], 0.0)),
             TipoDaEtapa::Recusada(_) => ([0; 3], 0.0),
         };
         out.push(EtapaDoPainter {
+            k,
             etapa: *g,
             tipo,
             t0: tocavel.events[t.inicio].t,
@@ -215,6 +224,25 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
     Ok(out)
 }
 
+fn apagada(track: &Track, g: &Etapa) -> bool {
+    track
+        .edicoes
+        .iter()
+        .any(|e| e.ancora == g.inicio && e.apagada)
+}
+
+/// **Apaga a etapa `k`**: o tempo dela fecha-se e a água passa ao relógio fixo ali.
+///
+/// # Errors
+/// [`ErroDeEdicaoDoPainter::SemEtapa`].
+pub fn apaga(track: &mut Track, k: usize) -> Result<(), ErroDeEdicaoDoPainter> {
+    if track.apaga_etapa(&LeitorDoPainter, k) {
+        Ok(())
+    } else {
+        Err(ErroDeEdicaoDoPainter::SemEtapa(k))
+    }
+}
+
 /// Uma edição pedida a uma etapa que não a aceita.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ErroDeEdicaoDoPainter {
@@ -227,10 +255,10 @@ fn pincelada(
     track: &Track,
     k: usize,
 ) -> Result<(Etapa, usize, EtapaDoPainter), ErroDeEdicaoDoPainter> {
-    let todas = etapas(track).map_err(ErroDeEdicaoDoPainter::Macro)?;
-    let e = todas
-        .get(k)
-        .cloned()
+    let e = etapas(track)
+        .map_err(ErroDeEdicaoDoPainter::Macro)?
+        .into_iter()
+        .find(|e| e.k == k)
         .ok_or(ErroDeEdicaoDoPainter::SemEtapa(k))?;
     if !matches!(e.tipo, TipoDaEtapa::Pincelada(_)) {
         return Err(ErroDeEdicaoDoPainter::NaoEPincelada(k));

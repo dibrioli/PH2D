@@ -341,12 +341,33 @@ impl PainterTool {
         })
     }
 
-    /// **A tela composta para a CENA** (o palco de uma macro, ADR-0186): o corpo do
-    /// [`Self::take_preview_arc`] — a MESMA composição que o editor mostra —, sem a porta gravada e
-    /// sem o portão do `preview_dirty`, que os passos gravados (`Preview`/`PreviewSujo`) já drenaram.
+    /// **A tela composta para a CENA** (o palco de uma macro, ADR-0186): a MESMA composição que o editor
+    /// mostra, UMA vez, sobre tudo o que os passos `Preview` drenaram desde a última leitura
+    /// ([`Self::drena_sem_compor`] deixou o retângulo sujo a acumular: a composição é parcial quando a
+    /// anterior está em cache). Não muda o estado da pintura.
     pub(crate) fn composto_da_cena(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
-        self.preview_dirty = true;
-        self.take_preview_arc_corpo()
+        if self.canvas_rgba.is_empty() {
+            return None;
+        }
+        Some(self.compoe_a_saida(false))
+    }
+
+    /// **O passo `Preview` de uma macro tocada** — o dreno do [`Self::take_preview_arc`] sem a
+    /// composição: o que o dreno muda no estado (o papel, a composição adiada do Composite Brush, o
+    /// vidro) corre igual e na mesma ordem; o retângulo sujo fica a acumular para a cena compor uma vez
+    /// ([`Self::composto_da_cena`]). `true` = a tela mudou.
+    pub(crate) fn drena_sem_compor(&mut self) -> bool {
+        self.reconcile_substrate();
+        self.compoe_o_pendente();
+        if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
+            return false;
+        }
+        let compoe = self.mask_grayscale_view_source().is_none()
+            && !(self.is_trivial_stack() && !self.mask_scratch_active() && !self.impasto_visible());
+        if compoe {
+            self.segue_o_vidro_no_quadro();
+        }
+        true
     }
 
     fn take_preview_arc_corpo(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
@@ -362,6 +383,12 @@ impl PainterTool {
             self.last_drain_branch = crate::tool::DrainBranch::Idle;
             return None;
         }
+        Some(self.compoe_a_saida(true))
+    }
+
+    /// A composição do dreno, depois do portão. `segue_o_vidro` = o dreno do editor (o vidro segue o
+    /// traço aberto); a cena de uma macro já o fez em cada `Preview` ([`Self::drena_sem_compor`]).
+    fn compoe_a_saida(&mut self, segue_o_vidro: bool) -> (Arc<Vec<u8>>, u32, u32) {
         // Past the guard we are returning a fresh preview, so the CONTENT changed since the last drain:
         // bump the version the shell keys its upload on. This is the ONE place a Some is produced, so a
         // single bump here covers the trivial, composite and mask-view returns below. (See the field doc
@@ -380,11 +407,11 @@ impl PainterTool {
             self.composited = Some(Arc::new(gray));
             self.preview_upload_bbox = None;
             self.last_drain_branch = crate::tool::DrainBranch::Gray;
-            return Some((
+            return (
                 Arc::clone(self.composited.as_ref().expect("just set")),
                 w,
                 h,
-            ));
+            );
         }
         // The trivial stack (single visible opaque Normal raster) stays the
         // zero-copy fast path. Any non-trivial stack (≥2 layers, or a layer with
@@ -406,14 +433,16 @@ impl PainterTool {
             // back to a full upload anyway, so an early bbox can never desync it.
             self.preview_upload_bbox = self.dirty_rect.take();
             self.last_drain_branch = crate::tool::DrainBranch::TrivialFast;
-            return Some((Arc::clone(&self.canvas_rgba), w, h));
+            return (Arc::clone(&self.canvas_rgba), w, h);
         }
         let active = self.layers.active().unwrap_or(RtLayerId(0));
         // Dirty-rect fast lane: when a valid full composite is cached AND only a
         // known bbox changed, recomposite ONLY that region and blit it into the
         // cache — O(N×bbox) vs O(N×W×H). Otherwise do a full recompose.
         // O VIDRO segue o traço aberto antes de o quadro o compor sobre o papel de cor (doc 48).
-        self.segue_o_vidro_no_quadro();
+        if segue_o_vidro {
+            self.segue_o_vidro_no_quadro();
+        }
         let dirty = self.dirty_rect.take();
         let stroke_dirtied = dirty.is_some();
         // A live Mask scratch does NOT force the full path. Its protection-overlay tint is PER-PIXEL
@@ -507,11 +536,11 @@ impl PainterTool {
                 self.last_drain_branch = crate::tool::DrainBranch::FullComposite;
             }
         }
-        Some((
+        (
             Arc::clone(self.composited.as_ref().expect("just set")),
             w,
             h,
-        ))
+        )
     }
 
     /// Drains the dirty bbox `(x, y, w, h)` of the LAST [`Self::take_preview_arc`]

@@ -158,15 +158,20 @@ impl TocadorDoPainter {
     }
 
     /// **A tela para a cena**, se mudou desde a última vez: a composição do editor
-    /// ([`PainterTool::take_preview_arc`]), straight, `w × h`. O sinal de mudança é o do editor — os
-    /// passos `Preview` (pista CPU) e `PreviewSujo` (pista da placa) que a gravação drenou —, logo só
-    /// recompõe quando o artista viu a tela mudar. Ler não muda a reprodução (gate
-    /// `macro_em_cena::ler_a_cena_nao_muda_a_reproducao`).
+    /// ([`PainterTool::take_preview_arc`]), straight, `w × h`, composta UMA vez sobre o que mudou desde
+    /// a leitura anterior. O sinal de mudança é o do editor — os passos `Preview` (pista CPU) e
+    /// `PreviewSujo` (pista da placa) que a gravação drenou —, logo só compõe quando o artista viu a tela
+    /// mudar. Ler não muda a reprodução (gate `macro_em_cena::ler_a_cena_nao_muda_a_reproducao`).
     pub fn toma_a_tela(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
         if !std::mem::take(&mut self.mudou) {
             return None;
         }
         self.tool.composto_da_cena()
+    }
+
+    /// O retângulo `(x, y, w, h)` que mudou na última [`Self::toma_a_tela`] — `None` = a tela inteira.
+    pub fn caixa_da_tela(&mut self) -> Option<(u32, u32, u32, u32)> {
+        self.tool.take_preview_upload_bbox()
     }
 
     #[must_use]
@@ -266,7 +271,8 @@ impl TocadorDoPainter {
             Passo::TiraAssadoAdiado => {
                 t.take_deferred_bake();
             }
-            Passo::Preview => mudou = t.take_preview_arc().is_some(),
+            // A cena compõe UMA vez quando lê ([`TocadorDoPainter::toma_a_tela`]).
+            Passo::Preview => mudou = t.drena_sem_compor(),
             Passo::PreviewBbox => {
                 t.take_preview_upload_bbox();
             }

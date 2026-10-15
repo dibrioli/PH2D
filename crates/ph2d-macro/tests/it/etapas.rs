@@ -290,8 +290,86 @@ fn uma_edicao_que_nao_cabe_na_gravacao_recusa_se() {
     );
 }
 
+#[test]
+fn apagar_uma_etapa_fecha_o_tempo_dela() {
+    let g = gravacao();
+    let es = Brinquedo.etapas(&g.events);
+    let (a, f) = (es[1].inicio, es[1].fim);
+    let dur = g.events[f].t.0 - g.events[a].t.0;
+    assert!(dur > 0, "a fixture: a etapa dura");
+    let tr = com(
+        com(
+            g.clone(),
+            EdicaoDeEtapa {
+                ancora: es[0].inicio,
+                insercoes: vec![(a + 1, carga(4, 42))],
+                ..Default::default()
+            },
+        ),
+        EdicaoDeEtapa {
+            ancora: a,
+            apagada: true,
+            // As outras edições de uma etapa apagada não valem.
+            espera_us: 5 * Q as i64,
+            trocas: vec![(f + 1, carga(4, 7))],
+            ..Default::default()
+        },
+    );
+    let ev = efetiva(&tr, &Brinquedo).expect("aplica");
+    assert_eq!(
+        &ev[..a],
+        &g.events[..a],
+        "antes da etapa: a gravação, ao bit"
+    );
+    assert_eq!(
+        ev[a].payload,
+        carga(9, 0),
+        "a trilha sai da gravação onde a etapa estava"
+    );
+    assert_eq!(ev[a].t, g.events[a].t);
+    assert_eq!(
+        (ev[a + 1].t, &ev[a + 1].payload),
+        (g.events[a].t, &carga(4, 42)),
+        "a inserção de OUTRA etapa num evento apagado toca onde ele fechou"
+    );
+    let depois = &ev[a + 2..];
+    assert_eq!(
+        depois.len(),
+        g.events.len() - f - 1,
+        "os eventos da etapa (e o relógio de dentro) saem"
+    );
+    for (e, o) in depois.iter().zip(&g.events[f + 1..]) {
+        assert_eq!(
+            e.t.0,
+            o.t.0 - dur,
+            "o que vem depois recua a duração da etapa"
+        );
+        if o.payload[0] == 0 {
+            assert_eq!(
+                tempo(&e.payload),
+                tempo(&o.payload) - dur,
+                "e o tempo de dentro também"
+            );
+        } else {
+            assert_eq!(e.payload, o.payload);
+        }
+    }
+    assert_eq!(Brinquedo.etapas(&ev).len(), 2, "fica uma etapa a menos");
+    assert_eq!(tipos(&ev).iter().filter(|&&k| k == 9).count(), 1);
+    assert!(
+        ev.windows(2).all(|w| w[0].t <= w[1].t),
+        "o tempo nunca recua"
+    );
+    let mut so = g.clone();
+    assert!(so.apaga_etapa(&Brinquedo, 1));
+    assert!(!so.apaga_etapa(&Brinquedo, 3), "não há etapa 3");
+    assert_eq!(so.edicoes.len(), 1);
+    assert!(so.edicoes[0].apagada && so.edicoes[0].ancora == a);
+}
+
 fn editado() -> MacroDoc {
     let g = gravacao();
+    let g0 = g.clone();
     let (a, b) = (ancora(&g, 1), ancora(&g, 2));
     let mut tr = g;
     tr.edicoes = vec![
@@ -302,6 +380,12 @@ fn editado() -> MacroDoc {
             trocas: vec![(a + 2, vec![7, 7])],
             insercoes: vec![(a, vec![])],
             sai_da_gravacao: true,
+            apagada: false,
+        },
+        EdicaoDeEtapa {
+            ancora: ancora(&g0, 0),
+            apagada: true,
+            ..Default::default()
         },
         EdicaoDeEtapa {
             ancora: b,

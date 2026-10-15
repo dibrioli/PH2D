@@ -12,7 +12,8 @@
 //!            · 5 EdicaoDeEtapa* (repetido; 1.1)
 //! Event    : 1 t_us (varint) · 2 payload (bytes)
 //! Edicao   : 1 ancora (varint) · 2 nome (utf8) · 3 espera_us (zigzag) · 4 troca* · 5 insercao*
-//!            · 6 sai_da_gravacao (varint)    — troca/insercao: 1 evento (varint) · 2 carga (bytes)
+//!            · 6 sai_da_gravacao (varint) · 7 apagada (varint)
+//!            — troca/insercao: 1 evento (varint) · 2 carga (bytes)
 //! ```
 //! Etiqueta repetida de campo único: vence a última.
 //!
@@ -128,6 +129,9 @@ fn write_edicao(ed: &EdicaoDeEtapa) -> Vec<u8> {
     }
     if ed.sai_da_gravacao {
         r.bool(6, true);
+    }
+    if ed.apagada {
+        r.bool(7, true);
     }
     r.finish()
 }
@@ -270,6 +274,7 @@ fn read_edicao(bytes: &[u8]) -> Result<EdicaoDeEtapa, CodecError> {
                 .push((i, carga));
             }
             6 => ed.sai_da_gravacao = Cursor(body).varint()? != 0,
+            7 => ed.apagada = Cursor(body).varint()? != 0,
             _ => {}
         }
     }

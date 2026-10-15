@@ -38,10 +38,9 @@ fn do_painter(tr: usize, track: &Track) -> Result<Vec<EtapaView>, ErroDaMacroVie
     let es = pi::etapas(track).map_err(|e| erros::do_painter(&e))?;
     Ok(es
         .into_iter()
-        .enumerate()
-        .map(|(k, e)| EtapaView {
+        .map(|e| EtapaView {
             trilha: tr,
-            k,
+            k: e.k,
             familia: FamiliaDaMacro::Painter,
             tipo: match e.tipo {
                 pi::TipoDaEtapa::Pincelada(n) => TipoDaEtapaView::Pincelada(n),
@@ -63,15 +62,14 @@ fn do_motion(tr: usize, track: &Track) -> Result<Vec<EtapaView>, ErroDaMacroView
     let es = mo::etapas(track).map_err(|e| erros::do_motion(&e))?;
     Ok(es
         .into_iter()
-        .enumerate()
-        .map(|(k, e)| {
+        .map(|e| {
             let props = match &e.tipo {
                 mo::TipoDaEtapa::Param { para, .. } => PropsDaEtapa::Param { valor: *para },
                 _ => PropsDaEtapa::Nenhuma,
             };
             EtapaView {
                 trilha: tr,
-                k,
+                k: e.k,
                 familia: FamiliaDaMacro::Motion,
                 tipo: match e.tipo {
                     mo::TipoDaEtapa::Acrescenta(v) => TipoDaEtapaView::Acrescenta(v),
@@ -139,14 +137,18 @@ pub fn vistas(bytes: &[u8]) -> Vistas {
         };
         match r {
             Ok(es) => {
-                let primeira = leitor(track).and_then(|l| {
-                    l.etapas(&track.events).iter().position(|g| {
-                        track
-                            .edicoes
-                            .iter()
-                            .any(|e| e.ancora == g.inicio && muda_o_toque(e))
+                // A 1.ª etapa À VISTA desde a qual a trilha já não é a gravação (a de uma apagada é a
+                // que ficou no lugar dela).
+                let primeira = leitor(track)
+                    .and_then(|l| {
+                        l.etapas(&track.events).iter().position(|g| {
+                            track
+                                .edicoes
+                                .iter()
+                                .any(|e| e.ancora == g.inicio && muda_o_toque(e))
+                        })
                     })
-                });
+                    .map(|k| es.iter().position(|e| e.k >= k).unwrap_or(es.len()));
                 if let Some(k) = primeira.map(|k| v.etapas.len() + k) {
                     v.editada_desde = Some(v.editada_desde.map_or(k, |a| a.min(k)));
                 }
@@ -160,7 +162,11 @@ pub fn vistas(bytes: &[u8]) -> Vistas {
 
 /// Uma edição que muda o que toca (o nome que o artista escreve não muda).
 fn muda_o_toque(e: &ph2d_macro::EdicaoDeEtapa) -> bool {
-    e.espera_us != 0 || !e.trocas.is_empty() || !e.insercoes.is_empty() || e.sai_da_gravacao
+    e.espera_us != 0
+        || !e.trocas.is_empty()
+        || !e.insercoes.is_empty()
+        || e.sai_da_gravacao
+        || e.apagada
 }
 
 pub(crate) fn leitor(track: &Track) -> Option<&'static dyn ph2d_macro::LeitorDaFamilia> {
@@ -252,6 +258,25 @@ pub fn assenta(c: &mut Cena<'_>, bits: u64, trilha: usize) -> Result<(), ErroDaM
     let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
     let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
     pi::assenta(track).map_err(|e| erros::do_painter(&e))?;
+    escreve(c, bits, &doc);
+    Ok(())
+}
+
+/// **Apaga a etapa `k` da trilha `trilha`** da `Macro` de `bits`: o tempo dela fecha-se e o clipe
+/// encurta pela sincronização.
+///
+/// # Errors
+/// O porquê, para o painel o dizer.
+pub fn apaga(c: &mut Cena<'_>, bits: u64, trilha: usize, k: usize) -> Result<(), ErroDaMacroView> {
+    let Some(m) = c.sim.world().get::<Macro>(Entity::from_bits(bits)) else {
+        return Ok(());
+    };
+    let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
+    let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
+    let l = leitor(track).ok_or_else(erros::sem_etapa)?;
+    if !track.apaga_etapa(l, k) {
+        return Err(erros::sem_etapa());
+    }
     escreve(c, bits, &doc);
     Ok(())
 }

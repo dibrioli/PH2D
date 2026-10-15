@@ -204,6 +204,14 @@ impl Macros {
                 }
                 Err(e) => self.erro_de_edicao = Some((entity_bits, e)),
             },
+            MacroRequest::Apaga {
+                entity_bits,
+                trilha,
+                k,
+            } => match etapas::apaga(c, entity_bits, trilha, k) {
+                Ok(()) => self.erro_de_edicao = None,
+                Err(e) => self.erro_de_edicao = Some((entity_bits, e)),
+            },
         }
     }
 

@@ -155,7 +155,7 @@ impl LeitorDaFamilia for LeitorDoMotion {
                 sujou,
             } => Some(
                 Passo::Quadro {
-                    tempo: tempo + segundos(us),
+                    tempo: tempo_deslocado(tempo, dt, us),
                     a_tocar,
                     dt,
                     sujou,
@@ -168,6 +168,41 @@ impl LeitorDaFamilia for LeitorDoMotion {
 
     fn sai_da_gravacao(&self) -> Option<Vec<u8>> {
         None
+    }
+
+    fn sem_o_gesto(&self, carga: &[u8]) -> Option<Vec<u8>> {
+        match passo(carga)? {
+            Passo::Quadro {
+                tempo,
+                a_tocar,
+                dt,
+                sujou: true,
+            } => Some(
+                Passo::Quadro {
+                    tempo,
+                    a_tocar,
+                    dt,
+                    sujou: false,
+                }
+                .codifica(),
+            ),
+            _ => None,
+        }
+    }
+}
+
+/// O `tempo` de um quadro deslocado `us`: um quadro na grelha do `dt` fica na grelha quando o desvio
+/// cabe no arredondamento dos instantes a µs (fechar 4 quadros tira 66 667 µs, não 66 666,67).
+fn tempo_deslocado(tempo: f64, dt: f64, us: i64) -> f64 {
+    let novo = tempo + segundos(us);
+    if dt <= 0.0 {
+        return novo;
+    }
+    let na = |t: f64| (t / dt).round() * dt;
+    if (tempo - na(tempo)).abs() < 1e-9 && (novo - na(novo)).abs() < 1.5e-6 {
+        na(novo)
+    } else {
+        novo
     }
 }
 
@@ -208,6 +243,9 @@ pub enum TipoDaEtapa {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct EtapaDoMotion {
+    /// A etapa a contar da GRAVAÇÃO — o endereço de toda edição (uma apagada não se mostra, mas não
+    /// renumera as outras).
+    pub k: usize,
     pub etapa: Etapa,
     pub tipo: TipoDaEtapa,
     /// Início e fim na trilha QUE TOCA.
@@ -337,12 +375,21 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoMotion>, ErroDaMacro> {
         .tocavel(&LeitorDoMotion)
         .map_err(ErroDaMacro::Edicao)?;
     let gravadas = LeitorDoMotion.etapas(&track.events);
-    let tocadas = LeitorDoMotion.etapas(&tocavel.events);
+    let mut tocadas = LeitorDoMotion.etapas(&tocavel.events).into_iter();
     let mut t = TocadorDoMotion::da_trilha(&tocavel, Modo::Explicativo)?;
     let base = t.base();
-    let mut out = Vec::with_capacity(tocadas.len());
+    let mut out = Vec::with_capacity(gravadas.len());
     let mut i = 0;
-    for (g, e) in gravadas.iter().zip(&tocadas) {
+    for (k, g) in gravadas.iter().enumerate() {
+        if track
+            .edicoes
+            .iter()
+            .any(|x| x.ancora == g.inicio && x.apagada)
+        {
+            continue;
+        }
+        let Some(e) = tocadas.next() else { break };
+        let e = &e;
         let antes = tipos(&t);
         let valor_antes = match passo(&tocavel.events[e.inicio].payload) {
             Some(Passo::Params { intencoes, .. }) => intencoes.iter().find_map(|i| match i {
@@ -360,6 +407,7 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoMotion>, ErroDaMacro> {
         }
         let depois = tipos(&t);
         out.push(EtapaDoMotion {
+            k,
             etapa: *g,
             tipo: descreve(&tocavel.events, *e, base, &antes, &depois, valor_antes),
             t0: tocavel.events[e.inicio].t,
@@ -431,6 +479,18 @@ pub fn edita_valor(track: &mut Track, k: usize, novo: f64) -> Result<(), ErroDeE
     ed.trocas.retain(|(i, _)| !(e.inicio..=e.fim).contains(i));
     ed.trocas.extend(trocas);
     Ok(())
+}
+
+/// **Apaga a etapa `k`**: o tempo dela fecha-se (o `tempo` dos quadros seguintes recua com ela).
+///
+/// # Errors
+/// [`ErroDeEdicaoDoMotion::SemEtapa`].
+pub fn apaga(track: &mut Track, k: usize) -> Result<(), ErroDeEdicaoDoMotion> {
+    if track.apaga_etapa(&LeitorDoMotion, k) {
+        Ok(())
+    } else {
+        Err(ErroDeEdicaoDoMotion::SemEtapa(k))
+    }
 }
 
 /// **A espera antes da etapa `k`**, em µs (+ abre, − encurta).

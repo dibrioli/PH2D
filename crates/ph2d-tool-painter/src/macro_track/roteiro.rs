@@ -75,6 +75,15 @@ pub fn grava_o_splash(lado: u32, alvo: u64) -> Option<(Vec<u8>, f64)> {
     grava_pinceladas(lado, alvo, &SPLASH, &[0; 4])
 }
 
+/// **`n` pinceladas (as do Splash, em ciclo) numa sprite branca aberta pela porta do PRODUTO**
+/// (`abre_a_sprite`: branca = papel branco sem tinta, a composição completa — o que o artista grava no
+/// editor).
+#[must_use]
+pub fn grava_no_papel(lado: u32, alvo: u64, n: usize) -> Option<(Vec<u8>, f64)> {
+    let ps: Vec<Pincelada> = SPLASH.iter().copied().cycle().take(n).collect();
+    grava(lado, alvo, &ps, &[], true)
+}
+
 /// As pinceladas `ps` gravadas como o Splash, com `antes[k]` quadros parados a mais antes da `k`.
 pub(crate) fn grava_pinceladas(
     lado: u32,
@@ -82,9 +91,23 @@ pub(crate) fn grava_pinceladas(
     ps: &[Pincelada],
     antes: &[u32],
 ) -> Option<(Vec<u8>, f64)> {
+    grava(lado, alvo, ps, antes, false)
+}
+
+fn grava(
+    lado: u32,
+    alvo: u64,
+    ps: &[Pincelada],
+    antes: &[u32],
+    papel: bool,
+) -> Option<(Vec<u8>, f64)> {
     let mut t = PainterTool::default();
     let n = usize::try_from(lado).ok()?;
-    t.set_source(vec![255u8; n * n * 4], lado, lado);
+    if papel {
+        t.abre_a_sprite(vec![255u8; n * n * 4], lado, lado);
+    } else {
+        t.set_source(vec![255u8; n * n * 4], lado, lado);
+    }
     t.set_paint_media(PaintMedia::WetPaint);
     t.set_wet_relogio_fixo(true);
     #[expect(

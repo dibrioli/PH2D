@@ -5,7 +5,8 @@
 //!
 //! Só a família lê a sua carga: ela diz onde estão as etapas, o que é relógio, como se sintetiza uma
 //! espera ([`LeitorDaFamilia`]). Uma espera é tempo a CORRER (a água escorre, o vento sopra), nunca
-//! câmara lenta — a câmara lenta é a faixa «Macro Time» da Timeline.
+//! câmara lenta — a câmara lenta é a faixa «Macro Time» da Timeline. Apagar uma etapa FECHA o tempo dela
+//! (decisão do dono, 15/10): o que vem depois recua a duração da etapa.
 
 use crate::doc::{Event, MacroTime, Track};
 use std::collections::BTreeMap;
@@ -39,6 +40,11 @@ pub trait LeitorDaFamilia {
     /// O passo que avisa o tocador de que dali em diante a trilha já não é a gravação no TEMPO (o Painter:
     /// a água larga a fita do worker). `None` = a família não precisa.
     fn sai_da_gravacao(&self) -> Option<Vec<u8>>;
+    /// **O relógio do quadro cujo gesto foi apagado** (o do mesmo instante do fim da etapa): o Motion
+    /// diz que o quadro já não sujou a simulação. `None` = o mesmo.
+    fn sem_o_gesto(&self, _carga: &[u8]) -> Option<Vec<u8>> {
+        None
+    }
 }
 
 /// As edições de UMA etapa.
@@ -57,6 +63,9 @@ pub struct EdicaoDeEtapa {
     /// A trilha sai da gravação nesta etapa mesmo sem mudar o tempo (a conferência de uma edição de
     /// valor divergiu: a água do Painter passa ao relógio fixo).
     pub sai_da_gravacao: bool,
+    /// A etapa saiu: os eventos dela (o relógio de dentro também) não tocam, o que vem depois recua a
+    /// duração dela, e a trilha sai da gravação ali. As outras edições desta etapa deixam de valer.
+    pub apagada: bool,
 }
 
 /// Uma edição que não cabe na gravação — recusada, nunca adivinhada.
@@ -87,6 +96,8 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
     let mut insercoes: BTreeMap<usize, Vec<&[u8]>> = BTreeMap::new();
     // Eventos da janela que uma espera NEGATIVA encurta → a âncora dela.
     let mut janela: BTreeMap<usize, usize> = BTreeMap::new();
+    // As etapas apagadas: início → fim.
+    let mut apagadas: BTreeMap<usize, usize> = BTreeMap::new();
     for ed in &track.edicoes {
         let k = etapas
             .iter()
@@ -94,6 +105,10 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
             .ok_or(ErroDeEdicao::AncoraSemEtapa(ed.ancora))?;
         if por_ancora.insert(ed.ancora, ed).is_some() {
             return Err(ErroDeEdicao::AncoraRepetida(ed.ancora));
+        }
+        if ed.apagada {
+            apagadas.insert(ed.ancora, etapas[k].fim);
+            continue;
         }
         for (i, c) in &ed.trocas {
             if *i >= ev.len() {
@@ -138,7 +153,58 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
         }
     };
     let em = |t: MacroTime, d: i64| t.0.saturating_add_signed(d);
+    // A etapa apagada que se está a saltar: (fim, a duração dela em µs, o instante onde fecha).
+    let mut fecha: Option<(usize, i64, u64)> = None;
+    // O instante (gravado) do quadro que perdeu o gesto apagado, até ao 1.º evento que não é relógio.
+    let mut sem_gesto: Option<MacroTime> = None;
     for (i, e) in ev.iter().enumerate() {
+        if sem_gesto.is_some_and(|t| t != e.t || !leitor.e_relogio(&e.payload)) {
+            sem_gesto = None;
+        }
+        if fecha.is_none()
+            && let Some(&fim) = apagadas.get(&i)
+        {
+            let aqui = em(e.t, andou);
+            sai(&mut out, aqui, &mut saiu);
+            let dur = i64::try_from(ev[fim].t.0 - e.t.0).unwrap_or(i64::MAX);
+            fecha = Some((fim, dur, aqui));
+        }
+        if let Some((fim, dur, aqui)) = fecha {
+            // As inserções de OUTRAS etapas antes de um evento apagado tocam onde ele fechou.
+            for c in insercoes.get(&i).into_iter().flatten() {
+                out.push(Event {
+                    t: MacroTime(aqui),
+                    payload: if andou == 0 {
+                        c.to_vec()
+                    } else {
+                        leitor.desloca(c, andou).unwrap_or_else(|| c.to_vec())
+                    },
+                });
+            }
+            if i == fim {
+                andou -= dur;
+                fecha = None;
+                sem_gesto = Some(e.t);
+            }
+            continue;
+        }
+        if sem_gesto.is_some()
+            && !trocas.contains_key(&i)
+            && let Some(c) = leitor.sem_o_gesto(&e.payload)
+        {
+            let ev_limpo = Event { t: e.t, payload: c };
+            empurra(
+                &mut out,
+                leitor,
+                &ev_limpo,
+                i,
+                em(e.t, andou),
+                andou,
+                &trocas,
+                &insercoes,
+            );
+            continue;
+        }
         if let Some(&ancora) = janela.get(&i) {
             let ed = por_ancora[&ancora];
             let t_ancora = em(ev[ancora].t, andou + ed.espera_us);
@@ -261,6 +327,15 @@ impl Track {
             }
         };
         &mut self.edicoes[i]
+    }
+
+    /// **Apaga a etapa `k`** (a contar da gravação): o tempo dela fecha-se. `false` = não há etapa `k`.
+    pub fn apaga_etapa(&mut self, leitor: &dyn LeitorDaFamilia, k: usize) -> bool {
+        let Some(e) = leitor.etapas(&self.events).get(k).copied() else {
+            return false;
+        };
+        self.edicao_mut(e.inicio).apagada = true;
+        true
     }
 
     /// **A trilha que toca**, sem edições (as dela aplicadas por [`efetiva`]).

@@ -115,6 +115,29 @@ fn a_cor_editada_nao_passa_a_pincelada_seguinte_que_a_herdava() {
 }
 
 #[test]
+fn apagar_uma_pincelada_e_grava_la_sem_ela() {
+    let original = trilha(&SPLASH, &[0; 4]);
+    let mut editada = original.clone();
+    etapas::apaga(&mut editada, 2).expect("há a pincelada 2");
+    // O tempo dela fecha-se e os dois intervalos à volta juntam-se: a seguinte toca 13 quadros depois
+    // (o relógio do quadro do levantar e os 12 de depois dela).
+    let ps = [SPLASH[0], SPLASH[1], SPLASH[3]];
+    bate(&editada, &trilha(&ps, &[0, 0, 13]), &original);
+    let e = etapas::etapas(&editada).expect("lê-se");
+    assert_eq!(e.iter().map(|x| x.k).collect::<Vec<_>>(), [0, 1, 3]);
+    assert_eq!(
+        e[2].tipo,
+        TipoDaEtapa::Pincelada(4),
+        "a numeração é a da gravação"
+    );
+    assert_eq!(e[2].cor, SPLASH[3].cor, "a seguinte fica com o seu pincel");
+    assert!(
+        etapas::edita_cor(&mut editada, 2, VERDE).is_err(),
+        "uma etapa apagada não se edita"
+    );
+}
+
+#[test]
 fn editar_o_tamanho_de_uma_pincelada_e_grava_la_com_esse_tamanho() {
     let original = trilha(&SPLASH, &[0; 4]);
     let mut editada = original.clone();

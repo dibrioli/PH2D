@@ -177,6 +177,12 @@ pub enum MacroRequest {
         k: usize,
         campo: CampoDaEtapa,
     },
+    /// Apaga a etapa: o tempo dela fecha-se.
+    Apaga {
+        entity_bits: u64,
+        trilha: usize,
+        k: usize,
+    },
 }
 
 /// Gravar: só o Wet Paint grava nesta versão.

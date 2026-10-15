@@ -180,3 +180,69 @@ fn sonda_o_quadro_mais_caro_do_splash() {
         eprintln!("t={t:.3} s: {ms:.1} ms (segue {segue:.1})");
     }
 }
+
+/// **W5e: subir a tela de um palco** — premultiplicar + substituir a textura INTEIRA (o `sobe` de hoje)
+/// contra só um retângulo de `f` da área (recortar + premultiplicar + `replace_individual_pixels_region`),
+/// a placa sincronizada; blocos intercalados, o MÍNIMO.
+#[test]
+#[ignore = "placa: sonda de custo, precisa de adapter de GPU"]
+fn sonda_subir_a_tela() {
+    const FRACCOES: [f64; 3] = [1.0, 0.25, 0.05];
+    let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("load antes: {}", carga().trim());
+    let gpu = GpuContext::new(GpuContext::default_instance(), None).expect("adaptador de GPU");
+    let atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    let mut r = SpriteRenderer::new(gpu.clone(), ph2d_render::GameRt::FORMAT, atlas, 8);
+    let mut vs: Vec<(u32, f64, u32, Vec<u8>, f64)> = Vec::new();
+    for lado in LADOS {
+        let n = (lado * lado * 4) as usize;
+        let tela: Vec<u8> = (0..n).map(|i| (i % 251) as u8).collect();
+        let id = r.acquire_individual(lado, lado, &tela).expect("ranhura");
+        for f in FRACCOES {
+            vs.push((lado, f, id, tela.clone(), f64::MAX));
+        }
+    }
+    let mut premul = Vec::new();
+    let k = vs.len();
+    for rodada in 0..RODADAS {
+        for i in 0..k {
+            let (lado, f, id, tela, best) = &mut vs[(rodada + i) % k];
+            let t0 = std::time::Instant::now();
+            for _ in 0..BLOCO {
+                if *f >= 1.0 {
+                    premul.clear();
+                    premul.extend_from_slice(tela);
+                    ph2d_render::premul::premultiply_rgba8(&mut premul);
+                    r.replace_individual_pixels(*id, *lado, *lado, &premul)
+                        .expect("sobe");
+                } else {
+                    #[expect(
+                        clippy::cast_possible_truncation,
+                        clippy::cast_sign_loss,
+                        reason = "lado"
+                    )]
+                    let w = (f64::from(*lado) * f.sqrt()) as u32;
+                    premul.clear();
+                    for y in 0..w {
+                        let a = ((y * *lado) * 4) as usize;
+                        premul.extend_from_slice(&tela[a..a + (w * 4) as usize]);
+                    }
+                    ph2d_render::premul::premultiply_rgba8(&mut premul);
+                    r.replace_individual_pixels_region(*id, 0, 0, w, w, &premul)
+                        .expect("sobe");
+                }
+                let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            }
+            #[expect(clippy::cast_precision_loss, reason = "BLOCO pequeno")]
+            let ms = t0.elapsed().as_secs_f64() * 1e3 / BLOCO as f64;
+            *best = best.min(ms);
+        }
+    }
+    eprintln!("load depois: {}", carga().trim());
+    for (lado, f, _, _, best) in &vs {
+        eprintln!(
+            "[w5e] subir {lado}², {:>3.0} % da área: {best:.2} ms (mínimo)",
+            f * 100.0
+        );
+    }
+}

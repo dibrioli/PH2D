@@ -140,6 +140,7 @@ fn clicar_numa_etapa_escolhe_a_e_leva_a_cabeca_ao_fim_dela() {
     p.pinta();
     for id in [
         ids::MACROS_RENAME,
+        ids::MACROS_DELETE,
         ids::MACROS_WAIT,
         ids::MACROS_COLOR,
         ids::MACROS_SIZE,
@@ -185,6 +186,25 @@ fn renomear_submete_o_nome_e_a_espera_editada_chega_como_edicao() {
             k: 1,
             campo: CampoDaEtapa::Espera(0.75),
         },
+    );
+}
+
+#[test]
+fn apagar_a_etapa_escolhida_chega_como_pedido_e_larga_a_escolha() {
+    let mut p = Palco::novo(info(None, None));
+    let _ = p.carrega(ids::row_id(0, 2));
+    p.pinta();
+    so(
+        &p.carrega(ids::MACROS_DELETE),
+        MacroRequest::Apaga {
+            entity_bits: BITS,
+            trilha: 0,
+            k: 2,
+        },
+    );
+    assert!(
+        p.st.escolhida.is_none(),
+        "a etapa apagada deixa de estar escolhida"
     );
 }
 

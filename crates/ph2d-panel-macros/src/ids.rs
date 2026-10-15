@@ -15,6 +15,8 @@ pub const MACROS_RECORD: NodeId = hash_node_id("macros.record");
 pub const MACROS_STOP: NodeId = hash_node_id("macros.stop");
 /// **Renomear** a etapa escolhida (o mesmo que o duplo clique na linha).
 pub const MACROS_RENAME: NodeId = hash_node_id("macros.rename");
+/// **Apagar** a etapa escolhida: o tempo dela fecha-se.
+pub const MACROS_DELETE: NodeId = hash_node_id("macros.delete");
 /// O campo de renomear, sobreposto à linha.
 pub const MACROS_RENAME_INPUT: NodeId = hash_node_id("macros.rename_input");
 /// A espera antes da etapa, em segundos.

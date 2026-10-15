@@ -255,6 +255,7 @@ impl Corpo<'_> {
             open_fold: None,
         };
         let mut y = r.action_button(ids::MACROS_RENAME, tr("panel.macros.rename"), y);
+        y = r.action_button(ids::MACROS_DELETE, tr("panel.macros.delete_step"), y);
         y = r.labeled_number_field(tr("panel.macros.field.wait"), ids::MACROS_WAIT, 0.1, y);
         match e.props {
             PropsDaEtapa::Pincelada { cor, .. } => {

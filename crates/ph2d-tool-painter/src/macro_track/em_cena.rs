@@ -208,6 +208,11 @@ impl MacroEmCena {
         self.tocador.toma_a_tela()
     }
 
+    /// O retângulo que mudou na última [`Self::toma_a_tela`] — `None` = a tela inteira.
+    pub fn caixa_da_tela(&mut self) -> Option<(u32, u32, u32, u32)> {
+        self.tocador.caixa_da_tela()
+    }
+
     #[must_use]
     pub fn tocador(&self) -> &TocadorDoPainter {
         &self.tocador

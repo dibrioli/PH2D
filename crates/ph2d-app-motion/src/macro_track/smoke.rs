@@ -16,7 +16,7 @@ const DT: f64 = 1.0 / 60.0;
 /// O quadro do 1.º gesto.
 const PRIMEIRO: u32 = 30;
 /// Quadros entre dois gestos.
-const ENTRE: u32 = 30;
+pub(crate) const ENTRE: u32 = 30;
 /// Quadros depois do último gesto (o vento a soprar).
 const CAUDA: u32 = 180;
 

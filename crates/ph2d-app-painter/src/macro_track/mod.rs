@@ -35,6 +35,16 @@ pub trait RanhurasDaCena {
     /// # Errors
     /// O porquê, para o artista.
     fn substitui(&mut self, id: u32, w: u32, h: u32, rgba: &[u8]) -> Result<(), String>;
+    /// Substitui só o retângulo `(x, y, w, h)` da ranhura `id` (`rgba` é o retângulo, premultiplicado).
+    ///
+    /// # Errors
+    /// O porquê, para o artista.
+    fn substitui_regiao(
+        &mut self,
+        id: u32,
+        caixa: (u32, u32, u32, u32),
+        rgba: &[u8],
+    ) -> Result<(), String>;
     fn solta(&mut self, id: u32);
 }
 
@@ -46,6 +56,16 @@ impl RanhurasDaCena for ph2d_render::SpriteRenderer {
 
     fn substitui(&mut self, id: u32, w: u32, h: u32, rgba: &[u8]) -> Result<(), String> {
         self.replace_individual_pixels(id, w, h, rgba)
+            .map_err(|e| e.to_string())
+    }
+
+    fn substitui_regiao(
+        &mut self,
+        id: u32,
+        (x, y, w, h): (u32, u32, u32, u32),
+        rgba: &[u8],
+    ) -> Result<(), String> {
+        self.replace_individual_pixels_region(id, x, y, w, h, rgba)
             .map_err(|e| e.to_string())
     }
 
@@ -67,6 +87,8 @@ struct PalcoDaPintura {
     /// A sprite-alvo neste quadro (resolvida pelo `StableId` da trilha).
     sprite: Option<u64>,
     ranhura: Option<u32>,
+    /// O tamanho da tela na ranhura (uma subida parcial só cabe na mesma).
+    tamanho: Option<(u32, u32)>,
     toca: bool,
 }
 
@@ -100,6 +122,7 @@ fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
         em_cena,
         sprite: None,
         ranhura: None,
+        tamanho: None,
         toca: false,
     }))
 }
@@ -205,7 +228,8 @@ impl PalcosDoPainter {
         world.increment_change_tick();
     }
 
-    /// **Sobe a tela de cada palco que toca e mudou** e devolve as sprites a trocar no extract. Devolve
+    /// **Sobe a tela de cada palco que toca e mudou** — só o retângulo que mudou desde a subida anterior,
+    /// quando a ranhura já tem a tela daquele tamanho — e devolve as sprites a trocar no extract. Devolve
     /// primeiro as ranhuras dos palcos que se foram.
     pub fn sobe(
         &mut self,
@@ -224,15 +248,34 @@ impl PalcosDoPainter {
                 continue;
             }
             if let Some((rgba, w, h)) = p.em_cena.toma_a_tela() {
+                let caixa = p
+                    .em_cena
+                    .caixa_da_tela()
+                    .filter(|&(_, _, cw, ch)| p.tamanho == Some((w, h)) && cw > 0 && ch > 0);
                 self.premul.clear();
-                self.premul.extend_from_slice(&rgba);
+                match caixa {
+                    Some((x, y, cw, ch)) => {
+                        let (x, cw) = (x as usize, cw as usize);
+                        let linhas = rgba.chunks_exact(w as usize * 4).skip(y as usize);
+                        for linha in linhas.take(ch as usize) {
+                            self.premul.extend_from_slice(&linha[x * 4..(x + cw) * 4]);
+                        }
+                    }
+                    None => self.premul.extend_from_slice(&rgba),
+                }
                 drop(rgba);
                 ph2d_render::premul::premultiply_rgba8(&mut self.premul);
-                let subida = match p.ranhura {
-                    Some(id) => ranhuras.substitui(id, w, h, &self.premul),
-                    None => ranhuras.adquire(w, h, &self.premul).map(|id| {
+                let subida = match (p.ranhura, caixa) {
+                    (Some(id), Some(c)) => ranhuras.substitui_regiao(id, c, &self.premul),
+                    (Some(id), None) => ranhuras.substitui(id, w, h, &self.premul),
+                    (None, _) => ranhuras.adquire(w, h, &self.premul).map(|id| {
                         p.ranhura = Some(id);
                     }),
+                };
+                p.tamanho = match (&subida, caixa) {
+                    (Ok(()), None) => Some((w, h)),
+                    (Ok(()), Some(_)) => p.tamanho,
+                    (Err(_), _) => None,
                 };
                 if let Err(e) = subida {
                     toasts.push(Toast::error(ph2d_i18n::tr_with(

@@ -14,11 +14,12 @@ use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
 
 /// Os botões, numa tabela: pintar, registar e despachar leem a MESMA.
-pub(crate) const BOTOES: [ph2d_a11y::NodeId; 4] = [
+pub(crate) const BOTOES: [ph2d_a11y::NodeId; 5] = [
     ids::MACROS_CLOSE,
     ids::MACROS_RECORD,
     ids::MACROS_STOP,
     ids::MACROS_RENAME,
+    ids::MACROS_DELETE,
 ];
 
 /// Os campos numéricos e a escala do arrasto de cada um (unidades por px — sem faixa: a família
@@ -162,6 +163,20 @@ pub(crate) fn apply_event(
                     .map(|x| crate::nomes::nome(&x))
                     .unwrap_or_default();
                 open_rename(host.store_mut(), &seed);
+            }
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Click(id) if id == ids::MACROS_DELETE => {
+            if let Some(e) = st.escolhida.take() {
+                st.renomeando = false;
+                pede(
+                    host,
+                    MacroRequest::Apaga {
+                        entity_bits: e.entity_bits,
+                        trilha: e.trilha,
+                        k: e.k,
+                    },
+                );
             }
             EventOutcome::Consumed
         }

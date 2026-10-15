@@ -23,15 +23,15 @@
 #[path = "paint_menu.rs"]
 mod paint_menu;
 use paint_menu::draw_menu;
+/// O pedido «traz estes nós à vista» (o balão do tutorial) — conta de vista, não pinta nada.
+#[path = "enquadra_nos.rs"]
+mod enquadra_nos;
 #[path = "paint_breadcrumb.rs"]
 mod paint_breadcrumb;
 /// A faixa de params do cartão (ciclo 1, doc 103) — irmão por RESPONSABILIDADE: este
 /// ficheiro desenha o que um cartão É, aquele o que ele CONTROLA.
 #[path = "paint_card_params.rs"]
 pub(crate) mod paint_card_params;
-/// O pedido «traz estes nós à vista» (o balão do tutorial) — conta de vista, não pinta nada.
-#[path = "enquadra_nos.rs"]
-mod enquadra_nos;
 #[path = "paint_inert_badge.rs"]
 mod paint_inert_badge;
 #[path = "paint_port_label.rs"]

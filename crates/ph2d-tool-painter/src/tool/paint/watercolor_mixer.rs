@@ -45,6 +45,39 @@ pub(super) struct WetMix {
     last_pos: Option<[f32; 2]>,
 }
 
+/// O que [`PainterTool::wet_mix_dab_colors`] devolve por dab: `(cor depositada, prioridade, reserva,
+/// apanha)`.
+pub(super) type DepositoDoDab = ([f32; 3], f32, f32, Option<Apanha>);
+
+/// **A tinta que a brocha apanhou neste dab** — a absorbância (despremultiplicada) do reservatório e o
+/// peso `t = pickup × w` da mistura. `None` quando ela não leva nada (`w ≈ 0`).
+#[derive(Clone, Copy, Debug)]
+pub(super) struct Apanha {
+    absorb: [f32; 3],
+    t: f32,
+}
+
+impl Apanha {
+    /// A cor que a brocha deposita: `cor` (a do pincel, ou a da Shape Color Ramp NO TEXEL) misturada
+    /// com a tinta apanhada em ABSORBÂNCIA (W-A, doc 12 OPT-1) — UMA lei para as duas donas da cor
+    /// (lista 26 A8: a rampa trocava a cor do dab já misturada e jogava fora a apanha).
+    ///
+    /// O lerp em absorbância APARENTE deposita mais claro que a brocha ao cruzar o próprio wash (filme
+    /// fino = absorbância baixa) — o CLAREAMENTO da junção. Uma re-escala de magnitude que o anulava
+    /// foi implementada e REVERTIDA (Enio 2026-07-09, take 9→10: "perdeu o efeito de clareamento").
+    pub(super) fn mistura(&self, cor: [f32; 3]) -> [f32; 3] {
+        let lut = super::watercolor_field::luts();
+        let mut out = cor;
+        for ((o, &sa), &c) in out.iter_mut().zip(&self.absorb).zip(&cor) {
+            let byte = (c.clamp(0.0, 1.0) * 255.0 + 0.5) as usize;
+            let ba = -lut.lnl[byte.min(255)]; // the colour's own absorbance
+            let mag = ba + (sa - ba) * self.t; // subtractive mix (log-space lerp)
+            *o = f32::from(lut.l2s_byte(lut.exp_mag(mag))) / 255.0;
+        }
+        out
+    }
+}
+
 /// Reservoir **load** retention (entering paint): low ⇒ the reservoir tracks the surface FAST, so the
 /// brush picks up a pool strongly the moment it enters. Kept separate from the unload retention so
 /// the pickup is strong AND the exit bleed is long (a single rate couples the two: fast enough to
@@ -94,19 +127,20 @@ impl PainterTool {
     /// Dilution only made it more visible by thinning the wash). Priority `1.0` for every dab when the
     /// mixer is off ⇒ the plain source-over path (byte-identical). Reads the frozen base + backdrop
     /// (cloned `Arc`s, so no borrow clash with the caller's `stroke_color` mutation).
-    pub(super) fn wet_mix_dab_colors(&mut self, dabs: &[Dab]) -> Vec<([f32; 3], f32, f32)> {
+    pub(super) fn wet_mix_dab_colors(&mut self, dabs: &[Dab]) -> Vec<DepositoDoDab> {
+        let desligado = || dabs.iter().map(|d| (d.color, 1.0, 1.0, None)).collect();
         if !self.wet_mixer_active() {
-            return dabs.iter().map(|d| (d.color, 1.0, 1.0)).collect();
+            return desligado();
         }
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
         let base = self.paint.watercolor_base.as_ref().map(Arc::clone);
         let backdrop = self.paint.wet_backdrop.as_ref().map(Arc::clone);
         let (Some(base), Some(backdrop)) = (base, backdrop) else {
-            return dabs.iter().map(|d| (d.color, 1.0, 1.0)).collect();
+            return desligado();
         };
         if base.len() != fw * fh * 4 || backdrop.len() != fw * fh * 4 || fw == 0 || fh == 0 {
-            return dabs.iter().map(|d| (d.color, 1.0, 1.0)).collect();
+            return desligado();
         }
         let pickup = (1.0 - self.paint.brush.wet_charge).clamp(0.0, 1.0);
         let p = self.paint.brush.wet_pull.clamp(0.0, 1.0);
@@ -151,25 +185,14 @@ impl PainterTool {
             //    the carried colour fades with distance, AND `t` decays with it — so a fading exit
             //    dab can't overwrite a stronger in-pool deposit (symmetric crossing). ──
             let t = (pickup * mix.w).clamp(0.0, 1.0);
-            let mut col = d.color;
-            if mix.w > 1e-4 {
+            let apanha = (mix.w > 1e-4).then(|| {
                 let inv = 1.0 / mix.w;
-                // O lerp em absorbância APARENTE deposita mais claro que a brocha ao cruzar o
-                // próprio wash (filme fino = absorbância baixa) — o CLAREAMENTO da junção. Uma
-                // re-escala de magnitude que o anulava foi implementada e REVERTIDA (Enio
-                // 2026-07-09, take 9→10: "perdeu o efeito de clareamento" — o clareamento é o
-                // look desejado; o defeito era só a FRONTEIRA dura dele, atacada na rampa
-                // espacial do load acima).
-                for ((out_c, &m), &brush_c) in
-                    col.iter_mut().zip(mix.absorb.iter()).zip(d.color.iter())
-                {
-                    let sa = m * inv; // unpremultiply → the carried paint's absorbance
-                    let byte = (brush_c.clamp(0.0, 1.0) * 255.0 + 0.5) as usize;
-                    let ba = -lut.lnl[byte.min(255)]; // the brush pigment's absorbance
-                    let mag = ba + (sa - ba) * t; // subtractive mix (log-space lerp)
-                    *out_c = f32::from(lut.l2s_byte(lut.exp_mag(mag))) / 255.0;
+                Apanha {
+                    absorb: mix.absorb.map(|m| m * inv), // unpremultiply → the carried absorbance
+                    t,
                 }
-            }
+            });
+            let col = apanha.map_or(d.color, |a| a.mistura(d.color));
             // Deposit intensity for the COLOUR alpha (mirror of the coverage map's factors): a
             // depleted brush must not re-TINT a wet pool at full priority — in a wet session the
             // pool re-renders with whatever colour was deposited over it, so the tint has to track
@@ -177,7 +200,7 @@ impl PainterTool {
             // weight `t`.
             let depl =
                 deplete_fresh(mix.travel, d.radius_px, charge).max(t * reservoir_pigment(&mix));
-            out.push((col, t, depl));
+            out.push((col, t, depl, apanha));
         }
         self.paint.wet_mix = mix;
         out

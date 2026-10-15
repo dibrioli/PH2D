@@ -103,6 +103,39 @@ pub fn silhouette_capsula(
     center: [f32; 2],
     radius: f32,
 ) -> f32 {
+    silhouette_capsula_com(
+        spec,
+        shape,
+        footprint,
+        cap,
+        lei,
+        c,
+        px,
+        py,
+        center,
+        radius,
+        |_, _| {},
+    )
+}
+
+/// [`silhouette_capsula`] that also hands `cada(off_k, x_k)` each sub-dab, front (`k = 0`) to back, with
+/// the `x_k` the [`crate::capsula::Junta`] composes — the capsule's COLOUR folds over the same sub-dabs
+/// in the same order ([`cor_capsula`], lista 26 A9).
+#[allow(clippy::too_many_arguments)]
+#[inline]
+pub(crate) fn silhouette_capsula_com(
+    spec: &BrushSpec,
+    shape: Option<ShapeInput<'_>>,
+    footprint: crate::footprint::FootprintDeform,
+    cap: crate::capsula::Capsula,
+    lei: crate::capsula::Lei,
+    c: f32,
+    px: i64,
+    py: i64,
+    center: [f32; 2],
+    radius: f32,
+    mut cada: impl FnMut([f32; 2], f32),
+) -> f32 {
     let inv = 1.0 / radius;
     let (dx, dy) = (px as f32 + 0.5 - center[0], py as f32 + 0.5 - center[1]);
     let corpo = spec.deposits_height();
@@ -128,7 +161,9 @@ pub fn silhouette_capsula(
             Some(_) => (0.0, 0.0),
             None => (queda, 1.0),
         };
-        j.mais(crate::height::film_coverage(corpo, x), queda, forma);
+        let x = crate::height::film_coverage(corpo, x);
+        cada(o, x);
+        j.mais(x, queda, forma);
     }
     j.fim()
 }
@@ -532,6 +567,7 @@ fn stamp_dab_inner(
 }
 
 mod bands;
+mod cor_capsula;
 
 pub(crate) use bands::parallel_band_stamp_masked;
 use bands::{DabCtx, stamp_band};

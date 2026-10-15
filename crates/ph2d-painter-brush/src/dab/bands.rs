@@ -5,7 +5,7 @@
 //! this file is how a dab becomes pixels, not what a dab is.
 
 use super::*;
-use crate::ramp_alpha::RampAlphaMode;
+use crate::ramp_alpha::{RampAlphaMode, RampIndex};
 use crate::spec::BrushSpec;
 use crate::texture::{ImageMask, TexDabBasis};
 
@@ -344,18 +344,42 @@ pub(super) fn stamp_band(
             // its fractional AREA coverage — every funnel inherits the anti-aliased cut the same way.
             // A capsule composes its sub-dabs at the pass opacity: the dab's own, or — under the
             // Accumulate cap, where `w` is a RATE toward the ceiling — `1` (`n` rates telescope into one).
+            // A capsule under a Shape ramp composes its COLOUR over the same sub-dabs
+            // ([`super::cor_capsula`], lista 26 A9); `None` ⇒ the colour is read at this pixel below.
+            let c_cap = if mask.is_some() { 1.0 } else { ctx.coverage };
+            let mut cor_cap = ctx
+                .capsula
+                .filter(|_| ctx.ramp.is_some_and(|r| r.index == RampIndex::Shape))
+                .map(|_| super::cor_capsula::CorCapsula::new(c_cap));
             let w = match (ctx.capsula, &ctx.film_aa) {
-                (Some(cap), _) => crate::dab::silhouette_capsula(
+                (Some(cap), _) => crate::dab::silhouette_capsula_com(
                     ctx.spec,
                     ctx.shape,
                     ctx.footprint,
                     cap,
                     ctx.lei,
-                    if mask.is_some() { 1.0 } else { ctx.coverage },
+                    c_cap,
                     px,
                     py,
                     ctx.center,
                     ctx.radius,
+                    |o, x| {
+                        let Some(cc) = cor_cap.as_mut() else { return };
+                        cc.mais(x, || {
+                            let centro = [ctx.center[0] + o[0], ctx.center[1] + o[1]];
+                            let forma = ctx.shape_cor.map(|sh| {
+                                crate::dab::shape_value_at(ctx.spec, sh, px, py, centro, ctx.radius)
+                            });
+                            crate::ramp_alpha::ramp_texel(
+                                ctx.ramp.as_ref(),
+                                x,
+                                forma,
+                                None,
+                                0.0,
+                                0.0,
+                            )
+                        });
+                    },
                 ),
                 (None, Some(aa)) => aa.film_at_planned(
                     ctx.lut.as_ref(),
@@ -397,17 +421,21 @@ pub(super) fn stamp_band(
                     ctx.image.as_ref(),
                 )
             });
-            let forma = ctx
-                .shape_cor
-                .map(|sh| crate::dab::shape_value_at(ctx.spec, sh, px, py, ctx.center, ctx.radius));
-            let tinta = crate::ramp_alpha::ramp_texel(
-                ctx.ramp.as_ref(),
-                w,
-                forma,
-                grain,
-                ctx.spec.grain_depth(),
-                ctx.spec.effective_granulation(),
-            );
+            let (depth, gran) = (ctx.spec.grain_depth(), ctx.spec.effective_granulation());
+            let tinta = match cor_cap {
+                Some(cc) => {
+                    let mordida =
+                        crate::ramp_alpha::ramp_texel(None, w, None, grain, depth, gran).g;
+                    let Some(t) = cc.fim(mordida) else { continue };
+                    t
+                }
+                None => {
+                    let forma = ctx.shape_cor.map(|sh| {
+                        crate::dab::shape_value_at(ctx.spec, sh, px, py, ctx.center, ctx.radius)
+                    });
+                    crate::ramp_alpha::ramp_texel(ctx.ramp.as_ref(), w, forma, grain, depth, gran)
+                }
+            };
             let color = tinta.color.unwrap_or(ctx.spec.color);
             let stamp_alpha = tinta.stamp_alpha; // mode TextureAlpha: the source pixel's own alpha
             let mut g = tinta.g;

@@ -6,6 +6,9 @@
 //! Desloca a ponta INTEIRA (a queda, a pegada e o Shape juntos), então vale para qualquer ponta e em
 //! todo meio que a pergunte aqui. A composição é a do próprio carimbo: `n` passagens da mesma cor por
 //! cima uma da outra, com opacidades `c·x_k`, são UMA passagem com `1 − Π(1 − c·x_k)` — a [`Lei::Uniao`].
+//! Sob uma rampa do Shape (Texture/Falloff Color) a cor de cada sub-dab é OUTRA: compõe-se de frente para
+//! trás sobre os mesmos sub-dabs (`dab/cor_capsula.rs`, lista 26 A9); o roteador só manda a cápsula com
+//! rampa ao núcleo por píxel (`stamp_dabs_ramped`), o único que a honra.
 
 use std::cell::Cell;
 

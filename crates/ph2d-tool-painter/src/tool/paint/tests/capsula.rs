@@ -318,7 +318,7 @@ fn traco_de(t: &mut PainterTool, curva: bool, pressao: bool) {
 
 /// **O custo** (MEDIR_VELOCIDADE: as variantes no MESMO processo, intercaladas em blocos rodados, o
 /// MÍNIMO): o traço a 0,25 com o Continuous contra o alvo a 0,025 sem ele (o motivo de existir), e contra
-/// 0,25 sem ele; recto, em curva e com pressão; as cerdas, raio 45.
+/// 0,25 sem ele; recto, em curva e com pressão; as cerdas e o Checker com a Texture Color, raio 45.
 /// `cargo test -p ph2d-tool-painter --profile smoke --lib measure_custo_da_capsula -- --ignored --nocapture`
 #[test]
 #[ignore = "medição: o custo do dab-cápsula"]
@@ -337,7 +337,12 @@ fn measure_custo_da_capsula() {
         (0.25, true, Some(0.05)),
     ];
     for meio in MEIOS {
-        for kind in [TextureKind::None, TextureKind::Bristles] {
+        // A Texture Color sobre o Checker: a cor composta por sub-dab (lista 26 A9).
+        for (kind, cor) in [
+            (TextureKind::None, CamadaCor::Off),
+            (TextureKind::Bristles, CamadaCor::Off),
+            (TextureKind::Checker, CamadaCor::Textura),
+        ] {
             for (nome, curva, pressao) in [
                 ("recto", false, false),
                 ("curva", true, false),
@@ -349,6 +354,11 @@ fn measure_custo_da_capsula() {
                         let v = (i + bloco) % 6;
                         let (sp, cont, sub) = variantes[v];
                         let mut t = pincel(meio, kind, 90.0, sp, cont);
+                        if cor != CamadaCor::Off {
+                            arma_cor(&mut t, cor);
+                            let seed = t.paint.brush;
+                            t.paint.brush_by_mode.fill(seed);
+                        }
                         t.paint.dynamics.size_pressure = pressao;
                         let t0 = Instant::now();
                         com_lei(Lei::Uniao, sub, || traco_de(&mut t, curva, pressao));
@@ -356,7 +366,7 @@ fn measure_custo_da_capsula() {
                     }
                 }
                 println!(
-                    "| {meio:?} | {kind:?} | {nome} | {:.1} | {:.1} | {:.1} | {:.1} | {:.1} | {:.1} | {:.2} |",
+                    "| {meio:?} | {kind:?} {cor:?} | {nome} | {:.1} | {:.1} | {:.1} | {:.1} | {:.1} | {:.1} | {:.2} |",
                     min[0],
                     min[1],
                     min[2],
@@ -364,6 +374,150 @@ fn measure_custo_da_capsula() {
                     min[4],
                     min[5],
                     min[4] / min[0]
+                );
+            }
+        }
+    }
+}
+
+// ── A9 (lista 26): a cor do Shape no Continuous ─────────────────────────────────────────────────────
+
+/// Quem pinta a cor: a rampa vermelho → azul na Texture Color, na Falloff Color, ou sem rampa.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum CamadaCor {
+    Off,
+    Textura,
+    Queda,
+}
+
+pub(super) fn vermelho_azul() -> ph2d_color::ColorRamp {
+    use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
+    ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
+            RampStop::new(1.0, [0.0, 0.0, 1.0, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    )
+}
+
+/// Arma a cor do Shape com a rampa vermelho → azul numa só camada (ou desliga-a).
+pub(super) fn arma_cor(t: &mut PainterTool, cor: CamadaCor) {
+    if cor == CamadaCor::Off {
+        t.set_shape_ramp_enabled(false);
+        return;
+    }
+    t.set_shape_color_ramp(vermelho_azul());
+    t.paint.shape_color_ramp_bw = false;
+    t.paint.shape_camadas.textura = cor == CamadaCor::Textura;
+    t.paint.shape_camadas.queda = cor == CamadaCor::Queda;
+    t.set_shape_falloff_ramp(vermelho_azul()); // re-assa as LUTs
+    t.set_shape_ramp_enabled(true);
+}
+
+/// Os texels do miolo do traço de raio `r` (longe das pontas, dentro do raio + 2).
+pub(super) fn miolo(r: f32) -> Vec<(usize, usize)> {
+    let eixo = (H / 2) as usize;
+    let ys = eixo.saturating_sub(r as usize + 2)..(eixo + r as usize + 3).min(H as usize);
+    let xs = (X0 + 2.0 * r + 10.0) as usize..(X1 - 2.0 * r - 10.0) as usize;
+    ys.flat_map(|y| xs.clone().map(move |x| (x, y))).collect()
+}
+
+pub(super) fn rgb(px: &[u8], x: usize, y: usize) -> [f32; 3] {
+    let p = &px[(y * W as usize + x) * 4..][..3];
+    [p[0].into(), p[1].into(), p[2].into()]
+}
+
+pub(super) fn correlacao(a: &[f32], b: &[f32]) -> f32 {
+    let n = a.len() as f32;
+    let (ma, mb) = (a.iter().sum::<f32>() / n, b.iter().sum::<f32>() / n);
+    let (mut sab, mut saa, mut sbb) = (0.0, 0.0, 0.0);
+    for (x, y) in a.iter().zip(b) {
+        sab += (x - ma) * (y - mb);
+        saa += (x - ma) * (x - ma);
+        sbb += (y - mb) * (y - mb);
+    }
+    if saa < 1e-9 || sbb < 1e-9 {
+        f32::NAN
+    } else {
+        sab / (saa * sbb).sqrt()
+    }
+}
+
+/// A matiz `b/(r+b)` do miolo — com a rampa vermelho → azul, o índice dela.
+pub(super) fn matiz(px: &[u8], r: f32) -> Vec<f32> {
+    miolo(r)
+        .iter()
+        .map(|&(x, y)| {
+            let c = rgb(px, x, y);
+            c[2] / (c[0] + c[2]).max(1.0)
+        })
+        .collect()
+}
+
+/// Média |ΔRGB| / 255 no miolo.
+pub(super) fn dif_cor(a: &[u8], b: &[u8], r: f32) -> f32 {
+    let pts = miolo(r);
+    let s: f32 = pts
+        .iter()
+        .map(|&(x, y)| {
+            let (p, q) = (rgb(a, x, y), rgb(b, x, y));
+            (0..3).map(|k| (p[k] - q[k]).abs()).sum::<f32>() / 3.0
+        })
+        .sum();
+    s / pts.len() as f32 / 255.0
+}
+
+/// O traço de 40 px com a cor do Shape `cor` sobre um Shape `kind` (mapping de fábrica, ou Tiled).
+fn traco_cor(
+    meio: Meio,
+    kind: TextureKind,
+    cor: CamadaCor,
+    tiled: bool,
+    sp: f32,
+    cont: bool,
+) -> Vec<u8> {
+    let mut t = pincel(meio, kind, 40.0, sp, cont);
+    if tiled {
+        t.paint.brush.shape.mapping = ph2d_painter_brush::texture::TextureMapping::Tiled;
+        t.paint.brush.shape.size = [6.0; 2];
+    }
+    arma_cor(&mut t, cor);
+    let seed = t.paint.brush;
+    t.paint.brush_by_mode.fill(seed);
+    traco(&mut t)
+}
+
+/// ⭐ **A cor do Shape no Continuous iguala o Spacing pequeno** (lista 26 A9, smoke do dono 15/10): a
+/// Texture Color e a Falloff Color sobre um Shape procedural no mapping do dab — a 0,25 com a caixa, o
+/// traço a 0,025 sem ela: Δcor ≤ 0,02 e a matiz correlacionada ≥ 0,9. A cor compõe-se sobre os MESMOS
+/// sub-dabs da cobertura ([`ph2d_painter_brush::dab::silhouette_capsula`]); lida uma vez no centro do
+/// dab da frente, dava Δ 0,39 e correlação −0,18. CONTROLOS: Tiled e sem rampa ficam ≤ 0,005 (o
+/// resíduo medido da caixa sem cor, Digital Noise sem rampa: 0,003).
+#[test]
+fn a_cor_do_shape_no_continuous_iguala_o_spacing_pequeno() {
+    let r = 20.0;
+    for meio in [Meio::Digital, Meio::Impasto] {
+        for kind in [TextureKind::Checker, TextureKind::Noise] {
+            for cor in [CamadaCor::Textura, CamadaCor::Queda] {
+                let alvo = traco_cor(meio, kind, cor, false, 0.025, false);
+                let px = traco_cor(meio, kind, cor, false, 0.25, true);
+                let (d, h) = (
+                    dif_cor(&px, &alvo, r),
+                    correlacao(&matiz(&px, r), &matiz(&alvo, r)),
+                );
+                println!("{meio:?} {kind:?} {cor:?}: Δcor {d:.3}, matiz {h:.3}");
+                assert!(d <= 0.02, "{meio:?} {kind:?} {cor:?}: Δcor {d:.3}");
+                assert!(h >= 0.9, "{meio:?} {kind:?} {cor:?}: matiz {h:.3}");
+            }
+            for (cor, tiled) in [(CamadaCor::Textura, true), (CamadaCor::Off, false)] {
+                let alvo = traco_cor(meio, kind, cor, tiled, 0.025, false);
+                let d = dif_cor(&traco_cor(meio, kind, cor, tiled, 0.25, true), &alvo, r);
+                println!("{meio:?} {kind:?} {cor:?} tiled {tiled}: controlo Δ {d:.4}");
+                assert!(
+                    d <= 0.005,
+                    "{meio:?} {kind:?} {cor:?} tiled {tiled}: controlo Δ {d:.3}"
                 );
             }
         }

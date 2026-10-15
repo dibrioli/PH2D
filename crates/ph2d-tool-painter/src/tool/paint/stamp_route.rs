@@ -486,7 +486,9 @@ impl PainterTool {
         // critical for the Line/Curve/Ellipse/Polygon fills, which re-stamp the WHOLE shape every move).
         // Per-pixel otherwise: a Grain to index, per-dab rotation, or the Accumulate cap (Enio 2026-06-26).
         let grain_active = brush.texture.is_active();
-        // The dab-capsule (Continuous Spacing) is per dab: no baked or canvas cache carries its step.
+        // The dab-capsule (Continuous Spacing) is per dab: no baked or canvas cache carries its step, nor
+        // its colour under a Shape ramp (composed per sub-dab, lista 26 A9) — only the per-pixel
+        // `stamp_dabs_ramped` honours it.
         let capsulas = brush.lays_capsules();
         let owner = self.color_ramp_owner(grain_active);
         if owner != RampLutOwner::None {

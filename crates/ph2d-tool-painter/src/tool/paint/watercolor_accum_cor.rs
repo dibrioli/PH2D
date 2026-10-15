@@ -45,7 +45,13 @@ impl PainterTool {
             self.agua_da_sessao().unwrap_or(0.0),
         );
         let mistura = pesos.0.max(pesos.1);
-        let pigment = pigment > 0.0;
+        // **O buffer é o ÚNICO dono da cor** quando o `Pigment` mistura a tinta nova com a da sessão ou
+        // quando a Shape Color Ramp troca a cor do dab pela das camadas: o composto, com o buffer vazio,
+        // cai na cor do PINCEL — o que só é inofensivo quando a cor do dab É a do pincel. Aí a
+        // prioridade do mixer (`pickup × carga`, `0` sobre o papel em branco) não pode pesar o depósito,
+        // senão a `Charge < 1` apaga a tinta (doc 44 §2) ou as cores da rampa (lista 26 A8). A `depl`
+        // (a reserva da brocha) pesa sempre.
+        let buffer_dono_da_cor = pigment > 0.0 || rampa.is_some();
         let (spec, tiling) = (self.paint.brush, self.paint.tiling);
         let planos = &mut self.paint.wet_mistura;
         let (mut arrasto_de, mut passo) = (planos.arrasto, None);
@@ -78,7 +84,7 @@ impl PainterTool {
                 Some(planos.dissolve(buf, (fw, fh), caixa, raio, pesos.1))
             })
             .flatten();
-        for (di, (d, (dcol, prio, depl))) in dabs.iter().zip(&mixed).enumerate() {
+        for (di, (d, (dcol, prio, depl, apanha))) in dabs.iter().zip(&mixed).enumerate() {
             // Frame draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
             let rng = rng.enter(&groups, di);
             let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut *rng, canvas));
@@ -120,8 +126,13 @@ impl PainterTool {
             // Deposit PRIORITY (Wet Mix): a high-pickup dab writes at full alpha; a low-pickup one
             // (leaving a pool over bare ground) barely writes, so it can't overwrite the stronger
             // picked-up colour — the pool's exit edge stays as coloured as its entry (Enio 2026-07-07).
-            // `prio == 1` when the mixer is off ⇒ byte-identical source-over.
-            let prio = prio.clamp(0.0, 1.0);
+            // `prio == 1` when the mixer is off ⇒ byte-identical source-over. With the buffer as the
+            // colour's sole owner (`buffer_dono_da_cor`) the priority is `1` in BOTH branches below.
+            let prio = if buffer_dono_da_cor {
+                1.0
+            } else {
+                prio.clamp(0.0, 1.0)
+            };
             let depl = depl.clamp(0.0, 1.0);
             let col = [
                 (dcol[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -177,8 +188,10 @@ impl PainterTool {
                             }
                             _ => (feather(dn), None),
                         };
-                        // A Shape Color Ramp ([`RampaDaAguada`]): a cor do dab troca-se pela das camadas
-                        // NESTE texel — a Texture Color pelo valor do Shape, a Falloff Color pelo peso.
+                        // A Shape Color Ramp ([`RampaDaAguada`]): a cor do PINCEL troca-se pela das
+                        // camadas NESTE texel — a Texture Color pelo valor do Shape, a Falloff Color pelo
+                        // peso — e é ESSA que se mistura com a tinta que a brocha apanhou (a `Charge`),
+                        // como a do pincel no mixer: uma lei ([`super::watercolor_mixer::Apanha`]).
                         let (col, wgt) = match &rampa {
                             Some(RampaDaAguada { lut, camadas }) if wgt > 0.0 => {
                                 let c = camadas.motor(forma.is_some()).color(
@@ -186,27 +199,25 @@ impl PainterTool {
                                     forma.unwrap_or(wgt),
                                     wgt,
                                 );
+                                let rgb = [c[0], c[1], c[2]];
+                                let rgb = apanha.map_or(rgb, |a| a.mistura(rgb));
                                 let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-                                ([byte(c[0]), byte(c[1]), byte(c[2])], wgt * c[3])
+                                ([byte(rgb[0]), byte(rgb[1]), byte(rgb[2])], wgt * c[3])
                             }
                             _ => (col, wgt),
                         };
                         let idx = (base + x) * 4;
                         if mistura > 0.0 {
-                            // ⚠️ O `Pigment` deposita a tinta que a brocha LARGA (`depl`), SEM a prioridade
-                            // do mixer (`prio = pickup × carga`): sobre tinta molhada da própria sessão o
-                            // mixer não apanha nada (ele lê a base CONGELADA), a prioridade é zero, e com
-                            // ela no peso o `Charge < 1` não gravava tinta nenhuma — a mistura ficava sem
-                            // parceiro e o botão virava inerte AO BIT (report do dono, 2026-09-29; doc 44 §2).
-                            // O Smudge SEM `Pigment` guarda a prioridade: ele não pediu mistura de tinta, e
-                            // a poça do Wet Mix (dono, 2026-07-07) vale para ele como para o traço comum
-                            // (`watercolor_color_change_junction_is_soft` reprovava sem isto). ⚠️ E o arrasto
-                            // não fica escondido por ela: sobre a tinta molhada o mixer APANHA (lê a base do
-                            // traço, que já traz a união da sessão), logo a prioridade ali não é zero —
-                            // medido, recompor também os texels sem depósito não mudava um byte a Charge
-                            // `1`, `0,5`, `0,326`, `0,2` nem `0`.
-                            let prio_do_deposito = if pigment { 1.0 } else { prio };
-                            let a = peak * wgt * prio_do_deposito * depl * keep;
+                            // ⚠️ Com o `Pigment` o depósito é a tinta que a brocha LARGA (`depl`), SEM a
+                            // prioridade do mixer — a lei `buffer_dono_da_cor` acima (report do dono,
+                            // 2026-09-29; doc 44 §2). O Smudge SEM `Pigment` nem rampa guarda a prioridade:
+                            // ele não pediu mistura de tinta, e a poça do Wet Mix (dono, 2026-07-07) vale
+                            // para ele como para o traço comum (`watercolor_color_change_junction_is_soft`
+                            // reprovava sem isto). ⚠️ E o arrasto não fica escondido por ela: sobre a tinta
+                            // molhada o mixer APANHA (lê a base do traço, que já traz a união da sessão),
+                            // logo a prioridade ali não é zero — medido, recompor também os texels sem
+                            // depósito não mudava um byte a Charge `1`, `0,5`, `0,326`, `0,2` nem `0`.
+                            let a = peak * wgt * prio * depl * keep;
                             if a > 0.0 {
                                 let parceiro = dissolucao.as_ref().map(|dis| {
                                     let de = if planos.capturado[base + x] {

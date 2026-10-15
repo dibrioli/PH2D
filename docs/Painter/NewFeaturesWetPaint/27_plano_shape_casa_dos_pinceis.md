@@ -83,6 +83,8 @@ a física (água, pigmento, papel ficam no Tuning) — muda **quem é dono da po
 
 - **Bristles também no Digital/Impasto** — o plano diz SIM (o Shape define o pincel igual em toda mídia).
 - **Biblioteca de pontas em PNG** (D5) — depois desta onda.
+- **B6 — a ponta LISA** (lisa ÷ cerdas 1,0–6,2 por preset, [prancha 39](39_prancha_b6_ponta_lisa_e_cerdas.png)) —
+  perguntado no smoke de 15/10 (§6.10); a resposta entra aqui e na [lista 26](26_ABERTOS.md).
 
 ## §6 — W0 medido (13/10) e W1 feita
 
@@ -256,3 +258,19 @@ sobre o GRÃO (Soft/Oil Pastel, Charcoal, Graphite 8B) o portão ainda comia o p
   desvio > 2× o da lisa; CONTROLO a redonda 400/400 lisa); `diag_c2_mancha_de_carimbos` grava os PPM.
 - **A ponta LISA × as cerdas** (§6.7: a lisa deposita 4,7–6,2× as cerdas de fábrica): fica para o SMOKE do dono — se não
   for a lisa que ele espera, a calibração é um número só (`texv = 1`), contra `fixtures/rebelle/ponta_textura_round_*`.
+
+### 6.10 — W5 feita (15/10): Flat/Fan saem, o doc do Shape, o portão do D7, a prancha do B6
+
+- **Corte:** censo reconferido no código de hoje (só `Round` construído; a elipse só sem silhueta; o hospedeiro passa
+  sempre `Some(&sil)`; nenhum preset os nomeia) ⇒ saem `BrushShape` inteiro, `Dab::{shape, dir_x, dir_y}`, a direção
+  do `Stroke`/`StrokeEvent` (só alimentava a elipse) e os dois `dir` das portas `dispatch_pressure_dab*`.
+  `for_each_stamp_pixel` é só o disco. Prova ao bit: `fingerprint` e as 12 miniaturas de fábrica (`27c75b50e3`).
+- **Doc:** [40 — o Shape hoje](40_o_shape_casa_dos_pinceis.md) (as 30 formas, os três canais do motor, o painel por
+  mídia, a Shape Color, o portão de cada lei).
+- **Mutação nas leis W1/W2** (nunca provadas): 5/6 sangram — tapete em píxeis e knobs (W1), Bristles → `texv`, ponta
+  lisa, migração, `CerdasDaAgua`. **Sobreviveu** «o Grain SUBSTITUI as cerdas» (D7, W2.4): portão novo
+  `shape_bristles::um_grain_armado_substitui_as_cerdas_do_shape` (Soft Pastel, Bristles = None ao byte; o Count não
+  muda), vermelho sob «grão × cerdas».
+- **B6 medido** (`sonda_prancha_b6_lisa_e_cerdas`, azul do oráculo), lisa ÷ cerdas: Wet Round **6,23** · Wet Wash
+  **4,28** · Wet Dry Brush **4,80** · Wet Liner 1,44 · Acrylic Round 1,66 · Oil Bristle 1,00 (os óleos saturam). Na
+  [prancha](39_prancha_b6_ponta_lisa_e_cerdas.png) o Round do Rebelle fica ENTRE as nossas cerdas e a nossa lisa.

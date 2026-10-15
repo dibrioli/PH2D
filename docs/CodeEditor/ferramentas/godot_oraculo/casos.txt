@@ -1,0 +1,306 @@
+# Casos do oráculo Godot (entrada NOSSA). Formato: ver oraculo.gd. `map:` = o mapa GDScript→Luau,
+# aplicado pelo teste Rust ao texto de entrada E à saída do Godot antes de correr a nossa lei.
+
+== par_parentese
+keys: (
+text: f|
+== par_colchete
+keys: [
+text: t|
+== par_chaveta
+keys: {
+text: x = |
+== par_aspas_duplas
+keys: "
+text: x = |
+== par_aspas_simples
+keys: '
+text: x = |
+== par_dentro_de_parenteses
+keys: (
+text: f(|)
+== par_antes_de_palavra
+keys: (
+text: f|x
+== par_antes_de_espaco
+keys: (
+text: f| x
+== par_antes_de_fecho
+keys: [
+text: f(|)
+== aspas_dentro_de_palavra
+keys: '
+text: don|
+== aspas_depois_de_palavra_com_espaco
+keys: '
+text: x = a |
+== aspas_antes_de_palavra
+keys: "
+text: x = |abc
+== aspas_dentro_de_string
+keys: '
+text: x = "ab|"
+== parentese_dentro_de_string
+keys: (
+text: x = "ab|"
+== parentese_dentro_de_comentario
+keys: (
+text: -- ab|
+== aspas_dentro_de_comentario
+keys: "
+text: -- ab|
+== salta_fecho_parentese
+keys: ( )
+text: f|
+== salta_fecho_com_conteudo
+keys: ( a )
+text: f|
+== salta_fecho_aspas
+keys: " a "
+text: x = |
+== salta_fecho_aspas_vazias
+keys: " "
+text: x = |
+== salta_fecho_chaveta
+keys: { }
+text: x = |
+== salta_fecho_colchete
+keys: [ ]
+text: t|
+== fecho_que_nao_foi_automatico
+keys: )
+text: f(a|)
+== fecho_sem_par_a_frente
+keys: )
+text: f(a|
+== aninhado
+keys: ( ( a ) )
+text: f|
+== backspace_par_vazio_parentese
+keys: ( BS
+text: f|
+== backspace_par_vazio_carregado
+keys: BS
+text: f(|)
+== backspace_par_vazio_aspas
+keys: BS
+text: x = "|"
+== backspace_par_vazio_chaveta
+keys: BS
+text: x = {|}
+== backspace_par_vazio_colchete
+keys: BS
+text: t[|]
+== backspace_par_com_conteudo
+keys: BS
+text: f(a|)
+== backspace_par_com_espaco
+keys: BS
+text: f(| )
+== backspace_depois_do_par
+keys: BS
+text: f()|
+== enter_entre_chavetas
+keys: ENTER
+text: x = {|}
+== enter_entre_parenteses
+keys: ENTER
+text: f(|)
+== enter_entre_colchetes
+keys: ENTER
+text: t[|]
+== enter_entre_aspas
+keys: ENTER
+text: x = "|"
+== enter_entre_chavetas_indentado
+keys: ENTER
+text: \tx = {|}
+== enter_entre_chavetas_com_espaco
+keys: ENTER
+text: x = { | }
+== enter_chaveta_aberta_sem_fecho
+keys: ENTER
+text: x = {|
+== enter_parentese_com_argumento
+keys: ENTER
+text: f(|a)
+== enter_mantem_indentacao
+keys: ENTER
+text: \tx = 1|
+== enter_mantem_indentacao_dupla
+keys: ENTER
+text: \t\tx = 1|
+== enter_no_meio_da_linha
+keys: ENTER
+text: \tab|cd
+== enter_antes_de_espaco
+keys: ENTER
+text: \tab| cd
+== enter_depois_de_espaco
+keys: ENTER
+text: \tab |cd
+== enter_no_inicio_da_linha
+keys: ENTER
+text: \t|ab
+== enter_linha_so_de_indentacao
+keys: ENTER
+text: \t|
+== enter_apos_if
+keys: ENTER
+text: if x:|
+map: :=> then
+== enter_apos_while
+keys: ENTER
+text: while x:|
+map: :=> do
+== enter_apos_funcao
+keys: ENTER
+text: func f():|
+map: func f():=>function f()
+== enter_apos_if_indentado
+keys: ENTER
+text: \tif y:|
+map: :=> then
+== enter_apos_abridor_com_espaco_final
+keys: ENTER
+text: if x: |
+map: :=> then
+== enter_apos_abridor_com_comentario
+keys: ENTER
+text: if x: -- c|
+map: :=> then
+== enter_dentro_de_bloco
+keys: ENTER
+text: if x:\n\tfoo()|
+map: :=> then
+== enter_duas_vezes
+keys: ENTER ENTER
+text: if x:|
+map: :=> then
+== escrever_depois_de_enter_entre_chavetas
+keys: ENTER a
+text: x = {|}
+== espacos_par_e_enter
+indent: 2
+keys: { ENTER
+text: x = |
+== espacos_enter_apos_if
+indent: 2
+keys: ENTER
+text: if x:|
+map: :=> then
+== espacos_enter_mantem
+indent: 2
+keys: ENTER
+text:   x = 1|
+== espacos_backspace_na_indentacao
+indent: 2
+keys: BS
+text:     |x
+== selecao_parentese
+keys: (
+text: f(^abc|)
+== selecao_aspas
+keys: "
+text: x = ^abc|
+== multicursor_par
+keys: (
+text: f|\ng|
+== multicursor_salta
+keys: ( )
+text: f|\ng|
+== multicursor_backspace_par
+keys: ( BS
+text: f|\ng|
+== multicursor_enter_entre_chavetas
+keys: { ENTER
+text: x = |\ny = |
+== desfazer_par
+keys: ( UNDO
+text: f|
+== desfazer_palavra_com_par
+keys: a b ( UNDO
+text: x = |
+== desfazer_enter_entre_chavetas
+keys: ENTER UNDO
+text: x = {|}
+== end_luau_recua
+keys: d
+text: if x:\n\tfoo()\n\ten|
+map: :=> then
+== par_antes_de_ponto
+keys: (
+text: f|.x
+== par_antes_de_digito
+keys: (
+text: f|1
+== par_antes_de_sublinhado
+keys: (
+text: f|_a
+== aspas_depois_de_digito
+keys: "
+text: x = 1|
+== aspas_depois_de_fecho
+keys: '
+text: f()|
+== aspas_antes_de_fecho
+keys: "
+text: f(|)
+== aspas_em_string_aberta
+keys: '
+text: x = "ab|
+== parentese_em_string_aberta
+keys: (
+text: x = "ab|
+== aspas_salta_dentro_de_string
+keys: "
+text: x = "ab|"
+== enter_entre_chavetas_com_resto
+keys: ENTER
+text: x = {|}, y
+== enter_depois_do_par_fechado
+keys: ENTER
+text: x = {}|
+== enter_depois_de_end
+keys: ENTER
+text: if x:\n\tfoo()\nend|
+map: :=> then
+== chaveta_fecha_recua_luau
+keys: }
+text: x = {\n\t1,\n\t|
+== else_luau_recua
+keys: e
+text: if x:\n\tfoo()\n\tels|
+map: :=> then
+== salta_fecho_em_comentario
+keys: )
+text: -- (|)
+== backspace_par_em_comentario
+keys: BS
+text: -- (|)
+== salta_fecho_em_string
+keys: )
+text: x = "(|)"
+== enter_no_inicio_absoluto
+keys: ENTER
+text: |\tab
+== enter_no_meio_da_indentacao
+keys: ENTER
+text: \t|\tab
+== espacos_backspace_fora_do_passo
+indent: 2
+keys: BS
+text:    |x
+== espacos_backspace_depois_de_texto
+indent: 2
+keys: BS
+text: x    |
+== selecao_chaveta
+keys: {
+text: x = ^1, 2|
+== selecao_multilinha_parentese
+keys: (
+text: f^a\nb|
+== fecho_com_selecao
+keys: )
+text: f(^a|)

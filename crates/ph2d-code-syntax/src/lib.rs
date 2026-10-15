@@ -8,6 +8,7 @@
 //! [`Text`]: ph2d_code_buffer::Text
 //! [`TextEdit`]: ph2d_code_buffer::TextEdit
 
+mod autoedit;
 mod brackets;
 mod errors;
 mod fold;
@@ -16,6 +17,7 @@ mod indent;
 mod queries;
 mod syntax;
 
+pub use autoedit::{AutoEdit, IndentStyle, closer_of};
 pub use errors::SyntaxError;
 pub use fold::Fold;
 pub use highlight::{HighlightKind, HighlightSpan};

@@ -1,5 +1,6 @@
 //! Um binário de teste para a crate (convenção do repo: teste novo = ficheiro aqui + linha `mod`).
 
+mod autoedit;
 mod cronometro;
 mod dobras;
 mod erros;

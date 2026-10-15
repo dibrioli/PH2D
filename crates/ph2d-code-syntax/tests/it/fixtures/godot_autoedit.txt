@@ -1,0 +1,409 @@
+# Saída do oráculo Godot sobre docs/CodeEditor/ferramentas/godot_oraculo/casos.txt (entrada NOSSA).
+# NÃO edite à mão — regrave: bash docs/CodeEditor/ferramentas/godot_oraculo/corre.sh
+# godot --version: 4.7.2.stable.arch_linux.ed1daf0bf
+# pacman -Qi godot: Name: godot;Version: 4.7.2-2.1;Licenses: MIT
+# data: 2026-10-15T21:42Z
+# comando: timeout 60 godot --headless --path <projeto temporário> -s oraculo.gd -- casos.txt <saída>
+# CodeEdit: auto_brace_completion_enabled=true, indent_automatic=true (prefixos de fábrica ":" "{" "[" "(");
+#   delimitadores do Luau: strings " e ', comentário -- (de linha).
+# map: o mapa abridor GDScript→Luau é NOSSO — o ":" do GDScript vira " then" / " do" / "function f()";
+#   o teste aplica-o ao texto de entrada E à saída do Godot antes de correr a nossa lei.
+# Marcadores: | = cursor, ^ = âncora da seleção; escapes \n \t \\.
+== par_parentese
+keys: (
+text: f|
+godot: f(|)
+== par_colchete
+keys: [
+text: t|
+godot: t[|]
+== par_chaveta
+keys: {
+text: x = |
+godot: x = {|}
+== par_aspas_duplas
+keys: "
+text: x = |
+godot: x = "|"
+== par_aspas_simples
+keys: '
+text: x = |
+godot: x = '|'
+== par_dentro_de_parenteses
+keys: (
+text: f(|)
+godot: f((|))
+== par_antes_de_palavra
+keys: (
+text: f|x
+godot: f(|x
+== par_antes_de_espaco
+keys: (
+text: f| x
+godot: f(|) x
+== par_antes_de_fecho
+keys: [
+text: f(|)
+godot: f([|])
+== aspas_dentro_de_palavra
+keys: '
+text: don|
+godot: don'|
+== aspas_depois_de_palavra_com_espaco
+keys: '
+text: x = a |
+godot: x = a '|'
+== aspas_antes_de_palavra
+keys: "
+text: x = |abc
+godot: x = "|abc
+== aspas_dentro_de_string
+keys: '
+text: x = "ab|"
+godot: x = "ab'|"
+== parentese_dentro_de_string
+keys: (
+text: x = "ab|"
+godot: x = "ab(|)"
+== parentese_dentro_de_comentario
+keys: (
+text: -- ab|
+godot: -- ab(|
+== aspas_dentro_de_comentario
+keys: "
+text: -- ab|
+godot: -- ab"|
+== salta_fecho_parentese
+keys: ( )
+text: f|
+godot: f()|
+== salta_fecho_com_conteudo
+keys: ( a )
+text: f|
+godot: f(a)|
+== salta_fecho_aspas
+keys: " a "
+text: x = |
+godot: x = "a"|
+== salta_fecho_aspas_vazias
+keys: " "
+text: x = |
+godot: x = ""|
+== salta_fecho_chaveta
+keys: { }
+text: x = |
+godot: x = {}|
+== salta_fecho_colchete
+keys: [ ]
+text: t|
+godot: t[]|
+== fecho_que_nao_foi_automatico
+keys: )
+text: f(a|)
+godot: f(a)|
+== fecho_sem_par_a_frente
+keys: )
+text: f(a|
+godot: f(a)|
+== aninhado
+keys: ( ( a ) )
+text: f|
+godot: f((a))|
+== backspace_par_vazio_parentese
+keys: ( BS
+text: f|
+godot: f|
+== backspace_par_vazio_carregado
+keys: BS
+text: f(|)
+godot: f|
+== backspace_par_vazio_aspas
+keys: BS
+text: x = "|"
+godot: x = |
+== backspace_par_vazio_chaveta
+keys: BS
+text: x = {|}
+godot: x = |
+== backspace_par_vazio_colchete
+keys: BS
+text: t[|]
+godot: t|
+== backspace_par_com_conteudo
+keys: BS
+text: f(a|)
+godot: f(|)
+== backspace_par_com_espaco
+keys: BS
+text: f(| )
+godot: f| )
+== backspace_depois_do_par
+keys: BS
+text: f()|
+godot: f(|
+== enter_entre_chavetas
+keys: ENTER
+text: x = {|}
+godot: x = {\n\t|\n}
+== enter_entre_parenteses
+keys: ENTER
+text: f(|)
+godot: f(\n\t|\n)
+== enter_entre_colchetes
+keys: ENTER
+text: t[|]
+godot: t[\n\t|\n]
+== enter_entre_aspas
+keys: ENTER
+text: x = "|"
+godot: x = "\n|"
+== enter_entre_chavetas_indentado
+keys: ENTER
+text: \tx = {|}
+godot: \tx = {\n\t\t|\n\t}
+== enter_entre_chavetas_com_espaco
+keys: ENTER
+text: x = { | }
+godot: x = { \n\t| }
+== enter_chaveta_aberta_sem_fecho
+keys: ENTER
+text: x = {|
+godot: x = {\n\t|
+== enter_parentese_com_argumento
+keys: ENTER
+text: f(|a)
+godot: f(\n\t|a)
+== enter_mantem_indentacao
+keys: ENTER
+text: \tx = 1|
+godot: \tx = 1\n\t|
+== enter_mantem_indentacao_dupla
+keys: ENTER
+text: \t\tx = 1|
+godot: \t\tx = 1\n\t\t|
+== enter_no_meio_da_linha
+keys: ENTER
+text: \tab|cd
+godot: \tab\n\t|cd
+== enter_antes_de_espaco
+keys: ENTER
+text: \tab| cd
+godot: \tab\n\t| cd
+== enter_depois_de_espaco
+keys: ENTER
+text: \tab |cd
+godot: \tab \n\t|cd
+== enter_no_inicio_da_linha
+keys: ENTER
+text: \t|ab
+godot: \t\n\t|ab
+== enter_linha_so_de_indentacao
+keys: ENTER
+text: \t|
+godot: \t\n\t|
+== enter_apos_if
+keys: ENTER
+text: if x:|
+map: :=> then
+godot: if x:\n\t|
+== enter_apos_while
+keys: ENTER
+text: while x:|
+map: :=> do
+godot: while x:\n\t|
+== enter_apos_funcao
+keys: ENTER
+text: func f():|
+map: func f():=>function f()
+godot: func f():\n\t|
+== enter_apos_if_indentado
+keys: ENTER
+text: \tif y:|
+map: :=> then
+godot: \tif y:\n\t\t|
+== enter_apos_abridor_com_espaco_final
+keys: ENTER
+text: if x: |
+map: :=> then
+godot: if x: \n\t|
+== enter_apos_abridor_com_comentario
+keys: ENTER
+text: if x: -- c|
+map: :=> then
+godot: if x: -- c\n\t|
+== enter_dentro_de_bloco
+keys: ENTER
+text: if x:\n\tfoo()|
+map: :=> then
+godot: if x:\n\tfoo()\n\t|
+== enter_duas_vezes
+keys: ENTER ENTER
+text: if x:|
+map: :=> then
+godot: if x:\n\t\n\t|
+== escrever_depois_de_enter_entre_chavetas
+keys: ENTER a
+text: x = {|}
+godot: x = {\n\ta|\n}
+== espacos_par_e_enter
+indent: 2
+keys: { ENTER
+text: x = |
+godot: x = {\n  |\n}
+== espacos_enter_apos_if
+indent: 2
+keys: ENTER
+text: if x:|
+map: :=> then
+godot: if x:\n  |
+== espacos_enter_mantem
+indent: 2
+keys: ENTER
+text:   x = 1|
+godot:   x = 1\n  |
+== espacos_backspace_na_indentacao
+indent: 2
+keys: BS
+text:     |x
+godot:   |x
+== selecao_parentese
+keys: (
+text: f(^abc|)
+godot: f((abc|))
+== selecao_aspas
+keys: "
+text: x = ^abc|
+godot: x = "abc|"
+== multicursor_par
+keys: (
+text: f|\ng|
+godot: f(|)\ng(|)
+== multicursor_salta
+keys: ( )
+text: f|\ng|
+godot: f()|\ng()|
+== multicursor_backspace_par
+keys: ( BS
+text: f|\ng|
+godot: f|\ng|
+== multicursor_enter_entre_chavetas
+keys: { ENTER
+text: x = |\ny = |
+godot: x = {\n\t|\n}\ny = {\n\t|\n}
+== desfazer_par
+keys: ( UNDO
+text: f|
+godot: f|
+== desfazer_palavra_com_par
+keys: a b ( UNDO
+text: x = |
+godot: x = |
+== desfazer_enter_entre_chavetas
+keys: ENTER UNDO
+text: x = {|}
+godot: x = {|}
+== end_luau_recua
+keys: d
+text: if x:\n\tfoo()\n\ten|
+map: :=> then
+godot: if x:\n\tfoo()\n\tend|
+== par_antes_de_ponto
+keys: (
+text: f|.x
+godot: f(|).x
+== par_antes_de_digito
+keys: (
+text: f|1
+godot: f(|1
+== par_antes_de_sublinhado
+keys: (
+text: f|_a
+godot: f(|_a
+== aspas_depois_de_digito
+keys: "
+text: x = 1|
+godot: x = 1"|
+== aspas_depois_de_fecho
+keys: '
+text: f()|
+godot: f()'|'
+== aspas_antes_de_fecho
+keys: "
+text: f(|)
+godot: f("|")
+== aspas_em_string_aberta
+keys: '
+text: x = "ab|
+godot: x = "ab'|
+== parentese_em_string_aberta
+keys: (
+text: x = "ab|
+godot: x = "ab(|)
+== aspas_salta_dentro_de_string
+keys: "
+text: x = "ab|"
+godot: x = "ab"|
+== enter_entre_chavetas_com_resto
+keys: ENTER
+text: x = {|}, y
+godot: x = {\n\t|\n}, y
+== enter_depois_do_par_fechado
+keys: ENTER
+text: x = {}|
+godot: x = {}\n|
+== enter_depois_de_end
+keys: ENTER
+text: if x:\n\tfoo()\nend|
+map: :=> then
+godot: if x:\n\tfoo()\nend\n|
+== chaveta_fecha_recua_luau
+keys: }
+text: x = {\n\t1,\n\t|
+godot: x = {\n\t1,\n\t}|
+== else_luau_recua
+keys: e
+text: if x:\n\tfoo()\n\tels|
+map: :=> then
+godot: if x:\n\tfoo()\n\telse|
+== salta_fecho_em_comentario
+keys: )
+text: -- (|)
+godot: -- ()|
+== backspace_par_em_comentario
+keys: BS
+text: -- (|)
+godot: -- |
+== salta_fecho_em_string
+keys: )
+text: x = "(|)"
+godot: x = "()|"
+== enter_no_inicio_absoluto
+keys: ENTER
+text: |\tab
+godot: \n|\tab
+== enter_no_meio_da_indentacao
+keys: ENTER
+text: \t|\tab
+godot: \t\n\t|\tab
+== espacos_backspace_fora_do_passo
+indent: 2
+keys: BS
+text:    |x
+godot:   |x
+== espacos_backspace_depois_de_texto
+indent: 2
+keys: BS
+text: x    |
+godot: x   |
+== selecao_chaveta
+keys: {
+text: x = ^1, 2|
+godot: x = {1, 2|}
+== selecao_multilinha_parentese
+keys: (
+text: f^a\nb|
+godot: f(a\nb|)
+== fecho_com_selecao
+keys: )
+text: f(^a|)
+godot: f()|)

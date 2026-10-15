@@ -27,6 +27,15 @@
 #   ⇒ um clique prova-se num gate de costura (`MockPanelHost`), não aqui.
 #   - O `$HOME` do app e' o do DONO, e o app RE-ESCREVE `~/.ph2d/layout.txt` (a arrumacao dos
 #     paineis, que vive fora do repo). ⇒ o roteiro corre com **HOME isolado** desde 19/09.
+#   ⛔⛔ E o HOME isolado levava o CACHE DE SHADERS do driver (`$HOME/.cache/nvidia`) VAZIO a cada
+#     foto (medido 15/10, cena 142, espera 12, 1930x1040): o 1.º quadro so' saía depois de o NVVM
+#     compilar todos os pipelines — 10,9 a 33,7 s com load 14–146 —, e ate' la' a janela X11 devolve
+#     ZEROS ao `import`: **9 de 12 fotos PRETAS**, do tamanho certo e da janela certa (`_NET_WM_PID` =
+#     o app). Com um cache PERSISTENTE so' das fotos o 1.º quadro sai aos 0,68–0,76 s (3/3, ate' load
+#     115); o do dono (`~/.cache/nvidia`) nao serve: outros processos aparam-no (frio 3 de 4 vezes).
+#     ⇒ cache proprio (`FOTO_CACHE_SHADERS`), e a espera conta-se do 1.º quadro ACESO, nunca do
+#     arranque; a janela e' a do PID do app; foto toda a zeros e' RECUSA, nunca entregue.
+#     `FOTO_GUARDA_TMP=1` guarda a pasta da sessao (logs, kwin.log, sessao.sh) para diagnostico.
 set -euo pipefail
 
 ENV_KV="${1:?VAR=valor}"
@@ -78,8 +87,19 @@ if [ -n "$NOVO" ]; then
 fi
 
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+if [ "${FOTO_GUARDA_TMP:-0}" = 1 ]; then
+  trap 'echo "[foto] sessao guardada em $TMP" >&2' EXIT
+else
+  trap 'rm -rf "$TMP"' EXIT
+fi
 mkdir -p "$TMP/cfg"
+# Cache de shaders PERSISTENTE e so' das fotos (ver «AS TRES ARMADILHAS»): no HOME REAL de quem chama,
+# lido ANTES do isolamento. E a saida apaga-se ja': uma foto VELHA no mesmo caminho nunca se le' como esta.
+CACHE="${FOTO_CACHE_SHADERS:-${XDG_CACHE_HOME:-$HOME/.cache}/ph2d-fotografa}"
+mkdir -p "$CACHE"
+PRAZO_QUADRO="${FOTO_PRAZO_QUADRO:-90}"
+PRAZO_KWIN="$(awk -v a="$PRAZO_QUADRO" -v b="$ESPERA" 'BEGIN { print int(a + b + 30) }')"
+rm -f "$SAIDA"
 cat > "$TMP/cfg/kwinrulesrc" <<'EOF'
 [General]
 count=1
@@ -108,6 +128,7 @@ EOF
 #
 # O binário corre SEM o cargo: o tecto do cache de shaders do driver é o do [env] do .cargo/config.toml
 # (16 GiB) — com o de fábrica (1 GiB) o driver APARA o cache partilhado e despeja a luz dos outros (W5p).
+# ⚠️ O cache é o `$CACHE` das fotos (o HOME isolado deixava-o VAZIO: as fotos pretas de 15/10).
 #
 # ⭐⭐ O GUARDA lê o FONTE do heredoc, ANTES de o gerar: no ficheiro gerado a crase já correu e sumiu
 # (14/10: o comentário acima vivia lá dentro, executava «[env]: comando não encontrado» e o guarda
@@ -128,12 +149,43 @@ if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$WAYLAND_DISPLAY" = "wayl
 fi
 cd "$RAIZ"
 mkdir -p "$TMP/home"
-env -u WAYLAND_DISPLAY HOME="$TMP/home" __GL_SHADER_DISK_CACHE_SIZE=17179869184 $ENV_KV \
+env -u WAYLAND_DISPLAY HOME="$TMP/home" __GL_SHADER_DISK_CACHE_SIZE=17179869184 \
+  __GL_SHADER_DISK_CACHE_PATH="$CACHE" MESA_SHADER_CACHE_DIR="$CACHE/mesa" $ENV_KV \
   PH2D_EXIT_AFTER_FRAMES=100000 "$BIN" > "$TMP/app.log" 2>&1 &
 APP=\$!
+janela() {
+  for w in \$(xprop -display "\$DISPLAY" -root _NET_CLIENT_LIST | grep -o '0x[0-9a-f]*'); do
+    xprop -display "\$DISPLAY" -id "\$w" _NET_WM_PID | grep -qx "_NET_WM_PID(CARDINAL) = \$APP" && echo "\$w"
+  done | tail -1
+}
+aceso() {
+  [ "\$(magick "\$1" -format '%[fx:maxima>0]' info: 2>/dev/null)" = 1 ]
+}
+WIN=
+T0=\$(date +%s%N)
+while :; do
+  if ! kill -0 \$APP 2>/dev/null; then
+    echo "RECUSA: o app morreu antes do 1.o quadro (ver o log do app)" >> "$TMP/log"; exit 5
+  fi
+  if [ \$SECONDS -ge $PRAZO_QUADRO ]; then
+    echo "RECUSA: em ${PRAZO_QUADRO}s a janela do app (pid \$APP, id \${WIN:-nenhuma}) nunca apresentou" \
+      "um quadro - o import so' devolveria ZEROS. FOTO_PRAZO_QUADRO sobe o prazo." >> "$TMP/log"
+    kill -9 \$APP 2>/dev/null; exit 6
+  fi
+  sleep 0.25
+  WIN=\$(janela)
+  [ -n "\$WIN" ] || continue
+  import -display "\$DISPLAY" -window "\$WIN" "$TMP/sonda.png" 2>/dev/null || continue
+  aceso "$TMP/sonda.png" && break
+done
+MS=\$(( (\$(date +%s%N) - T0) / 1000000 ))
+echo "[foto] 1.o quadro aceso aos \${MS} ms (janela \$WIN do pid \$APP); espero ${ESPERA}s" >> "$TMP/log"
 sleep $ESPERA
-WIN=\$(xprop -display "\$DISPLAY" -root _NET_CLIENT_LIST | grep -o '0x[0-9a-f]*' | tail -1)
 import -display "\$DISPLAY" -window "\$WIN" "$SAIDA" >> "$TMP/log" 2>&1
+if ! aceso "$SAIDA"; then
+  echo "RECUSA: a foto saiu toda a ZEROS depois de a janela ter acendido - nao a entrego" >> "$TMP/log"
+  rm -f "$SAIDA"
+fi
 kill -9 \$APP 2>/dev/null
 EOF
 chmod +x "$TMP/sessao.sh"
@@ -144,7 +196,7 @@ if grep -q '`' "$TMP/sessao.sh"; then
   exit 4
 fi
 
-XDG_CONFIG_HOME="$TMP/cfg" timeout 120 kwin_wayland --virtual --width "$LARG" --height "$ALT" \
+XDG_CONFIG_HOME="$TMP/cfg" timeout "$PRAZO_KWIN" kwin_wayland --virtual --width "$LARG" --height "$ALT" \
   --xwayland --exit-with-session "$TMP/sessao.sh" > "$TMP/kwin.log" 2>&1 || true
 cat "$TMP/log" 2>/dev/null || true
 if [ -s "$SAIDA" ]; then

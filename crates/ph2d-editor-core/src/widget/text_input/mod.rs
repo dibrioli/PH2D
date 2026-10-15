@@ -89,12 +89,12 @@ impl TextInput {
     }
 
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
-        NodeBuilder::new(Role::TextInput)
+        let b = NodeBuilder::new(Role::TextInput)
             .label(&self.label)
             .bounds(x, y, w, h)
             .focusable(self.state != TextInputState::Disabled)
-            .action(Action::Focus)
-            .build()
+            .action(Action::Focus);
+        compose::a11y_value(b, self).build()
     }
 }
 

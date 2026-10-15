@@ -166,3 +166,28 @@ fn a_number_input_never_composes() {
     dispatch_compose_key(&mut store, ComposeKey::Dead('´'));
     assert_eq!(store.composition(), None);
 }
+
+/// ⭐ O leitor de ecrã lê o que o ecrã mostra: a pré-edição no caret, e o valor sozinho depois dela.
+#[test]
+fn the_screen_reader_hears_the_composition_in_progress() {
+    let mut store = focused_field("ab");
+    let read = |store: &WidgetStore| {
+        crate::ime::begin_frame(store.focus_id(), store.composition());
+        let input = TextInput::new(FIELD, "Name")
+            .value("ab")
+            .state(TextInputState::Focused);
+        let input = TextInput {
+            caret_byte: 1,
+            ..input
+        };
+        input
+            .build_a11y(0.0, 0.0, 200.0, 32.0)
+            .value()
+            .map(str::to_owned)
+    };
+    assert_eq!(read(&store).as_deref(), Some("ab"));
+    dispatch_preedit(&mut store, "´", None);
+    assert_eq!(read(&store).as_deref(), Some("a´b"), "a pré-edição não chegou ao nó");
+    dispatch_preedit(&mut store, "", None);
+    assert_eq!(read(&store).as_deref(), Some("ab"), "a composição desfeita ficou no nó");
+}

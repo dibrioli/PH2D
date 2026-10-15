@@ -46,6 +46,7 @@ pub struct NodeBuilder {
     numeric_value: Option<f64>,
     numeric_value_min: Option<f64>,
     numeric_value_max: Option<f64>,
+    value: Option<String>,
 }
 
 impl NodeBuilder {
@@ -62,6 +63,7 @@ impl NodeBuilder {
             numeric_value: None,
             numeric_value_min: None,
             numeric_value_max: None,
+            value: None,
         }
     }
 
@@ -133,6 +135,12 @@ impl NodeBuilder {
         self
     }
 
+    /// The TEXT a `TextInput` holds, as the screen reader reads it (AccessKit `value`).
+    pub fn value(mut self, v: impl Into<String>) -> Self {
+        self.value = Some(v.into());
+        self
+    }
+
     pub fn build(self) -> Node {
         // Interactive roles (button, checkbox, etc.) must have a
         // label or screen readers say "button" without context.
@@ -169,6 +177,9 @@ impl NodeBuilder {
         }
         if let Some(v) = self.numeric_value_max {
             node.set_max_numeric_value(v);
+        }
+        if let Some(v) = self.value {
+            node.set_value(v);
         }
         if !self.focusable {
             // accesskit defaults vary by role; explicit non-focusable
@@ -227,6 +238,15 @@ mod tests {
             .build();
         assert_eq!(node.role(), Role::Button);
         assert_eq!(node.label(), Some("Save"));
+    }
+
+    #[test]
+    fn builder_carries_a_text_value() {
+        let node = NodeBuilder::new(Role::TextInput)
+            .label("Name")
+            .value("ab")
+            .build();
+        assert_eq!(node.value(), Some("ab"));
     }
 
     #[test]

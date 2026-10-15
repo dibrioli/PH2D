@@ -16,17 +16,18 @@ const ENTRE: u32 = 12;
 /// Quadros depois da última (a água a assentar).
 const CAUDA: u32 = 120;
 
-struct Pincelada {
-    cor: [u8; 3],
-    tamanho_px: f32,
+#[derive(Clone, Copy)]
+pub(crate) struct Pincelada {
+    pub(crate) cor: [u8; 3],
+    pub(crate) tamanho_px: f32,
     /// Início e fim, em fracções da tela; `curva` empurra o meio na perpendicular.
-    de: [f32; 2],
-    ate: [f32; 2],
-    curva: f32,
+    pub(crate) de: [f32; 2],
+    pub(crate) ate: [f32; 2],
+    pub(crate) curva: f32,
 }
 
 // LITERAL-COLOR-OK: as cores de uma pincelada GRAVADA (o artista escolheu-as), não da UI.
-const SPLASH: [Pincelada; 4] = [
+pub(crate) const SPLASH: [Pincelada; 4] = [
     Pincelada {
         cor: [30, 90, 200],
         tamanho_px: 70.0,
@@ -71,6 +72,16 @@ fn ponto(p: &Pincelada, f: f32, lado: f32) -> [f32; 2] {
 /// tool recusou armar.
 #[must_use]
 pub fn grava_o_splash(lado: u32, alvo: u64) -> Option<(Vec<u8>, f64)> {
+    grava_pinceladas(lado, alvo, &SPLASH, &[0; 4])
+}
+
+/// As pinceladas `ps` gravadas como o Splash, com `antes[k]` quadros parados a mais antes da `k`.
+pub(crate) fn grava_pinceladas(
+    lado: u32,
+    alvo: u64,
+    ps: &[Pincelada],
+    antes: &[u32],
+) -> Option<(Vec<u8>, f64)> {
     let mut t = PainterTool::default();
     let n = usize::try_from(lado).ok()?;
     t.set_source(vec![255u8; n * n * 4], lado, lado);
@@ -94,7 +105,10 @@ pub fn grava_o_splash(lado: u32, alvo: u64) -> Option<(Vec<u8>, f64)> {
         q += 1;
         Some(())
     };
-    for p in &SPLASH {
+    for (k, p) in ps.iter().enumerate() {
+        for _ in 0..antes.get(k).copied().unwrap_or(0) {
+            quadro(&mut t, &mut rec)?;
+        }
         t.set_brush_color_srgb8(p.cor);
         t.set_brush_size_px(p.tamanho_px);
         for i in 0..=TRACO {

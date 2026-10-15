@@ -204,6 +204,21 @@ fn empurra(
 }
 
 impl Track {
+    /// A edição da etapa que começa em `ancora`, criada vazia se ainda não existe.
+    pub fn edicao_mut(&mut self, ancora: usize) -> &mut EdicaoDeEtapa {
+        let i = match self.edicoes.iter().position(|e| e.ancora == ancora) {
+            Some(i) => i,
+            None => {
+                self.edicoes.push(EdicaoDeEtapa {
+                    ancora,
+                    ..Default::default()
+                });
+                self.edicoes.len() - 1
+            }
+        };
+        &mut self.edicoes[i]
+    }
+
     /// **A trilha que toca**, sem edições (as dela aplicadas por [`efetiva`]).
     ///
     /// # Errors

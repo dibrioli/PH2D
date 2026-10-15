@@ -12,6 +12,7 @@ mod a_luz_do_impasto_e_a_de_antes_da_poda;
 mod macro_agua;
 mod macro_comum;
 mod macro_em_cena;
+mod macro_etapas;
 mod macro_portas;
 mod macro_traco;
 mod measure_undo_capacity;

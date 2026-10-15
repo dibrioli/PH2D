@@ -100,6 +100,7 @@ fn todos_os_passos() -> Vec<Passo> {
         Passo::Agua(RespostaDoWorker::NaoVoltou),
         Passo::Agua(RespostaDoWorker::Passos(1 << 40)),
         Passo::Recusada("bind_document".to_owned()),
+        Passo::SaiDaGravacao,
     ]
 }
 

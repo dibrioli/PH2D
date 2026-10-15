@@ -36,6 +36,9 @@ impl MacroEmCena {
         if doc.tracks.is_empty() {
             return Ok(None);
         }
+        doc.tracks[0] = doc.tracks[0]
+            .tocavel(&super::etapas::LeitorDoPainter)
+            .map_err(ErroDaMacro::Edicao)?;
         let tocador = tocador_de(&doc)?;
         let player = MacroPlayer::new(&doc);
         Ok(Some(Self {

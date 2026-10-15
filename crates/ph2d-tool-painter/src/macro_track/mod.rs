@@ -10,6 +10,7 @@
 //! dos outros meios não viaja ainda.
 
 pub mod em_cena;
+pub mod etapas;
 pub mod inicial;
 pub mod passo;
 pub mod portas;
@@ -17,6 +18,8 @@ mod portas_internas;
 pub mod roteiro;
 pub mod tocar;
 
+#[cfg(test)]
+mod etapas_tests;
 #[cfg(test)]
 mod tests;
 

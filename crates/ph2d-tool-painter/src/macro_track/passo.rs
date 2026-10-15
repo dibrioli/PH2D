@@ -97,6 +97,10 @@ pub enum Passo {
     Agua(RespostaDoWorker),
     /// Uma porta que a macro não reproduz foi chamada a gravar (o nome dela).
     Recusada(String),
+    /// A trilha deixou de ser a gravação no tempo (uma etapa re-cronometrada ou cuja conferência
+    /// divergiu): a água larga a fita e corre no relógio fixo. Nunca gravado — só a trilha que toca o tem
+    /// (`ph2d_macro::etapa`).
+    SaiDaGravacao,
     /// Um tipo que este leitor não conhece (gravado por uma versão mais nova).
     Desconhecido(u64),
 }
@@ -327,6 +331,7 @@ impl Passo {
                 k(&mut r, 51);
                 r.str(2, porta);
             }
+            Passo::SaiDaGravacao => k(&mut r, 52),
             Passo::Desconhecido(n) => k(&mut r, *n),
         }
         r.finish()
@@ -478,6 +483,7 @@ impl Passo {
                 _ => return Ok(Passo::Desconhecido(50)),
             }),
             51 => Passo::Recusada(s_(2)?),
+            52 => Passo::SaiDaGravacao,
             n => Passo::Desconhecido(n),
         })
     }

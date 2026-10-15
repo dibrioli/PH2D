@@ -115,6 +115,12 @@ impl PainterTool {
 
     // The paint-mode setters (`set_paint_tool_mode` / `is_smear_mode`) live in `stencil.rs` (LOC cap).
 
+    /// The brush radius in pixels.
+    #[must_use]
+    pub fn brush_size_px(&self) -> f32 {
+        self.paint.brush.radius_px
+    }
+
     /// Set the brush radius in pixels, clamped to the interactive size range.
     pub fn set_brush_size_px(&mut self, px: f32) {
         crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TamanhoPx(px), {

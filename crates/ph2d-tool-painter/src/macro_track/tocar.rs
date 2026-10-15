@@ -27,6 +27,8 @@ pub enum ErroDaMacro {
     /// A reprodução deixou de ser a gravação.
     Divergiu(Divergencia),
     Preset(String),
+    /// Uma edição de etapa que não cabe na gravação.
+    Edicao(ph2d_macro::ErroDeEdicao),
 }
 
 pub struct TocadorDoPainter {
@@ -147,10 +149,24 @@ impl TocadorDoPainter {
     }
 
     fn aplica_passo(&mut self, passo: Passo) -> Result<(), ErroDaMacro> {
-        let (tw, th) = self.tool.source_size();
+        if matches!(passo, Passo::SaiDaGravacao) {
+            self.passa_ao_relogio_fixo();
+            return Ok(());
+        }
+        self.mudou |= Self::aplica_ao_tool(&mut self.tool, passo)?;
+        Ok(())
+    }
+
+    /// **Um passo pela porta que o gravou**, num tool qualquer (o do tocador, ou o da leitura das
+    /// propriedades das etapas). `true` = a tela da cena mudou.
+    ///
+    /// # Errors
+    /// [`ErroDaMacro`].
+    pub(crate) fn aplica_ao_tool(t: &mut PainterTool, passo: Passo) -> Result<bool, ErroDaMacro> {
+        let (tw, th) = t.source_size();
         let (tw, th) = (f64::from(tw), f64::from(th));
         let escala = |p: [f64; 2]| abs(p, tw, th);
-        let t = &mut self.tool;
+        let mut mudou = false;
         match passo {
             Passo::Ponteiro {
                 pos,
@@ -184,11 +200,11 @@ impl TocadorDoPainter {
             Passo::TiraAssadoAdiado => {
                 t.take_deferred_bake();
             }
-            Passo::Preview => self.mudou |= t.take_preview_arc().is_some(),
+            Passo::Preview => mudou = t.take_preview_arc().is_some(),
             Passo::PreviewBbox => {
                 t.take_preview_upload_bbox();
             }
-            Passo::PreviewSujo => self.mudou |= t.take_preview_dirty(),
+            Passo::PreviewSujo => mudou = t.take_preview_dirty(),
             Passo::PreviewAtual => {
                 let _ = t.current_preview();
             }
@@ -259,16 +275,17 @@ impl TocadorDoPainter {
             Passo::Para => {
                 // O fim da gravação assenta a água na tela e nenhum dreno gravado vem depois dele.
                 t.wet_traz_para_casa();
-                self.mudou = true;
+                mudou = true;
             }
             Passo::TipoDaTextura(k) => t.set_brush_texture_kind(k),
             Passo::TipoDaForma(k) => t.set_brush_shape_kind(k),
             Passo::SnapDaLinha(b) => t.set_line_snap(b),
             Passo::EscalaUniforme(b) => t.set_uniform_scale(b),
             Passo::Agua(_) => {}
+            Passo::SaiDaGravacao => t.wet_passa_ao_relogio_fixo(),
             Passo::Recusada(porta) => return Err(ErroDaMacro::PortaRecusada(porta)),
             Passo::Desconhecido(k) => return Err(ErroDaMacro::PassoDesconhecido(k)),
         }
-        Ok(())
+        Ok(mudou)
     }
 }

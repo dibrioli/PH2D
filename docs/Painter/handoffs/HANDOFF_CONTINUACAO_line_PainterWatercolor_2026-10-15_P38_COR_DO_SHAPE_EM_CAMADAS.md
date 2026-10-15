@@ -6,7 +6,8 @@ Linha sobre o `main` `0aab2c1cb6` (14/10). Sem push. Prompt:
 [38](../NewFeaturesWetPaint/38_PROMPT_rampa_do_shape_como_a_do_grain.md) · lista
 [26](../NewFeaturesWetPaint/26_ABERTOS.md) (A6 feito; C23, C24 novos) · prancha
 [38](../NewFeaturesWetPaint/38_prancha_cor_do_shape_em_camadas.png). Anterior: [P36](HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-14_P36_COR_DO_SHAPE.md).
-Commits: `36b554f315` (código + portões) · o de docs + portão do painel.
+Commits: `36b554f315` (código + portões) · `d3a3bc2962` (docs + portão do painel) · `9d0fb6c8c8`
+(clippy) · `fc1ab9fc1b` (o 1.º smoke do dono, §2-bis).
 
 ## §2 — O pedido mudou a meio (o dono, 15/10)
 
@@ -15,15 +16,29 @@ o dono: *«o modo como está pode ser preservado como falloff color»* e *«o no
 de shape. Ambos na mesma seção com possibilidade de organizar que é o primeiro e com a opção de Blend
 entre eles»*. Fez-se isso.
 
+## §2-bis — O 1.º smoke do dono (15/10) e a cura (`fc1ab9fc1b`)
+
+*«O mesmo color ramp está atuando para textura e para o falloff · o color ramp com o nome do falloff está
+sem atuação · o ajuste de opacidade deveria ter para os dois · o layout ficou todo bagunçado.»*
+Pelos eventos do painel a Falloff pintava (sonda); o que se via: sem textura no Shape a Texture Color
+indexava a silhueta — as duas faziam o mesmo e a de cima tapava a outra. Cura: sem textura a Texture
+Color NÃO pinta e o painel esmaece-a (`Dependente::TexturaSemForma`); as duas nascem ligadas (Texture
+em cima, opaca); **Opacity por camada sobre a cor do pincel** (substitui o «Mix» da de cima); a secção em
+**cartões** (B&W e Alpha como linhas com nome, «Move Up» no título do cartão de baixo, Blend no de cima),
+fotografada antes de ir ao dono: [foto](../NewFeaturesWetPaint/38_foto_secao_shape_color.png)
+(`foto_shape_color_tests`, vello na placa, `PH2D_FOTO_DIR` + `--ignored`). O censo dos controlos
+apanhou o «Use Color Ramp» morto num pincel sem textura antes da Falloff nascer ligada.
+
 ## §3 — A lei (uma porta: `ph2d-painter-brush/src/ramp_alpha.rs`)
 
 - `RampIndex::{Grain, Shape}` (o `Silhouette` do P36 saiu); `RampPaint.shape: ShapeRampLayers`.
 - **Texture Color** = `lut[valor da textura do Shape]` (padrão procedural, ou o valor da imagem). Um
   padrão PROCEDURAL deixa de recortar (a silhueta é a queda), a lei do Grain em cor; uma **imagem**
-  continua a ser a ponta (o valor dela é a cobertura). Sem Shape activo o valor é a silhueta.
+  continua a ser a ponta (o valor dela é a cobertura). Sem textura no Shape ela não pinta.
 - **Falloff Color** = `lut_queda[cobertura]` — a lei do P36 ao byte (o padrão recorta).
-- As duas: `compose_shape_ramp_layers` — a de cima (`falloff_first`) sobre a de baixo por
-  `blend::blend_over(modo, baixo, cima.rgb, cima.a × mix)`. A escolha «o padrão vira cor» contra
+- A pilha: `compose_shape_ramp_layers` — sobre a cor do pincel, a de baixo em Normal com a sua Opacity,
+  a de cima (`falloff_first` ⇒ a Falloff) com o Blend e a sua; exacta nas pontas. O alfa da rampa segue
+  o `RampAlphaMode`. Cor do pincel à vista ⇒ só a rota por pixel (`camadas_mostram_o_pincel`). A escolha «o padrão vira cor» contra
   «recorta e colore» (o desenho A) foi medida na prancha (coluna 4): o A esconde a ponta baixa da rampa,
   e exprime-se na lei escolhida com a rampa em Alpha → Strength; o inverso não.
 - **B&W ligado**: a rampa do Shape é o TOM da silhueta, como antes; as camadas não entram.
@@ -67,8 +82,11 @@ fica em 0,63: a aguada espalha a cor entre quadrados vizinhos (o Noise, suave, d
 - `rampa_do_shape::a_texture_color_segue_a_textura_do_shape` — Digital e Impasto × Checker/Noise ×
   dura/macia × View (assado)/Tiled (por pixel): corr ≥ 0,95 e cobertura ≥ 0,99; aguada Noise ≥ 0,85;
   controlo: Falloff só, macia, segue a queda (≥ 0,9) e não o padrão (≤ 0,5).
-- `rampa_do_shape::as_camadas_misturam_na_ordem_escolhida` — Mix 1: manda a de cima (nas duas ordens);
-  Mix 0: aparece a de baixo; sem Shape, Texture só e Falloff só pintam o mesmo byte (LUT combinada).
+- `rampa_do_shape::as_camadas_misturam_na_ordem_escolhida` — Opacity 1 da de cima: manda ela (nas
+  duas ordens); 0: aparece a de baixo; sem textura no Shape a Texture só = sem rampa, e a Falloff pinta.
+- `rampa_do_shape::cada_camada_tem_a_sua_opacidade_sobre_a_cor_do_pincel` — 1 = rampa, 0 = pincel, ½ = meio.
+- Mutações do smoke 5/5 (M8 sobreviveu à 1.ª corrida: faltava «as duas ligadas, sem textura» — o
+  portão ganhou-o e ela sangra); M9–M11 → o portão da Opacity, M12 → o da ordem.
 - `cor_do_shape::a_rampa_do_shape_em_cor_nao_desliga_o_grain` (P36, reescrito): Falloff só → α igual a
   sem rampa; Texture → α igual a sem rampa e SEM Shape; o Grain morde nos dois.
 - `paint_shape_ramp::tests::as_duas_camadas_pintam_os_controlos_de_cada_estado` (painel): cada estado

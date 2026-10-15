@@ -382,6 +382,19 @@ fn as_camadas_misturam_na_ordem_escolhida() {
         so(Rampa::Off),
         "controlo: sem Shape a Falloff Color pinta a rampa pela queda"
     );
+    // E com as DUAS ligadas: sem textura só a Falloff pinta, logo a ordem não muda um byte.
+    let ambas = |queda_em_cima| {
+        so(Rampa::Ambas {
+            queda_em_cima,
+            blend: Mix,
+            mix: 1.0,
+        })
+    };
+    assert_eq!(
+        ambas(false),
+        ambas(true),
+        "sem textura no Shape a Texture Color pintou por cima da Falloff Color"
+    );
 }
 
 /// A tela sobre branco, em PPM.

@@ -36,8 +36,8 @@ use mlua::{Lua, Table, Value};
 use ph2d_ecs::{Entity, StableId, Transform, World};
 
 use crate::component::{LuauScript, ScriptSource};
-use crate::io::{EntityWrite, ReadSnapshot, WriteQueue, pose_field};
 use crate::diagnostic::ScriptDiagnostic;
+use crate::io::{EntityWrite, ReadSnapshot, WriteQueue, pose_field};
 use crate::module::{ScriptModule, load_module};
 use crate::props::{PropDecl, ScriptValue, resolve};
 use ph2d_script_doc::{ScriptId, ScriptLibrary};
@@ -286,8 +286,11 @@ impl SceneScripts {
         lib: &ScriptLibrary,
     ) {
         let actors = actors(world);
-        let wanted: BTreeMap<ScriptId, ()> =
-            actors.iter().filter_map(|a| library_id(&a.cfg)).map(|id| (id, ())).collect();
+        let wanted: BTreeMap<ScriptId, ()> = actors
+            .iter()
+            .filter_map(|a| library_id(&a.cfg))
+            .map(|id| (id, ()))
+            .collect();
         // Quem ninguém aponta sai — o vivo de um script esquecido não fica na VM.
         self.slots.retain(|id, _| wanted.contains_key(id));
         for id in wanted.keys() {
@@ -364,10 +367,7 @@ impl SceneScripts {
         photograph(reads, world, &actors);
         let mut writes: Vec<EntityWrite> = Vec::new();
         for a in &actors {
-            let Some(hook) = self
-                .module_of(&a.cfg)
-                .and_then(|m| m.hook("on_signal"))
-            else {
+            let Some(hook) = self.module_of(&a.cfg).and_then(|m| m.hook("on_signal")) else {
                 continue;
             };
             let Some(inst) = self.instances.get_mut(&a.entity.to_bits()) else {

@@ -41,15 +41,15 @@ pub mod scene;
 mod valores;
 
 pub use component::{LuauScript, ProjectScripts, ScriptSource};
-pub use ph2d_script_doc::{ScriptDoc, ScriptId, ScriptLibrary};
+pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
 pub use host::ScriptHost;
 pub use io::{
     EntityWrite, InputSnapshot, QueueFull, ReadSnapshot, SpawnCommand, SpawnQueue, WriteQueue,
 };
 pub use lateral::{PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
-pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
 pub use module::{ScriptModule, load_module};
+pub use ph2d_script_doc::{DocError, ScriptDoc, ScriptId, ScriptLibrary};
 pub use props::{
     DeclError, Origin, Orphan, OrphanWhy, PROPS_MAX, PropDecl, PropHint, Resolution, Resolved,
     ScriptValue, ScriptValueKind,

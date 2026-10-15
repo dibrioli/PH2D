@@ -182,6 +182,7 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
             // posterior. Vazio aqui não é "não sei": é o que aquele ficheiro de facto tem.
             pattern_art: Vec::new(),
             boards: Vec::new(),
+            scripts: Vec::new(),
         },
         stable_id_counter,
         sculpture_left_out,
@@ -274,6 +275,7 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
             input_map: old.input_map,
             pattern_art: old.pattern_art,
             boards: Vec::new(),
+            scripts: Vec::new(),
         },
         actions,
         cameras,

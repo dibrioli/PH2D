@@ -15,7 +15,10 @@ fn library_blob_round_trips_byte_identical() {
     let back = ScriptLibrary::from_bytes(&bytes).expect("lê");
     assert_eq!(back, lib);
     assert_eq!(back.to_bytes(), bytes);
-    assert_eq!(ScriptLibrary::from_bytes(&[]).expect("vazio"), ScriptLibrary::new());
+    assert_eq!(
+        ScriptLibrary::from_bytes(&[]).expect("vazio"),
+        ScriptLibrary::new()
+    );
 }
 
 /// Um campo de um MINOR futuro salta-se, no registo da biblioteca e no de um script.
@@ -30,7 +33,10 @@ fn unknown_tags_are_skipped() {
     r.varint(1, 3).str(99, "futuro");
     for (id, d) in lib.iter() {
         let mut s = Record::new();
-        s.varint(1, id.0).str(2, &d.name).bytes(42, &[1, 2, 3]).str(3, &d.text);
+        s.varint(1, id.0)
+            .str(2, &d.name)
+            .bytes(42, &[1, 2, 3])
+            .str(3, &d.text);
         r.bytes(2, &s.finish());
     }
     out.extend_from_slice(&r.finish());
@@ -65,8 +71,16 @@ fn names_stay_unique_on_insert_and_rename() {
     // Pedir um nome ocupado dá o menor livre — que pode ser o próprio.
     assert_eq!(lib.rename(b, "bob 3.luau").as_deref(), Some("bob 2.luau"));
     assert_eq!(lib.rename(b, "porta.luau").as_deref(), Some("porta.luau"));
-    assert_eq!(lib.rename(c, "bob.luau").as_deref(), Some("bob 2.luau"), "o «2» ficou livre");
-    assert_eq!(lib.rename(a, "bob.luau").as_deref(), Some("bob.luau"), "o próprio nome não colide");
+    assert_eq!(
+        lib.rename(c, "bob.luau").as_deref(),
+        Some("bob 2.luau"),
+        "o «2» ficou livre"
+    );
+    assert_eq!(
+        lib.rename(a, "bob.luau").as_deref(),
+        Some("bob.luau"),
+        "o próprio nome não colide"
+    );
     assert_eq!(lib.insert("", "").0, 4);
     assert_eq!(lib.by_name("script.luau"), Some(ScriptId(4)));
 }

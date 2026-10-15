@@ -413,7 +413,10 @@ fn um_script_partido_pinta_a_linha_do_erro() {
     let corrida = "attempt to index nil with 'x'";
     let partido = linha(3, sintaxe);
     let parado = linha(7, corrida);
-    assert!(partido.contains('3') && parado.contains('7'), "a chave leva a linha");
+    assert!(
+        partido.contains('3') && parado.contains('7'),
+        "a chave leva a linha"
+    );
     let mut i = info();
     i.status = InspectorScriptStatus::Broken(erro(3, sintaxe));
     i.failure = Some(erro(7, corrida));

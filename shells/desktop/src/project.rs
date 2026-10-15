@@ -169,8 +169,13 @@ pub(crate) struct ProjectFile {
     pub(crate) pattern_art: Vec<u8>,
     /// **Os QUADROS** (MiroClone, v185) — as abas de documento, cada uma com o seu conteúdo e vista
     /// (`ph2d_board_model::BoardSet::to_bytes`). `Vec<u8>` opaco com versão PRÓPRIA lá dentro, o
-    /// precedente do `timeline`. ⚠️ **O último campo**: a posição é o formato.
+    /// precedente do `timeline`. ⚠️ A posição é o formato.
     pub(crate) boards: Vec<u8>,
+    /// **Os SCRIPTS do projeto** (v190, ADR-0188 §2) — o blob `PH2DSCRIPTS` da `ScriptLibrary`
+    /// (`ph2d_app_components::script_project`), com versão PRÓPRIA. Fora do `ProjectState`: o texto
+    /// tem histórico próprio. ⚠️ **O último campo** — o braço `189` do load lê um v189 acrescentando
+    /// o `0` deste `Vec` vazio.
+    pub(crate) scripts: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

@@ -51,11 +51,12 @@ impl crate::App {
         };
         // ⭐ **Até ao `189` o `StrokeSpec` tinha outra forma** (F16c, `VEC_SCENE` v22): todo ficheiro
         // anterior lê-se dentro do âmbito que a declara — o `189` com o tipo VIVO, porque o resto do
-        // ficheiro não mudou. Ver `ph2d_vec_scene::stroke_wire`.
-        let antigo = ver < PROJECT_SCHEMA;
+        // ficheiro não mudou. Ver `ph2d_vec_scene::stroke_wire`. ⚠️ É `<= 189` e NÃO `< PROJECT_SCHEMA`:
+        // o `190` já grava o traço novo (só lhe falta o campo `scripts`, degrau `191`).
+        let antigo = ver <= crate::project_schema::PROJECT_SCHEMA_TRACO_V22;
         let _traco_v22 = antigo.then(ph2d_vec_scene::StrokeLayoutV22::enter);
         let (mut file, migrated_counter) = match ver {
-            PROJECT_SCHEMA | crate::project_schema::PROJECT_SCHEMA_TRACO_V22 => {
+            PROJECT_SCHEMA => {
                 match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
                     Ok((_, f)) => (f, None),
                     Err(e) => {
@@ -130,6 +131,33 @@ impl crate::App {
                     Err(e) => {
                         eprintln!("[proj] v128 ilegivel: {e}");
                         self.toast_refused("shell.project_load.project_refused_format_128", &e);
+                        return None;
+                    }
+                }
+            }
+            // ⭐ **190 → 191: os scripts no projeto** (ADR-0188). O campo novo é o ÚLTIMO, e um
+            // `Vec` vazio no postcard é o byte `0` — o v190 (e o v189, que só difere no traço, já
+            // coberto pelo âmbito acima) lê-se com o tipo vivo acrescentando-o. Os blobs do
+            // `LuauScript` passam de v2 (o caminho) a v3; o load importa os caminhos.
+            190 | crate::project_schema::PROJECT_SCHEMA_TRACO_V22 => {
+                match postcard::from_bytes::<(u32, ProjectFile)>(&[bytes.as_slice(), &[0]].concat())
+                {
+                    Ok((_, mut f)) => {
+                        let m = ph2d_script::project_scripts::migrate_v2_blobs(&mut f.state.world);
+                        eprintln!(
+                            "[proj] migrado v{ver} -> v{PROJECT_SCHEMA} ({} script(s) v2 -> v3, {} ilegivel(eis))",
+                            m.migrated, m.unreadable
+                        );
+                        let n = &PROJECT_SCHEMA;
+                        self.toast(ph2d_i18n::tr_with(
+                            "shell.project_load.project_migrated_from_189",
+                            &[("ver", &ver), ("PROJECT_SCHEMA", n)],
+                        ));
+                        (f, None)
+                    }
+                    Err(e) => {
+                        eprintln!("[proj] v{ver} ilegivel: {e}");
+                        self.toast_refused("shell.project_load.project_refused_format_189", &e);
                         return None;
                     }
                 }

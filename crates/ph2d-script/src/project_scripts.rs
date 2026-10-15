@@ -84,14 +84,22 @@ pub struct ImportReport {
 
 /// Resolve `path`: absoluto; senão relativo à pasta do PROJETO; senão ao directório corrente.
 #[must_use]
-pub fn resolve(path: &str, project_dir: Option<&Path>, cwd: Option<&Path>) -> Option<(PathBuf, Matched)> {
+pub fn resolve(
+    path: &str,
+    project_dir: Option<&Path>,
+    cwd: Option<&Path>,
+) -> Option<(PathBuf, Matched)> {
     let p = Path::new(path);
     if p.is_absolute() {
         return p.is_file().then(|| (p.to_path_buf(), Matched::Absolute));
     }
     [(project_dir, Matched::ProjectDir), (cwd, Matched::Cwd)]
         .into_iter()
-        .find_map(|(dir, m)| dir.map(|d| d.join(p)).filter(|c| c.is_file()).map(|c| (c, m)))
+        .find_map(|(dir, m)| {
+            dir.map(|d| d.join(p))
+                .filter(|c| c.is_file())
+                .map(|c| (c, m))
+        })
 }
 
 /// Lê um ficheiro e põe-no na biblioteca com o nome do ficheiro (único).
@@ -100,9 +108,10 @@ pub fn resolve(path: &str, project_dir: Option<&Path>, cwd: Option<&Path>) -> Op
 /// O ficheiro não se lê como texto.
 pub fn import_file(lib: &mut ScriptLibrary, path: &Path) -> std::io::Result<ScriptId> {
     let text = std::fs::read_to_string(path)?;
-    let name = path
-        .file_name()
-        .map_or_else(|| "script.luau".to_owned(), |n| n.to_string_lossy().into_owned());
+    let name = path.file_name().map_or_else(
+        || "script.luau".to_owned(),
+        |n| n.to_string_lossy().into_owned(),
+    );
     Ok(lib.insert(&name, text))
 }
 

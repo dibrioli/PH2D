@@ -66,13 +66,26 @@ fn v2_blobs_become_v3_and_keep_the_artists_numbers() {
         LuauScriptV2::default(),
     ]) {
         let row = std::sync::Arc::make_mut(row);
-        let b = row.components.iter_mut().find(|b| b.type_id == id).expect("blob");
+        let b = row
+            .components
+            .iter_mut()
+            .find(|b| b.type_id == id)
+            .expect("blob");
         b.data = postcard::to_allocvec(&v2).expect("v2");
     }
     let m = migrate_v2_blobs(&mut snap);
-    assert_eq!(m, V2Migration { migrated: 2, unreadable: 0 });
+    assert_eq!(
+        m,
+        V2Migration {
+            migrated: 2,
+            unreadable: 0
+        }
+    );
     let s = scripts(&snap);
-    assert_eq!(s[0].source, ScriptSource::Unimported("scripts/bob.luau".into()));
+    assert_eq!(
+        s[0].source,
+        ScriptSource::Unimported("scripts/bob.luau".into())
+    );
     assert_eq!(s[0].own, own);
     assert_eq!(s[1].source, ScriptSource::None);
 }
@@ -89,19 +102,33 @@ fn unimported_paths_are_imported_once_per_file_and_missing_ones_stay() {
         ..LuauScript::default()
     };
     w.spawn((Transform::IDENTITY, StableId(1), un("bob.luau")));
-    w.spawn((Transform::IDENTITY, StableId(2), un(&dir.join("bob.luau").to_string_lossy())));
+    w.spawn((
+        Transform::IDENTITY,
+        StableId(2),
+        un(&dir.join("bob.luau").to_string_lossy()),
+    ));
     w.spawn((Transform::IDENTITY, StableId(3), un("sumiu.luau")));
     let mut snap = snapshot(&mut sim);
     let mut lib = ScriptLibrary::new();
     let r = import_unimported(&mut snap, &mut lib, Some(&dir), None);
     assert_eq!(r.imported.len(), 1, "{r:?}");
     assert_eq!(r.imported[0].matched, Matched::ProjectDir);
-    assert_eq!((r.objects, r.missing.clone()), (2, vec!["sumiu.luau".to_owned()]));
+    assert_eq!(
+        (r.objects, r.missing.clone()),
+        (2, vec!["sumiu.luau".to_owned()])
+    );
     let id = r.imported[0].id;
-    assert_eq!(lib.get(id).map(|d| (d.name.as_str(), d.text.as_str())), Some(("bob.luau", "-- bob\n")));
+    assert_eq!(
+        lib.get(id).map(|d| (d.name.as_str(), d.text.as_str())),
+        Some(("bob.luau", "-- bob\n"))
+    );
     let s = scripts(&snap);
     assert_eq!(s[0].source, ScriptSource::Library(id));
-    assert_eq!(s[1].source, ScriptSource::Library(id), "o mesmo ficheiro, o mesmo script");
+    assert_eq!(
+        s[1].source,
+        ScriptSource::Library(id),
+        "o mesmo ficheiro, o mesmo script"
+    );
     assert_eq!(s[2].source, ScriptSource::Unimported("sumiu.luau".into()));
 }
 
@@ -110,8 +137,14 @@ fn unimported_paths_are_imported_once_per_file_and_missing_ones_stay() {
 fn the_cwd_is_the_last_resort_and_is_recorded() {
     let proj = pasta(&[]);
     let cwd = pasta(&[("x.luau", "-- x\n")]);
-    assert_eq!(resolve("x.luau", Some(&proj), Some(&cwd)).map(|r| r.1), Some(Matched::Cwd));
-    assert_eq!(resolve("x.luau", Some(&cwd), Some(&proj)).map(|r| r.1), Some(Matched::ProjectDir));
+    assert_eq!(
+        resolve("x.luau", Some(&proj), Some(&cwd)).map(|r| r.1),
+        Some(Matched::Cwd)
+    );
+    assert_eq!(
+        resolve("x.luau", Some(&cwd), Some(&proj)).map(|r| r.1),
+        Some(Matched::ProjectDir)
+    );
     assert_eq!(resolve("x.luau", Some(&proj), None), None);
     let abs = cwd.join("x.luau");
     assert_eq!(

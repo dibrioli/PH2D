@@ -188,6 +188,8 @@ pub mod scene_ctx;
 pub mod script_bridge;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.
 pub mod script_inspector;
+/// ADR-0188 — os scripts do projeto no `ProjectFile.scripts`: gravar, abrir (importar caminhos antigos).
+pub mod script_project;
 /// ⭐⭐⭐ O smoke do SCRIPT DO ARTISTA (TOP-20 #16) — ver o cabeçalho.
 pub mod script_smoke;
 /// ⭐⭐⭐ **O instantâneo da CUTSCENE** (TOP-20 #19) — ver o cabeçalho.

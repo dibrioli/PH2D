@@ -74,6 +74,7 @@ fn a_recorded_run_survives_the_file() {
         input_map: ph2d_input::InputMap::new(),
         pattern_art: Vec::new(),
         boards: Vec::new(),
+        scripts: Vec::new(),
     };
     std::fs::write(
         &path,

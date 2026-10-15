@@ -284,7 +284,10 @@ fn gravar_a_correccao_devolve_um_script_partido_a_corrida() {
     let e = actor(sim.world_mut(), 1, &path, &[]);
     let mut host = ScriptHost::new().expect("vm");
     frame(&mut host, &mut sim, 1.0);
-    assert!(host.scene_failure(e).is_some_and(|d| d.message.contains("ups")));
+    assert!(
+        host.scene_failure(e)
+            .is_some_and(|d| d.message.contains("ups"))
+    );
     rewrite(sim.world_mut(), &path, MOVE_BY_SPEED);
     frame(&mut host, &mut sim, 1.0);
     assert!(host.scene_failure(e).is_none());
@@ -305,7 +308,11 @@ fn um_script_partido_nao_apaga_nada_do_componente() {
     );
     let mut host = ScriptHost::new().expect("vm");
     host.scene_sync(sim.world_mut());
-    rewrite(sim.world_mut(), &path, "ph2d.property(\"speed\", 1\nfunction update(");
+    rewrite(
+        sim.world_mut(),
+        &path,
+        "ph2d.property(\"speed\", 1\nfunction update(",
+    );
     host.scene_sync(sim.world_mut());
     let info = info(&host, sim.world_mut(), &path).expect("conhecido");
     assert!(
@@ -339,13 +346,20 @@ fn sem_ficheiro_nada_corre_e_o_painel_sabe_porque() {
         ))
         .id();
     let orfao = w
-        .spawn((Transform::IDENTITY, StableId(2), LuauScript::library(ScriptId(77))))
+        .spawn((
+            Transform::IDENTITY,
+            StableId(2),
+            LuauScript::library(ScriptId(77)),
+        ))
         .id();
     let mut host = ScriptHost::new().expect("vm");
     let r = frame(&mut host, &mut sim, 1.0);
     assert_eq!(r.calls, 0);
     assert_eq!(host.scene().live_count(), 0, "ninguém nasceu");
-    assert!(matches!(host.scene_info(ScriptId(77)), Some(ScriptInfo::Missing(_))));
+    assert!(matches!(
+        host.scene_info(ScriptId(77)),
+        Some(ScriptInfo::Missing(_))
+    ));
     assert_eq!(x(sim.world(), por_importar), 0.0);
     assert_eq!(x(sim.world(), orfao), 0.0);
 }
@@ -608,7 +622,11 @@ fn a_blank_motion_name_stops_the_object_and_its_writes_do_not_land() {
     actor(sim.world_mut(), 1, &path, &[]);
     let r = frame(&mut host, &mut sim, 1.0 / 60.0);
     assert_eq!(r.failed.len(), 1);
-    assert!(r.failed[0].1.message.contains("needs a name"), "{}", r.failed[0].1);
+    assert!(
+        r.failed[0].1.message.contains("needs a name"),
+        "{}",
+        r.failed[0].1
+    );
     assert!(sim.world().get_resource::<MotionInputs>().is_none());
 }
 
@@ -663,9 +681,10 @@ fn the_chunk_name_is_the_unique_library_name() {
     let w = sim.world_mut();
     let primeiro = script_file("bob", "-- outro bob");
     id_of(w, &primeiro);
-    let id = w
-        .resource_mut::<ProjectScripts>()
-        .insert("bob.luau", "function update(self, dt)\n  error('ai')\nend\n");
+    let id = w.resource_mut::<ProjectScripts>().insert(
+        "bob.luau",
+        "function update(self, dt)\n  error('ai')\nend\n",
+    );
     let e = w
         .spawn((Transform::IDENTITY, StableId(1), LuauScript::library(id)))
         .id();
@@ -675,7 +694,10 @@ fn the_chunk_name_is_the_unique_library_name() {
     assert_eq!(d.line, Some(2), "{d:?}");
     assert!(d.message.contains("ai"), "{d:?}");
     assert_eq!(
-        sim.world().resource::<ProjectScripts>().get(id).map(|s| s.name.as_str()),
+        sim.world()
+            .resource::<ProjectScripts>()
+            .get(id)
+            .map(|s| s.name.as_str()),
         Some("bob 2.luau")
     );
 }

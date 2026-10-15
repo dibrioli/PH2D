@@ -43,7 +43,7 @@ pub(super) fn empty_state() -> ProjectState {
 /// responsabilidade. `pub(super)` + `use` para que os outros filhos o alcancem por `super::*`.
 #[path = "project_test_writer.rs"]
 mod writer;
-use writer::{write_project, write_project_art, write_project_boards, write_project_with};
+use writer::{bare_file, write_project, write_project_art, write_project_boards, write_project_with};
 
 /// O documento de uma animação: uma track em `hero`, com o `wire_id` (a identidade do objeto)
 /// carimbado como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.
@@ -421,6 +421,7 @@ fn project_file_round_trips_through_postcard() {
         pattern_art: Vec::new(),
         // NÃO-vazio pela razão do `input_map` acima: dois quadros com nome.
         boards: two_boards().to_bytes().unwrap(),
+        scripts: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -569,6 +570,10 @@ mod pattern_art;
 /// **Os QUADROS no arquivo** (MiroClone, v185) — filho pela mesma razão: as fixtures são as portas.
 #[path = "project_boards_tests.rs"]
 mod boards;
+
+/// **Os SCRIPTS no arquivo** (CodeEditor T7, v190) — filho pela mesma razão.
+#[path = "project_scripts_tests.rs"]
+mod scripts;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — filho (`#[path]`) pelo
 /// teto de LOC do HR-18, e FILHO e não irmão porque as fixtures desta suíte

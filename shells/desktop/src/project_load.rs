@@ -30,7 +30,7 @@ impl crate::App {
     /// executa (o `project_load` acima só resolve o caminho) — e não uma cópia da decisão
     /// posta num helper que ninguém chama.
     pub(crate) fn project_load_from(&mut self, path: &str) {
-        let Some((file, migrated_counter)) = self.read_project_file(path) else {
+        let Some((mut file, migrated_counter)) = self.read_project_file(path) else {
             return;
         };
         // A ANIMAÇÃO É PARTE DO ARQUIVO, e um documento que este binário não sabe ler faz o
@@ -95,7 +95,22 @@ impl crate::App {
         };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
+        let scripts = match ph2d_app_components::script_project::open(
+            &mut file.state.world,
+            &file.scripts,
+            path,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("[proj] scripts ilegiveis — load RECUSADO: {e}");
+                self.toast_refused("shell.project_load.project_refused_its_scripts", &e);
+                return;
+            }
+        };
         self.project_forget_previous(&file);
+        if let Some(gfx) = self.gfx.as_mut() {
+            ph2d_app_components::script_project::install(gfx.sim.world_mut(), scripts);
+        }
         self.project_install_accepted(
             path,
             file,

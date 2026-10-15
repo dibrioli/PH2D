@@ -12,7 +12,9 @@
 //! corte, nunca uma entrada no `FILE_OVERAGE_OK`.*
 
 use super::*;
-use ph2d_editor_core::script_edits::{InspectorScriptError, InspectorScriptInfo, InspectorScriptStatus};
+use ph2d_editor_core::script_edits::{
+    InspectorScriptError, InspectorScriptInfo, InspectorScriptStatus,
+};
 use ph2d_i18n::{tr, tr_with};
 
 /// **A frase de um erro** — com a LINHA deste script, quando o Luau a disse.

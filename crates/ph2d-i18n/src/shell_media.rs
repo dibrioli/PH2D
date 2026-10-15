@@ -191,6 +191,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.project_load.project_refused_its_boards" => {
             "Project refused: its boards are from another version ({e})"
         }
+        "shell.project_load.project_refused_its_scripts" => {
+            "Project refused: its scripts are unreadable ({e})"
+        }
+        "shell.project_load.project_refused_format_189" => {
+            "Project refused: format 189 or 190 file is unreadable ({e})"
+        }
+        "shell.project_load.project_migrated_from_189" => {
+            "Project migrated from format {ver} to {PROJECT_SCHEMA} \u{2014} its scripts now live inside the project"
+        }
         "shell.project_load.project_refused_its" => {
             "Project refused: its animation is from another version ({e})"
         }

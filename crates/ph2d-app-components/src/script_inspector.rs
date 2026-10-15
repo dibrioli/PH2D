@@ -159,7 +159,10 @@ fn fonte_do_texto(sim: &SimWorld, text: &str) -> ScriptSource {
     sim.world()
         .get_resource::<ProjectScripts>()
         .and_then(|l| l.by_name(t))
-        .map_or_else(|| ScriptSource::Unimported(t.to_owned()), ScriptSource::Library)
+        .map_or_else(
+            || ScriptSource::Unimported(t.to_owned()),
+            ScriptSource::Library,
+        )
 }
 
 /// **Importa o ficheiro escolhido no `Browse`** para os scripts do projeto (nome único). Um ficheiro
@@ -252,7 +255,11 @@ pub fn apply_all(
 
 fn poe_fonte(sim: &mut SimWorld, bits: u64, fonte: ScriptSource) -> bool {
     let e = Entity::from_bits(bits);
-    if sim.world().get::<LuauScript>(e).is_none_or(|c| c.source == fonte) {
+    if sim
+        .world()
+        .get::<LuauScript>(e)
+        .is_none_or(|c| c.source == fonte)
+    {
         return false;
     }
     sim.world_mut()

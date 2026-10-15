@@ -37,11 +37,23 @@ pub(super) fn write_project_boards(
     boards: Vec<u8>,
 ) {
     let file = ProjectFile {
-        state: empty_state(),
+        timeline,
+        pattern_art,
+        boards,
+        ..bare_file(empty_state())
+    };
+    let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
+    std::fs::write(path, bytes).expect("grava o arquivo de projeto");
+}
+
+/// Um arquivo com `state` e o resto VAZIO — a base dos escritores acima.
+pub(super) fn bare_file(state: ProjectState) -> ProjectFile {
+    ProjectFile {
+        state,
         assets: Vec::new(),
         painted: Vec::new(),
         motion: String::new(),
-        timeline,
+        timeline: Vec::new(),
         physics: Default::default(),
         tokens: Vec::new(),
         settings: crate::project_settings::collect(Default::default()),
@@ -49,11 +61,10 @@ pub(super) fn write_project_boards(
         sprite_pixels: Vec::new(),
         stable_id_counter: ph2d_ecs::StableId::FIRST,
         input_map: ph2d_input::InputMap::new(),
-        pattern_art,
-        boards,
-    };
-    let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
-    std::fs::write(path, bytes).expect("grava o arquivo de projeto");
+        pattern_art: Vec::new(),
+        boards: Vec::new(),
+        scripts: Vec::new(),
+    }
 }
 
 pub(super) fn write_project(path: &std::path::Path, schema: u32) {

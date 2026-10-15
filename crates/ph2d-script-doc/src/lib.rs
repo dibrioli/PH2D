@@ -27,7 +27,9 @@ pub const MAJOR: u16 = 1;
 pub const MINOR: u16 = 0;
 
 /// A identidade durável de um script no projeto. Monotónica; `0` = nenhum.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct ScriptId(pub u64);
 
 impl ScriptId {
@@ -61,10 +63,15 @@ impl Default for ScriptLibrary {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DocError {
     NotAScriptLibrary,
-    MajorMismatch { found: u16, supported: u16 },
+    MajorMismatch {
+        found: u16,
+        supported: u16,
+    },
     Codec(CodecError),
     /// Um script sem id, com id `0`, repetido, ou com nome repetido.
-    BadScript { id: u64 },
+    BadScript {
+        id: u64,
+    },
 }
 
 impl std::fmt::Display for DocError {

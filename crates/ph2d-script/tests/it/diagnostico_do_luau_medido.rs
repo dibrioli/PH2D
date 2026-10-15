@@ -5,7 +5,9 @@
 //! Uma subida do mlua/Luau que mude o formato fica VERMELHA aqui antes de o cartão perder a linha.
 
 use ph2d_ecs::{SimWorld, StableId, Transform};
-use ph2d_script::{DiagnosticKind, LuauScript, ScriptDiagnostic, ScriptHost, ScriptInfo, load_module};
+use ph2d_script::{
+    DiagnosticKind, LuauScript, ScriptDiagnostic, ScriptHost, ScriptInfo, load_module,
+};
 
 fn host() -> ScriptHost {
     ScriptHost::new().expect("vm")
@@ -97,7 +99,10 @@ fn a_linha_e_a_deste_script() {
         Some("stack traceback:\n\t[C]: in ?\n\tbob.luau:7: in function 'update'")
     );
     let d = ScriptDiagnostic::from_error(&update_error(&h, "bob.luau", NESTED), "bob.luau");
-    assert_eq!((d.line, d.message.as_str()), (Some(2), "attempt to index nil with 'x'"));
+    assert_eq!(
+        (d.line, d.message.as_str()),
+        (Some(2), "attempt to index nil with 'x'")
+    );
     // Uma chamada da casa não tem posição na mensagem: a linha vem da pilha.
     let e = update_error(
         &h,
@@ -134,8 +139,8 @@ fn uma_posicao_alheia_nao_e_atribuida_a_este_script() {
     let h = host();
     let lua = h.runtime().lua();
     // `helper` mora noutro chunk; a falha é lá, e a moldura DESTE script é a linha 2.
-    let lib = load_module(lua, "lib.luau", "function helper(v)\n\n  return v.x\nend\n")
-        .expect("lib");
+    let lib =
+        load_module(lua, "lib.luau", "function helper(v)\n\n  return v.x\nend\n").expect("lib");
     lua.globals()
         .raw_set("zz_helper", lib.hook("helper").expect("helper"))
         .expect("o global de teste");
@@ -150,15 +155,24 @@ fn uma_posicao_alheia_nao_e_atribuida_a_este_script() {
     );
     let d = ScriptDiagnostic::from_error(&e, "bob.luau");
     assert_eq!(d.line, Some(2), "a moldura deste script, nunca a 3 do lib");
-    assert_eq!(d.message, "lib.luau:3: attempt to index nil with 'x'", "a posição alheia fica");
+    assert_eq!(
+        d.message, "lib.luau:3: attempt to index nil with 'x'",
+        "a posição alheia fica"
+    );
     let d = ScriptDiagnostic::from_error(&e, "lib.luau");
-    assert_eq!((d.line, d.message.as_str()), (Some(3), "attempt to index nil with 'x'"));
+    assert_eq!(
+        (d.line, d.message.as_str()),
+        (Some(3), "attempt to index nil with 'x'")
+    );
     // Uma posição alheia DENTRO da mensagem não é a deste script.
     let e = mlua::Error::RuntimeError(
         "bob.luau:2: other.luau:99: fake\nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\tbob.luau:2: in function 'update'".into(),
     );
     let d = ScriptDiagnostic::from_error(&e, "bob.luau");
-    assert_eq!((d.line, d.message.as_str()), (Some(2), "other.luau:99: fake"));
+    assert_eq!(
+        (d.line, d.message.as_str()),
+        (Some(2), "other.luau:99: fake")
+    );
     // Um nome com `:` lê-se inteiro; um prefixo do nome não é o nome.
     let e = mlua::Error::RuntimeError("a:b.luau:4: x: y".into());
     assert_eq!(ScriptDiagnostic::from_error(&e, "a:b.luau").line, Some(4));
@@ -206,15 +220,25 @@ fn o_prazo_estourado_diz_a_linha_do_laco() {
     );
     assert_eq!(
         d.traceback.as_deref(),
-        Some("stack traceback:\n\tloop.luau:3: in function 'spin'\n\tloop.luau:8: in function 'update'")
+        Some(
+            "stack traceback:\n\tloop.luau:3: in function 'spin'\n\tloop.luau:8: in function 'update'"
+        )
     );
     // No TOPO também.
-    let (cfg, top) = script(&mut sim, "top.luau", "local i = 0\n\nwhile true do\n  i = i + 1\nend\n");
+    let (cfg, top) = script(
+        &mut sim,
+        "top.luau",
+        "local i = 0\n\nwhile true do\n  i = i + 1\nend\n",
+    );
     sim.world_mut()
         .spawn((Transform::IDENTITY, StableId(2), cfg));
     h.scene_sync(sim.world_mut());
     let Some(ScriptInfo::Broken(d)) = h.scene_info(top) else {
         panic!("{:?}", h.scene_info(top));
     };
-    assert_eq!((d.kind.clone(), d.line), (DiagnosticKind::Budget, Some(3)), "{d:#}");
+    assert_eq!(
+        (d.kind.clone(), d.line),
+        (DiagnosticKind::Budget, Some(3)),
+        "{d:#}"
+    );
 }

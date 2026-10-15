@@ -191,7 +191,11 @@ fn mudar_o_default_no_ficheiro_muda_quem_nao_tem_aquele_numero_proprio() {
         crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[]);
         drive.settle();
     }
-    assert!(sim.world_mut().resource_mut::<ProjectScripts>().set_text(id, &novo));
+    assert!(
+        sim.world_mut()
+            .resource_mut::<ProjectScripts>()
+            .set_text(id, &novo)
+    );
     let mut max_dy = [0.0f32; 3];
     for _ in 0..240 {
         crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[]);

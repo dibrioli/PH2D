@@ -456,7 +456,20 @@
 /// antiga, e o leitor abre o âmbito `ph2d_vec_scene::StrokeLayoutV22` para todo ficheiro `< 190`
 /// (`project_load_read`); as formas guardadas dentro do Envelope e da pele são regravadas no load.
 /// Gate sobre BYTES gravados pelo código v189: `project_traco_v189_tests`. Registos de componentes: `0`.
-pub(crate) const PROJECT_SCHEMA: u32 = 190;
+///
+/// # `190 → 191` — **o script mora no PROJETO** (`line/CodeEditor`, T7, ADR-0188 §2, 2026-10-15)
+///
+/// Campo novo no FIM do `ProjectFile`: `scripts: Vec<u8>`, a `ScriptLibrary` (`ScriptId → { nome
+/// único, texto }`) no blob `PH2DSCRIPTS` com versão PRÓPRIA. O blob do `LuauScript` passa a v3
+/// (`source: ScriptSource { None, Library(id), Unimported(caminho) }`, era o caminho). ⭐ **COM
+/// migração** (decisão do dono: o projeto antigo importa o ficheiro, sem perda): os braços `190` e
+/// `189` (o último de forma antiga do traço) leem o ficheiro com o tipo vivo acrescentando o `0` do `scripts` vazio (o campo novo é o ÚLTIMO e o
+/// postcard é posicional), passa cada blob v2 do `LuauScript` a v3, e o load importa cada caminho
+/// legível (absoluto · pasta do projeto · directório corrente); o ilegível fica `Unimported` e o
+/// cartão recusa-o. Registos de componentes: `0`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 191;
 
 /// O degrau anterior ao tracejado em pares — o último cuja forma do `StrokeSpec` é a v22.
 pub(crate) const PROJECT_SCHEMA_TRACO_V22: u32 = 189;

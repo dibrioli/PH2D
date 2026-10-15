@@ -97,19 +97,28 @@ fn o_estado_do_ficheiro_chega_ao_painel() {
     browse(&mut sim, bits, &partido);
     let h = pronto(&mut sim);
     // O cartão leva a LINHA estruturada (CodeEditor T1/T7) — o pintor compõe a frase.
-    assert!(matches!(st(&sim, Some(&h)), S::Broken(InspectorScriptError { line: Some(1), .. })));
+    assert!(matches!(
+        st(&sim, Some(&h)),
+        S::Broken(InspectorScriptError { line: Some(1), .. })
+    ));
 
     // ⛔ Um caminho que não se importa é RECUSADO pelo nome, e nada corre vazio.
     assert!(browse(&mut sim, bits, "/nao/ha/x.luau"));
     let h = pronto(&mut sim);
     assert_eq!(st(&sim, Some(&h)), S::Unimported("/nao/ha/x.luau".into()));
-    assert_eq!(st(&sim, None), S::Unimported("/nao/ha/x.luau".into()), "a recusa é do dado");
+    assert_eq!(
+        st(&sim, None),
+        S::Unimported("/nao/ha/x.luau".into()),
+        "a recusa é do dado"
+    );
     assert_eq!(h.scene().live_count(), 0);
 
     // Um id que o projeto já não tem diz-se.
     let e = ph2d_ecs::Entity::from_bits(bits);
-    sim.world_mut().get_mut::<LuauScript>(e).expect("cfg").source =
-        ScriptSource::Library(ph2d_script::ScriptId(999));
+    sim.world_mut()
+        .get_mut::<LuauScript>(e)
+        .expect("cfg")
+        .source = ScriptSource::Library(ph2d_script::ScriptId(999));
     let h = pronto(&mut sim);
     assert_eq!(st(&sim, Some(&h)), S::Missing);
 }
@@ -124,15 +133,30 @@ fn escrever_o_nome_aponta_o_script_do_projeto_e_escrever_nunca_importa() {
         .resource_mut::<ProjectScripts>()
         .insert("outro.luau", "-- outro");
     let e = ph2d_ecs::Entity::from_bits(bits);
-    let fonte = |sim: &SimWorld| sim.world().get::<LuauScript>(e).expect("cfg").source.clone();
+    let fonte = |sim: &SimWorld| {
+        sim.world()
+            .get::<LuauScript>(e)
+            .expect("cfg")
+            .source
+            .clone()
+    };
     assert!(apply(&mut sim, bits, &E::Source("outro.luau".into())));
     assert_eq!(fonte(&sim), ScriptSource::Library(outro));
     let h = pronto(&mut sim);
-    assert_eq!(build_info(&sim, Some(&h), bits, 1, false).expect("tem").source, "outro.luau");
+    assert_eq!(
+        build_info(&sim, Some(&h), bits, 1, false)
+            .expect("tem")
+            .source,
+        "outro.luau"
+    );
     let real = script_file("-- no disco");
     assert!(apply(&mut sim, bits, &E::Source(real.clone())));
     assert_eq!(fonte(&sim), ScriptSource::Unimported(real));
-    assert_eq!(sim.world().resource::<ProjectScripts>().len(), 2, "nada foi importado");
+    assert_eq!(
+        sim.world().resource::<ProjectScripts>().len(),
+        2,
+        "nada foi importado"
+    );
     assert!(apply(&mut sim, bits, &E::Source("  ".into())));
     assert_eq!(fonte(&sim), ScriptSource::None);
 }
@@ -244,7 +268,9 @@ fn o_cartao_mostra_a_linha_do_erro() {
     let (mut sim, bits) = cena_com("local a = 1\nlocal b = 2\nlocal c = = 3\n", &[]);
     let h = pronto(&mut sim);
     assert_eq!(
-        build_info(&sim, Some(&h), bits, 1, false).expect("tem").status,
+        build_info(&sim, Some(&h), bits, 1, false)
+            .expect("tem")
+            .status,
         S::Broken(linha(
             3,
             "Expected identifier when parsing expression, got '='"
@@ -257,7 +283,9 @@ fn o_cartao_mostra_a_linha_do_erro() {
     let mut h = pronto(&mut sim);
     h.scene_tick(sim.world_mut(), 0.1);
     assert_eq!(
-        build_info(&sim, Some(&h), bits, 1, true).expect("tem").failure,
+        build_info(&sim, Some(&h), bits, 1, true)
+            .expect("tem")
+            .failure,
         Some(linha(7, "attempt to index nil with 'x'"))
     );
 }
@@ -292,7 +320,12 @@ fn browse_importa_o_ficheiro_e_cancelar_nao_escreve_nada() {
     // não mudaria nada e passaria por correcto.
     let (mut sim, bits) = cena_com("-- antes", &[]);
     let e = ph2d_ecs::Entity::from_bits(bits);
-    let antes = sim.world().get::<LuauScript>(e).expect("cfg").source.clone();
+    let antes = sim
+        .world()
+        .get::<LuauScript>(e)
+        .expect("cfg")
+        .source
+        .clone();
     let lote = [(bits, E::Browse)];
     assert!(!super::apply_all(&mut sim, &lote, || None), "cancelado");
     assert_eq!(sim.world().get::<LuauScript>(e).expect("cfg").source, antes);
@@ -304,7 +337,10 @@ fn browse_importa_o_ficheiro_e_cancelar_nao_escreve_nada() {
     };
     let doc = lib.get(id).expect("importado");
     assert_eq!(doc.text, "ph2d.property(\"n\", 1)");
-    assert!(std::path::Path::new(&f).ends_with(&doc.name), "o nome é o do ficheiro");
+    assert!(
+        std::path::Path::new(&f).ends_with(&doc.name),
+        "o nome é o do ficheiro"
+    );
     assert_eq!(lib.len(), 2, "o antigo FICA no projeto");
 }
 

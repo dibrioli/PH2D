@@ -107,7 +107,13 @@ ph2d.property("a", 2)
 function update() end
 "#,
     );
-    assert!(matches!(e.map(|_| ()), Err(ScriptDiagnostic { kind: DiagnosticKind::Decl(DeclError::Twice(_)), .. })));
+    assert!(matches!(
+        e.map(|_| ()),
+        Err(ScriptDiagnostic {
+            kind: DiagnosticKind::Decl(DeclError::Twice(_)),
+            ..
+        })
+    ));
 }
 
 /// ⛔ **Fora do topo é ERRO** — e o balde de um carregamento anterior (mesmo um que falhou) não

@@ -275,7 +275,10 @@ pub fn luau_definitions() -> String {
     }
     out.push_str("\n-- Engine hooks: global functions of a script that the engine calls.\n");
     for h in HOOKS {
-        out.push_str(&format!("--- {}\n-- @hook {}: {}\n", h.doc, h.name, h.luau_type));
+        out.push_str(&format!(
+            "--- {}\n-- @hook {}: {}\n",
+            h.doc, h.name, h.luau_type
+        ));
     }
     out
 }

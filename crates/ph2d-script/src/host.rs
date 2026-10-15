@@ -246,11 +246,18 @@ impl ScriptHost {
     pub fn scene_sync(&mut self, world: &mut World) {
         let (lua, deadline, scene) = (self.runtime.lua(), &self.deadline, &mut self.scene);
         if world.contains_resource::<crate::ProjectScripts>() {
-            world.resource_scope(|world, lib: bevy_ecs::change_detection::Mut<crate::ProjectScripts>| {
-                scene.sync(lua, deadline, world, &lib);
-            });
+            world.resource_scope(
+                |world, lib: bevy_ecs::change_detection::Mut<crate::ProjectScripts>| {
+                    scene.sync(lua, deadline, world, &lib);
+                },
+            );
         } else {
-            scene.sync(lua, deadline, world, &ph2d_script_doc::ScriptLibrary::default());
+            scene.sync(
+                lua,
+                deadline,
+                world,
+                &ph2d_script_doc::ScriptLibrary::default(),
+            );
         }
     }
 
@@ -378,9 +385,9 @@ fn install_deadline(lua: &mlua::Lua, deadline: &Deadline) {
                 .traceback(None, 0)
                 .map(|s| s.to_string_lossy())
                 .unwrap_or_default();
-            return Err(mlua::Error::external(
-                crate::diagnostic::BudgetExceeded { traceback },
-            ));
+            return Err(mlua::Error::external(crate::diagnostic::BudgetExceeded {
+                traceback,
+            }));
         }
         Ok(mlua::VmState::Continue)
     });

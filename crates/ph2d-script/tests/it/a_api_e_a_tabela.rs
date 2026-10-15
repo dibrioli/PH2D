@@ -67,7 +67,12 @@ fn as_chaves_da_vm_sao_as_da_tabela_nos_dois_sentidos() {
     let mut vistas = BTreeSet::new();
     for e in API {
         assert!(API_GLOBALS.iter().any(|g| g.name == e.table), "{}", e.table);
-        assert!(vistas.insert((e.table, e.name)), "repetida: {}.{}", e.table, e.name);
+        assert!(
+            vistas.insert((e.table, e.name)),
+            "repetida: {}.{}",
+            e.table,
+            e.name
+        );
     }
 }
 
@@ -79,17 +84,33 @@ fn as_definicoes_saem_da_tabela() {
         assert!(d.contains(&format!("declare {}: {{", g.name)), "{}", g.name);
     }
     for e in API {
-        assert!(d.contains(&format!("    {}: {},\n", e.name, e.luau_type)), "{}.{}", e.table, e.name);
+        assert!(
+            d.contains(&format!("    {}: {},\n", e.name, e.luau_type)),
+            "{}.{}",
+            e.table,
+            e.name
+        );
     }
     for t in API_TYPES {
-        assert!(d.contains(&format!("export type {} = {}\n", t.name, t.definition)), "{}", t.name);
+        assert!(
+            d.contains(&format!("export type {} = {}\n", t.name, t.definition)),
+            "{}",
+            t.name
+        );
     }
     // Um tipo com maiúscula citado numa assinatura tem de estar declarado.
     let declarados: BTreeSet<&str> = API_TYPES.iter().map(|t| t.name).collect();
     for h in HOOKS {
-        assert!(d.contains(&format!("-- @hook {}: {}\n", h.name, h.luau_type)), "gancho {}", h.name);
+        assert!(
+            d.contains(&format!("-- @hook {}: {}\n", h.name, h.luau_type)),
+            "gancho {}",
+            h.name
+        );
     }
-    let sigs = API.iter().map(|e| e.luau_type).chain(API_TYPES.iter().map(|t| t.definition));
+    let sigs = API
+        .iter()
+        .map(|e| e.luau_type)
+        .chain(API_TYPES.iter().map(|t| t.definition));
     for sig in sigs.chain(HOOKS.iter().map(|h| h.luau_type)) {
         for w in sig.split(|c: char| !c.is_ascii_alphanumeric() && c != '_') {
             if w.starts_with(|c: char| c.is_ascii_uppercase()) {
@@ -107,7 +128,11 @@ fn os_ganchos_da_tabela_sao_os_que_a_cena_chama() {
     let mut chamados = BTreeSet::new();
     for f in std::fs::read_dir(&src).expect("src") {
         let p = f.expect("entrada").path();
-        let nome = p.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_owned();
+        let nome = p
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_default()
+            .to_owned();
         if !nome.ends_with(".rs") || nome.ends_with("_tests.rs") {
             continue;
         }
@@ -122,6 +147,9 @@ fn os_ganchos_da_tabela_sao_os_que_a_cena_chama() {
         }
     }
     let na_tabela: BTreeSet<String> = HOOKS.iter().map(|h| h.name.to_owned()).collect();
-    assert!(!chamados.is_empty(), "nenhum .hook(\"…\") no fonte — o censo está cego");
+    assert!(
+        !chamados.is_empty(),
+        "nenhum .hook(\"…\") no fonte — o censo está cego"
+    );
     assert_eq!(chamados, na_tabela, "ganchos chamados pela cena × HOOKS");
 }

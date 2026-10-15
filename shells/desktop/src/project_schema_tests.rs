@@ -309,7 +309,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // espelhos `0`). A tripla NÃO vê este degrau.
         // ⚠️ **`190` em 2026-10-15** (`line/UIUX`, F16c) — o tracejado em pares e a seta por ponta:
         // o `StrokeSpec` muda de forma (`VecScene` `22 → 23`), e o `189` lê-se pela forma antiga.
-        (190, 13, 23),
+        // ⚠️ **`191` em 2026-10-15** (`line/CodeEditor`, T7, ADR-0188) — os SCRIPTS no projeto:
+        // `scripts: Vec<u8>` no fim do `ProjectFile`, `LuauScript` v3. A tripla NÃO vê este degrau.
+        (191, 13, 23),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

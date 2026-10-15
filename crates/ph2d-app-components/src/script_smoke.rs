@@ -194,7 +194,10 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let script = world
         .get_resource_or_init::<ProjectScripts>()
         .insert(FILE_NAME, BOB_LUAU);
-    let nome = world.resource::<ProjectScripts>().get(script).map(|d| d.name.clone());
+    let nome = world
+        .resource::<ProjectScripts>()
+        .get(script)
+        .map(|d| d.name.clone());
     let escolhido = cena_um(world, script);
     println!(
         "[script-smoke] =1 tres bonecos correm o MESMO script ({nome:?}, guardado DENTRO do \

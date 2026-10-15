@@ -106,11 +106,20 @@ fica igual. Commit `6e4095966b`.
 **A lei.** Cada pincelada gravada = uma REGIÃO: o caminho gravado do ponteiro em px da imagem da tela do aluno + o
 raio da pincelada, da trilha JOGÁVEL (com as edições). O critério conta só a parte NOVA da região (os pixels que
 nenhuma pincelada anterior da gravação cobre). «Pintado» = alguma camada difere da MESMA camada do estado inicial
-(a camada que o aluno criou conta pelo alfa; o inicial é reamostrado ao vizinho mais próximo para outro tamanho de
-tela). Progresso = a 1.ª pincelada abaixo da fracção; pára aí.
+(a camada que o aluno criou conta pelo alfa). Progresso = a 1.ª pincelada abaixo da fracção; pára aí. Uma pincelada
+que as anteriores cobrem INTEIRA (parte nova vazia) não tem critério — a lei da W6a: etapa com Δ vazio não espera nem
+mostra balão (gate `uma_pincelada_toda_coberta_nao_tem_criterio`). Uma imagem de OUTRO tamanho que a gravada não se
+avalia: o balão di-lo (`panel.macros.error.other_size`, «… ({w}×{h})»); ⛔ recusado o vizinho mais próximo de antes
+(frágil com um inicial texturado, e o «Recomeçar» já recusava outro tamanho).
 
 - **Preparo por família:** o Motion pede Edit; o Painter pede a imagem em modo Paint (Painter activo E ligado à
-  imagem-alvo da trilha), depois o meio gravado.
+  imagem-alvo da trilha), depois o meio DA PINCELADA CORRENTE: desde a W6c a gravação pode trocar de meio pelo
+  seletor do painel (um passo gravado); o meio de cada pincelada é o do tool de configuração no toque dela (a mesma
+  leitura do `pinceis()` de `etapas.rs`, cor/tamanho/meio).
+- **Custo por quadro:** a avaliação lê as camadas do aluno UMA vez e emparelha cada uma com a do inicial antes de
+  varrer; a família MACROS guarda o resultado pela chave (versão, imagem, tela, `PainterTool::content_revision` =
+  `layers_revision` + `pixel_clock`) — um estado igual não se reavalia; só a pincelada corrente leva a área; o
+  `MacroDoc` e os bytes já não se clonam nem se re-hasheiam a cada quadro.
 - **«Mostra-me»:** os passos do Ponteiro gravado pelas portas da ferramenta viva, com a cor/tamanho da pincelada;
   o pincel do aluno é restaurado depois; um passo de undo.
 - **«Recomeçar»:** o documento volta ao estado inicial da trilha como UM passo de undo estrutural
@@ -155,9 +164,28 @@ Fracção da parte NOVA, «pintado» exacto (qualquer diferença), pinceladas 1�
 
 | Gate (por nome) | O quê |
 |---|---|
-| `ph2d-tool-painter --lib macro_track::tutorial::tests` (6) | cumpre-se só feita + desfazer/refazer; mão torta cumpre, pincel fino e nada não; a parte nova não conta a anterior; o preparo; recomeçar = 1 passo de undo; «Mostra-me» devolve o pincel do aluno |
-| `ph2d-app-macros --test it tutorial_painter` (2) | o balão pede a imagem em Paint e depois o meio, a tela branca não conta como pintada; «Mostra-me» / Ctrl+Z / «Recomeçar» pela família MACROS |
+| `ph2d-tool-painter --lib macro_track::tutorial::tests` (10) | cumpre-se só feita + desfazer/refazer; mão torta cumpre, pincel fino e nada não; a parte nova não conta a anterior; o preparo; recomeçar = 1 passo de undo; «Mostra-me» devolve o pincel do aluno; o meio é o da pincelada corrente; a pincelada toda coberta não tem critério; outra tela recusa-se; recomeçar a gravar grava uma recusa |
+| `ph2d-tool-painter --lib macro_track::tests::um_estado_inicial_de_antes_da_w6c_reproduz_o_mesmo_splash` | um inicial sem as sete chaves da W6c lê-se como Wet Paint e toca a mesma tela |
+| `ph2d-app-macros --test it tutorial_painter` (6) | o balão pede a imagem em Paint e depois o meio, a tela branca não conta como pintada; os botões não tocam noutra imagem; «Mostra-me» / Ctrl+Z / «Recomeçar» pela família MACROS; o meio da pincelada corrente; o balão da imagem em que o Painter pinta; outra tela diz o tamanho gravado |
 | `ph2d-editor-core --lib tutorial_balao` (5) | inclui as frases do Painter e o «Mostra-me» só numa pincelada por fazer |
 
-**Por fazer na W6:** W6c em curso (a recusa do meio retirada; o estado inicial leva o meio; censo sobre os quatro
-meios), a prova de mutação da W6a+W6b, o fecho.
+### 6.3 A fracção nos quatro meios (W6c, sonda `sonda_a_fracao_por_meio`, 512², pinceladas 1–4)
+
+| Meio | Exacta = «Mostra-me» | Desloca ½ r | Fina | Nada |
+|---|---|---|---|---|
+| Digital | 95,5 / 94,7 / 92,5 / 96,4 % | 71,5 / 86,3 / **67,7** / 72,9 | 41,8 / 38,2 / 39,5 / 40,5 | 0 |
+| Watercolor | 86,2 / 83,7 / 82,7 / 89,0 | **66,4** / 82,8 / **61,2** / **68,3** | 38,2 / 33,3 / 35,5 / 37,4 | 0 |
+| Impasto | 91,7 / 91,1 / 89,0 / 93,3 | **69,6** / 85,2 / **65,8** / 71,3 | 40,8 / 37,5 / 38,8 / 40,1 | 0 |
+| Wet Paint | 96,2 / 94,9 / 93,2 / 95,7 | 78,6 / 91,3 / 75,1 / 83,0 | 46,5 / 47,3 / 47,7 / 51,8 | 0 / 14,6 / 9,0 / 11,2 |
+
+- A pincelada certa e o «Mostra-me» passam os 70 % nos quatro; o pincel fino e o nada não. ⚠️ **ABERTO: a mão torta
+  meio raio cai a 61–73 % fora do Wet Paint** (a negrito, abaixo dos 70 %) — a fracção NÃO separa «torta ½ r» de
+  «fina» em Digital/Watercolor/Impasto. Uma fracção por meio, ou uma só mais baixa (o máximo da «Fina» é 51,8 %, o
+  mínimo da «torta ½ r» 61,2 %), é decisão a tomar com estes números; o gate dos quatro meios espera por ela.
+- ⚠️ **ABERTO (sonda `sonda_o_custo_da_avaliacao`):** uma pincelada cuja parte nova é uma FATIA fina na borda (30
+  pinceladas do Splash deslocadas 13 px; 935–2 062 px novos de ~50 000) cumpre-se a 42–61 % mesmo com o «Mostra-me»
+  — a orla do raio é onde o pincel pinta menos. A régua da parte nova presume uma parte nova com miolo.
+- Custo da avaliação (a mesma sonda, 30 critérios, 13 avaliados, perfil smoke, mínimo de 7 intercalados, `load`
+  ~30): antes 158–294 µs, depois 117–197 µs; com a chave, um estado igual custa zero.
+
+**Por fazer na W6:** a decisão da fracção fora do Wet Paint (§6.3), a prova de mutação da W6a+W6b, o fecho.

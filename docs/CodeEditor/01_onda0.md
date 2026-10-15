@@ -33,4 +33,58 @@ LINHA no cartão Script; um acento composto aparece sublinhado enquanto se comp�
 
 ## Medições
 
-*(preenchido pela T4 — mínimo, p50, p99, p99.9 por pedido, com perfil de build e `loadavg` ao lado)*
+### T4 — latência do `luau-lsp` pelo cliente `ph2d-code-lsp` (15/10)
+
+Sonda `latencia_old_vs_new_solver_interleaved` (`crates/ph2d-code-lsp/tests/it/latencia.rs`, `#[ignore]`):
+dois servidores lado a lado (solver antigo × novo) no MESMO processo, 10 rodadas × blocos de 25 com o
+solver inicial rodado; cada iteração = inserir uma linha (sincronização incremental) → diagnósticos →
+completion → hover, e depois removê-la → completion IMEDIATA (o caminho tecla → popup). `n = 250` por célula
+(⇒ o p99.9 é praticamente o máximo). Ms de parede no cliente; o «diagnostics» é contado à chegada na
+thread leitora. Máquina de 32 núcleos, **sem esperar calma**.
+
+- **Perfil:** cliente compilado em `smoke` (otimizado); o `luau-lsp` é o binário oficial 1.70.1.
+- **`loadavg`:** início `6.81 17.45 30.68` · fim `4.67 15.41 29.36` (outras linhas a compilar).
+- **Definições:** o `runtime/luau/ph2d.d.luau` da T2 (`2ed43ac8c2`, gerado do `api_table.rs`).
+- **Módulos sintéticos:** propriedades, um helper tipado e N funções-passo com `ph2d.get/set/vec2/emit`,
+  laço e tabela, todas chamadas de `update` (gerador na sonda). Os `2` diagnósticos de cada doc são o lint
+  `FunctionUnused` em `init`/`update` (ver abaixo).
+- Re-correr: `bash scripts/cargo-test-narrow.sh ph2d-code-lsp --profile smoke -- --ignored latencia`, e o
+  binário `target/smoke/deps/it-*` com `--ignored latencia --nocapture` via `scripts/ph2d-run.sh` para ver a tabela.
+
+Cada célula: **mínimo / p50 / p99 / p99.9** em ms.
+
+| doc (linhas) | solver | 1.º check | didChange→diagnostics | didChange→completion | completion (texto já checado) | hover | diag. | RSS MB |
+|---|---|---|---|---|---|---|---|---|
+| bob.luau (51) | antigo | 3.2 | 0.2 / 0.3 / 0.4 / 0.6 | 0.5 / 0.5 / 0.7 / 1.2 | 0.2 / 0.3 / 0.4 / 0.5 | 0.2 / 0.2 / 0.3 / 0.4 | 2 | 32 |
+| bob.luau (51) | novo | 4.1 | 0.9 / 0.9 / 1.7 / 2.0 | 1.0 / 1.1 / 1.7 / 2.0 | 0.2 / 0.2 / 0.4 / 0.4 | 0.0 / 0.0 / 0.1 / 0.2 | 2 | 63 |
+| m200 (197) | antigo | 0.7 | 0.6 / 0.6 / 1.2 / 1.5 | 0.8 / 0.8 / 1.1 / 1.3 | 0.2 / 0.2 / 0.3 / 0.4 | 0.5 / 0.5 / 0.7 / 0.9 | 2 | 32 |
+| m200 (197) | novo | 2.3 | 2.1 / 2.1 / 2.8 / 3.8 | 2.2 / 2.3 / 3.3 / 3.6 | 0.2 / 0.2 / 0.3 / 0.4 | 0.0 / 0.0 / 0.1 / 0.2 | 2 | 63 |
+| m1000 (992) | antigo | 2.9 | 2.6 / 2.6 / 3.5 / 3.8 | 2.8 / 2.9 / 3.5 / 4.1 | 0.2 / 0.3 / 0.4 / 0.5 | 2.3 / 2.4 / 2.7 / 3.8 | 2 | 32 |
+| m1000 (992) | novo | 13.2 | 10.7 / 12.2 / 15.6 / 16.2 | 11.0 / 12.5 / 16.3 / 18.0 | 0.2 / 0.3 / 0.5 / 0.5 | 0.0 / 0.1 / 0.2 / 0.2 | 2 | 63 |
+| m3000 (2 987) | antigo | 8.7 | 7.6 / 8.0 / 9.3 / 11.0 | 7.9 / 8.7 / 11.0 / 11.5 | 0.3 / 0.5 / 0.7 / 0.9 | 6.7 / 7.2 / 8.6 / 9.3 | 2 | 32 |
+| m3000 (2 987) | novo | 59.1 | 47.4 / 55.2 / 63.6 / 66.1 | 47.3 / 55.1 / 66.6 / 78.7 | 0.3 / 0.4 / 0.5 / 0.6 | 0.1 / 0.1 / 0.1 / 0.2 | 2 | 63 |
+
+Duas corridas anteriores com definições provisórias (a API de `host.rs`, antes da T2; `loadavg` `9.8`–`33`)
+deram os mesmos mínimos/p50 (±0.6 ms; m3000 novo p50 `50.7`–`58.8`) e caudas até `4×` maiores (m3000 novo
+p99 `215`, m1000 antigo p99 `17.9`): **as caudas são carga, os mínimos são o custo**. O «1.º check» é UMA
+amostra (o primeiro quadro é um evento próprio) e variou `47`–`263` ms no m3000 novo entre corridas.
+
+**O que a tabela decide (orçamentos da Onda 1–2):**
+
+1. **Solver antigo por omissão** (= a omissão do `luau-lsp`): até 3 000 linhas o re-check custa `≤ 8` ms
+   de p50; o novo custa `~55` ms a 3 000 linhas (`7×`) e `12` ms a 1 000, com o dobro da RSS. O novo fica
+   como opção do projeto, nunca omissão, até nova medição.
+2. **A completion pedida logo após a tecla paga o re-check** (didChange→completion ≈ didChange→diagnostics);
+   sobre texto já checado ela custa `≤ 0.6` ms. ⇒ o editor **nunca bloqueia o quadro à espera do LSP**: o
+   pedido é assíncrono e o popup aparece quando chega (orçamento: um quadro a 60 Hz até ~3 000 linhas no
+   solver antigo, p50).
+3. **No solver antigo o hover custa um re-check** (`7.2` ms de p50 a 3 000 linhas, contra `0.1` no novo) — pedir
+   hover só em pausa do rato, não a cada movimento.
+4. **Interruptor do solver:** `--flag:LuauSolverV2=true` (ou `initializationOptions.fflags`). A opção
+   `fflags.enableNewSolver` respondida por `workspace/configuration` **não muda nada** (medido: 12–16 ms
+   igual ao antigo, contra 260–330 ms com a flag, num módulo de 3 000 linhas).
+5. **Os `2` diagnósticos de cada doc** são o lint `FunctionUnused` (código `8`) em `init`/`update`: globais
+   que o MOTOR chama, que o `luau-lsp` não sabe. Medido (15/10): declará-las no `.d.luau` piora
+   (`+BuiltinGlobalWrite`); `globals` num `.luaurc` não silencia; `--base-luaurc` com
+   `{"lint":{"FunctionUnused":false}}` silencia, mas apaga também o aviso de função LOCAL não usada.
+   Decisão aberta — é o que deixa vermelho o gate «bob limpo» da T3 (com o `self` sem tipo no estrito).

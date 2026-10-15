@@ -56,6 +56,13 @@ pub(crate) const NOMES_VAZIOS: [&str; 3] = [
 /// Bytes de uma entrada de T ou R (4 × f16).
 const ENTRADA: u64 = 8;
 
+/// ⭐ W5u — a grade (texels) a partir da qual a holográfica faz `Config::hrc_cones_por_fio` cones e
+/// `Config::hrc_pares_na_subida` pares por fio. O recurso é o PARALELISMO da placa: numa grade pequena,
+/// juntar entradas deixa fios a menos. Medido (RTX 5060 Ti, `c2` por processo, ms, 1 entrada por fio · 2/2
+/// · 4/4): 256×160 0,229 · 0,239 · 0,275; 512×320 0,451 · 0,436 · 0,443; 640×384 0,522 · — · 0,500;
+/// 992×576 1,407 · 1,371 · 1,367; 2496×1472 7,32 · — · 6,04 (handoff W5u).
+pub(crate) const POR_FIO_DESDE: u64 = 1 << 17;
+
 /// Um quadrante no canónico: `(X ao longo de u, Y ao longo de v, N níveis)`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Quadrante {

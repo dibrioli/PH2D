@@ -216,16 +216,11 @@ pub struct Config {
     pub hrc_grade_3d: bool,
     /// ⭐ W5u (só em 3D) — cones vizinhos por fio na descida (o T da aresta comum lido uma vez; `1` = um
     /// cone por fio) e pares (k par, k ímpar) por fio na subida (`0` = uma entrada por fio): o mesmo bit;
-    /// o High vazio −17 %, o Medium −12 %, o Low −4 % (handoff W5u).
+    /// o High vazio −17 %, o Medium −12 %, o Low −4 % (handoff W5u). Só nas grades de pelo menos
+    /// `hrc::POR_FIO_DESDE` texels (a decisão vai no uniforme: redimensionar não recompila).
     pub hrc_cones_por_fio: u32,
     pub hrc_pares_na_subida: u32,
 }
-
-/// ⭐ W5u — a grade (texels) a partir da qual a holográfica faz 4 cones e 4 pares por fio. O recurso é o
-/// PARALELISMO da placa: numa grade pequena, juntar entradas deixa fios a menos. Medido (RTX 5060 Ti, `c2`
-/// por processo, ms, 1 entrada por fio · 2/2 · 4/4): 256×160 0,229 · 0,239 · 0,275; 512×320 0,451 · 0,436 ·
-/// 0,443; 640×384 0,522 · — · 0,500; 992×576 1,407 · 1,371 · 1,367; 2496×1472 7,32 · — · 6,04 (handoff W5u).
-pub(crate) const HRC_POR_FIO_DESDE: u64 = 1 << 17;
 
 /// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
 pub const CAPTURA_MAX: u32 = crate::captura::SUB;
@@ -400,7 +395,6 @@ impl Config {
     /// - aritmética `F32` (portátil): a `F16` mediu IGUAL neste desktop; ver [`Self::padrao_para`].
     #[must_use]
     pub fn padrao(grade: Grade) -> Self {
-        let por_fio = u64::from(grade.largura) * u64::from(grade.altura) >= HRC_POR_FIO_DESDE;
         Self {
             grade,
             intervalo_c0: 1.0,
@@ -441,8 +435,8 @@ impl Config {
             hrc_salta_o_vazio: true,
             hrc_fio_por_sonda: true,
             hrc_grade_3d: true,
-            hrc_cones_por_fio: if por_fio { 4 } else { 1 },
-            hrc_pares_na_subida: if por_fio { 4 } else { 0 },
+            hrc_cones_por_fio: 4,
+            hrc_pares_na_subida: 4,
         }
     }
 

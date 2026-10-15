@@ -30,7 +30,8 @@ struct Hrc {
     topo: u32,
     // Quantas entradas este passe calcula (o despacho é 1D).
     total: u32,
-    _p0: u32,
+    // ⭐ W5u: 1 = os fios fazem mais de uma entrada neste passe (a decisão é da grade, no uniforme).
+    por_fio: u32,
     _p1: u32,
     _p2: u32,
     // ⭐ W5d — o MIOLO (texels da grade, `[x0, y0, x1, y1]`) cuja emissão este solver NÃO recolhe: ele é
@@ -395,7 +396,7 @@ fn fusao_de_baixo(k: u32, xi: u32, v: i32) -> Par {
 // ── T3..TN: a fusão de baixo para cima (Eq. 18–20) ──
 @compute @workgroup_size(64)
 fn hrc_sobe(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
-    if GRADE3D_HRC && COLUNAS_HRC && PARES_SOBE_HRC > 0u {
+    if GRADE3D_HRC && COLUNAS_HRC && PARES_SOBE_HRC > 0u && hrc.por_fio == 1u {
         if gid.x < hrc.eixo.y {
             subir_pares(gid);
         }
@@ -419,7 +420,7 @@ fn hrc_sobe(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
 // ── R_{N−1}..R0: a fusão de cima para baixo (Eq. 14–17) ──
 @compute @workgroup_size(64)
 fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
-    if GRADE3D_HRC && COLUNAS_HRC && CONES_HRC > 1u {
+    if GRADE3D_HRC && COLUNAS_HRC && CONES_HRC > 1u && hrc.por_fio == 1u {
         if gid.x < hrc.eixo.y {
             descer_cones(gid);
         }

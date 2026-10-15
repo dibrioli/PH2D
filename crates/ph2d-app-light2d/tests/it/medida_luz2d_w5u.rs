@@ -32,7 +32,12 @@ fn variantes() -> Vec<Variante> {
         ("c4p4", 4, 4),
     ];
     if std::env::var("PH2D_W5U_VARIANTES").as_deref() == Ok("todas") {
-        v.extend([("c4p1", 4, 1), ("c4p2", 4, 2), ("c8p2", 8, 2), ("c2p0", 2, 0)]);
+        v.extend([
+            ("c4p1", 4, 1),
+            ("c4p2", 4, 2),
+            ("c8p2", 8, 2),
+            ("c2p0", 2, 0),
+        ]);
     }
     v
 }

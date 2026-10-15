@@ -24,7 +24,9 @@ struct UniformeHrc {
     nx_cima: u32,
     topo: u32,
     total: u32,
-    _p: [u32; 3],
+    /// ⭐ W5u: 1 = os fios fazem mais de uma entrada neste passe (a grade passa [`hrc::POR_FIO_DESDE`]).
+    por_fio: u32,
+    _p: [u32; 2],
     /// O `vec4` seguinte alinha-se a 16 bytes (o `Hrc` do `c2_hrc.wgsl` tem 96).
     _q: [u32; 2],
     /// ⭐ W5d: o miolo cuja emissão não se recolhe (texels da grade) e a c0 do entorno somada na
@@ -215,8 +217,14 @@ impl Holografica {
         let g2 = g2_de(device, &g2_layout, &vazia, &amostra);
         // ⭐ W5u: os fios que fazem mais de uma entrada (só em 3D).
         let em_3d = e.cfg.hrc_grade_3d && e.cfg.hrc_por_colunas;
-        let cones = if em_3d { e.cfg.hrc_cones_por_fio.max(1) } else { 1 };
+        let cones = if em_3d {
+            e.cfg.hrc_cones_por_fio.max(1)
+        } else {
+            1
+        };
         let pares = if em_3d { e.cfg.hrc_pares_na_subida } else { 0 };
+        // A decisão por grade vai no UNIFORME, não nas constantes: redimensionar não recompila a luz.
+        let por_fio = em_3d && u64::from(g.largura) * u64::from(g.altura) >= hrc::POR_FIO_DESDE;
         let constantes = [
             ("PASSO_HRC", f64::from(e.escolhas.passo)),
             ("BORRAO_HRC", f64::from(u8::from(e.escolhas.borrao))),
@@ -328,7 +336,8 @@ impl Holografica {
             nx_cima: 0,
             topo: 0,
             total: 0,
-            _p: [0; 3],
+            por_fio: 0,
+            _p: [0; 2],
             _q: [0; 2],
             miolo: SEM_MIOLO,
             entorno: [0.0; 4],
@@ -360,7 +369,8 @@ impl Holografica {
                 nx_cima: 0,
                 topo: 0,
                 total: 0,
-                _p: [0; 3],
+                por_fio: 0,
+                _p: [0; 2],
                 _q: [0; 2],
                 miolo: SEM_MIOLO,
                 entorno: [0.0; 4],
@@ -381,6 +391,7 @@ impl Holografica {
                     nx: nx(n),
                     nx_baixo: if n > 0 { nx(n - 1) } else { 0 },
                     total: total as u32,
+                    por_fio: u32::from(por_fio),
                     ..base
                 };
                 let (etapa, ler) = if n <= 2 {
@@ -390,7 +401,9 @@ impl Holografica {
                 };
                 let grupos = match (em_3d, n <= 2) {
                     (true, true) if por_sonda => grupos_3d(n, 1),
-                    (true, false) if pares > 0 => grupos_3d(n, ((1 << (n - 1)) + 1u32).div_ceil(pares)),
+                    (true, false) if pares > 0 && por_fio => {
+                        grupos_3d(n, ((1 << (n - 1)) + 1u32).div_ceil(pares))
+                    }
                     (true, false) => grupos_3d(n, (1 << n) + 1),
                     _ => grupos_1d(total),
                 };
@@ -410,6 +423,7 @@ impl Holografica {
                     nx_cima: nx(n + 1),
                     topo: u32::from(topo),
                     total: total as u32,
+                    por_fio: u32::from(por_fio),
                     ..base
                 };
                 let cima = if topo {
@@ -428,7 +442,7 @@ impl Holografica {
                         &r[(n % 2) as usize],
                     ],
                     if em_3d {
-                        grupos_3d(n, (1u32 << n).div_ceil(cones))
+                        grupos_3d(n, (1u32 << n).div_ceil(if por_fio { cones } else { 1 }))
                     } else {
                         grupos_1d(total)
                     },

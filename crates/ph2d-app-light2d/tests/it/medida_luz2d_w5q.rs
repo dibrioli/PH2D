@@ -53,8 +53,19 @@ pub(crate) fn a_c2_e_as_etapas(
         mediana(&c2)
     );
     const NOMES: [&str; 13] = [
-        "c0", "c1", "c2", "c3_vis", "c3_fina", "c0_fina", "c3_preenche", "c3_masc", "c0_rebote",
-        "c3_rebote", "miolo", "total", "entorno",
+        "c0",
+        "c1",
+        "c2",
+        "c3_vis",
+        "c3_fina",
+        "c0_fina",
+        "c3_preenche",
+        "c3_masc",
+        "c0_rebote",
+        "c3_rebote",
+        "miolo",
+        "total",
+        "entorno",
     ];
     let q: Vec<String> = NOMES
         .iter()

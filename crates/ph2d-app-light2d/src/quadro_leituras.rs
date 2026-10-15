@@ -7,7 +7,7 @@ use ph2d_light2d_gpu::TemposMs;
 /// ⭐ W5u — INSTRUMENTO `PH2D_LIGHT2D_CUSTO=1`: o número do Inspector partido por passe (a vista e o
 /// entorno), a cada 60 leituras — o custo que o dono vê no app inteiro, não o da régua.
 pub(super) fn relatar_custo(t: &TemposMs, entorno: Option<&TemposMs>, grade: (u32, u32), n: u32) {
-    if n % 60 != 0 || std::env::var_os("PH2D_LIGHT2D_CUSTO").is_none() {
+    if !n.is_multiple_of(60) || std::env::var_os("PH2D_LIGHT2D_CUSTO").is_none() {
         return;
     }
     eprintln!(

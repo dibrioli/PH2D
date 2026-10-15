@@ -13,7 +13,6 @@
 //!   the ScriptHost but doesn't yet route input → ph2d.input snapshot.
 
 use ph2d_asset::{AssetDb, AssetId};
-use ph2d_script::ScriptHost;
 use std::path::{Path, PathBuf};
 
 pub const ATLAS_GRID: u32 = 4;
@@ -119,23 +118,6 @@ pub fn compose_atlas_rgba(asset_db: &AssetDb, ids: &[AssetId]) -> Result<Vec<u8>
         }
     }
     Ok(out)
-}
-
-/// Build a ScriptHost with a minimal placeholder script that proves
-/// the M7 pipeline is wired. Just prints once on load — full
-/// sim-driving via ph2d.set comes when the editor exposes a
-/// "scripts" panel (M12+ follow-up).
-pub fn init_script_host() -> Result<ScriptHost, String> {
-    let mut host = ScriptHost::new().map_err(|e| format!("ScriptHost::new: {e}"))?;
-    let placeholder = r#"
-        -- Integration demo script (M7 wired into shells/desktop).
-        -- Real script-driven gameplay goes here once the editor's
-        -- script panel exists (M12+ follow-up).
-        print("[lua] ph2d-host-desktop integration demo: ScriptHost OK")
-    "#;
-    host.load_script(placeholder)
-        .map_err(|e| format!("load_script: {e}"))?;
-    Ok(host)
 }
 
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> (u8, u8, u8) {

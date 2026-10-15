@@ -121,7 +121,7 @@ pub(crate) fn build_initial_state(
         subsystems::boot_sim_world(handler, &asset_db, &mut logical_texture_map);
     let camera = Camera2d::default();
 
-    let script = subsystems::boot_script_host(handler);
+    let script = ph2d_app_components::script_bridge::boot(handler.elapsed_ms());
 
     let (theme, zen, jobs, toasts, mut tools, layout, vello_pass) =
         subsystems::boot_editor_layer(handler, &surface, size);

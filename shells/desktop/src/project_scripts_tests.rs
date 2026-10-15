@@ -1,61 +1,23 @@
 //! **Os SCRIPTS no arquivo** (CodeEditor T7, v190, ADR-0188 §2) — o texto viaja DENTRO do
-//! `.ph2dproj`, e um v189 (o caminho de um ficheiro solto) importa o ficheiro no load.
+//! `.ph2dproj`, e um v189 (o caminho de um ficheiro solto) importa o ficheiro no load. As peças são
+//! da família (`ph2d_app_components::test_support::scripts`); aqui só o ficheiro da shell.
 
 use super::*;
-use ph2d_script::project_scripts::CANONICAL_NAME;
-use ph2d_script::{LuauScript, ProjectScripts, ScriptHost, ScriptLibrary, ScriptSource};
+use ph2d_app_components::test_support::scripts::{ANDA, as_v2, open_and_tick, snapshot};
+use ph2d_script::{LuauScript, ProjectScripts, ScriptLibrary, ScriptSource};
 
-const ANDA: &str = "function update(self, dt) ph2d.set(self.id, \"x\", 7) end\n";
-
-fn registo() -> ph2d_ecs::scene::ComponentRegistry {
-    let mut r = ph2d_ecs::scene::ComponentRegistry::new();
-    ph2d_ecs::scene::register_ecs_components(&mut r);
-    ph2d_script::register_script_components(&mut r);
-    r
-}
-
-/// Um projeto com UM objecto que corre `cfg`.
 fn estado(cfg: LuauScript) -> ProjectState {
-    let mut sim = ph2d_ecs::SimWorld::new();
-    sim.world_mut()
-        .spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::StableId(1), cfg));
-    let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
-    let mut work = ph2d_ecs::WorklistBuf::default();
-    let mut st = empty_state();
-    ph2d_ecs::scene::world_to_snapshot(
-        sim.world_mut(),
-        &mut prop,
-        &mut work,
-        &registo(),
-        &mut st.world,
-    )
-    .expect("captura");
-    st
+    ProjectState {
+        world: snapshot(cfg),
+        ..empty_state()
+    }
 }
 
-/// O caminho do Ctrl+O sem janela: ler o ficheiro, abrir os scripts, restaurar o mundo, um tique.
+/// O `read_project_file` da shell e, depois dele, o resto do Ctrl+O sem janela.
 fn abre_e_corre(path: &std::path::Path) -> (ScriptLibrary, LuauScript, f32) {
-    let mut app = headless_app();
     let p = path.to_string_lossy();
-    let (mut file, _) = app.read_project_file(&p).expect("aceite");
-    let lib = ph2d_app_components::script_project::open(&mut file.state.world, &file.scripts, &p)
-        .expect("scripts legíveis")
-        .lib;
-    let mut sim = ph2d_ecs::SimWorld::new();
-    let e = ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &file.state.world, &registo())
-        .expect("restaura")[0];
-    ph2d_app_components::script_project::install(sim.world_mut(), lib.clone());
-    let mut host = ScriptHost::new().expect("vm");
-    host.scene_sync(sim.world_mut());
-    let r = host.scene_tick(sim.world_mut(), 0.1);
-    assert!(r.failed.is_empty(), "{:?}", r.failed);
-    let w = sim.world();
-    let cfg = w.get::<LuauScript>(e).expect("cfg").clone();
-    (
-        lib,
-        cfg,
-        w.get::<ph2d_ecs::Transform>(e).expect("pose").translation.x,
-    )
+    let (file, _) = headless_app().read_project_file(&p).expect("aceite");
+    open_and_tick(file.state.world, &file.scripts, &p)
 }
 
 /// ⭐⭐ **Gravar → abrir guarda o TEXTO e a REFERÊNCIA** — sem ficheiro solto nenhum, e o objecto corre.
@@ -68,11 +30,8 @@ fn a_v190_project_keeps_the_script_text_and_the_reference() {
         ..bare_file(estado(LuauScript::library(id)))
     };
     let path = tmp_path("scripts_v190");
-    std::fs::write(
-        &path,
-        postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa"),
-    )
-    .expect("grava");
+    let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
+    std::fs::write(&path, bytes).expect("grava");
     let (back, cfg, x) = abre_e_corre(&path);
     let _ = std::fs::remove_file(&path);
     assert_eq!(back, lib, "a biblioteca atravessou o arquivo");
@@ -94,19 +53,8 @@ fn a_v189_project_with_a_script_path_imports_it_and_runs() {
         .to_string_lossy()
         .into_owned();
     let mut f = bare_file(estado(LuauScript::default()));
-    let tid = ph2d_ecs::scene::stable_type_id(CANONICAL_NAME);
-    let row = std::sync::Arc::make_mut(&mut f.state.world.entities[0]);
-    let blob = row
-        .components
-        .iter_mut()
-        .find(|b| b.type_id == tid)
-        .expect("blob");
     // v2: o caminho RELATIVO à pasta do projeto (o ficheiro de projeto mora no mesmo temp).
-    blob.data = postcard::to_allocvec(&ph2d_script::component::LuauScriptV2 {
-        source: nome,
-        own: Default::default(),
-    })
-    .expect("v2");
+    as_v2(&mut f.state.world, &nome);
     let v189 = (
         &f.state,
         &f.assets,
@@ -124,11 +72,8 @@ fn a_v189_project_with_a_script_path_imports_it_and_runs() {
         &f.boards,
     );
     let path = tmp_path("scripts_v189");
-    std::fs::write(
-        &path,
-        postcard::to_allocvec(&(189u32, v189)).expect("serializa"),
-    )
-    .expect("grava");
+    let bytes = postcard::to_allocvec(&(189u32, v189)).expect("serializa");
+    std::fs::write(&path, bytes).expect("grava");
     let (lib, cfg, x) = abre_e_corre(&path);
     let _ = (std::fs::remove_file(&path), std::fs::remove_file(&luau));
     let ScriptSource::Library(id) = cfg.source else {

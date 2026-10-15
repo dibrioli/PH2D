@@ -7,7 +7,8 @@
 //! devolve o que o arranque lê dele. Mudaram duas linhas, e por força do corte: o `mut` de um mapa
 //! que o bloco de assets deixou de mutar, e os dois empréstimos que o smoke do KTX2 recebe e que
 //! passaram a chegar já emprestados. E duas funções devolvem o `match` em vez de o guardar num
-//! `let` que era a última linha (`boot_script_host` · `boot_vec_scene` — clippy `let_and_return`).
+//! `let` que era a última linha (`boot_vec_scene` — clippy `let_and_return`; a VM dos scripts saiu
+//! para `ph2d_app_components::script_bridge::boot`).
 //!
 //! ⚠️ **O bloco dos REGISTOS e do HERO ficou no `init.rs`** (`boot_hero_screen`): o gate
 //! `the_registry_is_installed_before_the_hero` lê a ORDEM das duas chamadas naquele ficheiro.
@@ -178,28 +179,6 @@ pub(super) fn boot_sim_world(
         worklist,
         hero_live,
     )
-}
-
-/// **O ScriptHost** (M7) — a falha não é fatal: o arranque segue sem scripting.
-pub(super) fn boot_script_host(handler: &LoggingHandler) -> Option<ph2d_script::ScriptHost> {
-    // M7: ScriptHost. Failure here is also non-fatal (script is
-    // a placeholder; full sim-driving lands in M12+ editor panel).
-    match integration::init_script_host() {
-        Ok(host) => {
-            println!(
-                "[{:>6}ms] M7: ScriptHost initialized (placeholder script loaded)",
-                handler.elapsed_ms()
-            );
-            Some(host)
-        }
-        Err(e) => {
-            eprintln!(
-                "[{:>6}ms] M7 ScriptHost failed: {e} — continuing without scripting",
-                handler.elapsed_ms()
-            );
-            None
-        }
-    }
 }
 
 /// **A camada de dados do editor e o passe Vello** (M12 + M11) — tema, zen, fila de jobs, toasts,

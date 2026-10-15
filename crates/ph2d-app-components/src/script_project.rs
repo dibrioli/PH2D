@@ -39,7 +39,8 @@ pub fn open(
     bytes: &[u8],
     project_path: &str,
 ) -> Result<Opened, DocError> {
-    let mut lib = ScriptLibrary::from_bytes(bytes)?;
+    let mut lib = ScriptLibrary::from_bytes(bytes)
+        .inspect_err(|e| eprintln!("[proj] scripts ilegiveis — load RECUSADO: {e}"))?;
     let cwd = std::env::current_dir().ok();
     let r = import_unimported(
         snapshot,
@@ -64,7 +65,11 @@ pub fn open(
 /// deixa de mandar. O artista ouve-o no load — e ouve à parte o que veio do directório corrente
 /// (o recurso que pode apanhar um homónimo que não é o do projeto).
 fn notice(r: &ImportReport) -> Option<String> {
-    let cwd = r.imported.iter().filter(|i| i.matched == Matched::Cwd).count();
+    let cwd = r
+        .imported
+        .iter()
+        .filter(|i| i.matched == Matched::Cwd)
+        .count();
     let mut parts = Vec::new();
     if !r.imported.is_empty() {
         let n = r.imported.len();
@@ -89,6 +94,33 @@ fn notice(r: &ImportReport) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join(" \u{00b7} "))
 }
 
+/// ⭐ **O degrau `190 → 191`** (ADR-0188) — `F` é o `ProjectFile` da shell, `world` o caminho até ao
+/// snapshot dele. O campo novo (`scripts`) é o ÚLTIMO e um `Vec` vazio no postcard é o byte `0`: o
+/// v190 (e o v189, que só difere no traço) lê-se com o tipo vivo acrescentando-o. Os blobs do `LuauScript` passam de v2 (o caminho) a
+/// v3; o load importa os caminhos ([`open`]). Devolve o ficheiro e a frase do toast.
+///
+/// # Errors
+/// Os bytes não são de um ficheiro anterior aos scripts (`ver` = a versão lida: 190 ou 189).
+pub fn read_before_scripts<F: serde::de::DeserializeOwned>(
+    ver: u32,
+    bytes: &[u8],
+    world: fn(&mut F) -> &mut WorldSnapshot,
+    schema: u32,
+) -> Result<(F, String), postcard::Error> {
+    let (_, mut f) = postcard::from_bytes::<(u32, F)>(&[bytes, &[0]].concat())
+        .inspect_err(|e| eprintln!("[proj] v{ver} ilegivel: {e}"))?;
+    let m = ph2d_script::project_scripts::migrate_v2_blobs(world(&mut f));
+    eprintln!(
+        "[proj] migrado v{ver} -> v{schema} ({} script(s) v2 -> v3, {} ilegivel(eis))",
+        m.migrated, m.unreadable
+    );
+    let aviso = tr_with(
+        "shell.project_load.project_migrated_from_189",
+        &[("ver", &ver), ("PROJECT_SCHEMA", &schema)],
+    );
+    Ok((f, aviso))
+}
+
 /// Põe os scripts abertos no mundo — substitui os do documento anterior.
 pub fn install(world: &mut World, lib: ScriptLibrary) {
     world.insert_resource(ProjectScripts(lib));
@@ -111,7 +143,11 @@ mod tests {
     /// ⭐ O load que importa DIZ-o no ecrã — e o que veio do directório corrente e o que faltou à parte.
     #[test]
     fn an_import_on_load_is_told_on_screen() {
-        assert_eq!(notice(&ImportReport::default()), None, "nada importado: silêncio");
+        assert_eq!(
+            notice(&ImportReport::default()),
+            None,
+            "nada importado: silêncio"
+        );
         let r = ImportReport {
             imported: vec![importado(Matched::ProjectDir), importado(Matched::Cwd)],
             objects: 2,

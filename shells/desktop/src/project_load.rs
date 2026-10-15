@@ -95,17 +95,12 @@ impl crate::App {
         };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
-        let scripts = match ph2d_app_components::script_project::open(
-            &mut file.state.world,
-            &file.scripts,
-            path,
-        ) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("[proj] scripts ilegiveis — load RECUSADO: {e}");
-                self.toast_refused("shell.project_load.project_refused_its_scripts", &e);
-                return;
-            }
+        let abertos =
+            ph2d_app_components::script_project::open(&mut file.state.world, &file.scripts, path);
+        let Ok(scripts) = abertos.inspect_err(|e| {
+            self.toast_refused("shell.project_load.project_refused_its_scripts", e);
+        }) else {
+            return;
         };
         self.project_forget_previous(&file);
         if let Some(gfx) = self.gfx.as_mut() {

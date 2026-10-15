@@ -107,6 +107,35 @@ fn absorb(out: &mut ScriptFrame, r: ph2d_script::SceneReport) {
         .extend(r.failed.into_iter().map(|(e, m)| (e.to_bits(), m)));
 }
 
+/// O script de demonstração do arranque (M7): prova que a VM está ligada e só imprime uma vez.
+const BOOT_PLACEHOLDER: &str = r#"
+    -- Integration demo script (M7 wired into shells/desktop).
+    print("[lua] ph2d-host-desktop integration demo: ScriptHost OK")
+"#;
+
+/// **A VM do arranque** (M7) — a falha não é fatal: o app segue sem scripts. `ms` = o relógio do
+/// arranque, para a linha do log.
+#[must_use]
+pub fn boot(ms: u128) -> Option<ScriptHost> {
+    let host = ScriptHost::new()
+        .map_err(|e| format!("ScriptHost::new: {e}"))
+        .and_then(|mut h| {
+            h.load_script(BOOT_PLACEHOLDER)
+                .map_err(|e| format!("load_script: {e}"))?;
+            Ok(h)
+        });
+    match host {
+        Ok(h) => {
+            println!("[{ms:>6}ms] M7: ScriptHost initialized (placeholder script loaded)");
+            Some(h)
+        }
+        Err(e) => {
+            eprintln!("[{ms:>6}ms] M7 ScriptHost failed: {e} — continuing without scripting");
+            None
+        }
+    }
+}
+
 /// ⭐ **REBOBINAR É RENASCER** — o `self` de cada objecto volta a nascer no próximo Play, e a pose
 /// que a corrida escreveu volta à que o artista pôs. Devolve quantos objectos tinham vivo.
 ///

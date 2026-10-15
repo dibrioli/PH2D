@@ -4,13 +4,13 @@
 //! # ⚠️ Porque é um gate de TEXTO
 //!
 //! A ponte da barra (`ph2d_app_components::health_bar_bridge`) tem os gates dela, e todos entram
-//! **abaixo** da shell: a chamada mora no `motores_do_quadro`, o desenho no `present` e o rebobinar
+//! **abaixo** da shell: a chamada mora no `ph2d_app_components::motores`, o desenho no `present` e o rebobinar
 //! no `fase_fabrica_e_morte` — três sítios que pedem a `App` ou o `AppGfx` inteiros e não são
 //! alcançáveis de um teste. *Um motor com a lei certa e a shell a não o ligar lê-se como um motor sem
 //! a lei* — a forma que esta casa já pagou quatro vezes. ⇒ a régua lê os três, com `include_str!`
 //! para que mudar um ficheiro de sítio NÃO compile.
 
-const MOTORES: &str = include_str!("../../src/render_loop/motores_do_quadro.rs");
+const MOTORES: &str = include_str!("../../../../crates/ph2d-app-components/src/motores.rs");
 const PRESENT: &str = include_str!("../../src/render_loop/present.rs");
 const MORTE: &str = include_str!("../../src/render_loop/fase_fabrica_e_morte.rs");
 
@@ -21,7 +21,7 @@ const MORTE: &str = include_str!("../../src/render_loop/fase_fabrica_e_morte.rs"
 #[test]
 fn o_quadro_corre_as_barras() {
     let corpo = &MOTORES[MOTORES
-        .find("pub(super) fn correm(")
+        .find("pub fn correm(")
         .expect("o `correm` existe")..];
     let fim = corpo.find("\n}\n").expect("o `correm` fecha");
     let corpo = &corpo[..fim];

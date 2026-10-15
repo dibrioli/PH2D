@@ -69,7 +69,7 @@ fn o_script_emite_antes_de_a_tabela_de_accoes_ler() {
 fn ordem_dos_motores(motor: &str) {
     let src = crate::frame_text::render_frame();
     let porta = src
-        .find("motores_do_quadro::correm(")
+        .find("motores::correm(")
         .expect("os motores nao correm no quadro — os componentes seriam inertes");
     let tabela = src
         .find(".read(&mut self.signal_readers.action)")
@@ -81,9 +81,9 @@ fn ordem_dos_motores(motor: &str) {
     );
     // (b) E a porta de facto chama ESTE motor. ⚠️ `include_str!` falha a COMPILAR se alguém mover
     // o ficheiro — o modo de falha alto que o HOWTO pede.
-    let irmao = include_str!("../../src/render_loop/motores_do_quadro.rs");
+    let irmao = include_str!("../../../../crates/ph2d-app-components/src/motores.rs");
     let corpo = &irmao[irmao
-        .find("pub(super) fn correm(")
+        .find("pub fn correm(")
         .expect("a porta dos motores mudou de nome")..];
     let fim = corpo.find("\n}\n").expect("a porta acaba");
     assert!(
@@ -132,9 +132,9 @@ fn as_armas_disparam_antes_de_a_tabela_de_accoes_ler() {
 /// **Mutação que deve sangrar:** trocar as duas chamadas de sítio.
 #[test]
 fn a_arma_corre_depois_do_gatilho() {
-    let irmao = include_str!("../../src/render_loop/motores_do_quadro.rs");
+    let irmao = include_str!("../../../../crates/ph2d-app-components/src/motores.rs");
     let corpo = &irmao[irmao
-        .find("pub(super) fn correm(")
+        .find("pub fn correm(")
         .expect("a porta dos motores mudou de nome")..];
     let fim = corpo.find("\n}\n").expect("a porta acaba");
     let corpo = &corpo[..fim];
@@ -156,11 +156,11 @@ fn a_arma_corre_depois_do_gatilho() {
 /// desta janela cuja entrada é o estado do MUNDO.
 #[test]
 fn cada_motor_que_ouve_tem_cursor_proprio() {
-    let src = include_str!("../../src/render_loop/motores_do_quadro.rs");
+    let src = include_str!("../../../../crates/ph2d-app-components/src/motores.rs");
     for (motor, cursor) in [
-        ("fn scripts(", "&mut leitores.script"),
-        ("fn particulas(", "&mut leitores.particles"),
-        ("fn armas(", "&mut leitores.weapon"),
+        ("fn scripts(", "leitores.script"),
+        ("fn particulas(", "leitores.particles"),
+        ("fn armas(", "leitores.weapon"),
     ] {
         assert!(
             src.contains(motor),
@@ -208,7 +208,7 @@ fn as_particulas_desenham_se_com_qualquer_ferramenta() {
 /// **Mutação que deve sangrar:** ler o cursor depois de chamar a ponte.
 #[test]
 fn cada_motor_ouve_antes_de_andar() {
-    let src = include_str!("../../src/render_loop/motores_do_quadro.rs");
+    let src = include_str!("../../../../crates/ph2d-app-components/src/motores.rs");
     for (motor, ponte) in [
         ("fn scripts(", "script_bridge::frame("),
         ("fn particulas(", "particles.frame("),

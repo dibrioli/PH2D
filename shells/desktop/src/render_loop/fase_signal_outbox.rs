@@ -167,14 +167,16 @@ impl crate::App {
             }
         }
         // ⭐⭐⭐ **OS MOTORES DA JANELA DOS CÉREBROS** — scripts (#16), partículas (#18) e as vigias
-        // de contador; o corpo mora no irmão. ⚠️ **A ORDEM é esta e é o que o texto emendado do
+        // de contador; o corpo mora na família. ⚠️ **A ORDEM é esta e é o que o texto emendado do
         // quadro mede:** os três falam ANTES de a tabela de acções ler.
-        let relogio = motores_do_quadro::Relogio::do_quadro(
+        use ph2d_app_components::motores;
+        let relogio = motores::Relogio::do_quadro(
             self.playhead.is_playing(),
             ticks,
             self.fixed_step.fixed_dt(),
         );
-        motores_do_quadro::correm(
+        let r = &mut self.signal_readers;
+        motores::correm(
             sim,
             script,
             particles,
@@ -182,7 +184,11 @@ impl crate::App {
             sort_scratch,
             &mut self.preview_drive,
             &mut self.signals,
-            &mut self.signal_readers,
+            motores::Leitores {
+                script: &mut r.script,
+                particles: &mut r.particles,
+                weapon: &mut r.weapon,
+            },
             &relogio,
             &accoes,
         );

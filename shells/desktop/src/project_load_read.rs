@@ -140,23 +140,18 @@ impl crate::App {
             // coberto pelo âmbito acima) lê-se com o tipo vivo acrescentando-o. Os blobs do
             // `LuauScript` passam de v2 (o caminho) a v3; o load importa os caminhos.
             190 | crate::project_schema::PROJECT_SCHEMA_TRACO_V22 => {
-                match postcard::from_bytes::<(u32, ProjectFile)>(&[bytes.as_slice(), &[0]].concat())
-                {
-                    Ok((_, mut f)) => {
-                        let m = ph2d_script::project_scripts::migrate_v2_blobs(&mut f.state.world);
-                        eprintln!(
-                            "[proj] migrado v{ver} -> v{PROJECT_SCHEMA} ({} script(s) v2 -> v3, {} ilegivel(eis))",
-                            m.migrated, m.unreadable
-                        );
-                        let n = &PROJECT_SCHEMA;
-                        self.toast(ph2d_i18n::tr_with(
-                            "shell.project_load.project_migrated_from_189",
-                            &[("ver", &ver), ("PROJECT_SCHEMA", n)],
-                        ));
+                use ph2d_app_components::script_project::read_before_scripts;
+                match read_before_scripts(
+                    ver,
+                    &bytes,
+                    |f: &mut ProjectFile| &mut f.state.world,
+                    PROJECT_SCHEMA,
+                ) {
+                    Ok((f, aviso)) => {
+                        self.toast(aviso);
                         (f, None)
                     }
                     Err(e) => {
-                        eprintln!("[proj] v{ver} ilegivel: {e}");
                         self.toast_refused("shell.project_load.project_refused_format_189", &e);
                         return None;
                     }

@@ -122,3 +122,82 @@ pub fn plain_master(sim: &mut SimWorld) -> Entity {
     ph2d_ecs::assign_master_pieces(sim.world_mut());
     root
 }
+
+/// ⭐ (CodeEditor T7) **As peças dos gates do load de scripts** que a shell guarda
+/// (`project_scripts_tests`: o sujeito é o `read_project_file` dela). A lei — abrir, importar,
+/// instalar — é desta crate (`crate::script_project`); a shell prova só o ficheiro.
+pub mod scripts {
+    use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot};
+    use ph2d_script::{LuauScript, ScriptHost, ScriptLibrary};
+
+    /// Um script que põe o `x` do objecto em `7` no primeiro tique.
+    pub const ANDA: &str = "function update(self, dt) ph2d.set(self.id, \"x\", 7) end\n";
+
+    fn registo() -> ComponentRegistry {
+        let mut r = ComponentRegistry::new();
+        ph2d_ecs::scene::register_ecs_components(&mut r);
+        ph2d_script::register_script_components(&mut r);
+        r
+    }
+
+    /// Um snapshot com UM objecto (`StableId(1)`) que corre `cfg`.
+    pub fn snapshot(cfg: LuauScript) -> WorldSnapshot {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        sim.world_mut()
+            .spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::StableId(1), cfg));
+        let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
+        let mut work = ph2d_ecs::WorklistBuf::default();
+        let mut snap = WorldSnapshot::new();
+        ph2d_ecs::scene::world_to_snapshot(
+            sim.world_mut(),
+            &mut prop,
+            &mut work,
+            &registo(),
+            &mut snap,
+        )
+        .expect("captura");
+        snap
+    }
+
+    /// Troca o blob do `LuauScript` do 1.º objecto pelo v2 (o CAMINHO de um ficheiro) — a forma que
+    /// um ficheiro v189 tem, escrita campo a campo e não a partir do tipo vivo.
+    pub fn as_v2(world: &mut WorldSnapshot, path: &str) {
+        let tid = ph2d_ecs::scene::stable_type_id(ph2d_script::project_scripts::CANONICAL_NAME);
+        let row = std::sync::Arc::make_mut(&mut world.entities[0]);
+        let blob = row
+            .components
+            .iter_mut()
+            .find(|b| b.type_id == tid)
+            .expect("blob");
+        blob.data = postcard::to_allocvec(&ph2d_script::component::LuauScriptV2 {
+            source: path.to_owned(),
+            own: Default::default(),
+        })
+        .expect("v2");
+    }
+
+    /// O caminho do Ctrl+O depois de o ficheiro ser aceite: abrir os scripts (importar os caminhos
+    /// antigos), restaurar o mundo, instalar a biblioteca e correr um tique. Devolve a biblioteca, o
+    /// `LuauScript` do objecto e o `x` dele.
+    pub fn open_and_tick(
+        mut world: WorldSnapshot,
+        scripts: &[u8],
+        project_path: &str,
+    ) -> (ScriptLibrary, LuauScript, f32) {
+        let lib = crate::script_project::open(&mut world, scripts, project_path)
+            .expect("scripts legíveis")
+            .lib;
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let e = ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &world, &registo())
+            .expect("restaura")[0];
+        crate::script_project::install(sim.world_mut(), lib.clone());
+        let mut host = ScriptHost::new().expect("vm");
+        host.scene_sync(sim.world_mut());
+        let r = host.scene_tick(sim.world_mut(), 0.1);
+        assert!(r.failed.is_empty(), "{:?}", r.failed);
+        let w = sim.world();
+        let cfg = w.get::<LuauScript>(e).expect("cfg").clone();
+        let x = w.get::<ph2d_ecs::Transform>(e).expect("pose").translation.x;
+        (lib, cfg, x)
+    }
+}

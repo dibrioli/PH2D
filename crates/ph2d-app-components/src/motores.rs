@@ -1,19 +1,19 @@
 //! **OS MOTORES QUE CORREM NA JANELA DOS CÉREBROS** — os scripts do artista (TOP-20 #16), os
-//! emissores de partículas (TOP-20 #18) e as vigias de contador, tirados do corpo da
-//! [`super::fase_signal_outbox`].
+//! emissores de partículas (TOP-20 #18), as vigias de contador, o gatilho, as armas e as barras de
+//! vida, chamados pela `fase_signal_outbox` da shell.
 //!
 //! ⚠️ **São funções LIVRES e não fases-filhas**, e a razão é um empréstimo: o outbox segura o `sim`
-//! (e o resto do `gfx`) do princípio ao fim do corpo, então um `self.fase_*(…)` a meio é um segundo
-//! empréstimo de `self`. Cada motor recebe as peças de que precisa — e a CHAMADA fica no corpo do
-//! outbox, que é o que o texto emendado do quadro colhe: a ORDEM continua medível.
+//! (e o resto do `gfx`) do princípio ao fim do corpo. Cada motor recebe as peças de que precisa — e
+//! a CHAMADA fica no corpo do outbox, que é o que o texto emendado do quadro colhe: a ORDEM continua
+//! medível (`shells/desktop/tests/it/o_cerebro_fala_antes_de_a_tabela_ouvir.rs`).
 //!
-//! ⚠️ **Saíram por TECTO DE LOC** (`fase_signal_outbox` foi a `229` contra `200` ao ganhar o
-//! terceiro motor) — cura por CORTE, nunca uma entrada nova de dívida.
+//! ⚠️ **Moraram na shell** (`render_loop/motores_do_quadro.rs`) até a `line/CodeEditor` pagar as
+//! costuras do editor de scripts movendo-os para a família onde as pontes deles já viviam.
 
 use std::collections::BTreeMap;
 
-use ph2d_app_components::health_bar_bridge::HealthBarsState;
-use ph2d_app_components::particles_bridge::ParticlesState;
+use crate::health_bar_bridge::HealthBarsState;
+use crate::particles_bridge::ParticlesState;
 use ph2d_ecs::SimWorld;
 use ph2d_ecs::sort_key::SortScratch;
 use ph2d_runtime::{SignalOutbox, SignalReader};
@@ -21,13 +21,13 @@ use ph2d_script::ScriptHost;
 
 /// **O relógio do quadro**, para os dois motores: se a corrida anda, quantos passos fixos e quanto
 /// dura cada um.
-pub(super) struct Relogio {
+pub struct Relogio {
     /// A corrida está a andar (`playhead.is_playing()`)?
-    pub(super) playing: bool,
+    pub playing: bool,
     /// Quantos passos fixos este quadro deve.
-    pub(super) ticks: u32,
+    pub ticks: u32,
     /// Quanto dura um passo fixo.
-    pub(super) dt: f64,
+    pub dt: f64,
 }
 
 impl Relogio {
@@ -36,9 +36,17 @@ impl Relogio {
     /// ⚠️ **Construir-se é assunto de quem é dono do tipo** — e o corte foi imposto pelo tecto de
     /// 200 LOC da `fase_signal_outbox` (ela chegou a `202` ao ganhar o terceiro motor). *A cura de
     /// um tecto é o CORTE, nunca uma entrada nova no `FN_OVERAGE_OK`.*
-    pub(super) const fn do_quadro(playing: bool, ticks: u32, dt: f64) -> Self {
+    #[must_use]
+    pub const fn do_quadro(playing: bool, ticks: u32, dt: f64) -> Self {
         Self { playing, ticks, dt }
     }
+}
+
+/// Os cursores dos motores que OUVEM — um por motor: partilhar um apagaria os sinais do outro.
+pub struct Leitores<'a> {
+    pub script: &'a mut SignalReader,
+    pub particles: &'a mut SignalReader,
+    pub weapon: &'a mut SignalReader,
 }
 
 /// ⭐⭐⭐ **OS TRÊS MOTORES, pela ORDEM** — uma chamada só.
@@ -50,7 +58,7 @@ impl Relogio {
 /// a `202` ao ganhar o terceiro) **e é o certo por responsabilidade:** *correr os motores* é UM
 /// passo do quadro, e o quarto entra aqui sem tocar na fase.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn correm(
+pub fn correm(
     sim: &mut SimWorld,
     script: &mut Option<ScriptHost>,
     particles: &mut ParticlesState,
@@ -58,17 +66,17 @@ pub(super) fn correm(
     scratch: &SortScratch,
     drive: &mut ph2d_preview_drive::PreviewDrive,
     signals: &mut SignalOutbox,
-    leitores: &mut crate::app_state::app_state_signal_readers::SignalReaders,
+    leitores: Leitores<'_>,
     relogio: &Relogio,
     accoes: &BTreeMap<String, ph2d_ecs::ActionSample>,
 ) {
-    scripts(sim, script, drive, signals, &mut leitores.script, relogio);
+    scripts(sim, script, drive, signals, leitores.script, relogio);
     particulas(
         sim,
         particles,
         scratch,
         signals,
-        &mut leitores.particles,
+        leitores.particles,
         relogio,
     );
     vigias(sim, signals, relogio);
@@ -76,11 +84,11 @@ pub(super) fn correm(
     // ⭐⭐⭐ **As ARMAS correm DEPOIS do gatilho, e a ordem É a lei:** elas ouvem o que ele acabou
     // de publicar, logo carregar na tecla e a bala nascer acontecem no MESMO quadro. Correndo
     // antes, cada tiro chegava um quadro atrasado — a lei que o cabeçalho do outbox já escreve.
-    armas(sim, signals, &mut leitores.weapon, relogio);
+    armas(sim, signals, leitores.weapon, relogio);
     barras(sim, health_bars, relogio);
     // Ciclo 19 do Motion: as entradas do grafo (o `Motion Input`, a vida, o dano e os sinais) —
     // DEPOIS de todos os que falam, e antes do Motion, que coze neste mesmo quadro.
-    ph2d_app_components::motion_input_bridge::frame(sim, signals);
+    crate::motion_input_bridge::frame(sim, signals);
 }
 
 /// ⭐ **AS BARRAS DE VIDA** (plano 28, W4) — elas só LÊEM (a vida, a pose) e não falam no
@@ -119,7 +127,7 @@ fn scripts(
         return;
     };
     let nomes: Vec<&str> = ouvidos.iter().map(String::as_str).collect();
-    let f = ph2d_app_components::script_bridge::frame(
+    let f = crate::script_bridge::frame(
         host,
         sim,
         drive,
@@ -177,7 +185,7 @@ fn particulas(
 /// REACÇÃO. Falar depois da tabela inverteria os dois e daria **o mesmo total** ⇒ escolhe-se a
 /// margem que o texto emendado do quadro já cobre, que é esta.
 fn vigias(sim: &mut SimWorld, signals: &mut SignalOutbox, relogio: &Relogio) {
-    let f = ph2d_app_components::counter_watch_bridge::frame(sim, relogio.playing, relogio.ticks);
+    let f = crate::counter_watch_bridge::frame(sim, relogio.playing, relogio.ticks);
     for (bits, row, nome) in f.disparos {
         signals.publish(ph2d_runtime::Signal::from_counter_watch(&nome, bits, row));
     }
@@ -207,7 +215,7 @@ fn armas(
     let refs: Vec<&str> = ouvidos.iter().map(String::as_str).collect();
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let dt_us = (f64::from(relogio.ticks) * relogio.dt * 1e6) as u64;
-    let t = ph2d_app_components::weapon_bridge::frame(sim, relogio.playing, dt_us, &refs);
+    let t = crate::weapon_bridge::frame(sim, relogio.playing, dt_us, &refs);
     for (e, nome) in t.disparos.into_iter().chain(t.secas).chain(t.recarregadas) {
         signals.publish(ph2d_runtime::Signal::from_weapon(&nome, e.to_bits()));
     }
@@ -219,7 +227,7 @@ fn armas(
 /// ⚠️ **Ele não OUVE, só FALA** — como as vigias. E é o ÚNICO motor desta janela cuja entrada não é
 /// o mundo nem o barramento: é o **teclado**, já resolvido em acções nomeadas.
 ///
-/// ⚠️ **A LEI vive na crate da família** ([`ph2d_app_components::trigger_bridge::frame`]) — a cerca
+/// ⚠️ **A LEI vive na crate da família** ([`crate::trigger_bridge::frame`]) — a cerca
 /// do relógio incluída, que é o molde da irmã das vigias. Aqui fica a COMPOSIÇÃO: *onde* no quadro
 /// este motor corre, e a publicação.
 fn gatilhos(
@@ -228,7 +236,7 @@ fn gatilhos(
     relogio: &Relogio,
     amostras: &BTreeMap<String, ph2d_ecs::ActionSample>,
 ) {
-    for d in ph2d_app_components::trigger_bridge::frame(sim, relogio.playing, amostras) {
+    for d in crate::trigger_bridge::frame(sim, relogio.playing, amostras) {
         signals.publish(ph2d_runtime::Signal::from_action(
             &d.signal,
             d.source.to_bits(),

@@ -164,11 +164,15 @@ fn camadas(gpu: &ph2d_gpu::GpuContext, v: &Vista, c: &Caso) -> Camadas {
             }
         }
     }
-    let camada = (!discos.is_empty())
-        .then(|| pintar((g.largura * fator, g.altura * fator), mundo, discos));
-    let disco = c
-        .sprites
-        .then(|| pintar((64, 64), [0.0, 0.0, 1.0, 1.0], vec![([0.5, 0.5], 0.45, [255; 3])]));
+    let camada =
+        (!discos.is_empty()).then(|| pintar((g.largura * fator, g.altura * fator), mundo, discos));
+    let disco = c.sprites.then(|| {
+        pintar(
+            (64, 64),
+            [0.0, 0.0, 1.0, 1.0],
+            vec![([0.5, 0.5], 0.45, [255; 3])],
+        )
+    });
     Camadas {
         grade: g,
         camada,
@@ -263,8 +267,8 @@ fn medida_luz2d_w5s_salta() {
     let mut vistos = 0;
     for nivel in [NivelDaLuz::Baixa, NivelDaLuz::Alta] {
         for c in &casos() {
-            let mut vs = VARIANTES
-                .map(|(_, s, f)| Vista::nova_com(&gpu, c.a, nivel, &variante(s, f)));
+            let mut vs =
+                VARIANTES.map(|(_, s, f)| Vista::nova_com(&gpu, c.a, nivel, &variante(s, f)));
             let cam = camadas(&gpu, &vs[0], c);
             let sp = sprites(&cam);
             let correr = |v: &mut Vista| {

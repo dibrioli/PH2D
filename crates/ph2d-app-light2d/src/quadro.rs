@@ -27,7 +27,8 @@ mod ambiente;
 #[path = "quadro_avisos.rs"]
 mod avisos;
 use ambiente::{
-    cortes_ligados, hrc_duas_vezes, hrc_por_colunas, hrc_traca_nova, miolo_do_ambiente, rebote_ligado,
+    cortes_ligados, hrc_duas_vezes, hrc_por_colunas, hrc_traca_nova, miolo_do_ambiente,
+    rebote_ligado,
 };
 #[path = "quadro_entorno.rs"]
 mod entorno;

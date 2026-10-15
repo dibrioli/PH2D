@@ -230,10 +230,7 @@ impl Holografica {
                 "SALTA_O_VAZIO_HRC",
                 f64::from(u8::from(e.cfg.hrc_salta_o_vazio)),
             ),
-            (
-                "SONDA_HRC",
-                f64::from(u8::from(e.cfg.hrc_fio_por_sonda)),
-            ),
+            ("SONDA_HRC", f64::from(u8::from(e.cfg.hrc_fio_por_sonda))),
         ];
         let pipelines = ENTRADAS
             .iter()

@@ -474,7 +474,12 @@ fn medida_luz2d_w5o_lastro() {
             for j in (3..g.altura).step_by(6) {
                 let [x, y] = g.centro(i, j).map(|v| v as f32);
                 c.oclusores.push(ph2d_light2d_ecs::Oclusor {
-                    vertices: vec![[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]],
+                    vertices: vec![
+                        [x - h, y - h],
+                        [x + h, y - h],
+                        [x + h, y + h],
+                        [x - h, y + h],
+                    ],
                     opacidade: 1.0,
                     albedo: [0.5; 3],
                 });

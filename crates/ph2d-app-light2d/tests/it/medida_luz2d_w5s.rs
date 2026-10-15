@@ -21,11 +21,11 @@ type Discos = Vec<([f64; 2], f64, [u8; 3])>;
 
 /// Um caso: as cenas das duas metades dos quadros, a câmera, os discos da camada de uma família (vazio =
 /// nenhuma) e se leva os dois sprites com alfa.
-struct Caso {
-    rotulo: String,
-    cena: CenaDeLuz,
-    cena2: CenaDeLuz,
-    a: kurbo::Affine,
+pub(crate) struct Caso {
+    pub(crate) rotulo: String,
+    pub(crate) cena: CenaDeLuz,
+    pub(crate) cena2: CenaDeLuz,
+    pub(crate) a: kurbo::Affine,
     discos: Discos,
     sprites: bool,
 }
@@ -59,7 +59,7 @@ fn formas_do_motion() -> Discos {
     d
 }
 
-fn casos() -> Vec<Caso> {
+pub(crate) fn casos() -> Vec<Caso> {
     let mut v: Vec<Caso> = crate::medida_luz2d_w5q::casos()
         .into_iter()
         .map(|(rotulo, cena, cena2, a)| Caso {
@@ -128,13 +128,13 @@ fn textura(gpu: &ph2d_gpu::GpuContext, (w, h): (u32, u32)) -> wgpu::Texture {
 }
 
 /// As texturas de um caso na grade da vista: a camada da família e o disco dos sprites.
-struct Camadas {
+pub(crate) struct Camadas {
     grade: Grade,
     camada: Option<wgpu::TextureView>,
     disco: Option<wgpu::TextureView>,
 }
 
-fn camadas(gpu: &ph2d_gpu::GpuContext, v: &Vista, c: &Caso) -> Camadas {
+pub(crate) fn camadas(gpu: &ph2d_gpu::GpuContext, v: &Vista, c: &Caso) -> Camadas {
     let cfg = v.vista.config();
     let g = cfg.grade;
     let mundo = [
@@ -182,7 +182,7 @@ fn camadas(gpu: &ph2d_gpu::GpuContext, v: &Vista, c: &Caso) -> Camadas {
 
 /// Os sprites da C0 de um caso: a camada cobre a grade (como `outras.rs`); os do disco são um que tapa
 /// e um que brilha.
-fn sprites(c: &Camadas) -> CapturaDeSprites<'_> {
+pub(crate) fn sprites(c: &Camadas) -> CapturaDeSprites<'_> {
     let g = c.grade;
     let mut s = CapturaDeSprites {
         texturas: Vec::new(),

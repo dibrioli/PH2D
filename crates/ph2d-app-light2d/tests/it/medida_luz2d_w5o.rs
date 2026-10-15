@@ -437,6 +437,8 @@ fn medida_luz2d_w5o_lastro() {
         };
         let hrc_salta_o_vazio = chave("PH2D_W5S_SALTA", produto.hrc_salta_o_vazio);
         let hrc_fio_por_sonda = chave("PH2D_W5S_SONDA", produto.hrc_fio_por_sonda);
+        // ⭐ W5t: `PH2D_W5T_3D=0|1` — a holográfica despachada em 3D.
+        let hrc_grade_3d = chave("PH2D_W5T_3D", produto.hrc_grade_3d);
         (
             Config {
                 aritmetica,
@@ -445,6 +447,7 @@ fn medida_luz2d_w5o_lastro() {
                 hrc_arcos_em_tabela,
                 hrc_salta_o_vazio,
                 hrc_fio_por_sonda,
+                hrc_grade_3d,
                 ..produto
             },
             config_do_entorno(a, FHD, degrau_do(nivel)).map(|c| Config {
@@ -454,6 +457,7 @@ fn medida_luz2d_w5o_lastro() {
                 hrc_arcos_em_tabela,
                 hrc_salta_o_vazio,
                 hrc_fio_por_sonda,
+                hrc_grade_3d,
                 ..c
             }),
         )

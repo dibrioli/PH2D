@@ -100,7 +100,12 @@ fn camara() -> (f32, Caixa) {
 fn caixa_da_ficha(ts: &mut ph2d_text::TextSystem, c: &Caption, k: f32) -> Caixa {
     let hw = 0.5 * chip_width(ts, &c.text, 0.0) / k;
     let hh = 0.5 * CHIP_H_PX / k;
-    [c.world[0] - hw, c.world[1] - hh, c.world[0] + hw, c.world[1] + hh]
+    [
+        c.world[0] - hw,
+        c.world[1] - hh,
+        c.world[0] + hw,
+        c.world[1] + hh,
+    ]
 }
 
 fn caixa_dos_cantos(cantos: impl IntoIterator<Item = [f32; 2]>) -> Caixa {
@@ -111,7 +116,12 @@ fn caixa_dos_cantos(cantos: impl IntoIterator<Item = [f32; 2]>) -> Caixa {
         f32::NEG_INFINITY,
     ];
     for p in cantos {
-        b = [b[0].min(p[0]), b[1].min(p[1]), b[2].max(p[0]), b[3].max(p[1])];
+        b = [
+            b[0].min(p[0]),
+            b[1].min(p[1]),
+            b[2].max(p[0]),
+            b[3].max(p[1]),
+        ];
     }
     b
 }
@@ -181,8 +191,7 @@ fn gizmo(m: &MotionState, k: f32, fora: &mut Vec<Caixa>) {
         return;
     }
     #[expect(clippy::cast_possible_truncation, reason = "px de chrome")]
-    let traco =
-        ((crate::warp_overlay::OUTLINE_PX * 0.5 + crate::warp_overlay::CASE_PX) as f32) / k;
+    let traco = ((crate::warp_overlay::OUTLINE_PX * 0.5 + crate::warp_overlay::CASE_PX) as f32) / k;
     for &sink in &m.sinks {
         let Some(s) = m
             .pump
@@ -300,11 +309,7 @@ struct Cena {
 
 /// Mede as fichas do nível `level`, com `poe` a mexer nelas antes (os controlos) — `None` quando ele
 /// não publica legenda.
-fn mede(
-    level: &str,
-    ts: &mut ph2d_text::TextSystem,
-    poe: impl Fn(&mut [Caption]),
-) -> Option<Cena> {
+fn mede(level: &str, ts: &mut ph2d_text::TextSystem, poe: impl Fn(&mut [Caption])) -> Option<Cena> {
     let (k, vista) = camara();
     let mut m = MotionState::new();
     let (sinks, mut caps) = super::monta(level, &mut m.doc, &m.registry);
@@ -467,8 +472,12 @@ fn nenhuma_ficha_tapa_a_figura_que_explica() {
         }
     }
     for (l, t, _) in SEM_LUGAR {
-        if !isentas_vistas.iter().any(|(a, b)| a == l && b == t) && !maus.iter().any(|m| m.contains(t)) {
-            maus.push(format!("={l} {t:?} está em SEM_LUGAR e a cena já não a publica"));
+        if !isentas_vistas.iter().any(|(a, b)| a == l && b == t)
+            && !maus.iter().any(|m| m.contains(t))
+        {
+            maus.push(format!(
+                "={l} {t:?} está em SEM_LUGAR e a cena já não a publica"
+            ));
         }
     }
     // ⛔ PISOS (15/10: 42 cenas com legenda, 192 fichas): um leitor que deixe de montar lê zero e passa.
@@ -497,14 +506,23 @@ fn tapa_a_142_em(world: [f32; 2]) -> bool {
 /// `=140`) tapava a ponta de baixo do losango — tem de REPROVAR; a `-4,2` (a cura) passa.
 #[test]
 fn a_regua_reprova_a_142_a_menos_3_2_e_aprova_a_menos_4_2() {
-    assert!(tapa_a_142_em([0.0, -3.2]), "a -3,2 a ficha tapava a galáxia (foto de 15/10)");
-    assert!(!tapa_a_142_em([0.0, -4.2]), "a -4,2 ela pousa abaixo da galáxia");
+    assert!(
+        tapa_a_142_em([0.0, -3.2]),
+        "a -3,2 a ficha tapava a galáxia (foto de 15/10)"
+    );
+    assert!(
+        !tapa_a_142_em([0.0, -4.2]),
+        "a -4,2 ela pousa abaixo da galáxia"
+    );
 }
 
 /// ⭐ **CONTROLO POSITIVO feito à mão**: uma ficha posta no meio da galáxia da `=142` tapa.
 #[test]
 fn a_regua_reprova_uma_ficha_posta_sobre_a_figura() {
-    assert!(tapa_a_142_em([0.0, 0.0]), "no centro da galáxia a ficha tapa-a");
+    assert!(
+        tapa_a_142_em([0.0, 0.0]),
+        "no centro da galáxia a ficha tapa-a"
+    );
 }
 
 /// ⭐ **A SONDA** — a tabela cena → ficha → tapa/livre, com a sobreposição e as duas curas medidas.

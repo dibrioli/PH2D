@@ -439,12 +439,11 @@ fn medida_luz2d_w5o_lastro() {
         let hrc_fio_por_sonda = chave("PH2D_W5S_SONDA", produto.hrc_fio_por_sonda);
         // ⭐ W5t: `PH2D_W5T_3D=0|1` — a holográfica despachada em 3D.
         let hrc_grade_3d = chave("PH2D_W5T_3D", produto.hrc_grade_3d);
-        // ⭐ W5u: `PH2D_W5U_CONES=<n>` · `PH2D_W5U_PARES=<n>` · `PH2D_W5U_RGB=0|1` (omissão: a do produto).
+        // ⭐ W5u: `PH2D_W5U_CONES=<n>` · `PH2D_W5U_PARES=<n>` (omissão: a do produto).
         let num = |k: &str, padrao: u32| std::env::var(k).map_or(padrao, |v| v.parse().expect(k));
         let w5u = |c: Config| Config {
             hrc_cones_por_fio: num("PH2D_W5U_CONES", c.hrc_cones_por_fio),
             hrc_pares_na_subida: num("PH2D_W5U_PARES", c.hrc_pares_na_subida),
-            hrc_acumulado_rgb: chave("PH2D_W5U_RGB", c.hrc_acumulado_rgb),
             ..c
         };
         (

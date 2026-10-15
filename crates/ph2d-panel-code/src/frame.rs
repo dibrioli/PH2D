@@ -37,6 +37,8 @@ pub enum Badge {
     Reloaded { objects: usize },
     /// O texto não compila: a versão anterior continua; `line` 1-based.
     Refused { line: Option<u32> },
+    /// Gravado, e nenhum objecto corre este script (não há recarga a relatar).
+    Saved,
 }
 
 /// Tudo o que um quadro do editor pinta.

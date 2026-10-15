@@ -50,6 +50,7 @@ impl StatusLine {
             Badge::Reloaded { objects } => (tr_with("code.status.reloaded", &[("count", objects)]), Tone::Success),
             Badge::Refused { line: Some(l) } => (tr_with("code.status.refused_line", &[("line", l)]), Tone::Error),
             Badge::Refused { line: None } => (tr("code.status.refused").to_owned(), Tone::Error),
+            Badge::Saved => (tr("code.status.saved_unused").to_owned(), Tone::Plain),
         });
         Self { position, problems, badge }
     }

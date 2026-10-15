@@ -50,7 +50,6 @@ pub(crate) mod text_style_rows;
 /// ⭐ A tabela `id da linha ⇄ tema` do menu de tema (as duas famílias).
 pub mod theme_menu;
 pub use panel_ids::{PANEL_MOTION_GRAPH, PANEL_PHYSICS, PANEL_TIMELINE};
-use ph2d_i18n::tr;
 pub mod left_rail;
 pub mod pre_populate;
 pub mod pre_populate_blender;
@@ -169,7 +168,7 @@ use crate::interaction::{
 };
 use crate::zones::Rect;
 use bumpalo::Bump;
-use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_a11y::{Node, NodeId};
 use ph2d_host::{KeyEvent, PointerEvent};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -666,16 +665,10 @@ impl HeroScreen {
         observed
     }
 
+    /// O nó `Window` (com o `Document` da aba de família activa como filho) — ver
+    /// [`surface_input::sync_a11y`], que monta a árvore inteira.
     pub fn build_a11y(&self, viewport: Rect) -> Node {
-        NodeBuilder::new(Role::Window)
-            .label(tr("chrome.hero.ph2d_editor"))
-            .bounds(
-                viewport.x as f64,
-                viewport.y as f64,
-                viewport.w as f64,
-                viewport.h as f64,
-            )
-            .build()
+        surface_input::window_node(self, viewport)
     }
 }
 

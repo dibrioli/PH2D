@@ -43,6 +43,25 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.fold.ellipsis" => "…",
         // O nó de acessibilidade do texto do script (E12).
         "code.a11y.document" => "Script",
+        // E13: os comandos da aba nos menus da barra e no Ctrl+K (o atalho no rótulo, como o File).
+        "code.cmd.save" => "Save Script \u{00b7} Cmd+S",
+        "code.cmd.find" => "Find\u{2026} \u{00b7} Cmd+F",
+        "code.cmd.replace" => "Replace\u{2026} \u{00b7} Cmd+H",
+        "code.cmd.goto" => "Go to Line\u{2026} \u{00b7} Cmd+G",
+        "code.cmd.fold_all" => "Fold All",
+        "code.cmd.unfold_all" => "Unfold All",
+        // E11: a lista de scripts do projeto, à esquerda dentro da aba.
+        "code.list.title" => "Scripts",
+        "code.list.filter" => "Filter",
+        "code.list.new" => "New script",
+        "code.list.rename" => "Rename",
+        "code.list.delete" => "Delete",
+        "code.list.no_match" => "No script matches",
+        "code.list.users" => "{count} objects",
+        "code.list.users_one" => "1 object",
+        "code.list.in_use" => "\u{201c}{name}\u{201d} is used by {count} object(s) \u{2014} it was not deleted",
+        "code.list.show" => "Show the script list",
+        "code.list.hide" => "Hide the script list",
         _ => return None,
     })
 }

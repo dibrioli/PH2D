@@ -123,7 +123,7 @@ fn a11y_root_is_window() {
     crate::test_support::ensure_panel_registry();
     let h = HeroScreen::new(NodeId(1));
     let node = h.build_a11y(ipad12_viewport());
-    assert_eq!(node.role(), Role::Window);
+    assert_eq!(node.role(), ph2d_a11y::Role::Window);
 }
 
 #[test]

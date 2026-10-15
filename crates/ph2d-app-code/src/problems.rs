@@ -42,14 +42,14 @@ pub fn culprit_on_line(
         .map(|e| e.range.clone())
 }
 
-/// Os problemas da aba. `saved` = o diagnóstico do Luau para o texto salvo, e só conta enquanto o
-/// buffer é esse texto (`dirty == false`): com o texto mexido a linha dele já não é a do ecrã.
+/// Os problemas da aba. `saved` = o diagnóstico do Luau para o texto salvo e a linha (0-based) onde
+/// ele está AGORA no buffer — quem chama segue-a pelas edições, ou não o passa (ver
+/// `CodeDoc::problems`).
 #[must_use]
 pub fn problems(
     text: &Text,
     errors: &[SyntaxError],
-    saved: Option<&ScriptDiagnostic>,
-    dirty: bool,
+    saved: Option<(&ScriptDiagnostic, usize)>,
 ) -> Vec<Problem> {
     let mut out: Vec<Problem> = errors
         .iter()
@@ -65,12 +65,8 @@ pub fn problems(
         .collect();
     // Um erro por linha: o do tree-sitter que começa primeiro.
     out.dedup_by_key(|p| p.line);
-    if let Some(d) = saved.filter(|_| !dirty)
-        && let Some(line) = d.line
-    {
-        let line = (line as usize)
-            .saturating_sub(1)
-            .min(text.line_count().saturating_sub(1));
+    if let Some((d, line)) = saved {
+        let line = line.min(text.line_count().saturating_sub(1));
         match out.iter_mut().find(|p| p.line == line) {
             Some(p) => d.message.clone_into(&mut p.message),
             None => out.push(Problem {

@@ -40,15 +40,15 @@ impl App {
             && let PhysicalKey::Code(code) = physical_key
         {
             match code {
-                // ⚠️ **Ctrl+Shift+S é o `Save As…`**, e o par é o mesmo do `Ctrl+Shift+Z` — o
-                // `shift` é PERGUNTADO, senão os dois gestos
-                // ficam indistinguíveis, que é acidente e não desenho.
-                //
-                // ⚠️ E os dois chamam a MESMA função do menu Ficheiro (`crate::project_io`): duas
-                // portas para o mesmo gesto é como um `Save` do menu acabaria a gravar noutro
-                // sítio que o `Ctrl+S`.
+                // ⚠️ Ctrl+Shift+S é o `Save As…`. O teclado levanta a BANDEIRA do menu Ficheiro e
+                // o dreno chama o `project_save_gesture` (uma porta): antes dele o editor de scripts
+                // aplica as abas com ● (`ph2d_app_code::frame`).
                 KeyCode::KeyS => {
-                    self.project_save_gesture(self.modifiers.shift_key());
+                    let shift = self.modifiers.shift_key();
+                    match self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                        Some(h) => (h.file_menu.save, h.file_menu.save_as) = (!shift, shift),
+                        None => self.project_save_gesture(shift),
+                    }
                     return true;
                 }
                 // ⚠️ **Abrir PERGUNTA sempre** — é o gesto que deita fora o trabalho não

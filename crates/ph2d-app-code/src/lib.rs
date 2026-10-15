@@ -9,6 +9,7 @@
 //!
 //! [`ScriptId`]: ph2d_script::ScriptId
 
+pub mod commands;
 mod console;
 mod doc;
 mod docs;
@@ -16,6 +17,7 @@ mod edit;
 mod find;
 mod frame;
 mod keys;
+pub mod list;
 mod pointer;
 pub mod problems;
 pub mod smoke;

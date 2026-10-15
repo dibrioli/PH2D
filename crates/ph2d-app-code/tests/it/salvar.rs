@@ -122,7 +122,8 @@ fn sem_objectos_o_selo_diz_gravado() {
     assert_eq!(m.docs().badge_of(ids[0]), Some(Badge::Saved));
 }
 
-/// File ▸ Save com a aba de código ACTIVA aplica-a também; com a Cena activa, a aba fica com o ●.
+/// File ▸ Save com a aba de código ACTIVA aplica-a; ⭐ e com a Cena activa também aplica as abas com
+/// ● (decisão do dono 15/10: «salvar = guardado» — era a lei oposta até à Onda 1).
 #[test]
 fn o_save_do_menu_aplica_a_aba_activa() {
     let (mut m, ids) = Mesa::new(&[("bob.luau", BOB)]);
@@ -131,15 +132,12 @@ fn o_save_do_menu_aplica_a_aba_activa() {
     m.hero.documents.activate(None);
     m.hero.file_menu.save = true;
     m.quadro();
-    assert_eq!(
-        m.texto_salvo(ids[0]),
-        BOB,
-        "com a Cena activa o menu não toca na aba"
-    );
-    assert!(m.docs().is_dirty(ids[0]));
+    assert_ne!(m.texto_salvo(ids[0]), BOB, "com a Cena activa a aba com ● é aplicada");
+    assert!(!m.docs().is_dirty(ids[0]));
     m.pede(ids[0]); // volta a activar a aba
+    m.escreve(ids[0], "-- y\n");
     m.hero.file_menu.save = true;
     m.quadro();
-    assert_ne!(m.texto_salvo(ids[0]), BOB);
+    assert!(m.texto_salvo(ids[0]).contains("-- y"));
     assert!(!m.docs().is_dirty(ids[0]));
 }

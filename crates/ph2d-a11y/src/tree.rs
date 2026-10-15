@@ -69,6 +69,17 @@ impl Tree {
         removed
     }
 
+    /// Os ids na árvore, por ordem.
+    pub fn ids(&self) -> impl Iterator<Item = NodeId> + '_ {
+        self.nodes.keys().copied()
+    }
+
+    /// O nó `id`, se está na árvore.
+    #[must_use]
+    pub fn get(&self, id: NodeId) -> Option<&Node> {
+        self.nodes.get(&id)
+    }
+
     pub fn set_focus(&mut self, id: Option<NodeId>) {
         self.focus = id;
     }

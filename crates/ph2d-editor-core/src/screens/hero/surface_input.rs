@@ -31,9 +31,40 @@ fn key_of(k: BoardKey) -> Key {
     }
 }
 
+/// A roda: o Shift vem da cache que a shell actualiza a cada mudança de modificadores.
 pub(super) fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> Option<bool> {
+    let shift = hero.store.shift_held();
     let (f, id) = hero.documents.active_surface_mut()?;
-    Some(f.wheel(id, x, y, dy))
+    Some(f.wheel(id, x, y, dy, shift))
+}
+
+/// Os comandos da aba de família activa (vazio sem ela).
+#[must_use]
+pub fn commands(hero: &HeroScreen) -> Vec<crate::doc_surface::DocCommand> {
+    let Some(tab) = hero.documents.surface_active() else {
+        return Vec::new();
+    };
+    hero.documents
+        .surfaces()
+        .families
+        .get(usize::from(tab.family))
+        .map(|f| f.commands(tab.id))
+        .unwrap_or_default()
+}
+
+/// Um clique (linha de menu ou escolha do `Ctrl+K`) num comando da aba activa. `true` = tomado.
+pub(super) fn command(hero: &mut HeroScreen, event: crate::interaction::WidgetEvent) -> bool {
+    let crate::interaction::WidgetEvent::Click(cmd) = event else {
+        return false;
+    };
+    let taken = hero
+        .documents
+        .active_surface_mut()
+        .is_some_and(|(f, id)| f.command(id, cmd));
+    if taken && hero.store.context_menu().is_some() {
+        hero.store.close_context_menu();
+    }
+    taken
 }
 
 pub(super) fn pointer(
@@ -88,4 +119,53 @@ pub(super) fn compose(hero: &mut HeroScreen, c: Compose<'_>) -> Option<bool> {
 pub fn undo(hero: &mut HeroScreen, redo: bool) -> Option<bool> {
     let (f, id) = hero.documents.active_surface_mut()?;
     Some(f.undo(id, redo))
+}
+
+/// O nó `Window` do ecrã; com uma aba de família activa, o `Document` dela é o filho.
+#[must_use]
+pub(super) fn window_node(hero: &HeroScreen, viewport: crate::zones::Rect) -> ph2d_a11y::Node {
+    let doc = surface_a11y(hero).first().map(|(id, _)| *id);
+    let b = ph2d_a11y::NodeBuilder::new(ph2d_a11y::Role::Window)
+        .label(ph2d_i18n::tr("chrome.hero.ph2d_editor"))
+        .bounds(
+            f64::from(viewport.x),
+            f64::from(viewport.y),
+            f64::from(viewport.w),
+            f64::from(viewport.h),
+        );
+    match doc {
+        Some(d) => b.children(vec![d]).build(),
+        None => b.build(),
+    }
+}
+
+fn surface_a11y(hero: &HeroScreen) -> Vec<(ph2d_a11y::NodeId, ph2d_a11y::Node)> {
+    let Some(tab) = hero.documents.surface_active() else {
+        return Vec::new();
+    };
+    hero.documents
+        .surfaces()
+        .families
+        .get(usize::from(tab.family))
+        .map(|f| f.a11y(tab.id))
+        .unwrap_or_default()
+}
+
+/// ⭐ **A árvore de acessibilidade do ecrã** (E12): o `Window` na raiz de `tree` e, com uma aba de
+/// família activa, os nós dela (o `Document` filho do `Window`, um `TextRun` por linha visível). Um
+/// nó que deixou de existir (a linha saiu da vista ao rolar, a aba fechou) sai da árvore.
+pub fn sync_a11y(hero: &HeroScreen, tree: &mut ph2d_a11y::Tree, viewport: crate::zones::Rect) {
+    let root = tree.root();
+    let mut nodes = surface_a11y(hero);
+    nodes.insert(0, (root, window_node(hero, viewport)));
+    let keep: std::collections::BTreeSet<ph2d_a11y::NodeId> = nodes.iter().map(|(id, _)| *id).collect();
+    let stale: Vec<ph2d_a11y::NodeId> = tree.ids().filter(|id| !keep.contains(id)).collect();
+    for id in stale {
+        tree.remove(id);
+    }
+    for (id, n) in nodes {
+        if tree.get(id) != Some(&n) {
+            tree.insert(id, n);
+        }
+    }
 }

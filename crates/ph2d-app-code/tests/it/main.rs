@@ -6,6 +6,8 @@ mod a11y;
 mod abrir;
 mod busca;
 mod console;
+mod lista;
+mod onda1;
 mod oraculo_lsp;
 mod salvar;
 mod teclado;

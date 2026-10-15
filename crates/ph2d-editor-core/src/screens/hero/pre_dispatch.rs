@@ -45,6 +45,10 @@ pub(super) fn run(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     }
     // Uma linha da barra de menus fecha o menu (mas não consome: quem age é o dono do id).
     super::menu_bar::close_on_row_click(hero, event);
+    // Um comando da aba de família activa (linha de menu ou `Ctrl+K`): os ids são dela.
+    if super::surface_input::command(hero, event) {
+        return true;
+    }
     // ⭐ Uma aba de LAYOUT arruma a tela para a tarefa (D7). Antes da aba de painel: os dois ids
     // são derivados e nenhum handler de chrome os alcança.
     if super::layout_tabs::apply_event(hero, event) {

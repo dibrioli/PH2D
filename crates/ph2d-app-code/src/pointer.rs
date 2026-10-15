@@ -133,10 +133,12 @@ impl CodeDoc {
         }
     }
 
-    /// A roda: sobre o console rola-o, senão rola o texto.
-    pub fn wheel(&mut self, x: f32, y: f32, dy: f32, console: &Store) {
+    /// A roda: sobre o console rola-o, senão rola o texto — na horizontal com o Shift.
+    pub fn wheel(&mut self, x: f32, y: f32, dy: f32, shift: bool, console: &Store) {
         if self.console_view.area().contains(x, y) {
             self.console_view.scroll_by(dy, console.len());
+        } else if shift {
+            self.view.scroll_x_by(-dy);
         } else {
             self.view.scroll_by(-dy);
         }

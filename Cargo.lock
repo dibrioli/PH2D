@@ -4885,6 +4885,7 @@ dependencies = [
  "ph2d-script",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-tool-registry",
  "ph2d-vector",
 ]
 

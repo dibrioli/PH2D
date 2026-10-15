@@ -45,6 +45,12 @@ pub(crate) struct CodeDoc {
     pub console_view: ConsoleView,
     /// O diagnóstico do Luau para o texto SALVO (`None` = compilou, ou ainda não foi lido).
     pub saved_diag: Option<ScriptDiagnostic>,
+    /// Onde ele mora no buffer: o byte do início da linha (segue as edições) e se era um erro de
+    /// SINTAXE (esse o tree-sitter mostra vivo; os outros — uma declaração `ph2d.property` — ficam
+    /// na calha enquanto há ●).
+    diag_anchor: Option<(usize, bool)>,
+    /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
+    pub last_input_ns: u128,
     pub badge: Option<Badge>,
     /// A composição em curso; `true` = nasceu de uma tecla morta (a próxima tecla desfá-la).
     pub preedit: Option<(String, bool)>,
@@ -73,6 +79,8 @@ impl CodeDoc {
             find_view: FindBarView::default(),
             console_view: ConsoleView::default(),
             saved_diag: None,
+            diag_anchor: None,
+            last_input_ns: 0,
             badge: None,
             preedit: None,
             save: None,
@@ -91,7 +99,7 @@ impl CodeDoc {
         if syntax_too {
             self.syntax.edit(edits, self.buffer.text());
         }
-        for b in &mut self.folded {
+        for b in self.folded.iter_mut().chain(self.diag_anchor.iter_mut().map(|a| &mut a.0)) {
             for e in edits {
                 *b = map_byte(*b, e);
             }
@@ -122,16 +130,65 @@ impl CodeDoc {
         self.folded.retain(|b| starts.contains(b));
     }
 
-    /// Os problemas desta revisão (E7).
+    /// Os problemas desta revisão (E7). O diagnóstico do texto salvo mostra-se na linha onde o seu
+    /// texto foi parar; um erro de sintaxe sai com o ● (o tree-sitter mostra-o vivo).
     pub fn problems(&mut self) -> Vec<Problem> {
         self.derive();
         let dirty = self.buffer.is_dirty();
-        problems(
-            self.buffer.text(),
-            &self.derived.errors,
-            self.saved_diag.as_ref(),
-            dirty,
-        )
+        let t = self.buffer.text();
+        let saved = match (&self.saved_diag, self.diag_anchor) {
+            (Some(d), Some((byte, syntax))) if !(dirty && syntax) => {
+                Some((d, t.line_of_byte(byte.min(t.len()))))
+            }
+            _ => None,
+        };
+        problems(t, &self.derived.errors, saved)
+    }
+
+    /// O diagnóstico do Luau para o texto salvo (lido da cena em todo quadro): ancora-o quando muda.
+    pub fn set_saved_diag(&mut self, diag: Option<ScriptDiagnostic>) {
+        if diag == self.saved_diag {
+            return;
+        }
+        self.derive();
+        let t = self.buffer.text();
+        self.diag_anchor = diag.as_ref().and_then(|d| d.line).map(|n| {
+            let line = (n as usize)
+                .saturating_sub(1)
+                .min(t.line_count().saturating_sub(1));
+            let syntax = crate::problems::culprit_on_line(t, &self.derived.errors, line).is_some();
+            (t.byte_of_line(line), syntax)
+        });
+        self.saved_diag = diag;
+    }
+
+    /// Dobra (ou desdobra) todas as dobras do texto.
+    pub fn fold_all(&mut self, fold: bool) {
+        self.derive();
+        self.folded = if fold {
+            let t = self.buffer.text();
+            self.derived.folds.iter().map(|f| t.byte_of_line(f.start_line)).collect()
+        } else {
+            Vec::new()
+        };
+        self.folded.sort_unstable();
+        self.folded.dedup();
+        // O cursor escondido sobe para o cabeçalho da dobra de fora (o idioma do VS Code).
+        let t = self.buffer.text();
+        let line = t.line_of_byte(self.buffer.selection().primary().head);
+        let outer = self
+            .derived
+            .folds
+            .iter()
+            .filter(|f| fold && f.start_line < line && line <= f.end_line)
+            .map(|f| f.start_line)
+            .min();
+        if let Some(start) = outer {
+            let b = t.byte_of_line(start);
+            self.buffer.set_selection(ph2d_code_buffer::Selection::single(
+                ph2d_code_buffer::Range::cursor(b),
+            ));
+        }
     }
 
     pub fn fold_marks(&mut self) -> Vec<FoldMark> {
@@ -218,6 +275,7 @@ impl CodeDoc {
         ts: &mut TextSystem,
         theme: &Theme,
         console: &crate::console::Store,
+        blink_on: bool,
     ) {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
         let problems = self.problems();
@@ -249,7 +307,7 @@ impl CodeDoc {
             matches: if find.open { &find.matches } else { &[] },
             current_match: if find.open { find.current } else { None },
             preedit,
-            caret_on: find.focus.is_none(),
+            caret_on: find.focus.is_none() && blink_on,
             tab: TAB,
             badge: badge.as_ref(),
         };

@@ -137,6 +137,26 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
     // ── As BARRAS do módulo na mão (F4): ①, ② com os pulldowns, ④ — pelo nome do LUGAR ──
     groups.extend(global_palette_bars::groups(&hero.store));
 
+    // ── Os comandos da aba de FAMÍLIA activa (o editor de scripts): os das linhas de menu dela ──
+    let doc: Vec<PaletteItem> = super::surface_input::commands(hero)
+        .into_iter()
+        .map(|c| PaletteItem {
+            label: c.label,
+            id: c.id,
+            keywords: "",
+        })
+        .collect();
+    if !doc.is_empty() {
+        groups.push(PaletteGroup {
+            title: tr("chrome.palette.document").into(),
+            color: ColorToken::NodeCatSource,
+            subs: vec![PaletteSub {
+                title: None,
+                items: doc,
+            }],
+        });
+    }
+
     // ── Os PAINÉIS registados: "mostrar/esconder X", o verbo que mais falta ──
     // É aqui que uma paleta se paga: um painel sem chip no rail e sem pill na barra (o editor de
     // áudio, o Tuning da aquarela, os params do Motion) só é alcançável por quem sabe a tecla.

@@ -396,6 +396,37 @@ impl WidgetStore {
             .map_or(&[], |m| &m.rows)
     }
 
+    /// ⭐ Publica os comandos da aba de família activa (escrito em todo quadro, vazio incluído):
+    /// cada linha vira botão (sem estado um clique no menu morre) e pinta-se no fim do menu dela.
+    pub fn set_doc_commands(
+        &mut self,
+        rows: Vec<(crate::interaction::ContextMenuKind, ph2d_a11y::NodeId, String)>,
+    ) {
+        for &(_, id, _) in &rows {
+            if self.button_state(id).is_none() {
+                self.register(
+                    id,
+                    crate::interaction::InteractiveState::Button {
+                        state: crate::widget::ButtonState::Normal,
+                    },
+                );
+            }
+        }
+        self.area_menus.doc_rows = rows;
+    }
+
+    /// As linhas que a aba de família activa soma a `kind`.
+    pub fn doc_menu_rows(
+        &self,
+        kind: crate::interaction::ContextMenuKind,
+    ) -> impl Iterator<Item = (ph2d_a11y::NodeId, &str)> {
+        self.area_menus
+            .doc_rows
+            .iter()
+            .filter(move |(k, ..)| *k == kind)
+            .map(|(_, id, l)| (*id, l.as_str()))
+    }
+
     /// O que um módulo acrescenta a `kind` neste quadro — vazio quando ninguém contribui.
     #[must_use]
     pub fn menu_contrib(

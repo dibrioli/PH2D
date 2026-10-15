@@ -153,6 +153,19 @@ pub fn surface_title(doc: &DocTab) -> String {
 /// de família têm os controlos registados (sem `InteractiveState` uma aba nasce morta).
 pub fn follow_surfaces(hero: &mut HeroScreen) {
     hero.documents.follow_surfaces();
+    use crate::doc_surface::DocMenu;
+    use crate::interaction::ContextMenuKind as K;
+    let rows = super::surface_input::commands(hero)
+        .into_iter()
+        .map(|c| {
+            let menu = match c.menu {
+                DocMenu::File => K::MenuBarFile,
+                DocMenu::Edit => K::MenuBarEdit,
+            };
+            (menu, c.id, c.label)
+        })
+        .collect();
+    hero.store.set_doc_commands(rows);
     for (tab, _) in hero.documents.surfaces().tabs() {
         for id in [surface_tab_node_id(tab), surface_close_node_id(tab)] {
             if hero.store.button_state(id).is_none() {

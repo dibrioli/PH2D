@@ -65,6 +65,22 @@ pub enum Compose<'a> {
     DeadKey(ComposeKey),
 }
 
+/// O menu da barra onde um comando de documento entra.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DocMenu {
+    File,
+    Edit,
+}
+
+/// Um comando de uma aba de família (ver [`DocumentSurface::commands`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DocCommand {
+    pub id: ph2d_a11y::NodeId,
+    /// O rótulo já traduzido, com o atalho («Go to Line… · Cmd+G»).
+    pub label: String,
+    pub menu: DocMenu,
+}
+
 /// O que um evento do rato traz além da posição.
 pub struct PointerInput<'a> {
     pub text: &'a mut TextSystem,
@@ -82,8 +98,8 @@ pub trait DocumentSurface: Any {
     fn pointer(&mut self, id: u64, input: PointerInput<'_>, kind: PointerKind, button: PointerButton, x: f32, y: f32) -> bool;
     /// Movimento (com ou sem botão). `true` = tomado.
     fn pointer_move(&mut self, id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool;
-    /// Roda sobre a área. `true` = tomada.
-    fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32) -> bool;
+    /// Roda sobre a área (`shift` = o Shift premido: rolar na horizontal). `true` = tomada.
+    fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool;
     /// Uma tecla premida ou solta; `text` = o que ela escreve; `paste` = a área de transferência no Ctrl+V.
     fn key(&mut self, id: u64, text_system: &mut TextSystem, key: Key, mods: Modifiers, pressed: bool, text: Option<&str>, paste: Option<String>) -> KeyOutcome;
     /// Composição (IME / tecla morta). `true` = tomada.
@@ -105,6 +121,17 @@ pub trait DocumentSurface: Any {
     /// A aba que a família quer que fique activa (abriu um documento). Lida e limpa pelo hero.
     fn take_focus_request(&mut self) -> Option<u64> {
         None
+    }
+    /// Os comandos da aba: linhas nos menus da barra (com o atalho no rótulo) e na paleta `Ctrl+K`,
+    /// só enquanto a aba está activa.
+    fn commands(&self, id: u64) -> Vec<DocCommand> {
+        let _ = id;
+        Vec::new()
+    }
+    /// Corre o comando `cmd` (um id de [`Self::commands`]). `true` = era dela.
+    fn command(&mut self, id: u64, cmd: ph2d_a11y::NodeId) -> bool {
+        let _ = (id, cmd);
+        false
     }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

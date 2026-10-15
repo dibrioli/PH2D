@@ -58,6 +58,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.palette.tools" => "Tools",
         "chrome.palette.panels" => "Panels",
         "chrome.palette.menus" => "Menus",
+        "chrome.palette.document" => "This tab",
         "chrome.menu_bar.file" => "File",
         "chrome.menu_bar.edit" => "Edit",
         "chrome.menu_bar.view" => "View",

@@ -12,12 +12,12 @@ use crate::console::Store;
 use crate::doc::CodeDoc;
 use ph2d_a11y::{Node, NodeId};
 use ph2d_editor_core::doc_surface::{
-    Compose, DocTab, DocumentSurface, Key, KeyOutcome, PointerInput,
+    Compose, DocCommand, DocTab, DocumentSurface, Key, KeyOutcome, PointerInput,
 };
 use ph2d_editor_core::ime::ComposeKey;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{Modifiers, PointerButton, PointerKind};
-use ph2d_panel_code::{Badge, FindHit, Problem, count_text};
+use ph2d_panel_code::{Badge, FindHit, Problem, ScriptListView, count_text};
 use ph2d_script::ScriptId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -44,6 +44,18 @@ pub struct CodeDocs {
     pub(crate) smoke_done: bool,
     /// A área da aba no último quadro (o rato pergunta por ela).
     pub(crate) area: Rect,
+    /// E11: a lista de scripts do projeto, à esquerda.
+    pub(crate) list: crate::list::ListState,
+    /// O relógio do chrome (ns) e o «movimento reduzido» — o cursor pisca por eles.
+    pub(crate) clock: (u128, bool),
+}
+
+/// O meio-período do piscar do cursor: o token `Slow` (o do piscar do F4, 1,25 Hz — abaixo dos 3 Hz
+/// da WCAG 2.3.1). Aceso um período, apagado outro; uma tecla recomeça-o aceso.
+pub(crate) fn blink_on(now_ns: u128, last_input_ns: u128, steady: bool) -> bool {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let half = (f64::from(ph2d_tokens::Duration::Slow.ms()) * 1e6) as u128;
+    steady || (now_ns.saturating_sub(last_input_ns) / half.max(1)).is_multiple_of(2)
 }
 
 impl Default for CodeDocs {
@@ -55,6 +67,8 @@ impl Default for CodeDocs {
             focus: None,
             smoke_done: false,
             area: Rect::new(0.0, 0.0, 0.0, 0.0),
+            list: crate::list::ListState::default(),
+            clock: (0, false),
         }
     }
 }
@@ -62,6 +76,37 @@ impl Default for CodeDocs {
 impl CodeDocs {
     pub(crate) fn doc(&mut self, id: u64) -> Option<&mut CodeDoc> {
         self.docs.iter_mut().find(|d| d.script.0 == id)
+    }
+
+    /// A aba `id` com uma tecla, um clique ou um comando agora: o cursor fica aceso.
+    fn touched(&mut self, id: u64) -> Option<&mut CodeDoc> {
+        let now = self.clock.0;
+        let d = self.doc(id)?;
+        d.last_input_ns = now;
+        Some(d)
+    }
+
+    /// O relógio do chrome (`hero.store.clock_ns()`) e o «movimento reduzido» (cursor fixo).
+    pub fn set_clock(&mut self, now_ns: u128, steady: bool) {
+        self.clock = (now_ns, steady);
+    }
+
+    /// O cursor da aba `id` está aceso agora?
+    #[must_use]
+    pub fn caret_lit(&self, id: ScriptId) -> bool {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .is_some_and(|d| blink_on(self.clock.0, d.last_input_ns, self.clock.1))
+    }
+
+    /// As áreas da lista e do documento dentro da aba.
+    fn split_area(&self, area: Rect) -> (Rect, Rect) {
+        let w = ScriptListView::width(self.list.open).min(area.w);
+        (
+            Rect::new(area.x, area.y, w, area.h),
+            Rect::new(area.x + w, area.y, (area.w - w).max(0.0), area.h),
+        )
     }
 
     /// Abre (ou activa) o script `id`: um documento aberto ganha o foco; um estacionado volta como
@@ -118,6 +163,12 @@ impl CodeDocs {
             .iter()
             .find(|d| d.script == id)
             .map(|d| d.view.visible_lines())
+    }
+
+    /// A rolagem `(x, y)` da vista do script `id`, em píxeis.
+    #[must_use]
+    pub fn scroll_of(&self, id: ScriptId) -> Option<(f32, f32)> {
+        self.docs.iter().find(|d| d.script == id).map(|d| d.view.scroll())
     }
 
     /// O documento estacionado de `id` (fechado com ●), se o há.
@@ -204,8 +255,21 @@ impl DocumentSurface for CodeDocs {
         theme: &Theme,
     ) {
         self.area = area;
+        let (list_r, doc_r) = self.split_area(area);
+        let dirty: Vec<ScriptId> = self
+            .docs
+            .iter()
+            .chain(self.parked.values())
+            .filter(|d| d.buffer.is_dirty())
+            .map(|d| d.script)
+            .collect();
+        self.list
+            .paint(list_r, id, &|s| dirty.contains(&s), scene, text, theme);
+        let (now, steady) = self.clock;
+        let typing = self.list.focus.is_none();
         if let Some((doc, store)) = self.split(id) {
-            doc.paint(area, scene, text, theme, store);
+            let lit = typing && blink_on(now, doc.last_input_ns, steady);
+            doc.paint(doc_r, scene, text, theme, store, lit);
         }
     }
 
@@ -218,7 +282,17 @@ impl DocumentSurface for CodeDocs {
         x: f32,
         y: f32,
     ) -> bool {
-        let area = self.area;
+        let (_, area) = self.split_area(self.area);
+        if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
+            && let Some(h) = self.list.view.hit(input.text, x, y)
+        {
+            self.list.press(h, input.now_ns);
+            return true;
+        }
+        if matches!(kind, PointerKind::Down) {
+            self.list.focus = None;
+            let _ = self.touched(id);
+        }
         let Some((doc, store)) = self.split(id) else {
             return false;
         };
@@ -226,8 +300,8 @@ impl DocumentSurface for CodeDocs {
             (PointerKind::Down, PointerButton::Primary) => {
                 doc.press(area, input.text, input.mods, input.now_ns, x, y, store)
             }
-            (PointerKind::Up, _) => doc.release() || area.contains(x, y),
-            _ => area.contains(x, y),
+            (PointerKind::Up, _) => doc.release() || self.area.contains(x, y),
+            _ => self.area.contains(x, y),
         }
     }
 
@@ -235,13 +309,15 @@ impl DocumentSurface for CodeDocs {
         self.doc(id).is_some_and(|d| d.drag_to(x, y))
     }
 
-    fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32) -> bool {
-        let area = self.area;
-        if !area.contains(x, y) {
+    fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
+        if !self.area.contains(x, y) {
             return false;
         }
+        if self.list.view.wheel(x, y, dy) {
+            return true;
+        }
         if let Some((doc, store)) = self.split(id) {
-            doc.wheel(x, y, dy, store);
+            doc.wheel(x, y, dy, shift, store);
         }
         true
     }
@@ -256,14 +332,35 @@ impl DocumentSurface for CodeDocs {
         text: Option<&str>,
         paste: Option<String>,
     ) -> KeyOutcome {
-        match self.doc(id) {
+        if self.list.focus.is_some() {
+            if !pressed {
+                return KeyOutcome {
+                    consumed: true,
+                    copy: None,
+                };
+            }
+            let k = crate::edit::FieldKey {
+                key,
+                mods,
+                text,
+                paste: paste.as_deref(),
+            };
+            let out = self.list.key(k);
+            if out.consumed {
+                return out;
+            }
+        }
+        match self.touched(id) {
             Some(d) => d.key(key, mods, pressed, text, paste.as_deref()),
             None => KeyOutcome::default(),
         }
     }
 
     fn compose(&mut self, id: u64, c: Compose<'_>) -> bool {
-        let Some(d) = self.doc(id) else { return false };
+        if self.list.focus.is_some() {
+            return false;
+        }
+        let Some(d) = self.touched(id) else { return false };
         if d.find.open && d.find.focus.is_some() {
             return false;
         }
@@ -300,7 +397,7 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn undo(&mut self, id: u64, redo: bool) -> bool {
-        self.doc(id).is_some_and(|d| {
+        self.touched(id).is_some_and(|d| {
             let did = d.undo(redo);
             d.reveal();
             did
@@ -323,6 +420,25 @@ impl DocumentSurface for CodeDocs {
 
     fn take_focus_request(&mut self) -> Option<u64> {
         self.focus.take()
+    }
+
+    fn commands(&self, id: u64) -> Vec<DocCommand> {
+        if self.docs.iter().any(|d| d.script.0 == id) {
+            crate::commands::commands()
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn command(&mut self, id: u64, cmd: ph2d_a11y::NodeId) -> bool {
+        self.list.focus = None;
+        self.touched(id).is_some_and(|d| {
+            let did = d.run(cmd);
+            if did {
+                d.reveal();
+            }
+            did
+        })
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -24,9 +24,11 @@ pub fn frame(sim: &mut SimWorld, mut host: Option<&mut ScriptHost>, hero: &mut H
             .is_some_and(|f| f.as_any().is::<CodeDocs>());
         ours.then_some(t.id)
     });
+    let clock = (hero.store.clock_ns(), hero.motion.reduced_motion());
     let Some(docs) = hero.documents.surfaces_mut().find_mut::<CodeDocs>() else {
         return;
     };
+    docs.set_clock(clock.0, clock.1);
     let world = sim.world_mut();
     if let Some(level) = crate::smoke::armed_level() {
         crate::smoke::stage(level, world, docs, selected);
@@ -43,12 +45,11 @@ pub fn frame(sim: &mut SimWorld, mut host: Option<&mut ScriptHost>, hero: &mut H
         }
         follow_library(docs, lib);
     }
-    let ask = save(
-        docs,
-        world,
-        host.as_deref_mut(),
-        our_active.filter(|_| menu_save),
-    );
+    docs.apply_list(world);
+    if let Some(lib) = world.get_resource::<ProjectScripts>() {
+        follow_library(docs, lib);
+    }
+    let ask = save(docs, world, host.as_deref_mut(), menu_save, our_active);
     if let Some(h) = host {
         hear(docs, h);
     }
@@ -77,13 +78,16 @@ fn follow_library(docs: &mut CodeDocs, lib: &ProjectScripts) {
     }
 }
 
-/// Os salvares pedidos (Ctrl+S na aba; File ▸ Save com a aba activa): o texto vai para a biblioteca
-/// — a cena recarrega no quadro seguinte, sem disco. Devolve o pedido de gravar o projeto.
+/// Os salvares pedidos (Ctrl+S na aba; File ▸ Save / Ctrl+S com QUALQUER aba activa): o texto vai
+/// para a biblioteca — a cena recarrega no quadro seguinte, sem disco. ⭐ Gravar o projeto aplica
+/// também toda aba com ● (decisão do dono: «salvar = guardado»; um texto partido deixa a versão
+/// anterior a correr — é o motor). Devolve o pedido de gravar o projeto.
 fn save(
     docs: &mut CodeDocs,
     world: &mut ph2d_ecs::World,
     mut host: Option<&mut ScriptHost>,
-    menu: Option<u64>,
+    menu: bool,
+    active: Option<u64>,
 ) -> Option<SaveKind> {
     let mut ask = None;
     let mut saving = Vec::new();
@@ -96,7 +100,8 @@ fn save(
                 k
             });
         }
-        if kind.is_some() || menu == Some(d.script.0) {
+        let by_menu = menu && (d.buffer.is_dirty() || active == Some(d.script.0));
+        if kind.is_some() || by_menu {
             saving.push(i);
         }
     }
@@ -141,9 +146,9 @@ fn hear(docs: &mut CodeDocs, h: &mut ScriptHost) {
         }
     }
     for d in &mut docs.docs {
-        d.saved_diag = match h.scene_info(d.script) {
+        d.set_saved_diag(match h.scene_info(d.script) {
             Some(ScriptInfo::Broken(diag)) => Some(diag.clone()),
             _ => None,
-        };
+        });
     }
 }

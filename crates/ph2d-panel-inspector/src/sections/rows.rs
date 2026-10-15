@@ -343,8 +343,36 @@ pub(crate) fn aviso(
     texto: &str,
     token: ColorToken,
 ) -> f32 {
+    aviso_em(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        texto,
+        token,
+        TypeToken::Sm,
+    )
+}
+
+/// O [`aviso`] num degrau da escala à escolha — o ERRO de um script sobe um (`Base`, dono 15/10:
+/// *«melhor aumentar um pouco o tamanho da font da mensagem de erro»*). A altura segue o texto.
+#[allow(clippy::too_many_arguments)]
+#[track_caller]
+pub(crate) fn aviso_em(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    texto: &str,
+    token: ColorToken,
+    tamanho: TypeToken,
+) -> f32 {
     crate::censo_dos_avisos::regista(texto);
-    let font = TypeToken::Sm.px();
+    let font = tamanho.px();
     let alta = ph2d_editor_core::paint::paint_text_block(
         text_system,
         scene,
@@ -432,6 +460,46 @@ mod aviso_tests {
             alta > uma_linha,
             "o aviso devolveu {alta} px, a altura de UMA linha ({uma_linha}) — quem empilha por \
              baixo vai escrever por cima da segunda linha"
+        );
+    }
+
+    /// ⭐ **O erro do script, um degrau acima (`Base`), QUEBRA e cabe na altura que devolve** — a
+    /// última linha de base mais a descida fica acima do `y` seguinte (CodeEditor, dono 15/10).
+    /// Medido: 2 linhas a 268 px, fundo 31,9 px contra o próximo `y` 34,5 px.
+    #[test]
+    fn o_aviso_num_degrau_acima_cabe_na_altura_que_devolve() {
+        let erro = "Expected identifier when parsing expression, got '=' (line 3)";
+        let mut ts = TextSystem::without_system_fonts();
+        let mut cena = VectorScene::new();
+        let tamanho = TypeToken::Base;
+        let proximo = aviso_em(
+            &mut cena,
+            &mut ts,
+            Theme::Dark,
+            0.0,
+            COLUNA,
+            0.0,
+            erro,
+            ColorToken::Danger,
+            tamanho,
+        );
+        let res = &cena.inner().encoding().resources;
+        let px = ph2d_text::displayed_font_px(tamanho.px());
+        assert!(tamanho.px() > TypeToken::Sm.px());
+        let mut bases: Vec<f32> = Vec::new();
+        for run in &res.glyph_runs {
+            assert_eq!(run.font_size, px, "o erro não saiu no degrau pedido");
+            let ty = run.transform.translation[1];
+            bases.extend(res.glyphs[run.glyphs.clone()].iter().map(|g| ty + g.y));
+        }
+        bases.sort_by(f32::total_cmp);
+        bases.dedup();
+        assert!(bases.len() >= 2, "o erro não quebrou em {COLUNA} px: {bases:?}");
+        // A descida das fontes da casa é < 0,3 em; o vão (`control_gap_px`) pode recebê-la.
+        let fundo = bases.last().unwrap() + 0.3 * px;
+        assert!(
+            fundo <= proximo,
+            "a última linha desce até {fundo}, a fileira seguinte começa em {proximo}"
         );
     }
 }

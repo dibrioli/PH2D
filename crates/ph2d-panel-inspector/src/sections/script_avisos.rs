@@ -17,6 +17,9 @@ use ph2d_editor_core::script_edits::{
 };
 use ph2d_i18n::{tr, tr_with};
 
+/// O erro do Luau sobe um degrau sobre os outros avisos (`Sm`), por pedido do dono (15/10).
+const ERRO: TypeToken = TypeToken::Base;
+
 /// **A frase de um erro** — com a LINHA deste script, quando o Luau a disse.
 fn erro(e: &InspectorScriptError) -> String {
     match e.line {
@@ -107,7 +110,7 @@ pub(super) fn avisos(
             );
         }
         InspectorScriptStatus::Broken(e) => {
-            y = super::rows::aviso(
+            y = super::rows::aviso_em(
                 scene,
                 text_system,
                 theme,
@@ -119,6 +122,7 @@ pub(super) fn avisos(
                     &[("msg", &erro(e))],
                 ),
                 ColorToken::Danger,
+                ERRO,
             );
         }
         InspectorScriptStatus::Ready => {
@@ -137,7 +141,7 @@ pub(super) fn avisos(
         }
     }
     if let Some(e) = &info.failure {
-        y = super::rows::aviso(
+        y = super::rows::aviso_em(
             scene,
             text_system,
             theme,
@@ -149,6 +153,7 @@ pub(super) fn avisos(
                 &[("msg", &erro(e))],
             ),
             ColorToken::Danger,
+            ERRO,
         );
     }
     if info.kept > 0 {

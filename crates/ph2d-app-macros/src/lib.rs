@@ -72,6 +72,8 @@ pub struct Macros {
     conferencias: conferencia::Conferencias,
     vistas: etapas::Cache,
     duracoes: instala::Duracoes,
+    /// O relógio do quadro corrente (o de [`Macros::quadro`]).
+    agora_us: u64,
 }
 
 thread_local! {
@@ -118,6 +120,29 @@ impl Macros {
         self.conferencias.a_conferir()
     }
 
+    /// **Depois de o Motion correr no quadro** (o lote do grafo, os params e o `Quadro`): os passos que
+    /// ele gravou NESTE quadro, no relógio dele — em [`Macros::quadro`] ainda não tinham acontecido.
+    pub fn depois_do_motion(&mut self, motion: &mut dyn ph2d_macro::Gravadora) {
+        let agora = self.agora_us;
+        if let Some(s) = self
+            .sessao
+            .as_mut()
+            .filter(|s| s.familia() == FamiliaDaMacro::Motion)
+        {
+            s.passos(motion, agora);
+        }
+    }
+
+    /// **A sprite que o Painter está a gravar**: o palco dela em cena cede-a ao traço vivo do editor
+    /// (uma 2.ª tomada sobre uma sprite com macro mostra o que o artista pinta, não a tomada antiga).
+    #[must_use]
+    pub fn sprite_gravada(&self) -> Option<u64> {
+        self.sessao
+            .as_ref()
+            .filter(|s| s.familia() == FamiliaDaMacro::Painter)
+            .map(sessao::Sessao::dono)
+    }
+
     #[must_use]
     pub fn gravando(&self) -> Option<FamiliaDaMacro> {
         self.sessao.as_ref().map(Sessao::familia)
@@ -126,13 +151,20 @@ impl Macros {
     /// **O quadro**: os pedidos por ordem, depois os passos que as famílias gravaram neste quadro.
     /// `agora_us` é o relógio do chamador (o núcleo nunca lê o de parede).
     pub fn quadro(&mut self, f: &mut Familias<'_>, c: &mut Cena<'_>, agora_us: u64) {
+        self.agora_us = agora_us;
         for r in std::mem::take(&mut self.pedidos) {
             self.aplica(r, f, c, agora_us);
         }
         if let Some(e) = self.conferencias.quadro(c) {
             self.erro_de_edicao = Some(e);
         }
-        if let Some(s) = self.sessao.as_mut() {
+        // O Painter consumiu a entrada do quadro antes desta fase; o Motion corre DEPOIS dela
+        // ([`Macros::depois_do_motion`]).
+        if let Some(s) = self
+            .sessao
+            .as_mut()
+            .filter(|s| s.familia() == FamiliaDaMacro::Painter)
+        {
             s.quadro(f, agora_us);
         }
         self.sincroniza(c);

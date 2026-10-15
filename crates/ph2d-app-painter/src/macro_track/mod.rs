@@ -245,10 +245,13 @@ impl PalcosDoPainter {
     /// **Sobe a tela de cada palco que toca e mudou** — só o retângulo que mudou desde a subida anterior,
     /// quando a ranhura já tem a tela daquele tamanho — e devolve as sprites a trocar no extract. Devolve
     /// primeiro as ranhuras dos palcos que se foram.
+    ///
+    /// `cede` = a sprite que o Painter está a gravar: mostra o traço vivo do editor, não a macro.
     pub fn sobe(
         &mut self,
         ranhuras: &mut dyn RanhurasDaCena,
         toasts: &mut ToastQueue,
+        cede: Option<u64>,
     ) -> Vec<TrocaDaSprite> {
         for id in self.soltas.drain(..) {
             ranhuras.solta(id);
@@ -298,7 +301,9 @@ impl PalcosDoPainter {
                     )));
                 }
             }
-            if let (Some(entity_bits), Some(texture_id)) = (p.sprite, p.ranhura) {
+            if let (Some(entity_bits), Some(texture_id)) = (p.sprite, p.ranhura)
+                && Some(entity_bits) != cede
+            {
                 trocas.push(TrocaDaSprite {
                     entity_bits,
                     texture_id,

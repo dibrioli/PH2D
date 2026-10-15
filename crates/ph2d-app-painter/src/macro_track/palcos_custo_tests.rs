@@ -25,6 +25,8 @@ const INICIO_S: f64 = 0.2;
 struct Variante {
     lado: u32,
     n: usize,
+    /// A sprite branca do produto (o papel: a composição parcial).
+    no_papel: bool,
     sim: SimWorld,
     palcos: PalcosDoPainter,
     t: f64,
@@ -41,7 +43,7 @@ fn quadro(v: &mut Variante, r: &mut SpriteRenderer, gpu: &GpuContext) -> (f64, f
     let t0 = std::time::Instant::now();
     v.palcos.segue(v.sim.world_mut());
     let segue = t0.elapsed().as_secs_f64() * 1e3;
-    let trocas = v.palcos.sobe(r, &mut ToastQueue::default());
+    let trocas = v.palcos.sobe(r, &mut ToastQueue::default(), None);
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     let total = t0.elapsed().as_secs_f64() * 1e3;
     assert_eq!(trocas.len(), v.n, "cada palco troca a sua sprite");
@@ -72,7 +74,14 @@ fn sonda_n_palcos_do_painter() {
             t0.elapsed().as_secs_f64() * 1e3,
             bytes.len() / 1024
         );
-        for n in NS {
+        let papel = ph2d_tool_painter::macro_track::roteiro::grava_no_papel(lado, 0, 4)
+            .expect("grava")
+            .0;
+        for (n, bytes, no_papel) in NS
+            .iter()
+            .map(|&n| (n, bytes.clone(), false))
+            .chain([(1, papel, true)])
+        {
             let mut sim = SimWorld::new();
             for _ in 0..n {
                 sim.world_mut().spawn((
@@ -86,6 +95,7 @@ fn sonda_n_palcos_do_painter() {
             vs.push(Variante {
                 lado,
                 n,
+                no_papel,
                 sim,
                 palcos: PalcosDoPainter::default(),
                 t: INICIO_S,
@@ -134,8 +144,12 @@ fn sonda_n_palcos_do_painter() {
         #[expect(clippy::cast_precision_loss, reason = "N pequeno")]
         let por = min / v.n as f64;
         eprintln!(
-            "  {:>4}² | {:>8} | {min:>13.3} | {med:>7.3} | {por:>13.3} | {:.3} + {:.3}",
-            v.lado, v.n, v.ms[i].0, v.ms[i].1
+            "  {:>4}² | {:>8} | {min:>13.3} | {med:>7.3} | {por:>13.3} | {:.3} + {:.3}{}",
+            v.lado,
+            v.n,
+            v.ms[i].0,
+            v.ms[i].1,
+            if v.no_papel { " · no papel" } else { "" }
         );
     }
     eprintln!("load depois: {}", carga().trim());
@@ -161,6 +175,7 @@ fn sonda_o_quadro_mais_caro_do_splash() {
     let mut v = Variante {
         lado: 1024,
         n: 1,
+        no_papel: false,
         sim,
         palcos: PalcosDoPainter::default(),
         t: 0.0,

@@ -43,7 +43,8 @@ impl crate::App {
             ..
         } = FrameGfx::of(gfx);
         painter_macros.segue(sim.world_mut());
-        let palcos = painter_macros.sobe(renderer, toasts);
+        let gravada = ph2d_app_macros::com(|m| m.sprite_gravada());
+        let palcos = painter_macros.sobe(renderer, toasts, gravada);
         palcos
             .into_iter()
             .map(|t| sim_extract::PreviewOverride {

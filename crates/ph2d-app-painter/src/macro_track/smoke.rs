@@ -1,6 +1,6 @@
 //! `PH2D_MACRO_SMOKE=1` — **o Splash** (`docs/Macros/01_plano_onda1.md` §6): uma tela branca 1024² com
-//! um `Macro` que pinta nela quatro pinceladas de Wet Paint
-//! ([`ph2d_tool_painter::macro_track::roteiro::grava_o_splash`]). A shell monta o clipe
+//! um `Macro` que pinta nela quatro pinceladas de Wet Paint, gravadas pela porta do produto (a sprite
+//! branca = papel branco: [`ph2d_tool_painter::macro_track::roteiro::grava_no_papel`]). A shell monta o clipe
 //! (`add_macro_clip`, laço, Autoplay) e põe a cena a correr: as pinceladas pousam e a água escorre entre
 //! elas, e cada volta do laço recua a macro à tela branca.
 
@@ -36,7 +36,7 @@ pub fn monta(
     )
     .map_err(|e| eprintln!("[macro smoke =1] could not spawn the canvas: {e}"))
     .ok()?;
-    let (doc, duracao) = ph2d_tool_painter::macro_track::roteiro::grava_o_splash(LADO, 0)?;
+    let (doc, duracao) = ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 4)?;
     sim.world_mut()
         .entity_mut(Entity::from_bits(bits))
         .insert(Macro {

@@ -58,6 +58,8 @@ impl crate::App {
             hero.gizmo.replace_selection(Some(bits));
             hero.set_panel_visible("timeline", true);
             hero.set_panel_visible("hierarchy", true);
+            // As etapas à vista: o painel MACROS (lista e propriedades) e a linha «Macro steps».
+            hero.set_panel_visible("macros", true);
         }
     }
 }

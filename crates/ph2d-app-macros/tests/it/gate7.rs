@@ -203,6 +203,11 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     b.carrega(ids::MACROS_RECORD);
     b.quadro();
     assert_eq!(b.m.gravando(), Some(FamiliaDaMacro::Painter));
+    assert_eq!(
+        b.m.sprite_gravada(),
+        Some(b.bits),
+        "a sprite que o Painter grava: o palco dela cede-a ao traço vivo"
+    );
     b.pinta();
     assert!(
         b.rect(ids::MACROS_RECORD).is_none(),
@@ -217,6 +222,11 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     b.carrega(ids::MACROS_STOP);
     b.quadro();
     assert_eq!(b.m.gravando(), None);
+    assert_eq!(
+        b.m.sprite_gravada(),
+        None,
+        "parada a gravação, a macro toca"
+    );
     let doc = ph2d_macro::codec::read(
         &b.sim
             .world()
@@ -691,4 +701,60 @@ fn gate7_a_conferencia_corre_fora_do_quadro_e_a_decisao_e_dos_bytes() {
         "os bytes que voltam já estavam decididos: nada a conferir"
     );
     assert_eq!(erro(&mut b), Some(ph2d_app_macros::erros::PORTA));
+}
+
+/// Uma família de brinquedo: grava um passo marcado por quadro em que «correu».
+struct Brinquedo(Vec<Vec<u8>>);
+
+impl ph2d_macro::Gravadora for Brinquedo {
+    fn abre(
+        &mut self,
+        _: &mut ph2d_macro::MacroRecorder,
+    ) -> Result<ph2d_macro::TrackId, &'static str> {
+        Err("brinquedo")
+    }
+    fn passos(&mut self) -> Vec<Vec<u8>> {
+        std::mem::take(&mut self.0)
+    }
+    fn para(&mut self) -> Vec<Vec<u8>> {
+        Vec::new()
+    }
+}
+
+/// W5e — **os passos do Motion levam o relógio do quadro em que ele correu**: na shell o Motion corre
+/// DEPOIS da `fase_macros`, e drená-lo nela carimbava cada passo com o quadro seguinte.
+#[test]
+fn gate7_os_passos_do_motion_levam_o_relogio_do_quadro_em_que_correu() {
+    let mut b = Banca::nova();
+    b.activo = false;
+    let id = 77;
+    let dono = b.sim.world_mut().spawn(ph2d_ecs::StableId(id)).id();
+    b.motion.objeto.editing = Some(id);
+    b.m.pede(MacroRequest::Grava);
+    b.quadro();
+    assert_eq!(b.m.gravando(), Some(FamiliaDaMacro::Motion));
+    let armada = b.agora;
+    b.quadro();
+    let neste = b.agora - armada;
+    b.m.depois_do_motion(&mut Brinquedo(vec![vec![0xEE]]));
+    b.quadro();
+    b.m.pede(MacroRequest::Para);
+    b.quadro();
+    let doc = ph2d_macro::codec::read(
+        &b.sim
+            .world()
+            .get::<Macro>(dono)
+            .expect("Parar deixa a Macro no objecto Motion")
+            .doc,
+    )
+    .unwrap();
+    let e = doc.tracks[0]
+        .events
+        .iter()
+        .find(|e| e.payload == [0xEE])
+        .expect("o passo do Motion foi gravado");
+    assert_eq!(
+        e.t.0, neste,
+        "o passo leva o relógio do quadro em que o Motion correu"
+    );
 }

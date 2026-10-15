@@ -369,6 +369,9 @@ impl crate::App {
         // ⚠️ **O relógio da fase do MOTION** (`PH2D_FLUID_PROFILE`) — ver `frame_prof`.
         let motion_t0 = std::time::Instant::now();
         self.fase_motion_bridge(vec_xf_ops);
+        if let Some(gfx) = self.gfx.as_mut() {
+            ph2d_app_macros::com(|m| m.depois_do_motion(&mut gfx.motion));
+        }
         {
             let us = motion_t0.elapsed().as_micros() as u64;
             FRAME_PROF_MOTION_SUM_US.with(|c| c.set(c.get() + us));

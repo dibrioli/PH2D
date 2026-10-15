@@ -109,7 +109,7 @@ impl RanhurasDaCena for Placa {
 
 fn quadro(p: &mut PalcosDoPainter, w: &mut World, placa: &mut Placa) -> Vec<TrocaDaSprite> {
     p.segue(w);
-    p.sobe(placa, &mut ToastQueue::default())
+    p.sobe(placa, &mut ToastQueue::default(), None)
 }
 
 #[test]
@@ -254,7 +254,25 @@ fn a_ranhura_recebe_so_o_que_mudou_e_fica_igual_a_tela() {
         let t = f64::from(q) / 60.0;
         world.get_mut::<MacroTempo>(e).expect("tempo").segundos = t;
         palcos.segue(&mut world);
-        let trocas = palcos.sobe(&mut placa, &mut ToastQueue::default());
+        let trocas = palcos.sobe(&mut placa, &mut ToastQueue::default(), None);
+        if q == 1 {
+            // A sprite que o Painter grava mostra o traço vivo: o palco cede-a (e só ela).
+            assert!(
+                palcos
+                    .sobe(&mut placa, &mut ToastQueue::default(), Some(e.to_bits()))
+                    .is_empty(),
+                "o palco não cedeu a sprite gravada"
+            );
+            assert_eq!(
+                palcos.sobe(
+                    &mut placa,
+                    &mut ToastQueue::default(),
+                    Some(e.to_bits() + 1)
+                ),
+                trocas,
+                "o palco cedeu uma sprite que ninguém grava"
+            );
+        }
         verdade.segue(t).expect("toca");
         if let Some((a, _, _)) = verdade.toma_a_tela() {
             tela = a.to_vec();

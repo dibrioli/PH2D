@@ -166,6 +166,9 @@ fn sonda_custo_w5e() {
             d.zero[3],
             d.zero[4],
         );
+        if d.segundos > 10.0 {
+            conferencias(d);
+        }
         let k = d.ate_toque.len();
         if k > 4 {
             eprintln!(
@@ -176,5 +179,42 @@ fn sonda_custo_w5e() {
                 d.ate_toque[k - 1]
             );
         }
+    }
+}
+
+/// A conferência de uma cor editada na pincelada do meio e na última: do zero contra do instantâneo do
+/// palco que tocou até ao fim dela (o clique na etapa leva a cabeça ao fim dela). Mínimo de 2 rondas.
+fn conferencias(d: &Doc) {
+    use super::etapas::{self, confere, edita_cor};
+    use std::sync::atomic::AtomicBool;
+    let doc = ph2d_macro::codec::read(&d.bytes).unwrap();
+    let es = etapas::etapas(&doc.tracks[0]).unwrap();
+    let nunca = AtomicBool::new(false);
+    for k in [es.len() / 2, es.len() - 1] {
+        let mut ed = doc.clone();
+        // LITERAL-COLOR-OK: a cor nova de uma pincelada GRAVADA, não da UI.
+        edita_cor(&mut ed.tracks[0], k, [20, 200, 40]).unwrap();
+        let fim = f64::from(u32::try_from(es[k].t1.0).unwrap()) / 1e6;
+        let (mut zero, mut copia, mut parte) = (f64::MAX, f64::MAX, f64::MAX);
+        for _ in 0..2 {
+            let a = Instant::now();
+            confere(&ed.tracks[0], None, &nunca).unwrap();
+            zero = zero.min(a.elapsed().as_secs_f64() * 1e3);
+            let mut palco = MacroEmCena::de(&ph2d_macro::codec::write(&ed))
+                .unwrap()
+                .unwrap();
+            palco.segue(fim).unwrap();
+            let a = Instant::now();
+            let p = palco.partida(&ed.tracks[0]).expect("instantâneo");
+            copia = copia.min(a.elapsed().as_secs_f64() * 1e3);
+            let a = Instant::now();
+            confere(&ed.tracks[0], Some(p), &nunca).unwrap();
+            parte = parte.min(a.elapsed().as_secs_f64() * 1e3);
+        }
+        eprintln!(
+            "[w5e]   conferir a cor da pincelada {}/{}: do zero {zero:.0} ms · do instantâneo {parte:.0} ms (+ {copia:.1} ms a tirá-lo, no quadro)",
+            k + 1,
+            es.len()
+        );
     }
 }

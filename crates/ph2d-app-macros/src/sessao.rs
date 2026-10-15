@@ -74,9 +74,20 @@ impl Sessao {
         let Some(g) = gravadora(f, self.familia) else {
             return; // o Painter deixou de ser a ferramenta activa: os passos esperam por ele
         };
+        self.passos(g, agora_us);
+    }
+
+    /// Os passos de `g` (a família que grava), no instante `agora_us`.
+    pub fn passos(&mut self, g: &mut dyn Gravadora, agora_us: u64) {
         for c in g.passos() {
             let _ = self.rec.push(self.trilha, agora_us, c);
         }
+    }
+
+    /// O objecto que fica com a `Macro`.
+    #[must_use]
+    pub fn dono(&self) -> u64 {
+        self.dono
     }
 
     /// **Parar**: os últimos passos, e o objecto fica com a `Macro` e o clipe.

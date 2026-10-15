@@ -176,6 +176,8 @@ gate7` · `ph2d-panel-macros --test it seam_macros::apagar_a_etapa_escolhida_che
 
 ## Smoke
 
+✅ **Smoke do dono OK (15/10)** — cenas `=1` e `=2`: editar a cor, arrastar uma etapa, apagar uma etapa, Ctrl+Z.
+
 Binário `--profile smoke` deixado compilado na worktree (depois de `rm -rf target/*/incremental`, 55 GB),
 2.ª corrida:
 

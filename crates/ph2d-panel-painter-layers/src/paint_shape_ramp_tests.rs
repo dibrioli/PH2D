@@ -144,12 +144,15 @@ fn as_duas_camadas_pintam_os_controlos_de_cada_estado() {
         tem(&bw, ids::PAINTER_SHAPE_RAMP_SWATCH),
         "B&W: o tom tem a sua rampa"
     );
+    // Com B&W os DOIS cartões ficam (dono 15/10: «B&W está fechando um dos color ramps. Não permita»).
     for id in [
         ids::PAINTER_SHAPE_TEXTURE_COLOR,
         ids::PAINTER_SHAPE_FALLOFF_COLOR,
+        ids::PAINTER_SHAPE_FALLOFF_RAMP_SWATCH,
         ids::PAINTER_SHAPE_COLOR_BLEND,
+        ids::PAINTER_SHAPE_FALLOFF_OPACITY,
     ] {
-        assert!(!tem(&bw, id), "B&W (tom): {id:?} não devia estar pintado");
+        assert!(tem(&bw, id), "B&W: {id:?} tem de continuar no painel");
     }
 }
 

@@ -142,10 +142,8 @@ pub(crate) fn paint_shape_ramp_section(
         stops: &brush.shape_color_ramp_stops[..count],
         selected_id: state::selected_shape_ramp_stop(),
     };
-    if textura.bw {
-        y = paint_ramp_body(ctx, theme, x, content_w, y, &ids, textura);
-        return crate::paint_brush_top::end_fold(ctx, fold, y);
-    }
+    // ⛔ Com B&W os DOIS cartões ficam (dono 15/10: «B&W está fechando um dos color ramps. Não permita»):
+    // o tom é a pilha das duas camadas, mostradas em cinza (`textura.bw` viaja para a `queda`).
     let qcount =
         (brush.shape_falloff_ramp_stop_count as usize).min(brush.shape_falloff_ramp_stops.len());
     let queda = RampView {

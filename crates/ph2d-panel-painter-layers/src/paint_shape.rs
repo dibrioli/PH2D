@@ -511,12 +511,44 @@ fn paint_shape_preview(
 fn shape_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> bool {
     let count =
         (brush.shape_color_ramp_stop_count as usize).min(brush.shape_color_ramp_stops.len());
-    crate::paint_ramp_widget::build_preview_lut(
+    let duas = brush.shape_color_ramp_bw && brush.shape_falloff_color;
+    let ok = crate::paint_ramp_widget::build_preview_lut(
         brush.shape_color_ramp_enabled && brush.shape_ramp_offered(),
-        brush.shape_color_ramp_bw,
+        brush.shape_color_ramp_bw && !duas,
         brush.shape_color_ramp_mode,
         brush.shape_color_ramp_interp,
         &brush.shape_color_ramp_stops[..count],
         out,
-    )
+    );
+    if !(ok && duas) {
+        return ok;
+    }
+    // B&W com as duas camadas: o tom é a pilha delas (o mesmo que o motor assa), em cinza.
+    let qn =
+        (brush.shape_falloff_ramp_stop_count as usize).min(brush.shape_falloff_ramp_stops.len());
+    let mut queda = [[0.0f32; 4]; 256];
+    let tem_queda = crate::paint_ramp_widget::build_preview_lut(
+        true,
+        false,
+        brush.shape_falloff_ramp_mode,
+        brush.shape_falloff_ramp_interp,
+        &brush.shape_falloff_ramp_stops[..qn],
+        &mut queda,
+    );
+    let tex = *out;
+    let camadas = ph2d_tool_painter::ShapeRampLayers {
+        texture: brush.shape_texture_color || !tem_queda,
+        falloff: tem_queda.then_some(&queda[..]),
+        falloff_first: brush.shape_falloff_first,
+        blend: ph2d_tool_painter::BrushBlend::from_u8(brush.shape_color_blend),
+        texture_opacity: brush.shape_texture_opacity,
+        falloff_opacity: brush.shape_falloff_opacity,
+    };
+    for (i, o) in out.iter_mut().enumerate() {
+        let v = i as f32 / 255.0; // LITERAL-PX-OK: 256-entry LUT index normalize
+        let k = camadas.color(&tex, v, v);
+        let l = 0.2126 * k[0] + 0.7152 * k[1] + 0.0722 * k[2]; // LITERAL-PX-OK: Rec.709 luma weights
+        *o = [l, l, l, k[3]];
+    }
+    true
 }

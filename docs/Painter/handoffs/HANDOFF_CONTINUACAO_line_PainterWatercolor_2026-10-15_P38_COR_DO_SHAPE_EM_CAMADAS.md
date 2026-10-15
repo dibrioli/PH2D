@@ -90,6 +90,10 @@ Tabela da régua: [38_medicoes_regua_cor_do_shape.md](../NewFeaturesWetPaint/38_
   M4 ignora a ordem → G2 · M5 ignora o Mix → G2 · M6 roteador manda o padrão ao cache por cobertura →
   G1+G2 · M7 aguada indexa pelo peso → G1 (aguada).
 
+**4.º pedido (15/10):** *«B&W está fechando um dos color ramps. Não permita»* — com B&W os dois cartões
+ficam; o tom é a luminância da PILHA das duas camadas (`ensure_shape_ramp_lut`; uma só = a de sempre, ao
+bit), e a prévia em B&W idem. Portão `com_bw_as_duas_camadas_fazem_o_tom` (vermelho sob a mutação).
+
 ## §6 — ABERTO
 
 - **Smoke do dono** (passos na mensagem de fecho).

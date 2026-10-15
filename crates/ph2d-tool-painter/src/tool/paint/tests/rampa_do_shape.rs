@@ -535,3 +535,47 @@ fn o_alfa_de_cada_cor_e_a_opacity_sao_a_tinta() {
         "a de cima transparente deixa ver a de baixo (azul): {vazada:?}"
     );
 }
+
+/// **Com B&W as duas camadas fazem o tom** (dono 15/10: «B&W está fechando um dos color ramps. Não
+/// permita»): a Falloff Color por cima, opaca, de cinza constante — preta apaga a ponta, branca deixa-a
+/// inteira. Controlo: só a Texture Color (a de sempre) dá o tom de fábrica dela.
+#[test]
+fn com_bw_as_duas_camadas_fazem_o_tom() {
+    let cinza = |v: f32| {
+        ColorRamp::new(
+            vec![
+                RampStop::new(0.0, [v, v, v, 1.0]),
+                RampStop::new(1.0, [v, v, v, 1.0]),
+            ],
+            RampColorMode::Rgb,
+            RampInterp::Linear,
+        )
+    };
+    let tinta = |queda: Option<f32>| {
+        let mut t = PainterTool::default();
+        t.set_source(vec![0u8; (W * W * 4) as usize], W, W);
+        t.paint.brush.radius_px = R;
+        t.set_brush_shape_kind(TextureKind::Noise.to_u8());
+        let seed = t.paint.brush;
+        t.paint.brush_by_mode.fill(seed);
+        t.set_shape_ramp_enabled(true);
+        t.paint.shape_color_ramp_bw = true;
+        t.paint.shape_camadas.textura = true;
+        t.paint.shape_camadas.queda = queda.is_some();
+        t.paint.shape_camadas.queda_primeiro = true;
+        t.set_shape_falloff_ramp(cinza(queda.unwrap_or(0.0)));
+        t.on_canvas_pointer(cp([C, C], PointerPhase::Down));
+        t.on_canvas_pointer(cp([C, C], PointerPhase::Up));
+        t.canvas_rgba
+            .chunks(4)
+            .map(|p| u64::from(p[3]))
+            .sum::<u64>()
+    };
+    let (preta, branca, so_textura) = (tinta(Some(0.0)), tinta(Some(1.0)), tinta(None));
+    assert!(so_textura > 0, "controlo: o tom da Texture Color pinta");
+    assert!(
+        preta * 10 < branca && branca > so_textura,
+        "com B&W a Falloff Color por cima tem de fazer o tom: preta {preta}, branca {branca}, só a \
+         textura {so_textura}"
+    );
+}

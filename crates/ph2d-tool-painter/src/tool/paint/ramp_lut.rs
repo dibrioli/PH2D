@@ -138,11 +138,27 @@ impl PainterTool {
         if !self.paint.shape_ramp_dirty && self.paint.shape_ramp_lut.len() == 256 {
             return;
         }
-        let mut clut = [[0.0f32; 4]; 256];
-        self.paint.shape_color_ramp.bake_into(&mut clut);
+        // B&W com as DUAS camadas (dono 15/10: «B&W está fechando um dos color ramps. Não permita»): o
+        // tom é a luminância da pilha das duas — ordem, Blend e Opacity contam — com os dois índices no
+        // valor que o tom remapeia. Uma camada só (ou nenhuma) = a rampa da Texture Color, como sempre.
+        let mut tex = [[0.0f32; 4]; 256];
+        self.paint.shape_color_ramp.bake_into(&mut tex);
+        let mut queda = [[0.0f32; 4]; 256];
+        let c = &self.paint.shape_camadas;
+        c.queda_rampa.bake_into(&mut queda);
+        let camadas = ph2d_painter_brush::ShapeRampLayers {
+            texture: c.textura || !c.queda,
+            falloff: c.queda.then_some(&queda[..]),
+            falloff_first: c.queda_primeiro,
+            blend: c.blend,
+            texture_opacity: c.opacidade_textura,
+            falloff_opacity: c.opacidade_queda,
+        };
         let mut lut = vec![0.0f32; 256];
-        for (o, c) in lut.iter_mut().zip(clut.iter()) {
-            *o = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]).clamp(0.0, 1.0);
+        for (i, o) in lut.iter_mut().enumerate() {
+            let v = i as f32 / 255.0;
+            let k = camadas.color(&tex, v, v);
+            *o = (0.2126 * k[0] + 0.7152 * k[1] + 0.0722 * k[2]).clamp(0.0, 1.0);
         }
         self.paint.shape_ramp_lut = lut;
         self.paint.shape_ramp_dirty = false;

@@ -92,6 +92,11 @@ pub trait DocumentSurface: Any {
     fn close(&mut self, id: u64);
     /// Desfazer/refazer pedido pelo menu Edit com esta aba activa. `true` = havia o que fazer.
     fn undo(&mut self, id: u64, redo: bool) -> bool;
+    /// Os nós de acessibilidade da aba (o `Document` primeiro, depois um `TextRun` por linha visível).
+    fn a11y(&self, id: u64) -> Vec<(ph2d_a11y::NodeId, ph2d_a11y::Node)> {
+        let _ = id;
+        Vec::new()
+    }
     /// O caret em pixels lógicos (a janela de candidatos do IME).
     fn caret_area(&self, id: u64) -> Option<Rect> {
         let _ = id;
@@ -120,7 +125,7 @@ pub struct Surfaces {
 
 impl std::fmt::Debug for Surfaces {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Surfaces").field("families", &self.families.len()).finish()
+        f.debug_list().entries(self.families.iter().map(|_| ())).finish()
     }
 }
 

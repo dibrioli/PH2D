@@ -106,6 +106,7 @@ pub mod seccoes;
 pub mod state;
 mod state_dropdowns;
 mod state_ramp;
+mod state_shape_cor; // a cor do Shape em duas camadas (prompt 38)
 mod state_wet_presets; // W1: a vista dos presets que a ponte publica
 pub mod stroke_method_offer; // the Method dropdown's narrowing law — pure, gate-tested from `tests/`
 

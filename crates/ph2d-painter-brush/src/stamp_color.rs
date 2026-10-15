@@ -179,8 +179,9 @@ pub fn render_color_stamp_mask(
 }
 
 /// Render the unit **ramp-coloured** stamp at `size`×`size` — the cached fast path for a **Grain +
-/// Colour Ramp** brush. The ramp's OWNER indexes it ([`crate::RampIndex`]: the Grain value, or the
-/// silhouette — then the Grain bites the coverage), exactly like the per-pixel kernel; the silhouette
+/// Colour Ramp** brush, and for the Shape's **Texture Color** with or without a Grain. The ramp's OWNER
+/// indexes it ([`crate::RampIndex`]: the Grain value, or the Shape's layers — then the Grain, if any,
+/// bites the coverage), exactly like the per-pixel kernel; the silhouette
 /// (the Shape image, else the falloff) is the coverage, and in [`crate::RampAlphaMode::Strength`] the
 /// ramp's alpha scales it (`TextureAlpha` is never baked — the route keeps it per-pixel). Scale-invariant (View Grain + a static silhouette), so the whole
 /// grain×ramp colour bakes ONCE and scale-blits, instead of resampling the Grain + ramp per pixel per dab
@@ -210,6 +211,11 @@ pub fn render_ramp_color_stamp(
         )
     });
     let reach = crate::tip::stamp_domain(&spec.shape, shape_basis.as_ref());
+    // Texture Color: a cor lê o valor do Shape e um padrão procedural deixa de recortar (a regra do
+    // núcleo por pixel, `dab.rs`); o Grain só entra quando há um.
+    let le_forma = ramp.reads_shape_value();
+    let recorta = !le_forma || spec.shape.kind == crate::texture::TextureKind::Image;
+    let grain_active = spec.texture.is_active();
     let inv = 2.0 / size as f32;
     for j in 0..size {
         let v = ((j as f32 + 0.5) * inv - 1.0) * reach;
@@ -219,7 +225,7 @@ pub fn render_ramp_color_stamp(
             // Silhouette coverage — the Shape image REPLACES the falloff (else the bare falloff), exactly
             // like `render_stamp_mask`, so the cached colour matches the per-pixel path's coverage.
             let t = footprint.falloff_t(u, v);
-            let w = match &shape_basis {
+            let (w, forma) = match &shape_basis {
                 Some(sb) => {
                     let raw = crate::texture::sample_shape_silhouette_unit(
                         &spec.shape,
@@ -229,9 +235,15 @@ pub fn render_ramp_color_stamp(
                         shape_image,
                     );
                     let sv = crate::texture::remap_shape_value(raw, shape_tone_lut);
-                    spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
+                    let queda = spec.falloff_weight(t);
+                    let w = if recorta {
+                        spec.compose_shape_silhouette(sv, queda)
+                    } else {
+                        queda
+                    };
+                    (w, le_forma.then_some(sv))
                 }
-                None => spec.falloff_weight(t),
+                None => (spec.falloff_weight(t), None),
             };
             // The FILM, on the silhouette (see `render_stamp_mask`) — the per-layer-colour tip is a
             // pigment path like any other, so the rule binds it too.
@@ -241,11 +253,14 @@ pub fn render_ramp_color_stamp(
             }
             // The ramp's OWNER indexes it, and the Grain bites unless it is the owner — the same door
             // as the per-pixel kernel ([`crate::ramp_alpha::ramp_texel`]).
-            let s = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
+            let s = grain_active.then(|| {
+                crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image)
+            });
             let tinta = crate::ramp_alpha::ramp_texel(
                 Some(&ramp),
                 w,
-                Some(s),
+                forma,
+                s,
                 spec.grain_depth(),
                 spec.effective_granulation(),
             );

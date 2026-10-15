@@ -222,6 +222,7 @@ impl Default for PaintState {
             shape_color_ramp_bw: false,
             shape_color_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
             shape_ramp_lut: Vec::new(),
+            shape_camadas: Default::default(),
             shape_ramp_dirty: true,
             shape_ramp_version: 0,
             ramp_lut_owner: ramp_lut::RampLutOwner::None,

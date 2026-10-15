@@ -27,6 +27,8 @@ mod painter_selection;
 pub use painter_selection::*;
 mod painter_shape;
 pub use painter_shape::*;
+mod painter_shape_cor;
+pub use painter_shape_cor::*;
 mod painter_stroke_op;
 pub use painter_stroke_op::*;
 mod painter_substrate;

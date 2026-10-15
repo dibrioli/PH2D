@@ -37,7 +37,7 @@ const OUTLINE_W: f32 = 1.0; // LITERAL-PX-OK: stroke width
 const GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a stop handle's pointer grab box
 const IDX_W: f32 = 34.0; // LITERAL-PX-OK: stop-index chip width
 const POS_W: f32 = 70.0; // LITERAL-PX-OK: position chip width
-const BW_W: f32 = 42.0; // LITERAL-PX-OK: "B&W" toggle button width (wider than a square icon button)
+pub(crate) const BW_W: f32 = 42.0; // LITERAL-PX-OK: "B&W" toggle button width (wider than a square icon button)
 const DD_MIN_W: f32 = 56.0; // LITERAL-PX-OK: min usable width of one Mode/Interp dropdown chip
 
 /// The fixed-id widget set + per-instance state hooks for one Colour Ramp editor (Grain or Shape).
@@ -74,6 +74,8 @@ pub(crate) struct RampView<'a> {
     /// B&W is forced-on and **locked** (Smear/Blur/Clone: the ramp is a B&W coverage tone, not a colour).
     /// The B&W toggle paints accent/checked and is inert (no hit registration).
     pub bw_locked: bool,
+    /// Paint the B&W toggle in the controls line (the Shape section paints its own, above the layers).
+    pub bw_button: bool,
     pub mode: u8,
     pub interp: u8,
     pub alpha_mode: u8,
@@ -119,22 +121,7 @@ pub(crate) fn paint_color_ramp_section(
     if !view.enabled {
         return crate::paint_brush_top::end_fold(ctx, fold, y); // hide the editor when off (no dead controls)
     }
-    let sel = view
-        .stops
-        .iter()
-        .position(|s| s[5] as u8 == view.selected_id)
-        .unwrap_or(0);
-
-    y = paint_controls(ctx, theme, x, content_w, y, ids, view);
-
-    // Gradient bar + a colour-filled draggable handle per stop.
-    let bar = Rect::new(x, y, content_w, BAR_H);
-    paint_ramp_bar(ctx, theme, bar, ids, view, sel);
-    y += BAR_H + MARK_R + ph2d_tokens::control_gap_px();
-
-    // Bottom row: editable index + position chips + the final-colour box (edits the selected stop).
-    y = paint_ramp_bottom(ctx, theme, x, content_w, y, ids, view, sel);
-    ramp_color_readback(ctx, ids, view, sel);
+    y = paint_ramp_body(ctx, theme, x, content_w, y, ids, view);
 
     // Alpha action dropdown (Off / Reduce Strength / Sprite Alpha).
     let alpha_rect = Rect::new(x, y, content_w, ROW_H_PX);
@@ -150,6 +137,34 @@ pub(crate) fn paint_color_ramp_section(
     }
     let out = y + ph2d_tokens::row_pitch_px();
     crate::paint_brush_top::end_fold(ctx, fold, out)
+}
+
+/// The ramp editor's BODY — the controls line, the gradient bar with its stop handles, the selected
+/// stop's chips + colour box — at `y`, returning the next `y`. The Grain section and each of the Shape
+/// section's two layers ([`crate::paint_shape_ramp`]) paint it.
+pub(crate) fn paint_ramp_body(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    ids: &RampIds,
+    view: RampView,
+) -> f32 {
+    let sel = view
+        .stops
+        .iter()
+        .position(|s| s[5] as u8 == view.selected_id)
+        .unwrap_or(0);
+    y = paint_controls(ctx, theme, x, content_w, y, ids, view);
+    // Gradient bar + a colour-filled draggable handle per stop.
+    let bar = Rect::new(x, y, content_w, BAR_H);
+    paint_ramp_bar(ctx, theme, bar, ids, view, sel);
+    y += BAR_H + MARK_R + ph2d_tokens::control_gap_px();
+    // Bottom row: editable index + position chips + the final-colour box (edits the selected stop).
+    y = paint_ramp_bottom(ctx, theme, x, content_w, y, ids, view, sel);
+    ramp_color_readback(ctx, ids, view, sel);
+    y
 }
 
 /// The controls line: `+ − I [B&W]` square/toggle buttons, then the Mode / Interp dropdowns. When the
@@ -180,16 +195,10 @@ fn paint_controls(
     }
     // B&W: accent/checked when on OR locked; when locked it's inert (no hit) — the 3 pixel-processing
     // modes force it (a B&W coverage tone), so it can't be unchecked there.
-    icon_button(
-        ctx,
-        theme,
-        Rect::new(cx, y, BW_W, ROW_H_PX),
-        tr("panel.painter_layers.ramp.bw"),
-        ids.bw,
-        view.bw || view.bw_locked,
-        view.bw_locked,
-    );
-    cx += BW_W + gap;
+    if view.bw_button {
+        bw_button(ctx, theme, Rect::new(cx, y, BW_W, ROW_H_PX), ids.bw, view);
+        cx += BW_W + gap;
+    }
     let buttons_right = cx;
     // One row only if the two dropdowns still fit to the right of the buttons; else wrap to row 2.
     let one_row = (x + content_w) - buttons_right >= DD_MIN_W * 2.0 + gap;
@@ -225,10 +234,30 @@ fn paint_controls(
     y + rows * ROW_H_PX + (rows - 1.0) * gap + gap
 }
 
+/// The **B&W** toggle at `r` (accent when on or locked; inert when locked).
+pub(crate) fn bw_button(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    r: Rect,
+    id: NodeId,
+    view: RampView,
+) {
+    let label = tr("panel.painter_layers.ramp.bw");
+    icon_button(
+        ctx,
+        theme,
+        r,
+        label,
+        id,
+        view.bw || view.bw_locked,
+        view.bw_locked,
+    );
+}
+
 /// One control button (`+` / `−` / `I` / `B&W`); `active` fills it accent (a toggle's on-state). When
 /// `locked`, it paints active but is NOT hit-registered — an inert, forced-on toggle (the B&W lock in
 /// the pixel-processing modes).
-fn icon_button(
+pub(crate) fn icon_button(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     r: Rect,

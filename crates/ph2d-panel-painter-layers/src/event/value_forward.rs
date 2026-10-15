@@ -13,7 +13,9 @@ pub(super) fn route(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> 
         return true;
     }
     // Shape Color ramp: same editors, the Shape slot.
-    if ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_VALUE_IDS.contains(&id) {
+    if ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_VALUE_IDS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_VALUE_IDS.contains(&id)
+    {
         shape_ramp_picker::on_shape_ramp_value_changed(host, id);
         return true;
     }

@@ -10,7 +10,8 @@ use ph2d_painter_brush::{BrushSpec, Dab, blit_stamp_ramped};
 
 impl PainterTool {
     /// Like [`Self::stamp_dabs_cached`] but the per-texel colour comes from the **Shape Colour Ramp**
-    /// indexed by the cached coverage — the cacheable fast path for a no-Grain colour-ramp stroke. The
+    /// indexed by the cached coverage — the cacheable fast path for a no-Grain colour-ramp stroke whose
+    /// layers all read the coverage (no Shape, an Image tip, or Falloff Color alone). The
     /// silhouette is rendered once into the [`ph2d_painter_brush::StampMask`] (the no-Grain gate already
     /// suppresses the B&W tone ramp, so the mask is the raw silhouette × falloff coverage) and the ramp
     /// is a 256-entry LUT lookup at blit time — vs the per-pixel [`Self::stamp_dabs_ramped`] recomputing
@@ -33,7 +34,13 @@ impl PainterTool {
         let Some((mask, _)) = self.paint.stamp_cache.as_ref() else {
             return;
         };
-        let ramp = self.paint.texture_ramp_lut.as_slice();
+        // Owner Shape: its two layers composed per index — both indices ARE the coverage here (the router
+        // sends the procedural Texture Color elsewhere: [`Self::padrao_do_shape_vira_cor`]).
+        let ramp = if owner == super::ramp_lut::RampLutOwner::Shape {
+            self.paint.shape_camadas.lut_combinada.as_slice()
+        } else {
+            self.paint.texture_ramp_lut.as_slice()
+        };
         let alpha_mode = self.active_ramp_alpha_mode(owner);
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
@@ -110,10 +117,16 @@ impl PainterTool {
         let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
             && self.paint.shape_color_ramp_bw)
             .then_some(self.paint.shape_ramp_lut.as_slice());
+        // [`Self::rampa_de_cor`], field by field: the canvas is borrowed mutably below.
         let rampa = ph2d_painter_brush::RampPaint {
             lut: &self.paint.texture_ramp_lut,
             alpha_mode: self.active_ramp_alpha_mode(owner),
             index: owner.index(),
+            shape: if owner == super::ramp_lut::RampLutOwner::Shape {
+                self.paint.shape_camadas.motor()
+            } else {
+                ph2d_painter_brush::ShapeRampLayers::default()
+            },
         };
         // A dab's wrapped Tiling copies must share ONE random frame (see `tiling::DabRng`).
         let groups = self.paint.dab_groups.clone();

@@ -503,13 +503,17 @@ impl PainterTool {
                 self.active_ramp_alpha_mode(owner),
                 ph2d_painter_brush::RampAlphaMode::TextureAlpha
             );
-            if static_ok && !grain_active {
+            // The Shape's Texture Color over a PROCEDURAL pattern reads a value the coverage mask does
+            // not hold (the pattern turned colour, prompt 38) → the baked colour stamp, like a Grain.
+            let padrao = self.padrao_do_shape_vira_cor(owner, has_shape_image);
+            if static_ok && !grain_active && !padrao {
                 // No Grain: the silhouette/falloff coverage indexes the ramp → the cached grayscale
                 // StampMask + `ramp[coverage]` at blit (cheap as a plain cached stamp).
                 self.stamp_dabs_cached_ramped(dabs, &brush, alpha_locked, w, h);
-            } else if static_ok && grain_active && bakeable_alpha {
-                // Grain + ramp: the Grain VALUE indexes the ramp → bake the grain×ramp colour ONCE into
-                // a coloured stamp + scale-blit (vs the per-pixel Grain+ramp recompute — the slow fills).
+            } else if static_ok && (grain_active || padrao) && bakeable_alpha {
+                // Grain + ramp (or the Shape pattern as colour): a VALUE that is not the coverage
+                // indexes the ramp → bake the colour ONCE into a coloured stamp + scale-blit (vs the
+                // per-pixel recompute — the slow fills).
                 self.stamp_dabs_cached_ramp_color(dabs, &brush, alpha_locked, w, h);
             } else {
                 self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);

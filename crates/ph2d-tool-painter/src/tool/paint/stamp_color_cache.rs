@@ -678,11 +678,7 @@ impl PainterTool {
             let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
             let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
             let shape_tone = self.shape_tone_lut_slice();
-            let ramp = ph2d_painter_brush::RampPaint {
-                lut: self.paint.texture_ramp_lut.as_slice(),
-                alpha_mode: self.active_ramp_alpha_mode(owner),
-                index: owner.index(),
-            };
+            let ramp = self.rampa_de_cor(owner);
             render_ramp_color_stamp(
                 brush,
                 grain_image.as_ref(),

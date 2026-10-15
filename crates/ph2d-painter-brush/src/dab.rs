@@ -411,16 +411,23 @@ fn stamp_dab_inner(
     }
     let radius = spec.clamped_radius();
     let (cx, cy) = (center[0], center[1]);
+    // Texture Color ([`crate::ShapeRampLayers`]): a cor lê o VALOR da textura do Shape; um padrão
+    // procedural vira cor e deixa de recortar (a silhueta é a queda, como o Grain em cor), uma imagem
+    // continua a ser a ponta.
+    let shape = shape.filter(|_| spec.shape.is_active());
+    let shape_cor = shape.filter(|_| {
+        ramp.as_ref()
+            .is_some_and(crate::RampPaint::reads_shape_value)
+    });
+    let forma_extensao = shape;
+    let shape = shape
+        .filter(|_| shape_cor.is_none() || spec.shape.kind == crate::texture::TextureKind::Image);
 
     // Screen-space AA of the film silhouette (BUGS #16, impasto half) — hoisted once per dab;
     // `None` = the single-sample `film_of` path, byte-identical (checkbox off / no body / Shape tip).
     // The capsule's sub-dabs already average along the step, and each takes the film cut itself.
-    let film_aa = crate::height_film::FilmAa::for_dab(
-        spec,
-        shape.filter(|_| spec.shape.is_active()).is_some(),
-        radius,
-    )
-    .filter(|_| capsula.is_none());
+    let film_aa = crate::height_film::FilmAa::for_dab(spec, shape.is_some(), radius)
+        .filter(|_| capsula.is_none());
     // The AA's outermost fractional ring can live one texel past the geometric rim (a texel whose
     // CENTRE is outside can still be partially covered) — pad the bbox so it is not clipped.
     let aa_pad = crate::height_film::FilmAa::pad_px(&film_aa);
@@ -448,10 +455,7 @@ fn stamp_dab_inner(
     let [ext_x, ext_y] = crate::tip::dab_extent(
         footprint.extent(),
         &spec.shape,
-        shape
-            .as_ref()
-            .filter(|_| spec.shape.is_active())
-            .map(|s| s.basis),
+        forma_extensao.as_ref().map(|s| s.basis),
     );
     let (reach_x, reach_y) = (radius * ext_x + aa_pad, radius * ext_y + aa_pad);
     // The capsule's box reaches back to its farthest sub-dab.
@@ -473,9 +477,10 @@ fn stamp_dab_inner(
         image: image.copied(),
         // Who indexes it travels with it ([`crate::RampIndex`]): the Grain value, or the silhouette.
         ramp,
-        // The Shape supplies the silhouette only when the slot is active (the caller already gates
-        // this; the filter is belt-and-braces so an inactive Shape can never blank the falloff).
-        shape: shape.filter(|_| spec.shape.is_active()),
+        // The Shape supplies the silhouette only when the slot is active (filtered above, so an
+        // inactive Shape can never blank the falloff) — and not when Texture Color made it colour.
+        shape,
+        shape_cor,
         footprint,
         center,
         cx,

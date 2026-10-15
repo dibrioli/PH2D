@@ -119,6 +119,24 @@ pub(super) fn decode_shape_ramp_alpha_option(id: NodeId) -> Option<u8> {
         .find(|&m| ph2d_tool_painter::ids::painter_shape_ramp_alpha_option_id(m) == id)
 }
 
+/// Decode a Falloff-Color-ramp Interpolation popover option id → its `RampInterp` wire `u8`.
+pub(super) fn decode_shape_falloff_ramp_interp_option(id: NodeId) -> Option<u8> {
+    (0..RampInterp::COUNT)
+        .find(|&i| ph2d_tool_painter::ids::painter_shape_falloff_ramp_interp_option_id(i) == id)
+}
+
+/// Decode a Falloff-Color-ramp colour-Mode popover option id → its `RampColorMode` wire `u8`.
+pub(super) fn decode_shape_falloff_ramp_mode_option(id: NodeId) -> Option<u8> {
+    (0..RampColorMode::COUNT)
+        .find(|&m| ph2d_tool_painter::ids::painter_shape_falloff_ramp_mode_option_id(m) == id)
+}
+
+/// Decode a Shape-Color-layers Blend popover option id → its `BrushBlend` wire `u8`.
+pub(super) fn decode_shape_color_blend_option(id: NodeId) -> Option<u8> {
+    (0..MAX_BRUSH_BLEND_MODES)
+        .find(|&m| ph2d_tool_painter::ids::painter_shape_color_blend_option_id(m) == id)
+}
+
 /// Decode a texture-Mapping popover option id → its `TextureMapping` wire `u8` (`0..=2`).
 pub(super) fn decode_texture_mapping_option(id: NodeId) -> Option<u8> {
     (0..TextureMapping::COUNT)

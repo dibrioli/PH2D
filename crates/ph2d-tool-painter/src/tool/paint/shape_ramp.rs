@@ -107,6 +107,7 @@ impl PainterTool {
         self.paint.shape_color_ramp_enabled = false;
         self.paint.shape_color_ramp_bw = false;
         self.paint.shape_color_ramp_alpha_mode = ph2d_painter_brush::RampAlphaMode::None;
+        self.paint.shape_camadas = Default::default(); // Texture Color só, Falloff Color de fábrica
         self.shape_ramp_changed();
     }
 

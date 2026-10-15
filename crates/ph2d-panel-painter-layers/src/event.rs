@@ -410,6 +410,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE
                 || ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
                 || ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BUTTONS.contains(&id)
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
                 // Stroke shape-editor buttons (Apply/Apply&Keep/Delete/Convert/Simplify/Merge) — MUST be
                 // forwarded or the Click is dropped. Plus the Offset-card Trim + the Operation segments.
@@ -470,8 +471,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             ramp_picker::on_swatch_click(host);
             Some(true)
         }
-        WidgetEvent::Click(id) if id == ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SWATCH => {
-            shape_ramp_picker::on_swatch_click(host);
+        WidgetEvent::Click(id) if shape_ramp_picker::is_swatch(id) => {
+            shape_ramp_picker::on_swatch_click(host, id);
             Some(true)
         }
         // The Impasto swatches — the LAMP's colour and the paint's WAX filter → the shared OKLCH picker.

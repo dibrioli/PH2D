@@ -56,25 +56,113 @@ impl RampAlphaMode {
     }
 }
 
-/// **Quem INDEXA a rampa de cor** — sempre a dona dela (prompt 36, dono 14/10): a rampa do **Grain**
-/// pelo valor do grão; a rampa do **Shape** pela silhueta (o desenho do Shape × falloff). Antes a rampa
-/// do Shape era indexada pelo GRÃO sempre que houvesse um: a cor seguia o grão (ancorado à tela no
-/// Tiled — «o Mapping virou Tiled») e o grão deixava de morder a cobertura.
+/// **Quem INDEXA a rampa de cor** — sempre a dona dela (prompt 36): a rampa do **Grain** pelo valor do
+/// grão; a do **Shape** pelas suas duas camadas ([`ShapeRampLayers`], prompt 38).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum RampIndex {
     /// O valor do Grain (a rampa do Grain); sem Grain cai na silhueta.
     #[default]
     Grain,
-    /// A silhueta `w` (a rampa do Shape); o Grain, se houver, morde a cobertura como sem rampa.
-    Silhouette,
+    /// As camadas da rampa do Shape; o Grain, se houver, morde a cobertura como sem rampa.
+    Shape,
 }
 
-/// Uma rampa de cor como os núcleos do carimbo a leem: a LUT assada, o que o alfa dela faz e quem a indexa.
+/// **As duas camadas da cor do Shape** (prompt 38, dono 15/10: *«em shape parece atuar sobre o falloff e
+/// não sobre a textura… o modo como está pode ser preservado como falloff color… ambos na mesma seção,
+/// organizar qual é o primeiro, com Blend entre eles»*):
+/// - **Texture Color** = `rampa[valor da textura do Shape]` (o padrão procedural, ou a luminância da
+///   imagem). Como no Grain, um padrão procedural deixa de RECORTAR: vira cor, e a cobertura é a queda.
+///   Uma imagem continua a ser a ponta (a forma dela fica). Sem Shape activo o valor é a silhueta.
+/// - **Falloff Color** = `rampa_da_queda[cobertura do carimbo]` — a lei de antes do prompt 38; sozinha
+///   repete-a ao byte (o padrão recorta e a cor segue padrão × queda).
+///
+/// Com as duas, a de cima (`falloff_first` ⇒ a Falloff) mistura-se sobre a de baixo como uma camada:
+/// [`crate::blend::blend_over`] com o modo `blend` e o alfa `alfa_de_cima × mix`.
+#[derive(Clone, Copy, Debug)]
+pub struct ShapeRampLayers<'a> {
+    /// Texture Color ligada (a LUT dela é a [`RampPaint::lut`]).
+    pub texture: bool,
+    /// Falloff Color ligada: a LUT dela.
+    pub falloff: Option<&'a [[f32; 4]]>,
+    /// A Falloff Color é a camada de CIMA.
+    pub falloff_first: bool,
+    pub blend: crate::blend::BrushBlend,
+    /// A opacidade da camada de cima, `[0, 1]`.
+    pub mix: f32,
+}
+
+impl Default for ShapeRampLayers<'_> {
+    fn default() -> Self {
+        Self {
+            texture: true,
+            falloff: None,
+            falloff_first: false,
+            blend: crate::blend::BrushBlend::Mix,
+            mix: 1.0,
+        }
+    }
+}
+
+impl ShapeRampLayers<'_> {
+    /// A cor de um texel: `v_textura` indexa a Texture Color, `v_cobertura` a Falloff Color.
+    #[inline]
+    #[must_use]
+    pub fn color(&self, lut_textura: &[[f32; 4]], v_textura: f32, v_cobertura: f32) -> [f32; 4] {
+        compose_shape_ramp_layers(
+            self.texture
+                .then(|| crate::dab::ramp_sample(lut_textura, v_textura)),
+            self.falloff
+                .map(|l| crate::dab::ramp_sample(l, v_cobertura)),
+            self.falloff_first,
+            self.blend,
+            self.mix,
+        )
+    }
+}
+
+/// ⭐ **A porta única da mistura** das duas camadas (os núcleos, a LUT combinada do carimbo em cache e
+/// a aguada passam por aqui): uma só ⇒ ela; as duas ⇒ a de cima sobre a de baixo. RGBA reto.
+#[must_use]
+pub fn compose_shape_ramp_layers(
+    textura: Option<[f32; 4]>,
+    queda: Option<[f32; 4]>,
+    falloff_first: bool,
+    blend: crate::blend::BrushBlend,
+    mix: f32,
+) -> [f32; 4] {
+    match (textura, queda) {
+        (Some(c), None) | (None, Some(c)) => c,
+        (None, None) => [1.0, 1.0, 1.0, 1.0],
+        (Some(t), Some(q)) => {
+            let (cima, baixo) = if falloff_first { (q, t) } else { (t, q) };
+            crate::blend::blend_over(
+                blend,
+                baixo,
+                [cima[0], cima[1], cima[2]],
+                cima[3] * mix.clamp(0.0, 1.0),
+            )
+        }
+    }
+}
+
+/// Uma rampa de cor como os núcleos do carimbo a leem: a LUT assada (a do Grain, ou a Texture Color do
+/// Shape), o que o alfa faz, quem a indexa e — dona Shape — as camadas.
 #[derive(Clone, Copy, Debug)]
 pub struct RampPaint<'a> {
     pub lut: &'a [[f32; 4]],
     pub alpha_mode: RampAlphaMode,
     pub index: RampIndex,
+    pub shape: ShapeRampLayers<'a>,
+}
+
+impl RampPaint<'_> {
+    /// A cor lê o VALOR da textura do Shape (Texture Color ligada) — então um padrão procedural deixa de
+    /// recortar e o núcleo amostra-o à parte ([`crate::dab::shape_value_at`]).
+    #[inline]
+    #[must_use]
+    pub fn reads_shape_value(&self) -> bool {
+        self.index == RampIndex::Shape && self.shape.texture
+    }
 }
 
 /// A tinta de um texel: a cor (`None` = a do pincel), o factor de cobertura `g` (Grain × alfa da rampa
@@ -87,11 +175,13 @@ pub(crate) struct RampTexel {
 
 /// ⭐ **A porta única** da cor e da mordida do Grain num texel — os núcleos por pixel
 /// ([`crate::dab`]) e o carimbo assado ([`crate::stamp_color::render_ramp_color_stamp`]) passam por
-/// aqui. `w` = a silhueta, `grain` = o valor amostrado do Grain (se houver).
+/// aqui. `w` = a silhueta (a cobertura), `shape` = o valor da textura do Shape (Texture Color), `grain`
+/// = o valor amostrado do Grain (se houver).
 #[inline]
 pub(crate) fn ramp_texel(
     ramp: Option<&RampPaint>,
     w: f32,
+    shape: Option<f32>,
     grain: Option<f32>,
     depth: f32,
     granulation: f32,
@@ -101,16 +191,15 @@ pub(crate) fn ramp_texel(
         g: 1.0,
         stamp_alpha: 1.0,
     };
-    let indice = match (ramp, grain) {
-        (Some(r), Some(s)) if r.index == RampIndex::Grain => Some((r, s)),
-        (Some(r), _) => Some((r, w)),
-        (None, _) => None,
-    };
-    if let Some(s) = grain.filter(|_| !matches!(ramp, Some(r) if r.index == RampIndex::Grain)) {
+    let dono_grao = matches!(ramp, Some(r) if r.index == RampIndex::Grain);
+    if let Some(s) = grain.filter(|_| !dono_grao) {
         t.g = crate::texture::grain_coverage(s, depth, granulation);
     }
-    if let Some((r, v)) = indice {
-        let c = crate::dab::ramp_sample(r.lut, v);
+    if let Some(r) = ramp {
+        let c = match r.index {
+            RampIndex::Grain => crate::dab::ramp_sample(r.lut, grain.unwrap_or(w)),
+            RampIndex::Shape => r.shape.color(r.lut, shape.unwrap_or(w), w),
+        };
         t.color = Some([c[0], c[1], c[2]]);
         match r.alpha_mode {
             RampAlphaMode::None => {}

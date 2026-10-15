@@ -161,6 +161,10 @@ impl PainterTool {
                         self.set_brush_shape_size(1, v);
                         true
                     }
+                    x if x == crate::ids::PAINTER_SHAPE_COLOR_MIX => {
+                        self.set_shape_color_mix(v);
+                        true
+                    }
                     x if crate::ids::PAINTER_SHAPE_PARAMS.contains(&x) => {
                         if let Some(slot) = crate::ids::PAINTER_SHAPE_PARAMS
                             .iter()
@@ -283,7 +287,7 @@ impl PainterTool {
                 }
                 true
             }
-            _ => self.route_shape_layer_event(event),
+            _ => self.route_shape_color_layers_event(event) || self.route_shape_layer_event(event),
         }
     }
 
@@ -457,7 +461,7 @@ impl PainterTool {
 }
 
 /// Parse a `"id:value"` ramp-edit payload (stable stop id + an `f32`).
-fn parse_id_f32(s: &str) -> Option<(u8, f32)> {
+pub(super) fn parse_id_f32(s: &str) -> Option<(u8, f32)> {
     let mut it = s.split(':');
     match (it.next()?.parse::<u8>(), it.next()?.parse::<f32>()) {
         (Ok(id), Ok(v)) => Some((id, v)),

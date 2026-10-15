@@ -145,6 +145,9 @@ impl PainterTool {
                 f32::from(s.id),
             ];
         }
+        let camadas = &self.paint.shape_camadas;
+        let (queda_stops, queda_count) =
+            super::shape_camadas::stops_do_painel(&camadas.queda_rampa);
         // Snapshot the Shape Colour Ramp's stops (LINEAR → display sRGB; the 6th slot is the stable id).
         let sramp = self.shape_color_ramp();
         let mut shape_color_ramp_stops = [[0.0f32; 6]; PANEL_RAMP_STOPS];
@@ -384,6 +387,15 @@ impl PainterTool {
             shape_color_ramp_stops,
             shape_color_ramp_stop_count: sramp_count as u8,
             shape_color_ramp_alpha_mode: self.paint.shape_color_ramp_alpha_mode.to_u8(),
+            shape_texture_color: camadas.textura,
+            shape_falloff_color: camadas.queda,
+            shape_falloff_first: camadas.queda_primeiro,
+            shape_color_blend: camadas.blend.to_u8(),
+            shape_color_mix: camadas.mix,
+            shape_falloff_ramp_mode: camadas.queda_rampa.color_mode.to_u8(),
+            shape_falloff_ramp_interp: camadas.queda_rampa.interp.to_u8(),
+            shape_falloff_ramp_stops: queda_stops,
+            shape_falloff_ramp_stop_count: queda_count,
             color_jitter_enabled: b.color_jitter_enabled,
             color_jitter: [b.color_jitter_hue, b.color_jitter_sat, b.color_jitter_val],
             color_jitter_scope: b.color_jitter_scope.to_u8(),

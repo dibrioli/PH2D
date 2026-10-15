@@ -164,6 +164,11 @@ impl WetShapeStamp {
         }
     }
 
+    /// Whether the Shape slot shapes this stamp — then [`Self::sample`]'s density is its texture value.
+    pub(super) fn forma_ativa(&self) -> bool {
+        self.shape_active
+    }
+
     /// The per-dab stamp frame: the flatten/rotate footprint (Shape gizmo `dab_flatten` +
     /// `dab_angle_deg`, spun by Jitter Rotate) + the Shape basis when the slot is active. The
     /// footprint deforms the ENVELOPE distance too ([`Self::env_t`]) — Flatten/Rotate act on the

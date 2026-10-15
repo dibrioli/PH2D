@@ -290,6 +290,7 @@ pub use inercia::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};
 pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::tool` for the undo snapshot
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;
+mod shape_camadas; // a cor do Shape em duas camadas: Texture Color + Falloff Color (prompt 38)
 mod shape_ramp;
 mod smear_warp;
 mod snapshot;

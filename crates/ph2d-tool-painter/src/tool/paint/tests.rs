@@ -220,6 +220,7 @@ mod line_editor;
 mod parked_shapes;
 mod ponta_cortada; // a ponta da Shape cortada sob Jitter Rotate (smoke 12/10)
 mod protection_and_layer_mask;
+mod rampa_do_shape; // prompt 38: a rampa do Shape indexa a TEXTURA do Shape, como a do Grain (15/10)
 mod reset_de_fabrica; // o Reset de uma secção devolve o pincel com que ESTE modo nasce (doc 45)
 mod selection_editing;
 mod shape_bristles; // o tapete de cerdas do Wet Paint como tipo do Shape (plano 27 W1)

@@ -28,7 +28,7 @@ pub(super) fn route_brush_dropdown_option(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    let routes: [OptionRoute; 24] = [
+    let routes: [OptionRoute; 27] = [
         (
             decode_brush_preset_option,
             ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
@@ -108,6 +108,18 @@ pub(super) fn route_brush_dropdown_option(
         (
             decode_shape_ramp_alpha_option,
             ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
+        ),
+        (
+            super::decode::decode_shape_falloff_ramp_mode_option,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_MODE,
+        ),
+        (
+            super::decode::decode_shape_falloff_ramp_interp_option,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_INTERP,
+        ),
+        (
+            super::decode::decode_shape_color_blend_option,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BLEND,
         ),
         (
             decode_wet_policy_option,

@@ -44,6 +44,7 @@ pub(crate) fn is_param_field(id: NodeId) -> bool {
         || ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_FIELDS.contains(&id)
         || ph2d_tool_painter::ids::PAINTER_SHAPE_SLIDERS.contains(&id)
         || ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS.contains(&id)
+        || id == ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_MIX
         || ph2d_tool_painter::ids::PAINTER_SHAPE_DEPOSIT_FIELDS.contains(&id)
         || ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FIELDS.contains(&id)
         || ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS.contains(&id)

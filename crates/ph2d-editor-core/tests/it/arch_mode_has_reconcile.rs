@@ -177,6 +177,13 @@ const RECONCILES_VIA: &[(&str, &str, &str)] = &[
          next stamp — the Shape twin of `set_texture_ramp_mode`",
     ),
     (
+        "set_shape_falloff_ramp_mode",
+        "camadas_mudaram",
+        "Painter Shape Color's FALLOFF ramp colour-interpolation space (prompt 38): calls \
+         `camadas_mudaram()`, which flags the colour + tone LUTs dirty and bumps the version — the \
+         Falloff twin of `set_shape_ramp_mode`",
+    ),
+    (
         "set_sculpt_mode",
         "refresh_live_sculpt",
         "Painter Sculpt verb (Smooth/Sharpen): the two verbs are one kernel with the sign flipped, and \

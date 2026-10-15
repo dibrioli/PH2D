@@ -299,7 +299,10 @@ pub(crate) const PAPER: &[&str] = &[
     "panel.painter_layers.paper.roughness",
 ];
 /// *Color Ramp*.
-pub(crate) const RAMP: &[&str] = &["panel.painter_layers.ramp.use_color_ramp"];
+pub(crate) const RAMP: &[&str] = &[
+    "panel.painter_layers.ramp.use_color_ramp",
+    "panel.painter_layers.ramp.opacity",
+];
 /// *Sculpt*.
 pub(crate) const SCULPT: &[&str] = &["panel.painter_layers.sculpt.rake"];
 /// *Selection*.

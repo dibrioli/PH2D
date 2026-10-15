@@ -2,8 +2,9 @@
 //! single colour LUT (`texture_ramp_lut`) and the Shape **tone** LUT (`shape_ramp_lut`). Split from
 //! `stamp_cache` for the workspace LOC cap; the stamp/blit paths that consume these live there.
 //!
-//! There is exactly one colour ramp in the engine at a time (the **owner**): the Shape ramp colourises
-//! the silhouette when its B&W filter is off, else the Grain ramp colourises its pattern. With B&W on,
+//! There is exactly one colour ramp in the engine at a time (the **owner**): the Shape ramp (its two
+//! layers, Texture Color + Falloff Color — [`super::shape_camadas`]) when its B&W filter is off, else
+//! the Grain ramp colourises its pattern. With B&W on,
 //! the Shape ramp is instead the grayscale **tone** remap of the silhouette (a separate value LUT).
 
 use crate::tool::PainterTool;
@@ -19,14 +20,33 @@ pub(super) enum RampLutOwner {
 }
 
 impl RampLutOwner {
-    /// Who INDEXES the owner's ramp in the stamp kernels: the Shape ramp by the silhouette, the Grain
-    /// ramp by the Grain value (prompt 36).
+    /// Who INDEXES the owner's ramp in the stamp kernels: the Shape ramp by its two layers (prompt 38,
+    /// [`ph2d_painter_brush::ShapeRampLayers`]), the Grain ramp by the Grain value (prompt 36).
     pub(super) fn index(self) -> ph2d_painter_brush::RampIndex {
         match self {
-            Self::Shape => ph2d_painter_brush::RampIndex::Silhouette,
+            Self::Shape => ph2d_painter_brush::RampIndex::Shape,
             Self::Grain | Self::None => ph2d_painter_brush::RampIndex::Grain,
         }
     }
+}
+
+/// Bake a ramp into the 256-entry straight-**sRGB** LUT the dab blends with (`eval` is linear; alpha
+/// stays straight), desaturated to Rec.709 luminance first when `bw`.
+pub(super) fn lut_srgb(ramp: &ph2d_color::ColorRamp, bw: bool) -> Vec<[f32; 4]> {
+    let mut lut = vec![[0.0f32; 4]; 256];
+    ramp.bake_into(&mut lut);
+    for c in &mut lut {
+        if bw {
+            let l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+            c[0] = l;
+            c[1] = l;
+            c[2] = l;
+        }
+        for k in 0..3 {
+            c[k] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[k])) / 255.0;
+        }
+    }
+    lut
 }
 
 impl PainterTool {
@@ -35,13 +55,45 @@ impl PainterTool {
     /// colour when enabled + a Grain texture is active. With B&W on the Shape ramp is the tone remap,
     /// not a colour owner. `grain_active` is `brush.texture.is_active()`.
     pub(super) fn color_ramp_owner(&self, grain_active: bool) -> RampLutOwner {
-        if self.paint.shape_color_ramp_enabled && !self.paint.shape_color_ramp_bw {
+        if self.paint.shape_color_ramp_enabled
+            && !self.paint.shape_color_ramp_bw
+            && self.paint.shape_camadas.alguma()
+        {
             RampLutOwner::Shape
         } else if grain_active && self.paint.texture_ramp_enabled {
             RampLutOwner::Grain
         } else {
             RampLutOwner::None
         }
+    }
+
+    /// ⭐ The colour ramp as the stamp kernels read it — ONE door for every route (the per-pixel one, the
+    /// baked colour stamp and its cache key): the owner's LUT, alpha action, index and — owner Shape —
+    /// its two layers. Caller `ensure_ramp_lut(owner)`s first.
+    pub(super) fn rampa_de_cor(&self, owner: RampLutOwner) -> ph2d_painter_brush::RampPaint<'_> {
+        ph2d_painter_brush::RampPaint {
+            lut: &self.paint.texture_ramp_lut,
+            alpha_mode: self.active_ramp_alpha_mode(owner),
+            index: owner.index(),
+            shape: if owner == RampLutOwner::Shape {
+                self.paint.shape_camadas.motor()
+            } else {
+                ph2d_painter_brush::ShapeRampLayers::default()
+            },
+        }
+    }
+
+    /// A Texture Color recolhe o padrão PROCEDURAL do Shape em cor (ele deixa de recortar) — então o
+    /// carimbo em cache sem Grain, cujo índice é a cobertura, não a serve.
+    pub(super) fn padrao_do_shape_vira_cor(
+        &self,
+        owner: RampLutOwner,
+        has_shape_image: bool,
+    ) -> bool {
+        owner == RampLutOwner::Shape
+            && self.paint.shape_camadas.textura
+            && self.paint.brush.shape_silhouette_active(has_shape_image)
+            && self.paint.brush.shape.kind != ph2d_painter_brush::TextureKind::Image
     }
 
     /// The alpha action of whichever ramp owns the colour (`None` mode when no owner).
@@ -73,20 +125,10 @@ impl PainterTool {
             // Grain (or None — the Grain ramp is a harmless default when nothing owns colour).
             _ => (&self.paint.texture_ramp, self.paint.texture_ramp_bw),
         };
-        let mut lut = vec![[0.0f32; 4]; 256];
-        ramp.bake_into(&mut lut);
-        for c in &mut lut {
-            if bw {
-                let l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-                c[0] = l;
-                c[1] = l;
-                c[2] = l;
-            }
-            c[0] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[0])) / 255.0;
-            c[1] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[1])) / 255.0;
-            c[2] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[2])) / 255.0;
+        self.paint.texture_ramp_lut = lut_srgb(ramp, bw);
+        if owner == RampLutOwner::Shape {
+            self.assa_camadas_do_shape(); // a Falloff Color + a combinada ([`super::shape_camadas`])
         }
-        self.paint.texture_ramp_lut = lut;
         self.paint.texture_ramp_dirty = false;
         self.paint.ramp_lut_owner = owner;
         // The owner colour LUT changed → the colour-ramp stamp cache (which bakes it in) must re-bake.

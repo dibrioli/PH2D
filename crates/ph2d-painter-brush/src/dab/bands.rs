@@ -284,6 +284,8 @@ pub(super) struct DabCtx<'a> {
     /// The Shape slot's silhouette inputs (frame + optional image). `Some` ⇒ the silhouette is the
     /// Shape, replacing the falloff; `None` ⇒ the falloff is the silhouette. See [`ShapeInput`].
     pub(super) shape: Option<ShapeInput<'a>>,
+    /// The Shape whose VALUE the Texture Color reads ([`crate::RampPaint::reads_shape_value`]).
+    pub(super) shape_cor: Option<ShapeInput<'a>>,
     /// Baked Color Ramp: its LUT, what its alpha does, and who indexes it ([`crate::RampIndex`]).
     pub(super) ramp: Option<crate::RampPaint<'a>>,
     /// Dab flatten/rotate for the falloff `t` (Shape/Grain carry it in their bases); baked once per dab.
@@ -382,8 +384,8 @@ pub(super) fn stamp_band(
             // (Grain / Strength-ramp) kept SEPARATE so it CAPS the pixel — a 0.3 grain texel tops at
             // 0.3·Strength under re-passing, not climbing to full (the "fills in" bug). `g=1` ⇒ identical.
             // The colour and the Grain's bite come from ONE door ([`crate::ramp_alpha::ramp_texel`]):
-            // the ramp is indexed by its OWNER's value (Grain, or the silhouette `w`), and the Grain
-            // bites the coverage unless it is the one indexing the ramp.
+            // the ramp is indexed by its OWNER's value (the Grain, or the Shape's layers: its texture
+            // value and the coverage `w`), and the Grain bites unless it is the one indexing the ramp.
             let grain = ctx.tex.map(|b| {
                 crate::texture::sample(
                     &ctx.spec.texture,
@@ -395,9 +397,13 @@ pub(super) fn stamp_band(
                     ctx.image.as_ref(),
                 )
             });
+            let forma = ctx
+                .shape_cor
+                .map(|sh| crate::dab::shape_value_at(ctx.spec, sh, px, py, ctx.center, ctx.radius));
             let tinta = crate::ramp_alpha::ramp_texel(
                 ctx.ramp.as_ref(),
                 w,
+                forma,
                 grain,
                 ctx.spec.grain_depth(),
                 ctx.spec.effective_granulation(),
@@ -550,6 +556,7 @@ mod lut_ab_tests {
             tex: None,
             image: None,
             shape: None,
+            shape_cor: None,
             ramp: None,
             footprint,
             center: CENTRE,

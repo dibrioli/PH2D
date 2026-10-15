@@ -135,6 +135,7 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_FIELDS)
     .chain(ph2d_tool_painter::ids::PAINTER_SHAPE_SLIDERS)
     .chain(ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS)
+    .chain([ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_MIX])
     .chain(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FIELDS)
     .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS)
     .chain(ph2d_tool_painter::ids::PAINTER_IMPASTO_FIELDS)
@@ -346,6 +347,14 @@ fn register_ramp_buttons(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_BW,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SWATCH,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_RESET,
+        // Shape Color layers (prompt 38): the two checkboxes, the swap, the Falloff ramp's buttons.
+        ph2d_tool_painter::ids::PAINTER_SHAPE_TEXTURE_COLOR,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_COLOR,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_SWAP,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_ADD,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_REMOVE,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_INVERT,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_SWATCH,
     ] {
         store.register(
             id,
@@ -519,6 +528,10 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_MODE,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_INTERP,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
+        // Shape Color layers: the Falloff ramp's Mode + Interpolation, the layers' Blend.
+        ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_MODE,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_INTERP,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BLEND,
     ]
     .into_iter()
     // O bloco de presets do Wet Painter (W1): Preset · política · os valores rápidos dos volumes.

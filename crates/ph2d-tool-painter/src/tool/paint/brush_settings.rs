@@ -421,6 +421,16 @@ pub struct BrushSettings {
     pub shape_color_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
     pub shape_color_ramp_stop_count: u8,
     pub shape_color_ramp_alpha_mode: u8,
+    // ── Shape Color layers (prompt 38): Texture Color (the ramp above) + Falloff Color, order, Blend, Mix. ──
+    pub shape_texture_color: bool,
+    pub shape_falloff_color: bool,
+    pub shape_falloff_first: bool,
+    pub shape_color_blend: u8,
+    pub shape_color_mix: f32,
+    pub shape_falloff_ramp_mode: u8,
+    pub shape_falloff_ramp_interp: u8,
+    pub shape_falloff_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
+    pub shape_falloff_ramp_stop_count: u8,
 
     /// Per-dab randomize: Randomize-Color enable + HSV amounts + Jitter Scale/Rotate/Spacing (`0..1`).
     pub color_jitter_enabled: bool,

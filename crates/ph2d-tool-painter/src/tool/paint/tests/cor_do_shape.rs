@@ -10,12 +10,14 @@ const W: u32 = 192;
 const H: u32 = 96;
 const R: f32 = 18.0;
 
-/// Rampa da Shape: B&W ligado (controlo) ou desligado (a rampa é a dona da cor), ou a rampa desligada.
+/// Rampa da Shape: B&W ligado (controlo) ou desligado (a rampa é a dona da cor: a Texture Color de
+/// omissão, ou só a Falloff Color — a lei de antes do prompt 38), ou a rampa desligada.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Rampa {
     Off,
     Bw,
     Cor,
+    Queda,
 }
 
 /// O Grain do traço: nenhum, Noise num mapeamento, ou o PAPEL a fazer de Grain no Digital (Relief
@@ -76,6 +78,11 @@ fn tela(shape: Option<TextureMapping>, grao: Grao, rampa: Rampa) -> PainterTool 
     ));
     t.set_shape_ramp_enabled(rampa != Rampa::Off);
     t.paint.shape_color_ramp_bw = rampa == Rampa::Bw;
+    if rampa == Rampa::Queda {
+        t.set_shape_falloff_ramp(t.shape_color_ramp().clone());
+        t.toggle_shape_texture_color();
+        t.toggle_shape_falloff_color();
+    }
     t
 }
 
@@ -272,31 +279,35 @@ fn alfa_da_tela(t: &PainterTool) -> Vec<u8> {
     t.canvas_rgba.chunks(4).map(|p| p[3]).collect()
 }
 
-/// **D2 — o Grain morde a cobertura com a rampa do Shape em cor** (prompt 36). A rampa do Shape escolhe a
-/// COR; a cobertura tem de ser a mesmíssima de sem rampa, em cada rota: por pixel (Grain Tiled, o papel a
-/// fazer de Grain) e o carimbo assado (Grain View). Vermelho antes da cura: com cor, α = 1 sem buracos.
+/// **D2 — o Grain morde a cobertura com a rampa do Shape em cor** (prompt 36), em cada rota: por pixel
+/// (Grain Tiled, o papel a fazer de Grain) e o carimbo assado (Grain View). Vermelho antes da cura do
+/// P36: com cor, α = 1 sem buracos. Desde o prompt 38 o padrão do Shape conta assim: com a **Falloff
+/// Color** a cobertura é a mesmíssima de sem rampa (o padrão recorta, o Grain morde); com a **Texture
+/// Color** o padrão vira cor e a cobertura é a de SEM Shape — com o Grain a morder igual.
 #[test]
 fn a_rampa_do_shape_em_cor_nao_desliga_o_grain() {
     use TextureMapping::{Tiled, ViewPlane};
     for shape in [None, Some(ViewPlane)] {
         for grao in [Grao::Noise(Tiled), Grao::Noise(ViewPlane), Grao::Papel] {
-            let alfa = |r: Rampa| {
+            let alfa = |shape, r: Rampa| {
                 let mut t = tela(shape, grao, r);
                 carimbo(&mut t, 48.5, 48.5);
                 alfa_da_tela(&t)
             };
-            let (sem, cor) = (alfa(Rampa::Off), alfa(Rampa::Cor));
             let (_, _, buracos, desvio) = pegada(shape, grao, Rampa::Off);
             assert!(
                 buracos > 0.0 || desvio > 0.01,
                 "controlo: o Grain tem de morder sem rampa ({shape:?}, {grao:?})"
             );
-            let difere = sem.iter().zip(&cor).filter(|(a, b)| a != b).count();
-            assert_eq!(
-                difere, 0,
-                "com a rampa do Shape em cor a cobertura mudou em {difere} px ({shape:?}, {grao:?}) — o \
-                 Grain deixou de morder"
-            );
+            for (r, referencia) in [(Rampa::Queda, shape), (Rampa::Cor, None)] {
+                let (sem, cor) = (alfa(referencia, Rampa::Off), alfa(shape, r));
+                let difere = sem.iter().zip(&cor).filter(|(a, b)| a != b).count();
+                assert_eq!(
+                    difere, 0,
+                    "com a rampa do Shape em cor ({r:?}) a cobertura mudou em {difere} px ({shape:?}, \
+                     {grao:?}) — o Grain deixou de morder, ou o padrão do Shape recortou fora da lei"
+                );
+            }
         }
     }
 }

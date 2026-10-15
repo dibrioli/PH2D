@@ -1,0 +1,35 @@
+# The pinned luau-lsp (ADR-0188, CodeEditor Onda 0 T3). ONE source for the version:
+# `scripts/luau-lsp-fetch.sh` downloads from here and `ph2d-code-lsp` reads `version` to find the cache.
+#
+# The sha256 of each asset was computed locally over the downloaded zip on 2026-10-15 and matches the
+# `digest` GitHub publishes for the asset. Upgrading = new version + new sha256 for EVERY asset, then
+# re-run the gate tests of `ph2d-code-lsp` (the definitions syntax is officially unstable).
+#
+# Lives inside the crate, not under `tools/`: `tools/*` is a workspace glob and a folder there without a
+# Cargo.toml breaks every cargo command (measured).
+
+version = "1.70.1"
+licence = "MIT"
+release = "https://github.com/JohnnyMorganz/luau-lsp/releases/tag/1.70.1"
+published = "2026-09-27"
+
+[asset.linux-x86_64]
+url = "https://github.com/JohnnyMorganz/luau-lsp/releases/download/1.70.1/luau-lsp-linux-x86_64.zip"
+sha256 = "1a2ea1ae4f98f8946cefd970a4b54853e11ab4775e6932faa7f60cf920346567"
+binary = "luau-lsp"
+
+[asset.linux-arm64]
+url = "https://github.com/JohnnyMorganz/luau-lsp/releases/download/1.70.1/luau-lsp-linux-arm64.zip"
+sha256 = "6062345b95124ca937b8c324b74bc3fddb1d6919ba133c58f8b17945ce1acbc2"
+binary = "luau-lsp"
+
+# Universal Mach-O (x86_64 + arm64) — one asset serves both Macs.
+[asset.macos]
+url = "https://github.com/JohnnyMorganz/luau-lsp/releases/download/1.70.1/luau-lsp-macos.zip"
+sha256 = "7d3936e8dec6dc77547abd061d2e950da392562a5f94858b880f23dba50d84cd"
+binary = "luau-lsp"
+
+[asset.windows-x86_64]
+url = "https://github.com/JohnnyMorganz/luau-lsp/releases/download/1.70.1/luau-lsp-win64.zip"
+sha256 = "64225b9738102a30de6ee09fb28e5a3827edc402ecf2a6364af570312468159f"
+binary = "luau-lsp.exe"

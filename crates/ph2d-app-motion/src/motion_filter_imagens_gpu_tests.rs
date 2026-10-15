@@ -19,6 +19,10 @@ use crate::motion_shape_gen::mistura::gpu_tests::{
 use crate::motion_shape_placa::{Misturas, PlacaDeFormas};
 use crate::motion_state::MotionState;
 
+/// As linhas de OUTROS sinks antes da faixa, nas formas e nas imagens (diferentes: o deslocamento).
+const FOLGA_F: u32 = 3;
+const FOLGA_I: u32 = 1;
+
 /// O cinzento LINEAR do `Color Overlay` em cada forma.
 const EFEITO: f32 = 0.6;
 
@@ -70,37 +74,43 @@ fn pela_rota(
     let mut buf_formas = None;
     if dispositivo {
         // A disposição do COZIMENTO: a faixa inteira do sink nos dois buffers — a linha de imagem sem
-        // geometria nas formas (`SEM_GEOMETRIA`), a de forma com tamanho zero nas imagens (a calada).
-        let linhas: Vec<RenderInstance> = insts
-            .iter()
-            .map(|i| {
+        // geometria nas formas (`SEM_GEOMETRIA`), a de forma com tamanho zero nas imagens (a calada) —,
+        // cada faixa DEPOIS de linhas de outros sinks, em número diferente nos dois buffers (com um
+        // sink só a faixa começaria em 0 nos dois e o deslocamento da corrida ordenada nunca se veria).
+        let mut calada = crate::motion_shape_placa::linha_da_imagem(&insts[0]);
+        calada.size = [0.0, 0.0];
+        let linhas: Vec<RenderInstance> = std::iter::repeat_n(calada, FOLGA_I as usize)
+            .chain(insts.iter().map(|i| {
                 let mut l = crate::motion_shape_placa::linha_da_imagem(i);
                 if i.geometry_id > 0 {
                     l.size = [0.0, 0.0];
                 }
                 l
-            })
+            }))
             .collect();
         let com_formas = insts.iter().any(|i| i.geometry_id > 0);
         let n = u32::try_from(insts.len()).expect("poucas");
-        let n_f = if com_formas { n } else { 0 };
+        let copias = if com_formas { FOLGA_F..FOLGA_F + n } else { 0..0 };
         let mistura = insts[0].mistura;
         let corridas = crate::motion_shape_placa::corridas_das_faixas(
-            &[(m.sinks[0], 0..n_f, 0..n)],
+            &[(m.sinks[0], copias.clone(), FOLGA_I..FOLGA_I + n)],
             |_| mistura,
             misturas,
         )
         .expect("a placa compõe-na");
-        let formas: Vec<VectorInstance> = insts
-            .iter()
-            .map(|i| VectorInstance {
+        let muda = VectorInstance {
+            geometry_id: ph2d_gpu_cook::lower_forma::SEM_GEOMETRIA,
+            ..insts[0]
+        };
+        let formas: Vec<VectorInstance> = std::iter::repeat_n(muda, FOLGA_F as usize)
+            .chain(insts.iter().map(|i| VectorInstance {
                 geometry_id: if i.geometry_id > 0 {
                     i.geometry_id
                 } else {
                     ph2d_gpu_cook::lower_forma::SEM_GEOMETRIA
                 },
                 ..*i
-            })
+            }))
             .collect();
         buf_formas = com_formas.then(|| buffer_do_cozimento(gpu, &formas));
         let vivas: Vec<u32> = insts
@@ -123,7 +133,7 @@ fn pela_rota(
             .clone();
         assert!(placa.decide_do_dispositivo_com_pousa(
             true,
-            n_f,
+            copias.end,
             &vivas,
             &store,
             &mut m.placa_geometrias,
@@ -132,8 +142,8 @@ fn pela_rota(
         ));
         placa.com_imagens(Some(crate::motion_shape_placa::imagens::FontesDasImagens {
             buffer,
-            linhas: n,
-            texturas: vec![(0..n, atlas)],
+            linhas: FOLGA_I + n,
+            texturas: vec![(0..FOLGA_I + n, atlas)],
             projeto: ph2d_render::ImageFilterMode::Smooth,
         }));
     } else {

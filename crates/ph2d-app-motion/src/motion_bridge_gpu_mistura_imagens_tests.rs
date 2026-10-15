@@ -354,11 +354,14 @@ fn o_scene_com_imagens_pelo_dispositivo_guarda_a_ordem_das_linhas() {
              (contra a ordem errada: > 16: {fora_e}; o controlo: {fora_c})"
         );
         assert!(nc > 10_000, "{caso}: a cena pinta ({nc} pixels)");
-        assert!(alfa <= 100 && cor <= 100, "{caso}: alfa {alfa} cor {cor}");
+        // A barra das imagens sozinhas (`4 · 4 · 0`), não a das estrelas contra o Vello (5 %): com as
+        // imagens POR BAIXO das formas, a 1.ª redacção aceitou 501 px — eram as imagens em falta
+        // (o enchimento dos handles achado como «sem geometria», `registo_de`).
         assert!(
-            fora * 20 <= nc,
-            "{caso}: {fora} pixels desviam > 16 — acima de 5 % dos {nc}"
+            alfa <= ALFA_MAX && cor <= COR_MAX,
+            "{caso}: alfa {alfa} cor {cor}"
         );
+        assert_eq!(fora, FORA_MAX, "{caso}: {fora} pixels desviam mais de 16");
         assert!(
             fora_e * 20 > nc,
             "{caso}: o dispositivo tem de DIFERIR da ordem errada ({fora_e})"

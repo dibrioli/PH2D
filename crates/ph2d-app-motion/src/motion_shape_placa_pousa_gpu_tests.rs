@@ -507,3 +507,154 @@ fn o_scene_com_imagens_pela_cpu_guarda_a_ordem_das_linhas() {
         );
     }
 }
+
+/// ⭐⭐⭐ doc 132 §4.1 (3) — **o `Scene` com imagens PELO DISPOSITIVO guarda a ordem das linhas, com a
+/// faixa do grupo DESLOCADA**: a disposição do cozimento (a faixa inteira nos dois buffers, a linha do
+/// outro meio muda) DEPOIS de linhas de outros sinks em número diferente nas formas (3) e nas imagens
+/// (1) — o deslocamento que a corrida ordenada leva no `first_vertex`. Fixtura: a A (`A1`) e a B
+/// (`A2`), imagem + forma e forma + imagem; a B tapa a A nas duas. Tabela fechada:
+/// `[f(B, A1), f(B, A2), f(B, A2), B]`.
+#[test]
+#[ignore = "placa: precisa de adapter de GPU"]
+fn o_scene_com_imagens_pelo_dispositivo_segue_a_faixa_deslocada() {
+    let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
+        panic!("sem adapter — este gate mede a placa");
+    };
+    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    for (k, cinza) in [(1u32, A1), (2, A2)] {
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+        let v = byte(cinza) as u8;
+        atlas
+            .insert(&gpu, k, 4, 4, &[v, v, v, 255].repeat(16))
+            .expect("cabe");
+    }
+    let renderer =
+        ph2d_render::SpriteRenderer::new(gpu.clone(), ph2d_render::GameRt::FORMAT, atlas, 8);
+    let uvs = [renderer.atlas().region_uv(1), renderer.atlas().region_uv(2)];
+    let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
+    let mut casos = 0;
+    let mut falhas: Vec<String> = Vec::new();
+    for (folga_f, folga_i) in [(0u32, 0u32), (3, 3), (3, 1), (1, 3)] {
+    for imagem_em_cima in [false, true] {
+        for tag in [1u8, 3, 4] {
+            let m = MisturaDoSink {
+                blend: tag,
+                com: BlendWith::Scene,
+                sink: 0,
+            };
+            let insts: Vec<VectorInstance> = [(16.0, A1, 0usize), (32.0, A2, 1)]
+                .iter()
+                .map(|&(cx, cinza, k)| {
+                    let imagem = (k == 1) == imagem_em_cima;
+                    let mut c = copia(cx, 24.0, cinza, m, imagem.then_some(0));
+                    if imagem {
+                        c.atlas_uv = uvs[k];
+                    }
+                    c
+                })
+                .collect();
+            let muda = VectorInstance {
+                geometry_id: ph2d_gpu_cook::lower_forma::SEM_GEOMETRIA,
+                ..insts[0]
+            };
+            let formas: Vec<ph2d_shape_gpu::ShapeInstance> =
+                std::iter::repeat_n(muda, folga_f as usize)
+                    .chain(insts.iter().map(|i| VectorInstance {
+                        geometry_id: if i.geometry_id > 0 {
+                            i.geometry_id
+                        } else {
+                            ph2d_gpu_cook::lower_forma::SEM_GEOMETRIA
+                        },
+                        ..*i
+                    }))
+                    .map(|i| ph2d_shape_gpu::ShapeInstance {
+                        pos: i.world_pos,
+                        size: i.size,
+                        basis: i.basis,
+                        anchor: i.anchor,
+                        geometry: i.geometry_id,
+                        _pad: 0,
+                        tint: i.tint,
+                    })
+                    .collect();
+            let mut calada = super::linha_da_imagem(&insts[0]);
+            calada.size = [0.0, 0.0];
+            let linhas: Vec<ph2d_render::RenderInstance> =
+                std::iter::repeat_n(calada, folga_i as usize)
+                    .chain(insts.iter().map(|i| {
+                        let mut l = super::linha_da_imagem(i);
+                        if i.geometry_id > 0 {
+                            l.size = [0.0, 0.0];
+                        }
+                        l
+                    }))
+                    .collect();
+            let buffer = |bytes: &[u8]| {
+                let b = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("test cozimento deslocado"),
+                    size: bytes.len() as u64,
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                gpu.queue.write_buffer(&b, 0, bytes);
+                b
+            };
+            let (buf_f, buf_i) = (
+                buffer(bytemuck::cast_slice(&formas)),
+                buffer(bytemuck::cast_slice(&linhas)),
+            );
+            let corridas = corridas_das_faixas(
+                &[(
+                    ph2d_nodegraph::graph::NodeId(0),
+                    folga_f..folga_f + 2,
+                    folga_i..folga_i + 2,
+                )],
+                |_| m,
+                Misturas::do_quadro(&gpu, false),
+            )
+            .expect("a placa compõe-na");
+            assert!(corridas.0.iter().any(ph2d_shape_gpu::Corrida::ordenada));
+            let mut store = VecPathStore::default();
+            let _ = store.push(ph2d_vec_scene::rectangle([-0.5, -0.5], [0.5, 0.5]));
+            let mut placa = PlacaDeFormas::default();
+            let mut geos = GeometriasDaPlaca::default();
+            assert!(placa.decide_do_dispositivo_com_pousa(
+                true,
+                folga_f + 2,
+                &[1],
+                &store,
+                &mut geos,
+                Affine::IDENTITY,
+                corridas,
+            ));
+            let atlas = renderer
+                .texture_view_and_dims(0)
+                .expect("o átlas")
+                .0
+                .clone();
+            placa.com_imagens(Some(super::imagens::FontesDasImagens {
+                buffer: buf_i,
+                linhas: folga_i + 2,
+                texturas: vec![(0..folga_i + 2, atlas)],
+                projeto: ph2d_render::ImageFilterMode::Smooth,
+            }));
+            let _ = placa.desenha(&gpu, (W, H), &geos, Some(&buf_f)).expect("desenha");
+            let mundo = mundo_b(&gpu);
+            super::cola_no_mundo(&mut placa, &gpu, &blit, mundo.blend_view());
+            let lido = le_colunas(&gpu, &mundo);
+            let f = |x, y| crate::motion_shape_gen::mistura::gpu_tests::f(tag, x, y);
+            let quer = [f(B, A1), f(B, A2), f(B, A2), B].map(byte);
+            eprintln!("Scene {tag} folgas ({folga_f}, {folga_i}) imagem_em_cima={imagem_em_cima}: lido {lido:?} · tabela {quer:?}");
+            if !lido.iter().zip(&quer).all(|(l, q)| (l - q).abs() <= BARRA) {
+                falhas.push(format!(
+                    "tag {tag} folgas ({folga_f}, {folga_i}) imagem_em_cima={imagem_em_cima}: \
+                     {lido:?} contra {quer:?}"
+                ));
+            }
+            casos += 1;
+        }
+    }
+    }
+    assert_eq!(casos, 24);
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}

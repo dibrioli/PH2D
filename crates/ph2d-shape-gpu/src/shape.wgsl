@@ -108,6 +108,12 @@ struct VsOut {
 
 // O índice do registo de um handle, ou `0xffffffff` se a geometria não existe.
 fn registo_de(handle: u32) -> u32 {
+    // `0xffffffff` é o ENCHIMENTO dos handles (`set_geometries`) e a linha sem geometria do
+    // cozimento (`SEM_GEOMETRIA`): a busca achava-o num lugar de enchimento com menos de 4
+    // geometrias, e a linha de imagem de uma corrida ordenada lia-se como forma.
+    if handle == 0xffffffffu {
+        return 0xffffffffu;
+    }
     var lo = 0u;
     var hi = arrayLength(&handles);
     while lo < hi {

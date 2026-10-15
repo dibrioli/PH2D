@@ -42,8 +42,8 @@ pub(super) fn lut_srgb(ramp: &ph2d_color::ColorRamp, bw: bool) -> Vec<[f32; 4]> 
             c[1] = l;
             c[2] = l;
         }
-        for k in 0..3 {
-            c[k] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[k])) / 255.0;
+        for v in c.iter_mut().take(3) {
+            *v = f32::from(ph2d_color::srgb::linear_to_srgb_byte(*v)) / 255.0;
         }
     }
     lut

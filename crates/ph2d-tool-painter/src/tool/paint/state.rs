@@ -6,9 +6,8 @@
 //! lista de módulos, os re-exports e as suítes de gate. Um manifesto tem de morar na raiz do
 //! módulo; o estado não.
 //!
-//! Os campos são `pub(super)` e não privados porque quem os lê são os ~40 módulos IRMÃOS
-//! (`brush_settings`, `sculpt`, `wetpaint`, …), que são DESCENDENTES de `paint` — `pub(super)`
-//! daqui alcança exatamente eles e nada mais. Nenhum símbolo novo sai da crate.
+//! Os campos são `pub(super)`: quem os lê são os ~40 módulos IRMÃOS (`brush_settings`, `sculpt`,
+//! `wetpaint`, …), DESCENDENTES de `paint` — e nada mais. Nenhum símbolo novo sai da crate.
 
 use super::*;
 

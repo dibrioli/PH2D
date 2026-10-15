@@ -11,10 +11,9 @@ use ph2d_painter_brush::{
     blit_stamp, blit_stamp_ramped, render_stamp_mask,
 };
 
-/// Lazily-filled CANVAS-SPACE texture cache for the **Tiled / Stencil** mappings (canvas-fixed, so a
-/// pixel's texture value is dab-independent): each canvas pixel's texture is computed once per stroke
-/// and reused by every later dab — see [`ph2d_painter_brush::blit_canvas_cached`]. `tex` + `ready`
-/// are `width*height`; persisted across the stroke (and strokes) until the key / size changes.
+/// Lazily-filled CANVAS-SPACE texture cache for the **Tiled / Stencil** mappings (canvas-fixed): each
+/// pixel's texture is computed once and reused by every later dab ([`ph2d_painter_brush::blit_canvas_cached`]);
+/// `tex` + `ready` are `width*height`, kept across strokes until the key / size changes.
 #[derive(Clone)]
 pub(super) struct CanvasTexCache {
     tex: Vec<u8>,

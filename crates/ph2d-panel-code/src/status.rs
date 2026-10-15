@@ -42,7 +42,15 @@ impl StatusLine {
             (0, 0) => (tr("code.status.no_problems").to_owned(), Tone::Plain),
             (e, w) => {
                 let tone = if e > 0 { Tone::Error } else { Tone::Warning };
-                (tr_with("code.status.problems", &[("errors", &e), ("warnings", &w)]), tone)
+                let errors = match e {
+                    1 => tr("code.status.errors_one").to_owned(),
+                    n => tr_with("code.status.errors", &[("count", &n)]),
+                };
+                let warnings = match w {
+                    1 => tr("code.status.warnings_one").to_owned(),
+                    n => tr_with("code.status.warnings", &[("count", &n)]),
+                };
+                (tr_with("code.status.problems", &[("errors", &errors), ("warnings", &warnings)]), tone)
             }
         };
         let badge = frame.badge.map(|b| match b {

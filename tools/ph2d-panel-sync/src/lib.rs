@@ -29,19 +29,110 @@ pub const TOML_DEPS_END: &str = "# <ph2d-panel-sync:deps:end>";
 pub const TOML_FEATURES_BEGIN: &str = "# <ph2d-panel-sync:features:begin>";
 pub const TOML_FEATURES_END: &str = "# <ph2d-panel-sync:features:end>";
 
+/// The registry aggregator itself — carries the prefix, is not a panel.
+pub const REGISTRY_INIT: &str = "ph2d-panel-registry-init";
+
+/// ⛔ `ph2d-panel-*` crates that are PAINTING, not a panel: no `*Panel`, no registration, no dock
+/// slot. They keep the prefix on purpose — the UI gates (`no_literal_color`, `no_magic_numeric`,
+/// `architecture_panel_loc_cap`, HR-12, HR-15) discover their population by it. The ONE list read by
+/// the generator (`scan_panel_crates`) and by the shell's panel census; kept honest by
+/// [`paint_only_census`] (each name exists AND declares no panel). `(crate, why)`.
+pub const PAINT_ONLY_CRATES: &[(&str, &str)] = &[(
+    "ph2d-panel-code",
+    "the script editor's painting (CodeEditor Onda 1, docs/CodeEditor/02_onda1.md): a library the \
+     `ph2d-app-code` family calls through `ph2d_editor_core::doc_surface::DocumentSurface` — the \
+     editor lives in a document tab, not in a dock",
+)];
+
+/// Is `name` a `ph2d-panel-*` crate that registers a panel (not the aggregator, not paint-only)?
+pub fn is_registered_panel_crate(name: &str) -> bool {
+    name.starts_with("ph2d-panel-")
+        && name != REGISTRY_INIT
+        && !PAINT_ONLY_CRATES.iter().any(|(n, _)| *n == name)
+}
+
 /// Scan `crates_dir` for panel crates (`ph2d-panel-*`), excluding the
-/// `ph2d-panel-registry-init` aggregator. Returns kebab crate names,
-/// sorted (deterministic merge-stable order).
+/// `ph2d-panel-registry-init` aggregator and the [`PAINT_ONLY_CRATES`].
+/// Returns kebab crate names, sorted (deterministic merge-stable order).
 pub fn scan_panel_crates(crates_dir: &Path) -> Vec<String> {
     let mut names: Vec<String> = std::fs::read_dir(crates_dir)
         .expect("crates dir readable")
         .filter_map(Result::ok)
         .filter(|e| e.path().join("Cargo.toml").is_file())
         .filter_map(|e| e.file_name().into_string().ok())
-        .filter(|n| n.starts_with("ph2d-panel-") && n != "ph2d-panel-registry-init")
+        .filter(|n| is_registered_panel_crate(n))
         .collect();
     names.sort();
     names
+}
+
+/// The census that keeps [`PAINT_ONLY_CRATES`] honest. Returns one line per violation:
+/// a listed name with no crate on disk, an empty reason, or a listed crate that DOES declare a
+/// panel (`pub struct *Panel` in `lib.rs`, an `impl … Panel for` or an `ErasedPanel` anywhere in
+/// `src/`, comments skipped). Empty = honest.
+pub fn paint_only_census(crates_dir: &Path) -> Vec<String> {
+    let mut bad = Vec::new();
+    for (name, why) in PAINT_ONLY_CRATES {
+        let dir = crates_dir.join(name);
+        if !dir.join("Cargo.toml").is_file() {
+            bad.push(format!(
+                "`{name}` is listed as paint-only but has no crate on disk"
+            ));
+            continue;
+        }
+        if why.trim().is_empty() {
+            bad.push(format!(
+                "`{name}` is listed as paint-only without the reason"
+            ));
+        }
+        if let Some(s) = panel_struct_name(crates_dir, name) {
+            bad.push(format!(
+                "`{name}` is listed as paint-only but exports `pub struct {s}`"
+            ));
+        }
+        for hit in panel_declarations(&dir.join("src")) {
+            bad.push(format!(
+                "`{name}` is listed as paint-only but declares a panel: {hit}"
+            ));
+        }
+    }
+    bad
+}
+
+/// Non-comment lines under `src` that declare or register a panel.
+fn panel_declarations(src: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![src.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+                continue;
+            }
+            if p.extension().is_none_or(|x| x != "rs") {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&p) else {
+                continue;
+            };
+            for (i, line) in text.lines().enumerate() {
+                let t = line.trim_start();
+                if t.starts_with("//") {
+                    continue;
+                }
+                let impl_panel = t.starts_with("impl")
+                    && (t.contains(" Panel for ") || t.contains("::Panel for "));
+                if impl_panel || t.contains("ErasedPanel") {
+                    out.push(format!("{}:{} `{}`", p.display(), i + 1, t.trim_end()));
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Snake-case identifier for the crate (used in `use`/path expressions).

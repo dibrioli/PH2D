@@ -14,7 +14,10 @@ use crate::style::Ink;
 use crate::view::{CodeView, Row, Underline};
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_code_buffer::Buffer;
-use ph2d_editor_core::paint::{fill_rounded_rect, label_column_width, paint_text, rect_to_vello, stroke_polyline, stroke_rect};
+use ph2d_editor_core::math::safe_clamp_ord;
+use ph2d_editor_core::paint::{
+    fill_circle, fill_rounded_rect, frame_radius, label_column_width, paint_text, rect_to_vello, stroke_polyline, stroke_rect,
+};
 use ph2d_editor_core::ui_scale::ao_pixel;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -255,7 +258,7 @@ impl CodeView {
             let Some(layout) = self.cache.peek(row.key) else { continue };
             let x = self.text_x0() + geom::width(layout) + Spacing::Sm.px();
             let pill = Rect { x, y: row.y + Spacing::Xxs.px(), w, h: self.m.line_h - Spacing::Xxs.px() * 2.0 };
-            fill_rounded_rect(scene, pill, Radius::Sm.px(), pal.pill);
+            fill_rounded_rect(scene, pill, frame_radius(pal.theme, Radius::Sm.px()), pal.pill);
             paint_text(ts, scene, label, x + pad, row.y + (self.m.line_h - font) * 0.5, font, w, pal.pill_text);
         }
     }
@@ -303,8 +306,8 @@ impl CodeView {
             self.number_glyphs(out, row.line + 1, right, row.y);
             let worst = frame.problems.iter().filter(|p| p.line == row.line).map(|p| p.severity).max();
             if let Some(sev) = worst {
-                let r = Rect { x: a.x + (self.m.mark_w - dot) * 0.5, y: row.y + (self.m.line_h - dot) * 0.5, w: dot, h: dot };
-                fill_rounded_rect(scene, r, Radius::Full.px(), pal.severity(sev));
+                let (cx, cy) = (a.x + self.m.mark_w * 0.5, row.y + self.m.line_h * 0.5);
+                fill_circle(scene, cx, cy, dot * 0.5, pal.severity(sev));
             }
             if let Some(f) = self.folds.iter().find(|f| f.start == row.line && f.end > f.start) {
                 let cx = a.x + self.m.gutter_w - self.m.fold_w * 0.5;
@@ -407,8 +410,8 @@ impl CodeView {
 fn display_spans(spans: &[(Range<usize>, Ink)], ls: usize, le: usize, dl: &DisplayLine) -> Vec<(Range<usize>, Ink)> {
     let mut out = Vec::new();
     for (rg, ink) in spans.iter().take_while(|s| s.0.start < le.max(ls + 1)) {
-        let s = rg.start.clamp(ls, le) - ls;
-        let e = rg.end.clamp(ls, le) - ls;
+        let s = safe_clamp_ord(rg.start, ls, le) - ls;
+        let e = safe_clamp_ord(rg.end, ls, le) - ls;
         if s < e {
             out.push((dl.to_disp(s)..dl.to_disp(e), *ink));
         }

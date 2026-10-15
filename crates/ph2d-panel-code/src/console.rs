@@ -55,6 +55,16 @@ impl Default for ConsoleView {
     }
 }
 
+/// O título do cabeçalho: «Console», ou com a contagem de erros («1 error», «2 errors»).
+#[must_use]
+pub fn title_text(errors: usize) -> String {
+    match errors {
+        0 => tr("code.console.title").to_owned(),
+        1 => tr("code.console.title_errors_one").to_owned(),
+        n => tr_with("code.console.title_errors", &[("count", &n)]),
+    }
+}
+
 fn row_h() -> f32 {
     ph2d_editor_core::ui_scale::ao_pixel(chrome::font() * LineHeight::Normal.ratio())
 }
@@ -73,7 +83,11 @@ impl ConsoleView {
     /// Rola `dy` px (positivo = para trás no tempo).
     pub fn scroll_by(&mut self, dy: f32, total: usize) {
         let n = (dy / row_h()).round() as isize;
-        self.back = (self.back as isize + n).clamp(0, total.saturating_sub(1) as isize) as usize;
+        self.back = ph2d_editor_core::math::safe_clamp_ord(
+            self.back as isize + n,
+            0,
+            total.saturating_sub(1) as isize,
+        ) as usize;
     }
 
     /// Volta a mostrar a linha mais recente.
@@ -110,11 +124,7 @@ impl ConsoleView {
             chev,
             &ui,
         );
-        let title = if errors > 0 {
-            tr_with("code.console.title_errors", &[("count", &errors)])
-        } else {
-            tr("code.console.title").to_owned()
-        };
+        let title = title_text(errors);
         let tx = chev.x + chev.w + pad;
         let tone = if errors > 0 { ui.error } else { ui.text2 };
         chrome::label_in(

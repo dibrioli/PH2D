@@ -4,11 +4,13 @@
 use ph2d_code_buffer::Buffer;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, rect_to_vello, resolve,
-    stroke_rounded_rect,
+    fill_rounded_rect, frame_radius, paint_icon, paint_text, paint_text_centered, rect_to_vello,
+    resolve, stroke_frame,
 };
+use ph2d_editor_core::widget::section_cards::CardDepth;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
+use ph2d_tokens::visuals::Feel;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Color, VectorScene};
 
@@ -32,13 +34,17 @@ pub(crate) struct Ui {
     pub error: Color,
     pub warn: Color,
     pub hover: Color,
+    /// O tema — as quinas e a moldura perguntam-lhe.
+    pub theme: Theme,
 }
 
 impl Ui {
     pub fn new(theme: Theme) -> Self {
         let c = |t: ColorToken| resolve(t, theme);
         Self {
-            bg: c(ColorToken::Bg1),
+            // A barra assenta na raiz do documento, não dentro de um cartão: é a superfície de
+            // nível de cartão, e o tom vem da porta.
+            bg: CardDepth::Section.fill(theme),
             border: c(ColorToken::Border),
             field: c(ColorToken::CodeBg),
             field_edge: c(ColorToken::Border),
@@ -53,6 +59,7 @@ impl Ui {
             error: c(ColorToken::Danger),
             warn: c(ColorToken::Warn),
             hover: c(ColorToken::Bg2),
+            theme,
         }
     }
 }
@@ -121,7 +128,7 @@ pub(crate) fn text_button(
     fill_rounded_rect(
         scene,
         r,
-        Radius::Sm.px(),
+        frame_radius(ui.theme, Radius::Sm.px()),
         if on { ui.button_on } else { ui.button },
     );
     paint_text_centered(
@@ -174,9 +181,22 @@ pub(crate) fn text_field(
     focused: bool,
     ui: &Ui,
 ) -> f32 {
-    fill_rounded_rect(scene, r, Radius::Sm.px(), ui.field);
-    let edge = if focused { ui.focus } else { ui.field_edge };
-    stroke_rounded_rect(scene, r, Radius::Sm.px(), StrokeToken::Thin.px(), edge);
+    let radius = frame_radius(ui.theme, Radius::Sm.px());
+    fill_rounded_rect(scene, r, radius, ui.field);
+    let (feel, edge) = if focused {
+        (Feel::Focused, ui.focus)
+    } else {
+        (Feel::Rest, ui.field_edge)
+    };
+    stroke_frame(
+        scene,
+        r,
+        radius,
+        ui.theme,
+        feel,
+        StrokeToken::Thin.px(),
+        edge,
+    );
     let pad = Spacing::Sm.px();
     let x0 = r.x + pad;
     let f = font();

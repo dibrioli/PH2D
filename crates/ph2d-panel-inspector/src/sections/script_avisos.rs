@@ -65,7 +65,7 @@ fn simbolo(
     fill_rounded_rect(
         scene,
         chip,
-        Radius::Xs.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
         resolve(ColorToken::DangerSoft, theme),
     );
     ph2d_editor_core::paint::paint_text_centered(

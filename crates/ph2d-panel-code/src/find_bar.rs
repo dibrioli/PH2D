@@ -7,7 +7,7 @@ use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ICON_BTN_SIZE_PX, ROW_H_PX, Spacing, Theme};
+use ph2d_tokens::{ICON_BTN_SIZE_PX, ROW_H_PX, Spacing, Theme, row_pitch_px};
 use ph2d_vector::VectorScene;
 
 /// Um campo da barra.
@@ -63,6 +63,7 @@ pub fn count_text(count: Option<FindCount>) -> Option<String> {
     Some(match (c.total, c.current) {
         (0, _) => tr("code.find.none").to_owned(),
         (n, Some(i)) => tr_with("code.find.count", &[("current", &(i + 1)), ("total", &n)]),
+        (1, None) => tr("code.find.total_one").to_owned(),
         (n, None) => tr_with("code.find.total", &[("total", &n)]),
     })
 }
@@ -93,15 +94,17 @@ impl Default for FindBarView {
 }
 
 impl FindBarView {
-    /// A altura da barra: uma linha (buscar · ir para linha) ou duas (com substituir).
+    /// A altura da barra: uma linha (buscar · ir para linha) ou duas (com substituir). O recuo de
+    /// cima e de baixo é o da barra; de uma linha à seguinte, o passo do ritmo ([`row_pitch_px`]).
     #[must_use]
     pub fn height(bar: &FindBar<'_>) -> f32 {
-        let rows = if bar.goto.is_none() && bar.replace.is_some() {
-            2.0
-        } else {
+        let extra_rows = if bar.goto.is_none() && bar.replace.is_some() {
             1.0
+        } else {
+            0.0
         };
-        rows * ROW_H_PX + Spacing::Sm.px() * (rows + 1.0)
+        let pad = Spacing::Sm.px();
+        pad * 2.0 + ROW_H_PX + extra_rows * row_pitch_px()
     }
 
     pub fn paint(
@@ -199,7 +202,7 @@ impl FindBarView {
         );
         // 2.ª linha: substituir.
         if let Some(rep) = bar.replace {
-            y += ROW_H_PX + gap;
+            y += row_pitch_px();
             let all = self.text_button(
                 scene,
                 ts,

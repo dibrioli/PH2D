@@ -3,6 +3,7 @@
 
 use crate::style::Ink;
 use ph2d_editor_core::paint::resolve;
+use ph2d_editor_core::widget::section_cards::CardDepth;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::{Affine, BezPath, Brush, Color, VectorScene};
 
@@ -29,6 +30,8 @@ pub(crate) struct Palette {
     pub status_bg: Color,
     pub status_text: Color,
     pub success: Color,
+    /// O tema do quadro — as quinas perguntam-lhe ([`ph2d_editor_core::paint::frame_radius`]).
+    pub theme: Theme,
 }
 
 impl Palette {
@@ -54,9 +57,12 @@ impl Palette {
             fold: c(ColorToken::Text2),
             pill: c(ColorToken::Bg3),
             pill_text: c(ColorToken::Text2),
-            status_bg: c(ColorToken::Bg1),
+            // A barra de estado assenta na raiz do documento, não dentro de um cartão: é ela a
+            // superfície de nível de cartão, e o tom vem da porta.
+            status_bg: CardDepth::Section.fill(theme),
             status_text: c(ColorToken::Text2),
             success: c(ColorToken::Success),
+            theme,
         }
     }
 

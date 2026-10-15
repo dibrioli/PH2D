@@ -20,7 +20,7 @@ pub mod style;
 mod view;
 
 pub use a11y::RUN_CHARS;
-pub use console::{ConsoleHit, ConsoleRow, ConsoleView};
+pub use console::{ConsoleHit, ConsoleRow, ConsoleView, title_text as console_title_text};
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{Badge, CodeFrame, FoldMark, Problem, Severity};
 pub use geom::Column;

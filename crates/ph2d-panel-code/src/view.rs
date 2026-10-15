@@ -228,7 +228,7 @@ impl CodeView {
     }
 
     pub(crate) fn clamp_scroll(&mut self) {
-        self.scroll_y = self.scroll_y.clamp(0.0, self.max_scroll_y());
+        self.scroll_y = ph2d_editor_core::math::safe_clamp(self.scroll_y, 0.0, self.max_scroll_y());
         self.scroll_x = self.scroll_x.max(0.0);
     }
 

@@ -9,7 +9,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // A barra de estado do editor (E4): o cursor, os problemas e o selo do último salvar.
         "code.status.position" => "Ln {line}, Col {col}",
         "code.status.no_problems" => "No problems",
-        "code.status.problems" => "{errors} errors · {warnings} warnings",
+        // As contagens têm a forma de UM à parte (`_one`): «1 errors» era o que a barra dizia.
+        "code.status.problems" => "{errors} · {warnings}",
+        "code.status.errors" => "{count} errors",
+        "code.status.errors_one" => "1 error",
+        "code.status.warnings" => "{count} warnings",
+        "code.status.warnings_one" => "1 warning",
         "code.status.reloaded" => "Reloaded · {count} objects",
         "code.status.reloaded_one" => "Reloaded · 1 object",
         "code.status.refused_line" => {
@@ -24,6 +29,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.find.replace_placeholder" => "Replace",
         "code.find.count" => "{current} of {total}",
         "code.find.total" => "{total} results",
+        "code.find.total_one" => "1 result",
         "code.find.none" => "No results",
         "code.find.case" => "Aa",
         "code.find.word" => "Word",
@@ -34,6 +40,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O console da aba (E10).
         "code.console.title" => "Console",
         "code.console.title_errors" => "Console · {count} errors",
+        "code.console.title_errors_one" => "Console · 1 error",
         "code.console.clear" => "Clear",
         "code.console.empty" => "Nothing printed yet — print() from the script shows here",
         "code.console.runtime_error" => "Line {line}: {msg}",

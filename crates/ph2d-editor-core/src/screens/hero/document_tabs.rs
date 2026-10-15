@@ -16,14 +16,18 @@ use crate::doc_surface::{DocTab, SurfaceTab};
 use crate::icons::IconId;
 use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, rect_for_label, resolve};
+use crate::paint::{
+    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, rect_for_label, resolve,
+};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_board_model::{BoardId, BoardSet};
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{
+    ColorToken, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken, icon_label_gap_px,
+};
 use ph2d_vector::VectorScene;
 
 /// ⛔ O salto que separa o id da aba de um QUADRO de tudo o resto (bijecção: não cria colisão nova).
@@ -44,16 +48,30 @@ pub fn surface_close_node_id(tab: SurfaceTab) -> NodeId {
     NodeId(SURFACE_CLOSE_SALT ^ (u64::from(tab.family) << 56) ^ tab.id)
 }
 
-/// O quadrado do × dentro da aba de família (encostado à direita).
-#[must_use]
-pub fn surface_close_rect(tab: Rect) -> Rect {
-    let s = INLINE_ICON_PX;
-    Rect::new(
-        tab.x + tab.w - s - Spacing::Sm.px(),
-        tab.y + (tab.h - s) / 2.0,
-        s,
-        s,
-    )
+/// A cara de uma aba de família: o nome e, DEPOIS dele, o ×. É a porta das abas de painel
+/// ([`super::slot_tabs_face::face`]: recuo · glifo · vão · nome · recuo, o grupo centrado) com o
+/// glifo do outro lado — o mesmo orçamento e o mesmo vão ([`ph2d_tokens::icon_label_gap_px`]).
+/// Devolve o quadrado do × e o nome já elidido com o canto onde começa (`None` = só o ×).
+pub fn surface_face(
+    tab: Rect,
+    title: &str,
+    text_system: &mut TextSystem,
+) -> (Rect, Option<(String, f32, f32)>) {
+    let f = super::slot_tabs_face::face(tab, title, text_system);
+    let Some((shown, _, y)) = f.label else {
+        return (f.icon, None);
+    };
+    let text_w = text_system
+        .layout(&shown, TypeToken::Sm.px(), f32::INFINITY)
+        .width();
+    let x0 = f.icon.x;
+    let close = Rect::new(
+        x0 + text_w + icon_label_gap_px(),
+        f.icon.y,
+        f.icon.w,
+        f.icon.h,
+    );
+    (close, Some((shown, x0, y)))
 }
 
 /// O id do controlo da aba do quadro `id`.
@@ -124,8 +142,7 @@ pub fn tab_rects(
         push(Target::Board(b.id), natural.min(share), &mut out);
     }
     for (tab, doc) in surfaces {
-        let text_w = text_system.prefix_width(&surface_title(doc), font);
-        let natural = rect_for_label(text_w) + INLINE_ICON_PX + Spacing::Sm.px();
+        let natural = super::slot_tabs_face::natural_w(&surface_title(doc), text_system);
         push(Target::Surface(*tab), natural.min(share), &mut out);
     }
     push(Target::New, new_w, &mut out);
@@ -294,16 +311,19 @@ pub fn paint(
                     .iter()
                     .find(|(t, _)| *t == tab)
                     .map(|(_, d)| surface_title(d));
-                let close = surface_close_rect(r);
-                let label = Rect::new(r.x, r.y, (close.x - r.x).max(0.0), r.h);
-                paint_text_centered(
-                    text_system,
-                    scene,
-                    title.as_deref().unwrap_or(""),
-                    label,
-                    TypeToken::Sm.px(),
-                    fg,
-                );
+                let (close, label) = surface_face(r, title.as_deref().unwrap_or(""), text_system);
+                if let Some((shown, x, y)) = label {
+                    paint_text(
+                        text_system,
+                        scene,
+                        &shown,
+                        x,
+                        y,
+                        TypeToken::Sm.px(),
+                        r.w,
+                        fg,
+                    );
+                }
                 hit_index.register(id, r);
                 let cid = surface_close_node_id(tab);
                 let hot = matches!(

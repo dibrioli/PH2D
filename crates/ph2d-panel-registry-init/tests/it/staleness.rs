@@ -105,3 +105,24 @@ fn cargo_features_in_sync_with_folder() {
          Run `cargo run -p ph2d-panel-sync` and commit the regenerated file."
     );
 }
+
+/// ⛔ The paint-only exemption travels with the code and has a census (CLAUDE.md §5.0): every
+/// name in `PAINT_ONLY_CRATES` exists on disk, carries its reason and declares NO panel. A
+/// `ph2d-panel-*` crate outside the list without `*Panel` stays red in
+/// `build_typed_registry_in_sync_with_folder`.
+#[test]
+fn paint_only_crates_are_honest() {
+    let crates = crates_dir();
+    assert!(
+        !ph2d_panel_sync::PAINT_ONLY_CRATES.is_empty(),
+        "the paint-only list is empty — drop the list and this census with it"
+    );
+    let bad = ph2d_panel_sync::paint_only_census(&crates);
+    assert!(
+        bad.is_empty(),
+        "the paint-only list lies:\n  {}\ncure: a crate that registers a panel leaves \
+         `PAINT_ONLY_CRATES` (tools/ph2d-panel-sync/src/lib.rs) and `cargo run -p ph2d-panel-sync` \
+         wires it; a name that no longer exists leaves the list.",
+        bad.join("\n  ")
+    );
+}

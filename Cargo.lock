@@ -6191,6 +6191,7 @@ dependencies = [
  "ph2d-panel-physics",
  "ph2d-panel-registry-init",
  "ph2d-panel-skeleton",
+ "ph2d-panel-sync",
  "ph2d-panel-tags",
  "ph2d-panel-timeline",
  "ph2d-panel-tokens",

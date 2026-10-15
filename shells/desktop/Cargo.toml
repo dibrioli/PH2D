@@ -435,6 +435,9 @@ ph2d-audio-decode = { path = "../../crates/ph2d-audio-decode" }
 [dev-dependencies]
 # A régua lexical do HR-15 — o gate `every_word_the_shell_shows_comes_from_the_string_table`.
 ph2d-label-census = { path = "../../crates/ph2d-label-census" }
+# A população de painéis do `no_open_panel_leaves_its_column_blank`: a MESMA varredura do gerador
+# (sem as crates de pintura de `PAINT_ONLY_CRATES`).
+ph2d-panel-sync = { path = "../../tools/ph2d-panel-sync" }
 # ⚠️ **Estas três eram `[dependencies]` e só os TESTES as usam** (0 usos em `src/`, 3–5 em
 # `tests/`): a declaração mentia sobre o que o binário leva, e o `cargo machete` não o vê porque
 # conta `tests/` como uso (auditoria de arquitectura 2026-09-12, A6). No produto, os três nós

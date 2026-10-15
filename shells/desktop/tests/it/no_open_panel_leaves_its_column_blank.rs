@@ -68,27 +68,15 @@ fn panels() -> Vec<P> {
     v
 }
 
-/// Quantas crates `ph2d-panel-*` existem no disco — a população REAL, derivada.
-///
-/// ⚠️ **A `ph2d-panel-registry-init` sai por ser o registo, não um painel.** É a única excepção, e
-/// ela é estrutural: um nome novo com esse prefixo que fosse infra teria de vir aqui, e isso é
-/// exactamente a conversa que se quer ter.
+/// Quantas crates de painel existem no disco — a população REAL, derivada, pela MESMA varredura do
+/// gerador (`ph2d_panel_sync::scan_panel_crates`): sem o registo e sem as crates de PINTURA
+/// (`PAINT_ONLY_CRATES`, com o censo dela no `staleness` da `ph2d-panel-registry-init`).
 fn panel_crates_on_disk() -> Vec<String> {
     let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../crates")
         .canonicalize()
         .expect("a pasta das crates existe");
-    let mut v: Vec<String> = std::fs::read_dir(crates)
-        .expect("li a pasta das crates")
-        .flatten()
-        .filter_map(|e| {
-            let n = e.file_name().to_string_lossy().to_string();
-            (e.path().is_dir() && n.starts_with("ph2d-panel-") && n != "ph2d-panel-registry-init")
-                .then_some(n)
-        })
-        .collect();
-    v.sort();
-    v
+    ph2d_panel_sync::scan_panel_crates(&crates)
 }
 
 /// Pinta quatro quadros com **só** este painel aberto e devolve se ele publicou rect.

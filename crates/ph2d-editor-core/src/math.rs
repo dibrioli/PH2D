@@ -36,9 +36,29 @@ pub fn safe_clamp_f64(v: f64, min: f64, max: f64) -> f64 {
     v.clamp(lo, hi)
 }
 
+/// [`safe_clamp`] para INTEIROS (índices, bytes, linhas) — a mesma lei: `Ord::clamp` entra em
+/// pânico com `min > max`, e um limite inteiro vem tão dinâmico como um `f32` (`len - 1`, o fim de
+/// uma linha). Aqui os limites trocam-se; não há NaN a recuperar.
+#[inline]
+pub fn safe_clamp_ord<T: Ord>(v: T, min: T, max: T) -> T {
+    if min <= max {
+        v.clamp(min, max)
+    } else {
+        v.clamp(max, min)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_integer_twin_swaps_inverted_bounds_instead_of_panicking() {
+        assert_eq!(safe_clamp_ord(5usize, 2, 4), 4);
+        assert_eq!(safe_clamp_ord(5usize, 4, 2), 4);
+        assert_eq!(safe_clamp_ord(-3isize, 0, 7), 0);
+        assert_eq!(safe_clamp_ord(1isize, 3, 0), 1);
+    }
 
     #[test]
     fn nan_falls_back_to_min() {

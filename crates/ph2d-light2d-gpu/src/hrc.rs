@@ -47,11 +47,10 @@ pub(crate) fn ladrilhos([w, h]: [u32; 2]) -> u64 {
     u64::from(w.div_ceil(LADO_DO_VAZIO)) * u64::from(h.div_ceil(LADO_DO_VAZIO))
 }
 /// Os buffers que ocupam as ligações que um passe não usa (leitura; escrita de T; escrita de R).
-pub(crate) const NOMES_VAZIOS: [&str; 4] = [
+pub(crate) const NOMES_VAZIOS: [&str; 3] = [
     "luz2d/buf/hrc_vazio_l",
     "luz2d/buf/hrc_vazio_t",
     "luz2d/buf/hrc_vazio_r",
-    "luz2d/buf/hrc_vazio_a",
 ];
 
 /// Bytes de uma entrada de T ou R (4 × f16).
@@ -94,8 +93,7 @@ impl Quadrante {
 
 /// Os buffers da cascata holográfica para a grade `w × h`: T_0..T_N (o maior dos dois eixos), o par
 /// R, o acumulado, o uniforme (um por passe) e os vazios.
-/// `rgb`: o acumulado com 3 f32 por texel (`Config::hrc_acumulado_rgb`), não 4.
-pub(crate) fn buffers([w, h]: [u32; 2], passes: u64, rgb: bool) -> Vec<Buffer> {
+pub(crate) fn buffers([w, h]: [u32; 2], passes: u64) -> Vec<Buffer> {
     use wgpu::BufferUsages as B;
     let quads = [Quadrante::de(0, [w, h]), Quadrante::de(1, [w, h])];
     let n_max = quads.iter().map(|q| q.n).max().unwrap_or(3);
@@ -125,7 +123,7 @@ pub(crate) fn buffers([w, h]: [u32; 2], passes: u64, rgb: bool) -> Vec<Buffer> {
     }));
     v.push(Buffer {
         nome: NOME_ACUMULADO,
-        bytes: if rgb { 12 } else { 16 } * u64::from(w) * u64::from(h),
+        bytes: 16 * u64::from(w) * u64::from(h),
         usos: armazenado,
     });
     v.push(Buffer {

@@ -54,8 +54,6 @@ struct Hrc {
 // ⭐ W5s: um por ladrilho LADO_DO_VAZIO² da captura — 1 se algum texel tem cobertura (o `hrc_ladrilhos`
 // escreve-o a cada gravação; a traça lê-o).
 @group(3) @binding(16) var<storage, read_write> com_cobertura: array<u32>;
-// ⭐ W5u: o acumulado em rgb (3 f32 por texel, o `ACUMULADO_RGB_HRC`; o 4.º era sempre 0).
-@group(3) @binding(17) var<storage, read_write> acumulado_rgb: array<f32>;
 // ⭐ W5d: a c0 do entorno (só a saída a lê).
 @group(2) @binding(14) var entorno_c0: texture_2d<f32>;
 @group(2) @binding(15) var entorno_amostra: sampler;
@@ -84,11 +82,10 @@ override SONDA_HRC: bool = true;
 // descida pagam por FIO, não por byte (handoff W5t). `false` = 1D dobrado.
 override GRADE3D_HRC: bool = true;
 // ⭐ W5u (só em 3D) — CONES_HRC cones vizinhos por fio na descida: o T da aresta comum lido uma vez (1 = um
-// cone por fio). PARES_SOBE_HRC pares (k par, k ímpar) por fio na subida (0 = uma entrada por fio). O
-// acumulado em rgb: 12 bytes por texel, não 16. A conta de cada entrada é a mesma (handoff W5u).
-override CONES_HRC: u32 = 1u;
-override PARES_SOBE_HRC: u32 = 0u;
-override ACUMULADO_RGB_HRC: bool = false;
+// cone por fio). PARES_SOBE_HRC pares (k par, k ímpar) por fio na subida (0 = uma entrada por fio). A conta
+// de cada entrada é a mesma (handoff W5u).
+override CONES_HRC: u32 = 4u;
+override PARES_SOBE_HRC: u32 = 4u;
 const LADO_DO_VAZIO: u32 = 8u;
 
 struct Par {
@@ -592,32 +589,11 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
     let t = texel_da_grade(u, v);
     let i = t.y * hrc.grade.x + t.x;
-    if ACUMULADO_RGB_HRC {
-        let j = 3u * i;
-        if hrc.quadrante == 0u {
-            acumulado_rgb[j] = f.x;
-            acumulado_rgb[j + 1u] = f.y;
-            acumulado_rgb[j + 2u] = f.z;
-        } else {
-            acumulado_rgb[j] += f.x;
-            acumulado_rgb[j + 1u] += f.y;
-            acumulado_rgb[j + 2u] += f.z;
-        }
-        return;
-    }
     if hrc.quadrante == 0u {
         acumulado[i] = vec4<f32>(f, 0.0);
     } else {
         acumulado[i] += vec4<f32>(f, 0.0);
     }
-}
-
-fn ler_acumulado(i: u32) -> vec3<f32> {
-    if ACUMULADO_RGB_HRC {
-        let j = 3u * i;
-        return vec3<f32>(acumulado_rgb[j], acumulado_rgb[j + 1u], acumulado_rgb[j + 2u]);
-    }
-    return acumulado[i].rgb;
 }
 
 // ── A c0: o acumulado (com o filtro em cruz da Eq. 21) e a máscara do preenchimento ──
@@ -630,7 +606,7 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
     let tau_p = meio(P).tau;
     let fora = tau_p > 0.0;
     let i = gid.y * hrc.grade.x + gid.x;
-    var f = ler_acumulado(i);
+    var f = acumulado[i].rgb;
     if BORRAO_HRC {
         var soma = 4.0 * f;
         var peso = 4.0;
@@ -645,7 +621,7 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
             if meio(vec2<f32>(q) + 0.5).tau != tau_p {
                 continue;
             }
-            soma += ler_acumulado(u32(q.y) * hrc.grade.x + u32(q.x));
+            soma += acumulado[u32(q.y) * hrc.grade.x + u32(q.x)].rgb;
             peso += 1.0;
         }
         f = soma / peso;

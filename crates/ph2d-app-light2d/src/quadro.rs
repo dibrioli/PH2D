@@ -27,8 +27,8 @@ mod ambiente;
 #[path = "quadro_avisos.rs"]
 mod avisos;
 use ambiente::{
-    cortes_ligados, hrc_duas_vezes, hrc_em_3d, hrc_por_colunas, hrc_traca_nova, miolo_do_ambiente,
-    rebote_ligado,
+    cortes_ligados, hrc_duas_vezes, hrc_em_3d, hrc_por_colunas, hrc_por_fio, hrc_traca_nova,
+    miolo_do_ambiente, rebote_ligado,
 };
 #[path = "quadro_entorno.rs"]
 mod entorno;
@@ -189,7 +189,7 @@ impl LuzDoQuadro {
     /// e a estufa).
     fn config_do_solver(&self, gpu: &GpuContext, g: Grade, dg: Degrau) -> Config {
         let env = |k: &str| std::env::var(k).map_or(true, |v| v.trim() != "0");
-        Config {
+        hrc_por_fio(Config {
             aritmetica: Config::padrao_para(&gpu.device, g).aritmetica,
             pe_na_borda: env("PH2D_LIGHT2D_PE"),
             vis_na_face: env("PH2D_LIGHT2D_FACE"),
@@ -204,7 +204,7 @@ impl LuzDoQuadro {
             hrc_grade_3d: hrc_em_3d(),
             miolo: miolo_do_ambiente(),
             ..crate::teto::config_do_quadro(g, self.mundo_para_tela, dg, rebote_ligado())
-        }
+        })
     }
 
     /// ⭐ W5i — adianta à estufa os três níveis e o entorno nesta vista (uma vez): a troca de nível (o

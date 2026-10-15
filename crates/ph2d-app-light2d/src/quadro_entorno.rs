@@ -26,7 +26,7 @@ impl super::LuzDoQuadro {
         let ge = ligado
             .then(|| grade_do_quadro(self.mundo_para_tela, self.alvo_px, de))
             .flatten()?;
-        Some(Config {
+        Some(super::hrc_por_fio(Config {
             holografica,
             rebote: super::rebote_ligado(),
             // ⭐ W5o: da vista só se lê a c0 do entorno (`Solver::somar_entorno`).
@@ -34,7 +34,7 @@ impl super::LuzDoQuadro {
             hrc_nasce_duas_vezes: super::hrc_duas_vezes(),
             hrc_por_colunas: super::hrc_por_colunas(),
             ..Config::padrao_para(&gpu.device, ge)
-        })
+        }))
     }
 
     pub(super) fn preparar_entorno(&mut self, gpu: &GpuContext) {

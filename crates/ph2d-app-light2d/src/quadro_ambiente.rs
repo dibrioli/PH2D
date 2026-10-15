@@ -59,3 +59,16 @@ pub(super) fn hrc_traca_nova() -> bool {
 pub(super) fn hrc_em_3d() -> bool {
     ligado("PH2D_LIGHT2D_HRC_3D")
 }
+
+/// ⭐ W5u — `PH2D_LIGHT2D_HRC_POR_FIO=0`: uma entrada por fio na subida e na descida (o mesmo bit, mais
+/// lento; comparar), na vista e no entorno.
+pub(super) fn hrc_por_fio(c: ph2d_light2d_gpu::Config) -> ph2d_light2d_gpu::Config {
+    if ligado("PH2D_LIGHT2D_HRC_POR_FIO") {
+        return c;
+    }
+    ph2d_light2d_gpu::Config {
+        hrc_cones_por_fio: 1,
+        hrc_pares_na_subida: 0,
+        ..c
+    }
+}

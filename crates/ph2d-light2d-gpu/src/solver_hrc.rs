@@ -178,7 +178,6 @@ impl Holografica {
                 entrada_escrita(11, e.lista.texturas[c0].formato),
                 armazenado(12, true),
                 armazenado(16, false),
-                armazenado(17, false),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -214,11 +213,10 @@ impl Holografica {
         // o enchimento que o alocador dá às vizinhas (o G5).
         let vazia = e.vistas[EMISSAO].clone();
         let g2 = g2_de(device, &g2_layout, &vazia, &amostra);
-        // ⭐ W5u: os fios que fazem mais de uma entrada e o acumulado em rgb (só em 3D).
+        // ⭐ W5u: os fios que fazem mais de uma entrada (só em 3D).
         let em_3d = e.cfg.hrc_grade_3d && e.cfg.hrc_por_colunas;
         let cones = if em_3d { e.cfg.hrc_cones_por_fio.max(1) } else { 1 };
         let pares = if em_3d { e.cfg.hrc_pares_na_subida } else { 0 };
-        let rgb = e.cfg.hrc_acumulado_rgb;
         let constantes = [
             ("PASSO_HRC", f64::from(e.escolhas.passo)),
             ("BORRAO_HRC", f64::from(u8::from(e.escolhas.borrao))),
@@ -240,7 +238,6 @@ impl Holografica {
             ("GRADE3D_HRC", f64::from(u8::from(e.cfg.hrc_grade_3d))),
             ("CONES_HRC", f64::from(cones)),
             ("PARES_SOBE_HRC", f64::from(pares)),
-            ("ACUMULADO_RGB_HRC", f64::from(u8::from(rgb))),
         ];
         let pipelines = ENTRADAS
             .iter()
@@ -291,12 +288,7 @@ impl Holografica {
         if e.cfg.hrc_arcos_em_tabela {
             escrever_arcos(e, &arcos);
         }
-        let [vazio_l, vazio_t, vazio_r, vazio_a] = hrc::NOMES_VAZIOS.map(|nome| (e.buffer)(nome));
-        let (acumulado_4, acumulado_3) = if rgb {
-            (&vazio_a, &acumulado)
-        } else {
-            (&acumulado, &vazio_a)
-        };
+        let [vazio_l, vazio_t, vazio_r] = hrc::NOMES_VAZIOS.map(|nome| (e.buffer)(nome));
         let com_cobertura = (e.buffer)(hrc::NOME_COM_COBERTURA);
 
         let mut uniformes = Vec::new();
@@ -318,11 +310,10 @@ impl Holografica {
                         buf(7, ligados[2]),
                         buf(8, ligados[3]),
                         buf(9, ligados[4]),
-                        buf(10, acumulado_4),
+                        buf(10, &acumulado),
                         vista(11, &e.vistas[c0]),
                         buf(12, &arcos),
                         buf(16, &com_cobertura),
-                        buf(17, acumulado_3),
                     ],
                 });
                 passos.push((etapa, grupo, grupos));

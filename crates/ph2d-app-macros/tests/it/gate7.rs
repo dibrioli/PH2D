@@ -9,7 +9,9 @@ use ph2d_app_motion::motion_state::MotionState;
 use ph2d_ecs::{Entity, Macro, SimWorld};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::macro_edits::{FamiliaDaMacro, PropsDaEtapa, TipoDaEtapaView};
+use ph2d_editor_core::macro_edits::{
+    CampoDaEtapa, FamiliaDaMacro, MacroRequest, PropsDaEtapa, TipoDaEtapaView,
+};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool};
 use ph2d_editor_core::zones::Rect;
@@ -307,6 +309,15 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
         1,
         "o arrasto pede UMA edição ao largar: {pedidos:?}"
     );
+    // A espera pedida é a ANTIGA + Δ (a etapa 2 não tinha espera): ~0,5 s, não o Δ cru sobre outra.
+    match &pedidos[0] {
+        MacroRequest::Edita {
+            k: 1,
+            campo: CampoDaEtapa::Espera(s),
+            ..
+        } => assert!((s - 0.5).abs() < 1.0 / 60.0, "a espera pedida: {s}"),
+        r => panic!("o arrasto pediu {r:?}"),
+    }
     for r in pedidos {
         b.m.pede(r);
     }
@@ -407,5 +418,121 @@ fn gate7_parar_depois_de_trocar_de_ferramenta_fecha_a_gravacao_do_painter() {
     assert!(
         b.rect(ids::MACROS_RECORD).is_none(),
         "sem o Painter activo não há quem grave"
+    );
+}
+
+/// ⭐ **A conferência adiada corre, e só no quadro a seguir ao gesto** (sobrevivente M6/M8 da prova
+/// W5d). A gravação passa por uma porta recusada (religar a tela a meio); uma edição de VALOR pede a
+/// conferência, que toca a trilha e pára na recusa — o erro chega ao painel no quadro SEGUINTE.
+#[test]
+fn gate7_a_edicao_de_valor_e_conferida_no_quadro_seguinte() {
+    let mut b = Banca::nova();
+    b.pinta();
+    b.carrega(ids::MACROS_RECORD);
+    b.quadro();
+    let l = LADO as f32;
+    b.pincelada([0.1 * l, 0.3 * l], [0.9 * l, 0.3 * l]);
+    let n = usize::try_from(LADO).unwrap();
+    b.painter
+        .bind_document(b.bits, vec![255u8; n * n * 4], LADO, LADO);
+    b.quadro();
+    b.pincelada([0.1 * l, 0.7 * l], [0.9 * l, 0.7 * l]);
+    b.pinta();
+    b.carrega(ids::MACROS_STOP);
+    b.quadro();
+    b.pinta();
+    let o = ph2d_panel_macros::current_macros().objeto.unwrap();
+    assert!(
+        o.etapas
+            .iter()
+            .any(|e| matches!(e.tipo, TipoDaEtapaView::Recusada(_))),
+        "a porta recusada é uma etapa: {:?}",
+        o.etapas
+    );
+    assert_eq!(o.erro, None, "antes de editar não há erro");
+    b.m.pede(MacroRequest::Edita {
+        entity_bits: b.bits,
+        trilha: 0,
+        k: 0,
+        campo: CampoDaEtapa::Cor([200, 10, 10]),
+    });
+    b.quadro(); // a edição: a conferência fica pendente
+    b.pinta();
+    assert_eq!(
+        ph2d_panel_macros::current_macros().objeto.unwrap().erro,
+        None,
+        "a conferência correu no MESMO quadro da edição (o selector manda uma por quadro)"
+    );
+    b.quadro(); // o quadro sem edição nova: confere
+    b.pinta();
+    let erro = ph2d_panel_macros::current_macros().objeto.unwrap().erro;
+    assert_eq!(
+        erro.map(|e| e.chave),
+        Some(ph2d_app_macros::erros::PORTA),
+        "a conferência não correu, ou o erro dela não chegou ao painel"
+    );
+}
+
+/// ⭐ **A câmara lenta do artista não é sobrescrita** (sobrevivente M17). Uma chave na faixa Macro
+/// Time tira ao clipe a forma do Parar: uma espera nova já não o re-cronometra nem apaga a chave.
+#[test]
+fn gate7_o_clipe_com_a_camara_lenta_do_artista_nao_se_re_cronometra() {
+    let mut b = Banca::nova();
+    b.pinta();
+    b.carrega(ids::MACROS_RECORD);
+    b.quadro();
+    let l = LADO as f32;
+    b.pincelada([0.1 * l, 0.5 * l], [0.9 * l, 0.5 * l]);
+    b.pinta();
+    b.carrega(ids::MACROS_STOP);
+    b.quadro();
+    let clip =
+        b.tl.doc
+            .clip_named(b.bits, ph2d_i18n::tr("app.macros.clip_name"))
+            .unwrap();
+    let d = b.tl.doc.clip_length_override(clip).unwrap();
+    assert_eq!(b.tl.doc.active_index(), clip);
+    #[expect(clippy::cast_possible_truncation, reason = "a faixa guarda f32")]
+    let lento = (d / 4.0) as f32;
+    b.tl.doc.upsert_key(
+        b.bits,
+        ph2d_timeline::PropKind::MacroTime,
+        ph2d_anim::RationalTime::from_seconds(d / 2.0),
+        ph2d_timeline::AnimValue::Float(lento),
+        ph2d_timeline::Interp::Linear,
+    );
+    b.m.pede(MacroRequest::Edita {
+        entity_bits: b.bits,
+        trilha: 0,
+        k: 0,
+        campo: CampoDaEtapa::Espera(1.0),
+    });
+    b.quadro();
+    b.quadro();
+    assert_eq!(
+        b.tl.doc.clip_length_override(clip),
+        Some(d),
+        "o clipe com a câmara lenta do artista foi re-cronometrado"
+    );
+    // E sem a chave do artista a mesma espera re-cronometra-o (o controlo).
+    let mut c = Banca::nova();
+    c.pinta();
+    c.carrega(ids::MACROS_RECORD);
+    c.quadro();
+    c.pincelada([0.1 * l, 0.5 * l], [0.9 * l, 0.5 * l]);
+    c.pinta();
+    c.carrega(ids::MACROS_STOP);
+    c.quadro();
+    c.m.pede(MacroRequest::Edita {
+        entity_bits: c.bits,
+        trilha: 0,
+        k: 0,
+        campo: CampoDaEtapa::Espera(1.0),
+    });
+    c.quadro();
+    let dc = c.tl.doc.clip_length_override(clip).unwrap();
+    assert!(
+        (dc - (d + 1.0)).abs() < 1e-3,
+        "controlo: o clipe da forma do Parar segue a espera: {dc}"
     );
 }

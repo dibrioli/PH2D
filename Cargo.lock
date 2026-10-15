@@ -5034,6 +5034,7 @@ name = "ph2d-app-macros"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-anim",
  "ph2d-app-motion",
  "ph2d-ecs",
  "ph2d-editor-core",

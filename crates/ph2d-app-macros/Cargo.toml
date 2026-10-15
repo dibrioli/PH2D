@@ -24,6 +24,7 @@ ph2d-app-motion = { path = "../ph2d-app-motion" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # O gate 7: o painel de verdade, clicado.
 ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-anim = { path = "../ph2d-anim" }
 ph2d-panel-macros = { path = "../ph2d-panel-macros" }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 

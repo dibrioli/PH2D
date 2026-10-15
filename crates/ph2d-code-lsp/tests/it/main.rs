@@ -8,6 +8,7 @@ mod support;
 mod controlo_de_cegueira;
 mod definicoes;
 mod framing;
+mod ganchos;
 mod latencia;
 mod position_utf16;
 mod script_canonico;

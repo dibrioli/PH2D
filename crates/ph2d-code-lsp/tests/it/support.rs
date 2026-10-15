@@ -96,3 +96,37 @@ pub fn rejection_evidence(c: &mut LspClient, file_name: &str) -> Vec<String> {
     }
     out
 }
+
+/// `(line, code, needle)` from the `-- ERR <code> <needle>` markers at the END of code lines.
+pub fn expected_from_markers(text: &str) -> Vec<(u32, String, String)> {
+    let mut v: Vec<_> = text
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| !l.trim_start().starts_with("--"))
+        .filter_map(|(i, l)| {
+            let (_, tail) = l.split_once("-- ERR ")?;
+            let (code, needle) = tail.split_once(' ')?;
+            Some((i as u32 + 1, code.to_owned(), needle.trim().to_owned()))
+        })
+        .collect();
+    v.sort();
+    v
+}
+
+/// The diagnostics are EXACTLY the expected ones (line + code), each message holding its needle.
+pub fn assert_exactly(diags: &[Diagnostic], expected: &[(u32, String, String)]) {
+    let mut got: Vec<(u32, String)> = diags
+        .iter()
+        .map(|d| (d.range.start.line + 1, d.code.clone().unwrap_or_default()))
+        .collect();
+    got.sort();
+    let want: Vec<(u32, String)> = expected.iter().map(|(l, c, _)| (*l, c.clone())).collect();
+    assert_eq!(got, want, "diagnostics (line, code) differ; got:{}", render(diags));
+    for (line, code, needle) in expected {
+        let d = diags
+            .iter()
+            .find(|d| d.range.start.line + 1 == *line && d.code.as_deref() == Some(code.as_str()))
+            .unwrap();
+        assert!(d.message.contains(needle.as_str()), "line {line}: «{}» lacks {needle}", d.message);
+    }
+}

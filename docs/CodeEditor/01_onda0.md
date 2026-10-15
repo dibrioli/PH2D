@@ -46,8 +46,8 @@ thread leitora. Máquina de 32 núcleos, **sem esperar calma**.
 - **`loadavg`:** início `6.81 17.45 30.68` · fim `4.67 15.41 29.36` (outras linhas a compilar).
 - **Definições:** o `runtime/luau/ph2d.d.luau` da T2 (`2ed43ac8c2`, gerado do `api_table.rs`).
 - **Módulos sintéticos:** propriedades, um helper tipado e N funções-passo com `ph2d.get/set/vec2/emit`,
-  laço e tabela, todas chamadas de `update` (gerador na sonda). Os `2` diagnósticos de cada doc são o lint
-  `FunctionUnused` em `init`/`update` (ver abaixo).
+  laço e tabela, todas chamadas de `update` (gerador na sonda). Os `2` diagnósticos de cada doc eram o lint
+  `FunctionUnused` em `init`/`update`, hoje filtrado (item 5; a corrida sem rede já mostra `0`).
 - Re-correr: `bash scripts/cargo-test-narrow.sh ph2d-code-lsp --profile smoke -- --ignored latencia`, e o
   binário `target/smoke/deps/it-*` com `--ignored latencia --nocapture` via `scripts/ph2d-run.sh` para ver a tabela.
 
@@ -83,8 +83,14 @@ amostra (o primeiro quadro é um evento próprio) e variou `47`–`263` ms no m3
 4. **Interruptor do solver:** `--flag:LuauSolverV2=true` (ou `initializationOptions.fflags`). A opção
    `fflags.enableNewSolver` respondida por `workspace/configuration` **não muda nada** (medido: 12–16 ms
    igual ao antigo, contra 260–330 ms com a flag, num módulo de 3 000 linhas).
-5. **Os `2` diagnósticos de cada doc** são o lint `FunctionUnused` (código `8`) em `init`/`update`: globais
+5. **Os `2` diagnósticos de cada doc** eram o lint `FunctionUnused` (código `8`) em `init`/`update`: globais
    que o MOTOR chama, que o `luau-lsp` não sabe. Medido (15/10): declará-las no `.d.luau` piora
    (`+BuiltinGlobalWrite`); `globals` num `.luaurc` não silencia; `--base-luaurc` com
    `{"lint":{"FunctionUnused":false}}` silencia, mas apaga também o aviso de função LOCAL não usada.
-   Decisão aberta — é o que deixa vermelho o gate «bob limpo» da T3 (com o `self` sem tipo no estrito).
+   **Resolvido:** `api_table::HOOKS` (init · update · on_signal) sai no `ph2d.d.luau` como `-- @hook`, e o
+   `ph2d-code-lsp` tira SÓ o `FunctionUnused` de uma `function <gancho>` GLOBAL com o nome exacto (gate
+   `ganchos::*`: `helper` local, `updte` e um `local function on_signal` continuam acusados). O `self`
+   estrito tipa-se com `ScriptSelf = { id: Entity, [string]: any }`, exportado nas mesmas definições.
+6. **Sem rede (`unshare -rn`, 15/10):** os 17 gates passam iguais (3 + 3 corridas intercaladas, `0.03` s cada) e a
+   sonda dá os mesmos números (m3000 antigo `7.4 / 7.8` com rede × `7.4 / 7.7` sem; novo `44.5 / 47.0` ×
+   `44.8 / 47.2` ms, min / p50, `loadavg` `1.8`–`2.4`) ⇒ com `fflags.sync=false` o `luau-lsp` não usa a rede.

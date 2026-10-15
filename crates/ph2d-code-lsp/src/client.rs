@@ -3,9 +3,9 @@
 //! on that thread. A dead child surfaces as [`LspError::ServerDied`] and [`LspClient::restart`]
 //! brings it back with the open documents re-sent.
 
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::fmt;
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -18,6 +18,9 @@ use serde_json::{Value, json};
 
 use crate::framing::{read_message, write_message};
 use crate::position::{Position, Range, position_to_byte};
+
+/// The luau-lsp lint `FunctionUnused` (its number in `code`).
+const LINT_FUNCTION_UNUSED: &str = "8";
 
 /// Which Luau type solver the server runs. luau-lsp 1.70.1 defaults to the old one; the new one is
 /// switched on by the `LuauSolverV2` FFlag (the `fflags.enableNewSolver` setting answered through
@@ -163,6 +166,7 @@ pub struct LspClient {
     diagnostics: BTreeMap<String, PublishedDiagnostics>,
     messages: Vec<ServerMessage>,
     server_info: Value,
+    engine_hooks: BTreeSet<String>,
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -210,6 +214,11 @@ impl LspClient {
                 .map_err(LspError::Spawn)?;
         }
 
+        let mut engine_hooks = BTreeSet::new();
+        for (_, path) in &config.definitions {
+            let text = std::fs::read_to_string(path).unwrap_or_default();
+            engine_hooks.extend(hooks_in_definitions(&text));
+        }
         let mut client = Self {
             config,
             child,
@@ -223,6 +232,7 @@ impl LspClient {
             diagnostics: BTreeMap::new(),
             messages: Vec::new(),
             server_info: Value::Null,
+            engine_hooks,
         };
         let result = client.request("initialize", initialize_params())?;
         client.server_info = result.get("serverInfo").cloned().unwrap_or(Value::Null);
@@ -402,8 +412,7 @@ impl LspClient {
     pub fn pump(&mut self) -> Vec<Notification> {
         let mut out = Vec::new();
         while let Ok(n) = self.notifications.try_recv() {
-            self.record(&n);
-            out.push(n);
+            out.push(self.take(n));
         }
         out
     }
@@ -416,8 +425,7 @@ impl LspClient {
             let left = deadline.saturating_duration_since(Instant::now());
             match self.notifications.recv_timeout(left) {
                 Ok(n) => {
-                    self.record(&n);
-                    match n {
+                    match self.take(n) {
                         Notification::Diagnostics(d) if d.uri == uri => return Ok(d),
                         Notification::Exited => return Err(self.died()),
                         _ => {}
@@ -431,15 +439,25 @@ impl LspClient {
         }
     }
 
-    fn record(&mut self, n: &Notification) {
-        match n {
+    /// Filters (engine hooks) and records one notification.
+    fn take(&mut self, mut n: Notification) -> Notification {
+        match &mut n {
             Notification::Diagnostics(d) => {
+                if let Some((_, text)) = self.documents.get(&d.uri) {
+                    d.diagnostics.retain(|x| !is_unused_engine_hook(x, text, &self.engine_hooks));
+                }
                 self.diagnostics.insert(d.uri.clone(), d.clone());
             }
             Notification::Message(m) => self.messages.push(m.clone()),
             Notification::Exited => self.alive.store(false, Ordering::SeqCst),
             Notification::Other { .. } => {}
         }
+        n
+    }
+
+    /// The engine hooks read from the definitions files (`-- @hook <name>:` lines).
+    pub fn engine_hooks(&self) -> &BTreeSet<String> {
+        &self.engine_hooks
     }
 
     /// `shutdown` + `exit`, then waits briefly for the process (kills it if it lingers).
@@ -620,4 +638,27 @@ fn initialize_params() -> Value {
         },
         "initializationOptions": {}
     })
+}
+
+/// The names of the `-- @hook <name>: <type>` lines of a definitions file — the global functions
+/// the engine calls (generated from `ph2d_script::api_table::HOOKS`).
+pub fn hooks_in_definitions(text: &str) -> Vec<String> {
+    text.lines()
+        .filter_map(|l| l.strip_prefix("-- @hook "))
+        .filter_map(|rest| rest.split_once(':'))
+        .map(|(name, _)| name.trim().to_owned())
+        .filter(|n| !n.is_empty())
+        .collect()
+}
+
+/// `FunctionUnused` on a GLOBAL `function <hook>` — the engine is its caller, invisible to luau-lsp.
+/// By exact name and only for globals: a misspelt hook or a `local function update` still warns.
+pub fn is_unused_engine_hook(d: &Diagnostic, text: &str, hooks: &BTreeSet<String>) -> bool {
+    if d.code.as_deref() != Some(LINT_FUNCTION_UNUSED) || !d.message.starts_with("FunctionUnused:") {
+        return false;
+    }
+    let (a, b) = (position_to_byte(text, d.range.start), position_to_byte(text, d.range.end));
+    let Some(name) = text.get(a..b) else { return false };
+    let line_start = text[..a].rfind(['\n', '\r']).map_or(0, |i| i + 1);
+    hooks.contains(name) && text[line_start..a].trim() == "function"
 }

@@ -241,11 +241,14 @@ pub fn corridas_das_faixas(
         let c = misturas.composicao(0, &mistura_de(*sink))?;
         let novo = segmentos.junta(&c, corridas.len());
         // doc 132 §4.1 (3): uma corrida `Normal` com imagens é ORDENADA (`Corrida::ordenada`) — a
-        // faixa do sink nos dois buffers, a mesma linha à mesma distância; não se junta a vizinhas.
-        let ordem = c.mistura == Mistura::Normal;
+        // linha `j` em `copias.start + j` e `imagens.start + j`. Junta-se só a uma vizinha também
+        // ALINHADA (faixas contíguas do mesmo comprimento ⇒ o mesmo deslocamento).
+        let alinhada = |cop: &Range<u32>, img: &Range<u32>| cop.len() == img.len();
         let junta = |k: &ph2d_shape_gpu::Corrida| {
             !novo
-                && !(ordem && (!imagens.is_empty() || !k.imagens.is_empty()))
+                && (c.mistura != Mistura::Normal
+                    || (imagens.is_empty() && k.imagens.is_empty())
+                    || (alinhada(&k.copias, &k.imagens) && alinhada(copias, imagens)))
                 && k.mistura == c.mistura
                 && k.grupo == c.grupo
                 && k.copias.end == copias.start
@@ -582,12 +585,23 @@ mod tests {
         let (c, _) = corridas_das_faixas(&[(a, 0..2, 5..7)], cena, fora).expect("ordenada");
         assert_eq!(c.len(), 1);
         assert!(c[0].ordenada() && c[0].copias == (0..2) && c[0].imagens == (5..7));
-        let normal = |s| m(if s == a { 4 } else { 0 }, BlendWith::Scene, 0);
-        let (c, _) = corridas_das_faixas(&[(a, 0..2, 5..7), (b, 2..4, 0..0)], normal, fora)
-            .expect("compõe");
-        assert!(
-            c.iter().all(|k| !k.ordenada() || k.copias == (0..2)),
-            "a corrida ordenada não engole a vizinha: {c:?}"
+        // Faixas contíguas e ALINHADAS juntam-se (o mesmo deslocamento); uma vizinha só de formas
+        // não — a junção daria `0..4 / 5..7`, e a linha 3 das formas leria uma imagem que não é dela.
+        let vistas = |f: &[FaixaDoSink]| -> Vec<_> {
+            corridas_das_faixas(f, cena, fora)
+                .expect("compõe")
+                .0
+                .iter()
+                .map(|k| (k.ordenada(), k.copias.clone(), k.imagens.clone()))
+                .collect()
+        };
+        assert_eq!(
+            vistas(&[(a, 0..2, 5..7), (b, 2..4, 7..9)]),
+            vec![(true, 0..4, 5..9)]
+        );
+        assert_eq!(
+            vistas(&[(a, 0..2, 5..7), (b, 2..4, 0..0)]),
+            vec![(true, 0..2, 5..7), (false, 2..4, 0..0)]
         );
         assert!(corridas_das_faixas(&[(a, 0..2, 0..0)], cena, fora).is_ok());
     }

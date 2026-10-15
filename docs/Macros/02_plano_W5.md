@@ -78,6 +78,39 @@ Painter no início de cada etapa** (W5c): editar a k recomeça do instantâneo k
 O `PainterTool` e o `Engine` não são `Clone` (`tool/mod.rs:116`, `ph2d-wet-paint/src/painter.rs:85`): o tamanho e
 o custo da cópia medem-se na W5c, ANTES de qualquer tecto de memória.
 
+### 3.1 Os instantâneos — MEDIDO (W5c, 14/10, smoke)
+
+**A cópia** = `PainterTool::instantaneo` (`tool/instantaneo.rs`, padrão sem `..`): pixels das camadas por `Arc` (a
+1.ª escrita do original desdobra UMA camada), o resto `derive(Clone)` (52 tipos); à mão só o recurso vivo —
+`EngineSlot` (`Away` pânico nomeado), `WetSession` (o worker não viaja), a fita (cópia PROFUNDA), recusa a gravar /
+com worker / com ponte de dispositivo. O `SolverScratch` é «derivado, não estado» (`grid/scratch.rs`): a cópia
+leva-o VAZIO.
+
+| | retido por instantâneo (dhat) | B/px | declarado ao razão | retido ÷ declarado | tirar um, água molhada |
+|---|---:|---:|---:|---:|---:|
+| Splash 1024², cópia do scratch (1.ª versão) | 85,0 MB | 85 | — | — | — |
+| **Splash 1024²** | **60,2 MB** | 60 | 55,3 MB | 1,089 | **3,9 ms** |
+| **Splash 2048²** | **228,3 MB** | 57 | 218,2 MB | 1,046 | **14,3 ms** |
+| worker 1024² (fita) | 64,4 MB | 64 | 60,9 MB | 1,057 | — |
+| worker 512² (fita) | 17,3 MB | 69 | 16,0 MB | 1,082 | — |
+
+**O tecto** é o razão da RAM, `ph2d_core::razao` (a lei do doc 132 §7 P2 passou do Motion para o core: `1/32` da
+RAM física por FAMÍLIA de cache, partilhado pelo processo) — `macro_track::instantaneos::razao()`; reserva sem
+leitura da RAM = 256 MiB (o `1/32` de 8 GiB, cabe um a 2048²). Nesta máquina (123 GiB) ≈ 3,85 GiB ⇒ ~64 instantâneos
+a 1024², ~17 a 2048²; a 8 GiB: 4 a 1024², 1 a 2048². Passou do tecto, a macro DOBRA os seus (larga um em cada dois e
+tira de `2·passo` em `2·passo` etapas): a cobertura fica uniforme.
+
+**O preço e o ganho** (mínimo de 5 rondas intercaladas, `sonda_instantaneos`, load 13–17): tocar o Splash até ao
+fim COM instantâneos 1 158 ms × sem 1 169 ms (1024²), 2 603 × 2 481 ms (2048²) — dentro do ruído; editar a ÚLTIMA
+pincelada: do instantâneo 866 ms × do zero 1 150 ms (1024²), 1 990 × 2 446 ms (2048²). O ganho no Splash é pequeno
+porque ~4 s de água a secar vêm DEPOIS da última pincelada e re-simulam-se sempre; numa macro longa o ganho é o
+prefixo inteiro. O que resta do custo é a água (W5e: a reprodução para editar pode saltar as composições).
+
+**Reeditar** (`MacroEmCena::reedita`, o palco da cena quando o `Macro` muda): ficam os instantâneos cujos passos
+despachados são prefixo comum das duas trilhas (mesma inicial e alvo) E cujas respostas do worker já consumidas
+são as mesmas; a fila da fita refaz-se da trilha nova. Uma espera ENCURTADA tira relógio antes da etapa: o
+instantâneo dela cai e recomeça-se do anterior (correcto, uma etapa a mais de reprodução).
+
 ## 4. Formato
 
 `events` = a gravação bruta, IMUTÁVEL (uma verdade). Etiqueta nova por trilha `edicoes`: deslocamentos, trocas
@@ -110,7 +143,7 @@ seguintes. Suíte com `motivo: formato gravado`.
 | W5a ✅ | medição (§3) + `passa_ao_relogio_fixo` | sondas `#[ignore]` |
 | W5b ✅ (`9b40399255`..`95ca6db68e`) | núcleo + Painter + Motion; mutação 21/21 | [handoff W5](handoffs/HANDOFF_CONTINUACAO_W5_ETAPAS_2026-10-14.md) |
 | W5b | segmentação + nomes + `edicoes`/`exige` + deslocamento com relógio sintetizado + edição de valor | cena `=2` = N etapas, Splash = 4; antes da etapa editada = original ao bit; espera = a água/o vento continuam; recuar == do zero com edições; formato ida-e-volta, 1.0 lê |
-| W5c | instantâneos do Painter por etapa; relógio fixo decidido ao editar | instantâneo == tocar do zero ao bit; editar a k só muda o que vem depois |
+| W5c ✅ (`ff001e1bc7`..`8c92e9cd19`) | instantâneos do Painter por etapa (§3.1), razão da RAM no core, o palco reedita | continuar = do zero ao bit; recuo e edição = palco novo ao bit; dobra; fita reeditada; dhat retido ÷ declarado ∈ [1; 1,15] |
 | W5d | painel, linha de etapas na Timeline, Gravar ▸ Parar, cartão | gate 7 (ui-testkit): Gravar → pincelar → Parar ⇒ componente + clipe + N etapas; arrastar ⇒ etapa move; editar cor ⇒ tela muda |
 | W5e | cenas `=1`/`=2` com etapas, fotos com a máquina calma, perf (compor 1× por quadro, premultiplicar/subir), fecho | fecho batched, handoff, binário do smoke |
 

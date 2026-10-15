@@ -277,6 +277,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.script.script" => "Script",
         "panel.inspector.script.script_file_u" => "script file\u{2026}",
         "panel.inspector.script.browse" => "Browse",
+        "panel.inspector.script.edit" => "Edit script",
         "panel.inspector.script.no_longer_in_the_script" => "No longer in the script:",
         "panel.inspector.script.not_in_the_script" => "not in the script",
         "panel.inspector.script.not_one_of_the_options" => "not one of the options",

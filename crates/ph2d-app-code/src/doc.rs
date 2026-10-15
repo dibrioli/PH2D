@@ -122,11 +122,6 @@ impl CodeDoc {
         self.folded.retain(|b| starts.contains(b));
     }
 
-    pub fn errors(&mut self) -> &[SyntaxError] {
-        self.derive();
-        &self.derived.errors
-    }
-
     /// Os problemas desta revisão (E7).
     pub fn problems(&mut self) -> Vec<Problem> {
         self.derive();

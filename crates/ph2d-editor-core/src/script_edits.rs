@@ -147,6 +147,9 @@ pub enum ScriptFieldEdit {
     Source(String),
     /// `Browse` — a shell abre o diálogo (é ela que tem a janela) e o ficheiro é IMPORTADO.
     Browse,
+    /// ⭐ `Edit script` — abre o script do objecto numa aba do editor (CodeEditor E3); o documento da
+    /// cena não muda.
+    Edit,
     /// O artista PÔS este número.
     SetNumber(String, f64),
     /// O artista PÔS este sim/não.
@@ -193,5 +196,6 @@ mod tests {
         let _ = ScriptFieldEdit::Forget(String::new());
         let _ = ScriptFieldEdit::Source(String::new());
         let _ = ScriptFieldEdit::Browse;
+        let _ = ScriptFieldEdit::Edit;
     }
 }

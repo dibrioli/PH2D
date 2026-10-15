@@ -22,7 +22,10 @@ fn text_input() -> InteractiveState {
 }
 
 pub(crate) fn populate_script(store: &mut WidgetStore) {
-    register_button_ids(store, &[crate::ids::INSP_SCRIPT_BROWSE]);
+    register_button_ids(
+        store,
+        &[crate::ids::INSP_SCRIPT_BROWSE, crate::ids::INSP_SCRIPT_EDIT],
+    );
     register_button_ids(store, &crate::ids::INSP_SCRIPT_RESET);
     register_button_ids(store, &crate::ids::INSP_SCRIPT_ORPHAN_REMOVE);
     store.register(crate::ids::INSP_SCRIPT_SOURCE, text_input());

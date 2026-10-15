@@ -135,9 +135,12 @@ impl App {
         // pulo espúrio por um personagem que anda sozinho para sempre.
         if let PhysicalKey::Code(code) = physical_key {
             let pressed = state == ElementState::Pressed;
+            // Uma aba de código activa tira as teclas ao jogador, como um acorde (o soltar passa).
             let chord = self.modifiers.control_key()
                 || self.modifiers.alt_key()
-                || self.modifiers.super_key();
+                || self.modifiers.super_key()
+                || (self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()))
+                    .is_some_and(|h| h.documents.surface_active().is_some());
             if !pressed || !chord {
                 // ⭐ **O retrato dos dispositivos que o Input Map resolve** (plano 30 W5).
                 //

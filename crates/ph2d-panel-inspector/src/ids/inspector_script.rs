@@ -23,6 +23,8 @@ use ph2d_tool_registry::hash_node_id;
 pub const INSP_SCRIPT_SOURCE: NodeId = hash_node_id("insp_script_source");
 /// `Browse` — a shell abre o diálogo.
 pub const INSP_SCRIPT_BROWSE: NodeId = hash_node_id("insp_script_browse");
+/// `Edit script` — abre o script numa aba do editor (CodeEditor E3).
+pub const INSP_SCRIPT_EDIT: NodeId = hash_node_id("insp_script_edit");
 
 /// O campo NUMÉRICO da linha `i` (uma propriedade cujo default é um `number`).
 pub const INSP_SCRIPT_NUM: [NodeId; 32] = [

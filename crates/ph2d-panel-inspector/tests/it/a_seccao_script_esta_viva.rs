@@ -192,6 +192,38 @@ fn browse_pede_o_dialogo_a_shell() {
     set_current_inspector_script(None);
 }
 
+/// ⭐ (CodeEditor E3) **`Edit script`, ao lado do `Browse`, pede a aba do editor** — o clique REAL no
+/// botão pintado chega ao barramento como `ScriptFieldEdit::Edit`.
+///
+/// **Mutação que deve sangrar:** tirar o `INSP_SCRIPT_EDIT` do `populate_script` ou o braço do
+/// `event_script`.
+#[test]
+fn edit_script_pede_a_aba_do_editor() {
+    let (mut h, mut st) = host(Some(info()));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let browse = rect_de(&rects, ids::INSP_SCRIPT_BROWSE).expect("Browse pintado");
+    let edit = rect_de(&rects, ids::INSP_SCRIPT_EDIT).expect("Edit script pintado");
+    assert!(
+        (browse.y - edit.y).abs() < f32::EPSILON && edit.x > browse.x + browse.w,
+        "lado a lado: {browse:?} {edit:?}"
+    );
+    let a = clica(&mut h, &mut st, &rects, ids::INSP_SCRIPT_EDIT);
+    assert_eq!(edicoes(&a), [E::Edit]);
+    set_current_inspector_script(None);
+}
+
+/// Sem script do projeto (`NoFile`) o `Edit script` fica apagado e fora do índice — nada a abrir.
+#[test]
+fn sem_script_o_edit_nao_e_clicavel() {
+    let mut i = info();
+    i.status = InspectorScriptStatus::NoFile;
+    let (mut h, mut st) = host(Some(i));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert!(rect_de(&rects, ids::INSP_SCRIPT_BROWSE).is_some());
+    assert!(rect_de(&rects, ids::INSP_SCRIPT_EDIT).is_none());
+    set_current_inspector_script(None);
+}
+
 /// ⭐ **A caixa manda o CONTRÁRIO do que o snapshot diz** — e PÕE o valor (D1).
 ///
 /// **Mutação que deve sangrar:** tirar os `INSP_SCRIPT_BOOL` do `populate_script`.

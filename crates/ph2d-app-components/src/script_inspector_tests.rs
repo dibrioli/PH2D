@@ -424,3 +424,31 @@ fn o_passo_de_uma_posicao_sai_do_eixo_com_casas_decimais() {
         Some(0.25)
     );
 }
+
+/// ⭐ (CodeEditor E3) **`Edit script` pede a aba do script do projeto** — o documento não muda; sem
+/// script do projeto não se pede nada.
+#[test]
+fn edit_pede_o_editor_e_nao_mexe_no_documento() {
+    use ph2d_script::ScriptEditRequests;
+    let (mut sim, bits) = cena_com(DOIS, &[]);
+    let id = match sim
+        .world()
+        .get::<LuauScript>(ph2d_ecs::Entity::from_bits(bits))
+        .map(|c| c.source.clone())
+    {
+        Some(ScriptSource::Library(id)) => id,
+        outra => panic!("{outra:?}"),
+    };
+    let mexeu = super::apply_all(&mut sim, &[(bits, E::Edit), (bits, E::Edit)], || None);
+    assert!(!mexeu, "abrir o editor não é uma edição do documento");
+    let pedidos = sim.world().resource::<ScriptEditRequests>().0.clone();
+    assert_eq!(pedidos, [id, id]);
+    // Controlo: sem script do projeto, nenhum pedido.
+    let (mut sim, bits) = cena(LuauScript::default());
+    super::apply_all(&mut sim, &[(bits, E::Edit)], || None);
+    assert!(
+        sim.world()
+            .get_resource::<ScriptEditRequests>()
+            .is_none_or(|r| r.0.is_empty())
+    );
+}

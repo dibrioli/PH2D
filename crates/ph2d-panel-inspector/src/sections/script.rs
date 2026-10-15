@@ -19,7 +19,8 @@
 
 use super::*;
 use ph2d_editor_core::script_edits::{
-    InspectorScriptInfo, InspectorScriptProp, InspectorScriptValue, PorqueOrfao,
+    InspectorScriptInfo, InspectorScriptProp, InspectorScriptStatus, InspectorScriptValue,
+    PorqueOrfao,
 };
 use ph2d_editor_core::widget::{
     ColorSwatch, Dropdown, DropdownOption, SectionFold, SwatchSize, paint_color_swatch,
@@ -274,16 +275,47 @@ pub(crate) fn paint_script_section(
             .placeholder(tr("panel.inspector.script.script_file_u")),
         seccao_do_ficheiro,
     );
+    // `Browse` | `Edit script` lado a lado (CodeEditor E3). Sem script do projeto não há o que
+    // editar: o botão fica apagado e fora do índice.
+    let metade = (w - Spacing::Xs.px()) * 0.5;
     botao(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        Rect::new(x, cur_y, w, ALTURA_DE_CAMPO),
+        Rect::new(x, cur_y, metade, ALTURA_DE_CAMPO),
         ids::INSP_SCRIPT_BROWSE,
         tr("panel.inspector.script.browse"),
     );
+    let editar = Rect::new(x + w - metade, cur_y, metade, ALTURA_DE_CAMPO);
+    let editavel = !matches!(
+        info.status,
+        InspectorScriptStatus::NoFile
+            | InspectorScriptStatus::Missing
+            | InspectorScriptStatus::Unimported(_)
+    );
+    if editavel {
+        botao(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            editar,
+            ids::INSP_SCRIPT_EDIT,
+            tr("panel.inspector.script.edit"),
+        );
+    } else {
+        paint_button(
+            &Button::new(ids::INSP_SCRIPT_EDIT, tr("panel.inspector.script.edit"))
+                .state(ButtonState::Disabled),
+            editar,
+            scene,
+            text_system,
+            theme,
+        );
+    }
     cur_y += ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px();
     cur_y = super::script_avisos::avisos(scene, text_system, theme, x, w, cur_y, info);
 

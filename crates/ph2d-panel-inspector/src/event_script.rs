@@ -25,6 +25,8 @@ pub(crate) fn apply_script_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
     if let WidgetEvent::Click(id) = ev {
         let edit = if id == crate::ids::INSP_SCRIPT_BROWSE {
             Some(E::Browse)
+        } else if id == crate::ids::INSP_SCRIPT_EDIT {
+            Some(E::Edit)
         } else if let Some(i) = linha(&crate::ids::INSP_SCRIPT_RESET, id) {
             info.props
                 .get(i)

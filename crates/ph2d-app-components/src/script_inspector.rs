@@ -14,8 +14,8 @@ use ph2d_editor_core::script_edits::{
 };
 use ph2d_script::props::{forget, put, resolve};
 use ph2d_script::{
-    LuauScript, Origin, OrphanWhy, ProjectScripts, ScriptDiagnostic, ScriptHost, ScriptInfo,
-    ScriptSource, ScriptValue,
+    LuauScript, Origin, OrphanWhy, ProjectScripts, ScriptDiagnostic, ScriptEditRequests,
+    ScriptHost, ScriptInfo, ScriptSource, ScriptValue,
 };
 
 /// Tradução do valor para o vocabulário do painel.
@@ -202,7 +202,7 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
         Larga(String),
     }
     let mexe = match edit {
-        E::Browse => None,
+        E::Browse | E::Edit => None,
         E::Source(_) => fonte.filter(|f| cfg.source != *f).map(Mexe::Fonte),
         E::SetNumber(n, v) => posto(n, ScriptValue::Number(*v)).map(|v| Mexe::Poe(n.clone(), v)),
         E::SetBool(n, b) => posto(n, ScriptValue::Bool(*b)).map(|v| Mexe::Poe(n.clone(), v)),
@@ -240,6 +240,10 @@ pub fn apply_all(
 ) -> bool {
     let mut mexeu = false;
     for (bits, edit) in edits {
+        if matches!(edit, E::Edit) {
+            pede_o_editor(sim, *bits);
+            continue;
+        }
         if matches!(edit, E::Browse) {
             let Some(path) = pick() else {
                 continue;
@@ -251,6 +255,24 @@ pub fn apply_all(
         mexeu |= apply(sim, *bits, edit);
     }
     mexeu
+}
+
+/// ⭐ **`Edit script`** (CodeEditor E3): o script do projeto que o objecto corre vai para os pedidos
+/// do editor (`ScriptEditRequests`), que a família `ph2d-app-code` drena e abre numa aba. Sem script
+/// do projeto o botão nem é clicável; chegar aqui assim é avisado.
+fn pede_o_editor(sim: &mut SimWorld, bits: u64) {
+    let fonte = sim
+        .world()
+        .get::<LuauScript>(Entity::from_bits(bits))
+        .map(|c| c.source.clone());
+    match fonte {
+        Some(ScriptSource::Library(id)) => sim
+            .world_mut()
+            .get_resource_or_init::<ScriptEditRequests>()
+            .0
+            .push(id),
+        outra => eprintln!("[script] Edit script sem script do projeto: {outra:?}"),
+    }
 }
 
 fn poe_fonte(sim: &mut SimWorld, bits: u64, fonte: ScriptSource) -> bool {

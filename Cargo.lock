@@ -6123,6 +6123,7 @@ dependencies = [
  "ph2d-anim",
  "ph2d-app-audio",
  "ph2d-app-board",
+ "ph2d-app-code",
  "ph2d-app-components",
  "ph2d-app-flip",
  "ph2d-app-host",

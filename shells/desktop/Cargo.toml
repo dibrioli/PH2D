@@ -52,6 +52,8 @@ ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 ph2d-app-components = { path = "../../crates/ph2d-app-components" }
 # ⭐ A família do QUADRO (MiroClone): a cena de smoke que o arranque encena pelo nome.
 ph2d-app-board = { path = "../../crates/ph2d-app-board" }
+# ⭐ A família do EDITOR DE SCRIPTS (CodeEditor): instalada no arranque, um `frame` por quadro.
+ph2d-app-code = { path = "../../crates/ph2d-app-code" }
 # ⭐ **A árvore de tags do projecto** (TOP-20 #9) — a shell guarda a ÁRVORE VIVA no `AppGfx` e os
 # BYTES dela no `ProjectState`; o formato e a cache vivem na família (`ph2d_app_components::tags_doc`).
 ph2d-tags = { path = "../../crates/ph2d-tags" }

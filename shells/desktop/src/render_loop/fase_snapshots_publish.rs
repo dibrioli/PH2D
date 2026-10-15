@@ -200,12 +200,8 @@ impl crate::App {
         // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9) — fase-filha própria; ver o `mod tags_snapshot`.
         #[cfg(feature = "panel-tags")]
         tags_snapshot::publica(sim, hero, tags, tags_problem.as_ref());
-        // ⭐⭐ **As secções que o `publish` NÃO pode calcular** — na fase-filha, num ficheiro irmão.
-        //
-        // ⚠️ **O corte foi imposto pelo tecto de função** (esta chegou a `208` contra `200` ao
-        // ganhar o emissor) **e é o certo por RESPONSABILIDADE**: as duas leem coisas que não estão
-        // no mundo (a VM dos scripts, o relógio e as partículas vivas da corrida), e por isso é que
-        // nenhuma delas cabe na lista de argumentos do `publish`.
+        // ⭐⭐ **As secções que o `publish` NÃO pode calcular** (leem a VM, o relógio, as partículas
+        // vivas — nada disso está no mundo) — na fase-filha, num ficheiro irmão (tecto de função).
         tardios::publica(
             sim,
             tags,
@@ -219,6 +215,8 @@ impl crate::App {
                 motion,
             },
         );
+        // ⭐ O EDITOR DE SCRIPTS: pedidos do cartão, salvar → biblioteca, selo, console (a família).
+        ph2d_app_code::frame(sim, script.as_mut(), hero);
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
         let (info, corpo, recusa) = luz2d.publicar(hero.view.luz2d, sim.world(), sel);

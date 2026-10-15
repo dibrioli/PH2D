@@ -14,9 +14,9 @@ use super::stamp_cache::mask_size_for;
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushSpec, ColorStampMask, Dab, Falloff, FalloffCurve, FusedDab, ImageRgb, RampAlphaMode,
-    StrokeMethod, TextureSettings, accumulate_color_stamps_fused_batch, blend_over,
-    blit_color_stamp, render_color_stamp_mask, render_ramp_color_stamp,
+    BrushSpec, ColorStampMask, Dab, Falloff, FalloffCurve, FusedDab, ImageRgb, StrokeMethod,
+    TextureSettings, accumulate_color_stamps_fused_batch, blend_over, blit_color_stamp,
+    render_color_stamp_mask, render_ramp_color_stamp,
 };
 use ph2d_painter_effects::{BlendMode, apply_blend};
 use std::sync::Arc;
@@ -571,7 +571,7 @@ impl PainterTool {
 
 /// Identifies the appearance the cached **Grain+Ramp** coloured stamp was baked for: the silhouette
 /// (falloff or Shape) inputs, the Grain (image + frame), the baked owner ramp LUT (`ramp_lut_version`),
-/// whether the ramp alpha scales coverage, the dab flatten/rotate, and the resolution — NOT the radius.
+/// the dab flatten/rotate, and the resolution — NOT the radius.
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct RampColorStampKey {
     falloff: Falloff,
@@ -583,7 +583,6 @@ pub(super) struct RampColorStampKey {
     shape_image_version: u64,
     shape_ramp_version: u64,
     ramp_lut_version: u64,
-    strength_alpha: bool,
     ramp_index: ph2d_painter_brush::RampIndex,
     dab_flatten: f32,
     dab_angle_deg: u16,
@@ -654,7 +653,6 @@ impl PainterTool {
     /// Re-bake the Grain+Ramp coloured stamp when the appearance / mask size changed; a no-op on a hit.
     fn ensure_ramp_color_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
         let owner = self.color_ramp_owner(brush.texture.is_active());
-        let strength_alpha = matches!(self.active_ramp_alpha_mode(owner), RampAlphaMode::Strength);
         let key = RampColorStampKey {
             falloff: brush.falloff,
             hardness: brush.hardness,
@@ -665,7 +663,6 @@ impl PainterTool {
             shape_image_version: self.paint.shape_image_version,
             shape_ramp_version: self.paint.shape_ramp_version,
             ramp_lut_version: self.paint.ramp_lut_version,
-            strength_alpha,
             ramp_index: owner.index(),
             dab_flatten: brush.dab_flatten,
             dab_angle_deg: brush.dab_angle_deg,

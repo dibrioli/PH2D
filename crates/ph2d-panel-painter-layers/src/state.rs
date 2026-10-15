@@ -126,7 +126,8 @@ thread_local! {
     /// The open Color Ramp **Interpolation** dropdown popover: `(chip_rect, current_interp_u8)`.
     pub(crate) static PENDING_RAMP_INTERP_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
-    /// The open Color Ramp **Alpha action** dropdown popover: `(chip_rect, current_mode_u8)`.
+    /// The open Color Ramp **Alpha action** dropdown popover of a **Texture LAYER** (the brush ramps
+    /// have none): `(chip_rect, current_mode_u8)`.
     pub(crate) static PENDING_RAMP_ALPHA_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open **Shape** ramp Interpolation dropdown popover: `(chip_rect, current_interp_u8)`.
@@ -135,10 +136,6 @@ thread_local! {
 
     /// The open **Shape** ramp colour-Mode dropdown popover: `(chip_rect, current_mode_u8)`.
     pub(crate) static PENDING_SHAPE_RAMP_MODE_DD: Cell<Option<(Rect, u8)>> =
-        const { Cell::new(None) };
-
-    /// The open **Shape** ramp Alpha-action dropdown popover: `(chip_rect, current_mode_u8)`.
-    pub(crate) static PENDING_SHAPE_RAMP_ALPHA_DD: Cell<Option<(Rect, u8)>> =
         const { Cell::new(None) };
 
     /// Selected **Shape**-ramp stop (stable id), so the bottom-row chips edit it (separate from the

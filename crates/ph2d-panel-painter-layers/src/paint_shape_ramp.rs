@@ -15,12 +15,11 @@ use ph2d_i18n::tr;
 use ph2d_tokens::Spacing;
 use ph2d_tool_painter::ids::{
     painter_shape_color_blend_option_id, painter_shape_falloff_ramp_interp_option_id,
-    painter_shape_falloff_ramp_mode_option_id, painter_shape_ramp_alpha_option_id,
-    painter_shape_ramp_handle_id, painter_shape_ramp_interp_option_id,
-    painter_shape_ramp_mode_option_id,
+    painter_shape_falloff_ramp_mode_option_id, painter_shape_ramp_handle_id,
+    painter_shape_ramp_interp_option_id, painter_shape_ramp_mode_option_id,
 };
 use ph2d_tool_painter::{
-    BrushBlend, BrushSettings, MAX_BRUSH_BLEND_MODES, RampAlphaMode, RampColorMode, RampInterp,
+    BrushBlend, BrushSettings, MAX_BRUSH_BLEND_MODES, RampColorMode, RampInterp,
 };
 
 /// The Shape ramp's fixed widget ids + state hooks (collapsible "Shape Color").
@@ -31,7 +30,6 @@ fn shape_ramp_ids() -> RampIds {
         enable: ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ENABLE,
         mode: ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_MODE,
         interp: ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_INTERP,
-        alpha_mode: ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
         bw: ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_BW,
         add: ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ADD,
         remove: ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_REMOVE,
@@ -43,12 +41,11 @@ fn shape_ramp_ids() -> RampIds {
         handle: painter_shape_ramp_handle_id,
         set_pending_mode: state::set_pending_shape_ramp_mode_dd,
         set_pending_interp: state::set_pending_shape_ramp_interp_dd,
-        set_pending_alpha: state::set_pending_shape_ramp_alpha_dd,
     }
 }
 
-/// The Falloff Color ramp's ids (prompt 38) — the section-level ids (section / reset / enable / alpha /
-/// B&W) are the Shape ramp's: the layer body paints none of them.
+/// The Falloff Color ramp's ids (prompt 38) — the section-level ids (section / reset / enable / B&W) are
+/// the Shape ramp's: the layer body paints none of them.
 fn falloff_ramp_ids() -> RampIds {
     use ph2d_tool_painter::ids as i;
     RampIds {
@@ -78,7 +75,7 @@ enum Camada {
 const MOVE_W: f32 = 72.0; // LITERAL-PX-OK: the "Move Up" button — wide enough for its label
 
 /// Paint the **Shape Color** section at `y`, returning the next `y` (prompt 38): "Use Color Ramp", the
-/// section-wide **B&W** and **Alpha** rows, then one CARD per layer — **Texture Color** (the Shape ramp,
+/// section-wide **B&W** row, then one CARD per layer — **Texture Color** (the Shape ramp,
 /// indexed by the Shape's texture) and **Falloff Color** (indexed by the coverage), in stack order (the
 /// first card is on top). Each card: "Enabled" (the lower one also carries "Move Up"), and when on its
 /// ramp editor + **Opacity**; the top card adds the **Blend** when both are on. With B&W on the ramp is
@@ -132,22 +129,6 @@ pub(crate) fn paint_shape_ramp_section(
             brush.shape_color_ramp_bw,
         );
     }
-    let alpha = brush.shape_color_ramp_alpha_mode;
-    let (ny, aberto) = crate::paint_brush_rows::paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "panel.painter_layers.ramp.alpha",
-        ids.alpha_mode,
-        alpha,
-        tr(RampAlphaMode::from_u8(alpha).name_key()),
-    );
-    if let Some(r) = aberto {
-        state::set_pending_shape_ramp_alpha_dd(Some((r, alpha)));
-    }
-    y = ny;
     let count =
         (brush.shape_color_ramp_stop_count as usize).min(brush.shape_color_ramp_stops.len());
     let textura = RampView {
@@ -157,7 +138,7 @@ pub(crate) fn paint_shape_ramp_section(
         bw_button: false,
         mode: brush.shape_color_ramp_mode,
         interp: brush.shape_color_ramp_interp,
-        alpha_mode: alpha,
+        alpha: None, // the colour's alpha always scales coverage (`BRUSH_RAMP_ALPHA`)
         stops: &brush.shape_color_ramp_stops[..count],
         selected_id: state::selected_shape_ramp_stop(),
     };
@@ -420,16 +401,6 @@ pub(crate) fn paint_shape_ramp_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::
         let id = ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BLEND;
         paint_dropdown_popover(ctx, theme, id, opts, chip, cur);
     }
-    if let Some((chip, cur)) = state::take_pending_shape_ramp_alpha_dd() {
-        paint_dropdown_popover(
-            ctx,
-            theme,
-            ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
-            alpha_options(),
-            chip,
-            cur,
-        );
-    }
 }
 
 fn mode_options() -> Vec<DropdownOption<u8>> {
@@ -451,18 +422,6 @@ fn interp_options() -> Vec<DropdownOption<u8>> {
                 painter_shape_ramp_interp_option_id(i),
                 i,
                 tr(RampInterp::from_u8(i).label_key()),
-            )
-        })
-        .collect()
-}
-
-fn alpha_options() -> Vec<DropdownOption<u8>> {
-    (0..RampAlphaMode::COUNT)
-        .map(|m| {
-            DropdownOption::new(
-                painter_shape_ramp_alpha_option_id(m),
-                m,
-                ph2d_i18n::tr(RampAlphaMode::from_u8(m).name_key()),
             )
         })
         .collect()

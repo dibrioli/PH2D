@@ -523,14 +523,13 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // Texture section: Kind picker + Mapping chips.
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_KIND,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
-        // Grain Color Ramp: Mode + Interpolation + Alpha-action chips.
+        // Grain Color Ramp: Mode + Interpolation chips, and a Texture LAYER's Alpha-action one.
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
-        // Shape Color Ramp: Mode + Interpolation + Alpha-action chips.
+        // Shape Color Ramp: Mode + Interpolation chips.
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_MODE,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_INTERP,
-        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
         // Shape Color layers: the Falloff ramp's Mode + Interpolation, the layers' Blend.
         ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_MODE,
         ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_RAMP_INTERP,

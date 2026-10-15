@@ -4,7 +4,7 @@
 //! here we only build the id-bundle + view and drain the Grain's deferred dropdown popovers.
 
 use crate::paint_brush::paint_dropdown_popover;
-use crate::paint_ramp_widget::{RampIds, RampView, paint_color_ramp_section};
+use crate::paint_ramp_widget::{AlphaRow, RampIds, RampView, paint_color_ramp_section};
 use crate::state;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
@@ -23,7 +23,6 @@ fn grain_ramp_ids() -> RampIds {
         enable: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
         mode: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
         interp: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
-        alpha_mode: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
         bw: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_BW,
         add: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
         remove: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
@@ -35,13 +34,15 @@ fn grain_ramp_ids() -> RampIds {
         handle: painter_brush_texture_ramp_handle_id,
         set_pending_mode: state::set_pending_ramp_mode_dd,
         set_pending_interp: state::set_pending_ramp_interp_dd,
-        set_pending_alpha: state::set_pending_ramp_alpha_dd,
     }
 }
 
 /// Paint the Grain Color Ramp editor at `y`, returning the next `y`. `title` names the collapsible —
 /// "Grain Colors" under the Grain, or "Shape Color" when this same `texture_ramp` object backs the
-/// Shape's ramp slot. (The Shape's OWN ramp is [`crate::paint_shape_ramp`].)
+/// Shape's ramp slot. (The Shape's OWN ramp is [`crate::paint_shape_ramp`].) `layer_alpha` is the
+/// Texture LAYER's own Alpha action (`RampAlphaMode::to_u8`) when the layer editor paints this, and adds
+/// its dropdown; `None` for the brush, whose ramp alpha has one law ([`ph2d_tool_painter::BRUSH_RAMP_ALPHA`]).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_texture_ramp_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -50,6 +51,7 @@ pub(crate) fn paint_texture_ramp_section(
     y: f32,
     brush: BrushSettings,
     title: &str,
+    layer_alpha: Option<u8>,
 ) -> f32 {
     let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
     // Smear/Blur/Clone/Eraser paint no colour → the ramp is a B&W coverage tone; force B&W checked + locked.
@@ -61,14 +63,19 @@ pub(crate) fn paint_texture_ramp_section(
         bw_locked,
         mode: brush.texture_ramp_mode,
         interp: brush.texture_ramp_interp,
-        alpha_mode: brush.texture_ramp_alpha_mode,
+        alpha: layer_alpha.map(|mode| AlphaRow {
+            id: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+            mode,
+            set_pending: state::set_pending_ramp_alpha_dd,
+        }),
         stops: &brush.texture_ramp_stops[..count],
         selected_id: state::selected_ramp_stop(),
     };
     paint_color_ramp_section(ctx, theme, x, content_w, y, title, &grain_ramp_ids(), view)
 }
 
-/// Deferred paint of the Grain ramp's open Mode / Interpolation / Alpha dropdown popovers.
+/// Deferred paint of the Grain ramp's open Mode / Interpolation dropdown popovers, and of a Texture
+/// LAYER's Alpha one.
 pub(crate) fn paint_texture_ramp_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     if let Some((chip, cur)) = state::take_pending_ramp_mode_dd() {
         paint_dropdown_popover(

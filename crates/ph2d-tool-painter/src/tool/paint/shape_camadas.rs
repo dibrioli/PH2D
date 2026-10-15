@@ -191,9 +191,10 @@ impl PainterTool {
         c.lut_queda = super::ramp_lut::lut_srgb(&c.queda_rampa, false);
         let tex = &self.paint.texture_ramp_lut;
         let camadas = c.motor(forma);
-        // A cor do pincel não entra: a rota em cache só serve camadas que a cobrem (`shows_brush_color`).
+        // As camadas compõem-se sobre o transparente (a cor do pincel não entra): o alfa da LUT é o da
+        // tinta, e a rota em cache multiplica a cobertura por ele.
         let combinada = (0..tex.len())
-            .map(|i| camadas.color(tex, i as f32 / 255.0, i as f32 / 255.0, [1.0; 3]))
+            .map(|i| camadas.color(tex, i as f32 / 255.0, i as f32 / 255.0))
             .collect();
         c.lut_combinada = combinada;
     }

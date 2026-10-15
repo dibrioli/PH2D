@@ -296,11 +296,6 @@ pub const PAINTER_SHAPE_RAMP_INTERP: NodeId = hash_node_id("painter_brush.shape_
 /// `Click` → `toggle_shape_ramp_bw`.
 pub const PAINTER_SHAPE_RAMP_BW: NodeId = hash_node_id("painter_brush.shape_ramp_bw");
 
-/// Shape ramp **alpha action** dropdown (Off / → Strength / → Sprite). `SelectOption` →
-/// `set_shape_ramp_alpha_mode`.
-pub const PAINTER_SHAPE_RAMP_ALPHA_MODE: NodeId =
-    hash_node_id("painter_brush.shape_ramp_alpha_mode");
-
 /// The gradient **bar** — the `CurvePoint` parent the draggable stop handles report against.
 pub const PAINTER_SHAPE_RAMP_EDIT: NodeId = hash_node_id("painter_brush.shape_ramp_edit");
 
@@ -359,12 +354,6 @@ pub fn painter_shape_ramp_mode_option_id(m: u8) -> NodeId {
 #[must_use]
 pub fn painter_shape_ramp_interp_option_id(i: u8) -> NodeId {
     hash_node_id_runtime(&format!("painter_brush.shaperampinterpopt.{i}"))
-}
-
-/// Stable [`NodeId`] for Shape-ramp alpha-action option `m` in the open dropdown popover.
-#[must_use]
-pub fn painter_shape_ramp_alpha_option_id(m: u8) -> NodeId {
-    hash_node_id_runtime(&format!("painter_brush.shaperampalphaopt.{m}"))
 }
 
 /// Per-pattern parameter sliders for a **procedural** Shape (Contrast / Brightness + the kind's shape

@@ -30,9 +30,11 @@ use ph2d_vector::ImageQuality;
 /// Paint the Texture section starting at `y`, returning the next `y`. The Kind picker + Mapping
 /// dropdowns stash their open rects for the deferred [`paint_texture_popovers`] pass.
 ///
-/// `compact` (a **Texture layer** editor, not the brush) hides the per-dab-only controls — Mapping,
-/// Rake, Random and Angle — since a full-cover layer maps at identity. The Kind picker, the live
-/// preview, Size / Offset, per-pattern params and the Color Ramp are always shown.
+/// `layer_alpha` is `Some` (the layer's own ramp Alpha action, `RampAlphaMode::to_u8`) for a **Texture
+/// layer** editor, not the brush: that `compact` editor hides the per-dab-only controls — Mapping,
+/// Rake, Random and Angle — since a full-cover layer maps at identity, and its ramp keeps the Alpha
+/// dropdown the brush ramps no longer have. The Kind picker, the live preview, Size / Offset,
+/// per-pattern params and the Color Ramp are always shown.
 pub(crate) fn paint_texture_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -40,8 +42,9 @@ pub(crate) fn paint_texture_section(
     content_w: f32,
     y: f32,
     brush: BrushSettings,
-    compact: bool,
+    layer_alpha: Option<u8>,
 ) -> f32 {
+    let compact = layer_alpha.is_some();
     // Collapsible section (default expanded) on the brush; the inline Texture-LAYER editor keeps the
     // plain divider (it's always-on, nested under the active layer row).
     // ⚠️ `None` aqui significa DUAS coisas, e a distincao decide o corpo: em `compact` o editor
@@ -112,7 +115,7 @@ pub(crate) fn paint_texture_section(
     }
 
     // ── Live preview of the current texture pattern, right below the Texture dropdown (Enio 2026-06-24) ──
-    y = paint_texture_preview(
+    y = paint_texture_preview_com(
         ctx,
         theme,
         x,
@@ -120,6 +123,8 @@ pub(crate) fn paint_texture_section(
         y,
         brush,
         state::current_brush_texture_image(),
+        None,
+        ramp_alpha(layer_alpha),
     );
 
     // ── Per-dab mapping controls — brush only (a layer covers the sprite at identity rotation) ──
@@ -194,12 +199,22 @@ pub(crate) fn paint_texture_section(
     // A Color Ramp do Grain só onde o meio a oferece (`texture_ramp_offered`: nem na Aquarela, onde o
     // Grain é o mapa de granulação, nem no Wet Paint). A Texture LAYER (`compact`) guarda a dela.
     let show_ramp = brush.texture_ramp_offered() || compact;
-    let out = paint_texture_params_and_ramp(ctx, theme, x, content_w, y, brush, kind, show_ramp);
+    let out = paint_texture_params_and_ramp(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        brush,
+        kind,
+        show_ramp.then_some(layer_alpha),
+    );
     close(ctx, fold, out)
 }
 
-/// Paint the Grain section's tail — the per-pattern params + (when `show_ramp`) the Color Ramp sub-editor.
-/// Split out to keep [`paint_texture_section`] under the function LOC cap; reused by the layer editor.
+/// Paint the Grain section's tail — the per-pattern params + (when `ramp` is `Some`) the Color Ramp
+/// sub-editor, which carries the Texture layer's Alpha action (`Some(Some(_))`). Split out to keep
+/// [`paint_texture_section`] under the function LOC cap; reused by the layer editor.
 #[allow(clippy::too_many_arguments)]
 fn paint_texture_params_and_ramp(
     ctx: &mut PaintCtx,
@@ -209,7 +224,7 @@ fn paint_texture_params_and_ramp(
     mut y: f32,
     brush: BrushSettings,
     kind: TextureKind,
-    show_ramp: bool,
+    ramp: Option<Option<u8>>,
 ) -> f32 {
     // ── Per-pattern parameters — short labels pair two-per-line, long labels go solo. ──
     let pp = crate::number_field::params_de_padrao(
@@ -220,9 +235,9 @@ fn paint_texture_params_and_ramp(
     let sec = crate::paint_texture_tiling::seccao_do_grao(ctx);
     y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp, sec);
 
-    if !show_ramp {
+    let Some(layer_alpha) = ramp else {
         return y;
-    }
+    };
     // ── Color Ramp sub-editor (maps the texture's scalar to a colour). Shown in ALL modes: in
     //    Smear/Blur/Clone it's forced to a B&W coverage tone (checked + locked) that shapes the grain. ──
     crate::paint_texture_ramp::paint_texture_ramp_section(
@@ -233,7 +248,13 @@ fn paint_texture_params_and_ramp(
         y,
         brush,
         tr("panel.painter_layers.grain.grain_colors"),
+        layer_alpha,
     )
+}
+
+/// The ramp Alpha action the preview paints with: the Texture layer's own, else the brush's one law.
+fn ramp_alpha(layer_alpha: Option<u8>) -> RampAlphaMode {
+    layer_alpha.map_or(ph2d_tool_painter::BRUSH_RAMP_ALPHA, RampAlphaMode::from_u8)
 }
 
 /// Paint the **Texture-layer** editor inline under the active Texture-layer row: the same Texture
@@ -253,7 +274,7 @@ pub(crate) fn paint_texture_layer_editor(
     let Some(view) = state::current_brush().map(|b| brush_view_from_texture_layer(b, tex)) else {
         return y;
     };
-    paint_texture_section(ctx, theme, x, content_w, y, view, true)
+    paint_texture_section(ctx, theme, x, content_w, y, view, Some(tex.ramp_alpha_mode))
 }
 
 /// `true` when the inline Texture-LAYER editor (not the brush) is the one showing the Texture section:
@@ -295,7 +316,6 @@ pub(crate) fn brush_view_from_texture_layer(
     base.texture_ramp_enabled = tex.ramp_enabled;
     base.texture_ramp_mode = tex.ramp.color_mode.to_u8();
     base.texture_ramp_interp = tex.ramp.interp.to_u8();
-    base.texture_ramp_alpha_mode = tex.ramp_alpha_mode;
     let srgb = |c: f32| f32::from(linear_to_srgb_byte(c)) / 255.0; // LITERAL-PX-OK: sRGB 8-bit normalize
     let stops = tex.ramp.stops();
     let count = stops.len().min(base.texture_ramp_stops.len());
@@ -335,7 +355,17 @@ pub(crate) fn paint_texture_preview(
     brush: BrushSettings,
     image: Option<(std::sync::Arc<Vec<u8>>, u32, u32)>,
 ) -> f32 {
-    paint_texture_preview_com(ctx, theme, x, content_w, y, brush, image, None)
+    paint_texture_preview_com(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        brush,
+        image,
+        None,
+        ph2d_tool_painter::BRUSH_RAMP_ALPHA,
+    )
 }
 
 /// Um desenhista de pré-visualização no lugar do `render_texture_preview` — `(buffer RGBA, w, h)`.
@@ -354,6 +384,7 @@ pub(crate) fn paint_texture_preview_com(
     brush: BrushSettings,
     image: Option<(std::sync::Arc<Vec<u8>>, u32, u32)>,
     desenha: Option<Desenhista<'_>>,
+    alpha: RampAlphaMode,
 ) -> f32 {
     let ph = altura_do_preview(content_w);
     let rect = Rect::new(x, y, content_w, ph);
@@ -362,10 +393,7 @@ pub(crate) fn paint_texture_preview_com(
     // (Ease/Cardinal/B-Spline/Constant · RGB/HSV/HSL), alpha included. `None` → grayscale scalar.
     let mut lut = [[0.0f32; 4]; 256];
     let ramp = if build_ramp_preview_lut(&brush, &mut lut) {
-        Some((
-            &lut[..],
-            RampAlphaMode::from_u8(brush.texture_ramp_alpha_mode),
-        ))
+        Some((&lut[..], alpha))
     } else {
         None
     };

@@ -203,7 +203,7 @@ pub(crate) fn declara_aparencia(
     //    IS the granulation map in watercolor mode ("Same as Paper" + Amount at its top). ──
     plano.seccao(pids::PAINTER_BRUSH_TEXTURE_SECTION, move |ctx, theme, y| {
         if fora {
-            crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false)
+            crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, None)
         } else {
             y
         }

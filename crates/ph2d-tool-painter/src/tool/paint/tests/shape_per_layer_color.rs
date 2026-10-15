@@ -274,37 +274,24 @@ fn flipping_per_layer_color_mid_stroke_keeps_what_was_already_painted() {
 }
 
 #[test]
-fn appearance_signature_tracks_tiling_and_ramp_alpha() {
+fn appearance_signature_tracks_tiling() {
     // Sweep (2026-07-12): `AppearanceSig` is the change detector that re-fills an OPEN shape editor's
-    // preview (`on_panel_event` compares it and calls `refill_open_shape`). It missed the two ramps'
-    // **Alpha Mode** and **Tiling** — both because their setters deliberately say "no re-bake needed, it
-    // only affects future stamps". True of the LUT and of the canvas; NOT true of an open shape, whose
-    // preview IS a stamp that has not landed yet. Toggling Tiling (or Alpha Mode) with a Curve on screen
-    // changed nothing until some unrelated knob moved.
+    // preview (`on_panel_event` compares it and calls `refill_open_shape`). It missed **Tiling** — its
+    // setter deliberately says "it only affects future stamps". True of the canvas; NOT true of an open
+    // shape, whose preview IS a stamp that has not landed yet. Toggling Tiling with a Curve on screen
+    // changed nothing until some unrelated knob moved. (The ramps' Alpha Mode it also missed is gone:
+    // the brush ramps' alpha has one law since 15/10.)
     //
     // The gate is on the SIGNATURE, which is precisely the defect: if it does not move, the refill is never
     // even called. (Driving the repaint end-to-end needs an open-shape state this harness does not
     // reproduce, and a test whose behaviour I cannot explain is worth less than one that pins the cause.)
     // RED without the fix: the signature is unchanged and the preview stays stale.
-    use ph2d_painter_brush::RampAlphaMode;
     let mut t = white_canvas(64, 8.0);
     let sig = t.appearance_sig();
     t.toggle_brush_tiling(0);
     assert!(
         sig != t.appearance_sig(),
         "Tiling wraps an open shape's stamp — it MUST be in the appearance signature"
-    );
-    let sig = t.appearance_sig();
-    t.set_texture_ramp_alpha_mode(RampAlphaMode::Strength.to_u8());
-    assert!(
-        sig != t.appearance_sig(),
-        "the Grain ramp's Alpha Mode is applied at STAMP time — it MUST be in the appearance signature"
-    );
-    let sig = t.appearance_sig();
-    t.set_shape_ramp_alpha_mode(RampAlphaMode::Strength.to_u8());
-    assert!(
-        sig != t.appearance_sig(),
-        "the Shape ramp's Alpha Mode is applied at STAMP time — it MUST be in the appearance signature"
     );
 }
 

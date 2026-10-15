@@ -91,7 +91,7 @@ pub(crate) fn camadas_da_previa(
             .iter()
             .zip(&valor)
             .map(|(&c, &v)| {
-                let k = camadas.color(&tlut, u(v), u(c), brush.color);
+                let k = camadas.color(&tlut, u(v), u(c));
                 [k[0], k[1], k[2], u(c) * k[3]]
             })
             .collect(),

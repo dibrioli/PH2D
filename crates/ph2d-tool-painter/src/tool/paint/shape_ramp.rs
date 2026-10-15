@@ -41,12 +41,6 @@ impl PainterTool {
         self.shape_ramp_changed();
     }
 
-    /// Set what the Shape ramp colour's **alpha** does when painting (`RampAlphaMode` wire
-    /// discriminant). No LUT re-bake needed (the mode is applied at stamp time).
-    pub fn set_shape_ramp_alpha_mode(&mut self, m: u8) {
-        self.paint.shape_color_ramp_alpha_mode = ph2d_painter_brush::RampAlphaMode::from_u8(m);
-    }
-
     /// Move the Shape-ramp stop with stable `id` to normalized position `pos` (tracked by id, so it may
     /// be dragged **past its neighbours** and keep its identity).
     pub fn shape_ramp_move_stop(&mut self, id: u8, pos: f32) {
@@ -101,12 +95,11 @@ impl PainterTool {
         self.shape_ramp_changed();
     }
 
-    /// Reset the Shape Colour section to defaults: ramp off, the default gradient, B&W off, alpha off.
+    /// Reset the Shape Colour section to defaults: ramp off, the default gradient, B&W off.
     pub fn reset_shape_ramp(&mut self) {
         self.paint.shape_color_ramp = ph2d_color::ColorRamp::default();
         self.paint.shape_color_ramp_enabled = false;
         self.paint.shape_color_ramp_bw = false;
-        self.paint.shape_color_ramp_alpha_mode = ph2d_painter_brush::RampAlphaMode::None;
         self.paint.shape_camadas = Default::default(); // Texture Color só, Falloff Color de fábrica
         self.shape_ramp_changed();
     }

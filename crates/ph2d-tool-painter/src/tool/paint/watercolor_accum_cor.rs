@@ -180,27 +180,14 @@ impl PainterTool {
                         // A Shape Color Ramp ([`RampaDaAguada`]): a cor do dab troca-se pela das camadas
                         // NESTE texel — a Texture Color pelo valor do Shape, a Falloff Color pelo peso.
                         let (col, wgt) = match &rampa {
-                            Some(RampaDaAguada {
-                                lut,
-                                camadas,
-                                alfa_pesa,
-                            }) if wgt > 0.0 => {
-                                let base = [
-                                    f32::from(col[0]) / 255.0,
-                                    f32::from(col[1]) / 255.0,
-                                    f32::from(col[2]) / 255.0,
-                                ];
+                            Some(RampaDaAguada { lut, camadas }) if wgt > 0.0 => {
                                 let c = camadas.motor(forma.is_some()).color(
                                     lut,
                                     forma.unwrap_or(wgt),
                                     wgt,
-                                    base,
                                 );
                                 let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-                                (
-                                    [byte(c[0]), byte(c[1]), byte(c[2])],
-                                    if *alfa_pesa { wgt * c[3] } else { wgt },
-                                )
+                                ([byte(c[0]), byte(c[1]), byte(c[2])], wgt * c[3])
                             }
                             _ => (col, wgt),
                         };
@@ -267,13 +254,12 @@ impl PainterTool {
 /// ([`ph2d_painter_brush::ShapeRampLayers`], prompt 38): a Texture Color pelo valor da textura do Shape
 /// (a densidade do carimbo), a Falloff Color pelo peso do carimbo (o `wgt` do splat), misturadas como
 /// no digital — as camadas são as DONAS da cor. Na aguada o padrão procedural já não recorta a água
-/// (vira densidade), por isso nada muda na cobertura. No `Alpha Mode` Strength (e no Texture
-/// Alpha, que numa aguada não tem alfa de camada a baixar) o alfa da rampa pesa o depósito. O modo
+/// (vira densidade), por isso nada muda na cobertura. O alfa da tinta (o das cores da rampa × Opacity
+/// de cada camada) pesa o depósito, sempre — a lei única das rampas do pincel. O modo
 /// TOM (B&W) não mora aqui: remapeia a silhueta da Shape dentro do `WetShapeStamp`, como no digital.
 pub(super) struct RampaDaAguada {
     lut: Vec<[f32; 4]>,
     camadas: super::shape_camadas::CamadasDoShape,
-    alfa_pesa: bool,
 }
 
 impl PainterTool {
@@ -295,10 +281,6 @@ impl PainterTool {
         Some(RampaDaAguada {
             lut: self.paint.texture_ramp_lut.clone(),
             camadas: self.paint.shape_camadas.clone(),
-            alfa_pesa: !matches!(
-                self.active_ramp_alpha_mode(dona),
-                ph2d_painter_brush::RampAlphaMode::None
-            ),
         })
     }
 }

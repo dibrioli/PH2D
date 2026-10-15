@@ -46,7 +46,6 @@ pub(crate) struct RampIds {
     pub enable: NodeId,
     pub mode: NodeId,
     pub interp: NodeId,
-    pub alpha_mode: NodeId,
     pub bw: NodeId,
     pub add: NodeId,
     pub remove: NodeId,
@@ -57,10 +56,21 @@ pub(crate) struct RampIds {
     pub stop_pos: NodeId,
     /// Stable handle id for stop `i` on the bar.
     pub handle: fn(u8) -> NodeId,
-    /// Stash the open Mode / Interp / Alpha dropdown rect for this instance's deferred popover pass.
+    /// Stash the open Mode / Interp dropdown rect for this instance's deferred popover pass.
     pub set_pending_mode: fn(Option<(Rect, u8)>),
     pub set_pending_interp: fn(Option<(Rect, u8)>),
-    pub set_pending_alpha: fn(Option<(Rect, u8)>),
+}
+
+/// The **Alpha action** dropdown under a Texture LAYER's ramp — its own `RampAlphaMode`. The brush
+/// ramps (Grain · Shape Color) have none: their colour alpha always scales the painted coverage
+/// ([`ph2d_tool_painter::BRUSH_RAMP_ALPHA`]).
+#[derive(Clone, Copy)]
+pub(crate) struct AlphaRow {
+    pub id: NodeId,
+    /// `RampAlphaMode::to_u8`.
+    pub mode: u8,
+    /// Stash the open dropdown rect for the deferred popover pass.
+    pub set_pending: fn(Option<(Rect, u8)>),
 }
 
 /// A snapshot view of one ramp's published fields. `stops` is the valid slice `(pos, r, g, b, a, id)`
@@ -76,7 +86,8 @@ pub(crate) struct RampView<'a> {
     pub bw_button: bool,
     pub mode: u8,
     pub interp: u8,
-    pub alpha_mode: u8,
+    /// `Some` only for a Texture LAYER's ramp ([`AlphaRow`]).
+    pub alpha: Option<AlphaRow>,
     pub stops: &'a [[f32; 6]],
     pub selected_id: u8,
 }
@@ -121,20 +132,22 @@ pub(crate) fn paint_color_ramp_section(
     }
     y = paint_ramp_body(ctx, theme, x, content_w, y, ids, view);
 
-    // Alpha action dropdown (Off / Reduce Strength / Sprite Alpha).
-    let alpha_rect = Rect::new(x, y, content_w, ROW_H_PX);
-    if paint_dropdown_chip(
-        ctx,
-        theme,
-        ids.alpha_mode,
-        view.alpha_mode,
-        ph2d_i18n::tr(RampAlphaMode::from_u8(view.alpha_mode).name_key()),
-        alpha_rect,
-    ) {
-        (ids.set_pending_alpha)(Some((alpha_rect, view.alpha_mode)));
+    // A Texture LAYER's Alpha action dropdown (Off / Reduce Strength / Sprite Alpha).
+    if let Some(a) = view.alpha {
+        let alpha_rect = Rect::new(x, y, content_w, ROW_H_PX);
+        if paint_dropdown_chip(
+            ctx,
+            theme,
+            a.id,
+            a.mode,
+            ph2d_i18n::tr(RampAlphaMode::from_u8(a.mode).name_key()),
+            alpha_rect,
+        ) {
+            (a.set_pending)(Some((alpha_rect, a.mode)));
+        }
+        y += ph2d_tokens::row_pitch_px();
     }
-    let out = y + ph2d_tokens::row_pitch_px();
-    crate::paint_brush_top::end_fold(ctx, fold, out)
+    crate::paint_brush_top::end_fold(ctx, fold, y)
 }
 
 /// The ramp editor's BODY — the controls line, the gradient bar with its stop handles, the selected

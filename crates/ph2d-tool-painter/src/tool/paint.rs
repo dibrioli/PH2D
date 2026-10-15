@@ -235,6 +235,7 @@ mod inpaint; // content-aware heal brush (mark defect + reconstruct on pen-up); 
 mod mask;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
+pub use ramp_lut::BRUSH_RAMP_ALPHA;
 /// Pixel-region save/restore helpers for the drag preview (`dab_bbox`/`save_region`/`restore_region`).
 pub(crate) mod region;
 /// The **Selection** tool (ADR-0103) — the document-wide selection mask, undo integration + paint gate. [LOC split].

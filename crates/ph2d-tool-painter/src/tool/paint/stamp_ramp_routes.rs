@@ -41,7 +41,7 @@ impl PainterTool {
         } else {
             self.paint.texture_ramp_lut.as_slice()
         };
-        let alpha_mode = self.active_ramp_alpha_mode(owner);
+        let alpha_mode = super::ramp_lut::BRUSH_RAMP_ALPHA;
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -120,7 +120,7 @@ impl PainterTool {
         // [`Self::rampa_de_cor`], field by field: the canvas is borrowed mutably below.
         let rampa = ph2d_painter_brush::RampPaint {
             lut: &self.paint.texture_ramp_lut,
-            alpha_mode: self.active_ramp_alpha_mode(owner),
+            alpha_mode: super::ramp_lut::BRUSH_RAMP_ALPHA,
             index: owner.index(),
             shape: if owner == super::ramp_lut::RampLutOwner::Shape {
                 self.paint.shape_camadas.motor(shape_active)

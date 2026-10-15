@@ -375,7 +375,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.ramp.falloff_color" => "Falloff Color",
         "panel.painter_layers.ramp.move_up" => "Move Up",
         "panel.painter_layers.ramp.opacity" => "Opacity",
-        "panel.painter_layers.ramp.alpha" => "Alpha",
         "panel.painter_layers.ramp.blend" => "Blend",
         "panel.painter_layers.ramp.enabled" => "Enabled",
         "panel.painter_layers.impasto.level" => "Level",

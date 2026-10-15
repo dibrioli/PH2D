@@ -9,6 +9,13 @@
 
 use crate::tool::PainterTool;
 
+/// What the two BRUSH colour ramps' (Grain · Shape Color) colour alpha does — ONE law, no choice (dono
+/// 15/10: *«que o alpha obedeça o alfa de cada cor do color ramp»*): it scales the painted coverage. The
+/// panel's ramp preview reads it too. The Texture LAYER keeps its own `RampAlphaMode`
+/// ([`crate::TextureLayer`]).
+pub const BRUSH_RAMP_ALPHA: ph2d_painter_brush::RampAlphaMode =
+    ph2d_painter_brush::RampAlphaMode::Strength;
+
 /// Which ramp last baked into the engine's single colour LUT (`texture_ramp_lut`) — the Shape ramp
 /// (it colourises the silhouette when its B&W filter is off), the Grain ramp, or neither. Tracked so
 /// the LUT re-bakes when the **owner** flips even if neither ramp's own `_dirty` is set.
@@ -68,12 +75,13 @@ impl PainterTool {
     }
 
     /// ⭐ The colour ramp as the stamp kernels read it — ONE door for every route (the per-pixel one, the
-    /// baked colour stamp and its cache key): the owner's LUT, alpha action, index and — owner Shape —
-    /// its two layers. Caller `ensure_ramp_lut(owner)`s first.
+    /// baked colour stamp and its cache key): the owner's LUT, index and — owner Shape — its two layers.
+    /// The ramp colour's alpha always scales the painted coverage ([`BRUSH_RAMP_ALPHA`]). Caller
+    /// `ensure_ramp_lut(owner)`s first.
     pub(super) fn rampa_de_cor(&self, owner: RampLutOwner) -> ph2d_painter_brush::RampPaint<'_> {
         ph2d_painter_brush::RampPaint {
             lut: &self.paint.texture_ramp_lut,
-            alpha_mode: self.active_ramp_alpha_mode(owner),
+            alpha_mode: BRUSH_RAMP_ALPHA,
             index: owner.index(),
             shape: if owner == RampLutOwner::Shape {
                 self.paint.shape_camadas.motor(self.shape_tem_textura())
@@ -81,17 +89,6 @@ impl PainterTool {
                 ph2d_painter_brush::ShapeRampLayers::default()
             },
         }
-    }
-
-    /// A cor do pincel aparece por baixo das camadas do Shape (a de baixo não é opaca): só a rota por
-    /// pixel tem a cor de CADA dab.
-    pub(super) fn camadas_mostram_o_pincel(&self, owner: RampLutOwner) -> bool {
-        owner == RampLutOwner::Shape
-            && self
-                .paint
-                .shape_camadas
-                .motor(self.shape_tem_textura())
-                .shows_brush_color()
     }
 
     /// A Texture Color recolhe o padrão PROCEDURAL do Shape em cor (ele deixa de recortar) — então o
@@ -105,18 +102,6 @@ impl PainterTool {
             && self.paint.shape_camadas.textura
             && self.paint.brush.shape_silhouette_active(has_shape_image)
             && self.paint.brush.shape.kind != ph2d_painter_brush::TextureKind::Image
-    }
-
-    /// The alpha action of whichever ramp owns the colour (`None` mode when no owner).
-    pub(super) fn active_ramp_alpha_mode(
-        &self,
-        owner: RampLutOwner,
-    ) -> ph2d_painter_brush::RampAlphaMode {
-        match owner {
-            RampLutOwner::Shape => self.paint.shape_color_ramp_alpha_mode,
-            RampLutOwner::Grain => self.paint.texture_ramp_alpha_mode,
-            RampLutOwner::None => ph2d_painter_brush::RampAlphaMode::None,
-        }
     }
 
     /// (Re)bake the engine's single colour LUT from whichever ramp `owner` selects (Shape or Grain),

@@ -47,12 +47,12 @@ pub(crate) fn take_pending_ramp_interp_dd() -> Option<(Rect, u8)> {
     crate::state::PENDING_RAMP_INTERP_DD.with(|c| c.take())
 }
 
-/// Stash the open Grain Color Ramp Alpha-action dropdown for the deferred popover pass.
+/// Stash the open Texture-LAYER Color Ramp Alpha-action dropdown for the deferred popover pass.
 pub(crate) fn set_pending_ramp_alpha_dd(v: Option<(Rect, u8)>) {
     crate::state::PENDING_RAMP_ALPHA_DD.with(|c| c.set(v));
 }
 
-/// Take (and clear) the pending Grain Color Ramp Alpha-action dropdown.
+/// Take (and clear) the pending Texture-LAYER Color Ramp Alpha-action dropdown.
 pub(crate) fn take_pending_ramp_alpha_dd() -> Option<(Rect, u8)> {
     crate::state::PENDING_RAMP_ALPHA_DD.with(|c| c.take())
 }
@@ -76,14 +76,4 @@ pub(crate) fn set_pending_shape_ramp_mode_dd(v: Option<(Rect, u8)>) {
 /// Take (and clear) the pending Shape-ramp colour-Mode dropdown.
 pub(crate) fn take_pending_shape_ramp_mode_dd() -> Option<(Rect, u8)> {
     crate::state::PENDING_SHAPE_RAMP_MODE_DD.with(|c| c.take())
-}
-
-/// Stash the open Shape-ramp Alpha-action dropdown for the deferred popover pass.
-pub(crate) fn set_pending_shape_ramp_alpha_dd(v: Option<(Rect, u8)>) {
-    crate::state::PENDING_SHAPE_RAMP_ALPHA_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Shape-ramp Alpha-action dropdown.
-pub(crate) fn take_pending_shape_ramp_alpha_dd() -> Option<(Rect, u8)> {
-    crate::state::PENDING_SHAPE_RAMP_ALPHA_DD.with(|c| c.take())
 }

@@ -237,14 +237,17 @@ fn accumulate_off_caps_the_stroke_even_with_a_colour_ramp() {
         if accumulate {
             t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_ACCUMULATE));
         }
-        t.set_shape_color_ramp(ColorRamp::new(
+        let vermelha = ColorRamp::new(
             vec![
                 RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
                 RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
             ],
             RampColorMode::Rgb,
             RampInterp::Linear,
-        ));
+        );
+        // No Shape texture ⇒ the Falloff Color layer paints (prompt 38): give IT the red ramp.
+        t.set_shape_color_ramp(vermelha.clone());
+        t.set_shape_falloff_ramp(vermelha);
         t.set_shape_ramp_enabled(true); // no Grain ⇒ the Shape ramp owns colour (the ramped path)
         t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
         for _ in 0..5 {
@@ -812,30 +815,25 @@ fn ramp_set_stop_color_applies_alpha() {
     assert!(s.color[0] > 0.9, "red channel high (linear of sRGB 255)");
 }
 
-/// End-to-end via the SAME dispatch the panel sends: enable ramp + a translucent stop + pick the
-/// alpha mode through `handle_panel_event`, then paint a real stroke. Reproduces "I select a mode but
-/// painting does not change" — proves the tool+engine path so a UI-side break is isolated.
+/// End-to-end via the SAME dispatch the panel sends: enable the Grain ramp + set the s=1 stop's colour
+/// and alpha through `handle_panel_event`, then paint a real stroke. The ramp has ONE alpha law (dono
+/// 15/10: *«que o alpha obedeça o alfa de cada cor do color ramp»*): the stop's alpha scales the painted
+/// coverage — a transparent stop paints nothing where it indexes, and nothing ever punches the sprite.
 #[test]
-fn ramp_alpha_mode_dispatch_changes_the_painted_result() {
+fn ramp_stop_alpha_scales_the_painted_coverage() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
-    use ph2d_painter_brush::RampAlphaMode;
     use ph2d_painter_brush::texture::{TextureKind, TextureMapping};
-    let make = |mode: &str| {
+    let make = |alpha: u8| {
         let mut t = white_canvas(48, 16.0);
         // A checker texture so the ramped path engages (`texture_ramp_enabled && texture.is_active()`).
         t.paint.brush.texture.kind = TextureKind::Checker;
         t.paint.brush.texture.mapping = TextureMapping::ViewPlane;
         t.paint.brush.texture.size = [0.25, 0.25];
         t.set_texture_ramp_enabled(true);
-        // Make the s=1 stop (id 1) fully transparent via the real swatch dispatch ("id,r,g,b,a").
+        // The s=1 stop (id 1) red with `alpha`, via the real swatch dispatch ("id,r,g,b,a").
         t.handle_panel_event(PanelEvent::SelectOption(
             crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
-            "1,255,255,255,0".into(),
-        ));
-        // Select the alpha action through the dropdown dispatch.
-        t.handle_panel_event(PanelEvent::SelectOption(
-            crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
-            mode.into(),
+            format!("1,255,0,0,{alpha}"),
         ));
         // Paint one stroke across the middle.
         t.on_canvas_pointer(cp([8.0, 24.0], PointerPhase::Down));
@@ -849,22 +847,32 @@ fn ramp_alpha_mode_dispatch_changes_the_painted_result() {
             .count()
     };
 
-    // "2" = Sprite Alpha: the transparent ramp cells must punch the white sprite see-through.
-    let sprite = make("2");
-    assert_eq!(
-        sprite.paint.texture_ramp_alpha_mode,
-        RampAlphaMode::TextureAlpha,
-        "the dropdown dispatch set the mode"
+    let red = |t: &PainterTool| {
+        (0..48 * 48)
+            .filter(|&i| {
+                let p = &t.canvas_rgba[i * 4..i * 4 + 3];
+                p[0] > 200 && p[1] < 60 && p[2] < 60
+            })
+            .count()
+    };
+    let opaque = make(255);
+    let clear = make(0);
+    // Measured 15/10: 489 strong-red pixels opaque, 44 transparent — the 44 sit where the filtered
+    // checker is just under 1 (the stop's alpha just above 0) and the overlapping dabs build it up.
+    let (r_opaque, r_clear) = (red(&opaque), red(&clear));
+    assert!(
+        r_opaque > 0,
+        "an opaque red stop paints red where the Grain indexes it"
     );
     assert!(
-        transparent(&sprite) > 0,
-        "Sprite Alpha must make part of the sprite transparent"
+        r_clear * 4 < r_opaque,
+        "a transparent stop paints (almost) nothing where it indexes — its alpha scales the coverage: \
+         opaque {r_opaque} vs transparent {r_clear} strong-red pixels"
     );
-    // "0" = Off over the same setup leaves the sprite fully opaque (alpha ignored).
     assert_eq!(
-        transparent(&make("0")),
-        0,
-        "Off ignores the ramp alpha — nothing is punched transparent"
+        (transparent(&opaque), transparent(&clear)),
+        (0, 0),
+        "the ramp alpha only scales coverage — it never punches the white sprite see-through"
     );
 }
 

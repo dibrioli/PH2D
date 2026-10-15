@@ -268,14 +268,6 @@ impl PainterTool {
                 }
                 true
             }
-            PanelEvent::SelectOption(id, value)
-                if *id == crate::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE =>
-            {
-                if let Ok(m) = value.parse::<u8>() {
-                    self.set_shape_ramp_alpha_mode(m);
-                }
-                true
-            }
             PanelEvent::SelectOption(id, value) if *id == crate::ids::PAINTER_SHAPE_RAMP_SWATCH => {
                 let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
                 if let (Some(sid), Some(r), Some(g), Some(b), Some(a)) =

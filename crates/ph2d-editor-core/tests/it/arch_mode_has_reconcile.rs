@@ -89,19 +89,6 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          the model (the field is encoding-agnostic — both modes read the same buffers).",
     ),
     (
-        "set_texture_ramp_alpha_mode",
-        "Painter brush Color Ramp alpha action (Off/Strength/SpriteAlpha): a single \
-         `texture_ramp_alpha_mode` field write. It is NOT baked into the ramp LUT (which \
-         holds RGBA colours) — the stamp reads it fresh each dab in `stamp_dabs_ramped`, \
-         exactly like the unflagged `set_blend_mode`. No derived cache keyed on it.",
-    ),
-    (
-        "set_shape_ramp_alpha_mode",
-        "Painter brush SHAPE Color Ramp alpha action: the Shape ramp twin of \
-         `set_texture_ramp_alpha_mode` — a single `shape_color_ramp_alpha_mode` field write, \
-         read fresh each dab at stamp time, not baked into any LUT. No derived cache keyed on it.",
-    ),
-    (
         "set_paint_tool_mode",
         "Painter rail tool-mode setter (smear/blur/clone/mask/eyedropper/eraser/brush): writes only \
          simple mode fields (`paint_mode`/`eraser`/`eyedropper_armed` + a one-shot Spacing default). \

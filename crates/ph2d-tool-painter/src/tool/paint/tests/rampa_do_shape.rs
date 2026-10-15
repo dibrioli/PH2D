@@ -460,48 +460,78 @@ fn prancha_rampa_do_shape() {
     }
 }
 
-/// **Cada camada tem a sua Opacity, e por baixo de tudo está a cor do pincel** (smoke do dono 15/10:
-/// «o ajuste de opacidade deveria ter para os dois»). Falloff Color só, rampa vermelha, pincel verde:
-/// Opacity 1 pinta a rampa, 0 pinta o verde do pincel, 0,5 a meio — pela rota por pixel, que é a que
-/// tem a cor de cada dab.
+/// **O alfa de cada cor da rampa é o alfa da tinta, e a Opacity de cada camada multiplica-o** (dono
+/// 15/10: *«que o alpha não precise desses modos mas que obedeça o alfa de cada cor do color ramp»*).
+/// Falloff Color só, rampa vermelha: alfa 1 e Opacity 1 pintam vermelho cheio; Opacity 0 não pinta;
+/// Opacity ½ ou uma cor de alfa ½ pintam meia tinta — vermelha, nunca a cor do pincel (verde). E duas
+/// camadas: a de cima com cor transparente deixa ver a de baixo.
 #[test]
-fn cada_camada_tem_a_sua_opacidade_sobre_a_cor_do_pincel() {
-    let centro = |opacidade: f32| {
+fn o_alfa_de_cada_cor_e_a_opacity_sao_a_tinta() {
+    let vermelha = |a: f32| {
+        ColorRamp::new(
+            vec![
+                RampStop::new(0.0, [1.0, 0.0, 0.0, a]),
+                RampStop::new(1.0, [1.0, 0.0, 0.0, a]),
+            ],
+            RampColorMode::Rgb,
+            RampInterp::Linear,
+        )
+    };
+    let centro = |alfa: f32, opacidade: f32, textura_por_baixo: bool| {
         let mut t = PainterTool::default();
         t.set_source(vec![0u8; (W * W * 4) as usize], W, W);
         t.paint.brush.radius_px = R;
         t.paint.brush.color = [0.0, 1.0, 0.0];
+        if textura_por_baixo {
+            t.set_brush_shape_kind(TextureKind::Checker.to_u8());
+            t.paint.brush.shape.size = [0.01; 2]; // um ladrilho só: o valor do padrão é uniforme
+        }
         let seed = t.paint.brush;
         t.paint.brush_by_mode.fill(seed);
         t.set_shape_ramp_enabled(true);
         t.paint.shape_color_ramp_bw = false;
-        t.paint.shape_camadas.textura = false;
+        t.paint.shape_camadas.textura = textura_por_baixo;
         t.paint.shape_camadas.queda = true;
-        t.set_shape_falloff_ramp(ColorRamp::new(
+        t.paint.shape_camadas.queda_primeiro = true;
+        t.set_shape_color_ramp(ColorRamp::new(
             vec![
-                RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
-                RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
+                RampStop::new(0.0, [0.0, 0.0, 1.0, 1.0]),
+                RampStop::new(1.0, [0.0, 0.0, 1.0, 1.0]),
             ],
             RampColorMode::Rgb,
             RampInterp::Linear,
         ));
+        t.set_shape_falloff_ramp(vermelha(alfa));
         t.set_shape_falloff_opacity(opacidade);
         t.on_canvas_pointer(cp([C, C], PointerPhase::Down));
         t.on_canvas_pointer(cp([C, C], PointerPhase::Up));
         let i = ((48 * W + 48) * 4) as usize;
-        [t.canvas_rgba[i], t.canvas_rgba[i + 1], t.canvas_rgba[i + 2]]
+        [
+            t.canvas_rgba[i],
+            t.canvas_rgba[i + 1],
+            t.canvas_rgba[i + 2],
+            t.canvas_rgba[i + 3],
+        ]
     };
-    let (cheia, nada, meio) = (centro(1.0), centro(0.0), centro(0.5));
+    let cheia = centro(1.0, 1.0, false);
     assert!(
-        cheia[0] > 240 && cheia[1] < 15,
-        "Opacity 1: a rampa (vermelho): {cheia:?}"
+        cheia[0] > 240 && cheia[1] < 15 && cheia[3] > 240,
+        "alfa 1, Opacity 1: vermelho cheio: {cheia:?}"
     );
+    let nada = centro(1.0, 0.0, false);
+    assert!(nada[3] < 5, "Opacity 0: não pinta: {nada:?}");
+    for (nome, px) in [
+        ("Opacity ½", centro(1.0, 0.5, false)),
+        ("alfa ½", centro(0.5, 1.0, false)),
+    ] {
+        assert!(
+            (100..=160).contains(&px[3]) && px[0] > 200 && px[1] < 15,
+            "{nome}: meia tinta VERMELHA (sem a cor do pincel): {px:?}"
+        );
+    }
+    let vazada = centro(0.0, 1.0, true);
     assert!(
-        nada[1] > 240 && nada[0] < 15,
-        "Opacity 0: a cor do pincel (verde): {nada:?}"
-    );
-    assert!(
-        (100..=160).contains(&meio[0]) && (100..=160).contains(&meio[1]),
-        "Opacity 0,5: a meio entre a rampa e o pincel: {meio:?}"
+        vazada[2] > 200 && vazada[0] < 15 && vazada[3] > 240,
+        "a de cima transparente deixa ver a de baixo (azul): {vazada:?}"
     );
 }

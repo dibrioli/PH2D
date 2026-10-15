@@ -32,7 +32,7 @@ fn painted_hit_ids_for(brush: BrushSettings) -> Vec<NodeId> {
             scene: &mut scene,
             text_system: &mut text,
         };
-        paint_texture_section(&mut ctx, Theme::default(), 0.0, 320.0, 0.0, brush, false);
+        paint_texture_section(&mut ctx, Theme::default(), 0.0, 320.0, 0.0, brush, None);
     }
     host.hit_index_mut()
         .iter_registrations()
@@ -50,7 +50,8 @@ fn painted_hit_ids(kind: u8) -> Vec<NodeId> {
 
 /// Like [`painted_hit_ids_for`] but expands the **Color Ramp** section first (it defaults collapsed),
 /// so the "Use Color Ramp" checkbox + (when enabled) the ramp editor controls actually paint.
-fn painted_hit_ids_ramp_open(brush: BrushSettings) -> Vec<NodeId> {
+/// `layer_alpha` `Some` paints it as the Texture-LAYER editor (with that layer's ramp Alpha action).
+fn painted_hit_ids_ramp_open(brush: BrushSettings, layer_alpha: Option<u8>) -> Vec<NodeId> {
     let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
     host.store_mut().set_collapsed(
         ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
@@ -71,7 +72,15 @@ fn painted_hit_ids_ramp_open(brush: BrushSettings) -> Vec<NodeId> {
             scene: &mut scene,
             text_system: &mut text,
         };
-        paint_texture_section(&mut ctx, Theme::default(), 0.0, 320.0, 0.0, brush, false);
+        paint_texture_section(
+            &mut ctx,
+            Theme::default(),
+            0.0,
+            320.0,
+            0.0,
+            brush,
+            layer_alpha,
+        );
     }
     host.hit_index_mut()
         .iter_registrations()
@@ -190,10 +199,13 @@ fn param_sliders_register_exactly_the_kind_s_specs() {
 fn color_ramp_controls_gate_on_the_enable_toggle() {
     // Section expanded but ramp OFF (default): only the enable checkbox registers; Mode / Interp / + / −
     // stay hidden.
-    let off = painted_hit_ids_ramp_open(BrushSettings {
-        texture_kind: TextureKind::Noise.to_u8(),
-        ..crate::paint_brush::FALLBACK_BRUSH
-    });
+    let off = painted_hit_ids_ramp_open(
+        BrushSettings {
+            texture_kind: TextureKind::Noise.to_u8(),
+            ..crate::paint_brush::FALLBACK_BRUSH
+        },
+        None,
+    );
     assert!(
         off.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE),
         "the 'Use Color Ramp' enable checkbox shows when the section is expanded. painted = {off:?}"
@@ -213,13 +225,16 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
     let mut stops = [[0.0; 6]; ph2d_tool_painter::PANEL_RAMP_STOPS];
     stops[0] = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0]; // id 0
     stops[1] = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]; // id 1
-    let on = painted_hit_ids_ramp_open(BrushSettings {
-        texture_kind: TextureKind::Noise.to_u8(),
-        texture_ramp_enabled: true,
-        texture_ramp_stop_count: 2,
-        texture_ramp_stops: stops,
-        ..crate::paint_brush::FALLBACK_BRUSH
-    });
+    let on = painted_hit_ids_ramp_open(
+        BrushSettings {
+            texture_kind: TextureKind::Noise.to_u8(),
+            texture_ramp_enabled: true,
+            texture_ramp_stop_count: 2,
+            texture_ramp_stops: stops,
+            ..crate::paint_brush::FALLBACK_BRUSH
+        },
+        None,
+    );
     for shown in [
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
@@ -259,9 +274,25 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
         on.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS),
         "the stop-position chip must register a hit rect. painted = {on:?}"
     );
-    // The Alpha-action dropdown below the ramp registers a hit rect.
+    // The brush ramp has NO Alpha-action dropdown (its colour alpha always scales coverage, dono 15/10);
+    // the Texture-LAYER editor keeps its own below the same ramp.
+    let alpha = ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE;
     assert!(
-        on.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE),
-        "the ramp alpha-action dropdown must register a hit rect. painted = {on:?}"
+        !on.contains(&alpha),
+        "the BRUSH ramp has no alpha-action dropdown. painted = {on:?}"
+    );
+    let layer = painted_hit_ids_ramp_open(
+        BrushSettings {
+            texture_kind: TextureKind::Noise.to_u8(),
+            texture_ramp_enabled: true,
+            texture_ramp_stop_count: 2,
+            texture_ramp_stops: stops,
+            ..crate::paint_brush::FALLBACK_BRUSH
+        },
+        Some(ph2d_tool_painter::RampAlphaMode::TextureAlpha.to_u8()),
+    );
+    assert!(
+        layer.contains(&alpha),
+        "the Texture LAYER's ramp keeps its alpha-action dropdown. painted = {layer:?}"
     );
 }

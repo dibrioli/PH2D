@@ -91,6 +91,7 @@ pub(crate) fn paint_flow_rows(
         flow_preview_view(brush),
         imagem,
         classic(brush).then_some(&classico as crate::paint_texture::Desenhista<'_>),
+        ph2d_tool_painter::BRUSH_RAMP_ALPHA, // a vista do Flow desliga a rampa
     );
     y = card_row(
         ctx,

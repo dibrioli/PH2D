@@ -43,6 +43,9 @@ pub mod wet_diag; // o split do tick da agua para o log do produto (PH2D_FLUID_P
 /// sem que `wgpu` entre nesta crate nem o Painter alcance o kernel (doc 33 §S3).
 pub use tool::paint::stamp_device::{DeviceDab, DeviceStamp, DeviceStampJob};
 
+/// A lei única do alfa das rampas de cor do PINCEL (Grain · Shape Color).
+pub use tool::paint::BRUSH_RAMP_ALPHA;
+
 pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,
     flatten_for_gpu,

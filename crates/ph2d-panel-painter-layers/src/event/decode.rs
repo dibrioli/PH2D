@@ -113,12 +113,6 @@ pub(super) fn decode_shape_ramp_mode_option(id: NodeId) -> Option<u8> {
         .find(|&m| ph2d_tool_painter::ids::painter_shape_ramp_mode_option_id(m) == id)
 }
 
-/// Decode a Shape-ramp Alpha-action popover option id → its `RampAlphaMode` wire `u8`.
-pub(super) fn decode_shape_ramp_alpha_option(id: NodeId) -> Option<u8> {
-    (0..RampAlphaMode::COUNT)
-        .find(|&m| ph2d_tool_painter::ids::painter_shape_ramp_alpha_option_id(m) == id)
-}
-
 /// Decode a Falloff-Color-ramp Interpolation popover option id → its `RampInterp` wire `u8`.
 pub(super) fn decode_shape_falloff_ramp_interp_option(id: NodeId) -> Option<u8> {
     (0..RampInterp::COUNT)
@@ -155,7 +149,8 @@ pub(super) fn decode_texture_ramp_interp_option(id: NodeId) -> Option<u8> {
         .find(|&i| ph2d_tool_painter::ids::painter_brush_texture_ramp_interp_option_id(i) == id)
 }
 
-/// Decode a Color Ramp Alpha-action popover option id → its `RampAlphaMode` wire `u8` (`0..=2`).
+/// Decode a Texture-LAYER Color Ramp Alpha-action popover option id → its `RampAlphaMode` wire `u8`
+/// (`0..=2`). The brush ramps have no Alpha action.
 pub(super) fn decode_texture_ramp_alpha_option(id: NodeId) -> Option<u8> {
     (0..RampAlphaMode::COUNT)
         .find(|&m| ph2d_tool_painter::ids::painter_brush_texture_ramp_alpha_option_id(m) == id)

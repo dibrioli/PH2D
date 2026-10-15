@@ -91,13 +91,12 @@ impl PainterTool {
         self.paint.texture_ramp_dirty = true;
     }
 
-    /// Reset the **Color Ramp** sub-section to defaults: ramp off, the default gradient, B&W off, alpha
-    /// action off. Flags the LUT dirty so the next ramped stamp re-bakes.
+    /// Reset the **Color Ramp** sub-section to defaults: ramp off, the default gradient, B&W off. Flags
+    /// the LUT dirty so the next ramped stamp re-bakes.
     pub fn reset_brush_color_ramp(&mut self) {
         self.paint.texture_ramp = ph2d_color::ColorRamp::default();
         self.paint.texture_ramp_enabled = false;
         self.paint.texture_ramp_bw = false;
-        self.paint.texture_ramp_alpha_mode = ph2d_painter_brush::RampAlphaMode::None;
         self.paint.texture_ramp_dirty = true;
     }
 
@@ -111,13 +110,6 @@ impl PainterTool {
         self.paint.texture_ramp_dirty = true;
         self.paint.shape_ramp_version = self.paint.shape_ramp_version.wrapping_add(1);
         self.reset_brush_color_ramp();
-    }
-
-    /// Set what the ramp colour's **alpha** does when painting (`RampAlphaMode` wire discriminant):
-    /// `0` ignore · `1` scale brush Strength · `2` drive the sprite's own alpha. No LUT re-bake needed
-    /// (the mode is applied at stamp time, not baked).
-    pub fn set_texture_ramp_alpha_mode(&mut self, m: u8) {
-        self.paint.texture_ramp_alpha_mode = ph2d_painter_brush::RampAlphaMode::from_u8(m);
     }
 
     /// Add a ramp stop at the midpoint of the **largest gap** between existing stops, coloured by the

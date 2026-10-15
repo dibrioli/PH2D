@@ -8,7 +8,6 @@
 use super::super::composite::{CompositeLayer, CompositeOp, EscopoDaBorracha};
 use crate::tool::PainterTool;
 use ph2d_color::ColorRamp;
-use ph2d_painter_brush::RampAlphaMode;
 use serde_json::{Value, json};
 
 fn rgb(c: [f32; 3]) -> Value {
@@ -62,12 +61,11 @@ fn camada_de_json(v: &Value, base: CompositeLayer) -> CompositeLayer {
     }
 }
 
-fn rampa_para_json(r: &ColorRamp, ligada: bool, bw: bool, alfa: RampAlphaMode) -> Value {
+fn rampa_para_json(r: &ColorRamp, ligada: bool, bw: bool) -> Value {
     json!({
         "rampa": serde_json::to_value(r).unwrap_or(Value::Null),
         "ligada": ligada,
         "bw": bw,
-        "alfa": alfa.to_u8(),
     })
 }
 
@@ -85,13 +83,11 @@ impl PainterTool {
                 &p.texture_ramp,
                 p.texture_ramp_enabled,
                 p.texture_ramp_bw,
-                p.texture_ramp_alpha_mode,
             ),
             "rampa_forma": rampa_para_json(
                 &p.shape_color_ramp,
                 p.shape_color_ramp_enabled,
                 p.shape_color_ramp_bw,
-                p.shape_color_ramp_alpha_mode,
             ),
             "impasto": {
                 "show": p.impasto_show,
@@ -131,26 +127,21 @@ impl PainterTool {
             }
             *ligada = x["ligada"].as_bool().unwrap_or(*ligada);
             *bw = x["bw"].as_bool().unwrap_or(*bw);
-            u8_(&x["alfa"]).map(RampAlphaMode::from_u8)
         };
         let g = &v["rampa_grao"];
-        if let Some(a) = rampa(
+        rampa(
             g,
             &mut p.texture_ramp,
             &mut p.texture_ramp_enabled,
             &mut p.texture_ramp_bw,
-        ) {
-            p.texture_ramp_alpha_mode = a;
-        }
+        );
         let s = &v["rampa_forma"];
-        if let Some(a) = rampa(
+        rampa(
             s,
             &mut p.shape_color_ramp,
             &mut p.shape_color_ramp_enabled,
             &mut p.shape_color_ramp_bw,
-        ) {
-            p.shape_color_ramp_alpha_mode = a;
-        }
+        );
         p.texture_ramp_dirty = true;
         p.shape_ramp_dirty = true;
         p.shape_ramp_version = p.shape_ramp_version.wrapping_add(1);

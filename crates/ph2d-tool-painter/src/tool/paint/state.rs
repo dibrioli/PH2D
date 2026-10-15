@@ -382,11 +382,9 @@ pub(crate) struct PaintState {
     pub(super) texture_ramp_dirty: bool,
     pub(super) ramp_lut_version: u64, // bumped per owner-LUT re-bake; the colour-ramp stamp cache keys on it
     pub(super) shape_camadas: super::shape_camadas::CamadasDoShape, // Texture/Falloff Color (prompt 38)
-    pub(super) texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode,
     pub(super) shape_color_ramp: ph2d_color::ColorRamp,
     pub(super) shape_color_ramp_enabled: bool,
     pub(super) shape_color_ramp_bw: bool,
-    pub(super) shape_color_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode,
     pub(super) shape_ramp_lut: Vec<f32>,
     pub(super) shape_ramp_dirty: bool,
     pub(super) shape_ramp_version: u64,

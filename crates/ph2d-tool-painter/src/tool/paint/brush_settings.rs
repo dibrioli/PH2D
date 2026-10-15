@@ -410,8 +410,6 @@ pub struct BrushSettings {
     /// Ramp stops `(pos, r, g, b, a, id)` display sRGB, first [`Self::texture_ramp_stop_count`] valid, sorted by `pos`.
     pub texture_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
     pub texture_ramp_stop_count: u8,
-    /// Ramp alpha action (`RampAlphaMode::to_u8`): `0` off · `1` scales Strength · `2` drives sprite alpha.
-    pub texture_ramp_alpha_mode: u8,
 
     // ── Shape Colour Ramp — colour twin of the Grain ramp (same fields). B&W off = owns colour, on = tone. ──
     pub shape_color_ramp_enabled: bool,
@@ -420,7 +418,6 @@ pub struct BrushSettings {
     pub shape_color_ramp_interp: u8,
     pub shape_color_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
     pub shape_color_ramp_stop_count: u8,
-    pub shape_color_ramp_alpha_mode: u8,
     // ── Shape Color layers (prompt 38): Texture Color (the ramp above) + Falloff Color, order, Blend, Mix. ──
     pub shape_texture_color: bool,
     pub shape_falloff_color: bool,

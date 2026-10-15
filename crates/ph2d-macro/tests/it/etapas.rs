@@ -9,8 +9,7 @@
 use ph2d_macro::codec::{self, CodecError};
 use ph2d_macro::etapa::efetiva;
 use ph2d_macro::{
-    EdicaoDeEtapa, ErroDeEdicao, Etapa, Event, LeitorDaFamilia, MacroDoc, MacroTime, RefRect,
-    Track,
+    EdicaoDeEtapa, ErroDeEdicao, Etapa, Event, LeitorDaFamilia, MacroDoc, MacroTime, RefRect, Track,
 };
 
 const Q: u64 = 10_000;
@@ -120,7 +119,11 @@ fn tipos(ev: &[Event]) -> Vec<u8> {
 #[test]
 fn sem_edicoes_a_trilha_que_toca_e_a_gravacao_ao_bit() {
     let tr = gravacao();
-    assert_eq!(Brinquedo.etapas(&tr.events).len(), 3, "a fixture tem 3 gestos");
+    assert_eq!(
+        Brinquedo.etapas(&tr.events).len(),
+        3,
+        "a fixture tem 3 gestos"
+    );
     assert_eq!(efetiva(&tr, &Brinquedo), Ok(tr.events.clone()));
 }
 
@@ -137,8 +140,16 @@ fn uma_espera_e_relogio_a_correr_e_tudo_o_que_vem_depois_anda_com_ela() {
         },
     );
     let ev = efetiva(&tr, &Brinquedo).expect("aplica");
-    assert_eq!(&ev[..a], &g.events[..a], "antes da etapa: a gravação, ao bit");
-    assert_eq!(ev[a].payload, carga(9, 0), "a marca de saída, uma vez, no início da espera");
+    assert_eq!(
+        &ev[..a],
+        &g.events[..a],
+        "antes da etapa: a gravação, ao bit"
+    );
+    assert_eq!(
+        ev[a].payload,
+        carga(9, 0),
+        "a marca de saída, uma vez, no início da espera"
+    );
     assert_eq!(tipos(&ev).iter().filter(|&&k| k == 9).count(), 1);
     let ultimo = tempo(&g.events[a - 1].payload);
     for j in 0..5 {
@@ -152,14 +163,25 @@ fn uma_espera_e_relogio_a_correr_e_tudo_o_que_vem_depois_anda_com_ela() {
     }
     for (i, e) in g.events[a..].iter().enumerate() {
         let f = &ev[a + 6 + i];
-        assert_eq!(f.t.0, e.t.0 + 5 * Q, "a etapa e as seguintes andam a espera inteira");
+        assert_eq!(
+            f.t.0,
+            e.t.0 + 5 * Q,
+            "a etapa e as seguintes andam a espera inteira"
+        );
         if e.payload[0] == 0 {
-            assert_eq!(tempo(&f.payload), tempo(&e.payload) + 5 * Q, "e o tempo de dentro também");
+            assert_eq!(
+                tempo(&f.payload),
+                tempo(&e.payload) + 5 * Q,
+                "e o tempo de dentro também"
+            );
         } else {
             assert_eq!(f.payload, e.payload);
         }
     }
-    assert!(ev.windows(2).all(|w| w[0].t <= w[1].t), "o tempo nunca recua");
+    assert!(
+        ev.windows(2).all(|w| w[0].t <= w[1].t),
+        "o tempo nunca recua"
+    );
 }
 
 #[test]
@@ -173,11 +195,25 @@ fn encurtar_tira_so_relogio_e_nunca_passa_a_etapa_anterior() {
     };
     let ev = efetiva(&com(g.clone(), ed(-3 * Q as i64)), &Brinquedo).expect("cabe");
     let relogios = |v: &[Event]| v.iter().filter(|e| e.payload[0] == 0).count();
-    assert_eq!(relogios(&ev), relogios(&g.events) - 3, "três quadros de relógio a menos");
-    assert!(tipos(&ev).contains(&4), "a propriedade solta NÃO é relógio: fica");
+    assert_eq!(
+        relogios(&ev),
+        relogios(&g.events) - 3,
+        "três quadros de relógio a menos"
+    );
+    assert!(
+        tipos(&ev).contains(&4),
+        "a propriedade solta NÃO é relógio: fica"
+    );
     let p = ev.iter().position(|e| e.payload[0] == 4).expect("está");
-    assert_eq!(ev[p].t, ev[p + 1].t, "e cola-se ao início da etapa encurtada");
-    assert!(ev.windows(2).all(|w| w[0].t <= w[1].t), "o tempo nunca recua");
+    assert_eq!(
+        ev[p].t,
+        ev[p + 1].t,
+        "e cola-se ao início da etapa encurtada"
+    );
+    assert!(
+        ev.windows(2).all(|w| w[0].t <= w[1].t),
+        "o tempo nunca recua"
+    );
     let fim_anterior = Brinquedo.etapas(&g.events)[0].fim;
     let intervalo = g.events[a].t.0 - g.events[fim_anterior].t.0;
     assert!(efetiva(&com(g.clone(), ed(-(intervalo as i64))), &Brinquedo).is_ok());
@@ -203,9 +239,18 @@ fn trocar_e_acrescentar_cargas_nao_mexe_no_tempo() {
     let ev = efetiva(&tr, &Brinquedo).expect("aplica");
     assert_eq!(ev.len(), g.events.len() + 1);
     assert_eq!(&ev[..a], &g.events[..a]);
-    assert_eq!(ev[a], Event { t: g.events[a].t, payload: carga(4, 1) });
+    assert_eq!(
+        ev[a],
+        Event {
+            t: g.events[a].t,
+            payload: carga(4, 1)
+        }
+    );
     assert_eq!(ev[a + 3].payload, carga(2, 777));
-    assert!(!tipos(&ev).contains(&9), "sem mudar o tempo, a trilha não sai da gravação");
+    assert!(
+        !tipos(&ev).contains(&9),
+        "sem mudar o tempo, a trilha não sai da gravação"
+    );
     let sai = com(
         g.clone(),
         EdicaoDeEtapa {
@@ -274,13 +319,21 @@ fn editado() -> MacroDoc {
 fn as_edicoes_vao_e_voltam_ao_byte_e_o_ficheiro_exige_quem_as_aplique() {
     let doc = editado();
     let bytes = codec::write(&doc);
-    assert_eq!(&bytes[9..13], &[0x01, 0x00, 0x01, 0x00], "1.1: as edições sobem o minor");
+    assert_eq!(
+        &bytes[9..13],
+        &[0x01, 0x00, 0x01, 0x00],
+        "1.1: as edições sobem o minor"
+    );
     let back = codec::read(&bytes).expect("lê");
     assert_eq!(back, doc);
     assert_eq!(codec::write(&back), bytes);
     let mut sem = doc;
     sem.tracks[0].edicoes.clear();
-    assert_eq!(&codec::write(&sem)[9..13], &[0x01, 0x00, 0x00, 0x00], "sem edições: 1.0");
+    assert_eq!(
+        &codec::write(&sem)[9..13],
+        &[0x01, 0x00, 0x00, 0x00],
+        "sem edições: 1.0"
+    );
 }
 
 #[test]

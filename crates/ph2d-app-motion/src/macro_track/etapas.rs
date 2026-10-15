@@ -23,7 +23,9 @@ fn chave(p: &Passo) -> Option<BTreeSet<(u64, String)>> {
             .filter_map(|i| match i {
                 IntencaoDeParam::SetParam { node, param, .. }
                 | IntencaoDeParam::SetTextParam { node, param, .. }
-                | IntencaoDeParam::ResetParam { node, param } => Some((node.varint(), param.clone())),
+                | IntencaoDeParam::ResetParam { node, param } => {
+                    Some((node.varint(), param.clone()))
+                }
                 IntencaoDeParam::Desconhecida(_) => None,
             })
             .collect(),
@@ -129,7 +131,13 @@ impl LeitorDaFamilia for LeitorDoMotion {
         };
         let (n, resto) = ph2d_macro::etapa::quadros_da_espera(us, dt * 1e6);
         let mut out: Vec<Event> = (0..n)
-            .map(|j| quadro(ph2d_macro::etapa::no_quadro(j, dt * 1e6), tempo + (j + 1) as f64 * dt, dt))
+            .map(|j| {
+                quadro(
+                    ph2d_macro::etapa::no_quadro(j, dt * 1e6),
+                    tempo + (j + 1) as f64 * dt,
+                    dt,
+                )
+            })
             .collect();
         if resto > 0 {
             let r = segundos(resto as i64);
@@ -297,10 +305,12 @@ fn descreve(
             _ => {}
         }
     }
-    if intencoes
-        .iter()
-        .all(|i| matches!(i, Intencao::MoveNodes { .. } | Intencao::BeginDrag | Intencao::EndDrag))
-    {
+    if intencoes.iter().all(|i| {
+        matches!(
+            i,
+            Intencao::MoveNodes { .. } | Intencao::BeginDrag | Intencao::EndDrag
+        )
+    }) {
         return TipoDaEtapa::Move;
     }
     TipoDaEtapa::Grafo
@@ -323,7 +333,9 @@ fn valor(t: &TocadorDoMotion, a: Alvo, param: &str) -> Option<f32> {
 /// # Errors
 /// [`ErroDaMacro`].
 pub fn etapas(track: &Track) -> Result<Vec<EtapaDoMotion>, ErroDaMacro> {
-    let tocavel = track.tocavel(&LeitorDoMotion).map_err(ErroDaMacro::Edicao)?;
+    let tocavel = track
+        .tocavel(&LeitorDoMotion)
+        .map_err(ErroDaMacro::Edicao)?;
     let gravadas = LeitorDoMotion.etapas(&track.events);
     let tocadas = LeitorDoMotion.etapas(&tocavel.events);
     let mut t = TocadorDoMotion::da_trilha(&tocavel, Modo::Explicativo)?;

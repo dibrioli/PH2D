@@ -34,8 +34,15 @@ fn tela(t: &Track) -> Vec<u8> {
 /// A edição dá a verdade ao bit, e o original não.
 fn bate(editada: &Track, verdade: &Track, original: &Track) {
     let (e, v, o) = (tela(editada), tela(verdade), tela(original));
-    assert!(diferentes(&o, &v) > 0, "controlo: a mudança não muda a tela");
-    assert_eq!(diferentes(&e, &v), 0, "a trilha editada não é a gravada com a mudança");
+    assert!(
+        diferentes(&o, &v) > 0,
+        "controlo: a mudança não muda a tela"
+    );
+    assert_eq!(
+        diferentes(&e, &v),
+        0,
+        "a trilha editada não é a gravada com a mudança"
+    );
 }
 
 #[test]
@@ -46,10 +53,16 @@ fn o_splash_tem_quatro_pinceladas_com_o_pincel_que_se_gravou() {
     for (k, (et, p)) in e.iter().zip(&SPLASH).enumerate() {
         assert_eq!(et.tipo, TipoDaEtapa::Pincelada(k + 1));
         assert_eq!(et.cor, p.cor, "a cor da pincelada {k}");
-        assert!((et.tamanho_px - p.tamanho_px).abs() < 1e-6, "o tamanho da pincelada {k}");
+        assert!(
+            (et.tamanho_px - p.tamanho_px).abs() < 1e-6,
+            "o tamanho da pincelada {k}"
+        );
         assert!(et.t0 < et.t1, "a pincelada {k} dura");
     }
-    assert!(e.windows(2).all(|w| w[0].t1 < w[1].t0), "as etapas não se sobrepõem");
+    assert!(
+        e.windows(2).all(|w| w[0].t1 < w[1].t0),
+        "as etapas não se sobrepõem"
+    );
 }
 
 #[test]
@@ -85,13 +98,20 @@ fn a_cor_editada_nao_passa_a_pincelada_seguinte_que_a_herdava() {
         })
         .expect("a 4.ª pincelada gravou a sua cor");
     base.events.remove(cor_da_4a);
-    assert_eq!(etapas::etapas(&base).expect("lê-se")[3].cor, SPLASH[2].cor, "agora herda-a");
+    assert_eq!(
+        etapas::etapas(&base).expect("lê-se")[3].cor,
+        SPLASH[2].cor,
+        "agora herda-a"
+    );
     let mut editada = base.clone();
     etapas::edita_cor(&mut editada, 2, VERDE).expect("é uma pincelada");
     let mut ps = herda;
     ps[2].cor = VERDE;
     bate(&editada, &trilha(&ps, &[0; 4]), &base);
-    assert_eq!(etapas::etapas(&editada).expect("lê-se")[3].cor, SPLASH[2].cor);
+    assert_eq!(
+        etapas::etapas(&editada).expect("lê-se")[3].cor,
+        SPLASH[2].cor
+    );
 }
 
 #[test]
@@ -116,7 +136,11 @@ fn uma_espera_antes_de_uma_pincelada_e_grava_la_mais_tarde() {
         etapas::etapas(&verdade).expect("lê-se"),
     );
     let ms = |t: ph2d_macro::MacroTime| t.0 / 1000;
-    assert_eq!(ms(e[2].t0), ms(v[2].t0), "a pincelada começa meio segundo depois");
+    assert_eq!(
+        ms(e[2].t0),
+        ms(v[2].t0),
+        "a pincelada começa meio segundo depois"
+    );
     assert_eq!(ms(e[0].t0), ms(v[0].t0), "e as de antes não se mexem");
 }
 
@@ -125,7 +149,8 @@ fn uma_espera_antes_de_uma_pincelada_e_grava_la_mais_tarde() {
 #[test]
 fn a_meio_da_espera_a_cena_mostra_a_agua_que_a_gravacao_mostrava() {
     let mut doc = gravado(&SPLASH, &[0; 4]);
-    etapas::espera(&mut doc.tracks[0], 2, i64::from(ESPERA) * 1_000_000 / 60).expect("a etapa existe");
+    etapas::espera(&mut doc.tracks[0], 2, i64::from(ESPERA) * 1_000_000 / 60)
+        .expect("a etapa existe");
     let verdade = gravado(&SPLASH, &[0, 0, ESPERA, 0]);
     let meio = etapas::etapas(&verdade.tracks[0]).expect("lê-se")[2].t0.0 as f64 / 1e6 - 0.25;
     let no_meio = |d: &MacroDoc| {
@@ -138,7 +163,11 @@ fn a_meio_da_espera_a_cena_mostra_a_agua_que_a_gravacao_mostrava() {
         m.toma_a_tela().map(|t| t.0.to_vec())
     };
     let v = no_meio(&verdade).expect("controlo: a meio da espera a água ainda muda a tela");
-    assert_eq!(no_meio(&doc), Some(v), "a cena não mostra a espera como a gravação a mostrava");
+    assert_eq!(
+        no_meio(&doc),
+        Some(v),
+        "a cena não mostra a espera como a gravação a mostrava"
+    );
 }
 
 #[test]
@@ -150,7 +179,11 @@ fn deslocar_o_caminho_de_uma_pincelada_muda_a_tela_e_toca_igual_duas_vezes() {
     assert_eq!(diferentes(&a, &b), 0);
     assert!(diferentes(&a, &tela(&original)) > 0);
     etapas::desloca_caminho(&mut editada, 0, [0.0, 0.0]).expect("volta");
-    assert_eq!(diferentes(&tela(&editada), &tela(&original)), 0, "deslocar 0 é o gravado");
+    assert_eq!(
+        diferentes(&tela(&editada), &tela(&original)),
+        0,
+        "deslocar 0 é o gravado"
+    );
 }
 
 #[test]

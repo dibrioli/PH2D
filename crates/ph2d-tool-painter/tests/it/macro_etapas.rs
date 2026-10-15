@@ -25,7 +25,11 @@ fn uma_espera_numa_gravacao_do_worker_toca_sem_divergir_e_igual_duas_vezes() {
     etapas::espera(&mut editada.tracks[0], 3, 500_000).expect("a etapa existe");
     let a = tela(&editada).expect("a espera toca sem divergir");
     let b = tela(&editada).expect("outra vez");
-    assert_eq!(texels_diferentes(&a, &b), 0, "a trilha que toca é determinística");
+    assert_eq!(
+        texels_diferentes(&a, &b),
+        0,
+        "a trilha que toca é determinística"
+    );
     assert!(
         texels_diferentes(&a, &tela(&original).expect("o original toca")) > 0,
         "meio segundo mais de água muda a tela"
@@ -52,7 +56,9 @@ fn uma_edicao_de_valor_fica_na_fita_enquanto_a_conferencia_passa() {
 fn a_conferencia_que_diverge_tira_a_etapa_da_gravacao() {
     use ph2d_tool_painter::macro_track::Passo;
     let mut doc = grava_no_worker(N);
-    let ancora = etapas::etapas(&doc.tracks[0]).expect("lê-se")[3].etapa.inicio;
+    let ancora = etapas::etapas(&doc.tracks[0]).expect("lê-se")[3]
+        .etapa
+        .inicio;
     doc.tracks[0]
         .edicao_mut(ancora)
         .insercoes
@@ -62,6 +68,9 @@ fn a_conferencia_que_diverge_tira_a_etapa_da_gravacao() {
         "controlo: pela fita, um tique a mais diverge"
     );
     etapas::assenta(&mut doc.tracks[0]).expect("assenta");
-    assert!(doc.tracks[0].edicoes[0].sai_da_gravacao, "a etapa saiu da gravação");
+    assert!(
+        doc.tracks[0].edicoes[0].sai_da_gravacao,
+        "a etapa saiu da gravação"
+    );
     tela(&doc).expect("e agora toca");
 }

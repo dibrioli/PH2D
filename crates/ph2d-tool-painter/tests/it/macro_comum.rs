@@ -1,12 +1,12 @@
 //! O que os gates das macros partilham: gravar quadro a quadro, tocar pelo `MacroPlayer`, comparar.
 
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool, Tool};
-use ph2d_tool_painter::PaintMedia;
-use std::time::{Duration, Instant};
 use ph2d_macro::{MacroDoc, MacroRecorder, RefRect, TrackId};
+use ph2d_tool_painter::PaintMedia;
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::macro_track::FAMILIA;
 use ph2d_tool_painter::macro_track::tocar::TocadorDoPainter;
+use std::time::{Duration, Instant};
 
 /// A gravação do lado de quem chama: o tempo é do quadro (`16,666 ms`), nunca do relógio de parede.
 pub struct Gravador {
@@ -138,4 +138,3 @@ pub fn grava_no_worker(n: u32) -> MacroDoc {
     }
     g.para(&mut t)
 }
-

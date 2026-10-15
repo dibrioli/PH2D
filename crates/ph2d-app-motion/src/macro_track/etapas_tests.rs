@@ -23,7 +23,8 @@ fn retrato_no_fim(doc: &MacroDoc, d: f64, modo: Modo) -> Vec<u32> {
     let mut m = MacroEmCena::de(&codec::write(doc), modo)
         .expect("lê-se")
         .expect("tem a trilha do Motion");
-    m.segue(d, &MundoDaCena::default(), None).expect("toca até ao fim");
+    m.segue(d, &MundoDaCena::default(), None)
+        .expect("toca até ao fim");
     retrato(m.palco())
 }
 
@@ -78,7 +79,10 @@ fn a_cena_tem_uma_etapa_por_gesto_com_o_nome_do_que_fez() {
         };
         assert_eq!(et.tipo, esperado, "etapa {k}");
     }
-    assert!(e.windows(2).all(|w| w[0].t1 <= w[1].t0), "as etapas não se sobrepõem");
+    assert!(
+        e.windows(2).all(|w| w[0].t1 <= w[1].t0),
+        "as etapas não se sobrepõem"
+    );
 }
 
 #[test]
@@ -211,8 +215,16 @@ mod leitor {
                 .filter(|x| !LeitorDoMotion.e_relogio(&x.payload))
                 .count()
         };
-        assert_eq!(e.len(), 4, "size ×5 · size ×2 · rows · o arrasto de nós: {e:?}");
-        assert_eq!(n(&e[0]), 5, "os cinco quadros seguidos do mesmo param são UMA sessão");
+        assert_eq!(
+            e.len(),
+            4,
+            "size ×5 · size ×2 · rows · o arrasto de nós: {e:?}"
+        );
+        assert_eq!(
+            n(&e[0]),
+            5,
+            "os cinco quadros seguidos do mesmo param são UMA sessão"
+        );
         assert_eq!(n(&e[1]), 2, "parar 3 quadros abre outra");
         assert_eq!(n(&e[2]), 1, "outro param no quadro seguinte é outra etapa");
         assert_eq!(n(&e[3]), 3, "BeginDrag..EndDrag é um gesto só");
@@ -252,7 +264,9 @@ mod leitor {
             .iter()
             .filter_map(|x| match Passo::descodifica(&x.payload) {
                 Ok(Passo::Params { intencoes, .. }) => intencoes.iter().find_map(|i| match i {
-                    IntencaoDeParam::SetParam { param, value, .. } if param == "size" => Some(*value),
+                    IntencaoDeParam::SetParam { param, value, .. } if param == "size" => {
+                        Some(*value)
+                    }
                     _ => None,
                 }),
                 _ => None,

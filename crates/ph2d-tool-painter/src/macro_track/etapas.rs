@@ -178,7 +178,9 @@ fn pinceis(tocavel: &Track) -> Result<Vec<([u8; 3], f32)>, ErroDaMacro> {
 /// # Errors
 /// [`ErroDaMacro`] (uma edição que não cabe, um estado inicial que não se lê).
 pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
-    let tocavel = track.tocavel(&LeitorDoPainter).map_err(ErroDaMacro::Edicao)?;
+    let tocavel = track
+        .tocavel(&LeitorDoPainter)
+        .map_err(ErroDaMacro::Edicao)?;
     let gravadas = LeitorDoPainter.etapas(&track.events);
     let tocadas = LeitorDoPainter.etapas(&tocavel.events);
     let pinceis = pinceis(&tocavel)?;
@@ -221,9 +223,15 @@ pub enum ErroDeEdicaoDoPainter {
     Macro(ErroDaMacro),
 }
 
-fn pincelada(track: &Track, k: usize) -> Result<(Etapa, usize, EtapaDoPainter), ErroDeEdicaoDoPainter> {
+fn pincelada(
+    track: &Track,
+    k: usize,
+) -> Result<(Etapa, usize, EtapaDoPainter), ErroDeEdicaoDoPainter> {
     let todas = etapas(track).map_err(ErroDeEdicaoDoPainter::Macro)?;
-    let e = todas.get(k).cloned().ok_or(ErroDeEdicaoDoPainter::SemEtapa(k))?;
+    let e = todas
+        .get(k)
+        .cloned()
+        .ok_or(ErroDeEdicaoDoPainter::SemEtapa(k))?;
     if !matches!(e.tipo, TipoDaEtapa::Pincelada(_)) {
         return Err(ErroDeEdicaoDoPainter::NaoEPincelada(k));
     }
@@ -254,9 +262,8 @@ fn troca_a_volta(
     let depois = etapa.fim + 1;
     let tem_depois = depois < track.events.len();
     let ed = track.edicao_mut(etapa.inicio);
-    ed.insercoes.retain(|(i, c)| {
-        !((*i == down || *i == depois) && passo(c).is_some_and(|p| mesma(&p)))
-    });
+    ed.insercoes
+        .retain(|(i, c)| !((*i == down || *i == depois) && passo(c).is_some_and(|p| mesma(&p))));
     ed.insercoes.push((down, novo.codifica()));
     if tem_depois {
         ed.insercoes.push((depois, antigo.codifica()));
@@ -381,8 +388,11 @@ pub fn assenta(track: &mut Track) -> Result<(), ErroDaMacro> {
 }
 
 fn toca_tudo(track: &Track) -> Result<(), ErroDaMacro> {
-    let t = track.tocavel(&LeitorDoPainter).map_err(ErroDaMacro::Edicao)?;
-    let mut toc = TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice()))?;
+    let t = track
+        .tocavel(&LeitorDoPainter)
+        .map_err(ErroDaMacro::Edicao)?;
+    let mut toc =
+        TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice()))?;
     for e in &t.events {
         toc.aplica(&e.payload)?;
     }
@@ -391,8 +401,11 @@ fn toca_tudo(track: &Track) -> Result<(), ErroDaMacro> {
 
 #[cfg(test)]
 pub(crate) fn tela_no_fim(track: &Track) -> Result<Vec<u8>, ErroDaMacro> {
-    let t = track.tocavel(&LeitorDoPainter).map_err(ErroDaMacro::Edicao)?;
-    let mut toc = TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice()))?;
+    let t = track
+        .tocavel(&LeitorDoPainter)
+        .map_err(ErroDaMacro::Edicao)?;
+    let mut toc =
+        TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice()))?;
     for e in &t.events {
         toc.aplica(&e.payload)?;
     }

@@ -36,13 +36,24 @@ pub const EXIGE_ETAPAS: &str = "etapas";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodecError {
     NotAMacro,
-    MajorMismatch { found: u16, supported: u16 },
+    MajorMismatch {
+        found: u16,
+        supported: u16,
+    },
     Truncated,
     BadVarint,
     BadUtf8,
-    MissingField { record: &'static str, tag: u32 },
-    BadFieldLength { record: &'static str, tag: u32 },
-    NonMonotonicTime { track: usize },
+    MissingField {
+        record: &'static str,
+        tag: u32,
+    },
+    BadFieldLength {
+        record: &'static str,
+        tag: u32,
+    },
+    NonMonotonicTime {
+        track: usize,
+    },
     /// O ficheiro exige uma funcionalidade que este leitor não sabe aplicar.
     Exige(String),
 }
@@ -225,9 +236,7 @@ fn read_track(bytes: &[u8]) -> Result<Track, CodecError> {
 fn read_edicao(bytes: &[u8]) -> Result<EdicaoDeEtapa, CodecError> {
     let mut ancora = None;
     let mut ed = EdicaoDeEtapa::default();
-    let indice = |b: &[u8]| {
-        usize::try_from(Cursor(b).varint()?).map_err(|_| CodecError::BadVarint)
-    };
+    let indice = |b: &[u8]| usize::try_from(Cursor(b).varint()?).map_err(|_| CodecError::BadVarint);
     for (tag, body) in Cursor(bytes).record()? {
         match tag {
             1 => ancora = Some(indice(body)?),
@@ -253,7 +262,12 @@ fn read_edicao(bytes: &[u8]) -> Result<EdicaoDeEtapa, CodecError> {
                     record: "Troca",
                     tag: 1,
                 })?;
-                if tag == 4 { &mut ed.trocas } else { &mut ed.insercoes }.push((i, carga));
+                if tag == 4 {
+                    &mut ed.trocas
+                } else {
+                    &mut ed.insercoes
+                }
+                .push((i, carga));
             }
             6 => ed.sai_da_gravacao = Cursor(body).varint()? != 0,
             _ => {}

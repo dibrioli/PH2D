@@ -55,7 +55,9 @@ fn espera(doc: &MacroDoc, gesto: usize, q: u64) -> (MacroDoc, f64) {
         .filter(|&i| matches!(passo(&ev[i]), Passo::Grafo { .. }))
         .nth(gesto)
         .expect("o gesto existe");
-    let ins = (0..=gi).find(|&i| ev[i].t == ev[gi].t).expect("o quadro do gesto");
+    let ins = (0..=gi)
+        .find(|&i| ev[i].t == ev[gi].t)
+        .expect("o quadro do gesto");
     let Some((tempo, a_tocar, dt)) = (0..ins).rev().find_map(|i| match passo(&ev[i]) {
         Passo::Quadro {
             tempo, a_tocar, dt, ..
@@ -120,7 +122,9 @@ fn toca(doc: &MacroDoc, modo: Modo, ate: f64) -> (Option<String>, Vec<u32>, f64)
 fn sonda_etapas_editadas_do_motion() {
     eprintln!(
         "[etapas motion] loadavg {}",
-        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
     );
     let (bytes, d) = grava_o_tutorial(7).expect("grava");
     let doc = ph2d_macro::codec::read(&bytes).expect("lê-se");

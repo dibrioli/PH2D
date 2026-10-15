@@ -142,13 +142,29 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
         if let Some(&ancora) = janela.get(&i) {
             let ed = por_ancora[&ancora];
             let t_ancora = em(ev[ancora].t, andou + ed.espera_us);
-            if janela.range(..i).next_back().is_none_or(|(_, &a)| a != ancora) {
+            if janela
+                .range(..i)
+                .next_back()
+                .is_none_or(|(_, &a)| a != ancora)
+            {
                 sai(&mut out, t_ancora.min(em(e.t, andou)), &mut saiu);
             }
-            if leitor.e_relogio(&e.payload) && !insercoes.contains_key(&i) && !trocas.contains_key(&i) {
+            if leitor.e_relogio(&e.payload)
+                && !insercoes.contains_key(&i)
+                && !trocas.contains_key(&i)
+            {
                 continue;
             }
-            empurra(&mut out, leitor, e, i, t_ancora.min(em(e.t, andou)), andou, &trocas, &insercoes);
+            empurra(
+                &mut out,
+                leitor,
+                e,
+                i,
+                t_ancora.min(em(e.t, andou)),
+                andou,
+                &trocas,
+                &insercoes,
+            );
             continue;
         }
         if let Some(ed) = por_ancora.get(&i) {
@@ -167,7 +183,16 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
             }
             andou += ed.espera_us;
         }
-        empurra(&mut out, leitor, e, i, em(e.t, andou), andou, &trocas, &insercoes);
+        empurra(
+            &mut out,
+            leitor,
+            e,
+            i,
+            em(e.t, andou),
+            andou,
+            &trocas,
+            &insercoes,
+        );
     }
     Ok(out)
 }
@@ -188,7 +213,10 @@ pub fn no_quadro(j: u64, quadro_us: f64) -> u64 {
     (j as f64 * quadro_us).round() as u64
 }
 
-#[expect(clippy::too_many_arguments, reason = "o passo de saída e as duas tabelas da edição")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "o passo de saída e as duas tabelas da edição"
+)]
 fn empurra(
     out: &mut Vec<Event>,
     leitor: &dyn LeitorDaFamilia,

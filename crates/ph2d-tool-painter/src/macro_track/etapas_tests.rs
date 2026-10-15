@@ -120,6 +120,27 @@ fn uma_espera_antes_de_uma_pincelada_e_grava_la_mais_tarde() {
     assert_eq!(ms(e[0].t0), ms(v[0].t0), "e as de antes não se mexem");
 }
 
+/// A cena VÊ a água a escorrer durante a espera: a meio dela a tela mostrada é a da gravação que esperou
+/// (os quadros sintetizados drenam a pré-visualização como os gravados).
+#[test]
+fn a_meio_da_espera_a_cena_mostra_a_agua_que_a_gravacao_mostrava() {
+    let mut doc = gravado(&SPLASH, &[0; 4]);
+    etapas::espera(&mut doc.tracks[0], 2, i64::from(ESPERA) * 1_000_000 / 60).expect("a etapa existe");
+    let verdade = gravado(&SPLASH, &[0, 0, ESPERA, 0]);
+    let meio = etapas::etapas(&verdade.tracks[0]).expect("lê-se")[2].t0.0 as f64 / 1e6 - 0.25;
+    let no_meio = |d: &MacroDoc| {
+        let mut m = MacroEmCena::de(&codec::write(d))
+            .expect("lê-se")
+            .expect("tem a trilha");
+        m.segue(meio - 0.05).expect("toca");
+        let _ = m.toma_a_tela();
+        m.segue(meio).expect("toca");
+        m.toma_a_tela().map(|t| t.0.to_vec())
+    };
+    let v = no_meio(&verdade).expect("controlo: a meio da espera a água ainda muda a tela");
+    assert_eq!(no_meio(&doc), Some(v), "a cena não mostra a espera como a gravação a mostrava");
+}
+
 #[test]
 fn deslocar_o_caminho_de_uma_pincelada_muda_a_tela_e_toca_igual_duas_vezes() {
     let original = trilha(&SPLASH, &[0; 4]);

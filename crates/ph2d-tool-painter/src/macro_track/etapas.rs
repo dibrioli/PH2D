@@ -1,6 +1,6 @@
 //! **As etapas da trilha do Painter** (W5, `docs/Macros/02_plano_W5.md` §1/§3): uma etapa é uma
-//! pincelada (`Ponteiro Down..Up`, a começar no 1.º evento do quadro do toque: a cor e o tamanho
-//! escolhidos para ela estão lá) ou uma porta recusada. O tique, as respostas do worker e os drenos da
+//! pincelada (`Ponteiro Down..Up`; a cor e o tamanho dela são o pincel no toque, venham de onde vierem)
+//! ou uma porta recusada. O tique, as respostas do worker e os drenos da
 //! pré-visualização são o relógio entre elas.
 //!
 //! Editar uma pincelada toca só nela: a cor e o tamanho novos entram antes do toque e o que ela tinha
@@ -35,11 +35,7 @@ impl LeitorDaFamilia for LeitorDoPainter {
                     ..
                 }) => {
                     if let Some(d) = toque.take() {
-                        let livre = out.last().map_or(0, |a| a.fim + 1);
-                        let inicio = (livre..=d)
-                            .find(|&j| eventos[j].t == eventos[d].t)
-                            .unwrap_or(d);
-                        out.push(Etapa { inicio, fim: i });
+                        out.push(Etapa { inicio: d, fim: i });
                     }
                 }
                 Some(Passo::Recusada(_)) if toque.is_none() => {

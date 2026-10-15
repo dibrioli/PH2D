@@ -299,3 +299,14 @@ fn um_ficheiro_que_exige_o_que_este_leitor_nao_sabe_recusa_se() {
     sabe.splice(23..29, [0x03, 0x06, b'e', b't', b'a', b'p', b'a', b's']);
     assert!(codec::read(&sabe).is_ok(), "e o que sabe lê-se");
 }
+
+/// A cadência exacta: `k` quadros de 60 Hz arredondados a µs cabem `k` vezes, mesmo quando a divisão em
+/// vírgula flutuante fica um nada abaixo do inteiro (50 000 / 16 666,67 = 2,999…).
+#[test]
+fn uma_espera_de_k_quadros_arredondada_a_us_tem_k_quadros_e_nenhum_resto() {
+    use ph2d_macro::etapa::{no_quadro, quadros_da_espera};
+    let q = 1e6 / 60.0;
+    for k in 1..=600 {
+        assert_eq!(quadros_da_espera(no_quadro(k, q), q), (k, 0), "{k} quadros");
+    }
+}

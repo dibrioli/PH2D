@@ -78,6 +78,9 @@ override SALTA_O_VAZIO_HRC: bool = true;
 // ⭐ W5s — um fio por SONDA de T0–T2: os 2ⁿ + 1 intervalos dela num laço, o meio em A lido uma vez e o
 // salto do vazio decidido pelo LEQUE inteiro (o triângulo A, B₀, B_{2ⁿ}). `false` = um fio por intervalo.
 override SONDA_HRC: bool = true;
+// ⭐ W5t — o despacho em 3D (por colunas): `(v, xi, k)` são o índice do fio, sem as divisões do 1D — a subida e a
+// descida pagam por FIO, não por byte (handoff W5t). `false` = 1D dobrado.
+override GRADE3D_HRC: bool = true;
 const LADO_DO_VAZIO: u32 = 8u;
 
 struct Par {
@@ -325,31 +328,41 @@ fn leque(u: f32, v: f32, lado: f32) -> array<vec2<f32>, 3> {
     );
 }
 
+// A sonda `sv = (xi, v)` de T_n (n ≤ 2): os 2ⁿ + 1 intervalos dela.
+fn tracar_sonda(sv: vec2<u32>) {
+    let n = hrc.nivel;
+    let u = f32(sv.x << n);
+    let v = f32(sv.y);
+    let lado = f32(1u << n);
+    let l = leque(u, v, lado);
+    if SALTA_O_VAZIO_HRC && caixa_vazia(min(l[0], min(l[1], l[2])), max(l[0], max(l[1], l[2]))) {
+        for (var k = 0u; k <= (1u << n); k++) {
+            t_saida[indice_t(hrc.nx, n, sv.x, sv.y, k)] = empacotar(VACUO);
+        }
+        return;
+    }
+    let m0 = meio(l[0]);
+    for (var k = 0u; k <= (1u << n); k++) {
+        let B = na_grade(u + lado, v + 2.0 * f32(k) - lado);
+        t_saida[indice_t(hrc.nx, n, sv.x, sv.y, k)] = empacotar(tracar_de(l[0], m0, B));
+    }
+}
+
 // ── T0, T1, T2: traçados ──
 @compute @workgroup_size(64)
 fn hrc_traca(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
+    if GRADE3D_HRC && SONDA_HRC && COLUNAS_HRC {
+        if gid.x < hrc.eixo.y {
+            tracar_sonda(vec2<u32>(gid.y, gid.x));
+        }
+        return;
+    }
     let e = entrada(gid, nw);
     if e >= hrc.total {
         return;
     }
     if SONDA_HRC {
-        let n = hrc.nivel;
-        let sv = decompor_sonda(e);
-        let u = f32(sv.x << n);
-        let v = f32(sv.y);
-        let lado = f32(1u << n);
-        let l = leque(u, v, lado);
-        if SALTA_O_VAZIO_HRC && caixa_vazia(min(l[0], min(l[1], l[2])), max(l[0], max(l[1], l[2]))) {
-            for (var k = 0u; k <= (1u << n); k++) {
-                t_saida[indice_t(hrc.nx, n, sv.x, sv.y, k)] = empacotar(VACUO);
-            }
-            return;
-        }
-        let m0 = meio(l[0]);
-        for (var k = 0u; k <= (1u << n); k++) {
-            let B = na_grade(u + lado, v + 2.0 * f32(k) - lado);
-            t_saida[indice_t(hrc.nx, n, sv.x, sv.y, k)] = empacotar(tracar_de(l[0], m0, B));
-        }
+        tracar_sonda(decompor_sonda(e));
         return;
     }
     let ab = pontas_da_traca(e);
@@ -360,46 +373,60 @@ fn hrc_traca(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
     t_saida[e] = empacotar(tracar(ab[0], ab[1]));
 }
 
+// A entrada (k, xi, v) de T_n pela fusão de T_{n−1}.
+fn fusao_de_baixo(k: u32, xi: u32, v: i32) -> Par {
+    let h = i32(1u << (hrc.nivel - 1u));
+    if k % 2u == 0u {
+        let c = k / 2u;
+        return fundir(t_de_baixo(2u * xi, v, c), t_de_baixo(2u * xi + 1u, v + 2 * i32(c) - h, c));
+    }
+    let a = (k - 1u) / 2u;
+    let b = (k + 1u) / 2u;
+    let mais = fundir(t_de_baixo(2u * xi, v, b), t_de_baixo(2u * xi + 1u, v + 2 * i32(b) - h, a));
+    let menos = fundir(t_de_baixo(2u * xi, v, a), t_de_baixo(2u * xi + 1u, v + 2 * i32(a) - h, b));
+    return Par(0.5 * (mais.r + menos.r), 0.5 * (mais.t + menos.t));
+}
+
 // ── T3..TN: a fusão de baixo para cima (Eq. 18–20) ──
 @compute @workgroup_size(64)
 fn hrc_sobe(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
+    if GRADE3D_HRC && COLUNAS_HRC {
+        if gid.x < hrc.eixo.y {
+            t_saida[indice_t(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z)] =
+                empacotar(fusao_de_baixo(gid.z, gid.y, i32(gid.x)));
+        }
+        return;
+    }
     let e = entrada(gid, nw);
     if e >= hrc.total {
         return;
     }
-    let n = hrc.nivel;
-    let d = decompor(e, (1u << n) + 1u);
-    let k = d.x;
-    let xi = d.y;
-    let v = i32(d.z);
-    let h = i32(1u << (n - 1u));
-    var par: Par;
-    if k % 2u == 0u {
-        let c = k / 2u;
-        par = fundir(t_de_baixo(2u * xi, v, c), t_de_baixo(2u * xi + 1u, v + 2 * i32(c) - h, c));
-    } else {
-        let a = (k - 1u) / 2u;
-        let b = (k + 1u) / 2u;
-        let mais = fundir(t_de_baixo(2u * xi, v, b), t_de_baixo(2u * xi + 1u, v + 2 * i32(b) - h, a));
-        let menos = fundir(t_de_baixo(2u * xi, v, a), t_de_baixo(2u * xi + 1u, v + 2 * i32(a) - h, b));
-        par = Par(0.5 * (mais.r + menos.r), 0.5 * (mais.t + menos.t));
-    }
-    t_saida[e] = empacotar(par);
+    let d = decompor(e, (1u << hrc.nivel) + 1u);
+    t_saida[e] = empacotar(fusao_de_baixo(d.x, d.y, i32(d.z)));
 }
 
 // ── R_{N−1}..R0: a fusão de cima para baixo (Eq. 14–17) ──
 @compute @workgroup_size(64)
 fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
+    if GRADE3D_HRC && COLUNAS_HRC {
+        if gid.x < hrc.eixo.y {
+            r_saida[indice_r(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z)] =
+                empacotar(Par(soma_da_descida(gid.z, gid.y, gid.x), 0.0));
+        }
+        return;
+    }
     let e = entrada(gid, nw);
     if e >= hrc.total {
         return;
     }
+    let d = decompor(e, 1u << hrc.nivel);
+    r_saida[e] = empacotar(Par(soma_da_descida(d.x, d.y, d.z), 0.0));
+}
+
+// R_n no cone `m` da sonda `(xi, v)`: as duas metades do cone.
+fn soma_da_descida(m: u32, xi: u32, v: u32) -> vec3<f32> {
     let n = hrc.nivel;
     let cones = 1u << n;
-    let d = decompor(e, cones);
-    let m = d.x;
-    let xi = d.y;
-    let v = d.z;
     let lado = i32(cones);
     var soma = vec3<f32>(0.0);
     for (var lado_do_cone = 0u; lado_do_cone < 2u; lado_do_cone++) {
@@ -420,7 +447,7 @@ fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
             soma += 0.5 * (f0 + f1);
         }
     }
-    r_saida[e] = empacotar(Par(soma, 0.0));
+    return soma;
 }
 
 // O R0 do cone 0 na sonda `(u, v)` (o céu × o arco além da última).

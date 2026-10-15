@@ -27,7 +27,7 @@ mod ambiente;
 #[path = "quadro_avisos.rs"]
 mod avisos;
 use ambiente::{
-    cortes_ligados, hrc_duas_vezes, hrc_por_colunas, hrc_traca_nova, miolo_do_ambiente,
+    cortes_ligados, hrc_duas_vezes, hrc_em_3d, hrc_por_colunas, hrc_traca_nova, miolo_do_ambiente,
     rebote_ligado,
 };
 #[path = "quadro_entorno.rs"]
@@ -201,6 +201,7 @@ impl LuzDoQuadro {
             hrc_por_colunas: hrc_por_colunas(),
             hrc_salta_o_vazio: hrc_traca_nova(),
             hrc_fio_por_sonda: hrc_traca_nova(),
+            hrc_grade_3d: hrc_em_3d(),
             miolo: miolo_do_ambiente(),
             ..crate::teto::config_do_quadro(g, self.mundo_para_tela, dg, rebote_ligado())
         }

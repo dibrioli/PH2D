@@ -75,7 +75,7 @@ pub(super) struct Holografica {
     cena: wgpu::BindGroup,
     pipelines: Vec<wgpu::ComputePipeline>,
     /// `(etapa, grupo 3, grupos de trabalho)`, na ordem.
-    passos: Vec<(Etapa, wgpu::BindGroup, [u32; 2])>,
+    passos: Vec<(Etapa, wgpu::BindGroup, [u32; 3])>,
     /// ⭐ W5d: o uniforme de cada passo (o miolo e o entorno reescrevem-se neles) e o buffer.
     uniformes: Vec<UniformeHrc>,
     uniforme: wgpu::Buffer,
@@ -117,10 +117,10 @@ fn buf(binding: u32, x: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
 /// Grupos de trabalho de 64 para `total` entradas, dobrados em 2D (65 535 por eixo) por IGUAL nas filas
 /// (⭐ W5s: `[65 535, 2]` deixava até metade da 2.ª fila de grupos vazios, e lançá-los custava — a sobe
 /// n10–n12 e a desce n10–n11 −0,63 ms no High; handoff W5s §3).
-fn grupos_1d(total: u64) -> [u32; 2] {
+fn grupos_1d(total: u64) -> [u32; 3] {
     let g = total.div_ceil(64).max(1);
     let y = g.div_ceil(65_535);
-    [g.div_ceil(y) as u32, y as u32]
+    [g.div_ceil(y) as u32, y as u32, 1]
 }
 
 impl Holografica {
@@ -231,6 +231,7 @@ impl Holografica {
                 f64::from(u8::from(e.cfg.hrc_salta_o_vazio)),
             ),
             ("SONDA_HRC", f64::from(u8::from(e.cfg.hrc_fio_por_sonda))),
+            ("GRADE3D_HRC", f64::from(u8::from(e.cfg.hrc_grade_3d))),
         ];
         let pipelines = ENTRADAS
             .iter()
@@ -287,7 +288,7 @@ impl Holografica {
         let mut uniformes = Vec::new();
         let mut passos = Vec::new();
         let mut passo =
-            |etapa: Etapa, u: UniformeHrc, ligados: [&wgpu::Buffer; 5], grupos: [u32; 2]| {
+            |etapa: Etapa, u: UniformeHrc, ligados: [&wgpu::Buffer; 5], grupos: [u32; 3]| {
                 let k = passos.len() as u64;
                 uniformes.push(u);
                 let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -334,7 +335,11 @@ impl Holografica {
                 Etapa::Ladrilhos,
                 saida,
                 [&vazio_l, &vazio_l, &vazio_t, &vazio_l, &vazio_r],
-                [ge.largura, ge.altura].map(|x| x.div_ceil(hrc::LADO_DO_VAZIO)),
+                [
+                    ge.largura.div_ceil(hrc::LADO_DO_VAZIO),
+                    ge.altura.div_ceil(hrc::LADO_DO_VAZIO),
+                    1,
+                ],
             );
         }
         for q in 0..4 {
@@ -355,6 +360,9 @@ impl Holografica {
                 entorno: [0.0; 4],
             };
             let nx = |n: u32| quad.nx(n);
+            // ⭐ W5t: em 3D (por colunas) os grupos são `[⌈Y/64⌉, nx, k]` (a traça só com um fio por sonda).
+            let em_3d = e.cfg.hrc_grade_3d && e.cfg.hrc_por_colunas;
+            let grupos_3d = |n: u32, k: u32| [quad.y.div_ceil(64), nx(n), k];
             for n in 0..=quad.n {
                 // ⭐ W5s: um fio por sonda na traça (o `SONDA_HRC`).
                 let por_sonda = n <= 2 && e.cfg.hrc_fio_por_sonda;
@@ -375,11 +383,16 @@ impl Holografica {
                 } else {
                     (Etapa::Sobe, &t[(n - 1) as usize])
                 };
+                let grupos = match (em_3d, n <= 2) {
+                    (true, true) if por_sonda => grupos_3d(n, 1),
+                    (true, false) => grupos_3d(n, (1 << n) + 1),
+                    _ => grupos_1d(total),
+                };
                 passo(
                     etapa,
                     u,
                     [ler, &vazio_l, &t[n as usize], &vazio_l, &vazio_r],
-                    grupos_1d(total),
+                    grupos,
                 );
             }
             for n in (0..quad.n).rev() {
@@ -408,7 +421,11 @@ impl Holografica {
                         cima,
                         &r[(n % 2) as usize],
                     ],
-                    grupos_1d(total),
+                    if em_3d {
+                        grupos_3d(n, 1 << n)
+                    } else {
+                        grupos_1d(total)
+                    },
                 );
             }
             // ⭐ W5r: por colunas, um grupo por ladrilho 8×8 (o `hrc_soma`).
@@ -433,7 +450,7 @@ impl Holografica {
             Etapa::Saida,
             saida,
             [&vazio_l, &vazio_l, &vazio_t, &vazio_l, &vazio_r],
-            [grade[0].div_ceil(8), grade[1].div_ceil(8)],
+            [grade[0].div_ceil(8), grade[1].div_ceil(8), 1],
         );
         let h = Self {
             cena,
@@ -499,7 +516,7 @@ impl Holografica {
     /// a máscara do vazio só na 1.ª — a cobertura não muda entre os rebotes).
     pub(super) fn gravar(&self, p: &mut wgpu::ComputePass<'_>, k: u32) {
         p.set_bind_group(0, &self.cena, &[]);
-        for (etapa, grupo, [x, y]) in &self.passos {
+        for (etapa, grupo, [x, y, z]) in &self.passos {
             if k > 0 && matches!(etapa, Etapa::Ladrilhos) {
                 continue;
             }
@@ -508,7 +525,7 @@ impl Holografica {
                 p.set_bind_group(2, &self.g2, &[]);
             }
             p.set_bind_group(3, grupo, &[]);
-            p.dispatch_workgroups(*x, *y, 1);
+            p.dispatch_workgroups(*x, *y, *z);
         }
     }
 }

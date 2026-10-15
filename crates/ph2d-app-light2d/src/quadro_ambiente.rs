@@ -54,3 +54,8 @@ pub(super) fn hrc_por_colunas() -> bool {
 pub(super) fn hrc_traca_nova() -> bool {
     ligado("PH2D_LIGHT2D_HRC_TRACA")
 }
+
+/// ⭐ W5t — `PH2D_LIGHT2D_HRC_3D=0`: a holográfica despachada em 1D (o mesmo bit, mais lento; comparar).
+pub(super) fn hrc_em_3d() -> bool {
+    ligado("PH2D_LIGHT2D_HRC_3D")
+}

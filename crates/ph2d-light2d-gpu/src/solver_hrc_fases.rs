@@ -53,7 +53,7 @@ impl Holografica {
             return false;
         };
         let base = 2 * k * self.passos.len() as u32;
-        for (i, (etapa, grupo, [x, y])) in self.passos.iter().enumerate() {
+        for (i, (etapa, grupo, [x, y, z])) in self.passos.iter().enumerate() {
             let par = base + 2 * i as u32;
             // ⭐ W5s: a máscara só na 1.ª gravação (um passe vazio escreve os carimbos dela).
             let vazio = k > 0 && matches!(etapa, Etapa::Ladrilhos);
@@ -74,7 +74,7 @@ impl Holografica {
                 p.set_bind_group(2, &self.g2, &[]);
             }
             p.set_bind_group(3, grupo, &[]);
-            p.dispatch_workgroups(*x, *y, 1);
+            p.dispatch_workgroups(*x, *y, *z);
         }
         true
     }

@@ -211,6 +211,9 @@ pub struct Config {
     /// ⭐ W5s — um fio por SONDA de T0–T2 (os intervalos dela num laço, o meio na ponta lido uma vez; o
     /// salto decidido pelo leque inteiro): o mesmo bit. `false` = um fio por intervalo.
     pub hrc_fio_por_sonda: bool,
+    /// ⭐ W5t — a traça, a subida e a descida da holográfica despachadas em 3D (`(v, xi, k)` são o índice do
+    /// fio, sem as divisões do 1D; só por colunas): o mesmo bit. `false` = 1D dobrado.
+    pub hrc_grade_3d: bool,
 }
 
 /// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
@@ -425,6 +428,7 @@ impl Config {
             hrc_arcos_em_tabela: true,
             hrc_salta_o_vazio: true,
             hrc_fio_por_sonda: true,
+            hrc_grade_3d: true,
         }
     }
 

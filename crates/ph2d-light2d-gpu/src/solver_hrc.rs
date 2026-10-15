@@ -114,11 +114,13 @@ fn buf(binding: u32, x: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
     }
 }
 
-/// Grupos de trabalho de 64 para `total` entradas, dobrados em 2D (65 535 por eixo).
+/// Grupos de trabalho de 64 para `total` entradas, dobrados em 2D (65 535 por eixo) por IGUAL nas filas
+/// (⭐ W5s: `[65 535, 2]` deixava até metade da 2.ª fila de grupos vazios, e lançá-los custava — a sobe
+/// n10–n12 e a desce n10–n11 −0,63 ms no High; handoff W5s §3).
 fn grupos_1d(total: u64) -> [u32; 2] {
     let g = total.div_ceil(64).max(1);
-    let x = g.min(65_535);
-    [x as u32, g.div_ceil(x) as u32]
+    let y = g.div_ceil(65_535);
+    [g.div_ceil(y) as u32, y as u32]
 }
 
 impl Holografica {

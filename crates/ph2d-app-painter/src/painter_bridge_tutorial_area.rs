@@ -1,3 +1,7 @@
+//! ⏸️ **DORMENTE enquanto a ferramenta achatar a arte** (ordem do dono, 2026-09-15; regra F6-s): a
+//! área segue a arte dobrada pelo [`crate::canvas_map`], e debaixo do pincel o mapa degenera no afim
+//! do quad, ao bit — o porquê e o instrumento que ata esta nota estão no cabeçalho dele.
+//!
 //! **A área marcada do tutorial «fazer»** (Macros W6b, `docs/Macros/03_plano_W6.md` §6): a pincelada
 //! que o balão pede, desenhada por cima da imagem — o caminho gravado com o raio dele numa faixa
 //! TRANSLÚCIDA do acento, e a linha do caminho tracejada no acento. ⛔ O `AccentSoft` é opaco (um fundo
@@ -9,7 +13,7 @@ use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tokens::ColorToken;
 use ph2d_tool_painter::PainterTool;
-use ph2d_vector::{Affine, BezPath, Brush, Cap, Color, Join, Stroke, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Cap, Circle, Color, Fill, Join, Stroke, VectorScene};
 
 /// O tracejado da linha do caminho, em píxeis de ecrã.
 const TRACO_PX: f64 = 6.0; // LITERAL-PX-OK: tracejado do caminho marcado
@@ -73,11 +77,22 @@ pub(super) fn draw_tutorial_area(
     let Some((&primeiro, resto)) = pts.split_first() else {
         return;
     };
+    let scene = vector_scene.inner_mut();
+    if resto.is_empty() {
+        // Um toque só (sem arrasto): o carimbo redondo do pincel.
+        scene.fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(cor(ColorToken::Accent, hero, ALFA_DA_FAIXA)),
+            None,
+            &Circle::new(primeiro, largura * 0.5),
+        );
+        return;
+    }
     caminho.move_to(primeiro);
     for &p in resto {
         caminho.line_to(p);
     }
-    let scene = vector_scene.inner_mut();
     scene.stroke(
         &Stroke::new(largura)
             .with_caps(Cap::Round)

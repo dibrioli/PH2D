@@ -362,7 +362,10 @@ fn loose_cards_lie_side_by_side_in_one_row() {
     assert_eq!(p[&2].y, p[&3].y, "one row");
     assert_eq!(p[&3].x - p[&2].x, DX, "stepped like two columns");
     let chain_bottom = p[&0].y.max(p[&1].y) + Extent::default().bottom;
-    assert!(p[&2].y - chain_bottom >= BAND_GAP - 0.01, "the row is a band of its own");
+    assert!(
+        p[&2].y - chain_bottom >= BAND_GAP - 0.01,
+        "the row is a band of its own"
+    );
     assert_clear(&p);
 }
 
@@ -372,7 +375,11 @@ fn a_long_row_of_loose_cards_wraps_inside_the_widest_band() {
     let p = chain_and_loose(5, 11);
     let widest = p.range(..5).map(|(_, q)| q.x).fold(f32::MIN, f32::max) + Extent::default().right;
     let loose: Vec<Pos> = p.range(5..).map(|(_, q)| *q).collect();
-    assert!(loose.iter().all(|q| q.x + Extent::default().right <= widest + 0.01));
+    assert!(
+        loose
+            .iter()
+            .all(|q| q.x + Extent::default().right <= widest + 0.01)
+    );
     let rows: BTreeSet<u32> = loose.iter().map(|q| q.y.to_bits()).collect();
     assert_eq!(rows.len(), 3, "5 + 5 + 1 (the chain is 5 columns wide)");
     assert_clear(&p);

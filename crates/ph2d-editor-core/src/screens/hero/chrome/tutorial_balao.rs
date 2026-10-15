@@ -83,6 +83,7 @@ pub fn paint_balao(
         .filter_map(|id| hero.hit_index.rect_for(*id))
         .collect();
     let folga = Spacing::Xs.px();
+    let raio = crate::paint::frame_radius(theme, Radius::Md.px());
     for a in &alvos {
         let anel = Rect::new(
             a.x - folga,
@@ -90,18 +91,13 @@ pub fn paint_balao(
             a.w + folga * 2.0,
             a.h + folga * 2.0,
         );
-        stroke_rounded_rect(
-            scene,
-            anel,
-            Radius::Md.px(),
-            StrokeToken::Thick.px(),
-            acento,
-        );
+        // FRAME-RAW-OK: o anel É a mensagem do tutorial (aponta o alvo), como um anel de foco
+        stroke_rounded_rect(scene, anel, raio, StrokeToken::Thick.px(), acento);
     }
 
     let (titulo, corpo) = b.frase();
     let pad = Spacing::Md.px();
-    let gap = Spacing::Xs.px();
+    let gap = ph2d_tokens::control_gap_px();
     let inner_w = BALAO_W - pad * 2.0;
     let fonte = TypeToken::Sm.px();
     // Os blocos de texto: o que o AUTOR escreveu (conteúdo), a frase derivada (o que fazer) e a recusa.
@@ -141,9 +137,17 @@ pub fn paint_balao(
         );
     }
 
-    let raio = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, raio, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, r, raio, StrokeToken::Default.px(), acento);
+    // O balão pede a atenção do aluno: a moldura do foco (moderno) / o acento (clássico).
+    crate::paint::stroke_frame(
+        scene,
+        r,
+        raio,
+        theme,
+        ph2d_tokens::visuals::Feel::Focused,
+        StrokeToken::Default.px(),
+        acento,
+    );
     // O cartão come os cliques que caem nele (o painel por baixo não os recebe).
     hero.hit_index.register(TUTORIAL_BALAO, r);
 
@@ -203,6 +207,6 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     true
 }
 
+// Os testes em `tutorial_balao/tests.rs`: um `*_tests.rs` irmão o `ph2d-chrome-sync` lia como handler.
 #[cfg(test)]
-#[path = "tutorial_balao_tests.rs"]
 mod tests;

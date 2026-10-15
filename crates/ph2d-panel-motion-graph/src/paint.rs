@@ -29,9 +29,9 @@ mod paint_breadcrumb;
 /// ficheiro desenha o que um cartão É, aquele o que ele CONTROLA.
 #[path = "paint_card_params.rs"]
 pub(crate) mod paint_card_params;
-/// O pedido «traz estes nós à vista» (o balão do tutorial) — ver o módulo.
-#[path = "paint_enquadra_nos.rs"]
-mod paint_enquadra_nos;
+/// O pedido «traz estes nós à vista» (o balão do tutorial) — conta de vista, não pinta nada.
+#[path = "enquadra_nos.rs"]
+mod enquadra_nos;
 #[path = "paint_inert_badge.rs"]
 mod paint_inert_badge;
 #[path = "paint_port_label.rs"]
@@ -195,7 +195,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         state.fitted = true;
         state.fit_selection = false;
     }
-    paint_enquadra_nos::aplica(state, &snap, rect, auto_fit);
+    enquadra_nos::aplica(state, &snap, rect, auto_fit);
 
     // ⭐ **A BANDA que o divisor parte** — a régua da fracção, publicada pelo layout. ⛔ Não é
     // `center_viewport + rect`: com a timeline docada dentro do split essa soma não é a banda, e

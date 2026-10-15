@@ -244,7 +244,7 @@ pub fn plan_edges<K: Ord + Copy>(items: &[Item<K>], wires: &[Wire<K>]) -> Vec<(K
     }
 
     // Law 4: the loose cards share ONE band, in the slot of the first of them.
-    let mut bands: Vec<Option<(Vec<(K, Pos)>, f32)>> = Vec::new();
+    let mut bands: Vec<Option<Band<K>>> = Vec::new();
     let mut loose: Vec<K> = Vec::new();
     for comp in components(&keys, &undirected) {
         if comp.len() == 1 {
@@ -281,6 +281,9 @@ pub fn plan_edges<K: Ord + Copy>(items: &[Item<K>], wires: &[Wire<K>]) -> Vec<(K
     out
 }
 
+/// A band: its cards at band-local positions (top DRAWN edge at `0`) and its height.
+type Band<K> = (Vec<(K, Pos)>, f32);
+
 /// ⭐ **Law 4 — the loose cards lie SIDE BY SIDE** (owner, 2026-10-15). A card with
 /// no wire is a component of its own, and one band each stacked them `BAND_GAP`
 /// apart: two loose cards of the `PH2D_MACRO_SMOKE=3` tutorial ended 650 units
@@ -290,11 +293,7 @@ pub fn plan_edges<K: Ord + Copy>(items: &[Item<K>], wires: &[Wire<K>]) -> Vec<(K
 /// A row wraps past the widest wired band (what the view already spans), and
 /// always holds `⌈√n⌉`, so a graph with no wire at all comes out square.
 /// Returns band-local positions (top DRAWN edge at `0`) and the band height.
-fn loose_row<K: Ord + Copy>(
-    loose: &[K],
-    size: &BTreeMap<K, Extent>,
-    widest: f32,
-) -> (Vec<(K, Pos)>, f32) {
+fn loose_row<K: Ord + Copy>(loose: &[K], size: &BTreeMap<K, Extent>, widest: f32) -> Band<K> {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -435,7 +434,7 @@ fn layout_component<K: Ord + Copy>(
     rev: &BTreeMap<K, Vec<K>>,
     port_fwd: &BTreeMap<(K, K), u16>,
     port_rev: &BTreeMap<(K, K), u16>,
-) -> (Vec<(K, Pos)>, f32) {
+) -> Band<K> {
     let set: BTreeSet<K> = comp.iter().copied().collect();
     let col = columns_of(comp, fwd, &set);
 

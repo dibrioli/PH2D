@@ -77,5 +77,5 @@ fn dentro(r: Rect, painel: Rect) -> bool {
 }
 
 #[cfg(test)]
-#[path = "paint_enquadra_nos_tests.rs"]
+#[path = "enquadra_nos_tests.rs"]
 mod tests;

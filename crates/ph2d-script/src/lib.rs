@@ -21,6 +21,8 @@
 //! pattern; populated by shells from `ph2d_input::InputState` per
 //! frame.
 
+/// A API Luau como tabela — a fonte única do `ph2d.d.luau`.
+pub mod api_table;
 pub mod component;
 /// O diagnóstico estruturado de um script (linha, mensagem inteira, pilha).
 pub mod diagnostic;

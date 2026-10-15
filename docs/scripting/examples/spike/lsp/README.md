@@ -13,7 +13,7 @@ Manual verification (LSP é interativo — não automatizável puramente em CI).
    - `tamasfe.even-better-toml`
    - `vadimcn.vscode-lldb`
    Aceita.
-3. `.vscode/settings.json` já configura `luau-lsp.types.definitionFiles` apontando para `docs/scripting/examples/spike/llm-tests/ph2d.d.luau`.
+3. `.vscode/settings.json` já configura `luau-lsp.types.definitionFiles` apontando para `runtime/luau/ph2d.d.luau` (gerado da tabela da API em `crates/ph2d-script/src/api_table.rs`; a cópia à mão do spike que aqui estava saiu em 15/10, ADR-0188).
 4. Abrir cada `case_*.luau` neste diretório.
 
 ## 5 casos canônicos (per docs/spike/2026-05-plan.md L86-89)

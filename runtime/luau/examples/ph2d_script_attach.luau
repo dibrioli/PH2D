@@ -44,12 +44,10 @@ end
 local function ensure_companion(self_id: number)
     local target = ph2d.find_by_name("Companion")
     if target == nil then
-        ph2d.scene.spawn_entity()
-        -- Tag the freshly-spawned entity once the host gives it a
-        -- Name via `scene.add_component` — out of scope for this
-        -- minimal example.
+        ph2d.spawn_named("Companion")
     else
-        ph2d.message.send(target, "alert", { source = self_id })
+        -- Scripts talk through signals; whoever listens reacts.
+        ph2d.emit("alert")
     end
 end
 

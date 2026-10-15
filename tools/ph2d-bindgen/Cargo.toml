@@ -12,9 +12,10 @@ name = "ph2d-bindgen"
 path = "src/main.rs"
 
 [dependencies]
-# Source of truth: ph2d-mcp::CATALOG. The bindgen tool is downstream
-# of ph2d-mcp so any catalog change here forces a regeneration of
-# both runtime/luau and runtime/mcp artifacts (CI enforces parity).
+# The Luau half (runtime/luau/ph2d.d.luau): the script API table (ADR-0188 §3), checked
+# against the real VM wiring.
+ph2d-script = { path = "../../crates/ph2d-script" }
+# The MCP half (runtime/mcp/schema.json): ph2d-mcp::CATALOG (HR-10). CI enforces parity of both.
 ph2d-mcp = { path = "../../crates/ph2d-mcp" }
 serde_json = "1"
 

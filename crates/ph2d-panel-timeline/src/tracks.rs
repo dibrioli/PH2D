@@ -29,12 +29,8 @@ use crate::ids;
 use crate::state::TimelinePanelState;
 use crate::{geom, graph, graph_paint, summary_paint};
 
-/// Width of the left label column (property + object tag + the live value).
-///
-/// ⚠️ **Era `132` e cresceu exactamente a fatia do número** (`VALUE_W` + o respiro, 2026-09-04):
-/// o readout de valor foi ACRESCENTADO à coluna, não trocado pelo nome — com `132` o nome perdia
-/// ~40 px e *"Fade · Opacity"* passava a sair cortado, que é **o nome da própria row**. O preço é
-/// 44 px de área de tempo, e o piso dela (`MIN_TIME_W`) não se mexe.
+/// Width of the left label column (property + object tag + the live value). Era `132`: cresceu
+/// a fatia do número (`VALUE_W` + respiro), senão o nome da row sai cortado.
 pub(crate) const LABEL_COL_W: f32 = 176.0; // LITERAL-PX-OK: track-label column width
 /// Width of the expand/collapse twirl at the head of each row.
 const TWIRL_W: f32 = 24.0; // LITERAL-PX-OK: row twirl hit column width

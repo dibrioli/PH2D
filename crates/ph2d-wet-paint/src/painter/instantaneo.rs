@@ -58,7 +58,7 @@ impl Clone for Engine {
             stroke_events: stroke_events.clone(),
             tool: *tool,
             shape: *shape,
-            sliders: sliders.clone(),
+            sliders: *sliders,
             color: *color,
             km_glaze: *km_glaze,
             show_wet: *show_wet,

@@ -35,6 +35,7 @@ fn a_fila_da_luz_chega_ao_mundo() {
         &[],
         &[],
         &[],
+        &[],
     );
     assert!(mudou, "a aplicação das secções não tocou no mundo");
     let luz = sim

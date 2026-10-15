@@ -39,7 +39,6 @@ mod follow_an_unbound_object;
 mod gap_fade_out;
 #[cfg(feature = "skeleton")]
 mod ik_bend_side_anima;
-mod macro_time_conduz;
 mod intents;
 mod lead_in;
 mod lone_fade;
@@ -47,6 +46,7 @@ mod loop_pingpong_gap;
 mod loop_wrap;
 mod loop_wrap_both_ends;
 mod loop_wrap_out;
+mod macro_time_conduz;
 mod measure_motion_path;
 mod mede_o_que_a_composicao_ja_da_ao_tween;
 mod morph_is_authorable;

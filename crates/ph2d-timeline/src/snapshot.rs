@@ -55,11 +55,8 @@ pub struct TrackView {
     /// `Some` only for the ONE track that currently owns the A/B buffer, `None`
     /// otherwise. Its `Some`-ness is the single fact that drives both the ghost
     /// overlay AND the row's `Swap` button (the panel shows Swap iff a ghost
-    /// exists), so the two can never disagree about who owns the buffer.
-    ///
-    /// ⚠️ `rebuild` reuses `TrackView`s across frames, so it MUST set this every
-    /// pass (to `None` when this row does not own the buffer) — a stale `Some` from
-    /// a previous frame would paint a ghost the buffer no longer holds.
+    /// exists), so the two can never disagree about who owns the buffer. ⚠️ Set every pass
+    /// (the row is reused): a stale `Some` paints a ghost the buffer no longer holds.
     pub buffer_ghost: Option<Vec<KeyView>>,
     /// Extrapolation before the first key / after the last (crown-jewels plan §6),
     /// so the dope-sheet can mark the extrapolated regions with a dashed line + a
@@ -124,24 +121,14 @@ pub struct StripView {
     pub lead_in: f64,
     /// The window at this edge is defined by a NEIGHBOUR (the overlap), not by the
     /// strip's own `ease_in`/`ease_out` — so the ease handle there is **read-only**:
-    /// the overlap wins, and the way to change the fade is to move the strips.
-    ///
-    /// This is Unity's rule, and shipping the flag in the snapshot (instead of letting
-    /// the panel work it out from the strips it can see) is what keeps *one* answer to
-    /// "whose window is this": [`crate::ClipLane::neighbour_reach_in`].
+    /// the overlap wins (Unity's rule). One answer: [`crate::ClipLane::neighbour_reach_in`].
     pub ease_locked_in: bool,
     /// Mirror of `ease_locked_in`, at the end.
     pub ease_locked_out: bool,
     /// The SHAPE of the fade at the start edge — `None` is the factory `smoothstep`
     /// (Enio, 2026-07-31). The panel draws this curve inside the fade's wedge, so what the
-    /// artist chose in the menu is what the strip wears.
-    ///
-    /// ⚠️ It is the **EFFECTIVE** curve, not this strip's authored one: a crossfade is ONE
-    /// traversal shaped by ONE curve (the arriving clip's `curve_in`), and the departing side
-    /// wears its complement — so both edges of an overlap report the same shape. Resolved by
-    /// `ClipLane::effective_curve`, the door the evaluator asks; letting the panel apply that
-    /// rule itself would be a second copy of it, and a drawing that shows a curve the blend
-    /// does not use is a lie no gate on the model can see.
+    /// artist chose in the menu is what the strip wears. ⚠️ The **EFFECTIVE** curve (one
+    /// crossfade, one curve), resolved by `ClipLane::effective_curve` — the evaluator's door.
     pub curve_in: Option<ph2d_anim::Easing>,
     /// Mirror of `curve_in`, at the end edge.
     pub curve_out: Option<ph2d_anim::Easing>,
@@ -232,14 +219,8 @@ pub struct TimelineViewSnapshot {
     /// which is what makes them look mutually exclusive — because they ARE.
     pub loop_ping_pong: bool,
     /// The active clip's **effective length** in seconds — its authored duration OR its last
-    /// keyframe, whichever is later ([`crate::TimelineDoc::end_seconds`]).
-    ///
-    /// **NOT `duration()`.** A hand-keyed clip has an authored duration of `0` (keys never extend
-    /// it), so `duration()` would report a 5-second animation as 0. This is the length a NEW STRIP
-    /// is sized to, and `add_strip` sizes the strip's SLICE to the same `end_seconds`: read the
-    /// two through different doors and a strip is born with `span ≠ slice`, i.e. a `speed` the
-    /// artist never asked for — a 5 s clip crammed into a 1 s box at 5×. Transport's go-to-end
-    /// reads `end_seconds` for the very same reason; this field is the panel's copy of that answer.
+    /// keyframe, whichever is later ([`crate::TimelineDoc::end_seconds`]). **NOT `duration()`**
+    /// (`0` for a hand-keyed clip): `add_strip` sizes the slice by this door, or `span ≠ slice`.
     pub clip_length_seconds: f64,
     /// The CURRENT VIEW's **effective duration** in seconds — what the Dur(s)
     /// chip shows and edits (Enio, 2026-07-23). Keys: the active clip's end;

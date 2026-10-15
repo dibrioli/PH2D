@@ -11,5 +11,9 @@ fn o_tempo_da_macro_esta_na_lista_do_mais_track() {
         "o relogio da macro nao esta' na lista do «+ Track»"
     );
     let ids: std::collections::BTreeSet<_> = tabela.iter().map(|(id, _)| *id).collect();
-    assert_eq!(ids.len(), tabela.len(), "dois botoes do «+ Track» partilham o id");
+    assert_eq!(
+        ids.len(),
+        tabela.len(),
+        "dois botoes do «+ Track» partilham o id"
+    );
 }

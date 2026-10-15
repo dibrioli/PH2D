@@ -153,8 +153,11 @@ pub mod factory_edits;
 pub mod hud_edits;
 /// ⭐ **O vocabulário da secção LUZ** (Luz 2D, W4) — ver o cabeçalho dele.
 pub mod luz_edits;
-/// O vocabulário da secção MOTION INPUT (ciclo 19 do Motion).
+/// O vocabulário da secção MACRO e do painel MACROS (ADR-0186).
 pub mod macro_edits;
+/// A porta das etapas de UMA família de macros e as chaves do erro comuns (ADR-0186, W5e).
+pub mod macro_etapas;
+/// O vocabulário da secção MOTION INPUT (ciclo 19 do Motion).
 pub mod motion_input_edits;
 /// ⭐⭐⭐ O vocabulário das secções NAV REGION e NAV AGENT (plano 30, W4).
 pub mod nav_edits;

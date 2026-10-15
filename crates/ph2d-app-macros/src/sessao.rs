@@ -17,7 +17,7 @@ pub struct Sessao {
 fn gravadora<'a>(f: &'a mut Familias<'_>, fam: FamiliaDaMacro) -> Option<&'a mut dyn Gravadora> {
     match fam {
         FamiliaDaMacro::Painter => f.painter.as_deref_mut().map(|p| p as &mut dyn Gravadora),
-        FamiliaDaMacro::Motion => Some(f.motion as &mut dyn Gravadora),
+        FamiliaDaMacro::Motion => Some(&mut *f.motion),
     }
 }
 
@@ -47,7 +47,7 @@ impl Sessao {
                 (p.bound_document().ok_or(m::MACRO_RECUSA_SEM_TELA)?, r)
             }
             FamiliaDaMacro::Motion => {
-                let id = f.motion.objeto.editing.ok_or(m::MACRO_RECUSA_SEM_FAMILIA)?;
+                let id = f.motion_em_edicao.ok_or(m::MACRO_RECUSA_SEM_FAMILIA)?;
                 let e = ph2d_ecs::entity_of_stable_id(sim.world_mut(), ph2d_ecs::StableId(id))
                     .ok_or(m::MACRO_RECUSA_SEM_FAMILIA)?;
                 (e.to_bits(), RefRect { w: 1.0, h: 1.0 })
@@ -110,6 +110,6 @@ impl Sessao {
             FamiliaDaMacro::Painter => ph2d_ecs::ModoDaMacro::Fiel,
             FamiliaDaMacro::Motion => ph2d_ecs::ModoDaMacro::Explicativo,
         };
-        crate::instala::instala(c, self.dono, &doc, modo)
+        crate::instala::instala(c, f.etapas, self.dono, &doc, modo)
     }
 }

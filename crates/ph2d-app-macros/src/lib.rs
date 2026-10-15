@@ -11,7 +11,7 @@ pub mod etapas;
 pub mod instala;
 pub mod sessao;
 
-use ph2d_app_motion::motion_state::MotionState;
+use etapas::Injectadas;
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::macro_edits::{
     self as m, ErroDaMacroView, FamiliaDaMacro, MacroObjetoView, MacroPanelInfo, MacroRequest,
@@ -23,18 +23,22 @@ use std::cell::RefCell;
 
 /// As famílias que gravam, como a shell as tem neste quadro. O Painter chega SEMPRE (uma gravação
 /// em curso tem de receber o Parar mesmo depois de o artista trocar de ferramenta); só arma quando é
-/// a ferramenta activa (`painter_activo`).
+/// a ferramenta activa (`painter_activo`). O Motion é outra família: a composição passa a gravadora
+/// dele, o objecto em edição e as etapas ([`etapas::Injectadas`]) — esta crate não depende dela.
 pub struct Familias<'a> {
     pub painter: Option<&'a mut PainterTool>,
     pub painter_activo: bool,
-    pub motion: &'a mut MotionState,
+    pub motion: &'a mut dyn ph2d_macro::Gravadora,
+    /// O `StableId` do objecto Motion em edição: só com ele o Motion arma, e é ele o dono da `Macro`.
+    pub motion_em_edicao: Option<u64>,
+    pub etapas: Injectadas<'a>,
 }
 
 impl Familias<'_> {
     fn quem_grava(&self) -> Result<FamiliaDaMacro, &'static str> {
         quem_grava(
             self.painter.as_deref().filter(|_| self.painter_activo),
-            self.motion,
+            self.motion_em_edicao,
         )
     }
 }
@@ -91,7 +95,7 @@ pub fn com<R>(f: impl FnOnce(&mut Macros) -> R) -> R {
 /// A chave da frase ([`m::MACRO_RECUSA_MEIO`], …).
 pub fn quem_grava(
     painter: Option<&PainterTool>,
-    motion: &MotionState,
+    motion_em_edicao: Option<u64>,
 ) -> Result<FamiliaDaMacro, &'static str> {
     if let Some(p) = painter {
         if !p.wetpaint_armed() {
@@ -102,7 +106,7 @@ pub fn quem_grava(
         }
         return Ok(FamiliaDaMacro::Painter);
     }
-    if motion.objeto.editing.is_some() {
+    if motion_em_edicao.is_some() {
         return Ok(FamiliaDaMacro::Motion);
     }
     Err(m::MACRO_RECUSA_SEM_FAMILIA)
@@ -167,7 +171,7 @@ impl Macros {
         {
             s.quadro(f, agora_us);
         }
-        self.sincroniza(c);
+        self.sincroniza(c, f.etapas);
     }
 
     /// **O clipe acompanha a macro**: a duração dele é DERIVADA da trilha que toca, e re-cronometra-se
@@ -175,7 +179,7 @@ impl Macros {
     /// ([`TimelineDoc::macro_clip_identity_end`]). Uma só verdade (a `Macro`, no diff do mundo): o undo
     /// do mundo devolve a macro antiga e o clipe segue-a no quadro seguinte, sem passo de undo
     /// próprio que pudesse discordar.
-    fn sincroniza(&mut self, c: &mut Cena<'_>) {
+    fn sincroniza(&mut self, c: &mut Cena<'_>, outras: Injectadas<'_>) {
         let macros: Vec<(u64, Vec<u8>)> = {
             let mut q = c
                 .sim
@@ -192,7 +196,7 @@ impl Macros {
             let Some(fim) = c.timeline.doc.macro_clip_identity_end(clip, bits) else {
                 continue;
             };
-            let d = self.duracoes.de(bits, &bytes);
+            let d = self.duracoes.de(bits, &bytes, outras);
             if (d - fim).abs() > 1e-6 {
                 c.timeline.doc.retime_macro_clip(clip, bits, d);
             }
@@ -233,7 +237,7 @@ impl Macros {
                 trilha,
                 k,
                 campo,
-            } => match etapas::edita(c, entity_bits, trilha, k, &campo) {
+            } => match etapas::edita(c, f.etapas, entity_bits, trilha, k, &campo) {
                 Ok(()) => self.erro_de_edicao = None,
                 Err(e) => self.erro_de_edicao = Some((entity_bits, e)),
             },
@@ -241,7 +245,7 @@ impl Macros {
                 entity_bits,
                 trilha,
                 k,
-            } => match etapas::apaga(c, entity_bits, trilha, k) {
+            } => match etapas::apaga(c, f.etapas, entity_bits, trilha, k) {
                 Ok(()) => self.erro_de_edicao = None,
                 Err(e) => self.erro_de_edicao = Some((entity_bits, e)),
             },
@@ -250,11 +254,12 @@ impl Macros {
 
     /// **A linha «Macro steps» da Timeline**: as etapas da `Macro` do dono do clipe activo, quando o
     /// clipe activo é o da macro dele (o tempo do clipe é o da macro: a faixa Macro Time é a
-    /// identidade). Mesma cache do painel.
+    /// identidade). Mesma cache do painel. `outras` = as etapas que a composição injecta.
     pub fn etapas_na_linha(
         &mut self,
         sim: &SimWorld,
         tl: &TimelineDoc,
+        outras: Injectadas<'_>,
     ) -> Vec<ph2d_timeline::EtapaDaMacroView> {
         let activo = tl.active_index();
         let Some(dono) = tl
@@ -273,7 +278,7 @@ impl Macros {
             return Vec::new();
         };
         self.vistas
-            .de(dono, &m.doc)
+            .de(dono, &m.doc, outras)
             .etapas
             .iter()
             .map(|e| ph2d_timeline::EtapaDaMacroView {
@@ -302,13 +307,14 @@ impl Macros {
         sim: &SimWorld,
         bits: u64,
         erro_em_cena: Option<ErroDaMacroView>,
+        outras: Injectadas<'_>,
     ) -> Option<ResumoDaMacro> {
         let bytes = &sim
             .world()
             .get::<ph2d_ecs::Macro>(ph2d_ecs::Entity::from_bits(bits))?
             .doc;
         let edicao = self.erro_da_edicao(bits);
-        let v = self.vistas.de(bits, bytes);
+        let v = self.vistas.de(bits, bytes, outras);
         Some(ResumoDaMacro {
             etapas: v.etapas.len(),
             editada_desde: v.editada_desde,
@@ -336,7 +342,7 @@ impl Macros {
                 .get::<ph2d_ecs::Macro>(ph2d_ecs::Entity::from_bits(bits))?
                 .doc;
             let edicao = self.erro_da_edicao(bits);
-            let v = self.vistas.de(bits, bytes);
+            let v = self.vistas.de(bits, bytes, f.etapas);
             let erro = edicao.or(erro_em_cena).or_else(|| v.erro.clone());
             Some(MacroObjetoView {
                 entity_bits: bits,

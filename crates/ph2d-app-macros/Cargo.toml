@@ -16,9 +16,9 @@ ph2d-macro = { path = "../ph2d-macro" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
-# As duas famílias que gravam: a porta `ph2d_macro::Gravadora` e as etapas de cada uma.
+# O Painter grava por esta crate; o Motion é outra família e chega pela composição (a gravadora e
+# `ph2d_editor_core::macro_etapas::EtapasDaFamilia`).
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
-ph2d-app-motion = { path = "../ph2d-app-motion" }
 
 [dev-dependencies]
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

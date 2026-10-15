@@ -5035,7 +5035,6 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-anim",
- "ph2d-app-motion",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-i18n",
@@ -5848,6 +5847,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-input",
  "ph2d-label-census",
+ "ph2d-macro",
  "ph2d-panel-flip",
  "ph2d-panel-registry-init",
  "ph2d-panel-timeline",

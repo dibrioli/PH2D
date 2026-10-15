@@ -2,8 +2,12 @@
 //! de etapas, os passos que as famílias gravaram neste quadro e o instantâneo do painel. A lei vive
 //! na `ph2d-app-macros`.
 
-use ph2d_app_macros::{Cena, Familias, erros};
+use ph2d_app_macros::{Cena, Familias, erros, etapas::Injectadas};
+use ph2d_app_motion::macro_track::vistas::{EtapasDoMotion, do_motion};
 use ph2d_tool_painter::PainterTool;
+
+/// As etapas das famílias que a MACROS não conhece: a composição injecta o Motion.
+pub(super) const ETAPAS: Injectadas<'static> = &[&EtapasDoMotion];
 
 /// O relógio das macros: microssegundos desde o 1.º quadro (o núcleo nunca lê o de parede).
 fn agora_us() -> u64 {
@@ -30,7 +34,9 @@ impl crate::App {
         let mut f = Familias {
             painter,
             painter_activo,
+            motion_em_edicao: gfx.motion.objeto.editing,
             motion: &mut gfx.motion,
+            etapas: ETAPAS,
         };
         let palcos = &gfx.painter_macros;
         let mut c = Cena {
@@ -48,14 +54,14 @@ impl crate::App {
             gfx.painter_macros
                 .erro_de(b)
                 .map(erros::do_painter)
-                .or_else(|| self.motion_shell.palcos.erro_de(b).map(erros::do_motion))
+                .or_else(|| self.motion_shell.palcos.erro_de(b).map(do_motion))
         });
         // O cartão MACRO do Inspector: o componente (`build_info`) e as etapas da família.
         #[cfg(feature = "panel-inspector")]
         ph2d_panel_inspector::set_current_inspector_macro(escolhido.and_then(|b| {
             let quantos = hero.map_or(0, |h| h.gizmo.selected_len());
             let mut i = ph2d_app_components::macro_inspector::build_info(c.sim, b, quantos)?;
-            if let Some(r) = ph2d_app_macros::com(|m| m.resumo(c.sim, b, erro.clone())) {
+            if let Some(r) = ph2d_app_macros::com(|m| m.resumo(c.sim, b, erro.clone(), ETAPAS)) {
                 (i.etapas, i.editada_desde, i.erro) = (r.etapas, r.editada_desde, r.erro);
             }
             Some(i)

@@ -154,8 +154,9 @@ impl crate::App {
         // antes, o número atrasaria um quadro — e este é o sítio onde o mundo já está escrito.
         timeline_bridge::publish_track_values(&mut self.timeline_view, sim.world());
         // A linha «Macro steps» (ADR-0186, W5d): as etapas da macro do clipe activo.
-        self.timeline_view.macro_etapas =
-            ph2d_app_macros::com(|m| m.etapas_na_linha(sim, &self.timeline.doc));
+        self.timeline_view.macro_etapas = ph2d_app_macros::com(|m| {
+            m.etapas_na_linha(sim, &self.timeline.doc, super::fase_macros::ETAPAS)
+        });
         ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
     }
 }

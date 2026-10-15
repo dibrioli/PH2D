@@ -5,7 +5,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_app_macros::{Cena, Familias, Macros};
-use ph2d_app_motion::motion_state::MotionState;
 use ph2d_ecs::{Entity, Macro, SimWorld};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -41,7 +40,10 @@ const DT_MS: f32 = 1000.0 / 60.0;
 struct Banca {
     sim: SimWorld,
     painter: PainterTool,
-    motion: MotionState,
+    /// O Motion como a composição o passa: a gravadora e o objecto em edição (esta crate não
+    /// depende da família dele).
+    motion: MotionDeBrinquedo,
+    motion_em_edicao: Option<u64>,
     tl: TimelineState,
     intents: Vec<TimelineIntent>,
     m: Macros,
@@ -64,12 +66,11 @@ impl Banca {
         painter.set_paint_media(PaintMedia::WetPaint);
         painter.set_wet_relogio_fixo(true);
         painter.set_brush_color_srgb8([20, 40, 200]);
-        let mut motion = MotionState::new();
-        motion.gpu_enabled = false;
         Self {
             sim,
             painter,
-            motion,
+            motion: MotionDeBrinquedo,
+            motion_em_edicao: None,
             tl: TimelineState::default(),
             intents: Vec::new(),
             m: Macros::default(),
@@ -91,6 +92,8 @@ impl Banca {
             painter: Some(&mut self.painter),
             painter_activo: self.activo,
             motion: &mut self.motion,
+            motion_em_edicao: self.motion_em_edicao,
+            etapas: &[],
         };
         let mut c = Cena {
             sim: &mut self.sim,
@@ -107,6 +110,8 @@ impl Banca {
             painter: Some(&mut self.painter),
             painter_activo: self.activo,
             motion: &mut self.motion,
+            motion_em_edicao: self.motion_em_edicao,
+            etapas: &[],
         };
         let info = self.m.info(&f, &self.sim, Some(self.bits), None);
         set_current_macros(info);
@@ -294,7 +299,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
         clip,
         "o Parar deixa o clipe da macro activo"
     );
-    let linha = b.m.etapas_na_linha(&b.sim, &b.tl.doc);
+    let linha = b.m.etapas_na_linha(&b.sim, &b.tl.doc, &[]);
     assert_eq!(linha.len(), 3, "a linha mostra as etapas do clipe activo");
     let snap = ph2d_timeline::TimelineViewSnapshot {
         fps: 60.0,
@@ -343,7 +348,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
         b.m.pede(r);
     }
     b.quadro();
-    let depois = b.m.etapas_na_linha(&b.sim, &b.tl.doc);
+    let depois = b.m.etapas_na_linha(&b.sim, &b.tl.doc, &[]);
     let anda = |k: usize| depois[k].t0 - linha[k].t0;
     assert!(anda(0).abs() < 1e-9, "a etapa 1 não anda: {}", anda(0));
     assert!(
@@ -583,7 +588,7 @@ fn gate7_apagar_uma_etapa_fecha_o_tempo_dela_e_o_clipe_encurta() {
             .clip_named(b.bits, ph2d_i18n::tr("app.macros.clip_name"))
             .expect("Parar cria o clipe");
     let d0 = b.tl.doc.clip_length_override(clip).unwrap();
-    let antes = b.m.etapas_na_linha(&b.sim, &b.tl.doc);
+    let antes = b.m.etapas_na_linha(&b.sim, &b.tl.doc, &[]);
     assert_eq!(antes.len(), 3);
     b.pinta();
     let vistas = ph2d_panel_macros::current_macros().objeto.unwrap().etapas;
@@ -607,7 +612,7 @@ fn gate7_apagar_uma_etapa_fecha_o_tempo_dela_e_o_clipe_encurta() {
         Some(1),
         "editada desde a que ficou no lugar"
     );
-    let depois = b.m.etapas_na_linha(&b.sim, &b.tl.doc);
+    let depois = b.m.etapas_na_linha(&b.sim, &b.tl.doc, &[]);
     assert_eq!(depois.len(), 2, "a linha da Timeline também");
     assert!(fechou > 0.1, "a pincelada durava: {fechou}");
     let d = b.tl.doc.clip_length_override(clip).unwrap();
@@ -703,6 +708,24 @@ fn gate7_a_conferencia_corre_fora_do_quadro_e_a_decisao_e_dos_bytes() {
     assert_eq!(erro(&mut b), Some(ph2d_app_macros::erros::PORTA));
 }
 
+/// O Motion de brinquedo: abre a trilha dele e não grava nada sozinho.
+struct MotionDeBrinquedo;
+
+impl ph2d_macro::Gravadora for MotionDeBrinquedo {
+    fn abre(
+        &mut self,
+        rec: &mut ph2d_macro::MacroRecorder,
+    ) -> Result<ph2d_macro::TrackId, &'static str> {
+        Ok(rec.open_track("motion", 0, Vec::new()))
+    }
+    fn passos(&mut self) -> Vec<Vec<u8>> {
+        Vec::new()
+    }
+    fn para(&mut self) -> Vec<Vec<u8>> {
+        Vec::new()
+    }
+}
+
 /// Uma família de brinquedo: grava um passo marcado por quadro em que «correu».
 struct Brinquedo(Vec<Vec<u8>>);
 
@@ -729,7 +752,7 @@ fn gate7_os_passos_do_motion_levam_o_relogio_do_quadro_em_que_correu() {
     b.activo = false;
     let id = 77;
     let dono = b.sim.world_mut().spawn(ph2d_ecs::StableId(id)).id();
-    b.motion.objeto.editing = Some(id);
+    b.motion_em_edicao = Some(id);
     b.m.pede(MacroRequest::Grava);
     b.quadro();
     assert_eq!(b.m.gravando(), Some(FamiliaDaMacro::Motion));

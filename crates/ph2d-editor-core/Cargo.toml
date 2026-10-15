@@ -72,6 +72,9 @@ ph2d-grid             = { path = "../ph2d-grid" }
 # toast strings funnel through `tr("key")` so the eventual Fluent
 # migration is an impl swap, not a call-site rename. See HR-15.
 ph2d-i18n             = { path = "../ph2d-i18n" }
+# A porta das etapas de uma família de macros (`macro_etapas`): a `Track` e o `LeitorDaFamilia`.
+# Folha pura, sem dependências.
+ph2d-macro            = { path = "../ph2d-macro" }
 smallvec              = "1"
 bumpalo               = { version = "3", features = ["collections"] }
 

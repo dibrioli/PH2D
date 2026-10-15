@@ -23,6 +23,8 @@ pub(crate) mod roteiro;
 #[cfg(feature = "panel-motion-graph")]
 pub mod smoke;
 pub mod tocar;
+/// As etapas pela porta comum, para a família MACROS (W5e).
+pub mod vistas;
 
 #[cfg(test)]
 mod alvo_tests;

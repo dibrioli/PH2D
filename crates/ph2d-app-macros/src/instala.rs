@@ -2,6 +2,7 @@
 //! a duração ressincroniza.
 
 use crate::Cena;
+use crate::etapas::Injectadas;
 use ph2d_ecs::{Entity, Macro, ModoDaMacro};
 use ph2d_macro::MacroDoc;
 use ph2d_timeline::TimelineDoc;
@@ -19,12 +20,12 @@ pub fn clipe_de(doc: &TimelineDoc, dono: u64) -> Option<usize> {
 /// `MacroDoc::duration`, que lê a gravação imutável — uma espera editada muda o que toca, não o que
 /// se gravou, e o clipe tem de acabar onde a reprodução acaba.
 #[must_use]
-pub fn segundos(doc: &MacroDoc) -> f64 {
+pub fn segundos(doc: &MacroDoc, outras: Injectadas<'_>) -> f64 {
     let fim = doc
         .tracks
         .iter()
         .map(|t| {
-            crate::etapas::leitor(t)
+            crate::etapas::leitor(outras, t)
                 .and_then(|l| t.tocavel(l).ok())
                 .map_or_else(
                     || t.events.last().map_or(0, |e| e.t.0),
@@ -44,12 +45,13 @@ pub fn segundos(doc: &MacroDoc) -> f64 {
 /// A chave da frase: o clipe não coube na animação.
 pub fn instala(
     c: &mut Cena<'_>,
+    outras: Injectadas<'_>,
     dono: u64,
     doc: &MacroDoc,
     modo: ModoDaMacro,
 ) -> Result<usize, &'static str> {
     let bytes = ph2d_macro::codec::write(doc);
-    let d = segundos(doc);
+    let d = segundos(doc, outras);
     if let Ok(mut e) = c.sim.world_mut().get_entity_mut(Entity::from_bits(dono)) {
         e.insert(Macro { doc: bytes, modo });
     }
@@ -83,13 +85,13 @@ fn clipe(tl: &mut TimelineDoc, dono: u64, d: f64) -> Result<usize, &'static str>
 pub struct Duracoes(std::collections::BTreeMap<u64, (Vec<u8>, f64)>);
 
 impl Duracoes {
-    pub fn de(&mut self, bits: u64, bytes: &[u8]) -> f64 {
+    pub fn de(&mut self, bits: u64, bytes: &[u8], outras: Injectadas<'_>) -> f64 {
         if let Some((b, d)) = self.0.get(&bits)
             && b == bytes
         {
             return *d;
         }
-        let d = ph2d_macro::codec::read(bytes).map_or(0.0, |doc| segundos(&doc));
+        let d = ph2d_macro::codec::read(bytes).map_or(0.0, |doc| segundos(&doc, outras));
         self.0.insert(bits, (bytes.to_vec(), d));
         d
     }

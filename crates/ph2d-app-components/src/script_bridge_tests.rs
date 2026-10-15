@@ -191,7 +191,7 @@ fn a_falha_sai_uma_vez_com_a_mensagem() {
     let mut c = cena(r#"function update(self, dt) error("partiu") end"#);
     let f = c.quadro(true);
     assert_eq!(f.failed.len(), 1);
-    assert!(f.failed[0].1.contains("partiu"), "{}", f.failed[0].1);
+    assert!(f.failed[0].1.message.contains("partiu"), "{}", f.failed[0].1);
     assert!(
         c.quadro(true).failed.is_empty(),
         "parado, não repete a queixa"

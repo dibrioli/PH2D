@@ -261,6 +261,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "That file is gone \u{2014} pick it again."
         }
         "panel.inspector.script.the_script_has_an_error" => "The script has an error: {msg}",
+        "panel.inspector.script.at_line" => "line {line} \u{b7} {msg}",
         "panel.inspector.script.this_script_offers_no_properties" => {
             "This script offers no properties."
         }

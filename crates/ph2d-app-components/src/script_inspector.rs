@@ -13,7 +13,9 @@ use ph2d_editor_core::script_edits::{
     InspectorScriptValue, PorqueOrfao, ScriptFieldEdit as E,
 };
 use ph2d_script::props::{forget, put, resolve};
-use ph2d_script::{LuauScript, Origin, OrphanWhy, ScriptHost, ScriptInfo, ScriptValue};
+use ph2d_script::{
+    LuauScript, Origin, OrphanWhy, ScriptDiagnostic, ScriptHost, ScriptInfo, ScriptValue,
+};
 
 /// Tradução do valor para o vocabulário do painel.
 fn para_painel(v: &ScriptValue) -> InspectorScriptValue {
@@ -36,6 +38,19 @@ fn passo(default: f64, declarado: Option<f64>) -> f64 {
     declarado.unwrap_or(if default.fract() == 0.0 { 1.0 } else { 0.1 })
 }
 
+/// **O que o cartão diz de um diagnóstico** — a linha DESTE script, quando há, e a 1.ª linha da
+/// mensagem (o modelo guarda-a inteira, com a pilha).
+fn no_cartao(d: &ScriptDiagnostic) -> String {
+    let msg = d.message.lines().next().unwrap_or_default();
+    match d.line {
+        Some(line) => ph2d_i18n::tr_with(
+            "panel.inspector.script.at_line",
+            &[("line", &line), ("msg", &msg)],
+        ),
+        None => msg.to_owned(),
+    }
+}
+
 /// **O instantâneo.** `None` para quem não tem o componente (ADR-0166).
 pub fn build_info(
     sim: &SimWorld,
@@ -52,7 +67,7 @@ pub fn build_info(
         _ if cfg.source.trim().is_empty() => InspectorScriptStatus::NoFile,
         (Some(_), None) => InspectorScriptStatus::Loading,
         (Some(_), Some(ScriptInfo::Missing(_))) => InspectorScriptStatus::Missing,
-        (Some(_), Some(ScriptInfo::Broken(m))) => InspectorScriptStatus::Broken(m.clone()),
+        (Some(_), Some(ScriptInfo::Broken(d))) => InspectorScriptStatus::Broken(no_cartao(d)),
         (Some(_), Some(ScriptInfo::Ready(_))) => InspectorScriptStatus::Ready,
     };
     let decls = known.and_then(ScriptInfo::decls);
@@ -115,7 +130,7 @@ pub fn build_info(
         props,
         orphans,
         kept: r.kept.len(),
-        failure: host.and_then(|h| h.scene_failure(e)).map(str::to_owned),
+        failure: host.and_then(|h| h.scene_failure(e)).map(no_cartao),
         clock_playing,
         also_physics,
         selected_count,

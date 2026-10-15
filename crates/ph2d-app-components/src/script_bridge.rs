@@ -38,8 +38,8 @@ use ph2d_script::{LuauScript, ScriptHost};
 pub struct ScriptFrame {
     /// Sinais emitidos por `ph2d.emit`, com os bits de quem emitiu, pela ordem da identidade.
     pub emitted: Vec<(u64, String)>,
-    /// Objectos que pararam de correr NESTE quadro, com a mensagem (a shell imprime-a UMA vez).
-    pub failed: Vec<(u64, String)>,
+    /// Objectos que pararam de correr NESTE quadro, com o diagnóstico (a shell imprime-o UMA vez).
+    pub failed: Vec<(u64, ph2d_script::ScriptDiagnostic)>,
     /// Quantos ganchos correram.
     pub calls: usize,
 }

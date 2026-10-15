@@ -71,7 +71,8 @@ fn o_estado_do_ficheiro_chega_ao_painel() {
     let partido = script_file("function (");
     apply(&mut sim, bits, &E::Source(partido));
     let h = pronto(&mut sim);
-    assert!(matches!(st(&sim, Some(&h)), S::Broken(m) if m.starts_with("syntax error")));
+    // O cartão diz a LINHA (CodeEditor T1) — o «syntax error:» do texto antigo saiu.
+    assert!(matches!(st(&sim, Some(&h)), S::Broken(m) if m.starts_with(&linha(1, ""))));
 
     apply(&mut sim, bits, &E::Source("/nao/ha/x.luau".into()));
     let h = pronto(&mut sim);
@@ -165,6 +166,42 @@ fn com_o_script_partido_os_valores_contam_se_como_guardados() {
     assert!(info.orphans.is_empty());
     assert!(info.props.is_empty());
     assert_eq!(info.kept, 1);
+}
+
+/// A frase do cartão para um erro na linha `n`.
+fn linha(n: u32, msg: &str) -> String {
+    ph2d_i18n::tr_with(
+        "panel.inspector.script.at_line",
+        &[("line", &n), ("msg", &msg)],
+    )
+}
+
+/// ⭐⭐ (CodeEditor T1) **O cartão mostra a LINHA do erro** — sintaxe na 3, corrida na 7, sobre a VM
+/// real e ficheiros reais.
+///
+/// Mutação que deve sangrar: o `no_cartao` ignorar `d.line`.
+#[test]
+fn o_cartao_mostra_a_linha_do_erro() {
+    let (mut sim, bits) = cena(LuauScript::at(script_file(
+        "local a = 1\nlocal b = 2\nlocal c = = 3\n",
+    )));
+    let h = pronto(&mut sim);
+    assert_eq!(
+        build_info(&sim, Some(&h), bits, 1, false).expect("tem").status,
+        S::Broken(linha(
+            3,
+            "Expected identifier when parsing expression, got '='"
+        ))
+    );
+    let (mut sim, bits) = cena(LuauScript::at(script_file(
+        "-- 1\n-- 2\n-- 3\n-- 4\nfunction update(self, dt)\n  local t = nil\n  local z = t.x\nend\n",
+    )));
+    let mut h = pronto(&mut sim);
+    h.scene_tick(sim.world_mut(), 0.1);
+    assert_eq!(
+        build_info(&sim, Some(&h), bits, 1, true).expect("tem").failure,
+        Some(linha(7, "attempt to index nil with 'x'"))
+    );
 }
 
 #[test]

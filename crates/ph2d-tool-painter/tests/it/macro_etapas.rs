@@ -134,6 +134,20 @@ fn conferir_do_instantaneo_do_palco_decide_o_mesmo_que_do_zero() {
         Ok(Conferida::SaiEm(ancora))
     );
 
+    // Uma partida TARDIA (o palco da macro original, no fim: depois da etapa editada) ignora-se — de lá a
+    // 1.ª volta nunca veria a divergência.
+    let tardia = palco(&original)
+        .partida(&original.tracks[0])
+        .expect("o palco original tem instantâneos até ao fim");
+    assert!(
+        tardia.feitos > ancora,
+        "controlo: a partida é de depois da etapa editada"
+    );
+    assert_eq!(
+        etapas::confere(&doc.tracks[0], Some(tardia), &nunca),
+        Ok(Conferida::SaiEm(ancora))
+    );
+
     let mut cor = original;
     // LITERAL-COLOR-OK: a cor nova de uma pincelada GRAVADA, não da UI.
     etapas::edita_cor(&mut cor.tracks[0], 2, [20, 200, 40]).expect("é uma pincelada");

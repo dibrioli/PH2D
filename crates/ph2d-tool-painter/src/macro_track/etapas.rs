@@ -463,7 +463,7 @@ fn primeira_que_toca(track: &Track) -> Option<usize> {
 }
 
 /// **A conferência** de uma trilha editada — a decisão do [`assenta`], sem a escrever. Toca do zero, ou
-/// de `partida` (um instantâneo da trilha que toca com no máximo [`limite_da_partida`] eventos), até ao
+/// de `partida` (um estado da trilha que toca; uma de depois do [`limite_da_partida`] ignora-se), até ao
 /// fim; se a água gravada já não responde, toca outra vez com a 1.ª etapa editada fora da gravação (tem
 /// de chegar ao fim). `parar` interrompe entre dois eventos (quem pediu já não quer a resposta).
 ///
@@ -477,6 +477,10 @@ pub fn confere(
     let t = track
         .tocavel(&LeitorDoPainter)
         .map_err(ErroDaMacro::Edicao)?;
+    // Uma partida de depois do prefixo que ainda é a gravação não serve à 2.ª volta (a marca de saída
+    // cai antes dela): do zero.
+    let limite = limite_da_partida(track)?;
+    let partida = partida.filter(|p| p.feitos <= limite);
     let reserva = partida.as_ref().map(|p| Partida {
         tocador: p
             .tocador

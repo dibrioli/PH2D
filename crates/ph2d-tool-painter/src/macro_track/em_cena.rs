@@ -221,7 +221,6 @@ impl MacroEmCena {
             .take_while(|(a, b)| a == b)
             .count();
         let limite = super::etapas::limite_da_partida(track).ok()?.min(comum);
-        // (as duas réguas: os passos do palco são os da trilha nova, e ainda são a gravação)
         let f = self.fotos.ate_feitos(limite)?;
         let respostas: Arc<[_]> = respostas_de(novo.events.iter().map(|e| e.payload.as_slice()))
             .ok()?

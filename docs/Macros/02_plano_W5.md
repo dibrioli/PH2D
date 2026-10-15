@@ -222,6 +222,16 @@ O que sobra é a água (a simulação re-corre: `Tique` = 70–80 % de tocar do 
 
 Os da coluna Gates da §6 (W5e). Cobrem: apagar fecha o tempo (núcleo, Painter, Motion, leitor); composição 1× por quadro; conferir do instantâneo = do zero; a ranhura recebe só o que mudou (+ o palco cede só a sprite gravada); `gate7` (apagar encurta o clipe; conferida fora do quadro; a decisão é dos bytes; os passos do Motion no relógio do quadro; `sprite_gravada`); o painel manda `Apaga` e larga a escolha.
 
-**Prova de mutação W5e:** _(a preencher)_
+**Prova de mutação W5e (15/10, agente `mutacao`, 3 rondas): 1.ª ronda 15/20; fechadas → todas vistas a
+sangrar.** Sobreviventes e cura: **M13** (refazer a fila da reserva na 2.ª volta — equivalente: a marca de
+saída não é resposta do worker ⇒ saiu do código); **M14** (a guarda de hash no colhe — equivalente: a mudança
+da `Macro` pára o fio na leitura dos tiques ⇒ saiu); **M12/M22** (o limite da partida — NÃO redundante: uma
+edição cujo desvio aparece pinceladas depois deixa o palco com instantâneos de depois da etapa editada, e a 2.ª
+volta arrancaria de um estado que não é o da trilha com a marca ⇒ o limite passou para DENTRO de `confere`,
+gate com uma partida tardia); **M8** (o estado do dreno ⇒ UMA função `drena_o_estado` com dois chamadores;
+sangra em `substrate_relief_tests::raising_the_relief_repaints_without_a_stroke`); **M10** (o recorte da
+subida ⇒ `recorta` com gate fora do canto). Achado no caminho: um NOME numa etapa anterior tirava-a da gravação
+(`primeira_que_toca`; gate em `macro_etapas`). G2 (Painter) não vê o tempo nem a marca de saída nos píxeis —
+o núcleo (G1) cobre-os.
 
 Tutorial «fazer» (balão, realce, cena `=3`): W6.

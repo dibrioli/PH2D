@@ -254,7 +254,9 @@ pintura da coluna).
 | tecto da fita a 1/16 por cache | 512 MiB a 8 GiB: `1 GiB` aos dois caches, numa memória unificada com a placa; `1/32` já dobra a história (2,5 → 5 min) |
 
 **ABERTO (14/10):** detalhe do aviso «Vector-path shapes
-filter as one» (o dono não respondeu); legendas das cenas de ciclo em PT cru (não i18n). (Fechados em 14/10: a Keys
+filter as one» (o dono não respondeu); ~~legendas das cenas de ciclo em PT cru (não i18n)~~ **FECHADO 15/10**: tudo o que
+uma cena pinta é inglês, guardado por censo, e as legendas ficam fora da tabela por desenho
+([LÍNGUA](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-15_LINGUA.md)). (Fechados em 14/10: a Keys
 mexe o Motion; `Scene` na placa; cadeia 16·4096 = fica a Escolha; os 5 sítios de aviso entraram no censo.) Handoff:
 [ABERTOS 132](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-14_ABERTOS_132.md).
 

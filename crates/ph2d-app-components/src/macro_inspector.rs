@@ -10,7 +10,11 @@ use ph2d_editor_core::macro_edits::{
     MacroGravacao,
 };
 
-const MODOS: [ModoDaMacro; MACRO_MODOS] = [ModoDaMacro::Fiel, ModoDaMacro::Explicativo];
+const MODOS: [ModoDaMacro; MACRO_MODOS] = [
+    ModoDaMacro::Fiel,
+    ModoDaMacro::Explicativo,
+    ModoDaMacro::Fazer,
+];
 
 /// O índice que atravessa a fronteira ⇄ o modo. Fora da faixa ⇒ `None` (edição inerte).
 #[must_use]
@@ -23,6 +27,7 @@ pub fn u8_do_modo(m: ModoDaMacro) -> u8 {
     match m {
         ModoDaMacro::Fiel => 0,
         ModoDaMacro::Explicativo => 1,
+        ModoDaMacro::Fazer => 2,
     }
 }
 

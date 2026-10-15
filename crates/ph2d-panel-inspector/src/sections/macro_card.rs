@@ -14,11 +14,13 @@ use ph2d_i18n::{tr, tr_with};
 const MODOS: [&str; MACRO_MODOS] = [
     "panel.inspector.macro.mode.0",
     "panel.inspector.macro.mode.1",
+    "panel.inspector.macro.mode.2",
 ];
 /// O que cada modo faz, pela mesma ordem.
 const DICAS: [&str; MACRO_MODOS] = [
     "panel.inspector.macro.mode_hint.0",
     "panel.inspector.macro.mode_hint.1",
+    "panel.inspector.macro.mode_hint.2",
 ];
 
 const _: () = assert!(crate::ids::INSP_MACRO_MODO.len() == MACRO_MODOS);

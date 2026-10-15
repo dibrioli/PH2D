@@ -115,7 +115,8 @@ pub struct PalcosDoPainter {
 }
 
 fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
-    if m.doc.is_empty() {
+    // No tutorial «fazer» a sprite mostra o que o aluno pinta.
+    if m.doc.is_empty() || m.modo == ph2d_ecs::ModoDaMacro::Fazer {
         return Ok(None);
     }
     Ok(MacroEmCena::de(&m.doc)?.map(|em_cena| PalcoDaPintura {

@@ -371,14 +371,55 @@ fn valor(t: &TocadorDoMotion, a: Alvo, param: &str) -> Option<f32> {
 /// # Errors
 /// [`ErroDaMacro`].
 pub fn etapas(track: &Track) -> Result<Vec<EtapaDoMotion>, ErroDaMacro> {
+    let mut out = Vec::new();
+    percorre(
+        track,
+        |t, tocavel, e| {
+            let valor_antes = match passo(&tocavel.events[e.inicio].payload) {
+                Some(Passo::Params { intencoes, .. }) => intencoes.iter().find_map(|i| match i {
+                    IntencaoDeParam::SetParam { node, param, .. } => valor(t, *node, param),
+                    _ => None,
+                }),
+                _ => None,
+            };
+            (tipos(t), valor_antes)
+        },
+        |k, g, e, tocavel, t, (antes, valor_antes)| {
+            out.push(EtapaDoMotion {
+                k,
+                etapa: g,
+                tipo: descreve(&tocavel.events, e, t.base(), &antes, &tipos(t), valor_antes),
+                t0: tocavel.events[e.inicio].t,
+                t1: tocavel.events[e.fim].t,
+                nome: track
+                    .edicoes
+                    .iter()
+                    .find(|x| x.ancora == g.inicio)
+                    .and_then(|x| x.nome.clone()),
+            });
+        },
+    )?;
+    Ok(out)
+}
+
+/// **A trilha que toca, re-tocada etapa a etapa** num palco que recebe só os passos do documento (sem
+/// cozer): `antes` lê o palco antes de cada etapa viva, `depois` recebe o que ele leu e o palco depois
+/// dela, com `k` a contar da GRAVAÇÃO, a etapa gravada e a tocada. Uma porta só para os nomes das
+/// etapas e os critérios do tutorial (`super::tutorial`).
+///
+/// # Errors
+/// [`ErroDaMacro`].
+pub(super) fn percorre<A>(
+    track: &Track,
+    mut antes: impl FnMut(&TocadorDoMotion, &Track, Etapa) -> A,
+    mut depois: impl FnMut(usize, Etapa, Etapa, &Track, &TocadorDoMotion, A),
+) -> Result<(), ErroDaMacro> {
     let tocavel = track
         .tocavel(&LeitorDoMotion)
         .map_err(ErroDaMacro::Edicao)?;
     let gravadas = LeitorDoMotion.etapas(&track.events);
     let mut tocadas = LeitorDoMotion.etapas(&tocavel.events).into_iter();
     let mut t = TocadorDoMotion::da_trilha(&tocavel, Modo::Explicativo)?;
-    let base = t.base();
-    let mut out = Vec::with_capacity(gravadas.len());
     let mut i = 0;
     for (k, g) in gravadas.iter().enumerate() {
         if track
@@ -389,15 +430,7 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoMotion>, ErroDaMacro> {
             continue;
         }
         let Some(e) = tocadas.next() else { break };
-        let e = &e;
-        let antes = tipos(&t);
-        let valor_antes = match passo(&tocavel.events[e.inicio].payload) {
-            Some(Passo::Params { intencoes, .. }) => intencoes.iter().find_map(|i| match i {
-                IntencaoDeParam::SetParam { node, param, .. } => valor(&t, *node, param),
-                _ => None,
-            }),
-            _ => None,
-        };
+        let lido = antes(&t, &tocavel, e);
         while i <= e.fim {
             let c = &tocavel.events[i].payload;
             if !LeitorDoMotion.e_relogio(c) && !matches!(passo(c), Some(Passo::Recusada(_))) {
@@ -405,21 +438,9 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoMotion>, ErroDaMacro> {
             }
             i += 1;
         }
-        let depois = tipos(&t);
-        out.push(EtapaDoMotion {
-            k,
-            etapa: *g,
-            tipo: descreve(&tocavel.events, *e, base, &antes, &depois, valor_antes),
-            t0: tocavel.events[e.inicio].t,
-            t1: tocavel.events[e.fim].t,
-            nome: track
-                .edicoes
-                .iter()
-                .find(|x| x.ancora == g.inicio)
-                .and_then(|x| x.nome.clone()),
-        });
+        depois(k, *g, e, &tocavel, &t, lido);
     }
-    Ok(out)
+    Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq)]

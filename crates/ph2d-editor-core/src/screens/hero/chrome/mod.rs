@@ -95,8 +95,12 @@ mod tokens_toggle;
 mod tool_bar_overflow;
 mod touch_mods;
 mod transport;
+mod tutorial_balao;
 mod view_toggles;
 // <ph2d-chrome-sync:end>
+
+/// O balão do tutorial «fazer» das macros (W6) — pintado por cima de tudo na passagem do herói.
+pub use tutorial_balao::paint as paint_tutorial_balao;
 
 /// Snap the painter tool-rail radio back to Brush (the shell calls this when the Eyedropper's on-canvas
 /// pick completes, so the momentary tool returns to Brush automatically).
@@ -184,6 +188,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || onion_modal::apply(hero, event)
         || input_map::apply(hero, event)
         || command_palette::apply(hero, event)
+        || tutorial_balao::apply(hero, event)
         || scene_picker::apply(hero, event)
         || image_actions::apply(hero, event)
         || prefab_bar::apply(hero, event)

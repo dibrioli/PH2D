@@ -27,6 +27,10 @@ impl crate::App {
         };
         let pintor = ph2d_editor_core::ToolId::new("painter");
         let painter_activo = gfx.tools.active().is_some_and(|t| t.id() == pintor);
+        let motion_na_mao = gfx
+            .tools
+            .active()
+            .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"));
         let painter = gfx
             .tools
             .tool_by_id_mut(&pintor)
@@ -35,6 +39,7 @@ impl crate::App {
             painter,
             painter_activo,
             motion_em_edicao: gfx.motion.objeto.editing,
+            motion_na_mao,
             motion: &mut gfx.motion,
             etapas: ETAPAS,
         };

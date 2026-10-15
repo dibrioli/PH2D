@@ -2,7 +2,7 @@
 
 use ph2d_ecs::{Macro, ModoDaMacro, SimWorld};
 use ph2d_editor_core::macro_edits::{
-    MACRO_DE_VERSAO_NOVA, MACRO_ESTRAGADA, MACRO_MODOS, MODO_EXPLICATIVO, MODO_FIEL,
+    MACRO_DE_VERSAO_NOVA, MACRO_ESTRAGADA, MACRO_MODOS, MODO_EXPLICATIVO, MODO_FAZER, MODO_FIEL,
     MacroFieldEdit as E, MacroGravacao,
 };
 use ph2d_macro::{MacroRecorder, RefRect};
@@ -28,15 +28,16 @@ fn gravada() -> Vec<u8> {
 
 #[test]
 fn o_modo_vai_e_volta_pelo_indice() {
-    assert_eq!(MACRO_MODOS, 2);
+    assert_eq!(MACRO_MODOS, 3);
     for (i, m) in [
         (MODO_FIEL, ModoDaMacro::Fiel),
         (MODO_EXPLICATIVO, ModoDaMacro::Explicativo),
+        (MODO_FAZER, ModoDaMacro::Fazer),
     ] {
         assert_eq!(modo_de_u8(i), Some(m));
         assert_eq!(u8_do_modo(m), i);
     }
-    assert_eq!(modo_de_u8(2), None, "fora da faixa é inerte");
+    assert_eq!(modo_de_u8(3), None, "fora da faixa é inerte");
 }
 
 #[test]

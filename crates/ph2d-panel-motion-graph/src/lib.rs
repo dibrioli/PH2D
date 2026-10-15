@@ -36,10 +36,11 @@ mod paint_chrome;
 /// força acende) sem um pixel dentro. *O nome de um ficheiro é a primeira coisa que um censo lê.*
 mod realce;
 mod split;
-/// O id de hit de um chip da barra, para o gate de costura que mede a pintura.
-pub use paint_chrome::chrome_hit_id_for_tests;
 /// ⭐ A lei do arrasto do divisor — pública porque o gate dela é de **ida-e-volta** e tem de
 /// atravessar as duas crates (a fórmula aqui, a aplicação no `HeroLayout`).
+pub use hits::alvo;
+/// O id de hit de um chip da barra, para o gate de costura que mede a pintura.
+pub use paint_chrome::chrome_hit_id_for_tests;
 pub use split::split_fraction;
 mod param_edit;
 mod param_editor;

@@ -10,6 +10,7 @@ pub mod erros;
 pub mod etapas;
 pub mod instala;
 pub mod sessao;
+mod tutorial;
 
 use etapas::Injectadas;
 use ph2d_ecs::SimWorld;
@@ -28,9 +29,12 @@ use std::cell::RefCell;
 pub struct Familias<'a> {
     pub painter: Option<&'a mut PainterTool>,
     pub painter_activo: bool,
-    pub motion: &'a mut dyn ph2d_macro::Gravadora,
+    /// O Motion grava e ensina (o tutorial «fazer», W6).
+    pub motion: &'a mut dyn ph2d_editor_core::macro_tutorial::GravadoraQueEnsina,
     /// O `StableId` do objecto Motion em edição: só com ele o Motion arma, e é ele o dono da `Macro`.
     pub motion_em_edicao: Option<u64>,
+    /// A ferramenta Motion está na mão: com o objecto em edição, é o modo Edit (o tutorial pede-o).
+    pub motion_na_mao: bool,
     pub etapas: Injectadas<'a>,
 }
 
@@ -55,9 +59,10 @@ pub struct Cena<'a> {
 
 pub use conferencia::Partidas;
 
-/// As cenas de `PH2D_MACRO_SMOKE`: `=1` o Splash (Painter), `=2` o Motion nó a nó. Cada uma monta-se
-/// na família que grava; o clipe que as conduz monta-o a composição (`render_loop/macro_smoke.rs`).
-pub const CENAS_DO_SMOKE: u32 = 2;
+/// As cenas de `PH2D_MACRO_SMOKE`: `=1` o Splash (Painter), `=2` o Motion nó a nó, `=3` o tutorial
+/// «fazer» (Motion). Cada uma monta-se na família que grava; o clipe que conduz as duas primeiras
+/// monta-o a composição (`render_loop/macro_smoke.rs`).
+pub const CENAS_DO_SMOKE: u32 = 3;
 
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
@@ -89,6 +94,7 @@ pub struct Macros {
     conferencias: conferencia::Conferencias,
     vistas: etapas::Cache,
     duracoes: instala::Duracoes,
+    tutorial: tutorial::Tutorial,
     /// O relógio do quadro corrente (o de [`Macros::quadro`]).
     agora_us: u64,
 }
@@ -185,6 +191,7 @@ impl Macros {
             s.quadro(f, agora_us);
         }
         self.sincroniza(c, f.etapas);
+        ph2d_editor_core::macro_tutorial::set_balao(self.tutorial.balao(f, c.sim));
     }
 
     /// **O clipe acompanha a macro**: a duração dele é DERIVADA da trilha que toca, e re-cronometra-se
@@ -262,6 +269,12 @@ impl Macros {
                 Ok(()) => self.erro_de_edicao = None,
                 Err(e) => self.erro_de_edicao = Some((entity_bits, e)),
             },
+            MacroRequest::MostraMe { entity_bits } => {
+                self.tutorial.mostra(f, c.sim, entity_bits);
+            }
+            MacroRequest::Recomeca { entity_bits } => {
+                self.tutorial.recomeca(f, c.sim, entity_bits);
+            }
         }
     }
 

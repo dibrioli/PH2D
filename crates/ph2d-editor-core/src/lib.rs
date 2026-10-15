@@ -157,6 +157,8 @@ pub mod luz_edits;
 pub mod macro_edits;
 /// A porta das etapas de UMA família de macros e as chaves do erro comuns (ADR-0186, W5e).
 pub mod macro_etapas;
+/// O tutorial «fazer»: a porta da família, o balão e os botões dele (W6).
+pub mod macro_tutorial;
 /// O vocabulário da secção MOTION INPUT (ciclo 19 do Motion).
 pub mod motion_input_edits;
 /// ⭐⭐⭐ O vocabulário das secções NAV REGION e NAV AGENT (plano 30, W4).

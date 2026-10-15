@@ -11,6 +11,7 @@ use crate::motion_state::MotionState;
 use ph2d_ecs::{Macro, ModoDaMacro, MotionGenerator, Name, StableId, Transform};
 use ph2d_macro::{MacroRecorder, MacroTime, RefRect};
 use ph2d_nodegraph::graph::NodeId;
+use ph2d_panel_motion_graph::GraphIntent;
 
 const DT: f64 = 1.0 / 60.0;
 /// O quadro do 1.º gesto.
@@ -35,13 +36,40 @@ pub fn grava_o_tutorial(dono: u64) -> Option<(Vec<u8>, f64)> {
 
 /// Os `gestos` gravados como a cena, com `mais[i]` quadros a mais antes do gesto `i`.
 pub(crate) fn grava_gestos(dono: u64, gestos: &[Gesto], mais: &[u32]) -> Option<(Vec<u8>, f64)> {
+    grava(dono, gestos, mais, 0, None)
+}
+
+/// Os `gestos` com a gravação armada só a meio do intervalo antes do gesto `arma`: os anteriores são o
+/// ESTADO INICIAL da trilha (o tutorial «fazer» parte de um grafo meio feito). `lugar` põe cada nó
+/// novo pelo tipo.
+pub(crate) fn grava_desde(
+    dono: u64,
+    gestos: &[Gesto],
+    arma: usize,
+    lugar: Option<fn(&str) -> (f32, f32)>,
+) -> Option<(Vec<u8>, f64)> {
+    grava(dono, gestos, &[], arma, lugar)
+}
+
+fn grava(
+    dono: u64,
+    gestos: &[Gesto],
+    mais: &[u32],
+    arma: usize,
+    lugar: Option<fn(&str) -> (f32, f32)>,
+) -> Option<(Vec<u8>, f64)> {
     let mut m = MotionState::new();
     m.doc = ph2d_motion_doc::MotionDoc::new();
     m.sinks.clear();
     m.gpu_enabled = false;
     m.objeto.editing = Some(dono);
     let mut rec = MacroRecorder::new(RefRect { w: 1.0, h: 1.0 }, 0);
-    let trilha = m.gravacao_abre(&mut rec).ok()?;
+    let q0 = if arma == 0 {
+        0
+    } else {
+        quadro_do_gesto(arma, mais) - ENTRE / 2
+    };
+    let mut trilha = None;
     let mut toasts = ph2d_editor_core::ToastQueue::default();
     let mut split = ph2d_editor_core::screens::layout::CenterSplit::None;
     let mut ph = ph2d_core::Playhead::new(DT);
@@ -50,10 +78,19 @@ pub(crate) fn grava_gestos(dono: u64, gestos: &[Gesto], mais: &[u32]) -> Option<
     let mut slots: Vec<NodeId> = Vec::new();
     let mut agora = 0;
     for q in 0..=fim {
+        if q == q0 {
+            trilha = Some(m.gravacao_abre(&mut rec).ok()?);
+        }
         let antes: Vec<NodeId> = m.doc.graph.nodes().iter().map(|n| n.id).collect();
         let lote: Vec<_> = (0..gestos.len())
             .filter(|&i| quadro_do_gesto(i, mais) == q)
-            .map(|i| intent_de(gestos[i], &slots, i))
+            .map(|i| match (intent_de(gestos[i], &slots, i), lugar) {
+                (GraphIntent::AddNode { type_name, .. }, Some(f)) => {
+                    let (x, y) = f(type_name);
+                    GraphIntent::AddNode { type_name, x, y }
+                }
+                (g, _) => g,
+            })
             .collect();
         ph.seek(f64::from(q) * DT);
         crate::motion_bridge::aplica_e_grava(&mut m, &mut ph, &mut toasts, &mut split, lote);
@@ -72,9 +109,11 @@ pub(crate) fn grava_gestos(dono: u64, gestos: &[Gesto], mais: &[u32]) -> Option<
         }
         m.macro_fecha();
         o_quadro(&mut m, None, &ph, DT, MaoDoEditor::default());
-        agora = MacroTime::from_secs_f64(f64::from(q) * DT).0;
-        for c in m.gravacao_passos() {
-            rec.push(trilha, agora, c).ok()?;
+        agora = MacroTime::from_secs_f64(f64::from(q - q0.min(q)) * DT).0;
+        if let Some(t) = trilha {
+            for c in m.gravacao_passos() {
+                rec.push(t, agora, c).ok()?;
+            }
         }
         let mut novos: Vec<NodeId> = m
             .doc
@@ -87,10 +126,14 @@ pub(crate) fn grava_gestos(dono: u64, gestos: &[Gesto], mais: &[u32]) -> Option<
         novos.sort_by_key(|n| n.0);
         slots.extend(novos);
     }
+    let trilha = trilha?;
     for c in m.gravacao_para() {
         rec.push(trilha, agora, c).ok()?;
     }
-    Some((ph2d_macro::codec::write(&rec.finish()), f64::from(fim) * DT))
+    Some((
+        ph2d_macro::codec::write(&rec.finish()),
+        f64::from(fim - q0) * DT,
+    ))
 }
 
 /// **A cena**: o objecto «Wind tutorial» com o `Macro` gravado. Devolve os bits da entidade e a
@@ -119,4 +162,66 @@ pub fn monta(cx: &mut MotionSceneCtx<'_>) -> Option<(u64, f64)> {
         CENA.len()
     );
     Some((e.to_bits(), duracao))
+}
+
+/// O 1.º gesto da [`CENA`] que a cena `=3` grava: as três ligações que fazem o vento soprar e a caixa a
+/// crescer. Os anteriores são o grafo com que o aluno começa.
+pub(crate) const FAZER_DESDE: usize = 19;
+
+/// O lugar de cada nó da cena `=3` no editor: a cadeia que o aluno liga (caixa → vento → arrasto →
+/// integrador) numa fila legível, à vista sem deslocar o editor.
+pub(crate) fn lugar_do_fazer(tipo: &str) -> (f32, f32) {
+    match tipo {
+        "source.shape" => (0.0, 0.0),
+        "motion.duplicator" => (240.0, 0.0),
+        "motion.output" => (480.0, 0.0),
+        "motion.grid" => (0.0, 170.0),
+        "motion.integrate" => (480.0, 170.0),
+        "field.box" => (0.0, 340.0),
+        "force.wind" => (240.0, 340.0),
+        _ => (480.0, 340.0),
+    }
+}
+
+/// `PH2D_MACRO_SMOKE=3` — **o tutorial «fazer»** (`docs/Macros/03_plano_W6.md`): o objecto «Wind, your
+/// turn» em Edit, com o grafo da `=2` MENOS as três ligações do vento, e um `Macro` em modo `Fazer` que
+/// as grava. O aluno liga-as com o balão a apontar as portas. Devolve os bits da entidade.
+pub fn monta_fazer(cx: &mut MotionSceneCtx<'_>) -> Option<u64> {
+    let world = cx.sim.world_mut();
+    let e = world
+        .spawn((
+            Name::new("Wind, your turn"),
+            Transform::IDENTITY,
+            MotionGenerator,
+        ))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(world);
+    let dono = world.get::<StableId>(e).map_or(0, |s| s.0);
+    let (doc, _) = grava_desde(dono, CENA, FAZER_DESDE, Some(lugar_do_fazer))?;
+    let track = ph2d_macro::codec::read(&doc)
+        .ok()?
+        .tracks
+        .into_iter()
+        .next()?;
+    super::tutorial::recomeca(cx.motion, dono, &track).ok()?;
+    // O grafo inicial é a cena, não um passo que o Ctrl+Z do aluno desfaça.
+    cx.motion.history = ph2d_motion_doc::MotionHistory::new();
+    world.entity_mut(e).insert(Macro {
+        doc,
+        modo: ModoDaMacro::Fazer,
+    });
+    cx.motion.objeto.editing = Some(dono);
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
+    cx.motion.pump.mark_dirty();
+    cx.playhead.play();
+    eprintln!(
+        "[macro smoke =3] 'Wind, your turn' is a TUTORIAL: its grid of shapes and the wind nodes are \
+         there, but three links are missing. A balloon says which one to make and rings the two \
+         ports; link them in the node editor and the balloon moves on (the wind starts blowing at the \
+         third). Ctrl+Z takes the balloon back. 'Show me' makes the step for you; 'Restart' empties \
+         it again."
+    );
+    Some(e.to_bits())
 }

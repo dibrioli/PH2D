@@ -434,6 +434,27 @@ fn sock_in_id(node: u32, port: usize) -> NodeId {
 fn sock_out_id(node: u32, port: usize) -> NodeId {
     fnv_id(&format!("motion_graph/sock_out/{node}/{port}"))
 }
+
+/// **Onde o tutorial «fazer» aponta** (Macros W6): os ids que este painel regista no `hit_index` a
+/// cada quadro em que pinta o nó — o cartão, uma porta de entrada, uma de saída.
+pub mod alvo {
+    use super::NodeId;
+
+    #[must_use]
+    pub fn no(node: u32) -> NodeId {
+        super::node_hit_id(node)
+    }
+
+    #[must_use]
+    pub fn entrada(node: u32, port: usize) -> NodeId {
+        super::sock_in_id(node, port)
+    }
+
+    #[must_use]
+    pub fn saida(node: u32, port: usize) -> NodeId {
+        super::sock_out_id(node, port)
+    }
+}
 /// The inline rename box (doc 61). One id — only one thing is being renamed at a time, and the
 /// box is over it.
 pub(crate) fn rename_id() -> NodeId {

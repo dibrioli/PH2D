@@ -23,6 +23,8 @@ pub(crate) mod roteiro;
 #[cfg(feature = "panel-motion-graph")]
 pub mod smoke;
 pub mod tocar;
+/// O tutorial «fazer» (W6): os critérios das etapas, «Mostra-me», «Recomeçar».
+pub mod tutorial;
 /// As etapas pela porta comum, para a família MACROS (W5e).
 pub mod vistas;
 

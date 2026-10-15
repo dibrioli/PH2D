@@ -160,6 +160,37 @@ fn so_a_timeline_acorda_o_palco_e_a_troca_vai_a_sprite_alvo() {
 }
 
 #[test]
+fn no_tutorial_fazer_a_macro_nao_toca_e_a_sprite_e_do_aluno() {
+    let (doc, quadros) = gravada(7);
+    let mut w = World::new();
+    let sprite = w.spawn(StableId(7)).id();
+    let dono = w
+        .spawn((
+            Macro {
+                doc,
+                modo: ModoDaMacro::Fazer,
+            },
+            em(quadros),
+        ))
+        .id();
+    let (mut p, mut placa) = (PalcosDoPainter::default(), Placa::default());
+    assert!(
+        quadro(&mut p, &mut w, &mut placa).is_empty(),
+        "com o relógio a correr, o Fazer não toca"
+    );
+    assert!(placa.adquiridas.is_empty());
+    // Controlo: o mesmo objecto em Fiel toca e troca a sprite.
+    w.entity_mut(dono).get_mut::<Macro>().expect("macro").modo = ModoDaMacro::Fiel;
+    assert_eq!(
+        quadro(&mut p, &mut w, &mut placa),
+        [TrocaDaSprite {
+            entity_bits: sprite.to_bits(),
+            texture_id: 1
+        }]
+    );
+}
+
+#[test]
 fn sem_alvo_a_macro_pinta_a_sprite_que_a_tem() {
     let (doc, quadros) = gravada(0);
     let mut w = World::new();

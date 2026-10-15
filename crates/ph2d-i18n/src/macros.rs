@@ -68,6 +68,26 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.error.target" => "A step points at something the graph does not have.",
         "panel.macros.error.document" => "A recorded graph cannot be read: {detail}",
         "panel.macros.error.no_graph" => "This build has no Motion graph to replay it.",
+        // O balão do tutorial «fazer» (W6).
+        "panel.macros.tutorial.step" => "Step {n} of {total}",
+        "panel.macros.tutorial.before" => "Before you start",
+        "panel.macros.tutorial.done_title" => "Done!",
+        "panel.macros.tutorial.done" => "You made every step of this tutorial.",
+        "panel.macros.tutorial.edit" => {
+            "Edit the tutorial object: select it and press Tab (or pick Edit in its Mode menu)."
+        }
+        "panel.macros.tutorial.add" => {
+            "Add a {node} node: right-click the node editor and pick it from the list."
+        }
+        "panel.macros.tutorial.connect" => {
+            "Connect {from} to {to}: drag from the ringed output of {from} to the ringed input of \
+             {to}."
+        }
+        "panel.macros.tutorial.disconnect" => "Disconnect the ringed input of {to}.",
+        "panel.macros.tutorial.value" => "Set {param} on {node} to {value}.",
+        "panel.macros.tutorial.delete" => "Delete one {node} node.",
+        "panel.macros.tutorial.show_me" => "Show me",
+        "panel.macros.tutorial.restart" => "Restart",
         _ => return None,
     })
 }

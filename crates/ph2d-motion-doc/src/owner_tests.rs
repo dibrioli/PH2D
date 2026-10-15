@@ -153,6 +153,57 @@ fn copiar_um_dono_da_a_copia_um_grafo_proprio() {
     assert!(MotionDoc::from_text(&doc.to_text()).is_ok());
 }
 
+/// ⭐ Os nós de um dono de OUTRO documento entram com os params, os fios e os params dirigidos entre
+/// eles; um fio que vinha de outro dono não viaja (o nó dele não existe aqui); o que já cá estava fica.
+#[test]
+fn importar_um_dono_de_outro_documento_traz_o_grafo_dele() {
+    let mut src = MotionDoc::new();
+    let fora = src.graph.add_node("motion.grid");
+    let a = src.graph.add_node("motion.grid");
+    let b = src.graph.add_node("motion.output");
+    src.graph.set_param(a, "rows", 7.0);
+    for (de, para) in [(a, b), (fora, a)] {
+        src.graph
+            .connect(Edge {
+                from: (de, 0),
+                to: (para, 0),
+                delayed: false,
+            })
+            .unwrap();
+    }
+    src.graph.drive_param(b, "size", (a, 0)).unwrap();
+    src.set_owner(fora, 9);
+    src.set_owner(a, 1);
+    src.set_owner(b, 1);
+
+    let mut doc = MotionDoc::new();
+    let ja = doc.graph.add_node("motion.grid");
+    doc.set_owner(ja, 5);
+    let map = doc.import_owner(&src, 1, 5);
+    let (a2, b2) = (map[&a], map[&b]);
+    assert_eq!(doc.nodes_of(5), vec![ja, a2, b2]);
+    assert_eq!(
+        doc.graph
+            .node_param_overrides(a2)
+            .and_then(|p| p.get("rows")),
+        Some(&7.0)
+    );
+    let fios: Vec<_> = doc
+        .graph
+        .edges()
+        .iter()
+        .map(|e| (e.from.0, e.to.0))
+        .collect();
+    assert_eq!(fios, [(a2, b2)], "só o fio interno viaja");
+    assert_eq!(
+        doc.graph
+            .param_sources(b2)
+            .and_then(|s| s.get("size"))
+            .copied(),
+        Some((a2, 0))
+    );
+}
+
 #[test]
 fn a_moldura_tem_dono_e_sai_com_ele() {
     let (mut doc, a, _) = doc_de_dois_nos();

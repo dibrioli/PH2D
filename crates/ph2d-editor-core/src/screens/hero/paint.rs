@@ -581,6 +581,8 @@ pub fn paint_hero_screen(
         text_system,
         hero.theme,
     );
+    // O balão do tutorial «fazer» (Macros W6): depois dos painéis, que registaram os alvos dele.
+    chrome::paint_tutorial_balao(hero, viewport, scene, text_system);
     // W8 — a apresentação por cima de TUDO (a janela inteira).
     super::board_nav::team::show::paint(hero, viewport, scene, text_system);
     hero.store.end_scroll_frame();

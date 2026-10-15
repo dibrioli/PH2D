@@ -9,7 +9,7 @@
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
 
-/// **Como a trilha do Motion toca.** ⚠️ A ordem é a do seletor do Inspector; acrescentar é no fim.
+/// **Como a macro se usa.** ⚠️ A ordem é a do seletor do Inspector; acrescentar é no fim.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModoDaMacro {
     /// Cada passo no quadro gravado: o que o artista viu.
@@ -17,6 +17,9 @@ pub enum ModoDaMacro {
     Fiel,
     /// Re-simula da semente depois de cada mudança: o efeito de cada nó (o tutorial nó a nó).
     Explicativo,
+    /// **O tutorial «fazer»** (`docs/Macros/03_plano_W6.md`): a macro não toca — o aluno faz cada
+    /// etapa no objecto e um balão diz qual; o progresso é função do estado dele.
+    Fazer,
 }
 
 #[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

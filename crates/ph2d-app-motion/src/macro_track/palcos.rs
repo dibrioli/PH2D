@@ -43,24 +43,24 @@ pub struct PalcosDasMacros {
     lidos: BTreeMap<u64, Lido>,
 }
 
-fn modo(m: ModoDaMacro) -> Modo {
+/// Como o palco toca; `None` = não há palco (no tutorial «fazer» o objecto mostra o que o aluno fez).
+fn modo(m: ModoDaMacro) -> Option<Modo> {
     match m {
-        ModoDaMacro::Fiel => Modo::Fiel,
-        ModoDaMacro::Explicativo => Modo::Explicativo,
+        ModoDaMacro::Fiel => Some(Modo::Fiel),
+        ModoDaMacro::Explicativo => Some(Modo::Explicativo),
+        ModoDaMacro::Fazer => None,
     }
 }
 
 fn palco_de(m: &Macro) -> Result<Option<PalcoEmCena>, ErroDaMacro> {
-    if m.doc.is_empty() {
+    let Some(modo) = modo(m.modo).filter(|_| !m.doc.is_empty()) else {
         return Ok(None);
-    }
-    Ok(
-        MacroEmCena::de(&m.doc, modo(m.modo))?.map(|em_cena| PalcoEmCena {
-            em_cena,
-            placa: PlacaDeFormas::default(),
-            toca: false,
-        }),
-    )
+    };
+    Ok(MacroEmCena::de(&m.doc, modo)?.map(|em_cena| PalcoEmCena {
+        em_cena,
+        placa: PlacaDeFormas::default(),
+        toca: false,
+    }))
 }
 
 impl PalcosDasMacros {

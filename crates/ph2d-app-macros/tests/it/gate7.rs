@@ -93,6 +93,7 @@ impl Banca {
             painter_activo: self.activo,
             motion: &mut self.motion,
             motion_em_edicao: self.motion_em_edicao,
+            motion_na_mao: false,
             etapas: &[],
         };
         let mut c = Cena {
@@ -111,6 +112,7 @@ impl Banca {
             painter_activo: self.activo,
             motion: &mut self.motion,
             motion_em_edicao: self.motion_em_edicao,
+            motion_na_mao: false,
             etapas: &[],
         };
         let info = self.m.info(&f, &self.sim, Some(self.bits), None);
@@ -725,6 +727,8 @@ impl ph2d_macro::Gravadora for MotionDeBrinquedo {
         Vec::new()
     }
 }
+
+impl ph2d_editor_core::macro_tutorial::TutorialDaFamilia for MotionDeBrinquedo {}
 
 /// Uma família de brinquedo: grava um passo marcado por quadro em que «correu».
 struct Brinquedo(Vec<Vec<u8>>);

@@ -34,10 +34,21 @@ impl crate::App {
             "2" => self
                 .with_motion_scene(ph2d_app_motion::macro_track::smoke::monta)
                 .flatten(),
+            // O tutorial «fazer»: sem clipe — a macro não toca, o aluno faz.
+            "3" => {
+                let bits = self
+                    .with_motion_scene(ph2d_app_motion::macro_track::smoke::monta_fazer)
+                    .flatten();
+                if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    hero.gizmo.replace_selection(bits);
+                    hero.set_panel_visible("hierarchy", true);
+                }
+                return;
+            }
             _ => {
                 eprintln!(
-                    "[macro smoke] PH2D_MACRO_SMOKE={nivel}: the scenes are 1 (Splash) and 2 (Motion \
-                     node by node)"
+                    "[macro smoke] PH2D_MACRO_SMOKE={nivel}: the scenes are 1 (Splash), 2 (Motion \
+                     node by node) and 3 (the 'do it' tutorial)"
                 );
                 None
             }

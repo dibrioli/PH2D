@@ -5,12 +5,14 @@
 //! `ph2d-app-components`, com gate de ida-e-volta.
 
 /// Quantos modos há — o comprimento de `ModoDaMacro` (gate na `macro_inspector`).
-pub const MACRO_MODOS: usize = 2;
+pub const MACRO_MODOS: usize = 3;
 
 /// Índice do modo `Fiel` (o que o artista viu).
 pub const MODO_FIEL: u8 = 0;
 /// Índice do modo `Explicativo` (o efeito de cada nó).
 pub const MODO_EXPLICATIVO: u8 = 1;
+/// Índice do modo `Fazer` (o tutorial: o aluno faz cada etapa).
+pub const MODO_FAZER: u8 = 2;
 
 /// Uma edição da secção.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -183,6 +185,10 @@ pub enum MacroRequest {
         trilha: usize,
         k: usize,
     },
+    /// O tutorial «fazer»: a etapa corrente feita pelo aluno (o balão, «Mostra-me»).
+    MostraMe { entity_bits: u64 },
+    /// O tutorial «fazer»: o objecto volta ao estado inicial (o balão, «Recomeçar»).
+    Recomeca { entity_bits: u64 },
 }
 
 /// Gravar: só o Wet Paint grava nesta versão.

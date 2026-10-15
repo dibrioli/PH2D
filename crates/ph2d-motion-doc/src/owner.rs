@@ -204,35 +204,10 @@ impl MotionDoc {
             return map;
         }
         for n in self.nodes_of(from) {
-            let Some(inst) = self.graph.node(n) else {
+            let Some(a) = Atributos::de(&self.graph, n) else {
                 continue;
             };
-            let twin = self.graph.add_node(inst.type_name.clone());
-            let params = self
-                .graph
-                .node_param_overrides(n)
-                .cloned()
-                .unwrap_or_default();
-            for (k, v) in params {
-                self.graph.set_param(twin, k, v);
-            }
-            let texts = self
-                .graph
-                .node_text_param_overrides(n)
-                .cloned()
-                .unwrap_or_default();
-            for (k, v) in texts {
-                self.graph.set_text_param(twin, k, v);
-            }
-            if let Some(label) = self.graph.label(n).map(str::to_string) {
-                self.graph.set_label(twin, label);
-            }
-            self.graph.set_bypassed(twin, self.graph.node_bypassed(n));
-            if let Some(p) = self.graph.pos(n) {
-                self.graph.set_pos(twin, p);
-            }
-            self.owners.insert(twin, to);
-            map.insert(n, twin);
+            map.insert(n, self.planta(a, to));
         }
         let side = |n: NodeId| map.get(&n).copied().unwrap_or(n);
         let edges: Vec<Edge> = self
@@ -259,6 +234,61 @@ impl MotionDoc {
         }
         self.copy_nesting(from, to, &map);
         map
+    }
+
+    /// **Os nós de `from` noutro documento entram neste como de `to`** (o tutorial «Recomeçar» volta o
+    /// grafo do aluno ao estado inicial da trilha): cada nó com os atributos de [`Self::copy_owner`], os
+    /// fios e os params dirigidos ENTRE eles. Os subgrafos e as molduras não viajam (são da vista).
+    /// Devolve original (de `src`) → gémeo.
+    pub fn import_owner(
+        &mut self,
+        src: &MotionDoc,
+        from: u64,
+        to: u64,
+    ) -> BTreeMap<NodeId, NodeId> {
+        let mut map: BTreeMap<NodeId, NodeId> = BTreeMap::new();
+        for n in src.nodes_of(from) {
+            if let Some(a) = Atributos::de(&src.graph, n) {
+                map.insert(n, self.planta(a, to));
+            }
+        }
+        for e in src.graph.edges() {
+            if let (Some(a), Some(b)) = (map.get(&e.from.0), map.get(&e.to.0)) {
+                let _ = self.graph.connect(Edge {
+                    from: (*a, e.from.1),
+                    to: (*b, e.to.1),
+                    ..*e
+                });
+            }
+        }
+        for (n, twin) in &map {
+            for (k, (s, port)) in src.graph.param_sources(*n).cloned().unwrap_or_default() {
+                if let Some(s) = map.get(&s) {
+                    let _ = self.graph.drive_param(*twin, k, (*s, port));
+                }
+            }
+        }
+        map
+    }
+
+    /// Um nó novo de `to` com os atributos `a`.
+    fn planta(&mut self, a: Atributos, to: u64) -> NodeId {
+        let twin = self.graph.add_node(a.tipo);
+        for (k, v) in a.params {
+            self.graph.set_param(twin, k, v);
+        }
+        for (k, v) in a.textos {
+            self.graph.set_text_param(twin, k, v);
+        }
+        if let Some(label) = a.rotulo {
+            self.graph.set_label(twin, label);
+        }
+        self.graph.set_bypassed(twin, a.bypass);
+        if let Some(p) = a.lugar {
+            self.graph.set_pos(twin, p);
+        }
+        self.owners.insert(twin, to);
+        twin
     }
 
     /// Os subgrafos e as molduras de `from` ganham gémeos de `to` (ver [`Self::copy_owner`]).
@@ -312,6 +342,29 @@ impl MotionDoc {
             self.backdrops.push(Backdrop { id, ..b });
             self.backdrop_owners.insert(id, to);
         }
+    }
+}
+
+/// O que o gémeo de um nó leva: o tipo, os params, os textos, o rótulo, o bypass e o lugar.
+struct Atributos {
+    tipo: String,
+    params: BTreeMap<String, f32>,
+    textos: BTreeMap<String, String>,
+    rotulo: Option<String>,
+    bypass: bool,
+    lugar: Option<ph2d_nodegraph::graph::Pos>,
+}
+
+impl Atributos {
+    fn de(g: &Graph, n: NodeId) -> Option<Self> {
+        Some(Atributos {
+            tipo: g.node(n)?.type_name.clone(),
+            params: g.node_param_overrides(n).cloned().unwrap_or_default(),
+            textos: g.node_text_param_overrides(n).cloned().unwrap_or_default(),
+            rotulo: g.label(n).map(str::to_string),
+            bypass: g.node_bypassed(n),
+            lugar: g.pos(n),
+        })
     }
 }
 

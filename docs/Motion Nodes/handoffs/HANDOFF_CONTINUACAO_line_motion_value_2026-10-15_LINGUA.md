@@ -71,5 +71,8 @@ do `ship.sh` ✓ · fmt ✓ · check warnings=deny ✓ · gates de i18n/label-ce
 Perfil (`agent-loop-profile.sh`): paralelismo 1,16/passo ✗ (alvo 1,5) · test:check 2,7× ✗ · contexto 279 mil/passo ✗ ·
 edições sem conferir 1,0 % ✓ · respostas/sessão 134 ✓.
 
-**2.ª rodada (`104a87b7c3`..`4ce527459b`):** verificada por testes POR NOME (447 + os da 1.ª rodada) e **NÃO** pelo
-`nextest-impacted` de fecho — a suíte tem cadência; **o integrador a corre** (`PH2D_SUITE=fecho`). A linha tem 19 commits sobre o `main` (20 com o de docs deste handoff).
+**2.ª rodada (`104a87b7c3`..`4ce527459b`, + fmt `d973c94c7b`):** testes POR NOME (447) e o fecho batched sobre o diff
+acumulado: nextest-impacted `PH2D_SUITE=fecho` **17 450/17 451** — o 1 é `ph2d-app-light2d::it os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria`
+(wgpu `Buffer 'ph2d-render luz desligada ubo' is invalid`; nenhum ficheiro light2d no diff; 3/3 sozinho com `PH2D_GPU=1` a load 3–4 ⇒
+contenção da placa, candidato a FLAKES_DE_CARGA.md, não promovido) · clippy forma do ship.sh ✓ · fmt ✓ (após `d973c94c7b`: 3 ficheiros
+da `540919f6d7` estavam por formatar) · check warnings=deny ✓ · `bash -n fotografa_cena.sh` ✓. A linha tem 22 commits sobre o `main`.

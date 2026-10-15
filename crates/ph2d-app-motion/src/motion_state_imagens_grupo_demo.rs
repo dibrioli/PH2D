@@ -85,7 +85,8 @@ fn coluna(g: &mut Graph, k: usize) -> Option<NodeId> {
 }
 
 /// O FUNDO: um quadrado escuro grande atrás das duas galáxias (uma saída em `Normal`, a primeira).
-fn fundo(g: &mut Graph) -> Option<NodeId> {
+/// Partilhado com a `=142` (o `Scene`).
+pub(super) fn fundo(g: &mut Graph) -> Option<NodeId> {
     let no = no_em(-330.0);
     let ponto = no(g, "motion.grid", -440.0, 0.0);
     g.set_param(ponto, "rows", 1.0);

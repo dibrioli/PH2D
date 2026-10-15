@@ -19,7 +19,7 @@ use ph2d_nodegraph::graph::NodeId;
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
 const CICLOS: &[&str] = &[
     "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "130", "131", "132",
-    "133", "134", "135", "136", "137", "138", "139", "140", "141",
+    "133", "134", "135", "136", "137", "138", "139", "140", "141", "142",
 ];
 
 /// Este nível é uma cena de ciclo?
@@ -234,6 +234,14 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::imagens_grupo_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::imagens_grupo_demo::captions());
             super::imagens_grupo_demo::announce();
+            sinks
+        }
+        // ⭐ **O `Scene` COM IMAGENS, NA PLACA** (doc 132 §4.1 (3)): imagens na porta 0 e estrelas na
+        // 1 de uma galáxia; as estrelas tapam (a ordem das linhas) e só o grupo clareia o fundo.
+        "142" => {
+            let sinks = super::imagens_scene_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::imagens_scene_demo::captions());
+            super::imagens_scene_demo::announce();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

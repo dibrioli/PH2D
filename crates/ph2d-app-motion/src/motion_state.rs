@@ -168,6 +168,9 @@ pub(crate) mod fita_demo;
 /// A cena `=140` — imagens e formas num grupo que mistura, na placa (doc 132 §4, P4).
 #[path = "motion_state_imagens_grupo_demo.rs"]
 mod imagens_grupo_demo;
+/// A cena `=142` — o `Scene` com imagens e formas na placa, na ordem das linhas (doc 132 §4.1 (3)).
+#[path = "motion_state_imagens_scene_demo.rs"]
+mod imagens_scene_demo;
 
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]

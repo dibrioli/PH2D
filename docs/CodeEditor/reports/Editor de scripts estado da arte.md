@@ -24,6 +24,10 @@ As decisões técnicas seguem o padrão-ouro e estão neste documento. Ficam com
 | 3 | Como a IA entra | desligada por omissão e só como «professora» (explica, não escreve) · também escreve trechos, sempre com prévia e um Ctrl+Z · fica fora do PH2D, e quem quiser liga o próprio agente | Para quem está aprendendo, deixar a IA escrever o código derrubou a compreensão de ~67 % para ~50 % ([Anthropic 2026](https://www.anthropic.com/research/AI-assistance-coding-skills)). |
 | 4 | Um script pode apontar outro objeto pelo nome (arrastar da Hierarchy para o código, como no Godot)? | sim · não, só por sinais (como hoje) | Hoje é proibido de propósito: os scripts falam com o mundo por sinais ([handoff SCRIPT §9](../../../docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_SCRIPT_2026-09-16.md)). O gesto mais elogiado do Godot depende disso. |
 
+> ✅ **Decididas pelo dono em 15/10/2026:** (1) dentro do projeto · (2) sim · (3) desligada agora; entra
+> completa e poderosa **no fim** da implementação · (4) sim, e tudo o que torne mais fácil. Consequências:
+> [`00_decisoes_do_dono.md`](../00_decisoes_do_dono.md).
+
 ---
 
 ## 2. O que a pesquisa encontrou

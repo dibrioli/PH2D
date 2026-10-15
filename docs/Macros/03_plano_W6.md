@@ -61,3 +61,31 @@ devolve-os. Os nomes das etapas já vêm de re-tocar a gravação num palco e co
 **Cena `=3` — «Wind, your turn»:** o mesmo vento da `=2`, o grafo do aluno já com as formas, o integrador, o arrasto,
 a caixa e o vento SOLTOS; a macro grava as três ligações que faltam e o «width» final. A cena abre em Edit, com o
 painel do grafo à vista, e o balão aponta a 1.ª porta. Cada ligação muda o que se vê; o vento sopra na última.
+
+## 5. W6a — feita (15/10, `6ec665ddf4` + `ceffb4d5c8`)
+
+- **Medido na cena `=3`:** a 3.ª etapa é UM gesto e TRÊS mudanças — o fio do aluno (arrasto → integrador.1), e o
+  editor muda o laço do integrador da entrada dele (`integrate.0 → integrate.1`, atrasado) para a caixa
+  (`integrate.0 → box.0`, atrasado). O critério vem do que a gravação viu o editor fazer, e as três ligações feitas
+  À MÃO cumprem-no (gate). O fio leva o `atraso` (sem ele o «Mostra-me» fechava um ciclo).
+- **Defeito apanhado pelo gate:** o «Mostra-me» desligava pela ENTRADA e tirava o fio que acabara de pôr. Cura: só
+  esse fio (`input_edge` = o gravado) e tirar antes de pôr.
+- **O modo Edit** = o objecto em edição E a ferramenta Motion na mão (`ModeFamily::holds`): a família não vê a
+  ferramenta ⇒ o «antes de começar» decide-o a família MACROS (`Familias::motion_na_mao`).
+- **O texto do autor** (`EdicaoDeEtapa.dica`, etiqueta 8, sem `exige`: não muda o que toca) — «Balloon text…» no
+  painel MACROS reusa o campo da linha do renomear.
+- **Fotos** (`fotografa_cena.sh`, 1930×1040, smoke, load 15–52): o balão «Step 1 of 4», o texto do autor, a frase,
+  os anéis nas portas Box/Wind, «Restart» e «Show me»; 59–60 fps. Os cliques provam-se nos gates (o XTest não chega à
+  sessão virtual).
+
+| Gate (por nome) | O quê |
+|---|---|
+| `ph2d-app-motion --lib macro_track::tutorial` (7) | critérios da cena; cumpre-se só feita; desfazer/refazer; à mão cumpre as 3; alvos = portas do aluno; «Mostra-me» = 1 passo de undo; «Recomeçar»; valor final × valor de antes |
+| `ph2d-motion-doc importar_um_dono_de_outro_documento_traz_o_grafo_dele` | `import_owner` |
+| `ph2d-editor-core --lib tutorial_balao` (4) | anel/cartão ao lado do alvo; os botões vencem o painel e chegam como pedido (`dispatch_all`); «Mostra-me» só com etapa por fazer; a frase |
+| `ph2d-app-macros --test it tutorial::` (4) | o Edit primeiro; progresso; «Mostra-me» com a etapa corrente; o estado que volta volta o balão; «Recomeçar»; a recusa no balão; o texto do autor; sem balão fora do `Fazer` |
+| `ph2d-app-painter --lib no_tutorial_fazer_a_macro_nao_toca_e_a_sprite_e_do_aluno` | `Fazer` ⇒ sem palco (com controlo) |
+| `ph2d-panel-macros --test it seam_macros::o_texto_do_balao_submete_a_dica_e_nao_o_nome` | o painel |
+
+**Por fazer na W6:** W6b (Painter: a área pintada — MEDIR a fracção antes de a fixar —, a ferramenta activa, o
+«Mostra-me» da pincelada), W6c (os outros meios na gravação), a prova de mutação da W6a, o fecho.

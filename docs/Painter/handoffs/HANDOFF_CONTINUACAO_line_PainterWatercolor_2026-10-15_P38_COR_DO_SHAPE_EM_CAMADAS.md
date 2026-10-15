@@ -90,16 +90,12 @@ Tabela da régua: [38_medicoes_regua_cor_do_shape.md](../NewFeaturesWetPaint/38_
   M4 ignora a ordem → G2 · M5 ignora o Mix → G2 · M6 roteador manda o padrão ao cache por cobertura →
   G1+G2 · M7 aguada indexa pelo peso → G1 (aguada).
 
-**4.º pedido (15/10):** *«B&W está fechando um dos color ramps. Não permita»* — com B&W os dois cartões
-ficam; o tom é a luminância da PILHA das duas camadas (`ensure_shape_ramp_lut`; uma só = a de sempre, ao
-bit), e a prévia em B&W idem. Portão `com_bw_as_duas_camadas_fazem_o_tom` (vermelho sob a mutação).
+**4.º (`4ecd67d726`):** B&W mantém os dois cartões; tom = luminância da pilha (`ensure_shape_ramp_lut`).
 
 ## §6 — ABERTO
 
-- **Smoke do dono** (passos na mensagem de fecho).
-- C23: Shape de imagem com silhueta pelo ALFA — a Texture Color indexa o alfa (o Krita usaria a
-  luminância); pede o plano de luminância nas rotas.
-- C24: no Continuous o valor do Shape lê-se no centro do dab (não por sub-dab); no Impasto o relevo
-  mantém o padrão e o pigmento já não recorta (assimetria do Grain em cor).
+- Smoke do dono: OK até ao Alpha (15/10); o do B&W pendente.
+- C23: Shape de imagem com silhueta pelo ALFA — a Texture Color indexa o alfa (Krita: a luminância).
+- C24: no Continuous o valor do Shape lê-se no centro do dab; no Impasto o relevo mantém o padrão.
 - C22 segue para «sem Shape» e a Falloff Color (a borda AA indexa a ponta baixa da rampa).
 - Do P36: B8–B12, C21, D2 (Rebelle não corrido).

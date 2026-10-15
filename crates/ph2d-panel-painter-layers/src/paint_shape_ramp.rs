@@ -179,7 +179,17 @@ pub(crate) fn paint_shape_ramp_section(
     } else {
         [Camada::Textura, Camada::Queda]
     };
-    let ambas = brush.shape_texture_color && brush.shape_falloff_color;
+    // Sem textura no Shape a Texture Color não tem o que colorir (a ferramenta di-lo: `TexturaSemForma`):
+    // o cartão dela fica INTEIRO esmaecido e sem clique, e o Blend some (só a Falloff pinta).
+    let textura_inerte =
+        state::current_inercias().inerte(ph2d_tool_painter::Dependente::TexturaSemForma);
+    if textura_inerte {
+        let store = ctx.host.store_mut();
+        if store.picker_target() == Some(ids.swatch) {
+            store.set_picker_target(None);
+        }
+    }
+    let ambas = brush.shape_texture_color && !textura_inerte && brush.shape_falloff_color;
     for (n, camada) in ordem.into_iter().enumerate() {
         let (titulo, id, ligada, opacidade, id_op, view, rids) = match camada {
             Camada::Textura => (
@@ -201,90 +211,152 @@ pub(crate) fn paint_shape_ramp_section(
                 falloff_ramp_ids(),
             ),
         };
-        let de_cima = n == 0;
-        let com_blend = de_cima && ambas;
-        let iw = crate::card::card_inner_w(content_w);
-        let (linhas, corpo) = if ligada {
-            (2 + usize::from(com_blend), ramp_body_height(iw, false))
-        } else {
-            (1, 0.0)
+        let cartao = Cartao {
+            titulo,
+            corpo: Corpo {
+                id,
+                ligada,
+                rids,
+                view,
+                id_op,
+                opacidade,
+            },
+            de_cima: n == 0,
+            blend: (n == 0 && ambas).then_some(brush.shape_color_blend),
+            inerte: camada == Camada::Textura && textura_inerte,
         };
-        let (ix, iw, mut ry, proximo) = crate::card::card_frame_com_extra(
+        y = paint_layer_card(ctx, theme, x, content_w, y, &cartao);
+    }
+    crate::paint_brush_top::end_fold(ctx, fold, y)
+}
+
+/// What a layer card's body paints: "Enabled", and when on its ramp editor + Opacity.
+struct Corpo<'a> {
+    id: ph2d_a11y::NodeId,
+    ligada: bool,
+    rids: RampIds,
+    view: RampView<'a>,
+    id_op: ph2d_a11y::NodeId,
+    opacidade: f32,
+}
+
+/// One layer card: its title, body, whether it is on top (the lower one carries "Move Up"), the Blend
+/// it shows (the top card, with both layers on) and whether it is INERT (the Texture Color with no Shape
+/// texture: the whole card dimmed, under a hit-less clip — 2.º smoke do dono, 15/10).
+struct Cartao<'a> {
+    titulo: &'static str,
+    corpo: Corpo<'a>,
+    de_cima: bool,
+    blend: Option<u8>,
+    inerte: bool,
+}
+
+/// Paint one layer [`Cartao`] at `y`, returning the next `y`.
+fn paint_layer_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    c: &Cartao,
+) -> f32 {
+    let iw = crate::card::card_inner_w(content_w);
+    let (linhas, extra) = if c.corpo.ligada {
+        (
+            2 + usize::from(c.blend.is_some()),
+            ramp_body_height(iw, false),
+        )
+    } else {
+        (1, 0.0)
+    };
+    let (ix, iw, ry, proximo) =
+        crate::card::card_frame_com_extra(ctx, theme, x, content_w, y, tr(c.titulo), linhas, extra);
+    // The lower card's TITLE line carries "Move Up" (brings it to the top), so its rows keep the
+    // section's column.
+    if !c.de_cima {
+        icon_button(
             ctx,
             theme,
-            x,
-            content_w,
-            y,
-            tr(titulo),
-            linhas,
-            corpo,
+            Rect::new(
+                ix + iw - MOVE_W,
+                y + Spacing::Xs.px(),
+                MOVE_W,
+                ry - y - Spacing::Xs.px(),
+            ),
+            tr("panel.painter_layers.ramp.move_up"),
+            ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_SWAP,
+            false,
+            false,
         );
-        // The lower card's TITLE line carries "Move Up" (brings it to the top), so its rows keep the
-        // section's column.
-        if !de_cima {
-            let h = ry - y;
-            icon_button(
-                ctx,
-                theme,
-                Rect::new(
-                    ix + iw - MOVE_W,
-                    y + Spacing::Xs.px(),
-                    MOVE_W,
-                    h - Spacing::Xs.px(),
-                ),
-                tr("panel.painter_layers.ramp.move_up"),
-                ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_SWAP,
-                false,
-                false,
-            );
-        }
-        ry = crate::paint_brush_top::paint_checkbox_row(
+    }
+    if c.inerte {
+        let area = Rect::new(ix, ry, iw, (proximo - ry).max(0.0));
+        ctx.host
+            .hit_index_mut()
+            .push_clip(Rect::new(ix, ry, 0.0, 0.0));
+        crate::esmaecer::esmaecido(ctx, theme, area, |ctx| {
+            pinta_corpo(ctx, theme, ix, iw, ry, &c.corpo);
+        });
+        ctx.host.hit_index_mut().pop_clip();
+        return proximo;
+    }
+    let ry = pinta_corpo(ctx, theme, ix, iw, ry, &c.corpo);
+    if let (Some(m), true) = (c.blend, c.corpo.ligada) {
+        let (_, aberto) = crate::paint_brush_rows::paint_dropdown_row(
             ctx,
             theme,
             ix,
             iw,
             ry,
-            id,
-            "panel.painter_layers.ramp.enabled",
-            ligada,
+            "panel.painter_layers.ramp.blend",
+            ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BLEND,
+            m,
+            tr(BrushBlend::from_u8(m).name_key()),
         );
-        if ligada {
-            ry = paint_ramp_body(ctx, theme, ix, iw, ry, &rids, view);
-            ry = crate::card::card_row(
-                ctx,
-                theme,
-                ix,
-                iw,
-                ry,
-                "panel.painter_layers.ramp.opacity",
-                id_op,
-                opacidade.clamp(0.0, 1.0),
-                0.0,
-                1.0,
-                crate::number_field::FINE_STEP,
-                2,
-            );
-            if com_blend {
-                let m = brush.shape_color_blend;
-                let (_, aberto) = crate::paint_brush_rows::paint_dropdown_row(
-                    ctx,
-                    theme,
-                    ix,
-                    iw,
-                    ry,
-                    "panel.painter_layers.ramp.blend",
-                    ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BLEND,
-                    m,
-                    tr(BrushBlend::from_u8(m).name_key()),
-                );
-                if let Some(r) = aberto {
-                    crate::state_shape_cor::set_pending_blend_dd(Some((r, m)));
-                }
-            }
+        if let Some(r) = aberto {
+            crate::state_shape_cor::set_pending_blend_dd(Some((r, m)));
         }
-        y = proximo;
     }
-    crate::paint_brush_top::end_fold(ctx, fold, y)
+    proximo
+}
+
+/// A layer card's body without the Blend, at `ry`; returns the next `ry`.
+fn pinta_corpo(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    ix: f32,
+    iw: f32,
+    ry: f32,
+    c: &Corpo,
+) -> f32 {
+    let ry = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        c.id,
+        "panel.painter_layers.ramp.enabled",
+        c.ligada,
+    );
+    if !c.ligada {
+        return ry;
+    }
+    let ry = paint_ramp_body(ctx, theme, ix, iw, ry, &c.rids, c.view);
+    crate::card::card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "panel.painter_layers.ramp.opacity",
+        c.id_op,
+        c.opacidade.clamp(0.0, 1.0),
+        0.0,
+        1.0,
+        crate::number_field::FINE_STEP,
+        2,
+    )
 }
 
 /// Deferred paint of the Shape ramp's open Mode / Interpolation / Alpha dropdown popovers.
@@ -397,134 +469,5 @@ fn alpha_options() -> Vec<DropdownOption<u8>> {
 }
 
 #[cfg(test)]
-mod tests {
-    //! A secção Shape Color com as duas camadas (prompt 38) pinta e regista os controlos de cada estado —
-    //! uma linha não pintada não regista hit rect, logo nenhum clique a alcança — e nenhum se sobrepõe.
-    use ph2d_a11y::NodeId;
-    use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
-    use ph2d_editor_core::screens::HeroLayout;
-    use ph2d_editor_core::zones::Rect;
-    use ph2d_text::TextSystem;
-    use ph2d_tokens::Theme;
-    use ph2d_tool_painter::{BrushSettings, PANEL_RAMP_STOPS, ids};
-    use ph2d_ui_testkit::MockPanelHost;
-    use ph2d_vector::VectorScene;
-
-    /// O corpo do painel pintado com `brush` e a secção Shape Color aberta: cada id com o seu rect.
-    fn hits(brush: BrushSettings) -> Vec<(NodeId, Rect)> {
-        crate::state::set_current_brush(Some(brush));
-        let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
-        host.store_mut()
-            .set_collapsed(ids::PAINTER_SHAPE_RAMP_SECTION, false);
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        let viewport = Rect::new(0.0, 0.0, 360.0, 8000.0);
-        let layout = HeroLayout::for_viewport(viewport);
-        {
-            let mut ctx = PaintCtx {
-                host: &mut host,
-                layout: &layout,
-                slot: layout
-                    .slot_rects(ph2d_editor_core::screens::slot::SlotSet::ANY_DOCK)
-                    .get(ph2d_editor_core::screens::slot::Slot::RightTop),
-                viewport,
-                scene: &mut scene,
-                text_system: &mut text,
-            };
-            let rect = Rect::new(0.0, 0.0, 320.0, 8000.0);
-            crate::paint_brush::paint_brush_body(&mut ctx, Theme::default(), rect, 0.0);
-        }
-        crate::state::set_current_brush(None);
-        host.hit_index_mut().iter_registrations().collect()
-    }
-
-    fn base() -> BrushSettings {
-        let mut stops = [[0.0f32; 6]; PANEL_RAMP_STOPS];
-        stops[0] = [0.0, 1.0, 0.0, 0.0, 1.0, 0.0];
-        stops[1] = [1.0, 0.0, 0.0, 1.0, 1.0, 1.0];
-        BrushSettings {
-            shape_color_ramp_enabled: true,
-            shape_color_ramp_stops: stops,
-            shape_color_ramp_stop_count: 2,
-            shape_falloff_ramp_stops: stops,
-            shape_falloff_ramp_stop_count: 2,
-            shape_falloff_color: false,
-            ..crate::paint_brush::FALLBACK_BRUSH
-        }
-    }
-
-    #[test]
-    fn as_duas_camadas_pintam_os_controlos_de_cada_estado() {
-        let tem = |h: &[(NodeId, Rect)], id| h.iter().any(|(i, _)| *i == id);
-        let so_textura = hits(base());
-        for id in [
-            ids::PAINTER_SHAPE_TEXTURE_COLOR,
-            ids::PAINTER_SHAPE_FALLOFF_COLOR,
-            ids::PAINTER_SHAPE_COLOR_SWAP,
-            ids::PAINTER_SHAPE_RAMP_BW,
-            ids::PAINTER_SHAPE_RAMP_SWATCH,
-        ] {
-            assert!(tem(&so_textura, id), "Texture Color só: falta {id:?}");
-        }
-        for id in [
-            ids::PAINTER_SHAPE_FALLOFF_RAMP_SWATCH,
-            ids::PAINTER_SHAPE_COLOR_BLEND,
-            ids::PAINTER_SHAPE_FALLOFF_OPACITY,
-        ] {
-            assert!(
-                !tem(&so_textura, id),
-                "Texture Color só: {id:?} não devia estar pintado"
-            );
-        }
-        let ambas = hits(BrushSettings {
-            shape_falloff_color: true,
-            ..base()
-        });
-        let novos = [
-            ids::PAINTER_SHAPE_TEXTURE_COLOR,
-            ids::PAINTER_SHAPE_FALLOFF_COLOR,
-            ids::PAINTER_SHAPE_COLOR_SWAP,
-            ids::PAINTER_SHAPE_FALLOFF_RAMP_ADD,
-            ids::PAINTER_SHAPE_FALLOFF_RAMP_SWATCH,
-            ids::PAINTER_SHAPE_COLOR_BLEND,
-            ids::PAINTER_SHAPE_TEXTURE_OPACITY,
-            ids::PAINTER_SHAPE_FALLOFF_OPACITY,
-            ids::PAINTER_SHAPE_RAMP_SWATCH,
-        ];
-        for id in novos {
-            assert!(tem(&ambas, id), "as duas camadas: falta {id:?}");
-        }
-        let rects: Vec<Rect> = novos
-            .iter()
-            .filter_map(|id| ambas.iter().find(|(i, _)| i == id).map(|(_, r)| *r))
-            .collect();
-        for (a, ra) in rects.iter().enumerate() {
-            for rb in &rects[a + 1..] {
-                let cruza = ra.x < rb.x + rb.w
-                    && rb.x < ra.x + ra.w
-                    && ra.y < rb.y + rb.h
-                    && rb.y < ra.y + ra.h;
-                assert!(
-                    !cruza,
-                    "dois controlos das camadas sobrepõem-se: {ra:?} × {rb:?}"
-                );
-            }
-        }
-        let bw = hits(BrushSettings {
-            shape_color_ramp_bw: true,
-            shape_falloff_color: true,
-            ..base()
-        });
-        assert!(
-            tem(&bw, ids::PAINTER_SHAPE_RAMP_SWATCH),
-            "B&W: o tom tem a sua rampa"
-        );
-        for id in [
-            ids::PAINTER_SHAPE_TEXTURE_COLOR,
-            ids::PAINTER_SHAPE_FALLOFF_COLOR,
-            ids::PAINTER_SHAPE_COLOR_BLEND,
-        ] {
-            assert!(!tem(&bw, id), "B&W (tom): {id:?} não devia estar pintado");
-        }
-    }
-}
+#[path = "paint_shape_ramp_tests.rs"]
+mod tests;

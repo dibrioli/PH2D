@@ -81,6 +81,7 @@ mod paint_selection;
 mod paint_shape;
 mod paint_shape_dab;
 mod paint_shape_layers;
+mod paint_shape_previa; // a cor da prévia da ponta pelas camadas do Shape Color (prompt 38)
 mod paint_shape_ramp;
 mod paint_stencil;
 mod paint_stroke;

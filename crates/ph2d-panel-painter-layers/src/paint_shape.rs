@@ -421,6 +421,15 @@ fn paint_shape_preview(
     // checker toward white by the coverage. The ramp applies regardless of the Grain (Enio 2026-06-26).
     let mut clut = [[0.0f32; 4]; 256];
     let colored = shape_ramp_preview_lut(&brush, &mut clut);
+    // B&W off: the Shape Color LAYERS (prompt 38) — the same stack the engine paints.
+    let camadas = crate::paint_shape_previa::camadas_da_previa(
+        &brush,
+        kind,
+        &lut,
+        image_mask.as_ref(),
+        side,
+        &cov,
+    );
     // Per-Layer Color: the tool publishes the multi-layer COLOURED composite (premultiplied RGBA) — show
     // it over the checker instead of the grayscale/ramp silhouette, so the preview reflects the layer
     // colours (the per-layer pixels live only in the tool). `None` ⇒ the grayscale/ramp path below.
@@ -453,6 +462,11 @@ fn paint_shape_preview(
                 let a = f32::from(cp[o + 3]) / 255.0; // LITERAL-PX-OK: 8-bit alpha normalize
                 let over = |prem: u8| (f32::from(c) * (1.0 - a) + f32::from(prem)) as u8; // LITERAL-PX-OK: premul over checker
                 [over(cp[o]), over(cp[o + 1]), over(cp[o + 2]), 255]
+            } else if let Some(cores) = camadas.as_ref().filter(|_| inside) {
+                let s = cores[(py * side + (px - ox)) as usize];
+                let a = s[3].clamp(0.0, 1.0);
+                let mix = |ch: f32| (f32::from(c) * (1.0 - a) + ch * 255.0 * a) as u8; // LITERAL-PX-OK: 8-bit composite
+                [mix(s[0]), mix(s[1]), mix(s[2]), 255]
             } else if colored && inside {
                 // `ramp[coverage]` (sRGB straight) composited over the checker at coverage × stop alpha.
                 let s = clut[((cf * 255.0) as usize).min(255)]; // LITERAL-PX-OK: 256-entry LUT index

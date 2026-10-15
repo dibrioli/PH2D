@@ -96,6 +96,15 @@ fn foto_shape_color() {
         ("3_ambas_queda_em_cima", estado(true, true, true, false)),
         ("4_so_queda", estado(false, true, false, false)),
         ("5_bw", estado(true, true, false, true)),
+        (
+            "6_sem_textura",
+            BrushSettings {
+                inercias: ph2d_tool_painter::PainterTool::default()
+                    .brush_settings()
+                    .inercias,
+                ..estado(true, true, false, false)
+            },
+        ),
     ] {
         let px = foto(&gpu, b);
         image::save_buffer(

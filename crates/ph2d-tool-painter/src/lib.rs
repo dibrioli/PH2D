@@ -111,6 +111,7 @@ pub use ph2d_painter_brush::{
     PAPER_TOOTH_MAX,
     ParamSpec,
     RampAlphaMode,
+    ShapeRampLayers,
     StrokeMethod,
     TEX_ANGLE_MAX_DEG,
     TEX_OFFSET_MAX,

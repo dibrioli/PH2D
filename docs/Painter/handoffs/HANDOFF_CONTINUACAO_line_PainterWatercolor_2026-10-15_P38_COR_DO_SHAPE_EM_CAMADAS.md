@@ -29,6 +29,14 @@ fotografada antes de ir ao dono: [foto](../NewFeaturesWetPaint/38_foto_secao_sha
 (`foto_shape_color_tests`, vello na placa, `PH2D_FOTO_DIR` + `--ignored`). O censo dos controlos
 apanhou o «Use Color Ramp» morto num pincel sem textura antes da Falloff nascer ligada.
 
+**2.º smoke (15/10):** *«Texture em none, color ramp do Texture está transmitindo cor… deve ficar apagado e
+inativo completamente… o falloff color não chegou ao pincel»*. O MOTOR pintava certo (sonda: a Falloff
+verde); quem mentia era a **prévia da ponta** (`paint_shape.rs`), que desenhava `rampa_da_Texture[cobertura]`.
+Cura: a prévia pinta a mesma pilha (`paint_shape_previa.rs`, portão `a_previa_da_ponta_pinta_as_camadas_sem_textura`,
+vermelho sob a mutação); o cartão da Texture Color inteiro esmaecido e sem clique sem textura (recorte de
+hit vazio; portão em `paint_shape_ramp_tests.rs`). Tectos: testes e prévia em ficheiros irmãos, o cartão
+numa função (`paint_layer_card`).
+
 ## §3 — A lei (uma porta: `ph2d-painter-brush/src/ramp_alpha.rs`)
 
 - `RampIndex::{Grain, Shape}` (o `Silhouette` do P36 saiu); `RampPaint.shape: ShapeRampLayers`.

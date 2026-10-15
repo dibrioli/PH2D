@@ -7,7 +7,7 @@
 
 use parley::FontContext;
 use parley::fontique::{Blob, FontInfoOverride};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 /// Inter Variable (v4.0, SIL OFL) — bundled so chrome text rasterizes
 /// to the same glyphs everywhere, independent of installed system fonts.
@@ -107,9 +107,12 @@ pub fn displayed_font_px(nominal: f32) -> f32 {
 pub(crate) fn register_bundled(font_context: &mut FontContext, tail: &str) -> [String; UI_FONTS] {
     // As letras do DOCUMENTO e do CÓDIGO (não são escolha da interface): só se registam, quem as
     // pede nomeia-as (a mono pela pilha [`ph2d_tokens::FONT_MONO`]).
-    for (bytes, family) in [(VIRGIL_TTF, HAND_FAMILY), (JETBRAINS_MONO_TTF, MONO_FAMILY)] {
+    for (i, (bytes, family)) in [(VIRGIL_TTF, HAND_FAMILY), (JETBRAINS_MONO_TTF, MONO_FAMILY)]
+        .into_iter()
+        .enumerate()
+    {
         let registered = font_context.collection.register_fonts(
-            Blob::new(Arc::new(bytes)),
+            Blob::new(Arc::new(registada(&SEM_PREP[UI_FONTS + i], bytes))),
             Some(FontInfoOverride {
                 family_name: Some(family),
                 ..Default::default()
@@ -120,8 +123,9 @@ pub(crate) fn register_bundled(font_context: &mut FontContext, tail: &str) -> [S
             "a fonte embutida {family} não registou"
         );
     }
-    BUNDLED.map(|(bytes, family)| {
-        let blob = Blob::new(Arc::new(bytes));
+    std::array::from_fn(|i| {
+        let (bytes, family) = BUNDLED[i];
+        let blob = Blob::new(Arc::new(registada(&SEM_PREP[i], bytes)));
         let override_info = FontInfoOverride {
             family_name: Some(family),
             ..Default::default()
@@ -134,5 +138,91 @@ pub(crate) fn register_bundled(font_context: &mut FontContext, tail: &str) -> [S
         } else {
             format!("{family}{tail}")
         }
+    })
+}
+
+/// Os bytes REGISTADOS de cada fonte embutida: as da interface pela ordem de [`BUNDLED`], depois a
+/// Virgil e a mono. Calculados uma vez por processo.
+static SEM_PREP: [OnceLock<Option<Vec<u8>>>; UI_FONTS + 2] =
+    [const { OnceLock::new() }; UI_FONTS + 2];
+
+fn registada(slot: &'static OnceLock<Option<Vec<u8>>>, raw: &'static [u8]) -> &'static [u8] {
+    slot.get_or_init(|| without_prep_table(raw))
+        .as_deref()
+        .unwrap_or(raw)
+}
+
+/// ⭐⭐ **A fonte sem a tabela `prep`, quando ela é INERTE** — `None` se não há `prep`, ou se a
+/// fonte traz hinting de verdade (`fpgm` ou instruções em algum glifo), que fica intocado.
+///
+/// O Vello pede ao skrifa `Engine::AutoFallback`, que escolhe o interpretador TrueType sempre que
+/// a fonte tem `fpgm`, `prep` ou instruções. A Noto, a Atkinson e a JetBrains Mono trazem um
+/// `prep` de 7 bytes (`SCANCTRL`/`SCANTYPE`, só *dropout control*) e zero instruções ⇒ o
+/// interpretador corre e não mexe em nada, e `hint(true)` é um no-op. Sem o `prep` cai no
+/// autohinter. Medição: `docs/CodeEditor/ferramentas/medicoes/igual_perfis.txt`.
+///
+/// A saída é um sfnt válido: as outras tabelas byte a byte iguais (alinhadas a 4), os
+/// registos com o checksum original, e só o `head.checkSumAdjustment` recalculado.
+#[must_use]
+pub fn without_prep_table(font: &[u8]) -> Option<Vec<u8>> {
+    use read_fonts::types::{GlyphId, Tag};
+    use read_fonts::{FontRef, TableProvider, tables::glyf::Glyph};
+    const PREP: Tag = Tag::new(b"prep");
+    const HEAD: Tag = Tag::new(b"head");
+    let f = FontRef::new(font).ok()?;
+    let records = f.table_directory.table_records();
+    if !records.iter().any(|r| r.tag() == PREP) || f.table_data(Tag::new(b"fpgm")).is_some() {
+        return None;
+    }
+    let (loca, glyf) = (f.loca(None).ok()?, f.glyf().ok()?);
+    for gid in 0..u32::from(f.maxp().ok()?.num_glyphs()) {
+        let instr = match loca.get_glyf(GlyphId::new(gid), &glyf).ok()? {
+            Some(Glyph::Simple(g)) => g.instructions(),
+            Some(Glyph::Composite(g)) => g.instructions().unwrap_or_default(),
+            None => &[],
+        };
+        if !instr.is_empty() {
+            return None;
+        }
+    }
+    let kept: Vec<_> = records.iter().filter(|r| r.tag() != PREP).collect();
+    let n = u16::try_from(kept.len()).ok()?;
+    let sel = 15 - n.leading_zeros() as u16; // ⌊log2 n⌋
+    let range = (1u16 << sel) * 16;
+    let mut out = Vec::with_capacity(font.len());
+    out.extend_from_slice(&f.table_directory.sfnt_version().to_be_bytes());
+    for v in [n, range, sel, n * 16 - range] {
+        out.extend_from_slice(&v.to_be_bytes());
+    }
+    let mut at = out.len() + 16 * kept.len();
+    let mut head_at = None;
+    for r in &kept {
+        out.extend_from_slice(&r.tag().to_be_bytes());
+        out.extend_from_slice(&r.checksum().to_be_bytes());
+        out.extend_from_slice(&u32::try_from(at).ok()?.to_be_bytes());
+        out.extend_from_slice(&r.length().to_be_bytes());
+        if r.tag() == HEAD {
+            head_at = Some(at);
+        }
+        at += (r.length() as usize).next_multiple_of(4);
+    }
+    for r in &kept {
+        out.extend_from_slice(f.table_data(r.tag())?.as_bytes());
+        out.resize(out.len().next_multiple_of(4), 0);
+    }
+    let adj = head_at? + 8;
+    out[adj..adj + 4].fill(0);
+    let soma = sfnt_checksum(&out);
+    out[adj..adj + 4].copy_from_slice(&0xB1B0_AFBA_u32.wrapping_sub(soma).to_be_bytes());
+    Some(out)
+}
+
+/// A soma de `u32` big-endian do sfnt (o `CalcTableChecksum` da OpenType).
+#[must_use]
+pub fn sfnt_checksum(b: &[u8]) -> u32 {
+    b.chunks(4).fold(0u32, |s, c| {
+        let mut w = [0u8; 4];
+        w[..c.len()].copy_from_slice(c);
+        s.wrapping_add(u32::from_be_bytes(w))
     })
 }

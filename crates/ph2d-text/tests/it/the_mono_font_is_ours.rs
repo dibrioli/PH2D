@@ -1,13 +1,18 @@
 //! ⭐⭐ **A pilha mono resolve para a JetBrains Mono EMBUTIDA e ela é monoespaçada** (CodeEditor T5).
 //!
 //! A régua é o ficheiro no disco (`include_bytes!` daqui, não a porta do produto): cada run moldado
-//! pela pilha [`ph2d_tokens::FONT_MONO`] tem de trazer EXACTAMENTE esses bytes. O controlo negativo
+//! pela pilha [`ph2d_tokens::FONT_MONO`] tem de trazer EXACTAMENTE esses bytes, sem o `prep`
+//! (o que o registo tira; `the_bundled_fonts_lose_only_an_inert_prep.rs`). O controlo negativo
 //! (a pilha da interface não os traz) prova que a comparação discrimina.
 
 use parley::{FontFamily, Layout, PositionedLayoutItem, StyleProperty};
 use ph2d_text::{MONO_FAMILY, TextSystem};
 
 const EMBEDDED: &[u8] = include_bytes!("../../fonts/JetBrainsMonoVariable.ttf");
+/// O que o registo faz destes bytes: tira o `prep` inerte (`without_prep_table`, CodeEditor 15/10).
+static REGISTERED: std::sync::LazyLock<Vec<u8>> = std::sync::LazyLock::new(|| {
+    ph2d_text::without_prep_table(EMBEDDED).expect("a mono embutida traz o `prep` inerte")
+});
 const SIZE_PX: f32 = 14.0;
 
 fn shape(sys: &mut TextSystem, text: &str, mono: bool) -> Layout<()> {
@@ -31,7 +36,7 @@ fn glyphs(layout: &Layout<()>) -> Vec<(bool, u32, f32)> {
     for line in layout.lines() {
         for item in line.items() {
             if let PositionedLayoutItem::GlyphRun(gr) = item {
-                let ours = gr.run().font().data.data() == EMBEDDED;
+                let ours = gr.run().font().data.data() == REGISTERED.as_slice();
                 out.extend(gr.glyphs().map(|g| (ours, g.id, g.advance)));
             }
         }

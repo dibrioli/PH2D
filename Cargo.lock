@@ -8907,6 +8907,7 @@ version = "0.0.0"
 dependencies = [
  "parley",
  "ph2d-tokens",
+ "read-fonts",
 ]
 
 [[package]]

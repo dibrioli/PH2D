@@ -18,6 +18,9 @@ parley = "0.11.1"
 # Rendering Phase 0). Used by `layout_for_rendering` to bump nominal
 # FontWeight at small sizes when the rendering strategy is Crisp.
 ph2d-tokens = { path = "../ph2d-tokens" }
+# read-fonts — lê o directório de tabelas para tirar o `prep` inerte das fontes embutidas
+# (`bundled::without_prep_table`). Já no grafo (skrifa 0.44 → read-fonts 0.41.0).
+read-fonts = "0.41.0"
 
 [lints]
 workspace = true

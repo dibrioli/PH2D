@@ -87,5 +87,77 @@ painel do grafo à vista, e o balão aponta a 1.ª porta. Cada ligação muda o 
 | `ph2d-app-painter --lib no_tutorial_fazer_a_macro_nao_toca_e_a_sprite_e_do_aluno` | `Fazer` ⇒ sem palco (com controlo) |
 | `ph2d-panel-macros --test it seam_macros::o_texto_do_balao_submete_a_dica_e_nao_o_nome` | o painel |
 
-**Por fazer na W6:** W6b (Painter: a área pintada — MEDIR a fracção antes de a fixar —, a ferramenta activa, o
-«Mostra-me» da pincelada), W6c (os outros meios na gravação), a prova de mutação da W6a, o fecho.
+### 5.1 Depois: o grafo arruma-se ao abrir e os nós soltos em fila
+
+Decisão do dono (15/10) = opção (a) do ABERTO de [`HANDOFF_CONTINUACAO_W6_FAZER`](handoffs/HANDOFF_CONTINUACAO_W6_FAZER_2026-10-15.md):
+o arrumar põe os nós SOLTOS (sem fio) LADO A LADO numa fila, em vez de uma banda cada, empilhadas a `BAND_GAP`
+(Box→Wind = 650 unidades; o Wind caía fora do editor no zoom legível 0,35). Lei 4 de
+`crates/ph2d-nodegraph/src/layout.rs` (`loose_row`): os cartões soltos partilham UMA banda, no lugar do primeiro
+deles, por ordem de chave; colunas a `GAP_X` entre as caixas DESENHADAS, linhas a `GAP_Y`; a fila quebra além da banda
+ligada mais larga e tem sempre ⌈√n⌉ (grafo sem fios = quadrado). O espaçamento contra a sobreposição (dono, 20/09)
+fica igual. Commit `6e4095966b`.
+
+- **Gates:** layout `loose_cards_lie_side_by_side_in_one_row`, `a_long_row_of_loose_cards_wraps_inside_the_widest_band`,
+  `a_graph_with_no_wire_comes_out_square`; `ph2d-app-motion --lib macro_track::tutorial os_nos_soltos_da_cena_ficam_lado_a_lado`.
+- **Foto da `=3`:** Drag, Box e Wind numa fila, o anel entre Box e Wind, o balão «Step 1 of 4».
+
+## 6. W6b — feita (15/10, `baf7fa3a17` + `c545d65eb2`)
+
+**A lei.** Cada pincelada gravada = uma REGIÃO: o caminho gravado do ponteiro em px da imagem da tela do aluno + o
+raio da pincelada, da trilha JOGÁVEL (com as edições). O critério conta só a parte NOVA da região (os pixels que
+nenhuma pincelada anterior da gravação cobre). «Pintado» = alguma camada difere da MESMA camada do estado inicial
+(a camada que o aluno criou conta pelo alfa; o inicial é reamostrado ao vizinho mais próximo para outro tamanho de
+tela). Progresso = a 1.ª pincelada abaixo da fracção; pára aí.
+
+- **Preparo por família:** o Motion pede Edit; o Painter pede a imagem em modo Paint (Painter activo E ligado à
+  imagem-alvo da trilha), depois o meio gravado.
+- **«Mostra-me»:** os passos do Ponteiro gravado pelas portas da ferramenta viva, com a cor/tamanho da pincelada;
+  o pincel do aluno é restaurado depois; um passo de undo.
+- **«Recomeçar»:** o documento volta ao estado inicial da trilha como UM passo de undo estrutural
+  (`PainterTool::recomeca_com`; a sessão molhada assenta antes).
+
+### 6.1 Medição da fracção (antes de a fixar)
+
+Sonda `macro_track::tutorial::sonda::sonda_a_fracao_pintada_por_variante`, Splash gravado, o aluno faz certas as
+pinceladas anteriores e a pincelada k de cada maneira:
+`cargo test -p ph2d-tool-painter --profile smoke --lib macro_track::tutorial::sonda -- --ignored --nocapture`.
+Fracção da parte NOVA, «pintado» exacto (qualquer diferença), pinceladas 1–4:
+
+| Variante | 512² | 1024² |
+|---|---|---|
+| Exacta | 96,2 / 94,9 / 93,2 / 95,7 % | 98,3 / 97,4 / 96,9 / 97,6 % |
+| Desloca ½ r | 78,6 / 91,3 / 75,1 / 83,0 | — |
+| Desloca 1 r | 53,1 / 78,7 / 51,0 / 59,2 | 56,0 / 67,8 / 55,1 / 56,2 |
+| Desloca 2 r | 6,8 / 27,4 / 12,4 / 16,8 | — |
+| Fina (½ raio) | 46,5 / 47,3 / 47,7 / 51,8 | — |
+| Metade (meio caminho) | 57,6 / 82,0 / 42,1 / 58,5 | 51,6 / 59,0 / 42,5 / 51,7 |
+| Longe | 0 / 14,6 / 9,0 / 11,2 | — |
+| Nada | 0 / 14,6 / 9,0 / 11,2 | 0 / 6,0 / 4,8 / 3,5 |
+| «Mostra-me» | = Exacta à décima | = Exacta |
+
+- **⛔ Recusado — a região INTEIRA em vez da parte nova:** «Nada» chega a 50,0 % (512², pincelada 2), porque as
+  anteriores já a pintam. A parte nova é a régua. Parte nova / região inteira: 100/58/56/62 % (512²), 100/90/68/80 %
+  (1024²).
+- **⛔ Recusado — «pintado» = diferença de canal > 16:** a pincelada exacta cai para 64,9–68,4 % (512²). Fica a
+  diferença exacta.
+- **Decisão:** `FRACAO_QUE_CUMPRE = 0.70` — aceita a mão meio raio ao lado (mín. 75,1 %), manda o pincel fino
+  (≤ 52 %) continuar a encher; o ruído (nada pintado) ≤ 14,6 %. Custo da avaliação ≤ 0,22 ms por pincelada (1024²,
+  perfil smoke).
+
+### 6.2 O produto
+
+- `PedidoDoTutorial::{AbreParaPintar, Meio{chave_do_meio}, Pinta}`; `AreaNaImagem` no balão.
+- O Painter desenha a área marcada sobre a imagem: uma faixa TRANSLÚCIDA do acento com a largura da pincelada + o
+  caminho tracejado. ⛔ `AccentSoft` recusado: é opaco e na foto da `=4` a faixa lia-se como tinta já pintada
+  (`c545d65eb2`).
+- Cena `PH2D_MACRO_SMOKE=4`: a tela branca 1024² com o Splash em modo Fazer; abre em modo Paint com Wet Paint (como
+  a `=3` abre em Edit); texto do autor na pincelada 1.
+
+| Gate (por nome) | O quê |
+|---|---|
+| `ph2d-tool-painter --lib macro_track::tutorial::tests` (6) | cumpre-se só feita + desfazer/refazer; mão torta cumpre, pincel fino e nada não; a parte nova não conta a anterior; o preparo; recomeçar = 1 passo de undo; «Mostra-me» devolve o pincel do aluno |
+| `ph2d-app-macros --test it tutorial_painter` (2) | o balão pede a imagem em Paint e depois o meio, a tela branca não conta como pintada; «Mostra-me» / Ctrl+Z / «Recomeçar» pela família MACROS |
+| `ph2d-editor-core --lib tutorial_balao` (5) | inclui as frases do Painter e o «Mostra-me» só numa pincelada por fazer |
+
+**Por fazer na W6:** W6c em curso (a recusa do meio retirada; o estado inicial leva o meio; censo sobre os quatro
+meios), a prova de mutação da W6a+W6b, o fecho.

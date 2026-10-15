@@ -27,7 +27,7 @@ use std::sync::Arc;
 /// lower layer's accumulated coverage across the WHOLE stroke — not per dab (which buries earlier
 /// highlights). Reset once per stroke in `paint_begin` for the incremental methods, or per fill for the
 /// one-batch preview methods. `pre.is_empty()` ⇒ not yet initialised this stroke.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct PerLayerStroke {
     pub(super) pre: Vec<u8>,
     pub(super) cov: Vec<Vec<u8>>,
@@ -68,7 +68,7 @@ const PREVIEW_SIZE: u32 = 128;
 /// appearance [`ColorStampKey`] at [`PREVIEW_SIZE`] — so the host re-renders it only when the Shape
 /// appearance changes, NOT per frame (it was re-baking + re-allocating every frame). `None` ⇒ not in
 /// Per-Layer Color mode → the panel falls back to the grayscale silhouette.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct ShapeColorPreview {
     cache: Option<(Arc<Vec<u8>>, ColorStampKey)>,
 }

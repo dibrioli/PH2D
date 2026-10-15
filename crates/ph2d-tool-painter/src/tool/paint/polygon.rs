@@ -41,6 +41,7 @@ const H_CENTER: u8 = 6;
 
 /// In-progress Polygon session: the inscribing ellipse `(center, u, rx, ry)`, the side count, the
 /// current grab + the draw-vs-edit phase. Held in [`PaintState::polygon`]; `None` when idle.
+#[derive(Clone)]
 pub(super) struct PolygonEditor {
     center: [f32; 2],
     u: [f32; 2],

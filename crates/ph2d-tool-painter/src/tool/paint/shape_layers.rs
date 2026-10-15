@@ -28,7 +28,7 @@ pub const MAX_SHAPE_LAYERS: usize = 16;
 /// the panel-picked `manual_blend[i]` (the "B" dropdown). **Opacity** `opacity[i]` scales that layer's tip
 /// contribution at recomposite AND mirrors the SOURCE document layer's opacity (`doc_ids[i]`): the box is
 /// two-way with that layer's Layers-panel slider (guarded to the captured source, never the wrong layer).
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct ShapeLayers {
     /// The ACTIVE silhouette per layer — **derived**, never authored: [`Self::rebuild_derived`] builds
     /// it from [`Self::src`] (o alpha autorado) or from the luminance of [`Self::rgb`].

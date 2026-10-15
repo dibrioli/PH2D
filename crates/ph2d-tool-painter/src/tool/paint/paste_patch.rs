@@ -199,6 +199,7 @@ impl PastePatch {
 ///
 /// ⚠️ Os três planos do impasto são `None` juntos: ou a peça tem corpo e o composite os toca, ou não tem e
 /// eles nem são lidos.
+#[derive(Clone)]
 pub(crate) struct PastePristine {
     pub rect: Region,
     pub rgba: Vec<u8>,

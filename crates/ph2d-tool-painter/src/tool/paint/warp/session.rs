@@ -48,6 +48,7 @@ use std::sync::Arc;
 
 /// The frozen baselines + cumulative displacement of one warp gesture. See the module docs for who owns
 /// an instance and when.
+#[derive(Clone)]
 pub(crate) struct WarpSession {
     /// Pristine pixels at session start — Reconstruct fades back to this, Reset restores it wholesale,
     /// and every render resamples it exactly once.

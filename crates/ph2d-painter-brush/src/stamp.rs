@@ -18,6 +18,7 @@ use crate::texture::ImageMask;
 /// A rendered brush stamp: per-texel coverage (falloff × baked View texture) over the dab's bounding
 /// square `[-1, 1]²`, as `u8` alpha (`0` = no paint, `255` = full). Scale-invariant, so one mask
 /// serves every dab size via [`blit_stamp`].
+#[derive(Clone)]
 pub struct StampMask {
     data: Vec<u8>,
     size: u32,

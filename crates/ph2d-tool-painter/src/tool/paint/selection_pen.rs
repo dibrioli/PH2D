@@ -44,6 +44,7 @@ const MIN_CLOSE_POINTS: usize = 3;
 /// O `model` nasce ABERTO (`closed = false`) e só fecha no commit: enquanto ele está aberto, o desenho
 /// que o artista vê é o caminho, e a região que o preview aplica é esse caminho **implicitamente
 /// fechado** — exatamente o que ele receberá ao fechar.
+#[derive(Clone)]
 pub(crate) struct SelectionPen {
     /// O caminho autorado — âncoras + tangentes `[in, out]` + tipos, sempre paralelos.
     pub(super) model: CurveModel,

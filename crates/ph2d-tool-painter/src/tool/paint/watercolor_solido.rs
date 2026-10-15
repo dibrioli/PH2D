@@ -41,6 +41,7 @@ const PLANOS: usize = 6;
 
 /// O registo da mancha provisória do gesto à mão livre, sob a caixa `rect` (que cresce com a mancha
 /// e não encolhe durante o gesto).
+#[derive(Clone)]
 pub(crate) struct ManchaNaAguada {
     rect: Region,
     /// O PAPEL SEM A MANCHA, plano a plano (`None` = o plano não existia quando o registo nasceu, e

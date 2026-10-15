@@ -78,6 +78,7 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
 /// batch (*"o teto capava a tinta comum"*, §13.8). Here the 22 sites collapse into ONE question asked at
 /// the top of every batch — *did anything change under me?* — answered by three witnesses ([`Self::witness`],
 /// [`Self::scratch_gen`], [`Self::layer`]). Enumeration rots; a witness does not.
+#[derive(Clone)]
 pub(crate) struct GateSession {
     /// The canvas as the protection found it — what a fully-protected texel keeps forever. An `Arc` clone,
     /// so seeding costs a refcount, not a copy (the first `make_mut` on the canvas forks it once and the
@@ -424,6 +425,8 @@ impl Default for PainterTool {
 
 // ── Submodules (god-object split, pure mechanical move) ──
 mod documents;
+mod instantaneo; // a cópia de que o tocador de uma macro recomeça uma etapa (W5c)
+pub use instantaneo::SemInstantaneo;
 mod internal;
 mod outline;
 pub(crate) use internal::*;

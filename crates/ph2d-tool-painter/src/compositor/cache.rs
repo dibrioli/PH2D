@@ -10,7 +10,7 @@ use super::*;
 /// (≤1 ms slider-drag @ 4K). v1 composites inline (no cache wired into the hot
 /// path yet); this type + the dirty-rect field land the contract (HR-5
 /// `BTreeMap`, not `HashMap`) for the impl/T4.x to wire.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct CompositorCache {
     /// Cached straight encoded accumulator just below each adjustment layer,
     /// keyed by the adjustment's [`LayerId`]. Stable key + deterministic

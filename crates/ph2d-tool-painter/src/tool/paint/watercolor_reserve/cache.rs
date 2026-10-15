@@ -60,6 +60,7 @@ const LADO: usize = 64;
 
 /// O campo da reserva do canvas inteiro, um plano por raio distinto, e QUE ladrilhos dele já foram
 /// calculados (ver a invariante no cabeçalho).
+#[derive(Clone)]
 pub(in crate::tool::paint) struct ReserveCache {
     fw: usize,
     fh: usize,

@@ -80,7 +80,7 @@ impl super::PainterTool {
 
 /// O mapa do **Flow** carregado pelo "Use as Flow" (`edge_flow.kind == Image`) e a VERSÃO dele — sobe a
 /// cada instalação, e é por ela (nunca pelo endereço) que o memo das estatísticas o reconhece.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct MapaDoFluxo {
     pub(super) imagem: Option<super::brush_settings::BrushTextureImage>,
     pub(super) versao: u64,

@@ -163,6 +163,7 @@ fn marca(i: usize, t: std::time::Instant) {
 /// ⚠️ As listas são as do [`PainterTool::camada_dabs`] (escala, cor e a subamostragem por arco), e
 /// guardá-las RESOLVIDAS é o que torna o replay possível: aquele acumulador de arco é estado por
 /// traço, e recalculá-lo no replay entregaria outra lista de dabs a cada recomposição.
+#[derive(Clone)]
 pub(super) struct LoteDaPilha {
     pub(super) camadas: [Vec<Dab>; N_CAMADAS],
     /// A posição do fluxo de RNG **de cada camada** quando este lote correu pela primeira vez.
@@ -172,7 +173,7 @@ pub(super) struct LoteDaPilha {
 }
 
 /// O estado da pilha ao longo de UM traço. `pre` vazio = a pilha não está aberta.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct PilhaDoTraco {
     /// A tela no pen-down — a base de que toda recomposição parte.
     pub(super) pre: Vec<u8>,

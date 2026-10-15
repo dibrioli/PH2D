@@ -49,6 +49,7 @@ pub(super) struct TrabalhoDoCampo {
 
 /// **O que o laço devolve** — o campo e o rascunho de volta, o último pingo, o fluxo aleatório no
 /// fim, a caixa tocada e a contagem de arcos (a sonda da recusa).
+#[derive(Clone)]
 pub(super) struct CampoFeito {
     disp: Vec<[f32; 2]>,
     scratch: ph2d_painter_brush::smear_field::SmearScratch,

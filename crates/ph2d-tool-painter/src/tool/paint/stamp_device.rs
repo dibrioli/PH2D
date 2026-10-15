@@ -109,7 +109,7 @@ pub fn build_lut(brush: &BrushSpec) -> Vec<f32> {
 /// ⚠️ **`Falloff::Custom` NUNCA é cacheado**: a curva é editável e não entra na chave, então um
 /// cache o congelaria no perfil de quando o artista abriu o card — *um cache que erra por não
 /// perceber uma edição é pior que nenhum*.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct LutCache {
     key: Option<(u32, u8, bool)>,
     table: Vec<f32>,

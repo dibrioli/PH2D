@@ -98,7 +98,7 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::Dab;
 
 /// O estado do depósito de altura que é de UMA camada ao longo do traço.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct RelevoDaCamada {
     cadeia: Vec<Option<([f32; 2], f32)>>,
     onda: Vec<(f32, Option<WaveTip>)>,
@@ -108,7 +108,7 @@ pub(super) struct RelevoDaCamada {
 
 /// ⭐ **O envelope de UMA camada Brush** — os mesmos cinco planos do envelope do traço
 /// ([`super::relief_state::ReliefState`]), trocados com eles à volta do depósito dela.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct PlanosDoCorpo {
     height: Vec<f32>,
     paint: Vec<f32>,

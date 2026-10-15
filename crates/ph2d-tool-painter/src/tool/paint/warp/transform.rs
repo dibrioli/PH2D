@@ -64,6 +64,7 @@ pub(crate) struct PoseSnap {
 }
 
 /// The full live-transform state saved when undo UN-LIFTS it, so redo can re-lift the float + gizmo exactly.
+#[derive(Clone)]
 pub(crate) struct Relift {
     pub patch: FloatingPatch,
     pub xform: Xform,

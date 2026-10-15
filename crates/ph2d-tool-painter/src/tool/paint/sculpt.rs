@@ -100,6 +100,7 @@ pub(super) use mode::{MemoKey, SculptFamily, SculptMode};
 /// Apply button precisely because it is not committed — so while a shape is open the knobs do re-render it
 /// ([`Self::refresh_live_sculpt`] gates on `open`). That is not an exception to the rule; it is the rule:
 /// *the session lives exactly as long as the gesture is uncommitted.*
+#[derive(Clone)]
 pub(crate) struct SculptState {
     /// Sub-mode (`0` Smooth · `1` Sharpen).
     pub(crate) mode: u8,

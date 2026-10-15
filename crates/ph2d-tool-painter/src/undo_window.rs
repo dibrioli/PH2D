@@ -143,7 +143,7 @@ const fn union(a: Region, b: Region) -> Region {
 /// ⚠️ **Os dois campos respondem à MESMA pergunta por dois caminhos** (*o que este passo escreveu?*) —
 /// a janela responde ONDE, o journal responde O QUÊ ESTAVA LÁ. Ficam juntos de propósito: separá-los
 /// em dois campos do tool seria abrir espaço para um sítio declarar num e esquecer o outro.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct WriteState {
     win: std::cell::Cell<WriteWindow>,
     /// Quantas trocas de plano estão de pé — enquanto for ímpar, o campo `canvas_rgba` do tool hospeda
@@ -184,7 +184,7 @@ pub struct WriteState {
 /// passa pela porta GENÉRICA (`fork_par`) não sabe dizer de que plano é, então o journal do relevo não
 /// pode afirmar que descreve o passo. Ele responde `false`, o commit deriva como sempre, e cada sítio
 /// que aprende a sua porta nomeada passa a pagar só a região — *lento, nunca errado*.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct ReliefJournals {
     layer: Option<crate::layers::LayerId>,
     mixed: bool,

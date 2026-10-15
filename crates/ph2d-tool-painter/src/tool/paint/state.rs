@@ -12,6 +12,7 @@
 
 use super::*;
 
+#[derive(Clone)]
 pub(crate) struct PaintState {
     /// The active brush.
     pub(super) brush: BrushSpec,

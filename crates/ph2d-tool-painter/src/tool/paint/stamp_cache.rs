@@ -15,6 +15,7 @@ use ph2d_painter_brush::{
 /// pixel's texture value is dab-independent): each canvas pixel's texture is computed once per stroke
 /// and reused by every later dab — see [`ph2d_painter_brush::blit_canvas_cached`]. `tex` + `ready`
 /// are `width*height`; persisted across the stroke (and strokes) until the key / size changes.
+#[derive(Clone)]
 pub(super) struct CanvasTexCache {
     tex: Vec<u8>,
     ready: Vec<u8>,

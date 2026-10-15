@@ -14,6 +14,7 @@ use super::*;
 /// A stashed working document: the layer model + its pixels + the per-document history & selection, held
 /// in [`PainterTool::doc_cache`] by sprite id across sprite switches. The transient composite caches are
 /// NOT stashed — they are rebuilt on restore.
+#[derive(Clone)]
 pub(crate) struct StashedDoc {
     canvas_rgba: Arc<Vec<u8>>,
     layers: LayerStack,

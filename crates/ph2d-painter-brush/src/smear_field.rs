@@ -362,7 +362,7 @@ pub struct SmearOut<'a> {
 /// Caller-owned scratch so a hot stroke allocates nothing: the snapshot of the old map over one dab's
 /// window. (Até 2026-10-01 levava também os pares `(índice, peso)` da pegada; desde que as linhas se
 /// compõem por faixas a pegada é percorrida e composta no mesmo passo, sem lista.)
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct SmearScratch {
     win: Vec<[f32; 2]>,
 }

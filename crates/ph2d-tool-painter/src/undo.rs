@@ -335,7 +335,7 @@ impl UndoEntry {
 /// points: just after a structural edit commits ([`Self::record_structural`]),
 /// and when the gesture/shell requests [`Self::undo`] / [`Self::redo`] (each
 /// returns the [`ModelSnapshot`] the caller must reinstall).
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct UndoController {
     /// **O estado de ESCRITA desde o último commit** — a janela declarada e o journal dos bytes
     /// velhos (ver [`window::WriteState`]).

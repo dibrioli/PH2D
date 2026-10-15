@@ -63,6 +63,7 @@ const MIN_CAPTURE_DIST_SQ: f32 = 4.0;
 const MAX_FREEHAND_CAPTURE: usize = 4096;
 /// In-progress Curve session: the shared editable [`CurveModel`] + the stroke-specific grab / phase state.
 /// In [`PaintState::curve`].
+#[derive(Clone)]
 pub(super) struct CurveEditor {
     /// The shared editing core — control points + parallel `[in, out]` handles + kinds + selection + closed.
     /// EMPTY handles while drawing the initial line; `≥ 2` points + parallel handles once editing.

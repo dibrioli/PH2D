@@ -14,6 +14,7 @@ use crate::tool::PainterTool;
 /// The cached Catmull-Rom subdivision of the PRISTINE Warp grid — constant during a whole drag, but it
 /// was re-subdivided every move. Self-validating: `pristine` is compared against the live mesh's control
 /// points, so a reseed / undo / redo simply re-fills it (no lifecycle to forget).
+#[derive(Clone)]
 pub(crate) struct MeshFineCache {
     pristine: Vec<[f32; 2]>,
     pts: Vec<[f32; 2]>,

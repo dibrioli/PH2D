@@ -17,7 +17,7 @@ pub(super) struct WaveTip {
 
 /// See the module docs. Fields are `pub(super)` so the whole `paint` module tree reaches them exactly as
 /// it did when they lived on `PaintState` directly.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct ReliefState {
     /// **Impasto** per-stroke relief (f32, `w*h`) — the deposit ([`ph2d_painter_brush::height::
     /// derive_height`] of the ingredient planes below) plus the displacement the brush banked. Merged
@@ -138,6 +138,7 @@ pub(super) struct ReliefState {
 /// ⚠️ Os dois planos são `Arc` da entrada que estava no mapa — **refcount, não cópia**. O
 /// `stamp_dabs_height` ARRANCA o `Arc` do mapa e insere outro objeto no fim, então guardar o antigo
 /// congela o estado de partida sem uma segunda alocação canvas-sized por batch.
+#[derive(Clone)]
 pub(super) struct ErasePre {
     /// De quem é este `pre`. Trocar de camada com a borracha em mãos encerra a sessão: restaurar um plano
     /// numa camada que não é a dele escreveria a massa de outro desenho.
@@ -171,7 +172,7 @@ pub(super) struct ErasePre {
 /// `height` e o `film` são deste (o commit os consome), e o `paint`/`grain`/`radius` são os do traço
 /// ANTERIOR, que o commit acabou de substituir nos `live_*`. Uma janela por buffer seria mais apertada
 /// e mais fácil de errar; a união é um superconjunto, e um superconjunto zera de mais, nunca de menos.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct SparePlanes {
     pub(super) planes: StrokePlanes,
     /// Onde os cinco estão sujos. `None` ⇒ não há nada guardado.
@@ -183,7 +184,7 @@ pub(super) struct SparePlanes {
 /// ⚠️ Três deles são `Vec<f32>` (`height`, `paint`, `radius`), então uma tupla posicional aceita a
 /// ordem errada **sem o compilador dizer nada**: trocar dois deles compilaria e corromperia o relevo.
 /// O compilador só pegou a minha primeira versão porque a troca que fiz calhou de ser `f32` com `u8`.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct StrokePlanes {
     pub(super) height: Vec<f32>,
     pub(super) paint: Vec<f32>,

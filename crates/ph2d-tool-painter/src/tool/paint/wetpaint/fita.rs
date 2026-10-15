@@ -53,7 +53,7 @@ pub(crate) enum Pergunta {
     Passos,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Fita {
     /// A gravar: as respostas por ordem.
     Grava(Vec<RespostaDoWorker>),

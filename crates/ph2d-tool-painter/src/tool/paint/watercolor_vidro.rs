@@ -18,7 +18,7 @@ type ChaoCongelado = (Weak<Vec<u8>>, Option<Arc<Vec<u8>>>);
 
 /// O que se congela uma vez por base: ligado a ela por `Weak` (o endereço não se reutiliza enquanto o
 /// seguramos), então uma base nova congela de novo e a mesma base de uma sessão molhada reaproveita.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct VidroCongelado {
     /// A base da aguada e a do Wet Paint, cada uma no seu lugar: os dois meios podem ter sessões vivas
     /// ao mesmo tempo, e um lugar só voltava a congelar a partir de um plano já escrito.

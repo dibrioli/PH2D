@@ -19,6 +19,7 @@ use crate::texture::ImageMask;
 
 /// A baked multi-layer coloured stamp: per-texel **premultiplied** RGBA over the dab's `[-1, 1]²` square,
 /// as `u8`. Scale-invariant — one stamp serves every dab size via [`blit_color_stamp`].
+#[derive(Clone)]
 pub struct ColorStampMask {
     data: Vec<u8>,
     size: u32,

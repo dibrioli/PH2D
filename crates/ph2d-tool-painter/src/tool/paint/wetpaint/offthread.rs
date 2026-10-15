@@ -117,6 +117,20 @@ pub(in crate::tool::paint) struct SimWorker {
     steps: Arc<AtomicU64>,
 }
 
+/// Copia o motor que está nesta thread; um motor com o worker não se alcança por `&self` e PANICA
+/// nomeado, como o [`std::ops::Deref`] abaixo (quem copia confere antes: `PainterTool::wet_copiavel`).
+impl Clone for EngineSlot {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Here(e) => Self::Here(e.clone()),
+            Self::Roteiro(e) => Self::Roteiro(e.clone()),
+            Self::Away => {
+                panic!("EngineSlot::clone com o motor no worker — `wet_copiavel` recusa antes")
+            }
+        }
+    }
+}
+
 impl EngineSlot {
     /// Nasce na thread do frame — o worker só entra em cena no primeiro `hand_off_sim`.
     pub(in crate::tool::paint) fn new_here(engine: Engine) -> Self {

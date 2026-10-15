@@ -36,6 +36,7 @@ pub struct TransformGizmo {
 
 /// What a live gizmo drag does + the snapshot it maps. Held in the `CurveEditor` only between pointer-down
 /// and up. Every move re-maps `snap_*` (never the previous frame), so the transform can't accumulate drift.
+#[derive(Clone)]
 pub(super) struct GizmoGrab {
     pub(super) drag: GizmoDrag,
     /// The pointer position at grab-down — the Move delta origin.
@@ -49,6 +50,7 @@ pub(super) struct GizmoGrab {
 }
 
 /// The kind of whole-curve transform a [`GizmoGrab`] applies.
+#[derive(Clone)]
 pub(super) enum GizmoDrag {
     /// Translate the whole curve by the cursor delta.
     Move,

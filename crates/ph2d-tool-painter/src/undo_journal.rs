@@ -71,7 +71,7 @@ fn tile_bytes<T: Copy>(buf: &[T], stride: usize, rows: usize, ty: usize, tx: usi
 pub(crate) const TILE: usize = 128;
 
 /// Os bytes velhos de um plano, capturados tile a tile na primeira escrita de cada tile.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct TileJournal<T> {
     /// Elementos por linha do plano. Fixado na primeira captura do passo.
     stride: usize,

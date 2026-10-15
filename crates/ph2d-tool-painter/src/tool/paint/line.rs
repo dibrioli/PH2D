@@ -45,6 +45,7 @@ struct CornerGrab {
 
 /// In-progress Line session: the polyline `points` + draw-vs-edit phase. Held in [`PaintState::line`];
 /// `None` when idle.
+#[derive(Clone)]
 pub(super) struct LineEditor {
     points: Vec<[f32; 2]>,
     closed: bool,

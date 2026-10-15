@@ -147,7 +147,7 @@ impl WetStrokeStyle {
 /// The wet session's per-stroke style TABLE + per-pixel OWNER map (`0` = unowned → the current
 /// brush's style; `k` = `table[k−1]`). Ownership is RECENCY — the last stroke to touch a pixel
 /// styles it, matching the colour buffer's source-over. Cleared with the session.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(in crate::tool::paint) struct WetSessionStyles {
     pub(in crate::tool::paint) table: Vec<WetStrokeStyle>,
     pub(in crate::tool::paint) owner: Vec<u8>,

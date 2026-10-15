@@ -7,6 +7,7 @@ use super::*;
 
 /// A Drag Dot's restore record: the pristine pixels under the dab footprint (RGBA8 over `rect`), saved
 /// before stamping so the next move can erase it and leave no trail.
+#[derive(Clone)]
 pub(super) struct DragPreview {
     pub(super) rect: Region,
     pub(super) pixels: Vec<u8>,

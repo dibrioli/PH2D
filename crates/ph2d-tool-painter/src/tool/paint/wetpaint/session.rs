@@ -141,6 +141,7 @@ pub(in crate::tool::paint) struct WetSession {
 }
 
 /// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.
+#[derive(Clone)]
 pub(super) struct LoteAdiado {
     pub(super) dabs: Vec<Dab>,
     pub(super) brush: BrushSpec,
@@ -247,7 +248,92 @@ impl WetSession {
     }
 }
 
+/// **A cópia de uma sessão** (o instantâneo do tocador de uma macro, [`PainterTool::instantaneo`]): o
+/// motor tem de estar NESTA thread — um worker vivo não se copia, e quem chama confere antes
+/// ([`PainterTool::wet_copiavel`]). A [`Self::canvas`] da cópia aponta a mesma alocação que a tela
+/// copiada partilha (`Arc`), então a guarda de identidade passa; a fita é a mesma até quem copia
+/// instalar a dele.
+impl Clone for WetSession {
+    fn clone(&self) -> Self {
+        let WetSession {
+            engine,
+            ratio,
+            grid,
+            worker,
+            seen_steps,
+            base,
+            blend,
+            canvas,
+            pigment,
+            lanes,
+            stroke_open,
+            paper_key,
+            applied,
+            preview,
+            adiados,
+            fita,
+            roteiro_teve_worker,
+        } = self;
+        assert!(
+            worker.is_none(),
+            "WetSession::clone com um worker vivo — `wet_copiavel` recusa antes"
+        );
+        WetSession {
+            engine: engine.clone(),
+            ratio: *ratio,
+            grid: *grid,
+            worker: None,
+            seen_steps: *seen_steps,
+            base: Arc::clone(base),
+            blend: *blend,
+            canvas: Weak::clone(canvas),
+            pigment: pigment.clone(),
+            lanes: lanes.clone(),
+            stroke_open: *stroke_open,
+            paper_key: *paper_key,
+            applied: *applied,
+            preview: preview.clone(),
+            adiados: adiados.clone(),
+            fita: fita.clone(),
+            roteiro_teve_worker: *roteiro_teve_worker,
+        }
+    }
+}
+
+impl PainterTool {
+    /// A tinta molhada deixa-se copiar: sem sessão, ou com o motor nesta thread e sem worker (o tocador
+    /// de uma macro nunca tem um: o worker dele é o roteiro).
+    pub(crate) fn wet_copiavel(&self) -> bool {
+        self.paint.wetpaint.session.as_ref().is_none_or(|s| {
+            s.worker.is_none() && !matches!(s.engine, super::offthread::EngineSlot::Away)
+        })
+    }
+
+    /// **O que a água de uma cópia retém**: o motor (sem o rascunho do solver) e o plano de pigmento. A
+    /// `base` é partilhada e ninguém a escreve; o rascunho da autoria é um recorte do dab — não contam.
+    pub(crate) fn wet_bytes_retidos(&self) -> usize {
+        use super::offthread::EngineSlot;
+        self.paint.wetpaint.session.as_ref().map_or(0, |s| {
+            let motor = match &s.engine {
+                EngineSlot::Here(e) | EngineSlot::Roteiro(e) => e.bytes_retidos(),
+                EngineSlot::Away => 0,
+            };
+            motor + s.pigment.len()
+        })
+    }
+
+    /// A fita deixa de ser partilhada com quem este tool foi copiado: uma cópia PROFUNDA dela (as
+    /// respostas que faltam, a divergência) instalada no tool e na sessão. Devolve-a.
+    pub(crate) fn wet_fita_propria(&mut self) -> Option<super::fita::FitaPartilhada> {
+        let f = self.paint.wetpaint.fita.as_ref()?;
+        let propria = Arc::new(std::sync::Mutex::new(super::fita::trava(f).clone()));
+        self.wet_instala_fita(Some(Arc::clone(&propria)));
+        Some(propria)
+    }
+}
+
 /// One replication lane of the open stroke — see [`WetSession::lanes`].
+#[derive(Clone)]
 pub(super) struct Lane {
     pub(super) pos: [f32; 2],
     pub(super) ink: [f32; 3],

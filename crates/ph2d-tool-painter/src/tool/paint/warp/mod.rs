@@ -58,6 +58,7 @@ fn deform_radius_px(size_norm: f32) -> f32 {
 /// `pre` buffer + `disp` map + `active` flag ARE captured in the `ModelSnapshot` (like the Selection mask),
 /// so undo/redo rolls the whole warp back in lock-step with the pixels; the transient per-stroke cursor
 /// fields (`last_pos`/`momentum_vec`) are not.
+#[derive(Clone)]
 pub(crate) struct DeformState {
     /// Sub-mode (`0` Push · `1` Twist · `2` Pinch · `3` Wrinkle · `4` Fold · `5` Reconstruct).
     pub(crate) mode: u8,

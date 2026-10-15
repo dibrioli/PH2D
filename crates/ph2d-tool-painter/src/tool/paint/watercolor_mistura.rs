@@ -121,7 +121,7 @@ pub(super) fn alvo_sobre_seco(
 /// Os dois planos da mistura molhada (RGBA, `w*h*4` cada), vivos só enquanto o `Pigment` (ou o
 /// Smudge sobre tinta molhada) está ligado. `proprio` recomeça a zero em cada traço; `antes` é escrito
 /// na CAPTURA de cada texel, logo nunca precisa de ser limpo.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct PlanosDaMistura {
     pub(super) antes: Vec<u8>,
     pub(super) proprio: Vec<u8>,

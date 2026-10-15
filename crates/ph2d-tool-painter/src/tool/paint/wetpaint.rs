@@ -66,6 +66,7 @@ use std::sync::Weak;
 /// passo interrompível que a última delas construiu é **o que torna esta wave
 /// possível**: o worker devolve o motor em fronteira de ESTÁGIO (3-10 ms), não
 /// de passo (33-38).
+#[derive(Clone)]
 pub(crate) struct WetPaintState {
     /// The Wet Paint **checkbox** — the authored, persistent ARM (Enio
     /// 2026-07-21, the Watercolor/Impasto pattern): while `true`, the

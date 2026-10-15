@@ -32,6 +32,7 @@ const SOURCE_REFIT_TOL_PX: f32 = 1.0;
 const GROW_PROBE_PX: f32 = 2.0;
 
 /// One boundary of the offset source: a corner-true closed curve + how to offset it.
+#[derive(Clone)]
 pub(super) struct OffsetContour {
     pub points: Vec<[f32; 2]>,
     pub handles: Vec<[[f32; 2]; 2]>,

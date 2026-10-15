@@ -38,6 +38,7 @@ const H_CENTER: u8 = 5;
 /// In-progress Ellipse session: the ellipse `(center, u, rx, ry)` plus the current grab + the
 /// draw-vs-edit phase. Held in [`PaintState::circle`]; `None` when idle. `u` is the local x-axis
 /// unit vector (orientation); the y-axis is its left perpendicular.
+#[derive(Clone)]
 pub(super) struct EllipseEditor {
     center: [f32; 2],
     u: [f32; 2],

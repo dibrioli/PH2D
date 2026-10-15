@@ -419,6 +419,8 @@ pub fn recomeca(m: &mut MotionState, dono: u64, track: &Track) -> Result<(), Err
     let pre = m.doc.clone();
     m.doc.remove_owner(dono);
     m.doc.import_owner(&ini.doc, track.target, dono);
+    // O grafo recomeçado nasce arrumado, no MESMO passo de undo.
+    crate::motion_arrumar::arrumar_ao_abrir(m);
     if m.doc != pre {
         m.history.push_undo(pre);
         m.pump.mark_dirty();

@@ -13,7 +13,10 @@
 //! [owner]
 //! o <node_id> <stable_id>
 //! ob <backdrop_id> <stable_id>
+//! oh <stable_id>
 //! ```
+//!
+//! `oh` = o grafo desse dono foi arrumado À MÃO (o arrumar ao abrir salta-o).
 //!
 //! Escrita por ÚLTIMO e só quando há donos — um documento sem dono grava byte a byte o que sempre
 //! gravou (fixturas `tests/fixtures/*_antes_do_dono.txt`, gravadas antes desta lei).
@@ -33,8 +36,13 @@ pub type Owners = BTreeMap<NodeId, u64>;
 pub(crate) const HEADER: &str = "\n[owner]";
 
 /// Escreve a secção, ou nada sem donos.
-pub(crate) fn write_section(out: &mut String, owners: &Owners, backdrops: &BTreeMap<u32, u64>) {
-    if owners.is_empty() && backdrops.is_empty() {
+pub(crate) fn write_section(
+    out: &mut String,
+    owners: &Owners,
+    backdrops: &BTreeMap<u32, u64>,
+    a_mao: &BTreeSet<u64>,
+) {
+    if owners.is_empty() && backdrops.is_empty() && a_mao.is_empty() {
         return;
     }
     out.push_str("[owner]\n");
@@ -44,17 +52,31 @@ pub(crate) fn write_section(out: &mut String, owners: &Owners, backdrops: &BTree
     for (b, owner) in backdrops {
         let _ = writeln!(out, "ob {b} {owner}");
     }
+    for owner in a_mao {
+        let _ = writeln!(out, "oh {owner}");
+    }
 }
 
 /// Lê a secção (o texto DEPOIS do cabeçalho).
-pub(crate) fn parse_section(part: &str) -> Result<(Owners, BTreeMap<u32, u64>), ParseError> {
+pub(crate) fn parse_section(
+    part: &str,
+) -> Result<(Owners, BTreeMap<u32, u64>, BTreeSet<u64>), ParseError> {
     let mut owners = Owners::new();
     let mut backdrops: BTreeMap<u32, u64> = BTreeMap::new();
+    let mut a_mao: BTreeSet<u64> = BTreeSet::new();
     for line in part.lines().map(str::trim).filter(|l| !l.is_empty()) {
         if line == "[owner]" {
             continue;
         }
         let mut tok = line.split_whitespace();
+        if line.starts_with("oh ") {
+            tok.next();
+            let o: Option<u64> = tok.next().and_then(|s| s.parse().ok());
+            match (o, tok.next()) {
+                (Some(o), None) if o != 0 && a_mao.insert(o) => continue,
+                _ => return Err(ParseError::BadLine(line.into())),
+            }
+        }
         let kind = tok.next();
         let id: Option<u32> = tok.next().and_then(|s| s.parse().ok());
         let owner: Option<u64> = tok.next().and_then(|s| s.parse().ok());
@@ -67,7 +89,7 @@ pub(crate) fn parse_section(part: &str) -> Result<(Owners, BTreeMap<u32, u64>), 
             return Err(ParseError::BadLine(line.into()));
         }
     }
-    Ok((owners, backdrops))
+    Ok((owners, backdrops, a_mao))
 }
 
 /// ⛔ Um dono que nomeia um nó ou uma moldura que não existe morre AQUI, na fronteira.
@@ -190,6 +212,7 @@ impl MotionDoc {
             self.backdrop_owners.remove(b);
             self.backdrop_members.remove(b);
         }
+        self.arrumados_a_mao.remove(&owner);
         dead
     }
 
@@ -233,6 +256,9 @@ impl MotionDoc {
             let _ = self.graph.drive_param(side(n), k, (side(src), port));
         }
         self.copy_nesting(from, to, &map);
+        if self.arrumados_a_mao.contains(&from) {
+            self.arrumados_a_mao.insert(to);
+        }
         map
     }
 

@@ -226,3 +226,60 @@ fn a_moldura_tem_dono_e_sai_com_ele() {
     assert!(doc.backdrops.is_empty());
     assert!(doc.backdrop_owners.is_empty());
 }
+
+/// ⭐ «Arrumado à mão» (`oh`) atravessa o ficheiro, por ordem crescente; sem ele, nada se escreve.
+#[test]
+fn arrumado_a_mao_atravessa_o_ficheiro() {
+    let (mut doc, a, b) = doc_de_dois_nos();
+    doc.set_owner(a, 5);
+    doc.set_owner(b, 9);
+    let sem = doc.to_text();
+    assert!(!sem.contains("oh "));
+    doc.arrumados_a_mao.insert(9);
+    doc.arrumados_a_mao.insert(5);
+    let text = doc.to_text();
+    assert!(text.ends_with("oh 5\noh 9\n"), "{text}");
+    assert_eq!(MotionDoc::from_text(&text).unwrap(), doc);
+}
+
+/// Um documento só com a marca (sem donos de nó) também a grava; e um `oh` sem nós é aceite.
+#[test]
+fn arrumado_a_mao_sem_donos_tambem_se_grava() {
+    let (mut doc, _, _) = doc_de_dois_nos();
+    doc.arrumados_a_mao.insert(4);
+    let text = doc.to_text();
+    assert!(text.ends_with("[owner]\noh 4\n"), "{text}");
+    assert_eq!(MotionDoc::from_text(&text).unwrap(), doc);
+}
+
+#[test]
+fn um_oh_corrupto_e_recusado() {
+    let (doc, _, _) = doc_de_dois_nos();
+    let base = doc.to_text();
+    for bad in [
+        "[owner]\noh 0\n",
+        "[owner]\noh\n",
+        "[owner]\noh x\n",
+        "[owner]\noh 4 5\n",
+        "[owner]\noh 4\noh 4\n",
+    ] {
+        assert!(
+            MotionDoc::from_text(&format!("{base}{bad}")).is_err(),
+            "aceitou {bad:?}"
+        );
+    }
+}
+
+/// A cópia de um objecto arrumado à mão é arrumada à mão; o objecto que morre leva a marca.
+#[test]
+fn copiar_leva_a_marca_e_tirar_a_apaga() {
+    let (mut doc, a, b) = doc_de_dois_nos();
+    doc.set_owner(a, 1);
+    doc.set_owner(b, 3);
+    doc.arrumados_a_mao.insert(1);
+    doc.copy_owner(1, 2);
+    doc.copy_owner(3, 4);
+    assert_eq!(doc.arrumados_a_mao, BTreeSet::from([1, 2]));
+    doc.remove_owner(1);
+    assert_eq!(doc.arrumados_a_mao, BTreeSet::from([2]));
+}

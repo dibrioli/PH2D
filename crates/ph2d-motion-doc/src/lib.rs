@@ -103,6 +103,9 @@ pub struct MotionDoc {
     /// Decoration has an owner for the reason it has a level: drawn while editing one object, it
     /// belongs to that object's graph and nowhere else.
     pub backdrop_owners: BTreeMap<u32, u64>,
+    /// ⭐ Os donos cujo grafo o artista arrumou À MÃO (`oh` em `[owner]`): ao abrir o projecto,
+    /// o arrumar automático salta-os. Vive no documento para o undo e o gravar o levarem.
+    pub arrumados_a_mao: BTreeSet<u64>,
 }
 
 impl MotionDoc {
@@ -140,7 +143,12 @@ impl MotionDoc {
             &self.backdrop_members,
             &self.bypassed_subgraphs,
         );
-        owner::write_section(&mut out, &self.owners, &self.backdrop_owners);
+        owner::write_section(
+            &mut out,
+            &self.owners,
+            &self.backdrop_owners,
+            &self.arrumados_a_mao,
+        );
         out
     }
 
@@ -239,7 +247,7 @@ impl MotionDoc {
             &backdrops.iter().map(|b| b.id).collect(),
             &bypassed_subgraphs,
         )?;
-        let (owners, backdrop_owners) = owner::parse_section(owner_part)?;
+        let (owners, backdrop_owners, arrumados_a_mao) = owner::parse_section(owner_part)?;
         owner::validate(&graph, &owners, &backdrops, &backdrop_owners)?;
         Ok(Self {
             graph,
@@ -251,6 +259,7 @@ impl MotionDoc {
             bypassed_subgraphs,
             owners,
             backdrop_owners,
+            arrumados_a_mao,
         })
     }
 

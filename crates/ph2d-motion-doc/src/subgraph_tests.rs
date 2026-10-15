@@ -128,6 +128,7 @@ fn subgraphs_round_trip_through_the_text_format() {
         bypassed_subgraphs: BTreeSet::from([1]),
         owners: crate::Owners::new(),
         backdrop_owners: BTreeMap::new(),
+        arrumados_a_mao: BTreeSet::new(),
     };
     let back = MotionDoc::from_text(&doc.to_text()).unwrap();
     assert_eq!(back, doc, "the whole nesting survives a round trip");

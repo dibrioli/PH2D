@@ -90,9 +90,15 @@ pub(crate) fn apply_graph_batch(
             // the canvas). The id says which — and a CARD carries everything inside
             // it, at every depth, or entering it would land the artist on empty
             // canvas a screen away from the card they just dragged.
+            // ⭐ Mover é ARRUMAR À MÃO: o dono de cada nó movido fica marcado (`arrumados_a_mao`),
+            // e o arrumar ao abrir o projecto deixa-o como o artista o gravou.
             GraphIntent::MoveNodes { nodes, dx, dy } => {
                 for id in nodes {
-                    match subgraph::target(id) {
+                    let alvo = subgraph::target(id);
+                    if dx != 0.0 || dy != 0.0 {
+                        marca_arrumado_a_mao(motion, alvo);
+                    }
+                    match alvo {
                         subgraph::Target::Card(sid) => subgraph::translate(motion, sid, dx, dy),
                         subgraph::Target::Node(nid) => {
                             if let Some(p) = motion.doc.graph.pos(nid) {
@@ -632,6 +638,23 @@ pub(crate) fn apply_graph_batch(
     // reaches a sink through the integrator it forgot (its own undo step, toasted).
     if heal_ok {
         super::heal::heal_setup(motion, toasts);
+    }
+}
+
+/// Marca o dono de cada nó que `alvo` arrasta (um cartão de grupo arrasta todos os de dentro).
+fn marca_arrumado_a_mao(motion: &mut MotionState, alvo: subgraph::Target) {
+    let nos = match alvo {
+        subgraph::Target::Card(sid) => ph2d_motion_doc::subgraph::member_nodes_deep(
+            &motion.doc.subgraphs,
+            &motion.doc.members,
+            sid,
+        ),
+        subgraph::Target::Node(nid) => vec![nid],
+    };
+    for n in nos {
+        if let Some(o) = motion.doc.owner_of(n) {
+            motion.doc.arrumados_a_mao.insert(o);
+        }
     }
 }
 

@@ -551,6 +551,9 @@ fn a_saved_document_comes_back_whole() {
         .doc
         .graph
         .set_pos(node, ph2d_nodegraph::graph::Pos { x: 123.0, y: -45.0 });
+    // Só o objecto arrumado À MÃO volta como ficou; o resto arruma-se ao abrir (dono, 15/10).
+    state.doc.adopt_unowned(1);
+    state.doc.arrumados_a_mao.insert(1);
     let before = state.doc.to_text();
 
     let mut loaded = snow();

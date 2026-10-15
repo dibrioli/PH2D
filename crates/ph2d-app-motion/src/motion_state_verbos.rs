@@ -125,6 +125,8 @@ impl MotionState {
         // doc 115 §33: o `Collide` que morava no `Output` passa aos objectos a montante.
         crate::migra_o_collide_da_saida(&mut doc.graph);
         self.install(doc);
+        // Abrir arruma o grafo; o dono arrumado à mão (e gravado) fica como está.
+        crate::motion_arrumar::arrumar_ao_abrir(self);
         Ok(())
     }
 

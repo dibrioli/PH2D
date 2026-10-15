@@ -69,7 +69,7 @@ cedo com fios na marcha pesada.
 Régua do bit `medida_luz2d_w5v_fundo_ao_bit` (mesmo processo, 80 quadros, casos da W5q + cena 8, Low/Medium/High = 42):
 o corte sozinho 0 bytes em 42/42; controlos (fundo sem exigir vizinhas; salto forçado com suavidade 0,5) mudaram 27 e
 30 casos; antes contra antes 0 bytes (a placa é determinística). O 1 byte do §0 é o produto contra o de hoje; com o
-`select` exato no `miolo_final`, antes × novo = 0 bytes.
+`select` exato no `miolo_final`, antes × novo = 0 bytes. As duas réguas não se contradizem: «o corte sozinho» compara a difusão exata SEM o salto (o grupo forçado a calcular, por mutação) com a mesma COM o salto — 0 bytes em 42/42; «o produto contra hoje» compara o `mix` antigo sem salto com o novo — o 1 byte é só o `mix` → `select`.
 
 Tempos (lote 2; OUTRO `ph2d-host-desktop` na placa em todo o lote ⇒ só o A/B intercalado vale). Régua por processo,
 chave off → on, ms: cena 5 FHD Low custo 7,04→6,64, fina 2,85→2,44 · Medium 7,13→6,75, fina 1,95→1,58 · High

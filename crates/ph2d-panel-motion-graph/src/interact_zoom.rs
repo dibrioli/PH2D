@@ -7,7 +7,7 @@ use ph2d_editor_core::zones::Rect;
 
 // Wheel-zoom tuning (canvas-interaction constants, not chrome tokens).
 const ZOOM_WHEEL_DIV: f32 = 240.0; // LITERAL-PX-OK: wheel-notch → zoom-factor sensitivity divisor
-pub(crate) const ZOOM_MIN: f32 = 0.2; // LITERAL-PX-OK: min graph zoom
+const ZOOM_MIN: f32 = 0.2; // LITERAL-PX-OK: min graph zoom
 const ZOOM_MAX: f32 = 2.5; // LITERAL-PX-OK: max graph zoom
 
 /// Anchored zoom: keep the cursor's graph point fixed while scaling.

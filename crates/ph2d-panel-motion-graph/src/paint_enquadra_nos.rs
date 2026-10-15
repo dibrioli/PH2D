@@ -1,16 +1,18 @@
 //! ⭐ **«Traz estes nós à vista»** — o pedido de uma vez (`request_frame_nodes`) que o balão do
 //! tutorial faz quando a etapa muda: se os cartões pedidos já estão TODOS dentro do painel, nada
 //! muda; senão a vista desliza com o MESMO zoom até a caixa deles ficar ao centro, e só afasta o
-//! bastante para caberem — até ao zoom mínimo da roda (`ZOOM_MIN`), não ao piso do enquadramento
-//! automático: os dois sítios de uma ligação têm de estar à vista (cena `=3`: Box e Wind a `650`
-//! unidades na mesma coluna, num painel de `205` px). A conta é a do enquadramento ([`super::caixa`] + [`super::enquadra_entre`]).
+//! bastante para caberem, nunca abaixo do piso LEGÍVEL do enquadramento (`ZOOM_FIT_MIN`). Se ao
+//! piso não cabem, centra o PRIMEIRO (a porta de onde se arrasta). A conta é a do enquadramento
+//! ([`super::caixa`] + [`super::enquadra_entre`]).
 //!
 //! ⚠️ O painel muda de tamanho nos primeiros quadros (os painéis laterais chegam depois — ver
 //! `refit_if_the_panel_moved_under_an_untouched_view`): enquanto a vista for a que este pedido
 //! deixou (ou a que um auto-enquadramento acabou de pôr), um painel novo volta a verificá-lo. A
 //! vista que o artista mexeu é dele.
 
-use super::{GraphViewSnapshot, MotionGraphPanelState, Rect, caixa, enquadra_entre};
+use super::{
+    FIT_PAD, GraphViewSnapshot, MotionGraphPanelState, Rect, ZOOM_FIT_MIN, caixa, enquadra_entre,
+};
 use crate::geom::{View, card_rect};
 use std::collections::BTreeSet;
 
@@ -47,7 +49,19 @@ pub(super) fn aplica(
     let mut mexeu = false;
     if fora && let Some(c) = caixa(snap, Some(&alvo), &view) {
         let zoom = state.view.zoom;
-        state.view = enquadra_entre(rect, c, crate::interact::ZOOM_MIN.min(zoom), zoom);
+        let piso = ZOOM_FIT_MIN.min(zoom);
+        let mut v = enquadra_entre(rect, c, piso, zoom);
+        // O zoom novo pode mudar o desenho (cartão ↔ pílula): mede-se no regime em que se desenha.
+        let regime = View::new(rect, v);
+        let c = caixa(snap, Some(&alvo), &regime).unwrap_or(c);
+        v = enquadra_entre(rect, c, piso, v.zoom);
+        let cabe = (c[2] - c[0]) * v.zoom <= rect.w - 2.0 * FIT_PAD
+            && (c[3] - c[1]) * v.zoom <= rect.h - 2.0 * FIT_PAD;
+        let primeiro = ids.first().map(|i| BTreeSet::from([*i]));
+        state.view = match primeiro.and_then(|p| caixa(snap, Some(&p), &regime)) {
+            Some(c1) if !cabe => enquadra_entre(rect, c1, v.zoom, v.zoom),
+            _ => v,
+        };
         mexeu = true;
     }
     if let Some((_, feito)) = &mut state.nos_a_ver {

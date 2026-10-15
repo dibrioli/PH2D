@@ -104,3 +104,27 @@ fn um_pedido_antes_do_grafo_espera_por_ele() {
     );
     set_current_motion_graph(None);
 }
+
+/// Ao piso legível os dois não cabem (Grid em cima, Box 3000 abaixo): o zoom não desce do piso e o
+/// PRIMEIRO pedido (a porta de onde se arrasta) fica ao centro.
+#[test]
+fn o_que_nao_cabe_ao_piso_centra_o_primeiro() {
+    let snap = cena();
+    let (mut host, mut state) = aberto(&snap);
+    request_frame_nodes(vec![9, 1]);
+    let _ = pinta(&mut host, &mut state, layout(), &snap);
+    let painel = layout().motion_graph;
+    assert!(
+        state.view.zoom >= super::super::ZOOM_FIT_MIN - 1e-6,
+        "{}",
+        state.view.zoom
+    );
+    let r = rect_de(&state, &snap, 9);
+    assert!(dentro(r, painel), "o 1.º (Box) está à vista");
+    let centro = |a: f32, b: f32| a + b * 0.5;
+    assert!(
+        (centro(r.y, r.h) - centro(painel.y, painel.h)).abs() < 1.0,
+        "e ao centro: {r:?}"
+    );
+    set_current_motion_graph(None);
+}

@@ -101,7 +101,7 @@ pub fn word_at(t: &Text, b: usize) -> Option<std::ops::Range<usize>> {
     Some(s..e)
 }
 
-fn first_non_space(t: &Text, line: usize) -> usize {
+pub(crate) fn first_non_space(t: &Text, line: usize) -> usize {
     let start = t.byte_of_line(line);
     let s = t.line_string(line);
     start + s.len() - s.trim_start_matches([' ', '\t']).len()

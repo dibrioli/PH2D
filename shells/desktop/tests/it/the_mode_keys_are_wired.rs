@@ -7,8 +7,8 @@
 //! nós e CONSUMIA a tecla — em Edit com o Node, o `Tab` não saía do modo. ⇒ o `Tab` tem UM dono.
 
 /// ⚠️ A ÚNICA excepção é a tradução do QUADRO (`keyboard_board.rs`, MiroClone): com uma aba de quadro
-/// activa a cena está escondida e o teclado é do quadro (o `Tab` lá é a nota seguinte, como no Miro);
-/// sem quadro activo essa porta devolve `false` antes de ler a tecla.
+/// activa a cena está escondida e o teclado é do quadro (o `Tab` lá é a nota seguinte, como no Miro) —
+/// ou da aba de família (o editor de scripts); sem nenhum dos dois a porta devolve `false` antes.
 ///
 /// Mutação que tem de sangrar: um segundo braço `KeyCode::Tab` em qualquer outro ficheiro do input;
 /// o quadro tomar o teclado sem quadro activo; ou o braço do modo deixar de chamar o `mode_key`.
@@ -34,7 +34,7 @@ fn only_the_mode_owns_the_tab() {
         "o `Tab` tem mais de um dono no input (ou nenhum): {arms:?}"
     );
     assert!(
-        board.contains("if hero.documents.active().is_none() {\n            return false;"),
+        board.contains("active().is_none() && hero.documents.surface_active().is_none() {\n"),
         "o quadro toma o teclado (e o `Tab`) sem um quadro activo"
     );
     let handlers = crate::input_text::handlers();

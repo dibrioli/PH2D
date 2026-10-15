@@ -4,7 +4,7 @@
 //! [`ENTRE`] quadros com o relógio a correr. A shell monta o clipe (`add_macro_clip`, laço, Autoplay)
 //! e põe a cena a correr: cada ligação muda o que se vê, e cada volta do laço recua a macro ao início.
 
-use super::roteiro::{CENA, intent_de};
+use super::roteiro::{CENA, Gesto, intent_de};
 use crate::motion_bridge::quadro::{MaoDoEditor, o_quadro};
 use crate::motion_scene_ctx::MotionSceneCtx;
 use crate::motion_state::MotionState;
@@ -20,15 +20,21 @@ const ENTRE: u32 = 30;
 /// Quadros depois do último gesto (o vento a soprar).
 const CAUDA: u32 = 180;
 
-/// O quadro em que cai o gesto `i`.
-fn quadro_do_gesto(i: usize) -> u32 {
-    PRIMEIRO + ENTRE * u32::try_from(i).unwrap_or(u32::MAX)
+/// O quadro em que cai o gesto `i`, com `antes[j]` quadros a mais antes do gesto `j`.
+fn quadro_do_gesto(i: usize, antes: &[u32]) -> u32 {
+    let mais: u32 = antes.iter().take(i + 1).sum();
+    PRIMEIRO + ENTRE * u32::try_from(i).unwrap_or(u32::MAX) + mais
 }
 
 /// **A macro de tutorial gravada** como um artista a faria no editor do objecto `dono` (`StableId`):
 /// os bytes do `Macro.doc` e a duração em segundos. `None` = a gravação recusou (já gravava).
 #[must_use]
 pub fn grava_o_tutorial(dono: u64) -> Option<(Vec<u8>, f64)> {
+    grava_gestos(dono, CENA, &[])
+}
+
+/// Os `gestos` gravados como a cena, com `mais[i]` quadros a mais antes do gesto `i`.
+pub(crate) fn grava_gestos(dono: u64, gestos: &[Gesto], mais: &[u32]) -> Option<(Vec<u8>, f64)> {
     let mut m = MotionState::new();
     m.doc = ph2d_motion_doc::MotionDoc::new();
     m.sinks.clear();
@@ -40,14 +46,14 @@ pub fn grava_o_tutorial(dono: u64) -> Option<(Vec<u8>, f64)> {
     let mut split = ph2d_editor_core::screens::layout::CenterSplit::None;
     let mut ph = ph2d_core::Playhead::new(DT);
     ph.play();
-    let fim = quadro_do_gesto(CENA.len() - 1) + CAUDA;
+    let fim = quadro_do_gesto(gestos.len() - 1, mais) + CAUDA;
     let mut slots: Vec<NodeId> = Vec::new();
     let mut agora = 0;
     for q in 0..=fim {
         let antes: Vec<NodeId> = m.doc.graph.nodes().iter().map(|n| n.id).collect();
-        let lote: Vec<_> = (0..CENA.len())
-            .filter(|&i| quadro_do_gesto(i) == q)
-            .map(|i| intent_de(CENA[i], &slots, i))
+        let lote: Vec<_> = (0..gestos.len())
+            .filter(|&i| quadro_do_gesto(i, mais) == q)
+            .map(|i| intent_de(gestos[i], &slots, i))
             .collect();
         ph.seek(f64::from(q) * DT);
         crate::motion_bridge::aplica_e_grava(&mut m, &mut ph, &mut toasts, &mut split, lote);

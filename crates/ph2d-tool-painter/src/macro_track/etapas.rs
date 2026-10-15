@@ -77,7 +77,7 @@ impl LeitorDaFamilia for LeitorDoPainter {
                 _ => None,
             })
             .unwrap_or(1000.0 / 60.0);
-        let q = ((f64::from(dt_ms) * 1000.0).round() as u64).max(1);
+        let q = f64::from(dt_ms) * 1000.0;
         let mut out = Vec::new();
         let mut quadro = |t: u64, dt: f32| {
             for p in [Passo::Preview, Passo::Tique(dt)] {
@@ -87,10 +87,10 @@ impl LeitorDaFamilia for LeitorDoPainter {
                 });
             }
         };
-        for j in 0..us / q {
-            quadro(t0.0 + j * q, dt_ms);
+        let (n, resto) = ph2d_macro::etapa::quadros_da_espera(us, q);
+        for j in 0..n {
+            quadro(t0.0 + ph2d_macro::etapa::no_quadro(j, q), dt_ms);
         }
-        let resto = us % q;
         if resto > 0 {
             quadro(t0.0 + us - resto, resto as f32 / 1000.0);
         }

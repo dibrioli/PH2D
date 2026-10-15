@@ -45,6 +45,8 @@ pub enum ErroDaMacro {
     SemGrafo,
     /// O `Macro.doc` não se lê (cabeçalho, versão mais nova, dano).
     Ficheiro(CodecError),
+    /// Uma edição de etapa que não cabe na gravação.
+    Edicao(ph2d_macro::ErroDeEdicao),
 }
 
 /// Os nomes `&'static` que este build conhece — tipos de nó, params e as linhas da decoração —, para
@@ -128,6 +130,12 @@ impl TocadorDoMotion {
         t.palco.objeto.so_o_dono = dono;
         t.palco.objeto.editing = dono;
         Ok(t)
+    }
+
+    /// O id que o 1.º nó criado na gravação tem no palco (`Alvo::Criado(k)` = `base + k`).
+    #[must_use]
+    pub fn base(&self) -> u32 {
+        self.base
     }
 
     #[must_use]

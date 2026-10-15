@@ -82,8 +82,7 @@ fn editar_o_tamanho_de_uma_pincelada_e_grava_la_com_esse_tamanho() {
 fn uma_espera_antes_de_uma_pincelada_e_grava_la_mais_tarde() {
     let original = trilha(&SPLASH, &[0; 4]);
     let mut editada = original.clone();
-    let q = (1e6_f64 / 60.0).round() as i64;
-    etapas::espera(&mut editada, 2, i64::from(ESPERA) * q).expect("a etapa existe");
+    etapas::espera(&mut editada, 2, i64::from(ESPERA) * 1_000_000 / 60).expect("a etapa existe");
     let verdade = trilha(&SPLASH, &[0, 0, ESPERA, 0]);
     bate(&editada, &verdade, &original);
     let (e, v) = (

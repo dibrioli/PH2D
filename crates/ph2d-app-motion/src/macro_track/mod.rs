@@ -9,6 +9,8 @@
 //!   cada passo pelas MESMAS portas — o lote do grafo, o lote de params, o quadro ([`tocar`]).
 
 pub mod em_cena;
+/// As etapas da trilha (W5): nomes, re-cronometrar, editar.
+pub mod etapas;
 pub mod inicial;
 #[cfg(feature = "panel-motion-graph")]
 pub mod intencao;
@@ -26,6 +28,8 @@ pub mod tocar;
 mod alvo_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 mod etapas_sonda_tests;
+#[cfg(all(test, feature = "panel-motion-graph"))]
+mod etapas_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 pub(crate) mod gate_tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]

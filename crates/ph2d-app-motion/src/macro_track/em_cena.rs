@@ -38,6 +38,11 @@ impl MacroEmCena {
         // Uma gravação abre UMA trilha do Motion (a do objecto em edição, `gravacao_abre`).
         doc.tracks.retain(|t| t.family == FAMILIA);
         doc.tracks.truncate(1);
+        if let Some(t) = doc.tracks.first_mut() {
+            *t = t
+                .tocavel(&super::etapas::LeitorDoMotion)
+                .map_err(ErroDaMacro::Edicao)?;
+        }
         let Some(trilha) = doc.tracks.first() else {
             return Ok(None);
         };

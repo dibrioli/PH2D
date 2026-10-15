@@ -172,6 +172,22 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
     Ok(out)
 }
 
+/// **Quantos quadros de `quadro_us` cabem numa espera de `us`**, e o resto (µs) que não enche um. A
+/// cadência é a EXACTA do `dt` gravado (60 Hz = 16 666,67 µs): arredondar o quadro a µs inteiros
+/// acumula — 60 quadros davam 1 000 020 µs e o último caía fora do instante em que a espera acaba.
+#[must_use]
+pub fn quadros_da_espera(us: u64, quadro_us: f64) -> (u64, u64) {
+    let q = quadro_us.max(1.0);
+    let n = ((us as f64 + 0.5) / q).floor() as u64;
+    (n, us.saturating_sub(no_quadro(n, q)))
+}
+
+/// O instante (µs desde o início da espera) do quadro `j`.
+#[must_use]
+pub fn no_quadro(j: u64, quadro_us: f64) -> u64 {
+    (j as f64 * quadro_us).round() as u64
+}
+
 #[expect(clippy::too_many_arguments, reason = "o passo de saída e as duas tabelas da edição")]
 fn empurra(
     out: &mut Vec<Event>,

@@ -42,6 +42,8 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     // entrada é inerte no resto do tempo — e SEM ela o painel registado e visível nunca é
     // alcançado pelo passeio, e nunca é pintado.
     ids::TAGS_PANEL,
+    // O painel MACROS (`ph2d-panel-macros`, ADR-0186 W5d): coluna da direita, nasce fechado.
+    ids::MACROS_PANEL,
     // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`): docks
     // over the inspector slot while the `flip` tool is active (bridge-driven
     // visibility). Its `paint()` no-ops when hidden, so this is inert

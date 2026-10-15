@@ -288,6 +288,8 @@ mod fase_open_recipe;
 mod fase_painter_brush_smokes;
 /// Fase do quadro: o Painter: persistir, despachar e medir.
 mod fase_painter_dispatch;
+/// Fase do quadro: as macros (Gravar ▸ Parar, as etapas, o painel MACROS).
+mod fase_macros;
 mod fase_paralaxe;
 /// Fase do quadro: os efeitos, o spine, os passos e a booleana.
 mod fase_path_effects_spine_bool;

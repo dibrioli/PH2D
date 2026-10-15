@@ -202,3 +202,27 @@ macro_rules! porta {
     }};
 }
 pub(crate) use porta;
+
+/// O painel MACROS arma o Painter por esta porta (W5d) — as três decididas no censo ([`portas::PORTAS`]).
+/// O alvo é `0`: a `Macro` fica na sprite pintada.
+impl ph2d_macro::Gravadora for PainterTool {
+    fn abre(
+        &mut self,
+        rec: &mut ph2d_macro::MacroRecorder,
+    ) -> Result<ph2d_macro::TrackId, &'static str> {
+        use ph2d_editor_core::macro_edits as m;
+        self.macro_abre(rec, 0).map_err(|r| match r {
+            Recusa::Meio => m::MACRO_RECUSA_MEIO,
+            Recusa::JaGrava => m::MACRO_RECUSA_JA_GRAVA,
+            Recusa::SemTela => m::MACRO_RECUSA_SEM_TELA,
+        })
+    }
+
+    fn passos(&mut self) -> Vec<Vec<u8>> {
+        self.macro_passos()
+    }
+
+    fn para(&mut self) -> Vec<Vec<u8>> {
+        self.macro_para()
+    }
+}

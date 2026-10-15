@@ -273,6 +273,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::Lock,
     IconId::LockKeyhole,
     IconId::LockKeyholeOpen,
+    IconId::Macro,
     IconId::MakeSquare,
     IconId::MarqueeBox,
     IconId::MarqueeLasso,

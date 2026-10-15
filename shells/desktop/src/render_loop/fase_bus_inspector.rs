@@ -245,6 +245,9 @@ impl crate::App {
             EditorAction::TagTreeEdit { edit } => {
                 pd.tag_tree_edits.push(edit);
             }
+            // O painel MACROS e a linha de etapas (W5d): a família guarda o pedido e aplica-o na
+            // `fase_macros`, depois de o Painter consumir a entrada do quadro.
+            EditorAction::Macro(r) => ph2d_app_macros::com(|m| m.pede(r)),
             // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
             // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo
             // sabe construir.

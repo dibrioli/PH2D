@@ -17,6 +17,8 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     // ⭐⭐⭐ O painel das TAGS (TOP-20 #9) nasce FECHADO — a maioria dos projectos não tem tag
     // nenhuma, e a porta dele num projecto vazio é o *Window → Tags*.
     map.insert("tags", false);
+    // O painel MACROS (W5d) nasce FECHADO: a porta é o *Window → Macros*.
+    map.insert("macros", false);
     map
 }
 
@@ -46,6 +48,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         // `set_panel_visible` cai no `Box::leak`, o que funciona e mesmo assim é errado quando o
         // nome é conhecido.
         "tags" => Some("tags"),
+        "macros" => Some("macros"),
         _ => None,
     }
 }

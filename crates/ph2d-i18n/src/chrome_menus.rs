@@ -139,6 +139,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.motion_nodes" => "Motion Nodes",
         "chrome.menu.physics" => "Physics",
         "chrome.menu.tags" => "Tags",
+        "chrome.menu.macros" => "Macros",
         "chrome.menu.bones" => "Bones",
         "chrome.menu.audio_mixer" => "Audio Mixer",
         "chrome.menu.audio_editor" => "Audio Editor",

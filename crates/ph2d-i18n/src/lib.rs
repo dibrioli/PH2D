@@ -143,6 +143,8 @@ mod painter_layers;
 mod quatro_motores;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
 mod tags;
+/// As MACROS (ADR-0186, W5d): o painel e o nome do clipe.
+mod macros;
 /// ⭐⭐ **As cinco recusas da ÁRVORE de tags**, publicadas pela folha `ph2d-tags`.
 ///
 /// ⚠️ Tabela IRMÃ da [`tags`] de propósito: aquela são as palavras que o PAINEL escreve, estas são
@@ -495,6 +497,7 @@ fn tr_ingles(key: &str) -> &'static str {
         k => vector::tr(k)
             .or_else(|| timeline::tr(k))
             .or_else(|| tags::tr(k))
+            .or_else(|| macros::tr(k))
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))
             .or_else(|| component_catalog::tr(k))

@@ -55,6 +55,8 @@ const FORMA_OU_SELECAO: &str =
 const CAMADAS_COMO_PINCEL: &str =
     "lê as camadas como textura do pincel ou do papel: a macro não as guarda";
 const ACESSOR: &str = "acessor do contrato: não muda nada";
+const GRAVACAO: &str =
+    "arma, drena ou pára a gravação (o painel MACROS): controla a macro, não é um passo da obra";
 
 /// As portas de FORA, uma decisão cada.
 pub const PORTAS: &[Porta] = &[
@@ -72,6 +74,9 @@ pub const PORTAS: &[Porta] = &[
     a("as_any_mut", ACESSOR),
     a("as_raster_edit_mut", ACESSOR),
     a("as_canvas_paint_mut", ACESSOR),
+    a("macro_abre", GRAVACAO),
+    a("macro_passos", GRAVACAO),
+    a("macro_para", GRAVACAO),
     // — inerentes, gravadas —
     g("on_canvas_hover"),
     g("undo_last"),

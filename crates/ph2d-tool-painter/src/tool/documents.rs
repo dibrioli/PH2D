@@ -166,6 +166,12 @@ impl PainterTool {
     ///
     /// Two conditions, because there are two ways to not have a document: a different sprite, or no
     /// pixels at all.
+    /// The sprite whose document is on the canvas (the one the painter paints) — `None` when torn down.
+    #[must_use]
+    pub fn bound_document(&self) -> Option<u64> {
+        self.bound_doc.filter(|_| !self.canvas_rgba.is_empty())
+    }
+
     #[must_use]
     pub fn needs_document_bind(&self, entity: u64) -> bool {
         self.bound_doc != Some(entity) || self.canvas_rgba.is_empty()

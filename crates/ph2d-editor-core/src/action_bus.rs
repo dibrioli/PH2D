@@ -21,6 +21,8 @@
 /// variantes, e não o tamanho.
 ///
 /// ⇒ **quem acrescentar a próxima paga o corte.**
+/// ⚠️ **Re-medido 2026-10-14 (W5d Macros): a variante `Macro` custou +2 e o `rustfmt --check` passou**
+/// — o reflow já tinha acontecido; o que conta agora é só o tecto de 700.
 ///
 /// ⚠️ **A prescrição anterior (colapsar a família `Hier*`) já estava CUMPRIDA quando alguém a foi
 /// pagar** — *uma prescrição cumprida que ninguém apaga manda o pagador seguinte cortar o que já
@@ -614,6 +616,8 @@ pub enum EditorAction {
         /// Qual dos três.
         verb: AssetCardAction,
     },
+    /// O painel MACROS e a linha de etapas da Timeline (ADR-0186, W5d).
+    Macro(crate::macro_edits::MacroRequest),
 }
 
 // ⚠️ **As três partes abaixo são FILHAS deste módulo, não irmãs na raiz da crate** (auditoria A10,

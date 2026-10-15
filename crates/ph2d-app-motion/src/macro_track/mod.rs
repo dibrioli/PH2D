@@ -428,3 +428,23 @@ pub(crate) fn aplica_escritas(
     }
     Ok(())
 }
+
+/// O painel MACROS arma o Motion por esta porta (W5d): a trilha aponta o objecto em edição.
+impl ph2d_macro::Gravadora for MotionState {
+    fn abre(
+        &mut self,
+        rec: &mut ph2d_macro::MacroRecorder,
+    ) -> Result<ph2d_macro::TrackId, &'static str> {
+        self.gravacao_abre(rec).map_err(|r| match r {
+            Recusa::JaGrava => ph2d_editor_core::macro_edits::MACRO_RECUSA_JA_GRAVA,
+        })
+    }
+
+    fn passos(&mut self) -> Vec<Vec<u8>> {
+        self.gravacao_passos()
+    }
+
+    fn para(&mut self) -> Vec<Vec<u8>> {
+        self.gravacao_para()
+    }
+}

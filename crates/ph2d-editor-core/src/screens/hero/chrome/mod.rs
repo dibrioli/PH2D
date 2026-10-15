@@ -60,6 +60,7 @@ mod fill_modal;
 mod image_actions;
 mod input_map;
 mod io_menu;
+mod macros_toggle;
 mod menu_bar;
 mod motion_path_handle;
 mod motion_toggle;
@@ -165,6 +166,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || tags_toggle::apply(hero, event)
         || tokens_toggle::apply(hero, event)
         || authored_toggle::apply(hero, event)
+        || macros_toggle::apply(hero, event)
         || io_menu::apply(hero, event)
         || settings_ppm::apply(hero, event)
         || settings_unit::apply(hero, event)

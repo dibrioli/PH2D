@@ -167,6 +167,7 @@ pub enum IconId {
     Lock,
     LockKeyhole,
     LockKeyholeOpen,
+    Macro,
     MakeSquare,
     MarqueeBox,
     MarqueeLasso,

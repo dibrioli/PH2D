@@ -185,6 +185,8 @@ pub const LAB_SCROLLBAR_ID: NodeId = NodeId(846);
 /// `scroll_area` publica, e a lista continua a ser o sítio onde os ids se CONTAM.)
 ///
 pub const TAGS_SCROLLBAR_ID: NodeId = NodeId(847);
+/// O painel MACROS (ADR-0186, W5d) — uma gravação longa tem centenas de etapas.
+pub const MACROS_SCROLLBAR_ID: NodeId = NodeId(851);
 /// ⭐ **O painel de OSSOS** (2026-09-29, spec `04_a_rolagem_unica` D3) — ele pintava com o
 /// `VECTOR_SCROLLBAR_ID` **emprestado**, e arrastar a barra dele **rolava o painel Vector**. Com a
 /// porta `scroll_area` o dono passa a ser publicado a cada quadro, mas o id continua a ser CONTADO
@@ -248,6 +250,7 @@ mod tests {
             ("LAB", LAB_SCROLLBAR_ID),
             ("ASSET_BROWSER", ASSET_BROWSER_SCROLLBAR_ID),
             ("TAGS", TAGS_SCROLLBAR_ID),
+            ("MACROS", MACROS_SCROLLBAR_ID),
             ("SKELETON", SKELETON_SCROLLBAR_ID),
             ("CMD_PALETTE", CMD_PALETTE_SCROLLBAR_ID),
             ("BOARD_FACILITATE", BOARD_FACILITATE_SCROLLBAR_ID),

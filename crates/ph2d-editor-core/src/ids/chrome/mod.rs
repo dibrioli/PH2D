@@ -41,6 +41,8 @@ mod rail_painter;
 /// ⭐⭐⭐ **Os ids do painel TAGS** (TOP-20 #9) — o rect do painel e o abridor do menu, que são
 /// os dois que o CHROME lê. Os controlos vivem na crate do painel.
 mod tags;
+/// Os ids do painel MACROS (ADR-0186, W5d).
+mod macros;
 mod timeline;
 /// **Os ids do painel de TOKENS** (plano UI/UX W6) — a tabela de cor do design system,
 /// autorável pelo artista. Categoria MUNDO, como o de física.
@@ -68,6 +70,7 @@ pub use prefab::*;
 pub use rail::*;
 pub use rail_painter::*;
 pub use tags::*;
+pub use macros::*;
 pub use timeline::*;
 pub use tokens::*;
 pub use topbar::*;

@@ -64,6 +64,16 @@ fn palco_de(m: &Macro) -> Result<Option<PalcoEmCena>, ErroDaMacro> {
 }
 
 impl PalcosDasMacros {
+    /// **O erro da macro do objecto `bits`** — a gravação que não se lê, ou o passo em que o palco
+    /// parou (o painel MACROS di-lo ao artista, W5d).
+    #[must_use]
+    pub fn erro_de(&self, bits: u64) -> Option<&ErroDaMacro> {
+        match &self.lidos.get(&bits)?.palco {
+            Err(e) => Some(e),
+            Ok(p) => p.as_ref()?.em_cena.erro(),
+        }
+    }
+
     /// **Por quadro**, depois de `publica_o_mundo` e antes do `dispatch` do editor: (re)cria o palco
     /// de um `Macro` que mudou e segue o relógio de cada um que a Timeline conduz. Devolve os donos
     /// que um palco toca neste quadro (`0` = todos os objectos: uma trilha sem alvo).

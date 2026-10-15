@@ -68,6 +68,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<ph2d_panel_hierarchy::HierarchyPanel>());
     #[cfg(feature = "panel-inspector")]
     reg.push(ErasedPanel::new::<ph2d_panel_inspector::InspectorPanel>());
+    #[cfg(feature = "panel-macros")]
+    reg.push(ErasedPanel::new::<ph2d_panel_macros::MacrosPanel>());
     #[cfg(feature = "panel-motion-graph")]
     reg.push(ErasedPanel::new::<ph2d_panel_motion_graph::MotionGraphPanel>());
     #[cfg(feature = "panel-padding")]
@@ -147,6 +149,11 @@ mod tests {
         // painel novo que só apareça lá passa em `cargo test -p <crate>` e reprova no `ship.sh`,
         // quando a unificação de features da workspace liga o painel.
         #[cfg(feature = "panel-tags")]
+        {
+            n += 1;
+        }
+        // O painel MACROS (ADR-0186, W5d).
+        #[cfg(feature = "panel-macros")]
         {
             n += 1;
         }

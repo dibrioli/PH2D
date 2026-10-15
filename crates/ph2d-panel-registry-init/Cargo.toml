@@ -25,6 +25,7 @@ ph2d-panel-flip-frames = { path = "../ph2d-panel-flip-frames", optional = true }
 ph2d-panel-grid-snap = { path = "../ph2d-panel-grid-snap", optional = true }
 ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy", optional = true }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector", optional = true }
+ph2d-panel-macros = { path = "../ph2d-panel-macros", optional = true }
 ph2d-panel-motion-graph = { path = "../ph2d-panel-motion-graph", optional = true }
 ph2d-panel-padding = { path = "../ph2d-panel-padding", optional = true }
 ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = true }
@@ -52,6 +53,7 @@ default = [
     # `774`, com 785 px de seccoes acima a falar de coisas que um osso nao tem.
     "panel-skeleton",
     "panel-tags",
+    "panel-macros",
     "panel-color-equalization", "panel-equalize-sizes", "panel-upscale",
     "panel-audio-mixer", "panel-audio-editor",
     "panel-motion-graph",
@@ -83,6 +85,7 @@ panel-flip-frames = ["dep:ph2d-panel-flip-frames"]
 panel-grid-snap = ["dep:ph2d-panel-grid-snap"]
 panel-hierarchy = ["dep:ph2d-panel-hierarchy"]
 panel-inspector = ["dep:ph2d-panel-inspector"]
+panel-macros = ["dep:ph2d-panel-macros"]
 panel-motion-graph = ["dep:ph2d-panel-motion-graph"]
 panel-padding = ["dep:ph2d-panel-padding"]
 panel-painter-layers = ["dep:ph2d-panel-painter-layers"]

@@ -245,6 +245,8 @@ pub(super) const MENU_BAR_WINDOW_ROWS: &[MenuRow] = &[
     // MUNDO — e é a **única** porta do painel num projecto **sem** tag nenhuma, que é onde o
     // artista carrega em *+ New* para fazer a primeira.
     menu_row(ids::TOPBAR_TAGS, "chrome.menu.tags"),
+    // As MACROS (ADR-0186, W5d): a única porta do painel, que nasce fechado.
+    menu_row(ids::TOPBAR_MACROS, "chrome.menu.macros"),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09: *«o Menu Windows deve receber a opção
     // de Bones»*). ⚠️ Vizinho da Física porque os dois são painéis de MUNDO — e é a única
     // porta do painel numa cena **sem** ossos, que é onde o artista carrega em *Create*

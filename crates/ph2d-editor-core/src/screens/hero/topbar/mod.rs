@@ -42,6 +42,8 @@ pub fn populate(store: &mut WidgetStore) {
         // compra é o CLIQUE — sem ele o id não fica `active` no Down, o `Click` nunca nasce, e a
         // linha do menu abre um painel que nunca vê.
         ids::TOPBAR_TAGS,
+        // As MACROS (W5d): a mesma razão das TAGS — sem pill, a porta é o menu *Window*.
+        ids::TOPBAR_MACROS,
         ids::TOPBAR_TOKENS,
         ids::TOPBAR_AUTHORED,
         ids::TOPBAR_WIDGET_GALLERY,

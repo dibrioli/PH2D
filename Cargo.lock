@@ -5030,6 +5030,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-macros"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-app-motion",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-macro",
+ "ph2d-panel-macros",
+ "ph2d-timeline",
+ "ph2d-tool-painter",
+ "ph2d-ui-testkit",
+]
+
+[[package]]
 name = "ph2d-app-motion"
 version = "0.0.0"
 dependencies = [
@@ -6149,6 +6165,7 @@ dependencies = [
  "ph2d-app-flip",
  "ph2d-app-host",
  "ph2d-app-light2d",
+ "ph2d-app-macros",
  "ph2d-app-motion",
  "ph2d-app-painter",
  "ph2d-app-physics",
@@ -6206,6 +6223,7 @@ dependencies = [
  "ph2d-panel-flip",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
+ "ph2d-panel-macros",
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
  "ph2d-panel-physics",
@@ -8333,6 +8351,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-macros"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-label-census",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-motion-graph"
 version = "0.0.0"
 dependencies = [
@@ -8426,6 +8459,7 @@ dependencies = [
  "ph2d-panel-grid-snap",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
+ "ph2d-panel-macros",
  "ph2d-panel-motion-graph",
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",

@@ -143,22 +143,44 @@ impl TimelineDoc {
     ) -> Result<usize, crate::ClipRefusal> {
         self.clip_room(owner)?;
         let c = self.push_clip(name, scope_of(owner));
+        self.retime_macro_clip(c, owner, duracao_s);
+        Ok(c)
+    }
+
+    /// ⭐ **Re-cronometra o clipe de uma macro** para `duracao_s` (W5d: o Parar de uma regravação, uma
+    /// espera editada): a faixa [`PropKind::MacroTime`] volta a ser só `(0, 0) → (D′, D′)`, a duração
+    /// cortada passa a `D′` e cada laço que acabava no fim antigo acaba no novo — numa chamada, para
+    /// a transação ser uma. O clip activo não muda.
+    pub fn retime_macro_clip(&mut self, c: usize, owner: u64, duracao_s: f64) {
+        let Some(antiga) = self.clips.get(c).map(|nc| nc.length_override) else {
+            return;
+        };
+        let d = if duracao_s.is_finite() { duracao_s.max(0.0) } else { 0.0 };
         let antes = self.active_index();
         self.set_active(c);
-        let d = if duracao_s.is_finite() { duracao_s.max(0.0) } else { 0.0 };
+        let target = self.bind(owner, PropKind::MacroTime);
+        let track = self
+            .active_clip_mut()
+            .track_or_insert(target, || Track::new(vec![]));
+        *track = Track::new(vec![]).with_default(AnimValue::Float(0.0));
         let chaves: &[f64] = if d > 0.0 { &[0.0, d] } else { &[0.0] };
         for &t in chaves {
-            self.upsert_key(
-                owner,
-                PropKind::MacroTime,
+            track.insert_key(
                 RationalTime::from_seconds(t),
                 AnimValue::Float(t as f32),
                 Interp::Linear,
             );
         }
-        self.set_clip_length_override(c, Some(d));
         self.set_active(antes);
-        Ok(c)
+        self.set_clip_length_override(c, Some(d));
+        let nc = &mut self.clips[c];
+        for laco in [&mut nc.loop_range, &mut nc.keys_loop_range] {
+            if let Some((a, b)) = laco
+                && antiga.is_some_and(|fim| (*b - fim).abs() < 1e-9)
+            {
+                *laco = Some((*a, d.max(*a)));
+            }
+        }
     }
 
     /// ⭐ **Cabe mais um clip na animação de `owner`?** — a porta única do tecto, que criar e

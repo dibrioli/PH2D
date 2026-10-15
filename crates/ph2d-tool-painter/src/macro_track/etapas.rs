@@ -399,8 +399,11 @@ fn toca_tudo(track: &Track) -> Result<(), ErroDaMacro> {
     Ok(())
 }
 
-#[cfg(test)]
-pub(crate) fn tela_no_fim(track: &Track) -> Result<Vec<u8>, ErroDaMacro> {
+/// **A tela ao fim da trilha que toca**, tocada do zero — a régua de «a edição mudou a tela».
+///
+/// # Errors
+/// O [`ErroDaMacro`] da reprodução.
+pub fn tela_no_fim(track: &Track) -> Result<Vec<u8>, ErroDaMacro> {
     let t = track
         .tocavel(&LeitorDoPainter)
         .map_err(ErroDaMacro::Edicao)?;

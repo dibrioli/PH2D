@@ -50,6 +50,8 @@ ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 # prefab que se abre, e os quatro componentes do TOP-20. Dep directa e
 # não-opcional: o `render_loop` chama-lhe os passes pelo nome, em ordem.
 ph2d-app-components = { path = "../../crates/ph2d-app-components" }
+# As MACROS (ADR-0186, W5d): Gravar ▸ Parar, as etapas e as edições delas.
+ph2d-app-macros = { path = "../../crates/ph2d-app-macros" }
 # ⭐ A família do QUADRO (MiroClone): a cena de smoke que o arranque encena pelo nome.
 ph2d-app-board = { path = "../../crates/ph2d-app-board" }
 # ⭐ A família do EDITOR DE SCRIPTS (CodeEditor): instalada no arranque, um `frame` por quadro.
@@ -285,6 +287,7 @@ ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true
 ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector", optional = true }
 ph2d-panel-skeleton = { path = "../../crates/ph2d-panel-skeleton", optional = true }
 ph2d-panel-tags = { path = "../../crates/ph2d-panel-tags", optional = true }
+ph2d-panel-macros = { path = "../../crates/ph2d-panel-macros", optional = true }
 # Painter layers panel — typed panel listing the LayerStack (thumb + name +
 # visibility + opacity + blend) + adjustment-layer editors. Right-docked
 # (Inspector slot takeover) when the Painter (layers + effects) tool is active.
@@ -509,6 +512,7 @@ default = [
     "panel-vector",
     "panel-skeleton",
     "panel-tags",
+    "panel-macros",
     "panel-flip",
     "panel-flip-frames",
     "panel-audio-mixer",
@@ -559,6 +563,9 @@ panel-skeleton       = ["ph2d-panel-registry-init/panel-skeleton", "dep:ph2d-pan
 # ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4). A shell publica-lhe a árvore por quadro
 # (`ph2d_panel_tags::set_current_tags`) e drena os gestos dele pelo barramento.
 panel-tags           = ["ph2d-panel-registry-init/panel-tags", "dep:ph2d-panel-tags"]
+# O painel MACROS (ADR-0186, W5d): a shell publica-lhe o instantâneo (`set_current_macros`) e drena
+# os gestos pelo barramento até à `ph2d-app-macros`.
+panel-macros         = ["ph2d-panel-registry-init/panel-macros", "dep:ph2d-panel-macros"]
 # Flip Style panel + its render_loop bridge (`flip_bridge` publishes the style +
 # layers snapshots via `ph2d_panel_flip::set_current_flip_*` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.

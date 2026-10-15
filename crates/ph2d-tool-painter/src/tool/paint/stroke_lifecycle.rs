@@ -150,9 +150,10 @@ impl PainterTool {
             // wash keeps ITS Concentration/Edge/water instead of being re-styled by the current
             // brush (Enio 2026-07-09).
             let forced_wet = self.paint.wet_session_wetness;
+            let dono = self.aguada_tem_rampa_de_cor();
             self.paint
                 .wet_styles
-                .push_capture(&self.paint.brush, forced_wet);
+                .push_capture(&self.paint.brush, forced_wet, dono);
             // Cada poça seca no seu tempo: a que secou longe da tinta molhada assa ANTES do primeiro
             // carimbo, para este traço velar sobre ela (o alcance já conta o estilo deste traço).
             if wet_session {

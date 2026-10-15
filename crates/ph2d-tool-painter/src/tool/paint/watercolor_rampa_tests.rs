@@ -379,3 +379,245 @@ fn a_rampa_da_aguada_sobrevive_a_cada_campo_do_painel() {
         falhas.join("\n")
     );
 }
+
+/// Um carimbo (`traco = false`) ou um traço curto de Voronoi na aguada, Automatic desligado, pincel
+/// azul; `camadas` = `(Texture, Falloff)` da Shape Color com a rampa verde → vermelho (`None` = sem
+/// rampa). Devolve a ferramenta com o buffer da cor (a prévia, `rampa(v)`) e a tela.
+fn voronoi_p39(camadas: Option<(bool, bool)>, traco: bool) -> (PainterTool, Vec<u8>) {
+    use ph2d_painter_brush::texture::TextureKind;
+    let verde_vermelho = ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [0.0, 1.0, 0.0, 1.0]),
+            RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    );
+    let mut t = tool(128, PaintMedia::Watercolor, 40.0);
+    t.set_brush_color_srgb8([30, 60, 220]);
+    t.toggle_brush_watercolor_shape_auto();
+    t.set_brush_shape_kind(TextureKind::Voronoi.to_u8());
+    if let Some((textura, queda)) = camadas {
+        t.set_shape_color_ramp(verde_vermelho.clone());
+        t.set_shape_falloff_ramp(verde_vermelho);
+        t.set_shape_ramp_enabled(true);
+        t.paint.shape_camadas.textura = textura;
+        t.paint.shape_camadas.queda = queda;
+    }
+    let seed = t.paint.brush;
+    t.paint.brush_by_mode.fill(seed);
+    t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
+    for k in 1..=if traco { 4 } else { 0 } {
+        #[allow(clippy::cast_precision_loss)]
+        t.on_canvas_pointer(cp([64.0 + 2.0 * k as f32, 64.0], PointerPhase::Move));
+    }
+    let cor = t.paint.stroke_color.clone();
+    t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Up));
+    (t, cor)
+}
+
+/// **O PADRÃO QUE A TEXTURE COLOR RECOLHE EM COR NÃO RAREIA O PIGMENTO DA AGUADA** (2.º smoke do dono,
+/// 15/10, P39: Voronoi + Shape Color, a prévia verde no miolo das células e a tela creme/branca ali).
+/// O valor do Voronoi indexava a rampa E era a densidade da ponta: o miolo (`v ≈ 0`, a ponta verde da
+/// rampa) não tinha pigmento. A lei do digital (prompt 38): o padrão vira cor e deixa de recortar — na
+/// aguada, deixa de ser a densidade. Medido antes da cura (dab · traço): G−R da tela onde a prévia é
+/// verde `6,3 · 7,0`, escuro `12 · 17`, correlação prévia × tela `0,38 · 0,35`; depois `30 · 27`,
+/// `47 · 53`, `0,94 · 0,65`.
+#[test]
+fn o_padrao_que_vira_cor_nao_rareia_o_pigmento_da_aguada() {
+    for traco in [false, true] {
+        let (t, cor) = voronoi_p39(Some((true, true)), traco);
+        let tela = &t.canvas_rgba;
+        let (mut n, mut gr, mut escuro) = (0u32, 0.0f64, 0.0f64);
+        let (mut sx, mut sy, mut sxx, mut syy, mut sxy, mut m) = (0.0f64, 0.0, 0.0, 0.0, 0.0, 0.0);
+        for (c, p) in cor
+            .chunks(4)
+            .zip(tela.chunks(4))
+            .filter(|(c, _)| c[3] >= 128)
+        {
+            let x = f64::from(c[1]) - f64::from(c[0]);
+            let y = f64::from(p[1]) - f64::from(p[0]);
+            if x.abs() <= 60.0 {
+                continue; // nem verde nem vermelho na prévia
+            }
+            (sx, sy, sxx, syy, sxy, m) = (
+                sx + x,
+                sy + y,
+                sxx + x * x,
+                syy + y * y,
+                sxy + x * y,
+                m + 1.0,
+            );
+            if x > 60.0 {
+                n += 1;
+                gr += y;
+                escuro += 255.0 - p[..3].iter().map(|&v| f64::from(v)).sum::<f64>() / 3.0;
+            }
+        }
+        let corr =
+            (m * sxy - sx * sy) / ((m * sxx - sx * sx) * (m * syy - sy * sy)).sqrt().max(1e-9);
+        let (gr, escuro) = (gr / f64::from(n.max(1)), escuro / f64::from(n.max(1)));
+        assert!(
+            n >= 300,
+            "controlo: a prévia tem miolos verdes ({n} texels)"
+        );
+        assert!(
+            gr >= 18.0 && escuro >= 30.0 && corr >= 0.55,
+            "traço {traco}: onde a prévia é verde a tela não é (G−R {gr:.1}, escuro {escuro:.1}, \
+             correlação {corr:.3})"
+        );
+        let cheia = t
+            .paint
+            .stroke_coverage
+            .iter()
+            .zip(&t.paint.stroke_density)
+            .all(|(&c, &d)| c == 0 || d == 255);
+        assert!(
+            cheia,
+            "o padrão recolhido em cor ainda é a densidade da ponta"
+        );
+    }
+    // Controlos: sem a Texture Color (só a Falloff, ou sem rampa) o padrão CONTINUA a densidade.
+    for camadas in [Some((false, true)), None] {
+        let (t, _) = voronoi_p39(camadas, false);
+        let rala = t
+            .paint
+            .stroke_coverage
+            .iter()
+            .zip(&t.paint.stroke_density)
+            .filter(|&(&c, &d)| c > 128 && d < 128)
+            .count();
+        assert!(
+            rala > 300,
+            "{camadas:?}: o Voronoi deixou de ser a densidade sem a Texture Color ({rala} texels ralos)"
+        );
+    }
+}
+
+/// O pincel azul do P39b, a aguada de um carimbo em `(64, 64)` de raio 40 armada por `arma`.
+fn aguada_p39b(arma: &dyn Fn(&mut PainterTool)) -> (PainterTool, Vec<u8>) {
+    let mut t = tool(128, PaintMedia::Watercolor, 40.0);
+    t.set_brush_color_srgb8(AZUL_P39B);
+    arma(&mut t);
+    let seed = t.paint.brush;
+    t.paint.brush_by_mode.fill(seed);
+    t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
+    let cor = t.paint.stroke_color.clone();
+    t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Up));
+    (t, cor)
+}
+
+const AZUL_P39B: [u8; 3] = [30, 60, 220];
+
+/// A rampa da Falloff Color de UMA cor (sRGB em bytes) com alfa `a` — Automatic ligado, sem Shape.
+fn queda_lisa(rgb: [u8; 3], a: f32) -> impl Fn(&mut PainterTool) {
+    let lin = rgb.map(|c| ((f32::from(c) / 255.0 + 0.055) / 1.055).powf(2.4));
+    move |t: &mut PainterTool| {
+        t.set_shape_falloff_ramp(rampa([lin[0], lin[1], lin[2], a]));
+        t.set_shape_ramp_enabled(true);
+    }
+}
+
+/// A absorvância de um texel (`−ln`, por canal) normalizada — a DIRECÇÃO da cor de um pigmento.
+fn absorvancia(p: &[u8]) -> [f64; 3] {
+    let a: [f64; 3] = core::array::from_fn(|c| -(f64::from(p[c].max(1)) / 255.0).ln());
+    let n = a.iter().map(|v| v * v).sum::<f64>().sqrt().max(1e-9);
+    a.map(|v| v / n)
+}
+
+fn cosseno(a: [f64; 3], b: [f64; 3]) -> f64 {
+    a.iter().zip(&b).map(|(x, y)| x * y).sum()
+}
+
+/// No anel `dn ∈ [0,7; 0,95]` do carimbo: (fração dos texels pintados cuja cor está mais perto da do
+/// buffer — a rampa — que da do pincel, tinta média = `255 − lum`).
+fn anel_p39b(t: &PainterTool, cor: &[u8]) -> (f64, f64) {
+    let pincel = absorvancia(&AZUL_P39B);
+    let (mut perto, mut n, mut tinta) = (0u32, 0u32, 0.0f64);
+    for (i, p) in t.canvas_rgba.chunks(4).enumerate() {
+        #[allow(clippy::cast_precision_loss)]
+        let (x, y) = ((i % 128) as f32 + 0.5 - 64.0, (i / 128) as f32 + 0.5 - 64.0);
+        let dn = (x * x + y * y).sqrt() / 40.0;
+        let lum = p[..3].iter().map(|&v| f64::from(v)).sum::<f64>() / 3.0;
+        if !(0.7..=0.95).contains(&dn) || lum > 250.0 || cor[i * 4 + 3] == 0 {
+            continue;
+        }
+        let (c, rampa) = (absorvancia(p), absorvancia(&cor[i * 4..i * 4 + 3]));
+        n += 1;
+        tinta += 255.0 - lum;
+        if cosseno(c, rampa) > cosseno(c, pincel) {
+            perto += 1;
+        }
+    }
+    (
+        f64::from(perto) / f64::from(n.max(1)),
+        tinta / f64::from(n.max(1)),
+    )
+}
+
+/// **A BORDA ESCURECIDA DA AGUADA SAI NA COR DA RAMPA** (2.º smoke do dono, P39: o aro laranja era a
+/// cor do pincel). O buffer pousa a cor da rampa com alfa = peso × alfa da cor, e o composto puxava a
+/// cor para a do pincel por esse alfa — na borda o peso é baixo. Com a rampa dona da cor
+/// (`WetStrokeStyle::deposito_dono`) o pigmento é o do buffer onde ele tem tinta.
+#[test]
+fn a_borda_da_aguada_sai_na_cor_da_rampa() {
+    use ph2d_painter_brush::texture::TextureKind;
+    let voronoi = |t: &mut PainterTool| {
+        t.toggle_brush_watercolor_shape_auto();
+        t.set_brush_shape_kind(TextureKind::Voronoi.to_u8());
+        let vv = ColorRamp::new(
+            vec![
+                RampStop::new(0.0, [0.0, 1.0, 0.0, 1.0]),
+                RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
+            ],
+            RampColorMode::Rgb,
+            RampInterp::Linear,
+        );
+        t.set_shape_color_ramp(vv.clone());
+        t.set_shape_falloff_ramp(vv);
+        t.set_shape_ramp_enabled(true);
+    };
+    let laranja = queda_lisa([230, 120, 20], 1.0);
+    for (nome, arma) in [
+        ("Voronoi", &voronoi as &dyn Fn(&mut PainterTool)),
+        ("Falloff laranja", &laranja),
+    ] {
+        let (t, cor) = aguada_p39b(arma);
+        let (perto, _) = anel_p39b(&t, &cor);
+        assert!(
+            perto >= 0.9,
+            "{nome}: só {perto:.3} do anel tem a cor da rampa — o resto puxa para o pincel"
+        );
+    }
+    // Controlo: a rampa da COR DO PINCEL é a aguada sem rampa — a força da borda não muda (±5 %).
+    let (sem, cs) = aguada_p39b(&|_| {});
+    let (com, cc) = aguada_p39b(&queda_lisa(AZUL_P39B, 1.0));
+    let ((_, ts), (_, tc)) = (anel_p39b(&sem, &cs), anel_p39b(&com, &cc));
+    assert!(
+        (tc / ts - 1.0).abs() <= 0.05,
+        "a rampa da cor do pincel mudou a tinta da borda: {tc:.1} contra {ts:.1}"
+    );
+}
+
+/// **UMA PARAGEM TRANSPARENTE DA RAMPA PINTA MENOS TINTA** — no digital o alfa da cor escala a
+/// cobertura; na aguada escala a densidade do pigmento, e a cor continua a da rampa (antes o alfa
+/// baixo puxava a cor para a do pincel e a tinta ficava igual).
+#[test]
+fn a_paragem_transparente_da_rampa_pinta_menos_tinta() {
+    let tinta = |t: &PainterTool| {
+        t.canvas_rgba
+            .chunks(4)
+            .map(|p| 255.0 - p[..3].iter().map(|&v| f64::from(v)).sum::<f64>() / 3.0)
+            .sum::<f64>()
+    };
+    let verde = [40, 200, 60];
+    let (opaca, _) = aguada_p39b(&queda_lisa(verde, 1.0));
+    let (rala, cor) = aguada_p39b(&queda_lisa(verde, 0.3));
+    let r = tinta(&rala) / tinta(&opaca);
+    assert!(r <= 0.6, "o alfa 0,3 da rampa deixou {r:.3} da tinta");
+    let (perto, _) = anel_p39b(&rala, &cor);
+    assert!(
+        perto >= 0.9,
+        "a paragem transparente pinta a cor do pincel ({perto:.3})"
+    );
+}

@@ -14,6 +14,7 @@ fn dab_at(center: [f32; 2], radius: f32) -> HeightDab<'static> {
         shape: None,
         grain: None,
         grain_image: None,
+        capsula: None,
     }
 }
 

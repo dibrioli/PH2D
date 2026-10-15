@@ -29,6 +29,7 @@ use super::BACKRUN_CONC;
 pub(super) fn pigmento_do_pixel(
     dono: [u8; 3],
     deposito: Option<(&[u8], usize)>,
+    deposito_dono: bool,
     dissolve: f32,
     bleed: [f32; 3],
     backrun: f32,
@@ -40,7 +41,9 @@ pub(super) fn pigmento_do_pixel(
     let mut pig = dono;
     if let Some((buf, ci)) = deposito {
         let ca8 = buf[ci + 3];
-        if ca8 == u8::MAX {
+        // O depósito DONO da cor (a Shape Color Ramp, P39): onde há tinta, a cor é a dele — o alfa fraco
+        // da borda pesa a TINTA (a densidade), não puxa a cor para a do pincel.
+        if ca8 == u8::MAX || (deposito_dono && ca8 > 0) {
             pig = [buf[ci], buf[ci + 1], buf[ci + 2]];
         } else if ca8 > 0 {
             let w = f32::from(ca8) / 255.0;

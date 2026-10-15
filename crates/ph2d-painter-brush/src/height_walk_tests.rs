@@ -84,6 +84,7 @@ fn swept(s: &BrushSpec, radius: f32, centre: [f32; 2]) -> HeightDab<'static> {
         shape: None,
         grain: None,
         grain_image: None,
+        capsula: None,
     }
 }
 

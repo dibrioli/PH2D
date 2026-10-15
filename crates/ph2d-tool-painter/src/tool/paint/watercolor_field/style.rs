@@ -48,6 +48,10 @@ pub(in crate::tool::paint) struct WetStrokeStyle {
     /// — choosing another Flow for the next stroke must not reshape the pool below.
     pub(in crate::tool::paint) edge_flow: ph2d_painter_brush::TextureSettings,
     pub(in crate::tool::paint) paper_edge: f32,
+    /// **O depósito é o DONO da cor** (a Shape Color Ramp em cor, P39): o pigmento é o do buffer onde
+    /// ele tem tinta, nunca puxado para `color` pelo alfa fraco da borda
+    /// ([`super::super::watercolor_render`], `pigmento_do_pixel`).
+    pub(in crate::tool::paint) deposito_dono: bool,
 }
 
 /// **A DILUICAO E QUANTA TINTA, NUNCA ONDE A LAVAGEM ESTA** (o arco palido, Enio 2026-08-11).
@@ -140,6 +144,7 @@ impl WetStrokeStyle {
             texture: spec.texture,
             edge_flow: spec.edge_flow,
             paper_edge: spec.paper_edge.clamp(0.0, 1.0),
+            deposito_dono: false,
         }
     }
 }
@@ -160,11 +165,16 @@ impl WetSessionStyles {
         &mut self,
         spec: &ph2d_painter_brush::BrushSpec,
         forced_wet: f32,
+        deposito_dono: bool,
     ) {
+        let st = WetStrokeStyle {
+            deposito_dono,
+            ..WetStrokeStyle::capture(spec, forced_wet)
+        };
         if self.table.len() < 255 {
-            self.table.push(WetStrokeStyle::capture(spec, forced_wet));
+            self.table.push(st);
         } else if let Some(last) = self.table.last_mut() {
-            *last = WetStrokeStyle::capture(spec, forced_wet);
+            *last = st;
         }
     }
 

@@ -275,6 +275,7 @@ impl PainterTool {
                     }),
                 grain: grain_basis.as_ref(),
                 grain_image: grain_image.as_ref(),
+                capsula: None,
                 // O sculpt RESHAPE o relevo que ja esta na tela; ele nao deposita uma forma capturada.
             };
             let hit = if plane_family {

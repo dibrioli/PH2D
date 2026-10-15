@@ -523,3 +523,116 @@ fn a_cor_do_shape_no_continuous_iguala_o_spacing_pequeno() {
         }
     }
 }
+
+// ── C25 (lista 26): o RELEVO do Impasto no Continuous ───────────────────────────────────────────────
+
+/// A rampa do smoke do dono (P39): verde → laranja, pontos verdes no centro das células do Voronoi.
+pub(super) fn verde_laranja() -> ph2d_color::ColorRamp {
+    use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
+    ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [0.1, 0.55, 0.1, 1.0]),
+            RampStop::new(1.0, [1.0, 0.6, 0.05, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    )
+}
+
+/// O traço do dono no Impasto (40 px): o Shape `kind` (no dab, ou `tiled` na tela), a Shape Color de
+/// fábrica (as duas camadas) com a rampa verde → laranja, ou sem ela. Devolve o tool (o relevo, a luz)
+/// e a tela crua.
+pub(super) fn traco_impasto(
+    kind: TextureKind,
+    cor: bool,
+    tiled: bool,
+    sp: f32,
+    cont: bool,
+) -> (PainterTool, Vec<u8>) {
+    let mut t = pincel(Meio::Impasto, kind, 40.0, sp, cont);
+    if tiled {
+        t.paint.brush.shape.mapping = ph2d_painter_brush::texture::TextureMapping::Tiled;
+        t.paint.brush.shape.size = [6.0; 2];
+    }
+    if cor {
+        t.set_shape_color_ramp(verde_laranja());
+    }
+    t.set_shape_ramp_enabled(cor);
+    let seed = t.paint.brush;
+    t.paint.brush_by_mode.fill(seed);
+    let px = traco(&mut t);
+    (t, px)
+}
+
+/// A tela `cru` como o artista a vê: acesa pela luz do impasto de `t`, sobre o relevo de `t`.
+pub(super) fn acesa(t: &PainterTool, cru: &[u8]) -> Vec<u8> {
+    let mut b = cru.to_vec();
+    t.apply_impasto_light(
+        &mut b,
+        Region {
+            x: 0,
+            y: 0,
+            w: W,
+            h: H,
+        },
+    );
+    b
+}
+
+/// O relevo da camada activa.
+pub(super) fn relevo(t: &PainterTool) -> Vec<f32> {
+    t.layers
+        .active()
+        .and_then(|id| t.layer_height_view(id))
+        .unwrap_or_default()
+}
+
+/// `Σ|a − t| / Σ|t|` do relevo no miolo do traço de raio `r`, e a correlação.
+pub(super) fn dif_relevo(a: &[f32], t: &[f32], r: f32) -> (f32, f32) {
+    if a.is_empty() || t.is_empty() {
+        return (f32::INFINITY, f32::NAN);
+    }
+    let i = |&(x, y): &(usize, usize)| y * W as usize + x;
+    let (va, vt): (Vec<f32>, Vec<f32>) = miolo(r).iter().map(|p| (a[i(p)], t[i(p)])).unzip();
+    let st: f32 = vt.iter().map(|v| v.abs()).sum();
+    let d: f32 = va.iter().zip(&vt).map(|(a, t)| (a - t).abs()).sum();
+    (d / st.max(1e-9), correlacao(&va, &vt))
+}
+
+/// ⭐ **O Impasto com Continuous iguala o Spacing pequeno na tela ILUMINADA** (lista 26 C25, smoke do dono
+/// P39: Voronoi + Shape Color, 0,25 com a caixa = a grelha de pontos e sombras por dab; 0,01 sem ela = as
+/// listras ao longo). O A9 media a tela CRUA, e a cor já batia (Δ 0,0009); o relevo lia o Shape no centro
+/// do dab ao varrer a corda (`height_walk.rs`), carimbando o padrão uma vez por dab, e a luz desenha-o.
+/// Antes da cura: Δacesa 0,144 / 0,087 / 0,0044 / 0,071 e Δrelevo 0,060 / 0,024 / 0,286 / 0,060 (Voronoi,
+/// Checker, Noise, Voronoi sem cor); depois ≤ 0,0010 e 0. CONTROLOS: sem Shape e com o Shape na tela
+/// (Tiled) o relevo com a caixa é o de sem ela AO BIT — a corda já é o relevo denso.
+#[test]
+fn o_impasto_com_continuous_iguala_o_spacing_pequeno_na_tela_iluminada() {
+    let r = 20.0;
+    for (kind, cor) in [
+        (TextureKind::Voronoi, true),
+        (TextureKind::Checker, true),
+        (TextureKind::Noise, true),
+        (TextureKind::Voronoi, false),
+    ] {
+        let (ta, ca) = traco_impasto(kind, cor, false, 0.025, false);
+        let (tt, ct) = traco_impasto(kind, cor, false, 0.25, true);
+        let d = dif_cor(&acesa(&tt, &ct), &acesa(&ta, &ca), r);
+        let (dr, cr) = dif_relevo(&relevo(&tt), &relevo(&ta), r);
+        println!("{kind:?} cor {cor}: Δacesa {d:.5}, Δrelevo {dr:.5}, corr {cr:.4}");
+        assert!(d <= 0.003, "{kind:?} cor {cor}: Δacesa {d:.4}");
+        assert!(dr <= 0.002, "{kind:?} cor {cor}: Δrelevo {dr:.4}");
+        assert!(cr >= 0.999, "{kind:?} cor {cor}: corr relevo {cr:.4}");
+    }
+    for (kind, tiled) in [(TextureKind::None, false), (TextureKind::Voronoi, true)] {
+        let com = relevo(&traco_impasto(kind, true, tiled, 0.25, true).0);
+        let sem = relevo(&traco_impasto(kind, true, tiled, 0.25, false).0);
+        assert!(!com.is_empty(), "{kind:?} tiled {tiled}: sem relevo");
+        assert!(
+            com.iter()
+                .map(|v| v.to_bits())
+                .eq(sem.iter().map(|v| v.to_bits())),
+            "{kind:?} tiled {tiled}: a caixa mexeu no relevo"
+        );
+    }
+}

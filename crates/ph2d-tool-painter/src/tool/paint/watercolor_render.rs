@@ -219,6 +219,7 @@ impl PainterTool {
             texture: gran_tex,
             edge_flow: brush.edge_flow,
             paper_edge: brush.paper_edge.clamp(0.0, 1.0),
+            deposito_dono: self.aguada_tem_rampa_de_cor(),
         };
         // #13 (doc 14): per-owner SUBSTRATE. Single-substrate sessions resolve to the globals
         // (byte-identical + cache live); a multi-substrate session (paper/grain changed mid-session)
@@ -526,6 +527,7 @@ impl PainterTool {
                             .as_ref()
                             .map_or(st.color, |sf| sf.sample_color(sx, sy, st.color)),
                         has_color.then_some((color_buf.as_slice(), ci)),
+                        st.deposito_dono,
                         dissolve,
                         bleed,
                         backrun,

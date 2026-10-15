@@ -106,6 +106,9 @@ pub(super) struct WetShapeStamp {
     /// O TOM da Shape Color Ramp (B&W ligado): remapeia o valor CRU da silhueta antes de tudo, a lei
     /// do traço digital (`stamp.rs`, `remap_shape_value`). `None` = desligado.
     tom: Option<Vec<f32>>,
+    /// A Texture Color recolhe o padrão PROCEDURAL em cor ([`PainterTool::padrao_do_shape_vira_cor`],
+    /// a lei do digital: ele deixa de recortar) — então ele deixa de ser a DENSIDADE: [`Self::densidade`].
+    padrao_vira_cor: bool,
 }
 
 /// A textured tip's WETNESS ramp: a normalised tip sample at/below `TIP_WET_LO` is a true hole
@@ -167,6 +170,14 @@ impl WetShapeStamp {
     /// Whether the Shape slot shapes this stamp — then [`Self::sample`]'s density is its texture value.
     pub(super) fn forma_ativa(&self) -> bool {
         self.shape_active
+    }
+
+    /// A DENSIDADE do pigmento a partir do valor de [`Self::sample`]: o próprio valor, salvo quando a
+    /// Texture Color o recolheu em cor — aí `1`, senão o padrão indexava a cor E rareava o pigmento, e a
+    /// ponta baixa da rampa (o miolo das células do Voronoi) saía papel branco (smoke do dono P39).
+    #[inline]
+    pub(super) fn densidade(&self, valor: f32) -> f32 {
+        if self.padrao_vira_cor { 1.0 } else { valor }
     }
 
     /// The per-dab stamp frame: the flatten/rotate footprint (Shape gizmo `dab_flatten` +
@@ -264,6 +275,10 @@ impl PainterTool {
             img_norm: self.paint.wet_shape_norm,
             tom: (self.paint.shape_color_ramp_enabled && self.paint.shape_color_ramp_bw)
                 .then(|| self.paint.shape_ramp_lut.clone()),
+            padrao_vira_cor: self.padrao_do_shape_vira_cor(
+                self.color_ramp_owner(false),
+                self.paint.shape_image.is_some(),
+            ),
         })
     }
     /// Zero the per-stroke coverage (retain capacity). Shape-preview methods (Drag Dot / Anchored / Line)
@@ -371,7 +386,10 @@ impl PainterTool {
         // Tip-density buffer: sized only when a textured tip is stamping (see `stroke_density` docs);
         // stays empty otherwise so the composite's fast path (density ≡ 1) is untouched. Sized BEFORE
         // the shape-image borrow below (disjoint field borrows carry the loop).
-        let textured_tip = stamp.as_ref().is_some_and(|s| s.shape_active);
+        // A Shape Color Ramp em cor: o alfa da cor das camadas é QUANTA tinta (a lei do digital, alfa ×
+        // cobertura) — pesa a densidade, que então existe também sem ponta texturada.
+        let rampa = self.rampa_da_aguada();
+        let textured_tip = stamp.as_ref().is_some_and(|s| s.shape_active) || rampa.is_some();
         if textured_tip && self.paint.stroke_density.len() != fw * fh {
             let mut dens = vec![0u8; fw * fh];
             // Sessão molhada: washs ANTERIORES (tip liso ⇒ densidade plena) não podem ler 0 do
@@ -509,16 +527,19 @@ impl PainterTool {
                         if keep <= 0.0 {
                             continue;
                         }
-                        let (wgt, dens) = match (&stamp, &frame) {
-                            (Some(s), Some((fp, basis))) => s.sample(
-                                WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
-                                basis.as_ref(),
-                                shape_img_owned.as_ref(),
-                                [x, y],
-                                centro,
-                                r,
-                            ),
-                            _ => (feather(dn), 1.0),
+                        let (wgt, dens, forma) = match (&stamp, &frame) {
+                            (Some(s), Some((fp, basis))) => {
+                                let (w, v) = s.sample(
+                                    WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
+                                    basis.as_ref(),
+                                    shape_img_owned.as_ref(),
+                                    [x, y],
+                                    centro,
+                                    r,
+                                );
+                                (w, s.densidade(v), s.forma_ativa().then_some(v))
+                            }
+                            _ => (feather(dn), 1.0, None),
                         };
                         let v = (peak * keep * wgt * 255.0) as u8;
                         if v > cov[idx] {
@@ -527,6 +548,7 @@ impl PainterTool {
                         // Tip density (textured tip only): max-blend, matching the coverage's "one pass"
                         // union — the composite multiplies it into the interior fill.
                         if textured_tip && wgt > 0.0 {
+                            let dens = rampa.as_ref().map_or(dens, |r| dens * r.cor(forma, wgt)[3]);
                             let dv = (dens * 255.0) as u8;
                             if dv > dens_buf[idx] {
                                 dens_buf[idx] = dv;

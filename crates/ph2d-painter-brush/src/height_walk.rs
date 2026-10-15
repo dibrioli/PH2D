@@ -22,6 +22,8 @@ pub(super) struct Walk<'a, 'b> {
     pub(super) cx: f32,
     pub(super) cy: f32,
     pub(super) sweep: Option<([f32; 2], f32)>,
+    /// The capsule read per sub-dab ([`super::capsula_da_altura`]); `None` = the chord sweep.
+    pub(super) capsula: Option<SubPasso>,
     pub(super) film_aa: Option<crate::height_film::FilmAa>,
     pub(super) lut: Option<crate::height_film::FilmLutPlan<'a>>,
     pub(super) ablate: u32,
@@ -189,7 +191,9 @@ fn walk_band(
             // lives in that space (see [`crate::height_film::FilmAa::film_at_lut`]).
             let wv = dab.footprint.apply([rx * inv_radius, ry * inv_radius]);
             let t = (wv[0] * wv[0] + wv[1] * wv[1]).sqrt();
-            let w = if ablate & crate::ablate::SILHOUETTE != 0 {
+            let w = if let Some(c) = wk.capsula {
+                c.silhueta(wk, dx, dy, px, py) // `film_aa` is `None` here: `t`/`wv` go unread
+            } else if ablate & crate::ablate::SILHOUETTE != 0 {
                 f32::from(t < 1.0) // MESMO suporte, sem falloff/Shape/mascara -- so a sonda arma isto
             } else {
                 crate::dab::silhouette_at(spec, dab.shape, t, px, py, dab.center, radius)
@@ -313,6 +317,58 @@ fn walk_band(
         }
     }
     touched
+}
+
+/// ⭐ **The relief of a dab-CAPSULE** ([`crate::capsula`], lista 26 C25): the dense stroke's relief, as
+/// the colour's [`crate::dab::silhouette_capsula`] is its pigment — the SAME sub-dabs (`off_k = −D·k/n`),
+/// each with the Shape at its own centre and its body swept back one sub-step (the dense stroke's chord),
+/// folded by the stroke envelope's own law, the `max` (`film_of` is monotone, so the film rides it).
+/// Read at the front dab's centre, the pattern stamped once per dab: the lattice of the owner's smoke.
+#[derive(Clone, Copy)]
+pub(super) struct SubPasso {
+    cap: crate::capsula::Capsula,
+    /// The sub-chord: the unit vector back toward the previous centre and its length `|D|/n`.
+    eixo: ([f32; 2], f32),
+}
+
+impl SubPasso {
+    pub(super) fn new(cap: crate::capsula::Capsula) -> Self {
+        let v = cap.off(1);
+        let l = v[0].hypot(v[1]);
+        Self {
+            cap,
+            eixo: ([v[0] / l, v[1] / l], l),
+        }
+    }
+
+    /// How far back the capsule reaches, in px: `|D|`.
+    pub(super) fn comprimento(self) -> f32 {
+        self.eixo.1 * self.cap.n() as f32
+    }
+
+    /// The capsule's silhouette at the texel `(px, py)`, offset `(dx, dy)` from the front centre.
+    #[inline]
+    fn silhueta(self, wk: &Walk<'_, '_>, dx: f32, dy: f32, px: i64, py: i64) -> f32 {
+        let (spec, dab) = (wk.spec, wk.dab);
+        let Some(sh) = dab.shape else { return 0.0 };
+        let imagem = spec.shape.kind == crate::texture::TextureKind::Image;
+        let mut w = 0.0f32;
+        for k in 0..self.cap.n() {
+            let o = self.cap.off(k);
+            let (rx, ry) = sweep_residual(dx - o[0], dy - o[1], Some(self.eixo));
+            let queda = spec.falloff_weight(
+                dab.footprint
+                    .falloff_t(rx * wk.inv_radius, ry * wk.inv_radius),
+            );
+            if queda <= 0.0 && !imagem {
+                continue; // a procedural Shape multiplies the falloff (as in the colour's capsule)
+            }
+            let c = [dab.center[0] + o[0], dab.center[1] + o[1]];
+            let forma = crate::dab::shape_value_at(spec, sh, px, py, c, wk.radius);
+            w = w.max(spec.compose_shape_silhouette(forma, queda));
+        }
+        w
+    }
 }
 
 #[cfg(test)]

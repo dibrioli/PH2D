@@ -193,12 +193,8 @@ impl PainterTool {
                         // peso — e é ESSA que se mistura com a tinta que a brocha apanhou (a `Charge`),
                         // como a do pincel no mixer: uma lei ([`super::watercolor_mixer::Apanha`]).
                         let (col, wgt) = match &rampa {
-                            Some(RampaDaAguada { lut, camadas }) if wgt > 0.0 => {
-                                let c = camadas.motor(forma.is_some()).color(
-                                    lut,
-                                    forma.unwrap_or(wgt),
-                                    wgt,
-                                );
+                            Some(r) if wgt > 0.0 => {
+                                let c = r.cor(forma, wgt);
                                 let rgb = [c[0], c[1], c[2]];
                                 let rgb = apanha.map_or(rgb, |a| a.mistura(rgb));
                                 let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
@@ -264,30 +260,43 @@ impl PainterTool {
 /// **A Shape Color Ramp na aguada, no modo COR** (B&W desligado) — a mesma lei do traço digital
 /// ([`ph2d_painter_brush::ShapeRampLayers`], prompt 38): a Texture Color pelo valor da textura do Shape
 /// (a densidade do carimbo), a Falloff Color pelo peso do carimbo (o `wgt` do splat), misturadas como
-/// no digital — as camadas são as DONAS da cor. Na aguada o padrão procedural já não recorta a água
-/// (vira densidade), por isso nada muda na cobertura. O alfa da tinta (o das cores da rampa × Opacity
-/// de cada camada) pesa o depósito, sempre — a lei única das rampas do pincel. O modo
+/// no digital — as camadas são as DONAS da cor. O padrão procedural recolhido pela Texture Color deixa
+/// de ser a densidade do pigmento ([`WetShapeStamp::densidade`]), como no digital deixa de recortar.
+/// O alfa da tinta (o das cores da rampa × Opacity de cada camada) pesa o depósito, sempre — a lei única das rampas do pincel. O modo
 /// TOM (B&W) não mora aqui: remapeia a silhueta da Shape dentro do `WetShapeStamp`, como no digital.
 pub(super) struct RampaDaAguada {
     lut: Vec<[f32; 4]>,
     camadas: super::shape_camadas::CamadasDoShape,
 }
 
+impl RampaDaAguada {
+    /// A cor das camadas num texel (sRGB reto + alfa da tinta): a Texture Color pelo valor do Shape
+    /// (`forma`), a Falloff Color pelo peso — a MESMA conta nas duas passadas (cor e densidade).
+    #[inline]
+    pub(super) fn cor(&self, forma: Option<f32>, wgt: f32) -> [f32; 4] {
+        self.camadas
+            .motor(forma.is_some())
+            .color(&self.lut, forma.unwrap_or(wgt), wgt)
+    }
+}
+
 impl PainterTool {
+    /// A aguada tem a Shape Color Ramp em COR — as camadas são as donas da cor do depósito (o
+    /// predicado do [`Self::rampa_da_aguada`] e da marca `WetStrokeStyle::deposito_dono`).
+    pub(super) fn aguada_tem_rampa_de_cor(&self) -> bool {
+        self.color_ramp_owner(false) == super::ramp_lut::RampLutOwner::Shape
+    }
+
     /// A rampa da Shape no modo cor que este lote lê — `None` com ela desligada ou no modo B&W (o
     /// caminho de sempre, ao byte).
     pub(super) fn rampa_da_aguada(&mut self) -> Option<RampaDaAguada> {
-        if !self.paint.shape_color_ramp_enabled {
-            return None;
-        }
-        if self.paint.shape_color_ramp_bw {
+        if self.paint.shape_color_ramp_enabled && self.paint.shape_color_ramp_bw {
             self.ensure_shape_ramp_lut(); // o tom do `wet_shape_stamp` lê-a
+        }
+        if !self.aguada_tem_rampa_de_cor() {
             return None;
         }
         let dona = super::ramp_lut::RampLutOwner::Shape;
-        if !self.paint.shape_camadas.alguma(self.shape_tem_textura()) {
-            return None;
-        }
         self.ensure_ramp_lut(dona);
         Some(RampaDaAguada {
             lut: self.paint.texture_ramp_lut.clone(),

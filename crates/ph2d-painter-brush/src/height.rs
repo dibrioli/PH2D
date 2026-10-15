@@ -66,6 +66,22 @@ pub struct HeightDab<'a> {
     pub grain: Option<&'a crate::texture::TexDabBasis>,
     /// The Grain's pixels (an `Image` Grain).
     pub grain_image: Option<&'a crate::texture::ImageMask<'a>>,
+    /// The dab-capsule the colour lays ([`crate::Dab::capsula`], Continuous Spacing). Read only under a
+    /// Shape that moves with the dab: the relief then reads it per sub-dab (`capsula_da_altura`).
+    pub capsula: Option<crate::capsula::Capsula>,
+}
+
+/// The capsule the height kernel walks, or `None` for the chord sweep: the dab carries one AND a Shape
+/// rides the dab (not canvas-fixed) — the one per-dab reader the sweep cannot carry, since the pattern
+/// moves with each sub-dab (lista 26 C25). With no Shape (or a canvas-fixed one) the chord sweep already
+/// is the dense stroke's relief, so those paths stay byte-identical.
+#[inline]
+pub(crate) fn capsula_da_altura(
+    spec: &crate::BrushSpec,
+    dab: &HeightDab<'_>,
+) -> Option<crate::capsula::Capsula> {
+    dab.capsula
+        .filter(|_| dab.shape.is_some() && !spec.shape.mapping.is_canvas_fixed())
 }
 
 /// O alcance do dab em raios: `1`, ou a ponta de imagem do Shape quando ela sai do disco
@@ -367,9 +383,14 @@ pub fn accumulate_dab_height(
     let film_aa = crate::height_film::FilmAa::for_dab(spec, dab.shape.is_some(), radius);
     // The bbox has to cover the whole SWEPT body, not just the disc at the centre (+ the AA's
     // one-texel fractional ring so it is not clipped at small radii).
-    let reach = radius * tip_reach(spec, dab)
-        + sweep_len(dab)
-        + crate::height_film::FilmAa::pad_px(&film_aa);
+    // Under a moving Shape the capsule's sub-dabs carry the pattern back to the previous centre
+    // ([`capsula_da_altura`]); the AA ring needs no Shape, so the two never meet.
+    let capsula = capsula_da_altura(spec, dab)
+        .filter(|_| film_aa.is_none())
+        .map(walk::SubPasso::new);
+    let atras = capsula.map_or(sweep_len(dab), |c| sweep_len(dab).max(c.comprimento()));
+    let reach =
+        radius * tip_reach(spec, dab) + atras + crate::height_film::FilmAa::pad_px(&film_aa);
     let x0 = (cx - reach).floor().max(0.0) as i64;
     let y0 = (cy - reach).floor().max(0.0) as i64;
     let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
@@ -405,6 +426,7 @@ pub fn accumulate_dab_height(
         cx,
         cy,
         sweep,
+        capsula,
         film_aa,
         lut,
         ablate,

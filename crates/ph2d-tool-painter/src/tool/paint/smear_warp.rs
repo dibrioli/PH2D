@@ -421,6 +421,7 @@ impl TrabalhoDoCampo {
                             }),
                         grain: grain_basis.as_ref(),
                         grain_image: grain_mask.as_ref(),
+                        capsula: None,
                         // O smear TRANSPORTA o relevo que encontra; ele nao deposita uma forma capturada.
                     };
                     if let Some(r) = ph2d_painter_brush::accumulate_dab_smear(

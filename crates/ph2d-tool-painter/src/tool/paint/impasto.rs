@@ -380,6 +380,7 @@ impl PainterTool {
                     }),
                 grain: grain_basis.as_ref(),
                 grain_image: grain_image.as_ref(),
+                capsula: d.capsula(),
             };
             // UN-paint this copy's standing wave lobe FIRST — before the dab's own deposit
             // touches `stroke_paint`, so the `(1 − paint)` weights recompute to the exact numbers
@@ -408,6 +409,7 @@ impl PainterTool {
                     shape: None,
                     grain: None,
                     grain_image: None,
+                    capsula: None,
                     // O lóbulo da onda é do PRÓPRIO dab (ele desloca massa que já está na tela);
                     // uma forma capturada não tem o que dizer sobre para onde a massa foge.
                 };

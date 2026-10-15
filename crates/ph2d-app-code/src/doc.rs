@@ -99,7 +99,11 @@ impl CodeDoc {
         if syntax_too {
             self.syntax.edit(edits, self.buffer.text());
         }
-        for b in self.folded.iter_mut().chain(self.diag_anchor.iter_mut().map(|a| &mut a.0)) {
+        for b in self
+            .folded
+            .iter_mut()
+            .chain(self.diag_anchor.iter_mut().map(|a| &mut a.0))
+        {
             for e in edits {
                 *b = map_byte(*b, e);
             }
@@ -167,7 +171,11 @@ impl CodeDoc {
         self.derive();
         self.folded = if fold {
             let t = self.buffer.text();
-            self.derived.folds.iter().map(|f| t.byte_of_line(f.start_line)).collect()
+            self.derived
+                .folds
+                .iter()
+                .map(|f| t.byte_of_line(f.start_line))
+                .collect()
         } else {
             Vec::new()
         };
@@ -185,9 +193,10 @@ impl CodeDoc {
             .min();
         if let Some(start) = outer {
             let b = t.byte_of_line(start);
-            self.buffer.set_selection(ph2d_code_buffer::Selection::single(
-                ph2d_code_buffer::Range::cursor(b),
-            ));
+            self.buffer
+                .set_selection(ph2d_code_buffer::Selection::single(
+                    ph2d_code_buffer::Range::cursor(b),
+                ));
         }
     }
 

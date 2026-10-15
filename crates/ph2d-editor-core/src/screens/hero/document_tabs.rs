@@ -12,13 +12,13 @@
 //! ([`register_board`]): sem `InteractiveState` uma aba é pintada e nasce morta.
 
 use super::HeroScreen;
+use crate::doc_surface::{DocTab, SurfaceTab};
 use crate::icons::IconId;
 use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, rect_for_label, resolve};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
-use crate::doc_surface::{DocTab, SurfaceTab};
 use ph2d_a11y::NodeId;
 use ph2d_board_model::{BoardId, BoardSet};
 use ph2d_i18n::tr;
@@ -48,7 +48,12 @@ pub fn surface_close_node_id(tab: SurfaceTab) -> NodeId {
 #[must_use]
 pub fn surface_close_rect(tab: Rect) -> Rect {
     let s = INLINE_ICON_PX;
-    Rect::new(tab.x + tab.w - s - Spacing::Sm.px(), tab.y + (tab.h - s) / 2.0, s, s)
+    Rect::new(
+        tab.x + tab.w - s - Spacing::Sm.px(),
+        tab.y + (tab.h - s) / 2.0,
+        s,
+        s,
+    )
 }
 
 /// O id do controlo da aba do quadro `id`.
@@ -285,14 +290,34 @@ pub fn paint(
                 paint_text_centered(text_system, scene, name, r, TypeToken::Sm.px(), fg);
             }
             Target::Surface(tab) => {
-                let title = surfaces.iter().find(|(t, _)| *t == tab).map(|(_, d)| surface_title(d));
+                let title = surfaces
+                    .iter()
+                    .find(|(t, _)| *t == tab)
+                    .map(|(_, d)| surface_title(d));
                 let close = surface_close_rect(r);
                 let label = Rect::new(r.x, r.y, (close.x - r.x).max(0.0), r.h);
-                paint_text_centered(text_system, scene, title.as_deref().unwrap_or(""), label, TypeToken::Sm.px(), fg);
+                paint_text_centered(
+                    text_system,
+                    scene,
+                    title.as_deref().unwrap_or(""),
+                    label,
+                    TypeToken::Sm.px(),
+                    fg,
+                );
                 hit_index.register(id, r);
                 let cid = surface_close_node_id(tab);
-                let hot = matches!(store.button_state(cid), Some(ButtonState::Hovered | ButtonState::Pressed));
-                let ink = resolve(if hot { ColorToken::Text1 } else { ColorToken::Text3 }, theme);
+                let hot = matches!(
+                    store.button_state(cid),
+                    Some(ButtonState::Hovered | ButtonState::Pressed)
+                );
+                let ink = resolve(
+                    if hot {
+                        ColorToken::Text1
+                    } else {
+                        ColorToken::Text3
+                    },
+                    theme,
+                );
                 paint_icon(scene, IconId::Close, close, ink, StrokeToken::Default.px());
                 hit_index.register(cid, close);
                 continue;

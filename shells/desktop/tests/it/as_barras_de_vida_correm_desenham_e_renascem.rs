@@ -20,9 +20,7 @@ const MORTE: &str = include_str!("../../src/render_loop/fase_fabrica_e_morte.rs"
 /// **Mutação que deve sangrar:** apagar a chamada `barras(…)` do `correm`.
 #[test]
 fn o_quadro_corre_as_barras() {
-    let corpo = &MOTORES[MOTORES
-        .find("pub fn correm(")
-        .expect("o `correm` existe")..];
+    let corpo = &MOTORES[MOTORES.find("pub fn correm(").expect("o `correm` existe")..];
     let fim = corpo.find("\n}\n").expect("o `correm` fecha");
     let corpo = &corpo[..fim];
     assert!(

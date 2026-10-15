@@ -312,7 +312,7 @@ pub(crate) fn paint_script_section(
     } else {
         paint_button(
             &Button::new(ids::INSP_SCRIPT_EDIT, tr("panel.inspector.script.edit"))
-                .state(ButtonState::Disabled),
+                .visual((ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)),
             editar,
             scene,
             text_system,

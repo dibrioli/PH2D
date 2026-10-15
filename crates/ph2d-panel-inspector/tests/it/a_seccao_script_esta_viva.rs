@@ -477,7 +477,9 @@ fn um_script_partido_pinta_a_linha_do_erro() {
         }
         // ⭐⭐ O retorno do dono: o símbolo NUNCA cru entre aspas — e sai destacado, num chip.
         assert!(
-            avisos.iter().all(|a| !a.texto.contains("'='") && !a.texto.contains("'x'")),
+            avisos
+                .iter()
+                .all(|a| !a.texto.contains("'='") && !a.texto.contains("'x'")),
             "um símbolo cru entre aspas no cartão: {avisos:?}"
         );
         for chip in ["=", "x"] {
@@ -524,7 +526,11 @@ fn o_seletor_lista_os_scripts_do_projeto_e_a_escolha_aponta_o_nome() {
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let chip = ids::INSP_SCRIPT_PICK;
     assert!(rect_de(&rects, chip).is_some(), "o seletor nao foi pintado");
-    assert_eq!(h.dropdown_is_open(chip), Some(false), "nao esta' registado como Dropdown");
+    assert_eq!(
+        h.dropdown_is_open(chip),
+        Some(false),
+        "nao esta' registado como Dropdown"
+    );
     h.set_dropdown_open(chip, true);
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     for j in 0..2 {

@@ -132,7 +132,11 @@ fn o_save_do_menu_aplica_a_aba_activa() {
     m.hero.documents.activate(None);
     m.hero.file_menu.save = true;
     m.quadro();
-    assert_ne!(m.texto_salvo(ids[0]), BOB, "com a Cena activa a aba com ● é aplicada");
+    assert_ne!(
+        m.texto_salvo(ids[0]),
+        BOB,
+        "com a Cena activa a aba com ● é aplicada"
+    );
     assert!(!m.docs().is_dirty(ids[0]));
     m.pede(ids[0]); // volta a activar a aba
     m.escreve(ids[0], "-- y\n");

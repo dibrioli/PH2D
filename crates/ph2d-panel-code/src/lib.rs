@@ -21,7 +21,7 @@ mod view;
 
 pub use a11y::RUN_CHARS;
 pub use console::{ConsoleHit, ConsoleRow, ConsoleView};
-pub use find_bar::{count_text, FindBar, FindBarView, FindCount, FindField, FindHit};
+pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{Badge, CodeFrame, FoldMark, Problem, Severity};
 pub use geom::Column;
 pub use line_cache::LineCache;

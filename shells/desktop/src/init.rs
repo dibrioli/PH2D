@@ -367,7 +367,8 @@ fn boot_hero_screen(
         crate::layout_persist::load_sections(&mut hero.store);
         // A cena de smoke dos QUADROS (`PH2D_BOARD_SMOKE`), inerte sem a env.
         ph2d_app_board::smoke::stage_armed_smokes(&mut hero);
-        hero.documents.install_surface(Box::new(ph2d_app_code::CodeDocs::default()));
+        hero.documents
+            .install_surface(Box::new(ph2d_app_code::CodeDocs::default()));
         Some(hero)
     } else {
         None

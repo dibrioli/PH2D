@@ -124,9 +124,9 @@ impl ListState {
             }
             ListHit::Row(id) => {
                 self.focus = None;
-                let double = self
-                    .last_click
-                    .is_some_and(|(t, at)| at == id && now_ns.saturating_sub(t) <= DOUBLE_CLICK_WINDOW_NS);
+                let double = self.last_click.is_some_and(|(t, at)| {
+                    at == id && now_ns.saturating_sub(t) <= DOUBLE_CLICK_WINDOW_NS
+                });
                 self.last_click = Some((now_ns, id));
                 if double {
                     self.start_rename(ScriptId(id));
@@ -176,7 +176,9 @@ impl ListState {
                 if r.escape || r.enter || r.tab {
                     self.focus = None;
                 }
-                if r.enter && let Some((id, _)) = self.visible().first() {
+                if r.enter
+                    && let Some((id, _)) = self.visible().first()
+                {
                     self.asks.push(Ask::Open(*id));
                 }
             }
@@ -216,7 +218,10 @@ impl CodeDocs {
         for ask in asks {
             match ask {
                 Ask::Open(id) => {
-                    if let Some(d) = world.get_resource::<ProjectScripts>().and_then(|l| l.get(id)) {
+                    if let Some(d) = world
+                        .get_resource::<ProjectScripts>()
+                        .and_then(|l| l.get(id))
+                    {
                         let (name, text) = (d.name.clone(), d.text.clone());
                         self.open(id, &name, &text);
                     }
@@ -225,8 +230,15 @@ impl CodeDocs {
                     let id = world
                         .get_resource_or_init::<ProjectScripts>()
                         .insert(NEW_SCRIPT_NAME, NEW_SCRIPT_TEXT);
-                    let name = world.resource::<ProjectScripts>().get(id).map(|d| d.name.clone());
-                    self.open(id, name.as_deref().unwrap_or(NEW_SCRIPT_NAME), NEW_SCRIPT_TEXT);
+                    let name = world
+                        .resource::<ProjectScripts>()
+                        .get(id)
+                        .map(|d| d.name.clone());
+                    self.open(
+                        id,
+                        name.as_deref().unwrap_or(NEW_SCRIPT_NAME),
+                        NEW_SCRIPT_TEXT,
+                    );
                 }
                 Ask::Rename(id, name) => {
                     if let Some(mut l) = world.get_resource_mut::<ProjectScripts>() {
@@ -259,7 +271,11 @@ impl CodeDocs {
     /// O que a lista mostra — os testes perguntam por aqui.
     #[must_use]
     pub fn list_names(&self) -> Vec<String> {
-        self.list.visible().into_iter().map(|(_, n)| n.to_owned()).collect()
+        self.list
+            .visible()
+            .into_iter()
+            .map(|(_, n)| n.to_owned())
+            .collect()
     }
 
     /// A frase de recusa que a lista mostra, se a há.

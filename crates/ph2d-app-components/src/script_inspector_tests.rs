@@ -511,7 +511,13 @@ fn re_browse_do_mesmo_ficheiro_reusa_o_script() {
     let e = ph2d_ecs::Entity::from_bits(bits);
     let f = script_file("ph2d.property(\"n\", 1)");
     assert!(browse(&mut sim, bits, &f));
-    let fonte = |sim: &SimWorld| sim.world().get::<LuauScript>(e).expect("cfg").source.clone();
+    let fonte = |sim: &SimWorld| {
+        sim.world()
+            .get::<LuauScript>(e)
+            .expect("cfg")
+            .source
+            .clone()
+    };
     let primeiro = fonte(&sim);
     // Outro objecto, o MESMO ficheiro: o mesmo script.
     let outro = sim

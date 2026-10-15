@@ -133,13 +133,13 @@ pub mod instantiate;
 /// ADR-0186: a secção MACRO do Inspector.
 pub mod macro_inspector;
 pub mod master_editing;
-/// Os motores da janela dos cérebros (scripts, partículas, vigias, gatilho, armas, barras) — a
-/// shell chama-os pela ordem do quadro (`fase_signal_outbox`).
-pub mod motores;
 /// Ciclo 19 do Motion: o `Motion Input` e os sinais publicam as entradas do grafo.
 pub mod motion_input_bridge;
 /// A secção MOTION INPUT do Inspector — o instantâneo e o dreno (ciclo 19 do Motion).
 pub mod motion_input_inspector;
+/// Os motores da janela dos cérebros (scripts, partículas, vigias, gatilho, armas, barras) — a
+/// shell chama-os pela ordem do quadro (`fase_signal_outbox`).
+pub mod motores;
 /// ⭐⭐⭐ As secções NAV REGION e NAV AGENT do Inspector — o instantâneo e o dreno (plano 30, W4).
 pub mod nav_inspector;
 pub mod nav_rota;

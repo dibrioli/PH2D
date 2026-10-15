@@ -97,7 +97,11 @@ fn a_arvore_do_ecra_tem_um_no_por_linha_visivel_e_rolar_troca_os_nos() {
         .ids()
         .find(|id| tree.get(*id).map(|n| n.role()) == Some(Role::Document))
         .expect("o Document da aba");
-    assert_eq!(window.children(), [doc.into()], "o Document é filho do Window");
+    assert_eq!(
+        window.children(),
+        [doc.into()],
+        "o Document é filho do Window"
+    );
     let vis = m.docs().visible_lines(ids[0]).expect("vista");
     let antes = runs(&tree);
     assert_eq!(antes.len(), vis.len(), "um nó por linha visível");
@@ -105,14 +109,20 @@ fn a_arvore_do_ecra_tem_um_no_por_linha_visivel_e_rolar_troca_os_nos() {
 
     // Rolar: as primeiras linhas saem da árvore, as novas entram.
     let (x, y) = centro(AREA);
-    assert!(m.docs().wheel(ids[0].0, x + AREA.w * 0.25, y, -600.0, false));
+    assert!(
+        m.docs()
+            .wheel(ids[0].0, x + AREA.w * 0.25, y, -600.0, false)
+    );
     m.pinta(ids[0]);
     surface_input::sync_a11y(&m.hero, &mut tree, AREA);
     let depois = runs(&tree);
     let vis = m.docs().visible_lines(ids[0]).expect("vista");
     assert!(vis.start > 0, "rolou");
     assert_eq!(depois.len(), vis.len());
-    assert!(!depois.contains(&"local v0 = 0".to_owned()), "a linha 0 saiu");
+    assert!(
+        !depois.contains(&"local v0 = 0".to_owned()),
+        "a linha 0 saiu"
+    );
     assert_eq!(depois[0], format!("local v{0} = {0}", vis.start));
 
     // E a aba fechada leva os nós: só o Window fica.
@@ -152,7 +162,11 @@ fn o_cursor_pisca_e_fica_aceso_enquanto_se_escreve() {
     let lit = m.docs().caret_lit(ids[0]);
     m.hero.store.note_clock(t0 + meio * 102);
     m.quadro();
-    assert_ne!(m.docs().caret_lit(ids[0]), lit, "o frame lê o relógio do chrome");
+    assert_ne!(
+        m.docs().caret_lit(ids[0]),
+        lit,
+        "o frame lê o relógio do chrome"
+    );
 }
 
 /// Shift+roda rola na HORIZONTAL, pela porta do hero (o Shift vem da cache que a shell actualiza).
@@ -167,7 +181,12 @@ fn shift_roda_rola_na_horizontal() {
     let (x, y) = centro(AREA);
     let x = x + AREA.w * 0.25;
     m.hero.store.set_shift_held(true);
-    assert!(ph2d_editor_core::screens::hero::board_view::wheel(&mut m.hero, x, y, -120.0));
+    assert!(ph2d_editor_core::screens::hero::board_view::wheel(
+        &mut m.hero,
+        x,
+        y,
+        -120.0
+    ));
     let (sx, sy) = m.docs().scroll_of(ids[0]).expect("aberto");
     assert!(sx > 0.0 && sy == 0.0, "rolou na horizontal: ({sx}, {sy})");
     // Controlo: sem Shift, a roda não mexe na horizontal.
@@ -214,9 +233,17 @@ fn o_erro_de_declaracao_fica_na_calha_enquanto_ha_alteracoes() {
     m.pede(ids[0]);
     m.quadro();
     let linhas = |m: &mut Mesa| -> Vec<usize> {
-        m.docs().problems_of(ids[0]).iter().map(|p| p.line).collect()
+        m.docs()
+            .problems_of(ids[0])
+            .iter()
+            .map(|p| p.line)
+            .collect()
     };
-    assert_eq!(linhas(&mut m), [2], "o Luau acusa a 2.ª declaração (linha 3)");
+    assert_eq!(
+        linhas(&mut m),
+        [2],
+        "o Luau acusa a 2.ª declaração (linha 3)"
+    );
     // Escrever uma linha no topo: ● — o erro fica, uma linha abaixo.
     m.tecla(ids[0], Key::Home, ctrl(), None);
     m.escreve(ids[0], "-- novo\n");
@@ -235,5 +262,8 @@ fn o_erro_de_declaracao_fica_na_calha_enquanto_ha_alteracoes() {
     m2.escreve(ids2[0], "local x = 1\n");
     m2.quadro();
     assert!(m2.docs().is_dirty(ids2[0]));
-    assert!(m2.docs().problems_of(ids2[0]).is_empty(), "corrigido: nada na calha");
+    assert!(
+        m2.docs().problems_of(ids2[0]).is_empty(),
+        "corrigido: nada na calha"
+    );
 }

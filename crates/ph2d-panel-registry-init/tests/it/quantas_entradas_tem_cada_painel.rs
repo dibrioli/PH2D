@@ -1094,7 +1094,9 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⬆️ `85 → 87` em 2026-10-11 (Luz 2D, smoke do dono) — **capacidade nova**: os cartões LIGHT
     //    OCCLUDER e UNLIT, cada um com o seu `x Remove` (dois comandos a sério). A *Opacity* é um
     //    VALOR e não conta.
-    ("inspector", 87),
+    // ⬆️ `87 → 88` em 2026-10-15 (CodeEditor E11) — **capacidade nova**: o seletor dos scripts do
+    //    projeto no cartão Script (escolher um script que já existe; as opções são as do enum).
+    ("inspector", 88),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),

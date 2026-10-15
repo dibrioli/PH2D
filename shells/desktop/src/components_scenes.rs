@@ -360,7 +360,9 @@ impl crate::App {
     /// `ph2d-app-code`). Prólogo do quadro, uma vez: a cena, a régua aberta, o relógio a andar.
     pub(crate) fn script_smoke(&mut self) {
         let code = ph2d_app_code::smoke::armed_level();
-        let script = std::env::var("PH2D_SCRIPT_SMOKE").ok().map(|v| v.parse().unwrap_or(1));
+        let script = std::env::var("PH2D_SCRIPT_SMOKE")
+            .ok()
+            .map(|v| v.parse().unwrap_or(1));
         if self.components.smokes.script || code.or(script).is_none() {
             return;
         }
@@ -369,7 +371,9 @@ impl crate::App {
         };
         let escolhido = match code {
             Some(n) => ph2d_app_components::code_smoke::montar(cx, n),
-            None => Some(ph2d_app_components::script_smoke::montar(cx.sim.world_mut(), 1).escolhido),
+            None => {
+                Some(ph2d_app_components::script_smoke::montar(cx.sim.world_mut(), 1).escolhido)
+            }
         };
         self.components.smokes.script = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {

@@ -96,7 +96,16 @@ pub(super) fn paint_deferred_top20_popovers(
         && let Some(info) = crate::state_components::current_inspector_script()
     {
         let dd = sections::script_seletor::chip(&info, true);
-        paint_open_popover(&dd, chip, region, store, scene, text_system, theme, hit_index);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
     } else if let Some((linha, chip)) = pendente
         && let Some(info) = crate::state_components::current_inspector_script()
         && let Some(p) = info.props.get(linha)

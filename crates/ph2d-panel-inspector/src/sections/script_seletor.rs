@@ -37,7 +37,8 @@ pub fn chip(info: &InspectorScriptInfo, aberto: bool) -> Dropdown<usize> {
     dd
 }
 
-/// Pinta o seletor em `r` (apagado sem scripts no projeto).
+/// Pinta o seletor na fileira `r` (apagado sem scripts no projeto), com a coluna da animação
+/// reservada como toda fileira de formulário.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn seletor(
     scene: &mut VectorScene,
@@ -48,13 +49,16 @@ pub(super) fn seletor(
     r: Rect,
     info: &InspectorScriptInfo,
 ) {
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(r.x, r.w, r.y, r.h);
+    let r = Rect::new(r.x, r.y, control_w, r.h);
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     if info.library.is_empty() {
         paint_button(
             &Button::new(
                 ids::INSP_SCRIPT_PICK,
                 tr("panel.inspector.script.no_scripts_in_the_project"),
             )
-            .state(ButtonState::Disabled),
+            .visual((ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)),
             r,
             scene,
             text_system,
@@ -67,7 +71,8 @@ pub(super) fn seletor(
         store.get(ids::INSP_SCRIPT_PICK),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    paint_dropdown_chip(&chip(info, aberto), r, scene, text_system, theme);
+    let dd = chip(info, aberto).visual(store.dropdown_visual(ids::INSP_SCRIPT_PICK));
+    paint_dropdown_chip(&dd, r, scene, text_system, theme);
     if aberto {
         crate::state_popovers::set_pending_script_enum(Some((LINHA_DO_SELETOR, r)));
     }

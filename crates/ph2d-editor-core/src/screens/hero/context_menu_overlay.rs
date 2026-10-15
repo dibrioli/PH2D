@@ -120,7 +120,11 @@ pub fn paint_context_menu_overlay(
             }
         }))
         // Os comandos da aba de família activa (o editor de scripts), no fim do menu deles.
-        .chain(store.doc_menu_rows(req.kind).map(|(id, l)| MenuRow::Item(id, l, None)))
+        .chain(
+            store
+                .doc_menu_rows(req.kind)
+                .map(|(id, l)| MenuRow::Item(id, l, None)),
+        )
         .collect();
 
     if matches!(req.kind, ContextMenuKind::SceneList) {

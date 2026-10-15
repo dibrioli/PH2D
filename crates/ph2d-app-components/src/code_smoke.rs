@@ -68,9 +68,18 @@ fn formas(nivel: u32) -> Vec<(&'static str, VecPath)> {
     let r = SHAPE_R;
     let mut v = vec![
         ("Circle", tinta(ellipse([0.0, 0.0], r, r), [96, 168, 235])),
-        ("Star", tinta(star([0.0, 0.0], r, r, 5, 0.45), [240, 196, 72])),
-        ("Hexagon", tinta(regular_polygon([0.0, 0.0], r, r, 6), [150, 120, 230])),
-        ("Square (no script)", tinta(rectangle([-r, -r], [r, r]), [130, 134, 146])),
+        (
+            "Star",
+            tinta(star([0.0, 0.0], r, r, 5, 0.45), [240, 196, 72]),
+        ),
+        (
+            "Hexagon",
+            tinta(regular_polygon([0.0, 0.0], r, r, 6), [150, 120, 230]),
+        ),
+        (
+            "Square (no script)",
+            tinta(rectangle([-r, -r], [r, r]), [130, 134, 146]),
+        ),
     ];
     if nivel >= 2 {
         v.push((

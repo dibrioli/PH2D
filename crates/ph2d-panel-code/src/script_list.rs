@@ -6,7 +6,9 @@
 use crate::chrome::{self, Ui};
 use ph2d_code_buffer::Buffer;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_block, paint_text_elided, rect_to_vello};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text_block, paint_text_elided, rect_to_vello,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
@@ -143,13 +145,27 @@ impl ScriptListView {
             scene,
             ts,
             title,
-            Rect::new(area.x + gap, y, (new.x - gap - area.x - gap).max(0.0), ROW_H_PX),
+            Rect::new(
+                area.x + gap,
+                y,
+                (new.x - gap - area.x - gap).max(0.0),
+                ROW_H_PX,
+            ),
             &ui,
         );
         let y = y + ROW_H_PX + gap;
         let field = Rect::new(area.x + gap, y, (area.w - gap * 2.0).max(0.0), ROW_H_PX);
         let focus = list.focus == Some(ListField::Filter);
-        self.field(scene, ts, ListField::Filter, list.filter, tr("code.list.filter"), field, focus, &ui);
+        self.field(
+            scene,
+            ts,
+            ListField::Filter,
+            list.filter,
+            tr("code.list.filter"),
+            field,
+            focus,
+            &ui,
+        );
         let top = y + ROW_H_PX + gap;
         let notice_h = list.notice.map_or(0.0, |n| {
             let w = (area.w - gap * 2.0).max(0.0);
@@ -176,12 +192,21 @@ impl ScriptListView {
                 continue;
             }
             let r = Rect::new(area.x + gap * 0.5, ry, (area.w - gap).max(0.0), ROW_H_PX);
-            self.row(scene, ts, list, row, r, &ui);
+            self.row(scene, ts, list, row, r, &ui, *theme);
         }
         scene.pop_layer();
         if let Some(n) = list.notice {
             let w = (area.w - gap * 2.0).max(0.0);
-            paint_text_block(ts, scene, n, area.x + gap, bottom + gap, chrome::font(), w, ui.error);
+            paint_text_block(
+                ts,
+                scene,
+                n,
+                area.x + gap,
+                bottom + gap,
+                chrome::font(),
+                w,
+                ui.error,
+            );
         }
     }
 
@@ -194,20 +219,38 @@ impl ScriptListView {
         row: &ListRow<'_>,
         r: Rect,
         ui: &Ui,
+        theme: Theme,
     ) {
         if row.current {
-            fill_rounded_rect(scene, r, Radius::Sm.px(), ui.button_on);
+            let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+            fill_rounded_rect(scene, r, radius, ui.button_on);
         }
         let gap = Spacing::Sm.px();
         let mut text_right = r.x + r.w - gap;
         if row.current {
-            let del = self.icon_button(scene, IconId::Trash, ListHit::Delete(row.id), r.x + r.w, r.y, ui);
+            let del = self.icon_button(
+                scene,
+                IconId::Trash,
+                ListHit::Delete(row.id),
+                r.x + r.w,
+                r.y,
+                ui,
+            );
             text_right = del.x - gap;
         }
         if let Some((_, buf)) = list.renaming.filter(|(id, _)| *id == row.id) {
             let field = Rect::new(r.x + gap, r.y, (text_right - r.x - gap).max(0.0), r.h);
             let focus = list.focus == Some(ListField::Rename);
-            self.field(scene, ts, ListField::Rename, buf, row.name, field, focus, ui);
+            self.field(
+                scene,
+                ts,
+                ListField::Rename,
+                buf,
+                row.name,
+                field,
+                focus,
+                ui,
+            );
             return;
         }
         let name = if row.dirty {
@@ -218,14 +261,23 @@ impl ScriptListView {
         let f = chrome::font();
         let color = if row.current { ui.text1 } else { ui.text2 };
         let w = (text_right - r.x - gap).max(0.0);
-        paint_text_elided(ts, scene, &name, r.x + gap, r.y + (r.h - f) * 0.5, f, w, color);
+        paint_text_elided(
+            ts,
+            scene,
+            &name,
+            r.x + gap,
+            r.y + (r.h - f) * 0.5,
+            f,
+            w,
+            color,
+        );
         // A linha inteira é alvo — depois do lixo, que ganha por vir primeiro.
         self.targets.push((ListHit::Row(row.id), r));
     }
 
     fn clamp_scroll(&mut self) {
         let max = (self.content_h - self.rows_rect.h).max(0.0);
-        self.scroll = self.scroll.clamp(0.0, max);
+        self.scroll = ph2d_editor_core::math::safe_clamp(self.scroll, 0.0, max);
     }
 
     /// A roda sobre as linhas. `true` = tomada.
@@ -246,14 +298,15 @@ impl ScriptListView {
         }
         for p in &self.fields {
             if p.rect.contains(x, y) {
-                return Some(ListHit::Field(p.field, chrome::byte_at_x(ts, &p.text, x - p.x0)));
+                return Some(ListHit::Field(
+                    p.field,
+                    chrome::byte_at_x(ts, &p.text, x - p.x0),
+                ));
             }
         }
-        if let Some((h, _)) = self
-            .targets
-            .iter()
-            .find(|(h, r)| r.contains(x, y) && (!matches!(h, ListHit::Row(_)) || self.rows_rect.contains(x, y)))
-        {
+        if let Some((h, _)) = self.targets.iter().find(|(h, r)| {
+            r.contains(x, y) && (!matches!(h, ListHit::Row(_)) || self.rows_rect.contains(x, y))
+        }) {
             return Some(*h);
         }
         Some(ListHit::Body)

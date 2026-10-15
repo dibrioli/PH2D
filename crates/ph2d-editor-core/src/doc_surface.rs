@@ -93,15 +93,39 @@ pub trait DocumentSurface: Any {
     /// As abas abertas, pela ordem em que se mostram.
     fn tabs(&self) -> Vec<DocTab>;
     /// Pinta o documento em `area` (o fundo também: a cena está por baixo).
-    fn paint(&mut self, id: u64, area: Rect, scene: &mut VectorScene, text: &mut TextSystem, theme: &Theme);
+    fn paint(
+        &mut self,
+        id: u64,
+        area: Rect,
+        scene: &mut VectorScene,
+        text: &mut TextSystem,
+        theme: &Theme,
+    );
     /// Carregar/largar dentro da área. `true` = tomado.
-    fn pointer(&mut self, id: u64, input: PointerInput<'_>, kind: PointerKind, button: PointerButton, x: f32, y: f32) -> bool;
+    fn pointer(
+        &mut self,
+        id: u64,
+        input: PointerInput<'_>,
+        kind: PointerKind,
+        button: PointerButton,
+        x: f32,
+        y: f32,
+    ) -> bool;
     /// Movimento (com ou sem botão). `true` = tomado.
     fn pointer_move(&mut self, id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool;
     /// Roda sobre a área (`shift` = o Shift premido: rolar na horizontal). `true` = tomada.
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool;
     /// Uma tecla premida ou solta; `text` = o que ela escreve; `paste` = a área de transferência no Ctrl+V.
-    fn key(&mut self, id: u64, text_system: &mut TextSystem, key: Key, mods: Modifiers, pressed: bool, text: Option<&str>, paste: Option<String>) -> KeyOutcome;
+    fn key(
+        &mut self,
+        id: u64,
+        text_system: &mut TextSystem,
+        key: Key,
+        mods: Modifiers,
+        pressed: bool,
+        text: Option<&str>,
+        paste: Option<String>,
+    ) -> KeyOutcome;
     /// Composição (IME / tecla morta). `true` = tomada.
     fn compose(&mut self, id: u64, c: Compose<'_>) -> bool;
     /// O artista fechou a aba. A família decide (pode guardar o que estava por salvar).
@@ -152,7 +176,9 @@ pub struct Surfaces {
 
 impl std::fmt::Debug for Surfaces {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_list().entries(self.families.iter().map(|_| ())).finish()
+        f.debug_list()
+            .entries(self.families.iter().map(|_| ()))
+            .finish()
     }
 }
 
@@ -163,11 +189,15 @@ impl Surfaces {
 
     /// A família do tipo `T` (a crate dela fala com o estado dela por aqui).
     pub fn find_mut<T: DocumentSurface>(&mut self) -> Option<&mut T> {
-        self.families.iter_mut().find_map(|f| f.as_any_mut().downcast_mut::<T>())
+        self.families
+            .iter_mut()
+            .find_map(|f| f.as_any_mut().downcast_mut::<T>())
     }
 
     pub fn find<T: DocumentSurface>(&self) -> Option<&T> {
-        self.families.iter().find_map(|f| f.as_any().downcast_ref::<T>())
+        self.families
+            .iter()
+            .find_map(|f| f.as_any().downcast_ref::<T>())
     }
 
     /// Todas as abas de todas as famílias, pela ordem das famílias.
@@ -175,7 +205,11 @@ impl Surfaces {
         let mut out = Vec::new();
         for (i, f) in self.families.iter().enumerate() {
             let family = u8::try_from(i).unwrap_or(u8::MAX);
-            out.extend(f.tabs().into_iter().map(|t| (SurfaceTab { family, id: t.id }, t)));
+            out.extend(
+                f.tabs()
+                    .into_iter()
+                    .map(|t| (SurfaceTab { family, id: t.id }, t)),
+            );
         }
         out
     }

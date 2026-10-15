@@ -165,7 +165,10 @@ impl CodeDocs {
     /// A rolagem `(x, y)` da vista do script `id`, em píxeis.
     #[must_use]
     pub fn scroll_of(&self, id: ScriptId) -> Option<(f32, f32)> {
-        self.docs.iter().find(|d| d.script == id).map(|d| d.view.scroll())
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map(|d| d.view.scroll())
     }
 
     /// O documento estacionado de `id` (fechado com ●), se o há.
@@ -357,7 +360,9 @@ impl DocumentSurface for CodeDocs {
         if self.list.focus.is_some() {
             return false;
         }
-        let Some(d) = self.touched(id) else { return false };
+        let Some(d) = self.touched(id) else {
+            return false;
+        };
         if d.find.open && d.find.focus.is_some() {
             return false;
         }

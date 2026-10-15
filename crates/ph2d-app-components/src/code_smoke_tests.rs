@@ -35,13 +35,20 @@ fn tres_formas_correm_o_mesmo_script_e_o_quadrado_fica_parado() {
     let (mut sim, formas) = cena(1);
     assert_eq!(formas.len(), 4);
     let w = sim.world();
-    let bob = w.resource::<ProjectScripts>().by_name(BOB_NAME).expect("bob.luau no projeto");
+    let bob = w
+        .resource::<ProjectScripts>()
+        .by_name(BOB_NAME)
+        .expect("bob.luau no projeto");
     for &e in &formas[..3] {
         assert_eq!(w.get::<LuauScript>(e), Some(&LuauScript::library(bob)));
     }
-    assert!(w.get::<LuauScript>(formas[3]).is_none(), "o quadrado é o controlo");
     assert!(
-        w.get_resource::<ScriptEditRequests>().is_none_or(|r| r.0.is_empty()),
+        w.get::<LuauScript>(formas[3]).is_none(),
+        "o quadrado é o controlo"
+    );
+    assert!(
+        w.get_resource::<ScriptEditRequests>()
+            .is_none_or(|r| r.0.is_empty()),
         "nada aberto no nível 1"
     );
 
@@ -54,8 +61,13 @@ fn tres_formas_correm_o_mesmo_script_e_o_quadrado_fica_parado() {
 
     // O gesto do dono: a amplitude 1.0 → 2 no texto, gravado. As três passam a ~2 m.
     let novo = BOB_LUAU.replace("\"amplitude\", 1.0", "\"amplitude\", 2");
-    assert_ne!(novo, BOB_LUAU, "a linha que o comentário manda mudar existe");
-    sim.world_mut().resource_mut::<ProjectScripts>().set_text(bob, &novo);
+    assert_ne!(
+        novo, BOB_LUAU,
+        "a linha que o comentário manda mudar existe"
+    );
+    sim.world_mut()
+        .resource_mut::<ProjectScripts>()
+        .set_text(bob, &novo);
     let depois = passeio(&mut sim, &mut host, &formas, 90);
     for (i, d) in depois.iter().enumerate().take(3) {
         assert!(*d > 1.5, "a forma {i} sobe mais depois de gravar: {d}");

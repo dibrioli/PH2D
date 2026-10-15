@@ -3,9 +3,9 @@
 //! primeiro e a cena nunca vê o evento que ela tomou. `None` = não há aba de família activa (segue a
 //! porta do quadro como antes).
 
+use super::HeroScreen;
 use super::board_keys::{BoardKey, KeyOutcome as BoardOutcome};
 use super::board_view::Input;
-use super::HeroScreen;
 use crate::doc_surface::{Compose, Key, PointerInput};
 use ph2d_host::{Modifiers, PointerButton, PointerKind};
 use ph2d_text::TextSystem;
@@ -76,7 +76,11 @@ pub(super) fn pointer(
     y: f32,
 ) -> Option<bool> {
     let (f, id) = hero.documents.active_surface_mut()?;
-    let pi = PointerInput { text: input.text, mods: input.mods, now_ns: input.now_ns };
+    let pi = PointerInput {
+        text: input.text,
+        mods: input.mods,
+        now_ns: input.now_ns,
+    };
     let taken = f.pointer(id, pi, kind, button, x, y);
     // Carregar no documento tira o foco a um campo da interface: senão o texto iria para lá.
     if taken && matches!(kind, PointerKind::Down) && hero.store.focus_id().is_some() {
@@ -85,9 +89,18 @@ pub(super) fn pointer(
     Some(taken)
 }
 
-pub(super) fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> Option<bool> {
+pub(super) fn pointer_move(
+    hero: &mut HeroScreen,
+    input: Input<'_>,
+    x: f32,
+    y: f32,
+) -> Option<bool> {
     let (f, id) = hero.documents.active_surface_mut()?;
-    let pi = PointerInput { text: input.text, mods: input.mods, now_ns: input.now_ns };
+    let pi = PointerInput {
+        text: input.text,
+        mods: input.mods,
+        now_ns: input.now_ns,
+    };
     Some(f.pointer_move(id, pi, x, y))
 }
 
@@ -103,7 +116,10 @@ pub(super) fn key(
 ) -> Option<BoardOutcome> {
     let (f, id) = hero.documents.active_surface_mut()?;
     let out = f.key(id, ts, key_of(k), mods, pressed, text, paste);
-    Some(BoardOutcome { consumed: out.consumed, copy: out.copy })
+    Some(BoardOutcome {
+        consumed: out.consumed,
+        copy: out.copy,
+    })
 }
 
 /// Composição (IME / tecla morta / carácter confirmado) — só sem campo da interface focado.
@@ -158,7 +174,8 @@ pub fn sync_a11y(hero: &HeroScreen, tree: &mut ph2d_a11y::Tree, viewport: crate:
     let root = tree.root();
     let mut nodes = surface_a11y(hero);
     nodes.insert(0, (root, window_node(hero, viewport)));
-    let keep: std::collections::BTreeSet<ph2d_a11y::NodeId> = nodes.iter().map(|(id, _)| *id).collect();
+    let keep: std::collections::BTreeSet<ph2d_a11y::NodeId> =
+        nodes.iter().map(|(id, _)| *id).collect();
     let stale: Vec<ph2d_a11y::NodeId> = tree.ids().filter(|id| !keep.contains(id)).collect();
     for id in stale {
         tree.remove(id);

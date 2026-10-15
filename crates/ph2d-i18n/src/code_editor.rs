@@ -12,8 +12,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.status.problems" => "{errors} errors · {warnings} warnings",
         "code.status.reloaded" => "Reloaded · {count} objects",
         "code.status.reloaded_one" => "Reloaded · 1 object",
-        "code.status.refused_line" => "Not applied: error on line {line} — the previous version keeps running",
-        "code.status.refused" => "Not applied: the script has an error — the previous version keeps running",
+        "code.status.refused_line" => {
+            "Not applied: error on line {line} — the previous version keeps running"
+        }
+        "code.status.refused" => {
+            "Not applied: the script has an error — the previous version keeps running"
+        }
         "code.status.saved_unused" => "Saved · no object uses this script",
         // A barra de buscar/substituir e o «Go to line» (E9).
         "code.find.placeholder" => "Find",
@@ -59,7 +63,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.list.no_match" => "No script matches",
         "code.list.users" => "{count} objects",
         "code.list.users_one" => "1 object",
-        "code.list.in_use" => "\u{201c}{name}\u{201d} is used by {count} object(s) \u{2014} it was not deleted",
+        "code.list.in_use" => {
+            "\u{201c}{name}\u{201d} is used by {count} object(s) \u{2014} it was not deleted"
+        }
         "code.list.show" => "Show the script list",
         "code.list.hide" => "Hide the script list",
         _ => return None,

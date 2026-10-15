@@ -400,7 +400,11 @@ impl WidgetStore {
     /// cada linha vira botão (sem estado um clique no menu morre) e pinta-se no fim do menu dela.
     pub fn set_doc_commands(
         &mut self,
-        rows: Vec<(crate::interaction::ContextMenuKind, ph2d_a11y::NodeId, String)>,
+        rows: Vec<(
+            crate::interaction::ContextMenuKind,
+            ph2d_a11y::NodeId,
+            String,
+        )>,
     ) {
         for &(_, id, _) in &rows {
             if self.button_state(id).is_none() {

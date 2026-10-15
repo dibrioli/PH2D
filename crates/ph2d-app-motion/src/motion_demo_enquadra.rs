@@ -17,9 +17,10 @@
 //! - **Uma cena que é um CAMPO** (a figura em `t = 0` já contém a vista de omissão inteira: as grelhas
 //!   de população) abre na omissão — está-se dentro dela. Fica fora da tabela, e o gate confere-o.
 //! - **Uma cena cujas peças FOGEM** — a figura do ciclo pede mais de [`FOGE_ACIMA_DE`] vezes a altura
-//!   da do ARRANQUE (`t = 0`) junto com o canvas visto da omissão: a fonte que cai 70 m, a corda solta
-//!   que cai 40 m, as plumas da `=95` a ±40 m — abre nesta última: o que fugiu não afasta a vista
-//!   (com o ciclo inteiro, a `=50` abria a 79 m com a figura num canto de um canvas vazio).
+//!   da do ARRANQUE (`t = 0`) junto com o canvas visto da omissão ([`razao_da_fuga`]): a fonte que
+//!   cai 70 m, a corda solta que cai 40 m, as plumas da `=95` a ±40 m — abre nesta última: o que
+//!   fugiu não afasta a vista (com o ciclo inteiro, a `=50` abria a 79 m com a figura num canto de um
+//!   canvas vazio). ⚠️ O corte é de escala, num vão medido, não uma natureza (ver a constante).
 //!
 //! A shell só APLICA ([`abre_inteira`], uma chamada por quadro na fase da ponte); `PH2D_DEMO_ALTURA`
 //! (bissecção do zoom) continua a mandar na altura.
@@ -40,13 +41,32 @@ pub struct Extensao {
     pub arranque: [f32; 4],
 }
 
-/// ⭐ **Quando o ciclo FOGE** — a razão entre a altura da vista do ciclo e a do arranque (junto com o
-/// canvas visto da omissão) acima da qual o que afasta a vista é o que sai de cena. Medida a 15/10
-/// (sonda `a_tabela_das_extensoes`, 131 cenas): as que CRESCEM no sítio vão até 1,48 (`=139`, a
-/// galáxia dos gatilhos; `=128` 1,45; `=127` 1,42; `=111` 1,32), e as que se vão começam em 1,59
-/// (`=138` os discos a cair, `=102` 1,64, `=10` a neve 1,77, `=52` 1,82, `=50` a corda solta 2,41,
-/// `=95` as plumas 4,91, `=5` a fonte 10): o meio desse vão.
-pub const FOGE_ACIMA_DE: f32 = 1.55;
+/// ⭐ **Quando o ciclo FOGE** — o corte da [`razao_da_fuga`]. O recurso é o TAMANHO das peças no
+/// ecrã (medido na câmara de omissão): acima do corte, abrir no ciclo encolhê-las-ia mais do que a
+/// cena aguenta, e abre-se no arranque.
+///
+/// ⛔ **É um corte num VÃO entre amostras, não uma natureza.** Medido a 15/10 (sondas
+/// `candidatos_da_fuga` e `a_razao_noutras_janelas`, as 131 cenas da tabela, `2 · CICLO` a 60 Hz):
+/// nenhum descritor da DINÂMICA separa as classes — cada um cruza-as (`=15`/`=16` fora):
+///
+/// | candidato | foge | cresce no sítio |
+/// |---|---|---|
+/// | alcance: crescimento no 2.º ciclo ÷ no 1.º | 0 (`=113`) … 9,6 (`=52`) | 0 … 1,37 (`=139`) |
+/// | instante em que o alcance chega a 95 % ÷ `2·CICLO` | 0,31 (`=113`) … 0,98 | 0 … 0,96 (`=75`) |
+/// | peças que batem no 2.º ciclo o recorde do 1.º | 0 (`=113`) … 1 | 0 … 1 (`=139`) |
+/// | a caixa em `t = CICLO` contra a de `t = 0` | 0,14 (`=52`) … 504 | 0 … 61 (`=67`) |
+/// | o instante preenche a figura do ciclo (máx.) | 0,74 (`=113`) … 1 | 0,58 … 1 |
+/// | **esta razão** | **≥ 1,571** (`=138`) | **≤ 1,454** (`=128`) |
+///
+/// (os discos da `=138` caem e ASSENTAM no 1.º ciclo; a galáxia da `=139` continua a crescer no 2.º:
+/// a «fuga» é de ESCALA.) O vão é `1,454` (`=128`, igual nas quatro janelas do gate) → `1,571`
+/// (`=138` a 1366×768; 1,581 na foto), ×1,081; o corte é o centro geométrico dele: folga de 3,9 % e
+/// 4,1 %. ⚠️ **O risco:** uma cena nova ou uma mudança que caia no vão muda o modo de abrir sem
+/// ninguém decidir — o gate (`motion_demo_enquadra_tests`) confere a classe de cada cena em quatro
+/// janelas contra a lista decidida (`FOGEM`) e reprova a menos de `PERTO_DO_CORTE` (3 %) do corte.
+/// ⚠️ Até 15/10 este doc dizia 1,48 (`=139`) – 1,59 com o corte em 1,55: era a razão SEM o canvas
+/// da omissão, não a que a lei corta — nela a `=10` (0,76) e a `=102` (1,33) já abriam no ciclo.
+pub const FOGE_ACIMA_DE: f32 = 1.51;
 
 /// ⭐ **A figura MEDIDA de cada cena.** ⛔ Escrita pela sonda (`cargo test -p ph2d-app-motion --lib
 /// a_tabela_das_extensoes -- --ignored --nocapture`), nunca à mão: o gate re-mede cada linha.
@@ -117,6 +137,33 @@ pub fn area_no_mundo(v: View, area: Area, janela: WindowSize) -> [f32; 4] {
     [x(area.x), y(area.y + area.h), x(area.x + area.w), y(area.y)]
 }
 
+/// A figura do arranque junto com o canvas visto da omissão.
+fn arranque_visto(e: Extensao, area: Area, janela: WindowSize) -> [f32; 4] {
+    let o = area_no_mundo(Camera2d::default().view(), area, janela);
+    let b = e.arranque;
+    [
+        b[0].min(o[0]),
+        b[1].min(o[1]),
+        b[2].max(o[2]),
+        b[3].max(o[3]),
+    ]
+}
+
+/// ⭐ **A razão da fuga** — a altura da vista do ciclo sobre a do arranque visto
+/// ([`arranque_visto`]): quantas vezes cada peça encolhe no ecrã se a cena abrir no ciclo em vez de
+/// no arranque. É o número que [`FOGE_ACIMA_DE`] corta.
+#[must_use]
+pub fn razao_da_fuga(
+    e: Extensao,
+    fichas: &[Ficha],
+    area: Area,
+    janela: WindowSize,
+    margem: f32,
+) -> f32 {
+    let h = |f| vista(f, fichas, area, janela, margem).height_world;
+    h(e.ciclo) / h(arranque_visto(e, area, janela))
+}
+
 /// ⭐ **O que a cena enquadra** — a figura do ciclo, ou, quando ela FOGE ([`FOGE_ACIMA_DE`]), a do
 /// arranque junto com o canvas visto da omissão (abrir nunca mostra menos do que ela mostrava).
 #[must_use]
@@ -127,17 +174,8 @@ pub fn a_enquadrar(
     janela: WindowSize,
     margem: f32,
 ) -> [f32; 4] {
-    let o = area_no_mundo(Camera2d::default().view(), area, janela);
-    let b = e.arranque;
-    let arranque = [
-        b[0].min(o[0]),
-        b[1].min(o[1]),
-        b[2].max(o[2]),
-        b[3].max(o[3]),
-    ];
-    let h = |f| vista(f, fichas, area, janela, margem).height_world;
-    if h(e.ciclo) > FOGE_ACIMA_DE * h(arranque) {
-        arranque
+    if razao_da_fuga(e, fichas, area, janela, margem) > FOGE_ACIMA_DE {
+        arranque_visto(e, area, janela)
     } else {
         e.ciclo
     }

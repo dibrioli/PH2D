@@ -109,7 +109,7 @@ impl crate::App {
         };
         self.project_forget_previous(&file);
         if let Some(gfx) = self.gfx.as_mut() {
-            ph2d_app_components::script_project::install(gfx.sim.world_mut(), scripts);
+            ph2d_app_components::script_project::install(gfx.sim.world_mut(), scripts.lib);
         }
         self.project_install_accepted(
             path,
@@ -123,6 +123,9 @@ impl crate::App {
         // Os quadros do ficheiro tomam as abas (e a área volta à cena).
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             ph2d_editor_core::screens::hero::document_tabs::load(hero, boards);
+        }
+        if let Some(n) = scripts.notice {
+            self.toast(n);
         }
     }
 

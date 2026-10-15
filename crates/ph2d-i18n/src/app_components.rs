@@ -91,6 +91,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Made a variant \u{2014} it still follows its base"
         }
         // ph2d-migrar-texto:end
+        // ADR-0188 §2 — the load imported loose script files into the project (the toast of the open).
+        "app.components.script_project.copied_script_file_s_into_the_project" => {
+            "Copied {n} script file(s) into the project \u{2014} the loose files no longer change it"
+        }
+        "app.components.script_project.found_in_the_app_working_folder_not_next_to_the_project" => {
+            "{n} found in the app\u{2019}s working folder, not next to the project \u{2014} check they are the right ones"
+        }
+        "app.components.script_project.script_file_s_not_found_the_script_card_names_them" => {
+            "{n} script file(s) not found \u{2014} the Script card names them"
+        }
         _ => return None,
     })
 }

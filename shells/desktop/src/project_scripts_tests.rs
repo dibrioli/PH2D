@@ -39,7 +39,8 @@ fn abre_e_corre(path: &std::path::Path) -> (ScriptLibrary, LuauScript, f32) {
     let p = path.to_string_lossy();
     let (mut file, _) = app.read_project_file(&p).expect("aceite");
     let lib = ph2d_app_components::script_project::open(&mut file.state.world, &file.scripts, &p)
-        .expect("scripts legíveis");
+        .expect("scripts legíveis")
+        .lib;
     let mut sim = ph2d_ecs::SimWorld::new();
     let e = ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &file.state.world, &registo())
         .expect("restaura")[0];

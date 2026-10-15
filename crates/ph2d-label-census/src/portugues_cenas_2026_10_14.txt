@@ -1,0 +1,199 @@
+# O português que as cenas do Motion PINTAVAM no canvas em 2026-10-14 (legendas + títulos de cartão),
+# lido do PRODUTO: cada nível 1..=142 montado pela porta dos testes (motion_demo_legend::monta),
+# menos os textos neutros (só nomes de nós/opções). 151 legendas + 44 cartões, um por linha.
+# Controlo positivo MEDIDO da régua (portugues.rs): ela tem de acusar cada linha.
+1 CANTOS · agora: miolo curvo
+1 CANTOS · antes: miolo reto
+1 CARREGA · o penacho anda junto
+1 EMBRULHO · agora: curva de um lado
+1 EMBRULHO · antes: reta
+1. GUIADA: 3 ramos, tronco de 2
+1 LEMBRADO · a cauda de sempre
+1 · O carimbo
+1 ONDA · agora: a desenhada
+1 ONDA · antes: so' as 5 prontas
+1 RETANGULO · como sempre foi
+1 SOMBRA · agora: escurece
+1 SOMBRA · antes: cobre
+1 STAGGER · Bounce: age
+1 STAGGER · Linear: mudo
+2 · A forma INTEIRA
+2 ANEL · a forma vem da porta
+2 ARESTA · agora: borda curva
+2 ARESTA · antes: nao da'
+2 DEGRAU · corte Hard: mudo
+2 DEGRAU · Smooth: age
+2 DEIXA · fica onde nasceu
+2 ESCADA · agora: a desenhada
+2 ESCADA · antes: rampa reta
+2. estocastica, semente 1
+2 LENTE · agora: eixo movido
+2 LENTE · antes: centro fixo
+2 RE-COZIDO · tem de ser igual a 1
+2 TRELIÇA · agora: derrete à direita
+2 TRELIÇA · antes: favo perfeito
+32 761 pecas, UM fio: o Value LFO manda no tamanho de todas
+3 ALFA · sombra forte (85%)
+3 ALFA · sombra fraca (15%)
+3 CRUZ · dois grids somados
+3 EIXOS · agora: os dois
+3 EIXOS · antes: so' vertical
+3. estocastica, semente 9
+3 FAIXA · Linear: age
+3 FAIXA · Smooth: mudo
+3 HERDA · leva a velocidade junto
+3 ONDA · agora: sobe e desce
+3 ONDA · antes: só engorda
+3 · O ponto da' o GIRO
+3 PARA A FRENTE · o eco vai na frente
+4. a 1 com gravidade
+4 CAMPO · em rampa: mudo
+4 CAMPO · em Random: age
+5 RUÍDO · 1 oitava: mudo
+5 RUÍDO · 6 oitavas: age
+5. samambaia, a CRESCER
+6 TREMOR · 1 oitava: mudo
+6 TREMOR · 4 oitavas: age
+7 TINTA · em Gradient: age
+7 TINTA · em Solid: mudo
+Absorb (agora)
+Add em grupo: clareia mais, ate ao branco
+a origem do mundo
+A PELE: os ossos todos puxam
+arraste ESTA alca
+arraste ESTE bloco
+atraso pela ORDEM: linha a linha
+atraso pelo LUGAR: esq -> dir
+ATRATOR com PERFIL
+ATRATOR de sempre
+boom: cada disparo sacode a galaxia (ADSR -> Vortex)
+Bounciness 0,9: SALTA
+Bounciness 0: morre onde cai
+...cada osso o SEU quinhao
+cada peca anda em roda
+Camera: a vista
+CAUDA com Tail Alpha Max
+CAUDA sem teto
+Collide DEPOIS da corda
+Collide desligado: um borrao
+Collide ligado: uma pilha
+Color Ramp: uma cor POR PECA
+Color Space = Linear RGB: o meio fica cinza
+Color Space = OKLCH: a cor fica viva
+Com atraso por copia
+COM Collide: encostam
+Com DUAS fontes
+COPIAS Linear
+COPIAS Radial
+CORDA afunilada
+CORDA uniforme
++ Counter: pisca a cada QUATRO
+CURVA com Axis 90
+CURVA com Size Start/End
+CURVA eixo de sempre
+CURVA sem afunilamento
+Custom = colisor (controlo): ninguem le, sobrepoem-se
+Custom = collider: os discos da borda empurram-se
+DOBRA Limited
+DOBRA Limited (a mesma de cima, para comparar)
+DOBRA Unlimited
+DOBRA Within Box
+Drive: a coluna «vendas»
+Drive: o angulo de cada junta
+Drive: o quinhao de cada osso
+Drive: o tamanho no ecra
+...e a VISTA (de' zoom!)
+Element (agora)
+EMISSOR de vida unica
+EMISSOR Life Random
+Emitter: de onde nascem
+Entre bolas, Friction 0: escorregam
+Entre bolas, Friction 1: ROLAM umas nas outras
+...e o campo
+ESCADA Direction Down
+ESCADA para cima
+ESPALHA
+ESPALHA com Uniform desligado
+ESPELHO Both
+ESPELHO Reflection Only
+estado: a grelha cruza no anel (Follow -> Mixer)
+...e uma COLUNA delas
+FAIXA como CAMPO
+FAIXA unica
+Falloff (esta fileira NAO colide)
+fio do Oscillator solto no Transform: nao liga, nao abre menu, o aviso diz porque
+fita das entradas: toca 5 s e para; a faixa verde da Timeline comeca depois do 0
+FK: os pais decidem
+Forever (o de sempre)
+FORMA
+FORMA com Own Fill + Rotation
+Friction 0: desliza sem virar
+Friction 1: ROLA
+Grid (a cadeia)
+IK: a mao vai ao alvo
+Lens: a camera ve a cena inteira
+Loop (recomeca)
+MAR de QUATRO ondas
+MAR de UMA onda
+MOLA num eixo so'
+MOLA Position XY
+o circulo do meio e' o campo: la' dentro tudo cai mais depressa
+O INSTANTE: pisca a CADA batida
+Once (atrasada, com fim)
+ONDA Custom
+ONDA Sine
+O NUMERO: respira LISO
+O QUE A CENA DA: as particulas
+O QUE EU FIZ: uma palavra
+O QUE EU TENHO: as linhas do ficheiro
+Order = From Point: do centro para fora
+Order = Index: fila a fila
+...ou a MAO decide (IK)
+...ou uma forma
+PENACHO + Randomize(Hue)
+PENACHO + Randomize(Opacity)
+PENACHO + Randomize(Rotation)
+PENACHO + Randomize(Size)
+PENACHO SIMULADO
+POISSON uniforme
++ Quantize: respira aos DEGRAUS
+QUEM SEGURA: os pais decidem (FK)
+Random dentro de GRUPOS
+Random na fila TODA
+Range: que ossos puxam
+Reflect (o de sempre)
+Remap (agora)
+Scene: a estrela (forma) tapa o quadrado laranja (imagem); so' o grupo clareia o fundo
+Screen em grupo: imagens e estrelas clareiam onde se tocam
+Seed da cena (o de sempre)
+Seed por PECA (agora)
+SEGURA-SE SOZINHO: a corda
+Sem atraso (o de sempre)
+SEM Collide: atravessam-se
+Set (o de sempre)
+Shape: a forma
+Size (a magnitude)
+Size X (o EIXO)
+Skin: cada osso o seu quinhao
+Skin: os ossos todos
+Slit Scan: CAMPO
+Slit Scan: ORDEM
+So' o centro
+Strength: quanto a restricao puxa
+Table: as linhas
+Table: o grafico
+Target: onde a mao tem de estar
+Text: a palavra
+Tint: UMA cor para o pano
+TOLERANCIA
+tolerancia 0
++ Trail: cada peca deixa RASTO
+VENTO Force
+VENTO Target Velocity
+Verlet Rope: a corda
+vida: baixar = dano (On Change Fall -> ADSR); cor: solte o r no r do Tint
+vida: o tempo da barra e' a vida (Time Remap = Driven)
+VORTICE Force
+VORTICE Target Velocity
+Wave: o campo
+World (o de sempre)

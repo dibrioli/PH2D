@@ -363,7 +363,12 @@ pub fn declared_pairs_in(src: &str) -> Vec<Par> {
         if let Some((chave, abre, fim)) = ultima.take() {
             let meio: String = b[fim..inicio].iter().collect();
             let antes: String = b[..abre].iter().collect();
-            let seta = meio.contains("=>");
+            // Entre a chave e o texto só cabe a seta (e a chaveta do braço partido em linhas): um
+            // `"xx" => Idioma::Teste,` emparelhava com o `eprintln!` três linhas abaixo (14/10).
+            let seta = matches!(
+                meio.split_whitespace().collect::<String>().as_str(),
+                "=>" | "=>{"
+            );
             let tuplo = antes.trim_end().ends_with('(') && meio.trim() == ",";
             if seta || tuplo {
                 let linha = b[..inicio].iter().filter(|c| **c == '\n').count() + 1;
@@ -413,6 +418,20 @@ mod tests_pares_das_duas_formas {
     /// Quem discrimina é um **array** (`&["Paint", "Erase"]`, que as tabelas deste repo têm aos
     /// montes): ali há uma vírgula entre dois literais e o que abre é um `[`. Sem a cerca, a régua
     /// inventa o par `("Paint", "Erase")`.
+    /// ⛔ **Um braço cujo valor NÃO é texto não empresta a chave ao literal seguinte** (14/10:
+    /// `idioma.rs` dava `xx` → a frase do `eprintln!` três linhas abaixo, e a régua da língua
+    /// acusava-a como texto da tabela). E o braço partido em linhas continua a ser par.
+    #[test]
+    fn um_braco_sem_texto_nao_se_emparelha_com_o_literal_seguinte() {
+        let src =
+            "  \"xx\" => Idioma::Teste,\n  outro => {\n    eprintln!(\"{v} desconhecido\");\n  }\n";
+        assert!(pares(src).is_empty(), "par inventado: {:?}", pares(src));
+        assert_eq!(
+            pares("  \"a.b\" => {\n    \"Long text\"\n  }\n"),
+            vec![("a.b".to_string(), "Long text".to_string())]
+        );
+    }
+
     #[test]
     fn dois_literais_separados_por_virgula_num_array_nao_sao_um_par() {
         assert!(

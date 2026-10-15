@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 
 use mlua::{Lua, Table, Value};
 use ph2d_script::ScriptHost;
-use ph2d_script::api_table::{API, API_GLOBALS, API_TYPES, luau_definitions};
+use ph2d_script::api_table::{API, API_GLOBALS, API_TYPES, HOOKS, luau_definitions};
 
 fn keys(t: &Table) -> BTreeSet<String> {
     t.pairs::<Value, Value>()
@@ -86,11 +86,42 @@ fn as_definicoes_saem_da_tabela() {
     }
     // Um tipo com maiúscula citado numa assinatura tem de estar declarado.
     let declarados: BTreeSet<&str> = API_TYPES.iter().map(|t| t.name).collect();
-    for sig in API.iter().map(|e| e.luau_type).chain(API_TYPES.iter().map(|t| t.definition)) {
+    for h in HOOKS {
+        assert!(d.contains(&format!("-- @hook {}: {}\n", h.name, h.luau_type)), "gancho {}", h.name);
+    }
+    let sigs = API.iter().map(|e| e.luau_type).chain(API_TYPES.iter().map(|t| t.definition));
+    for sig in sigs.chain(HOOKS.iter().map(|h| h.luau_type)) {
         for w in sig.split(|c: char| !c.is_ascii_alphanumeric() && c != '_') {
             if w.starts_with(|c: char| c.is_ascii_uppercase()) {
                 assert!(declarados.contains(w), "tipo por declarar: {w} em {sig}");
             }
         }
     }
+}
+
+/// Os ganchos da tabela são EXACTAMENTE os nomes que o motor pede (`.hook("…")` no fonte da crate,
+/// fora dos testes) — gancho novo na cena sem linha em `HOOKS` ⇒ vermelho, e vice-versa.
+#[test]
+fn os_ganchos_da_tabela_sao_os_que_a_cena_chama() {
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut chamados = BTreeSet::new();
+    for f in std::fs::read_dir(&src).expect("src") {
+        let p = f.expect("entrada").path();
+        let nome = p.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_owned();
+        if !nome.ends_with(".rs") || nome.ends_with("_tests.rs") {
+            continue;
+        }
+        let texto = std::fs::read_to_string(&p).expect("ler");
+        for (i, _) in texto.match_indices(".hook(\"") {
+            let resto = &texto[i + ".hook(\"".len()..];
+            let nome = &resto[..resto.find('"').expect("fecho")];
+            // Só identificadores: a prosa (`.hook("…")` num doc-comment) não é uma chamada.
+            if !nome.is_empty() && nome.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
+                chamados.insert(nome.to_owned());
+            }
+        }
+    }
+    let na_tabela: BTreeSet<String> = HOOKS.iter().map(|h| h.name.to_owned()).collect();
+    assert!(!chamados.is_empty(), "nenhum .hook(\"…\") no fonte — o censo está cego");
+    assert_eq!(chamados, na_tabela, "ganchos chamados pela cena × HOOKS");
 }

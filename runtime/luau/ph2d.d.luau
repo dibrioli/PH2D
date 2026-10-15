@@ -26,6 +26,9 @@ export type PropertyOptions = { min: number?, max: number?, step: number?, optio
 --- Plain data that survives a reload in the per-object state table.
 export type StateValue = boolean | number | string | { [string]: StateValue }
 
+--- The `self` a hook receives: its `id`, the declared properties and whatever the script keeps.
+export type ScriptSelf = { id: Entity, [string]: any }
+
 --- The PH2D scene API: move objects, read input, signals, properties, values.
 declare ph2d: {
     --- Writes a pose field; applied at the end of the tick (everyone reads the same photo).
@@ -73,3 +76,11 @@ declare motion: {
     --- Fires a trigger input of the Motion graph.
     fire: (trigger: string) -> (),
 }
+
+-- Engine hooks: global functions of a script that the engine calls.
+--- Once, before the first update, with the properties already in `self`.
+-- @hook init: (self: ScriptSelf) -> ()
+--- Every fixed tick; `dt` in seconds.
+-- @hook update: (self: ScriptSelf, dt: number) -> ()
+--- For each signal heard this tick, by name.
+-- @hook on_signal: (self: ScriptSelf, signal: string) -> ()

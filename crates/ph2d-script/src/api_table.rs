@@ -32,6 +32,36 @@ pub struct ApiType {
     pub doc: &'static str,
 }
 
+/// Um gancho: função GLOBAL do script que o MOTOR chama (`ScriptModule::hook`).
+pub struct ApiHook {
+    pub name: &'static str,
+    /// A assinatura com que a cena o chama.
+    pub luau_type: &'static str,
+    pub doc: &'static str,
+}
+
+/// Os ganchos, lidos de `scene.rs` (`tick` / `hear`); o teste da tabela compara-os com os
+/// `.hook("…")` do fonte. Saem no `ph2d.d.luau` como linhas `-- @hook <nome>: <tipo>` — comentário,
+/// porque DECLARÁ-los como globais faz o `luau-lsp` acusar `BuiltinGlobalWrite` em cada script
+/// (medido 15/10); o `ph2d-code-lsp` lê essas linhas para não acusar `FunctionUnused` neles.
+pub const HOOKS: &[ApiHook] = &[
+    ApiHook {
+        name: "init",
+        luau_type: "(self: ScriptSelf) -> ()",
+        doc: "Once, before the first update, with the properties already in `self`.",
+    },
+    ApiHook {
+        name: "update",
+        luau_type: "(self: ScriptSelf, dt: number) -> ()",
+        doc: "Every fixed tick; `dt` in seconds.",
+    },
+    ApiHook {
+        name: "on_signal",
+        luau_type: "(self: ScriptSelf, signal: string) -> ()",
+        doc: "For each signal heard this tick, by name.",
+    },
+];
+
 pub const API_GLOBALS: &[ApiGlobal] = &[
     ApiGlobal {
         name: "ph2d",
@@ -78,6 +108,14 @@ pub const API_TYPES: &[ApiType] = &[
         name: "StateValue",
         definition: "boolean | number | string | { [string]: StateValue }",
         doc: "Plain data that survives a reload in the per-object state table.",
+    },
+    // `born` cria o `self` só com o `id`; os números entram pelos nomes das propriedades e o script
+    // guarda o que quiser ⇒ o indexador `any` é a verdade, não preguiça. O `luau-lsp` 1.70.1 expõe um
+    // `export type` do ficheiro de definições como tipo global dos scripts (medido 15/10).
+    ApiType {
+        name: "ScriptSelf",
+        definition: "{ id: Entity, [string]: any }",
+        doc: "The `self` a hook receives: its `id`, the declared properties and whatever the script keeps.",
     },
 ];
 
@@ -234,6 +272,10 @@ pub fn luau_definitions() -> String {
             ));
         }
         out.push_str("}\n");
+    }
+    out.push_str("\n-- Engine hooks: global functions of a script that the engine calls.\n");
+    for h in HOOKS {
+        out.push_str(&format!("--- {}\n-- @hook {}: {}\n", h.doc, h.name, h.luau_type));
     }
     out
 }

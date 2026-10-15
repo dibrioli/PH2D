@@ -282,7 +282,10 @@ fn sonda_instantaneos() {
     use ph2d_core::razao::Razao;
     use ph2d_tool_painter::macro_track::em_cena::MacroEmCena;
     use ph2d_tool_painter::macro_track::etapas;
-    let docs = [("splash 1024²", splash(1024)), ("splash 2048²", splash(2048))];
+    let docs = [
+        ("splash 1024²", splash(1024)),
+        ("splash 2048²", splash(2048)),
+    ];
     eprintln!("[w5c] loadavg {}", carga().trim());
     let mut tirar = vec![f64::MAX; docs.len()];
     let mut reedita = vec![f64::MAX; docs.len()];
@@ -301,18 +304,23 @@ fn sonda_instantaneos() {
             let novos = ph2d_macro::codec::write(&editada);
             // Tocar até ao fim com e sem instantâneos (o razão a zero não guarda nenhum).
             let a = Instant::now();
-            let mut m = MacroEmCena::no_razao(&bytes, Razao::new(usize::MAX)).unwrap().unwrap();
+            let mut m = MacroEmCena::no_razao(&bytes, Razao::new(usize::MAX))
+                .unwrap()
+                .unwrap();
             m.segue(60.0).unwrap();
             com[i] = com[i].min(a.elapsed().as_secs_f64() * 1e3);
             let a = Instant::now();
-            let mut z = MacroEmCena::no_razao(&bytes, Razao::new(0)).unwrap().unwrap();
+            let mut z = MacroEmCena::no_razao(&bytes, Razao::new(0))
+                .unwrap()
+                .unwrap();
             z.segue(60.0).unwrap();
             sem[i] = sem[i].min(a.elapsed().as_secs_f64() * 1e3);
             // Um instantâneo, sozinho, no início da última pincelada (a água da anterior ainda molhada).
             let inicio = pinceladas(doc)[k].0;
             let tr = &doc.tracks[0];
-            let mut t = TocadorDoPainter::novo(&tr.initial, tr.events.iter().map(|e| e.payload.as_slice()))
-                .unwrap();
+            let mut t =
+                TocadorDoPainter::novo(&tr.initial, tr.events.iter().map(|e| e.payload.as_slice()))
+                    .unwrap();
             for e in &tr.events[..inicio] {
                 t.aplica(&e.payload).unwrap();
             }
@@ -326,7 +334,9 @@ fn sonda_instantaneos() {
             m.segue(60.0).unwrap();
             reedita[i] = reedita[i].min(a.elapsed().as_secs_f64() * 1e3);
             let a = Instant::now();
-            let mut n = MacroEmCena::no_razao(&novos, Razao::new(0)).unwrap().unwrap();
+            let mut n = MacroEmCena::no_razao(&novos, Razao::new(0))
+                .unwrap()
+                .unwrap();
             n.segue(60.0).unwrap();
             do_zero[i] = do_zero[i].min(a.elapsed().as_secs_f64() * 1e3);
         }

@@ -326,7 +326,11 @@ impl PainterTool {
     /// sondas e os gates; `None` sem sessão.
     #[must_use]
     pub fn wet_pigmento(&self) -> Option<&[u8]> {
-        self.paint.wetpaint.session.as_ref().map(|s| s.pigment.as_slice())
+        self.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .map(|s| s.pigment.as_slice())
     }
 
     /// A fita que a água deste tool usa (a do tocador de uma macro).

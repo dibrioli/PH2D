@@ -226,11 +226,17 @@ fn o_razao_cheio_dobra_os_instantaneos_e_a_cena_continua_ao_bit() {
     for q in 0..=(fim * 60.0) as u32 {
         m.segue(f64::from(q) / 60.0).expect("toca");
         let (fotos, passo) = m.instantaneos();
-        assert!(fotos.iter().all(|e| e % passo == 0), "quadro {q}: {fotos:?} de {passo} em {passo}");
+        assert!(
+            fotos.iter().all(|e| e % passo == 0),
+            "quadro {q}: {fotos:?} de {passo} em {passo}"
+        );
     }
     let (fotos, passo) = m.instantaneos();
     assert!(passo >= 2, "dobrou: {passo}");
-    assert!(fotos.len() >= 2, "{fotos:?}: a dobra deixa instantâneos, não os apaga");
+    assert!(
+        fotos.len() >= 2,
+        "{fotos:?}: a dobra deixa instantâneos, não os apaga"
+    );
     assert!(
         fotos.iter().all(|e| e % passo == 0),
         "{fotos:?} de {passo} em {passo}"

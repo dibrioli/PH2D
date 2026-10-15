@@ -208,11 +208,11 @@ mod watercolor_smudge_gate_tests; // o smudge não forka o canvas (doc 28 §5.73
 mod acumulacao_por_meio; // Accumulate e Space Attenuation só onde o meio os oferece (doc 46)
 mod brush_panel;
 mod capsula; // o Continuous que iguala o Spacing pequeno: a régua contra o alvo (prompt 34)
+mod cor_do_shape; // prompt 36: a rampa de cor da Shape não muda o Mapping nem desliga o Grain (14/10)
 mod curve_editor;
+mod custo_das_rampas; // prompt 36, Parte 2: o preço das rampas por meio e de N grãos (doc 37)
 mod deform;
 mod edit_modes;
-mod cor_do_shape; // prompt 36: a rampa de cor da Shape não muda o Mapping nem desliga o Grain (14/10)
-mod custo_das_rampas; // prompt 36, Parte 2: o preço das rampas por meio e de N grãos (doc 37)
 mod ellipse_and_polygon;
 mod grain_and_stencil;
 mod impasto_body;

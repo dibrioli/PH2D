@@ -135,14 +135,15 @@ fn correlacao(a: &[f32], b: &[f32]) -> f32 {
 /// D1: o MESMO carimbo em `x = 48` e `x = 48 + k`. `0` ⇒ o padrão anda com o pincel; alto ⇒ preso à tela
 /// (ou sorteado por carimbo, no Random).
 fn anda_com_o_pincel(shape: Option<TextureMapping>, grao: Grao, rampa: Rampa) -> f32 {
-    [37u32, 61].map(|k| {
-        let mut t = tela(shape, grao, rampa);
-        carimbo(&mut t, 48.5, 48.5);
-        carimbo(&mut t, 48.5 + k as f32, 48.5);
-        diferenca(&recorte(&t, [48, 48]), &recorte(&t, [48 + k, 48]))
-    })
-    .into_iter()
-    .fold(0.0, f32::max)
+    [37u32, 61]
+        .map(|k| {
+            let mut t = tela(shape, grao, rampa);
+            carimbo(&mut t, 48.5, 48.5);
+            carimbo(&mut t, 48.5 + k as f32, 48.5);
+            diferenca(&recorte(&t, [48, 48]), &recorte(&t, [48 + k, 48]))
+        })
+        .into_iter()
+        .fold(0.0, f32::max)
 }
 
 /// D2: a pegada do grão no α (a cobertura) de um carimbo — média, buracos (α < ½ do máximo dentro do
@@ -156,7 +157,12 @@ fn pegada(shape: Option<TextureMapping>, grao: Grao, rampa: Rampa) -> (Vec<f32>,
     let media = dentro.iter().sum::<f32>() / n;
     let max = dentro.iter().copied().fold(0.0_f32, f32::max);
     let buracos = dentro.iter().filter(|a| **a < 0.5 * max).count() as f32 / n;
-    let dp = (dentro.iter().map(|a| (a - media) * (a - media)).sum::<f32>() / n).sqrt();
+    let dp = (dentro
+        .iter()
+        .map(|a| (a - media) * (a - media))
+        .sum::<f32>()
+        / n)
+        .sqrt();
     (alfa, media, buracos, dp)
 }
 
@@ -164,16 +170,25 @@ fn pegada(shape: Option<TextureMapping>, grao: Grao, rampa: Rampa) -> (Vec<f32>,
 #[ignore = "régua do prompt 36 — corra por nome com --ignored --nocapture"]
 fn regua_cor_do_shape_e_o_grao() {
     use TextureMapping::{Random, Tiled, ViewPlane};
-    let nome = |m: Option<TextureMapping>| m.map_or("—", |m| match m {
-        ViewPlane => "View",
-        Tiled => "Tiled",
-        Random => "Random",
-        _ => "Stencil",
-    });
-    println!("\n## D1 — o padrão anda com o pincel? (diferença média dos dois recortes; 0 = anda)\n");
+    let nome = |m: Option<TextureMapping>| {
+        m.map_or("—", |m| match m {
+            ViewPlane => "View",
+            Tiled => "Tiled",
+            Random => "Random",
+            _ => "Stencil",
+        })
+    };
+    println!(
+        "\n## D1 — o padrão anda com o pincel? (diferença média dos dois recortes; 0 = anda)\n"
+    );
     println!("| Shape | Grain | rampa Off | B&W | Cor |\n|---|---|---|---|---|");
     for shape in [Some(ViewPlane), Some(Random), Some(Tiled), None] {
-        for grao in [Grao::Sem, Grao::Xadrez(Tiled), Grao::Xadrez(ViewPlane), Grao::Papel] {
+        for grao in [
+            Grao::Sem,
+            Grao::Xadrez(Tiled),
+            Grao::Xadrez(ViewPlane),
+            Grao::Papel,
+        ] {
             let v: Vec<String> = [Rampa::Off, Rampa::Bw, Rampa::Cor]
                 .iter()
                 .map(|r| format!("{:.3}", anda_com_o_pincel(shape, grao, *r)))
@@ -181,8 +196,12 @@ fn regua_cor_do_shape_e_o_grao() {
             println!("| {} | {grao:?} | {} |", nome(shape), v.join(" | "));
         }
     }
-    println!("\n## D2 — a pegada do grão no α (média · buracos · desvio · correlação com a rampa Off)\n");
-    println!("| Shape | Grain | rampa | média | buracos | desvio | corr(Off) |\n|---|---|---|---|---|---|---|");
+    println!(
+        "\n## D2 — a pegada do grão no α (média · buracos · desvio · correlação com a rampa Off)\n"
+    );
+    println!(
+        "| Shape | Grain | rampa | média | buracos | desvio | corr(Off) |\n|---|---|---|---|---|---|---|"
+    );
     for shape in [None, Some(ViewPlane)] {
         for grao in [Grao::Noise(Tiled), Grao::Noise(ViewPlane), Grao::Papel] {
             let (base, ..) = pegada(shape, grao, Rampa::Off);
@@ -203,8 +222,8 @@ fn ppm(t: &PainterTool, caminho: &std::path::Path) {
     let mut out = format!("P6\n{W} {H}\n255\n").into_bytes();
     for p in t.canvas_rgba.chunks(4) {
         let a = f32::from(p[3]) / 255.0;
-        for k in 0..3 {
-            out.push((f32::from(p[k]) * a + 255.0 * (1.0 - a)).round() as u8);
+        for &c in &p[..3] {
+            out.push((f32::from(c) * a + 255.0 * (1.0 - a)).round() as u8);
         }
     }
     std::fs::write(caminho, out).unwrap();
@@ -214,14 +233,19 @@ fn ppm(t: &PainterTool, caminho: &std::path::Path) {
 #[ignore = "prancha do prompt 36 — PH2D_PRANCHA_DIR=<pasta> e --ignored"]
 fn prancha_cor_do_shape_e_o_grao() {
     use TextureMapping::{Random, Tiled, ViewPlane};
-    let dir = std::path::PathBuf::from(std::env::var("PH2D_PRANCHA_DIR").expect("PH2D_PRANCHA_DIR"));
+    let dir =
+        std::path::PathBuf::from(std::env::var("PH2D_PRANCHA_DIR").expect("PH2D_PRANCHA_DIR"));
     std::fs::create_dir_all(&dir).unwrap();
     let casos = [
         ("shapeView_sem", Some(ViewPlane), Grao::Sem),
         ("shapeTiled_sem", Some(Tiled), Grao::Sem),
         ("shapeRandom_sem", Some(Random), Grao::Sem),
         ("shapeView_noiseTiled", Some(ViewPlane), Grao::Noise(Tiled)),
-        ("shapeView_xadrezTiled", Some(ViewPlane), Grao::Xadrez(Tiled)),
+        (
+            "shapeView_xadrezTiled",
+            Some(ViewPlane),
+            Grao::Xadrez(Tiled),
+        ),
         ("semShape_noiseTiled", None, Grao::Noise(Tiled)),
         ("semShape_papel", None, Grao::Papel),
     ];
@@ -284,7 +308,11 @@ fn a_rampa_do_shape_em_cor_nao_desliga_o_grain() {
 #[test]
 fn a_cor_da_rampa_do_shape_anda_com_o_pincel() {
     let k = 48u32; // 1,5 período do xadrez preso à tela (32 px): em contrafase
-    let mut t = tela(Some(TextureMapping::ViewPlane), Grao::Xadrez(TextureMapping::Tiled), Rampa::Cor);
+    let mut t = tela(
+        Some(TextureMapping::ViewPlane),
+        Grao::Xadrez(TextureMapping::Tiled),
+        Rampa::Cor,
+    );
     t.paint.brush.falloff = Falloff::Smooth;
     t.paint.brush.hardness = 0.0;
     t.paint.brush.grain_depth = 0.5; // o Grain modula sem zerar: os dois carimbos partilham texels
@@ -301,14 +329,23 @@ fn a_cor_da_rampa_do_shape_anda_com_o_pincel() {
         }
     }
     let dalfa = dalfa / (a.len() / 4) as f32;
-    assert!(dalfa > 0.02, "controlo: o Grain tem de estar preso à tela (Δα médio {dalfa:.3}; 0 se andasse)");
-    assert!(n > 50, "controlo: os dois carimbos têm de partilhar texels pintados ({n})");
+    assert!(
+        dalfa > 0.02,
+        "controlo: o Grain tem de estar preso à tela (Δα médio {dalfa:.3}; 0 se andasse)"
+    );
+    assert!(
+        n > 50,
+        "controlo: os dois carimbos têm de partilhar texels pintados ({n})"
+    );
     let (lo, hi) = a
         .chunks(4)
         .filter(|p| p[3] > 0.1)
         .map(matiz)
         .fold((1.0_f32, 0.0_f32), |(lo, hi), m| (lo.min(m), hi.max(m)));
-    assert!(hi - lo > 0.2, "controlo: a rampa tem de variar dentro do dab ({lo:.2}..{hi:.2})");
+    assert!(
+        hi - lo > 0.2,
+        "controlo: a rampa tem de variar dentro do dab ({lo:.2}..{hi:.2})"
+    );
     assert!(
         pior <= 0.03,
         "a cor da rampa do Shape ficou presa à tela: o mesmo ponto do dab muda de matiz {pior:.3} entre \

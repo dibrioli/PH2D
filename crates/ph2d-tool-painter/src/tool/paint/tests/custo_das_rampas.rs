@@ -91,9 +91,20 @@ fn min_med(v: &mut [f64]) -> (f64, f64) {
 #[test]
 #[ignore = "régua do prompt 36 — perfil smoke, --ignored --nocapture"]
 fn custo_das_rampas_por_meio() {
-    println!("loadavg início: {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+    println!(
+        "loadavg início: {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
     let meios = ["Digital", "Impasto", "Composite", "Watercolor", "WetPaint"];
-    let rampas = [Rampa::Off, Rampa::ShapeBw, Rampa::ShapeCor, Rampa::GrainBw, Rampa::GrainCor];
+    let rampas = [
+        Rampa::Off,
+        Rampa::ShapeBw,
+        Rampa::ShapeCor,
+        Rampa::GrainBw,
+        Rampa::GrainCor,
+    ];
     let mut vs = Vec::new();
     for meio in meios {
         for grao in [TextureMapping::Tiled, TextureMapping::ViewPlane] {
@@ -117,7 +128,9 @@ fn custo_das_rampas_por_meio() {
             }
         }
     }
-    println!("\n| Meio | Grain | Off | Shape B&W | Shape Cor | Grain B&W | Grain Cor |\n|---|---|---|---|---|---|---|");
+    println!(
+        "\n| Meio | Grain | Off | Shape B&W | Shape Cor | Grain B&W | Grain Cor |\n|---|---|---|---|---|---|---|"
+    );
     for (c, chunk) in vs.chunks(rampas.len()).enumerate() {
         let linha: Vec<String> = (0..rampas.len())
             .map(|j| {
@@ -125,10 +138,20 @@ fn custo_das_rampas_por_meio() {
                 format!("{mi:.1} ({me:.1})")
             })
             .collect();
-        println!("| {} | {:?} | {} |", chunk[0].meio, chunk[0].grao, linha.join(" | "));
+        println!(
+            "| {} | {:?} | {} |",
+            chunk[0].meio,
+            chunk[0].grao,
+            linha.join(" | ")
+        );
     }
     println!("\n(ms por traço: mínimo (mediana) de {rodadas}×{bloco})");
-    println!("loadavg fim: {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+    println!(
+        "loadavg fim: {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
 }
 
 /// O custo por texel de N grãos: N amostras do Grain multiplicadas sobre a pegada de um dab de raio 48 —
@@ -159,7 +182,12 @@ fn custo_de_n_graos_por_texel() {
         }
     }
     let um_dab = |s: &TextureSettings, n: usize| -> (f64, f32) {
-        let b = dab_basis(s, &mut 0u64, [256.0, 256.0], ph2d_painter_brush::FootprintDeform::identity());
+        let b = dab_basis(
+            s,
+            &mut 0u64,
+            [256.0, 256.0],
+            ph2d_painter_brush::FootprintDeform::identity(),
+        );
         let t0 = Instant::now();
         let mut acc = 0.0_f32;
         for py in (c[1] - r) as i64..(c[1] + r) as i64 {
@@ -201,7 +229,14 @@ fn custo_de_n_graos_por_texel() {
                 format!("{mi:.0} ({me:.0})")
             })
             .collect();
-        println!("| {} | {:?} | {} |", chunk[0].0, chunk[0].1, linha.join(" | "));
+        println!(
+            "| {} | {:?} | {} |",
+            chunk[0].0,
+            chunk[0].1,
+            linha.join(" | ")
+        );
     }
-    println!("\n(µs por dab de raio 48 ≈ 7 238 texels: mínimo (mediana) de 9×5; guarda {guarda:.0})");
+    println!(
+        "\n(µs por dab de raio 48 ≈ 7 238 texels: mínimo (mediana) de 9×5; guarda {guarda:.0})"
+    );
 }

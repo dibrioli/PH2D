@@ -96,6 +96,7 @@ impl Banca {
             sim: &mut self.sim,
             timeline: &mut self.tl,
             intents: &mut self.intents,
+            partidas: None,
         };
         self.m.quadro(&mut f, &mut c, self.agora);
     }
@@ -168,6 +169,16 @@ impl Banca {
         }
         for _ in 0..6 {
             self.quadro();
+        }
+    }
+
+    /// Quadros até a conferência fora do quadro acabar.
+    fn espera_a_conferencia(&mut self) {
+        let t0 = std::time::Instant::now();
+        while self.m.a_conferir() {
+            assert!(t0.elapsed().as_secs() < 120, "a conferência não acabou");
+            self.quadro();
+            std::thread::sleep(std::time::Duration::from_millis(2));
         }
     }
 
@@ -457,13 +468,17 @@ fn gate7_a_edicao_de_valor_e_conferida_no_quadro_seguinte() {
         campo: CampoDaEtapa::Cor([200, 10, 10]),
     });
     b.quadro(); // a edição: a conferência fica pendente
+    assert!(
+        b.m.a_conferir(),
+        "a edição de valor fica por conferir (o undo espera por ela)"
+    );
     b.pinta();
     assert_eq!(
         ph2d_panel_macros::current_macros().objeto.unwrap().erro,
         None,
         "a conferência correu no MESMO quadro da edição (o selector manda uma por quadro)"
     );
-    b.quadro(); // o quadro sem edição nova: confere
+    b.espera_a_conferencia(); // no quadro sem edição nova arranca, num fio próprio
     b.pinta();
     let erro = ph2d_panel_macros::current_macros().objeto.unwrap().erro;
     assert_eq!(
@@ -594,4 +609,86 @@ fn gate7_apagar_uma_etapa_fecha_o_tempo_dela_e_o_clipe_encurta() {
         (depois[1].t0 - (antes[2].t0 - fechou)).abs() < 1e-6,
         "a seguinte recua a duração da apagada"
     );
+}
+
+/// W5e — **a conferência corre FORA do quadro e a decisão é dos BYTES**: a mesma `Macro` que volta (um
+/// desfazer devolve os bytes de antes) recebe a decisão já, sem conferir outra vez; uma versão nova
+/// confere-se de novo.
+#[test]
+fn gate7_a_conferencia_corre_fora_do_quadro_e_a_decisao_e_dos_bytes() {
+    let mut b = Banca::nova();
+    b.pinta();
+    b.carrega(ids::MACROS_RECORD);
+    b.quadro();
+    let l = LADO as f32;
+    b.pincelada([0.1 * l, 0.3 * l], [0.9 * l, 0.3 * l]);
+    let n = usize::try_from(LADO).unwrap();
+    b.painter
+        .bind_document(b.bits, vec![255u8; n * n * 4], LADO, LADO);
+    b.quadro();
+    b.pincelada([0.1 * l, 0.7 * l], [0.9 * l, 0.7 * l]);
+    b.pinta();
+    b.carrega(ids::MACROS_STOP);
+    b.quadro();
+    assert!(
+        !b.m.a_conferir(),
+        "sem edição de valor não há nada a conferir"
+    );
+    let edita = |b: &mut Banca, campo| {
+        b.m.pede(MacroRequest::Edita {
+            entity_bits: b.bits,
+            trilha: 0,
+            k: 0,
+            campo,
+        });
+        b.quadro();
+    };
+    let doc = |b: &Banca| {
+        b.sim
+            .world()
+            .get::<Macro>(Entity::from_bits(b.bits))
+            .unwrap()
+            .doc
+            .clone()
+    };
+    let erro = |b: &mut Banca| {
+        b.pinta();
+        ph2d_panel_macros::current_macros()
+            .objeto
+            .unwrap()
+            .erro
+            .map(|e| e.chave)
+    };
+    edita(&mut b, CampoDaEtapa::Cor([200, 10, 10]));
+    let v1 = doc(&b);
+    b.espera_a_conferencia();
+    assert_eq!(erro(&mut b), Some(ph2d_app_macros::erros::PORTA));
+    edita(&mut b, CampoDaEtapa::Tamanho(9.0));
+    assert!(b.m.a_conferir(), "uma versão nova confere-se de novo");
+    b.espera_a_conferencia();
+    // O desfazer devolve os bytes da 1.ª edição: a decisão deles volta no MESMO quadro.
+    b.sim
+        .world_mut()
+        .get_mut::<Macro>(Entity::from_bits(b.bits))
+        .unwrap()
+        .doc = v1;
+    b.m.pede(MacroRequest::Edita {
+        entity_bits: b.bits,
+        trilha: 0,
+        k: 0,
+        campo: CampoDaEtapa::Nome(Some("x".into())),
+    });
+    b.quadro();
+    b.m.pede(MacroRequest::Edita {
+        entity_bits: b.bits,
+        trilha: 0,
+        k: 0,
+        campo: CampoDaEtapa::Nome(None),
+    });
+    b.quadro();
+    assert!(
+        !b.m.a_conferir(),
+        "os bytes que voltam já estavam decididos: nada a conferir"
+    );
+    assert_eq!(erro(&mut b), Some(ph2d_app_macros::erros::PORTA));
 }

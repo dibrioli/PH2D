@@ -203,6 +203,34 @@ impl MacroEmCena {
         Ok(true)
     }
 
+    /// **Um ponto de partida para conferir `track`** (a trilha com as edições, [`super::etapas::confere`]):
+    /// o instantâneo mais tardio que ainda é um estado dela — os passos despachados são prefixo comum
+    /// desta macro e da trilha que toca de `track`, até ao [`super::etapas::limite_da_partida`] —, com a
+    /// fita dela. `None` = do zero.
+    #[must_use]
+    pub fn partida(&self, track: &ph2d_macro::Track) -> Option<super::etapas::Partida> {
+        let novo = track.tocavel(&LeitorDoPainter).ok()?;
+        let velho = &self.doc.tracks[0];
+        if velho.initial != novo.initial || velho.target != novo.target {
+            return None;
+        }
+        let comum = velho
+            .events
+            .iter()
+            .zip(&novo.events)
+            .take_while(|(a, b)| a == b)
+            .count();
+        let limite = super::etapas::limite_da_partida(track).ok()?.min(comum);
+        let f = self.fotos.ate_feitos(limite)?;
+        let respostas: Arc<[_]> = respostas_de(novo.events.iter().map(|e| e.payload.as_slice()))
+            .ok()?
+            .into();
+        Some(super::etapas::Partida {
+            tocador: f.tocador.recomeca(&respostas)?,
+            feitos: f.player.dispatched(),
+        })
+    }
+
     /// A tela para a cena, se mudou desde a última leitura ([`TocadorDoPainter::toma_a_tela`]).
     pub fn toma_a_tela(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
         self.tocador.toma_a_tela()

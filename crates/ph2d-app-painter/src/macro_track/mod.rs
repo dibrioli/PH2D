@@ -173,6 +173,20 @@ impl PalcosDoPainter {
         }
     }
 
+    /// **De onde conferir a trilha `track` da macro do objecto `bits`** — o instantâneo do palco dele
+    /// ([`MacroEmCena::partida`]); `None` = do zero.
+    #[must_use]
+    pub fn partida(
+        &self,
+        bits: u64,
+        track: &ph2d_macro::Track,
+    ) -> Option<ph2d_tool_painter::macro_track::etapas::Partida> {
+        match &self.lidos.get(&bits)?.palco {
+            Ok(Some(p)) => p.em_cena.partida(track),
+            _ => None,
+        }
+    }
+
     /// **Por quadro**, depois de a Timeline escrever o `MacroTempo` e antes do extract: (re)cria o
     /// palco de um `Macro` que mudou e segue o relógio de cada um que a Timeline conduz.
     pub fn segue(&mut self, world: &mut World) {

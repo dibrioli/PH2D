@@ -402,6 +402,8 @@ impl crate::App {
             .live_busy(self.flip_state.style.as_ref())
         {
             Some(tr("shell.undo_app.colorize_a_recalcular"))
+        } else if ph2d_app_macros::com(|m| m.a_conferir()) {
+            Some(tr("shell.undo_app.macro_a_conferir"))
         } else if self.ui_state_live {
             Some(tr("shell.undo_app.transicao_de_estado_de"))
         } else if !had_input {

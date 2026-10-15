@@ -91,6 +91,11 @@ impl Instantaneos {
         self.fotos.iter().rev().find(|f| f.player.time() <= ate)
     }
 
+    /// O instantâneo mais tardio que despachou no máximo `n` eventos.
+    pub(super) fn ate_feitos(&self, n: usize) -> Option<&Foto> {
+        self.fotos.iter().rev().find(|f| f.player.dispatched() <= n)
+    }
+
     /// Fica com os instantâneos que `mantem` aceita, refeitos por ele (`None` = larga).
     pub(super) fn refaz(&mut self, mut mantem: impl FnMut(&Foto) -> Option<Foto>) {
         let velhas = std::mem::take(&mut self.fotos);

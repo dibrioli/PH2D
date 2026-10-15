@@ -199,7 +199,7 @@ impl Cache {
 }
 
 /// **Edita a etapa `k` da trilha `trilha`** da `Macro` do objecto `bits`; o clipe acompanha a duração.
-/// `Ok(true)` = a trilha tem de ser conferida ([`assenta`]) — uma edição de VALOR do Painter.
+/// Uma edição de VALOR do Painter é conferida fora do quadro (`conferencia`).
 ///
 /// # Errors
 /// O porquê, para o painel o dizer.
@@ -209,28 +209,27 @@ pub fn edita(
     trilha: usize,
     k: usize,
     campo: &CampoDaEtapa,
-) -> Result<bool, ErroDaMacroView> {
+) -> Result<(), ErroDaMacroView> {
     let Some(m) = c.sim.world().get::<Macro>(Entity::from_bits(bits)) else {
-        return Ok(false);
+        return Ok(());
     };
     let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
     let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
-    let confere = if let CampoDaEtapa::Nome(n) = campo {
+    if let CampoDaEtapa::Nome(n) = campo {
         let ancora = leitor(track)
             .and_then(|l| l.etapas(&track.events).get(k).copied())
             .ok_or_else(erros::sem_etapa)?
             .inicio;
         track.edicao_mut(ancora).nome = n.clone().filter(|n| !n.trim().is_empty());
-        false
     } else {
         match familia(track) {
             Some(FamiliaDaMacro::Painter) => edita_painter(track, k, campo)?,
-            Some(FamiliaDaMacro::Motion) => edita_motion(track, k, campo).map(|()| false)?,
+            Some(FamiliaDaMacro::Motion) => edita_motion(track, k, campo)?,
             None => return Err(erros::sem_etapa()),
         }
-    };
+    }
     escreve(c, bits, &doc);
-    Ok(confere)
+    Ok(())
 }
 
 /// Grava `doc` na `Macro` de `bits`, só se mudou (o undo é por diff). O clipe segue a duração pela
@@ -242,24 +241,6 @@ fn escreve(c: &mut Cena<'_>, bits: u64, doc: &MacroDoc) {
     {
         m.doc = bytes;
     }
-}
-
-/// **Confere a trilha `trilha`** tocando-a do zero (`ph2d_tool_painter::macro_track::etapas::assenta`):
-/// se a água gravada já não responde, a 1.ª etapa editada sai da gravação. Corre UMA vez, no quadro a
-/// seguir ao último gesto (uma cor arrastada no selector manda uma edição por quadro, e conferir custa
-/// tocar a macro inteira — plano W5 §3).
-///
-/// # Errors
-/// O porquê, para o painel o dizer.
-pub fn assenta(c: &mut Cena<'_>, bits: u64, trilha: usize) -> Result<(), ErroDaMacroView> {
-    let Some(m) = c.sim.world().get::<Macro>(Entity::from_bits(bits)) else {
-        return Ok(());
-    };
-    let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
-    let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
-    pi::assenta(track).map_err(|e| erros::do_painter(&e))?;
-    escreve(c, bits, &doc);
-    Ok(())
 }
 
 /// **Apaga a etapa `k` da trilha `trilha`** da `Macro` de `bits`: o tempo dela fecha-se e o clipe
@@ -290,20 +271,14 @@ fn us(segundos: f64) -> i64 {
     v
 }
 
-/// `Ok(true)` = uma edição de VALOR: a trilha tem de ser conferida.
-fn edita_painter(
-    track: &mut Track,
-    k: usize,
-    campo: &CampoDaEtapa,
-) -> Result<bool, ErroDaMacroView> {
+fn edita_painter(track: &mut Track, k: usize, campo: &CampoDaEtapa) -> Result<(), ErroDaMacroView> {
     let r = match *campo {
         CampoDaEtapa::Cor(c) => pi::edita_cor(track, k, c),
         CampoDaEtapa::Tamanho(px) => pi::edita_tamanho(track, k, px),
         CampoDaEtapa::Espera(s) => pi::espera(track, k, us(s)),
         CampoDaEtapa::Valor(_) | CampoDaEtapa::Nome(_) => return Err(erros::sem_etapa()),
     };
-    r.map_err(|e| erros::de_edicao_do_painter(&e))?;
-    Ok(!matches!(campo, CampoDaEtapa::Espera(_)))
+    r.map_err(|e| erros::de_edicao_do_painter(&e))
 }
 
 fn edita_motion(track: &mut Track, k: usize, campo: &CampoDaEtapa) -> Result<(), ErroDaMacroView> {

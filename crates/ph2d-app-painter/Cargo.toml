@@ -10,6 +10,8 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# A trilha de uma macro (`PalcosDoPainter::partida`; os gates dos palcos gravam uma).
+ph2d-macro = { path = "../ph2d-macro" }
 # A TABELA DE TEXTOS (HR-15): tudo o que esta crate diz ao artista sai daqui, nunca de um
 # literal no fonte — o gate `every_word_..._comes_from_the_string_table` mede-o.
 ph2d-i18n = { path = "../ph2d-i18n" }
@@ -70,8 +72,6 @@ panel-painter-layers = ["dep:ph2d-panel-painter-layers", "dep:ph2d-brush-presets
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
-# Os gates dos palcos gravam uma macro (`macro_track/palcos_tests.rs`).
-ph2d-macro = { path = "../ph2d-macro" }
 
 [lints]
 workspace = true

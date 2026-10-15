@@ -32,10 +32,12 @@ impl crate::App {
             painter_activo,
             motion: &mut gfx.motion,
         };
+        let palcos = &gfx.painter_macros;
         let mut c = Cena {
             sim: &mut gfx.sim,
             timeline: &mut self.timeline,
             intents: &mut self.timeline_intents,
+            partidas: Some(&|b, t| palcos.partida(b, t)),
         };
         let agora = agora_us();
         ph2d_app_macros::com(|m| m.quadro(&mut f, &mut c, agora));

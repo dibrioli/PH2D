@@ -13,6 +13,7 @@ use super::tocar::{ErroDaMacro, TocadorDoPainter};
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PointerPhase;
 use ph2d_macro::{Etapa, Event, LeitorDaFamilia, MacroTime, Track};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct LeitorDoPainter;
 
@@ -403,28 +404,121 @@ pub fn espera(track: &mut Track, k: usize, us: i64) -> Result<(), ErroDeEdicaoDo
 /// # Errors
 /// O [`ErroDaMacro`] que sobra (uma porta recusada, um passo desconhecido).
 pub fn assenta(track: &mut Track) -> Result<(), ErroDaMacro> {
-    match toca_tudo(track) {
-        Err(ErroDaMacro::Divergiu(_)) => {
-            let Some(primeira) = track.edicoes.iter().map(|e| e.ancora).min() else {
-                return toca_tudo(track);
-            };
-            track.edicao_mut(primeira).sai_da_gravacao = true;
-            toca_tudo(track)
-        }
-        r => r,
+    if let Conferida::SaiEm(a) = confere(track, None, &AtomicBool::new(false))? {
+        track.edicao_mut(a).sai_da_gravacao = true;
     }
+    Ok(())
 }
 
-fn toca_tudo(track: &Track) -> Result<(), ErroDaMacro> {
+/// De onde uma conferência recomeça: um tocador a meio da trilha que toca (com a fita dela) e quantos
+/// eventos dela já despachou.
+pub struct Partida {
+    pub tocador: TocadorDoPainter,
+    pub feitos: usize,
+}
+
+/// O que a conferência decide.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Conferida {
+    /// A água gravada responde: a trilha fica como está.
+    Passa,
+    /// A água já não responde: a etapa que começa neste evento da gravação sai da gravação.
+    SaiEm(usize),
+    /// Interrompida antes do fim: sem conclusão.
+    Parada,
+}
+
+/// **Até onde um instantâneo serve à conferência de `track`** (eventos da trilha que toca): o prefixo
+/// que ainda é a gravação, nunca depois da 1.ª etapa editada (a marca de saída cai no início dela).
+///
+/// # Errors
+/// [`ErroDaMacro::Edicao`].
+pub fn limite_da_partida(track: &Track) -> Result<usize, ErroDaMacro> {
     let t = track
         .tocavel(&LeitorDoPainter)
         .map_err(ErroDaMacro::Edicao)?;
-    let mut toc =
-        TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice()))?;
-    for e in &t.events {
+    let comum = t
+        .events
+        .iter()
+        .zip(&track.events)
+        .take_while(|(a, b)| a == b)
+        .count();
+    Ok(track
+        .edicoes
+        .iter()
+        .map(|e| e.ancora)
+        .min()
+        .map_or(comum, |a| a.min(comum)))
+}
+
+/// **A conferência** de uma trilha editada — a decisão do [`assenta`], sem a escrever. Toca do zero, ou
+/// de `partida` (um instantâneo da trilha que toca com no máximo [`limite_da_partida`] eventos), até ao
+/// fim; se a água gravada já não responde, toca outra vez com a 1.ª etapa editada fora da gravação (tem
+/// de chegar ao fim). `parar` interrompe entre dois eventos (quem pediu já não quer a resposta).
+///
+/// # Errors
+/// O [`ErroDaMacro`] que sobra (uma porta recusada, um passo desconhecido).
+pub fn confere(
+    track: &Track,
+    partida: Option<Partida>,
+    parar: &AtomicBool,
+) -> Result<Conferida, ErroDaMacro> {
+    let t = track
+        .tocavel(&LeitorDoPainter)
+        .map_err(ErroDaMacro::Edicao)?;
+    let reserva = partida.as_ref().map(|p| Partida {
+        tocador: p
+            .tocador
+            .instantaneo()
+            .expect("o tocador de uma macro não grava nem tem worker nem ponte de dispositivo"),
+        feitos: p.feitos,
+    });
+    match toca_de(&t, partida, parar) {
+        Ok(true) => Ok(Conferida::Passa),
+        Ok(false) => Ok(Conferida::Parada),
+        Err(ErroDaMacro::Divergiu(d)) => {
+            let Some(primeira) = track.edicoes.iter().map(|e| e.ancora).min() else {
+                return Err(ErroDaMacro::Divergiu(d));
+            };
+            let mut fora = track.clone();
+            fora.edicao_mut(primeira).sai_da_gravacao = true;
+            let t = fora
+                .tocavel(&LeitorDoPainter)
+                .map_err(ErroDaMacro::Edicao)?;
+            let respostas: std::sync::Arc<[_]> =
+                super::tocar::respostas_de(t.events.iter().map(|e| e.payload.as_slice()))?.into();
+            let reserva = reserva.and_then(|p| {
+                Some(Partida {
+                    tocador: p.tocador.recomeca(&respostas)?,
+                    feitos: p.feitos,
+                })
+            });
+            Ok(if toca_de(&t, reserva, parar)? {
+                Conferida::SaiEm(primeira)
+            } else {
+                Conferida::Parada
+            })
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// `true` = chegou ao fim; `false` = `parar`.
+fn toca_de(t: &Track, partida: Option<Partida>, parar: &AtomicBool) -> Result<bool, ErroDaMacro> {
+    let (mut toc, desde) = match partida {
+        Some(p) => (p.tocador, p.feitos),
+        None => (
+            TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice()))?,
+            0,
+        ),
+    };
+    for e in t.events.iter().skip(desde) {
+        if parar.load(Ordering::Relaxed) {
+            return Ok(false);
+        }
         toc.aplica(&e.payload)?;
     }
-    Ok(())
+    Ok(true)
 }
 
 /// **A tela ao fim da trilha que toca**, tocada do zero — a régua de «a edição mudou a tela».

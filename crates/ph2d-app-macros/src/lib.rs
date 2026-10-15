@@ -5,6 +5,7 @@
 //!
 //! O estado é da família ([`com`], um `thread_local`), nunca um campo da `App` (ADR-0075).
 
+mod conferencia;
 pub mod erros;
 pub mod etapas;
 pub mod instala;
@@ -44,7 +45,11 @@ pub struct Cena<'a> {
     /// O documento E a história: criar o clipe é um passo da pilha da Timeline.
     pub timeline: &'a mut TimelineState,
     pub intents: &'a mut Vec<TimelineIntent>,
+    /// De onde a conferência de uma edição de valor recomeça (o palco do Painter em cena).
+    pub partidas: Option<conferencia::Partidas<'a>>,
 }
+
+pub use conferencia::Partidas;
 
 /// O que o cartão MACRO do Inspector mostra da gravação, além do que o componente guarda.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -64,8 +69,7 @@ pub struct Macros {
     recusa: Option<&'static str>,
     /// A última edição recusada, pelo objecto.
     erro_de_edicao: Option<(u64, ErroDaMacroView)>,
-    /// A trilha com uma edição de valor por conferir: `(bits, trilha)`.
-    por_assentar: Option<(u64, usize)>,
+    conferencias: conferencia::Conferencias,
     vistas: etapas::Cache,
     duracoes: instala::Duracoes,
 }
@@ -107,6 +111,13 @@ impl Macros {
         self.pedidos.push(r);
     }
 
+    /// **Uma edição de valor está por conferir ou a conferir** (fora do quadro): o undo espera por ela,
+    /// como pelo recálculo do Colorize — a edição e a decisão da conferência são UM passo.
+    #[must_use]
+    pub fn a_conferir(&self) -> bool {
+        self.conferencias.a_conferir()
+    }
+
     #[must_use]
     pub fn gravando(&self) -> Option<FamiliaDaMacro> {
         self.sessao.as_ref().map(Sessao::familia)
@@ -115,16 +126,11 @@ impl Macros {
     /// **O quadro**: os pedidos por ordem, depois os passos que as famílias gravaram neste quadro.
     /// `agora_us` é o relógio do chamador (o núcleo nunca lê o de parede).
     pub fn quadro(&mut self, f: &mut Familias<'_>, c: &mut Cena<'_>, agora_us: u64) {
-        let pendente = self.por_assentar.take();
         for r in std::mem::take(&mut self.pedidos) {
             self.aplica(r, f, c, agora_us);
         }
-        // A conferência corre no 1.º quadro em que a trilha já não recebeu edição.
-        if let Some((bits, trilha)) = pendente
-            && self.por_assentar != Some((bits, trilha))
-            && let Err(e) = etapas::assenta(c, bits, trilha)
-        {
-            self.erro_de_edicao = Some((bits, e));
+        if let Some(e) = self.conferencias.quadro(c) {
+            self.erro_de_edicao = Some(e);
         }
         if let Some(s) = self.sessao.as_mut() {
             s.quadro(f, agora_us);
@@ -196,12 +202,7 @@ impl Macros {
                 k,
                 campo,
             } => match etapas::edita(c, entity_bits, trilha, k, &campo) {
-                Ok(confere) => {
-                    self.erro_de_edicao = None;
-                    if confere {
-                        self.por_assentar = Some((entity_bits, trilha));
-                    }
-                }
+                Ok(()) => self.erro_de_edicao = None,
                 Err(e) => self.erro_de_edicao = Some((entity_bits, e)),
             },
             MacroRequest::Apaga {

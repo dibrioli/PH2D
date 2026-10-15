@@ -74,3 +74,67 @@ fn a_conferencia_que_diverge_tira_a_etapa_da_gravacao() {
     );
     tela(&doc).expect("e agora toca");
 }
+
+/// W5e — **a conferência a partir do instantâneo do palco decide o MESMO que do zero** (a que diverge e a
+/// que passa); o palco da macro ORIGINAL nunca empresta um instantâneo de depois da etapa editada; e um
+/// `parar` erguido interrompe sem conclusão.
+#[test]
+fn conferir_do_instantaneo_do_palco_decide_o_mesmo_que_do_zero() {
+    use etapas::Conferida;
+    use ph2d_tool_painter::macro_track::Passo;
+    use std::sync::atomic::AtomicBool;
+    let nunca = AtomicBool::new(false);
+    let original = grava_no_worker(N);
+    let mut doc = original.clone();
+    let ancora = etapas::etapas(&doc.tracks[0]).expect("lê-se")[3]
+        .etapa
+        .inicio;
+    doc.tracks[0]
+        .edicao_mut(ancora)
+        .insercoes
+        .push((ancora, Passo::Tique(1000.0 / 60.0).codifica()));
+    let palco = |d: &MacroDoc| {
+        let mut m = MacroEmCena::de(&ph2d_macro::codec::write(d))
+            .expect("lê-se")
+            .expect("trilha");
+        let _ = m.segue(60.0);
+        m
+    };
+    let p = palco(&doc)
+        .partida(&doc.tracks[0])
+        .expect("o palco tem um instantâneo de antes da etapa editada");
+    assert!(p.feitos > 0, "controlo: não recomeça do zero");
+    assert_eq!(
+        etapas::confere(&doc.tracks[0], Some(p), &nunca),
+        Ok(Conferida::SaiEm(ancora))
+    );
+    assert_eq!(
+        etapas::confere(&doc.tracks[0], None, &nunca),
+        Ok(Conferida::SaiEm(ancora))
+    );
+    let p = palco(&original)
+        .partida(&doc.tracks[0])
+        .expect("o palco original serve até à etapa editada");
+    assert!(
+        p.feitos <= ancora,
+        "um instantâneo de depois da etapa editada ({} > {ancora}) não é um estado dela",
+        p.feitos
+    );
+    assert_eq!(
+        etapas::confere(&doc.tracks[0], Some(p), &nunca),
+        Ok(Conferida::SaiEm(ancora))
+    );
+
+    let mut cor = original;
+    // LITERAL-COLOR-OK: a cor nova de uma pincelada GRAVADA, não da UI.
+    etapas::edita_cor(&mut cor.tracks[0], 2, [20, 200, 40]).expect("é uma pincelada");
+    let p = palco(&cor).partida(&cor.tracks[0]).expect("instantâneo");
+    assert_eq!(
+        etapas::confere(&cor.tracks[0], Some(p), &nunca),
+        Ok(Conferida::Passa)
+    );
+    assert_eq!(
+        etapas::confere(&cor.tracks[0], None, &AtomicBool::new(true)),
+        Ok(Conferida::Parada)
+    );
+}

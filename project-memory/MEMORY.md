@@ -137,7 +137,7 @@
 - [Registro de painel — (5) sítios](reference_topic_panel_registration.md) · [Gotchas de código (36)](reference_topic_code_gotchas.md)
 - ⛔ [Renomear um símbolo por NOME destrói a PROSA que o cita — num repo onde o porquê vive em doc-comments, a memória histórica é a vítima mais comum](feedback_a_rename_by_name_cannot_tell_an_address_from_a_memory.md)
 - ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)
-- ⛔ [O dono de um id de BARRA DE ROLAGEM é o DESPACHO — declarado no painel, o polegar pinta e nunca se agarra (há um vivo: o painel de ossos)](feedback_the_owner_of_a_scrollbar_id_is_the_dispatch.md)
+- ⛔ [O dono de um id de BARRA DE ROLAGEM é o DESPACHO — declarado no painel, o polegar pinta e nunca se agarra (o do painel de ossos já foi curado)](feedback_the_owner_of_a_scrollbar_id_is_the_dispatch.md)
 - ⛔ [O oráculo ensina a PERGUNTA; a resposta depende da natureza da SUA entrada — um NÍVEL e um EVENTO pedem paragens opostas](feedback_an_oracle_teaches_the_question_the_answer_depends_on_your_input_kind.md)
 - ⛔ [Um EVENTO lido como ESTADO acerta pelo tempo que ninguém o apagar — a etiqueta dependia de o relógio estar a andar](feedback_an_event_read_as_state_is_right_for_as_long_as_nobody_clears_it.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais (45) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)

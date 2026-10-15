@@ -115,9 +115,9 @@ impl TocadorDoPainter {
     /// # Errors
     /// [`SemInstantaneo`] — o tool do tocador nunca grava, nunca tem worker nem ponte de dispositivo.
     pub fn instantaneo(&self) -> Result<Self, SemInstantaneo> {
-        let mut tool = self.tool.instantaneo()?;
+        let tool = self.tool.instantaneo()?;
         let fita = tool
-            .wet_fita_propria()
+            .wet_fita()
             .unwrap_or_else(|| Arc::new(Mutex::new(fita::trava(&self.fita).clone())));
         Ok(Self {
             tool,

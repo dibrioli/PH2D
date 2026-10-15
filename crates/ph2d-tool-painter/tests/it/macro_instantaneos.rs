@@ -56,17 +56,25 @@ fn a_tela_da_cena(m: &mut MacroEmCena) -> Vec<u8> {
 fn continuar_o_instantaneo_de_cada_etapa_e_tocar_do_zero_ao_bit() {
     for (nome, doc) in as_duas() {
         let ev = &doc.tracks[0].events;
-        let inicios: Vec<usize> = LeitorDoPainter
-            .etapas(ev)
-            .iter()
-            .map(|e| e.inicio)
-            .collect();
+        let todas = LeitorDoPainter.etapas(ev);
+        let inicios: Vec<usize> = todas.iter().map(|e| e.inicio).collect();
         assert!(inicios.len() >= 4, "{nome}: várias pinceladas");
+        // O início de cada etapa (onde a cena os tira) e o MEIO de cada pincelada (o traço aberto).
+        let pontos: Vec<usize> = todas
+            .iter()
+            .flat_map(|e| [e.inicio, (e.inicio + e.fim) / 2])
+            .collect();
         let mut zero = tocador(&doc);
         let mut fotos = Vec::new();
         for (i, e) in ev.iter().enumerate() {
-            if inicios.contains(&i) {
-                fotos.push((i, zero.instantaneo().expect("copia-se")));
+            if pontos.contains(&i) {
+                let f = zero.instantaneo().expect("copia-se");
+                assert_eq!(
+                    f.tool().wet_pigmento(),
+                    zero.tool().wet_pigmento(),
+                    "{nome}: o pigmento da sessão viaja (ele responde «há tinta?» ao trocar o Blend)"
+                );
+                fotos.push((i, f));
             }
             zero.aplica(&e.payload).expect("toca");
         }
@@ -203,15 +211,26 @@ fn editar_a_etapa_k_recomeca_do_instantaneo_k_e_da_o_mesmo_bit() {
 fn o_razao_cheio_dobra_os_instantaneos_e_a_cena_continua_ao_bit() {
     let doc = grava_no_worker(N);
     let fim = 60.0;
-    let mut livre = cena(&doc, sem_tecto());
+    let r_livre = sem_tecto();
+    let mut livre = cena(&doc, Arc::clone(&r_livre));
     livre.segue(fim).expect("toca");
-    let um = livre.tocador().bytes_retidos();
-    // Cabem dois e meio: a cena tem de dobrar até caber.
-    let razao = Razao::new(um * 5 / 2);
+    // O instantâneo médio, com a água molhada (o tocador no fim já assentou a água: não serve de régua).
+    let um = r_livre.usado() / livre.instantaneos().0.len();
+    // `um` é a média sobre as 6 etapas, a 1.ª sem água (~0): o tecto `4,2·um` ≈ 3,5 instantâneos com água.
+    // Cabem 3 de 5 ⇒ dobra para 2 e FICA com espaço para um 3.º — que só não se tira se o passo manda (a
+    // 6.ª etapa); com 2,5 cada foto fora do passo fazia dobrar outra vez e o defeito não se via.
+    let razao = Razao::new(um * 21 / 5);
     let mut m = cena(&doc, Arc::clone(&razao));
-    m.segue(fim).expect("toca");
+    // A cada quadro: os instantâneos vivos são sempre do passo de agora (depois de dobrar, não se tiram
+    // mais entre eles).
+    for q in 0..=(fim * 60.0) as u32 {
+        m.segue(f64::from(q) / 60.0).expect("toca");
+        let (fotos, passo) = m.instantaneos();
+        assert!(fotos.iter().all(|e| e % passo == 0), "quadro {q}: {fotos:?} de {passo} em {passo}");
+    }
     let (fotos, passo) = m.instantaneos();
     assert!(passo >= 2, "dobrou: {passo}");
+    assert!(fotos.len() >= 2, "{fotos:?}: a dobra deixa instantâneos, não os apaga");
     assert!(
         fotos.iter().all(|e| e % passo == 0),
         "{fotos:?} de {passo} em {passo}"

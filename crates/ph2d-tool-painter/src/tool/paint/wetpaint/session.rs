@@ -322,6 +322,18 @@ impl PainterTool {
         })
     }
 
+    /// **O plano de pigmento da sessão molhada** (o que decide «há tinta?» ao trocar o Blend) — para as
+    /// sondas e os gates; `None` sem sessão.
+    #[must_use]
+    pub fn wet_pigmento(&self) -> Option<&[u8]> {
+        self.paint.wetpaint.session.as_ref().map(|s| s.pigment.as_slice())
+    }
+
+    /// A fita que a água deste tool usa (a do tocador de uma macro).
+    pub(crate) fn wet_fita(&self) -> Option<super::fita::FitaPartilhada> {
+        self.paint.wetpaint.fita.clone()
+    }
+
     /// A fita deixa de ser partilhada com quem este tool foi copiado: uma cópia PROFUNDA dela (as
     /// respostas que faltam, a divergência) instalada no tool e na sessão. Devolve-a.
     pub(crate) fn wet_fita_propria(&mut self) -> Option<super::fita::FitaPartilhada> {

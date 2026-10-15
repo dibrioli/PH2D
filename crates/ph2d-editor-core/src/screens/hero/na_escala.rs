@@ -43,11 +43,19 @@ impl HeroScreen {
 
     /// `Ime::Preedit` no campo focado ([`crate::ime`]); vazio = acaba. Nunca grava.
     pub fn handle_preedit(&mut self, text: &str, cursor: Option<(usize, usize)>) {
+        let c = crate::doc_surface::Compose::Preedit(text, cursor);
+        if super::surface_input::compose(self, c) == Some(true) {
+            return;
+        }
         crate::interaction::dispatch_preedit(&mut self.store, text, cursor);
     }
 
     /// Uma tecla premida vista pela composição (tecla morta sem IME); `true` = consumida.
     pub fn handle_compose_key(&mut self, key: crate::ime::ComposeKey) -> bool {
+        let c = crate::doc_surface::Compose::DeadKey(key);
+        if let Some(taken) = super::surface_input::compose(self, c) {
+            return taken;
+        }
         crate::interaction::dispatch_compose_key(&mut self.store, key)
     }
 

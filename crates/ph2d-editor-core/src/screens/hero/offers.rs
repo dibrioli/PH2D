@@ -68,6 +68,6 @@ impl HeroScreen {
     /// **esta** função, e a faixa em si tem a porta [`crate::ruler::live_bands`].
     #[must_use]
     pub fn rulers_live(&self) -> bool {
-        self.view.rulers_visible && self.documents.active().is_none()
+        self.view.rulers_visible && self.documents.scene_active()
     }
 }

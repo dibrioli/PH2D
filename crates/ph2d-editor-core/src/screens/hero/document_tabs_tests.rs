@@ -174,7 +174,7 @@ fn tabs_sit_between_start_and_end_without_overlap() {
     for i in 0..6 {
         set.create(format!("A board with a long name {i}"));
     }
-    let tabs = tab_rects(bar, 260.0, 900.0, &set, None, &mut text);
+    let tabs = tab_rects(bar, 260.0, 900.0, &set, &[], None, &mut text);
     assert_eq!(tabs.len(), 8, "Scene + 6 quadros + New");
     assert_eq!(tabs[0].0, Target::Scene);
     assert_eq!(tabs[7].0, Target::New);
@@ -191,7 +191,7 @@ fn tabs_sit_between_start_and_end_without_overlap() {
         );
     }
     assert!(
-        tab_rects(bar, 260.0, 270.0, &set, None, &mut text).is_empty(),
+        tab_rects(bar, 260.0, 270.0, &set, &[], None, &mut text).is_empty(),
         "sem espaço não se pinta nada"
     );
 }

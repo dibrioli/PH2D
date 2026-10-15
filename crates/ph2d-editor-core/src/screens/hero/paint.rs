@@ -136,6 +136,8 @@ pub fn paint_hero_screen(
     // by `paint::fill_rounded_rect` / `stroke_rounded_rect`. Set
     // every frame so it stays in sync with the topbar's radius menu.
     crate::paint::set_radius_scale(hero.store.radius_scale());
+    // As abas de FAMÍLIA (o editor de scripts): a que pediu foco fica activa e os controlos existem.
+    super::document_tabs::follow_surfaces(hero);
     // Same pattern for the text-rendering strategy — read by
     // `paint_text*` via the `paint::text_rendering()` thread-local.
     crate::paint::set_text_rendering(hero.text_rendering);
@@ -233,7 +235,17 @@ pub fn paint_hero_screen(
     //    nada do que é da cena (réguas, gizmos, selecção) chega a ser pintado ou clicável.
     // W7 — os cronómetros dos quadros andam com QUALQUER aba activa (a Cena incluída: F1).
     super::board_nav::facilitate::tick(hero, std::time::Instant::now());
-    if hero.documents.active().is_some() {
+    if hero.documents.surface_active().is_some() {
+        // ⭐ Um documento de FAMÍLIA (o editor de scripts) é dono da área como o quadro: a cena fica
+        //    por baixo, sem réguas, gizmos nem barras. Pintar e agarrar leem o MESMO rect.
+        let r = super::board_view::area(&layout);
+        hero.last_canvas = r;
+        hero.last_content = r;
+        let theme = hero.theme;
+        if let Some((family, id)) = hero.documents.active_surface_mut() {
+            family.paint(id, r, scene, text_system, &theme);
+        }
+    } else if hero.documents.active().is_some() {
         // E a sessão de voto segue o quadro activo ANTES de ele se desenhar.
         super::board_nav::facilitate::follow(hero);
         let r = super::board_view::area(&layout);
@@ -391,7 +403,7 @@ pub fn paint_hero_screen(
             painter_active,
             &hero.motion,
         );
-    } else if hero.documents.active().is_none() {
+    } else if hero.documents.scene_active() {
         // ⚠️ Só com a aba `Scene`: num QUADRO estes chips (mover, girar, desfazer da cena) seriam
         //    controlos da cena por cima de outro documento.
         // ⭐ **O que não coube fica publicado** para o corpo do `⋯` o desenhar — ANTES do pintor,

@@ -136,6 +136,12 @@ impl crate::App {
                 self.flip_state.colorize.can_undo_scribble()
             };
         let Some(gfx) = self.gfx.as_mut() else { return };
+        // Uma aba de FAMÍLIA activa (o editor de scripts) desfaz o texto dela, nunca a cena.
+        if let Some(h) = gfx.hero_screen.as_mut()
+            && ph2d_editor_core::screens::hero::surface_input::undo(h, redo).is_some()
+        {
+            return;
+        }
         let painter_active = gfx
             .tools
             .active()

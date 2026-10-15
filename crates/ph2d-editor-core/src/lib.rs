@@ -34,6 +34,8 @@
 
 pub mod action_bus;
 pub mod aquecimento;
+/// Documentos de FAMÍLIA em aba (o editor de scripts) — o trait que a crate da família implementa.
+pub mod doc_surface;
 /// Os documentos do projecto além da cena — os quadros (MiroClone).
 pub mod documents;
 /// A âmbar do REALCE do editor — uma cor, uma porta, fora do tema de propósito.

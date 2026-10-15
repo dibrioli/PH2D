@@ -86,7 +86,7 @@ impl crate::App {
         let Some(hero) = g.hero_screen.as_mut() else {
             return false;
         };
-        if hero.documents.active().is_none() {
+        if hero.documents.active().is_none() && hero.documents.surface_active().is_none() {
             return false;
         }
         let pressed = state == ElementState::Pressed;

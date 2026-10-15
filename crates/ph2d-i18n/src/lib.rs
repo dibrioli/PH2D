@@ -39,6 +39,8 @@ mod app_painter;
 mod app_physics;
 /// O que a família do VETOR diz (os selos da booleana, importar SVG).
 mod app_vec;
+/// O que o EDITOR DE SCRIPTS diz (CodeEditor Onda 1) e as abas de documento de família.
+mod code_editor;
 /// As strings do navegador de assets.
 mod asset_browser;
 /// As strings dos dois painéis de áudio (editor + mixer).
@@ -552,6 +554,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| app_physics::tr(k))
             .or_else(|| app_motion::tr(k))
             .or_else(|| app_vec::tr(k))
+            .or_else(|| code_editor::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

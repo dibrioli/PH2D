@@ -144,6 +144,9 @@ fn view_rect(board: &Board, area: Area) -> [f64; 4] {
 
 /// A roda sobre a área de um quadro activo. `true` = consumida (a cena não a vê).
 pub fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
+    if let Some(taken) = super::surface_input::wheel(hero, x, y, dy) {
+        return taken;
+    }
     // W8 — durante a apresentação a vista é a da viagem: a roda não a mexe (W19: nem no ecrã inteiro do
     // vídeo, que tapa o quadro).
     if super::board_nav::team::show::showing(hero) || super::board_video::fullscreen(hero) {
@@ -241,6 +244,9 @@ pub fn pointer(
     y: f32,
     on_canvas: bool,
 ) -> bool {
+    if hero.documents.surface_active().is_some() {
+        return super::surface_input::pointer(hero, input, kind, button, x, y).unwrap_or(false);
+    }
     if hero.documents.active().is_none() {
         return false;
     }
@@ -309,6 +315,9 @@ pub fn pointer(
 
 /// O cursor mexeu-se. `true` = um arrasto do quadro (vista ou gesto) está em curso e consumiu-o.
 pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> bool {
+    if hero.documents.surface_active().is_some() {
+        return super::surface_input::pointer_move(hero, input, x, y).unwrap_or(false);
+    }
     // W11 — o meu cursor no quadro da sala (a família manda-o aos outros).
     super::board_nav::team::live_board::cursor(hero, x, y);
     // W21 — um carregar num vídeo com outra ferramenta virou arrasto: a ferramenta começa onde carregou.

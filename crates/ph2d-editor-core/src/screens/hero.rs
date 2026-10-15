@@ -67,6 +67,8 @@ pub mod board_nav;
 pub mod board_video;
 pub mod board_video_bar;
 pub mod board_view;
+/// A entrada de um documento de FAMÍLIA em aba (`crate::doc_surface`), antes da do quadro.
+pub mod surface_input;
 pub mod document_tabs;
 pub mod document_tabs_menu;
 pub mod float_bar;
@@ -584,6 +586,9 @@ impl HeroScreen {
         ch: char,
         arena: &'frame Bump,
     ) -> &'frame [WidgetEvent] {
+        if surface_input::compose(self, crate::doc_surface::Compose::Commit(ch)) == Some(true) {
+            return &[];
+        }
         crate::interaction::dispatch_text_input(&mut self.store, ch, arena)
     }
 

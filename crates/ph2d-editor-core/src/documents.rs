@@ -21,6 +21,8 @@ pub mod live;
 pub(crate) mod nav;
 #[path = "documents_team.rs"]
 pub mod team;
+#[path = "documents_surface.rs"]
+mod surface;
 
 /// Os quadros e a aba activa.
 #[derive(Debug, Default)]
@@ -38,6 +40,10 @@ pub struct Documents {
     pub(crate) live: BoardLive,
     /// O quadro ao vivo (ADR-0181): o que o painel mostra e pede.
     pub(crate) live_view: live::LiveView,
+    /// As famílias com documentos em aba (o editor de scripts) — `crate::doc_surface`.
+    pub(crate) surfaces: crate::doc_surface::Surfaces,
+    /// A aba de família activa; exclusiva com `active` (as duas `None` = a `Cena`).
+    pub(crate) surface_active: Option<crate::doc_surface::SurfaceTab>,
 }
 
 /// ⭐ **O estado de SESSÃO dos quadros** — nada disto vai para o ficheiro.
@@ -224,6 +230,7 @@ impl Documents {
             self.live.render_cache.videos.frame = None;
         }
         self.active = id;
+        self.surface_active = None;
         self.pan_from = None;
     }
 
@@ -267,6 +274,7 @@ impl Documents {
         self.tab_drag = None;
         self.live.histories.clear();
         self.active = None;
+        self.surface_active = None;
         self.pan_from = None;
         // W7 — os ids de quadro recomeçam em cada projecto: nada da facilitação do anterior (um
         // relógio, uma sessão de voto) pode cair sobre o quadro novo com o mesmo id (auditoria W7).

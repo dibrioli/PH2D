@@ -18,6 +18,7 @@ use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, rect_for_label, resolve};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
+use crate::doc_surface::{DocTab, SurfaceTab};
 use ph2d_a11y::NodeId;
 use ph2d_board_model::{BoardId, BoardSet};
 use ph2d_i18n::tr;
@@ -27,6 +28,28 @@ use ph2d_vector::VectorScene;
 
 /// ⛔ O salto que separa o id da aba de um QUADRO de tudo o resto (bijecção: não cria colisão nova).
 const BOARD_TAB_SALT: u64 = 0xb0a2_d7ab_0000_0003;
+/// O mesmo para as abas de FAMÍLIA (`crate::doc_surface`) e o × delas.
+const SURFACE_TAB_SALT: u64 = 0x5afe_d0c7_0000_0005;
+const SURFACE_CLOSE_SALT: u64 = 0x5afe_c105_0000_0007;
+
+/// O id do controlo da aba de família `tab`.
+#[must_use]
+pub fn surface_tab_node_id(tab: SurfaceTab) -> NodeId {
+    NodeId(SURFACE_TAB_SALT ^ (u64::from(tab.family) << 56) ^ tab.id)
+}
+
+/// O id do × que fecha a aba de família `tab`.
+#[must_use]
+pub fn surface_close_node_id(tab: SurfaceTab) -> NodeId {
+    NodeId(SURFACE_CLOSE_SALT ^ (u64::from(tab.family) << 56) ^ tab.id)
+}
+
+/// O quadrado do × dentro da aba de família (encostado à direita).
+#[must_use]
+pub fn surface_close_rect(tab: Rect) -> Rect {
+    let s = INLINE_ICON_PX;
+    Rect::new(tab.x + tab.w - s - Spacing::Sm.px(), tab.y + (tab.h - s) / 2.0, s, s)
+}
 
 /// O id do controlo da aba do quadro `id`.
 #[must_use]
@@ -39,6 +62,7 @@ pub fn tab_node_id(id: BoardId) -> NodeId {
 pub enum Target {
     Scene,
     Board(BoardId),
+    Surface(SurfaceTab),
     New,
 }
 
@@ -48,6 +72,7 @@ impl Target {
         match self {
             Target::Scene => ids::DOC_TAB_SCENE,
             Target::Board(id) => tab_node_id(id),
+            Target::Surface(tab) => surface_tab_node_id(tab),
             Target::New => ids::DOC_TAB_NEW,
         }
     }
@@ -65,6 +90,7 @@ pub fn tab_rects(
     start_x: f32,
     end_x: f32,
     boards: &BoardSet,
+    surfaces: &[(SurfaceTab, DocTab)],
     editing: Option<(BoardId, &str)>,
     text_system: &mut TextSystem,
 ) -> Vec<(Target, Rect)> {
@@ -75,7 +101,7 @@ pub fn tab_rects(
     if free < 0.0 {
         return Vec::new();
     }
-    let n = boards.boards().len();
+    let n = boards.boards().len() + surfaces.len();
     let share = if n == 0 { 0.0 } else { free / n as f32 };
     let mut out = Vec::with_capacity(n + 2);
     let mut x = start_x;
@@ -92,6 +118,11 @@ pub fn tab_rects(
         let natural = rect_for_label(text_w);
         push(Target::Board(b.id), natural.min(share), &mut out);
     }
+    for (tab, doc) in surfaces {
+        let text_w = text_system.prefix_width(&surface_title(doc), font);
+        let natural = rect_for_label(text_w) + INLINE_ICON_PX + Spacing::Sm.px();
+        push(Target::Surface(*tab), natural.min(share), &mut out);
+    }
     push(Target::New, new_w, &mut out);
     out
 }
@@ -106,6 +137,29 @@ pub fn populate(store: &mut WidgetStore) {
     super::board_bar::populate(store);
     super::board_video_bar::populate(store);
     super::board_nav::populate(store);
+}
+
+/// O título da aba de família: o nome e, com alterações por salvar, o ponto do «por salvar».
+#[must_use]
+pub fn surface_title(doc: &DocTab) -> String {
+    if doc.dirty {
+        ph2d_i18n::tr_with("doc.tab.dirty_title", &[("name", &doc.title)])
+    } else {
+        doc.title.clone()
+    }
+}
+
+/// ⭐ Em todo quadro, antes de pintar: a família que abriu um documento ganha a aba activa, e as abas
+/// de família têm os controlos registados (sem `InteractiveState` uma aba nasce morta).
+pub fn follow_surfaces(hero: &mut HeroScreen) {
+    hero.documents.follow_surfaces();
+    for (tab, _) in hero.documents.surfaces().tabs() {
+        for id in [surface_tab_node_id(tab), surface_close_node_id(tab)] {
+            if hero.store.button_state(id).is_none() {
+                register(&mut hero.store, id);
+            }
+        }
+    }
 }
 
 /// Regista a aba de um quadro que acabou de nascer ou de chegar de um ficheiro.
@@ -145,13 +199,19 @@ pub fn paint(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    let active = hero_docs.active().map_or(Target::Scene, Target::Board);
+    let active = match (hero_docs.active(), hero_docs.surface_active()) {
+        (Some(b), _) => Target::Board(b),
+        (None, Some(t)) => Target::Surface(t),
+        (None, None) => Target::Scene,
+    };
     let editing = hero_docs.renaming.zip(rename_buffer(store));
+    let surfaces = hero_docs.surfaces().tabs();
     let tabs = tab_rects(
         bar,
         start_x,
         end_x,
         hero_docs.boards(),
+        &surfaces,
         editing,
         text_system,
     );
@@ -210,6 +270,19 @@ pub fn paint(
             Target::Board(b) => {
                 let name = hero_docs.boards().get(b).map_or("", |b| b.name.as_str());
                 paint_text_centered(text_system, scene, name, r, TypeToken::Sm.px(), fg);
+            }
+            Target::Surface(tab) => {
+                let title = surfaces.iter().find(|(t, _)| *t == tab).map(|(_, d)| surface_title(d));
+                let close = surface_close_rect(r);
+                let label = Rect::new(r.x, r.y, (close.x - r.x).max(0.0), r.h);
+                paint_text_centered(text_system, scene, title.as_deref().unwrap_or(""), label, TypeToken::Sm.px(), fg);
+                hit_index.register(id, r);
+                let cid = surface_close_node_id(tab);
+                let hot = matches!(store.button_state(cid), Some(ButtonState::Hovered | ButtonState::Pressed));
+                let ink = resolve(if hot { ColorToken::Text1 } else { ColorToken::Text3 }, theme);
+                paint_icon(scene, IconId::Close, close, ink, StrokeToken::Default.px());
+                hit_index.register(cid, close);
+                continue;
             }
         }
         hit_index.register(id, r);
@@ -292,6 +365,19 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if id == ids::DOC_TAB_SCENE {
         hero.documents.activate(None);
         return true;
+    }
+    for (tab, _) in hero.documents.surfaces().tabs() {
+        if id == surface_tab_node_id(tab) {
+            hero.documents.activate_surface(tab);
+            return true;
+        }
+        if id == surface_close_node_id(tab) {
+            if let Some(f) = hero.documents.surfaces_mut().get(tab.family) {
+                f.close(tab.id);
+            }
+            hero.documents.follow_surfaces();
+            return true;
+        }
     }
     if id == ids::DOC_TAB_NEW {
         let n = hero.documents.boards().boards().len() + 1;

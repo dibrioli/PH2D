@@ -68,7 +68,7 @@ fn nome(k: TextureKind) -> String {
 }
 
 /// **A tabela do #47 inteira:** cada tipo do Shape (menos o Image, que pede píxeis) × Wet Paint e
-/// Digital, o pincel de fábrica, o mesmo traço. A linha `None` do Wet Paint são as cerdas de hoje.
+/// Digital, o pincel de fábrica, o mesmo traço. Desde a W2 a linha `None` do Wet Paint é a ponta LISA.
 #[test]
 #[ignore = "sonda W0 do plano 27: corre-se à mão"]
 fn sonda_shape_casa_tinta_por_tipo() {
@@ -561,5 +561,69 @@ fn sonda_prancha_passo_wet() {
                 std::fs::write(format!("{dir}/passo_{arq}_{sp}_{lei}.ppm"), ppm).expect("grava");
             }
         }
+    }
+}
+
+/// **A prancha do B6** (prompt 39): a ponta LISA (Shape None) ao lado das cerdas de fábrica (o preset como
+/// vem), o mesmo traço, nos presets cujo `texv` são as cerdas (sem Grain). Imprime a tinta e a razão;
+/// `PH2D_SONDA_OUT=<pasta>` grava `b6_<preset>_<ponta>.ppm`.
+#[test]
+#[ignore = "sonda: a prancha do B6 (ponta lisa × cerdas)"]
+fn sonda_prancha_b6_lisa_e_cerdas() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let bib = Biblioteca::carregar(&raiz, None);
+    let dir = std::env::var("PH2D_SONDA_OUT").expect("PH2D_SONDA_OUT");
+    println!("| preset | cerdas | lisa | lisa ÷ cerdas |");
+    println!("|---|---:|---:|---:|");
+    for nome in [
+        "Wet Round",
+        "Wet Wash",
+        "Wet Dry Brush",
+        "Wet Liner",
+        "Acrylic Round",
+        "Oil Bristle",
+    ] {
+        let e = bib
+            .entradas
+            .iter()
+            .find(|e| e.relativo.contains(&format!("/{nome}.")))
+            .expect("preset");
+        let mut tintas = [0u64; 2];
+        for (i, ponta) in ["cerdas", "lisa"].into_iter().enumerate() {
+            let mut t = tela(PaintMedia::WetPaint);
+            assert!(t.wet_preset_aplicar(&e.preset).is_empty());
+            t.wet_preset_aplicar_volumes(&e.preset.parametros.volumes);
+            t.paint.wetpaint.tilt_on = false;
+            // O azul do Round do Rebelle (`fixtures/rebelle/README.md`, «Pontas texturadas»).
+            t.set_brush_color_srgb8([20, 30, 120]);
+            assert!(
+                !t.paint.brush.grain_samples(false),
+                "{nome}: a prancha é das pontas sem Grain"
+            );
+            if ponta == "lisa" {
+                t.set_brush_shape_kind(TextureKind::None.to_u8());
+            } else {
+                assert_eq!(
+                    t.paint.brush.shape.kind,
+                    TextureKind::Bristles,
+                    "{nome} vem com cerdas"
+                );
+            }
+            traco(&mut t);
+            t.wet_bring_home();
+            tintas[i] = tinta(&t);
+            let mut ppm = format!("P6 {W} {H} 255\n").into_bytes();
+            for k in 0..(W * H) as usize {
+                ppm.extend_from_slice(&t.canvas_rgba[k * 4..k * 4 + 3]);
+            }
+            let arq = nome.replace(' ', "_");
+            std::fs::write(format!("{dir}/b6_{arq}_{ponta}.ppm"), ppm).expect("grava");
+        }
+        println!(
+            "| {nome} | {} | {} | {:.2} |",
+            tintas[0],
+            tintas[1],
+            tintas[1] as f64 / tintas[0] as f64
+        );
     }
 }

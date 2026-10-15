@@ -263,6 +263,63 @@ fn o_wet_paint_le_as_cerdas_do_shape() {
     assert_ne!(arco(&mut lisa), base, "a ponta lisa pinta igual às cerdas");
 }
 
+/// ⭐ **Um Grain armado SUBSTITUI as cerdas do Shape** (plano 27 W2.4/D7, [27 §6.7]): com o grão, o
+/// traço de Shape = Bristles é o MESMO, ao byte, que o de Shape = None — e o Count das cerdas não o muda.
+/// Multiplicar os dois escurecia em dobro e apagava os pastéis (que pintam pelo grão).
+///
+/// **Mutação que sangra** (W5, a sobrevivente da prova das leis W1/W2): `grain_arg` em
+/// `wetpaint/dab_route.rs` multiplicar o grão pelas cerdas.
+#[test]
+fn um_grain_armado_substitui_as_cerdas_do_shape() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let pastel = ph2d_brush_presets::Biblioteca::carregar(&raiz, None)
+        .entradas
+        .into_iter()
+        .find(|e| e.preset.parametros.name == "Soft Pastel")
+        .expect("o Soft Pastel de fábrica")
+        .preset;
+    let com_grao = |kind: TextureKind, count: Option<f32>| {
+        let mut t = pincel(PaintMedia::WetPaint, TextureKind::None);
+        assert!(t.wet_preset_aplicar(&pastel).is_empty());
+        t.wet_preset_aplicar_volumes(&pastel.parametros.volumes);
+        t.paint.wetpaint.tilt_on = false;
+        assert!(
+            t.paint.brush.grain_samples(false),
+            "o pastel pinta pelo grão"
+        );
+        t.set_brush_shape_kind(kind.to_u8());
+        if kind == TextureKind::Bristles {
+            t.paint.brush.shape =
+                crate::tool::paint::WetKnobs::DEFAULT.cerdas_no_shape(t.paint.brush.shape);
+        }
+        if let Some(c) = count {
+            t.set_brush_shape_param_norm(0, c);
+        }
+        arco(&mut t)
+    };
+    let lisa = com_grao(TextureKind::None, None);
+    assert!(
+        lisa.as_chunks::<4>().0.iter().any(|p| p[0] < 250),
+        "o pastel não pintou"
+    );
+    let diferem = |a: &[u8]| {
+        a.chunks(4)
+            .zip(lisa.chunks(4))
+            .filter(|(x, y)| x != y)
+            .count()
+    };
+    let cerdas = diferem(&com_grao(TextureKind::Bristles, None));
+    assert_eq!(
+        cerdas, 0,
+        "com o Grain armado as cerdas do Shape ainda pintam ({cerdas} px)"
+    );
+    let count = diferem(&com_grao(TextureKind::Bristles, Some(0.1)));
+    assert_eq!(
+        count, 0,
+        "com o Grain armado o Count das cerdas muda o traço ({count} px)"
+    );
+}
+
 /// ⭐ **A migração dos presets** (plano 27 W2, D4): um preset de antes (as cerdas no mapa do motor, o Shape
 /// vazio) chega com o Shape em Bristles e os MESMOS valores; gravado de novo, o mapa já não as traz e a
 /// ida-e-volta guarda o Shape; um Shape None gravado depois continua None (a ponta lisa não vira cerdas).

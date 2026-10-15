@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_api_e_a_tabela;
+mod a_recarga_e_o_console;
 mod diagnostico_do_luau_medido;
 mod hot_reload_per_entity;
 mod lateral_storage_determinism;

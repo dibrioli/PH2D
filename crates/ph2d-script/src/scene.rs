@@ -26,6 +26,8 @@
 //! - ⚠️ **Recarregar NÃO renasce.** Um texto que muda troca as funções e mantém cada `self` (o
 //!   *reset+restore* do HR-16): um objecto a meio de um salto continua o salto com a lei nova. E um
 //!   script que tinha partido volta a correr — a correcção é a razão de o artista ter gravado.
+//! - ⭐ **Um texto que não compila é RECUSADO e a última versão boa continua** (CodeEditor E6,
+//!   `scene_reload.rs`): apagar um `end` não pára a cena; o diagnóstico fica no [`ScriptInfo::Broken`].
 //! - **O texto vem da BIBLIOTECA do projeto** (ADR-0188 §2), por [`ScriptId`]: recarrega quando o
 //!   `blake3` do texto (ou o nome) muda — sem disco. Um `Unimported` nunca corre.
 
@@ -36,9 +38,10 @@ use mlua::{Lua, Table, Value};
 use ph2d_ecs::{Entity, StableId, Transform, World};
 
 use crate::component::{LuauScript, ScriptSource};
+use crate::console::speaking;
 use crate::diagnostic::ScriptDiagnostic;
 use crate::io::{EntityWrite, ReadSnapshot, WriteQueue, pose_field};
-use crate::module::{ScriptModule, load_module};
+use crate::module::ScriptModule;
 use crate::props::{PropDecl, ScriptValue, resolve};
 use ph2d_script_doc::{ScriptId, ScriptLibrary};
 
@@ -47,7 +50,8 @@ use ph2d_script_doc::{ScriptId, ScriptLibrary};
 pub enum ScriptInfo {
     /// Carregou; estas são as declarações dele.
     Ready(Vec<PropDecl>),
-    /// O Luau recusou-o — o diagnóstico diz porquê e onde.
+    /// O Luau recusou o texto ACTUAL — o diagnóstico diz porquê e onde. Os objectos continuam na
+    /// versão anterior quando havia uma ([`SceneScripts::runs_previous`]).
     Broken(ScriptDiagnostic),
     /// A biblioteca não tem este id (um undo que voltou a apontar um script apagado).
     Missing(String),
@@ -66,11 +70,32 @@ impl ScriptInfo {
 
 /// Um script da biblioteca, carregado ou não.
 struct Slot {
-    /// O nome do chunk — o nome único na biblioteca.
+    /// O nome na biblioteca quando o texto foi lido pela última vez.
     name: String,
     hash: Option<[u8; 32]>,
+    /// A última versão BOA — fica quando um texto novo é recusado (`scene_reload.rs`).
     module: Option<ScriptModule>,
+    /// O nome do chunk com que o `module` foi carregado (o que o diagnóstico procura).
+    chunk: String,
     info: ScriptInfo,
+    /// Quantos objectos o apontam (no último `sync`).
+    users: usize,
+    /// `request_reload`: recarrega mesmo com o texto igual.
+    forced: bool,
+}
+
+impl Slot {
+    fn empty() -> Self {
+        Self {
+            name: String::new(),
+            hash: None,
+            module: None,
+            chunk: String::new(),
+            info: ScriptInfo::Missing(String::new()),
+            users: 0,
+            forced: false,
+        }
+    }
 }
 
 /// O vivo de UM objecto.
@@ -168,6 +193,8 @@ impl EmitQueue {
 pub struct SceneScripts {
     slots: BTreeMap<ScriptId, Slot>,
     instances: BTreeMap<u64, Instance>,
+    /// As recargas por drenar — uma por script (`scene_reload.rs`).
+    reloads: BTreeMap<ScriptId, ScriptReload>,
 }
 
 /// Um objecto com script, no instante do tique.
@@ -286,15 +313,14 @@ impl SceneScripts {
         lib: &ScriptLibrary,
     ) {
         let actors = actors(world);
-        let wanted: BTreeMap<ScriptId, ()> = actors
-            .iter()
-            .filter_map(|a| library_id(&a.cfg))
-            .map(|id| (id, ()))
-            .collect();
+        let mut wanted: BTreeMap<ScriptId, usize> = BTreeMap::new();
+        for id in actors.iter().filter_map(|a| library_id(&a.cfg)) {
+            *wanted.entry(id).or_default() += 1;
+        }
         // Quem ninguém aponta sai — o vivo de um script esquecido não fica na VM.
         self.slots.retain(|id, _| wanted.contains_key(id));
-        for id in wanted.keys() {
-            self.refresh(lua, deadline, lib, *id);
+        for (id, users) in wanted {
+            self.refresh(lua, deadline, lib, id, users);
         }
         let now: BTreeMap<u64, Option<ScriptId>> = actors
             .iter()
@@ -302,48 +328,6 @@ impl SceneScripts {
             .collect();
         self.instances
             .retain(|bits, inst| now.get(bits).is_some_and(|id| *id == Some(inst.script)));
-    }
-
-    /// Recarrega `id` se o texto (ou o nome) mudou (HR-16).
-    fn refresh(&mut self, lua: &Lua, deadline: &Deadline, lib: &ScriptLibrary, id: ScriptId) {
-        let slot = self.slots.entry(id).or_insert_with(|| Slot {
-            name: String::new(),
-            hash: None,
-            module: None,
-            info: ScriptInfo::Missing(String::new()),
-        });
-        let Some(doc) = lib.get(id) else {
-            slot.hash = None;
-            slot.module = None;
-            slot.info = ScriptInfo::Missing(format!("no script #{} in this project", id.0));
-            return;
-        };
-        let hash = *blake3::hash(doc.text.as_bytes()).as_bytes();
-        if slot.hash == Some(hash) && slot.name == doc.name {
-            return;
-        }
-        slot.hash = Some(hash);
-        slot.name.clone_from(&doc.name);
-        // ⚠️ O TOPO também corre sob o prazo: um laço sem saída fora de qualquer função congelaria
-        // o app no instante em que o artista escolhe o script.
-        let loaded = deadline.within(|| load_module(lua, &doc.name, &doc.text));
-        // ⚠️ O topo de um script pode ter escrito ou emitido — isso não é de objecto nenhum.
-        discard_queues(lua);
-        match loaded {
-            Ok(m) => {
-                slot.info = ScriptInfo::Ready(m.decls.clone());
-                slot.module = Some(m);
-                // Recarregar não renasce — mas um script partido volta a tentar.
-                for inst in self.instances.values_mut().filter(|i| i.script == id) {
-                    inst.failed = None;
-                    inst.chunk.clone_from(&doc.name);
-                }
-            }
-            Err(d) => {
-                slot.info = ScriptInfo::Broken(d);
-                slot.module = None;
-            }
-        }
     }
 
     /// ⭐ **Os sinais deste quadro chegam a quem os ouve** (`on_signal(self, nome)`), uma chamada
@@ -378,7 +362,9 @@ impl SceneScripts {
                     break;
                 }
                 report.calls += 1;
-                let ran = deadline.within(|| hook.call::<()>((inst.this.clone(), *name)));
+                let ran = speaking(lua, inst.script, Some(a.entity), || {
+                    deadline.within(|| hook.call::<()>((inst.this.clone(), *name)))
+                });
                 settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
             }
         }
@@ -417,6 +403,14 @@ impl SceneScripts {
                     Ok(inst) => slot.insert(inst),
                     Err(e) => {
                         let d = ScriptDiagnostic::from_error(&e, &chunk);
+                        if let Some(c) = crate::console::of(lua) {
+                            c.diagnostic(
+                                library_id(&a.cfg).unwrap_or_default(),
+                                Some(a.entity),
+                                &d,
+                                false,
+                            );
+                        }
                         report.failed.push((a.entity, d));
                         continue;
                     }
@@ -424,7 +418,9 @@ impl SceneScripts {
                 apply_props(lua, inst, &decls, &a.cfg);
                 if let Some(init) = init {
                     report.calls += 1;
-                    let ran = deadline.within(|| init.call::<()>(inst.this.clone()));
+                    let ran = speaking(lua, inst.script, Some(a.entity), || {
+                        deadline.within(|| init.call::<()>(inst.this.clone()))
+                    });
                     if !settle_call(lua, a.entity, ran, inst, &mut writes, &mut report) {
                         continue;
                     }
@@ -437,7 +433,9 @@ impl SceneScripts {
             apply_props(lua, inst, &decls, &a.cfg);
             if let Some(update) = update {
                 report.calls += 1;
-                let ran = deadline.within(|| update.call::<()>((inst.this.clone(), dt)));
+                let ran = speaking(lua, inst.script, Some(a.entity), || {
+                    deadline.within(|| update.call::<()>((inst.this.clone(), dt)))
+                });
                 settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
             }
         }
@@ -457,7 +455,7 @@ impl SceneScripts {
     fn chunk_of(&self, cfg: &LuauScript) -> String {
         library_id(cfg)
             .and_then(|id| self.slots.get(&id))
-            .map(|s| s.name.clone())
+            .map(|s| s.chunk.clone())
             .unwrap_or_default()
     }
 }
@@ -548,6 +546,9 @@ fn settle_call(
             }),
     };
     if let Some(d) = failure {
+        if let Some(c) = crate::console::of(lua) {
+            c.diagnostic(inst.script, Some(entity), &d, false);
+        }
         inst.failed = Some(d.clone());
         report.failed.push((entity, d));
         return false;
@@ -572,7 +573,7 @@ fn drain_queues(lua: &Lua) -> (Vec<EntityWrite>, Vec<String>) {
     (writes, emits)
 }
 
-fn discard_queues(lua: &Lua) {
+pub(crate) fn discard_queues(lua: &Lua) {
     let _ = drain_queues(lua);
     let _ = crate::motion_api::drain(lua);
 }
@@ -615,6 +616,10 @@ fn apply_writes(world: &mut World, writes: &[EntityWrite], report: &mut SceneRep
         report.wrote.push(entity);
     }
 }
+
+#[path = "scene_reload.rs"]
+mod reload;
+pub use reload::{ReloadOutcome, ScriptReload};
 
 #[cfg(test)]
 #[path = "scene_tests.rs"]

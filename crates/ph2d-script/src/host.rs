@@ -13,11 +13,12 @@
 //!   canonical store, scripts are derived behavior).
 
 use crate::ScriptRuntime;
+use crate::console::{Console, ConsoleLine};
 use crate::io::{
     EntityWrite, InputSnapshot, NameSnapshot, ReadSnapshot, SpawnCommand, SpawnQueue, WriteQueue,
 };
 use crate::lateral::{PodValue, StateTable};
-use crate::scene::{Deadline, EmitQueue, SceneReport, SceneScripts, ScriptInfo};
+use crate::scene::{Deadline, EmitQueue, SceneReport, SceneScripts, ScriptInfo, ScriptReload};
 use mlua::Function;
 use ph2d_ecs::{Entity, World};
 
@@ -49,6 +50,8 @@ pub struct ScriptHost {
     deadline: Deadline,
     /// Os scripts da cena — um módulo por ficheiro, um `self` por objecto.
     scene: SceneScripts,
+    /// ⭐ CodeEditor E10: o `print`, os erros de runtime e as recusas de recarga.
+    console: Console,
 }
 
 impl ScriptHost {
@@ -61,6 +64,7 @@ impl ScriptHost {
         let state_table = StateTable::new();
         let emit_queue = EmitQueue::default();
         let deadline = Deadline::default();
+        let console = Console::default();
         let runtime = build_runtime(
             &write_queue,
             &read_snapshot,
@@ -70,6 +74,7 @@ impl ScriptHost {
             &state_table,
             &emit_queue,
             &deadline,
+            &console,
         )?;
         Ok(Self {
             runtime,
@@ -84,6 +89,7 @@ impl ScriptHost {
             emit_queue,
             deadline,
             scene: SceneScripts::default(),
+            console,
         })
     }
 
@@ -120,6 +126,7 @@ impl ScriptHost {
             &self.state_table,
             &self.emit_queue,
             &self.deadline,
+            &self.console,
         )?;
         // ⚠️ Os módulos e os `self` da cena são tabelas da VM VELHA — esquecê-los obriga o próximo
         // `scene_sync` a recarregar da biblioteca, em vez de chamar funções de um estado que morreu.
@@ -305,6 +312,36 @@ impl ScriptHost {
     pub fn scene(&self) -> &SceneScripts {
         &self.scene
     }
+
+    // ── CodeEditor E6/E10: a recarga e o console ─────────────────────────────────────────────
+
+    /// ⭐ As recargas desde a última drenagem — ver [`SceneScripts::drain_reloads`].
+    pub fn drain_reloads(&mut self) -> Vec<ScriptReload> {
+        self.scene.drain_reloads()
+    }
+
+    /// Quantos objectos apontam `id` — ver [`SceneScripts::objects_using`].
+    #[must_use]
+    pub fn objects_using(&self, id: ph2d_script_doc::ScriptId) -> usize {
+        self.scene.objects_using(id)
+    }
+
+    /// Recarrega `id` no próximo `scene_sync` mesmo sem mudança — ver
+    /// [`SceneScripts::request_reload`].
+    pub fn request_reload(&mut self, id: ph2d_script_doc::ScriptId) {
+        self.scene.request_reload(id);
+    }
+
+    /// ⭐ As linhas do console por ler, da mais antiga à mais nova ([`crate::CONSOLE_LINES_MAX`]).
+    pub fn drain_console(&self) -> Vec<ConsoleLine> {
+        self.console.drain()
+    }
+
+    /// Quantas linhas do console o tecto deitou fora (desde o arranque).
+    #[must_use]
+    pub fn console_dropped(&self) -> u64 {
+        self.console.dropped()
+    }
 }
 
 /// Build a fresh `ScriptRuntime` with the `ph2d.*` Luau bindings
@@ -323,6 +360,7 @@ fn build_runtime(
     state_table: &StateTable,
     emit_queue: &EmitQueue,
     deadline: &Deadline,
+    console: &Console,
 ) -> mlua::Result<ScriptRuntime> {
     let runtime = ScriptRuntime::new()?;
     wire_ph2d_api(
@@ -335,6 +373,7 @@ fn build_runtime(
         state_table,
     )?;
     wire_scene_api(&runtime, emit_queue)?;
+    crate::console::wire_print(runtime.lua(), console)?;
     install_deadline(runtime.lua(), deadline);
     runtime.lua().sandbox(true)?;
     Ok(runtime)

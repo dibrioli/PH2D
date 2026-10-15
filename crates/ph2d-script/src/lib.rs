@@ -24,6 +24,8 @@
 /// A API Luau como tabela — a fonte única do `ph2d.d.luau`.
 pub mod api_table;
 pub mod component;
+/// O console dos scripts: `print`, erros de runtime, recusas de recarga (CodeEditor E10).
+pub mod console;
 /// O diagnóstico estruturado de um script (linha, mensagem inteira, pilha).
 pub mod diagnostic;
 pub mod host;
@@ -41,6 +43,7 @@ pub mod scene;
 mod valores;
 
 pub use component::{LuauScript, ProjectScripts, ScriptSource};
+pub use console::{CONSOLE_LINES_MAX, Console, ConsoleKind, ConsoleLine};
 pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
 pub use host::ScriptHost;
 pub use io::{
@@ -55,7 +58,7 @@ pub use props::{
     ScriptValue, ScriptValueKind,
 };
 pub use registry::register_script_components;
-pub use scene::{HOOK_BUDGET, SceneReport, SceneScripts, ScriptInfo};
+pub use scene::{HOOK_BUDGET, ReloadOutcome, SceneReport, SceneScripts, ScriptInfo, ScriptReload};
 
 use mlua::thread::ThreadStatus;
 use mlua::{Function, IntoLuaMulti, Lua, Thread, Value};

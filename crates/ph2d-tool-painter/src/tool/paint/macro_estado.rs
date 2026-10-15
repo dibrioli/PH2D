@@ -1,17 +1,21 @@
-//! **As configurações que o estado inicial de uma macro leva** (`crate::macro_track::inicial`): o pincel
-//! do Wet Paint pela porta do PRESET (o pincel inteiro, com as texturas), por cima dele os campos da obra e
-//! do gesto ([`super::wetpaint_preset::CAMPOS_DA_MACRO`]), e o estado do meio e do traço que o preset não
-//! guarda. Tudo por NOME (JSON): um campo novo num leitor antigo salta, um campo ausente fica o de fábrica.
+//! **As configurações que o estado inicial de uma macro leva** (`crate::macro_track::inicial`): o estado
+//! do Wet Paint pela porta do PRESET (knobs, máscaras, texturas), o meio e a ferramenta na mão, e por cima
+//! deles cada PINCEL inteiro ([`super::wetpaint_preset::campos_da_macro`]) — o vivo e o guardado de cada
+//! modo (`brush_by_mode`: trocar de meio ou de ferramenta a gravar carrega o do destino) —, mais o estado
+//! do meio e do traço que o preset não guarda. Tudo por NOME (JSON): um campo novo num leitor antigo
+//! salta, um campo ausente fica o de fábrica; um estado de antes da W6c (sem `meio`) é Wet Paint.
 //!
 //! A completude é gateada pelo censo dos controlos (`ph2d-panel-painter-layers`,
-//! `tests/it/macro_estado_inicial.rs`): cada controlo do painel do Wet Paint, mexido antes de armar, tem
-//! de chegar à reprodução.
+//! `tests/it/macro_estado_inicial.rs`): cada controlo do painel de cada meio, mexido antes de armar ou a
+//! gravar, tem de chegar à reprodução.
 
-use super::wetpaint_preset::{CAMPOS_DA_MACRO, json};
+use super::wetpaint_preset::{campos_da_macro, json};
 use crate::tool::PainterTool;
 use ph2d_brush_presets::{Miniatura, Origem, Parametros, Preset};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
+
+mod tela;
 
 /// Porque as configurações não se aplicaram.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,9 +32,21 @@ impl PainterTool {
             self.wet_preset_capturar(&Parametros::novo("WetPaint", "macro", "macro"));
         let w = &self.paint.wetpaint;
         let p = &self.paint;
+        let campos = campos_da_macro();
         let v = json!({
+            "meio": self.paint_media().to_u8(),
+            "modo": self.active_paint_mode_id(),
             "preset": preset,
-            "pincel": json::pincel_para_json(&p.brush, &CAMPOS_DA_MACRO),
+            "pincel": json::pincel_para_json(&p.brush, &campos),
+            "pinceis": p
+                .brush_by_mode
+                .iter()
+                .map(|b| json::pincel_para_json(b, &campos))
+                .collect::<Vec<_>>(),
+            "ligados": p.link_shared_settings,
+            "falloff_armado": p.falloff_armed,
+            "metodo_por_meio": p.method_by_media,
+            "tela": self.macro_tela(),
             "wet": {
                 "grid_ratio": w.grid_ratio,
                 "flow_ratio": w.flow_ratio,
@@ -85,10 +101,36 @@ impl PainterTool {
         if !falhas.is_empty() {
             return Err(ErroDoEstado::Texturas(falhas));
         }
-        if let Some(m) = v["pincel"].as_object() {
-            let m: BTreeMap<String, Value> = m.clone().into_iter().collect();
-            self.paint.brush = json::pincel_de_json(&m, &CAMPOS_DA_MACRO, self.paint.brush);
+        // O preset arma o Wet Paint; o meio gravado e a ferramenta na mão vêm depois, pelas portas de
+        // sempre. Os pincéis vêm por ÚLTIMO, crus: as trocas acima carregam slots e assentam métodos, e
+        // o que a gravação viu é o que fica.
+        let meio = v["meio"].as_u64().and_then(|m| u8::try_from(m).ok());
+        self.set_paint_media(meio.map_or(super::PaintMedia::WetPaint, super::PaintMedia::from_u8));
+        if let Some(modo) = v["modo"].as_str() {
+            self.set_paint_tool_mode(modo);
         }
+        let campos = campos_da_macro();
+        let pincel = |x: &Value, base| {
+            x.as_object().map_or(base, |m| {
+                let m: BTreeMap<String, Value> = m.clone().into_iter().collect();
+                json::pincel_de_json(&m, &campos, base)
+            })
+        };
+        if let Some(a) = v["pinceis"].as_array() {
+            for (slot, x) in self.paint.brush_by_mode.iter_mut().zip(a) {
+                *slot = pincel(x, *slot);
+            }
+        }
+        self.paint.brush = pincel(&v["pincel"], self.paint.brush);
+        let p = &mut self.paint;
+        p.link_shared_settings = v["ligados"].as_bool().unwrap_or(p.link_shared_settings);
+        p.falloff_armed = v["falloff_armado"].as_bool().unwrap_or(p.falloff_armed);
+        if let Some(a) = v["metodo_por_meio"].as_array() {
+            for (m, x) in p.method_by_media.iter_mut().zip(a) {
+                *m = x.as_u64().and_then(|n| u8::try_from(n).ok()).unwrap_or(*m);
+            }
+        }
+        self.macro_tela_aplica(&v["tela"]);
         let wv = &v["wet"];
         let w = &mut self.paint.wetpaint;
         let u8_ = |x: &Value, base: u8| {

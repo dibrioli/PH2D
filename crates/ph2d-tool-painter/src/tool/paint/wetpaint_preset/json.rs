@@ -1,4 +1,5 @@
-//! Cada campo de [`super::CAMPOS_DO_PINCEL`] para JSON e de volta, pelo NOME do campo.
+//! Cada campo do `BrushSpec` para JSON e de volta, pelo NOME do campo: os do preset
+//! ([`super::CAMPOS_DO_PINCEL`]) aqui, e os que só a macro leva aqui e em [`meio`].
 //!
 //! Leis: `f32` escreve-se pelo menor texto que volta ao mesmo `f32` (`0.1`, nunca
 //! `0.10000000149011612`); enums pelo NOME da variante (reordenar o enum não estraga um preset);
@@ -13,6 +14,8 @@ use ph2d_painter_brush::{
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
+
+mod meio;
 
 fn num(v: f32) -> Value {
     format!("{v}")
@@ -165,7 +168,7 @@ fn pegada_de_json(v: Option<&Value>, base: FootprintCurve) -> FootprintCurve {
     FootprintCurve::from_rows(rows)
 }
 
-/// O valor JSON de UM campo do pincel. Um nome fora de [`super::CAMPOS_DO_PINCEL`] é erro de quem chama.
+/// O valor JSON de UM campo do pincel. Um nome que não é campo do `BrushSpec` é erro de quem chama.
 fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
     match campo {
         "hardness" => num(b.hardness),
@@ -206,7 +209,7 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
     }
 }
 
-/// Os campos que o preset deixa de fora e a MACRO leva ([`super::CAMPOS_DA_MACRO`]).
+/// Os campos da obra e do gesto, que o preset deixa de fora e a MACRO leva ([`super::campos_da_macro`]).
 fn ler_campo_da_obra(b: &BrushSpec, campo: &str) -> Value {
     match campo {
         "radius_px" => num(b.radius_px),
@@ -244,7 +247,7 @@ fn ler_campo_da_obra(b: &BrushSpec, campo: &str) -> Value {
         "rough_passes" => json!(b.rough_passes),
         "dash_ratio" => num(b.dash_ratio),
         "dash_samples" => json!(b.dash_samples),
-        outro => unreachable!("campo do pincel sem conversão: {outro}"),
+        outro => meio::ler(b, outro),
     }
 }
 
@@ -299,7 +302,7 @@ fn escrever_campo_da_obra(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "rough_passes" => b.rough_passes = inteiro(v, b.rough_passes),
         "dash_ratio" => b.dash_ratio = f(v, b.dash_ratio),
         "dash_samples" => b.dash_samples = inteiro(v, b.dash_samples),
-        outro => unreachable!("campo do pincel sem conversão: {outro}"),
+        outro => meio::escrever(b, outro, v),
     }
 }
 

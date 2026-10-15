@@ -112,5 +112,12 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     {
         return;
     }
-    painter.set_paint_media(ph2d_tool_painter::PaintMedia::WetPaint);
+    // Pelo seletor do painel (a porta gravada), não pelo `set_paint_media` interno.
+    ph2d_editor_core::tool::Tool::handle_panel_event(
+        painter,
+        ph2d_editor_core::tool::PanelEvent::SelectOption(
+            ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
+            ph2d_tool_painter::PaintMedia::WetPaint.to_u8().to_string(),
+        ),
+    );
 }

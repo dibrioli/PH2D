@@ -6,8 +6,8 @@
 //! - **Tocar** = um `PainterTool` PRÓPRIO ([`tocar`]) parte do [`inicial`] e recebe os mesmos passos
 //!   pelas mesmas portas; a fita responde pelo worker. Nenhuma lei da pintura muda para gravar.
 //!
-//! Escopo (W2): o meio **Wet Paint**. Armar noutro meio recusa-se ([`Recusa::Meio`]); o estado inicial
-//! dos outros meios não viaja ainda.
+//! Escopo (W6c): os quatro meios. O estado inicial leva o meio e o pincel inteiro de cada um, e trocar
+//! de meio a gravar é um passo do painel como outro qualquer.
 
 pub mod em_cena;
 pub mod etapas;
@@ -41,8 +41,6 @@ pub const FAMILIA: &str = "painter";
 /// Porque armar a gravação não começou.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Recusa {
-    /// Só o Wet Paint grava nesta versão.
-    Meio,
     /// Já se está a gravar.
     JaGrava,
     /// Sem tela.
@@ -57,12 +55,7 @@ pub struct Gravacao {
     fita: FitaPartilhada,
     /// O quadro de referência (o tamanho da tela ao armar).
     pub(crate) referencia: (f64, f64),
-    /// O meio já saiu do Wet Paint (a recusa ficou gravada).
-    saiu_do_meio: bool,
 }
-
-/// O nome da recusa quando o meio sai do Wet Paint a gravar.
-pub const PORTA_DO_MEIO: &str = "o meio saiu do Wet Paint";
 
 impl PainterTool {
     /// **Arma a gravação**: devolve o estado inicial ([`inicial`]) e o quadro de referência.
@@ -77,13 +70,13 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return Err(Recusa::SemTela);
         }
-        if !self.wetpaint_armed() {
-            return Err(Recusa::Meio);
-        }
         // A água é estado de TELA, não de documento (`tool/paint/wetpaint.rs`): armar encerra a sessão
         // viva pela porta de sempre (o fim da sessão É o bake), como o desfazer e a troca de camada
         // fazem — e o estado inicial é o documento.
         self.wetpaint_end_session();
+        // A irmã da aguada: a sessão molhada (o «Wet now», a lavagem ainda viva) seca pela porta de
+        // sempre, a mesma do desfazer (`dry_session_now`) — os pixels ficam, a humidade não viaja.
+        self.dry_session_now();
         let estado = inicial::captura(self);
         let f: FitaPartilhada = Arc::new(Mutex::new(Fita::Grava(Vec::new())));
         self.wet_instala_fita(Some(Arc::clone(&f)));
@@ -92,7 +85,6 @@ impl PainterTool {
             fundo: 0,
             fita: f,
             referencia: (f64::from(w), f64::from(h)),
-            saiu_do_meio: false,
         }));
         Ok((estado, (w, h)))
     }
@@ -157,17 +149,10 @@ impl PainterTool {
         true
     }
 
-    /// A porta fecha-se. Ao fechar a de FORA, se o meio deixou de ser o Wet Paint a gravação marca a
-    /// recusa (uma vez): o pincel dos outros meios não está no estado inicial, e o tocador pintaria outra
-    /// coisa EM SILÊNCIO (medido: ~1 750 texels a 128²).
+    /// A porta fecha-se.
     pub(crate) fn macro_sai(&mut self) {
-        let armado = self.wetpaint_armed();
         if let Some(g) = self.macro_gravacao.as_mut() {
             g.fundo = g.fundo.saturating_sub(1);
-            if g.fundo == 0 && !armado && !g.saiu_do_meio {
-                g.saiu_do_meio = true;
-                g.passos.push(Passo::Recusada(PORTA_DO_MEIO.to_owned()));
-            }
         }
     }
 
@@ -217,7 +202,6 @@ impl ph2d_macro::Gravadora for PainterTool {
     ) -> Result<ph2d_macro::TrackId, &'static str> {
         use ph2d_editor_core::macro_edits as m;
         self.macro_abre(rec, 0).map_err(|r| match r {
-            Recusa::Meio => m::MACRO_RECUSA_MEIO,
             Recusa::JaGrava => m::MACRO_RECUSA_JA_GRAVA,
             Recusa::SemTela => m::MACRO_RECUSA_SEM_TELA,
         })

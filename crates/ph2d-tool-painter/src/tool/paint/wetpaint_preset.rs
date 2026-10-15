@@ -75,39 +75,17 @@ pub const CAMPOS_DO_PINCEL: [&str; 30] = [
     "paper_depth",
 ];
 
-/// Os campos de [`CAMPOS_FORA`] que o traço do Wet Paint LÊ — o volume, a obra e o gesto — e que o
-/// estado inicial de uma MACRO leva por cima do preset (`crate::macro_track::inicial`). Os restantes de
-/// fora são de outros meios, e o gate `o_pincel_guardado_pinta_o_mesmo_traco` prova que não o mudam.
-pub const CAMPOS_DA_MACRO: [&str; 28] = [
-    "radius_px",
-    "strength",
-    "color",
-    "paper",
-    "symmetry",
-    "stroke_method",
-    "grid_cell_px",
-    "grid_offset_px",
-    "grid_fit",
-    "edge_to_edge",
-    "line_kind",
-    "style_solid",
-    "sketchy_reach",
-    "sketchy_density",
-    "thread_width_px",
-    "thread_opacity",
-    "sketchy_magnetify",
-    "wire_history",
-    "wire_connection_line",
-    "ribbon_weight",
-    "ribbon_friction",
-    "ribbon_gravity",
-    "ribbon_rungs",
-    "rough_amount",
-    "rough_bowing",
-    "rough_passes",
-    "dash_ratio",
-    "dash_samples",
-];
+/// **O pincel INTEIRO, pelo nome de cada campo** — o que o estado inicial de uma MACRO leva de cada
+/// pincel (`crate::macro_track::inicial`; W6c: os quatro meios, e cada um lê campos que o preset do Wet
+/// Paint deixa de fora). A união das duas listas do censo, logo nenhum campo do `BrushSpec` falta.
+#[must_use]
+pub fn campos_da_macro() -> Vec<&'static str> {
+    CAMPOS_DO_PINCEL
+        .iter()
+        .copied()
+        .chain(CAMPOS_FORA.iter().map(|(c, _)| *c))
+        .collect()
+}
 
 const VOLUME: &str = "volume do topo (Size px = 2·raio, Opacity = força)";
 const DA_OBRA: &str =

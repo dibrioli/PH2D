@@ -1,7 +1,7 @@
-//! ⭐ **O estado inicial de uma macro leva CADA controlo do painel do Wet Paint.**
+//! ⭐ **O estado inicial de uma macro leva CADA controlo do painel, nos QUATRO meios** (W6c).
 //!
 //! A população é a do censo dos controlos ([`super::censo_dos_controlos::gestos`]): cada controlo que a
-//! tela pinta no Wet Paint, conduzido pela porta do ponteiro ANTES de armar a gravação. Depois grava-se
+//! tela pinta em cada meio, conduzido pela porta do ponteiro ANTES de armar a gravação. Depois grava-se
 //! os dois traços da bancada e toca-se a macro num tool novo, que só sabe do controlo pelo estado
 //! inicial. Verde = a mesma tela ao byte, controlo a controlo. Um controlo que o estado inicial não
 //! leve aparece aqui com o nome.
@@ -19,8 +19,8 @@ use ph2d_tool_painter::macro_track::tocar::TocadorDoPainter;
 
 /// `(gesto, texels diferentes)` — ou `Err` com o porquê de não se medir (a gravação recusou-se).
 /// `durante` = o gesto entra DEPOIS de armar (vira um passo do painel), senão antes (vai no inicial).
-fn ensaio_em(g: &Gesto, durante: bool) -> Result<usize, String> {
-    let mut b = Bancada::nova(PaintMedia::WetPaint, &[]);
+fn ensaio_em(meio: PaintMedia, g: &Gesto, durante: bool) -> Result<usize, String> {
+    let mut b = Bancada::nova(meio, &[]);
     let mut lixo = super::censo_dos_controlos::Entrega::default();
     if !durante {
         b.aplica(g, &mut lixo);
@@ -46,8 +46,42 @@ fn ensaio_em(g: &Gesto, durante: bool) -> Result<usize, String> {
     Ok(diferenca(&original, &tocado).0)
 }
 
-fn ensaio(g: &Gesto) -> Result<usize, String> {
-    ensaio_em(g, false)
+/// Os quatro meios do seletor.
+const MEIOS: [PaintMedia; 4] = [
+    PaintMedia::Digital,
+    PaintMedia::Watercolor,
+    PaintMedia::Impasto,
+    PaintMedia::WetPaint,
+];
+
+/// Cada controlo de cada meio pelo `ensaio`; as falhas com o meio e o nome do controlo.
+fn falhas_em(
+    minimo: usize,
+    ensaio: impl Fn(PaintMedia, &Gesto) -> Result<usize, String> + Sync,
+) -> (usize, Vec<String>) {
+    let nomes = nomes();
+    let (mut total, mut falhas) = (0, Vec::new());
+    for meio in MEIOS {
+        let todos = gestos(meio, &[]);
+        assert!(
+            todos.len() > minimo,
+            "o painel de {meio:?} pintou só {} controlos: a bancada partiu-se",
+            todos.len()
+        );
+        total += todos.len();
+        let resultados = em_paralelo(&todos, |g| ensaio(meio, g));
+        for (g, r) in todos.iter().zip(resultados) {
+            let quem = g
+                .id()
+                .map_or_else(|| format!("{g:?}"), |id| nome(&nomes, id));
+            match r {
+                Ok(0) => {}
+                Ok(n) => falhas.push(format!("{meio:?} · {quem}: {n} texels")),
+                Err(e) => falhas.push(format!("{meio:?} · {quem}: {e}")),
+            }
+        }
+    }
+    (total, falhas)
 }
 
 /// ⭐ Cada controlo do Wet Paint mexido DURANTE a gravação reproduz-se: o passo do painel chega ao tool
@@ -55,65 +89,29 @@ fn ensaio(g: &Gesto) -> Result<usize, String> {
 /// alternar aplicado duas vezes desfaz-se).
 #[test]
 fn cada_controlo_mexido_a_gravar_reproduz_se() {
-    let todos = gestos(PaintMedia::WetPaint, &[]);
-    let nomes = nomes();
-    let resultados = em_paralelo(&todos, |g| ensaio_em(g, true));
-    let mut falhas = Vec::new();
-    for (g, r) in todos.iter().zip(resultados) {
-        let quem = g
-            .id()
-            .map_or_else(|| format!("{g:?}"), |id| nome(&nomes, id));
-        match r {
-            Ok(0) => {}
-            // Trocar de meio a gravar deixa a porta do meio na gravação; o tocador recusa-a.
-            Err(e) if e.contains(ph2d_tool_painter::macro_track::PORTA_DO_MEIO) => {}
-            Ok(n) => falhas.push(format!("{quem}: {n} texels")),
-            Err(e) => falhas.push(format!("{quem}: {e}")),
-        }
-    }
+    let (total, falhas) = falhas_em(10, |m, g| ensaio_em(m, g, true));
     assert!(
         falhas.is_empty(),
-        "{} de {} controlos mexidos A GRAVAR não se reproduzem:\n{}",
+        "{} de {total} controlos mexidos A GRAVAR não se reproduzem:\n{}",
         falhas.len(),
-        todos.len(),
         falhas.join("\n")
     );
 }
 
 #[test]
-fn o_estado_inicial_leva_cada_controlo_do_wet_paint() {
-    let todos = gestos(PaintMedia::WetPaint, &[]);
-    assert!(
-        todos.len() > 40,
-        "o painel do Wet Paint pintou só {} controlos: a bancada partiu-se",
-        todos.len()
-    );
-    let base = ensaio(&Gesto::Nenhum).expect("a base mede-se");
-    assert_eq!(
-        base, 0,
-        "sem gesto nenhum a reprodução já difere ({base} texels)"
-    );
-    let nomes = nomes();
-    let resultados = em_paralelo(&todos, ensaio);
-    let mut falhas = Vec::new();
-    for (g, r) in todos.iter().zip(resultados) {
-        let quem = g
-            .id()
-            .map_or_else(|| format!("{g:?}"), |id| nome(&nomes, id));
-        match r {
-            Ok(0) => {}
-            // O gesto trocou de MEIO: a gravação desta versão é do Wet Paint e recusa-se (o porquê vai ao
-            // artista) — não é um controlo que o estado inicial perca.
-            Err(e) if e.contains("Meio") => {}
-            Ok(n) => falhas.push(format!("{quem}: {n} texels")),
-            Err(e) => falhas.push(format!("{quem}: {e}")),
-        }
+fn o_estado_inicial_leva_cada_controlo_de_cada_meio() {
+    for meio in MEIOS {
+        let base = ensaio_em(meio, &Gesto::Nenhum, false).expect("a base mede-se");
+        assert_eq!(
+            base, 0,
+            "{meio:?}: sem gesto nenhum a reprodução já difere ({base} texels)"
+        );
     }
+    let (total, falhas) = falhas_em(10, |m, g| ensaio_em(m, g, false));
     assert!(
         falhas.is_empty(),
-        "{} de {} controlos do Wet Paint NÃO chegam à reprodução pelo estado inicial:\n{}",
+        "{} de {total} controlos NÃO chegam à reprodução pelo estado inicial:\n{}",
         falhas.len(),
-        todos.len(),
         falhas.join("\n")
     );
 }

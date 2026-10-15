@@ -111,15 +111,12 @@ pub fn com<R>(f: impl FnOnce(&mut Macros) -> R) -> R {
 /// **Quem grava se o artista carregar em Gravar agora** — ou a chave do porquê não.
 ///
 /// # Errors
-/// A chave da frase ([`m::MACRO_RECUSA_MEIO`], …).
+/// A chave da frase ([`m::MACRO_RECUSA_SEM_TELA`], …).
 pub fn quem_grava(
     painter: Option<&PainterTool>,
     motion_em_edicao: Option<u64>,
 ) -> Result<FamiliaDaMacro, &'static str> {
     if let Some(p) = painter {
-        if !p.wetpaint_armed() {
-            return Err(m::MACRO_RECUSA_MEIO);
-        }
         if p.bound_document().is_none() {
             return Err(m::MACRO_RECUSA_SEM_TELA);
         }

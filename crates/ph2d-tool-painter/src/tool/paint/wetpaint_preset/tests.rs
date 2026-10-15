@@ -399,6 +399,67 @@ fn capturar_o_aplicado_devolve_o_mesmo_preset() {
     assert_eq!(tex2, texturas);
 }
 
+/// ⭐ A macro leva o pincel INTEIRO (W6c): cada campo do `BrushSpec` vai ao JSON e volta igual. O
+/// controlo: a fixtura mexe em TODOS (o JSON de cada um difere do de fábrica), senão uma conversão em
+/// falta passava calada pelo valor de `base`.
+#[test]
+fn o_pincel_inteiro_vai_e_volta_pelo_json_da_macro() {
+    use ph2d_painter_brush::line_kind::LineKind;
+    use ph2d_painter_brush::{MirrorAxis, StrokeMethod};
+    let d = BrushSpec::default();
+    let mut b = pincel_mexido();
+    b.color = [0.1, 0.5, 0.9];
+    b.paper = TextureSettings {
+        angle_deg: 33,
+        ..b.texture
+    };
+    b.symmetry.enabled = !d.symmetry.enabled;
+    b.symmetry.circular = !d.symmetry.circular;
+    b.symmetry.axis = MirrorAxis::from_u8(1);
+    b.symmetry.radial_segments = d.symmetry.radial_segments + 3;
+    b.symmetry.center = [11.0, 7.0];
+    b.symmetry.custom_dir = [0.6, 0.8];
+    b.stroke_method = (0..StrokeMethod::COUNT)
+        .map(StrokeMethod::from_u8)
+        .find(|m| *m != d.stroke_method)
+        .unwrap();
+    b.line_kind = (0..6)
+        .map(LineKind::from_wire)
+        .find(|k| *k != d.line_kind)
+        .unwrap();
+    b.grid_cell_px = [d.grid_cell_px[0] + 3.0, d.grid_cell_px[1] + 5.0];
+    b.grid_offset_px = [d.grid_offset_px[0] + 1.0, d.grid_offset_px[1] + 2.0];
+    b.grid_fit = d.grid_fit + 0.25;
+    b.edge_to_edge = !d.edge_to_edge;
+    b.style_solid = !d.style_solid;
+    b.sketchy_reach = d.sketchy_reach + 0.25;
+    b.sketchy_density = d.sketchy_density + 0.25;
+    b.thread_width_px = d.thread_width_px + 0.25;
+    b.thread_opacity = d.thread_opacity + 0.25;
+    b.sketchy_magnetify = !d.sketchy_magnetify;
+    b.wire_history = d.wire_history + 0.25;
+    b.wire_connection_line = !d.wire_connection_line;
+    b.ribbon_weight = d.ribbon_weight + 0.25;
+    b.ribbon_friction = d.ribbon_friction + 0.25;
+    b.ribbon_gravity = d.ribbon_gravity + 0.25;
+    b.ribbon_rungs = d.ribbon_rungs + 0.25;
+    b.rough_amount = d.rough_amount + 0.25;
+    b.rough_bowing = d.rough_bowing + 0.25;
+    b.rough_passes = d.rough_passes + 1;
+    b.dash_ratio = d.dash_ratio + 0.25;
+    b.dash_samples = d.dash_samples + 1;
+    b.needs_heading = !d.needs_heading;
+    b.watercolor = !d.watercolor;
+    b.impasto = !d.impasto;
+
+    let campos = campos_da_macro();
+    let fabrica = json::pincel_para_json(&d, &campos);
+    let m = json::pincel_para_json(&b, &campos);
+    let parados: Vec<&&str> = campos.iter().filter(|c| fabrica[**c] == m[**c]).collect();
+    assert!(parados.is_empty(), "a fixtura não mexe em {parados:?}");
+    assert_eq!(json::pincel_de_json(&m, &campos, d), b);
+}
+
 #[test]
 fn campos_de_ondas_futuras_sobrevivem_a_captura() {
     let mut base = Parametros::novo(MEIO_DO_PRESET, "Teste", "Futuro");

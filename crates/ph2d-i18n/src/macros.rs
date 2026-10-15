@@ -38,7 +38,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.step.refused" => "Refused: {why}",
         "panel.macros.step.unknown_node" => "?",
         "panel.macros.step.default_value" => "default",
-        "panel.macros.refusal.wet_paint_only" => "Only Wet Paint records in this version.",
         "panel.macros.refusal.no_canvas" => "The Painter has no canvas to record on.",
         "panel.macros.refusal.already_recording" => "Already recording.",
         "panel.macros.refusal.nothing_to_record" => {

@@ -195,8 +195,6 @@ pub enum MacroRequest {
     Recomeca { entity_bits: u64 },
 }
 
-/// Gravar: só o Wet Paint grava nesta versão.
-pub const MACRO_RECUSA_MEIO: &str = "panel.macros.refusal.wet_paint_only";
 /// Gravar: o Painter não tem tela.
 pub const MACRO_RECUSA_SEM_TELA: &str = "panel.macros.refusal.no_canvas";
 /// Gravar: já se está a gravar.

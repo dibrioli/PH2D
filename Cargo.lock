@@ -8151,6 +8151,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-code"
+version = "0.0.0"
+dependencies = [
+ "accesskit",
+ "parley",
+ "ph2d-a11y",
+ "ph2d-code-buffer",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "ph2d-panel-color-equalization"
 version = "0.0.0"
 dependencies = [

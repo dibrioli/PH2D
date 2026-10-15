@@ -13,7 +13,6 @@
 //! que o CLAUDE.md §0 nomeia — *nunca deixe o fallback definir o produto* — e o
 //! §0 também diz o que fazer: **medir**, e escrever o número que a medição deu.
 
-use ph2d_wet_paint::brush::BrushShape;
 use ph2d_wet_paint::painter::Engine;
 use ph2d_wet_paint::trail::{Dab, TRAIL_HALF, TRAIL_SIZE, Trail, TrailMode};
 use ph2d_wet_paint::tuning::Knob;
@@ -31,9 +30,6 @@ fn dab_at(x: f64, y: f64, r: f64) -> Dab {
         intensity: 1.0,
         water_amount: 0.5,
         dry_gate: 0.0,
-        shape: BrushShape::Round,
-        dir_x: 1.0,
-        dir_y: 0.0,
         reach: 1.0,
         window_reach: 1.0,
     }

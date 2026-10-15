@@ -14,7 +14,6 @@
 //!
 //! Imprime o `/proc/loadavg` ao lado: acima de `load ~5` leia só a RAZÃO.
 
-use ph2d_wet_paint::brush::BrushShape;
 use ph2d_wet_paint::painter::Engine;
 use ph2d_wet_paint::par::{MIN_CELLS_DEPOSIT, MIN_CELLS_TIP, Rows};
 use ph2d_wet_paint::trail::{Dab, Trail, TrailMode};
@@ -32,9 +31,6 @@ fn dab(x: f64, y: f64, r: f64) -> Dab {
         intensity: 40.0,
         water_amount: 0.5,
         dry_gate: 0.2,
-        shape: BrushShape::Round,
-        dir_x: 1.0,
-        dir_y: 0.0,
         reach: 1.0,
         window_reach: 1.0,
     }

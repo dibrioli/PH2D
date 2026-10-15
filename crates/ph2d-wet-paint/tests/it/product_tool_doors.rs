@@ -25,7 +25,7 @@ fn seeded_engine(color: [f64; 3]) -> Engine {
     while x < 76.0 {
         x += 4.0;
         e.direct_segment(0, 4.0);
-        e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 1.0, 0.0, 10.0, None, None, None);
+        e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 10.0, None, None, None);
     }
     e.end_direct_stroke();
     for _ in 0..8 {
@@ -76,10 +76,10 @@ fn the_tool_door_matches_the_engines_own_dispatch_bit_for_bit() {
         let mut b = seeded_engine([220.0, 45.0, 40.0]);
         let (p1, p2) = ([40.0, 48.0], [46.0, 50.0]);
         a.tool = tool;
-        a.dispatch_pressure_dab(p1[0], p1[1], 5.0, 1.0, 0.0, 12.0);
-        a.dispatch_pressure_dab(p2[0], p2[1], 5.0, 1.0, 0.0, 12.0);
-        b.dispatch_pressure_dab_tool(tool, p1[0], p1[1], 5.0, 1.0, 0.0, 12.0, None);
-        b.dispatch_pressure_dab_tool(tool, p2[0], p2[1], 5.0, 1.0, 0.0, 12.0, Some(p1));
+        a.dispatch_pressure_dab(p1[0], p1[1], 5.0, 12.0);
+        a.dispatch_pressure_dab(p2[0], p2[1], 5.0, 12.0);
+        b.dispatch_pressure_dab_tool(tool, p1[0], p1[1], 5.0, 12.0, None);
+        b.dispatch_pressure_dab_tool(tool, p2[0], p2[1], 5.0, 12.0, Some(p1));
         assert_grids_identical(&a, &b, &format!("{tool:?}"));
     }
 }
@@ -100,7 +100,7 @@ fn the_blend_lane_door_remixes_settled_paint() {
         while x < x0 + 24.0 {
             x += 4.0;
             e.direct_segment(0, 4.0);
-            e.dispatch_pressure_dab_lane(0, x, 48.0, 6.0, 1.0, 0.0, 10.0, None, None, None);
+            e.dispatch_pressure_dab_lane(0, x, 48.0, 6.0, 10.0, None, None, None);
         }
         e.end_direct_stroke();
     }
@@ -140,7 +140,7 @@ fn the_blend_lane_door_remixes_settled_paint() {
     while x < 60.0 {
         x += 4.0;
         e.direct_segment(0, 4.0);
-        e.dispatch_pressure_dab_lane_blend(0, x, 48.0, 6.0, 1.0, 0.0, 12.0);
+        e.dispatch_pressure_dab_lane_blend(0, x, 48.0, 6.0, 12.0);
     }
     e.end_direct_stroke();
     let (_, after) = mean_a(&e);
@@ -284,7 +284,7 @@ fn the_glaze_stacks_the_film_over_the_dried_paint() {
     while x < 66.0 {
         x += 4.0;
         e.direct_segment(0, 4.0);
-        e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 1.0, 0.0, 10.0, None, None, None);
+        e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 10.0, None, None, None);
     }
     e.end_direct_stroke();
     e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
@@ -343,8 +343,8 @@ fn a_dab_outside_the_grid_touches_nothing_in_any_tool() {
             let virgem = seeded_engine([220.0, 45.0, 40.0]);
             let mut e = seeded_engine([220.0, 45.0, 40.0]);
             let prev = [x - 6.0, y - 4.0];
-            e.dispatch_pressure_dab_tool(tool, prev[0], prev[1], 1.0, 0.0, 0.0, 2.0, None);
-            e.dispatch_pressure_dab_tool(tool, x, y, 1.0, 1.0, 0.0, 2.0, Some(prev));
+            e.dispatch_pressure_dab_tool(tool, prev[0], prev[1], 1.0, 2.0, None);
+            e.dispatch_pressure_dab_tool(tool, x, y, 1.0, 2.0, Some(prev));
             assert_grids_identical(&virgem, &e, &format!("{tool:?} em ({x}, {y})"));
         }
     }

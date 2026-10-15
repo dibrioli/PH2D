@@ -19,7 +19,6 @@
 //! ⚠️ **Nada aqui muda o grid** — a correção só DECLARA. O
 //! `scripted_session_fingerprint_is_stable` é a prova executável disso.
 
-use ph2d_wet_paint::brush::BrushShape;
 use ph2d_wet_paint::painter::Engine;
 use ph2d_wet_paint::trail::{Dab, Trail, TrailMode};
 use ph2d_wet_paint::tuning::Knob;
@@ -37,9 +36,6 @@ fn dab() -> Dab {
         intensity: 1.0,
         water_amount: 0.5,
         dry_gate: 0.0,
-        shape: BrushShape::Round,
-        dir_x: 1.0,
-        dir_y: 0.0,
         reach: 1.0,
         window_reach: 1.0,
     }

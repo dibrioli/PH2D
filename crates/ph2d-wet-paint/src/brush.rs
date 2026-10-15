@@ -155,47 +155,6 @@ pub fn radial_falloff(d: f64, hardness: f64) -> f64 {
     a * a * (3.0 - 2.0 * a)
 }
 
-/// Brush footprint shapes. Flat/fan are ellipses in the stroke frame
-/// (along/across axes in units of the brush radius).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BrushShape {
-    Round,
-    Flat,
-    Fan,
-}
-
-impl BrushShape {
-    fn axes(self) -> Option<[f64; 2]> {
-        match self {
-            BrushShape::Round => None,
-            BrushShape::Flat => Some([1.0, 0.35]),
-            BrushShape::Fan => Some([1.4, 0.5]),
-        }
-    }
-}
-
-/// Iterate every stamp pixel of one dab, restricted to the brushable area
-/// [2..W-1] x [2..H-1]. Calls cb(i, x, y, falloff, texture) — the caller
-/// multiplies them (plus its own intensity/clamps); they stay separate
-/// because the wet-edge-softening extension keys on the falloff alone.
-///
-/// Takes the grid DIMENSIONS, not the grid: the callback is where deposits
-/// mutate cell arrays, so the iterator must not hold a borrow of them.
-///
-/// Flat/fan is an ellipse in the stroke frame (dir = stroke direction unit
-/// vector); with no direction yet it falls back to the disc. Texture coords
-/// for shaped brushes are the ROTATED px offsets, so the grain rides the
-/// stroke frame.
-/// The PRODUCT's shaped variant of [`for_each_stamp_pixel`]: the host owns
-/// the dab's whole silhouette — falloff curve, Shape image, flatten/rotate
-/// footprint — so `sil(x, y)` (absolute cell coords) REPLACES both the
-/// internal radial falloff and the elliptical footprint test (`0` = outside).
-/// The bristle `tex` is the engine's DEFAULT texture factor, sampled in RAW
-/// offsets exactly as the Round shape samples it; when the host has a grain
-/// system of its own, `grain(x, y)` REPLACES the bristle sample outright —
-/// two textures multiplying would double-darken, and the artist's Grain is
-/// THE texture everywhere else in the app. The engine's own paths never call
-/// this — the port's behaviour is pinned by the session fingerprint.
 /// A silhueta ou o grão do HOSPEDEIRO, avaliados numa célula (coordenadas absolutas).
 ///
 /// ⚠️ **`Fn + Sync` e não `FnMut`, de propósito** (ADR-0175): o depósito de um dab do produto caminha
@@ -269,10 +228,10 @@ pub(crate) fn stamp_row_shaped(
 
 /// The PRODUCT's shaped variant of [`for_each_stamp_pixel`]: the host owns
 /// the dab's whole silhouette — falloff curve, Shape image, flatten/rotate
-/// footprint — so `sil(x, y)` (absolute cell coords) REPLACES both the
-/// internal radial falloff and the elliptical footprint test (`0` = outside).
+/// footprint — so `sil(x, y)` (absolute cell coords) REPLACES the engine's
+/// radial falloff and disc test (`0` = outside).
 /// The bristle `tex` is the engine's DEFAULT texture factor, sampled in RAW
-/// offsets exactly as the Round shape samples it; when the host has a grain
+/// offsets exactly as the round stamp samples it; when the host has a grain
 /// system of its own, `grain(x, y)` REPLACES the bristle sample outright —
 /// two textures multiplying would double-darken, and the artist's Grain is
 /// THE texture everywhere else in the app. The engine's own paths never call
@@ -315,6 +274,17 @@ pub fn for_each_stamp_pixel_shaped(
     }
 }
 
+/// Iterate every stamp pixel of one ROUND dab, restricted to the brushable area
+/// [2..W-1] x [2..H-1]. Calls cb(i, x, y, falloff, texture) — the caller
+/// multiplies them (plus its own intensity/clamps); they stay separate
+/// because the wet-edge-softening extension keys on the falloff alone.
+///
+/// Takes the grid DIMENSIONS, not the grid: the callback is where deposits
+/// mutate cell arrays, so the iterator must not hold a borrow of them.
+///
+/// The engine's only footprint is the disc: the JS port's Flat/Fan ellipses
+/// left with plan 27 W5 (no product caller — the host's Shape owns the
+/// footprint through [`for_each_stamp_pixel_shaped`]).
 #[allow(clippy::too_many_arguments)]
 pub fn for_each_stamp_pixel(
     s: usize,
@@ -325,54 +295,29 @@ pub fn for_each_stamp_pixel(
     cy: f64,
     r: f64,
     hardness: f64,
-    shape: BrushShape,
-    dir_x: f64,
-    dir_y: f64,
     mut cb: impl FnMut(usize, i32, i32, f64, f64),
 ) {
-    let axes = shape.axes();
-    let has_dir = axes.is_some() && (dir_x != 0.0 || dir_y != 0.0);
-    let reach = if has_dir { r * axes.unwrap()[0] } else { r };
-    let x0 = ((cx - reach).ceil() as i32).max(2);
-    let x1 = ((cx + reach).floor() as i32).min(grid_w as i32 - 1);
-    let y0 = ((cy - reach).ceil() as i32).max(2);
-    let y1 = ((cy + reach).floor() as i32).min(grid_h as i32 - 1);
+    let x0 = ((cx - r).ceil() as i32).max(2);
+    let x1 = ((cx + r).floor() as i32).min(grid_w as i32 - 1);
+    let y0 = ((cy - r).ceil() as i32).max(2);
+    let y1 = ((cy + r).floor() as i32).min(grid_h as i32 - 1);
     if x1 < x0 || y1 < y0 {
         return;
     }
     let inv_r = 1.0 / r;
-    let (mut inv_a, mut inv_b) = (0.0, 0.0);
-    if has_dir {
-        let ax = axes.unwrap();
-        inv_a = 1.0 / (ax[0] * r);
-        inv_b = 1.0 / (ax[1] * r);
-    }
     for y in y0..=y1 {
         let mut i = x0 as usize + y as usize * s;
         for x in x0..=x1 {
             let dx = x as f64 - cx;
             let dy = y as f64 - cy;
-            let (d2, tx, ty);
-            if has_dir {
-                let along = dx * dir_x + dy * dir_y;
-                let across = -dx * dir_y + dy * dir_x;
-                let na = along * inv_a;
-                let nb = across * inv_b;
-                d2 = na * na + nb * nb;
-                tx = along;
-                ty = across;
-            } else {
-                let nx = dx * inv_r;
-                let ny = dy * inv_r;
-                d2 = nx * nx + ny * ny;
-                tx = dx;
-                ty = dy;
-            }
+            let nx = dx * inv_r;
+            let ny = dy * inv_r;
+            let d2 = nx * nx + ny * ny;
             if d2 < 1.0 {
                 // reject on squared distance before any sqrt
                 let fall = radial_falloff(d2.sqrt(), hardness);
                 if fall > 0.0 {
-                    let texv = sample_bristle(tex, tx, ty);
+                    let texv = sample_bristle(tex, dx, dy);
                     if texv > 0.0 {
                         cb(i, x, y, fall, texv);
                     }

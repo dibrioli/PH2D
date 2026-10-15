@@ -42,7 +42,7 @@ impl Engine {
             .sim
             .gather_params(&self.tuning)
             .com_pigmento(self.sliders.pigmento);
-        let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, 1.0, 0.0, r);
+        let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
         let ext_bypass = self.sim.ext_bypass;
         self.texture();
         let tex = self.brush_tex.take().unwrap();

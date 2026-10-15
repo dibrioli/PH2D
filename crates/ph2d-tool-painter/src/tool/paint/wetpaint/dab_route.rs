@@ -488,8 +488,6 @@ impl PainterTool {
                     cell_x,
                     cell_y,
                     b,
-                    f64::from(d.dir[0]),
-                    f64::from(d.dir[1]),
                     cell_r,
                     Some(&sil),
                     grain_arg,
@@ -502,8 +500,6 @@ impl PainterTool {
                     cell_x,
                     cell_y,
                     b,
-                    f64::from(d.dir[0]),
-                    f64::from(d.dir[1]),
                     cell_r,
                     Some(&sil),
                     grain_arg,
@@ -511,15 +507,9 @@ impl PainterTool {
                 ),
                 // Blend keeps the engine's own fixed-hardness stamp (the
                 // model's tools ignore the brush silhouette on purpose).
-                WetTool::Blend => sess.engine.dispatch_pressure_dab_lane_blend(
-                    li,
-                    cell_x,
-                    cell_y,
-                    b,
-                    f64::from(d.dir[0]),
-                    f64::from(d.dir[1]),
-                    cell_r,
-                ),
+                WetTool::Blend => sess
+                    .engine
+                    .dispatch_pressure_dab_lane_blend(li, cell_x, cell_y, b, cell_r),
                 // Direct tools: per-dab grid ops; the displacement source is
                 // THIS lane's previous centre (host-tracked per copy).
                 WetTool::Wet | WetTool::Dry | WetTool::Blow | WetTool::Smear => {
@@ -528,8 +518,6 @@ impl PainterTool {
                         cell_x,
                         cell_y,
                         b,
-                        f64::from(d.dir[0]),
-                        f64::from(d.dir[1]),
                         cell_r,
                         lane_prev.map(|p| {
                             [

@@ -14,7 +14,7 @@
 //! Blend mode reuses the window plumbing with a saturating mask and re-mixes
 //! both pigment layers toward the window averages (dry paint included).
 
-use crate::brush::{BrushShape, CellFn, for_each_stamp_pixel};
+use crate::brush::{CellFn, for_each_stamp_pixel};
 
 mod deposit; // o que um dab POUSA — a lei da célula e o caminho por linhas (ADR-0175)
 mod transfer; // the window-landing half of §10 (LOC-cap split)
@@ -61,9 +61,6 @@ pub struct Dab {
     pub water_amount: f64,
     /// Dry-brush gate (only feeds the §17 dry-brush extension).
     pub dry_gate: f64,
-    pub shape: BrushShape,
-    pub dir_x: f64,
-    pub dir_y: f64,
     /// O alcance da silhueta do HOSPEDEIRO em raios (`≥ 1`): a ponta de imagem rodada ou de Size < 1
     /// vai além de `r` (Bug #52 do Painter). Só o caminho com forma a percorre; o motor deixa `1`.
     pub reach: f64,
@@ -505,20 +502,7 @@ impl Trail {
             water[l] = (water[l] as f64 + deposit * law.water_amount) as f32;
             touch_ext(&mut ext, lx, ly);
         };
-        for_each_stamp_pixel(
-            *s,
-            *w,
-            *h,
-            tex,
-            dab.x,
-            dab.y,
-            dab.r,
-            dab.hardness,
-            dab.shape,
-            dab.dir_x,
-            dab.dir_y,
-            body,
-        );
+        for_each_stamp_pixel(*s, *w, *h, tex, dab.x, dab.y, dab.r, dab.hardness, body);
         (self.lx0, self.ly0, self.lx1, self.ly1) = ext;
         self.accumulated(wrote)
     }
@@ -546,9 +530,6 @@ impl Trail {
             dab.y,
             dab.r,
             dab.hardness,
-            dab.shape,
-            dab.dir_x,
-            dab.dir_y,
             |i, x, y, fall, texv| {
                 let mut stamp = fall * texv * dab.intensity;
                 if stamp > 1.0 {

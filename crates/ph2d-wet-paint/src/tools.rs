@@ -145,20 +145,7 @@ fn apply_erase_impl(
         }
         None => {
             debug_assert!(grain.is_none(), "grain override requires the shaped path");
-            for_each_stamp_pixel(
-                *s,
-                *w,
-                *h,
-                tex,
-                dab.x,
-                dab.y,
-                dab.r,
-                TOOL_HARDNESS,
-                dab.shape,
-                dab.dir_x,
-                dab.dir_y,
-                body,
-            );
+            for_each_stamp_pixel(*s, *w, *h, tex, dab.x, dab.y, dab.r, TOOL_HARDNESS, body);
         }
     }
     if touched {
@@ -213,9 +200,6 @@ pub fn apply_wet(
         dab.y,
         dab.r,
         TOOL_HARDNESS,
-        dab.shape,
-        dab.dir_x,
-        dab.dir_y,
         |i, _x, _y, fall, texv| {
             let mut stamp = fall * texv * clamp_i;
             if stamp > 1.0 {
@@ -278,9 +262,6 @@ pub fn apply_dry(g: &mut Grid, p: &Params, tex: &[f32], dab: &Dab) -> Option<Tou
         dab.y,
         dab.r,
         TOOL_HARDNESS,
-        dab.shape,
-        dab.dir_x,
-        dab.dir_y,
         |i, _x, _y, fall, texv| {
             let mut stamp = fall * texv * clamp_i;
             if stamp > 1.0 {
@@ -371,9 +352,6 @@ pub fn apply_blow(
         dab.y,
         dab.r,
         TOOL_HARDNESS,
-        dab.shape,
-        dab.dir_x,
-        dab.dir_y,
         |i, x, y, fall, texv| {
             let mut stamp = fall * texv * clamp_i;
             if stamp > 1.0 {
@@ -502,9 +480,6 @@ pub fn apply_smear(
         dab.y,
         dab.r,
         TOOL_HARDNESS,
-        dab.shape,
-        dab.dir_x,
-        dab.dir_y,
         |i, x, y, fall, texv| {
             let mut stamp = fall * texv * clamp_i;
             if stamp > 1.0 {

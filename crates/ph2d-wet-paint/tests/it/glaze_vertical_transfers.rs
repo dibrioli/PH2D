@@ -163,7 +163,7 @@ fn medir_levantar(glaze: bool, tool: Tool) -> (Medida, usize, f64) {
         let antes = ecra_seco(&e);
         let g = e.active_grid();
         let (sett, sc, uc) = (g.sett.clone(), g.sett_rgb.clone(), g.susp_rgb.clone());
-        e.dispatch_pressure_dab(x, 20.0, 2.0, 1.0, 0.0, 6.0);
+        e.dispatch_pressure_dab(x, 20.0, 2.0, 6.0);
         let depois = ecra_seco(&e);
         let g = e.active_grid();
         let mut k = 0;

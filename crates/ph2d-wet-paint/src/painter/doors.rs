@@ -15,8 +15,6 @@ impl Engine {
         x: f64,
         y: f64,
         b: f64,
-        dir_x: f64,
-        dir_y: f64,
         r: f64,
     ) -> (Dab, f64) {
         let s = self.sliders;
@@ -48,9 +46,6 @@ impl Engine {
             intensity,
             water_amount,
             dry_gate,
-            shape: self.shape,
-            dir_x,
-            dir_y,
             reach: 1.0,
             window_reach: 1.0,
         };
@@ -120,8 +115,6 @@ impl Engine {
         x: f64,
         y: f64,
         b: f64,
-        dir_x: f64,
-        dir_y: f64,
         r: f64,
         sil: Option<crate::brush::CellFn<'_>>,
         grain: Option<crate::brush::CellFn<'_>>,
@@ -131,7 +124,7 @@ impl Engine {
             .sim
             .gather_params(&self.tuning)
             .com_pigmento(self.sliders.pigmento);
-        let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
         if sil.is_some() {
             [dab.reach, dab.window_reach] = self.silhouette_reach;
         }
@@ -184,14 +177,12 @@ impl Engine {
         x: f64,
         y: f64,
         b: f64,
-        dir_x: f64,
-        dir_y: f64,
         r: f64,
         sil: Option<crate::brush::CellFn<'_>>,
         grain: Option<crate::brush::CellFn<'_>>,
     ) {
         let p = self.sim.gather_params(&self.tuning);
-        let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
         if sil.is_some() {
             [dab.reach, dab.window_reach] = self.silhouette_reach;
         }
@@ -225,12 +216,10 @@ impl Engine {
         x: f64,
         y: f64,
         b: f64,
-        dir_x: f64,
-        dir_y: f64,
         r: f64,
     ) {
         let p = self.sim.gather_params(&self.tuning);
-        let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
         if let Some(hook) = self.on_dab.as_mut() {
             hook(b, &dab);
         }
@@ -275,13 +264,11 @@ impl Engine {
         x: f64,
         y: f64,
         b: f64,
-        dir_x: f64,
-        dir_y: f64,
         r: f64,
         prev: Option<[f64; 2]>,
     ) {
         let p = self.sim.gather_params(&self.tuning);
-        let (dab, water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        let (dab, water_unit) = self.pressure_dab(&p, x, y, b, r);
         if let Some(hook) = self.on_dab.as_mut() {
             hook(b, &dab);
         }

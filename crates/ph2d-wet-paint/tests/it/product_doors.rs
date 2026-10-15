@@ -80,14 +80,14 @@ fn a_mid_stroke_ink_swap_recolours_the_rest_of_the_stroke() {
     for k in 1..=20 {
         let x = 30.0 + 6.0 * k as f64;
         e.direct_segment(0, x - prev);
-        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0, None, None, None);
+        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 8.0, None, None, None);
         prev = x;
     }
     e.set_stroke_color(0, [20.0, 220.0, 20.0]); // dip in green
     for k in 21..=40 {
         let x = 30.0 + 6.0 * k as f64;
         e.direct_segment(0, x - prev);
-        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 1.0, 0.0, 8.0, None, None, None);
+        e.dispatch_pressure_dab_lane(0, x, 60.0, 5.0, 8.0, None, None, None);
         prev = x;
     }
     e.end_direct_stroke();
@@ -143,7 +143,7 @@ fn a_direct_stroke_deposits_and_gates_the_sim() {
         let chord = ((x - prev.0).powi(2) + (y - prev.1).powi(2)).sqrt();
         e.direct_segment(0, chord);
         // Real pressure (host units mapped to the §8 range) + real radius.
-        e.dispatch_pressure_dab_lane(0, x, y, 5.0, 1.0, 0.0, 9.0, None, None, None);
+        e.dispatch_pressure_dab_lane(0, x, y, 5.0, 9.0, None, None, None);
         prev = (x, y);
     }
     e.end_direct_stroke();
@@ -216,8 +216,6 @@ fn the_hosts_grain_replaces_the_bristle() {
                 x,
                 60.0,
                 5.0,
-                1.0,
-                0.0,
                 9.0,
                 Some(&sil),
                 grained.then_some(&gr as ph2d_wet_paint::brush::CellFn<'_>),
@@ -263,7 +261,7 @@ fn the_hosts_grain_replaces_the_bristle() {
 fn a_single_dab_on_a_fresh_stroke_transfers_to_the_grid() {
     let mut e = Engine::new(120, 90);
     e.begin_direct_stroke(0, 60.0, 45.0);
-    e.dispatch_pressure_dab_lane(0, 60.0, 45.0, 5.0, 1.0, 0.0, 12.0, None, None, None);
+    e.dispatch_pressure_dab_lane(0, 60.0, 45.0, 5.0, 12.0, None, None, None);
     let g = e.active_grid();
     let mass: f64 = g.susp.iter().map(|&v| f64::from(v)).sum::<f64>()
         + g.sett.iter().map(|&v| f64::from(v)).sum::<f64>();

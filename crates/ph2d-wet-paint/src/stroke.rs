@@ -22,7 +22,7 @@ struct Point {
 }
 
 /// Callbacks: `on_segment(chord)` fires BEFORE that segment's dabs (the trail
-/// sizes its window with it); `on_dab(x, y, pressure, dir_x, dir_y)` per dab.
+/// sizes its window with it); `on_dab(x, y, pressure)` per dab.
 #[derive(Clone)]
 pub struct Stroke {
     pub active: bool,
@@ -33,8 +33,6 @@ pub struct Stroke {
     last_y: f64,
     pts: Vec<Point>,
     arc_accum: f64,
-    dir_x: f64,
-    dir_y: f64,
     first_dab_done: bool,
     spacing: f64,
 }
@@ -50,8 +48,6 @@ impl Default for Stroke {
             last_y: 0.0,
             pts: Vec::new(),
             arc_accum: 0.0,
-            dir_x: 0.0,
-            dir_y: 0.0,
             first_dab_done: false,
             spacing: 2.0,
         }
@@ -64,13 +60,13 @@ impl Default for Stroke {
 #[derive(Clone)]
 pub enum StrokeEvent {
     /// Chord length of a spline segment, reported before its dabs.
-    Segment { chord: f64 },
+    Segment {
+        chord: f64,
+    },
     Dab {
         x: f64,
         y: f64,
         pressure: f64,
-        dir_x: f64,
-        dir_y: f64,
     },
 }
 
@@ -85,8 +81,6 @@ impl Stroke {
         self.pts.clear();
         self.pts.push(Point { x, y, t: 0.0 });
         self.arc_accum = 0.0;
-        self.dir_x = 0.0;
-        self.dir_y = 0.0;
         self.first_dab_done = false;
         // JS `Math.max(0.5, spacing || 2)`: a falsy spacing (0 or NaN) falls
         // back to the default 2 BEFORE the floor (port-verify finding).
@@ -216,8 +210,6 @@ impl Stroke {
                 x: p1.x,
                 y: p1.y,
                 pressure: p1.t,
-                dir_x: self.dir_x,
-                dir_y: self.dir_y,
             });
         }
         let steps = (chord.ceil() as i64).max(2);
@@ -229,10 +221,6 @@ impl Stroke {
             let dx = sx - px;
             let dy = sy - py;
             let d = (dx * dx + dy * dy).sqrt();
-            if d > 0.0 {
-                self.dir_x = dx / d;
-                self.dir_y = dy / d;
-            }
             self.arc_accum += d;
             while self.arc_accum >= self.spacing {
                 self.arc_accum -= self.spacing;
@@ -241,8 +229,6 @@ impl Stroke {
                     x: sx,
                     y: sy,
                     pressure: b,
-                    dir_x: self.dir_x,
-                    dir_y: self.dir_y,
                 });
             }
             px = sx;

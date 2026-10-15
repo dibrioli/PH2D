@@ -4,7 +4,7 @@
 //! parameterization (SPEC §9), tool dispatch, canvas-wide actions, and the
 //! render dirty-rect bookkeeping.
 
-use crate::brush::{BristleKnobs, BrushShape, build_bristle_texture};
+use crate::brush::{BristleKnobs, build_bristle_texture};
 use crate::grid::{
     Grid, GridSnapshot, clear_canvas, dry_canvas, restore_grid, snapshot_grid, wet_canvas,
 };
@@ -102,7 +102,6 @@ pub struct Engine {
     stroke_events: Vec<StrokeEvent>,
     // Tool state (boot defaults, SPEC §16).
     pub tool: Tool,
-    pub shape: BrushShape,
     pub sliders: Sliders,
     pub color: [f64; 3],
     /// Render-side experimental checkbox (K–M glaze stacking).
@@ -170,7 +169,6 @@ impl Engine {
             stroke: Stroke::default(),
             stroke_events: Vec::new(),
             tool: Tool::Paint,
-            shape: BrushShape::Round,
             sliders: Sliders::default(),
             color: [50.0, 140.0, 210.0],
             km_glaze: false,
@@ -254,9 +252,9 @@ impl Engine {
     // Dab parameters (SPEC §9) + dispatch
     // -----------------------------------------------------------------------
 
-    fn dispatch_dab(&mut self, x: f64, y: f64, b: f64, dir_x: f64, dir_y: f64) {
+    fn dispatch_dab(&mut self, x: f64, y: f64, b: f64) {
         let r = 2.0 + self.sliders.size * 33.0;
-        self.dispatch_pressure_dab(x, y, b, dir_x, dir_y, r);
+        self.dispatch_pressure_dab(x, y, b, r);
     }
 
     /// Product door: SPEC §9's dab-parameter mapping with the two host
@@ -264,20 +262,12 @@ impl Engine {
     /// output range, ~0..10) and a REAL radius `r` (px) instead of the Size
     /// slider's `2 + size*33`. The engine's own [`Self::dispatch_dab`] is a
     /// thin wrapper, so there is exactly one §9 to diverge.
-    pub fn dispatch_pressure_dab(
-        &mut self,
-        x: f64,
-        y: f64,
-        b: f64,
-        dir_x: f64,
-        dir_y: f64,
-        r: f64,
-    ) {
+    pub fn dispatch_pressure_dab(&mut self, x: f64, y: f64, b: f64, r: f64) {
         let p = self
             .sim
             .gather_params(&self.tuning)
             .com_pigmento(self.sliders.pigmento);
-        let (dab, water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        let (dab, water_unit) = self.pressure_dab(&p, x, y, b, r);
         self.finish_dispatch(p, dab, b, water_unit);
     }
 
@@ -373,14 +363,8 @@ impl Engine {
                         self.trail.on_segment(chord, spacing);
                     }
                 }
-                StrokeEvent::Dab {
-                    x,
-                    y,
-                    pressure,
-                    dir_x,
-                    dir_y,
-                } => {
-                    self.dispatch_dab(x, y, pressure, dir_x, dir_y);
+                StrokeEvent::Dab { x, y, pressure } => {
+                    self.dispatch_dab(x, y, pressure);
                 }
             }
         }

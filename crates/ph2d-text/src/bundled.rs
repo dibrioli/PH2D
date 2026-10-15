@@ -46,6 +46,18 @@ const VIRGIL_TTF: &[u8] = include_bytes!("../fonts/Virgil-Regular.ttf");
 /// O nome com que a Virgil é registada (forçado, como as da interface).
 pub const HAND_FAMILY: &str = "PH2D Virgil";
 
+/// ⭐ **JetBrains Mono 2.304 (SIL OFL 1.1, variável `wght`)** — a letra MONOESPAÇADA do editor de
+/// código. Origem, sha256 e a decisão do nome em `fonts/JetBrainsMono-LICENSE.txt`.
+const JETBRAINS_MONO_TTF: &[u8] = include_bytes!("../fonts/JetBrainsMonoVariable.ttf");
+/// O nome com que a JetBrains Mono é registada — forçado, para a embutida nunca perder para uma
+/// instalada. A OFL dela não declara «Reserved Font Name», então o nome próprio é conforme.
+/// ⚠️ [`ph2d_tokens::FONT_MONO`] começa por ele (gate em `tests/it/the_mono_font_is_ours.rs`).
+pub const MONO_FAMILY: &str = "PH2D JetBrains Mono";
+
+/// Quantas fontes da interface há — o comprimento de [`ph2d_tokens::UiFont::ALL`], para uma
+/// escolha nova não compilar sem a sua entrada em [`BUNDLED`].
+pub(crate) const UI_FONTS: usize = ph2d_tokens::UiFont::ALL.len();
+
 /// ⭐⭐⭐ **As fontes EMBUTIDAS, pela ordem de [`ph2d_tokens::UiFont::ALL`]** — os bytes e o nome
 /// de família com que cada uma é REGISTADA.
 ///
@@ -57,7 +69,7 @@ pub const HAND_FAMILY: &str = "PH2D Virgil";
 /// fontes do sistema, onde o nome era forçado) mediam a Inter: o produto e a régua liam fontes
 /// diferentes. ⚠️ E forçar um nome PRÓPRIO evita a colisão inversa: a Noto embutida e a Noto
 /// instalada não podem responder pelo mesmo nome.
-const BUNDLED: [(&[u8], &str); 3] = [
+const BUNDLED: [(&[u8], &str); UI_FONTS] = [
     (INTER_VARIABLE_TTF, INTER_FAMILY),
     (NOTO_SANS_TTF, "PH2D Noto Sans"),
     (ATKINSON_TTF, "PH2D Atkinson Hyperlegible"),
@@ -92,15 +104,22 @@ pub fn displayed_font_px(nominal: f32) -> f32 {
 /// Regista as fontes EMBUTIDAS ([`BUNDLED`]) com o nome forçado e devolve a pilha de cada uma —
 /// `"<nome><cauda>"`, ou `"sans-serif"` quando o registo não produziu família (bytes rejeitados):
 /// o arranque nunca entra em pânico por causa de uma fonte.
-pub(crate) fn register_bundled(font_context: &mut FontContext, tail: &str) -> [String; 3] {
-    // A letra do DOCUMENTO (não é escolha da interface): só se regista, quem a pede nomeia-a.
-    font_context.collection.register_fonts(
-        Blob::new(Arc::new(VIRGIL_TTF)),
-        Some(FontInfoOverride {
-            family_name: Some(HAND_FAMILY),
-            ..Default::default()
-        }),
-    );
+pub(crate) fn register_bundled(font_context: &mut FontContext, tail: &str) -> [String; UI_FONTS] {
+    // As letras do DOCUMENTO e do CÓDIGO (não são escolha da interface): só se registam, quem as
+    // pede nomeia-as (a mono pela pilha [`ph2d_tokens::FONT_MONO`]).
+    for (bytes, family) in [(VIRGIL_TTF, HAND_FAMILY), (JETBRAINS_MONO_TTF, MONO_FAMILY)] {
+        let registered = font_context.collection.register_fonts(
+            Blob::new(Arc::new(bytes)),
+            Some(FontInfoOverride {
+                family_name: Some(family),
+                ..Default::default()
+            }),
+        );
+        debug_assert!(
+            !registered.is_empty(),
+            "a fonte embutida {family} não registou"
+        );
+    }
     BUNDLED.map(|(bytes, family)| {
         let blob = Blob::new(Arc::new(bytes));
         let override_info = FontInfoOverride {

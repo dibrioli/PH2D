@@ -20,7 +20,7 @@ use std::borrow::Cow;
 // era `u32` (`swash::tag_from_bytes`), hoje é `parley::setting::Tag`, um
 // `#[repr(transparent)] [u8; 4]` vindo do `parlance` — e `Tag::new` é `const fn`,
 // então as constantes abaixo continuam a ser constantes.
-use crate::bundled::{active_text_style, register_bundled};
+use crate::bundled::{UI_FONTS, active_text_style, register_bundled};
 use crate::layout_cache::{LayoutCache, LayoutCacheKey};
 use parley::{
     Alignment, FontContext, FontFamily, FontVariation, FontVariations, FontWeight, Layout,
@@ -82,7 +82,7 @@ pub struct TextSystem {
     layout_context: LayoutContext<()>,
     /// A pilha de cada fonte embutida, pela ordem de [`ph2d_tokens::UiFont::ALL`] — `"<nome>,
     /// sans-serif"` quando ela registou, `"sans-serif"` quando não.
-    stacks: [String; 3],
+    stacks: [String; UI_FONTS],
     /// Shaped-layout cache (perf): `layout_with_weight` rebuilt a parley
     /// `Layout` (shape + line-break + align) from scratch on EVERY call,
     /// every frame — the dominant per-frame cost under the continuous
@@ -150,6 +150,17 @@ impl TextSystem {
             &mut self.font_context,
             &mut self.layout_context,
             self.stacks[0].as_str(),
+        )
+    }
+
+    /// ⭐ **Os dois contextos e a pilha MONOESPAÇADA** ([`ph2d_tokens::FONT_MONO`], que abre pela
+    /// JetBrains Mono embutida, [`crate::MONO_FAMILY`]) — a porta do editor de código, irmã de
+    /// [`Self::contexts`]; sem o estilo da interface.
+    pub fn mono_contexts(&mut self) -> (&mut FontContext, &mut LayoutContext<()>, &'static str) {
+        (
+            &mut self.font_context,
+            &mut self.layout_context,
+            ph2d_tokens::FONT_MONO,
         )
     }
 

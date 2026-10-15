@@ -128,7 +128,10 @@ impl LetterSpacing {
 pub const FONT_SANS: &str =
     "Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
 pub const FONT_DISPLAY: &str = "'Inter Display', Inter, system-ui, sans-serif";
-pub const FONT_MONO: &str = "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace";
+/// A 1.ª é a JetBrains Mono EMBUTIDA, registada com nome forçado pelo `ph2d-text` (`MONO_FAMILY`);
+/// as seguintes só servem se o registo falhar.
+pub const FONT_MONO: &str =
+    "'PH2D JetBrains Mono', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace";
 
 /// Text-rendering strategy. Orthogonal to [`crate::Theme`] — qualquer
 /// combinação Theme × TextRendering é válida. Lida via thread-local

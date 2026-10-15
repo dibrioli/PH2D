@@ -54,7 +54,7 @@ const NOT_LANGUAGE: &[Excecao] = &[
     ),
     (
         "typography.rs",
-        "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace",
+        "'PH2D JetBrains Mono', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace",
         "pilha de famílias de fonte monoespaçada — ver as irmãs acima; identificador de ficheiro \
          instalado, não interface",
     ),

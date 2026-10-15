@@ -51,10 +51,29 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
         },
         ..ph2d_tool_vector::VectorStyleSnapshot::default()
     }));
+    // F16 (15/10): uma forma selecionada — a barra de controle inteira (nome, Profile ▾, Type ▾,
+    //    Opacity), que é o ecrã que o artista vê ao trabalhar.
+    ph2d_panel_vector::set_current_selection_count(1);
+    ph2d_panel_vector::state::set_current_selection_name(Some("Star 1".to_owned()));
+    ph2d_panel_vector::set_stroke_paint_kind(Some(ph2d_panel_vector::state::StrokePaintKind::Solid));
+    ph2d_panel_vector::state::set_current_appearance(Some(ph2d_panel_vector::state::Appearance {
+        opacity: 1.0,
+        blend: ph2d_vec_scene::BlendMode::Normal,
+        layers: Vec::new(),
+    }));
     let barras = ph2d_panel_vector::bars::tool_bars(&h.store, None, Vec::new());
     h.store.set_tool_bars(Some(barras));
-    h.store
-        .set_area_commands(ph2d_panel_vector::bars::module_menus(), Vec::new());
+    // F16 (15/10): o vetor já não publica pulldowns de área — a ② é a barra de controle dele. Os
+    //    botões genéricos saíram da fila e o app caiu para `1 005` textos; ⇒ as secções Snap e
+    //    Boolean do painel ABERTAS (nascem recolhidas; abri-las é um clique do artista). ⚠️ Abrir o
+    //    painel do traço da barra NÃO serve: ele molda os MESMOS textos da secção Stroke (`+1`).
+    h.store.set_area_commands(Vec::new(), Vec::new());
+    for s in [
+        ph2d_tool_vector::ids::VECTOR_SECTION_SNAP,
+        ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
+    ] {
+        h.store.set_collapsed(s, false);
+    }
 
     // ⚠️ **E o menu Add aberto, pela mesma razão** (2026-10-04): a F3 do Vector tirou o pill VECTOR
     //    e a fileira do painel passou a mostrar só as ferramentas do modo — `1 014` textos. A paleta

@@ -468,8 +468,8 @@ impl crate::App {
         }
     }
 
-    /// Vector Ctrl+D: duplicate the object selection (offset ~12 px) — o irmão de
-    /// teclado do botão Arrange "Duplicate". Preserva os grupos, como o paste.
+    /// Vector Ctrl+D: duplicate the object selection (offset ~12 px). Preserva os grupos, como o
+    /// paste. (O botão Duplicate da ④ saiu a 15/10, F16: fica a tecla e o menu da Hierarchy.)
     pub(super) fn vec_duplicate_shortcut(&mut self) {
         let (dx, dy) = self.vec_screen_offset(PASTE_OFFSET_PX);
         if let Some(gfx) = self.gfx.as_mut() {

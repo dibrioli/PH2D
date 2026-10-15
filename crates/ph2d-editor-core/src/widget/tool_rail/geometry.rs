@@ -51,7 +51,11 @@ pub fn entry_advance(entry: &ToolRailEntry, chip_px: f32, axis: RailAxis) -> f32
     match entry {
         ToolRailEntry::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
         ToolRailEntry::Compound { row_w, .. } if axis == RailAxis::Horizontal => row_w.max(chip_px),
-        ToolRailEntry::Number { row_w, .. } if axis == RailAxis::Horizontal => row_w.max(chip_px),
+        ToolRailEntry::Number { row_w, .. } | ToolRailEntry::Text { row_w, .. }
+            if axis == RailAxis::Horizontal =>
+        {
+            row_w.max(chip_px)
+        }
         _ => chip_px,
     }
 }
@@ -83,6 +87,13 @@ pub fn size_row_pulldowns(rail: &mut ToolRail, text_system: &mut TextSystem) {
         // O campo numérico: o piso vivo da caixa de número (que já cresce com o tamanho do texto).
         if let ToolRailEntry::Number { row_w, .. } = entry {
             *row_w = crate::widget::number_input::min_w_px();
+        }
+        // O texto (o nome do objecto): a caixa dele, com TECTO de dois campos — um nome longo é
+        // elidido em vez de empurrar a barra inteira para o `⋯`.
+        if let ToolRailEntry::Text { text, row_w } = entry {
+            let w = text_system.prefix_width_weighted(text, font, FontWeight::MEDIUM);
+            *row_w = crate::paint::rect_for_label(w)
+                .min(crate::widget::number_input::min_w_px() * 2.0);
         }
     }
 }

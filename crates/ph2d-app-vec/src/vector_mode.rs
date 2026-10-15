@@ -362,6 +362,7 @@ impl ModeFamily for Family<'_> {
 /// `=19` (F12): as setas ⇕ lado a lado em quatro formas e a ponta da espiral (`vector_mode_setas`).
 /// `=20` (F13): o modo Forma selecciona — o clique desarma e traz as alças (`vector_mode_seleciona`).
 /// `=22` (15/10): o Arrange e o Alinhar nas duas linhas da ④ (`vector_mode_alinhar`).
+/// `=23` (F16): a barra de controle e o painel do traço aberto (`vector_mode_controle`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -388,7 +389,8 @@ pub fn smoke_step(
     // `vector_mode_stroke`); 4 = a 18 (F12 A, o traço das formas — 100–103 em `vector_mode_tracos`);
     // 5 = a 19 (F12, as setas lado a lado — 110–120 em `vector_mode_setas`); 6 = a 20 (F13, o
     // modo Forma selecciona — 130–136 em `vector_mode_seleciona`); 7 = a 21 (F14, `vector_mode_quinas`);
-    // 8 = a 22 (o Alinhar na ④ — 220–224 em `vector_mode_alinhar`).
+    // 8 = a 22 (o Alinhar na ④ — 220–224 em `vector_mode_alinhar`); 9 = a 23 (F16, a barra de
+    // controle — 230–234 em `vector_mode_controle`).
     static HANDLES: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
@@ -396,7 +398,7 @@ pub fn smoke_step(
             let want = match scene.as_deref() {
                 Ok(
                     "6" | "7" | "9" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17" | "18"
-                    | "19" | "20" | "21" | "22",
+                    | "19" | "20" | "21" | "22" | "23",
                 ) => 1,
                 _ => 9,
             };
@@ -417,7 +419,8 @@ pub fn smoke_step(
                         | "19"
                         | "20"
                         | "21"
-                        | "22")
+                        | "22"
+                        | "23")
                 )),
                 Ordering::Relaxed,
             );
@@ -434,6 +437,7 @@ pub fn smoke_step(
                     Ok("20") => 6,
                     Ok("21") => 7,
                     Ok("22") => 8,
+                    Ok("23") => 9,
                     _ => 0,
                 },
                 Ordering::Relaxed,
@@ -476,6 +480,8 @@ pub fn smoke_step(
             13
         } else if QUICK.load(Ordering::Relaxed) != 0 {
             50
+        } else if HANDLES.load(Ordering::Relaxed) == 9 {
+            crate::vector_mode_controle::FIRST
         } else if HANDLES.load(Ordering::Relaxed) == 8 {
             crate::vector_mode_alinhar::FIRST
         } else if HANDLES.load(Ordering::Relaxed) == 7 {
@@ -609,6 +615,11 @@ pub fn smoke_step(
         }
         s @ crate::vector_mode_alinhar::FIRST..=crate::vector_mode_alinhar::LAST => {
             if let Some(next) = crate::vector_mode_alinhar::step(s, vec, scene, hero) {
+                go(next);
+            }
+        }
+        s @ crate::vector_mode_controle::FIRST..=crate::vector_mode_controle::LAST => {
+            if let Some(next) = crate::vector_mode_controle::step(s, vec, scene, hero) {
                 go(next);
             }
         }

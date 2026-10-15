@@ -17,7 +17,6 @@ pub(super) struct NodeAndArrangeVerbsIntents {
     pub(super) pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind>,
     pub(super) pending_vec_delete_vertex: bool,
     pub(super) pending_vec_reorder: Option<ph2d_vec_scene::ZOrder>,
-    pub(super) pending_vec_duplicate: bool,
     pub(super) pending_vec_flip: Option<ph2d_vec_scene::FlipAxis>,
     pub(super) pending_vec_rotate: Option<ph2d_vec_scene::Rotate90>,
 }
@@ -47,7 +46,6 @@ impl crate::App {
             pending_vec_vertex_kind,
             pending_vec_delete_vertex,
             pending_vec_reorder,
-            pending_vec_duplicate,
             pending_vec_flip,
             pending_vec_rotate,
         } = intents;
@@ -147,16 +145,6 @@ impl crate::App {
             && let Some(sel) = self.vec.pen.selected()
         {
             ph2d_vec_entities::entities::zorder::reorder(sim, &self.vec.entities, sel, order);
-        }
-        if pending_vec_duplicate {
-            // Offset the clone by a fixed SCREEN distance (px → world) so it's
-            // visibly separated at any zoom.
-            //
-            // ⚠️ A const é a PARTILHADA. Ela vivia aqui como cópia local de 12.0 ao lado do
-            // `PASTE_OFFSET_PX`, que é o mesmo número pela mesma razão — exatamente a
-            // divergência contra a qual o doc de `screen_offset_world` avisa.
-            let off = crate::input_dispatch::PASTE_OFFSET_PX * vec_px_to_world;
-            crate::input_dispatch::apply_vec_duplicate(vec_scene, &mut self.vec.pen, off, off);
         }
         if let Some(axis) = pending_vec_flip {
             crate::input_dispatch::apply_vec_flip(vec_scene, &self.vec.pen, axis);

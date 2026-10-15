@@ -16,6 +16,20 @@ impl WidgetStore {
         self.tool_bars.bars.as_ref()
     }
 
+    /// F16: publica onde cada chip da fila ② caiu (em TODO quadro, vazio incluído).
+    pub fn set_tool_row_slots(&mut self, slots: Vec<(ph2d_a11y::NodeId, crate::zones::Rect)>) {
+        self.tool_bars.row_slots = slots;
+    }
+
+    /// F16: o rectângulo do chip `id` na fila ②, como ficou no último quadro pintado.
+    #[must_use]
+    pub fn tool_row_slot(&self, id: ph2d_a11y::NodeId) -> Option<crate::zones::Rect> {
+        self.tool_bars
+            .row_slots
+            .iter()
+            .find_map(|&(i, r)| (i == id).then_some(r))
+    }
+
     /// ④ fixada no topo da área?
     #[must_use]
     pub fn selection_actions_pinned(&self) -> bool {

@@ -307,7 +307,6 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == crate::ids::VECTOR_SNAP_GUIDES_ON
         || id == crate::ids::VECTOR_RULERS_OFF
         || id == crate::ids::VECTOR_RULERS_ON
-        || id == crate::ids::VECTOR_ARRANGE_DUPLICATE
         || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK
         || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD
         || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD

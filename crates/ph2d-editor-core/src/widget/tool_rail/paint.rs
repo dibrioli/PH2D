@@ -408,6 +408,17 @@ pub fn paint_tool_rail_axis(
                     resolve(ColorToken::Text2, theme),
                 );
             }
+            // O texto (o nome do objecto, F16): direito, na linha dos chips, sem caixa nem legenda.
+            ToolRailEntry::Text { text, .. } => {
+                paint_text_centered(
+                    text_system,
+                    scene,
+                    text,
+                    slot_rect,
+                    super::compound_face_font_px(),
+                    resolve(ColorToken::Text1, theme),
+                );
+            }
             ToolRailEntry::Divider => {
                 scene.fill_rect(rect_to_vello(slot_rect), resolve(ColorToken::Border, theme));
             }

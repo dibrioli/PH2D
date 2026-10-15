@@ -1,8 +1,9 @@
 //! ⭐⭐ **A fila ② pode morar EMBAIXO** (D10 decisão 2, F5 — 08/10): a opção de layout para tablet.
 //!
 //! Com as barras reais do vetor no caso mais longo (Node): a faixa passa para baixo da área sem a
-//! tapar, e os menus que ela abre — o `⋯` e os pulldowns da área — crescem para CIMA do chip. O
-//! CONTROLO: com a fila em cima, os mesmos menus abrem por baixo.
+//! tapar, e os menus que ela abre — o `⋯`, os pulldowns da área e (F16) o painel do traço e as
+//! listas da barra de controle — crescem para CIMA do chip. O CONTROLO: com a fila em cima, os
+//! mesmos menus abrem por baixo.
 
 use bumpalo::Bump;
 use ph2d_editor_core::ids;
@@ -37,10 +38,12 @@ fn com_fila(bottom: bool, mode: DrawMode, ts: &mut ph2d_text::TextSystem) -> Her
     }));
     ph2d_panel_vector::set_current_selection_count(1);
     ph2d_panel_vector::set_current_vertex_count(2);
+    // F16: com uma forma com traço, a barra de controle mostra os três chips «▾».
+    ph2d_panel_vector::set_stroke_paint_kind(Some(ph2d_panel_vector::StrokePaintKind::Solid));
     let bars = ph2d_panel_vector::bars::tool_bars(&hero.store, None, Vec::new());
     hero.store.set_tool_bars(Some(bars));
-    hero.store
-        .set_area_commands(ph2d_panel_vector::bars::module_menus(), Vec::new());
+    // F16: o vetor já não publica pulldowns de área (o mesmo que `bars_publish::publish`).
+    hero.store.set_area_commands(Vec::new(), Vec::new());
     pinta(&mut hero, ts);
     pinta(&mut hero, ts);
     hero
@@ -72,11 +75,49 @@ fn down(hero: &mut HeroScreen, r: Rect) {
     }
 }
 
+/// F16: os três chips «▾» da barra de controle do vetor — o painel do traço e as duas listas
+/// abrem por baixo deles, e com a fila embaixo têm de subir como os outros menus da fila.
+const BAR_LISTS: [NodeId; 3] = [
+    ph2d_panel_vector::ids::VECTOR_BAR_STROKE,
+    ph2d_panel_vector::ids::VECTOR_BAR_PROFILE,
+    ph2d_panel_vector::ids::VECTOR_BAR_KIND,
+];
+
+/// As linhas que o chip «▾» `chip` abre (o painel do traço é medido pelo cartão inteiro).
+fn bar_list_rows(hero: &HeroScreen, chip: NodeId) -> Vec<Rect> {
+    use ph2d_panel_vector::ids as v;
+    if chip == v::VECTOR_BAR_STROKE {
+        return hero
+            .store
+            .dropdown_popover()
+            .filter(|(id, _)| *id == chip)
+            .map(|(_, r)| r)
+            .into_iter()
+            .collect();
+    }
+    let rows: Vec<NodeId> = if chip == v::VECTOR_BAR_PROFILE {
+        (0..v::MAX_WIDTH_PRESETS).map(v::vector_width_preset_id).collect()
+    } else {
+        vec![
+            ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID,
+            ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN,
+            ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH,
+        ]
+    };
+    rows.iter()
+        .filter_map(|&id| hero.hit_index.rect_for(id))
+        .collect()
+}
+
 /// O chip que abre um menu da fila e a 1.ª linha desse menu, pintada.
-fn chip_e_linha(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) -> Vec<(Rect, Rect)> {
+fn chip_e_linha(
+    hero: &mut HeroScreen,
+    ts: &mut ph2d_text::TextSystem,
+) -> Vec<(NodeId, Rect, Rect)> {
     let mut out = Vec::new();
     let chips: Vec<NodeId> = std::iter::once(ids::TOOL_BAR_OVERFLOW)
         .chain((0..ids::MAX_AREA_MENUS).map(ids::area_menu_button))
+        .chain(BAR_LISTS)
         .collect();
     for chip in chips {
         let Some(r) = hero.hit_index.rect_for(chip) else {
@@ -84,6 +125,25 @@ fn chip_e_linha(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) -> Vec<(R
         };
         down(hero, r);
         pinta(hero, ts);
+        if BAR_LISTS.contains(&chip) {
+            let painted = bar_list_rows(hero, chip);
+            if let (Some(top), Some(bottom)) = (
+                painted.iter().map(|q| q.y).reduce(f32::min),
+                painted.iter().map(|q| q.y + q.h).reduce(f32::max),
+            ) {
+                out.push((chip, r, Rect::new(0.0, top, 0.0, bottom - top)));
+            }
+            for id in BAR_LISTS {
+                if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
+                    open, ..
+                }) = hero.store.get_mut(id)
+                {
+                    *open = false;
+                }
+            }
+            pinta(hero, ts);
+            continue;
+        }
         let rows: Vec<NodeId> = if chip == ids::TOOL_BAR_OVERFLOW {
             hero.store
                 .tool_overflow()
@@ -113,7 +173,7 @@ fn chip_e_linha(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) -> Vec<(R
             painted.iter().map(|q| q.y).reduce(f32::min),
             painted.iter().map(|q| q.y + q.h).reduce(f32::max),
         ) {
-            out.push((r, Rect::new(0.0, top, 0.0, bottom - top)));
+            out.push((chip, r, Rect::new(0.0, top, 0.0, bottom - top)));
         }
         hero.store.close_context_menu();
         pinta(hero, ts);
@@ -121,12 +181,24 @@ fn chip_e_linha(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) -> Vec<(R
     out
 }
 
+/// O CONTROLO dos dois testes: os três chips «▾» da barra de controle foram abertos e medidos — sem
+/// isto a lei passaria sobre o `⋯` sozinho (F16 tirou os pulldowns de área do vetor).
+fn mediu_os_tres_da_barra(pares: &[(NodeId, Rect, Rect)]) {
+    for id in BAR_LISTS {
+        assert!(
+            pares.iter().any(|(c, _, _)| *c == id),
+            "{id:?}: o chip da barra não abriu nada medível ({} medidos)",
+            pares.len()
+        );
+    }
+}
+
 /// ⭐⭐ **Embaixo: a faixa por baixo da área, e os menus da fila crescem para cima.**
 #[test]
 fn at_the_bottom_the_row_sits_below_the_area_and_its_menus_grow_up() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let mut pares = Vec::new();
-    // O Node põe os pulldowns atrás do `⋯` no mini; o Select deixa-os à vista — os dois medem-se.
+    // O Node põe a cauda atrás do `⋯` no mini; o Select mostra a barra de controle — os dois medem-se.
     for mode in [DrawMode::Node, DrawMode::Select] {
         let mut hero = com_fila(true, mode, &mut ts);
         let l = hero.last_layout.expect("layout");
@@ -138,12 +210,8 @@ fn at_the_bottom_the_row_sits_below_the_area_and_its_menus_grow_up() {
         );
         pares.extend(chip_e_linha(&mut hero, &mut ts));
     }
-    assert!(
-        pares.len() >= 2,
-        "o `⋯` e um pulldown — só {} medidos",
-        pares.len()
-    );
-    for (chip, row) in pares {
+    mediu_os_tres_da_barra(&pares);
+    for (_, chip, row) in pares {
         assert!(
             row.y + row.h <= chip.y + 0.5,
             "um menu da fila embaixo abriu por baixo do chip ({row:?} sob {chip:?})"
@@ -162,8 +230,8 @@ fn at_the_top_the_same_menus_open_below() {
         assert!(l.tool_bar.y + l.tool_bar.h <= l.draw_area.y + 0.5);
         pares.extend(chip_e_linha(&mut hero, &mut ts));
     }
-    assert!(pares.len() >= 2);
-    for (chip, row) in pares {
+    mediu_os_tres_da_barra(&pares);
+    for (_, chip, row) in pares {
         assert!(
             row.y >= chip.y + chip.h - 0.5,
             "em cima, o menu abriu por cima do chip"

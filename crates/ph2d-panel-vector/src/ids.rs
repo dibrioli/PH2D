@@ -48,5 +48,7 @@ mod vector_frame;
 pub use vector_frame::*;
 mod vector_snap;
 pub use vector_snap::*;
+mod vector_bar;
+pub use vector_bar::*;
 mod vector_width;
 pub use vector_width::*;

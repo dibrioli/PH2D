@@ -183,18 +183,18 @@ pub fn bar_rail(
     painter_active: bool,
     image_tools_on: bool,
 ) -> ToolRail {
-    let mut entries = rail_entries(store, painter_active);
-    // ⭐⭐ **O PRODUTOR do módulo** ([`crate::interaction::ToolBars`], hoje o Vetor — D10 ②). A ORDEM
-    // é a PRIORIDADE DECLARADA, porque o `⋯` leva a cauda: as opções do gesto entram À FRENTE dos
-    // chips do gizmo (saem por último), e o resto atrás deles. Medido na F0 (07/10): em Edit + Node
-    // a fila pede `1 051 px` e um iPad 12,9" dá `730` — a ordem é que decide o que fica à mão.
-    if let Some(bars) = store.tool_bars() {
-        if !bars.row_lead.is_empty() {
-            let chips = std::mem::take(&mut entries);
-            entries.extend(bars.row_lead.iter().cloned());
-            entries.push(crate::widget::ToolRailEntry::Divider);
-            entries.extend(chips);
-        }
+    // ⭐⭐ **O PRODUTOR do módulo** ([`crate::interaction::ToolBars`], hoje o Vetor — D10 ②). Com ele
+    // publicado a fila é a BARRA DE CONTROLE do módulo (F16, dono 15/10: *«os botões que estão na
+    // barra do topo devem sair»* — o gizmo, SPACE, VIEW, UNDO/REDO e o seletor de modo): só os
+    // ajustes dele, na ordem dele, que é a PRIORIDADE — o `⋯` leva a cauda.
+    let module = store.tool_bars();
+    let mut entries = if module.is_some() {
+        Vec::new()
+    } else {
+        rail_entries(store, painter_active)
+    };
+    if let Some(bars) = module {
+        entries.extend(bars.row_lead.iter().cloned());
         if !bars.row_tail.is_empty() {
             entries.push(crate::widget::ToolRailEntry::Divider);
             entries.extend(bars.row_tail.iter().cloned());
@@ -221,7 +221,7 @@ pub fn bar_rail(
     // ⚠️ A FACE de cada um é uma leitura (*qual é a vista agora*, *qual é o verbo do gizmo*), e é
     // por isso que ela vem do store em vez de ser o rótulo: um chip que diz sempre a mesma coisa
     // não distingue os estados que abre.
-    if !store.area_menus().is_empty() {
+    if module.is_none() && !store.area_menus().is_empty() {
         entries.push(crate::widget::ToolRailEntry::Divider);
         for (slot, menu) in store.area_menus().iter().enumerate() {
             entries.push(
@@ -433,10 +433,22 @@ pub fn publish_overflow(
     let bar = layout.tool_bar;
     if bar.w <= 0.0 || bar.h <= 0.0 {
         store.set_tool_overflow(Vec::new());
+        store.set_tool_row_slots(Vec::new());
         return;
     }
-    let (_, over) = bar_split(store, text_system, painter_active, image_tools_on, bar.w);
+    let (rail, over) = bar_split(store, text_system, painter_active, image_tools_on, bar.w);
     store.set_tool_overflow(over);
+    // F16: a mesma porta da geometria que o pintor e o hit perguntam — a âncora dos popovers.
+    let slots = entry_rects(
+        &rail,
+        content_rect(bar),
+        store.rail_button_size(),
+        RailAxis::Horizontal,
+    )
+    .into_iter()
+    .filter_map(|s| s.id.map(|id| (id, s.rect)))
+    .collect();
+    store.set_tool_row_slots(slots);
 }
 
 #[cfg(test)]

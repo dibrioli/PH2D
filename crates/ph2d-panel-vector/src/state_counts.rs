@@ -10,7 +10,7 @@
 //! todos), e os dois pills de corte nasceram fora do `populate` — pintados, acesos sob o mouse e
 //! MUDOS. É por isso que as duas contagens vivem juntas: são a mesma pergunta.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 
 thread_local! {
     /// Quantos CAMINHOS estão na seleção de objeto — Align (≥2) / Distribute (≥3) / Join (≥2).
@@ -18,6 +18,36 @@ thread_local! {
     /// Quantos NÓS estão selecionados. O `VertexSel` diz o TIPO (uniforme ou misto) e **não** a
     /// contagem, e o Average precisa exactamente dela.
     static CURRENT_VERTEX_COUNT: Cell<usize> = const { Cell::new(0) };
+    /// O NOME (o da Hierarchy) da forma primária, quando há UMA — a cabeça da barra de controle ②
+    /// (F16, o `Rectangle` da Control bar do Illustrator).
+    static CURRENT_SELECTION_NAME: RefCell<Option<String>> = const { RefCell::new(None) };
+    /// O perfil de largura da forma primária, como linha do catálogo (`WIDTH_PRESETS`): sem
+    /// `VecStrokeProfile` é o Uniform; `None` = um perfil que não é do catálogo («Custom»). ⚠️ NÃO
+    /// é o dos quatro sliders do Power Stroke: esses AUTORAM o próximo perfil e ficam onde estão
+    /// quando a forma não tem nenhum.
+    static CURRENT_SELECTION_PROFILE: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+/// Publica a linha do catálogo que descreve o perfil da forma primária (shell → painel).
+pub fn set_current_selection_profile(row: Option<usize>) {
+    CURRENT_SELECTION_PROFILE.with(|c| c.set(row));
+}
+
+/// A linha do catálogo do perfil da forma primária deste frame, `None` = «Custom».
+#[must_use]
+pub(crate) fn current_selection_profile() -> Option<usize> {
+    CURRENT_SELECTION_PROFILE.with(Cell::get)
+}
+
+/// Publica o nome da forma primária selecionada (shell → painel, a cada frame).
+pub fn set_current_selection_name(name: Option<String>) {
+    CURRENT_SELECTION_NAME.with(|c| *c.borrow_mut() = name);
+}
+
+/// O nome da forma primária deste frame, `None` sem uma.
+#[must_use]
+pub(crate) fn current_selection_name() -> Option<String> {
+    CURRENT_SELECTION_NAME.with(|c| c.borrow().clone())
 }
 
 /// Publica quantos CAMINHOS a seleção de objeto tem (shell → painel, a cada frame).

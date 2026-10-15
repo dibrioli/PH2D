@@ -51,8 +51,8 @@ fn publica(hero: &mut HeroScreen, mode: DrawMode, sel: usize, verts: usize, at: 
     retrato(mode, sel, verts);
     let bars = ph2d_panel_vector::bars::tool_bars(&hero.store, at, Vec::new());
     hero.store.set_tool_bars(Some(bars));
-    hero.store
-        .set_area_commands(ph2d_panel_vector::bars::module_menus(), Vec::new());
+    // F16: o vetor já não publica pulldowns de área (o mesmo que `bars_publish::publish`).
+    hero.store.set_area_commands(Vec::new(), Vec::new());
 }
 
 fn pinta(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) {

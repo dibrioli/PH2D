@@ -182,6 +182,37 @@ pub fn publish(
     } else {
         0
     });
+    // ② F16: o NOME da forma primária, à cabeça da barra de controle (o da Hierarchy).
+    ph2d_panel_vector::state::set_current_selection_name(
+        vector_active
+            .then(|| pen.selected())
+            .flatten()
+            .and_then(|id| vec_entities.get(&id))
+            .and_then(|&bits| {
+                sim.world()
+                    .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(bits))
+            })
+            .map(|n| n.as_str().to_owned()),
+    );
+    // ② F16: o perfil de largura DA FORMA (o Uniform sem `VecStrokeProfile`) como linha do catálogo.
+    ph2d_panel_vector::state::set_current_selection_profile(
+        vector_active
+            .then(|| pen.selected())
+            .flatten()
+            .and_then(|id| vec_entities.get(&id))
+            .and_then(|&bits| {
+                match sim
+                    .world()
+                    .get::<ph2d_ecs::VecStrokeProfile>(ph2d_ecs::Entity::from_bits(bits))
+                {
+                    None => Some(ph2d_vec_scene::WidthProfile::UNIFORM),
+                    Some(w) => crate::profile_live::preset_of(&w.stops),
+                }
+            })
+            .and_then(|p| {
+                ph2d_tool_vector::params::active_preset(&ph2d_tool_vector::params::preset_tracks(&p))
+            }),
+    );
     // Publish the pivot-edit ("Set Center") armed state for the button label.
     ph2d_panel_vector::set_current_pivot_edit(vector_active && pivot_edit);
     // Publish shape-snapping so the Snap section reflects (and drives) it.

@@ -326,10 +326,9 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind>,
     // ADR-0108 Fase 1: "Delete Node" button removes the selected vertex.
     pub(in crate::render_loop) pending_vec_delete_vertex: bool,
-    // ADR-0108: Arrange buttons — z-order restack + Duplicate + Flip H/V —
+    // ADR-0108: Arrange buttons — z-order restack + Flip H/V —
     // act on the selected path (document ops), applied after the drain.
     pub(in crate::render_loop) pending_vec_reorder: Option<ph2d_vec_scene::ZOrder>,
-    pub(in crate::render_loop) pending_vec_duplicate: bool,
     pub(in crate::render_loop) pending_vec_flip: Option<ph2d_vec_scene::FlipAxis>,
     pub(in crate::render_loop) pending_vec_rotate: Option<ph2d_vec_scene::Rotate90>,
     pub(in crate::render_loop) pending_vec_path_shape:

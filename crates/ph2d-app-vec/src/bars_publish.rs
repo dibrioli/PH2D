@@ -103,6 +103,7 @@ pub fn publish(
     let readout = readout(hero, snap_on, px_to_world);
     let bars = ph2d_panel_vector::bars::tool_bars(&hero.store, selection, readout);
     hero.store.set_tool_bars(Some(bars));
-    hero.store
-        .set_area_commands(ph2d_panel_vector::bars::module_menus(), Vec::new());
+    // F16: o vetor já não publica pulldowns de área — a ② é a barra de controle dele (o encaixe
+    // voltou ao painel; os verbos do caminho estão na ④).
+    hero.store.set_area_commands(Vec::new(), Vec::new());
 }

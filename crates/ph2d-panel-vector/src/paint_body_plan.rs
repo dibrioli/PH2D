@@ -164,7 +164,10 @@ impl BodyCtx<'_> {
 /// ⭐ D10 ③ — as secções que nascem RECOLHIDAS: Avançado (o resto das booleanas e do arranjo),
 /// Contêiner e Interação. Antes abriam ANTES do Stroke (foto `antes_01`): o `States`, com quatro
 /// linhas `Rec` e onze curvas, ocupava o meio do painel.
-pub(crate) const COLLAPSED_BY_DEFAULT: [NodeId; 9] = [
+pub(crate) const COLLAPSED_BY_DEFAULT: [NodeId; 10] = [
+    // F16 (15/10): o Snap voltou ao painel RECOLHIDO — a catraca da altura de abertura
+    // (`a_altura_de_abertura_de_um_painel_so_encolhe`) mediu +140 px com ele aberto.
+    ph2d_tool_vector::ids::VECTOR_SECTION_SNAP,
     ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
     ph2d_tool_vector::ids::VECTOR_SECTION_FRAME,
     ph2d_tool_vector::ids::VECTOR_SECTION_CLIP,
@@ -183,14 +186,16 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     #[allow(clippy::wildcard_imports)]
     use ph2d_tool_vector::ids::*;
     let mut p = Seccoes::new();
-    // ⛔ D10: `Tool` → coluna ①; o catálogo `Shape` → flyout da ①; `Pencil`, `Symmetry` e `Snap` →
-    // fila ②; `Path` → ② (no Node), ④ e o ⚙ (no Select). Saíram do painel na mesma obra: *um
+    // ⛔ D10: `Tool` → coluna ①; o catálogo `Shape` → flyout da ①; `Pencil` e `Symmetry` →
+    // fila ②; `Path` → ② (no Node) e ④. Saíram do painel na mesma obra: *um
     // comando, uma porta*. O que fica é o que a SELEÇÃO é, por esta ordem.
     // ③ o que a SELEÇÃO é (D10, `03_plano.md` §2) — a geometria, a aparência e a cor. ⛔ O Alinhar
     // e o Arrange saíram a 15/10 (dono) para a barra ④: o Alinhar é a 2.ª linha dela.
     p.seccao(VECTOR_SECTION_TRANSFORM, scope::ALWAYS, |b, y| {
         b.transform_section(y)
     });
+    // O encaixe (F16, dono 15/10): a ② virou a barra de controle e o Snap voltou para cá.
+    p.seccao(VECTOR_SECTION_SNAP, scope::ALWAYS, |b, y| b.snap_section(y));
     p.seccao(VECTOR_SECTION_APPEARANCE, scope::ALWAYS, |b, y| {
         b.appearance_section(y)
     });

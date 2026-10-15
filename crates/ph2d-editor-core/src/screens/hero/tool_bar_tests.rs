@@ -15,7 +15,7 @@ fn legenda(e: &ToolRailEntry) -> Option<&str> {
         | ToolRailEntry::Swatch { sub, .. }
         | ToolRailEntry::Glyph { sub, .. }
         | ToolRailEntry::Number { sub, .. } => Some(sub.as_str()).filter(|s| !s.is_empty()),
-        ToolRailEntry::Divider => None,
+        ToolRailEntry::Text { .. } | ToolRailEntry::Divider => None,
     }
 }
 

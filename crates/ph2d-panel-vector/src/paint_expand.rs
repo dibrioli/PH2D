@@ -10,6 +10,40 @@ use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::params;
 
+const SLIDERS: [(TextKey, ph2d_a11y::NodeId, ph2d_a11y::NodeId); 4] = [
+    (
+        TextKey::new("panel.vector.expand.w_start"),
+        crate::ids::VECTOR_EXPAND_W_START,
+        ph2d_tool_vector::ids::VECTOR_EXPAND_W_START_NUM,
+    ),
+    (
+        TextKey::new("panel.vector.expand.w_mid"),
+        crate::ids::VECTOR_EXPAND_W_MID,
+        ph2d_tool_vector::ids::VECTOR_EXPAND_W_MID_NUM,
+    ),
+    (
+        TextKey::new("panel.vector.expand.w_end"),
+        crate::ids::VECTOR_EXPAND_W_END,
+        ph2d_tool_vector::ids::VECTOR_EXPAND_W_END_NUM,
+    ),
+    (
+        TextKey::new("panel.vector.expand.w_pos"),
+        crate::ids::VECTOR_EXPAND_W_POS,
+        ph2d_tool_vector::ids::VECTOR_EXPAND_W_POS_NUM,
+    ),
+];
+
+/// **Os quatro trilhos do perfil que estão na TELA** — o store quando o artista já tocou, o default
+/// da tool quando não. A fileira de perfis e os quatro sliders leem daqui.
+fn live_tracks(store: &ph2d_editor_core::interaction::WidgetStore) -> [f32; 4] {
+    let fallback = params::preset_tracks(&params::WPROFILE_DEFAULT);
+    let mut tracks = [0.0_f32; 4];
+    for (i, (_, slider, _)) in SLIDERS.iter().enumerate() {
+        tracks[i] = store.slider(*slider).map_or(fallback[i], |(_, v)| v);
+    }
+    tracks
+}
+
 impl BodyCtx<'_> {
     /// Seção **EXPAND** — Outline Stroke (o traço vira forma) + Offset Path (a borda anda).
     ///
@@ -126,37 +160,11 @@ impl BodyCtx<'_> {
         // vira um nó de AccessKit lá dentro (`slider_row` → `paint_slider_with_chip…`,
         // `action_button` → `paint_button`, que é quem emite). A seção **delega** o a11y aos
         // primitivos canónicos — o gate HR-12 lê esta delegação aqui.
-        const SLIDERS: [(TextKey, ph2d_a11y::NodeId, ph2d_a11y::NodeId); 4] = [
-            (
-                TextKey::new("panel.vector.expand.w_start"),
-                crate::ids::VECTOR_EXPAND_W_START,
-                ph2d_tool_vector::ids::VECTOR_EXPAND_W_START_NUM,
-            ),
-            (
-                TextKey::new("panel.vector.expand.w_mid"),
-                crate::ids::VECTOR_EXPAND_W_MID,
-                ph2d_tool_vector::ids::VECTOR_EXPAND_W_MID_NUM,
-            ),
-            (
-                TextKey::new("panel.vector.expand.w_end"),
-                crate::ids::VECTOR_EXPAND_W_END,
-                ph2d_tool_vector::ids::VECTOR_EXPAND_W_END_NUM,
-            ),
-            (
-                TextKey::new("panel.vector.expand.w_pos"),
-                crate::ids::VECTOR_EXPAND_W_POS,
-                ph2d_tool_vector::ids::VECTOR_EXPAND_W_POS_NUM,
-            ),
-        ];
         // **Os quatro trilhos que estão na TELA**, lidos UMA vez: o store quando o artista já
         // tocou, o default do tool quando não. A fileira de perfis e os quatro sliders leem
         // daqui — perguntar duas vezes é como a linha acesa passaria a discordar do knob que
         // está logo abaixo dela.
-        let fallback = params::preset_tracks(&params::WPROFILE_DEFAULT);
-        let mut tracks = [0.0_f32; 4];
-        for (i, (_, slider, _)) in SLIDERS.iter().enumerate() {
-            tracks[i] = self.store.slider(*slider).map_or(fallback[i], |(_, v)| v);
-        }
+        let tracks = live_tracks(self.store);
         let mut y = self.width_presets(&tracks, y);
         for (i, (label, slider, chip)) in SLIDERS.iter().enumerate() {
             // O `W Pos` já É a fração de arco (domínio `[0,1]`); os outros três são
@@ -202,7 +210,12 @@ impl BodyCtx<'_> {
     /// A comparação é em **TRILHO** e exata; o porquê de não poder ser em multiplicador está no
     /// doc de [`params::preset_tracks`].
     fn width_presets(&mut self, tracks: &[f32; 4], y: f32) -> f32 {
-        let active = params::active_preset(tracks);
+        self.width_preset_row(params::active_preset(tracks), y)
+    }
+
+    /// A fileira do catálogo com a linha `active` acesa. O Expand acende a dos quatro sliders (o
+    /// perfil que eles AUTORAM); o painel do traço da barra ② (F16) acende o da FORMA selecionada.
+    pub(crate) fn width_preset_row(&mut self, active: Option<usize>, y: f32) -> f32 {
         let opts: Vec<(ph2d_a11y::NodeId, &str, bool)> = ph2d_vec_scene::WIDTH_PRESETS
             .iter()
             .enumerate()

@@ -84,12 +84,11 @@ pub const VECTOR_VERT_X: NodeId = hash_node_id("vector.vert.x");
 /// **Y do nó** — o irmão do [`VECTOR_VERT_X`], mesma lei.
 pub const VECTOR_VERT_Y: NodeId = hash_node_id("vector.vert.y");
 
-// ── Arrange (ADR-0108 — path ops: duplicate + z-order) ───────────────────────
+// ── Arrange (ADR-0108 — path ops: z-order) ───────────────────────────────────
 // Act on the SELECTED path (shell-side PenTool selection); document commands
-// routed through the shell drain (mirror of Boolean/Vertex). Duplicate clones
-// the path with a small offset; the four z-order buttons restack it (render
-// order = paths-vec order, index 0 = back).
-pub const VECTOR_ARRANGE_DUPLICATE: NodeId = hash_node_id("vector.arrange.duplicate");
+// routed through the shell drain (mirror of Boolean/Vertex). The four z-order
+// buttons restack it (render order = paths-vec order, index 0 = back). ⛔ O
+// botão Duplicate saiu da ④ a 15/10 (dono, F16) — o duplicar mora na Hierarchy.
 
 /// Rotation (degrees) — a RELATIVE scrub field (not a bbox readout): each change
 /// rotates the selected path by the delta about its bbox center. Seeded to 0 while

@@ -156,6 +156,8 @@ mod paint_markers;
 mod paint_modes;
 mod paint_rows;
 mod paint_sections;
+/// A seção SNAP (de volta ao painel a 15/10, F16).
+mod paint_snap;
 /// ⭐ **A LISTA da pilha de aparência** (v20) — irmão do acima pelo tecto de 600 LOC.
 mod paint_stack_rows;
 mod paint_tokens;

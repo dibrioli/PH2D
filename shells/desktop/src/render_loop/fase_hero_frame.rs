@@ -282,7 +282,6 @@ impl crate::App {
                 pending_vec_vertex_kind: take(&mut pd.pending_vec_vertex_kind),
                 pending_vec_delete_vertex: take(&mut pd.pending_vec_delete_vertex),
                 pending_vec_reorder: take(&mut pd.pending_vec_reorder),
-                pending_vec_duplicate: take(&mut pd.pending_vec_duplicate),
                 pending_vec_flip: take(&mut pd.pending_vec_flip),
                 pending_vec_rotate: take(&mut pd.pending_vec_rotate),
             },

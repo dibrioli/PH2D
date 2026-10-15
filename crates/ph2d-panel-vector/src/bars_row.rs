@@ -1,9 +1,10 @@
 //! ② **A fila de cima do vetor** — o que cada modo põe nela (irmão do [`super`] pelo tecto de 600
-//! LOC dos painéis; o corte é por LUGAR: aqui a fila e os pulldowns, lá a coluna, a ④ e a ordem).
+//! LOC dos painéis; o corte é por LUGAR: aqui o gesto, a forma e a simetria da fila, no
+//! `bars_control` a cabeça dela — a barra de controle, F16 —, lá a coluna, a ④ e a ordem).
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::interaction::{AreaMenu, WidgetStore};
+use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::widget::ToolRailEntry;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::ids;
@@ -18,30 +19,6 @@ pub(super) fn chip(id: NodeId, key: &str, active: bool) -> ToolRailEntry {
 pub(super) fn icon_chip(id: NodeId, key: &str, icon: IconId, active: bool) -> ToolRailEntry {
     let e = ToolRailEntry::icon(id, tr(key), icon);
     if active { e.active() } else { e }
-}
-
-/// ② a cor e a largura — o padrão nº 1 do Affinity (a amostra abre a cor ali mesmo).
-pub(super) fn style_chips(snap: &VectorStyleSnapshot) -> Vec<ToolRailEntry> {
-    vec![
-        ToolRailEntry::swatch(
-            ids::VECTOR_FILL_SWATCH,
-            tr("panel.vector.bar.fill"),
-            snap.fill,
-        )
-        .with_sub(tr("panel.vector.bar.sub.fill")),
-        ToolRailEntry::swatch(
-            ids::VECTOR_STROKE_SWATCH,
-            tr("panel.vector.bar.stroke"),
-            snap.stroke,
-        )
-        .with_sub(tr("panel.vector.bar.sub.stroke")),
-        ToolRailEntry::number(
-            ids::VECTOR_WIDTH_NUM,
-            tr("panel.vector.bar.width"),
-            tr("panel.vector.bar.sub.width"),
-            None,
-        ),
-    ]
 }
 
 /// ② os PARÂMETROS da forma em foco (F9, 11/10 — a Context Toolbar do Affinity): a secção do
@@ -262,79 +239,4 @@ pub(super) fn symmetry_chips(snap: &VectorStyleSnapshot) -> Vec<ToolRailEntry> {
         }
     }
     v
-}
-
-/// ② os pulldowns do módulo: o ENCAIXE (sempre) e o ⚙ do CAMINHO (com seleção, no Select/Node).
-pub(super) fn area_menus(mode: DrawMode, sel: usize) -> Vec<AreaMenu> {
-    let toggle = |on: bool, on_id: NodeId, off_id: NodeId, key: &str| {
-        let e = ToolRailEntry::icon(if on { off_id } else { on_id }, tr(key), IconId::SnapMagnet);
-        if on { e.active() } else { e }
-    };
-    let snap_on = crate::state::current_snap();
-    let mut menus = vec![AreaMenu {
-        label: tr("panel.vector.bar.snap").to_owned(),
-        face: tr(if snap_on {
-            "panel.vector.bar.snap_on"
-        } else {
-            "panel.vector.bar.snap_off"
-        })
-        .to_owned(),
-        faces: vec![
-            tr("panel.vector.bar.snap_on").to_owned(),
-            tr("panel.vector.bar.snap_off").to_owned(),
-        ],
-        rows: vec![
-            toggle(
-                snap_on,
-                ph2d_editor_core::ids::VECTOR_SNAP_ON,
-                crate::ids::VECTOR_SNAP_OFF,
-                "panel.vector.bar.snap.shapes",
-            ),
-            toggle(
-                crate::state::current_snap_path(),
-                crate::ids::VECTOR_SNAP_PATH_ON,
-                crate::ids::VECTOR_SNAP_PATH_OFF,
-                "panel.vector.bar.snap.path",
-            ),
-            toggle(
-                crate::state::current_snap_crossings(),
-                crate::ids::VECTOR_SNAP_CROSS_ON,
-                crate::ids::VECTOR_SNAP_CROSS_OFF,
-                "panel.vector.bar.snap.crossings",
-            ),
-            toggle(
-                crate::state::current_snap_guides(),
-                crate::ids::VECTOR_SNAP_GUIDES_ON,
-                crate::ids::VECTOR_SNAP_GUIDES_OFF,
-                "panel.vector.bar.snap.guides",
-            ),
-        ],
-    }];
-    if sel > 0 && matches!(mode, DrawMode::Select | DrawMode::Node) {
-        let row = |id, key: &str| ToolRailEntry::compound(id, tr(key), tr(key), "");
-        let mut rows = vec![
-            row(ids::VECTOR_PATH_SMOOTH, "panel.vector.arrange.smooth"),
-            row(ids::VECTOR_PATH_SHARPEN, "panel.vector.arrange.sharpen"),
-            row(ids::VECTOR_PATH_SIMPLIFY, "panel.vector.arrange.simplify"),
-            row(ids::VECTOR_PATH_SUBDIVIDE, "panel.vector.arrange.subdivide"),
-        ];
-        // No Select o Fechar e o Inverter não estão na ② (são do Node): moram aqui.
-        if mode == DrawMode::Select {
-            rows.push(row(
-                crate::ids::VECTOR_PATH_CLOSE,
-                "panel.vector.arrange.close_path",
-            ));
-            rows.push(row(
-                crate::ids::VECTOR_PATH_REVERSE,
-                "panel.vector.arrange.reverse",
-            ));
-        }
-        menus.push(AreaMenu {
-            label: tr("panel.vector.bar.path").to_owned(),
-            face: tr("panel.vector.bar.path").to_owned(),
-            faces: Vec::new(),
-            rows,
-        });
-    }
-    menus
 }

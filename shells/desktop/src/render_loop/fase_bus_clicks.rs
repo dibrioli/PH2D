@@ -351,8 +351,6 @@ impl crate::App {
             pd.pending_vec_cut_discard = true;
         } else if let Some(order) = crate::input_dispatch::vec_reorder_for_id(*id) {
             pd.pending_vec_reorder = Some(order);
-        } else if *id == ph2d_panel_vector::ids::VECTOR_ARRANGE_DUPLICATE {
-            pd.pending_vec_duplicate = true;
         } else if let Some(axis) = crate::input_dispatch::vec_flip_for_id(*id) {
             pd.pending_vec_flip = Some(axis);
         } else if let Some(dir) = crate::input_dispatch::vec_rotate_for_id(*id) {

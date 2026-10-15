@@ -14,17 +14,23 @@
 use crate::tool_keys;
 #[path = "bars_row.rs"]
 mod row;
+#[path = "bars_control.rs"]
+mod control;
+pub(crate) use control::{
+    close_list_on_pick, paint_bar_popovers, populate as populate_control, stroke_popover_open,
+    toggle_list,
+};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{
-    AreaMenu, BarButton, BarFace, BarFamily, ToolBars, WidgetStore,
+    BarButton, BarFace, BarFamily, ToolBars, WidgetStore,
 };
 use ph2d_editor_core::widget::ToolRailEntry;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::ids;
 use ph2d_tool_vector::{DrawMode, VectorStyleSnapshot};
-use row::{area_menus, gesture_chips, shape_chips, style_chips, symmetry_chips};
+use row::{gesture_chips, shape_chips, symmetry_chips};
 use std::cell::Cell;
 
 /// ① **A coluna**, por família — a forma de cada ferramenta é o ícone dela, a cor é a família.
@@ -457,12 +463,8 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
     }
     // ⭐ O ARRANJO inteiro (dono 15/10: a secção Arrange saiu do painel): a ordem na pilha, da
     // frente para trás, e a orientação. O Z numérico é do Inspector no modo Objeto (a ordenação).
+    // ⛔ O Duplicate saiu (dono 15/10, F16): ficam o Ctrl+D e o menu da Hierarchy.
     out.push(vec![
-        b(
-            crate::ids::VECTOR_ARRANGE_DUPLICATE,
-            IconId::Duplicate,
-            "panel.vector.arrange.duplicate",
-        ),
         b(
             ids::VECTOR_ARRANGE_TO_FRONT,
             IconId::ArrangeFront,
@@ -532,14 +534,57 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
     out
 }
 
-/// ④ a 2.ª linha — o ALINHAR (dono 15/10: saiu do painel para a barra, numa linha própria): com
-/// duas formas ou mais, e o Distribuir com três (as duas das pontas ficam onde estão).
+/// ④ a 2.ª linha — os verbos que REMODELAM o caminho (F16: eram o pulldown «Path» da fila ②, que
+/// virou a barra de controle) e o ALINHAR (dono 15/10: saiu do painel para a barra): com duas formas
+/// ou mais, e o Distribuir com três (as duas das pontas ficam onde estão).
 fn actions_below(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
-    if sel < 2 || PRECISE.contains(&mode) {
+    if sel == 0 || PRECISE.contains(&mode) {
         return Vec::new();
     }
     let b = |id, icon, key: &str| button(id, icon, tr(key).to_owned(), false, BarFamily::Neutral);
-    let mut out = vec![
+    let mut out = Vec::new();
+    if matches!(mode, DrawMode::Select | DrawMode::Node) {
+        let mut path = vec![
+            b(
+                ids::VECTOR_PATH_SMOOTH,
+                IconId::PathSmooth,
+                "panel.vector.arrange.smooth",
+            ),
+            b(
+                ids::VECTOR_PATH_SHARPEN,
+                IconId::PathSharpen,
+                "panel.vector.arrange.sharpen",
+            ),
+            b(
+                ids::VECTOR_PATH_SIMPLIFY,
+                IconId::PathSimplify,
+                "panel.vector.arrange.simplify",
+            ),
+            b(
+                ids::VECTOR_PATH_SUBDIVIDE,
+                IconId::PathSubdivide,
+                "panel.vector.arrange.subdivide",
+            ),
+        ];
+        // No Select o Fechar e o Inverter não estão na ② (são do gesto do Node): moram aqui.
+        if mode == DrawMode::Select {
+            path.push(b(
+                crate::ids::VECTOR_PATH_CLOSE,
+                IconId::PathClose,
+                "panel.vector.arrange.close_path",
+            ));
+            path.push(b(
+                crate::ids::VECTOR_PATH_REVERSE,
+                IconId::PathReverse,
+                "panel.vector.arrange.reverse",
+            ));
+        }
+        out.push(path);
+    }
+    if sel < 2 {
+        return out;
+    }
+    out.extend([
         vec![
             b(
                 ids::VECTOR_ALIGN_LEFT,
@@ -574,7 +619,7 @@ fn actions_below(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
                 "panel.vector.arrange.bottom",
             ),
         ],
-    ];
+    ]);
     if sel >= 3 {
         out.push(vec![
             b(
@@ -619,7 +664,7 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
     let (sym_fields, sym_chips): (Vec<_>, Vec<_>) =
         symmetry_chips(&snap).into_iter().partition(is_field);
     fields.extend(sym_fields);
-    let mut row_lead = style_chips(&snap);
+    let mut row_lead = control::control_chips(&snap, store);
     row_lead.extend(fields);
     // Os parâmetros da forma em foco (F9) são campos: à frente, num grupo que o separador nomeia.
     let shape = shape_chips(&snap, store);
@@ -647,13 +692,6 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
         hint: tr(hint_key_for(&snap)).to_owned(),
         readout,
     }
-}
-
-/// Os pulldowns do módulo deste quadro (o encaixe e o ⚙ do caminho).
-#[must_use]
-pub fn module_menus() -> Vec<AreaMenu> {
-    let snap = crate::state::current_snapshot();
-    area_menus(snap.mode, crate::state::current_selection_count())
 }
 
 #[cfg(test)]

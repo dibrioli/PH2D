@@ -79,9 +79,37 @@ dash ×3 e escala por ponta (formato gravado ⇒ versão + migração; `ph2d-vec
 | F16c | Perfil ▾ e Pincel ▾ na barra; dash ×3 e escala por ponta no modelo | formato: migração com fixture do ficheiro antigo |
 | fecho | cena de smoke 23 (fotografada), suíte/clippy `PH2D_SUITE=fecho`, CLAUDE.md §5.1 | — |
 
+## 4b — F16c: o mapa de impacto (medido 15/10, para a janela que a fizer)
+
+`StrokeSpec.dash: Option<(f64,f64)>` → até 3 pares, e `marker_scale` → início/fim. ~60 sítios em 15 crates.
+- **Formato**: postcard POSICIONAL ⇒ bump `VEC_SCENE_SCHEMA_VERSION` (`ph2d-vec-scene/src/schema.rs:80`, hoje 22) +
+  a escada do `PROJECT_SCHEMA` (`shells/desktop/src/project_schema.rs:450`, hoje 189; história em
+  `project_schema_history.rs`) — a tripla do §5.0, reconta com `python3 scripts/schema-recount.py`. Receita a
+  copiar: `60db072e7b` (v22, `dilate`). Sem golden de bytes do `StrokeSpec`; não é contrato congelado (§6 só pina
+  `ph2d-vector-doc`/`-traits`).
+- **Tracejado não é drop-in**: o par está tipado em `dash_lengths()` (`stroke_style.rs:416`), `dash_fit::dash_lengths_for`
+  (`dash_fit.rs:109`, `[f64;2]`), `dash_of`/`kurbo_stroke` (`ph2d-vec-render/src/lib.rs:417,538`),
+  `stroke_uniform.rs:371` (`let &[traco, vao]` + `fit`), `brush_spans` (`brush_stroke.rs:171`), `align.rs:94-102`
+  (halva o dash do Inner/Outer), `expand.rs:202-267`, `svg_export.rs:182` (`stroke-dasharray`), `placa.rs:61`,
+  `miter_clip.rs:30`, `instance.rs:66`. O `kurbo::Stroke::with_dashes` já aceita N valores.
+- **Setas**: só `marker.rs:543-575` (`stroke_head`, que já recebe `at_start`) lê `marker_scale`/`marker_round`;
+  hit-test `vec_gizmo_pick.rs:192`.
+- **Tool/ponte/painel**: `params_snapshot.rs:50-110`, `tool.rs:172-391`, `params.rs:35,165,186`;
+  `vector_bridge_style.rs:37-146,420`; `vector_bridge.rs:266-354`; `paint_sections_stroke.rs` (Dash/Gap),
+  `paint_markers.rs:54-139`, `populate_style.rs:83`, `event.rs:266-293`. Motion grava `spec.dash`
+  (`motion_shape_gen.rs:398`). Fixtures literais: `vector_bridge_tests.rs`, `vector_bridge_opacity_tests.rs`,
+  `vec_selection.rs:346`, `brush_stroke_fixtures.rs:52`, `stroke_present_tests.rs:149`, `motion_shape_*_tests.rs`.
+
 ## 5 — Perguntas ao dono (respostas entram aqui)
 
 - **P1** Os botões saem só na tela do Vetor ou em todas? (recomendado: só no Vetor agora)
 - **P2** O Snap vai para onde? (recomendado: o «snap on» da barra de baixo vira clicável e abre os quatro interruptores)
 - **P3** O painel do traço solto por baixo do «Stroke:» conta como «modal»? (recomendado: não — não trava a tela)
 - **P4** «Style» (estilos guardados) — agora ou numa onda própria? (recomendado: onda própria; não existe nada hoje)
+
+**Respostas do dono (15/10, verbatim):** *«1: por enquanto só de vector · 2: Snap volta pro painel lateral como era
+antes. · 3: Não entendi, mas procure fazer o melhor tendo com referência o Illustrator · 4: Etapa para o futuro ·
+Duplicate sai. «Live: Off/On» por enquanto fica»*.
+⇒ P1 só o layout Vetor perde os botões genéricos · P2 o Snap sai da ② e vive só no painel · P3 popover à Illustrator
+(dropdown-painel ancorado, não bloqueante) · P4 Style fora da F16 · o Duplicate sai da ④ (fica no menu da Hierarchy) ·
+o «Live: Off/On» do painel fica.

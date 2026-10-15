@@ -132,4 +132,7 @@ pub struct ToolBarsSlot {
     pub(crate) touch: crate::interaction::TouchGestures,
     /// F5 (D10 decisão 2): a fila ② EMBAIXO da área — a opção de layout para tablet.
     pub(crate) row_bottom: bool,
+    /// F16: onde cada chip da fila ② caiu no último quadro — a âncora de um popover que o MÓDULO
+    /// pinta por baixo do chip (o painel pinta antes da fila, logo lê o quadro anterior).
+    pub(crate) row_slots: Vec<(NodeId, crate::zones::Rect)>,
 }

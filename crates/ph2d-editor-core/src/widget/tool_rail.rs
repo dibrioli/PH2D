@@ -150,6 +150,14 @@ pub enum ToolRailEntry {
         /// A largura na fila (rótulo + chip), medida por [`size_row_pulldowns`]; `0` ⇒ o mínimo.
         row_w: f32,
     },
+    /// ⭐ **Um TEXTO na fila, que não é botão** — o nome do objecto selecionado à cabeça da barra de
+    /// controle do vetor (F16, a *Control bar* do Illustrator: `Rectangle │ Fill │ Stroke …`).
+    /// Sem id: não se clica, não se despacha, não entra na paleta.
+    Text {
+        text: String,
+        /// A largura na fila, medida por [`size_row_pulldowns`] (com tecto); `0` ⇒ um chip.
+        row_w: f32,
+    },
     Divider,
 }
 
@@ -167,7 +175,7 @@ impl ToolRailEntry {
             | Self::Swatch { id, .. }
             | Self::Glyph { id, .. }
             | Self::Number { id, .. } => Some(*id),
-            Self::Divider => None,
+            Self::Text { .. } | Self::Divider => None,
         }
     }
 
@@ -184,7 +192,7 @@ impl ToolRailEntry {
             | Self::Swatch { label, .. }
             | Self::Glyph { label, .. }
             | Self::Number { label, .. } => Some(label),
-            Self::Divider => None,
+            Self::Text { .. } | Self::Divider => None,
         }
     }
 
@@ -269,6 +277,14 @@ impl ToolRailEntry {
         }
     }
 
+    /// Um texto que não é botão (ver [`Self::Text`]).
+    pub fn text(text: impl Into<String>) -> Self {
+        Self::Text {
+            text: text.into(),
+            row_w: 0.0,
+        }
+    }
+
     /// Um chip cujo ícone é um caminho de manifesto (as ferramentas de imagem).
     pub fn glyph(
         id: NodeId,
@@ -306,7 +322,7 @@ impl ToolRailEntry {
             Self::Compound { .. } => size.chip_px(),
             Self::Swatch { .. } => size.chip_px(),
             Self::Glyph { .. } => size.chip_px(),
-            Self::Number { .. } => size.chip_px(),
+            Self::Number { .. } | Self::Text { .. } => size.chip_px(),
             Self::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
         }
     }
@@ -363,7 +379,7 @@ impl ToolRail {
             | ToolRailEntry::Swatch { id, .. }
             | ToolRailEntry::Glyph { id, .. }
             | ToolRailEntry::Number { id, .. } => Some(*id),
-            ToolRailEntry::Divider => None,
+            ToolRailEntry::Text { .. } | ToolRailEntry::Divider => None,
         });
         NodeBuilder::new(Role::Toolbar)
             .label(&self.label)
@@ -398,6 +414,12 @@ impl ToolRail {
                     .label(label)
                     .bounds(x, y, w, h)
                     .focusable(true)
+                    .build(),
+            ),
+            ToolRailEntry::Text { text, .. } => Some(
+                NodeBuilder::new(Role::Label)
+                    .label(text)
+                    .bounds(x, y, w, h)
                     .build(),
             ),
             ToolRailEntry::Divider => None,

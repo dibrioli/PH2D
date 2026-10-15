@@ -23,8 +23,14 @@ pub use text::*;
 /// *quantos há*, a pergunta que decide se um gesto de CONJUNTO é sequer oferecido.
 #[path = "state_counts.rs"]
 mod counts;
-pub(crate) use counts::{current_selection_count, current_vertex_count};
-pub use counts::{set_current_selection_count, set_current_vertex_count};
+pub(crate) use counts::{
+    current_selection_count, current_selection_name, current_selection_profile,
+    current_vertex_count,
+};
+pub use counts::{
+    set_current_selection_count, set_current_selection_name, set_current_selection_profile,
+    set_current_vertex_count,
+};
 
 /// **A LINHA DE CORTE existe?** — irmão pela mesma razão dos counts: é a pergunta que decide se
 /// os dois botões do corte são oferecidos.

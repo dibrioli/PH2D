@@ -43,6 +43,7 @@ mod the_tab_and_the_menu_call_a_panel_the_same_thing;
 mod the_tool_bar_never_grows_and_the_rest_is_behind_the_dots;
 mod the_tool_options_can_live_at_the_bottom;
 mod the_vector_bars_answer_a_real_pointer;
+mod the_vector_control_bar;
 mod the_window_menu_reaches_every_module;
 mod ui_motion_frame_halves;
 mod ui_motion_population_census;

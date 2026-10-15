@@ -50,11 +50,7 @@ fn arrange_button_ids_map_to_their_zorder() {
         vec_reorder_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT),
         Some(ZOrder::ToFront)
     );
-    // Duplicate is NOT a reorder (handled separately), nor any non-Arrange id.
-    assert_eq!(
-        vec_reorder_for_id(ph2d_panel_vector::ids::VECTOR_ARRANGE_DUPLICATE),
-        None
-    );
+    // No non-Arrange id is a reorder.
     assert_eq!(
         vec_reorder_for_id(ph2d_panel_vector::ids::VECTOR_BOOL_UNION),
         None

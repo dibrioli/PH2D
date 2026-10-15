@@ -37,6 +37,8 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_FILL,
     VECTOR_SECTION_FILL_TYPE,
     VECTOR_SECTION_TRANSFORM,
+    // O ENCAIXE (F16, dono 15/10: «Snap volta pro painel lateral como era antes»).
+    ph2d_tool_vector::ids::VECTOR_SECTION_SNAP,
     // ⭐ A APARÊNCIA do objecto (estudo 42 item 2) — logo a seguir ao Transform, que é onde ela é
     // pintada: as duas descrevem a forma selecionada como um todo.
     VECTOR_SECTION_APPEARANCE,

@@ -293,6 +293,16 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
             .clear_panel_rect(ph2d_editor_core::ids::VECTOR_PANEL);
         set_last_content_h(0.0);
         set_last_visible_h(0.0);
+        // ② F16: o que a barra abre não depende do painel estar aberto — a barra é que é a porta.
+        let theme = ctx.host.theme();
+        crate::bars::paint_bar_popovers(
+            ctx,
+            theme,
+            ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN,
+        );
+        if let Some((slot, chip_rect)) = state::take_pending_marker_dd() {
+            crate::paint_markers::paint_marker_popover(ctx, slot, chip_rect, theme);
+        }
         return;
     }
 
@@ -416,6 +426,10 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         ph2d_editor_core::ids::VECTOR_CLOSE,
         panel_close_button_rect(rect),
     );
+
+    // ② F16: o painel do traço e as listas que a barra de controle abre — ANTES dos popovers
+    // diferidos abaixo, porque o das pontas pode nascer DENTRO do painel do traço.
+    crate::bars::paint_bar_popovers(ctx, theme, rect.w);
 
     // Deferred: the Font dropdown popover paints (and hit-registers its rows) ON
     // TOP of every section — the chip stashed its rect during the body paint when

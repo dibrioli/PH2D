@@ -23,8 +23,8 @@ fn publica(hero: &mut HeroScreen, mode: DrawMode, sel: usize, at: Option<Rect>) 
     ph2d_panel_vector::set_current_vertex_count(0);
     let bars = ph2d_panel_vector::bars::tool_bars(&hero.store, at, Vec::new());
     hero.store.set_tool_bars(Some(bars));
-    hero.store
-        .set_area_commands(ph2d_panel_vector::bars::module_menus(), Vec::new());
+    // F16: o vetor já não publica pulldowns de área (o mesmo que `bars_publish::publish`).
+    hero.store.set_area_commands(Vec::new(), Vec::new());
 }
 
 fn pinta(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) {
@@ -58,6 +58,21 @@ fn ponte_do_snap(id: NodeId, pos: &mut (bool, bool)) {
         _ => {}
     }
     ph2d_panel_vector::set_current_snap_position(pos.0, pos.1);
+}
+
+/// Os três chips «▾» da barra de controle (F16): abrem uma lista ou o painel do traço por baixo.
+const LISTAS: [NodeId; 3] = [
+    ph2d_panel_vector::ids::VECTOR_BAR_STROKE,
+    ph2d_panel_vector::ids::VECTOR_BAR_PROFILE,
+    ph2d_panel_vector::ids::VECTOR_BAR_KIND,
+];
+
+/// O `Dropdown` do store de `id` está aberto?
+fn aberta(hero: &HeroScreen, id: NodeId) -> bool {
+    matches!(
+        hero.store.get(id),
+        Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open: true, .. })
+    )
 }
 
 /// As portas onde um comando pode morar e que este quadro pintou.
@@ -112,6 +127,9 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
             global_palette::route_global_pick(&mut hero, id);
             let chegou = if swatch {
                 hero.store.picker_target() == Some(id)
+            } else if LISTAS.contains(&id) {
+                // F16: os chips «▾» da barra de controle não têm verbo — abrem o que mostram.
+                aberta(&hero, id)
             } else {
                 // A mesma régua do teste de ponteiro real: o `X` abre o seletor em vez de ir ao
                 // barramento, e fixar/desligar a ④ são do chrome.
@@ -151,4 +169,36 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
         "só {medidos} comandos medidos — a paleta não viu as barras"
     );
     assert!(campos > 0, "o controlo: nenhuma fila tinha campo numérico");
+}
+
+/// ⭐ **A paleta abre o painel do traço** (F16, dono 15/10: *«a barra de ajustes no topo como no
+/// illustrator, principalmente com os ajustes do stroke»*): escolher «Stroke ▾» abre o `Dropdown`
+/// dele, escolher outro chip «▾» troca (um de cada vez), e escolher o mesmo outra vez fecha.
+#[test]
+fn the_palette_opens_the_stroke_panel_of_the_control_bar() {
+    use ph2d_panel_vector::ids as v;
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    ph2d_panel_vector::set_stroke_paint_kind(Some(ph2d_panel_vector::StrokePaintKind::Solid));
+    let mut hero = com_barras(DrawMode::Select, &mut ts);
+    assert!(
+        LISTAS.iter().all(|&id| !aberta(&hero, id)),
+        "controlo: nasce tudo fechado"
+    );
+    let model = global_palette::build_global_model(&hero);
+    assert!(model.is_item(v::VECTOR_BAR_STROKE), "«Stroke ▾» fora da paleta");
+    global_palette::route_global_pick(&mut hero, v::VECTOR_BAR_STROKE);
+    assert!(aberta(&hero, v::VECTOR_BAR_STROKE), "a paleta não abriu o painel do traço");
+    global_palette::route_global_pick(&mut hero, v::VECTOR_BAR_PROFILE);
+    assert!(aberta(&hero, v::VECTOR_BAR_PROFILE));
+    assert!(
+        !aberta(&hero, v::VECTOR_BAR_STROKE),
+        "dois popovers da barra abertos ao mesmo tempo"
+    );
+    global_palette::route_global_pick(&mut hero, v::VECTOR_BAR_PROFILE);
+    assert!(
+        LISTAS.iter().all(|&id| !aberta(&hero, id)),
+        "escolher o mesmo outra vez não fechou"
+    );
+    ph2d_panel_vector::set_stroke_paint_kind(None);
 }

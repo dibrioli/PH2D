@@ -12,7 +12,7 @@ use ph2d_i18n::tr;
 impl BodyCtx<'_> {
     /// Width + Stroke swatch + Stroke opacity + Cap / Join + Dash / Gap.
     pub(crate) fn stroke_style(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        let (mut y, collapsed) = self.section_header(
+        let (y, collapsed) = self.section_header(
             ph2d_tool_vector::ids::VECTOR_SECTION_STROKE,
             tr("panel.vector.section.stroke"),
             y,
@@ -20,6 +20,19 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
+        // F16: com o painel do traço aberto por baixo da barra ②, os controlos moram LÁ neste quadro
+        // — um id pintado em dois sítios faria o arrasto de um slider seguir o rect do outro
+        // (`HitIndex::rect_for` devolve o último registado).
+        if crate::bars::stroke_popover_open(self.store) {
+            return self.hint_line(tr("panel.vector.stroke.in_bar"), y);
+        }
+        self.stroke_body(snap, y)
+    }
+
+    /// O CORPO da secção Stroke, sem o cabeçalho — o painel e o popover do «Stroke ▾» da barra ②
+    /// (F16) pintam este mesmo corpo, com os mesmos ids.
+    pub(crate) fn stroke_body(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        let mut y = y;
         // ⭐⭐ **ESTA FORMA TEM TRAÇO?** (plano 34) — a linha que faltava, e o report que a pediu foi
         // o do Enio de 2026-08-27 (*"o contorno funciona com as shapes que eu desejo, mas não
         // funcionam com os teus desenhos"*).

@@ -182,6 +182,13 @@ pub(crate) fn apply_event(
     if let Some(consumed) = track_slider_event(host, ev) {
         return EventOutcome::from_bool(consumed);
     }
+    // ② F16: uma linha de uma lista da barra fecha a lista; o verbo dela corre abaixo, como no painel.
+    if let WidgetEvent::Click(id) = ev {
+        if crate::bars::toggle_list(host.store_mut(), id) {
+            return EventOutcome::Consumed;
+        }
+        crate::bars::close_list_on_pick(host.store_mut(), id);
+    }
     let consumed = match ev {
         // **Os sliders cujo TRACK vai cru para o tool** — Width e os dois knobs do lápis. Um braço
         // só porque a pergunta é literalmente a mesma (*qual é o novo track deste slider?*); o que

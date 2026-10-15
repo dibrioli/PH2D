@@ -256,6 +256,8 @@ pub fn populate(store: &mut WidgetStore) {
     style::populate_style(store);
     populate_arrange(store);
     populate_connector(store);
+    // ② a BARRA DE CONTROLE (F16): os três chips que abrem uma lista ou o painel do traço.
+    crate::bars::populate_control(store);
     // ⭐ AS SETAS do Morph (plano 32 W4) — o pool inteiro. ⛔ Aqui e não no módulo que as pinta:
     // a gate `architecture_panel_wiring_parity` exige a chamada de registro dentro do
     // `populate.rs`, e ela tem razão (um widget pintado e não registrado nasce morto).
@@ -473,9 +475,8 @@ fn populate_shape(store: &mut WidgetStore) {
 
 /// Arrange (duplicate / z-order / flip / rotate), reshape de path, e o botão Close.
 fn populate_arrange(store: &mut WidgetStore) {
-    // Arrange: Duplicate + z-order restack + Flip/Rotate — os botões da barra ④ (a secção saiu do
-    // painel a 15/10; o Z numérico é o do Inspector no modo Objeto).
-    button(store, crate::ids::VECTOR_ARRANGE_DUPLICATE);
+    // Arrange: z-order restack + Flip/Rotate — os botões da barra ④ (a secção saiu do painel a
+    // 15/10; o Z numérico é o do Inspector no modo Objeto; o Duplicate saiu da ④ a 15/10, F16).
     button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK);
     button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD);
     button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD);

@@ -517,13 +517,13 @@ fn boolean_button_click_forwards_to_the_bus_for_the_shell() {
     );
 }
 
-/// The Arrange buttons (Duplicate + z-order) are DOCUMENT commands acting on the
+/// The Arrange buttons (z-order + flip/rotate) are DOCUMENT commands acting on the
 /// selected path — the tool ignores them, so the seam proof is that each `Click`
 /// reaches the bus as a `ToolPanelEvent` for the shell drain to apply.
+/// ⛔ Duplicate left the bars (F16, owner 15/10): Ctrl+D and the Hierarchy menu remain.
 #[test]
 fn arrange_buttons_forward_to_the_bus_for_the_shell() {
     for id in [
-        ph2d_panel_vector::ids::VECTOR_ARRANGE_DUPLICATE,
         ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK,
         ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD,
         ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD,

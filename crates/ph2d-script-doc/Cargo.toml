@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-script-doc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Os scripts DO PROJETO (ADR-0188 §Decisão 2) — dados puros: sem mlua, sem ECS, sem UI.
+[dependencies]
+# O registo de campos etiquetados (varint · etiqueta · comprimento) — a MESMA porta do `PH2DMACRO`.
+ph2d-macro = { path = "../ph2d-macro" }
+# O `ScriptId` viaja dentro do `LuauScript` (postcard, no blob do componente).
+serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

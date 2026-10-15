@@ -258,7 +258,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.script.reading_the_file_u" => "Reading the file\u{2026}",
         "panel.inspector.script.that_file_is_gone_u_pick_it_again" => {
-            "That file is gone \u{2014} pick it again."
+            "That script is no longer in this project \u{2014} pick another."
+        }
+        "panel.inspector.script.file_not_found_browse_to_import" => {
+            "No script \u{201c}{path}\u{201d} in this project \u{2014} use Browse to import the file."
         }
         "panel.inspector.script.the_script_has_an_error" => "The script has an error: {msg}",
         "panel.inspector.script.at_line" => "line {line} \u{b7} {msg}",

@@ -33,12 +33,15 @@ pub mod messaging;
 pub mod module;
 /// Ciclo 19: a tabela `motion` (as entradas do grafo do Motion).
 pub mod motion_api;
+/// O load de um projeto e os scripts: o degrau v2 → v3 e a importação dos caminhos (ADR-0188).
+pub mod project_scripts;
 pub mod props;
 pub mod registry;
 pub mod scene;
 mod valores;
 
-pub use component::LuauScript;
+pub use component::{LuauScript, ProjectScripts, ScriptSource};
+pub use ph2d_script_doc::{ScriptDoc, ScriptId, ScriptLibrary};
 pub use host::ScriptHost;
 pub use io::{
     EntityWrite, InputSnapshot, QueueFull, ReadSnapshot, SpawnCommand, SpawnQueue, WriteQueue,

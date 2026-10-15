@@ -171,31 +171,27 @@ fn uma_posicao_alheia_nao_e_atribuida_a_este_script() {
     assert_eq!((d.line, d.message.as_str()), (None, "nopos\nsegunda"));
 }
 
-fn script_file(name: &str, source: &str) -> String {
-    use std::sync::atomic::{AtomicU32, Ordering};
-    static N: AtomicU32 = AtomicU32::new(0);
-    let dir = std::env::temp_dir().join(format!(
-        "ph2d_diag_{}_{}",
-        std::process::id(),
-        N.fetch_add(1, Ordering::Relaxed)
-    ));
-    std::fs::create_dir_all(&dir).expect("temp");
-    let p = dir.join(name);
-    std::fs::write(&p, source).expect("escreve");
-    p.to_string_lossy().into_owned()
+/// Põe o script na biblioteca do projeto (o recurso do mundo) e devolve o componente que o aponta.
+fn script(sim: &mut SimWorld, name: &str, source: &str) -> (LuauScript, ph2d_script::ScriptId) {
+    let mut lib = sim
+        .world_mut()
+        .get_resource_or_init::<ph2d_script::ProjectScripts>();
+    let id = lib.insert(name, source);
+    (LuauScript::library(id), id)
 }
 
 /// ⭐⭐ **O prazo de um quadro diz ONDE o laço está** — a pilha é colhida dentro da interrupção.
 #[test]
 fn o_prazo_estourado_diz_a_linha_do_laco() {
-    let path = script_file(
+    let mut sim = SimWorld::new();
+    let (cfg, _) = script(
+        &mut sim,
         "loop.luau",
         "local function spin()\n  local i = 0\n  while true do\n    i = i + 1\n  end\nend\nfunction update(self, dt)\n  spin()\nend\n",
     );
-    let mut sim = SimWorld::new();
     let e = sim
         .world_mut()
-        .spawn((Transform::IDENTITY, StableId(1), LuauScript::at(&path)))
+        .spawn((Transform::IDENTITY, StableId(1), cfg))
         .id();
     let mut h = host();
     h.scene_sync(sim.world_mut());
@@ -213,12 +209,12 @@ fn o_prazo_estourado_diz_a_linha_do_laco() {
         Some("stack traceback:\n\tloop.luau:3: in function 'spin'\n\tloop.luau:8: in function 'update'")
     );
     // No TOPO também.
-    let top = script_file("top.luau", "local i = 0\n\nwhile true do\n  i = i + 1\nend\n");
+    let (cfg, top) = script(&mut sim, "top.luau", "local i = 0\n\nwhile true do\n  i = i + 1\nend\n");
     sim.world_mut()
-        .spawn((Transform::IDENTITY, StableId(2), LuauScript::at(&top)));
+        .spawn((Transform::IDENTITY, StableId(2), cfg));
     h.scene_sync(sim.world_mut());
-    let Some(ScriptInfo::Broken(d)) = h.scene_info(&top) else {
-        panic!("{:?}", h.scene_info(&top));
+    let Some(ScriptInfo::Broken(d)) = h.scene_info(top) else {
+        panic!("{:?}", h.scene_info(top));
     };
     assert_eq!((d.kind.clone(), d.line), (DiagnosticKind::Budget, Some(3)), "{d:#}");
 }

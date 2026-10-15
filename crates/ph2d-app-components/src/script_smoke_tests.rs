@@ -1,23 +1,12 @@
 //! A cena do SCRIPT, headless: o que o dono vai ver, medido antes de ele o ver — e ALCANÇÁVEL
 //! (a lição do #15: uma cena certa como dados pode ser impossível como gesto).
 
-use std::sync::atomic::{AtomicU32, Ordering};
-
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, Visibility};
 use ph2d_preview_drive::PreviewDrive;
 use ph2d_render::Sprite;
-use ph2d_script::{LuauScript, ScriptHost, ScriptValue};
+use ph2d_script::{LuauScript, ProjectScripts, ScriptHost, ScriptSource, ScriptValue};
 
 use super::{BOB_LUAU, BOB_SIZE, BOB_X, BOB_Y, CENAS, FILE_NAME, LAMP_Y, TALL_AMPLITUDE, montar};
-
-fn pasta() -> std::path::PathBuf {
-    static N: AtomicU32 = AtomicU32::new(0);
-    std::env::temp_dir().join(format!(
-        "ph2d_script_smoke_{}_{}",
-        std::process::id(),
-        N.fetch_add(1, Ordering::Relaxed)
-    ))
-}
 
 fn por_nome(sim: &mut SimWorld, nome: &str) -> Entity {
     let w = sim.world_mut();
@@ -28,10 +17,9 @@ fn por_nome(sim: &mut SimWorld, nome: &str) -> Entity {
         .unwrap_or_else(|| panic!("`{nome}` não está na cena"))
 }
 
-fn montada() -> (SimWorld, std::path::PathBuf) {
-    let dir = pasta();
+fn montada() -> (SimWorld, ph2d_script::ScriptId) {
     let mut sim = SimWorld::new();
-    let m = montar(sim.world_mut(), 1, &dir).expect("monta");
+    let m = montar(sim.world_mut(), 1);
     assert_eq!(m.nivel, 1);
     // ⭐ Quem abre escolhido é o «Bob (tall)» — o que tem a secção mais cheia.
     assert_eq!(
@@ -41,29 +29,36 @@ fn montada() -> (SimWorld, std::path::PathBuf) {
         Some("Bob (tall)")
     );
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    (sim, dir)
+    let id = sim
+        .world()
+        .resource::<ProjectScripts>()
+        .by_name(FILE_NAME)
+        .expect("o bob.luau está nos scripts do projeto");
+    (sim, id)
 }
 
 #[test]
 fn o_roteador_nunca_devolve_acima_do_tecto() {
     for nivel in 0..=3 {
         let mut sim = SimWorld::new();
-        let n = montar(sim.world_mut(), nivel, &pasta())
-            .expect("monta")
-            .nivel;
+        let n = montar(sim.world_mut(), nivel).nivel;
         assert!(n >= 1 && n <= CENAS, "nível {nivel} devolveu {n}");
     }
 }
 
+/// ⭐ (ADR-0188) O script vive DENTRO do projeto — nenhum ficheiro solto — e os três apontam-no.
 #[test]
-fn a_cena_escreve_o_ficheiro_e_os_tres_bonecos_apontam_para_ele() {
-    let (mut sim, dir) = montada();
-    let path = dir.join(FILE_NAME);
-    assert_eq!(std::fs::read_to_string(&path).expect("lê"), BOB_LUAU);
+fn a_cena_poe_o_script_no_projeto_e_os_tres_bonecos_apontam_para_ele() {
+    let (mut sim, id) = montada();
+    {
+        let lib = sim.world().resource::<ProjectScripts>();
+        assert_eq!(lib.get(id).map(|d| d.text.as_str()), Some(BOB_LUAU));
+        assert_eq!(lib.len(), 1);
+    }
     for nome in ["Bob", "Bob (tall)", "Bob (fast)"] {
         let e = por_nome(&mut sim, nome);
         let cfg = sim.world().get::<LuauScript>(e).expect("tem script");
-        assert_eq!(cfg.source, path.to_string_lossy(), "{nome}");
+        assert_eq!(cfg.source, ScriptSource::Library(id), "{nome}");
     }
 }
 
@@ -172,14 +167,14 @@ fn o_bob_alto_mostra_o_orfao_height() {
     assert!(amp.own);
 }
 
-/// ⭐⭐ **O ficheiro é VIVO** — mudar o default e gravar muda só quem não tem número próprio (Q1/Q2).
+/// ⭐⭐ **O script é VIVO** — mudar o default muda só quem não tem número próprio (Q1/Q2).
 ///
 /// ⚠️ **«Próprio» é por NÚMERO, não por objecto:** o «Bob (fast)» tem `speed` e `top_signal`
 /// próprios e **segue** a `amplitude` do ficheiro — a 1.ª redacção da cena dizia ao dono que *só o
 /// «Bob»* mudava, e este gate media dois bonecos e não via o terceiro.
 #[test]
 fn mudar_o_default_no_ficheiro_muda_quem_nao_tem_aquele_numero_proprio() {
-    let (mut sim, dir) = montada();
+    let (mut sim, id) = montada();
     let mut host = ScriptHost::new().expect("vm");
     let mut drive = PreviewDrive::default();
     let bob = por_nome(&mut sim, "Bob");
@@ -196,7 +191,7 @@ fn mudar_o_default_no_ficheiro_muda_quem_nao_tem_aquele_numero_proprio() {
         crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[]);
         drive.settle();
     }
-    std::fs::write(dir.join(FILE_NAME), novo).expect("grava");
+    assert!(sim.world_mut().resource_mut::<ProjectScripts>().set_text(id, &novo));
     let mut max_dy = [0.0f32; 3];
     for _ in 0..240 {
         crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[]);

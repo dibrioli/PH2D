@@ -100,9 +100,7 @@ fn monta(env: &str, nivel: u32) -> SimWorld {
             c::statemachine_smoke::montar(sim.world_mut(), nivel);
         }
         "PH2D_SCRIPT_SMOKE" => {
-            let dir = std::env::temp_dir().join("ph2d_censo_desenho_e_corpo");
-            std::fs::create_dir_all(&dir).expect("pasta temporaria");
-            c::script_smoke::montar(sim.world_mut(), nivel, &dir).expect("monta");
+            c::script_smoke::montar(sim.world_mut(), nivel);
         }
         "PH2D_PARTICLES_SMOKE" => {
             c::particles_smoke::montar(sim.world_mut(), nivel);

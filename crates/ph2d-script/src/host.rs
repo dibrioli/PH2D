@@ -122,7 +122,7 @@ impl ScriptHost {
             &self.deadline,
         )?;
         // ⚠️ Os módulos e os `self` da cena são tabelas da VM VELHA — esquecê-los obriga o próximo
-        // `scene_sync` a recarregar do disco, em vez de chamar funções de um estado que morreu.
+        // `scene_sync` a recarregar da biblioteca, em vez de chamar funções de um estado que morreu.
         self.scene.clear();
         self.runtime.eval(source)?;
         self.last_source_hash = Some(hash);
@@ -241,9 +241,17 @@ impl ScriptHost {
 
     // ── TOP-20 #16: os scripts da CENA ────────────────────────────────────────────────────────
 
-    /// ⭐ **Uma vez por quadro, a correr ou não** — ver [`SceneScripts::sync`].
+    /// ⭐ **Uma vez por quadro, a correr ou não** — ver [`SceneScripts::sync`]. Os textos vêm do
+    /// recurso [`crate::ProjectScripts`] do mundo (ausente = biblioteca vazia).
     pub fn scene_sync(&mut self, world: &mut World) {
-        self.scene.sync(self.runtime.lua(), &self.deadline, world);
+        let (lua, deadline, scene) = (self.runtime.lua(), &self.deadline, &mut self.scene);
+        if world.contains_resource::<crate::ProjectScripts>() {
+            world.resource_scope(|world, lib: bevy_ecs::change_detection::Mut<crate::ProjectScripts>| {
+                scene.sync(lua, deadline, world, &lib);
+            });
+        } else {
+            scene.sync(lua, deadline, world, &ph2d_script_doc::ScriptLibrary::default());
+        }
     }
 
     /// ⭐⭐⭐ **Um passo fixo** — ver [`SceneScripts::tick`].
@@ -273,10 +281,10 @@ impl ScriptHost {
         self.scene.rewind()
     }
 
-    /// O que se sabe do ficheiro `path` — ver [`SceneScripts::info`].
+    /// O que se sabe do script `id` — ver [`SceneScripts::info`].
     #[must_use]
-    pub fn scene_info(&self, path: &str) -> Option<&ScriptInfo> {
-        self.scene.info(path)
+    pub fn scene_info(&self, id: ph2d_script_doc::ScriptId) -> Option<&ScriptInfo> {
+        self.scene.info(id)
     }
 
     /// Porque o objecto parou de correr o script — ver [`SceneScripts::failure`].

@@ -12,8 +12,19 @@
 //! corte, nunca uma entrada no `FILE_OVERAGE_OK`.*
 
 use super::*;
-use ph2d_editor_core::script_edits::{InspectorScriptInfo, InspectorScriptStatus};
+use ph2d_editor_core::script_edits::{InspectorScriptError, InspectorScriptInfo, InspectorScriptStatus};
 use ph2d_i18n::{tr, tr_with};
+
+/// **A frase de um erro** — com a LINHA deste script, quando o Luau a disse.
+fn erro(e: &InspectorScriptError) -> String {
+    match e.line {
+        Some(line) => tr_with(
+            "panel.inspector.script.at_line",
+            &[("line", &line), ("msg", &e.message)],
+        ),
+        None => e.message.clone(),
+    }
+}
 
 /// Os avisos do ficheiro e da corrida. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -78,7 +89,22 @@ pub(super) fn avisos(
                 ColorToken::Danger,
             );
         }
-        InspectorScriptStatus::Broken(msg) => {
+        InspectorScriptStatus::Unimported(path) => {
+            y = super::rows::aviso(
+                scene,
+                text_system,
+                theme,
+                x,
+                w,
+                y,
+                &tr_with(
+                    "panel.inspector.script.file_not_found_browse_to_import",
+                    &[("path", path)],
+                ),
+                ColorToken::Danger,
+            );
+        }
+        InspectorScriptStatus::Broken(e) => {
             y = super::rows::aviso(
                 scene,
                 text_system,
@@ -88,7 +114,7 @@ pub(super) fn avisos(
                 y,
                 &tr_with(
                     "panel.inspector.script.the_script_has_an_error",
-                    &[("msg", &msg)],
+                    &[("msg", &erro(e))],
                 ),
                 ColorToken::Danger,
             );
@@ -108,7 +134,7 @@ pub(super) fn avisos(
             }
         }
     }
-    if let Some(msg) = &info.failure {
+    if let Some(e) = &info.failure {
         y = super::rows::aviso(
             scene,
             text_system,
@@ -118,7 +144,7 @@ pub(super) fn avisos(
             y,
             &tr_with(
                 "panel.inspector.script.stopped_fix_and_save",
-                &[("msg", &msg)],
+                &[("msg", &erro(e))],
             ),
             ColorToken::Danger,
         );

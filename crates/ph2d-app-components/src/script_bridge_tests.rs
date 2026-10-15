@@ -1,22 +1,11 @@
 //! A ponte dos scripts contra o LEDGER de verdade — o `Ctrl+Z` e o rebobinar são o que ela decide,
 //! então os gates andam com a `settle` a correr a cada quadro, como no produto.
 
-use std::sync::atomic::{AtomicU32, Ordering};
-
 use ph2d_ecs::{SimWorld, StableId, Transform};
 use ph2d_preview_drive::{Driver, PreviewDrive};
-use ph2d_script::{LuauScript, ScriptHost};
+use ph2d_script::{LuauScript, ProjectScripts, ScriptHost};
 
 use super::{frame, rewind};
-
-fn script_file(source: &str) -> String {
-    static N: AtomicU32 = AtomicU32::new(0);
-    let dir = std::env::temp_dir().join(format!("ph2d_script_bridge_{}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("temp");
-    let p = dir.join(format!("s{}.luau", N.fetch_add(1, Ordering::Relaxed)));
-    std::fs::write(&p, source).expect("escreve");
-    p.to_string_lossy().into_owned()
-}
 
 /// Anda `+1` por tique durante `limite` tiques, e depois PÁRA — o condutor que acaba de mexer.
 const ANDA_E_PARA: &str = r#"
@@ -41,9 +30,13 @@ fn cena(source: &str) -> Cena {
     let mut sim = SimWorld::new();
     let mut t = Transform::IDENTITY;
     t.translation.x = 10.0;
+    let id = sim
+        .world_mut()
+        .get_resource_or_init::<ProjectScripts>()
+        .insert("s.luau", source);
     let e = sim
         .world_mut()
-        .spawn((t, StableId(1), LuauScript::at(script_file(source))))
+        .spawn((t, StableId(1), LuauScript::library(id)))
         .id();
     Cena {
         sim,

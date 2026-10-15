@@ -392,22 +392,31 @@ fn a_amostra_abre_o_selector_e_o_clique_nao_escreve_nada() {
     set_current_inspector_script(None);
 }
 
-/// ⭐ (CodeEditor T1) **O erro de um script pinta-se COM a linha** — o aviso de «partido» e o de
-/// «parado» levam a frase que o cartão compôs pela chave `at_line`.
+/// ⭐ (CodeEditor T1/T7) **O erro de um script pinta-se COM a linha** — o cartão recebe a linha
+/// ESTRUTURADA e o pintor compõe a frase pela chave `at_line`, no aviso de «partido» e no de «parado».
+///
+/// Mutação que deve sangrar: o `erro` do `script_avisos` ignorar `line`.
 #[test]
 fn um_script_partido_pinta_a_linha_do_erro() {
+    use ph2d_editor_core::script_edits::InspectorScriptError;
     let linha = |n: u32, msg: &str| {
         ph2d_i18n::tr_with(
             "panel.inspector.script.at_line",
             &[("line", &n), ("msg", &msg)],
         )
     };
-    let partido = linha(3, "Expected identifier when parsing expression, got '='");
-    let parado = linha(7, "attempt to index nil with 'x'");
+    let erro = |n: u32, msg: &str| InspectorScriptError {
+        message: msg.to_owned(),
+        line: Some(n),
+    };
+    let sintaxe = "Expected identifier when parsing expression, got '='";
+    let corrida = "attempt to index nil with 'x'";
+    let partido = linha(3, sintaxe);
+    let parado = linha(7, corrida);
     assert!(partido.contains('3') && parado.contains('7'), "a chave leva a linha");
     let mut i = info();
-    i.status = InspectorScriptStatus::Broken(partido.clone());
-    i.failure = Some(parado.clone());
+    i.status = InspectorScriptStatus::Broken(erro(3, sintaxe));
+    i.failure = Some(erro(7, corrida));
     let (mut h, mut st) = host(Some(i));
     let (_, avisos) = ph2d_panel_inspector::censo_dos_avisos::medindo(|| {
         let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
@@ -421,4 +430,28 @@ fn um_script_partido_pinta_a_linha_do_erro() {
             "não se pintou «{frase}»: {avisos:?}"
         );
     }
+}
+
+/// ⛔ (CodeEditor T7) **Um script por importar pinta a RECUSA com o caminho** — nunca um cartão
+/// calado.
+#[test]
+fn um_script_por_importar_pinta_a_recusa_com_o_caminho() {
+    let mut i = info();
+    i.status = InspectorScriptStatus::Unimported("scripts/bob.luau".into());
+    let (mut h, mut st) = host(Some(i));
+    let (_, avisos) = ph2d_panel_inspector::censo_dos_avisos::medindo(|| {
+        let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    });
+    set_current_inspector_script(None);
+    let frase = ph2d_i18n::tr_with(
+        "panel.inspector.script.file_not_found_browse_to_import",
+        &[("path", &"scripts/bob.luau")],
+    );
+    assert!(frase.contains("scripts/bob.luau"));
+    assert!(
+        avisos
+            .iter()
+            .any(|a| a.seccao() == "script_avisos" && a.texto.contains(frase.as_str())),
+        "não se pintou «{frase}»: {avisos:?}"
+    );
 }

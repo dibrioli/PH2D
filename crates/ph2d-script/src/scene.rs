@@ -23,32 +23,33 @@
 //!   valor de antes — é o modelo com fila que a casa escolheu no M7, não um acidente.
 //! - **Cada escrita tem DONO**: a fila é drenada depois de CADA gancho, então um campo desconhecido
 //!   é culpa do script que o escreveu, e o painel diz qual.
-//! - ⚠️ **Recarregar NÃO renasce.** Um ficheiro que muda troca as funções e mantém cada `self` (o
+//! - ⚠️ **Recarregar NÃO renasce.** Um texto que muda troca as funções e mantém cada `self` (o
 //!   *reset+restore* do HR-16): um objecto a meio de um salto continua o salto com a lei nova. E um
 //!   script que tinha partido volta a correr — a correcção é a razão de o artista ter gravado.
+//! - **O texto vem da BIBLIOTECA do projeto** (ADR-0188 §2), por [`ScriptId`]: recarrega quando o
+//!   `blake3` do texto (ou o nome) muda — sem disco. Um `Unimported` nunca corre.
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
-use std::path::Path;
-use std::time::SystemTime;
 
 use mlua::{Lua, Table, Value};
 use ph2d_ecs::{Entity, StableId, Transform, World};
 
-use crate::component::LuauScript;
+use crate::component::{LuauScript, ScriptSource};
 use crate::io::{EntityWrite, ReadSnapshot, WriteQueue, pose_field};
 use crate::diagnostic::ScriptDiagnostic;
 use crate::module::{ScriptModule, load_module};
 use crate::props::{PropDecl, ScriptValue, resolve};
+use ph2d_script_doc::{ScriptId, ScriptLibrary};
 
-/// **O que se sabe de um ficheiro de script** — o que o painel mostra.
+/// **O que se sabe de um script** — o que o painel mostra.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ScriptInfo {
     /// Carregou; estas são as declarações dele.
     Ready(Vec<PropDecl>),
     /// O Luau recusou-o — o diagnóstico diz porquê e onde.
     Broken(ScriptDiagnostic),
-    /// O ficheiro não se deixa ler (sumiu, sem permissão).
+    /// A biblioteca não tem este id (um undo que voltou a apontar um script apagado).
     Missing(String),
 }
 
@@ -63,16 +64,10 @@ impl ScriptInfo {
     }
 }
 
-/// O carimbo barato de um ficheiro — mudar de tamanho ou de data manda reler.
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct Stamp {
-    len: u64,
-    modified: Option<SystemTime>,
-}
-
-/// Um ficheiro de script, carregado ou não.
+/// Um script da biblioteca, carregado ou não.
 struct Slot {
-    stamp: Option<Stamp>,
+    /// O nome do chunk — o nome único na biblioteca.
+    name: String,
     hash: Option<[u8; 32]>,
     module: Option<ScriptModule>,
     info: ScriptInfo,
@@ -80,9 +75,9 @@ struct Slot {
 
 /// O vivo de UM objecto.
 struct Instance {
-    /// O ficheiro que ele corre — mudar de ficheiro é renascer.
-    path: String,
-    /// O nome do chunk desse ficheiro — o que o diagnóstico procura nas mensagens.
+    /// O script que ele corre — mudar de script é renascer.
+    script: ScriptId,
+    /// O nome do chunk desse script — o que o diagnóstico procura nas mensagens.
     chunk: String,
     /// A tabela `self`.
     this: Table,
@@ -171,7 +166,7 @@ impl EmitQueue {
 /// ⭐ **Os scripts da cena.** Vive dentro do `ScriptHost`, que é quem tem a VM.
 #[derive(Default)]
 pub struct SceneScripts {
-    slots: BTreeMap<String, Slot>,
+    slots: BTreeMap<ScriptId, Slot>,
     instances: BTreeMap<u64, Instance>,
 }
 
@@ -245,7 +240,7 @@ fn to_lua(lua: &Lua, v: &ScriptValue) -> mlua::Result<Value> {
 
 impl SceneScripts {
     /// ⚠️ **A VM mudou** (o `load_script` do spike reconstrói-a): toda tabela guardada aqui é da VM
-    /// velha. Esquece tudo; o próximo `sync` recarrega do disco.
+    /// velha. Esquece tudo; o próximo `sync` recarrega da biblioteca.
     pub fn clear(&mut self) {
         self.slots.clear();
         self.instances.clear();
@@ -258,10 +253,10 @@ impl SceneScripts {
         n
     }
 
-    /// O que se sabe do ficheiro `path` — `None` se nenhum objecto o nomeou ainda.
+    /// O que se sabe do script `id` — `None` se nenhum objecto o apontou ainda.
     #[must_use]
-    pub fn info(&self, path: &str) -> Option<&ScriptInfo> {
-        self.slots.get(path).map(|s| &s.info)
+    pub fn info(&self, id: ScriptId) -> Option<&ScriptInfo> {
+        self.slots.get(&id).map(|s| &s.info)
     }
 
     /// Porque o objecto parou de correr o script, se parou.
@@ -278,66 +273,57 @@ impl SceneScripts {
         self.instances.len()
     }
 
-    /// ⭐ **Uma vez por QUADRO, a correr ou não**: recarrega o que mudou no disco e esquece o vivo
-    /// de quem já não tem script (ou trocou de ficheiro).
+    /// ⭐ **Uma vez por QUADRO, a correr ou não**: recarrega o que mudou na biblioteca e esquece o
+    /// vivo de quem já não tem script (ou trocou de script).
     ///
     /// ⚠️ **Parado também**, e é o que faz o painel ver as declarações no instante em que o artista
-    /// escolhe o ficheiro — sem isto a linha de cada número só apareceria depois do Play.
-    pub(crate) fn sync(&mut self, lua: &Lua, deadline: &Deadline, world: &mut World) {
+    /// escolhe o script — sem isto a linha de cada número só apareceria depois do Play.
+    pub(crate) fn sync(
+        &mut self,
+        lua: &Lua,
+        deadline: &Deadline,
+        world: &mut World,
+        lib: &ScriptLibrary,
+    ) {
         let actors = actors(world);
-        let wanted: BTreeMap<&str, ()> = actors
-            .iter()
-            .filter(|a| !a.cfg.source.trim().is_empty())
-            .map(|a| (a.cfg.source.as_str(), ()))
-            .collect();
-        // Quem ninguém nomeia sai — um ficheiro esquecido não é relido para sempre.
-        self.slots.retain(|p, _| wanted.contains_key(p.as_str()));
-        for path in wanted.keys() {
-            self.refresh(lua, deadline, path);
+        let wanted: BTreeMap<ScriptId, ()> =
+            actors.iter().filter_map(|a| library_id(&a.cfg)).map(|id| (id, ())).collect();
+        // Quem ninguém aponta sai — o vivo de um script esquecido não fica na VM.
+        self.slots.retain(|id, _| wanted.contains_key(id));
+        for id in wanted.keys() {
+            self.refresh(lua, deadline, lib, *id);
         }
-        let now: BTreeMap<u64, &str> = actors
+        let now: BTreeMap<u64, Option<ScriptId>> = actors
             .iter()
-            .map(|a| (a.entity.to_bits(), a.cfg.source.as_str()))
+            .map(|a| (a.entity.to_bits(), library_id(&a.cfg)))
             .collect();
         self.instances
-            .retain(|bits, inst| now.get(bits).is_some_and(|p| *p == inst.path));
+            .retain(|bits, inst| now.get(bits).is_some_and(|id| *id == Some(inst.script)));
     }
 
-    /// Relê `path` se o carimbo mudou, e recarrega se o CONTEÚDO mudou (HR-16).
-    fn refresh(&mut self, lua: &Lua, deadline: &Deadline, path: &str) {
-        let meta = std::fs::metadata(Path::new(path));
-        let stamp = meta.as_ref().ok().map(|m| Stamp {
-            len: m.len(),
-            modified: m.modified().ok(),
-        });
-        let slot = self.slots.entry(path.to_owned()).or_insert_with(|| Slot {
-            stamp: None,
+    /// Recarrega `id` se o texto (ou o nome) mudou (HR-16).
+    fn refresh(&mut self, lua: &Lua, deadline: &Deadline, lib: &ScriptLibrary, id: ScriptId) {
+        let slot = self.slots.entry(id).or_insert_with(|| Slot {
+            name: String::new(),
             hash: None,
             module: None,
             info: ScriptInfo::Missing(String::new()),
         });
-        if stamp.is_some() && slot.stamp == stamp {
+        let Some(doc) = lib.get(id) else {
+            slot.hash = None;
+            slot.module = None;
+            slot.info = ScriptInfo::Missing(format!("no script #{} in this project", id.0));
+            return;
+        };
+        let hash = *blake3::hash(doc.text.as_bytes()).as_bytes();
+        if slot.hash == Some(hash) && slot.name == doc.name {
             return;
         }
-        slot.stamp = stamp;
-        let source = match meta.and_then(|_| std::fs::read_to_string(path)) {
-            Ok(s) => s,
-            Err(e) => {
-                slot.hash = None;
-                slot.module = None;
-                slot.info = ScriptInfo::Missing(e.to_string());
-                return;
-            }
-        };
-        let hash = *blake3::hash(source.as_bytes()).as_bytes();
-        if slot.hash == Some(hash) {
-            return; // tocado, não mudado
-        }
         slot.hash = Some(hash);
-        let name = chunk_name(path);
+        slot.name.clone_from(&doc.name);
         // ⚠️ O TOPO também corre sob o prazo: um laço sem saída fora de qualquer função congelaria
-        // o app no instante em que o artista escolhe o ficheiro.
-        let loaded = deadline.within(|| load_module(lua, &name, &source));
+        // o app no instante em que o artista escolhe o script.
+        let loaded = deadline.within(|| load_module(lua, &doc.name, &doc.text));
         // ⚠️ O topo de um script pode ter escrito ou emitido — isso não é de objecto nenhum.
         discard_queues(lua);
         match loaded {
@@ -345,8 +331,9 @@ impl SceneScripts {
                 slot.info = ScriptInfo::Ready(m.decls.clone());
                 slot.module = Some(m);
                 // Recarregar não renasce — mas um script partido volta a tentar.
-                for inst in self.instances.values_mut().filter(|i| i.path == path) {
+                for inst in self.instances.values_mut().filter(|i| i.script == id) {
                     inst.failed = None;
+                    inst.chunk.clone_from(&doc.name);
                 }
             }
             Err(d) => {
@@ -378,7 +365,7 @@ impl SceneScripts {
         let mut writes: Vec<EntityWrite> = Vec::new();
         for a in &actors {
             let Some(hook) = self
-                .module_of(&a.cfg.source)
+                .module_of(&a.cfg)
                 .and_then(|m| m.hook("on_signal"))
             else {
                 continue;
@@ -417,18 +404,19 @@ impl SceneScripts {
         photograph(reads, world, &actors);
         let mut writes: Vec<EntityWrite> = Vec::new();
         for a in &actors {
-            let Some(module) = self.module_of(&a.cfg.source) else {
-                continue; // sem ficheiro, partido ou por carregar: o painel já o diz
+            let Some(module) = self.module_of(&a.cfg) else {
+                continue; // sem script, partido, por importar ou por carregar: o painel já o diz
             };
             let decls = module.decls.clone();
             let init = module.hook("init");
             let update = module.hook("update");
             let bits = a.entity.to_bits();
+            let chunk = self.chunk_of(&a.cfg);
             if let Entry::Vacant(slot) = self.instances.entry(bits) {
-                let inst = match born(lua, a, bits) {
+                let inst = match born(lua, a, bits, chunk.clone()) {
                     Ok(inst) => slot.insert(inst),
                     Err(e) => {
-                        let d = ScriptDiagnostic::from_error(&e, &chunk_name(&a.cfg.source));
+                        let d = ScriptDiagnostic::from_error(&e, &chunk);
                         report.failed.push((a.entity, d));
                         continue;
                     }
@@ -460,20 +448,30 @@ impl SceneScripts {
         report
     }
 
-    fn module_of(&self, path: &str) -> Option<&ScriptModule> {
-        self.slots.get(path).and_then(|s| s.module.as_ref())
+    fn module_of(&self, cfg: &LuauScript) -> Option<&ScriptModule> {
+        library_id(cfg)
+            .and_then(|id| self.slots.get(&id))
+            .and_then(|s| s.module.as_ref())
+    }
+
+    fn chunk_of(&self, cfg: &LuauScript) -> String {
+        library_id(cfg)
+            .and_then(|id| self.slots.get(&id))
+            .map(|s| s.name.clone())
+            .unwrap_or_default()
     }
 }
 
-/// O nome do chunk de um ficheiro de script — o nome do ficheiro, como as mensagens o citam.
-fn chunk_name(path: &str) -> String {
-    Path::new(path)
-        .file_name()
-        .map_or_else(|| path.to_owned(), |n| n.to_string_lossy().into_owned())
+/// O script da biblioteca que um objecto aponta — `None` sem script ou por importar.
+fn library_id(cfg: &LuauScript) -> Option<ScriptId> {
+    match cfg.source {
+        ScriptSource::Library(id) => Some(id),
+        ScriptSource::None | ScriptSource::Unimported(_) => None,
+    }
 }
 
 /// O `self` de um objecto acabado de nascer: só o `id`. Os números entram pelo [`apply_props`].
-fn born(lua: &Lua, a: &Actor, bits: u64) -> mlua::Result<Instance> {
+fn born(lua: &Lua, a: &Actor, bits: u64, chunk: String) -> mlua::Result<Instance> {
     let this = lua.create_table()?;
     #[expect(
         clippy::cast_precision_loss,
@@ -482,8 +480,8 @@ fn born(lua: &Lua, a: &Actor, bits: u64) -> mlua::Result<Instance> {
     )]
     this.set("id", bits as f64)?;
     Ok(Instance {
-        path: a.cfg.source.clone(),
-        chunk: chunk_name(&a.cfg.source),
+        script: library_id(&a.cfg).unwrap_or_default(),
+        chunk,
         this,
         applied: BTreeMap::new(),
         failed: None,

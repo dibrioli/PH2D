@@ -9,12 +9,13 @@
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor_core::script_edits::{
-    InspectorScriptInfo, InspectorScriptOrphan, InspectorScriptProp, InspectorScriptStatus,
-    InspectorScriptValue, PorqueOrfao, ScriptFieldEdit as E,
+    InspectorScriptError, InspectorScriptInfo, InspectorScriptOrphan, InspectorScriptProp,
+    InspectorScriptStatus, InspectorScriptValue, PorqueOrfao, ScriptFieldEdit as E,
 };
 use ph2d_script::props::{forget, put, resolve};
 use ph2d_script::{
-    LuauScript, Origin, OrphanWhy, ScriptDiagnostic, ScriptHost, ScriptInfo, ScriptValue,
+    LuauScript, Origin, OrphanWhy, ProjectScripts, ScriptDiagnostic, ScriptHost, ScriptInfo,
+    ScriptSource, ScriptValue,
 };
 
 /// Tradução do valor para o vocabulário do painel.
@@ -39,15 +40,11 @@ fn passo(default: f64, declarado: Option<f64>) -> f64 {
 }
 
 /// **O que o cartão diz de um diagnóstico** — a linha DESTE script, quando há, e a 1.ª linha da
-/// mensagem (o modelo guarda-a inteira, com a pilha).
-fn no_cartao(d: &ScriptDiagnostic) -> String {
-    let msg = d.message.lines().next().unwrap_or_default();
-    match d.line {
-        Some(line) => ph2d_i18n::tr_with(
-            "panel.inspector.script.at_line",
-            &[("line", &line), ("msg", &msg)],
-        ),
-        None => msg.to_owned(),
+/// mensagem (o modelo guarda-a inteira, com a pilha). A frase compõe-na o pintor.
+fn no_cartao(d: &ScriptDiagnostic) -> InspectorScriptError {
+    InspectorScriptError {
+        message: d.message.lines().next().unwrap_or_default().to_owned(),
+        line: d.line,
     }
 }
 
@@ -61,14 +58,26 @@ pub fn build_info(
 ) -> Option<InspectorScriptInfo> {
     let e = Entity::from_bits(bits);
     let cfg = sim.world().get::<LuauScript>(e)?;
-    let known = host.and_then(|h| h.scene_info(&cfg.source));
-    let status = match (host, known) {
-        (None, _) => InspectorScriptStatus::Unavailable,
-        _ if cfg.source.trim().is_empty() => InspectorScriptStatus::NoFile,
-        (Some(_), None) => InspectorScriptStatus::Loading,
-        (Some(_), Some(ScriptInfo::Missing(_))) => InspectorScriptStatus::Missing,
-        (Some(_), Some(ScriptInfo::Broken(d))) => InspectorScriptStatus::Broken(no_cartao(d)),
-        (Some(_), Some(ScriptInfo::Ready(_))) => InspectorScriptStatus::Ready,
+    let lib = sim.world().get_resource::<ProjectScripts>();
+    let (source, known) = match &cfg.source {
+        ScriptSource::None => (String::new(), None),
+        ScriptSource::Library(id) => (
+            lib.and_then(|l| l.get(*id))
+                .map(|d| d.name.clone())
+                .unwrap_or_default(),
+            host.and_then(|h| h.scene_info(*id)),
+        ),
+        ScriptSource::Unimported(path) => (path.clone(), None),
+    };
+    let status = match (host, &cfg.source, known) {
+        // ⛔ A recusa é do DADO — diz-se com ou sem VM, e nunca corre vazio.
+        (_, ScriptSource::Unimported(p), _) => InspectorScriptStatus::Unimported(p.clone()),
+        (None, ..) => InspectorScriptStatus::Unavailable,
+        (_, ScriptSource::None, _) => InspectorScriptStatus::NoFile,
+        (Some(_), _, None) => InspectorScriptStatus::Loading,
+        (Some(_), _, Some(ScriptInfo::Missing(_))) => InspectorScriptStatus::Missing,
+        (Some(_), _, Some(ScriptInfo::Broken(d))) => InspectorScriptStatus::Broken(no_cartao(d)),
+        (Some(_), _, Some(ScriptInfo::Ready(_))) => InspectorScriptStatus::Ready,
     };
     let decls = known.and_then(ScriptInfo::decls);
     let r = resolve(decls, &cfg.own);
@@ -125,7 +134,7 @@ pub fn build_info(
         .is_some_and(|b| b.kind == ph2d_physics_ecs::BodyKind::Dynamic);
     Some(InspectorScriptInfo {
         entity_bits: bits,
-        source: cfg.source.clone(),
+        source,
         status,
         props,
         orphans,
@@ -137,28 +146,61 @@ pub fn build_info(
     })
 }
 
+/// **O script que um texto escrito à mão aponta**: vazio = nenhum; o nome de um script do projeto =
+/// esse; qualquer outra coisa = por importar (o cartão recusa-o e pede o `Browse`).
+///
+/// ⚠️ **Escrever nunca importa** — o campo emite a cada tecla, e um caminho a meio que por acaso
+/// existisse entraria no projeto. Importar é o `Browse`.
+fn fonte_do_texto(sim: &SimWorld, text: &str) -> ScriptSource {
+    let t = text.trim();
+    if t.is_empty() {
+        return ScriptSource::None;
+    }
+    sim.world()
+        .get_resource::<ProjectScripts>()
+        .and_then(|l| l.by_name(t))
+        .map_or_else(|| ScriptSource::Unimported(t.to_owned()), ScriptSource::Library)
+}
+
+/// **Importa o ficheiro escolhido no `Browse`** para os scripts do projeto (nome único). Um ficheiro
+/// que não se lê fica `Unimported` — o cartão di-lo.
+fn importa(sim: &mut SimWorld, path: &str) -> ScriptSource {
+    let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
+    match ph2d_script::project_scripts::import_file(&mut lib, std::path::Path::new(path)) {
+        Ok(id) => ScriptSource::Library(id),
+        Err(e) => {
+            eprintln!("[script] importar {path}: {e}");
+            ScriptSource::Unimported(path.to_owned())
+        }
+    }
+}
+
 /// **Aplica uma edição.** `true` = o documento mudou.
 ///
-/// ⚠️ **`Browse` não escreve nada aqui** — o diálogo é da shell, que tem a janela, e ela devolve o
-/// caminho escolhido como um `Source`.
+/// ⚠️ **`Browse` não escreve nada aqui** — o diálogo é da shell, que tem a janela; o [`apply_all`]
+/// importa o ficheiro escolhido.
 ///
 /// ⚠️ **Decide com uma LEITURA e só depois empresta em escrita** — o `bevy` marca a alteração no
 /// `deref_mut`, e um componente tocado por nada é ruído para quem lê `Changed<…>`. ⭐ Mas **pôr o
 /// mesmo número pela primeira vez MUDA**: ele passa a ser próprio (a divergência D1).
 pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
     let e = Entity::from_bits(bits);
+    let fonte = match edit {
+        E::Source(text) => Some(fonte_do_texto(sim, text)),
+        _ => None,
+    };
     let Some(cfg) = sim.world().get::<LuauScript>(e) else {
         return false;
     };
     let posto = |name: &str, v: ScriptValue| (cfg.own.get(name) != Some(&v)).then_some(v);
     enum Mexe {
-        Caminho(String),
+        Fonte(ScriptSource),
         Poe(String, ScriptValue),
         Larga(String),
     }
     let mexe = match edit {
         E::Browse => None,
-        E::Source(path) => (cfg.source != *path).then(|| Mexe::Caminho(path.clone())),
+        E::Source(_) => fonte.filter(|f| cfg.source != *f).map(Mexe::Fonte),
         E::SetNumber(n, v) => posto(n, ScriptValue::Number(*v)).map(|v| Mexe::Poe(n.clone(), v)),
         E::SetBool(n, b) => posto(n, ScriptValue::Bool(*b)).map(|v| Mexe::Poe(n.clone(), v)),
         E::SetText(n, t) => posto(n, ScriptValue::Text(t.clone())).map(|v| Mexe::Poe(n.clone(), v)),
@@ -173,7 +215,7 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
         return false;
     };
     match mexe {
-        Mexe::Caminho(p) => cfg.source = p,
+        Mexe::Fonte(f) => cfg.source = f,
         Mexe::Poe(n, v) => put(&mut cfg.own, &n, v),
         Mexe::Larga(n) => {
             forget(&mut cfg.own, &n);
@@ -183,7 +225,11 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
 }
 
 /// **Aplica as edições de um quadro.** `pick` é o diálogo de ficheiro — a shell passa o dela (é ela
-/// que tem a janela), e um `Browse` cancelado não escreve nada. `true` = o documento mudou.
+/// que tem a janela); o ficheiro escolhido é IMPORTADO para os scripts do projeto, e um `Browse`
+/// cancelado não escreve nada. `true` = o documento mudou.
+///
+/// ⚠️ Um script importado e depois desfeito (`Ctrl+Z`) FICA no projeto — é conteúdo do artista.
+/// (Escolher um script que já está no projeto é a Onda 1.)
 pub fn apply_all(
     sim: &mut SimWorld,
     edits: &[(u64, E)],
@@ -191,16 +237,30 @@ pub fn apply_all(
 ) -> bool {
     let mut mexeu = false;
     for (bits, edit) in edits {
-        let edit = match edit {
-            E::Browse => match pick() {
-                Some(path) => E::Source(path),
-                None => continue,
-            },
-            other => other.clone(),
-        };
-        mexeu |= apply(sim, *bits, &edit);
+        if matches!(edit, E::Browse) {
+            let Some(path) = pick() else {
+                continue;
+            };
+            let fonte = importa(sim, &path);
+            mexeu |= poe_fonte(sim, *bits, fonte);
+            continue;
+        }
+        mexeu |= apply(sim, *bits, edit);
     }
     mexeu
+}
+
+fn poe_fonte(sim: &mut SimWorld, bits: u64, fonte: ScriptSource) -> bool {
+    let e = Entity::from_bits(bits);
+    if sim.world().get::<LuauScript>(e).is_none_or(|c| c.source == fonte) {
+        return false;
+    }
+    sim.world_mut()
+        .get_mut::<LuauScript>(e)
+        .is_some_and(|mut c| {
+            c.source = fonte;
+            true
+        })
 }
 
 /// As extensões que o diálogo `Browse` oferece — a porta única, lida pela shell e pelo gate.

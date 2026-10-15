@@ -1,15 +1,17 @@
-//! O instantâneo e o dreno da secção SCRIPT, sobre a VM real e ficheiros reais.
+//! O instantâneo e o dreno da secção SCRIPT, sobre a VM real e os scripts do projeto (ADR-0188).
 
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use ph2d_ecs::{SimWorld, StableId, Transform};
 use ph2d_editor_core::script_edits::{
-    InspectorScriptStatus as S, InspectorScriptValue as V, ScriptFieldEdit as E,
+    InspectorScriptError, InspectorScriptStatus as S, InspectorScriptValue as V,
+    ScriptFieldEdit as E,
 };
-use ph2d_script::{LuauScript, ScriptHost, ScriptValue};
+use ph2d_script::{LuauScript, ProjectScripts, ScriptHost, ScriptSource, ScriptValue};
 
 use super::{apply, build_info};
 
+/// Um ficheiro REAL no disco — só o `Browse` (a importação) os lê.
 fn script_file(source: &str) -> String {
     static N: AtomicU32 = AtomicU32::new(0);
     let dir = std::env::temp_dir().join(format!("ph2d_script_insp_{}", std::process::id()));
@@ -17,6 +19,29 @@ fn script_file(source: &str) -> String {
     let p = dir.join(format!("i{}.luau", N.fetch_add(1, Ordering::Relaxed)));
     std::fs::write(&p, source).expect("escreve");
     p.to_string_lossy().into_owned()
+}
+
+/// Uma cena com UM objecto que corre `source`, posto nos scripts do projeto.
+fn cena_com(source: &str, own: &[(&str, ScriptValue)]) -> (SimWorld, u64) {
+    let mut sim = SimWorld::new();
+    let id = sim
+        .world_mut()
+        .get_resource_or_init::<ProjectScripts>()
+        .insert("i.luau", source);
+    let mut cfg = LuauScript::library(id);
+    for (k, v) in own {
+        cfg.own.insert((*k).to_owned(), v.clone());
+    }
+    let e = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, StableId(1), cfg))
+        .id();
+    (sim, e.to_bits())
+}
+
+/// O `Browse` com um diálogo que devolve `path`.
+fn browse(sim: &mut SimWorld, bits: u64, path: &str) -> bool {
+    super::apply_all(sim, &[(bits, E::Browse)], || Some(path.to_owned()))
 }
 
 const DOIS: &str = r#"
@@ -63,25 +88,58 @@ fn o_estado_do_ficheiro_chega_ao_painel() {
     );
 
     let ok = script_file(DOIS);
-    assert!(apply(&mut sim, bits, &E::Source(ok.clone())));
-    assert_eq!(st(&sim, Some(&h)), S::Loading, "nomeado e ainda por ler");
+    assert!(browse(&mut sim, bits, &ok));
+    assert_eq!(st(&sim, Some(&h)), S::Loading, "importado e ainda por ler");
     let h = pronto(&mut sim);
     assert_eq!(st(&sim, Some(&h)), S::Ready);
 
     let partido = script_file("function (");
-    apply(&mut sim, bits, &E::Source(partido));
+    browse(&mut sim, bits, &partido);
     let h = pronto(&mut sim);
-    // O cartão diz a LINHA (CodeEditor T1) — o «syntax error:» do texto antigo saiu.
-    assert!(matches!(st(&sim, Some(&h)), S::Broken(m) if m.starts_with(&linha(1, ""))));
+    // O cartão leva a LINHA estruturada (CodeEditor T1/T7) — o pintor compõe a frase.
+    assert!(matches!(st(&sim, Some(&h)), S::Broken(InspectorScriptError { line: Some(1), .. })));
 
-    apply(&mut sim, bits, &E::Source("/nao/ha/x.luau".into()));
+    // ⛔ Um caminho que não se importa é RECUSADO pelo nome, e nada corre vazio.
+    assert!(browse(&mut sim, bits, "/nao/ha/x.luau"));
+    let h = pronto(&mut sim);
+    assert_eq!(st(&sim, Some(&h)), S::Unimported("/nao/ha/x.luau".into()));
+    assert_eq!(st(&sim, None), S::Unimported("/nao/ha/x.luau".into()), "a recusa é do dado");
+    assert_eq!(h.scene().live_count(), 0);
+
+    // Um id que o projeto já não tem diz-se.
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    sim.world_mut().get_mut::<LuauScript>(e).expect("cfg").source =
+        ScriptSource::Library(ph2d_script::ScriptId(999));
     let h = pronto(&mut sim);
     assert_eq!(st(&sim, Some(&h)), S::Missing);
 }
 
+/// ⭐ (ADR-0188) **Escrever no campo o NOME de um script do projeto aponta-o; outro texto fica por
+/// importar** — e escrever nunca lê o disco (o campo emite a cada tecla).
+#[test]
+fn escrever_o_nome_aponta_o_script_do_projeto_e_escrever_nunca_importa() {
+    let (mut sim, bits) = cena_com(DOIS, &[]);
+    let outro = sim
+        .world_mut()
+        .resource_mut::<ProjectScripts>()
+        .insert("outro.luau", "-- outro");
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    let fonte = |sim: &SimWorld| sim.world().get::<LuauScript>(e).expect("cfg").source.clone();
+    assert!(apply(&mut sim, bits, &E::Source("outro.luau".into())));
+    assert_eq!(fonte(&sim), ScriptSource::Library(outro));
+    let h = pronto(&mut sim);
+    assert_eq!(build_info(&sim, Some(&h), bits, 1, false).expect("tem").source, "outro.luau");
+    let real = script_file("-- no disco");
+    assert!(apply(&mut sim, bits, &E::Source(real.clone())));
+    assert_eq!(fonte(&sim), ScriptSource::Unimported(real));
+    assert_eq!(sim.world().resource::<ProjectScripts>().len(), 2, "nada foi importado");
+    assert!(apply(&mut sim, bits, &E::Source("  ".into())));
+    assert_eq!(fonte(&sim), ScriptSource::None);
+}
+
 #[test]
 fn as_linhas_sao_as_declaracoes_com_a_origem_e_o_passo() {
-    let (mut sim, bits) = cena(LuauScript::at(script_file(DOIS)));
+    let (mut sim, bits) = cena_com(DOIS, &[]);
     apply(&mut sim, bits, &E::SetNumber("vidas".into(), 5.0));
     let h = pronto(&mut sim);
     let info = build_info(&sim, Some(&h), bits, 1, true).expect("tem");
@@ -107,7 +165,7 @@ fn as_linhas_sao_as_declaracoes_com_a_origem_e_o_passo() {
 /// ⭐ **D1 no dreno:** pôr o MESMO número que o default muda o documento — ele passa a ser próprio.
 #[test]
 fn por_o_numero_do_default_torna_o_proprio_e_so_o_reset_o_larga() {
-    let (mut sim, bits) = cena(LuauScript::at(script_file(DOIS)));
+    let (mut sim, bits) = cena_com(DOIS, &[]);
     assert!(apply(&mut sim, bits, &E::SetNumber("vidas".into(), 3.0)));
     assert!(
         !apply(&mut sim, bits, &E::SetNumber("vidas".into(), 3.0)),
@@ -124,10 +182,13 @@ fn por_o_numero_do_default_torna_o_proprio_e_so_o_reset_o_larga() {
 
 #[test]
 fn os_orfaos_dizem_o_que_o_script_quer_agora() {
-    let mut cfg = LuauScript::at(script_file(DOIS));
-    cfg.own.insert("velho".into(), ScriptValue::Number(9.0));
-    cfg.own.insert("nome".into(), ScriptValue::Number(2.0));
-    let (mut sim, bits) = cena(cfg);
+    let (mut sim, bits) = cena_com(
+        DOIS,
+        &[
+            ("velho", ScriptValue::Number(9.0)),
+            ("nome", ScriptValue::Number(2.0)),
+        ],
+    );
     let h = pronto(&mut sim);
     let info = build_info(&sim, Some(&h), bits, 1, false).expect("tem");
     let o: Vec<(&str, ph2d_editor_core::script_edits::PorqueOrfao)> = info
@@ -158,9 +219,7 @@ fn os_orfaos_dizem_o_que_o_script_quer_agora() {
 /// ⚠️ **«Não sei» não é «nada»** — com o ficheiro partido os valores contam-se e não se oferecem.
 #[test]
 fn com_o_script_partido_os_valores_contam_se_como_guardados() {
-    let mut cfg = LuauScript::at(script_file("function ("));
-    cfg.own.insert("vidas".into(), ScriptValue::Number(9.0));
-    let (mut sim, bits) = cena(cfg);
+    let (mut sim, bits) = cena_com("function (", &[("vidas", ScriptValue::Number(9.0))]);
     let h = pronto(&mut sim);
     let info = build_info(&sim, Some(&h), bits, 1, false).expect("tem");
     assert!(info.orphans.is_empty());
@@ -168,23 +227,21 @@ fn com_o_script_partido_os_valores_contam_se_como_guardados() {
     assert_eq!(info.kept, 1);
 }
 
-/// A frase do cartão para um erro na linha `n`.
-fn linha(n: u32, msg: &str) -> String {
-    ph2d_i18n::tr_with(
-        "panel.inspector.script.at_line",
-        &[("line", &n), ("msg", &msg)],
-    )
+/// O erro do cartão: a 1.ª linha da mensagem e a linha do script.
+fn linha(n: u32, msg: &str) -> InspectorScriptError {
+    InspectorScriptError {
+        message: msg.to_owned(),
+        line: Some(n),
+    }
 }
 
-/// ⭐⭐ (CodeEditor T1) **O cartão mostra a LINHA do erro** — sintaxe na 3, corrida na 7, sobre a VM
-/// real e ficheiros reais.
+/// ⭐⭐ (CodeEditor T1/T7) **O cartão leva a LINHA do erro, estruturada** — sintaxe na 3, corrida na
+/// 7, sobre a VM real. A frase compõe-na o pintor (`a_seccao_script_esta_viva`).
 ///
 /// Mutação que deve sangrar: o `no_cartao` ignorar `d.line`.
 #[test]
 fn o_cartao_mostra_a_linha_do_erro() {
-    let (mut sim, bits) = cena(LuauScript::at(script_file(
-        "local a = 1\nlocal b = 2\nlocal c = = 3\n",
-    )));
+    let (mut sim, bits) = cena_com("local a = 1\nlocal b = 2\nlocal c = = 3\n", &[]);
     let h = pronto(&mut sim);
     assert_eq!(
         build_info(&sim, Some(&h), bits, 1, false).expect("tem").status,
@@ -193,9 +250,10 @@ fn o_cartao_mostra_a_linha_do_erro() {
             "Expected identifier when parsing expression, got '='"
         ))
     );
-    let (mut sim, bits) = cena(LuauScript::at(script_file(
+    let (mut sim, bits) = cena_com(
         "-- 1\n-- 2\n-- 3\n-- 4\nfunction update(self, dt)\n  local t = nil\n  local z = t.x\nend\n",
-    )));
+        &[],
+    );
     let mut h = pronto(&mut sim);
     h.scene_tick(sim.world_mut(), 0.1);
     assert_eq!(
@@ -206,13 +264,11 @@ fn o_cartao_mostra_a_linha_do_erro() {
 
 #[test]
 fn a_falha_da_corrida_chega_ao_painel() {
-    let (mut sim, bits) = cena(LuauScript::at(script_file(
-        r#"function update(self, dt) error("partiu") end"#,
-    )));
+    let (mut sim, bits) = cena_com(r#"function update(self, dt) error("partiu") end"#, &[]);
     let mut h = pronto(&mut sim);
     h.scene_tick(sim.world_mut(), 0.1);
     let info = build_info(&sim, Some(&h), bits, 1, true).expect("tem");
-    assert!(info.failure.is_some_and(|m| m.contains("partiu")));
+    assert!(info.failure.is_some_and(|m| m.message.contains("partiu")));
 }
 
 #[test]
@@ -228,25 +284,28 @@ fn browse_nao_escreve_e_um_corpo_dinamico_e_avisado() {
     assert_eq!(info.selected_count, 2);
 }
 
+/// ⭐ (ADR-0188) **`Browse` IMPORTA o ficheiro** para os scripts do projeto (nome único) e aponta-o;
+/// cancelar não escreve nada.
 #[test]
-fn browse_escreve_o_que_o_dialogo_devolve_e_cancelar_nao_escreve_nada() {
-    // ⚠️ **Parte de um caminho NÃO vazio**: com o default (`""`), um cancelamento que escrevesse um
-    // caminho vazio não mudaria nada e passaria por correcto.
-    let (mut sim, bits) = cena(LuauScript::at("/antes.luau"));
+fn browse_importa_o_ficheiro_e_cancelar_nao_escreve_nada() {
+    // ⚠️ **Parte de um script NÃO vazio**: com o default, um cancelamento que escrevesse «nenhum»
+    // não mudaria nada e passaria por correcto.
+    let (mut sim, bits) = cena_com("-- antes", &[]);
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    let antes = sim.world().get::<LuauScript>(e).expect("cfg").source.clone();
     let lote = [(bits, E::Browse)];
     assert!(!super::apply_all(&mut sim, &lote, || None), "cancelado");
-    let e = ph2d_ecs::Entity::from_bits(bits);
-    assert_eq!(
-        sim.world().get::<LuauScript>(e).expect("cfg").source,
-        "/antes.luau"
-    );
-    assert!(super::apply_all(&mut sim, &lote, || Some(
-        "/a/b.luau".into()
-    )));
-    assert_eq!(
-        sim.world().get::<LuauScript>(e).expect("cfg").source,
-        "/a/b.luau"
-    );
+    assert_eq!(sim.world().get::<LuauScript>(e).expect("cfg").source, antes);
+    let f = script_file("ph2d.property(\"n\", 1)");
+    assert!(browse(&mut sim, bits, &f));
+    let lib = sim.world().resource::<ProjectScripts>();
+    let ScriptSource::Library(id) = sim.world().get::<LuauScript>(e).expect("cfg").source else {
+        panic!("não apontou a biblioteca");
+    };
+    let doc = lib.get(id).expect("importado");
+    assert_eq!(doc.text, "ph2d.property(\"n\", 1)");
+    assert!(std::path::Path::new(&f).ends_with(&doc.name), "o nome é o do ficheiro");
+    assert_eq!(lib.len(), 2, "o antigo FICA no projeto");
 }
 
 /// ⭐⭐⭐ **As duas edições novas chegam ao documento, e a IDEMPOTÊNCIA fica** — pôr o mesmo par
@@ -263,7 +322,7 @@ fn a_posicao_e_a_cor_chegam_ao_documento_e_nao_mexem_duas_vezes() {
 ph2d.property("offset", ph2d.vec2(0, 1))
 ph2d.property("tint", ph2d.color(1, 1, 1))
 "#;
-    let (mut sim, bits) = cena(LuauScript::at(script_file(TIPOS)));
+    let (mut sim, bits) = cena_com(TIPOS, &[]);
     let h = pronto(&mut sim);
     let ler = |sim: &SimWorld, n: &str| {
         build_info(sim, Some(&h), bits, 1, false)
@@ -314,7 +373,7 @@ ph2d.property("tint", ph2d.color(1, 1, 1))
 #[test]
 fn o_passo_de_uma_posicao_sai_do_eixo_com_casas_decimais() {
     let passo = |src: &str| {
-        let (mut sim, bits) = cena(LuauScript::at(script_file(src)));
+        let (mut sim, bits) = cena_com(src, &[]);
         let h = pronto(&mut sim);
         build_info(&sim, Some(&h), bits, 1, false)
             .expect("tem")

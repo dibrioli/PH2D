@@ -8699,8 +8699,17 @@ dependencies = [
  "blake3",
  "mlua",
  "ph2d-ecs",
+ "ph2d-script-doc",
  "postcard",
  "proptest",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-script-doc"
+version = "0.0.0"
+dependencies = [
+ "ph2d-macro",
  "serde",
 ]
 

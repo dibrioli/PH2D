@@ -15,7 +15,7 @@ pub fn register_script_components(reg: &mut ComponentRegistry) {
     // ⚠️ `register_default` desde o TOP-20 #16: a paleta do `+` anexa o PONTO NEUTRO do tipo (um
     // script sem ficheiro), e sem esta porta o descritor `Authored` prometeria o que não constrói
     // (gate `every_offered_component_can_be_constructed`, na shell).
-    reg.register_default::<LuauScript>("ph2d::script::LuauScript");
+    reg.register_default::<LuauScript>(crate::project_scripts::CANONICAL_NAME);
 }
 
 #[cfg(test)]

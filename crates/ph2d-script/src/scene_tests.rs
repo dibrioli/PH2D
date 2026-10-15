@@ -1,34 +1,46 @@
-//! Os scripts da cena, headless, sobre a VM REAL do `ScriptHost` e ficheiros REAIS no disco — o
-//! caminho que o produto percorre (§3 do plano 13).
-
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering};
+//! Os scripts da cena, headless, sobre a VM REAL do `ScriptHost` e a biblioteca de scripts do
+//! projeto como recurso do mundo — o caminho que o produto percorre (§3 do plano 13, ADR-0188).
 
 use ph2d_ecs::{Entity, SimWorld, StableId, Transform, World};
 
-use crate::ScriptHost;
-use crate::component::LuauScript;
+use crate::component::{LuauScript, ProjectScripts, ScriptSource};
 use crate::props::ScriptValue;
 use crate::scene::ScriptInfo;
-use crate::DiagnosticKind;
+use crate::{DiagnosticKind, ScriptHost, ScriptId};
 
-/// Um ficheiro de script único para este teste (os testes correm em paralelo).
-fn script_file(tag: &str, source: &str) -> String {
-    static N: AtomicU32 = AtomicU32::new(0);
-    let dir: PathBuf = std::env::temp_dir().join(format!("ph2d_scene_{}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("temp");
-    let p = dir.join(format!("{tag}_{}.luau", N.fetch_add(1, Ordering::Relaxed)));
-    std::fs::write(&p, source).expect("escreve");
-    p.to_string_lossy().into_owned()
+/// Um script por escrever na biblioteca: o nome (único no teste) e o texto.
+struct Src {
+    name: String,
+    text: String,
 }
 
-fn rewrite(path: &str, source: &str) {
-    std::fs::write(path, source).expect("reescreve");
+fn script_file(tag: &str, source: &str) -> Src {
+    Src {
+        name: format!("{tag}.luau"),
+        text: source.to_owned(),
+    }
+}
+
+/// O id do script na biblioteca do mundo — põe-no lá se ainda não está.
+fn id_of(world: &mut World, src: &Src) -> ScriptId {
+    let mut lib = world.get_resource_or_init::<ProjectScripts>();
+    lib.by_name(&src.name)
+        .unwrap_or_else(|| lib.insert(&src.name, src.text.clone()))
+}
+
+/// O artista edita o texto na biblioteca.
+fn rewrite(world: &mut World, src: &Src, source: &str) {
+    let id = id_of(world, src);
+    assert!(world.resource_mut::<ProjectScripts>().set_text(id, source));
+}
+
+fn info<'h>(host: &'h ScriptHost, world: &mut World, src: &Src) -> Option<&'h ScriptInfo> {
+    host.scene_info(id_of(world, src))
 }
 
 /// Um objecto com pose, identidade e script.
-fn actor(world: &mut World, sid: u64, path: &str, own: &[(&str, ScriptValue)]) -> Entity {
-    let mut s = LuauScript::at(path);
+fn actor(world: &mut World, sid: u64, src: &Src, own: &[(&str, ScriptValue)]) -> Entity {
+    let mut s = LuauScript::library(id_of(world, src));
     for (k, v) in own {
         s.own.insert((*k).to_owned(), v.clone());
     }
@@ -75,8 +87,8 @@ fn o_painel_ve_as_declaracoes_sem_a_cena_correr() {
     actor(sim.world_mut(), 1, &path, &[]);
     let mut host = ScriptHost::new().expect("vm");
     host.scene_sync(sim.world_mut());
-    let Some(ScriptInfo::Ready(decls)) = host.scene_info(&path) else {
-        panic!("{:?}", host.scene_info(&path));
+    let Some(ScriptInfo::Ready(decls)) = info(&host, sim.world_mut(), &path) else {
+        panic!("{:?}", info(&host, sim.world_mut(), &path));
     };
     assert_eq!(decls[0].name, "speed");
     assert_eq!(host.scene().live_count(), 0, "parado ninguém nasce");
@@ -227,9 +239,9 @@ fn um_laco_sem_saida_no_topo_nao_congela_a_carga() {
     let mut host = ScriptHost::new().expect("vm");
     host.scene_sync(sim.world_mut());
     assert!(
-        matches!(host.scene_info(&path), Some(ScriptInfo::Broken(d)) if d.kind == DiagnosticKind::Budget),
+        matches!(info(&host, sim.world_mut(), &path), Some(ScriptInfo::Broken(d)) if d.kind == DiagnosticKind::Budget),
         "{:?}",
-        host.scene_info(&path)
+        info(&host, sim.world_mut(), &path)
     );
 }
 
@@ -250,6 +262,7 @@ function update(self, dt) self.n = self.n + 1 ; ph2d.set(self.id, "x", self.n) e
     frame(&mut host, &mut sim, 0.1);
     assert_eq!(x(sim.world(), e), 2.0);
     rewrite(
+        sim.world_mut(),
         &path,
         r#"
 function init(self) self.n = 1000 end
@@ -272,7 +285,7 @@ fn gravar_a_correccao_devolve_um_script_partido_a_corrida() {
     let mut host = ScriptHost::new().expect("vm");
     frame(&mut host, &mut sim, 1.0);
     assert!(host.scene_failure(e).is_some_and(|d| d.message.contains("ups")));
-    rewrite(&path, MOVE_BY_SPEED);
+    rewrite(sim.world_mut(), &path, MOVE_BY_SPEED);
     frame(&mut host, &mut sim, 1.0);
     assert!(host.scene_failure(e).is_none());
     assert_eq!(x(sim.world(), e), 1.0);
@@ -292,9 +305,9 @@ fn um_script_partido_nao_apaga_nada_do_componente() {
     );
     let mut host = ScriptHost::new().expect("vm");
     host.scene_sync(sim.world_mut());
-    rewrite(&path, "ph2d.property(\"speed\", 1\nfunction update(");
+    rewrite(sim.world_mut(), &path, "ph2d.property(\"speed\", 1\nfunction update(");
     host.scene_sync(sim.world_mut());
-    let info = host.scene_info(&path).expect("conhecido");
+    let info = info(&host, sim.world_mut(), &path).expect("conhecido");
     assert!(
         matches!(info, ScriptInfo::Broken(d) if d.kind == DiagnosticKind::Syntax),
         "{info:?}"
@@ -310,18 +323,31 @@ fn um_script_partido_nao_apaga_nada_do_componente() {
     );
 }
 
+/// ⛔ **Um script por importar NUNCA corre vazio**, e um id que a biblioteca não tem diz-se.
 #[test]
 fn sem_ficheiro_nada_corre_e_o_painel_sabe_porque() {
     let mut sim = SimWorld::new();
-    let e = actor(sim.world_mut(), 1, "/nao/existe/bob.luau", &[]);
+    let w = sim.world_mut();
+    let por_importar = w
+        .spawn((
+            Transform::IDENTITY,
+            StableId(1),
+            LuauScript {
+                source: ScriptSource::Unimported("/nao/existe/bob.luau".into()),
+                ..LuauScript::default()
+            },
+        ))
+        .id();
+    let orfao = w
+        .spawn((Transform::IDENTITY, StableId(2), LuauScript::library(ScriptId(77))))
+        .id();
     let mut host = ScriptHost::new().expect("vm");
     let r = frame(&mut host, &mut sim, 1.0);
     assert_eq!(r.calls, 0);
-    assert!(matches!(
-        host.scene_info("/nao/existe/bob.luau"),
-        Some(ScriptInfo::Missing(_))
-    ));
-    assert_eq!(x(sim.world(), e), 0.0);
+    assert_eq!(host.scene().live_count(), 0, "ninguém nasceu");
+    assert!(matches!(host.scene_info(ScriptId(77)), Some(ScriptInfo::Missing(_))));
+    assert_eq!(x(sim.world(), por_importar), 0.0);
+    assert_eq!(x(sim.world(), orfao), 0.0);
 }
 
 /// ⚠️ **A mão do artista manda, mas só onde mexeu** (§3.5).
@@ -377,6 +403,7 @@ fn trocar_de_ficheiro_renasce() {
     let mut host = ScriptHost::new().expect("vm");
     frame(&mut host, &mut sim, 0.1);
     assert_eq!(x(sim.world(), e), 1.0);
+    let b = ScriptSource::Library(id_of(sim.world_mut(), &b));
     sim.world_mut()
         .get_mut::<LuauScript>(e)
         .expect("cfg")
@@ -583,4 +610,72 @@ fn a_blank_motion_name_stops_the_object_and_its_writes_do_not_land() {
     assert_eq!(r.failed.len(), 1);
     assert!(r.failed[0].1.message.contains("needs a name"), "{}", r.failed[0].1);
     assert!(sim.world().get_resource::<MotionInputs>().is_none());
+}
+
+// ── ADR-0188: o texto vem da biblioteca do projeto ─────────────────────────────
+
+/// ⭐⭐ **Dois objectos no MESMO script, o texto editado na biblioteca: os DOIS recarregam** — e
+/// cada um guarda o seu `self` (recarregar não renasce).
+///
+/// Mutação que deve sangrar: o `refresh` não comparar o hash (nunca recarrega) · o `sync` não reler
+/// a biblioteca a cada quadro.
+#[test]
+fn editing_a_shared_library_script_reloads_every_object_keeping_self() {
+    let path = script_file(
+        "partilhado",
+        r#"
+ph2d.property("passo", 1)
+function init(self) self.n = 0 end
+function update(self, dt) self.n = self.n + self.passo ; ph2d.set(self.id, "x", self.n) end
+"#,
+    );
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let a = actor(w, 1, &path, &[]);
+    let b = actor(w, 2, &path, &[("passo", ScriptValue::Number(2.0))]);
+    let mut host = ScriptHost::new().expect("vm");
+    for _ in 0..2 {
+        frame(&mut host, &mut sim, 0.1);
+    }
+    assert_eq!((x(sim.world(), a), x(sim.world(), b)), (2.0, 4.0));
+    rewrite(
+        sim.world_mut(),
+        &path,
+        r#"
+ph2d.property("passo", 1)
+function init(self) self.n = 1000 end
+function update(self, dt) self.n = self.n + 10 * self.passo ; ph2d.set(self.id, "x", self.n) end
+"#,
+    );
+    frame(&mut host, &mut sim, 0.1);
+    assert_eq!(
+        (x(sim.world(), a), x(sim.world(), b)),
+        (12.0, 24.0),
+        "os dois correm a lei nova sobre o self velho, e o init NÃO correu outra vez"
+    );
+    assert_eq!(host.scene().live_count(), 2);
+}
+
+/// O nome do chunk é o nome ÚNICO na biblioteca — é ele que a mensagem do Luau cita.
+#[test]
+fn the_chunk_name_is_the_unique_library_name() {
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let primeiro = script_file("bob", "-- outro bob");
+    id_of(w, &primeiro);
+    let id = w
+        .resource_mut::<ProjectScripts>()
+        .insert("bob.luau", "function update(self, dt)\n  error('ai')\nend\n");
+    let e = w
+        .spawn((Transform::IDENTITY, StableId(1), LuauScript::library(id)))
+        .id();
+    let mut host = ScriptHost::new().expect("vm");
+    frame(&mut host, &mut sim, 0.1);
+    let d = host.scene_failure(e).expect("parou");
+    assert_eq!(d.line, Some(2), "{d:?}");
+    assert!(d.message.contains("ai"), "{d:?}");
+    assert_eq!(
+        sim.world().resource::<ProjectScripts>().get(id).map(|s| s.name.as_str()),
+        Some("bob 2.luau")
+    );
 }

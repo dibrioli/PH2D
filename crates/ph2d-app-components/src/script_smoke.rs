@@ -1,20 +1,21 @@
 //! ⭐⭐⭐ **Smoke do SCRIPT DO ARTISTA** (TOP-20 #16, W4). `PH2D_SCRIPT_SMOKE=1`.
 //!
-//! # UM ficheiro, TRÊS objectos, três conjuntos de números
+//! # UM script, TRÊS objectos, três conjuntos de números
 //!
-//! A cena escreve **um** `bob.luau` (sobe e desce) e pendura-o em três bonecos lado a lado:
+//! A cena põe **um** `bob.luau` (sobe e desce) nos scripts DO PROJETO e pendura-o em três bonecos
+//! lado a lado:
 //!
 //! | boneco | números PRÓPRIOS | o que se vê |
 //! |---|---|---|
-//! | **«Bob»** | nenhum — segue o ficheiro | sobe e desce devagar, pouco |
+//! | **«Bob»** | nenhum — segue o script | sobe e desce devagar, pouco |
 //! | **«Bob (tall)»** | `amplitude = 2` · e um `height = 9` que o script **não** declara | sobe e desce o dobro; o painel mostra o `height` como ÓRFÃO |
 //! | **«Bob (fast)»** | `speed = 6` · `top_signal = "top"` | sobe e desce depressa e, a cada topo, **grita** `top` — e a tabela de acções dele acende e apaga a lâmpada |
 //!
 //! ⭐⭐⭐ **O que a cena ensina é o §0 do plano, à vista:** o mesmo script vira três comportamentos
-//! pelos números de cada objecto, e o ficheiro é vivo — mudar o default da `amplitude` no editor de
-//! texto e gravar muda o **«Bob»** e o **«Bob (fast)»** e deixa o **«Bob (tall)»** na dele (Q1/Q2
-//! do oráculo). ⚠️ *«Próprio» é por NÚMERO, não por objecto* — o rápido tem `speed` próprio e
-//! segue a `amplitude` do ficheiro.
+//! pelos números de cada objecto, e o texto é vivo — mudar o default da `amplitude` muda o
+//! **«Bob»** e o **«Bob (fast)»** e deixa o **«Bob (tall)»** na dele (Q1/Q2 do oráculo; o editor
+//! de texto dentro do app é a Onda 1 do ADR-0188). ⚠️ *«Próprio» é por NÚMERO, não por objecto* — o
+//! rápido tem `speed` próprio e segue a `amplitude` do script.
 //!
 //! ⭐ **E o grito liga o script ao mundo pela porta que o levantamento prescreve** (sinais, nunca uma
 //! referência directa a outro objecto): o script não sabe que a lâmpada existe.
@@ -25,23 +26,20 @@
 //! boneco sem corpo seria impossível de escolher e a secção nunca apareceria (o report do dono sobre
 //! a máquina de estados, 2026-09-15).
 //!
-//! # ⚠️ O ficheiro vive fora do repositório
+//! # O script vive DENTRO do projeto (ADR-0188 §2)
 //!
-//! Em `~/.ph2d/smoke/bob.luau` — é para o dono o abrir e mexer. ⚠️ **A cena reescreve-o a cada
-//! arranque**: um smoke começa sempre do mesmo sítio, e uma edição de ontem não pode fazer a cena de
-//! hoje ensinar outra coisa.
-
-use std::path::{Path, PathBuf};
+//! Nenhum ficheiro solto: o texto entra nos scripts do projeto e viaja no `.ph2dproj` quando o dono
+//! grava.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SignalAction, SignalActions, SignalVerb, Transform, Visibility, World};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
-use ph2d_script::{LuauScript, ScriptValue};
+use ph2d_script::{LuauScript, ProjectScripts, ScriptId, ScriptValue};
 
 /// ⭐⭐ **Quantas cenas este roteador serve** — contado do [`montar`] (uma, sem `match`).
 pub const CENAS: u32 = 1;
 
-/// O nome do ficheiro que a cena escreve.
+/// O nome do script nos scripts do projeto.
 pub const FILE_NAME: &str = "bob.luau";
 
 /// ⭐ **O script da cena** — o que o dono abre no editor de texto.
@@ -124,15 +122,6 @@ pub const TALL_AMPLITUDE: f64 = 2.0;
 /// Onde a lâmpada fica: logo acima do «Bob (fast)», fora do caminho dele.
 pub const LAMP_Y: f32 = 3.4;
 
-/// **Onde a cena escreve o ficheiro** — `~/.ph2d/smoke`, ou a pasta temporária sem `HOME`.
-#[must_use]
-pub fn default_dir() -> PathBuf {
-    std::env::var_os("HOME").map_or_else(
-        || std::env::temp_dir().join("ph2d-smoke"),
-        |h| PathBuf::from(h).join(".ph2d").join("smoke"),
-    )
-}
-
 fn boneco(world: &mut World, nome: &str, i: usize, script: LuauScript) -> ph2d_ecs::Entity {
     world
         .spawn((
@@ -155,7 +144,7 @@ pub struct Montada {
     pub escolhido: u64,
 }
 
-fn cena_um(world: &mut World, path: &str) -> u64 {
+fn cena_um(world: &mut World, script: ScriptId) -> u64 {
     // ⚠️ O chão é a PRIMEIRA raiz — desenha atrás de tudo.
     world.spawn((
         Name::new("Floor"),
@@ -169,9 +158,9 @@ fn cena_um(world: &mut World, path: &str) -> u64 {
         Transform::from_translation(Vec2::new(BOB_X[2], LAMP_Y)),
     ));
 
-    boneco(world, "Bob", 0, LuauScript::at(path));
+    boneco(world, "Bob", 0, LuauScript::library(script));
 
-    let mut alto = LuauScript::at(path);
+    let mut alto = LuauScript::library(script);
     alto.own
         .insert("amplitude".into(), ScriptValue::Number(TALL_AMPLITUDE));
     // ⭐ **O ÓRFÃO de propósito** — um número que o script não declara (a divergência D2): o painel
@@ -179,7 +168,7 @@ fn cena_um(world: &mut World, path: &str) -> u64 {
     alto.own.insert("height".into(), ScriptValue::Number(9.0));
     let escolhido = boneco(world, "Bob (tall)", 1, alto).to_bits();
 
-    let mut rapido = LuauScript::at(path);
+    let mut rapido = LuauScript::library(script);
     rapido.own.insert("speed".into(), ScriptValue::Number(6.0));
     rapido
         .own
@@ -198,24 +187,21 @@ fn cena_um(world: &mut World, path: &str) -> u64 {
     escolhido
 }
 
-/// Monta a cena pedida, escreve o `bob.luau` em `dir` e devolve o nível montado.
+/// Monta a cena pedida — o `bob.luau` entra nos scripts do projeto — e devolve o nível montado.
 ///
 /// ⚠️ **Uma cena só, logo SEM `match`** (a razão está no irmão `statemachine_smoke::montar`).
-///
-/// # Errors
-/// A escrita do ficheiro falhou — sem ele a cena ensinaria *«o script não faz nada»*.
-pub fn montar(world: &mut World, _nivel: u32, dir: &Path) -> std::io::Result<Montada> {
-    std::fs::create_dir_all(dir)?;
-    let path = dir.join(FILE_NAME);
-    std::fs::write(&path, BOB_LUAU)?;
-    let path = path.to_string_lossy().into_owned();
-    let escolhido = cena_um(world, &path);
+pub fn montar(world: &mut World, _nivel: u32) -> Montada {
+    let script = world
+        .get_resource_or_init::<ProjectScripts>()
+        .insert(FILE_NAME, BOB_LUAU);
+    let nome = world.resource::<ProjectScripts>().get(script).map(|d| d.name.clone());
+    let escolhido = cena_um(world, script);
     println!(
-        "[script-smoke] =1 tres bonecos correm o MESMO script ({path}) com numeros diferentes: \
-         «Bob» segue o ficheiro, «Bob (tall)» sobe o dobro, «Bob (fast)» e' rapido e acende a \
-         lampada a cada topo. Carregue num boneco e veja a seccao Script do painel; abra o \
-         ficheiro, mude o default da amplitude, grave — o «Bob» e o «Bob (fast)» mudam, o \
-         «Bob (tall)» fica com a dele.\n\
+        "[script-smoke] =1 tres bonecos correm o MESMO script ({nome:?}, guardado DENTRO do \
+         projeto) com numeros diferentes: «Bob» segue o script, «Bob (tall)» sobe o dobro, \
+         «Bob (fast)» e' rapido e acende a lampada a cada topo. Carregue num boneco e veja a \
+         seccao Script do painel: o campo «Script» diz `bob.luau`, e nenhum ficheiro foi escrito \
+         no disco.\n\
          ⭐ E a fileira «wave» e' um CHIP e nao um campo: o script declarou uma LISTA \
          (`sine · square · still`). Escolha `square` e o boneco passa a saltar entre dois \
          niveis; `still` para-o. ⚠️ Deu errado se ela vier como campo de escrever, ou se \
@@ -226,10 +212,10 @@ pub fn montar(world: &mut World, _nivel: u32, dir: &Path) -> std::io::Result<Mon
          passeia menos, uma CLARA e ele passeia mais. ⚠️ Deu errado se a posicao vier em duas \
          linhas, se a cor vier como tres campos de numero, ou se o selector nao abrir"
     );
-    Ok(Montada {
+    Montada {
         nivel: 1,
         escolhido,
-    })
+    }
 }
 
 #[cfg(test)]

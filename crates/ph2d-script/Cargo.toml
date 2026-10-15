@@ -36,10 +36,13 @@ bevy_ecs = "0.19"
 # serde derives on LuauScript + PodValue so they round-trip through
 # the postcard pipeline that PrefabDoc/SceneDoc consume in M14.3.
 serde = { version = "1", features = ["derive"] }
+# Os scripts DO PROJETO (ADR-0188 §2): o `LuauScript` aponta um `ScriptId`, e o runtime lê o texto
+# da `ScriptLibrary` (sem disco).
+ph2d-script-doc = { path = "../ph2d-script-doc" }
+# O degrau v2 → v3 do blob do `LuauScript` no `WorldSnapshot` do projeto (`project_scripts`).
+postcard = { version = "1", features = ["alloc"] }
 
 [dev-dependencies]
-# O fio dos valores (`props_tests`): a ordem das variantes é o contrato, e só uma serialização a mede.
-postcard = { version = "1", features = ["alloc"] }
 proptest = "1.11.0"
 
 [package.metadata.cargo-machete]

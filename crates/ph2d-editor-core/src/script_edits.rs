@@ -12,9 +12,10 @@
 //!
 //! | aviso | o que se passa |
 //! |---|---|
-//! | `No script file yet` | o componente não nomeia ficheiro nenhum, e não corre |
-//! | `That file is gone` | o caminho gravado não se deixa ler — os valores próprios ficam |
-//! | `The script has an error` | o Luau recusou-o; a mensagem é a do Luau |
+//! | `No script file yet` | o componente não aponta script nenhum, e não corre |
+//! | `Script file not found: …` | um caminho antigo que o load não importou — nunca corre vazio |
+//! | `That script is gone` | o projeto já não tem o script apontado — os valores próprios ficam |
+//! | `The script has an error` | o Luau recusou-o; a mensagem é a do Luau, com a LINHA |
 //! | `Stopped: …` | o objecto parou de correr o script (erro num gancho, laço sem fim) |
 //! | `… not in the script` | um valor próprio cuja propriedade saiu do ficheiro (D2) |
 //! | `The clock is stopped` | um script só corre com a cena a tocar |
@@ -90,28 +91,38 @@ pub enum PorqueOrfao {
     ForaDaLista,
 }
 
-/// **Em que estado está o ficheiro.**
+/// **Um erro do Luau, como o cartão o pinta** — a 1.ª linha da mensagem e a linha DESTE script.
+/// Quem compõe a frase é o pintor (a chave `panel.inspector.script.at_line`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InspectorScriptError {
+    pub message: String,
+    pub line: Option<u32>,
+}
+
+/// **Em que estado está o script.**
 #[derive(Clone, Debug, PartialEq)]
 pub enum InspectorScriptStatus {
-    /// O componente não nomeia ficheiro nenhum.
+    /// O componente não aponta script nenhum.
     NoFile,
     /// A VM não arrancou nesta sessão — o app corre sem scripts.
     Unavailable,
-    /// O ficheiro ainda não foi lido (o primeiro quadro depois de o nomear).
+    /// O script ainda não foi lido (o primeiro quadro depois de o escolher).
     Loading,
-    /// O ficheiro não se deixa ler.
+    /// O projeto não tem o script apontado.
     Missing,
     /// O Luau recusou-o — a mensagem é a dele.
-    Broken(String),
+    Broken(InspectorScriptError),
     /// Carregou.
     Ready,
+    /// ⛔ Um caminho de ficheiro que o load não importou (ADR-0188) — RECUSADO, nunca corre vazio.
+    Unimported(String),
 }
 
 /// Snapshot da secção SCRIPT da entidade selecionada.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorScriptInfo {
     pub entity_bits: u64,
-    /// O caminho, como o componente o guarda.
+    /// O nome do script na biblioteca do projeto — ou o caminho por importar.
     pub source: String,
     pub status: InspectorScriptStatus,
     /// Uma por declaração, na ordem da declaração.
@@ -121,7 +132,7 @@ pub struct InspectorScriptInfo {
     /// ou partido) — contados e nunca oferecidos para apagar: *não sei* não é *nada*.
     pub kept: usize,
     /// Porque o objecto parou de correr o script, se parou.
-    pub failure: Option<String>,
+    pub failure: Option<InspectorScriptError>,
     /// O relógio está a andar?
     pub clock_playing: bool,
     /// ⚠️ O objecto é também um corpo da física — as duas mãos brigam pelo `Transform`.
@@ -132,9 +143,9 @@ pub struct InspectorScriptInfo {
 /// Uma edição da secção SCRIPT.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ScriptFieldEdit {
-    /// O caminho, escrito à mão.
+    /// Escrito à mão: o NOME de um script do projeto, ou o caminho de um ficheiro a importar.
     Source(String),
-    /// `Browse` — a shell abre o diálogo (é ela que tem a janela).
+    /// `Browse` — a shell abre o diálogo (é ela que tem a janela) e o ficheiro é IMPORTADO.
     Browse,
     /// O artista PÔS este número.
     SetNumber(String, f64),

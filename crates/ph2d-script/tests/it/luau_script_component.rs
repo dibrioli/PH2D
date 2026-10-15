@@ -18,7 +18,7 @@ use ph2d_script::{PodValue, ScriptHost, ScriptValue};
 fn luau_script_attaches_to_sim_entity() {
     let mut sim = SimWorld::new();
     let entity = sim.world_mut().spawn_empty().id();
-    let mut script = LuauScript::at("/scripts/bob.luau");
+    let mut script = LuauScript::library(ph2d_script::ScriptId(1));
     script.own.insert("speed".into(), ScriptValue::Number(3.0));
     sim.world_mut().entity_mut(entity).insert(script.clone());
 

@@ -97,3 +97,53 @@ fn a_cena_142_vai_a_placa_por_uma_corrida_ordenada() {
         "o Scene com imagens desenha-se por uma corrida ORDENADA"
     );
 }
+
+/// ⭐ **A LEGENDA NÃO TAPA A GALÁXIA, em nenhum quadro.** A galáxia é SIMULADA (o redemoinho e o íman
+/// mexem-na), logo a borda de baixo mede-se ao longo de duas voltas (`2 · CICLO`), e a ficha (11 px,
+/// ~0,35 m de altura na câmara da cena, fotografado) pousa abaixo dela. Achado na foto de 15/10: a
+/// `-3,2` herdada da `=140` (duas galáxias menores) tapava a ponta de baixo do losango.
+#[test]
+fn a_legenda_da_cena_142_pousa_abaixo_da_galaxia_em_todos_os_quadros() {
+    const MEIA_FICHA: f32 = 0.35;
+    let (mut m, c) = cena();
+    let scopes = ph2d_nodegraph::cook::TimeScopes::new();
+    let mut baixo = f32::INFINITY;
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "segundos inteiros"
+    )]
+    let tiques = (2.0 * super::super::ritmo_demo::CICLO * 60.0) as u64;
+    for t in 0..=tiques {
+        #[expect(clippy::cast_precision_loss, reason = "um tique")]
+        crate::motion_externals::publish_all(&mut m, t as f64 / 60.0);
+        let sinks = m.sinks.clone();
+        let _ = m.pump.advance_or_scrub_scoped(
+            &m.doc.graph,
+            &m.registry,
+            &sinks,
+            t,
+            |t| t as f64 / 60.0,
+            m.default_uv_rect,
+            m.default_size,
+            &scopes,
+        );
+        let s = m.pump.cook.peek(c.saida).expect("a saida cozeu")[0]
+            .as_stream()
+            .clone();
+        let Some(ph2d_nodegraph::attr::Column::Vec2(p)) = s.get("P") else {
+            panic!("a saida tem posicoes");
+        };
+        // O quadrado pode girar: a meia-diagonal cobre qualquer ângulo.
+        let fundo = p.iter().map(|q| q[1]).fold(f32::INFINITY, f32::min)
+            - IMAGEM * std::f32::consts::FRAC_1_SQRT_2;
+        baixo = baixo.min(fundo);
+    }
+    let ficha = captions()[0].world[1];
+    eprintln!("cena 142: borda de baixo {baixo:.3} m · ficha a {ficha:.3} m");
+    assert!(baixo.is_finite(), "a galaxia tem pontos");
+    assert!(
+        ficha + MEIA_FICHA <= baixo,
+        "a legenda (y = {ficha}) tapa a galaxia, cuja borda de baixo chega a {baixo:.3}"
+    );
+}

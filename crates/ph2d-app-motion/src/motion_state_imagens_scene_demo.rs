@@ -94,8 +94,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
 /// As fichas do canvas.
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
+    // Abaixo da borda de baixo da galáxia simulada (-3,68 m em duas voltas, com gate).
     vec![crate::motion_demo_legend::Caption::new(
-        [0.0, -3.2],
+        [0.0, -4.2],
         "Scene: the star (shape) covers the orange square (image); only the group brightens the background",
     )]
 }

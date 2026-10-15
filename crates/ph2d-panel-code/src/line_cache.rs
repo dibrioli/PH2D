@@ -6,7 +6,9 @@
 
 use crate::style::Ink;
 use parley::setting::Tag;
-use parley::{FontFamily, FontVariation, FontVariations, FontWeight, Layout, LayoutContext, StyleProperty};
+use parley::{
+    FontFamily, FontFeature, FontFeatures, FontVariation, FontVariations, FontWeight, Layout, LayoutContext, StyleProperty,
+};
 use ph2d_text::TextSystem;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -14,6 +16,11 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 
 const WGHT_TAG: Tag = Tag::new(b"wght");
+
+/// ⛔ Sem ligaduras: `==`, `>=`, `~=` mostram-se como os caracteres escritos (o dono, 15/10: um `=`
+/// fora do sítio já confundia; a JetBrains Mono junta-os por `calt`).
+const NO_LIGATURES: [FontFeature; 2] =
+    [FontFeature { tag: Tag::new(b"calt"), value: 0 }, FontFeature { tag: Tag::new(b"liga"), value: 0 }];
 
 /// O peso do texto de código (o eixo `wght` da JetBrains Mono variável tem de ser empurrado: sem ele
 /// a fonte cai no peso de omissão).
@@ -108,6 +115,7 @@ fn shape(lcx: &mut LayoutContext<Ink>, ts: &mut TextSystem, text: &str, spans: &
     b.push_default(StyleProperty::FontWeight(CODE_WEIGHT));
     let wght = [FontVariation { tag: WGHT_TAG, value: CODE_WEIGHT.value() }];
     b.push_default(StyleProperty::FontVariations(FontVariations::List(Cow::Borrowed(&wght))));
+    b.push_default(StyleProperty::FontFeatures(FontFeatures::List(Cow::Borrowed(&NO_LIGATURES))));
     b.push_default(StyleProperty::Brush(Ink::Plain));
     for (r, ink) in spans {
         let r = r.start.min(text.len())..r.end.min(text.len());

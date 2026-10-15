@@ -5,6 +5,7 @@ mod a11y;
 mod clique;
 mod cronometro;
 mod estado;
+mod ligaduras;
 mod sublinhado;
 mod virtualizacao;
 

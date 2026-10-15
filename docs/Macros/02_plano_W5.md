@@ -14,7 +14,7 @@ por família (só a família lê a sua carga, `crates/ph2d-macro/src/doc.rs:35`)
 | Família | Etapa | Relógio (não é etapa) |
 |---|---|---|
 | Motion | um `Passo::Grafo` (um lote do dreno, `macro_track/mod.rs:255-281`; um arrasto de nós `BeginDrag..EndDrag` = uma) · uma SESSÃO de param = `Params` do mesmo `(nó, param)` em quadros SEGUIDOS (não há início/fim de arrasto gravável: `motion_bridge_params_edit.rs:105-137` só abre sessão para o conta-gotas) · `Escritas`/`Documento` = «edição direta» (gizmo, desfazer) · `Recusada` = etapa que mostra o porquê | `Quadro`, `Toque` |
-| Painter | uma pincelada `Ponteiro Down..Up` (`passo.rs:104-120`); `Cor`/`TamanhoPx`/`PresetAplica`/`Painel` entre pinceladas são PROPRIEDADES da seguinte (os que sobram no fim = etapa «Ajustes») · `Recusada` | `Tique`, `Agua`, os drenos (`Preview*`, `TiraCommit`…) |
+| Painter | uma pincelada `Ponteiro Down..Up` (`passo.rs:104-120`); as suas PROPRIEDADES são o pincel no toque (cor, tamanho), venham de `Cor`/`TamanhoPx`/`PresetAplica`/`Painel` · `Recusada` | `Tique`, `Agua`, os drenos (`Preview*`, `TiraCommit`…) |
 
 **Nome:** derivado e traduzido no momento de mostrar (`ph2d-i18n`: «Add {nó}» com o nome do catálogo
 `node_catalog.rs`, «{a} → {b}», «{param}: a → b», «Pincelada {n}» + a amostra da cor). Só o nome que o artista
@@ -108,6 +108,7 @@ seguintes. Suíte com `motivo: formato gravado`.
 | Onda | O quê | Gates (vermelho primeiro + mutação) |
 |---|---|---|
 | W5a ✅ | medição (§3) + `passa_ao_relogio_fixo` | sondas `#[ignore]` |
+| W5b ✅ (`9b40399255`..`95ca6db68e`) | núcleo + Painter + Motion; mutação 21/21 | [handoff W5](handoffs/HANDOFF_CONTINUACAO_W5_ETAPAS_2026-10-14.md) |
 | W5b | segmentação + nomes + `edicoes`/`exige` + deslocamento com relógio sintetizado + edição de valor | cena `=2` = N etapas, Splash = 4; antes da etapa editada = original ao bit; espera = a água/o vento continuam; recuar == do zero com edições; formato ida-e-volta, 1.0 lê |
 | W5c | instantâneos do Painter por etapa; relógio fixo decidido ao editar | instantâneo == tocar do zero ao bit; editar a k só muda o que vem depois |
 | W5d | painel, linha de etapas na Timeline, Gravar ▸ Parar, cartão | gate 7 (ui-testkit): Gravar → pincelar → Parar ⇒ componente + clipe + N etapas; arrastar ⇒ etapa move; editar cor ⇒ tela muda |

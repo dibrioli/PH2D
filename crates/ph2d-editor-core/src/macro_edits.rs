@@ -48,6 +48,12 @@ pub struct InspectorMacroInfo {
     pub gravacao: MacroGravacao,
     /// Quantos objectos estão escolhidos (a edição aplica-se ao activo).
     pub selected_count: usize,
+    /// Quantas etapas a gravação tem (as do painel MACROS).
+    pub etapas: usize,
+    /// A 1.ª etapa com edições, a contar de 0 (o cartão diz «editada desde a etapa N+1»).
+    pub editada_desde: Option<usize>,
+    /// O erro que chega ao artista: o da reprodução em cena vence o da leitura.
+    pub erro: Option<ErroDaMacroView>,
 }
 
 // ─── O painel MACROS e a linha de etapas (W5d, `docs/Macros/02_plano_W5.md` §5) ───────────────────

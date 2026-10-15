@@ -43,6 +43,7 @@ use ph2d_editor_core::factory_edits::{
     InspectorFactory, InspectorFactoryInfo, InspectorLifecycle, InspectorSpawnWhere,
 };
 use ph2d_editor_core::hud_edits::InspectorHudInfo;
+use ph2d_editor_core::macro_edits::{ErroDaMacroView, InspectorMacroInfo, MacroGravacao};
 use ph2d_editor_core::motion_input_edits::InspectorMotionInputInfo;
 use ph2d_editor_core::nav_edits::{
     InspectorNavAgent, InspectorNavCostArea, InspectorNavInfo, InspectorNavLink,
@@ -1223,6 +1224,23 @@ fn arma_o_top20() {
         tem_vida: false,
         selected_count: selecionados(),
     }));
+    // A MACRO (ADR-0186, W5d) — no estado que pinta MAIS linhas: o resumo, a «editada desde» e um
+    // erro com detalhe (a frase mais comprida do cartão).
+    insp::set_current_inspector_macro(Some(InspectorMacroInfo {
+        entity_bits: BITS,
+        modo: 1,
+        gravacao: MacroGravacao::Lida {
+            trilhas: vec![("painter".to_string(), 12), ("motion".to_string(), 4)],
+            duracao_us: 12_500_000,
+        },
+        selected_count: selecionados(),
+        etapas: 16,
+        editada_desde: Some(3),
+        erro: Some(ErroDaMacroView {
+            chave: "panel.macros.error.missing_preset",
+            detalhe: Some("Wet Paint \u{b7} Soft Round Watercolor".to_string()),
+        }),
+    }));
 }
 
 /// **Desarma as 29 portas.** ⚠️ Sem isto a varredura de fábrica passaria a medir um Inspector
@@ -1245,6 +1263,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_vida(None);
     insp::set_current_inspector_nav(None);
     insp::set_current_inspector_motion_input(None);
+    insp::set_current_inspector_macro(None);
     insp::set_current_inspector_name(None);
     insp::set_current_inspector_transform(None);
     insp::set_current_inspector_visibility(None);
@@ -1354,6 +1373,7 @@ pub const PORTAS: &[(&str, fn())] = &[
     ("motion_input", || {
         insp::set_current_inspector_motion_input(None)
     }),
+    ("macro", || insp::set_current_inspector_macro(None)),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

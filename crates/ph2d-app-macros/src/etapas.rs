@@ -208,7 +208,6 @@ pub fn edita(
         return Ok(false);
     };
     let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
-    let antes = crate::instala::segundos(&doc);
     let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
     let confere = if let CampoDaEtapa::Nome(n) = campo {
         let ancora = leitor(track)
@@ -224,25 +223,18 @@ pub fn edita(
             None => return Err(erros::sem_etapa()),
         }
     };
-    escreve(c, bits, &doc, antes);
+    escreve(c, bits, &doc);
     Ok(confere)
 }
 
-/// Grava `doc` na `Macro` de `bits` (só se mudou: o undo é por diff) e re-cronometra o clipe se a
-/// duração mudou.
-fn escreve(c: &mut Cena<'_>, bits: u64, doc: &MacroDoc, antes: f64) {
-    let e = Entity::from_bits(bits);
+/// Grava `doc` na `Macro` de `bits`, só se mudou (o undo é por diff). O clipe segue a duração pela
+/// sincronização (`Macros::sincroniza`): uma verdade só.
+fn escreve(c: &mut Cena<'_>, bits: u64, doc: &MacroDoc) {
     let bytes = ph2d_macro::codec::write(doc);
-    if let Some(mut m) = c.sim.world_mut().get_mut::<Macro>(e)
+    if let Some(mut m) = c.sim.world_mut().get_mut::<Macro>(Entity::from_bits(bits))
         && m.doc != bytes
     {
         m.doc = bytes;
-    }
-    let d = crate::instala::segundos(doc);
-    if (d - antes).abs() > 0.0
-        && let Some(clip) = crate::instala::clipe_de(c.timeline, bits)
-    {
-        c.timeline.retime_macro_clip(clip, bits, d);
     }
 }
 
@@ -258,10 +250,9 @@ pub fn assenta(c: &mut Cena<'_>, bits: u64, trilha: usize) -> Result<(), ErroDaM
         return Ok(());
     };
     let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
-    let antes = crate::instala::segundos(&doc);
     let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
     pi::assenta(track).map_err(|e| erros::do_painter(&e))?;
-    escreve(c, bits, &doc, antes);
+    escreve(c, bits, &doc);
     Ok(())
 }
 

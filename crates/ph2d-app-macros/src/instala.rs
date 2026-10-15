@@ -53,8 +53,16 @@ pub fn instala(
     if let Ok(mut e) = c.sim.world_mut().get_entity_mut(Entity::from_bits(dono)) {
         e.insert(Macro { doc: bytes, modo });
     }
-    let tl = &mut *c.timeline;
-    // O clipe da macro fica ACTIVO: a linha «Macro steps» da Timeline mostra-se logo.
+    // Criar ou re-cronometrar o clipe é UM passo da pilha da Timeline (o undo dos clipes é o dela);
+    // a `Macro` entra no diff do mundo. O clipe da macro fica ACTIVO: a linha «Macro steps» mostra-se.
+    let st = &mut *c.timeline;
+    st.history.begin(&st.doc);
+    let r = clipe(&mut st.doc, dono, d);
+    st.history.commit_if_changed(&st.doc);
+    r
+}
+
+fn clipe(tl: &mut TimelineDoc, dono: u64, d: f64) -> Result<usize, &'static str> {
     if let Some(clip) = clipe_de(tl, dono) {
         tl.retime_macro_clip(clip, dono, d);
         tl.set_active(clip);
@@ -67,4 +75,22 @@ pub fn instala(
     tl.set_active_loop_for(true, Some((0.0, d)));
     tl.set_autoplay(clip, true);
     Ok(clip)
+}
+
+/// As durações que tocam, por objecto — refeitas só quando os bytes da `Macro` mudam (a sincronização
+/// do clipe corre a cada quadro).
+#[derive(Default)]
+pub struct Duracoes(std::collections::BTreeMap<u64, (Vec<u8>, f64)>);
+
+impl Duracoes {
+    pub fn de(&mut self, bits: u64, bytes: &[u8]) -> f64 {
+        if let Some((b, d)) = self.0.get(&bits)
+            && b == bytes
+        {
+            return *d;
+        }
+        let d = ph2d_macro::codec::read(bytes).map_or(0.0, |doc| segundos(&doc));
+        self.0.insert(bits, (bytes.to_vec(), d));
+        d
+    }
 }

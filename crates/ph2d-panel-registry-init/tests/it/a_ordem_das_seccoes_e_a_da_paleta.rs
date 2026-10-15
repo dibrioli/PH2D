@@ -32,6 +32,7 @@ const SECCAO_E_COMPONENTE: &[(&str, &str)] = &[
     ("insp_live_tags_section", "ph2d::ecs::Tags"),
     ("insp_live_particles_section", "ph2d::ecs::ParticleEmitter"),
     ("insp_live_anim_section", "ph2d::ecs::SpriteAnimations"),
+    ("insp_live_macro_section", "ph2d::ecs::Macro"),
     ("insp_live_anchor_section", "ph2d::ecs::NamedAnchorList"),
     ("insp_live_topdown_section", "ph2d::physics::TopDownPlayer"),
     (

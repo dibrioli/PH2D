@@ -65,6 +65,8 @@ pub(crate) struct LiveSnapshots {
     pub nav_info: Option<ph2d_editor_core::nav_edits::InspectorNavInfo>,
     /// O MOTION INPUT (ciclo 19). ENTRA no `any_section`: vale para qualquer objecto.
     pub motion_input_info: Option<ph2d_editor_core::motion_input_edits::InspectorMotionInputInfo>,
+    /// A MACRO (ADR-0186, W5d). ENTRA no `any_section`: vale para qualquer objecto.
+    pub macro_info: Option<ph2d_editor_core::macro_edits::InspectorMacroInfo>,
     /// ⭐ O snapshot do CÉREBRO (TOP-20 #15).
     pub statemachine_info: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     /// ⭐ O snapshot do SCRIPT (TOP-20 #16).
@@ -146,6 +148,7 @@ impl LiveSnapshots {
         let vida_info = crate::state_components::current_inspector_vida();
         let nav_info = crate::state_components::current_inspector_nav();
         let motion_input_info = crate::state_components::current_inspector_motion_input();
+        let macro_info = crate::state_components::current_inspector_macro();
         let statemachine_info = crate::state_components::current_inspector_statemachine();
         let script_info = crate::state_components::current_inspector_script();
         let particles_info = crate::state_components::current_inspector_particles();
@@ -185,6 +188,7 @@ impl LiveSnapshots {
             vida_info.is_some(),
             nav_info.is_some(),
             motion_input_info.is_some(),
+            macro_info.is_some(),
             statemachine_info.is_some(),
             script_info.is_some(),
             particles_info.is_some(),
@@ -222,6 +226,7 @@ impl LiveSnapshots {
             vida_info,
             nav_info,
             motion_input_info,
+            macro_info,
             statemachine_info,
             script_info,
             particles_info,

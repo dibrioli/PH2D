@@ -28,6 +28,7 @@ pub(crate) fn populate_das_waves(store: &mut WidgetStore) {
     super::populate_vida::populate_vida(store);
     super::populate_nav::populate_nav(store);
     super::populate_motion_input::populate_motion_input(store);
+    super::populate_macro::populate_macro(store);
     super::populate_tween::populate_tween(store);
     super::populate_path_follow::populate_path_follow(store);
     super::populate_statemachine::populate_statemachine(store);

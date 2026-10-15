@@ -64,6 +64,14 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_as_tags(),
         desarma: desarma_as_tags,
     },
+    // O painel MACROS (ADR-0186, W5d) com um objecto gravado e editado: o botão Gravar, a linha de
+    // pronto, o resumo, a linha «editada desde» e as três etapas.
+    #[cfg(feature = "panel-macros")]
+    Armacao {
+        painel: "macros",
+        arma: |_| arma_as_macros(),
+        desarma: desarma_as_macros,
+    },
     // ⛔⛔ **O painel de params do Motion SAIU do app** (`line/motion-value`, ordem do dono de
     //    2026-09-17: os params vivem NO CARTÃO). A armação dele vivia aqui e mediu as `828`
     //    entradas do catálogo de params por largura — ⚠️ e essa medição **perdeu a superfície**,
@@ -209,4 +217,50 @@ fn arma_as_tags() {
 
 fn desarma_as_tags() {
     ph2d_panel_tags::set_current_tags(ph2d_editor_core::tags_edits::TagsPanelInfo::default());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// AS MACROS
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Um objecto com três pinceladas gravadas, editado desde a 1.ª, e o Painter pronto a gravar.
+#[cfg(feature = "panel-macros")]
+fn arma_as_macros() {
+    use ph2d_editor_core::macro_edits::{
+        EtapaView, FamiliaDaMacro, MacroObjetoView, MacroPanelInfo, PropsDaEtapa, TipoDaEtapaView,
+    };
+    let etapa = |k: usize| {
+        #[expect(clippy::cast_precision_loss, reason = "k < 3")]
+        let t = k as f64 * 0.5;
+        EtapaView {
+            trilha: 0,
+            k,
+            familia: FamiliaDaMacro::Painter,
+            tipo: TipoDaEtapaView::Pincelada(k + 1),
+            nome: None,
+            t0_s: t,
+            t1_s: t + 0.5,
+            espera_s: 0.0,
+            props: PropsDaEtapa::Pincelada {
+                cor: [10, 20, 30],
+                tamanho_px: 12.0,
+            },
+        }
+    };
+    ph2d_panel_macros::set_current_macros(MacroPanelInfo {
+        pode_gravar: Some(FamiliaDaMacro::Painter),
+        objeto: Some(MacroObjetoView {
+            entity_bits: 1,
+            duracao_s: 2.0,
+            etapas: (0..3).map(etapa).collect(),
+            editada_desde: Some(1),
+            erro: None,
+        }),
+        ..Default::default()
+    });
+}
+
+#[cfg(feature = "panel-macros")]
+fn desarma_as_macros() {
+    ph2d_panel_macros::set_current_macros(ph2d_editor_core::macro_edits::MacroPanelInfo::default());
 }

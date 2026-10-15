@@ -137,6 +137,9 @@ pub(crate) fn apply_event(
     if crate::event_motion_input::apply_motion_input_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    if crate::event_macro::apply_macro_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ **O CÉREBRO** (TOP-20 #15) — ele precisa do estado do painel (as duas listas têm uma
     // linha aberta cada), como a tabela de acções e os timers.
     if crate::event_statemachine::apply_statemachine_event(state, host, ev) {

@@ -396,6 +396,25 @@ pub(crate) fn current_inspector_particles() -> Option<InspectorParticlesInfo> {
 }
 
 thread_local! {
+    /// O snapshot da secção MACRO (ADR-0186, W5d).
+    static CURRENT_INSPECTOR_MACRO: std::cell::RefCell<
+        Option<ph2d_editor_core::macro_edits::InspectorMacroInfo>,
+    > = const { std::cell::RefCell::new(None) };
+}
+
+/// O snapshot da MACRO — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_macro(
+    info: Option<ph2d_editor_core::macro_edits::InspectorMacroInfo>,
+) {
+    CURRENT_INSPECTOR_MACRO.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_macro() -> Option<ph2d_editor_core::macro_edits::InspectorMacroInfo>
+{
+    CURRENT_INSPECTOR_MACRO.with(|c| c.borrow().clone())
+}
+
+thread_local! {
     /// O snapshot da secção MOTION INPUT (ciclo 19 do Motion).
     static CURRENT_INSPECTOR_MOTION_INPUT: std::cell::RefCell<Option<InspectorMotionInputInfo>> =
         const { std::cell::RefCell::new(None) };

@@ -15,23 +15,44 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::macro_edits::{
     self as m, ErroDaMacroView, FamiliaDaMacro, MacroObjetoView, MacroPanelInfo, MacroRequest,
 };
-use ph2d_timeline::{TimelineDoc, TimelineIntent};
+use ph2d_timeline::{TimelineDoc, TimelineIntent, TimelineState};
 use ph2d_tool_painter::PainterTool;
 use sessao::Sessao;
 use std::cell::RefCell;
 
-/// As famílias que gravam, como a shell as tem neste quadro. `painter` só quando o Painter é a
-/// ferramenta activa.
+/// As famílias que gravam, como a shell as tem neste quadro. O Painter chega SEMPRE (uma gravação
+/// em curso tem de receber o Parar mesmo depois de o artista trocar de ferramenta); só arma quando é
+/// a ferramenta activa (`painter_activo`).
 pub struct Familias<'a> {
     pub painter: Option<&'a mut PainterTool>,
+    pub painter_activo: bool,
     pub motion: &'a mut MotionState,
+}
+
+impl Familias<'_> {
+    fn quem_grava(&self) -> Result<FamiliaDaMacro, &'static str> {
+        quem_grava(
+            self.painter.as_deref().filter(|_| self.painter_activo),
+            self.motion,
+        )
+    }
 }
 
 /// O que um pedido muda fora das famílias.
 pub struct Cena<'a> {
     pub sim: &'a mut SimWorld,
-    pub timeline: &'a mut TimelineDoc,
+    /// O documento E a história: criar o clipe é um passo da pilha da Timeline.
+    pub timeline: &'a mut TimelineState,
     pub intents: &'a mut Vec<TimelineIntent>,
+}
+
+/// O que o cartão MACRO do Inspector mostra da gravação, além do que o componente guarda.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResumoDaMacro {
+    pub etapas: usize,
+    /// A 1.ª etapa com edições, a contar de 0.
+    pub editada_desde: Option<usize>,
+    pub erro: Option<ErroDaMacroView>,
 }
 
 /// O estado da família MACROS.
@@ -46,6 +67,7 @@ pub struct Macros {
     /// A trilha com uma edição de valor por conferir: `(bits, trilha)`.
     por_assentar: Option<(u64, usize)>,
     vistas: etapas::Cache,
+    duracoes: instala::Duracoes,
 }
 
 thread_local! {
@@ -107,6 +129,36 @@ impl Macros {
         if let Some(s) = self.sessao.as_mut() {
             s.quadro(f, agora_us);
         }
+        self.sincroniza(c);
+    }
+
+    /// **O clipe acompanha a macro**: a duração dele é DERIVADA da trilha que toca, e re-cronometra-se
+    /// a cada quadro enquanto ele tiver a forma que o Parar lhe deu
+    /// ([`TimelineDoc::macro_clip_identity_end`]). Uma só verdade (a `Macro`, no diff do mundo): o undo
+    /// do mundo devolve a macro antiga e o clipe segue-a no quadro seguinte, sem passo de undo
+    /// próprio que pudesse discordar.
+    fn sincroniza(&mut self, c: &mut Cena<'_>) {
+        let macros: Vec<(u64, Vec<u8>)> = {
+            let mut q = c
+                .sim
+                .world_mut()
+                .query::<(ph2d_ecs::Entity, &ph2d_ecs::Macro)>();
+            q.iter(c.sim.world())
+                .map(|(e, m)| (e.to_bits(), m.doc.clone()))
+                .collect()
+        };
+        for (bits, bytes) in macros {
+            let Some(clip) = instala::clipe_de(&c.timeline.doc, bits) else {
+                continue;
+            };
+            let Some(fim) = c.timeline.doc.macro_clip_identity_end(clip, bits) else {
+                continue;
+            };
+            let d = self.duracoes.de(bits, &bytes);
+            if (d - fim).abs() > 1e-6 {
+                c.timeline.doc.retime_macro_clip(clip, bits, d);
+            }
+        }
     }
 
     fn aplica(&mut self, r: MacroRequest, f: &mut Familias<'_>, c: &mut Cena<'_>, agora_us: u64) {
@@ -116,7 +168,8 @@ impl Macros {
                     self.recusa = Some(m::MACRO_RECUSA_JA_GRAVA);
                     return;
                 }
-                let r = quem_grava(f.painter.as_deref(), f.motion)
+                let r = f
+                    .quem_grava()
                     .and_then(|fam| Sessao::abre(fam, f, c.sim, agora_us));
                 match r {
                     Ok(s) => {
@@ -192,6 +245,36 @@ impl Macros {
             .collect()
     }
 
+    /// A última edição recusada, se foi neste objecto.
+    fn erro_da_edicao(&self, bits: u64) -> Option<ErroDaMacroView> {
+        self.erro_de_edicao
+            .as_ref()
+            .filter(|(b, _)| *b == bits)
+            .map(|(_, e)| e.clone())
+    }
+
+    /// **O resumo do cartão MACRO do Inspector**: quantas etapas, a 1.ª editada e o erro — pela
+    /// MESMA cache e pela MESMA precedência do painel ([`Self::info`]: a edição recusada, depois a
+    /// reprodução em cena, depois a leitura). `None` = o objecto não tem `Macro`.
+    pub fn resumo(
+        &mut self,
+        sim: &SimWorld,
+        bits: u64,
+        erro_em_cena: Option<ErroDaMacroView>,
+    ) -> Option<ResumoDaMacro> {
+        let bytes = &sim
+            .world()
+            .get::<ph2d_ecs::Macro>(ph2d_ecs::Entity::from_bits(bits))?
+            .doc;
+        let edicao = self.erro_da_edicao(bits);
+        let v = self.vistas.de(bits, bytes);
+        Some(ResumoDaMacro {
+            etapas: v.etapas.len(),
+            editada_desde: v.editada_desde,
+            erro: edicao.or(erro_em_cena).or_else(|| v.erro.clone()),
+        })
+    }
+
     /// **O instantâneo do painel**. `escolhido` = os bits do objecto escolhido; `erro_em_cena` = o
     /// erro do palco dele (a reprodução), que só a shell alcança.
     pub fn info(
@@ -202,7 +285,7 @@ impl Macros {
         erro_em_cena: Option<ErroDaMacroView>,
     ) -> MacroPanelInfo {
         let gravando = self.gravando();
-        let (pode_gravar, recusa_agora) = match quem_grava(f.painter.as_deref(), f.motion) {
+        let (pode_gravar, recusa_agora) = match f.quem_grava() {
             Ok(fam) => (Some(fam), None),
             Err(k) => (None, Some(k)),
         };
@@ -211,14 +294,9 @@ impl Macros {
                 .world()
                 .get::<ph2d_ecs::Macro>(ph2d_ecs::Entity::from_bits(bits))?
                 .doc;
+            let edicao = self.erro_da_edicao(bits);
             let v = self.vistas.de(bits, bytes);
-            let erro = self
-                .erro_de_edicao
-                .as_ref()
-                .filter(|(b, _)| *b == bits)
-                .map(|(_, e)| e.clone())
-                .or(erro_em_cena)
-                .or_else(|| v.erro.clone());
+            let erro = edicao.or(erro_em_cena).or_else(|| v.erro.clone());
             Some(MacroObjetoView {
                 entity_bits: bits,
                 duracao_s: v.duracao_s,

@@ -40,6 +40,7 @@ mod event_instance;
 mod event_joint;
 /// ⭐ A LUZ (Luz 2D, W4).
 mod event_luz;
+mod event_macro;
 mod event_motion_input;
 mod event_nav;
 mod event_ordering;
@@ -89,6 +90,7 @@ mod paint_head;
 mod paint_optional;
 mod paint_optional_factory;
 mod paint_optional_luz;
+mod paint_optional_macro;
 mod paint_optional_motion_input;
 mod paint_optional_movers;
 mod paint_optional_nav;
@@ -120,6 +122,7 @@ mod populate_hud;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
 mod populate_instance;
 mod populate_luz;
+mod populate_macro;
 mod populate_motion_input;
 mod populate_nav;
 mod populate_parallax;
@@ -280,10 +283,10 @@ pub use state_components::{
     set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_corpo_luz,
     set_current_inspector_counter_watch, set_current_inspector_emitter,
     set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_luz,
-    set_current_inspector_motion_input, set_current_inspector_nav, set_current_inspector_parallax,
-    set_current_inspector_particles, set_current_inspector_path_follow,
-    set_current_inspector_projectile, set_current_inspector_ray, set_current_inspector_script,
-    set_current_inspector_sequence, set_current_inspector_shake,
+    set_current_inspector_macro, set_current_inspector_motion_input, set_current_inspector_nav,
+    set_current_inspector_parallax, set_current_inspector_particles,
+    set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
+    set_current_inspector_script, set_current_inspector_sequence, set_current_inspector_shake,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
     set_current_inspector_tween, set_current_inspector_vida, set_current_inspector_weapon,
 };

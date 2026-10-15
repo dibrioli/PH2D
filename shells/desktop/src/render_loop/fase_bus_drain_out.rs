@@ -479,6 +479,9 @@ pub(in crate::render_loop) struct DrainOut {
         u64,
         ph2d_editor_core::motion_input_edits::MotionInputFieldEdit,
     )>,
+    /// As edições da secção MACRO (ADR-0186, W5d).
+    pub(in crate::render_loop) macro_edits:
+        Vec<(u64, ph2d_editor_core::macro_edits::MacroFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(in crate::render_loop) tween_edits:
         Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,

@@ -147,6 +147,30 @@ impl TimelineDoc {
         Ok(c)
     }
 
+    /// **O fim do clipe de uma macro enquanto ele tem a forma que o Parar lhe deu** (W5d): a faixa
+    /// [`PropKind::MacroTime`] é só `(0, 0) → (D, D)` linear (ou `(0, 0)` com `D = 0`) e a duração
+    /// cortada é `D`. `None` = o artista mexeu-lhe (uma câmara lenta deliberada, outra duração): a
+    /// macro deixa de o re-cronometrar.
+    #[must_use]
+    pub fn macro_clip_identity_end(&self, c: usize, owner: u64) -> Option<f64> {
+        let nc = self.clips.get(c)?;
+        let target = self.binding_for(owner, PropKind::MacroTime)?.target;
+        let keys = nc.clip.track(target)?.keys();
+        let identidade = |k: &ph2d_anim::Key| {
+            let t = k.t.to_seconds();
+            matches!(k.value, AnimValue::Float(v)
+                if (f64::from(v) - t).abs() <= f64::from(f32::EPSILON) * t.max(1.0))
+                && k.interp == Interp::Linear
+        };
+        let d = match keys {
+            [a] if a.t.to_seconds() == 0.0 && identidade(a) => 0.0,
+            [a, b] if a.t.to_seconds() == 0.0 && identidade(a) && identidade(b) => b.t.to_seconds(),
+            _ => return None,
+        };
+        let len = nc.length_override.unwrap_or(0.0);
+        ((len - d).abs() < 1e-6).then_some(d)
+    }
+
     /// ⭐ **Re-cronometra o clipe de uma macro** para `duracao_s` (W5d: o Parar de uma regravação, uma
     /// espera editada): a faixa [`PropKind::MacroTime`] volta a ser só `(0, 0) → (D′, D′)`, a duração
     /// cortada passa a `D′` e cada laço que acabava no fim antigo acaba no novo — numa chamada, para

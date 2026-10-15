@@ -49,6 +49,9 @@ pub fn gravacao(bytes: &[u8]) -> MacroGravacao {
 }
 
 /// ⭐ **Constrói o instantâneo** da entidade escolhida, ou `None` se ela não tem o componente.
+///
+/// As etapas, a «editada desde» e o erro são da família MACROS (`ph2d_app_macros::Macros::resumo`),
+/// que esta crate não vê: saem a zero e a shell completa-os.
 #[must_use]
 pub fn build_info(sim: &SimWorld, bits: u64, selected_count: usize) -> Option<InspectorMacroInfo> {
     let m = sim
@@ -59,6 +62,9 @@ pub fn build_info(sim: &SimWorld, bits: u64, selected_count: usize) -> Option<In
         modo: u8_do_modo(m.modo),
         gravacao: gravacao(&m.doc),
         selected_count,
+        etapas: 0,
+        editada_desde: None,
+        erro: None,
     })
 }
 

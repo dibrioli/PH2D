@@ -81,6 +81,8 @@ pub(super) struct InspectorIntents {
         u64,
         ph2d_editor_core::motion_input_edits::MotionInputFieldEdit,
     )>,
+    /// As edições da secção MACRO (ADR-0186, W5d).
+    pub(super) macro_edits: Vec<(u64, ph2d_editor_core::macro_edits::MacroFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(super) tween_edits: Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,
     /// ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23).
@@ -177,6 +179,7 @@ impl crate::App {
             nav_edits,
             luz_edits,
             motion_input_edits,
+            macro_edits,
             tween_edits,
             path_follow_edits,
             statemachine_edits,
@@ -287,6 +290,7 @@ impl crate::App {
             &nav_edits,
             &luz_edits,
             &motion_input_edits,
+            &macro_edits,
             &tween_edits,
             &path_follow_edits,
             &statemachine_edits,

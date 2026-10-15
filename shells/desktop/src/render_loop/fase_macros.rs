@@ -21,37 +21,51 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        let pintor = ph2d_editor_core::ToolId::new("painter");
+        let painter_activo = gfx.tools.active().is_some_and(|t| t.id() == pintor);
         let painter = gfx
             .tools
-            .active_mut()
+            .tool_by_id_mut(&pintor)
             .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>());
         let mut f = Familias {
             painter,
+            painter_activo,
             motion: &mut gfx.motion,
         };
         let mut c = Cena {
             sim: &mut gfx.sim,
-            timeline: &mut self.timeline.doc,
+            timeline: &mut self.timeline,
             intents: &mut self.timeline_intents,
         };
         let agora = agora_us();
         ph2d_app_macros::com(|m| m.quadro(&mut f, &mut c, agora));
+        let hero = gfx.hero_screen.as_ref();
+        let escolhido = hero.and_then(|h| h.gizmo.selection);
+        // O erro da reprodução em cena: só a shell alcança os palcos.
+        let erro = escolhido.and_then(|b| {
+            gfx.painter_macros
+                .erro_de(b)
+                .map(erros::do_painter)
+                .or_else(|| self.motion_shell.palcos.erro_de(b).map(erros::do_motion))
+        });
+        // O cartão MACRO do Inspector: o componente (`build_info`) e as etapas da família.
+        #[cfg(feature = "panel-inspector")]
+        ph2d_panel_inspector::set_current_inspector_macro(escolhido.and_then(|b| {
+            let quantos = hero.map_or(0, |h| h.gizmo.selected_len());
+            let mut i = ph2d_app_components::macro_inspector::build_info(c.sim, b, quantos)?;
+            if let Some(r) = ph2d_app_macros::com(|m| m.resumo(c.sim, b, erro.clone())) {
+                (i.etapas, i.editada_desde, i.erro) = (r.etapas, r.editada_desde, r.erro);
+            }
+            Some(i)
+        }));
         #[cfg(feature = "panel-macros")]
         {
             use ph2d_editor_core::panel::Panel;
-            let Some(hero) = gfx.hero_screen.as_ref() else {
-                return;
-            };
-            if !hero.is_panel_visible(<ph2d_panel_macros::MacrosPanel as Panel>::ID) {
+            if !hero
+                .is_some_and(|h| h.is_panel_visible(<ph2d_panel_macros::MacrosPanel as Panel>::ID))
+            {
                 return;
             }
-            let escolhido = hero.gizmo.selection;
-            let erro = escolhido.and_then(|b| {
-                gfx.painter_macros
-                    .erro_de(b)
-                    .map(erros::do_painter)
-                    .or_else(|| self.motion_shell.palcos.erro_de(b).map(erros::do_motion))
-            });
             let info = ph2d_app_macros::com(|m| m.info(&f, c.sim, escolhido, erro));
             ph2d_panel_macros::set_current_macros(info);
         }

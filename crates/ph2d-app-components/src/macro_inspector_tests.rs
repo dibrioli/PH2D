@@ -55,6 +55,11 @@ fn o_instantaneo_le_a_gravacao() {
             duracao_us: 40_000,
         }
     );
+    assert_eq!(
+        (info.etapas, info.editada_desde, info.erro),
+        (0, None, None),
+        "as etapas são da família MACROS: a shell completa-as"
+    );
     assert_eq!(gravacao(&[]), MacroGravacao::Vazia);
 }
 

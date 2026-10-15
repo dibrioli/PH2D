@@ -1096,7 +1096,10 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    VALOR e não conta.
     // ⬆️ `87 → 88` em 2026-10-15 (CodeEditor E11) — **capacidade nova**: o seletor dos scripts do
     //    projeto no cartão Script (escolher um script que já existe; as opções são as do enum).
-    ("inspector", 88),
+    // ⬆️ `88 → 89` em 2026-10-14 (Macros, W5d) — **capacidade nova**: o cartão MACRO e o seu
+    //    «Edit steps…», que abre o painel MACROS (um comando a sério). O *Playback* é uma ESCOLHA
+    //    declarada e não conta. (Somado ao `88` do main, que traz o seletor de scripts do CodeEditor.)
+    ("inspector", 89),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),

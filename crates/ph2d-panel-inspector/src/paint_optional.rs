@@ -292,6 +292,15 @@ pub(crate) fn push_optional_sections<'a>(
             )
         },
     );
+    // A MACRO (ADR-0186, W5d) — família ANIMAÇÃO pelo catálogo (`ph2d::ecs::Macro`).
+    crate::paint_optional_macro::push_macro_section(
+        plano,
+        store,
+        inner_x,
+        inner_w,
+        header_h,
+        snaps.macro_info.as_ref(),
+    );
     // ── ÂNCORAS (7) ───────────────────────────────────────────────────────────────────────────
     crate::paint_frame_shared::push_anchor_section(
         plano,

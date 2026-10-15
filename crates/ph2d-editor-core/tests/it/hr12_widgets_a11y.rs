@@ -864,6 +864,11 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint_optional_motion_input.rs",
         "a MOLDURA da seccao MOTION INPUT; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
     ),
+    // O mesmo molde para a MACRO (ADR-0186, W5d), com a isenção MEDIDA da mesma forma.
+    (
+        "ph2d-panel-inspector/src/paint_optional_macro.rs",
+        "a MOLDURA da seccao MACRO; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     (
         "ph2d-panel-inspector/src/paint_optional_top20_tail.rs",
         "a cauda da CAUDA — a moldura da seccao TWEEN, cortada do irmao pelo teto de ficheiro de painel; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",

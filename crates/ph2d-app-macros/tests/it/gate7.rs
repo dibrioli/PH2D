@@ -14,7 +14,7 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_macros::{MacrosPanel, MacrosPanelState, ids, set_current_macros};
-use ph2d_timeline::{TimelineDoc, TimelineIntent};
+use ph2d_timeline::{TimelineIntent, TimelineState};
 use ph2d_tool_painter::{PaintMedia, PainterTool};
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -40,7 +40,7 @@ struct Banca {
     sim: SimWorld,
     painter: PainterTool,
     motion: MotionState,
-    tl: TimelineDoc,
+    tl: TimelineState,
     intents: Vec<TimelineIntent>,
     m: Macros,
     host: MockPanelHost,
@@ -48,6 +48,8 @@ struct Banca {
     agora: u64,
     bits: u64,
     rects: Vec<(NodeId, Rect)>,
+    /// O Painter é a ferramenta activa.
+    activo: bool,
 }
 
 impl Banca {
@@ -66,7 +68,7 @@ impl Banca {
             sim,
             painter,
             motion,
-            tl: TimelineDoc::new(),
+            tl: TimelineState::default(),
             intents: Vec::new(),
             m: Macros::default(),
             host: MockPanelHost::with_panel::<MacrosPanel>(),
@@ -74,6 +76,7 @@ impl Banca {
             agora: 0,
             bits,
             rects: Vec::new(),
+            activo: true,
         }
     }
 
@@ -84,6 +87,7 @@ impl Banca {
         self.agora += QUADRO_US;
         let mut f = Familias {
             painter: Some(&mut self.painter),
+            painter_activo: self.activo,
             motion: &mut self.motion,
         };
         let mut c = Cena {
@@ -98,6 +102,7 @@ impl Banca {
     fn pinta(&mut self) {
         let f = Familias {
             painter: Some(&mut self.painter),
+            painter_activo: self.activo,
             motion: &mut self.motion,
         };
         let info = self.m.info(&f, &self.sim, Some(self.bits), None);
@@ -209,11 +214,12 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     .unwrap();
     let duracao = doc.duration().0 as f64 / 1e6;
     let clip =
-        b.tl.clip_named(b.bits, ph2d_i18n::tr("app.macros.clip_name"))
+        b.tl.doc
+            .clip_named(b.bits, ph2d_i18n::tr("app.macros.clip_name"))
             .expect("Parar cria o clipe na animação do objecto");
-    assert!((b.tl.clip_length_override(clip).unwrap() - duracao).abs() < 1e-9);
+    assert!((b.tl.doc.clip_length_override(clip).unwrap() - duracao).abs() < 1e-9);
     assert!(
-        b.tl.autoplay_entries().contains(&(b.bits, clip)),
+        b.tl.doc.autoplay_entries().contains(&(b.bits, clip)),
         "o clipe nasce em Autoplay"
     );
 
@@ -261,11 +267,11 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
 
     // ARRASTAR a etapa 2 na linha «Macro steps» da Timeline ⇒ ela e a 3 andam; a 1 fica.
     assert_eq!(
-        b.tl.active_index(),
+        b.tl.doc.active_index(),
         clip,
         "o Parar deixa o clipe da macro activo"
     );
-    let linha = b.m.etapas_na_linha(&b.sim, &b.tl);
+    let linha = b.m.etapas_na_linha(&b.sim, &b.tl.doc);
     assert_eq!(linha.len(), 3, "a linha mostra as etapas do clipe activo");
     let snap = ph2d_timeline::TimelineViewSnapshot {
         fps: 60.0,
@@ -305,7 +311,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
         b.m.pede(r);
     }
     b.quadro();
-    let depois = b.m.etapas_na_linha(&b.sim, &b.tl);
+    let depois = b.m.etapas_na_linha(&b.sim, &b.tl.doc);
     let anda = |k: usize| depois[k].t0 - linha[k].t0;
     assert!(anda(0).abs() < 1e-9, "a etapa 1 não anda: {}", anda(0));
     assert!(
@@ -319,9 +325,87 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
         anda(2),
         anda(1)
     );
-    let d = b.tl.clip_length_override(clip).unwrap();
+    let d = b.tl.doc.clip_length_override(clip).unwrap();
     assert!(
         (d - (duracao + anda(1))).abs() < 1e-6,
         "o clipe acompanha a duração: {d}"
+    );
+
+    // ⭐ O UNDO das duas pilhas. A macro é do diff do mundo: devolvê-la à de antes do arrasto (o
+    // que o Ctrl+Z global faz) devolve o clipe à duração antiga no quadro seguinte — ele é DERIVADO.
+    let mut doc = ph2d_macro::codec::read(
+        &b.sim
+            .world()
+            .get::<Macro>(Entity::from_bits(b.bits))
+            .unwrap()
+            .doc,
+    )
+    .unwrap();
+    doc.tracks[0]
+        .edicoes
+        .iter_mut()
+        .for_each(|e| e.espera_us = 0);
+    b.sim
+        .world_mut()
+        .get_mut::<Macro>(Entity::from_bits(b.bits))
+        .unwrap()
+        .doc = ph2d_macro::codec::write(&doc);
+    b.quadro();
+    let d = b.tl.doc.clip_length_override(clip).unwrap();
+    assert!(
+        (d - duracao).abs() < 1e-6,
+        "desfeita a espera, o clipe volta a {duracao}: {d}"
+    );
+    // O clipe é da pilha da Timeline: o Parar foi UM passo dela; desfazê-lo tira o clipe e deixa a
+    // Macro (a do mundo desfaz-se pela pilha do mundo).
+    assert!(
+        b.tl.history.can_undo(),
+        "o Parar é um passo da pilha da Timeline"
+    );
+    assert!(b.tl.undo());
+    assert!(
+        b.tl.doc
+            .clip_named(b.bits, ph2d_i18n::tr("app.macros.clip_name"))
+            .is_none(),
+        "desfazer o Parar na Timeline tira o clipe"
+    );
+    assert!(
+        b.sim
+            .world()
+            .get::<Macro>(Entity::from_bits(b.bits))
+            .is_some()
+    );
+}
+
+/// Trocar de ferramenta a meio de uma gravação do Painter não a deixa órfã: o Parar chega-lhe na
+/// mesma (a shell passa o Painter sempre; só ARMAR exige que ele seja o activo).
+#[test]
+fn gate7_parar_depois_de_trocar_de_ferramenta_fecha_a_gravacao_do_painter() {
+    let mut b = Banca::nova();
+    b.pinta();
+    b.carrega(ids::MACROS_RECORD);
+    b.quadro();
+    let l = LADO as f32;
+    b.pincelada([0.1 * l, 0.5 * l], [0.9 * l, 0.5 * l]);
+    b.activo = false;
+    b.pinta();
+    b.carrega(ids::MACROS_STOP);
+    b.quadro();
+    assert!(
+        !b.painter.macro_gravando(),
+        "o Painter ficou a gravar depois do Parar"
+    );
+    assert_eq!(b.m.gravando(), None);
+    assert!(
+        b.sim
+            .world()
+            .get::<Macro>(Entity::from_bits(b.bits))
+            .is_some()
+    );
+    // E com outra ferramenta activa ninguém arma o Painter.
+    b.pinta();
+    assert!(
+        b.rect(ids::MACROS_RECORD).is_none(),
+        "sem o Painter activo não há quem grave"
     );
 }

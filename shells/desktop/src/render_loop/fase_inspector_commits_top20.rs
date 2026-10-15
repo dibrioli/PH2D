@@ -50,6 +50,7 @@ pub(super) fn aplicar(
         u64,
         ph2d_editor_core::motion_input_edits::MotionInputFieldEdit,
     )],
+    macros: &[(u64, ph2d_editor_core::macro_edits::MacroFieldEdit)],
     tween: &[(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)],
     path_follow: &[(
         u64,
@@ -70,6 +71,7 @@ pub(super) fn aplicar(
         | ph2d_app_components::nav_inspector::apply_all(sim, nav)
         | ph2d_app_light2d::inspector::apply_all(sim, luz)
         | ph2d_app_components::motion_input_inspector::apply_all(sim, motion_input)
+        | ph2d_app_components::macro_inspector::apply_all(sim, macros)
         | ph2d_app_components::tween_inspector::apply_all(sim, tween)
         | ph2d_app_components::path_follow_inspector::apply_all(sim, path_follow)
         | super::statemachine_commits::aplicar(sim, statemachine)

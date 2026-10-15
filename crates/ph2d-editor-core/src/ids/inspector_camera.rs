@@ -154,5 +154,9 @@ pub const INSP_LIVE_LUZ_SEM_LUZ_GRIP: NodeId = hash_node_id("insp_live_luz_sem_l
 pub const INSP_LIVE_MOTION_INPUT_SECTION: NodeId = hash_node_id("insp_live_motion_input_section");
 /// A pega de arrasto da secção MOTION INPUT.
 pub const INSP_LIVE_MOTION_INPUT_GRIP: NodeId = hash_node_id("insp_live_motion_input_grip");
+/// O cabeçalho dobrável da secção MACRO — a gravação do objecto (ADR-0186, W5d).
+pub const INSP_LIVE_MACRO_SECTION: NodeId = hash_node_id("insp_live_macro_section");
+/// A pega de arrasto da secção MACRO.
+pub const INSP_LIVE_MACRO_GRIP: NodeId = hash_node_id("insp_live_macro_grip");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

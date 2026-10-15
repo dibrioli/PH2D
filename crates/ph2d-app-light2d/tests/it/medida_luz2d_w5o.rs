@@ -465,7 +465,10 @@ fn medida_luz2d_w5o_lastro() {
                 hrc_salta_o_vazio,
                 hrc_fio_por_sonda,
                 hrc_grade_3d,
-                ..w5u(c)
+                // `PH2D_W5U_E_CONES` · `PH2D_W5U_E_PARES`: só o entorno.
+                hrc_cones_por_fio: num("PH2D_W5U_E_CONES", w5u(c).hrc_cones_por_fio),
+                hrc_pares_na_subida: num("PH2D_W5U_E_PARES", w5u(c).hrc_pares_na_subida),
+                ..c
             }),
         )
     };
@@ -579,7 +582,10 @@ fn medida_luz2d_w5o_lastro() {
         }
     }
     let rotulo = format!(
-        "{medido:?} · dicas {dicas:?} duas vezes {ensaio} lastro {caso} ({} texturas, vivo {})",
+        "{medido:?} · grade {}×{} · entorno {:?} · dicas {dicas:?} duas vezes {ensaio} lastro {caso} ({} texturas, vivo {})",
+        v.grade.largura,
+        v.grade.altura,
+        e.as_ref().map(|e| (e.grade.largura, e.grade.altura)),
         lastro.len(),
         vivo.is_some()
     );

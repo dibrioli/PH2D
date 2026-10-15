@@ -44,3 +44,24 @@ fn uma_edicao_de_valor_fica_na_fita_enquanto_a_conferencia_passa() {
     );
     tela(&doc).expect("toca sem divergir");
 }
+
+/// O recurso da conferência: uma edição que muda as perguntas ao worker SEM mudar o tempo (aqui, um tique
+/// a mais acrescentado à mão) diverge pela fita; [`etapas::assenta`] tira essa etapa da gravação e a
+/// trilha toca.
+#[test]
+fn a_conferencia_que_diverge_tira_a_etapa_da_gravacao() {
+    use ph2d_tool_painter::macro_track::Passo;
+    let mut doc = grava_no_worker(N);
+    let ancora = etapas::etapas(&doc.tracks[0]).expect("lê-se")[3].etapa.inicio;
+    doc.tracks[0]
+        .edicao_mut(ancora)
+        .insercoes
+        .push((ancora, Passo::Tique(1000.0 / 60.0).codifica()));
+    assert!(
+        tela(&doc).is_err_and(|e| e.contains("Divergiu")),
+        "controlo: pela fita, um tique a mais diverge"
+    );
+    etapas::assenta(&mut doc.tracks[0]).expect("assenta");
+    assert!(doc.tracks[0].edicoes[0].sai_da_gravacao, "a etapa saiu da gravação");
+    tela(&doc).expect("e agora toca");
+}

@@ -68,6 +68,32 @@ fn editar_a_cor_de_uma_pincelada_e_grava_la_com_essa_cor() {
     bate(&editada, &trilha(&ps, &[0; 4]), &original);
 }
 
+/// A cor de uma pincelada editada não passa à seguinte que HERDAVA a dela (não gravou cor própria): a
+/// cor de antes volta depois do levantar.
+#[test]
+fn a_cor_editada_nao_passa_a_pincelada_seguinte_que_a_herdava() {
+    let mut herda = SPLASH;
+    herda[3].cor = SPLASH[2].cor;
+    let mut base = trilha(&herda, &[0; 4]);
+    let todas = etapas::etapas(&base).expect("lê-se");
+    let cor_da_4a = (todas[2].etapa.fim..todas[3].etapa.fim)
+        .find(|&i| {
+            matches!(
+                super::passo::Passo::descodifica(&base.events[i].payload),
+                Ok(super::passo::Passo::Cor(_))
+            )
+        })
+        .expect("a 4.ª pincelada gravou a sua cor");
+    base.events.remove(cor_da_4a);
+    assert_eq!(etapas::etapas(&base).expect("lê-se")[3].cor, SPLASH[2].cor, "agora herda-a");
+    let mut editada = base.clone();
+    etapas::edita_cor(&mut editada, 2, VERDE).expect("é uma pincelada");
+    let mut ps = herda;
+    ps[2].cor = VERDE;
+    bate(&editada, &trilha(&ps, &[0; 4]), &base);
+    assert_eq!(etapas::etapas(&editada).expect("lê-se")[3].cor, SPLASH[2].cor);
+}
+
 #[test]
 fn editar_o_tamanho_de_uma_pincelada_e_grava_la_com_esse_tamanho() {
     let original = trilha(&SPLASH, &[0; 4]);

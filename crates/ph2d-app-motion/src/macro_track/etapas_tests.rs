@@ -124,3 +124,146 @@ fn editar_o_valor_de_um_param_e_grava_lo_com_esse_valor() {
         outro => panic!("{outro:?}"),
     }
 }
+
+mod leitor {
+    //! O leitor sobre trilhas FEITAS À MÃO: as sessões e os arrastos que a cena `=2` não tem (cada
+    //! gesto dela é um quadro só).
+    use super::super::Destino;
+    use super::super::etapas::LeitorDoMotion;
+    use super::super::passo::{Alvo, Intencao, IntencaoDeParam, Passo};
+    use ph2d_macro::{Event, LeitorDaFamilia, MacroTime, Track};
+
+    const DT: f64 = 1.0 / 60.0;
+
+    fn param(nome: &str, v: f64) -> Passo {
+        Passo::Params {
+            destino: Destino::No,
+            intencoes: vec![IntencaoDeParam::SetParam {
+                node: Alvo::Existente(1),
+                param: nome.to_owned(),
+                value: v,
+            }],
+        }
+    }
+
+    fn grafo(i: Vec<Intencao>) -> Passo {
+        Passo::Grafo {
+            nivel: None,
+            ajuda: false,
+            intencoes: i,
+        }
+    }
+
+    fn mover() -> Intencao {
+        Intencao::MoveNodes {
+            nodes: vec![Alvo::Existente(1)],
+            dx: 1.0,
+            dy: 0.0,
+        }
+    }
+
+    /// Cada quadro: os passos dele e o `Quadro`.
+    fn trilha(quadros: Vec<Vec<Passo>>) -> Track {
+        let mut events = Vec::new();
+        for (q, passos) in quadros.into_iter().enumerate() {
+            let t = MacroTime((q as f64 * DT * 1e6).round() as u64);
+            for p in passos.into_iter().chain([Passo::Quadro {
+                tempo: q as f64 * DT,
+                a_tocar: true,
+                dt: DT,
+                sujou: false,
+            }]) {
+                events.push(Event {
+                    t,
+                    payload: p.codifica(),
+                });
+            }
+        }
+        Track {
+            family: "motion".into(),
+            target: 0,
+            initial: vec![],
+            events,
+            edicoes: vec![],
+        }
+    }
+
+    fn fixture() -> Track {
+        let mut q: Vec<Vec<Passo>> = vec![vec![]; 3];
+        q.extend((0..5).map(|i| vec![param("size", f64::from(i))]));
+        q.extend(vec![vec![]; 3]);
+        q.extend((0..2).map(|i| vec![param("size", f64::from(i))]));
+        q.push(vec![param("rows", 4.0)]);
+        q.push(vec![grafo(vec![Intencao::BeginDrag, mover()])]);
+        q.push(vec![grafo(vec![mover()])]);
+        q.push(vec![grafo(vec![mover(), Intencao::EndDrag])]);
+        q.extend(vec![vec![]; 2]);
+        trilha(q)
+    }
+
+    #[test]
+    fn um_arrasto_de_param_em_quadros_seguidos_e_uma_etapa_e_outro_depois_de_parar_e_outra() {
+        let tr = fixture();
+        let e = LeitorDoMotion.etapas(&tr.events);
+        let n = |et: &ph2d_macro::Etapa| {
+            tr.events[et.inicio..=et.fim]
+                .iter()
+                .filter(|x| !LeitorDoMotion.e_relogio(&x.payload))
+                .count()
+        };
+        assert_eq!(e.len(), 4, "size ×5 · size ×2 · rows · o arrasto de nós: {e:?}");
+        assert_eq!(n(&e[0]), 5, "os cinco quadros seguidos do mesmo param são UMA sessão");
+        assert_eq!(n(&e[1]), 2, "parar 3 quadros abre outra");
+        assert_eq!(n(&e[2]), 1, "outro param no quadro seguinte é outra etapa");
+        assert_eq!(n(&e[3]), 3, "BeginDrag..EndDrag é um gesto só");
+    }
+
+    #[test]
+    fn a_espera_continua_o_relogio_e_o_tempo_do_playhead_anda_com_a_trilha() {
+        let mut tr = fixture();
+        let e = LeitorDoMotion.etapas(&tr.events);
+        tr.edicao_mut(e[1].inicio).espera_us = 100_000;
+        let ev = ph2d_macro::etapa::efetiva(&tr, &LeitorDoMotion).expect("aplica");
+        let tempos: Vec<f64> = ev
+            .iter()
+            .filter_map(|x| match Passo::descodifica(&x.payload) {
+                Ok(Passo::Quadro { tempo, .. }) => Some(tempo),
+                _ => None,
+            })
+            .collect();
+        let gravados = tr
+            .events
+            .iter()
+            .filter(|x| LeitorDoMotion.e_relogio(&x.payload))
+            .count();
+        assert_eq!(tempos.len(), gravados + 6, "0,1 s = 6 quadros de 60 Hz");
+        assert!(
+            tempos.windows(2).all(|w| (w[1] - w[0] - DT).abs() < 1e-9),
+            "o relógio de dentro não salta nem pára: {tempos:?}"
+        );
+    }
+
+    #[test]
+    fn editar_o_valor_de_um_arrasto_mantem_a_forma_e_acaba_no_valor_novo() {
+        let mut tr = fixture();
+        super::super::etapas::edita_valor(&mut tr, 0, 8.0).expect("é um param");
+        let ev = ph2d_macro::etapa::efetiva(&tr, &LeitorDoMotion).expect("aplica");
+        let v: Vec<f64> = ev
+            .iter()
+            .filter_map(|x| match Passo::descodifica(&x.payload) {
+                Ok(Passo::Params { intencoes, .. }) => intencoes.iter().find_map(|i| match i {
+                    IntencaoDeParam::SetParam { param, value, .. } if param == "size" => Some(*value),
+                    _ => None,
+                }),
+                _ => None,
+            })
+            .take(5)
+            .collect();
+        // Gravado 0,1,2,3,4; cada amostra anda (8 − 4)·(j+1)/5.
+        let esperado = [0.8, 2.6, 4.4, 6.2, 8.0];
+        assert!(
+            v.iter().zip(esperado).all(|(a, b)| (a - b).abs() < 1e-9),
+            "{v:?}"
+        );
+    }
+}

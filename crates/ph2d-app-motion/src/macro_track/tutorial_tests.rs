@@ -278,3 +278,16 @@ fn a_etapa_corrente_pede_ao_editor_os_nos_dela_uma_vez() {
         Some(vec![n("force.wind"), n("force.drag")])
     );
 }
+
+/// ⭐ A decisão do dono (15/10, opção «a»): o «Recomeçar» arruma, e a caixa e o vento — os dois nós
+/// SOLTOS da cena — ficam lado a lado numa fila; empilhados, ficavam a 650 unidades e o vento caía
+/// fora do editor ao zoom legível.
+#[test]
+fn os_nos_soltos_da_cena_ficam_lado_a_lado() {
+    let m = aluno(&trilha());
+    let s = retrato(&m, ALUNO);
+    let lugar = |tipo: &str| m.doc.graph.pos(s.nos[&vaga(tipo)]).expect("lugar");
+    let (caixa, vento) = (lugar("field.box"), lugar("force.wind"));
+    assert_eq!(caixa.y, vento.y, "uma fila");
+    assert!(caixa.x < vento.x, "pela ordem de criação");
+}

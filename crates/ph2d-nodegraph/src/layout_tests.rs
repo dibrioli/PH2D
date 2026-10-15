@@ -335,6 +335,59 @@ fn two_disconnected_chains_become_two_non_overlapping_bands() {
     );
 }
 
+/// A chain of `n` default cards keyed `0..n`, and `loose` cards with no wire keyed after it.
+fn chain_and_loose(n: u64, loose: u64) -> BTreeMap<u64, Pos> {
+    let items: Vec<Item<u64>> = (0..n + loose).map(Item::plain).collect();
+    let wires: Vec<Wire<u64>> = (1..n).map(|k| link(k - 1, 0, k, 0)).collect();
+    plan_edges(&items, &wires).into_iter().collect()
+}
+
+/// No two default boxes overlap, nor come closer than the layout's own gaps.
+fn assert_clear(p: &BTreeMap<u64, Pos>) {
+    let e = Extent::default();
+    for (a, pa) in p {
+        for (b, pb) in p.range(a + 1..) {
+            let apart_x = (pb.x - pa.x).abs() >= e.right + GAP_X - 0.01;
+            let apart_y = (pb.y - pa.y).abs() >= e.bottom + GAP_Y - 0.01;
+            assert!(apart_x || apart_y, "{a} and {b} overlap: {pa:?} {pb:?}");
+        }
+    }
+}
+
+/// ⭐ **Law 4 — loose cards lie SIDE BY SIDE** (owner, 2026-10-15). FALSIFIED by the old
+/// one-band-per-component: the two loose cards stacked `BAND_GAP` apart.
+#[test]
+fn loose_cards_lie_side_by_side_in_one_row() {
+    let p = chain_and_loose(2, 2);
+    assert_eq!(p[&2].y, p[&3].y, "one row");
+    assert_eq!(p[&3].x - p[&2].x, DX, "stepped like two columns");
+    let chain_bottom = p[&0].y.max(p[&1].y) + Extent::default().bottom;
+    assert!(p[&2].y - chain_bottom >= BAND_GAP - 0.01, "the row is a band of its own");
+    assert_clear(&p);
+}
+
+/// The row wraps past the widest wired band, and the rows clear by `GAP_Y`.
+#[test]
+fn a_long_row_of_loose_cards_wraps_inside_the_widest_band() {
+    let p = chain_and_loose(5, 11);
+    let widest = p.range(..5).map(|(_, q)| q.x).fold(f32::MIN, f32::max) + Extent::default().right;
+    let loose: Vec<Pos> = p.range(5..).map(|(_, q)| *q).collect();
+    assert!(loose.iter().all(|q| q.x + Extent::default().right <= widest + 0.01));
+    let rows: BTreeSet<u32> = loose.iter().map(|q| q.y.to_bits()).collect();
+    assert_eq!(rows.len(), 3, "5 + 5 + 1 (the chain is 5 columns wide)");
+    assert_clear(&p);
+}
+
+/// With no wire at all there is no band to follow: `⌈√n⌉` per row, a square.
+#[test]
+fn a_graph_with_no_wire_comes_out_square() {
+    let p = chain_and_loose(0, 9);
+    let xs: BTreeSet<u32> = p.values().map(|q| q.x.to_bits()).collect();
+    let ys: BTreeSet<u32> = p.values().map(|q| q.y.to_bits()).collect();
+    assert_eq!((xs.len(), ys.len()), (3, 3));
+    assert_clear(&p);
+}
+
 #[test]
 fn a_pre_edge_is_ignored_for_columns_but_keeps_the_band_together() {
     // a → b → c with a feedback c ⇢ a (delayed). Columns must ignore the

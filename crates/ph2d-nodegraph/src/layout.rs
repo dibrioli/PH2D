@@ -12,7 +12,8 @@
 //!   sweeps), with the **PORT** breaking every tie,
 //! - their `y` is then **pulled to the average of their neighbours'**, so a join
 //!   sits centred between the rows it joins and a chain stays straight,
-//! - and no two **DRAWN BOXES** touch, in either direction.
+//! - and no two **DRAWN BOXES** touch, in either direction;
+//! - the cards with no wire at all share ONE band, side by side ([`loose_row`]).
 //!
 //! It moves POSITIONS only — it never touches nodes, edges, params, labels, or
 //! the frozen node contract (ADR-0039): it is a sibling module riding the same
@@ -242,10 +243,35 @@ pub fn plan_edges<K: Ord + Copy>(items: &[Item<K>], wires: &[Wire<K>]) -> Vec<(K
         }
     }
 
+    // Law 4: the loose cards share ONE band, in the slot of the first of them.
+    let mut bands: Vec<Option<(Vec<(K, Pos)>, f32)>> = Vec::new();
+    let mut loose: Vec<K> = Vec::new();
+    for comp in components(&keys, &undirected) {
+        if comp.len() == 1 {
+            if loose.is_empty() {
+                bands.push(None);
+            }
+            loose.push(comp[0]);
+        } else {
+            bands.push(Some(layout_component(
+                &comp, &size, &fwd, &rev, &port_fwd, &port_rev,
+            )));
+        }
+    }
+    let widest = bands
+        .iter()
+        .flatten()
+        .flat_map(|(placed, _)| placed.iter().map(|(n, p)| p.x + size[n].right))
+        .fold(X0, f32::max)
+        - X0;
+    let mut row = Some(loose_row(&loose, &size, widest));
+
     let mut out = Vec::with_capacity(items.len());
     let mut band_top = Y0;
-    for comp in components(&keys, &undirected) {
-        let (placed, height) = layout_component(&comp, &size, &fwd, &rev, &port_fwd, &port_rev);
+    for band in bands {
+        let Some((placed, height)) = band.or_else(|| row.take()) else {
+            continue;
+        };
         for (n, mut p) in placed {
             p.y += band_top;
             out.push((n, p));
@@ -253,6 +279,58 @@ pub fn plan_edges<K: Ord + Copy>(items: &[Item<K>], wires: &[Wire<K>]) -> Vec<(K
         band_top += height + BAND_GAP;
     }
     out
+}
+
+/// ⭐ **Law 4 — the loose cards lie SIDE BY SIDE** (owner, 2026-10-15). A card with
+/// no wire is a component of its own, and one band each stacked them `BAND_GAP`
+/// apart: two loose cards of the `PH2D_MACRO_SMOKE=3` tutorial ended 650 units
+/// apart, too far for one view at the legible zoom. ⇒ they share one band, in key
+/// order, columns stepped exactly like [`layout_component`]'s (`GAP_X` between
+/// DRAWN boxes) and the rows `GAP_Y` apart — the drawn-box spacing is untouched.
+/// A row wraps past the widest wired band (what the view already spans), and
+/// always holds `⌈√n⌉`, so a graph with no wire at all comes out square.
+/// Returns band-local positions (top DRAWN edge at `0`) and the band height.
+fn loose_row<K: Ord + Copy>(
+    loose: &[K],
+    size: &BTreeMap<K, Extent>,
+    widest: f32,
+) -> (Vec<(K, Pos)>, f32) {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_precision_loss,
+        reason = "a graph holds far fewer cards than f32 counts exactly"
+    )]
+    let at_least = (loose.len() as f32).sqrt().ceil() as usize;
+    let mut rows: Vec<Vec<(K, f32)>> = Vec::new();
+    let mut right_edge = X0;
+    for &n in loose {
+        let e = size[&n];
+        let x = right_edge + GAP_X - e.left;
+        let fits = rows
+            .last()
+            .is_some_and(|r| r.len() < at_least || x + e.right - X0 <= widest);
+        let x = if fits {
+            x
+        } else {
+            rows.push(Vec::new());
+            X0
+        };
+        rows.last_mut().expect("a row was just opened").push((n, x));
+        right_edge = x + e.right;
+    }
+    let mut out = Vec::with_capacity(loose.len());
+    let mut top = 0.0f32;
+    for r in &rows {
+        let up = r.iter().map(|(n, _)| size[n].top).fold(f32::MAX, f32::min);
+        let down = r
+            .iter()
+            .map(|(n, _)| size[n].bottom)
+            .fold(f32::MIN, f32::max);
+        out.extend(r.iter().map(|&(n, x)| (n, Pos { x, y: top - up })));
+        top += down - up + GAP_Y;
+    }
+    (out, top - GAP_Y)
 }
 
 fn keep_min<K: Ord + Copy>(m: &mut BTreeMap<(K, K), u16>, k: (K, K), v: u16) {

@@ -1,0 +1,16 @@
+READY
+0 IME Disabled
+0 FOCUSED false
+127 FOCUSED true
+130 KEY logical=Dead(Some('´')) text=None phys=Unidentified(Xkb(0x0000))
+231 KEY logical=Character("á") text=Some("á") phys=Code(KeyA)
+331 KEY logical=Dead(Some('´')) text=None phys=Unidentified(Xkb(0x0000))
+433 KEY logical=Named(Shift) text=None phys=Code(ShiftLeft)
+483 KEY logical=Character("Á") text=Some("Á") phys=Code(KeyA)
+634 KEY logical=Dead(Some('´')) text=None phys=Unidentified(Xkb(0x0000))
+735 KEY logical=Unidentified(Xkb(0x0071)) text=None phys=Code(KeyQ)
+836 KEY logical=Dead(Some('´')) text=None phys=Unidentified(Xkb(0x0000))
+936 KEY logical=Named(Escape) text=None phys=Code(Escape)
+1039 KEY logical=Dead(Some('´')) text=None phys=Unidentified(Xkb(0x0000))
+1139 KEY logical=Character("´") text=Some("´") phys=Unidentified(Xkb(0x0000))
+X connection to :97 broken (explicit kill or server shutdown).

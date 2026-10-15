@@ -1,0 +1,15 @@
+READY
+0 IME Disabled
+0 IME Enabled
+0 FOCUSED false
+172 FOCUSED true
+174 KEY logical=Character("a") text=Some("a") phys=Code(KeyA)
+274 KEY logical=Character("b") text=Some("b") phys=Code(KeyB)
+375 KEY logical=Named(Escape) text=Some("\u{1b}") phys=Code(Escape)
+576 KEY logical=Named(Shift) text=None phys=Code(ShiftLeft)
+626 IME Preedit("", None)
+626 IME Commit("Á")
+879 IME Preedit("", None)
+879 IME Commit("ç")
+979 KEY logical=Character("ç") text=Some("ç") phys=Unidentified(Xkb(0x0000))
+X connection to :97 broken (explicit kill or server shutdown).

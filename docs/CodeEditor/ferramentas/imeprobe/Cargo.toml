@@ -1,0 +1,9 @@
+[package]
+name = "imeprobe"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+winit = "=0.30.13"
+
+# Sonda fora do workspace do PH2D (corre-se com --manifest-path).
+[workspace]

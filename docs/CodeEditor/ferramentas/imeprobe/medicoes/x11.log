@@ -1,0 +1,12 @@
+READY
+0 IME Disabled
+0 IME Enabled
+0 FOCUSED false
+171 FOCUSED true
+272 IME Preedit("", None)
+272 IME Commit("á")
+474 IME Preedit("", None)
+474 IME Commit("ã")
+1078 IME Preedit("", None)
+1078 IME Commit("´")
+X connection to :97 broken (explicit kill or server shutdown).

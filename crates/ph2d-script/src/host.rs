@@ -281,7 +281,7 @@ impl ScriptHost {
 
     /// Porque o objecto parou de correr o script — ver [`SceneScripts::failure`].
     #[must_use]
-    pub fn scene_failure(&self, entity: Entity) -> Option<&str> {
+    pub fn scene_failure(&self, entity: Entity) -> Option<&crate::ScriptDiagnostic> {
         self.scene.failure(entity)
     }
 
@@ -359,16 +359,20 @@ fn install_deadline(lua: &mlua::Lua, deadline: &Deadline) {
     use std::sync::atomic::{AtomicU32, Ordering};
     let limit = deadline.0.clone();
     let ticks = std::sync::Arc::new(AtomicU32::new(0));
-    lua.set_interrupt(move |_| {
+    lua.set_interrupt(move |lua| {
         let until = limit.load(Ordering::Relaxed);
         if until == u64::MAX || ticks.fetch_add(1, Ordering::Relaxed) & 0xFF != 0 {
             return Ok(mlua::VmState::Continue);
         }
         if crate::scene::now_nanos() > until {
-            return Err(mlua::Error::RuntimeError(format!(
-                "the script ran for longer than a frame ({} ms) — is there a loop that never ends?",
-                crate::scene::HOOK_BUDGET.as_secs_f64() * 1000.0
-            )));
+            // A pilha só existe AQUI: o erro de uma interrupção volta sem ela (medido).
+            let traceback = lua
+                .traceback(None, 0)
+                .map(|s| s.to_string_lossy())
+                .unwrap_or_default();
+            return Err(mlua::Error::external(
+                crate::diagnostic::BudgetExceeded { traceback },
+            ));
         }
         Ok(mlua::VmState::Continue)
     });

@@ -10,6 +10,7 @@ use crate::ScriptHost;
 use crate::component::LuauScript;
 use crate::props::ScriptValue;
 use crate::scene::ScriptInfo;
+use crate::DiagnosticKind;
 
 /// Um ficheiro de script único para este teste (os testes correm em paralelo).
 fn script_file(tag: &str, source: &str) -> String {
@@ -141,7 +142,7 @@ fn um_sinal_sem_nome_para_o_script_e_diz_porque() {
     assert!(r.emitted.is_empty());
     assert!(
         host.scene_failure(e)
-            .is_some_and(|m| m.contains("needs a name"))
+            .is_some_and(|d| d.message.contains("needs a name"))
     );
 }
 
@@ -162,7 +163,7 @@ fn um_campo_desconhecido_para_so_quem_o_escreveu() {
     assert_eq!(r.failed.len(), 1);
     assert_eq!(r.failed[0].0, e_mau);
     assert!(
-        r.failed[0].1.contains("unknown field 'z'"),
+        r.failed[0].1.message.contains("unknown field 'z'"),
         "{}",
         r.failed[0].1
     );
@@ -188,7 +189,7 @@ fn um_numero_que_nao_e_numero_e_recusado() {
     assert_eq!(x(sim.world(), e), 0.0, "a pose não recebe um NaN");
     assert!(
         host.scene_failure(e)
-            .is_some_and(|m| m.contains("not a number"))
+            .is_some_and(|d| d.message.contains("not a number"))
     );
 }
 
@@ -204,7 +205,7 @@ fn um_laco_sem_saida_num_gancho_para_no_prazo() {
     let gasto = t0.elapsed();
     assert!(
         host.scene_failure(e)
-            .is_some_and(|m| m.contains("longer than a frame")),
+            .is_some_and(|d| d.kind == DiagnosticKind::Budget),
         "{:?}",
         host.scene_failure(e)
     );
@@ -226,7 +227,7 @@ fn um_laco_sem_saida_no_topo_nao_congela_a_carga() {
     let mut host = ScriptHost::new().expect("vm");
     host.scene_sync(sim.world_mut());
     assert!(
-        matches!(host.scene_info(&path), Some(ScriptInfo::Broken(m)) if m.contains("longer than a frame")),
+        matches!(host.scene_info(&path), Some(ScriptInfo::Broken(d)) if d.kind == DiagnosticKind::Budget),
         "{:?}",
         host.scene_info(&path)
     );
@@ -270,7 +271,7 @@ fn gravar_a_correccao_devolve_um_script_partido_a_corrida() {
     let e = actor(sim.world_mut(), 1, &path, &[]);
     let mut host = ScriptHost::new().expect("vm");
     frame(&mut host, &mut sim, 1.0);
-    assert!(host.scene_failure(e).is_some_and(|m| m.contains("ups")));
+    assert!(host.scene_failure(e).is_some_and(|d| d.message.contains("ups")));
     rewrite(&path, MOVE_BY_SPEED);
     frame(&mut host, &mut sim, 1.0);
     assert!(host.scene_failure(e).is_none());
@@ -295,7 +296,7 @@ fn um_script_partido_nao_apaga_nada_do_componente() {
     host.scene_sync(sim.world_mut());
     let info = host.scene_info(&path).expect("conhecido");
     assert!(
-        matches!(info, ScriptInfo::Broken(m) if m.starts_with("syntax error")),
+        matches!(info, ScriptInfo::Broken(d) if d.kind == DiagnosticKind::Syntax),
         "{info:?}"
     );
     assert!(info.decls().is_none(), "desconhecido, não vazio");
@@ -580,6 +581,6 @@ fn a_blank_motion_name_stops_the_object_and_its_writes_do_not_land() {
     actor(sim.world_mut(), 1, &path, &[]);
     let r = frame(&mut host, &mut sim, 1.0 / 60.0);
     assert_eq!(r.failed.len(), 1);
-    assert!(r.failed[0].1.contains("needs a name"), "{}", r.failed[0].1);
+    assert!(r.failed[0].1.message.contains("needs a name"), "{}", r.failed[0].1);
     assert!(sim.world().get_resource::<MotionInputs>().is_none());
 }

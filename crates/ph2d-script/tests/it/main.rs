@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod diagnostico_do_luau_medido;
 mod hot_reload_per_entity;
 mod lateral_storage_determinism;
 mod lateral_storage_rejects_non_pod;

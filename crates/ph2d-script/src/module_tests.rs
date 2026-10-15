@@ -49,7 +49,7 @@ fn um_erro_de_sintaxe_e_nomeado_como_tal() {
     let e = load_module(h.runtime().lua(), "partido.luau", "function update(")
         .err()
         .expect("recusa");
-    assert!(matches!(e, ModuleError::Syntax(_)), "{e:?}");
+    assert_eq!(e.kind, DiagnosticKind::Syntax, "{e:?}");
 }
 
 #[test]
@@ -91,7 +91,7 @@ fn uma_declaracao_recusada_para_o_topo_e_diz_qual() {
         ),
     ] {
         let e = load_module(lua, "mau.luau", src).err().expect(src);
-        assert_eq!(e, ModuleError::Decl(esperado), "{src}");
+        assert_eq!(e.kind, DiagnosticKind::Decl(esperado), "{src}");
     }
 }
 
@@ -107,7 +107,7 @@ ph2d.property("a", 2)
 function update() end
 "#,
     );
-    assert!(matches!(e, Err(ModuleError::Decl(DeclError::Twice(_)))));
+    assert!(matches!(e.map(|_| ()), Err(ScriptDiagnostic { kind: DiagnosticKind::Decl(DeclError::Twice(_)), .. })));
 }
 
 /// ⛔ **Fora do topo é ERRO** — e o balde de um carregamento anterior (mesmo um que falhou) não
@@ -137,7 +137,9 @@ end
         .call::<()>(())
         .expect_err("declarar num gancho é recusado");
     assert!(
-        runtime_message(&err).contains("must be called at the top"),
+        ScriptDiagnostic::from_error(&err, "tarde.luau")
+            .message
+            .contains("must be called at the top"),
         "{err}"
     );
     assert!(m.decls.is_empty(), "e não entrou na lista");
@@ -192,7 +194,7 @@ fn um_modulo_le_a_biblioteca_mas_nao_reescreve_a_casa() {
     let e = load_module(lua, "vandalo.luau", "ph2d.set = nil")
         .err()
         .expect("a casa é só de leitura");
-    assert!(matches!(e, ModuleError::Runtime(_)), "{e:?}");
+    assert_eq!(e.kind, DiagnosticKind::Runtime, "{e:?}");
 }
 
 // ─── vec2 e color: os construtores ──────────────────────────────────────────────────────────────
@@ -305,8 +307,8 @@ fn uma_tabela_crua_nao_e_um_default() {
     ] {
         let e = load_module(lua, "mau.luau", src).err().expect(src);
         assert_eq!(
-            e,
-            ModuleError::Decl(DeclError::BadDefault("t".into())),
+            e.kind,
+            DiagnosticKind::Decl(DeclError::BadDefault("t".into())),
             "{src}"
         );
     }

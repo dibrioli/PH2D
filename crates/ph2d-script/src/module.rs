@@ -22,6 +22,7 @@
 
 use mlua::{Function, Lua, Table, Value};
 
+use crate::diagnostic::{DiagnosticKind, ScriptDiagnostic};
 use crate::props::{DeclError, PropDecl, PropHint, ScriptValue, check_decl};
 
 /// **O balde das declarações** — presente nos dados da VM só enquanto o topo de um script corre.
@@ -30,26 +31,6 @@ pub(crate) struct DeclSink {
     decls: Vec<PropDecl>,
     /// A recusa que parou o topo — guardada à parte para a distinguir de um erro qualquer.
     error: Option<DeclError>,
-}
-
-/// **Porque um script não carregou.**
-#[derive(Clone, Debug, PartialEq)]
-pub enum ModuleError {
-    /// O Luau não o conseguiu ler.
-    Syntax(String),
-    /// Uma declaração foi recusada — a mensagem diz qual.
-    Decl(DeclError),
-    /// O topo do script falhou ao correr.
-    Runtime(String),
-}
-
-impl std::fmt::Display for ModuleError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Syntax(m) | Self::Runtime(m) => f.write_str(m),
-            Self::Decl(e) => write!(f, "{e}"),
-        }
-    }
 }
 
 /// **Um script carregado.**
@@ -73,18 +54,20 @@ impl ScriptModule {
 /// ⭐ **Carrega `source` como um módulo novo** — corre o topo e colhe as declarações.
 ///
 /// # Errors
-/// O [`ModuleError`] que o painel mostra.
-pub fn load_module(lua: &Lua, chunk_name: &str, source: &str) -> Result<ScriptModule, ModuleError> {
-    let env = module_env(lua).map_err(|e| ModuleError::Runtime(e.to_string()))?;
+/// O [`ScriptDiagnostic`] que o painel mostra.
+pub fn load_module(
+    lua: &Lua,
+    chunk_name: &str,
+    source: &str,
+) -> Result<ScriptModule, ScriptDiagnostic> {
+    let diag = |e: &mlua::Error| ScriptDiagnostic::from_error(e, chunk_name);
+    let env = module_env(lua).map_err(|e| diag(&e))?;
     let func = lua
         .load(source)
         .set_name(format!("={chunk_name}"))
         .set_environment(env.clone())
         .into_function()
-        .map_err(|e| match e {
-            mlua::Error::SyntaxError { message, .. } => ModuleError::Syntax(message),
-            other => ModuleError::Runtime(other.to_string()),
-        })?;
+        .map_err(|e| diag(&e))?;
     // ⚠️ O balde entra ANTES e sai DEPOIS, com qualquer resultado: um balde esquecido faria o
     // `ph2d.property` de um gancho posterior declarar em silêncio num módulo que já carregou.
     lua.set_app_data(DeclSink::default());
@@ -95,8 +78,13 @@ pub fn load_module(lua: &Lua, chunk_name: &str, source: &str) -> Result<ScriptMo
             env,
             decls: sink.decls,
         }),
-        (Err(_), Some(decl)) => Err(ModuleError::Decl(decl)),
-        (Err(e), None) => Err(ModuleError::Runtime(runtime_message(&e))),
+        // A linha vem da pilha do `ph2d.property` que recusou.
+        (Err(e), Some(decl)) => Err(ScriptDiagnostic {
+            message: decl.to_string(),
+            kind: DiagnosticKind::Decl(decl),
+            ..diag(&e)
+        }),
+        (Err(e), None) => Err(diag(&e)),
     }
 }
 
@@ -107,21 +95,6 @@ fn module_env(lua: &Lua) -> mlua::Result<Table> {
     meta.set("__index", lua.globals())?;
     env.set_metatable(Some(meta))?;
     Ok(env)
-}
-
-/// A mensagem de um erro de corrida SEM a pilha de chamadas do Rust — o painel mostra uma linha.
-#[must_use]
-pub fn runtime_message(e: &mlua::Error) -> String {
-    match e {
-        mlua::Error::CallbackError { cause, .. } => runtime_message(cause),
-        mlua::Error::RuntimeError(m) => m.lines().next().unwrap_or_default().to_owned(),
-        other => other
-            .to_string()
-            .lines()
-            .next()
-            .unwrap_or_default()
-            .to_owned(),
-    }
 }
 
 /// ⭐ **`ph2d.property(name, default, options?)`** — instalada pelo `ScriptHost` antes da sandbox.

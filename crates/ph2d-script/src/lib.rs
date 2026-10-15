@@ -22,6 +22,8 @@
 //! frame.
 
 pub mod component;
+/// O diagnóstico estruturado de um script (linha, mensagem inteira, pilha).
+pub mod diagnostic;
 pub mod host;
 pub mod io;
 pub mod lateral;
@@ -41,7 +43,8 @@ pub use io::{
 };
 pub use lateral::{PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
-pub use module::{ModuleError, ScriptModule, load_module};
+pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
+pub use module::{ScriptModule, load_module};
 pub use props::{
     DeclError, Origin, Orphan, OrphanWhy, PROPS_MAX, PropDecl, PropHint, Resolution, Resolved,
     ScriptValue, ScriptValueKind,

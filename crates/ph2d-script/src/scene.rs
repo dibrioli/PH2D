@@ -37,7 +37,8 @@ use ph2d_ecs::{Entity, StableId, Transform, World};
 
 use crate::component::LuauScript;
 use crate::io::{EntityWrite, ReadSnapshot, WriteQueue, pose_field};
-use crate::module::{ModuleError, ScriptModule, load_module, runtime_message};
+use crate::diagnostic::ScriptDiagnostic;
+use crate::module::{ScriptModule, load_module};
 use crate::props::{PropDecl, ScriptValue, resolve};
 
 /// **O que se sabe de um ficheiro de script** — o que o painel mostra.
@@ -45,8 +46,8 @@ use crate::props::{PropDecl, ScriptValue, resolve};
 pub enum ScriptInfo {
     /// Carregou; estas são as declarações dele.
     Ready(Vec<PropDecl>),
-    /// O Luau recusou-o — a mensagem diz porquê.
-    Broken(String),
+    /// O Luau recusou-o — o diagnóstico diz porquê e onde.
+    Broken(ScriptDiagnostic),
     /// O ficheiro não se deixa ler (sumiu, sem permissão).
     Missing(String),
 }
@@ -81,12 +82,14 @@ struct Slot {
 struct Instance {
     /// O ficheiro que ele corre — mudar de ficheiro é renascer.
     path: String,
+    /// O nome do chunk desse ficheiro — o que o diagnóstico procura nas mensagens.
+    chunk: String,
     /// A tabela `self`.
     this: Table,
     /// Os valores que já foram escritos no `self` — só uma MUDANÇA volta a escrever (§3.5).
     applied: BTreeMap<String, ScriptValue>,
     /// Porque parou de correr, se parou.
-    failed: Option<String>,
+    failed: Option<ScriptDiagnostic>,
 }
 
 /// **O que um tique fez** — os factos que a ponte declara.
@@ -96,8 +99,8 @@ pub struct SceneReport {
     pub wrote: Vec<Entity>,
     /// Sinais emitidos, com quem os emitiu, pela ordem da identidade.
     pub emitted: Vec<(Entity, String)>,
-    /// Objectos que pararam de correr NESTE tique, com a mensagem.
-    pub failed: Vec<(Entity, String)>,
+    /// Objectos que pararam de correr NESTE tique, com o diagnóstico.
+    pub failed: Vec<(Entity, ScriptDiagnostic)>,
     /// Quantos ganchos correram.
     pub calls: usize,
     /// ⭐ Ciclo 19: o que os scripts escreveram na tabela `motion` (já aplicado ao recurso).
@@ -263,10 +266,10 @@ impl SceneScripts {
 
     /// Porque o objecto parou de correr o script, se parou.
     #[must_use]
-    pub fn failure(&self, entity: Entity) -> Option<&str> {
+    pub fn failure(&self, entity: Entity) -> Option<&ScriptDiagnostic> {
         self.instances
             .get(&entity.to_bits())
-            .and_then(|i| i.failed.as_deref())
+            .and_then(|i| i.failed.as_ref())
     }
 
     /// Quantos objectos têm o vivo nascido — o número que um gate lê.
@@ -331,9 +334,7 @@ impl SceneScripts {
             return; // tocado, não mudado
         }
         slot.hash = Some(hash);
-        let name = Path::new(path)
-            .file_name()
-            .map_or_else(|| path.to_owned(), |n| n.to_string_lossy().into_owned());
+        let name = chunk_name(path);
         // ⚠️ O TOPO também corre sob o prazo: um laço sem saída fora de qualquer função congelaria
         // o app no instante em que o artista escolhe o ficheiro.
         let loaded = deadline.within(|| load_module(lua, &name, &source));
@@ -348,11 +349,8 @@ impl SceneScripts {
                     inst.failed = None;
                 }
             }
-            Err(e) => {
-                slot.info = ScriptInfo::Broken(match &e {
-                    ModuleError::Syntax(m) => format!("syntax error: {m}"),
-                    other => other.to_string(),
-                });
+            Err(d) => {
+                slot.info = ScriptInfo::Broken(d);
                 slot.module = None;
             }
         }
@@ -430,7 +428,8 @@ impl SceneScripts {
                 let inst = match born(lua, a, bits) {
                     Ok(inst) => slot.insert(inst),
                     Err(e) => {
-                        report.failed.push((a.entity, runtime_message(&e)));
+                        let d = ScriptDiagnostic::from_error(&e, &chunk_name(&a.cfg.source));
+                        report.failed.push((a.entity, d));
                         continue;
                     }
                 };
@@ -466,6 +465,13 @@ impl SceneScripts {
     }
 }
 
+/// O nome do chunk de um ficheiro de script — o nome do ficheiro, como as mensagens o citam.
+fn chunk_name(path: &str) -> String {
+    Path::new(path)
+        .file_name()
+        .map_or_else(|| path.to_owned(), |n| n.to_string_lossy().into_owned())
+}
+
 /// O `self` de um objecto acabado de nascer: só o `id`. Os números entram pelo [`apply_props`].
 fn born(lua: &Lua, a: &Actor, bits: u64) -> mlua::Result<Instance> {
     let this = lua.create_table()?;
@@ -477,6 +483,7 @@ fn born(lua: &Lua, a: &Actor, bits: u64) -> mlua::Result<Instance> {
     this.set("id", bits as f64)?;
     Ok(Instance {
         path: a.cfg.source.clone(),
+        chunk: chunk_name(&a.cfg.source),
         this,
         applied: BTreeMap::new(),
         failed: None,
@@ -523,25 +530,28 @@ fn settle_call(
     let (mine, emitted) = drain_queues(lua);
     let motion = crate::motion_api::drain(lua);
     let failure = match ran {
-        Err(e) => Some(runtime_message(&e)),
+        Err(e) => Some(ScriptDiagnostic::from_error(&e, &inst.chunk)),
         Ok(()) => mine
             .iter()
             .find(|w| pose_field(&w.field).is_none())
             .map(|w| {
-                format!(
+                ScriptDiagnostic::runtime(format!(
                     "ph2d.set: unknown field '{}' (x, y, rotation, scale_x, scale_y)",
                     w.field
-                )
+                ))
             })
             .or_else(|| {
-                mine.iter()
-                    .find(|w| !w.value.is_finite())
-                    .map(|w| format!("ph2d.set: '{}' got {} — not a number", w.field, w.value))
+                mine.iter().find(|w| !w.value.is_finite()).map(|w| {
+                    ScriptDiagnostic::runtime(format!(
+                        "ph2d.set: '{}' got {} — not a number",
+                        w.field, w.value
+                    ))
+                })
             }),
     };
-    if let Some(msg) = failure {
-        inst.failed = Some(msg.clone());
-        report.failed.push((entity, msg));
+    if let Some(d) = failure {
+        inst.failed = Some(d.clone());
+        report.failed.push((entity, d));
         return false;
     }
     writes.extend(mine);

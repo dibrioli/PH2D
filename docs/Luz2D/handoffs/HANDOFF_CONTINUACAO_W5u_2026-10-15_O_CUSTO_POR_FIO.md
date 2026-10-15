@@ -181,6 +181,26 @@ das fotos):
 Régua do loop (`agent-loop-profile.sh`): paralelismo 1,16 (✗ ≥ 1,5) · `test:check` 2,7× (✗) · contexto por passo
 287 mil (✗ ≤ 250 mil) · edições sem conferir 0,9 % (✓).
 
+## 7. ⛔ O número do DONO não é o da régua (smoke do dono, 15/10)
+
+O dono, cena 5 desta linha, Low manual: Inspector **7,6 ms** (AOC, 1920×1080) e **9,0** (LG, 2560×1080) — contra ~2,1
+do `a_nitidez_da_luz` e 0,5 de `c2` do `lastro`. Reproduzido no app INTEIRO (`fotografa_cena.sh`, HOME isolado, cena
+5) com o instrumento novo `PH2D_LIGHT2D_CUSTO=1` (`quadro_leituras::relatar_custo`: o número do Inspector por passe,
+a cada 60 leituras):
+
+| cena 5, 1920×1080 | total | c2 | fina | vis | miolo | rebote | preenche | entorno |
+|---|---|---|---|---|---|---|---|---|
+| Low (grade 640×384) | 8,2–9,1 | 1,4–1,8 | **3,2** | 0,8–1,6 | 0,78 | 0,6 | 0,37 | 0,47 |
+| Low a 2560×1080 (832×384) | 9,5–9,7 | 1,7–2,1 | 3,8–4,5 | 0,8–1,3 | 0,92 | 0,6–1,0 | 0,48 | 0,51 |
+| High (2496×1408), W5u | **18,0–18,8** | 11,6–12,1 | 2,7 | — | 0,76 | 0,5 | 0,34 | 1,5–2,0 |
+| High, `PH2D_LIGHT2D_HRC_POR_FIO=0` | 23,7–26,0 | 16,5–18,0 | 3,3–4,0 | — | 0,76 | 0,5 | 0,34 | 1,7–1,9 |
+
+⇒ (1) No Low o relógio é a FINA (3,2 ms, o mesmo em todo nível) + a visibilidade + o miolo — não a holográfica.
+(2) No app a `c2` do High é ~2× a da régua (11,6 contra 6,0): conteúdo + rebote (o mecanismo da cheia, §1d) e a placa
+partilhada com o desenho da UI. O corte da W5u vale MAIS no app: −5 a −6 ms. (3) ⛔ O `a_nitidez_da_luz` e o `lastro`
+(cena 1, quase vazia) NÃO medem o produto: a próxima onda mede a CENA 5 no app (este instrumento) antes de cortar.
+§6b passa a começar por: a fina (3,2 ms no Low), a visibilidade e a `c2` com conteúdo.
+
 ## Smoke do dono
 
 ⏳ Pendente (o da W5s e o da W5t também).

@@ -69,3 +69,7 @@ Definição em [relatório §6](../reports/Editor%20de%20scripts%20estado%20da%2
   ✗ contexto relido por passo (media)         285 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
   ✓ contexto no inicio da sessao               64 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
 ```
+
+## Retorno do smoke do dono (15/10)
+
+- Erro de `script_quebrado.luau` lido no cartão: `line 3 · Expected identifier when parsing expression, got '='`. Está CORRECTO (a 2.ª `=` de `local x = = 1` é o símbolo inesperado), mas o dono: *«não gostei do = pois é confuso para os olhos»*. ⇒ **Onda 1/2, primeiro item de mensagens:** (1) o símbolo culpado nunca vai cru entre aspas simples no meio da frase — vai destacado (chip/realce com tokens) e, no editor, sublinhado no lugar exacto da linha; (2) as mensagens mais frequentes do compilador ganham texto escrito à mão em `ph2d-i18n` (ex.: «Something is missing before this =»), com a mensagem crua do Luau ao dispor no hover/console. Medir quais são as frequentes no registo de códigos de erro (plano §6 Onda 2).

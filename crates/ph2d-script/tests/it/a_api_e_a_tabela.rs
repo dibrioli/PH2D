@@ -38,40 +38,40 @@ fn as_chaves_da_vm_sao_as_da_tabela_nos_dois_sentidos() {
     let limpa = Lua::new();
     limpa.sandbox(true).expect("sandbox");
     let instalados: BTreeSet<String> = globais(lua).difference(&globais(&limpa)).cloned().collect();
-    let declarados: BTreeSet<String> = API_GLOBALS.iter().map(|g| g.name.to_owned()).collect();
+    let declarados: BTreeSet<String> = API_GLOBALS.iter().map(|g| g.ident.to_owned()).collect();
     assert_eq!(instalados, declarados, "globais da fiação × API_GLOBALS");
     for g in API_GLOBALS {
-        let t: Table = lua.globals().get(g.name).expect("o global é tabela");
+        let t: Table = lua.globals().get(g.ident).expect("o global é tabela");
         let na_vm = keys(&t);
         let na_tabela: BTreeSet<String> = API
             .iter()
-            .filter(|e| e.table == g.name)
-            .map(|e| e.name.to_owned())
+            .filter(|e| e.table == g.ident)
+            .map(|e| e.ident.to_owned())
             .collect();
         let falta: Vec<_> = na_vm.difference(&na_tabela).collect();
         let inventada: Vec<_> = na_tabela.difference(&na_vm).collect();
         assert!(
             falta.is_empty() && inventada.is_empty(),
             "{}: na VM sem linha na tabela {falta:?} · na tabela sem função na VM {inventada:?}",
-            g.name
+            g.ident
         );
         for k in &na_vm {
             assert!(
                 matches!(t.get::<Value>(k.as_str()), Ok(Value::Function(_))),
                 "{}.{k} não é função",
-                g.name
+                g.ident
             );
         }
     }
     // Cada linha é única e aponta um global declarado.
     let mut vistas = BTreeSet::new();
     for e in API {
-        assert!(API_GLOBALS.iter().any(|g| g.name == e.table), "{}", e.table);
+        assert!(API_GLOBALS.iter().any(|g| g.ident == e.table), "{}", e.table);
         assert!(
-            vistas.insert((e.table, e.name)),
+            vistas.insert((e.table, e.ident)),
             "repetida: {}.{}",
             e.table,
-            e.name
+            e.ident
         );
     }
 }
@@ -81,30 +81,30 @@ fn as_chaves_da_vm_sao_as_da_tabela_nos_dois_sentidos() {
 fn as_definicoes_saem_da_tabela() {
     let d = luau_definitions();
     for g in API_GLOBALS {
-        assert!(d.contains(&format!("declare {}: {{", g.name)), "{}", g.name);
+        assert!(d.contains(&format!("declare {}: {{", g.ident)), "{}", g.ident);
     }
     for e in API {
         assert!(
-            d.contains(&format!("    {}: {},\n", e.name, e.luau_type)),
+            d.contains(&format!("    {}: {},\n", e.ident, e.luau_type)),
             "{}.{}",
             e.table,
-            e.name
+            e.ident
         );
     }
     for t in API_TYPES {
         assert!(
-            d.contains(&format!("export type {} = {}\n", t.name, t.definition)),
+            d.contains(&format!("export type {} = {}\n", t.ident, t.definition)),
             "{}",
-            t.name
+            t.ident
         );
     }
     // Um tipo com maiúscula citado numa assinatura tem de estar declarado.
-    let declarados: BTreeSet<&str> = API_TYPES.iter().map(|t| t.name).collect();
+    let declarados: BTreeSet<&str> = API_TYPES.iter().map(|t| t.ident).collect();
     for h in HOOKS {
         assert!(
-            d.contains(&format!("-- @hook {}: {}\n", h.name, h.luau_type)),
+            d.contains(&format!("-- @hook {}: {}\n", h.ident, h.luau_type)),
             "gancho {}",
-            h.name
+            h.ident
         );
     }
     let sigs = API
@@ -146,7 +146,7 @@ fn os_ganchos_da_tabela_sao_os_que_a_cena_chama() {
             }
         }
     }
-    let na_tabela: BTreeSet<String> = HOOKS.iter().map(|h| h.name.to_owned()).collect();
+    let na_tabela: BTreeSet<String> = HOOKS.iter().map(|h| h.ident.to_owned()).collect();
     assert!(
         !chamados.is_empty(),
         "nenhum .hook(\"…\") no fonte — o censo está cego"

@@ -263,7 +263,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.script.file_not_found_browse_to_import" => {
             "No script \u{201c}{path}\u{201d} in this project \u{2014} use Browse to import the file."
         }
-        "panel.inspector.script.the_script_has_an_error" => "The script has an error: {msg}",
+        "panel.inspector.script.the_script_has_an_error" => {
+            "The script has an error and is not running: {msg}"
+        }
+        "panel.inspector.script.broken_runs_previous" => {
+            "The new text has an error \u{2014} the previous version keeps running: {msg}"
+        }
+        "panel.inspector.script.symbol" => "The problem is at",
         "panel.inspector.script.at_line" => "line {line} \u{b7} {msg}",
         "panel.inspector.script.this_script_offers_no_properties" => {
             "This script offers no properties."

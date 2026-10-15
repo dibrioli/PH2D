@@ -42,10 +42,7 @@ fn passo(default: f64, declarado: Option<f64>) -> f64 {
 /// **O que o cartão diz de um diagnóstico** — a linha DESTE script, quando há, e a 1.ª linha da
 /// mensagem (o modelo guarda-a inteira, com a pilha). A frase compõe-na o pintor.
 fn no_cartao(d: &ScriptDiagnostic) -> InspectorScriptError {
-    InspectorScriptError {
-        message: d.message.lines().next().unwrap_or_default().to_owned(),
-        line: d.line,
-    }
+    InspectorScriptError::from_luau(&d.message, d.line)
 }
 
 /// **O instantâneo.** `None` para quem não tem o componente (ADR-0166).
@@ -76,6 +73,12 @@ pub fn build_info(
         (_, ScriptSource::None, _) => InspectorScriptStatus::NoFile,
         (Some(_), _, None) => InspectorScriptStatus::Loading,
         (Some(_), _, Some(ScriptInfo::Missing(_))) => InspectorScriptStatus::Missing,
+        // ⭐ (E6/E7) Partido E a correr a versão anterior, ou partido e parado.
+        (Some(h), ScriptSource::Library(id), Some(ScriptInfo::Broken(d)))
+            if h.scene().runs_previous(*id) =>
+        {
+            InspectorScriptStatus::BrokenRunsPrevious(no_cartao(d))
+        }
         (Some(_), _, Some(ScriptInfo::Broken(d))) => InspectorScriptStatus::Broken(no_cartao(d)),
         (Some(_), _, Some(ScriptInfo::Ready(_))) => InspectorScriptStatus::Ready,
     };

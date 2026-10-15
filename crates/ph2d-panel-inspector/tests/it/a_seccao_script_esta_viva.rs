@@ -437,33 +437,56 @@ fn um_script_partido_pinta_a_linha_do_erro() {
             &[("line", &n), ("msg", &msg)],
         )
     };
-    let erro = |n: u32, msg: &str| InspectorScriptError {
-        message: msg.to_owned(),
-        line: Some(n),
-    };
+    let erro = |n: u32, msg: &str| InspectorScriptError::from_luau(msg, Some(n));
     let sintaxe = "Expected identifier when parsing expression, got '='";
     let corrida = "attempt to index nil with 'x'";
-    let partido = linha(3, sintaxe);
-    let parado = linha(7, corrida);
+    // ⭐ (E7) A frase vai SEM o símbolo; o símbolo vai num chip à parte.
+    let partido = linha(3, "Expected identifier when parsing expression, got");
+    let parado = linha(7, "attempt to index nil with");
     assert!(
         partido.contains('3') && parado.contains('7'),
         "a chave leva a linha"
     );
-    let mut i = info();
-    i.status = InspectorScriptStatus::Broken(erro(3, sintaxe));
-    i.failure = Some(erro(7, corrida));
-    let (mut h, mut st) = host(Some(i));
-    let (_, avisos) = ph2d_panel_inspector::censo_dos_avisos::medindo(|| {
-        let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    });
-    set_current_inspector_script(None);
-    for frase in [&partido, &parado] {
+    for (status, chave) in [
+        (
+            InspectorScriptStatus::Broken(erro(3, sintaxe)),
+            "panel.inspector.script.the_script_has_an_error",
+        ),
+        (
+            InspectorScriptStatus::BrokenRunsPrevious(erro(3, sintaxe)),
+            "panel.inspector.script.broken_runs_previous",
+        ),
+    ] {
+        let mut i = info();
+        i.status = status;
+        i.failure = Some(erro(7, corrida));
+        let (mut h, mut st) = host(Some(i));
+        let (_, avisos) = ph2d_panel_inspector::censo_dos_avisos::medindo(|| {
+            let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        });
+        set_current_inspector_script(None);
+        let frase = ph2d_i18n::tr_with(chave, &[("msg", &partido)]);
+        for f in [&frase, &parado] {
+            assert!(
+                avisos
+                    .iter()
+                    .any(|a| a.seccao() == "script_avisos" && a.texto.contains(f.as_str())),
+                "não se pintou «{f}»: {avisos:?}"
+            );
+        }
+        // ⭐⭐ O retorno do dono: o símbolo NUNCA cru entre aspas — e sai destacado, num chip.
         assert!(
-            avisos
-                .iter()
-                .any(|a| a.seccao() == "script_avisos" && a.texto.contains(frase.as_str())),
-            "não se pintou «{frase}»: {avisos:?}"
+            avisos.iter().all(|a| !a.texto.contains("'='") && !a.texto.contains("'x'")),
+            "um símbolo cru entre aspas no cartão: {avisos:?}"
         );
+        for chip in ["=", "x"] {
+            assert!(
+                avisos
+                    .iter()
+                    .any(|a| a.seccao() == "script_avisos" && a.texto == chip),
+                "o chip «{chip}» não foi pintado: {avisos:?}"
+            );
+        }
     }
 }
 

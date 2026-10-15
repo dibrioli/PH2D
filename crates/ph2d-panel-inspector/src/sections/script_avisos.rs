@@ -31,6 +31,54 @@ fn erro(e: &InspectorScriptError) -> String {
     }
 }
 
+/// ⭐ (CodeEditor E7) **O símbolo culpado num chip** — nunca cru entre aspas no meio da frase
+/// (retorno do dono: o `'='` confunde). Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+fn simbolo(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    sym: &str,
+) -> f32 {
+    crate::censo_dos_avisos::regista(sym);
+    let font = ERRO.px();
+    let rotulo = tr("panel.inspector.script.symbol");
+    let lw = ph2d_editor_core::paint::label_column_width(text_system, font, [rotulo]);
+    let pad = Spacing::Xs.px();
+    let h = font + pad * 2.0;
+    paint_text(
+        text_system,
+        scene,
+        rotulo,
+        x,
+        y + pad,
+        font,
+        lw,
+        resolve(ColorToken::Text2, theme),
+    );
+    let cw = ph2d_editor_core::paint::label_column_width(text_system, font, [sym])
+        + Spacing::Md.px() * 2.0;
+    let chip = Rect::new(x + lw + Spacing::Sm.px(), y, cw.min((w - lw).max(0.0)), h);
+    fill_rounded_rect(
+        scene,
+        chip,
+        Radius::Xs.px(),
+        resolve(ColorToken::DangerSoft, theme),
+    );
+    ph2d_editor_core::paint::paint_text_centered(
+        text_system,
+        scene,
+        sym,
+        chip,
+        font,
+        resolve(ColorToken::Danger, theme),
+    );
+    y + h + ph2d_tokens::control_gap_px()
+}
+
 /// Os avisos do ficheiro e da corrida. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn avisos(
@@ -109,7 +157,13 @@ pub(super) fn avisos(
                 ColorToken::Danger,
             );
         }
-        InspectorScriptStatus::Broken(e) => {
+        InspectorScriptStatus::Broken(e) | InspectorScriptStatus::BrokenRunsPrevious(e) => {
+            // ⭐ (E6/E7) Quebrado e PARADO, ou quebrado com a versão anterior a correr.
+            let chave = if matches!(info.status, InspectorScriptStatus::Broken(_)) {
+                "panel.inspector.script.the_script_has_an_error"
+            } else {
+                "panel.inspector.script.broken_runs_previous"
+            };
             y = super::rows::aviso_em(
                 scene,
                 text_system,
@@ -117,13 +171,13 @@ pub(super) fn avisos(
                 x,
                 w,
                 y,
-                &tr_with(
-                    "panel.inspector.script.the_script_has_an_error",
-                    &[("msg", &erro(e))],
-                ),
+                &tr_with(chave, &[("msg", &erro(e))]),
                 ColorToken::Danger,
                 ERRO,
             );
+            if let Some(s) = &e.symbol {
+                y = simbolo(scene, text_system, theme, x, w, y, s);
+            }
         }
         InspectorScriptStatus::Ready => {
             if info.props.is_empty() {
@@ -155,6 +209,9 @@ pub(super) fn avisos(
             ColorToken::Danger,
             ERRO,
         );
+        if let Some(s) = &e.symbol {
+            y = simbolo(scene, text_system, theme, x, w, y, s);
+        }
     }
     if info.kept > 0 {
         y = super::rows::aviso(

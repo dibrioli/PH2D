@@ -93,10 +93,39 @@ pub enum PorqueOrfao {
 
 /// **Um erro do Luau, como o cartão o pinta** — a 1.ª linha da mensagem e a linha DESTE script.
 /// Quem compõe a frase é o pintor (a chave `panel.inspector.script.at_line`).
+///
+/// ⭐ (CodeEditor E7, retorno do dono: *«o `=` cru entre aspas confunde»*) o símbolo culpado com que
+/// o Luau ACABA a mensagem (`…, got '='`) sai dela para `symbol`, e o cartão pinta-o destacado.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InspectorScriptError {
     pub message: String,
     pub line: Option<u32>,
+    pub symbol: Option<String>,
+}
+
+impl InspectorScriptError {
+    /// Lê a 1.ª linha de uma mensagem do Luau: um `'símbolo'` no FIM vai para `symbol` e sai da
+    /// frase; aspas a meio da frase ficam (são palavras, não o culpado).
+    #[must_use]
+    pub fn from_luau(message: &str, line: Option<u32>) -> Self {
+        let first = message.lines().next().unwrap_or_default().trim_end();
+        let split = first
+            .strip_suffix('\'')
+            .and_then(|s| s.rfind('\'').map(|i| (&s[..i], &s[i + 1..])))
+            .filter(|(_, sym)| !sym.is_empty());
+        match split {
+            Some((head, sym)) => Self {
+                message: head.trim_end().to_owned(),
+                line,
+                symbol: Some(sym.to_owned()),
+            },
+            None => Self {
+                message: first.to_owned(),
+                line,
+                symbol: None,
+            },
+        }
+    }
 }
 
 /// **Em que estado está o script.**
@@ -110,8 +139,10 @@ pub enum InspectorScriptStatus {
     Loading,
     /// O projeto não tem o script apontado.
     Missing,
-    /// O Luau recusou-o — a mensagem é a dele.
+    /// O Luau recusou-o e NADA corre (nunca houve uma versão boa) — a mensagem é a dele.
     Broken(InspectorScriptError),
+    /// ⭐ (CodeEditor E6/E7) O texto novo foi recusado, e os objectos CONTINUAM na versão anterior.
+    BrokenRunsPrevious(InspectorScriptError),
     /// Carregou.
     Ready,
     /// ⛔ Um caminho de ficheiro que o load não importou (ADR-0188) — RECUSADO, nunca corre vazio.
@@ -172,6 +203,42 @@ pub enum ScriptFieldEdit {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ (E7) O símbolo do FIM sai da frase sem aspas; aspas a meio ficam; sem aspas, nada.
+    #[test]
+    fn o_simbolo_do_fim_sai_da_frase() {
+        let e = InspectorScriptError::from_luau(
+            "Expected identifier when parsing expression, got '='",
+            Some(3),
+        );
+        assert_eq!(
+            (e.message.as_str(), e.symbol.as_deref(), e.line),
+            (
+                "Expected identifier when parsing expression, got",
+                Some("="),
+                Some(3)
+            )
+        );
+        let e = InspectorScriptError::from_luau("attempt to index nil with 'x'\nstack", None);
+        assert_eq!(
+            (e.message.as_str(), e.symbol.as_deref()),
+            ("attempt to index nil with", Some("x"))
+        );
+        let e = InspectorScriptError::from_luau(
+            "Expected 'end' (to close 'function' at line 1), got <eof>",
+            None,
+        );
+        assert_eq!(e.symbol, None);
+        assert_eq!(
+            e.message,
+            "Expected 'end' (to close 'function' at line 1), got <eof>"
+        );
+        assert_eq!(
+            InspectorScriptError::from_luau("got ''", None).symbol,
+            None,
+            "aspas vazias não são símbolo"
+        );
+    }
 
     /// ⚠️ **Todo tipo de valor tem a sua edição** — um tipo sem variante é uma linha que o painel
     /// pinta e ninguém pode mexer.

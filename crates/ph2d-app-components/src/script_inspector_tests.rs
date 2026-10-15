@@ -253,10 +253,7 @@ fn com_o_script_partido_os_valores_contam_se_como_guardados() {
 
 /// O erro do cartão: a 1.ª linha da mensagem e a linha do script.
 fn linha(n: u32, msg: &str) -> InspectorScriptError {
-    InspectorScriptError {
-        message: msg.to_owned(),
-        line: Some(n),
-    }
+    InspectorScriptError::from_luau(msg, Some(n))
 }
 
 /// ⭐⭐ (CodeEditor T1/T7) **O cartão leva a LINHA do erro, estruturada** — sintaxe na 3, corrida na
@@ -451,4 +448,57 @@ fn edit_pede_o_editor_e_nao_mexe_no_documento() {
             .get_resource::<ScriptEditRequests>()
             .is_none_or(|r| r.0.is_empty())
     );
+}
+
+/// ⭐ (CodeEditor E7) **O cartão distingue «partido, a correr a versão anterior» de «partido e
+/// parado»** — e o símbolo culpado sai da frase (nada de `'='` cru).
+///
+/// Mutação que deve sangrar: o braço `runs_previous` do `build_info` cair no `Broken`.
+#[test]
+fn partido_a_correr_a_anterior_e_partido_parado() {
+    let (mut sim, bits) = cena_com("local a = 1\n", &[]);
+    let mut h = pronto(&mut sim);
+    assert_eq!(
+        build_info(&sim, Some(&h), bits, 1, false)
+            .expect("tem")
+            .status,
+        S::Ready
+    );
+    let id = sim
+        .world()
+        .resource::<ProjectScripts>()
+        .by_name("i.luau")
+        .expect("script");
+    sim.world_mut()
+        .resource_mut::<ProjectScripts>()
+        .set_text(id, "local a = 1\nlocal c = = 3\n");
+    h.scene_sync(sim.world_mut());
+    let st = build_info(&sim, Some(&h), bits, 1, false)
+        .expect("tem")
+        .status;
+    let S::BrokenRunsPrevious(e) = st else {
+        panic!("esperava «a correr a anterior»: {st:?}")
+    };
+    assert_eq!(
+        (e.line, e.message.as_str(), e.symbol.as_deref()),
+        (
+            Some(2),
+            "Expected identifier when parsing expression, got",
+            Some("=")
+        )
+    );
+    assert!(
+        !e.message.contains('\''),
+        "a frase não leva aspas: {}",
+        e.message
+    );
+    // Controlo: um script que NUNCA compilou está partido e PARADO.
+    let (mut sim, bits) = cena_com("local c = = 3\n", &[]);
+    let h = pronto(&mut sim);
+    assert!(matches!(
+        build_info(&sim, Some(&h), bits, 1, false)
+            .expect("tem")
+            .status,
+        S::Broken(_)
+    ));
 }

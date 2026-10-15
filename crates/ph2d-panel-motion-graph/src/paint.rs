@@ -29,6 +29,9 @@ mod paint_breadcrumb;
 /// ficheiro desenha o que um cartão É, aquele o que ele CONTROLA.
 #[path = "paint_card_params.rs"]
 pub(crate) mod paint_card_params;
+/// O pedido «traz estes nós à vista» (o balão do tutorial) — ver o módulo.
+#[path = "paint_enquadra_nos.rs"]
+mod paint_enquadra_nos;
 #[path = "paint_inert_badge.rs"]
 mod paint_inert_badge;
 #[path = "paint_port_label.rs"]
@@ -36,7 +39,7 @@ mod paint_port_label;
 
 #[cfg(test)]
 #[path = "paint_fit_tests.rs"]
-mod fit_tests;
+pub(crate) mod fit_tests;
 /// O gate de PIXEL da faixa de params — o que os seis de geometria não podiam ver.
 #[cfg(test)]
 #[path = "paint_card_params_tests.rs"]
@@ -184,13 +187,15 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // a selection frames it, not the whole graph (`fit_selection`); every auto-fit
     // (first sight, level change) leaves that flag false and so frames everything.
     state.refit_if_the_panel_moved_under_an_untouched_view(rect);
-    if !state.fitted && !snap.nodes.is_empty() {
+    let auto_fit = !state.fitted && !snap.nodes.is_empty();
+    if auto_fit {
         let scope = state.fit_selection.then_some(&state.selected);
         state.view = fit(&snap, rect, scope);
         state.enquadrado_em = scope.is_none().then_some((rect, state.view));
         state.fitted = true;
         state.fit_selection = false;
     }
+    paint_enquadra_nos::aplica(state, &snap, rect, auto_fit);
 
     // ⭐ **A BANDA que o divisor parte** — a régua da fracção, publicada pelo layout. ⛔ Não é
     // `center_viewport + rect`: com a timeline docada dentro do split essa soma não é a banda, e
@@ -396,7 +401,7 @@ pub(crate) fn fit(
 
 /// A caixa `[min_x, min_y, max_x, max_y]`, em unidades do grafo, dos cartões do `selection` (ou de
 /// todos) TAL COMO o regime de `regime` os desenha. `None` se ela não contém nenhum.
-fn caixa(
+pub(crate) fn caixa(
     snap: &GraphViewSnapshot,
     selection: Option<&std::collections::BTreeSet<u32>>,
     regime: &View,
@@ -420,12 +425,23 @@ fn caixa(
 }
 
 /// A vista que centra `caixa` em `rect`, com o zoom entre o piso do enquadramento e `teto`.
-fn enquadra(rect: Rect, [min_x, min_y, max_x, max_y]: [f32; 4], teto: f32) -> ViewState {
+fn enquadra(rect: Rect, caixa: [f32; 4], teto: f32) -> ViewState {
+    enquadra_entre(rect, caixa, ZOOM_FIT_MIN, teto)
+}
+
+/// [`enquadra`] com o piso dado (o pedido de trazer nós à vista nunca aproxima abaixo do zoom
+/// que o artista escolheu).
+pub(crate) fn enquadra_entre(
+    rect: Rect,
+    [min_x, min_y, max_x, max_y]: [f32; 4],
+    piso: f32,
+    teto: f32,
+) -> ViewState {
     let bw = (max_x - min_x).max(1.0);
     let bh = (max_y - min_y).max(1.0);
     let zoom = ph2d_editor_core::math::safe_clamp(
         ((rect.w - 2.0 * FIT_PAD) / bw).min((rect.h - 2.0 * FIT_PAD) / bh),
-        ZOOM_FIT_MIN,
+        piso,
         teto,
     );
     // ⛔ **O que não cabe ao piso alinha pelo INÍCIO, nunca pelo centro** (report de 2026-10-03):

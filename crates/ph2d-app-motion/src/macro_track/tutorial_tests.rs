@@ -247,3 +247,34 @@ fn saltar_para_o_valor_final_cumpre_o_intermedio_mas_o_valor_de_antes_nao() {
     );
     assert!(!cumpre(&crits[0].itens[0], &com(1.25), &crits[1..]));
 }
+
+/// ⭐ O editor traz à vista os nós da etapa UMA vez por etapa: no quadro seguinte, com o mesmo estado,
+/// não volta a pedir (o aluno desloca à vontade); a etapa seguinte pede outra vez, com os nós dela.
+#[test]
+fn a_etapa_corrente_pede_ao_editor_os_nos_dela_uma_vez() {
+    use ph2d_editor_core::macro_tutorial::TutorialDaFamilia;
+    use ph2d_panel_motion_graph::take_frame_request;
+    let t = trilha();
+    let mut m = aluno(&t);
+    let _ = take_frame_request();
+    let s = retrato(&m, ALUNO);
+    let n = |tipo: &str| s.nos[&vaga(tipo)].0;
+    let avalia = |m: &mut MotionState| TutorialDaFamilia::avalia(m, ALUNO, &t, 1).expect("avalia");
+    avalia(&mut m);
+    assert_eq!(
+        take_frame_request(),
+        Some(vec![n("field.box"), n("force.wind")])
+    );
+    avalia(&mut m);
+    assert_eq!(
+        take_frame_request(),
+        None,
+        "mesmo estado, nenhum pedido novo"
+    );
+    liga(&mut m, "field.box", 0, "force.wind", 0);
+    avalia(&mut m);
+    assert_eq!(
+        take_frame_request(),
+        Some(vec![n("force.wind"), n("force.drag")])
+    );
+}

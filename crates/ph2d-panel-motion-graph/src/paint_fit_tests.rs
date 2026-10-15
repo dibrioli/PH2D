@@ -18,7 +18,7 @@ use ph2d_editor_core::screens::layout::{CenterSplit, HeroLayout};
 use ph2d_node_registry::{NodeSilhouette, NodeUiCategory, ParamUiHint, ParamWidget};
 
 /// A janela da foto do dono.
-const JANELA: Rect = Rect {
+pub(crate) const JANELA: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1930.0, // LITERAL-PX-OK: a janela fotografada
@@ -27,7 +27,7 @@ const JANELA: Rect = Rect {
 
 /// O layout da janela, com o painel do grafo no retângulo MEDIDO no app (quadro 1 em diante, a
 /// timeline aberta por baixo): `1310 × 205,5` px.
-fn layout() -> HeroLayout {
+pub(crate) fn layout() -> HeroLayout {
     let mut l = HeroLayout::for_viewport_split(
         JANELA,
         false,
@@ -45,7 +45,7 @@ fn layout() -> HeroLayout {
     l
 }
 
-fn no(id: u32, nome: &str, x: f32, y: f32, params: usize) -> GraphNodeView {
+pub(crate) fn no(id: u32, nome: &str, x: f32, y: f32, params: usize) -> GraphNodeView {
     let hint = ParamUiHint {
         param: "strength",
         label: "Strength",
@@ -78,7 +78,7 @@ fn no(id: u32, nome: &str, x: f32, y: f32, params: usize) -> GraphNodeView {
     }
 }
 
-fn grafo(nos: Vec<GraphNodeView>) -> GraphViewSnapshot {
+pub(crate) fn grafo(nos: Vec<GraphNodeView>) -> GraphViewSnapshot {
     GraphViewSnapshot {
         level: None,
         breadcrumb: Vec::new(),
@@ -111,7 +111,7 @@ fn a_galaxia() -> GraphViewSnapshot {
 }
 
 /// Pinta o painel com `layout` e devolve o retângulo de cada cartão TAL COMO DESENHADO.
-fn pinta(
+pub(crate) fn pinta(
     host: &mut ph2d_ui_testkit::MockPanelHost,
     state: &mut MotionGraphPanelState,
     layout: HeroLayout,

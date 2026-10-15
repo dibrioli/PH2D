@@ -259,24 +259,30 @@ fn pedido(item: &Item) -> PedidoDoTutorial {
     }
 }
 
-/// Onde o aluno faz o item: as portas de um fio, o cartão de um nó.
-#[cfg(feature = "panel-motion-graph")]
-fn alvos(item: &Item, s: &Retrato) -> Vec<ph2d_editor_core::ids::NodeId> {
-    use ph2d_panel_motion_graph::alvo;
+/// Um sítio onde o aluno faz o item, num nó dele.
+#[derive(Clone, Copy)]
+enum Sitio {
+    Saida(u16),
+    Entrada(u16),
+    Cartao,
+}
+
+/// Onde o aluno faz o item: as portas de um fio, o cartão de um nó (ids crus do aluno).
+fn sitios(item: &Item, s: &Retrato) -> Vec<(u32, Sitio)> {
     let no = |v: &Vaga| s.nos.get(v).map(|n| n.0);
     match item {
         Item::Liga(f) => [
-            no(&f.de).map(|n| alvo::saida(n, usize::from(f.porta_de))),
-            no(&f.para).map(|n| alvo::entrada(n, usize::from(f.porta_para))),
+            no(&f.de).map(|n| (n, Sitio::Saida(f.porta_de))),
+            no(&f.para).map(|n| (n, Sitio::Entrada(f.porta_para))),
         ]
         .into_iter()
         .flatten()
         .collect(),
         Item::Desliga(f) => no(&f.para)
-            .map(|n| alvo::entrada(n, usize::from(f.porta_para)))
+            .map(|n| (n, Sitio::Entrada(f.porta_para)))
             .into_iter()
             .collect(),
-        Item::Valor { no: v, .. } => no(v).map(alvo::no).into_iter().collect(),
+        Item::Valor { no: v, .. } => no(v).map(|n| (n, Sitio::Cartao)).into_iter().collect(),
         Item::NaoHaMais { tipo, .. } => s
             .nos
             .range(
@@ -287,11 +293,25 @@ fn alvos(item: &Item, s: &Retrato) -> Vec<ph2d_editor_core::ids::NodeId> {
             )
             .take_while(|(v, _)| &v.tipo == tipo)
             .last()
-            .map(|(_, n)| alvo::no(n.0))
+            .map(|(_, n)| (n.0, Sitio::Cartao))
             .into_iter()
             .collect(),
         Item::Ha { .. } => Vec::new(),
     }
+}
+
+/// Os ids de interação dos [`sitios`] que o painel do grafo regista.
+#[cfg(feature = "panel-motion-graph")]
+fn alvos(item: &Item, s: &Retrato) -> Vec<ph2d_editor_core::ids::NodeId> {
+    use ph2d_panel_motion_graph::alvo;
+    sitios(item, s)
+        .into_iter()
+        .map(|(n, sitio)| match sitio {
+            Sitio::Saida(p) => alvo::saida(n, usize::from(p)),
+            Sitio::Entrada(p) => alvo::entrada(n, usize::from(p)),
+            Sitio::Cartao => alvo::no(n),
+        })
+        .collect()
 }
 
 #[cfg(not(feature = "panel-motion-graph"))]
@@ -302,20 +322,59 @@ fn alvos(_: &Item, _: &Retrato) -> Vec<ph2d_editor_core::ids::NodeId> {
 /// **As etapas no estado do aluno**: para cada critério, o 1.º item por cumprir e onde se faz.
 #[must_use]
 pub fn avalia(m: &MotionState, dono: u64, crits: &[Criterio]) -> Vec<EtapaDoTutorial> {
+    avalia_e_onde(m, dono, crits).0
+}
+
+/// [`avalia`] e a etapa CORRENTE (a 1.ª por cumprir): `(k, os nós do aluno onde ela se faz)`.
+fn avalia_e_onde(
+    m: &MotionState,
+    dono: u64,
+    crits: &[Criterio],
+) -> (Vec<EtapaDoTutorial>, Option<(usize, Vec<u32>)>) {
     let s = retrato(m, dono);
-    crits
+    let mut corrente = None;
+    let etapas = crits
         .iter()
         .enumerate()
         .map(|(i, c)| {
             let falta = c.itens.iter().find(|x| !cumpre(x, &s, &crits[i + 1..]));
+            if let Some(x) = falta
+                && corrente.is_none()
+            {
+                corrente = Some((c.k, sitios(x, &s).into_iter().map(|(n, _)| n).collect()));
+            }
             EtapaDoTutorial {
                 k: c.k,
                 falta: falta.map(pedido),
                 alvos: falta.map(|x| alvos(x, &s)).unwrap_or_default(),
             }
         })
-        .collect()
+        .collect();
+    (etapas, corrente)
 }
+
+#[cfg(feature = "panel-motion-graph")]
+thread_local! {
+    /// O último «traz à vista» pedido ao painel: `(dono, k, nós)` — só se volta a pedir quando muda,
+    /// para o aluno poder deslocar o editor à vontade.
+    static VISTO: RefCell<Option<(u64, usize, Vec<u32>)>> = const { RefCell::new(None) };
+}
+
+/// Pede ao painel do grafo que traga à vista os nós da etapa corrente, uma vez por etapa.
+#[cfg(feature = "panel-motion-graph")]
+fn traz_a_vista(dono: u64, corrente: Option<(usize, Vec<u32>)>) {
+    let Some((k, nos)) = corrente.filter(|(_, n)| !n.is_empty()) else {
+        return;
+    };
+    let chave = (dono, k, nos);
+    if VISTO.with(|v| v.borrow().as_ref() != Some(&chave)) {
+        ph2d_panel_motion_graph::request_frame_nodes(chave.2.clone());
+        VISTO.with(|v| *v.borrow_mut() = Some(chave));
+    }
+}
+
+#[cfg(not(feature = "panel-motion-graph"))]
+fn traz_a_vista(_: u64, _: Option<(usize, Vec<u32>)>) {}
 
 /// **«Mostra-me»**: o grafo do aluno passa a ter o que a etapa mudou — um passo de undo.
 ///
@@ -458,7 +517,9 @@ impl TutorialDaFamilia for MotionState {
         if track.family != super::FAMILIA {
             return Ok(Vec::new());
         }
-        Ok(avalia(self, dono, &em_cache(dono, track, versao)?))
+        let (etapas, corrente) = avalia_e_onde(self, dono, &em_cache(dono, track, versao)?);
+        traz_a_vista(dono, corrente);
+        Ok(etapas)
     }
 
     fn mostra(

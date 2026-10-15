@@ -374,6 +374,7 @@ thread_local! {
     static PARAM_SCRUB: RefCell<Option<(u32, &'static str)>> = const { RefCell::new(None) };
     static BACKDROP_SELECTION: RefCell<Option<u32>> = const { RefCell::new(None) };
     static SELECTION_REQUEST: RefCell<Option<Vec<u32>>> = const { RefCell::new(None) };
+    static FRAME_REQUEST: RefCell<Option<Vec<u32>>> = const { RefCell::new(None) };
     /// **The node-help system on/off** (ADR-0155): a shell→panel scalar the toolbar
     /// chip reads to draw its state and to flip. It lives HERE, not on
     /// [`GraphViewSnapshot`], because it is editor UX state (like the selection), not
@@ -435,6 +436,24 @@ pub fn current_graph_param_scrub() -> Option<(u32, &'static str)> {
 /// on its next `process`.
 pub fn request_graph_selection(nodes: Vec<u32>) {
     SELECTION_REQUEST.with(|c| *c.borrow_mut() = Some(nodes));
+}
+
+/// **Traz estes nós à vista** (shell → painel, uma vez): na próxima pintura, se algum não está
+/// dentro do painel, a vista desliza (e só afasta se não couberem) até eles estarem. Quem pede é
+/// o balão do tutorial; depois disso o pan é do artista.
+pub fn request_frame_nodes(nodes: Vec<u32>) {
+    FRAME_REQUEST.with(|c| *c.borrow_mut() = Some(nodes));
+}
+
+/// O pedido de enquadrar por cumprir, SEM o consumir (os gates de quem pede).
+#[must_use]
+pub fn pending_frame_nodes() -> Option<Vec<u32>> {
+    FRAME_REQUEST.with(|c| c.borrow().clone())
+}
+
+/// Consome o pedido de enquadrar (o painel; e os gates de quem pede, para limpar).
+pub fn take_frame_request() -> Option<Vec<u32>> {
+    FRAME_REQUEST.with(|c| c.borrow_mut().take())
 }
 
 /// Take the pending selection request, if any (panel).

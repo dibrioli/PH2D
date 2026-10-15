@@ -185,7 +185,17 @@ impl PainterTool {
                                 camadas,
                                 alfa_pesa,
                             }) if wgt > 0.0 => {
-                                let c = camadas.motor().color(lut, forma.unwrap_or(wgt), wgt);
+                                let base = [
+                                    f32::from(col[0]) / 255.0,
+                                    f32::from(col[1]) / 255.0,
+                                    f32::from(col[2]) / 255.0,
+                                ];
+                                let c = camadas.motor(forma.is_some()).color(
+                                    lut,
+                                    forma.unwrap_or(wgt),
+                                    wgt,
+                                    base,
+                                );
                                 let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
                                 (
                                     [byte(c[0]), byte(c[1]), byte(c[2])],
@@ -278,7 +288,7 @@ impl PainterTool {
             return None;
         }
         let dona = super::ramp_lut::RampLutOwner::Shape;
-        if !self.paint.shape_camadas.alguma() {
+        if !self.paint.shape_camadas.alguma(self.shape_tem_textura()) {
             return None;
         }
         self.ensure_ramp_lut(dona);

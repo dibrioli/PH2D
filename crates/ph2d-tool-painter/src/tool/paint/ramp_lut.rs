@@ -57,7 +57,7 @@ impl PainterTool {
     pub(super) fn color_ramp_owner(&self, grain_active: bool) -> RampLutOwner {
         if self.paint.shape_color_ramp_enabled
             && !self.paint.shape_color_ramp_bw
-            && self.paint.shape_camadas.alguma()
+            && self.paint.shape_camadas.alguma(self.shape_tem_textura())
         {
             RampLutOwner::Shape
         } else if grain_active && self.paint.texture_ramp_enabled {
@@ -76,11 +76,22 @@ impl PainterTool {
             alpha_mode: self.active_ramp_alpha_mode(owner),
             index: owner.index(),
             shape: if owner == RampLutOwner::Shape {
-                self.paint.shape_camadas.motor()
+                self.paint.shape_camadas.motor(self.shape_tem_textura())
             } else {
                 ph2d_painter_brush::ShapeRampLayers::default()
             },
         }
+    }
+
+    /// A cor do pincel aparece por baixo das camadas do Shape (a de baixo não é opaca): só a rota por
+    /// pixel tem a cor de CADA dab.
+    pub(super) fn camadas_mostram_o_pincel(&self, owner: RampLutOwner) -> bool {
+        owner == RampLutOwner::Shape
+            && self
+                .paint
+                .shape_camadas
+                .motor(self.shape_tem_textura())
+                .shows_brush_color()
     }
 
     /// A Texture Color recolhe o padrão PROCEDURAL do Shape em cor (ele deixa de recortar) — então o

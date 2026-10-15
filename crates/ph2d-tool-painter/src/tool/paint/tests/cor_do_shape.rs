@@ -77,11 +77,13 @@ fn tela(shape: Option<TextureMapping>, grao: Grao, rampa: Rampa) -> PainterTool 
         RampInterp::Linear,
     ));
     t.set_shape_ramp_enabled(rampa != Rampa::Off);
+    // `Cor` = a Texture Color só (a lei do prompt 38); `Queda` = a Falloff Color só (a de antes).
+    t.paint.shape_camadas.queda = false;
     t.paint.shape_color_ramp_bw = rampa == Rampa::Bw;
     if rampa == Rampa::Queda {
+        t.paint.shape_camadas.textura = false;
+        t.paint.shape_camadas.queda = true;
         t.set_shape_falloff_ramp(t.shape_color_ramp().clone());
-        t.toggle_shape_texture_color();
-        t.toggle_shape_falloff_color();
     }
     t
 }

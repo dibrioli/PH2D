@@ -6,14 +6,13 @@
 //! drain the section's deferred dropdown popovers.
 
 use crate::paint_brush::paint_dropdown_popover;
-use crate::paint_brush_rows::paint_dropdown_chip;
-use crate::paint_ramp_widget::{BW_W, RampIds, RampView, bw_button, icon_button, paint_ramp_body};
+use crate::paint_ramp_widget::{RampIds, RampView, icon_button, paint_ramp_body, ramp_body_height};
 use crate::state;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::Spacing;
 use ph2d_tool_painter::ids::{
     painter_shape_color_blend_option_id, painter_shape_falloff_ramp_interp_option_id,
     painter_shape_falloff_ramp_mode_option_id, painter_shape_ramp_alpha_option_id,
@@ -76,11 +75,14 @@ enum Camada {
     Queda,
 }
 
+const MOVE_W: f32 = 72.0; // LITERAL-PX-OK: the "Move Up" button — wide enough for its label
+
 /// Paint the **Shape Color** section at `y`, returning the next `y` (prompt 38): "Use Color Ramp", the
-/// section-wide B&W + Alpha line, then the two layers — **Texture Color** (the Shape ramp, indexed by
-/// the Shape's texture) and **Falloff Color** (indexed by the coverage) — each with its checkbox and,
-/// when on, its ramp editor; the first row carries the swap button; with both on, the top layer's
-/// Blend mode + Opacity. With B&W on the ramp is the silhouette's TONE: one ramp, no layers.
+/// section-wide **B&W** and **Alpha** rows, then one CARD per layer — **Texture Color** (the Shape ramp,
+/// indexed by the Shape's texture) and **Falloff Color** (indexed by the coverage), in stack order (the
+/// first card is on top). Each card: "Enabled" (the lower one also carries "Move Up"), and when on its
+/// ramp editor + **Opacity**; the top card adds the **Blend** when both are on. With B&W on the ramp is
+/// the silhouette's TONE: one ramp, no layers.
 pub(crate) fn paint_shape_ramp_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -116,8 +118,36 @@ pub(crate) fn paint_shape_ramp_section(
     if !brush.shape_color_ramp_enabled {
         return crate::paint_brush_top::end_fold(ctx, fold, y); // no dead controls when off
     }
-    // Smear/Blur/Clone/Eraser paint no colour → the ramp is a B&W coverage tone; force B&W checked + locked.
+    // Smear/Blur/Clone/Eraser paint no colour → the ramp is a B&W coverage tone (forced: no B&W row).
     let bw_locked = brush.paints_no_color() || brush.eraser || brush.is_mask;
+    if !bw_locked {
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ids.bw,
+            "panel.painter_layers.ramp.bw",
+            brush.shape_color_ramp_bw,
+        );
+    }
+    let alpha = brush.shape_color_ramp_alpha_mode;
+    let (ny, aberto) = crate::paint_brush_rows::paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "panel.painter_layers.ramp.alpha",
+        ids.alpha_mode,
+        alpha,
+        tr(RampAlphaMode::from_u8(alpha).name_key()),
+    );
+    if let Some(r) = aberto {
+        state::set_pending_shape_ramp_alpha_dd(Some((r, alpha)));
+    }
+    y = ny;
     let count =
         (brush.shape_color_ramp_stop_count as usize).min(brush.shape_color_ramp_stops.len());
     let textura = RampView {
@@ -127,30 +157,10 @@ pub(crate) fn paint_shape_ramp_section(
         bw_button: false,
         mode: brush.shape_color_ramp_mode,
         interp: brush.shape_color_ramp_interp,
-        alpha_mode: brush.shape_color_ramp_alpha_mode,
+        alpha_mode: alpha,
         stops: &brush.shape_color_ramp_stops[..count],
         selected_id: state::selected_shape_ramp_stop(),
     };
-    // The section-wide line: B&W + the Alpha action.
-    let gap = Spacing::Xs.px();
-    bw_button(ctx, theme, Rect::new(x, y, BW_W, ROW_H_PX), ids.bw, textura);
-    let alpha_rect = Rect::new(
-        x + BW_W + gap,
-        y,
-        (content_w - BW_W - gap).max(0.0),
-        ROW_H_PX,
-    );
-    if paint_dropdown_chip(
-        ctx,
-        theme,
-        ids.alpha_mode,
-        textura.alpha_mode,
-        tr(RampAlphaMode::from_u8(textura.alpha_mode).name_key()),
-        alpha_rect,
-    ) {
-        state::set_pending_shape_ramp_alpha_dd(Some((alpha_rect, textura.alpha_mode)));
-    }
-    y += ph2d_tokens::row_pitch_px();
     if textura.bw {
         y = paint_ramp_body(ctx, theme, x, content_w, y, &ids, textura);
         return crate::paint_brush_top::end_fold(ctx, fold, y);
@@ -169,92 +179,112 @@ pub(crate) fn paint_shape_ramp_section(
     } else {
         [Camada::Textura, Camada::Queda]
     };
+    let ambas = brush.shape_texture_color && brush.shape_falloff_color;
     for (n, camada) in ordem.into_iter().enumerate() {
-        let (id, chave, ligada) = match camada {
+        let (titulo, id, ligada, opacidade, id_op, view, rids) = match camada {
             Camada::Textura => (
-                ph2d_tool_painter::ids::PAINTER_SHAPE_TEXTURE_COLOR,
                 "panel.painter_layers.ramp.texture_color",
+                ph2d_tool_painter::ids::PAINTER_SHAPE_TEXTURE_COLOR,
                 brush.shape_texture_color,
+                brush.shape_texture_opacity,
+                ph2d_tool_painter::ids::PAINTER_SHAPE_TEXTURE_OPACITY,
+                textura,
+                ids,
             ),
             Camada::Queda => (
-                ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_COLOR,
                 "panel.painter_layers.ramp.falloff_color",
+                ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_COLOR,
                 brush.shape_falloff_color,
+                brush.shape_falloff_opacity,
+                ph2d_tool_painter::ids::PAINTER_SHAPE_FALLOFF_OPACITY,
+                queda,
+                falloff_ramp_ids(),
             ),
         };
-        // The first row carries the swap (which layer is on top) at its right.
-        let troca = n == 0;
-        let w_caixa = if troca {
-            content_w - BW_W - gap
+        let de_cima = n == 0;
+        let com_blend = de_cima && ambas;
+        let iw = crate::card::card_inner_w(content_w);
+        let (linhas, corpo) = if ligada {
+            (2 + usize::from(com_blend), ramp_body_height(iw, false))
         } else {
-            content_w
+            (1, 0.0)
         };
-        if troca {
+        let (ix, iw, mut ry, proximo) = crate::card::card_frame_com_extra(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr(titulo),
+            linhas,
+            corpo,
+        );
+        // The lower card's TITLE line carries "Move Up" (brings it to the top), so its rows keep the
+        // section's column.
+        if !de_cima {
+            let h = ry - y;
             icon_button(
                 ctx,
                 theme,
-                Rect::new(x + content_w - BW_W, y, BW_W, ROW_H_PX),
-                tr("panel.painter_layers.ramp.swap"),
+                Rect::new(
+                    ix + iw - MOVE_W,
+                    y + Spacing::Xs.px(),
+                    MOVE_W,
+                    h - Spacing::Xs.px(),
+                ),
+                tr("panel.painter_layers.ramp.move_up"),
                 ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_SWAP,
                 false,
                 false,
             );
         }
-        y = crate::paint_brush_top::paint_checkbox_row(
-            ctx, theme, x, w_caixa, y, id, chave, ligada,
+        ry = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            ix,
+            iw,
+            ry,
+            id,
+            "panel.painter_layers.ramp.enabled",
+            ligada,
         );
         if ligada {
-            y = match camada {
-                Camada::Textura => paint_ramp_body(ctx, theme, x, content_w, y, &ids, textura),
-                Camada::Queda => {
-                    paint_ramp_body(ctx, theme, x, content_w, y, &falloff_ramp_ids(), queda)
+            ry = paint_ramp_body(ctx, theme, ix, iw, ry, &rids, view);
+            ry = crate::card::card_row(
+                ctx,
+                theme,
+                ix,
+                iw,
+                ry,
+                "panel.painter_layers.ramp.opacity",
+                id_op,
+                opacidade.clamp(0.0, 1.0),
+                0.0,
+                1.0,
+                crate::number_field::FINE_STEP,
+                2,
+            );
+            if com_blend {
+                let m = brush.shape_color_blend;
+                let (_, aberto) = crate::paint_brush_rows::paint_dropdown_row(
+                    ctx,
+                    theme,
+                    ix,
+                    iw,
+                    ry,
+                    "panel.painter_layers.ramp.blend",
+                    ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BLEND,
+                    m,
+                    tr(BrushBlend::from_u8(m).name_key()),
+                );
+                if let Some(r) = aberto {
+                    crate::state_shape_cor::set_pending_blend_dd(Some((r, m)));
                 }
-            };
+            }
         }
-    }
-    if brush.shape_texture_color && brush.shape_falloff_color {
-        y = paint_blend_rows(ctx, theme, x, content_w, y, brush);
+        y = proximo;
     }
     crate::paint_brush_top::end_fold(ctx, fold, y)
-}
-
-/// The top layer's **Blend** mode chip and its **Opacity** field.
-fn paint_blend_rows(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    brush: BrushSettings,
-) -> f32 {
-    let r = Rect::new(x, y, content_w, ROW_H_PX);
-    let m = brush.shape_color_blend;
-    if paint_dropdown_chip(
-        ctx,
-        theme,
-        ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BLEND,
-        m,
-        tr(BrushBlend::from_u8(m).name_key()),
-        r,
-    ) {
-        crate::state_shape_cor::set_pending_blend_dd(Some((r, m)));
-    }
-    let sec = crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.ramp.opacity");
-    crate::number_field::paint_num_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y + ph2d_tokens::row_pitch_px(),
-        tr("panel.painter_layers.ramp.opacity"),
-        ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_MIX,
-        brush.shape_color_mix.clamp(0.0, 1.0),
-        0.0,
-        1.0,
-        crate::number_field::FINE_STEP,
-        2,
-        sec,
-    )
 }
 
 /// Deferred paint of the Shape ramp's open Mode / Interpolation / Alpha dropdown popovers.
@@ -418,6 +448,7 @@ mod tests {
             shape_color_ramp_stop_count: 2,
             shape_falloff_ramp_stops: stops,
             shape_falloff_ramp_stop_count: 2,
+            shape_falloff_color: false,
             ..crate::paint_brush::FALLBACK_BRUSH
         }
     }
@@ -438,7 +469,7 @@ mod tests {
         for id in [
             ids::PAINTER_SHAPE_FALLOFF_RAMP_SWATCH,
             ids::PAINTER_SHAPE_COLOR_BLEND,
-            ids::PAINTER_SHAPE_COLOR_MIX,
+            ids::PAINTER_SHAPE_FALLOFF_OPACITY,
         ] {
             assert!(
                 !tem(&so_textura, id),
@@ -456,7 +487,8 @@ mod tests {
             ids::PAINTER_SHAPE_FALLOFF_RAMP_ADD,
             ids::PAINTER_SHAPE_FALLOFF_RAMP_SWATCH,
             ids::PAINTER_SHAPE_COLOR_BLEND,
-            ids::PAINTER_SHAPE_COLOR_MIX,
+            ids::PAINTER_SHAPE_TEXTURE_OPACITY,
+            ids::PAINTER_SHAPE_FALLOFF_OPACITY,
             ids::PAINTER_SHAPE_RAMP_SWATCH,
         ];
         for id in novos {

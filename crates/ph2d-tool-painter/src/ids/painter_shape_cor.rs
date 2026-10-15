@@ -12,15 +12,20 @@ pub const PAINTER_SHAPE_TEXTURE_COLOR: NodeId = hash_node_id("painter_brush.shap
 /// **Falloff Color** layer checkbox. `Click` → `toggle_shape_falloff_color`.
 pub const PAINTER_SHAPE_FALLOFF_COLOR: NodeId = hash_node_id("painter_brush.shape_falloff_color");
 
-/// Swap which layer is on top (the first). `Click` → `swap_shape_color_layers`.
+/// Move the lower layer's card to the top (swaps the order). `Click` → `swap_shape_color_layers`.
 pub const PAINTER_SHAPE_COLOR_SWAP: NodeId = hash_node_id("painter_brush.shape_color_swap");
 
 /// The **Blend** mode of the top layer over the bottom one (`BrushBlend`). `SelectOption` →
 /// `set_shape_color_blend`.
 pub const PAINTER_SHAPE_COLOR_BLEND: NodeId = hash_node_id("painter_brush.shape_color_blend");
 
-/// The top layer's opacity (**Mix**, `0..1`). `SetValue` → `set_shape_color_mix`.
-pub const PAINTER_SHAPE_COLOR_MIX: NodeId = hash_node_id("painter_brush.shape_color_mix");
+/// The **Texture Color** layer's opacity (`0..1`). `SetValue` → `set_shape_texture_opacity`.
+pub const PAINTER_SHAPE_TEXTURE_OPACITY: NodeId =
+    hash_node_id("painter_brush.shape_texture_opacity");
+
+/// The **Falloff Color** layer's opacity (`0..1`). `SetValue` → `set_shape_falloff_opacity`.
+pub const PAINTER_SHAPE_FALLOFF_OPACITY: NodeId =
+    hash_node_id("painter_brush.shape_falloff_opacity");
 
 /// Falloff ramp **colour mode** dropdown. `SelectOption` → `set_shape_falloff_ramp_mode`.
 pub const PAINTER_SHAPE_FALLOFF_RAMP_MODE: NodeId =

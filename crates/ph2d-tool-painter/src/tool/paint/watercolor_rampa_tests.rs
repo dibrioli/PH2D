@@ -46,9 +46,24 @@ fn avermelhados(px: &[u8]) -> usize {
 #[test]
 fn a_rampa_da_shape_pinta_a_cor_da_aguada() {
     let sem = aguada(|_| {});
-    let com = aguada(|t| {
+    // Sem textura no Shape a cor é da Falloff Color (prompt 38); a Texture Color não tem o que colorir.
+    let so_textura = aguada(|t| {
         t.set_shape_color_ramp(rampa([1.0, 0.0, 0.0, 1.0]));
         t.set_shape_ramp_enabled(true);
+        t.paint.shape_camadas.queda = false;
+        t.set_shape_falloff_ramp(rampa([1.0, 0.0, 0.0, 1.0]));
+    });
+    assert_eq!(
+        avermelhados(&so_textura),
+        0,
+        "sem textura no Shape a Texture Color não pode pintar a aguada"
+    );
+    let com = aguada(|t| {
+        t.set_shape_falloff_ramp(rampa([1.0, 0.0, 0.0, 1.0]));
+        t.set_shape_ramp_enabled(true);
+        t.paint.shape_camadas.textura = false;
+        t.paint.shape_camadas.queda = true;
+        t.set_shape_falloff_ramp(rampa([1.0, 0.0, 0.0, 1.0]));
     });
     assert_eq!(
         avermelhados(&sem),

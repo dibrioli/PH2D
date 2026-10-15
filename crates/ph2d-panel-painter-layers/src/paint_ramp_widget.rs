@@ -12,11 +12,9 @@
 use crate::paint::register_button;
 use crate::paint_brush_rows::paint_dropdown_chip;
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{
     ColorSwatch, SwatchSize, SwatchState, TextInputState, flat_button_surface_color,
     paint_color_swatch, paint_number_chip,
@@ -163,8 +161,33 @@ pub(crate) fn paint_ramp_body(
     y += BAR_H + MARK_R + ph2d_tokens::control_gap_px();
     // Bottom row: editable index + position chips + the final-colour box (edits the selected stop).
     y = paint_ramp_bottom(ctx, theme, x, content_w, y, ids, view, sel);
-    ramp_color_readback(ctx, ids, view, sel);
+    crate::paint_ramp_leitura::ramp_color_readback(ctx, ids, view, sel);
     y
+}
+
+/// The controls line fits on ONE row at `content_w`: the Mode / Interp dropdowns still fit to the right
+/// of the `+ − I [B&W]` buttons.
+fn cabe_numa_linha(content_w: f32, bw_button: bool) -> bool {
+    let gap = Spacing::Xs.px();
+    let botoes = 3.0 * ph2d_tokens::row_pitch_px() + if bw_button { BW_W + gap } else { 0.0 };
+    content_w - botoes >= DD_MIN_W * 2.0 + gap
+}
+
+/// The height [`paint_ramp_body`] takes at `content_w` — a card that holds it sizes itself from this.
+pub(crate) fn ramp_body_height(content_w: f32, bw_button: bool) -> f32 {
+    let gap = Spacing::Xs.px();
+    let rows = if cabe_numa_linha(content_w, bw_button) {
+        1.0
+    } else {
+        2.0
+    };
+    rows * ROW_H_PX
+        + (rows - 1.0) * gap
+        + gap
+        + BAR_H
+        + MARK_R
+        + ph2d_tokens::control_gap_px()
+        + ph2d_tokens::row_pitch_px()
 }
 
 /// The controls line: `+ − I [B&W]` square/toggle buttons, then the Mode / Interp dropdowns. When the
@@ -201,7 +224,11 @@ fn paint_controls(
     }
     let buttons_right = cx;
     // One row only if the two dropdowns still fit to the right of the buttons; else wrap to row 2.
-    let one_row = (x + content_w) - buttons_right >= DD_MIN_W * 2.0 + gap;
+    let one_row = cabe_numa_linha(content_w, view.bw_button);
+    debug_assert_eq!(
+        one_row,
+        (x + content_w) - buttons_right >= DD_MIN_W * 2.0 + gap
+    );
     let (dd_x, dd_y, dd_w) = if one_row {
         let total = (x + content_w) - buttons_right;
         (buttons_right, y, (total - gap) * 0.5)
@@ -470,35 +497,6 @@ pub(crate) fn paint_ramp_chip(
         theme,
     );
     ctx.host.hit_index_mut().register(chip_id, rect);
-}
-
-/// When the picker targets this ramp's colour box, forward its live colour (incl. alpha) to the
-/// selected stop (as `"id,r,g,b,a"`) once it differs. The tool's swatch decode sets that stop's colour.
-fn ramp_color_readback(ctx: &mut PaintCtx, ids: &RampIds, view: RampView, sel: usize) {
-    if ctx.host.store().picker_target() != Some(ids.swatch) {
-        return;
-    }
-    let Some(picked) = ctx.host.store().widget_color(ids.swatch) else {
-        return;
-    };
-    if sel >= view.stops.len() {
-        return;
-    }
-    let s = view.stops[sel];
-    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
-    if [enc(s[1]), enc(s[2]), enc(s[3]), enc(s[4])] == picked {
-        return;
-    }
-    let stop_id = s[5] as u8;
-    ctx.host
-        .bus_mut()
-        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-            ids.swatch,
-            format!(
-                "{stop_id},{},{},{},{}",
-                picked[0], picked[1], picked[2], picked[3]
-            ),
-        )));
 }
 
 /// Linear-interpolated colour at `t` for the bar preview (a quick visual; the real paint uses the

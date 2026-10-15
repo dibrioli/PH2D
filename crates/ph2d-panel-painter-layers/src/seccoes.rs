@@ -301,7 +301,11 @@ pub(crate) const PAPER: &[&str] = &[
 /// *Color Ramp*.
 pub(crate) const RAMP: &[&str] = &[
     "panel.painter_layers.ramp.use_color_ramp",
+    "panel.painter_layers.ramp.bw",
+    "panel.painter_layers.ramp.alpha",
+    "panel.painter_layers.ramp.enabled",
     "panel.painter_layers.ramp.opacity",
+    "panel.painter_layers.ramp.blend",
 ];
 /// *Sculpt*.
 pub(crate) const SCULPT: &[&str] = &["panel.painter_layers.sculpt.rake"];

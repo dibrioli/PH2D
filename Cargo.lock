@@ -8646,14 +8646,17 @@ dependencies = [
 name = "ph2d-panel-painter-layers"
 version = "0.0.0"
 dependencies = [
+ "image",
  "ph2d-a11y",
  "ph2d-editor-core",
+ "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-widget-gallery",
+ "ph2d-render",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-painter",

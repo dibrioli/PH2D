@@ -35,10 +35,11 @@ pub enum Dependente {
     FollowSemNada,
     ContinuoSemPasso,
     CorDaTexturaSemLeitor,
+    TexturaSemForma,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 21] = [
+    pub const TODOS: [Dependente; 22] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -60,6 +61,7 @@ impl Dependente {
         Dependente::FollowSemNada,
         Dependente::ContinuoSemPasso,
         Dependente::CorDaTexturaSemLeitor,
+        Dependente::TexturaSemForma,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -92,6 +94,10 @@ impl Dependente {
             Dependente::FollowSemNada => &[ids::PAINTER_SHAPE_FOLLOW],
             Dependente::ContinuoSemPasso => &[ids::PAINTER_BRUSH_CONTINUOUS_SPACING],
             Dependente::CorDaTexturaSemLeitor => &[ids::PAINTER_SHAPE_PER_LAYER_COLOR],
+            Dependente::TexturaSemForma => &[
+                ids::PAINTER_SHAPE_TEXTURE_COLOR,
+                ids::PAINTER_SHAPE_TEXTURE_OPACITY,
+            ],
         }
     }
 
@@ -121,6 +127,9 @@ impl Dependente {
             Dependente::FollowSemNada => "panel.painter_layers.inerte.follow_nothing_to_turn",
             Dependente::ContinuoSemPasso => "panel.painter_layers.inerte.method_lays_a_path",
             Dependente::CorDaTexturaSemLeitor => "panel.painter_layers.inerte.texture_colors_media",
+            Dependente::TexturaSemForma => {
+                "panel.painter_layers.inerte.texture_color_needs_a_shape"
+            }
         }
     }
 
@@ -330,6 +339,11 @@ impl PainterTool {
                             ph2d_painter_brush::TextureMapping::ViewPlane
                                 | ph2d_painter_brush::TextureMapping::Random
                         )),
+            ),
+            // A Texture Color colore a textura do Shape (prompt 38): sem textura não há o que colorir.
+            (
+                Dependente::TexturaSemForma,
+                !b.shape_silhouette_active(self.paint.shape_image.is_some()),
             ),
             // A cápsula é uma lei da PONTA, em todo meio: não age num método sem caminho (Drag Dot,
             // Anchored, Grid Stamp), num Spacing já tão fino quanto o sub-passo, nem — na água — num

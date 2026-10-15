@@ -121,12 +121,9 @@ fn carimbo_em(
         Rampa::Ambas { .. } => (true, true),
         _ => (true, false),
     };
-    if !textura {
-        t.toggle_shape_texture_color();
-    }
-    if queda {
-        t.toggle_shape_falloff_color();
-    }
+    t.paint.shape_camadas.textura = textura;
+    t.paint.shape_camadas.queda = queda;
+    t.set_shape_falloff_ramp(vermelho_azul()); // marca as camadas mudadas (re-assa as LUTs)
     if let Rampa::Ambas {
         queda_em_cima,
         blend,
@@ -140,7 +137,12 @@ fn carimbo_em(
             t.swap_shape_color_layers();
         }
         t.set_shape_color_blend(blend.to_u8());
-        t.set_shape_color_mix(mix);
+        // `mix` = a opacidade da camada de CIMA.
+        if queda_em_cima {
+            t.set_shape_falloff_opacity(mix);
+        } else {
+            t.set_shape_texture_opacity(mix);
+        }
     }
     let seed = t.paint.brush;
     t.paint.brush_by_mode.fill(seed);
@@ -367,11 +369,18 @@ fn as_camadas_misturam_na_ordem_escolhida() {
         invisivel.padrao.is_some_and(|c| c.abs() >= 0.95),
         "com Mix 0 a camada de baixo (a Texture Color) tem de aparecer: {invisivel:?}"
     );
+    // Smoke do dono (15/10): «o mesmo color ramp está atuando para textura e para o falloff». Sem
+    // textura no Shape a Texture Color não tem o que colorir: pinta a cor do pincel, e a Falloff não.
     let so = |r| carimbo(PaintMedia::Digital, None, Queda::Macia, r).canvas_rgba;
     assert_eq!(
         so(Rampa::Textura),
+        so(Rampa::Off),
+        "sem textura no Shape a Texture Color não pode pintar (pintou a rampa pela queda)"
+    );
+    assert_ne!(
         so(Rampa::Queda),
-        "sem Shape as duas camadas leem a mesma cobertura: têm de pintar o mesmo byte"
+        so(Rampa::Off),
+        "controlo: sem Shape a Falloff Color pinta a rampa pela queda"
     );
 }
 
@@ -436,4 +445,50 @@ fn prancha_rampa_do_shape() {
             ppm(&a, &dir.join(format!("{nome}_4_recusado_recorta.ppm")));
         }
     }
+}
+
+/// **Cada camada tem a sua Opacity, e por baixo de tudo está a cor do pincel** (smoke do dono 15/10:
+/// «o ajuste de opacidade deveria ter para os dois»). Falloff Color só, rampa vermelha, pincel verde:
+/// Opacity 1 pinta a rampa, 0 pinta o verde do pincel, 0,5 a meio — pela rota por pixel, que é a que
+/// tem a cor de cada dab.
+#[test]
+fn cada_camada_tem_a_sua_opacidade_sobre_a_cor_do_pincel() {
+    let centro = |opacidade: f32| {
+        let mut t = PainterTool::default();
+        t.set_source(vec![0u8; (W * W * 4) as usize], W, W);
+        t.paint.brush.radius_px = R;
+        t.paint.brush.color = [0.0, 1.0, 0.0];
+        let seed = t.paint.brush;
+        t.paint.brush_by_mode.fill(seed);
+        t.set_shape_ramp_enabled(true);
+        t.paint.shape_color_ramp_bw = false;
+        t.paint.shape_camadas.textura = false;
+        t.paint.shape_camadas.queda = true;
+        t.set_shape_falloff_ramp(ColorRamp::new(
+            vec![
+                RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
+                RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
+            ],
+            RampColorMode::Rgb,
+            RampInterp::Linear,
+        ));
+        t.set_shape_falloff_opacity(opacidade);
+        t.on_canvas_pointer(cp([C, C], PointerPhase::Down));
+        t.on_canvas_pointer(cp([C, C], PointerPhase::Up));
+        let i = ((48 * W + 48) * 4) as usize;
+        [t.canvas_rgba[i], t.canvas_rgba[i + 1], t.canvas_rgba[i + 2]]
+    };
+    let (cheia, nada, meio) = (centro(1.0), centro(0.0), centro(0.5));
+    assert!(
+        cheia[0] > 240 && cheia[1] < 15,
+        "Opacity 1: a rampa (vermelho): {cheia:?}"
+    );
+    assert!(
+        nada[1] > 240 && nada[0] < 15,
+        "Opacity 0: a cor do pincel (verde): {nada:?}"
+    );
+    assert!(
+        (100..=160).contains(&meio[0]) && (100..=160).contains(&meio[1]),
+        "Opacity 0,5: a meio entre a rampa e o pincel: {meio:?}"
+    );
 }

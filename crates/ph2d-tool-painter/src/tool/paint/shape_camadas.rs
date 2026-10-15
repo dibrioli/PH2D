@@ -17,7 +17,8 @@ pub(super) struct CamadasDoShape {
     /// A Falloff Color é a camada de CIMA (a primeira da lista).
     pub(super) queda_primeiro: bool,
     pub(super) blend: BrushBlend,
-    pub(super) mix: f32,
+    pub(super) opacidade_textura: f32,
+    pub(super) opacidade_queda: f32,
     /// A LUT da Falloff Color (sRGB reto), assada com a da Texture Color em `ensure_ramp_lut`.
     pub(super) lut_queda: Vec<[f32; 4]>,
     /// As duas compostas por índice — o carimbo em cache sem Grain, quando os dois índices coincidem.
@@ -27,12 +28,15 @@ pub(super) struct CamadasDoShape {
 impl Default for CamadasDoShape {
     fn default() -> Self {
         Self {
+            // As duas nascem ligadas, a Texture Color por cima e opaca: num Shape com textura manda ela, num
+            // pincel sem textura (onde ela não tem o que colorir) pinta a Falloff Color — a lei de sempre.
             textura: true,
-            queda: false,
+            queda: true,
             queda_rampa: ColorRamp::default(),
             queda_primeiro: false,
             blend: BrushBlend::Mix,
-            mix: 0.5,
+            opacidade_textura: 1.0,
+            opacidade_queda: 1.0,
             lut_queda: Vec::new(),
             lut_combinada: Vec::new(),
         }
@@ -40,19 +44,21 @@ impl Default for CamadasDoShape {
 }
 
 impl CamadasDoShape {
-    /// Alguma camada pinta a cor.
-    pub(super) fn alguma(&self) -> bool {
-        self.textura || self.queda
+    /// Alguma camada pinta a cor — a Texture Color só com uma textura no Shape (`forma`).
+    pub(super) fn alguma(&self, forma: bool) -> bool {
+        (self.textura && forma) || self.queda
     }
 
-    /// As camadas como o motor as lê (as LUTs já assadas).
-    pub(super) fn motor(&self) -> ph2d_painter_brush::ShapeRampLayers<'_> {
+    /// As camadas como o motor as lê (as LUTs já assadas); `forma` = o Shape tem uma textura a colorir
+    /// (sem ela a Texture Color não pinta: não há o que colorir).
+    pub(super) fn motor(&self, forma: bool) -> ph2d_painter_brush::ShapeRampLayers<'_> {
         ph2d_painter_brush::ShapeRampLayers {
-            texture: self.textura,
+            texture: self.textura && forma,
             falloff: self.queda.then_some(self.lut_queda.as_slice()),
             falloff_first: self.queda_primeiro,
             blend: self.blend,
-            mix: self.mix,
+            texture_opacity: self.opacidade_textura,
+            falloff_opacity: self.opacidade_queda,
         }
     }
 }
@@ -89,10 +95,23 @@ impl PainterTool {
         self.camadas_mudaram();
     }
 
-    /// A opacidade da camada de cima, `[0, 1]`.
-    pub fn set_shape_color_mix(&mut self, v: f32) {
-        self.paint.shape_camadas.mix = v.clamp(0.0, 1.0);
+    /// A opacidade da Texture Color, `[0, 1]` (por baixo de tudo está a cor do pincel).
+    pub fn set_shape_texture_opacity(&mut self, v: f32) {
+        self.paint.shape_camadas.opacidade_textura = v.clamp(0.0, 1.0);
         self.camadas_mudaram();
+    }
+
+    /// A opacidade da Falloff Color, `[0, 1]`.
+    pub fn set_shape_falloff_opacity(&mut self, v: f32) {
+        self.paint.shape_camadas.opacidade_queda = v.clamp(0.0, 1.0);
+        self.camadas_mudaram();
+    }
+
+    /// O Shape tem uma textura a colorir (procedural ou imagem) — sem ela a Texture Color não pinta.
+    pub(super) fn shape_tem_textura(&self) -> bool {
+        self.paint
+            .brush
+            .shape_silhouette_active(self.paint.shape_image.is_some())
     }
 
     /// Substitui a rampa da Falloff Color (o painel semeia-a; os testes também).
@@ -167,12 +186,14 @@ impl PainterTool {
     /// Assa a LUT da Falloff Color e a LUT combinada (chamado por `ensure_ramp_lut` com a dona Shape,
     /// depois de assar a da Texture Color em `texture_ramp_lut`).
     pub(super) fn assa_camadas_do_shape(&mut self) {
+        let forma = self.shape_tem_textura();
         let c = &mut self.paint.shape_camadas;
         c.lut_queda = super::ramp_lut::lut_srgb(&c.queda_rampa, false);
         let tex = &self.paint.texture_ramp_lut;
-        let camadas = c.motor();
+        let camadas = c.motor(forma);
+        // A cor do pincel não entra: a rota em cache só serve camadas que a cobrem (`shows_brush_color`).
         let combinada = (0..tex.len())
-            .map(|i| camadas.color(tex, i as f32 / 255.0, i as f32 / 255.0))
+            .map(|i| camadas.color(tex, i as f32 / 255.0, i as f32 / 255.0, [1.0; 3]))
             .collect();
         c.lut_combinada = combinada;
     }
@@ -180,7 +201,7 @@ impl PainterTool {
 
 impl PainterTool {
     /// The Shape Color layers' panel events (the two checkboxes, the swap, the Blend and the Falloff
-    /// ramp's editor — the Mix slider rides the `SetValue` router). `true` when consumed.
+    /// ramp's editor — the two Opacity fields ride the `SetValue` router). `true` when consumed.
     pub(super) fn route_shape_color_layers_event(
         &mut self,
         event: &ph2d_editor_core::tool::PanelEvent,

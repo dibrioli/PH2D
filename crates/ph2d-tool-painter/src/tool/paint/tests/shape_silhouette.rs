@@ -193,24 +193,39 @@ fn shape_colour_ramp_colourises_the_silhouette_when_grain_is_none() {
     use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
 
     // No Grain ⇒ the SHAPE colour ramp OWNS the painted colour (B&W off): the silhouette coverage
-    // indexes it (Enio 2026-06-26). A solid-red ramp over a BLUE brush base ⇒ a RED dab — proving the
-    // Shape ramp colourises (without it the centre would be the brush's blue).
-    let mut t = white_canvas(64, 12.0);
-    t.set_brush_color_channel(2, 1.0); // brush base = blue [0,0,1]
-    t.set_shape_color_ramp(ColorRamp::new(
+    // indexes it (Enio 2026-06-26) — since prompt 38 that is the **Falloff Color** layer. A solid-red
+    // ramp over a BLUE brush base ⇒ a RED dab (without it the centre would be the brush's blue). And the
+    // **Texture Color** alone, with no Shape texture to colour, paints nothing (dono 15/10: «o mesmo color
+    // ramp está atuando para textura e para o falloff»).
+    let vermelha = ColorRamp::new(
         vec![
             RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
             RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
         ],
         RampColorMode::Rgb,
         RampInterp::Linear,
-    ));
-    t.set_shape_ramp_enabled(true); // B&W stays off ⇒ the ramp colourises
-    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
-    let c = px(&t, 64, 32, 32);
+    );
+    let carimbo = |queda: bool| {
+        let mut t = white_canvas(64, 12.0);
+        t.set_brush_color_channel(2, 1.0); // brush base = blue [0,0,1]
+        t.set_shape_color_ramp(vermelha.clone());
+        t.set_shape_falloff_ramp(vermelha.clone());
+        t.set_shape_ramp_enabled(true); // B&W stays off ⇒ the layers colourise
+        t.paint.shape_camadas.textura = !queda;
+        t.paint.shape_camadas.queda = queda;
+        t.set_shape_falloff_ramp(vermelha.clone());
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+        px(&t, 64, 32, 32)
+    };
+    let c = carimbo(true);
     assert!(
         c[0] > 200 && c[1] < 80 && c[2] < 80,
-        "grain-None Shape colour ramp paints red (not the brush's blue): {c:?}"
+        "grain-None Falloff Color paints red (not the brush's blue): {c:?}"
+    );
+    let c = carimbo(false);
+    assert!(
+        c[2] > 200 && c[0] < 80,
+        "the Texture Color with no Shape texture must not colourise (the brush's blue): {c:?}"
     );
 }
 

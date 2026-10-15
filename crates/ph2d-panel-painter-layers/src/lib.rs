@@ -45,6 +45,8 @@ mod dropdown_popover;
 mod esmaecer; // a linha esmaecida: o controlo que depende de outro e agora não age (doc 46)
 mod event;
 mod event_brush_forward;
+#[cfg(test)]
+mod foto_shape_color_tests; // a foto da secção, `#[ignore]` (prompt 38)
 /// As barras do card Line: a tabela que o pintor, o registo e o encaminhamento leem.
 pub mod line_barras;
 mod number_field;
@@ -69,6 +71,7 @@ mod paint_line; // o card Line (Style: Solid) — plano 38 §1
 mod paint_mask;
 mod paint_mask_row;
 mod paint_pigment; // a fileira `Pigment`: uma lei, uma porta, os três meios que a sentem
+mod paint_ramp_leitura;
 mod paint_ramp_widget;
 mod paint_rows;
 mod paint_rows_relief;

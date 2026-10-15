@@ -402,6 +402,7 @@ pub(super) fn stamp_band(
                 .map(|sh| crate::dab::shape_value_at(ctx.spec, sh, px, py, ctx.center, ctx.radius));
             let tinta = crate::ramp_alpha::ramp_texel(
                 ctx.ramp.as_ref(),
+                ctx.spec.color,
                 w,
                 forma,
                 grain,

@@ -57,6 +57,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.bristles_no_grain" => {
             "Acts with Grain None and the Paint tool or the Eraser"
         }
+        "panel.painter_layers.inerte.texture_color_needs_a_shape" => {
+            "Acts with a Shape texture: a pattern or an image"
+        }
         "panel.painter_layers.inerte.texture_colors_media" => {
             "Acts in Digital and Impasto: Wet Paint and Watercolor paint the brush colour"
         }
@@ -370,8 +373,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.ramp.bw" => "B&W",
         "panel.painter_layers.ramp.texture_color" => "Texture Color",
         "panel.painter_layers.ramp.falloff_color" => "Falloff Color",
-        "panel.painter_layers.ramp.swap" => "Swap",
+        "panel.painter_layers.ramp.move_up" => "Move Up",
         "panel.painter_layers.ramp.opacity" => "Opacity",
+        "panel.painter_layers.ramp.alpha" => "Alpha",
+        "panel.painter_layers.ramp.blend" => "Blend",
+        "panel.painter_layers.ramp.enabled" => "Enabled",
         "panel.painter_layers.impasto.level" => "Level",
         "panel.painter_layers.impasto.add" => "Add",
         "panel.painter_layers.sculpt.rake" => "Rake",

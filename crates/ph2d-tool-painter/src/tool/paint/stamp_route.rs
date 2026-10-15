@@ -494,6 +494,7 @@ impl PainterTool {
             // requiring `shape_silhouette_active` here needlessly forced a colour ramp on a plain brush
             // onto the per-pixel path — the cause of the slow ramped fills (Enio 2026-06-26).
             let static_ok = brush.dab_mask_cacheable(has_shape_image)
+                && !self.camadas_mostram_o_pincel(owner)
                 && !per_dab_rotation
                 && !accumulate_cap
                 && !capsulas;

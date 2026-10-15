@@ -41,6 +41,11 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
+# A foto da secção Shape Color (`foto_shape_color_tests`, `#[ignore]`): o painel desenhado na placa
+# (vello) e gravado em PNG — o layout olha-se antes do smoke do dono (prompt 38).
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-render = { path = "../ph2d-render" }
+image = { version = "0.25", default-features = false, features = ["png"] }
 ph2d-host = { path = "../ph2d-host" }
 # O gate `every_word_this_panel_shows_comes_from_the_string_table` — a régua lexical partilhada.
 ph2d-label-census = { path = "../ph2d-label-census" }

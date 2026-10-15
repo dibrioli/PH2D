@@ -69,26 +69,31 @@ pub enum RampIndex {
 
 /// **As duas camadas da cor do Shape** (prompt 38, dono 15/10: *«em shape parece atuar sobre o falloff e
 /// não sobre a textura… o modo como está pode ser preservado como falloff color… ambos na mesma seção,
-/// organizar qual é o primeiro, com Blend entre eles»*):
-/// - **Texture Color** = `rampa[valor da textura do Shape]` (o padrão procedural, ou a luminância da
+/// organizar qual é o primeiro, com Blend entre eles»*; e no smoke: *«o ajuste de opacidade deveria ter
+/// para os dois»*):
+/// - **Texture Color** = `rampa[valor da textura do Shape]` (o padrão procedural, ou o valor da
 ///   imagem). Como no Grain, um padrão procedural deixa de RECORTAR: vira cor, e a cobertura é a queda.
-///   Uma imagem continua a ser a ponta (a forma dela fica). Sem Shape activo o valor é a silhueta.
-/// - **Falloff Color** = `rampa_da_queda[cobertura do carimbo]` — a lei de antes do prompt 38; sozinha
-///   repete-a ao byte (o padrão recorta e a cor segue padrão × queda).
+///   Uma imagem continua a ser a ponta. **Sem textura no Shape ela não pinta** (não há o que colorir —
+///   o chamador desliga-a, como o Grain sem grão).
+/// - **Falloff Color** = `rampa_da_queda[cobertura do carimbo]` — a lei de antes do prompt 38; sozinha e
+///   opaca repete-a ao byte (o padrão recorta e a cor segue padrão × queda).
 ///
-/// Com as duas, a de cima (`falloff_first` ⇒ a Falloff) mistura-se sobre a de baixo como uma camada:
-/// [`crate::blend::blend_over`] com o modo `blend` e o alfa `alfa_de_cima × mix`.
+/// As camadas empilham-se sobre a **cor do pincel**: a de baixo em Normal com a sua opacidade, a de cima
+/// (`falloff_first` ⇒ a Falloff) com o modo `blend` e a sua. O ALFA da rampa não é transparência de
+/// camada: ele segue o `RampAlphaMode`, empilhado pelas mesmas opacidades.
 #[derive(Clone, Copy, Debug)]
 pub struct ShapeRampLayers<'a> {
-    /// Texture Color ligada (a LUT dela é a [`RampPaint::lut`]).
+    /// Texture Color ligada E com uma textura a colorir (a LUT dela é a [`RampPaint::lut`]).
     pub texture: bool,
     /// Falloff Color ligada: a LUT dela.
     pub falloff: Option<&'a [[f32; 4]]>,
     /// A Falloff Color é a camada de CIMA.
     pub falloff_first: bool,
+    /// O modo da camada de cima sobre a de baixo.
     pub blend: crate::blend::BrushBlend,
-    /// A opacidade da camada de cima, `[0, 1]`.
-    pub mix: f32,
+    /// As opacidades da Texture Color e da Falloff Color, `[0, 1]`.
+    pub texture_opacity: f32,
+    pub falloff_opacity: f32,
 }
 
 impl Default for ShapeRampLayers<'_> {
@@ -98,51 +103,103 @@ impl Default for ShapeRampLayers<'_> {
             falloff: None,
             falloff_first: false,
             blend: crate::blend::BrushBlend::Mix,
-            mix: 1.0,
+            texture_opacity: 1.0,
+            falloff_opacity: 1.0,
         }
     }
 }
 
 impl ShapeRampLayers<'_> {
-    /// A cor de um texel: `v_textura` indexa a Texture Color, `v_cobertura` a Falloff Color.
+    /// Alguma camada pinta.
+    #[must_use]
+    pub fn any(&self) -> bool {
+        self.texture || self.falloff.is_some()
+    }
+
+    /// A cor do pincel aparece por baixo das camadas: a de baixo (a única, se só uma pinta) não é opaca.
+    /// Então a cor depende do dab, e só as rotas que a têm por dab servem.
+    #[must_use]
+    pub fn shows_brush_color(&self) -> bool {
+        let baixo = match (self.texture, self.falloff.is_some()) {
+            (true, true) if self.falloff_first => self.texture_opacity,
+            (_, true) => self.falloff_opacity,
+            (true, false) => self.texture_opacity,
+            (false, false) => return false,
+        };
+        baixo < 1.0
+    }
+
+    /// A cor de um texel: `v_textura` indexa a Texture Color, `v_cobertura` a Falloff Color, `pincel` é
+    /// a cor do pincel por baixo.
     #[inline]
     #[must_use]
-    pub fn color(&self, lut_textura: &[[f32; 4]], v_textura: f32, v_cobertura: f32) -> [f32; 4] {
-        compose_shape_ramp_layers(
-            self.texture
-                .then(|| crate::dab::ramp_sample(lut_textura, v_textura)),
-            self.falloff
-                .map(|l| crate::dab::ramp_sample(l, v_cobertura)),
-            self.falloff_first,
-            self.blend,
-            self.mix,
-        )
+    pub fn color(
+        &self,
+        lut_textura: &[[f32; 4]],
+        v_textura: f32,
+        v_cobertura: f32,
+        pincel: [f32; 3],
+    ) -> [f32; 4] {
+        let t = self.texture.then(|| {
+            (
+                crate::dab::ramp_sample(lut_textura, v_textura),
+                self.texture_opacity,
+            )
+        });
+        let q = self.falloff.map(|l| {
+            (
+                crate::dab::ramp_sample(l, v_cobertura),
+                self.falloff_opacity,
+            )
+        });
+        let (baixo, cima) = if self.falloff_first { (t, q) } else { (q, t) };
+        compose_shape_ramp_layers(pincel, baixo, cima, self.blend)
     }
 }
 
-/// ⭐ **A porta única da mistura** das duas camadas (os núcleos, a LUT combinada do carimbo em cache e
-/// a aguada passam por aqui): uma só ⇒ ela; as duas ⇒ a de cima sobre a de baixo. RGBA reto.
+/// `a → b` por `t`, EXACTO nas pontas (uma camada opaca devolve a sua cor ao bit).
+#[inline]
+fn mistura(a: f32, b: f32, t: f32) -> f32 {
+    if t >= 1.0 {
+        b
+    } else if t <= 0.0 {
+        a
+    } else {
+        a + (b - a) * t
+    }
+}
+
+/// ⭐ **A porta única da pilha** das duas camadas (os núcleos, a LUT combinada do carimbo em cache e a
+/// aguada passam por aqui): sobre a cor do `pincel` (alfa 1), a de `baixo` em Normal com a sua
+/// opacidade, a de `cima` com o modo `blend` e a sua. Cada camada é `(rgba da rampa, opacidade)`.
 #[must_use]
 pub fn compose_shape_ramp_layers(
-    textura: Option<[f32; 4]>,
-    queda: Option<[f32; 4]>,
-    falloff_first: bool,
+    pincel: [f32; 3],
+    baixo: Option<([f32; 4], f32)>,
+    cima: Option<([f32; 4], f32)>,
     blend: crate::blend::BrushBlend,
-    mix: f32,
 ) -> [f32; 4] {
-    match (textura, queda) {
-        (Some(c), None) | (None, Some(c)) => c,
-        (None, None) => [1.0, 1.0, 1.0, 1.0],
-        (Some(t), Some(q)) => {
-            let (cima, baixo) = if falloff_first { (q, t) } else { (t, q) };
-            crate::blend::blend_over(
-                blend,
-                baixo,
-                [cima[0], cima[1], cima[2]],
-                cima[3] * mix.clamp(0.0, 1.0),
-            )
+    let mut c = [pincel[0], pincel[1], pincel[2], 1.0];
+    if let Some((b, op)) = baixo {
+        for (ck, bk) in c.iter_mut().zip(b) {
+            *ck = mistura(*ck, bk, op);
         }
     }
+    if let Some((t, op)) = cima {
+        let op = op.clamp(0.0, 1.0);
+        let rgb = if baixo.is_none() {
+            [t[0], t[1], t[2]]
+        } else {
+            let m =
+                crate::blend::blend_over(blend, [c[0], c[1], c[2], 1.0], [t[0], t[1], t[2]], 1.0);
+            [m[0], m[1], m[2]]
+        };
+        for (ck, rk) in c.iter_mut().zip(rgb) {
+            *ck = mistura(*ck, rk, op);
+        }
+        c[3] = mistura(c[3], t[3], op);
+    }
+    c
 }
 
 /// Uma rampa de cor como os núcleos do carimbo a leem: a LUT assada (a do Grain, ou a Texture Color do
@@ -175,11 +232,12 @@ pub(crate) struct RampTexel {
 
 /// ⭐ **A porta única** da cor e da mordida do Grain num texel — os núcleos por pixel
 /// ([`crate::dab`]) e o carimbo assado ([`crate::stamp_color::render_ramp_color_stamp`]) passam por
-/// aqui. `w` = a silhueta (a cobertura), `shape` = o valor da textura do Shape (Texture Color), `grain`
-/// = o valor amostrado do Grain (se houver).
+/// aqui. `pincel` = a cor do pincel (por baixo das camadas do Shape), `w` = a silhueta (a cobertura),
+/// `shape` = o valor da textura do Shape (Texture Color), `grain` = o valor amostrado do Grain.
 #[inline]
 pub(crate) fn ramp_texel(
     ramp: Option<&RampPaint>,
+    pincel: [f32; 3],
     w: f32,
     shape: Option<f32>,
     grain: Option<f32>,
@@ -198,7 +256,7 @@ pub(crate) fn ramp_texel(
     if let Some(r) = ramp {
         let c = match r.index {
             RampIndex::Grain => crate::dab::ramp_sample(r.lut, grain.unwrap_or(w)),
-            RampIndex::Shape => r.shape.color(r.lut, shape.unwrap_or(w), w),
+            RampIndex::Shape => r.shape.color(r.lut, shape.unwrap_or(w), w, pincel),
         };
         t.color = Some([c[0], c[1], c[2]]);
         match r.alpha_mode {

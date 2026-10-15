@@ -161,8 +161,12 @@ impl PainterTool {
                         self.set_brush_shape_size(1, v);
                         true
                     }
-                    x if x == crate::ids::PAINTER_SHAPE_COLOR_MIX => {
-                        self.set_shape_color_mix(v);
+                    x if x == crate::ids::PAINTER_SHAPE_TEXTURE_OPACITY => {
+                        self.set_shape_texture_opacity(v);
+                        true
+                    }
+                    x if x == crate::ids::PAINTER_SHAPE_FALLOFF_OPACITY => {
+                        self.set_shape_falloff_opacity(v);
                         true
                     }
                     x if crate::ids::PAINTER_SHAPE_PARAMS.contains(&x) => {

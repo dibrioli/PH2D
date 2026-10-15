@@ -258,6 +258,7 @@ pub fn render_ramp_color_stamp(
             });
             let tinta = crate::ramp_alpha::ramp_texel(
                 Some(&ramp),
+                spec.color,
                 w,
                 forma,
                 s,

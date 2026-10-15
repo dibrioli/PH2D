@@ -123,7 +123,7 @@ impl PainterTool {
             alpha_mode: self.active_ramp_alpha_mode(owner),
             index: owner.index(),
             shape: if owner == super::ramp_lut::RampLutOwner::Shape {
-                self.paint.shape_camadas.motor()
+                self.paint.shape_camadas.motor(shape_active)
             } else {
                 ph2d_painter_brush::ShapeRampLayers::default()
             },

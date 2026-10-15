@@ -58,6 +58,7 @@ impl TutorialDaFamilia for Aluno {
                     tipo: format!("no{i}"),
                 }),
                 alvos: vec![NodeId(k as u64)],
+                area: None,
             })
             .collect())
     }

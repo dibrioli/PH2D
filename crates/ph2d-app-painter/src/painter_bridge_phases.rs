@@ -192,6 +192,7 @@ pub(crate) fn bind_document(
         crate::substrate_smoke::arm_brush_once(painter);
         crate::line_smoke::arm_brush_once(painter);
         crate::composite_smoke::arm_brush_once(painter);
+        crate::macro_track::smoke::arm_brush_once(painter);
         *last_painter_pushed_entity = Some(bits);
         // The bind abandons any pending Fill (tool side); close its now-orphaned adjust modal too, so
         // switching sprites never leaves a stale Fill modal floating over the new one.

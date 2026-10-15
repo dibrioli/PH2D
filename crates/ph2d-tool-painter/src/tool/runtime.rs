@@ -253,6 +253,38 @@ impl PainterTool {
         self.source_size
     }
 
+    /// Os píxeis de cada camada (RGBA8 straight, do tamanho da tela), pela ordem dos ids — a activa
+    /// sai do `canvas_rgba`. Só leitura (o tutorial «fazer» compara-as com as do estado inicial).
+    #[must_use]
+    pub fn camadas_rgba(&self) -> Vec<(u64, &[u8])> {
+        let n = self.source_size.0 as usize * self.source_size.1 as usize * 4;
+        let active = self.layers.active();
+        let mut out: Vec<(u64, &[u8])> = self
+            .images
+            .iter()
+            .filter(|(id, img)| Some(**id) != active && img.rgba8.len() == n)
+            .map(|(id, img)| (id.0, img.rgba8.as_slice()))
+            .collect();
+        if let Some(a) = active
+            && self.canvas_rgba.len() == n
+        {
+            out.push((a.0, self.canvas_rgba.as_slice()));
+        }
+        out.sort_unstable_by_key(|(id, _)| *id);
+        out
+    }
+
+    /// O documento volta ao de `t0` (o estado inicial de uma macro, do mesmo tamanho): um passo de
+    /// undo estrutural. A água em curso assenta antes.
+    pub(crate) fn recomeca_com(&mut self, t0: &PainterTool) {
+        self.wetpaint_end_session();
+        let before = self.snapshot_model();
+        self.restore_model(t0.snapshot_model());
+        self.edited_since_bind = true;
+        self.commit_structural_edit(before);
+        self.invalidate_composite();
+    }
+
     /// Composite the live layers to a flat `Rec.601` luminance WITHOUT baking — the source for "Use as
     /// Brush Grain" on the active document, so the grain reflects the LIVE painting without re-pushing
     /// the sprite (a re-push runs `set_source`, which resets the layer stack and would destroy the

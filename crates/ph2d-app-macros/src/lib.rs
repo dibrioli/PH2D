@@ -60,9 +60,9 @@ pub struct Cena<'a> {
 pub use conferencia::Partidas;
 
 /// As cenas de `PH2D_MACRO_SMOKE`: `=1` o Splash (Painter), `=2` o Motion nó a nó, `=3` o tutorial
-/// «fazer» (Motion). Cada uma monta-se na família que grava; o clipe que conduz as duas primeiras
+/// «fazer» do Motion, `=4` o do Painter. Cada uma monta-se na família que grava; o clipe que conduz as duas primeiras
 /// monta-o a composição (`render_loop/macro_smoke.rs`).
-pub const CENAS_DO_SMOKE: u32 = 3;
+pub const CENAS_DO_SMOKE: u32 = 4;
 
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {

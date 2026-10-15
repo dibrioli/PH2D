@@ -102,6 +102,7 @@ pub mod painter_bridge_shape_overlays;
 /// Live GPU preview of a brush Shape-source sprite (when not selected), split from `painter_bridge` for
 /// the HR-18 file-LOC cap.
 pub mod painter_bridge_shape_preview;
+mod painter_bridge_tutorial_area; // a área marcada do tutorial «fazer» (Macros W6b)
 /// On-canvas wetness sheen veil (Watercolor render-path), split from `painter_bridge_overlays` for the
 /// HR-18 file-LOC cap.
 pub mod painter_bridge_upload;

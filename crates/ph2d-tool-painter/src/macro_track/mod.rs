@@ -18,6 +18,7 @@ pub mod portas;
 mod portas_internas;
 pub mod roteiro;
 pub mod tocar;
+pub mod tutorial;
 
 #[cfg(test)]
 mod composicao_tests;

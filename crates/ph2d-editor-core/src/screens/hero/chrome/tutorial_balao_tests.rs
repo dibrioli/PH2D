@@ -23,6 +23,7 @@ fn balao_de(pedido: Option<PedidoDoTutorial>, alvos: Vec<NodeId>) -> BalaoDoTuto
         pedido,
         dica: None,
         alvos,
+        area: None,
         erro: None,
     }
 }
@@ -115,6 +116,14 @@ fn mostra_me_so_com_uma_etapa_por_fazer() {
         (liga(), true),
         (None, false),
         (Some(PedidoDoTutorial::Edita), false),
+        (Some(PedidoDoTutorial::AbreParaPintar), false),
+        (
+            Some(PedidoDoTutorial::Meio {
+                chave_do_meio: "tool.painter.media.wet_paint",
+            }),
+            false,
+        ),
+        (Some(PedidoDoTutorial::Pinta), true),
     ] {
         let mut hero = HeroScreen::new(NodeId(1));
         quadro(&mut hero, &balao_de(pedido.clone(), vec![]));
@@ -135,4 +144,16 @@ fn a_frase_diz_o_passo_e_o_que_ligar() {
     assert!(!corpo.contains('{'), "sem chave por preencher: {corpo}");
     let (titulo, _) = balao_de(None, vec![]).frase();
     assert_eq!(titulo, ph2d_i18n::tr("panel.macros.tutorial.done_title"));
+}
+
+/// As frases do Painter (W6b): o modo Paint, o meio pelo NOME que o seletor mostra, a área marcada.
+#[test]
+fn as_frases_do_painter_dizem_o_modo_o_meio_e_a_area() {
+    let corpo = |p| balao_de(Some(p), vec![]).frase().1;
+    assert!(corpo(PedidoDoTutorial::AbreParaPintar).contains("Paint"));
+    let meio = corpo(PedidoDoTutorial::Meio {
+        chave_do_meio: "tool.painter.media.wet_paint",
+    });
+    assert!(meio.contains("Wet Paint") && !meio.contains('{'), "{meio}");
+    assert!(corpo(PedidoDoTutorial::Pinta).contains("marked area"));
 }

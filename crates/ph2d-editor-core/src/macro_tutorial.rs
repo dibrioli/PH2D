@@ -34,6 +34,23 @@ pub enum PedidoDoTutorial {
     Apaga {
         tipo: String,
     },
+    /// Antes de uma pincelada: a imagem do tutorial aberta em modo Paint.
+    AbreParaPintar,
+    /// Antes de uma pincelada: o meio da gravação (`chave_do_meio` = a chave i18n do nome dele).
+    Meio {
+        chave_do_meio: &'static str,
+    },
+    /// Pintar a área marcada ([`AreaNaImagem`]).
+    Pinta,
+}
+
+/// Uma área numa imagem — o caminho de uma pincelada com o raio dela, em píxeis da imagem. A família
+/// que a pinta (o Painter) desenha-a por cima da imagem `entity_bits`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AreaNaImagem {
+    pub entity_bits: u64,
+    pub pontos: Vec<[f32; 2]>,
+    pub raio: f32,
 }
 
 /// Uma etapa COM critério, no estado do aluno.
@@ -45,6 +62,8 @@ pub struct EtapaDoTutorial {
     pub falta: Option<PedidoDoTutorial>,
     /// Onde o aluno o faz: ids de interação que o painel da família regista por quadro.
     pub alvos: Vec<NodeId>,
+    /// Ou uma área numa imagem.
+    pub area: Option<AreaNaImagem>,
 }
 
 /// O que uma família faz por um tutorial dela. Os métodos por omissão dizem «esta família não tem
@@ -102,17 +121,23 @@ pub struct BalaoDoTutorial {
     /// O texto que o autor escreveu para a etapa (conteúdo, não UI).
     pub dica: Option<String>,
     pub alvos: Vec<NodeId>,
+    pub area: Option<AreaNaImagem>,
     /// A última recusa de um botão.
     pub erro: Option<ErroDaMacroView>,
 }
 
 impl BalaoDoTutorial {
-    /// «Mostra-me» faz sentido: há uma etapa do grafo por fazer.
+    /// «Mostra-me» faz sentido: há uma etapa por fazer (e não um preparo).
     #[must_use]
     pub fn pode_mostrar(&self) -> bool {
-        self.pedido
-            .as_ref()
-            .is_some_and(|p| *p != PedidoDoTutorial::Edita)
+        self.pedido.as_ref().is_some_and(|p| {
+            !matches!(
+                p,
+                PedidoDoTutorial::Edita
+                    | PedidoDoTutorial::AbreParaPintar
+                    | PedidoDoTutorial::Meio { .. }
+            )
+        })
     }
 
     /// **O título e a frase** do balão, traduzidos agora.
@@ -163,6 +188,12 @@ impl BalaoDoTutorial {
             PedidoDoTutorial::Apaga { tipo } => {
                 tr_with("panel.macros.tutorial.delete", &[("node", &no(tipo))])
             }
+            PedidoDoTutorial::AbreParaPintar => tr("panel.macros.tutorial.open_paint").to_owned(),
+            PedidoDoTutorial::Meio { chave_do_meio } => tr_with(
+                "panel.macros.tutorial.medium",
+                &[("medium", &tr(chave_do_meio))],
+            ),
+            PedidoDoTutorial::Pinta => tr("panel.macros.tutorial.paint").to_owned(),
         };
         (titulo, corpo)
     }

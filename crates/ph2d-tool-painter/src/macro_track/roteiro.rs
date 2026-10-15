@@ -8,13 +8,13 @@ use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool, Tool};
 use ph2d_macro::{MacroRecorder, MacroTime, RefRect};
 
-const DT_MS: f32 = 1000.0 / 60.0;
+pub(crate) const DT_MS: f32 = 1000.0 / 60.0;
 /// Quadros de cada pincelada.
-const TRACO: u32 = 24;
+pub(crate) const TRACO: u32 = 24;
 /// Quadros entre duas pinceladas.
-const ENTRE: u32 = 12;
+pub(crate) const ENTRE: u32 = 12;
 /// Quadros depois da última (a água a assentar).
-const CAUDA: u32 = 120;
+pub(crate) const CAUDA: u32 = 120;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Pincelada {
@@ -58,7 +58,7 @@ pub(crate) const SPLASH: [Pincelada; 4] = [
     },
 ];
 
-fn ponto(p: &Pincelada, f: f32, lado: f32) -> [f32; 2] {
+pub(crate) fn ponto(p: &Pincelada, f: f32, lado: f32) -> [f32; 2] {
     let (dx, dy) = (p.ate[0] - p.de[0], p.ate[1] - p.de[1]);
     let arco = p.curva * (std::f32::consts::PI * f).sin();
     [

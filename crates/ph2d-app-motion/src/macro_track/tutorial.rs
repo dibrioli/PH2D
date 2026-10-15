@@ -347,6 +347,7 @@ fn avalia_e_onde(
                 k: c.k,
                 falta: falta.map(pedido),
                 alvos: falta.map(|x| alvos(x, &s)).unwrap_or_default(),
+                area: None,
             }
         })
         .collect();

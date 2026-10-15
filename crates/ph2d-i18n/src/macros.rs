@@ -87,6 +87,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.tutorial.disconnect" => "Disconnect the ringed input of {to}.",
         "panel.macros.tutorial.value" => "Set {param} on {node} to {value}.",
         "panel.macros.tutorial.delete" => "Delete one {node} node.",
+        "panel.macros.tutorial.open_paint" => {
+            "Paint on the tutorial image: select it and pick Paint in its Mode menu."
+        }
+        "panel.macros.tutorial.medium" => "Pick {medium} in the Paint Mode dropdown.",
+        "panel.macros.tutorial.paint" => {
+            "Paint over the marked area: fill most of it, with any colour and brush."
+        }
         "panel.macros.tutorial.show_me" => "Show me",
         "panel.macros.tutorial.restart" => "Restart",
         _ => return None,

@@ -50,3 +50,67 @@ pub fn monta(
     );
     Some((bits, duracao))
 }
+
+/// `PH2D_MACRO_SMOKE=4` — **o tutorial «fazer» do Painter** (`docs/Macros/03_plano_W6.md` §6): a
+/// mesma tela branca com o Splash gravado, mas em modo `Fazer` — a macro não toca, o aluno pinta. O
+/// balão pede a imagem em modo Paint, o meio Wet Paint, e cada pincelada sobre a área marcada.
+/// Devolve os bits da sprite (a shell abre-a em modo Paint; o meio arma-se no bind,
+/// [`arm_brush_once`]).
+pub fn monta_fazer(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+) -> Option<u64> {
+    use ph2d_tool_painter::macro_track::{etapas::LeitorDoPainter, tutorial::regioes};
+    let (_, bits) = ph2d_image_import::spawn_blank_canvas(
+        sim,
+        renderer,
+        asset_db,
+        cell_idx,
+        LADO,
+        2,
+        Vec2::new(0.0, 0.0),
+        pixels_per_meter,
+        atlas_asset_map,
+    )
+    .map_err(|e| eprintln!("[macro smoke =4] could not spawn the canvas: {e}"))
+    .ok()?;
+    let (doc, _) = ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 4)?;
+    let mut macro_doc = ph2d_macro::codec::read(&doc).ok()?;
+    // O texto do AUTOR na 1.ª pincelada (o «Balloon text…» do painel MACROS).
+    let track = macro_doc.tracks.first_mut()?;
+    let k = regioes(track, 1, 1).ok()?.first()?.k;
+    let ancora = ph2d_macro::LeitorDaFamilia::etapas(&LeitorDoPainter, &track.events)
+        .get(k)?
+        .inicio;
+    track.edicao_mut(ancora).dica =
+        Some("Start with the sky: one wide blue stroke across the top.".into());
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(bits))
+        .insert(Macro {
+            doc: ph2d_macro::codec::write(&macro_doc),
+            modo: ModoDaMacro::Fazer,
+        });
+    eprintln!(
+        "[macro smoke =4] 'Canvas' (white, {LADO}²) is a PAINTING TUTORIAL: it carries the four \
+         recorded Splash strokes but does not play them. It opens in Paint mode with Wet Paint; a \
+         balloon marks each stroke's area — fill most of it and the balloon moves on. Ctrl+Z takes it \
+         back; 'Show me' paints the stroke for you; 'Restart' clears the canvas."
+    );
+    Some(bits)
+}
+
+/// A cena `=4` abre no meio da gravação: o Wet Paint no 1.º bind, uma vez (como as cenas do pincel).
+pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static ARMADO: AtomicBool = AtomicBool::new(false);
+    if std::env::var("PH2D_MACRO_SMOKE").as_deref() != Ok("4")
+        || ARMADO.swap(true, Ordering::Relaxed)
+    {
+        return;
+    }
+    painter.set_paint_media(ph2d_tool_painter::PaintMedia::WetPaint);
+}

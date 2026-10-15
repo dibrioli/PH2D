@@ -59,6 +59,16 @@ pub fn draw_overlays(
             *t = std::time::Instant::now();
         }
     };
+    // A área marcada do tutorial «fazer» — por baixo de tudo o que o pincel desenha.
+    crate::painter_bridge_tutorial_area::draw_tutorial_area(
+        painter,
+        hero,
+        sim,
+        present,
+        camera,
+        window_size,
+        vector_scene,
+    );
     // Wetness sheen FIRST — under the brush ring + editor guides (#12a).
     crate::painter_bridge_wetness::draw_wetness_overlay(
         painter,

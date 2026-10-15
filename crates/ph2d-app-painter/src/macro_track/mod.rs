@@ -162,6 +162,15 @@ fn relido(velho: Option<Lido>, m: &Macro, tique: u32, soltas: &mut Vec<u32>) -> 
     }
 }
 
+/// Acrescenta a `out` o retângulo `(x, y, w, h)` de uma tela RGBA de largura `largura`, linha a linha.
+fn recorta(rgba: &[u8], largura: u32, (x, y, w, h): (u32, u32, u32, u32), out: &mut Vec<u8>) {
+    let (x, w) = (x as usize, w as usize);
+    let linhas = rgba.chunks_exact(largura as usize * 4).skip(y as usize);
+    for linha in linhas.take(h as usize) {
+        out.extend_from_slice(&linha[x * 4..(x + w) * 4]);
+    }
+}
+
 impl PalcosDoPainter {
     /// **O erro da macro do objecto `bits`** — a gravação que não se lê, ou o passo em que o palco
     /// parou (o painel MACROS di-lo ao artista, W5d).
@@ -271,13 +280,7 @@ impl PalcosDoPainter {
                     .filter(|&(_, _, cw, ch)| p.tamanho == Some((w, h)) && cw > 0 && ch > 0);
                 self.premul.clear();
                 match caixa {
-                    Some((x, y, cw, ch)) => {
-                        let (x, cw) = (x as usize, cw as usize);
-                        let linhas = rgba.chunks_exact(w as usize * 4).skip(y as usize);
-                        for linha in linhas.take(ch as usize) {
-                            self.premul.extend_from_slice(&linha[x * 4..(x + cw) * 4]);
-                        }
-                    }
+                    Some(c) => recorta(&rgba, w, c, &mut self.premul),
                     None => self.premul.extend_from_slice(&rgba),
                 }
                 drop(rgba);

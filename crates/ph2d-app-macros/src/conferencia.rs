@@ -214,11 +214,7 @@ impl Conferencias {
             Fio::Pronto(r) => Ok(r),
         };
         let bits = x.bits;
-        let m = c.sim.world().get::<Macro>(Entity::from_bits(bits))?;
-        if hash(&m.doc) != x.hash {
-            // A `Macro` mudou: a conferência dela já está na fila.
-            return None;
-        }
+        // A `Macro` é a conferida: uma mudança dela pára o fio na leitura dos tiques (`quadro`).
         let decisao: Decisao = match r {
             Ok(Ok(rs)) if rs.iter().any(|&(_, r)| r == Conferida::Parada) => return None,
             Ok(Ok(rs)) => Ok(rs

@@ -429,7 +429,9 @@ pub enum Conferida {
 }
 
 /// **Até onde um instantâneo serve à conferência de `track`** (eventos da trilha que toca): o prefixo
-/// que ainda é a gravação, nunca depois da 1.ª etapa editada (a marca de saída cai no início dela).
+/// que ainda é a gravação. A marca de saída da 2.ª volta cai na 1.ª etapa que muda o toque, e toda
+/// edição que muda o toque muda a trilha nesse início ou antes (a janela de uma espera encurtada) — o
+/// prefixo nunca o passa.
 ///
 /// # Errors
 /// [`ErroDaMacro::Edicao`].
@@ -437,18 +439,27 @@ pub fn limite_da_partida(track: &Track) -> Result<usize, ErroDaMacro> {
     let t = track
         .tocavel(&LeitorDoPainter)
         .map_err(ErroDaMacro::Edicao)?;
-    let comum = t
-        .events
+    Ok(t.events
         .iter()
         .zip(&track.events)
         .take_while(|(a, b)| a == b)
-        .count();
-    Ok(track
+        .count())
+}
+
+/// A 1.ª etapa (âncora) cuja edição muda o toque — um nome não muda.
+fn primeira_que_toca(track: &Track) -> Option<usize> {
+    track
         .edicoes
         .iter()
+        .filter(|e| {
+            e.espera_us != 0
+                || !e.trocas.is_empty()
+                || !e.insercoes.is_empty()
+                || e.sai_da_gravacao
+                || e.apagada
+        })
         .map(|e| e.ancora)
         .min()
-        .map_or(comum, |a| a.min(comum)))
 }
 
 /// **A conferência** de uma trilha editada — a decisão do [`assenta`], sem a escrever. Toca do zero, ou
@@ -477,7 +488,7 @@ pub fn confere(
         Ok(true) => Ok(Conferida::Passa),
         Ok(false) => Ok(Conferida::Parada),
         Err(ErroDaMacro::Divergiu(d)) => {
-            let Some(primeira) = track.edicoes.iter().map(|e| e.ancora).min() else {
+            let Some(primeira) = primeira_que_toca(track) else {
                 return Err(ErroDaMacro::Divergiu(d));
             };
             let mut fora = track.clone();
@@ -485,14 +496,7 @@ pub fn confere(
             let t = fora
                 .tocavel(&LeitorDoPainter)
                 .map_err(ErroDaMacro::Edicao)?;
-            let respostas: std::sync::Arc<[_]> =
-                super::tocar::respostas_de(t.events.iter().map(|e| e.payload.as_slice()))?.into();
-            let reserva = reserva.and_then(|p| {
-                Some(Partida {
-                    tocador: p.tocador.recomeca(&respostas)?,
-                    feitos: p.feitos,
-                })
-            });
+            // A marca de saída não é resposta do worker: a fila da reserva já é a desta volta.
             Ok(if toca_de(&t, reserva, parar)? {
                 Conferida::SaiEm(primeira)
             } else {

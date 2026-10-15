@@ -293,3 +293,19 @@ fn a_ranhura_recebe_so_o_que_mudou_e_fica_igual_a_tela() {
         placa.substituidas
     );
 }
+
+/// O recorte da subida parcial: o retângulo `(x, y, w, h)` fora do canto, linha a linha.
+#[test]
+fn o_recorte_da_subida_e_o_retangulo_fora_do_canto() {
+    // Tela 4×3: cada texel guarda (x, y, 0, 255).
+    let rgba: Vec<u8> = (0..3u8)
+        .flat_map(|y| (0..4u8).flat_map(move |x| [x, y, 0, 255]))
+        .collect();
+    let mut out = Vec::new();
+    super::recorta(&rgba, 4, (1, 1, 2, 2), &mut out);
+    assert_eq!(
+        out,
+        [1, 1, 0, 255, 2, 1, 0, 255, 1, 2, 0, 255, 2, 2, 0, 255],
+        "as linhas 1–2, colunas 1–2"
+    );
+}

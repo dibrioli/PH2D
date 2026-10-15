@@ -357,9 +357,7 @@ impl PainterTool {
     /// vidro) corre igual e na mesma ordem; o retângulo sujo fica a acumular para a cena compor uma vez
     /// ([`Self::composto_da_cena`]). `true` = a tela mudou.
     pub(crate) fn drena_sem_compor(&mut self) -> bool {
-        self.reconcile_substrate();
-        self.compoe_o_pendente();
-        if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
+        if !self.drena_o_estado() {
             return false;
         }
         let compoe = self.mask_grayscale_view_source().is_none()
@@ -370,7 +368,9 @@ impl PainterTool {
         true
     }
 
-    fn take_preview_arc_corpo(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
+    /// **O estado que o dreno muda**, o MESMO no editor e na macro tocada; `true` = a tela mudou (o
+    /// portão do `preview_dirty`, que se drena sempre).
+    fn drena_o_estado(&mut self) -> bool {
         // ⚠️ **ANTES do portão do `preview_dirty`, e a ordem é a metade que o artista vê.** O dente do
         // papel é canvas-inteiro, e nenhum dos nove knobs que o produzem levanta o `preview_dirty`
         // sozinho — reconciliar depois do portão deixaria a tela parada até a pincelada seguinte, que é
@@ -379,7 +379,11 @@ impl PainterTool {
         // ⭐ A composição do Composite Brush adiada neste quadro corre AQUI, antes de a tela ser
         // lida (`paint::composite_por_quadro`) — a mesma forma do acerto do papel acima.
         self.compoe_o_pendente();
-        if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
+        std::mem::take(&mut self.preview_dirty) && !self.canvas_rgba.is_empty()
+    }
+
+    fn take_preview_arc_corpo(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
+        if !self.drena_o_estado() {
             self.last_drain_branch = crate::tool::DrainBranch::Idle;
             return None;
         }

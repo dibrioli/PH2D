@@ -155,8 +155,7 @@ seguintes. Suíte com `motivo: formato gravado`.
   a PORTAS com `Decisao::Ambiente` no censo (controlam a gravação, não são passo da obra). O Parar chega sempre
   ao Painter (`Familias.painter`), mesmo com outra ferramenta activa; só o armar exige `painter_activo`.
 - **Recusa de escala:** arrastar a escala de uma etapa sem faixa — a família recusa e o painel diz.
-- **Apagar uma etapa:** NÃO feito (não estava no pedido; precisa da lei do que acontece à água/relógio) — por
-  decidir com o dono.
+- **Apagar uma etapa:** decidido pelo dono em 15/10 — «o tempo dela fecha-se»; feito na W5e (ver §7).
 
 ## 6. Ondas
 
@@ -167,6 +166,62 @@ seguintes. Suíte com `motivo: formato gravado`.
 | W5b | segmentação + nomes + `edicoes`/`exige` + deslocamento com relógio sintetizado + edição de valor | cena `=2` = N etapas, Splash = 4; antes da etapa editada = original ao bit; espera = a água/o vento continuam; recuar == do zero com edições; formato ida-e-volta, 1.0 lê |
 | W5c ✅ (`ff001e1bc7`..`8c92e9cd19`) | instantâneos do Painter por etapa (§3.1), razão da RAM no core, o palco reedita | continuar = do zero ao bit; recuo e edição = palco novo ao bit; dobra; fita reeditada; dhat retido ÷ declarado ∈ [1; 1,15] |
 | W5d ✅ (`d21a072d6b`..`a3475fb6fb`) | painel, linha de etapas na Timeline, Gravar ▸ Parar, cartão, undo; mutação 18/18 (§5.1) | `ph2d-app-macros --test it gate7` (4): Gravar → pincelar → Parar ⇒ Macro + clipe + N etapas; arrastar ⇒ etapa move; editar cor ⇒ só aquela pincelada; undo das duas pilhas |
-| W5e | cenas `=1`/`=2` com etapas, fotos com a máquina calma, perf (compor 1× por quadro, premultiplicar/subir), fecho | fecho batched, handoff, binário do smoke |
+| W5e ✅ (`024b153672`..`dc3d49d001`) | apagar etapa; composição 1× por quadro + subida parcial; conferência fora do quadro, do instantâneo; os dois riscos do smoke; cenas com etapas (§7) | `ph2d-macro --test it etapas::apagar_uma_etapa_fecha_o_tempo_dela` · `ph2d-tool-painter --lib macro_track::etapas_tests::apagar_uma_pincelada_e_grava_la_sem_ela`, `macro_track::composicao_tests` · `ph2d-tool-painter --test it macro_etapas::conferir_do_instantaneo_do_palco_decide_o_mesmo_que_do_zero` · `ph2d-app-motion --lib macro_track::etapas_tests::apagar_um_gesto_e_grava_lo_sem_ele`, `…leitor::apagar_um_arrasto_fecha_os_quadros_dele_e_o_relogio_de_dentro_nao_salta` · `ph2d-app-painter --lib macro_track::palcos_tests::a_ranhura_recebe_so_o_que_mudou_e_fica_igual_a_tela` · `ph2d-app-macros --test it gate7` · `ph2d-panel-macros --test it seam_macros::apagar_a_etapa_escolhida_chega_como_pedido_e_larga_a_escolha` |
+
+## 7. W5e — o que se mediu e decidiu (15/10)
+
+**Apagar** (dono, 15/10: o tempo fecha-se): `EdicaoDeEtapa.apagada` (codec tag 7, dentro de «etapas» 1.1 — nenhum ficheiro 1.1 saiu da linha). `efetiva` salta os eventos da etapa (o relógio de dentro também); o que vem depois recua `t[fim]−t[inicio]`; sai da gravação ali. As outras edições da etapa apagada deixam de valer; inserções de OUTRAS etapas num evento apagado tocam onde ele fechou. As etapas vivas levam o `k` da GRAVAÇÃO (uma apagada não renumera; o Painter numera «Pincelada n» pela gravação).
+- Motion: `LeitorDaFamilia::sem_o_gesto` — o `Quadro` do instante do fim de uma etapa apagada passa a `sujou:false` (sem isso o Fiel diverge: medido). `tempo_deslocado` encaixa o `tempo` na grelha do `dt` quando o desvio cabe no arredondamento a µs (fechar 4 quadros tira 66 667 µs: 0,33 µs de deriva, o gate apanhou).
+- UI: botão «Delete step» no painel MACROS (`MACROS_DELETE`), `MacroRequest::Apaga`; undo pelo diff do mundo, o clipe encurta pela sincronização.
+
+### 7.1 Composição e subida — MEDIDO
+
+Sondas `custo_w5e`, `sonda_n_palcos_do_painter`, `sonda_subir_a_tela`; perfil smoke, mínimo de rondas intercaladas; load antes 23–29, depois 4–55. ⚠️ A sprite branca do PRODUTO abre com papel branco (`abre_a_sprite`) ⇒ composição completa; o Splash de antes era `set_source` (pilha trivial, composição grátis) — `roteiro::grava_no_papel` grava pela porta do produto e a cena `=1` passou a usá-la.
+
+Antes: cada `Preview` da reprodução compunha (parcial) e a leitura da cena forçava uma composição INTEIRA (`composto_da_cena` sem retângulo). Agora: `PainterTool::drena_sem_compor` (os mutadores do dreno — papel, composição adiada do Composite, vidro — correm igual; o retângulo sujo acumula) e a cena compõe UMA vez sobre o retângulo acumulado; `caixa_da_tela`; o palco sobe só esse retângulo (`RanhurasDaCena::substitui_regiao`).
+
+| | antes | depois |
+|---|---|---|
+| Splash no papel 2048², cena: segue + compor por tela nova | 12,8 + 18,2 ms | 10,1 + 8,7 ms |
+| Splash no papel 1024², idem | 5,3 + 3,5 ms | 4,2 + 1,9 ms |
+| tocar do zero ao fim, Splash no papel 1024² / 2048² | 2 043 / 3 622 ms | 1 102 / 2 441 ms |
+| tocar do zero, longa 61 s no papel 1024² / 22 s a 2048² | 26,6 / 17,7 s | 22,9 / 13,5 s |
+| subir à placa 2048² (inteira / 25 % / 5 %) | 8,53 / 2,49 / 0,49 ms | — |
+| subir à placa 1024² (inteira / 25 % / 5 %) | 1,73 / 0,53 / 0,26 ms | — |
+| palco no papel com a placa, 2048² N=1 (segue + sobe) | — | 4,0 + 3,8 ms |
+
+Área média sujada por pré-visualização (antes): 28–47 %; 48 de 111 subidas no gate do palco são inteiras (a ferramenta invalida a cache). Verdade dos gates: a composição de uma vez = a completa ao bit em cada quadro; a ranhura parcial = a tela premultiplicada em cada quadro. ⚠️ A cena mostra o estado no FIM do quadro (depois do `Tique`); o editor mostrava-o drenado ANTES do tique do quadro — uma régua «a cena = o que o editor mostrava» diverge 368 texels no quadro 26 COM O CÓDIGO ANTIGO TAMBÉM (medido): não é a régua desta mudança.
+
+### 7.2 Conferência fora do quadro — MEDIDO
+
+Antes tocava a macro inteira DENTRO de um quadro (3,6 s no Splash no papel 2048²; 26,6 s na longa de 61 s). Agora `conferencia.rs` (app-macros): DERIVADA da `Macro` (tique de mudança + hash dos bytes), num fio «macro-confere», no 1.º quadro sem mudança nova, a partir do instantâneo do palco em cena (`MacroEmCena::partida`, `limite_da_partida`: nunca depois da 1.ª etapa editada); escreve só se a `Macro` ainda for a conferida; uma mudança a meio pára o fio; a decisão fica pelos bytes e os mesmos bytes que voltam (desfazer/refazer) recebem-na já. O undo suprime o passo enquanto há conferência («uma macro a conferir», molde do Colorize).
+
+| conferir a cor | do zero | do instantâneo | tirar o instantâneo (no quadro) |
+|---|---|---|---|
+| longa 61 s, 1024²: pincelada 49/96 | 25,5 s | 16,3 s | 6,6 ms |
+| longa 61 s, 1024²: pincelada 96/96 | 24,5 s | 3,0 s | 7,9 ms |
+| longa 22 s, 2048²: 17/32 | 16,3 s | 11,3 s | 20,6 ms |
+| longa 22 s, 2048²: 32/32 | 19,4 s | 7,6 s | 16,8 ms |
+
+O que sobra é a água (a simulação re-corre: `Tique` = 70–80 % de tocar do zero).
+
+### 7.3 Os dois riscos do smoke (investigados)
+
+1. No extract o palco vence a pré-visualização do editor (os palcos antes do `do_editor` em `fase_extract_inputs`; `sim_extract` fica com o 1.º) — uma 2.ª tomada sobre uma sprite com macro mostrava a tomada antiga enquanto o artista pintava ⇒ `Macros::sprite_gravada` + `sobe(.., cede)`: a sprite que o Painter grava mostra o traço vivo; o palco nunca escreve no documento nem partilha ranhura com a pré-visualização. Pintar SEM gravar depois do Parar continua escondido enquanto o clipe toca (por desenho: a sprite mostra a macro).
+2. O Motion grava um `Quadro` por quadro do editor e a testemunha apanha escritas fora das portas, mas a Sessao drenava-o na `fase_macros`, ANTES de o Motion correr ⇒ cada passo levava o relógio do quadro seguinte ⇒ `Macros::depois_do_motion` depois da `fase_motion_bridge`.
+
+### 7.4 ⛔ Recusas MEDIDAS
+
+| Recusado | Porquê |
+|---|---|
+| «a cena = o que o editor mostrava» como régua da composição | fase do tique; diverge igual no código antigo (368 texels, quadro 26) |
+| conferir dentro do quadro | 3,6–26,6 s num quadro |
+| conferência disparada só pelo pedido de edição (`por_assentar`) | um desfazer/refazer devolvia bytes não conferidos — agora derivada dos bytes |
+
+### 7.5 Gates W5e (todos verdes, por nome)
+
+Os da coluna Gates da §6 (W5e). Cobrem: apagar fecha o tempo (núcleo, Painter, Motion, leitor); composição 1× por quadro; conferir do instantâneo = do zero; a ranhura recebe só o que mudou (+ o palco cede só a sprite gravada); `gate7` (apagar encurta o clipe; conferida fora do quadro; a decisão é dos bytes; os passos do Motion no relógio do quadro; `sprite_gravada`); o painel manda `Apaga` e larga a escolha.
+
+**Prova de mutação W5e:** _(a preencher)_
 
 Tutorial «fazer» (balão, realce, cena `=3`): W6.

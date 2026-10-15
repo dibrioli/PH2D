@@ -63,15 +63,24 @@ fn a_conferencia_que_diverge_tira_a_etapa_da_gravacao() {
         .edicao_mut(ancora)
         .insercoes
         .push((ancora, Passo::Tique(1000.0 / 60.0).codifica()));
+    // Um NOME numa etapa anterior não muda o toque: não é ela que sai da gravação.
+    let antes = etapas::etapas(&doc.tracks[0]).expect("lê-se")[1]
+        .etapa
+        .inicio;
+    doc.tracks[0].edicao_mut(antes).nome = Some("céu".into());
     assert!(
         tela(&doc).is_err_and(|e| e.contains("Divergiu")),
         "controlo: pela fita, um tique a mais diverge"
     );
     etapas::assenta(&mut doc.tracks[0]).expect("assenta");
-    assert!(
-        doc.tracks[0].edicoes[0].sai_da_gravacao,
-        "a etapa saiu da gravação"
-    );
+    let sai = |a: usize| {
+        doc.tracks[0]
+            .edicoes
+            .iter()
+            .any(|e| e.ancora == a && e.sai_da_gravacao)
+    };
+    assert!(sai(ancora), "a etapa editada saiu da gravação");
+    assert!(!sai(antes), "a etapa só renomeada não sai");
     tela(&doc).expect("e agora toca");
 }
 

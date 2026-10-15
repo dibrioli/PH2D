@@ -131,7 +131,7 @@ pub fn paint_hero_screen(
     // únicos que sobrevivem a ele — ver [`crate::interaction::WidgetStore::end_scroll_frame`].
     hero.store.begin_scroll_frame();
     // A pré-edição do IME e o caret que a janela de candidatos segue ([`crate::ime`]).
-    crate::ime::begin_frame(&hero.store);
+    crate::ime::begin_frame(hero.store.focus_id(), hero.store.composition());
     // Publish the user-picked radius scale to the thread-local read
     // by `paint::fill_rounded_rect` / `stroke_rounded_rect`. Set
     // every frame so it stays in sync with the topbar's radius menu.

@@ -1,8 +1,9 @@
 //! ⭐ **A pré-edição de IME** — a composição em curso (o `´` antes do `a`) que o campo focado
 //! MOSTRA, sublinhada no caret, e que **nunca** entra no valor antes do `Commit`.
 //!
-//! O dono do estado é o [`WidgetStore`] ([`WidgetStore::composition`]); este módulo é a ponte de
-//! PINTURA (o padrão do `published`: *o hero publica, a folha lê*): o hero publica a composição no
+//! O dono do estado é o `WidgetStore` da `interaction` (`WidgetStore::composition`), que depende
+//! DESTE módulo e nunca o contrário — quem chama o [`begin_frame`] entrega-lhe o foco e a
+//! composição; este módulo é a ponte de PINTURA (o padrão do `published`: *o hero publica, a folha lê*): o hero publica a composição no
 //! início do quadro, o pintor do campo lê-a e devolve o rect do caret, e a shell pergunta-o depois
 //! da pintura para pôr a janela de candidatos do sistema no caret.
 //!
@@ -17,7 +18,6 @@
 //! ⇒ cada carácter chega por UM caminho, nunca pelos dois. Sem IME não há `Preedit`, e por isso a
 //! tecla morta é composta aqui ([`ComposeKey`]). `´`+`q` cancela (o `q` chega sem texto); `´´` = `´`.
 
-use crate::interaction::WidgetStore;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use std::cell::RefCell;
@@ -58,12 +58,13 @@ thread_local! {
     static FRAME: RefCell<Frame> = RefCell::new(Frame::default());
 }
 
-/// Início do quadro: o hero publica o foco e a composição antes de qualquer pintor.
-pub fn begin_frame(store: &WidgetStore) {
+/// Início do quadro: o hero publica o foco e a composição (as do `WidgetStore`) antes de qualquer
+/// pintor.
+pub fn begin_frame(focus: Option<NodeId>, composition: Option<&Composition>) {
     FRAME.with(|f| {
         let mut f = f.borrow_mut();
-        f.focus = store.focus_id();
-        f.composition = store.composition().cloned();
+        f.focus = focus;
+        f.composition = composition.cloned();
         f.caret = None;
     });
 }

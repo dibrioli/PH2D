@@ -22,7 +22,7 @@ fn focused_field(value: &str) -> WidgetStore {
 
 /// O que a pintura do campo focado produz: `(glifos, segmentos de caminho, caret)`.
 fn paint(store: &WidgetStore) -> (usize, u32, Rect) {
-    crate::ime::begin_frame(store);
+    crate::ime::begin_frame(store.focus_id(), store.composition());
     let Some(InteractiveState::TextInput { text, caret, .. }) = store.get(FIELD) else {
         panic!("o campo é um TextInput");
     };

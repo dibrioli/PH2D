@@ -214,6 +214,12 @@ pub struct Config {
     /// ⭐ W5t — a traça, a subida e a descida da holográfica despachadas em 3D (`(v, xi, k)` são o índice do
     /// fio, sem as divisões do 1D; só por colunas): o mesmo bit. `false` = 1D dobrado.
     pub hrc_grade_3d: bool,
+    /// ⭐ W5u (só em 3D) — cones vizinhos por fio na descida (o T da aresta comum lido uma vez; `1` = um
+    /// cone por fio), pares (k par, k ímpar) por fio na subida (`0` = uma entrada por fio) e o acumulado
+    /// em rgb (12 bytes por texel, não 16): o mesmo bit (handoff W5u).
+    pub hrc_cones_por_fio: u32,
+    pub hrc_pares_na_subida: u32,
+    pub hrc_acumulado_rgb: bool,
 }
 
 /// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
@@ -429,6 +435,9 @@ impl Config {
             hrc_salta_o_vazio: true,
             hrc_fio_por_sonda: true,
             hrc_grade_3d: true,
+            hrc_cones_por_fio: 1,
+            hrc_pares_na_subida: 0,
+            hrc_acumulado_rgb: false,
         }
     }
 

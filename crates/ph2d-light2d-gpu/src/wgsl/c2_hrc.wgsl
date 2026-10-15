@@ -54,6 +54,8 @@ struct Hrc {
 // ⭐ W5s: um por ladrilho LADO_DO_VAZIO² da captura — 1 se algum texel tem cobertura (o `hrc_ladrilhos`
 // escreve-o a cada gravação; a traça lê-o).
 @group(3) @binding(16) var<storage, read_write> com_cobertura: array<u32>;
+// ⭐ W5u: o acumulado em rgb (3 f32 por texel, o `ACUMULADO_RGB_HRC`; o 4.º era sempre 0).
+@group(3) @binding(17) var<storage, read_write> acumulado_rgb: array<f32>;
 // ⭐ W5d: a c0 do entorno (só a saída a lê).
 @group(2) @binding(14) var entorno_c0: texture_2d<f32>;
 @group(2) @binding(15) var entorno_amostra: sampler;
@@ -81,6 +83,12 @@ override SONDA_HRC: bool = true;
 // ⭐ W5t — o despacho em 3D (por colunas): `(v, xi, k)` são o índice do fio, sem as divisões do 1D — a subida e a
 // descida pagam por FIO, não por byte (handoff W5t). `false` = 1D dobrado.
 override GRADE3D_HRC: bool = true;
+// ⭐ W5u (só em 3D) — CONES_HRC cones vizinhos por fio na descida: o T da aresta comum lido uma vez (1 = um
+// cone por fio). PARES_SOBE_HRC pares (k par, k ímpar) por fio na subida (0 = uma entrada por fio). O
+// acumulado em rgb: 12 bytes por texel, não 16. A conta de cada entrada é a mesma (handoff W5u).
+override CONES_HRC: u32 = 1u;
+override PARES_SOBE_HRC: u32 = 0u;
+override ACUMULADO_RGB_HRC: bool = false;
 const LADO_DO_VAZIO: u32 = 8u;
 
 struct Par {
@@ -390,6 +398,12 @@ fn fusao_de_baixo(k: u32, xi: u32, v: i32) -> Par {
 // ── T3..TN: a fusão de baixo para cima (Eq. 18–20) ──
 @compute @workgroup_size(64)
 fn hrc_sobe(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
+    if GRADE3D_HRC && COLUNAS_HRC && PARES_SOBE_HRC > 0u {
+        if gid.x < hrc.eixo.y {
+            subir_pares(gid);
+        }
+        return;
+    }
     if GRADE3D_HRC && COLUNAS_HRC {
         if gid.x < hrc.eixo.y {
             t_saida[indice_t(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z)] =
@@ -408,6 +422,12 @@ fn hrc_sobe(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
 // ── R_{N−1}..R0: a fusão de cima para baixo (Eq. 14–17) ──
 @compute @workgroup_size(64)
 fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
+    if GRADE3D_HRC && COLUNAS_HRC && CONES_HRC > 1u {
+        if gid.x < hrc.eixo.y {
+            descer_cones(gid);
+        }
+        return;
+    }
     if GRADE3D_HRC && COLUNAS_HRC {
         if gid.x < hrc.eixo.y {
             r_saida[indice_r(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z)] =
@@ -448,6 +468,81 @@ fn soma_da_descida(m: u32, xi: u32, v: u32) -> vec3<f32> {
         }
     }
     return soma;
+}
+
+// ⭐ W5u — os pares `c0..c0 + PARES_SOBE_HRC` da sonda `(xi, v)` de T_n: k = 2c (a fusão direta) e
+// k = 2c + 1 (a média das duas), a MESMA conta do [`fusao_de_baixo`]; o T_{n−1} de baixo da aresta c + 1
+// passa ao par seguinte.
+fn subir_pares(gid: vec3<u32>) {
+    let xi = gid.y;
+    let v = i32(gid.x);
+    let h = i32(1u << (hrc.nivel - 1u));
+    let kmax = 1u << hrc.nivel;
+    let c0 = gid.z * PARES_SOBE_HRC;
+    var b_ant = t_de_baixo(2u * xi, v, c0);
+    for (var p = 0u; p < PARES_SOBE_HRC; p++) {
+        let c = c0 + p;
+        if 2u * c > kmax {
+            break;
+        }
+        let par = fundir(b_ant, t_de_baixo(2u * xi + 1u, v + 2 * i32(c) - h, c));
+        t_saida[indice_t(hrc.nx, hrc.nivel, xi, gid.x, 2u * c)] = empacotar(par);
+        if 2u * c + 1u > kmax {
+            break;
+        }
+        let b_prox = t_de_baixo(2u * xi, v, c + 1u);
+        let mais = fundir(b_prox, t_de_baixo(2u * xi + 1u, v + 2 * i32(c + 1u) - h, c));
+        let menos = fundir(b_ant, t_de_baixo(2u * xi + 1u, v + 2 * i32(c) - h, c + 1u));
+        t_saida[indice_t(hrc.nx, hrc.nivel, xi, gid.x, 2u * c + 1u)] =
+            empacotar(Par(0.5 * (mais.r + menos.r), 0.5 * (mais.t + menos.t)));
+        b_ant = b_prox;
+    }
+}
+
+// ⭐ W5u — o T da aresta `aresta` que a descida da sonda `(xi, v)` lê: T_n se xi ímpar, T_{n+1} (aresta
+// 2·aresta) se par.
+fn t_da_aresta(xi: u32, v: u32, aresta: u32) -> Par {
+    if xi % 2u == 1u {
+        return t_deste(xi, v, aresta);
+    }
+    return t_de_cima(xi / 2u, v, 2u * aresta);
+}
+
+// ⭐ W5u — a metade do cone fino `j` na aresta `aresta`, com o T dela já lido: a MESMA conta do
+// [`soma_da_descida`].
+fn metade_da_descida(xi: u32, v: u32, aresta: u32, j: u32, tr: Par) -> vec3<f32> {
+    let n = hrc.nivel;
+    let lado = i32(1u << n);
+    let a = arco(n + 1u, j);
+    if xi % 2u == 1u {
+        let q = i32(v) + 2 * i32(aresta) - lado;
+        return a * tr.r + tr.t * r_de_cima((xi + 1u) / 2u, q, j);
+    }
+    let f0 = r_de_cima(xi / 2u, i32(v), j);
+    let q = i32(v) + 2 * i32(2u * aresta) - 2 * lado;
+    let f1 = a * tr.r + tr.t * r_de_cima(xi / 2u + 1u, q, j);
+    return 0.5 * (f0 + f1);
+}
+
+// ⭐ W5u — os cones `m0..m0 + CONES_HRC` da sonda `(xi, v)` de R_n: o T da aresta m + 1 passa ao cone m + 1.
+fn descer_cones(gid: vec3<u32>) {
+    let xi = gid.y;
+    let v = gid.x;
+    let cones = 1u << hrc.nivel;
+    let m0 = gid.z * CONES_HRC;
+    var t_ant = t_da_aresta(xi, v, m0);
+    for (var c = 0u; c < CONES_HRC; c++) {
+        let m = m0 + c;
+        if m >= cones {
+            break;
+        }
+        let t_prox = t_da_aresta(xi, v, m + 1u);
+        var soma = vec3<f32>(0.0);
+        soma += metade_da_descida(xi, v, m, 2u * m, t_ant);
+        soma += metade_da_descida(xi, v, m + 1u, 2u * m + 1u, t_prox);
+        r_saida[indice_r(hrc.nx, hrc.nivel, xi, v, m)] = empacotar(Par(soma, 0.0));
+        t_ant = t_prox;
+    }
 }
 
 // O R0 do cone 0 na sonda `(u, v)` (o céu × o arco além da última).
@@ -497,11 +592,32 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
     let t = texel_da_grade(u, v);
     let i = t.y * hrc.grade.x + t.x;
+    if ACUMULADO_RGB_HRC {
+        let j = 3u * i;
+        if hrc.quadrante == 0u {
+            acumulado_rgb[j] = f.x;
+            acumulado_rgb[j + 1u] = f.y;
+            acumulado_rgb[j + 2u] = f.z;
+        } else {
+            acumulado_rgb[j] += f.x;
+            acumulado_rgb[j + 1u] += f.y;
+            acumulado_rgb[j + 2u] += f.z;
+        }
+        return;
+    }
     if hrc.quadrante == 0u {
         acumulado[i] = vec4<f32>(f, 0.0);
     } else {
         acumulado[i] += vec4<f32>(f, 0.0);
     }
+}
+
+fn ler_acumulado(i: u32) -> vec3<f32> {
+    if ACUMULADO_RGB_HRC {
+        let j = 3u * i;
+        return vec3<f32>(acumulado_rgb[j], acumulado_rgb[j + 1u], acumulado_rgb[j + 2u]);
+    }
+    return acumulado[i].rgb;
 }
 
 // ── A c0: o acumulado (com o filtro em cruz da Eq. 21) e a máscara do preenchimento ──
@@ -514,7 +630,7 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
     let tau_p = meio(P).tau;
     let fora = tau_p > 0.0;
     let i = gid.y * hrc.grade.x + gid.x;
-    var f = acumulado[i].rgb;
+    var f = ler_acumulado(i);
     if BORRAO_HRC {
         var soma = 4.0 * f;
         var peso = 4.0;
@@ -529,7 +645,7 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
             if meio(vec2<f32>(q) + 0.5).tau != tau_p {
                 continue;
             }
-            soma += acumulado[u32(q.y) * hrc.grade.x + u32(q.x)].rgb;
+            soma += ler_acumulado(u32(q.y) * hrc.grade.x + u32(q.x));
             peso += 1.0;
         }
         f = soma / peso;

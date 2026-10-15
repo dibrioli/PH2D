@@ -419,7 +419,11 @@ impl PassList {
         }
         // ⭐ W5c: a cascata holográfica (os T, o par R, o acumulado, o uniforme e os vazios).
         if cfg.holografica.is_some() {
-            buffers.extend(crate::hrc::buffers(fino, crate::hrc::n_passes(fino)));
+            buffers.extend(crate::hrc::buffers(
+                fino,
+                crate::hrc::n_passes(fino),
+                cfg.hrc_acumulado_rgb,
+            ));
         }
         if op.rebote.is_some() {
             buffers.push(Buffer {

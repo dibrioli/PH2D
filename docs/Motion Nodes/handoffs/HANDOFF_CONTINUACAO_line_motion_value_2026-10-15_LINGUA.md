@@ -36,7 +36,7 @@
 
 ## Aberto (ordem)
 
-1. **Smoke do dono da =142** (foto nova em `/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/1a0517fd-0c57-4153-87c1-f5d2d67a92f3/scratchpad/cena142d.png`;
+1. ~~**Smoke do dono da =142**~~ — **OK do dono (15/10).** (foto nova em `/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/1a0517fd-0c57-4153-87c1-f5d2d67a92f3/scratchpad/cena142d.png`;
    log: `[formas] 513 copias de 2 geometrias pela PLACA (do dispositivo)` e `[motion-route] device: HIBRIDO -- prefixo na CPU, sufixo no device`).
 2. O detalhe do aviso «Vector-path shapes filter as one» — o dono decide (dica ou tutorial).
 3. NENHUM gate geral pergunta se uma legenda tapa a figura que explica (só a =142 tem, desde hoje). Um gate geral exige o

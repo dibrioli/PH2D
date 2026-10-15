@@ -123,12 +123,18 @@ impl ShapeRampLayers<'_> {
     #[inline]
     #[must_use]
     pub fn color(&self, lut_textura: &[[f32; 4]], v_textura: f32, v_cobertura: f32) -> [f32; 4] {
-        let t = self
-            .texture
-            .then(|| (crate::dab::ramp_sample(lut_textura, v_textura), self.texture_opacity));
-        let q = self
-            .falloff
-            .map(|l| (crate::dab::ramp_sample(l, v_cobertura), self.falloff_opacity));
+        let t = self.texture.then(|| {
+            (
+                crate::dab::ramp_sample(lut_textura, v_textura),
+                self.texture_opacity,
+            )
+        });
+        let q = self.falloff.map(|l| {
+            (
+                crate::dab::ramp_sample(l, v_cobertura),
+                self.falloff_opacity,
+            )
+        });
         let (baixo, cima) = if self.falloff_first { (t, q) } else { (q, t) };
         compose_shape_ramp_layers(baixo, cima, self.blend)
     }

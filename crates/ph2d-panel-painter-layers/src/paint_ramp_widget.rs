@@ -180,9 +180,12 @@ pub(crate) fn paint_ramp_body(
 
 /// The controls line fits on ONE row at `content_w`: the Mode / Interp dropdowns still fit to the right
 /// of the `+ − I [B&W]` buttons.
+const BOTOES_QUADRADOS: f32 = 3.0; // LITERAL-PX-OK: the three square buttons `+ − I` of the controls line
+
 fn cabe_numa_linha(content_w: f32, bw_button: bool) -> bool {
     let gap = Spacing::Xs.px();
-    let botoes = 3.0 * ph2d_tokens::row_pitch_px() + if bw_button { BW_W + gap } else { 0.0 };
+    let botoes =
+        BOTOES_QUADRADOS * ph2d_tokens::row_pitch_px() + if bw_button { BW_W + gap } else { 0.0 };
     content_w - botoes >= DD_MIN_W * 2.0 + gap
 }
 

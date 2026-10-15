@@ -1244,6 +1244,17 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-painter-layers/src/paint_watercolor.rs",
         "checkboxes delegate to paint_checkbox_row (Checkbox); sliders to number_field (NumberInput); rest is chrome",
     ),
+    // ⭐ **Nasceram em 2026-10-15 dos cortes que a secção Shape Color (prompt 38) impôs ao
+    // `paint_ramp_widget.rs` e ao `paint_shape.rs`** (tecto de 600). ⚠️ Medido: zero `NodeId`, `hit_index`
+    // ou `register(` — a leitura do selector de cor e a COR da prévia da ponta.
+    (
+        "ph2d-panel-painter-layers/src/paint_ramp_leitura.rs",
+        "a leitura viva do selector de cor de uma rampa (empurra o SelectOption da caixa que o widget ja' registou); nao pinta nem regista um id — 0 ocorrencias de NodeId / hit_index. / register(",
+    ),
+    (
+        "ph2d-panel-painter-layers/src/paint_shape_previa.rs",
+        "a COR da previa da ponta pelas camadas do Shape Color (uma conta sobre o snapshot, devolve RGBA por texel); nao pinta nem regista um id — quem pinta e regista e' o `paint_shape_preview`",
+    ),
 ];
 
 fn walk(root: &Path, dir: &Path, cb: &mut dyn FnMut(&Path, &Path)) {

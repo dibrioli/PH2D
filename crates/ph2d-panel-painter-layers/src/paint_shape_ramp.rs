@@ -255,15 +255,11 @@ fn paint_layer_card(
     // The lower card's TITLE line carries "Move Up" (brings it to the top), so its rows keep the
     // section's column.
     if !c.de_cima {
+        let topo = y + Spacing::Xs.px();
         icon_button(
             ctx,
             theme,
-            Rect::new(
-                ix + iw - MOVE_W,
-                y + Spacing::Xs.px(),
-                MOVE_W,
-                ry - y - Spacing::Xs.px(),
-            ),
+            Rect::new(ix + iw - MOVE_W, topo, MOVE_W, ry - topo),
             tr("panel.painter_layers.ramp.move_up"),
             ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_SWAP,
             false,

@@ -165,8 +165,7 @@ Cenas do smoke, contadas no roteador (`motion_state_demo_router.rs:34`, `MAX_DEM
      deslocamento no `first_vertex` com viés 2^28); sai `RECUSA_SCENE_NO_DISPOSITIVO`. Sonda
      `sonda_o_scene_ordenado_no_dispositivo` (1080p, médias a alternar, mínimo de 12 blocos, carga ~2), 1k/4k/16k: CPU por
      linha `9,35 / 49,5 / 206,5 ms` · ORDENADO `0,204 / 0,407 / 2,19 ms` · comutativa (2 desenhos) `0,265 / 0,524 /
-     2,46 ms` ⇒ 46–122× a lei de antes e 0,77–0,89× a comutativa (kill-criterion fixado antes: ≤ 1,5×). ⚠️ Medida
-     ANTES da cura `c28534c7ac` (a imagem não desenhava nas linhas de imagem): **re-medir** — ABERTO. Gate
+     2,46 ms` ⇒ 46–122× a lei de antes e 0,77–0,89× a comutativa (kill-criterion fixado antes: ≤ 1,5×). (antes da cura `c28534c7ac`). Re-medida DEPOIS de `c28534c7ac` (carga ~6,5; a razão intercalada vale, o relógio menos): CPU por linha `10,5 / 61,1 / 212,9 ms` · ORDENADO `0,226 / 0,518 / 2,90 ms` · comutativa `0,267 / 0,560 / 2,74 ms` ⇒ 46–118× a lei de antes; 0,84 / 0,93 / 1,06× a comutativa — dentro do kill-criterion. Gate
      `o_scene_com_imagens_pelo_dispositivo_segue_a_faixa_deslocada` (24 casos). Handoff:
      [ABERTOS 132](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-14_ABERTOS_132.md).
   4. **`MundoPartido` — VERDE, por segmentos.** A camada desenha cada SEGMENTO de pousa e pousa-o por sua vez
@@ -254,7 +253,7 @@ pintura da coluna).
 | 2.º kernel só para cadeias 16·4096 do `corrige` (decisão 14/10: fica a Escolha `select`) | mínimo `+9 %` (Matriz) e mediana `−3,4 %` discordam de sinal, a régua não separa; a Escolha ganha até 43 % na nuvem; kernel duplicado por ganho dentro do ruído |
 | tecto da fita a 1/16 por cache | 512 MiB a 8 GiB: `1 GiB` aos dois caches, numa memória unificada com a placa; `1/32` já dobra a história (2,5 → 5 min) |
 
-**ABERTO (14/10):** re-medir a sonda do `Scene` ordenado depois de `c28534c7ac`; detalhe do aviso «Vector-path shapes
+**ABERTO (14/10):** detalhe do aviso «Vector-path shapes
 filter as one» (o dono não respondeu); legendas das cenas de ciclo em PT cru (não i18n). (Fechados em 14/10: a Keys
 mexe o Motion; `Scene` na placa; cadeia 16·4096 = fica a Escolha; os 5 sítios de aviso entraram no censo.) Handoff:
 [ABERTOS 132](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-14_ABERTOS_132.md).

@@ -31,8 +31,7 @@
 **Sonda** `sonda_o_scene_ordenado_no_dispositivo` (1080p, médias a alternar linha a linha, mínimo de 12 blocos, carga
 ~2), 1k/4k/16k: CPU por linha `9,35 / 49,5 / 206,5 ms` · ORDENADO `0,204 / 0,407 / 2,19 ms` · comutativa (2 desenhos)
 `0,265 / 0,524 / 2,46 ms` ⇒ 46–122× a lei de antes; 0,77–0,89× a comutativa. Kill-criterion fixado antes: ≤ 1,5× a
-comutativa. ⚠️ Medida ANTES de `c28534c7ac` (a imagem não desenhava nas linhas de imagem): o número do ordenado
-deve ser **re-medido** (ABERTO 1).
+comutativa (medida antes de `c28534c7ac`, com a imagem em falta). Re-medida DEPOIS de `c28534c7ac` (carga ~6,5; a razão intercalada vale, o relógio menos): CPU por linha `10,5 / 61,1 / 212,9 ms` · ORDENADO `0,226 / 0,518 / 2,90 ms` · comutativa `0,267 / 0,560 / 2,74 ms` ⇒ 46–118× a lei de antes; 0,84 / 0,93 / 1,06× a comutativa — dentro do kill-criterion.
 
 **Decisões fechadas.**
 - Cadeia 16·4096 do `corrige`: fica a Escolha (`select`) em todos os casos. Mínimo (`+9 %` Matriz) e mediana (`−3,4 %`)
@@ -51,7 +50,7 @@ e a mutação da guarda nova é RED.
 
 ## Aberto
 
-1. Re-medir `sonda_o_scene_ordenado_no_dispositivo` depois de `c28534c7ac` (kill-criterion ≤ 1,5× a comutativa).
+1. ~~Re-medir a sonda do ordenado~~ — FEITO (14/10, ver «O que fechou»).
 2. O detalhe perdido do aviso «Vector-path shapes filter as one» — o dono ainda não respondeu se o quer numa dica/tutorial.
 3. Legendas das cenas de ciclo em PT cru, não i18n (padrão herdado): decidir se passam a chaves.
 4. `docs/Components/ferramentas/fotografa_cena.sh:108` (NÃO é da linha): comentário com crases dentro de heredoc sem

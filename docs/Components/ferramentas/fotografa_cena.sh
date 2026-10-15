@@ -105,6 +105,21 @@ EOF
 # entre crases EXECUTOU o spectacle — o unico programa que este roteiro proibe, porque ele
 # fotografa o ecra REAL do dono — e o roteiro ficou pendurado 449 s a' espera dele.
 # ⇒ prosa fica FORA do heredoc; dentro dele so' codigo, e o guarda abaixo recusa o resto.
+#
+# O binário corre SEM o cargo: o tecto do cache de shaders do driver é o do [env] do .cargo/config.toml
+# (16 GiB) — com o de fábrica (1 GiB) o driver APARA o cache partilhado e despeja a luz dos outros (W5p).
+#
+# ⭐⭐ O GUARDA lê o FONTE do heredoc, ANTES de o gerar: no ficheiro gerado a crase já correu e sumiu
+# (14/10: o comentário acima vivia lá dentro, executava «[env]: comando não encontrado» e o guarda
+# antigo, que lia o gerado, nunca o via). Recusa crase e «$(» sem barra antes.
+if awk -v alvo='cat > "$TMP/sessao.sh" <<EOF' '
+  $0 == alvo { dentro = 1; next }
+  dentro && $0 == "EOF" { dentro = 0 }
+  dentro && /(^|[^\\])(`|\$\()/ { print FILENAME ":" FNR ": " $0; achou = 1 }
+  END { exit !achou }' "$0" >&2; then
+  echo "RECUSA: crase ou \$( sem barra no heredoc <<EOF do roteiro — corre na GERACAO" >&2
+  exit 4
+fi
 cat > "$TMP/sessao.sh" <<EOF
 #!/bin/bash
 if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$WAYLAND_DISPLAY" = "wayland-0" ]; then
@@ -113,8 +128,6 @@ if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$WAYLAND_DISPLAY" = "wayl
 fi
 cd "$RAIZ"
 mkdir -p "$TMP/home"
-# O binário corre SEM o cargo: o tecto do cache de shaders do driver é o do `[env]` do `.cargo/config.toml`
-# (16 GiB) — com o de fábrica (1 GiB) o driver APARA o cache partilhado e despeja a luz dos outros (W5p).
 env -u WAYLAND_DISPLAY HOME="$TMP/home" __GL_SHADER_DISK_CACHE_SIZE=17179869184 $ENV_KV \
   PH2D_EXIT_AFTER_FRAMES=100000 "$BIN" > "$TMP/app.log" 2>&1 &
 APP=\$!
@@ -125,9 +138,7 @@ kill -9 \$APP 2>/dev/null
 EOF
 chmod +x "$TMP/sessao.sh"
 
-# ⭐⭐ O GUARDA da armadilha acima: o roteiro gerado nao pode conter uma crase nem um $(, porque o
-# heredoc que o escreve e' sem aspas e os dois JA' correram na geracao. Se algum sobreviveu ate' o
-# ficheiro, e' porque escapou — e o que vem a seguir corre-o outra vez.
+# E o guarda do GERADO fica: uma crase escapada (\`) sobrevive até o ficheiro, e o kwin corre-o.
 if grep -q '`' "$TMP/sessao.sh"; then
   echo "RECUSA: o roteiro gerado tem uma CRASE — ela e' substituicao de comando no heredoc <<EOF" >&2
   exit 4

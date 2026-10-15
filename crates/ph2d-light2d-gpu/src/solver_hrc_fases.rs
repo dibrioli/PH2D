@@ -11,6 +11,9 @@ pub(super) struct FasesHrc {
     leitura: wgpu::Buffer,
     periodo_ns: f64,
     gravacoes: u32,
+    /// As gravações que o último quadro fez (sem refletor o rebote a mais não corre): só os carimbos
+    /// delas se resolvem — um carimbo nunca escrito prende a resolução da placa para sempre.
+    feitas: std::cell::Cell<u32>,
 }
 
 /// (etapa, nível, ms de placa somados nos quadrantes e nas gravações, despachos).
@@ -43,6 +46,7 @@ impl Holografica {
             ),
             periodo_ns: f64::from(gpu.queue.get_timestamp_period()),
             gravacoes,
+            feitas: std::cell::Cell::new(0),
         });
     }
 
@@ -79,9 +83,11 @@ impl Holografica {
         true
     }
 
-    pub(crate) fn resolver_fases(&self, enc: &mut wgpu::CommandEncoder) {
+    /// Resolve os carimbos das `feitas` gravações deste quadro.
+    pub(crate) fn resolver_fases(&self, enc: &mut wgpu::CommandEncoder, feitas: u32) {
         if let Some(f) = &self.fases {
-            let n = 2 * self.passos.len() as u32 * f.gravacoes;
+            f.feitas.set(feitas.min(f.gravacoes));
+            let n = 2 * self.passos.len() as u32 * f.feitas.get();
             enc.resolve_query_set(&f.set, 0..n, &f.resolve, 0);
             enc.copy_buffer_to_buffer(&f.resolve, 0, &f.leitura, 0, u64::from(n) * 8);
         }
@@ -103,7 +109,7 @@ impl Holografica {
             .collect();
         f.leitura.unmap();
         let mut out: Vec<FaseHrc> = Vec::new();
-        for k in 0..f.gravacoes as usize {
+        for k in 0..f.feitas.get() as usize {
             for (i, ((etapa, _, _), u)) in self.passos.iter().zip(&self.uniformes).enumerate() {
                 let par = 2 * (k * self.passos.len() + i);
                 let ms = ts[par + 1].wrapping_sub(ts[par]) as f64 * f.periodo_ns / 1e6;

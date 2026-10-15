@@ -374,7 +374,7 @@ impl Solver {
             }
         }
         if let Some(h) = &self.hrc {
-            h.resolver_fases(enc);
+            h.resolver_fases(enc, a_mais + 1);
         }
         for i in (0..self.n).rev() {
             if self.hrc.is_some() {

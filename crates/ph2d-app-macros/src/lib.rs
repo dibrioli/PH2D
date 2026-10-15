@@ -140,6 +140,13 @@ impl Macros {
         self.conferencias.a_conferir()
     }
 
+    /// **O tutorial do Painter mede as referências das pinceladas** (fora do quadro): até chegarem,
+    /// nenhuma se dá por feita.
+    #[must_use]
+    pub fn a_medir(&self) -> bool {
+        self.tutorial.a_medir()
+    }
+
     /// **Depois de o Motion correr no quadro** (o lote do grafo, os params e o `Quadro`): os passos que
     /// ele gravou NESTE quadro, no relógio dele — em [`Macros::quadro`] ainda não tinham acontecido.
     pub fn depois_do_motion(&mut self, motion: &mut dyn ph2d_macro::Gravadora) {

@@ -87,7 +87,7 @@ impl Banca {
         }
     }
 
-    fn quadro(&mut self) -> BalaoDoTutorial {
+    fn um_quadro(&mut self) -> BalaoDoTutorial {
         let mut motion = SemMotion;
         let mut f = Familias {
             painter: Some(&mut self.t),
@@ -105,6 +105,16 @@ impl Banca {
         };
         self.m.quadro(&mut f, &mut c, 0);
         balao().expect("balão")
+    }
+
+    /// O quadro depois de as referências do tutorial chegarem (o fio que as mede).
+    fn quadro(&mut self) -> BalaoDoTutorial {
+        let mut x = self.um_quadro();
+        while self.m.a_medir() {
+            std::thread::sleep(std::time::Duration::from_millis(2));
+            x = self.um_quadro();
+        }
+        x
     }
 
     /// O meio pelo seletor do painel (a porta do artista).

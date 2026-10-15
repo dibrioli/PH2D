@@ -15,12 +15,105 @@ use ph2d_editor_core::macro_tutorial::{
 };
 use ph2d_macro::{MacroDoc, Track};
 use ph2d_tool_painter::PainterTool;
-use ph2d_tool_painter::macro_track::tutorial::{self as pt, EnsinoDoPainter, Preparo};
+use ph2d_tool_painter::macro_track::tocar::ErroDaMacro;
+use ph2d_tool_painter::macro_track::tutorial::{self as pt, EnsinoDoPainter, Preparo, Referencias};
+use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::JoinHandle;
 
-/// A chave da avaliação do Painter: a versão da trilha, a imagem ligada, o tamanho da tela e a
-/// revisão do conteúdo ([`PainterTool::content_revision`]) — a mesma chave, o mesmo estado.
-type ChaveDoProgresso = (u64, Option<u64>, (u32, u32), (u64, u64));
+/// A chave da avaliação do Painter: a versão da trilha, a imagem ligada, o tamanho da tela, a
+/// revisão do conteúdo ([`PainterTool::content_revision`]) e as referências chegadas — a mesma
+/// chave, o mesmo estado.
+type ChaveDoProgresso = (u64, Option<u64>, (u32, u32), (u64, u64), bool);
+
+type Medida = Result<Option<Referencias>, ErroDaMacro>;
+
+enum Fio {
+    Corre(JoinHandle<Medida>),
+    /// O fio não arrancou: mediu-se aqui.
+    Pronto(Medida),
+}
+
+/// **A medição das referências FORA do quadro** (W6c, `docs/Macros/03_plano_W6.md` §6.3): uma
+/// reprodução da trilha inteira por versão — ~1 s a 1024², 60 quadros. Até chegarem, nenhuma
+/// pincelada se cumpre (o balão mostra a 1.ª sem a dar por feita). Largar a medição pára o fio.
+struct Medicao {
+    parar: Arc<AtomicBool>,
+    fio: Option<Fio>,
+}
+
+impl Drop for Medicao {
+    fn drop(&mut self) {
+        self.parar.store(true, Ordering::Relaxed);
+    }
+}
+
+impl Medicao {
+    fn arranca(track: &Track) -> Self {
+        let parar = Arc::new(AtomicBool::new(false));
+        let (t, p) = (track.clone(), Arc::clone(&parar));
+        let fio = std::thread::Builder::new()
+            .name("macro-referencias".into())
+            .spawn(move || EnsinoDoPainter::referencias(&t, &p))
+            .map_or_else(
+                |_| Fio::Pronto(EnsinoDoPainter::referencias(track, &parar)),
+                Fio::Corre,
+            );
+        Self {
+            parar,
+            fio: Some(fio),
+        }
+    }
+
+    /// A medida, se acabou (`Some(None)` = o fio entrou em pânico).
+    fn colhe(&mut self) -> Option<Option<Medida>> {
+        if let Some(Fio::Corre(f)) = &self.fio
+            && !f.is_finished()
+        {
+            return None;
+        }
+        Some(match self.fio.take()? {
+            Fio::Corre(f) => f.join().ok(),
+            Fio::Pronto(r) => Some(r),
+        })
+    }
+}
+
+/// O ensino de uma versão da trilha e a medição das referências dele.
+struct Ensino {
+    e: Result<EnsinoDoPainter, ErroDaMacroView>,
+    medicao: Option<Medicao>,
+}
+
+impl Ensino {
+    fn novo(track: &Track) -> Self {
+        let e = EnsinoDoPainter::de(track).map_err(|e| crate::erros::do_painter(&e));
+        let medicao = e
+            .as_ref()
+            .is_ok_and(EnsinoDoPainter::a_medir)
+            .then(|| Medicao::arranca(track));
+        Self { e, medicao }
+    }
+
+    /// Recebe as referências, se o fio acabou.
+    fn colhe(&mut self) {
+        let Some(r) = self.medicao.as_mut().and_then(Medicao::colhe) else {
+            return;
+        };
+        self.medicao = None;
+        match (r, &mut self.e) {
+            (Some(Ok(Some(r))), Ok(e)) => {
+                e.com_referencias(r);
+            }
+            (Some(Err(x)), _) => self.e = Err(crate::erros::do_painter(&x)),
+            // Um pânico do fio: o balão di-lo em vez de esperar para sempre.
+            (None, _) => self.e = Err(crate::erros::erro(crate::erros::ESTRAGADA)),
+            _ => {}
+        }
+    }
+}
 
 /// O estado do tutorial na família: a última `Macro` lida e a recusa de um botão.
 #[derive(Default)]
@@ -28,8 +121,8 @@ pub(crate) struct Tutorial {
     /// (bits, bytes, o hash deles, o documento).
     lido: Option<(u64, Vec<u8>, u64, MacroDoc)>,
     erro: Option<(u64, ErroDaMacroView)>,
-    /// O ensino do Painter, por versão da trilha.
-    ensino: Option<(u64, EnsinoDoPainter)>,
+    /// O ensino do Painter, por versão da trilha (as trilhas do Painter da última avaliação).
+    ensinos: BTreeMap<u64, Ensino>,
     /// A 1.ª pincelada por cumprir no último estado avaliado: o progresso é função do estado, e um
     /// estado igual não se reavalia (a cada quadro seriam todas as pinceladas cumpridas outra vez).
     progresso: Option<(ChaveDoProgresso, usize)>,
@@ -89,6 +182,11 @@ fn painter_em<'a>(f: &'a mut Familias<'_>, alvo: Option<u64>) -> Option<&'a mut 
 }
 
 impl Tutorial {
+    /// As referências de um ensino estão a ser medidas (fora do quadro).
+    pub(crate) fn a_medir(&self) -> bool {
+        self.ensinos.values().any(|e| e.medicao.is_some())
+    }
+
     /// A `Macro` de `bits`, lida (e o hash dos bytes feito) uma vez por mudança dos bytes.
     fn le(&mut self, bits: u64, bytes: &[u8]) -> Result<(u64, &MacroDoc), ErroDaMacroView> {
         let fresco = self
@@ -115,11 +213,12 @@ impl Tutorial {
         track: &Track,
         versao: u64,
     ) -> Result<Vec<(Option<PedidoDoTutorial>, EtapaDoTutorial)>, ErroDaMacroView> {
-        if self.ensino.as_ref().is_none_or(|(v, _)| *v != versao) {
-            let e = EnsinoDoPainter::de(track).map_err(|e| crate::erros::do_painter(&e))?;
-            self.ensino = Some((versao, e));
-        }
-        let e = &self.ensino.as_ref().expect("calculado acima").1;
+        let ensino = self
+            .ensinos
+            .entry(versao)
+            .or_insert_with(|| Ensino::novo(track));
+        ensino.colhe();
+        let e = ensino.e.as_ref().map_err(Clone::clone)?;
         let na_mao = f.painter_activo;
         let t = painter_em(f, alvo).map(|t| &*t);
         let (preparo, feitas) = match e.aberto(t, na_mao, alvo.unwrap_or(u64::MAX)) {
@@ -137,6 +236,7 @@ impl Tutorial {
                     t.bound_document(),
                     t.canvas_size(),
                     t.content_revision(),
+                    !e.a_medir(),
                 );
                 let feitas = match self.progresso {
                     Some((c, n)) if c == chave => n,
@@ -199,6 +299,9 @@ impl Tutorial {
     ) -> Result<Vec<Etapa>, ErroDaMacroView> {
         let editando = f.motion_em_edicao == Some(dono) && f.motion_na_mao;
         let mut out = Vec::new();
+        // Os ensinos de outras versões (e as medições deles) largam-se.
+        let painter: Vec<u64> = (0..doc.tracks.len()).map(|tr| versao(h, tr)).collect();
+        self.ensinos.retain(|v, _| painter.contains(v));
         for (tr, track) in doc.tracks.iter().enumerate() {
             let Some(familia) = da_trilha(f.etapas, track).map(|x| x.familia()) else {
                 continue;

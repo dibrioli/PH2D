@@ -1,7 +1,7 @@
 //! Os gates do tutorial «fazer» do Painter (W6b, `docs/Macros/03_plano_W6.md` §6): o Splash gravado
 //! a 512², um aluno no estado inicial.
 
-use super::sonda::{Variante, aluno, quadro};
+use super::sonda::{MEIOS, Variante, cada_aluno, criterio_de, quadro, trilha_no_meio, trinta};
 use super::*;
 use crate::macro_track::roteiro::{CAUDA, SPLASH, grava_nos_meios, grava_pinceladas};
 use ph2d_editor_core::tool::{PanelEvent, Tool};
@@ -21,46 +21,127 @@ fn assenta(t: &mut PainterTool) {
     }
 }
 
-/// Cada pincelada cumpre-se só quando feita («Mostra-me» = a gravada), e o Ctrl+Z volta o passo.
+/// Cada pincelada cumpre-se só quando feita («Mostra-me» = a gravada), e o Ctrl+Z volta o passo — nos
+/// quatro meios.
 #[test]
 fn cada_pincelada_so_se_cumpre_feita_e_o_desfazer_a_volta() {
-    let track = trilha();
-    let e = EnsinoDoPainter::de(&track).expect("ensino");
-    assert_eq!(e.criterios.len(), 4);
-    let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
-    assert_eq!(e.por_cumprir(&t), Some(0), "nada feito");
-    for (i, c) in e.criterios.iter().enumerate() {
-        mostra(&mut t, &track, c.regiao.k).expect("mostra");
+    for m in MEIOS {
+        let track = trilha_no_meio(m, &SPLASH, LADO);
+        let e = EnsinoDoPainter::medido(&track).expect("ensino");
+        assert_eq!(e.criterios.len(), 4, "{m:?}");
+        let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+        assert_eq!(e.por_cumprir(&t), Some(0), "{m:?}: nada feito");
+        for (i, c) in e.criterios.iter().enumerate() {
+            mostra(&mut t, &track, c.regiao.k).expect("mostra");
+            assenta(&mut t);
+            assert_eq!(
+                e.por_cumprir(&t),
+                (i + 1 < 4).then_some(i + 1),
+                "{m:?}: depois da {i}"
+            );
+        }
+        assert!(t.undo_last(), "a última pincelada desfaz-se");
         assenta(&mut t);
         assert_eq!(
             e.por_cumprir(&t),
-            (i + 1 < 4).then_some(i + 1),
-            "depois da {i}"
+            Some(3),
+            "{m:?}: o desfazer volta o passo"
         );
+        assert!(t.redo_last());
+        assenta(&mut t);
+        assert_eq!(e.por_cumprir(&t), None, "{m:?}: o refazer avança");
     }
-    assert!(t.undo_last(), "a última pincelada desfaz-se");
-    assenta(&mut t);
-    assert_eq!(e.por_cumprir(&t), Some(3), "o desfazer volta o passo");
-    assert!(t.redo_last());
-    assenta(&mut t);
-    assert_eq!(e.por_cumprir(&t), None, "o refazer avança");
 }
 
-/// A fracção medida separa a mão torta (cumpre) do pincel fino e do nada (não cumprem).
+/// ⭐ A fracção SOBRE A DA GRAVADA separa, nos quatro meios e nas quatro pinceladas do Splash, a mão
+/// torta meio raio (cumpre) do pincel fino e do nada (não cumprem).
 #[test]
 fn a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao() {
+    use Variante::{Desloca, Fina, Nada};
+    for m in MEIOS {
+        let track = trilha_no_meio(m, &SPLASH, LADO);
+        let e = EnsinoDoPainter::medido(&track).expect("ensino");
+        cada_aluno(
+            &track,
+            &SPLASH,
+            LADO,
+            &[Desloca(0.5), Fina, Nada],
+            |k, v, t| {
+                let c = criterio_de(&e, &track, k).expect("critério");
+                let r = e.razao(t, c).expect("medida");
+                let cumpre = r >= FRACAO_DA_GRAVADA_QUE_CUMPRE;
+                assert_eq!(
+                    cumpre,
+                    matches!(v, Desloca(_)),
+                    "{m:?} · pincelada {k} · {v:?}: {r}"
+                );
+            },
+        );
+    }
+}
+
+/// ⭐ **A fatia fina** (W6c): a 2.ª pincelada é a 1.ª deslocada 13 px — a parte nova dela é uma fatia
+/// na orla, que nem a gravada pinta toda. Pela fracção absoluta o «Mostra-me» não a cumpria; sobre a
+/// da gravada cumpre, nos quatro meios.
+#[test]
+fn o_mostra_me_cumpre_a_fatia_fina() {
+    let ps = [trinta()[0], trinta()[4]];
+    for m in MEIOS {
+        let track = trilha_no_meio(m, &ps, LADO);
+        let e = EnsinoDoPainter::medido(&track).expect("ensino");
+        let c = &e.criterios[1];
+        let toda = rasteriza(&c.regiao, LADO, LADO).len();
+        assert!(c.novos.len() * 10 < toda, "{m:?}: a parte nova é uma fatia");
+        let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+        for c in &e.criterios {
+            mostra(&mut t, &track, c.regiao.k).expect("mostra");
+            assenta(&mut t);
+        }
+        let r = e.razao(&t, c).expect("medida");
+        assert!(r >= FRACAO_DA_GRAVADA_QUE_CUMPRE, "{m:?}: {r}");
+        assert_eq!(e.por_cumprir(&t), None, "{m:?}");
+    }
+}
+
+/// Sem as referências (ainda por medir), nenhuma pincelada se cumpre — nem as feitas pelo
+/// «Mostra-me»; as de outra trilha recusam-se.
+#[test]
+fn sem_referencias_nenhuma_pincelada_se_cumpre() {
     let track = trilha();
-    let e = EnsinoDoPainter::de(&track).expect("ensino");
-    let c = &e.criterios[0];
-    let f = |v| e.fracao_pintada(&aluno(&track, 0, v, LADO), c);
-    let (torta, fina, nada) = (
-        f(Variante::Desloca(0.5)),
-        f(Variante::Fina),
-        f(Variante::Nada),
-    );
-    assert!(torta >= FRACAO_QUE_CUMPRE, "torta meio raio: {torta}");
-    assert!(fina < FRACAO_QUE_CUMPRE, "fina: {fina}");
-    assert!(nada < FRACAO_QUE_CUMPRE, "nada: {nada}");
+    let mut e = EnsinoDoPainter::de(&track).expect("ensino");
+    assert!(e.a_medir());
+    let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    for c in &e.criterios {
+        mostra(&mut t, &track, c.regiao.k).expect("mostra");
+    }
+    assenta(&mut t);
+    assert_eq!(e.por_cumprir(&t), Some(0));
+    assert!(!e.com_referencias(Referencias(vec![1.0])), "outra trilha");
+    let r = EnsinoDoPainter::referencias(&track, &std::sync::atomic::AtomicBool::new(false))
+        .expect("mede")
+        .expect("sem paragem");
+    assert!(e.com_referencias(r));
+    assert!(!e.a_medir());
+    assert_eq!(e.por_cumprir(&t), None);
+}
+
+/// Uma pincelada cuja gravada não pinta nada da parte nova (referência 0: uma borracha no papel em
+/// branco) não tem critério — a lei do Δ vazio.
+#[test]
+fn uma_referencia_nula_nao_tem_criterio() {
+    let track = trilha();
+    let mut e = EnsinoDoPainter::de(&track).expect("ensino");
+    let k = e.criterios[1].regiao.k;
+    assert!(e.com_referencias(Referencias(vec![0.9, 0.0, 0.8, 0.7])));
+    assert_eq!(e.criterios.len(), 3);
+    assert!(e.criterios.iter().all(|c| c.regiao.k != k));
+}
+
+/// Um pedido de paragem a meio devolve `None` (a `Macro` mudou: a medição é de outra versão).
+#[test]
+fn a_medicao_para_a_pedido() {
+    let parar = std::sync::atomic::AtomicBool::new(true);
+    assert_eq!(EnsinoDoPainter::referencias(&trilha(), &parar), Ok(None));
 }
 
 /// A parte nova de uma pincelada não tem píxeis de uma anterior.
@@ -130,7 +211,7 @@ fn o_meio_pedido_e_o_da_pincelada_corrente() {
     )
     .expect("grava");
     let track = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
-    let e = EnsinoDoPainter::de(&track).expect("ensino");
+    let e = EnsinoDoPainter::medido(&track).expect("ensino");
     let meios: Vec<PaintMedia> = e.criterios.iter().map(|c| c.regiao.meio).collect();
     assert_eq!(meios, [PaintMedia::WetPaint, PaintMedia::Watercolor]);
     let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
@@ -194,7 +275,7 @@ fn recomecar_a_gravar_grava_uma_recusa() {
 #[test]
 fn recomecar_volta_ao_inicio_num_passo_de_undo() {
     let track = trilha();
-    let e = EnsinoDoPainter::de(&track).expect("ensino");
+    let e = EnsinoDoPainter::medido(&track).expect("ensino");
     let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
     mostra(&mut t, &track, e.criterios[0].regiao.k).expect("mostra");
     assenta(&mut t);

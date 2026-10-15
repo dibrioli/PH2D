@@ -149,9 +149,10 @@ Fracção da parte NOVA, «pintado» exacto (qualquer diferença), pinceladas 1�
   (1024²).
 - **⛔ Recusado — «pintado» = diferença de canal > 16:** a pincelada exacta cai para 64,9–68,4 % (512²). Fica a
   diferença exacta.
-- **Decisão:** `FRACAO_QUE_CUMPRE = 0.70` — aceita a mão meio raio ao lado (mín. 75,1 %), manda o pincel fino
-  (≤ 52 %) continuar a encher; o ruído (nada pintado) ≤ 14,6 %. Custo da avaliação ≤ 0,22 ms por pincelada (1024²,
-  perfil smoke).
+- **Decisão (W6b, SUBSTITUÍDA pela W6c, §6.3):** `FRACAO_QUE_CUMPRE = 0.70` absoluta — valia no Wet Paint (torta ½ r
+  ≥ 75,1 %, fina ≤ 52 %, nada ≤ 14,6 %), não nos outros três meios nem na fatia fina. Hoje a régua é a fracção SOBRE
+  A DA GRAVADA, `FRACAO_DA_GRAVADA_QUE_CUMPRE = 0.665`. Custo da avaliação ≤ 0,22 ms por pincelada (1024², perfil
+  smoke).
 
 ### 6.2 O produto
 
@@ -169,23 +170,72 @@ Fracção da parte NOVA, «pintado» exacto (qualquer diferença), pinceladas 1�
 | `ph2d-app-macros --test it tutorial_painter` (6) | o balão pede a imagem em Paint e depois o meio, a tela branca não conta como pintada; os botões não tocam noutra imagem; «Mostra-me» / Ctrl+Z / «Recomeçar» pela família MACROS; o meio da pincelada corrente; o balão da imagem em que o Painter pinta; outra tela diz o tamanho gravado |
 | `ph2d-editor-core --lib tutorial_balao` (5) | inclui as frases do Painter e o «Mostra-me» só numa pincelada por fazer |
 
-### 6.3 A fracção nos quatro meios (W6c, sonda `sonda_a_fracao_por_meio`, 512², pinceladas 1–4)
+### 6.3 A régua é a GRAVADA (W6c, fechada 15/10)
 
-| Meio | Exacta = «Mostra-me» | Desloca ½ r | Fina | Nada |
-|---|---|---|---|---|
-| Digital | 95,5 / 94,7 / 92,5 / 96,4 % | 71,5 / 86,3 / **67,7** / 72,9 | 41,8 / 38,2 / 39,5 / 40,5 | 0 |
-| Watercolor | 86,2 / 83,7 / 82,7 / 89,0 | **66,4** / 82,8 / **61,2** / **68,3** | 38,2 / 33,3 / 35,5 / 37,4 | 0 |
-| Impasto | 91,7 / 91,1 / 89,0 / 93,3 | **69,6** / 85,2 / **65,8** / 71,3 | 40,8 / 37,5 / 38,8 / 40,1 | 0 |
-| Wet Paint | 96,2 / 94,9 / 93,2 / 95,7 | 78,6 / 91,3 / 75,1 / 83,0 | 46,5 / 47,3 / 47,7 / 51,8 | 0 / 14,6 / 9,0 / 11,2 |
+**O defeito (uma família, dois sintomas).** A fracção absoluta 0,70 comparava o aluno com 100 % da parte nova, e
+a pincelada GRAVADA não pinta 100 % dela: (1) fora do Wet Paint a mão torta ½ r caía a 61–73 % (Digital, Watercolor,
+Impasto pintam menos a orla); (2) quando a parte nova é uma FATIA fina na borda, nem o «Mostra-me» passava (42–61 %).
 
-- A pincelada certa e o «Mostra-me» passam os 70 % nos quatro; o pincel fino e o nada não. ⚠️ **ABERTO: a mão torta
-  meio raio cai a 61–73 % fora do Wet Paint** (a negrito, abaixo dos 70 %) — a fracção NÃO separa «torta ½ r» de
-  «fina» em Digital/Watercolor/Impasto. Uma fracção por meio, ou uma só mais baixa (o máximo da «Fina» é 51,8 %, o
-  mínimo da «torta ½ r» 61,2 %), é decisão a tomar com estes números; o gate dos quatro meios espera por ela.
-- ⚠️ **ABERTO (sonda `sonda_o_custo_da_avaliacao`):** uma pincelada cuja parte nova é uma FATIA fina na borda (30
-  pinceladas do Splash deslocadas 13 px; 935–2 062 px novos de ~50 000) cumpre-se a 42–61 % mesmo com o «Mostra-me»
-  — a orla do raio é onde o pincel pinta menos. A régua da parte nova presume uma parte nova com miolo.
-- Custo da avaliação (a mesma sonda, 30 critérios, 13 avaliados, perfil smoke, mínimo de 7 intercalados, `load`
-  ~30): antes 158–294 µs, depois 117–197 µs; com a chave, um estado igual custa zero.
+**A lei.** Cada critério tem uma `referencia` = a fracção dos `novos` dele que a pincelada GRAVADA pinta, medida com
+a régua do aluno (o «pintado») na trilha que toca reproduzida do estado inicial (`TocadorDoPainter`), no instante antes
+do `Down` da pincelada SEGUINTE (ou no fim da trilha) — a água que corre depois do levantar conta, como para o aluno.
+Cumpre-se quando `fracção pintada / referência ≥ FRACAO_DA_GRAVADA_QUE_CUMPRE` (`0.665`). Uma referência 0 (a gravada
+não pinta nada da parte nova: uma borracha no papel em branco) = sem critério — a lei do Δ vazio. Uma porta recusada
+salta-se na reprodução (o tutorial não a ensina). `EnsinoDoPainter::{de, referencias, com_referencias, medido, razao}`.
 
-**Por fazer na W6:** a decisão da fracção fora do Wet Paint (§6.3), a prova de mutação da W6a+W6b, o fecho.
+**A medição** (sondas `sonda_a_fracao_por_meio` e `sonda_a_fatia_fina`, perfil smoke; pinceladas 1–4 do Splash;
+«normalizada» = % da referência):
+
+| Meio | Referência | Exacta = «Mostra-me» (norm.) | Torta ½ r bruta / **norm.** | Fina bruta / **norm.** | Nada norm. |
+|---|---|---|---|---|---|
+| Digital 512² | 95,5 / 94,7 / 92,5 / 96,4 | 100 | 71,5 / 86,3 / 67,7 / 72,9 — **74,8 / 91,1 / 73,1 / 75,7** | 41,8 / 38,2 / 39,5 / 40,5 — **43,8 / 40,4 / 42,7 / 42,0** | 0 |
+| Watercolor 512² | 86,2 / 83,7 / 82,7 / 89,0 | 100 | 66,4 / 82,8 / 61,2 / 68,3 — **77,0 / 98,9 / 74,0 / 76,7** | 38,2 / 33,3 / 35,5 / 37,4 — **44,3 / 39,8 / 43,0 / 42,0** | 0 |
+| Impasto 512² | 91,7 / 91,1 / 89,0 / 93,3 | 100 | 69,6 / 85,2 / 65,8 / 71,3 — **75,9 / 93,5 / 74,0 / 76,4** | 40,8 / 37,5 / 38,8 / 40,1 — **44,5 / 41,1 / 43,6 / 43,0** | 0 |
+| Wet Paint 512² | 94,7 / 93,6 / 91,3 / 95,7 | 100–102,1 | 78,6 / 91,3 / 75,1 / 83,0 — **83,0 / 97,6 / 82,2 / 86,7** | 46,5 / 47,3 / 47,7 / 51,8 — **49,1 / 50,5 / 52,3 / 54,1** | 0 / 15,6 / 9,9 / 11,7 |
+| Wet Paint 1024² | 97,4 / 96,7 / 95,9 / 97,6 | 100–101,1 | 81,2 / 88,6 / 79,4 / 80,7 — **83,4 / 91,6 / 82,8 / 82,7** | 50,0 / 58,1 / 52,2 / 52,6 — **51,4 / 60,1 / 54,4 / 53,9** | 0 / 6,2 / 5,0 / 3,6 |
+
+- Torta 1 r (normalizada) cai em 44,8–84,1 % — entre as duas, não decide.
+- **Decisão: `0.665`** — o meio do intervalo entre a fina mais cheia (60,1 %, Wet Paint 1024²) e a torta ½ r mais
+  vazia (73,1 %, Digital): 6,4 pontos de margem para cada lado; o nada ≤ 15,6 %.
+- **A fatia fina** (30 pinceladas do Splash deslocadas 13 px, 512²; 24–26 de 28–30 critérios com a parte nova
+  < 10 % da região): referência 15,9–81,0 % (Digital), 1,0–48,6 % (Watercolor), 4,5–67,4 % (Impasto), 40,9–83,7 %
+  (Wet Paint); o «Mostra-me» e a exacta dão ≥ 99,8 % da referência nos quatro meios (antes: 42–61 %); o nada 0–0,2 %
+  fora do Wet Paint.
+- ⚠️ **ABERTO — a aguada inunda a fatia fina no Wet Paint:** nas 30 pinceladas, o «Nada» (o aluno não faz a
+  pincelada k e espera 120 quadros) chega a 29,9–85,3 % da referência e CUMPRE 6 de 30 (as k = 5, 9, 13, 18, 22, 26:
+  68,0–85,3 %). Não é da normalização: pela fracção absoluta de antes o «Nada» já cumpria as k = 22 e 26 (≈ 70 % bruto).
+  A água da pincelada anterior pinta a orla nova sozinha; a exacta chega a 141,6 % da referência pela mesma razão (o
+  aluno espera mais que os 12 quadros entre pinceladas da gravação). Cura candidata (não feita: muda a lei): uma linha
+  de base contrafactual — a reprodução SEM a pincelada k desde o `Down` dela, assentada — e a razão
+  `(f − base) / (ref − base)`, com o Δ vazio quando `ref − base` é ~0; custa outra reprodução por pincelada (fora do
+  quadro). No Splash e nos outros três meios o «Nada» não cumpre nada.
+
+**O custo das referências — fora do quadro** (sonda `sonda_o_custo_das_referencias`, Wet Paint, perfil smoke,
+mínimo de 3 intercaladas, `load` 3,6 → 7,1):
+
+| Trilha | Eventos | `EnsinoDoPainter::de` (no quadro) | Referências (uma reprodução) |
+|---|---|---|---|
+| Splash 512² | 645 | 11,0 ms | 784 ms |
+| Splash 1024² | 645 | 30,2 ms | 1 134 ms |
+| 30 pinceladas 512² | 3 271 | 65,9 ms | 3 804 ms |
+| 30 pinceladas 1024² | 3 271 | 168,5 ms | 7 258 ms |
+
+- 1,1 s a 1024² = 68 quadros ⇒ a família MACROS mede-as num fio próprio (`macro-referencias`,
+  `crates/ph2d-app-macros/src/tutorial.rs`, o padrão da conferência da W5e), uma vez por versão da trilha; mudar de
+  versão larga o ensino e PÁRA o fio (`AtomicBool`). Até chegarem, nenhuma pincelada se cumpre (`referencia: None`):
+  o balão mostra a 1.ª sem a dar por feita — função do estado, nenhum passo avança sem dados. A chave do progresso
+  leva «referências chegadas». Um erro da reprodução (divergiu) diz-se no balão; um pânico do fio, como macro estragada.
+  `Macros::a_medir()` expõe a espera (os testes da família esperam por ela).
+- ⚠️ **ABERTO — o `EnsinoDoPainter::de` continua no quadro** (já estava): 30,2 ms no Splash a 1024² e 168,5 ms nas
+  30 pinceladas a 1024², UMA vez por versão da `Macro` (um soluço ao abrir ou editar a macro). Passá-lo também ao fio
+  pede ao balão um estado «a preparar» (hoje sem critérios o balão daria tudo por feito).
+
+| Gate (por nome) | O quê |
+|---|---|
+| `ph2d-tool-painter --lib macro_track::tutorial::tests::cada_pincelada_so_se_cumpre_feita_e_o_desfazer_a_volta` | nos quatro meios (debug 6,5 s) |
+| `…::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao` | quatro meios × quatro pinceladas: torta ½ r cumpre, fina e nada não (debug 12,1 s). ⛔ VERMELHO pela régua absoluta 0,70: Digital pincelada 3 torta = 67,7 % |
+| `…::o_mostra_me_cumpre_a_fatia_fina` | a 2.ª pincelada = a 1.ª deslocada 13 px, parte nova < 10 % da região: o «Mostra-me» cumpre nos quatro meios (debug 4,8 s). ⛔ VERMELHO pela régua absoluta |
+| `…::sem_referencias_nenhuma_pincelada_se_cumpre` · `…::uma_referencia_nula_nao_tem_criterio` · `…::a_medicao_para_a_pedido` | o estado «a medir», o Δ vazio pela referência 0, a paragem |
+| `ph2d-app-macros --test it tutorial` (10) | os do balão do Painter, agora com as referências pelo fio |
+
+**Por fazer na W6:** os dois ABERTOS do §6.3 (a aguada na fatia fina; o `de` no quadro), a prova de mutação da W6a+W6b, o fecho.

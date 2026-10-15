@@ -4,8 +4,8 @@
 //!
 //! `cargo test -p ph2d-tool-painter --profile smoke --lib macro_track::tutorial::sonda -- --ignored --nocapture`
 //!
-//! A 2.ª sonda repete as variantes que decidem a fracção (certa, meio raio ao lado, fina, nada,
-//! «Mostra-me») nos quatro meios, a 512².
+//! As da W6c (§6.3) medem a fracção SOBRE A DA GRAVADA: as variantes que decidem a fracção nos quatro
+//! meios, a fatia fina (30 pinceladas), e o custo de medir as referências.
 
 use super::*;
 use crate::macro_track::roteiro::{
@@ -67,6 +67,54 @@ fn deslocada(p: &Pincelada, d: f32, lado: f32) -> Pincelada {
     }
 }
 
+/// A variante `v` da pincelada `p` (a `j` da gravação `track`) no aluno `t`, e a água a assentar.
+fn faz(t: &mut PainterTool, track: &Track, j: usize, p: &Pincelada, v: Variante, l: f32) {
+    match v {
+        Variante::Exacta => pinta(t, p, l),
+        Variante::Desloca(d) => pinta(t, &deslocada(p, d, l), l),
+        Variante::Fina => pinta(
+            t,
+            &Pincelada {
+                tamanho_px: p.tamanho_px * 0.5,
+                ..*p
+            },
+            l,
+        ),
+        Variante::Metade => pinta(
+            t,
+            &Pincelada {
+                ate: [(p.de[0] + p.ate[0]) * 0.5, (p.de[1] + p.ate[1]) * 0.5],
+                curva: p.curva * 0.5,
+                ..*p
+            },
+            l,
+        ),
+        Variante::Longe => pinta(
+            t,
+            &Pincelada {
+                de: [0.90, 0.96],
+                ate: [0.98, 0.90],
+                curva: 0.0,
+                ..*p
+            },
+            l,
+        ),
+        Variante::Nada => {}
+        Variante::MostraMe => {
+            let (w, h) = t.canvas_size();
+            let k = regioes(track, w, h).expect("regiões")[j].k;
+            mostra(t, track, k).expect("mostra");
+            for _ in 0..ENTRE {
+                quadro(t);
+            }
+        }
+    }
+    for _ in 0..CAUDA {
+        quadro(t);
+    }
+}
+
+/// O aluno que fez certas as pinceladas do Splash antes da `k` e a `k` na variante `v`.
 pub(super) fn aluno(track: &Track, k: usize, v: Variante, lado: u32) -> PainterTool {
     #[expect(clippy::cast_precision_loss, reason = "o lado cabe num f32")]
     let l = lado as f32;
@@ -74,50 +122,40 @@ pub(super) fn aluno(track: &Track, k: usize, v: Variante, lado: u32) -> PainterT
     for p in &SPLASH[..k] {
         pinta(&mut t, p, l);
     }
-    let p = SPLASH[k];
-    match v {
-        Variante::Exacta => pinta(&mut t, &p, l),
-        Variante::Desloca(d) => pinta(&mut t, &deslocada(&p, d, l), l),
-        Variante::Fina => pinta(
-            &mut t,
-            &Pincelada {
-                tamanho_px: p.tamanho_px * 0.5,
-                ..p
-            },
-            l,
-        ),
-        Variante::Metade => pinta(
-            &mut t,
-            &Pincelada {
-                ate: [(p.de[0] + p.ate[0]) * 0.5, (p.de[1] + p.ate[1]) * 0.5],
-                curva: p.curva * 0.5,
-                ..p
-            },
-            l,
-        ),
-        Variante::Longe => pinta(
-            &mut t,
-            &Pincelada {
-                de: [0.90, 0.96],
-                ate: [0.98, 0.90],
-                curva: 0.0,
-                ..p
-            },
-            l,
-        ),
-        Variante::Nada => {}
-        Variante::MostraMe => {
-            let crits = EnsinoDoPainter::de(track).expect("ensino");
-            mostra(&mut t, track, crits.criterios[k].regiao.k).expect("mostra");
-            for _ in 0..ENTRE {
-                quadro(&mut t);
-            }
-        }
-    }
-    for _ in 0..CAUDA {
-        quadro(&mut t);
-    }
+    faz(&mut t, track, k, &SPLASH[k], v, l);
     t
+}
+
+/// Cada pincelada `k` de `ps` (as gravadas em `track`) em cada variante de `vs`: o aluno com as
+/// anteriores certas (pintadas uma vez; cada variante corre num instantâneo dele).
+pub(super) fn cada_aluno(
+    track: &Track,
+    ps: &[Pincelada],
+    lado: u32,
+    vs: &[Variante],
+    mut f: impl FnMut(usize, Variante, &PainterTool),
+) {
+    #[expect(clippy::cast_precision_loss, reason = "o lado cabe num f32")]
+    let l = lado as f32;
+    let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    for (k, p) in ps.iter().enumerate() {
+        for &v in vs {
+            let mut a = t.instantaneo().expect("instantâneo do aluno");
+            faz(&mut a, track, k, p, v, l);
+            f(k, v, &a);
+        }
+        pinta(&mut t, p, l);
+    }
+}
+
+/// O critério da pincelada `j` da gravação (`None` = sem critério).
+pub(super) fn criterio_de<'a>(
+    e: &'a EnsinoDoPainter,
+    track: &Track,
+    j: usize,
+) -> Option<&'a CriterioDaPincelada> {
+    let k = regioes(track, e.w, e.h).expect("regiões")[j].k;
+    e.criterios.iter().find(|c| c.regiao.k == k)
 }
 
 /// A fracção de `idx` pintada com «pintado» = algum canal de alguma camada a mais de `limiar`.
@@ -193,46 +231,71 @@ fn sonda_a_fracao_pintada_por_variante() {
     }
 }
 
-/// O Splash gravado no meio `m`.
-fn trilha_no_meio(m: PaintMedia, lado: u32) -> Track {
-    let (b, _) = grava_nos_meios(lado, &SPLASH, &[m]).expect("grava");
+/// As pinceladas `ps` gravadas no meio `m`.
+pub(super) fn trilha_no_meio(m: PaintMedia, ps: &[Pincelada], lado: u32) -> Track {
+    let (b, _) = grava_nos_meios(lado, ps, &[m]).expect("grava");
     ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0)
 }
 
+pub(super) const MEIOS: [PaintMedia; 4] = [
+    PaintMedia::Digital,
+    PaintMedia::Watercolor,
+    PaintMedia::Impasto,
+    PaintMedia::WetPaint,
+];
+
+/// ⭐ **A fracção nos quatro meios, bruta e sobre a da gravada** (W6c, `03_plano_W6.md` §6.3): o
+/// Splash a 512² nos quatro meios e a 1024² em Wet Paint.
 #[test]
-#[ignore = "sonda de medição (W6b/W6c): a fracção nos quatro meios"]
+#[ignore = "sonda de medição (W6c): a fracção nos quatro meios, bruta e normalizada"]
 fn sonda_a_fracao_por_meio() {
     use Variante::*;
-    let lado = 512;
-    for m in [
-        PaintMedia::Digital,
-        PaintMedia::Watercolor,
-        PaintMedia::Impasto,
-        PaintMedia::WetPaint,
-    ] {
-        let track = trilha_no_meio(m, lado);
-        let e = EnsinoDoPainter::de(&track).expect("ensino");
-        for &v in &[Exacta, Desloca(0.5), Fina, Nada, MostraMe] {
-            let fs: Vec<String> = (0..e.criterios.len())
-                .map(|k| {
-                    let t = aluno(&track, k, v, lado);
-                    format!("{:>5.1}", 100.0 * e.fracao_pintada(&t, &e.criterios[k]))
-                })
-                .collect();
-            println!("{m:?} · {:<14} {} %", format!("{v:?}"), fs.join(" / "));
+    let vs = [Exacta, Desloca(0.5), Desloca(1.0), Fina, Nada, MostraMe];
+    let casos = MEIOS
+        .iter()
+        .map(|&m| (m, 512))
+        .chain([(PaintMedia::WetPaint, 1024)]);
+    for (m, lado) in casos {
+        let track = trilha_no_meio(m, &SPLASH, lado);
+        let e = EnsinoDoPainter::medido(&track).expect("ensino");
+        let refs: Vec<String> = e
+            .criterios
+            .iter()
+            .map(|c| format!("{:.1}", 100.0 * c.referencia.unwrap_or(f32::NAN)))
+            .collect();
+        println!("{m:?} {lado}² · referência {} %", refs.join(" / "));
+        let mut linhas: Vec<(String, Vec<String>, Vec<String>)> = vs
+            .iter()
+            .map(|v| (format!("{v:?}"), Vec::new(), Vec::new()))
+            .collect();
+        cada_aluno(&track, &SPLASH, lado, &vs, |k, v, t| {
+            let i = vs
+                .iter()
+                .position(|x| format!("{x:?}") == format!("{v:?}"))
+                .expect("variante");
+            let (b, n) = criterio_de(&e, &track, k).map_or(("—".into(), "—".into()), |c| {
+                (
+                    format!("{:.1}", 100.0 * e.fracao_pintada(t, c)),
+                    format!("{:.1}", 100.0 * e.razao(t, c).unwrap_or(f32::NAN)),
+                )
+            });
+            linhas[i].1.push(b);
+            linhas[i].2.push(n);
+        });
+        for (v, b, n) in linhas {
+            println!(
+                "  {v:<14} bruta {} % · normalizada {} %",
+                b.join(" / "),
+                n.join(" / ")
+            );
         }
     }
 }
 
-/// **O custo de uma avaliação** (W6, a auditoria): 30 pinceladas distintas (o Splash deslocado), o
-/// aluno com as 15 primeiras feitas. «Antes» = a régua de antes da cura (as camadas lidas e
-/// ordenadas por critério, o inicial procurado por píxel — a [`fracao`] desta sonda); «depois» =
-/// [`EnsinoDoPainter::por_cumprir`]. Intercaladas, o MÍNIMO de 7.
-#[test]
-#[ignore = "sonda de medição (W6): o custo da avaliação por quadro"]
-fn sonda_o_custo_da_avaliacao() {
-    let lado = 512;
-    let ps: Vec<Pincelada> = (0..30)
+/// 30 pinceladas distintas: o Splash deslocado 0,025 da tela a cada volta. Muitas têm por parte nova
+/// uma FATIA fina na borda (a orla do raio, onde o pincel pinta menos).
+pub(super) fn trinta() -> Vec<Pincelada> {
+    (0..30)
         .map(|j: u16| {
             let p = SPLASH[usize::from(j % 4)];
             let d = 0.025 * f32::from(j / 4) - 0.08;
@@ -242,10 +305,142 @@ fn sonda_o_custo_da_avaliacao() {
                 ..p
             }
         })
-        .collect();
+        .collect()
+}
+
+/// ⭐ **A fatia fina** (W6c): as 30 pinceladas nos quatro meios a 512² — a referência e a razão de
+/// «Exacta», «Nada» e «Mostra-me» nas pinceladas cuja parte nova é < 10 % da região, e o mínimo do
+/// «Mostra-me» e o máximo do «Nada» nas 30.
+#[test]
+#[ignore = "sonda de medição (W6c): a fatia fina, nos quatro meios"]
+fn sonda_a_fatia_fina() {
+    use Variante::*;
+    let lado = 512;
+    let ps = trinta();
+    for m in MEIOS {
+        let track = trilha_no_meio(m, &ps, lado);
+        let e = EnsinoDoPainter::medido(&track).expect("ensino");
+        let fina =
+            |c: &CriterioDaPincelada| c.novos.len() * 10 < rasteriza(&c.regiao, lado, lado).len();
+        let (mut finas, mut rmin, mut rmax) = (0, f32::MAX, 0.0f32);
+        for c in e.criterios.iter().filter(|c| fina(c)) {
+            finas += 1;
+            let r = c.referencia.expect("medida");
+            (rmin, rmax) = (rmin.min(r), rmax.max(r));
+        }
+        // (mín, máx) da razão por variante: nas finas e nas 30.
+        let mut nas_finas = [(f32::MAX, 0.0f32); 3];
+        let mut em_todas = [(f32::MAX, 0.0f32); 3];
+        let vs = [Exacta, Nada, MostraMe];
+        let mut nada_cumpre = Vec::new();
+        cada_aluno(&track, &ps, lado, &vs, |k, v, t| {
+            let Some(c) = criterio_de(&e, &track, k) else {
+                return;
+            };
+            let i = match v {
+                Exacta => 0,
+                Nada => 1,
+                _ => 2,
+            };
+            let r = e.razao(t, c).expect("medida");
+            if matches!(v, Nada) && r >= FRACAO_DA_GRAVADA_QUE_CUMPRE {
+                nada_cumpre.push(format!(
+                    "{k} ({} de {} px, ref {:.1} %, nada {:.1} %)",
+                    c.novos.len(),
+                    rasteriza(&c.regiao, lado, lado).len(),
+                    100.0 * c.referencia.unwrap_or(0.0),
+                    100.0 * r
+                ));
+            }
+            let mm = |x: &mut (f32, f32)| *x = (x.0.min(r), x.1.max(r));
+            mm(&mut em_todas[i]);
+            if fina(c) {
+                mm(&mut nas_finas[i]);
+            }
+        });
+        println!(
+            "{m:?}: {} critérios, {finas} finos (referência {:.1}–{:.1} %)",
+            e.criterios.len(),
+            100.0 * rmin,
+            100.0 * rmax
+        );
+        println!(
+            "  o «Nada» cumpre {} de {}: {}",
+            nada_cumpre.len(),
+            e.criterios.len(),
+            nada_cumpre.join(", ")
+        );
+        for (i, v) in vs.iter().enumerate() {
+            println!(
+                "  {:<10} finas {:.1}–{:.1} % · todas {:.1}–{:.1} %",
+                format!("{v:?}"),
+                100.0 * nas_finas[i].0,
+                100.0 * nas_finas[i].1,
+                100.0 * em_todas[i].0,
+                100.0 * em_todas[i].1
+            );
+        }
+    }
+}
+
+fn carga() -> String {
+    std::fs::read_to_string("/proc/loadavg").unwrap_or_default()
+}
+
+/// ⭐ **O custo de medir as referências** (W6c): uma reprodução da trilha que toca por versão da
+/// `Macro`. O Splash e as 30 pinceladas em Wet Paint, a 512² e 1024²; [`EnsinoDoPainter::de`] (a parte
+/// do quadro) ao lado. Intercaladas, o MÍNIMO de 3.
+#[test]
+#[ignore = "sonda de medição (W6c): o custo das referências"]
+fn sonda_o_custo_das_referencias() {
+    let ps = trinta();
+    let casos: Vec<(String, Track)> = [
+        (&SPLASH[..], 512u32),
+        (&SPLASH[..], 1024),
+        (&ps[..], 512),
+        (&ps[..], 1024),
+    ]
+    .into_iter()
+    .map(|(ps, lado)| {
+        let (b, _) = grava_pinceladas(lado, 0, ps, &[]).expect("grava");
+        let t = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
+        (format!("{} pinceladas {lado}²", ps.len()), t)
+    })
+    .collect();
+    println!("load antes: {}", carga());
+    let mut m = vec![(u128::MAX, u128::MAX); casos.len()];
+    let parar = AtomicBool::new(false);
+    for _ in 0..3 {
+        for (i, (_, t)) in casos.iter().enumerate() {
+            let t0 = std::time::Instant::now();
+            std::hint::black_box(EnsinoDoPainter::de(t).expect("de"));
+            m[i].0 = m[i].0.min(t0.elapsed().as_micros());
+            let t0 = std::time::Instant::now();
+            std::hint::black_box(EnsinoDoPainter::referencias(t, &parar).expect("referências"));
+            m[i].1 = m[i].1.min(t0.elapsed().as_micros());
+        }
+    }
+    for ((nome, t), (de, r)) in casos.iter().zip(m) {
+        println!(
+            "{nome} ({} eventos): de {de} µs · referências {r} µs",
+            t.events.len()
+        );
+    }
+    println!("load depois: {}", carga());
+}
+
+/// **O custo de uma avaliação** (W6, a auditoria): as 30 pinceladas, o aluno com as 15 primeiras
+/// feitas. «Antes» = a régua de antes da cura (as camadas lidas e ordenadas por critério, o inicial
+/// procurado por píxel — a [`fracao`] desta sonda); «depois» = [`EnsinoDoPainter::por_cumprir`].
+/// Intercaladas, o MÍNIMO de 7.
+#[test]
+#[ignore = "sonda de medição (W6): o custo da avaliação por quadro"]
+fn sonda_o_custo_da_avaliacao() {
+    let lado = 512;
+    let ps = trinta();
     let (b, _) = grava_pinceladas(lado, 0, &ps, &[]).expect("grava");
     let track = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
-    let e = EnsinoDoPainter::de(&track).expect("ensino");
+    let e = EnsinoDoPainter::medido(&track).expect("ensino");
     let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
     for c in &e.criterios[..15] {
         mostra(&mut t, &track, c.regiao.k).expect("mostra");
@@ -257,17 +452,19 @@ fn sonda_o_custo_da_avaliacao() {
         quadro(&mut t);
     }
     let antes = |t: &PainterTool| {
-        e.criterios
-            .iter()
-            .position(|c| fracao(&e, t, &c.novos, 0) < FRACAO_QUE_CUMPRE)
+        e.criterios.iter().position(|c| {
+            fracao(&e, t, &c.novos, 0)
+                < FRACAO_DA_GRAVADA_QUE_CUMPRE * c.referencia.expect("medida")
+        })
     };
     assert_eq!(antes(&t), e.por_cumprir(&t), "as duas réguas concordam");
     for (i, c) in e.criterios.iter().enumerate().take(16) {
         let toda = rasteriza(&c.regiao, lado, lado).len();
         println!(
-            "  {i}: nova {} de {toda} px, pintada {:.1} %",
+            "  {i}: nova {} de {toda} px, pintada {:.1} %, referência {:.1} %",
             c.novos.len(),
-            100.0 * e.fracao_pintada(&t, c)
+            100.0 * e.fracao_pintada(&t, c),
+            100.0 * c.referencia.expect("medida")
         );
     }
     let (mut a, mut d) = (u128::MAX, u128::MAX);

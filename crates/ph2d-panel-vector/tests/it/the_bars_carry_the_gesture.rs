@@ -440,6 +440,60 @@ fn the_live_boolean_switch_rides_in_front_of_the_booleans() {
     ph2d_panel_vector::state::set_bool_live_on(false);
 }
 
+/// ⭐ (dono 15/10) **Uma forma DENTRO da booleana viva**: com ela só selecionada, a ④ oferece os
+/// quatro verbos dela (aceso o que ela tem, a dica com o nome dela) e o Apply — e cada um chega à
+/// porta do painel. Fora de uma booleana viva, nenhum.
+#[test]
+fn a_shape_inside_a_live_boolean_gets_its_verbs_and_the_apply() {
+    const VERBS: [NodeId; 4] = [
+        p::VECTOR_BOOL_SHAPE_UNION,
+        p::VECTOR_BOOL_SHAPE_SUBTRACT,
+        p::VECTOR_BOOL_SHAPE_INTERSECT,
+        p::VECTOR_BOOL_SHAPE_EXCLUDE,
+    ];
+    let one = || {
+        Retrato {
+            sel: 1,
+            ..Retrato::em(DrawMode::Select)
+        }
+        .barras()
+        .0
+    };
+    let fora = action_ids(&one());
+    assert!(
+        VERBS.iter().chain([&p::VECTOR_BOOL_APPLY]).all(|id| !fora.contains(id)),
+        "fora de uma booleana viva não há verbo de forma nem Apply"
+    );
+    ph2d_panel_vector::state::set_bool_shape_row(Some((1, "Path 2".to_owned())));
+    ph2d_panel_vector::state::set_bool_group_selected(true);
+    let b = one();
+    let row: Vec<_> = b
+        .actions
+        .iter()
+        .flatten()
+        .filter(|x| VERBS.contains(&x.id))
+        .collect();
+    assert_eq!(row.iter().map(|x| x.id).collect::<Vec<_>>(), VERBS);
+    assert_eq!(
+        row.iter().map(|x| x.on).collect::<Vec<_>>(),
+        [false, true, false, false],
+        "aceso o verbo que a forma tem (Subtract)"
+    );
+    assert!(row.iter().all(|x| x.label.contains("Path 2")), "a dica nomeia a forma");
+    assert!(action_ids(&b).contains(&p::VECTOR_BOOL_APPLY), "o Apply");
+    for id in VERBS.into_iter().chain([p::VECTOR_BOOL_APPLY]) {
+        let mut host = crate::host_aberto();
+        let out = host
+            .apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(id));
+        assert!(
+            out == EventOutcome::Consumed && !host.drained_actions().is_empty(),
+            "{id:?} pinta na ④ e o painel não o despacha"
+        );
+    }
+    ph2d_panel_vector::state::set_bool_shape_row(None);
+    ph2d_panel_vector::state::set_bool_group_selected(false);
+}
+
 /// … e o PAINEL já não os pinta (*«tire a seção Arrange do painel»*): com três formas, nenhum
 /// botão do Arrange nem do Alinhar tem rectângulo no corpo — e o cabeçalho do Fill tem (o
 /// controlo que torna o «nenhum» não-vazio).

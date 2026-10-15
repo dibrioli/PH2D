@@ -365,6 +365,57 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
             BarFamily::Neutral,
         )]);
     }
+    // ⭐ (dono 15/10) **Dentro de uma booleana viva**: o verbo da forma em mãos (aceso o dela) e o
+    // Apply — com UMA forma selecionada, que é como se aponta um filho; sem isto a ④ não deixava
+    // mudar o modo. A regra de quando há fileira (a base não tem verbo…) é da shell (`vec_bool_shape`).
+    if let Some((code, name)) = crate::state::bool_shape_row() {
+        let shape = if name.is_empty() {
+            tr("panel.vector.bool.shape").to_owned()
+        } else {
+            name
+        };
+        let verbs = [
+            (
+                crate::ids::VECTOR_BOOL_SHAPE_UNION,
+                IconId::BoolUnion,
+                "panel.vector.bool.shape.union",
+            ),
+            (
+                crate::ids::VECTOR_BOOL_SHAPE_SUBTRACT,
+                IconId::BoolSubtract,
+                "panel.vector.bool.shape.subtract",
+            ),
+            (
+                crate::ids::VECTOR_BOOL_SHAPE_INTERSECT,
+                IconId::BoolIntersect,
+                "panel.vector.bool.shape.intersect",
+            ),
+            (
+                crate::ids::VECTOR_BOOL_SHAPE_EXCLUDE,
+                IconId::BoolExclude,
+                "panel.vector.bool.shape.exclude",
+            ),
+        ];
+        out.push(
+            verbs
+                .into_iter()
+                .zip(0u8..)
+                .map(|((id, icon, key), i)| {
+                    let label = tr("panel.vector.bar.bool_shape")
+                        .replace("{shape}", &shape)
+                        .replace("{verb}", tr(key));
+                    button(id, icon, label, code == i, BarFamily::Neutral)
+                })
+                .collect(),
+        );
+    }
+    if crate::state::bool_group_selected() {
+        out.push(vec![b(
+            crate::ids::VECTOR_BOOL_APPLY,
+            IconId::Check,
+            "panel.vector.bool.apply",
+        )]);
+    }
     if sel >= 2 {
         // ⭐ (dono 15/10) A BOOLEANA VIVA à frente das quatro: é o MODO delas (`On` cria um grupo
         // cujos filhos continuam editáveis). Um interruptor: aceso = ligada, e o id é o do estado

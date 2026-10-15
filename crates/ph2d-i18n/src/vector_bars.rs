@@ -65,6 +65,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bar.sub.segments" => "SEG",
         // ④ (dono 15/10): o interruptor da booleana viva, à frente das quatro booleanas.
         "panel.vector.bar.bool_live" => "Live Boolean \u{00b7} the shapes stay editable",
+        // ④ o verbo de UMA forma dentro da booleana viva: a dica nomeia a forma de que fala.
+        "panel.vector.bar.bool_shape" => "{shape} \u{00b7} {verb}",
         "panel.vector.bar.fill" => "Fill colour",
         "panel.vector.bar.stroke" => "Stroke colour",
         "panel.vector.bar.width" => "Stroke width",

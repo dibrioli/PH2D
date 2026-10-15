@@ -92,7 +92,7 @@ já diz hoje. ⇒ **a regra de destino é derivável, não escolhida a dedo**: G
 | Fill Type, Texture Pattern ×2, Brush | seleção | **③** sob Fill/Stroke | |
 | **Transform**, **Appearance** | seleção | **③** no topo | |
 | Shape Params, Connector, Text, Font, Paragraph, Text on Path, Axes, Vertex | seleção | **③** «específico do tipo» | só a do tipo seleccionado aparece (já é assim) |
-| **Boolean**, **Arrange**, **Path**, **Align** | WHEN_SELECTED | **④** os verbos + **③** a linha de Alinhar no topo | Rive/Penpot/Sketch: alinhar no topo do painel, só com seleção |
+| **Boolean**, **Arrange**, **Path**, **Align** | WHEN_SELECTED | **④** os verbos; ⛔ (dono 15/10) o **Arrange** e o **Align** saíram INTEIROS do ③: o Arrange na 1.ª linha da ④, o Align (+ Distribuir) numa **2.ª linha** dela; o Z numérico é o do Inspector no modo Objeto; o Duplicate também no menu da Hierarchy | Rive/Penpot/Sketch: alinhar no topo do painel — recusado pelo dono a 15/10 |
 | Expand, Effects, Filters, Envelope, Pattern on Path, Contour, Blend | seleção | **③** «Efeitos» | |
 | Frame, Clip, Layout, Anchors | seleção | **③** «▸ Contêiner», recolhido | hoje abrem ANTES do Stroke (foto `antes_01`) |
 | Component, Widget, States, Morph, Morph States | seleção | **③** «▸ Interação», recolhido | idem — States, com 4 linhas `Rec` e 11 curvas, ocupa o meio do painel |

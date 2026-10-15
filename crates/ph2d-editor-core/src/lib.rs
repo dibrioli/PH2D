@@ -46,6 +46,8 @@ pub mod grid_snap;
 pub mod hier_rows;
 pub mod icons;
 pub mod ids;
+/// A pré-edição de IME: a composição que o campo focado mostra e nunca grava antes do `Commit`.
+pub mod ime;
 pub mod image_edit;
 pub mod interaction;
 /// A porta única de *como este app imprime um comprimento* — veja os docs do módulo.

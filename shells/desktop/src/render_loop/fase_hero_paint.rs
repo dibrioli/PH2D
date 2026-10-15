@@ -54,6 +54,12 @@ impl crate::App {
                 }
             },
         );
+        // A janela de candidatos do IME segue o caret do campo focado.
+        if let (Some(r), Some(h)) = (hero.ime_caret_area_changed(), self.host.as_ref()) {
+            use winit::dpi::{PhysicalPosition as P, PhysicalSize as S};
+            let (p, s) = (P::new(r.x, r.y), S::new(r.w, r.h));
+            h.window().set_ime_cursor_area(p, s);
+        }
         // ⭐⭐ **A ARRUMAÇÃO é detectada no QUADRO, não no hook de ponteiro** (decisão D4).
         //
         // ⛔⛔ Ela viveu no `forward_to_hero` durante uma entrega, com os outros dois

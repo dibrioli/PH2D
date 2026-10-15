@@ -1,7 +1,8 @@
 //! [`TextInput`] — single-line text field.
 //!
-//! v1 paints layout-only: caret stays static at `caret_pos`, no IME
-//! composing, no selection range. Real input handling lands when the
+//! v1 paints layout-only: caret stays static at `caret_pos`; the IME
+//! pre-edit of the focused field is drawn underlined at the caret
+//! ([`crate::ime`]). Real input handling lands when the
 //! shell wires `winit::Event::KeyboardInput` into the editor (post
 //! M13). The data shape here exists so widgets that compose
 //! TextInput (NumberInput, Combobox) have a stable contract.
@@ -10,7 +11,7 @@ use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Width of the caret bar. The viewport reserves it on the right so a caret at
@@ -330,6 +331,16 @@ pub fn paint_text_input_with_buffer(
 
     let displayed: &str = buffer.unwrap_or(input.value.as_str());
     let displayed_caret = caret.unwrap_or(input.caret_byte);
+    let focused = input.state == TextInputState::Focused;
+    // ⭐ A pré-edição do IME entra no caret, sublinhada; o VALOR não a tem ([`crate::ime`]).
+    let composed = focused
+        .then(|| crate::ime::composition_for(input.id))
+        .flatten()
+        .map(|c| with_composition(displayed, displayed_caret, &c));
+    let (displayed, displayed_caret) = match &composed {
+        Some(c) => (c.text.as_str(), c.caret),
+        None => (displayed, displayed_caret),
+    };
 
     // **A text field is one LINE, so it SCROLLS — it does not wrap.** `paint_text`
     // breaks the run at `max_width`, so a name longer than the box grew a second
@@ -342,7 +353,6 @@ pub fn paint_text_input_with_buffer(
     // Only a FOCUSED field scrolls. With no caret to follow there is nothing to
     // chase, and a reader looking at an unfocused field wants the BEGINNING of the
     // name — scrolling it to the end would hide the part that identifies it.
-    let focused = input.state == TextInputState::Focused;
     let caret_w = focused.then(|| {
         text_system.prefix_width(
             &displayed[..displayed_caret.min(displayed.len())],
@@ -355,6 +365,7 @@ pub fn paint_text_input_with_buffer(
     )));
 
     if input.state == TextInputState::Focused
+        && composed.is_none()
         && let Some(anchor) = selection_anchor
         && anchor != displayed_caret
     {
@@ -424,6 +435,15 @@ pub fn paint_text_input_with_buffer(
             resolve(color, theme),
         );
     }
+    if let Some(c) = &composed {
+        let x0 = text_x + text_system.prefix_width(&displayed[..c.start], font_size);
+        let x1 = text_x + text_system.prefix_width(&displayed[..c.end], font_size);
+        let under = Rect::new(x0, inner_y + font_size, x1 - x0, StrokeToken::Thin.px());
+        scene.fill_rect(
+            crate::paint::rect_to_vello(under),
+            resolve(ColorToken::Text1, theme),
+        );
+    }
 
     if let Some(caret_w) = caret_w {
         // ⚠️ Mesma aritmética da seleção acima, o mesmo piso e a MESMA medição: o recorte apara,
@@ -438,6 +458,7 @@ pub fn paint_text_input_with_buffer(
             crate::paint::rect_to_vello(caret_rect),
             resolve(ColorToken::Accent, theme),
         );
+        crate::ime::publish_caret(input.id, caret_rect);
     }
     scene.pop_layer();
 }
@@ -456,6 +477,9 @@ fn caret_scroll(focused: bool, inner_w: f32, caret_w: f32) -> f32 {
         0.0
     }
 }
+
+mod compose;
+use compose::with_composition;
 
 #[cfg(test)]
 mod tests;

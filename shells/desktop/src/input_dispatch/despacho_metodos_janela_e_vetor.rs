@@ -195,19 +195,28 @@ impl crate::App {
         }
     }
 
-    /// IME composition commits — PT-BR / Spanish / French accent
-    /// dead-key sequences arrive here on macOS, NOT in `KeyEvent::text`
-    /// (the system text-input service swallows the dead-key keystroke
-    /// and emits the composed char via `Ime::Commit`).
-    pub(crate) fn on_ime_commit(&mut self, text: String) {
-        for ch in text.chars() {
-            if !ch.is_control() {
-                forward_text_to_hero(self.gfx.as_mut(), ch);
+    /// `WindowEvent::Ime`: o `Commit` escreve, o `Preedit` só se mostra ([`ph2d_editor_core::ime`]).
+    /// Um carácter chega por `KeyEvent.text` OU por `Commit`, nunca pelos dois (a medição está lá).
+    pub(crate) fn on_ime(&mut self, ime: winit::event::Ime) {
+        use winit::event::Ime;
+        let (text, cursor) = match ime {
+            Ime::Commit(text) => {
+                for ch in text.chars().filter(|c| !c.is_control()) {
+                    if self.vector_keys_live() && self.vec_text_editing() {
+                        self.vec_text_append(ch);
+                    } else {
+                        forward_text_to_hero(self.gfx.as_mut(), ch);
+                    }
+                }
+                return;
             }
+            Ime::Preedit(text, cursor) => (text, cursor),
+            Ime::Disabled => (String::new(), None),
+            Ime::Enabled => return,
+        };
+        if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            h.handle_preedit(&text, cursor);
         }
-        // `Preedit` (in-progress composition) is ignored for now — no
-        // visible preedit caret yet. Future: render the preedit text
-        // in italics at the caret.
     }
 
     /// Reflect the current hover context in the OS cursor. Called each

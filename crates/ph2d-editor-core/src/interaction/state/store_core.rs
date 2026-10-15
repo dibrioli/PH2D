@@ -14,6 +14,7 @@ impl WidgetStore {
             hot_id: None,
             active_id: None,
             focus_id: None,
+            composition: None,
             active_rect: None,
             slider_to_number: BTreeMap::new(),
             number_to_slider: BTreeMap::new(),
@@ -540,7 +541,21 @@ impl WidgetStore {
     }
 
     pub fn set_focus(&mut self, id: Option<NodeId>) {
+        if self.focus_id != id {
+            self.composition = None;
+        }
         self.focus_id = id;
+    }
+
+    /// A pré-edição do IME no campo FOCADO ([`crate::ime`]); nunca parte do valor.
+    pub fn composition(&self) -> Option<&crate::ime::Composition> {
+        self.composition
+            .as_ref()
+            .filter(|c| Some(c.id) == self.focus_id)
+    }
+
+    pub fn set_composition(&mut self, c: Option<crate::ime::Composition>) {
+        self.composition = c;
     }
 
     /// Iterate registered widgets in registration order. Used by

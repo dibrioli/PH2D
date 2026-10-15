@@ -41,6 +41,23 @@ impl HeroScreen {
         UiScaleMap::no_ecra(self.ui_scale, self.escala_do_ecra)
     }
 
+    /// `Ime::Preedit` no campo focado ([`crate::ime`]); vazio = acaba. Nunca grava.
+    pub fn handle_preedit(&mut self, text: &str, cursor: Option<(usize, usize)>) {
+        crate::interaction::dispatch_preedit(&mut self.store, text, cursor);
+    }
+
+    /// Uma tecla premida vista pela composição (tecla morta sem IME); `true` = consumida.
+    pub fn handle_compose_key(&mut self, key: crate::ime::ComposeKey) -> bool {
+        crate::interaction::dispatch_compose_key(&mut self.store, key)
+    }
+
+    /// O caret do campo focado em pixels FÍSICOS da janela, só quando mudou desde a última
+    /// pergunta — o `set_ime_cursor_area` da janela de candidatos.
+    #[must_use]
+    pub fn ime_caret_area_changed(&self) -> Option<Rect> {
+        crate::ime::caret_area_changed().map(|r| self.escala().rect_to_physical(r))
+    }
+
     /// ⭐ **A cena que o artista VÊ**, em pixels FÍSICOS `[x, y, w, h]`: o conteúdo depois das
     /// réguas (que já desconta os painéis docados e a faixa da timeline) cortado pelo split do
     /// Motion (`scene_viewport`, físico). `None` antes do primeiro quadro pintado ou sem

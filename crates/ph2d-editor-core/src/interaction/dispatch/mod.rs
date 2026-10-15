@@ -45,7 +45,7 @@ pub use keymap::{
 };
 pub use pointer::{dispatch_pointer, dispatch_pointer_with_text};
 pub use scroll::dispatch_wheel;
-pub use text_input::dispatch_text_input;
+pub use text_input::{dispatch_compose_key, dispatch_preedit, dispatch_text_input};
 pub use tick::dispatch_tick;
 
 use super::{InteractiveState, WidgetEvent, WidgetStore};

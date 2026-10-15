@@ -991,7 +991,7 @@ impl ApplicationHandler for App {
                 self.input.apply_event(ph2d_input::Event::FocusLost);
             }
             WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
-            WindowEvent::Ime(winit::event::Ime::Commit(text)) => self.on_ime_commit(text),
+            WindowEvent::Ime(ime) => self.on_ime(ime),
             WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
             WindowEvent::MouseWheel { delta, .. } => self.on_mouse_wheel(delta),
             WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),

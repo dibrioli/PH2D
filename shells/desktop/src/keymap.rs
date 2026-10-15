@@ -158,10 +158,37 @@ pub fn winit_to_input_keycode(code: KeyCode) -> Option<u32> {
     Some(v)
 }
 
+/// A tecla LÓGICA vista pela composição de uma tecla morta ([`ph2d_editor_core::ime`]).
+pub fn compose_key(k: &winit::keyboard::Key) -> ph2d_editor_core::ime::ComposeKey {
+    use ph2d_editor_core::ime::ComposeKey;
+    use winit::keyboard::{Key, NamedKey as N};
+    match k {
+        Key::Dead(Some(c)) => ComposeKey::Dead(*c),
+        Key::Named(N::Escape) => ComposeKey::Escape,
+        Key::Dead(None)
+        | Key::Named(
+            N::Shift | N::Control | N::Alt | N::AltGraph | N::Super | N::Meta | N::Hyper | N::Fn,
+        )
+        | Key::Named(N::CapsLock | N::NumLock | N::Symbol) => ComposeKey::Modifier,
+        _ => ComposeKey::Other,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use ph2d_editor_core::interaction::{GraphKey, graph_key_for};
+
+    /// `´` + Shift + `A` = `Á`: o Shift não pode desfazer a tecla morta (sequência medida, T6).
+    #[test]
+    fn a_dead_key_survives_shift_and_dies_on_the_next_key() {
+        use ph2d_editor_core::ime::ComposeKey as C;
+        use winit::keyboard::{Key, NamedKey as N};
+        assert_eq!(compose_key(&Key::Dead(Some('´'))), C::Dead('´'));
+        assert_eq!(compose_key(&Key::Named(N::Shift)), C::Modifier);
+        assert_eq!(compose_key(&Key::Named(N::Escape)), C::Escape);
+        assert_eq!(compose_key(&Key::Character("á".into())), C::Other);
+    }
 
     /// **Every verb the graph owns must survive the SHELL's normalizer.**
     ///

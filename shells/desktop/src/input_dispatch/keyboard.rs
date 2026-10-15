@@ -32,11 +32,19 @@ impl App {
     pub(crate) fn on_keyboard_input(&mut self, event: WinitKeyEvent) {
         let WinitKeyEvent {
             physical_key,
+            logical_key,
             state,
             repeat,
             text,
             ..
         } = event;
+        // A tecla morta sem IME (o xkb compõe): o acento pendente mostra-se no campo focado.
+        if state == ElementState::Pressed
+            && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+            && h.handle_compose_key(crate::keymap::compose_key(&logical_key))
+        {
+            return;
+        }
         self.key_input(physical_key, state, repeat, text);
     }
 

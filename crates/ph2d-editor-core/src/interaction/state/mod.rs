@@ -75,6 +75,8 @@ pub struct WidgetStore {
     pub(super) hot_id: Option<NodeId>,
     pub(super) active_id: Option<NodeId>,
     pub(super) focus_id: Option<NodeId>,
+    /// A pré-edição do IME no campo focado — nunca parte do valor ([`crate::ime`]).
+    pub(super) composition: Option<crate::ime::Composition>,
     /// Rect of the active widget at the moment of Down. Used by
     /// drag dispatch (Slider) to compute new value from pointer
     /// position relative to the original geometry.

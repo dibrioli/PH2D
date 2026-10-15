@@ -56,3 +56,14 @@ estes dois defeitos no **Digital**.
 
 Handoff ≤ 8 KB e a lista 26 atualizada (D1, D2 e os itens da avaliação). O smoke vai ao dono em passos numerados, com a
 PRANCHA antes/depois e os números de cada régua.
+
+## Resultado (14/10)
+
+- **D1 e D2 eram UMA causa.** Com a rampa de cor do Shape a mandar na cor (B&W desligado) e um Grain activo (Noise Tiled
+  por omissão, ou o papel a agir de Grain), os dois núcleos do carimbo indexavam a rampa pelo GRÃO e largavam
+  `grain_coverage`: a cor colava-se à tela (D1) e a cobertura enchia (D2: α 0,578 → 1,000, buracos 18 % → 0).
+- **Lei:** quem manda na rampa é quem a indexa (`RampIndex`), uma porta só (`ramp_alpha::ramp_texel`).
+- As duas tabelas (antes/depois e o preço por meio e por N grãos) estão no [handoff P36](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-14_P36_COR_DO_SHAPE.md) e no [doc 37](37_rampas_de_cor_shape_grain_papel.md) §3.
+- Prancha: [36_prancha_cor_do_shape_antes_depois.png](36_prancha_cor_do_shape_antes_depois.png).
+- Commits: `e03302cb34` (correcção + portões + corte do `stamp_cache.rs`) · `41369b2a3d` (sonda de custo + prancha).
+- Parte 2 (avaliação das rampas de cor, oráculo Krita, decisões B8–B12) = [doc 37](37_rampas_de_cor_shape_grain_papel.md).

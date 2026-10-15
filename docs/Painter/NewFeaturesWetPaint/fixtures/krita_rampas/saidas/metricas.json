@@ -1,0 +1,358 @@
+{
+ "c0_tipGM_semTextura": {
+  "stroke1": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.4779,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.2237,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "stroke2": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.4779,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.2237,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "t_profile_across_maxdiff_between_strokes": 0.0,
+  "t_profile_stroke1_dy_-24_0_+24": [
+   0.125,
+   0.478,
+   0.827
+  ],
+  "t_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "t_cols_same_CANVAS_x_maxdiff": 0.0,
+  "alpha_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.0
+ },
+ "c1_A_tipGM_texMultiply": {
+  "stroke1": {
+   "mean_alpha": 0.936,
+   "holes_frac": 0.0478,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.4779,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.2237,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.1788,
+   "corr_alpha_vs_canvasRamp": 0.5607,
+   "corr_alpha_vs_strokeRelRamp": 0.0818
+  },
+  "stroke2": {
+   "mean_alpha": 0.9264,
+   "holes_frac": 0.0557,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.4779,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.2237,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.1913,
+   "corr_alpha_vs_canvasRamp": 0.5821,
+   "corr_alpha_vs_strokeRelRamp": 0.5597
+  },
+  "t_profile_across_maxdiff_between_strokes": 0.0,
+  "t_profile_stroke1_dy_-24_0_+24": [
+   0.125,
+   0.478,
+   0.827
+  ],
+  "t_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "t_cols_same_CANVAS_x_maxdiff": 0.0,
+  "alpha_cols_same_RELATIVE_x_maxdiff": 1.0,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.0085
+ },
+ "c2_A_tipGM_texSubtract": {
+  "stroke1": {
+   "mean_alpha": 0.938,
+   "holes_frac": 0.0474,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.4779,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.2237,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.1731,
+   "corr_alpha_vs_canvasRamp": -0.553,
+   "corr_alpha_vs_strokeRelRamp": 0.2269
+  },
+  "stroke2": {
+   "mean_alpha": 0.9282,
+   "holes_frac": 0.056,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.4779,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.2237,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.1853,
+   "corr_alpha_vs_canvasRamp": -0.5647,
+   "corr_alpha_vs_strokeRelRamp": -0.2813
+  },
+  "t_profile_across_maxdiff_between_strokes": 0.0,
+  "t_profile_stroke1_dy_-24_0_+24": [
+   0.125,
+   0.478,
+   0.827
+  ],
+  "t_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "t_cols_same_CANVAS_x_maxdiff": 0.0,
+  "alpha_cols_same_RELATIVE_x_maxdiff": 1.0,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.0029
+ },
+ "c3_B_pontaLisa_texGradientMap": {
+  "stroke1": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.5009,
+   "t_std_along_stroke": 0.2844,
+   "t_std_across_stroke": 0.0,
+   "corr_t_vs_canvasRamp": 1.0,
+   "corr_t_vs_strokeRelRamp": -0.4108,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "stroke2": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.5056,
+   "t_std_along_stroke": 0.2992,
+   "t_std_across_stroke": 0.0,
+   "corr_t_vs_canvasRamp": 1.0,
+   "corr_t_vs_strokeRelRamp": 0.9054,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "t_profile_across_maxdiff_between_strokes": 0.0047,
+  "t_profile_stroke1_dy_-24_0_+24": [
+   0.501,
+   0.501,
+   0.501
+  ],
+  "t_cols_same_RELATIVE_x_maxdiff": 0.651,
+  "t_cols_same_CANVAS_x_maxdiff": 0.0,
+  "alpha_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.0
+ },
+ "c4_C_tipGM_texGradientMap": {
+  "stroke1": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.5009,
+   "t_std_along_stroke": 0.2844,
+   "t_std_across_stroke": 0.0,
+   "corr_t_vs_canvasRamp": 1.0,
+   "corr_t_vs_strokeRelRamp": -0.4108,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "stroke2": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.5056,
+   "t_std_along_stroke": 0.2992,
+   "t_std_across_stroke": 0.0,
+   "corr_t_vs_canvasRamp": 1.0,
+   "corr_t_vs_strokeRelRamp": 0.9054,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "t_profile_across_maxdiff_between_strokes": 0.0047,
+  "t_profile_stroke1_dy_-24_0_+24": [
+   0.501,
+   0.501,
+   0.501
+  ],
+  "t_cols_same_RELATIVE_x_maxdiff": 0.651,
+  "t_cols_same_CANVAS_x_maxdiff": 0.0,
+  "alpha_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.0
+ },
+ "c5_pontaLisa_semTextura": {
+  "stroke1": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 1.0,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "stroke2": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 1.0,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "alpha_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.0
+ },
+ "c6_pontaLisa_texMultiply": {
+  "stroke1": {
+   "mean_alpha": 0.9395,
+   "holes_frac": 0.0461,
+   "green_frac_of_rgb": 1.0,
+   "alpha_col_std": 0.1752,
+   "corr_alpha_vs_canvasRamp": 0.5453,
+   "corr_alpha_vs_strokeRelRamp": 0.0829
+  },
+  "stroke2": {
+   "mean_alpha": 0.9302,
+   "holes_frac": 0.0531,
+   "green_frac_of_rgb": 1.0,
+   "alpha_col_std": 0.1876,
+   "corr_alpha_vs_canvasRamp": 0.5668,
+   "corr_alpha_vs_strokeRelRamp": 0.5451
+  },
+  "alpha_cols_same_RELATIVE_x_maxdiff": 1.0,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.0059
+ },
+ "c7_A_tipGM_texMultiply_stockHardGrain": {
+  "stroke1": {
+   "mean_alpha": 0.9926,
+   "holes_frac": 0.0011,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.4779,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.2237,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.0082,
+   "corr_alpha_vs_canvasRamp": -0.0467,
+   "corr_alpha_vs_strokeRelRamp": 0.025,
+   "stock_corr_at_canvas_origin": 0.373,
+   "stock_best_offset": [
+    0,
+    0,
+    0.373
+   ]
+  },
+  "stroke2": {
+   "mean_alpha": 0.9926,
+   "holes_frac": 0.0006,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.4779,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.2237,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.0072,
+   "corr_alpha_vs_canvasRamp": 0.0633,
+   "corr_alpha_vs_strokeRelRamp": 0.0399,
+   "stock_corr_at_canvas_origin": 0.4082,
+   "stock_best_offset": [
+    0,
+    0,
+    0.4082
+   ]
+  },
+  "t_profile_across_maxdiff_between_strokes": 0.0,
+  "t_profile_stroke1_dy_-24_0_+24": [
+   0.125,
+   0.478,
+   0.827
+  ],
+  "t_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "t_cols_same_CANVAS_x_maxdiff": 0.0,
+  "alpha_cols_same_RELATIVE_x_maxdiff": 0.0455,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.054
+ },
+ "c8_pontaLisa_texLightnessMap": {
+  "stroke1": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.6291,
+   "t_mean": 0.5,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.0,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "stroke2": {
+   "mean_alpha": 1.0,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.604,
+   "t_mean": 0.5,
+   "t_std_along_stroke": 0.0,
+   "t_std_across_stroke": 0.0,
+   "corr_t_vs_canvasRamp": NaN,
+   "corr_t_vs_strokeRelRamp": NaN,
+   "alpha_col_std": 0.0,
+   "corr_alpha_vs_canvasRamp": NaN,
+   "corr_alpha_vs_strokeRelRamp": NaN
+  },
+  "t_profile_across_maxdiff_between_strokes": 0.0,
+  "t_profile_stroke1_dy_-24_0_+24": [
+   0.5,
+   0.5,
+   0.5
+  ],
+  "t_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "t_cols_same_CANVAS_x_maxdiff": 0.0,
+  "alpha_cols_same_RELATIVE_x_maxdiff": 0.0,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.0
+ },
+ "c9_tipAlphaMask_texGradientMap": {
+  "stroke1": {
+   "mean_alpha": 0.9831,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.5009,
+   "t_std_along_stroke": 0.2844,
+   "t_std_across_stroke": 0.0,
+   "corr_t_vs_canvasRamp": 1.0,
+   "corr_t_vs_strokeRelRamp": -0.4108,
+   "alpha_col_std": 0.0006,
+   "corr_alpha_vs_canvasRamp": -0.0475,
+   "corr_alpha_vs_strokeRelRamp": 0.0246
+  },
+  "stroke2": {
+   "mean_alpha": 0.9831,
+   "holes_frac": 0.0,
+   "green_frac_of_rgb": 0.0,
+   "t_mean": 0.5056,
+   "t_std_along_stroke": 0.2992,
+   "t_std_across_stroke": 0.0,
+   "corr_t_vs_canvasRamp": 1.0,
+   "corr_t_vs_strokeRelRamp": 0.9054,
+   "alpha_col_std": 0.0003,
+   "corr_alpha_vs_canvasRamp": 0.0486,
+   "corr_alpha_vs_strokeRelRamp": -0.048
+  },
+  "t_profile_across_maxdiff_between_strokes": 0.0047,
+  "t_profile_stroke1_dy_-24_0_+24": [
+   0.501,
+   0.501,
+   0.501
+  ],
+  "t_cols_same_RELATIVE_x_maxdiff": 0.651,
+  "t_cols_same_CANVAS_x_maxdiff": 0.0,
+  "alpha_cols_same_RELATIVE_x_maxdiff": 0.001,
+  "alpha_cols_same_CANVAS_x_maxdiff": 0.0017
+ }
+}

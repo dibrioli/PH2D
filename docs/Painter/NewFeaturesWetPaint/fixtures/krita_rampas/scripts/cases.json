@@ -1,0 +1,59 @@
+[
+ {
+  "name": "c0_tipGM_semTextura",
+  "tip": "color",
+  "tipmode": 3,
+  "tex": null
+ },
+ {
+  "name": "c1_A_tipGM_texMultiply",
+  "tip": "color",
+  "tipmode": 3,
+  "tex": 0
+ },
+ {
+  "name": "c2_A_tipGM_texSubtract",
+  "tip": "color",
+  "tipmode": 3,
+  "tex": 1
+ },
+ {
+  "name": "c3_B_pontaLisa_texGradientMap",
+  "tip": "plain",
+  "tex": 3
+ },
+ {
+  "name": "c4_C_tipGM_texGradientMap",
+  "tip": "color",
+  "tipmode": 3,
+  "tex": 3
+ },
+ {
+  "name": "c5_pontaLisa_semTextura",
+  "tip": "plain",
+  "tex": null
+ },
+ {
+  "name": "c6_pontaLisa_texMultiply",
+  "tip": "plain",
+  "tex": 0
+ },
+ {
+  "name": "c8_pontaLisa_texLightnessMap",
+  "tip": "plain",
+  "tex": 2
+ },
+ {
+  "name": "c9_tipAlphaMask_texGradientMap",
+  "tip": "color",
+  "tipmode": 0,
+  "tex": 3
+ },
+ {
+  "name": "c7_A_tipGM_texMultiply_stockHardGrain",
+  "tip": "color",
+  "tipmode": 3,
+  "tex": 0,
+  "pattern": "06_hard-grain.png"
+ }
+]

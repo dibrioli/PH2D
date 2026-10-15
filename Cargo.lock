@@ -4869,6 +4869,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-code"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-app-host",
+ "ph2d-code-buffer",
+ "ph2d-code-lsp",
+ "ph2d-code-syntax",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-panel-code",
+ "ph2d-script",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-app-components"
 version = "0.0.0"
 dependencies = [
@@ -5169,6 +5189,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-app-audio",
  "ph2d-app-board",
+ "ph2d-app-code",
  "ph2d-app-components",
  "ph2d-app-flip",
  "ph2d-app-host",

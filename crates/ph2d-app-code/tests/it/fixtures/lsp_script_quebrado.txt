@@ -1,0 +1,5 @@
+# Oráculo do E7 — luau-lsp 1.70.1 (fixado, ph2d-code-lsp), solver antigo, definições runtime/luau/ph2d.d.luau.
+# Entrada: docs/CodeEditor/ferramentas/smoke/script_quebrado.luau. Uma linha por diagnóstico de ERRO de sintaxe:
+# <linha>:<carácter UTF-16>-<linha>:<carácter> [código] mensagem (0-based, como o LSP os dá).
+# Gravado por crates/ph2d-app-code/tests/it/oraculo_lsp.rs com PH2D_GRAVA_ORACULO=1.
+2:10-2:11 [1014] SyntaxError: Expected identifier when parsing expression, got '='

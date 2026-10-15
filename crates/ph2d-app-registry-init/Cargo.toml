@@ -14,6 +14,7 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 # <ph2d-app-sync:deps:begin>
 ph2d-app-audio = { path = "../ph2d-app-audio", optional = true }
 ph2d-app-board = { path = "../ph2d-app-board", optional = true }
+ph2d-app-code = { path = "../ph2d-app-code", optional = true }
 ph2d-app-components = { path = "../ph2d-app-components", optional = true }
 ph2d-app-flip = { path = "../ph2d-app-flip", optional = true }
 ph2d-app-light2d = { path = "../ph2d-app-light2d", optional = true }
@@ -33,6 +34,7 @@ default = [
 # <ph2d-app-sync:default:begin>
     "app-audio",
     "app-board",
+    "app-code",
     "app-components",
     "app-flip",
     "app-light2d",
@@ -48,6 +50,7 @@ default = [
 # <ph2d-app-sync:features:begin>
 app-audio = ["dep:ph2d-app-audio"]
 app-board = ["dep:ph2d-app-board"]
+app-code = ["dep:ph2d-app-code"]
 app-components = ["dep:ph2d-app-components"]
 app-flip = ["dep:ph2d-app-flip"]
 app-light2d = ["dep:ph2d-app-light2d"]

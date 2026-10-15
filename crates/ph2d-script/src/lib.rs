@@ -42,7 +42,7 @@ pub mod registry;
 pub mod scene;
 mod valores;
 
-pub use component::{LuauScript, ProjectScripts, ScriptSource};
+pub use component::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptSource};
 pub use console::{CONSOLE_LINES_MAX, Console, ConsoleKind, ConsoleLine};
 pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
 pub use host::ScriptHost;

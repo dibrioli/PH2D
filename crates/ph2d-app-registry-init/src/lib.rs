@@ -62,6 +62,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_audio::FAMILY);
     #[cfg(feature = "app-board")]
     reg.push(ph2d_app_board::FAMILY);
+    #[cfg(feature = "app-code")]
+    reg.push(ph2d_app_code::FAMILY);
     #[cfg(feature = "app-components")]
     reg.push(ph2d_app_components::FAMILY);
     #[cfg(feature = "app-flip")]

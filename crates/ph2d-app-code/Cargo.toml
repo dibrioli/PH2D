@@ -1,0 +1,35 @@
+[package]
+name = "ph2d-app-code"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A família do EDITOR DE SCRIPTS (CodeEditor Onda 1, `docs/CodeEditor/02_onda1.md`): os documentos em
+# aba (o trait `DocumentSurface` do `ph2d-editor-core`), o texto (`ph2d-code-buffer`), a gramática
+# (`ph2d-code-syntax`), a pintura (`ph2d-panel-code`) e a ponte com a cena (`ph2d-script`).
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-code-buffer = { path = "../ph2d-code-buffer" }
+ph2d-code-syntax = { path = "../ph2d-code-syntax" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-panel-code = { path = "../ph2d-panel-code" }
+ph2d-script = { path = "../ph2d-script" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+# O oráculo de posição do E7: o `luau-lsp` fixado corre sobre o script quebrado do smoke.
+ph2d-code-lsp = { path = "../ph2d-code-lsp" }
+
+[lints]
+workspace = true

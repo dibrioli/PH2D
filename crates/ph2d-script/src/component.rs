@@ -97,6 +97,11 @@ impl From<LuauScriptV2> for LuauScript {
 #[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
 pub struct ProjectScripts(pub ScriptLibrary);
 
+/// ⭐ **Os scripts que o artista pediu para EDITAR** (o «Edit script» do cartão, CodeEditor E3): o
+/// Inspector escreve, a família do editor (`ph2d-app-code`) drena-os por quadro e abre a aba.
+#[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ScriptEditRequests(pub Vec<ScriptId>);
+
 impl std::ops::Deref for ProjectScripts {
     type Target = ScriptLibrary;
     fn deref(&self) -> &ScriptLibrary {

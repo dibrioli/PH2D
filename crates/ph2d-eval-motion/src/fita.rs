@@ -182,7 +182,7 @@ pub struct Fita {
     bytes: usize,
     /// Um tecto PRÓPRIO, além do razão (os gates); `usize::MAX` por omissão.
     orcamento: usize,
-    /// O que esta fita declara no razão de todas ([`Razao::da_fita`]).
+    /// O que esta fita declara no razão de todas ([`crate::razao::da_fita`]).
     conta: ContaDaFita,
 }
 
@@ -192,7 +192,7 @@ struct ContaDaFita(Conta);
 
 impl Default for ContaDaFita {
     fn default() -> Self {
-        Self(Conta::em(Razao::da_fita()))
+        Self(Conta::em(crate::razao::da_fita()))
     }
 }
 
@@ -344,10 +344,10 @@ fn mesmas_revisoes(nomes: &Tabela, e: &Estado, agora: &All) -> bool {
 }
 
 impl Fita {
-    /// Uma fita no razão do processo ([`Razao::da_fita`]).
+    /// Uma fita no razão do processo ([`crate::razao::da_fita`]).
     #[must_use]
     pub fn new() -> Self {
-        Self::no_razao(Razao::da_fita())
+        Self::no_razao(crate::razao::da_fita())
     }
 
     /// Uma fita num razão dado (os gates e a sonda medem com um próprio).

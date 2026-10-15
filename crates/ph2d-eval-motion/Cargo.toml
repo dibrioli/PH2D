@@ -14,6 +14,8 @@ authors.workspace = true
 # (no GPU); the upload+draw is the shell's job.
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+# A lei do razão da RAM (`ph2d_core::razao`), partilhada com os instantâneos das macros do Painter.
+ph2d-core = { path = "../ph2d-core" }
 # doc 115 W5: o PASSE automatico de separacao corre no fim do cozimento, sobre a corrente que
 # vai ser desenhada. A lei vive na crate do contacto (as portas dela JA sao a lei); aqui so se
 # chama a porta. Sem ciclo: a `ph2d-contact` depende da `ph2d-nodegraph` e de mais nada.

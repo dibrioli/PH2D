@@ -5862,6 +5862,7 @@ version = "0.0.0"
 dependencies = [
  "dhat",
  "ph2d-contact",
+ "ph2d-core",
  "ph2d-node-force-wind",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-grid",

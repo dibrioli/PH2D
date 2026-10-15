@@ -1,7 +1,7 @@
 //! ⭐ **A RÉGUA DO ANEL contra a memória que ele RETÉM** (doc 132 §7, P2 — o irmão do
 //! `tests/fita_memoria.rs`).
 //!
-//! O que o anel declara ao razão ([`Razao::dos_aneis`]) é o que o tecto compara; se declara menos do
+//! O que o anel declara ao razão ([`ph2d_eval_motion::razao::dos_aneis`]) é o que o tecto compara; se declara menos do
 //! que retém, o tecto é uma fração do que diz ser (medido antes da cura: `0 B` declarados por um
 //! ponto de recuo leve, `~1,9 KB` ganhos pelo processo). O heap conta-se com o `dhat`: o retido é o
 //! que LARGAR o anel devolve, `bytes + 16 · blocos` — o cabeçalho e o arredondamento do `malloc` —,

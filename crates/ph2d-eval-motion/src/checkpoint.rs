@@ -24,7 +24,7 @@
 //!   redundant anchor; the first entry's left neighbour is the virtual tick-0
 //!   seed). History degrades in RESOLUTION, never by amputation — which is
 //!   exactly what a loop's next wrap needs to stay cheap.
-//! - **Bytes, not count** ([`Razao::dos_aneis`]): the old `RECENT_CAPACITY = 300`
+//! - **Bytes, not count** ([`crate::razao::dos_aneis`]): the old `RECENT_CAPACITY = 300`
 //!   was a COUNT — a multiplier, the ADR-0117 class: 300 checkpoints of a 262k
 //!   particle scene are gigabytes and the cap never blinked. A heavy scene now
 //!   gets a SHORTER window, never a bigger bill. [`MAX_ENTRIES`] remains as an
@@ -45,7 +45,7 @@ use ph2d_nodegraph::cook::CookCheckpoint;
 /// scrub, now explicit policy rather than a side effect of the count cap.
 pub const RECENT_DENSE: usize = 300;
 
-/// **A RESERVA do tecto dos anéis** — o tecto é [`crate::razao`] ([`Razao::dos_aneis`]): `1/32`
+/// **A RESERVA do tecto dos anéis** — o tecto é [`crate::razao`] ([`crate::razao::dos_aneis`]): `1/32`
 /// da RAM física, PARTILHADO por todos os anéis do processo (cada emissor de partículas tem uma
 /// bomba); este número só vale onde a RAM não se lê. Um checkpoint de 262k elementos são ~15 MB:
 /// a cena pesada ganha mais âncoras numa máquina maior, nunca uma conta maior que a fração.
@@ -58,7 +58,7 @@ pub const CPU_RING_BYTES: usize = 128 * 1024 * 1024;
 pub const MEMO_A_CADA: u64 = 8;
 
 /// Insertion-cost backstop (ordered insert shifts `O(n)`), far above any
-/// real spread — never the budget (that is the [`Razao::dos_aneis`] ledger).
+/// real spread — never the budget (that is the [`crate::razao::dos_aneis`] ledger).
 pub const MAX_ENTRIES: usize = 2048;
 
 /// One anchor: the state that reproduces frame `tick`, and what it costs to
@@ -79,7 +79,7 @@ pub struct CheckpointRing {
     bytes: usize,
     /// Um tecto PRÓPRIO, além do razão (os gates); `usize::MAX` por omissão.
     budget_bytes: usize,
-    /// O que este anel declara no razão de todos ([`Razao::dos_aneis`]).
+    /// O que este anel declara no razão de todos ([`crate::razao::dos_aneis`]).
     conta: ContaDoAnel,
 }
 
@@ -89,7 +89,7 @@ struct ContaDoAnel(Conta);
 
 impl Default for ContaDoAnel {
     fn default() -> Self {
-        Self(Conta::em(Razao::dos_aneis()))
+        Self(Conta::em(crate::razao::dos_aneis()))
     }
 }
 

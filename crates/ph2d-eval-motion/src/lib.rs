@@ -296,7 +296,7 @@ impl MotionCookPump {
         self.so_com_forma
     }
 
-    /// A ring-own byte cap on top of the process ledger (`Razao::dos_aneis`) — the
+    /// A ring-own byte cap on top of the process ledger (`razao::dos_aneis`) — the
     /// mirror of `GpuCook::set_ring_budget`, and what lets a gate squeeze the
     /// ring into the eviction regime a real heavy scene lives in (ADR-0137).
     pub fn set_ring_budget(&mut self, bytes: usize) {

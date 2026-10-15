@@ -121,7 +121,7 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
 /// **O roteiro que o dono segue** (`CLAUDE.md` §0.8).
 pub(super) fn announce() {
     let var = ph2d_eval_motion::razao::VAR_DO_TECTO_DA_FITA;
-    let tecto = ph2d_eval_motion::Razao::da_fita().tecto();
+    let tecto = ph2d_eval_motion::razao::da_fita().tecto();
     eprintln!(
         "\n[a fita que dobra] UMA galaxia de estrelas a girar (uma SIMULACAO com campos), sacudida\n\
          de 1,5 em 1,5 s pelo gatilho `batida`. Os {GATILHOS} cartoes `sinal_*` disparam em TODO tique:\n\

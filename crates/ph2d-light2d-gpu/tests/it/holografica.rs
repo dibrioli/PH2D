@@ -456,7 +456,14 @@ fn sonda_hrc_escolhas() {
 }
 
 /// ⭐ **G4 (K3) na holográfica** — gate de RELÓGIO (a faixa dos flakes de carga): o custo das
-/// cascatas com 1 · 10 · 100 · 1 000 · 10 000 luzes na MESMA geometria varia ≤ 5 %.
+/// cascatas com 1 · 10 · 100 · 1 000 · 10 000 luzes na MESMA geometria fica a ≤ 5 % do maior entre o de 1
+/// luz e o do CONTROLO.
+///
+/// ⚠️ **O controlo** (W5s, 14/10): a placa cobra os VALORES, não as luzes — a mesma geometria com 1 luz,
+/// o céu e as outras formas translúcidas de opacidades variadas custa o MESMO que 10 000 luzes (0,791–0,794
+/// contra 0,792–0,795 ms; 1 luz 0,751–0,754; só o céu, uniforme, não muda nada). O que cresce é a soma
+/// (0,048 → 0,058–0,066 ms), que não tem conta por luz. Sem o controlo o gate media isso: 4,4–4,9 % no
+/// código da W5r, 4,4–5,7 % depois da W5s (a base mais baixa). Um custo POR LUZ continua a reprová-lo.
 ///
 /// ⚠️ **As cinco cenas no MESMO solver** (14/10): com um solver por contagem, desde os buffers do miolo
 /// (W5h, `f9c8110287`, por bissecção) o de 100 luzes fica ~3 % mais rápido pelo sítio onde os buffers dele
@@ -474,27 +481,36 @@ fn g4_o_custo_da_holografica_nao_depende_do_numero_de_luzes() {
         com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO)),
     )
     .expect("solver");
-    let cenas: Vec<_> = [1u32, 10, 100, 1_000, 10_000]
+    let mut cenas: Vec<_> = [1u32, 10, 100, 1_000, 10_000]
         .iter()
         .map(|&n| enxame_de_luzes(n))
         .collect();
+    let mut controlo = enxame_de_luzes(1);
+    controlo.ceu = [1.0; 3];
+    for (i, o) in controlo.oclusores.iter_mut().enumerate() {
+        o.opacidade = 0.2 + 0.7 * (i as f32 * 0.618_034).fract();
+    }
+    cenas.push(controlo);
     let carga = loadavg();
-    let Some(rc) = rc_no_mesmo_solver(&gpu, &mut solver, &cenas, 15) else {
+    let Some(mut rc) = rc_no_mesmo_solver(&gpu, &mut solver, &cenas, 15) else {
         eprintln!("G4 holográfica: sem TIMESTAMP_QUERY — saltado");
         return;
     };
+    let controlo = rc.pop().expect("o controlo");
     let (min, max) = rc
         .iter()
         .fold((f64::INFINITY, 0.0_f64), |(a, b), &v| (a.min(v), b.max(v)));
+    let base = rc[0].max(controlo);
     eprintln!(
-        "G4 holográfica · loadavg {carga} · {:?} ms · variação {:.2} %",
+        "G4 holográfica · loadavg {carga} · {:?} ms · controlo {controlo:.3} ms · variação {:.2} % · acima da base {:.2} %",
         rc,
-        100.0 * (max - min) / min
+        100.0 * (max - min) / min,
+        100.0 * (max - base) / base
     );
     assert!(
-        (max - min) / min <= 0.05,
-        "K3 na holográfica: {:.2} %",
-        100.0 * (max - min) / min
+        (max - base) / base <= 0.05,
+        "K3 na holográfica: {:.2} % acima do maior entre 1 luz e o controlo",
+        100.0 * (max - base) / base
     );
 }
 

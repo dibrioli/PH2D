@@ -18,6 +18,7 @@ use ph2d_timeline::{TimelineIntent, TimelineState};
 
 const DONO: u64 = 5;
 const KS: [usize; 3] = [10, 20, 30];
+const DICA: &str = "O vento só sopra dentro da caixa.";
 
 /// O aluno de brinquedo: quantas etapas fez; o que lhe pediram.
 #[derive(Default)]
@@ -78,8 +79,8 @@ impl TutorialDaFamilia for Aluno {
 /// O leitor e as etapas do Motion de brinquedo: a família MACROS só lhes pede a chave e a família.
 struct Leitor;
 impl LeitorDaFamilia for Leitor {
-    fn etapas(&self, _: &[Event]) -> Vec<Etapa> {
-        Vec::new()
+    fn etapas(&self, ev: &[Event]) -> Vec<Etapa> {
+        (0..ev.len()).map(|i| Etapa { inicio: i, fim: i }).collect()
     }
     fn e_relogio(&self, _: &[u8]) -> bool {
         false
@@ -127,8 +128,17 @@ impl Banca {
     fn nova(modo: ModoDaMacro) -> Self {
         let mut rec = MacroRecorder::new(RefRect { w: 1.0, h: 1.0 }, 0);
         let t = rec.open_track("motion", DONO, Vec::new());
-        rec.push(t, 0, vec![1]).expect("tempo");
-        let doc = ph2d_macro::codec::write(&rec.finish());
+        for i in 0..=KS[2] as u64 {
+            rec.push(t, i * 1_000, vec![1]).expect("tempo");
+        }
+        let mut doc = rec.finish();
+        // O autor escreveu o texto do balão da 2.ª etapa do tutorial (k = 20 na gravação).
+        doc.tracks[0].edicoes.push(ph2d_macro::EdicaoDeEtapa {
+            ancora: KS[1],
+            dica: Some(DICA.into()),
+            ..Default::default()
+        });
+        let doc = ph2d_macro::codec::write(&doc);
         let mut sim = SimWorld::new();
         let bits = sim
             .world_mut()
@@ -194,7 +204,12 @@ fn mostra_me_desfazer_e_recomecar() {
     b.m.pede(MacroRequest::MostraMe {
         entity_bits: b.bits,
     });
-    assert_eq!(b.quadro().expect("balão").passo, 2);
+    let x = b.quadro().expect("balão");
+    assert_eq!(
+        (x.passo, x.dica.as_deref()),
+        (2, Some(DICA)),
+        "o texto do autor na etapa dele"
+    );
     b.m.pede(MacroRequest::MostraMe {
         entity_bits: b.bits,
     });

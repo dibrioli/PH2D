@@ -93,6 +93,7 @@ impl EtapasDaFamilia for EtapasDoMotion {
                     familia: FamiliaDaMacro::Motion,
                     tipo: tipo(x.tipo),
                     nome: x.nome,
+                    dica: None,
                     t0_s: segundos(x.t0),
                     t1_s: segundos(x.t1),
                     espera_s: espera_s(track, x.etapa.inicio),
@@ -111,7 +112,10 @@ impl EtapasDaFamilia for EtapasDoMotion {
         let r = match *campo {
             CampoDaEtapa::Valor(v) => mo::edita_valor(track, k, v),
             CampoDaEtapa::Espera(s) => mo::espera(track, k, us(s)),
-            CampoDaEtapa::Cor(_) | CampoDaEtapa::Tamanho(_) | CampoDaEtapa::Nome(_) => {
+            CampoDaEtapa::Cor(_)
+            | CampoDaEtapa::Tamanho(_)
+            | CampoDaEtapa::Nome(_)
+            | CampoDaEtapa::Dica(_) => {
                 return Err(e::sem_etapa());
             }
         };

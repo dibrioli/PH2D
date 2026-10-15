@@ -135,6 +135,9 @@ impl Tutorial {
                 b.passo = i + 1;
                 b.pedido = etapas[i].e.falta.clone();
                 b.alvos = etapas[i].e.alvos.clone();
+                let doc = self.le(bits, &bytes).ok()?;
+                b.dica =
+                    crate::etapas::dica(f.etapas, &doc.tracks[etapas[i].trilha], etapas[i].e.k);
             }
             None => b.passo = b.total,
         }

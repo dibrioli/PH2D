@@ -376,6 +376,7 @@ fn editado() -> MacroDoc {
         EdicaoDeEtapa {
             ancora: a,
             nome: Some("Pincelada azul".into()),
+            dica: Some("Pinte o céu primeiro".into()),
             espera_us: -12_345,
             trocas: vec![(a + 2, vec![7, 7])],
             insercoes: vec![(a, vec![])],

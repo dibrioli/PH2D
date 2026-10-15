@@ -14,12 +14,13 @@ use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
 
 /// Os botões, numa tabela: pintar, registar e despachar leem a MESMA.
-pub(crate) const BOTOES: [ph2d_a11y::NodeId; 5] = [
+pub(crate) const BOTOES: [ph2d_a11y::NodeId; 6] = [
     ids::MACROS_CLOSE,
     ids::MACROS_RECORD,
     ids::MACROS_STOP,
     ids::MACROS_RENAME,
     ids::MACROS_DELETE,
+    ids::MACROS_HINT,
 ];
 
 /// Os campos numéricos e a escala do arrasto de cada um (unidades por px — sem faixa: a família
@@ -130,6 +131,7 @@ pub(crate) fn apply_event(
             let (e, _) = etapa_de(id).expect("acabou de ser lida");
             st.escolhida = Some(e);
             st.renomeando = true;
+            st.dica = false;
             let seed = state::etapa(e)
                 .map(|x| crate::nomes::nome(&x))
                 .unwrap_or_default();
@@ -140,6 +142,7 @@ pub(crate) fn apply_event(
             let (e, fim) = etapa_de(id).expect("acabou de ser lida");
             st.escolhida = Some(e);
             st.renomeando = false;
+            st.dica = false;
             pede(
                 host,
                 MacroRequest::VaiPara {
@@ -161,9 +164,19 @@ pub(crate) fn apply_event(
             host.set_panel_visible(crate::MacrosPanel::ID, false);
             EventOutcome::Consumed
         }
+        WidgetEvent::Click(id) if id == ids::MACROS_HINT => {
+            if let Some(e) = st.escolhida {
+                st.renomeando = true;
+                st.dica = true;
+                let seed = state::etapa(e).and_then(|x| x.dica).unwrap_or_default();
+                open_rename(host.store_mut(), &seed);
+            }
+            EventOutcome::Consumed
+        }
         WidgetEvent::Click(id) if id == ids::MACROS_RENAME => {
             if let Some(e) = st.escolhida {
                 st.renomeando = true;
+                st.dica = false;
                 let seed = state::etapa(e)
                     .map(|x| crate::nomes::nome(&x))
                     .unwrap_or_default();
@@ -192,13 +205,19 @@ pub(crate) fn apply_event(
                 _ => String::new(),
             };
             if let Some(e) = st.escolhida {
-                let nome = (!texto.trim().is_empty()).then_some(texto);
-                edita(host, e, CampoDaEtapa::Nome(nome));
+                let texto = (!texto.trim().is_empty()).then_some(texto);
+                let campo = if std::mem::take(&mut st.dica) {
+                    CampoDaEtapa::Dica(texto)
+                } else {
+                    CampoDaEtapa::Nome(texto)
+                };
+                edita(host, e, campo);
             }
             EventOutcome::Consumed
         }
         WidgetEvent::Cancel(id) if id == ids::MACROS_RENAME_INPUT => {
             st.renomeando = false;
+            st.dica = false;
             EventOutcome::Consumed
         }
         WidgetEvent::ValueChanged(id) if CAMPOS.iter().any(|(c, _)| *c == id) => {

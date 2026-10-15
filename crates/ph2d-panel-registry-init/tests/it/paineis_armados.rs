@@ -238,6 +238,7 @@ fn arma_as_macros() {
             familia: FamiliaDaMacro::Painter,
             tipo: TipoDaEtapaView::Pincelada(k + 1),
             nome: None,
+            dica: None,
             t0_s: t,
             t1_s: t + 0.5,
             espera_s: 0.0,

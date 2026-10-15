@@ -23,6 +23,7 @@ pub(crate) fn paint(st: &mut MacrosPanelState, ctx: &mut PaintCtx) {
     if st.escolhida.is_some_and(|e| state::etapa(e).is_none()) {
         st.escolhida = None;
         st.renomeando = false;
+        st.dica = false;
     }
     let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();

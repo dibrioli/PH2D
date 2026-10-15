@@ -43,6 +43,7 @@ impl EtapasDaFamilia for EtapasDoPainter {
                     pi::TipoDaEtapa::Recusada(p) => TipoDaEtapaView::Recusada(p),
                 },
                 nome: e.nome,
+                dica: None,
                 t0_s: segundos(e.t0),
                 t1_s: segundos(e.t1),
                 espera_s: espera_s(track, e.etapa.inicio),
@@ -64,7 +65,9 @@ impl EtapasDaFamilia for EtapasDoPainter {
             CampoDaEtapa::Cor(c) => pi::edita_cor(track, k, c),
             CampoDaEtapa::Tamanho(px) => pi::edita_tamanho(track, k, px),
             CampoDaEtapa::Espera(s) => pi::espera(track, k, us(s)),
-            CampoDaEtapa::Valor(_) | CampoDaEtapa::Nome(_) => return Err(erros::sem_etapa()),
+            CampoDaEtapa::Valor(_) | CampoDaEtapa::Nome(_) | CampoDaEtapa::Dica(_) => {
+                return Err(erros::sem_etapa());
+            }
         };
         r.map_err(|e| erros::de_edicao_do_painter(&e))
     }
@@ -117,7 +120,12 @@ pub fn vistas(bytes: &[u8], outras: Injectadas<'_>) -> Vistas {
         let Some(f) = da_trilha(outras, track) else {
             continue;
         };
-        let r = f.vistas(tr, track);
+        let r = f.vistas(tr, track).map(|mut es| {
+            for e in &mut es {
+                e.dica = dica(outras, track, e.k);
+            }
+            es
+        });
         match r {
             Ok(es) => {
                 // A 1.ª etapa À VISTA desde a qual a trilha já não é a gravação (a de uma apagada é a
@@ -141,6 +149,16 @@ pub fn vistas(bytes: &[u8], outras: Injectadas<'_>) -> Vistas {
         }
     }
     v
+}
+
+/// **O texto do balão** que o autor escreveu na etapa `k` (a contar da gravação).
+pub(crate) fn dica(outras: Injectadas<'_>, track: &Track, k: usize) -> Option<String> {
+    let ancora = leitor(outras, track)?.etapas(&track.events).get(k)?.inicio;
+    track
+        .edicoes
+        .iter()
+        .find(|e| e.ancora == ancora)
+        .and_then(|e| e.dica.clone())
 }
 
 /// Uma edição que muda o que toca (o nome que o artista escreve não muda).
@@ -192,12 +210,18 @@ pub fn edita(
     };
     let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
     let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
-    if let CampoDaEtapa::Nome(n) = campo {
+    if let CampoDaEtapa::Nome(n) | CampoDaEtapa::Dica(n) = campo {
         let ancora = leitor(outras, track)
             .and_then(|l| l.etapas(&track.events).get(k).copied())
             .ok_or_else(erros::sem_etapa)?
             .inicio;
-        track.edicao_mut(ancora).nome = n.clone().filter(|n| !n.trim().is_empty());
+        let texto = n.clone().filter(|n| !n.trim().is_empty());
+        let ed = track.edicao_mut(ancora);
+        if matches!(campo, CampoDaEtapa::Nome(_)) {
+            ed.nome = texto;
+        } else {
+            ed.dica = texto;
+        }
     } else {
         da_trilha(outras, track)
             .ok_or_else(erros::sem_etapa)?

@@ -198,11 +198,17 @@ pub fn monta_fazer(cx: &mut MotionSceneCtx<'_>) -> Option<u64> {
     ph2d_ecs::assign_missing_stable_ids(world);
     let dono = world.get::<StableId>(e).map_or(0, |s| s.0);
     let (doc, _) = grava_desde(dono, CENA, FAZER_DESDE, Some(lugar_do_fazer))?;
-    let track = ph2d_macro::codec::read(&doc)
-        .ok()?
-        .tracks
-        .into_iter()
-        .next()?;
+    let mut macro_doc = ph2d_macro::codec::read(&doc).ok()?;
+    // O texto do AUTOR na 1.ª etapa (o «Balloon text…» do painel MACROS): o porquê, por cima do quê.
+    let track = macro_doc.tracks.first_mut()?;
+    let k = super::tutorial::criterios(track).ok()?.first()?.k;
+    let ancora = ph2d_macro::LeitorDaFamilia::etapas(&super::etapas::LeitorDoMotion, &track.events)
+        .get(k)?
+        .inicio;
+    track.edicao_mut(ancora).dica =
+        Some("The wind needs a box to blow in: start the chain at the Box.".into());
+    let track = track.clone();
+    let doc = ph2d_macro::codec::write(&macro_doc);
     super::tutorial::recomeca(cx.motion, dono, &track).ok()?;
     // O grafo inicial é a cena, não um passo que o Ctrl+Z do aluno desfaça.
     cx.motion.history = ph2d_motion_doc::MotionHistory::new();

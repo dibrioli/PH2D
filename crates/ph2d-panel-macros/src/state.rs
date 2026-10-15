@@ -16,6 +16,8 @@ pub struct MacrosPanelState {
     pub escolhida: Option<Escolhida>,
     /// O campo de renomear está aberto sobre a linha escolhida.
     pub renomeando: bool,
+    /// O campo aberto escreve o texto do balão do tutorial, não o nome.
+    pub dica: bool,
 }
 
 thread_local! {

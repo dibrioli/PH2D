@@ -174,6 +174,18 @@ fn a_rich_document_round_trips_to_the_byte() {
             },
         ],
     };
+    // As edições de uma etapa, todas as etiquetas — a 8 (o texto do balão do tutorial) inclusive.
+    let mut doc = doc;
+    doc.tracks[0].edicoes = vec![ph2d_macro::EdicaoDeEtapa {
+        ancora: 3,
+        nome: Some("Céu".into()),
+        dica: Some("Ligue a caixa ao vento".into()),
+        espera_us: -250,
+        trocas: vec![(4, vec![1, 2])],
+        insercoes: vec![(5, vec![3])],
+        sai_da_gravacao: true,
+        apagada: true,
+    }];
     let bytes = codec::write(&doc);
     let back = codec::read(&bytes).expect("lê");
     assert_eq!(back, doc);

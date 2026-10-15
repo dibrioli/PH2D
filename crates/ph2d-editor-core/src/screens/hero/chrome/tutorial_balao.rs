@@ -104,19 +104,28 @@ pub fn paint_balao(
     let gap = Spacing::Xs.px();
     let inner_w = BALAO_W - pad * 2.0;
     let fonte = TypeToken::Sm.px();
-    // A altura: mede a frase (e o erro) antes de pintar o cartão.
-    let mut medida = VectorScene::new();
-    let mut h_texto = paint_text_block(ts, &mut medida, &corpo, 0.0, 0.0, fonte, inner_w, acento);
+    // Os blocos de texto: o que o AUTOR escreveu (conteúdo), a frase derivada (o que fazer) e a recusa.
     let erro = b.erro.as_ref().map(|e| {
         let s = ph2d_i18n::tr(e.chave);
         e.detalhe
             .as_ref()
             .map_or_else(|| s.to_owned(), |d| s.replace("{detail}", d))
     });
-    if let Some(e) = &erro {
-        h_texto += gap + paint_text_block(ts, &mut medida, e, 0.0, 0.0, fonte, inner_w, acento);
-    }
-    let h = pad * 2.0 + ROW_H_PX + gap + h_texto + gap + ROW_H_PX;
+    let blocos: Vec<(&str, ColorToken)> = [
+        b.dica.as_deref().map(|d| (d, ColorToken::Text1)),
+        Some((corpo.as_str(), ColorToken::Text2)),
+        erro.as_deref().map(|e| (e, ColorToken::Danger)),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    // A altura: mede os blocos antes de pintar o cartão.
+    let mut medida = VectorScene::new();
+    let h_texto: f32 = blocos
+        .iter()
+        .map(|(t, _)| paint_text_block(ts, &mut medida, t, 0.0, 0.0, fonte, inner_w, acento) + gap)
+        .sum();
+    let h = pad * 2.0 + ROW_H_PX + gap + h_texto + ROW_H_PX;
     let r = lugar(alvos.first().copied(), h, viewport);
 
     // O fio do cartão ao alvo: a relação, fina, por baixo do cartão.
@@ -151,30 +160,9 @@ pub fn paint_balao(
         resolve(ColorToken::Text1, theme),
     );
     y += ROW_H_PX + gap;
-    y += paint_text_block(
-        ts,
-        scene,
-        &corpo,
-        x,
-        y,
-        fonte,
-        inner_w,
-        resolve(ColorToken::Text2, theme),
-    );
-    if let Some(e) = &erro {
-        y += gap;
-        y += paint_text_block(
-            ts,
-            scene,
-            e,
-            x,
-            y,
-            fonte,
-            inner_w,
-            resolve(ColorToken::Danger, theme),
-        );
+    for (t, cor) in &blocos {
+        y += paint_text_block(ts, scene, t, x, y, fonte, inner_w, resolve(*cor, theme)) + gap;
     }
-    y += gap;
 
     let bw = ((inner_w - gap) * 0.5).max(1.0);
     let recomeca = Rect::new(x, y, bw, ROW_H_PX);

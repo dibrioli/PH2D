@@ -114,6 +114,8 @@ pub struct EtapaView {
     pub tipo: TipoDaEtapaView,
     /// O nome que o artista escreveu.
     pub nome: Option<String>,
+    /// O texto do balão do tutorial que o autor escreveu.
+    pub dica: Option<String>,
     /// Início e fim na trilha QUE TOCA, em segundos de macro.
     pub t0_s: f64,
     pub t1_s: f64,
@@ -162,6 +164,8 @@ pub enum CampoDaEtapa {
     Espera(f64),
     /// `None` = volta ao nome derivado.
     Nome(Option<String>),
+    /// O texto do balão do tutorial «fazer» nesta etapa; `None` = só a frase derivada.
+    Dica(Option<String>),
 }
 
 /// O que o painel MACROS e a linha de etapas da Timeline pedem.

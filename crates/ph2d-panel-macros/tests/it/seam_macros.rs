@@ -29,6 +29,7 @@ fn etapa(k: usize, props: PropsDaEtapa) -> EtapaView {
         familia: FamiliaDaMacro::Painter,
         tipo: TipoDaEtapaView::Pincelada(k + 1),
         nome: None,
+        dica: None,
         t0_s: t,
         t1_s: t + 0.5,
         espera_s: 0.0,
@@ -141,6 +142,7 @@ fn clicar_numa_etapa_escolhe_a_e_leva_a_cabeca_ao_fim_dela() {
     for id in [
         ids::MACROS_RENAME,
         ids::MACROS_DELETE,
+        ids::MACROS_HINT,
         ids::MACROS_WAIT,
         ids::MACROS_COLOR,
         ids::MACROS_SIZE,
@@ -151,6 +153,36 @@ fn clicar_numa_etapa_escolhe_a_e_leva_a_cabeca_ao_fim_dela() {
         p.rect(ids::MACROS_VALUE).is_none(),
         "uma pincelada não tem valor"
     );
+}
+
+/// ⭐ «Balloon text…» abre o campo da linha com o texto do balão, e o Submit chega como a edição do
+/// texto — não do nome (o mesmo campo serve os dois).
+#[test]
+fn o_texto_do_balao_submete_a_dica_e_nao_o_nome() {
+    let mut p = Palco::novo(info(None, None));
+    let _ = p.carrega(ids::row_id(0, 1));
+    p.pinta();
+    let _ = p.carrega(ids::MACROS_HINT);
+    assert!(p.st.renomeando && p.st.dica);
+    p.host
+        .set_text(ids::MACROS_RENAME_INPUT, "Ligue a caixa ao vento");
+    let _ = p
+        .host
+        .apply_panel_event::<MacrosPanel>(&mut p.st, WidgetEvent::Submit(ids::MACROS_RENAME_INPUT));
+    so(
+        &p.host.drained_actions(),
+        MacroRequest::Edita {
+            entity_bits: BITS,
+            trilha: 0,
+            k: 1,
+            campo: CampoDaEtapa::Dica(Some("Ligue a caixa ao vento".into())),
+        },
+    );
+    assert!(!p.st.dica, "o campo fechou");
+    // Controlo: o Renomear seguinte volta a escrever o NOME.
+    p.pinta();
+    let _ = p.carrega(ids::MACROS_RENAME);
+    assert!(p.st.renomeando && !p.st.dica);
 }
 
 #[test]

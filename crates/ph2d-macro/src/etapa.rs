@@ -54,6 +54,9 @@ pub struct EdicaoDeEtapa {
     pub ancora: usize,
     /// O nome que o artista escreveu (o derivado não se grava).
     pub nome: Option<String>,
+    /// O texto que o autor escreveu para o balão do tutorial «fazer» nesta etapa (conteúdo; não muda o
+    /// que toca).
+    pub dica: Option<String>,
     /// Tempo acrescentado (+) ou tirado (−) ANTES da etapa, µs; tudo o que vem depois anda com ela.
     pub espera_us: i64,
     /// Cargas trocadas: `(evento da gravação, carga nova)`.

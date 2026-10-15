@@ -11,9 +11,47 @@ type Onde<'a> = (&'a Config, Grade, ([u32; 2], [u32; 2]), (u32, u32));
 /// entorno), a cada 60 leituras — o custo que o dono vê no app inteiro, não o da régua.
 /// ⭐ W5v: e ONDE — a janela, a grade das cascatas, a fina (texels finos por texel, a captura, a região da
 /// janela na grade da fluência) e a aritmética: o que uma régua tem de reproduzir.
-pub(super) fn relatar_custo(t: &TemposMs, entorno: Option<&TemposMs>, onde: Onde<'_>, n: u32) {
-    if !n.is_multiple_of(60) || std::env::var_os("PH2D_LIGHT2D_CUSTO").is_none() {
-        return;
+/// ⭐ W5w: e o MÍNIMO e a MEDIANA das 60 leituras (a amostra solta é ruído); `PH2D_LIGHT2D_RENASCE=<k>` faz o
+/// solver da vista renascer a cada `k` janelas no MESMO processo (a `c2` do High varia entre processos e
+/// não dentro: a régua do regime de alocação). Devolve se o solver renasce agora.
+pub(super) fn relatar_custo(
+    janela: &mut JanelaDeCusto,
+    t: &TemposMs,
+    entorno: Option<&TemposMs>,
+    onde: Onde<'_>,
+    n: u32,
+) -> bool {
+    if std::env::var_os("PH2D_LIGHT2D_CUSTO").is_none() {
+        return false;
+    }
+    let total = t.total() + entorno.map_or(0.0, TemposMs::total);
+    janela.total.push(total);
+    janela.c2.push(t.c2_total());
+    janela.fina.push(t.c3_fina);
+    if !n.is_multiple_of(60) {
+        return false;
+    }
+    let (total_min, total_med) = min_e_mediana(&mut janela.total);
+    let (c2_min, c2_med) = min_e_mediana(&mut janela.c2);
+    let (fina_min, fina_med) = min_e_mediana(&mut janela.fina);
+    eprintln!(
+        "[luz2d] janela g{} w{} · {} leituras · total min {total_min:.2} med {total_med:.2} · c2 min \
+         {c2_min:.2} med {c2_med:.2} · fina min {fina_min:.2} med {fina_med:.2}",
+        janela.geracao,
+        janela.n,
+        janela.c2.len(),
+    );
+    janela.total.clear();
+    janela.c2.clear();
+    janela.fina.clear();
+    janela.n += 1;
+    let renasce = std::env::var("PH2D_LIGHT2D_RENASCE")
+        .ok()
+        .and_then(|v| v.trim().parse::<u32>().ok())
+        .is_some_and(|k| k > 0 && janela.n.is_multiple_of(k));
+    if renasce {
+        janela.geracao += 1;
+        janela.n = 0;
     }
     let (cfg, fluencia, (i, f), alvo) = onde;
     eprintln!(
@@ -34,7 +72,7 @@ pub(super) fn relatar_custo(t: &TemposMs, entorno: Option<&TemposMs>, onde: Onde
     eprintln!(
         "[luz2d] custo {:.2} ms · grade {}×{} · c0 {:.2} c1 {:.2} c2 {:.2} vis {:.2} fina {:.2} c0_fina {:.2} \
          preenche {:.2} másc {:.2} rebote {:.2}+{:.2} miolo {:.2} · entorno {:.2}",
-        t.total() + entorno.map_or(0.0, TemposMs::total),
+        total,
         grade.0,
         grade.1,
         t.c0,
@@ -50,6 +88,25 @@ pub(super) fn relatar_custo(t: &TemposMs, entorno: Option<&TemposMs>, onde: Onde
         t.c3_miolo,
         entorno.map_or(0.0, TemposMs::total),
     );
+    renasce
+}
+
+/// As leituras da janela corrente do instrumento ([`relatar_custo`]): a geração do solver e a janela nela.
+#[derive(Default)]
+pub(super) struct JanelaDeCusto {
+    total: Vec<f64>,
+    c2: Vec<f64>,
+    fina: Vec<f64>,
+    geracao: u32,
+    n: u32,
+}
+
+fn min_e_mediana(v: &mut [f64]) -> (f64, f64) {
+    if v.is_empty() {
+        return (f64::NAN, f64::NAN);
+    }
+    v.sort_by(f64::total_cmp);
+    (v[0], v[v.len() / 2])
 }
 
 impl super::LuzDoQuadro {

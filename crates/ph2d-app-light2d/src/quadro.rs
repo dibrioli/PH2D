@@ -98,6 +98,7 @@ pub struct LuzDoQuadro {
     /// ⭐ W5e: quantas vezes um solver da vista foi MONTADO (cada uma aloca a grade inteira).
     montagens: u32,
     leituras: u32,
+    custo_janela: leituras::JanelaDeCusto,
     /// ⭐ W5i: a estufa das pipelines (desligada por omissão: os portões medem o quadro síncrono).
     forno: crate::forno::Forno,
     /// ⭐ W5i: a configuração deste quadro ainda está na estufa — o quadro sai sem luz, sem travar.
@@ -155,6 +156,7 @@ impl LuzDoQuadro {
             custo_ms: None,
             montagens: 0,
             leituras: 0,
+            custo_janela: leituras::JanelaDeCusto::default(),
             forno: crate::forno::Forno::default(),
             aquecendo: false,
             adiantado: false,
@@ -559,6 +561,7 @@ impl LuzDoQuadro {
         // ⭐ O custo de placa lê-se SEM ESPERAR (de há poucos quadros) sempre que há preferência do
         // editor — o Inspector mostra-o em todo nível; com o Automático desligado ficava congelado
         // no último nível automático (smoke do dono, 10/10). Só o governador depende do Automático.
+        let mut renasce = false;
         if let Some(p) = self.preferencia
             && let Some(t) = r.solver.tempos_sem_esperar(gpu)
         {
@@ -573,7 +576,13 @@ impl LuzDoQuadro {
             let fluencia = r.solver.grade_da_fluencia();
             let regiao = crate::grade::regiao_da_janela(fluencia, self.mundo_para_tela, self.alvo_px);
             let onde = (r.solver.config(), fluencia, regiao, self.alvo_px);
-            leituras::relatar_custo(&t, te.as_ref(), onde, self.leituras);
+            renasce = leituras::relatar_custo(
+                &mut self.custo_janela,
+                &t,
+                te.as_ref(),
+                onde,
+                self.leituras,
+            );
             if p.automatica {
                 let custo = crate::qualidade::Custo {
                     por_nivel: t.por_nivel(),
@@ -581,6 +590,9 @@ impl LuzDoQuadro {
                 };
                 self.governador.ler(custo, p.nivel);
             }
+        }
+        if renasce {
+            self.resolvido = None;
         }
     }
 

@@ -1,4 +1,4 @@
-# Handoff de continuação — Luz 2D, W5v: o fundo dos opacos (2026-10-15) — PARCIAL, decisão do dono pendente
+# Handoff de continuação — Luz 2D, W5v: o fundo dos opacos (2026-10-15) — PARCIAL: o dono ACEITOU, falta o fecho
 
 > Regras R1–R9: as do [handoff W5f](HANDOFF_CONTINUACAO_W5f_2026-10-11.md). Linha `line/Luz2D` sobre o `main`
 > `0aab2c1cb6` (o main não andou), por cima da W5u ([handoff](HANDOFF_CONTINUACAO_W5u_2026-10-15_O_CUSTO_POR_FIO.md)),
@@ -11,7 +11,7 @@
 
 ## 0. Estado
 
-⏳ **DECISÃO DO DONO PENDENTE** (regra: bit não mantido ⇒ parar). O corte é exato ao bit contra a lei, mas o produto
+✅ **O DONO ACEITOU (15/10)** o 1 ulp: a chave fica ligada por omissão (regra: bit não mantido ⇒ parar e perguntar — perguntado). O corte é exato ao bit contra a lei, mas o produto
 muda contra o de hoje em **1 byte num caso de 42**: Medium, cena 3, câmera em x=2 alt 2, texel (1840, 834), canal R
 0,80225 → 0,80176 (1 ulp f16, 0,06 %).
 
@@ -100,7 +100,7 @@ abertura recompila a luz. Nenhum contrato congelado. Sem schema, sem registo nov
 
 ## 6. ABERTO, por ordem
 
-1. A decisão do dono (aceitar o 1 ulp, ou padrão `false`).
+1. ✅ Decidido: o dono aceitou o 1 ulp (15/10); `miolo_salta_o_fundo` fica `true`.
 2. Fecho: gate batched (`PH2D_SUITE=fecho`), smoke do dono com os números, binário do smoke por último, cache
    aquecido, `bash scripts/agent-loop-profile.sh`, `rm -rf target/*/incremental`.
 3. Mais fina no Low: borda exata (−0,9), passo, média no eixo — mudam a imagem ⇒ produto.

@@ -223,9 +223,12 @@ pub struct MotionGraphPanelState {
     /// [`Self::refit_if_the_panel_moved_under_an_untouched_view`]. `None` depois de um enquadramento
     /// da selecção (esse é um pedido do artista, não uma vista automática).
     pub(crate) enquadrado_em: Option<(ph2d_editor_core::zones::Rect, ViewState)>,
-    /// O último pedido «traz estes nós à vista» e o painel e a vista com que foi cumprido — ver
-    /// `paint_enquadra_nos`.
-    pub(crate) nos_a_ver: Option<(Vec<u32>, ph2d_editor_core::zones::Rect, ViewState)>,
+    /// O último pedido «traz estes nós à vista» e o painel e a vista com que foi cumprido (`None` =
+    /// ainda por cumprir: os nós não chegaram ao retrato) — ver `paint_enquadra_nos`.
+    pub(crate) nos_a_ver: Option<(
+        Vec<u32>,
+        Option<(ph2d_editor_core::zones::Rect, ViewState, bool)>,
+    )>,
     /// A MANUAL fit (the chip or `F`) asked to frame the SELECTION, not the whole
     /// graph. Set only by [`Self::request_fit`] when there is a selection; the
     /// auto-fits (first sight, level change) leave it `false`, so they always frame

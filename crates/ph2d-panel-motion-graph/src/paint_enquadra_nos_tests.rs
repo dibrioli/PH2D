@@ -83,3 +83,24 @@ fn o_que_nao_cabe_afasta_ate_caber() {
     }
     set_current_motion_graph(None);
 }
+
+/// O pedido feito ANTES de o grafo chegar ao painel (o 1.º quadro da cena) espera por ele, e
+/// cumpre-se depois do auto-enquadramento.
+#[test]
+fn um_pedido_antes_do_grafo_espera_por_ele() {
+    let snap = cena();
+    let _ = take_frame_request();
+    let vazio = grafo(Vec::new());
+    set_current_motion_graph(Some(vazio.clone()));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::MotionGraphPanel>();
+    let mut state = MotionGraphPanelState::default();
+    request_frame_nodes(vec![9]);
+    let _ = pinta(&mut host, &mut state, layout(), &vazio);
+    set_current_motion_graph(Some(snap.clone()));
+    let _ = pinta(&mut host, &mut state, layout(), &snap);
+    assert!(
+        dentro(rect_de(&state, &snap, 9), layout().motion_graph),
+        "o Box entrou"
+    );
+    set_current_motion_graph(None);
+}

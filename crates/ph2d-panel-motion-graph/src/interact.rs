@@ -57,6 +57,7 @@ use key::{apply_key, dedup_double_dispatch, select_on_press, select_wire_on_pres
 
 #[path = "interact_zoom.rs"]
 mod zoom;
+pub(crate) use zoom::ZOOM_MIN;
 use zoom::apply_zoom;
 
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).

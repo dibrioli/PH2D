@@ -340,7 +340,10 @@ fn a_rampa_da_aguada_sobrevive_a_cada_campo_do_painel() {
         .iter()
         .filter(|id| valores_fora_do_padrao(**id).is_none())
         .count();
-    assert_eq!(sem_valores, 0, "campos da aquarela sem valores na tabela do gate");
+    assert_eq!(
+        sem_valores, 0,
+        "campos da aquarela sem valores na tabela do gate"
+    );
     let (mut casos, mut falhas, mut em_branco) = (0, Vec::new(), 0);
     for id in i::PAINTER_WATERCOLOR_FIELDS {
         for &v in valores_fora_do_padrao(id).unwrap_or(&[]) {
@@ -365,7 +368,10 @@ fn a_rampa_da_aguada_sobrevive_a_cada_campo_do_painel() {
             }
         }
     }
-    assert_eq!(em_branco, 2, "a Dilution 1 deixou de ser o único caso em branco");
+    assert_eq!(
+        em_branco, 2,
+        "a Dilution 1 deixou de ser o único caso em branco"
+    );
     assert!(
         falhas.is_empty(),
         "{} de {casos} casos perderam a rampa:\n{}",

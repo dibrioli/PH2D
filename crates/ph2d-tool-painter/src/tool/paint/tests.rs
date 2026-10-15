@@ -226,9 +226,9 @@ mod selection_editing;
 mod shape_bristles; // o tapete de cerdas do Wet Paint como tipo do Shape (plano 27 W1)
 mod shape_per_layer_color;
 mod shape_silhouette;
-mod sonda_a9_continuo_impasto; // lista 26 A9
-mod sonda_a8_carga_rampa; // lista 26 A8: que parâmetros da aguada apagam as cores da rampa do Shape
 mod solid_carimbos; // o Solid com imagem no Shape enche-se de carimbos (smoke 12/10)
+mod sonda_a8_carga_rampa; // lista 26 A8: que parâmetros da aguada apagam as cores da rampa do Shape
+mod sonda_a9_continuo_impasto; // lista 26 A9
 mod stroke_and_session;
 mod textura_tinge; // Bug #51: textura × tinta, o Randomize na textura, e o Randomize «a cada traço» (12/10)
 mod texture_and_tiling;

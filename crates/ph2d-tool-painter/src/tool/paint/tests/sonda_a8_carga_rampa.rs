@@ -157,7 +157,10 @@ fn le(camadas: Camadas, arma: &dyn Fn(&mut PainterTool)) -> Leitura {
         rampa: fracao_da_rampa(&um.canvas_rgba),
         corr: correlacao(&ts, &ps),
         traco: fracao_da_rampa(&tr.canvas_rgba),
-        igual_off: (um.canvas_rgba == off.canvas_rgba, tr.canvas_rgba == off_tr.canvas_rgba),
+        igual_off: (
+            um.canvas_rgba == off.canvas_rgba,
+            tr.canvas_rgba == off_tr.canvas_rgba,
+        ),
     }
 }
 
@@ -191,7 +194,11 @@ fn sonda_a8_que_parametros_da_aguada_apagam_a_rampa() {
     use crate::ids as i;
     let campos: Vec<(&str, ph2d_a11y::NodeId, [f64; 2])> = vec![
         ("Charge", i::PAINTER_WATERCOLOR_CHARGE, [0.5, 0.0]),
-        ("Charge (0,9 / 0,99)", i::PAINTER_WATERCOLOR_CHARGE, [0.9, 0.99]),
+        (
+            "Charge (0,9 / 0,99)",
+            i::PAINTER_WATERCOLOR_CHARGE,
+            [0.9, 0.99],
+        ),
         ("Dilution", i::PAINTER_WATERCOLOR_DILUTION, [0.5, 1.0]),
         ("Pull", i::PAINTER_WATERCOLOR_PULL, [0.5, 1.0]),
         ("Smudge", i::PAINTER_WATERCOLOR_SMUDGE, [0.5, 1.0]),
@@ -245,7 +252,12 @@ fn sonda_a8_que_parametros_da_aguada_apagam_a_rampa() {
         println!("| Textura | {nome} | — | {l} |");
     }
     // B&W: o tom sai no peso do carimbo (não no buffer da cor) — a Charge apaga-o também?
-    let alfa = |t: &PainterTool| t.canvas_rgba.chunks(4).map(|p| u64::from(p[3])).sum::<u64>();
+    let alfa = |t: &PainterTool| {
+        t.canvas_rgba
+            .chunks(4)
+            .map(|p| u64::from(p[3]))
+            .sum::<u64>()
+    };
     for (nome, charge) in [("B&W Charge 1", 1.0), ("B&W Charge 0,5", 0.5)] {
         let bw = dab(pincel(
             PaintMedia::Watercolor,
@@ -302,7 +314,11 @@ fn dab_em(mut t: PainterTool, p: [f32; 2]) -> PainterTool {
 }
 
 /// O pincel do traço (o de [`pincel`]) armado sobre uma ferramenta que já tem tinta.
-fn pincel_sobre(mut t: PainterTool, camadas: Camadas, arma: &dyn Fn(&mut PainterTool)) -> PainterTool {
+fn pincel_sobre(
+    mut t: PainterTool,
+    camadas: Camadas,
+    arma: &dyn Fn(&mut PainterTool),
+) -> PainterTool {
     let b = &mut t.paint.brush;
     b.radius_px = 14.0;
     b.color = [1.0, 0.0, 0.0];
@@ -338,7 +354,10 @@ fn sonda_a8_a_rampa_leva_a_cor_apanhada() {
                 if a[3] < 13 || b[3] < 13 {
                     continue;
                 }
-                let d: f64 = (0..3).map(|c| (f64::from(a[c]) - f64::from(b[c])).abs()).sum::<f64>() / 3.0;
+                let d: f64 = (0..3)
+                    .map(|c| (f64::from(a[c]) - f64::from(b[c])).abs())
+                    .sum::<f64>()
+                    / 3.0;
                 let k = usize::from(!poca[i]);
                 s[k] += d;
                 n[k] += 1;

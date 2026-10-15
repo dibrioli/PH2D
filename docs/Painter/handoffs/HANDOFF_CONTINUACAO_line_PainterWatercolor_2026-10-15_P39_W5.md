@@ -71,3 +71,30 @@ por mídia (Use Texture Colors esmaecido na água; Shape Color some no Wet Paint
 - **B6** (dono): manter a lisa, ou calibrá-la (`texv` da lisa = um número só, contra `fixtures/rebelle/ponta_textura_round_*`).
 - O resto do Shape: lista 26 B9 · B12 · C16 · C23 · C24; biblioteca de pontas PNG (D5).
 - `docs/Painter/00_INDEX.md` não cita a pasta `NewFeaturesWetPaint` (pré-existente).
+
+## §8 — Depois do smoke do dono (15/10): A7 na fila, A8 e A9 curados
+
+Smoke OK nos passos 1–5; B6 sem resposta ainda. O dono: *«quero a Shape Color no Wet Paint. Coloque na fila do
+plano»* ⇒ lista 26 **A7**, plano 27 **W6**. Dois defeitos do smoke anterior, caçados (sondas `tests/sonda_a8_carga_rampa.rs`,
+`tests/sonda_a9_continuo_impasto.rs`) e curados em `9751de461d`:
+
+- **A8 / [BUGS #54](../BUGS_painter_fechados_41_a_46.md)** — Watercolor, Charge < 1 apagava a rampa (só ela, nos 30
+  campos). `watercolor_accum_cor.rs` `buffer_dono_da_cor` (Pigment ou rampa ⇒ prioridade 1 nos dois ramos);
+  `watercolor_mixer.rs` `Apanha::mistura` (a rampa entra no lugar do pincel ANTES da mistura — antes ela descartava a
+  cor apanhada: Δ 0,2 → 24,2 na poça molhada). Portões: `a_rampa_da_aguada_sobrevive_a_cada_campo_do_painel`
+  (vermelho 8/124) · `a_rampa_leva_a_cor_que_a_brocha_apanhou`. Mutações 2/2.
+- **A9 / [BUGS #55](../BUGS_painter_fechados_41_a_46.md)** — Continuous com a Texture Color: a cor lida no centro do
+  dab da frente. `dab.rs` `silhouette_capsula_com` + `dab/cor_capsula.rs` `CorCapsula` (composição frente-para-trás
+  pelos mesmos sub-dabs); `bands.rs` usa-a. Rotas: o cache e o carimbo assado já excluíam a cápsula; aguada e Wet
+  Paint passam sub-dabs reais. Portão `capsula::a_cor_do_shape_no_continuous_iguala_o_spacing_pequeno` (Δcor ≤ 0,003,
+  matiz ≥ 0,992 nos 8 casos). Mutações 2/2 (centro ⇒ Δ 0,128; `w` total ⇒ Falloff Δ 0,237). Custo com padrão
+  procedural 0,38 → 0,57–0,90 do traço denso (medido sob `load` 30–45: ruidoso).
+- **C25 novo** (antigo, não curado): o relevo do Impasto arrasta o padrão do dab da frente com Spacing alto (Noise
+  Δrelevo 0,29/0,55) — pede prancha ao dono.
+
+Bateria do fecho: clippy `-D warnings --all-targets` (`PH2D_SUITE=fecho`; painter-brush,
+tool-painter, panel-painter-layers, app-painter) ✓ · `cargo fmt` (8 diffs de espaçamento nos testes, aplicado) ✓ ·
+`nextest-impacted` (base `0aab2c1cb6`) **18 459/18 461** em 555 s; os 2 vermelhos são `ph2d-light2d-gpu`
+`g4_o_custo_do_rc_nao_depende_do_numero_de_luzes` (6,77 % > 5 %) e `g4_o_custo_da_holografica_…` (49 %) — crate não
+tocada, ambos membros JÁ registados em [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md) (razão de relógios da placa),
+`load` 68–84 nas três corridas (108 no fim): confirmar numa máquina quieta antes de integrar.

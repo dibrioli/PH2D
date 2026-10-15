@@ -5,13 +5,12 @@
 
 use super::*;
 
-/// Os pedidos de moldura, layout, z e âncoras que o dreno do barramento recolheu neste quadro.
+/// Os pedidos de moldura, layout e âncoras que o dreno do barramento recolheu neste quadro.
 pub(super) struct FrameLayoutIntents {
     pub(super) pending_frame_clip: Option<bool>,
     pub(super) pending_layout_edit: Option<ph2d_app_vec::layout_edit::LayoutEdit>,
     pub(super) pending_anchor_edit: Option<crate::vec_anchor_edit::AnchorEdit>,
     pub(super) pending_layout_field: Option<(ph2d_app_vec::layout_edit::LayoutField, f64)>,
-    pub(super) pending_vec_z: Option<f64>,
 }
 
 impl crate::App {
@@ -35,7 +34,6 @@ impl crate::App {
             pending_layout_edit,
             pending_anchor_edit,
             pending_layout_field,
-            pending_vec_z,
         } = intents;
         let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
         // **A MOLDURA da seleção** (plano UI/UX W0): honra o chip e publica o estado. O
@@ -87,19 +85,6 @@ impl crate::App {
                 v
             };
             ph2d_app_vec::layout_edit::apply_layout_field(sim, &self.vec.entities, &sel, f, v);
-        }
-        // **O Z-INDEX**, honrado ANTES de publicar (a ordem dos vizinhos): publicar
-        // primeiro deixaria o campo a mostrar o valor ANTERIOR por um quadro.
-        if let Some(v) = pending_vec_z
-            && let Some(id) = sel.first()
-        {
-            ph2d_vec_entities::entities::zorder::set_authored_z(
-                sim,
-                &self.vec.entities,
-                *id,
-                // O clamp e' o do COMPONENTE, e mora na porta que escreve — nao no widget.
-                v.round().clamp(f64::from(i32::MIN), f64::from(i32::MAX)) as i32,
-            );
         }
         // AS ÂNCORAS (plano UI/UX W3): aplicar, e só depois publicar — publicar antes
         // deixaria o chip a mostrar a regra ANTERIOR por um frame, e o artista veria a

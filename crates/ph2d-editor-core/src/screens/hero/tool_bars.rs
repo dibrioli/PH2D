@@ -7,8 +7,8 @@
 //! no iPad, com fixar e desligar na MESMA entrega — a armadilha da *Contextual Task Bar*, estudo §4).
 
 use super::{
-    column_rects, grid_rects, inner, paint_button, paint_panel, paint_swatch, pinned_strip_rects,
-    strip_rects_at,
+    column_rects, grid_rects, inner, paint_button, paint_panel, paint_swatch, pinned_strip_rows,
+    strip_rows_at,
 };
 use crate::icons::IconId;
 use crate::ids;
@@ -78,18 +78,29 @@ pub fn placed(
             *r = super::mirrored(area, *r);
         }
     }
-    let has_actions = bars.actions.iter().any(|g| !g.is_empty());
+    let has_actions = bars
+        .actions
+        .iter()
+        .chain(&bars.actions_below)
+        .any(|g| !g.is_empty());
     if has_actions && !actions_off && (pinned || bars.selection.is_some()) {
+        // O chrome (fixar · desligar) fecha a 1.ª linha; a 2.ª vem por baixo dela.
         let mut groups = bars.actions.clone();
         groups.push(chrome_group(pinned));
         let sizes: Vec<usize> = groups.iter().map(Vec::len).collect();
+        let below: Vec<usize> = bars.actions_below.iter().map(Vec::len).collect();
+        let rows = [sizes.as_slice(), below.as_slice()];
         // Os ícones da ④ lêem-se ao lado da COLUNA, não ao das caras do Quadro (foto da cena 9).
         let s = super::button_px();
         let rects = match bars.selection {
-            Some(sel) if !pinned => strip_rects_at(area, sel, &sizes, s, super::selection_gap()),
-            _ => pinned_strip_rects(area, &sizes, s),
+            Some(sel) if !pinned => strip_rows_at(area, sel, &rows, s, super::selection_gap()),
+            _ => pinned_strip_rows(area, &rows, s),
         };
-        out.extend(groups.into_iter().flatten().zip(rects));
+        let buttons = groups
+            .into_iter()
+            .flatten()
+            .chain(bars.actions_below.iter().flatten().cloned());
+        out.extend(buttons.zip(rects));
     }
     out
 }

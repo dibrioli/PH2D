@@ -342,10 +342,6 @@ pub const VECTOR_SECTION_BOOLEAN: NodeId = hash_node_id("vector.section.boolean"
 
 pub const VECTOR_SECTION_EXPAND: NodeId = hash_node_id("vector.section.expand");
 
-pub const VECTOR_SECTION_ALIGN: NodeId = hash_node_id("vector.section.align");
-
-pub const VECTOR_SECTION_ARRANGE: NodeId = hash_node_id("vector.section.arrange");
-
 pub const VECTOR_SECTION_PATH: NodeId = hash_node_id("vector.section.path");
 
 pub const VECTOR_SECTION_TEXT: NodeId = hash_node_id("vector.section.text");

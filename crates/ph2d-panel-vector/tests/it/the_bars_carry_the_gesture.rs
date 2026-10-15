@@ -85,6 +85,33 @@ fn action_ids(b: &ToolBars) -> Vec<NodeId> {
     b.actions.iter().flatten().map(|x| x.id).collect()
 }
 
+fn below_ids(b: &ToolBars) -> Vec<NodeId> {
+    b.actions_below.iter().flatten().map(|x| x.id).collect()
+}
+
+/// Os verbos da antiga secção ARRANGE, na ④ (dono 15/10).
+const ARRANGE: [NodeId; 9] = [
+    p::VECTOR_ARRANGE_DUPLICATE,
+    t::VECTOR_ARRANGE_TO_FRONT,
+    t::VECTOR_ARRANGE_FORWARD,
+    t::VECTOR_ARRANGE_BACKWARD,
+    t::VECTOR_ARRANGE_TO_BACK,
+    t::VECTOR_ARRANGE_FLIP_H,
+    t::VECTOR_ARRANGE_FLIP_V,
+    t::VECTOR_ARRANGE_ROTATE_CCW,
+    t::VECTOR_ARRANGE_ROTATE_CW,
+];
+
+/// Os da antiga secção ALIGN, pela ordem da 2.ª linha da ④.
+const ALIGN: [NodeId; 6] = [
+    t::VECTOR_ALIGN_LEFT,
+    t::VECTOR_ALIGN_HCENTER,
+    t::VECTOR_ALIGN_RIGHT,
+    t::VECTOR_ALIGN_TOP,
+    t::VECTOR_ALIGN_VCENTER,
+    t::VECTOR_ALIGN_BOTTOM,
+];
+
 /// A matriz de quadros que as leis percorrem: cada modo × seleção × nós × simetria × lâmina.
 fn matriz() -> Vec<Retrato> {
     let mut out = Vec::new();
@@ -335,6 +362,79 @@ fn the_selection_actions_follow_the_selection() {
     );
 }
 
+/// ⭐ (dono 15/10) **O Arrange inteiro na 1.ª linha da ④ e o Alinhar na 2.ª** — com duas formas, e
+/// o Distribuir com três; nada disso sob uma ferramenta de clique preciso.
+#[test]
+fn the_arrange_verbs_ride_the_first_row_and_align_the_second() {
+    let bars = |mode, sel| {
+        Retrato {
+            sel,
+            ..Retrato::em(mode)
+        }
+        .barras()
+        .0
+    };
+    let one = bars(DrawMode::Select, 1);
+    for id in ARRANGE {
+        assert!(action_ids(&one).contains(&id), "{id:?} falta na 1.ª linha");
+    }
+    assert!(below_ids(&one).is_empty(), "uma forma não se alinha a nada");
+    let two = bars(DrawMode::Select, 2);
+    assert_eq!(below_ids(&two), ALIGN, "a 2.ª linha é o Alinhar, por ordem");
+    assert!(ALIGN.iter().all(|id| !action_ids(&two).contains(id)));
+    let three = bars(DrawMode::Node, 3);
+    let mut with_dist = ALIGN.to_vec();
+    with_dist.extend([t::VECTOR_DISTRIBUTE_H, t::VECTOR_DISTRIBUTE_V]);
+    assert_eq!(below_ids(&three), with_dist, "com três, o Distribuir");
+    assert!(
+        below_ids(&bars(DrawMode::Cut, 3)).is_empty(),
+        "a barra roubaria o clique de uma ferramenta precisa"
+    );
+    // Cada botão novo chega à porta do painel (o Distribuir não aparece na matriz, que pára em 2).
+    for id in with_dist {
+        let mut host = crate::host_aberto();
+        let out = host
+            .apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(id));
+        assert!(
+            out == EventOutcome::Consumed && !host.drained_actions().is_empty(),
+            "{id:?} pinta na ④ e o painel não o despacha"
+        );
+    }
+}
+
+/// … e o PAINEL já não os pinta (*«tire a seção Arrange do painel»*): com três formas, nenhum
+/// botão do Arrange nem do Alinhar tem rectângulo no corpo — e o cabeçalho do Fill tem (o
+/// controlo que torna o «nenhum» não-vazio).
+#[test]
+fn the_panel_no_longer_paints_arrange_nor_align() {
+    const ALTO: ph2d_editor_core::zones::Rect = ph2d_editor_core::zones::Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 4000.0,
+    };
+    ph2d_panel_vector::set_current_selection_count(3);
+    let mut host = crate::host_aberto();
+    let mut st = VectorPanelState;
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, ALTO, t::VECTOR_SECTION_FILL)
+            .is_some(),
+        "controlo: o cabeçalho do Fill devia estar pintado"
+    );
+    for id in ARRANGE
+        .into_iter()
+        .chain(ALIGN)
+        .chain([t::VECTOR_DISTRIBUTE_H, t::VECTOR_DISTRIBUTE_V])
+    {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut st, ALTO, id)
+                .is_none(),
+            "{id:?} voltou ao painel"
+        );
+    }
+    ph2d_panel_vector::set_current_selection_count(0);
+}
+
 /// O encaixe: um pulldown sempre, com as quatro chaves; cada linha é o interruptor para o OUTRO estado.
 #[test]
 fn the_snap_pulldown_holds_the_four_switches() {
@@ -424,6 +524,18 @@ fn every_control_of_the_moved_sections_has_a_new_home() {
         (p::VECTOR_PATH_JOIN, "Join"),
         (p::VECTOR_PATH_WELD, "Weld"),
     ]);
+    // As secções Arrange e Align (dono 15/10) — o Z numérico foi para o Inspector no modo Objeto.
+    saidas.extend(ARRANGE.iter().chain(&ALIGN).map(|&id| (id, "Arrange/Align")));
+    saidas.extend([
+        (t::VECTOR_DISTRIBUTE_H, "Distribute H"),
+        (t::VECTOR_DISTRIBUTE_V, "Distribute V"),
+    ]);
+    let (b, _) = Retrato {
+        sel: 3,
+        ..Retrato::em(DrawMode::Select)
+    }
+    .barras();
+    casa.extend(b.painted_ids());
     for k in SymmetryKind::ALL {
         saidas.push((
             ph2d_tool_vector::params::symmetry_kind_id(*k),

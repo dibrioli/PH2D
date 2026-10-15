@@ -89,29 +89,6 @@ fn the_scene_order_door_is_gone_from_the_shell() {
     );
 }
 
-/// **O número que o painel MOSTRA e o que ele ESCREVE são a mesma porta.**
-///
-/// ⚠️ São duas travessias da mesma fiação e é fácil ligá-las a lugares diferentes — o campo lê o
-/// autorado e o commit escreve noutro sítio. Aí ele mostra um número e edita outro, e nada falha.
-#[test]
-fn the_published_z_index_comes_from_the_same_module_as_the_write() {
-    // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs`: desde a OBRA 2 da
-    // `line/render-loop` (2026-09-13) o quadro vive em fases, e a publicação do Z já mora na
-    // `fase_vector_selection_states_panel`.
-    let s = crate::frame_text::render_frame();
-    let at = s
-        .find("ph2d_panel_vector::state::set_z_index(")
-        .expect("a shell deixou de publicar o Z-index: o campo some do painel em silêncio");
-    assert!(
-        s[at..at + 400].contains("zorder::authored_z("),
-        "o Z publicado nao vem da porta que o campo escreve"
-    );
-    assert!(
-        s.contains("zorder::set_authored_z("),
-        "o commit do campo Z nao chega a' porta de escrita — o artista digita e nada acontece"
-    );
-}
-
 /// **O `reorder` escreve o Z e NÃO ESCREVE A ÁRVORE** (Enio, 2026-08-04).
 ///
 /// ⚠️ O gate de comportamento (`every_verb_writes_the_z_and_leaves_the_hierarchy_alone`) mede a

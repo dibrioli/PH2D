@@ -1073,9 +1073,10 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint_frame_shared.rs",
         "orquestrador puro: delega os quatro corpos a `sections::paint_*_section` (a11y-wired)",
     ),
+    // O antigo `paint_arrange` (renomeado a 15/10, quando o Arrange e o Align foram para a ④).
     (
-        "ph2d-panel-vector/src/paint_arrange.rs",
-        "delegates to row2/action_button (paint_button-backed) in paint_sections",
+        "ph2d-panel-vector/src/paint_fill_type.rs",
+        "delegates to row2/slider_row (paint_button/paint_slider-backed) in paint_sections",
     ),
     // ⭐ A seção PATH saiu do `paint_arrange` em 2026-09-16 (tecto de LOC depois da migração dos
     // rótulos) e leva a mesma delegação: só `row2`/`action_button`, nenhum widget próprio.
@@ -1165,7 +1166,7 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "delegates to BodyCtx::slider_row/slider_row_linked (paint_slider/paint_number_input-backed) in paint_rows",
     ),
     // Vector connector subsection (Route / Jetty / Spread) — mesmo caso do
-    // `paint_arrange` acima: a seção não tem widget PRÓPRIO. As três linhas dela são
+    // `paint_fill_type` acima: a seção não tem widget PRÓPRIO. As três linhas dela são
     // `BodyCtx::labeled_choice_button` / `labeled_number_field` (em `paint_modes`), que
     // pintam pelos primitivos a11y-wired `paint_segmented_button` e
     // `paint_number_input_with_buffer` — os MESMOS que desenham os parâmetros de forma.

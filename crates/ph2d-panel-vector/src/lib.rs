@@ -135,12 +135,9 @@ pub(crate) fn rotation_from_track(t: f64) -> f64 {
 pub(crate) fn rotation_to_track(deg: f64) -> f32 {
     ((deg / ROTATION_MAX) * 0.5 + 0.5) as f32
 }
-/// A seção ALIGN / DISTRIBUTE (cortada de `paint_arrange`).
-mod paint_align;
 /// A seção CONSTRAINTS — as âncoras (plano UI/UX W3), irmã de `paint_layout`.
 mod paint_anchors;
 mod paint_appearance;
-mod paint_arrange;
 /// ⭐⭐⭐ O corpo como uma LISTA — ordem do artista e tema por secção (2026-09-30).
 mod paint_body_plan;
 mod paint_boolean;
@@ -149,6 +146,8 @@ mod paint_clip;
 mod paint_components;
 /// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
 mod paint_connector;
+/// Fill-type, Fill-rule e Compound (era `paint_arrange` até 15/10).
+mod paint_fill_type;
 /// A seção FRAME — o contêiner (plano UI/UX W0).
 mod paint_frame;
 mod paint_layout;

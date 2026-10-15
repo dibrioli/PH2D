@@ -84,6 +84,8 @@ pub struct ToolBars {
     pub row_tail: Vec<ToolRailEntry>,
     /// ④ as ações da seleção, por grupos. Vazio ⇒ sem barra.
     pub actions: Vec<Vec<BarButton>>,
+    /// ④ a 2.ª linha, por baixo da 1.ª (o Alinhar do vetor, dono 15/10). Vazia ⇒ uma linha só.
+    pub actions_below: Vec<Vec<BarButton>>,
     /// ④ o rectângulo da seleção no ECRÃ — a âncora da barra quando não está fixada.
     pub selection: Option<Rect>,
     /// ⑤ a dica da ferramenta na mão (o que o clique, o arrasto e os modificadores fazem).
@@ -102,6 +104,7 @@ impl ToolBars {
             .flatten()
             .chain(self.flyout.iter().flat_map(|(_, f)| f.iter()))
             .chain(self.actions.iter().flatten())
+            .chain(self.actions_below.iter().flatten())
             .map(|b| b.id);
         let row = self
             .row_lead

@@ -172,3 +172,70 @@ fn the_action_bar_floats_one_handle_plus_lg_off_the_selection() {
         mid.y - bar_bottom
     );
 }
+
+/// ⭐ (dono 15/10) **A ④ em duas linhas**: a 2.ª (o Alinhar) fica por BAIXO da 1.ª, centrada nela,
+/// e o bloco inteiro pousa à mesma folga da seleção — é a base da 2.ª que fica a `selection_gap`.
+/// Fixada, as duas linhas descem juntas do topo da área.
+#[test]
+fn the_second_row_of_the_action_bar_sits_under_the_first_centred() {
+    use crate::interaction::{BarButton, BarFace, BarFamily, ToolBars};
+    let b = |id| BarButton {
+        id: NodeId(id),
+        face: BarFace::Icon(crate::icons::IconId::Select),
+        label: String::new(),
+        on: false,
+        family: BarFamily::Neutral,
+    };
+    let a = Rect::new(300.0, 80.0, 1200.0, 800.0);
+    let mid = Rect::new(a.x + 400.0, a.y + 300.0, 120.0, 90.0);
+    let bars = ToolBars {
+        actions: vec![(100..105).map(b).collect(), (105..109).map(b).collect()],
+        actions_below: vec![(200..203).map(b).collect(), (203..206).map(b).collect()],
+        selection: Some(mid),
+        ..ToolBars::default()
+    };
+    for pinned in [false, true] {
+        let all = tool_bars::placed(&bars, a, false, pinned, false);
+        let span = |lo: u64, hi: u64| {
+            let rs: Vec<Rect> = all
+                .iter()
+                .filter(|(btn, _)| (lo..hi).contains(&btn.id.0))
+                .map(|(_, r)| *r)
+                .collect();
+            assert_eq!(rs.len() as u64, hi - lo, "faltam botões em {lo}..{hi}");
+            let x0 = rs.iter().map(|r| r.x).fold(f32::MAX, f32::min);
+            let x1 = rs.iter().map(|r| r.x + r.w).fold(f32::MIN, f32::max);
+            let y0 = rs.iter().map(|r| r.y).fold(f32::MAX, f32::min);
+            let y1 = rs.iter().map(|r| r.y + r.h).fold(f32::MIN, f32::max);
+            (x0, x1, y0, y1)
+        };
+        // A 1.ª linha leva o chrome (fixar · desligar) no fim: os ids dele não são destes.
+        let top = span(100, 109);
+        let low = span(200, 206);
+        assert!(
+            (low.2 - top.3 - gap()).abs() < 1e-3,
+            "a 2.ª linha a um `gap` da 1.ª, não {}",
+            low.2 - top.3
+        );
+        let chrome_x1 = all
+            .iter()
+            .filter(|(btn, _)| btn.id == crate::ids::SELECTION_ACTIONS_OFF)
+            .map(|(_, r)| r.x + r.w)
+            .next()
+            .expect("o ✕ fecha a 1.ª linha");
+        let centre_top = (top.0 + chrome_x1) / 2.0;
+        assert!(
+            ((low.0 + low.1) / 2.0 - centre_top).abs() < 1e-3,
+            "a 2.ª linha centrada na 1.ª"
+        );
+        if pinned {
+            assert!((top.2 - (a.y + Spacing::Md.px())).abs() < 1e-3, "fixada: no topo");
+        } else {
+            assert!(
+                (mid.y - low.3 - selection_gap()).abs() < 1e-3,
+                "a base da 2.ª linha a `selection_gap` da seleção, não {}",
+                mid.y - low.3
+            );
+        }
+    }
+}

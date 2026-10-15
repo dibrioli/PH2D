@@ -164,9 +164,8 @@ impl BodyCtx<'_> {
 /// ⭐ D10 ③ — as secções que nascem RECOLHIDAS: Avançado (o resto das booleanas e do arranjo),
 /// Contêiner e Interação. Antes abriam ANTES do Stroke (foto `antes_01`): o `States`, com quatro
 /// linhas `Rec` e onze curvas, ocupava o meio do painel.
-pub(crate) const COLLAPSED_BY_DEFAULT: [NodeId; 10] = [
+pub(crate) const COLLAPSED_BY_DEFAULT: [NodeId; 9] = [
     ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
-    ph2d_tool_vector::ids::VECTOR_SECTION_ARRANGE,
     ph2d_tool_vector::ids::VECTOR_SECTION_FRAME,
     ph2d_tool_vector::ids::VECTOR_SECTION_CLIP,
     crate::ids::VECTOR_SECTION_LAYOUT,
@@ -187,10 +186,8 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     // ⛔ D10: `Tool` → coluna ①; o catálogo `Shape` → flyout da ①; `Pencil`, `Symmetry` e `Snap` →
     // fila ②; `Path` → ② (no Node), ④ e o ⚙ (no Select). Saíram do painel na mesma obra: *um
     // comando, uma porta*. O que fica é o que a SELEÇÃO é, por esta ordem.
-    // ③ o que a SELEÇÃO é (D10, `03_plano.md` §2) — Alinhar no topo (com seleção), a geometria, a aparência e a cor.
-    p.seccao(VECTOR_SECTION_ALIGN, scope::ALWAYS, |b, y| {
-        b.align_section(y)
-    });
+    // ③ o que a SELEÇÃO é (D10, `03_plano.md` §2) — a geometria, a aparência e a cor. ⛔ O Alinhar
+    // e o Arrange saíram a 15/10 (dono) para a barra ④: o Alinhar é a 2.ª linha dela.
     p.seccao(VECTOR_SECTION_TRANSFORM, scope::ALWAYS, |b, y| {
         b.transform_section(y)
     });
@@ -257,12 +254,9 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     p.seccao(VECTOR_SECTION_CONTOUR, scope::ALWAYS, |b, y| {
         b.contour_section(y)
     });
-    // ▸ Avançado — o resto das booleanas e do arranjo (os verbos frequentes estão na barra ④). Recolhido por omissão.
+    // ▸ Avançado — o resto das booleanas (os verbos frequentes estão na barra ④). Recolhido por omissão.
     p.seccao(VECTOR_SECTION_BOOLEAN, scope::WHEN_SELECTED, |b, y| {
         b.boolean_section(y)
-    });
-    p.seccao(VECTOR_SECTION_ARRANGE, scope::WHEN_SELECTED, |b, y| {
-        b.arrange_section(y)
     });
     // ▸ Contêiner — recolhido por omissão (antes abria ANTES do Stroke: foto `antes_01`).
     p.seccao(VECTOR_SECTION_FRAME, scope::ALWAYS, |b, y| {

@@ -6,8 +6,7 @@ lib.rs	panel
 art_vocabulary.rs	art
 font_dropdown.rs	text
 icon_dropdown.rs	icon
-paint_arrange.rs	arrange
-paint_align.rs	arrange
+paint_fill_type.rs	arrange
 paint_path_ops.rs	arrange
 paint_blend.rs	blend
 paint_brush.rs	brush

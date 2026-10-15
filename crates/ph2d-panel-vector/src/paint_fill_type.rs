@@ -1,18 +1,13 @@
-//! Subsection painters for the Vector Style panel: **a seção ARRANGE** (o Z-index, os quatro
-//! botões de z-order, Flip e Rotate), o SNAP, os seletores de Fill-type + Fill-rule e a linha
-//! Make/Release Compound. Split from `paint_sections` to keep that file under the 600-LOC panel
-//! cap; it's an `impl BodyCtx` block over there. ⚠️ O ALIGN e o PATH (os botões de remodelar)
-//! saíram em 2026-09-16 para `paint_align` e `paint_path_ops`.
+//! Subsection painters for the Vector Style panel: os seletores de Fill-type + Fill-rule, a linha
+//! Make/Release Compound e a fileira segmentada que eles partilham.
 //!
-//! ⚠️ A `arrange_section` mudou-se para cá quando o READOUT do Z-index (Enio, 2026-08-04) levou o
-//! `paint_sections` a 602 — e o corte é por ASSUNTO, não por tamanho: este arquivo já se chamava
-//! `paint_arrange`, e a seção que lhe dá o nome vivia noutro sítio.
+//! ⚠️ Chamava-se `paint_arrange` até 15/10, quando o ARRANGE e o ALIGN saíram do painel para a
+//! barra ④ (dono: *«tire a seção Arrange do painel»*; o Z é do Inspector no modo Objeto).
 
 use crate::paint_sections::BodyCtx;
 use crate::state;
 use crate::state::{FillKind, PathFillRule};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
-use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::Spacing;
@@ -21,106 +16,6 @@ use ph2d_tokens::Spacing;
 const FULL_TURN_DEG: f64 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
 
 impl BodyCtx<'_> {
-    /// Seção **ARRANGE** — Duplicate + z-order (2×2) + Flip + Rotate. Age sobre o path
-    /// selecionado (comandos de documento pelo dreno da shell).
-    pub(crate) fn arrange_section(&mut self, y: f32) -> f32 {
-        let (mut y, collapsed) = self.section_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_ARRANGE,
-            tr("panel.vector.section.arrange"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        y = self.action_button(
-            crate::ids::VECTOR_ARRANGE_DUPLICATE,
-            tr("panel.vector.arrange.duplicate"),
-            y,
-        );
-        // **O Z-INDEX GLOBAL** (Enio, 2026-08-04: *"o Z index deve ser global e sobrepõe a ordem
-        // na hierarquia"*) — maior = mais à frente, a convenção do `CanvasItem.z_index` do Godot.
-        // A ordem da Hierarquia só decide entre objetos que EMPATAM neste número.
-        //
-        // ⚠️ Ele vem ANTES dos quatro botões de propósito: é o número que manda, e eles movem a
-        // forma *dentro* do que ele permite. Só é oferecido com uma forma selecionada — um campo
-        // sem resposta única seria um controlo que escreve num objeto que o artista não nomeou.
-        if state::z_index().is_some() {
-            y = self.lone_number_row(
-                tr("panel.vector.arrange.z"),
-                crate::ids::VECTOR_ARRANGE_Z,
-                y,
-            );
-        }
-        // Z-order: 2×2 grid — To Back | To Front · Backward | Forward.
-        let zorder = [
-            (
-                ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK,
-                tr("panel.vector.arrange.to_back"),
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT,
-                tr("panel.vector.arrange.to_front"),
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD,
-                tr("panel.vector.arrange.backward"),
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD,
-                tr("panel.vector.arrange.forward"),
-            ),
-        ];
-        let z_cols = 2usize;
-        let z_gap = Spacing::Sm.px();
-        let z_w = ((self.inner_w - z_gap * (z_cols as f32 - 1.0)) / z_cols as f32).max(1.0);
-        let z_top = y;
-        for (i, (id, label)) in zorder.iter().enumerate() {
-            let rx = self.inner_x + (i % z_cols) as f32 * (z_w + z_gap);
-            let ry = z_top + (i / z_cols) as f32 * (self.row_h + z_gap);
-            let rect = Rect::new(rx, ry, z_w, self.row_h);
-            let bstate = self.store.button_visual(*id);
-            let btn = Button::new(*id, *label)
-                .kind(ButtonKind::Default)
-                .visual(bstate);
-            paint_button(&btn, rect, self.scene, self.text_system, self.theme);
-            self.hit_index.register(*id, rect);
-        }
-        let z_rows = zorder.len().div_ceil(z_cols) as f32;
-        y = z_top + z_rows * self.row_h + (z_rows - 1.0) * z_gap + self.row_gap;
-
-        // Flip (mirror) + Rotate (90°) — each a 2-col row of action buttons.
-        y = self.row2(
-            z_w,
-            z_gap,
-            [
-                (
-                    ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H,
-                    tr("panel.vector.arrange.flip_h"),
-                ),
-                (
-                    ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_V,
-                    tr("panel.vector.arrange.flip_v"),
-                ),
-            ],
-            y,
-        );
-        self.row2(
-            z_w,
-            z_gap,
-            [
-                (
-                    ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW,
-                    tr("panel.vector.arrange.rotate_cw"),
-                ),
-                (
-                    ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CCW,
-                    tr("panel.vector.arrange.rotate_ccw"),
-                ),
-            ],
-            y,
-        )
-    }
-
     /// A labelled segmented button row (sibling of `segmented3`).
     ///
     /// ⚠️ **Ela REFLUI**: uma fileira que não cabe quebra em linhas, em vez de espremer os

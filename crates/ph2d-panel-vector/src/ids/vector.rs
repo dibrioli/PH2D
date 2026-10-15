@@ -91,11 +91,6 @@ pub const VECTOR_VERT_Y: NodeId = hash_node_id("vector.vert.y");
 // order = paths-vec order, index 0 = back).
 pub const VECTOR_ARRANGE_DUPLICATE: NodeId = hash_node_id("vector.arrange.duplicate");
 
-/// **O Z-INDEX GLOBAL da forma** (Enio, 2026-08-04) — o número que SOBREPÕE a ordem da
-/// hierarquia: só quando dois objetos empatam nele é que a árvore decide quem fica na frente.
-/// Maior = mais à frente (a convenção do `CanvasItem.z_index` do Godot).
-pub const VECTOR_ARRANGE_Z: NodeId = hash_node_id("vector.arrange.z");
-
 /// Rotation (degrees) — a RELATIVE scrub field (not a bbox readout): each change
 /// rotates the selected path by the delta about its bbox center. Seeded to 0 while
 /// unfocused; the panel owns the per-gesture accumulator.

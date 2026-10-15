@@ -20,7 +20,6 @@ mod popover_band;
 mod probe_gutters;
 mod seam;
 mod seam_anchors;
-mod seam_arrange_z;
 mod seam_bool;
 mod seam_bucket;
 mod seam_components;

@@ -389,6 +389,8 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
             ),
         ]);
     }
+    // ⭐ O ARRANJO inteiro (dono 15/10: a secção Arrange saiu do painel): a ordem na pilha, da
+    // frente para trás, e a orientação. O Z numérico é do Inspector no modo Objeto (a ordenação).
     out.push(vec![
         b(
             crate::ids::VECTOR_ARRANGE_DUPLICATE,
@@ -401,10 +403,22 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
             "panel.vector.arrange.to_front",
         ),
         b(
+            ids::VECTOR_ARRANGE_FORWARD,
+            IconId::ArrangeForward,
+            "panel.vector.arrange.forward",
+        ),
+        b(
+            ids::VECTOR_ARRANGE_BACKWARD,
+            IconId::ArrangeBackward,
+            "panel.vector.arrange.backward",
+        ),
+        b(
             ids::VECTOR_ARRANGE_TO_BACK,
             IconId::ArrangeBack,
             "panel.vector.arrange.to_back",
         ),
+    ]);
+    out.push(vec![
         b(
             ids::VECTOR_ARRANGE_FLIP_H,
             IconId::FlipH,
@@ -414,6 +428,16 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
             ids::VECTOR_ARRANGE_FLIP_V,
             IconId::FlipV,
             "panel.vector.arrange.flip_v",
+        ),
+        b(
+            ids::VECTOR_ARRANGE_ROTATE_CCW,
+            IconId::RotateCcw,
+            "panel.vector.arrange.rotate_ccw",
+        ),
+        b(
+            ids::VECTOR_ARRANGE_ROTATE_CW,
+            IconId::RotateCw,
+            "panel.vector.arrange.rotate_cw",
         ),
     ]);
     if mode != DrawMode::Node {
@@ -438,6 +462,66 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
             "panel.vector.arrange.weld",
         ));
         out.push(path);
+    }
+    out
+}
+
+/// ④ a 2.ª linha — o ALINHAR (dono 15/10: saiu do painel para a barra, numa linha própria): com
+/// duas formas ou mais, e o Distribuir com três (as duas das pontas ficam onde estão).
+fn actions_below(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
+    if sel < 2 || PRECISE.contains(&mode) {
+        return Vec::new();
+    }
+    let b = |id, icon, key: &str| button(id, icon, tr(key).to_owned(), false, BarFamily::Neutral);
+    let mut out = vec![
+        vec![
+            b(
+                ids::VECTOR_ALIGN_LEFT,
+                IconId::AlignLeft,
+                "panel.vector.arrange.left",
+            ),
+            b(
+                ids::VECTOR_ALIGN_HCENTER,
+                IconId::AlignCenter,
+                "panel.vector.arrange.center",
+            ),
+            b(
+                ids::VECTOR_ALIGN_RIGHT,
+                IconId::AlignRight,
+                "panel.vector.arrange.right",
+            ),
+        ],
+        vec![
+            b(
+                ids::VECTOR_ALIGN_TOP,
+                IconId::AlignTop,
+                "panel.vector.arrange.top",
+            ),
+            b(
+                ids::VECTOR_ALIGN_VCENTER,
+                IconId::AlignMiddle,
+                "panel.vector.arrange.middle",
+            ),
+            b(
+                ids::VECTOR_ALIGN_BOTTOM,
+                IconId::AlignBottom,
+                "panel.vector.arrange.bottom",
+            ),
+        ],
+    ];
+    if sel >= 3 {
+        out.push(vec![
+            b(
+                ids::VECTOR_DISTRIBUTE_H,
+                IconId::DistributeH,
+                "panel.vector.arrange.dist_h",
+            ),
+            b(
+                ids::VECTOR_DISTRIBUTE_V,
+                IconId::DistributeV,
+                "panel.vector.arrange.dist_v",
+            ),
+        ]);
     }
     out
 }
@@ -492,6 +576,7 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
         row_lead,
         row_tail: sym_chips,
         actions: actions(snap.mode, sel),
+        actions_below: actions_below(snap.mode, sel),
         selection,
         hint: tr(hint_key_for(&snap)).to_owned(),
         readout,

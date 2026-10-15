@@ -551,7 +551,6 @@ fn is_shell_owned_number(id: ph2d_a11y::NodeId) -> bool {
         || id == tool_ids::VECTOR_TRANSFORM_Y
         || id == tool_ids::VECTOR_TRANSFORM_W
         || id == tool_ids::VECTOR_TRANSFORM_H
-        || id == crate::ids::VECTOR_ARRANGE_Z
         || id == crate::ids::VECTOR_VERT_X
         || id == crate::ids::VECTOR_VERT_Y
         // ⭐⭐⭐ **Os números do OSSO, pela TABELA** ([`ids::VECTOR_BONE_FIELDS`]) — eles moram num

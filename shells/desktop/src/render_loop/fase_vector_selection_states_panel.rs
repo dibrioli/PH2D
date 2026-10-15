@@ -79,16 +79,6 @@ impl crate::App {
             self.ui_preview.is_on(),
             self.ui_states_move_all,
         ));
-        // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o número GLOBAL que sobrepõe a
-        // ordem da hierarquia. Publicado pela MESMA porta que o campo escreve e que os
-        // botões Arrange movem, para o número que o artista lê ser o que ele edita.
-        ph2d_panel_vector::state::set_z_index(
-            sel.first()
-                .and_then(|id| {
-                    ph2d_vec_entities::entities::zorder::authored_z(sim, &self.vec.entities, *id)
-                })
-                .map(|z| z as f32),
-        );
         // **Resize Box** (plano UI/UX W3b): honrar e so' depois publicar, a mesma ordem
         // dos irmaos acima — publicar antes deixaria a caixa a mostrar o estado ANTERIOR
         // por um frame, e o artista veria o clique "nao pegar".

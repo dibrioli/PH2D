@@ -62,7 +62,6 @@ impl crate::App {
                     pending_layout_edit: take(&mut pd.pending_layout_edit),
                     pending_anchor_edit: take(&mut pd.pending_anchor_edit),
                     pending_layout_field: take(&mut pd.pending_layout_field),
-                    pending_vec_z: take(&mut pd.pending_vec_z),
                 },
             )?;
             let sel = self.fase_vector_selection_states_panel(

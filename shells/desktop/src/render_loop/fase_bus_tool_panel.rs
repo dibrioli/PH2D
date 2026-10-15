@@ -260,8 +260,6 @@ impl crate::App {
                 (ph2d_ui_state::MIN_DAMPING, ph2d_ui_state::MAX_DAMPING)
             };
             pd.pending_ui_spring_knob = Some((stiff, lo + *v * (hi - lo)));
-        } else if *id == ph2d_panel_vector::ids::VECTOR_ARRANGE_Z {
-            pd.pending_vec_z = Some(*v);
         } else if let Some(f) = ph2d_app_vec::layout_edit::layout_field_for_id(*id) {
             // Vao, recuo, Grow e Shrink — mesma rota dos campos do Transform:
             // o valor mora no componente, entao quem escreve e' a shell.

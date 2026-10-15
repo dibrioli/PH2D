@@ -188,7 +188,15 @@ pub fn selection_gap() -> f32 {
 /// Quadro fica na de sempre.
 #[must_use]
 pub fn strip_rects_at(area: Rect, sel: Rect, groups: &[usize], s: f32, gap: f32) -> Vec<Rect> {
-    let (width, bar_h) = strip_extent(groups, s);
+    strip_rows_at(area, sel, &[groups], s, gap)
+}
+
+/// ⭐ **A barra junto da seleção em LINHAS** (dono 15/10: o Alinhar numa 2.ª linha da ④): cada
+/// linha é uma fila de grupos, centrada sob a mais larga; o bloco inteiro pousa como a de uma linha
+/// só — por cima de `sel`, por baixo quando a altura das linhas juntas não cabe por cima.
+#[must_use]
+pub fn strip_rows_at(area: Rect, sel: Rect, rows: &[&[usize]], s: f32, gap: f32) -> Vec<Rect> {
+    let (width, bar_h) = rows_extent(rows, s);
     let above = sel.y - bar_h - gap;
     let y = if above >= area.y {
         above
@@ -198,16 +206,51 @@ pub fn strip_rects_at(area: Rect, sel: Rect, groups: &[usize], s: f32, gap: f32)
     let x = (sel.x + sel.w / 2.0 - width / 2.0)
         .max(area.x)
         .min(area.x + area.w - width);
-    strip_from(x, y, bar_h, groups, s)
+    rows_from(x, y, width, rows, s)
 }
 
 /// ⭐ **A mesma barra, FIXADA**: no topo da área, ao centro. Deixa de seguir a seleção — e por
 /// isso nunca tapa a arte que se está a editar (a lição da *Contextual Task Bar*, estudo §4).
 #[must_use]
 pub fn pinned_strip_rects(area: Rect, groups: &[usize], s: f32) -> Vec<Rect> {
-    let (width, bar_h) = strip_extent(groups, s);
+    pinned_strip_rows(area, &[groups], s)
+}
+
+/// A [`pinned_strip_rects`] em linhas (as de [`strip_rows_at`]).
+#[must_use]
+pub fn pinned_strip_rows(area: Rect, rows: &[&[usize]], s: f32) -> Vec<Rect> {
+    let (width, _) = rows_extent(rows, s);
     let x = (area.x + area.w / 2.0 - width / 2.0).max(area.x);
-    strip_from(x, area.y + Spacing::Md.px(), bar_h, groups, s)
+    rows_from(x, area.y + Spacing::Md.px(), width, rows, s)
+}
+
+/// Uma linha conta se tem um botão; uma linha vazia não abre espaço.
+fn live_rows<'a>(rows: &'a [&'a [usize]]) -> impl Iterator<Item = &'a [usize]> {
+    rows.iter().copied().filter(|r| r.iter().any(|&n| n > 0))
+}
+
+/// A largura (a da linha mais larga) e a altura (as linhas e um [`gap`] entre elas).
+fn rows_extent(rows: &[&[usize]], s: f32) -> (f32, f32) {
+    let (mut w, mut h, mut n) = (0.0_f32, 0.0_f32, 0usize);
+    for r in live_rows(rows) {
+        let (rw, rh) = strip_extent(r, s);
+        w = w.max(rw);
+        h += rh;
+        n += 1;
+    }
+    (w, h + n.saturating_sub(1) as f32 * gap())
+}
+
+/// Os rectângulos das linhas, de cima para baixo, cada uma centrada na largura `width`.
+fn rows_from(x: f32, y: f32, width: f32, rows: &[&[usize]], s: f32) -> Vec<Rect> {
+    let mut out = Vec::new();
+    let mut y = y;
+    for r in live_rows(rows) {
+        let (rw, rh) = strip_extent(r, s);
+        out.extend(strip_from(x + (width - rw) / 2.0, y, rh, r, s));
+        y += rh + gap();
+    }
+    out
 }
 
 /// O fundo (elevado, com moldura) por baixo de um conjunto de botões.

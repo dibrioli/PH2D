@@ -178,9 +178,6 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) pending_stroke_present: bool,
     pub(in crate::render_loop) pending_layout_field:
         Option<(ph2d_app_vec::layout_edit::LayoutField, f64)>,
-    // **O Z-INDEX global** (Enio, 2026-08-04): o numero que sobrepoe a ordem da
-    // hierarquia. Campo numerico, entao a rota e' a mesma do Transform.
-    pub(in crate::render_loop) pending_vec_z: Option<f64>,
     // **O TOKEN escolhido no picker** (plano UI/UX W4): a propriedade + o token, ou
     // `None` no token = SOLTAR (a propriedade volta ao literal do documento).
     pub(in crate::render_loop) pending_token_bind:

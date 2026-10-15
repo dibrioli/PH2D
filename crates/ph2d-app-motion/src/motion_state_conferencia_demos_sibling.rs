@@ -178,8 +178,15 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     band_labels()
         .map(|(k, label)| {
             let (row, col) = (k / 2, k % 2);
+            // Por FORA da metade onde o rastro chega à ficha (régua `motion_demo_legend::tapa`, 15/10).
+            const LEGENDA_X: [[f32; 2]; 4] = [
+                [-10.4, GAP_X],
+                [-GAP_X, GAP_X],
+                [-GAP_X, GAP_X],
+                [-GAP_X, 9.9],
+            ];
             let at = [
-                if col == 0 { -GAP_X } else { GAP_X },
+                LEGENDA_X[row][col],
                 GAP_Y * 1.5 - row as f32 * GAP_Y + GAP_Y * 0.38,
             ];
             crate::motion_demo_legend::Caption::new(at, short_of(label))

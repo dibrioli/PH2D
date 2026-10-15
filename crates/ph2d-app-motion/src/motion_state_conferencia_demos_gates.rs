@@ -152,7 +152,8 @@ pub fn row_labels() -> impl Iterator<Item = (usize, &'static str)> {
 pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     // Por FORA de cada metade, à altura da linha: acima dela a ficha tapava as cruzes de cima e os
     // vãos entre linhas têm 16 px — a altura da ficha (régua `motion_demo_legend::tapa`, 15/10).
-    const LEGENDA_X: f32 = 5.1;
+    // A 5,9 e não 5,1: com a cena enquadrada (36,8 px/m) a ficha cobre mais mundo.
+    const LEGENDA_X: f32 = 5.9;
     let mut out = Vec::with_capacity(ROWS_TABLE.len() * 2);
     for (k, row) in ROWS_TABLE.iter().enumerate() {
         let y = (ROWS_TABLE.len() as f32 - 1.0) * 0.5 * ROW_GAP - k as f32 * ROW_GAP + H * 0.62;

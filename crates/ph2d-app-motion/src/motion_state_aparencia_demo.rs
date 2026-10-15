@@ -110,8 +110,10 @@ pub(super) fn captions() -> Vec<Caption> {
     .enumerate()
     {
         let y = fileira_y(k) + FICHA_Y;
-        v.push(Caption::new([-COL_X, y], esq));
-        v.push(Caption::new([COL_X, y], dir));
+        // A 3.ª fileira por FORA: o atraso leva as peças até à ficha (régua `motion_demo_legend::tapa`).
+        let x = if k == 2 { 5.8 } else { COL_X };
+        v.push(Caption::new([-x, y], esq));
+        v.push(Caption::new([x, y], dir));
     }
     v
 }

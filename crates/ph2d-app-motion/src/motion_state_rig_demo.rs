@@ -661,7 +661,7 @@ pub(super) fn captions() -> Vec<Caption> {
     };
     vec![
         ficha(-COL_X, 0, "HOLDS ITSELF: the rope"),
-        ficha(COL_X, 0, "...and the field"),
+        ficha(4.8, 0, "...and the field"),
         ficha(-COL_X, 1, "WHO HOLDS IT: the parents decide (FK)"),
         ficha(COL_X, 1, "...or the HAND decides (IK)"),
         ficha(-COL_X, 2, "THE SKIN: all the bones pull"),

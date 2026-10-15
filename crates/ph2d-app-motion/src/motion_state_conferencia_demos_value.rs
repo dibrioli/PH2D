@@ -396,7 +396,7 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
             // A linha 4 estica até 0,75 acima dela: a ficha sobe a 1,6 (régua `motion_demo_legend::tapa`, 15/10).
             let at = [
                 if col == 0 { -COL_X } else { COL_X },
-                ROW_Y[row] + if row == 3 { 1.6 } else { 0.75 },
+                ROW_Y[row] + if row == 3 { 1.8 } else { 0.75 },
             ];
             crate::motion_demo_legend::Caption::new(at, short_of(label))
         })

@@ -30,16 +30,17 @@
 use ph2d_editor_core::readout::{CHIP_H_PX, chip_width};
 use ph2d_editor_core::screens::layout::CenterSplit;
 use ph2d_host::WindowSize;
+use ph2d_render::camera_frame::{Area, View};
 use ph2d_vector::Affine;
 
 use super::Caption;
 use crate::motion_state::MotionState;
 
 /// A janela da foto do smoke (`fotografa_cena.sh … 1930 1040`).
-const JANELA: (u32, u32) = (1930, 1040);
+pub(super) const JANELA: (u32, u32) = (1930, 1040);
 /// O que se VÊ do canvas nessa janela (foto `antes_82.png`, 15/10), px: entre o painel Hierarchy e o
 /// Inspector, abaixo da barra de ferramentas (que tapa os 96 px de cima da cena) e acima do grafo.
-const CANVAS_VISTO_PX: [f32; 4] = [332.0, 96.0, 1622.0, 566.0];
+pub(super) const CANVAS_VISTO_PX: [f32; 4] = [332.0, 96.0, 1622.0, 566.0];
 /// De quantos em quantos tiques se lê a figura — TODOS: as entradas publicam-se por quadro, e a 2
 /// a régua perdia os gatilhos ímpares (a `=139` media a galáxia com 3,5 m de raio; a foto, 4,1).
 const PASSO: usize = 1;
@@ -52,46 +53,96 @@ const AR_PX: f32 = 4.0;
 const SEM_LUGAR: &[(&str, &str, &str)] = &[
     (
         "95",
-        "VORTEX Force",
-        "as forças levam as plumas a ±37 m: a coluna e a faixa inteiras",
+        "ATTRACTOR as before",
+        "as forças levam as plumas a x −42…61 · y −39…35 m: a coluna e a faixa inteiras",
+    ),
+    (
+        "95",
+        "ATTRACTOR with PROFILE",
+        "as forças levam as plumas a x −42…61 · y −39…35 m: a coluna e a faixa inteiras",
+    ),
+    (
+        "95",
+        "WIND Force",
+        "as forças levam as plumas a x −42…61 · y −39…35 m: a coluna e a faixa inteiras",
+    ),
+    (
+        "95",
+        "WIND Target Velocity",
+        "as forças levam as plumas a x −42…61 · y −39…35 m: a coluna e a faixa inteiras",
     ),
     (
         "95",
         "VORTEX Target Velocity",
-        "as forças levam as plumas a ±37 m: a coluna e a faixa inteiras",
+        "as forças levam as plumas a x −42…61 · y −39…35 m: a coluna e a faixa inteiras",
     ),
     (
         "95",
         "SEA of ONE wave",
-        "as forças levam as plumas a ±37 m: a coluna e a faixa inteiras",
-    ),
-    (
-        "95",
-        "SEA of FOUR waves",
-        "as forças levam as plumas a ±37 m: a coluna e a faixa inteiras",
-    ),
-    (
-        "137",
-        "Custom = collider: the border discs push apart",
-        "os discos da borda empurram-se até ±5 m: a coluna inteira da vista",
+        "as forças levam as plumas a x −42…61 · y −39…35 m: a coluna e a faixa inteiras",
     ),
 ];
 
 /// Uma caixa de mundo `[x0, y0, x1, y1]`.
-type Caixa = [f32; 4];
+pub(super) type Caixa = [f32; 4];
 
-/// Px de ecrã por metro, e a caixa de mundo do canvas visto.
-fn camara() -> (f32, Caixa) {
-    let (w, h) = crate::field_gizmo::scene_window_wh(
+/// A janela da CENA sob o split que a ferramenta Motion põe ao entrar.
+pub(super) fn janela_da_cena() -> WindowSize {
+    crate::field_gizmo::scene_camera_window(
         CenterSplit::Horizontal {
             t: CenterSplit::T_DEFAULT,
         },
         WindowSize::new(JANELA.0, JANELA.1),
-    );
-    let alt = ph2d_render::Camera2d::default().height_world;
-    let k = h / alt;
+    )
+}
+
+/// O canvas visto como a `Area` do enquadramento (px da janela da cena).
+pub(super) fn area() -> Area {
     let [x0, y0, x1, y1] = CANVAS_VISTO_PX;
-    let mundo = |px: f32, py: f32| [(px - 0.5 * w) / k, (0.5 * h - py) / k];
+    Area {
+        x: x0,
+        y: y0,
+        w: x1 - x0,
+        h: y1 - y0,
+    }
+}
+
+/// A margem do enquadramento de arranque — a do produto, a do *Enquadrar tudo*.
+pub(super) fn margem() -> f32 {
+    ph2d_editor_core::screens::hero::float_bar::frame_margin()
+}
+
+/// ⭐ **A vista com que a cena abre** — a lei do produto (`motion_demo_enquadra::vista`) sobre a
+/// figura da tabela e as fichas `legendas` (já no mundo). Campo ou cena fora da tabela: a omissão.
+pub(super) fn vista_da_cena(
+    level: &str,
+    legendas: &[Caption],
+    ts: &mut ph2d_text::TextSystem,
+) -> View {
+    use crate::motion_demo_enquadra as e;
+    let fichas = e::fichas(legendas, ts);
+    e::vista_de(
+        e::extensao(Some(level)),
+        &fichas,
+        area(),
+        janela_da_cena(),
+        margem(),
+    )
+}
+
+/// Px de ecrã por metro sob a vista `v`, e a caixa de mundo do canvas visto.
+pub(super) fn camara(v: View) -> (f32, Caixa) {
+    let j = janela_da_cena();
+    #[expect(clippy::cast_precision_loss, reason = "px de janela")]
+    let (w, h) = (j.width as f32, j.height as f32);
+    let k = h / v.height_world;
+    let [x0, y0, x1, y1] = CANVAS_VISTO_PX;
+    let mundo = |px: f32, py: f32| {
+        [
+            v.center[0] + (px - 0.5 * w) / k,
+            v.center[1] + (0.5 * h - py) / k,
+        ]
+    };
     let ([a, b], [c, d]) = (mundo(x0, y1), mundo(x1, y0));
     (k, [a, b, c, d])
 }
@@ -127,7 +178,7 @@ fn caixa_dos_cantos(cantos: impl IntoIterator<Item = [f32; 2]>) -> Caixa {
 }
 
 /// O que o canvas pinta neste quadro, uma caixa por peça.
-fn figura(m: &MotionState, k: f32, fora: &mut Vec<Caixa>) {
+pub(super) fn figura(m: &MotionState, k: f32, fora: &mut Vec<Caixa>) {
     fora.clear();
     gizmo(m, k, fora);
     for i in &m.pump.instances {
@@ -305,12 +356,14 @@ struct Medida {
 struct Cena {
     medidas: Vec<Medida>,
     pecas_lidas: usize,
+    /// Px/m e o canvas visto (mundo) da vista com que a cena ABRE.
+    k: f32,
+    vista: Caixa,
 }
 
 /// Mede as fichas do nível `level`, com `poe` a mexer nelas antes (os controlos) — `None` quando ele
 /// não publica legenda.
 fn mede(level: &str, ts: &mut ph2d_text::TextSystem, poe: impl Fn(&mut [Caption])) -> Option<Cena> {
-    let (k, vista) = camara();
     let mut m = MotionState::new();
     let (sinks, mut caps) = super::monta(level, &mut m.doc, &m.registry);
     if caps.is_empty() {
@@ -318,7 +371,9 @@ fn mede(level: &str, ts: &mut ph2d_text::TextSystem, poe: impl Fn(&mut [Caption]
     }
     poe(&mut caps);
     m.sinks = sinks;
-    let mut medidas: Vec<Medida> = super::no_mundo_de(&caps, &m)
+    let no_mundo = super::no_mundo_de(&caps, &m);
+    let (k, vista) = camara(vista_da_cena(level, &no_mundo, ts));
+    let mut medidas: Vec<Medida> = no_mundo
         .iter()
         .map(|c| {
             let caixa = caixa_da_ficha(ts, c, k);
@@ -390,6 +445,8 @@ fn mede(level: &str, ts: &mut ph2d_text::TextSystem, poe: impl Fn(&mut [Caption]
     Some(Cena {
         medidas,
         pecas_lidas,
+        k,
+        vista,
     })
 }
 
@@ -430,7 +487,6 @@ fn curas(md: &Medida, todas: &[Medida], k: f32, vista: Caixa) -> (Option<f32>, O
 #[test]
 fn nenhuma_ficha_tapa_a_figura_que_explica() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    let (k, vista) = camara();
     let (mut cenas, mut fichas) = (0usize, 0usize);
     let mut maus = Vec::new();
     let mut isentas_vistas = Vec::new();
@@ -455,7 +511,7 @@ fn nenhuma_ficha_tapa_a_figura_que_explica() {
                 )),
                 (Some(_), Some(_)) => {
                     isentas_vistas.push((level.clone(), md.texto.clone()));
-                    let (y, x) = curas(md, &cena.medidas, k, vista);
+                    let (y, x) = curas(md, &cena.medidas, cena.k, cena.vista);
                     if y.is_some() || x.is_some() {
                         maus.push(format!(
                             "={level} {:?} está em SEM_LUGAR, mas já há lugar: y = {y:?} · x = {x:?}",
@@ -534,11 +590,6 @@ fn a_regua_reprova_uma_ficha_posta_sobre_a_figura() {
 fn a_tabela_das_fichas_que_tapam() {
     let only = std::env::var("PH2D_LAYOUT_LEVEL").ok();
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    let (k, v) = camara();
-    println!(
-        "camara: {k:.2} px/m · canvas visto x [{:.2}..{:.2}] y [{:.2}..{:.2}] m",
-        v[0], v[2], v[1], v[3]
-    );
     for n in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {
         let level = n.to_string();
         if only.as_deref().is_some_and(|w| w != level) {
@@ -547,6 +598,11 @@ fn a_tabela_das_fichas_que_tapam() {
         let Some(cena) = mede(&level, &mut ts, |_| ()) else {
             continue;
         };
+        let (k, v) = (cena.k, cena.vista);
+        println!(
+            "={level}: {k:.2} px/m · canvas visto x [{:.2}..{:.2}] y [{:.2}..{:.2}] m",
+            v[0], v[2], v[1], v[3]
+        );
         for md in &cena.medidas {
             let estado = match md.tapa {
                 Some((s, t)) => {

@@ -31,6 +31,7 @@ impl MotionState {
             .expect("motion node registry builds");
         let mut doc = MotionDoc::new();
         let sinks = demo_router::demo_sinks(&mut doc, &registry);
+        let abertura = crate::motion_demo_enquadra::pedida(sinks.len());
         Self {
             doc,
             history: MotionHistory::new(),
@@ -112,6 +113,7 @@ impl MotionState {
             macro_gravacao: None,
             ao_painel: Default::default(),
             mundo: Default::default(),
+            abertura,
         }
     }
 

@@ -377,7 +377,7 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![
         // 0,4 à esquerda e 0,34 mais abaixo: a barra e a galáxia chegavam às fichas (régua `motion_demo_legend::tapa`, 15/10).
         ficha(
-            -0.4,
+            -0.65,
             BARRA_Y - 0.6,
             "health: the bar's time is the health (Time Remap = Driven)",
         ),

@@ -437,7 +437,14 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     band_labels()
         .map(|(k, label)| {
             let at = band_at(k);
-            crate::motion_demo_legend::Caption::new([at[0], at[1] + GAP_Y * 0.44], short_of(label))
+            // VORTEX Force e SEA of FOUR waves: o único vão é por FORA da metade, longe — as plumas
+            // vão a ±40 m (régua `motion_demo_legend::tapa`, com a cena enquadrada).
+            let x = match k {
+                4 => -19.4,
+                7 => 17.6,
+                _ => at[0],
+            };
+            crate::motion_demo_legend::Caption::new([x, at[1] + GAP_Y * 0.44], short_of(label))
         })
         .collect()
 }

@@ -269,7 +269,7 @@ pub(super) fn captions() -> Vec<Caption> {
         ficha(-COL_X, 0, "WHAT I MADE: a word"),
         ficha(COL_X, 0, "...or a shape"),
         ficha(-COL_X, 1, "WHAT I HAVE: the rows of a file"),
-        ficha(COL_X, 1, "...and one COLUMN of them"),
+        ficha(6.4, 1, "...and one COLUMN of them"),
         ficha(-COL_X, 2, "WHAT THE SCENE GIVES: particles"),
         ficha(COL_X, 2, "...and the VIEW (zoom in!)"),
     ]

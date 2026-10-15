@@ -72,7 +72,7 @@ pub(super) fn captions() -> Vec<Caption> {
         Caption::new([0.0, 0.0], "the world origin"),
         Caption::new(
             // 2 m à direita do pano: em cima dele, o canto girado tapava-a (régua `motion_demo_legend::tapa`, 15/10).
-            [DESLOCAMENTO + 2.0, LARGURA * 1.1],
+            [DESLOCAMENTO + 2.45, LARGURA * 1.1],
             "Twist ▸ Pivot: Point -> Centroid",
         ),
     ]

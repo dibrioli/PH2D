@@ -113,7 +113,7 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     // À esquerda da galáxia: no meio dela, a -2,6, as estrelas sacudidas passavam por baixo, e por
     // baixo dela não sobra vão no canvas visto (régua `motion_demo_legend::tapa`, 15/10).
     vec![crate::motion_demo_legend::Caption::new(
-        [-5.9, -3.72],
+        [-7.4, -3.72],
         "input history: plays 5 s and stops; the Timeline's green band starts after 0".to_string(),
     )]
 }

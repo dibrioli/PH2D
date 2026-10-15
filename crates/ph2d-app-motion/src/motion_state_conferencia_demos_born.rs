@@ -170,7 +170,7 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
             let (row, col) = (k / 2, k % 2);
             // Por FORA das metades: as nuvens chegam à ficha acima delas (régua `motion_demo_legend::tapa`, 15/10).
             let at = [
-                if col == 0 { -8.1 } else { 8.1 },
+                if col == 0 { -8.6 } else { 8.6 },
                 GAP_Y - row as f32 * GAP_Y + GAP_Y * 0.44,
             ];
             crate::motion_demo_legend::Caption::new(at, short_of(label))

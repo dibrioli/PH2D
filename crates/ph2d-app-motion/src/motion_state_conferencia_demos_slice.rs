@@ -276,8 +276,15 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
         .map(|(k, label)| {
             let (row, col) = (k / 2, k % 2);
             // Por FORA das metades: as curvas dobram por baixo da ficha (régua `motion_demo_legend::tapa`, 15/10).
+            const LEGENDA_X: [[f32; 2]; 5] = [
+                [-9.9, 8.3],
+                [-15.1, 8.7],
+                [-9.0, 7.1],
+                [-9.6, 11.9],
+                [-7.9, 9.6],
+            ];
             let at = [
-                if col == 0 { -7.9 } else { 7.1 },
+                LEGENDA_X[row][col],
                 GAP_Y * 2.0 - row as f32 * GAP_Y + GAP_Y * 0.40,
             ];
             // A ficha traz só a primeira palavra + o modo — o rótulo inteiro vai no terminal.

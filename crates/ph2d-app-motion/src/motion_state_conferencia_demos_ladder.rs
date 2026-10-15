@@ -253,7 +253,7 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
             let (row, col) = (k / 2, k % 2);
             // A mola e a escada passam pela ficha da linha delas: essas pousam por FORA (régua `motion_demo_legend::tapa`, 15/10).
             const LEGENDA_X: [[f32; 2]; 4] =
-                [[-GAP_X, GAP_X], [-9.8, 10.6], [-GAP_X, GAP_X], [-8.2, 8.4]];
+                [[-GAP_X, GAP_X], [-11.1, 11.7], [-9.1, 7.3], [-9.1, 9.7]];
             let at = [
                 LEGENDA_X[row][col],
                 GAP_Y * 1.5 - row as f32 * GAP_Y + GAP_Y * 0.42,

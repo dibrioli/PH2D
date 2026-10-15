@@ -529,6 +529,8 @@ pub struct MotionState {
     /// uma história dobrada, ou o publicado agora antes do primeiro tique gravado — doc 132 §2).
     /// Ver [`crate::motion_historia`].
     pub queixa_da_historia: Option<String>,
+    /// A vista com que a cena de demo pede para abrir ([`crate::motion_demo_enquadra`]).
+    pub abertura: Option<crate::motion_demo_enquadra::Abertura>,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the

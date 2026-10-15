@@ -220,7 +220,7 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
                 GAP_Y * 1.0 - (row - 1) as f32 * GAP_Y
             };
             // Por FORA das metades: as plumas sobem até à ficha (régua `motion_demo_legend::tapa`, 15/10).
-            let at = [if col == 0 { -8.8 } else { 8.1 }, y + GAP_Y * 0.42];
+            let at = [if col == 0 { -10.6 } else { 9.7 }, y + GAP_Y * 0.42];
             crate::motion_demo_legend::Caption::new(at, short_of(label))
         })
         .collect()

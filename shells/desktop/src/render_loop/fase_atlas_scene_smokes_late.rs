@@ -25,7 +25,6 @@ impl crate::App {
             next_import_cell,
             atlas_asset_map,
             motion,
-            camera,
             ..
         } = FrameGfx::of(gfx);
 
@@ -166,12 +165,9 @@ impl crate::App {
             // latch já queimado seria uma falha silenciosa e DEFINITIVA na sessão. Os irmãos do
             // Flip já o guardavam (`flip_hardness_smoke.rs`); este não.
             let ok = tools.set_active(&ph2d_editor_core::ToolId::new("motion"));
+            // A vista de arranque (e o `PH2D_DEMO_ALTURA`) é da `motion_demo_enquadra::abre_inteira`.
             if ok {
                 self.title_dirty = true;
-                // A porta de bissecção do zoom (`PH2D_DEMO_ALTURA`) — ver o doc dela.
-                if let Some(h) = ph2d_app_motion::motion_demo_altura::altura_semeada() {
-                    camera.height_world = h;
-                }
             } else {
                 self.demo_tool_forced = false;
                 eprintln!(

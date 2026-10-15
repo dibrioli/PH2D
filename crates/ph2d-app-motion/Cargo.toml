@@ -101,6 +101,8 @@ ph2d-macro = { path = "../ph2d-macro" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-render = { path = "../ph2d-render" }
+# A largura das fichas da cena de demo ao enquadrá-la (`motion_demo_enquadra`): o medidor REAL.
+ph2d-text = { path = "../ph2d-text" }
 # O `fx.filter` em CADA forma (ciclo 20 W3b, doc 129 §3.4): as células do átlas.
 ph2d-fx-cells = { path = "../ph2d-fx-cells" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
@@ -149,9 +151,6 @@ ph2d-asset-ktx2 = { path = "../ph2d-asset-ktx2" }
 # ⚠️ Só para o gate do roteiro da cena `=125`, que deriva o nome do cartão dos OSSOS do
 # registo em vez de o escrever à mão. O produto alcança o nó pelo `ph2d-node-registry-init`.
 ph2d-node-rig-bones = { path = "../ph2d-node-rig-bones" }
-# ⚠️ Só para o censo que mede cada nome do catálogo contra a largura da cápsula com o medidor
-# REAL — a propriedade é sobre LARGURA, e uma contagem de caracteres aprovaria um nome cortado.
-ph2d-text = { path = "../ph2d-text" }
 
 [lints]
 workspace = true

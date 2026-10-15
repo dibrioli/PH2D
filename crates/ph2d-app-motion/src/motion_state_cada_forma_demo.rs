@@ -162,7 +162,7 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     // À esquerda da chuva e dentro do canvas visto: no meio os discos caíam por ela, e a -5,2 o
     // grafo tapava-a (régua `motion_demo_legend::tapa`, 15/10).
     vec![crate::motion_demo_legend::Caption::new(
-        [-5.1, -4.6],
+        [-8.6, -4.6],
         "the middle circle is the field: inside it everything falls faster".to_string(),
     )]
 }

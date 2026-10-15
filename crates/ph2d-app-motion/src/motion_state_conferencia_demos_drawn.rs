@@ -103,7 +103,7 @@ pub fn row_labels() -> impl Iterator<Item = (usize, &'static str)> {
 pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     // As curvas das linhas 1 e 2 chegam à ficha acima delas: essas pousam por FORA das metades
     // (régua `motion_demo_legend::tapa`, 15/10).
-    const LEGENDA_X: [[f32; 2]; 3] = [[-5.4, 3.7], [-3.3, 4.5], [-COL_X, COL_X]];
+    const LEGENDA_X: [[f32; 2]; 3] = [[-5.7, 4.2], [-3.6, 4.8], [-COL_X, COL_X]];
     let mut out = Vec::with_capacity(ROWS_TABLE.len() * 2);
     for (k, row) in ROWS_TABLE.iter().enumerate() {
         let y =

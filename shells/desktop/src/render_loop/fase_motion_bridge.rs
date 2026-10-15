@@ -20,6 +20,7 @@ impl crate::App {
             vec_scene,
             hero_screen,
             motion,
+            text_system,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -76,6 +77,13 @@ impl crate::App {
             self.last_pointer,
             toasts,
             surface.gpu(),
+        );
+        ph2d_app_motion::motion_demo_enquadra::abre_inteira(
+            motion,
+            hero,
+            camera,
+            surface.size(),
+            text_system,
         );
         // O grafo gritou — o shell é quem publica (ADR-0075: o produtor não chama
         // ninguém). ⚠️ **Este produtor pousa UM QUADRO atrás dos outros dois**, e o

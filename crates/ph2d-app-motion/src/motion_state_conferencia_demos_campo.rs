@@ -86,7 +86,7 @@ pub static ROWS_TABLE: &[Row] = &[
 pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     // A onda da linha 3 sobe até à ficha acima dela (a da esquerda espalha-se até x = -5,9): as duas
     // pousam por FORA das metades (régua `motion_demo_legend::tapa`, 15/10).
-    const LEGENDA_X: [[f32; 2]; 3] = [[-COL_X, COL_X], [-COL_X, COL_X], [-7.1, 4.9]];
+    const LEGENDA_X: [[f32; 2]; 3] = [[-COL_X, COL_X], [-COL_X, COL_X], [-7.8, 5.6]];
     let mut out = Vec::with_capacity(ROWS_TABLE.len() * 2);
     for (k, row) in ROWS_TABLE.iter().enumerate() {
         let y =

@@ -6,7 +6,6 @@
 //! dab centre to each **pixel centre**
 //! (`px + 0.5`), matching the texel-centre convention.
 
-use crate::ramp_alpha::RampAlphaMode;
 use crate::spec::BrushSpec;
 use crate::texture::{ImageMask, TexDabBasis};
 
@@ -230,7 +229,6 @@ pub fn stamp_dab_textured(
         image,
         shape,
         None,
-        RampAlphaMode::None,
         None,
         [1.0, 0.0],
         PARALLEL_MIN_AREA,
@@ -271,7 +269,6 @@ pub fn stamp_dab_textured_masked(
         image,
         shape,
         None,
-        RampAlphaMode::None,
         mask,
         dab_rotation,
         PARALLEL_MIN_AREA,
@@ -318,7 +315,6 @@ pub fn stamp_dab_textured_masked_with(
         None,
         None,
         None,
-        RampAlphaMode::None,
         mask,
         dab_rotation,
         min_area,
@@ -327,10 +323,10 @@ pub fn stamp_dab_textured_masked_with(
 }
 
 /// As [`stamp_dab_textured`], but a baked **Color Ramp** LUT (256 straight-RGBA entries) maps each
-/// texel's texture value to a COLOUR: the brush paints `lut[t]`'s RGB, so the texture's scalar drives
-/// the painted colour (not just attenuating the single colour). The ramp **alpha** does what `alpha_mode`
-/// selects ([`RampAlphaMode`]): ignored, scaling coverage, or driving the pixel's own alpha (punch
-/// transparent). With no texture there's nothing to index, so it falls back to the plain stamp.
+/// texel's value to a COLOUR: the brush paints `lut[v]`'s RGB, where `v` is what the ramp's OWNER
+/// samples ([`crate::RampIndex`]: the Grain value, or the silhouette — then the Grain still bites the
+/// coverage). The ramp **alpha** does what `alpha_mode` selects ([`crate::RampAlphaMode`]): ignored,
+/// scaling coverage, or driving the pixel's own alpha (punch transparent).
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn stamp_dab_ramped(
@@ -344,8 +340,7 @@ pub fn stamp_dab_ramped(
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
     shape: Option<ShapeInput>,
-    ramp: &[[f32; 4]],
-    alpha_mode: RampAlphaMode,
+    ramp: crate::RampPaint<'_>,
     // Per-stroke coverage buffer + law so a Color-Ramp stroke honours Accumulate (TextureAlpha
     // uncapped), Enio 2026-06-25.
     mask: Option<&mut [u8]>,
@@ -364,7 +359,6 @@ pub fn stamp_dab_ramped(
         image,
         shape,
         Some(ramp),
-        alpha_mode,
         mask,
         dab_rotation,
         PARALLEL_MIN_AREA,
@@ -385,8 +379,7 @@ fn stamp_dab_inner(
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
     shape: Option<ShapeInput>,
-    ramp: Option<&[[f32; 4]]>,
-    alpha_mode: RampAlphaMode,
+    ramp: Option<crate::RampPaint<'_>>,
     // **Accumulate OFF** per-stroke coverage mask (canvas-sized, 1 byte/pixel). `Some` ⇒ cap each
     // pixel's stroke coverage at the dab target (the tool passes it when Accumulate is off and the cap
     // is observable); `None` ⇒ the plain per-dab build-up.
@@ -478,12 +471,11 @@ fn stamp_dab_inner(
         // skipped entirely so the texture-free path costs nothing).
         tex: tex.filter(|_| spec.texture.is_active()),
         image: image.copied(),
-        // Kept even with no Grain — then the silhouette coverage indexes the ramp (Shape's colour ramp).
+        // Who indexes it travels with it ([`crate::RampIndex`]): the Grain value, or the silhouette.
         ramp,
         // The Shape supplies the silhouette only when the slot is active (the caller already gates
         // this; the filter is belt-and-braces so an inactive Shape can never blank the falloff).
         shape: shape.filter(|_| spec.shape.is_active()),
-        alpha_mode,
         footprint,
         center,
         cx,

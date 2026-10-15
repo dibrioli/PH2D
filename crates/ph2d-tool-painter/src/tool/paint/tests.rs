@@ -211,6 +211,7 @@ mod capsula; // o Continuous que iguala o Spacing pequeno: a régua contra o alv
 mod curve_editor;
 mod deform;
 mod edit_modes;
+mod cor_do_shape; // prompt 36: a rampa de cor da Shape não muda o Mapping nem desliga o Grain (14/10)
 mod ellipse_and_polygon;
 mod grain_and_stencil;
 mod impasto_body;

@@ -298,6 +298,7 @@ pub mod stamp_banded;
 mod stamp_cache;
 pub mod stamp_device; // o lote publicado para um dispositivo (doc 33 S3); a ponte e' do shell
 mod stamp_preview; // interactive drag-preview stamping (restore+re-stamp, dirty-rect); split for the LOC cap
+mod stamp_ramp_routes; // as rotas da rampa de cor (cache sem Grain + por pixel)
 mod stamp_route;
 /// `PaintState::default` body — split out for the workspace file-LOC cap (struct stays in `paint.rs`).
 mod state_default;

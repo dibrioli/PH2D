@@ -284,10 +284,8 @@ pub(super) struct DabCtx<'a> {
     /// The Shape slot's silhouette inputs (frame + optional image). `Some` ⇒ the silhouette is the
     /// Shape, replacing the falloff; `None` ⇒ the falloff is the silhouette. See [`ShapeInput`].
     pub(super) shape: Option<ShapeInput<'a>>,
-    /// Baked Color Ramp LUT: a per-texel value (Grain pattern, else the silhouette coverage) indexes it for the paint colour. [`stamp_dab_ramped`].
-    pub(super) ramp: Option<&'a [[f32; 4]]>,
-    /// What the ramp colour's alpha does (only meaningful when `ramp` is `Some`). See [`RampAlphaMode`].
-    pub(super) alpha_mode: RampAlphaMode,
+    /// Baked Color Ramp: its LUT, what its alpha does, and who indexes it ([`crate::RampIndex`]).
+    pub(super) ramp: Option<crate::RampPaint<'a>>,
     /// Dab flatten/rotate for the falloff `t` (Shape/Grain carry it in their bases); baked once per dab.
     pub(super) footprint: crate::footprint::FootprintDeform,
     pub(super) center: [f32; 2],
@@ -380,16 +378,14 @@ pub(super) fn stamp_band(
             if w <= 0.0 {
                 continue;
             }
-            // Default colour = the brush's; a Color Ramp instead indexes the ramp by the texture value for
-            // the per-texel COLOUR, its alpha per `ctx.alpha_mode` (none / less coverage / the pixel's alpha).
-            let mut color = ctx.spec.color;
-            let mut stamp_alpha = 1.0_f32; // mode TextureAlpha: the source pixel's own alpha
             // `w` = dab PROFILE (falloff × silhouette, the build factor); `g` = texture COVERAGE factor
             // (Grain / Strength-ramp) kept SEPARATE so it CAPS the pixel — a 0.3 grain texel tops at
             // 0.3·Strength under re-passing, not climbing to full (the "fills in" bug). `g=1` ⇒ identical.
-            let mut g = 1.0_f32;
-            if let Some(b) = ctx.tex {
-                let s = crate::texture::sample(
+            // The colour and the Grain's bite come from ONE door ([`crate::ramp_alpha::ramp_texel`]):
+            // the ramp is indexed by its OWNER's value (Grain, or the silhouette `w`), and the Grain
+            // bites the coverage unless it is the one indexing the ramp.
+            let grain = ctx.tex.map(|b| {
+                crate::texture::sample(
                     &ctx.spec.texture,
                     b,
                     px,
@@ -397,36 +393,22 @@ pub(super) fn stamp_band(
                     ctx.center,
                     ctx.radius,
                     ctx.image.as_ref(),
-                );
-                if let Some(lut) = ctx.ramp {
-                    let c = ramp_sample(lut, s);
-                    color = [c[0], c[1], c[2]];
-                    match ctx.alpha_mode {
-                        RampAlphaMode::None => {}             // recolour only — alpha ignored
-                        RampAlphaMode::Strength => g *= c[3], // less coverage where translucent
-                        RampAlphaMode::TextureAlpha => stamp_alpha = c[3],
-                    }
-                } else {
-                    // GRAIN Depth (Procreate) + watercolor Granulation gate — the single shared combine
-                    // ([`crate::texture::grain_coverage`]); byte-identical at Depth 1 / Granulation 0.
-                    g *= crate::texture::grain_coverage(
-                        s,
-                        ctx.spec.grain_depth(),
-                        ctx.spec.effective_granulation(),
-                    );
-                }
+                )
+            });
+            let tinta = crate::ramp_alpha::ramp_texel(
+                ctx.ramp.as_ref(),
+                w,
+                grain,
+                ctx.spec.grain_depth(),
+                ctx.spec.effective_granulation(),
+            );
+            let color = tinta.color.unwrap_or(ctx.spec.color);
+            let stamp_alpha = tinta.stamp_alpha; // mode TextureAlpha: the source pixel's own alpha
+            let mut g = tinta.g;
+            if let Some(b) = ctx.tex {
                 g *= crate::texture::stencil_gate(&ctx.spec.texture, b, px, py); // rect mask, ramp-safe
                 if w * g <= 0.0 {
                     continue;
-                }
-            } else if let Some(lut) = ctx.ramp {
-                // No Grain + a Colour Ramp on (Shape's ramp): silhouette `w` indexes it for the COLOUR; alpha per `alpha_mode` (a Strength `g → 0` is caught downstream).
-                let c = ramp_sample(lut, w);
-                color = [c[0], c[1], c[2]];
-                match ctx.alpha_mode {
-                    RampAlphaMode::None => {}
-                    RampAlphaMode::Strength => g *= c[3],
-                    RampAlphaMode::TextureAlpha => stamp_alpha = c[3],
                 }
             }
             let i = row + (px as usize) * 4;
@@ -440,7 +422,9 @@ pub(super) fn stamp_band(
             // sprite's own alpha (punch it transparent) — alpha-lock can't apply (it edits alpha).
             // The other modes gate coverage by the dest alpha when alpha-locked + blend with the brush
             // mode (colour blend modes keep the dest alpha; you only paint where there's coverage).
-            let out = if matches!(ctx.alpha_mode, RampAlphaMode::TextureAlpha) && ctx.ramp.is_some()
+            let out = if ctx
+                .ramp
+                .is_some_and(|r| matches!(r.alpha_mode, RampAlphaMode::TextureAlpha))
             {
                 let m = w * g * ctx.coverage;
                 if m <= 0.0 {
@@ -567,7 +551,6 @@ mod lut_ab_tests {
             image: None,
             shape: None,
             ramp: None,
-            alpha_mode: crate::ramp_alpha::RampAlphaMode::default(),
             footprint,
             center: CENTRE,
             cx: CENTRE[0],

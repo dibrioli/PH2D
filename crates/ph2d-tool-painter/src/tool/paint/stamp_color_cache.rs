@@ -584,6 +584,7 @@ pub(super) struct RampColorStampKey {
     shape_ramp_version: u64,
     ramp_lut_version: u64,
     strength_alpha: bool,
+    ramp_index: ph2d_painter_brush::RampIndex,
     dab_flatten: f32,
     dab_angle_deg: u16,
     size: u32,
@@ -665,6 +666,7 @@ impl PainterTool {
             shape_ramp_version: self.paint.shape_ramp_version,
             ramp_lut_version: self.paint.ramp_lut_version,
             strength_alpha,
+            ramp_index: owner.index(),
             dab_flatten: brush.dab_flatten,
             dab_angle_deg: brush.dab_angle_deg,
             size,
@@ -676,14 +678,17 @@ impl PainterTool {
             let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
             let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
             let shape_tone = self.shape_tone_lut_slice();
-            let ramp = self.paint.texture_ramp_lut.as_slice();
+            let ramp = ph2d_painter_brush::RampPaint {
+                lut: self.paint.texture_ramp_lut.as_slice(),
+                alpha_mode: self.active_ramp_alpha_mode(owner),
+                index: owner.index(),
+            };
             render_ramp_color_stamp(
                 brush,
                 grain_image.as_ref(),
                 shape_image.as_ref(),
                 shape_tone,
                 ramp,
-                strength_alpha,
                 size,
             )
         };

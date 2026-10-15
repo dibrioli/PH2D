@@ -18,6 +18,17 @@ pub(super) enum RampLutOwner {
     Grain,
 }
 
+impl RampLutOwner {
+    /// Who INDEXES the owner's ramp in the stamp kernels: the Shape ramp by the silhouette, the Grain
+    /// ramp by the Grain value (prompt 36).
+    pub(super) fn index(self) -> ph2d_painter_brush::RampIndex {
+        match self {
+            Self::Shape => ph2d_painter_brush::RampIndex::Silhouette,
+            Self::Grain | Self::None => ph2d_painter_brush::RampIndex::Grain,
+        }
+    }
+}
+
 impl PainterTool {
     /// Which ramp (if any) owns the painted COLOUR — the engine's single colour ramp. The Shape ramp
     /// wins when its B&W filter is OFF (it colourises the silhouette); otherwise the Grain ramp owns

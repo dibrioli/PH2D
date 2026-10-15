@@ -144,7 +144,11 @@ fn the_parallel_fork_is_actually_faster_than_the_serial_one() {
 /// Wet Paint, que roda a cada TICK) pagavam a cópia **serial**. O gate irmão abaixo cobre a crate.
 #[test]
 fn the_pigment_deposit_forks_the_canvas_in_parallel() {
-    let src = include_str!("stamp_cache.rs");
+    // As rotas da rampa saíram para um irmão (prompt 36, tecto de LOC): o censo lê os dois.
+    let src = concat!(
+        include_str!("stamp_cache.rs"),
+        include_str!("stamp_ramp_routes.rs")
+    );
     // Controle positivo: o alvo tem de EXISTIR, senão o gate passa por não achar nada (a falha que o
     // `the_shape_slot_goes_through_the_shape_door` do Flow pegou em si mesmo).
     let through = src.matches("fork_canvas(").count();

@@ -167,7 +167,7 @@ pub use footprint::{DAB_FLATTEN_MAX, FootprintCurve, FootprintDeform};
 pub use height::{DepthSource, DrawTo};
 pub use jitter::{ColorJitterScope, apply_color_shift};
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
-pub use ramp_alpha::RampAlphaMode;
+pub use ramp_alpha::{RampAlphaMode, RampIndex, RampPaint};
 pub use sampler::MAX_INPUT_SAMPLES;
 pub use smear::{smear_dab, smear_dab_premultiplicado};
 pub use smear_field::{

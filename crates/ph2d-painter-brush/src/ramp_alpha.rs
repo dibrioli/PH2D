@@ -55,3 +55,68 @@ impl RampAlphaMode {
         }
     }
 }
+
+/// **Quem INDEXA a rampa de cor** — sempre a dona dela (prompt 36, dono 14/10): a rampa do **Grain**
+/// pelo valor do grão; a rampa do **Shape** pela silhueta (o desenho do Shape × falloff). Antes a rampa
+/// do Shape era indexada pelo GRÃO sempre que houvesse um: a cor seguia o grão (ancorado à tela no
+/// Tiled — «o Mapping virou Tiled») e o grão deixava de morder a cobertura.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RampIndex {
+    /// O valor do Grain (a rampa do Grain); sem Grain cai na silhueta.
+    #[default]
+    Grain,
+    /// A silhueta `w` (a rampa do Shape); o Grain, se houver, morde a cobertura como sem rampa.
+    Silhouette,
+}
+
+/// Uma rampa de cor como os núcleos do carimbo a leem: a LUT assada, o que o alfa dela faz e quem a indexa.
+#[derive(Clone, Copy, Debug)]
+pub struct RampPaint<'a> {
+    pub lut: &'a [[f32; 4]],
+    pub alpha_mode: RampAlphaMode,
+    pub index: RampIndex,
+}
+
+/// A tinta de um texel: a cor (`None` = a do pincel), o factor de cobertura `g` (Grain × alfa da rampa
+/// em Strength) e o alfa próprio do texel (`TextureAlpha`).
+pub(crate) struct RampTexel {
+    pub(crate) color: Option<[f32; 3]>,
+    pub(crate) g: f32,
+    pub(crate) stamp_alpha: f32,
+}
+
+/// ⭐ **A porta única** da cor e da mordida do Grain num texel — os núcleos por pixel
+/// ([`crate::dab`]) e o carimbo assado ([`crate::stamp_color::render_ramp_color_stamp`]) passam por
+/// aqui. `w` = a silhueta, `grain` = o valor amostrado do Grain (se houver).
+#[inline]
+pub(crate) fn ramp_texel(
+    ramp: Option<&RampPaint>,
+    w: f32,
+    grain: Option<f32>,
+    depth: f32,
+    granulation: f32,
+) -> RampTexel {
+    let mut t = RampTexel {
+        color: None,
+        g: 1.0,
+        stamp_alpha: 1.0,
+    };
+    let indice = match (ramp, grain) {
+        (Some(r), Some(s)) if r.index == RampIndex::Grain => Some((r, s)),
+        (Some(r), _) => Some((r, w)),
+        (None, _) => None,
+    };
+    if let Some(s) = grain.filter(|_| !matches!(ramp, Some(r) if r.index == RampIndex::Grain)) {
+        t.g = crate::texture::grain_coverage(s, depth, granulation);
+    }
+    if let Some((r, v)) = indice {
+        let c = crate::dab::ramp_sample(r.lut, v);
+        t.color = Some([c[0], c[1], c[2]]);
+        match r.alpha_mode {
+            RampAlphaMode::None => {}
+            RampAlphaMode::Strength => t.g *= c[3],
+            RampAlphaMode::TextureAlpha => t.stamp_alpha = c[3],
+        }
+    }
+    t
+}

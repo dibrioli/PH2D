@@ -179,10 +179,10 @@ pub fn render_color_stamp_mask(
 }
 
 /// Render the unit **ramp-coloured** stamp at `size`×`size` — the cached fast path for a **Grain +
-/// Colour Ramp** brush (e.g. a coloured Shape ramp over a coloured Grain). The Grain value indexes the
-/// colour `ramp` (exactly like the per-pixel path's grain-ramp colour), the silhouette (the Shape image,
-/// else the falloff) is the coverage, and — when `strength_alpha` ([`crate::RampAlphaMode::Strength`]) —
-/// the ramp's alpha scales coverage. Scale-invariant (View Grain + a static silhouette), so the whole
+/// Colour Ramp** brush. The ramp's OWNER indexes it ([`crate::RampIndex`]: the Grain value, or the
+/// silhouette — then the Grain bites the coverage), exactly like the per-pixel kernel; the silhouette
+/// (the Shape image, else the falloff) is the coverage, and in [`crate::RampAlphaMode::Strength`] the
+/// ramp's alpha scales it (`TextureAlpha` is never baked — the route keeps it per-pixel). Scale-invariant (View Grain + a static silhouette), so the whole
 /// grain×ramp colour bakes ONCE and scale-blits, instead of resampling the Grain + ramp per pixel per dab
 /// (the slow path for the Line/Curve/Ellipse/Polygon fills). `shape_tone_lut` remaps the silhouette tone
 /// (Shape ramp B&W on). Premultiplied RGBA. Deterministic (HR-5).
@@ -192,8 +192,7 @@ pub fn render_ramp_color_stamp(
     grain_image: Option<&ImageMask>,
     shape_image: Option<&ImageMask>,
     shape_tone_lut: Option<&[f32]>,
-    ramp: &[[f32; 4]],
-    strength_alpha: bool,
+    ramp: crate::RampPaint<'_>,
     size: u32,
 ) -> ColorStampMask {
     let size = size.max(1);
@@ -240,10 +239,18 @@ pub fn render_ramp_color_stamp(
             if w <= 0.0 {
                 continue; // leaves the texel transparent (premul [0,0,0,0])
             }
-            // The Grain value indexes the colour ramp (the per-pixel `if grain: ramp[grain]` path).
+            // The ramp's OWNER indexes it, and the Grain bites unless it is the owner — the same door
+            // as the per-pixel kernel ([`crate::ramp_alpha::ramp_texel`]).
             let s = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
-            let c = crate::dab::ramp_sample(ramp, s);
-            let a = if strength_alpha { w * c[3] } else { w };
+            let tinta = crate::ramp_alpha::ramp_texel(
+                Some(&ramp),
+                w,
+                Some(s),
+                spec.grain_depth(),
+                spec.effective_granulation(),
+            );
+            let c = tinta.color.unwrap_or(spec.color);
+            let a = w * tinta.g;
             if a <= 0.0 {
                 continue;
             }

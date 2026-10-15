@@ -104,6 +104,41 @@ fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
     }))
 }
 
+/// O palco de um `Macro` que mudou: o que já tocava REEDITA-SE (recomeça do instantâneo mais tardio que
+/// a trilha nova ainda tem, `MacroEmCena::reedita`); o resto nasce do zero. A ranhura de um palco que se
+/// vai fica a devolver.
+fn relido(velho: Option<Lido>, m: &Macro, tique: u32, soltas: &mut Vec<u32>) -> Lido {
+    if let Some(Lido {
+        palco: Ok(Some(mut p)),
+        ..
+    }) = velho
+    {
+        let palco = if m.doc.is_empty() {
+            Ok(None)
+        } else {
+            p.em_cena.reedita(&m.doc).map(|ainda| ainda.then_some(()))
+        };
+        return match palco {
+            Ok(Some(())) => Lido {
+                tique,
+                palco: Ok(Some(p)),
+            },
+            outro => {
+                soltas.extend(p.ranhura);
+                Lido {
+                    tique,
+                    palco: outro.map(|_| None),
+                }
+            }
+        };
+    }
+    soltas.extend(velho.and_then(|l| l.ranhura()));
+    Lido {
+        tique,
+        palco: palco_de(m),
+    }
+}
+
 impl PalcosDoPainter {
     /// **Por quadro**, depois de a Timeline escrever o `MacroTempo` e antes do extract: (re)cria o
     /// palco de um `Macro` que mudou e segue o relógio de cada um que a Timeline conduz.
@@ -131,9 +166,9 @@ impl PalcosDoPainter {
                 .get(&e.to_bits())
                 .is_none_or(|l| l.tique != tique);
             if fresco && let Some(m) = world.get::<Macro>(e) {
-                let palco = palco_de(m);
-                let velho = self.lidos.insert(e.to_bits(), Lido { tique, palco });
-                self.soltas.extend(velho.and_then(|l| l.ranhura()));
+                let velho = self.lidos.remove(&e.to_bits());
+                let lido = relido(velho, m, tique, &mut self.soltas);
+                self.lidos.insert(e.to_bits(), lido);
             }
             let Some(Lido {
                 palco: Ok(Some(p)), ..

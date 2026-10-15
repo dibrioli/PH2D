@@ -1,7 +1,7 @@
 //! Os palcos do Painter em cena: só a Timeline acorda um palco, a troca vai à sprite-alvo, uma tela
 //! parada não sobe outra vez, e as ranhuras de palcos que morrem ou renascem devolvem-se.
 
-use super::{PalcosDoPainter, RanhurasDaCena, TrocaDaSprite};
+use super::{Lido, PalcosDoPainter, RanhurasDaCena, TrocaDaSprite};
 use ph2d_ecs::{Macro, MacroTempo, ModoDaMacro, StableId, World};
 use ph2d_editor_core::toast::ToastQueue;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool, Tool};
@@ -152,7 +152,7 @@ fn sem_alvo_a_macro_pinta_a_sprite_que_a_tem() {
 }
 
 #[test]
-fn o_palco_que_renasce_ou_morre_devolve_a_ranhura() {
+fn o_palco_que_muda_reedita_na_mesma_ranhura_e_o_que_morre_a_devolve() {
     let (doc, quadros) = gravada(7);
     let mut w = World::new();
     w.spawn(StableId(7));
@@ -165,15 +165,38 @@ fn o_palco_que_renasce_ou_morre_devolve_a_ranhura() {
     quadro(&mut p, &mut w, &mut placa);
     assert_eq!(placa.adquiridas, [1]);
 
-    // O `Macro` muda (outra gravação): o palco renasce numa ranhura nova e a velha volta.
-    w.entity_mut(dono).insert(m);
+    // O `Macro` muda (uma etapa editada): o palco REEDITA-SE — recomeça do instantâneo — e a sprite
+    // continua na mesma ranhura.
+    w.entity_mut(dono).insert(m.clone());
     let trocas = quadro(&mut p, &mut w, &mut placa);
     assert_eq!(
         (placa.adquiridas.as_slice(), placa.soltas.as_slice()),
-        (&[1, 2][..], &[1][..])
+        (&[1][..], &[][..])
     );
-    assert_eq!(trocas[0].texture_id, 2);
+    assert_eq!(trocas[0].texture_id, 1);
+    let Some(Lido {
+        palco: Ok(Some(palco)),
+        ..
+    }) = p.lidos.get(&dono.to_bits())
+    else {
+        panic!("o palco continua");
+    };
+    assert!(
+        palco.em_cena.recomecou_de().is_some(),
+        "do instantâneo, não do zero"
+    );
 
+    // Um `Macro` vazio não tem trilha: o palco sai e a ranhura volta.
+    w.entity_mut(dono).insert(Macro {
+        doc: Vec::new(),
+        modo: ModoDaMacro::Fiel,
+    });
+    assert!(quadro(&mut p, &mut w, &mut placa).is_empty());
+    assert_eq!(placa.soltas, [1]);
+
+    w.entity_mut(dono).insert(m);
+    quadro(&mut p, &mut w, &mut placa);
+    assert_eq!(placa.adquiridas, [1, 2], "o palco nasce de novo");
     w.despawn(dono);
     assert!(quadro(&mut p, &mut w, &mut placa).is_empty());
     assert_eq!(placa.soltas, [1, 2]);

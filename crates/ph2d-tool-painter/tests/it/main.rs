@@ -13,6 +13,7 @@ mod macro_agua;
 mod macro_comum;
 mod macro_em_cena;
 mod macro_etapas;
+mod macro_instantaneos;
 mod macro_portas;
 mod macro_traco;
 mod measure_undo_capacity;

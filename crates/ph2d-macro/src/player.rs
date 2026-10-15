@@ -62,6 +62,34 @@ impl MacroPlayer {
         Ok(n)
     }
 
+    /// Como [`Self::advance_to`], mas pára quando [`Self::dispatched`] chega a `limite` — o instante fica no
+    /// último passo despachado (≤ `to`), e um `advance_to` seguinte continua dali. É onde a família tira um
+    /// instantâneo, entre dois passos de um mesmo quadro se for preciso.
+    pub fn advance_to_limit<E>(
+        &mut self,
+        doc: &MacroDoc,
+        to: MacroTime,
+        limite: usize,
+        mut apply: impl FnMut(usize, &Track, &Event) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        self.cursors.resize(doc.tracks.len(), 0);
+        let mut n = 0;
+        while self.dispatched() < limite
+            && let Some(k) = self.next_due(doc, to)
+        {
+            let tr = &doc.tracks[k];
+            let ev = &tr.events[self.cursors[k]];
+            apply(k, tr, ev)?;
+            self.cursors[k] += 1;
+            self.time = self.time.max(ev.t);
+            n += 1;
+        }
+        if self.dispatched() < limite {
+            self.time = self.time.max(to);
+        }
+        Ok(n)
+    }
+
     /// Volta ao início (`reset` restaura o estado inicial de cada trilha) e avança até `to`.
     /// É o scrub para trás; os instantâneos que o encurtam são da família.
     pub fn seek<E>(

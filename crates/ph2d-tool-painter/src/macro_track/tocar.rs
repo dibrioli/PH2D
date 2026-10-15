@@ -8,8 +8,8 @@
 
 use super::inicial::{self, ErroDoInicial};
 use super::passo::{Passo, abs};
-use crate::tool::PainterTool;
-use crate::tool::paint::fita::{self, Divergencia, Fita, FitaPartilhada};
+use crate::tool::paint::fita::{self, Divergencia, Fita, FitaPartilhada, RespostaDoWorker};
+use crate::tool::{PainterTool, SemInstantaneo};
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, RasterEditTool, Tool};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -37,6 +37,26 @@ pub struct TocadorDoPainter {
     /// Um passo de pré-visualização viu a tela mudar desde o último [`Self::toma_a_tela`] (nasce
     /// `true`: a tela inicial também se mostra).
     mudou: bool,
+    /// As respostas do worker que a trilha carregou, pela ordem (a fita consome-as de frente).
+    respostas: Arc<[RespostaDoWorker]>,
+    /// A água ainda responde pela fita (`false` depois de [`Self::passa_ao_relogio_fixo`]).
+    fita_viva: bool,
+}
+
+/// As respostas do worker de uma trilha, pela ordem das cargas.
+///
+/// # Errors
+/// [`ErroDaMacro::Passo`].
+pub fn respostas_de<'a>(
+    cargas: impl IntoIterator<Item = &'a [u8]>,
+) -> Result<Vec<RespostaDoWorker>, ErroDaMacro> {
+    let mut out = Vec::new();
+    for c in cargas {
+        if let Passo::Agua(r) = Passo::descodifica(c).map_err(ErroDaMacro::Passo)? {
+            out.push(r);
+        }
+    }
+    Ok(out)
 }
 
 impl TocadorDoPainter {
@@ -74,14 +94,9 @@ impl TocadorDoPainter {
         mut tool: PainterTool,
         cargas: impl IntoIterator<Item = &'a [u8]>,
     ) -> Result<Self, ErroDaMacro> {
-        let mut fila = VecDeque::new();
-        for c in cargas {
-            if let Passo::Agua(r) = Passo::descodifica(c).map_err(ErroDaMacro::Passo)? {
-                fila.push_back(r);
-            }
-        }
+        let respostas: Arc<[RespostaDoWorker]> = respostas_de(cargas)?.into();
         let fita: FitaPartilhada = Arc::new(Mutex::new(Fita::Toca {
-            fila,
+            fila: respostas.iter().copied().collect(),
             divergiu: None,
         }));
         tool.wet_instala_fita(Some(Arc::clone(&fita)));
@@ -89,7 +104,57 @@ impl TocadorDoPainter {
             tool,
             fita,
             mudou: true,
+            respostas,
+            fita_viva: true,
         })
+    }
+
+    /// **O instantâneo deste tocador**: continuar a cópia dá, ao bit, o que este daria ([`PainterTool::instantaneo`];
+    /// a fita é dela).
+    ///
+    /// # Errors
+    /// [`SemInstantaneo`] — o tool do tocador nunca grava, nunca tem worker nem ponte de dispositivo.
+    pub fn instantaneo(&self) -> Result<Self, SemInstantaneo> {
+        let mut tool = self.tool.instantaneo()?;
+        let fita = tool
+            .wet_fita_propria()
+            .unwrap_or_else(|| Arc::new(Mutex::new(fita::trava(&self.fita).clone())));
+        Ok(Self {
+            tool,
+            fita,
+            mudou: true,
+            respostas: Arc::clone(&self.respostas),
+            fita_viva: self.fita_viva,
+        })
+    }
+
+    /// **O que um instantâneo deste tocador retém** ([`PainterTool::bytes_do_instantaneo`]) — o que ele
+    /// declara ao razão da RAM.
+    #[must_use]
+    pub fn bytes_retidos(&self) -> usize {
+        self.tool.bytes_do_instantaneo()
+    }
+
+    /// **Recomeça deste instantâneo uma trilha EDITADA** cujas respostas do worker são `respostas`: a
+    /// fita passa a ser a da trilha nova, a partir das que este já consumiu. `None` = este instantâneo
+    /// não é um estado da trilha nova (ela mudou alguma resposta que ele já consumiu).
+    ///
+    /// Só a fita se confere aqui: quem chama garante que os eventos já despachados são os mesmos.
+    #[must_use]
+    pub fn recomeca(&self, respostas: &Arc<[RespostaDoWorker]>) -> Option<Self> {
+        let mut c = self.instantaneo().ok()?;
+        if c.fita_viva {
+            let ja = self.respostas.len() - self.respostas_por_pedir();
+            if respostas.get(..ja)? != self.respostas.get(..ja)? {
+                return None;
+            }
+            *fita::trava(&c.fita) = Fita::Toca {
+                fila: respostas[ja..].iter().copied().collect(),
+                divergiu: None,
+            };
+        }
+        c.respostas = Arc::clone(respostas);
+        Some(c)
     }
 
     /// **A tela para a cena**, se mudou desde a última vez: a composição do editor
@@ -125,6 +190,7 @@ impl TocadorDoPainter {
     /// **Daqui em diante a água corre no relógio fixo**, sem a fita (a reprodução de uma etapa editada:
     /// [`TocadorDoPainter::aplica`] deixa de conferir as respostas gravadas do worker).
     pub fn passa_ao_relogio_fixo(&mut self) {
+        self.fita_viva = false;
         self.tool.wet_passa_ao_relogio_fixo();
         *fita::trava(&self.fita) = Fita::Toca {
             fila: VecDeque::new(),

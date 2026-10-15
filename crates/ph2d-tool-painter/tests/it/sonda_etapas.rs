@@ -270,3 +270,78 @@ fn sonda_custo_de_tocar_ate_cada_pincelada() {
         );
     }
 }
+
+/// **W5c: o preço dos instantâneos** — tirar um no início de cada etapa (a reprodução da cena paga-o
+/// nesse quadro) e reeditar a pincelada `k` a partir dele contra um palco novo do zero. Mínimo de
+/// [`RONDAS_W5C`] rondas intercaladas.
+const RONDAS_W5C: usize = 5;
+
+#[test]
+#[ignore = "sonda de medição (W5c): imprime, não reprova"]
+fn sonda_instantaneos() {
+    use ph2d_core::razao::Razao;
+    use ph2d_tool_painter::macro_track::em_cena::MacroEmCena;
+    use ph2d_tool_painter::macro_track::etapas;
+    let docs = [("splash 1024²", splash(1024)), ("splash 2048²", splash(2048))];
+    eprintln!("[w5c] loadavg {}", carga().trim());
+    let mut tirar = vec![f64::MAX; docs.len()];
+    let mut reedita = vec![f64::MAX; docs.len()];
+    let mut do_zero = vec![f64::MAX; docs.len()];
+    let mut com = vec![f64::MAX; docs.len()];
+    let mut sem = vec![f64::MAX; docs.len()];
+    for r in 0..RONDAS_W5C {
+        for j in 0..docs.len() {
+            let i = (j + r) % docs.len();
+            let doc = &docs[i].1;
+            let bytes = ph2d_macro::codec::write(doc);
+            let k = etapas::etapas(&doc.tracks[0]).expect("lê-se").len() - 1;
+            let mut editada = doc.clone();
+            // LITERAL-COLOR-OK: a cor nova de uma pincelada GRAVADA, não da UI.
+            etapas::edita_cor(&mut editada.tracks[0], k, [20, 200, 40]).expect("pincelada");
+            let novos = ph2d_macro::codec::write(&editada);
+            // Tocar até ao fim com e sem instantâneos (o razão a zero não guarda nenhum).
+            let a = Instant::now();
+            let mut m = MacroEmCena::no_razao(&bytes, Razao::new(usize::MAX)).unwrap().unwrap();
+            m.segue(60.0).unwrap();
+            com[i] = com[i].min(a.elapsed().as_secs_f64() * 1e3);
+            let a = Instant::now();
+            let mut z = MacroEmCena::no_razao(&bytes, Razao::new(0)).unwrap().unwrap();
+            z.segue(60.0).unwrap();
+            sem[i] = sem[i].min(a.elapsed().as_secs_f64() * 1e3);
+            // Um instantâneo, sozinho, no início da última pincelada (a água da anterior ainda molhada).
+            let inicio = pinceladas(doc)[k].0;
+            let tr = &doc.tracks[0];
+            let mut t = TocadorDoPainter::novo(&tr.initial, tr.events.iter().map(|e| e.payload.as_slice()))
+                .unwrap();
+            for e in &tr.events[..inicio] {
+                t.aplica(&e.payload).unwrap();
+            }
+            let a = Instant::now();
+            let f = t.instantaneo().unwrap();
+            tirar[i] = tirar[i].min(a.elapsed().as_secs_f64() * 1e3);
+            drop(f);
+            // Editar a última pincelada: do instantâneo dela contra um palco novo.
+            let a = Instant::now();
+            m.reedita(&novos).unwrap();
+            m.segue(60.0).unwrap();
+            reedita[i] = reedita[i].min(a.elapsed().as_secs_f64() * 1e3);
+            let a = Instant::now();
+            let mut n = MacroEmCena::no_razao(&novos, Razao::new(0)).unwrap().unwrap();
+            n.segue(60.0).unwrap();
+            do_zero[i] = do_zero[i].min(a.elapsed().as_secs_f64() * 1e3);
+        }
+    }
+    eprintln!("[w5c] loadavg {}", carga().trim());
+    for (i, (nome, doc)) in docs.iter().enumerate() {
+        eprintln!(
+            "[w5c] {nome}: macro {:.2} s · um instantâneo {:.1} ms · tocar ao fim com instantâneos {:.0} ms, \
+             sem {:.0} ms · editar a última pincelada: do instantâneo {:.0} ms, do zero {:.0} ms",
+            doc.duration().0 as f64 / 1e6,
+            tirar[i],
+            com[i],
+            sem[i],
+            reedita[i],
+            do_zero[i]
+        );
+    }
+}

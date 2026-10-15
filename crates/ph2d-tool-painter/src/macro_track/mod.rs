@@ -12,6 +12,7 @@
 pub mod em_cena;
 pub mod etapas;
 pub mod inicial;
+pub mod instantaneos;
 pub mod passo;
 pub mod portas;
 mod portas_internas;

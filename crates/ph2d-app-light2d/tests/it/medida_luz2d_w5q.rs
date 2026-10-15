@@ -17,16 +17,55 @@ pub(crate) fn a_c2_e_as_etapas(
     cena: &CenaDeLuz,
     rotulo: &str,
 ) {
+    // ⭐ W5u: aquecida antes — na cena cheia o rebote acende a cena nos primeiros quadros e a `c2` do High
+    // vai de 9,4 (o 1.º quadro, que o mínimo lia) a ~17 ms (handoff W5u §1). `PH2D_W5U_AQUECE=0` = o antes.
+    let aquece = std::env::var("PH2D_W5U_AQUECE").as_deref() != Ok("0");
+    for _ in 0..if aquece { QUADROS } else { 0 } {
+        p.quadro(gpu, cena);
+    }
     let mut c2 = Vec::new();
+    // ⭐ W5u: a FATIA de cada passe do quadro (a vista; o entorno inteiro à parte), o mínimo por passe.
+    let mut fatias: Vec<Vec<f64>> = vec![Vec::new(); 13];
     for _ in 0..QUADROS {
         p.quadro(gpu, cena);
-        c2.push(p.tempos(gpu).0.c2_total());
+        let (t, e) = p.tempos(gpu);
+        c2.push(t.c2_total());
+        let v = [
+            t.c0,
+            t.c1,
+            t.c2_total(),
+            t.c3_visibilidade,
+            t.c3_fina,
+            t.c0_fina,
+            t.c3_preenche,
+            t.c3_mascaras,
+            t.c0_rebote,
+            t.c3_rebote,
+            t.c3_miolo,
+            t.total(),
+            e.map_or(0.0, |e| e.total()),
+        ];
+        fatias.iter_mut().zip(v).for_each(|(f, x)| f.push(x));
     }
     eprintln!(
         "C {rotulo} · c2 High mín {:.3} · med {:.3} ms",
         minimo(&c2),
         mediana(&c2)
     );
+    const NOMES: [&str; 13] = [
+        "c0", "c1", "c2", "c3_vis", "c3_fina", "c0_fina", "c3_preenche", "c3_masc", "c0_rebote",
+        "c3_rebote", "miolo", "total", "entorno",
+    ];
+    let q: Vec<String> = NOMES
+        .iter()
+        .zip(&fatias)
+        .map(|(n, f)| format!("{n} {:.3}", minimo(f)))
+        .collect();
+    eprintln!("Q {rotulo} · mín por passe: {}", q.join(" · "));
+    if std::env::var("PH2D_W5U_SERIE").is_ok() {
+        let s: Vec<String> = c2.iter().map(|x| format!("{x:.2}")).collect();
+        eprintln!("Z {rotulo} · c2 por quadro: {}", s.join(" "));
+    }
     if std::env::var("PH2D_W5Q_FASES").as_deref() != Ok("1") {
         return;
     }

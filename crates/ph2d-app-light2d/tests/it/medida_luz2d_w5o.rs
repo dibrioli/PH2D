@@ -439,6 +439,14 @@ fn medida_luz2d_w5o_lastro() {
         let hrc_fio_por_sonda = chave("PH2D_W5S_SONDA", produto.hrc_fio_por_sonda);
         // ⭐ W5t: `PH2D_W5T_3D=0|1` — a holográfica despachada em 3D.
         let hrc_grade_3d = chave("PH2D_W5T_3D", produto.hrc_grade_3d);
+        // ⭐ W5u: `PH2D_W5U_CONES=<n>` · `PH2D_W5U_PARES=<n>` · `PH2D_W5U_RGB=0|1` (omissão: a do produto).
+        let num = |k: &str, padrao: u32| std::env::var(k).map_or(padrao, |v| v.parse().expect(k));
+        let w5u = |c: Config| Config {
+            hrc_cones_por_fio: num("PH2D_W5U_CONES", c.hrc_cones_por_fio),
+            hrc_pares_na_subida: num("PH2D_W5U_PARES", c.hrc_pares_na_subida),
+            hrc_acumulado_rgb: chave("PH2D_W5U_RGB", c.hrc_acumulado_rgb),
+            ..c
+        };
         (
             Config {
                 aritmetica,
@@ -448,7 +456,7 @@ fn medida_luz2d_w5o_lastro() {
                 hrc_salta_o_vazio,
                 hrc_fio_por_sonda,
                 hrc_grade_3d,
-                ..produto
+                ..w5u(produto)
             },
             config_do_entorno(a, FHD, degrau_do(nivel)).map(|c| Config {
                 aritmetica,
@@ -458,17 +466,17 @@ fn medida_luz2d_w5o_lastro() {
                 hrc_salta_o_vazio,
                 hrc_fio_por_sonda,
                 hrc_grade_3d,
-                ..c
+                ..w5u(c)
             }),
         )
     };
     // ⭐ W5s: `PH2D_W5S_CENA=cheia` — a vazia sob um tapete de quadrados (meio texel de lado a cada 6
     // texels da grade do High): todo ladrilho com cobertura, o pior caso do salto.
-    // ⭐ W5s: `PH2D_W5S_NIVEL=low` — a mesma régua no Low.
-    let medido = if std::env::var("PH2D_W5S_NIVEL").as_deref() == Ok("low") {
-        NivelDaLuz::Baixa
-    } else {
-        NivelDaLuz::Alta
+    // ⭐ W5s/W5u: `PH2D_W5S_NIVEL=low|medium` — a mesma régua no Low e no Medium (omissão: High).
+    let medido = match std::env::var("PH2D_W5S_NIVEL").as_deref() {
+        Ok("low") => NivelDaLuz::Baixa,
+        Ok("medium") => NivelDaLuz::Media,
+        _ => NivelDaLuz::Alta,
     };
     let vazia = if std::env::var("PH2D_W5S_CENA").as_deref() == Ok("cheia") {
         let g = cfgs(medido).0.grade;
@@ -572,7 +580,7 @@ fn medida_luz2d_w5o_lastro() {
         }
     }
     let rotulo = format!(
-        "dicas {dicas:?} duas vezes {ensaio} lastro {caso} ({} texturas, vivo {})",
+        "{medido:?} · dicas {dicas:?} duas vezes {ensaio} lastro {caso} ({} texturas, vivo {})",
         lastro.len(),
         vivo.is_some()
     );

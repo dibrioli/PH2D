@@ -1,6 +1,7 @@
 //! **A área marcada do tutorial «fazer»** (Macros W6b, `docs/Macros/03_plano_W6.md` §6): a pincelada
-//! que o balão pede, desenhada por cima da imagem — o caminho gravado com o raio dele numa faixa do
-//! acento suave, e a linha do caminho tracejada no acento. Desenho puro: lê o balão publicado
+//! que o balão pede, desenhada por cima da imagem — o caminho gravado com o raio dele numa faixa
+//! TRANSLÚCIDA do acento, e a linha do caminho tracejada no acento. ⛔ O `AccentSoft` é opaco (um fundo
+//! de chrome): na foto da cena `=4` a faixa lia-se como tinta já pintada. Desenho puro: lê o balão publicado
 //! ([`ph2d_editor_core::macro_tutorial::balao`]) e só pinta sobre a imagem que o Painter tem ligada.
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
@@ -13,10 +14,12 @@ use ph2d_vector::{Affine, BezPath, Brush, Cap, Color, Join, Stroke, VectorScene}
 /// O tracejado da linha do caminho, em píxeis de ecrã.
 const TRACO_PX: f64 = 6.0; // LITERAL-PX-OK: tracejado do caminho marcado
 const LINHA_PX: f64 = 1.5; // LITERAL-PX-OK: espessura da linha do caminho marcado
+/// A opacidade da faixa: a tela (e a tinta do aluno) vê-se através dela.
+const ALFA_DA_FAIXA: u8 = 56; // LITERAL-COLOR-OK: ~22 % de opacidade da faixa marcada
 
-fn cor(t: ColorToken, hero: &HeroScreen) -> Color {
+fn cor(t: ColorToken, hero: &HeroScreen, alfa: u8) -> Color {
     let c = t.resolve(hero.theme);
-    Color::from_rgba8(c.r, c.g, c.b, c.a)
+    Color::from_rgba8(c.r, c.g, c.b, alfa)
 }
 
 pub(super) fn draw_tutorial_area(
@@ -80,14 +83,14 @@ pub(super) fn draw_tutorial_area(
             .with_caps(Cap::Round)
             .with_join(Join::Round),
         Affine::IDENTITY,
-        &Brush::Solid(cor(ColorToken::AccentSoft, hero)),
+        &Brush::Solid(cor(ColorToken::Accent, hero, ALFA_DA_FAIXA)),
         None,
         &caminho,
     );
     scene.stroke(
         &Stroke::new(LINHA_PX).with_dashes(0.0, [TRACO_PX, TRACO_PX]),
         Affine::IDENTITY,
-        &Brush::Solid(cor(ColorToken::Accent, hero)),
+        &Brush::Solid(cor(ColorToken::Accent, hero, u8::MAX)),
         None,
         &caminho,
     );

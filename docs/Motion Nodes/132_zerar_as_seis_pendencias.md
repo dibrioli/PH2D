@@ -159,8 +159,16 @@ Cenas do smoke, contadas no roteador (`motion_state_demo_router.rs:34`, `MAX_DEM
      por linha: `+0,019–0,023 ms` por linha — `23,8 ms` a 1k, `97,5 ms` a 4k, `312 ms` a 16k, contra `2,0 / 2,4 / 4,9 ms`
      por média (`sonda_o_preco_de_um_desenho_por_linha`). ⇒ fica na CPU (`RECUSA_SCENE_NO_DISPOSITIVO`), que SABE a média
      e parte a corrida `Normal` a cada troca (gate `o_scene_com_imagens_pela_cpu_guarda_a_ordem_das_linhas`); nas
-     misturas comutativas as duas médias partilham a corrida, como no dispositivo. A porta do hardware é UM pipeline
-     que desenhe as duas médias na ordem do buffer (as imagens como cópias da placa de formas) — não construída.
+     misturas comutativas as duas médias partilham a corrida, como no dispositivo. **A porta do hardware foi
+     CONSTRUÍDA (14/10, `13a06f47e4` + `c28534c7ac` + `cfd4dc046b`):** UM pipeline desenha as duas médias na ordem do
+     buffer (`Corrida::ordenada`, `ShapePass::com_segundo_meio`, `ordenado.wgsl` `vs_ordenado`/`fs_ordenado`,
+     deslocamento no `first_vertex` com viés 2^28); sai `RECUSA_SCENE_NO_DISPOSITIVO`. Sonda
+     `sonda_o_scene_ordenado_no_dispositivo` (1080p, médias a alternar, mínimo de 12 blocos, carga ~2), 1k/4k/16k: CPU por
+     linha `9,35 / 49,5 / 206,5 ms` · ORDENADO `0,204 / 0,407 / 2,19 ms` · comutativa (2 desenhos) `0,265 / 0,524 /
+     2,46 ms` ⇒ 46–122× a lei de antes e 0,77–0,89× a comutativa (kill-criterion fixado antes: ≤ 1,5×). ⚠️ Medida
+     ANTES da cura `c28534c7ac` (a imagem não desenhava nas linhas de imagem): **re-medir** — ABERTO. Gate
+     `o_scene_com_imagens_pelo_dispositivo_segue_a_faixa_deslocada` (24 casos). Handoff:
+     [ABERTOS 132](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-14_ABERTOS_132.md).
   4. **`MundoPartido` — VERDE, por segmentos.** A camada desenha cada SEGMENTO de pousa e pousa-o por sua vez
      (`Segmentos`, `cola_no_mundo`): `+0,12 ms` por segmento a 1080p e a 4K (`sonda_o_preco_de_um_segmento_de_pousa`),
      contra o quadro inteiro no Vello. Gate `as_pousas_diferentes_pousam_por_segmentos` (Everything+Normal,
@@ -241,13 +249,15 @@ pintura da coluna).
 | ler o backdrop do mundo | cópia `+0,10–0,16 ms` a 1080p, `+0,30–0,33 ms` a 4K; a pousa com o modo custa o mesmo que `Normal` |
 | `Scene` no dispositivo, uma chamada por linha | `23,8 / 97,5 / 312 ms` × por média `2,0 / 2,4 / 4,9 ms` a 1k/4k/16k |
 | relógio livre na `=139` | 25 s depois de abrir a faixa está em `[22, 25] s`, fora da régua 0–6 s (a cena pára aos 5 s) |
+| guarda de junção LARGA (nenhuma corrida `Normal` com imagens se junta) | sem gate, e proibia junções certas; a exacta (só vizinha ALINHADA, `cfd4dc046b`) tem gate e mutação RED |
+| barra de 5 % (estrelas) no gate do `Scene` ordenado | aceitou 501 px com as imagens em falta por baixo (defeito `registo_de(0xffffffff)` achava o enchimento dos handles); apertada a 4·4·0 |
+| 2.º kernel só para cadeias 16·4096 do `corrige` (decisão 14/10: fica a Escolha `select`) | mínimo `+9 %` (Matriz) e mediana `−3,4 %` discordam de sinal, a régua não separa; a Escolha ganha até 43 % na nuvem; kernel duplicado por ganho dentro do ruído |
 | tecto da fita a 1/16 por cache | 512 MiB a 8 GiB: `1 GiB` aos dois caches, numa memória unificada com a placa; `1/32` já dobra a história (2,5 → 5 min) |
 
-**ABERTO (13/10):** na aba Keys o Motion não segue o relógio que o artista arrasta (desenho do módulo — a faixa só
-vive na Arrange); `Scene` na placa por UM pipeline que desenhe as duas médias na ordem do buffer (escrito, não
-construído); cadeia 16·4096 do `corrige` (mínimo pior, mediana melhor: não decidida); 5 sítios de aviso fora do
-censo (texto só em execução: `component_attach.rs:199`, `fase_physics_step.rs:113`, `fase_view_frame.rs:49`,
-`fase_sprite_pixel_smokes.rs:49/51`). Handoff: [ZERAR 132](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-13_ZERAR_132.md).
+**ABERTO (14/10):** re-medir a sonda do `Scene` ordenado depois de `c28534c7ac`; detalhe do aviso «Vector-path shapes
+filter as one» (o dono não respondeu); legendas das cenas de ciclo em PT cru (não i18n). (Fechados em 14/10: a Keys
+mexe o Motion; `Scene` na placa; cadeia 16·4096 = fica a Escolha; os 5 sítios de aviso entraram no censo.) Handoff:
+[ABERTOS 132](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-14_ABERTOS_132.md).
 
 ### P3 — o `corrige` em registos (`select`) ganha; `PECAS_PARA_UM_GRUPO` 1024 → 1536
 

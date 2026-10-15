@@ -73,6 +73,7 @@ impl Params {
 /// Sim state that lives OUTSIDE the grid: cadence, tilt, experimental flags.
 /// (The JS holds the grid reference here; in Rust the caller passes the grid
 /// to [`sim_step`] — the facade owns which layer's grid simulates.)
+#[derive(Clone)]
 pub struct Sim {
     pub frame: u64,
     // Adaptive drying cadence, starts calm.

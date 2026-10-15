@@ -72,6 +72,7 @@ pub struct Dab {
     pub window_reach: f64,
 }
 
+#[derive(Clone)]
 pub struct Trail {
     pig: Vec<f32>,
     water: Vec<f32>,

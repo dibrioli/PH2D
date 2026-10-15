@@ -23,6 +23,7 @@ struct Point {
 
 /// Callbacks: `on_segment(chord)` fires BEFORE that segment's dabs (the trail
 /// sizes its window with it); `on_dab(x, y, pressure, dir_x, dir_y)` per dab.
+#[derive(Clone)]
 pub struct Stroke {
     pub active: bool,
     pub releasing: bool,
@@ -60,6 +61,7 @@ impl Default for Stroke {
 /// The per-frame stroke outputs, drained by the caller after each tick — the
 /// JS uses closures; a drained event list keeps the borrow checker out of the
 /// facade's way without changing WHEN anything fires.
+#[derive(Clone)]
 pub enum StrokeEvent {
     /// Chord length of a spline segment, reported before its dabs.
     Segment { chord: f64 },

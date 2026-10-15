@@ -64,6 +64,15 @@ pub struct SolverScratch {
     pub bflags: Vec<u8>,
 }
 
+/// A cópia de um rascunho é um rascunho VAZIO: o conteúdo é reescrito inteiro dentro de um passe, e o
+/// primeiro passo da cópia volta a alocá-lo ([`Self::ensure`]). É um terço do instantâneo de uma macro
+/// (medido, `docs/Macros/02_plano_W5.md` §3).
+impl Clone for SolverScratch {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
 impl SolverScratch {
     /// Garante os planos com `n` células. Idempotente e sem realocar depois da
     /// primeira vez.

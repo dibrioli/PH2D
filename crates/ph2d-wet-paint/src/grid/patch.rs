@@ -30,6 +30,7 @@
 use super::Grid;
 
 /// Um recorte retangular do grid, em células FINAS de INTERIOR (`1..=w`), já clampado.
+#[derive(Clone)]
 pub struct GridPatch {
     x0: i32,
     y0: i32,

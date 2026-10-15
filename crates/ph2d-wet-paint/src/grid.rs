@@ -30,6 +30,7 @@ pub use patch::{GridPatch, restore_grid_region, snapshot_grid_region};
 pub const DEFAULT_WIDTH: usize = 900;
 pub const DEFAULT_HEIGHT: usize = 450;
 
+#[derive(Clone)]
 pub struct Grid {
     pub w: usize,
     pub h: usize,

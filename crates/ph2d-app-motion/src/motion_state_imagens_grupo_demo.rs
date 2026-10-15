@@ -128,9 +128,9 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![
         ficha(
             -COL_X,
-            "Screen em grupo: imagens e estrelas clareiam onde se tocam",
+            "Screen as a group: images and stars brighten where they touch",
         ),
-        ficha(COL_X, "Add em grupo: clareia mais, ate ao branco"),
+        ficha(COL_X, "Add as a group: brightens more, up to white"),
     ]
 }
 

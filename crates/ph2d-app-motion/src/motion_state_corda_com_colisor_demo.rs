@@ -181,8 +181,8 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
         crate::motion_demo_legend::Caption::new([x, MASTRO_Y + 4.0], t.to_string())
     };
     vec![
-        ficha(MASTRO_X[0], "SEM Collide: atravessam-se"),
-        ficha(MASTRO_X[1], "COM Collide: encostam"),
+        ficha(MASTRO_X[0], "NO Collide: they pass through"),
+        ficha(MASTRO_X[1], "WITH Collide: they touch"),
     ]
 }
 
@@ -190,7 +190,7 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
 pub(super) fn captions_depois() -> Vec<crate::motion_demo_legend::Caption> {
     vec![crate::motion_demo_legend::Caption::new(
         [MASTRO_X[0], MASTRO_Y + 4.0],
-        "Collide DEPOIS da corda".to_string(),
+        "Collide AFTER the rope".to_string(),
     )]
 }
 

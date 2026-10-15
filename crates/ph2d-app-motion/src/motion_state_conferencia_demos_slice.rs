@@ -255,16 +255,16 @@ pub fn build_slice_demo_document(
 /// Os rótulos das dez bandas, na ordem em que a cena as monta.
 pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "DOBRA Unlimited -- a fileira INTEIRA curva, como sempre foi",
-        "DOBRA Limited -- so' metade curva, e a outra metade ACOMPANHA a ponta, direita",
-        "DOBRA Limited (a mesma de cima, para comparar)",
-        "DOBRA Within Box -- so' metade curva, e a outra metade FICA onde estava",
-        "CURVA eixo de sempre -- a COLUNA sai numa reta: a curva nao existe para ela",
-        "CURVA com Axis 90 -- a mesma coluna a percorrer o S inteiro",
-        "CURVA sem afunilamento -- as pecas todas do mesmo tamanho",
-        "CURVA com Size Start/End -- ela ENGROSSA no comeco e afina ate' sumir no fim",
-        "COPIAS Linear -- a fila em recta que o no' sempre fez",
-        "COPIAS Radial -- as mesmas copias num LEQUE, em torno de um pivo",
+        "BEND Unlimited -- a fileira INTEIRA curva, como sempre foi",
+        "BEND Limited -- so' metade curva, e a outra metade ACOMPANHA a ponta, direita",
+        "BEND Limited (same as above, to compare)",
+        "BEND Within Box -- so' metade curva, e a outra metade FICA onde estava",
+        "CURVE axis as before -- a COLUNA sai numa reta: a curva nao existe para ela",
+        "CURVE with Axis 90 -- a mesma coluna a percorrer o S inteiro",
+        "CURVE without taper -- as pecas todas do mesmo tamanho",
+        "CURVE with Size Start/End -- ela ENGROSSA no comeco e afina ate' sumir no fim",
+        "COPIES Linear -- a fila em recta que o no' sempre fez",
+        "COPIES Radial -- as mesmas copias num LEQUE, em torno de um pivo",
     ]
     .into_iter()
     .enumerate()

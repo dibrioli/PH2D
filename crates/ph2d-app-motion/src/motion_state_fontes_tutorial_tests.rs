@@ -24,10 +24,10 @@ fn every_row_the_source_tutorial_names_is_on_the_card() {
         &mut snap,
     );
     let pedidos: &[(&str, &[&str])] = &[
-        ("Text: a palavra", &["Text", "Tracking"]),
-        ("Shape: a forma", &["Shape"]),
-        ("Table: o grafico", &["Table File"]),
-        ("Drive: o tamanho no ecra", &["Scale"]),
+        ("Text: the word", &["Text", "Tracking"]),
+        ("Shape: the shape", &["Shape"]),
+        ("Table: the chart", &["Table File"]),
+        ("Drive: the size on screen", &["Scale"]),
     ];
     for (titulo, linhas) in pedidos {
         let v = snap

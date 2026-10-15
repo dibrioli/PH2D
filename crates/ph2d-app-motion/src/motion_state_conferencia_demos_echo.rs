@@ -66,17 +66,17 @@ pub struct Row {
 pub static ROWS_TABLE: &[Row] = &[
     Row {
         label: "LEMBRADO — o rastro de sempre. O CONTROLE",
-        caption: "1 LEMBRADO · a cauda de sempre",
+        caption: "1 REMEMBERED · the usual tail",
         echo: Echo::Remembered,
     },
     Row {
         label: "RE-COZIDO — a MESMA cauda, sem lembrar de nada",
-        caption: "2 RE-COZIDO · tem de ser igual a 1",
+        caption: "2 RE-COOKED · must match 1",
         echo: Echo::Resampled,
     },
     Row {
         label: "PARA A FRENTE — a cauda ADIANTE do elemento",
-        caption: "3 PARA A FRENTE · o eco vai na frente",
+        caption: "3 FORWARD · the echo goes ahead",
         echo: Echo::Forward,
     },
 ];

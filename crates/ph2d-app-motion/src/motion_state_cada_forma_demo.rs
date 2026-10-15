@@ -161,7 +161,7 @@ pub(super) fn build_discos(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Ve
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![crate::motion_demo_legend::Caption::new(
         [0.0, -5.2],
-        "o circulo do meio e' o campo: la' dentro tudo cai mais depressa".to_string(),
+        "the middle circle is the field: inside it everything falls faster".to_string(),
     )]
 }
 

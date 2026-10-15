@@ -67,14 +67,14 @@ pub struct Row {
 pub static ROWS_TABLE: &[Row] = &[
     Row {
         label: "MESMOS CANTOS — as mesmas 4 pontas; à direita o MIOLO arqueia",
-        left: "1 CANTOS · antes: miolo reto",
-        right: "1 CANTOS · agora: miolo curvo",
+        left: "1 CORNERS · before: straight interior",
+        right: "1 CORNERS · now: curved interior",
         case: Case::SameCorners,
     },
     Row {
         label: "ARESTA — o de antes só sabe mover CANTOS; o novo entorta a BORDA",
-        left: "2 ARESTA · antes: nao da'",
-        right: "2 ARESTA · agora: borda curva",
+        left: "2 EDGE · before: can't do it",
+        right: "2 EDGE · now: curved border",
         case: Case::CurvedEdge,
     },
 ];

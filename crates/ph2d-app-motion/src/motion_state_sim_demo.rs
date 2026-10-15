@@ -109,7 +109,7 @@ pub(super) fn indice_de(reg: &NodeRegistry, no: &str, param: &str, valor: &str) 
 /// A legenda que a cena pousa no canvas.
 pub(super) fn captions() -> Vec<Caption> {
     vec![
-        Caption::new([BLOCO_W + 0.35, BLOCO_Y], "arraste ESTE bloco"),
+        Caption::new([BLOCO_W + 0.35, BLOCO_Y], "drag THIS block"),
         Caption::new(
             [-(COLS - 1.0) * GAP * 0.5, BLOCO_Y - 1.0],
             "Wind ▸ Acts As: Force -> Target Velocity",

@@ -588,12 +588,12 @@ fn every_row_the_simulation_tutorial_names_is_on_the_card() {
         T05,
         &snap,
         &[
-            ("Friction 1: ROLA", &["Friction", "Rolling Friction"]),
-            ("Bounciness 0,9: SALTA", &["Bounciness"]),
+            ("Friction 1: ROLLS", &["Friction", "Rolling Friction"]),
+            ("Bounciness 0.9: BOUNCES", &["Bounciness"]),
         ],
     );
-    n += confere_secoes(T05, &snap, &[("Friction 1: ROLA", &["Collision"])]);
+    n += confere_secoes(T05, &snap, &[("Friction 1: ROLLS", &["Collision"])]);
     // O passo 13 diz que a `Collision` «já vem aberta».
-    confere_nascimento(&mut m, &[("Friction 1: ROLA", "Collision", true)]);
+    confere_nascimento(&mut m, &[("Friction 1: ROLLS", "Collision", true)]);
     assert_eq!(n, 22, "conferi {n}");
 }

@@ -233,14 +233,14 @@ pub fn build_ladder_demo_document(
 /// Os rótulos das oito bandas, na ordem em que a cena as monta.
 pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "CORDA uniforme -- todos os elos querem o mesmo comprimento",
-        "CORDA afunilada -- os elos de cima largos, os de baixo curtos, e ela NAO encolheu",
-        "MOLA num eixo so' -- ela persegue o alvo na horizontal e cola-se a ele na vertical",
-        "MOLA Position XY -- um no' so', e ela persegue nos DOIS eixos: o atraso vira uma curva",
-        "CAUDA sem teto -- o eco mais novo nasce colado a' cabeca",
-        "CAUDA com Tail Alpha Max -- a cauda nasce ja' apagada, separada da cabeca",
-        "ESCADA para cima -- os degraus sobem, e a contagem sobe com eles",
-        "ESCADA Direction Down -- os mesmos degraus, percorridos ao contrario",
+        "ROPE uniform -- todos os elos querem o mesmo comprimento",
+        "ROPE tapered -- os elos de cima largos, os de baixo curtos, e ela NAO encolheu",
+        "SPRING on one axis only -- ela persegue o alvo na horizontal e cola-se a ele na vertical",
+        "SPRING Position XY -- um no' so', e ela persegue nos DOIS eixos: o atraso vira uma curva",
+        "TAIL with no cap -- o eco mais novo nasce colado a' cabeca",
+        "TAIL with Tail Alpha Max -- a cauda nasce ja' apagada, separada da cabeca",
+        "STAIRS going up -- os degraus sobem, e a contagem sobe com eles",
+        "STAIRS Direction Down -- os mesmos degraus, percorridos ao contrario",
     ]
     .into_iter()
     .enumerate()

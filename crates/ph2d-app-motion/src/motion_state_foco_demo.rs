@@ -62,7 +62,7 @@ const CRESCIMENTO: f32 = 2.2;
 /// A legenda que a cena pousa no canvas.
 pub(super) fn captions() -> Vec<Caption> {
     vec![
-        Caption::new([DESLOCAMENTO, RAIO * 1.4], "arraste ESTA alca"),
+        Caption::new([DESLOCAMENTO, RAIO * 1.4], "drag THIS handle"),
         Caption::new(
             [-LARGURA * 0.5, -LARGURA * 0.62],
             "Falloff ▸ Shape: Circle -> Rect",

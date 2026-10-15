@@ -107,8 +107,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption::new([x, -4.0], t.to_string());
     vec![
-        ficha(-COL_X, "Color Space = Linear RGB: o meio fica cinza"),
-        ficha(COL_X, "Color Space = OKLCH: a cor fica viva"),
+        ficha(-COL_X, "Color Space = Linear RGB: the middle turns gray"),
+        ficha(COL_X, "Color Space = OKLCH: the color stays vivid"),
     ]
 }
 

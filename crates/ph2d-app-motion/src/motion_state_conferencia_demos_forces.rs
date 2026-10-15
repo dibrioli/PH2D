@@ -419,14 +419,14 @@ pub fn build_forces_demo_document(
 /// Os rótulos das oito bandas, na ordem em que a cena as monta.
 pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "ATRATOR de sempre -- puxa mais forte no centro, e tudo acaba num ponto",
-        "ATRATOR com PERFIL -- ele EMPURRA de perto e puxa de longe: forma-se um ANEL",
-        "VENTO Force -- a aceleracao nunca para, e as pecas saem do ecra",
-        "VENTO Target Velocity -- elas alcancam a velocidade do vento e ficam nela",
-        "VORTICE Force -- o giro acelera sem fim e a nuvem espalha-se",
-        "VORTICE Target Velocity -- ela estabiliza num rodamoinho de raio constante",
-        "MAR de UMA onda -- todas as cristas a mesma distancia, como um desenho",
-        "MAR de QUATRO ondas -- cristas de tamanhos diferentes: le^-se como agua",
+        "ATTRACTOR as before -- puxa mais forte no centro, e tudo acaba num ponto",
+        "ATTRACTOR with PROFILE -- ele EMPURRA de perto e puxa de longe: forma-se um ANEL",
+        "WIND Force -- a aceleracao nunca para, e as pecas saem do ecra",
+        "WIND Target Velocity -- elas alcancam a velocidade do vento e ficam nela",
+        "VORTEX Force -- o giro acelera sem fim e a nuvem espalha-se",
+        "VORTEX Target Velocity -- ela estabiliza num rodamoinho de raio constante",
+        "SEA of ONE wave -- todas as cristas a mesma distancia, como um desenho",
+        "SEA of FOUR waves -- cristas de tamanhos diferentes: le^-se como agua",
     ]
     .into_iter()
     .enumerate()

@@ -153,10 +153,10 @@ pub(super) fn build_gpu_space_demo_document(
 ) -> Option<Vec<NodeId>> {
     let g = &mut doc.graph;
     Some(vec![
-        fan(g, -SPAN_X, 0.0, -300.0, "World (o de sempre)")?,
-        fan(g, SPAN_X, 1.0, -80.0, "Element (agora)")?,
-        masked(g, -SPAN_X, 1.0, 160.0, "Set (o de sempre)")?,
-        masked(g, SPAN_X, 7.0, 380.0, "Remap (agora)")?,
+        fan(g, -SPAN_X, 0.0, -300.0, "World (as before)")?,
+        fan(g, SPAN_X, 1.0, -80.0, "Element (now)")?,
+        masked(g, -SPAN_X, 1.0, 160.0, "Set (as before)")?,
+        masked(g, SPAN_X, 7.0, 380.0, "Remap (now)")?,
     ])
 }
 

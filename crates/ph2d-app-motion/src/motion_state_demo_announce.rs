@@ -266,17 +266,17 @@ pub(super) fn fontes() {
      as outras duas nao precisam de tempo.
   2. Fileira de CIMA -- O QUE EU FIZ. A ESQUERDA e' uma PALAVRA: cada LETRA e' uma peca.
      A DIREITA e' uma FORMA que escolhi.
-  3. Clique no cartao `Text: a palavra` e escreva outra coisa na linha `Text`: as pecas
+  3. Clique no cartao `Text: the word` e escreva outra coisa na linha `Text`: as pecas
      da esquerda passam a ser as letras novas.
-  4. Clique no cartao `Shape: a forma` e mude a linha `Shape`: a peca da direita troca
+  4. Clique no cartao `Shape: the shape` e mude a linha `Shape`: a peca da direita troca
      de forma.
   5. Fileira do MEIO -- O QUE EU TENHO. Os dois panos leem o MESMO ficheiro, e cada
      LINHA dele e' uma peca. A DIREITA as pecas estao a alturas diferentes: a altura vem
-     da coluna «vendas» do ficheiro.
-     (i) O cartao a mais e' o `Drive: a coluna «vendas»`.
+     da coluna «sales» do ficheiro.
+     (i) O cartao a mais e' o `Drive: the «sales» column`.
   6. O ficheiro esta' aqui:
        {}
-     Abra-o, mude um numero da coluna «vendas», guarde -- e no cartao `Table: o grafico`
+     Abra-o, mude um numero da coluna «sales», guarde -- e no cartao `Table: the chart`
      escolha o ficheiro OUTRA VEZ no botao `Table File`. O grafico muda: escolher e'
      recarregar.
   7. Fileira de BAIXO -- O QUE A CENA DA. A ESQUERDA as pecas NASCEM de um sitio e
@@ -327,9 +327,9 @@ pub(super) fn rig() {
      ponto puxa o vizinho, e ninguem lhe disse a forma. A DIREITA e' um CAMPO visto DE
      CIMA: cada celula empurra as quatro vizinhas, e o que voce ve' sao ANEIS a crescer
      do meio para fora -- as pecas ENGORDAM com a altura da onda.
-  3. Clique no cartao `Verlet Rope: a corda` e suba a linha `Gravity`: a corda cai mais
+  3. Clique no cartao `Verlet Rope: the rope` e suba a linha `Gravity`: a corda cai mais
      depressa e balanca menos. Baixe-a ate' perto de zero: ela fica a flutuar.
-  4. Clique no cartao `Wave: o campo` e mude a linha `Height Drives` de `Size` para
+  4. Clique no cartao `Wave: the field` e mude a linha `Height Drives` de `Size` para
      `Y`: as pecas deixam de engordar e passam a SUBIR e DESCER. E' a MESMA onda,
      escrita noutro sitio. Volte a `Size` depois de ver.
   5. Ainda no cartao `Wave`, escreva nesta ordem: `512` na linha `Rows`, `512` em `Cols`
@@ -343,18 +343,18 @@ pub(super) fn rig() {
        ESQUERDA (FK) -- eu digo o ANGULO de cada junta, e a corrente vai parar onde for.
        DIREITA  (IK) -- eu digo ONDE A MAO TEM DE ESTAR, e o app acha os angulos.
      O ponto que varre a direita e' o ALVO. Repare que a mao nunca o larga.
-  7. Clique no cartao `Strength: quanto a restricao puxa` (o da direita) e baixe a linha
+  7. Clique no cartao `Strength: how hard the constraint pulls` (o da direita) e baixe a linha
      `Radius` de 20 ate' perto de 1. A mao deixa de chegar ao alvo e fica a meio
      caminho: a forca da restricao deixou de valer para os ossos mais distantes.
      Ponha `Radius` de volta em 20 e a mao volta a agarrar o alvo.
   8. Na fileira do MEIO, no pano da ESQUERDA, clique no cartao `Drive` (o que esta'
-     ANTES do `FK: os pais decidem`) e mude a linha `Scale`. Cada junta dobra mais (ou
+     ANTES do `FK: the parents decide`) e mude a linha `Scale`. Cada junta dobra mais (ou
      menos), e a corrente inteira enrola: o angulo e' de cada junta, nao da corrente.
   9. Fileira de BAIXO -- A PELE. Os dois panos tem a MESMA manga de 21 pecas vestida na
      MESMA corrente dobrada. A ESQUERDA todos os ossos puxam por igual e a manga dobra
      inteira. A DIREITA os DOIS ULTIMOS ossos nao puxam nada: a metade de cima da manga
      fica DIREITA, como uma manga larga que nao acompanha o cotovelo.
- 10. Clique no cartao `Range: que ossos puxam` (fileira de BAIXO, pano da DIREITA) e
+ 10. Clique no cartao `Range: which bones pull` (fileira de BAIXO, pano da DIREITA) e
      suba a linha `End` ate' 1. Agora TODOS os ossos puxam, e a manga da direita fica
      igual a' da esquerda. Baixe `End` ate' 0: nenhum osso puxa e a manga fica DIREITA
      por completo, onde a grelha a pos.
@@ -393,7 +393,7 @@ pub(super) fn aparencia() {
      ATRASADA. A ESQUERDA atrasa pela ORDEM das pecas: a onda sobe o pano linha a
      linha, a comecar pela de BAIXO. A DIREITA atrasa pelo LUGAR: a onda corre da
      esquerda para a direita, com as seis linhas juntas.
-  8. Clique no cartao `Slit Scan: ORDEM` e mude `Delay By` para `Field`: sem nenhum
+  8. Clique no cartao `Slit Scan: ORDER` e mude `Delay By` para `Field`: sem nenhum
      campo antes dele, o pano inteiro atrasa por igual e a onda SOME.
      (i) O da direita tem um `Falloff` antes -- e' ele que diz quanto cada peca atrasa.
   9. Clique no cartao `Falloff` e ligue `Invert`: a onda passa a correr da DIREITA
@@ -456,14 +456,14 @@ pub(super) fn material() {
   2. Fileira de CIMA, as duas rampas. A bola da ESQUERDA escorrega ate' abaixo SEM
      VIRAR: o tracejado do contorno fica sempre na mesma posicao. A da DIREITA ROLA --
      o tracejado gira, como uma roda. E' a mesma rampa e a mesma bola.
-  3. No grafo, clique no cartao `Friction 1: ROLA` e abra a seccao `Collision`. A linha
+  3. No grafo, clique no cartao `Friction 1: ROLLS` e abra a seccao `Collision`. A linha
      `Friction` esta' em 1,00. Arraste-a ate' 0: a bola passa a escorregar sem virar,
      igual a` da esquerda. Volte a 1 e ela volta a rolar.
      (i) `Friction` nao e' so' `quanto trava`: e' a UNICA coisa que faz um circulo rodar.
          Um empurrao que passa pelo centro da bola nunca a faz girar.
   4. Fileira do MEIO, as duas quedas. A bola da ESQUERDA cai e morre onde bate. A da
      DIREITA SALTA, e cada salto e' mais baixo que o anterior. Clique no cartao
-     `Bounciness 0,9: SALTA` e arraste `Bounciness` ate' 0: ela passa a morrer no chao.
+     `Bounciness 0.9: BOUNCES` e arraste `Bounciness` ate' 0: ela passa a morrer no chao.
      Agora arraste ate' ao FIM do slider (2,00): ela volta mais alto do que caiu, e
      chega a SAIR pelo cimo da janela antes de voltar. E' isso que 2 quer dizer --
      acima de 1 a batida devolve mais do que levou.
@@ -472,9 +472,9 @@ pub(super) fn material() {
      ESCORREGADIAS, entao tudo o que se ve vem das bolas entre si. A` ESQUERDA elas
      escorregam umas nas outras sem NENHUMA virar. A` DIREITA rolam umas nas outras: os
      tracejados giram.
-  6. Clique no cartao `Entre bolas, Friction 1: ROLAM umas nas outras` e arraste
+  6. Clique no cartao `Ball on ball, Friction 1: they ROLL on each other` e arraste
      `Friction` ate' 0: os tracejados congelam e o monte fica mais espalhado. Volte a 1.
-  7. Volte ao cartao `Friction 1: ROLA` (a rampa da direita) e arraste a linha
+  7. Volte ao cartao `Friction 1: ROLLS` (a rampa da direita) e arraste a linha
      `Rolling Friction` -- a ultima da seccao -- ate' perto de 0,25. A bola TRAVA na
      rampa: ela assenta e fica. Volte a 0 e ela desce outra vez.
      (i) Isto e' outra coisa que o `Friction`: aquele trava quem DERRAPA, e uma bola que

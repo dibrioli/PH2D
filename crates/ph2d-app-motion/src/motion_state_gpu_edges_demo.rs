@@ -80,9 +80,9 @@ fn pond(g: &mut Graph, x: f32, edges: f32, row: f32) -> Option<NodeId> {
     g.set_label(
         w,
         if edges >= 0.5 {
-            "Absorb (agora)"
+            "Absorb (now)"
         } else {
-            "Reflect (o de sempre)"
+            "Reflect (as before)"
         },
     );
 
@@ -135,9 +135,9 @@ fn clump(g: &mut Graph, x: f32, own_field: f32, row: f32) -> Option<NodeId> {
     g.set_label(
         ns,
         if own_field >= 0.5 {
-            "Seed por PECA (agora)"
+            "Seed per PIECE (now)"
         } else {
-            "Seed da cena (o de sempre)"
+            "Scene seed (as before)"
         },
     );
     wire(g, size, 0, ns, 0, false)?;

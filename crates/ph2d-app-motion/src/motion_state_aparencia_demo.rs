@@ -79,8 +79,8 @@ pub(super) const POR_ORDEM: f32 = 0.0;
 pub(super) const POR_CAMPO: f32 = 1.0;
 
 /// Os nomes dos cartões que a cena dá — o anúncio e o tutorial nomeiam-nos.
-pub(super) const NOME_ORDEM: &str = "Slit Scan: ORDEM";
-pub(super) const NOME_CAMPO: &str = "Slit Scan: CAMPO";
+pub(super) const NOME_ORDEM: &str = "Slit Scan: ORDER";
+pub(super) const NOME_CAMPO: &str = "Slit Scan: FIELD";
 
 /// O centro da fileira `k` (`0` = cima).
 pub(super) fn fileira_y(k: usize) -> f32 {
@@ -93,11 +93,17 @@ pub(super) fn fileira_y(k: usize) -> f32 {
 pub(super) fn captions() -> Vec<Caption> {
     let mut v = Vec::new();
     for (k, (esq, dir)) in [
-        ("Tint: UMA cor para o pano", "Color Ramp: uma cor POR PECA"),
-        ("cada peca anda em roda", "+ Trail: cada peca deixa RASTO"),
         (
-            "atraso pela ORDEM: linha a linha",
-            "atraso pelo LUGAR: esq -> dir",
+            "Tint: ONE color for the sheet",
+            "Color Ramp: one color PER PIECE",
+        ),
+        (
+            "each piece goes in a circle",
+            "+ Trail: each piece leaves a TRAIL",
+        ),
+        (
+            "delay by ORDER: row by row",
+            "delay by PLACE: left -> right",
         ),
     ]
     .into_iter()

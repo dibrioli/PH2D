@@ -95,8 +95,8 @@ pub(super) fn build_gpu_echo_copies_demo_document(
 ) -> Option<Vec<NodeId>> {
     let g = &mut doc.graph;
     Some(vec![
-        ring(g, 0.0, -240.0, 1.9, "Sem atraso (o de sempre)")?,
-        ring(g, OFFSET, 120.0, -1.9, "Com atraso por copia")?,
+        ring(g, 0.0, -240.0, 1.9, "No delay (as before)")?,
+        ring(g, OFFSET, 120.0, -1.9, "Delay per copy")?,
     ])
 }
 

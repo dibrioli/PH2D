@@ -71,20 +71,20 @@ pub struct Row {
 pub static ROWS_TABLE: &[Row] = &[
     Row {
         label: "ONDA   — a fileira É a onda; à direita ela é a curva que você desenha",
-        left: "1 ONDA · antes: so' as 5 prontas",
-        right: "1 ONDA · agora: a desenhada",
+        left: "1 WAVE · before: only the 5 presets",
+        right: "1 WAVE · now: the drawn one",
         case: Case::Wave,
     },
     Row {
         label: "ESCADA — a rampa por índice; à direita a forma dela é desenhada",
-        left: "2 ESCADA · antes: rampa reta",
-        right: "2 ESCADA · agora: a desenhada",
+        left: "2 STAIRS · before: straight ramp",
+        right: "2 STAIRS · now: the drawn one",
         case: Case::Ease,
     },
     Row {
         label: "DOIS EIXOS — o ruído mexia num eixo só; à direita mexe nos dois",
-        left: "3 EIXOS · antes: so' vertical",
-        right: "3 EIXOS · agora: os dois",
+        left: "3 AXES · before: vertical only",
+        right: "3 AXES · now: both",
         case: Case::TwoAxis,
     },
 ];

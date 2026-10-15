@@ -96,7 +96,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![crate::motion_demo_legend::Caption::new(
         [0.0, -3.2],
-        "Scene: a estrela (forma) tapa o quadrado laranja (imagem); so' o grupo clareia o fundo",
+        "Scene: the star (shape) covers the orange square (image); only the group brightens the background",
     )]
 }
 

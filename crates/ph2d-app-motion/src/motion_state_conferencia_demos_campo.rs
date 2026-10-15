@@ -59,20 +59,20 @@ pub struct Row {
 pub static ROWS_TABLE: &[Row] = &[
     Row {
         label: "EMBRULHO — o degradê ligado dava ZERO a todos; agora cada peça embrulha o seu",
-        left: "1 EMBRULHO · antes: reta",
-        right: "1 EMBRULHO · agora: curva de um lado",
+        left: "1 WRAP · before: straight",
+        right: "1 WRAP · now: curves on one side",
         case: Case::Wrap,
     },
     Row {
         label: "TRELIÇA  — idem: sem tremor em lado nenhum; agora ela derrete DE UM LADO SÓ",
-        left: "2 TRELIÇA · antes: favo perfeito",
-        right: "2 TRELIÇA · agora: derrete à direita",
+        left: "2 LATTICE · before: perfect honeycomb",
+        right: "2 LATTICE · now: melts on the right",
         case: Case::Jitter,
     },
     Row {
         label: "ONDA     — a altura ia sempre para o TAMANHO (crista = vale); agora escolhe o canal",
-        left: "3 ONDA · antes: só engorda",
-        right: "3 ONDA · agora: sobe e desce",
+        left: "3 WAVE · before: only grows",
+        right: "3 WAVE · now: rises and falls",
         case: Case::Wave,
     },
 ];

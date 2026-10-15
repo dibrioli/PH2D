@@ -54,9 +54,9 @@ fn pond(g: &mut Graph, x: f32, sources: bool, row: f32) -> Option<NodeId> {
     g.set_label(
         w,
         if sources {
-            "Com DUAS fontes"
+            "With TWO sources"
         } else {
-            "So' o centro"
+            "Center only"
         },
     );
 

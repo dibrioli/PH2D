@@ -74,7 +74,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![crate::motion_demo_legend::Caption::new(
         [0.0, -3.2],
-        "fio do Oscillator solto no Transform: nao liga, nao abre menu, o aviso diz porque"
+        "Oscillator wire dropped on the Transform: no link, no menu, the warning says why"
             .to_string(),
     )]
 }

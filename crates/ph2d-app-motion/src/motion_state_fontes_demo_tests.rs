@@ -216,7 +216,7 @@ fn the_chart_follows_the_column_the_card_names() {
     let com_vendas = ys(&corre(GRAFICO, 10.0, nada));
     let com_nivel = ys(&corre(GRAFICO, 10.0, |g, sink| {
         let a = a_montante(g, sink, "value.attribute").expect("a coluna");
-        g.set_text_param(a, ph2d_node_value_attribute::ATTR_KEY, "nivel");
+        g.set_text_param(a, ph2d_node_value_attribute::ATTR_KEY, "level");
     }));
     assert_eq!(com_vendas.len(), com_nivel.len(), "as mesmas linhas");
     assert!(
@@ -304,7 +304,7 @@ fn the_announcement_names_cards_the_scene_has() {
         .nth(1)
         .expect("o anuncio do ciclo 8");
     let passos = fontes.split("pub(super) fn").next().expect("o corpo");
-    for r in ["Text: a palavra", "Shape: a forma", "Table: o grafico"] {
+    for r in ["Text: the word", "Shape: the shape", "Table: the chart"] {
         assert!(
             rotulos.iter().any(|l| l == r),
             "o anuncio manda clicar em `{r}` e a cena nao tem esse cartao: {rotulos:?}"

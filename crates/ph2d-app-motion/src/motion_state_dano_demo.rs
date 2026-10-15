@@ -125,7 +125,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![crate::motion_demo_legend::Caption::new(
         [0.0, -2.6],
-        "vida: baixar = dano (On Change Fall -> ADSR); cor: solte o r no r do Tint".to_string(),
+        "health: dropping = damage (On Change Fall -> ADSR); color: drop the r on the Tint's r"
+            .to_string(),
     )]
 }
 

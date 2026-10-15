@@ -48,10 +48,7 @@ const AMPLITUDE: f32 = 0.6;
 pub(super) fn captions() -> Vec<Caption> {
     vec![Caption::new(
         [0.0, -2.6],
-        format!(
-            "{} pecas, UM fio: o Value LFO manda no tamanho de todas",
-            pecas()
-        ),
+        format!("{} pieces, ONE wire: the Value LFO sizes them all", pecas()),
     )]
 }
 

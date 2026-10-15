@@ -108,20 +108,20 @@ pub(super) fn build_gpu_lifecycle_demo_document(
 ) -> Option<Vec<NodeId>> {
     let g = &mut doc.graph;
     Some(vec![
-        half(g, -SPAN_X, -260.0, &[], "Forever (o de sempre)")?,
+        half(g, -SPAN_X, -260.0, &[], "Forever (as before)")?,
         half(
             g,
             0.0,
             40.0,
             &[("mode", 1.0), ("start", START), ("duration", DURATION)],
-            "Once (atrasada, com fim)",
+            "Once (delayed, with an end)",
         )?,
         half(
             g,
             SPAN_X,
             340.0,
             &[("mode", 2.0), ("duration", DURATION), ("loop_delay", REST)],
-            "Loop (recomeca)",
+            "Loop (restarts)",
         )?,
     ])
 }

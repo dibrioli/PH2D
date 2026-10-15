@@ -244,8 +244,8 @@ pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
         "Point Wins -- a mesma cena, e a rampa chega",
         "Point Wins -- a cor do ponto, limpa",
         "Multiply -- a mesma rampa, tingida pela cor da forma",
-        "Random na fila TODA -- as cores espalham-se de ponta a ponta",
-        "Random dentro de GRUPOS -- quatro faixas, cada uma baralhada por dentro",
+        "Random over the WHOLE row -- as cores espalham-se de ponta a ponta",
+        "Random within GROUPS -- quatro faixas, cada uma baralhada por dentro",
     ]
     .into_iter()
     .enumerate()

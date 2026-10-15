@@ -112,8 +112,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![crate::motion_demo_legend::Caption::new(
         [0.0, -2.6],
-        "fita das entradas: toca 5 s e para; a faixa verde da Timeline comeca depois do 0"
-            .to_string(),
+        "input history: plays 5 s and stops; the Timeline's green band starts after 0".to_string(),
     )]
 }
 

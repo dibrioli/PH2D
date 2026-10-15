@@ -160,14 +160,14 @@ pub fn build_sibling_demo_document(
 /// Os rótulos das oito bandas, na ordem em que a cena as monta.
 pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "ESPALHA -- um Scale so', os dois eixos juntos, como sempre foi",
-        "ESPALHA com Uniform desligado -- ela estica na LARGURA e nao na altura",
+        "SCATTER -- um Scale so', os dois eixos juntos, como sempre foi",
+        "SCATTER with Uniform off -- ela estica na LARGURA e nao na altura",
         "NORMAL -- a grelha como ela e'",
         "FLIP -- Scale Y negativo: a mesma grelha, espelhada de cabeca para baixo",
-        "ESPELHO Both -- o original E o gemeo, os dois na tela",
-        "ESPELHO Reflection Only -- so' o gemeo: espelhar SEM duplicar",
-        "FORMA -- herda a cor de quem a desenhou, e aponta para onde nasceu",
-        "FORMA com Own Fill + Rotation -- ela decide a propria cor e o proprio angulo",
+        "MIRROR Both -- o original E o gemeo, os dois na tela",
+        "MIRROR Reflection Only -- so' o gemeo: espelhar SEM duplicar",
+        "SHAPE -- herda a cor de quem a desenhou, e aponta para onde nasceu",
+        "SHAPE with Own Fill + Rotation -- ela decide a propria cor e o proprio angulo",
     ]
     .into_iter()
     .enumerate()

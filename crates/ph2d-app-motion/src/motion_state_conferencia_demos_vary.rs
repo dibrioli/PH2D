@@ -194,16 +194,16 @@ pub fn build_vary_demo_document(
 /// Os rótulos das dez bandas, na ordem em que a cena as monta.
 pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "ONDA Sine -- a onda de sempre, e no painel dela NAO ha' editor de curva",
-        "ONDA Custom -- a forma DESENHADA (um V) a conduzir mesmo, e o editor aparece",
-        "PENACHO SIMULADO -- emissor + integrate + vento; toda particula com o mesmo angulo",
-        "PENACHO + Randomize(Rotation) -- cada uma com o seu angulo",
-        "PENACHO SIMULADO -- todas igualmente opacas",
-        "PENACHO + Randomize(Opacity) -- umas mais apagadas que outras",
-        "PENACHO SIMULADO -- todas da mesma cor",
-        "PENACHO + Randomize(Hue) -- cada uma com a sua cor",
-        "PENACHO SIMULADO -- todas do mesmo tamanho",
-        "PENACHO + Randomize(Size) -- cada uma com o seu tamanho",
+        "WAVE Sine -- a onda de sempre, e no painel dela NAO ha' editor de curva",
+        "WAVE Custom -- a forma DESENHADA (um V) a conduzir mesmo, e o editor aparece",
+        "SIMULATED PLUME -- emissor + integrate + vento; toda particula com o mesmo angulo",
+        "PLUME + Randomize(Rotation) -- cada uma com o seu angulo",
+        "SIMULATED PLUME -- todas igualmente opacas",
+        "PLUME + Randomize(Opacity) -- umas mais apagadas que outras",
+        "SIMULATED PLUME -- todas da mesma cor",
+        "PLUME + Randomize(Hue) -- cada uma com a sua cor",
+        "SIMULATED PLUME -- todas do mesmo tamanho",
+        "PLUME + Randomize(Size) -- cada uma com o seu tamanho",
     ]
     .into_iter()
     .enumerate()

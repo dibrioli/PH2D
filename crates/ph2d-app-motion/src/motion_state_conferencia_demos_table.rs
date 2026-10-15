@@ -5,7 +5,7 @@
 //! existe. Esta cena mostra as duas lado a lado:
 //!
 //! 1. **`source.table`** — cada linha é um ELEMENTO. Doze meses, doze pontos, e a altura de
-//!    cada um sai da coluna `vendas`. É o *Import CSV* do Blender / *Table Import* do Houdini.
+//!    cada um sai da coluna `sales`. É o *Import CSV* do Blender / *Table Import* do Houdini.
 //! 2. **`value.table`** — cada linha é um MOMENTO. Um quadrado só, cujo tamanho segue a coluna
 //!    `nivel` ao longo da coluna `tempo` **enquanto o playhead anda**. É o `dataValue()` do AE.
 //!
@@ -17,22 +17,22 @@ use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
 
-/// Doze meses. ⚠️ A coluna `mes` é TEXTO de propósito — ela prova que o leitor a salta e
+/// Doze meses. ⚠️ A coluna `month` é TEXTO de propósito — ela prova que o leitor a salta e
 /// **nomeia**, em vez de a converter em zeros (a divergência medida contra a regra do Blender).
 const CSV: &str = "\
-mes,vendas,tempo,nivel
+month,sales,time,level
 jan,12,0.0,0.2
-fev,19,0.5,0.9
+feb,19,0.5,0.9
 mar,7,1.0,0.3
-abr,25,1.5,1.0
-mai,31,2.0,0.5
+apr,25,1.5,1.0
+may,31,2.0,0.5
 jun,18,2.5,0.8
 jul,9,3.0,0.2
-ago,22,3.5,0.6
-set,28,4.0,1.0
-out,35,4.5,0.4
+aug,22,3.5,0.6
+sep,28,4.0,1.0
+oct,35,4.5,0.4
 nov,15,5.0,0.7
-dez,21,5.5,0.3
+dec,21,5.5,0.3
 ";
 
 /// O ficheiro que a cena escreve, e que os dois nós apontam.
@@ -103,7 +103,7 @@ pub fn build_table_demo_document(doc: &mut MotionDoc, _reg: &NodeRegistry) -> Op
     let g = &mut doc.graph;
     let mut sinks = Vec::new();
 
-    // ---- 1. Uma linha é um ELEMENTO: doze pontos, a altura vinda da coluna `vendas`.
+    // ---- 1. Uma linha é um ELEMENTO: doze pontos, a altura vinda da coluna `sales`.
     let src = g.add_node("source.table");
     g.set_pos(src, Pos { x: 80.0, y: 120.0 });
     g.set_text_param(src, ph2d_node_source_table::FILE_KEY, &file);
@@ -111,7 +111,7 @@ pub fn build_table_demo_document(doc: &mut MotionDoc, _reg: &NodeRegistry) -> Op
 
     let attr = g.add_node("value.attribute");
     g.set_pos(attr, Pos { x: 80.0, y: 320.0 });
-    g.set_text_param(attr, ph2d_node_value_attribute::ATTR_KEY, "vendas");
+    g.set_text_param(attr, ph2d_node_value_attribute::ATTR_KEY, "sales");
 
     let drive = g.add_node("motion.drive");
     g.set_pos(drive, Pos { x: 420.0, y: 120.0 });
@@ -151,8 +151,8 @@ pub fn build_table_demo_document(doc: &mut MotionDoc, _reg: &NodeRegistry) -> Op
     let vt = g.add_node("value.table");
     g.set_pos(vt, Pos { x: 420.0, y: 820.0 });
     g.set_text_param(vt, ph2d_node_value_table::FILE_KEY, &file);
-    g.set_text_param(vt, ph2d_node_value_table::TIME_KEY, "tempo");
-    g.set_text_param(vt, ph2d_node_value_table::VALUE_KEY, "nivel");
+    g.set_text_param(vt, ph2d_node_value_table::TIME_KEY, "time");
+    g.set_text_param(vt, ph2d_node_value_table::VALUE_KEY, "level");
     // Repete, senão a demo pára de se mexer aos 5,5 segundos e lê-se como partida.
     g.set_param(vt, ph2d_node_value_table::param::OUTSIDE, 1.0);
     wire(g, grid, vt, 0)?;

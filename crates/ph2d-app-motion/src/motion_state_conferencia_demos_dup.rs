@@ -440,14 +440,14 @@ pub fn build_dup_demo_document(
 /// ANTES do primeiro ` --`; a frase inteira sai no terminal.
 pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "O carimbo -- uma forma, cinco pontos: uma copia em cada",
-        "A forma INTEIRA -- as tres pecas do cometa pousam juntas, sem perder a forma",
-        "O ponto da' o GIRO -- o `rot` do ponto SOMA-SE ao da forma, e a fila torce",
+        "The stamp -- uma forma, cinco pontos: uma copia em cada",
+        "The WHOLE shape -- as tres pecas do cometa pousam juntas, sem perder a forma",
+        "The point gives the SPIN -- o `rot` do ponto SOMA-SE ao da forma, e a fila torce",
         "Pick = Off -- o PRODUTO: as tres formas em cada ponto, 15 copias",
         "Pick = Cycle -- UMA por ponto, revezando na ordem",
         "Pick = Random -- UMA por ponto, sorteada pela semente",
         "Point Scale = 0 -- a escala do PONTO e' deitada fora (o de sempre)",
-        "Point Scale = 0,5 -- meio caminho entre a forma e o ponto",
+        "Point Scale = 0.5 -- meio caminho entre a forma e o ponto",
         "Point Scale = 1 -- a escala do ponto inteira: as copias engordam",
         "Transfer = Shape Wins -- a cor autorada no ARRANJO some (o de sempre)",
         "Transfer = Point Wins -- a rampa do arranjo chega",

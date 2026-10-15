@@ -71,7 +71,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     #[expect(clippy::cast_precision_loss, reason = "uma contagem de pecas, 16")]
     g.set_param(grelha, "cols", PECAS as f32);
     g.set_param(grelha, "gap_x", PASSO);
-    g.set_label(grelha, "Grid (a cadeia)");
+    g.set_label(grelha, "Grid (the chain)");
 
     let dup = no(g, "motion.duplicator");
     let saida = no(g, "motion.output");

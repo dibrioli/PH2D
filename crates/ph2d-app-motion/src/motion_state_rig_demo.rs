@@ -9,8 +9,8 @@
 //!
 //! ```text
 //!   CIMA    O QUE SE SEGURA SOZINHO   Verlet Rope (a corda)   |  Wave (o campo)
-//!   MEIO    QUEM SEGURA               FK: os pais decidem     |  IK: a mão vai ao ALVO
-//!   BAIXO   A PELE                    Skin: os ossos todos    |  ...cada osso com o SEU envelope
+//!   MEIO    QUEM SEGURA               FK: the parents decide     |  IK: a mão vai ao ALVO
+//!   BAIXO   A PELE                    Skin: all the bones    |  ...cada osso com o SEU envelope
 //! ```
 //!
 //! ⭐ **A fileira de CIMA é a categoria «Source»** — cinco nós que EMITEM uma coisa que se
@@ -351,7 +351,7 @@ fn caneta_da_banda(doc: &mut MotionDoc, fonte: NodeId, coluna: &str, y: f32) -> 
     // ⚠️ `soft = 0` é o DEGRAU: com a borda macia de fábrica (`0,10`) as cinco juntas caem todas
     // dentro da rampa e o quinhao vira outra rampa — a lei que esta função existe para não repetir.
     doc.graph.set_param(banda, "soft", 0.0);
-    doc.graph.set_label(banda, "Range: que ossos puxam");
+    doc.graph.set_label(banda, "Range: which bones pull");
     let a = no(doc, "value.attribute", -160.0, y - 90.0);
     doc.graph.set_text_param(a, "attr", COLUNA_FALLOFF);
     let d = no(doc, "motion.drive", -20.0, y);
@@ -359,7 +359,7 @@ fn caneta_da_banda(doc: &mut MotionDoc, fonte: NodeId, coluna: &str, y: f32) -> 
     doc.graph.set_param(d, "mode", MODO_SET);
     doc.graph.set_param(d, "scale", 1.0);
     doc.graph.set_text_param(d, "column", coluna);
-    doc.graph.set_label(d, "Drive: o quinhao de cada osso");
+    doc.graph.set_label(d, "Drive: each bone's share");
     liga(doc, fonte, (banda, 0))?;
     liga(doc, banda, (a, 0))?;
     liga(doc, fonte, (d, 0))?;
@@ -435,9 +435,9 @@ fn pele(doc: &mut MotionDoc, envelope: bool, y: f32) -> Option<NodeId> {
     doc.graph.set_label(
         p,
         if envelope {
-            "Skin: cada osso o seu quinhao"
+            "Skin: each bone its own share"
         } else {
-            "Skin: os ossos todos"
+            "Skin: all the bones"
         },
     );
     liga(doc, sobe, (p, 0))?;
@@ -515,7 +515,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let c = no(doc, "motion.verlet_rope", -400.0, y);
         doc.graph.set_param(c, "count", CORDA_PONTOS);
         doc.graph.set_param(c, "length", CORDA_COMPRIMENTO);
-        doc.graph.set_label(c, "Verlet Rope: a corda");
+        doc.graph.set_label(c, "Verlet Rope: the rope");
         laco_de_estado(doc, c, CORDA_PORTA_ESTADO)?;
         // ⭐⭐⭐ **A corda veste-se de SEGMENTOS, ligados como ossos** (ordem do dono, 2026-09-20:
         // *«os segmentos devem ser conectados como ossos senão a corda não parecerá um único
@@ -549,7 +549,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_param(w, "rows", CAMPO_LADO);
         doc.graph.set_param(w, "cols", CAMPO_LADO);
         doc.graph.set_param(w, "spacing", CAMPO_VAO);
-        doc.graph.set_label(w, "Wave: o campo");
+        doc.graph.set_label(w, "Wave: the field");
         laco_de_estado(doc, w, CAMPO_PORTA_ESTADO)?;
         // A fonte do centro precisa de um pulso — sem ele a grelha fica parada.
         let lfo = no(doc, "value.lfo", -600.0, y);
@@ -574,9 +574,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         // ⚠️ **O rótulo não é enfeite: o passo 7 do tutorial manda clicar NESTE cartão**, e a cena
         // tem quatro `motion.drive`. *Um passo que diz «o Drive» num grafo com quatro é um passo
         // que o dono não consegue executar.*
-        doc.graph.set_label(dobra, "Drive: o angulo de cada junta");
+        doc.graph.set_label(dobra, "Drive: the angle of each joint");
         let f = no(doc, "rig.fk", 120.0, y);
-        doc.graph.set_label(f, "FK: os pais decidem");
+        doc.graph.set_label(f, "FK: the parents decide");
         liga(doc, dobra, (f, 0))?;
         let b = ossos_de(doc, f, y)?;
         sinks.push(pousa(
@@ -601,7 +601,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_param(osc, "channel", OSC_X);
         doc.graph.set_param(osc, "amplitude", ALVO_VARRE);
         doc.graph.set_param(osc, "frequency", ALVO_RITMO);
-        doc.graph.set_label(osc, "Target: onde a mao tem de estar");
+        doc.graph.set_label(osc, "Target: where the hand must be");
         liga(doc, alvo, (sobe, 0))?;
         liga(doc, sobe, (osc, 0))?;
 
@@ -613,11 +613,11 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let forca = no(doc, "motion.falloff", -80.0, y);
         doc.graph.set_param(forca, "radius", FORCA_RAIO);
         doc.graph
-            .set_label(forca, "Strength: quanto a restricao puxa");
+            .set_label(forca, "Strength: how hard the constraint pulls");
         liga(doc, e, (forca, 0))?;
 
         let ik = no(doc, "rig.ik_2bone", 120.0, y);
-        doc.graph.set_label(ik, "IK: a mao vai ao alvo");
+        doc.graph.set_label(ik, "IK: the hand goes to the target");
         liga(doc, forca, (ik, 0))?;
         liga(doc, osc, (ik, 1))?;
         let b = ossos_de(doc, ik, y)?;
@@ -660,12 +660,12 @@ pub(super) fn captions() -> Vec<Caption> {
         no: None,
     };
     vec![
-        ficha(-COL_X, 0, "SEGURA-SE SOZINHO: a corda"),
-        ficha(COL_X, 0, "...e o campo"),
-        ficha(-COL_X, 1, "QUEM SEGURA: os pais decidem (FK)"),
-        ficha(COL_X, 1, "...ou a MAO decide (IK)"),
-        ficha(-COL_X, 2, "A PELE: os ossos todos puxam"),
-        ficha(COL_X, 2, "...cada osso o SEU quinhao"),
+        ficha(-COL_X, 0, "HOLDS ITSELF: the rope"),
+        ficha(COL_X, 0, "...and the field"),
+        ficha(-COL_X, 1, "WHO HOLDS IT: the parents decide (FK)"),
+        ficha(COL_X, 1, "...or the HAND decides (IK)"),
+        ficha(-COL_X, 2, "THE SKIN: all the bones pull"),
+        ficha(COL_X, 2, "...each bone its OWN share"),
     ]
 }
 

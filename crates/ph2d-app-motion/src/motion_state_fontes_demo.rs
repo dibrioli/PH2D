@@ -64,7 +64,7 @@ const TABELA_VAO: f32 = 0.42;
 /// O tamanho da peça de uma linha da tabela.
 const TABELA_PECA: f32 = 0.3;
 /// A coluna do ficheiro que dá a ALTURA no pano da direita.
-const COLUNA: &str = "vendas";
+const COLUNA: &str = "sales";
 /// Quanto do mundo vale uma unidade da coluna (`7..35` ⇒ `0,28..1,4`).
 const COLUNA_ESCALA: f32 = 0.04;
 
@@ -149,7 +149,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
             .set_text_param(t, ph2d_node_source_text::TEXT_KEY, PALAVRA);
         doc.graph
             .set_param(t, ph2d_node_source_text::param::SIZE, TEXTO_TAM);
-        doc.graph.set_label(t, "Text: a palavra");
+        doc.graph.set_label(t, "Text: the word");
         sinks.push(pousa(doc, t, 1.0, [-COL_X, fileira_y(0)], y)?);
     }
     {
@@ -164,7 +164,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         );
         doc.graph
             .set_param(f, ph2d_node_motion_shape::param::SIZE, FORMA_TAM);
-        doc.graph.set_label(f, "Shape: a forma");
+        doc.graph.set_label(f, "Shape: the shape");
         sinks.push(pousa(doc, f, 1.0, [COL_X, fileira_y(0)], y)?);
     }
 
@@ -182,9 +182,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_label(
             t,
             if lado == 0 {
-                "Table: as linhas"
+                "Table: the rows"
             } else {
-                "Table: o grafico"
+                "Table: the chart"
             },
         );
         let ultimo = if lado == 0 {
@@ -198,7 +198,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
             doc.graph.set_param(d, "channel", CANAL_Y);
             doc.graph.set_param(d, "mode", MODO_ADD);
             doc.graph.set_param(d, "scale", COLUNA_ESCALA);
-            doc.graph.set_label(d, "Drive: a coluna «vendas»");
+            doc.graph.set_label(d, "Drive: the «sales» column");
             liga(doc, t, (a, 0))?;
             liga(doc, t, (d, 0))?;
             liga(doc, a, (d, 1))?;
@@ -216,7 +216,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_param(e, "speed", 0.9);
         doc.graph.set_param(e, "spread", 0.6);
         doc.graph.set_param(e, "angle", 90.0);
-        doc.graph.set_label(e, "Emitter: de onde nascem");
+        doc.graph.set_label(e, "Emitter: where they are born");
         sinks.push(pousa(
             doc,
             e,
@@ -233,7 +233,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_param(g, "gap_x", CAM_VAO);
         doc.graph.set_param(g, "gap_y", CAM_VAO);
         let cam = no(doc, "source.camera", -580.0, y - 120.0);
-        doc.graph.set_label(cam, "Camera: a vista");
+        doc.graph.set_label(cam, "Camera: the view");
         let a = no(doc, "value.attribute", -400.0, y - 120.0);
         doc.graph.set_text_param(
             a,
@@ -244,7 +244,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_param(d, "channel", CANAL_SIZE);
         doc.graph.set_param(d, "mode", MODO_DIVIDE);
         doc.graph.set_param(d, "scale", 1.0 / CAM_PIXELS);
-        doc.graph.set_label(d, "Drive: o tamanho no ecra");
+        doc.graph.set_label(d, "Drive: the size on screen");
         liga(doc, g, (d, 0))?;
         liga(doc, cam, (a, 0))?;
         liga(doc, a, (d, 1))?;
@@ -265,12 +265,12 @@ pub(super) fn captions() -> Vec<Caption> {
         no: None,
     };
     vec![
-        ficha(-COL_X, 0, "O QUE EU FIZ: uma palavra"),
-        ficha(COL_X, 0, "...ou uma forma"),
-        ficha(-COL_X, 1, "O QUE EU TENHO: as linhas do ficheiro"),
-        ficha(COL_X, 1, "...e uma COLUNA delas"),
-        ficha(-COL_X, 2, "O QUE A CENA DA: as particulas"),
-        ficha(COL_X, 2, "...e a VISTA (de' zoom!)"),
+        ficha(-COL_X, 0, "WHAT I MADE: a word"),
+        ficha(COL_X, 0, "...or a shape"),
+        ficha(-COL_X, 1, "WHAT I HAVE: the rows of a file"),
+        ficha(COL_X, 1, "...and one COLUMN of them"),
+        ficha(-COL_X, 2, "WHAT THE SCENE GIVES: particles"),
+        ficha(COL_X, 2, "...and the VIEW (zoom in!)"),
     ]
 }
 

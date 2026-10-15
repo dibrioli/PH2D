@@ -117,7 +117,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
             g.set_param(c, "center_x", CAMPO_LONGE);
             g.set_param(c, "center_y", CAMPO_LONGE);
             g.set_param(c, "radius", CAMPO_RAIO);
-            g.set_label(c, "Falloff (esta fileira NAO colide)");
+            g.set_label(c, "Falloff (this row does NOT collide)");
             c
         });
 
@@ -195,7 +195,7 @@ pub(super) fn announce() {
          com as pecas a tremer o tempo todo. A de baixo continua metida uma na outra.\n\
          (4) Ligue `Collide` tambem no `Shape` de BAIXO. A fileira de baixo NAO muda — e e'\n    \
          esse o assunto do passo seguinte.\n\
-         (5) Na fileira de baixo, clique no cartao `Falloff (esta fileira NAO colide)` e ponha\n    \
+         (5) Na fileira de baixo, clique no cartao `Falloff (this row does NOT collide)` e ponha\n    \
          `Center X` e `Center Y` a zero. Agora ela tambem se separa.\n    \
          (i) E' assim que se diz a um objecto que ele NAO colide: nem a forma nem o sink\n        \
          mudaram — mudou um campo, que e' a mesma coisa que um Sprite ou um vector podem ter.\n\

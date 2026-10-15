@@ -152,12 +152,12 @@ pub fn build_born_demo_document(
 /// Os rótulos das seis bandas, na ordem em que a cena as monta.
 pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "POISSON uniforme -- todo par a' mesma distancia minima",
+        "POISSON uniform -- todo par a' mesma distancia minima",
         "POISSON Density Falloff -- a borda fica mais RALA (espacamento maior), nao esburacada",
         "VORONOI Euclidean -- as celulas arredondam",
         "VORONOI Chebyshev -- a mesma semente, e as celulas puxam para quadrados",
-        "EMISSOR de vida unica -- todas as particulas morrem juntas, na mesma borda",
-        "EMISSOR Life Random -- cada uma morre na sua hora, e a borda desmancha-se",
+        "EMITTER with a single life -- todas as particulas morrem juntas, na mesma borda",
+        "EMITTER Life Random -- cada uma morre na sua hora, e a borda desmancha-se",
     ]
     .into_iter()
     .enumerate()

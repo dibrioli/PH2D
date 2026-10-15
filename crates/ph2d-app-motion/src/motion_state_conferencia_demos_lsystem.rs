@@ -106,7 +106,7 @@ pub struct Plant {
 /// entre elas uma afirmação sobre a estocástica em vez de sobre duas gramáticas.
 pub const PLANTS: &[Plant] = &[
     Plant {
-        label: "1. GUIADA: 3 ramos, tronco de 2",
+        label: "1. GUIDED: 3 branches, trunk of 2",
         axiom: ls::DEFAULT_AXIOM,
         rules: ls::DEFAULT_RULES,
         generations: 6.0,
@@ -116,7 +116,7 @@ pub const PLANTS: &[Plant] = &[
         guided: true,
     },
     Plant {
-        label: "2. estocastica, semente 1",
+        label: "2. stochastic, seed 1",
         axiom: "A(step)",
         rules: STOCHASTIC,
         generations: 6.0,
@@ -126,7 +126,7 @@ pub const PLANTS: &[Plant] = &[
         guided: false,
     },
     Plant {
-        label: "3. estocastica, semente 9",
+        label: "3. stochastic, seed 9",
         axiom: "A(step)",
         rules: STOCHASTIC,
         generations: 6.0,
@@ -136,7 +136,7 @@ pub const PLANTS: &[Plant] = &[
         guided: false,
     },
     Plant {
-        label: "4. a 1 com gravidade",
+        label: "4. plant 1 with gravity",
         axiom: ls::DEFAULT_AXIOM,
         rules: ls::DEFAULT_RULES,
         generations: 6.0,
@@ -146,7 +146,7 @@ pub const PLANTS: &[Plant] = &[
         guided: false,
     },
     Plant {
-        label: "5. samambaia, a CRESCER",
+        label: "5. fern, GROWING",
         axiom: "A(step)",
         rules: FERN,
         generations: GROW_MAX,

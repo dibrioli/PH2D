@@ -77,56 +77,56 @@ struct Row {
 static ROWS_TABLE: &[Row] = &[
     Row {
         label: "STAGGER — a DIREÇÃO do easing: muda em Linear? (não) · em Bounce? (sim)",
-        left: "1 STAGGER · Linear: mudo",
-        right: "1 STAGGER · Bounce: age",
+        left: "1 STAGGER · Linear: no effect",
+        right: "1 STAGGER · Bounce: acts",
         knob: Knob::StaggerDir,
         mute: 0.0, // ease_curve = Linear
         live: 7.0, // ease_curve = Bounce
     },
     Row {
         label: "STEP    — a LARGURA da banda: muda no corte Hard? (não) · em Smooth? (sim)",
-        left: "2 DEGRAU · corte Hard: mudo",
-        right: "2 DEGRAU · Smooth: age",
+        left: "2 STEP · Hard cut: no effect",
+        right: "2 STEP · Smooth: acts",
         knob: Knob::StepWidth,
         mute: 0.0, // mode = Hard
         live: 1.0, // mode = Smooth
     },
     Row {
         label: "FAIXA   — o CLAMP: muda em Smooth? (não, ele já prende) · em Linear? (sim)",
-        left: "3 FAIXA · Smooth: mudo",
-        right: "3 FAIXA · Linear: age",
+        left: "3 BAND · Smooth: no effect",
+        right: "3 BAND · Linear: acts",
         knob: Knob::MapClamp,
         mute: 2.0, // interpolation = Smooth
         live: 0.0, // interpolation = Linear
     },
     Row {
         label: "CAMPO   — a SEMENTE: muda numa rampa? (não) · no modo Random? (sim)",
-        left: "4 CAMPO · em rampa: mudo",
-        right: "4 CAMPO · em Random: age",
+        left: "4 FIELD · on a ramp: no effect",
+        right: "4 FIELD · in Random: acts",
         knob: Knob::FieldSeed,
         mute: 1.0, // mode = Ramp
         live: 2.0, // mode = Random
     },
     Row {
         label: "RUÍDO   — a ASPEREZA: muda com UMA oitava? (não) · com seis? (sim)",
-        left: "5 RUÍDO · 1 oitava: mudo",
-        right: "5 RUÍDO · 6 oitavas: age",
+        left: "5 NOISE · 1 octave: no effect",
+        right: "5 NOISE · 6 octaves: acts",
         knob: Knob::NoiseRoughness,
         mute: 1.0,
         live: 6.0,
     },
     Row {
         label: "TREMOR  — o MULTIPLICADOR: muda com UMA oitava? (não) · com quatro? (sim)",
-        left: "6 TREMOR · 1 oitava: mudo",
-        right: "6 TREMOR · 4 oitavas: age",
+        left: "6 JITTER · 1 octave: no effect",
+        right: "6 JITTER · 4 octaves: acts",
         knob: Knob::WiggleAmpMult,
         mute: 1.0,
         live: 4.0,
     },
     Row {
         label: "TINTA   — a SEGUNDA COR: muda em Solid? (não) · em Gradient? (sim)",
-        left: "7 TINTA · em Solid: mudo",
-        right: "7 TINTA · em Gradient: age",
+        left: "7 INK · in Solid: no effect",
+        right: "7 INK · in Gradient: acts",
         knob: Knob::TintEnd,
         mute: 0.0, // mode = Solid
         live: 1.0, // mode = Gradient

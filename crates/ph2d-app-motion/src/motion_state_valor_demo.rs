@@ -57,18 +57,18 @@ const A_CADA: f32 = 4.0;
 /// As legendas que a cena pousa no canvas.
 pub(super) fn captions() -> Vec<Caption> {
     vec![
-        Caption::new([-AFASTA_X, AFASTA_Y + 1.35], "O NUMERO: respira LISO"),
         Caption::new(
-            [AFASTA_X, AFASTA_Y + 1.35],
-            "+ Quantize: respira aos DEGRAUS",
+            [-AFASTA_X, AFASTA_Y + 1.35],
+            "THE NUMBER: breathes SMOOTHLY",
         ),
+        Caption::new([AFASTA_X, AFASTA_Y + 1.35], "+ Quantize: breathes in STEPS"),
         Caption::new(
             [-AFASTA_X, -AFASTA_Y - 1.35],
-            "O INSTANTE: pisca a CADA batida",
+            "THE INSTANT: blinks on EVERY beat",
         ),
         Caption::new(
             [AFASTA_X, -AFASTA_Y - 1.35],
-            "+ Counter: pisca a cada QUATRO",
+            "+ Counter: blinks every FOURTH beat",
         ),
     ]
 }

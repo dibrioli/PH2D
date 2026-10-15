@@ -86,10 +86,10 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption::new([x, -3.2], t.to_string());
     vec![
-        ficha(-COL_X, "Custom = collider: os discos da borda empurram-se"),
+        ficha(-COL_X, "Custom = collider: the border discs push apart"),
         ficha(
             COL_X,
-            "Custom = colisor (controlo): ninguem le, sobrepoem-se",
+            "Custom = colisor (control): nobody reads it, they overlap",
         ),
     ]
 }

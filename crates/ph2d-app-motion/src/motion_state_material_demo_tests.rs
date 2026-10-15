@@ -311,9 +311,9 @@ fn every_row_the_announcement_names_is_on_the_card() {
         &mut snap,
     );
     for titulo in [
-        "Friction 1: ROLA",
-        "Bounciness 0,9: SALTA",
-        "Entre bolas, Friction 1: ROLAM umas nas outras",
+        "Friction 1: ROLLS",
+        "Bounciness 0.9: BOUNCES",
+        "Ball on ball, Friction 1: they ROLL on each other",
     ] {
         let v = snap
             .nodes

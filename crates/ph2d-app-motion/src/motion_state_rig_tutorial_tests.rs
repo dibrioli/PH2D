@@ -30,18 +30,18 @@ fn every_row_the_rig_tutorial_names_is_on_the_card() {
         &mut snap,
     );
     let pedidos: &[(&str, &[&str])] = &[
-        ("Verlet Rope: a corda", &["Gravity"]),
+        ("Verlet Rope: the rope", &["Gravity"]),
         (
-            "Wave: o campo",
+            "Wave: the field",
             // ⚠️⚠️ **`Height Drives` e não `Height Channel`** — o param chama-se `height_channel`
             // e o RÓTULO que o artista lê é outro. *Foi este gate que o apanhou*, sobre um
             // tutorial já impresso em PDF: o passo mandava procurar uma linha que a tela nunca
             // mostrou, e o modo de falha é o dono a concluir que o programa está partido.
             &["Height Drives", "Rows", "Cols", "Spacing"],
         ),
-        ("Strength: quanto a restricao puxa", &["Radius"]),
-        ("Drive: o angulo de cada junta", &["Scale"]),
-        ("Range: que ossos puxam", &["End"]),
+        ("Strength: how hard the constraint pulls", &["Radius"]),
+        ("Drive: the angle of each joint", &["Scale"]),
+        ("Range: which bones pull", &["End"]),
     ];
     for (titulo, linhas) in pedidos {
         let v = snap

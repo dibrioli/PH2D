@@ -144,3 +144,7 @@ pub use dono::{ancora_em, monta_cena, no_mundo, no_mundo_de};
 #[cfg(test)]
 #[path = "motion_demo_legend_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_demo_legend_lingua_tests.rs"]
+mod lingua;

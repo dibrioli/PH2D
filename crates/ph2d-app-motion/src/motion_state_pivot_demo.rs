@@ -69,7 +69,7 @@ const DESLOCAMENTO: f32 = LARGURA * 1.25;
 /// A legenda que a cena pousa no canvas.
 pub(super) fn captions() -> Vec<Caption> {
     vec![
-        Caption::new([0.0, 0.0], "a origem do mundo"),
+        Caption::new([0.0, 0.0], "the world origin"),
         Caption::new(
             [DESLOCAMENTO, LARGURA * 1.1],
             "Twist ▸ Pivot: Point -> Centroid",

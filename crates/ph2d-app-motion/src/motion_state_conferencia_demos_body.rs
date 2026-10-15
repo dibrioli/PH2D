@@ -75,17 +75,17 @@ pub struct Col {
 pub static COLS_TABLE: &[Col] = &[
     Col {
         label: "RETANGULO — a malha de sempre (a porta vazia). O CONTROLE",
-        caption: "1 RETANGULO · como sempre foi",
+        caption: "1 RECTANGLE · as it always was",
         form: Form::Mesh,
     },
     Col {
         label: "ANEL — um buraco no meio: nenhum rows×cols faz isto",
-        caption: "2 ANEL · a forma vem da porta",
+        caption: "2 RING · the shape comes from the port",
         form: Form::Ring,
     },
     Col {
         label: "CRUZ — dois grids somados: a forma e' AUTORADA no grafo",
-        caption: "3 CRUZ · dois grids somados",
+        caption: "3 CROSS · two grids added together",
         form: Form::Cross,
     },
 ];

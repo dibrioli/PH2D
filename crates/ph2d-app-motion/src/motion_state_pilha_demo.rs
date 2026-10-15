@@ -159,11 +159,8 @@ const PAUSA: f32 = 0.6;
 pub(super) fn captions() -> Vec<Caption> {
     let m = medida();
     vec![
-        Caption::new(
-            [-m.vao, TACA_Y - m.raio - 0.45],
-            "Collide desligado: um borrao",
-        ),
-        Caption::new([m.vao, TACA_Y - m.raio - 0.45], "Collide ligado: uma pilha"),
+        Caption::new([-m.vao, TACA_Y - m.raio - 0.45], "Collide off: a blob"),
+        Caption::new([m.vao, TACA_Y - m.raio - 0.45], "Collide on: a pile"),
     ]
 }
 

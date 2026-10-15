@@ -375,14 +375,14 @@ pub fn build_value_demo_document(
 /// Os rótulos das oito bandas, na ordem em que a cena as monta.
 pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "FAIXA unica -- quatro dentes iguais",
-        "FAIXA como CAMPO -- o dente estica ao longo da banda",
+        "single BAND -- quatro dentes iguais",
+        "BAND as FIELD -- o dente estica ao longo da banda",
         "Centered -- o filtro cresce ANTES do degrau",
         "Left Half -- nada se mexe antes do acontecimento",
-        "tolerancia 0 -- a mediana reescreve tudo, e a fileira sai lisa",
-        "TOLERANCIA -- o pico cai e a ondulacao fica",
-        "Size (a magnitude) -- ela quase nao muda, e a rotacao nao varre",
-        "Size X (o EIXO) -- a rotacao varre a banda",
+        "tolerance 0 -- a mediana reescreve tudo, e a fileira sai lisa",
+        "TOLERANCE -- o pico cai e a ondulacao fica",
+        "Size (the magnitude) -- ela quase nao muda, e a rotacao nao varre",
+        "Size X (the AXIS) -- a rotacao varre a banda",
     ]
     .into_iter()
     .enumerate()

@@ -357,12 +357,12 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
         ph2d_editor_core::ProjectSettings::default(),
         &mut s115,
     );
-    // ⚠️ **O cartão da forma nesta cena tem o nome da LEGENDA** (`Friction 1: ROLA`), e é esse o
+    // ⚠️ **O cartão da forma nesta cena tem o nome da LEGENDA** (`Friction 1: ROLLS`), e é esse o
     // nome que o capítulo manda clicar — logo é esse que o gate procura. *Uma régua que procurasse
     // `Shape` passaria sobre um tutorial que manda clicar num cartão que não existe.*
     for (titulo, linhas) in [
-        ("Friction 1: ROLA", &["Friction", "Rolling Friction"][..]),
-        ("Bounciness 0,9: SALTA", &["Bounciness"][..]),
+        ("Friction 1: ROLLS", &["Friction", "Rolling Friction"][..]),
+        ("Bounciness 0.9: BOUNCES", &["Bounciness"][..]),
     ] {
         let forma = s115
             .nodes

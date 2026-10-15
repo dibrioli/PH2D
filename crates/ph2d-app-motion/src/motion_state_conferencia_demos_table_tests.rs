@@ -67,7 +67,7 @@ fn the_upper_row_has_one_element_per_file_row_and_the_height_comes_from_the_colu
     assert_eq!(s.count(), 12, "uma linha do ficheiro, um elemento");
 
     let h = ys(&s);
-    // ⚠️ **A coluna `vendas` sobe e desce** (12·19·7·25·31·18·9·22·28·35·15·21), então as
+    // ⚠️ **A coluna `sales` sobe e desce** (12·19·7·25·31·18·9·22·28·35·15·21), então as
     // alturas TÊM de a seguir na mesma ordem — sem isto, uma cena que ligasse a coluna errada
     // (ou nenhuma) desenharia doze pontos igualmente espaçados e pareceria certa.
     let vendas = [
@@ -140,14 +140,14 @@ fn the_word_column_is_skipped_and_the_numbers_beside_it_arrive() {
             .iter()
             .map(|c| c.name.as_str())
             .collect::<Vec<_>>(),
-        ["vendas", "tempo", "nivel"],
-        "a coluna `mes` tem palavras e nao entra"
+        ["sales", "time", "level"],
+        "a coluna `month` tem palavras e nao entra"
     );
     assert_eq!(t.rows, 12);
     // ⭐ E a recusa CHEGA a uma frase — sem um leitor, a divergência contra o Blender pagava o
     // preço (recusar a coluna inteira) e não entregava o benefício (o artista saber porquê).
     let r = t.report().expect("a coluna de palavras tem de ser DITA");
-    assert!(r.contains("mes"), "{r}");
+    assert!(r.contains("month"), "{r}");
 }
 
 /// ⭐⭐ **E A FRASE CHEGA AO TERMINAL** — a porta é o cache da shell, uma vez por ficheiro.

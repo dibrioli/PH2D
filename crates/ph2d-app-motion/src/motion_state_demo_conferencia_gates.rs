@@ -29,7 +29,7 @@ pub fn gate_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> 
     let (n, count) = conferencia_demos_gates::authored();
     eprintln!(
         "[cena 82] {n} linhas, {c} peças por figura. Esta cena julga-se PARADA — não carregue
-  Play. (A linha 6, do TREMOR, é a única que anda se o relógio andar; parada, ela lê-se
+  Play. (A linha 6, do JITTER, é a única que anda se o relógio andar; parada, ela lê-se
   como as outras.) Cada figura tem uma ficha em cima a dizer o que ela é.
 
   O QUE CONTAR: cada metade desenha o MESMO controle DUAS vezes — no mínimo e no máximo.

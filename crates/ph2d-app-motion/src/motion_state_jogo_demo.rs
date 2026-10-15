@@ -378,17 +378,17 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
         ficha(
             0.0,
             BARRA_Y - 0.6,
-            "vida: o tempo da barra e' a vida (Time Remap = Driven)",
+            "health: the bar's time is the health (Time Remap = Driven)",
         ),
         ficha(
             -COL_X,
             -4.0,
-            "estado: a grelha cruza no anel (Follow -> Mixer)",
+            "state: the grid crosses into the ring (Follow -> Mixer)",
         ),
         ficha(
             COL_X,
             -4.0,
-            "boom: cada disparo sacode a galaxia (ADSR -> Vortex)",
+            "boom: each trigger shakes the galaxy (ADSR -> Vortex)",
         ),
     ]
 }

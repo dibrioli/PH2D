@@ -10,14 +10,14 @@ pub fn table_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId>
     {}
 
   EM CIMA -- cada linha do ficheiro e' UM PONTO. Doze meses, doze pontos, e a ALTURA de
-  cada um vem da coluna «vendas». E' um grafico, feito com dois nos: `source.table`
+  cada um vem da coluna «sales». E' um grafico, feito com dois nos: `source.table`
   entrega as linhas, e `value.attribute` escolhe a coluna pelo NOME.
 
   EM BAIXO -- cada linha do ficheiro e' UM INSTANTE. ⚠️ DE' PLAY. O quadrado muda de
-  tamanho seguindo a coluna «nivel» ao longo da coluna «tempo». Parado, ele nao diz
+  tamanho seguindo a coluna «level» ao longo da coluna «time». Parado, ele nao diz
   nada -- e' o playhead que o faz ler a tabela.
 
-  ⭐ A coluna «mes» tem PALAVRAS, e por isso nao entra: um leitor que a convertesse
+  ⭐ A coluna «month» tem PALAVRAS, e por isso nao entra: um leitor que a convertesse
   daria uma coluna de zeros sem avisar. Ela e' saltada e nomeada.
 
   ⭐ PARA RECARREGAR: edite o ficheiro acima, guarde, e escolha-o outra vez no botao

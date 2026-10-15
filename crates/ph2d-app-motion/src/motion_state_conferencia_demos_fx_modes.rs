@@ -68,20 +68,20 @@ pub struct Row {
 pub static ROWS_TABLE: &[Row] = &[
     Row {
         label: "SOMBRA — ela só sabia COBRIR; agora escolhe o modo, e a de Photoshop MULTIPLICA",
-        left: "1 SOMBRA · antes: cobre",
-        right: "1 SOMBRA · agora: escurece",
+        left: "1 SHADOW · before: covers",
+        right: "1 SHADOW · now: darkens",
         case: Case::Shadow,
     },
     Row {
         label: "LENTE  — a franja nascia no centro e ponto; agora o eixo move-se e há miolo limpo",
-        left: "2 LENTE · antes: centro fixo",
-        right: "2 LENTE · agora: eixo movido",
+        left: "2 LENS · before: fixed center",
+        right: "2 LENS · now: axis moved",
         case: Case::Lens,
     },
     Row {
         label: "ALFA   — as duas MULTIPLICAM e só a alfa muda: a fraca tem de ser mais CLARA",
-        left: "3 ALFA · sombra fraca (15%)",
-        right: "3 ALFA · sombra forte (85%)",
+        left: "3 ALPHA · weak shadow (15%)",
+        right: "3 ALPHA · strong shadow (85%)",
         case: Case::ShadowAlpha,
     },
 ];

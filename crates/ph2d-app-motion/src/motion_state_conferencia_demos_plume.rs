@@ -70,17 +70,17 @@ pub struct Row {
 pub static ROWS_TABLE: &[Row] = &[
     Row {
         label: "CARREGA — o penacho anda junto. O CONTROLE (e o que sempre houve)",
-        caption: "1 CARREGA · o penacho anda junto",
+        caption: "1 CARRY · the plume moves along",
         motion: Motion::Carry,
     },
     Row {
         label: "DEIXA — a particula fica onde nasceu: um rasto no ar",
-        caption: "2 DEIXA · fica onde nasceu",
+        caption: "2 LEAVE · stays where it was born",
         motion: Motion::Leave,
     },
     Row {
         label: "HERDA — e ainda leva a velocidade da fonte: o jacto INCLINA",
-        caption: "3 HERDA · leva a velocidade junto",
+        caption: "3 INHERIT · takes the velocity along",
         motion: Motion::Inherit,
     },
 ];

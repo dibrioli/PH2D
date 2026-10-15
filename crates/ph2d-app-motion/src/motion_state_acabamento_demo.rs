@@ -177,7 +177,7 @@ pub(crate) fn passo(g: &mut Graph, c: &Cena, n: &str) -> bool {
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![crate::motion_demo_legend::Caption::new(
         [0.0, -4.6],
-        "Lens: a camera ve a cena inteira".to_string(),
+        "Lens: the camera sees the whole scene".to_string(),
     )]
 }
 

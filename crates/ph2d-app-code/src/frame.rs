@@ -14,6 +14,7 @@ use ph2d_script::{
 /// Um quadro do editor de scripts. `host` = a VM (`None` = o app corre sem scripts).
 pub fn frame(sim: &mut SimWorld, mut host: Option<&mut ScriptHost>, hero: &mut HeroScreen) {
     let menu_save = hero.file_menu.save || hero.file_menu.save_as;
+    let selected = hero.gizmo.selection;
     let active = hero.documents.surface_active();
     let our_active = active.and_then(|t| {
         let ours = hero
@@ -27,6 +28,9 @@ pub fn frame(sim: &mut SimWorld, mut host: Option<&mut ScriptHost>, hero: &mut H
         return;
     };
     let world = sim.world_mut();
+    if let Some(level) = crate::smoke::armed_level() {
+        crate::smoke::stage(level, world, docs, selected);
+    }
     let wanted = world
         .get_resource_mut::<ScriptEditRequests>()
         .map(|mut r| std::mem::take(&mut r.0))

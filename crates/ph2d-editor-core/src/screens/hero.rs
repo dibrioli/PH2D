@@ -67,7 +67,6 @@ pub mod board_nav;
 pub mod board_video;
 pub mod board_video_bar;
 pub mod board_view;
-/// A entrada de um documento de FAMÍLIA em aba (`crate::doc_surface`), antes da do quadro.
 pub mod surface_input;
 pub mod document_tabs;
 pub mod document_tabs_menu;

@@ -18,12 +18,13 @@ mod frame;
 mod keys;
 mod pointer;
 pub mod problems;
+pub mod smoke;
 
 pub use docs::{CodeDocs, SaveKind};
 pub use frame::frame;
 
-/// A declaração da família à shell. Sem cenas de smoke ainda (o `PH2D_CODE_SMOKE` é o E15).
+/// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "code",
-    routers: &[],
+    routers: smoke::ROUTERS,
 };

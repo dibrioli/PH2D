@@ -40,6 +40,8 @@ pub struct CodeDocs {
     pub(crate) parked: BTreeMap<ScriptId, CodeDoc>,
     pub(crate) consoles: BTreeMap<ScriptId, Store>,
     pub(crate) focus: Option<u64>,
+    /// A cena de smoke já foi encenada.
+    pub(crate) smoke_done: bool,
     /// A área da aba no último quadro (o rato pergunta por ela).
     pub(crate) area: Rect,
 }
@@ -51,6 +53,7 @@ impl Default for CodeDocs {
             parked: BTreeMap::new(),
             consoles: BTreeMap::new(),
             focus: None,
+            smoke_done: false,
             area: Rect::new(0.0, 0.0, 0.0, 0.0),
         }
     }

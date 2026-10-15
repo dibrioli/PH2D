@@ -224,12 +224,25 @@ impl RowCtx<'_> {
 
     /// **Um campo numérico ROTULADO** (`<rótulo> [ 12,0 ]`).
     pub fn labeled_number_field(&mut self, label: &str, id: NodeId, step: f64, y: f32) -> f32 {
+        self.labeled_number_field_unit(label, id, step, None, y)
+    }
+
+    /// O mesmo, com a unidade no CAMPO (`<rótulo> [ 12,0 s ]`), nunca no rótulo.
+    pub fn labeled_number_field_unit(
+        &mut self,
+        label: &str,
+        id: NodeId,
+        step: f64,
+        unit: Option<crate::widget::Unit>,
+        y: f32,
+    ) -> f32 {
         self.label_cell(label, y);
         let rect = value_col(self.inner_x, self.inner_w, y, self.row_h);
         self.hit_index.register(id, rect);
         let (st, value, buffer, caret, anchor) = read_number_input(self.store, id);
         let input = NumberInput::new(id, "", value)
             .step(step)
+            .suffix(unit.map(crate::widget::Unit::suffix))
             .visual((st, self.store.hover_live(id)));
         paint_number_input_with_buffer(
             &input,

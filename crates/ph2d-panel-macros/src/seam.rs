@@ -25,10 +25,15 @@ pub(crate) const BOTOES: [ph2d_a11y::NodeId; 5] = [
 /// Os campos numéricos e a escala do arrasto de cada um (unidades por px — sem faixa: a família
 /// recusa o que não cabe e o painel diz porquê).
 pub(crate) const CAMPOS: [(ph2d_a11y::NodeId, f64); 3] = [
-    (ids::MACROS_WAIT, 0.01),
+    (ids::MACROS_WAIT, ARRASTO_FINO),
     (ids::MACROS_SIZE, 0.5),
-    (ids::MACROS_VALUE, 0.01),
+    (ids::MACROS_VALUE, ARRASTO_FINO),
 ];
+
+/// A escala do arrasto da espera (s/px) e do valor.
+const ARRASTO_FINO: f64 = 0.01; // LITERAL-PX-OK: escala no domínio do documento, não medida de design
+/// O passo das setas da espera (s) e do valor.
+pub(crate) const PASSO_FINO: f64 = 0.1; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     for id in BOTOES {

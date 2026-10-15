@@ -3,6 +3,7 @@
 
 use crate::ids;
 use crate::nomes;
+use crate::seam::PASSO_FINO;
 use crate::state::{Escolhida, MacrosPanelState};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::macro_edits::{
@@ -11,7 +12,7 @@ use ph2d_editor_core::macro_edits::{
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
 use ph2d_editor_core::panel::rows::{RowCtx, value_col};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ColorSwatch, RowHighlight, TextInput, TextInputState, paint_button,
+    Button, ButtonKind, ColorSwatch, RowHighlight, TextInput, TextInputState, Unit, paint_button,
     paint_color_swatch, paint_row_highlight, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
@@ -256,17 +257,29 @@ impl Corpo<'_> {
         };
         let mut y = r.action_button(ids::MACROS_RENAME, tr("panel.macros.rename"), y);
         y = r.action_button(ids::MACROS_DELETE, tr("panel.macros.delete_step"), y);
-        y = r.labeled_number_field(tr("panel.macros.field.wait"), ids::MACROS_WAIT, 0.1, y);
+        y = r.labeled_number_field_unit(
+            tr("panel.macros.field.wait"),
+            ids::MACROS_WAIT,
+            PASSO_FINO,
+            Some(Unit::Seconds),
+            y,
+        );
         match e.props {
             PropsDaEtapa::Pincelada { cor, .. } => {
                 y = cor_row(&mut r, cor, y);
-                y = r.labeled_number_field(tr("panel.macros.field.size"), ids::MACROS_SIZE, 1.0, y);
+                y = r.labeled_number_field_unit(
+                    tr("panel.macros.field.size"),
+                    ids::MACROS_SIZE,
+                    1.0,
+                    Some(Unit::Px),
+                    y,
+                );
             }
             PropsDaEtapa::Param { .. } if e.familia == FamiliaDaMacro::Motion => {
                 y = r.labeled_number_field(
                     tr("panel.macros.field.value"),
                     ids::MACROS_VALUE,
-                    0.1,
+                    PASSO_FINO,
                     y,
                 );
             }

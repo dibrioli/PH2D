@@ -317,8 +317,13 @@ fn o_instantaneo_que_consumiu_uma_resposta_mudada_nao_recomeca() {
         t.recomeca(&iguais).is_some(),
         "controlo: a mesma trilha recomeça"
     );
+    // A 1.ª resposta (já consumida) troca com a 1.ª que difere dela: quantas respostas iguais vêm à
+    // frente depende do relógio do worker na gravação.
+    let j = todas
+        .iter()
+        .position(|r| *r != todas[0])
+        .expect("controlo: a gravação tem duas respostas diferentes");
     let mut mudadas = todas;
-    mudadas.swap(0, 1);
-    assert_ne!(mudadas[0], mudadas[1], "duas respostas diferentes");
+    mudadas.swap(0, j);
     assert!(t.recomeca(&mudadas.into()).is_none());
 }

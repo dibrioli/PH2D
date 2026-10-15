@@ -55,6 +55,19 @@ pub struct Cena<'a> {
 
 pub use conferencia::Partidas;
 
+/// As cenas de `PH2D_MACRO_SMOKE`: `=1` o Splash (Painter), `=2` o Motion nó a nó. Cada uma monta-se
+/// na família que grava; o clipe que as conduz monta-o a composição (`render_loop/macro_smoke.rs`).
+pub const CENAS_DO_SMOKE: u32 = 2;
+
+/// A declaração da família à shell.
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "macros",
+    routers: &[ph2d_app_host::SmokeRouter {
+        env: "PH2D_MACRO_SMOKE",
+        max_level: CENAS_DO_SMOKE,
+    }],
+};
+
 /// O que o cartão MACRO do Inspector mostra da gravação, além do que o componente guarda.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResumoDaMacro {

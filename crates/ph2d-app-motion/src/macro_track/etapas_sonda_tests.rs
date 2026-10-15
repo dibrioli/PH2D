@@ -118,7 +118,7 @@ fn toca(doc: &MacroDoc, modo: Modo, ate: f64) -> (Option<String>, Vec<u32>, f64)
 }
 
 #[test]
-#[ignore = "sonda de medição (W5a): imprime, não reprova"]
+#[ignore = "sonda: medição (W5a) — imprime, não reprova"]
 fn sonda_etapas_editadas_do_motion() {
     eprintln!(
         "[etapas motion] loadavg {}",

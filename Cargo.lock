@@ -5035,6 +5035,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-anim",
+ "ph2d-app-host",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-i18n",
@@ -5220,6 +5221,7 @@ dependencies = [
  "ph2d-app-flip",
  "ph2d-app-host",
  "ph2d-app-light2d",
+ "ph2d-app-macros",
  "ph2d-app-motion",
  "ph2d-app-painter",
  "ph2d-app-physics",

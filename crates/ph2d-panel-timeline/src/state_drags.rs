@@ -230,6 +230,17 @@ pub struct StaggerDrag {
     pub applied_step_s: f64,
 }
 
+/// **O arrasto de uma etapa da macro** (W5d, linha «Macro steps»): a etapa e o x do ponteiro.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MacroDrag {
+    /// A posição na `TimelineViewSnapshot::macro_etapas`.
+    pub index: usize,
+    /// x do ponteiro no Begin.
+    pub start_x: f32,
+    /// x mais recente.
+    pub cur_x: f32,
+}
+
 /// An in-progress dope-sheet key drag: pointer x at Begin + the latest x. The
 /// time delta is `(cur_x - start_x) / px_per_s`, frame-snapped on commit.
 #[derive(Clone, Copy, Debug, PartialEq)]

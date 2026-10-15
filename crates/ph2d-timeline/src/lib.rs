@@ -124,7 +124,9 @@ pub use pose::{animated_entities, entity_key_times, pose_at, world_pose_at, worl
 pub use prop::{Algebra, PropKind};
 pub use refusal::{ClipRefusal, KeyRefusal, NestRefusal};
 pub use signal::{TimelineSignal, signals_crossed};
-pub use snapshot::{ContainerView, KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};
+pub use snapshot::{
+    ContainerView, EtapaDaMacroView, KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView,
+};
 pub use speed::{sample_speed, segment_endpoint_speed, speed_extent};
 pub use stack::{
     ClipLane, ClipStrip, LaneMode, Seam, SeamSlice, StripId, StripLoop, StripSource, fade_ramp,

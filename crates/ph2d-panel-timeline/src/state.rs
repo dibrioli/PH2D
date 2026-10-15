@@ -99,6 +99,10 @@ pub struct TimelinePanelState {
     /// selected diamonds shifted by the live delta and `event`/`interact` can
     /// emit the final `MoveSelectedKeys` on End. `None` when not dragging keys.
     pub key_drag: Option<KeyDrag>,
+    /// O arrasto de uma etapa da linha «Macro steps» (W5d).
+    pub macro_drag: Option<MacroDrag>,
+    /// O pedido que o arrasto de uma etapa deixou para o barramento (o `process` empurra-o).
+    pub macro_pedido: Option<ph2d_editor_core::macro_edits::MacroRequest>,
     /// The move emitted THIS frame but not yet visible in the published snapshot
     /// (intents land one frame later). The selected diamonds ride it so they do
     /// not lag the cursor by a frame. Cleared at the top of the next
@@ -275,6 +279,8 @@ impl Default for TimelinePanelState {
             view_span_s: 0.0,
             add_track_open: false,
             key_drag: None,
+            macro_drag: None,
+            macro_pedido: None,
             pending_move_dx: None,
             scale_drag: None,
             scale_markers: Vec::new(),

@@ -15,10 +15,26 @@ pub fn clipe_de(doc: &TimelineDoc, dono: u64) -> Option<usize> {
     doc.clip_named(dono, ph2d_i18n::tr(NOME_DO_CLIPE))
 }
 
+/// **A duração da macro QUE TOCA**, em segundos: o fim da trilha efectiva mais longa. ⚠️ Não é o
+/// `MacroDoc::duration`, que lê a gravação imutável — uma espera editada muda o que toca, não o que
+/// se gravou, e o clipe tem de acabar onde a reprodução acaba.
 #[must_use]
 pub fn segundos(doc: &MacroDoc) -> f64 {
+    let fim = doc
+        .tracks
+        .iter()
+        .map(|t| {
+            crate::etapas::leitor(t)
+                .and_then(|l| t.tocavel(l).ok())
+                .map_or_else(
+                    || t.events.last().map_or(0, |e| e.t.0),
+                    |e| e.events.last().map_or(0, |e| e.t.0),
+                )
+        })
+        .max()
+        .unwrap_or(0);
     #[expect(clippy::cast_precision_loss, reason = "µs de uma macro cabem num f64")]
-    let s = doc.duration().0 as f64 / 1e6;
+    let s = fim as f64 / 1e6;
     s
 }
 
@@ -38,17 +54,17 @@ pub fn instala(
         e.insert(Macro { doc: bytes, modo });
     }
     let tl = &mut *c.timeline;
+    // O clipe da macro fica ACTIVO: a linha «Macro steps» da Timeline mostra-se logo.
     if let Some(clip) = clipe_de(tl, dono) {
         tl.retime_macro_clip(clip, dono, d);
+        tl.set_active(clip);
         return Ok(clip);
     }
     let clip = tl
         .add_macro_clip(ph2d_i18n::tr(NOME_DO_CLIPE).to_owned(), dono, d)
         .map_err(ph2d_timeline::ClipRefusal::message_key)?;
-    let antes = tl.active_index();
     tl.set_active(clip);
     tl.set_active_loop_for(true, Some((0.0, d)));
-    tl.set_active(antes);
     tl.set_autoplay(clip, true);
     Ok(clip)
 }

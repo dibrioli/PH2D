@@ -256,6 +256,7 @@ pub(crate) fn content_h(
         + row_bands(snap, tab, expanded, graph_h, 0.0, 0.0)
             .map(|(_, _, h)| h)
             .sum::<f32>()
+        + crate::macro_steps::macro_h(snap, tab)
 }
 
 /// The Summary channel's row rect, or `None` when there is no track to summarise.

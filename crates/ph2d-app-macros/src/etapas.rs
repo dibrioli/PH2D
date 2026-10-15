@@ -163,7 +163,7 @@ fn muda_o_toque(e: &ph2d_macro::EdicaoDeEtapa) -> bool {
     e.espera_us != 0 || !e.trocas.is_empty() || !e.insercoes.is_empty() || e.sai_da_gravacao
 }
 
-fn leitor(track: &Track) -> Option<&'static dyn ph2d_macro::LeitorDaFamilia> {
+pub(crate) fn leitor(track: &Track) -> Option<&'static dyn ph2d_macro::LeitorDaFamilia> {
     match familia(track)? {
         FamiliaDaMacro::Painter => Some(&pi::LeitorDoPainter),
         FamiliaDaMacro::Motion => Some(&mo::LeitorDoMotion),
@@ -208,7 +208,7 @@ pub fn edita(
         return Ok(false);
     };
     let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
-    let antes = doc.duration();
+    let antes = crate::instala::segundos(&doc);
     let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
     let confere = if let CampoDaEtapa::Nome(n) = campo {
         let ancora = leitor(track)
@@ -230,7 +230,7 @@ pub fn edita(
 
 /// Grava `doc` na `Macro` de `bits` (só se mudou: o undo é por diff) e re-cronometra o clipe se a
 /// duração mudou.
-fn escreve(c: &mut Cena<'_>, bits: u64, doc: &MacroDoc, antes: MacroTime) {
+fn escreve(c: &mut Cena<'_>, bits: u64, doc: &MacroDoc, antes: f64) {
     let e = Entity::from_bits(bits);
     let bytes = ph2d_macro::codec::write(doc);
     if let Some(mut m) = c.sim.world_mut().get_mut::<Macro>(e)
@@ -238,11 +238,11 @@ fn escreve(c: &mut Cena<'_>, bits: u64, doc: &MacroDoc, antes: MacroTime) {
     {
         m.doc = bytes;
     }
-    if doc.duration() != antes
+    let d = crate::instala::segundos(doc);
+    if (d - antes).abs() > 0.0
         && let Some(clip) = crate::instala::clipe_de(c.timeline, bits)
     {
-        c.timeline
-            .retime_macro_clip(clip, bits, crate::instala::segundos(doc));
+        c.timeline.retime_macro_clip(clip, bits, d);
     }
 }
 
@@ -258,7 +258,7 @@ pub fn assenta(c: &mut Cena<'_>, bits: u64, trilha: usize) -> Result<(), ErroDaM
         return Ok(());
     };
     let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
-    let antes = doc.duration();
+    let antes = crate::instala::segundos(&doc);
     let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
     pi::assenta(track).map_err(|e| erros::do_painter(&e))?;
     escreve(c, bits, &doc, antes);

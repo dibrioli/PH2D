@@ -154,6 +154,44 @@ impl Macros {
         }
     }
 
+    /// **A linha «Macro steps» da Timeline**: as etapas da `Macro` do dono do clipe activo, quando o
+    /// clipe activo é o da macro dele (o tempo do clipe é o da macro: a faixa Macro Time é a
+    /// identidade). Mesma cache do painel.
+    pub fn etapas_na_linha(
+        &mut self,
+        sim: &SimWorld,
+        tl: &TimelineDoc,
+    ) -> Vec<ph2d_timeline::EtapaDaMacroView> {
+        let activo = tl.active_index();
+        let Some(dono) = tl
+            .clips()
+            .get(activo)
+            .and_then(|c| c.owner)
+            .map(|o| o.entity)
+            .filter(|&d| instala::clipe_de(tl, d) == Some(activo))
+        else {
+            return Vec::new();
+        };
+        let Some(m) = sim
+            .world()
+            .get::<ph2d_ecs::Macro>(ph2d_ecs::Entity::from_bits(dono))
+        else {
+            return Vec::new();
+        };
+        self.vistas
+            .de(dono, &m.doc)
+            .etapas
+            .iter()
+            .map(|e| ph2d_timeline::EtapaDaMacroView {
+                entity_bits: dono,
+                trilha: e.trilha,
+                k: e.k,
+                t0: e.t0_s,
+                espera_s: e.espera_s,
+            })
+            .collect()
+    }
+
     /// **O instantâneo do painel**. `escolhido` = os bits do objecto escolhido; `erro_em_cena` = o
     /// erro do palco dele (a reprodução), que só a shell alcança.
     pub fn info(

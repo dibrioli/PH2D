@@ -42,7 +42,7 @@ const TWIRL_W: f32 = 24.0; // LITERAL-PX-OK: row twirl hit column width
 const TWIRL_BASE_HALF: f32 = 5.0; // LITERAL-PX-OK: row twirl triangle half-base
 /// Height of the twirl triangle, flat edge to apex.
 const TWIRL_TIP: f32 = 9.0; // LITERAL-PX-OK: row twirl triangle height
-const DIAMOND_H: f32 = 4.5; // LITERAL-PX-OK: keyframe diamond half-size
+pub(crate) const DIAMOND_H: f32 = 4.5; // LITERAL-PX-OK: keyframe diamond half-size
 /// A ROVING key draws as a small dot instead of the diamond (AE convention:
 /// its time is derived, not authored).
 const ROVE_DOT_R: f32 = 2.5; // LITERAL-PX-OK: roving key dot radius
@@ -203,6 +203,13 @@ pub(crate) fn paint_rows(
         state.scroll_y,
     )
     .collect();
+    // A linha «Macro steps» (W5d) vai logo a seguir à última faixa.
+    let fim = bands.last().map_or(
+        region.y - state.scroll_y
+            + geom::stack_h(snap, state.tab)
+            + geom::summary_h(snap, state.tab),
+        |&(_, y, h)| y + h,
+    );
     for (i, y, h) in bands {
         // Cull the rows outside the band entirely: a long track list then neither
         // paints nor registers off-screen hits.
@@ -277,6 +284,7 @@ pub(crate) fn paint_rows(
     }
     // The time-scale box + grips over the current key selection (crown-jewels §4).
     // Registered AFTER the diamonds so the grips win the hit where they sit.
+    crate::macro_steps::paint(ctx, theme, region, label_w, view, state, snap, fim, lane);
     crate::scale_drag::paint_selection_box(ctx, theme, g, view, state, snap);
     ctx.scene.pop_layer();
 }

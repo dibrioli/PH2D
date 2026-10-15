@@ -24,6 +24,14 @@ const VIEWPORT: Rect = Rect {
     w: 320.0,
     h: 1600.0,
 };
+/// A Timeline docka-se em baixo: numa coluna de 320 px a barra de transporte quebra e come a altura
+/// das faixas inteira (medido: região das faixas com 0 px).
+const VIEWPORT_TIMELINE: Rect = Rect {
+    x: 0.0,
+    y: 0.0,
+    w: 1600.0,
+    h: 1000.0,
+};
 const LADO: u32 = 128;
 const QUADRO_US: u64 = 16_667;
 const DT_MS: f32 = 1000.0 / 60.0;
@@ -250,4 +258,70 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     assert_eq!(cor(0), [20, 40, 200], "só aquela pincelada muda");
     assert_eq!(cor(2), [20, 40, 200], "a seguinte fica com a sua");
     assert_eq!(o.erro, None);
+
+    // ARRASTAR a etapa 2 na linha «Macro steps» da Timeline ⇒ ela e a 3 andam; a 1 fica.
+    assert_eq!(
+        b.tl.active_index(),
+        clip,
+        "o Parar deixa o clipe da macro activo"
+    );
+    let linha = b.m.etapas_na_linha(&b.sim, &b.tl);
+    assert_eq!(linha.len(), 3, "a linha mostra as etapas do clipe activo");
+    let snap = ph2d_timeline::TimelineViewSnapshot {
+        fps: 60.0,
+        frame_snap: true,
+        macro_etapas: linha.clone(),
+        ..ph2d_timeline::TimelineViewSnapshot::default()
+    };
+    ph2d_panel_timeline::set_current_timeline(Some(snap));
+    let mut th = MockPanelHost::with_panel::<ph2d_panel_timeline::TimelinePanel>();
+    let mut ts = ph2d_panel_timeline::state::TimelinePanelState::default();
+    let rects = th.paint::<ph2d_panel_timeline::TimelinePanel>(&mut ts, VIEWPORT_TIMELINE);
+    let id = ph2d_panel_timeline::ids::timeline_macro_step_id(1);
+    let r = rects
+        .iter()
+        .find(|(n, _)| *n == id)
+        .map(|(_, r)| *r)
+        .expect("a Timeline pinta o losango da etapa 2");
+    let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
+    let meio_segundo = (0.5 * ts.px_per_s) as f32;
+    let _ = th.drag_at(x, y, x + meio_segundo, y);
+    let _ = th.paint::<ph2d_panel_timeline::TimelinePanel>(&mut ts, VIEWPORT_TIMELINE);
+    let pedidos: Vec<_> = th
+        .drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            EditorAction::Macro(r) => Some(r),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        pedidos.len(),
+        1,
+        "o arrasto pede UMA edição ao largar: {pedidos:?}"
+    );
+    for r in pedidos {
+        b.m.pede(r);
+    }
+    b.quadro();
+    let depois = b.m.etapas_na_linha(&b.sim, &b.tl);
+    let anda = |k: usize| depois[k].t0 - linha[k].t0;
+    assert!(anda(0).abs() < 1e-9, "a etapa 1 não anda: {}", anda(0));
+    assert!(
+        (anda(1) - 0.5).abs() < 1.0 / 60.0,
+        "a etapa 2 anda ~0,5 s: {}",
+        anda(1)
+    );
+    assert!(
+        (anda(2) - anda(1)).abs() < 1e-6,
+        "a 3 anda com ela: {} × {}",
+        anda(2),
+        anda(1)
+    );
+    let d = b.tl.clip_length_override(clip).unwrap();
+    assert!(
+        (d - (duracao + anda(1))).abs() < 1e-6,
+        "o clipe acompanha a duração: {d}"
+    );
 }

@@ -5040,6 +5040,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-macro",
  "ph2d-panel-macros",
+ "ph2d-panel-timeline",
  "ph2d-timeline",
  "ph2d-tool-painter",
  "ph2d-ui-testkit",

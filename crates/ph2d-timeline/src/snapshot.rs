@@ -195,6 +195,22 @@ pub struct ContainerView {
     pub length: f64,
 }
 
+/// **Uma etapa da macro na linha «Macro steps»** (W5d): o endereço que o arrasto edita e o início
+/// dela no tempo do clipe (a faixa Macro Time é a identidade `(0,0)→(D′,D′)`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct EtapaDaMacroView {
+    /// O objecto dono da `Macro` (o dono do clipe).
+    pub entity_bits: u64,
+    /// A trilha no `MacroDoc`.
+    pub trilha: usize,
+    /// A etapa dentro da trilha.
+    pub k: usize,
+    /// Início, em segundos do clipe.
+    pub t0: f64,
+    /// A espera editada antes dela, em segundos: arrastar Δ escreve `espera_s + Δ`.
+    pub espera_s: f64,
+}
+
 /// The whole panel view for one frame.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimelineViewSnapshot {
@@ -262,6 +278,10 @@ pub struct TimelineViewSnapshot {
     /// Markers as `(seconds, label, signal)` — the signal name (ADR-0143) is `Some`
     /// when the marker emits, which the ruler draws as a distinct glyph.
     pub markers: Vec<(f64, String, Option<String>)>,
+    /// **As etapas da macro do clipe activo** (ADR-0186, W5d) — a linha «Macro steps» da vista
+    /// Keys. Vazia quando o clipe activo não é o de uma macro. Quem a enche é a shell, pela
+    /// `ph2d-app-macros` (o `rebuild` não lhe toca).
+    pub macro_etapas: Vec<EtapaDaMacroView>,
     /// Auto-key armed.
     pub auto_key: bool,
     /// Frame snapping on.

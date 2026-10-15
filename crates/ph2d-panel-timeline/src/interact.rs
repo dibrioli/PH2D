@@ -76,6 +76,11 @@ pub(crate) fn process(
             PointerButton::Secondary => {}
         }
     }
+    if let Some(r) = state.macro_pedido.take() {
+        ctx.host
+            .bus_mut()
+            .push(ph2d_editor_core::action_bus::EditorAction::Macro(r));
+    }
 }
 
 /// Route one Primary-button gesture to the machine that owns its hit kind.
@@ -145,6 +150,7 @@ pub(crate) fn dispatch_primary(
                 key_drag::apply_key(state, px_per_s, snap, sel, g);
             }
         }
+        TimelineHitKind::MacroStep { index } => crate::macro_steps::apply(state, snap, index, g),
         TimelineHitKind::SummaryKey { t_bits } => {
             summary::apply_gesture(state, px_per_s, snap, t_bits, g);
         }

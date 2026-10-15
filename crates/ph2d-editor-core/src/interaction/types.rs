@@ -328,6 +328,11 @@ pub enum TimelineHitKind {
     SummaryKey {
         t_bits: u64,
     },
+    /// Um losango da linha **«Macro steps»** (ADR-0186, W5d): uma etapa da macro do clipe activo.
+    /// Arrastar re-cronometra-a (e às seguintes); `index` é a posição na lista do instantâneo.
+    MacroStep {
+        index: usize,
+    },
     /// A track row's expand/collapse twirl — a click opens that track's graph
     /// editor (`target` is its raw `AnimTarget`).
     Twirl {

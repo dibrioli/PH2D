@@ -431,6 +431,12 @@ pub fn timeline_key_hit_id(target: u64, key: u64) -> NodeId {
     dynamic_id("timeline.key", &[target, key])
 }
 
+/// O losango da etapa `index` na linha «Macro steps» (W5d).
+#[must_use]
+pub fn timeline_macro_step_id(index: usize) -> NodeId {
+    dynamic_id("timeline.macro_step", &[index as u64])
+}
+
 /// A stable `NodeId` for one track row's expand/collapse twirl (W3.E1), keyed by
 /// the track's `AnimTarget`.
 #[must_use]

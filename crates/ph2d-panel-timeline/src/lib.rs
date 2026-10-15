@@ -57,6 +57,7 @@ pub mod ids;
 mod interact;
 mod key_drag;
 mod loop_drag;
+mod macro_steps;
 mod marker_drag;
 mod marker_menu;
 mod marker_rename;

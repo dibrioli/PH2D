@@ -176,11 +176,26 @@ gate7` · `ph2d-panel-macros --test it seam_macros::apagar_a_etapa_escolhida_che
 
 ## Smoke
 
-(o binário: será colado)
+Binário `--profile smoke` deixado compilado na worktree (depois de `rm -rf target/*/incremental`, 55 GB),
+2.ª corrida:
+
+```
+▸ linha line_macros_automa____o · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.24s
+```
+
+`agent-loop-profile.sh` (20 sessões): paralelismo 1,16/passo ✗ · test:check 2,7× ✗ · edições sem conferir 1,0 % ✓
+· contexto relido 281 mil ✗ (esta janela passou de 450 mil por passo no fim: o fecho foi delegado).
 
 ## Fotos
 
-(será colado)
+`fotografa_cena.sh` (kwin virtual, 1930×1040, perfil smoke, rajada de 3), load 5,2–5,6 na hora:
+- `=1`: o Splash no papel a pintar; painel MACROS com «4 steps · 4.47 s», as quatro pinceladas com a amostra
+  da cor e o instante; a linha «Macro steps» com 4 losangos; 60 fps.
+- `=2`: aos 13,9 s a grelha de formas com o vento a soprar só dentro da caixa (as colunas da direita
+  espalhadas); painel com as 23 etapas nomeadas («Add Shape», «Size: default → 0.12», «Box → Wind»…); a
+  linha «Macro steps»; 59–60 fps com `PH2D_GPU_COOK=1` e `=0`. ⚠️ Uma 1.ª rajada a load 28 (média de 5 min)
+  leu 8 fps e duas fotos iguais — refeita com a máquina calma: era a carga, não o programa.
 
 ## Retomar
 

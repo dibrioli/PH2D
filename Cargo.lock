@@ -4865,6 +4865,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "image",
+ "parley",
  "ph2d-anim",
  "ph2d-app-host",
  "ph2d-asset",
@@ -4876,6 +4877,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-entity-visibility",
+ "ph2d-gpu",
  "ph2d-health",
  "ph2d-host",
  "ph2d-hud",

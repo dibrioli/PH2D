@@ -152,6 +152,10 @@ ph2d-nav = { path = "../ph2d-nav" }
 # corre o `apply_autoplay` sobre o `ClipPlayback` que a ponte escreveu. Só nos testes: o produto
 # liga as duas metades na shell, pelo mundo.
 ph2d-timeline = { path = "../ph2d-timeline" }
+# 📏 A sonda das barras do `=` (`tests/it/mede_as_duas_barras_do_igual.rs`, CodeEditor 15/10): a
+# placa para o `VelloPass` e o construtor do parley para moldar a pilha mono. Já estão no grafo.
+ph2d-gpu = { path = "../ph2d-gpu" }
+parley = "0.11.1"
 
 [features]
 # ⚠️⚠️ **Um `#[cfg(test)]` da família é INVISÍVEL do outro lado da fronteira**

@@ -168,6 +168,52 @@ fn o_alvo_de_uma_ligacao_sao_as_portas_do_aluno() {
     assert_eq!(e.alvos, [alvo::saida(caixa, 0), alvo::entrada(vento, 0)]);
 }
 
+/// ⭐ Os nós casam por TIPO e ORDEM DE CRIAÇÃO (plano W6 §2): com DUAS caixas, o fio que a gravação
+/// ligou à 2.ª só se cumpre na 2.ª caixa do aluno — a 1.ª, do mesmo tipo, não serve — e o balão
+/// aponta-a. As fixturas da cena `=3` têm um nó por tipo e não o distinguem.
+#[test]
+fn com_dois_nos_do_mesmo_tipo_a_etapa_e_do_segundo() {
+    use ph2d_panel_motion_graph::alvo;
+    let nos = |m: &mut MotionState, dono: u64| {
+        ["field.box", "field.box", "force.wind"].map(|t| {
+            let id = m.doc.graph.add_node(t);
+            m.doc.set_owner(id, dono);
+            id
+        })
+    };
+    let fio = |m: &mut MotionState, de: NodeId, para: NodeId| {
+        m.doc
+            .graph
+            .connect(Edge {
+                from: (de, 0),
+                to: (para, 0),
+                delayed: false,
+            })
+            .expect("liga");
+    };
+    // O professor liga a 2.ª caixa ao vento.
+    let mut p = estado_de_teste();
+    let [_, segunda, vento] = nos(&mut p, PROFESSOR);
+    let antes = retrato(&p, PROFESSOR);
+    fio(&mut p, segunda, vento);
+    let c = [Criterio {
+        k: 0,
+        itens: delta(&antes, &retrato(&p, PROFESSOR)),
+    }];
+    // O aluno, com um nó de outro objecto à frente (outros ids).
+    let mut m = estado_de_teste();
+    let outro = m.doc.graph.add_node("field.box");
+    m.doc.set_owner(outro, 99);
+    let [a1, a2, av] = nos(&mut m, ALUNO);
+    fio(&mut m, a1, av);
+    let e = &avalia(&m, ALUNO, &c)[0];
+    assert!(e.falta.is_some(), "a 1.ª caixa do aluno não é a gravada");
+    assert_eq!(e.alvos, [alvo::saida(a2.0, 0), alvo::entrada(av.0, 0)]);
+    m.doc.graph.disconnect(av, 0);
+    fio(&mut m, a2, av);
+    assert_eq!(faltas(&m, &c), [false], "a 2.ª caixa cumpre");
+}
+
 /// ⭐ «Mostra-me» cumpre a etapa, é UM passo de undo, e o desfazer devolve-a ao aluno.
 #[test]
 fn mostra_me_cumpre_a_etapa_e_o_desfazer_a_devolve() {

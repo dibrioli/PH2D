@@ -178,3 +178,7 @@ impl PainterTool {
         self.invalidate_composite();
     }
 }
+
+#[cfg(test)]
+#[path = "tela_tests.rs"]
+mod tests;

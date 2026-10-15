@@ -149,6 +149,35 @@ fn o_balao_pede_a_imagem_em_paint_e_depois_o_meio() {
     assert!(x.pode_mostrar());
 }
 
+/// ⭐ Os botões só agem na imagem do TUTORIAL: com o Painter na mão aberto noutra imagem (Wet Paint
+/// armado), «Mostra-me» e «Recomeçar» não lhe tocam — nem um pixel, nem um passo de undo — e o balão
+/// continua a pedir a imagem.
+#[test]
+fn os_botoes_nao_tocam_noutra_imagem() {
+    let mut b = Banca::nova();
+    b.activo = true;
+    let outra = b.sim.world_mut().spawn(StableId(10)).id().to_bits();
+    // Cinza: o papel branco do «Recomeçar» mudá-la-ia.
+    let n = LADO as usize * LADO as usize * 4;
+    b.t.bind_document(outra, vec![128; n], LADO, LADO);
+    b.t.set_paint_media(PaintMedia::WetPaint);
+    let camadas = |t: &PainterTool| -> Vec<(u64, Vec<u8>)> {
+        t.camadas_rgba()
+            .into_iter()
+            .map(|(id, px)| (id, px.to_vec()))
+            .collect()
+    };
+    b.assenta();
+    let antes = camadas(&b.t);
+    for r in [mostra_me, recomeca] {
+        let x = b.pede(r);
+        b.assenta();
+        assert_eq!(x.pedido, Some(PedidoDoTutorial::AbreParaPintar));
+        assert!(camadas(&b.t) == antes, "a outra imagem mudou");
+        assert!(!b.t.undo_last(), "um passo de undo na outra imagem");
+    }
+}
+
 /// ⭐ «Mostra-me» pinta a pincelada corrente; o Ctrl+Z volta o passo; «Recomeçar» volta ao início e
 /// desfaz-se num passo.
 #[test]

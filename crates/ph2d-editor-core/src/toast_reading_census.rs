@@ -375,7 +375,7 @@ fn exemplo(nome: &str) -> String {
 /// A frase de uma chave em inglês, cada marcador cheio. Um `{cura}` (a cura do Motion) leva a
 /// frase mais longa das OUTRAS chaves do mesmo sítio — é dali que o chamador a monta.
 fn frase(chave: &str, irmas: &[String]) -> String {
-    encher(&tr_em(Idioma::Ingles, chave), chave, irmas)
+    encher(tr_em(Idioma::Ingles, chave), chave, irmas)
 }
 
 /// Um molde (da tabela ou um `format!` cru) com cada marcador cheio; `{}` e `{:.0}` são números.
@@ -563,7 +563,10 @@ fn a_variavel_do_aviso_segue_ate_quem_a_liga() {
             for (i, line) in lines.into_iter().enumerate() { toasts.push(Toast::warning(";
     assert_eq!(
         ligacoes(corpo, "line"),
-        ["lines.into_iter().enumerate()", "crate::smoke::spawn(sim, \"x = y\")"]
+        [
+            "lines.into_iter().enumerate()",
+            "crate::smoke::spawn(sim, \"x = y\")"
+        ]
     );
     let corpo = "fn f() { if let Err(msg) = attach_by_name(sim, *bits) { toasts.push(";
     assert_eq!(ligacoes(corpo, "msg"), ["attach_by_name(sim, *bits)"]);

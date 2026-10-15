@@ -90,7 +90,11 @@ fn pela_rota(
             .collect();
         let com_formas = insts.iter().any(|i| i.geometry_id > 0);
         let n = u32::try_from(insts.len()).expect("poucas");
-        let copias = if com_formas { FOLGA_F..FOLGA_F + n } else { 0..0 };
+        let copias = if com_formas {
+            FOLGA_F..FOLGA_F + n
+        } else {
+            0..0
+        };
         let mistura = insts[0].mistura;
         let corridas = crate::motion_shape_placa::corridas_das_faixas(
             &[(m.sinks[0], copias.clone(), FOLGA_I..FOLGA_I + n)],

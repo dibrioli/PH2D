@@ -322,7 +322,9 @@ fn variaveis(s: &str) -> Vec<String> {
 
 /// A variável de que uma expressão PARTE (`lines.into_iter()` → `lines`), se parte de uma.
 fn receptor(e: &str) -> Option<String> {
-    let t = e.trim_start_matches(['&', '*', ' ']).trim_start_matches("mut ");
+    let t = e
+        .trim_start_matches(['&', '*', ' '])
+        .trim_start_matches("mut ");
     let fim = t.bytes().position(|c| !e_ident(c)).unwrap_or(t.len());
     let (w, resto) = t.split_at(fim);
     let livre = resto.is_empty() || resto.starts_with(['.', '?', ' ']);
@@ -532,8 +534,18 @@ pub(super) fn seguidos<'a>(
 /// fora do que só o terminal lê (`eprintln!`, `panic!`, `.expect(`…).
 pub(super) fn prosa(corpo: &str) -> Vec<String> {
     const TERMINAL: &[&str] = &[
-        "eprintln!(", "println!(", "panic!(", "unreachable!(", "assert!(", "assert_eq!(",
-        "debug_assert!(", "debug_assert_eq!(", "warn!(", "info!(", "debug!(", "trace!(",
+        "eprintln!(",
+        "println!(",
+        "panic!(",
+        "unreachable!(",
+        "assert!(",
+        "assert_eq!(",
+        "debug_assert!(",
+        "debug_assert_eq!(",
+        "warn!(",
+        "info!(",
+        "debug!(",
+        "trace!(",
         ".expect(",
     ];
     let mut s = corpo.to_string();

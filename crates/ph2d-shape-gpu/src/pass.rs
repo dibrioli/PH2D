@@ -84,7 +84,6 @@ pub struct ShapePass {
     ordenado: Option<crate::contorno::Variantes<wgpu::RenderPipeline>>,
 }
 
-
 /// O shader: o desenho e os passes de cálculo do contorno num MÓDULO só — os dois lêem a mesma
 /// `copia_de` e a mesma geometria do traço (`bissectriz`), e escritas duas vezes elas divergiriam.
 const SHADER: &str = concat!(

@@ -308,7 +308,11 @@ fn mista(a: &Atlas, tag: u8, com: BlendWith, imagens_primeiro: bool) -> MotionSt
     let (mut m, combina, imagens) = estado_de(4.0, false, tag, com, false, true);
     let ramo = ramo_de_imagens(&mut m, imagens, 1.6);
     if imagens_primeiro {
-        let formas = m.doc.graph.disconnect(combina, 0).expect("as formas na porta 0");
+        let formas = m
+            .doc
+            .graph
+            .disconnect(combina, 0)
+            .expect("as formas na porta 0");
         liga(&mut m, formas.from.0, combina, 1);
         liga(&mut m, ramo, combina, 0);
     } else {

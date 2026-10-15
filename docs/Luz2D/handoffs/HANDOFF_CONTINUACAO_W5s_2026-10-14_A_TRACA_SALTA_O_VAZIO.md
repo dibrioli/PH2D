@@ -152,7 +152,18 @@ Gate do fecho (verificador, régua = merge-base `0aab2c1cb6`): fmt (curado em `8
 12/12; `nextest-impacted` (`PH2D_SUITE=fecho`, `PH2D_GPU=1`, load 19 → 38) **11 753 / 11 753**. Por nome, depois
 do `40f5b518c7` (o G4 era o único vermelho): `g3_` 7 (+1 ignorado), `g5_` 2, `holografica` verde.
 
-<!-- BINARIO -->
+Cache do dono (`fotografa_cena.sh` com `__GL_SHADER_DISK_CACHE_PATH=/home/enio/.cache/nvidia`,
+`PH2D_LIGHT2D_SMOKE=5`, load ~4, placa só da linha): 1.ª abertura **1,29 s** (42 pipelines), 2.ª **0,06 s**;
+o `GLCache` 1 338 → 1 335 MB (o driver arruma; a 2.ª abertura prova-o quente). `target/*/incremental`
+reclamado (5,9 GB). Binário do smoke (2.ª corrida, depois de `40f5b518c7`):
+
+```
+▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
+```
+
+Régua do loop (`agent-loop-profile.sh`, 20 sessões): paralelismo 1,18 (✗ ≥ 1,5) · `test:check` 3,3× (✗) ·
+contexto por passo 281 mil (✗ ≤ 250 mil) · edições sem conferir 0,9 % (✓).
 
 ## Smoke do dono
 

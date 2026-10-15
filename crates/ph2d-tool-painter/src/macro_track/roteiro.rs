@@ -5,7 +5,9 @@
 
 use crate::PaintMedia;
 use crate::tool::PainterTool;
-use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool, Tool};
+use ph2d_editor_core::tool::{
+    CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, RasterEditTool, Tool,
+};
 use ph2d_macro::{MacroRecorder, MacroTime, RefRect};
 
 pub(crate) const DT_MS: f32 = 1000.0 / 60.0;
@@ -81,7 +83,7 @@ pub fn grava_o_splash(lado: u32, alvo: u64) -> Option<(Vec<u8>, f64)> {
 #[must_use]
 pub fn grava_no_papel(lado: u32, alvo: u64, n: usize) -> Option<(Vec<u8>, f64)> {
     let ps: Vec<Pincelada> = SPLASH.iter().copied().cycle().take(n).collect();
-    grava(lado, alvo, &ps, &[], true)
+    grava(lado, alvo, &ps, &[], true, &[PaintMedia::WetPaint])
 }
 
 /// As pinceladas `ps` gravadas como o Splash, com `antes[k]` quadros parados a mais antes da `k`.
@@ -91,7 +93,30 @@ pub(crate) fn grava_pinceladas(
     ps: &[Pincelada],
     antes: &[u32],
 ) -> Option<(Vec<u8>, f64)> {
-    grava(lado, alvo, ps, antes, false)
+    grava(lado, alvo, ps, antes, false, &[PaintMedia::WetPaint])
+}
+
+/// As pinceladas `ps` gravadas como o Splash, a `k` no meio `meios[k]` (o último repete-se): o 1.º
+/// escolhe-se antes de armar, cada troca seguinte grava-se pelo seletor do painel antes da pincelada.
+#[cfg(test)]
+pub(crate) fn grava_nos_meios(
+    lado: u32,
+    ps: &[Pincelada],
+    meios: &[PaintMedia],
+) -> Option<(Vec<u8>, f64)> {
+    grava(lado, 0, ps, &[], false, meios)
+}
+
+/// **Uma pincelada do Splash por meio de `meios`** (em ciclo), numa sprite branca aberta pela porta do
+/// produto como [`grava_no_papel`]: a troca de meio a meio da gravação é um passo do seletor do painel.
+#[must_use]
+pub fn grava_no_papel_nos_meios(
+    lado: u32,
+    alvo: u64,
+    meios: &[PaintMedia],
+) -> Option<(Vec<u8>, f64)> {
+    let ps: Vec<Pincelada> = SPLASH.iter().copied().cycle().take(meios.len()).collect();
+    grava(lado, alvo, &ps, &[], true, meios)
 }
 
 fn grava(
@@ -100,7 +125,9 @@ fn grava(
     ps: &[Pincelada],
     antes: &[u32],
     papel: bool,
+    meios: &[PaintMedia],
 ) -> Option<(Vec<u8>, f64)> {
+    let meio = |k: usize| meios.get(k).or(meios.last()).copied();
     let mut t = PainterTool::default();
     let n = usize::try_from(lado).ok()?;
     if papel {
@@ -108,7 +135,7 @@ fn grava(
     } else {
         t.set_source(vec![255u8; n * n * 4], lado, lado);
     }
-    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_paint_media(meio(0)?);
     t.set_wet_relogio_fixo(true);
     #[expect(
         clippy::cast_precision_loss,
@@ -131,6 +158,13 @@ fn grava(
     for (k, p) in ps.iter().enumerate() {
         for _ in 0..antes.get(k).copied().unwrap_or(0) {
             quadro(&mut t, &mut rec)?;
+        }
+        let m = meio(k)?;
+        if t.paint_media() != m {
+            t.handle_panel_event(PanelEvent::SelectOption(
+                crate::ids::PAINTER_BRUSH_MEDIA,
+                m.to_u8().to_string(),
+            ));
         }
         t.set_brush_color_srgb8(p.cor);
         t.set_brush_size_px(p.tamanho_px);

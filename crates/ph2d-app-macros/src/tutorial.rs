@@ -18,19 +18,27 @@ use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::macro_track::tutorial::{self as pt, EnsinoDoPainter, Preparo};
 use std::hash::{Hash, Hasher};
 
+/// A chave da avaliação do Painter: a versão da trilha, a imagem ligada, o tamanho da tela e a
+/// revisão do conteúdo ([`PainterTool::content_revision`]) — a mesma chave, o mesmo estado.
+type ChaveDoProgresso = (u64, Option<u64>, (u32, u32), (u64, u64));
+
 /// O estado do tutorial na família: a última `Macro` lida e a recusa de um botão.
 #[derive(Default)]
 pub(crate) struct Tutorial {
-    /// (bits, bytes, o documento).
-    lido: Option<(u64, Vec<u8>, MacroDoc)>,
+    /// (bits, bytes, o hash deles, o documento).
+    lido: Option<(u64, Vec<u8>, u64, MacroDoc)>,
     erro: Option<(u64, ErroDaMacroView)>,
-    /// O ensino do Painter, por (versão da trilha, tamanho da tela).
-    ensino: Option<((u64, Option<(u32, u32)>), EnsinoDoPainter)>,
+    /// O ensino do Painter, por versão da trilha.
+    ensino: Option<(u64, EnsinoDoPainter)>,
+    /// A 1.ª pincelada por cumprir no último estado avaliado: o progresso é função do estado, e um
+    /// estado igual não se reavalia (a cada quadro seriam todas as pinceladas cumpridas outra vez).
+    progresso: Option<(ChaveDoProgresso, usize)>,
 }
 
-/// O objecto do tutorial: o que está em edição, se tem uma `Macro` em `Fazer`; senão o 1.º que tenha.
-/// Devolve os bits e o `StableId` (o dono das trilhas).
-fn objeto(sim: &SimWorld, em_edicao: Option<u64>) -> Option<(u64, u64)> {
+/// O objecto do tutorial: a imagem em que o Painter pinta (a `Macro` do Painter vive na imagem que
+/// gravou), senão o objecto em edição, se têm uma `Macro` em `Fazer`; senão o 1.º que tenha. Devolve
+/// os bits e o `StableId` (o dono das trilhas).
+fn objeto(sim: &SimWorld, pintando: Option<u64>, em_edicao: Option<u64>) -> Option<(u64, u64)> {
     let w = sim.world();
     let mut todos: Vec<(u64, u64)> = w
         .iter_entities()
@@ -43,12 +51,14 @@ fn objeto(sim: &SimWorld, em_edicao: Option<u64>) -> Option<(u64, u64)> {
     todos.sort_unstable();
     todos
         .iter()
-        .find(|(_, s)| Some(*s) == em_edicao)
+        .find(|(b, _)| Some(*b) == pintando)
+        .or_else(|| todos.iter().find(|(_, s)| Some(*s) == em_edicao))
         .or(todos.first())
         .copied()
 }
 
-fn versao(bytes: &[u8], trilha: usize) -> u64 {
+/// A versão da trilha `trilha` de uma `Macro` cujos bytes têm o hash `bytes`.
+fn versao(bytes: u64, trilha: usize) -> u64 {
     let mut h = std::hash::DefaultHasher::new();
     bytes.hash(&mut h);
     trilha.hash(&mut h);
@@ -79,36 +89,25 @@ fn painter_em<'a>(f: &'a mut Familias<'_>, alvo: Option<u64>) -> Option<&'a mut 
 }
 
 impl Tutorial {
-    /// A `Macro` de `bits`, lida uma vez por mudança dos bytes.
-    fn le(&mut self, bits: u64, bytes: &[u8]) -> Result<&MacroDoc, ErroDaMacroView> {
+    /// A `Macro` de `bits`, lida (e o hash dos bytes feito) uma vez por mudança dos bytes.
+    fn le(&mut self, bits: u64, bytes: &[u8]) -> Result<(u64, &MacroDoc), ErroDaMacroView> {
         let fresco = self
             .lido
             .as_ref()
-            .is_some_and(|(b, v, _)| *b == bits && v == bytes);
+            .is_some_and(|(b, v, _, _)| *b == bits && v == bytes);
         if !fresco {
             let doc = ph2d_macro::codec::read(bytes).map_err(|e| crate::erros::do_ficheiro(&e))?;
-            self.lido = Some((bits, bytes.to_vec(), doc));
+            let mut h = std::hash::DefaultHasher::new();
+            bytes.hash(&mut h);
+            self.lido = Some((bits, bytes.to_vec(), h.finish(), doc));
         }
-        Ok(&self.lido.as_ref().expect("lido acima").2)
-    }
-
-    /// O ensino da trilha do Painter para a tela do aluno (`None` = não a tem aberta).
-    fn ensino(
-        &mut self,
-        track: &Track,
-        versao: u64,
-        tela: Option<(u32, u32)>,
-    ) -> Result<&EnsinoDoPainter, ErroDaMacroView> {
-        let chave = (versao, tela);
-        if self.ensino.as_ref().is_none_or(|(c, _)| *c != chave) {
-            let e = EnsinoDoPainter::de(track, tela).map_err(|e| crate::erros::do_painter(&e))?;
-            self.ensino = Some((chave, e));
-        }
-        Ok(&self.ensino.as_ref().expect("calculado acima").1)
+        let (_, _, h, doc) = self.lido.as_ref().expect("lido acima");
+        Ok((*h, doc))
     }
 
     /// As pinceladas da trilha no estado do aluno: cumpridas até à 1.ª por cumprir (que só se avalia
-    /// com o Painter na imagem, no meio gravado).
+    /// com o Painter na imagem, da tela da gravação); o meio pedido é o da pincelada corrente. Só a
+    /// corrente leva a área marcada.
     fn etapas_do_painter(
         &mut self,
         f: &mut Familias<'_>,
@@ -116,31 +115,52 @@ impl Tutorial {
         track: &Track,
         versao: u64,
     ) -> Result<Vec<(Option<PedidoDoTutorial>, EtapaDoTutorial)>, ErroDaMacroView> {
+        if self.ensino.as_ref().is_none_or(|(v, _)| *v != versao) {
+            let e = EnsinoDoPainter::de(track).map_err(|e| crate::erros::do_painter(&e))?;
+            self.ensino = Some((versao, e));
+        }
+        let e = &self.ensino.as_ref().expect("calculado acima").1;
         let na_mao = f.painter_activo;
         let t = painter_em(f, alvo).map(|t| &*t);
-        let e = self.ensino(track, versao, t.map(PainterTool::canvas_size))?;
-        let preparo = e
-            .preparo(t, na_mao, alvo.unwrap_or(u64::MAX))
-            .map(|p| match p {
-                Preparo::AbreParaPintar => PedidoDoTutorial::AbreParaPintar,
-                Preparo::Meio(m) => PedidoDoTutorial::Meio {
-                    chave_do_meio: pt::chave_do_meio(m),
-                },
-            });
-        let feitas = match (preparo.is_none(), t) {
-            (true, Some(t)) => e.por_cumprir(t).unwrap_or(e.criterios.len()),
-            _ => 0,
+        let (preparo, feitas) = match e.aberto(t, na_mao, alvo.unwrap_or(u64::MAX)) {
+            // Outra tela não se avalia: o balão di-lo, em vez de fingir que nada está pintado.
+            Err(Preparo::OutroTamanho { w, h }) => {
+                return Err(crate::erros::erro_com(
+                    crate::erros::OUTRO_TAMANHO,
+                    format!("{w}\u{d7}{h}"),
+                ));
+            }
+            Err(_) => (Some(PedidoDoTutorial::AbreParaPintar), 0),
+            Ok(t) => {
+                let chave = (
+                    versao,
+                    t.bound_document(),
+                    t.canvas_size(),
+                    t.content_revision(),
+                );
+                let feitas = match self.progresso {
+                    Some((c, n)) if c == chave => n,
+                    _ => {
+                        let n = e.por_cumprir(t).unwrap_or(e.criterios.len());
+                        self.progresso = Some((chave, n));
+                        n
+                    }
+                };
+                let meio = e.meio_que_falta(t, feitas).map(|m| PedidoDoTutorial::Meio {
+                    chave_do_meio: m.name_key(),
+                });
+                (meio, feitas)
+            }
         };
         Ok(e.criterios
             .iter()
             .enumerate()
             .map(|(i, c)| {
-                let falta = i >= feitas;
                 let etapa = EtapaDoTutorial {
                     k: c.regiao.k,
-                    falta: falta.then_some(PedidoDoTutorial::Pinta),
+                    falta: (i >= feitas).then_some(PedidoDoTutorial::Pinta),
                     alvos: Vec::new(),
-                    area: alvo.filter(|_| falta).map(|a| AreaNaImagem {
+                    area: alvo.filter(|_| i == feitas).map(|a| AreaNaImagem {
                         entity_bits: a,
                         pontos: c.regiao.pontos.clone(),
                         raio: c.regiao.raio,
@@ -160,7 +180,23 @@ impl Tutorial {
         dono: u64,
         bytes: &[u8],
     ) -> Result<Vec<Etapa>, ErroDaMacroView> {
-        let doc = self.le(bits, bytes)?.clone();
+        self.le(bits, bytes)?;
+        // O documento sai do estado enquanto as famílias o avaliam (sem o clonar a cada quadro).
+        let lido = self.lido.take().expect("lido acima");
+        let r = self.etapas_de(f, sim, bits, dono, lido.2, &lido.3);
+        self.lido = Some(lido);
+        r
+    }
+
+    fn etapas_de(
+        &mut self,
+        f: &mut Familias<'_>,
+        sim: &SimWorld,
+        bits: u64,
+        dono: u64,
+        h: u64,
+        doc: &MacroDoc,
+    ) -> Result<Vec<Etapa>, ErroDaMacroView> {
         let editando = f.motion_em_edicao == Some(dono) && f.motion_na_mao;
         let mut out = Vec::new();
         for (tr, track) in doc.tracks.iter().enumerate() {
@@ -170,12 +206,12 @@ impl Tutorial {
             let es = match familia {
                 FamiliaDaMacro::Motion => f
                     .motion
-                    .avalia(dono, track, versao(bytes, tr))?
+                    .avalia(dono, track, versao(h, tr))?
                     .into_iter()
                     .map(|e| ((!editando).then_some(PedidoDoTutorial::Edita), e))
                     .collect(),
                 FamiliaDaMacro::Painter => {
-                    self.etapas_do_painter(f, alvo(sim, bits, track), track, versao(bytes, tr))?
+                    self.etapas_do_painter(f, alvo(sim, bits, track), track, versao(h, tr))?
                 }
             };
             out.extend(es.into_iter().map(|(preparo, e)| Etapa {
@@ -194,12 +230,13 @@ impl Tutorial {
         f: &mut Familias<'_>,
         sim: &SimWorld,
     ) -> Option<BalaoDoTutorial> {
-        let (bits, dono) = objeto(sim, f.motion_em_edicao)?;
-        let bytes = sim
-            .world()
-            .get::<Macro>(Entity::from_bits(bits))?
-            .doc
-            .clone();
+        let pintando = f
+            .painter
+            .as_deref()
+            .filter(|_| f.painter_activo)
+            .and_then(PainterTool::bound_document);
+        let (bits, dono) = objeto(sim, pintando, f.motion_em_edicao)?;
+        let bytes = &sim.world().get::<Macro>(Entity::from_bits(bits))?.doc;
         let erro = self
             .erro
             .as_ref()
@@ -215,7 +252,7 @@ impl Tutorial {
             area: None,
             erro,
         };
-        let etapas = match self.etapas(f, sim, bits, dono, &bytes) {
+        let etapas = match self.etapas(f, sim, bits, dono, bytes) {
             Ok(e) => e,
             Err(e) => {
                 b.erro = Some(e);
@@ -230,7 +267,7 @@ impl Tutorial {
                 b.pedido = etapas[i].e.falta.clone();
                 b.alvos = etapas[i].e.alvos.clone();
                 b.area = etapas[i].e.area.clone();
-                let doc = self.le(bits, &bytes).ok()?;
+                let (_, doc) = self.le(bits, bytes).ok()?;
                 b.dica =
                     crate::etapas::dica(f.etapas, &doc.tracks[etapas[i].trilha], etapas[i].e.k);
             }
@@ -260,13 +297,11 @@ impl Tutorial {
             if e.preparo.is_some() {
                 return Err(crate::erros::sem_etapa());
             }
-            let doc = self.le(bits, &bytes)?.clone();
+            let (h, doc) = self.le(bits, &bytes)?;
+            let doc = doc.clone();
             let track = &doc.tracks[e.trilha];
             match e.familia {
-                FamiliaDaMacro::Motion => {
-                    f.motion
-                        .mostra(dono, track, versao(&bytes, e.trilha), e.e.k)
-                }
+                FamiliaDaMacro::Motion => f.motion.mostra(dono, track, versao(h, e.trilha), e.e.k),
                 FamiliaDaMacro::Painter => {
                     let t = painter_em(f, alvo(sim, bits, track))
                         .ok_or_else(crate::erros::sem_etapa)?;
@@ -291,7 +326,7 @@ impl Tutorial {
                 .ok_or_else(crate::erros::sem_etapa)?
                 .doc
                 .clone();
-            let doc = self.le(bits, &bytes)?.clone();
+            let doc = self.le(bits, &bytes)?.1.clone();
             for track in &doc.tracks {
                 match da_trilha(f.etapas, track).map(|x| x.familia()) {
                     Some(FamiliaDaMacro::Motion) => f.motion.recomeca(dono, track)?,

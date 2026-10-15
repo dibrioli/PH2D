@@ -68,6 +68,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.error.target" => "A step points at something the graph does not have.",
         "panel.macros.error.document" => "A recorded graph cannot be read: {detail}",
         "panel.macros.error.no_graph" => "This build has no Motion graph to replay it.",
+        "panel.macros.error.other_size" => {
+            "This image is not the size the tutorial was recorded on ({detail})."
+        }
         // O balão do tutorial «fazer» (W6).
         "panel.macros.tutorial.step" => "Step {n} of {total}",
         "panel.macros.tutorial.before" => "Before you start",

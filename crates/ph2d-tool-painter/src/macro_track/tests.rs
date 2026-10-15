@@ -240,3 +240,55 @@ fn o_documento_da_macro_tem_a_versao_do_seu_formato() {
 
 /// A impressão do `PaintedDocument` da versão 1 (medida em 2026-10-13, base `757afebd58`).
 const IMPRESSAO_DO_DOCUMENTO_V1: u64 = 0xf6e6_904f_ffdb_a430;
+
+/// ⭐ **Um estado inicial de ANTES da W6c** (sem `meio`, `modo`, `pinceis`, `ligados`,
+/// `falloff_armado`, `metodo_por_meio` nem `tela` no JSON das configurações) lê-se como Wet Paint e
+/// reproduz o Splash na MESMA tela que o estado inteiro.
+#[test]
+fn um_estado_inicial_de_antes_da_w6c_reproduz_o_mesmo_splash() {
+    use ph2d_macro::rec::{self, Record};
+    let (b, _) =
+        super::roteiro::grava_pinceladas(128, 0, &super::roteiro::SPLASH, &[0; 4]).expect("grava");
+    let track = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
+    let mut velho = Record::new();
+    let mut tirou = 0;
+    for (tag, v) in rec::fields(&track.initial).expect("campos") {
+        match tag {
+            1 | 5 => {
+                velho.varint(tag, rec::as_varint(v).expect("varint"));
+            }
+            2 => {
+                let mut cfg: serde_json::Value =
+                    serde_json::from_str(rec::as_str(v).expect("texto")).expect("json");
+                let m = cfg.as_object_mut().expect("objecto");
+                for k in [
+                    "meio",
+                    "modo",
+                    "pinceis",
+                    "ligados",
+                    "falloff_armado",
+                    "metodo_por_meio",
+                    "tela",
+                ] {
+                    tirou += usize::from(m.remove(k).is_some());
+                }
+                velho.str(tag, &cfg.to_string());
+            }
+            _ => {
+                velho.bytes(tag, v);
+            }
+        }
+    }
+    assert_eq!(tirou, 7, "o estado de agora leva as sete chaves da W6c");
+    let velha = ph2d_macro::Track {
+        initial: velho.finish(),
+        ..track.clone()
+    };
+    let t = super::inicial::tool_no_inicial(&velha.initial).expect("o velho lê-se");
+    assert_eq!(t.paint_media(), crate::PaintMedia::WetPaint);
+    assert!(
+        super::etapas::tela_no_fim(&velha).expect("toca")
+            == super::etapas::tela_no_fim(&track).expect("toca"),
+        "o estado de antes da W6c reproduz outra tela"
+    );
+}

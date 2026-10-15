@@ -10,6 +10,7 @@
 use super::inicial;
 use super::passo::Passo;
 use super::tocar::{ErroDaMacro, TocadorDoPainter};
+use crate::PaintMedia;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PointerPhase;
 use ph2d_macro::{Etapa, Event, LeitorDaFamilia, MacroTime, Track};
@@ -125,6 +126,8 @@ pub struct EtapaDoPainter {
     pub t1: MacroTime,
     pub cor: [u8; 3],
     pub tamanho_px: f32,
+    /// O meio em vigor no toque (a gravação pode trocá-lo pelo seletor do painel entre pinceladas).
+    pub meio: PaintMedia,
     /// O nome que o artista escreveu.
     pub nome: Option<String>,
 }
@@ -156,9 +159,9 @@ fn e_de_configuracao(p: &Passo) -> bool {
     )
 }
 
-/// O pincel no toque de cada pincelada da trilha QUE TOCA, lido por um tool no estado inicial que só
-/// recebe os passos de configuração.
-fn pinceis(tocavel: &Track) -> Result<Vec<([u8; 3], f32)>, ErroDaMacro> {
+/// O pincel no toque de cada pincelada da trilha QUE TOCA (cor, tamanho e meio), lido por um tool no
+/// estado inicial que só recebe os passos de configuração.
+fn pinceis(tocavel: &Track) -> Result<Vec<([u8; 3], f32, PaintMedia)>, ErroDaMacro> {
     let mut t: PainterTool =
         inicial::tool_no_inicial(&tocavel.initial).map_err(ErroDaMacro::Inicial)?;
     let mut out = Vec::new();
@@ -169,7 +172,7 @@ fn pinceis(tocavel: &Track) -> Result<Vec<([u8; 3], f32)>, ErroDaMacro> {
             ..
         } = p
         {
-            out.push((t.brush_color_srgb8(), t.brush_size_px()));
+            out.push((t.brush_color_srgb8(), t.brush_size_px(), t.paint_media()));
         } else if e_de_configuracao(&p) {
             TocadorDoPainter::aplica_ao_tool(&mut t, p)?;
         }
@@ -203,9 +206,13 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
             continue;
         }
         let Some(t) = tocadas.next() else { break };
-        let (cor, tamanho_px) = match tipo {
-            TipoDaEtapa::Pincelada(_) => pinceis.next().unwrap_or(([0; 3], 0.0)),
-            TipoDaEtapa::Recusada(_) => ([0; 3], 0.0),
+        let (cor, tamanho_px, meio) = match tipo {
+            TipoDaEtapa::Pincelada(_) => {
+                pinceis
+                    .next()
+                    .unwrap_or(([0; 3], 0.0, PaintMedia::default()))
+            }
+            TipoDaEtapa::Recusada(_) => ([0; 3], 0.0, PaintMedia::default()),
         };
         out.push(EtapaDoPainter {
             k,
@@ -215,6 +222,7 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
             t1: tocavel.events[t.fim].t,
             cor,
             tamanho_px,
+            meio,
             nome: track
                 .edicoes
                 .iter()

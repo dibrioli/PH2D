@@ -6,8 +6,9 @@
 use ph2d_app_macros::{Cena, Familias, Macros};
 use ph2d_ecs::{Macro, ModoDaMacro, SimWorld, StableId};
 use ph2d_editor_core::macro_edits::MacroRequest;
+use ph2d_editor_core::macro_etapas::erros;
 use ph2d_editor_core::macro_tutorial::{BalaoDoTutorial, PedidoDoTutorial, balao};
-use ph2d_editor_core::tool::Tool;
+use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_timeline::{TimelineIntent, TimelineState};
 use ph2d_tool_painter::{PaintMedia, PainterTool};
 
@@ -45,6 +46,10 @@ impl Banca {
     fn nova() -> Self {
         let (doc, _) =
             ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 4).expect("grava");
+        Self::com(doc)
+    }
+
+    fn com(doc: Vec<u8>) -> Self {
         let mut sim = SimWorld::new();
         let bits = sim
             .world_mut()
@@ -100,6 +105,14 @@ impl Banca {
         };
         self.m.quadro(&mut f, &mut c, 0);
         balao().expect("balão")
+    }
+
+    /// O meio pelo seletor do painel (a porta do artista).
+    fn meio(&mut self, m: PaintMedia) {
+        self.t.handle_panel_event(PanelEvent::SelectOption(
+            ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
+            m.to_u8().to_string(),
+        ));
     }
 
     fn pede(&mut self, r: fn(u64) -> MacroRequest) -> BalaoDoTutorial {
@@ -200,4 +213,92 @@ fn mostra_me_desfazer_e_recomecar_no_painter() {
     assert_eq!((x.passo, x.erro), (1, None), "de volta ao início");
     assert!(b.t.undo_last(), "o recomeçar é um passo de undo");
     assert_eq!(b.quadro().passo, 2);
+}
+
+/// ⭐ **O meio pedido é o da pincelada corrente** (W6c): a 1.ª gravada em Wet Paint, a 2.ª em
+/// Watercolor (a troca é um passo do seletor do painel). Feita a 1.ª, o aluno em Watercolor tem o passo
+/// 2 por pintar; em Wet Paint, o balão pede o Watercolor.
+#[test]
+fn o_balao_pede_o_meio_da_pincelada_corrente() {
+    let (doc, _) = ph2d_tool_painter::macro_track::roteiro::grava_no_papel_nos_meios(
+        LADO,
+        0,
+        &[PaintMedia::WetPaint, PaintMedia::Watercolor],
+    )
+    .expect("grava");
+    let mut b = Banca::com(doc);
+    b.activo = true;
+    b.abre();
+    b.meio(PaintMedia::WetPaint);
+    assert_eq!(b.quadro().passo, 1);
+    b.pede(mostra_me);
+    b.assenta();
+    let x = b.quadro();
+    assert_eq!(
+        x.pedido,
+        Some(PedidoDoTutorial::Meio {
+            chave_do_meio: PaintMedia::Watercolor.name_key()
+        }),
+        "a 2.ª pincelada foi gravada em Watercolor"
+    );
+    b.meio(PaintMedia::Watercolor);
+    let x = b.quadro();
+    assert_eq!((x.passo, x.pedido), (2, Some(PedidoDoTutorial::Pinta)));
+}
+
+/// ⭐ Com duas imagens-tutorial, o balão é o da que o Painter tem aberta (não a 1.ª do mundo).
+#[test]
+fn o_balao_e_o_da_imagem_em_que_o_painter_pinta() {
+    let mut b = Banca::nova();
+    let doc = b
+        .sim
+        .world()
+        .get::<Macro>(ph2d_ecs::Entity::from_bits(b.bits))
+        .expect("macro")
+        .doc
+        .clone();
+    let segunda = b
+        .sim
+        .world_mut()
+        .spawn((
+            StableId(11),
+            Macro {
+                doc,
+                modo: ModoDaMacro::Fazer,
+            },
+        ))
+        .id()
+        .to_bits();
+    // Sem nada aberto o balão é o da 1.ª pelos bits; abre-se a OUTRA.
+    let primeira = b.quadro().entity_bits;
+    let outra = if primeira == b.bits { segunda } else { b.bits };
+    let n = LADO as usize * LADO as usize * 4;
+    b.t.bind_document(outra, vec![255; n], LADO, LADO);
+    b.activo = true;
+    assert_eq!(b.quadro().entity_bits, outra, "a aberta no Painter");
+    b.activo = false;
+    assert_eq!(
+        b.quadro().entity_bits,
+        primeira,
+        "o Painter fora da mão não decide"
+    );
+}
+
+/// Uma imagem de outro tamanho que a gravada: o balão di-lo (com o tamanho gravado), em vez de pedir
+/// pinceladas que não se podem avaliar.
+#[test]
+fn outra_tela_diz_o_tamanho_gravado() {
+    let mut b = Banca::nova();
+    b.activo = true;
+    let n = 256 * 256 * 4;
+    b.t.bind_document(b.bits, vec![255; n], 256, 256);
+    let x = b.quadro();
+    assert_eq!(
+        x.erro,
+        Some(erros::erro_com(
+            erros::OUTRO_TAMANHO,
+            format!("{LADO}\u{d7}{LADO}")
+        ))
+    );
+    assert!(!x.pode_mostrar());
 }

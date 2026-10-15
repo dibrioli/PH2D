@@ -602,6 +602,15 @@ impl PainterTool {
         self.layers_revision
     }
 
+    /// A revisão do CONTEÚDO do documento: `(layers_revision, pixel_clock)`. Toda escrita de píxeis
+    /// passa por `mark_dirty` → `bump_layer_pixels` (a testemunha da época do traço depende disso) e
+    /// toda edição de estrutura/undo por `invalidate_composite`: um dos dois anda. A chave da
+    /// avaliação do tutorial «fazer» (Macros W6).
+    #[must_use]
+    pub fn content_revision(&self) -> (u64, u64) {
+        (self.layers_revision, self.pixel_clock)
+    }
+
     /// Monotonic CONTENT version of the preview, bumped once per dirty
     /// [`Self::take_preview_arc`]. The shell keys its GPU-slot upload on this
     /// instead of the drained `Arc`'s pointer, so it never has to hold a clone of

@@ -3,10 +3,13 @@
 //! noutro lugar, nenhuma, «Mostra-me». Imprime a fracção pintada da parte NOVA e da região inteira.
 //!
 //! `cargo test -p ph2d-tool-painter --profile smoke --lib macro_track::tutorial::sonda -- --ignored --nocapture`
+//!
+//! A 2.ª sonda repete as variantes que decidem a fracção (certa, meio raio ao lado, fina, nada,
+//! «Mostra-me») nos quatro meios, a 512².
 
 use super::*;
 use crate::macro_track::roteiro::{
-    CAUDA, DT_MS, ENTRE, Pincelada, SPLASH, TRACO, grava_pinceladas, ponto,
+    CAUDA, DT_MS, ENTRE, Pincelada, SPLASH, TRACO, grava_nos_meios, grava_pinceladas, ponto,
 };
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool};
 
@@ -104,7 +107,7 @@ pub(super) fn aluno(track: &Track, k: usize, v: Variante, lado: u32) -> PainterT
         ),
         Variante::Nada => {}
         Variante::MostraMe => {
-            let crits = EnsinoDoPainter::de(track, Some((lado, lado))).expect("ensino");
+            let crits = EnsinoDoPainter::de(track).expect("ensino");
             mostra(&mut t, track, crits.criterios[k].regiao.k).expect("mostra");
             for _ in 0..ENTRE {
                 quadro(&mut t);
@@ -162,7 +165,7 @@ fn sonda_a_fracao_pintada_por_variante() {
     ] {
         let (b, _) = grava_pinceladas(lado, 0, &SPLASH, &[0; 4]).expect("grava");
         let track = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
-        let e = EnsinoDoPainter::de(&track, Some((lado, lado))).expect("ensino");
+        let e = EnsinoDoPainter::de(&track).expect("ensino");
         for (k, c) in e.criterios.iter().enumerate() {
             let toda = rasteriza(&c.regiao, lado, lado);
             println!(
@@ -188,4 +191,97 @@ fn sonda_a_fracao_pintada_por_variante() {
             }
         }
     }
+}
+
+/// O Splash gravado no meio `m`.
+fn trilha_no_meio(m: PaintMedia, lado: u32) -> Track {
+    let (b, _) = grava_nos_meios(lado, &SPLASH, &[m]).expect("grava");
+    ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0)
+}
+
+#[test]
+#[ignore = "sonda de medição (W6b/W6c): a fracção nos quatro meios"]
+fn sonda_a_fracao_por_meio() {
+    use Variante::*;
+    let lado = 512;
+    for m in [
+        PaintMedia::Digital,
+        PaintMedia::Watercolor,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        let track = trilha_no_meio(m, lado);
+        let e = EnsinoDoPainter::de(&track).expect("ensino");
+        for &v in &[Exacta, Desloca(0.5), Fina, Nada, MostraMe] {
+            let fs: Vec<String> = (0..e.criterios.len())
+                .map(|k| {
+                    let t = aluno(&track, k, v, lado);
+                    format!("{:>5.1}", 100.0 * e.fracao_pintada(&t, &e.criterios[k]))
+                })
+                .collect();
+            println!("{m:?} · {:<14} {} %", format!("{v:?}"), fs.join(" / "));
+        }
+    }
+}
+
+/// **O custo de uma avaliação** (W6, a auditoria): 30 pinceladas distintas (o Splash deslocado), o
+/// aluno com as 15 primeiras feitas. «Antes» = a régua de antes da cura (as camadas lidas e
+/// ordenadas por critério, o inicial procurado por píxel — a [`fracao`] desta sonda); «depois» =
+/// [`EnsinoDoPainter::por_cumprir`]. Intercaladas, o MÍNIMO de 7.
+#[test]
+#[ignore = "sonda de medição (W6): o custo da avaliação por quadro"]
+fn sonda_o_custo_da_avaliacao() {
+    let lado = 512;
+    let ps: Vec<Pincelada> = (0..30)
+        .map(|j: u16| {
+            let p = SPLASH[usize::from(j % 4)];
+            let d = 0.025 * f32::from(j / 4) - 0.08;
+            Pincelada {
+                de: [p.de[0] + d, p.de[1]],
+                ate: [p.ate[0] + d, p.ate[1]],
+                ..p
+            }
+        })
+        .collect();
+    let (b, _) = grava_pinceladas(lado, 0, &ps, &[]).expect("grava");
+    let track = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
+    let e = EnsinoDoPainter::de(&track).expect("ensino");
+    let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    for c in &e.criterios[..15] {
+        mostra(&mut t, &track, c.regiao.k).expect("mostra");
+        for _ in 0..ENTRE {
+            quadro(&mut t);
+        }
+    }
+    for _ in 0..CAUDA {
+        quadro(&mut t);
+    }
+    let antes = |t: &PainterTool| {
+        e.criterios
+            .iter()
+            .position(|c| fracao(&e, t, &c.novos, 0) < FRACAO_QUE_CUMPRE)
+    };
+    assert_eq!(antes(&t), e.por_cumprir(&t), "as duas réguas concordam");
+    for (i, c) in e.criterios.iter().enumerate().take(16) {
+        let toda = rasteriza(&c.regiao, lado, lado).len();
+        println!(
+            "  {i}: nova {} de {toda} px, pintada {:.1} %",
+            c.novos.len(),
+            100.0 * e.fracao_pintada(&t, c)
+        );
+    }
+    let (mut a, mut d) = (u128::MAX, u128::MAX);
+    for _ in 0..7 {
+        let t0 = std::time::Instant::now();
+        std::hint::black_box(antes(&t));
+        a = a.min(t0.elapsed().as_micros());
+        let t0 = std::time::Instant::now();
+        std::hint::black_box(e.por_cumprir(&t));
+        d = d.min(t0.elapsed().as_micros());
+    }
+    println!(
+        "{} critérios, por cumprir {:?}: antes {a} µs, depois {d} µs por avaliação",
+        e.criterios.len(),
+        e.por_cumprir(&t)
+    );
 }

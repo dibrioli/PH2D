@@ -26,10 +26,21 @@ pub struct RegiaoDaPincelada {
     pub pontos: Vec<[f32; 2]>,
     pub raio: f32,
     pub cor: [u8; 3],
+    /// O meio em vigor no toque dela (a gravação pode trocá-lo entre pinceladas).
+    pub meio: PaintMedia,
 }
 
-/// Cada pincelada da trilha QUE TOCA (com as edições): `k`, cor, tamanho e os passos do ponteiro.
-fn pinceladas(track: &Track) -> Result<Vec<(usize, [u8; 3], f32, Vec<Passo>)>, ErroDaMacro> {
+/// Uma pincelada da trilha QUE TOCA: o endereço, o pincel no toque e os passos do ponteiro.
+struct Pinc {
+    k: usize,
+    cor: [u8; 3],
+    raio: f32,
+    meio: PaintMedia,
+    passos: Vec<Passo>,
+}
+
+/// Cada pincelada da trilha QUE TOCA (com as edições).
+fn pinceladas(track: &Track) -> Result<Vec<Pinc>, ErroDaMacro> {
     let tocavel = track
         .tocavel(&LeitorDoPainter)
         .map_err(ErroDaMacro::Edicao)?;
@@ -40,14 +51,20 @@ fn pinceladas(track: &Track) -> Result<Vec<(usize, [u8; 3], f32, Vec<Passo>)>, E
         if !matches!(e.tipo, TipoDaEtapa::Pincelada(_)) {
             continue;
         }
-        let mut ps = Vec::new();
+        let mut passos = Vec::new();
         for ev in &tocavel.events[t.inicio..=t.fim] {
             let p = Passo::descodifica(&ev.payload).map_err(ErroDaMacro::Passo)?;
             if matches!(p, Passo::Ponteiro { .. }) {
-                ps.push(p);
+                passos.push(p);
             }
         }
-        out.push((e.k, e.cor, e.tamanho_px, ps));
+        out.push(Pinc {
+            k: e.k,
+            cor: e.cor,
+            raio: e.tamanho_px,
+            meio: e.meio,
+            passos,
+        });
     }
     Ok(out)
 }
@@ -60,17 +77,19 @@ pub fn regioes(track: &Track, w: u32, h: u32) -> Result<Vec<RegiaoDaPincelada>, 
     let (fw, fh) = (f64::from(w), f64::from(h));
     Ok(pinceladas(track)?
         .into_iter()
-        .map(|(k, cor, raio, ps)| RegiaoDaPincelada {
-            k,
-            pontos: ps
+        .map(|p| RegiaoDaPincelada {
+            k: p.k,
+            pontos: p
+                .passos
                 .iter()
                 .filter_map(|p| match p {
                     Passo::Ponteiro { pos, .. } => Some(abs(*pos, fw, fh)),
                     _ => None,
                 })
                 .collect(),
-            raio,
-            cor,
+            raio: p.raio,
+            cor: p.cor,
+            meio: p.meio,
         })
         .collect())
 }
@@ -88,7 +107,6 @@ fn rasteriza(r: &RegiaoDaPincelada, w: u32, h: u32) -> Vec<u32> {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        clippy::cast_precision_loss,
         reason = "coordenadas de tela, recortadas à tela"
     )]
     let faixa = |a: f32, b: f32, n: u32| {
@@ -132,34 +150,37 @@ fn d2_segmento(c: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CriterioDaPincelada {
     pub regiao: RegiaoDaPincelada,
-    /// Os píxeis da região que nenhuma pincelada anterior cobre; toda a região se não sobra nenhum.
+    /// Os píxeis da região que nenhuma pincelada anterior cobre (nunca vazio: a pincelada toda
+    /// coberta pelas anteriores não tem critério).
     pub novos: Vec<u32>,
 }
 
-/// O que o tutorial do Painter precisa de uma trilha numa tela `w × h`: os critérios, as camadas do
-/// estado inicial e o meio. Calcula-se uma vez por versão da `Macro` e tamanho da tela.
+/// O que o tutorial do Painter precisa de uma trilha: os critérios na tela da gravação e as camadas
+/// do estado inicial. Calcula-se uma vez por versão da `Macro`.
 pub struct EnsinoDoPainter {
+    /// Só as pinceladas com parte NOVA — a lei da W6a: etapa com Δ vazio não tem critério (não espera,
+    /// não mostra balão).
     pub criterios: Vec<CriterioDaPincelada>,
     /// As camadas do estado inicial (id, RGBA) — a régua do «pintado».
     inicial: Vec<(u64, Vec<u8>)>,
-    pub meio: PaintMedia,
+    /// A tela da gravação: uma imagem de outro tamanho recusa-se ([`Preparo::OutroTamanho`]).
     pub w: u32,
     pub h: u32,
 }
 
+/// As camadas do aluno, cada uma com a MESMA camada do estado inicial (`None` = criada pelo aluno).
+type Camadas<'a> = Vec<(&'a [u8], Option<&'a [u8]>)>;
+
 impl EnsinoDoPainter {
-    /// `tela` = o tamanho da imagem do aluno; `None` = o da gravação.
-    ///
     /// # Errors
     /// [`ErroDaMacro`].
-    pub fn de(track: &Track, tela: Option<(u32, u32)>) -> Result<Self, ErroDaMacro> {
+    pub fn de(track: &Track) -> Result<Self, ErroDaMacro> {
         let t0 = inicial::tool_no_inicial(&track.initial).map_err(ErroDaMacro::Inicial)?;
-        let (w0, h0) = t0.canvas_size();
-        let (w, h) = tela.unwrap_or((w0, h0));
+        let (w, h) = t0.canvas_size();
         let inicial = t0
             .camadas_rgba()
             .into_iter()
-            .map(|(id, px)| (id, reamostra(px, (w0, h0), (w, h))))
+            .map(|(id, px)| (id, px.to_vec()))
             .collect();
         let mut coberto = vec![false; w as usize * h as usize];
         let mut criterios = Vec::new();
@@ -173,67 +194,115 @@ impl EnsinoDoPainter {
             for &i in &dentro {
                 coberto[i as usize] = true;
             }
-            criterios.push(CriterioDaPincelada {
-                novos: if novos.is_empty() { dentro } else { novos },
-                regiao,
-            });
+            if !novos.is_empty() {
+                criterios.push(CriterioDaPincelada { novos, regiao });
+            }
         }
         Ok(Self {
             criterios,
             inicial,
-            meio: t0.paint_media(),
             w,
             h,
         })
+    }
+
+    /// As camadas do aluno `t` ao lado das do inicial, emparelhadas UMA vez por avaliação; `None` numa
+    /// tela de outro tamanho.
+    fn camadas<'a>(&'a self, t: &'a PainterTool) -> Option<Camadas<'a>> {
+        (t.canvas_size() == (self.w, self.h)).then(|| {
+            t.camadas_rgba()
+                .into_iter()
+                .map(|(id, px)| {
+                    let ini = self.inicial.iter().find(|(j, _)| *j == id);
+                    (px, ini.map(|(_, v)| v.as_slice()))
+                })
+                .collect()
+        })
+    }
+
+    /// A fracção dos píxeis NOVOS de `c` pintados nas `camadas`.
+    fn fracao(camadas: &Camadas<'_>, c: &CriterioDaPincelada) -> f32 {
+        let pintado = |i: u32| {
+            let k = i as usize * 4;
+            camadas.iter().any(|(px, ini)| match ini {
+                Some(ini) => px[k..k + 4] != ini[k..k + 4],
+                None => px[k + 3] > 0,
+            })
+        };
+        #[expect(clippy::cast_precision_loss, reason = "contagens de píxeis")]
+        let f = c.novos.iter().filter(|&&i| pintado(i)).count() as f32 / c.novos.len() as f32;
+        f
     }
 
     /// A fracção dos píxeis NOVOS do critério `c` que o aluno `t` pintou (`0` numa tela de outro
     /// tamanho).
     #[must_use]
     pub fn fracao_pintada(&self, t: &PainterTool, c: &CriterioDaPincelada) -> f32 {
-        if t.canvas_size() != (self.w, self.h) || c.novos.is_empty() {
-            return 0.0;
-        }
-        let aluno = t.camadas_rgba();
-        let pintado = |i: u32| {
-            let k = i as usize * 4;
-            aluno.iter().any(
-                |(id, px)| match self.inicial.iter().find(|(j, _)| j == id) {
-                    Some((_, ini)) => px[k..k + 4] != ini[k..k + 4],
-                    None => px[k + 3] > 0,
-                },
-            )
-        };
-        #[expect(clippy::cast_precision_loss, reason = "contagens de píxeis")]
-        let f = c.novos.iter().filter(|&&i| pintado(i)).count() as f32 / c.novos.len() as f32;
-        f
+        self.camadas(t).map_or(0.0, |cs| Self::fracao(&cs, c))
     }
 }
 
 /// ⭐ **A fracção da parte nova que cumpre uma pincelada** — MEDIDA (W6b, `03_plano_W6.md` §6.1,
-/// a sonda deste módulo, o Splash a 512² e 1024²): a pincelada certa e o «Mostra-me» pintam ≥ 93 %,
-/// torta meio raio ≥ 75 %; com o pincel fino 46–52 %, deslocada dois raios ≤ 27 %, nada ≤ 14,6 % (a
-/// água das anteriores). 70 % aceita a mão torta e pede ao pincel fino que acabe de encher.
+/// a sonda deste módulo, o Splash em Wet Paint a 512² e 1024²): a pincelada certa e o «Mostra-me»
+/// pintam ≥ 93 %, torta meio raio ≥ 75 %; com o pincel fino 46–52 %, deslocada dois raios ≤ 27 %, nada
+/// ≤ 14,6 % (a água das anteriores). 70 % aceita a mão torta e pede ao pincel fino que acabe de encher.
+/// ⚠️ Nos outros três meios a mão torta meio raio cai a 61–73 % (a 2.ª sonda, §6.1): ABERTO.
 pub const FRACAO_QUE_CUMPRE: f32 = 0.70;
 
 impl EnsinoDoPainter {
     /// A 1.ª pincelada por cumprir no tool `t` (índice em [`Self::criterios`]); `None` = todas. Pára
-    /// nela: as seguintes não se avaliam (o balão mostra a 1.ª).
+    /// nela: as seguintes não se avaliam (o balão mostra a 1.ª). As camadas leem-se uma vez.
     #[must_use]
     pub fn por_cumprir(&self, t: &PainterTool) -> Option<usize> {
+        let Some(cs) = self.camadas(t) else {
+            return (!self.criterios.is_empty()).then_some(0);
+        };
         self.criterios
             .iter()
-            .position(|c| self.fracao_pintada(t, c) < FRACAO_QUE_CUMPRE)
+            .position(|c| Self::fracao(&cs, c) < FRACAO_QUE_CUMPRE)
     }
 
-    /// O que falta antes de pintar: o tool `t` (o Painter, `na_mao` = é a ferramenta activa) na
-    /// imagem `alvo` (bits) e no meio da gravação.
+    /// O que falta antes de AVALIAR: o tool `t` (o Painter, `na_mao` = é a ferramenta activa) na
+    /// imagem `alvo` (bits), da tela da gravação. `Ok` = o tool a avaliar.
+    ///
+    /// # Errors
+    /// [`Preparo::AbreParaPintar`] ou [`Preparo::OutroTamanho`].
+    pub fn aberto<'a>(
+        &self,
+        t: Option<&'a PainterTool>,
+        na_mao: bool,
+        alvo: u64,
+    ) -> Result<&'a PainterTool, Preparo> {
+        let t = t
+            .filter(|t| na_mao && t.bound_document() == Some(alvo))
+            .ok_or(Preparo::AbreParaPintar)?;
+        if t.canvas_size() == (self.w, self.h) {
+            Ok(t)
+        } else {
+            Err(Preparo::OutroTamanho {
+                w: self.w,
+                h: self.h,
+            })
+        }
+    }
+
+    /// O meio que falta para a pincelada `atual` (índice em [`Self::criterios`]): o dela, não o do
+    /// início da gravação.
+    #[must_use]
+    pub fn meio_que_falta(&self, t: &PainterTool, atual: usize) -> Option<PaintMedia> {
+        let m = self.criterios.get(atual)?.regiao.meio;
+        (t.paint_media() != m).then_some(m)
+    }
+
+    /// O que falta antes da pincelada corrente: [`Self::aberto`] e depois [`Self::meio_que_falta`].
     #[must_use]
     pub fn preparo(&self, t: Option<&PainterTool>, na_mao: bool, alvo: u64) -> Option<Preparo> {
-        let Some(t) = t.filter(|t| na_mao && t.bound_document() == Some(alvo)) else {
-            return Some(Preparo::AbreParaPintar);
-        };
-        (t.paint_media() != self.meio).then_some(Preparo::Meio(self.meio))
+        match self.aberto(t, na_mao, alvo) {
+            Err(p) => Some(p),
+            Ok(t) => self
+                .meio_que_falta(t, self.por_cumprir(t)?)
+                .map(Preparo::Meio),
+        }
     }
 }
 
@@ -241,40 +310,12 @@ impl EnsinoDoPainter {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Preparo {
     AbreParaPintar,
+    /// A imagem do aluno não é do tamanho da gravação (`w × h`): o tutorial não a avalia.
+    OutroTamanho {
+        w: u32,
+        h: u32,
+    },
     Meio(PaintMedia),
-}
-
-/// A chave i18n do nome de um meio (a do seletor do pincel).
-#[must_use]
-pub fn chave_do_meio(m: PaintMedia) -> &'static str {
-    match m {
-        PaintMedia::Digital => "tool.painter.media.digital",
-        PaintMedia::Watercolor => "tool.painter.media.watercolor",
-        PaintMedia::Impasto => "tool.painter.media.impasto",
-        PaintMedia::WetPaint => "tool.painter.media.wet_paint",
-    }
-}
-
-/// `px` (`de`) no tamanho `para`, pelo vizinho mais perto (a régua do «pintado» numa imagem do aluno
-/// de outro tamanho que a gravada; do mesmo tamanho é a cópia).
-fn reamostra(px: &[u8], de: (u32, u32), para: (u32, u32)) -> Vec<u8> {
-    if de == para {
-        return px.to_vec();
-    }
-    let (w, h) = (para.0 as usize, para.1 as usize);
-    let (w0, h0) = (de.0.max(1) as usize, de.1.max(1) as usize);
-    let mut out = vec![0u8; w * h * 4];
-    for y in 0..h {
-        let y0 = y * h0 / h.max(1);
-        for x in 0..w {
-            let x0 = x * w0 / w.max(1);
-            let (a, b) = ((y * w + x) * 4, (y0 * w0 + x0) * 4);
-            if let Some(src) = px.get(b..b + 4) {
-                out[a..a + 4].copy_from_slice(src);
-            }
-        }
-    }
-    out
 }
 
 /// **«Recomeçar»**: o documento do tool vivo `t` volta ao estado inicial da trilha — um passo de
@@ -287,6 +328,8 @@ pub fn recomeca(t: &mut PainterTool, track: &Track) -> Result<(), ErroDaMacro> {
     if t0.canvas_size() != t.canvas_size() {
         return Err(ErroDaMacro::PortaRecusada("recomeca".into()));
     }
+    // Uma macro a gravar não reproduz o «Recomeçar» (não é uma porta do tool): a reprodução pára aqui.
+    t.macro_recusa("tutorial_recomeca");
     t.recomeca_com(&t0);
     Ok(())
 }
@@ -297,13 +340,14 @@ pub fn recomeca(t: &mut PainterTool, track: &Track) -> Result<(), ErroDaMacro> {
 /// # Errors
 /// [`ErroDaMacro`]; a etapa `k` não é uma pincelada.
 pub fn mostra(t: &mut PainterTool, track: &Track, k: usize) -> Result<(), ErroDaMacro> {
-    let Some((_, cor, raio, ps)) = pinceladas(track)?.into_iter().find(|p| p.0 == k) else {
+    let Some(p) = pinceladas(track)?.into_iter().find(|p| p.k == k) else {
         return Err(ErroDaMacro::PortaRecusada(format!("etapa {k}")));
     };
     let antes = (t.brush_color_srgb8(), t.brush_size_px());
-    t.set_brush_color_srgb8(cor);
-    t.set_brush_size_px(raio);
-    let r = ps
+    t.set_brush_color_srgb8(p.cor);
+    t.set_brush_size_px(p.raio);
+    let r = p
+        .passos
         .into_iter()
         .try_for_each(|p| TocadorDoPainter::aplica_ao_tool(t, p).map(drop));
     t.set_brush_color_srgb8(antes.0);

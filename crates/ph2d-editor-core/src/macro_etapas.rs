@@ -82,6 +82,7 @@ pub mod erros {
     pub const ALVO: &str = "panel.macros.error.target";
     pub const DOCUMENTO: &str = "panel.macros.error.document";
     pub const SEM_GRAFO: &str = "panel.macros.error.no_graph";
+    pub const OUTRO_TAMANHO: &str = "panel.macros.error.other_size";
 
     /// Todas as chaves (o censo da tabela as confere).
     pub const CHAVES: &[&str] = &[
@@ -102,6 +103,7 @@ pub mod erros {
         ALVO,
         DOCUMENTO,
         SEM_GRAFO,
+        OUTRO_TAMANHO,
     ];
 
     /// O erro sem detalhe.

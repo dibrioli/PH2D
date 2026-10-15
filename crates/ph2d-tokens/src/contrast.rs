@@ -102,7 +102,30 @@ pub const CONTRAST_PAIRS: &[ContrastPair] = &[
         min_ratio: 3.0,
         criterion: "WCAG 2.2 AA 1.4.11",
     },
+    // ── O editor de scripts: cada tinta do realce sobre o fundo dele. ⚠️ O comentário também a
+    //    4,5 (não 3): num script de artista ele É a documentação. A linha do cursor, a distância
+    //    entre tipos e a tabela medida: `tests/it/the_code_inks_read_and_differ.rs`.
+    code_ink(ColorToken::CodeKeyword),
+    code_ink(ColorToken::CodeFunction),
+    code_ink(ColorToken::CodeBuiltin),
+    code_ink(ColorToken::CodeType),
+    code_ink(ColorToken::CodeString),
+    code_ink(ColorToken::CodeNumber),
+    code_ink(ColorToken::CodeConstant),
+    code_ink(ColorToken::CodeProperty),
+    code_ink(ColorToken::CodeOperator),
+    code_ink(ColorToken::CodeComment),
 ];
+
+/// Uma tinta do editor de scripts sobre o `code-bg` — é TEXTO, logo a barra de texto.
+const fn code_ink(fg: ColorToken) -> ContrastPair {
+    ContrastPair {
+        fg,
+        bg: ColorToken::CodeBg,
+        min_ratio: 4.5,
+        criterion: "WCAG 2.2 AA 1.4.3",
+    }
+}
 
 /// Os pares que **NÃO cumprem** a WCAG neste modo, agora.
 ///

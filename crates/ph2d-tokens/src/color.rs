@@ -546,6 +546,23 @@ color_tokens! {
     /// `person-ink` — o texto e o contorno por cima da cor de uma pessoa (o nome na etiqueta, a
     /// inicial no avatar).
     PersonInk => "person-ink",
+
+    // ── O editor de scripts (CodeEditor): a superfície e as tintas do realce ──
+    // Tintas = cores de DADO, uma paleta por polaridade; a superfície segue o painel do tema. A lei
+    // (≥ 4,5:1 sobre o fundo e a linha do cursor, ΔE OKLab entre tipos) e a tabela: `contrast.rs`.
+    CodeBg => "code-bg",
+    CodeGutter => "code-gutter",
+    CodeLineCurrent => "code-line-current",
+    CodeKeyword => "code-keyword",
+    CodeFunction => "code-function",
+    CodeBuiltin => "code-builtin",
+    CodeType => "code-type",
+    CodeString => "code-string",
+    CodeNumber => "code-number",
+    CodeConstant => "code-constant",
+    CodeProperty => "code-property",
+    CodeOperator => "code-operator",
+    CodeComment => "code-comment",
 }
 
 impl ColorToken {

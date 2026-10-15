@@ -2141,7 +2141,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    `shape-handle` (as alças de parâmetro das formas): `1 × ROW_H_PX (25)` exactos.
     // ⬆️ `3 116 → 3 141` em 2026-10-16 (UIUX F17), pela MESMA razão: a fileira do `stage-tint-ui`
     //    (o tinto do palco na vista de interface do vetor): `1 × ROW_H_PX (25)` exactos.
-    ("tokens", 3141.0),
+    // ⬆️ `3 141 → 3 466` em 2026-10-15 (CodeEditor), pela MESMA razão: treze fileiras novas, as
+    //    cores do editor de scripts (`code-bg`, `code-gutter`, `code-line-current` + dez tintas de
+    //    realce): `13 × ROW_H_PX (25) = 325` exactos (somados ao `3 141` do main, que traz o UIUX F17).
+    ("tokens", 3466.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

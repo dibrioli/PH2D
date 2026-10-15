@@ -12,6 +12,7 @@ mod cada_palavra_desta_crate_vem_da_tabela;
 mod design_token_sync;
 mod measure_override_layer;
 mod mockup_tokens_exist;
+mod the_code_inks_read_and_differ;
 mod the_ground_stands_under_every_panel;
 mod the_leaf_stays_dep_free;
 mod the_modern_family_derives_every_token;

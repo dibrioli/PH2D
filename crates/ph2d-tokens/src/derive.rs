@@ -34,7 +34,8 @@
 //!
 //! # ⚠️ As cores de DADO não se derivam — emprestam-se
 //!
-//! `node-cat-*`, `port-*`, `curve-*`, `wire-fire-glow`, `graph-backdrop-*`, `attr-write`, `person-*`: são as
+//! `node-cat-*`, `port-*`, `curve-*`, `wire-fire-glow`, `graph-backdrop-*`, `attr-write`, `person-*`,
+//! as tintas `code-*` do editor de scripts (não a superfície dele, que segue o painel): são as
 //! únicas com matiz por direito (a lei que os quatro modelos planos partilham — `pesquisa/08 §3`),
 //! e já estão calibradas em OKLCH *dark-safe* no `tokens.json`. Um tema moderno escuro lê-as da
 //! tabela do `forge`, um claro da do `sunstone`. ⭐ Os eixos `axis-x/y/z` são os do Godot.
@@ -468,6 +469,24 @@ pub fn card_surface(theme: Theme, subsection: bool) -> Option<Color> {
 /// A alfa do `highlight_color` do Godot — `Color(accent, 0.275)`.
 const HIGHLIGHT_A: f32 = 0.275;
 
+/// O véu da linha do cursor do editor de scripts: `mono` a 5 % sobre o painel (≈ 12/255 no escuro).
+/// ⚠️ Teto MEDIDO: com ele a pior tinta (`code-number`, Candy) fica a `4,60:1` — gate
+/// `the_code_inks_read_and_differ`; um véu mais forte reprova lá.
+const CODE_LINE_VEIL: f32 = 0.05;
+
+/// A calha do editor de scripts: meio [`SURFACE_STEP`] abaixo do painel, rumo ao chão.
+/// ⛔ No `Oled` o painel JÁ é o chão (preto) e descer dava a mesma cor (medido: ΔE `0,000`, gate
+/// `the_code_inks_read_and_differ`) — ali ela sobe o meio degrau.
+fn code_gutter(panel: Rgb) -> Rgb {
+    let half = SURFACE_STEP / 2.0;
+    let d = if panel.r.max(panel.g).max(panel.b) < half {
+        half
+    } else {
+        -half
+    };
+    Rgb::new(panel.r + d, panel.g + d, panel.b + d).clamp()
+}
+
 /// **A cor de um slot num tema moderno.**
 ///
 /// ⚠️ Cobre TODA chave de [`ColorToken`] — o gate `every_token_derives_in_every_modern_theme`
@@ -558,12 +577,18 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "timeline-missing" => r.error.color(),
         "timeline-key" => r.font.color(),
         "timeline-ruler-tick" => r.mono.over(r.base, 0.45).color(),
+        // ── o editor de scripts: a SUPERFÍCIE é a do painel (não um buraco nele) ──
+        "code-bg" => r.panel.color(),
+        // A calha desce meio degrau rumo ao chão; a linha do cursor é um véu da cor do texto.
+        "code-gutter" => code_gutter(r.panel).color(),
+        "code-line-current" => r.mono.over(r.panel, CODE_LINE_VEIL).color(),
         // ── as cores de DADO: emprestadas ──
         k if k.starts_with("node-cat-")
             || k.starts_with("port-")
             || k.starts_with("curve-")
             || k.starts_with("graph-backdrop-")
             || k.starts_with("person-")
+            || k.starts_with("code-")
             || k == "wire-fire-glow"
             || k == "attr-write" =>
         {

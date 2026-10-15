@@ -2,6 +2,34 @@
 //! pelo tecto de 700 LOC (W5j).
 
 use ph2d_editor_core::luz_edits::NivelDaLuz;
+use ph2d_light2d_gpu::TemposMs;
+
+/// ⭐ W5u — INSTRUMENTO `PH2D_LIGHT2D_CUSTO=1`: o número do Inspector partido por passe (a vista e o
+/// entorno), a cada 60 leituras — o custo que o dono vê no app inteiro, não o da régua.
+pub(super) fn relatar_custo(t: &TemposMs, entorno: Option<&TemposMs>, grade: (u32, u32), n: u32) {
+    if n % 60 != 0 || std::env::var_os("PH2D_LIGHT2D_CUSTO").is_none() {
+        return;
+    }
+    eprintln!(
+        "[luz2d] custo {:.2} ms · grade {}×{} · c0 {:.2} c1 {:.2} c2 {:.2} vis {:.2} fina {:.2} c0_fina {:.2} \
+         preenche {:.2} másc {:.2} rebote {:.2}+{:.2} miolo {:.2} · entorno {:.2}",
+        t.total() + entorno.map_or(0.0, TemposMs::total),
+        grade.0,
+        grade.1,
+        t.c0,
+        t.c1,
+        t.c2_total(),
+        t.c3_visibilidade,
+        t.c3_fina,
+        t.c0_fina,
+        t.c3_preenche,
+        t.c3_mascaras,
+        t.c0_rebote,
+        t.c3_rebote,
+        t.c3_miolo,
+        entorno.map_or(0.0, TemposMs::total),
+    );
+}
 
 impl super::LuzDoQuadro {
     /// ⭐ W5e: quantas vezes a fina está engrossada neste quadro (0 = a do nível) e se foi pelo

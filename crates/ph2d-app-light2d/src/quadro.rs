@@ -583,13 +583,15 @@ impl LuzDoQuadro {
             && let Some(t) = r.solver.tempos_sem_esperar(gpu)
         {
             // ⭐ W5d: o entorno faz parte do custo (fixo: não muda com o nível).
-            let extra = self
+            let te = self
                 .entorno
                 .as_mut()
-                .and_then(|e| e.tempos_sem_esperar(gpu))
-                .map_or(0.0, |t| t.total());
+                .and_then(|e| e.tempos_sem_esperar(gpu));
+            let extra = te.as_ref().map_or(0.0, |t| t.total());
             self.custo_ms = Some(t.total() + extra);
             self.leituras += 1;
+            let g = r.solver.config().grade;
+            leituras::relatar_custo(&t, te.as_ref(), (g.largura, g.altura), self.leituras);
             if p.automatica {
                 let custo = crate::qualidade::Custo {
                     por_nivel: t.por_nivel(),

@@ -36,6 +36,16 @@ pub(crate) const NOME_ACUMULADO: &str = "luz2d/buf/hrc_acumulado";
 pub(crate) const NOME_UNIFORME: &str = "luz2d/buf/hrc_uniforme";
 /// ⭐ W5r — o arco de cada cone, `arcos[2ⁿ + m]` para n = 0..=N (a placa escreve-o uma vez, ao nascer).
 pub(crate) const NOME_ARCOS: &str = "luz2d/buf/hrc_arcos";
+/// ⭐ W5s — um `u32` por ladrilho [`LADO_DO_VAZIO`]² da grade: 1 onde a captura tem cobertura (a traça
+/// salta o intervalo que só cruza ladrilhos a 0).
+pub(crate) const NOME_COM_COBERTURA: &str = "luz2d/buf/hrc_com_cobertura";
+/// O `LADO_DO_VAZIO` do `c2_hrc.wgsl`.
+pub(crate) const LADO_DO_VAZIO: u32 = 8;
+
+/// ⭐ W5s — os ladrilhos da máscara do vazio na grade `w × h`.
+pub(crate) fn ladrilhos([w, h]: [u32; 2]) -> u64 {
+    u64::from(w.div_ceil(LADO_DO_VAZIO)) * u64::from(h.div_ceil(LADO_DO_VAZIO))
+}
 /// Os buffers que ocupam as ligações que um passe não usa (leitura; escrita de T; escrita de R).
 pub(crate) const NOMES_VAZIOS: [&str; 3] = [
     "luz2d/buf/hrc_vazio_l",
@@ -122,6 +132,11 @@ pub(crate) fn buffers([w, h]: [u32; 2], passes: u64) -> Vec<Buffer> {
         usos: armazenado,
     });
     v.push(Buffer {
+        nome: NOME_COM_COBERTURA,
+        bytes: 4 * ladrilhos([w, h]),
+        usos: armazenado,
+    });
+    v.push(Buffer {
         nome: NOME_UNIFORME,
         bytes: crate::passlist::PASSO_UNIFORME * passes,
         usos: B::UNIFORM | B::COPY_DST,
@@ -134,8 +149,8 @@ pub(crate) fn buffers([w, h]: [u32; 2], passes: u64) -> Vec<Buffer> {
     v
 }
 
-/// Quantos passes (despachos) a cascata holográfica grava por quadro: por quadrante T0–T2, T3..TN,
-/// R_{N−1}..R0 e a soma; mais a saída.
+/// Quantos passes (despachos) a cascata holográfica grava por quadro: os ladrilhos com cobertura (W5s);
+/// por quadrante T0–T2, T3..TN, R_{N−1}..R0 e a soma; mais a saída.
 pub(crate) fn n_passes([w, h]: [u32; 2]) -> u64 {
     (0..4)
         .map(|q| {
@@ -143,7 +158,7 @@ pub(crate) fn n_passes([w, h]: [u32; 2]) -> u64 {
             3 + (n - 2) + n + 1
         })
         .sum::<u64>()
-        + 1
+        + 2
 }
 
 #[cfg(test)]

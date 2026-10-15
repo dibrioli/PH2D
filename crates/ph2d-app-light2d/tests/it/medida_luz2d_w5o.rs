@@ -429,12 +429,22 @@ fn medida_luz2d_w5o_lastro() {
         let hrc_por_colunas = std::env::var("PH2D_W5R_COLUNAS").as_deref() != Ok("0");
         // ⭐ W5r: `PH2D_W5R_TABELA=0` — os arcos recalculados por fio.
         let hrc_arcos_em_tabela = std::env::var("PH2D_W5R_TABELA").as_deref() != Ok("0");
+        // ⭐ W5s: `PH2D_W5S_SALTA=0|1` e `PH2D_W5S_SONDA=0|1` — os cortes da traça (omissão: a do produto).
+        let chave = |k: &str, padrao: bool| match std::env::var(k).as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => padrao,
+        };
+        let hrc_salta_o_vazio = chave("PH2D_W5S_SALTA", produto.hrc_salta_o_vazio);
+        let hrc_fio_por_sonda = chave("PH2D_W5S_SONDA", produto.hrc_fio_por_sonda);
         (
             Config {
                 aritmetica,
                 hrc_nasce_duas_vezes,
                 hrc_por_colunas,
                 hrc_arcos_em_tabela,
+                hrc_salta_o_vazio,
+                hrc_fio_por_sonda,
                 ..produto
             },
             config_do_entorno(a, FHD, degrau_do(nivel)).map(|c| Config {
@@ -442,9 +452,37 @@ fn medida_luz2d_w5o_lastro() {
                 hrc_nasce_duas_vezes,
                 hrc_por_colunas,
                 hrc_arcos_em_tabela,
+                hrc_salta_o_vazio,
+                hrc_fio_por_sonda,
                 ..c
             }),
         )
+    };
+    // ⭐ W5s: `PH2D_W5S_CENA=cheia` — a vazia sob um tapete de quadrados (meio texel de lado a cada 6
+    // texels da grade do High): todo ladrilho com cobertura, o pior caso do salto.
+    // ⭐ W5s: `PH2D_W5S_NIVEL=low` — a mesma régua no Low.
+    let medido = if std::env::var("PH2D_W5S_NIVEL").as_deref() == Ok("low") {
+        NivelDaLuz::Baixa
+    } else {
+        NivelDaLuz::Alta
+    };
+    let vazia = if std::env::var("PH2D_W5S_CENA").as_deref() == Ok("cheia") {
+        let g = cfgs(medido).0.grade;
+        let mut c = vazia;
+        let h = (0.75 * g.texel_m) as f32;
+        for i in (3..g.largura).step_by(6) {
+            for j in (3..g.altura).step_by(6) {
+                let [x, y] = g.centro(i, j).map(|v| v as f32);
+                c.oclusores.push(ph2d_light2d_ecs::Oclusor {
+                    vertices: vec![[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]],
+                    opacidade: 1.0,
+                    albedo: [0.5; 3],
+                });
+            }
+        }
+        c
+    } else {
+        vazia
     };
     let mut lastro = Vec::new();
     let mut vivo = None;
@@ -500,7 +538,7 @@ fn medida_luz2d_w5o_lastro() {
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         }
     }
-    let (v, e) = cfgs(NivelDaLuz::Alta);
+    let (v, e) = cfgs(medido);
     if std::env::var("PH2D_W5O_LISTA").is_ok() {
         let mut t: Vec<_> = ph2d_light2d_gpu::PassList::de(&v, true)
             .texturas

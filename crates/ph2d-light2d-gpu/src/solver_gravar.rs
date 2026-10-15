@@ -338,7 +338,7 @@ impl Solver {
                         .as_ref()
                         .map(|t| t.escrita_compute(tempos::da_cascata(0))),
                 });
-                h.gravar(&mut p);
+                h.gravar(&mut p, 0);
             }
         }
         // ⭐ W5d: os rebotes a mais do quadro — a fonte com esta cascata, a emissão de base de novo com a
@@ -370,7 +370,7 @@ impl Solver {
                         .as_ref()
                         .map(|t| t.escrita_compute(tempos::da_cascata(k))),
                 });
-                h.gravar(&mut p);
+                h.gravar(&mut p, k);
             }
         }
         if let Some(h) = &self.hrc {

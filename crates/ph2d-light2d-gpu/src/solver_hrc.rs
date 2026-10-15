@@ -45,14 +45,16 @@ enum Etapa {
     Desce = 2,
     Soma = 3,
     Saida = 4,
+    Ladrilhos = 5,
 }
 
-const ENTRADAS: [&str; 5] = [
+const ENTRADAS: [&str; 6] = [
     "hrc_traca",
     "hrc_sobe",
     "hrc_desce",
     "hrc_soma",
     "hrc_saida",
+    "hrc_ladrilhos",
 ];
 
 /// O que a holográfica pega do solver ao nascer.
@@ -173,6 +175,7 @@ impl Holografica {
                 armazenado(10, false),
                 entrada_escrita(11, e.lista.texturas[c0].formato),
                 armazenado(12, true),
+                armazenado(16, false),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -220,6 +223,14 @@ impl Holografica {
             (
                 "ARCOS_TABELA",
                 f64::from(u8::from(e.cfg.hrc_arcos_em_tabela)),
+            ),
+            (
+                "SALTA_O_VAZIO_HRC",
+                f64::from(u8::from(e.cfg.hrc_salta_o_vazio)),
+            ),
+            (
+                "SONDA_HRC",
+                f64::from(u8::from(e.cfg.hrc_fio_por_sonda)),
             ),
         ];
         let pipelines = ENTRADAS
@@ -272,6 +283,7 @@ impl Holografica {
             escrever_arcos(e, &arcos);
         }
         let [vazio_l, vazio_t, vazio_r] = hrc::NOMES_VAZIOS.map(|nome| (e.buffer)(nome));
+        let com_cobertura = (e.buffer)(hrc::NOME_COM_COBERTURA);
 
         let mut uniformes = Vec::new();
         let mut passos = Vec::new();
@@ -295,10 +307,37 @@ impl Holografica {
                         buf(10, &acumulado),
                         vista(11, &e.vistas[c0]),
                         buf(12, &arcos),
+                        buf(16, &com_cobertura),
                     ],
                 });
                 passos.push((etapa, grupo, grupos));
             };
+        let saida = UniformeHrc {
+            quadrante: 0,
+            nivel: 0,
+            grade,
+            eixo: grade,
+            nx: 0,
+            nx_baixo: 0,
+            nx_cima: 0,
+            topo: 0,
+            total: 0,
+            _p: [0; 3],
+            _q: [0; 2],
+            miolo: SEM_MIOLO,
+            entorno: [0.0; 4],
+        };
+        // ⭐ W5s: a máscara do vazio, da própria captura (a textura inteira: a grade efetiva), antes dos
+        // quadrantes.
+        if e.cfg.hrc_salta_o_vazio {
+            let ge = e.cfg.grade_efetiva();
+            passo(
+                Etapa::Ladrilhos,
+                saida,
+                [&vazio_l, &vazio_l, &vazio_t, &vazio_l, &vazio_r],
+                [ge.largura, ge.altura].map(|x| x.div_ceil(hrc::LADO_DO_VAZIO)),
+            );
+        }
         for q in 0..4 {
             let quad = Quadrante::de(q, grade);
             let base = UniformeHrc {
@@ -318,7 +357,13 @@ impl Holografica {
             };
             let nx = |n: u32| quad.nx(n);
             for n in 0..=quad.n {
-                let total = quad.entradas_t(n);
+                // ⭐ W5s: um fio por sonda na traça (o `SONDA_HRC`).
+                let por_sonda = n <= 2 && e.cfg.hrc_fio_por_sonda;
+                let total = if por_sonda {
+                    u64::from(nx(n)) * u64::from(quad.y)
+                } else {
+                    quad.entradas_t(n)
+                };
                 let u = UniformeHrc {
                     nivel: n,
                     nx: nx(n),
@@ -385,24 +430,9 @@ impl Holografica {
                 grupos_1d(total),
             );
         }
-        let u = UniformeHrc {
-            quadrante: 0,
-            nivel: 0,
-            grade,
-            eixo: grade,
-            nx: 0,
-            nx_baixo: 0,
-            nx_cima: 0,
-            topo: 0,
-            total: 0,
-            _p: [0; 3],
-            _q: [0; 2],
-            miolo: SEM_MIOLO,
-            entorno: [0.0; 4],
-        };
         passo(
             Etapa::Saida,
-            u,
+            saida,
             [&vazio_l, &vazio_l, &vazio_t, &vazio_l, &vazio_r],
             [grade[0].div_ceil(8), grade[1].div_ceil(8)],
         );
@@ -466,10 +496,14 @@ impl Holografica {
         self.escrever(queue);
     }
 
-    /// Grava a cascata holográfica inteira no passe `p` (a c0 sai dela).
-    pub(super) fn gravar(&self, p: &mut wgpu::ComputePass<'_>) {
+    /// Grava a cascata holográfica inteira no passe `p` (a c0 sai dela); a gravação `k` do quadro (⭐ W5s:
+    /// a máscara do vazio só na 1.ª — a cobertura não muda entre os rebotes).
+    pub(super) fn gravar(&self, p: &mut wgpu::ComputePass<'_>, k: u32) {
         p.set_bind_group(0, &self.cena, &[]);
         for (etapa, grupo, [x, y]) in &self.passos {
+            if k > 0 && matches!(etapa, Etapa::Ladrilhos) {
+                continue;
+            }
             p.set_pipeline(&self.pipelines[*etapa as usize]);
             if matches!(etapa, Etapa::Saida) {
                 p.set_bind_group(2, &self.g2, &[]);

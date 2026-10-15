@@ -48,3 +48,9 @@ pub(super) fn hrc_duas_vezes() -> bool {
 pub(super) fn hrc_por_colunas() -> bool {
     ligado("PH2D_LIGHT2D_HRC_COLUNAS")
 }
+
+/// ⭐ W5s — `PH2D_LIGHT2D_HRC_TRACA=0`: a traça de antes (um fio por intervalo, marcha sempre; o mesmo
+/// bit, mais lento; comparar).
+pub(super) fn hrc_traca_nova() -> bool {
+    ligado("PH2D_LIGHT2D_HRC_TRACA")
+}

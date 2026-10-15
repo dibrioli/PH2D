@@ -205,6 +205,12 @@ pub struct Config {
     /// ⭐ W5r — o arco de cada cone numa tabela que a placa escreve uma vez (não dois `atan` por fio na
     /// descida): o mesmo bit. `false` = recalculado por fio.
     pub hrc_arcos_em_tabela: bool,
+    /// ⭐ W5s — o traço curto (T0–T2) que só cruza ladrilhos SEM cobertura devolve o vácuo sem marchar; a
+    /// máscara sai da própria captura, na placa (handoff W5s): o mesmo bit. `false` = marcha sempre.
+    pub hrc_salta_o_vazio: bool,
+    /// ⭐ W5s — um fio por SONDA de T0–T2 (os intervalos dela num laço, o meio na ponta lido uma vez; o
+    /// salto decidido pelo leque inteiro): o mesmo bit. `false` = um fio por intervalo.
+    pub hrc_fio_por_sonda: bool,
 }
 
 /// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
@@ -417,6 +423,8 @@ impl Config {
             hrc_nasce_duas_vezes: true,
             hrc_por_colunas: true,
             hrc_arcos_em_tabela: true,
+            hrc_salta_o_vazio: true,
+            hrc_fio_por_sonda: true,
         }
     }
 

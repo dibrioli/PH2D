@@ -51,6 +51,9 @@ struct Hrc {
 // ⭐ W5r: o arco de cada cone (`arcos[2ⁿ + m]`), escrito uma vez pelo `hrc_arcos` (binding 13).
 @group(3) @binding(12) var<storage, read> arcos: array<f32>;
 @group(3) @binding(13) var<storage, read_write> arcos_escrita: array<f32>;
+// ⭐ W5s: um por ladrilho LADO_DO_VAZIO² da captura — 1 se algum texel tem cobertura (o `hrc_ladrilhos`
+// escreve-o a cada gravação; a traça lê-o).
+@group(3) @binding(16) var<storage, read_write> com_cobertura: array<u32>;
 // ⭐ W5d: a c0 do entorno (só a saída a lê).
 @group(2) @binding(14) var entorno_c0: texture_2d<f32>;
 @group(2) @binding(15) var entorno_amostra: sampler;
@@ -70,6 +73,12 @@ override MAIS_UM_HRC: bool = true;
 override COLUNAS_HRC: bool = true;
 // ⭐ W5r — o arco lido da tabela (`arcos`), não recalculado por fio: a MESMA conta, feita uma vez na placa.
 override ARCOS_TABELA: bool = true;
+// ⭐ W5s — o traço curto que só lê ladrilhos sem cobertura é o VACUO exato: não marcha (handoff W5s).
+override SALTA_O_VAZIO_HRC: bool = true;
+// ⭐ W5s — um fio por SONDA de T0–T2: os 2ⁿ + 1 intervalos dela num laço, o meio em A lido uma vez e o
+// salto do vazio decidido pelo LEQUE inteiro (o triângulo A, B₀, B_{2ⁿ}). `false` = um fio por intervalo.
+override SONDA_HRC: bool = true;
+const LADO_DO_VAZIO: u32 = 8u;
 
 struct Par {
     r: vec3<f32>,
@@ -117,6 +126,11 @@ fn no_miolo(x: vec2<f32>) -> bool {
 
 // Traço(A, B) na lei do meio, as entradas em (A, B]; a queda conta-se de A.
 fn tracar(A: vec2<f32>, B: vec2<f32>) -> Par {
+    return tracar_de(A, meio(A), B);
+}
+
+// [`tracar`] com o meio em A já lido (`m0`: partilhado pelos intervalos de uma sonda).
+fn tracar_de(A: vec2<f32>, m0: Meio, B: vec2<f32>) -> Par {
     var par = VACUO;
     let seg = B - A;
     let len = length(seg);
@@ -124,7 +138,6 @@ fn tracar(A: vec2<f32>, B: vec2<f32>) -> Par {
         return par;
     }
     let dir = seg / len;
-    let m0 = meio(A);
     var tau_ant = m0.tau;
     var luz_ant = m0.luz;
     var s = min(PASSO_HRC, len);
@@ -152,6 +165,33 @@ fn tracar(A: vec2<f32>, B: vec2<f32>) -> Par {
         s = min(s + PASSO_HRC, len);
     }
     return par;
+}
+
+fn ladrilhos_por_linha() -> u32 {
+    return (cas.tamanho.x + LADO_DO_VAZIO - 1u) / LADO_DO_VAZIO;
+}
+
+// ⭐ W5s — o traço A → B só lê texels SEM cobertura: cada amostra p lê pelo gather `floor(p − ½)` e o
+// seguinte (presos à borda), e com os quatro a zero o meio é «fora» (τ 1, sem luz) — o VACUO exato. A
+// folga de 0,001 cobre o arredondamento de `A + dir·s`.
+fn so_vazio(A: vec2<f32>, B: vec2<f32>) -> bool {
+    return caixa_vazia(min(A, B), max(A, B));
+}
+
+// Os ladrilhos que cobrem a caixa `[a, b]` (pontos da grade), com a folga do gather, estão a 0.
+fn caixa_vazia(a: vec2<f32>, b: vec2<f32>) -> bool {
+    let ultimo = vec2<i32>(cas.tamanho) - 1;
+    let lo = vec2<u32>(clamp(vec2<i32>(floor(a - 0.501)), vec2<i32>(0), ultimo)) / LADO_DO_VAZIO;
+    let hi = vec2<u32>(clamp(vec2<i32>(floor(b + 0.501)), vec2<i32>(0), ultimo)) / LADO_DO_VAZIO;
+    let lx = ladrilhos_por_linha();
+    for (var y = lo.y; y <= hi.y; y++) {
+        for (var x = lo.x; x <= hi.x; x++) {
+            if com_cobertura[y * lx + x] != 0u {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 // O arco do cone m da cascata n (Eq. 13): entre as arestas v_n(m) e v_n(m+1).
@@ -237,6 +277,54 @@ fn hrc_arcos(@builtin(global_invocation_id) gid: vec3<u32>) {
     arcos_escrita[i] = arco_conta(n, i - (1u << n));
 }
 
+// ── ⭐ W5s: os ladrilhos com cobertura, da própria captura — um grupo por ladrilho, um fio por texel ──
+var<workgroup> aceso_local: atomic<u32>;
+
+@compute @workgroup_size(8, 8)
+fn hrc_ladrilhos(
+    @builtin(workgroup_id) wid: vec3<u32>,
+    @builtin(local_invocation_id) lid: vec3<u32>,
+) {
+    let p = wid.xy * LADO_DO_VAZIO + lid.xy;
+    if all(p < cas.tamanho) && textureLoad(cobertura, p, 0).r > 0.0 {
+        atomicOr(&aceso_local, 1u);
+    }
+    workgroupBarrier();
+    if all(lid.xy == vec2<u32>(0u)) {
+        com_cobertura[wid.y * ladrilhos_por_linha() + wid.x] = atomicLoad(&aceso_local);
+    }
+}
+
+// As pontas `(A, B)` do intervalo da entrada `e` de T_n (n ≤ 2).
+fn pontas_da_traca(e: u32) -> array<vec2<f32>, 2> {
+    let n = hrc.nivel;
+    let d = decompor(e, (1u << n) + 1u);
+    let u = f32(d.y << n);
+    let lado = f32(1u << n);
+    return array<vec2<f32>, 2>(
+        na_grade(u, f32(d.z)),
+        na_grade(u + lado, f32(d.z) + 2.0 * f32(d.x) - lado),
+    );
+}
+
+// A sonda `s` de T_n → `(xi, v)`, na ordem do armazenamento (fios vizinhos, v vizinhos por colunas).
+fn decompor_sonda(s: u32) -> vec2<u32> {
+    if COLUNAS_HRC {
+        return vec2<u32>(s / hrc.eixo.y, s % hrc.eixo.y);
+    }
+    return vec2<u32>(s % hrc.nx, s / hrc.nx);
+}
+
+// O leque da sonda `(u, v)` de T_n: as pontas extremas `[A, B₀, B_{2ⁿ}]` (o triângulo que os intervalos
+// varrem).
+fn leque(u: f32, v: f32, lado: f32) -> array<vec2<f32>, 3> {
+    return array<vec2<f32>, 3>(
+        na_grade(u, v),
+        na_grade(u + lado, v - lado),
+        na_grade(u + lado, v + lado),
+    );
+}
+
 // ── T0, T1, T2: traçados ──
 @compute @workgroup_size(64)
 fn hrc_traca(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
@@ -244,16 +332,32 @@ fn hrc_traca(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
     if e >= hrc.total {
         return;
     }
-    let n = hrc.nivel;
-    let d = decompor(e, (1u << n) + 1u);
-    let k = d.x;
-    let xi = d.y;
-    let v = d.z;
-    let u = f32(xi << n);
-    let lado = f32(1u << n);
-    let A = na_grade(u, f32(v));
-    let B = na_grade(u + lado, f32(v) + 2.0 * f32(k) - lado);
-    t_saida[e] = empacotar(tracar(A, B));
+    if SONDA_HRC {
+        let n = hrc.nivel;
+        let sv = decompor_sonda(e);
+        let u = f32(sv.x << n);
+        let v = f32(sv.y);
+        let lado = f32(1u << n);
+        let l = leque(u, v, lado);
+        if SALTA_O_VAZIO_HRC && caixa_vazia(min(l[0], min(l[1], l[2])), max(l[0], max(l[1], l[2]))) {
+            for (var k = 0u; k <= (1u << n); k++) {
+                t_saida[indice_t(hrc.nx, n, sv.x, sv.y, k)] = empacotar(VACUO);
+            }
+            return;
+        }
+        let m0 = meio(l[0]);
+        for (var k = 0u; k <= (1u << n); k++) {
+            let B = na_grade(u + lado, v + 2.0 * f32(k) - lado);
+            t_saida[indice_t(hrc.nx, n, sv.x, sv.y, k)] = empacotar(tracar_de(l[0], m0, B));
+        }
+        return;
+    }
+    let ab = pontas_da_traca(e);
+    if SALTA_O_VAZIO_HRC && so_vazio(ab[0], ab[1]) {
+        t_saida[e] = empacotar(VACUO);
+        return;
+    }
+    t_saida[e] = empacotar(tracar(ab[0], ab[1]));
 }
 
 // ── T3..TN: a fusão de baixo para cima (Eq. 18–20) ──

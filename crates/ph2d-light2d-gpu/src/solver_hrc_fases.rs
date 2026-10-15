@@ -55,6 +55,8 @@ impl Holografica {
         let base = 2 * k * self.passos.len() as u32;
         for (i, (etapa, grupo, [x, y])) in self.passos.iter().enumerate() {
             let par = base + 2 * i as u32;
+            // ⭐ W5s: a máscara só na 1.ª gravação (um passe vazio escreve os carimbos dela).
+            let vazio = k > 0 && matches!(etapa, Etapa::Ladrilhos);
             let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some(ENTRADAS[*etapa as usize]),
                 timestamp_writes: Some(wgpu::ComputePassTimestampWrites {
@@ -63,6 +65,9 @@ impl Holografica {
                     end_of_pass_write_index: Some(par + 1),
                 }),
             });
+            if vazio {
+                continue;
+            }
             p.set_bind_group(0, &self.cena, &[]);
             p.set_pipeline(&self.pipelines[*etapa as usize]);
             if matches!(etapa, Etapa::Saida) {
@@ -133,6 +138,15 @@ impl Solver {
                 true
             }
             None => false,
+        }
+    }
+
+    /// ⭐ W5s — INSTRUMENTO (o controlo de `medida_luz2d_w5s_salta`): a máscara do vazio deixa de ser
+    /// escrita — fica a zero, a traça salta TODO raio e a fluência TEM de mudar.
+    #[doc(hidden)]
+    pub fn hrc_sem_mascara(&mut self) {
+        if let Some(h) = &mut self.hrc {
+            h.passos.retain(|p| !matches!(p.0, Etapa::Ladrilhos));
         }
     }
 

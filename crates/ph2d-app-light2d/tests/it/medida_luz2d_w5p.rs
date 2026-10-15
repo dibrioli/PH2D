@@ -528,6 +528,25 @@ impl Vista {
         }
         self.vista.quadro(gpu, cena);
     }
+
+    /// ⭐ W5s: [`Self::quadro`] com sprites na C0 da vista (as camadas das famílias, um sprite com alfa).
+    pub(crate) fn quadro_com(
+        &mut self,
+        gpu: &ph2d_gpu::GpuContext,
+        cena: &ph2d_light2d_ecs::CenaDeLuz,
+        sprites: &ph2d_light2d_gpu::CapturaDeSprites<'_>,
+    ) {
+        if let Some(e) = self.entorno.as_mut() {
+            let sem_ceu = ph2d_light2d_ecs::CenaDeLuz {
+                ceu: [0.0; 3],
+                ..cena.clone()
+            };
+            e.quadro(gpu, &sem_ceu);
+        }
+        let mut enc = gpu.device.create_command_encoder(&Default::default());
+        self.vista.gravar_com_sprites(gpu, &mut enc, cena, sprites);
+        gpu.queue.submit([enc.finish()]);
+    }
 }
 
 /// ⭐ W5p — a reescrita contra o [`ANTES`] no MESMO processo: a fluência da vista ao BIT (80 quadros,

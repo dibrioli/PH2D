@@ -110,7 +110,8 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     COLS_TABLE
         .iter()
         .enumerate()
-        .map(|(k, c)| crate::motion_demo_legend::Caption::new([col_x(k), ROW_Y + 1.5], c.caption))
+        // ABAIXO das figuras: acima, a 1,5, a ficha tapava o topo delas (régua `motion_demo_legend::tapa`, 15/10).
+        .map(|(k, c)| crate::motion_demo_legend::Caption::new([col_x(k), ROW_Y - 2.75], c.caption))
         .collect()
 }
 

@@ -58,16 +58,16 @@ const A_CADA: f32 = 4.0;
 pub(super) fn captions() -> Vec<Caption> {
     vec![
         Caption::new(
-            [-AFASTA_X, AFASTA_Y + 1.35],
+            [-AFASTA_X, AFASTA_Y + 1.52],
             "THE NUMBER: breathes SMOOTHLY",
         ),
-        Caption::new([AFASTA_X, AFASTA_Y + 1.35], "+ Quantize: breathes in STEPS"),
+        Caption::new([AFASTA_X, AFASTA_Y + 1.52], "+ Quantize: breathes in STEPS"),
         Caption::new(
-            [-AFASTA_X, -AFASTA_Y - 1.35],
+            [-AFASTA_X, -AFASTA_Y - 1.58],
             "THE INSTANT: blinks on EVERY beat",
         ),
         Caption::new(
-            [AFASTA_X, -AFASTA_Y - 1.35],
+            [AFASTA_X, -AFASTA_Y - 1.58],
             "+ Counter: blinks every FOURTH beat",
         ),
     ]

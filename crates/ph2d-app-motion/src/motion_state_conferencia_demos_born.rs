@@ -168,8 +168,9 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     band_labels()
         .map(|(k, label)| {
             let (row, col) = (k / 2, k % 2);
+            // Por FORA das metades: as nuvens chegam à ficha acima delas (régua `motion_demo_legend::tapa`, 15/10).
             let at = [
-                if col == 0 { -GAP_X } else { GAP_X },
+                if col == 0 { -8.1 } else { 8.1 },
                 GAP_Y - row as f32 * GAP_Y + GAP_Y * 0.44,
             ];
             crate::motion_demo_legend::Caption::new(at, short_of(label))

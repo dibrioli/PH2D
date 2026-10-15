@@ -135,7 +135,7 @@ mod corda_com_colisor_demo;
 
 /// A cena `=132` — o ritmo (ciclo 17, doc 126): a onda pela ordem e pela curva da casa.
 #[path = "motion_state_ritmo_demo.rs"]
-mod ritmo_demo;
+pub(crate) mod ritmo_demo;
 
 /// A cena `=133` — a cor que o olho vê (ciclo 18, doc 127).
 #[path = "motion_state_cor_demo.rs"]

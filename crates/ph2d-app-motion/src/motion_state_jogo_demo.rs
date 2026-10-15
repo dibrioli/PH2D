@@ -375,19 +375,20 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     let ficha =
         |x: f32, y: f32, t: &str| crate::motion_demo_legend::Caption::new([x, y], t.to_string());
     vec![
+        // 0,4 à esquerda e 0,34 mais abaixo: a barra e a galáxia chegavam às fichas (régua `motion_demo_legend::tapa`, 15/10).
         ficha(
-            0.0,
+            -0.4,
             BARRA_Y - 0.6,
             "health: the bar's time is the health (Time Remap = Driven)",
         ),
         ficha(
             -COL_X,
-            -4.0,
+            -4.34,
             "state: the grid crosses into the ring (Follow -> Mixer)",
         ),
         ficha(
             COL_X,
-            -4.0,
+            -4.34,
             "boom: each trigger shakes the galaxy (ADSR -> Vortex)",
         ),
     ]

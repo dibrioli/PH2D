@@ -148,3 +148,7 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_demo_legend_lingua_tests.rs"]
 mod lingua;
+
+#[cfg(test)]
+#[path = "motion_demo_legend_tapa_tests.rs"]
+mod tapa;

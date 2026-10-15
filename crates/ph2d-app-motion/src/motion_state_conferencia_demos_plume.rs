@@ -106,7 +106,8 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
         .iter()
         .enumerate()
         .map(|(k, r)| {
-            crate::motion_demo_legend::Caption::new([0.0, row_y(k) + ROW_GAP * 0.36], r.caption)
+            // 0,5 e não 0,36: a pluma sobe até à ficha (régua `motion_demo_legend::tapa`, 15/10).
+            crate::motion_demo_legend::Caption::new([0.0, row_y(k) + ROW_GAP * 0.5], r.caption)
         })
         .collect()
 }

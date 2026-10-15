@@ -84,18 +84,16 @@ pub static ROWS_TABLE: &[Row] = &[
 /// compara as duas. Nada de rótulo por baixo — a linha de baixo é onde a onda desce, e uma ficha
 /// ali taparia metade do que a cena existe para mostrar.
 pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
+    // A onda da linha 3 sobe até à ficha acima dela (a da esquerda espalha-se até x = -5,9): as duas
+    // pousam por FORA das metades (régua `motion_demo_legend::tapa`, 15/10).
+    const LEGENDA_X: [[f32; 2]; 3] = [[-COL_X, COL_X], [-COL_X, COL_X], [-7.1, 4.9]];
     let mut out = Vec::with_capacity(ROWS_TABLE.len() * 2);
     for (k, row) in ROWS_TABLE.iter().enumerate() {
         let y =
             (ROWS_TABLE.len() as f32 - 1.0) * 0.5 * ROW_GAP - k as f32 * ROW_GAP + ROW_GAP * 0.34;
-        out.push(crate::motion_demo_legend::Caption::new(
-            [-COL_X, y],
-            row.left,
-        ));
-        out.push(crate::motion_demo_legend::Caption::new(
-            [COL_X, y],
-            row.right,
-        ));
+        let [xl, xr] = LEGENDA_X[k];
+        out.push(crate::motion_demo_legend::Caption::new([xl, y], row.left));
+        out.push(crate::motion_demo_legend::Caption::new([xr, y], row.right));
     }
     out
 }

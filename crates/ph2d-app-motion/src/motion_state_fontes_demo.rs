@@ -47,8 +47,9 @@ const COL_X: f32 = 2.9;
 /// fileiras mais as fichas têm de caber nela **sem zoom** — senão o primeiro passo do smoke é
 /// procurar a cena.
 const ROW_GAP: f32 = 3.2;
-/// A que altura acima do centro do pano pousa a ficha.
-const FICHA_Y: f32 = 1.5;
+/// A que altura acima do centro do pano pousa a ficha — 1,66 e não 1,5: o pano da direita sobe
+/// até ela (régua `motion_demo_legend::tapa`, 15/10).
+const FICHA_Y: f32 = 1.66;
 
 /// A palavra que a fonte de texto escreve. ⚠️ **Três letras**, e curta de propósito: o passo do
 /// tutorial manda TROCÁ-LA, e uma frase faria as peças ficarem minúsculas ao caber no pano.

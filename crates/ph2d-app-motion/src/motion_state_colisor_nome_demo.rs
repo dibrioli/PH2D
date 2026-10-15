@@ -84,11 +84,13 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
 /// As fichas do canvas.
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
+    // ⚠️ A da esquerda TAPA e não tem onde ir: os discos da borda empurram-se até ±5 m, a coluna
+    // inteira da vista; a da direita pousa por FORA da galáxia (régua `motion_demo_legend::tapa`, 15/10).
     let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption::new([x, -3.2], t.to_string());
     vec![
         ficha(-COL_X, "Custom = collider: the border discs push apart"),
         ficha(
-            COL_X,
+            8.8,
             "Custom = colisor (control): nobody reads it, they overlap",
         ),
     ]

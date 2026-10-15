@@ -72,8 +72,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
 /// A ficha do canvas.
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
+    // Abaixo da galáxia: a -3,2 a ponta de baixo dela tapava-se (régua `motion_demo_legend::tapa`, 15/10).
     vec![crate::motion_demo_legend::Caption::new(
-        [0.0, -3.2],
+        [0.0, -3.78],
         "Oscillator wire dropped on the Transform: no link, no menu, the warning says why"
             .to_string(),
     )]

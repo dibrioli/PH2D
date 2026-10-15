@@ -124,7 +124,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
 /// As fichas do canvas.
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
-    let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption::new([x, -3.2], t.to_string());
+    // Abaixo das galáxias: a -3,2 a ponta de baixo delas tapava-se (régua `motion_demo_legend::tapa`, 15/10).
+    let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption::new([x, -3.9], t.to_string());
     vec![
         ficha(
             -COL_X,

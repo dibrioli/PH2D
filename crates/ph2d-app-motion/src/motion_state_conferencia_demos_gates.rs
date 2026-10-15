@@ -150,15 +150,18 @@ pub fn row_labels() -> impl Iterator<Item = (usize, &'static str)> {
 /// é 1,55 contra os 3,0 da cena irmã): uma ficha centrada na linha taparia as duas cópias que a
 /// cena existe para contar, que é o oposto de uma legenda.
 pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
+    // Por FORA de cada metade, à altura da linha: acima dela a ficha tapava as cruzes de cima e os
+    // vãos entre linhas têm 16 px — a altura da ficha (régua `motion_demo_legend::tapa`, 15/10).
+    const LEGENDA_X: f32 = 5.1;
     let mut out = Vec::with_capacity(ROWS_TABLE.len() * 2);
     for (k, row) in ROWS_TABLE.iter().enumerate() {
         let y = (ROWS_TABLE.len() as f32 - 1.0) * 0.5 * ROW_GAP - k as f32 * ROW_GAP + H * 0.62;
         out.push(crate::motion_demo_legend::Caption::new(
-            [-COL_X, y],
+            [-LEGENDA_X, y],
             row.left,
         ));
         out.push(crate::motion_demo_legend::Caption::new(
-            [COL_X, y],
+            [LEGENDA_X, y],
             row.right,
         ));
     }

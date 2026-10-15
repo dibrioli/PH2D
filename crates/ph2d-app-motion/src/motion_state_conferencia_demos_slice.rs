@@ -275,8 +275,9 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     band_labels()
         .map(|(k, label)| {
             let (row, col) = (k / 2, k % 2);
+            // Por FORA das metades: as curvas dobram por baixo da ficha (régua `motion_demo_legend::tapa`, 15/10).
             let at = [
-                if col == 0 { -GAP_X } else { GAP_X },
+                if col == 0 { -7.9 } else { 7.1 },
                 GAP_Y * 2.0 - row as f32 * GAP_Y + GAP_Y * 0.40,
             ];
             // A ficha traz só a primeira palavra + o modo — o rótulo inteiro vai no terminal.

@@ -101,18 +101,16 @@ pub fn row_labels() -> impl Iterator<Item = (usize, &'static str)> {
 
 /// **As fichas desta cena, no canvas** — função PURA, medida pelo gate da legenda.
 pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
+    // As curvas das linhas 1 e 2 chegam à ficha acima delas: essas pousam por FORA das metades
+    // (régua `motion_demo_legend::tapa`, 15/10).
+    const LEGENDA_X: [[f32; 2]; 3] = [[-5.4, 3.7], [-3.3, 4.5], [-COL_X, COL_X]];
     let mut out = Vec::with_capacity(ROWS_TABLE.len() * 2);
     for (k, row) in ROWS_TABLE.iter().enumerate() {
         let y =
             (ROWS_TABLE.len() as f32 - 1.0) * 0.5 * ROW_GAP - k as f32 * ROW_GAP + ROW_GAP * 0.36;
-        out.push(crate::motion_demo_legend::Caption::new(
-            [-COL_X, y],
-            row.left,
-        ));
-        out.push(crate::motion_demo_legend::Caption::new(
-            [COL_X, y],
-            row.right,
-        ));
+        let [xl, xr] = LEGENDA_X[k];
+        out.push(crate::motion_demo_legend::Caption::new([xl, y], row.left));
+        out.push(crate::motion_demo_legend::Caption::new([xr, y], row.right));
     }
     out
 }

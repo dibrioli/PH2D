@@ -109,9 +109,10 @@ pub(super) fn indice_de(reg: &NodeRegistry, no: &str, param: &str, valor: &str) 
 /// A legenda que a cena pousa no canvas.
 pub(super) fn captions() -> Vec<Caption> {
     vec![
-        Caption::new([BLOCO_W + 0.35, BLOCO_Y], "drag THIS block"),
+        // As duas por FORA do pano: ele sopra e passa por baixo delas (régua `motion_demo_legend::tapa`, 15/10).
+        Caption::new([BLOCO_W + 1.75, BLOCO_Y], "drag THIS block"),
         Caption::new(
-            [-(COLS - 1.0) * GAP * 0.5, BLOCO_Y - 1.0],
+            [-(COLS - 1.0) * GAP * 0.5 - 1.85, BLOCO_Y - 1.0],
             "Wind ▸ Acts As: Force -> Target Velocity",
         ),
     ]

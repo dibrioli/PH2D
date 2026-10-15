@@ -62,7 +62,8 @@ const CRESCIMENTO: f32 = 2.2;
 /// A legenda que a cena pousa no canvas.
 pub(super) fn captions() -> Vec<Caption> {
     vec![
-        Caption::new([DESLOCAMENTO, RAIO * 1.4], "drag THIS handle"),
+        // 2,45 raios e não 1,4: a borda do foco chegava à ficha (régua `motion_demo_legend::tapa`, 15/10).
+        Caption::new([DESLOCAMENTO, RAIO * 2.45], "drag THIS handle"),
         Caption::new(
             [-LARGURA * 0.5, -LARGURA * 0.62],
             "Falloff ▸ Shape: Circle -> Rect",

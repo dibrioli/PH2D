@@ -196,7 +196,8 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     band_labels()
         .map(|(k, label)| {
             let (row, col) = (k / 2, k % 2);
-            let at = [if col == 0 { -COL_X } else { COL_X }, ROW_Y[row] + 0.95];
+            // Por FORA das metades: o ruído chega à ficha acima dele (régua `motion_demo_legend::tapa`, 15/10).
+            let at = [if col == 0 { -4.4 } else { 4.4 }, ROW_Y[row] + 0.95];
             crate::motion_demo_legend::Caption::new(at, short_of(label))
         })
         .collect()

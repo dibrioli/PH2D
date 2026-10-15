@@ -182,7 +182,8 @@ pub(super) fn captions() -> Vec<Caption> {
         .iter()
         .map(|q| {
             let y = match q.cena {
-                Cena::Rampa => RAMPA_Y + 0.5,
+                // 0,9 e não 0,5: a bola da rampa passa a 0,4 dela (régua `motion_demo_legend::tapa`, 15/10).
+                Cena::Rampa => RAMPA_Y + 0.9,
                 Cena::Queda => CHAO_Y - 0.3,
                 Cena::Taca => TACA[1] - TACA_R - 0.3,
             };

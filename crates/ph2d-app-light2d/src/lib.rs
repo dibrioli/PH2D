@@ -29,7 +29,7 @@ pub use grade::{
     DEGRAU_PADRAO, Degrau, ENTORNO_PADRAO, MARGEM_DO_ENTORNO, captura_do_quadro, fina_do_quadro,
     grade_do_quadro, regiao_da_janela, tela_para_mundo,
 };
-pub use quadro::LuzDoQuadro;
+pub use quadro::{LuzDoQuadro, config_da_vista, config_do_entorno};
 
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {

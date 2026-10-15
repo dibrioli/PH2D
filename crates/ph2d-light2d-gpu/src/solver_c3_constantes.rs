@@ -53,6 +53,10 @@ pub(super) fn com_visibilidade(cfg: &Config) -> bool {
 /// `c3_fina` (refino pela visibilidade das sondas) ou a `c3_fina_exata`. O anel é `<entrada>_anel`.
 #[must_use]
 pub fn da_fina(cfg: &Config) -> (&'static str, Vec<(&'static str, f64)>) {
+    let fundo = cfg.miolo_salta_o_fundo
+        && cfg.niveis_do_miolo().is_some()
+        && cfg.miolo.is_some_and(|m| m.suavidade >= 1.0);
+    let fundo = ("FUNDO_SEM_LUZ", f64::from(u8::from(fundo)));
     match cfg.refino {
         Refino::Bordas(b) if com_visibilidade(cfg) => (
             "c3_fina",
@@ -62,8 +66,9 @@ pub fn da_fina(cfg: &Config) -> (&'static str, Vec<(&'static str, f64)>) {
                 ("BISSECOES", f64::from(b.bissecoes)),
                 ("JOELHO", f64::from(u8::from(b.joelho))),
                 ("CURVATURA", f64::from(u8::from(b.curvatura))),
+                fundo,
             ],
         ),
-        _ => ("c3_fina_exata", vec![("PASSO", passo(cfg, true))]),
+        _ => ("c3_fina_exata", vec![("PASSO", passo(cfg, true)), fundo]),
     }
 }

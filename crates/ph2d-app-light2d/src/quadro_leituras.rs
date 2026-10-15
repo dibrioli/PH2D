@@ -2,14 +2,35 @@
 //! pelo tecto de 700 LOC (W5j).
 
 use ph2d_editor_core::luz_edits::NivelDaLuz;
-use ph2d_light2d_gpu::TemposMs;
+use ph2d_light2d_gpu::{Config, Grade, TemposMs};
+
+/// A configuração da vista, a grade da fluência, a região da janela nela e a janela.
+type Onde<'a> = (&'a Config, Grade, ([u32; 2], [u32; 2]), (u32, u32));
 
 /// ⭐ W5u — INSTRUMENTO `PH2D_LIGHT2D_CUSTO=1`: o número do Inspector partido por passe (a vista e o
 /// entorno), a cada 60 leituras — o custo que o dono vê no app inteiro, não o da régua.
-pub(super) fn relatar_custo(t: &TemposMs, entorno: Option<&TemposMs>, grade: (u32, u32), n: u32) {
+/// ⭐ W5v: e ONDE — a janela, a grade das cascatas, a fina (texels finos por texel, a captura, a região da
+/// janela na grade da fluência) e a aritmética: o que uma régua tem de reproduzir.
+pub(super) fn relatar_custo(t: &TemposMs, entorno: Option<&TemposMs>, onde: Onde<'_>, n: u32) {
     if !n.is_multiple_of(60) || std::env::var_os("PH2D_LIGHT2D_CUSTO").is_none() {
         return;
     }
+    let (cfg, fluencia, (i, f), alvo) = onde;
+    eprintln!(
+        "[luz2d] onde · janela {}×{} · grade {}×{} · fina ×{} captura ×{} · fluência {}×{} região {}×{} · {:?}",
+        alvo.0,
+        alvo.1,
+        cfg.grade.largura,
+        cfg.grade.altura,
+        cfg.fina,
+        cfg.captura,
+        fluencia.largura,
+        fluencia.altura,
+        f[0] - i[0],
+        f[1] - i[1],
+        cfg.aritmetica,
+    );
+    let grade = (cfg.grade.largura, cfg.grade.altura);
     eprintln!(
         "[luz2d] custo {:.2} ms · grade {}×{} · c0 {:.2} c1 {:.2} c2 {:.2} vis {:.2} fina {:.2} c0_fina {:.2} \
          preenche {:.2} másc {:.2} rebote {:.2}+{:.2} miolo {:.2} · entorno {:.2}",

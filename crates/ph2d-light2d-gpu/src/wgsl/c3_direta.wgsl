@@ -96,6 +96,8 @@ override C0_AO_LONGO_MEDIANA: bool = false;
 const SEM_SEMENTE: u32 = 0xffffffffu;
 // ⭐ W5h: o alfa da fluência marca o texel do INTERIOR (0) para o `c3_miolo.wgsl`.
 override MIOLO: bool = false;
+// ⭐ W5v: a fina salta o FUNDO dos opacos ([`no_fundo`]; `Config::miolo_salta_o_fundo`).
+override FUNDO_SEM_LUZ: bool = false;
 
 // A abertura do disco na penumbra: `RAIOS_DIRETOS + 1` raios FIXOS nas fronteiras de
 // `RAIOS_DIRETOS` fatias e, numa fatia em que a transmissão muda, `BISSECOES` passos de bissecção
@@ -885,10 +887,43 @@ fn c3_visibilidade(@builtin(global_invocation_id) gid: vec3<u32>) {
     textureStore(visibilidade_saida, id, vec4<u32>(w, 0u, 0u));
 }
 
+// ⭐ W5v: algum texel do grupo calcula a luz (o salto do fundo é do grupo INTEIRO, [`no_fundo`]).
+var<workgroup> grupo_calcula: atomic<u32>;
+
+// ⭐ W5v — o grupo inteiro está no FUNDO ([`no_fundo`] em todo texel dele na região): grava-o e salta.
+fn fundo_do_grupo(alvo: vec2<u32>, na_regiao: bool, lid: u32) -> bool {
+    if !FUNDO_SEM_LUZ {
+        return false;
+    }
+    if lid == 0u {
+        atomicStore(&grupo_calcula, 0u);
+    }
+    workgroupBarrier();
+    borda_aqui = true;
+    var tau = 1.0;
+    var fundo = true;
+    if na_regiao {
+        tau = meio(ponto_fino(alvo)).tau;
+        fundo = no_fundo(alvo, tau);
+    }
+    if !fundo {
+        atomicOr(&grupo_calcula, 1u);
+    }
+    workgroupBarrier();
+    if atomicLoad(&grupo_calcula) != 0u {
+        return false;
+    }
+    if na_regiao {
+        guardar_fundo(alvo, tau);
+    }
+    return true;
+}
+
 @compute @workgroup_size(8, 8)
-fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
+fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocation_index) lid: u32) {
     let alvo = gid.xy + fina.inicio;
-    if any(alvo >= fina.fim) {
+    let na_regiao = all(alvo < fina.fim);
+    if fundo_do_grupo(alvo, na_regiao, lid) || !na_regiao {
         return;
     }
     borda_aqui = true;
@@ -896,6 +931,39 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
     let onde = onde_calcular(alvo);
     let lt = luz_do_texel(alvo, onde, tau, false, true);
     guardar_fina(alvo, onde, lt.l, lt.t, tau);
+}
+
+const VIZINHAS_DO_FUNDO: array<vec2<i32>, 4> = array<vec2<i32>, 4>(
+    vec2<i32>(1, 0), vec2<i32>(-1, 0), vec2<i32>(0, 1), vec2<i32>(0, -1)
+);
+
+// ⭐ W5v — o FUNDO de um opaco: o texel e as 4 vizinhas dentro de um corpo e na região, e uma semente do
+// preenchimento na célula (está nas 3×3 de cada vizinha: todas saem remapeadas, nenhuma é de fora). O
+// `miolo_classifica` dá-lhe peso 0 e, com a suavidade 1, o `miolo_final` troca a luz dele pela difusão:
+// calculá-la (a fronteira, a visibilidade medida, a c0 ao longo da face) era trabalho que ninguém lia.
+// ⛔ O salto é do GRUPO inteiro (todo texel dele no fundo): fios que saem cedo ao lado de fios na marcha
+// pesada, no mesmo grupo, fazem o driver da placa parar (Xid 109, CTX SWITCH TIMEOUT; handoff W5v §2).
+fn no_fundo(alvo: vec2<u32>, tau: f32) -> bool {
+    if !FUNDO_SEM_LUZ || tau > 0.0 || any(alvo <= fina.inicio) || any(alvo + 1u >= fina.fim) {
+        return false;
+    }
+    if !num_corpo(ponto_fino(alvo)) {
+        return false;
+    }
+    for (var k = 0u; k < 4u; k++) {
+        if !num_corpo(ponto_fino(vec2<u32>(vec2<i32>(alvo) + VIZINHAS_DO_FUNDO[k]))) {
+            return false;
+        }
+    }
+    let c = alvo / CELULA_PREENCHE;
+    return all(c < textureDimensions(preenchido))
+        && textureLoad(preenchido, vec2<i32>(c), 0).x != SEM_SEMENTE;
+}
+
+// O que a fina grava no fundo: o interior marcado (alfa 0) e a transmitida de um opaco.
+fn guardar_fundo(alvo: vec2<u32>, tau: f32) {
+    let p = ponto_fino(alvo);
+    guardar_fina(alvo, Onde(p, true, p, 0.0), vec3<f32>(0.0), vec3<f32>(0.0), tau);
 }
 
 // ⭐ W5k — a fluência do texel e, dentro de um corpo de opacidade `α = 1 − τ < 1`, a TRANSMITIDA `t`
@@ -1093,9 +1161,10 @@ fn luz_do_texel(alvo: vec2<u32>, onde: Onde, tau: f32, exata: bool, transmitida:
 }
 
 @compute @workgroup_size(8, 8)
-fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
+fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocation_index) lid: u32) {
     let id = gid.xy + fina.inicio;
-    if any(id >= fina.fim) {
+    let na_regiao = all(id < fina.fim);
+    if fundo_do_grupo(id, na_regiao, lid) || !na_regiao {
         return;
     }
     borda_aqui = true;

@@ -22,7 +22,9 @@ struct UniformeNivel {
     ladrilhos: f32,
     /// ⭐ W5q: as relaxações por despacho do bloco neste nível (a solução, o erro; 0 = sem bloco).
     blocos: [u32; 2],
-    _q: [u32; 2],
+    /// ⭐ W5v: 1 = a suavidade 1 é a difusão EXATA no `miolo_final` (o fundo da fina não vaza no último bit).
+    exata: u32,
+    _q: u32,
 }
 
 /// ⭐ W5o — o instrumento das fases (ficheiro irmão pelo tecto de 700 LOC).
@@ -127,6 +129,8 @@ pub(super) struct DoMiolo {
     miolo: Miolo,
     /// ⭐ W5n: o [`Config::anel_fora_da_regiao`].
     anel: bool,
+    /// ⭐ W5v: o [`Config::miolo_salta_o_fundo`].
+    exata: bool,
     /// ⭐ W5o: o nível `b` de onde a base resolve num despacho (`None` = um despacho por relaxação).
     base: Option<u32>,
     /// Os pares de relaxações da cascata por nível (índice = o nível).
@@ -481,6 +485,7 @@ impl DoMiolo {
             niveis,
             miolo,
             anel: cfg.anel_fora_da_regiao,
+            exata: cfg.miolo_salta_o_fundo,
             base,
             pares,
             blocos,
@@ -597,7 +602,8 @@ impl DoMiolo {
                     moldura: f32::from(u8::from(self.parcial())),
                     ladrilhos: f32::from(u8::from(fatia == 2 && self.parcial())),
                     blocos: self.blocos[l as usize],
-                    _q: [0; 2],
+                    exata: u32::from(self.exata),
+                    _q: 0,
                 };
                 let o = fatia as usize * PASSO_UNIFORME as usize;
                 uni[o..o + size_of::<UniformeNivel>()].copy_from_slice(bytemuck::bytes_of(&u));

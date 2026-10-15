@@ -33,7 +33,8 @@ struct Nivel {
     // ⭐ W5q: as relaxações por despacho do BLOCO neste nível (a solução e o erro; 0 = sem bloco).
     bloco_relaxa: u32,
     bloco_erro: u32,
-    _q0: u32,
+    // ⭐ W5v: 1 = com a suavidade 1, a difusão EXATA (o `mix` arredondava pelo valor do fundo da fina).
+    exata: u32,
     _q1: u32,
 }
 
@@ -269,7 +270,8 @@ fn miolo_final(@builtin(global_invocation_id) gid: vec3<u32>) {
             }
         }
         if m > 0.0 {
-            l = mix(k.rgb, soma / (m + nv.kh2), nv.suavidade);
+            let difusa = soma / (m + nv.kh2);
+            l = select(mix(k.rgb, difusa, nv.suavidade), difusa, nv.exata != 0u && nv.suavidade >= 1.0);
         }
     }
     // ⭐ W5k: dentro de um translúcido, `mix(transmitida, miolo, α)` — o opaco (`α = 1`) fica no bit.

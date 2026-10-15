@@ -26,10 +26,7 @@ mod ambiente;
 /// Os avisos ao artista — ficheiro irmão pelo tecto de 700 LOC (W5e).
 #[path = "quadro_avisos.rs"]
 mod avisos;
-use ambiente::{
-    cortes_ligados, hrc_duas_vezes, hrc_em_3d, hrc_por_colunas, hrc_por_fio, hrc_traca_nova,
-    miolo_do_ambiente, rebote_ligado,
-};
+pub use ambiente::{config_da_vista, config_do_entorno};
 #[path = "quadro_entorno.rs"]
 mod entorno;
 #[path = "quadro_leituras.rs"]
@@ -185,26 +182,9 @@ impl LuzDoQuadro {
         self.aquecendo
     }
 
-    /// A configuração do solver da vista para o degrau `dg` na grade `g` — a ÚNICA porta (o quadro
-    /// e a estufa).
+    /// A configuração do solver da vista para o degrau `dg` na grade `g` ([`config_da_vista`]).
     fn config_do_solver(&self, gpu: &GpuContext, g: Grade, dg: Degrau) -> Config {
-        let env = |k: &str| std::env::var(k).map_or(true, |v| v.trim() != "0");
-        hrc_por_fio(Config {
-            aritmetica: Config::padrao_para(&gpu.device, g).aritmetica,
-            pe_na_borda: env("PH2D_LIGHT2D_PE"),
-            vis_na_face: env("PH2D_LIGHT2D_FACE"),
-            // ⭐ W5o: `=0` volta à marcha a partir do ponto afastado (a penumbra deslocada, comparar).
-            face_pelo_ponto: env("PH2D_LIGHT2D_FACE_PONTO"),
-            hrc_nasce_duas_vezes: hrc_duas_vezes(),
-            // ⭐ W5q: `=0` = o anel na grade inteira (o mesmo bit, mais lento; comparar).
-            anel_por_ladrilhos: env("PH2D_LIGHT2D_LADRILHOS"),
-            hrc_por_colunas: hrc_por_colunas(),
-            hrc_salta_o_vazio: hrc_traca_nova(),
-            hrc_fio_por_sonda: hrc_traca_nova(),
-            hrc_grade_3d: hrc_em_3d(),
-            miolo: miolo_do_ambiente(),
-            ..crate::teto::config_do_quadro(g, self.mundo_para_tela, dg, rebote_ligado())
-        })
+        config_da_vista(&gpu.device, g, self.mundo_para_tela, dg)
     }
 
     /// ⭐ W5i — adianta à estufa os três níveis e o entorno nesta vista (uma vez): a troca de nível (o
@@ -590,8 +570,10 @@ impl LuzDoQuadro {
             let extra = te.as_ref().map_or(0.0, |t| t.total());
             self.custo_ms = Some(t.total() + extra);
             self.leituras += 1;
-            let g = r.solver.config().grade;
-            leituras::relatar_custo(&t, te.as_ref(), (g.largura, g.altura), self.leituras);
+            let fluencia = r.solver.grade_da_fluencia();
+            let regiao = crate::grade::regiao_da_janela(fluencia, self.mundo_para_tela, self.alvo_px);
+            let onde = (r.solver.config(), fluencia, regiao, self.alvo_px);
+            leituras::relatar_custo(&t, te.as_ref(), onde, self.leituras);
             if p.automatica {
                 let custo = crate::qualidade::Custo {
                     por_nivel: t.por_nivel(),

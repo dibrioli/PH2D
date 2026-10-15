@@ -185,6 +185,10 @@ pub struct Config {
     /// ⭐ W5q — o anel só nos ladrilhos 8×8 com corpo da captura fina (ou a janela); `false` = na
     /// grade inteira (o antes: o mesmo bit, com um teste de corpo e uma escrita em cada texel).
     pub anel_por_ladrilhos: bool,
+    /// ⭐ W5v — com o miolo e a suavidade 1, a fina SALTA o fundo dos opacos (os grupos 8×8 com todo texel e
+    /// as 4 vizinhas dentro, com semente na célula) e o `miolo_final` dá a difusão EXATA no lugar do `mix`
+    /// (que arredondava pelo valor do fundo: 1 ulp f16 num texel em 42 casos); `false` = o antes, ao bit.
+    pub miolo_salta_o_fundo: bool,
     /// ⭐ W5o — ninguém lê a FLUÊNCIA deste solver (o entorno: só a c0 dele soma-se à da vista): a
     /// visibilidade das lâmpadas, a grade fina, o anel e o miolo não correm (nem alocam).
     pub so_a_c0: bool,
@@ -426,6 +430,7 @@ impl Config {
             miolo: Some(MIOLO_PADRAO),
             anel_fora_da_regiao: true,
             anel_por_ladrilhos: true,
+            miolo_salta_o_fundo: true,
             so_a_c0: false,
             holografica: None,
             modulo_rc: None,

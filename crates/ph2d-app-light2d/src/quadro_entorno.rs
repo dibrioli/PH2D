@@ -3,7 +3,8 @@
 use ph2d_gpu::GpuContext;
 use ph2d_light2d_gpu::{Config, Solver};
 
-use crate::grade::{Degrau, MARGEM_DO_ENTORNO, grade_do_quadro};
+#[cfg(doc)]
+use crate::grade::{Degrau, MARGEM_DO_ENTORNO};
 
 impl super::LuzDoQuadro {
     /// ⭐ W5d — o ENTORNO deste quadro: criado na grade dele ([`Degrau::entorno`] × o texel,
@@ -11,30 +12,7 @@ impl super::LuzDoQuadro {
     /// holográfica, `PH2D_LIGHT2D_ENTORNO=0` para comparar).
     /// ⭐ W5i — a configuração do ENTORNO nesta vista (`None` = sem ele).
     pub(super) fn config_do_entorno(&self, gpu: &GpuContext) -> Option<Config> {
-        let holografica = self
-            .degrau
-            .holografica
-            .then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO);
-        let ligado = self.degrau.entorno > 0.0
-            && holografica.is_some()
-            && std::env::var("PH2D_LIGHT2D_ENTORNO").map_or(true, |v| v.trim() != "0");
-        let de = Degrau {
-            c0_px: self.degrau.c0_px * self.degrau.entorno,
-            margem: MARGEM_DO_ENTORNO,
-            ..self.degrau
-        };
-        let ge = ligado
-            .then(|| grade_do_quadro(self.mundo_para_tela, self.alvo_px, de))
-            .flatten()?;
-        Some(super::hrc_por_fio(Config {
-            holografica,
-            rebote: super::rebote_ligado(),
-            // ⭐ W5o: da vista só se lê a c0 do entorno (`Solver::somar_entorno`).
-            so_a_c0: super::cortes_ligados(),
-            hrc_nasce_duas_vezes: super::hrc_duas_vezes(),
-            hrc_por_colunas: super::hrc_por_colunas(),
-            ..Config::padrao_para(&gpu.device, ge)
-        }))
+        super::config_do_entorno(&gpu.device, self.mundo_para_tela, self.alvo_px, self.degrau)
     }
 
     pub(super) fn preparar_entorno(&mut self, gpu: &GpuContext) {

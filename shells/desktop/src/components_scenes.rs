@@ -356,27 +356,26 @@ impl crate::App {
         self.playhead.play();
     }
 
-    /// ⭐⭐⭐ **O SCRIPT DO ARTISTA** (TOP-20 #16, W4). Prólogo do quadro, uma vez — o molde do
-    /// cérebro, acima: a cena, a régua aberta, e o relógio a andar (um script só corre a tocar).
-    ///
-    /// O script vive DENTRO do projeto (ADR-0188) — nenhum ficheiro solto.
+    /// ⭐⭐⭐ **O SCRIPT DO ARTISTA** (`PH2D_SCRIPT_SMOKE`) e o EDITOR (`PH2D_CODE_SMOKE`, roteador da
+    /// `ph2d-app-code`). Prólogo do quadro, uma vez: a cena, a régua aberta, o relógio a andar.
     pub(crate) fn script_smoke(&mut self) {
-        if self.components.smokes.script {
+        let code = ph2d_app_code::smoke::armed_level();
+        let script = std::env::var("PH2D_SCRIPT_SMOKE").ok().map(|v| v.parse().unwrap_or(1));
+        if self.components.smokes.script || code.or(script).is_none() {
             return;
         }
-        let Some(v) = std::env::var_os("PH2D_SCRIPT_SMOKE") else {
-            return;
-        };
-        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
         let Some(cx) = self.components_ctx() else {
             return;
         };
-        let m = ph2d_app_components::script_smoke::montar(cx.sim.world_mut(), nivel);
+        let escolhido = match code {
+            Some(n) => ph2d_app_components::code_smoke::montar(cx, n),
+            None => Some(ph2d_app_components::script_smoke::montar(cx.sim.world_mut(), 1).escolhido),
+        };
         self.components.smokes.script = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             crate::components_scenes::abre_a_regua_da_corrida(hero);
             // ⚠️ O `clear()` anda colado ao `selection` (a lei da cena de física).
-            hero.gizmo.selection = Some(m.escolhido);
+            hero.gizmo.selection = escolhido;
             hero.gizmo.extra_selection.clear();
         }
         self.playhead.rewind();

@@ -124,7 +124,9 @@ pub(crate) fn apply_event(
             let (e, _) = etapa_de(id).expect("acabou de ser lida");
             st.escolhida = Some(e);
             st.renomeando = true;
-            let seed = state::etapa(e).map(|x| crate::nomes::nome(&x)).unwrap_or_default();
+            let seed = state::etapa(e)
+                .map(|x| crate::nomes::nome(&x))
+                .unwrap_or_default();
             open_rename(host.store_mut(), &seed);
             EventOutcome::Consumed
         }
@@ -156,7 +158,9 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id) if id == ids::MACROS_RENAME => {
             if let Some(e) = st.escolhida {
                 st.renomeando = true;
-                let seed = state::etapa(e).map(|x| crate::nomes::nome(&x)).unwrap_or_default();
+                let seed = state::etapa(e)
+                    .map(|x| crate::nomes::nome(&x))
+                    .unwrap_or_default();
                 open_rename(host.store_mut(), &seed);
             }
             EventOutcome::Consumed
@@ -184,7 +188,10 @@ pub(crate) fn apply_event(
             let campo = if id == ids::MACROS_WAIT {
                 CampoDaEtapa::Espera(v)
             } else if id == ids::MACROS_SIZE {
-                #[expect(clippy::cast_possible_truncation, reason = "um tamanho de pincel em px")]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "um tamanho de pincel em px"
+                )]
                 CampoDaEtapa::Tamanho(v as f32)
             } else {
                 CampoDaEtapa::Valor(v)

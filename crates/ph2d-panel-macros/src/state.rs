@@ -42,7 +42,10 @@ pub(crate) fn with_current<R>(f: impl FnOnce(&MacroPanelInfo) -> R) -> R {
 /// A etapa `e` no instantâneo actual.
 pub(crate) fn etapa(e: Escolhida) -> Option<EtapaView> {
     with_current(|i| {
-        let o = i.objeto.as_ref().filter(|o| o.entity_bits == e.entity_bits)?;
+        let o = i
+            .objeto
+            .as_ref()
+            .filter(|o| o.entity_bits == e.entity_bits)?;
         o.etapas
             .iter()
             .find(|x| x.trilha == e.trilha && x.k == e.k)

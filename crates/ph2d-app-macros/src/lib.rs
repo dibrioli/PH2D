@@ -142,17 +142,15 @@ impl Macros {
                 trilha,
                 k,
                 campo,
-            } => {
-                match etapas::edita(c, entity_bits, trilha, k, &campo) {
-                    Ok(confere) => {
-                        self.erro_de_edicao = None;
-                        if confere {
-                            self.por_assentar = Some((entity_bits, trilha));
-                        }
+            } => match etapas::edita(c, entity_bits, trilha, k, &campo) {
+                Ok(confere) => {
+                    self.erro_de_edicao = None;
+                    if confere {
+                        self.por_assentar = Some((entity_bits, trilha));
                     }
-                    Err(e) => self.erro_de_edicao = Some((entity_bits, e)),
                 }
-            }
+                Err(e) => self.erro_de_edicao = Some((entity_bits, e)),
+            },
         }
     }
 
@@ -193,7 +191,11 @@ impl Macros {
         });
         MacroPanelInfo {
             gravando,
-            pode_gravar: if gravando.is_some() { None } else { pode_gravar },
+            pode_gravar: if gravando.is_some() {
+                None
+            } else {
+                pode_gravar
+            },
             recusa: self.recusa.or(recusa_agora),
             objeto,
         }

@@ -138,10 +138,18 @@ fn clicar_numa_etapa_escolhe_a_e_leva_a_cabeca_ao_fim_dela() {
     assert_eq!(p.st.escolhida.map(|e| e.k), Some(2));
     // As propriedades da escolhida pintam-se: renomear, a espera, a cor, o tamanho.
     p.pinta();
-    for id in [ids::MACROS_RENAME, ids::MACROS_WAIT, ids::MACROS_COLOR, ids::MACROS_SIZE] {
+    for id in [
+        ids::MACROS_RENAME,
+        ids::MACROS_WAIT,
+        ids::MACROS_COLOR,
+        ids::MACROS_SIZE,
+    ] {
         assert!(p.rect(id).is_some(), "{id:?} não se pintou");
     }
-    assert!(p.rect(ids::MACROS_VALUE).is_none(), "uma pincelada não tem valor");
+    assert!(
+        p.rect(ids::MACROS_VALUE).is_none(),
+        "uma pincelada não tem valor"
+    );
 }
 
 #[test]

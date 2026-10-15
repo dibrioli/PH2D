@@ -155,7 +155,11 @@ impl TimelineDoc {
         let Some(antiga) = self.clips.get(c).map(|nc| nc.length_override) else {
             return;
         };
-        let d = if duracao_s.is_finite() { duracao_s.max(0.0) } else { 0.0 };
+        let d = if duracao_s.is_finite() {
+            duracao_s.max(0.0)
+        } else {
+            0.0
+        };
         let antes = self.active_index();
         self.set_active(c);
         let target = self.bind(owner, PropKind::MacroTime);

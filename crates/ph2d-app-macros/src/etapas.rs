@@ -80,9 +80,17 @@ fn do_motion(tr: usize, track: &Track) -> Result<Vec<EtapaView>, ErroDaMacroView
                     mo::TipoDaEtapa::Apaga(n) => TipoDaEtapaView::Apaga(n),
                     mo::TipoDaEtapa::Move => TipoDaEtapaView::Move,
                     mo::TipoDaEtapa::Renomeia(n) => TipoDaEtapaView::Renomeia(n),
-                    mo::TipoDaEtapa::Param { no, param, de, para } => {
-                        TipoDaEtapaView::Param { no, param, de, para }
-                    }
+                    mo::TipoDaEtapa::Param {
+                        no,
+                        param,
+                        de,
+                        para,
+                    } => TipoDaEtapaView::Param {
+                        no,
+                        param,
+                        de,
+                        para,
+                    },
                     mo::TipoDaEtapa::Grafo => TipoDaEtapaView::Grafo,
                     mo::TipoDaEtapa::Direta => TipoDaEtapaView::Direta,
                     mo::TipoDaEtapa::Recusada(p) => TipoDaEtapaView::Recusada(p),
@@ -133,7 +141,10 @@ pub fn vistas(bytes: &[u8]) -> Vistas {
             Ok(es) => {
                 let primeira = leitor(track).and_then(|l| {
                     l.etapas(&track.events).iter().position(|g| {
-                        track.edicoes.iter().any(|e| e.ancora == g.inicio && muda_o_toque(e))
+                        track
+                            .edicoes
+                            .iter()
+                            .any(|e| e.ancora == g.inicio && muda_o_toque(e))
                     })
                 });
                 if let Some(k) = primeira.map(|k| v.etapas.len() + k) {
@@ -198,10 +209,7 @@ pub fn edita(
     };
     let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
     let antes = doc.duration();
-    let track = doc
-        .tracks
-        .get_mut(trilha)
-        .ok_or_else(erros::sem_etapa)?;
+    let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
     let confere = if let CampoDaEtapa::Nome(n) = campo {
         let ancora = leitor(track)
             .and_then(|l| l.etapas(&track.events).get(k).copied())
@@ -258,13 +266,20 @@ pub fn assenta(c: &mut Cena<'_>, bits: u64, trilha: usize) -> Result<(), ErroDaM
 }
 
 fn us(segundos: f64) -> i64 {
-    #[expect(clippy::cast_possible_truncation, reason = "segundos de uma espera cabem num i64 de µs")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "segundos de uma espera cabem num i64 de µs"
+    )]
     let v = (segundos * 1e6).round() as i64;
     v
 }
 
 /// `Ok(true)` = uma edição de VALOR: a trilha tem de ser conferida.
-fn edita_painter(track: &mut Track, k: usize, campo: &CampoDaEtapa) -> Result<bool, ErroDaMacroView> {
+fn edita_painter(
+    track: &mut Track,
+    k: usize,
+    campo: &CampoDaEtapa,
+) -> Result<bool, ErroDaMacroView> {
     let r = match *campo {
         CampoDaEtapa::Cor(c) => pi::edita_cor(track, k, c),
         CampoDaEtapa::Tamanho(px) => pi::edita_tamanho(track, k, px),

@@ -29,6 +29,8 @@ mod flip;
 mod image_tools;
 mod input_map;
 mod inspector;
+/// Os ids do painel MACROS (ADR-0186, W5d).
+mod macros;
 mod motion;
 mod padding;
 mod painter;
@@ -41,8 +43,6 @@ mod rail_painter;
 /// ⭐⭐⭐ **Os ids do painel TAGS** (TOP-20 #9) — o rect do painel e o abridor do menu, que são
 /// os dois que o CHROME lê. Os controlos vivem na crate do painel.
 mod tags;
-/// Os ids do painel MACROS (ADR-0186, W5d).
-mod macros;
 mod timeline;
 /// **Os ids do painel de TOKENS** (plano UI/UX W6) — a tabela de cor do design system,
 /// autorável pelo artista. Categoria MUNDO, como o de física.
@@ -61,6 +61,7 @@ pub use flip::*;
 pub use image_tools::*;
 pub use input_map::*;
 pub use inspector::*;
+pub use macros::*;
 pub use motion::*;
 pub use padding::*;
 pub use painter::*;
@@ -70,7 +71,6 @@ pub use prefab::*;
 pub use rail::*;
 pub use rail_painter::*;
 pub use tags::*;
-pub use macros::*;
 pub use timeline::*;
 pub use tokens::*;
 pub use topbar::*;

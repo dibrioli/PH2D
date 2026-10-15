@@ -8,7 +8,10 @@ use ph2d_tool_painter::PainterTool;
 /// O relógio das macros: microssegundos desde o 1.º quadro (o núcleo nunca lê o de parede).
 fn agora_us() -> u64 {
     static INICIO: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
-    let us = INICIO.get_or_init(std::time::Instant::now).elapsed().as_micros();
+    let us = INICIO
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_micros();
     u64::try_from(us).unwrap_or(u64::MAX)
 }
 

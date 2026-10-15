@@ -178,7 +178,10 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     b.quadro();
     assert_eq!(b.m.gravando(), Some(FamiliaDaMacro::Painter));
     b.pinta();
-    assert!(b.rect(ids::MACROS_RECORD).is_none(), "a gravar, o Gravar sai");
+    assert!(
+        b.rect(ids::MACROS_RECORD).is_none(),
+        "a gravar, o Gravar sai"
+    );
 
     let l = LADO as f32;
     b.pincelada([0.1 * l, 0.2 * l], [0.9 * l, 0.25 * l]);
@@ -197,10 +200,9 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     )
     .unwrap();
     let duracao = doc.duration().0 as f64 / 1e6;
-    let clip = b
-        .tl
-        .clip_named(b.bits, ph2d_i18n::tr("app.macros.clip_name"))
-        .expect("Parar cria o clipe na animação do objecto");
+    let clip =
+        b.tl.clip_named(b.bits, ph2d_i18n::tr("app.macros.clip_name"))
+            .expect("Parar cria o clipe na animação do objecto");
     assert!((b.tl.clip_length_override(clip).unwrap() - duracao).abs() < 1e-9);
     assert!(
         b.tl.autoplay_entries().contains(&(b.bits, clip)),
@@ -208,11 +210,16 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     );
 
     b.pinta();
-    let o = ph2d_panel_macros::current_macros().objeto.expect("o painel vê a macro");
+    let o = ph2d_panel_macros::current_macros()
+        .objeto
+        .expect("o painel vê a macro");
     assert_eq!(o.etapas.len(), 3, "uma etapa por pincelada: {:?}", o.etapas);
     for (k, e) in o.etapas.iter().enumerate() {
         assert_eq!(e.tipo, TipoDaEtapaView::Pincelada(k + 1));
-        assert!(b.rect(ids::row_id(0, k)).is_some(), "a linha {k} não foi pintada");
+        assert!(
+            b.rect(ids::row_id(0, k)).is_some(),
+            "a linha {k} não foi pintada"
+        );
     }
 
     // Clicar numa etapa leva a cabeça de leitura ao FIM dela.

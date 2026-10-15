@@ -36,7 +36,10 @@ impl Sessao {
             FamiliaDaMacro::Painter => {
                 let p = f.painter.as_deref().ok_or(m::MACRO_RECUSA_SEM_FAMILIA)?;
                 let (w, h) = p.source_size();
-                #[expect(clippy::cast_precision_loss, reason = "o lado de uma tela cabe num f32")]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "o lado de uma tela cabe num f32"
+                )]
                 let r = RefRect {
                     w: w as f32,
                     h: h as f32,

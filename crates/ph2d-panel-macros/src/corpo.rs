@@ -76,10 +76,20 @@ impl Corpo<'_> {
     /// Gravar ▸ Parar. O botão Gravar só se pinta quando há quem grave; senão a frase diz porquê.
     fn gravar(&mut self, info: &MacroPanelInfo, y: f32) -> f32 {
         let (id, rotulo, kind) = match (info.gravando, info.pode_gravar) {
-            (Some(_), _) => (ids::MACROS_STOP, tr("panel.macros.stop"), ButtonKind::Danger),
-            (None, Some(_)) => (ids::MACROS_RECORD, tr("panel.macros.record"), ButtonKind::Accent),
+            (Some(_), _) => (
+                ids::MACROS_STOP,
+                tr("panel.macros.stop"),
+                ButtonKind::Danger,
+            ),
+            (None, Some(_)) => (
+                ids::MACROS_RECORD,
+                tr("panel.macros.record"),
+                ButtonKind::Accent,
+            ),
             (None, None) => {
-                let k = info.recusa.unwrap_or("panel.macros.refusal.nothing_to_record");
+                let k = info
+                    .recusa
+                    .unwrap_or("panel.macros.refusal.nothing_to_record");
                 return self.bloco(tr(k), ColorToken::Text3, y);
             }
         };
@@ -100,7 +110,10 @@ impl Corpo<'_> {
         };
         let y = self.bloco(&frase, ColorToken::Text3, y);
         // A recusa da última tentativa (o Parar que não coube na animação) fica à vista.
-        match info.recusa.filter(|_| info.gravando.is_some() || info.pode_gravar.is_some()) {
+        match info
+            .recusa
+            .filter(|_| info.gravando.is_some() || info.pode_gravar.is_some())
+        {
             Some(k) => self.bloco(tr(k), ColorToken::Danger, y),
             None => y,
         }

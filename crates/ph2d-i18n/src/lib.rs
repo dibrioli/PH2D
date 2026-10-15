@@ -124,6 +124,8 @@ mod inspector_player;
 mod inspector_vida;
 /// ⭐ As palavras da LUZ 2D (W4) — a secção do Inspector e os avisos da luz do quadro.
 mod luz2d;
+/// As MACROS (ADR-0186, W5d): o painel e o nome do clipe.
+mod macros;
 /// Os nomes dos nós — a 3.ª fatia da fronteira dos motores.
 mod node_catalog;
 /// ⭐⭐ **Os nomes das SECÇÕES** do painel de params de um nó — 38 palavras sobre 229 sítios.
@@ -143,8 +145,6 @@ mod painter_layers;
 mod quatro_motores;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
 mod tags;
-/// As MACROS (ADR-0186, W5d): o painel e o nome do clipe.
-mod macros;
 /// ⭐⭐ **As cinco recusas da ÁRVORE de tags**, publicadas pela folha `ph2d-tags`.
 ///
 /// ⚠️ Tabela IRMÃ da [`tags`] de propósito: aquela são as palavras que o PAINEL escreve, estas são

@@ -272,6 +272,8 @@ mod fase_inspector_commits;
 mod fase_legacy_chrome;
 /// Fase do quadro: o offset e a largura vivos.
 mod fase_live_offset_and_width;
+/// Fase do quadro: as macros (Gravar ▸ Parar, as etapas, o painel MACROS).
+mod fase_macros;
 /// Fase do quadro: o Motion: publicar, despachar e os sinais.
 mod fase_motion_bridge;
 /// Fase do quadro: os gizmos do Motion que leem o cozido (o colisor e o warp).
@@ -288,8 +290,6 @@ mod fase_open_recipe;
 mod fase_painter_brush_smokes;
 /// Fase do quadro: o Painter: persistir, despachar e medir.
 mod fase_painter_dispatch;
-/// Fase do quadro: as macros (Gravar ▸ Parar, as etapas, o painel MACROS).
-mod fase_macros;
 mod fase_paralaxe;
 /// Fase do quadro: os efeitos, o spine, os passos e a booleana.
 mod fase_path_effects_spine_bool;

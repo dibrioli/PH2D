@@ -39,13 +39,19 @@ pub fn nome(e: &EtapaView) -> String {
             "panel.macros.step.connect",
             &[("from", &no(de.as_deref())), ("to", &no(para.as_deref()))],
         ),
-        T::Desliga { para } => {
-            tr_with("panel.macros.step.disconnect", &[("to", &no(para.as_deref()))])
-        }
+        T::Desliga { para } => tr_with(
+            "panel.macros.step.disconnect",
+            &[("to", &no(para.as_deref()))],
+        ),
         T::Apaga(n) => tr_with("panel.macros.step.delete", &[("n", n)]),
         T::Move => tr("panel.macros.step.move").to_owned(),
         T::Renomeia(nome) => tr_with("panel.macros.step.rename", &[("name", nome)]),
-        T::Param { no: tipo, param, de, para } => {
+        T::Param {
+            no: tipo,
+            param,
+            de,
+            para,
+        } => {
             let rotulo = tipo
                 .as_deref()
                 .and_then(|t| tr_se_ha(&format!("node.{t}.param.{param}")))

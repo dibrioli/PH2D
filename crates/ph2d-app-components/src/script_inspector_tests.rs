@@ -502,3 +502,51 @@ fn partido_a_correr_a_anterior_e_partido_parado() {
         S::Broken(_)
     ));
 }
+
+/// ⭐ (E11) **Re-Browse do MESMO ficheiro reusa o script** — nem «bob 2.luau», nem um segundo
+/// objecto a apontar uma cópia; um texto NOVO ainda entra com nome único.
+#[test]
+fn re_browse_do_mesmo_ficheiro_reusa_o_script() {
+    let (mut sim, bits) = cena_com("-- antes", &[]);
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    let f = script_file("ph2d.property(\"n\", 1)");
+    assert!(browse(&mut sim, bits, &f));
+    let fonte = |sim: &SimWorld| sim.world().get::<LuauScript>(e).expect("cfg").source.clone();
+    let primeiro = fonte(&sim);
+    // Outro objecto, o MESMO ficheiro: o mesmo script.
+    let outro = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, StableId(2), LuauScript::default()))
+        .id();
+    assert!(browse(&mut sim, outro.to_bits(), &f));
+    assert_eq!(
+        sim.world().get::<LuauScript>(outro).expect("cfg").source,
+        primeiro
+    );
+    assert!(!browse(&mut sim, bits, &f), "o mesmo script: nada muda");
+    assert_eq!(sim.world().resource::<ProjectScripts>().len(), 2);
+    // Controlo: o ficheiro MUDOU — texto novo, script novo.
+    std::fs::write(&f, "-- outro texto").expect("escreve");
+    assert!(browse(&mut sim, bits, &f));
+    assert_ne!(fonte(&sim), primeiro);
+    assert_eq!(sim.world().resource::<ProjectScripts>().len(), 3);
+}
+
+/// ⭐ (E11) O instantâneo leva os nomes dos scripts do projeto (o seletor do cartão), e escolher um
+/// é o `Source` com o nome — aponta-o sem importar nada.
+#[test]
+fn o_seletor_do_cartao_lista_e_aponta_os_scripts_do_projeto() {
+    let (mut sim, bits) = cena_com("-- a", &[]);
+    let b = sim
+        .world_mut()
+        .resource_mut::<ProjectScripts>()
+        .insert("b.luau", "-- b");
+    let info = build_info(&sim, None, bits, 1, false).expect("secção");
+    assert_eq!(info.library, ["i.luau", "b.luau"]);
+    assert!(apply(&mut sim, bits, &E::Source("b.luau".into())));
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    assert_eq!(
+        sim.world().get::<LuauScript>(e).expect("cfg").source,
+        ScriptSource::Library(b)
+    );
+}

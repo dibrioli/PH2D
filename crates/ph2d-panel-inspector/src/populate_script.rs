@@ -36,7 +36,10 @@ pub(crate) fn populate_script(store: &mut WidgetStore) {
     // delas que decide se a escolha chega. ⚠️ Sem esta linha o chip abre e o clique numa opção
     // morre: *um controlo pintado e ausente daqui está MORTO SOB O DEDO*.
     register_button_ids(store, &crate::ids::INSP_SCRIPT_ENUM_OPT);
-    for id in crate::ids::INSP_SCRIPT_ENUM {
+    for id in crate::ids::INSP_SCRIPT_ENUM
+        .into_iter()
+        .chain([crate::ids::INSP_SCRIPT_PICK])
+    {
         store.register(
             id,
             InteractiveState::Dropdown {

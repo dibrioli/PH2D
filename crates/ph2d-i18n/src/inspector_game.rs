@@ -250,13 +250,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The clock is stopped \u{2014} the reading is the pose you see."
         }
         "panel.inspector.script.reset" => "Reset",
-        "panel.inspector.script.no_script_file_yet_u_use_browse_to_pick_a_luau_file" => {
-            "No script file yet \u{2014} use Browse to pick a .luau file."
+        "panel.inspector.script.no_script_yet_choose_or_browse" => {
+            "No script yet \u{2014} choose one of the project\u{2019}s scripts, or Browse to import a .luau file."
         }
         "panel.inspector.script.scripting_is_not_available_in_this_session" => {
             "Scripting is not available in this session."
         }
-        "panel.inspector.script.reading_the_file_u" => "Reading the file\u{2026}",
+        "panel.inspector.script.loading_the_script_u" => "Loading the script\u{2026}",
         "panel.inspector.script.that_file_is_gone_u_pick_it_again" => {
             "That script is no longer in this project \u{2014} pick another."
         }
@@ -281,7 +281,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The clock is stopped \u{2014} scripts only run while the scene plays."
         }
         "panel.inspector.script.script" => "Script",
-        "panel.inspector.script.script_file_u" => "script file\u{2026}",
+        "panel.inspector.script.script_name_u" => "script name\u{2026}",
+        "panel.inspector.script.choose_a_project_script_u" => "Choose a project script\u{2026}",
+        "panel.inspector.script.no_scripts_in_the_project" => "No scripts in this project yet",
         "panel.inspector.script.browse" => "Browse",
         "panel.inspector.script.edit" => "Edit script",
         "panel.inspector.script.no_longer_in_the_script" => "No longer in the script:",

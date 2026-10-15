@@ -102,7 +102,7 @@ pub(super) fn avisos(
                 x,
                 w,
                 y,
-                tr("panel.inspector.script.no_script_file_yet_u_use_browse_to_pick_a_luau_file"),
+                tr("panel.inspector.script.no_script_yet_choose_or_browse"),
                 ColorToken::Text3,
             );
         }
@@ -126,7 +126,7 @@ pub(super) fn avisos(
                 x,
                 w,
                 y,
-                tr("panel.inspector.script.reading_the_file_u"),
+                tr("panel.inspector.script.loading_the_script_u"),
                 ColorToken::Text3,
             );
         }

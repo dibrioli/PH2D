@@ -25,6 +25,8 @@ pub const INSP_SCRIPT_SOURCE: NodeId = hash_node_id("insp_script_source");
 pub const INSP_SCRIPT_BROWSE: NodeId = hash_node_id("insp_script_browse");
 /// `Edit script` — abre o script numa aba do editor (CodeEditor E3).
 pub const INSP_SCRIPT_EDIT: NodeId = hash_node_id("insp_script_edit");
+/// O seletor dos scripts do projeto (CodeEditor E11) — as opções são as `INSP_SCRIPT_ENUM_OPT`.
+pub const INSP_SCRIPT_PICK: NodeId = hash_node_id("insp_script_pick");
 
 /// O campo NUMÉRICO da linha `i` (uma propriedade cujo default é um `number`).
 pub const INSP_SCRIPT_NUM: [NodeId; 32] = [

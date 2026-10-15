@@ -72,6 +72,7 @@ fn info() -> InspectorScriptInfo {
         clock_playing: true,
         also_physics: false,
         selected_count: 1,
+        library: vec!["bob.luau".into(), "outro.luau".into()],
     }
 }
 
@@ -512,4 +513,34 @@ fn um_script_por_importar_pinta_a_recusa_com_o_caminho() {
             .any(|a| a.seccao() == "script_avisos" && a.texto.contains(frase.as_str())),
         "não se pintou «{frase}»: {avisos:?}"
     );
+}
+
+/// ⭐ (CodeEditor E11) **O SELETOR dos scripts do projeto**: o chip abre com os nomes da biblioteca,
+/// e a escolha chega como o `Source` com o NOME — o mesmo gesto de escrever o nome. Sem scripts no
+/// projeto o chip fica apagado e fora do índice.
+#[test]
+fn o_seletor_lista_os_scripts_do_projeto_e_a_escolha_aponta_o_nome() {
+    let (mut h, mut st) = host(Some(info()));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let chip = ids::INSP_SCRIPT_PICK;
+    assert!(rect_de(&rects, chip).is_some(), "o seletor nao foi pintado");
+    assert_eq!(h.dropdown_is_open(chip), Some(false), "nao esta' registado como Dropdown");
+    h.set_dropdown_open(chip, true);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    for j in 0..2 {
+        assert!(
+            rect_de(&rects, ids::INSP_SCRIPT_ENUM_OPT[j]).is_some(),
+            "a opcao {j} nao chegou ao indice"
+        );
+    }
+    let acoes = clica(&mut h, &mut st, &rects, ids::INSP_SCRIPT_ENUM_OPT[1]);
+    assert_eq!(edicoes(&acoes), vec![E::Source("outro.luau".into())]);
+
+    // Controlo: sem scripts no projeto não há o que escolher.
+    let mut vazio = info();
+    vazio.library.clear();
+    set_current_inspector_script(Some(vazio));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert!(rect_de(&rects, chip).is_none(), "apagado = fora do indice");
+    set_current_inspector_script(None);
 }

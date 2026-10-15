@@ -115,6 +115,30 @@ pub fn import_file(lib: &mut ScriptLibrary, path: &Path) -> std::io::Result<Scri
     Ok(lib.insert(&name, text))
 }
 
+/// ⭐ **A lei do re-Browse**: um ficheiro cujo TEXTO já é o de um script do projeto devolve esse
+/// script (o de nome igual ao do ficheiro, se há vários) — importar o mesmo ficheiro duas vezes não
+/// cria «bob 2.luau». Um texto novo entra pelo [`import_file`] (nome único).
+///
+/// # Errors
+/// O ficheiro não se lê como texto.
+pub fn import_or_reuse(lib: &mut ScriptLibrary, path: &Path) -> std::io::Result<ScriptId> {
+    let text = std::fs::read_to_string(path)?;
+    let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
+    let same: Vec<ScriptId> = lib
+        .iter()
+        .filter(|(_, d)| d.text == text)
+        .map(|(id, _)| id)
+        .collect();
+    let named = same
+        .iter()
+        .copied()
+        .find(|id| lib.get(*id).map(|d| Some(&d.name)) == Some(name.as_ref()));
+    match named.or_else(|| same.first().copied()) {
+        Some(id) => Ok(id),
+        None => import_file(lib, path),
+    }
+}
+
 /// Importa cada `Unimported(caminho)` legível e reaponta o objecto. Um ficheiro, um script: a chave
 /// é o caminho CANÓNICO.
 pub fn import_unimported(

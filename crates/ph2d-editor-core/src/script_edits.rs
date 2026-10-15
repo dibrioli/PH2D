@@ -12,8 +12,8 @@
 //!
 //! | aviso | o que se passa |
 //! |---|---|
-//! | `No script file yet` | o componente não aponta script nenhum, e não corre |
-//! | `Script file not found: …` | um caminho antigo que o load não importou — nunca corre vazio |
+//! | `No script yet` | o componente não aponta script nenhum, e não corre |
+//! | `No script "…" in this project` | um caminho antigo que o load não importou — nunca corre vazio |
 //! | `That script is gone` | o projeto já não tem o script apontado — os valores próprios ficam |
 //! | `The script has an error` | o Luau recusou-o; a mensagem é a do Luau, com a LINHA |
 //! | `Stopped: …` | o objecto parou de correr o script (erro num gancho, laço sem fim) |
@@ -169,6 +169,8 @@ pub struct InspectorScriptInfo {
     /// ⚠️ O objecto é também um corpo da física — as duas mãos brigam pelo `Transform`.
     pub also_physics: bool,
     pub selected_count: usize,
+    /// Os nomes dos scripts do projeto, pela ordem da biblioteca — o seletor do cartão (E11).
+    pub library: Vec<String>,
 }
 
 /// Uma edição da secção SCRIPT.

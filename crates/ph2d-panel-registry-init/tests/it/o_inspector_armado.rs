@@ -832,6 +832,7 @@ fn arma_o_top20() {
         clock_playing: true,
         also_physics: false,
         selected_count: selecionados(),
+        library: vec!["bob.luau".to_string(), "outro.luau".to_string()],
     }));
     // ⭐⭐⭐ **AS NOVE PORTAS que a `line/components` acrescentou em 17–20/09.** Elas chegaram
     //    depois desta fixtura e o censo DERIVADO acusou-as na integração — que é exactamente

@@ -51,6 +51,12 @@ pub(crate) fn apply_script_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
         // abaixo faz `return false`, logo um braço escrito a seguir ao bloco é CÓDIGO MORTO para
         // todo `Click`. *É o «dreno de um braço só» do §5.0 — um handler cujo `if let` não cobre a
         // variante —, e ele compila, pinta e regista sem que nada acuse.*
+        } else if let Some(j) = linha(&crate::ids::INSP_SCRIPT_ENUM_OPT, id)
+            && crate::state_popovers::linha_do_enum_pintado()
+                == Some(crate::sections::script_seletor::LINHA_DO_SELETOR)
+        {
+            // ⭐ (E11) A opção do SELETOR: o script do projeto escolhido, pelo nome.
+            info.library.get(j).map(|nome| E::Source(nome.clone()))
         } else if let Some(j) = linha(&crate::ids::INSP_SCRIPT_ENUM_OPT, id) {
             // ⚠️ A LINHA vem de quem REGISTOU as opções, nunca do `open` do chip: o despacho fecha
             // o dropdown no `pointer_down`, logo aqui ele já é `false`.

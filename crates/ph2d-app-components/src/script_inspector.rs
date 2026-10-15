@@ -146,6 +146,9 @@ pub fn build_info(
         clock_playing,
         also_physics,
         selected_count,
+        library: lib
+            .map(|l| l.iter().map(|(_, d)| d.name.clone()).collect())
+            .unwrap_or_default(),
     })
 }
 
@@ -168,11 +171,12 @@ fn fonte_do_texto(sim: &SimWorld, text: &str) -> ScriptSource {
         )
 }
 
-/// **Importa o ficheiro escolhido no `Browse`** para os scripts do projeto (nome único). Um ficheiro
-/// que não se lê fica `Unimported` — o cartão di-lo.
+/// **Importa o ficheiro escolhido no `Browse`** para os scripts do projeto. ⭐ Um ficheiro cujo texto
+/// já é o de um script do projeto REUSA-o (re-Browse do mesmo ficheiro não cria «bob 2.luau»); um
+/// texto novo entra com nome único. Um ficheiro que não se lê fica `Unimported` — o cartão di-lo.
 fn importa(sim: &mut SimWorld, path: &str) -> ScriptSource {
     let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
-    match ph2d_script::project_scripts::import_file(&mut lib, std::path::Path::new(path)) {
+    match ph2d_script::project_scripts::import_or_reuse(&mut lib, std::path::Path::new(path)) {
         Ok(id) => ScriptSource::Library(id),
         Err(e) => {
             eprintln!("[script] importar {path}: {e}");
@@ -235,7 +239,7 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
 /// cancelado não escreve nada. `true` = o documento mudou.
 ///
 /// ⚠️ Um script importado e depois desfeito (`Ctrl+Z`) FICA no projeto — é conteúdo do artista.
-/// (Escolher um script que já está no projeto é a Onda 1.)
+/// Escolher um script que já está no projeto é o seletor do cartão (um `Source` com o nome).
 pub fn apply_all(
     sim: &mut SimWorld,
     edits: &[(u64, E)],

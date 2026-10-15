@@ -272,11 +272,14 @@ pub(crate) fn paint_script_section(
         tr("panel.inspector.script.source_label"),
         ids::INSP_SCRIPT_SOURCE,
         TextInput::new(ids::INSP_SCRIPT_SOURCE, "")
-            .placeholder(tr("panel.inspector.script.script_file_u")),
+            .placeholder(tr("panel.inspector.script.script_name_u")),
         seccao_do_ficheiro,
     );
-    // `Browse` | `Edit script` lado a lado (CodeEditor E3). Sem script do projeto não há o que
-    // editar: o botão fica apagado e fora do índice.
+    // O seletor dos scripts do projeto (E11), depois `Browse` | `Edit script` lado a lado (E3). Sem
+    // script do projeto não há o que editar: o botão fica apagado e fora do índice.
+    let r = Rect::new(x, cur_y, w, ALTURA_DE_CAMPO);
+    super::script_seletor::seletor(scene, text_system, theme, hit_index, store, r, info);
+    cur_y += ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px();
     let metade = (w - Spacing::Xs.px()) * 0.5;
     botao(
         scene,

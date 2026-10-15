@@ -91,7 +91,13 @@ pub(super) fn paint_deferred_top20_popovers(
     // quem foi REGISTADO, e é esta passagem que regista. Ela apaga-se quando não há popover, senão
     // um clique numa opção de um quadro antigo escolheria para a linha errada.
     state_popovers::set_linha_do_enum_pintado(pendente.map(|(linha, _)| linha));
-    if let Some((linha, chip)) = pendente
+    // ⭐ (E11) O do SELETOR dos scripts do projeto — a mesma máquina, as opções da biblioteca.
+    if let Some((sections::script_seletor::LINHA_DO_SELETOR, chip)) = pendente
+        && let Some(info) = crate::state_components::current_inspector_script()
+    {
+        let dd = sections::script_seletor::chip(&info, true);
+        paint_open_popover(&dd, chip, region, store, scene, text_system, theme, hit_index);
+    } else if let Some((linha, chip)) = pendente
         && let Some(info) = crate::state_components::current_inspector_script()
         && let Some(p) = info.props.get(linha)
         && !p.options.is_empty()

@@ -146,8 +146,8 @@ pub const FONT_MONO: &str =
 ///   (Medium 500 → ExtraBold 800 a 11 px) **com hint OFF**: deixa o
 ///   eixo variable wght fluir sem quantização → letras visivelmente
 ///   mais cheias, qualidade "Linear/Notion-pro".
-/// - `CrispHeavyPlus` — variação experimental de CrispHeavy (2026-05-25
-///   "tempero final"): mesmo boost + hint=off de CrispHeavy, mas com
+/// - `CrispHeavyPlus` — o de fábrica; variação de CrispHeavy (2026-05-25
+///   "tempero final"): mesmo boost de CrispHeavy, **hint=on** (dono 15/10), mas com
 ///   **half-pixel snap-X** (preserva ~50 % do kerning) e
 ///   **letter-spacing -0.01 em em corpos ≤16 px** (aperta a densidade
 ///   que ExtraBold abre). Pensada para A/B test contra `CrispHeavy` —
@@ -171,8 +171,8 @@ pub enum TextRendering {
     /// Snap-X + hint **OFF** + boost +300/+200/+150 → ExtraBold @ 11 px,
     /// axis variable flowing sem quantização do autohinter.
     CrispHeavy,
-    /// Experimental: CrispHeavy + half-pixel snap-X + letter-spacing
-    /// -0.01em em corpos ≤16 px. A/B vs CrispHeavy.
+    /// O de fábrica: boost de CrispHeavy + hint ON + half-pixel snap-X +
+    /// letter-spacing -0.01em em corpos ≤16 px.
     CrispHeavyPlus,
 }
 
@@ -211,6 +211,10 @@ pub struct TextRenderingParams {
     /// Quando `false`, deixa o eixo wght variable fluir livremente
     /// — strokes ficam ligeiramente mais "soft" mas a variação entre
     /// presets é visível.
+    ///
+    /// ⚠️ Só faz efeito se a fonte chega ao AUTOHINTER: um `prep`/`fpgm` desvia o skrifa para o
+    /// interpretador TrueType (no-op nas nossas) — o registo tira o `prep` inerte
+    /// (`ph2d_text::without_prep_table`).
     pub hint: bool,
     /// Letter-spacing (em ems) aplicado a corpos ≤16 px. Negativo
     /// aperta a densidade horizontal — útil em presets com ExtraBold
@@ -324,7 +328,10 @@ impl TextRendering {
                 weight_boost_mid: 150,
                 // Half-pixel snap — preserva ~50 % do kerning vs Full.
                 snap_x: SnapX::Half,
-                hint: false,
+                // ⭐ ON por decisão do dono (15/10, «pode aplicar a mesma nitidez»): com ele OFF as
+                // duas barras do `=` saíam desiguais. O peso medido muda −3,3 %…+5,0 % de tinta
+                // (`docs/CodeEditor/ferramentas/medicoes/peso_hint.txt`).
+                hint: true,
                 // Aperta densidade dos corpos pequenos compensando o
                 // "abrir" do ExtraBold.
                 letter_spacing_em_dense: -0.01,
@@ -446,7 +453,7 @@ mod tests {
     }
 
     #[test]
-    fn crisp_heavy_plus_differs_from_heavy_in_two_axes() {
+    fn crisp_heavy_plus_differs_from_heavy_in_three_axes() {
         // The whole point of CrispHeavyPlus: same boost as CrispHeavy
         // but 2 axes flipped to A/B-test the "tempero final".
         //
@@ -464,6 +471,9 @@ mod tests {
         assert_ne!(p.snap_x, h.snap_x, "Plus must use Half snap, not Full");
         assert_eq!(p.snap_x, SnapX::Half);
         assert!(p.letter_spacing_em_dense < 0.0, "Plus tightens body");
+        // ⭐ 3.º eixo desde 15/10, por decisão do dono: o de fábrica pinta COM hint (o `=` com as
+        // duas barras iguais — gate `as_duas_barras_do_igual_sao_iguais` em ph2d-app-components).
+        assert!(p.hint && !h.hint, "Plus hints; CrispHeavy keeps the free wght axis");
     }
 
     #[test]

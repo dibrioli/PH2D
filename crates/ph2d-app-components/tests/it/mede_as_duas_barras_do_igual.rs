@@ -19,6 +19,10 @@
 //! `wght` 700, `hint` OFF do `CrispHeavyPlus`) o `=` é `[2.84 3.42 2.35 4.01]` — sem vão, a barra de
 //! cima em duas linhas cinzentas, a de baixo numa escura. `hint(true)` dá o MESMO bit (o `prep`);
 //! sem o `prep` (autohinter) dá `[5.18 0.84 5.27 0.92]`.
+//!
+//! ⚠️ Depois da cura (15/10: o registo tira o `prep`, `ph2d_text::without_prep_table`, e o
+//! `CrispHeavyPlus` liga o `hint`) a variante `off(ATUAL)` é o preset ⇒ hint ON, e `auto` = `on`.
+//! A tabela gravada é a de ANTES. O gate é `as_duas_barras_do_igual_sao_iguais`.
 
 use parley::{FontFamily, StyleProperty};
 use ph2d_editor_core::paint::{paint_text_block, set_text_rendering};
@@ -41,7 +45,7 @@ enum Hint {
     Preset,
     On,
     Off,
-    /// `On` + a fonte SEM a tabela `prep` (contrafactual do autohinter — ver [`sem_prep`]).
+    /// `On` + a fonte SEM a tabela `prep` (contrafactual do autohinter — `ph2d_text::without_prep_table`).
     Auto,
 }
 
@@ -126,7 +130,8 @@ fn pinta(
                 run.font = sem
                     .entry(f.data.id())
                     .or_insert_with(|| {
-                        let b = sem_prep(f.data.data()).unwrap_or_else(|| f.data.data().to_vec());
+                        let b = ph2d_text::without_prep_table(f.data.data())
+                            .unwrap_or_else(|| f.data.data().to_vec());
                         ph2d_vector::FontData::new(b.into(), f.index)
                     })
                     .clone();
@@ -136,33 +141,6 @@ fn pinta(
     }
     let iguais = iguais.iter().map(|&(a, b)| (a * v.s, b * v.s)).collect();
     (cena, iguais)
-}
-
-/// ⭐ **A fonte sem a tabela `prep`** — o contrafactual do autohinter. O Vello pede ao skrifa
-/// `Engine::AutoFallback`, que escolhe o INTERPRETADOR TrueType sempre que a fonte tem `fpgm`,
-/// `prep` ou instruções (a regra do FreeType, `skrifa::outline::glyf::Outlines::new`). A Noto, a
-/// JetBrains Mono e a Atkinson trazem um `prep` de 7 bytes (só `SCANCTRL`/`SCANTYPE`) e ZERO
-/// instruções por glifo ⇒ o interpretador corre e não mexe em nada: `hint(true)` é um no-op. Sem o
-/// `prep`, o mesmo pedido cai no autohinter (o que a Inter, sem `prep`, já recebe). O directório
-/// encolhe 16 bytes no lugar; os deslocamentos são absolutos e ficam válidos.
-fn sem_prep(b: &[u8]) -> Option<Vec<u8>> {
-    let n = usize::from(u16::from_be_bytes([b[4], b[5]]));
-    let i = (0..n).find(|&j| &b[12 + 16 * j..16 + 16 * j] == b"prep")?;
-    let mut out = b.to_vec();
-    let m = (n - 1) as u16;
-    let es = 15 - m.leading_zeros() as u16;
-    let sr = (1u16 << es) * 16;
-    out[4..6].copy_from_slice(&m.to_be_bytes());
-    out[6..8].copy_from_slice(&sr.to_be_bytes());
-    out[8..10].copy_from_slice(&es.to_be_bytes());
-    out[10..12].copy_from_slice(&(m * 16 - sr).to_be_bytes());
-    let mut w = 12;
-    for j in (0..n).filter(|&j| j != i) {
-        out[w..w + 16].copy_from_slice(&b[12 + 16 * j..28 + 16 * j]);
-        w += 16;
-    }
-    out[w..w + 16].fill(0);
-    Some(out)
 }
 
 fn id_do_igual(layout: &ph2d_text::Layout<()>) -> u32 {

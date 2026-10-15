@@ -16,7 +16,6 @@ fn sample() -> Layout {
         dock_w_right: Some(320.5),
         dock_h_bottom: Some(196.0),
         // ④ D10: a barra fixada viaja no ficheiro (e a desligada fica de fora: `false` não se escreve).
-        actions_off: false,
         actions_pinned: true,
         tool_row_bottom: true,
     }
@@ -159,7 +158,6 @@ fn a_saved_arrangement_comes_back_but_a_forbidden_slot_does_not() {
             // ⚠️ Um id que já não existe nesta build é saltado aqui pela mesma lei dos encaixes.
             tab_order: vec!["um_painel_de_2030".into(), "audio_mixer".into()],
             dock_h_bottom: None,
-            actions_off: false,
             actions_pinned: false,
             tool_row_bottom: false,
             dock_w_left: Some(281.0),
@@ -212,7 +210,6 @@ fn what_is_installed_is_what_gets_written_back() {
         dock_w_left: Some(281.0),
         dock_w_right: Some(333.0),
         dock_h_bottom: Some(210.0),
-        actions_off: false,
         actions_pinned: false,
         tool_row_bottom: false,
     };

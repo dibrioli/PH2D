@@ -119,8 +119,6 @@ impl ToolBars {
 #[derive(Clone, Debug, Default)]
 pub struct ToolBarsSlot {
     pub(crate) bars: Option<ToolBars>,
-    /// ④ desligada pelo artista (o `✕` dela, ou *Ver ▸ Ações da seleção*).
-    pub(crate) actions_off: bool,
     /// ④ fixada: deixa de seguir a seleção e fica no topo da área (nunca tapa a arte que se edita).
     pub(crate) actions_pinned: bool,
     /// ⑤ a última posição do ponteiro no ecrã — as coordenadas do rodapé.

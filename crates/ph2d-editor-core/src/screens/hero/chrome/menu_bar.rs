@@ -69,11 +69,6 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         hero.store.close_context_menu();
         return true;
-    } else if id == ids::MENUBAR_VIEW_SELECTION_ACTIONS {
-        let off = hero.store.selection_actions_off();
-        hero.store.set_selection_actions_off(!off);
-        hero.store.close_context_menu();
-        return true;
     } else if id == ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM {
         let bottom = hero.store.tool_row_bottom();
         hero.store.set_tool_row_bottom(!bottom);

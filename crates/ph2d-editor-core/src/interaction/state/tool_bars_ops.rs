@@ -16,16 +16,6 @@ impl WidgetStore {
         self.tool_bars.bars.as_ref()
     }
 
-    /// ④ desligada pelo artista?
-    #[must_use]
-    pub fn selection_actions_off(&self) -> bool {
-        self.tool_bars.actions_off
-    }
-
-    pub fn set_selection_actions_off(&mut self, off: bool) {
-        self.tool_bars.actions_off = off;
-    }
-
     /// ④ fixada no topo da área?
     #[must_use]
     pub fn selection_actions_pinned(&self) -> bool {

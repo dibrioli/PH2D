@@ -402,8 +402,6 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
                 //    a coluna aberta e fechada, o defeito que ele pagou dezasseis vezes.
                 || *id == ids::MENUBAR_VIEW_COLUMN_LEFT
                 || *id == ids::MENUBAR_VIEW_COLUMN_RIGHT
-                // ⭐ D10 (07/10): a barra de ações da seleção — ligada/desligada é um estado.
-                || *id == ids::MENUBAR_VIEW_SELECTION_ACTIONS
                 // ⭐ D10 F5 (08/10): a fila ② embaixo — em cima/embaixo é um estado.
                 || *id == ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM;
             assert_eq!(
@@ -428,11 +426,12 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
 
 /// As linhas de alternância que **não** vivem no menu *Window*: os dois painéis laterais
 /// (*Hierarchy*, *Inspector*), a régua, — desde 2026-09-19 — as duas COLUNAS, e — desde 2026-10-07
-/// (D10) — a barra de ações da seleção, e — desde 2026-10-08 (D10 F5) — a fila ② embaixo.
+/// (D10) até 2026-10-15 (o dono tirou o desligar) — a barra de ações da seleção, e — desde
+/// 2026-10-08 (D10 F5) — a fila ② embaixo.
 ///
 /// ⚠️ Escritas como CONTAGEM porque a lista delas está no `is_toggle` acima — se lá aparecer mais
 /// uma, este número tem de subir no mesmo commit, e o gate diz qual é a diferença.
-const OUTSIDE_WINDOW_TOGGLES: usize = 7;
+const OUTSIDE_WINDOW_TOGGLES: usize = 6;
 
 /// **E a régua PUBLICA o estado dela**, porque quem pinta a marca não alcança o `HeroScreen`.
 #[test]

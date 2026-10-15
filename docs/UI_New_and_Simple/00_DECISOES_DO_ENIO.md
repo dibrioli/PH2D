@@ -489,7 +489,7 @@ não um conflito.
 | 1 | barra de ferramentas à esquerda | **flutua sobre a área**, como a barra curta do Quadro (0 px de layout) |
 | 2 | opções da ferramenta | **em cima**, na fila que já existe; embaixo fica como opção de layout para tablet |
 | 3 | layout de teclas | ⭐ *«o mais bem aceito»* ⇒ **Illustrator** — medido: o Inkscape 1.4.4 instalado traz um perfil `adobe-illustrator-cs2.xml` («Adobe Illustrator», estilo CC 2020) e nenhum do Affinity, e a comunidade dele contribuiu outro em 2025 (CC 2024); o Affinity e o Figma copiam o núcleo (`V A P N T I`). Tabela em [`02`](vetor_nova_ui/02_estudo_os_apps_amados.md) §5 |
-| 4 | barra de ações perto da seleção | **ligada**, no desktop **e** no iPad (fixável e desligável continua obrigatório — a armadilha da CTB do Illustrator) |
+| 4 | barra de ações perto da seleção | **ligada**, no desktop **e** no iPad (fixável e desligável continua obrigatório — a armadilha da CTB do Illustrator). ⛔ **15/10 (dono): o desligar SAIU** (o ✕ e *Ver ▸ Selection Actions*) — a barra passou a ser a única casa do Arrange e do Alinhar (2.ª linha); fica o fixar. E ganhou o interruptor da booleana viva, à frente das booleanas |
 | 5 | a Hierarquia | **fica na coluna esquerda** |
 
 ⚠️ A recusa de 31/08 (nenhuma faixa nova de altura) **continua de pé**: os cinco lugares cabem no

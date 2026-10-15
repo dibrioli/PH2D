@@ -402,6 +402,44 @@ fn the_arrange_verbs_ride_the_first_row_and_align_the_second() {
     }
 }
 
+/// ⭐ (dono 15/10) **O interruptor da booleana viva na ④**, à frente das quatro booleanas: com duas
+/// formas; apagado, o clique pede `On`; aceso, pede `Off` — e os dois chegam à porta do painel.
+#[test]
+fn the_live_boolean_switch_rides_in_front_of_the_booleans() {
+    let bars = |sel| {
+        Retrato {
+            sel,
+            ..Retrato::em(DrawMode::Select)
+        }
+        .barras()
+        .0
+    };
+    let live = |b: &ToolBars| {
+        b.actions
+            .iter()
+            .flatten()
+            .find(|x| x.id == p::VECTOR_BOOL_LIVE_ON || x.id == p::VECTOR_BOOL_LIVE_OFF)
+            .map(|x| (x.id, x.on))
+    };
+    assert_eq!(live(&bars(1)), None, "com uma forma não há booleana");
+    for (on, want) in [(false, p::VECTOR_BOOL_LIVE_ON), (true, p::VECTOR_BOOL_LIVE_OFF)] {
+        ph2d_panel_vector::state::set_bool_live_on(on);
+        let b = bars(2);
+        assert_eq!(live(&b), Some((want, on)), "ligada = {on}");
+        let ids = action_ids(&b);
+        let at = ids.iter().position(|&i| i == want).expect("na ④");
+        assert_eq!(ids.get(at + 1), Some(&p::VECTOR_BOOL_UNION), "à frente da Union");
+        let mut host = crate::host_aberto();
+        let out = host
+            .apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(want));
+        assert!(
+            out == EventOutcome::Consumed && !host.drained_actions().is_empty(),
+            "o interruptor pinta na ④ e o painel não o despacha"
+        );
+    }
+    ph2d_panel_vector::state::set_bool_live_on(false);
+}
+
 /// … e o PAINEL já não os pinta (*«tire a seção Arrange do painel»*): com três formas, nenhum
 /// botão do Arrange nem do Alinhar tem rectângulo no corpo — e o cabeçalho do Fill tem (o
 /// controlo que torna o «nenhum» não-vazio).

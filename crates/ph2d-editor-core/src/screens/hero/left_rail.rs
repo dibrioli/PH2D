@@ -184,9 +184,8 @@ pub fn populate(store: &mut WidgetStore) {
         // arma o `active` e o Up nunca emite `Click`. Foi exactamente isso que o gate de gesto
         // apanhou quando ele chegou (`the_dots_open_the_rest_and_a_pick_closes_them`).
         ids::TOOL_BAR_OVERFLOW,
-        // ④ fixar e desligar — pintados pelo `tool_bars`, despachados pelo `chrome::selection_actions`.
+        // ④ fixar — pintado pelo `tool_bars`, despachado pelo `chrome::selection_actions`.
         ids::SELECTION_ACTIONS_PIN,
-        ids::SELECTION_ACTIONS_OFF,
     ]
     .into_iter()
     .chain(crate::interaction::touch::CHIPS) // F5: os modificadores na tela (`touch_mods`)

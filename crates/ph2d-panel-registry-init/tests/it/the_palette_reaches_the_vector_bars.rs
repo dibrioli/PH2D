@@ -125,7 +125,7 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
                     EditorAction::ToolPanelEvent(PanelEvent::SetValue(f, _)) => Some(f) == twin,
                     _ => false,
                 }) || hero.store.picker_target().is_some()
-                    || [ids::SELECTION_ACTIONS_PIN, ids::SELECTION_ACTIONS_OFF].contains(&id)
+                    || id == ids::SELECTION_ACTIONS_PIN
             };
             assert!(
                 chegou,

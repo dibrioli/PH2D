@@ -30,7 +30,6 @@ fn left_handed_moves_the_column_and_the_widget_to_the_right() {
         let col = crate::screens::hero::float_bar::tool_bars::placed(
             &bars(),
             AREA,
-            true,
             false,
             left_handed,
         );
@@ -55,7 +54,7 @@ fn left_handed_moves_the_column_and_the_widget_to_the_right() {
 /// **O widget não tapa a coluna ①** (ela desce até ao fundo num iPad mini).
 #[test]
 fn the_widget_sits_beside_the_column_never_under_it() {
-    let col = crate::screens::hero::float_bar::tool_bars::placed(&bars(), AREA, true, false, false);
+    let col = crate::screens::hero::float_bar::tool_bars::placed(&bars(), AREA, false, false);
     let right = col.iter().map(|(_, r)| r.x + r.w).fold(0.0, f32::max);
     for r in rects(AREA, true, false) {
         assert!(

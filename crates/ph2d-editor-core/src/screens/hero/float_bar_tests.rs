@@ -160,7 +160,7 @@ fn the_action_bar_floats_one_handle_plus_lg_off_the_selection() {
         selection: Some(mid),
         ..ToolBars::default()
     };
-    let all = tool_bars::placed(&bars, a, false, false, false);
+    let all = tool_bars::placed(&bars, a, false, false);
     let bar_bottom = all
         .iter()
         .filter(|(btn, _)| (100..104).contains(&btn.id.0))
@@ -195,7 +195,7 @@ fn the_second_row_of_the_action_bar_sits_under_the_first_centred() {
         ..ToolBars::default()
     };
     for pinned in [false, true] {
-        let all = tool_bars::placed(&bars, a, false, pinned, false);
+        let all = tool_bars::placed(&bars, a, pinned, false);
         let span = |lo: u64, hi: u64| {
             let rs: Vec<Rect> = all
                 .iter()
@@ -209,7 +209,7 @@ fn the_second_row_of_the_action_bar_sits_under_the_first_centred() {
             let y1 = rs.iter().map(|r| r.y + r.h).fold(f32::MIN, f32::max);
             (x0, x1, y0, y1)
         };
-        // A 1.ª linha leva o chrome (fixar · desligar) no fim: os ids dele não são destes.
+        // A 1.ª linha leva o chrome (o fixar) no fim: o id dele não é destes.
         let top = span(100, 109);
         let low = span(200, 206);
         assert!(
@@ -219,10 +219,10 @@ fn the_second_row_of_the_action_bar_sits_under_the_first_centred() {
         );
         let chrome_x1 = all
             .iter()
-            .filter(|(btn, _)| btn.id == crate::ids::SELECTION_ACTIONS_OFF)
+            .filter(|(btn, _)| btn.id == crate::ids::SELECTION_ACTIONS_PIN)
             .map(|(_, r)| r.x + r.w)
             .next()
-            .expect("o ✕ fecha a 1.ª linha");
+            .expect("o fixar fecha a 1.ª linha");
         let centre_top = (top.0 + chrome_x1) / 2.0;
         assert!(
             ((low.0 + low.1) / 2.0 - centre_top).abs() < 1e-3,

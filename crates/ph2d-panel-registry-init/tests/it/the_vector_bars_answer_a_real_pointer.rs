@@ -10,7 +10,8 @@
 
 use bumpalo::Bump;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::interaction::{BarFace, WidgetEvent};
 use ph2d_editor_core::screens::hero::float_bar::tool_bars::placed;
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
 use ph2d_editor_core::screens::hero::{menu_bar, tool_bar};
@@ -85,7 +86,7 @@ fn every_painted_column_and_action_button_answers_a_real_pointer() {
         publica(&mut hero, mode, 2, 0, Some(sel));
         pinta(&mut hero, &mut ts);
         let bars = hero.store.tool_bars().cloned().expect("publicadas");
-        for (b, r) in placed(&bars, hero.last_content, false, false, false) {
+        for (b, r) in placed(&bars, hero.last_content, false, false) {
             if hero.store.is_picker_swatch(b.id) {
                 // A amostra abre o seletor no Down — o despacho genérico da cor.
                 let _ = clica(&mut hero, r);
@@ -111,18 +112,13 @@ fn every_painted_column_and_action_button_answers_a_real_pointer() {
             let chegou = hero.bus.drain().any(
                 |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if i == b.id),
             ) || hero.store.picker_target().is_some()
-                || [
-                    ph2d_editor_core::ids::SELECTION_ACTIONS_PIN,
-                    ph2d_editor_core::ids::SELECTION_ACTIONS_OFF,
-                ]
-                .contains(&b.id);
+                || b.id == ph2d_editor_core::ids::SELECTION_ACTIONS_PIN;
             assert!(
                 chegou,
                 "{mode:?}: «{}» clicou e não chegou à ferramenta",
                 b.label
             );
             hero.store.set_picker_target(None);
-            hero.store.set_selection_actions_off(false);
             hero.store.set_selection_actions_pinned(false);
             medidos += 1;
         }
@@ -130,10 +126,11 @@ fn every_painted_column_and_action_button_answers_a_real_pointer() {
     assert!(medidos >= 17 * 20, "controlo: só {medidos} botões medidos");
 }
 
-/// ⭐ **Fixar e desligar** (D10 decisão 4): fixada, a barra deixa de seguir a seleção e vai ao
-/// topo; desligada, some — e o menu *Ver* religa-a.
+/// ⭐ **Fixar** (D10 decisão 4): fixada, a barra deixa de seguir a seleção e vai ao topo; o 2.º
+/// clique devolve-a à seleção. ⛔ E **nada a esconde** (dono 15/10): ela é a única casa do Arrange e
+/// do Alinhar — nenhum botão dela tem a cara de fechar.
 #[test]
-fn the_action_bar_pins_and_turns_off() {
+fn the_action_bar_pins_and_never_hides() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let mut hero = HeroScreen::new(NodeId(1));
@@ -142,6 +139,12 @@ fn the_action_bar_pins_and_turns_off() {
     let sel = Rect::new(area.x + area.w * 0.4, area.y + area.h * 0.7, 120.0, 90.0);
     publica(&mut hero, DrawMode::Select, 2, 0, Some(sel));
     pinta(&mut hero, &mut ts);
+    let bars = hero.store.tool_bars().cloned().expect("publicadas");
+    let fecha = placed(&bars, area, false, false)
+        .into_iter()
+        .filter(|(b, _)| matches!(b.face, BarFace::Icon(IconId::Close)))
+        .count();
+    assert_eq!(fecha, 0, "a ④ voltou a ter um botão de esconder");
     let pin = hero
         .hit_index
         .rect_for(ph2d_editor_core::ids::SELECTION_ACTIONS_PIN)
@@ -162,29 +165,12 @@ fn the_action_bar_pins_and_turns_off() {
         fixa.y,
         area.y
     );
-    let off = hero
-        .hit_index
-        .rect_for(ph2d_editor_core::ids::SELECTION_ACTIONS_OFF)
-        .expect("o desligar está pintado");
-    for e in clica(&mut hero, off) {
-        hero.apply_event(e);
-    }
-    assert!(hero.store.selection_actions_off());
-    hero.hit_index = Default::default();
-    pinta(&mut hero, &mut ts);
-    assert!(
-        hero.hit_index
-            .rect_for(ph2d_editor_core::ids::SELECTION_ACTIONS_OFF)
-            .is_none(),
-        "desligada e ainda pintada"
-    );
+    // ⚠️ O 2.º clique pelo despacho, e não pelo ponteiro: no mesmo sítio, logo a seguir, o
+    // ponteiro lê-o como DUPLO clique.
     hero.apply_event(WidgetEvent::Click(
-        ph2d_editor_core::ids::MENUBAR_VIEW_SELECTION_ACTIONS,
+        ph2d_editor_core::ids::SELECTION_ACTIONS_PIN,
     ));
-    assert!(
-        !hero.store.selection_actions_off(),
-        "o menu Ver não a religou"
-    );
+    assert!(!hero.store.selection_actions_pinned(), "o 2.º clique não a soltou");
 }
 
 /// Os três tablets (os mesmos do `the_chrome_never_eats_more_of_a_tablet_than_this`).

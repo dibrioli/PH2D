@@ -20,8 +20,8 @@ pub const TOOL_HOME: NodeId = hash_node_id("tool_home");
 pub const TOOL_BAR_OVERFLOW: NodeId = hash_node_id("tool_bar_overflow");
 /// ④ **Fixar** a barra de ações da seleção no topo da área (deixa de seguir a seleção).
 pub const SELECTION_ACTIONS_PIN: NodeId = hash_node_id("selection_actions_pin");
-/// ④ **Desligar** a barra de ações da seleção (*Ver ▸ Selection Actions* religa-a).
-pub const SELECTION_ACTIONS_OFF: NodeId = hash_node_id("selection_actions_off");
+// ⛔ O «desligar» da ④ (o ✕ e *Ver ▸ Selection Actions*) saiu a 15/10 por ordem do dono: a ④ é a
+// única casa do Arrange e do Alinhar, e desligada eles ficavam sem porta.
 /// F5: os botões do widget dos modificadores na tela (segurar = segurar, tocar = travar).
 pub const TOUCH_MOD_SHIFT: NodeId = hash_node_id("touch_mod_shift");
 pub const TOUCH_MOD_ALT: NodeId = hash_node_id("touch_mod_alt");

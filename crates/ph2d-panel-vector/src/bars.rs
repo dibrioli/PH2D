@@ -366,7 +366,22 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
         )]);
     }
     if sel >= 2 {
+        // ⭐ (dono 15/10) A BOOLEANA VIVA à frente das quatro: é o MODO delas (`On` cria um grupo
+        // cujos filhos continuam editáveis). Um interruptor: aceso = ligada, e o id é o do estado
+        // OPOSTO — o clique pede o que ainda não é (a mesma lei dos chips do encaixe).
+        let live = crate::state::bool_live_on();
         out.push(vec![
+            button(
+                if live {
+                    crate::ids::VECTOR_BOOL_LIVE_OFF
+                } else {
+                    crate::ids::VECTOR_BOOL_LIVE_ON
+                },
+                IconId::Link,
+                tr("panel.vector.bar.bool_live").to_owned(),
+                live,
+                BarFamily::Neutral,
+            ),
             b(
                 crate::ids::VECTOR_BOOL_UNION,
                 IconId::BoolUnion,

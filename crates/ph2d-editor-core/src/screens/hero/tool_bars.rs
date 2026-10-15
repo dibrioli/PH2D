@@ -2,9 +2,9 @@
 //! ações junto da seleção: a CARA das [`ToolBars`] que o módulo publica (hoje o Vetor), pela
 //! geometria do [`super`] (o `float_bar`).
 //!
-//! ⚠️ Os ids dos botões são do PAINEL dono — o clique segue pela porta dele. Os únicos ids daqui são
-//! os dois do chrome da ④: **fixar** e **desligar** (D10 decisão 4: ligada por omissão no desktop e
-//! no iPad, com fixar e desligar na MESMA entrega — a armadilha da *Contextual Task Bar*, estudo §4).
+//! ⚠️ Os ids dos botões são do PAINEL dono — o clique segue pela porta dele. O único id daqui é o do
+//! chrome da ④: **fixar** (D10 decisão 4). ⛔ O **desligar** saiu a 15/10 (dono): a ④ passou a ser
+//! a única casa do Arrange e do Alinhar.
 
 use super::{
     column_rects, grid_rects, inner, paint_button, paint_panel, paint_swatch, pinned_strip_rows,
@@ -20,24 +20,15 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
-/// O grupo do chrome que fecha a ④: fixar (aceso quando fixada) e desligar.
+/// O grupo do chrome que fecha a ④: fixar (aceso quando fixada).
 fn chrome_group(pinned: bool) -> Vec<BarButton> {
-    vec![
-        BarButton {
-            id: ids::SELECTION_ACTIONS_PIN,
-            face: BarFace::Icon(IconId::Pin),
-            label: tr("chrome.selection_actions.pin").to_owned(),
-            on: pinned,
-            family: BarFamily::Neutral,
-        },
-        BarButton {
-            id: ids::SELECTION_ACTIONS_OFF,
-            face: BarFace::Icon(IconId::Close),
-            label: tr("chrome.selection_actions.off").to_owned(),
-            on: false,
-            family: BarFamily::Neutral,
-        },
-    ]
+    vec![BarButton {
+        id: ids::SELECTION_ACTIONS_PIN,
+        face: BarFace::Icon(IconId::Pin),
+        label: tr("chrome.selection_actions.pin").to_owned(),
+        on: pinned,
+        family: BarFamily::Neutral,
+    }]
 }
 
 /// ⭐ **Onde cai cada botão neste quadro** — a porta que o pintor e os gates perguntam.
@@ -51,7 +42,6 @@ fn chrome_group(pinned: bool) -> Vec<BarButton> {
 pub fn placed(
     bars: &ToolBars,
     area: Rect,
-    actions_off: bool,
     pinned: bool,
     left_handed: bool,
 ) -> Vec<(BarButton, Rect)> {
@@ -83,8 +73,8 @@ pub fn placed(
         .iter()
         .chain(&bars.actions_below)
         .any(|g| !g.is_empty());
-    if has_actions && !actions_off && (pinned || bars.selection.is_some()) {
-        // O chrome (fixar · desligar) fecha a 1.ª linha; a 2.ª vem por baixo dela.
+    if has_actions && (pinned || bars.selection.is_some()) {
+        // O chrome (fixar) fecha a 1.ª linha; a 2.ª vem por baixo dela.
         let mut groups = bars.actions.clone();
         groups.push(chrome_group(pinned));
         let sizes: Vec<usize> = groups.iter().map(Vec::len).collect();
@@ -121,9 +111,8 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene) {
         return;
     };
     let theme = hero.theme;
-    let off = hero.store.selection_actions_off();
     let pinned = hero.store.selection_actions_pinned();
-    let all = placed(&bars, area, off, pinned, hero.view.ui_mirrored);
+    let all = placed(&bars, area, pinned, hero.view.ui_mirrored);
     // Os fundos primeiro, por bloco (a coluna, o flyout, a ④): cada um é um painel.
     for b in blocks(&bars, all.len()) {
         if b.start < b.end && b.end <= all.len() {

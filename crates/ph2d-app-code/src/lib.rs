@@ -15,6 +15,7 @@ mod doc;
 mod docs;
 mod edit;
 mod find;
+mod folds;
 mod frame;
 mod keys;
 pub mod list;

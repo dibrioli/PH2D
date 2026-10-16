@@ -7,6 +7,7 @@ mod abrir;
 mod bancada;
 mod busca;
 mod console;
+mod dobras;
 mod lista;
 mod onda1;
 mod oraculo_lsp;

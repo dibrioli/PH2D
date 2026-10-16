@@ -6,7 +6,8 @@ use ph2d_panel_code::{Badge, Problem, Severity, StatusLine, Tone};
 
 fn status(buf: &Buffer, d: &Deco) -> StatusLine {
     let mut f = |r: std::ops::Range<usize>| spans_de(buf, r);
-    StatusLine::of(&frame(buf, d, &mut f))
+    let mut m = crate::marcas(d);
+    StatusLine::of(&frame(buf, d, &mut f, &mut m))
 }
 
 fn p(severity: Severity) -> Problem {

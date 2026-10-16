@@ -613,9 +613,13 @@ struct Gramatica {
     linhas: usize,
     buf: Buffer,
     syn: Syntax,
+    /// A mesma gramática com a comparação de estrutura armada (a aba com dobras fechadas).
+    armada: Syntax,
     k: usize,
     reparse: Vec<f64>,
+    estrutura: Vec<f64>,
     dobras: Vec<f64>,
+    vista: Vec<f64>,
     erros: Vec<f64>,
     realce: Vec<f64>,
 }
@@ -628,13 +632,18 @@ impl Gramatica {
         let at = buf.text().line_end(alvo);
         buf.set_selection(Selection::single(Cursor::cursor(at)));
         let syn = Syntax::new(buf.text());
+        let mut armada = Syntax::new(buf.text());
+        armada.arm_changes();
         Self {
             linhas,
             buf,
             syn,
+            armada,
             k: 0,
             reparse: Vec::new(),
+            estrutura: Vec::new(),
             dobras: Vec::new(),
+            vista: Vec::new(),
             erros: Vec::new(),
             realce: Vec::new(),
         }
@@ -646,6 +655,10 @@ impl Gramatica {
         let t = Instant::now();
         self.syn.edit(&edits, self.buf.text());
         self.reparse.push(ms(t));
+        self.armada.edit(&edits, self.buf.text());
+        let t = Instant::now();
+        black_box(self.armada.changed_since_mark());
+        self.estrutura.push(ms(t));
         let t = Instant::now();
         black_box(self.syn.folds(self.buf.text()));
         self.dobras.push(ms(t));
@@ -663,11 +676,16 @@ impl Gramatica {
         let t = Instant::now();
         black_box(self.syn.highlights(self.buf.text(), r));
         self.realce.push(ms(t));
+        // As dobras que a pintura pede agora: só as das mesmas 100 linhas.
+        let t = Instant::now();
+        black_box(self.syn.folds_in(self.buf.text(), a..b + 1));
+        self.vista.push(ms(t));
         self.k += 1;
         if self.k == LETRAS.len() {
             for _ in 0..LETRAS.len() {
                 let e = self.buf.delete_backward();
                 self.syn.edit(&e, self.buf.text());
+                self.armada.edit(&e, self.buf.text());
             }
             self.k = 0;
         }
@@ -796,15 +814,17 @@ fn tecla_pixel() {
         gram[0].reparse.len()
     );
     println!(
-        "| documento | reparse incremental | dobras (`folds`) | erros | realce de 100 linhas |"
+        "| documento | reparse incremental | estrutura mudada (`changed_ranges`, só com dobras fechadas) | dobras do ficheiro (`folds`, só o Fold All) | dobras de 100 linhas (`folds_in`, a pintura) | erros | realce de 100 linhas |"
     );
-    println!("|---|---|---|---|---|");
+    println!("|---|---|---|---|---|---|---|");
     for g in &gram {
         println!(
-            "| {} linhas | {} | {} | {} | {} |",
+            "| {} linhas | {} | {} | {} | {} | {} | {} |",
             g.linhas,
             resumo(&g.reparse),
+            resumo(&g.estrutura),
             resumo(&g.dobras),
+            resumo(&g.vista),
             resumo(&g.erros),
             resumo(&g.realce)
         );

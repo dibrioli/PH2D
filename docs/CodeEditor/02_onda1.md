@@ -90,6 +90,8 @@ lê. Controlo da régua em cada célula: antes da tecla, zero píxeis com tinta 
 
 Cada célula: **mínimo / p50 / p99 / p99.9** em ms; as fases são p50.
 
+**ANTES** da cura das dobras (`3bd0ba3a55`, `loadavg` 5–8):
+
 | cena · documento · vista | linhas pintadas | 1.º quadro | **tecla→pixel** | tecla (buffer + AutoEdit + reparse + dobras) | quadro da família (+ passo da cena) | paint | placa + leitura | a11y por tecla | paint sem mudança |
 |---|---|---|---|---|---|---|---|---|---|
 | parada · 51 · ~43 | 43 | 15.7 | 1.15 / 1.41 / 3.79 / 4.89 | 0.128 | 0.003 | 0.474 | 0.757 | 0.07 / 0.08 / 0.23 / 0.27 | 0.36 / 0.40 / 1.11 / 1.36 |
@@ -101,6 +103,25 @@ Cada célula: **mínimo / p50 / p99 / p99.9** em ms; as fases são p50.
 | parada · 7 500 · 100 | 100 | 9.7 | 7.28 / 9.97 / 18.28 / 21.76 | **7.405** | 0.010 | 1.159 | 1.348 | 0.14 / 0.20 / 0.43 / 0.49 | 0.78 / 0.92 / 1.89 / 2.09 |
 | a tocar · 7 500 · 100 | 100 | 13.3 | 7.31 / 10.42 / 22.93 / 23.30 | **7.688** | 0.116 | 1.170 | 1.369 | 0.14 / 0.20 / 0.52 / 0.59 | 0.79 / 0.93 / 2.15 / 2.45 |
 
+**DEPOIS** da cura (15/10, mesma sonda, rodada de `16.1 s`; `loadavg` início `6.11 4.46 14.82` · fim
+`5.89 4.53 14.62`). A fase «tecla» é buffer + `AutoEdit` + reparse + as dobras FECHADAS (as da vista
+passaram para a pintura):
+
+| cena · documento · vista | linhas pintadas | 1.º quadro | **tecla→pixel** | tecla | quadro da família (+ passo da cena) | paint | placa + leitura | a11y por tecla | paint sem mudança |
+|---|---|---|---|---|---|---|---|---|---|
+| parada · 51 · ~43 | 43 | 16.4 | 1.12 / 1.30 / 2.75 / 4.13 | 0.052 | 0.002 | 0.505 | 0.706 | 0.07 / 0.08 / 0.16 / 0.18 | 0.39 / 0.45 / 0.98 / 1.10 |
+| a tocar · 51 · ~43 | 43 | 2.6 | 1.12 / 1.29 / 1.88 / 2.94 | 0.050 | 0.027 | 0.491 | 0.690 | 0.06 / 0.08 / 0.16 / 0.18 | 0.40 / 0.44 / 0.92 / 0.94 |
+| parada · 7 500 · ~43 | 43 | 3.3 | 1.49 / 1.74 / 2.68 / 3.45 | **0.471** | 0.003 | 0.461 | 0.731 | 0.07 / 0.08 / 0.16 / 0.22 | 0.36 / 0.39 / 0.61 / 0.62 |
+| a tocar · 7 500 · ~43 | 43 | 3.1 | 1.54 / **1.77** / 2.81 / **3.05** | **0.482** | 0.057 | 0.464 | 0.724 | 0.07 / 0.08 / 0.13 / 0.15 | 0.37 / 0.40 / 0.63 / 0.91 |
+| parada · 51 · 100 | 52 | 4.2 | 1.26 / 1.47 / 2.17 / 3.40 | 0.051 | 0.003 | 0.573 | 0.798 | 0.07 / 0.09 / 0.17 / 0.18 | 0.47 / 0.52 / 0.79 / 0.81 |
+| a tocar · 51 · 100 | 52 | 2.8 | 1.27 / 1.44 / 2.25 / 2.92 | 0.051 | 0.027 | 0.567 | 0.786 | 0.08 / 0.08 / 0.14 / 0.14 | 0.47 / 0.51 / 0.81 / 1.06 |
+| parada · 7 500 · 100 | 100 | 3.7 | 2.13 / 2.51 / 3.99 / 4.27 | **0.516** | 0.003 | 0.854 | 1.075 | 0.14 / 0.15 / 0.33 / 0.47 | 0.72 / 0.78 / 1.25 / 1.36 |
+| a tocar · 7 500 · 100 | 100 | 4.8 | 2.20 / **2.75** / 4.26 / **4.50** | **0.576** | 0.061 | 0.885 | 1.072 | 0.14 / 0.15 / 0.30 / 0.34 | 0.73 / 0.81 / 1.21 / 1.27 |
+
+Duas rodadas a mais da mesma árvore, para ver o ruído. Uma a `load 9` dá a tocar · 7 500: `2.02` ms de p50 a
+~43 linhas e `2.81` a 100 linhas. A outra, a `load 0.85`, ainda tinha o `changed_ranges` em cada tecla (ver
+abaixo) e dá `1.93` e `2.67`. O mínimo varia pouco entre as três.
+
 Ctrl+S → selo «Reloaded · 3 objects» (cena a tocar; Ctrl+S → `frame` → `scene_sync` + passo → `frame`, até o
 `drain_reloads` dar `Reloaded` com N = 3; fora: a gravação do `.ph2dproj` em disco, que é da shell):
 
@@ -109,29 +130,66 @@ Ctrl+S → selo «Reloaded · 3 objects» (cena a tocar; Ctrl+S → `frame` → 
 | 51 linhas | 0.04 / 0.05 / 0.14 / 0.26 | 0.04 / 0.05 / 0.13 / 0.23 |
 | 7 500 linhas | 2.60 / 3.07 / 6.46 / 12.09 | 2.56 / 2.95 / 5.76 / 11.59 |
 
-A gramática por tecla, à parte (um `Buffer` + `Syntax` por tamanho, a mesma escrita):
+A gramática por tecla, à parte (um `Buffer` + `Syntax` por tamanho, a mesma escrita). **ANTES:**
 
 | documento | reparse incremental | dobras (`Syntax::folds`) | erros | realce de 100 linhas |
 |---|---|---|---|---|
 | 51 linhas | 0.02 / 0.02 / 0.10 / 0.18 | 0.05 / 0.05 / 0.12 / 0.15 | 0.00 / 0.00 / 0.00 / 0.00 | 0.22 / 0.23 / 0.42 / 0.45 |
 | 7 500 linhas | 0.37 / 0.58 / 3.34 / 4.17 | **4.95 / 6.46 / 13.75 / 14.57** | 0.00 / 0.00 / 0.00 / 0.00 | 0.37 / 0.42 / 0.86 / 2.05 |
 
+**DEPOIS** (a mesma rodada da tabela DEPOIS acima). A tecla já não paga o `folds`, que só o «Fold All» chama;
+paga as dobras da vista (`folds_in`, na pintura) e, só com dobras fechadas, o `changed_ranges`:
+
+| documento | reparse incremental | estrutura mudada (`changed_ranges`, só com dobras fechadas) | dobras do ficheiro (`folds`, só o Fold All) | dobras de 100 linhas (`folds_in`, a pintura) | erros | realce de 100 linhas |
+|---|---|---|---|---|---|---|
+| 51 linhas | 0.02 / 0.02 / 0.08 / 0.10 | 0.01 / 0.01 / 0.03 / 0.03 | 0.05 / 0.05 / 0.13 / 0.14 | 0.05 / 0.05 / 0.09 / 0.09 | 0.00 / 0.00 / 0.00 / 0.00 | 0.22 / 0.23 / 0.41 / 0.48 |
+| 7 500 linhas | 0.37 / 0.42 / 1.19 / 2.24 | 0.34 / 0.36 / 0.60 / 0.72 | 4.91 / 5.37 / 8.72 / 9.25 | **0.07 / 0.07 / 0.14 / 0.15** | 0.00 / 0.00 / 0.00 / 0.00 | 0.37 / 0.39 / 0.63 / 0.63 |
+
+**De quem é o reparse que cresce?** Mediu-se o MESMO reparse com as teclas intercaladas
+(`ph2d-code-syntax` `cronometro::reparse_rope_contra_str`, `smoke`, `loadavg 13.11`, 400 teclas). Uma coluna
+é o nosso `Syntax::edit`, que lê a rope por pedaços. A outra é o tree-sitter sozinho sobre um `&str`
+contíguo:
+
+| documento | `Syntax::edit` (rope por pedaços) | tree-sitter sobre `&str` |
+|---|---|---|
+| 51 linhas | 0.016 / 0.018 / 0.032 / 0.043 | 0.015 / 0.017 / 0.029 / 0.036 |
+| 7 500 linhas, as `ph2d.property` de cada cópia vivas | 2.007 / 2.130 / 4.418 / 4.645 | 1.926 / 2.044 / 4.202 / 4.630 |
+| 7 500 linhas, as da 2.ª cópia em diante comentadas (o texto da bancada) | 0.376 / 0.380 / 0.399 / 1.110 | 0.372 / 0.378 / 0.410 / 0.969 |
+| 7 500 linhas, um bloco aberto no fim (texto com ERROR) | 1.959 / 2.099 / 3.933 / 4.183 | 1.881 / 2.027 / 4.143 / 4.494 |
+
+**O reparse que cresce é do tree-sitter, não nosso.** A leitura da rope custa ≤ 4 % a mais. O custo depende
+do CONTEÚDO, não só do tamanho: com as ~1 000 chamadas `ph2d.property(…)` de topo vivas, o reparse por tecla
+sobe de `0.38` para `2.1` ms de p50; com um bloco aberto no fim, também.
+
 O «1.º quadro» é UMA amostra fria: o layout de cada linha e os glifos novos para o Vello. A cauda varia com a
 carga, e o primeiro uso da placa no processo (`15.7`) é o maior.
 
-**⛔ Defeito achado (aberto): uma tecla custa O(ficheiro) nas dobras.** `CodeDoc::derive`
-(`crates/ph2d-app-code/src/doc.rs:125`) corre `Syntax::folds` (`crates/ph2d-code-syntax/src/fold.rs:15-18`:
-a query `folds.scm` sobre a árvore INTEIRA) a cada revisão. A tecla chama-o pelo `reveal` → `unfold_cursor`
-(`keys.rs:98` → `doc.rs:233`), e a pintura chamá-lo-ia pelo `fold_marks`/`problems` se a tecla não o tivesse
-feito. A medição separa a causa: a fase «tecla» passa de `0.13` ms (51) para `7.4–7.9` ms (7 500), e as dobras
-sozinhas custam `6.46` ms de p50 (`14.6` no p99.9) a 7 500 linhas contra `0.05` a 51. O reparse incremental
-(`0.58`) e o resto da tecla (`~0.4`) fecham a conta. Ficou por corrigir: a cura atravessa três crates (dobras
-incrementais pelo `changed_ranges` da árvore, ou só as da vista mais as fechadas), por isso não é local.
-**Crescimentos menores, dentro do orçamento:**
+**✅ Defeito achado e corrigido (15/10): uma tecla custava O(ficheiro) nas dobras.** ANTES, `CodeDoc::derive`
+corria `Syntax::folds` em cada revisão: a query `folds.scm` sobre a árvore INTEIRA. A tecla chamava-o pelo
+`reveal` → `unfold_cursor`. A fase «tecla» ia de `0.13` ms (51 linhas) a `7.4–7.9` ms (7 500), e só as dobras
+custavam `6.46` ms de p50 a 7 500 contra `0.05` a 51. **A cura:**
 
-- o reparse incremental, `0.02` → `0.58` ms de p50 (×29 para ×147 de ficheiro);
-- o `paint` na mesma vista de 43 linhas, `0.47` → `0.75` ms. Hipótese não medida à parte: o `fold_marks`
-  percorre todas as dobras do ficheiro a cada quadro.
+- **As dobras da vista** (`Syntax::folds_in`: a query com `set_point_range`, só pelos nós que tocam a faixa).
+  A pintura pede-as por bloco contíguo de linhas visíveis (`CodeFrame::folds` é agora um pedido por faixa),
+  e o `fold_marks` deixou de percorrer o ficheiro. A 7 500 linhas custam `0.07` ms para 100 linhas.
+- **As dobras FECHADAS são estado do documento** (`ph2d-app-code` `folds.rs`). Guardam o byte do cabeçalho
+  e o da última linha escondida, que as edições movem. Só se re-conferem (`Syntax::fold_at`, uma linha) as
+  fechadas que a edição tocou ou cuja estrutura o tree-sitter diz que mudou (`changed_ranges`). Uma fechada
+  sem estrutura abre-se. O `unfold_cursor` só olha as fechadas, e o «Fold All» é a única pergunta pelo
+  ficheiro inteiro.
+- **O `changed_ranges` custa O(ficheiro):** `0.36` ms de p50 a 7 500 linhas, medido na tabela acima. Na 1.ª
+  versão da cura corria em cada tecla, e a fase «tecla» ficava em `0.73` ms. Agora só se arma enquanto
+  há dobras fechadas: sem nenhuma, a tecla não o paga (`0.47–0.58` ms).
+- **A suspeita do `paint`** confirmou-se: na mesma vista de 43 linhas a 7 500 o paint caiu de `0.75–0.80` ms
+  para `0.46` ms, o mesmo que a 51 linhas (`0.49–0.51`).
+- **Gate de custo, sem relógio:** `dobras::o_trabalho_das_dobras_por_tecla_nao_cresce_com_o_ficheiro`
+  (`ph2d-app-code`). Conta as capturas da query das dobras (`fold_captures_visited`) por tecla mais o
+  quadro pintado, com a MESMA vista de 35 linhas. Hoje dá `40` a 53 linhas e `41` a 7 500. Com o custo
+  antigo reposto (a query inteira em cada revisão) dá `90` contra `7 126`, e o gate fica vermelho.
+
+**O que ainda cresce com o ficheiro:** o **reparse incremental do tree-sitter**, de `0.02` para `0.42` ms
+de p50 (51 → 7 500, ×21). Não é nosso (tabela rope × `&str` acima). Mais nada da tecla cresce: a tecla a 7 500
+(`0.47–0.58`) é o reparse mais os `0.05` ms de 51 linhas.
 
 **O que a tabela decide (orçamentos da Onda 1):**
 
@@ -141,7 +199,17 @@ incrementais pelo `changed_ranges` da árvore, ou só as da vista mais as fechad
    - a tecla `≤ 0.2` ms (medido `0.13–0.16`);
    - o paint `≤ 1.2` ms a 100 linhas (`0.56–1.17`);
    - a placa com a leitura `≤ 1.4` ms (`0.71–1.37`).
-   ⛔ Hoje a 7 500 linhas o orçamento **estoura** (p50 `9.5–10.4`, p99.9 `20.4–23.3`) pelo defeito das dobras.
+   ANTES, a 7 500 linhas o orçamento **estourava** (p50 `9.5–10.4`, p99.9 `20.4–23.3`) pelo defeito das dobras.
+   **DEPOIS (15/10, cena a tocar, 7 500 linhas):**
+   - **Vista de ~43 linhas: PASSA.** p50 `1.77`, p99.9 `3.05` a `load 6` (`2.02` / `3.67` a `load 9`).
+   - **Vista de 100 linhas: o p99.9 PASSA e o p50 REPROVA.** p99.9 `4.50`; p50 `2.75` (`2.81` a `load 9`,
+     `2.67` a `load 0.85`, ainda com o `changed_ranges`).
+
+   O que passa dos 2 ms a 100 linhas é sobretudo a pintura e a placa de 100 linhas pintadas: `0.885` +
+   `1.072` = `1.96` ms, cada uma dentro do seu sub-orçamento (`≤ 1.2` e `≤ 1.4`). Isto não depende do tamanho
+   do ficheiro. Por cima vem o reparse do tree-sitter (`0.42`). A soma dos três sub-orçamentos
+   (`0.2 + 1.2 + 1.4 = 2.8`) já passa dos 2 ms de p50. A tecla (`0.48–0.58` ms) passa do seu (`≤ 0.2`) só pelo
+   reparse do tree-sitter.
 2. **Por quadro sem tecla:** paint `≤ 1` ms de p50 a 100 linhas (`0.40–0.93`); a árvore a11y `≤ 0.2` ms de
    p50 (`0.08–0.20`); reparse `≤ 1` ms de p50 e realce das 100 linhas `≤ 0.5` ms (`0.58` e `0.42` a 7 500).
 3. **Ao salvar: Ctrl+S → selo dentro de UM quadro a 60 Hz** (`16.7` ms) até 7 500 linhas. Medido: `0.05` ms de
@@ -153,12 +221,25 @@ incrementais pelo `changed_ranges` da árvore, ou só as da vista mais as fechad
 **Critério de morte: NÃO disparou — fica a cache por linha, sem atlas de glifos.** Com 100 linhas visíveis e a
 cena a tocar, o paint custa `0.56` ms (51) / `1.17` ms (7 500) de p50. Com a placa e a leitura (`0.84` / `1.37`)
 fica abaixo de `2.6` ms, um terço do quadro a 120 Hz. O pior p99.9 do paint sem mudança é `2.45` ms. O que
-estoura o quadro a 7 500 linhas são as dobras, não a pintura.
+estourava o quadro a 7 500 linhas eram as dobras, não a pintura. Depois da cura o paint de 100 linhas a 7 500
+custa `0.885` ms.
 
-**Regra de Fatin (51 × 7 500): REPROVADA hoje.** A latência cresce com o tamanho do ficheiro: ×7 no p50 e ×5 no
-p99.9, e a cena a tocar quase não pesa (`+0.1` ms). A causa medida é o defeito acima. O aceite da onda
-(«uma edição num ficheiro de 7 500 linhas não piora a latência») só passa quando as dobras deixarem de ser
-O(ficheiro) por tecla. A re-medição é esta mesma sonda.
+**Regra de Fatin (51 × 7 500).** ANTES: **REPROVADA**. A latência crescia com o ficheiro, ×7 no p50 e ×5
+no p99.9, pelas dobras O(ficheiro). **DEPOIS: o defeito saiu, mas a regra estrita ainda não passa.** O
+único par que pinta o mesmo número de linhas é a vista de ~43 linhas (o `bob.luau` só tem 52 linhas, logo a
+vista de 100 a 51 pinta 52). Nele, com a cena a tocar:
+
+- p50: `1.29` → `1.77` ms (`+0.48`, ×1.4; antes `+8.7`, ×7);
+- p99.9: `2.94` → `3.05` ms (antes ×4.4).
+
+O que sobra de crescimento é todo o reparse incremental do tree-sitter (`0.02` → `0.42` ms). O resto da
+tecla, a pintura, a placa e a a11y ficaram iguais entre 51 e 7 500. O aceite («uma edição num ficheiro de
+7 500 linhas não piora a latência») passa dentro do orçamento, mas não ao pé da letra.
+
+**A próxima fase que cresce com o ficheiro é o reparse do tree-sitter**: `0.42` ms de p50 no texto da
+bancada, e `2.1` ms com as ~1 000 `ph2d.property` de topo vivas. Ainda não se mediu porque é que as
+chamadas de topo o encarecem, e esse é o primeiro passo. Só depois se escolhe a cura: tirar o reparse da
+tecla, ou o que essa medição apontar.
 
 ## Fica para a Onda 2 (com o porquê)
 

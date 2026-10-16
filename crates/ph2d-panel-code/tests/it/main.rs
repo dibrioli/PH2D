@@ -78,12 +78,23 @@ pub fn ts() -> TextSystem {
     TextSystem::without_system_fonts()
 }
 
-pub fn frame<'a>(buf: &'a Buffer, d: &'a Deco, spans: &'a mut dyn FnMut(Range<usize>) -> Vec<(Range<usize>, Ink)>) -> CodeFrame<'a> {
+/// As dobras de `d` que começam nas linhas pedidas (o que a família responde à pintura).
+pub fn marcas(d: &Deco) -> impl FnMut(Range<usize>) -> Vec<FoldMark> + '_ {
+    |lines| d.folds.iter().filter(|f| lines.contains(&f.start)).copied().collect()
+}
+
+pub fn frame<'a>(
+    buf: &'a Buffer,
+    d: &'a Deco,
+    spans: &'a mut dyn FnMut(Range<usize>) -> Vec<(Range<usize>, Ink)>,
+    folds: &'a mut dyn FnMut(Range<usize>) -> Vec<FoldMark>,
+) -> CodeFrame<'a> {
     CodeFrame {
         buffer: buf,
         spans,
         problems: &d.problems,
-        folds: &d.folds,
+        folds,
+        closed: &d.folds,
         bracket: d.bracket,
         matches: &d.matches,
         current_match: d.current,
@@ -102,7 +113,8 @@ pub fn pinta(v: &mut CodeView, buf: &Buffer, ts: &mut TextSystem, area: Rect, d:
 
 pub fn pinta_em(v: &mut CodeView, buf: &Buffer, ts: &mut TextSystem, area: Rect, d: &Deco, scene: &mut VectorScene) {
     let mut f = |r: Range<usize>| spans_de(buf, r);
-    v.paint(frame(buf, d, &mut f), area, scene, ts, &Theme::default());
+    let mut m = marcas(d);
+    v.paint(frame(buf, d, &mut f, &mut m), area, scene, ts, &Theme::default());
 }
 
 /// A área onde cabem exatamente `rows` linhas de texto (mede-se com uma pintura de aquecimento).

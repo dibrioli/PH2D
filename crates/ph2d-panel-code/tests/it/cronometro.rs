@@ -37,7 +37,10 @@ fn pintar_cem_linhas() {
                 vf.clear_cache();
                 pinta_em(&mut vf, &buf, &mut ts, area, &d, &mut scene);
             }
-            _ => vs.paint(frame(&buf, &d, &mut nada), area, &mut scene, &mut ts, &Theme::default()),
+            _ => {
+                let mut m = crate::marcas(&d);
+                vs.paint(frame(&buf, &d, &mut nada, &mut m), area, &mut scene, &mut ts, &Theme::default());
+            }
         }
         let us = t.elapsed().as_secs_f64() * 1e6;
         if i >= 30 {

@@ -14,6 +14,9 @@ use tree_sitter::{InputEdit, Parser, Tree};
 pub struct Syntax {
     parser: Parser,
     tree: Tree,
+    /// A árvore da última [`Syntax::changed_since_mark`], editada junto (as faixas mudadas
+    /// saem da comparação dela com a de agora). `None` = ninguém pediu.
+    mark: Option<Tree>,
 }
 
 fn ts_point(p: Point) -> tree_sitter::Point {
@@ -51,7 +54,11 @@ impl Syntax {
             "ABI da gramática Luau fora da faixa do tree-sitter (teste `abi_da_gramatica`)",
         );
         let tree = parse(&mut parser, text, None);
-        Self { parser, tree }
+        Self {
+            parser,
+            tree,
+            mark: None,
+        }
     }
 
     /// Aplica as edições à árvore (na ordem dada: a do `Buffer`, do fim para o início) e reparse
@@ -61,16 +68,45 @@ impl Syntax {
             return;
         }
         for e in edits {
-            self.tree.edit(&InputEdit {
+            let ie = InputEdit {
                 start_byte: e.start_byte,
                 old_end_byte: e.old_end_byte,
                 new_end_byte: e.new_end_byte,
                 start_position: ts_point(e.start),
                 old_end_position: ts_point(e.old_end),
                 new_end_position: ts_point(e.new_end),
-            });
+            };
+            self.tree.edit(&ie);
+            if let Some(m) = &mut self.mark {
+                m.edit(&ie);
+            }
         }
         self.tree = parse(&mut self.parser, text_after, Some(&self.tree));
+    }
+
+    /// Marca a árvore de agora (se ainda não há marca): daqui em diante as edições levam-na junto.
+    pub fn arm_changes(&mut self) {
+        if self.mark.is_none() {
+            self.mark = Some(self.tree.clone());
+        }
+    }
+
+    /// Esquece a marca: as edições deixam de a levar e ninguém paga a comparação.
+    pub fn disarm_changes(&mut self) {
+        self.mark = None;
+    }
+
+    /// As faixas de bytes (do texto de agora) cuja estrutura mudou desde a marca, e marca a árvore
+    /// de agora para a seguinte. Sem marca só marca (`None`). Custa a comparação das duas árvores
+    /// (`changed_ranges`): só se arma quando alguém precisa.
+    pub fn changed_since_mark(&mut self) -> Option<Vec<std::ops::Range<usize>>> {
+        let out = self.mark.as_ref().map(|m| {
+            m.changed_ranges(&self.tree)
+                .map(|r| r.start_byte..r.end_byte)
+                .collect()
+        });
+        self.mark = Some(self.tree.clone());
+        out
     }
 
     pub fn tree(&self) -> &Tree {

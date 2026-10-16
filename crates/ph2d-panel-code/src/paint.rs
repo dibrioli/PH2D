@@ -60,7 +60,7 @@ impl CodeView {
             self.digits = d;
         }
         self.area = area;
-        self.set_folds(frame.folds, self.line_count);
+        self.set_hidden(frame.closed, self.line_count);
         self.clamp_scroll();
     }
 
@@ -72,6 +72,7 @@ impl CodeView {
         let pre = frame.preedit.map(|s| (buffer.selection().primary().head, s));
         let mut rows = std::mem::take(&mut self.rows);
         rows.clear();
+        self.folds.clear();
         let mut r = span.start;
         while r < span.end {
             let first = self.line_of_row(r);
@@ -79,6 +80,7 @@ impl CodeView {
             while r + n < span.end && self.line_of_row(r + n) == first + n {
                 n += 1;
             }
+            self.folds.extend((frame.folds)(first..first + n));
             let mut spans = (frame.spans)(t.byte_of_line(first)..t.line_end(first + n - 1));
             spans.sort_by_key(|s| s.0.start);
             let mut k = 0;

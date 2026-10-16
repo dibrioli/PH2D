@@ -3,9 +3,10 @@
 
 use crate::docs::SaveKind;
 use crate::find::FindState;
+use crate::folds::ClosedFolds;
 use crate::problems::{ink_of, problems};
 use ph2d_code_buffer::{Buffer, TextEdit};
-use ph2d_code_syntax::{AutoEdit, Fold, IndentStyle, Syntax, SyntaxError};
+use ph2d_code_syntax::{AutoEdit, IndentStyle, Syntax, SyntaxError};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_code::{
     Badge, CodeFrame, CodeView, ConsoleView, FindBarView, FoldMark, Ink, Problem,
@@ -25,7 +26,6 @@ pub(crate) const INDENT: IndentStyle = IndentStyle::Spaces(2);
 #[derive(Default)]
 struct Derived {
     revision: Option<u64>,
-    folds: Vec<Fold>,
     errors: Vec<SyntaxError>,
 }
 
@@ -38,8 +38,8 @@ pub(crate) struct CodeDoc {
     pub syntax: Syntax,
     pub auto: AutoEdit,
     pub view: CodeView,
-    /// O byte do início de cada linha com a dobra FECHADA (segue o texto pelas edições).
-    pub folded: Vec<usize>,
+    /// As dobras FECHADAS (seguem o texto pelas edições).
+    pub(crate) folds: ClosedFolds,
     pub find: FindState,
     pub find_view: FindBarView,
     pub console_view: ConsoleView,
@@ -74,7 +74,7 @@ impl CodeDoc {
             syntax,
             auto: AutoEdit::new(INDENT),
             view: CodeView::new(),
-            folded: Vec::new(),
+            folds: ClosedFolds::default(),
             find: FindState::default(),
             find_view: FindBarView::default(),
             console_view: ConsoleView::default(),
@@ -99,21 +99,12 @@ impl CodeDoc {
         if syntax_too {
             self.syntax.edit(edits, self.buffer.text());
         }
-        for b in self
-            .folded
-            .iter_mut()
-            .chain(self.diag_anchor.iter_mut().map(|a| &mut a.0))
-        {
+        if let Some(a) = &mut self.diag_anchor {
             for e in edits {
-                *b = map_byte(*b, e);
+                a.0 = map_byte(a.0, e);
             }
         }
-        let t = self.buffer.text();
-        for b in &mut self.folded {
-            *b = t.byte_of_line(t.line_of_byte(*b));
-        }
-        self.folded.sort_unstable();
-        self.folded.dedup();
+        self.folds.edited(edits, self.buffer.text());
     }
 
     fn derive(&mut self) {
@@ -121,17 +112,9 @@ impl CodeDoc {
         if self.derived.revision == Some(rev) {
             return;
         }
-        let t = self.buffer.text();
-        self.derived.folds = self.syntax.folds(t);
         self.derived.errors = self.syntax.errors();
         self.derived.revision = Some(rev);
-        let starts: Vec<usize> = self
-            .derived
-            .folds
-            .iter()
-            .map(|f| t.byte_of_line(f.start_line))
-            .collect();
-        self.folded.retain(|b| starts.contains(b));
+        self.folds.check(&mut self.syntax, self.buffer.text());
     }
 
     /// Os problemas desta revisão (E7). O diagnóstico do texto salvo mostra-se na linha onde o seu
@@ -166,27 +149,20 @@ impl CodeDoc {
         self.saved_diag = diag;
     }
 
-    /// Dobra (ou desdobra) todas as dobras do texto.
+    /// Dobra (ou desdobra) todas as dobras do texto (a única pergunta pelo ficheiro inteiro).
     pub fn fold_all(&mut self, fold: bool) {
         self.derive();
-        self.folded = if fold {
-            let t = self.buffer.text();
-            self.derived
-                .folds
-                .iter()
-                .map(|f| t.byte_of_line(f.start_line))
-                .collect()
+        let t = self.buffer.text();
+        let all = if fold {
+            self.syntax.folds(t)
         } else {
             Vec::new()
         };
-        self.folded.sort_unstable();
-        self.folded.dedup();
+        self.folds.set_all(&all, t);
+        self.folds.arm(&mut self.syntax);
         // O cursor escondido sobe para o cabeçalho da dobra de fora (o idioma do VS Code).
-        let t = self.buffer.text();
         let line = t.line_of_byte(self.buffer.selection().primary().head);
-        let outer = self
-            .derived
-            .folds
+        let outer = all
             .iter()
             .filter(|f| fold && f.start_line < line && line <= f.end_line)
             .map(|f| f.start_line)
@@ -200,48 +176,31 @@ impl CodeDoc {
         }
     }
 
-    pub fn fold_marks(&mut self) -> Vec<FoldMark> {
-        self.derive();
-        let t = self.buffer.text();
-        self.derived
-            .folds
+    /// As dobras fechadas, em linhas (os testes lêem-nas).
+    pub fn closed_folds(&self) -> Vec<(usize, usize)> {
+        self.folds
+            .marks(self.buffer.text())
             .iter()
-            .map(|f| FoldMark {
-                start: f.start_line,
-                end: f.end_line,
-                folded: self.folded.contains(&t.byte_of_line(f.start_line)),
-            })
+            .map(|f| (f.start, f.end))
             .collect()
     }
 
     /// Abre/fecha a dobra que começa na linha `line`.
     pub fn toggle_fold(&mut self, line: usize) {
         self.derive();
-        if !self.derived.folds.iter().any(|f| f.start_line == line) {
-            return;
-        }
-        let b = self.buffer.text().byte_of_line(line);
-        match self.folded.iter().position(|&x| x == b) {
-            Some(i) => {
-                self.folded.remove(i);
-            }
-            None => self.folded.push(b),
+        let t = self.buffer.text();
+        if let Some(f) = self.syntax.fold_at(t, line) {
+            self.folds.toggle(f, t);
+            self.folds.arm(&mut self.syntax);
         }
     }
 
-    /// Abre as dobras que escondem a linha do cursor primário.
+    /// Abre as dobras fechadas que escondem a linha do cursor primário.
     pub fn unfold_cursor(&mut self) {
         self.derive();
         let t = self.buffer.text();
         let line = t.line_of_byte(self.buffer.selection().primary().head);
-        let hide: Vec<usize> = self
-            .derived
-            .folds
-            .iter()
-            .filter(|f| f.start_line < line && line <= f.end_line)
-            .map(|f| t.byte_of_line(f.start_line))
-            .collect();
-        self.folded.retain(|b| !hide.contains(b));
+        self.folds.unfold_line(line, t);
     }
 
     /// O cursor primário à vista (e fora de qualquer dobra).
@@ -288,7 +247,7 @@ impl CodeDoc {
     ) {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
         let problems = self.problems();
-        let folds = self.fold_marks();
+        let closed = self.folds.marks(self.buffer.text());
         let bracket = self.bracket();
         self.find.refresh(&self.buffer);
         let preedit = self.preedit.as_ref().map(|(s, _)| s.as_str());
@@ -298,6 +257,7 @@ impl CodeDoc {
             view,
             find,
             badge,
+            folds: closed_set,
             ..
         } = self;
         let mut spans = |r: std::ops::Range<usize>| -> Vec<(std::ops::Range<usize>, Ink)> {
@@ -307,11 +267,25 @@ impl CodeDoc {
                 .map(|h| (h.range, ink_of(h.kind)))
                 .collect()
         };
+        // Só as dobras das linhas que a vista pinta (a calha, o «…», o clique).
+        let mut marks = |lines: std::ops::Range<usize>| -> Vec<FoldMark> {
+            let t = buffer.text();
+            syntax
+                .folds_in(t, lines)
+                .into_iter()
+                .map(|f| FoldMark {
+                    start: f.start_line,
+                    end: f.end_line,
+                    folded: closed_set.is_closed(t.byte_of_line(f.start_line)),
+                })
+                .collect()
+        };
         let frame = CodeFrame {
             buffer,
             spans: &mut spans,
             problems: &problems,
-            folds: &folds,
+            folds: &mut marks,
+            closed: &closed,
             bracket,
             matches: if find.open { &find.matches } else { &[] },
             current_match: if find.open { find.current } else { None },
@@ -339,7 +313,7 @@ impl CodeDoc {
 }
 
 /// Um byte do texto antes da edição `e`, no texto depois dela.
-fn map_byte(b: usize, e: &TextEdit) -> usize {
+pub(crate) fn map_byte(b: usize, e: &TextEdit) -> usize {
     if b < e.start_byte {
         b
     } else if b >= e.old_end_byte {

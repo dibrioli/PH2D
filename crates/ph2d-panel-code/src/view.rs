@@ -59,6 +59,7 @@ pub struct CodeView {
     pub(crate) revision: u64,
     /// Faixas de linhas escondidas por dobras, ordenadas e fundidas (inclusivas).
     pub(crate) hidden: Vec<(usize, usize)>,
+    /// As dobras que começam nas linhas pintadas no último quadro (calha, «…», clique).
     pub(crate) folds: Vec<FoldMark>,
     pub(crate) rows: Vec<Row>,
     pub(crate) underlines: Vec<Underline>,
@@ -139,12 +140,11 @@ impl CodeView {
         self.text_rect().y + row as f32 * self.m.line_h - self.sy()
     }
 
-    pub(crate) fn set_folds(&mut self, folds: &[FoldMark], line_count: usize) {
-        self.folds.clear();
-        self.folds.extend_from_slice(folds);
+    /// As linhas escondidas pelas dobras fechadas `closed`.
+    pub(crate) fn set_hidden(&mut self, closed: &[FoldMark], line_count: usize) {
         self.hidden.clear();
         let last = line_count.saturating_sub(1);
-        let mut v: Vec<(usize, usize)> = folds
+        let mut v: Vec<(usize, usize)> = closed
             .iter()
             .filter(|f| f.folded && f.end > f.start && f.start < last)
             .map(|f| (f.start + 1, f.end.min(last)))

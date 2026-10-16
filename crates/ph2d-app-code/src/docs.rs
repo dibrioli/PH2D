@@ -153,6 +153,16 @@ impl CodeDocs {
         Some((d.buffer.text().line_of_byte(h), h))
     }
 
+    /// As dobras fechadas do script `id`: `(cabeçalho, última escondida)`, linhas 0-based.
+    #[must_use]
+    pub fn closed_folds(&self, id: ScriptId) -> Vec<(usize, usize)> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map(CodeDoc::closed_folds)
+            .unwrap_or_default()
+    }
+
     /// As linhas que a vista do script `id` mostrou no último quadro.
     #[must_use]
     pub fn visible_lines(&self, id: ScriptId) -> Option<std::ops::Range<usize>> {

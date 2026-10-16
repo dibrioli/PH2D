@@ -7,7 +7,6 @@ use ph2d_app_code::commands::{CMD_GOTO, CMD_SAVE};
 use ph2d_editor_core::doc_surface::{DocumentSurface, Key};
 use ph2d_editor_core::interaction::ContextMenuKind;
 use ph2d_editor_core::screens::hero::{document_tabs, global_palette, surface_input};
-use ph2d_host::Modifiers;
 use ph2d_panel_code::{FindField, FindHit};
 
 /// Um quadro do hero como a pintura o começa (as abas e os comandos publicados).

@@ -47,7 +47,11 @@ pub struct CodeFrame<'a> {
     /// Os trechos de cor de uma faixa de bytes (a pintura só pede as linhas visíveis).
     pub spans: &'a mut dyn FnMut(Range<usize>) -> Vec<(Range<usize>, Ink)>,
     pub problems: &'a [Problem],
-    pub folds: &'a [FoldMark],
+    /// As dobras que COMEÇAM numa faixa de linhas (a pintura só pede as das linhas visíveis, por
+    /// bloco contíguo — o custo é o da vista, não o do ficheiro).
+    pub folds: &'a mut dyn FnMut(Range<usize>) -> Vec<FoldMark>,
+    /// As dobras FECHADAS do texto inteiro: decidem que linhas se escondem (só as `folded` contam).
+    pub closed: &'a [FoldMark],
     /// O par do parêntese/chave junto ao cursor primário (os dois bytes).
     pub bracket: Option<(usize, usize)>,
     /// As ocorrências da busca (bytes), e qual é a corrente.

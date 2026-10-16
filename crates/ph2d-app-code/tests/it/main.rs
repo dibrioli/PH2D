@@ -43,6 +43,10 @@ pub struct Mesa {
     pub ts: TextSystem,
     /// Os avisos que a família deu (o ecrã os mostra).
     pub toasts: ph2d_editor_core::ToastQueue,
+    /// O ficheiro do projecto (`None` = nunca gravado, como a cena do `PH2D_CODE_SMOKE`).
+    pub ficheiro: Option<std::path::PathBuf>,
+    /// Quantos diálogos «Save as» a shell teria aberto ([`Mesa::shell_drena`]).
+    pub dialogos: usize,
 }
 
 impl Mesa {
@@ -63,6 +67,8 @@ impl Mesa {
                 host: None,
                 ts: TextSystem::without_system_fonts(),
                 toasts: ph2d_editor_core::ToastQueue::default(),
+                ficheiro: None,
+                dialogos: 0,
             },
             ids,
         )
@@ -91,8 +97,26 @@ impl Mesa {
             self.host.as_mut(),
             &mut self.hero,
             &mut self.toasts,
+            self.ficheiro.is_some(),
         );
         self.hero.documents.follow_surfaces();
+    }
+
+    /// O dreno do menu Ficheiro da shell (`drain_project_io` → `save_target`, gate
+    /// `the_first_save_asks_and_the_next_ones_do_not`): «Save» com ficheiro grava em silêncio (aqui,
+    /// o blob dos scripts no ficheiro); «Save» sem ficheiro ou «Save as» abre o diálogo (conta-se).
+    pub fn shell_drena(&mut self) {
+        let asked = std::mem::take(&mut self.hero.file_menu);
+        if !(asked.save || asked.save_as) {
+            return;
+        }
+        match self.ficheiro.as_ref().filter(|_| !asked.save_as) {
+            Some(p) => {
+                let bytes = self.sim.world().resource::<ProjectScripts>().to_bytes();
+                std::fs::write(p, bytes).expect("grava");
+            }
+            None => self.dialogos += 1,
+        }
     }
 
     /// Um quadro da cena (o `sync` recarrega; um tique corre os ganchos).

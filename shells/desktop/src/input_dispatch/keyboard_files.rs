@@ -40,9 +40,8 @@ impl App {
             && let PhysicalKey::Code(code) = physical_key
         {
             match code {
-                // ⚠️ Ctrl+Shift+S é o `Save As…`. O teclado levanta a BANDEIRA do menu Ficheiro e
-                // o dreno chama o `project_save_gesture` (uma porta): antes dele o editor de scripts
-                // aplica as abas com ● (`ph2d_app_code::frame`).
+                // ⚠️ Ctrl+Shift+S = `Save As…`. A BANDEIRA do menu → dreno → `project_save_gesture`
+                // (uma porta); antes, `ph2d_app_code::frame` aplica as abas com ●.
                 KeyCode::KeyS => {
                     let shift = self.modifiers.shift_key();
                     match self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {

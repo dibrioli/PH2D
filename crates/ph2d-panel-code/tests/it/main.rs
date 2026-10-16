@@ -109,6 +109,7 @@ pub fn frame<'a>(
         caret_on: true,
         tab: TAB,
         badge: d.badge.as_ref(),
+        project_unsaved: false,
     }
 }
 

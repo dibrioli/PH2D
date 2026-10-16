@@ -52,6 +52,8 @@ pub(crate) struct CodeDoc {
     /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
     pub last_input_ns: u128,
     pub badge: Option<Badge>,
+    /// O último Ctrl+S aplicou o texto, mas o projecto ainda não tem ficheiro (o selo di-lo).
+    pub project_unsaved: bool,
     /// A composição em curso; `true` = nasceu de uma tecla morta (a próxima tecla desfá-la).
     pub preedit: Option<(String, bool)>,
     /// Um salvar pedido pelo teclado, à espera do quadro da família.
@@ -82,6 +84,7 @@ impl CodeDoc {
             diag_anchor: None,
             last_input_ns: 0,
             badge: None,
+            project_unsaved: false,
             preedit: None,
             save: None,
             drag: None,
@@ -278,6 +281,7 @@ impl CodeDoc {
             view,
             find,
             badge,
+            project_unsaved,
             folds: closed_set,
             ..
         } = self;
@@ -314,6 +318,7 @@ impl CodeDoc {
             caret_on: find.focus.is_none() && blink_on,
             tab: TAB,
             badge: badge.as_ref(),
+            project_unsaved: *project_unsaved,
         };
         view.paint(frame, code_r, scene, ts, theme);
         if let Some(r) = find_r {

@@ -1,6 +1,7 @@
 //! ⭐ **O quadro da família** — a ÚNICA porta entre o editor e a cena, chamada pela shell uma vez por
-//! quadro: abre o que o cartão pediu, entrega o texto salvo à `ScriptLibrary` (e pede a gravação do
-//! projeto pelo MESMO caminho do File ▸ Save), lê as recargas (o selo), o console e o diagnóstico.
+//! quadro: abre o que o cartão pediu, entrega o texto salvo à `ScriptLibrary` (e, se o projecto já
+//! tem ficheiro, pede a gravação pelo MESMO caminho do File ▸ Save), lê as recargas (o selo), o
+//! console e o diagnóstico.
 
 use crate::doc::CodeDoc;
 use crate::docs::{CodeDocs, SaveKind};
@@ -13,12 +14,14 @@ use ph2d_script::{
 };
 
 /// Um quadro do editor de scripts. `host` = a VM (`None` = o app corre sem scripts); `toasts` = os
-/// avisos do ecrã (o projecto trocado com textos por gravar diz onde eles ficaram).
+/// avisos do ecrã (o projecto trocado com textos por gravar diz onde eles ficaram); `project_file` =
+/// o projecto já tem ficheiro (o File ▸ Save grava sem perguntar).
 pub fn frame(
     sim: &mut SimWorld,
     mut host: Option<&mut ScriptHost>,
     hero: &mut HeroScreen,
     toasts: &mut ToastQueue,
+    project_file: bool,
 ) {
     let menu_save = hero.file_menu.save || hero.file_menu.save_as;
     let active = hero.documents.surface_active();
@@ -56,7 +59,13 @@ pub fn frame(
     if let Some(lib) = world.get_resource::<ProjectScripts>() {
         follow_library(docs, lib);
     }
-    let ask = save(docs, world, host.as_deref_mut(), menu_save, our_active);
+    let ask = save(
+        docs,
+        world,
+        host.as_deref_mut(),
+        (menu_save, project_file),
+        our_active,
+    );
     if let Some(h) = host {
         hear(docs, h);
     }
@@ -86,30 +95,36 @@ fn follow_library(docs: &mut CodeDocs, lib: &ProjectScripts) {
 }
 
 /// Os salvares pedidos (Ctrl+S na aba; File ▸ Save / Ctrl+S com QUALQUER aba activa, e então também
-/// as abas fechadas com ●): o texto vai para a biblioteca — a cena recarrega no quadro seguinte, sem disco. ⭐ Gravar o projeto aplica
-/// também toda aba com ● (decisão do dono: «salvar = guardado»; um texto partido deixa a versão
-/// anterior a correr — é o motor). Devolve o pedido de gravar o projeto.
+/// as abas fechadas com ●): o texto vai para a biblioteca — a cena recarrega no quadro seguinte, sem
+/// disco. ⭐ Gravar o projeto aplica também toda aba com ● (decisão do dono: «salvar = guardado»; um
+/// texto partido deixa a versão anterior a correr — é o motor). Devolve o pedido de gravar o projeto.
+///
+/// ⛔ O Ctrl+S da ABA nunca abre diálogo (smoke do dono 16/10): sem ficheiro de projecto aplica e o
+/// selo di-lo; com ficheiro grava em silêncio. Só o Ctrl+Shift+S («Save As…») pergunta.
 fn save(
     docs: &mut CodeDocs,
     world: &mut ph2d_ecs::World,
     mut host: Option<&mut ScriptHost>,
-    menu: bool,
+    (menu, project_file): (bool, bool),
     active: Option<u64>,
 ) -> Option<SaveKind> {
     let mut ask = None;
     let mut saving = Vec::new();
     for (i, d) in docs.docs.iter_mut().enumerate() {
+        if project_file {
+            d.project_unsaved = false;
+        }
         let kind = d.save.take();
-        if let Some(k) = kind {
-            ask = Some(if ask == Some(SaveKind::SaveAs) {
-                SaveKind::SaveAs
-            } else {
-                k
-            });
+        match kind {
+            Some(SaveKind::SaveAs) => ask = Some(SaveKind::SaveAs),
+            Some(SaveKind::Save) if project_file => {
+                ask = ask.or(Some(SaveKind::Save));
+            }
+            _ => {}
         }
         let by_menu = menu && (d.buffer.is_dirty() || active == Some(d.script.0));
         if kind.is_some() || by_menu {
-            saving.push(i);
+            saving.push((i, kind == Some(SaveKind::Save) && !project_file));
         }
     }
     // As abas FECHADAS com ● também (a lista pinta-as com ●): gravadas, deixam de estar estacionadas.
@@ -127,8 +142,9 @@ fn save(
             lib.set_text(id, &p.buffer.text().to_string());
         }
     }
-    for i in saving {
+    for (i, unsaved) in saving {
         let d = &mut docs.docs[i];
+        d.project_unsaved = unsaved;
         let text = d.buffer.text().to_string();
         let changed = lib.set_text(d.script, &text);
         d.synced = text;

@@ -24,6 +24,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Not applied: the script has an error — the previous version keeps running"
         }
         "code.status.saved_unused" => "Saved · no object uses this script",
+        // O Ctrl+S da aba nunca abre diálogo: sem ficheiro de projecto, aplica e di-lo.
+        "code.status.project_unsaved" => "Script applied · project not saved yet — File ▸ Save As…",
+        "code.status.project_unsaved_after" => "{badge} · project not saved yet — File ▸ Save As…",
         // A barra de buscar/substituir e o «Go to line» (E9).
         "code.find.placeholder" => "Find",
         "code.find.replace_placeholder" => "Replace",

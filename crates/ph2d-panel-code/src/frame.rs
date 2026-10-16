@@ -64,4 +64,6 @@ pub struct CodeFrame<'a> {
     /// Largura de uma tabulação, em colunas.
     pub tab: usize,
     pub badge: Option<&'a Badge>,
+    /// O último Ctrl+S aplicou o script mas o projecto ainda não tem ficheiro (o selo di-lo).
+    pub project_unsaved: bool,
 }

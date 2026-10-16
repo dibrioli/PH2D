@@ -72,27 +72,47 @@ impl StatusLine {
                 )
             }
         };
-        let badge = frame.badge.map(|b| match b {
-            Badge::Reloaded { objects: 1 } => {
-                (tr("code.status.reloaded_one").to_owned(), Tone::Success)
-            }
-            Badge::Reloaded { objects } => (
-                tr_with("code.status.reloaded", &[("count", objects)]),
-                Tone::Success,
-            ),
-            Badge::Refused { line: Some(l) } => (
-                tr_with("code.status.refused_line", &[("line", l)]),
-                Tone::Error,
-            ),
-            Badge::Refused { line: None } => (tr("code.status.refused").to_owned(), Tone::Error),
-            Badge::Saved => (tr("code.status.saved_unused").to_owned(), Tone::Plain),
-        });
         Self {
             position,
             problems,
-            badge,
+            badge: badge_line(frame.badge, frame.project_unsaved),
         }
     }
+}
+
+/// O texto e o tom do selo (a pintura e as sondas lêem o MESMO). `project_unsaved` = o script foi
+/// aplicado mas o projecto ainda não tem ficheiro: o selo di-lo e aponta o File ▸ Save As….
+#[must_use]
+pub fn badge_line(badge: Option<&Badge>, project_unsaved: bool) -> Option<(String, Tone)> {
+    let base = badge.map(|b| match b {
+        Badge::Reloaded { objects: 1 } => {
+            (tr("code.status.reloaded_one").to_owned(), Tone::Success)
+        }
+        Badge::Reloaded { objects } => (
+            tr_with("code.status.reloaded", &[("count", objects)]),
+            Tone::Success,
+        ),
+        Badge::Refused { line: Some(l) } => (
+            tr_with("code.status.refused_line", &[("line", l)]),
+            Tone::Error,
+        ),
+        Badge::Refused { line: None } => (tr("code.status.refused").to_owned(), Tone::Error),
+        Badge::Saved => (tr("code.status.saved_unused").to_owned(), Tone::Plain),
+    });
+    if !project_unsaved {
+        return base;
+    }
+    Some(match base {
+        Some((text, tone)) => (
+            tr_with("code.status.project_unsaved_after", &[("badge", &text)]),
+            if tone == Tone::Error {
+                Tone::Error
+            } else {
+                Tone::Warning
+            },
+        ),
+        None => (tr("code.status.project_unsaved").to_owned(), Tone::Warning),
+    })
 }
 
 fn color(pal: &Palette, tone: Tone) -> ph2d_vector::Color {

@@ -31,6 +31,6 @@ pub use glyphs::{PaintWork, paint_work};
 pub use line_cache::LineCache;
 pub use metrics::Metrics;
 pub use script_list::{ListField, ListHit, ListRow, ScriptList, ScriptListView};
-pub use status::{StatusLine, Tone};
+pub use status::{StatusLine, Tone, badge_line};
 pub use style::Ink;
 pub use view::{CodeView, Hit, Underline};

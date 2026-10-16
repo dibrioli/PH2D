@@ -1,7 +1,8 @@
 //! ⭐ **E6 — Ctrl+S aplica o script E grava o projeto** (decisão do dono, opção «a»): o texto vai para a
-//! `ScriptLibrary`, o pedido de gravar sobe pela MESMA bandeira do File ▸ Save, a cena recarrega no
-//! quadro seguinte e o selo diz quantos objectos; um texto partido é recusado e a versão anterior
-//! continua.
+//! `ScriptLibrary`, a cena recarrega no quadro seguinte e o selo diz quantos objectos; um texto
+//! partido é recusado e a versão anterior continua. ⛔ O Ctrl+S da aba NUNCA abre diálogo (smoke do
+//! dono 16/10): com ficheiro de projecto o pedido de gravar sobe pela MESMA bandeira do File ▸ Save
+//! (que então grava em silêncio); sem ficheiro aplica e o selo diz que o projecto não foi gravado.
 
 use crate::{Mesa, ctrl};
 use ph2d_editor_core::doc_surface::Key;
@@ -19,6 +20,7 @@ fn salva(m: &mut Mesa, id: ph2d_script::ScriptId) {
 fn ctrl_s_aplica_o_texto_grava_o_projeto_e_o_selo_conta_os_objectos() {
     let (m, ids) = Mesa::new(&[("bob.luau", BOB)]);
     let mut m = m.com_cena(ids[0], 3);
+    m.ficheiro = Some(std::env::temp_dir().join("nunca_escrito.ph2dproj")); // o projecto tem ficheiro
     m.cena(); // a 1.ª leitura (não é recarga)
     m.pede(ids[0]);
     m.escreve(ids[0], "-- novo\n");
@@ -33,7 +35,7 @@ fn ctrl_s_aplica_o_texto_grava_o_projeto_e_o_selo_conta_os_objectos() {
     );
     assert!(
         m.hero.file_menu.save,
-        "o projeto é gravado pela bandeira do File ▸ Save"
+        "com ficheiro, o projeto é gravado pela bandeira do File ▸ Save"
     );
     assert!(!m.docs().is_dirty(ids[0]), "salvo: o ● sai");
     m.cena(); // a cena recarrega a partir da biblioteca
@@ -176,4 +178,83 @@ fn o_save_do_menu_aplica_as_abas_fechadas_com_alteracoes() {
         Some(escrito.as_str())
     );
     assert!(!m.docs().is_dirty(ids[0]), "gravado: o ● sai da lista");
+}
+
+/// ⛔ Smoke do dono (16/10): «Ctrl+S, em vez de salvar o script já existente, abre o diálogo para
+/// salvar». Na cena sem ficheiro de projecto o Ctrl+S da aba levantava o File ▸ Save, e a shell
+/// pergunta onde gravar o primeiro save. ⭐ Lei: o Ctrl+S da aba NUNCA abre diálogo — aplica o
+/// texto e o selo diz que o projecto ainda não está gravado.
+#[test]
+fn ctrl_s_sem_ficheiro_aplica_e_nao_abre_dialogo() {
+    let (m, ids) = Mesa::new(&[("bob.luau", BOB)]);
+    let mut m = m.com_cena(ids[0], 3);
+    m.cena();
+    m.pede(ids[0]);
+    m.escreve(ids[0], "-- novo\n");
+    salva(&mut m, ids[0]);
+    m.shell_drena();
+    assert_eq!(m.dialogos, 0, "o Ctrl+S da aba abriu o diálogo «Save as»");
+    let texto = m.docs().text_of(ids[0]).expect("aberto");
+    assert_eq!(
+        m.texto_salvo(ids[0]),
+        texto,
+        "o texto foi para a biblioteca"
+    );
+    assert!(!m.docs().is_dirty(ids[0]), "aplicado: o ● sai");
+    assert_eq!(
+        m.docs().badge_text_of(ids[0]).as_deref(),
+        Some("Script applied · project not saved yet — File ▸ Save As…")
+    );
+    m.cena();
+    m.quadro();
+    assert_eq!(
+        m.docs().badge_of(ids[0]),
+        Some(Badge::Reloaded { objects: 3 }),
+        "a cena recarregou"
+    );
+    assert_eq!(
+        m.docs().badge_text_of(ids[0]).as_deref(),
+        Some("Reloaded · 3 objects · project not saved yet — File ▸ Save As…")
+    );
+    // Controlo: o projecto ganhou ficheiro (File ▸ Save As…) — o aviso sai.
+    m.ficheiro = Some(std::env::temp_dir().join("nunca_escrito.ph2dproj"));
+    m.quadro();
+    assert_eq!(
+        m.docs().badge_text_of(ids[0]).as_deref(),
+        Some("Reloaded · 3 objects")
+    );
+}
+
+/// Com o projecto JÁ num ficheiro, o Ctrl+S da aba aplica E grava, sem diálogo: o ficheiro em
+/// disco tem o texto novo.
+#[test]
+fn ctrl_s_com_ficheiro_aplica_e_grava_sem_dialogo() {
+    let dir = std::env::temp_dir().join(format!("ph2d_code_ctrl_s_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("pasta");
+    let caminho = dir.join("hero.ph2dproj");
+    let (m, ids) = Mesa::new(&[("bob.luau", BOB)]);
+    let mut m = m.com_cena(ids[0], 3);
+    m.ficheiro = Some(caminho.clone());
+    m.cena();
+    m.pede(ids[0]);
+    m.escreve(ids[0], "-- novo\n");
+    salva(&mut m, ids[0]);
+    m.shell_drena();
+    assert_eq!(m.dialogos, 0, "com ficheiro, gravar não pergunta");
+    let texto = m.docs().text_of(ids[0]).expect("aberto");
+    let bytes = std::fs::read(&caminho).expect("o projecto foi gravado em disco");
+    let gravado = ph2d_script::ScriptLibrary::from_bytes(&bytes).expect("lê");
+    assert_eq!(
+        gravado.get(ids[0]).map(|d| d.text.as_str()),
+        Some(texto.as_str()),
+        "o ficheiro em disco tem o texto novo"
+    );
+    m.cena();
+    m.quadro();
+    assert_eq!(
+        m.docs().badge_text_of(ids[0]).as_deref(),
+        Some("Reloaded · 3 objects"),
+        "gravado: o selo não fala de projecto por gravar"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
 }

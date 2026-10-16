@@ -308,6 +308,13 @@ impl CodeDocs {
             .and_then(|d| d.badge.clone())
     }
 
+    /// O texto do selo que a barra de estado do script `id` (aberto) pinta.
+    #[must_use]
+    pub fn badge_text_of(&self, id: ScriptId) -> Option<String> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        ph2d_panel_code::badge_line(d.badge.as_ref(), d.project_unsaved).map(|(t, _)| t)
+    }
+
     /// Os problemas que a aba do script `id` mostra (E7).
     #[must_use]
     pub fn problems_of(&mut self, id: ScriptId) -> Vec<Problem> {

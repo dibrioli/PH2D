@@ -237,7 +237,12 @@ fn the_focus_scene_builds_and_stays_on_the_device() {
         "a `=112` so' pode deixar a FORMA do lado da CPU"
     );
     let na_placa: Vec<String> = plano.stages.iter().map(|e| tipo(&m, e.node)).collect();
-    for t in ["motion.falloff", "field.remap", "motion.scale", "motion.duplicator"] {
+    for t in [
+        "motion.falloff",
+        "field.remap",
+        "motion.scale",
+        "motion.duplicator",
+    ] {
         assert!(
             na_placa.iter().any(|p| p == t),
             "o campo e' o assunto do ciclo 4 e `{t}` saiu da placa: {na_placa:?}"

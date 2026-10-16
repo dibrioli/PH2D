@@ -323,6 +323,18 @@ pub(super) struct Shape {
     pub(super) dense: bool,
 }
 
+/// The columns the plan derives for `node`'s output — `None` when it cannot prove them. Public
+/// for the gates that pin a conditional write's presence (the `size`/`rot` of the
+/// `motion.duplicator`, judged on the POINTS port).
+pub fn output_columns(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    node: NodeId,
+) -> Option<BTreeSet<&'static str>> {
+    output_shape(graph, ops, kernels, node, SHAPE_DEPTH, &DrivenParams::new()).map(|s| s.cols)
+}
+
 /// Whether `node`'s output is a dense id window (ADR-0130) — `None` when the plan
 /// cannot prove the shape (a `pre` stop, an unkernelled boundary). Public for the
 /// gates that pin the property's propagation through per-element stages and its

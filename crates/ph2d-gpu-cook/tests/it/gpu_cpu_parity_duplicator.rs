@@ -558,3 +558,52 @@ fn a_rotacao_dos_pontos_concorda_com_a_cpu() {
         &cozer_gpu(&gpu, &reg, &g, out),
     );
 }
+
+/// ⭐⭐ **A PRESENÇA do `size` e da `rot` na saída derivada é a da CPU** — as duas são escritas
+/// condicionais na porta dos PONTOS, e o plano julga-as nessa porta (não na da forma): forma sem
+/// `size` com pontos que o trazem ⇒ a saída TEM `size` (a CPU cunha-o); nenhum dos dois ⇒ não tem.
+/// Uma forma derivada que esquece uma coluna aprova um nó a jusante que a devia recusar.
+///
+/// ⚠️ Sem placa: é uma pergunta de PLANO.
+#[test]
+fn a_saida_derivada_do_carimbo_tem_o_size_e_a_rot_dos_pontos() {
+    let reg = registry();
+    let colunas = |forma_size: bool, pontos_size: bool, pontos_rot: bool| {
+        let mut g = Graph::new();
+        let mut formas = grelha(&mut g, 1.0, 3.0, 1.7, 0.0);
+        if forma_size {
+            formas = com_tamanho(&mut g, formas, 4.0, 0.6, 1.4);
+        }
+        let mut pontos = grelha(&mut g, 8.0, 8.0, 0.13, 0.07);
+        if pontos_size {
+            pontos = com_tamanho(&mut g, pontos, 0.6, 2.3, 0.4);
+        }
+        if pontos_rot {
+            let r = g.add_node("motion.rotate");
+            g.set_param(r, "angle", 11.0);
+            liga(&mut g, pontos, r, 0);
+            pontos = r;
+        }
+        let dup = g.add_node("motion.duplicator");
+        g.set_param(dup, "point_scale", 1.0);
+        liga(&mut g, formas, dup, 0);
+        liga(&mut g, pontos, dup, 1);
+        g.validate(&reg).expect("bem tipada");
+        ph2d_gpu_cook::plan::output_columns(&g, &reg, &reg, dup).expect("a forma prova-se")
+    };
+    // (forma com size, pontos com size, pontos com rot) → (saída com size, saída com rot)
+    for (fs, ps, pr, size, rot) in [
+        (false, true, false, true, false),
+        (true, false, false, true, false),
+        (false, false, false, false, false),
+        (false, false, true, false, true),
+        (true, true, true, true, true),
+    ] {
+        let c = colunas(fs, ps, pr);
+        assert_eq!(
+            (c.contains("size"), c.contains("rot")),
+            (size, rot),
+            "forma size {fs} · pontos size {ps} · pontos rot {pr}: {c:?}"
+        );
+    }
+}

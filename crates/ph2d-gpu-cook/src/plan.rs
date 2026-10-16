@@ -510,7 +510,7 @@ impl Walk<'_> {
 #[path = "plan_forma.rs"]
 mod forma;
 pub(crate) use forma::fired_active;
-pub use forma::{coluna_da_convencao, output_dense_window};
+pub use forma::{coluna_da_convencao, output_columns, output_dense_window};
 use forma::{declares_port, edge_shape};
 #[path = "plan_condutor.rs"]
 mod condutor;

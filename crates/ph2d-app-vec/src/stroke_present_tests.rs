@@ -146,7 +146,7 @@ fn the_box_dresses_a_shape_exactly_like_the_tool_draws_one() {
     let mut estilo = pen.style();
     estilo.stroke_w_px = 5.0;
     estilo.join = ph2d_vec_scene::LineJoin::Bevel;
-    estilo.dash = Some((3.0, 2.0));
+    estilo.dash = Some(ph2d_vec_scene::DashPattern::single(3.0, 2.0));
     estilo.marker_end = ph2d_vec_scene::Marker::Triangle;
     pen.set_style(estilo);
 

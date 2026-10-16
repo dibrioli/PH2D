@@ -272,12 +272,12 @@ fn the_three_align_chips_are_clickable_and_reach_the_tool() {
     }
 }
 
-/// A Cap button + the Dash and Gap sliders reach the tool through the seam —
-/// the stroke-detail controls.
+/// A Cap button + the Dash and Gap NUMBER BOXES (F16c: three pairs, no slider) reach the tool
+/// through the seam — the stroke-detail controls. Each box carries the AUTHORED value (a
+/// multiple of the width), not a 0..1 track.
 #[test]
 fn stroke_cap_dash_and_gap_reach_the_tool() {
     use ph2d_tool_vector::StrokeCap;
-    use ph2d_tool_vector::params::{DASH_MAX, GAP_MAX};
     let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
@@ -290,23 +290,29 @@ fn stroke_cap_dash_and_gap_reach_the_tool() {
     drain_into_tool(&mut host, &mut tool);
     assert_eq!(tool.cap(), StrokeCap::Round);
 
-    host.set_slider_value(ph2d_tool_vector::ids::VECTOR_DASH, 1.0);
-    let d = host.apply_panel_event::<VectorPanel>(
-        &mut panel_state,
-        WidgetEvent::ValueChanged(ph2d_tool_vector::ids::VECTOR_DASH),
-    );
-    assert_eq!(d, EventOutcome::Consumed, "Dash slider not wired");
-    drain_into_tool(&mut host, &mut tool);
-    assert!((tool.dash() - DASH_MAX).abs() < 1e-6);
-
-    host.set_slider_value(ph2d_tool_vector::ids::VECTOR_GAP, 1.0);
-    let g = host.apply_panel_event::<VectorPanel>(
-        &mut panel_state,
-        WidgetEvent::ValueChanged(ph2d_tool_vector::ids::VECTOR_GAP),
-    );
-    assert_eq!(g, EventOutcome::Consumed, "Gap slider not wired");
-    drain_into_tool(&mut host, &mut tool);
-    assert!((tool.gap() - GAP_MAX).abs() < 1e-6);
+    // Os seis campos — (dash, gap) de cada par —, cada um com um valor distinto, para que um
+    // id trocado de casa apareça no padrão.
+    let want = [[3.0, 2.0], [1.0, 0.5], [0.25, 1.5]];
+    for k in 0..3 {
+        for (id, v, what) in [
+            (ph2d_tool_vector::ids::VECTOR_DASH_IDS[k], want[k][0], "Dash"),
+            (ph2d_tool_vector::ids::VECTOR_GAP_IDS[k], want[k][1], "Gap"),
+        ] {
+            host.set_number_value(id, v);
+            let o = host.apply_panel_event::<VectorPanel>(
+                &mut panel_state,
+                WidgetEvent::ValueChanged(id),
+            );
+            assert_eq!(o, EventOutcome::Consumed, "{what} box {} not wired", k + 1);
+            assert!(
+                drain_into_tool(&mut host, &mut tool),
+                "{what} box {} never became a ToolPanelEvent",
+                k + 1
+            );
+        }
+    }
+    let p = tool.dash_pattern().expect("the boxes armed a dash");
+    assert_eq!(p.pairs, want, "the six boxes did not land on their pairs");
 }
 
 /// The Star mode button switches the mode, and the Star "Points" slider reaches
@@ -690,7 +696,10 @@ fn every_section_header_is_registered_as_collapsible() {
         // **CONTADO** (o gate imprimiu `left: 35`).
         // ⛔ **−1 (2026-10-11, F9): SHAPE_PARAMS saiu** — os parâmetros da forma viraram alças no
         // canvas e o número exacto foi para a fila ② (`bars::tool_bars`). ⚠️ O `34` foi CONTADO.
-        34,
+        // ⛔ **−2 +1 (15/10, `line/UIUX`): o ARRANGE e o ALINHAR saíram para a ④ (`e4b067baab`) e o
+        // SNAP voltou ao painel (F16, `c35be32de1`)** — a linha não reconferiu esta conta nos dois
+        // commits; o `33` foi CONTADO (o gate imprimiu `left: 33`).
+        33,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -858,6 +867,7 @@ fn the_marker_head_controls_reach_the_tool() {
     // 1. As duas CAIXAS (Head Size / Head Round): o valor sai como está (não é um track 0..1).
     for (id, v) in [
         (ph2d_tool_vector::ids::VECTOR_MARKER_SCALE, 2.5),
+        (ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_END, 1.5),
         (ph2d_tool_vector::ids::VECTOR_MARKER_ROUND, 0.75),
     ] {
         host.set_number_value(id, v);
@@ -873,9 +883,11 @@ fn the_marker_head_controls_reach_the_tool() {
             "o campo da ponta nunca virou ToolPanelEvent — o seam painel->shell esta morto"
         );
     }
-    assert!(
-        (tool.marker_scale() - 2.5).abs() < 1e-9,
-        "o Head Size chegou ao bus mas nao ao Style — falta o arm em `handle_panel_event`"
+    assert_eq!(
+        tool.marker_scale(),
+        [2.5, 1.5],
+        "o Head Size (comeco, fim) chegou ao bus mas nao ao Style — falta o arm em \
+         `handle_panel_event`"
     );
     assert!(
         (tool.marker_round() - 0.75).abs() < 1e-9,

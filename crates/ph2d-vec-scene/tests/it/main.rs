@@ -17,4 +17,5 @@ mod measure_node_reach;
 mod measure_scene_clone;
 mod measure_trim_on_shapes;
 mod node_reach;
+mod stroke_v22_fixture;
 mod which_shapes_close;

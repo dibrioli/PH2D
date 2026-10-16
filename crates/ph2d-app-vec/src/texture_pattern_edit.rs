@@ -368,8 +368,16 @@ pub fn log_shape(tag: &str, scene: &VecScene, pen: &ph2d_vec_edit::PenTool) {
         };
         format!(
             "Stroke(tinta={tinta} largura={} align={:?} cap={:?} join={:?} dash={:?} \
-             marcadores={:?}/{:?} escala={})",
-            s.width, s.align, s.cap, s.join, s.dash, s.marker_start, s.marker_end, s.marker_scale
+             marcadores={:?}/{:?} escala={}/{})",
+            s.width,
+            s.align,
+            s.cap,
+            s.join,
+            s.dash,
+            s.marker_start,
+            s.marker_end,
+            s.marker_scale_start,
+            s.marker_scale_end
         )
     });
     eprintln!(

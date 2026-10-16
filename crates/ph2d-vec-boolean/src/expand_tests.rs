@@ -362,7 +362,7 @@ fn an_open_path_is_not_closed_by_the_bake() {
 fn a_dashed_stroke_bakes_into_one_shape_per_dash() {
     let mut line = stroked(open_line(20.0), 1.0);
     if let Some(s) = line.stroke.as_mut() {
-        s.dash = Some((2.0, 2.0)); // traço 2, vão 2
+        s.dash = Some(ph2d_vec_scene::DashPattern::single(2.0, 2.0)); // traço 2, vão 2
     }
     let out = outline_stroke(&line);
     assert!(out.len() >= 4, "saíram {} pedaços (esperado ~5)", out.len());
@@ -396,7 +396,7 @@ fn baking_an_arrow_keeps_its_head() {
     // escrito aqui: um gate com a constante copiada passa a mentir no dia em que a ponta mudar de
     // tamanho, e mente afirmando exactamente o que devia proteger.
     let reach = ph2d_vec_scene::Marker::Triangle
-        .inset(arrow.stroke.as_ref().map_or(1.0, |s| s.marker_scale))
+        .inset(arrow.stroke.as_ref().map_or(1.0, |s| s.marker_scale(false)))
         * arrow.stroke.as_ref().map_or(1.0, |s| s.width);
     let right = out.iter().map(|p| bbox(p).x1).fold(f64::MIN, f64::max);
     assert!(

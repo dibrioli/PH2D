@@ -346,7 +346,7 @@ mod tests {
             dash: None,
             marker_start: ph2d_vec_scene::Marker::None,
             marker_end: ph2d_vec_scene::Marker::None,
-            marker_scale: 1.0,
+            marker_scale: [1.0; 2],
             marker_round: 0.0,
         };
         let n = restyle_selected_strokes(&mut scene, pen.selected_paths(), &style, Some(3.0));

@@ -491,3 +491,35 @@ mod tests;
 #[cfg(test)]
 #[path = "envelope_sondas_tests.rs"]
 mod sondas_tests;
+
+#[cfg(test)]
+#[path = "envelope_traco_v22_tests.rs"]
+mod traco_v22_tests;
+
+/// ⭐ **Os envelopes de um ficheiro anterior ao v23 do traço, regravados na forma nova** (F16c) — a
+/// fonte de cada filho é um `VecPath` com o `StrokeSpec` v22 dentro, e quem a lê a cada quadro já não
+/// sabe a versão do ficheiro. Devolve quantos envelopes mudaram.
+///
+/// ⚠️ Consumo EXACTO (`take_from_bytes` sem sobra): uma fonte que não se lê inteira na forma v22 fica
+/// como estava, em vez de ser regravada a partir de lixo bem-formado.
+pub fn migra_traco_v22(mundo: &mut ph2d_ecs::scene::WorldSnapshot) -> usize {
+    mundo.rewrite_component_blobs(ph2d_ecs::VEC_ENVELOPE_TYPE_NAME, |blob| {
+        let Ok((mut env, [])) = postcard::take_from_bytes::<ph2d_ecs::VecEnvelope>(blob) else {
+            return None;
+        };
+        let mut mudou = false;
+        for filho in &mut env.children {
+            let fonte = ph2d_vec_scene::with_stroke_layout_v22(|| {
+                match postcard::take_from_bytes::<VecPath>(&filho.source) {
+                    Ok((p, [])) => Some(p),
+                    _ => None,
+                }
+            });
+            if let Some(bytes) = fonte.and_then(|p| postcard::to_allocvec(&p).ok()) {
+                mudou |= bytes != filho.source;
+                filho.source = bytes;
+            }
+        }
+        mudou.then(|| postcard::to_allocvec(&env).ok()).flatten()
+    })
+}

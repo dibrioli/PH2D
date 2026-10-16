@@ -30,21 +30,15 @@ use ph2d_panel_vector::ids;
 /// Os pares `(slider, chip)` do painel. **Todo id `*_NUM` daqui é o chip de um slider** — os campos
 /// numéricos avulsos do painel (Transform X/Y/W/H) não usam o sufixo, então a regra é mecânica e a
 /// lista não tem como escolher errado.
+///
+/// ⚠️ **Exceção (F16c): `VECTOR_DASH_NUM`/`VECTOR_GAP_NUM`** guardam o nome mas deixaram de ser
+/// chips — são a 1.ª caixa das filas «Dash»/«Gap» (três pares, sem slider), e o `seam.rs` prova
+/// que o `ValueChanged` delas chega à tool.
 const PAIRS: &[(&str, ph2d_a11y::NodeId, ph2d_a11y::NodeId)] = &[
     (
         "Width",
         ph2d_tool_vector::ids::VECTOR_WIDTH,
         ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
-    ),
-    (
-        "Dash",
-        ph2d_tool_vector::ids::VECTOR_DASH,
-        ph2d_tool_vector::ids::VECTOR_DASH_NUM,
-    ),
-    (
-        "Gap",
-        ph2d_tool_vector::ids::VECTOR_GAP,
-        ph2d_tool_vector::ids::VECTOR_GAP_NUM,
     ),
     (
         "Stroke Opacity",

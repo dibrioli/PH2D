@@ -358,7 +358,13 @@ pub fn pattern_along_in(
     // apanhar. *Uma guarda que mutação nenhuma mata é código sem sujeito, e vale menos que a linha
     // simples com a medição ao lado.*
     if let Some(span) = spec.fit_span {
-        advance = crate::dash_fit::fit([advance, 0.0], span, guide.closed())[0].max(MIN_ADVANCE);
+        advance = crate::dash_fit::fit(
+            crate::DashLengths::from_pairs(&[[advance, 0.0]]),
+            span,
+            guide.closed(),
+        )
+        .first_dash()
+        .max(MIN_ADVANCE);
     }
     let advance = advance;
     let inv = 1.0 / advance;

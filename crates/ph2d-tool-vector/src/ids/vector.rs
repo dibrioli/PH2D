@@ -101,13 +101,26 @@ pub const VECTOR_JOIN_ROUND: NodeId = hash_node_id("vector.join.round");
 
 pub const VECTOR_JOIN_BEVEL: NodeId = hash_node_id("vector.join.bevel");
 
-pub const VECTOR_DASH: NodeId = hash_node_id("vector.dash");
-
+// ── Tracejado: até três pares (F16c, o *Dashed Line* do painel Stroke do Illustrator) ──────────
+// Três linhas do painel, uma por par: **Dash / Gap n** [traço][vão] (`paint_dashes`). ⚠️ Os ids `vector.dash`/`vector.gap` (os SLIDERS do 1.º par, antes da F16c)
+// saíram: o 1.º par passou a caixa como os outros dois, e os `_num` ficaram como as caixas dele.
 pub const VECTOR_DASH_NUM: NodeId = hash_node_id("vector.dash_num");
 
-pub const VECTOR_GAP: NodeId = hash_node_id("vector.gap");
-
 pub const VECTOR_GAP_NUM: NodeId = hash_node_id("vector.gap_num");
+
+pub const VECTOR_DASH_2: NodeId = hash_node_id("vector.dash_2");
+
+pub const VECTOR_GAP_2: NodeId = hash_node_id("vector.gap_2");
+
+pub const VECTOR_DASH_3: NodeId = hash_node_id("vector.dash_3");
+
+pub const VECTOR_GAP_3: NodeId = hash_node_id("vector.gap_3");
+
+/// As caixas do TRAÇO de cada par, pela ordem do padrão.
+pub const VECTOR_DASH_IDS: [NodeId; 3] = [VECTOR_DASH_NUM, VECTOR_DASH_2, VECTOR_DASH_3];
+
+/// As caixas do VÃO de cada par, pela ordem do padrão.
+pub const VECTOR_GAP_IDS: [NodeId; 3] = [VECTOR_GAP_NUM, VECTOR_GAP_2, VECTOR_GAP_3];
 
 // ── Pontas de traço / markers (arrowheads) ───────────────────────────────────
 // Bloco APPEND-ONLY. A ponta é propriedade do **stroke** (herda cor e largura do
@@ -125,10 +138,18 @@ pub const VECTOR_MARKER_START_DD: NodeId = hash_node_id("vector.marker.start_dd"
 /// Chip da ponta no FIM do caminho.
 pub const VECTOR_MARKER_END_DD: NodeId = hash_node_id("vector.marker.end_dd");
 
-/// **Head Size** — o tamanho da ponta, como MÚLTIPLO do que a largura do traço já dita
-/// (`1.0` = o default). Múltiplo, e não tamanho absoluto: a ponta tem de crescer com o
+/// **Head Size** — o tamanho da ponta do COMEÇO, como MÚLTIPLO do que a largura do traço já
+/// dita (`1.0` = o default). Múltiplo, e não tamanho absoluto: a ponta tem de crescer com o
 /// traço, senão engrossar a linha faz a seta encolher visualmente até virar um cotoco.
+/// ⚠️ Até à F16c era UM tamanho para as duas pontas; o id ficou com a do começo.
 pub const VECTOR_MARKER_SCALE: NodeId = hash_node_id("vector.marker.scale");
+
+/// **Head Size** da ponta do FIM — a 2.ª caixa da mesma linha (F16c, o *Scale* por ponta do
+/// painel Stroke do Illustrator).
+pub const VECTOR_MARKER_SCALE_END: NodeId = hash_node_id("vector.marker.scale_end");
+
+/// As caixas do tamanho, por slot (`MARKER_SLOT_START`, `MARKER_SLOT_END`).
+pub const VECTOR_MARKER_SCALE_IDS: [NodeId; 2] = [VECTOR_MARKER_SCALE, VECTOR_MARKER_SCALE_END];
 
 /// **Head Round** — o arredondamento das quinas da PRÓPRIA ponta (`0` = afiada).
 pub const VECTOR_MARKER_ROUND: NodeId = hash_node_id("vector.marker.round");

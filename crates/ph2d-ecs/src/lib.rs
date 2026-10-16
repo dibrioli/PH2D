@@ -351,7 +351,8 @@ pub use vec_morph_machine::VecMorphMachine;
 
 mod vec_envelope;
 pub use vec_envelope::{
-    ENVELOPE_DEFAULT_BEND, EnvelopeKind, EnvelopeWarp, VecEnvelope, VecEnvelopeChild,
+    ENVELOPE_DEFAULT_BEND, EnvelopeKind, EnvelopeWarp, VEC_ENVELOPE_TYPE_NAME, VecEnvelope,
+    VecEnvelopeChild,
 };
 
 // ⛔ **O ESQUELETO SAIU DA FUNDAÇÃO em 2026-09-06** e vive na `ph2d-skeleton-ecs`

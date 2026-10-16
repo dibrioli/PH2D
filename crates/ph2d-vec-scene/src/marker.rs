@@ -566,9 +566,10 @@ pub fn stroke_head(path: &VecPath, s: &StrokeSpec, at_start: bool) -> Option<(Ma
     // curvatura e que esta linha pagou em três waves: a ponta descolava, o traço saía de cima da
     // curva, e a linha chegou a desaparecer. Sem recuo não há conversão, e sem conversão não há
     // erro que dependa do ângulo da alça.
-    let reach = marker.inset(s.marker_scale) * s.width;
+    let scale = s.marker_scale(at_start);
+    let reach = marker.inset(scale) * s.width;
     let tip = [node[0] + dir[0] * reach, node[1] + dir[1] * reach];
-    let geo = marker.build(tip, dir, s.width, s.marker_scale, s.marker_round)?;
+    let geo = marker.build(tip, dir, s.width, scale, s.marker_round)?;
     Some((marker, geo))
 }
 

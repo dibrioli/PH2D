@@ -19,7 +19,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_tool_vector::params::{
     BLEND_STEPS_DEFAULT, MORPH_T_DEFAULT, blend_steps_from_track, blend_steps_to_track,
-    dash_to_slider, gap_to_slider, opacity_to_slider,
+    opacity_to_slider,
 };
 use ph2d_tool_vector::{
     StrokeCap, StrokeJoin, VectorStyleSnapshot, VertexSel, VertexType, px_to_slider,

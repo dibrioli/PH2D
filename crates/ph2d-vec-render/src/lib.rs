@@ -318,7 +318,7 @@ pub(crate) struct PathTess {
     /// estrutura já pagou. Quem desenha só tem o `tess` em mão; se ele tivesse de cozer outra
     /// vez para medir, o ajuste custaria uma pilha de efeitos por instância — ou, pior,
     /// alguém mediria o caminho de ORIGEM e o tracejado sairia noutra cadência que o desenho.
-    dash: Option<[f64; 2]>,
+    dash: Option<ph2d_vec_scene::DashLengths>,
     /// ⭐⭐⭐ **ONDE ESTA FORMA VIVE, em coordenadas LOCAIS** — a caixa que o RECORTE POR CÂMARA
     /// (ordem do dono, 2026-09-21) transforma por cópia para decidir se ela chega ao ecrã.
     ///
@@ -414,7 +414,7 @@ pub(crate) fn agudo_de(path: &VecPath, bp: Option<&BezPath>) -> bool {
 ///
 /// ⚠️ Mede o COZIDO (um Trim muda o comprimento) e só mede quando há tracejado: a medição é
 /// um `arclen` por segmento, e uma linha contínua não tem o que ajustar.
-pub(crate) fn dash_of(cooked: &VecPath, stroke: Option<&StrokeSpec>) -> Option<[f64; 2]> {
+pub(crate) fn dash_of(cooked: &VecPath, stroke: Option<&StrokeSpec>) -> Option<ph2d_vec_scene::DashLengths> {
     ph2d_vec_scene::dash_fit::dash_lengths_for(cooked, stroke?)
 }
 
@@ -535,7 +535,7 @@ pub use overlays::{draw_overlays, overlay_transform};
 
 /// `StrokeSpec` → `kurbo::Stroke` (ponta/junção + dash). Larguras/dashes ficam em
 /// world-units; o `transform` do render escala p/ screen.
-pub(crate) fn kurbo_stroke(s: &StrokeSpec, dash: Option<[f64; 2]>) -> Stroke {
+pub(crate) fn kurbo_stroke(s: &StrokeSpec, dash: Option<ph2d_vec_scene::DashLengths>) -> Stroke {
     let cap = match s.cap {
         LineCap::Butt => Cap::Butt,
         LineCap::Round => Cap::Round,
@@ -556,7 +556,7 @@ pub(crate) fn kurbo_stroke(s: &StrokeSpec, dash: Option<[f64; 2]>) -> Stroke {
     // [`ph2d_vec_scene::dash_fit`], a porta única que o Outline Stroke também usa. Ler o
     // `s.dash_lengths()` cru aqui poria de volta a emenda visível na junção do contorno.
     match dash {
-        Some(d) => stroke.with_dashes(0.0, d),
+        Some(d) => stroke.with_dashes(0.0, d.as_slice().iter().copied()),
         None => stroke,
     }
 }

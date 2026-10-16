@@ -9,10 +9,7 @@ use super::{
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::DropdownState;
 use ph2d_tool_vector::params;
-use ph2d_tool_vector::params::{
-    DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
-    OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, gap_to_slider,
-};
+use ph2d_tool_vector::params::{OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE};
 
 /// Gradiente (Angle / Influence / Jitter), opacidades e o traço (cap/join/dash).
 pub(super) fn populate_style(store: &mut WidgetStore) {
@@ -78,24 +75,16 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     button(store, ph2d_tool_vector::ids::VECTOR_JOIN_MITER);
     button(store, ph2d_tool_vector::ids::VECTOR_JOIN_ROUND);
     button(store, ph2d_tool_vector::ids::VECTOR_JOIN_BEVEL);
-    slider_chip(
-        store,
-        ph2d_tool_vector::ids::VECTOR_DASH,
-        ph2d_tool_vector::ids::VECTOR_DASH_NUM,
-        0.0,
-        0.0,
-        DASH_SLIDER_SCALE,
-        DASH_SLIDER_OFFSET,
-    );
-    slider_chip(
-        store,
-        ph2d_tool_vector::ids::VECTOR_GAP,
-        ph2d_tool_vector::ids::VECTOR_GAP_NUM,
-        gap_to_slider(GAP_DEFAULT),
-        GAP_DEFAULT,
-        GAP_SLIDER_SCALE,
-        GAP_SLIDER_OFFSET,
-    );
+    // O tracejado em pares (F16c): seis caixas numéricas, com a faixa (sem ela o arrasto escala
+    // errado). Pintadas e semeadas em `paint_dashes`.
+    for (ids, lo, hi) in [
+        (ph2d_tool_vector::ids::VECTOR_DASH_IDS, params::DASH_MIN, params::DASH_MAX),
+        (ph2d_tool_vector::ids::VECTOR_GAP_IDS, params::GAP_MIN, params::GAP_MAX),
+    ] {
+        for id in ids {
+            number_field(store, id, lo, hi, crate::paint_dashes::DASH_STEP, lo);
+        }
+    }
     populate_markers(store);
 }
 
@@ -128,6 +117,10 @@ fn populate_markers(store: &mut WidgetStore) {
     for (id, field) in [
         (
             ph2d_tool_vector::ids::VECTOR_MARKER_SCALE,
+            &params::MARKER_SCALE,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_END,
             &params::MARKER_SCALE,
         ),
         (

@@ -447,4 +447,16 @@
 /// sempre — um v188 é recusado em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 189;
+///
+/// # `189 → 190` — **o tracejado em PARES e a seta por PONTA** (`line/UIUX`, F16c, 2026-10-15)
+///
+/// O `StrokeSpec` muda de forma (`VEC_SCENE_SCHEMA_VERSION` `22 → 23`): `dash` passa a até três pares
+/// e `marker_scale` a `marker_scale_start`/`_end`. ⭐ **COM leitura do anterior, sem tipo congelado**
+/// (ordem do dono: *«ficheiros antigos têm de continuar a abrir iguais»*): só o `StrokeSpec` tem forma
+/// antiga, e o leitor abre o âmbito `ph2d_vec_scene::StrokeLayoutV22` para todo ficheiro `< 190`
+/// (`project_load_read`); as formas guardadas dentro do Envelope e da pele são regravadas no load.
+/// Gate sobre BYTES gravados pelo código v189: `project_traco_v189_tests`. Registos de componentes: `0`.
+pub(crate) const PROJECT_SCHEMA: u32 = 190;
+
+/// O degrau anterior ao tracejado em pares — o último cuja forma do `StrokeSpec` é a v22.
+pub(crate) const PROJECT_SCHEMA_TRACO_V22: u32 = 189;

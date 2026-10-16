@@ -390,7 +390,7 @@ fn the_brush_controls_map_to_their_commands_and_nothing_else_does() {
     // ⛔ Um slider do PADRÃO não pode cair aqui: seria a secção do pincel a consumir o clique do
     // vizinho, e o padrão deixaria de responder sem uma mensagem sequer.
     assert_eq!(
-        slider_cmd_for_id(ph2d_tool_vector::ids::VECTOR_DASH, 1.0),
+        slider_cmd_for_id(ph2d_tool_vector::ids::VECTOR_DASH_NUM, 1.0),
         None
     );
 }

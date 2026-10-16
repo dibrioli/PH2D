@@ -6,7 +6,7 @@
 //! gradiente, raio de quina **e** largura de traço pela MESMA porta — construir aqui já em mundo
 //! obrigaria a repetir essa lei, e ela tem quatro sub-casos.
 
-use ph2d_vec_scene::{
+use ph2d_vec_scene::{MAX_DASH_PAIRS, 
     GradientStop, LineCap, LineJoin, Marker, Paint, Rgba8, StrokeAlign, StrokePaint, StrokeSpec,
 };
 
@@ -149,13 +149,21 @@ pub(crate) fn traco(s: &usvg::Stroke) -> (StrokeSpec, Lost) {
     };
     let width = f64::from(s.width().get());
     // ⚠️ **O tracejado do documento é em MÚLTIPLOS da largura**, o do SVG em unidades — e é essa
-    // razão que o mantém correcto quando o traço engrossa. ⛔ Um `dasharray` com mais de dois
-    // números descreve um ritmo que o documento não tem; entram os dois primeiros, e a nota diz.
+    // razão que o mantém correcto quando o traço engrossa. ⛔ Um `dasharray` com mais de seis
+    // números (três pares, F16c) descreve um ritmo que o documento não tem; entram os seis
+    // primeiros, e a nota diz.
     let (dash, perdeu_dash) = match s.dasharray() {
-        Some(d) if d.len() >= 2 && width > 0.0 => (
-            Some((f64::from(d[0]) / width, f64::from(d[1]) / width)),
-            (d.len() > 2).then_some("stroke-dasharray com mais de 2 numeros (entraram os 2 1.os)"),
-        ),
+        Some(d) if d.len() >= 2 && width > 0.0 => {
+            let mut p = ph2d_vec_scene::DashPattern::single(0.0, 0.0);
+            for (k, par) in d.chunks_exact(2).take(MAX_DASH_PAIRS).enumerate() {
+                p.pairs[k] = [f64::from(par[0]) / width, f64::from(par[1]) / width];
+            }
+            (
+                Some(p),
+                (d.len() > 2 * MAX_DASH_PAIRS)
+                    .then_some("stroke-dasharray com mais de 6 numeros (entraram os 6 1.os)"),
+            )
+        }
         Some(_) | None => (None, None),
     };
     (
@@ -177,7 +185,8 @@ pub(crate) fn traco(s: &usvg::Stroke) -> (StrokeSpec, Lost) {
             dash,
             marker_start: Marker::None,
             marker_end: Marker::None,
-            marker_scale: 1.0,
+            marker_scale_start: 1.0,
+            marker_scale_end: 1.0,
             marker_round: 0.0,
             align: StrokeAlign::Centre,
         },

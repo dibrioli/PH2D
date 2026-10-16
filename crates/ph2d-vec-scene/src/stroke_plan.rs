@@ -81,7 +81,7 @@ pub enum StrokePiece<'a> {
 /// `dash_lengths_fitted` na `line/Vector`), com a MESMA fórmula; ficou uma, e as duas suítes
 /// provam-na.
 #[must_use]
-pub fn dash_for(path: &VecPath, s: &StrokeSpec) -> Option<[f64; 2]> {
+pub fn dash_for(path: &VecPath, s: &StrokeSpec) -> Option<crate::DashLengths> {
     // ⚠️ A guarda ANTES da medição — ver o ⚠️ do custo acima.
     s.dash_lengths()?;
     crate::dash_fit::dash_lengths_for(&path.cooked(), s)

@@ -91,7 +91,7 @@ fn store() -> (VecPathStore, u32, u32, u32) {
     let lisa = s.push(ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.4));
     let mut t = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);
     let mut spec = StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05);
-    spec.dash = Some((2.0, 1.0));
+    spec.dash = Some(ph2d_vec_scene::DashPattern::single(2.0, 1.0));
     t.stroke = Some(spec);
     let tracada = s.push(t);
     let mut p = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);

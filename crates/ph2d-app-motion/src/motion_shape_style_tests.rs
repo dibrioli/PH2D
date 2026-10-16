@@ -181,7 +181,7 @@ fn the_dash_reaches_the_stroke_and_is_inert_without_one() {
     }));
     assert_eq!(
         dashed.stroke.expect("ha' traco").dash,
-        Some((3.0, 2.0)),
+        Some(ph2d_vec_scene::DashPattern::single(3.0, 2.0)),
         "em MULTIPLOS da largura, como o StrokeSpec os fala"
     );
     // Sem largura não há `StrokeSpec` nenhum — então o tracejado não tem onde pousar, e a

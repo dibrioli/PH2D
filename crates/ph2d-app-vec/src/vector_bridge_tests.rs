@@ -32,7 +32,7 @@ fn style() -> StrokeStyle {
         dash: None,
         marker_start: Marker::None,
         marker_end: Marker::None,
-        marker_scale: 1.0,
+        marker_scale: [1.0; 2],
         marker_round: 0.0,
     }
 }
@@ -69,7 +69,7 @@ fn head_size_and_round_reach_every_selected_path() {
     let (mut scene, ids) = scene_with(3);
     let s = StrokeStyle {
         marker_end: Marker::Triangle,
-        marker_scale: 2.5,
+        marker_scale: [2.5, 1.5],
         marker_round: 0.75,
         ..style()
     };
@@ -82,10 +82,10 @@ fn head_size_and_round_reach_every_selected_path() {
             .find(|p| p.id == *id)
             .and_then(|p| p.stroke.clone())
             .expect("o caminho tem traco");
-        assert!(
-            (spec.marker_scale - 2.5).abs() < 1e-12,
-            "o Head Size nao chegou ao caminho {id:?}: {}",
-            spec.marker_scale
+        assert_eq!(
+            [spec.marker_scale_start, spec.marker_scale_end],
+            [2.5, 1.5],
+            "o Head Size (comeco, fim) nao chegou ao caminho {id:?}"
         );
         assert!(
             (spec.marker_round - 0.75).abs() < 1e-12,
@@ -158,7 +158,7 @@ fn every_field_of_the_style_is_seen_by_the_change_detector() {
         (
             "dash",
             StrokeStyle {
-                dash: Some((2.0, 1.0)),
+                dash: Some(ph2d_vec_scene::DashPattern::single(2.0, 1.0)),
                 ..base
             },
         ),
@@ -177,9 +177,16 @@ fn every_field_of_the_style_is_seen_by_the_change_detector() {
             },
         ),
         (
-            "marker_scale",
+            "marker_scale (start)",
             StrokeStyle {
-                marker_scale: 2.0,
+                marker_scale: [2.0, 1.0],
+                ..base
+            },
+        ),
+        (
+            "marker_scale (end)",
+            StrokeStyle {
+                marker_scale: [1.0, 2.0],
                 ..base
             },
         ),
@@ -204,6 +211,28 @@ fn every_field_of_the_style_is_seen_by_the_change_detector() {
             "`{field}` foi detectado mas NAO foi gravado pelo `onto`"
         );
     }
+    // F16c — o PAR 2 do tracejado também é visto: sobre um traço já tracejado com um par, mexer
+    // só no 2.º par tem de contar como mudança (e ser gravado).
+    let um_par = StrokeStyle {
+        dash: Some(ph2d_vec_scene::DashPattern::single(2.0, 1.0)),
+        ..base
+    };
+    let tracejado = um_par.onto(&spec, spec.width);
+    assert!(!um_par.differs_from(&tracejado), "precondicao: o par 1 gravado");
+    let dois_pares = StrokeStyle {
+        dash: Some(ph2d_vec_scene::DashPattern {
+            pairs: [[2.0, 1.0], [0.5, 1.0], [0.0, 0.0]],
+        }),
+        ..base
+    };
+    assert!(
+        dois_pares.differs_from(&tracejado),
+        "mudar so' o par 2 do tracejado NAO foi visto pelo detector"
+    );
+    assert!(
+        !dois_pares.differs_from(&dois_pares.onto(&tracejado, spec.width)),
+        "o par 2 foi detectado mas NAO foi gravado pelo `onto`"
+    );
 }
 
 /// Um caminho **sem traço** (só preenchimento) não ganha um do nada: a UI não inventa
@@ -242,10 +271,12 @@ fn what_the_apply_writes_the_selection_reads_back() {
         cap: LineCap::Square,
         join: LineJoin::Bevel,
         align: StrokeAlign::Outer,
-        dash: Some((2.5, 1.5)),
+        dash: Some(ph2d_vec_scene::DashPattern {
+            pairs: [[2.5, 1.5], [0.5, 1.0], [0.0, 0.0]],
+        }),
         marker_start: Marker::Triangle,
         marker_end: Marker::DiamondOpen,
-        marker_scale: 1.75,
+        marker_scale: [1.75, 2.25],
         marker_round: 0.5,
     };
     let width_world = 0.4;
@@ -262,7 +293,7 @@ fn what_the_apply_writes_the_selection_reads_back() {
         cap: tool.cap().into(),
         join: tool.join().into(),
         align: tool.stroke_align(),
-        dash: (tool.dash() > 0.0).then_some((tool.dash(), tool.gap())),
+        dash: tool.dash_pattern(),
         marker_start: tool.marker_start(),
         marker_end: tool.marker_end(),
         marker_scale: tool.marker_scale(),
@@ -459,14 +490,14 @@ fn no_stroke_geometry_control_destroys_the_pattern() {
         (
             "dash",
             StrokeStyle {
-                dash: Some((9.0, 9.0)),
+                dash: Some(ph2d_vec_scene::DashPattern::single(9.0, 9.0)),
                 ..style()
             },
         ),
         (
             "marker_scale",
             StrokeStyle {
-                marker_scale: 3.0,
+                marker_scale: [3.0; 2],
                 ..style()
             },
         ),
@@ -589,7 +620,9 @@ fn new_paths_get_the_armed_heads_not_the_selections() {
     for want in [
         "marker_start: armed[0]",
         "marker_end: armed[1]",
-        "marker_scale: armed_scale",
+        // F16c: o tamanho é POR PONTA — cada lado leva o SEU tamanho armado.
+        "marker_scale_start: armed_scale[0]",
+        "marker_scale_end: armed_scale[1]",
         "marker_round: armed_round",
     ] {
         assert!(block.contains(want), "o PenStyle não leva {want}:\n{block}");

@@ -188,7 +188,7 @@ fn a_group_survives_dashes_corners_rotation_flip_and_opacity_as_one_unit() {
             ..crate::BrushStroke::default()
         }));
         if dash {
-            s.dash = Some((4.0, 2.0));
+            s.dash = Some(crate::DashPattern::single(4.0, 2.0));
         }
         s
     };

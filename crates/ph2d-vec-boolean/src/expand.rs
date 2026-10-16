@@ -219,7 +219,7 @@ pub(crate) fn line_pen(line: &VecPath, s: &StrokeSpec) -> Stroke {
     // caber), então é a porta que COZE e mede — a mesma conta que o `tess.dash` do renderer
     // cacheia sobre o cozido. Uma só lei (`dash_fit`), duas portas, e a diferença é quem cozeu.
     match ph2d_vec_scene::dash_for(line, s) {
-        Some(d) => pen.with_dashes(0.0, d),
+        Some(d) => pen.with_dashes(0.0, d.as_slice().iter().copied()),
         None => pen,
     }
 }

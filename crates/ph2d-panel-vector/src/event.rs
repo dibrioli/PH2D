@@ -263,8 +263,6 @@ pub(crate) fn apply_event(
                 // ⚠️ **outro sujeito**: as duas de cima são a tinta da ferramenta, esta é a forma
                 // selecionada. Elas convivem, e o id é o que as separa.
                 || id == crate::ids::VECTOR_OBJ_OPACITY
-                || id == tool_ids::VECTOR_DASH
-                || id == tool_ids::VECTOR_GAP
                 || id == crate::ids::VECTOR_GRAD_ANGLE
                 || id == crate::ids::VECTOR_GRAD_INFLUENCE
                 || id == crate::ids::VECTOR_GRAD_JITTER =>
@@ -289,8 +287,6 @@ pub(crate) fn apply_event(
                 || id == tool_ids::VECTOR_STROKE_OPACITY_NUM
                 || id == tool_ids::VECTOR_FILL_OPACITY_NUM
                 || id == ids::VECTOR_OBJ_OPACITY_NUM
-                || id == tool_ids::VECTOR_DASH_NUM
-                || id == tool_ids::VECTOR_GAP_NUM
                 || id == tool_ids::VECTOR_GRAD_ANGLE_NUM
                 || id == tool_ids::VECTOR_GRAD_INFLUENCE_NUM
                 || id == tool_ids::VECTOR_GRAD_JITTER_NUM =>
@@ -368,6 +364,7 @@ pub(crate) fn apply_event(
         // 200 LOC por função.
         other => {
             crate::paint_markers::apply_event(host, other)
+                || crate::paint_dashes::apply_event(host, other)
                 || crate::paint_connector::apply_event(host, other)
                 || crate::paint_layout::apply_event(host, other)
                 || crate::font_dropdown::apply_event(host, other)

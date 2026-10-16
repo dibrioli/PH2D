@@ -271,7 +271,7 @@ fn the_band_wears_the_strokes_colour_as_a_fill() {
 /// oráculo é a CONTAGEM de peças: o mesmo caminho, o mesmo tracejado, o mesmo número de traços.
 #[test]
 fn an_aligned_dash_keeps_the_cadence_of_the_centred_one() {
-    let dash = Some((2.0, 2.0));
+    let dash = Some(ph2d_vec_scene::DashPattern::single(2.0, 2.0));
     let mut centred = square(0.2, StrokeAlign::Centre);
     centred.stroke = Some(StrokeSpec {
         dash,

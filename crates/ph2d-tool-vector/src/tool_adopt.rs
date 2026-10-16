@@ -59,12 +59,17 @@ impl VectorTool {
         self.cap = s.cap.into();
         self.join = s.join.into();
         self.align = s.align;
-        // `dash` é `Option<(traço, vão)>` em múltiplos da largura; a tool guarda os dois soltos,
-        // e `dash = 0` é o contínuo — a mesma convenção que o `dash_lengths` do documento usa.
-        let (d, g) = s.dash.unwrap_or((0.0, crate::params::GAP_DEFAULT));
-        self.dash = d;
-        self.gap = g;
-        self.adopt_markers(s.marker_start, s.marker_end, s.marker_scale, s.marker_round);
+        // `dash` é `Option<DashPattern>` em múltiplos da largura; a tool guarda os pares, e o 1.º
+        // traço `0` é o contínuo — a mesma convenção que o `dash_lengths` do documento usa.
+        self.dash = s
+            .dash
+            .map_or(crate::params::DASH_DEFAULT, |p| p.pairs);
+        self.adopt_markers(
+            s.marker_start,
+            s.marker_end,
+            [s.marker_scale_start, s.marker_scale_end],
+            s.marker_round,
+        );
     }
 
     /// **ADOTA** as pontas de um caminho (o shell chama ao SELECIONAR um): elas viram as
@@ -73,10 +78,10 @@ impl VectorTool {
     /// [`Self::adopt_shape_values`], e pela mesma razão: sem isto o seletor mente sobre o
     /// que está na tela. **Não** marca `apply_to_selected` — adotar é LER o documento; se
     /// marcasse, o próprio ato de selecionar reescreveria o caminho.
-    pub fn adopt_markers(&mut self, start: Marker, end: Marker, scale: f64, round: f64) {
+    pub fn adopt_markers(&mut self, start: Marker, end: Marker, scale: [f64; 2], round: f64) {
         self.marker_start = start;
         self.marker_end = end;
-        self.marker_scale = crate::shapes::clamp_to(&crate::params::MARKER_SCALE, scale);
+        self.marker_scale = scale.map(|v| crate::shapes::clamp_to(&crate::params::MARKER_SCALE, v));
         self.marker_round = crate::shapes::clamp_to(&crate::params::MARKER_ROUND, round);
     }
 }

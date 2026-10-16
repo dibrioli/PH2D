@@ -549,6 +549,9 @@ pub struct Tendon {
     pub rest: [f64; 6],
 }
 
+/// O nome registado da [`SkinBind`] — também o de quem regrava os blobs dela num ficheiro antigo.
+pub const SKIN_TYPE_NAME: &str = "ph2d::skeleton::Skin";
+
 /// Regista os componentes que a `ph2d-skeleton-ecs` possui. A shell chama isto uma vez no arranque,
 /// ao lado do `register_ecs_components` e do `register_physics_components`.
 ///
@@ -561,7 +564,7 @@ pub fn register_skeleton_components(reg: &mut ComponentRegistry) {
     reg.register_default::<Bone>("ph2d::skeleton::Bone");
     // `register`: uma pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir
     // — ela chega pelo GESTO (*Bind*) e nunca por um botão de "acrescentar componente".
-    reg.register::<SkinBind>("ph2d::skeleton::Skin");
+    reg.register::<SkinBind>(SKIN_TYPE_NAME);
     // `register` pela MESMA razão: uma âncora sem alvo não governa nada. Ela chega pelo gesto
     // (*Add IK*), que cria o alvo no mesmo passo — pendurá-la por paleta daria uma restrição inerte
     // que o artista não teria como completar.

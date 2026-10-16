@@ -46,10 +46,9 @@ pub struct VectorStyleSnapshot {
     pub shape: ShapeKind,
     pub cap: StrokeCap,
     pub join: StrokeJoin,
-    /// Dash as a multiple of stroke width (`0` = solid).
-    pub dash: f64,
-    /// Gap between dashes as a multiple of stroke width.
-    pub gap: f64,
+    /// O tracejado: até três pares `[traço, vão]`, em múltiplos da largura (1.º traço `0` =
+    /// contínuo; o 1.º par `[0, 0]` depois do 1.º fecha o padrão — `ph2d_vec_scene::DashPattern`).
+    pub dash: [[f64; 2]; ph2d_vec_scene::MAX_DASH_PAIRS],
     /// **Pontas do traço** (arrowheads) — a do começo e a do fim do caminho. São
     /// propriedade do STROKE (herdam cor e largura, giram com a tangente), não formas
     /// do catálogo: por isso viajam no snapshot ao lado de cap/join/dash, e o painel
@@ -63,7 +62,8 @@ pub struct VectorStyleSnapshot {
     /// ([`MARKER_ROUND`]). Viajam no snapshot porque as caixas do painel são semeadas com o
     /// valor EFETIVO da tool a cada frame — um campo que nascesse em `0` daria uma seta
     /// invisível ao primeiro toque.
-    pub marker_scale: f64,
+    /// `[começo, fim]` — o tamanho é por ponta desde a F16c.
+    pub marker_scale: [f64; 2],
     pub marker_round: f64,
     /// **De que lado da linha a faixa cai** — Centre/Inner/Outer.
     ///
@@ -102,11 +102,10 @@ impl Default for VectorStyleSnapshot {
             cap: StrokeCap::Butt,
             align: StrokeAlign::Centre,
             join: StrokeJoin::Miter,
-            dash: 0.0,
-            gap: GAP_DEFAULT,
+            dash: crate::params::DASH_DEFAULT,
             marker_start: Marker::None,
             marker_end: Marker::None,
-            marker_scale: DEFAULT_MARKER_SCALE,
+            marker_scale: [DEFAULT_MARKER_SCALE; 2],
             marker_round: DEFAULT_MARKER_ROUND,
         }
     }

@@ -156,7 +156,8 @@ impl App {
             marker_start: style.marker_start,
             // A ponta de seta é o que faz a linha ser um conector, e não um traço.
             marker_end: Marker::Triangle,
-            marker_scale: style.marker_scale,
+            marker_scale_start: style.marker_scale_start,
+            marker_scale_end: style.marker_scale_end,
             marker_round: style.marker_round,
         });
         let id = gfx.vec_scene.push_path(path);

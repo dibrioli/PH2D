@@ -48,10 +48,12 @@ fn holding_an_arrow_puts_the_head_on_the_live_path_and_release_keeps_it() {
     assert_eq!((s.marker_start, s.marker_end), (Marker::None, Marker::Open));
     let drawn = 60.0 / (3.0 * 20f64.sqrt());
     assert!(
-        (s.marker_scale / drawn - 1.0).abs() < 0.35,
+        (s.marker_scale(false) / drawn - 1.0).abs() < 0.35,
         "tamanho {} vs {drawn}",
-        s.marker_scale
+        s.marker_scale(false)
     );
+    // F16c: o tamanho é POR PONTA — o início, sem farpa, fica com o do estilo.
+    assert_eq!(s.marker_scale(true), 1.0, "o inicio nao tem farpa");
     assert_eq!(p.verts.len(), 2, "o cabo é uma recta: {:?}", p.verts);
     assert!(
         dist(p.verts[1].anchor, tip) < 4.0,
@@ -76,8 +78,12 @@ fn esc_gives_back_the_free_stroke_without_the_head() {
     let p = scene.path(id).unwrap();
     let s = p.stroke.as_ref().unwrap();
     assert_eq!(
-        (s.marker_start, s.marker_end, s.marker_scale),
-        (Marker::None, Marker::None, 1.0)
+        (
+            s.marker_start,
+            s.marker_end,
+            [s.marker_scale_start, s.marker_scale_end]
+        ),
+        (Marker::None, Marker::None, [1.0; 2])
     );
     assert!(
         p.verts.len() > 2,
@@ -94,7 +100,7 @@ fn the_drag_scales_and_turns_the_whole_arrow() {
     let id = pencil.active_path().unwrap();
     let (s0, v0) = {
         let p = scene.path(id).unwrap();
-        (p.stroke.as_ref().unwrap().marker_scale, p.verts.clone())
+        (p.stroke.as_ref().unwrap().marker_scale(false), p.verts.clone())
     };
     let end = *pencil.samples().last().unwrap();
     let pivot = v0[0].anchor;
@@ -108,9 +114,9 @@ fn the_drag_scales_and_turns_the_whole_arrow() {
     let s = p.stroke.as_ref().unwrap();
     assert_eq!(s.marker_end, Marker::Open);
     assert!(
-        (s.marker_scale / s0 - 2.0).abs() < 1e-9,
+        (s.marker_scale(false) / s0 - 2.0).abs() < 1e-9,
         "a ponta dobra: {s0} → {}",
-        s.marker_scale
+        s.marker_scale(false)
     );
     let want = add(pivot, mul(rotate(sub(v0[1].anchor, pivot), FRAC_PI_2), 2.0));
     assert!(dist(p.verts[0].anchor, pivot) < 1e-9, "o início fica");
@@ -154,7 +160,7 @@ fn an_armed_head_is_the_arrows_and_its_tip_lands_on_the_drawn_tip() {
     let (node, dir) = ph2d_vec_scene::end_tangent(p, false).unwrap();
     let bico = add(
         node,
-        mul(dir, Marker::Triangle.inset(s.marker_scale) * s.width),
+        mul(dir, Marker::Triangle.inset(s.marker_scale(false)) * s.width),
     );
     assert!(
         dist(bico, tip) < 4.0,
@@ -171,7 +177,8 @@ fn the_ends_go_back_to_the_style_when_the_shape_stops_being_an_arrow() {
     let style = crate::PenStyle {
         marker_start: Marker::Bar,
         marker_end: Marker::Triangle,
-        marker_scale: 1.7,
+        marker_scale_start: 1.7,
+        marker_scale_end: 2.3,
         ..crate::PenStyle::default()
     };
     let arrow = arrow_ends(&style, [None, Some(30.0)], 3.0);
@@ -181,13 +188,29 @@ fn the_ends_go_back_to_the_style_when_the_shape_stops_being_an_arrow() {
         "só onde a mão desenhou"
     );
     assert!(arrow.inset[1] > 0.0 && arrow.inset[0] == 0.0);
+    // F16c: o tamanho é POR PONTA — o início, sem farpa, fica com o do estilo.
+    assert_eq!(arrow.scale[0], 1.7, "o inicio sem farpa guarda o seu tamanho");
     let back = arrow_ends(&style, [None; 2], 3.0);
     assert_eq!(back.markers, [Marker::Bar, Marker::Triangle]);
-    assert_eq!((back.scale, back.inset), (1.7, [0.0; 2]));
+    assert_eq!((back.scale, back.inset), ([1.7, 2.3], [0.0; 2]));
     let plain = arrow_ends(&crate::PenStyle::default(), [Some(30.0), Some(30.0)], 3.0);
     assert_eq!(
         plain.markers,
         [Marker::Open; 2],
         "sem ponta armada: a Open nas duas"
+    );
+    // ⭐ F16c — **cada ponta alcança a SUA farpa**: farpas de 30 e 60 dão tamanhos 1:2, e não a
+    // média das duas (a lei de antes, com UM tamanho para as duas pontas).
+    let desiguais = arrow_ends(&crate::PenStyle::default(), [Some(30.0), Some(60.0)], 3.0);
+    assert!(
+        (desiguais.scale[1] / desiguais.scale[0] - 2.0).abs() < 1e-9,
+        "cada ponta tem o tamanho da sua farpa: {:?}",
+        desiguais.scale
+    );
+    assert!(
+        (desiguais.scale[0] - plain.scale[0]).abs() < 1e-9,
+        "a ponta de partida nao mudou com a farpa do fim: {:?} vs {:?}",
+        desiguais.scale,
+        plain.scale
     );
 }

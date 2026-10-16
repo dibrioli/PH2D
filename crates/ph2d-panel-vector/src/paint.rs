@@ -282,6 +282,8 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     // Idem para as caixas da PONTA (Head Size / Head Round): nascem no valor EFETIVO da tool,
     // não em `0` — uma ponta de tamanho zero é uma ponta invisível.
     crate::paint_markers::seed(store);
+    // E as seis do TRACEJADO (F16c): mostram o padrão da forma selecionada.
+    crate::paint_dashes::seed(store);
 }
 
 pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {

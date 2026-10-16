@@ -28,7 +28,8 @@ fn spec(width: f64) -> StrokeSpec {
 fn head_spec(end: Marker, scale: f64, round: f64) -> StrokeSpec {
     let mut s = spec(2.0);
     s.marker_end = end;
-    s.marker_scale = scale;
+    s.marker_scale_start = scale;
+    s.marker_scale_end = scale;
     s.marker_round = round;
     s
 }
@@ -115,7 +116,7 @@ fn the_line_meets_the_head_at_every_scale() {
 
                 let gap = head_depth(geo, 60.0) - (60.0 - end_x);
                 assert!(
-                    gap.abs() < 1e-3 * s.width * s.marker_scale,
+                    gap.abs() < 1e-3 * s.width * s.marker_scale(false),
                     "{m:?} (scale {scale}, round {round}): a linha termina em x={end_x} e a \
                      cabeça vai ate x={} — {} de {}",
                     60.0 - head_depth(geo, 60.0),
@@ -155,7 +156,7 @@ fn the_users_round_reaches_the_head() {
 fn a_filled_head_fills_and_an_open_head_is_a_symbol() {
     let p = line(60.0);
     let mut s = head_spec(Marker::Triangle, 1.0, 0.0);
-    s.dash = Some((2.0, 2.0));
+    s.dash = Some(crate::DashPattern::single(2.0, 2.0));
     let plan = stroke_plan(&p, &s);
     assert!(
         matches!(plan[1], StrokePiece::Fill { .. }),
@@ -235,7 +236,7 @@ fn the_head_sits_with_its_base_on_the_node() {
         lo > -1e-9,
         "a ponta invade a linha: o ponto mais recuado dela esta' a {lo:.4} ATRAS do no'"
     );
-    let reach = Marker::Triangle.inset(s.marker_scale) * s.width;
+    let reach = Marker::Triangle.inset(s.marker_scale(false)) * s.width;
     assert!(
         (hi - reach).abs() < 1e-6,
         "o bico devia estar a {reach:.4} do no' e esta' a {hi:.4}"
@@ -272,7 +273,7 @@ fn a_closed_contour_has_no_heads() {
 /// próprios comprimentos, e a aritmética do gate fica legível.
 fn dashed(d: f64, g: f64) -> StrokeSpec {
     let mut s = StrokeSpec::new(crate::Rgba8::new(0, 0, 0, 255), 1.0);
-    s.dash = Some((d, g));
+    s.dash = Some(crate::DashPattern::single(d, g));
     s
 }
 
@@ -293,7 +294,8 @@ fn the_dash_closes_the_loop_on_a_shape_path() {
         "controlo positivo: o padrao cru TEM de sobrar, senao o gate nao prova nada"
     );
 
-    let [d, g] = crate::dash_for(&rect, &s).expect("ha' tracejado");
+    let dl = crate::dash_for(&rect, &s).expect("ha' tracejado");
+    let (d, g) = (dl[0], dl[1]);
     let period = d + g;
     let n = 12.0 / period;
     assert!(
@@ -311,7 +313,8 @@ fn the_dash_closes_the_loop_on_a_shape_path() {
 fn fitting_the_loop_keeps_the_dash_to_gap_ratio() {
     let rect = crate::rectangle([0.0, 0.0], [4.0, 2.0]);
     let s = dashed(3.0, 1.0);
-    let [d, g] = crate::dash_for(&rect, &s).expect("ha' tracejado");
+    let dl = crate::dash_for(&rect, &s).expect("ha' tracejado");
+    let (d, g) = (dl[0], dl[1]);
     assert!(
         (d / g - 3.0).abs() < 1e-9,
         "a razao 3:1 virou {:.4}:1 -- o tracejado mudou de carater",
@@ -342,7 +345,8 @@ fn an_open_path_starts_and_ends_on_a_dash() {
         "controlo positivo: o padrao cru TEM de nao encaixar, senao o gate passa vazio"
     );
 
-    let [d, g] = crate::dash_for(&line, &s).expect("ha' tracejado");
+    let dl = crate::dash_for(&line, &s).expect("ha' tracejado");
+    let (d, g) = (dl[0], dl[1]);
     let n = ((10.0 + g) / (d + g)).round();
     let span = n * d + (n - 1.0) * g;
     assert!(
@@ -375,7 +379,8 @@ fn a_solid_stroke_asks_nothing_of_the_geometry() {
 fn a_period_longer_than_the_loop_saturates_at_one() {
     let small = crate::rectangle([0.0, 0.0], [1.0, 1.0]); // perímetro 4
     let s = dashed(20.0, 5.0); // período 25 > 4
-    let [d, g] = crate::dash_for(&small, &s).expect("ha' tracejado");
+    let dl = crate::dash_for(&small, &s).expect("ha' tracejado");
+    let (d, g) = (dl[0], dl[1]);
     assert!(
         ((d + g) - 4.0).abs() < 1e-9,
         "com n=1 o periodo tem de ser a volta inteira, e deu {}",
@@ -413,7 +418,8 @@ fn the_dash_closes_the_cooked_loop_not_the_authored_one() {
     );
 
     let s = dashed(2.5, 1.0);
-    let [d, g] = crate::dash_for(&r, &s).expect("ha' tracejado");
+    let dl = crate::dash_for(&r, &s).expect("ha' tracejado");
+    let (d, g) = (dl[0], dl[1]);
     let period = d + g;
 
     let n_cooked = cooked / period;

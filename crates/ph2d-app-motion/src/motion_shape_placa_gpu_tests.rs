@@ -433,7 +433,10 @@ pub(crate) fn estrelas_da_sonda(
     if tracejado {
         use crate::motion_state::traco_esticado_demo::TRACEJADO;
         if let Some(s) = f.stroke.as_mut() {
-            s.dash = Some((f64::from(TRACEJADO.0), f64::from(TRACEJADO.1)));
+            s.dash = Some(ph2d_vec_scene::DashPattern::single(
+                f64::from(TRACEJADO.0),
+                f64::from(TRACEJADO.1),
+            ));
         }
     }
     let (ex, ey) = if modo == "conforme" {

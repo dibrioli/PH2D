@@ -72,7 +72,7 @@ pub(crate) fn symmetry_kind(id: ph2d_a11y::NodeId) -> Option<ph2d_symmetry::Symm
 
 use crate::params::{
     DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, marker_from_value,
-    slider_to_dash, slider_to_gap, slider_to_opacity, slider_to_px,
+    slider_to_opacity, slider_to_px,
 };
 use ph2d_vec_scene::{Marker, StrokeAlign};
 
@@ -164,23 +164,22 @@ pub struct VectorTool {
     /// discriminante. Guardar por-forma é o que faz cada uma lembrar do "último usado":
     /// mexer no raio da estrela não mexe no do retângulo.
     shape_values: [ShapeValues; MAX_SHAPES],
-    /// Stroke cap / join + dash & gap as multiples of the stroke width
-    /// (`dash = 0` = solid; `gap` is the space between dashes).
+    /// Stroke cap / join + o tracejado: até três pares `[traço, vão]` em múltiplos da largura
+    /// (1.º traço `0` = contínuo — ver `ph2d_vec_scene::DashPattern`).
     cap: StrokeCap,
     join: StrokeJoin,
     align: StrokeAlign,
-    dash: f64,
-    gap: f64,
+    dash: [[f64; 2]; ph2d_vec_scene::MAX_DASH_PAIRS],
     /// **Pontas do traço** (arrowheads): a do começo e a do fim. Propriedade do stroke,
     /// como cap/join/dash — valem para o próximo caminho desenhado E para o selecionado
     /// (o bridge as reaplica no `take_apply_to_selected`).
     marker_start: Marker,
     marker_end: Marker,
-    /// **Tamanho** da ponta (múltiplo do que a largura dita) e **arredondamento** das
-    /// quinas dela. Style, como as pontas — o bridge os leva ao `StrokeSpec` de TODOS os
+    /// **Tamanho** de cada ponta (`[começo, fim]`, múltiplo do que a largura dita) e
+    /// **arredondamento** das quinas dela. Style, como as pontas — o bridge os leva ao `StrokeSpec` de TODOS os
     /// caminhos selecionados. **Não** há um flag "bidirecional": esse estado é derivado das
     /// duas pontas ([`VectorStyleSnapshot::both_ends`]).
-    marker_scale: f64,
+    marker_scale: [f64; 2],
     marker_round: f64,
     /// **As pontas ARMADAS** — as do PRÓXIMO caminho desenhado: só o painel as escreve, campo a
     /// campo (o que o artista mexeu). Selecionar um caminho ADOTA as pontas dele nos campos acima
@@ -235,11 +234,10 @@ impl Default for VectorTool {
             cap: StrokeCap::Butt,
             join: StrokeJoin::Miter,
             align: StrokeAlign::Centre,
-            dash: 0.0,
-            gap: crate::params::GAP_DEFAULT,
+            dash: crate::params::DASH_DEFAULT,
             marker_start: Marker::None,
             marker_end: Marker::None,
-            marker_scale: crate::params::DEFAULT_MARKER_SCALE,
+            marker_scale: [crate::params::DEFAULT_MARKER_SCALE; 2],
             marker_round: crate::params::DEFAULT_MARKER_ROUND,
             armed: ArmedHead::default(),
             apply_to_selected: false,
@@ -366,13 +364,11 @@ impl VectorTool {
     pub fn stroke_align(&self) -> StrokeAlign {
         self.align
     }
+    /// O tracejado autorado, como o documento o guarda (`None` = contínuo).
     #[must_use]
-    pub fn dash(&self) -> f64 {
-        self.dash
-    }
-    #[must_use]
-    pub fn gap(&self) -> f64 {
-        self.gap
+    pub fn dash_pattern(&self) -> Option<ph2d_vec_scene::DashPattern> {
+        let p = ph2d_vec_scene::DashPattern { pairs: self.dash };
+        p.is_dashed().then_some(p)
     }
 
     /// As pontas do traço (começo / fim).
@@ -385,10 +381,10 @@ impl VectorTool {
         self.marker_end
     }
 
-    /// Tamanho da ponta (múltiplo) e arredondamento das quinas dela — o bridge os leva ao
-    /// `StrokeSpec` dos caminhos selecionados, ao lado das pontas.
+    /// Tamanho de cada ponta (`[começo, fim]`, múltiplo) e arredondamento das quinas dela — o
+    /// bridge os leva ao `StrokeSpec` dos caminhos selecionados, ao lado das pontas.
     #[must_use]
-    pub fn marker_scale(&self) -> f64 {
+    pub fn marker_scale(&self) -> [f64; 2] {
         self.marker_scale
     }
     #[must_use]
@@ -396,9 +392,9 @@ impl VectorTool {
         self.marker_round
     }
 
-    /// As pontas ARMADAS para o próximo caminho: `([começo, fim], tamanho, arredondamento)`.
+    /// As pontas ARMADAS para o próximo caminho: `([começo, fim], [tamanhos], arredondamento)`.
     #[must_use]
-    pub fn armed_markers(&self) -> ([Marker; 2], f64, f64) {
+    pub fn armed_markers(&self) -> ([Marker; 2], [f64; 2], f64) {
         let a = self.armed;
         ([a.start, a.end], a.scale, a.round)
     }
@@ -435,11 +431,23 @@ impl VectorTool {
         self.apply_to_selected = true;
     }
 
-    /// Escreve o tamanho / o arredondamento da ponta (clampados à faixa que o painel
+    /// Escreve o tamanho de UMA ponta (`slot`) / o arredondamento (clampados à faixa que o painel
     /// registra na caixa) + marca a seleção para reestilizar — são Style, como as pontas.
-    fn set_marker_scale(&mut self, v: f64) {
-        self.marker_scale = crate::shapes::clamp_to(&crate::params::MARKER_SCALE, v);
-        self.armed.scale = self.marker_scale;
+    fn set_marker_scale(&mut self, slot: usize, v: f64) {
+        self.marker_scale[slot] = crate::shapes::clamp_to(&crate::params::MARKER_SCALE, v);
+        self.armed.scale[slot] = self.marker_scale[slot];
+        self.apply_to_selected = true;
+    }
+
+    /// Escreve o traço (`gap = false`) ou o vão (`gap = true`) do par `k` do tracejado, na faixa
+    /// das caixas do painel.
+    fn set_dash(&mut self, k: usize, gap: bool, v: f64) {
+        let (lo, hi) = if gap {
+            (crate::params::GAP_MIN, crate::params::GAP_MAX)
+        } else {
+            (crate::params::DASH_MIN, crate::params::DASH_MAX)
+        };
+        self.dash[k][usize::from(gap)] = v.clamp(lo, hi);
         self.apply_to_selected = true;
     }
     fn set_marker_round(&mut self, v: f64) {
@@ -550,7 +558,6 @@ impl VectorTool {
             join: self.join,
             align: self.align,
             dash: self.dash,
-            gap: self.gap,
             marker_start: self.marker_start,
             marker_end: self.marker_end,
             marker_scale: self.marker_scale,
@@ -633,7 +640,7 @@ mod panel_event;
 struct ArmedHead {
     start: Marker,
     end: Marker,
-    scale: f64,
+    scale: [f64; 2],
     round: f64,
 }
 
@@ -642,7 +649,7 @@ impl Default for ArmedHead {
         Self {
             start: Marker::None,
             end: Marker::None,
-            scale: crate::params::DEFAULT_MARKER_SCALE,
+            scale: [crate::params::DEFAULT_MARKER_SCALE; 2],
             round: crate::params::DEFAULT_MARKER_ROUND,
         }
     }

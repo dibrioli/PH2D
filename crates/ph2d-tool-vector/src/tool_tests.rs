@@ -186,11 +186,20 @@ fn stroke_cap_join_dash_arms() {
     );
     Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_JOIN_BEVEL));
     assert_eq!(t.join(), StrokeJoin::Bevel);
-    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH, 1.0));
-    assert!((t.dash() - DASH_MAX).abs() < 1e-6);
+    // F16c: o Dash/Gap do par 1 é a CAIXA de número — o valor autorado (múltiplo da largura),
+    // saturado na faixa dela.
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH_NUM, 3.0));
+    assert_eq!(
+        t.dash_pattern().map(|p| p.pairs[0][0]),
+        Some(3.0),
+        "3 = tres larguras"
+    );
     assert!(t.take_apply_to_selected());
-    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP, 1.0));
-    assert!((t.gap() - GAP_MAX).abs() < 1e-6);
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH_NUM, 99.0));
+    assert!((t.dash_pattern().expect("tracejado").pairs[0][0] - DASH_MAX).abs() < 1e-6);
+    assert!(t.take_apply_to_selected());
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP_NUM, 99.0));
+    assert!((t.dash_pattern().expect("tracejado").pairs[0][1] - GAP_MAX).abs() < 1e-6);
     assert!(
         t.take_apply_to_selected(),
         "gap change restyles the selection"
@@ -199,8 +208,8 @@ fn stroke_cap_join_dash_arms() {
     let s = t.ui_snapshot();
     assert_eq!(s.cap, StrokeCap::Round);
     assert_eq!(s.join, StrokeJoin::Bevel);
-    assert!((s.dash - DASH_MAX).abs() < 1e-6);
-    assert!((s.gap - GAP_MAX).abs() < 1e-6);
+    assert!((s.dash[0][0] - DASH_MAX).abs() < 1e-6);
+    assert!((s.dash[0][1] - GAP_MAX).abs() < 1e-6);
 }
 
 /// **As pontas chegam ao Style, e voltam no snapshot.** O painel manda o
@@ -266,7 +275,7 @@ fn adopting_markers_does_not_arm_a_restyle() {
     t.adopt_markers(
         Marker::Circle,
         Marker::Open,
-        crate::params::DEFAULT_MARKER_SCALE,
+        [crate::params::DEFAULT_MARKER_SCALE; 2],
         crate::params::DEFAULT_MARKER_ROUND,
     );
     assert_eq!(t.marker_start(), Marker::Circle);
@@ -333,7 +342,7 @@ fn the_head_size_and_round_reach_the_tool_and_clamp_to_their_range() {
         "a tool nova nasce sem restyle pendente"
     );
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, 2.5));
-    assert!((t.marker_scale() - 2.5).abs() < 1e-9);
+    assert!((t.marker_scale()[0] - 2.5).abs() < 1e-9);
     assert!(
         t.take_apply_to_selected(),
         "mudar o tamanho da cabeca tem de reestilizar o traco SELECIONADO — senao o numero \
@@ -349,10 +358,10 @@ fn the_head_size_and_round_reach_the_tool_and_clamp_to_their_range() {
         &mut t,
         PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, 999.0),
     );
-    assert!((t.marker_scale() - crate::params::MARKER_SCALE.max).abs() < 1e-9);
+    assert!((t.marker_scale()[0] - crate::params::MARKER_SCALE.max).abs() < 1e-9);
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, -5.0));
     assert!(
-        (t.marker_scale() - crate::params::MARKER_SCALE.min).abs() < 1e-9,
+        (t.marker_scale()[0] - crate::params::MARKER_SCALE.min).abs() < 1e-9,
         "uma cabeca de tamanho zero (ou negativo) e uma seta invisivel"
     );
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_ROUND, 9.0));
@@ -446,17 +455,17 @@ fn both_ends_mirrors_a_lone_start_marker_instead_of_clobbering_it() {
 fn adopting_a_paths_markers_also_adopts_its_head_size_and_round() {
     let mut t = VectorTool::new();
     let _ = t.take_apply_to_selected();
-    t.adopt_markers(Marker::None, Marker::Triangle, 3.0, 0.5);
+    t.adopt_markers(Marker::None, Marker::Triangle, [2.0, 3.0], 0.5);
     assert_eq!(t.marker_end(), Marker::Triangle);
-    assert!((t.marker_scale() - 3.0).abs() < 1e-9);
+    assert_eq!(t.marker_scale(), [2.0, 3.0], "cada ponta com o seu tamanho");
     assert!((t.marker_round() - 0.5).abs() < 1e-9);
     assert!(
         !t.take_apply_to_selected(),
         "adotar e LER o documento — se marcasse, selecionar um caminho ja o reescreveria"
     );
     // Um save corrompido (escala absurda) e clampado na adocao, nao propagado.
-    t.adopt_markers(Marker::None, Marker::Triangle, 1e9, -1.0);
-    assert!((t.marker_scale() - crate::params::MARKER_SCALE.max).abs() < 1e-9);
+    t.adopt_markers(Marker::None, Marker::Triangle, [1e9; 2], -1.0);
+    assert_eq!(t.marker_scale(), [crate::params::MARKER_SCALE.max; 2]);
     assert!((t.marker_round() - crate::params::MARKER_ROUND.min).abs() < 1e-9);
 }
 

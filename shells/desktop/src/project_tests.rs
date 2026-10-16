@@ -577,3 +577,8 @@ mod boards;
 /// próximo bump.
 #[path = "project_tape_tests.rs"]
 mod tape;
+
+/// **Um projecto v189 abre com o mesmo traço** (F16c) — filho pela razão dos de cima: as fixtures
+/// (`headless_app`, `tmp_path`) são as portas dele.
+#[path = "project_traco_v189_tests.rs"]
+mod traco_v189;

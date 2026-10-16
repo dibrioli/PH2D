@@ -237,10 +237,61 @@ fn the_dash_arrives_in_multiples_of_the_width() {
     </svg>"##;
     let d = ler(svg);
     let s = d.shapes[0].path.stroke.as_ref().expect("ha' traco");
-    let (a, b) = s.dash.expect("ha' tracejado");
+    let p = s.dash.expect("ha' tracejado");
+    assert_eq!(p.active().len(), 1, "um par so': {p:?}");
+    let [a, b] = p.pairs[0];
     assert!(
         (a - 2.0).abs() < 1e-9 && (b - 3.0).abs() < 1e-9,
         "dash: {a}, {b}"
+    );
+}
+
+/// ⭐ **F16c — um `dasharray` de QUATRO números entra como DOIS pares**, em múltiplos da largura, e
+/// não é perda nenhuma (o documento tem três pares).
+#[test]
+fn a_four_number_dasharray_arrives_as_two_pairs_without_a_note() {
+    let d = ler(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+      <path d="M 0 0 L 50 0" stroke="#000" stroke-width="2" stroke-dasharray="6 2 1 2"/>
+    </svg>"##,
+    );
+    let s = d.shapes[0].path.stroke.as_ref().expect("ha' traco");
+    let p = s.dash.expect("ha' tracejado");
+    assert_eq!(p.active(), &[[3.0, 1.0], [0.5, 1.0]], "os dois pares: {p:?}");
+    assert!(
+        !d.notes.iter().any(|n| n.contains("stroke-dasharray")),
+        "quatro numeros cabem no documento - nao ha' perda a dizer: {:?}",
+        d.notes
+    );
+}
+
+/// ⛔ **Mais de SEIS números é um ritmo que o documento não tem**: entram os três primeiros pares,
+/// e a nota di-lo (um par a mais NÃO entra calado).
+#[test]
+fn a_dasharray_longer_than_six_numbers_keeps_three_pairs_and_says_so() {
+    let d = ler(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+      <path d="M 0 0 L 50 0" stroke="#000" stroke-width="1" stroke-dasharray="1 2 3 4 5 6 7 8"/>
+    </svg>"##,
+    );
+    let s = d.shapes[0].path.stroke.as_ref().expect("ha' traco");
+    let p = s.dash.expect("ha' tracejado");
+    assert_eq!(p.pairs, [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], "os 6 1.os: {p:?}");
+    assert!(
+        d.notes.iter().any(|n| n.contains("stroke-dasharray")),
+        "o 4.o par caiu e a nota tem de o dizer: {:?}",
+        d.notes
+    );
+    // CONTROLO: seis números exactos não perdem nada.
+    let seis = ler(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+      <path d="M 0 0 L 50 0" stroke="#000" stroke-width="1" stroke-dasharray="1 2 3 4 5 6"/>
+    </svg>"##,
+    );
+    assert!(
+        !seis.notes.iter().any(|n| n.contains("stroke-dasharray")),
+        "seis numeros cabem: {:?}",
+        seis.notes
     );
 }
 

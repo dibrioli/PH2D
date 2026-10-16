@@ -224,6 +224,8 @@ mod vector_mode_quinas;
 mod vector_mode_alinhar;
 /// A cena 23 (F16): a barra de controle do Illustrator e o painel do traço aberto.
 mod vector_mode_controle;
+/// A cena 24 (F16c): o tracejado em pares e a seta por ponta, no painel do traço.
+mod vector_mode_tracejado;
 /// A cena 20 (F13): o modo Forma selecciona — o clique desarma e traz as alças.
 mod vector_mode_seleciona;
 /// A cena 19 (F12): as setas lado a lado em quatro formas e a ponta da espiral que segue a mão.

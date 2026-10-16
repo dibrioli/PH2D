@@ -15,7 +15,7 @@ fn set(t: &mut VectorTool, id: NodeId, v: f64) {
 fn adopting_a_paths_heads_shows_them_but_does_not_arm_them() {
     let mut t = VectorTool::new();
     let before = t.armed_markers();
-    t.adopt_markers(Marker::None, Marker::Open, 1.114, 0.0);
+    t.adopt_markers(Marker::None, Marker::Open, [1.0, 1.114], 0.0);
     assert_eq!(
         t.marker_end(),
         Marker::Open,
@@ -29,11 +29,15 @@ fn adopting_a_paths_heads_shows_them_but_does_not_arm_them() {
 #[test]
 fn the_panel_arms_only_the_field_it_touched() {
     let mut t = VectorTool::new();
-    t.adopt_markers(Marker::None, Marker::Open, 1.114, 0.0);
+    t.adopt_markers(Marker::None, Marker::Open, [1.0, 1.114], 0.0);
     set(&mut t, ids::VECTOR_MARKER_SCALE, 2.0);
     let ([start, end], scale, _) = t.armed_markers();
     assert_eq!((start, end), (Marker::None, Marker::None));
-    assert!((scale - 2.0).abs() < 1e-9);
+    // F16c: o Head Size é POR PONTA — a caixa do começo arma só o começo; o fim fica no de
+    // nascença (o 1,114 da seta adotada NÃO é armado).
+    assert_eq!(scale, [2.0, crate::params::DEFAULT_MARKER_SCALE]);
+    set(&mut t, ids::VECTOR_MARKER_SCALE_END, 1.5);
+    assert_eq!(t.armed_markers().1, [2.0, 1.5], "a caixa do fim arma o fim");
     set(&mut t, ids::VECTOR_MARKER_ROUND, 0.5);
     assert!((t.armed_markers().2 - 0.5).abs() < 1e-9);
     set(
@@ -54,4 +58,33 @@ fn the_panel_arms_only_the_field_it_touched() {
         [t.marker_start(), t.marker_end()],
         "Both Ends arma as duas"
     );
+}
+
+/// ⭐ F16c — **o par 2 do tracejado chega à tool e ao padrão**, sem mexer no par 1; e o tamanho
+/// da ponta do FIM muda só o fim.
+#[test]
+fn the_second_dash_pair_and_the_end_head_size_reach_the_tool() {
+    let mut t = VectorTool::new();
+    let _ = t.take_apply_to_selected();
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH_NUM, 4.0));
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP_NUM, 2.0));
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH_2, 1.0));
+    assert!(t.take_apply_to_selected(), "o par 2 reestiliza a selecao");
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP_2, 0.5));
+    assert!(t.take_apply_to_selected());
+    let p = t.dash_pattern().expect("ha' tracejado");
+    assert_eq!(p.pairs[0], [4.0, 2.0], "o par 1 ficou");
+    assert_eq!(p.pairs[1], [1.0, 0.5], "o par 2 chegou");
+    assert_eq!(p.pairs[2], [0.0, 0.0], "o par 3 nao foi tocado");
+    assert_eq!(p.active().len(), 2, "o padrao percorre DOIS pares");
+    assert_eq!(t.ui_snapshot().dash[1], [1.0, 0.5], "e o snapshot leva-o");
+
+    let antes = t.marker_scale();
+    Tool::handle_panel_event(
+        &mut t,
+        PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE_END, 2.5),
+    );
+    assert_eq!(t.marker_scale(), [antes[0], 2.5], "so' o fim mudou");
+    assert!(t.take_apply_to_selected());
+    assert_eq!(t.ui_snapshot().marker_scale, [antes[0], 2.5]);
 }

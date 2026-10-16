@@ -193,6 +193,49 @@ impl SkinnedPath {
     }
 }
 
+/// ⭐ **Os binds de um ficheiro anterior ao v23 do traço, regravados na forma nova** (F16c) — o
+/// `VecPath` dentro do `SkinBind::source` traz o `StrokeSpec` v22, e o leitor de cada quadro já não
+/// sabe a versão do ficheiro. Devolve quantos binds mudaram.
+///
+/// ⚠️ Lê com **consumo EXACTO** (`take_from_bytes` sem sobra), as três formas pela ordem da
+/// [`le`]: a fonte de uma IMAGEM é uma `SkinnedMesh` e não pode ser tomada por um caminho — o que
+/// não se lê exactamente fica como estava.
+pub fn migra_traco_v22(mundo: &mut ph2d_ecs::scene::WorldSnapshot) -> usize {
+    fn exacto<'a, T: serde::Deserialize<'a>>(b: &'a [u8]) -> Option<T> {
+        match postcard::take_from_bytes::<T>(b) {
+            Ok((v, [])) => Some(v),
+            _ => None,
+        }
+    }
+    let caminho = |b: &[u8]| -> Option<SkinnedPath> {
+        ph2d_vec_scene::with_stroke_layout_v22(|| {
+            exacto::<SkinnedPath>(b)
+                .or_else(|| {
+                    exacto::<SkinnedPathV2>(b).map(|v2| SkinnedPath {
+                        path: v2.path,
+                        pesos: v2.pesos,
+                        campo: v2.campo,
+                        efeitos_cozidos: false,
+                    })
+                })
+                .or_else(|| {
+                    exacto::<SkinnedPathV1>(b).map(|v1| SkinnedPath {
+                        path: v1.path,
+                        pesos: v1.pesos,
+                        campo: None,
+                        efeitos_cozidos: false,
+                    })
+                })
+        })
+    };
+    mundo.rewrite_component_blobs(ph2d_skeleton_ecs::SKIN_TYPE_NAME, |blob| {
+        let mut skin: ph2d_skeleton_ecs::SkinBind = exacto(blob)?;
+        let g = caminho(&skin.source)?;
+        skin.source = postcard::to_allocvec(&g).ok()?;
+        postcard::to_allocvec(&skin).ok()
+    })
+}
+
 /// ⭐⭐⭐ **A PORTA do formato guardado** — o `SkinBind::source` lê-se por aqui, e só por aqui.
 ///
 /// ⛔⛔ **Ela existe porque o formato era descodificado À MÃO em SETE sítios** (medido 2026-09-19),

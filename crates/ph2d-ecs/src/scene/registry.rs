@@ -502,7 +502,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ADR-0129: o Envelope Object vivo. Mesma razão de todos acima — sem o registro, o snapshot o
     // DESCARTA e o undo/save perderiam a gaiola E a fonte autorada em silêncio (e a fonte, aqui,
     // é insubstituível: o recook já sobrescreveu o path da cena com a cozida).
-    reg.register::<crate::VecEnvelope>("ph2d::ecs::VecEnvelope");
+    reg.register::<crate::VecEnvelope>(crate::vec_envelope::VEC_ENVELOPE_TYPE_NAME);
     // ⭐⭐⭐ O ESQUELETO (o OSSO e a PELE) **MUDOU-SE** para a `ph2d-skeleton-ecs` em 2026-09-06,
     // quando virou módulo próprio: ele serve vector, raster e Flip, e um componente por mídia
     // dentro da fundação a faria crescer uma vez por cliente. Quem os regista é a porta

@@ -525,3 +525,43 @@ fn one_object_goes_out_alone_at_the_projects_pixels_per_meter() {
     );
     assert!(svg_of_path(&scene, &VecXforms::new(), 999, &sempre_nao, 1.0).is_none());
 }
+
+/// O valor do atributo `nome="…"` na 1.ª ocorrência do texto.
+fn atributo<'a>(texto: &'a str, nome: &str) -> Option<&'a str> {
+    let chave = format!("{nome}=\"");
+    let i = texto.find(&chave)? + chave.len();
+    let fim = texto[i..].find('"')?;
+    Some(&texto[i..i + fim])
+}
+
+/// ⭐ **F16c — um tracejado de DOIS PARES sai com QUATRO números**, na unidade do ficheiro (os
+/// múltiplos da largura vezes a largura escrita), e um par vazio a seguir não sai.
+#[test]
+fn a_two_pair_dash_goes_out_as_four_numbers() {
+    let mut scene = VecScene::new();
+    let id = quadrado(&mut scene, 10.0);
+    if let Some(p) = scene.path_mut(id)
+        && let Some(s) = p.stroke.as_mut()
+    {
+        let mut d = ph2d_vec_scene::DashPattern::single(3.0, 1.0);
+        d.pairs[1] = [0.5, 1.0];
+        s.dash = Some(d);
+    }
+    let out = svg(&scene, &VecXforms::new(), &sempre_nao, &sempre_nao);
+    let w: f64 = atributo(&out.texto, "stroke-width")
+        .expect("o traco tem largura")
+        .parse()
+        .expect("numero");
+    let lista: Vec<f64> = atributo(&out.texto, "stroke-dasharray")
+        .expect("o tracejado viajou")
+        .split(',')
+        .map(|n| n.parse().expect("numero"))
+        .collect();
+    assert_eq!(lista.len(), 4, "dois pares = quatro numeros: {lista:?}");
+    for (got, mult) in lista.iter().zip([3.0, 1.0, 0.5, 1.0]) {
+        assert!(
+            (got - mult * w).abs() < 1e-3,
+            "o tracejado saiu {lista:?} com largura {w}; esperava {mult} x {w}"
+        );
+    }
+}

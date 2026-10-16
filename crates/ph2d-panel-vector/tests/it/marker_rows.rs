@@ -50,7 +50,7 @@ fn paint_frame(hero: &mut HeroScreen) {
 }
 
 /// O Style que a shell publica (o que a tool tem armado).
-fn publish(start: Marker, end: Marker, scale: f64, round: f64) {
+fn publish(start: Marker, end: Marker, scale: [f64; 2], round: f64) {
     set_current_vector_style(Some(VectorStyleSnapshot {
         marker_start: start,
         marker_end: end,
@@ -64,11 +64,12 @@ fn publish(start: Marker, end: Marker, scale: f64, round: f64) {
 #[test]
 fn head_size_head_round_and_both_ends_are_painted_and_clickable() {
     let mut hero = hero_with_vector_panel();
-    publish(Marker::None, Marker::None, 1.0, 0.0);
+    publish(Marker::None, Marker::None, [1.0; 2], 0.0);
     paint_frame(&mut hero);
 
     for (id, what) in [
         (ph2d_tool_vector::ids::VECTOR_MARKER_SCALE, "Head Size"),
+        (ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_END, "Head Size (end)"),
         (ph2d_tool_vector::ids::VECTOR_MARKER_ROUND, "Head Round"),
         (ph2d_tool_vector::ids::VECTOR_MARKER_BOTH, "Both Ends"),
     ] {
@@ -84,7 +85,7 @@ fn head_size_head_round_and_both_ends_are_painted_and_clickable() {
 #[test]
 fn the_head_boxes_are_born_showing_the_effective_value_not_zero() {
     let mut hero = hero_with_vector_panel();
-    publish(Marker::None, Marker::Triangle, 2.5, 0.4);
+    publish(Marker::None, Marker::Triangle, [2.5, 1.8], 0.4);
     paint_frame(&mut hero);
 
     let scale = hero
@@ -101,10 +102,19 @@ fn the_head_boxes_are_born_showing_the_effective_value_not_zero() {
          primeiro toque"
     );
     assert!((round - 0.4).abs() < 1e-9, "o Head Round nasceu em {round}");
+    // F16c: o Head Size é POR PONTA — a 2.ª caixa nasce no tamanho do FIM.
+    let end = hero
+        .store
+        .number_value(ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_END)
+        .expect("Head Size (fim) tem de estar registrado no populate");
+    assert!(
+        (end - 1.8).abs() < 1e-9,
+        "o Head Size do fim nasceu em {end}, e nao no efetivo (1.8)"
+    );
 
     // E acompanha o frame seguinte (o seed é por-frame, como o do conector — a tool muda
     // quando o usuário seleciona outro caminho).
-    publish(Marker::None, Marker::Triangle, 0.75, 0.0);
+    publish(Marker::None, Marker::Triangle, [0.75; 2], 0.0);
     paint_frame(&mut hero);
     let scale = hero
         .store
@@ -122,7 +132,7 @@ fn the_head_boxes_are_born_showing_the_effective_value_not_zero() {
 #[test]
 fn the_head_boxes_declare_their_range() {
     let mut hero = hero_with_vector_panel();
-    publish(Marker::None, Marker::Triangle, 99.0, 9.0);
+    publish(Marker::None, Marker::Triangle, [99.0; 2], 9.0);
     paint_frame(&mut hero);
     let scale = hero
         .store

@@ -119,6 +119,31 @@ impl WorldSnapshot {
         let bytes = postcard::to_allocvec(self).expect("WorldSnapshot serialize");
         *blake3::hash(&bytes).as_bytes()
     }
+
+    /// **Regrava os blobs de UM componente** (pelo nome registado): `f` devolve os bytes novos, ou
+    /// `None` para deixar o blob como está. Devolve quantos mudaram.
+    ///
+    /// É a porta das migrações de formato que vivem DENTRO de um componente (o `VecPath` guardado
+    /// pelo Envelope e pela pele, F16c) — o snapshot não conhece os tipos, só o nome. ⚠️ A linha é
+    /// copiada só quando um blob dela muda (`Arc::make_mut`): as outras continuam partilhadas.
+    pub fn rewrite_component_blobs(
+        &mut self,
+        type_name: &str,
+        mut f: impl FnMut(&[u8]) -> Option<Vec<u8>>,
+    ) -> usize {
+        let id = super::stable_type_id(type_name);
+        let mut n = 0;
+        for row in &mut self.entities {
+            let Some(slot) = row.components.iter().position(|b| b.type_id == id) else {
+                continue;
+            };
+            if let Some(novo) = f(&row.components[slot].data) {
+                std::sync::Arc::make_mut(row).components[slot].data = novo;
+                n += 1;
+            }
+        }
+        n
+    }
 }
 
 impl Default for WorldSnapshot {

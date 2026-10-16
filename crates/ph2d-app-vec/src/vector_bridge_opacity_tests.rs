@@ -35,7 +35,7 @@ fn style(c: Rgba8) -> StrokeStyle {
         dash: None,
         marker_start: ph2d_vec_scene::Marker::None,
         marker_end: ph2d_vec_scene::Marker::None,
-        marker_scale: 1.0,
+        marker_scale: [1.0; 2],
         marker_round: 0.0,
     }
 }

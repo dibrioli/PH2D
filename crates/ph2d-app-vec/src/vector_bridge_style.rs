@@ -34,11 +34,11 @@ pub struct StrokeStyle {
     pub join: LineJoin,
     /// De que lado da linha a faixa cai (Centre/Inner/Outer).
     pub align: StrokeAlign,
-    pub dash: Option<(f64, f64)>,
+    pub dash: Option<ph2d_vec_scene::DashPattern>,
     pub marker_start: ph2d_vec_scene::Marker,
     pub marker_end: ph2d_vec_scene::Marker,
-    /// Tamanho da cabeça da seta (múltiplo) + arredondamento das quinas dela.
-    pub marker_scale: f64,
+    /// Tamanho da cabeça de cada seta (`[começo, fim]`, múltiplo) + arredondamento das quinas.
+    pub marker_scale: [f64; 2],
     pub marker_round: f64,
 }
 
@@ -53,7 +53,8 @@ impl StrokeStyle {
             || s.dash != self.dash
             || s.marker_start != self.marker_start
             || s.marker_end != self.marker_end
-            || (s.marker_scale - self.marker_scale).abs() > f64::EPSILON
+            || (s.marker_scale_start - self.marker_scale[0]).abs() > f64::EPSILON
+            || (s.marker_scale_end - self.marker_scale[1]).abs() > f64::EPSILON
             || (s.marker_round - self.marker_round).abs() > f64::EPSILON
     }
 
@@ -142,7 +143,8 @@ impl StrokeStyle {
             dash: self.dash,
             marker_start: self.marker_start,
             marker_end: self.marker_end,
-            marker_scale: self.marker_scale,
+            marker_scale_start: self.marker_scale[0],
+            marker_scale_end: self.marker_scale[1],
             marker_round: self.marker_round,
         }
     }
@@ -414,16 +416,6 @@ fn reseed_style_sliders(
         store,
         ph2d_tool_vector::ids::VECTOR_WIDTH,
         params::px_to_slider(tool.stroke_width_px()),
-    );
-    set(
-        store,
-        ph2d_tool_vector::ids::VECTOR_DASH,
-        params::dash_to_slider(tool.dash()),
-    );
-    set(
-        store,
-        ph2d_tool_vector::ids::VECTOR_GAP,
-        params::gap_to_slider(tool.gap()),
     );
     sync_opacity_slider(
         store,

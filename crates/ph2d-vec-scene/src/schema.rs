@@ -77,4 +77,17 @@
 /// fim de `PaintEntry`**, com o mesmo modo de falha do v21: um save v21 rebenta **dentro** do `Vec`
 /// de camadas. ⭐ O neutro é `0.0` e o cozimento sai por um `is_dilated()` antes de tocar no motor
 /// ⇒ uma cena que nunca lhe toque desenha byte a byte o que desenhava.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 22;
+/// v23: o [`crate::StrokeSpec`] ganhou o tracejado em **até três pares** (`dash:
+/// Option<DashPattern>`, era `Option<(f64, f64)>`) e o tamanho da ponta **por lado**
+/// (`marker_scale_start`/`_end`, era um `marker_scale`) — F16c, o painel Stroke do Illustrator.
+/// ⭐ **O primeiro degrau desta escada que LÊ o anterior em vez de o recusar** (ordem do dono:
+/// *«ficheiros antigos têm de continuar a abrir iguais»*): só o `StrokeSpec` tem forma antiga
+/// ([`crate::stroke_wire`]), e o leitor de um v22 abre o âmbito [`crate::with_stroke_layout_v22`].
+/// O par antigo vira o 1.º par; o tamanho único vai para as duas pontas ⇒ os VALORES voltam iguais
+/// (gate `stroke_v22_fixture`, sobre bytes gravados pelo código v22). ⚠️ O piso de um elemento do
+/// tracejado subiu na mesma wave (`MIN_DASH_FRACTION`): um vão `0` antigo mede `0,1 %` da largura em
+/// vez de `2e-16` — invisível, e o que faz o PONTO do «traço-ponto» existir.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 23;
+
+/// O degrau anterior — o único que ainda se lê ([`crate::VecScene::from_bytes`]).
+pub(crate) const VEC_SCENE_SCHEMA_V22: u32 = 22;

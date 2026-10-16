@@ -168,25 +168,34 @@ fn art_at_height(art: &[VecPath], h: f64) -> Option<Vec<VecPath>> {
 /// Vazio quando não há contorno que se meça — um comprimento nulo não tem fatia nenhuma, e isso é
 /// diferente de *"uma fatia de comprimento nulo"*.
 #[must_use]
-pub fn brush_spans(total: f64, dash: Option<[f64; 2]>) -> Vec<(f64, f64)> {
+pub fn brush_spans(total: f64, dash: Option<crate::DashLengths>) -> Vec<(f64, f64)> {
     if total <= 0.0 || total.is_nan() {
         return Vec::new();
     }
     let inteiro = vec![(0.0, total)];
-    let Some([traco, vao]) = dash else {
+    let Some(dash) = dash else {
         return inteiro;
     };
-    let periodo = traco + vao;
+    let periodo = dash.period();
+    let traco = dash.first_dash();
     // ⚠️ `<=` e não `!(_ > _)`: a forma que o `dash_fit` desta crate já escolheu, e as duas
     // recusam o NaN — *duas formas de recusar a mesma coisa lêem-se como duas leis*.
     if traco <= 0.0 || periodo <= 0.0 || traco.is_nan() || periodo.is_nan() {
         return inteiro;
     }
+    // Os pares em ciclo (F16c: até três); um traço que não mede nada não leva cópia.
     let mut out = Vec::new();
     let mut s = 0.0;
-    while s < total && out.len() < MAX_DASHES {
-        out.push((s, (s + traco).min(total)));
-        s += periodo;
+    'volta: while s < total {
+        for [d, g] in dash.pairs() {
+            if s >= total || out.len() >= MAX_DASHES {
+                break 'volta;
+            }
+            if d > f64::EPSILON {
+                out.push((s, (s + d).min(total)));
+            }
+            s += d + g;
+        }
     }
     out
 }
@@ -215,7 +224,7 @@ pub fn brush_copies(
     art: &[VecPath],
     b: &BrushStroke,
     width: f64,
-    dash: Option<[f64; 2]>,
+    dash: Option<crate::DashLengths>,
 ) -> Vec<VecPath> {
     let Some(mut escalada) = art_at_height(art, brush_height(b, width)) else {
         return Vec::new();

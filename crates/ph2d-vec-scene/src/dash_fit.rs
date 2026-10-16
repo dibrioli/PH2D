@@ -27,18 +27,19 @@
 //! diferentes sairiam com traços de espessuras diferentes.
 
 use crate::VecPath;
+use crate::DashLengths;
 use crate::arc_path::ArcPath;
 use crate::compound::Contour;
 use crate::stroke_style::StrokeSpec;
 
-/// **A lei, pura.** `raw` é `[traço, vão]` em COMPRIMENTO (o que a
-/// [`StrokeSpec::dash_lengths`] devolve), `total` é o comprimento do contorno.
+/// **A lei, pura.** `raw` é o padrão em COMPRIMENTO (o que a [`StrokeSpec::dash_lengths`]
+/// devolve: até três pares), `total` é o comprimento do contorno.
 ///
 /// Devolve `raw` intocado quando não há o que ajustar (contorno degenerado, período nulo) —
 /// *não ajustar* é sempre melhor que dividir por quase-zero.
 #[must_use]
-pub fn fit(raw: [f64; 2], total: f64, closed: bool) -> [f64; 2] {
-    let period = raw[0] + raw[1];
+pub fn fit(raw: DashLengths, total: f64, closed: bool) -> DashLengths {
+    let period = raw.period();
     // ⚠️ `<=` e não `!(_ > _)`: os dois recusam o NaN, e o clippy prefere a forma que não
     // esconde a incomparabilidade atrás de uma negação.
     if total <= 0.0 || period <= 0.0 || total.is_nan() || period.is_nan() {
@@ -52,8 +53,9 @@ pub fn fit(raw: [f64; 2], total: f64, closed: bool) -> [f64; 2] {
     let denom = if closed {
         (total / period).round().max(1.0) * period
     } else {
-        // Um traço a mais: o caminho começa e acaba com traço inteiro.
-        ((total - raw[0]) / period).round().max(0.0) * period + raw[0]
+        // Um traço a mais — o 1.º do padrão: o caminho começa e acaba com traço inteiro.
+        let first = raw.first_dash();
+        ((total - first) / period).round().max(0.0) * period + first
     };
     if denom <= 0.0 || denom.is_nan() {
         return raw;
@@ -62,7 +64,7 @@ pub fn fit(raw: [f64; 2], total: f64, closed: bool) -> [f64; 2] {
     if !k.is_finite() || k <= 0.0 {
         return raw;
     }
-    [raw[0] * k, raw[1] * k]
+    raw.scaled(k)
 }
 
 /// O contorno mais LONGO do caminho: `(comprimento, fechado)`.
@@ -93,7 +95,7 @@ pub fn longest_contour(path: &VecPath) -> Option<(f64, bool)> {
     best
 }
 
-/// **A PORTA ÚNICA** — o `[traço, vão]` que um traçador deve usar para este caminho.
+/// **A PORTA ÚNICA** — o padrão (em comprimento) que um traçador deve usar para este caminho.
 ///
 /// O renderer e o *Outline Stroke* constroem cada um o seu `Stroke` (versões diferentes da
 /// kurbo), e os dois têm de concordar sobre quanto mede um traço: se um ajustasse e o outro
@@ -106,7 +108,7 @@ pub fn longest_contour(path: &VecPath) -> Option<(f64, bool)> {
 /// ⚠️ **Sem contorno que se meça, devolve o padrão AUTORADO, não `None`**: `None` é «sólido»,
 /// e um tracejado pedido sobre geometria degenerada continua a ser um tracejado pedido.
 #[must_use]
-pub fn dash_lengths_for(path: &VecPath, s: &StrokeSpec) -> Option<[f64; 2]> {
+pub fn dash_lengths_for(path: &VecPath, s: &StrokeSpec) -> Option<DashLengths> {
     let raw = s.dash_lengths()?;
     Some(match longest_contour(path) {
         Some((total, closed)) => fit(raw, total, closed),

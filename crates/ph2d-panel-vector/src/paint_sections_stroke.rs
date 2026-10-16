@@ -255,45 +255,8 @@ impl BodyCtx<'_> {
             y,
         );
 
-        // Dash length (multiple of width; 0 = solid).
-        let track = self
-            .store
-            .slider(ph2d_tool_vector::ids::VECTOR_DASH)
-            .map(|(_, v)| v)
-            .unwrap_or_else(|| dash_to_slider(snap.dash));
-        let px = self
-            .store
-            .number_value(ph2d_tool_vector::ids::VECTOR_DASH_NUM)
-            .unwrap_or(snap.dash);
-        y = self.slider_row(
-            tr("panel.vector.stroke.dash"),
-            ph2d_tool_vector::ids::VECTOR_DASH,
-            ph2d_tool_vector::ids::VECTOR_DASH_NUM,
-            track,
-            px,
-            &format!("{}", px.round() as i64),
-            y,
-        );
-
-        // Gap length between dashes.
-        let track = self
-            .store
-            .slider(ph2d_tool_vector::ids::VECTOR_GAP)
-            .map(|(_, v)| v)
-            .unwrap_or_else(|| gap_to_slider(snap.gap));
-        let px = self
-            .store
-            .number_value(ph2d_tool_vector::ids::VECTOR_GAP_NUM)
-            .unwrap_or(snap.gap);
-        y = self.slider_row(
-            tr("panel.vector.stroke.gap"),
-            ph2d_tool_vector::ids::VECTOR_GAP,
-            ph2d_tool_vector::ids::VECTOR_GAP_NUM,
-            track,
-            px,
-            &format!("{}", px.round() as i64),
-            y,
-        );
+        // O tracejado: até três pares (F16c), uma linha «Dash / Gap n» por par.
+        y = self.dash_rows(y);
 
         // As PONTAS do traço (Start / End). Ficam aqui, e não no catálogo de formas,
         // porque uma ponta é propriedade do stroke: herda a cor e a largura dele e gira

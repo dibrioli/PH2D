@@ -189,8 +189,8 @@ fn the_zero_gap_fit_is_the_same_law_either_way_within_one_copy() {
     for i in 1..=400u32 {
         let total = f64::from(i) * 0.137;
         for avanco in [0.01, 0.37, 1.0, 2.5, 13.0, 400.0] {
-            let fechado = crate::dash_fit::fit([avanco, 0.0], total, true)[0];
-            let aberto = crate::dash_fit::fit([avanco, 0.0], total, false)[0];
+            let fechado = crate::dash_fit::fit([avanco, 0.0].into(), total, true)[0];
+            let aberto = crate::dash_fit::fit([avanco, 0.0].into(), total, false)[0];
             pior = pior.max((fechado - aberto).abs() / fechado.max(f64::MIN_POSITIVE));
             vistos += 1;
         }
@@ -211,7 +211,7 @@ fn the_zero_gap_fit_is_the_same_law_either_way_within_one_copy() {
     );
     // ⚠️ **CONTROLO — com um VÃO as duas leis divergem de FORMA, não por uma cópia.** Sem esta
     // metade, o gate ficaria verde num dia em que o `fit` deixasse de olhar para o `closed`.
-    let com_vao = |c| crate::dash_fit::fit([1.0, 1.0], 7.0, c);
+    let com_vao = |c| crate::dash_fit::fit([1.0, 1.0].into(), 7.0, c);
     assert_ne!(
         com_vao(true),
         com_vao(false),
@@ -283,7 +283,8 @@ fn the_art_lives_inside_the_dashes_and_the_gaps_stay_empty() {
     let s = traco(&pincel(), 1.0, Some((2.0, 2.0)));
     // O MESMO par que o traçador desenharia — a porta única (`dash_lengths_for`), não uma
     // segunda conta.
-    let [d, g] = crate::dash_fit::dash_lengths_for(&guia, &s).expect("a fixtura tem tracejado");
+    let dl = crate::dash_fit::dash_lengths_for(&guia, &s).expect("a fixtura tem tracejado");
+    let (d, g) = (dl[0], dl[1]);
     let periodo = d + g;
     let copias = brush_along_path(&guia, &[arte(1.0, 1.0)], &s);
     assert!(copias.len() >= 4, "sem cópias não há o que medir");
@@ -322,7 +323,9 @@ fn the_art_lives_inside_the_dashes_and_the_gaps_stay_empty() {
 fn every_dash_carries_the_same_rhythm() {
     let guia = segmento(20.0);
     let s = traco(&pincel(), 1.0, Some((2.0, 2.0)));
-    let [d, _] = crate::dash_fit::dash_lengths_for(&guia, &s).expect("a fixtura tem tracejado");
+    let d = crate::dash_fit::dash_lengths_for(&guia, &s)
+        .expect("a fixtura tem tracejado")
+        .first_dash();
     let copias = brush_along_path(&guia, &[arte(1.0, 1.0)], &s);
     let xs: Vec<f64> = copias.iter().map(|c| centro(c)[0]).collect();
     assert!(xs.len() >= 4);
@@ -361,31 +364,48 @@ fn the_spans_are_one_without_a_dash_and_one_per_dash_with_one() {
     assert_eq!(crate::brush_spans(10.0, None), vec![(0.0, 10.0)]);
     // Um traço de 2 e um vão de 2 num contorno de 10: `[0,2] [4,6] [8,10]`.
     assert_eq!(
-        crate::brush_spans(10.0, Some([2.0, 2.0])),
+        crate::brush_spans(10.0, Some([2.0, 2.0].into())),
         vec![(0.0, 2.0), (4.0, 6.0), (8.0, 10.0)]
     );
     // ⚠️ A última fatia é TRUNCADA — um composto tem um par de tracejado só (fitado ao contorno
     // mais longo), então os outros anéis acabam a meio de um traço.
     assert_eq!(
-        crate::brush_spans(9.0, Some([2.0, 2.0])),
+        crate::brush_spans(9.0, Some([2.0, 2.0].into())),
         vec![(0.0, 2.0), (4.0, 6.0), (8.0, 9.0)]
     );
     // Degenerados: um contorno sem comprimento não tem fatia nenhuma, e um "tracejado" de traço
     // nulo é uma linha contínua (a mesma leitura do `dash_lengths`).
     assert!(crate::brush_spans(0.0, None).is_empty());
-    assert!(crate::brush_spans(f64::NAN, Some([2.0, 2.0])).is_empty());
+    assert!(crate::brush_spans(f64::NAN, Some([2.0, 2.0].into())).is_empty());
     assert_eq!(
-        crate::brush_spans(10.0, Some([0.0, 2.0])),
+        crate::brush_spans(10.0, Some([0.0, 2.0].into())),
         vec![(0.0, 10.0)]
     );
     // ⛔ **O TETO** — o recurso é tempo, e o número está medido no `MAX_DASHES`.
-    let muitas = crate::brush_spans(1.0e6, Some([0.1, 0.1]));
+    let muitas = crate::brush_spans(1.0e6, Some([0.1, 0.1].into()));
     assert_eq!(
         muitas.len(),
         super::MAX_DASHES,
         "as fatias deixaram de ser limitadas - um tracejado fino num contorno longo passa a custar \
          sem teto"
     );
+}
+
+/// **DOIS PARES: AS FATIAS ALTERNAM OS DOIS TRAÇOS** (F16c) — o padrão anda em ciclo, par a par.
+#[test]
+fn the_spans_alternate_the_two_dash_lengths_of_a_two_pair_pattern() {
+    // Pares `[3, 1]` e `[1, 1]`: período 6 ⇒ `[0,3] [4,5] [6,9] [10,11] [12,13]` em 13.
+    let dois = crate::DashLengths::from_pairs(&[[3.0, 1.0], [1.0, 1.0]]);
+    assert_eq!(
+        crate::brush_spans(13.0, Some(dois)),
+        vec![(0.0, 3.0), (4.0, 5.0), (6.0, 9.0), (10.0, 11.0), (12.0, 13.0)]
+    );
+    // E as larguras alternam 3, 1, 3, 1 (a última é truncada no fim do contorno).
+    let larguras: Vec<f64> = crate::brush_spans(13.0, Some(dois))
+        .iter()
+        .map(|(a, b)| b - a)
+        .collect();
+    assert_eq!(larguras, vec![3.0, 1.0, 3.0, 1.0, 1.0]);
 }
 
 /// ⭐ **UM TRAÇO SÓLIDO SAI EXACTAMENTE COMO SAÍA** (W2) — o tracejado é opt-in do documento.

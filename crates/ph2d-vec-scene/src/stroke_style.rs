@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Marker, Rgba8};
+use crate::{DashLengths, DashPattern, Marker, Rgba8};
 
 /// Ponta do traço (mapeia p/ `kurbo::Cap` no render). Default = `Butt`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -234,18 +234,22 @@ impl StrokePaint {
 ///
 /// ⚠️ **Deixou de ser `Copy` em 2026-08-27** (plano 35): a tinta pode ser um padrão, e ele vive
 /// atrás de um `Box` porque em linha o `VecPath` engordaria 54 % (§0.1 do plano).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+///
+/// ⚠️ **O `Deserialize` é escrito à mão** em [`crate::stroke_wire`]: um ficheiro v22 lê-se na forma
+/// antiga (um par de tracejado, um tamanho de ponta) dentro do âmbito que o leitor abre.
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct StrokeSpec {
     /// ⚠️ **Era `color: Rgba8`.** Quem só quer uma cor pergunta por [`Self::color`].
     pub paint: StrokePaint,
     pub width: f64,
     pub cap: LineCap,
     pub join: LineJoin,
-    /// Tracejado como **múltiplos da largura**: `Some((dash, gap))` ⇒ traço de
-    /// `dash·width` e vão de `gap·width`; `None` (ou `dash ≤ 0`) = contínuo.
-    /// Width-aware: engrossar o traço alonga dash e vão na proporção, então a
-    /// projeção da ponta nunca engole o vão.
-    pub dash: Option<(f64, f64)>,
+    /// Tracejado como **múltiplos da largura**: até três pares `[traço, vão]` ([`DashPattern`]);
+    /// `None` (ou 1.º traço `≤ 0`) = contínuo. Width-aware: engrossar o traço alonga traços e vãos
+    /// na proporção, então a projeção da ponta nunca engole o vão.
+    ///
+    /// ⚠️ **Era `Option<(f64, f64)>` até ao v22** (F16c) — um par só.
+    pub dash: Option<DashPattern>,
     /// **Ponta no COMEÇO** do caminho (arrowhead). Só vale em caminho aberto.
     ///
     /// ⚠️ **Corrigido em 2026-08-01 — a frase anterior era falsa.** Ela dizia que *"o postcard é
@@ -254,22 +258,23 @@ pub struct StrokeSpec {
     /// ausência, o leitor chega ao fim dos bytes e falha (`Hit the end of buffer`, medido). O
     /// `#[serde(default)]` serve a formatos auto-descritivos e à construção em código; quem protege
     /// o arquivo é o `VEC_SCENE_SCHEMA_VERSION`, que recusa em vez de ler torto.
-    #[serde(default)]
     pub marker_start: Marker,
     /// **Ponta no FIM** do caminho. Idem.
-    #[serde(default)]
     pub marker_end: Marker,
-    /// **Tamanho da ponta**, como múltiplo do tamanho que a largura do traço já dita.
+    /// **Tamanho da ponta do COMEÇO**, como múltiplo do tamanho que a largura do traço já dita.
     /// `1.0` = o default.
     ///
     /// Por que um MÚLTIPLO e não um tamanho absoluto: a ponta tem de crescer com o traço,
     /// senão engrossar a linha faz a seta encolher visualmente até virar um cotoco. O
     /// multiplicador dá o ajuste fino sem quebrar essa proporção.
-    #[serde(default = "unit_scale")]
-    pub marker_scale: f64,
+    ///
+    /// ⚠️ **Até ao v22 era UM `marker_scale` para as duas pontas** (F16c: o *Scale* do painel
+    /// Stroke do Illustrator é por ponta). Quem tem o lado em mão pergunta [`Self::marker_scale`].
+    pub marker_scale_start: f64,
+    /// **Tamanho da ponta do FIM.** Idem.
+    pub marker_scale_end: f64,
     /// **Arredondamento das quinas da ponta**: `0` = afiada, `1` = o máximo que a geometria
     /// da ponta comporta sem se descaracterizar.
-    #[serde(default)]
     pub marker_round: f64,
     /// **De que lado da linha a faixa cai** — ver [`StrokeAlign`]. Default `Centre`, que é o que
     /// todo desenho já feito tem.
@@ -279,7 +284,6 @@ pub struct StrokeSpec {
     /// ausência** — ele chega ao fim dos bytes e falha, em vez de cair no default. O atributo
     /// serve para construir o struct em código e para formatos auto-descritivos; a compatibilidade
     /// de leitura vem do NÚMERO, e é ele que recusa o arquivo velho em vez de o ler torto.
-    #[serde(default)]
     pub align: StrokeAlign,
 }
 
@@ -301,11 +305,15 @@ pub struct StrokeSpec {
 /// o ficheiro exportado cortaria o bico que o ecrã mostra.
 pub const MITER_LIMIT: f64 = 4.0;
 
-/// O default do [`StrokeSpec::marker_scale`]. Precisa ser uma função porque o default de
-/// `serde` para um `f64` é **zero** — e uma ponta de tamanho zero é uma ponta invisível.
-fn unit_scale() -> f64 {
-    1.0
-}
+/// ⭐ **O comprimento mínimo de um elemento do tracejado, em FRAÇÃO da largura** (F16c).
+///
+/// ⛔ **Era `f64::EPSILON` absoluto, e a FOTO da cena 24 apanhou-o:** um traço `0` (o PONTO do
+/// «traço-ponto», com ponta redonda) media `2e-16`, abaixo da resolução de uma coordenada de mundo
+/// (`|x| ≈ 1` ⇒ passo `2,2e-16`): o segmento colapsava num ponto, a kurbo descartava-o, e dos pontos
+/// de um retângulo só sobreviviam os que caíam perto de um múltiplo exacto. Em fração da largura ele
+/// escala com o traço, fica milhões de vezes acima do passo do `f64` em qualquer cena, e continua
+/// invisível a olho (`0,1 %` da largura) — um ponto redondo mede a largura, não isto.
+pub const MIN_DASH_FRACTION: f64 = 1e-3;
 
 impl StrokeSpec {
     /// Traço sólido, ponta/junção default (Butt/Miter), sem tracejado, sem setas.
@@ -319,7 +327,8 @@ impl StrokeSpec {
             dash: None,
             marker_start: Marker::None,
             marker_end: Marker::None,
-            marker_scale: 1.0,
+            marker_scale_start: 1.0,
+            marker_scale_end: 1.0,
             marker_round: 0.0,
             align: StrokeAlign::Centre,
         }
@@ -374,6 +383,16 @@ impl StrokeSpec {
         self.align.needs_a_region() && self.lays_a_band()
     }
 
+    /// O tamanho da ponta de um lado (`at_start` = o começo do caminho).
+    #[must_use]
+    pub fn marker_scale(&self, at_start: bool) -> f64 {
+        if at_start {
+            self.marker_scale_start
+        } else {
+            self.marker_scale_end
+        }
+    }
+
     /// `true` se o traço tem alguma ponta — o render então precisa recuar a linha.
     #[must_use]
     pub fn has_markers(&self) -> bool {
@@ -400,23 +419,27 @@ impl StrokeSpec {
         self.width > 0.0
     }
 
-    /// **O tracejado em COMPRIMENTO** — `[traço, vão]` no mesmo espaço da geometria, ou
-    /// `None` para linha contínua.
+    /// **O tracejado em COMPRIMENTO** — os pares ativos do [`Self::dash`] multiplicados pela
+    /// largura, ou `None` para linha contínua.
     ///
-    /// O campo [`Self::dash`] guarda MÚLTIPLOS da largura (engrossar o traço alonga os dois
-    /// na proporção, então a projeção da ponta nunca engole o vão); quem desenha ou assa
-    /// precisa dos comprimentos. A conversão é UMA — o renderer e o Outline Stroke falam com
-    /// versões diferentes da kurbo e cada um constrói o próprio `Stroke`, mas os dois têm de
-    /// concordar sobre **quanto mede um traço**, senão a forma assada sai com o tracejado
-    /// noutra cadência que a desenhada.
+    /// O campo guarda MÚLTIPLOS da largura (engrossar o traço alonga os dois na proporção, então
+    /// a projeção da ponta nunca engole o vão); quem desenha ou assa precisa dos comprimentos. A
+    /// conversão é UMA — o renderer e o Outline Stroke falam com versões diferentes da kurbo e cada
+    /// um constrói o próprio `Stroke`, mas os dois têm de concordar sobre **quanto mede um
+    /// traço**, senão a forma assada sai com o tracejado noutra cadência que a desenhada.
     ///
-    /// O vão é afastado do zero: um vão de comprimento nulo é um elemento degenerado para a
-    /// kurbo, e o que o usuário quis dizer com ele é "sólido".
+    /// Cada comprimento é afastado do zero por [`MIN_DASH_FRACTION`] da largura: um elemento de
+    /// comprimento nulo é degenerado para a kurbo. Um vão nulo lê-se «sólido»; um traço nulo depois
+    /// do 1.º, com ponta redonda, um PONTO.
     #[must_use]
-    pub fn dash_lengths(&self) -> Option<[f64; 2]> {
-        match self.dash {
-            Some((d, g)) if d > 0.0 => Some([d * self.width, (g * self.width).max(f64::EPSILON)]),
-            _ => None,
+    pub fn dash_lengths(&self) -> Option<DashLengths> {
+        let p = self.dash.as_ref().filter(|p| p.is_dashed())?;
+        let mut out = [[0.0; 2]; crate::MAX_DASH_PAIRS];
+        let active = p.active();
+        let piso = (MIN_DASH_FRACTION * self.width).max(f64::EPSILON);
+        for (o, [d, g]) in out.iter_mut().zip(active) {
+            *o = [(d * self.width).max(piso), (g * self.width).max(piso)];
         }
+        Some(DashLengths::from_pairs(&out[..active.len()]))
     }
 }

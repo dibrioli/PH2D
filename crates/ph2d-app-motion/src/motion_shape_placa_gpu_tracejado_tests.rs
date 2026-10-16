@@ -15,7 +15,7 @@ fn tracejada(
     join: LineJoin,
 ) -> VecPath {
     let mut s = StrokeSpec::new(Rgba8::new(20, 30, 40, 240), largura);
-    s.dash = Some(dash);
+    s.dash = Some(ph2d_vec_scene::DashPattern::single(dash.0, dash.1));
     s.cap = cap;
     s.join = join;
     forma.stroke = Some(s);

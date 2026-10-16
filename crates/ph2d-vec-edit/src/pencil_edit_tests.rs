@@ -366,7 +366,11 @@ fn the_arrow_keeps_its_heads_and_its_tip_follows_the_node() {
     ));
     let markers = |s: &VecScene| {
         let st = s.path(id).unwrap().stroke.clone().unwrap();
-        (st.marker_start, st.marker_end, st.marker_scale)
+        (
+            st.marker_start,
+            st.marker_end,
+            [st.marker_scale_start, st.marker_scale_end],
+        )
     };
     let before = markers(&scene);
     let end_before = *anchors(&scene, id).last().unwrap();

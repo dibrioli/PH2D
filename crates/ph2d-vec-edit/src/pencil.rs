@@ -336,7 +336,7 @@ impl Pencil {
         live.closed = closed;
         if let Some(s) = live.stroke.as_mut() {
             [s.marker_start, s.marker_end] = ends.markers;
-            s.marker_scale = ends.scale;
+            [s.marker_scale_start, s.marker_scale_end] = ends.scale;
         }
         true
     }
@@ -377,28 +377,30 @@ impl Pencil {
     }
 }
 
-/// As pontas do traço vivo: o `[início, fim]`, o tamanho, e quanto o caminho recua em cada extremo.
+/// As pontas do traço vivo: o `[início, fim]`, o tamanho de cada uma, e quanto o caminho recua em
+/// cada extremo.
 #[derive(Debug, PartialEq)]
 pub(crate) struct ArrowEnds {
     pub(crate) markers: [Marker; 2],
-    pub(crate) scale: f64,
+    pub(crate) scale: [f64; 2],
     pub(crate) inset: [f64; 2],
 }
 
 /// **As pontas de um traço de largura `w` (mundo) com farpas desenhadas `heads`** — as do estilo se
 /// não há farpas. Num extremo com farpas: a ponta ARMADA no lápis (a desse extremo, senão a do
 /// outro) ou, sem nenhuma, a `Open` — a «arrow» de nascença do Excalidraw (duas riscas em V,
-/// medida pela linha do Quadro) e o que a mão desenhou; sem farpas, nenhuma. O tamanho põe o
-/// alcance da ponta igual à farpa média desenhada; o recuo é o que a ponta avança para lá do nó
-/// (`Marker::inset`), para o bico cair onde a mão o pôs.
+/// medida pela linha do Quadro) e o que a mão desenhou; sem farpas, nenhuma. O tamanho de cada
+/// ponta põe o alcance dela igual à farpa que a mão desenhou NAQUELE extremo (F16c: o tamanho é
+/// por ponta); o recuo é o que a ponta avança para lá do nó (`Marker::inset`), para o bico cair
+/// onde a mão o pôs.
 pub(crate) fn arrow_ends(style: &PenStyle, heads: [Option<f64>; 2], w: f64) -> ArrowEnds {
-    let drawn: Vec<f64> = heads.iter().flatten().copied().collect();
-    if drawn.is_empty() || w <= 0.0 {
-        return ArrowEnds {
-            markers: [style.marker_start, style.marker_end],
-            scale: style.marker_scale,
-            inset: [0.0; 2],
-        };
+    let estilo = ArrowEnds {
+        markers: [style.marker_start, style.marker_end],
+        scale: [style.marker_scale_start, style.marker_scale_end],
+        inset: [0.0; 2],
+    };
+    if heads.iter().all(Option::is_none) || w <= 0.0 {
+        return estilo;
     }
     let armed = |m: Marker| (m != Marker::None).then_some(m);
     let pick = |own: Marker, other: Marker| armed(own).or(armed(other)).unwrap_or(Marker::Open);
@@ -406,28 +408,30 @@ pub(crate) fn arrow_ends(style: &PenStyle, heads: [Option<f64>; 2], w: f64) -> A
         heads[0].map_or(Marker::None, |_| pick(style.marker_start, style.marker_end)),
         heads[1].map_or(Marker::None, |_| pick(style.marker_end, style.marker_start)),
     ];
-    let m = if heads[1].is_some() {
-        markers[1]
-    } else {
-        markers[0]
-    };
     // O alcance da ponta à escala 1 e largura 1: o vértice mais longe do bico.
-    let reach = m
-        .build([0.0, 0.0], [1.0, 0.0], 1.0, 1.0, 0.0)
-        .map_or(0.0, |p| {
-            p.verts
-                .iter()
-                .map(|v| v.anchor[0].hypot(v.anchor[1]))
-                .fold(0.0, f64::max)
-        });
-    if reach <= f64::MIN_POSITIVE {
-        return arrow_ends(style, [None; 2], w);
+    let reach = |m: Marker| {
+        m.build([0.0, 0.0], [1.0, 0.0], 1.0, 1.0, 0.0)
+            .map_or(0.0, |p| {
+                p.verts
+                    .iter()
+                    .map(|v| v.anchor[0].hypot(v.anchor[1]))
+                    .fold(0.0, f64::max)
+            })
+    };
+    let mut scale = estilo.scale;
+    for k in 0..2 {
+        if let Some(h) = heads[k] {
+            let r = reach(markers[k]);
+            if r <= f64::MIN_POSITIVE {
+                return estilo;
+            }
+            scale[k] = h / (w * r);
+        }
     }
-    let scale = drawn.iter().sum::<f64>() / drawn.len() as f64 / (w * reach);
     ArrowEnds {
         markers,
         scale,
-        inset: [0, 1].map(|k| heads[k].map_or(0.0, |_| markers[k].inset(scale) * w)),
+        inset: [0, 1].map(|k| heads[k].map_or(0.0, |_| markers[k].inset(scale[k]) * w)),
     }
 }
 

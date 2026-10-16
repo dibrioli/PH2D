@@ -30,7 +30,8 @@ fn scene_with_line(
     let mut p = line([0.0, 0.0], [100.0, 0.0]);
     let mut s = StrokeSpec::new(Rgba8::new(255, 255, 255, 255), width);
     s.marker_end = marker;
-    s.marker_scale = scale;
+    s.marker_scale_start = scale;
+    s.marker_scale_end = scale;
     p.stroke = Some(s);
     let id = scene.push_path(p);
     let e = sim

@@ -270,8 +270,8 @@ pub fn dispatch(
     let (armed, armed_scale, armed_round) = tool.armed_markers();
     // Dash + gap are MULTIPLES of the stroke width (width-aware) — the render
     // scales them by the path's own width, so no px→world conversion here.
-    // `dash = 0` ⇒ solid; otherwise `(dash, gap)` sizes the dash and the space.
-    let dash = (tool.dash() > 0.0).then_some((tool.dash(), tool.gap()));
+    // `None` ⇒ contínuo (1.º traço `0`); senão até três pares (F16c).
+    let dash = tool.dash_pattern();
 
     // ── 3. New paths honour the tool's Style (pen + shape share it). ──────
     let style = PenStyle {
@@ -287,7 +287,8 @@ pub fn dispatch(
         // nascer com a ponta dela (o dono, 10/10).
         marker_start: armed[0],
         marker_end: armed[1],
-        marker_scale: armed_scale,
+        marker_scale_start: armed_scale[0],
+        marker_scale_end: armed_scale[1],
         marker_round: armed_round,
     };
     pen.set_style(style);

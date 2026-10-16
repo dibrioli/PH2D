@@ -365,21 +365,24 @@ pub const FOLGA_DO_AJUSTE: f64 = 1e-4;
 /// vez ao contorno mais longo da geometria JÁ transformada, pela mesma lei. Sob afim conforme o ecrã
 /// é o local escalado e o ajuste não muda nada — e esse caminho nem passa aqui.
 ///
-/// ⚠️ A placa (`ph2d-shape-gpu`, `ajuste_do_tracejado`) faz a MESMA conta; só um `[traço, vão]` com
-/// fase `0` (o que o `kurbo_stroke` produz) se ajusta.
+/// ⚠️ A placa (`ph2d-shape-gpu`, `ajuste_do_tracejado`) faz a MESMA conta para um `[traço, vão]`;
+/// aqui vale para os até três pares (F16c) com fase `0` — o que o `kurbo_stroke` produz.
 pub fn ajusta_no_ecra(pen: &mut Stroke, screen: &BezPath) {
-    let &[traco, vao] = pen.dash_pattern.as_slice() else {
-        return;
-    };
-    if pen.dash_offset != 0.0 {
+    let n = pen.dash_pattern.len();
+    if n == 0 || n % 2 != 0 || n > 2 * ph2d_vec_scene::MAX_DASH_PAIRS || pen.dash_offset != 0.0 {
         return;
     }
     let Some((total, fechado)) = maior_contorno(screen) else {
         return;
     };
-    let [t, v] = ph2d_vec_scene::dash_fit::fit([traco, vao], total, fechado);
+    let pares: Vec<[f64; 2]> = pen.dash_pattern.chunks_exact(2).map(|c| [c[0], c[1]]).collect();
+    let ajuste = ph2d_vec_scene::dash_fit::fit(
+        ph2d_vec_scene::DashLengths::from_pairs(&pares),
+        total,
+        fechado,
+    );
     let folga = if fechado { 1.0 + FOLGA_DO_AJUSTE } else { 1.0 };
-    pen.dash_pattern = [t * folga, v * folga].into_iter().collect();
+    pen.dash_pattern = ajuste.scaled(folga).as_slice().iter().copied().collect();
 }
 
 /// O sub-caminho mais LONGO de `bp` e se é fechado — a [`ph2d_vec_scene::dash_fit::longest_contour`]

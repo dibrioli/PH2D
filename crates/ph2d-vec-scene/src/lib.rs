@@ -307,10 +307,17 @@ pub mod brush_stroke;
 /// de 700 LOC deste arquivo, e coeso: é o vocabulário de uma caneta, com os seus defaults e
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
+/// O **tracejado** em pares (F16c) — o autorado e o medido.
+mod dash_pattern;
+pub use dash_pattern::{DashLengths, DashPattern, MAX_DASH_PAIRS};
+/// A leitura do `StrokeSpec` por versão — o âmbito v22 (F16c).
+mod stroke_wire;
+pub use stroke_wire::{StrokeLayoutV22, with_stroke_layout_v22};
 pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
 
 pub use stroke_style::{
-    BrushStroke, LineCap, LineJoin, MITER_LIMIT, OffsetSide, StrokeAlign, StrokePaint, StrokeSpec,
+    BrushStroke, LineCap, LineJoin, MIN_DASH_FRACTION, MITER_LIMIT, OffsetSide, StrokeAlign,
+    StrokePaint, StrokeSpec,
 };
 /// O bico CORTADO (`miter-clip` do SVG 2): a lei de toda junta `Miter` além do [`MITER_LIMIT`].
 pub mod miter_clip;
@@ -667,15 +674,17 @@ impl VecScene {
         postcard::to_allocvec(&(VEC_SCENE_SCHEMA_VERSION, self)).map_err(|e| e.to_string())
     }
 
-    /// Desserializa uma cena salva por [`Self::to_bytes`]; rejeita schema alheio.
+    /// Desserializa uma cena salva por [`Self::to_bytes`]; rejeita schema alheio. Um v22 lê-se
+    /// pela forma antiga do traço ([`with_stroke_layout_v22`]) e volta igual.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
-        let (ver, scene): (u32, VecScene) =
-            postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
-        if ver != VEC_SCENE_SCHEMA_VERSION {
-            return Err(format!(
+        let (ver, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
+        let read = || postcard::from_bytes::<(u32, VecScene)>(bytes).map_err(|e| e.to_string());
+        match ver {
+            VEC_SCENE_SCHEMA_VERSION => read().map(|(_, s)| s),
+            schema::VEC_SCENE_SCHEMA_V22 => with_stroke_layout_v22(read).map(|(_, s)| s),
+            _ => Err(format!(
                 "versão de schema {ver} != {VEC_SCENE_SCHEMA_VERSION}"
-            ));
+            )),
         }
-        Ok(scene)
     }
 }

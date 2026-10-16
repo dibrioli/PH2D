@@ -89,7 +89,7 @@ fn pincel(art: VecPathId, dash: Option<(f64, f64)>, rotation_deg: f64, flip: boo
         flip,
         ..BrushStroke::default()
     }));
-    s.dash = dash;
+    s.dash = dash.map(|(d, g)| ph2d_vec_scene::DashPattern::single(d, g));
     s
 }
 

@@ -150,42 +150,22 @@ pub enum VertexSel {
 
 /// Dash range as a **multiple of the stroke width** (`0` = solid). Width-aware:
 /// the render draws dash/gap of `dash·width`, so a thick line keeps its gaps.
+/// ⚠️ Até à F16c o 1.º par era um SLIDER (com as conversões track↔múltiplo aqui); hoje os três
+/// pares são caixas numéricas e a faixa é a da caixa.
 pub const DASH_MIN: f64 = 0.0;
 pub const DASH_MAX: f64 = 8.0;
-pub const DASH_SLIDER_SCALE: f32 = (DASH_MAX - DASH_MIN) as f32;
-pub const DASH_SLIDER_OFFSET: f32 = DASH_MIN as f32;
 
-/// Normalized track `0..=1` → dash multiple `MIN..=MAX`.
-#[must_use]
-pub fn slider_to_dash(track: f32) -> f64 {
-    DASH_MIN + f64::from(track.clamp(0.0, 1.0)) * (DASH_MAX - DASH_MIN)
-}
-/// Dash multiple → normalized track (inverse of [`slider_to_dash`]).
-#[must_use]
-pub fn dash_to_slider(m: f64) -> f32 {
-    ((m.clamp(DASH_MIN, DASH_MAX) - DASH_MIN) / (DASH_MAX - DASH_MIN)) as f32
-}
+/// O tracejado de nascença: contínuo (1.º traço `0`), com o vão do 1.º par já no default — o
+/// primeiro número que o artista põe no Dash dá logo um tracejado legível.
+pub const DASH_DEFAULT: [[f64; 2]; ph2d_vec_scene::MAX_DASH_PAIRS] =
+    [[0.0, GAP_DEFAULT], [0.0, 0.0], [0.0, 0.0]];
 
 /// Gap range as a **multiple of the stroke width**, independent of the dash
-/// length — the render draws the space between dashes as `gap·width`. Same
-/// width-aware model as [`slider_to_dash`]. Default `1` (Dash = 0 ⇒ solid, so
-/// the gap only bites once Dash > 0).
+/// length — the render draws the space between dashes as `gap·width`. Default `1`
+/// (Dash = 0 ⇒ solid, so the gap only bites once Dash > 0).
 pub const GAP_MIN: f64 = 0.0;
 pub const GAP_MAX: f64 = 8.0;
 pub const GAP_DEFAULT: f64 = 1.0;
-pub const GAP_SLIDER_SCALE: f32 = (GAP_MAX - GAP_MIN) as f32;
-pub const GAP_SLIDER_OFFSET: f32 = GAP_MIN as f32;
-
-/// Normalized track `0..=1` → gap multiple `MIN..=MAX`.
-#[must_use]
-pub fn slider_to_gap(track: f32) -> f64 {
-    GAP_MIN + f64::from(track.clamp(0.0, 1.0)) * (GAP_MAX - GAP_MIN)
-}
-/// Gap multiple → normalized track (inverse of [`slider_to_gap`]).
-#[must_use]
-pub fn gap_to_slider(m: f64) -> f32 {
-    ((m.clamp(GAP_MIN, GAP_MAX) - GAP_MIN) / (GAP_MAX - GAP_MIN)) as f32
-}
 
 /// Os parâmetros de TEXTO (tamanho · peso · entrelinha · tracking) — módulo irmão pelo teto
 /// de 700 LOC deste arquivo. Uma família inteira, com os seus mapas de slider ao lado das

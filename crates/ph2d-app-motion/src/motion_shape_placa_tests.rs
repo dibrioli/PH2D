@@ -113,7 +113,7 @@ fn o_traco_tracejado_sob_escala_nao_uniforme_vai_a_placa() {
     ));
     let mut t = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);
     let mut spec = StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05);
-    spec.dash = Some((2.0, 1.0));
+    spec.dash = Some(ph2d_vec_scene::DashPattern::single(2.0, 1.0));
     t.stroke = Some(spec);
     let tracejada = s.push(t);
     for tam in [[3.0, 1.0], [2.0, 2.0]] {

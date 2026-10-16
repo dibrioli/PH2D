@@ -96,6 +96,9 @@ pub use ph2d_warp_style::WarpStyle as EnvelopeWarp;
 /// (Era `EnvelopeWarp::DEFAULT_BEND`; virou const livre quando o enum virou apelido do catálogo.)
 pub const ENVELOPE_DEFAULT_BEND: f64 = 0.5;
 
+/// O nome registado do [`VecEnvelope`] — também o de quem regrava os blobs dele num ficheiro antigo.
+pub const VEC_ENVELOPE_TYPE_NAME: &str = "ph2d::ecs::VecEnvelope";
+
 /// **O Envelope Object.** Um container que guarda a gaiola (cantos + lados) + a fonte autorada de
 /// cada filho. A geometria que o mundo vê está no `VecPath` de cada filho (a cozida); esta struct é a
 /// **relação** da qual essa geometria é função pura, re-cozida por frame pela shell.

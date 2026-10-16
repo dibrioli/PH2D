@@ -80,11 +80,17 @@ fn slot_i18n_key(slot: usize) -> &'static str {
 pub(crate) fn seed(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     let snap = state::current_snapshot();
     let focus = store.focus_id();
+    let [scale_start, scale_end] = snap.marker_scale;
     for (id, field, value) in [
         (
             ph2d_tool_vector::ids::VECTOR_MARKER_SCALE,
             &params::MARKER_SCALE,
-            snap.marker_scale,
+            scale_start,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_END,
+            &params::MARKER_SCALE,
+            scale_end,
         ),
         (
             ph2d_tool_vector::ids::VECTOR_MARKER_ROUND,
@@ -110,7 +116,7 @@ pub(crate) fn apply_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
     let WidgetEvent::ValueChanged(id) = ev else {
         return false;
     };
-    let field = if id == ph2d_tool_vector::ids::VECTOR_MARKER_SCALE {
+    let field = if ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_IDS.contains(&id) {
         &params::MARKER_SCALE
     } else if id == ph2d_tool_vector::ids::VECTOR_MARKER_ROUND {
         &params::MARKER_ROUND
@@ -134,17 +140,31 @@ impl BodyCtx<'_> {
         // As caixas leem o valor do STORE (semeado com o efetivo na Fase B do paint), como
         // toda caixa numérica do painel — assim o dígito que está sendo digitado não é
         // sobrescrito pelo snapshot do frame.
-        y = self.labeled_number_field(
+        // ⭐ F16c: o TAMANHO é por ponta — «um nome, duas caixas» (começo · fim), na ordem dos dois
+        // chips de cima, como o *Scale* do painel Stroke do Illustrator. O arredondamento continua
+        // um só, na MESMA coluna.
+        let (size, round) = (
             crate::nomes_do_motor::marcador(params::MARKER_SCALE.label),
-            ph2d_tool_vector::ids::VECTOR_MARKER_SCALE,
-            params::MARKER_SCALE.step,
-            y,
-        );
-        y = self.labeled_number_field(
             crate::nomes_do_motor::marcador(params::MARKER_ROUND.label),
-            ph2d_tool_vector::ids::VECTOR_MARKER_ROUND,
-            params::MARKER_ROUND.step,
+        );
+        let sec = ph2d_editor_core::property_row::Seccao::medida(
+            self.text_system,
+            ph2d_tool_vector::ids::MARKER_SLOTS,
+            &[size, round],
+        );
+        y = self.fields_row(
+            size,
+            &ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_IDS,
+            None,
             y,
+            sec,
+        );
+        y = self.fields_row(
+            round,
+            &[ph2d_tool_vector::ids::VECTOR_MARKER_ROUND],
+            None,
+            y,
+            sec,
         );
         // **Dupla via.** O rótulo do botão é DERIVADO das pontas (`both_ends()`) — não há um
         // flag a consultar. Reusa o mesmo desenho do campo de escolha (rótulo na coluna de

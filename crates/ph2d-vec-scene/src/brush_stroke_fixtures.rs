@@ -52,7 +52,7 @@ pub(super) fn pincel() -> BrushStroke {
 pub(super) fn traco(b: &BrushStroke, width: f64, dash: Option<(f64, f64)>) -> crate::StrokeSpec {
     let mut s = crate::StrokeSpec::new(b.fallback, width);
     s.paint = crate::StrokePaint::Brush(Box::new(b.clone()));
-    s.dash = dash;
+    s.dash = dash.map(|(d, g)| crate::DashPattern::single(d, g));
     s
 }
 

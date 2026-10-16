@@ -237,13 +237,15 @@ impl VectorTool {
             PanelEvent::Click(id) if id == crate::ids::VECTOR_JOIN_BEVEL => {
                 self.set_join(StrokeJoin::Bevel)
             }
-            PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_DASH => {
-                self.dash = slider_to_dash(v as f32);
-                self.apply_to_selected = true;
+            // **O tracejado em pares** (F16c) — caixas numéricas: o valor chega autorado, em
+            // múltiplos da largura, e a coluna da caixa é o par.
+            PanelEvent::SetValue(id, v) if crate::ids::VECTOR_DASH_IDS.contains(&id) => {
+                let k = crate::ids::VECTOR_DASH_IDS.iter().position(|x| *x == id).unwrap_or(0);
+                self.set_dash(k, false, v);
             }
-            PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_GAP => {
-                self.gap = slider_to_gap(v as f32);
-                self.apply_to_selected = true;
+            PanelEvent::SetValue(id, v) if crate::ids::VECTOR_GAP_IDS.contains(&id) => {
+                let k = crate::ids::VECTOR_GAP_IDS.iter().position(|x| *x == id).unwrap_or(0);
+                self.set_dash(k, true, v);
             }
             // **Pontas do traço.** O popover do chip escolhe uma ponta e o painel emite o
             // DISCRIMINANTE dela (`Marker::as_u8`) no id do chip — um `SetValue` por
@@ -257,8 +259,9 @@ impl VectorTool {
             }
             // **Tamanho / arredondamento da ponta** — caixas numéricas (o valor chega
             // autorado, não um track 0..1), como os campos de forma e os do conector.
-            PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_MARKER_SCALE => {
-                self.set_marker_scale(v);
+            PanelEvent::SetValue(id, v) if crate::ids::VECTOR_MARKER_SCALE_IDS.contains(&id) => {
+                let slot = usize::from(id == crate::ids::VECTOR_MARKER_SCALE_END);
+                self.set_marker_scale(slot, v);
             }
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_MARKER_ROUND => {
                 self.set_marker_round(v);

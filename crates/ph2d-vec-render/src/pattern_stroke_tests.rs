@@ -502,7 +502,10 @@ fn a_dashed_patterned_stroke_still_paints_the_pattern() {
         let mut s = StrokeSpec::new(ph2d_vec_scene::Rgba8::new(9, 9, 9, 255), 0.22);
         s.paint = paint;
         // Os números MEDIDOS na sessão do Enio — a fixtura contém o fenómeno, e não uma aproximação.
-        s.dash = Some((0.881_610_572_338_104_2, 1.605_468_75));
+        s.dash = Some(ph2d_vec_scene::DashPattern::single(
+            0.881_610_572_338_104_2,
+            1.605_468_75,
+        ));
         s.cap = ph2d_vec_scene::LineCap::Round;
         let id = scene.push_path(ph2d_vec_scene::VecPath {
             verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
@@ -653,7 +656,7 @@ fn a_dashed_brush_draws_fewer_copies_because_the_gaps_are_empty() {
 
     // O MESMO traço, tracejado: `(4, 2)` múltiplos de uma largura de `1` ⇒ traço de 4, vão de 2.
     if let Some(s) = scene.path_mut(id).and_then(|p| p.stroke.as_mut()) {
-        s.dash = Some((4.0, 2.0));
+        s.dash = Some(ph2d_vec_scene::DashPattern::single(4.0, 2.0));
     }
     let picotado = desenha_com(&scene, &crate::PatternTiles::new(), &brushes);
     assert!(

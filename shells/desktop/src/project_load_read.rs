@@ -49,8 +49,13 @@ impl crate::App {
                 return None;
             }
         };
-        let (file, migrated_counter) = match ver {
-            PROJECT_SCHEMA => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
+        // ⭐ **Até ao `189` o `StrokeSpec` tinha outra forma** (F16c, `VEC_SCENE` v22): todo ficheiro
+        // anterior lê-se dentro do âmbito que a declara — o `189` com o tipo VIVO, porque o resto do
+        // ficheiro não mudou. Ver `ph2d_vec_scene::stroke_wire`.
+        let antigo = ver < PROJECT_SCHEMA;
+        let _traco_v22 = antigo.then(ph2d_vec_scene::StrokeLayoutV22::enter);
+        let (mut file, migrated_counter) = match ver {
+            PROJECT_SCHEMA | crate::project_schema::PROJECT_SCHEMA_TRACO_V22 => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
                 Ok((_, f)) => (f, None),
                 Err(e) => {
                     eprintln!("[proj] erro ao ler {path}: {e}");
@@ -171,6 +176,14 @@ impl crate::App {
                 return None;
             }
         };
+        if antigo {
+            // As formas guardadas DENTRO de componentes (Envelope, pele) são lidas mais tarde, fora
+            // deste âmbito ⇒ regravam-se agora na forma nova.
+            let w = &mut file.state.world;
+            let n = ph2d_app_vec::envelope_live::migra_traco_v22(w)
+                + ph2d_skeleton_live::skinned_mesh::migra_traco_v22(w);
+            eprintln!("[proj] v{ver}: traço v22 lido; {n} envelope(s)/pele(s) regravado(s)");
+        }
         Some((file, migrated_counter))
     }
 }

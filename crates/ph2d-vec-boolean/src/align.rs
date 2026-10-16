@@ -99,7 +99,7 @@ pub fn aligned_stroke(path: &VecPath) -> Option<Vec<VecPath>> {
 fn doubled(s: &StrokeSpec) -> StrokeSpec {
     StrokeSpec {
         width: s.width * 2.0,
-        dash: s.dash.map(|(d, g)| (d * 0.5, g * 0.5)),
+        dash: s.dash.map(|p| p.scaled(0.5)),
         ..s.clone()
     }
 }

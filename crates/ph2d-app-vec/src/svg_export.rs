@@ -179,15 +179,14 @@ fn traco(s: &ph2d_vec_scene::StrokeSpec) -> (String, Option<&'static str>) {
         );
     }
     // ⚠️ O tracejado do documento é em MÚLTIPLOS da largura; o do SVG é em unidades.
-    if let Some((d, g)) = s.dash
-        && d > 0.0
-    {
-        let _ = write!(
-            a,
-            r#" stroke-dasharray="{},{}""#,
-            num(d * s.width),
-            num(g * s.width)
-        );
+    // F16c: até três pares, os que o padrão percorre.
+    if let Some(p) = s.dash.filter(ph2d_vec_scene::DashPattern::is_dashed) {
+        let lista: Vec<String> = p
+            .active()
+            .iter()
+            .flat_map(|[d, g]| [num(d * s.width), num(g * s.width)])
+            .collect();
+        let _ = write!(a, r#" stroke-dasharray="{}""#, lista.join(","));
     }
     let perdeu = matches!(s.paint, StrokePaint::Pattern(_)).then_some("padrão no traço");
     let perdeu =

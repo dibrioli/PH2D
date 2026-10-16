@@ -100,6 +100,32 @@ dash ×3 e escala por ponta (formato gravado ⇒ versão + migração; `ph2d-vec
   (`motion_shape_gen.rs:398`). Fixtures literais: `vector_bridge_tests.rs`, `vector_bridge_opacity_tests.rs`,
   `vec_selection.rs:346`, `brush_stroke_fixtures.rs:52`, `stroke_present_tests.rs:149`, `motion_shape_*_tests.rs`.
 
+### 4c — F16c FEITA (15/10, `line/UIUX`) — o que ficou decidido
+
+- **Modelo**: `StrokeSpec.dash: Option<DashPattern>` (`[[f64; 2]; 3]`, `ph2d-vec-scene/src/dash_pattern.rs`) e
+  `marker_scale_start`/`_end`. Lei dos pares: o 1.º conta sempre (1.º traço `0` = contínuo, a lei de antes);
+  os seguintes contam até ao 1.º par `[0, 0]`; um traço `0` depois do 1.º é um PONTO (com ponta redonda).
+  `DashLengths` (em comprimento) é o que o traçador, o Outline Stroke, o pincel e o SVG leem; o ajuste aos
+  cantos (`dash_fit::fit`) escala os N comprimentos pelo mesmo `k` e, num aberto, acaba no 1.º traço.
+- **Ficheiros antigos abrem iguais** (`VEC_SCENE` `22 → 23`, `PROJECT_SCHEMA` `189 → 190`): só o
+  `StrokeSpec` tem forma antiga (`stroke_wire.rs`, `StrokeSpecV22`); o leitor de um ficheiro `< 190` abre o
+  âmbito `StrokeLayoutV22` (thread-local), e as formas guardadas DENTRO de componentes (fonte do Envelope e
+  da pele) são regravadas no load. Gates sobre BYTES gravados pelo código v22/v189 (commit `d138b96401`):
+  `stroke_v22_fixture` (vec-scene), `traco_v189` (shell), `envelope_traco_v22_tests` (app-vec) — cada um com
+  o controlo «sem o âmbito, os mesmos bytes não leem igual».
+- **Painel** (e o popover do «Stroke ▾», que pinta as mesmas linhas): *Dash / Gap 1..3*, uma linha por par
+  com [traço][vão] — «um nome, N caixas» do Inspector (os SLIDERS do 1.º par saíram, como no Illustrator,
+  que só tem caixas); *Head Size* [começo][fim]; *Head Round* na mesma coluna. `paint_dashes.rs`.
+  ⛔ Duas linhas de três caixas (*Dash* [1][2][3] / *Gap* [1][2][3]) foram a 1.ª redacção: a FOTO mostrou a
+  fila a partir no painel solto (a 3.ª caixa debaixo da 1.ª).
+- **Lápis com farpas desenhadas**: cada ponta tem o tamanho da SUA farpa (era a média das duas).
+- **SVG**: importa até 6 números do `stroke-dasharray` (a nota de perda só acima disso); exporta os pares ativos.
+- ⏳ **Por fazer, nomeado**: a placa (`ph2d-shape-gpu`, `tracejado_do_eixo`) só percorre UM par; um padrão de
+  2–3 pares cai na cerca que já existia (`FLAG_SO_CONFORME`: a placa desenha as cópias conformes com o
+  tracejado cortado na CPU, o Vello as outras) — mesma imagem, caminho mais lento só sob escala não uniforme.
+  O Motion continua com um par (o nó `ph2d-node-motion-shape` tem `DASH`/`DASH_GAP`).
+- Cena de smoke **24** (`PH2D_OBJECT_MODE_SMOKE=24`, `vector_mode_tracejado.rs`).
+
 ## 5 — Perguntas ao dono (respostas entram aqui)
 
 - **P1** Os botões saem só na tela do Vetor ou em todas? (recomendado: só no Vetor agora)

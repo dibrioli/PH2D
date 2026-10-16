@@ -103,6 +103,7 @@
 | 2026-10-11 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_FAMILIA_B_B5.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_FAMILIA_B_B5.md) | continuação | B5 feito: mistura por cópia nas formas da placa (Soma · Tela · Multiplica), o `Each Shape` entra na mistura; LUT do glow a 4 096 |
 | 2026-10-12 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-12_ZERAR_FAMILIA_B_B6.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-12_ZERAR_FAMILIA_B_B6.md) | continuação | fila viva: B6 feito — a mistura em grupo pelo DISPOSITIVO (corridas por faixa, vigia das imagens), halo fechado por medição; família B fechada, segue C/D/E |
 | 2026-10-15 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-15_LINGUA.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-15_LINGUA.md) | continuação | fila viva: a língua das cenas — tudo o que uma cena pinta é inglês, censo que monta cada nível; régua de língua medida contra 195 textos; guarda do heredoc; legenda da =142 |
+| 2026-10-16 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-16_CARIMBO.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-16_CARIMBO.md) | continuação | fila viva: o carimbo na placa — `point_scale > 0` e pontos com `rot` (=132 ×11 9×, =136 5,7×); custo fixo da rota híbrida em aberto |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

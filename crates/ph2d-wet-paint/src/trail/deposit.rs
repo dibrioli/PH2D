@@ -28,7 +28,8 @@
 //! mesmo traço ao bit.
 
 use super::{Accumulated, TouchedRect, Trail, touch_ext};
-use crate::brush::{CellFn, shaped_bounds, stamp_row_shaped};
+use crate::brush::{CellFn, ColorFn, shaped_bounds, stamp_row_shaped};
+use crate::colorops::ColorMix;
 use crate::grid::{Grid, wet_byte_from_paper};
 use crate::par::{self, Rows};
 use crate::sim::Params;
@@ -61,6 +62,8 @@ pub(super) struct DepositLaw {
     intensity: f64,
     dry_gate: f64,
     pub(super) water_amount: f64,
+    /// A mistura da tinta, para a cor POR CÉLULA que dois dabs da mesma janela pousam na ponta.
+    mix: ColorMix,
 }
 
 impl DepositLaw {
@@ -75,6 +78,7 @@ impl DepositLaw {
             intensity: dab.intensity,
             dry_gate: dab.dry_gate,
             water_amount: dab.water_amount,
+            mix: p.mix,
         }
     }
 
@@ -136,9 +140,50 @@ impl DepositLaw {
     }
 }
 
-/// Uma linha do depósito: o `y`, a linha do grid (`wet`) e — se a janela a cobre — a linha do
-/// pigmento e a da água do rasto.
-type Linha<'a> = (i32, &'a mut [u8], Option<(&'a mut [f32], &'a mut [f32])>);
+/// A linha da janela do rasto: o pigmento, a água e — com a cor por célula — os três planos da tinta.
+struct LinhaDaJanela<'a> {
+    pig: &'a mut [f32],
+    water: &'a mut [f32],
+    tinta: Option<[&'a mut [f32]; 3]>,
+}
+
+/// Uma linha do depósito: o `y`, a linha do grid (`wet`) e — se a janela a cobre — a linha dela.
+type Linha<'a> = (i32, &'a mut [u8], Option<LinhaDaJanela<'a>>);
+
+/// **A cor de um dab numa célula da janela**: a primeira tinta na célula pousa a cor dele inteira; as
+/// seguintes misturam-se pela massa (`soma ÷ (antes + soma)`), como duas tintas no pincel.
+#[inline]
+fn pousa_a_tinta(
+    tinta: &mut [&mut [f32]; 3],
+    l: usize,
+    antes: f64,
+    soma: f64,
+    c: [f32; 4],
+    mix: ColorMix,
+) {
+    if antes <= 0.0 {
+        for k in 0..3 {
+            tinta[k][l] = c[k];
+        }
+        return;
+    }
+    let mut out = [0.0f64; 3];
+    let [r, g, b] = [0, 1, 2].map(|k| f64::from(tinta[k][l]));
+    let w = soma / (antes + soma);
+    mix.mix(
+        r,
+        g,
+        b,
+        f64::from(c[0]),
+        f64::from(c[1]),
+        f64::from(c[2]),
+        w,
+        &mut out,
+    );
+    for k in 0..3 {
+        tinta[k][l] = out[k] as f32;
+    }
+}
 
 impl Trail {
     /// O depósito de um dab com a silhueta do HOSPEDEIRO, caminhado por linhas na rota `mode`.
@@ -156,6 +201,7 @@ impl Trail {
         sil: CellFn<'_>,
         grain: Option<CellFn<'_>>,
         padrao: Option<CellFn<'_>>,
+        cor: Option<ColorFn<'_>>,
         mode: Option<Rows>,
     ) -> (i32, i32, i32, i32) {
         let Some((x0, y0, x1, y1)) = shaped_bounds(g.w, g.h, dab.x, dab.y, dab.r * dab.reach)
@@ -184,17 +230,37 @@ impl Trail {
         // As linhas da janela que caem dentro da caixa do dab — cada uma é a MESMA linha `y` do
         // grid, com a âncora da janela a ligá-las.
         let n_linhas = (y1 - y0 + 1) as usize;
-        let mut janela: Vec<Option<(&mut [f32], &mut [f32])>> =
-            (0..n_linhas).map(|_| None).collect();
-        for (ly, par_de_linhas) in self
+        let mut janela: Vec<Option<LinhaDaJanela<'_>>> = (0..n_linhas).map(|_| None).collect();
+        let n = size as usize;
+        let mut tinta: Vec<Option<[&mut [f32]; 3]>> = (0..n_linhas).map(|_| None).collect();
+        if cor.is_some() {
+            for (ly, ((r, g), b)) in self
+                .tinta_r
+                .chunks_mut(n)
+                .zip(self.tinta_g.chunks_mut(n))
+                .zip(self.tinta_b.chunks_mut(n))
+                .enumerate()
+            {
+                let y = ly as i32 - half + ay;
+                if (y0..=y1).contains(&y) {
+                    tinta[(y - y0) as usize] = Some([r, g, b]);
+                }
+            }
+        }
+        for (ly, (pig, water)) in self
             .pig
-            .chunks_mut(size as usize)
-            .zip(self.water.chunks_mut(size as usize))
+            .chunks_mut(n)
+            .zip(self.water.chunks_mut(n))
             .enumerate()
         {
             let y = ly as i32 - half + ay;
             if (y0..=y1).contains(&y) {
-                janela[(y - y0) as usize] = Some(par_de_linhas);
+                let k = (y - y0) as usize;
+                janela[k] = Some(LinhaDaJanela {
+                    pig,
+                    water,
+                    tinta: tinta[k].take(),
+                });
             }
         }
         let faixa = &mut wet[y0 as usize * s..(y1 as usize + 1) * s];
@@ -223,11 +289,15 @@ impl Trail {
                 padrao,
                 |x, fall, texv, sv| {
                     let i = base + x as usize;
-                    let Some((deposit, wb)) =
+                    let Some((mut deposit, wb)) =
                         law.cell(susp[i], sett[i], paper[i], film[i], fall, texv, sv)
                     else {
                         return;
                     };
+                    let tinta = cor.map(|f| f(x, y, fall * sv));
+                    if let Some(c) = tinta {
+                        deposit *= f64::from(c[3]);
+                    }
                     // ⚠️ **Esta é uma escrita no DOCUMENTO** — ver o doc do pai: é dela que o véu do
                     // Show Wet se alimenta, e acontece mesmo fora da janela do rasto.
                     wet_row[x as usize] = wb;
@@ -236,12 +306,17 @@ impl Trail {
                     if !(0..size).contains(&lx) {
                         return;
                     }
-                    let Some((pig_row, water_row)) = win.as_mut() else {
+                    let Some(jl) = win.as_mut() else {
                         return;
                     };
                     let l = lx as usize;
-                    pig_row[l] = (pig_row[l] as f64 + deposit * gain) as f32;
-                    water_row[l] = (water_row[l] as f64 + deposit * law.water_amount) as f32;
+                    let antes = jl.pig[l] as f64;
+                    if let (Some(c), Some(t)) = (tinta.filter(|_| deposit > 0.0), jl.tinta.as_mut())
+                    {
+                        pousa_a_tinta(t, l, antes, deposit * gain, c, law.mix);
+                    }
+                    jl.pig[l] = (antes + deposit * gain) as f32;
+                    jl.water[l] = (jl.water[l] as f64 + deposit * law.water_amount) as f32;
                     touch_ext(&mut ext, lx, ly);
                 },
             );

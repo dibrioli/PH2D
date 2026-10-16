@@ -25,8 +25,9 @@ fn viewport() -> Rect {
 }
 
 /// Os ficheiros que declaram os ids que o painel do pincel pinta — para o NOME de cada id no relatório.
-const FICHEIROS_DE_IDS: [&str; 17] = [
+const FICHEIROS_DE_IDS: [&str; 18] = [
     include_str!("../../../ph2d-tool-painter/src/ids/painter.rs"),
+    include_str!("../../../ph2d-tool-painter/src/ids/painter_shape_cor.rs"),
     include_str!("../../../ph2d-tool-painter/src/ids/painter_brush_sections.rs"),
     include_str!("../../../ph2d-tool-painter/src/ids/painter_deform.rs"),
     include_str!("../../../ph2d-tool-painter/src/ids/painter_gradient.rs"),
@@ -1135,6 +1136,57 @@ fn pre_condicoes() -> Vec<Linha> {
         ],
         true,
     ));
+    // A Shape Color (prompt 41): cada controlo da secção sobre um Shape (Voronoi), com as duas camadas
+    // (a fábrica) e com a Falloff Color desligada — o Wet Paint responde como o Digital (medido 16/10:
+    // controlo a controlo, os mesmos vivos e os mesmos inertes).
+    for (m, sem_queda) in [Digital, Watercolor, Impasto, WetPaint]
+        .into_iter()
+        .flat_map(|m| [(m, false), (m, true)])
+    {
+        let mut armar = vec![
+            Gesto::Clique(PAINTER_SHAPE_RAMP_ENABLE),
+            opcao(PAINTER_SHAPE_KIND, painter_shape_kind_option_id(3)),
+        ];
+        if m == Watercolor {
+            armar.insert(0, Gesto::Clique(PAINTER_SHAPE_WATERCOLOR_AUTO));
+        }
+        if sem_queda {
+            armar.push(Gesto::Clique(PAINTER_SHAPE_FALLOFF_COLOR));
+        }
+        v.push((
+            m,
+            if sem_queda {
+                "Shape Color sem a Falloff Color, sobre um Shape Voronoi"
+            } else {
+                "Shape Color ligada sobre um Shape Voronoi"
+            },
+            armar,
+            [
+                PAINTER_SHAPE_TEXTURE_COLOR,
+                PAINTER_SHAPE_FALLOFF_COLOR,
+                PAINTER_SHAPE_COLOR_SWAP,
+                PAINTER_SHAPE_COLOR_BLEND,
+                PAINTER_SHAPE_TEXTURE_OPACITY,
+                PAINTER_SHAPE_FALLOFF_OPACITY,
+                PAINTER_SHAPE_RAMP_MODE,
+                PAINTER_SHAPE_RAMP_INTERP,
+                PAINTER_SHAPE_RAMP_BW,
+                PAINTER_SHAPE_RAMP_INVERT,
+                PAINTER_SHAPE_RAMP_ADD,
+                PAINTER_SHAPE_RAMP_REMOVE,
+                PAINTER_SHAPE_RAMP_STOP_POS,
+                PAINTER_SHAPE_FALLOFF_RAMP_MODE,
+                PAINTER_SHAPE_FALLOFF_RAMP_INTERP,
+                PAINTER_SHAPE_FALLOFF_RAMP_INVERT,
+                PAINTER_SHAPE_FALLOFF_RAMP_ADD,
+                PAINTER_SHAPE_FALLOFF_RAMP_REMOVE,
+            ]
+            .into_iter()
+            .map(Alvo::Id)
+            .collect(),
+            false,
+        ));
+    }
     // «Use Texture Colors» (26 C1): só aparece com uma ponta de imagem colorida; a água não lê a cor
     // da textura (o motor deposita a cor do pincel pela silhueta).
     for m in [Digital, Impasto, WetPaint] {

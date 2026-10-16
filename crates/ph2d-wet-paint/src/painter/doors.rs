@@ -120,6 +120,24 @@ impl Engine {
         grain: Option<crate::brush::CellFn<'_>>,
         padrao: Option<crate::brush::CellFn<'_>>,
     ) {
+        self.dispatch_pressure_dab_lane_cor(lane, x, y, b, r, sil, grain, padrao, None);
+    }
+
+    /// [`Self::dispatch_pressure_dab_lane`] com a COR de cada célula (a Shape Color do hospedeiro,
+    /// [`crate::trail::Trail::accumulate_paint_shaped_cor`]); só o caminho com silhueta a lê.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dispatch_pressure_dab_lane_cor(
+        &mut self,
+        lane: usize,
+        x: f64,
+        y: f64,
+        b: f64,
+        r: f64,
+        sil: Option<crate::brush::CellFn<'_>>,
+        grain: Option<crate::brush::CellFn<'_>>,
+        padrao: Option<crate::brush::CellFn<'_>>,
+        cor: Option<crate::brush::ColorFn<'_>>,
+    ) {
         let p = self
             .sim
             .gather_params(&self.tuning)
@@ -140,7 +158,7 @@ impl Engine {
             return;
         };
         let acc = match sil {
-            Some(sil) => trail.accumulate_paint_shaped(
+            Some(sil) => trail.accumulate_paint_shaped_cor(
                 &mut layer.grid,
                 &p,
                 &tex,
@@ -149,6 +167,8 @@ impl Engine {
                 sil,
                 grain,
                 padrao,
+                cor,
+                None,
             ),
             None => trail.accumulate_paint(&mut layer.grid, &p, &tex, &dab, ext_bypass),
         };

@@ -77,7 +77,13 @@ impl Trail {
         let tip_retain = 1.0 - p.k(Knob::Pickup);
         let mode =
             mode.unwrap_or_else(|| crate::par::Rows::pick(size, size, crate::par::MIN_CELLS_TIP));
-        let linha = |ly: usize, tr: &mut [f32], tg: &mut [f32], tb: &mut [f32]| {
+        // `limpo` (com a cor por célula): o peso da cor limpa em cada texel segue as MESMAS duas
+        // interpolações — a limpeza devolve-lhe `clean`, a recolha guarda `k` dele.
+        let linha = |ly: usize,
+                     tr: &mut [f32],
+                     tg: &mut [f32],
+                     tb: &mut [f32],
+                     mut limpo: Option<&mut [f32]>| {
             // 1. Tip self-cleaning: every texel eases back toward the stroke color.
             //
             // ⚠️ **O laço mede a janela VIVA, nunca a do PISO.** Ele ia `0..N` (a
@@ -93,6 +99,11 @@ impl Trail {
                     tr[l] = (tr[l] as f64 + (base_r - tr[l] as f64) * clean) as f32;
                     tg[l] = (tg[l] as f64 + (base_g - tg[l] as f64) * clean) as f32;
                     tb[l] = (tb[l] as f64 + (base_b - tb[l] as f64) * clean) as f32;
+                }
+                if let Some(w) = limpo.as_deref_mut() {
+                    for v in w.iter_mut() {
+                        *v = (*v as f64 + (1.0 - *v as f64) * clean) as f32;
+                    }
                 }
             }
             // 2. Tip pickup (the dirty brush) — reads the PRE-deposit canvas.
@@ -130,16 +141,33 @@ impl Trail {
                 tr[l] = (tr[l] as f64 * k + cr * (1.0 - k)) as f32;
                 tg[l] = (tg[l] as f64 * k + cg * (1.0 - k)) as f32;
                 tb[l] = (tb[l] as f64 * k + cb * (1.0 - k)) as f32;
+                if let Some(w) = limpo.as_deref_mut() {
+                    w[l] = (w[l] as f64 * k) as f32;
+                }
             }
         };
-        crate::par::walk_rows3(
-            mode,
-            &mut self.tip_r,
-            &mut self.tip_g,
-            &mut self.tip_b,
-            size,
-            linha,
-        );
+        if self.limpo.len() == self.tip_r.len() {
+            crate::par::walk_rows4(
+                mode,
+                [
+                    &mut self.tip_r,
+                    &mut self.tip_g,
+                    &mut self.tip_b,
+                    &mut self.limpo,
+                ],
+                size,
+                |ly, [tr, tg, tb, w]| linha(ly, tr, tg, tb, Some(w)),
+            );
+        } else {
+            crate::par::walk_rows3(
+                mode,
+                &mut self.tip_r,
+                &mut self.tip_g,
+                &mut self.tip_b,
+                size,
+                |ly, tr, tg, tb| linha(ly, tr, tg, tb, None),
+            );
+        }
     }
 
     fn transfer_paint_impl(
@@ -184,6 +212,10 @@ impl Trail {
             0.0
         };
 
+        // A cor que cada célula pousa: a da ponta — ou, com a cor por célula, a tinta LIMPA da janela com a
+        // sujidade da ponta (o que ela apanhou da tela e ainda não limpou).
+        let tinta = self.tinta_na_janela;
+        let base = [self.base_r, self.base_g, self.base_b];
         // A ponta SECA é a JANELA inteira sem água (um pincel de Water 0) — não o texel: a orla de uma ponta
         // pouco molhada leva pigmento sem água e continua molhada (o Express Oil ao byte).
         let ponta_seca = count > 0 && sum_water <= 0.0;
@@ -223,16 +255,18 @@ impl Trail {
                 // na célula, o pigmento pousa já ASSENTE — um pastel não se mexe depois do traço (medido: o
                 // suspenso andava 2 passos depois do pen-up). O arrasto abaixo continua do PRESET (`Drag`): o
                 // pastel seco não arrasta, o de óleo risca (as estrias do Oil Pastel 2 do Rebelle).
+                let mut ponta = [self.tip_r[l], self.tip_g[l], self.tip_b[l]];
+                if tinta {
+                    let w = f64::from(self.limpo[l]);
+                    let limpa = [self.tinta_r[l], self.tinta_g[l], self.tinta_b[l]];
+                    for k in 0..3 {
+                        let sujidade = f64::from(ponta[k]) - w * base[k];
+                        ponta[k] = (w * f64::from(limpa[k]) + sujidade).clamp(0.0, 255.0) as f32;
+                    }
+                }
                 let seco = ponta_seca && g.film[i] <= FILM_TRACO;
                 if seco {
-                    pousa_seco(
-                        g,
-                        i,
-                        v,
-                        [self.tip_r[l], self.tip_g[l], self.tip_b[l]],
-                        p,
-                        &mut out,
-                    );
+                    pousa_seco(g, i, v, ponta, p, &mut out);
                     if g.sett[i] as f64 > 3000.0 {
                         let ns = g.sett[i] as f64 - shed_pig;
                         g.sett[i] = if ns < 0.0 { 0.0 } else { ns as f32 };
@@ -249,7 +283,7 @@ impl Trail {
                         if e9 + in_a > 0.0 {
                             let wgt = in_a / (e9 + in_a);
                             let uc = g.susp_rgb[i];
-                            let tip = [self.tip_r[l], self.tip_g[l], self.tip_b[l]].map(f64::from);
+                            let tip = ponta.map(f64::from);
                             mix.mix(
                                 uc[0] as f64,
                                 uc[1] as f64,
@@ -282,7 +316,7 @@ impl Trail {
                     } else {
                         // Virgin cell: takes the tip color outright, and drinks
                         // its first wetting twice (this add + the general below).
-                        g.susp_rgb[i] = [self.tip_r[l], self.tip_g[l], self.tip_b[l]];
+                        g.susp_rgb[i] = ponta;
                         g.susp[i] = v as f32;
                         g.film[i] = (g.film[i] as f64 + self.water[l] as f64) as f32;
                     }

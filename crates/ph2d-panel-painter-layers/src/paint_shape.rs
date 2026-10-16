@@ -513,7 +513,7 @@ fn shape_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> b
         (brush.shape_color_ramp_stop_count as usize).min(brush.shape_color_ramp_stops.len());
     let duas = brush.shape_color_ramp_bw && brush.shape_falloff_color;
     let ok = crate::paint_ramp_widget::build_preview_lut(
-        brush.shape_color_ramp_enabled && brush.shape_ramp_offered(),
+        brush.shape_color_ramp_enabled,
         brush.shape_color_ramp_bw && !duas,
         brush.shape_color_ramp_mode,
         brush.shape_color_ramp_interp,

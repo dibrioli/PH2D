@@ -164,6 +164,12 @@ pub fn radial_falloff(d: f64, hardness: f64) -> f64 {
 /// vez de uma corrida.
 pub type CellFn<'a> = &'a (dyn Fn(i32, i32) -> f64 + Sync);
 
+/// A COR do hospedeiro numa célula (a Shape Color do pincel, prompt 41): `(x, y, cobertura)` → sRGB
+/// `0..255` e o alfa da tinta `0..1`, que pesa o depósito. `cobertura` = a silhueta × o padrão da
+/// célula — o índice da Falloff Color, como no traço digital e na prévia do Shape. Pura e `Sync` pela
+/// razão do [`CellFn`].
+pub type ColorFn<'a> = &'a (dyn Fn(i32, i32, f64) -> [f32; 4] + Sync);
+
 /// A caixa de células `[x0, x1] × [y0, y1]` de um dab do caminho com forma, recortada à área
 /// pincelável `[2..W-1] × [2..H-1]`; `None` quando o dab cai inteiro fora dela.
 ///

@@ -169,10 +169,10 @@ pub(crate) fn declara_aparencia(
 
     // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), below
     //    the Shape section. Shown in ALL modes (Smear/Blur/Clone force it to a B&W coverage tone);
-    //    HIDDEN while Per-Layer Color owns the colour per layer (the ramp is nullified) and where the
-    //    medium does not offer it (`shape_ramp_offered`: not in Wet Paint). ──
+    //    HIDDEN while Per-Layer Color owns the colour per layer (the ramp is nullified). In every
+    //    medium — the Wet Paint deposit takes it per cell (prompt 41). ──
     plano.seccao(pids::PAINTER_SHAPE_RAMP_SECTION, move |ctx, theme, y| {
-        if fora && !brush.shape_per_layer_color && brush.shape_ramp_offered() {
+        if fora && !brush.shape_per_layer_color {
             crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush)
         } else {
             y

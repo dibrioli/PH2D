@@ -352,6 +352,35 @@ pub(crate) fn walk_rows3<T, U, V, F>(
     }
 }
 
+/// [`walk_rows3`] com um QUARTO plano — o bico com o peso da cor limpa (a cor por célula, prompt 41).
+pub(crate) fn walk_rows4<T, F>(mode: Rows, planos: [&mut [T]; 4], stride: usize, f: F)
+where
+    T: Send,
+    F: Fn(usize, [&mut [T]; 4]) + Send + Sync,
+{
+    let [a, b, c, d] = planos;
+    debug_assert!(
+        [b.len(), c.len(), d.len()].iter().all(|&n| n == a.len()),
+        "os planos tem faixas diferentes"
+    );
+    match mode {
+        Rows::Serial => a
+            .chunks_mut(stride)
+            .zip(b.chunks_mut(stride))
+            .zip(c.chunks_mut(stride))
+            .zip(d.chunks_mut(stride))
+            .enumerate()
+            .for_each(|(r, (((ra, rb), rc), rd))| f(r, [ra, rb, rc, rd])),
+        Rows::Parallel => a
+            .par_chunks_mut(stride)
+            .zip(b.par_chunks_mut(stride))
+            .zip(c.par_chunks_mut(stride))
+            .zip(d.par_chunks_mut(stride))
+            .enumerate()
+            .for_each(|(r, (((ra, rb), rc), rd))| f(r, [ra, rb, rc, rd])),
+    }
+}
+
 /// Piso do `advect_jacobi` — **medido**, ver a tabela no [`Rows::pick`] e o
 /// doc-comment do próprio passe. Ele move MUITO mais bytes por célula que os
 /// três do ADR-0145 (quatro passadas sobre a janela), então o pool se paga

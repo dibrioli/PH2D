@@ -53,14 +53,6 @@ impl BrushSettings {
             && !self.solid_owns_the_gesture
     }
 
-    /// **O meio OFERECE a Shape Color Ramp?** — a porta única da secção do painel e da pré-visualização
-    /// da Shape. Não no Wet Paint (recusada, doc 46 §1): a água leva UMA cor por carimbo ao fluido, e a
-    /// mistura K–M homogeneíza o carimbo no primeiro passo — a rampa seria apagada pela física.
-    #[must_use]
-    pub fn shape_ramp_offered(&self) -> bool {
-        !self.wetpaint
-    }
-
     /// **O meio OFERECE a Color Ramp do Grain?** — não no Wet Paint, pela física da da Shape (achada
     /// morta pela procura completa do censo em 2026-10-05: a secção inteira não muda um texel), nem na
     /// Aquarela, onde o Grain é o mapa de granulação (a cor mora no Paper).

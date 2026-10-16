@@ -11,6 +11,7 @@ mod util;
 
 mod acceptance;
 mod acceptance_budget;
+mod cor_por_celula;
 mod deposit_rows;
 mod fingerprint;
 mod flow_grid;

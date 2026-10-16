@@ -20,7 +20,7 @@ pub(crate) fn camadas_da_previa(
     side: u32,
     cov: &[u8],
 ) -> Option<Vec<[f32; 4]>> {
-    if !brush.shape_color_ramp_enabled || !brush.shape_ramp_offered() || brush.shape_color_ramp_bw {
+    if !brush.shape_color_ramp_enabled || brush.shape_color_ramp_bw {
         return None;
     }
     let inerte = state::current_inercias().inerte(ph2d_tool_painter::Dependente::TexturaSemForma);

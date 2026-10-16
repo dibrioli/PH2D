@@ -8,6 +8,7 @@
 
 mod a_pilha_de_ajustes_fala_a_tabela_e_mostra_o_numero;
 mod as_seccoes_arrastam_e_tem_tema; // o tema e o arrasto das secções do corpo do pincel
+mod auditoria_l2_continuous; // AUDITORIA lente 2 (15/10): o Continuous pelo ponteiro — sonda, não portão
 mod cada_nome_deste_painel_cabe_na_coluna_da_seccao;
 mod censo_dos_controlos; // cada controlo pintado, em cada meio, muda o traço (ou diz porquê)
 mod curve_handle_menu_e2e;
@@ -42,4 +43,3 @@ mod seam_watercolor_flow; // as linhas da forma da borda: Flow, Size, Angle, Pap
 mod seam_wet_presets;
 mod seam_wetpaint; // W1: o navegador de presets e os volumes do Wet Painter, pelo ponteiro
 mod seam_wetpaint_opcoes; // W1g: Live Water e Heavy Edge pelo clique real
-mod auditoria_l2_continuous; // AUDITORIA lente 2 (15/10): o Continuous pelo ponteiro — sonda, não portão

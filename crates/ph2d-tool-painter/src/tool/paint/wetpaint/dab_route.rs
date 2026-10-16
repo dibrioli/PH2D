@@ -170,6 +170,19 @@ impl PainterTool {
         // Shape image/procedural × flatten/rotate footprint); the engine's
         // internal falloff/footprint step aside per dab via the shaped door,
         // and the bristle texture stays as the fluid's default grain (W2.3b).
+        // ⭐ **A Shape Color** (prompt 41): as camadas dão a cor de cada CÉLULA do depósito, pela porta
+        // da aguada (Texture Color pelo valor do Shape, Falloff Color pela silhueta); o padrão que vira cor
+        // deixa de recortar (a lei do digital, P38). Assa também o tom do modo B&W.
+        let rampa = if erasing {
+            None
+        } else {
+            self.rampa_da_aguada()
+        };
+        let padrao_vira_cor = rampa.is_some()
+            && self.padrao_do_shape_vira_cor(
+                super::ramp_lut::RampLutOwner::Shape,
+                self.paint.shape_image.is_some(),
+            );
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
             && self.paint.shape_color_ramp_bw)
@@ -403,8 +416,9 @@ impl PainterTool {
             // Per-dab grain closure (armed slot only): replaces the bristle
             // sample inside the shaped stamp, cell − 1 = px like `sil`.
             let spec_ref = &spec;
-            let padrao = shape_input.filter(|_| padrao_a_parte).map(|si| {
-                move |cx: i32, cy: i32| -> f64 {
+            // O valor do Shape numa célula, pela cobertura (os sub-pontos do AA) — o padrão e a cor leem-no.
+            let valor_da_forma =
+                |si: ph2d_painter_brush::ShapeInput<'_>, cx: i32, cy: i32| -> f32 {
                     let mut acc = 0.0f32;
                     for j in 0..aa_n {
                         let sy = grid_map::cell_subsample_px(cy, ratio, j, aa_step);
@@ -420,12 +434,33 @@ impl PainterTool {
                             );
                         }
                     }
-                    f64::from(acc * aa_inv)
-                }
-            });
+                    acc * aa_inv
+                };
+            let padrao = shape_input
+                .filter(|_| padrao_a_parte && !padrao_vira_cor)
+                .map(|si| move |cx: i32, cy: i32| -> f64 { f64::from(valor_da_forma(si, cx, cy)) });
             let padrao_arg = padrao
                 .as_ref()
                 .map(|p| p as ph2d_wet_paint::brush::CellFn<'_>);
+            // A cor da célula: a Texture Color lê o valor do Shape (as cerdas incluídas — é a textura que a
+            // prévia mostra), a Falloff Color a silhueta; sRGB `0..1` → os `0..255` do motor.
+            let forma_da_cor = shape_basis
+                .as_ref()
+                .map(|sb| ph2d_painter_brush::ShapeInput {
+                    basis: sb,
+                    image: shape_image.as_ref(),
+                    ramp_lut: None,
+                });
+            let cor = rampa.as_ref().map(|r| {
+                move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
+                    let v = forma_da_cor.map(|si| valor_da_forma(si, cx, cy));
+                    let c = r.cor(v, queda as f32);
+                    [c[0] * 255.0, c[1] * 255.0, c[2] * 255.0, c[3]]
+                }
+            });
+            let cor_arg = cor
+                .as_ref()
+                .map(|c| c as ph2d_wet_paint::brush::ColorFn<'_>);
             let gimg = grain_image.as_ref();
             let grain = grain_basis.as_ref().map(|gb| {
                 move |cx: i32, cy: i32| -> f64 {
@@ -495,7 +530,7 @@ impl PainterTool {
                 continue;
             }
             match wet_tool {
-                WetTool::Paint => sess.engine.dispatch_pressure_dab_lane(
+                WetTool::Paint => sess.engine.dispatch_pressure_dab_lane_cor(
                     li,
                     cell_x,
                     cell_y,
@@ -504,6 +539,7 @@ impl PainterTool {
                     Some(&sil),
                     grain_arg,
                     padrao_arg,
+                    cor_arg,
                 ),
                 // Blend keeps the engine's own fixed-hardness stamp (the
                 // model's tools ignore the brush silhouette on purpose).

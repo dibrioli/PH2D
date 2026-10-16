@@ -82,17 +82,18 @@ fn com_solid_o_accumulate_sai_do_painel() {
     }
 }
 
-/// **A Shape Color Ramp não aparece no Wet Paint** (doc 46 §1, recusada: a água leva UMA cor por
-/// carimbo ao fluido, e a mistura K–M homogeneíza-o no primeiro passo — a rampa seria apagada pela
-/// física). A lei é a `BrushSettings::shape_ramp_offered`.
+/// **A Shape Color aparece em TODO meio** (prompt 41, dono 15/10). No Wet Paint esteve escondida
+/// (doc 46 §1: «a mistura K–M homogeneíza o carimbo no primeiro passo») — análise que a régua refutou:
+/// nos 12 pincéis de fábrica a cor por célula sobrevive aos 10 s da água (×3,4–18 o desvio de G−R do
+/// traço sem rampa, `wetpaint/shape_color_tests.rs::sonda_shape_color_no_wet_paint`).
 #[test]
-fn a_rampa_da_shape_so_onde_o_meio_a_oferece() {
+fn a_rampa_da_shape_aparece_em_todo_meio() {
     use ph2d_tool_painter::ids::{PAINTER_SHAPE_RAMP_ENABLE, PAINTER_SHAPE_RAMP_SECTION};
     for (media, oferece) in [
         (PaintMedia::Digital, true),
         (PaintMedia::Watercolor, true),
         (PaintMedia::Impasto, true),
-        (PaintMedia::WetPaint, false),
+        (PaintMedia::WetPaint, true),
     ] {
         let ids = pintados(media);
         for (id, nome) in [

@@ -526,8 +526,6 @@ mod lei_b_tests; // plano 27 W3: o padrão do Shape multiplica DEPOIS do portão
 #[cfg(test)]
 mod medida_undo; // o Ctrl+Z com as opções da W1g (dono 10/10)
 #[cfg(test)]
-mod shape_color_tests; // prompt 41: a Shape Color pinta cada célula do depósito; desligada, ao byte
-#[cfg(test)]
 mod mistura_camadas_tests; // N camadas de amarelo sobre azul seco convergem sem preto (prompt 15)
 #[cfg(test)]
 mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
@@ -537,6 +535,8 @@ mod mistura_wet_drip_tests; // uma mistura nunca é mais clara que as tintas (o 
 mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
 #[cfg(test)]
 mod pastel_seco_tests; // o Soft Pastel não se mexe depois do traço e não depende da altura (prompt 35)
+#[cfg(test)]
+mod shape_color_tests; // prompt 41: a Shape Color pinta cada célula do depósito; desligada, ao byte
 #[cfg(test)]
 #[path = "wetpaint/showwet_tests.rs"]
 mod showwet_tests;
@@ -564,6 +564,8 @@ mod sonda_pastel_tempo; // o Soft Pastel no TEMPO contra o Rebelle Dry Thin (pro
 mod sonda_presets;
 #[cfg(test)]
 mod sonda_shape_casa; // W0 do plano 27: a tinta de cada tipo do Shape e as leis candidatas do #47 // o Wet Drip com as caixas K–M e a lei de antes (prompt 16, Fases B–E) // os 4 pincéis de fábrica na bancada do Rebelle (conferência do dono 10/10) // o pincel seco nos picos do papel (dono 09/10) // a barra da meia inclinação e a tela direita ao byte (W1e, F1)
+#[cfg(test)]
+mod sonda_shape_color; // prompt 41: a régua, os números das leis e a prancha da Shape Color
 
 #[cfg(test)]
 mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)

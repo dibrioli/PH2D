@@ -14,7 +14,7 @@
 //! Blend mode reuses the window plumbing with a saturating mask and re-mixes
 //! both pigment layers toward the window averages (dry paint included).
 
-use crate::brush::{CellFn, for_each_stamp_pixel};
+use crate::brush::{CellFn, ColorFn, for_each_stamp_pixel};
 
 mod deposit; // o que um dab POUSA — a lei da célula e o caminho por linhas (ADR-0175)
 mod transfer; // the window-landing half of §10 (LOC-cap split)
@@ -101,6 +101,18 @@ pub struct Trail {
     /// O espaçamento do último segmento — a deriva da janela entre dois
     /// transfers é `window_size × spacing`, com `window_size` capado em 4.
     spacing: f64,
+    /// A cor LIMPA de cada célula da janela, quando o hospedeiro a dá (a Shape Color, prompt 41): os
+    /// dabs pousam-na misturada pela massa, e o transfer pousa-a com a sujidade da ponta
+    /// ([`crate::colorops::ColorMix::carry`]). Vazia até o primeiro dab com cor.
+    tinta_r: Vec<f32>,
+    tinta_g: Vec<f32>,
+    tinta_b: Vec<f32>,
+    /// Quanto da cor LIMPA do pincel resta em cada texel da ponta (`1` = limpa): a limpeza e a recolha
+    /// são interpolações para alvos fixos, então a ponta é `limpo · base + sujidade`, e a tinta por
+    /// célula pousa `limpo · tinta + sujidade`. Vive com a tinta (vazio sem ela).
+    limpo: Vec<f32>,
+    /// Algum dab desta janela trouxe a cor por célula.
+    tinta_na_janela: bool,
 }
 
 /// Canvas rect touched by a transfer (cell coords, inclusive).
@@ -195,6 +207,11 @@ impl Default for Trail {
             half: TRAIL_HALF,
             size: TRAIL_SIZE,
             spacing: 6.0,
+            tinta_r: Vec::new(),
+            tinta_g: Vec::new(),
+            tinta_b: Vec::new(),
+            limpo: Vec::new(),
+            tinta_na_janela: false,
         }
     }
 }
@@ -207,6 +224,7 @@ impl Trail {
         self.tip_r.fill(color[0] as f32);
         self.tip_g.fill(color[1] as f32);
         self.tip_b.fill(color[2] as f32);
+        self.limpo.fill(1.0);
         self.base_r = color[0];
         self.base_g = color[1];
         self.base_b = color[2];
@@ -237,6 +255,7 @@ impl Trail {
         self.tip_r.fill(color[0] as f32);
         self.tip_g.fill(color[1] as f32);
         self.tip_b.fill(color[2] as f32);
+        self.limpo.fill(1.0);
     }
 
     /// **A janela cresce para o pincel que chegou** — a lei do [`TRAIL_HALF`],
@@ -268,6 +287,10 @@ impl Trail {
         self.tip_r = vec![self.base_r as f32; n];
         self.tip_g = vec![self.base_g as f32; n];
         self.tip_b = vec![self.base_b as f32; n];
+        self.limpo.clear();
+        self.tinta_r.clear();
+        self.tinta_g.clear();
+        self.tinta_b.clear();
         self.lx0 = 0;
         self.ly0 = 0;
         self.lx1 = -1;
@@ -315,6 +338,17 @@ impl Trail {
     pub fn touched_extent_for_measure(&self) -> Option<(i32, i32, i32, i32)> {
         (self.lx0 <= self.lx1 && self.ly0 <= self.ly1)
             .then_some((self.lx0, self.ly0, self.lx1, self.ly1))
+    }
+
+    /// A cor LIMPA da janela num texel local (a Shape Color) — só para MEDIÇÃO, como a do bico
+    /// abaixo; `None` sem cor na janela ou fora dela.
+    #[must_use]
+    pub fn tinta_rgb_for_measure(&self, lx: i32, ly: i32) -> Option<[f32; 3]> {
+        if !self.tinta_na_janela || lx < 0 || ly < 0 || lx >= self.size || ly >= self.size {
+            return None;
+        }
+        let l = (lx + ly * self.size) as usize;
+        Some([self.tinta_r[l], self.tinta_g[l], self.tinta_b[l]])
     }
 
     /// A cor do BICO num texel local — o oráculo do gate da auto-limpeza.
@@ -389,7 +423,28 @@ impl Trail {
         grain: Option<CellFn<'_>>,
         padrao: Option<CellFn<'_>>,
     ) -> Accumulated {
-        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, padrao, None)
+        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, padrao, None, None)
+    }
+
+    /// [`Self::accumulate_paint_shaped`] com a COR de cada célula (a Shape Color, prompt 41): cada célula
+    /// da ponta que o dab carrega leva a cor de `cor`, misturada pela massa com o que a janela já tinha
+    /// nela — e é essa ponta que pousa no transfer (a recolha da cor da tela entra por cima, como sempre).
+    /// O alfa da tinta pesa o depósito. Os dabs sem cor são o [`Self::accumulate_paint_shaped`] ao bit.
+    #[allow(clippy::too_many_arguments)]
+    pub fn accumulate_paint_shaped_cor(
+        &mut self,
+        g: &mut Grid,
+        p: &Params,
+        tex: &[f32],
+        dab: &Dab,
+        ext_bypass: bool,
+        sil: CellFn<'_>,
+        grain: Option<CellFn<'_>>,
+        padrao: Option<CellFn<'_>>,
+        cor: Option<ColorFn<'_>>,
+        mode: Option<crate::par::Rows>,
+    ) -> Accumulated {
+        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, padrao, cor, mode)
     }
 
     /// [`Self::accumulate_paint_shaped`] with the row route FORCED — the door
@@ -407,7 +462,18 @@ impl Trail {
         padrao: Option<CellFn<'_>>,
         mode: crate::par::Rows,
     ) -> Accumulated {
-        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, padrao, Some(mode))
+        self.shaped_impl(
+            g,
+            p,
+            tex,
+            dab,
+            ext_bypass,
+            sil,
+            grain,
+            padrao,
+            None,
+            Some(mode),
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -421,11 +487,22 @@ impl Trail {
         sil: CellFn<'_>,
         grain: Option<CellFn<'_>>,
         padrao: Option<CellFn<'_>>,
+        cor: Option<ColorFn<'_>>,
         mode: Option<crate::par::Rows>,
     ) -> Accumulated {
         self.anchor_first_dab(dab);
+        if cor.is_some() {
+            let n = self.pig.len();
+            if self.tinta_r.len() != n {
+                self.tinta_r = vec![0.0; n];
+                self.tinta_g = vec![0.0; n];
+                self.tinta_b = vec![0.0; n];
+                self.limpo = vec![1.0; n];
+            }
+            self.tinta_na_janela = true;
+        }
         let law = deposit::DepositLaw::new(p, dab, ext_bypass);
-        let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, padrao, mode);
+        let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, padrao, cor, mode);
         self.accumulated(wrote)
     }
 
@@ -581,6 +658,7 @@ impl Trail {
         self.lx1 = -1;
         self.ly1 = -1;
         self.dab_count = 0;
+        self.tinta_na_janela = false;
     }
 
     /// Stroke end: the remainder window is DROPPED (the release tail already

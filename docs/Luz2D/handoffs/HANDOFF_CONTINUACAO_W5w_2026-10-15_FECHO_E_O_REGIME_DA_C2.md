@@ -129,4 +129,4 @@ Código retirado; não reconstruir sem ler isto.
 4. Os dois portões de relógio sob placa partilhada (§1): o integrador decide se entram em
    [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md) (promover = tabela + faixa do nextest).
 
-Smoke do dono: ⏳ pendente (W5s, W5t, W5u, W5v, W5w).
+Smoke do dono: ✅ OK (15/10) — cobre W5s, W5t, W5u, W5v e W5w (binário deste handoff). A linha está pronta para integrar, por ordem do dono.

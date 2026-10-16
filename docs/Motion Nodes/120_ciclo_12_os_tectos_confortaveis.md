@@ -260,6 +260,87 @@ que o runtime usa.
 | **W1(b).2** | a cerca da ponte passa a perguntar pelo CONTEÚDO: um objecto todo no átlas não se recusa | gate de rota: a escada vai `FullyGpu`; o CONTROLO (um objecto com textura própria) continua recusado |
 | **W1(b).3** | a escada outra vez, com a máquina calma | a tabela do §3/§4 com a cadeia inteira na placa |
 
+#### §8.3.1 — ✅ W1(b).2 do carimbo (16/10): `point_scale > 0` e pontos com `rot` na placa
+
+> Nome: a «W1(b).2» desta subsecção é a SEGUNDA vaga do KERNEL do carimbo (os modos que a W1(b).1 deixou
+> `applicable = false`), não a «W1(b).2» da cerca da ponte da tabela acima. Linha `line/motion-value`,
+> commits `32782190a4` (a lei) e `762c7a6df6` (o gate).
+
+**Lei** ([`kernel.rs`](../../crates/ph2d-node-motion-duplicator/src/kernel.rs)): o `size` de cada carimbo é o
+`apply_point_scale` da CPU (`base · (1 + (p − 1) · min(t, 1))`, f32, mesma ordem), na variante
+`COM_ESCALA_DO_PONTO` que o `variant_by_param` escolhe quando `t > 0`. O `size` do PONTO é
+`SourceReadWriteExisting` na porta 1 ⇒ escrito se e só se os pontos o trazem; sem ele, o gather leva o da
+forma. A `rot` dos pontos usa o mesmo verbo (soma forma + ponto; guarda `np > 0` para não ler o 1.º ponto
+sem orçamento) — caiu o `RefuseIfPresent` da `rot`, que também recusava toda porta de pontos vinda do
+processador (forma não provável). Só o `point_scale = NaN` (param dirigido; o grafo recusa-o autorado)
+continua recusa.
+
+**Planeador** ([`plan_forma.rs`](../../crates/ph2d-gpu-cook/src/plan_forma.rs)): uma escrita condicional numa
+porta ≠ 0 julga a presença na porta DELA; `output_columns` passou a público para o gate.
+
+**Desvio declarado** (o mesmo do `Index`/`Count`): sem orçamento para pontos (`np = 0`) com a porta de pontos
+a trazer `size`/`rot` e a forma sem eles, a placa escreve a identidade (`[1,1]`, `0`) onde a CPU devolve a
+forma sem a coluna.
+
+**Paridade** (RTX 5060 Ti, `a_escala_do_ponto_concorda_com_a_cpu` em
+[`gpu_cpu_parity_duplicator.rs`](../../crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity_duplicator.rs), barra
+`ULP_DO_SIZE = 2`):
+
+| caso | pior erro do `size` (ULP) |
+|---|---:|
+| controlo t = 0 (o carimbo não calcula o size, só o `motion.scale` a montante) | 0,80 |
+| t = 0,25 | 0,94 |
+| t = 0,5 | 1,13 |
+| t = 1 | 1,67 |
+| t = 1,7 | 1,67 |
+| forma sem size / ponto com | 0,91 |
+| forma com / ponto sem | 0,80 |
+| nenhum | 0,00 |
+
+A causa é a contracção FMA do compilador da placa (o `motion.scale` declara a mesma); a 1.ª redacção pedia
+AO BIT e reprovou por 120 lanes a 1 ULP. Rotação dos pontos: pior \|Δpos\| `0`, dentro de `EPS_BASIS`.
+
+**Rota medida pela porta do produto** (sonda `sonda_o_carimbo_com_escala`,
+[`motion_state_demo_carimbo_escala_tests.rs`](../../crates/ph2d-app-motion/src/motion_state_demo_carimbo_escala_tests.rs)):
+`=111`, `=112`, `=132`, `=136`, `=137`, `=141` ficam só com o `Shape` no processador; `=62` com `Shape` +
+`Combine`; `=139` continua com a simulação na CPU por OUTRA fronteira (`Integrate`); `=120`/`=125` passam a
+ter Bones/Skin como fronteiras; `=131` o Verlet Rope; `=119` Table/Text/Camera. Outras fronteiras, OUTRO
+tecto (não o carimbo): `=98` (`transfer` = 1 e 3), `=134` (Time Remap ⇒ cena toda na CPU), `=51` (Boids e
+Soft Body).
+
+**Medição A×B** (A = kernel registado sem a variante, com a recusa antiga; B = hoje), mesmo processo, 7
+rodadas × blocos de 20 quadros, resumo = MÍNIMO, quadro inteiro `o_quadro` + espera da placa, perfil smoke,
+RTX 5060 Ti; grelhas ampliadas ×k de lado. `load` 9,7 → 21 durante a corrida: nas diferenças pequenas a
+mediana fica afastada do mínimo; os ganhos grandes são firmes. A → B, ms por quadro:
+
+| cena | ×1 | ×4 | ×11 |
+|---|---|---|---|
+| =132 | 0,415 → 0,633 | 1,775 → 0,693 | 9,344 → 1,016 (61 952 inst.) |
+| =136 | 0,220 → 0,381 | 0,820 → 0,397 | 2,733 → 0,478 |
+| =141 | 0,899 → 0,407 | 1,204 → 0,350 | 2,316 → 1,353 |
+| =139 | 0,116 → 0,581 | 0,648 → 1,064 | 2,092 → 1,318 |
+| =137 | 2,385 → 2,647 | 44,7 → 40,6 | 1 442 → 1 462 (outro gargalo, por achar) |
+| =120 | 0,121 → 0,725 | 0,136 → 0,737 | 0,249 → 0,774 |
+| =111 | 0,472 → 0,539 | 1,023 → 1,723 | 1,282 → 1,565 |
+| =112 | 0,145 → 0,208 | 0,190 → 0,261 | 0,185 → 0,279 |
+| =119 | 0,753 → 1,558 | 0,571 → 0,824 | 0,617 → 0,841 |
+| =125 | 0,181 → 0,264 | 0,185 → 0,263 | 0,198 → 0,262 |
+| =62 | 0,747 → 0,582 | 0,360 → 0,662 | 1,387 → 0,711 |
+
+**O kill-criterion K2 disparou — e a decisão do dono foi manter (16/10).** Declarado ANTES: «B mais lento
+que A em qualquer das =132/=137/=139 ⇒ volta a recusar». Disparou no tamanho de demonstração (=139 ×1
+`0,116 → 0,581`; =137 ×1). O K2 media o custo FIXO do despacho em cenas de centenas de estrelas, não o
+tecto (§0.0): com o pano a escalar a rota nova ganha de 5,7× (=136) a 9× (=132). **Aberto, o PRÓXIMO:** o
+custo fixo (+0,06 a +0,6 ms por quadro nas cenas pequenas; a =120 fica 3× mais lenta mesmo a ×11 por ter
+muitas costuras CPU→placa) — a mesma família do aberto 2 do handoff LÍNGUA (o `Shape` estático da =116
+recozido a cada quadro).
+
+**⛔ Recusas MEDIDAS**
+
+| recusa | medido | veredito |
+|---|---|---|
+| K2 «B mais lento que A nas cenas de demo ⇒ reverter» | 16/10: dispara a ×1 (custo fixo do despacho), inverte a ×4–×11 nas galáxias (até 9×) | recusado como régua do TECTO: mede o custo fixo, não o teto — o custo fixo é aberto próprio |
+
 ### §8.4 — ✅ W1(b).1 e W1(b).2 FECHADAS (2026-09-24)
 
 **O kernel** ([`ph2d-node-motion-duplicator/src/kernel.rs`](../../crates/ph2d-node-motion-duplicator/src/kernel.rs)):

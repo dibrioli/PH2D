@@ -90,8 +90,7 @@ fn desfazer_devolve_a_selecao_de_antes() {
 /// sujo (nunca «limpo» por engano). Um tecto pequeno aqui; o do app é [`HISTORY_BYTES_MAX`].
 #[test]
 fn o_historico_tem_tecto_em_bytes_e_os_passos_antigos_saem_primeiro() {
-    use ph2d_code_buffer::{EditKind, HISTORY_BYTES_MAX};
-    assert!(HISTORY_BYTES_MAX >= 1 << 20, "o tecto do app não é o do teste");
+    use ph2d_code_buffer::EditKind;
     let mut b = Buffer::new("");
     b.set_history_cap(16 << 10);
     b.mark_saved();

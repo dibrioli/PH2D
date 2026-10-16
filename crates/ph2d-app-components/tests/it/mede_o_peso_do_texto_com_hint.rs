@@ -85,11 +85,10 @@ fn mede_o_peso_do_texto_com_hint() {
                 &mut placa,
                 &mut ts,
                 letra,
-                TextRendering::CrispHeavyPlus,
+                (TextRendering::CrispHeavyPlus, Some(hint)),
                 s,
                 TEXTO,
                 CAIXA,
-                Some(hint),
             );
             if volta == 0 && s <= 1.25 && nome == "dono" {
                 let f = format!(

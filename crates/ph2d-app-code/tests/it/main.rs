@@ -133,7 +133,14 @@ impl Mesa {
     /// Uma tecla premida na aba `id`, direto à família.
     pub fn tecla(&mut self, id: ScriptId, key: Key, mods: Modifiers, text: Option<&str>) {
         let mut ts = TextSystem::without_system_fonts();
-        let _ = self.docs().key(id.0, &mut ts, key, mods, true, text, None);
+        let input = ph2d_editor_core::doc_surface::KeyInput {
+            key,
+            mods,
+            pressed: true,
+            text,
+            paste: None,
+        };
+        let _ = self.docs().key(id.0, &mut ts, input);
     }
 
     pub fn escreve(&mut self, id: ScriptId, s: &str) {

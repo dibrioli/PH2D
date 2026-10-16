@@ -61,13 +61,13 @@ impl Selection {
         sorted.sort_by_key(|r| (r.from(), r.to()));
         let mut out: Vec<Range> = Vec::with_capacity(sorted.len());
         for r in sorted {
-            if let Some(last) = out.last_mut() {
-                if r.from() < last.to() || r.span() == last.span() {
-                    let (from, to) = (last.from().min(r.from()), last.to().max(r.to()));
-                    let forward = last.head >= last.anchor;
-                    *last = if forward { Range::new(from, to) } else { Range::new(to, from) };
-                    continue;
-                }
+            if let Some(last) = out.last_mut()
+                && (r.from() < last.to() || r.span() == last.span())
+            {
+                let (from, to) = (last.from().min(r.from()), last.to().max(r.to()));
+                let forward = last.head >= last.anchor;
+                *last = if forward { Range::new(from, to) } else { Range::new(to, from) };
+                continue;
             }
             out.push(r);
         }
@@ -103,8 +103,10 @@ impl Selection {
             .ranges
             .iter()
             .map(|r| {
-                let a = if r.is_empty() { Assoc::After } else if r.anchor < r.head { Assoc::After } else { Assoc::Before };
-                let h = if r.is_empty() { Assoc::After } else if r.anchor < r.head { Assoc::Before } else { Assoc::After };
+                // Um cursor vazio segue a inserção; uma faixa cresce para fora das duas pontas.
+                let forward = !r.is_empty() && r.anchor < r.head;
+                let a = if r.is_empty() || forward { Assoc::After } else { Assoc::Before };
+                let h = if forward { Assoc::Before } else { Assoc::After };
                 Range::new(cs.map_pos(r.anchor, a), cs.map_pos(r.head, h))
             })
             .collect();

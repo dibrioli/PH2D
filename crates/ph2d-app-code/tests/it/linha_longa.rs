@@ -15,7 +15,14 @@ fn trabalho_por_quadro(n: usize) -> ph2d_panel_code::PaintWork {
     m.tecla(id, Key::End, Modifiers::default(), None);
     let longa = format!(" -- {}", "ab cd é ".repeat(n / 9));
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    let _ = m.docs().key(id.0, &mut ts, Key::Char('v'), ctrl(), true, Some("v"), Some(longa));
+    let input = ph2d_editor_core::doc_surface::KeyInput {
+        key: Key::Char('v'),
+        mods: ctrl(),
+        pressed: true,
+        text: Some("v"),
+        paste: Some(longa),
+    };
+    let _ = m.docs().key(id.0, &mut ts, input);
     m.pinta(id);
     let antes = ph2d_panel_code::paint_work();
     m.pinta(id);

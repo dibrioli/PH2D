@@ -164,7 +164,7 @@ enum Op {
 /// refazer. Cada passo é conferido.
 #[test]
 fn reparse_incremental_igual_ao_parse_do_zero_em_600_edicoes() {
-    let mut rng = fastrand::Rng::with_seed(0x5EED_1A0);
+    let mut rng = fastrand::Rng::with_seed(0x05EE_D1A0);
     let mut b = Buffer::new(BOB);
     let mut syn = Syntax::new(b.text());
     let mut conta = Conta::default();

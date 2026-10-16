@@ -65,6 +65,17 @@ pub enum Compose<'a> {
     DeadKey(ComposeKey),
 }
 
+/// Uma tecla para a aba: premida ou solta, o que ela escreve (`text`) e, no Ctrl+V, a área de
+/// transferência (`paste`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KeyInput<'a> {
+    pub key: Key,
+    pub mods: Modifiers,
+    pub pressed: bool,
+    pub text: Option<&'a str>,
+    pub paste: Option<String>,
+}
+
 /// O menu da barra onde um comando de documento entra.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DocMenu {
@@ -115,17 +126,8 @@ pub trait DocumentSurface: Any {
     fn pointer_move(&mut self, id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool;
     /// Roda sobre a área (`shift` = o Shift premido: rolar na horizontal). `true` = tomada.
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool;
-    /// Uma tecla premida ou solta; `text` = o que ela escreve; `paste` = a área de transferência no Ctrl+V.
-    fn key(
-        &mut self,
-        id: u64,
-        text_system: &mut TextSystem,
-        key: Key,
-        mods: Modifiers,
-        pressed: bool,
-        text: Option<&str>,
-        paste: Option<String>,
-    ) -> KeyOutcome;
+    /// Uma tecla premida ou solta ([`KeyInput`]).
+    fn key(&mut self, id: u64, text_system: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome;
     /// Composição (IME / tecla morta). `true` = tomada.
     fn compose(&mut self, id: u64, c: Compose<'_>) -> bool;
     /// O artista fechou a aba. A família decide (pode guardar o que estava por salvar).

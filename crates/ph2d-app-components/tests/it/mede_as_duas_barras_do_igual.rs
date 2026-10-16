@@ -77,7 +77,7 @@ fn dev(s: f32) -> (u32, u32) {
 fn pinta(
     ts: &mut TextSystem,
     v: &Variante,
-    sem: &mut std::collections::HashMap<u64, ph2d_vector::FontData>,
+    sem: &mut std::collections::BTreeMap<u64, ph2d_vector::FontData>,
 ) -> (VectorScene, Vec<(f32, f32)>) {
     set_text_rendering(v.preset);
     set_active_text_style(v.estilo);
@@ -399,7 +399,7 @@ fn mede_as_duas_barras_do_igual() {
     let mut pass =
         ph2d_render::VelloPass::new(&gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, dev(2.0)).unwrap();
     let mut ts = TextSystem::without_system_fonts();
-    let mut sem = std::collections::HashMap::new();
+    let mut sem = std::collections::BTreeMap::new();
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../docs/CodeEditor/ferramentas/medicoes");
     std::fs::create_dir_all(&dir).unwrap();

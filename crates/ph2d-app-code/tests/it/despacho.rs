@@ -4,7 +4,6 @@
 //! (`board_view::pointer`, com o `on_canvas` que a shell calcula) e o desfazer (`surface_input::undo`).
 
 use crate::{AREA, Mesa, ctrl};
-use ph2d_editor_core::doc_surface::DocumentSurface;
 use ph2d_editor_core::ime::ComposeKey;
 use ph2d_editor_core::screens::hero::board_keys::{self, BoardKey};
 use ph2d_editor_core::screens::hero::{board_view, document_tabs, surface_input};

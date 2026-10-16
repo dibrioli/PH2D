@@ -66,7 +66,7 @@ fn medicoes_do_fecho() {
     let area_c = Rect { x: 0.0, y: 0.0, w: 1600.0, h: 900.0 };
     let (mut quente, mut fria): (Vec<Vec<f64>>, Vec<Vec<f64>>) =
         (vec![Vec::new(); tectos.len()], vec![Vec::new(); tectos.len()]);
-    let mut pinta = |v: &mut CodeView, scene: &mut VectorScene, ts: &mut ph2d_text::TextSystem| {
+    let pinta = |v: &mut CodeView, scene: &mut VectorScene, ts: &mut ph2d_text::TextSystem| {
         let mut f = |r: std::ops::Range<usize>| spans_de(&buf, r);
         let mut m = marcas(&d);
         v.paint(frame(&buf, &d, &mut f, &mut m), area_c, scene, ts, &theme);

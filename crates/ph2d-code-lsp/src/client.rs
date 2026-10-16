@@ -3,7 +3,7 @@
 //! on that thread. A dead child surfaces as [`LspError::ServerDied`] and [`LspClient::restart`]
 //! brings it back with the open documents re-sent.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
@@ -149,7 +149,7 @@ pub struct CompletionItem {
     pub detail: Option<String>,
 }
 
-type Pending = Arc<Mutex<HashMap<i64, Sender<Result<Value, LspError>>>>>;
+type Pending = Arc<Mutex<BTreeMap<i64, Sender<Result<Value, LspError>>>>>;
 
 const STDERR_TAIL: usize = 200;
 
@@ -498,11 +498,7 @@ fn reader_loop(
     alive: &AtomicBool,
     tx: &Sender<Notification>,
 ) {
-    loop {
-        let msg = match read_message(&mut stdout) {
-            Ok(Some(m)) => m,
-            Ok(None) | Err(_) => break,
-        };
+    while let Ok(Some(msg)) = read_message(&mut stdout) {
         let method = msg.get("method").and_then(Value::as_str);
         match (msg.get("id"), method) {
             (Some(id), Some(method)) => {
@@ -532,7 +528,7 @@ fn reader_loop(
         }
     }
     alive.store(false, Ordering::SeqCst);
-    for (_, waiter) in lock(pending).drain() {
+    for (_, waiter) in std::mem::take(&mut *lock(pending)) {
         let _ = waiter.send(Err(LspError::ServerDied { status: None, stderr_tail: String::new() }));
     }
     let _ = tx.send(Notification::Exited);

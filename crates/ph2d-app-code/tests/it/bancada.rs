@@ -228,7 +228,14 @@ fn tecla(
     mods: Modifiers,
     text: Option<&str>,
 ) {
-    let _ = m.docs().key(id.0, ts, key, mods, true, text, None);
+    let input = ph2d_editor_core::doc_surface::KeyInput {
+        key,
+        mods,
+        pressed: true,
+        text,
+        paste: None,
+    };
+    let _ = m.docs().key(id.0, ts, input);
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -451,15 +458,14 @@ impl Celula {
         let ch = LETRAS[self.k % LETRAS.len()];
         let s = ch.to_string();
         let t0 = Instant::now();
-        let _ = self.m.docs().key(
-            self.id.0,
-            ts,
-            Key::Char(ch),
-            Modifiers::default(),
-            true,
-            Some(&s),
-            None,
-        );
+        let input = ph2d_editor_core::doc_surface::KeyInput {
+            key: Key::Char(ch),
+            mods: Modifiers::default(),
+            pressed: true,
+            text: Some(&s),
+            paste: None,
+        };
+        let _ = self.m.docs().key(self.id.0, ts, input);
         let t_key = ms(t0);
         let t1 = Instant::now();
         if self.cena == Cena::Tocando {

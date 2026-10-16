@@ -140,7 +140,14 @@ pub(super) fn key(
     paste: Option<String>,
 ) -> Option<BoardOutcome> {
     let (f, id) = hero.documents.active_surface_mut()?;
-    let out = f.key(id, ts, key_of(k), mods, pressed, text, paste);
+    let input = crate::doc_surface::KeyInput {
+        key: key_of(k),
+        mods,
+        pressed,
+        text,
+        paste,
+    };
+    let out = f.key(id, ts, input);
     Some(BoardOutcome {
         consumed: out.consumed,
         copy: out.copy,

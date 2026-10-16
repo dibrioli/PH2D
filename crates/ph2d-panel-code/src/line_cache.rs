@@ -11,7 +11,7 @@ use parley::{
 };
 use ph2d_text::TextSystem;
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 
@@ -29,7 +29,7 @@ pub const CODE_WEIGHT: FontWeight = FontWeight::MEDIUM;
 #[derive(Default)]
 pub struct LineCache {
     lcx: LayoutContext<Ink>,
-    map: HashMap<u64, (Layout<Ink>, u64)>,
+    map: BTreeMap<u64, (Layout<Ink>, u64)>,
     frame: u64,
     shapes: u64,
 }

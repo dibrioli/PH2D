@@ -68,11 +68,10 @@ pub(crate) fn rasteriza(
     placa: &mut Placa,
     ts: &mut TextSystem,
     letra: Letra,
-    preset: TextRendering,
+    (preset, hint): (TextRendering, Option<bool>),
     s: f32,
     texto: &str,
     (lw, lh): (f32, f32),
-    hint: Option<bool>,
 ) -> Alfa {
     set_text_rendering(preset);
     let mapa = UiScaleMap::no_ecra(UiScale::P100, s);

@@ -13,11 +13,11 @@ use crate::console::Store;
 use crate::doc::CodeDoc;
 use ph2d_a11y::{Node, NodeId};
 use ph2d_editor_core::doc_surface::{
-    Compose, DocCommand, DocTab, DocumentSurface, Key, KeyOutcome, PointerInput,
+    Compose, DocCommand, DocTab, DocumentSurface, KeyInput, KeyOutcome, PointerInput,
 };
 use ph2d_editor_core::ime::ComposeKey;
 use ph2d_editor_core::zones::Rect;
-use ph2d_host::{Modifiers, PointerButton, PointerKind};
+use ph2d_host::{PointerButton, PointerKind};
 use ph2d_panel_code::{Badge, FindHit, Problem, ScriptListView, count_text};
 use ph2d_editor_core::ToastQueue;
 use ph2d_script::{LibraryEpoch, ScriptId};
@@ -437,16 +437,14 @@ impl DocumentSurface for CodeDocs {
         true
     }
 
-    fn key(
-        &mut self,
-        id: u64,
-        _ts: &mut TextSystem,
-        key: Key,
-        mods: Modifiers,
-        pressed: bool,
-        text: Option<&str>,
-        paste: Option<String>,
-    ) -> KeyOutcome {
+    fn key(&mut self, id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {
+        let KeyInput {
+            key,
+            mods,
+            pressed,
+            text,
+            paste,
+        } = input;
         if crate::keys::foreign_chord(key, mods) {
             return KeyOutcome::default();
         }

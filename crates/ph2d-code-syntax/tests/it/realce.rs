@@ -85,7 +85,7 @@ fn spans_ordenados_sem_sobreposicao_e_a_faixa_e_o_todo_recortado() {
 
 fn kind_at(text: &Text, syn: &Syntax, line: usize, needle: &str) -> Option<K> {
     let at = text.byte_of_line(line) + text.line_string(line).find(needle)?;
-    syn.highlights(&text, at..at + needle.len())
+    syn.highlights(text, at..at + needle.len())
         .iter()
         .find(|s| s.range.start == at)
         .map(|s| s.kind)

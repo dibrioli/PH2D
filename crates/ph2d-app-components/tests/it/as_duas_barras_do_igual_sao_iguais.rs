@@ -67,11 +67,10 @@ fn as_duas_barras_do_igual_tem_o_mesmo_pico_no_preset_de_fabrica() {
             &mut placa,
             &mut ts,
             letra,
-            TextRendering::CrispHeavyPlus,
+            (TextRendering::CrispHeavyPlus, None),
             1.0,
             "=",
             (40.0, 30.0),
-            None,
         );
         let linhas = alfa.linhas();
         let (sup, inf) = picos(&linhas);

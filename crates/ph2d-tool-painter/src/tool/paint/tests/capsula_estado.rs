@@ -315,7 +315,15 @@ pub(super) fn mede_ramos() -> Vec<(&'static str, Medida)> {
         pressao: true,
         ..curva
     };
-    let ramos: [(&str, Caso, fn(&mut PainterTool)); 3] = [
+    let flow = Caso {
+        follow: Follow::Flow,
+        ..curva
+    };
+    let ramos: [(&str, Caso, fn(&mut PainterTool)); 4] = [
+        // Sem a Shape Color o Shape é a SILHUETA: o arco do Flow chega ao leitor da cobertura.
+        ("Flow, Shape sem cor", flow, |t| {
+            t.set_shape_ramp_enabled(false)
+        }),
         ("Rake, ponta achatada", curva, |t| {
             t.paint.brush.dab_flatten = 0.8;
         }),
@@ -344,10 +352,86 @@ fn os_ramos_da_capsula_giram_e_apertam_com_o_dab() {
     let mut falhas = Vec::new();
     for (n, m) in mede_ramos() {
         println!("{n}: {m:?}");
-        let gira = n.starts_with("Rake");
+        let gira = n.starts_with("Rake") || n.starts_with("Flow");
         if m.com > BARRA || (gira && m.com > 0.7 * m.velha) {
             falhas.push(format!("{n}: {m:?}"));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// A prancha do smoke (prompt 40): por linha, o traço denso (o alvo), a cápsula de ANTES (só o centro), a
+/// de AGORA e o traço sem a caixa. `PH2D_SONDA_OUT=<pasta> cargo test -p ph2d-tool-painter --profile smoke
+/// --lib prancha_p40 -- --ignored`
+#[test]
+#[ignore = "prancha do smoke do prompt 40"]
+fn prancha_p40() {
+    let Ok(dir) = std::env::var("PH2D_SONDA_OUT") else {
+        return;
+    };
+    let grava = |nome: &str, px: &[u8]| {
+        let mut ppm = format!("P6 {W} {H} 255\n").into_bytes();
+        for p in px.chunks(4) {
+            ppm.extend_from_slice(&p[..3]);
+        }
+        std::fs::write(format!("{dir}/{nome}.ppm"), ppm).expect("grava");
+    };
+    let linhas: [(&str, Caso, fn(&mut PainterTool)); 4] = [
+        (
+            "1_impasto_caneta",
+            Caso {
+                impasto: true,
+                curva: false,
+                follow: Follow::Off,
+                pressao: true,
+            },
+            |_| {},
+        ),
+        (
+            "2_impasto_flow",
+            Caso {
+                impasto: true,
+                curva: true,
+                follow: Follow::Flow,
+                pressao: false,
+            },
+            |_| {},
+        ),
+        (
+            "3_digital_flow_caneta",
+            Caso {
+                impasto: false,
+                curva: true,
+                follow: Follow::Flow,
+                pressao: true,
+            },
+            |_| {},
+        ),
+        (
+            "4_digital_rake_achatada",
+            Caso {
+                impasto: false,
+                curva: true,
+                follow: Follow::Rake,
+                pressao: false,
+            },
+            |t| t.paint.brush.dab_flatten = 0.8,
+        ),
+    ];
+    for (nome, c, f) in linhas {
+        grava(
+            &format!("{nome}_a_denso"),
+            &mostrada(&traco_tool(c, 0.025, false, f), c.impasto),
+        );
+        let velha = ph2d_painter_brush::capsula::com_so_o_centro(|| traco_tool(c, 0.25, true, f));
+        grava(&format!("{nome}_b_antes"), &mostrada(&velha, c.impasto));
+        grava(
+            &format!("{nome}_c_agora"),
+            &mostrada(&traco_tool(c, 0.25, true, f), c.impasto),
+        );
+        grava(
+            &format!("{nome}_d_sem"),
+            &mostrada(&traco_tool(c, 0.25, false, f), c.impasto),
+        );
+    }
 }

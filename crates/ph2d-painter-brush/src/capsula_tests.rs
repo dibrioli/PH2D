@@ -380,3 +380,98 @@ fn o_sub_dab_leva_o_estado_interpolado() {
         x(neutra, 41)
     );
 }
+
+/// ⛔ **A caixa do dab cresce para o raio de TRÁS** (prompt 40; as mutações M17/M18 sobreviviam ao portão
+/// ponta a ponta, onde o dab anterior já pintou o que a caixa cortava): um dab de raio 10 cuja cápsula
+/// volta 20 px até um dab de raio 20 pinta a 15 px atrás do centro anterior — na cor e no relevo.
+#[test]
+fn a_caixa_cresce_para_o_raio_de_tras() {
+    const W: u32 = 128;
+    const H: u32 = 64;
+    let centro = [80.0, 32.0];
+    let cap = Capsula::new([20.0, 0.0], sub_passo_px(10.0))
+        .expect("cápsula")
+        .com_estado(Estado {
+            raio: 2.0,
+            cobertura: 1.0,
+            rotor: [1.0, 0.0],
+            arco: -20.0,
+        });
+    // Pintou alguma coisa nas colunas 40..50 (atrás do alcance do raio da frente, 80 − 20 − 10 = 50)?
+    let atras = |pinta: &dyn Fn(usize) -> bool| {
+        (0..H as usize).any(|y| (40..50).any(|x| pinta(y * W as usize + x)))
+    };
+
+    let spec = crate::BrushSpec {
+        radius_px: 10.0,
+        ..Default::default()
+    };
+    let mut buf = vec![255u8; (W * H * 4) as usize];
+    let _ = crate::dab::stamp_dab_textured_masked(
+        &mut buf,
+        W,
+        H,
+        centro,
+        &spec,
+        1.0,
+        false,
+        None,
+        None,
+        None,
+        None,
+        [1.0, 0.0],
+        Some(cap),
+    );
+    assert!(
+        atras(&|i| buf[i * 4..i * 4 + 3] != [255, 255, 255]),
+        "a cor cortada pela caixa"
+    );
+
+    let mut spec = crate::BrushSpec {
+        radius_px: 10.0,
+        impasto: true,
+        ..Default::default()
+    };
+    spec.shape.kind = crate::texture::TextureKind::Noise;
+    let fp = spec.dab_footprint([1.0, 0.0]);
+    let basis = crate::texture::shape_basis(
+        &spec.shape,
+        &mut 0u64,
+        [W as f32, H as f32],
+        fp,
+        crate::texture::ShapeFrame::Static,
+    );
+    let n = (W * H) as usize;
+    let (mut alt, mut paint, mut grain, mut film, mut radius) = (
+        vec![0.0f32; n],
+        vec![0.0f32; n],
+        vec![0u8; n],
+        vec![0u8; n],
+        vec![0.0f32; n],
+    );
+    let mut fields = crate::height::HeightFields {
+        height: &mut alt,
+        paint: &mut paint,
+        grain: &mut grain,
+        film: &mut film,
+        radius: &mut radius,
+        gate: None,
+    };
+    let dab = crate::height::HeightDab {
+        center: centro,
+        radius: 10.0,
+        coverage: 1.0,
+        footprint: fp,
+        prev_center: Some([60.0, 32.0]),
+        shape: Some(crate::dab::ShapeInput {
+            basis: &basis,
+            image: None,
+            ramp_lut: None,
+        }),
+        grain: None,
+        grain_image: None,
+        capsula: Some(cap),
+    };
+    let _ = crate::height::accumulate_dab_height(&mut fields, W, H, &spec, &dab, None);
+    assert!(atras(&|i| paint[i] > 0.0), "o relevo cortado pela caixa");
+}

@@ -113,7 +113,8 @@ Binário `--profile smoke` na worktree, 2.ª compilação:
    `c545d65eb2`.
 
 Fotos (`fotografa_cena.sh`): `=3` tirada. `=4`: a 1.ª foto mostrou a área opaca (curado em `c545d65eb2`); a foto do
-binário FINAL está **pendente** de a placa estar livre (outra linha a segura).
+binário FINAL (`991dcd4649`, 1930×1040, smoke) mostra a faixa translúcida do acento com o caminho tracejado, o balão
+«Step 1 of 4» com o texto do autor, «Restart» e «Show me»; 59 fps.
 
 ## §8 — ABERTO
 

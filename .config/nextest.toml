@@ -97,8 +97,11 @@ priority = -100
 # 11/10 (prompt 20): o `sem_celulas_soltas` sai — as três cenas uma por thread, 19,9 → 7,7 s sozinho. Os três que
 # ficam, sozinhos a load 16–22: camadas 44,7 s · largura 24,7 s · mídias 14,8 s (já paralelos; razão no
 # HANDOFF_CONTINUACAO_..._VELOCIDADE_2 §4).
+# 15/10 (Macros W6d, o tutorial do Painter): as 30 pinceladas em Wet Paint — `pular_a_pincelada_…` 24,0 s
+# sozinho (load 16) e MORTO aos 180 s sob a suíte (load ~200); `a_mao_torta_…` (4 meios) 10,4 s sozinho / 106 s
+# sob a mesma suíte. ~10× sob a suíte: o tecto de 6 × 60 s dá ~15× do medido sozinho.
 [[profile.default.overrides]]
-filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(=presets_de_fabrica::a_largura_e_a_prometida) + test(=midias_de_fabrica::cada_preset_parece_a_sua_midia)'
+filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(=presets_de_fabrica::a_largura_e_a_prometida) + test(=midias_de_fabrica::cada_preset_parece_a_sua_midia) + test(=macro_track::tutorial::tests::pular_a_pincelada_e_esperar_nao_cumpre_nenhuma) + test(=macro_track::tutorial::tests::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao)'
 slow-timeout = { period = "60s", terminate-after = 6 }
 
 # ── Tecto GLOBAL e as três regras que viviam em scripts ─────────────────────────

@@ -62,7 +62,7 @@ fazer também. Os `.log` irmãos das fotos ficam não rastreados.
 
 1. Popover do traço: a altura é cortada à região (`min(corpo, região)`) mas as linhas não têm recorte nem
    rolagem — num ecrã muito baixo transbordariam (achado pelo agente; anterior a esta onda).
-2. Smoke do dono das cenas 23 e 24.
+2. Smoke do dono: cena 24 OK (16/10, «smoke ok», depois das correções da faixa e do Inner/Outer); a 23 sem confirmação explícita.
 3. No fecho: clippy + suíte `PH2D_SUITE=fecho`; CLAUDE.md §5.1 UI/UX (lista de smoke `6..24` e o «Último:»).
 4. A placa (`ph2d-shape-gpu`, `tracejado_do_eixo`) só percorre UM par; 2–3 pares caem na cerca `FLAG_SO_CONFORME`
    (mesma imagem; mais lento só sob escala não uniforme). Estender o shader é uma onda própria, medida.

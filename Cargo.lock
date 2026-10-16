@@ -4879,14 +4879,17 @@ dependencies = [
  "ph2d-code-syntax",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-panel-code",
+ "ph2d-render",
  "ph2d-script",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-vector",
+ "wgpu",
 ]
 
 [[package]]

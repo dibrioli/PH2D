@@ -4,6 +4,7 @@
 
 mod a11y;
 mod abrir;
+mod bancada;
 mod busca;
 mod console;
 mod lista;

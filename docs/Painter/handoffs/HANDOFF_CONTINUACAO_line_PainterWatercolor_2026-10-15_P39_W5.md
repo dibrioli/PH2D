@@ -23,9 +23,8 @@ os nomeiam (o `BrushShape` não tinha `serde`). A direção do traço (`Stroke::
 - `for_each_stamp_pixel` = só o disco; os docs órfãos do `brush.rs` (o do iterador estava colado ao `CellFn`) foram
   arrumados.
 - **Prova ao bit:** `ph2d-wet-paint` `fingerprint` (a impressão FIXA da sessão) e
-  `presets_de_fabrica::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` (12 ao byte) verdes; mais `product_doors`,
-  `product_tool_doors`, `deposit_rows`, `the_window_follows`, `the_accumulate_declares`, `glaze_vertical`,
-  `acceptance` (38 ✓) e `lei_b_tests`, `mascara_tests`, `shape_bristles`, `macro_track`, `dab_route` (24 ✓).
+  `presets_de_fabrica::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` (12 ao byte) verdes, mais as portas do
+  produto do motor (38 ✓) e as rotas do Wet Paint (24 ✓).
 
 ## §3 — Mutação nas leis W1/W2 (nunca tinham prova) e o portão que faltava
 
@@ -84,13 +83,8 @@ plano»* ⇒ lista 26 **A7**, plano 27 **W6**. Dois defeitos do smoke anterior, 
   cor apanhada: Δ 0,2 → 24,2 na poça molhada). Portões: `a_rampa_da_aguada_sobrevive_a_cada_campo_do_painel`
   (vermelho 8/124) · `a_rampa_leva_a_cor_que_a_brocha_apanhou`. Mutações 2/2.
 - **A9 / [BUGS #55](../BUGS_painter_fechados_41_a_46.md)** — Continuous com a Texture Color: a cor lida no centro do
-  dab da frente. `dab.rs` `silhouette_capsula_com` + `dab/cor_capsula.rs` `CorCapsula` (composição frente-para-trás
-  pelos mesmos sub-dabs); `bands.rs` usa-a. Rotas: o cache e o carimbo assado já excluíam a cápsula; aguada e Wet
-  Paint passam sub-dabs reais. Portão `capsula::a_cor_do_shape_no_continuous_iguala_o_spacing_pequeno` (Δcor ≤ 0,003,
-  matiz ≥ 0,992 nos 8 casos). Mutações 2/2 (centro ⇒ Δ 0,128; `w` total ⇒ Falloff Δ 0,237). Custo com padrão
-  procedural 0,38 → 0,57–0,90 do traço denso (medido sob `load` 30–45: ruidoso).
-- **C25 novo** (antigo, não curado): o relevo do Impasto arrasta o padrão do dab da frente com Spacing alto (Noise
-  Δrelevo 0,29/0,55) — pede prancha ao dono.
+  dab da frente. `dab.rs` `silhouette_capsula_com` + `dab/cor_capsula.rs` `CorCapsula` (frente-para-trás pelos mesmos
+  sub-dabs). Portão `capsula::a_cor_do_shape_no_continuous_iguala_o_spacing_pequeno`. Mutações 2/2.
 
 Bateria do fecho: clippy `-D warnings --all-targets` (`PH2D_SUITE=fecho`; painter-brush,
 tool-painter, panel-painter-layers, app-painter) ✓ · `cargo fmt` (8 diffs de espaçamento nos testes, aplicado) ✓ ·
@@ -98,3 +92,13 @@ tool-painter, panel-painter-layers, app-painter) ✓ · `cargo fmt` (8 diffs de 
 `g4_o_custo_do_rc_nao_depende_do_numero_de_luzes` (6,77 % > 5 %) e `g4_o_custo_da_holografica_…` (49 %) — crate não
 tocada, ambos membros JÁ registados em [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md) (razão de relógios da placa),
 `load` 68–84 nas três corridas (108 no fim): confirmar numa máquina quieta antes de integrar.
+
+## §9 — 2.º smoke (15/10): `783fb4fcde`
+
+Digital OK. **Impasto** ainda diferia: a régua do A9 lia a tela CRUA; o relevo nunca recebia a cápsula ⇒
+`HeightDab::capsula` + `height_walk.rs` `SubPasso` (Δ acesa 0,144 → 0,0009; portão
+`o_impasto_com_continuous_iguala_o_spacing_pequeno_na_tela_iluminada`; fecha C25). **Watercolor** prévia ≠ dab
+([BUGS #56](../BUGS_painter_fechados_41_a_46.md), A10): `WetShapeStamp::densidade` + `WetStrokeStyle::deposito_dono`;
+3 portões em `watercolor_rampa_tests.rs`; mutações 6/7 (M6, espelho no estilo vivo, equivalente). C26 (imagem + só
+Falloff: a borda muda de cor) por confirmar. Pranchas `39_prancha_impasto_continuous.png`,
+`39_prancha_watercolor_previa.png`. Bateria: fmt ✓ · clippy (4 crates) ✓ · `nextest-impacted` **18 465/18 465** ✓ (474 s; os flakes da luz 2D passaram).

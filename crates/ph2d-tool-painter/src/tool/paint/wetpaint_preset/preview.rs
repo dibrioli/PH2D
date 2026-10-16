@@ -11,6 +11,7 @@
 //! obra neutra (tela branca, sem papel).
 
 use super::super::brush_settings::BrushTextureImage;
+use super::super::shape_ramp::EstadoDaShapeColor;
 use super::super::wetpaint::largura::LeiDaLargura;
 use crate::{PaintMedia, PainterTool, WetKnobs};
 use ph2d_brush_presets::LADO_MINIATURA;
@@ -73,6 +74,9 @@ pub struct CenaDoPreview {
     opacidade: f32,
     /// A lei da largura do pincel (W2): sem ela o preview e a miniatura pintavam com a do Wet Round.
     largura: Option<LeiDaLargura>,
+    /// A Shape Color (prompt 41: pinta cada célula no Wet Paint; smoke do dono 16/10: o preview pintava
+    /// o azul do pincel). Só o preview VIVO a instala — ver [`PainterTool::instalar_cena`].
+    shape_color: EstadoDaShapeColor,
 }
 
 /// «Mudou alguma coisa que o preview mostra?» — os mesmos ingredientes da [`CenaDoPreview`], com as
@@ -91,6 +95,8 @@ pub struct ChaveDoPreview {
     opcoes: (bool, f64),
     opacidade: f32,
     largura: Option<u64>,
+    /// A Shape Color: ligada, B&W e a versão da rampa (cada setter da secção e das camadas a sobe).
+    shape_color: (bool, bool, u64),
 }
 
 impl PainterTool {
@@ -117,6 +123,7 @@ impl PainterTool {
             opcoes: (w.agua_viva, w.borda_que_pesa),
             opacidade: w.opacidade,
             largura: w.largura.clone(),
+            shape_color: self.shape_color_estado(),
         }
     }
 
@@ -141,6 +148,11 @@ impl PainterTool {
             opcoes: (w.agua_viva, w.borda_que_pesa),
             opacidade: w.opacidade,
             largura: w.largura.as_ref().map(LeiDaLargura::chave),
+            shape_color: (
+                self.paint.shape_color_ramp_enabled,
+                self.paint.shape_color_ramp_bw,
+                self.paint.shape_ramp_version,
+            ),
         }
     }
 
@@ -148,6 +160,10 @@ impl PainterTool {
     /// fábrica do tool novo): a cena NÃO leva a ferramenta molhada, e por isso o preview mostra o que o
     /// pincel deposita também quando a activa é o Smear (gate `o_preview_pinta_o_pincel_mesmo_com…`).
     /// `exata` = o pincel no tamanho REAL (o preview vivo); senão preso à miniatura dos ficheiros.
+    ///
+    /// A Shape Color entra só no preview vivo: a miniatura é o que o PRESET reproduz, e o preset não a
+    /// guarda (pergunta B13 ao dono) — com ela a miniatura mostraria cores que o ficheiro não devolve
+    /// (gate `a_miniatura_nao_pinta_a_shape_color`).
     fn instalar_cena(&mut self, c: &CenaDoPreview, exata: bool) {
         let mut brush = c.brush;
         if !exata {
@@ -180,6 +196,9 @@ impl PainterTool {
         (w.agua_viva, w.borda_que_pesa) = c.opcoes;
         w.opacidade = c.opacidade;
         w.largura.clone_from(&c.largura);
+        if exata {
+            self.set_shape_color_estado(&c.shape_color);
+        }
         self.paint.eraser = false;
         self.invalidate_composite();
     }

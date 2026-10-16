@@ -128,4 +128,34 @@ impl PainterTool {
     pub fn shape_ramp_bw(&self) -> bool {
         self.paint.shape_color_ramp_bw
     }
+
+    /// The whole Shape Color section, copied — the live brush preview carries it to its own tool.
+    pub(super) fn shape_color_estado(&self) -> EstadoDaShapeColor {
+        let p = &self.paint;
+        EstadoDaShapeColor {
+            ligada: p.shape_color_ramp_enabled,
+            bw: p.shape_color_ramp_bw,
+            rampa: p.shape_color_ramp.clone(),
+            camadas: p.shape_camadas.clone(),
+        }
+    }
+
+    /// Install a [`Self::shape_color_estado`] copy; re-bakes the LUTs (the copied ones are never trusted).
+    pub(super) fn set_shape_color_estado(&mut self, e: &EstadoDaShapeColor) {
+        let p = &mut self.paint;
+        p.shape_color_ramp_enabled = e.ligada;
+        p.shape_color_ramp_bw = e.bw;
+        p.shape_color_ramp.clone_from(&e.rampa);
+        p.shape_camadas.clone_from(&e.camadas);
+        self.shape_ramp_changed();
+    }
+}
+
+/// The Shape Color section as one value (on, B&W, the Texture Color ramp, the layers).
+#[derive(Clone, Debug)]
+pub(super) struct EstadoDaShapeColor {
+    ligada: bool,
+    bw: bool,
+    rampa: ph2d_color::ColorRamp,
+    camadas: super::shape_camadas::CamadasDoShape,
 }

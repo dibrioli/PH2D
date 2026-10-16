@@ -171,6 +171,121 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
     });
 }
 
+/// A Shape Voronoi com a Shape Color verde → vermelho na Texture Color (`ligada` = a secção ligada).
+fn com_shape_color(t: &mut PainterTool, ligada: bool) {
+    use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
+    t.set_brush_shape_kind(TextureKind::Voronoi.to_u8());
+    t.set_shape_color_ramp(ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [0.0, 1.0, 0.0, 1.0]),
+            RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    ));
+    t.set_shape_ramp_enabled(ligada);
+}
+
+/// A média de `(R + G)/2 − B` nos píxeis pintados (`255 − min(rgb) > 40`): negativa no azul do pincel,
+/// positiva na rampa verde → vermelho (as células, sobrepostas pelo S a `spacing` 0,025, dão a média dela,
+/// o amarelo — por isso a régua é o TOM médio e não o desvio de G−R entre células).
+fn amarelo_menos_azul(px: &[u8]) -> f64 {
+    let v: Vec<f64> = px
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| 255 - p[0].min(p[1]).min(p[2]) > 40)
+        .map(|p| (f64::from(p[0]) + f64::from(p[1])) / 2.0 - f64::from(p[2]))
+        .collect();
+    v.iter().sum::<f64>() / v.len().max(1) as f64
+}
+
+/// ⭐ **O preview mostra a Shape Color** (smoke do dono 16/10, prompt 41: a tela pintava as cores da
+/// rampa e o preview o azul do pincel — a cena não levava a secção, e o preview ligado era AO BYTE o
+/// desligado). A régua: [`amarelo_menos_azul`], com a secção ligada contra a mesma configurada e
+/// desligada.
+///
+/// **Mutação que sangra:** tirar a Shape Color de `instalar_cena`.
+#[test]
+fn o_preview_mostra_a_shape_color() {
+    let [ligada, desligada] = ultimos([&|t| com_shape_color(t, true), &|t| {
+        com_shape_color(t, false)
+    }]);
+    let (yl, yd) = (amarelo_menos_azul(&ligada), amarelo_menos_azul(&desligada));
+    eprintln!("[preview] (R+G)/2 − B: Shape Color ligada {yl:.1} · desligada {yd:.1}");
+    assert_ne!(ligada, desligada, "a Shape Color não mudou o preview");
+    assert!(
+        yd < -20.0 && yl > 20.0,
+        "o preview não tem as cores da rampa: (R+G)/2 − B {yl:.1} contra {yd:.1} desligada"
+    );
+}
+
+/// **Sonda (ignorada): o preview com a Shape Color desligada e ligada**, lado a lado, em
+/// `PH2D_SONDA_OUT/preview_shape_color.ppm` (a desligada é, ao byte, o preview de antes do conserto).
+#[test]
+#[ignore = "sonda: grava o preview com e sem a Shape Color; corre-se à mão"]
+fn sonda_do_preview_com_a_shape_color() {
+    let out = std::env::var("PH2D_SONDA_OUT").unwrap_or_else(|_| "/tmp".into());
+    let [desligada, ligada] = ultimos([&|t| com_shape_color(t, false), &|t| {
+        com_shape_color(t, true)
+    }]);
+    let (l, a) = (LARGURA_DO_PREVIEW as usize, ALTURA_DO_PREVIEW as usize);
+    let mut f = format!("P6\n{} {a}\n255\n", l * 2).into_bytes();
+    for y in 0..a {
+        for px in [&desligada, &ligada] {
+            for x in 0..l {
+                let s = (y * l + x) * 4;
+                f.extend_from_slice(&px[s..s + 3]);
+            }
+        }
+    }
+    std::fs::write(format!("{out}/preview_shape_color.ppm"), f).unwrap();
+}
+
+/// **A chave do preview vê a Shape Color** — sem ela a ponte nunca repinta quando a secção muda: ligar,
+/// a cor de um stop, uma camada, o B&W.
+///
+/// **Mutação que sangra:** tirar a Shape Color de `wet_preview_chave`.
+#[test]
+fn a_chave_ve_a_shape_color() {
+    let mut t = molhado();
+    com_shape_color(&mut t, false);
+    let mexes: [(&str, &dyn Fn(&mut PainterTool)); 5] = [
+        ("ligar", &|t| t.set_shape_ramp_enabled(true)),
+        ("cor de um stop", &|t| {
+            let id = t.shape_color_ramp().stops()[0].id;
+            t.shape_ramp_set_stop_color(id, [10, 20, 200, 255]);
+        }),
+        ("Falloff Color", &|t| t.toggle_shape_falloff_color()),
+        ("Texture Color", &|t| t.toggle_shape_texture_color()),
+        ("B&W", &|t| t.toggle_shape_ramp_bw()),
+    ];
+    for (nome, mexe) in mexes {
+        let antes = t.wet_preview_chave();
+        mexe(&mut t);
+        assert_ne!(t.wet_preview_chave(), antes, "{nome}: a chave não viu");
+    }
+}
+
+/// **A miniatura dos ficheiros NÃO pinta a Shape Color**: o preset não a guarda (pergunta B13 ao dono),
+/// e uma miniatura com cores que o preset não reproduz mentiria. O controlo do mesmo par é o preview
+/// vivo ([`o_preview_mostra_a_shape_color`]).
+#[test]
+fn a_miniatura_nao_pinta_a_shape_color() {
+    let mini = |ligada: bool| {
+        let mut t = molhado();
+        com_shape_color(&mut t, ligada);
+        let mut ultimo = Vec::new();
+        assert!(super::pintar_miniatura(
+            &t.wet_preview_cena(),
+            &|| false,
+            &mut |px, _, _| ultimo = px.to_vec()
+        ));
+        ultimo
+    };
+    assert_eq!(mini(true), mini(false));
+}
+
 #[test]
 fn quando_a_cena_muda_o_pintor_desiste() {
     let mut n = 0;

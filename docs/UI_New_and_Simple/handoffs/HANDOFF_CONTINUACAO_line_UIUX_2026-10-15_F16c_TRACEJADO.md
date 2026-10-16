@@ -10,7 +10,8 @@
 |---|---|
 | `d138b96401` | os BYTES de referência gravados pelo código ANTES da mudança (v22 da cena, v189 do projecto) |
 | `695c786c7b` | F16c inteira — lista completa na mensagem (`git show -s 695c786c7b`) |
-| (o seguinte) | os 8 vermelhos da suíte afectada (§4), 4 desta onda e 4 herdados da F16a/b |
+| `ff16b2cb9b` | os 8 vermelhos da suíte afectada (§4), 4 desta onda e 4 herdados da F16a/b |
+| `4a2776c969` | report do dono (faixa branca sob o retângulo da cena 24, conforme o pan/zoom): o fecho de um tracejado ajustado caía EXACTAMENTE no início ⇒ o arredondamento do `kurbo::dash` emendava uma lasca de `3,07e-7` numa cúbica degenerada, e o Vello pintava-a como faixa. `dash_fit::fit_traced` (folga `FOLGA_DO_AJUSTE` também no caminho LOCAL). Anterior à F16c (um par também). Gates: `seam_tests` (CPU) e `a_cena_24_nao_pinta_a_faixa_do_fecho_em_vista_nenhuma` (GPU, 0/144 vs 117/144). Resto do Vello: BUGS_vector #42 |
 
 ## 2 — Decisões que um merge/leitor pode partir
 

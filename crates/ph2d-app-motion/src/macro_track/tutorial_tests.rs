@@ -131,7 +131,7 @@ fn cada_etapa_so_se_cumpre_quando_feita_e_o_desfazer_a_volta() {
 
     // Controlo: um fio ERRADO (a caixa ao arrasto) não cumpre a etapa do vento.
     liga(&mut m, "field.box", 0, "force.drag", 0);
-    assert_eq!(faltas(&m, &c)[1], true);
+    assert!(faltas(&m, &c)[1]);
     desfaz(&mut m);
 }
 
@@ -288,7 +288,7 @@ fn saltar_para_o_valor_final_cumpre_o_intermedio_mas_o_valor_de_antes_nao() {
         "o de antes"
     );
     assert!(
-        cumpre(&crits[0].itens[0], &com(1.200_000_1), &crits[1..]),
+        cumpre(&crits[0].itens[0], &com(1.2_f32.next_up()), &crits[1..]),
         "o mesmo número no campo"
     );
     assert!(!cumpre(&crits[0].itens[0], &com(1.25), &crits[1..]));

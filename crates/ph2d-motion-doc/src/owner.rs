@@ -32,6 +32,9 @@ use crate::{Backdrop, MotionDoc, Subgraph};
 /// nó → `StableId` do objecto Motion que é dono dele.
 pub type Owners = BTreeMap<NodeId, u64>;
 
+/// O que a secção `[owner]` traz: os donos dos nós, os das molduras e os objectos arrumados à mão.
+type Section = (Owners, BTreeMap<u32, u64>, BTreeSet<u64>);
+
 /// O cabeçalho da secção (sempre no início de uma linha).
 pub(crate) const HEADER: &str = "\n[owner]";
 
@@ -58,9 +61,7 @@ pub(crate) fn write_section(
 }
 
 /// Lê a secção (o texto DEPOIS do cabeçalho).
-pub(crate) fn parse_section(
-    part: &str,
-) -> Result<(Owners, BTreeMap<u32, u64>, BTreeSet<u64>), ParseError> {
+pub(crate) fn parse_section(part: &str) -> Result<Section, ParseError> {
     let mut owners = Owners::new();
     let mut backdrops: BTreeMap<u32, u64> = BTreeMap::new();
     let mut a_mao: BTreeSet<u64> = BTreeSet::new();

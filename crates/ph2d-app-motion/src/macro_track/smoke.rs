@@ -39,6 +39,9 @@ pub(crate) fn grava_gestos(dono: u64, gestos: &[Gesto], mais: &[u32]) -> Option<
     grava(dono, gestos, mais, 0, None)
 }
 
+/// Onde nasce um nó novo, pelo tipo.
+type Lugar = fn(&str) -> (f32, f32);
+
 /// Os `gestos` com a gravação armada só a meio do intervalo antes do gesto `arma`: os anteriores são o
 /// ESTADO INICIAL da trilha (o tutorial «fazer» parte de um grafo meio feito). `lugar` põe cada nó
 /// novo pelo tipo.
@@ -46,7 +49,7 @@ pub(crate) fn grava_desde(
     dono: u64,
     gestos: &[Gesto],
     arma: usize,
-    lugar: Option<fn(&str) -> (f32, f32)>,
+    lugar: Option<Lugar>,
 ) -> Option<(Vec<u8>, f64)> {
     grava(dono, gestos, &[], arma, lugar)
 }
@@ -56,7 +59,7 @@ fn grava(
     gestos: &[Gesto],
     mais: &[u32],
     arma: usize,
-    lugar: Option<fn(&str) -> (f32, f32)>,
+    lugar: Option<Lugar>,
 ) -> Option<(Vec<u8>, f64)> {
     let mut m = MotionState::new();
     m.doc = ph2d_motion_doc::MotionDoc::new();

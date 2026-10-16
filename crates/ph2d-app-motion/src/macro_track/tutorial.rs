@@ -488,9 +488,12 @@ pub fn recomeca(m: &mut MotionState, dono: u64, track: &Track) -> Result<(), Err
     Ok(())
 }
 
+/// Os critérios de um objecto e a versão da `Macro` de que saíram.
+type CriteriosDaVersao = (u64, Rc<Vec<Criterio>>);
+
 thread_local! {
     /// Os critérios de cada objecto do tutorial, pela versão da `Macro` de que saíram.
-    static CRITERIOS: RefCell<BTreeMap<u64, (u64, Rc<Vec<Criterio>>)>> =
+    static CRITERIOS: RefCell<BTreeMap<u64, CriteriosDaVersao>> =
         const { RefCell::new(BTreeMap::new()) };
 }
 

@@ -118,6 +118,8 @@ dash ×3 e escala por ponta (formato gravado ⇒ versão + migração; `ph2d-vec
   que só tem caixas); *Head Size* [começo][fim]; *Head Round* na mesma coluna. `paint_dashes.rs`.
   ⛔ Duas linhas de três caixas (*Dash* [1][2][3] / *Gap* [1][2][3]) foram a 1.ª redacção: a FOTO mostrou a
   fila a partir no painel solto (a 3.ª caixa debaixo da 1.ª).
+  A linha do par seguinte só aparece quando o anterior traça (a lei do `DashPattern::active`): com as três
+  sempre à vista o painel abria `937` px (o gate da altura reprovou); assim abre `887` (era `916`).
 - **Lápis com farpas desenhadas**: cada ponta tem o tamanho da SUA farpa (era a média das duas).
 - **SVG**: importa até 6 números do `stroke-dasharray` (a nota de perda só acima disso); exporta os pares ativos.
 - ⏳ **Por fazer, nomeado**: a placa (`ph2d-shape-gpu`, `tracejado_do_eixo`) só percorre UM par; um padrão de

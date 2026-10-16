@@ -112,7 +112,7 @@ fn the_bridge_publishes_the_bbox_in_the_artists_unit() {
         .find("set_current_transform(")
         .expect("a ponte tem de publicar a bbox — se este `expect` disparar, o publisher mudou-se");
     // A janela do bloco de publicação: o `map` que constrói os quatro números.
-    let win = &src[at..(at + 700).min(src.len())];
+    let win = janela(&src, at, 700);
     assert_eq!(
         win.matches("display.value(").count(),
         4,
@@ -160,7 +160,7 @@ fn the_typed_number_comes_back_through_the_door_and_the_preset_does_not() {
     let at = src
         .find("if let Some(p) = pending_frame_preset {")
         .expect("o bloco do preset de dispositivo tem de existir — controle positivo");
-    let block = &src[at..(at + 900).min(src.len())];
+    let block = janela(&src, at, 900);
     assert!(
         !block.contains("to_world"),
         "o preset devolve unidades de DOCUMENTO (dado autorado), não a face do artista — \
@@ -188,7 +188,7 @@ fn the_layout_drain_asks_the_type_before_converting() {
     let at = src
         .find("if let Some((f, v)) = pending_layout_field {")
         .expect("o dreno do campo de layout tem de existir — controle positivo");
-    let block = &src[at..(at + 900).min(src.len())];
+    let block = janela(&src, at, 900);
     assert!(
         block.contains("f.is_length()"),
         "a conversão é CONDICIONAL, e quem responde é o tipo. Bloco:\n{block}"
@@ -208,7 +208,7 @@ fn the_node_position_is_published_in_the_artists_unit() {
     let at = src
         .find("set_current_vertex_pos(")
         .expect("a ponte tem de publicar a posição do nó — controle positivo");
-    let win = &src[at..(at + 400).min(src.len())];
+    let win = janela(&src, at, 400);
     assert_eq!(
         win.matches("d.value(").count(),
         2,
@@ -239,7 +239,7 @@ fn typing_a_node_coordinate_displaces_the_set_it_does_not_write_each_node() {
     let at = src
         .find("if let Some((is_y, target)) = pending_vec_vert {")
         .expect("o dreno do campo X/Y do nó tem de existir — controle positivo");
-    let block = &src[at..(at + 600).min(src.len())];
+    let block = janela(&src, at, 600);
     assert!(
         block.contains("to_world(target)"),
         "o número DIGITADO está na unidade do artista e volta pela mesma porta. Bloco:\n{block}"
@@ -281,4 +281,14 @@ fn the_published_flow_goes_through_the_length_aware_door() {
         "os dez comprimentos do fluxo cruzam a fronteira por UMA porta — mapear o struct em bloco \
          levaria a contagem de colunas junto"
     );
+}
+
+/// Os `n` bytes de `src` a partir de `at`, com o fim RECUADO até uma fronteira de carácter — com o
+/// corte cru a janela caiu dentro de um `ó` (15/10) e o teste rebentou sem medir nada.
+fn janela(src: &str, at: usize, n: usize) -> &str {
+    let mut fim = (at + n).min(src.len());
+    while !src.is_char_boundary(fim) {
+        fim -= 1;
+    }
+    &src[at..fim]
 }

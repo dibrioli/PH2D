@@ -256,7 +256,7 @@ impl BodyCtx<'_> {
         );
 
         // O tracejado: até três pares (F16c), uma linha «Dash / Gap n» por par.
-        y = self.dash_rows(y);
+        y = self.dash_rows(snap, y);
 
         // As PONTAS do traço (Start / End). Ficam aqui, e não no catálogo de formas,
         // porque uma ponta é propriedade do stroke: herda a cor e a largura dele e gira

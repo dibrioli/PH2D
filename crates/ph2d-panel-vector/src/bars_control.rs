@@ -192,7 +192,8 @@ pub(crate) fn toggle_list(store: &mut WidgetStore, id: NodeId) -> bool {
 /// Uma linha de uma das duas listas foi escolhida: fecha o chip que a abriu (o light-dismiss não
 /// dispara num clique DENTRO da lista). O verbo da linha é o do painel, que corre a seguir.
 pub(crate) fn close_list_on_pick(store: &mut WidgetStore, id: NodeId) {
-    let profile = (0..crate::ids::MAX_WIDTH_PRESETS).any(|i| id == crate::ids::vector_width_preset_id(i));
+    let profile =
+        (0..crate::ids::MAX_WIDTH_PRESETS).any(|i| id == crate::ids::vector_width_preset_id(i));
     let kind = KINDS.iter().any(|(k, _, _)| *k == id);
     let owner = if profile {
         crate::ids::VECTOR_BAR_PROFILE
@@ -308,9 +309,17 @@ fn paint_stroke_popover(ctx: &mut PaintCtx, theme: Theme, chip: Rect, width: f32
         inner_w,
     );
     stroke_rows(&mut b, &snap, rect.y + pad);
+    // O rect publicado é o que o light-dismiss e a roda leem (a mesma publicação da porta das listas
+    // e do popover diferido do Inspector). Não é uma lista e não rola: as duas alturas são a dele.
     ctx.host
         .store_mut()
-        .set_dropdown_popover(crate::ids::VECTOR_BAR_STROKE, rect);
+        .publish_dropdown_popover(ph2d_editor_core::widget::PaintedPopover {
+            id: crate::ids::VECTOR_BAR_STROKE,
+            panel: rect,
+            content_h: rect.h,
+            visible_h: rect.h,
+            scroll: 0.0,
+        });
 }
 
 fn body_ctx<'a>(

@@ -16,15 +16,17 @@ use crate::paint_sections::BodyCtx;
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
+use ph2d_editor_core::math::safe_clamp_f64;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::property_row::Seccao;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_i18n::tr_with;
 use ph2d_tool_vector::ids::{VECTOR_DASH_IDS, VECTOR_GAP_IDS};
+use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::params::{DASH_MAX, DASH_MIN, GAP_MAX, GAP_MIN};
 
 /// O passo do arrasto/teclas das seis caixas — um quarto da largura do traço.
-pub(crate) const DASH_STEP: f64 = 0.25;
+pub(crate) const DASH_STEP: f64 = 0.25; // LITERAL-PX-OK: passo em múltiplos da largura do traço, não uma medida de ecrã
 
 /// A caixa `id` é de um vão? (`None` = não é caixa do tracejado.)
 fn is_gap(id: ph2d_a11y::NodeId) -> Option<bool> {
@@ -54,7 +56,7 @@ pub(crate) fn seed(store: &mut WidgetStore) {
             let (lo, hi) = range(gap);
             store.set_number_range(id, lo, hi, DASH_STEP);
             if focus != Some(id) {
-                store.set_number_value(id, v.clamp(lo, hi));
+                store.set_number_value(id, safe_clamp_f64(v, lo, hi));
             }
         }
     }
@@ -69,23 +71,56 @@ pub(crate) fn apply_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
         return false;
     };
     let (lo, hi) = range(gap);
-    let v = host.store().number_value(id).unwrap_or(lo).clamp(lo, hi);
+    let v = safe_clamp_f64(host.store().number_value(id).unwrap_or(lo), lo, hi);
     host.bus_mut()
         .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v)));
     true
 }
 
 impl BodyCtx<'_> {
-    /// As três linhas do tracejado, uma por par. Devolve o `y` avançado.
-    pub(crate) fn dash_rows(&mut self, mut y: f32) -> f32 {
+    /// As linhas do tracejado, uma por par. Devolve o `y` avançado.
+    ///
+    /// ⭐ **A linha do par seguinte aparece quando o anterior traça alguma coisa** — a MESMA lei do
+    /// [`ph2d_vec_scene::DashPattern::active`]: um traço contínuo mostra só o 1.º par, um tracejado
+    /// mostra o 2.º, e o 3.º chega quando o 2.º deixa de ser `[0, 0]`. É o que a casa vazia do
+    /// Illustrator diz sem ocupar altura, e mantém a abertura do painel abaixo da de antes da F16c
+    /// (o gate `a_altura_de_abertura_de_um_painel_so_encolhe` reprovou as três linhas sempre à vista).
+    /// ⚠️ A coluna de nomes mede os TRÊS nomes: ela não salta quando uma linha aparece.
+    pub(crate) fn dash_rows(&mut self, snap: &VectorStyleSnapshot, mut y: f32) -> f32 {
         let nomes: Vec<String> = (1..=VECTOR_DASH_IDS.len())
             .map(|n| tr_with("panel.vector.stroke.dash_gap", &[("n", &n)]))
             .collect();
         let refs: Vec<&str> = nomes.iter().map(String::as_str).collect();
         let sec = Seccao::medida(self.text_system, 2, &refs);
-        for (k, nome) in refs.iter().enumerate() {
+        let visiveis = visible_dash_rows(&snap.dash);
+        for (k, nome) in refs.iter().enumerate().take(visiveis) {
             y = self.fields_row(nome, &[VECTOR_DASH_IDS[k], VECTOR_GAP_IDS[k]], None, y, sec);
         }
         y
+    }
+}
+
+/// Quantas linhas do tracejado o painel mostra — ver [`BodyCtx::dash_rows`].
+#[must_use]
+pub(crate) fn visible_dash_rows(pairs: &[[f64; 2]; ph2d_vec_scene::MAX_DASH_PAIRS]) -> usize {
+    let p = ph2d_vec_scene::DashPattern { pairs: *pairs };
+    if p.is_dashed() {
+        (p.active().len() + 1).min(ph2d_vec_scene::MAX_DASH_PAIRS)
+    } else {
+        1
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::visible_dash_rows;
+
+    #[test]
+    fn the_next_pair_row_appears_when_the_previous_one_draws() {
+        assert_eq!(visible_dash_rows(&[[0.0, 1.0], [0.0, 0.0], [0.0, 0.0]]), 1, "contínuo");
+        assert_eq!(visible_dash_rows(&[[0.0, 1.0], [2.0, 2.0], [0.0, 0.0]]), 1, "1.º traço 0");
+        assert_eq!(visible_dash_rows(&[[3.0, 1.0], [0.0, 0.0], [0.0, 0.0]]), 2);
+        assert_eq!(visible_dash_rows(&[[3.0, 1.0], [0.0, 1.0], [0.0, 0.0]]), 3, "um ponto conta");
+        assert_eq!(visible_dash_rows(&[[3.0, 1.0], [1.0, 1.0], [1.0, 1.0]]), 3);
     }
 }

@@ -2150,7 +2150,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    VOLTA ao painel por ordem do dono (*«Snap volta pro painel lateral como era antes»*) e nasce
     //    RECOLHIDO (`COLLAPSED_BY_DEFAULT`) — o que custa é só o cartão do cabeçalho, `36` exactos
     //    medidos pelo gate (aberto eram `+140`).
-    ("vector", 916.0),
+    // ⬇️ `916 → 887` em 2026-10-15 (F16c, o tracejado em pares): os dois sliders Dash/Gap viraram UMA
+    //    linha «Dash / Gap 1», e as dos pares 2–3 só aparecem quando o par anterior traça. Com as três
+    //    sempre à vista eram `937` (o gate reprovou-as). Medido pelo gate.
+    ("vector", 887.0),
     // ⬆️ `1 281 → 1 317` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (era
     //    um risco entre elas): cada fronteira à vista paga o vão entre cartões em vez do separador,
     //    e o último cartão fecha-se com a folga dele.

@@ -27,6 +27,9 @@ use ph2d_vec_scene::VecPathId;
 
 use crate::state::VecState;
 
+#[path = "vector_mode_scenes.rs"]
+mod scenes;
+
 /// O id da ferramenta do vetor no registo.
 const VECTOR: &str = "vector";
 
@@ -385,77 +388,21 @@ pub fn smoke_step(
     static QUICK: AtomicU8 = AtomicU8::new(0);
     // A cena 14 (F8): enquadrar tudo — estágios 60–63 em `vector_mode_frame`.
     static FRAME: AtomicU8 = AtomicU8::new(0);
-    // A cena 15 (F9): as alças das formas — estágios 70–76 em `vector_mode_handles`; 2 = a 16 (F10,
-    // a estrela — 80–84 em `vector_mode_estrela`); 3 = a 17 (F11, o traço — 90–93 em
-    // `vector_mode_stroke`); 4 = a 18 (F12 A, o traço das formas — 100–103 em `vector_mode_tracos`);
-    // 5 = a 19 (F12, as setas lado a lado — 110–120 em `vector_mode_setas`); 6 = a 20 (F13, o
-    // modo Forma selecciona — 130–136 em `vector_mode_seleciona`); 7 = a 21 (F14, `vector_mode_quinas`);
-    // 8 = a 22 (o Alinhar na ④ — 220–224 em `vector_mode_alinhar`); 9 = a 23 (F16, a barra de
-    // controle — 230–234 em `vector_mode_controle`); 10 = a 24 (F16c, o tracejado em pares —
-    // 240–245 em `vector_mode_tracejado`).
+    // As cenas 15..24: a família das alças — `scenes::handles_first`.
     static HANDLES: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
-            let scene = std::env::var("PH2D_OBJECT_MODE_SMOKE");
-            let want = match scene.as_deref() {
-                Ok(
-                    "6" | "7" | "9" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17" | "18"
-                    | "19" | "20" | "21" | "22" | "23" | "24",
-                ) => 1,
-                _ => 9,
-            };
-            WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);
-            BARS.store(
-                u8::from(matches!(
-                    scene.as_deref(),
-                    Ok("9"
-                        | "10"
-                        | "11"
-                        | "12"
-                        | "13"
-                        | "14"
-                        | "15"
-                        | "16"
-                        | "17"
-                        | "18"
-                        | "19"
-                        | "20"
-                        | "21"
-                        | "22"
-                        | "23"
-                        | "24")
-                )),
-                Ordering::Relaxed,
-            );
-            REACH.store(u8::from(scene.as_deref() == Ok("10")), Ordering::Relaxed);
-            NAV.store(u8::from(scene.as_deref() == Ok("11")), Ordering::Relaxed);
-            FRAME.store(u8::from(scene.as_deref() == Ok("14")), Ordering::Relaxed);
-            HANDLES.store(
-                match scene.as_deref() {
-                    Ok("15") => 1,
-                    Ok("16") => 2,
-                    Ok("17") => 3,
-                    Ok("18") => 4,
-                    Ok("19") => 5,
-                    Ok("20") => 6,
-                    Ok("21") => 7,
-                    Ok("22") => 8,
-                    Ok("23") => 9,
-                    Ok("24") => 10,
-                    _ => 0,
-                },
-                Ordering::Relaxed,
-            );
-            QUICK.store(
-                match scene.as_deref() {
-                    Ok("12") => 1,
-                    Ok("13") => 2,
-                    _ => 0,
-                },
-                Ordering::Relaxed,
-            );
-            STAGE.store(want, Ordering::Relaxed);
-            want
+            let var = std::env::var("PH2D_OBJECT_MODE_SMOKE");
+            let s = scenes::of(var.as_deref().ok());
+            WELD.store(u8::from(s.weld), Ordering::Relaxed);
+            BARS.store(u8::from(s.bars), Ordering::Relaxed);
+            REACH.store(u8::from(s.reach), Ordering::Relaxed);
+            NAV.store(u8::from(s.nav), Ordering::Relaxed);
+            FRAME.store(u8::from(s.frame), Ordering::Relaxed);
+            HANDLES.store(s.handles, Ordering::Relaxed);
+            QUICK.store(s.quick, Ordering::Relaxed);
+            STAGE.store(s.want, Ordering::Relaxed);
+            s.want
         }
         s => s,
     };
@@ -484,28 +431,8 @@ pub fn smoke_step(
             13
         } else if QUICK.load(Ordering::Relaxed) != 0 {
             50
-        } else if HANDLES.load(Ordering::Relaxed) == 10 {
-            crate::vector_mode_tracejado::FIRST
-        } else if HANDLES.load(Ordering::Relaxed) == 9 {
-            crate::vector_mode_controle::FIRST
-        } else if HANDLES.load(Ordering::Relaxed) == 8 {
-            crate::vector_mode_alinhar::FIRST
-        } else if HANDLES.load(Ordering::Relaxed) == 7 {
-            crate::vector_mode_quinas::FIRST
-        } else if HANDLES.load(Ordering::Relaxed) == 6 {
-            130
-        } else if HANDLES.load(Ordering::Relaxed) == 5 {
-            110
-        } else if HANDLES.load(Ordering::Relaxed) == 4 {
-            100
-        } else if HANDLES.load(Ordering::Relaxed) == 3 {
-            90
-        } else if HANDLES.load(Ordering::Relaxed) == 2 {
-            80
-        } else if HANDLES.load(Ordering::Relaxed) != 0 {
-            70
         } else {
-            3
+            scenes::handles_first(HANDLES.load(Ordering::Relaxed)).unwrap_or(3)
         }),
         13 if !edit => {
             draw_line(vec, scene, [-1.6, -0.4], [0.2, 1.0]);

@@ -7,6 +7,7 @@
 
 use crate::paint_sections::BodyCtx;
 use crate::state;
+use ph2d_a11y::NodeId;
 use ph2d_i18n::tr;
 
 impl BodyCtx<'_> {
@@ -35,69 +36,51 @@ impl BodyCtx<'_> {
         }
         let y = self.segmented(
             tr("panel.vector.arrange.shapes"),
-            &[
-                (
-                    crate::ids::VECTOR_SNAP_OFF,
-                    tr("panel.vector.arrange.off"),
-                    !on,
-                ),
-                (
-                    ph2d_editor_core::ids::VECTOR_SNAP_ON,
-                    tr("panel.vector.arrange.on"),
-                    on,
-                ),
-            ],
+            &off_on(
+                crate::ids::VECTOR_SNAP_OFF,
+                ph2d_editor_core::ids::VECTOR_SNAP_ON,
+                on,
+            ),
             y,
         );
         let y = self.segmented(
             tr("panel.vector.arrange.path"),
-            &[
-                (
-                    crate::ids::VECTOR_SNAP_PATH_OFF,
-                    tr("panel.vector.arrange.off"),
-                    !path,
-                ),
-                (
-                    crate::ids::VECTOR_SNAP_PATH_ON,
-                    tr("panel.vector.arrange.on"),
-                    path,
-                ),
-            ],
+            &off_on(
+                crate::ids::VECTOR_SNAP_PATH_OFF,
+                crate::ids::VECTOR_SNAP_PATH_ON,
+                path,
+            ),
             y,
         );
         let y = self.segmented(
             tr("panel.vector.arrange.cross"),
-            &[
-                (
-                    crate::ids::VECTOR_SNAP_CROSS_OFF,
-                    tr("panel.vector.arrange.off"),
-                    !cross,
-                ),
-                (
-                    crate::ids::VECTOR_SNAP_CROSS_ON,
-                    tr("panel.vector.arrange.on"),
-                    cross,
-                ),
-            ],
+            &off_on(
+                crate::ids::VECTOR_SNAP_CROSS_OFF,
+                crate::ids::VECTOR_SNAP_CROSS_ON,
+                cross,
+            ),
             y,
         );
         // As GUIAS (W6.2). Alinhamento como o "Shapes", com um interruptor próprio: desligar
         // o ímã das formas não deve desligar o das linhas que o artista pôs à mão.
         self.segmented(
             tr("panel.vector.arrange.guides"),
-            &[
-                (
-                    crate::ids::VECTOR_SNAP_GUIDES_OFF,
-                    tr("panel.vector.arrange.off"),
-                    !guides,
-                ),
-                (
-                    crate::ids::VECTOR_SNAP_GUIDES_ON,
-                    tr("panel.vector.arrange.on"),
-                    guides,
-                ),
-            ],
+            &off_on(
+                crate::ids::VECTOR_SNAP_GUIDES_OFF,
+                crate::ids::VECTOR_SNAP_GUIDES_ON,
+                guides,
+            ),
             y,
         )
     }
+}
+
+/// Um interruptor Off/On do ímã: as duas peças do segmentado (`segmented` → `paint_choice_row`),
+/// cada uma com o SEU `NodeId` — a identidade de AccessKit que o hit, o store e a árvore partilham —,
+/// o nome e o estado `selected`.
+fn off_on(off: NodeId, on: NodeId, value: bool) -> [(NodeId, &'static str, bool); 2] {
+    [
+        (off, tr("panel.vector.arrange.off"), !value),
+        (on, tr("panel.vector.arrange.on"), value),
+    ]
 }

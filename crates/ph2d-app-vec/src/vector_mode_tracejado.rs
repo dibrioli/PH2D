@@ -97,3 +97,7 @@ pub fn step(
         _ => None,
     }
 }
+
+#[cfg(test)]
+#[path = "vector_mode_tracejado_tests.rs"]
+mod tests;

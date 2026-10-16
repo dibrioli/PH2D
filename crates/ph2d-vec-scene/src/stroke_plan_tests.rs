@@ -296,12 +296,15 @@ fn the_dash_closes_the_loop_on_a_shape_path() {
 
     let dl = crate::dash_for(&rect, &s).expect("ha' tracejado");
     let (d, g) = (dl[0], dl[1]);
-    let period = d + g;
+    // O traçador recebe o ajuste alongado pela folga do fecho (BUGS_vector #42): o fim cai DENTRO
+    // do último vão, nunca na fronteira que o arredondamento decide.
+    let period = (d + g) / (1.0 + crate::dash_fit::FOLGA_DO_AJUSTE);
     let n = 12.0 / period;
     assert!(
         (n - n.round()).abs() < 1e-9,
         "o padrao nao fecha a volta: cabem {n} periodos, e a emenda aparece no ponto inicial"
     );
+    assert!(12.0 / (d + g) < n.round(), "o fim tem de cair DENTRO do ultimo vao");
     assert!(n.round() >= 1.0);
 }
 
@@ -381,8 +384,9 @@ fn a_period_longer_than_the_loop_saturates_at_one() {
     let s = dashed(20.0, 5.0); // período 25 > 4
     let dl = crate::dash_for(&small, &s).expect("ha' tracejado");
     let (d, g) = (dl[0], dl[1]);
+    let d_mais_g = (d + g) / (1.0 + crate::dash_fit::FOLGA_DO_AJUSTE);
     assert!(
-        ((d + g) - 4.0).abs() < 1e-9,
+        (d_mais_g - 4.0).abs() < 1e-9,
         "com n=1 o periodo tem de ser a volta inteira, e deu {}",
         d + g
     );
@@ -420,7 +424,7 @@ fn the_dash_closes_the_cooked_loop_not_the_authored_one() {
     let s = dashed(2.5, 1.0);
     let dl = crate::dash_for(&r, &s).expect("ha' tracejado");
     let (d, g) = (dl[0], dl[1]);
-    let period = d + g;
+    let period = (d + g) / (1.0 + crate::dash_fit::FOLGA_DO_AJUSTE);
 
     let n_cooked = cooked / period;
     assert!(

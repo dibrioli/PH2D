@@ -7,7 +7,7 @@ volta. Espelha o [`docs/Painter/BUGS_painter.md`](../Painter/BUGS_painter.md).
 Regra deste arquivo: um bug só é considerado fechado quando existe um teste que **falha**
 se a correção for revertida. "Não reproduzi mais" não fecha nada.
 
-> **O que está VIVO aqui:** os **41 bugs estão TODOS fechados**, então o que vale hoje não é
+> **O que está VIVO aqui:** os **42 bugs estão TODOS fechados**, então o que vale hoje não é
 > nenhum deles — é o que eles ensinaram. Ficaram, nesta ordem: as **recusas com medição atrás**
 > (⛔ — não as reconstrua), os **padrões que se repetem** (leia ANTES de caçar o próximo) e o
 > **índice de uma linha por bug, com o MECANISMO**.
@@ -155,7 +155,12 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 41 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 42 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #42 — Uma FAIXA branca sob o rectângulo tracejado, conforme o pan e o zoom: o fecho do padrão era decidido pelo arredondamento ✅ 2026-10-15
+
+**Sintoma (smoke do Enio, cena 24, F16c):** *«bug no stroke que depende do pan e do zoom para aparecer»* — no rectângulo traço-ponto-ponto, uma barra branca da espessura do traço logo abaixo da aresta de baixo, da quina esquerda até passar a direita, e os traços dessa aresta ESCUROS (a barra e eles cancelam-se). **Mecanismo (medido, não suposto):** o `dash_fit::fit` acaba o padrão EXACTAMENTE no início do contorno fechado, e quem decide se o último vão acaba antes ou depois do fecho é o arco do traçador (`kurbo::dash` mede cada troço a `1e-6`; o `ArcPath` do ajuste mede doutra forma). Do lado errado nasce um traço de **`3,07e-7` m** antes do fecho, emendado ao 1.º traço — uma lasca de uma cúbica DEGENERADA (as arestas do rectângulo são cúbicas com as alças sobre os nós, logo a lasca no fim de uma tem a velocidade a ir a zero). O traçador de GPU do Vello pinta essa lasca como uma faixa de *winding* da largura do traço até à borda da caixa — e como depende de onde a lasca cai nas telhas, aparece e some com o pan e o zoom. **Discriminadores (sonda na placa, 144 vistas = 24 zooms × 6 pans):** ponta Butt/Round e com/sem fill — igual (`120/144`); cada sub-caminho do tracejado sozinho — só o que passa no fecho pinta (`384 px`); as MESMAS arestas como `LineTo` — `0/144` (a lasca só morde sobre a cúbica degenerada); o padrão alongado `1e-4` — `0/144`. **Não é da F16c:** o mesmo defeito em 1 par (`[4, 1,5]`: 6 de 24 rectângulos com faixa, `84 602 px`; elipses: 7–10 de 24, até `376 327 px`); a F16c só pôs um padrão que cai nele no rectângulo do smoke. **Cura:** a `FOLGA_DO_AJUSTE` (`1e-4`), que já valia para o ajuste no ECRÃ (`ajusta_no_ecra`) e para a placa (`ph2d-shape-gpu`), passa a valer na porta do traçador LOCAL — `dash_fit::fit_traced` (o `fit` + a folga num fechado), chamada pela `dash_lengths_for` e pela `ajusta_no_ecra`; a constante mora agora na `dash_fit` e a `ph2d-vec-render` reexporta-a. **Gates:** `seam_tests::o_fecho_de_um_tracejado_cai_dentro_do_ultimo_vao` (CPU, 216 fechos: rectângulo, round-rect, elipse × 24 tamanhos × 3 padrões; controlo sem a folga: 59 emendam) e `o_rectangulo_da_cena_24_nao_emenda_uma_lasca_no_fecho` (vermelhos com a folga revertida: lasca `3,07e-7`), mais `a_cena_24_nao_pinta_a_faixa_do_fecho_em_vista_nenhuma` (placa, `#[ignore]`: `0/144`, controlo `117/144`, `297 504 px`). ⚠️ **Os verdes sobre isto:** `the_door_measures_the_path…` e três do `stroke_plan_tests` EXIGIAM o fecho exacto NA PORTA DO TRAÇADOR — mediam a aritmética do ajuste, nunca o que o traçador recebe; o fecho exacto é justamente a fronteira que o arredondamento decide. Os quatro passam a exigir a folga. ⚠️ **Resta, e é do Vello:** riscas de 1 px (`≤ 12 px` por vista) em alguns round-rects/elipses tracejados, presentes antes e depois — não são esta faixa.
+
 
 ### #41 — Os chips de Corner/Side do Offset não faziam NADA antes de mexer no slider, e o gate e o roteiro que os cobriam estavam verdes ✅ 2026-10-11
 

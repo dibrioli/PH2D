@@ -111,9 +111,29 @@ pub fn longest_contour(path: &VecPath) -> Option<(f64, bool)> {
 pub fn dash_lengths_for(path: &VecPath, s: &StrokeSpec) -> Option<DashLengths> {
     let raw = s.dash_lengths()?;
     Some(match longest_contour(path) {
-        Some((total, closed)) => fit(raw, total, closed),
+        Some((total, closed)) => fit_traced(raw, total, closed),
         None => raw,
     })
+}
+
+/// A folga RELATIVA do período num FECHADO, para um traçador. O [`fit`] acaba o padrão EXACTAMENTE
+/// no início, e quem decide se o último vão acaba antes ou depois do fecho é o arredondamento do
+/// arco do traçador (a `kurbo` mede cada troço a `1e-6`, o [`ArcPath`] doutra forma): do lado
+/// errado nasce um traço de `~3e-7` no fecho, emendado ao 1.º — e o traçador do Vello pinta essa
+/// lasca como uma FAIXA até à borda da caixa (`BUGS_vector.md` #42). Alongado em `1e-4`, o fim cai
+/// sempre DENTRO do último vão. É a mesma folga da placa (`ph2d-shape-gpu`, `shape.wgsl`).
+pub const FOLGA_DO_AJUSTE: f64 = 1e-4;
+
+/// **O [`fit`] que um TRAÇADOR usa** — o mesmo, mais a [`FOLGA_DO_AJUSTE`] num fechado.
+#[must_use]
+pub fn fit_traced(raw: DashLengths, total: f64, closed: bool) -> DashLengths {
+    let d = fit(raw, total, closed);
+    // Só onde o `fit` ajustou: o padrão devolvido intocado (contorno degenerado) fica intocado.
+    if closed && total > 0.0 && raw.period() > 0.0 {
+        d.scaled(1.0 + FOLGA_DO_AJUSTE)
+    } else {
+        d
+    }
 }
 
 #[cfg(test)]

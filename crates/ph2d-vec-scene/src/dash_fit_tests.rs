@@ -4,7 +4,7 @@
 //! ajustado divide o contorno num número inteiro de vezes, não há emenda. Um gate que
 //! comparasse os números contra uma tabela escrita à mão estaria a testar a tabela.
 
-use super::{dash_lengths_for, fit, longest_contour};
+use super::{FOLGA_DO_AJUSTE, dash_lengths_for, fit, fit_traced, longest_contour};
 use crate::{DashLengths, DashPattern, Rgba8, ShapeKind, StrokeSpec, cook};
 
 /// Quantos períodos do padrão `d` cabem em `total` — inteiro se o ajuste funcionou.
@@ -108,10 +108,25 @@ fn the_door_measures_the_path_and_passes_the_absence_through() {
 
     solid.dash = Some(DashPattern::single(2.5, 2.0));
     let d = dash_lengths_for(&rect, &solid).expect("com tracejado, o ajuste");
-    let n = periods(d, total);
+    // A porta do traçador alonga o ajuste pela folga do fecho: o fim cai DENTRO do último vão.
+    let n = periods(d, total) * (1.0 + FOLGA_DO_AJUSTE);
     assert!(
         (n - n.round()).abs() < 1e-9,
         "a porta tem de fechar a conta: {n} periodos"
+    );
+    assert!(periods(d, total) < n.round(), "o fim cai DENTRO do ultimo vao");
+}
+
+/// **A folga só entra num FECHADO ajustado** — o aberto e o padrão devolvido intocado ficam iguais
+/// ao [`fit`].
+#[test]
+fn the_tracer_fit_adds_the_seam_slack_only_to_a_closed_contour() {
+    let raw: DashLengths = [1.0, 0.6].into();
+    assert_eq!(fit_traced(raw, 13.37, false), fit(raw, 13.37, false));
+    assert_eq!(fit_traced(raw, 0.0, true), raw);
+    assert_eq!(
+        fit_traced(raw, 13.37, true),
+        fit(raw, 13.37, true).scaled(1.0 + FOLGA_DO_AJUSTE)
     );
 }
 

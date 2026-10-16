@@ -352,12 +352,10 @@ pub fn pen_for(stroke: &Stroke, transform: Affine) -> (Option<Stroke>, Affine) {
     (Some(pen), Affine::IDENTITY)
 }
 
-/// A folga RELATIVA do período no ajuste de um FECHADO no ecrã: o padrão ajustado acaba EXACTAMENTE no
-/// início, e aí o `f64` do kurbo e o `f32` da placa (doc 121 §9.9) decidiriam por arredondamento se o
-/// último traço emenda no primeiro — um pontinho na emenda, ou não, conforme a máquina. Alongado em
-/// `1e-4`, o fim cai sempre DENTRO do último vão (`≤ 0,3 px` numa volta de `3 000 px`); o erro
-/// relativo do arco somado em `f32` na placa é `~1e-5`.
-pub const FOLGA_DO_AJUSTE: f64 = 1e-4;
+/// A folga do fecho — a lei vive na [`ph2d_vec_scene::dash_fit::FOLGA_DO_AJUSTE`] (o traçador do
+/// espaço LOCAL e o do ecrã usam a mesma); aqui, no ecrã, ela fica `≤ 0,3 px` numa volta de
+/// `3 000 px`, e o erro relativo do arco somado em `f32` na placa (doc 121 §9.9) é `~1e-5`.
+pub use ph2d_vec_scene::dash_fit::FOLGA_DO_AJUSTE;
 
 /// ⭐ **O AJUSTE DO TRACEJADO NO ECRÃ** (doc 121 §9.9) — a [`ph2d_vec_scene::dash_fit`] (a cura da emenda
 /// de 22/08) mediu o contorno no espaço LOCAL; sob escala não uniforme o comprimento no ecrã não é
@@ -376,13 +374,12 @@ pub fn ajusta_no_ecra(pen: &mut Stroke, screen: &BezPath) {
         return;
     };
     let pares: Vec<[f64; 2]> = pen.dash_pattern.chunks_exact(2).map(|c| [c[0], c[1]]).collect();
-    let ajuste = ph2d_vec_scene::dash_fit::fit(
+    let ajuste = ph2d_vec_scene::dash_fit::fit_traced(
         ph2d_vec_scene::DashLengths::from_pairs(&pares),
         total,
         fechado,
     );
-    let folga = if fechado { 1.0 + FOLGA_DO_AJUSTE } else { 1.0 };
-    pen.dash_pattern = ajuste.scaled(folga).as_slice().iter().copied().collect();
+    pen.dash_pattern = ajuste.as_slice().iter().copied().collect();
 }
 
 /// O sub-caminho mais LONGO de `bp` e se é fechado — a [`ph2d_vec_scene::dash_fit::longest_contour`]
@@ -427,3 +424,7 @@ fn maior_contorno(bp: &BezPath) -> Option<(f64, bool)> {
 #[cfg(test)]
 #[path = "stroke_uniform_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "dash_seam_tests.rs"]
+mod seam_tests;

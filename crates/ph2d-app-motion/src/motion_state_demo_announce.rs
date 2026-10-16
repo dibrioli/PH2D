@@ -372,8 +372,8 @@ pub(super) fn rig() {
 
 pub(super) fn aparencia() {
     eprintln!(
-        "[cena 118] A COR E O RASTO. Seis panos de 36 pecas, em tres fileiras. Em cada par
-  muda UMA coisa -- o pano, e nas fileiras de baixo o movimento, sao os mesmos.
+        "[cena 118] A COR E O RASTO. Seis panos de 36 QUADRADINHOS, em tres fileiras. Em cada
+  par muda UMA coisa -- o pano, e nas fileiras de baixo o movimento, sao os mesmos.
 
   1. Carregue em PLAY. A fileira de CIMA fica PARADA de proposito (a cor nao precisa
      de tempo); as duas de baixo mexem-se.
@@ -399,9 +399,10 @@ pub(super) fn aparencia() {
   9. Clique no cartao `Falloff` e ligue `Invert`: a onda passa a correr da DIREITA
      para a esquerda.
 
-  DEU ERRADO se: os dois panos de cima tiverem a mesma cor; se nenhum pano do meio
-  deixar cauda (ou os dois deixarem); se os dois de baixo ondularem IGUAL; ou se o
-  passo 8 nao fizer a onda sumir."
+  DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
+  perderam a forma); se os dois panos de cima tiverem a mesma cor; se nenhum pano do
+  meio deixar cauda (ou os dois deixarem); se os dois de baixo ondularem IGUAL; ou se
+  o passo 8 nao fizer a onda sumir."
     );
 }
 

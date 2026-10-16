@@ -250,5 +250,8 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
 }
 
 #[cfg(test)]
+#[path = "motion_state_demo_router_ciclos_formas_tests.rs"]
+mod formas_tests;
+#[cfg(test)]
 #[path = "motion_state_demo_router_ciclos_placa_tests.rs"]
 mod placa_tests;

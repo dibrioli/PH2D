@@ -13,17 +13,8 @@
 //! ⛔⛔ **A ESCRITA VEM DEPOIS DAS ASSERÇÕES** — a lei que o ciclo 4 pagou.
 
 use super::tutorial_draw as draw;
-use ph2d_motion_doc::MotionDoc;
-use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::{Column, Stream};
-use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::NodeId;
-
-fn registry() -> NodeRegistry {
-    let mut reg = NodeRegistry::new();
-    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
-    reg
-}
 
 /// As coordenadas de mundo ganham esta escala antes de virar a figura — a `moldura` partilhada
 /// tem uma folga mínima de `6` unidades, pensada para os panos grandes dos outros ciclos.
@@ -33,37 +24,40 @@ const DT: f64 = 1.0 / 60.0;
 /// Corre a cena `=118` (pela porta `monta`, nunca uma cena montada à mão) `ticks` quadros e devolve,
 /// por sink, o stream dele e o do `motion.move` a montante (a pose de REPOUSO), no último quadro.
 fn colher(ticks: u64) -> Vec<(Stream, Stream)> {
-    let reg = registry();
-    let mut doc = MotionDoc::default();
-    let (sinks, _) = crate::motion_demo_legend::monta("118", &mut doc, &reg);
+    // ⚠️ Pela `MotionState` e não por um `Cook` solto: as peças são FORMAS (Bug #20), e a
+    // `source.shape` lê o que a ponte publica a cada quadro (`publish_all`).
+    let mut m = crate::motion_state::MotionState::new();
+    let (sinks, _) = crate::motion_demo_legend::monta("118", &mut m.doc, &m.registry);
     let repouso: Vec<NodeId> = sinks
         .iter()
         .map(|s| {
-            ph2d_nodegraph::cook::upstream_cone(&doc.graph, *s)
+            ph2d_nodegraph::cook::upstream_cone(&m.doc.graph, *s)
                 .into_iter()
                 .find(|n| {
-                    doc.graph
+                    m.doc
+                        .graph
                         .node(*n)
                         .is_some_and(|i| i.type_name == "motion.move")
                 })
                 .expect("o pano")
         })
         .collect();
-    let mut cook = Cook::new();
     let mut fora = Vec::new();
     for f in 0..ticks {
         let t = f as f64 * DT;
+        crate::motion_externals::publish_all(&mut m, t);
         fora.clear();
+        let (g, reg, cook) = (&m.doc.graph, &m.registry, &mut m.pump.cook);
         for (s, r) in sinks.iter().zip(&repouso) {
-            let a = cook.cook(&doc.graph, &reg, *s, t).expect("coze")[0]
+            let a = cook.cook(g, reg, *s, t).expect("coze")[0]
                 .as_stream()
                 .clone();
-            let b = cook.cook(&doc.graph, &reg, *r, t).expect("coze")[0]
+            let b = cook.cook(g, reg, *r, t).expect("coze")[0]
                 .as_stream()
                 .clone();
             fora.push((a, b));
         }
-        cook.advance_tick(&doc.graph, &reg, t).expect("tique");
+        cook.advance_tick(g, reg, t).expect("tique");
     }
     fora
 }
@@ -99,12 +93,18 @@ fn srgb(c: f32) -> u8 {
     (s * 255.0).round() as u8
 }
 
+/// O lado, na figura, de uma peça com este `size`: o `Rectangle` vive em raio `1`, logo o `size`
+/// dele é o SEMI-lado.
+fn lado_do_size(size: f32) -> f32 {
+    2.0 * size * ESCALA
+}
+
 /// Um quadrado por peça, com a COR, a ALFA e o TAMANHO que o motor lhe deu.
 fn svg_pintado(s: &Stream, (cx, cy, w, h): (f32, f32, f32, f32)) -> String {
     const LARGURA_PX: f32 = 340.0;
     let (p, cor) = (escala(&vec2(s, "P")), vec4(s, "tint"));
     let lado: Vec<f32> = match s.get("size") {
-        Some(Column::Vec2(v)) => v.iter().map(|z| z[0] * ESCALA).collect(),
+        Some(Column::Vec2(v)) => v.iter().map(|z| lado_do_size(z[0])).collect(),
         _ => vec![ESCALA; p.len()],
     };
     let mut o = format!(
@@ -207,7 +207,7 @@ pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
         let (cx, cy, w, h) = draw::moldura(&[&escala(&vec2(&pan[k].0, "P"))]);
         // ⚠️ A moldura conta CENTROS; um quadrado passa meio lado para lá do dele.
         let lado = match pan[k].0.get("size") {
-            Some(Column::Vec2(v)) => v.iter().map(|z| z[0]).fold(0.0, f32::max) * ESCALA,
+            Some(Column::Vec2(v)) => lado_do_size(v.iter().map(|z| z[0]).fold(0.0, f32::max)),
             _ => 0.0,
         };
         (cx, cy, w + lado, h + lado)

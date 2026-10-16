@@ -19,6 +19,12 @@
 //! porque o modo novo SEM campo não tem nada para mostrar (o pano inteiro atrasa por igual). Há gate
 //! a contar os nós e a linha.
 //!
+//! ⛔⛔ **Cada pano é FORMAS** (`source.shape` → `motion.duplicator`, o molde da `=133`), e a forma
+//! é carimbada ANTES de qualquer cartão de aparência. A cena nasceu (16/09) três dias antes da lei
+//! do dono «só com forma» (`72cdfa6f71`, 19/09) e desde então os seis panos desenhavam só os
+//! marcadores de ponto — nenhum laranja, nenhum arco-íris, rastos ilegíveis (Bug #20). O gate da
+//! família é `toda_cena_de_ciclo_que_pinta_aparencia_desenha_formas`.
+//!
 //! ⚠️ **A fileira de cima é PARADA de propósito** — a cor não precisa de tempo, e uma cena que a
 //! pusesse a mexer misturaria duas perguntas no mesmo par.
 //!
@@ -39,11 +45,18 @@ use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
 pub(super) const LADO: f32 = 6.0;
 /// O passo entre peças, em unidades de MUNDO.
 const VAO: f32 = 0.4;
-/// O tamanho da peça (o sink desenha um quad de `1`, e o `motion.scale` põe-no à escala).
-/// ⚠️ **Menor que a RODA do meio**, e isto foi a figura do tutorial que o mostrou: com a peça a
-/// `0,16` e a roda a `0,1`, o rasto saía uma MANCHA colada à peça em vez de um arco. O anel inteiro
-/// (`2·RODA + PECA = 0,38`) cabe no passo (`0,4`), então nenhum toca o vizinho.
+/// O LADO da peça, um quadrado. ⚠️ **Menor que a RODA do meio**, e isto foi a figura do tutorial
+/// que o mostrou: com a peça a `0,16` e a roda a `0,1`, o rasto saía uma MANCHA colada à peça em
+/// vez de um arco. O anel inteiro (`2·RODA + PECA = 0,38`) cabe no passo (`0,4`), então nenhum
+/// toca o vizinho.
 const PECA: f32 = 0.1;
+/// O `Size` da forma: o `Rectangle` vive em raio `1` (lado `2`), logo o `size` é o SEMI-lado — e é
+/// esta a coluna `size` que sai no sink.
+pub(super) const MEIO_PECA: f32 = PECA * 0.5;
+/// A cor da peça ANTES de qualquer cartão de cor — a mesma nos seis panos. Saturada de propósito:
+/// o `Tail Hue Shift` do `Trail` roda a MATIZ, e num branco não muda nada (o passo «Vá além» do
+/// tutorial prometia a cauda colorida sobre peças brancas).
+pub(super) const VERDE: [f32; 3] = [0.25, 0.85, 0.6];
 /// A meia-largura de um pano, DERIVADA.
 pub(super) const MEIO_PANO: f32 = (LADO - 1.0) * 0.5 * VAO;
 /// A que distância do centro cada metade vive.
@@ -136,21 +149,31 @@ fn no(doc: &mut MotionDoc, tipo: &str, x: f32, y: f32) -> NodeId {
     n
 }
 
-/// Um pano de `LADO × LADO` centrado em `centro`. Devolve o último nó.
+/// Um pano de `LADO × LADO` centrado em `centro`: a grade dá os LUGARES, e o `Duplicator` carimba
+/// um quadrado em cada um. Devolve o último nó.
 fn pano(doc: &mut MotionDoc, centro: [f32; 2], y: f32) -> Option<NodeId> {
     let g = no(doc, "motion.grid", -760.0, y);
     doc.graph.set_param(g, "rows", LADO);
     doc.graph.set_param(g, "cols", LADO);
     doc.graph.set_param(g, "gap_x", VAO);
     doc.graph.set_param(g, "gap_y", VAO);
-    let peca = no(doc, "motion.scale", -580.0, y);
-    doc.graph.set_param(peca, "amount", PECA);
-    let mv = no(doc, "motion.move", -400.0, y);
+    let mv = no(doc, "motion.move", -580.0, y);
     doc.graph.set_param(mv, "dx", centro[0]);
     doc.graph.set_param(mv, "dy", centro[1]);
-    liga(doc, g, (peca, 0), false)?;
-    liga(doc, peca, (mv, 0), false)?;
-    Some(mv)
+    liga(doc, g, (mv, 0), false)?;
+    let forma = super::jogo_demo::forma(
+        &mut doc.graph,
+        &super::jogo_demo::no_em(0.0),
+        ph2d_node_motion_shape::ShapeKind::Rectangle,
+        MEIO_PECA,
+        VERDE,
+        -580.0,
+        y + 100.0,
+    )?;
+    let pecas = no(doc, "motion.duplicator", -400.0, y);
+    liga(doc, forma, (pecas, 0), false)?;
+    liga(doc, mv, (pecas, 1), false)?;
+    Some(pecas)
 }
 
 /// Um oscilador sem desfasamento entre peças: o pano mexe-se INTEIRO. ⚠️ O default do nó

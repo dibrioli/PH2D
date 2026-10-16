@@ -41,6 +41,8 @@ fn corre(
     let mut fim = (Stream::default(), None);
     for f in 0..ticks {
         let t = f as f64 * DT;
+        // ⚠️ As FORMAS são externas: a `source.shape` lê o que a ponte publicou neste quadro.
+        crate::motion_externals::publish_all(&mut m, t);
         let s = m
             .pump
             .cook
@@ -428,8 +430,10 @@ fn each_pair_differs_by_what_the_announcement_says() {
     let conta = |t: &str| tipos.iter().filter(|x| **x == t).count();
     for (t, n) in [
         ("motion.grid", 6),
-        ("motion.scale", 6),
         ("motion.move", 6),
+        // A peça: um quadrado carimbado em cada lugar (Bug #20).
+        ("source.shape", 6),
+        ("motion.duplicator", 6),
         ("motion.output", 6),
         // Cima: UM de cada — a troca.
         ("motion.tint", 1),
@@ -444,7 +448,18 @@ fn each_pair_differs_by_what_the_announcement_says() {
     ] {
         assert_eq!(conta(t), n, "`{t}`: {tipos:?}");
     }
-    assert_eq!(tipos.len(), 36, "nada alem do contado: {tipos:?}");
+    assert_eq!(tipos.len(), 42, "nada alem do contado: {tipos:?}");
+    // ⚠️ E as seis formas são a MESMA peça.
+    let formas: Vec<_> = g
+        .nodes()
+        .iter()
+        .filter(|i| i.type_name == "source.shape")
+        .map(|i| g.node_param_overrides(i.id).cloned().unwrap_or_default())
+        .collect();
+    assert!(
+        formas.windows(2).all(|w| w[0] == w[1]),
+        "as seis formas diferem: {formas:?}"
+    );
     // ⚠️ E os dois slit-scans diferem SÓ no `Delay By` (e no nome).
     let scans: Vec<_> = g
         .nodes()
@@ -512,8 +527,8 @@ fn a_full_tail_size_stops_the_shrink() {
     let (s, _) = corre(3, 120, None, poe("motion.trail", "shrink", 1.0));
     let lados: Vec<f32> = vec2(&s, "size").iter().map(|z| z[0]).collect();
     assert!(
-        lados.iter().all(|l| (l - PECA).abs() < 1e-5),
-        "com o Tail Size a 1 toda copia tem o tamanho da peca ({PECA}); o menor e' {}",
+        lados.iter().all(|l| (l - MEIO_PECA).abs() < 1e-5),
+        "com o Tail Size a 1 toda copia tem o tamanho da peca ({MEIO_PECA}); o menor e' {}",
         lados.iter().copied().fold(f32::MAX, f32::min)
     );
     // O controlo: no default da cena a cauda ENCOLHE.
@@ -523,7 +538,7 @@ fn a_full_tail_size_stops_the_shrink() {
         .map(|z| z[0])
         .fold(f32::MAX, f32::min);
     assert!(
-        menor < PECA * 0.9,
+        menor < MEIO_PECA * 0.9,
         "controlo: a cauda da cena encolhe ({menor})"
     );
 }

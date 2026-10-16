@@ -68,17 +68,7 @@ pub fn placed(
             *r = super::mirrored(area, *r);
         }
     }
-    let has_actions = bars
-        .actions
-        .iter()
-        .chain(&bars.actions_below)
-        .any(|g| !g.is_empty());
-    if has_actions && (pinned || bars.selection.is_some()) {
-        // O chrome (fixar) fecha a 1.ª linha; a 2.ª vem por baixo dela.
-        let mut groups = bars.actions.clone();
-        groups.push(chrome_group(pinned));
-        let sizes: Vec<usize> = groups.iter().map(Vec::len).collect();
-        let below: Vec<usize> = bars.actions_below.iter().map(Vec::len).collect();
+    if let Some((groups, sizes, below)) = action_rows(bars, pinned) {
         let rows = [sizes.as_slice(), below.as_slice()];
         // Os ícones da ④ lêem-se ao lado da COLUNA, não ao das caras do Quadro (foto da cena 9).
         let s = super::button_px();
@@ -93,6 +83,40 @@ pub fn placed(
         out.extend(buttons.zip(rects));
     }
     out
+}
+
+/// As linhas da ④ quando ela está à vista: os grupos da 1.ª (o chrome, fixar, fecha-a), os tamanhos
+/// deles e os da 2.ª.
+fn action_rows(
+    bars: &ToolBars,
+    pinned: bool,
+) -> Option<(Vec<Vec<BarButton>>, Vec<usize>, Vec<usize>)> {
+    let has_actions = bars
+        .actions
+        .iter()
+        .chain(&bars.actions_below)
+        .any(|g| !g.is_empty());
+    if !has_actions || !(pinned || bars.selection.is_some()) {
+        return None;
+    }
+    let mut groups = bars.actions.clone();
+    groups.push(chrome_group(pinned));
+    let sizes = groups.iter().map(Vec::len).collect();
+    let below = bars.actions_below.iter().map(Vec::len).collect();
+    Some((groups, sizes, below))
+}
+
+/// ⭐ **A margem de CIMA de um enquadramento neste quadro** (px lógicos): a da ④ que está à vista,
+/// com as linhas que ela tem ([`super::frame_top_margin`]); sem ④, a [`super::frame_margin`].
+#[must_use]
+pub fn frame_top_margin(hero: &HeroScreen) -> f32 {
+    let pinned = hero.store.selection_actions_pinned();
+    hero.store
+        .tool_bars()
+        .and_then(|bars| action_rows(bars, pinned))
+        .map_or_else(super::frame_margin, |(_, sizes, below)| {
+            super::frame_top_margin(&[&sizes, &below], super::button_px(), pinned)
+        })
 }
 
 /// Os blocos de [`placed`] (a coluna, o flyout, a ④), como intervalos na lista: cada um é um

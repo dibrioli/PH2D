@@ -285,20 +285,40 @@ fn paint_stroke_popover(ctx: &mut PaintCtx, theme: Theme, chip: Rect, width: f32
         );
         stroke_rows(&mut b, &snap, 0.0)
     };
+    let id = crate::ids::VECTOR_BAR_STROKE;
     let region = ctx.layout.popover_region();
-    let h = (body_h + pad * 2.0).min(region.h);
-    let x = chip.x.min(region.x + region.w - width).max(region.x);
+    let content_h = body_h + pad * 2.0;
     let gap = Spacing::Xs.px();
-    let y = if ctx.host.store().tool_row_bottom() {
+    let bottom = ctx.host.store().tool_row_bottom();
+    // O painel fica do lado do chip que a fila deixa e encolhe ao que sobra dele na região; o resto
+    // ROLA (um ecrã baixo transbordava as linhas por cima da arte e para fora da janela).
+    let room = if bottom {
+        chip.y - gap - region.y
+    } else {
+        region.y + region.h - (chip.y + chip.h + gap)
+    };
+    let h = content_h.min(room.max(0.0));
+    let x = chip.x.min(region.x + region.w - width).max(region.x);
+    let y = if bottom {
         chip.y - gap - h
     } else {
         chip.y + chip.h + gap
     };
     let rect = Rect::new(x, y, width, h);
+    let max_scroll = (content_h - h).max(0.0);
+    let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
     paint_panel_surface(rect, ctx.scene, theme);
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     // O fundo ENGOLE o clique (o mesmo da fila): sem ele um clique entre duas linhas caía na arte.
     hit_index.register(ph2d_editor_core::ids::RAIL_BACKDROP, rect);
+    // O recorte da cena e o dos hits dizem o mesmo: uma linha rolada para fora nem pinta nem clica.
+    ctx.scene.push_clip(&ph2d_vector::Rect::new(
+        f64::from(rect.x),
+        f64::from(rect.y),
+        f64::from(rect.x + rect.w),
+        f64::from(rect.y + rect.h),
+    ));
+    hit_index.push_clip(rect);
     let mut b = body_ctx(
         ctx.scene,
         ctx.text_system,
@@ -308,18 +328,20 @@ fn paint_stroke_popover(ctx: &mut PaintCtx, theme: Theme, chip: Rect, width: f32
         rect.x + pad,
         inner_w,
     );
-    stroke_rows(&mut b, &snap, rect.y + pad);
-    // O rect publicado é o que o light-dismiss e a roda leem (a mesma publicação da porta das listas
-    // e do popover diferido do Inspector). Não é uma lista e não rola: as duas alturas são a dele.
-    ctx.host
-        .store_mut()
-        .publish_dropdown_popover(ph2d_editor_core::widget::PaintedPopover {
-            id: crate::ids::VECTOR_BAR_STROKE,
-            panel: rect,
-            content_h: rect.h,
-            visible_h: rect.h,
-            scroll: 0.0,
-        });
+    stroke_rows(&mut b, &snap, rect.y + pad - scroll);
+    hit_index.pop_clip();
+    ctx.scene.pop_layer();
+    // O rect publicado é o que o light-dismiss, a roda e o polegar leem (a mesma publicação da porta
+    // das listas e do popover diferido do Inspector).
+    let painted = ph2d_editor_core::widget::PaintedPopover {
+        id,
+        panel: rect,
+        content_h,
+        visible_h: h,
+        scroll,
+    };
+    ph2d_editor_core::panel::paint_popover_scrollbar(&painted, store, ctx.scene, theme, hit_index);
+    ctx.host.store_mut().publish_dropdown_popover(painted);
 }
 
 fn body_ctx<'a>(

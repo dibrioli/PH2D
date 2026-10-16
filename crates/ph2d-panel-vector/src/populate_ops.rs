@@ -184,8 +184,6 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, crate::ids::VECTOR_SNAP_CROSS_ON);
     button(store, crate::ids::VECTOR_SNAP_GUIDES_OFF);
     button(store, crate::ids::VECTOR_SNAP_GUIDES_ON);
-    button(store, crate::ids::VECTOR_RULERS_OFF);
-    button(store, crate::ids::VECTOR_RULERS_ON);
 
     // Fill-type selector (Solid / Linear / Radial) — act on the selected path.
     button(store, ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID);

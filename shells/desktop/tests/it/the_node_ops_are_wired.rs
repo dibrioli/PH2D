@@ -305,8 +305,6 @@ fn the_snap_toggles_are_not_crossed() {
             "VECTOR_SNAP_GUIDES_ON",
             "pending_vec_snap_guides = Some(true)",
         ),
-        ("VECTOR_RULERS_OFF", "pending_rulers = Some(false)"),
-        ("VECTOR_RULERS_ON", "pending_rulers = Some(true)"),
     ] {
         let at = code
             .find(&format!("ids::{id} {{"))
@@ -334,9 +332,6 @@ fn each_pending_snap_toggle_lands_on_its_own_field() {
         ("pending_vec_snap_path", "self.vec.snap.path = on"),
         ("pending_vec_snap_cross", "self.vec.snap.crossings = on"),
         ("pending_vec_snap_guides", "self.vec.snap.guides = on"),
-        // ⚠️ A régua é o único dos cinco que NÃO é campo de ferramenta: ela é vista, e o
-        // destino é o hero. Colapsá-la com os outros faria esconder a régua desligar o ímã.
-        ("pending_rulers", "hero.view.rulers_visible = on"),
     ] {
         let at = code
             .find(&format!("if let Some(on) = {pending} {{"))

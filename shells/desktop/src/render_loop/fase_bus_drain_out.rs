@@ -374,7 +374,6 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) pending_vec_snap_path: Option<bool>,
     pub(in crate::render_loop) pending_vec_snap_cross: Option<bool>,
     pub(in crate::render_loop) pending_vec_snap_guides: Option<bool>,
-    pub(in crate::render_loop) pending_rulers: Option<bool>,
 
     // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
     // ⭐ A APARÊNCIA do objecto (estudo 42 item 2): o track `0..1` do slider e o CÓDIGO do

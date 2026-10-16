@@ -1,5 +1,7 @@
-//! **Fase do quadro: O COMPOSTO, OS ENCAIXES E AS RÉGUAS** — o caminho composto, a regra de preenchimento, os encaixes (estado da FERRAMENTA) e as
-//! réguas (estado do hero) (OBRA 2 da `line/render-loop`, 2026-09-13).
+//! **Fase do quadro: O COMPOSTO E OS ENCAIXES** — o caminho composto, a regra de preenchimento e os
+//! encaixes (estado da FERRAMENTA) (OBRA 2 da `line/render-loop`, 2026-09-13). As réguas eram daqui
+//! por dois botões do painel do vetor que nada pintava; saíram (UIUX 16/10): a casa delas é o menu
+//! View, que mexe no `hero.view` direto.
 
 use super::*;
 
@@ -11,7 +13,6 @@ pub(super) struct CompoundSnapRulersIntents {
     pub(super) pending_vec_snap_path: Option<bool>,
     pub(super) pending_vec_snap_cross: Option<bool>,
     pub(super) pending_vec_snap_guides: Option<bool>,
-    pub(super) pending_rulers: Option<bool>,
 }
 
 impl crate::App {
@@ -21,15 +22,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let FrameGfx {
-            vec_scene,
-            hero_screen,
-            ..
-        } = FrameGfx::of(gfx);
-        // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
-        let Some(hero) = hero_screen.as_mut() else {
-            return;
-        };
+        let FrameGfx { vec_scene, .. } = FrameGfx::of(gfx);
         let CompoundSnapRulersIntents {
             pending_vec_compound,
             pending_vec_fill_rule,
@@ -37,7 +30,6 @@ impl crate::App {
             pending_vec_snap_path,
             pending_vec_snap_cross,
             pending_vec_snap_guides,
-            pending_rulers,
         } = intents;
         if let Some(make) = pending_vec_compound {
             crate::input_dispatch::apply_vec_compound(vec_scene, &mut self.vec.pen, make);
@@ -57,12 +49,6 @@ impl crate::App {
         }
         if let Some(on) = pending_vec_snap_guides {
             self.vec.snap.guides = on;
-        }
-        // ⚠️ A régua é estado do HERO, não da ferramenta: ela é chrome de canvas, aparece
-        // com qualquer ferramenta na mão, e é o mesmo flag que a tecla/menu de vista
-        // mexeria. O painel do vetor é só mais um lugar de onde se alcança o interruptor.
-        if let Some(on) = pending_rulers {
-            hero.view.rulers_visible = on;
         }
     }
 }

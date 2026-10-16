@@ -27,6 +27,23 @@ pub fn frameable(hero: &ph2d_editor_core::screens::hero::HeroScreen, viewport: R
     r
 }
 
+/// ⭐ **A área e a margem de um ENQUADRAMENTO**, px físicos: a [`frameable`] sem a faixa de cima que
+/// a ④ deste quadro pede além da margem (`tool_bars::frame_top_margin`), e a margem de sempre.
+#[must_use]
+pub fn frame_target(
+    hero: &ph2d_editor_core::screens::hero::HeroScreen,
+    viewport: Rect,
+) -> (Rect, f32) {
+    use ph2d_editor_core::screens::hero::float_bar;
+    let k = hero.escala().factor();
+    let margin = float_bar::frame_margin() * k;
+    let extra = float_bar::tool_bars::frame_top_margin(hero) * k - margin;
+    let mut r = frameable(hero, viewport);
+    r.y += extra;
+    r.h = (r.h - extra).max(0.0);
+    (r, margin)
+}
+
 /// A área visível do canvas, ou `viewport` enquanto ela ainda não foi publicada.
 #[must_use]
 pub fn visible(hero: &ph2d_editor_core::screens::hero::HeroScreen, viewport: Rect) -> Rect {

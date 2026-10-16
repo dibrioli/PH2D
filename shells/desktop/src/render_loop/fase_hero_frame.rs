@@ -266,7 +266,6 @@ impl crate::App {
             pending_vec_snap_path: take(&mut pd.pending_vec_snap_path),
             pending_vec_snap_cross: take(&mut pd.pending_vec_snap_cross),
             pending_vec_snap_guides: take(&mut pd.pending_vec_snap_guides),
-            pending_rulers: take(&mut pd.pending_rulers),
         });
         self.fase_node_and_arrange_verbs(
             fase_node_and_arrange_verbs::NodeAndArrangeVerbsIntents {

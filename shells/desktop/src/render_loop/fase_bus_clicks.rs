@@ -449,10 +449,6 @@ impl crate::App {
             pd.pending_vec_snap_guides = Some(false);
         } else if *id == ph2d_panel_vector::ids::VECTOR_SNAP_GUIDES_ON {
             pd.pending_vec_snap_guides = Some(true);
-        } else if *id == ph2d_panel_vector::ids::VECTOR_RULERS_OFF {
-            pd.pending_rulers = Some(false);
-        } else if *id == ph2d_panel_vector::ids::VECTOR_RULERS_ON {
-            pd.pending_rulers = Some(true);
         } else if *id == ph2d_panel_vector::ids::VECTOR_TEXT_FONT_PREV {
             pd.pending_vec_font_cycle = Some(-1);
         } else if *id == ph2d_panel_vector::ids::VECTOR_TEXT_FONT_NEXT {

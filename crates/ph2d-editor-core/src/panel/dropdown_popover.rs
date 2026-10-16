@@ -11,7 +11,7 @@ use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::panel::PaintCtx;
 use crate::widget::{
     ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, PaintedPopover, PopoverRowPainter,
-    paint_dropdown_popover_scrolled, scrollbar_is_needed, scrollbar_track_rect,
+    paint_dropdown_popover_scrolled, paint_scrollbar, scrollbar_is_needed, scrollbar_track_rect,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -107,6 +107,32 @@ pub fn paint_dropdown_popover_scrolled_with_hits<T: Clone + PartialEq>(
         hit_index,
         None,
     )
+}
+
+/// ⭐ **A barra de um popover que ROLA sem ser lista** (o painel do traço da barra do vetor): pinta a
+/// trilha e o polegar de `p` e regista a trilha sob o [`DROPDOWN_SCROLLBAR_ID`] — a mesma barra da
+/// lista, que o arrasto acha pelo `publish_dropdown_popover` do mesmo `p`. Sem excesso, nada.
+pub fn paint_popover_scrollbar(
+    p: &PaintedPopover,
+    store: &WidgetStore,
+    scene: &mut VectorScene,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+) {
+    let visual = store.scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(p.id));
+    if paint_scrollbar(
+        p.panel,
+        p.scroll,
+        p.content_h,
+        p.visible_h,
+        visual,
+        scene,
+        theme,
+    )
+    .is_some()
+    {
+        hit_index.register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(p.panel));
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

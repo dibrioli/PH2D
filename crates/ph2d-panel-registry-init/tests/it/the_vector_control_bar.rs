@@ -75,6 +75,11 @@ fn seletor_de_modo() -> AreaMenu {
 
 /// Publica (ou não) as barras do vetor e o seletor de modo, e pinta — o que o app faz por quadro.
 fn quadro(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem, vetor: bool) {
+    quadro_em(hero, ts, vetor, HERO_VIEWPORT_H);
+}
+
+/// O [`quadro`] numa janela de altura `altura`.
+fn quadro_em(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem, vetor: bool, altura: f32) {
     if vetor {
         ph2d_panel_vector::set_current_vector_style(Some(VectorStyleSnapshot {
             mode: DrawMode::Select,
@@ -90,7 +95,7 @@ fn quadro(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem, vetor: bool) {
     hero.store.set_area_commands(Vec::new(), Vec::new());
     hero.store.publish_mode_menu(Some(seletor_de_modo()));
     let mut scene = ph2d_vector::VectorScene::new();
-    let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+    let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, altura);
     paint_hero_screen(hero, vp, &mut scene, ts);
 }
 
@@ -112,14 +117,19 @@ fn na_fila(hero: &HeroScreen) -> Vec<NodeId> {
 fn with_the_vector_in_hand_the_row_is_only_the_control_bar() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    let menus: Vec<NodeId> = (0..ids::MAX_AREA_MENUS).map(ids::area_menu_button).collect();
+    let menus: Vec<NodeId> = (0..ids::MAX_AREA_MENUS)
+        .map(ids::area_menu_button)
+        .collect();
 
     let mut sem = HeroScreen::new(NodeId(1));
     quadro(&mut sem, &mut ts, false);
     quadro(&mut sem, &mut ts, false);
     let fila = na_fila(&sem);
     for id in GENERICOS {
-        assert!(fila.contains(&id), "controlo: sem módulo, {id:?} devia estar na fila");
+        assert!(
+            fila.contains(&id),
+            "controlo: sem módulo, {id:?} devia estar na fila"
+        );
     }
     assert!(
         fila.contains(&ids::area_menu_button(0)),
@@ -165,9 +175,8 @@ fn the_stroke_chip_opens_the_stroke_panel_under_the_bar() {
     quadro(&mut hero, &mut ts, true);
     quadro(&mut hero, &mut ts, true);
     let painel = hero.store.panel_rect(ids::VECTOR_PANEL);
-    let dentro_do_painel = |r: Rect| {
-        painel.is_some_and(|p| r.x >= p.x - 0.5 && r.x + r.w <= p.x + p.w + 0.5)
-    };
+    let dentro_do_painel =
+        |r: Rect| painel.is_some_and(|p| r.x >= p.x - 0.5 && r.x + r.w <= p.x + p.w + 0.5);
     // O CONTROLO: fechado, a ponta mora no painel docado (e só lá).
     let antes = hero.hit_index.rect_for(VECTOR_CAP_ROUND);
     assert!(
@@ -198,20 +207,29 @@ fn the_stroke_chip_opens_the_stroke_panel_under_the_bar() {
         cap.y >= bar.y + bar.h,
         "a ponta não está POR BAIXO da fila ({cap:?} × {bar:?})"
     );
-    assert!(!dentro_do_painel(cap), "a ponta ficou no painel docado: {cap:?}");
+    assert!(
+        !dentro_do_painel(cap),
+        "a ponta ficou no painel docado: {cap:?}"
+    );
     let vezes = hero
         .hit_index
         .iter_registrations()
         .filter(|(id, _)| *id == VECTOR_CAP_ROUND)
         .count();
-    assert_eq!(vezes, 1, "a ponta registada {vezes} vezes com o painel do traço aberto");
+    assert_eq!(
+        vezes, 1,
+        "a ponta registada {vezes} vezes com o painel do traço aberto"
+    );
 
     let _ = hero.bus.drain().count();
     clica(&mut hero, cap);
     let chegou = hero.bus.drain().any(|a| {
         matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if i == VECTOR_CAP_ROUND)
     });
-    assert!(chegou, "a ponta clicada no painel do traço não chegou à ferramenta");
+    assert!(
+        chegou,
+        "a ponta clicada no painel do traço não chegou à ferramenta"
+    );
     assert!(
         matches!(
             hero.store.get(ph2d_panel_vector::ids::VECTOR_BAR_STROKE),
@@ -235,6 +253,124 @@ fn the_stroke_chip_opens_the_stroke_panel_under_the_bar() {
     assert!(
         depois.is_none_or(dentro_do_painel),
         "fechado, a ponta continua pintada fora do painel: {depois:?}"
+    );
+    ph2d_panel_vector::set_stroke_paint_kind(None);
+}
+
+/// O painel do traço aberto numa janela de altura `altura`: o herói, o rect publicado e os ids que
+/// ele regista DENTRO de si.
+fn painel_do_traco_aberto(
+    ts: &mut ph2d_text::TextSystem,
+    altura: f32,
+) -> (HeroScreen, Rect, Vec<NodeId>) {
+    let mut hero = HeroScreen::new(NodeId(1));
+    <HeroScreen as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
+        &mut hero, "vector", true,
+    );
+    quadro_em(&mut hero, ts, true, altura);
+    quadro_em(&mut hero, ts, true, altura);
+    let chip = hero
+        .hit_index
+        .rect_for(ph2d_panel_vector::ids::VECTOR_BAR_STROKE)
+        .expect("o «Stroke ▾» está pintado");
+    clica(&mut hero, chip);
+    quadro_em(&mut hero, ts, true, altura);
+    quadro_em(&mut hero, ts, true, altura);
+    let (id, pop) = hero
+        .store
+        .dropdown_popover()
+        .expect("o painel do traço publicou-se");
+    assert_eq!(id, ph2d_panel_vector::ids::VECTOR_BAR_STROKE);
+    let dentro = linhas_dentro(&hero, pop);
+    (hero, pop, dentro)
+}
+
+fn linhas_dentro(hero: &HeroScreen, pop: Rect) -> Vec<NodeId> {
+    hero.hit_index
+        .iter_registrations()
+        .filter(|(id, r)| {
+            *id != ids::RAIL_BACKDROP
+                && r.x >= pop.x - 0.5
+                && r.x + r.w <= pop.x + pop.w + 0.5
+                && r.y >= pop.y - 0.5
+                && r.y + r.h <= pop.y + pop.h + 0.5
+        })
+        .map(|(id, _)| id)
+        .collect()
+}
+
+/// ⭐ **Numa janela baixa o painel do traço ROLA dentro da região** (aberto do handoff F16c §5.1:
+/// a altura era cortada à região, mas as linhas pintavam e clicavam por baixo dela, por cima da
+/// arte). Cada linha que a janela alta mostra inteira no painel, na baixa ou está DENTRO dele ou
+/// não está registada; a roda leva-o até à última. O CONTROLO: a janela baixa transborda mesmo.
+#[test]
+fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    ph2d_panel_vector::set_stroke_paint_kind(Some(ph2d_panel_vector::StrokePaintKind::Solid));
+    let (_, _, todas) = painel_do_traco_aberto(&mut ts, HERO_VIEWPORT_H);
+    assert!(
+        todas.contains(&VECTOR_CAP_ROUND),
+        "controlo: a ponta mora no painel do traço"
+    );
+
+    let (mut hero, pop, _) = painel_do_traco_aberto(&mut ts, HERO_VIEWPORT_H * 0.5);
+    let id = ph2d_panel_vector::ids::VECTOR_BAR_STROKE;
+    let region = hero.last_layout.expect("layout").popover_region();
+    assert!(
+        pop.y >= region.y - 0.5 && pop.y + pop.h <= region.y + region.h + 0.5,
+        "o painel do traço sai da região: {pop:?} × {region:?}"
+    );
+    let (conteudo, visivel) = (
+        hero.store.panel_content_h(id).unwrap_or(0.0),
+        hero.store.panel_visible_h(id).unwrap_or(0.0),
+    );
+    assert!(
+        conteudo > visivel + 1.0,
+        "controlo: a janela baixa não transborda ({conteudo} ≤ {visivel})"
+    );
+    let fora_do_painel = |hero: &HeroScreen, pop: Rect| -> Vec<NodeId> {
+        let dentro = linhas_dentro(hero, pop);
+        todas
+            .iter()
+            .copied()
+            .filter(|t| !dentro.contains(t) && hero.hit_index.rect_for(*t).is_some())
+            .collect()
+    };
+    let fora = fora_do_painel(&hero, pop);
+    assert!(
+        fora.is_empty(),
+        "linhas do painel do traço clicáveis FORA dele: {fora:?}"
+    );
+
+    let arena = Bump::new();
+    let _ = hero.handle_wheel(
+        ph2d_host::WheelEvent {
+            x: pop.x + pop.w * 0.5,
+            y: pop.y + pop.h * 0.5,
+            delta_x: 0.0,
+            delta_y: -10_000.0,
+            modifiers: ph2d_host::Modifiers::default(),
+            timestamp_ns: 0,
+        },
+        &arena,
+    );
+    quadro_em(&mut hero, &mut ts, true, HERO_VIEWPORT_H * 0.5);
+    let rolado = hero.store.panel_scroll(id);
+    assert!(
+        (rolado - (conteudo - visivel)).abs() < 1.0,
+        "a roda não levou o painel até ao fim: {rolado} de {}",
+        conteudo - visivel
+    );
+    let fora = fora_do_painel(&hero, pop);
+    assert!(
+        fora.is_empty(),
+        "rolado, linhas clicáveis FORA do painel: {fora:?}"
+    );
+    let cap = hero.hit_index.rect_for(VECTOR_CAP_ROUND);
+    assert!(
+        cap.is_none_or(|c| c.y >= pop.y - 0.5),
+        "rolado, a ponta saiu por cima do painel e continua clicável: {cap:?}"
     );
     ph2d_panel_vector::set_stroke_paint_kind(None);
 }

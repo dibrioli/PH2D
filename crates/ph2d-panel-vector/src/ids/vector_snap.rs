@@ -34,11 +34,3 @@ pub const VECTOR_SNAP_GUIDES_OFF: NodeId = hash_node_id("vector.snap.guides.off"
 
 /// **Snap to Guides — ligado.** Nasce assim: num documento sem guias o ímã é inerte.
 pub const VECTOR_SNAP_GUIDES_ON: NodeId = hash_node_id("vector.snap.guides.on");
-
-/// **Réguas — escondidas.** ⚠️ Este interruptor governa DUAS coisas: se as faixas aparecem e
-/// se as guias podem ser ARRASTADAS. É o *lock de guias* que o Illustrator esconde num
-/// booleano de menu — aqui ele é o mesmo controle que já se vê na tela.
-pub const VECTOR_RULERS_OFF: NodeId = hash_node_id("vector.rulers.off");
-
-/// **Réguas — à mostra.**
-pub const VECTOR_RULERS_ON: NodeId = hash_node_id("vector.rulers.on");

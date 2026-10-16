@@ -49,6 +49,25 @@ pub fn frame_margin() -> f32 {
     Spacing::Lg.px() + button_px() + 2.0 * Spacing::Xs.px()
 }
 
+/// ⭐ **A margem de CIMA de um enquadramento com a ④ de `rows`** (px lógicos): a faixa que a ④ ocupa
+/// por cima da seleção (o afastamento dela, as linhas e o ar `Xs` do painel) mais o mesmo ar até à
+/// borda — nunca menos do que a [`frame_margin`]. A margem fixa contava UMA linha a `Lg`; a do vetor
+/// tem duas a [`selection_gap`] e, sem lugar em cima, era empurrada contra a borda de baixo, POR CIMA
+/// da arte (gate `the_frame_top_margin_keeps_the_strip_above_the_framed_selection`).
+#[must_use]
+pub fn frame_top_margin(rows: &[&[usize]], s: f32, pinned: bool) -> f32 {
+    let (_, bar_h) = rows_extent(rows, s);
+    if bar_h <= 0.0 {
+        return frame_margin();
+    }
+    let lead = if pinned {
+        Spacing::Md.px()
+    } else {
+        selection_gap()
+    };
+    frame_margin().max(lead + bar_h + 2.0 * Spacing::Xs.px())
+}
+
 /// O espaço entre dois GRUPOS.
 #[must_use]
 pub fn group_sep() -> f32 {

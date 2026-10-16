@@ -229,7 +229,10 @@ fn the_second_row_of_the_action_bar_sits_under_the_first_centred() {
             "a 2.ª linha centrada na 1.ª"
         );
         if pinned {
-            assert!((top.2 - (a.y + Spacing::Md.px())).abs() < 1e-3, "fixada: no topo");
+            assert!(
+                (top.2 - (a.y + Spacing::Md.px())).abs() < 1e-3,
+                "fixada: no topo"
+            );
         } else {
             assert!(
                 (mid.y - low.3 - selection_gap()).abs() < 1e-3,
@@ -238,4 +241,41 @@ fn the_second_row_of_the_action_bar_sits_under_the_first_centred() {
             );
         }
     }
+}
+
+/// ⭐ **A margem de cima livra a ④ que está à vista** — uma ou duas linhas, a seguir a seleção ou
+/// fixada: com a seleção enquadrada na margem (cima [`frame_top_margin`], o resto [`frame_margin`]) o
+/// painel da ④ cabe POR CIMA dela, com o ar `Xs` até à borda. A margem fixa contava uma linha a `Lg`
+/// (44 px); a ④ do vetor, duas linhas a [`selection_gap`], ia para a borda de baixo e tapava 7 px.
+#[test]
+fn the_frame_top_margin_keeps_the_strip_above_the_framed_selection() {
+    let a = area();
+    let (s, m) = (button_px(), frame_margin());
+    let one: [&[usize]; 2] = [&[5, 1], &[]];
+    let two: [&[usize]; 2] = [&[5, 1], &[6]];
+    for rows in [one, two] {
+        for pinned in [false, true] {
+            let top = frame_top_margin(&rows, s, pinned);
+            assert!(top >= m, "{top} abaixo da margem {m}");
+            let sel = Rect::new(a.x + m, a.y + top, a.w - 2.0 * m, a.h - top - m);
+            let strip = if pinned {
+                pinned_strip_rows(a, &rows, s)
+            } else {
+                strip_rows_at(a, sel, &rows, s, selection_gap())
+            };
+            let p = panel_of(strip).unwrap();
+            assert!(
+                p.y - a.y >= Spacing::Xs.px() - 1e-3,
+                "a ④ cola na borda de cima ({rows:?}, fixada {pinned}): {p:?}"
+            );
+            assert!(
+                p.y + p.h + Spacing::Xs.px() <= sel.y + 1e-3,
+                "a ④ tapa a seleção ({rows:?}, fixada {pinned}): {p:?} sobre {sel:?}"
+            );
+        }
+    }
+    assert!(
+        (frame_top_margin(&[&[], &[]], s, false) - m).abs() < 1e-3,
+        "sem ④, a margem de sempre"
+    );
 }

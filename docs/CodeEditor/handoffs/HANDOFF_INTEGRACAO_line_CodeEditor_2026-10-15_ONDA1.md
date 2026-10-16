@@ -97,6 +97,8 @@ Smoke do dono: *«Ctrl+S, em vez de salvar o script já existente, abre o diálo
 
 ## 8. Smoke para o DONO (a janela abre sozinha com uma cena própria)
 
+> ✅ **Smoke do dono: OK (16/10)**, depois da correção do Ctrl+S sem diálogo (`2a27b4b648`). A linha está pronta para integrar — só por ordem do dono.
+
 1. Cole no terminal: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_CODE_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke`
 2. Aparecem quatro formas: três a subir e descer (círculo azul, estrela amarela, hexágono roxo) e um quadrado cinzento parado. Na lista da esquerda (Hierarchy) clique em **Circle** (ou Star, ou Hexagon). À direita, no Inspector, procure o cartão **Script** e clique no botão **Edit script**.
 3. O que tem de acontecer: abre uma aba **bob.luau** com o texto do script. Na linha de `amplitude`, troque `1.0` por `2` e carregue **Ctrl+S**: **não abre janela nenhuma**; as três formas passam a subir mais alto sem reiniciar, o ● some do nome da aba, e a barra de baixo, à direita, diz «Reloaded · 3 objects · project not saved yet — File ▸ Save As…» (esta cena ainda não foi gravada num ficheiro: o script já está aplicado, o projeto inteiro grava-se pelo menu File ▸ Save As…; depois disso o Ctrl+S grava tudo sem perguntar e o aviso some). Depois apague um `end`, **Ctrl+S**: a cena continua a mexer com a versão anterior, a linha fica marcada com um ponto vermelho e o símbolo culpado fica sublinhado.

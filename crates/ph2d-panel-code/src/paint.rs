@@ -25,6 +25,32 @@ use ph2d_tokens::{Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, Fill, FontData, Glyph, VectorScene};
 use std::ops::Range;
 
+thread_local! {
+    static WORK: std::cell::Cell<PaintWork> = const { std::cell::Cell::new(PaintWork { row_bytes: 0, glyphs: 0 }) };
+}
+
+/// O trabalho da pintura nesta thread desde o início, sem relógio: os bytes de linha preparados
+/// (o texto mostrado de cada fila) e os glifos entregues à cena. O gate da linha longa conta-o.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PaintWork {
+    pub row_bytes: u64,
+    pub glyphs: u64,
+}
+
+#[must_use]
+pub fn paint_work() -> PaintWork {
+    WORK.with(std::cell::Cell::get)
+}
+
+fn add_work(row_bytes: usize, glyphs: usize) {
+    WORK.with(|w| {
+        let mut v = w.get();
+        v.row_bytes += row_bytes as u64;
+        v.glyphs += glyphs as u64;
+        w.set(v);
+    });
+}
+
 impl CodeView {
     /// Pinta o documento em `area` (o fundo também).
     pub fn paint(&mut self, mut frame: CodeFrame<'_>, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem, theme: &Theme) {
@@ -43,6 +69,11 @@ impl CodeView {
         self.paint_carets(&frame, scene, &pal);
         scene.pop_layer();
         self.paint_gutter(&frame, scene, &pal);
+        let head = frame.buffer.selection().primary().head;
+        let k = (frame.buffer.revision(), head, self.tab);
+        if self.status_col.is_none_or(|c| c.0 != k) {
+            self.status_col = Some((k, frame.buffer.text().display_col(head, self.tab)));
+        }
         crate::status::paint(self, &frame, scene, ts, &pal);
         self.cache.end_frame();
     }
@@ -73,6 +104,7 @@ impl CodeView {
         let mut rows = std::mem::take(&mut self.rows);
         rows.clear();
         self.folds.clear();
+        let cap = self.render_cap.max(1);
         let mut r = span.start;
         while r < span.end {
             let first = self.line_of_row(r);
@@ -81,20 +113,37 @@ impl CodeView {
                 n += 1;
             }
             self.folds.extend((frame.folds)(first..first + n));
-            let mut spans = (frame.spans)(t.byte_of_line(first)..t.line_end(first + n - 1));
-            spans.sort_by_key(|s| s.0.start);
-            let mut k = 0;
-            for i in 0..n {
-                let line = first + i;
-                let (ls, le) = (t.byte_of_line(line), t.line_end(line));
-                let pre_here = pre.filter(|(h, _)| (ls..=le).contains(h)).map(|(h, s)| (h - ls, s));
-                let dl = DisplayLine::build(&t.slice(ls..le), self.tab, pre_here);
-                while k < spans.len() && spans[k].0.end <= ls {
-                    k += 1;
+            // Cada fila mostra a linha até ao tecto (`render_cap`); os trechos de cor pedem-se por
+            // bloco de bytes contíguos — uma linha cortada fecha o bloco dela.
+            let mut i = 0;
+            while i < n {
+                let mut block: Vec<(usize, usize, usize, usize)> = Vec::new();
+                while i < n {
+                    let line = first + i;
+                    let (ls, le) = (t.byte_of_line(line), t.line_end(line));
+                    let shown = if le - ls > cap { t.floor_char(ls + cap) } else { le };
+                    block.push((r + i, ls, le, shown));
+                    i += 1;
+                    if shown < le {
+                        break;
+                    }
                 }
-                let ds = display_spans(&spans[k..], ls, le, &dl);
-                let key = self.cache.touch(ts, &dl.text, &ds, self.m.font_px);
-                rows.push(Row { line, start: ls, len: le - ls, y: self.row_y(r + i), key, dl });
+                let (bs, be) = (block[0].1, block[block.len() - 1].3);
+                let mut spans = (frame.spans)(bs..be);
+                spans.sort_by_key(|s| s.0.start);
+                let mut k = 0;
+                for (row, ls, le, shown) in block {
+                    let line = self.line_of_row(row);
+                    let pre_here = pre.filter(|(h, _)| (ls..=shown).contains(h)).map(|(h, s)| (h - ls, s));
+                    let dl = DisplayLine::build(&t.slice(ls..shown), self.tab, pre_here);
+                    add_work(dl.text.len(), 0);
+                    while k < spans.len() && spans[k].0.end <= ls {
+                        k += 1;
+                    }
+                    let ds = display_spans(&spans[k..], ls, shown, &dl);
+                    let key = self.cache.touch(ts, &dl.text, &ds, self.m.font_px);
+                    rows.push(Row { line, start: ls, len: shown - ls, cut: shown < le, y: self.row_y(row), key, dl });
+                }
             }
             r += n;
         }
@@ -185,18 +234,30 @@ impl CodeView {
     /// juntam-se por (fonte, tamanho, tinta) num `draw_glyphs` por grupo e por QUADRO, e lêem-se
     /// pelos grupos de cada corrida: o `line.items()`/`positioned_glyphs` do parley é quadrático na
     /// linha e custava 11,5 ms a 100 linhas coloridas (medido, `tests/it/cronometro.rs`).
+    /// ⛔ Só os glifos da faixa horizontal à vista (mais uma margem) vão para a cena: uma linha
+    /// comprida pinta o que se vê, não o que tem.
     fn paint_glyphs(&self, scene: &mut VectorScene, pal: &Palette) {
         let x = self.text_x0();
+        let tr = self.text_rect();
+        let margin = self.m.advance * 4.0;
+        let (left, right) = (tr.x - margin, tr.x + tr.w + margin);
         let mut batches: Vec<Batch> = Vec::new();
         for row in &self.rows {
             let Some(layout) = self.cache.peek(row.key) else { continue };
             let top = ao_pixel(row.y + self.m.text_dy);
-            for line in layout.lines() {
+            'row: for line in layout.lines() {
                 let base = line.metrics().baseline;
                 let mut off = line.metrics().offset;
                 for run in line.runs() {
                     let mut last: Option<(Ink, usize)> = None;
                     for c in run.visual_clusters() {
+                        if x + off > right {
+                            break 'row;
+                        }
+                        if x + off + c.advance() < left {
+                            off += c.advance();
+                            continue;
+                        }
                         let ink = c.first_style().brush;
                         let i = match last {
                             Some((k, i)) if k == ink => i,
@@ -211,6 +272,7 @@ impl CodeView {
                 }
             }
         }
+        add_work(0, batches.iter().map(|b| b.glyphs.len()).sum());
         for b in batches {
             draw(scene, &b.font, b.size, &b.coords, pal.ink(b.ink), b.glyphs);
         }
@@ -255,8 +317,11 @@ impl CodeView {
         let font = ph2d_text::displayed_font_px(TypeToken::Sm.px());
         let pad = Spacing::Xs.px();
         let w = label_column_width(ts, font, [label]) + pad * 2.0;
-        for f in self.folds.iter().filter(|f| f.folded && f.end > f.start) {
-            let Some(row) = self.row_of(f.start) else { continue };
+        // O «…» também no fim de uma linha mostrada só até ao tecto (`render_cap`).
+        let folded = self.folds.iter().filter(|f| f.folded && f.end > f.start).map(|f| f.start);
+        let cut = self.rows.iter().filter(|r| r.cut).map(|r| r.line);
+        for line in folded.chain(cut) {
+            let Some(row) = self.row_of(line) else { continue };
             let Some(layout) = self.cache.peek(row.key) else { continue };
             let x = self.text_x0() + geom::width(layout) + Spacing::Sm.px();
             let pill = Rect { x, y: row.y + Spacing::Xxs.px(), w, h: self.m.line_h - Spacing::Xxs.px() * 2.0 };
@@ -386,8 +451,7 @@ impl CodeView {
         let mut out = Vec::with_capacity(lines.len() + 1);
         let mut runs = Vec::with_capacity(lines.len());
         for r in self.rows.iter().filter(|r| r.line < t.line_count()) {
-            let text = t.line_string(r.line);
-            let (value, lens) = clipped(&text);
+            let (value, lens) = clipped(&crate::a11y::run_text(t, r.line));
             let id = Self::a11y_run_id(base, r.line);
             let mut node = NodeBuilder::new(Role::TextRun).bounds(f64::from(tr.x), f64::from(r.y), f64::from(tr.w), f64::from(self.m.line_h)).build();
             node.set_value(value);

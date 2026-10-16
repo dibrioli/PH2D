@@ -48,6 +48,11 @@ impl Buffer {
         self.history.mark_saved();
     }
 
+    /// O tecto de bytes do histórico ([`crate::HISTORY_BYTES_MAX`] por omissão).
+    pub fn set_history_cap(&mut self, bytes: usize) {
+        self.history.set_cap(bytes);
+    }
+
     pub fn seal_history(&mut self) {
         self.history.seal();
     }

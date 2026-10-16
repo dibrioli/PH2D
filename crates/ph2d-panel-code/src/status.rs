@@ -33,8 +33,17 @@ impl StatusLine {
     pub fn of(frame: &CodeFrame<'_>) -> Self {
         let t = frame.buffer.text();
         let head = frame.buffer.selection().primary().head;
+        Self::at(frame, t.display_col(head, frame.tab.max(1)))
+    }
+
+    /// Com a coluna (0-based) do cursor já sabida (a pintura guarda-a por revisão e cursor: numa
+    /// linha de 1 MB contá-la custa a linha).
+    #[must_use]
+    pub fn at(frame: &CodeFrame<'_>, col0: usize) -> Self {
+        let t = frame.buffer.text();
+        let head = frame.buffer.selection().primary().head;
         let line = t.line_of_byte(head) + 1;
-        let col = t.display_col(head, frame.tab.max(1)) + 1;
+        let col = col0 + 1;
         let position = tr_with("code.status.position", &[("line", &line), ("col", &col)]);
         let errors = frame.problems.iter().filter(|p| p.severity == Severity::Error).count();
         let warnings = frame.problems.len() - errors;
@@ -82,7 +91,7 @@ pub(crate) fn paint(view: &CodeView, frame: &CodeFrame<'_>, scene: &mut VectorSc
     let bar = Rect { x: a.x, y: a.y + a.h - h, w: a.w, h };
     scene.fill_rect(rect_to_vello(bar), pal.status_bg);
     scene.fill_rect(rect_to_vello(Rect { h: StrokeToken::Thin.px(), ..bar }), pal.border);
-    let s = StatusLine::of(frame);
+    let s = StatusLine::at(frame, view.status_col.map_or(0, |c| c.1));
     let font = ph2d_text::displayed_font_px(TypeToken::Sm.px());
     let y = bar.y + (h - font) * 0.5;
     let pad = Spacing::Md.px();

@@ -20,12 +20,15 @@ pub mod style;
 mod view;
 
 pub use a11y::RUN_CHARS;
-pub use console::{ConsoleHit, ConsoleRow, ConsoleView, title_text as console_title_text};
+pub use console::{
+    ConsoleHit, ConsoleRow, ConsoleSource, ConsoleView, title_text as console_title_text,
+};
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{Badge, CodeFrame, FoldMark, Problem, Severity};
 pub use geom::Column;
 pub use line_cache::LineCache;
 pub use metrics::Metrics;
+pub use paint::{PaintWork, paint_work};
 pub use script_list::{ListField, ListHit, ListRow, ScriptList, ScriptListView};
 pub use status::{StatusLine, Tone};
 pub use style::Ink;

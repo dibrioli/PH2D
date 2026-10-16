@@ -59,3 +59,23 @@ fn um_erro_de_runtime_abre_o_console_e_a_linha_leva_o_cursor() {
         "o clique leva o cursor à linha 5"
     );
 }
+
+/// ⛔ O registo por aba tem o MESMO tecto em bytes que o do motor (item 8 da auditoria): sem ele,
+/// o console de UMA aba guardava tudo o que o motor já tinha deitado fora por quadro.
+#[test]
+fn o_console_da_aba_tem_tecto_em_bytes() {
+    use ph2d_script::{CONSOLE_BYTES_MAX, CONSOLE_LINE_BYTES_MAX};
+    let longo = "function update(self, dt)\n  print(string.rep(\"x\", 9000))\nend\n";
+    let (m, ids) = Mesa::new(&[("longo.luau", longo)]);
+    let mut m = m.com_cena(ids[0], 1_000);
+    m.pede(ids[0]);
+    for _ in 0..5 {
+        m.cena();
+        m.quadro();
+    }
+    let linhas = m.docs().console_texts(ids[0]);
+    let total: usize = linhas.iter().map(String::len).sum();
+    assert!(linhas.iter().all(|l| l.len() <= CONSOLE_LINE_BYTES_MAX + '…'.len_utf8()));
+    assert!(total <= CONSOLE_BYTES_MAX, "a aba guardou {total} bytes");
+    assert!(linhas.len() < 5_000, "controlo: o tecto em bytes deitou linhas fora");
+}

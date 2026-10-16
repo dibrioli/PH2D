@@ -415,3 +415,30 @@ fn abrir_outro_projecto_nao_relata_uma_recarga() {
         "o selo diria «Reloaded» sobre um projecto acabado de abrir"
     );
 }
+
+/// ⛔ **Um `print` longo não retém gigabytes** (auditoria do fecho, item 8): o tecto de linhas foi
+/// medido com textos de 8 B. Cada linha corta-se ao tecto por linha (com `…`) e o console inteiro
+/// ao tecto em bytes — 1 000 objectos × 5 passos de 5 000 bytes passariam os dois.
+#[test]
+fn um_print_longo_corta_a_linha_e_o_console_tem_tecto_em_bytes() {
+    use ph2d_script::{CONSOLE_BYTES_MAX, CONSOLE_LINE_BYTES_MAX};
+    let mut c = cena(
+        "function update(self, dt) print(string.rep(\"é\", 2500)) end\n",
+        1_000,
+    );
+    for _ in 0..5 {
+        c.quadro();
+    }
+    let linhas = c.host.drain_console();
+    let total: usize = linhas.iter().map(|l| l.text.len()).sum();
+    assert!(
+        linhas
+            .iter()
+            .all(|l| l.text.len() <= CONSOLE_LINE_BYTES_MAX + '…'.len_utf8() && l.text.ends_with('…')),
+        "uma linha passou do tecto por linha: {}",
+        linhas.iter().map(|l| l.text.len()).max().unwrap_or(0)
+    );
+    assert!(total <= CONSOLE_BYTES_MAX, "{total} bytes retidos > {CONSOLE_BYTES_MAX}");
+    assert!(c.host.console_dropped() > 0, "controlo: o tecto em bytes deitou linhas fora");
+    assert_eq!(linhas.len() as u64 + c.host.console_dropped(), 5_000);
+}

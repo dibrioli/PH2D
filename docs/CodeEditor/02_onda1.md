@@ -237,6 +237,68 @@ bancada, e `2.1` ms com as ~1 000 `ph2d.property` de topo vivas. Ainda não se m
 chamadas de topo o encarecem, e esse é o primeiro passo. Só depois se escolhe a cura: tirar o reparse da
 tecla, ou o que essa medição apontar.
 
+## Medições do fecho (auditoria, 15/10)
+
+Os tectos que a auditoria do fecho pediu (itens 8, 9, 11). Cada um diz de que recurso é. Perfil `smoke`,
+sem placa (o custo é o da CPU a pôr a cena; o raster na placa fica fora). `loadavg` `12.6 → 11.9`
+(outras linhas a compilar; não se esperou calma). Variantes no MESMO processo, 10 rondas × blocos de 5,
+rodadas; resumo = o MÍNIMO. Sondas: `ph2d-panel-code` `tests/it/medicoes_do_fecho.rs` (A, C) e
+`ph2d-code-buffer` `tests/it/agrupamento.rs::mede_os_bytes_por_passo_do_historico` (D), as duas `#[ignore]`.
+
+**A — uma linha do console** (`CONSOLE_LINE_BYTES_MAX`, recurso: o QUADRO). O console pinta cada linha à
+vista inteira (o `paint_text` molda o texto todo para o elidir). Console aberto (1000×300), todas as filas
+com `L` bytes:
+
+| `L` | 128 B | 1 KiB | **4 KiB** | 16 KiB | 64 KiB |
+|---|---|---|---|---|---|
+| min | 107 µs | 213 µs | **264 µs** | 586 µs | 1 519 µs |
+| p50 | 108 µs | 219 µs | **289 µs** | 635 µs | 1 676 µs |
+
+Escolha: **4 KiB**. O console cheio de linhas no tecto custa `0.26` ms (3 % de um quadro de 120 Hz); a 16
+KiB já custa o dobro e a 64 KiB `1.5` ms. Nenhum ecrã mostra mais de ~500 colunas de uma linha do console.
+
+**B — o console inteiro** (`CONSOLE_BYTES_MAX`, recurso: a MEMÓRIA). O tecto de linhas (65 536) foi medido
+com textos de 8 B (`~160 B/linha` ⇒ `~10.5 MB` cheio). Sem tecto em bytes, `print(string.rep("x", 100000))`
+em cada passo retinha `65 536 × 100 KB = 6.5 GB` (o registo de cada aba repetia-o). Escolha: **16 MiB** de
+texto (o console cheio de linhas curtas arredondado para cima): o `print` normal continua limitado pelas
+linhas; o longo pára aqui, no motor e no registo de cada aba. Gates:
+`um_print_longo_corta_a_linha_e_o_console_tem_tecto_em_bytes`, `o_console_da_aba_tem_tecto_em_bytes`.
+
+**C — uma linha muito longa** (`LINE_RENDER_BYTES_MAX`, recurso: o QUADRO). Antes, cada quadro preparava
+a linha inteira e entregava à cena TODOS os glifos dela (1 MB colado = `1 048 598` bytes e `932 090` glifos
+por quadro, gate `uma_linha_de_1_mb_colada_custa_por_quadro_o_mesmo_que_uma_de_64_kb`). Agora a fila mostra
+a linha até ao tecto (o resto acaba num «…») e só os glifos da faixa à vista vão para a cena. O pior caso
+— 40 filas à vista, TODAS linhas de 200 KB (um ficheiro minificado) — por tecto `K`:
+
+| `K` | **2 000 B** | 5 000 B | 10 000 B | 20 000 B |
+|---|---|---|---|---|
+| quente (quadro parado) | **1.97 ms** | 4.64 ms | 8.86 ms | 17.4 ms |
+| fria (rolar/editar: molda tudo) | **2.53 ms** | 5.85 ms | 11.3 ms | 22.2 ms |
+
+Escolha: **2 000 bytes**. É o único da tabela em que o pior caso cabe no orçamento por tecla (p99.9 ≤ 5 ms)
+com folga; 2 000 colunas são ~4× a largura de um ecrã 4K na fonte do editor. (O VS Code pára em 10 000
+caracteres; aqui 10 000 custa 8.9 ms parado — mais que um quadro inteiro de 120 Hz.) O custo quente ainda
+cresce com `K` porque cada quadro prepara cada fila à vista (texto mostrado, cores, a chave da cache): para
+o baixar sem baixar o tecto, a fila preparada tinha de ficar em cache entre quadros — aberto.
+
+**D — o histórico de desfazer** (`HISTORY_BYTES_MAX`, recurso: a MEMÓRIA, por documento). Bytes por passo,
+pela MESMA conta que o tecto lê (`History::bytes`):
+
+| gesto | escrever (por tecla) | Enter | colar 1 KiB | colar 64 KiB | colar 1 MiB |
+|---|---|---|---|---|---|
+| bytes | 194 | 297 | 1 320 | 65 832 | 1 048 872 |
+
+Um dia inteiro de escrita contínua (8 h × 300 teclas/min = 144 000 teclas) são `27.9 MB`. Escolha: **32
+MiB** por documento — o dia cabe; passado o tecto saem os passos mais ANTIGOS (o estado salvo que saia
+deixa o texto sujo, nunca «limpo» por engano). Os documentos fechados com ● largam a árvore da gramática e
+a cache de layouts e guardam só o texto e o histórico (`o_estacionado_larga_a_arvore_e_a_cache_e_guarda_
+texto_e_historico`).
+
+**E — a busca** (item 10, sem relógio): fechada lia o ficheiro inteiro a cada tecla (`215 289` bytes por
+tecla a 7 500 linhas); fechada agora lê `0`, e aberta segue as edições (`find_update`, igual à busca do zero
+num traço aleatório) — `164` bytes por tecla a 50 e a 7 500 linhas
+(`a_busca_por_tecla_nao_cresce_com_o_ficheiro_e_fechada_nao_custa_nada`).
+
 ## Fica para a Onda 2 (com o porquê)
 
 - Textos escritos à mão para os erros frequentes (retorno do dono, parte 2): pedem a medição de frequência do plano §6 Onda 2.

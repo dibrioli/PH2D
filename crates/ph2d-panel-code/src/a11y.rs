@@ -44,6 +44,21 @@ pub(crate) fn clipped(line: &str) -> (String, Vec<u8>) {
     (value, lens)
 }
 
+/// O começo da linha `line` que basta para [`RUN_CHARS`] unidades — nunca a linha inteira (uma
+/// linha de 1 MB custaria 1 MB por quadro).
+pub(crate) fn run_text(t: &ph2d_code_buffer::Text, line: usize) -> String {
+    let (ls, le) = (t.byte_of_line(line), t.line_end(line));
+    let mut take = RUN_CHARS * 4;
+    loop {
+        let end = if le - ls > take { t.floor_char(ls + take) } else { le };
+        let s = t.slice(ls..end);
+        if end == le || units(&s).take(RUN_CHARS).count() >= RUN_CHARS {
+            return s;
+        }
+        take *= 2;
+    }
+}
+
 /// A posição de `byte` nos nós visíveis; fora da vista prende-se à primeira/última linha.
 fn position(buffer: &Buffer, lines: &[usize], base: NodeId, byte: usize) -> Option<TextPosition> {
     let t = buffer.text();
@@ -53,10 +68,12 @@ fn position(buffer: &Buffer, lines: &[usize], base: NodeId, byte: usize) -> Opti
         (first, 0)
     } else if line > last || !lines.contains(&line) {
         let l = if line > last { last } else { *lines.iter().rev().find(|&&l| l < line).unwrap_or(&first) };
-        (l, units(&t.line_string(l)).take(RUN_CHARS).count())
+        (l, units(&run_text(t, l)).take(RUN_CHARS).count())
     } else {
         let start = t.byte_of_line(line);
-        (line, units(&t.slice(start..byte)).take(RUN_CHARS).count())
+        let run = run_text(t, line);
+        let upto = (byte - start).min(run.len());
+        (line, units(&run[..upto]).take(RUN_CHARS).count())
     };
     Some(TextPosition { node: CodeView::a11y_run_id(base, line).into(), character_index: index })
 }

@@ -101,3 +101,40 @@ fn goto_line_40() {
         "além do fim encosta na última"
     );
 }
+
+/// ⭐ **A busca que segue as edições = a busca do zero** (item 10 da auditoria): um traço aleatório
+/// de trocas multicursor sobre texto periódico (`aaaa`, onde o casamento guloso muda de fase),
+/// acentos e maiúsculas, com as quatro combinações de opções.
+#[test]
+fn seguir_as_edicoes_da_o_mesmo_que_buscar_do_zero() {
+    use ph2d_code_buffer::{Change, ChangeSet, EditKind, find_update};
+    let mut rng = fastrand::Rng::with_seed(0xF1ED);
+    let pedacos = ["a", "aa", "A", "b", " ", "\n", "é", "É", "vida", "Vida_", "_", "ç", "😀"];
+    let agulhas = ["a", "aa", "aaa", "vida", "é", "ab", "a a"];
+    for ronda in 0..300 {
+        let texto: String = (0..rng.usize(0..40)).map(|_| pedacos[rng.usize(..pedacos.len())]).collect();
+        let mut b = Buffer::new(&texto);
+        let needle = agulhas[rng.usize(..agulhas.len())];
+        let opts = FindOptions { case_sensitive: rng.bool(), whole_word: rng.bool() };
+        let mut m = find_all(b.text(), needle, opts);
+        for passo in 0..15 {
+            let t = b.text().to_string();
+            let fr: Vec<usize> = t.char_indices().map(|(i, _)| i).chain([t.len()]).collect();
+            let mut changes = Vec::new();
+            for _ in 0..rng.usize(1..4) {
+                let (x, y) = (fr[rng.usize(..fr.len())], fr[rng.usize(..fr.len())]);
+                let insert: String = (0..rng.usize(0..3)).map(|_| pedacos[rng.usize(..pedacos.len())]).collect();
+                changes.push(Change { range: x.min(y)..x.max(y), insert });
+            }
+            let Some(cs) = ChangeSet::new(changes) else { continue };
+            let edits = b.apply(cs, None, EditKind::Other);
+            find_update(b.text(), needle, opts, &mut m, &edits);
+            assert_eq!(
+                m,
+                find_all(b.text(), needle, opts),
+                "ronda {ronda} passo {passo}: {needle:?} {opts:?} em {:?}",
+                b.text().to_string()
+            );
+        }
+    }
+}

@@ -2,8 +2,8 @@
 //! recarga), guardado por `ScriptId` mesmo com a aba fechada, e se ele está aberto.
 
 use ph2d_i18n::tr_with;
-use ph2d_panel_code::{ConsoleRow, Tone};
-use ph2d_script::{CONSOLE_LINES_MAX, ConsoleKind, ConsoleLine};
+use ph2d_panel_code::{ConsoleRow, ConsoleSource, Tone};
+use ph2d_script::{CONSOLE_BYTES_MAX, CONSOLE_LINES_MAX, ConsoleKind, ConsoleLine};
 use std::collections::VecDeque;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -13,11 +13,15 @@ struct Entry {
     line: Option<u32>,
 }
 
-/// As linhas de um script. O tecto é o do console do motor ([`CONSOLE_LINES_MAX`], medido): a mais
-/// antiga sai primeiro.
+/// As linhas de um script. Os tectos são os do console do motor ([`CONSOLE_LINES_MAX`] linhas e
+/// [`CONSOLE_BYTES_MAX`] bytes de texto, medidos; cada linha já chega cortada ao tecto por linha):
+/// a mais antiga sai primeiro. Os erros e os bytes contam-se ao entrar e sair — o título e o tecto
+/// não percorrem as linhas.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Store {
     entries: VecDeque<Entry>,
+    bytes: usize,
+    errors: usize,
     pub open: bool,
 }
 
@@ -45,9 +49,14 @@ impl Store {
                 (text, Tone::Error, d.line, false)
             }
         };
-        if self.entries.len() >= CONSOLE_LINES_MAX {
-            self.entries.pop_front();
+        while !self.entries.is_empty()
+            && (self.entries.len() >= CONSOLE_LINES_MAX
+                || self.bytes + text.len() > CONSOLE_BYTES_MAX)
+        {
+            self.pop_front();
         }
+        self.bytes += text.len();
+        self.errors += usize::from(tone == Tone::Error);
         self.entries.push_back(Entry { text, tone, line });
         if runtime {
             self.open = true;
@@ -55,22 +64,20 @@ impl Store {
         runtime
     }
 
-    pub fn rows(&self) -> Vec<ConsoleRow> {
-        self.entries
-            .iter()
-            .map(|e| ConsoleRow {
-                text: e.text.clone(),
-                tone: e.tone,
-                line: e.line,
-            })
-            .collect()
+    fn pop_front(&mut self) {
+        if let Some(e) = self.entries.pop_front() {
+            self.bytes -= e.text.len();
+            self.errors -= usize::from(e.tone == Tone::Error);
+        }
     }
 
     pub fn errors(&self) -> usize {
-        self.entries
-            .iter()
-            .filter(|e| e.tone == Tone::Error)
-            .count()
+        self.errors
+    }
+
+    /// Os bytes de texto guardados (o tecto [`CONSOLE_BYTES_MAX`] lê-os).
+    pub fn bytes(&self) -> usize {
+        self.bytes
     }
 
     pub fn len(&self) -> usize {
@@ -83,10 +90,26 @@ impl Store {
 
     pub fn clear(&mut self) {
         self.entries.clear();
+        (self.bytes, self.errors) = (0, 0);
     }
 
     /// O texto de cada linha (os testes leem o que a aba mostra).
     pub fn texts(&self) -> Vec<String> {
         self.entries.iter().map(|e| e.text.clone()).collect()
+    }
+}
+
+impl ConsoleSource for Store {
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    fn row(&self, i: usize) -> ConsoleRow<'_> {
+        let e = &self.entries[i];
+        ConsoleRow {
+            text: &e.text,
+            tone: e.tone,
+            line: e.line,
+        }
     }
 }

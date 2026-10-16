@@ -94,3 +94,46 @@ fn ctrl_g_40_poe_o_cursor_na_40_e_a_vista_mostra_a() {
             .contains(&39)
     );
 }
+
+/// O trabalho da busca numa tecla escrita no TEXTO (tecla + quadro pintado): bytes lidos pela busca.
+/// Nos dois casos procurou-se `vida`; `aberta = false` fecha a barra com o Esc antes das teclas.
+fn bytes_por_tecla(texto: &str, aberta: bool) -> u64 {
+    let (mut m, ids) = Mesa::new(&[("bob.luau", texto)]);
+    let id = ids[0];
+    m.pede(id);
+    m.tecla(id, Key::Char('f'), ctrl(), Some("f"));
+    m.escreve(id, "vida");
+    m.pinta(id);
+    if aberta {
+        // A barra fica aberta e o teclado volta ao texto (um clique no código).
+        let (x, y) = (crate::AREA.x + crate::AREA.w * 0.6, crate::AREA.y + crate::AREA.h * 0.4);
+        m.clica(id, x, y, Modifiers::default());
+    } else {
+        m.tecla(id, Key::Escape, Modifiers::default(), None);
+    }
+    m.pinta(id);
+    let antes = ph2d_code_buffer::find_bytes_scanned();
+    const TECLAS: u64 = 5;
+    for c in ['x', 'w', 'm', 'z', 'k'] {
+        m.tecla(id, Key::Other, Modifiers::default(), Some(&c.to_string()));
+        m.pinta(id);
+    }
+    if aberta {
+        assert!(m.docs().find_count_text(id).is_some(), "controlo: a barra continua aberta");
+    }
+    (ph2d_code_buffer::find_bytes_scanned() - antes) / TECLAS
+}
+
+/// ⭐ **Gate de custo (sem relógio), item 10 da auditoria:** a busca FECHADA não lê nada por tecla;
+/// ABERTA, o que ela lê por tecla não cresce com o ficheiro (a busca segue as edições em vez de
+/// varrer o texto inteiro a cada revisão).
+#[test]
+fn a_busca_por_tecla_nao_cresce_com_o_ficheiro_e_fechada_nao_custa_nada() {
+    let (pequeno, grande) = (linhas(50), linhas(7_500));
+    let fechada = bytes_por_tecla(&grande, false);
+    let (ap, ag) = (bytes_por_tecla(&pequeno, true), bytes_por_tecla(&grande, true));
+    eprintln!("busca por tecla: fechada {fechada} B · aberta {ap} B (50 linhas) · {ag} B (7 500)");
+    assert_eq!(fechada, 0, "a busca fechada leu {fechada} bytes por tecla");
+    assert!(ap > 0, "controlo: a régua conta a busca aberta");
+    assert!(ag <= ap * 2, "aberta: {ap} B por tecla a 50 linhas contra {ag} B a 7 500");
+}

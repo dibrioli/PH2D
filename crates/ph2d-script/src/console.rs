@@ -24,6 +24,35 @@ use crate::diagnostic::ScriptDiagnostic;
 /// ~10,5 MB cheio. A mais antiga sai primeiro e conta em [`Console::dropped`].
 pub const CONSOLE_LINES_MAX: usize = 65_536;
 
+/// **Bytes de TEXTO guardados por ler** (todas as linhas). ⚠️ **De que recurso é:** da MEMÓRIA,
+/// como o de cima — que só conta linhas e foi medido com textos de 8 B: `print(string.rep("x",
+/// 100000))` em cada passo encheria as 65 536 linhas com 6,5 GB. Este tecto é o do console cheio de
+/// linhas curtas medido acima (~10,5 MB) arredondado para cima: o `print` normal continua limitado
+/// pelas LINHAS, e o longo nunca passa daqui. A tabela: `docs/CodeEditor/02_onda1.md` §Medições do
+/// fecho.
+pub const CONSOLE_BYTES_MAX: usize = 16 << 20;
+
+/// **Bytes de texto de UMA linha**; o resto corta-se (por fronteira de carácter) e a linha acaba
+/// em `…`. ⚠️ **De que recurso é:** do QUADRO — o console pinta cada linha à vista inteira (o
+/// `paint_text` molda o texto todo para o elidir). Medido (`docs/CodeEditor/02_onda1.md` §Medições
+/// do fecho, A): o console aberto com todas as linhas no tecto custa 0.26 ms; a 16 KiB 0.59, a 64 KiB
+/// 1.5 ms.
+pub const CONSOLE_LINE_BYTES_MAX: usize = 4 << 10;
+
+/// O texto de uma linha cortado ao tecto [`CONSOLE_LINE_BYTES_MAX`] (com `…` no fim).
+#[must_use]
+pub fn clip_console_text(mut text: String) -> String {
+    if text.len() > CONSOLE_LINE_BYTES_MAX {
+        let mut cut = CONSOLE_LINE_BYTES_MAX;
+        while !text.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        text.truncate(cut);
+        text.push('…');
+    }
+    text
+}
+
 /// **De que espécie é uma linha.**
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConsoleKind {
@@ -50,6 +79,8 @@ pub struct ConsoleLine {
 #[derive(Default)]
 struct Inner {
     lines: VecDeque<ConsoleLine>,
+    /// Os bytes de texto em `lines` (o tecto [`CONSOLE_BYTES_MAX`]).
+    bytes: usize,
     dropped: u64,
     speaker: (ScriptId, Option<Entity>),
 }
@@ -63,13 +94,20 @@ impl Console {
         self.0.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    /// Empurra uma linha; cheio ⇒ a mais antiga sai.
-    pub(crate) fn push(&self, line: ConsoleLine) {
+    /// Empurra uma linha (cortada ao tecto por linha); cheio, em linhas ou em bytes ⇒ as mais
+    /// antigas saem.
+    pub(crate) fn push(&self, mut line: ConsoleLine) {
+        line.text = clip_console_text(line.text);
         let mut g = self.lock();
-        if g.lines.len() >= CONSOLE_LINES_MAX {
-            g.lines.pop_front();
+        while !g.lines.is_empty()
+            && (g.lines.len() >= CONSOLE_LINES_MAX || g.bytes + line.text.len() > CONSOLE_BYTES_MAX)
+        {
+            if let Some(old) = g.lines.pop_front() {
+                g.bytes -= old.text.len();
+            }
             g.dropped += 1;
         }
+        g.bytes += line.text.len();
         g.lines.push_back(line);
     }
 
@@ -109,7 +147,9 @@ impl Console {
 
     /// Tira todas as linhas por ler, da mais antiga à mais nova.
     pub fn drain(&self) -> Vec<ConsoleLine> {
-        self.lock().lines.drain(..).collect()
+        let mut g = self.lock();
+        g.bytes = 0;
+        g.lines.drain(..).collect()
     }
 
     /// Quantas linhas o tecto já deitou fora (desde o arranque).
@@ -145,11 +185,17 @@ pub(crate) fn wire_print(lua: &Lua, console: &Console) -> mlua::Result<()> {
     let print = lua.create_function(move |lua, args: MultiValue| -> mlua::Result<()> {
         let mut text = String::new();
         for (i, v) in args.into_iter().enumerate() {
+            // Passado o tecto por linha o resto nem se copia (o `push` corta e põe o `…`).
+            if text.len() > CONSOLE_LINE_BYTES_MAX {
+                break;
+            }
             if i > 0 {
                 text.push('\t');
             }
             let s: mlua::LuaString = tostring.call(v)?;
-            text.push_str(&s.to_string_lossy());
+            let bytes = s.as_bytes();
+            let room = (CONSOLE_LINE_BYTES_MAX + 4 - text.len()).min(bytes.len());
+            text.push_str(&String::from_utf8_lossy(&bytes[..room]));
         }
         if let Some(c) = of(lua) {
             let (script, entity) = c.lock().speaker;

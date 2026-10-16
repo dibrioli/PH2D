@@ -6,6 +6,7 @@ mod clique;
 mod cronometro;
 mod estado;
 mod ligaduras;
+mod medicoes_do_fecho;
 mod sublinhado;
 mod virtualizacao;
 

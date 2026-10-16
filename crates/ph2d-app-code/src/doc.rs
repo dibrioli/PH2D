@@ -90,6 +90,24 @@ impl CodeDoc {
         }
     }
 
+    /// Fecha com alterações por salvar: fica só o texto e o histórico ([`crate::docs::Parked`]).
+    pub fn park(self) -> crate::docs::Parked {
+        crate::docs::Parked {
+            title: self.title,
+            buffer: self.buffer,
+            synced: self.synced,
+        }
+    }
+
+    /// Reabre um estacionado: a gramática e a vista refazem-se do texto.
+    pub fn unpark(script: ScriptId, p: crate::docs::Parked) -> Self {
+        let mut d = Self::new(script, &p.title, "");
+        d.syntax = Syntax::new(p.buffer.text());
+        d.buffer = p.buffer;
+        d.synced = p.synced;
+        d
+    }
+
     /// A gramática segue `edits` (as do `Buffer` — o `AutoEdit` já a avança sozinho) e as dobras
     /// fechadas andam com o texto.
     pub fn edited(&mut self, edits: &[TextEdit], syntax_too: bool) {
@@ -105,6 +123,7 @@ impl CodeDoc {
             }
         }
         self.folds.edited(edits, self.buffer.text());
+        self.find.follow(&self.buffer, edits);
     }
 
     fn derive(&mut self) {
@@ -249,7 +268,9 @@ impl CodeDoc {
         let problems = self.problems();
         let closed = self.folds.marks(self.buffer.text());
         let bracket = self.bracket();
-        self.find.refresh(&self.buffer);
+        if self.find.open {
+            self.find.refresh(&self.buffer);
+        }
         let preedit = self.preedit.as_ref().map(|(s, _)| s.as_str());
         let Self {
             buffer,
@@ -299,9 +320,8 @@ impl CodeDoc {
             let bar = self.find.bar();
             self.find_view.paint(&bar, r, scene, ts, theme);
         }
-        let rows = console.rows();
         self.console_view.paint(
-            &rows,
+            console,
             console.open,
             console.errors(),
             console_r,

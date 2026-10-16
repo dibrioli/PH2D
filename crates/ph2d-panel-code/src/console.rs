@@ -12,13 +12,23 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{LineHeight, ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
-/// Uma linha do console, já composta.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ConsoleRow {
-    pub text: String,
+/// Uma linha do console, já composta (emprestada de quem a guarda: pintar não copia nada).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ConsoleRow<'a> {
+    pub text: &'a str,
     pub tone: Tone,
     /// A linha (1-based) do script a que o clique leva.
     pub line: Option<u32>,
+}
+
+/// As linhas de um console, por índice: a pintura só pede as que estão à vista (e nenhuma com o
+/// console fechado).
+pub trait ConsoleSource {
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+    fn row(&self, i: usize) -> ConsoleRow<'_>;
 }
 
 /// Onde caiu um clique no console.
@@ -98,7 +108,7 @@ impl ConsoleView {
     #[allow(clippy::too_many_arguments)]
     pub fn paint(
         &mut self,
-        rows: &[ConsoleRow],
+        rows: &dyn ConsoleSource,
         open: bool,
         errors: usize,
         area: Rect,
@@ -170,7 +180,7 @@ impl ConsoleView {
         }
         for (k, i) in (start..end).enumerate() {
             let r = Rect::new(body.x, body.y + k as f32 * h, body.w, h);
-            let row = &rows[i];
+            let row = rows.row(i);
             let color = match row.tone {
                 Tone::Plain | Tone::Success => ui.text1,
                 Tone::Warning => ui.warn,
@@ -182,7 +192,7 @@ impl ConsoleView {
             chrome::label_in(
                 scene,
                 ts,
-                &row.text,
+                row.text,
                 Rect::new(r.x + pad, r.y, (r.w - pad * 2.0).max(0.0), r.h),
                 color,
             );

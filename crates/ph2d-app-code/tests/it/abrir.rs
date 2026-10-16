@@ -82,3 +82,24 @@ fn fechar_com_alteracoes_guarda_o_texto_e_reabre_com_ele() {
     m.docs().close(ids[0].0);
     assert!(!m.docs().is_parked(ids[0]));
 }
+
+/// ⛔ **O estacionado guarda só o texto e o histórico** (auditoria do fecho, item 11): a árvore da
+/// gramática e a cache de layouts largam-se ao fechar (refazem-se ao reabrir); o desfazer volta com
+/// ele.
+#[test]
+fn o_estacionado_larga_a_arvore_e_a_cache_e_guarda_texto_e_historico() {
+    use ph2d_editor_core::doc_surface::Key;
+    use ph2d_host::Modifiers;
+    let (mut m, ids) = Mesa::new(&[("bob.luau", BOB)]);
+    m.pede(ids[0]);
+    m.escreve(ids[0], "x");
+    m.pinta(ids[0]);
+    m.docs().close(ids[0].0);
+    let p = m.docs().parked_footprint(ids[0]).expect("estacionado");
+    assert_eq!((p.layouts, p.tree), (0, false), "o estacionado segura {p:?}");
+    assert!(p.undo_steps > 0 && p.text_bytes > BOB.len(), "{p:?}");
+    m.pede(ids[0]);
+    m.tecla(ids[0], Key::Char('z'), crate::ctrl(), Some("z"));
+    assert_eq!(m.docs().text_of(ids[0]).as_deref(), Some(BOB), "o desfazer voltou com ele");
+    let _ = Modifiers::default();
+}

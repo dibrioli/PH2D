@@ -14,8 +14,10 @@ mod text;
 
 pub use buffer::{Buffer, Edits};
 pub use change::{Assoc, Change, ChangeSet, TextEdit};
-pub use find::{find_all, goto_line, replace_all, replace_one, FindOptions};
-pub use history::{EditKind, History};
+pub use find::{
+    find_all, find_bytes_scanned, find_update, goto_line, replace_all, replace_one, FindOptions,
+};
+pub use history::{EditKind, History, HISTORY_BYTES_MAX};
 pub use motion::{is_word_char, word_at, word_left, word_right, Motion};
 pub use selection::{Range, Selection};
 pub use text::{display_width, normalize_newlines, Point, Text};

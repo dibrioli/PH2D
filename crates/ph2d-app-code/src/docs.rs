@@ -34,12 +34,23 @@ pub enum SaveKind {
     SaveAs,
 }
 
+/// O que um documento estacionado segura (a sonda dos testes).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ParkedFootprint {
+    pub text_bytes: usize,
+    pub undo_steps: usize,
+    /// Layouts de linha na cache da vista.
+    pub layouts: usize,
+    /// Segura a árvore da gramática.
+    pub tree: bool,
+}
+
 /// O id do nó `Document` da aba `id` (os `TextRun` vêm a seguir, um por linha).
 const A11Y_SALT: u64 = 0xC0DE_0000_0000_0000;
 
 pub struct CodeDocs {
     pub(crate) docs: Vec<CodeDoc>,
-    pub(crate) parked: BTreeMap<ScriptId, CodeDoc>,
+    pub(crate) parked: BTreeMap<ScriptId, Parked>,
     pub(crate) consoles: BTreeMap<ScriptId, Store>,
     pub(crate) focus: Option<u64>,
     /// A área da aba no último quadro (o rato pergunta por ela).
@@ -84,7 +95,22 @@ impl Default for CodeDocs {
     }
 }
 
+/// ⭐ **Um documento fechado com alterações por salvar** — só o texto (com a seleção e o histórico de
+/// desfazer, no `Buffer`) e o que a biblioteca tinha; a árvore da gramática, a cache de layouts, a
+/// busca e a vista largam-se ao fechar e refazem-se ao reabrir ([`CodeDoc::unpark`]).
+pub(crate) struct Parked {
+    pub title: String,
+    pub buffer: ph2d_code_buffer::Buffer,
+    pub synced: String,
+}
+
 impl CodeDocs {
+    /// Os textos abertos e os estacionados: `(script, título, buffer)`.
+    fn buffers(&self) -> impl Iterator<Item = (ScriptId, &str, &ph2d_code_buffer::Buffer)> {
+        let open = self.docs.iter().map(|d| (d.script, d.title.as_str(), &d.buffer));
+        open.chain(self.parked.iter().map(|(id, p)| (*id, p.title.as_str(), &p.buffer)))
+    }
+
     pub(crate) fn doc(&mut self, id: u64) -> Option<&mut CodeDoc> {
         self.docs.iter_mut().find(|d| d.script.0 == id)
     }
@@ -123,11 +149,9 @@ impl CodeDocs {
             return false;
         }
         let unsaved: Vec<(String, String)> = self
-            .docs
-            .iter()
-            .chain(self.parked.values())
-            .filter(|d| d.buffer.is_dirty())
-            .map(|d| (d.title.clone(), d.buffer.text().to_string()))
+            .buffers()
+            .filter(|d| d.2.is_dirty())
+            .map(|d| (d.1.to_owned(), d.2.text().to_string()))
             .collect();
         self.docs.clear();
         self.parked.clear();
@@ -168,10 +192,10 @@ impl CodeDocs {
     /// estava; senão nasce do texto da biblioteca.
     pub fn open(&mut self, id: ScriptId, name: &str, text: &str) {
         if !self.docs.iter().any(|d| d.script == id) {
-            let doc = self
-                .parked
-                .remove(&id)
-                .unwrap_or_else(|| CodeDoc::new(id, name, text));
+            let doc = match self.parked.remove(&id) {
+                Some(p) => CodeDoc::unpark(id, p),
+                None => CodeDoc::new(id, name, text),
+            };
             self.docs.push(doc);
         }
         self.focus = Some(id.0);
@@ -248,6 +272,17 @@ impl CodeDocs {
             .and_then(|d| d.preedit.as_ref().map(|p| p.0.clone()))
     }
 
+    /// ⚠️ SONDA: o que o documento estacionado de `id` segura.
+    #[must_use]
+    pub fn parked_footprint(&self, id: ScriptId) -> Option<ParkedFootprint> {
+        self.parked.get(&id).map(|p| ParkedFootprint {
+            text_bytes: p.buffer.text().len(),
+            undo_steps: p.buffer.history().undo_len(),
+            layouts: 0,
+            tree: false,
+        })
+    }
+
     /// O documento estacionado de `id` (fechado com ●), se o há.
     #[must_use]
     pub fn is_parked(&self, id: ScriptId) -> bool {
@@ -272,10 +307,7 @@ impl CodeDocs {
     /// Há alterações por salvar na aba (aberta ou estacionada) do script `id`?
     #[must_use]
     pub fn is_dirty(&self, id: ScriptId) -> bool {
-        self.docs
-            .iter()
-            .chain(self.parked.values())
-            .any(|d| d.script == id && d.buffer.is_dirty())
+        self.buffers().any(|d| d.0 == id && d.2.is_dirty())
     }
 
     /// Onde a barra de busca pintou `hit` no último quadro (os testes clicam aí).
@@ -290,7 +322,7 @@ impl CodeDocs {
     /// O texto da contagem da busca que a barra mostra («3 of 12» / «No results»).
     #[must_use]
     pub fn find_count_text(&mut self, id: ScriptId) -> Option<String> {
-        let d = self.doc(id.0)?;
+        let d = self.doc(id.0).filter(|d| d.find.open)?;
         d.find.refresh(&d.buffer);
         count_text(d.find.count())
     }
@@ -334,11 +366,9 @@ impl DocumentSurface for CodeDocs {
         self.area = area;
         let (list_r, doc_r) = self.split_area(area);
         let dirty: Vec<ScriptId> = self
-            .docs
-            .iter()
-            .chain(self.parked.values())
-            .filter(|d| d.buffer.is_dirty())
-            .map(|d| d.script)
+            .buffers()
+            .filter(|d| d.2.is_dirty())
+            .map(|d| d.0)
             .collect();
         self.list
             .paint(list_r, id, &|s| dirty.contains(&s), scene, text, theme);
@@ -483,7 +513,7 @@ impl DocumentSurface for CodeDocs {
         };
         let doc = self.docs.remove(i);
         if doc.buffer.is_dirty() {
-            self.parked.insert(doc.script, doc);
+            self.parked.insert(doc.script, doc.park());
         }
     }
 

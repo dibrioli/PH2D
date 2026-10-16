@@ -42,6 +42,8 @@ pub(crate) struct Row {
     /// Byte do buffer onde a linha começa e o comprimento dela (sem `\n`).
     pub start: usize,
     pub len: usize,
+    /// A linha passa do tecto de pintura (`render_cap`): `len` é só o que se mostra.
+    pub cut: bool,
     pub y: f32,
     pub key: u64,
     pub dl: DisplayLine,
@@ -63,7 +65,17 @@ pub struct CodeView {
     pub(crate) folds: Vec<FoldMark>,
     pub(crate) rows: Vec<Row>,
     pub(crate) underlines: Vec<Underline>,
+    /// Os bytes que uma fila mostra (o resto da linha não se prepara nem se molda).
+    pub(crate) render_cap: usize,
+    /// A coluna da barra de estado da última (revisão, cursor, tab).
+    pub(crate) status_col: Option<((u64, usize, usize), usize)>,
 }
+
+/// ⛔ **Os bytes de uma linha que a pintura mostra** — o resto acaba num «…». ⚠️ **De que recurso
+/// é:** do QUADRO (preparar, colorir, moldar e pôr na cena cada fila à vista custa a fila inteira).
+/// Medido (`docs/CodeEditor/02_onda1.md` §Medições do fecho, C): 40 filas à vista, todas no tecto,
+/// custam 1.97 ms parado e 2.53 ms a moldar; a 10 000 B já 8.9/11.3 ms.
+pub const LINE_RENDER_BYTES_MAX: usize = 2_000;
 
 impl Default for CodeView {
     fn default() -> Self {
@@ -81,6 +93,8 @@ impl Default for CodeView {
             folds: Vec::new(),
             rows: Vec::new(),
             underlines: Vec::new(),
+            render_cap: LINE_RENDER_BYTES_MAX,
+            status_col: None,
         }
     }
 }
@@ -99,6 +113,11 @@ impl CodeView {
     #[must_use]
     pub fn cache(&self) -> &LineCache {
         &self.cache
+    }
+
+    /// O tecto de bytes por fila ([`LINE_RENDER_BYTES_MAX`]); a bancada troca-o em execução.
+    pub fn set_render_cap(&mut self, bytes: usize) {
+        self.render_cap = bytes.max(1);
     }
 
     /// Esquece os layouts (a medição a frio).

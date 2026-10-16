@@ -123,8 +123,8 @@ fn save(
     }
     let mut lib = world.get_resource_or_init::<ProjectScripts>();
     for id in parked {
-        if let Some(d) = docs.parked.remove(&id) {
-            lib.set_text(id, &d.buffer.text().to_string());
+        if let Some(p) = docs.parked.remove(&id) {
+            lib.set_text(id, &p.buffer.text().to_string());
         }
     }
     for i in saving {

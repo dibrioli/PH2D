@@ -4,6 +4,8 @@
 > [decisões do dono](00_decisoes_do_dono.md), ao [ADR-0188](../architecture/decisions/0188-o-editor-de-scripts-mora-no-ph2d-e-o-script-mora-no-projeto.md)
 > e ao [handoff da Onda 0](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-15_ONDA0.md) (§6 aberto, §7, retorno do smoke).
 > Estado: **aprovado pelo dono 15/10** — e decidiu: **Ctrl+S no editor aplica o script E grava o projeto** (opção «a»).
+> ⛔ Refinado pelo smoke de 16/10: o Ctrl+S da aba **nunca abre diálogo** — sem ficheiro de projecto aplica e o
+> selo diz «… project not saved yet — File ▸ Save As…» ([handoff §5.1](handoffs/HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-15_ONDA1.md)).
 
 ## O que o código diz hoje (medido 15/10, explorador)
 

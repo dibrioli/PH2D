@@ -113,7 +113,7 @@ impl Capsula {
     /// que só se afasta do ângulo linear em giros grandes por passo; meia volta fica no da frente).
     #[inline]
     #[must_use]
-    pub fn sub(self, k: u32) -> Sub {
+    pub fn sub_dab(self, k: u32) -> Sub {
         let t = k as f32 / self.n as f32;
         let e = self.estado;
         let lerp = |b: f32| 1.0 + (b - 1.0) * t;
@@ -322,6 +322,75 @@ pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> impl Iterator<Item = crate::Dab>
         }
         s
     })
+}
+
+/// The per-dab state a capsule interpolates back to ([`Dab::ante`]): what the previous dab of the path
+/// was, beside its centre. Orientation vectors transform with the dab under Symmetry.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Ante {
+    pub radius_px: f32,
+    pub coverage: f32,
+    pub dir: [f32; 2],
+    pub rotation: [f32; 2],
+    pub arc_len: f32,
+}
+
+impl Ante {
+    /// The state `d` leaves behind for the next dab of its path.
+    #[must_use]
+    pub fn de(d: &crate::Dab) -> Self {
+        Self {
+            radius_px: d.radius_px,
+            coverage: d.coverage,
+            dir: d.dir,
+            rotation: d.rotation,
+            arc_len: d.arc_len,
+        }
+    }
+
+    /// The same state with its orientation vectors mapped by `f` (a Symmetry copy).
+    #[must_use]
+    pub fn orientado(self, f: impl Fn([f32; 2]) -> [f32; 2]) -> Self {
+        Self {
+            dir: f(self.dir),
+            rotation: f(self.rotation),
+            ..self
+        }
+    }
+}
+
+impl crate::Dab {
+    /// The dab-capsule ([`crate::capsula`]) its [`Self::step`] lays, at the product's sub-step, carrying
+    /// the [`Self::ante`] state relative to this dab's under `spec` (the rotor needs the follow law);
+    /// `None` with no step (Continuous Spacing off, the opening dab, the single marks).
+    #[must_use]
+    pub fn capsula(&self, spec: &crate::BrushSpec) -> Option<Capsula> {
+        let cap = Capsula::new(self.step, sub_passo_px(self.radius_px))?;
+        let Some(a) = self.ante else {
+            return Some(cap);
+        };
+        let razao = |atras: f32, frente: f32| {
+            if frente > 1e-6 && atras.is_finite() && atras >= 0.0 {
+                atras / frente
+            } else {
+                1.0
+            }
+        };
+        let frente = spec.dab_rotor(self);
+        let atras = spec.dab_rotor(&Self {
+            dir: a.dir,
+            rotation: a.rotation,
+            ..*self
+        });
+        // The back rotor relative to the front one: `atras · conj(frente)`.
+        let rotor = crate::heading::rotate(atras, [frente[0], -frente[1]]);
+        Some(cap.com_estado(Estado {
+            raio: razao(a.radius_px, self.radius_px),
+            cobertura: razao(a.coverage, self.coverage),
+            rotor,
+            arco: a.arc_len - self.arc_len,
+        }))
+    }
 }
 
 #[cfg(test)]

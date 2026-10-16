@@ -7,6 +7,7 @@
 //! `DragDot`/`Airbrush`) emit one dab per sample. The *interactive* methods (`Anchored`/`Line`/`Arc`)
 //! are tool/shell-owned; the engine exposes [`Stroke::fill_segment`] + [`Stroke::tick`] as primitives.
 
+pub use crate::capsula::Ante;
 use crate::dynamics::Dynamics;
 use crate::sampler::InputSampler;
 use crate::spec::{BrushSpec, MAX_BRUSH_RADIUS_PX};
@@ -71,80 +72,9 @@ pub struct Dab {
     /// and the deliberate single marks: Drag Dot, Anchored, Grid Stamp) and with Continuous Spacing off.
     /// With it on, the dab is a CAPSULE back to the previous centre ([`Dab::capsula`], doc 31 §5).
     pub step: [f32; 2],
-    /// The STATE of the dab the [`Self::step`] comes from — the capsule's back end: each sub-dab carries
-    /// `lerp(front, ante, k/n)` of it (prompt 40). `None` = the front's own (no step, or a mark built
-    /// by hand), so the capsule only shifts the centre.
+    /// The STATE of the dab the [`Self::step`] comes from: each sub-dab carries `lerp(front, ante, k/n)`
+    /// of it (prompt 40). `None` = the front's own, so the capsule only shifts the centre.
     pub ante: Option<Ante>,
-}
-
-/// The per-dab state a capsule interpolates back to ([`Dab::ante`]): what the previous dab of the path
-/// was, beside its centre. Orientation vectors transform with the dab under Symmetry.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Ante {
-    pub radius_px: f32,
-    pub coverage: f32,
-    pub dir: [f32; 2],
-    pub rotation: [f32; 2],
-    pub arc_len: f32,
-}
-
-impl Ante {
-    /// The state `d` leaves behind for the next dab of its path.
-    #[must_use]
-    pub fn de(d: &Dab) -> Self {
-        Self {
-            radius_px: d.radius_px,
-            coverage: d.coverage,
-            dir: d.dir,
-            rotation: d.rotation,
-            arc_len: d.arc_len,
-        }
-    }
-
-    /// The same state with its orientation vectors mapped by `f` (a Symmetry copy).
-    #[must_use]
-    pub fn orientado(self, f: impl Fn([f32; 2]) -> [f32; 2]) -> Self {
-        Self {
-            dir: f(self.dir),
-            rotation: f(self.rotation),
-            ..self
-        }
-    }
-}
-
-impl Dab {
-    /// The dab-capsule ([`crate::capsula`]) its [`Self::step`] lays, at the product's sub-step, carrying
-    /// the [`Self::ante`] state relative to this dab's under `spec` (the rotor needs the follow law);
-    /// `None` with no step (Continuous Spacing off, the opening dab, the single marks).
-    #[must_use]
-    pub fn capsula(&self, spec: &BrushSpec) -> Option<crate::capsula::Capsula> {
-        let cap =
-            crate::capsula::Capsula::new(self.step, crate::capsula::sub_passo_px(self.radius_px))?;
-        let Some(a) = self.ante else {
-            return Some(cap);
-        };
-        let razao = |atras: f32, frente: f32| {
-            if frente > 1e-6 && atras.is_finite() && atras >= 0.0 {
-                atras / frente
-            } else {
-                1.0
-            }
-        };
-        let frente = spec.dab_rotor(self);
-        let atras = spec.dab_rotor(&Self {
-            dir: a.dir,
-            rotation: a.rotation,
-            ..*self
-        });
-        // The back rotor relative to the front one: `atras · conj(frente)`.
-        let rotor = crate::heading::rotate(atras, [frente[0], -frente[1]]);
-        Some(cap.com_estado(crate::capsula::Estado {
-            raio: razao(a.radius_px, self.radius_px),
-            cobertura: razao(a.coverage, self.coverage),
-            rotor,
-            arco: a.arc_len - self.arc_len,
-        }))
-    }
 }
 
 /// Incremental stroke state. Feed it pointer samples; it emits dabs per the brush's stroke method.
@@ -208,8 +138,7 @@ pub struct Stroke {
     /// the [`Dab::step`] every mark of this path point carries. Written only by `advance_step`.
     step_from: Option<[f32; 2]>,
     dab_step: [f32; 2],
-    /// The state the last built dab leaves behind ([`Ante::de`]) and the one this path point's capsule
-    /// interpolates back to ([`Dab::ante`]) — beside `step_from`/`dab_step`, written by the same doors.
+    /// The last built dab's state ([`Ante::de`]) and this path point's [`Dab::ante`], as `step_from`/`dab_step`.
     ultimo: Option<Ante>,
     dab_ante: Option<Ante>,
     /// The point *before* `last_pos` — the trailing neighbour the Catmull-Rom smoother needs for the

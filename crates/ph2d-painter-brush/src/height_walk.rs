@@ -330,7 +330,7 @@ fn walk_band(
 
 /// ⭐ **The relief of a dab-CAPSULE** ([`crate::capsula`], lista 26 C25): the dense stroke's relief, as
 /// the colour's [`crate::dab::silhouette_capsula`] is its pigment — the SAME interpolated sub-dabs
-/// ([`crate::capsula::Capsula::sub`]: centre, radius, rotation, arc length, coverage), each with the Shape
+/// ([`crate::capsula::Capsula::sub_dab`]: centre, radius, rotation, arc length, coverage), each with the Shape
 /// at its own centre and its body swept back one sub-step (the dense stroke's chord), folded by the
 /// stroke envelope's own law, the `max` (`film_of` is monotone, so the film rides it). Read at the front
 /// dab's centre, the pattern stamped once per dab: the lattice of the owner's smoke.
@@ -374,7 +374,7 @@ impl SubPasso {
         let flow = spec.shape.flow;
         let mut w = 0.0f32;
         for k in 0..self.cap.n() {
-            let s = self.cap.sub(k);
+            let s = self.cap.sub_dab(k);
             let (o, r) = (s.off, wk.radius * s.escala);
             let inv = 1.0 / r;
             let fp = s

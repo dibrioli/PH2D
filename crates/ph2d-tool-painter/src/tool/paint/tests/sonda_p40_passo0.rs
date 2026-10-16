@@ -312,8 +312,10 @@ fn sonda_p40_onde_a_capsula_morre() {
     for c in casos {
         let (aa, ha) = corre(&c, 0.025, false);
         let spc = {
-            let mut b = BrushSpec::default();
-            b.spacing = 0.25;
+            let mut b = BrushSpec {
+                spacing: 0.25,
+                ..BrushSpec::default()
+            };
             (c.extra)(&mut b);
             b.spacing
         };
@@ -344,7 +346,8 @@ fn sonda_p40_impasto_pressao() {
         follow: Follow::Off,
         pressao: true,
     };
-    let vars: [(&str, fn(&mut PainterTool)); 4] = [
+    type Var = (&'static str, fn(&mut PainterTool));
+    let vars: [Var; 4] = [
         ("os dois", |_| {}),
         ("só o raio", |t| t.paint.dynamics.strength_pressure = false),
         ("só a cobertura", |t| {
@@ -383,7 +386,7 @@ fn sonda_p40_modos() {
         let mut t = PainterTool::default();
         let mut src = vec![255u8; (WW * HH * 4) as usize];
         for (i, p) in src.chunks_mut(4).enumerate() {
-            if (i % WW as usize / 12) % 2 == 0 {
+            if (i % WW as usize / 12).is_multiple_of(2) {
                 p[..3].copy_from_slice(&[200, 60, 40]);
             }
         }

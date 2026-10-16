@@ -238,7 +238,7 @@ impl Stroke {
             fill.arc_len = from_arc + (to_arc - from_arc) * t;
             fill.step = step;
             fill.ante = ante;
-            ante = Some(Ante::de(&fill)).filter(|_| capsulas);
+            ante = capsulas.then(|| Ante::de(&fill));
             crate::symmetry::push_symmetric(out, fill, &self.spec.symmetry);
         }
         Some((step, ante))

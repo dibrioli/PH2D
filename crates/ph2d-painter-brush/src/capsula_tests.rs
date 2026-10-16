@@ -302,12 +302,12 @@ fn o_sub_dab_leva_o_estado_interpolado() {
     let cap = Capsula::new([10.0, 0.0], 1.0)
         .expect("cápsula")
         .com_estado(e);
-    let s0 = cap.sub(0);
+    let s0 = cap.sub_dab(0);
     assert_eq!(
         (s0.escala, s0.cobertura, s0.rotor, s0.arco),
         (1.0, 1.0, None, 0.0)
     );
-    let s5 = cap.sub(5);
+    let s5 = cap.sub_dab(5);
     assert_eq!(
         (s5.off, s5.escala, s5.cobertura, s5.arco),
         ([-5.0, 0.0], 1.5, 0.75, -6.0)
@@ -316,7 +316,9 @@ fn o_sub_dab_leva_o_estado_interpolado() {
     let h = std::f32::consts::FRAC_1_SQRT_2;
     assert!((r[0] - h).abs() < 1e-6 && (r[1] - h).abs() < 1e-6, "{r:?}");
     assert_eq!(
-        com_so_o_centro(|| Capsula::new([10.0, 0.0], 1.0).map(|c| c.com_estado(e).sub(5).escala)),
+        com_so_o_centro(
+            || Capsula::new([10.0, 0.0], 1.0).map(|c| c.com_estado(e).sub_dab(5).escala)
+        ),
         Some(1.0)
     );
 

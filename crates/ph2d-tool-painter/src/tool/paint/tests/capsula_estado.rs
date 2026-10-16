@@ -12,6 +12,9 @@ const X0: f32 = 60.0;
 const X1: f32 = 420.0;
 const EVENTOS: usize = 72;
 
+/// Um caso nomeado com o ajuste do tool antes do traço.
+type Ramo = (&'static str, Caso, fn(&mut PainterTool));
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Follow {
     Off,
@@ -215,7 +218,7 @@ fn no_modo(
     let mut t = PainterTool::default();
     let mut src = vec![255u8; (W * H * 4) as usize];
     for (i, p) in src.chunks_mut(4).enumerate() {
-        if (i % W as usize / 12) % 2 == 0 {
+        if (i % W as usize / 12).is_multiple_of(2) {
             p[..3].copy_from_slice(&[200, 60, 40]);
         }
     }
@@ -319,7 +322,7 @@ pub(super) fn mede_ramos() -> Vec<(&'static str, Medida)> {
         follow: Follow::Flow,
         ..curva
     };
-    let ramos: [(&str, Caso, fn(&mut PainterTool)); 4] = [
+    let ramos: [Ramo; 4] = [
         // Sem a Shape Color o Shape é a SILHUETA: o arco do Flow chega ao leitor da cobertura.
         ("Flow, Shape sem cor", flow, |t| {
             t.set_shape_ramp_enabled(false)
@@ -376,7 +379,7 @@ fn prancha_p40() {
         }
         std::fs::write(format!("{dir}/{nome}.ppm"), ppm).expect("grava");
     };
-    let linhas: [(&str, Caso, fn(&mut PainterTool)); 4] = [
+    let linhas: [Ramo; 4] = [
         (
             "1_impasto_caneta",
             Caso {

@@ -87,7 +87,7 @@ pub fn shape_value_at(
 
 /// ⭐ **The dab-CAPSULE's silhouette** at one canvas pixel ([`crate::capsula`], Continuous Spacing): the
 /// [`silhouette_at`] of each sub-dab — the dab INTERPOLATED back to the previous one ([`crate::capsula::
-/// Capsula::sub`]: centre, radius, footprint rotation, arc length; its coverage scales the pass) —
+/// Capsula::sub_dab`]: centre, radius, footprint rotation, arc length; its coverage scales the pass) —
 /// through the film cut, composed by `lei` with the per-pass opacity `c`. A procedural Shape under a
 /// zero falloff is skipped (it multiplies); an Image tip never is.
 #[allow(clippy::too_many_arguments)]
@@ -143,7 +143,7 @@ pub(crate) fn silhouette_capsula_com(
     let flow = spec.shape.flow;
     let mut j = crate::capsula::Junta::new(lei, c);
     for k in 0..cap.n() {
-        let s = cap.sub(k);
+        let s = cap.sub_dab(k);
         let (o, r) = (s.off, radius * s.escala);
         let inv = 1.0 / r;
         let fp = s.rotor.map_or(footprint, |q| footprint.rotated_by(q));

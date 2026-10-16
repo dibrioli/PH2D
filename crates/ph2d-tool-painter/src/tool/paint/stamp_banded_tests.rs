@@ -35,8 +35,7 @@ pub(super) fn arc(n: usize, radius: f32) -> Vec<Dab> {
                 center: [256.0 + c * radius, 256.0 + s * radius],
                 radius_px: 12.0,
                 coverage: 0.6,
-                // A cor varia por dab: se a ordem de composição trocasse, o pixel de sobreposição
-                // mudaria de cor — é o que torna a identidade um teste da ORDEM, não só da soma.
+                // A cor varia por dab: trocar a ordem de composição muda a cor da sobreposição.
                 #[allow(clippy::cast_precision_loss)]
                 color: [(i % 7) as f32 / 7.0, 0.3, 0.9],
                 color_shift: [0.0; 3],

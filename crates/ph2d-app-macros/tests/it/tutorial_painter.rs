@@ -129,6 +129,21 @@ impl Banca {
         self.m.pede(r(self.bits));
         self.quadro()
     }
+
+    /// Uma versão nova da `Macro`: o autor dá a `dica` à 1.ª pincelada.
+    fn da_dica(&mut self, dica: &str) {
+        use ph2d_macro::LeitorDaFamilia;
+        use ph2d_tool_painter::macro_track::tutorial::regioes;
+        let e = ph2d_ecs::Entity::from_bits(self.bits);
+        let doc = &mut self.sim.world_mut().get_mut::<Macro>(e).expect("macro").doc;
+        let mut d = ph2d_macro::codec::read(doc).expect("lê");
+        let track = &mut d.tracks[0];
+        let k = regioes(track, LADO, LADO).expect("regiões")[0].k;
+        let ancora =
+            ph2d_tool_painter::macro_track::etapas::LeitorDoPainter.etapas(&track.events)[k].inicio;
+        track.edicao_mut(ancora).dica = Some(dica.into());
+        *doc = ph2d_macro::codec::write(&d);
+    }
 }
 
 fn mostra_me(entity_bits: u64) -> MacroRequest {
@@ -318,7 +333,6 @@ fn outra_tela_diz_o_tamanho_gravado() {
 /// pincelada já pintada; quando o trabalho chega, avança como antes. «Recomeçar» vale a preparar.
 #[test]
 fn uma_versao_nova_prepara_se_fora_do_quadro() {
-    use ph2d_macro::LeitorDaFamilia;
     use ph2d_tool_painter::macro_track::tutorial::{mostra, regioes};
     let mut b = Banca::nova();
     b.activo = true;
@@ -351,17 +365,7 @@ fn uma_versao_nova_prepara_se_fora_do_quadro() {
     );
 
     // Uma versão nova (o autor deu uma dica) volta a preparar; «Recomeçar» vale.
-    let mut track = track;
-    let ancora =
-        ph2d_tool_painter::macro_track::etapas::LeitorDoPainter.etapas(&track.events)[k].inicio;
-    track.edicao_mut(ancora).dica = Some("Pinta o céu".into());
-    let mut d = ph2d_macro::codec::read(&doc).expect("lê");
-    d.tracks[0] = track;
-    b.sim
-        .world_mut()
-        .get_mut::<Macro>(ph2d_ecs::Entity::from_bits(b.bits))
-        .expect("macro")
-        .doc = ph2d_macro::codec::write(&d);
+    b.da_dica("Pinta o céu");
     assert_eq!(b.um_quadro().pedido, Some(PedidoDoTutorial::APreparar));
     b.m.pede(recomeca(b.bits));
     assert_eq!(b.um_quadro().erro, None, "recomeçar a preparar");
@@ -369,4 +373,35 @@ fn uma_versao_nova_prepara_se_fora_do_quadro() {
     assert_eq!((x.passo, x.dica.as_deref()), (1, Some("Pinta o céu")));
     assert!(b.t.undo_last(), "o recomeçar é um passo de undo");
     assert_eq!(b.quadro().passo, 2);
+}
+
+/// ⭐ **A medição de uma versão velha larga-se** (W6d): a `Macro` muda ENQUANTO a versão anterior
+/// ainda se mede — o trabalho dela pára e sai da conta; só o da versão nova fica até chegar. Um
+/// trabalho velho guardado deixava o «a medir» aceso para sempre (ninguém o colhe) e o fio a medir
+/// uma versão que já não existe.
+#[test]
+fn mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha() {
+    let mut b = Banca::nova();
+    b.um_quadro();
+    assert!(b.m.a_medir(), "a 1.ª versão mede-se");
+    b.da_dica("Pinta o céu");
+    let prazo = std::time::Instant::now() + std::time::Duration::from_secs(300);
+    b.um_quadro();
+    while b.m.a_medir() && std::time::Instant::now() < prazo {
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        b.um_quadro();
+    }
+    assert!(
+        !b.m.a_medir(),
+        "a medição da versão velha continua na conta depois de a nova chegar"
+    );
+    b.activo = true;
+    b.abre();
+    b.t.set_paint_media(PaintMedia::WetPaint);
+    let x = b.um_quadro();
+    assert_eq!(
+        (x.passo, x.total, x.dica.as_deref()),
+        (1, 4, Some("Pinta o céu")),
+        "o ensino é o da versão nova"
+    );
 }

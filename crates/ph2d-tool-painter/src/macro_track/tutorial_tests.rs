@@ -105,23 +105,84 @@ fn o_mostra_me_cumpre_a_fatia_fina() {
 
 /// ⭐ **Pular a pincelada e esperar não a cumpre** (W6d): nas 30 pinceladas em Wet Paint, o aluno que
 /// fez as anteriores certas NÃO faz a `k` e espera a água assentar — a aguada da anterior pinta sozinha
-/// a fatia nova. Nenhuma das 30 se cumpre.
+/// a fatia nova. Nenhuma das 30 se cumpre — nem pela razão, nem pela porta do balão
+/// ([`EnsinoDoPainter::por_cumprir`] pára na 1.ª com critério desde a `k`: a base, que a aguada das
+/// outras pinta sozinha, desconta-se lá também).
 #[test]
 fn pular_a_pincelada_e_esperar_nao_cumpre_nenhuma() {
     let ps = trinta();
     let track = trilha_no_meio(PaintMedia::WetPaint, &ps, LADO);
     let e = EnsinoDoPainter::medido(&track).expect("ensino");
+    let ks: Vec<usize> = regioes(&track, LADO, LADO)
+        .expect("regiões")
+        .iter()
+        .map(|r| r.k)
+        .collect();
     let mut cumpre = Vec::new();
+    let mut passa = Vec::new();
     cada_aluno(&track, &ps, LADO, &[Variante::Nada], |k, _, t| {
         if let Some(c) = criterio_de(&e, &track, k)
             && e.razao(t, c).expect("medida") >= FRACAO_DA_GRAVADA_QUE_CUMPRE
         {
             cumpre.push(k);
         }
+        let esperada = e
+            .criterios
+            .iter()
+            .position(|c| ks[k..].contains(&c.regiao.k));
+        let balao = e.por_cumprir(t);
+        if balao != esperada {
+            passa.push((k, esperada, balao));
+        }
     });
     assert!(
         cumpre.is_empty(),
         "o «Nada» cumpre as pinceladas {cumpre:?}"
+    );
+    assert!(
+        passa.is_empty(),
+        "o balão passa a pincelada pulada (k, esperada, por_cumprir): {passa:?}"
+    );
+}
+
+/// ⭐ **Outra tela não se avalia, nem por dentro**: [`EnsinoDoPainter::fracao_pintada`] e
+/// [`EnsinoDoPainter::por_cumprir`] chamados com um Painter de outro tamanho (sem passar por
+/// [`EnsinoDoPainter::aberto`]) — toda a tela pintada — dão fracção 0 e a 1.ª pincelada por cumprir.
+#[test]
+fn outra_tela_nao_se_avalia_nem_chamada_por_dentro() {
+    let track = trilha();
+    let mut e = EnsinoDoPainter::de(&track).expect("ensino");
+    let ks: Vec<usize> = e.criterios.iter().map(|c| c.regiao.k).collect();
+    for k in ks {
+        assert!(e.com_medida(Medida {
+            k,
+            referencia: Referencia {
+                gravada: 0.9,
+                base: 0.0,
+            },
+        }));
+    }
+    assert!(!e.a_medir());
+    // Maior que a gravada: os índices dos critérios caem dentro dela, toda pintada e opaca.
+    let lado = LADO + 64;
+    let mut t = PainterTool::default();
+    t.bind_document(
+        ALVO,
+        [40, 80, 120, 255].repeat(lado as usize * lado as usize),
+        lado,
+        lado,
+    );
+    let pintadas: Vec<(usize, f32)> = e
+        .criterios
+        .iter()
+        .map(|c| e.fracao_pintada(&t, c))
+        .enumerate()
+        .filter(|&(_, f)| f > 0.0)
+        .collect();
+    assert_eq!(
+        (pintadas, e.por_cumprir(&t)),
+        (Vec::new(), Some(0)),
+        "outra tela leu-se como pintada (pincelada, fracção) e cumpriu pinceladas"
     );
 }
 

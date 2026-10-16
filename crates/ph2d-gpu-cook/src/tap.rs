@@ -251,6 +251,9 @@ impl GpuCook {
             }
             let take = samples.min(stream.count);
             for (name, col) in &stream.cols {
+                if !cabe_numa_coluna(col.dim) {
+                    continue;
+                }
                 let lanes = crate::stream::element_stride(col.dim) as u32 / 4;
                 slots.push(Slot {
                     node: *node,
@@ -365,6 +368,14 @@ impl GpuCook {
     }
 }
 
+/// **A leitura só leva as colunas que um [`Column`] exprime** (`Scalar`…`Vec4`). Uma `Mat*` é
+/// estado privado de um kernel (o anel `ss_ring*` do `Slit Scan`, `Mat4`, 16 números por
+/// elemento) que nenhum cartão mostra; lida como `Vec4` ela dava `count × 4` elementos e o
+/// `Stream::set` pânicava (`144` contra `36`, a cena `=118` ao 12.º quadro do app).
+fn cabe_numa_coluna(dim: Dim) -> bool {
+    matches!(dim, Dim::Scalar | Dim::Vec2 | Dim::Vec3 | Dim::Vec4)
+}
+
 /// **A metade que LÊ** — um `staging` já MAPEADO de volta em streams, e desmapeia-o.
 pub(crate) fn le_tap(staging: &wgpu::Buffer, slots: &[Slot]) -> BTreeMap<NodeId, Stream> {
     let flat: Vec<f32> = bytemuck::cast_slice(&staging.slice(..).get_mapped_range()).to_vec();
@@ -390,13 +401,15 @@ pub(crate) fn le_tap(staging: &wgpu::Buffer, slots: &[Slot]) -> BTreeMap<NodeId,
                     .map(|c| [c[0], c[1], c[2]])
                     .collect(),
             ),
-            _ => Column::Vec4(
+            Dim::Vec4 => Column::Vec4(
                 run.as_chunks::<4>()
                     .0
                     .iter()
                     .map(|c| [c[0], c[1], c[2], c[3]])
                     .collect(),
             ),
+            // O [`GpuCook::codifica_tap`] nunca as encomenda — ver [`cabe_numa_coluna`].
+            Dim::Mat2 | Dim::Mat3 | Dim::Mat4 => continue,
         };
         out.entry(slot.node)
             .or_insert_with(|| Stream::new(n))

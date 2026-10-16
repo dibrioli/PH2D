@@ -34,6 +34,39 @@
 
 | [18](archive/BUGS_motion_nodes/parte_3.md#bug-18--um-toque-que-treme-virava-arrasto-no-grafo-e-um-campo-legível-não-respondia) | **"Apertar botões em todo módulo é impreciso e inconsistente"** (da barra de baixo aos campos dentro dos nós) | o despacho da superfície do grafo (`ph2d-editor-core`) + o cartão (`ph2d-panel-motion-graph`) | ✅ FECHADO (smoke do dono 10/10) | 2026-10-10 |
 | [19](#bug-19--o-ângulo-do-glow-aparece-só-onde-não-faz-nada) | **O ângulo do *streak* do Glow aparece só onde não faz nada** (achado do agente, ciclo 20, sem report) | `fx.glow` (`PARAM_GATES`) + `motion_bridge_params_visible.rs` | ✅ **FECHADO** — smoke do dono 11/10 (cena `=70`), espécie `ParamGateAway` | 2026-10-10 |
+| [20](#bug-20--a-118-pânicava-na-placa-o-trail-acusado-era-inocente-o-anel-mat4-do-slit-scan-lido-pelos-cartões) | **A `=118` crasha na placa ao quadro 12** (`attr.rs:456`, `144` contra `36`) | `motion.trail` (acusado, **inocente**) + a leitura dos cartões (`ph2d-gpu-cook` `tap.rs`) | ✅ **CURADO** (aguarda smoke, tutorial 07) | 2026-10-15 |
+---
+
+## Bug #20 — a `=118` pânicava na placa: o Trail acusado era inocente, o anel `Mat4` do Slit Scan lido pelos cartões
+
+**Sintoma.** `PH2D_GPU_COOK_DEMO=118` morre ao quadro 12 do app (`column length must equal stream
+element count`, `144` contra `36`); com `PH2D_GPU_COOK=0` corre. O `144 = 4 · 36` apontava para o
+`Trail` (ecos empilhados) — falso.
+
+**Mecanismo (backtrace do app, perfil `smoke` com `line-tables`).** `dispatch` → `readout::take_tap` →
+`GpuCook::tap_sem_espera` → `le_tap` (`tap.rs`). O `Slit Scan` no dispositivo guarda o anel em quatro
+colunas `ss_ring*` de `Dim::Mat4` (16 números por elemento, `438bd1a49f`); o `codifica_tap` amostrava
+TODAS as colunas do stream e o `le_tap` decodificava toda dim que não fosse `Scalar/Vec2/Vec3` pelo
+braço `_ => Vec4` (`3608e67a47`): `36 × 16 / 4 = 144` vec4 num `Stream` de `36`. É do `main`
+(medido: o gate vermelho no `0aab2c1cb6`, com o mesmo `144/36`), não da linha.
+
+**Por que nenhum gate via.** Os gates da `=118` cozem pela CPU; os de placa das cenas (`=140`, `=142`)
+são por cena e não há varredura das cenas de ciclo na placa; e o pânico vive na LEITURA dos cartões,
+fora da porta do quadro — um varrimento só por `o_quadro` ficou VERDE (medido) até ler como o `dispatch`.
+A paridade do slit-scan lê o anel pela `read_column` (debug), nunca pelo tap.
+
+**Cura.** O tap só encomenda colunas que um `Column` exprime (`cabe_numa_coluna`); o `le_tap` fica
+exaustivo. Gates: `toda_cena_de_ciclo_coze_pela_placa` (as 23 cenas de ciclo, `placa:`) e a leitura
+dos cartões na paridade do slit-scan (`ph2d-gpu-cook` `tests/it`), vermelha com a cura revertida.
+
+**Lição.** Um braço `_ =>` num decodificador de dims é uma resposta para o tipo que ainda não nasceu
+— e ele nasceu (`Mat4`) num kernel sem que o leitor soubesse.
+
+**⚠️ ABERTO, visto na foto da cura (15/10, 12 s de Play, as duas rotas):** a cena não tem formas, e
+pela lei «só com forma» os seis panos são o GIZMO de pontos em ambas — nenhum laranja nem
+arco-íris, ao contrário do que o anúncio e o tutorial 07 prometem. E na PLACA o gizmo fica
+CONGELADO na pose de repouso (sem os arcos do rasto nem a onda de baixo), enquanto na CPU anda: as
+tomadas do `ponto_gizmo::taps_for` armam-se na bomba, que num quadro inteiro da placa não coze.
 ---
 
 ## Bug #19 — o ângulo do Glow aparece só onde não faz nada

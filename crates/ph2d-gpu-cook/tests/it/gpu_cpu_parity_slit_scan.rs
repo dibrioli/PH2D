@@ -172,6 +172,15 @@ fn paridade(
                 &dev_k,
             ));
         }
+        // ⭐ A leitura dos CARTÕES deste cozimento — o anel `Mat4` não cabe num `Column` e não vem
+        // (lido como `Vec4` dava `count × 4` elementos e o `Stream::set` pânicava, a `=118`).
+        let lidos = gc
+            .tap(gpu, ph2d_gpu_cook::tap::TAP_SAMPLES)
+            .expect("a leitura");
+        let lido = &lidos[&ss];
+        let amostras = p.len().min(ph2d_gpu_cook::tap::TAP_SAMPLES as usize);
+        assert_eq!(lido.count(), amostras, "{rotulo}: uma amostra por elemento");
+        assert!(lido.get("P").is_some() && lido.get("ss_ring0").is_none());
         posicoes.push(p);
         cook.advance_tick(&g, reg, t).expect("cpu tick");
     }

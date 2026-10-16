@@ -89,3 +89,7 @@ i18n, panel-painter-layers) ✓ — 2 avisos do motor e 6 dos testes corrigidos 
 701) ⇒ `Ante` e `Dab::capsula` mudaram para `capsula.rs` (700/700); refeitos por nome: o tecto ✓ e os portões da
 cápsula, Speed, traço, simetria, relevo e banda ✓. Smoke ao dono: na resposta da janela (Impasto com caneta e
 rato, Flow, Dots/Airbrush, Smear com a caixa esmaecida).
+
+## §9 — Smoke do dono (16/10)
+
+**OK** (*«funcionou. smoke ok»*). Próxima etapa da fila: lista 26 **A7** (Shape Color no Wet Paint) — [prompt 41](../NewFeaturesWetPaint/41_PROMPT_shape_color_no_wet_paint.md).

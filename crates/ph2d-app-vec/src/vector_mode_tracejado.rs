@@ -4,19 +4,29 @@
 //! pares (`3 · 1`, `1 · 1`) e uma seta pequena no começo (`0,7`) e grande no fim (`2`). A linha fica
 //! selecionada e o «Stroke ▾» aberto: as linhas *Dash* / *Gap* mostram os pares dela, e o *Head Size*
 //! as duas pontas.
+//!
+//! À direita da linha, o MESMO rectângulo traço-ponto-ponto com *Align* **Inner** (o do meio) e
+//! **Outer** (o da ponta): os traços e os pontos ficam inteiros, de um lado só do contorno
+//! (`BUGS_vector.md` #43 — antes viravam uma faixa quase sólida e esfarrapada).
 
 use crate::state::VecState;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_vec_scene::{DashPattern, LineCap, Marker, ShapeKind};
+use ph2d_vec_scene::{DashPattern, LineCap, Marker, ShapeKind, StrokeAlign};
 
-/// As duas formas: o tipo, o centro (m) e a meia-largura (m). A linha é a selecionada.
-const FORMAS: [(ShapeKind, [f64; 2], f64); 2] = [
-    (ShapeKind::Rectangle, [-1.3, 0.0], 0.8),
-    (ShapeKind::Line, [1.3, 0.0], 0.8),
+/// As formas: o tipo, o centro (m), a meia-largura (m) e o *Align* do traço. A linha
+/// ([`LINHA`]) é a selecionada.
+const FORMAS: [(ShapeKind, [f64; 2], f64, StrokeAlign); 4] = [
+    (ShapeKind::Rectangle, [-1.3, 0.0], 0.8, StrokeAlign::Centre),
+    (ShapeKind::Line, [1.3, 0.0], 0.8, StrokeAlign::Centre),
+    (ShapeKind::Rectangle, [3.3, 0.0], 0.8, StrokeAlign::Inner),
+    (ShapeKind::Rectangle, [5.1, 0.0], 0.8, StrokeAlign::Outer),
 ];
 
-/// A largura dos dois traços (m) — o tracejado é em múltiplos dela.
+/// O índice da linha em [`FORMAS`].
+const LINHA: usize = 1;
+
+/// A largura dos traços (m) — o tracejado é em múltiplos dela.
 const LARGURA: f64 = 0.05;
 
 /// O primeiro estágio (uma forma por estágio, o estilo, o Select, a seleção, o «Stroke ▾»).
@@ -30,7 +40,8 @@ pub(crate) const LAST: u8 = PICK + 1;
 fn estilo(i: usize, s: &mut ph2d_vec_scene::StrokeSpec) {
     s.width = LARGURA;
     s.cap = LineCap::Round;
-    if i == 0 {
+    s.align = FORMAS[i].3;
+    if i != LINHA {
         s.dash = Some(DashPattern {
             pairs: [[4.0, 1.5], [0.0, 1.5], [0.0, 1.5]],
         });
@@ -53,7 +64,7 @@ pub fn step(
     let feitas = vec.entities.len();
     match stage {
         s if (FIRST..ESTILO).contains(&s) && feitas == usize::from(s - FIRST) => {
-            let (kind, at, half) = FORMAS[usize::from(s - FIRST)];
+            let (kind, at, half, _) = FORMAS[usize::from(s - FIRST)];
             crate::vector_mode::draw_shape(vec, scene, kind, at, half);
             Some(s + 1)
         }
@@ -72,7 +83,7 @@ pub fn step(
             ));
             Some(PICK)
         }
-        // A troca de ferramenta reduz a seleção: a linha (a mais nova) é escolhida DEPOIS dela.
+        // A troca de ferramenta reduz a seleção: a linha é escolhida DEPOIS dela.
         PICK if hero.store.tool_bars().is_some_and(|b| {
             b.column
                 .iter()
@@ -80,7 +91,7 @@ pub fn step(
                 .any(|x| x.on && x.id == ph2d_tool_vector::ids::VECTOR_MODE_SELECT)
         }) =>
         {
-            let linha = vec.entities.keys().last().copied()?;
+            let linha = vec.entities.keys().nth(LINHA).copied()?;
             vec.pen.select_many(&[linha]);
             Some(LAST)
         }

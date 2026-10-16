@@ -323,6 +323,35 @@ pub fn svg_at(
                     );
                 }
                 ph2d_vec_scene::PaintRef::Stroke(s) => {
+                    // ⚠️ Inner/Outer não existem em SVG 1.1: sai a FAIXA que o ecrã pinta
+                    // (`align_live`, a mesma porta), preenchida com a cor do traço. Até 15/10 saía
+                    // o traço CENTRADO (`BUGS_vector.md` #43).
+                    let faixa = if camada.is_base {
+                        ph2d_vec_boolean::aligned_stroke(p)
+                    } else {
+                        None
+                    };
+                    if let Some(faixa) = faixa {
+                        if let Some(o) = traco(s).1 {
+                            aproximadas.push((*id, o));
+                        }
+                        for f in &faixa {
+                            let d = ph2d_vec_render::build_contours(f, Some(true)).to_svg();
+                            let Some(paint) = f.fill.as_ref().filter(|_| !d.is_empty()) else {
+                                continue;
+                            };
+                            let (attrs, _) = tinta(paint, *id, k, &mut defs);
+                            let regra = match f.fill_rule {
+                                ph2d_vec_scene::FillRule::EvenOdd => "evenodd",
+                                ph2d_vec_scene::FillRule::NonZero => "nonzero",
+                            };
+                            let _ = write!(
+                                corpo,
+                                "\n  <path data-ph2d-id=\"{id}\"{marca}{extra} fill-rule=\"{regra}\" {attrs} stroke=\"none\" d=\"{d}\"/>"
+                            );
+                        }
+                        continue;
+                    }
                     let d = ph2d_vec_render::build_contours(p, None).to_svg();
                     if d.is_empty() {
                         continue;

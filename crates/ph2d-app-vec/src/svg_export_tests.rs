@@ -565,3 +565,33 @@ fn a_two_pair_dash_goes_out_as_four_numbers() {
         );
     }
 }
+
+/// ⭐ **Um traço Inner/Outer sai como a FAIXA que se vê** — o SVG 1.1 não tem alinhamento, e o
+/// atributo `stroke` o desenharia CENTRADO (`BUGS_vector.md` #43). O CONTROLO é o Centre, que
+/// continua um traço.
+#[test]
+fn an_aligned_stroke_exports_the_band_it_draws() {
+    for align in [
+        ph2d_vec_scene::StrokeAlign::Centre,
+        ph2d_vec_scene::StrokeAlign::Inner,
+        ph2d_vec_scene::StrokeAlign::Outer,
+    ] {
+        let mut scene = VecScene::new();
+        let id = quadrado(&mut scene, 10.0);
+        if let Some(s) = scene.path_mut(id).and_then(|p| p.stroke.as_mut()) {
+            s.align = align;
+        }
+        let out = svg(&scene, &VecXforms::new(), &sempre_nao, &sempre_nao);
+        let centrado = align == ph2d_vec_scene::StrokeAlign::Centre;
+        assert_eq!(
+            out.texto.contains("stroke-width="),
+            centrado,
+            "{align:?}: só o Centre sai como traço"
+        );
+        assert_eq!(
+            out.texto.contains(r##"fill="#000000""##),
+            !centrado,
+            "{align:?}: a faixa alinhada sai preenchida com a cor do traço"
+        );
+    }
+}

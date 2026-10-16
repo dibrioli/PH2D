@@ -7,7 +7,7 @@ volta. Espelha o [`docs/Painter/BUGS_painter.md`](../Painter/BUGS_painter.md).
 Regra deste arquivo: um bug só é considerado fechado quando existe um teste que **falha**
 se a correção for revertida. "Não reproduzi mais" não fecha nada.
 
-> **O que está VIVO aqui:** os **42 bugs estão TODOS fechados**, então o que vale hoje não é
+> **O que está VIVO aqui:** os **43 bugs estão TODOS fechados**, então o que vale hoje não é
 > nenhum deles — é o que eles ensinaram. Ficaram, nesta ordem: as **recusas com medição atrás**
 > (⛔ — não as reconstrua), os **padrões que se repetem** (leia ANTES de caçar o próximo) e o
 > **índice de uma linha por bug, com o MECANISMO**.
@@ -155,7 +155,11 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 42 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 43 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #43 — Inner/Outer TRACEJADO: os pontos viravam meios-discos de raio `w` e a faixa saía quase sólida e esfarrapada ✅ 2026-10-15
+
+**Sintoma (smoke do Enio, cena 24):** *«Align inner e outer não ficaram corretos»* — o rectângulo traço-ponto-ponto (`w = 0,05`, ponta redonda, `4 · 1,5`, `0 · 1,5`, `0 · 1,5`) com Inner/Outer mostrava os pontos cortados pela borda, com o dobro da largura, e os traços sem a ponta redonda. **Mecanismo (medido):** o `aligned_stroke` (desde `dc30d3a051`, 01/08) era a banda do traço a `2w` cortada pela região — exacto para o SÓLIDO, errado para o tracejado: a caneta dupla dobra também as PONTAS, então cada ponto é um disco de raio `w` cortado ao meio e **todo vão menor que `2w` FECHA** (os multiplicadores a meio só preservam o comprimento). Na cena 24: Centre = **45 peças** (15 traços + 30 pontos de `0,787 w²` = o disco de diâmetro `w`); Inner/Outer = **1 peça** de `117 w²` (95 % da faixa sólida de `124 w²`). **Anterior à F16c:** qualquer tracejado alinhado com ponta Round/Square e vão `< 2w`, desde o 1.º dia; a F16c só pôs pontos no smoke. **Lei (a do Illustrator):** o tracejado percorre o **trilho** — a borda de `região − banda(w)` (Inner) ou `região ∪ banda(w)` (Outer), no sentido da REGIÃO (o furo cresce no Inner) — com a caneta AUTORADA; o padrão ajusta-se ao comprimento do trilho (`dash_fit`, com a folga do #42) e cada trilho é rodado/virado para começar no início do contorno de origem e no sentido dele. O SÓLIDO fica com o recorte (é a banda exacta; nas quinas convexas do Inner ela é recta com qualquer junta, o que o trilho com Round/Bevel não dá) — gate ao bit. **Custo** (perfil `smoke`, mínimo de 15 intercaladas): rectângulo da cena 24 `2,37 ms → 0,75 ms`, círculo `2,99 → 1,00–1,07 ms` (a banda dupla unia peças sobrepostas); fica atrás do memo do `align_live`. **Os outros leitores mentiam também:** o Outline Stroke de um traço Inner/Outer assava a faixa CENTRADA (a forma crescia `w/2` no clique — o cabeçalho do `align.rs` afirmava que ele consumia o alinhamento) e o SVG exportava um `stroke` centrado; os dois passam pela mesma porta. **Gates:** `align::dash_tests::*` (pontos inteiros por área e caixa, encostados ao caminho do lado certo, tinta de um lado só em rect/rosquinha/círculo, a fase e o sentido nos dois sentidos do rectângulo; controlos: o Centre e o sólido ao bit), `an_aligned_dash_keeps_the_cadence_of_the_centred_one` (re-escrito: o período no trilho — Inner `19`, Centre `20`, Outer `21`), `outlining_an_aligned_stroke_bakes_the_aligned_band`, `an_aligned_stroke_exports_the_band_it_draws`; mutações (sem o ramo, sem o acerto do início, sem a viragem, Outer com Subtract) sangram. ⚠️ **O verde sobre isto:** `an_aligned_dash_keeps_the_cadence_of_the_centred_one` contava peças com ponta **Butt** e vão = `2w` — exactamente onde a banda dupla não funde nada. ⚠️ **Resta:** um traço Inner/Outer com tinta Pattern/Brush sai como faixa SÓLIDA na cor de recurso (`fallback`; o alinhamento pinta com `s.color()`), antes e depois — não é desta onda.
 
 ### #42 — Uma FAIXA branca sob o rectângulo tracejado, conforme o pan e o zoom: o fecho do padrão era decidido pelo arredondamento ✅ 2026-10-15
 

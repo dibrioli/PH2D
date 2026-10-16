@@ -266,34 +266,39 @@ fn the_band_wears_the_strokes_colour_as_a_fill() {
     }
 }
 
-/// **O tracejado mantém a CADÊNCIA.** O `dash` é múltiplo da largura, então a banda dupla o
-/// dobraria em comprimento — e o Inner sairia com metade da espessura e o dobro do passo. O
-/// oráculo é a CONTAGEM de peças: o mesmo caminho, o mesmo tracejado, o mesmo número de traços.
+/// **O tracejado mantém a CADÊNCIA — o PERÍODO autorado, percorrido no TRILHO.** O `dash` é múltiplo
+/// da largura, então a banda dupla o dobraria em comprimento. O oráculo é a CONTAGEM de traços:
+/// `round(L/p)` com `L` o comprimento do trilho (o quadrado de lado `4 ∓ w`, quinas Miter) e `p` o
+/// período pedido — Inner `19`, Centre `20`, Outer `21`. (Esta régua dizia «o mesmo número que o
+/// centrado» enquanto o tracejado alinhado corria no caminho de ORIGEM; desde o BUGS #43 ele corre
+/// no trilho, que é mais curto por dentro e mais longo por fora.)
 #[test]
 fn an_aligned_dash_keeps_the_cadence_of_the_centred_one() {
-    let dash = Some(ph2d_vec_scene::DashPattern::single(2.0, 2.0));
-    let mut centred = square(0.2, StrokeAlign::Centre);
+    let w = 0.2;
+    let periodo = 4.0 * w;
+    let mut centred = square(w, StrokeAlign::Centre);
     centred.stroke = Some(StrokeSpec {
-        dash,
-        ..spec(0.2, StrokeAlign::Centre)
+        dash: Some(ph2d_vec_scene::DashPattern::single(2.0, 2.0)),
+        ..spec(w, StrokeAlign::Centre)
     });
-    let mut inner = centred.clone();
-    inner.stroke = Some(StrokeSpec {
-        align: StrokeAlign::Inner,
-        ..centred.stroke.clone().expect("tem traco")
-    });
-
     let n_centred = outline_stroke(&centred).len();
-    let n_inner = aligned_stroke(&inner).expect("inner existe").len();
-    assert!(
-        n_centred > 1,
-        "a fixture tem de conter o fenomeno (tracejado)"
-    );
     assert_eq!(
-        n_inner, n_centred,
-        "o tracejado alinhado saiu com {n_inner} pecas contra {n_centred} do centrado — \
-         a cadencia mudou com a largura"
+        n_centred, 20,
+        "CONTROLO: o centrado percorre o caminho de lado 4"
     );
+    for (align, lado) in [(StrokeAlign::Inner, 4.0 - w), (StrokeAlign::Outer, 4.0 + w)] {
+        let mut p = centred.clone();
+        p.stroke = Some(StrokeSpec {
+            align,
+            ..centred.stroke.clone().expect("tem traco")
+        });
+        let n = aligned_stroke(&p).expect("alinha").len();
+        let want = (4.0 * lado / periodo).round() as usize;
+        assert_eq!(
+            n, want,
+            "{align:?}: {n} tracos contra {want} — a cadencia mudou"
+        );
+    }
 }
 
 /// **O recorte de uma borda CURVA sai LIMPO — uma peça, zero lascas.**

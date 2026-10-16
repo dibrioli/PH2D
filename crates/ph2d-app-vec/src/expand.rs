@@ -193,7 +193,14 @@ pub fn materialise_selection(
 pub fn expand_layers(world: &VecPath, cmd: Expand, d: f64) -> Vec<VecPath> {
     match cmd {
         Expand::Offset { join, side } => ph2d_vec_boolean::offset_path(world, d, join, side),
-        Expand::OutlineStroke => ink_layers(world, ph2d_vec_boolean::outline_stroke(world)),
+        // ⚠️ Inner/Outer assam a faixa ALINHADA — a mesma que o ecrã pinta (`align_live`). Até
+        // 15/10 o Outline Stroke de um traço Inner assava a faixa CENTRADA e a forma crescia `w/2`
+        // no clique (`BUGS_vector.md` #43).
+        Expand::OutlineStroke => ink_layers(
+            world,
+            ph2d_vec_boolean::aligned_stroke(world)
+                .unwrap_or_else(|| ph2d_vec_boolean::outline_stroke(world)),
+        ),
         Expand::PowerStroke { stops } => power_stroke_layers(world, &stops),
     }
 }

@@ -125,3 +125,98 @@ fn what_an_aligned_stroke_costs() {
          POR FORMA TRACADA, com a cena inteira re-cozida a cada arrasto de slider.\n"
     );
 }
+
+/// **O tracejado alinhado nos TRILHOS contra a banda dupla de antes** (`BUGS_vector.md` #43), na
+/// forma da cena 24 (rectângulo de lado `1,6`, `w = 0,05`, traço-ponto-ponto, ponta redonda) e num
+/// círculo. As três variantes no MESMO processo, intercaladas, e o resumo é o MÍNIMO.
+///
+/// Rodar: `cargo test -p ph2d-vec-boolean --profile smoke --test it what_a_dashed -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de medicao, nao gate"]
+fn what_a_dashed_aligned_stroke_costs() {
+    use ph2d_vec_boolean::aligned_stroke;
+    use ph2d_vec_scene::{DashPattern, Paint, StrokeAlign};
+    let tracejado = |align| StrokeSpec {
+        cap: LineCap::Round,
+        align,
+        dash: Some(DashPattern {
+            pairs: [[4.0, 1.5], [0.0, 1.5], [0.0, 1.5]],
+        }),
+        ..spec(0.05)
+    };
+    let rect = |align| VecPath {
+        verts: vec![v(-0.8, -0.8), v(0.8, -0.8), v(0.8, 0.8), v(-0.8, 0.8)],
+        closed: true,
+        stroke: Some(tracejado(align)),
+        ..VecPath::default()
+    };
+    let circulo = |align| {
+        const K: f64 = 0.552_284_749_830_793_4;
+        let (r, k) = (0.8, K * 0.8);
+        let pts = [(r, 0.0), (0.0, r), (-r, 0.0), (0.0, -r)];
+        let tans = [(0.0, k), (-k, 0.0), (0.0, -k), (k, 0.0)];
+        VecPath {
+            verts: pts
+                .iter()
+                .zip(tans.iter())
+                .map(|(&(x, y), &(tx, ty))| VecVertex {
+                    in_handle: [x - tx, y - ty],
+                    out_handle: [x + tx, y + ty],
+                    ..VecVertex::corner([x, y])
+                })
+                .collect(),
+            closed: true,
+            stroke: Some(tracejado(align)),
+            ..VecPath::default()
+        }
+    };
+    // A lei de ANTES, reescrita aqui: o traço a `2w` com os multiplicadores do tracejado a meio,
+    // cortado pela região.
+    let banda_dupla = |p: &VecPath, op: BoolOp| {
+        let s = p.stroke.clone().expect("traco");
+        let dobro = StrokeSpec {
+            width: 2.0 * s.width,
+            dash: s.dash.map(|d| d.scaled(0.5)),
+            ..s.clone()
+        };
+        let band = outline_stroke(&VecPath {
+            stroke: Some(dobro),
+            ..p.clone()
+        });
+        let region = VecPath {
+            fill: Some(Paint::Solid(s.color())),
+            stroke: None,
+            ..p.clone()
+        };
+        band.iter().flat_map(|b| apply(b, &region, op)).count()
+    };
+    let formas: [(&str, &dyn Fn(StrokeAlign) -> VecPath); 2] =
+        [("rect cena 24", &rect), ("circulo", &circulo)];
+    for (nome, forma) in formas {
+        for (align, op) in [
+            (StrokeAlign::Inner, BoolOp::Intersect),
+            (StrokeAlign::Outer, BoolOp::Subtract),
+        ] {
+            let p = forma(align);
+            let centre = forma(StrokeAlign::Centre);
+            let mut best = [f64::INFINITY; 3];
+            for _ in 0..15 {
+                for (i, best) in best.iter_mut().enumerate() {
+                    let t0 = std::time::Instant::now();
+                    let n = match i {
+                        0 => outline_stroke(&centre).len(),
+                        1 => banda_dupla(&p, op),
+                        _ => aligned_stroke(&p).map_or(0, |t| t.len()),
+                    };
+                    let dt = t0.elapsed().as_secs_f64() * 1e3;
+                    assert!(n > 0);
+                    *best = best.min(dt);
+                }
+            }
+            println!(
+                "{nome:>13} {align:?}: centre (outline) {:.3} ms | banda dupla (antes) {:.3} ms | trilhos (agora) {:.3} ms",
+                best[0], best[1], best[2]
+            );
+        }
+    }
+}

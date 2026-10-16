@@ -269,3 +269,31 @@ fn the_command_offsets_the_cooked_shape_not_the_raw_one() {
         );
     }
 }
+
+/// ⭐ **O Outline Stroke de um traço ALINHADO assa a faixa alinhada** — a que o ecrã pinta
+/// (`BUGS_vector.md` #43). Quadrado de lado 10, traço 2, quina Miter: Inner `10² − 6² = 64`, Outer
+/// `14² − 10² = 96`; a faixa CENTRADA (o defeito: a forma crescia no clique) mede `12² − 8² = 80`.
+#[test]
+fn outlining_an_aligned_stroke_bakes_the_aligned_band() {
+    use ph2d_vec_scene::StrokeAlign;
+    for (align, want) in [
+        (StrokeAlign::Centre, 80.0),
+        (StrokeAlign::Inner, 64.0),
+        (StrokeAlign::Outer, 96.0),
+    ] {
+        let mut p = filled(stroked(square(10.0)));
+        if let Some(s) = p.stroke.as_mut() {
+            s.align = align;
+        }
+        let layers = expand_layers(&p, Expand::OutlineStroke, 0.0);
+        assert!(
+            layers[0].fill.is_some(),
+            "{align:?}: o miolo fica como objecto próprio"
+        );
+        let ink: f64 = layers[1..].iter().map(ph2d_vec_boolean::area).sum();
+        assert!(
+            (ink - want).abs() < 0.01 * want,
+            "{align:?}: a tinta assada mede {ink:.2}, a faixa que se vê mede {want}"
+        );
+    }
+}

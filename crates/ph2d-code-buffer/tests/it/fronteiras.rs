@@ -61,3 +61,27 @@ fn colar_um_texto_por_cursor_normaliza_o_cr_solto() {
     assert!(!t.contains('\r'), "um `\\r` entrou no buffer: {t:?}");
     assert_eq!(t, "1a\nb\n2c\nd\n");
 }
+
+/// ⛔ Uma seleção vinda de fora no MEIO de um carácter (uma posição do LSP, uma conta antiga) desce
+/// à fronteira — escrever ali entrava em pânico no `crop` (a sonda da auditoria: inserir no meio do
+/// `é`).
+#[test]
+fn uma_selecao_no_meio_de_um_caracter_desce_a_fronteira_e_escrever_nao_entra_em_panico() {
+    let mut b = Buffer::new("aé");
+    b.set_selection(Selection::single(Range::new(2, 3)));
+    let r = b.selection().primary();
+    assert_eq!(
+        (r.anchor, r.head),
+        (1, 3),
+        "dentro do é desce ao início dele"
+    );
+    b.set_selection(Selection::single(Range::cursor(2)));
+    b.insert("x");
+    assert_eq!(b.to_string(), "axé");
+    // E uma troca com a ponta no meio do `é` (a de um chamador antigo) também.
+    let cs = ph2d_code_buffer::ChangeSet::single(3..3, "y");
+    b.apply(cs, None, EditKind::Other);
+    assert_eq!(b.to_string(), "axyé");
+    b.undo();
+    assert_eq!(b.to_string(), "axé", "o inverso usa a MESMA faixa");
+}

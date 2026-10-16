@@ -45,8 +45,10 @@ impl crate::App {
         state: ElementState,
         repeat: bool,
     ) -> bool {
-        let chord = self.modifiers.control_key() || self.modifiers.super_key();
-        if !self.morph_preview || chord || self.surface_owns_the_keyboard() {
+        if !self.morph_preview || self.modifiers.control_key() || self.modifiers.super_key() {
+            return false;
+        }
+        if self.surface_owns_the_keyboard() {
             return false;
         }
         if state == ElementState::Pressed

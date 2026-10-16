@@ -10,6 +10,7 @@ mod display;
 pub mod find_bar;
 pub mod frame;
 mod geom;
+mod glyphs;
 pub mod line_cache;
 mod metrics;
 mod paint;
@@ -26,9 +27,9 @@ pub use console::{
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{Badge, CodeFrame, FoldMark, Problem, Severity};
 pub use geom::Column;
+pub use glyphs::{PaintWork, paint_work};
 pub use line_cache::LineCache;
 pub use metrics::Metrics;
-pub use paint::{PaintWork, paint_work};
 pub use script_list::{ListField, ListHit, ListRow, ScriptList, ScriptListView};
 pub use status::{StatusLine, Tone};
 pub use style::Ink;

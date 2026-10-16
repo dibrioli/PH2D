@@ -65,6 +65,25 @@ impl ChangeSet {
         .unwrap_or_default()
     }
 
+    /// As faixas com as pontas na fronteira de carácter de `text` (iguais se já estavam).
+    pub(crate) fn snapped(self, text: &Text) -> Self {
+        if self.changes.iter().all(|c| {
+            text.floor_char(c.range.start) == c.range.start
+                && text.floor_char(c.range.end) == c.range.end
+        }) {
+            return self;
+        }
+        let changes = self
+            .changes
+            .into_iter()
+            .map(|c| Change {
+                range: text.floor_char(c.range.start)..text.floor_char(c.range.end),
+                insert: c.insert,
+            })
+            .collect();
+        Self::new(changes).unwrap_or_default()
+    }
+
     pub fn changes(&self) -> &[Change] {
         &self.changes
     }

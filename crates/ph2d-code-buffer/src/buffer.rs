@@ -66,8 +66,9 @@ impl Buffer {
             .ranges()
             .iter()
             .map(|r| Range {
-                anchor: r.anchor.min(n),
-                head: r.head.min(n),
+                // Uma posição vinda de fora no meio de um carácter desce ao início dele.
+                anchor: self.text.floor_char(r.anchor.min(n)),
+                head: self.text.floor_char(r.head.min(n)),
                 goal: r.goal,
             })
             .collect();
@@ -76,6 +77,9 @@ impl Buffer {
 
     /// A ÚNICA porta de mutação: aplica, mapeia a seleção (ou usa `after`) e regista no histórico.
     pub fn apply(&mut self, cs: ChangeSet, after: Option<Selection>, kind: EditKind) -> Edits {
+        // As pontas de cada troca descem à fronteira de carácter (o `crop` entra em pânico no meio
+        // de um); as edições, o inverso e a aplicação usam as MESMAS faixas.
+        let cs = cs.snapped(&self.text);
         if cs.is_empty() {
             if let Some(sel) = after {
                 self.set_selection(sel);

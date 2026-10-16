@@ -55,7 +55,9 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
     //    Opacity), que é o ecrã que o artista vê ao trabalhar.
     ph2d_panel_vector::set_current_selection_count(1);
     ph2d_panel_vector::state::set_current_selection_name(Some("Star 1".to_owned()));
-    ph2d_panel_vector::set_stroke_paint_kind(Some(ph2d_panel_vector::state::StrokePaintKind::Solid));
+    ph2d_panel_vector::set_stroke_paint_kind(Some(
+        ph2d_panel_vector::state::StrokePaintKind::Solid,
+    ));
     ph2d_panel_vector::state::set_current_appearance(Some(ph2d_panel_vector::state::Appearance {
         opacity: 1.0,
         blend: ph2d_vec_scene::BlendMode::Normal,

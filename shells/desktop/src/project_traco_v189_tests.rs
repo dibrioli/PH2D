@@ -26,8 +26,14 @@ fn a_v189_project_opens_with_the_same_strokes() {
     };
     let s = seta.stroke.as_ref().expect("traço");
     assert_eq!(s.dash, Some(DashPattern::single(3.0, 1.5)));
-    assert_eq!((s.marker_scale_start, s.marker_scale_end, s.marker_round), (1.7, 1.7, 0.25));
-    assert_eq!(caixa.stroke.as_ref().and_then(|s| s.dash), Some(DashPattern::single(2.0, 1.0)));
+    assert_eq!(
+        (s.marker_scale_start, s.marker_scale_end, s.marker_round),
+        (1.7, 1.7, 0.25)
+    );
+    assert_eq!(
+        caixa.stroke.as_ref().and_then(|s| s.dash),
+        Some(DashPattern::single(2.0, 1.0))
+    );
     assert_eq!(lisa.stroke.as_ref().map(|s| s.dash), Some(None));
 
     // O traço de um ESTADO de UI viaja no mesmo ficheiro e lê-se pelo mesmo âmbito.

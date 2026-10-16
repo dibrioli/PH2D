@@ -48,15 +48,28 @@ fn populacao() -> Vec<(String, ph2d_vec_scene::VecPath, StrokeSpec)> {
         DashPattern::single(0.001, 1.5),
     ];
     let mut v = Vec::new();
-    for kind in [ShapeKind::Rectangle, ShapeKind::RoundRect, ShapeKind::Ellipse] {
+    for kind in [
+        ShapeKind::Rectangle,
+        ShapeKind::RoundRect,
+        ShapeKind::Ellipse,
+    ] {
         for i in 0..24 {
             let (w, h) = (0.4 + 0.113 * f64::from(i), 1.6 - 0.041 * f64::from(i));
-            let mut path = cook(kind, [-w * 0.5, -h * 0.5], [w * 0.5, h * 0.5], &kind.defaults());
+            let mut path = cook(
+                kind,
+                [-w * 0.5, -h * 0.5],
+                [w * 0.5, h * 0.5],
+                &kind.defaults(),
+            );
             for (j, pat) in padroes.iter().enumerate() {
                 let mut s = StrokeSpec::new(Rgba8::new(255, 255, 255, 255), 0.05);
                 s.dash = Some(*pat);
                 path.stroke = Some(s.clone());
-                v.push((format!("{kind:?} {w:.3}x{h:.3} padrão {j}"), path.clone(), s));
+                v.push((
+                    format!("{kind:?} {w:.3}x{h:.3} padrão {j}"),
+                    path.clone(),
+                    s,
+                ));
             }
         }
     }

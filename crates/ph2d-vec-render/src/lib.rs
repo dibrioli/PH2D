@@ -414,7 +414,10 @@ pub(crate) fn agudo_de(path: &VecPath, bp: Option<&BezPath>) -> bool {
 ///
 /// ⚠️ Mede o COZIDO (um Trim muda o comprimento) e só mede quando há tracejado: a medição é
 /// um `arclen` por segmento, e uma linha contínua não tem o que ajustar.
-pub(crate) fn dash_of(cooked: &VecPath, stroke: Option<&StrokeSpec>) -> Option<ph2d_vec_scene::DashLengths> {
+pub(crate) fn dash_of(
+    cooked: &VecPath,
+    stroke: Option<&StrokeSpec>,
+) -> Option<ph2d_vec_scene::DashLengths> {
     ph2d_vec_scene::dash_fit::dash_lengths_for(cooked, stroke?)
 }
 

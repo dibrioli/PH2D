@@ -69,7 +69,10 @@ fn head_size_head_round_and_both_ends_are_painted_and_clickable() {
 
     for (id, what) in [
         (ph2d_tool_vector::ids::VECTOR_MARKER_SCALE, "Head Size"),
-        (ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_END, "Head Size (end)"),
+        (
+            ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_END,
+            "Head Size (end)",
+        ),
         (ph2d_tool_vector::ids::VECTOR_MARKER_ROUND, "Head Round"),
         (ph2d_tool_vector::ids::VECTOR_MARKER_BOTH, "Both Ends"),
     ] {

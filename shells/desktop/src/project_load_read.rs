@@ -55,13 +55,15 @@ impl crate::App {
         let antigo = ver < PROJECT_SCHEMA;
         let _traco_v22 = antigo.then(ph2d_vec_scene::StrokeLayoutV22::enter);
         let (mut file, migrated_counter) = match ver {
-            PROJECT_SCHEMA | crate::project_schema::PROJECT_SCHEMA_TRACO_V22 => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
-                Ok((_, f)) => (f, None),
-                Err(e) => {
-                    eprintln!("[proj] erro ao ler {path}: {e}");
-                    return None;
+            PROJECT_SCHEMA | crate::project_schema::PROJECT_SCHEMA_TRACO_V22 => {
+                match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
+                    Ok((_, f)) => (f, None),
+                    Err(e) => {
+                        eprintln!("[proj] erro ao ler {path}: {e}");
+                        return None;
+                    }
                 }
-            },
+            }
             // ⭐ **98 → 99: o corte da `Sprite`** (ADR-0164 F1 passo 6). A forma do ficheiro é a
             // mesma, então ele lê-se com o tipo VIVO — o que muda são os bytes DENTRO do blob da
             // `Sprite`, que o parse atravessa sem olhar. Ver `crate::project_migrate_sprite`.

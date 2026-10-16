@@ -170,7 +170,10 @@ fn the_action_bar_pins_and_never_hides() {
     hero.apply_event(WidgetEvent::Click(
         ph2d_editor_core::ids::SELECTION_ACTIONS_PIN,
     ));
-    assert!(!hero.store.selection_actions_pinned(), "o 2.º clique não a soltou");
+    assert!(
+        !hero.store.selection_actions_pinned(),
+        "o 2.º clique não a soltou"
+    );
 }
 
 /// Os três tablets (os mesmos do `the_chrome_never_eats_more_of_a_tablet_than_this`).

@@ -186,9 +186,15 @@ fn the_palette_opens_the_stroke_panel_of_the_control_bar() {
         "controlo: nasce tudo fechado"
     );
     let model = global_palette::build_global_model(&hero);
-    assert!(model.is_item(v::VECTOR_BAR_STROKE), "«Stroke ▾» fora da paleta");
+    assert!(
+        model.is_item(v::VECTOR_BAR_STROKE),
+        "«Stroke ▾» fora da paleta"
+    );
     global_palette::route_global_pick(&mut hero, v::VECTOR_BAR_STROKE);
-    assert!(aberta(&hero, v::VECTOR_BAR_STROKE), "a paleta não abriu o painel do traço");
+    assert!(
+        aberta(&hero, v::VECTOR_BAR_STROKE),
+        "a paleta não abriu o painel do traço"
+    );
     global_palette::route_global_pick(&mut hero, v::VECTOR_BAR_PROFILE);
     assert!(aberta(&hero, v::VECTOR_BAR_PROFILE));
     assert!(

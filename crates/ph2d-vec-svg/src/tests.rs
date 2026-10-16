@@ -257,7 +257,11 @@ fn a_four_number_dasharray_arrives_as_two_pairs_without_a_note() {
     );
     let s = d.shapes[0].path.stroke.as_ref().expect("ha' traco");
     let p = s.dash.expect("ha' tracejado");
-    assert_eq!(p.active(), &[[3.0, 1.0], [0.5, 1.0]], "os dois pares: {p:?}");
+    assert_eq!(
+        p.active(),
+        &[[3.0, 1.0], [0.5, 1.0]],
+        "os dois pares: {p:?}"
+    );
     assert!(
         !d.notes.iter().any(|n| n.contains("stroke-dasharray")),
         "quatro numeros cabem no documento - nao ha' perda a dizer: {:?}",
@@ -276,7 +280,11 @@ fn a_dasharray_longer_than_six_numbers_keeps_three_pairs_and_says_so() {
     );
     let s = d.shapes[0].path.stroke.as_ref().expect("ha' traco");
     let p = s.dash.expect("ha' tracejado");
-    assert_eq!(p.pairs, [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], "os 6 1.os: {p:?}");
+    assert_eq!(
+        p.pairs,
+        [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]],
+        "os 6 1.os: {p:?}"
+    );
     assert!(
         d.notes.iter().any(|n| n.contains("stroke-dasharray")),
         "o 4.o par caiu e a nota tem de o dizer: {:?}",

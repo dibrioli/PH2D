@@ -146,13 +146,13 @@ mod paint_clip;
 mod paint_components;
 /// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
 mod paint_connector;
+/// O tracejado em pares (F16c) — as linhas Dash / Gap da seção Stroke.
+mod paint_dashes;
 /// Fill-type, Fill-rule e Compound (era `paint_arrange` até 15/10).
 mod paint_fill_type;
 /// A seção FRAME — o contêiner (plano UI/UX W0).
 mod paint_frame;
 mod paint_layout;
-/// O tracejado em pares (F16c) — as linhas Dash / Gap da seção Stroke.
-mod paint_dashes;
 /// As pontas do traço (arrowheads) — dois chips na seção Stroke + o popover diferido.
 mod paint_markers;
 mod paint_modes;

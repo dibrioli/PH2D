@@ -304,7 +304,10 @@ fn the_dash_closes_the_loop_on_a_shape_path() {
         (n - n.round()).abs() < 1e-9,
         "o padrao nao fecha a volta: cabem {n} periodos, e a emenda aparece no ponto inicial"
     );
-    assert!(12.0 / (d + g) < n.round(), "o fim tem de cair DENTRO do ultimo vao");
+    assert!(
+        12.0 / (d + g) < n.round(),
+        "o fim tem de cair DENTRO do ultimo vao"
+    );
     assert!(n.round() >= 1.0);
 }
 

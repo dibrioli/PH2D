@@ -210,7 +210,9 @@ pub fn publish(
                 }
             })
             .and_then(|p| {
-                ph2d_tool_vector::params::active_preset(&ph2d_tool_vector::params::preset_tracks(&p))
+                ph2d_tool_vector::params::active_preset(&ph2d_tool_vector::params::preset_tracks(
+                    &p,
+                ))
             }),
     );
     // Publish the pivot-edit ("Set Center") armed state for the button label.

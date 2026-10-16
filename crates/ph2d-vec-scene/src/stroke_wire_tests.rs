@@ -60,7 +60,10 @@ fn the_v22_scope_reads_the_old_layout_and_closes() {
     let s: StrokeSpec = with_stroke_layout_v22(|| postcard::from_bytes(&antigo)).unwrap();
     assert_eq!(s.dash, Some(DashPattern::single(2.0, 1.5)));
     assert_eq!((s.marker_scale_start, s.marker_scale_end), (1.7, 1.7));
-    assert_eq!((s.marker_start, s.marker_round, s.align), (Marker::Circle, 0.25, StrokeAlign::Inner));
+    assert_eq!(
+        (s.marker_start, s.marker_round, s.align),
+        (Marker::Circle, 0.25, StrokeAlign::Inner)
+    );
     assert!(!reading_v22(), "o âmbito fechou");
     let vivo = postcard::to_allocvec(&cheio()).unwrap();
     assert_eq!(postcard::from_bytes::<StrokeSpec>(&vivo).unwrap(), cheio());
@@ -77,7 +80,10 @@ fn a_zero_dash_after_the_first_is_a_dot_that_survives_world_coordinates() {
     });
     let l = s.dash_lengths().expect("tracejado");
     let ponto = l[2];
-    assert!(ponto >= crate::MIN_DASH_FRACTION * s.width, "o ponto mede {ponto}");
+    assert!(
+        ponto >= crate::MIN_DASH_FRACTION * s.width,
+        "o ponto mede {ponto}"
+    );
     for x in [1.0_f64, 1.3e3, 1.0e5] {
         assert!(x + ponto > x, "em x = {x} o ponto colapsa");
     }

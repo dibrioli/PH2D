@@ -398,9 +398,9 @@ pub fn build_shape_path(p: &ShapeParams) -> VecPath {
         let mut spec = ph2d_vec_scene::StrokeSpec::new(rgba8(st.rgba), f64::from(st.width));
         // ⚠️ **O TRACEJADO, a PONTA e a JUNTA já moram no `StrokeSpec`** (doc 89 folha 14, doc 121
         // §9.19 (3)): o que faltava era o nó ter onde dizê-los. `dash <= 0` é contínuo.
-        spec.dash = p.dash.map(|(d, g)| {
-            ph2d_vec_scene::DashPattern::single(f64::from(d), f64::from(g.max(0.0)))
-        });
+        spec.dash = p
+            .dash
+            .map(|(d, g)| ph2d_vec_scene::DashPattern::single(f64::from(d), f64::from(g.max(0.0))));
         (spec.cap, spec.join) = mistura::traco::ponta_e_junta(st);
         path.stroke = Some(spec);
     }

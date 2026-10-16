@@ -26,8 +26,8 @@
 //! engrossaria a linha em função do perímetro — dois retângulos do mesmo desenho e tamanhos
 //! diferentes sairiam com traços de espessuras diferentes.
 
-use crate::VecPath;
 use crate::DashLengths;
+use crate::VecPath;
 use crate::arc_path::ArcPath;
 use crate::compound::Contour;
 use crate::stroke_style::StrokeSpec;

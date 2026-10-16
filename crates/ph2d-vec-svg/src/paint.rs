@@ -6,8 +6,9 @@
 //! gradiente, raio de quina **e** largura de traço pela MESMA porta — construir aqui já em mundo
 //! obrigaria a repetir essa lei, e ela tem quatro sub-casos.
 
-use ph2d_vec_scene::{MAX_DASH_PAIRS, 
-    GradientStop, LineCap, LineJoin, Marker, Paint, Rgba8, StrokeAlign, StrokePaint, StrokeSpec,
+use ph2d_vec_scene::{
+    GradientStop, LineCap, LineJoin, MAX_DASH_PAIRS, Marker, Paint, Rgba8, StrokeAlign,
+    StrokePaint, StrokeSpec,
 };
 
 /// O que uma tinta não conseguiu trazer (uma linha por espécie, para a nota do importador).

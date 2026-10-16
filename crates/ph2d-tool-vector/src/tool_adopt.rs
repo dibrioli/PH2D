@@ -61,9 +61,7 @@ impl VectorTool {
         self.align = s.align;
         // `dash` é `Option<DashPattern>` em múltiplos da largura; a tool guarda os pares, e o 1.º
         // traço `0` é o contínuo — a mesma convenção que o `dash_lengths` do documento usa.
-        self.dash = s
-            .dash
-            .map_or(crate::params::DASH_DEFAULT, |p| p.pairs);
+        self.dash = s.dash.map_or(crate::params::DASH_DEFAULT, |p| p.pairs);
         self.adopt_markers(
             s.marker_start,
             s.marker_end,

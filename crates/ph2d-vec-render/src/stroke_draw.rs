@@ -109,7 +109,10 @@ pub(crate) fn draw_one_stroke(
                 // ⚠️ Só a FAIXA recebe o padrão. Uma ponta de seta é um preenchimento sólido, e o
                 // `stroke_plan` já a devolve como peça própria — pintá-la com o ladrilho poria o
                 // motivo dentro de um triângulo de 3 px, onde ele não se lê.
-                let (line, own): (std::borrow::Cow<'_, VecPath>, Option<ph2d_vec_scene::DashLengths>) = match piece {
+                let (line, own): (
+                    std::borrow::Cow<'_, VecPath>,
+                    Option<ph2d_vec_scene::DashLengths>,
+                ) = match piece {
                     StrokePiece::Line {
                         path: Cow::Borrowed(_),
                     } => (Cow::Borrowed(path), None),

@@ -373,7 +373,11 @@ pub fn ajusta_no_ecra(pen: &mut Stroke, screen: &BezPath) {
     let Some((total, fechado)) = maior_contorno(screen) else {
         return;
     };
-    let pares: Vec<[f64; 2]> = pen.dash_pattern.chunks_exact(2).map(|c| [c[0], c[1]]).collect();
+    let pares: Vec<[f64; 2]> = pen
+        .dash_pattern
+        .chunks_exact(2)
+        .map(|c| [c[0], c[1]])
+        .collect();
     let ajuste = ph2d_vec_scene::dash_fit::fit_traced(
         ph2d_vec_scene::DashLengths::from_pairs(&pares),
         total,

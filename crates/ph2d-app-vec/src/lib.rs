@@ -214,24 +214,24 @@ mod sonda_tampa_redonda_tests;
 #[cfg(test)]
 #[path = "tampa_redonda_tests.rs"]
 mod tampa_redonda_tests;
+/// A cena 22 (15/10): o Arrange e o Alinhar nas duas linhas da ④.
+mod vector_mode_alinhar;
+/// A cena 23 (F16): a barra de controle do Illustrator e o painel do traço aberto.
+mod vector_mode_controle;
 /// A cena 16 (F10; F12): a estrela pelas alças e a fila de ⇕ da lateral.
 mod vector_mode_estrela;
 /// A cena 15 (F9): as alças das formas arrastadas pelo press e o arrasto da shell.
 mod vector_mode_handles;
 /// A cena 21 (F14): as quinas arredondadas em toda forma que as tem.
 mod vector_mode_quinas;
-/// A cena 22 (15/10): o Arrange e o Alinhar nas duas linhas da ④.
-mod vector_mode_alinhar;
-/// A cena 23 (F16): a barra de controle do Illustrator e o painel do traço aberto.
-mod vector_mode_controle;
-/// A cena 24 (F16c): o tracejado em pares e a seta por ponta, no painel do traço.
-mod vector_mode_tracejado;
 /// A cena 20 (F13): o modo Forma selecciona — o clique desarma e traz as alças.
 mod vector_mode_seleciona;
 /// A cena 19 (F12): as setas lado a lado em quatro formas e a ponta da espiral que segue a mão.
 mod vector_mode_setas;
 /// A cena 17 (F11): a caixa por fora do traço grosso e os ⊙ dentro dos cantos.
 mod vector_mode_stroke;
+/// A cena 24 (F16c): o tracejado em pares e a seta por ponta, no painel do traço.
+mod vector_mode_tracejado;
 /// A cena 18 (F12 A): o traço das formas das fotos do dono, para o antes × depois do bico.
 mod vector_mode_tracos;
 

@@ -78,8 +78,16 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     // O tracejado em pares (F16c): seis caixas numéricas, com a faixa (sem ela o arrasto escala
     // errado). Pintadas e semeadas em `paint_dashes`.
     for (ids, lo, hi) in [
-        (ph2d_tool_vector::ids::VECTOR_DASH_IDS, params::DASH_MIN, params::DASH_MAX),
-        (ph2d_tool_vector::ids::VECTOR_GAP_IDS, params::GAP_MIN, params::GAP_MAX),
+        (
+            ph2d_tool_vector::ids::VECTOR_DASH_IDS,
+            params::DASH_MIN,
+            params::DASH_MAX,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_GAP_IDS,
+            params::GAP_MIN,
+            params::GAP_MAX,
+        ),
     ] {
         for id in ids {
             number_field(store, id, lo, hi, crate::paint_dashes::DASH_STEP, lo);

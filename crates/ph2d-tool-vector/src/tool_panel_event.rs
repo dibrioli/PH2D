@@ -240,11 +240,17 @@ impl VectorTool {
             // **O tracejado em pares** (F16c) — caixas numéricas: o valor chega autorado, em
             // múltiplos da largura, e a coluna da caixa é o par.
             PanelEvent::SetValue(id, v) if crate::ids::VECTOR_DASH_IDS.contains(&id) => {
-                let k = crate::ids::VECTOR_DASH_IDS.iter().position(|x| *x == id).unwrap_or(0);
+                let k = crate::ids::VECTOR_DASH_IDS
+                    .iter()
+                    .position(|x| *x == id)
+                    .unwrap_or(0);
                 self.set_dash(k, false, v);
             }
             PanelEvent::SetValue(id, v) if crate::ids::VECTOR_GAP_IDS.contains(&id) => {
-                let k = crate::ids::VECTOR_GAP_IDS.iter().position(|x| *x == id).unwrap_or(0);
+                let k = crate::ids::VECTOR_GAP_IDS
+                    .iter()
+                    .position(|x| *x == id)
+                    .unwrap_or(0);
                 self.set_dash(k, true, v);
             }
             // **Pontas do traço.** O popover do chip escolhe uma ponta e o painel emite o

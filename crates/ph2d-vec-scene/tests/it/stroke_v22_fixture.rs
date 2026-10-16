@@ -21,10 +21,24 @@ fn a_v22_scene_opens_the_same() {
     };
 
     let s = seta.stroke.as_ref().expect("a seta tem traço");
-    assert_eq!(s.dash, Some(DashPattern::single(3.0, 1.5)), "o par antigo é o 1.º par");
-    assert_eq!((s.marker_scale_start, s.marker_scale_end), (1.7, 1.7), "o tamanho único vai às duas");
-    assert_eq!((s.marker_start, s.marker_end), (Marker::Triangle, Marker::Circle));
-    assert_eq!((s.marker_round, s.cap, s.width), (0.25, LineCap::Round, 0.5));
+    assert_eq!(
+        s.dash,
+        Some(DashPattern::single(3.0, 1.5)),
+        "o par antigo é o 1.º par"
+    );
+    assert_eq!(
+        (s.marker_scale_start, s.marker_scale_end),
+        (1.7, 1.7),
+        "o tamanho único vai às duas"
+    );
+    assert_eq!(
+        (s.marker_start, s.marker_end),
+        (Marker::Triangle, Marker::Circle)
+    );
+    assert_eq!(
+        (s.marker_round, s.cap, s.width),
+        (0.25, LineCap::Round, 0.5)
+    );
     // ⭐ O que se DESENHA: o mesmo par em comprimento que o v22 dava (`[d·w, g·w]`).
     assert_eq!(s.dash_lengths().expect("tracejada"), [1.5, 0.75]);
 
@@ -40,7 +54,10 @@ fn a_v22_scene_opens_the_same() {
     assert_eq!((c.marker_scale_start, c.marker_scale_end), (2.5, 2.5));
 
     let s = lisa.stroke.as_ref().expect("a lisa tem traço");
-    assert_eq!((s.dash, s.marker_scale_start, s.marker_scale_end), (None, 1.0, 1.0));
+    assert_eq!(
+        (s.dash, s.marker_scale_start, s.marker_scale_end),
+        (None, 1.0, 1.0)
+    );
 
     // E volta a gravar-se na forma NOVA, sem perder nada.
     let nova = cena.to_bytes().expect("grava");
@@ -54,5 +71,8 @@ fn a_v22_scene_opens_the_same() {
 fn without_the_v22_scope_the_same_bytes_do_not_read_the_same() {
     let certo = VecScene::from_bytes(V22).expect("um v22 abre");
     let torto = postcard::from_bytes::<(u32, VecScene)>(V22).map(|(_, c)| c);
-    assert!(torto.as_ref() != Ok(&certo), "o âmbito não mudou nada — o gate de cima é cego");
+    assert!(
+        torto.as_ref() != Ok(&certo),
+        "o âmbito não mudou nada — o gate de cima é cego"
+    );
 }

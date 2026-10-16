@@ -44,7 +44,10 @@ fn o_tracejado_esticado_fecha_no_contorno_do_ecra() {
     let bp = Circle::new((0.0, 0.0), 1.0).to_path(1e-4);
     let local = ph2d_vec_scene::dash_fit::fit([0.3, 0.2].into(), 2.0 * std::f64::consts::PI, true);
     let m = Affine::scale_non_uniform(2.0, 0.7);
-    let (pen, xf) = pen_for(&Stroke::new(0.1).with_dashes(0.0, local.as_slice().iter().copied()), m);
+    let (pen, xf) = pen_for(
+        &Stroke::new(0.1).with_dashes(0.0, local.as_slice().iter().copied()),
+        m,
+    );
     let mut pen = pen.expect("nao conforme");
     assert_eq!(xf, Affine::IDENTITY);
     let ecra = m * bp;

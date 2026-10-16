@@ -398,7 +398,13 @@ fn the_spans_alternate_the_two_dash_lengths_of_a_two_pair_pattern() {
     let dois = crate::DashLengths::from_pairs(&[[3.0, 1.0], [1.0, 1.0]]);
     assert_eq!(
         crate::brush_spans(13.0, Some(dois)),
-        vec![(0.0, 3.0), (4.0, 5.0), (6.0, 9.0), (10.0, 11.0), (12.0, 13.0)]
+        vec![
+            (0.0, 3.0),
+            (4.0, 5.0),
+            (6.0, 9.0),
+            (10.0, 11.0),
+            (12.0, 13.0)
+        ]
     );
     // E as larguras alternam 3, 1, 3, 1 (a última é truncada no fim do contorno).
     let larguras: Vec<f64> = crate::brush_spans(13.0, Some(dois))

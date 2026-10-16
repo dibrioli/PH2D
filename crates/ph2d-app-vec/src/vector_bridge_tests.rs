@@ -218,7 +218,10 @@ fn every_field_of_the_style_is_seen_by_the_change_detector() {
         ..base
     };
     let tracejado = um_par.onto(&spec, spec.width);
-    assert!(!um_par.differs_from(&tracejado), "precondicao: o par 1 gravado");
+    assert!(
+        !um_par.differs_from(&tracejado),
+        "precondicao: o par 1 gravado"
+    );
     let dois_pares = StrokeStyle {
         dash: Some(ph2d_vec_scene::DashPattern {
             pairs: [[2.0, 1.0], [0.5, 1.0], [0.0, 0.0]],

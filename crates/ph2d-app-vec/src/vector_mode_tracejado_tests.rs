@@ -105,8 +105,18 @@ fn vistas() -> Vec<(f64, [f64; 2])> {
     let mut v = Vec::new();
     for zi in 0..24 {
         let k = 100.0 * 1.17_f64.powi(zi);
-        for (fx, sub) in [(0.0, 0.0), (0.0, 0.37), (0.1, 0.5), (0.5, 0.21), (1.0, 0.73), (0.25, 0.9)] {
-            v.push((k, [R[0] + fx * (R[2] - R[0]) + sub / k, R[1] + 13.0 * sub / k]));
+        for (fx, sub) in [
+            (0.0, 0.0),
+            (0.0, 0.37),
+            (0.1, 0.5),
+            (0.5, 0.21),
+            (1.0, 0.73),
+            (0.25, 0.9),
+        ] {
+            v.push((
+                k,
+                [R[0] + fx * (R[2] - R[0]) + sub / k, R[1] + 13.0 * sub / k],
+            ));
         }
     }
     v
@@ -151,7 +161,11 @@ fn a_cena_24_nao_pinta_a_faixa_do_fecho_em_vista_nenhuma() {
         let to = ph2d_vec_render::path_to_screen(&xf, p.id, cam);
         t.inner_mut()
             .stroke(&controlo, to, &Brush::Solid(Color::WHITE), None, &bp);
-        let n = vazamentos(&pass.render_and_readback(&gpu, t.inner(), size).unwrap(), size, cam);
+        let n = vazamentos(
+            &pass.render_and_readback(&gpu, t.inner(), size).unwrap(),
+            size,
+            cam,
+        );
         antes += usize::from(n > 0);
         px_antes += n;
     }

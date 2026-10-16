@@ -21,8 +21,8 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::property_row::Seccao;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_i18n::tr_with;
-use ph2d_tool_vector::ids::{VECTOR_DASH_IDS, VECTOR_GAP_IDS};
 use ph2d_tool_vector::VectorStyleSnapshot;
+use ph2d_tool_vector::ids::{VECTOR_DASH_IDS, VECTOR_GAP_IDS};
 use ph2d_tool_vector::params::{DASH_MAX, DASH_MIN, GAP_MAX, GAP_MIN};
 
 /// O passo do arrasto/teclas das seis caixas — um quarto da largura do traço.
@@ -52,7 +52,10 @@ pub(crate) fn seed(store: &mut WidgetStore) {
     let snap = state::current_snapshot();
     let focus = store.focus_id();
     for (k, [d, g]) in snap.dash.iter().enumerate() {
-        for (id, gap, v) in [(VECTOR_DASH_IDS[k], false, *d), (VECTOR_GAP_IDS[k], true, *g)] {
+        for (id, gap, v) in [
+            (VECTOR_DASH_IDS[k], false, *d),
+            (VECTOR_GAP_IDS[k], true, *g),
+        ] {
             let (lo, hi) = range(gap);
             store.set_number_range(id, lo, hi, DASH_STEP);
             if focus != Some(id) {
@@ -117,10 +120,22 @@ mod tests {
 
     #[test]
     fn the_next_pair_row_appears_when_the_previous_one_draws() {
-        assert_eq!(visible_dash_rows(&[[0.0, 1.0], [0.0, 0.0], [0.0, 0.0]]), 1, "contínuo");
-        assert_eq!(visible_dash_rows(&[[0.0, 1.0], [2.0, 2.0], [0.0, 0.0]]), 1, "1.º traço 0");
+        assert_eq!(
+            visible_dash_rows(&[[0.0, 1.0], [0.0, 0.0], [0.0, 0.0]]),
+            1,
+            "contínuo"
+        );
+        assert_eq!(
+            visible_dash_rows(&[[0.0, 1.0], [2.0, 2.0], [0.0, 0.0]]),
+            1,
+            "1.º traço 0"
+        );
         assert_eq!(visible_dash_rows(&[[3.0, 1.0], [0.0, 0.0], [0.0, 0.0]]), 2);
-        assert_eq!(visible_dash_rows(&[[3.0, 1.0], [0.0, 1.0], [0.0, 0.0]]), 3, "um ponto conta");
+        assert_eq!(
+            visible_dash_rows(&[[3.0, 1.0], [0.0, 1.0], [0.0, 0.0]]),
+            3,
+            "um ponto conta"
+        );
         assert_eq!(visible_dash_rows(&[[3.0, 1.0], [1.0, 1.0], [1.0, 1.0]]), 3);
     }
 }

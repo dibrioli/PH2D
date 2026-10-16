@@ -114,7 +114,10 @@ fn the_door_measures_the_path_and_passes_the_absence_through() {
         (n - n.round()).abs() < 1e-9,
         "a porta tem de fechar a conta: {n} periodos"
     );
-    assert!(periods(d, total) < n.round(), "o fim cai DENTRO do ultimo vao");
+    assert!(
+        periods(d, total) < n.round(),
+        "o fim cai DENTRO do ultimo vao"
+    );
 }
 
 /// **A folga só entra num FECHADO ajustado** — o aberto e o padrão devolvido intocado ficam iguais
@@ -137,7 +140,11 @@ fn a_two_pair_pattern_on_a_closed_contour_scales_all_four_lengths_by_one_k() {
     let raw = DashLengths::from_pairs(&[[1.0, 0.6], [0.3, 0.4]]);
     for total in [10.0, 13.37, 100.0, 7.5] {
         let d = fit(raw, total, true);
-        assert_eq!(d.as_slice().len(), 4, "os dois pares sobrevivem ao ajuste: {d:?}");
+        assert_eq!(
+            d.as_slice().len(),
+            4,
+            "os dois pares sobrevivem ao ajuste: {d:?}"
+        );
         let k = d[0] / raw[0];
         for i in 0..4 {
             assert!(

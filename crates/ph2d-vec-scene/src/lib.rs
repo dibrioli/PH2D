@@ -303,17 +303,17 @@ pub use marker::{ALL_MARKERS, Marker, end_tangent, stroke_head, trim_path};
 /// ⭐⭐⭐ **O PINCEL de contorno** (plano 36) — a arte que PERCORRE a linha, ao lado do padrão que é
 /// a tinta que ela revela. São dois modelos, e o estado da arte entrega os dois.
 pub mod brush_stroke;
+/// O **tracejado** em pares (F16c) — o autorado e o medido.
+mod dash_pattern;
 /// O **ESTILO do traço** (`LineCap` · `LineJoin` · `StrokeSpec`) — módulo irmão pelo teto
 /// de 700 LOC deste arquivo, e coeso: é o vocabulário de uma caneta, com os seus defaults e
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
-/// O **tracejado** em pares (F16c) — o autorado e o medido.
-mod dash_pattern;
 pub use dash_pattern::{DashLengths, DashPattern, MAX_DASH_PAIRS};
 /// A leitura do `StrokeSpec` por versão — o âmbito v22 (F16c).
 mod stroke_wire;
-pub use stroke_wire::{StrokeLayoutV22, with_stroke_layout_v22};
 pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
+pub use stroke_wire::{StrokeLayoutV22, with_stroke_layout_v22};
 
 pub use stroke_style::{
     BrushStroke, LineCap, LineJoin, MIN_DASH_FRACTION, MITER_LIMIT, OffsetSide, StrokeAlign,

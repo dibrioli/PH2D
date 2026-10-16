@@ -92,8 +92,8 @@ pub fn size_row_pulldowns(rail: &mut ToolRail, text_system: &mut TextSystem) {
         // elidido em vez de empurrar a barra inteira para o `⋯`.
         if let ToolRailEntry::Text { text, row_w } = entry {
             let w = text_system.prefix_width_weighted(text, font, FontWeight::MEDIUM);
-            *row_w = crate::paint::rect_for_label(w)
-                .min(crate::widget::number_input::min_w_px() * 2.0);
+            *row_w =
+                crate::paint::rect_for_label(w).min(crate::widget::number_input::min_w_px() * 2.0);
         }
     }
 }

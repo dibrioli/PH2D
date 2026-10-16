@@ -509,12 +509,13 @@ pub fn migra_traco_v22(mundo: &mut ph2d_ecs::scene::WorldSnapshot) -> usize {
         };
         let mut mudou = false;
         for filho in &mut env.children {
-            let fonte = ph2d_vec_scene::with_stroke_layout_v22(|| {
-                match postcard::take_from_bytes::<VecPath>(&filho.source) {
-                    Ok((p, [])) => Some(p),
-                    _ => None,
-                }
-            });
+            let fonte =
+                ph2d_vec_scene::with_stroke_layout_v22(|| {
+                    match postcard::take_from_bytes::<VecPath>(&filho.source) {
+                        Ok((p, [])) => Some(p),
+                        _ => None,
+                    }
+                });
             if let Some(bytes) = fonte.and_then(|p| postcard::to_allocvec(&p).ok()) {
                 mudou |= bytes != filho.source;
                 filho.source = bytes;

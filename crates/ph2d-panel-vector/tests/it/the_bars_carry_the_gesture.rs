@@ -430,8 +430,8 @@ fn the_arrange_verbs_ride_the_first_row_and_align_the_second() {
     // Cada botão novo chega à porta do painel (o Distribuir não aparece na matriz, que pára em 2).
     for id in with_dist {
         let mut host = crate::host_aberto();
-        let out = host
-            .apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(id));
+        let out =
+            host.apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(id));
         assert!(
             out == EventOutcome::Consumed && !host.drained_actions().is_empty(),
             "{id:?} pinta na ④ e o painel não o despacha"
@@ -458,16 +458,23 @@ fn the_live_boolean_switch_rides_in_front_of_the_booleans() {
             .map(|x| (x.id, x.on))
     };
     assert_eq!(live(&bars(1)), None, "com uma forma não há booleana");
-    for (on, want) in [(false, p::VECTOR_BOOL_LIVE_ON), (true, p::VECTOR_BOOL_LIVE_OFF)] {
+    for (on, want) in [
+        (false, p::VECTOR_BOOL_LIVE_ON),
+        (true, p::VECTOR_BOOL_LIVE_OFF),
+    ] {
         ph2d_panel_vector::state::set_bool_live_on(on);
         let b = bars(2);
         assert_eq!(live(&b), Some((want, on)), "ligada = {on}");
         let ids = action_ids(&b);
         let at = ids.iter().position(|&i| i == want).expect("na ④");
-        assert_eq!(ids.get(at + 1), Some(&p::VECTOR_BOOL_UNION), "à frente da Union");
+        assert_eq!(
+            ids.get(at + 1),
+            Some(&p::VECTOR_BOOL_UNION),
+            "à frente da Union"
+        );
         let mut host = crate::host_aberto();
-        let out = host
-            .apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(want));
+        let out =
+            host.apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(want));
         assert!(
             out == EventOutcome::Consumed && !host.drained_actions().is_empty(),
             "o interruptor pinta na ④ e o painel não o despacha"
@@ -496,7 +503,10 @@ fn a_shape_inside_a_live_boolean_gets_its_verbs_and_the_apply() {
     };
     let fora = action_ids(&one());
     assert!(
-        VERBS.iter().chain([&p::VECTOR_BOOL_APPLY]).all(|id| !fora.contains(id)),
+        VERBS
+            .iter()
+            .chain([&p::VECTOR_BOOL_APPLY])
+            .all(|id| !fora.contains(id)),
         "fora de uma booleana viva não há verbo de forma nem Apply"
     );
     ph2d_panel_vector::state::set_bool_shape_row(Some((1, "Path 2".to_owned())));
@@ -514,12 +524,15 @@ fn a_shape_inside_a_live_boolean_gets_its_verbs_and_the_apply() {
         [false, true, false, false],
         "aceso o verbo que a forma tem (Subtract)"
     );
-    assert!(row.iter().all(|x| x.label.contains("Path 2")), "a dica nomeia a forma");
+    assert!(
+        row.iter().all(|x| x.label.contains("Path 2")),
+        "a dica nomeia a forma"
+    );
     assert!(action_ids(&b).contains(&p::VECTOR_BOOL_APPLY), "o Apply");
     for id in VERBS.into_iter().chain([p::VECTOR_BOOL_APPLY]) {
         let mut host = crate::host_aberto();
-        let out = host
-            .apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(id));
+        let out =
+            host.apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(id));
         assert!(
             out == EventOutcome::Consumed && !host.drained_actions().is_empty(),
             "{id:?} pinta na ④ e o painel não o despacha"
@@ -590,7 +603,8 @@ fn the_snap_section_is_back_in_the_panel_and_off_the_bars() {
     let mut st = VectorPanelState;
     for id in SNAP {
         assert!(
-            host.painted_rect::<VectorPanel>(&mut st, ALTO, id).is_some(),
+            host.painted_rect::<VectorPanel>(&mut st, ALTO, id)
+                .is_some(),
             "{id:?}: o painel não pinta o encaixe"
         );
     }
@@ -663,7 +677,12 @@ fn every_control_of_the_moved_sections_has_a_new_home() {
         (p::VECTOR_PATH_WELD, "Weld"),
     ]);
     // As secções Arrange e Align (dono 15/10) — o Z numérico foi para o Inspector no modo Objeto.
-    saidas.extend(ARRANGE.iter().chain(&ALIGN).map(|&id| (id, "Arrange/Align")));
+    saidas.extend(
+        ARRANGE
+            .iter()
+            .chain(&ALIGN)
+            .map(|&id| (id, "Arrange/Align")),
+    );
     saidas.extend([
         (t::VECTOR_DISTRIBUTE_H, "Distribute H"),
         (t::VECTOR_DISTRIBUTE_V, "Distribute V"),
@@ -923,7 +942,11 @@ fn the_control_bar_leads_with_name_colours_and_stroke() {
         ]
     );
     let all = none.painted_ids();
-    for id in [p::VECTOR_BAR_PROFILE, p::VECTOR_BAR_KIND, p::VECTOR_OBJ_OPACITY_NUM] {
+    for id in [
+        p::VECTOR_BAR_PROFILE,
+        p::VECTOR_BAR_KIND,
+        p::VECTOR_OBJ_OPACITY_NUM,
+    ] {
         assert!(!all.contains(&id), "{id:?} sem forma selecionada");
     }
     let three = Retrato {

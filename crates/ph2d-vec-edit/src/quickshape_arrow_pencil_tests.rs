@@ -100,7 +100,10 @@ fn the_drag_scales_and_turns_the_whole_arrow() {
     let id = pencil.active_path().unwrap();
     let (s0, v0) = {
         let p = scene.path(id).unwrap();
-        (p.stroke.as_ref().unwrap().marker_scale(false), p.verts.clone())
+        (
+            p.stroke.as_ref().unwrap().marker_scale(false),
+            p.verts.clone(),
+        )
     };
     let end = *pencil.samples().last().unwrap();
     let pivot = v0[0].anchor;
@@ -189,7 +192,10 @@ fn the_ends_go_back_to_the_style_when_the_shape_stops_being_an_arrow() {
     );
     assert!(arrow.inset[1] > 0.0 && arrow.inset[0] == 0.0);
     // F16c: o tamanho é POR PONTA — o início, sem farpa, fica com o do estilo.
-    assert_eq!(arrow.scale[0], 1.7, "o inicio sem farpa guarda o seu tamanho");
+    assert_eq!(
+        arrow.scale[0], 1.7,
+        "o inicio sem farpa guarda o seu tamanho"
+    );
     let back = arrow_ends(&style, [None; 2], 3.0);
     assert_eq!(back.markers, [Marker::Bar, Marker::Triangle]);
     assert_eq!((back.scale, back.inset), ([1.7, 2.3], [0.0; 2]));

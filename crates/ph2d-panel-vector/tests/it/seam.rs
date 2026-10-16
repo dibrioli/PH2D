@@ -295,14 +295,16 @@ fn stroke_cap_dash_and_gap_reach_the_tool() {
     let want = [[3.0, 2.0], [1.0, 0.5], [0.25, 1.5]];
     for k in 0..3 {
         for (id, v, what) in [
-            (ph2d_tool_vector::ids::VECTOR_DASH_IDS[k], want[k][0], "Dash"),
+            (
+                ph2d_tool_vector::ids::VECTOR_DASH_IDS[k],
+                want[k][0],
+                "Dash",
+            ),
             (ph2d_tool_vector::ids::VECTOR_GAP_IDS[k], want[k][1], "Gap"),
         ] {
             host.set_number_value(id, v);
-            let o = host.apply_panel_event::<VectorPanel>(
-                &mut panel_state,
-                WidgetEvent::ValueChanged(id),
-            );
+            let o = host
+                .apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::ValueChanged(id));
             assert_eq!(o, EventOutcome::Consumed, "{what} box {} not wired", k + 1);
             assert!(
                 drain_into_tool(&mut host, &mut tool),

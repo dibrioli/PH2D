@@ -27,12 +27,8 @@ fn bars() -> ToolBars {
 fn left_handed_moves_the_column_and_the_widget_to_the_right() {
     let mid = AREA.x + AREA.w * 0.5;
     for (left_handed, right_side) in [(true, true), (false, false)] {
-        let col = crate::screens::hero::float_bar::tool_bars::placed(
-            &bars(),
-            AREA,
-            false,
-            left_handed,
-        );
+        let col =
+            crate::screens::hero::float_bar::tool_bars::placed(&bars(), AREA, false, left_handed);
         assert!(!col.is_empty());
         for (_, r) in &col {
             assert_eq!(

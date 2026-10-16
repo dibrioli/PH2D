@@ -96,7 +96,9 @@ fn bar_list_rows(hero: &HeroScreen, chip: NodeId) -> Vec<Rect> {
             .collect();
     }
     let rows: Vec<NodeId> = if chip == v::VECTOR_BAR_PROFILE {
-        (0..v::MAX_WIDTH_PRESETS).map(v::vector_width_preset_id).collect()
+        (0..v::MAX_WIDTH_PRESETS)
+            .map(v::vector_width_preset_id)
+            .collect()
     } else {
         vec![
             ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID,
@@ -135,7 +137,8 @@ fn chip_e_linha(
             }
             for id in BAR_LISTS {
                 if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
-                    open, ..
+                    open,
+                    ..
                 }) = hero.store.get_mut(id)
                 {
                     *open = false;

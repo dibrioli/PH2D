@@ -5,7 +5,11 @@ fn the_first_empty_pair_closes_the_pattern() {
     let mut p = DashPattern::single(3.0, 1.0);
     assert_eq!(p.active(), &[[3.0, 1.0]]);
     p.pairs[2] = [5.0, 5.0];
-    assert_eq!(p.active().len(), 1, "o 3.º par não conta depois de um 2.º vazio");
+    assert_eq!(
+        p.active().len(),
+        1,
+        "o 3.º par não conta depois de um 2.º vazio"
+    );
     p.pairs[1] = [0.0, 2.0];
     assert_eq!(p.active(), &[[3.0, 1.0], [0.0, 2.0], [5.0, 5.0]]);
 }

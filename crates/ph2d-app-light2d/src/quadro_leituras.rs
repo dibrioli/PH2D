@@ -43,7 +43,7 @@ pub(super) fn relatar_custo(
         janela.n,
         janela.c2.len(),
     );
-    if janela.n == 0 {
+    if janela.n == 0 && std::env::var_os("PH2D_LIGHT2D_MEMORIA").is_some() {
         relatar_memoria(janela, gpu, buffers);
     }
     janela.total.clear();
@@ -107,8 +107,8 @@ pub(super) struct JanelaDeCusto {
     sonda: Option<SondaDeMemoria>,
 }
 
-/// ⭐ W5x — a BANDA de ler cada buffer grande da holográfica da vista, sozinho (1× por geração, na 1.ª
-/// janela): os zeros em páginas comprimíveis leem-se a ~4× a banda da DRAM, fora delas à banda da DRAM —
+/// ⭐ W5x — `PH2D_LIGHT2D_MEMORIA=1` (com o `CUSTO`): a BANDA de ler cada buffer grande da holográfica da
+/// vista, sozinho (1× por geração, na 1.ª janela): os zeros em páginas comprimíveis leem-se a ~4× a banda da DRAM, fora delas à banda da DRAM —
 /// o regime da `c2` do High é a soma destes (handoff W5x).
 fn relatar_memoria(
     janela: &mut JanelaDeCusto,

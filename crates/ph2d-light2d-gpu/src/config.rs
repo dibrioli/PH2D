@@ -208,6 +208,10 @@ pub struct Config {
     /// e o buffer que nasce no buraco dela lê os seus zeros sem tocar na DRAM (handoff W5x). `false` = o
     /// 1.º nascimento em buffers, o da W5p (`PH2D_LIGHT2D_HRC_BERCO=0` no app compara).
     pub hrc_berco: bool,
+    /// ⭐ W5x — INSTRUMENTO: a holográfica guarda os seus buffers grandes para
+    /// [`crate::Solver::buffers_da_holografica`] (as réguas do regime). `false` no produto: guardá-los
+    /// atrasava a devolução da memória quando a placa recusa (`a_luz_recua_quando_a_placa_recusa_a_memoria`).
+    pub hrc_guarda_os_grandes: bool,
     /// ⭐ W5r — os T e os R da cascata holográfica por COLUNAS (`v` o índice mais rápido): as leituras
     /// em diagonal ficam contíguas — o mesmo bit, outros endereços (handoff W5r). `false` = por linhas.
     pub hrc_por_colunas: bool,
@@ -441,6 +445,7 @@ impl Config {
             modulo_rc: None,
             hrc_nasce_duas_vezes: true,
             hrc_berco: true,
+            hrc_guarda_os_grandes: false,
             hrc_por_colunas: true,
             hrc_arcos_em_tabela: true,
             hrc_salta_o_vazio: true,

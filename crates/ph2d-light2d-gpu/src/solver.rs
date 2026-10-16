@@ -584,7 +584,7 @@ impl Solver {
     }
 
     /// ⭐ W5x — DIAGNÓSTICO: os buffers grandes da holográfica (T, R, acumulado) com o rótulo; vazio
-    /// sem ela. Só para as réguas do regime de memória.
+    /// sem ela ou sem [`Config::hrc_guarda_os_grandes`]. Só para as réguas do regime de memória.
     #[doc(hidden)]
     #[must_use]
     pub fn buffers_da_holografica(&self) -> &[(&'static str, wgpu::Buffer)] {

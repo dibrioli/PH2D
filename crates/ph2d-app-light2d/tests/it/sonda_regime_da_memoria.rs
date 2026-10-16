@@ -234,6 +234,7 @@ fn sonda_regime_da_memoria_na_holografica() {
     let com = |c: Config| Config {
         hrc_nasce_duas_vezes: duas,
         hrc_berco: berco,
+        hrc_guarda_os_grandes: true,
         ..c
     };
     eprintln!(

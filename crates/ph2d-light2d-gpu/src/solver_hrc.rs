@@ -515,13 +515,17 @@ impl Holografica {
             amostra,
             vazia,
             fases: None,
-            grandes: hrc::NOMES_T[..n_t]
-                .iter()
-                .copied()
-                .zip(t)
-                .chain(hrc::NOMES_R.into_iter().zip(r))
-                .chain([(hrc::NOME_ACUMULADO, acumulado)])
-                .collect(),
+            grandes: if e.cfg.hrc_guarda_os_grandes {
+                hrc::NOMES_T[..n_t]
+                    .iter()
+                    .copied()
+                    .zip(t)
+                    .chain(hrc::NOMES_R.into_iter().zip(r))
+                    .chain([(hrc::NOME_ACUMULADO, acumulado)])
+                    .collect()
+            } else {
+                Vec::new()
+            },
         };
         h.escrever(e.queue);
         h

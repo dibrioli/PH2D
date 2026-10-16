@@ -230,6 +230,8 @@ mod solid_carimbos; // o Solid com imagem no Shape enche-se de carimbos (smoke 1
 mod sonda_a8_carga_rampa; // lista 26 A8: que parâmetros da aguada apagam as cores da rampa do Shape
 mod sonda_a9_continuo_impasto; // lista 26 A9
 mod sonda_a9_impasto_luz; // smoke P39: o Impasto com Continuous na tela ILUMINADA (lista 26 C25)
+mod auditoria_l2_seam; // AUDITORIA lente 2 (15/10): Continuous pela porta do painel — sonda, não portão
+mod auditoria_l1_impasto; // auditoria lente 1 (15/10): o Continuous do Impasto fora da fixtura do portão
 mod stroke_and_session;
 mod textura_tinge; // Bug #51: textura × tinta, o Randomize na textura, e o Randomize «a cada traço» (12/10)
 mod texture_and_tiling;

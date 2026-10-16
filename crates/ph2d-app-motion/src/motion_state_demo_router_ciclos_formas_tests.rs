@@ -244,46 +244,7 @@ fn sonda_rota_das_cenas_de_ciclo() {
         let com = rota(&mut m, &sinks);
         // O CONTROLO: a mesma cena com cada carimbo (`Shape → Duplicator`) arrancado — a rota de
         // antes da forma.
-        let carimbos: Vec<NodeId> = m
-            .doc
-            .graph
-            .nodes()
-            .iter()
-            .filter(|i| i.type_name == "motion.duplicator")
-            .map(|i| i.id)
-            .filter(|d| {
-                m.doc.graph.input_edge(*d, 0).is_some_and(|(f, _, _)| {
-                    m.doc
-                        .graph
-                        .node(f)
-                        .is_some_and(|i| i.type_name == "source.shape")
-                })
-            })
-            .collect();
-        for d in carimbos {
-            let g = &mut m.doc.graph;
-            let Some((pontos, porta, _)) = g.input_edge(d, 1) else {
-                continue;
-            };
-            let forma = g.input_edge(d, 0).map(|e| e.0);
-            let saidas: Vec<_> = g
-                .edges()
-                .iter()
-                .filter(|e| e.from.0 == d)
-                .copied()
-                .collect();
-            for e in saidas {
-                g.disconnect(e.to.0, e.to.1);
-                let _ = g.connect(ph2d_nodegraph::graph::Edge {
-                    from: (pontos, u16::try_from(porta).expect("porta")),
-                    ..e
-                });
-            }
-            g.remove_node(d);
-            if let Some(f) = forma {
-                g.remove_node(f);
-            }
-        }
+        crate::motion_state::arranca_carimbos(&mut m.doc.graph);
         let sem = rota(&mut m, &sinks);
         eprintln!("={n}: na CPU {com:?} · sem carimbo {sem:?}");
     }

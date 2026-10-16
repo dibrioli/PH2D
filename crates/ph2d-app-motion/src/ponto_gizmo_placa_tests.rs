@@ -162,7 +162,7 @@ fn os_marcadores_andam_na_placa_como_na_cpu() {
 /// `cpu antiga` (sem gizmo + o `cook_taps_only` do sink, o que a rota pagava antes).
 /// Correr com `--profile smoke`.
 #[test]
-#[ignore = "sonda de placa: mede, não decide"]
+#[ignore = "sonda: placa, --profile smoke — mede, não decide"]
 fn sonda_o_preco_da_leitura_dos_marcadores() {
     let gpu =
         ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).expect("adapter");

@@ -288,11 +288,13 @@ pub fn pedida(sinks: usize) -> Option<Abertura> {
 /// ⭐ **A PORTA DA SHELL**, uma vez por quadro: com a ferramenta Motion já a dividir o centro e o
 /// layout publicado, põe a vista de [`vista`] (ou a altura do `PH2D_DEMO_ALTURA`) e repete-a enquanto
 /// a área visível ainda muda; acaba quando ela assenta ou quando a câmara deixa de ser a posta.
+/// `cena` é a janela da CENA — a banda do split (`scene_mapping::janela` na shell), nunca a
+/// superfície inteira: a mesma conta mundo↔tela de quem desenha.
 pub fn abre_inteira(
     motion: &mut MotionState,
     hero: &HeroScreen,
     camera: &mut Camera2d,
-    janela: WindowSize,
+    cena: WindowSize,
     ts: &mut ph2d_text::TextSystem,
 ) {
     let Some(ab) = motion.abertura.as_ref() else {
@@ -304,7 +306,6 @@ pub fn abre_inteira(
     {
         return;
     }
-    let cena = crate::field_gizmo::scene_camera_window(split, janela);
     #[expect(clippy::cast_precision_loss, reason = "px de janela")]
     let (cw, ch) = (cena.width as f32, cena.height as f32);
     let r = ph2d_app_host::canvas_area::frameable(
@@ -317,11 +318,11 @@ pub fn abre_inteira(
         w: r.w.min(cw - r.x).max(0.0),
         h: r.h.min(ch - r.y).max(0.0),
     };
-    if let Some((a, v)) = ab.ultima {
-        if camera.view() != v || a == area {
-            motion.abertura = None;
-            return;
-        }
+    if let Some((a, v)) = ab.ultima
+        && (camera.view() != v || a == area)
+    {
+        motion.abertura = None;
+        return;
     }
     let nivel = ab.nivel.clone();
     let v = match crate::motion_demo_altura::altura_semeada() {

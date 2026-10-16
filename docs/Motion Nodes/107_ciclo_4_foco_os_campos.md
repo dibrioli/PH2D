@@ -242,6 +242,12 @@ INDEPENDENTES:** ela coze `6 400` peças · a mancha **vê-se** (`maior > 1,5 ×
 `size`) · e a cadeia inteira é reivindicada pelo dispositivo. ⛔ Prova de mutação: tirar o campo da
 cadeia dá *«a mancha tem de se ver: menor 0,04399996 maior 0,04399996»*.
 
+⚠️ **Desde 15/10 (`4737080011`, Bug #20) as peças são quadrados carimbados** (`Shape → Duplicator`
+com `point_scale = 1`, que o kernel do `Duplicator` recusa): a rota é HÍBRIDA, e a 3.ª pergunta do
+gate passou a ser *a única fronteira é o carimbo, e `Falloff`/`Remap`/`Scale` são estágios da
+placa* — com o controlo sem carimbo (`arranca_carimbos`) ainda de ponta a ponta no dispositivo. As
+`6 400` peças contam-se depois do `publish_all` (a forma lê um external; sem ele o carimbo emite 0).
+
 **As figuras** saem da **saída do produto** — cada uma coze `grid → <campo> → scale` e desenha um
 quadrado por elemento **do tamanho que o cook lhe deu**. ⚠️ **A régua é a DISPERSÃO, não um
 deslocamento:** *um campo não move um elemento, pesa-o*, e copiar a régua do ciclo 3 (`Δposição`)

@@ -146,6 +146,8 @@ mod acabamento_demo;
 /// A cena `=134` — o jogo manda (ciclo 19, doc 128).
 #[path = "motion_state_jogo_demo.rs"]
 mod jogo_demo;
+#[cfg(test)]
+pub(crate) use jogo_demo::arranca_carimbos;
 
 /// A cena `=136` — vida e dano num objecto (doc 131 §3, D.13). Ver o cabeçalho dela.
 #[path = "motion_state_dano_demo.rs"]

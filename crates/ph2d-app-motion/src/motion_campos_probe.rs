@@ -175,19 +175,27 @@ fn waking_a_field_takes_it_off_the_identity() {
     );
 }
 
-/// ⭐⭐ **A CENA `=112` CONSTRÓI, É ALCANÇÁVEL E FICA NO DISPOSITIVO** (ciclo 4, passo 7).
+/// ⭐⭐ **A CENA `=112` CONSTRÓI, É ALCANÇÁVEL E O CAMPO FICA NO DISPOSITIVO** (ciclo 4, passo 7).
 ///
 /// ⚠️ **As três perguntas são independentes**, e a casa já pagou por confundi-las: um grafo que
 /// coze não é um grafo que se VÊ (a 1.ª redacção da cena `=111` punha o pano a `300` unidades,
 /// fora do alcance do zoom, e o report foi *«funciona nos nós mas não aparece no canvas»*), e um
 /// grafo que se vê não é um grafo que o dispositivo reivindica.
+///
+/// ⚠️ **Desde 15/10 as peças são QUADRADOS** (`Shape` → `Duplicator`, Bug #20, `4737080011`) e o
+/// carimbo tem `point_scale = 1`, que o kernel do `Duplicator` RECUSA (o ramo da CPU é o canónico):
+/// a rota é a HÍBRIDA que o anúncio diz — o pano e o carimbo na CPU, o CAMPO na placa. A régua
+/// do assunto do ciclo é o campo (`Falloff → Remap → Scale`) do lado da placa; o controlo sem
+/// carimbo continua a ser a cadeia de pontos reivindicada de ponta a ponta.
 #[test]
 fn the_focus_scene_builds_and_stays_on_the_device() {
     let mut m = crate::motion_state::MotionState::new();
     let (sinks, _) = crate::motion_demo_legend::monta("112", &mut m.doc, &m.registry);
     let sink = *sinks.first().expect("a cena 112 tem um sink");
+    // A forma carimbada lê um EXTERNAL que a shell publica — sem ele o carimbo emite zero peças.
+    crate::motion_externals::publish_all(&mut m, 0.0);
 
-    // 1. Ela COZE, e produz as peças que promete.
+    // 1. Ela COZE, e produz as peças que promete — onde o carimbo as põe.
     let out = m
         .pump
         .cook
@@ -212,10 +220,37 @@ fn the_focus_scene_builds_and_stays_on_the_device() {
          esta' a ser lido"
     );
 
-    // 3. E a cadeia inteira é REIVINDICADA pelo dispositivo.
+    // 3. O CAMPO é reivindicado pelo dispositivo: a única fronteira é o carimbo (o pano e a forma
+    //    ficam atrás dela, na CPU), e o `Falloff`, o `Remap` e o `Scale` que o lê são da placa.
+    let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
+    let tipo = |m: &crate::motion_state::MotionState, n: ph2d_nodegraph::graph::NodeId| {
+        m.doc
+            .graph
+            .node(n)
+            .map(|i| i.type_name.clone())
+            .unwrap_or_default()
+    };
+    let fora: Vec<String> = plano.boundaries.iter().map(|(n, _)| tipo(&m, *n)).collect();
+    assert_eq!(
+        fora,
+        vec!["motion.duplicator".to_string()],
+        "a `=112` so' pode deixar o CARIMBO (`point_scale = 1`, recusa do kernel) do lado da CPU"
+    );
+    let na_placa: Vec<String> = plano.stages.iter().map(|e| tipo(&m, e.node)).collect();
+    for t in ["motion.falloff", "field.remap", "motion.scale"] {
+        assert!(
+            na_placa.iter().any(|p| p == t),
+            "o campo e' o assunto do ciclo 4 e `{t}` saiu da placa: {na_placa:?}"
+        );
+    }
+    // O CONTROLO: sem o carimbo a MESMA cadeia é da placa de ponta a ponta — a fronteira é o
+    // carimbo e nada mais.
+    assert_eq!(crate::motion_state::arranca_carimbos(&mut m.doc.graph), 1);
+    let plano0 = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
     assert!(
-        ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, sink).is_fully_gpu(),
-        "a cena do ciclo 4 tem de correr no dispositivo -- os sete campos menos um la' estao"
+        plano0.is_fully_gpu(),
+        "controlo: sem carimbo o pano de pontos e' da placa de ponta a ponta: {:?}",
+        plano0.boundaries
     );
 }
 

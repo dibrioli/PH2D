@@ -82,7 +82,7 @@ impl crate::App {
             motion,
             hero,
             camera,
-            surface.size(),
+            crate::scene_mapping::janela(hero.view.center_split, surface.size()),
             text_system,
         );
         // O grafo gritou — o shell é quem publica (ADR-0075: o produtor não chama

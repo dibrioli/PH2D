@@ -14,8 +14,6 @@ pub(super) enum Cena {
     Forma(u32),
 }
 
-/// ⚠️ **Quem anuncia o quê** — `(ficheiro, função, cena)`. As frases de rota são DESCOBERTAS pela
-/// varredura das fontes; esta tabela só lhes dá a cena, e uma frase de rota numa função que não
 // ───────────────────────────── A MEDIÇÃO ─────────────────────────────
 
 /// A rota que o terminal diz, em três classes.

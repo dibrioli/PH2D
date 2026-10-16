@@ -4,6 +4,8 @@
 use super::medida::Cena;
 use std::path::Path;
 
+/// ⚠️ **Quem anuncia o quê** — `(ficheiro, função, cena)`. As frases de rota são DESCOBERTAS pela
+/// varredura das fontes; esta tabela só lhes dá a cena, e uma frase de rota numa função que não
 /// está aqui reprova ([`toda_frase_de_rota_tem_classe_e_cena`]).
 pub(super) const ANUNCIOS: &[(&str, &str, &str)] = &[
     ("motion_state_demo_announce.rs", "lazy_switch", "107"),

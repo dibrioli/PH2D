@@ -108,6 +108,49 @@ pub(super) fn carimbo(g: &mut Graph, rgb: [f32; 3], x: f32, y: f32) -> Option<No
     Some(dup)
 }
 
+/// O INVERSO do [`carimbo`] — o CONTROLO dos gates de rota: cada `Duplicator` cuja porta `0` é uma
+/// `source.shape` sai com a forma, e quem o lia passa a ler os pontos que ele carimbava. Devolve
+/// quantos arrancou (`0` é a cena já de pontos — quem chama decide se isso é um defeito).
+#[cfg(test)]
+pub(crate) fn arranca_carimbos(g: &mut Graph) -> usize {
+    let carimbos: Vec<NodeId> = g
+        .nodes()
+        .iter()
+        .filter(|i| i.type_name == "motion.duplicator")
+        .map(|i| i.id)
+        .filter(|d| {
+            g.input_edge(*d, 0)
+                .is_some_and(|(f, _, _)| g.node(f).is_some_and(|i| i.type_name == "source.shape"))
+        })
+        .collect();
+    let mut n = 0;
+    for d in carimbos {
+        let Some((pontos, porta, _)) = g.input_edge(d, 1) else {
+            continue;
+        };
+        let forma = g.input_edge(d, 0).map(|e| e.0);
+        let saidas: Vec<Edge> = g
+            .edges()
+            .iter()
+            .filter(|e| e.from.0 == d)
+            .copied()
+            .collect();
+        for e in saidas {
+            g.disconnect(e.to.0, e.to.1);
+            let _ = g.connect(Edge {
+                from: (pontos, u16::try_from(porta).expect("porta")),
+                ..e
+            });
+        }
+        g.remove_node(d);
+        if let Some(f) = forma {
+            g.remove_node(f);
+        }
+        n += 1;
+    }
+    n
+}
+
 /// O semi-lado do quadrado de lado `1` (o `Rectangle` vive em raio `1`).
 pub(super) const MEIO_LADO_UNITARIO: f32 = 0.5;
 

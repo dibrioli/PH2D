@@ -54,8 +54,7 @@ os 12 pincéis de fábrica ×2,5 a 10 s · o padrão que vira cor pousa a tinta 
 0,821) · cápsula ρ > 0,85 (0,97) · a brocha leva a cor apanhada com a rampa (> 0,85; medido +1,7) · escolher um Grain não liga o B&W na água.
 `ph2d-panel-painter-layers` `a_rampa_da_shape_aparece_em_todo_meio` (era `…so_onde_o_meio_a_oferece`).
 **Censo** (`sonda_as_pre_condicoes`, 2 estados novos × 4 meios): no Wet Paint cada controlo da secção age ou
-fica inerte como no Digital ⇒ nada a esmaecer. (Os ids de `painter_shape_cor.rs` com `const` em duas linhas
-saem em hex no relatório — o leitor de nomes só lê uma linha.)
+fica inerte como no Digital ⇒ nada a esmaecer.
 
 ## §5 — Mutação
 
@@ -73,8 +72,7 @@ a limpeza · o padrão-cor a recortar · `rampa_da_aguada` filtrada a nada · o 
   igual sem a rampa.
 - A Shape Color NÃO entra no preset do Wet Paint (nem na de fábrica): guardá-la é degrau de formato
   (`ph2d-brush-presets`, doc 37 §4) — pergunta ao dono se um pincel salvo deve levar as rampas.
-- `ph2d-light2d-gpu` — `g4_o_custo_do_rc_nao_depende_do_numero_de_luzes` e `g4_o_custo_da_holografica_…` vermelhos
-  também isolados (`load` 2,8); crate fora deste diff — para a linha da Luz 2D (`PH2D_GPU=1`, 3×).
+- Luz 2D: os dois `g4_…_nao_depende_do_numero_de_luzes` vermelhos também isolados (fora deste diff).
 
 ## §6b — Smoke do dono (16/10): OK, e dois defeitos
 

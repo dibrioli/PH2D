@@ -60,12 +60,40 @@ fazer também. Os `.log` irmãos das fotos ficam não rastreados.
 
 ## 5 — ABERTO
 
-1. Popover do traço: a altura é cortada à região (`min(corpo, região)`) mas as linhas não têm recorte nem
-   rolagem — num ecrã muito baixo transbordariam (achado pelo agente; anterior a esta onda).
+1. ~~Popover do traço sem recorte nem rolagem~~ — FEITO 16/10 (`f62d175678`, §6).
 2. Smoke do dono: cena 24 OK (16/10, «smoke ok», depois das correções da faixa e do Inner/Outer); a 23 sem confirmação explícita.
 3. No fecho: clippy + suíte `PH2D_SUITE=fecho`; CLAUDE.md §5.1 UI/UX (lista de smoke `6..24` e o «Último:»).
 4. A placa (`ph2d-shape-gpu`, `tracejado_do_eixo`) só percorre UM par; 2–3 pares caem na cerca `FLAG_SO_CONFORME`
    (mesma imagem; mais lento só sob escala não uniforme). Estender o shader é uma onda própria, medida.
-5. Testes GPU do Motion (`motion_shape_placa_gpu*`) não correram (a placa estava presa pela `line_luz2d`);
-   compilam, a mudança neles é só `DashPattern::single`.
-6. Herdados do handoff anterior: `frame_margin()` com a ④ em duas linhas; ids órfãos `VECTOR_RULERS_OFF/ON`.
+5. ~~Testes GPU do Motion não correram~~ — CORRIDOS 16/10: os 11 de `motion_shape_placa::gpu_tests` verdes
+   (7 de paridade em 3,2 s, as 4 sondas/custos em 8 s, um de cada vez; os 10 sem a `intercalada` também
+   verdes em paralelo). ⚠️ Achado da linha do MOTION (anterior a esta onda, não curado aqui): o comando do
+   cabeçalho de `motion_shape_placa_gpu_tests.rs` (`… gpu_tests -- --ignored`) apanha a submódulo
+   `intercalada::sonda_intercalada`, que faz `pass_profiler::init_forced` — medidor GLOBAL do processo,
+   ligado ao device DELA. Em paralelo, os outros testes (cada um com o seu device) caem (8 FAILED,
+   reproduzido 2×) e a sonda pendura em `futex` a 0 % de CPU segurando a placa (14 min até `kill`). As
+   sondas de `ph2d-fx-cells/tests/it/celulas_gpu.rs` têm a mesma forma. Cura certa: o profiler só regista
+   passes do device com que nasceu (ou as sondas correm sob um cadeado de processo) — é do `ph2d-gpu`.
+6. ~~`frame_margin()` com a ④ em duas linhas; ids órfãos `VECTOR_RULERS_OFF/ON`~~ — FEITOS 16/10 (§6).
+7. Formato: a linha tinha deixado 41 ficheiros fora do `cargo fmt` (o `main` limpo) — `4b33991e07`.
+
+## 6 — Janela 16/10: as pendências pequenas (`f62d175678`, `4b33991e07`)
+
+- **Margem de cima do enquadramento** (medido: margem fixa `44` px = UMA linha da ④ a `Lg`; a ④ do vetor
+  tem duas a `selection_gap` = `51` px de altura e, sem lugar em cima, era empurrada contra a borda de
+  baixo, tapando `7` px da arte enquadrada; com uma linha já não cabia em cima, `48 > 44`):
+  `float_bar::frame_top_margin(rows, s, pinned)` = `max(frame_margin, afastamento + linhas + 2·Xs)`, lido
+  das linhas REAIS da ④ (`tool_bars::frame_top_margin(hero)`); `canvas_area::frame_target` tira o excesso
+  de cima da área enquadrável (o resto da margem fica simétrico). Gate
+  `the_frame_top_margin_keeps_the_strip_above_the_framed_selection`; mutação «margem fixa» → vermelho.
+- **Painel do traço**: fica do lado do chip que a fila deixa, encolhe ao que sobra na região, ROLA (roda
+  e polegar pela `publish_dropdown_popover` de sempre), recorta cena e hits. Porta nova
+  `panel::paint_popover_scrollbar` (o censo `architecture_dropdown_lists_use_the_door` proíbe a barra à
+  mão num painel). Gate `on_a_short_window_the_stroke_panel_scrolls_inside_the_region` (herói real,
+  janela a meia altura, controlo de transbordo); mutações «sem recorte dos hits» e «sem encolher» → vermelho.
+- **`VECTOR_RULERS_OFF/ON`** saíram com o canal `pending_rulers` inteiro (as réguas são do menu View, que
+  escreve `hero.view` direto); o nome do ficheiro `fase_compound_snap_rulers.rs` ficou (só o cabeçalho mudou).
+- Verificação: os 3 gates novos + 10 por nome dos censos tocados (`clamp_calls…`, `no_magic_numeric…`,
+  `architecture_dropdown_lists_use_the_door`, `the_shell_only_shrinks`, `float_bar` 15, os dois do snap
+  na shell, `a_altura_de_abertura…`, `view_request` 4, `canvas_area`) verdes; `cargo check --workspace
+  --tests` sem erros nem avisos; `cargo fmt --all -- --check` limpo. Suíte e clippy: no fecho (R7).

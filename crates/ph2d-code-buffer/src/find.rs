@@ -109,7 +109,15 @@ pub fn find_update(
             k += 1;
         }
         let from = matches.last().map_or(0, |m| m.end);
-        let p = rescan(text, needle, opts, from.max(text.floor_char(win.start)), win.end, &kept[k..], matches);
+        let p = rescan(
+            text,
+            needle,
+            opts,
+            from.max(text.floor_char(win.start)),
+            win.end,
+            &kept[k..],
+            matches,
+        );
         while k < kept.len() && kept[k].start < p {
             k += 1;
         }
@@ -140,7 +148,9 @@ fn rescan(
         }
         if p + reach > w_end && w_end < len {
             base = text.floor_char(p.saturating_sub(4));
-            w_end = text.floor_char((p + reach * 8).min(len)).max(text.ceil_char((p + reach).min(len)));
+            w_end = text
+                .floor_char((p + reach * 8).min(len))
+                .max(text.ceil_char((p + reach).min(len)));
             w = text.slice(base..w_end);
             scanned(w.len());
         }
@@ -156,7 +166,11 @@ fn rescan(
                     && !w[e..].chars().next().is_some_and(is_word_char))
         };
         match end {
-            Some(e) if e + base <= w_end && (e < w.len() || w_end == len || !opts.whole_word) && edge(e) => {
+            Some(e)
+                if e + base <= w_end
+                    && (e < w.len() || w_end == len || !opts.whole_word)
+                    && edge(e) =>
+            {
                 out.push(p..base + e);
                 p = base + e;
             }

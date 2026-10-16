@@ -12,7 +12,11 @@ const SUB: &str = "recovered-scripts";
 
 /// A pasta por omissão (`None` = o sistema não dá nenhuma).
 pub(crate) fn default_dir() -> Option<PathBuf> {
-    let var = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
+    let var = |k: &str| {
+        std::env::var_os(k)
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
+    };
     var("PH2D_SCRIPT_RECOVERY_DIR")
         .or_else(|| var("XDG_DATA_HOME").map(|d| d.join("ph2d").join(SUB)))
         .or_else(|| var("HOME").map(|h| h.join(".local/share/ph2d").join(SUB)))
@@ -23,7 +27,13 @@ pub(crate) fn default_dir() -> Option<PathBuf> {
 fn file_name(stamp: u64, n: usize, name: &str) -> String {
     let clean: String = name
         .chars()
-        .map(|c| if matches!(c, '/' | '\\' | ':' | '\0') { '_' } else { c })
+        .map(|c| {
+            if matches!(c, '/' | '\\' | ':' | '\0') {
+                '_'
+            } else {
+                c
+            }
+        })
         .collect();
     if n == 0 {
         format!("{stamp}-{clean}")

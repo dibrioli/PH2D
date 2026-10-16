@@ -4,7 +4,9 @@
 
 use ph2d_code_lsp::Solver;
 
-use crate::support::{assert_exactly, diagnostics_of, expected_from_markers, fixture, ph2d_definitions, start};
+use crate::support::{
+    assert_exactly, diagnostics_of, expected_from_markers, fixture, ph2d_definitions, start,
+};
 
 #[test]
 fn deliberate_errors_yield_exactly_the_expected_diagnostics() {

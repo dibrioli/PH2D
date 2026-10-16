@@ -83,7 +83,12 @@ impl Default for CodeView {
             cache: LineCache::default(),
             digits: None,
             m: Metrics::default(),
-            area: Rect { x: 0.0, y: 0.0, w: 0.0, h: 0.0 },
+            area: Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 0.0,
+                h: 0.0,
+            },
             scroll_y: 0.0,
             scroll_x: 0.0,
             tab: 1,
@@ -141,7 +146,12 @@ impl CodeView {
     pub fn text_rect(&self) -> Rect {
         let a = self.area;
         let h = (a.h - self.m.status_h).max(0.0);
-        Rect { x: a.x + self.m.gutter_w, y: a.y, w: (a.w - self.m.gutter_w).max(0.0), h }
+        Rect {
+            x: a.x + self.m.gutter_w,
+            y: a.y,
+            w: (a.w - self.m.gutter_w).max(0.0),
+            h,
+        }
     }
 
     /// O x onde a coluna 0 do texto começa (com a rolagem horizontal), no píxel do ecrã.
@@ -317,7 +327,12 @@ impl CodeView {
         let y = self.row_y(self.row_of_line(line));
         let x = self.text_x0() + self.x_in_line(buffer, byte);
         let visible = y + self.m.line_h > tr.y && y < tr.y + tr.h && x >= tr.x && x <= tr.x + tr.w;
-        visible.then_some(Rect { x, y, w: self.m.caret_w, h: self.m.line_h })
+        visible.then_some(Rect {
+            x,
+            y,
+            w: self.m.caret_w,
+            h: self.m.line_h,
+        })
     }
 
     /// Onde caiu `(x, y)`.
@@ -335,8 +350,15 @@ impl CodeView {
         let line = self.line_of_row(row).min(buffer.text().line_count() - 1);
         if x < tr.x {
             let fold_x0 = a.x + self.m.gutter_w - self.m.fold_w;
-            let is_fold = self.folds.iter().any(|f| f.start == line && f.end > f.start);
-            return if is_fold && x >= fold_x0 { Hit::Fold(line) } else { Hit::Gutter(line) };
+            let is_fold = self
+                .folds
+                .iter()
+                .any(|f| f.start == line && f.end > f.start);
+            return if is_fold && x >= fold_x0 {
+                Hit::Fold(line)
+            } else {
+                Hit::Gutter(line)
+            };
         }
         let local = x - self.text_x0();
         if let Some(r) = self.row(buffer, line)
@@ -345,7 +367,11 @@ impl CodeView {
             return Hit::Text(r.start + geom::byte_at_x(layout, &r.dl, local, r.len));
         }
         let col = (local / self.m.advance + 0.5).max(0.0) as usize;
-        Hit::Text(buffer.text().byte_at_display_col(line, col, self.tab.max(1)))
+        Hit::Text(
+            buffer
+                .text()
+                .byte_at_display_col(line, col, self.tab.max(1)),
+        )
     }
 
     /// ⚠️ SONDA (testes/auditoria): as colunas do último quadro em coordenadas de ecrã, com o byte
@@ -356,10 +382,19 @@ impl CodeView {
         let x0 = self.text_x0();
         let mut out = Vec::new();
         for r in &self.rows {
-            let Some(layout) = self.cache.peek(r.key) else { continue };
+            let Some(layout) = self.cache.peek(r.key) else {
+                continue;
+            };
             let mid = r.y + self.m.line_h * 0.5;
             for c in geom::columns(layout, &r.dl) {
-                out.push((Column { byte: r.start + c.byte, x0: x0 + c.x0, x1: x0 + c.x1 }, mid));
+                out.push((
+                    Column {
+                        byte: r.start + c.byte,
+                        x0: x0 + c.x0,
+                        x1: x0 + c.x1,
+                    },
+                    mid,
+                ));
             }
         }
         out

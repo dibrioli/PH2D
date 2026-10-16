@@ -12,11 +12,19 @@ pub struct Range {
 
 impl Range {
     pub fn cursor(at: usize) -> Self {
-        Self { anchor: at, head: at, goal: None }
+        Self {
+            anchor: at,
+            head: at,
+            goal: None,
+        }
     }
 
     pub fn new(anchor: usize, head: usize) -> Self {
-        Self { anchor, head, goal: None }
+        Self {
+            anchor,
+            head,
+            goal: None,
+        }
     }
 
     pub fn from(&self) -> usize {
@@ -50,7 +58,10 @@ impl Default for Selection {
 
 impl Selection {
     pub fn single(r: Range) -> Self {
-        Self { ranges: vec![r], primary: 0 }
+        Self {
+            ranges: vec![r],
+            primary: 0,
+        }
     }
 
     /// Ordena e funde faixas que se tocam por dentro; a primária segue a faixa que a contém.
@@ -66,7 +77,11 @@ impl Selection {
             {
                 let (from, to) = (last.from().min(r.from()), last.to().max(r.to()));
                 let forward = last.head >= last.anchor;
-                *last = if forward { Range::new(from, to) } else { Range::new(to, from) };
+                *last = if forward {
+                    Range::new(from, to)
+                } else {
+                    Range::new(to, from)
+                };
                 continue;
             }
             out.push(r);
@@ -75,7 +90,10 @@ impl Selection {
             .iter()
             .position(|r| r.from() <= p.from() && p.to() <= r.to())
             .unwrap_or(out.len() - 1);
-        Self { ranges: out, primary }
+        Self {
+            ranges: out,
+            primary,
+        }
     }
 
     pub fn ranges(&self) -> &[Range] {
@@ -105,7 +123,11 @@ impl Selection {
             .map(|r| {
                 // Um cursor vazio segue a inserção; uma faixa cresce para fora das duas pontas.
                 let forward = !r.is_empty() && r.anchor < r.head;
-                let a = if r.is_empty() || forward { Assoc::After } else { Assoc::Before };
+                let a = if r.is_empty() || forward {
+                    Assoc::After
+                } else {
+                    Assoc::Before
+                };
                 let h = if forward { Assoc::Before } else { Assoc::After };
                 Range::new(cs.map_pos(r.anchor, a), cs.map_pos(r.head, h))
             })

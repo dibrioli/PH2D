@@ -23,8 +23,13 @@ fn the_ph2d_definitions_load_without_the_silent_rejection() {
         evidence.join("\n")
     );
     // Accepted AND applied: completion after `ph2d.` offers the API.
-    let items = c.completion(&uri("toca.luau"), Position::new(0, 18)).expect("completion");
-    assert!(!items.is_empty(), "no completion after `ph2d.` — the definitions did not reach the checker");
+    let items = c
+        .completion(&uri("toca.luau"), Position::new(0, 18))
+        .expect("completion");
+    assert!(
+        !items.is_empty(),
+        "no completion after `ph2d.` — the definitions did not reach the checker"
+    );
     c.shutdown().expect("shutdown");
 }
 
@@ -35,7 +40,10 @@ fn a_rejected_definitions_file_is_seen_by_the_gate() {
     let mut c = start(&defs, Solver::Old);
     diagnostics_of(&mut c, "toca.luau", "local _x = 1\n");
     let evidence = rejection_evidence(&mut c, "definicoes_rejeitadas.d.luau");
-    assert!(!evidence.is_empty(), "the rejection of a `declare class` file went unseen");
+    assert!(
+        !evidence.is_empty(),
+        "the rejection of a `declare class` file went unseen"
+    );
     c.shutdown().expect("shutdown");
 }
 
@@ -44,7 +52,17 @@ fn a_rejected_definitions_file_is_seen_by_the_gate() {
 #[test]
 fn the_resolved_binary_is_the_pinned_version() {
     let c = start(&ph2d_definitions(), Solver::Old);
-    let reported = c.server_info().get("version").and_then(|v| v.as_str()).unwrap_or_default().to_owned();
-    assert_eq!(reported, pinned_version(), "serverInfo = {}", c.server_info());
+    let reported = c
+        .server_info()
+        .get("version")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_owned();
+    assert_eq!(
+        reported,
+        pinned_version(),
+        "serverInfo = {}",
+        c.server_info()
+    );
     c.shutdown().expect("shutdown");
 }

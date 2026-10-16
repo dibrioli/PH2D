@@ -46,11 +46,15 @@ pub fn is_word_char(c: char) -> bool {
 }
 
 fn char_at(t: &Text, b: usize) -> Option<char> {
-    (b < t.len()).then(|| t.slice(b..t.next_grapheme(b)).chars().next()).flatten()
+    (b < t.len())
+        .then(|| t.slice(b..t.next_grapheme(b)).chars().next())
+        .flatten()
 }
 
 fn char_before(t: &Text, b: usize) -> Option<char> {
-    (b > 0).then(|| t.slice(t.prev_grapheme(b)..b).chars().next()).flatten()
+    (b > 0)
+        .then(|| t.slice(t.prev_grapheme(b)..b).chars().next())
+        .flatten()
 }
 
 /// Ctrl+→: salta os espaços e depois um bloco da mesma classe.
@@ -76,7 +80,10 @@ pub fn word_left(t: &Text, mut b: usize) -> usize {
     while char_before(t, b).is_some_and(|c| class(c) == Class::Space) {
         b = t.prev_grapheme(b);
     }
-    if let Some(k) = char_before(t, b).map(class).filter(|k| *k != Class::Newline) {
+    if let Some(k) = char_before(t, b)
+        .map(class)
+        .filter(|k| *k != Class::Newline)
+    {
         while char_before(t, b).is_some_and(|c| class(c) == k) {
             b = t.prev_grapheme(b);
         }
@@ -86,7 +93,8 @@ pub fn word_left(t: &Text, mut b: usize) -> usize {
 
 /// A palavra que contém `b` (ou que acaba nele); `None` fora de palavra.
 pub fn word_at(t: &Text, b: usize) -> Option<std::ops::Range<usize>> {
-    let inside = char_at(t, b).is_some_and(is_word_char) || char_before(t, b).is_some_and(is_word_char);
+    let inside =
+        char_at(t, b).is_some_and(is_word_char) || char_before(t, b).is_some_and(is_word_char);
     if !inside {
         return None;
     }
@@ -148,13 +156,22 @@ fn move_one(t: &Text, r: &Range, m: Motion, extend: bool, tab: usize) -> Range {
             }
         }
     };
-    Range { anchor: if extend { r.anchor } else { head }, head, goal }
+    Range {
+        anchor: if extend { r.anchor } else { head },
+        head,
+        goal,
+    }
 }
 
 impl Buffer {
     pub fn move_cursors(&mut self, m: Motion, extend: bool, tab: usize) {
         let t = self.text();
-        let ranges = self.selection().ranges().iter().map(|r| move_one(t, r, m, extend, tab)).collect();
+        let ranges = self
+            .selection()
+            .ranges()
+            .iter()
+            .map(|r| move_one(t, r, m, extend, tab))
+            .collect();
         let sel = self.selection().with_ranges(ranges);
         self.set_selection(sel);
         self.seal_history();
@@ -169,8 +186,17 @@ impl Buffer {
     /// Alt+clique: um cursor a mais (ou tira o que já está lá, se não for o único).
     pub fn toggle_cursor(&mut self, at: usize) {
         let sel = self.selection();
-        let hit: Vec<Range> = sel.ranges().iter().copied().filter(|r| !(r.is_empty() && r.head == at)).collect();
-        let next = if hit.len() < sel.len() && !hit.is_empty() { sel.with_ranges(hit) } else { sel.push(Range::cursor(at)) };
+        let hit: Vec<Range> = sel
+            .ranges()
+            .iter()
+            .copied()
+            .filter(|r| !(r.is_empty() && r.head == at))
+            .collect();
+        let next = if hit.len() < sel.len() && !hit.is_empty() {
+            sel.with_ranges(hit)
+        } else {
+            sel.push(Range::cursor(at))
+        };
         self.set_selection(next);
         self.seal_history();
     }
@@ -187,12 +213,20 @@ impl Buffer {
         let t = self.text();
         let p = self.selection().primary();
         if p.is_empty() {
-            let Some(w) = word_at(t, p.head) else { return false };
+            let Some(w) = word_at(t, p.head) else {
+                return false;
+            };
             let ranges: Vec<Range> = self
                 .selection()
                 .ranges()
                 .iter()
-                .map(|r| if *r == p { Range::new(w.start, w.end) } else { *r })
+                .map(|r| {
+                    if *r == p {
+                        Range::new(w.start, w.end)
+                    } else {
+                        *r
+                    }
+                })
                 .collect();
             let sel = self.selection().with_ranges(ranges);
             self.set_selection(sel);
@@ -200,7 +234,13 @@ impl Buffer {
         }
         let needle = t.slice(p.span());
         let hay = t.to_string();
-        let last = self.selection().ranges().iter().map(Range::to).max().unwrap_or(0);
+        let last = self
+            .selection()
+            .ranges()
+            .iter()
+            .map(Range::to)
+            .max()
+            .unwrap_or(0);
         let taken = |s: usize| self.selection().ranges().iter().any(|r| r.from() == s);
         let found = hay[last..]
             .match_indices(needle.as_str())

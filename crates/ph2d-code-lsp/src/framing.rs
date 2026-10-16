@@ -24,7 +24,10 @@ pub fn read_message(r: &mut impl BufRead) -> io::Result<Option<Value>> {
             if first {
                 return Ok(None);
             }
-            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "eof inside headers"));
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "eof inside headers",
+            ));
         }
         first = false;
         let header = line.trim_end_matches(['\r', '\n']);
@@ -45,7 +48,9 @@ pub fn read_message(r: &mut impl BufRead) -> io::Result<Option<Value>> {
     let n = length.ok_or_else(|| invalid("missing Content-Length".into()))?;
     let mut body = vec![0u8; n];
     r.read_exact(&mut body)?;
-    serde_json::from_slice(&body).map(Some).map_err(|e| invalid(e.to_string()))
+    serde_json::from_slice(&body)
+        .map(Some)
+        .map_err(|e| invalid(e.to_string()))
 }
 
 fn invalid(msg: String) -> io::Error {

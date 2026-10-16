@@ -26,7 +26,10 @@ impl DisplayLine {
     /// `line` sem o `\n`; `preedit` = (byte relativo à linha, texto) do cursor primário.
     pub fn build(line: &str, tab: usize, preedit: Option<(usize, &str)>) -> Self {
         let tab = tab.max(1);
-        let mut out = Self { text: String::with_capacity(line.len()), exps: Vec::new() };
+        let mut out = Self {
+            text: String::with_capacity(line.len()),
+            exps: Vec::new(),
+        };
         let mut w = 0usize;
         let mut pre = preedit.filter(|(_, s)| !s.is_empty());
         for (i, g) in line.grapheme_indices(true) {
@@ -38,7 +41,12 @@ impl DisplayLine {
             }
             if g == "\t" {
                 let n = tab - w % tab;
-                out.exps.push(Expansion { buf: i, buf_len: 1, disp: out.text.len(), disp_len: n });
+                out.exps.push(Expansion {
+                    buf: i,
+                    buf_len: 1,
+                    disp: out.text.len(),
+                    disp_len: n,
+                });
                 out.text.extend(std::iter::repeat_n(' ', n));
                 w += n;
             } else {
@@ -53,7 +61,12 @@ impl DisplayLine {
     }
 
     fn push_preedit(&mut self, at: usize, s: &str) -> usize {
-        self.exps.push(Expansion { buf: at, buf_len: 0, disp: self.text.len(), disp_len: s.len() });
+        self.exps.push(Expansion {
+            buf: at,
+            buf_len: 0,
+            disp: self.text.len(),
+            disp_len: s.len(),
+        });
         self.text.push_str(s);
         s.graphemes(true).count()
     }
@@ -88,7 +101,10 @@ impl DisplayLine {
 
     /// Onde a pré-edição está (byte mostrado do início e o comprimento), se há.
     pub fn preedit_span(&self) -> Option<(usize, usize)> {
-        self.exps.iter().find(|e| e.buf_len == 0).map(|e| (e.disp, e.disp_len))
+        self.exps
+            .iter()
+            .find(|e| e.buf_len == 0)
+            .map(|e| (e.disp, e.disp_len))
     }
 }
 

@@ -20,16 +20,28 @@ fn um_no_por_linha_visivel_e_rolar_troca_os_nos() {
     assert_eq!(nos.len(), VISTA + 1);
     let (id, doc) = &nos[0];
     assert_eq!((*id, doc.role()), (BASE, Role::Document));
-    let filhos: Vec<AkNodeId> = (0..VISTA).map(|l| CodeView::a11y_run_id(BASE, l).into()).collect();
+    let filhos: Vec<AkNodeId> = (0..VISTA)
+        .map(|l| CodeView::a11y_run_id(BASE, l).into())
+        .collect();
     assert_eq!(doc.children(), filhos.as_slice());
     let sel = doc.text_selection().expect("seleção");
-    assert_eq!(sel.focus.node, AkNodeId::from(CodeView::a11y_run_id(BASE, 5)));
+    assert_eq!(
+        sel.focus.node,
+        AkNodeId::from(CodeView::a11y_run_id(BASE, 5))
+    );
     assert_eq!(sel.focus.character_index, 2);
     for (k, (id, run)) in nos[1..].iter().enumerate() {
         assert_eq!(*id, CodeView::a11y_run_id(BASE, k));
         assert_eq!(run.role(), Role::TextRun);
-        assert_eq!(run.value(), Some(buf.text().line_string(k).as_str()), "o texto exacto da linha {k}");
-        assert_eq!(run.character_lengths().len(), buf.text().line_string(k).chars().count());
+        assert_eq!(
+            run.value(),
+            Some(buf.text().line_string(k).as_str()),
+            "o texto exacto da linha {k}"
+        );
+        assert_eq!(
+            run.character_lengths().len(),
+            buf.text().line_string(k).chars().count()
+        );
     }
     // Controlo: rolar dez linhas troca os nós.
     v.scroll_by(10.0 * v.metrics().line_h);
@@ -38,7 +50,11 @@ fn um_no_por_linha_visivel_e_rolar_troca_os_nos() {
     assert_eq!(nos.len(), VISTA + 1);
     assert_eq!(nos[1].0, CodeView::a11y_run_id(BASE, 10));
     assert_eq!(nos[1].1.value(), Some(buf.text().line_string(10).as_str()));
-    assert_eq!(nos[0].1.text_selection().map(|s| s.focus.node), Some(CodeView::a11y_run_id(BASE, 10).into()), "o cursor fora da vista prende-se à primeira linha");
+    assert_eq!(
+        nos[0].1.text_selection().map(|s| s.focus.node),
+        Some(CodeView::a11y_run_id(BASE, 10).into()),
+        "o cursor fora da vista prende-se à primeira linha"
+    );
 }
 
 #[test]
@@ -68,9 +84,21 @@ fn um_grafema_maior_que_255_bytes_nao_desalinha_os_comprimentos() {
     let nos = v.a11y_nodes(&buf, BASE);
     let run = &nos[1].1;
     let valor = run.value().expect("texto");
-    let soma: usize = run.character_lengths().iter().map(|&l| usize::from(l)).sum();
-    assert_eq!(soma, valor.len(), "a soma dos comprimentos = os bytes do texto");
+    let soma: usize = run
+        .character_lengths()
+        .iter()
+        .map(|&l| usize::from(l))
+        .sum();
+    assert_eq!(
+        soma,
+        valor.len(),
+        "a soma dos comprimentos = os bytes do texto"
+    );
     assert_eq!(valor, linha, "o texto inteiro está no nó");
     let foco = nos[0].1.text_selection().expect("seleção").focus;
-    assert_eq!(foco.character_index, run.character_lengths().len(), "o cursor no fim = a última unidade");
+    assert_eq!(
+        foco.character_index,
+        run.character_lengths().len(),
+        "o cursor no fim = a última unidade"
+    );
 }

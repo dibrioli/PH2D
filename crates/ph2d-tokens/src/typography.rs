@@ -473,7 +473,10 @@ mod tests {
         assert!(p.letter_spacing_em_dense < 0.0, "Plus tightens body");
         // ⭐ 3.º eixo desde 15/10, por decisão do dono: o de fábrica pinta COM hint (o `=` com as
         // duas barras iguais — gate `as_duas_barras_do_igual_sao_iguais` em ph2d-app-components).
-        assert!(p.hint && !h.hint, "Plus hints; CrispHeavy keeps the free wght axis");
+        assert!(
+            p.hint && !h.hint,
+            "Plus hints; CrispHeavy keeps the free wght axis"
+        );
     }
 
     #[test]

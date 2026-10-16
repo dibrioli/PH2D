@@ -49,8 +49,20 @@ fn linhas_bytes_e_pontos_batem_com_a_contagem_ingenua() {
                     continue;
                 }
                 assert_eq!(t.line_of_byte(b), row, "{s:?} byte {b}");
-                assert_eq!(t.point_of_byte(b), Point { row, col: b - start });
-                assert_eq!(t.byte_of_point(Point { row, col: b - start }), b);
+                assert_eq!(
+                    t.point_of_byte(b),
+                    Point {
+                        row,
+                        col: b - start
+                    }
+                );
+                assert_eq!(
+                    t.byte_of_point(Point {
+                        row,
+                        col: b - start
+                    }),
+                    b
+                );
             }
         }
         assert_eq!(t.byte_of_line(t.line_count()), s.len());

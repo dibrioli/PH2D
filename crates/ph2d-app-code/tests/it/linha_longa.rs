@@ -39,7 +39,10 @@ fn uma_linha_de_1_mb_colada_custa_por_quadro_o_mesmo_que_uma_de_64_kb() {
     let curta = trabalho_por_quadro(64 << 10);
     let longa = trabalho_por_quadro(1 << 20);
     eprintln!("por quadro: 64 KB → {curta:?} · 1 MB → {longa:?}");
-    assert!(curta.row_bytes > 0 && curta.glyphs > 0, "controlo: a régua conta a pintura");
+    assert!(
+        curta.row_bytes > 0 && curta.glyphs > 0,
+        "controlo: a régua conta a pintura"
+    );
     assert!(
         longa.row_bytes <= curta.row_bytes && longa.glyphs <= curta.glyphs,
         "a linha de 1 MB custa mais por quadro: {longa:?} contra {curta:?}"

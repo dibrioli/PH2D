@@ -283,7 +283,11 @@ mod tests {
                 (frase, Some(simbolo)),
                 "{cru:?}"
             );
-            assert!(!e.message.contains('\''), "aspas cruas na frase: {:?}", e.message);
+            assert!(
+                !e.message.contains('\''),
+                "aspas cruas na frase: {:?}",
+                e.message
+            );
         }
         // Controlo: parênteses que não acabam num símbolo ficam como estão.
         let e = InspectorScriptError::from_luau("attempt to perform arithmetic (add) on nil", None);

@@ -66,7 +66,11 @@ fn as_chaves_da_vm_sao_as_da_tabela_nos_dois_sentidos() {
     // Cada linha é única e aponta um global declarado.
     let mut vistas = BTreeSet::new();
     for e in API {
-        assert!(API_GLOBALS.iter().any(|g| g.ident == e.table), "{}", e.table);
+        assert!(
+            API_GLOBALS.iter().any(|g| g.ident == e.table),
+            "{}",
+            e.table
+        );
         assert!(
             vistas.insert((e.table, e.ident)),
             "repetida: {}.{}",
@@ -81,7 +85,11 @@ fn as_chaves_da_vm_sao_as_da_tabela_nos_dois_sentidos() {
 fn as_definicoes_saem_da_tabela() {
     let d = luau_definitions();
     for g in API_GLOBALS {
-        assert!(d.contains(&format!("declare {}: {{", g.ident)), "{}", g.ident);
+        assert!(
+            d.contains(&format!("declare {}: {{", g.ident)),
+            "{}",
+            g.ident
+        );
     }
     for e in API {
         assert!(

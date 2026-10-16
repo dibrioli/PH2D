@@ -7,7 +7,10 @@ fn ctrl_d_tres_vezes_e_escrever_e_um_passo_de_undo() {
     let src = "local vida = 1\nvida = vida + 1\n";
     let mut b = Buffer::new(src);
     b.set_selection(Selection::single(Range::cursor(8)));
-    assert!(b.select_next_occurrence(), "1.º Ctrl+D selecciona a palavra");
+    assert!(
+        b.select_next_occurrence(),
+        "1.º Ctrl+D selecciona a palavra"
+    );
     assert!(b.select_next_occurrence());
     assert!(b.select_next_occurrence());
     assert_eq!(b.selection().len(), 3);
@@ -17,7 +20,11 @@ fn ctrl_d_tres_vezes_e_escrever_e_um_passo_de_undo() {
     }
     assert_eq!(b.to_string(), "local hp = 1\nhp = hp + 1\n");
     b.undo();
-    assert_eq!(b.to_string(), src, "uma edição multicursor desfaz-se de uma vez");
+    assert_eq!(
+        b.to_string(),
+        src,
+        "uma edição multicursor desfaz-se de uma vez"
+    );
 }
 
 #[test]
@@ -26,7 +33,11 @@ fn backspace_em_cursores_vizinhos_nao_apaga_duas_vezes_o_mesmo() {
     b.set_selection(Selection::new(vec![Range::cursor(2), Range::cursor(3)], 0));
     b.delete_backward();
     assert_eq!(b.to_string(), "ad");
-    assert_eq!(b.selection().len(), 1, "os dois cursores fundiram-se no mesmo sítio");
+    assert_eq!(
+        b.selection().len(),
+        1,
+        "os dois cursores fundiram-se no mesmo sítio"
+    );
 }
 
 #[test]

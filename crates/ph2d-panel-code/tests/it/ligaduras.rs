@@ -26,7 +26,19 @@ fn igual_igual_e_maior_igual_sao_os_caracteres_escritos() {
     let eq = glyphs(&mut cache, &mut ts, "=")[0];
     let gt = glyphs(&mut cache, &mut ts, ">")[0];
     let til = glyphs(&mut cache, &mut ts, "~")[0];
-    assert_eq!(glyphs(&mut cache, &mut ts, "=="), vec![eq, eq], "`==` virou ligadura");
-    assert_eq!(glyphs(&mut cache, &mut ts, ">="), vec![gt, eq], "`>=` virou ligadura");
-    assert_eq!(glyphs(&mut cache, &mut ts, "~="), vec![til, eq], "`~=` virou ligadura");
+    assert_eq!(
+        glyphs(&mut cache, &mut ts, "=="),
+        vec![eq, eq],
+        "`==` virou ligadura"
+    );
+    assert_eq!(
+        glyphs(&mut cache, &mut ts, ">="),
+        vec![gt, eq],
+        "`>=` virou ligadura"
+    );
+    assert_eq!(
+        glyphs(&mut cache, &mut ts, "~="),
+        vec![til, eq],
+        "`~=` virou ligadura"
+    );
 }

@@ -9,7 +9,12 @@ use crate::support::{bob_luau, diagnostics_of, fixture, ph2d_definitions, render
 fn assert_clean(name: &str, text: &str) {
     let mut c = start(&ph2d_definitions(), Solver::Old);
     let diags = diagnostics_of(&mut c, name, text);
-    assert!(diags.is_empty(), "{name}: {} diagnostic(s):{}", diags.len(), render(&diags));
+    assert!(
+        diags.is_empty(),
+        "{name}: {} diagnostic(s):{}",
+        diags.len(),
+        render(&diags)
+    );
     c.shutdown().expect("shutdown");
 }
 
@@ -36,11 +41,18 @@ fn the_strict_mirror_is_bob_plus_types_only() {
     let mut untyped = body.to_owned();
     for (typed, plain) in [
         ("function init(self: ScriptSelf)\n", "function init(self)\n"),
-        ("function update(self: ScriptSelf, dt: number)\n", "function update(self, dt)\n"),
+        (
+            "function update(self: ScriptSelf, dt: number)\n",
+            "function update(self, dt)\n",
+        ),
         ("  local s: number\n", "  local s\n"),
     ] {
         assert_eq!(untyped.matches(typed).count(), 1, "{typed:?}");
         untyped = untyped.replacen(typed, plain, 1);
     }
-    assert_eq!(untyped, bob_luau(), "fixtures/bob_estrito.luau drifted from BOB_LUAU");
+    assert_eq!(
+        untyped,
+        bob_luau(),
+        "fixtures/bob_estrito.luau drifted from BOB_LUAU"
+    );
 }

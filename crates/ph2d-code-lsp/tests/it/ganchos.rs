@@ -6,14 +6,19 @@ use std::collections::BTreeSet;
 
 use ph2d_code_lsp::{Solver, hooks_in_definitions};
 
-use crate::support::{assert_exactly, diagnostics_of, expected_from_markers, fixture, ph2d_definitions, start};
+use crate::support::{
+    assert_exactly, diagnostics_of, expected_from_markers, fixture, ph2d_definitions, start,
+};
 
 #[test]
 fn hooks_are_read_from_the_definitions_file() {
     let defs = std::fs::read_to_string(ph2d_definitions()).expect("ph2d.d.luau");
     let hooks: BTreeSet<String> = hooks_in_definitions(&defs).into_iter().collect();
     for h in ["init", "update", "on_signal"] {
-        assert!(hooks.contains(h), "ph2d.d.luau has no `-- @hook {h}:` line: {hooks:?}");
+        assert!(
+            hooks.contains(h),
+            "ph2d.d.luau has no `-- @hook {h}:` line: {hooks:?}"
+        );
     }
     let c = start(&ph2d_definitions(), Solver::Old);
     assert_eq!(c.engine_hooks(), &hooks);

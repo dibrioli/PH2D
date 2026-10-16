@@ -75,7 +75,14 @@ fn o_console_da_aba_tem_tecto_em_bytes() {
     }
     let linhas = m.docs().console_texts(ids[0]);
     let total: usize = linhas.iter().map(String::len).sum();
-    assert!(linhas.iter().all(|l| l.len() <= CONSOLE_LINE_BYTES_MAX + '…'.len_utf8()));
+    assert!(
+        linhas
+            .iter()
+            .all(|l| l.len() <= CONSOLE_LINE_BYTES_MAX + '…'.len_utf8())
+    );
     assert!(total <= CONSOLE_BYTES_MAX, "a aba guardou {total} bytes");
-    assert!(linhas.len() < 5_000, "controlo: o tecto em bytes deitou linhas fora");
+    assert!(
+        linhas.len() < 5_000,
+        "controlo: o tecto em bytes deitou linhas fora"
+    );
 }

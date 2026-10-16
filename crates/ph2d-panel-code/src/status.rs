@@ -45,7 +45,11 @@ impl StatusLine {
         let line = t.line_of_byte(head) + 1;
         let col = col0 + 1;
         let position = tr_with("code.status.position", &[("line", &line), ("col", &col)]);
-        let errors = frame.problems.iter().filter(|p| p.severity == Severity::Error).count();
+        let errors = frame
+            .problems
+            .iter()
+            .filter(|p| p.severity == Severity::Error)
+            .count();
         let warnings = frame.problems.len() - errors;
         let problems = match (errors, warnings) {
             (0, 0) => (tr("code.status.no_problems").to_owned(), Tone::Plain),
@@ -59,17 +63,35 @@ impl StatusLine {
                     1 => tr("code.status.warnings_one").to_owned(),
                     n => tr_with("code.status.warnings", &[("count", &n)]),
                 };
-                (tr_with("code.status.problems", &[("errors", &errors), ("warnings", &warnings)]), tone)
+                (
+                    tr_with(
+                        "code.status.problems",
+                        &[("errors", &errors), ("warnings", &warnings)],
+                    ),
+                    tone,
+                )
             }
         };
         let badge = frame.badge.map(|b| match b {
-            Badge::Reloaded { objects: 1 } => (tr("code.status.reloaded_one").to_owned(), Tone::Success),
-            Badge::Reloaded { objects } => (tr_with("code.status.reloaded", &[("count", objects)]), Tone::Success),
-            Badge::Refused { line: Some(l) } => (tr_with("code.status.refused_line", &[("line", l)]), Tone::Error),
+            Badge::Reloaded { objects: 1 } => {
+                (tr("code.status.reloaded_one").to_owned(), Tone::Success)
+            }
+            Badge::Reloaded { objects } => (
+                tr_with("code.status.reloaded", &[("count", objects)]),
+                Tone::Success,
+            ),
+            Badge::Refused { line: Some(l) } => (
+                tr_with("code.status.refused_line", &[("line", l)]),
+                Tone::Error,
+            ),
             Badge::Refused { line: None } => (tr("code.status.refused").to_owned(), Tone::Error),
             Badge::Saved => (tr("code.status.saved_unused").to_owned(), Tone::Plain),
         });
-        Self { position, problems, badge }
+        Self {
+            position,
+            problems,
+            badge,
+        }
     }
 }
 
@@ -82,15 +104,32 @@ fn color(pal: &Palette, tone: Tone) -> ph2d_vector::Color {
     }
 }
 
-pub(crate) fn paint(view: &CodeView, frame: &CodeFrame<'_>, scene: &mut VectorScene, ts: &mut TextSystem, pal: &Palette) {
+pub(crate) fn paint(
+    view: &CodeView,
+    frame: &CodeFrame<'_>,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    pal: &Palette,
+) {
     let a = view.area;
     let h = view.m.status_h.min(a.h);
     if h <= 0.0 {
         return;
     }
-    let bar = Rect { x: a.x, y: a.y + a.h - h, w: a.w, h };
+    let bar = Rect {
+        x: a.x,
+        y: a.y + a.h - h,
+        w: a.w,
+        h,
+    };
     scene.fill_rect(rect_to_vello(bar), pal.status_bg);
-    scene.fill_rect(rect_to_vello(Rect { h: StrokeToken::Thin.px(), ..bar }), pal.border);
+    scene.fill_rect(
+        rect_to_vello(Rect {
+            h: StrokeToken::Thin.px(),
+            ..bar
+        }),
+        pal.border,
+    );
     let s = StatusLine::at(frame, view.status_col.map_or(0, |c| c.1));
     let font = ph2d_text::displayed_font_px(TypeToken::Sm.px());
     let y = bar.y + (h - font) * 0.5;
@@ -98,14 +137,35 @@ pub(crate) fn paint(view: &CodeView, frame: &CodeFrame<'_>, scene: &mut VectorSc
     let gap = Spacing::Xl.px();
     let right = bar.x + bar.w - pad;
     let mut x = bar.x + pad;
-    for (text, tone) in [(s.position.as_str(), Tone::Plain), (s.problems.0.as_str(), s.problems.1)] {
+    for (text, tone) in [
+        (s.position.as_str(), Tone::Plain),
+        (s.problems.0.as_str(), s.problems.1),
+    ] {
         let w = label_column_width(ts, font, [text]);
-        paint_text_elided(ts, scene, text, x, y, font, (right - x).max(0.0), color(pal, tone));
+        paint_text_elided(
+            ts,
+            scene,
+            text,
+            x,
+            y,
+            font,
+            (right - x).max(0.0),
+            color(pal, tone),
+        );
         x += w + gap;
     }
     if let Some((text, tone)) = &s.badge {
         let w = label_column_width(ts, font, [text.as_str()]);
         let bx = (right - w).max(x);
-        paint_text_elided(ts, scene, text, bx, y, font, (right - bx).max(0.0), color(pal, *tone));
+        paint_text_elided(
+            ts,
+            scene,
+            text,
+            bx,
+            y,
+            font,
+            (right - bx).max(0.0),
+            color(pal, *tone),
+        );
     }
 }

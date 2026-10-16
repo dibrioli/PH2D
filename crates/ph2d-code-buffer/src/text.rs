@@ -29,7 +29,9 @@ pub fn normalize_newlines(s: &str) -> std::borrow::Cow<'_, str> {
 
 impl Text {
     pub fn new(s: &str) -> Self {
-        Self { rope: Rope::from(normalize_newlines(s).as_ref()) }
+        Self {
+            rope: Rope::from(normalize_newlines(s).as_ref()),
+        }
     }
 
     pub fn rope(&self) -> &Rope {
@@ -55,7 +57,11 @@ impl Text {
     }
 
     pub fn line_count(&self) -> usize {
-        if self.is_empty() { 1 } else { self.rope.line_len() + usize::from(self.ends_with_newline()) }
+        if self.is_empty() {
+            1
+        } else {
+            self.rope.line_len() + usize::from(self.ends_with_newline())
+        }
     }
 
     fn ends_with_newline(&self) -> bool {
@@ -82,7 +88,11 @@ impl Text {
     /// Byte do fim da linha, ANTES do `\n`.
     pub fn line_end(&self, line: usize) -> usize {
         let next = self.byte_of_line(line + 1);
-        if line + 1 < self.line_count() { next - 1 } else { next }
+        if line + 1 < self.line_count() {
+            next - 1
+        } else {
+            next
+        }
     }
 
     pub fn line_string(&self, line: usize) -> String {
@@ -123,20 +133,29 @@ impl Text {
 
     /// O texto tem `pat` a começar em `at`? Compara BYTES (nunca corta um carácter).
     pub fn starts_with_at(&self, at: usize, pat: &str) -> bool {
-        at.checked_add(pat.len()).is_some_and(|end| end <= self.len())
-            && pat.bytes().enumerate().all(|(i, b)| self.rope.byte(at + i) == b)
+        at.checked_add(pat.len())
+            .is_some_and(|end| end <= self.len())
+            && pat
+                .bytes()
+                .enumerate()
+                .all(|(i, b)| self.rope.byte(at + i) == b)
     }
 
     pub fn point_of_byte(&self, byte: usize) -> Point {
         let byte = self.floor_char(byte);
         let row = self.line_of_byte(byte);
-        Point { row, col: byte - self.byte_of_line(row) }
+        Point {
+            row,
+            col: byte - self.byte_of_line(row),
+        }
     }
 
     /// O byte de `p`; uma coluna no meio de um carácter desce ao início dele.
     pub fn byte_of_point(&self, p: Point) -> usize {
         let start = self.byte_of_line(p.row.min(self.line_count() - 1));
-        let b = start.saturating_add(p.col).min(self.line_end(self.line_of_byte(start)));
+        let b = start
+            .saturating_add(p.col)
+            .min(self.line_end(self.line_of_byte(start)));
         self.floor_char(b)
     }
 
@@ -203,7 +222,8 @@ impl Text {
 
 pub fn display_width(s: &str, tab: usize) -> usize {
     let tab = tab.max(1);
-    s.graphemes(true).fold(0, |w, g| if g == "\t" { w + tab - w % tab } else { w + 1 })
+    s.graphemes(true)
+        .fold(0, |w, g| if g == "\t" { w + tab - w % tab } else { w + 1 })
 }
 
 impl std::fmt::Display for Text {

@@ -32,9 +32,39 @@ fn os_casos_da_auditoria_nao_derrubam_o_editor() {
 }
 
 const ALFABETO: &[&str] = &[
-    "a", "x", " ", "  ", "\n", "-", "--", "--[[", "]]", "\"", "'", "(", ")", "{", "}", "[", "]",
-    "é", "ç", "ã", "😀", "👍🏽", "e\u{301}", "a\u{308}\u{301}", "日本", "語", "\t", "end",
-    "function f()", "local s = \"", "[=[", "]=]", "🇵🇹",
+    "a",
+    "x",
+    " ",
+    "  ",
+    "\n",
+    "-",
+    "--",
+    "--[[",
+    "]]",
+    "\"",
+    "'",
+    "(",
+    ")",
+    "{",
+    "}",
+    "[",
+    "]",
+    "é",
+    "ç",
+    "ã",
+    "😀",
+    "👍🏽",
+    "e\u{301}",
+    "a\u{308}\u{301}",
+    "日本",
+    "語",
+    "\t",
+    "end",
+    "function f()",
+    "local s = \"",
+    "[=[",
+    "]=]",
+    "🇵🇹",
 ];
 
 /// Os bytes que são fronteira de carácter (onde o editor pode pôr um cursor).
@@ -67,7 +97,11 @@ fn um_traco_aleatorio_nao_ascii_nunca_entra_em_panico() {
             let cursores: Vec<Range> = (0..rng.usize(1..4))
                 .map(|_| {
                     let a = fr[rng.usize(..fr.len())];
-                    let b = if rng.bool() { a } else { fr[rng.usize(..fr.len())] };
+                    let b = if rng.bool() {
+                        a
+                    } else {
+                        fr[rng.usize(..fr.len())]
+                    };
                     Range::new(a, b)
                 })
                 .collect();

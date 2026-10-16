@@ -54,7 +54,10 @@ impl Documents {
         let mut wants = None;
         for (i, f) in self.surfaces.families.iter_mut().enumerate() {
             if let Some(id) = f.take_focus_request() {
-                wants = Some(SurfaceTab { family: u8::try_from(i).unwrap_or(u8::MAX), id });
+                wants = Some(SurfaceTab {
+                    family: u8::try_from(i).unwrap_or(u8::MAX),
+                    id,
+                });
             }
         }
         if let Some(tab) = wants {

@@ -10,16 +10,31 @@ fn byte_of_point_no_meio_de_um_caracter_desce_ao_inicio_dele() {
     assert_eq!(t.byte_of_point(Point { row: 0, col: 1 }), 0, "dentro do é");
     assert_eq!(t.byte_of_point(Point { row: 0, col: 4 }), 2, "dentro do 😀");
     assert_eq!(t.byte_of_point(Point { row: 0, col: 6 }), 6, "o x");
-    assert_eq!(t.byte_of_point(Point { row: 9, col: usize::MAX }), t.len(), "fora do texto");
+    assert_eq!(
+        t.byte_of_point(Point {
+            row: 9,
+            col: usize::MAX
+        }),
+        t.len(),
+        "fora do texto"
+    );
 }
 
 #[test]
 fn byte_of_utf16_fora_da_faixa_ou_no_meio_de_um_par_nao_entra_em_panico() {
     let t = Text::new("a😀b");
     assert_eq!(t.byte_of_utf16(999), t.len(), "fora da faixa = o fim");
-    assert_eq!(t.byte_of_utf16(2), 1, "no meio do par substituto = o início do 😀");
+    assert_eq!(
+        t.byte_of_utf16(2),
+        1,
+        "no meio do par substituto = o início do 😀"
+    );
     assert_eq!(t.byte_of_utf16(3), 5);
-    assert_eq!(t.utf16_of_byte(3), 1, "um byte no meio do 😀 conta como o início dele");
+    assert_eq!(
+        t.utf16_of_byte(3),
+        1,
+        "um byte no meio do 😀 conta como o início dele"
+    );
 }
 
 #[test]

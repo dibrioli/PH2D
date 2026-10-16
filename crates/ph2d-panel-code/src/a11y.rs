@@ -50,7 +50,11 @@ pub(crate) fn run_text(t: &ph2d_code_buffer::Text, line: usize) -> String {
     let (ls, le) = (t.byte_of_line(line), t.line_end(line));
     let mut take = RUN_CHARS * 4;
     loop {
-        let end = if le - ls > take { t.floor_char(ls + take) } else { le };
+        let end = if le - ls > take {
+            t.floor_char(ls + take)
+        } else {
+            le
+        };
         let s = t.slice(ls..end);
         if end == le || units(&s).take(RUN_CHARS).count() >= RUN_CHARS {
             return s;
@@ -67,7 +71,11 @@ fn position(buffer: &Buffer, lines: &[usize], base: NodeId, byte: usize) -> Opti
     let (line, index) = if line < first {
         (first, 0)
     } else if line > last || !lines.contains(&line) {
-        let l = if line > last { last } else { *lines.iter().rev().find(|&&l| l < line).unwrap_or(&first) };
+        let l = if line > last {
+            last
+        } else {
+            *lines.iter().rev().find(|&&l| l < line).unwrap_or(&first)
+        };
         (l, units(&run_text(t, l)).take(RUN_CHARS).count())
     } else {
         let start = t.byte_of_line(line);
@@ -75,10 +83,16 @@ fn position(buffer: &Buffer, lines: &[usize], base: NodeId, byte: usize) -> Opti
         let upto = (byte - start).min(run.len());
         (line, units(&run[..upto]).take(RUN_CHARS).count())
     };
-    Some(TextPosition { node: CodeView::a11y_run_id(base, line).into(), character_index: index })
+    Some(TextPosition {
+        node: CodeView::a11y_run_id(base, line).into(),
+        character_index: index,
+    })
 }
 
 pub(crate) fn selection(buffer: &Buffer, lines: &[usize], base: NodeId) -> Option<TextSelection> {
     let p = buffer.selection().primary();
-    Some(TextSelection { anchor: position(buffer, lines, base, p.anchor)?, focus: position(buffer, lines, base, p.head)? })
+    Some(TextSelection {
+        anchor: position(buffer, lines, base, p.anchor)?,
+        focus: position(buffer, lines, base, p.head)?,
+    })
 }

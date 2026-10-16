@@ -82,9 +82,18 @@ pub fn ph2d_settings() -> Value {
 #[derive(Debug)]
 pub enum LspError {
     Spawn(io::Error),
-    ServerDied { status: Option<ExitStatus>, stderr_tail: String },
-    Timeout { method: String },
-    Server { method: String, code: i64, message: String },
+    ServerDied {
+        status: Option<ExitStatus>,
+        stderr_tail: String,
+    },
+    Timeout {
+        method: String,
+    },
+    Server {
+        method: String,
+        code: i64,
+        message: String,
+    },
     Protocol(String),
 }
 
@@ -92,11 +101,18 @@ impl fmt::Display for LspError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Spawn(e) => write!(f, "could not start luau-lsp: {e}"),
-            Self::ServerDied { status, stderr_tail } => {
+            Self::ServerDied {
+                status,
+                stderr_tail,
+            } => {
                 write!(f, "luau-lsp died ({status:?}); last stderr: {stderr_tail}")
             }
             Self::Timeout { method } => write!(f, "luau-lsp did not answer {method} in time"),
-            Self::Server { method, code, message } => {
+            Self::Server {
+                method,
+                code,
+                message,
+            } => {
                 write!(f, "luau-lsp refused {method}: {code} {message}")
             }
             Self::Protocol(m) => write!(f, "luau-lsp protocol error: {m}"),
@@ -137,7 +153,10 @@ pub struct ServerMessage {
 pub enum Notification {
     Diagnostics(PublishedDiagnostics),
     Message(ServerMessage),
-    Other { method: String, params: Value },
+    Other {
+        method: String,
+        params: Value,
+    },
     /// The reader hit end of stream: the server is gone.
     Exited,
 }
@@ -291,7 +310,10 @@ impl LspClient {
     fn died(&mut self) -> LspError {
         self.alive.store(false, Ordering::SeqCst);
         let status = self.child.try_wait().ok().flatten();
-        LspError::ServerDied { status, stderr_tail: self.stderr_tail().join("\n") }
+        LspError::ServerDied {
+            status,
+            stderr_tail: self.stderr_tail().join("\n"),
+        }
     }
 
     fn send(&mut self, body: &Value) -> Result<(), LspError> {
@@ -319,16 +341,20 @@ impl LspClient {
         }
         match rx.recv_timeout(self.config.request_timeout) {
             Ok(Ok(v)) => Ok(v),
-            Ok(Err(LspError::Server { code, message, .. })) => {
-                Err(LspError::Server { method: method.to_owned(), code, message })
-            }
+            Ok(Err(LspError::Server { code, message, .. })) => Err(LspError::Server {
+                method: method.to_owned(),
+                code,
+                message,
+            }),
             Ok(Err(LspError::ServerDied { .. })) | Err(RecvTimeoutError::Disconnected) => {
                 Err(self.died())
             }
             Ok(Err(e)) => Err(e),
             Err(RecvTimeoutError::Timeout) => {
                 lock(&self.pending).remove(&id);
-                Err(LspError::Timeout { method: method.to_owned() })
+                Err(LspError::Timeout {
+                    method: method.to_owned(),
+                })
             }
         }
     }
@@ -377,7 +403,10 @@ impl LspClient {
 
     pub fn did_close(&mut self, uri: &str) -> Result<(), LspError> {
         self.documents.remove(uri);
-        self.notify("textDocument/didClose", json!({ "textDocument": { "uri": uri } }))
+        self.notify(
+            "textDocument/didClose",
+            json!({ "textDocument": { "uri": uri } }),
+        )
     }
 
     /// The client's copy of an open document.
@@ -389,13 +418,20 @@ impl LspClient {
         let r = self.request("textDocument/completion", text_position(uri, at))?;
         let items = match &r {
             Value::Array(a) => a.as_slice(),
-            Value::Object(o) => o.get("items").and_then(Value::as_array).map_or(&[][..], Vec::as_slice),
+            Value::Object(o) => o
+                .get("items")
+                .and_then(Value::as_array)
+                .map_or(&[][..], Vec::as_slice),
             _ => &[],
         };
         Ok(items
             .iter()
             .map(|i| CompletionItem {
-                label: i.get("label").and_then(Value::as_str).unwrap_or_default().to_owned(),
+                label: i
+                    .get("label")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned(),
                 kind: i.get("kind").and_then(Value::as_u64).map(|k| k as u32),
                 detail: i.get("detail").and_then(Value::as_str).map(str::to_owned),
             })
@@ -419,20 +455,24 @@ impl LspClient {
 
     /// Blocks until a NEW `publishDiagnostics` for `uri` arrives (call [`Self::pump`] before the
     /// edit so an older one is not taken for it).
-    pub fn wait_diagnostics(&mut self, uri: &str, timeout: Duration) -> Result<PublishedDiagnostics, LspError> {
+    pub fn wait_diagnostics(
+        &mut self,
+        uri: &str,
+        timeout: Duration,
+    ) -> Result<PublishedDiagnostics, LspError> {
         let deadline = Instant::now() + timeout;
         loop {
             let left = deadline.saturating_duration_since(Instant::now());
             match self.notifications.recv_timeout(left) {
-                Ok(n) => {
-                    match self.take(n) {
-                        Notification::Diagnostics(d) if d.uri == uri => return Ok(d),
-                        Notification::Exited => return Err(self.died()),
-                        _ => {}
-                    }
-                }
+                Ok(n) => match self.take(n) {
+                    Notification::Diagnostics(d) if d.uri == uri => return Ok(d),
+                    Notification::Exited => return Err(self.died()),
+                    _ => {}
+                },
                 Err(RecvTimeoutError::Timeout) => {
-                    return Err(LspError::Timeout { method: format!("publishDiagnostics {uri}") });
+                    return Err(LspError::Timeout {
+                        method: format!("publishDiagnostics {uri}"),
+                    });
                 }
                 Err(RecvTimeoutError::Disconnected) => return Err(self.died()),
             }
@@ -444,7 +484,8 @@ impl LspClient {
         match &mut n {
             Notification::Diagnostics(d) => {
                 if let Some((_, text)) = self.documents.get(&d.uri) {
-                    d.diagnostics.retain(|x| !is_unused_engine_hook(x, text, &self.engine_hooks));
+                    d.diagnostics
+                        .retain(|x| !is_unused_engine_hook(x, text, &self.engine_hooks));
                 }
                 self.diagnostics.insert(d.uri.clone(), d.clone());
             }
@@ -510,26 +551,38 @@ fn reader_loop(
             }
             (Some(id), None) => {
                 let Some(id) = id.as_i64() else { continue };
-                let Some(waiter) = lock(pending).remove(&id) else { continue };
+                let Some(waiter) = lock(pending).remove(&id) else {
+                    continue;
+                };
                 let r = match msg.get("error") {
                     Some(e) => Err(LspError::Server {
                         method: String::new(),
                         code: e.get("code").and_then(Value::as_i64).unwrap_or(0),
-                        message: e.get("message").and_then(Value::as_str).unwrap_or_default().to_owned(),
+                        message: e
+                            .get("message")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_owned(),
                     }),
                     None => Ok(msg.get("result").cloned().unwrap_or(Value::Null)),
                 };
                 let _ = waiter.send(r);
             }
             (None, Some(method)) => {
-                let _ = tx.send(parse_notification(method, msg.get("params").cloned().unwrap_or(Value::Null)));
+                let _ = tx.send(parse_notification(
+                    method,
+                    msg.get("params").cloned().unwrap_or(Value::Null),
+                ));
             }
             (None, None) => {}
         }
     }
     alive.store(false, Ordering::SeqCst);
     for (_, waiter) in std::mem::take(&mut *lock(pending)) {
-        let _ = waiter.send(Err(LspError::ServerDied { status: None, stderr_tail: String::new() }));
+        let _ = waiter.send(Err(LspError::ServerDied {
+            status: None,
+            stderr_tail: String::new(),
+        }));
     }
     let _ = tx.send(Notification::Exited);
 }
@@ -537,7 +590,9 @@ fn reader_loop(
 fn answer_server_request(method: &str, params: Option<&Value>) -> Value {
     match method {
         "workspace/configuration" => {
-            let items = params.and_then(|p| p.get("items")).and_then(Value::as_array);
+            let items = params
+                .and_then(|p| p.get("items"))
+                .and_then(Value::as_array);
             Value::Array(
                 items
                     .into_iter()
@@ -556,7 +611,11 @@ fn answer_server_request(method: &str, params: Option<&Value>) -> Value {
 fn parse_notification(method: &str, params: Value) -> Notification {
     match method {
         "textDocument/publishDiagnostics" => Notification::Diagnostics(PublishedDiagnostics {
-            uri: params.get("uri").and_then(Value::as_str).unwrap_or_default().to_owned(),
+            uri: params
+                .get("uri")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
             diagnostics: params
                 .get("diagnostics")
                 .and_then(Value::as_array)
@@ -569,9 +628,16 @@ fn parse_notification(method: &str, params: Value) -> Notification {
         "window/logMessage" | "window/showMessage" => Notification::Message(ServerMessage {
             shown: method == "window/showMessage",
             level: params.get("type").and_then(Value::as_u64).unwrap_or(4) as u8,
-            text: params.get("message").and_then(Value::as_str).unwrap_or_default().to_owned(),
+            text: params
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
         }),
-        _ => Notification::Other { method: method.to_owned(), params },
+        _ => Notification::Other {
+            method: method.to_owned(),
+            params,
+        },
     }
 }
 
@@ -584,7 +650,11 @@ fn parse_diagnostic(d: &Value) -> Diagnostic {
             Value::Number(n) => Some(n.to_string()),
             _ => None,
         }),
-        message: d.get("message").and_then(Value::as_str).unwrap_or_default().to_owned(),
+        message: d
+            .get("message")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned(),
     }
 }
 
@@ -612,7 +682,11 @@ fn text_position(uri: &str, at: Position) -> Value {
 fn hover_text(contents: &Value) -> String {
     match contents {
         Value::String(s) => s.clone(),
-        Value::Object(o) => o.get("value").and_then(Value::as_str).unwrap_or_default().to_owned(),
+        Value::Object(o) => o
+            .get("value")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned(),
         Value::Array(a) => a.iter().map(hover_text).collect::<Vec<_>>().join("\n"),
         _ => String::new(),
     }
@@ -650,11 +724,17 @@ pub fn hooks_in_definitions(text: &str) -> Vec<String> {
 /// `FunctionUnused` on a GLOBAL `function <hook>` — the engine is its caller, invisible to luau-lsp.
 /// By exact name and only for globals: a misspelt hook or a `local function update` still warns.
 pub fn is_unused_engine_hook(d: &Diagnostic, text: &str, hooks: &BTreeSet<String>) -> bool {
-    if d.code.as_deref() != Some(LINT_FUNCTION_UNUSED) || !d.message.starts_with("FunctionUnused:") {
+    if d.code.as_deref() != Some(LINT_FUNCTION_UNUSED) || !d.message.starts_with("FunctionUnused:")
+    {
         return false;
     }
-    let (a, b) = (position_to_byte(text, d.range.start), position_to_byte(text, d.range.end));
-    let Some(name) = text.get(a..b) else { return false };
+    let (a, b) = (
+        position_to_byte(text, d.range.start),
+        position_to_byte(text, d.range.end),
+    );
+    let Some(name) = text.get(a..b) else {
+        return false;
+    };
     let line_start = text[..a].rfind(['\n', '\r']).map_or(0, |i| i + 1);
     hooks.contains(name) && text[line_start..a].trim() == "function"
 }

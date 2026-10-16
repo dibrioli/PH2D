@@ -70,7 +70,9 @@ struct Doc {
 impl Doc {
     fn new(name: &str, text: String) -> Self {
         let first_get = text.find("ph2d.get").expect("doc uses ph2d.get");
-        let update = text.find("function update(self, dt)\n").expect("doc has update");
+        let update = text
+            .find("function update(self, dt)\n")
+            .expect("doc has update");
         let edit_line = byte_to_position(&text, update).line + 1;
         Self {
             name: format!("{name}.luau"),
@@ -99,15 +101,31 @@ fn ms(d: Duration) -> f64 {
 
 /// Inserts or removes the probe line (incremental sync), so the text alternates between two states.
 fn edit(c: &mut LspClient, u: &str, d: &Doc, inserting: bool) {
-    let end = if inserting { d.edit_at } else { Position::new(d.edit_at.line + 1, 0) };
+    let end = if inserting {
+        d.edit_at
+    } else {
+        Position::new(d.edit_at.line + 1, 0)
+    };
     let text = if inserting { PROBE_LINE } else { "" };
-    c.did_change(u, Range { start: d.edit_at, end }, text).expect("didChange");
+    c.did_change(
+        u,
+        Range {
+            start: d.edit_at,
+            end,
+        },
+        text,
+    )
+    .expect("didChange");
 }
 
 fn complete(c: &mut LspClient, u: &str, d: &Doc) -> f64 {
     let t = Instant::now();
     let items = c.completion(u, d.completion_at).expect("completion");
-    assert!(!items.is_empty(), "{}: empty completion after `ph2d.`", d.name);
+    assert!(
+        !items.is_empty(),
+        "{}: empty completion after `ph2d.`",
+        d.name
+    );
     ms(t.elapsed())
 }
 
@@ -118,7 +136,9 @@ fn iterate(c: &mut LspClient, d: &Doc, out: Option<&mut Samples>) {
     c.pump();
     let t0 = Instant::now();
     edit(c, &u, d, true);
-    let published = c.wait_diagnostics(&u, Duration::from_secs(120)).expect("diagnostics");
+    let published = c
+        .wait_diagnostics(&u, Duration::from_secs(120))
+        .expect("diagnostics");
     let diag_ms = ms(published.received.saturating_duration_since(t0));
     let completion_ms = complete(c, &u, d);
     let t2 = Instant::now();
@@ -131,8 +151,13 @@ fn iterate(c: &mut LspClient, d: &Doc, out: Option<&mut Samples>) {
     edit(c, &u, d, false);
     let items = c.completion(&u, d.completion_at).expect("completion");
     let edit_completion_ms = ms(t3.elapsed());
-    assert!(!items.is_empty(), "{}: empty completion right after an edit", d.name);
-    c.wait_diagnostics(&u, Duration::from_secs(120)).expect("diagnostics");
+    assert!(
+        !items.is_empty(),
+        "{}: empty completion right after an edit",
+        d.name
+    );
+    c.wait_diagnostics(&u, Duration::from_secs(120))
+        .expect("diagnostics");
 
     if let Some(s) = out {
         s.diag.push(diag_ms);
@@ -160,21 +185,32 @@ fn summary(v: &[f64]) -> String {
 }
 
 fn loadavg() -> String {
-    std::fs::read_to_string("/proc/loadavg").map(|s| s.split_whitespace().take(3).collect::<Vec<_>>().join(" ")).unwrap_or_else(|_| "?".into())
+    std::fs::read_to_string("/proc/loadavg")
+        .map(|s| s.split_whitespace().take(3).collect::<Vec<_>>().join(" "))
+        .unwrap_or_else(|_| "?".into())
 }
 
 fn rss_mb(pid: u32) -> String {
     std::fs::read_to_string(format!("/proc/{pid}/status"))
         .ok()
-        .and_then(|s| s.lines().find(|l| l.starts_with("VmRSS")).map(str::to_owned))
-        .and_then(|l| l.split_whitespace().nth(1).and_then(|kb| kb.parse::<f64>().ok()))
+        .and_then(|s| {
+            s.lines()
+                .find(|l| l.starts_with("VmRSS"))
+                .map(str::to_owned)
+        })
+        .and_then(|l| {
+            l.split_whitespace()
+                .nth(1)
+                .and_then(|kb| kb.parse::<f64>().ok())
+        })
         .map_or("?".into(), |kb| format!("{:.0}", kb / 1024.0))
 }
 
 #[test]
 #[ignore = "latency probe (T4) — run explicitly; it takes minutes"]
 fn latencia_old_vs_new_solver_interleaved() {
-    let defs = std::env::var_os("PH2D_LSP_PROBE_DEFINITIONS").map_or_else(ph2d_definitions, PathBuf::from);
+    let defs =
+        std::env::var_os("PH2D_LSP_PROBE_DEFINITIONS").map_or_else(ph2d_definitions, PathBuf::from);
     let load_start = loadavg();
     let docs = [
         Doc::new("bob", bob_luau()),
@@ -184,7 +220,10 @@ fn latencia_old_vs_new_solver_interleaved() {
     ];
     let solvers = [Solver::Old, Solver::New];
     let mut clients: Vec<LspClient> = solvers.iter().map(|&s| start(&defs, s)).collect();
-    let mut samples: Vec<Vec<Samples>> = solvers.iter().map(|_| docs.iter().map(|_| Samples::default()).collect()).collect();
+    let mut samples: Vec<Vec<Samples>> = solvers
+        .iter()
+        .map(|_| docs.iter().map(|_| Samples::default()).collect())
+        .collect();
 
     // Cold first check (an event of its own), then warm-up outside the ruler.
     for (si, c) in clients.iter_mut().enumerate() {
@@ -193,7 +232,9 @@ fn latencia_old_vs_new_solver_interleaved() {
             c.pump();
             let t0 = Instant::now();
             c.did_open(&u, &d.text).expect("didOpen");
-            let p = c.wait_diagnostics(&u, Duration::from_secs(120)).expect("open diagnostics");
+            let p = c
+                .wait_diagnostics(&u, Duration::from_secs(120))
+                .expect("open diagnostics");
             samples[si][di].open_ms = ms(p.received.saturating_duration_since(t0));
             samples[si][di].open_diags = p.diagnostics.len();
             for _ in 0..WARMUP {
@@ -214,7 +255,11 @@ fn latencia_old_vs_new_solver_interleaved() {
         }
     }
 
-    let profile = if cfg!(debug_assertions) { "debug (client side)" } else { "optimised (client side)" };
+    let profile = if cfg!(debug_assertions) {
+        "debug (client side)"
+    } else {
+        "optimised (client side)"
+    };
     let mut table = format!(
         "luau-lsp {} · definitions {} · client {profile} · {ROUNDS} rounds × {BLOCK} per block (n = {} per cell) · loadavg start {load_start} · end {}\n\n\
          | doc (lines) | solver | 1st check ms | didChange→diagnostics ms (min / p50 / p99 / p99.9) | didChange→completion ms | completion (checked) ms | hover ms | diagnostics | RSS MB |\n\

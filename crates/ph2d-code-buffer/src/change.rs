@@ -58,7 +58,11 @@ impl ChangeSet {
     }
 
     pub fn single(range: Range<usize>, insert: impl Into<String>) -> Self {
-        Self::new(vec![Change { range, insert: insert.into() }]).unwrap_or_default()
+        Self::new(vec![Change {
+            range,
+            insert: insert.into(),
+        }])
+        .unwrap_or_default()
     }
 
     pub fn changes(&self) -> &[Change] {
@@ -82,7 +86,10 @@ impl ChangeSet {
                         row: start.row + c.insert.matches('\n').count(),
                         col: c.insert.len() - i - 1,
                     },
-                    None => Point { row: start.row, col: start.col + c.insert.len() },
+                    None => Point {
+                        row: start.row,
+                        col: start.col + c.insert.len(),
+                    },
                 };
                 TextEdit {
                     start_byte: c.range.start,
@@ -111,7 +118,10 @@ impl ChangeSet {
             .map(|c| {
                 let start = (c.range.start as isize + delta) as usize;
                 delta += c.insert.len() as isize - c.range.len() as isize;
-                Change { range: start..start + c.insert.len(), insert: before.slice(c.range.clone()) }
+                Change {
+                    range: start..start + c.insert.len(),
+                    insert: before.slice(c.range.clone()),
+                }
             })
             .collect();
         ChangeSet { changes }
@@ -121,10 +131,14 @@ impl ChangeSet {
     pub fn map_pos(&self, pos: usize, assoc: Assoc) -> usize {
         let mut delta: isize = 0;
         for c in &self.changes {
-            if pos < c.range.start || (pos == c.range.start && !c.range.is_empty() && assoc == Assoc::Before) {
+            if pos < c.range.start
+                || (pos == c.range.start && !c.range.is_empty() && assoc == Assoc::Before)
+            {
                 break;
             }
-            if pos > c.range.end || (pos == c.range.end && !c.range.is_empty() && assoc == Assoc::After) {
+            if pos > c.range.end
+                || (pos == c.range.end && !c.range.is_empty() && assoc == Assoc::After)
+            {
                 delta += c.insert.len() as isize - c.range.len() as isize;
                 continue;
             }

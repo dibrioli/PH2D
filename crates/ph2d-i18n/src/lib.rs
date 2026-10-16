@@ -39,8 +39,6 @@ mod app_painter;
 mod app_physics;
 /// O que a família do VETOR diz (os selos da booleana, importar SVG).
 mod app_vec;
-/// O que o EDITOR DE SCRIPTS diz (CodeEditor Onda 1) e as abas de documento de família.
-mod code_editor;
 /// As strings do navegador de assets.
 mod asset_browser;
 /// As strings dos dois painéis de áudio (editor + mixer).
@@ -72,6 +70,8 @@ mod chrome_panes;
 mod chrome_rail;
 /// O alcance das barras (D10, F4–F5): a paleta que ensina e o toque.
 mod chrome_reach;
+/// O que o EDITOR DE SCRIPTS diz (CodeEditor Onda 1) e as abas de documento de família.
+mod code_editor;
 /// ⭐⭐ **As palavras do MOTOR DA CENA** (`ph2d-ecs`) — a 7.ª fatia da fronteira dos motores, e a
 /// primeira achada por um instrumento.
 mod ecs_scene;

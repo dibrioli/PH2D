@@ -27,7 +27,11 @@ pub fn pinned_version() -> &'static str {
 }
 
 pub fn binary_file_name() -> &'static str {
-    if cfg!(windows) { "luau-lsp.exe" } else { "luau-lsp" }
+    if cfg!(windows) {
+        "luau-lsp.exe"
+    } else {
+        "luau-lsp"
+    }
 }
 
 /// `<cache>/ph2d/luau-lsp/<pinned version>/`, or `None` when no home directory is known.
@@ -36,7 +40,8 @@ pub fn cache_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
         .filter(|p| p.is_absolute());
     let home_var = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
-    let base = xdg.or_else(|| std::env::var_os(home_var).map(|h| PathBuf::from(h).join(".cache")))?;
+    let base =
+        xdg.or_else(|| std::env::var_os(home_var).map(|h| PathBuf::from(h).join(".cache")))?;
     Some(base.join("ph2d").join("luau-lsp").join(pinned_version()))
 }
 
@@ -51,7 +56,9 @@ pub enum BinarySource {
 pub enum ResolveError {
     /// `PH2D_LUAU_LSP` names a file that does not exist — an explicit setting is never skipped.
     EnvPointsNowhere(PathBuf),
-    NotFound { tried: Vec<PathBuf> },
+    NotFound {
+        tried: Vec<PathBuf>,
+    },
 }
 
 impl fmt::Display for ResolveError {
@@ -61,7 +68,11 @@ impl fmt::Display for ResolveError {
                 write!(f, "{ENV_BINARY}={} does not exist", p.display())
             }
             Self::NotFound { tried } => {
-                write!(f, "luau-lsp {} not found; run `bash scripts/luau-lsp-fetch.sh` (tried:", pinned_version())?;
+                write!(
+                    f,
+                    "luau-lsp {} not found; run `bash scripts/luau-lsp-fetch.sh` (tried:",
+                    pinned_version()
+                )?;
                 for p in tried {
                     write!(f, " {}", p.display())?;
                 }
@@ -84,7 +95,10 @@ pub fn resolve_binary() -> Result<(PathBuf, BinarySource), ResolveError> {
         };
     }
     let mut tried = Vec::new();
-    if let Some(dir) = std::env::current_exe().ok().and_then(|e| e.parent().map(PathBuf::from)) {
+    if let Some(dir) = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(PathBuf::from))
+    {
         let p = dir.join(binary_file_name());
         if p.is_file() {
             return Ok((p, BinarySource::NextToExe));

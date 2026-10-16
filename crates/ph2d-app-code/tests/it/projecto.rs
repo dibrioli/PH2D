@@ -57,33 +57,46 @@ fn abrir_outro_projecto_nunca_grava_o_texto_do_anterior_por_cima() {
     m.escreve(ids[0], "s");
     m.tecla(ids[0], Key::Char('s'), ctrl(), Some("s"));
     m.quadro();
-    assert!(m.docs().badge_of(ids[0]).is_some(), "controlo: o bob tem selo");
+    assert!(
+        m.docs().badge_of(ids[0]).is_some(),
+        "controlo: o bob tem selo"
+    );
     m.escreve(ids[0], "y");
     assert!(m.docs().is_dirty(ids[0]) && m.docs().is_parked(ids[1]));
 
     let enemy = abre_o_projecto_b(&mut m);
     assert_eq!(enemy, ids[0], "o #1 do B tem o id do bob");
     assert!(m.docs().tabs().is_empty(), "as abas do projecto A fecharam");
-    assert!(!m.docs().is_parked(ids[1]), "o estacionado do A foi esquecido");
+    assert!(
+        !m.docs().is_parked(ids[1]),
+        "o estacionado do A foi esquecido"
+    );
     assert!(!m.docs().is_dirty(enemy));
     // O File ▸ Save do projecto B não grava nada do A.
     m.hero.file_menu.save = true;
     m.quadro();
-    assert_eq!(m.texto_salvo(enemy), ENEMY, "o texto do bob caiu sobre o enemy");
+    assert_eq!(
+        m.texto_salvo(enemy),
+        ENEMY,
+        "o texto do bob caiu sobre o enemy"
+    );
     m.pede(enemy);
     assert_eq!(m.docs().text_of(enemy).as_deref(), Some(ENEMY));
-    assert_eq!(m.docs().badge_of(enemy), None, "o selo do bob ficou no enemy");
+    assert_eq!(
+        m.docs().badge_of(enemy),
+        None,
+        "o selo do bob ficou no enemy"
+    );
     assert!(m.docs().console_texts(enemy).is_empty());
 
     // Os textos por gravar do A ficaram em ficheiros, e o ecrã di-lo.
-    let mut esperado = vec![
-        format!("sy{BOB}"),
-        format!("x{ANA}"),
-    ];
+    let mut esperado = vec![format!("sy{BOB}"), format!("x{ANA}")];
     esperado.sort();
     assert_eq!(ficheiros(&dir), esperado, "os textos por gravar do A");
     assert!(
-        m.toasts.iter().any(|t| t.message.contains(&dir.display().to_string())),
+        m.toasts
+            .iter()
+            .any(|t| t.message.contains(&dir.display().to_string())),
         "o aviso diz onde ficaram"
     );
     let _ = std::fs::remove_dir_all(&dir);

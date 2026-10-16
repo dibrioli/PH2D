@@ -43,7 +43,9 @@ pub(super) fn empty_state() -> ProjectState {
 /// responsabilidade. `pub(super)` + `use` para que os outros filhos o alcancem por `super::*`.
 #[path = "project_test_writer.rs"]
 mod writer;
-use writer::{bare_file, write_project, write_project_art, write_project_boards, write_project_with};
+use writer::{
+    bare_file, write_project, write_project_art, write_project_boards, write_project_with,
+};
 
 /// O documento de uma animação: uma track em `hero`, com o `wire_id` (a identidade do objeto)
 /// carimbado como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.

@@ -434,11 +434,18 @@ fn um_print_longo_corta_a_linha_e_o_console_tem_tecto_em_bytes() {
     assert!(
         linhas
             .iter()
-            .all(|l| l.text.len() <= CONSOLE_LINE_BYTES_MAX + '…'.len_utf8() && l.text.ends_with('…')),
+            .all(|l| l.text.len() <= CONSOLE_LINE_BYTES_MAX + '…'.len_utf8()
+                && l.text.ends_with('…')),
         "uma linha passou do tecto por linha: {}",
         linhas.iter().map(|l| l.text.len()).max().unwrap_or(0)
     );
-    assert!(total <= CONSOLE_BYTES_MAX, "{total} bytes retidos > {CONSOLE_BYTES_MAX}");
-    assert!(c.host.console_dropped() > 0, "controlo: o tecto em bytes deitou linhas fora");
+    assert!(
+        total <= CONSOLE_BYTES_MAX,
+        "{total} bytes retidos > {CONSOLE_BYTES_MAX}"
+    );
+    assert!(
+        c.host.console_dropped() > 0,
+        "controlo: o tecto em bytes deitou linhas fora"
+    );
     assert_eq!(linhas.len() as u64 + c.host.console_dropped(), 5_000);
 }

@@ -106,7 +106,10 @@ fn bytes_por_tecla(texto: &str, aberta: bool) -> u64 {
     m.pinta(id);
     if aberta {
         // A barra fica aberta e o teclado volta ao texto (um clique no código).
-        let (x, y) = (crate::AREA.x + crate::AREA.w * 0.6, crate::AREA.y + crate::AREA.h * 0.4);
+        let (x, y) = (
+            crate::AREA.x + crate::AREA.w * 0.6,
+            crate::AREA.y + crate::AREA.h * 0.4,
+        );
         m.clica(id, x, y, Modifiers::default());
     } else {
         m.tecla(id, Key::Escape, Modifiers::default(), None);
@@ -119,7 +122,10 @@ fn bytes_por_tecla(texto: &str, aberta: bool) -> u64 {
         m.pinta(id);
     }
     if aberta {
-        assert!(m.docs().find_count_text(id).is_some(), "controlo: a barra continua aberta");
+        assert!(
+            m.docs().find_count_text(id).is_some(),
+            "controlo: a barra continua aberta"
+        );
     }
     (ph2d_code_buffer::find_bytes_scanned() - antes) / TECLAS
 }
@@ -131,9 +137,15 @@ fn bytes_por_tecla(texto: &str, aberta: bool) -> u64 {
 fn a_busca_por_tecla_nao_cresce_com_o_ficheiro_e_fechada_nao_custa_nada() {
     let (pequeno, grande) = (linhas(50), linhas(7_500));
     let fechada = bytes_por_tecla(&grande, false);
-    let (ap, ag) = (bytes_por_tecla(&pequeno, true), bytes_por_tecla(&grande, true));
+    let (ap, ag) = (
+        bytes_por_tecla(&pequeno, true),
+        bytes_por_tecla(&grande, true),
+    );
     eprintln!("busca por tecla: fechada {fechada} B · aberta {ap} B (50 linhas) · {ag} B (7 500)");
     assert_eq!(fechada, 0, "a busca fechada leu {fechada} bytes por tecla");
     assert!(ap > 0, "controlo: a régua conta a busca aberta");
-    assert!(ag <= ap * 2, "aberta: {ap} B por tecla a 50 linhas contra {ag} B a 7 500");
+    assert!(
+        ag <= ap * 2,
+        "aberta: {ap} B por tecla a 50 linhas contra {ag} B a 7 500"
+    );
 }

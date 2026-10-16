@@ -81,7 +81,13 @@ pub fn ts() -> TextSystem {
 
 /// As dobras de `d` que começam nas linhas pedidas (o que a família responde à pintura).
 pub fn marcas(d: &Deco) -> impl FnMut(Range<usize>) -> Vec<FoldMark> + '_ {
-    |lines| d.folds.iter().filter(|f| lines.contains(&f.start)).copied().collect()
+    |lines| {
+        d.folds
+            .iter()
+            .filter(|f| lines.contains(&f.start))
+            .copied()
+            .collect()
+    }
 }
 
 pub fn frame<'a>(
@@ -106,21 +112,56 @@ pub fn frame<'a>(
     }
 }
 
-pub fn pinta(v: &mut CodeView, buf: &Buffer, ts: &mut TextSystem, area: Rect, d: &Deco) -> VectorScene {
+pub fn pinta(
+    v: &mut CodeView,
+    buf: &Buffer,
+    ts: &mut TextSystem,
+    area: Rect,
+    d: &Deco,
+) -> VectorScene {
     let mut scene = VectorScene::new();
     pinta_em(v, buf, ts, area, d, &mut scene);
     scene
 }
 
-pub fn pinta_em(v: &mut CodeView, buf: &Buffer, ts: &mut TextSystem, area: Rect, d: &Deco, scene: &mut VectorScene) {
+pub fn pinta_em(
+    v: &mut CodeView,
+    buf: &Buffer,
+    ts: &mut TextSystem,
+    area: Rect,
+    d: &Deco,
+    scene: &mut VectorScene,
+) {
     let mut f = |r: Range<usize>| spans_de(buf, r);
     let mut m = marcas(d);
-    v.paint(frame(buf, d, &mut f, &mut m), area, scene, ts, &Theme::default());
+    v.paint(
+        frame(buf, d, &mut f, &mut m),
+        area,
+        scene,
+        ts,
+        &Theme::default(),
+    );
 }
 
 /// A área onde cabem exatamente `rows` linhas de texto (mede-se com uma pintura de aquecimento).
 pub fn area_para(v: &mut CodeView, buf: &Buffer, ts: &mut TextSystem, rows: usize) -> Rect {
-    pinta(v, buf, ts, Rect { x: 0.0, y: 0.0, w: 1200.0, h: 400.0 }, &Deco::default());
+    pinta(
+        v,
+        buf,
+        ts,
+        Rect {
+            x: 0.0,
+            y: 0.0,
+            w: 1200.0,
+            h: 400.0,
+        },
+        &Deco::default(),
+    );
     let m = *v.metrics();
-    Rect { x: 0.0, y: 0.0, w: 1200.0, h: rows as f32 * m.line_h + m.status_h }
+    Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1200.0,
+        h: rows as f32 * m.line_h + m.status_h,
+    }
 }

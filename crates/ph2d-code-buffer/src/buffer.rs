@@ -3,7 +3,7 @@
 use crate::change::{Change, ChangeSet, TextEdit};
 use crate::history::{EditKind, History};
 use crate::selection::{Range, Selection};
-use crate::text::{normalize_newlines, Text};
+use crate::text::{Text, normalize_newlines};
 use unicode_segmentation::UnicodeSegmentation;
 
 /// O que uma mutação devolve: as edições para quem segue o texto (sintaxe, LSP) em ordem de
@@ -20,7 +20,10 @@ pub struct Buffer {
 
 impl Buffer {
     pub fn new(s: &str) -> Self {
-        Self { text: Text::new(s), ..Self::default() }
+        Self {
+            text: Text::new(s),
+            ..Self::default()
+        }
     }
 
     pub fn text(&self) -> &Text {
@@ -59,7 +62,15 @@ impl Buffer {
 
     pub fn set_selection(&mut self, sel: Selection) {
         let n = self.text.len();
-        let clamped = sel.ranges().iter().map(|r| Range { anchor: r.anchor.min(n), head: r.head.min(n), goal: r.goal }).collect();
+        let clamped = sel
+            .ranges()
+            .iter()
+            .map(|r| Range {
+                anchor: r.anchor.min(n),
+                head: r.head.min(n),
+                goal: r.goal,
+            })
+            .collect();
         self.selection = sel.with_ranges(clamped);
     }
 
@@ -77,7 +88,8 @@ impl Buffer {
         let before = self.selection.clone();
         cs.apply(&mut self.text);
         let after = after.unwrap_or_else(|| before.map(&cs));
-        self.history.record(cs, inverse, before, after.clone(), kind, &inserted);
+        self.history
+            .record(cs, inverse, before, after.clone(), kind, &inserted);
         self.selection = after;
         self.revision += 1;
         edits
@@ -86,7 +98,11 @@ impl Buffer {
     /// Substitui CADA faixa da seleção pelo texto (a escrita em todos os cursores).
     pub fn insert(&mut self, s: &str) -> Edits {
         let s = normalize_newlines(s);
-        let kind = if s.graphemes(true).count() == 1 && !s.contains('\n') { EditKind::Typing } else { EditKind::Other };
+        let kind = if s.graphemes(true).count() == 1 && !s.contains('\n') {
+            EditKind::Typing
+        } else {
+            EditKind::Other
+        };
         self.insert_each(|_| s.to_string(), kind)
     }
 
@@ -97,7 +113,10 @@ impl Buffer {
             .selection
             .ranges()
             .iter()
-            .map(|r| Change { range: r.span(), insert: normalize_newlines(&f(r)).into_owned() })
+            .map(|r| Change {
+                range: r.span(),
+                insert: normalize_newlines(&f(r)).into_owned(),
+            })
             .collect();
         match ChangeSet::new(changes) {
             Some(cs) => {
@@ -135,12 +154,21 @@ impl Buffer {
             .selection
             .ranges()
             .iter()
-            .map(|r| Change { range: if r.is_empty() { span(&self.text, r) } else { r.span() }, insert: String::new() })
+            .map(|r| Change {
+                range: if r.is_empty() {
+                    span(&self.text, r)
+                } else {
+                    r.span()
+                },
+                insert: String::new(),
+            })
             .collect::<Vec<_>>();
         let mut merged: Vec<Change> = Vec::new();
         for c in changes {
             match merged.last_mut() {
-                Some(last) if c.range.start <= last.range.end => last.range.end = last.range.end.max(c.range.end),
+                Some(last) if c.range.start <= last.range.end => {
+                    last.range.end = last.range.end.max(c.range.end)
+                }
                 _ => merged.push(c),
             }
         }
@@ -151,12 +179,16 @@ impl Buffer {
     }
 
     pub fn undo(&mut self) -> Edits {
-        let Some((sets, sel)) = self.history.pop_undo() else { return Vec::new() };
+        let Some((sets, sel)) = self.history.pop_undo() else {
+            return Vec::new();
+        };
         self.replay(sets, sel)
     }
 
     pub fn redo(&mut self) -> Edits {
-        let Some((sets, sel)) = self.history.pop_redo() else { return Vec::new() };
+        let Some((sets, sel)) = self.history.pop_redo() else {
+            return Vec::new();
+        };
         self.replay(sets, sel)
     }
 

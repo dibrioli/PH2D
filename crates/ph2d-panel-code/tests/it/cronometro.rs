@@ -2,16 +2,22 @@
 //! e fria. `cargo test --profile smoke -p ph2d-panel-code --test it pintar_cem_linhas -- --ignored --nocapture`
 
 use crate::{Deco, area_para, frame, pinta_em, texto, ts};
-use ph2d_tokens::Theme;
 use ph2d_code_buffer::Buffer;
 use ph2d_panel_code::CodeView;
+use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 use std::time::Instant;
 
 fn resumo(nome: &str, mut v: Vec<f64>) {
     v.sort_by(f64::total_cmp);
     let q = |p: f64| v[((v.len() - 1) as f64 * p).round() as usize];
-    println!("{nome:>6}: n={} min={:.0} µs  p50={:.0} µs  p99={:.0} µs", v.len(), v[0], q(0.5), q(0.99));
+    println!(
+        "{nome:>6}: n={} min={:.0} µs  p50={:.0} µs  p99={:.0} µs",
+        v.len(),
+        v[0],
+        q(0.5),
+        q(0.99)
+    );
 }
 
 #[test]
@@ -39,7 +45,13 @@ fn pintar_cem_linhas() {
             }
             _ => {
                 let mut m = crate::marcas(&d);
-                vs.paint(frame(&buf, &d, &mut nada, &mut m), area, &mut scene, &mut ts, &Theme::default());
+                vs.paint(
+                    frame(&buf, &d, &mut nada, &mut m),
+                    area,
+                    &mut scene,
+                    &mut ts,
+                    &Theme::default(),
+                );
             }
         }
         let us = t.elapsed().as_secs_f64() * 1e6;
@@ -48,7 +60,11 @@ fn pintar_cem_linhas() {
         }
     }
     assert_eq!(v.cache().len(), 100);
-    let perfil = if cfg!(debug_assertions) { "debug" } else { "otimizado (smoke/release)" };
+    let perfil = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "otimizado (smoke/release)"
+    };
     let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("perfil: {perfil} · loadavg: {}", load.trim());
     resumo("quente", quente);

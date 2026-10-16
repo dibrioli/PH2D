@@ -10,8 +10,9 @@ pub mod position;
 pub mod resolve;
 
 pub use client::{
-    CompletionItem, Diagnostic, LspClient, hooks_in_definitions, is_unused_engine_hook, LspError, Notification, PublishedDiagnostics,
-    ServerConfig, ServerMessage, Solver, ph2d_settings,
+    CompletionItem, Diagnostic, LspClient, LspError, Notification, PublishedDiagnostics,
+    ServerConfig, ServerMessage, Solver, hooks_in_definitions, is_unused_engine_hook,
+    ph2d_settings,
 };
 pub use position::{Position, Range, byte_to_position, end_position, position_to_byte};
 pub use resolve::{BinarySource, ResolveError, pinned_version, resolve_binary};

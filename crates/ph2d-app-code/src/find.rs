@@ -115,7 +115,8 @@ impl FindState {
         }
         let from = buf.selection().primary().from();
         let i = self.matches.partition_point(|m| m.start < from);
-        self.current = (!self.matches.is_empty()).then_some(if i < self.matches.len() { i } else { 0 });
+        self.current =
+            (!self.matches.is_empty()).then_some(if i < self.matches.len() { i } else { 0 });
     }
 
     /// O texto mudou por `edits`: com a busca aberta, as ocorrências seguem-nas sem reler o

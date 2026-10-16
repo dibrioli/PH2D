@@ -43,12 +43,18 @@ pub struct Metrics {
 }
 
 impl Metrics {
-    pub(crate) fn measure(cache: &mut LineCache, ts: &mut TextSystem, line_count: usize) -> (Self, Option<DigitFont>) {
+    pub(crate) fn measure(
+        cache: &mut LineCache,
+        ts: &mut TextSystem,
+        line_count: usize,
+    ) -> (Self, Option<DigitFont>) {
         let font_px = ph2d_text::displayed_font_px(TypeToken::Base.px());
         let line_h = ao_pixel(font_px * LineHeight::Normal.ratio()).max(1.0);
         let layout = cache.shape_loose(ts, DIGITS, font_px);
         let advance = layout.width() / DIGITS.len() as f32;
-        let (height, baseline) = layout.lines().next().map_or((font_px, font_px), |l| (l.metrics().line_height, l.metrics().baseline));
+        let (height, baseline) = layout.lines().next().map_or((font_px, font_px), |l| {
+            (l.metrics().line_height, l.metrics().baseline)
+        });
         let digits = count_digits(line_count).max(2);
         let mark_w = Spacing::Md.px();
         let number_w = digits as f32 * advance;
@@ -67,7 +73,10 @@ impl Metrics {
             fold_w,
             gutter_w,
             text_pad: Spacing::Xs.px(),
-            status_h: ao_pixel(ph2d_text::displayed_font_px(TypeToken::Sm.px()) * LineHeight::Normal.ratio() + Spacing::Sm.px()),
+            status_h: ao_pixel(
+                ph2d_text::displayed_font_px(TypeToken::Sm.px()) * LineHeight::Normal.ratio()
+                    + Spacing::Sm.px(),
+            ),
             caret_w: StrokeToken::Thick.px(),
         };
         (m, digit_font(&layout))
@@ -76,11 +85,18 @@ impl Metrics {
 
 fn digit_font(layout: &Layout<Ink>) -> Option<DigitFont> {
     let line = layout.lines().next()?;
-    let PositionedLayoutItem::GlyphRun(gr) = line.items().next()? else { return None };
+    let PositionedLayoutItem::GlyphRun(gr) = line.items().next()? else {
+        return None;
+    };
     let run = gr.run();
     let ids: Vec<u32> = gr.glyphs().map(|g| g.id).collect();
     let glyphs: [u32; 10] = ids.try_into().ok()?;
-    Some(DigitFont { font: run.font().clone(), size: run.font_size(), coords: run.normalized_coords().to_vec(), glyphs })
+    Some(DigitFont {
+        font: run.font().clone(),
+        size: run.font_size(),
+        coords: run.normalized_coords().to_vec(),
+        glyphs,
+    })
 }
 
 pub(crate) fn count_digits(mut n: usize) -> usize {

@@ -96,10 +96,18 @@ fn o_estacionado_larga_a_arvore_e_a_cache_e_guarda_texto_e_historico() {
     m.pinta(ids[0]);
     m.docs().close(ids[0].0);
     let p = m.docs().parked_footprint(ids[0]).expect("estacionado");
-    assert_eq!((p.layouts, p.tree), (0, false), "o estacionado segura {p:?}");
+    assert_eq!(
+        (p.layouts, p.tree),
+        (0, false),
+        "o estacionado segura {p:?}"
+    );
     assert!(p.undo_steps > 0 && p.text_bytes > BOB.len(), "{p:?}");
     m.pede(ids[0]);
     m.tecla(ids[0], Key::Char('z'), crate::ctrl(), Some("z"));
-    assert_eq!(m.docs().text_of(ids[0]).as_deref(), Some(BOB), "o desfazer voltou com ele");
+    assert_eq!(
+        m.docs().text_of(ids[0]).as_deref(),
+        Some(BOB),
+        "o desfazer voltou com ele"
+    );
     let _ = Modifiers::default();
 }

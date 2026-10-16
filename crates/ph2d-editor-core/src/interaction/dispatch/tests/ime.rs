@@ -187,7 +187,15 @@ fn the_screen_reader_hears_the_composition_in_progress() {
     };
     assert_eq!(read(&store).as_deref(), Some("ab"));
     dispatch_preedit(&mut store, "´", None);
-    assert_eq!(read(&store).as_deref(), Some("a´b"), "a pré-edição não chegou ao nó");
+    assert_eq!(
+        read(&store).as_deref(),
+        Some("a´b"),
+        "a pré-edição não chegou ao nó"
+    );
     dispatch_preedit(&mut store, "", None);
-    assert_eq!(read(&store).as_deref(), Some("ab"), "a composição desfeita ficou no nó");
+    assert_eq!(
+        read(&store).as_deref(),
+        Some("ab"),
+        "a composição desfeita ficou no nó"
+    );
 }

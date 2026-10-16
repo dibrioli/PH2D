@@ -21,14 +21,21 @@ impl ConsoleSource for Linhas {
         self.0.len()
     }
     fn row(&self, i: usize) -> ConsoleRow<'_> {
-        ConsoleRow { text: &self.0[i], tone: Tone::Plain, line: None }
+        ConsoleRow {
+            text: &self.0[i],
+            tone: Tone::Plain,
+            line: None,
+        }
     }
 }
 
 fn resumo(nome: &str, mut v: Vec<f64>) -> (f64, f64) {
     v.sort_by(f64::total_cmp);
     let (min, p50) = (v[0], v[v.len() / 2]);
-    println!("{nome:>28}: n={:>3} min={min:>9.1} µs  p50={p50:>9.1} µs", v.len());
+    println!(
+        "{nome:>28}: n={:>3} min={min:>9.1} µs  p50={p50:>9.1} µs",
+        v.len()
+    );
     (min, p50)
 }
 
@@ -38,11 +45,21 @@ fn medicoes_do_fecho() {
     let mut ts = ts();
     let theme = Theme::default();
     let mut scene = VectorScene::new();
-    println!("loadavg início: {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+    println!(
+        "loadavg início: {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
 
     // A — o console: 1000×300 px aberto (as filas que cabem, todas com L bytes).
     let comps = [128usize, 1 << 10, 4 << 10, 16 << 10, 64 << 10];
-    let area = Rect { x: 0.0, y: 0.0, w: 1000.0, h: 300.0 };
+    let area = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1000.0,
+        h: 300.0,
+    };
     let consoles: Vec<Linhas> = comps
         .iter()
         .map(|&l| Linhas(vec!["oi 123 x ".repeat(l / 9 + 1)[..l].to_owned(); 64]))
@@ -63,9 +80,16 @@ fn medicoes_do_fecho() {
             v
         })
         .collect();
-    let area_c = Rect { x: 0.0, y: 0.0, w: 1600.0, h: 900.0 };
-    let (mut quente, mut fria): (Vec<Vec<f64>>, Vec<Vec<f64>>) =
-        (vec![Vec::new(); tectos.len()], vec![Vec::new(); tectos.len()]);
+    let area_c = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let (mut quente, mut fria): (Vec<Vec<f64>>, Vec<Vec<f64>>) = (
+        vec![Vec::new(); tectos.len()],
+        vec![Vec::new(); tectos.len()],
+    );
     let pinta = |v: &mut CodeView, scene: &mut VectorScene, ts: &mut ph2d_text::TextSystem| {
         let mut f = |r: std::ops::Range<usize>| spans_de(&buf, r);
         let mut m = marcas(&d);
@@ -102,14 +126,25 @@ fn medicoes_do_fecho() {
             }
         }
     }
-    println!("A — console aberto, {} filas à vista:", views[0].row_rect(0).map_or(0, |_| 1));
+    println!(
+        "A — console aberto, {} filas à vista:",
+        views[0].row_rect(0).map_or(0, |_| 1)
+    );
     for (i, l) in comps.iter().enumerate() {
         resumo(&format!("linha de {l} B"), std::mem::take(&mut a[i]));
     }
     println!("C — 40 filas de 200 KB:");
     for (i, k) in tectos.iter().enumerate() {
-        resumo(&format!("tecto {k} B quente"), std::mem::take(&mut quente[i]));
+        resumo(
+            &format!("tecto {k} B quente"),
+            std::mem::take(&mut quente[i]),
+        );
         resumo(&format!("tecto {k} B fria"), std::mem::take(&mut fria[i]));
     }
-    println!("loadavg fim: {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+    println!(
+        "loadavg fim: {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
 }

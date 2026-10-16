@@ -38,7 +38,11 @@ pub(crate) struct Group {
 }
 
 fn change_set_bytes(cs: &ChangeSet) -> usize {
-    std::mem::size_of_val(cs.changes()) + cs.changes().iter().map(|c| c.insert.capacity()).sum::<usize>()
+    std::mem::size_of_val(cs.changes())
+        + cs.changes()
+            .iter()
+            .map(|c| c.insert.capacity())
+            .sum::<usize>()
 }
 
 fn step_bytes(s: &Step) -> usize {
@@ -67,7 +71,13 @@ pub struct History {
 
 impl Default for History {
     fn default() -> Self {
-        Self { undo: Vec::new(), redo: Vec::new(), saved: Some(0), cap: HISTORY_BYTES_MAX, bytes: 0 }
+        Self {
+            undo: Vec::new(),
+            redo: Vec::new(),
+            saved: Some(0),
+            cap: HISTORY_BYTES_MAX,
+            bytes: 0,
+        }
     }
 }
 
@@ -114,7 +124,15 @@ impl History {
                     + selection_bytes(&before)
                     + selection_bytes(&after);
                 self.bytes += bytes;
-                self.undo.push(Group { steps: vec![step], before, after, kind, last_char_space: space, sealed: false, bytes });
+                self.undo.push(Group {
+                    steps: vec![step],
+                    before,
+                    after,
+                    kind,
+                    last_char_space: space,
+                    sealed: false,
+                    bytes,
+                });
             }
         }
         self.enforce_cap();

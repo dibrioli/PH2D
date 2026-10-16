@@ -83,7 +83,10 @@ impl std::fmt::Display for DocError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::IdsExhausted { id } => {
-                write!(f, "script id {id} is the last possible one, the file is damaged")
+                write!(
+                    f,
+                    "script id {id} is the last possible one, the file is damaged"
+                )
             }
             other => write!(f, "{other:?}"),
         }
@@ -262,7 +265,9 @@ impl ScriptLibrary {
         // O contador nunca volta a entregar um id vivo: sem um id livre depois do maior (nem do
         // contador gravado), o ficheiro está estragado.
         let max = lib.scripts.keys().next_back().map_or(0, |i| i.0);
-        let after = max.checked_add(1).ok_or(DocError::IdsExhausted { id: max })?;
+        let after = max
+            .checked_add(1)
+            .ok_or(DocError::IdsExhausted { id: max })?;
         lib.next = lib.next.max(after);
         if lib.next == u64::MAX {
             return Err(DocError::IdsExhausted { id: lib.next });

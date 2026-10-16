@@ -66,7 +66,6 @@ pub mod board_nav;
 pub mod board_video;
 pub mod board_video_bar;
 pub mod board_view;
-pub mod surface_input;
 pub mod document_tabs;
 pub mod document_tabs_menu;
 pub mod float_bar;
@@ -125,6 +124,7 @@ pub mod slot_tabs_face;
 /// ⭐ **A saída para quando há mais abas do que cabem** — irmão do [`slot_tabs`] pela terceira
 /// pergunta da fila: *o que se vê*, *o que uma aba diz*, e **como se chega ao que não se vê**.
 pub mod slot_tabs_overflow;
+pub mod surface_input;
 pub mod variant_axes;
 // ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
 // lista que um teste não consegue ler é uma lista que ninguém confere — e esta já custou

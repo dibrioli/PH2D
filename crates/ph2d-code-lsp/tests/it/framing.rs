@@ -22,7 +22,10 @@ fn framing_round_trips_back_to_back_messages() {
 #[test]
 fn framing_length_counts_bytes_and_headers_are_case_insensitive() {
     let body = r#"{"m":"é"}"#;
-    let raw = format!("content-length: {}\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n{body}", body.len());
+    let raw = format!(
+        "content-length: {}\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n{body}",
+        body.len()
+    );
     let mut r = BufReader::new(Cursor::new(raw.into_bytes()));
     assert_eq!(read_message(&mut r).unwrap(), Some(json!({ "m": "é" })));
 }
@@ -30,9 +33,18 @@ fn framing_length_counts_bytes_and_headers_are_case_insensitive() {
 #[test]
 fn framing_truncation_is_an_error_not_a_clean_end() {
     let mut r = BufReader::new(Cursor::new(b"Content-Length: 50\r\n\r\n{\"a\":".to_vec()));
-    assert_eq!(read_message(&mut r).unwrap_err().kind(), ErrorKind::UnexpectedEof);
+    assert_eq!(
+        read_message(&mut r).unwrap_err().kind(),
+        ErrorKind::UnexpectedEof
+    );
     let mut r = BufReader::new(Cursor::new(b"Content-Length: 5\r\n".to_vec()));
-    assert_eq!(read_message(&mut r).unwrap_err().kind(), ErrorKind::UnexpectedEof);
+    assert_eq!(
+        read_message(&mut r).unwrap_err().kind(),
+        ErrorKind::UnexpectedEof
+    );
     let mut r = BufReader::new(Cursor::new(b"X: 1\r\n\r\n{}".to_vec()));
-    assert_eq!(read_message(&mut r).unwrap_err().kind(), ErrorKind::InvalidData);
+    assert_eq!(
+        read_message(&mut r).unwrap_err().kind(),
+        ErrorKind::InvalidData
+    );
 }

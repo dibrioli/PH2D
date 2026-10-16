@@ -12,6 +12,7 @@
 use crate::console::Store;
 use crate::doc::CodeDoc;
 use ph2d_a11y::{Node, NodeId};
+use ph2d_editor_core::ToastQueue;
 use ph2d_editor_core::doc_surface::{
     Compose, DocCommand, DocTab, DocumentSurface, KeyInput, KeyOutcome, PointerInput,
 };
@@ -19,7 +20,6 @@ use ph2d_editor_core::ime::ComposeKey;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerKind};
 use ph2d_panel_code::{Badge, FindHit, Problem, ScriptListView, count_text};
-use ph2d_editor_core::ToastQueue;
 use ph2d_script::{LibraryEpoch, ScriptId};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -107,8 +107,15 @@ pub(crate) struct Parked {
 impl CodeDocs {
     /// Os textos abertos e os estacionados: `(script, título, buffer)`.
     fn buffers(&self) -> impl Iterator<Item = (ScriptId, &str, &ph2d_code_buffer::Buffer)> {
-        let open = self.docs.iter().map(|d| (d.script, d.title.as_str(), &d.buffer));
-        open.chain(self.parked.iter().map(|(id, p)| (*id, p.title.as_str(), &p.buffer)))
+        let open = self
+            .docs
+            .iter()
+            .map(|d| (d.script, d.title.as_str(), &d.buffer));
+        open.chain(
+            self.parked
+                .iter()
+                .map(|(id, p)| (*id, p.title.as_str(), &p.buffer)),
+        )
     }
 
     pub(crate) fn doc(&mut self, id: u64) -> Option<&mut CodeDoc> {
@@ -159,7 +166,10 @@ impl CodeDocs {
         self.focus = None;
         self.list.forget_project();
         if !unsaved.is_empty() {
-            let dir = self.recovery_dir.clone().or_else(crate::recovery::default_dir);
+            let dir = self
+                .recovery_dir
+                .clone()
+                .or_else(crate::recovery::default_dir);
             toasts.push(crate::recovery::keep(dir.as_deref(), &unsaved));
         }
         true
@@ -492,7 +502,9 @@ impl DocumentSurface for CodeDocs {
             Compose::DeadKey(ComposeKey::Dead(ch)) => d.preedit = Some((ch.to_string(), true)),
             // Só toma o que é dela: sem composição em curso, o Esc é do editor e o Shift da tecla.
             Compose::DeadKey(ComposeKey::Escape) => return d.preedit.take().is_some(),
-            Compose::DeadKey(ComposeKey::Modifier) => return d.preedit.as_ref().is_some_and(|p| p.1),
+            Compose::DeadKey(ComposeKey::Modifier) => {
+                return d.preedit.as_ref().is_some_and(|p| p.1);
+            }
             // Outra tecla: a tecla morta desfaz-se e a tecla segue para o `key` (o texto composto
             // vem nela).
             Compose::DeadKey(ComposeKey::Other) => {

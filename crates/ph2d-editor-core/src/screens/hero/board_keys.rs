@@ -63,7 +63,8 @@ pub fn key(
 ) -> KeyOutcome {
     // Uma aba de FAMÍLIA activa (o editor de scripts) recebe a tecla antes de tudo.
     if hero.documents.surface_active().is_some() {
-        return super::surface_input::key(hero, ts, k, mods, pressed, text, paste).unwrap_or_default();
+        return super::surface_input::key(hero, ts, k, mods, pressed, text, paste)
+            .unwrap_or_default();
     }
     if hero.documents.active().is_none() {
         return KeyOutcome::default();

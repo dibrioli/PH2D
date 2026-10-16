@@ -21,7 +21,9 @@ fn random_changes(s: &str, rng: &mut fastrand::Rng) -> ChangeSet {
         .chunks(2)
         .map(|p| Change {
             range: p[0]..p[1],
-            insert: (0..rng.usize(0..3)).map(|_| ALFABETO[rng.usize(0..ALFABETO.len())]).collect(),
+            insert: (0..rng.usize(0..3))
+                .map(|_| ALFABETO[rng.usize(0..ALFABETO.len())])
+                .collect(),
         })
         .collect();
     ChangeSet::new(changes).expect("cortes ordenados nunca se sobrepõem")
@@ -51,7 +53,12 @@ fn aplicar_e_inverter_devolve_o_texto_byte_a_byte() {
         let cs = random_changes(&s, &mut rng);
         let expected = naive_apply(&s, &cs);
         let inverse = cs.invert(&before);
-        let inserts: Vec<String> = cs.changes().iter().rev().map(|c| c.insert.clone()).collect();
+        let inserts: Vec<String> = cs
+            .changes()
+            .iter()
+            .rev()
+            .map(|c| c.insert.clone())
+            .collect();
         let edits = b.apply(cs, None, EditKind::Other);
         assert_eq!(b.to_string(), expected);
         // As TextEdit, aplicadas em sequência a uma String, dão o mesmo texto e os pontos certos.

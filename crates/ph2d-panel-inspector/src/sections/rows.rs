@@ -494,7 +494,10 @@ mod aviso_tests {
         }
         bases.sort_by(f32::total_cmp);
         bases.dedup();
-        assert!(bases.len() >= 2, "o erro não quebrou em {COLUNA} px: {bases:?}");
+        assert!(
+            bases.len() >= 2,
+            "o erro não quebrou em {COLUNA} px: {bases:?}"
+        );
         // A descida das fontes da casa é < 0,3 em; o vão (`control_gap_px`) pode recebê-la.
         let fundo = bases.last().unwrap() + 0.3 * px;
         assert!(

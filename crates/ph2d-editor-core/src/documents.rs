@@ -19,10 +19,10 @@ pub(crate) mod fac;
 pub mod live;
 #[path = "documents_nav.rs"]
 pub(crate) mod nav;
-#[path = "documents_team.rs"]
-pub mod team;
 #[path = "documents_surface.rs"]
 mod surface;
+#[path = "documents_team.rs"]
+pub mod team;
 
 /// Os quadros e a aba activa.
 #[derive(Debug, Default)]

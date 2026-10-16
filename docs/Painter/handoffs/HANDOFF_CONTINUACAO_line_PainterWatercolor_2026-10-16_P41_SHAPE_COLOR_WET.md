@@ -11,14 +11,12 @@ prancha) · o deste fecho (docs).
 ## §2 — Medido primeiro (um lote, `wetpaint/sonda_shape_color.rs`)
 
 - **Onde a cor pousa:** o rasto de cada faixa tem a JANELA (pigmento/água por célula, ≤ 4 dabs) e a PONTA
-  (`tip_r/g/b`, a cor do pincel + o que apanhou da tela, por limpeza `TipClean` e recolha `Pickup`, ambas
-  interpolações LINEARES em sRGB). O transfer pousa a ponta no `susp_rgb`/`sett_rgb` pela mistura K–M.
+  (`tip_r/g/b`: a cor do pincel + o que apanhou, por `TipClean`/`Pickup`, interpolações LINEARES em sRGB).
 - **A recusa do doc 46 §1** («a mistura K–M homogeneíza o carimbo no primeiro passo») era análise: com a cor por
   célula, o desvio de G−R da Texture Color é ×3,4 (Express Oil) a ×16,5 (Oil Bristle) o do traço sem rampa
   **10 s depois**, nos 12 pincéis de fábrica. Só o estado cru de teste (mais molhado que todo pincel de fábrica)
   a mistura toda (×1,0 a 10 s).
-- **Custo:** ×1,06–1,11 o traço (raio 48, 26 eventos, mínimo de 9 intercalados; perfil dev com `opt-level 2`
-  nas crates do pincel e do motor).
+- **Custo:** ×1,06–1,11 o traço (raio 48, mínimo de 9 intercalados; dev com `opt-level 2` no pincel e no motor).
 - **Identidade:** 7 cenas pinadas no `f6d501defb` (lisa, padrão, cápsula, cerdas, rampa configurada e
   desligada, tom B&W, brocha suja). A do tom saiu da lista: era ao byte a do Voronoi cru — **controlo mudo**
   (a rota da água nunca assava a LUT do tom); agora age.
@@ -77,6 +75,19 @@ a limpeza · o padrão-cor a recortar · `rampa_da_aguada` filtrada a nada · o 
   (`ph2d-brush-presets`, doc 37 §4) — pergunta ao dono se um pincel salvo deve levar as rampas.
 - `ph2d-light2d-gpu` — `g4_o_custo_do_rc_nao_depende_do_numero_de_luzes` e `g4_o_custo_da_holografica_…` vermelhos
   também isolados (`load` 2,8); crate fora deste diff — para a linha da Luz 2D (`PH2D_GPU=1`, 3×).
+
+## §6b — Smoke do dono (16/10): OK, e dois defeitos
+
+1. **O traço cortado por uma recta** (anterior ao P41; a rampa só o tornou visível) — `83c347df9b`. A janela do rasto
+   media-se pelo `spacing` do motor (2 células), mas na porta do pincel os dabs estão a uma CORDA (o espaçamento do
+   pincel): o 2.º/3.º dab da janela passava de `âncora ± half` e perdia o pigmento (`trail/deposit.rs`: fora da janela
+   só a umidade). Cura: `fit_to` com `4 · max(spacing, corda)` + rede de segurança — o dab que não cabe faz a janela
+   CRESCER no lugar (âncora fixa, todos os planos recentrados, `trail/janela.rs`); o Blend passa a medir a janela.
+   Crescer a janela já não repõe a ponta na cor base. Portões `the_window_holds_the_whole_dab.rs` (4) e
+   `janela_do_rasto_tests.rs` (2: aresta 0,79 → 0,21; o pincel do dono 33 655 px → 0). Identidade ao byte. Mutações 4/4.
+2. **A prévia do pincel sem a Shape Color** — `ad43c2f0d7`/`c171649604`. A cena da prévia (`wetpaint_preset/preview.rs`)
+   e a chave não levavam a rampa: `EstadoDaShapeColor` (`shape_ramp.rs`) + `shape_ramp_version` na chave. A miniatura
+   do preset fica SEM a rampa (B13). Mutações 3/3.
 
 ## §7 — Fecho
 

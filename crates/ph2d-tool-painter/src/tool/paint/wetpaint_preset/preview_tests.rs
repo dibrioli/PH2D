@@ -250,7 +250,8 @@ fn sonda_do_preview_com_a_shape_color() {
 fn a_chave_ve_a_shape_color() {
     let mut t = molhado();
     com_shape_color(&mut t, false);
-    let mexes: [(&str, &dyn Fn(&mut PainterTool)); 5] = [
+    type Mexe<'a> = (&'a str, &'a dyn Fn(&mut PainterTool));
+    let mexes: [Mexe<'_>; 5] = [
         ("ligar", &|t| t.set_shape_ramp_enabled(true)),
         ("cor de um stop", &|t| {
             let id = t.shape_color_ramp().stops()[0].id;

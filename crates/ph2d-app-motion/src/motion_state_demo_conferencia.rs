@@ -316,8 +316,10 @@ pub(super) fn space(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId>
   so' com peso pedia 51,2, 8,5x acima do topo). A de baixo tem `separation_radius` {:.1} e
   mede {:.3} de mediana, {}/{} sobrepostos: ponha os olhos nos VAOS, nao nas pecas.
   (!) O preco da banda 4 esta NOMEADO: um espaco pessoal maior que a percepcao e' invisivel
-  a' grade do device, entao ela RECUSA a GPU e coze na CPU -- a alternativa era divergir em
-  silencio entre as duas rotas.",
+  a' grade da placa, entao o `Boids` dela corre no processador -- a alternativa era divergir
+  em silencio entre as duas rotas.
+  (!) Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] device: HIBRIDO`: os dois
+  `Boids` e os dois `Soft Body` correm no processador; so' os `Move` correm na placa.",
         5.0,
         conferencia_demos_space::drawn_size(),
         1.182,

@@ -111,7 +111,9 @@ pub(super) fn announce() {
          da galaxia azul): `Channel` = `Custom...` e `Column` = `colisor`. Clique em `colisor`,\n    \
          escreva `collider` e Enter: a azul passa a fazer igual a' laranja.\n\
          (4) Aberta com `PH2D_MOTION_ROUTE_LOG=1`, o terminal diz UMA vez\n    \
-         `[motion-route] device: HIBRIDO` - as duas correm na PLACA.\n\
+         `[motion-route] device: HIBRIDO`: a galaxia (`Grid`, `Integrate`, `Vortex`,\n    \
+         `Attractor`, `Falloff`) e o `Duplicator` que carimba os discos correm no\n    \
+         processador; o `Drive` do raio e o `Transform` correm na placa.\n\
          \n\
          DEU ERRADO se: as duas ficarem iguais antes do passo (3); o passo (3) nao mudar nada;\n\
          ou o terminal disser `CPU: uma peca declara colisor pelo nome`.\n"

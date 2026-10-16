@@ -88,8 +88,8 @@ pub(super) fn column(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId
   (!) 3-4: o par do NOME. A de cima le' `{col}` e cresce; a de baixo le' `{wrong}`, que ninguem
   escreveu, e volta a ser plana -- uma coluna e' uma palavra, e a palavra errada nao e' um erro,
   e' o SILENCIO.
-  (!) Este canal RECUSA o device de proposito (o nome so' existe em tempo de cook), entao esta
-  cadeia coza na CPU. E' o mesmo recuo da `Median` do `value.reduce`.",
+  (!) Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] device: o plano inteiro
+  (fully-GPU)`: a cadeia inteira corre na placa, a coluna batizada incluida.",
     );
     sinks
 }

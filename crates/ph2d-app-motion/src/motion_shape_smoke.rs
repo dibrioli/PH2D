@@ -17,14 +17,24 @@
 //! e' sprite-only (hardcoda `texture_id`, sem rota `geometry_id`), entao no instante em
 //! que um estagio GPU (o rotate) rodava depois da fonte, as 16 estrelas viravam
 //! RETANGULOS brancos do atlas — e o `motion.rotate`/`grid` moviam os retangulos, nao as
-//! estrelas (ADR-0154/0155). O conserto: um documento com uma fonte de aparencia RECUSA
-//! para o render da CPU (que desenha o vetor). Agora as 16 estrelas giram NITIDAS.
+//! estrelas (ADR-0154/0155). O 1.º conserto recusava para o render da CPU; desde o doc 121 W3 as
+//! formas vão à placa (rota HÍBRIDA, só a forma no processador) e as 16 estrelas giram NITIDAS.
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 /// Star = 5, Gear = 7 (indices de `ShapeKind`; ver `ph2d_node_motion_shape`).
 const STAR: f32 = 5.0;
 const GEAR: f32 = 7.0;
+
+/// O grafo do smoke `=modo` (`1` ou `2`), para o gate que mede a rota que o anúncio dele afirma.
+#[cfg(test)]
+pub(crate) fn grafo_do_smoke(graph: &mut Graph, modo: u32) {
+    let _ = if modo == 2 {
+        build_rotated_shape_graph(graph, 25.0)
+    } else {
+        build_shape_graph(graph, STAR)
+    };
+}
 
 /// O grafo comum: `source.shape -> duplicator <- grid -> output`. O `source.shape`
 /// nasce com o `kind` dado. Devolve `(o no da forma, o sink)`.
@@ -204,11 +214,14 @@ pub fn motion_shape_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) 
                 "[shape smoke =2] `source.shape (STAR) -> duplicator <- grid -> motion.rotate \
                  -> output`, GPU cook LIGADO (o default). ANTES: no instante em que o rotate \
                  (um estagio GPU) rodava depois da fonte, as 16 estrelas viravam RETANGULOS \
-                 brancos do atlas (a lowering GPU e' sprite-only: hardcoda texture_id, sem \
+                 brancos do atlas (a lowering GPU era sprite-only: hardcodava texture_id, sem \
                  rota geometry_id) — e o rotate/grid moviam os retangulos, nao as estrelas. \
-                 AGORA: o documento tem uma fonte de aparencia -> RECUSA para o render da CPU \
-                 -> 16 ESTRELAS NITIDAS giradas 25 graus, sem um unico retangulo. SE VIR \
-                 RETANGULOS BRANCOS, PARE. No frame 90 o angulo vira 75 e as estrelas GIRAM."
+                 AGORA: as formas vao a' placa e o terminal diz `[formas] ... pela PLACA` -> \
+                 16 ESTRELAS NITIDAS giradas 25 graus, sem um unico retangulo. Com \
+                 PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] device: HIBRIDO`: o \
+                 `The Shape` corre no processador; o `Duplicator` e o `Rotate` correm na placa. \
+                 SE VIR RETANGULOS BRANCOS, PARE. No frame 90 o angulo vira 75 e as estrelas \
+                 GIRAM."
             );
         }
         // =2, frame 90: gira mais — as 16 estrelas nitidas viram para 75 graus.
@@ -219,7 +232,7 @@ pub fn motion_shape_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) 
                 eprintln!(
                     "[shape smoke =2] angle -> 75: as 16 estrelas NITIDAS giram (o deformer \
                      move as ESTRELAS agora, nao retangulos). Continuam vetor crisp em qualquer \
-                     zoom — o render caiu na CPU porque a GPU nao carrega o geometry_id."
+                     zoom — a placa desenha cada copia da forma (`[formas] ... pela PLACA`)."
                 );
             }
         }

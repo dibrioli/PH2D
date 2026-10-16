@@ -203,8 +203,9 @@ lado (ms por quadro; um quadro a 60 fps tem 16,7 ms):</p>
   <tr><td>Time com Delay (Index · From Point + Spring)</td><td class="n">0,13 · 0,12</td><td class="n">0,37 · 0,43</td></tr>
 </table>
 <p class="soft">Na placa as curvas novas custam o mesmo que as antigas. Na CPU o <code>Bezier</code>
-é o caro (procura a curva 24 vezes por estrela); ele só corre na CPU se a placa não estiver
-disponível.</p>
+é o caro (procura a curva 24 vezes por estrela). E nesta cena o <code>Stagger</code> corre no
+processador: o <code>Duplicator</code> que carimba as estrelas, com o <code>Point Scale</code> ligado,
+ainda não tem caminho na placa, e leva consigo tudo o que vem antes dele.</p>
 
 <h2>7 · Se algo não bater</h2>
 <table>

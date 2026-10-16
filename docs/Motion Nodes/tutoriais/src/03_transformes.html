@@ -319,8 +319,13 @@ caixa de digitar, o teto está escrito ao lado.</p>
 
 <p>Este app tem dois caminhos para cozinhar uma cena: a <b>placa de vídeo</b>, que move dezenas de
 milhares de objetos sem piscar, e o <b>processador</b>, que é o caminho de referência e é mais lento.
-Quem escolhe é o app, e a regra é simples: <b>a fila inteira vai para a placa, ou nenhum vai</b>.
-Um único nó que não saiba rodar lá derruba a cadeia toda.</p>
+Quem escolhe é o app, nó a nó: <b>tudo o que vem antes de um nó que não sabe rodar na placa fica
+no processador, e dele em diante a cena volta para a placa</b>. Se esse nó for o último antes do
+<code>Output</code>, a cena inteira fica no processador. Nesta cena o pano — o <code>Grid</code>, o
+<code>Shape</code> e o <code>Duplicator</code> que carimba o quadradinho — corre no processador, e o
+<code>Mirror</code>, o <code>Twist</code> e o <code>Transform</code> correm na placa (o terminal diz
+<code>[motion-route] device: HIBRIDO</code> quando o app abre com
+<code>PH2D_MOTION_ROUTE_LOG=1</code>).</p>
 
 <p>Por isso a resposta que interessa não é «quantos milissegundos custa este nó», é
 <b>quantos deles ficam na placa</b>:</p>
@@ -352,8 +357,8 @@ não tem como receber um desenho. Enquanto isso não existir, pô-lo a rodar lá
       <code>Pivot X</code>.
       <div class="out">A linha <code>Pivot X</code> deixa de arrastar (o número passa a vir de
       fora) e o eixo da torção passeia pelo pano.</div>
-      <div class="bad">Com um controle puxado por fio, este nó sai da placa e volta para o
-      processador — numa cena grande isso se sente.</div></li>
+      <div class="out">Com um controle puxado por fio o <code>Twist</code> continua na placa: o
+      número do fio vai para lá a cada quadro.</div></li>
 </ol>
 
 <h2>10 · Se algo não bater</h2>
@@ -379,7 +384,8 @@ não tem como receber um desenho. Enquanto isso não existir, pô-lo a rodar lá
       clique em <code>Use Selected Path</code> com um desenho selecionado, ou escolha um pela
       linha <code>Shape</code></td></tr>
   <tr><td>A cena engasga com muitos objetos</td><td>o <b>Spline Wrap</b> é o único dos treze que
-      nunca roda na placa; com ele na cadeia, tudo volta para o processador. O <b>Look At</b>
+      nunca roda na placa: o <code>Spline Wrap</code> e o que vem antes dele correm no
+      processador. O <b>Look At</b>
       roda — mas <em>só</em> enquanto o alvo dele vier por fio: digitar um
       <code>Target X</code> tira o nó da placa também</td></tr>
 </table>

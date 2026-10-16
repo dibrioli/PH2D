@@ -255,3 +255,6 @@ mod formas_tests;
 #[cfg(test)]
 #[path = "motion_state_demo_router_ciclos_placa_tests.rs"]
 mod placa_tests;
+#[cfg(test)]
+#[path = "motion_state_demo_rota_anunciada_tests.rs"]
+mod rota_anunciada_tests;

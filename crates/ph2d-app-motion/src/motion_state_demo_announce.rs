@@ -226,14 +226,16 @@ pub(super) fn fio() {
   2. Olhe o terminal de onde abriu o app, ABAIXO deste texto. Ha' uma linha colada a`
      margem esquerda que comeca por `[motion-route] device:`. E' essa linha que diz que
      as {pecas} pecas estao a ser feitas pela PLACA GRAFICA.
-     (i) Ela diz HIBRIDO: o processador faz so' o desenho do quadradinho (UM), e a
-         placa carimba-o nos {pecas} lugares e manda no tamanho deles.
+     (i) Ela diz `[motion-route] device: HIBRIDO`: o `Shape` (o desenho do quadradinho,
+         UM) corre no processador; o `Duplicator`, que o carimba nos {pecas} lugares, e o
+         `Scale`, que manda no tamanho deles, correm na placa.
      (i) As linhas que aparecem AQUI DENTRO, recuadas, sao este texto a citar -- a de
          verdade e' a que esta' encostada a` margem, mais abaixo.
-  3. Feche o app e abra OUTRA VEZ com o interruptor desta mudanca desligado (o comando
-     esta' no relatorio). A cena e' a MESMA -- o mesmo pano, o mesmo fio.
-  4. Compare: a linha colada a` margem passa a comecar por `[motion-route] CPU:`. O
-     pano respira IGUAL -- a diferenca nao se ve a olho neste tamanho.
+  3. Feche o app e abra OUTRA VEZ com `PH2D_MOTION_DRIVEN_GPU=0` a` frente do comando (e'
+     o interruptor desta mudanca). A cena e' a MESMA -- o mesmo pano, o mesmo fio.
+  4. Compare: com `PH2D_MOTION_DRIVEN_GPU=0` a linha colada a` margem passa a comecar por
+     `[motion-route] CPU:`. O pano respira IGUAL -- a diferenca nao se ve a olho neste
+     tamanho.
      (i) Era isto que acontecia ANTES desta mudanca, em toda cena com um fio de valor:
          a ligacao sozinha mandava o trabalho inteiro para o processador. Medido: 2,5
          vezes mais caro aqui (0,47 contra 0,19 milesimos de segundo por quadro), e o
@@ -527,7 +529,9 @@ pub(super) fn sim() {
   DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
   perderam a forma), ou se nada cair depois do PLAY.
 
-  Tudo isto corre no dispositivo."
+  Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] CPU: fronteira sem estagio de
+  GPU que despache`: esta cena corre toda no processador. A simulacao (`Simulation Zone`)
+  corre no processador, e depois dela so' vem o `Output`."
     );
 }
 
@@ -548,7 +552,9 @@ pub(super) fn foco() {
   DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
   perderam a forma), ou se o pano inteiro crescer por igual.
 
-  Tudo isto corre no dispositivo -- so' o desenho do quadradinho (UM) sai do processador."
+  Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] device: HIBRIDO`: o pano --
+  o `Grid`, o `Shape` e o `Duplicator` que carimba o quadradinho -- corre no processador;
+  o `Falloff` e o `Remap` correm na placa."
     );
 }
 
@@ -569,7 +575,8 @@ pub(super) fn pivot() {
   DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
   perderam a forma), ou se o pano ja' abrir a torcer-se sobre si proprio.
 
-  Tudo isto corre no dispositivo, o espelho incluido -- so' o desenho do quadradinho
-  (UM) sai do processador."
+  Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] device: HIBRIDO`: o pano --
+  o `Grid`, o `Scale`, o `Shape` e o `Duplicator` que carimba o quadradinho -- corre no
+  processador; o `Mirror`, o `Twist` e o `Transform` correm na placa."
     );
 }

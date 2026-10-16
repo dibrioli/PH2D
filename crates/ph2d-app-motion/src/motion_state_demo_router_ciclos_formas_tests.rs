@@ -231,6 +231,9 @@ fn todo_anuncio_que_promete_cor_tem_formas_em_todo_pano() {
 
 /// **SONDA — a ROTA de cada cena:** os tipos que o plano do produto deixa na CPU (as fronteiras).
 /// `[]` = a placa de ponta a ponta; `["source.shape"]` = híbrida, só a forma na CPU.
+/// ⚠️ Lê só o PLANO: as cercas do `cook_gpu` e o `gpu_route` decidem depois dele (a `=113`, a `=120`,
+/// a `=134` e a `=139` planeiam com fronteiras e correm TODAS no processador). A rota que o terminal
+/// diz é a do `sonda_rota_de_cada_cena_do_roteador` (`motion_state_demo_rota_anunciada_tests.rs`).
 #[test]
 #[ignore = "sonda: corra à mão"]
 fn sonda_rota_das_cenas_de_ciclo() {

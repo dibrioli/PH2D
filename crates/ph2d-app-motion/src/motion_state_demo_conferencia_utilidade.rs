@@ -347,7 +347,7 @@ pub fn color_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId>
   ficarem paradas -- era esse o defeito. Ou se a grade da direita do par 1 sair chapada,
   ou se a do par 2 sair em listras regulares.
   (!) A PARIDADE: rode outra vez com `PH2D_GPU_COOK=0` na frente do comando. A imagem
-  tem de ser a MESMA -- a paleta passou a correr na placa, e o caminho de referencia
+  tem de ser a MESMA -- a paleta (o `Color Array`) corre na placa, e o caminho de referencia
   continua a dar a mesma resposta."
     );
     sinks

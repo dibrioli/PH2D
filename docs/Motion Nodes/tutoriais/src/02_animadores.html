@@ -447,7 +447,9 @@ existe mas só aparece depois que você troca o modo que a linha nomeia.</p>
   <tr><td>Um controle que não arrasta</td><td>ele está sendo puxado por um fio — o número vem de
       fora</td></tr>
   <tr><td>A cena engasga com muitos objetos</td><td>o <code>Delay</code> é o único dos oito que
-      não roda na placa; com ele na cadeia, tudo volta para o processador</td></tr>
+      não roda na placa: o <code>Delay</code> e o que vem antes dele correm no processador; o
+      que vem depois dele fica na placa (e, se ele for o último antes do <code>Output</code>, a cena
+      inteira fica no processador)</td></tr>
 </table>
 
 <footer>PH2D · Motion Nodes · ciclo 2 «Animadores» · gerado de

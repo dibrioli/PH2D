@@ -62,11 +62,24 @@ dos cartões na paridade do slit-scan (`ph2d-gpu-cook` `tests/it`), vermelha com
 **Lição.** Um braço `_ =>` num decodificador de dims é uma resposta para o tipo que ainda não nasceu
 — e ele nasceu (`Mat4`) num kernel sem que o leitor soubesse.
 
-**⚠️ ABERTO, visto na foto da cura (15/10, 12 s de Play, as duas rotas):** a cena não tem formas, e
-pela lei «só com forma» os seis panos são o GIZMO de pontos em ambas — nenhum laranja nem
-arco-íris, ao contrário do que o anúncio e o tutorial 07 prometem. E na PLACA o gizmo fica
+**✅ As formas — CURADO em `c6187829cb` (15/10).** *Origem:* a cena nasceu em `fb55eab867` (16/09)
+e a lei «só com forma» ligou-se em `72cdfa6f71` (19/09) — desde então os seis panos eram o gizmo de
+pontos nas duas rotas: nenhum laranja, nenhum arco-íris, rastos ilegíveis. As figuras do tutorial
+07 nunca o mostraram porque são DADOS do motor (a coluna `tint`), não fotos. *Cura:* cada pano é
+`Grid → Move → Duplicator(Shape)` — um quadrado verde de semi-lado `0,05` (o lado `0,1` de sempre),
+saturado para o `Tail Hue Shift` ter matiz — e os cartões de aparência vêm DEPOIS do carimbo.
+*Família* (sonda `sonda_formas_das_cenas_de_ciclo`, 23 cenas): só a `=118` tinha sinks com cartão de
+aparência sem forma; sem forma nenhuma mas sem prometer cor ficam `=111`, `=112`, `=113`, `=116` e
+4 dos 6 panos da `=119` (§0.8 pede formas em todo smoke — fora deste bloco). *Gates:*
+`toda_cena_de_ciclo_que_pinta_aparencia_desenha_formas` (pelo grafo, piso + controlo `=111`) e
+`todo_anuncio_que_promete_cor_tem_formas_em_todo_pano` (pelo texto). Fotos CPU e placa: laranja,
+arco-íris, rastos verdes em arco, a onda de baixo a andar nas duas.
+
+**⚠️ ABERTO, visto na foto da cura (15/10, 12 s de Play, as duas rotas):** na PLACA o gizmo fica
 CONGELADO na pose de repouso (sem os arcos do rasto nem a onda de baixo), enquanto na CPU anda: as
 tomadas do `ponto_gizmo::taps_for` armam-se na bomba, que num quadro inteiro da placa não coze.
+⚠️ Desde `c6187829cb` a `=118` já não tem gizmo (tem formas): o congelamento reproduz-se numa cena
+só de pontos (`=111`, `=112`, `=116`).
 ---
 
 ## Bug #19 — o ângulo do Glow aparece só onde não faz nada

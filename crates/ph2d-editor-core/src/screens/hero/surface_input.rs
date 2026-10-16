@@ -31,6 +31,31 @@ fn key_of(k: BoardKey) -> Key {
     }
 }
 
+impl HeroScreen {
+    /// Um CAMPO DE TEXTO da interface tem o teclado (um botão focado — a aba clicada, o «Edit
+    /// script» — não conta: o teclado e a composição seguem para o documento).
+    #[must_use]
+    pub fn text_entry_focused(&self) -> bool {
+        self.store.focus_id().is_some_and(|id| {
+            matches!(
+                self.store.get(id),
+                Some(
+                    crate::InteractiveState::TextInput { .. }
+                        | crate::InteractiveState::NumberInput { .. }
+                        | crate::InteractiveState::Combobox { .. }
+                )
+            )
+        })
+    }
+}
+
+/// Com uma aba de família activa (e nenhum CAMPO DE TEXTO com o teclado), o teclado é dela: nem um
+/// interruptor da shell (F9) nem um modo da cena (o preview do Morph) toma teclas.
+#[must_use]
+pub fn owns_the_keyboard(hero: Option<&HeroScreen>) -> bool {
+    hero.is_some_and(|h| h.documents.surface_active().is_some() && !h.text_entry_focused())
+}
+
 /// A roda: o Shift vem da cache que a shell actualiza a cada mudança de modificadores.
 pub(super) fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> Option<bool> {
     let shift = hero.store.shift_held();
@@ -122,17 +147,21 @@ pub(super) fn key(
     })
 }
 
-/// Composição (IME / tecla morta / carácter confirmado) — só sem campo da interface focado.
+/// Composição (IME / tecla morta / carácter confirmado) — só sem CAMPO DE TEXTO focado (a aba
+/// clicada é um botão com foco, e a composição perdia-se nele).
 pub(super) fn compose(hero: &mut HeroScreen, c: Compose<'_>) -> Option<bool> {
-    if hero.store.focus_id().is_some() {
+    if hero.text_entry_focused() {
         return None;
     }
     let (f, id) = hero.documents.active_surface_mut()?;
     Some(f.compose(id, c))
 }
 
-/// Desfazer/refazer do menu Edit com a aba de família activa.
+/// Desfazer/refazer do menu Edit com a aba de família activa; um CAMPO DE TEXTO focado ganha.
 pub fn undo(hero: &mut HeroScreen, redo: bool) -> Option<bool> {
+    if hero.text_entry_focused() {
+        return None;
+    }
     let (f, id) = hero.documents.active_surface_mut()?;
     Some(f.undo(id, redo))
 }

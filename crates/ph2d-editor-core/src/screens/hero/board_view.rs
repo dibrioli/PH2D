@@ -245,6 +245,11 @@ pub fn pointer(
     on_canvas: bool,
 ) -> bool {
     if hero.documents.surface_active().is_some() {
+        // Um carregar sobre o chrome desenhado por cima da aba (o menu File, um popover, a paleta)
+        // é do chrome; o largar segue a lei do quadro: só é da aba se o carregar foi.
+        if matches!(kind, PointerKind::Down) && !on_canvas {
+            return false;
+        }
         return super::surface_input::pointer(hero, input, kind, button, x, y).unwrap_or(false);
     }
     if hero.documents.active().is_none() {

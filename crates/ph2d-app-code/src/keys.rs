@@ -8,6 +8,20 @@ use ph2d_code_buffer::Motion;
 use ph2d_editor_core::doc_surface::{Key, KeyOutcome};
 use ph2d_host::Modifiers;
 
+/// As letras dos acordes Ctrl/Cmd que o editor usa (no texto e nos campos da busca).
+const CHORDS: [char; 11] = ['a', 'c', 'd', 'f', 'g', 'h', 's', 'v', 'x', 'y', 'z'];
+
+/// O acorde é do editor? Os outros (Ctrl+K a paleta, Ctrl+O abrir, Ctrl+Espaço…) NÃO são tomados:
+/// a shell segue para o atalho dela.
+pub(crate) fn foreign_chord(key: Key, mods: Modifiers) -> bool {
+    (mods.ctrl || mods.meta)
+        && match key {
+            Key::Char(c) => !CHORDS.contains(&c),
+            Key::Space | Key::Other => true,
+            _ => false,
+        }
+}
+
 impl CodeDoc {
     /// Uma tecla premida (ou solta: tomada sem efeito).
     pub fn key(

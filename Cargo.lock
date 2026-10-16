@@ -4872,6 +4872,7 @@ dependencies = [
 name = "ph2d-app-code"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-code-buffer",

@@ -7,6 +7,7 @@ mod abrir;
 mod bancada;
 mod busca;
 mod console;
+mod despacho;
 mod dobras;
 mod lista;
 mod onda1;

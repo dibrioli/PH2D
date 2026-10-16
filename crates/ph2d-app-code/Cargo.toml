@@ -36,6 +36,8 @@ ph2d-code-lsp = { path = "../ph2d-code-lsp" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-render = { path = "../ph2d-render" }
 wgpu = "29.0.4"
+# O carácter confirmado do IME entra pela porta do hero (`handle_text_input`), que pede a arena.
+bumpalo = "3"
 
 [lints]
 workspace = true

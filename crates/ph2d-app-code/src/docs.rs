@@ -50,6 +50,10 @@ pub struct CodeDocs {
     pub(crate) clock: (u128, bool),
     /// A biblioteca que as abas seguem (outra = outro projecto).
     epoch: Option<LibraryEpoch>,
+    /// A aba activa no último quadro (perdê-la larga a composição e o arrasto).
+    active: Option<u64>,
+    /// Um carregar foi tomado e ainda não largou.
+    pressed: bool,
     /// `None` = a pasta do sistema ([`crate::recovery::default_dir`]).
     recovery_dir: Option<std::path::PathBuf>,
 }
@@ -73,6 +77,8 @@ impl Default for CodeDocs {
             list: crate::list::ListState::default(),
             clock: (0, false),
             epoch: None,
+            active: None,
+            pressed: false,
             recovery_dir: None,
         }
     }
@@ -94,6 +100,19 @@ impl CodeDocs {
     /// A pasta dos ficheiros de recuperação (os textos por gravar de um projecto que se trocou).
     pub fn set_recovery_dir(&mut self, dir: std::path::PathBuf) {
         self.recovery_dir = Some(dir);
+    }
+
+    /// A aba activa deste quadro (`None` = outra família, um quadro ou a Cena): nenhuma outra aba
+    /// segura uma composição ou um arrasto (a sessão ao vivo pode chamar para um quadro a meio).
+    pub(crate) fn follow_active(&mut self, active: Option<u64>) {
+        for d in self.docs.iter_mut().filter(|d| Some(d.script.0) != active) {
+            d.preedit = None;
+            d.drag = None;
+        }
+        if self.active != active {
+            self.pressed = false;
+            self.active = active;
+        }
     }
 
     /// ⛔ **Outra biblioteca = outro projecto** (os `ScriptId` recomeçam em 1): esquece as abas, os
@@ -220,6 +239,15 @@ impl CodeDocs {
             .map(|d| d.view.scroll())
     }
 
+    /// A composição em curso na aba do script `id` (a pré-edição do IME ou a tecla morta).
+    #[must_use]
+    pub fn composing(&self, id: ScriptId) -> Option<String> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .and_then(|d| d.preedit.as_ref().map(|p| p.0.clone()))
+    }
+
     /// O documento estacionado de `id` (fechado com ●), se o há.
     #[must_use]
     pub fn is_parked(&self, id: ScriptId) -> bool {
@@ -336,22 +364,30 @@ impl DocumentSurface for CodeDocs {
             && let Some(h) = self.list.view.hit(input.text, x, y)
         {
             self.list.press(h, input.now_ns);
+            self.pressed = true;
             return true;
         }
         if matches!(kind, PointerKind::Down) {
             self.list.focus = None;
             let _ = self.touched(id);
         }
+        // O largar só é da aba se o carregar foi (a lei do quadro): o de um clique no chrome não.
+        let was_pressed = matches!(kind, PointerKind::Up) && std::mem::take(&mut self.pressed);
+        let in_area = self.area.contains(x, y);
         let Some((doc, store)) = self.split(id) else {
             return false;
         };
-        match (kind, button) {
+        let taken = match (kind, button) {
             (PointerKind::Down, PointerButton::Primary) => {
                 doc.press(area, input.text, input.mods, input.now_ns, x, y, store)
             }
-            (PointerKind::Up, _) => doc.release() || self.area.contains(x, y),
-            _ => self.area.contains(x, y),
+            (PointerKind::Up, _) => doc.release() || was_pressed,
+            _ => in_area,
+        };
+        if matches!(kind, PointerKind::Down) {
+            self.pressed = taken;
         }
+        taken
     }
 
     fn pointer_move(&mut self, id: u64, _input: PointerInput<'_>, x: f32, y: f32) -> bool {
@@ -381,6 +417,9 @@ impl DocumentSurface for CodeDocs {
         text: Option<&str>,
         paste: Option<String>,
     ) -> KeyOutcome {
+        if crate::keys::foreign_chord(key, mods) {
+            return KeyOutcome::default();
+        }
         if self.list.focus.is_some() {
             if !pressed {
                 return KeyOutcome {
@@ -423,8 +462,9 @@ impl DocumentSurface for CodeDocs {
                 d.reveal();
             }
             Compose::DeadKey(ComposeKey::Dead(ch)) => d.preedit = Some((ch.to_string(), true)),
-            Compose::DeadKey(ComposeKey::Escape) => d.preedit = None,
-            Compose::DeadKey(ComposeKey::Modifier) => {}
+            // Só toma o que é dela: sem composição em curso, o Esc é do editor e o Shift da tecla.
+            Compose::DeadKey(ComposeKey::Escape) => return d.preedit.take().is_some(),
+            Compose::DeadKey(ComposeKey::Modifier) => return d.preedit.as_ref().is_some_and(|p| p.1),
             // Outra tecla: a tecla morta desfaz-se e a tecla segue para o `key` (o texto composto
             // vem nela).
             Compose::DeadKey(ComposeKey::Other) => {

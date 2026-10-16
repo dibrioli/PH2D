@@ -101,6 +101,7 @@ impl App {
         // ⭐ **F9 — o chrome legado volta.** Porquê um interruptor: `crate::legacy_chrome`.
         if state == ElementState::Pressed
             && physical_key == PhysicalKey::Code(KeyCode::F9)
+            && !self.surface_owns_the_keyboard()
             && self.toggle_legacy_chrome()
         {
             return;
@@ -139,8 +140,7 @@ impl App {
             let chord = self.modifiers.control_key()
                 || self.modifiers.alt_key()
                 || self.modifiers.super_key()
-                || (self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()))
-                    .is_some_and(|h| h.documents.surface_active().is_some());
+                || self.surface_owns_the_keyboard();
             if !pressed || !chord {
                 // ⭐ **O retrato dos dispositivos que o Input Map resolve** (plano 30 W5).
                 //

@@ -35,6 +35,7 @@ pub fn frame(
         return;
     };
     docs.set_clock(clock.0, clock.1);
+    docs.follow_active(our_active);
     let world = sim.world_mut();
     let mut wanted = world
         .get_resource_mut::<ScriptEditRequests>()

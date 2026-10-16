@@ -367,20 +367,16 @@ impl crate::App {
     /// compor `tool_active && !text_entry_focused` em cada braço é a enumeração
     /// que o BUGS #25 documenta apodrecendo.
     pub(crate) fn text_entry_focused(&self) -> bool {
-        let Some(h) = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) else {
-            return false;
-        };
-        let Some(id) = h.store.focus_id() else {
-            return false;
-        };
-        matches!(
-            h.store.get(id),
-            Some(
-                ph2d_editor_core::InteractiveState::TextInput { .. }
-                    | ph2d_editor_core::InteractiveState::NumberInput { .. }
-                    | ph2d_editor_core::InteractiveState::Combobox { .. }
-            )
-        )
+        self.hero_ref().is_some_and(|h| h.text_entry_focused())
+    }
+
+    /// Uma aba de família activa é dona do teclado (`surface_input::owns_the_keyboard`).
+    pub(crate) fn surface_owns_the_keyboard(&self) -> bool {
+        ph2d_editor_core::screens::hero::surface_input::owns_the_keyboard(self.hero_ref())
+    }
+
+    fn hero_ref(&self) -> Option<&ph2d_editor_core::screens::hero::HeroScreen> {
+        self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref())
     }
 
     /// Vector Ctrl+C: copy the object selection into the in-app clipboard. O

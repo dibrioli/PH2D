@@ -75,11 +75,39 @@ aparência sem forma; sem forma nenhuma mas sem prometer cor ficam `=111`, `=112
 `todo_anuncio_que_promete_cor_tem_formas_em_todo_pano` (pelo texto). Fotos CPU e placa: laranja,
 arco-íris, rastos verdes em arco, a onda de baixo a andar nas duas.
 
-**⚠️ ABERTO, visto na foto da cura (15/10, 12 s de Play, as duas rotas):** na PLACA o gizmo fica
-CONGELADO na pose de repouso (sem os arcos do rasto nem a onda de baixo), enquanto na CPU anda: as
-tomadas do `ponto_gizmo::taps_for` armam-se na bomba, que num quadro inteiro da placa não coze.
-⚠️ Desde `c6187829cb` a `=118` já não tem gizmo (tem formas): o congelamento reproduz-se numa cena
-só de pontos (`=111`, `=112`, `=116`).
+**Os marcadores parados na placa — FECHADO em `de58233ef3`** (visto na foto da cura, 15/10, 12 s de
+Play: na PLACA o gizmo ficava na pose de repouso, sem os arcos do rasto nem a onda de baixo).
+
+*Mecanismo (medido).* Na rota inteira na placa a bomba não marcha, e as tomadas dos gizmos
+(`pump.tap_streams()`, a porta dos QUATRO: pontos, warp, colisor, pivô) vinham do
+`MotionCookPump::cook_taps_only` (`motion_bridge_gpu.rs`, o braço `FullyGpu`) — a CPU a cozer o sink
+no playhead sobre um estado que **nunca marchou**. Sem estado dá certo; com estado não: sonda
+`grelha 3×3 → oscilador → motion.trail → saída`, `72` pontos na CPU contra `9` na placa (o rasto sem
+ecos); `grelha → oscilador` igual nas duas. ⚠️ A suspeita de que `=111`/`=112`/`=116` o reproduziam
+caiu: são sem estado, e mediram placa × CPU = `0` antes da cura (a `=118` era a única cena com
+`Trail`/`Slit Scan` sem formas). Origem: `main` (o `cook_taps_only` de 08/09 e as tomadas do gizmo de
+19/09; a linha não toca nesses ficheiros desde `0aab2c1cb6`).
+
+*Por que nenhum gate via.* `the_fully_gpu_route_cooks_the_taps_it_never_marched` mede UM cozimento no
+tique `0` e pergunta se a tomada EXISTE — nunca se ela anda nem se é a da placa; os de paridade cozem
+uma rota de cada vez.
+
+*Cura.* A leitura sem espera (`ph2d-gpu-cook` `tap_voo`) ganha TOMADAS por nome, cada uma com o seu
+tecto (`TECTO_DA_TOMADA` = `MAX_PONTOS`, o mesmo passo `i·count/n` do gizmo), codificadas no
+`submit` do cozimento; a ponte pede-as antes e põe-nas na bomba — **um quadro atrás**, como os
+cartões. Só um nó que a placa não encenou volta à CPU. **Família, o mesmo mecanismo** (ler a CPU
+num quadro da placa): o cartão (`readout::stamp`), as colunas (`columns::at`) e o valor dirigido
+(`params::stream::driven_value`) liam o memo da CPU PRIMEIRO — e ele não está vazio, guarda o último
+quadro da CPU; agora a leitura da placa ganha. A sonda do canvas (`edit::sample_probe`) já lia a placa.
+
+*Preço (release, `32 768` linhas no sink, três variantes intercaladas no mesmo processo, mínimo de 9
+blocos, `load ~22`):* leitura da placa `0,229 ms` · sem gizmo `0,193 ms` · a CPU antiga `0,257 ms` por
+quadro — a cura custa `+0,036 ms` e é mais barata que o que substitui. Lê `4 096` linhas por quadro.
+
+*Gates.* `os_marcadores_andam_na_placa_como_na_cpu` (`placa:`; com o `cook_taps_only` de volta fica
+vermelho, `9` contra `27` pontos), `num_quadro_da_placa_o_cartao_le_a_placa_e_nao_o_memo_velho` e
+`a_leitura_da_placa_ganha_do_memo_velho_da_cpu` (três mutações, as três sangram). Foto: `=111` pela
+placa, esperas 8 e 12 — os pontos mudam de pose.
 ---
 
 ## Bug #19 — o ângulo do Glow aparece só onde não faz nada

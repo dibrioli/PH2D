@@ -77,10 +77,35 @@ echo "[foto] a construir o binario ($PERFIL) — senao esta foto e' da build de 
 # ⚠️ **A recusa é ALTA e não um aviso:** o modo de falha que ela substitui é mudo por construção
 # (a foto sai, é bonita, e é de outra build), e este roteiro é lido por quem já está a caçar um
 # defeito. ⭐ E a régua é o PRÓPRIO ficheiro mais novo, com o nome dele na mensagem — nunca um
-# relógio: `find -newer` compara os dois mtimes e não tem calibração para envelhecer.
-NOVO="$(find "$RAIZ/crates" "$RAIZ/shells" -name '*.rs' -newer "$BIN" -print -quit 2>/dev/null || true)"
+# relógio: compara os dois mtimes e não tem calibração para envelhecer.
+#
+# ⛔⛔ A POPULAÇÃO é a que ENTRA no binário: a dep-info que o cargo escreve ao lado dele
+# (`$BIN.d`, `alvo: dep1 dep2 …`, espaço escapado `\ `; reescrita a cada build, mesmo no-op).
+# A régua antiga (`find crates shells -name '*.rs' -newer`) recusou duas vezes em 15–16/10 por um
+# `*_tests.rs` (fora do binário, build no-op CORRECTA) — e a «cura» de um agente foi `touch` no
+# binário, que desarma o guarda inteiro. Ela também era cega aos `.wgsl`/`include_str!`, que a
+# dep-info lista. Sem dep-info (ou mais velha que o binário) não há régua: RECUSA.
+DEP="$BIN.d"
+if [ ! -s "$DEP" ] || [ "$DEP" -ot "$BIN" ]; then
+  echo "RECUSA: sem regua — a dep-info $DEP falta ou e' mais velha que o binario" >&2
+  exit 2
+fi
+mapfile -t DEPS < <(awk -v alvo="$BIN" '
+  BEGIN { gsub(/ /, "\001", alvo); alvo = alvo ":" }
+  { gsub(/\\ /, "\001") }
+  $1 == alvo { for (i = 2; i <= NF; i++) { f = $i; gsub(/\001/, " ", f); print f } }' "$DEP")
+if [ "${#DEPS[@]}" -eq 0 ]; then
+  echo "RECUSA: sem regua — a dep-info $DEP nao lista nenhum ficheiro para $BIN" >&2
+  exit 2
+fi
+NOVO=""
+for f in "${DEPS[@]}"; do
+  case "$f" in /*) ;; *) f="$RAIZ/$f" ;; esac
+  if [ ! -e "$f" ]; then NOVO="$f (APAGADO)"; break; fi
+  if [ "$f" -nt "$BIN" ]; then NOVO="$f"; break; fi
+done
 if [ -n "$NOVO" ]; then
-  echo "RECUSA: ha' codigo mais novo que o binario (ex.: ${NOVO#"$RAIZ/"})" >&2
+  echo "RECUSA: ha' codigo do binario mais novo que ele (ex.: ${NOVO#"$RAIZ/"})" >&2
   echo "  a foto seria do programa ANTERIOR. Corra primeiro:" >&2
   echo "  bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile $PERFIL" >&2
   exit 2

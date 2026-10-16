@@ -1,13 +1,14 @@
 //! **QUE COLUNAS A STREAM AQUI CARREGA?** — a porta única da pergunta, com os DOIS
 //! lugares de onde a resposta pode vir.
 //!
-//! O grafo coza na **GPU por default**, e nesse quadro o memo do `Cook` está VAZIO
-//! (`motion_bridge::cook_gpu` devolve `Handled` e o laço que preenche o memo é
-//! pulado); num quadro de CPU o memo é a coisa real. Quem quer saber as colunas tem
-//! de perguntar aos dois, **e a ordem importa** — o memo primeiro, porque é a stream
-//! COMPLETA; a tomada de GPU é uma sub-amostra de 48 linhas por nó ENCENADO, e
-//! MEMBRESIA de coluna é o que aqui se pergunta (48 linhas descobrem os mesmos
-//! nomes que quatro milhões).
+//! O grafo coza na **GPU por default**, e nesse quadro o laço que preenche o memo do
+//! `Cook` é pulado (`motion_bridge::cook_gpu` devolve `Handled`); num quadro de CPU o
+//! memo é a coisa real. Quem quer saber as colunas tem de perguntar aos dois, **e a
+//! ordem importa** — a tomada da placa primeiro (ela só existe num quadro da placa):
+//! ⛔ o memo NÃO está vazio ali, guarda o último quadro da CPU (uma troca de rota), e
+//! lido primeiro respondia por um quadro que já não é este (Bug #20). A tomada é uma
+//! sub-amostra de 48 linhas por nó ENCENADO, e MEMBRESIA de coluna é o que aqui se
+//! pergunta (48 linhas descobrem os mesmos nomes que quatro milhões).
 //!
 //! ⚠️ **Isto nasceu dentro do painel de params** (o *column picker* do
 //! `value.attribute` foi quem precisou primeiro) e mudou-se para cá quando ganhou um
@@ -42,6 +43,12 @@ pub(super) struct LiveColumn {
 /// As colunas da stream na saída `(node, port)`, **owned** para sobreviverem a
 /// qualquer das duas fontes; `None` quando não sabemos (ver o cabeçalho).
 pub(super) fn at(motion: &MotionState, node: NodeId, port: u16) -> Option<Vec<LiveColumn>> {
+    // ⛔ Quadro de device PRIMEIRO (Bug #20): o memo pode guardar um quadro velho da CPU.
+    if let Some(stream) = motion.gpu_tap.as_ref().and_then(|t| t.get(&node))
+        && port == 0
+    {
+        return Some(describe(stream));
+    }
     // Quadro de CPU: o memo tem a coisa real, e é uma consulta, nunca um 2º cook.
     if let Some(stream) = motion
         .pump
@@ -52,11 +59,7 @@ pub(super) fn at(motion: &MotionState, node: NodeId, port: u16) -> Option<Vec<Li
     {
         return Some(describe(stream));
     }
-    // Quadro de device: a MESMA tomada que os readouts do painel de grafo leem.
-    match motion.gpu_tap.as_ref().and_then(|t| t.get(&node)) {
-        Some(stream) if port == 0 => Some(describe(stream)),
-        _ => None,
-    }
+    None
 }
 
 /// Só os NOMES, para quem não se importa com o tipo.
@@ -146,17 +149,15 @@ fn stream_at(
     node: NodeId,
     port: u16,
 ) -> Option<&ph2d_nodegraph::attr::Stream> {
-    if let Some(s) = motion
+    if let Some(s) = motion.gpu_tap.as_ref().and_then(|t| t.get(&node))
+        && port == 0
+    {
+        return Some(s);
+    }
+    motion
         .pump
         .cook
         .peek(node)
         .and_then(|o| o.get(port as usize))
         .map(ph2d_nodegraph::value::CookValue::as_stream)
-    {
-        return Some(s);
-    }
-    match motion.gpu_tap.as_ref().and_then(|t| t.get(&node)) {
-        Some(s) if port == 0 => Some(s),
-        _ => None,
-    }
 }

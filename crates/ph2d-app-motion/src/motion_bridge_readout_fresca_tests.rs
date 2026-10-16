@@ -78,3 +78,44 @@ fn uma_leitura_repetida_nao_entra_no_anel_da_sonda() {
     );
     assert_eq!(sonda(&mut m, true), 2, "CONTROLO: a seguinte, nova, junta");
 }
+
+/// O cartão do nó `n` depois de um `stamp` com a leitura `tap`.
+fn o_cartao(m: &mut MotionState, n: NodeId, tap: Option<&BTreeMap<NodeId, Stream>>) -> String {
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    stamp(m, tap, &mut snap);
+    let c = snap.nodes.iter().find(|c| c.id == n.0).expect("o cartao");
+    format!("{:?} · {:?}", c.readout, c.count)
+}
+
+/// ⛔ **Bug #20: num quadro da placa o memo da CPU NÃO está vazio** — guarda o último quadro da CPU
+/// (uma troca de rota), e lido primeiro ele congelava o cartão e as colunas nesse quadro. ⭐ Com a
+/// leitura da placa, o cartão e as colunas são os MESMOS que com o memo vazio. CONTROLO: o memo
+/// velho existe e, sem leitura da placa (um quadro de CPU), é ele que o cartão mostra.
+#[test]
+fn num_quadro_da_placa_o_cartao_le_a_placa_e_nao_o_memo_velho() {
+    let (mut m, n) = na_placa();
+    let leitura: BTreeMap<NodeId, Stream> = [(
+        n,
+        uma_nuvem(7.0).with("marca", Column::Scalar(vec![1.0; 4])),
+    )]
+    .into();
+    let limpo = o_cartao(&mut m, n, Some(&leitura));
+    let (g, r) = (&m.doc.graph, &m.registry);
+    m.pump.cook.cook(g, r, n, 0.0).expect("a CPU coze a grelha");
+    let do_memo = o_cartao(&mut m, n, None);
+    assert_ne!(
+        do_memo, limpo,
+        "CONTROLO: o memo velho diz outra coisa que a placa"
+    );
+    assert_eq!(
+        o_cartao(&mut m, n, Some(&leitura)),
+        limpo,
+        "num quadro da placa o cartão mostra a placa, não o memo velho da CPU"
+    );
+    m.gpu_tap = Some(leitura);
+    let cols = super::super::columns::at(&m, n, 0).expect("há colunas");
+    assert!(
+        cols.iter().any(|c| c.name == "marca"),
+        "as colunas são as da placa, não as do memo velho"
+    );
+}

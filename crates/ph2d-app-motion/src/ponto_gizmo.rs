@@ -265,7 +265,9 @@ fn escalares(s: &Stream, nome: &str, am: &Amostra) -> Option<Vec<f32>> {
 ///
 /// ⛔ **E ELA É VAZIA COM A LEI DESLIGADA, que é a configuração de FÁBRICA:** *um gizmo que não é
 /// desenhado não pode cobrar o cozimento de que ele precisaria.* Na rota do DISPOSITIVO a bomba
-/// **não marcha**, logo uma tomada obriga o `cook_taps_only` a cozinhar aquele sink **na CPU**.
+/// **não marcha**, e a tomada é uma LEITURA da placa (Bug #20, `TECTO_DA_TOMADA` linhas, um quadro
+/// atrás) — até lá era o `cook_taps_only` a cozinhar aquele sink **na CPU**, sobre um estado que a
+/// bomba nunca marchou (o rasto sem ecos: os marcadores parados na pose de repouso).
 ///
 /// ⚠️⚠️ **E o PREÇO disso foi MEDIDO, depois de eu o ter invocado errado.** Eu justifiquei esta
 /// cerca com os `195,9 ms` que a auditoria de performance do módulo mede para a CPU a `4,19 M`
@@ -426,3 +428,7 @@ pub fn view() -> Option<PontoGizmoView> {
 #[cfg(test)]
 #[path = "ponto_gizmo_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "ponto_gizmo_placa_tests.rs"]
+mod placa_tests;

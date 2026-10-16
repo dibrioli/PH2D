@@ -32,7 +32,7 @@
 //! amostras.
 
 use crate::GpuCook;
-use crate::tap::{Slot, le_tap};
+use crate::tap::{Leitura, Pedido, Slot, le_tap};
 use ph2d_gpu::GpuContext;
 use ph2d_nodegraph::attr::Stream;
 use ph2d_nodegraph::graph::NodeId;
@@ -43,11 +43,14 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 #[derive(Default)]
 pub(crate) struct TapVoo {
     em_voo: Option<EmVoo>,
-    ultimo: Option<BTreeMap<NodeId, Stream>>,
+    ultimo: Option<Leitura>,
     /// A última chamada RECOLHEU uma leitura nova? — ver [`GpuCook::tap_fresca`].
     fresca: bool,
-    /// As amostras que a última chamada pediu — `Some` ⇒ o cozimento codifica a leitura.
-    pedido: Option<u32>,
+    /// Chegou uma leitura nova desde a última [`GpuCook::tap_sem_espera`] — quem a recolheu pode
+    /// ter sido o [`GpuCook::recolhe_tomadas`], e os cartões têm de a ver como nova.
+    nova_para_os_cartoes: bool,
+    /// O que o cozimento seguinte codifica — não vazio ⇒ o cozimento codifica a leitura.
+    pedido: Pedido,
     /// O último cozimento já tinha o pedido? `false` ⇒ ele não codificou leitura nenhuma, e a
     /// chamada seguinte encomenda-a ela (o arranque).
     cozimento_viu_pedido: bool,
@@ -69,15 +72,35 @@ impl GpuCook {
         gpu: &GpuContext,
         samples: u32,
     ) -> Option<BTreeMap<NodeId, Stream>> {
+        self.recolhe(gpu);
+        self.tap_voo.fresca = std::mem::take(&mut self.tap_voo.nova_para_os_cartoes);
+        self.tap_voo.pedido.cartoes = Some(samples);
+        if self.tap_voo.em_voo.is_none() && !self.tap_voo.cozimento_viu_pedido {
+            // O ARRANQUE: o cozimento que temos aconteceu sem pedido — encomenda-se aqui, uma vez.
+            self.tap_voo.cozimento_viu_pedido = true;
+            let pedido = self.tap_voo.pedido.clone();
+            let Some((staging, slots)) = self.encomenda_tap(gpu, &pedido, true) else {
+                // ⛔ Nada a amostrar (todo stream vazio — um emissor rebobinado ao zero): a leitura
+                // antiga NÃO fica — o `tap` síncrono também devolve nada aqui, e um cartão com os
+                // números de antes do rebobinar mente (auditoria do fecho, 2026-09-24).
+                self.tap_voo.ultimo = None;
+                return None;
+            };
+            self.arma_o_tap(staging, slots);
+        }
+        self.tap_voo.ultimo.as_ref().map(|l| l.cartoes.clone())
+    }
+
+    /// **Recolhe a leitura em voo se a placa já a acabou** — nunca espera.
+    pub fn recolhe(&mut self, gpu: &GpuContext) {
         // ⛔ `Poll` e NUNCA `wait`: esperar aqui é o defeito que este módulo existe para curar.
         let _ = gpu.device.poll(wgpu::PollType::Poll);
-        self.tap_voo.fresca = false;
         if let Some(voo) = &self.tap_voo.em_voo {
             match voo.pronto.try_recv() {
                 Ok(Ok(())) => {
                     let voo = self.tap_voo.em_voo.take().expect("acabou de ser lido");
                     self.tap_voo.ultimo = Some(le_tap(&voo.staging, &voo.slots));
-                    self.tap_voo.fresca = true;
+                    self.tap_voo.nova_para_os_cartoes = true;
                 }
                 // A placa recusou o mapeamento (ou o pedido morreu): esquece-o e encomenda outro.
                 Ok(Err(_)) | Err(TryRecvError::Disconnected) => {
@@ -88,20 +111,24 @@ impl GpuCook {
                 Err(TryRecvError::Empty) => {}
             }
         }
-        self.tap_voo.pedido = Some(samples);
-        if self.tap_voo.em_voo.is_none() && !self.tap_voo.cozimento_viu_pedido {
-            // O ARRANQUE: o cozimento que temos aconteceu sem pedido — encomenda-se aqui, uma vez.
-            self.tap_voo.cozimento_viu_pedido = true;
-            let Some((staging, slots)) = self.encomenda_tap(gpu, samples, true) else {
-                // ⛔ Nada a amostrar (todo stream vazio — um emissor rebobinado ao zero): a leitura
-                // antiga NÃO fica — o `tap` síncrono também devolve nada aqui, e um cartão com os
-                // números de antes do rebobinar mente (auditoria do fecho, 2026-09-24).
-                self.tap_voo.ultimo = None;
-                return None;
-            };
-            self.arma_o_tap(staging, slots);
-        }
-        self.tap_voo.ultimo.clone()
+    }
+
+    /// ⭐ **AS TOMADAS de um quadro feito inteiro na placa** (Bug #20) — os nós que os gizmos leem,
+    /// cada um com o seu tecto de linhas, pedidos ANTES do cozimento: ele codifica-os no seu
+    /// `submit`, junto dos cartões, e a leitura recolhe-se no quadro seguinte ([`Self::tomadas`]).
+    /// ⚠️ Recolhe a leitura anterior AQUI, antes do cozimento, para o pedido deste quadro poder
+    /// partir — senão o gizmo andaria a meio ritmo. Lista vazia = sem tomadas.
+    pub fn pede_as_tomadas(&mut self, gpu: &GpuContext, tomadas: &[(NodeId, u32)]) {
+        self.recolhe(gpu);
+        self.tap_voo.pedido.tomadas.clear();
+        self.tap_voo.pedido.tomadas.extend_from_slice(tomadas);
+    }
+
+    /// As tomadas da última leitura completa — **um quadro atrás**, como os cartões. `None` antes
+    /// da primeira; um nó que a placa não encenou não aparece.
+    #[must_use]
+    pub fn tomadas(&self) -> Option<&BTreeMap<NodeId, Stream>> {
+        self.tap_voo.ultimo.as_ref().map(|l| &l.tomadas)
     }
 
     /// Põe a leitura em voo: o `map_async` da leitura já submetida (nunca espera por ele).
@@ -125,12 +152,14 @@ impl GpuCook {
         gpu: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Option<Option<(wgpu::Buffer, Vec<Slot>)>> {
-        self.tap_voo.cozimento_viu_pedido = self.tap_voo.pedido.is_some();
-        let samples = self.tap_voo.pedido?;
-        if self.tap_voo.em_voo.is_some() {
+        self.tap_voo.cozimento_viu_pedido = !self.tap_voo.pedido.vazio();
+        if self.tap_voo.pedido.vazio() || self.tap_voo.em_voo.is_some() {
             return None;
         }
-        Some(self.codifica_tap(gpu, encoder, samples, true))
+        let pedido = std::mem::take(&mut self.tap_voo.pedido);
+        let feito = self.codifica_tap(gpu, encoder, &pedido, true);
+        self.tap_voo.pedido = pedido;
+        Some(feito)
     }
 
     /// A metade de depois do `submit` — `Some(None)`: havia pedido e nada a amostrar, e a leitura

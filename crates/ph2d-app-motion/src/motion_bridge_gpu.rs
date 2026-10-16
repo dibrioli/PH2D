@@ -123,6 +123,37 @@ pub(crate) mod mistura;
 use colisor::{RECUSA_COLISOR, RECUSA_PASSE, graph_declares_collider};
 pub(crate) use colisor::{estagios_que_despacham, peca_declara_colisor};
 
+/// **Quantas linhas a placa devolve de cada tomada de gizmo** (Bug #20). O recurso é o DESENHO do
+/// gizmo: nenhum desenha mais do que o [`crate::ponto_gizmo::MAX_PONTOS`], e o passo da leitura
+/// (`i · count / n`) é o MESMO da [`crate::ponto_gizmo`] — ali os índices coincidem ao elemento.
+/// ⚠️ Acima do tecto a caixa do warp sai da amostra, não da corrente inteira.
+pub(crate) const TECTO_DA_TOMADA: u32 = crate::ponto_gizmo::MAX_PONTOS as u32;
+
+/// As tomadas `gizmos` da última leitura da placa, na bomba — onde os gizmos as leem.
+fn poe_as_tomadas_da_placa(motion: &mut MotionState, gizmos: &[NodeId]) {
+    let lidas = motion.gpu_cook.tomadas().map_or_else(Vec::new, |t| {
+        gizmos
+            .iter()
+            .filter_map(|n| t.get(n).map(|s| (*n, s.clone())))
+            .collect()
+    });
+    motion.pump.poe_as_tomadas_lidas(lidas);
+}
+
+/// **Só os gates:** espera a placa acabar o último cozimento e põe as tomadas DELE na bomba — o que
+/// o quadro seguinte do app recolheria. Para quem mede UM cozimento.
+#[cfg(test)]
+pub(crate) fn espera_as_tomadas(motion: &mut MotionState, gpu: &ph2d_gpu::GpuContext) {
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    motion.gpu_cook.recolhe(gpu);
+    let gizmos: Vec<NodeId> = motion
+        .gpu_cook
+        .tomadas()
+        .map(|t| t.keys().copied().collect())
+        .unwrap_or_default();
+    poe_as_tomadas_da_placa(motion, &gizmos);
+}
+
 /// O motivo de um documento de várias saídas não ir à placa quando uma delas não pode ser encenada
 /// (doc 119 W3): ela ficaria fronteira, e o estilo de uma saída iria para as linhas de outra.
 pub(crate) const RECUSA_SAIDA_FORA_DA_PLACA: &str =
@@ -411,6 +442,18 @@ pub(super) fn cook_gpu(
                 false => vec![target],
             };
             let ticks = substep_clocks(&ticks, sub, fixed_dt, plan.drives_a_loop());
+            // ⭐ As tomadas dos GIZMOS lêem-se da PLACA (Bug #20) — pedidas antes do cozimento, que
+            // as codifica no seu `submit`; recolhidas abaixo.
+            // As dos SINAIS ficam fora (precisam da marcha, abaixo) — pelo nome, não pela posição.
+            let gizmos: Vec<NodeId> = motion
+                .pump
+                .tomadas_armadas()
+                .iter()
+                .copied()
+                .filter(|n| !motion.signal_taps.contains(n))
+                .collect();
+            let pedidas: Vec<_> = gizmos.iter().map(|&n| (n, TECTO_DA_TOMADA)).collect();
+            motion.gpu_cook.pede_as_tomadas(gpu, &pedidas);
             // ⭐ AS ENTRADAS DE CADA TIQUE (doc 128 §3.3): o que já foi cozido repete o que a fita
             // gravou; o novo grava-se, e um ramo esquece também o futuro do anel da placa.
             let mut replay = motion
@@ -458,21 +501,30 @@ pub(super) fn cook_gpu(
                 // as tomadas passaram a ser estado da bomba para cavalgarem *«a marcha que
                 // houver»*. O que ninguém viu é que aqui **não há marcha nenhuma**.
                 //
-                // ⚠️ **Cozinha, não marcha** — ver [`MotionCookPump::cook_taps_only`]: marchar
-                // aqui simularia o tique duas vezes, uma no device e outra na CPU.
-                //
-                // ⚠️ **No MESMO instante em que o device acabou**, e não num recalculado: a
-                // lista de tiques já foi resolvida acima (com sub-passos e com o rebobinar de um
-                // laço), e derivar o playhead outra vez daria um segundo número para a mesma
-                // pergunta — que é como a tomada passaria a descrever outro quadro.
                 // ⛔⛔ **Um SINAL precisa da história tique a tique** (doc 110 §14.2): cozer sem
                 // marchar deixa o `pre` do cone parado e o livro-razão vazio. Com tomadas de sinal
                 // marcha-se o cone delas — a marcha da rota híbrida, com zero fronteiras.
+                // ⛔⛔ **E as dos GIZMOS lêem-se da PLACA, nunca do `cook_taps_only`** (Bug #20): ele
+                // coze na CPU um estado que a bomba nunca marchou — o `motion.trail` sem ecos, o
+                // anel do `Slit Scan` parado —, e os marcadores ficavam na pose de repouso. A
+                // leitura é a da placa, um quadro atrás como os cartões. ⚠️ Só um nó que a placa
+                // NÃO encenou (sem corrente própria neste cozimento) volta à CPU, como antes.
+                let fora: Vec<NodeId> = gizmos
+                    .iter()
+                    .copied()
+                    .filter(|&n| motion.gpu_cook.node_columns(n).is_none())
+                    .collect();
                 if motion.signal_taps.is_empty() {
+                    motion.pump.esquece_as_tomadas();
+                    motion.pump.set_taps(&fora);
                     let ultimo = ticks.last().map_or(0.0, |(playhead, _)| *playhead);
                     let (g, r) = (&motion.doc.graph, &motion.registry);
                     motion.pump.cook_taps_only(g, r, ultimo, scopes);
                 } else {
+                    let mut sinais = motion.signal_taps.clone();
+                    sinais.extend(fora);
+                    motion.pump.set_taps(&sinais);
+                    motion.pump.set_taps_por_tique(motion.signal_taps.len());
                     for tick in super::ticks_owed(motion.pump.last_cooked_tick(), target) {
                         let (g, r) = (&motion.doc.graph, &motion.registry);
                         let at = |t: u64| t as f64 * fixed_dt;
@@ -481,6 +533,7 @@ pub(super) fn cook_gpu(
                             .advance_or_scrub_to_nodes_scoped(g, r, &[], tick, at, scopes);
                     }
                 }
+                poe_as_tomadas_da_placa(motion, &gizmos);
                 say_route(motion, "device: o plano inteiro (fully-GPU)");
                 colisor::publica_o_relatorio_da_placa(motion, gpu);
                 forma::anota_as_formas(motion, vivas);

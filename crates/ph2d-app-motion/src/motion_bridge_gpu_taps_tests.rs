@@ -66,6 +66,8 @@ fn the_fully_gpu_route_cooks_the_taps_it_never_marched() {
         );
 
         let saida = cook_gpu(&mut m, &gpu, 0, 1.0 / 60.0, &scopes);
+        // ⚠️ Desde o Bug #20 a tomada é uma LEITURA da placa, recolhida no quadro seguinte.
+        super::espera_as_tomadas(&mut m, &gpu);
 
         assert!(
             matches!(saida, GpuOutcome::Handled),

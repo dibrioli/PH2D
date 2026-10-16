@@ -7,7 +7,7 @@ use crate::motion_state::MotionState;
 
 /// **The live number a wire is putting into `param`** (doc 58), or `None` if nothing
 /// drives it — read from the cook's MEMO (`Cook::peek`) on a CPU frame, and from the
-/// GPU **tap** on a device frame (the memo is empty then). Both are a lookup, never a
+/// GPU **tap** on a device frame (read FIRST: the memo keeps a stale CPU frame). Both are a lookup, never a
 /// second evaluation, and both are one frame behind — the memo because `peek` runs
 /// before this frame's cook, the tap by construction — so they agree
 /// ([[feedback_derived_coordinate_seed_must_match_sample]]).
@@ -28,20 +28,22 @@ pub(super) fn driven_value(
     param: &str,
 ) -> Option<(f32, ph2d_nodegraph::graph::NodeId)> {
     let (src, port) = *motion.doc.graph.param_sources(node)?.get(param)?;
+    // GPU-cooked frame FIRST (Bug #20): the memo is NOT empty there — it keeps the last CPU
+    // frame (a route flip), and read first it froze the row on it. The tap carries one
+    // subsampled stream per STAGED node — port 0 only, which is what a value driver has — so a
+    // driver off a higher output port falls to the memo. Row 0 of the tap IS element 0, so
+    // `v[0]` matches the memo.
+    if let Some(stream) = motion.gpu_tap.as_ref().and_then(|t| t.get(&src))
+        && port == 0
+    {
+        return match super::super::readout::reading_of(stream, stream.count() as u32) {
+            super::super::readout::Reading::Value(v) => Some((v, src)),
+            super::super::readout::Reading::Instances(_) => None,
+        };
+    }
     // CPU-cooked frame: the memo holds the real thing.
-    if let Some(cooked) = motion.pump.cook.peek(src) {
-        return ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?)
-            .map(|v| (v, src));
-    }
-    // GPU-cooked frame: the memo is empty. The tap carries one subsampled stream per
-    // STAGED node — port 0 only, which is what a value driver has — so a driver off a
-    // higher output port is honestly unavailable here (rare; the row shows the
-    // override instead). Row 0 of the tap IS element 0, so `v[0]` matches the memo.
-    let stream = motion.gpu_tap.as_ref()?.get(&src).filter(|_| port == 0)?;
-    match super::super::readout::reading_of(stream, stream.count() as u32) {
-        super::super::readout::Reading::Value(v) => Some((v, src)),
-        super::super::readout::Reading::Instances(_) => None,
-    }
+    let cooked = motion.pump.cook.peek(src)?;
+    ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?).map(|v| (v, src))
 }
 
 /// **O nome que o card daquele nó mostra** — pela porta única (`card_title`), nunca por uma
@@ -96,9 +98,10 @@ pub(super) fn upstream_scalar_columns(
 /// either source.
 ///
 /// The pump's memo (`Cook::peek`) on a CPU frame — a zero-cost lookup. But the graph
-/// cooks on the **GPU by default** (`PH2D_GPU_COOK=1`), and then the memo is EMPTY:
+/// cooks on the **GPU by default** (`PH2D_GPU_COOK=1`), and then the memo is NOT refreshed:
 /// `motion_bridge::cook_gpu` returns `Handled` and the sink loop that fills the memo is
-/// skipped. On a device frame, read the SAME tap the graph panel's readouts read
+/// skipped (what it still holds is a stale CPU frame — Bug #20, so `columns::at` reads the
+/// tap first). On a device frame, read the SAME tap the graph panel's readouts read
 /// (`motion.gpu_tap`) — the one door, not a private second cook
 /// ([[feedback_two_doors_to_the_same_question_diverge]]). The tap is a 48-row subsample
 /// per STAGED node, and column MEMBERSHIP is what the picker needs — a subsample carries
@@ -495,6 +498,41 @@ mod tests {
             Some((42.0, a)),
             "the driven value comes from the tap when the memo is empty — e o NÓ junto, \
              porque a row dirigida mostra os dois e eles vêm da mesma resolução"
+        );
+    }
+
+    /// ⛔ **Bug #20: num quadro da placa o memo NÃO está vazio** — guarda o último quadro da CPU
+    /// (uma troca de rota), e lido primeiro ele congelava a row nesse número. A leitura da placa
+    /// ganha. CONTROLO: sem leitura da placa (um quadro de CPU) a row lê o memo.
+    #[test]
+    fn a_leitura_da_placa_ganha_do_memo_velho_da_cpu() {
+        use ph2d_nodegraph::attr::{Column, Stream};
+        use std::collections::BTreeMap;
+        let mut motion = crate::motion_state::MotionState::new();
+        motion.doc = ph2d_motion_doc::MotionDoc::new();
+        let a = motion.doc.graph.add_node("value.number");
+        motion.doc.graph.set_param(a, "value", 3.0);
+        let b = motion.doc.graph.add_node("value.gain");
+        motion
+            .doc
+            .graph
+            .drive_param(b, "strength", (a, 0))
+            .expect("drive strength from a");
+        let (g, r) = (&motion.doc.graph, &motion.registry);
+        motion.pump.cook.cook(g, r, a, 0.0).expect("a CPU coze o a");
+        let velho = super::driven_value(&motion, b, "strength");
+        assert!(
+            velho.is_some_and(|(v, _)| v != 42.0),
+            "CONTROLO: o memo da CPU tem um valor, e não é o da placa: {velho:?}"
+        );
+        motion.gpu_tap = Some(BTreeMap::from([(
+            a,
+            Stream::new(1).with("v", Column::Scalar(vec![42.0])),
+        )]));
+        assert_eq!(
+            super::driven_value(&motion, b, "strength"),
+            Some((42.0, a)),
+            "num quadro da placa a row mostra o número da placa, não o memo velho"
         );
     }
 }

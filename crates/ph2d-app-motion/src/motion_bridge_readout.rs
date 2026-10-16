@@ -313,7 +313,11 @@ pub(super) fn stamp(
     let inert = super::heal::inert_reaching_output(motion);
     for node in &mut snap.nodes {
         let id = NodeId(node.id);
-        let cooked = motion.pump.cook.peek(id);
+        let sampled = tapped.and_then(|t| t.get(&id));
+        // ⛔ **A leitura da PLACA ganha da memória da CPU** (Bug #20): num quadro da placa o memo
+        // não é «vazio» — guarda o último quadro da CPU (uma troca de rota) — e lido primeiro ele
+        // congelava o cartão nesse quadro. `tapped` só existe num quadro da placa.
+        let cooked = motion.pump.cook.peek(id).filter(|_| sampled.is_none());
         // The exact element count — the memo's own when the CPU cooked, else the
         // sequencer's, which SIZED the dispatch with it. NEVER the tap's: see
         // `readout_text`.
@@ -321,7 +325,6 @@ pub(super) fn stamp(
             .and_then(|o| o.first())
             .map(|v| v.as_stream().count() as u32)
             .or_else(|| motion.gpu_cook.node_count(id));
-        let sampled = tapped.and_then(|t| t.get(&id));
         node.readout = match (cooked, sampled) {
             (Some(o), _) => readout_of(o),
             (None, Some(s)) => Some(readout_text(s, exact.unwrap_or(0) as usize)),

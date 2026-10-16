@@ -146,6 +146,28 @@ impl MotionCookPump {
         }
     }
 
+    /// **As tomadas armadas** — a lista do último [`Self::set_taps`].
+    #[must_use]
+    pub fn tomadas_armadas(&self) -> &[NodeId] {
+        &self.taps
+    }
+
+    /// ⭐ **As tomadas que OUTRO cozimento leu** — a placa, num quadro feito inteiro nela (Bug
+    /// #20): o gizmo lê o que DESENHOU, e o [`Self::cook_taps_only`] coze um estado que esta bomba
+    /// nunca marchou (um `motion.trail` sem ecos, um anel parado). Substituem as do mesmo nó; as
+    /// outras (as dos sinais, marchadas) ficam.
+    pub fn poe_as_tomadas_lidas(&mut self, lidas: impl IntoIterator<Item = (NodeId, Stream)>) {
+        for (node, stream) in lidas {
+            self.tap_streams.retain(|(n, _)| *n != node);
+            self.tap_streams.push((node, stream));
+        }
+    }
+
+    /// Esquece as tomadas do quadro anterior — o quadro da placa que ainda não tem leitura.
+    pub fn esquece_as_tomadas(&mut self) {
+        self.tap_streams.clear();
+    }
+
     /// Os streams das TOMADAS da última marcha de sinks, rotulados por nó.
     ///
     /// ⚠️ **Vazio, e não obsoleto, quando o quadro não cozinhou** — o `pump` faz

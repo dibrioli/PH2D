@@ -107,6 +107,31 @@ pub(crate) struct Slot {
     samples: u32,
     /// Offset into the shared `f32` output buffer.
     offset: u32,
+    /// Uma TOMADA pedida por nome ([`Pedido::tomadas`]) e não a amostra dos cartões.
+    tomada: bool,
+}
+
+/// **O que uma leitura encomenda**: a amostra dos cartões (todo nó encenado, `cartoes` linhas) e
+/// as TOMADAS (os nós que o host pediu por nome, cada um com o seu tecto de linhas) — as dos
+/// gizmos de um quadro feito inteiro na placa (Bug #20), num gather só.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Pedido {
+    pub(crate) cartoes: Option<u32>,
+    pub(crate) tomadas: Vec<(NodeId, u32)>,
+}
+
+impl Pedido {
+    pub(crate) fn vazio(&self) -> bool {
+        self.cartoes.is_none() && self.tomadas.is_empty()
+    }
+}
+
+/// Uma leitura recolhida: os cartões e as tomadas, cada uma no seu mapa (um nó pode estar nos
+/// dois, com contagens diferentes).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Leitura {
+    pub(crate) cartoes: BTreeMap<NodeId, Stream>,
+    pub(crate) tomadas: BTreeMap<NodeId, Stream>,
 }
 
 /// The tap's persistent GPU resources — created once, reused every frame.
@@ -195,7 +220,11 @@ impl GpuCook {
     /// calls this inside the same frame as the cook and before the next
     /// [`crate::BufferPool::reclaim`].
     pub fn tap(&mut self, gpu: &GpuContext, samples: u32) -> Option<BTreeMap<NodeId, Stream>> {
-        let (staging, slots) = self.encomenda_tap(gpu, samples, false)?;
+        let pedido = Pedido {
+            cartoes: Some(samples),
+            tomadas: Vec::new(),
+        };
+        let (staging, slots) = self.encomenda_tap(gpu, &pedido, false)?;
         let slice = staging.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |r| {
@@ -203,7 +232,7 @@ impl GpuCook {
         });
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().ok()?.ok()?;
-        Some(le_tap(&staging, &slots))
+        Some(le_tap(&staging, &slots).cartoes)
     }
 
     /// **A metade que ENCOMENDA** — codifica o gather num encoder SEU e submete-o. Partilhada pelo
@@ -213,7 +242,7 @@ impl GpuCook {
     pub(crate) fn encomenda_tap(
         &mut self,
         gpu: &GpuContext,
-        samples: u32,
+        pedido: &Pedido,
         persistente: bool,
     ) -> Option<(wgpu::Buffer, Vec<Slot>)> {
         let mut encoder = gpu
@@ -221,7 +250,7 @@ impl GpuCook {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("ph2d-gpu-cook tap"),
             });
-        let feito = self.codifica_tap(gpu, &mut encoder, samples, persistente)?;
+        let feito = self.codifica_tap(gpu, &mut encoder, pedido, persistente)?;
         gpu.queue.submit(Some(encoder.finish()));
         Some(feito)
     }
@@ -233,7 +262,7 @@ impl GpuCook {
         &mut self,
         gpu: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
-        samples: u32,
+        pedido: &Pedido,
         persistente: bool,
     ) -> Option<(wgpu::Buffer, Vec<Slot>)> {
         let streams: Vec<(NodeId, &GpuStream)> =
@@ -245,7 +274,17 @@ impl GpuCook {
         // run of `samples * lanes` floats.
         let mut slots: Vec<Slot> = Vec::new();
         let mut total: u32 = 0;
-        for (node, stream) in &streams {
+        let cartoes = pedido
+            .cartoes
+            .into_iter()
+            .flat_map(|n| streams.iter().map(move |(node, s)| (*node, *s, n, false)));
+        let tomadas = pedido.tomadas.iter().filter_map(|&(node, tecto)| {
+            streams
+                .iter()
+                .find(|(n, _)| *n == node)
+                .map(|(_, s)| (node, *s, tecto, true))
+        });
+        for (node, stream, samples, tomada) in cartoes.chain(tomadas) {
             if stream.count == 0 {
                 continue;
             }
@@ -256,11 +295,12 @@ impl GpuCook {
                 }
                 let lanes = crate::stream::element_stride(col.dim) as u32 / 4;
                 slots.push(Slot {
-                    node: *node,
+                    node,
                     column: name.clone(),
                     dim: col.dim,
                     samples: take,
                     offset: total,
+                    tomada,
                 });
                 total += take * lanes;
             }
@@ -377,10 +417,10 @@ fn cabe_numa_coluna(dim: Dim) -> bool {
 }
 
 /// **A metade que LÊ** — um `staging` já MAPEADO de volta em streams, e desmapeia-o.
-pub(crate) fn le_tap(staging: &wgpu::Buffer, slots: &[Slot]) -> BTreeMap<NodeId, Stream> {
+pub(crate) fn le_tap(staging: &wgpu::Buffer, slots: &[Slot]) -> Leitura {
     let flat: Vec<f32> = bytemuck::cast_slice(&staging.slice(..).get_mapped_range()).to_vec();
     staging.unmap();
-    let mut out: BTreeMap<NodeId, Stream> = BTreeMap::new();
+    let mut leitura = Leitura::default();
     for slot in slots {
         let lanes = crate::stream::element_stride(slot.dim) as usize / 4;
         let n = slot.samples as usize;
@@ -411,9 +451,14 @@ pub(crate) fn le_tap(staging: &wgpu::Buffer, slots: &[Slot]) -> BTreeMap<NodeId,
             // O [`GpuCook::codifica_tap`] nunca as encomenda — ver [`cabe_numa_coluna`].
             Dim::Mat2 | Dim::Mat3 | Dim::Mat4 => continue,
         };
+        let out = if slot.tomada {
+            &mut leitura.tomadas
+        } else {
+            &mut leitura.cartoes
+        };
         out.entry(slot.node)
             .or_insert_with(|| Stream::new(n))
             .set(slot.column.clone(), col);
     }
-    out
+    leitura
 }

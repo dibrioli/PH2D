@@ -12,6 +12,7 @@
 | `695c786c7b` | F16c inteira — lista completa na mensagem (`git show -s 695c786c7b`) |
 | `ff16b2cb9b` | os 8 vermelhos da suíte afectada (§4), 4 desta onda e 4 herdados da F16a/b |
 | `4a2776c969` | report do dono (faixa branca sob o retângulo da cena 24, conforme o pan/zoom): o fecho de um tracejado ajustado caía EXACTAMENTE no início ⇒ o arredondamento do `kurbo::dash` emendava uma lasca de `3,07e-7` numa cúbica degenerada, e o Vello pintava-a como faixa. `dash_fit::fit_traced` (folga `FOLGA_DO_AJUSTE` também no caminho LOCAL). Anterior à F16c (um par também). Gates: `seam_tests` (CPU) e `a_cena_24_nao_pinta_a_faixa_do_fecho_em_vista_nenhuma` (GPU, 0/144 vs 117/144). Resto do Vello: BUGS_vector #42 |
+| `24bf91be29` | report do dono (*«Align inner e outer não ficaram corretos»*, cena 24): o Inner/Outer TRACEJADO era a banda a `2w` cortada — a caneta dupla dobrava as pontas (ponto = meio disco de raio `w`) e fechava todo vão `< 2w`: Centre 45 peças, Inner/Outer **1 peça** de `117 w²`. Lei nova: o tracejado percorre o TRILHO (`região ∓ banda(w)`) com a caneta autorada, a começar no início do contorno e no sentido dele; o sólido fica com o recorte (ao bit). Outline Stroke e SVG passam pela mesma porta (assavam/exportavam CENTRADO). Custo smoke: `2,37 → 0,75 ms`. Cena 24 ganha o rectângulo Inner (x = 3,3) e Outer (x = 5,1). Anterior à F16c. Gates: `align::dash_tests::*`, `outlining_an_aligned_stroke_bakes_the_aligned_band`, `an_aligned_stroke_exports_the_band_it_draws`. BUGS_vector #43 |
 
 ## 2 — Decisões que um merge/leitor pode partir
 

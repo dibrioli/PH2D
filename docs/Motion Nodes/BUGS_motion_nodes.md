@@ -70,10 +70,23 @@ pontos nas duas rotas: nenhum laranja, nenhum arco-íris, rastos ilegíveis. As 
 saturado para o `Tail Hue Shift` ter matiz — e os cartões de aparência vêm DEPOIS do carimbo.
 *Família* (sonda `sonda_formas_das_cenas_de_ciclo`, 23 cenas): só a `=118` tinha sinks com cartão de
 aparência sem forma; sem forma nenhuma mas sem prometer cor ficam `=111`, `=112`, `=113`, `=116` e
-4 dos 6 panos da `=119` (§0.8 pede formas em todo smoke — fora deste bloco). *Gates:*
+4 dos 6 panos da `=119` (curadas a seguir em `4737080011`, abaixo). *Gates:*
 `toda_cena_de_ciclo_que_pinta_aparencia_desenha_formas` (pelo grafo, piso + controlo `=111`) e
 `todo_anuncio_que_promete_cor_tem_formas_em_todo_pano` (pelo texto). Fotos CPU e placa: laranja,
 arco-íris, rastos verdes em arco, a onda de baixo a andar nas duas.
+
+**✅ As outras cinco cenas de ciclo — CURADO em `4737080011` (15/10).** `=111`, `=112`, `=113`,
+`=116` e 4 panos da `=119` ganham o quadrado carimbado (`jogo_demo::carimbo`: `Rectangle` de lado
+`1`, `point_scale = 1` — o `size` da corrente continua a ser o lado), com os cartões citados
+intactos. Na `=113` o carimbo vem antes da simulação (o `Collide` `Auto` lê o colisor da forma);
+na `=116` o vão passa a `0,03` e a rota fica HÍBRIDA (só a forma na CPU): cozimento `0,067` →
+`0,185 ms` na placa (release, mínimo de 7 rodadas), fio derrubado `0,476` (`2,5×`), quadro do
+app `16,7 ms` nos dois. Na `=119` o emissor não tinha integrador (as `121` partículas num ponto
+só) e ganhou `motion.integrate` + gravidade. *Gate:* `toda_cena_de_ciclo_desenha_formas_em_todo_sink_visivel`
+(piso 23 cenas / 56 sinks + controlo só de pontos montado no teste). *Família achada pelo
+caminho:* o gate de formas montava pelo `build_level` direto e atropelava a legenda de quem varre
+fichas em paralelo (`tapa` leu a da `=112` na `=40`); ele e seis testes passam pela `monta`. Fotos
+pela placa: quadrados nas cinco.
 
 **Os marcadores parados na placa — FECHADO em `de58233ef3`** (visto na foto da cura, 15/10, 12 s de
 Play: na PLACA o gizmo ficava na pose de repouso, sem os arcos do rasto nem a onda de baixo).

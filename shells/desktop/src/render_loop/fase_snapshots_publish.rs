@@ -216,7 +216,7 @@ impl crate::App {
             },
         );
         // ⭐ O EDITOR DE SCRIPTS: pedidos do cartão, salvar → biblioteca, selo, console (a família).
-        ph2d_app_code::frame(sim, script.as_mut(), hero);
+        ph2d_app_code::frame(sim, script.as_mut(), hero, toasts);
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
         let (info, corpo, recusa) = luz2d.publicar(hero.view.luz2d, sim.world(), sel);

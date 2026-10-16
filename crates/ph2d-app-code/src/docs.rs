@@ -5,8 +5,9 @@
 //!
 //! ⛔ **Nunca se descarta texto em silêncio.** Fechar uma aba com ● guarda o documento INTEIRO (o
 //! texto, o cursor, o histórico de desfazer) em [`CodeDocs::parked`]; o «Edit script» seguinte desse
-//! script reabre-o tal como estava, ainda com ●. Só um projeto novo (o script deixou de existir ou
-//! mudou de nome) o larga — o mesmo gesto que já deita fora o trabalho não gravado da cena.
+//! script reabre-o tal como estava, ainda com ●; o File ▸ Save grava-o. Abrir outro projeto esquece
+//! tudo o que é por `ScriptId` e guarda os textos por gravar em ficheiros de recuperação
+//! ([`crate::recovery`]) — nunca em silêncio.
 
 use crate::console::Store;
 use crate::doc::CodeDoc;
@@ -18,7 +19,8 @@ use ph2d_editor_core::ime::ComposeKey;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{Modifiers, PointerButton, PointerKind};
 use ph2d_panel_code::{Badge, FindHit, Problem, ScriptListView, count_text};
-use ph2d_script::ScriptId;
+use ph2d_editor_core::ToastQueue;
+use ph2d_script::{LibraryEpoch, ScriptId};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -46,6 +48,10 @@ pub struct CodeDocs {
     pub(crate) list: crate::list::ListState,
     /// O relógio do chrome (ns) e o «movimento reduzido» — o cursor pisca por eles.
     pub(crate) clock: (u128, bool),
+    /// A biblioteca que as abas seguem (outra = outro projecto).
+    epoch: Option<LibraryEpoch>,
+    /// `None` = a pasta do sistema ([`crate::recovery::default_dir`]).
+    recovery_dir: Option<std::path::PathBuf>,
 }
 
 /// O meio-período do piscar do cursor: o token `Slow` (o do piscar do F4, 1,25 Hz — abaixo dos 3 Hz
@@ -66,6 +72,8 @@ impl Default for CodeDocs {
             area: Rect::new(0.0, 0.0, 0.0, 0.0),
             list: crate::list::ListState::default(),
             clock: (0, false),
+            epoch: None,
+            recovery_dir: None,
         }
     }
 }
@@ -81,6 +89,37 @@ impl CodeDocs {
         let d = self.doc(id)?;
         d.last_input_ns = now;
         Some(d)
+    }
+
+    /// A pasta dos ficheiros de recuperação (os textos por gravar de um projecto que se trocou).
+    pub fn set_recovery_dir(&mut self, dir: std::path::PathBuf) {
+        self.recovery_dir = Some(dir);
+    }
+
+    /// ⛔ **Outra biblioteca = outro projecto** (os `ScriptId` recomeçam em 1): esquece as abas, os
+    /// estacionados, os consoles, os selos e a lista; os textos por gravar viram ficheiros de
+    /// recuperação ([`crate::recovery`]) e o aviso vai para `toasts`. `true` = trocou.
+    pub(crate) fn follow_epoch(&mut self, epoch: LibraryEpoch, toasts: &mut ToastQueue) -> bool {
+        if self.epoch.replace(epoch).is_none_or(|e| e == epoch) {
+            return false;
+        }
+        let unsaved: Vec<(String, String)> = self
+            .docs
+            .iter()
+            .chain(self.parked.values())
+            .filter(|d| d.buffer.is_dirty())
+            .map(|d| (d.title.clone(), d.buffer.text().to_string()))
+            .collect();
+        self.docs.clear();
+        self.parked.clear();
+        self.consoles.clear();
+        self.focus = None;
+        self.list.forget_project();
+        if !unsaved.is_empty() {
+            let dir = self.recovery_dir.clone().or_else(crate::recovery::default_dir);
+            toasts.push(crate::recovery::keep(dir.as_deref(), &unsaved));
+        }
+        true
     }
 
     /// O relógio do chrome (`hero.store.clock_ns()`) e o «movimento reduzido» (cursor fixo).

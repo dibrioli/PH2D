@@ -123,7 +123,7 @@ pub fn read_before_scripts<F: serde::de::DeserializeOwned>(
 
 /// Põe os scripts abertos no mundo — substitui os do documento anterior.
 pub fn install(world: &mut World, lib: ScriptLibrary) {
-    world.insert_resource(ProjectScripts(lib));
+    ProjectScripts::install(world, lib);
 }
 
 #[cfg(test)]

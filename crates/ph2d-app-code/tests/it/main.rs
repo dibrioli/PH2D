@@ -11,6 +11,7 @@ mod dobras;
 mod lista;
 mod onda1;
 mod oraculo_lsp;
+mod projecto;
 mod salvar;
 mod teclado;
 
@@ -38,6 +39,8 @@ pub struct Mesa {
     pub hero: HeroScreen,
     pub host: Option<ScriptHost>,
     pub ts: TextSystem,
+    /// Os avisos que a família deu (o ecrã os mostra).
+    pub toasts: ph2d_editor_core::ToastQueue,
 }
 
 impl Mesa {
@@ -57,6 +60,7 @@ impl Mesa {
                 hero,
                 host: None,
                 ts: TextSystem::without_system_fonts(),
+                toasts: ph2d_editor_core::ToastQueue::default(),
             },
             ids,
         )
@@ -80,7 +84,12 @@ impl Mesa {
 
     /// Um quadro da família (e o hero segue o pedido de foco, como no início da pintura).
     pub fn quadro(&mut self) {
-        ph2d_app_code::frame(&mut self.sim, self.host.as_mut(), &mut self.hero);
+        ph2d_app_code::frame(
+            &mut self.sim,
+            self.host.as_mut(),
+            &mut self.hero,
+            &mut self.toasts,
+        );
         self.hero.documents.follow_surfaces();
     }
 

@@ -52,6 +52,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.problem.missing" => "Missing {sym}",
         // O fim de uma linha com dobra fechada.
         "code.fold.ellipsis" => "…",
+        // Outro projecto aberto com textos por gravar: ficaram em ficheiros (nunca em silêncio).
+        "code.recovery.kept" => "{count} unsaved scripts of the previous project were kept in {dir}",
+        "code.recovery.kept_one" => "1 unsaved script of the previous project was kept in {dir}",
+        "code.recovery.failed" => "Could not keep {count} unsaved scripts of the previous project: {err}",
         // O nó de acessibilidade do texto do script (E12).
         "code.a11y.document" => "Script",
         // E13: os comandos da aba nos menus da barra e no Ctrl+K (o atalho no rótulo, como o File).

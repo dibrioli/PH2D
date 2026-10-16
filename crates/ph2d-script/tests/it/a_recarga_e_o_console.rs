@@ -358,3 +358,60 @@ fn o_print_nao_vai_para_o_stdout() {
         "o print chegou ao stdout: {stdout}"
     );
 }
+
+impl Cena {
+    /// ⭐ **Abrir OUTRO projecto** pela porta do load (`ProjectScripts::install`): o mundo troca de
+    /// objectos e os `ScriptId` recomeçam em 1 — o `#1` do projecto novo é OUTRO script.
+    fn abre_outro_projecto(&mut self, texto: &str, n: u64) {
+        let w = self.sim.world_mut();
+        for e in std::mem::take(&mut self.objs) {
+            w.despawn(e);
+        }
+        let mut lib = ph2d_script::ScriptLibrary::default();
+        let id = lib.insert("enemy.luau", texto);
+        assert_eq!(id, self.id, "o #1 do projecto novo tem o MESMO id");
+        ProjectScripts::install(w, lib);
+        self.objs = (1..=n)
+            .map(|sid| {
+                w.spawn((Transform::IDENTITY, StableId(sid), LuauScript::library(id)))
+                    .id()
+            })
+            .collect();
+    }
+}
+
+/// ⛔⛔ **O projecto novo nunca corre o código do anterior** (auditoria do fecho): o `#1` partido do
+/// projecto B não pode cair na «versão anterior que continua a correr» — essa era a do projecto A.
+#[test]
+fn abrir_outro_projecto_esquece_a_versao_anterior_do_mesmo_id() {
+    let mut c = cena(&soma(1), 2);
+    c.quadro();
+    assert_eq!(c.xs(), [1.0; 2]);
+    let _ = c.host.drain_reloads();
+    c.abre_outro_projecto(&sem_end(5), 2);
+    let _ = c.quadro_livre();
+    assert!(
+        !c.host.scene().runs_previous(c.id),
+        "o #1 partido do projecto B corre o código do projecto A"
+    );
+    assert_eq!(c.xs(), [0.0; 2], "os objectos do B correram o update do A");
+    assert!(
+        c.host.drain_reloads().is_empty(),
+        "a 1.ª leitura do B não é uma recarga do A"
+    );
+}
+
+/// ⛔ E um `#1` bom no projecto B é a 1.ª leitura dele — nenhum «Reloaded» espúrio.
+#[test]
+fn abrir_outro_projecto_nao_relata_uma_recarga() {
+    let mut c = cena(&soma(1), 2);
+    c.quadro();
+    let _ = c.host.drain_reloads();
+    c.abre_outro_projecto(&soma(5), 3);
+    c.quadro();
+    assert_eq!(c.xs(), [5.0; 3], "o B corre o texto dele");
+    assert!(
+        c.host.drain_reloads().is_empty(),
+        "o selo diria «Reloaded» sobre um projecto acabado de abrir"
+    );
+}

@@ -94,8 +94,45 @@ impl From<LuauScriptV2> for LuauScript {
 /// ⭐ **Os scripts do projeto, como recurso do mundo** — a ponte, o Inspector e o save leem-nos daqui
 /// (ADR-0075: desacoplar por recursos). ⚠️ Não é componente: o `WorldSnapshot` (undo, save do
 /// `ProjectState`) não o vê — o texto tem histórico próprio, e viaja no `ProjectFile.scripts`.
-#[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
-pub struct ProjectScripts(pub ScriptLibrary);
+///
+/// ⛔ **Os `ScriptId` recomeçam em 1 em cada projecto**: quem guarda estado por id (as abas do
+/// editor, os módulos da cena) compara a [`LibraryEpoch`] — uma biblioteca instalada nova é OUTRO
+/// projecto, e o `#1` dela é outro script.
+#[derive(Resource, Clone, Debug, PartialEq, Eq)]
+pub struct ProjectScripts(pub ScriptLibrary, LibraryEpoch);
+
+/// A identidade de UMA biblioteca instalada (única no processo; um clone guarda-a).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LibraryEpoch(u64);
+
+impl LibraryEpoch {
+    fn fresh() -> Self {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        Self(NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+    }
+}
+
+impl Default for ProjectScripts {
+    fn default() -> Self {
+        Self::new(ScriptLibrary::default())
+    }
+}
+
+impl ProjectScripts {
+    pub fn new(lib: ScriptLibrary) -> Self {
+        Self(lib, LibraryEpoch::fresh())
+    }
+
+    /// ⭐ **A porta do load**: a biblioteca de um projecto aberto entra no mundo, com época nova.
+    pub fn install(world: &mut bevy_ecs::world::World, lib: ScriptLibrary) {
+        world.insert_resource(Self::new(lib));
+    }
+
+    #[must_use]
+    pub fn epoch(&self) -> LibraryEpoch {
+        self.1
+    }
+}
 
 /// ⭐ **Os scripts que o artista pediu para EDITAR** (o «Edit script» do cartão, CodeEditor E3): o
 /// Inspector escreve, a família do editor (`ph2d-app-code`) drena-os por quadro e abre a aba.

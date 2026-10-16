@@ -251,6 +251,13 @@ impl ScriptHost {
     /// ⭐ **Uma vez por quadro, a correr ou não** — ver [`SceneScripts::sync`]. Os textos vêm do
     /// recurso [`crate::ProjectScripts`] do mundo (ausente = biblioteca vazia).
     pub fn scene_sync(&mut self, world: &mut World) {
+        let epoch = world
+            .get_resource::<crate::ProjectScripts>()
+            .map(crate::ProjectScripts::epoch);
+        if self.scene.follow_epoch(epoch) {
+            // O que o projecto anterior imprimiu e ninguém leu nomeia os ids dele.
+            let _ = self.console.drain();
+        }
         let (lua, deadline, scene) = (self.runtime.lua(), &self.deadline, &mut self.scene);
         if world.contains_resource::<crate::ProjectScripts>() {
             world.resource_scope(

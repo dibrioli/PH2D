@@ -5,14 +5,21 @@
 use crate::doc::CodeDoc;
 use crate::docs::{CodeDocs, SaveKind};
 use ph2d_ecs::SimWorld;
+use ph2d_editor_core::ToastQueue;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_panel_code::Badge;
 use ph2d_script::{
     ProjectScripts, ReloadOutcome, ScriptEditRequests, ScriptHost, ScriptId, ScriptInfo,
 };
 
-/// Um quadro do editor de scripts. `host` = a VM (`None` = o app corre sem scripts).
-pub fn frame(sim: &mut SimWorld, mut host: Option<&mut ScriptHost>, hero: &mut HeroScreen) {
+/// Um quadro do editor de scripts. `host` = a VM (`None` = o app corre sem scripts); `toasts` = os
+/// avisos do ecrã (o projecto trocado com textos por gravar diz onde eles ficaram).
+pub fn frame(
+    sim: &mut SimWorld,
+    mut host: Option<&mut ScriptHost>,
+    hero: &mut HeroScreen,
+    toasts: &mut ToastQueue,
+) {
     let menu_save = hero.file_menu.save || hero.file_menu.save_as;
     let active = hero.documents.surface_active();
     let our_active = active.and_then(|t| {
@@ -29,11 +36,14 @@ pub fn frame(sim: &mut SimWorld, mut host: Option<&mut ScriptHost>, hero: &mut H
     };
     docs.set_clock(clock.0, clock.1);
     let world = sim.world_mut();
-    let wanted = world
+    let mut wanted = world
         .get_resource_mut::<ScriptEditRequests>()
         .map(|mut r| std::mem::take(&mut r.0))
         .unwrap_or_default();
     if let Some(lib) = world.get_resource::<ProjectScripts>() {
+        if docs.follow_epoch(lib.epoch(), toasts) {
+            wanted.clear(); // pedidos de ids do projecto anterior
+        }
         for id in wanted {
             if let Some(d) = lib.get(id) {
                 docs.open(id, &d.name, &d.text);
@@ -74,8 +84,8 @@ fn follow_library(docs: &mut CodeDocs, lib: &ProjectScripts) {
     }
 }
 
-/// Os salvares pedidos (Ctrl+S na aba; File ▸ Save / Ctrl+S com QUALQUER aba activa): o texto vai
-/// para a biblioteca — a cena recarrega no quadro seguinte, sem disco. ⭐ Gravar o projeto aplica
+/// Os salvares pedidos (Ctrl+S na aba; File ▸ Save / Ctrl+S com QUALQUER aba activa, e então também
+/// as abas fechadas com ●): o texto vai para a biblioteca — a cena recarrega no quadro seguinte, sem disco. ⭐ Gravar o projeto aplica
 /// também toda aba com ● (decisão do dono: «salvar = guardado»; um texto partido deixa a versão
 /// anterior a correr — é o motor). Devolve o pedido de gravar o projeto.
 fn save(
@@ -101,10 +111,21 @@ fn save(
             saving.push(i);
         }
     }
-    if saving.is_empty() {
+    // As abas FECHADAS com ● também (a lista pinta-as com ●): gravadas, deixam de estar estacionadas.
+    let parked: Vec<ScriptId> = if menu {
+        docs.parked.keys().copied().collect()
+    } else {
+        Vec::new()
+    };
+    if saving.is_empty() && parked.is_empty() {
         return ask;
     }
     let mut lib = world.get_resource_or_init::<ProjectScripts>();
+    for id in parked {
+        if let Some(d) = docs.parked.remove(&id) {
+            lib.set_text(id, &d.buffer.text().to_string());
+        }
+    }
     for i in saving {
         let d = &mut docs.docs[i];
         let text = d.buffer.text().to_string();

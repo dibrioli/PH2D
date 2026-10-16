@@ -145,3 +145,28 @@ fn o_save_do_menu_aplica_a_aba_activa() {
     assert!(m.texto_salvo(ids[0]).contains("-- y"));
     assert!(!m.docs().is_dirty(ids[0]));
 }
+
+/// ⛔ File ▸ Save aplica também as abas FECHADAS com ● (a lista pinta-as com ●): editar → fechar no
+/// × → File ▸ Save ⇒ o texto está na biblioteca — e nos bytes que vão para o ficheiro.
+#[test]
+fn o_save_do_menu_aplica_as_abas_fechadas_com_alteracoes() {
+    use ph2d_editor_core::doc_surface::DocumentSurface;
+    let (mut m, ids) = Mesa::new(&[("bob.luau", BOB)]);
+    m.pede(ids[0]);
+    m.escreve(ids[0], "-- x\n");
+    let escrito = m.docs().text_of(ids[0]).expect("aberto");
+    m.docs().close(ids[0].0);
+    m.quadro();
+    assert!(m.docs().is_parked(ids[0]));
+    m.hero.file_menu.save = true;
+    m.quadro();
+    assert_eq!(m.texto_salvo(ids[0]), escrito, "a aba fechada com ● não foi aplicada");
+    let bytes = m
+        .sim
+        .world()
+        .resource::<ph2d_script::ProjectScripts>()
+        .to_bytes();
+    let gravado = ph2d_script::ScriptLibrary::from_bytes(&bytes).expect("lê");
+    assert_eq!(gravado.get(ids[0]).map(|d| d.text.as_str()), Some(escrito.as_str()));
+    assert!(!m.docs().is_dirty(ids[0]), "gravado: o ● sai da lista");
+}

@@ -195,6 +195,8 @@ pub struct SceneScripts {
     instances: BTreeMap<u64, Instance>,
     /// As recargas por drenar — uma por script (`scene_reload.rs`).
     reloads: BTreeMap<ScriptId, ScriptReload>,
+    /// A biblioteca que os `slots` seguem; outra = outro projecto (os ids recomeçam em 1).
+    epoch: Option<crate::LibraryEpoch>,
 }
 
 /// Um objecto com script, no instante do tique.
@@ -271,6 +273,24 @@ impl SceneScripts {
     pub fn clear(&mut self) {
         self.slots.clear();
         self.instances.clear();
+    }
+
+    /// ⛔ **Outra biblioteca = outro projecto**: os módulos, os vivos e as recargas por drenar são
+    /// do projecto anterior e nomeiam ids que o novo reusa — esquecê-los (senão o `#1` partido do
+    /// projecto novo «continuaria a correr» o `#1` do anterior, e o selo diria «Reloaded»).
+    /// `true` = havia um projecto antes e foi esquecido.
+    pub(crate) fn follow_epoch(&mut self, epoch: Option<crate::LibraryEpoch>) -> bool {
+        if self.epoch == epoch {
+            return false;
+        }
+        // A 1.ª biblioteca (o arranque) não troca nada: não havia projecto a esquecer.
+        let swapped = self.epoch.is_some();
+        self.epoch = epoch;
+        if swapped {
+            self.clear();
+            self.reloads.clear();
+        }
+        swapped
     }
 
     /// ⭐ **REBOBINAR É RENASCER** — o `init` volta a correr no próximo tique.

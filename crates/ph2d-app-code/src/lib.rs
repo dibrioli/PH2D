@@ -21,6 +21,7 @@ mod keys;
 pub mod list;
 mod pointer;
 pub mod problems;
+mod recovery;
 pub mod smoke;
 
 pub use docs::{CodeDocs, SaveKind};

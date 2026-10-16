@@ -56,6 +56,17 @@ impl Default for ListState {
 }
 
 impl ListState {
+    /// Outro projecto: os pedidos, o renomear e o clique nomeiam ids do anterior. Fica o filtro e
+    /// se a lista está aberta (preferências do artista, não do projecto).
+    pub(crate) fn forget_project(&mut self) {
+        let (open, filter) = (self.open, std::mem::take(&mut self.filter));
+        *self = Self {
+            open,
+            filter,
+            ..Self::default()
+        };
+    }
+
     /// As linhas que passam o filtro (sem maiúsculas).
     fn visible(&self) -> Vec<(ScriptId, &str)> {
         let f = self.filter.text().to_string().to_lowercase();

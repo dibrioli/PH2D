@@ -81,5 +81,5 @@ fn a_v189_project_with_a_script_path_imports_it_and_runs() {
     };
     assert_eq!(lib.get(id).map(|d| d.text.as_str()), Some(ANDA));
     assert_eq!(x, 7.0, "o objecto correu o texto importado");
-    assert!(lib.iter().count() == 1 && ProjectScripts(lib).len() == 1);
+    assert!(lib.iter().count() == 1 && ProjectScripts::new(lib).len() == 1);
 }

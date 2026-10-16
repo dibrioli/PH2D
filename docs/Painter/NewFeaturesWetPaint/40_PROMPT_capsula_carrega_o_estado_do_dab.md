@@ -11,9 +11,15 @@ O dono: *«Impasto ainda não está correto. Auditoria com outro agente»* ([fot
 - **Lente 2 (costura):** o Continuous está íntegro do clique ao traço, em todas as ordens de passos (Δ 0,00000 contra o
   campo posto à mão). Sondas `tests/auditoria_l2_seam.rs`, `ph2d-panel-painter-layers/tests/it/auditoria_l2_continuous.rs`.
 - **Lente 1 (correção):** a foto reproduz-se com o traço de CIMA **com** Continuous e o de BAIXO **sem** (Spacing ≈ 0,25
-  nos dois; o binário do smoke tinha a cura). Sonda `tests/auditoria_l1_impasto.rs`. ⇒ **perguntado ao dono** o que
-  estava ligado em cada traço, e o Follow dele; se o de baixo tinha a caixa ligada, a causa está no pincel dele (peça-o
-  guardado como preset e corra as sondas sobre ele ANTES de curar).
+  nos dois; o binário do smoke tinha a cura). Sonda `tests/auditoria_l1_impasto.rs`.
+- ⛔ **Resposta do dono (15/10): o traço de BAIXO tinha a caixa LIGADA, Follow OFF.** Logo há uma condição do pincel
+  dele que DERRUBA a cápsula (ou a ignora) e que nenhuma sonda fixou. **Passo 0, antes de qualquer cura:** reproduza
+  com o pincel REAL dele — procure se o app guarda o estado do pincel (sessão/autosave/preset em disco) e leia-o; senão,
+  peça-lhe o pincel guardado como preset. Suspeitos a medir: `lays_capsules()` (`spec/queries.rs:342`) exige
+  `stroke_method.allows_jitter()` e `dab_spacing_px() > sub_passo_px(raio)` — um método de traço (Line/Curve/Dots/
+  Anchored…), um Spacing em PÍXEIS, ou um raio de motor ≠ do painel derrubam-na com a caixa ainda viva no painel
+  (a lei `ContinuoSemPasso` em `inercia.rs:351-364` cobre todos?); Jitter/Scatter; a ordem das duas camadas da Shape
+  Color; Symmetry/lanes. A caixa que fica viva sem agir é um CONTROLO QUE MENTE (portão do censo).
 
 ## A família achada (os dois auditores, independentes) — a lei: cada sub-dab é o dab INTERPOLADO
 

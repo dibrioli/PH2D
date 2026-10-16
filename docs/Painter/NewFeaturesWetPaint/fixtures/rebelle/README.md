@@ -48,3 +48,17 @@ preset, calculada em memória (nada extraído). Cabeçalhos completos em `cabeca
 | `ponta_textura_flatdry_{20,40}.png` | Watercolor/Flat Dry | forma cheia + ruído de média 0,49 (o seco vem do papel, que não se desenha sob Wine) |
 | `ponta_textura_opacidade_granulation_40.png` | Granulation/Granulation | varredura da opacidade |
 | `ponta_textura_opacidade_gouachedry_fan_round_40.png` | Gouache Dry · Fan · Round | varredura da opacidade (colunas) |
+
+## O cruzamento SECO (sessão de 2026-10-16, prompt 42)
+
+Os mesmos gestos (`ferramentas/gera_eventos.py --seca_cruz 240`): depois do azul recto da linha 3, `SIMULATION 240` + `DRY`, e só então o vermelho que o cruza — o azul está SECO quando a tinta de cima chega. Estado A, recorte 1000×640. `p42dippen.png` é o CONTROLO da sessão: o `dippen` de 11/10 refeito igual (cruzamento 0,283 contra 0,223 — o ruído da sessão).
+
+| ficheiro | ferramenta | preset | size_px | pressão | extras | semente | papel | sha256 (16) | SIMULATION |
+|---|---|---|---|---|---|---|---|---|---|
+| `inkseco.png` | INK_PEN | Pen/Bullet | 40 | 100 | — | 7 | Default/EX00 White Simple | `08963f7881df3971` | [240, 240] |
+| `dippenseco.png` | INK_PEN | Pen/Dip Pen | 40 | 100 | — | 7 | Default/EX00 White Simple | `e958ab1fcd18be1d` | [240, 240] |
+| `inkbrushseco.png` | INK_PEN | Brush/Brush | 40 | 100 | — | 7 | Default/EX00 White Simple | `d58c09cefbbbab4c` | [240, 240] |
+| `markerseco.png` | MARKER | Marker/Liner | 40 | 100 | — | 7 | Default/EX00 White Simple | `d853f7c8e22ebfdd` | [240, 240] |
+| `markerbulletseco.png` | MARKER | Marker/Bullet | 40 | 100 | — | 7 | Default/EX00 White Simple | `5c3ca3c2024a0f00` | [240, 240] |
+| `wcroundseco.png` | WATERCOLOR | Watercolor/Round | 40 | 100 | — | 7 | Default/EX00 White Simple | `0498037ee88c3b56` | [240, 240] |
+| `p42dippen.png` | INK_PEN | Pen/Dip Pen | 40 | 100 | — | 7 | Default/EX00 White Simple | `62bf5cb965252cdf` | [240] |

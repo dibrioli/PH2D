@@ -73,6 +73,8 @@ def main():
     ap.add_argument("--tilt", type=float, nargs=2, default=None, help="pen_tilt x y (graus) em todos os eventos")
     ap.add_argument("--dirty", action="store_true", help="dirty_brush no SET_BRUSH")
     ap.add_argument("--paint_type", default=None)
+    ap.add_argument("--seca_cruz", type=int, default=None,
+                    help="SIMULATION N + DRY antes do cruzamento vermelho: o azul da linha 3 SECO (prompt 42)")
     a = ap.parse_args()
     ev = []
     if not a.so_tracos:
@@ -117,6 +119,9 @@ def main():
     gesto_rep(ev, [(600, 300), (960, 300)], 25, cheio)
     # linha 3 — recto, cruzamento vermelho e um recto vermelho
     gesto_rep(ev, [(60, 480), (560, 480)], 3, cheio)
+    if a.seca_cruz is not None:
+        ev.append({"event_type": "SIMULATION", "repeats": a.seca_cruz})
+        ev.append({"event_type": "DRY"})
     cor_actual["cor"] = VERMELHO
     ev.append({"event_type": "SET_BRUSH_COLOR", "color": VERMELHO})
     gesto_rep(ev, [(300, 400), (300, 560)], 3, cheio)

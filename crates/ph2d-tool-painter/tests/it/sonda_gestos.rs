@@ -9,8 +9,8 @@ use ph2d_tool_painter::{PaintMedia, PainterTool};
 
 pub const W: u32 = 1000;
 pub const H: u32 = 640;
-const AZUL: [u8; 3] = [23, 101, 179];
-const VERMELHO: [u8; 3] = [191, 0, 18];
+pub const AZUL: [u8; 3] = [23, 101, 179];
+pub const VERMELHO: [u8; 3] = [191, 0, 18];
 
 fn cp(pos: [f32; 2], pressure: f32, phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
@@ -22,7 +22,7 @@ fn cp(pos: [f32; 2], pressure: f32, phase: PointerPhase) -> CanvasPointer {
 }
 
 /// Um gesto por uma polilinha, com `passo` px entre eventos e a pressão dada por `p(t)` em `t ∈ [0, 1]`.
-fn gesto(t: &mut PainterTool, pts: &[[f32; 2]], passo: f32, p: impl Fn(f32) -> f32) {
+pub fn gesto(t: &mut PainterTool, pts: &[[f32; 2]], passo: f32, p: impl Fn(f32) -> f32) {
     let total: f32 = pts
         .windows(2)
         .map(|w| ((w[1][0] - w[0][0]).powi(2) + (w[1][1] - w[0][1]).powi(2)).sqrt())

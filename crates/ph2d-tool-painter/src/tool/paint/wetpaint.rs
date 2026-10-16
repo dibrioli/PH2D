@@ -233,6 +233,22 @@ impl PainterTool {
         !s.engine.sim.step_pending() && !s.engine.active_grid().has_fluid
     }
 
+    /// **SONDA:** o motor da sessão, depois de os factos do painel lá chegarem — para medir uma lei
+    /// candidata que o painel ainda não escreve (`tests/it/sonda_midias.rs`, `PH2D_SONDA_LEI`). Os
+    /// factos seguintes só reescrevem o motor se mudarem.
+    #[doc(hidden)]
+    pub fn wet_sonda_motor(&mut self, f: impl FnOnce(&mut ph2d_wet_paint::painter::Engine)) {
+        if !self.ensure_wet_session() {
+            return;
+        }
+        let facts = self.wet_facts();
+        if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            sess.bring_home();
+            sess.reconcile_facts(facts);
+            f(&mut sess.engine);
+        }
+    }
+
     /// Instala (ou tira) a fita da macro: no estado, para as sessões que nascerem, e na sessão viva.
     pub(crate) fn wet_instala_fita(&mut self, f: Option<fita::FitaPartilhada>) {
         if let Some(s) = self.paint.wetpaint.session.as_mut() {

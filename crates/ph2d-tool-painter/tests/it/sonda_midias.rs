@@ -205,8 +205,14 @@ fn preset_de(c: &Receita) -> Preset {
     p.heavy_edge = c.heavy_edge;
     // A tela direita: a largura é a do TRAÇO; o escorrimento é da tela (W1e).
     p.tilt = Some(DIREITA);
+    // A captura guarda só os knobs que o pincel mostra (as cerdas e o feltro saíram para o Shape a 13/10):
+    // o candidato pode pôr qualquer chave do REGISTO.
     for (k, v) in &c.knobs {
-        assert!(p.engine.insert(k.clone(), *v).is_some(), "knob {k}");
+        assert!(
+            ph2d_wet_paint::tuning::KNOB_DEFS.iter().any(|d| d.key == k),
+            "knob {k}"
+        );
+        p.engine.insert(k.clone(), *v);
     }
     for (k, v) in &c.brush {
         assert!(p.brush.insert(k.clone(), v.clone()).is_some(), "campo {k}");
@@ -266,18 +272,72 @@ fn saida() -> PathBuf {
     out
 }
 
+/// Uma LEI candidata do motor (prompt 42): `PH2D_SONDA_LEI="nome:k=v,k=v|nome2:…"` — cada receita pinta-se
+/// uma vez por variante (`<receita>@<variante>.ppm`). Chaves: `obra_km`/`obra_glaze` (as caixas da obra,
+/// pelo painel) e, no motor, `km` · `glaze` (a velatura das junções) · `filme` (a do filme sobre o
+/// assentado) · `esconde` · `camadas`.
+type Variante = (String, Vec<(String, f64)>);
+
+fn variantes() -> Vec<Variante> {
+    let Ok(v) = std::env::var("PH2D_SONDA_LEI") else {
+        return vec![(String::new(), Vec::new())];
+    };
+    v.split('|')
+        .map(|s| {
+            let (nome, kv) = s.split_once(':').unwrap_or((s, ""));
+            let kv = kv
+                .split(',')
+                .filter(|x| !x.is_empty())
+                .map(|x| {
+                    let (k, v) = x.split_once('=').unwrap();
+                    (k.to_owned(), v.parse().unwrap())
+                })
+                .collect();
+            (nome.to_owned(), kv)
+        })
+        .collect()
+}
+
+fn aplica_variante(t: &mut PainterTool, v: &[(String, f64)]) {
+    for (k, x) in v {
+        match k.as_str() {
+            "obra_km" if *x > 0.0 => {
+                t.handle_panel_event(PanelEvent::Click(ids::WET_TUNING_KM_MIXING))
+            }
+            "obra_glaze" if *x > 0.0 => {
+                t.handle_panel_event(PanelEvent::Click(ids::WET_TUNING_KM_GLAZE))
+            }
+            _ => {}
+        }
+    }
+    t.wet_sonda_motor(|e| {
+        for (k, x) in v {
+            match k.as_str() {
+                "km" => e.sim.km_mixing = *x > 0.0,
+                "glaze" => e.sim.glaze = *x,
+                "filme" => e.sim.glaze_filme = *x,
+                "esconde" => e.sim.esconde = *x,
+                "camadas" => e.sim.camadas_transparentes = *x > 0.0,
+                "obra_km" | "obra_glaze" => {}
+                o => panic!("chave da lei: {o}"),
+            }
+        }
+    });
+}
+
 #[test]
 #[ignore = "sonda: o mapa das mídias (prompt 17, Fase A); corre-se à mão"]
 fn as_midias_com_os_knobs_de_hoje() {
     let out = saida();
     let so = std::env::var("PH2D_SONDA_SO").ok();
     let todas = receitas();
+    let leis = variantes();
     std::thread::scope(|s| {
         for c in todas.iter().filter(|c| {
             so.as_deref()
                 .is_none_or(|q| q.split(',').any(|n| n == c.nome))
         }) {
-            let out = &out;
+            let (out, leis) = (&out, &leis);
             s.spawn(move || {
                 let p = preset_de(c);
                 let lei: Vec<(f32, f32)> = if c.raio.is_some() {
@@ -289,33 +349,47 @@ fn as_midias_com_os_knobs_de_hoje() {
                         .collect()
                 };
                 let r = c.raio.or_else(|| raio_para(&lei, c.alvo));
-                let mut t = tela();
-                t.set_wet_relogio_fixo(true);
-                assert!(t.wet_preset_aplicar(&p).is_empty());
-                t.set_brush_size_px(r.unwrap_or(c.alvo * 0.5));
-                // `PH2D_SONDA_KM=1`: as duas caixas K–M da tela (Pigment mixing + Glaze layering) ligadas —
-                // as opções da OBRA que nenhum preset guarda; mede se a lei já existe para o cruzamento.
-                if std::env::var("PH2D_SONDA_KM").as_deref() == Ok("1") {
-                    for id in [ids::WET_TUNING_KM_MIXING, ids::WET_TUNING_KM_GLAZE] {
-                        t.handle_panel_event(PanelEvent::Click(id));
-                    }
-                }
-                // `PH2D_SONDA_SECA=<quadros>`: mais tempo depois dos 8 s da cena (o Rebelle é fotografado SECO).
-                let extra = std::env::var("PH2D_SONDA_SECA")
-                    .ok()
-                    .and_then(|v| v.parse::<u32>().ok());
-                let (px, w, h) = pinta_cena_ate(&mut t, 480 + extra.unwrap_or(0));
-                escreve_ppm(&out.join(format!("{}.ppm", c.nome)), &px, w, h);
                 let lei: Vec<String> = lei.iter().map(|(r, l)| format!("{r}→{l}")).collect();
-                println!(
-                    "[midia] {:<9} foto {:<12} alvo {:>4} raio {} fnv {:#018x} · lei {}",
-                    c.nome,
-                    c.foto,
-                    c.alvo,
-                    r.map_or("FORA DA LEI".to_owned(), |r| format!("{r:.2}")),
-                    fnv1a(&px),
-                    lei.join(" ")
-                );
+                std::thread::scope(|s2| {
+                    for (vnome, v) in leis {
+                        let (p, lei) = (&p, &lei);
+                        s2.spawn(move || {
+                            let mut t = tela();
+                            t.set_wet_relogio_fixo(true);
+                            assert!(t.wet_preset_aplicar(p).is_empty());
+                            t.set_brush_size_px(r.unwrap_or(c.alvo * 0.5));
+                            // `PH2D_SONDA_KM=1`: as duas caixas K–M da tela (Pigment mixing + Glaze layering)
+                            // ligadas — as opções da OBRA que nenhum preset guarda.
+                            if std::env::var("PH2D_SONDA_KM").as_deref() == Ok("1") {
+                                for id in [ids::WET_TUNING_KM_MIXING, ids::WET_TUNING_KM_GLAZE] {
+                                    t.handle_panel_event(PanelEvent::Click(id));
+                                }
+                            }
+                            aplica_variante(&mut t, v);
+                            // `PH2D_SONDA_SECA=<quadros>`: mais tempo depois dos 8 s da cena (o Rebelle é
+                            // fotografado SECO).
+                            let extra = std::env::var("PH2D_SONDA_SECA")
+                                .ok()
+                                .and_then(|v| v.parse::<u32>().ok());
+                            let (px, w, h) = pinta_cena_ate(&mut t, 480 + extra.unwrap_or(0));
+                            let nome = if vnome.is_empty() {
+                                c.nome.clone()
+                            } else {
+                                format!("{}@{vnome}", c.nome)
+                            };
+                            escreve_ppm(&out.join(format!("{nome}.ppm")), &px, w, h);
+                            println!(
+                                "[midia] {:<9} foto {:<12} alvo {:>4} raio {} fnv {:#018x} · lei {}",
+                                nome,
+                                c.foto,
+                                c.alvo,
+                                r.map_or("FORA DA LEI".to_owned(), |r| format!("{r:.2}")),
+                                fnv1a(&px),
+                                lei.join(" ")
+                            );
+                        });
+                    }
+                });
             });
         }
     });
@@ -367,4 +441,59 @@ fn a_lei_densa_dos_presets_de_fabrica() {
             });
         }
     });
+}
+
+/// **SONDA (prompt 42): a CÉLULA do cruzamento** — o azul recto da linha 3, depois o vermelho que o cruza,
+/// depois a cena seca; o estado do motor (assentado, suspenso, água) no cruzamento e no azul ao lado, para
+/// cada receita × [`variantes`]. Mostra ONDE a tinta de cima tapa a de baixo.
+#[test]
+#[ignore = "sonda: a célula do cruzamento (prompt 42); corre-se à mão"]
+fn sonda_a_celula_do_cruzamento() {
+    use super::sonda_gestos::{AZUL, VERMELHO, gesto};
+    let so = std::env::var("PH2D_SONDA_SO").ok();
+    let leis = variantes();
+    for c in receitas().iter().filter(|c| {
+        so.as_deref()
+            .is_none_or(|q| q.split(',').any(|n| n == c.nome))
+    }) {
+        let p = preset_de(c);
+        for (vnome, v) in &leis {
+            let mut t = tela();
+            t.set_wet_relogio_fixo(true);
+            assert!(t.wet_preset_aplicar(&p).is_empty());
+            t.set_brush_size_px(c.raio.unwrap_or(c.alvo * 0.5));
+            aplica_variante(&mut t, v);
+            let mut le = |t: &mut PainterTool, quando: &str| {
+                t.wet_sonda_motor(|e| {
+                    let g = e.active_grid();
+                    let razao = 1000.0 / g.w as f64;
+                    let cel = |x: f64, y: f64| {
+                        let (cx, cy) = ((x / razao) as usize + 1, (y / razao) as usize + 1);
+                        cx + cy * g.s
+                    };
+                    for (nome, i) in [("cruz", cel(300.0, 480.0)), ("azul", cel(200.0, 480.0))] {
+                        println!(
+                            "[{}@{vnome}] {quando:<8} {nome}: sett {:7.1} {:?} · susp {:7.1} {:?} · film {:.4}",
+                            c.nome,
+                            g.sett[i],
+                            g.sett_rgb[i].map(|v| v.round()),
+                            g.susp[i],
+                            g.susp_rgb[i].map(|v| v.round()),
+                            g.film[i]
+                        );
+                    }
+                });
+            };
+            t.set_brush_color_srgb8(AZUL);
+            gesto(&mut t, &[[60.0, 480.0], [560.0, 480.0]], 3.0, |_| 1.0);
+            le(&mut t, "azul");
+            t.set_brush_color_srgb8(VERMELHO);
+            gesto(&mut t, &[[300.0, 400.0], [300.0, 560.0]], 3.0, |_| 1.0);
+            le(&mut t, "vermelho");
+            for _ in 0..1800 {
+                t.on_tick(1000.0 / 60.0);
+            }
+            le(&mut t, "seco");
+        }
+    }
 }

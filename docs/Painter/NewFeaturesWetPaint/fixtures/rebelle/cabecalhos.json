@@ -1274,5 +1274,213 @@
    "SET_RANDOM_SEED": 1
   },
   "sha256": "ea5af02ba283651a8c8af7f49eb6de82559b19e2c079834aa25f37f50e2f0df2"
+ },
+ "inkseco": {
+  "tool": "INK_PEN",
+  "preset": "Pen/Bullet",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240,
+   240
+  ],
+  "eventos": {
+   "DRY": 1,
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 2
+  },
+  "sha256": "08963f7881df39715ceae15977df9fb4d42e2c02d9140280ead0cbf09408df17"
+ },
+ "dippenseco": {
+  "tool": "INK_PEN",
+  "preset": "Pen/Dip Pen",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240,
+   240
+  ],
+  "eventos": {
+   "DRY": 1,
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 2
+  },
+  "sha256": "e958ab1fcd18be1ddfc2116fdaff395090e6e6a96320a1a8c9dfa1619c10b9cc"
+ },
+ "inkbrushseco": {
+  "tool": "INK_PEN",
+  "preset": "Brush/Brush",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240,
+   240
+  ],
+  "eventos": {
+   "DRY": 1,
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 2
+  },
+  "sha256": "d58c09cefbbbab4c60220e2e3694fb8b36244daa011f930f9530fb73bd38a274"
+ },
+ "markerseco": {
+  "tool": "MARKER",
+  "preset": "Marker/Liner",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240,
+   240
+  ],
+  "eventos": {
+   "DRY": 1,
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 2
+  },
+  "sha256": "d853f7c8e22ebfdd7da3fd4bd51585f5590b5a9f727dd791e683336bce4035fd"
+ },
+ "markerbulletseco": {
+  "tool": "MARKER",
+  "preset": "Marker/Bullet",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240,
+   240
+  ],
+  "eventos": {
+   "DRY": 1,
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 2
+  },
+  "sha256": "5c3ca3c2024a0f009f59ca0b33b7c38de3d62b690661d1224a3dd55b28022585"
+ },
+ "wcroundseco": {
+  "tool": "WATERCOLOR",
+  "preset": "Watercolor/Round",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240,
+   240
+  ],
+  "eventos": {
+   "DRY": 1,
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 2
+  },
+  "sha256": "0498037ee88c3b56c1077838edbe800b23e80d0f4f5330294bfddb0bb4d738fd"
+ },
+ "p42dippen": {
+  "tool": "INK_PEN",
+  "preset": "Pen/Dip Pen",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "62bf5cb965252cdf14377fa37123416cec793dd6ff95e76fcc2e039cadd77a20"
  }
 }

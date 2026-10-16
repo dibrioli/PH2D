@@ -183,10 +183,10 @@ fn waking_a_field_takes_it_off_the_identity() {
 /// grafo que se vê não é um grafo que o dispositivo reivindica.
 ///
 /// ⚠️ **Desde 15/10 as peças são QUADRADOS** (`Shape` → `Duplicator`, Bug #20, `4737080011`) e o
-/// carimbo tem `point_scale = 1`, que o kernel do `Duplicator` RECUSA (o ramo da CPU é o canónico):
-/// a rota é a HÍBRIDA que o anúncio diz — o pano e o carimbo na CPU, o CAMPO na placa. A régua
-/// do assunto do ciclo é o campo (`Falloff → Remap → Scale`) do lado da placa; o controlo sem
-/// carimbo continua a ser a cadeia de pontos reivindicada de ponta a ponta.
+/// carimbo tem `point_scale = 1`. Desde 16/10 o kernel do `Duplicator` cobre a escala do ponto
+/// (doc 120 §8.3): a rota é a HÍBRIDA com o `Shape` (o desenho, UM) como única fronteira — o pano,
+/// o CAMPO (`Falloff → Remap → Scale`) e o carimbo na placa. O controlo sem carimbo continua a ser
+/// a cadeia de pontos reivindicada de ponta a ponta.
 #[test]
 fn the_focus_scene_builds_and_stays_on_the_device() {
     let mut m = crate::motion_state::MotionState::new();
@@ -220,8 +220,8 @@ fn the_focus_scene_builds_and_stays_on_the_device() {
          esta' a ser lido"
     );
 
-    // 3. O CAMPO é reivindicado pelo dispositivo: a única fronteira é o carimbo (o pano e a forma
-    //    ficam atrás dela, na CPU), e o `Falloff`, o `Remap` e o `Scale` que o lê são da placa.
+    // 3. O CAMPO é reivindicado pelo dispositivo: a única fronteira é a FORMA (o `Shape` é da
+    //    CPU), e o `Falloff`, o `Remap`, o `Scale` que o lê e o carimbo são da placa.
     let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
     let tipo = |m: &crate::motion_state::MotionState, n: ph2d_nodegraph::graph::NodeId| {
         m.doc
@@ -233,11 +233,11 @@ fn the_focus_scene_builds_and_stays_on_the_device() {
     let fora: Vec<String> = plano.boundaries.iter().map(|(n, _)| tipo(&m, *n)).collect();
     assert_eq!(
         fora,
-        vec!["motion.duplicator".to_string()],
-        "a `=112` so' pode deixar o CARIMBO (`point_scale = 1`, recusa do kernel) do lado da CPU"
+        vec!["source.shape".to_string()],
+        "a `=112` so' pode deixar a FORMA do lado da CPU"
     );
     let na_placa: Vec<String> = plano.stages.iter().map(|e| tipo(&m, e.node)).collect();
-    for t in ["motion.falloff", "field.remap", "motion.scale"] {
+    for t in ["motion.falloff", "field.remap", "motion.scale", "motion.duplicator"] {
         assert!(
             na_placa.iter().any(|p| p == t),
             "o campo e' o assunto do ciclo 4 e `{t}` saiu da placa: {na_placa:?}"

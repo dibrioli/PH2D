@@ -34,9 +34,10 @@
 //! | coluna | CPU (`duplicate`) | aqui |
 //! |---|---|---|
 //! | `P` | `shape.P[si] + points.P[pi]` | a mesma soma em `f32` |
-//! | `rot` | existe se QUALQUER lado a tem; soma | só a forma a pode trazer: os pontos com `rot` são RECUSADOS ([`ColumnAccess::RefuseIfPresent`]) e a da forma é [`ColumnAccess::SourceReadWriteExisting`] ⇒ existe iff a forma a tem, com `+ 0` exacto |
+//! | `rot` | existe se QUALQUER lado a tem; soma | a do ponto é [`ColumnAccess::SourceReadWriteExisting`] (escrita iff os pontos a trazem, a soma na mesma ordem) e a da forma [`ColumnAccess::SourceRead`]; sem ela nos pontos, o gather leva a da forma |
 //! | `Index` | `i` | `f32(i)` — escrita SEMPRE, como a CPU (que a CUNHA) |
 //! | `Count` | `total` | o `total` derivado |
+//! | `size` (`point_scale > 0`) | `apply_point_scale`: escrito iff o ponto o traz | a variante [`COM_ESCALA_DO_PONTO`], a mesma conta em `f32` |
 //! | o resto da forma | `spread` em `si` | o gather do sequenciador em `cp_rows = si` |
 //! | o resto dos pontos | deitado fora (`Shape Wins`) | não viaja |
 //!
@@ -61,11 +62,20 @@
 //!   `ns · np`); um kernel por escrever, não um bloqueio;
 //! - **`transfer ≠ Shape Wins`** — as colunas dos pontos passam a viajar, e são dinâmicas (os nomes
 //!   dependem do stream), coisa que uma lista estática de ligações não exprime;
-//! - **`point_scale > 0`** — a escala do ponto compõe-se com a da forma, e o ramo da CPU só corre
-//!   quando o ponto TRAZ `size`. ⚠️ O predicado é `p <= 0` **à letra do `apply_point_scale`**, e é
-//!   isso que manda um `NaN` para a CPU (onde ele aplica a escala inteira) em vez de o engolir.
+//! - **`point_scale = NaN`** — a CPU não sai pelo `t <= 0` e o `NaN.min(1)` dela é `1`; o `min` do
+//!   WGSL não promete o mesmo. Só um param DIRIGIDO o pode trazer (o grafo recusa-o autorado).
+//!
+//! ⭐ O `point_scale > 0` deixou de ser recusa (16/10): era a fronteira que mandava a simulação
+//! inteira das cenas de ciclo para a CPU (todas ligam `point_scale = 1`). A variante é escolhida
+//! pelo param ([`GpuKernel::variant_by_param`]) e o `size` é [`COM_ESCALA_DO_PONTO`]. Na mesma
+//! onda caiu a recusa dos PONTOS com `rot` (um `RefuseIfPresent` que também recusava toda porta
+//! de pontos vinda do processador, por não a poder provar). Medição e paridade: doc 120 §8.3.
+//!
+//! ⚠️ **O desvio declarado, o mesmo de cima:** sem orçamento para pontos (`np = 0`) com a porta
+//! de pontos a trazer `size` (ou `rot`) e a forma sem ele, a placa escreve a identidade
+//! (`size = [1, 1]`, `rot = 0`) onde a CPU devolve a forma sem a coluna. O desenho é o mesmo.
 
-use super::{MANIFEST, POINT_SCALE, Pick, points_within_budget, transfer};
+use super::{MANIFEST, POINT_SCALE, Pick, SIZE, SIZE_IDENTITY, points_within_budget, transfer};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::gpu::{
     ColumnAccess, ColumnBinding, CountLawCtx, DerivedUniform, GpuKernel, ROWS_COL, SourceWindow,
@@ -120,9 +130,10 @@ static DERIVADOS: &[DerivedUniform] = &[
     },
 ];
 
-/// O kernel do dispositivo (ADR-0136 `StreamOp::SourceRows` sobre a porta `shape`).
-pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
+/// O corpo comum às duas variantes — o par `(forma, ponto)`, a soma do `P`, a `rot` e a renumeração.
+macro_rules! corpo_do_carimbo {
+    () => {
+        "\
         let dp_np = u32(params.dp_np);\n\
         var dp_s = i;\n\
         var dp_p = 0u;\n\
@@ -137,89 +148,164 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   dp_pp = read_points_P(dp_p);\n\
         }\n\
         write_P(i, vec2<f32>(dp_sp.x + dp_pp.x, dp_sp.y + dp_pp.y));\n\
-        write_rot(i, read_shape_rot(dp_s));\n\
+        var dp_pr = 0.0;\n\
+        if (dp_np > 0u) {\n\
+        \x20   dp_pr = read_points_rot(dp_p);\n\
+        }\n\
+        write_rot(i, read_shape_rot(dp_s) + dp_pr);\n\
         write_Index(i, f32(i));\n\
-        write_Count(i, params.dp_total);\n",
-    wgsl_lib: "",
-    bindings: &[
-        // A posição da FORMA, lida na forma `i / np` — a length-decouple da porta template.
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::SourceRead,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // A posição do PONTO, lida no ponto `i % np`. Ausente (porta vazia) ⇒ `[0, 0]`, o `p_at`.
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::SourceRead,
-            identity: [0.0; 4],
-            port: 1,
-        },
-        // A posição da SAÍDA — um buffer diferente dos de cima.
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // A rotação da FORMA: escrita só quando a forma a traz — que é, com a recusa de baixo, o
-        // `has_rot` da CPU inteiro.
-        ColumnBinding {
-            column: "rot",
-            dim: Dim::Scalar,
-            access: ColumnAccess::SourceReadWriteExisting,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // Pontos com rotação própria somariam uma coluna que a forma pode não ter — o `has_rot`
-        // é um OU das duas portas, e nenhum verbo exprime «escreve se QUALQUER porta a traz».
-        // ⇒ recusa ao planear (a CPU é canónica), e só neste caso.
-        ColumnBinding {
-            column: "rot",
-            dim: Dim::Scalar,
-            access: ColumnAccess::RefuseIfPresent,
-            identity: [0.0; 4],
-            port: 1,
-        },
-        // A linha da forma de que cada elemento nasce: o sequenciador colhe aqui todas as outras
-        // colunas da forma e deita esta fora.
-        ColumnBinding {
-            column: ROWS_COL,
-            dim: Dim::Scalar,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // A RENUMERAÇÃO — a CPU CUNHA as duas sempre que há pontos.
-        ColumnBinding {
-            column: "Index",
-            dim: Dim::Scalar,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        ColumnBinding {
-            column: "Count",
-            dim: Dim::Scalar,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-    ],
-    params: &[NP, TOTAL],
-    count_law: Some(|c| SourceWindow::of_count(total(c))),
-    variant_by_param: None,
-    // As três recusas do cabeçalho.
+        write_Count(i, params.dp_total);\n"
+    };
+}
+
+/// **O kernel registado** — escolhe a variante pelo `point_scale` e recusa o resto (o cabeçalho).
+pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
+    variant_by_param: Some(|p| {
+        if p(POINT_SCALE) > 0.0 {
+            &COM_ESCALA_DO_PONTO
+        } else {
+            &SEM_ESCALA_DO_PONTO
+        }
+    }),
     applicable: Some(|p| {
         Pick::of(p("pick")) == Pick::Off
             && transfer::Transfer::of(p(transfer::TRANSFER)).is_inert()
-            && p(POINT_SCALE) <= 0.0
+            && !p(POINT_SCALE).is_nan()
     }),
+    ..SEM_ESCALA_DO_PONTO
 };
+
+/// **`point_scale > 0`** — o `size` de cada carimbo é o `apply_point_scale` da CPU, na mesma ordem
+/// de contas em `f32`: `base · (1 + (p − 1) · min(t, 1))`.
+///
+/// A presença é a da CPU pelos verbos: o `size` do ponto é [`ColumnAccess::SourceReadWriteExisting`]
+/// na porta 1 ⇒ escrito iff os pontos o trazem (o `point_size.is_none() ⇒ return`); sem ele a
+/// escrita cai e o gather leva o da forma (que salta o que o corpo escreveu). A forma sem `size`
+/// lê a identidade `[1, 1]` — o `size_at`.
+const COM_ESCALA_DO_PONTO: GpuKernel = GpuKernel {
+    wgsl: concat!(
+        corpo_do_carimbo!(),
+        "\
+        let dp_t = min(params.point_scale, 1.0);\n\
+        let dp_base = read_shape_size(dp_s);\n\
+        var dp_ps = vec2<f32>(1.0, 1.0);\n\
+        if (dp_np > 0u) {\n\
+        \x20   dp_ps = read_points_size(dp_p);\n\
+        }\n\
+        write_size(i, vec2<f32>(\n\
+        \x20   dp_base.x * (1.0 + (dp_ps.x - 1.0) * dp_t),\n\
+        \x20   dp_base.y * (1.0 + (dp_ps.y - 1.0) * dp_t),\n\
+        ));\n"
+    ),
+    bindings: &[
+        LIGACOES[0],
+        LIGACOES[1],
+        LIGACOES[2],
+        LIGACOES[3],
+        LIGACOES[4],
+        LIGACOES[5],
+        LIGACOES[6],
+        LIGACOES[7],
+        // O `size` da FORMA, lido na forma `i / np`; ausente ⇒ `[1, 1]`.
+        ColumnBinding {
+            column: SIZE,
+            dim: Dim::Vec2,
+            access: ColumnAccess::SourceRead,
+            identity: [SIZE_IDENTITY; 4],
+            port: 0,
+        },
+        // O `size` do PONTO — lido no ponto `i % np`, e a ÚNICA escrita do `size`.
+        ColumnBinding {
+            column: SIZE,
+            dim: Dim::Vec2,
+            access: ColumnAccess::SourceReadWriteExisting,
+            identity: [SIZE_IDENTITY; 4],
+            port: 1,
+        },
+    ],
+    params: &[NP, TOTAL, POINT_SCALE],
+    ..SEM_ESCALA_DO_PONTO
+};
+
+/// **`point_scale ≤ 0`** (o de fábrica) — o `size` é da forma e chega pelo gather.
+const SEM_ESCALA_DO_PONTO: GpuKernel = GpuKernel {
+    wgsl: corpo_do_carimbo!(),
+    wgsl_lib: "",
+    bindings: &LIGACOES,
+    params: &[NP, TOTAL],
+    count_law: Some(|c| SourceWindow::of_count(total(c))),
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// As ligações comuns às duas variantes.
+const LIGACOES: [ColumnBinding; 8] = [
+    // A posição da FORMA, lida na forma `i / np` — a length-decouple da porta template.
+    ColumnBinding {
+        column: "P",
+        dim: Dim::Vec2,
+        access: ColumnAccess::SourceRead,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    // A posição do PONTO, lida no ponto `i % np`. Ausente (porta vazia) ⇒ `[0, 0]`, o `p_at`.
+    ColumnBinding {
+        column: "P",
+        dim: Dim::Vec2,
+        access: ColumnAccess::SourceRead,
+        identity: [0.0; 4],
+        port: 1,
+    },
+    // A posição da SAÍDA — um buffer diferente dos de cima.
+    ColumnBinding {
+        column: "P",
+        dim: Dim::Vec2,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    // A rotação da FORMA, lida na forma `i / np`; ausente ⇒ `0`, o `rot_at`.
+    ColumnBinding {
+        column: "rot",
+        dim: Dim::Scalar,
+        access: ColumnAccess::SourceRead,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    // A do PONTO é a ÚNICA escrita da `rot` — o `has_rot` (um OU das portas) pelos verbos: com
+    // ela nos pontos, a soma; sem ela, a escrita cai e o gather leva a da forma (ou nada).
+    ColumnBinding {
+        column: "rot",
+        dim: Dim::Scalar,
+        access: ColumnAccess::SourceReadWriteExisting,
+        identity: [0.0; 4],
+        port: 1,
+    },
+    // A linha da forma de que cada elemento nasce: o sequenciador colhe aqui todas as outras
+    // colunas da forma e deita esta fora.
+    ColumnBinding {
+        column: ROWS_COL,
+        dim: Dim::Scalar,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    // A RENUMERAÇÃO — a CPU CUNHA as duas sempre que há pontos.
+    ColumnBinding {
+        column: "Index",
+        dim: Dim::Scalar,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    ColumnBinding {
+        column: "Count",
+        dim: Dim::Scalar,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    },
+];
 
 /// **Regista o caminho do dispositivo.** Side-metadata do ADR-0126/0136 — o contrato congelado do
 /// `CLAUDE.md` §6 fica intacto.

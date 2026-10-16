@@ -22,6 +22,8 @@ use crate::motion_state::MotionState;
 use crate::motion_state::demo_router::MAX_DEMO_LEVEL;
 use std::collections::BTreeMap;
 
+#[path = "motion_state_demo_carimbo_escala_tests.rs"]
+mod carimbo_escala;
 #[path = "motion_state_demo_rota_frases_tests.rs"]
 mod frases_de_rota;
 #[path = "motion_state_demo_rota_medida_tests.rs"]
@@ -379,7 +381,7 @@ fn toda_frase_de_rota_confere_com_a_rota_medida() {
             "113",
             "O terminal diz `[motion-route] device: o plano inteiro (fully-GPU)`.",
         ),
-        ("111", "O `Duplicator` corre na placa."),
+        ("111", "O `Duplicator` corre no processador."),
         ("113", "Tudo isto corre no dispositivo."),
         (
             "116",
@@ -387,7 +389,7 @@ fn toda_frase_de_rota_confere_com_a_rota_medida() {
         ),
         (
             "112",
-            "O terminal diz `[motion-route] device: HIBRIDO`: o `Shape` corre no processador.",
+            "O terminal diz `[motion-route] device: HIBRIDO`: o `Falloff` corre no processador.",
         ),
     ] {
         assert!(

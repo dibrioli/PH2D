@@ -146,7 +146,22 @@ pub(super) fn output_shape(
         .resolve(&|name| resolve_param(graph, node, manifest, name, driven))
         .bindings
     {
-        let present = cols.contains(b.column);
+        // Uma escrita CONDICIONAL julga a presença na porta DELA (o `size` dos pontos do
+        // `motion.duplicator`), e uma porta por provar recusa a resposta.
+        let condicional = b.access.writes(true) && !b.access.writes(false);
+        let present = if condicional && b.port != 0 {
+            match graph.input_edge(node, b.port) {
+                None => false,
+                Some((_, _, true)) => return None,
+                Some((src, sp, false)) => {
+                    edge_shape(graph, ops, kernels, (src, sp), budget, driven)?
+                        .cols
+                        .contains(b.column)
+                }
+            }
+        } else {
+            cols.contains(b.column)
+        };
         if b.access.consumes() {
             cols.remove(b.column);
         } else if b.access.writes(present) {

@@ -321,9 +321,10 @@ caixa de digitar, o teto está escrito ao lado.</p>
 milhares de objetos sem piscar, e o <b>processador</b>, que é o caminho de referência e é mais lento.
 Quem escolhe é o app, nó a nó: <b>tudo o que vem antes de um nó que não sabe rodar na placa fica
 no processador, e dele em diante a cena volta para a placa</b>. Se esse nó for o último antes do
-<code>Output</code>, a cena inteira fica no processador. Nesta cena o pano — o <code>Grid</code>, o
-<code>Shape</code> e o <code>Duplicator</code> que carimba o quadradinho — corre no processador, e o
-<code>Mirror</code>, o <code>Twist</code> e o <code>Transform</code> correm na placa (o terminal diz
+<code>Output</code>, a cena inteira fica no processador. Nesta cena só o <code>Shape</code> (o
+desenho do quadradinho, um só) corre no processador, e o <code>Grid</code>, o <code>Duplicator</code>
+que o carimba, o <code>Mirror</code>, o <code>Twist</code> e o <code>Transform</code> correm na
+placa (o terminal diz
 <code>[motion-route] device: HIBRIDO</code> quando o app abre com
 <code>PH2D_MOTION_ROUTE_LOG=1</code>).</p>
 

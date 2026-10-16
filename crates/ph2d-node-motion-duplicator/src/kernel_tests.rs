@@ -109,21 +109,29 @@ fn o_np_derivado_e_o_do_orcamento() {
     );
 }
 
-/// ⭐ **AS TRÊS RECUSAS são as do cabeçalho, e o modo de fábrica é reclamado.** Com o controlo: os
-/// valores de fábrica (`pick 0`, `transfer 0`, `point_scale 0`) reclamam.
+/// ⭐ **AS RECUSAS são as do cabeçalho, e o resto é reclamado.** Com o controlo: os valores de
+/// fábrica e a escala do ponto (`point_scale` em `]0, ∞]`) reclamam; o `NaN` não.
 #[test]
-fn as_tres_recusas_entregam_o_no_a_cpu() {
+fn as_recusas_entregam_o_no_a_cpu() {
     let ap = GPU_KERNEL.applicable.expect("o carimbo declara as recusas");
-    assert!(
-        ap(&params(vec![])),
-        "o modo de fábrica é reclamado pelo dispositivo"
-    );
+    for (param, v) in [
+        (POINT_SCALE, 0.0f32),
+        (POINT_SCALE, -1.0),
+        (POINT_SCALE, 0.5),
+        (POINT_SCALE, 1.0),
+        (POINT_SCALE, 7.0),
+        (POINT_SCALE, f32::INFINITY),
+    ] {
+        assert!(
+            ap(&params(vec![(param, v)])),
+            "`{param} = {v}` é reclamado pelo dispositivo"
+        );
+    }
     for (param, v) in [
         ("pick", 1.0f32),
         ("pick", 2.0),
         (transfer::TRANSFER, 1.0),
         (transfer::TRANSFER, 3.0),
-        (POINT_SCALE, 0.5),
         (POINT_SCALE, f32::NAN),
     ] {
         assert!(
@@ -133,8 +141,39 @@ fn as_tres_recusas_entregam_o_no_a_cpu() {
     }
 }
 
+/// ⭐ **A VARIANTE é a do ramo da CPU** — `t ≤ 0` sai pelo caminho literal (sem `size`), `t > 0`
+/// liga o `size` das duas portas e só o do ponto escreve.
+#[test]
+fn a_escala_do_ponto_escolhe_a_variante_que_escreve_o_size() {
+    let com_size = |t: f32| {
+        GPU_KERNEL
+            .resolve(&params(vec![(POINT_SCALE, t)]))
+            .bindings
+            .iter()
+            .filter(|b| b.column == "size")
+            .map(|b| (b.access, b.port))
+            .collect::<Vec<_>>()
+    };
+    for t in [0.0f32, -0.5] {
+        assert!(
+            com_size(t).is_empty(),
+            "`point_scale = {t}` não toca o size"
+        );
+    }
+    for t in [0.25f32, 1.0, 3.0] {
+        assert_eq!(
+            com_size(t),
+            vec![
+                (ColumnAccess::SourceRead, 0),
+                (ColumnAccess::SourceReadWriteExisting, 1)
+            ],
+            "`point_scale = {t}`: lê o da forma, escreve iff o ponto o traz"
+        );
+    }
+}
+
 /// ⭐ **A FORMA DAS LIGAÇÕES** — as duas leituras de `P` são das DUAS portas, a `rot` dos pontos é
-/// uma recusa e não uma leitura, a da forma escreve só se existe, e `Index`/`Count` são escritas
+/// a única escrita dela (só se existe; o gather leva a da forma), e `Index`/`Count` são escritas
 /// SEMPRE (a CPU cunha-as).
 #[test]
 fn as_ligacoes_sao_as_da_lei_da_cpu() {
@@ -146,8 +185,14 @@ fn as_ligacoes_sao_as_da_lei_da_cpu() {
     assert!(tem("P", ColumnAccess::SourceRead, 0), "o P da forma");
     assert!(tem("P", ColumnAccess::SourceRead, 1), "o P do ponto");
     assert!(tem("P", ColumnAccess::Write, 0), "o P da saída");
-    assert!(tem("rot", ColumnAccess::SourceReadWriteExisting, 0));
-    assert!(tem("rot", ColumnAccess::RefuseIfPresent, 1));
+    assert!(
+        tem("rot", ColumnAccess::SourceRead, 0),
+        "a rot da forma lê-se"
+    );
+    assert!(
+        tem("rot", ColumnAccess::SourceReadWriteExisting, 1),
+        "a rot do ponto é a única escrita"
+    );
     assert!(tem(ROWS_COL, ColumnAccess::Write, 0));
     assert!(tem("Index", ColumnAccess::Write, 0));
     assert!(tem("Count", ColumnAccess::Write, 0));
@@ -156,6 +201,6 @@ fn as_ligacoes_sao_as_da_lei_da_cpu() {
         b.iter()
             .filter(|x| x.port == 1)
             .all(|x| x.column == "P" || x.column == "rot"),
-        "da porta dos pontos só viajam P (e a recusa da rot)"
+        "da porta dos pontos só viajam P e rot"
     );
 }

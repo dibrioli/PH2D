@@ -49,25 +49,30 @@ pub(super) fn rota_de(razao: &str) -> Rota {
     }
 }
 
+/// A cena `PH2D_GPU_COOK_DEMO=<n>` montada como o produto a monta (`None` = a cena não existe).
+pub(super) fn monta_demo(n: &str) -> Option<MotionState> {
+    let mut m = MotionState::new();
+    m.cpu_pedida = crate::motion_state::demo_router::cena_pede_a_cpu_em(Some(n));
+    (!crate::motion_demo_legend::monta(n, &mut m.doc, &m.registry)
+        .0
+        .is_empty())
+    .then_some(m)
+}
+
 /// Coze `QUADROS` quadros da cena pela porta do produto e lê o que o terminal diria.
 pub(super) fn mede(
     gpu: &ph2d_gpu::GpuContext,
     cena: &Cena,
     ajusta: impl FnOnce(&mut MotionState),
 ) -> Option<Medida> {
-    let mut m = MotionState::new();
-    match cena {
-        Cena::Demo(n) => {
-            m.cpu_pedida = crate::motion_state::demo_router::cena_pede_a_cpu_em(Some(n));
-            if crate::motion_demo_legend::monta(n, &mut m.doc, &m.registry)
-                .0
-                .is_empty()
-            {
-                return None;
-            }
+    let mut m = match cena {
+        Cena::Demo(n) => monta_demo(n)?,
+        Cena::Forma(n) => {
+            let mut m = MotionState::new();
+            crate::motion_shape_smoke::grafo_do_smoke(&mut m.doc.graph, *n);
+            m
         }
-        Cena::Forma(n) => crate::motion_shape_smoke::grafo_do_smoke(&mut m.doc.graph, *n),
-    }
+    };
     ajusta(&mut m);
     let mut playhead = ph2d_core::Playhead::new(1.0 / 60.0);
     playhead.play();

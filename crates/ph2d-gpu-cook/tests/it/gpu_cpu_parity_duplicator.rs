@@ -41,6 +41,9 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     // Para juntar duas grelhas cheias e passar o tecto de formas (o caso sem orçamento).
     ph2d_node_motion_combine::register(&mut reg).unwrap();
+    // O `size` que muda de elemento para elemento (a escala do ponto).
+    ph2d_node_motion_falloff::register(&mut reg).unwrap();
+    ph2d_node_motion_scale::register(&mut reg).unwrap();
     reg
 }
 
@@ -255,7 +258,7 @@ fn comparar(rot: &str, cpu: &[RenderInstance], dev: &[RenderInstance]) {
 
 /// ⭐⭐⭐ **O carimbo, no dispositivo, concorda com a CPU — a forma certa, a soma e a renumeração.**
 #[test]
-#[ignore = "requires a GPU adapter"]
+#[ignore = "placa: precisa de GPU"]
 fn o_carimbo_concorda_com_a_cpu_dentro_do_epsilon() {
     let Some(gpu) = try_headless_gpu() else {
         eprintln!("sem adaptador de GPU — a saltar");
@@ -289,6 +292,107 @@ fn o_carimbo_concorda_com_a_cpu_dentro_do_epsilon() {
     }
 }
 
+/// `fonte → falloff → scale` não uniforme: um `size` que muda de elemento para elemento.
+fn com_tamanho(g: &mut Graph, fonte: NodeId, raio: f32, ax: f32, ay: f32) -> NodeId {
+    let f = g.add_node("motion.falloff");
+    g.set_param(f, "radius", raio);
+    let s = g.add_node("motion.scale");
+    g.set_param(s, "amount", ax);
+    g.set_param(s, "uniform", 0.0);
+    g.set_param(s, "amount_y", ay);
+    liga(g, fonte, f, 0);
+    liga(g, f, s, 0);
+    s
+}
+
+/// A barra do `size`, em ULP relativo: a contracção `a·b + c` → `fma` do compilador da placa, que
+/// o WGSL não proíbe (o `motion.scale` declara a mesma, «parity within FMA ε»). MEDIDA na RTX
+/// 5060 Ti (16/10): o controlo `t = 0` (o carimbo NÃO calcula o `size`, só o `motion.scale` a
+/// montante) dá `0,80` ULP; `t = 0,25` → `0,94`; `t = 0,5` → `1,13`. Uma avaria do carimbo (o
+/// índice errado, o `min` perdido, a ordem trocada) move o `size` por ordens de grandeza.
+const ULP_DO_SIZE: f32 = 2.0;
+
+/// ⭐⭐⭐ **A ESCALA DO PONTO, no dispositivo, é a da CPU a [`ULP_DO_SIZE`]** — `base · (1 + (p − 1) · min(t, 1))`
+/// nos quatro casos de presença do `size` (forma × ponto) e com o `t` acima de `1` (o `min`).
+///
+/// Sem rotação não há trigonometria a jusante: a base e o `size` da instância são os do kernel. A fixtura VÊ: com `size` nos pontos, dois pontos da mesma forma têm
+/// tamanhos diferentes; com `size` nas formas, duas formas no mesmo ponto também.
+#[test]
+#[ignore = "placa: precisa de GPU"]
+fn a_escala_do_ponto_concorda_com_a_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem adaptador de GPU — a saltar");
+        return;
+    };
+    let reg = registry();
+    let (ns, lado) = (3usize, 8.0f32);
+    for (forma_tem, ponto_tem, t) in [
+        // O CONTROLO: o `size` chega pelo gather, e o que sobra é do `motion.scale`.
+        (true, true, 0.0f32),
+        (true, true, 0.25),
+        (true, true, 0.5),
+        (true, true, 1.0),
+        (true, true, 1.7),
+        (false, true, 0.5),
+        (true, false, 1.0),
+        (false, false, 1.0),
+    ] {
+        let rot = format!("escala do ponto t {t} forma {forma_tem} ponto {ponto_tem}");
+        let mut g = Graph::new();
+        let mut formas = grelha(&mut g, 1.0, ns as f32, 1.7, 0.0);
+        if forma_tem {
+            formas = com_tamanho(&mut g, formas, 4.0, 0.6, 1.4);
+        }
+        let mut pontos = grelha(&mut g, lado, lado, 0.13, 0.07);
+        if ponto_tem {
+            pontos = com_tamanho(&mut g, pontos, 0.6, 2.3, 0.4);
+        }
+        let dup = g.add_node("motion.duplicator");
+        g.set_param(dup, "point_scale", t);
+        liga(&mut g, formas, dup, 0);
+        liga(&mut g, pontos, dup, 1);
+        let out = g.add_node("motion.output");
+        liga(&mut g, dup, out, 0);
+        g.validate(&reg).expect("bem tipada");
+
+        let cpu = cozer_cpu(&reg, &g, out);
+        let np = (lado * lado) as usize;
+        assert_eq!(cpu.len(), ns * np, "{rot}: a saida e' `ns · np`");
+        let escala = |r: &RenderInstance| (r.basis, r.size);
+        if ponto_tem && t > 0.0 {
+            assert_ne!(
+                escala(&cpu[0]),
+                escala(&cpu[5]),
+                "{rot}: os pontos teriam o MESMO tamanho"
+            );
+        }
+        if forma_tem {
+            assert_ne!(
+                escala(&cpu[5]),
+                escala(&cpu[np + 5]),
+                "{rot}: as formas teriam o MESMO tamanho"
+            );
+        }
+        let dev = cozer_gpu(&gpu, &reg, &g, out);
+        comparar(&rot, &cpu, &dev);
+        let (mut bits, mut pior_ulp) = (0usize, 0.0f32);
+        for (c, d) in cpu.iter().zip(&dev) {
+            let (cs, ds) = (c.basis.iter().chain(&c.size), d.basis.iter().chain(&d.size));
+            for (a, b) in cs.zip(ds) {
+                if a.to_bits() != b.to_bits() {
+                    bits += 1;
+                    pior_ulp = pior_ulp.max((a - b).abs() / (f32::EPSILON * a.abs().max(1e-30)));
+                }
+            }
+        }
+        eprintln!("{rot}: {bits} lanes (base + size) fora do bit, pior {pior_ulp:.2} ULP");
+        assert!(
+            pior_ulp <= ULP_DO_SIZE,
+            "{rot}: a base e o size a mais de {ULP_DO_SIZE} ULP da CPU ({pior_ulp:.2})"
+        );
+    }
+}
+
 /// ⛔⛔ **Sem orçamento para pontos, o carimbo devolve a FORMA intacta — nas duas rotas** (auditoria
 /// do fecho, 2026-09-24). Com mais formas do que o tecto o `np` do orçamento é `0` com a porta de
 /// pontos CHEIA; a CPU devolve a forma, e o kernel lia `read_points_P(0)` (a presença da coluna é
@@ -297,7 +401,7 @@ fn o_carimbo_concorda_com_a_cpu_dentro_do_epsilon() {
 /// A fixtura: duas grelhas de `181²` juntas (`65 522` formas, acima dos `32 768`) sobre uma grelha de
 /// pontos `3×3` cujo 1.º ponto NÃO é a origem.
 #[test]
-#[ignore = "requires a GPU adapter"]
+#[ignore = "placa: precisa de GPU"]
 fn sem_orcamento_para_pontos_o_carimbo_devolve_a_forma() {
     let Some(gpu) = try_headless_gpu() else {
         eprintln!("sem adaptador de GPU — a saltar");
@@ -354,11 +458,18 @@ fn as_recusas_do_carimbo_entregam_o_no_a_cpu() {
             .expect("a cadeia tem o carimbo")
             .id
     };
+    // A escala do ponto é do dispositivo (o kernel da variante com `size`).
+    let (mut g, out) = cadeia(&reg, 3.0, 8.0, Olhar::AFormaCerta, false);
+    let dup = dup_de(&g);
+    g.set_param(dup, "point_scale", 1.0);
+    assert!(
+        ph2d_gpu_cook::plan(&g, &reg, &reg, out).is_fully_gpu(),
+        "a escala do ponto: a cadeia inteira e' do dispositivo"
+    );
     for (nome, param, valor) in [
         ("o modo Cycle", "pick", 1.0f32),
         ("o modo Random", "pick", 2.0),
         ("a transferencia", "transfer", 1.0),
-        ("a escala do ponto", "point_scale", 1.0),
     ] {
         let (mut g, out) = cadeia(&reg, 3.0, 8.0, Olhar::AFormaCerta, false);
         let dup = dup_de(&g);
@@ -368,10 +479,25 @@ fn as_recusas_do_carimbo_entregam_o_no_a_cpu() {
             "{nome}: o plano tem de RECUAR para a CPU"
         );
     }
-    // Os PONTOS com rotação própria: a CPU somaria uma coluna que a forma não tem.
+    // Os PONTOS com rotação própria são do dispositivo (a `rot` deles é a única escrita).
+    let (g, out) = pontos_rodados(&reg, 3.0, 8.0, false);
+    assert!(
+        ph2d_gpu_cook::plan(&g, &reg, &reg, out).is_fully_gpu(),
+        "pontos com rot: a cadeia inteira e' do dispositivo"
+    );
+}
+
+/// `formas (1×ns, opcionalmente rodadas) → carimbo ← pontos rodados (lado²) → saída`.
+fn pontos_rodados(reg: &NodeRegistry, ns: f32, lado: f32, formas_rodadas: bool) -> (Graph, NodeId) {
     let mut g = Graph::new();
-    let formas = grelha(&mut g, 1.0, 3.0, 1.7, 0.0);
-    let pontos = grelha(&mut g, 8.0, 8.0, 0.13, 0.07);
+    let mut formas = grelha(&mut g, 1.0, ns, 1.7, 0.0);
+    if formas_rodadas {
+        let r = g.add_node("motion.rotate");
+        g.set_param(r, "angle", 23.0);
+        liga(&mut g, formas, r, 0);
+        formas = r;
+    }
+    let pontos = grelha(&mut g, lado, lado, 0.13, 0.07);
     let rot = g.add_node("motion.rotate");
     g.set_param(rot, "angle", 11.0);
     liga(&mut g, pontos, rot, 0);
@@ -380,9 +506,55 @@ fn as_recusas_do_carimbo_entregam_o_no_a_cpu() {
     liga(&mut g, rot, dup, 1);
     let out = g.add_node("motion.output");
     liga(&mut g, dup, out, 0);
+    g.validate(reg).expect("bem tipada");
+    (g, out)
+}
+
+/// ⭐⭐ **A ROTAÇÃO DOS PONTOS, no dispositivo, é a da CPU** — a `rot` é um OU das duas portas
+/// (`has_rot`): só nos pontos, e nos dois lados (a soma). E sem orçamento para pontos (`np = 0`
+/// com a porta CHEIA) a forma sai intacta: o kernel não lê a `rot` do 1.º ponto.
+#[test]
+#[ignore = "placa: precisa de GPU"]
+fn a_rotacao_dos_pontos_concorda_com_a_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem adaptador de GPU — a saltar");
+        return;
+    };
+    let reg = registry();
+    for (ns, lado, formas_rodadas) in [(3.0f32, 8.0f32, false), (4.0, 8.0, true)] {
+        let rot = format!("pontos rodados ns {ns} formas rodadas {formas_rodadas}");
+        let (g, out) = pontos_rodados(&reg, ns, lado, formas_rodadas);
+        let cpu = cozer_cpu(&reg, &g, out);
+        assert!(cpu[0].basis[1].abs() > 0.1, "{rot}: a fixtura tem de rodar");
+        comparar(&rot, &cpu, &cozer_gpu(&gpu, &reg, &g, out));
+    }
+    // Sem orçamento: 65 522 formas > 32 768 sobre pontos rodados.
+    let mut g = Graph::new();
+    let lado = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
+    let f1 = grelha(&mut g, lado, lado, 0.01, 0.01);
+    let f2 = grelha(&mut g, lado, lado, 0.013, 0.013);
+    let juntas = g.add_node("motion.combine");
+    liga(&mut g, f1, juntas, 0);
+    liga(&mut g, f2, juntas, 1);
+    let pontos = grelha(&mut g, 3.0, 3.0, 0.5, 0.3);
+    let r = g.add_node("motion.rotate");
+    g.set_param(r, "angle", 11.0);
+    liga(&mut g, pontos, r, 0);
+    let dup = g.add_node("motion.duplicator");
+    liga(&mut g, juntas, dup, 0);
+    liga(&mut g, r, dup, 1);
+    let out = g.add_node("motion.output");
+    liga(&mut g, dup, out, 0);
     g.validate(&reg).expect("bem tipada");
-    assert!(
-        !ph2d_gpu_cook::plan(&g, &reg, &reg, out).is_fully_gpu(),
-        "pontos com rot: o plano tem de RECUAR para a CPU"
+    let cpu = cozer_cpu(&reg, &g, out);
+    assert_eq!(
+        cpu.len(),
+        2 * ph2d_nodegraph::node::CELULAS_DE_UMA_GRELHA_CHEIA,
+        "sem orcamento, a CPU devolve as formas tal qual"
+    );
+    comparar(
+        "pontos rodados sem orcamento",
+        &cpu,
+        &cozer_gpu(&gpu, &reg, &g, out),
     );
 }

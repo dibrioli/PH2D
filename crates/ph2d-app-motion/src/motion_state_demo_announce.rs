@@ -552,9 +552,9 @@ pub(super) fn foco() {
   DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
   perderam a forma), ou se o pano inteiro crescer por igual.
 
-  Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] device: HIBRIDO`: o pano --
-  o `Grid`, o `Shape` e o `Duplicator` que carimba o quadradinho -- corre no processador;
-  o `Falloff` e o `Remap` correm na placa."
+  Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] device: HIBRIDO`: so' o
+  `Shape` (o desenho do quadradinho, UM) corre no processador; o `Grid`, o `Falloff`, o
+  `Remap` e o `Duplicator` que carimba o quadradinho correm na placa."
     );
 }
 
@@ -575,8 +575,9 @@ pub(super) fn pivot() {
   DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
   perderam a forma), ou se o pano ja' abrir a torcer-se sobre si proprio.
 
-  Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] device: HIBRIDO`: o pano --
-  o `Grid`, o `Scale`, o `Shape` e o `Duplicator` que carimba o quadradinho -- corre no
-  processador; o `Mirror`, o `Twist` e o `Transform` correm na placa."
+  Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz `[motion-route] device: HIBRIDO`: so' o
+  `Shape` (o desenho do quadradinho, UM) corre no processador; o `Grid`, o `Scale`, o
+  `Duplicator` que carimba o quadradinho, o `Mirror`, o `Twist` e o `Transform` correm na
+  placa."
     );
 }

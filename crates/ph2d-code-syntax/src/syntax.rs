@@ -35,10 +35,12 @@ fn parse(parser: &mut Parser, text: &Text, old: Option<&Tree>) -> Tree {
         if byte >= len {
             return &[];
         }
-        rope.byte_slice(byte..len)
+        // Um pedido no meio de um carácter lê a partir do início dele e salta os bytes já lidos.
+        let at = text.floor_char(byte);
+        rope.byte_slice(at..len)
             .chunks()
             .next()
-            .map_or(&[][..], str::as_bytes)
+            .map_or(&[][..], |c| &c.as_bytes()[byte - at..])
     };
     // `None` só com cancelamento ou sem linguagem; nenhum dos dois existe aqui (texto quebrado
     // dá árvore com ERROR, nunca `None`).

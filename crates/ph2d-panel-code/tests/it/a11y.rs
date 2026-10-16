@@ -52,3 +52,25 @@ fn linha_longa_corta_em_255() {
     assert_eq!(nos[1].1.value().map(str::len), Some(RUN_CHARS));
     assert_eq!(nos[1].1.character_lengths().len(), RUN_CHARS);
 }
+
+/// ⛔ Um grafema com mais de 255 bytes (uma letra com 200 acentos combinantes) não cabe num `u8`: a
+/// soma dos `character_lengths` tem de dar o comprimento do `value` (o contrato do AccessKit), e a
+/// posição do cursor conta as mesmas unidades.
+#[test]
+fn um_grafema_maior_que_255_bytes_nao_desalinha_os_comprimentos() {
+    let gigante = format!("a{}", "\u{301}".repeat(200));
+    let linha = format!("x{gigante}y");
+    let mut buf = Buffer::new(&linha);
+    buf.set_selection(Selection::single(Range::cursor(linha.len())));
+    let (mut v, mut ts) = (CodeView::new(), ts());
+    let area = area_para(&mut v, &buf, &mut ts, 5);
+    pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+    let nos = v.a11y_nodes(&buf, BASE);
+    let run = &nos[1].1;
+    let valor = run.value().expect("texto");
+    let soma: usize = run.character_lengths().iter().map(|&l| usize::from(l)).sum();
+    assert_eq!(soma, valor.len(), "a soma dos comprimentos = os bytes do texto");
+    assert_eq!(valor, linha, "o texto inteiro está no nó");
+    let foco = nos[0].1.text_selection().expect("seleção").focus;
+    assert_eq!(foco.character_index, run.character_lengths().len(), "o cursor no fim = a última unidade");
+}

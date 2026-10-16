@@ -89,26 +89,66 @@ impl Text {
         self.slice(self.byte_of_line(line)..self.line_end(line))
     }
 
+    /// ⛔ **Total: nunca entra em pânico.** As pontas descem à fronteira de carácter anterior e
+    /// ficam dentro do texto (o `crop` entra em pânico num byte do meio de um carácter — o app caía
+    /// ao escrever `(` depois de `-- é`, auditoria do fecho da Onda 1).
     pub fn slice(&self, range: std::ops::Range<usize>) -> String {
-        self.rope.byte_slice(range).to_string()
+        // Nos testes um chamador com uma ponta cortada fica vermelho; no app, o texto segue.
+        debug_assert!(
+            self.floor_char(range.start) == range.start && self.floor_char(range.end) == range.end,
+            "slice({range:?}) fora de uma fronteira de carácter"
+        );
+        let start = self.floor_char(range.start);
+        let end = self.floor_char(range.end).max(start);
+        self.rope.byte_slice(start..end).to_string()
+    }
+
+    /// A fronteira de carácter em `byte` ou antes dele (dentro do texto).
+    pub fn floor_char(&self, byte: usize) -> usize {
+        let mut b = byte.min(self.len());
+        while !self.rope.is_char_boundary(b) {
+            b -= 1;
+        }
+        b
+    }
+
+    /// A fronteira de carácter em `byte` ou depois dele (dentro do texto).
+    pub fn ceil_char(&self, byte: usize) -> usize {
+        let mut b = byte.min(self.len());
+        while !self.rope.is_char_boundary(b) {
+            b += 1;
+        }
+        b
+    }
+
+    /// O texto tem `pat` a começar em `at`? Compara BYTES (nunca corta um carácter).
+    pub fn starts_with_at(&self, at: usize, pat: &str) -> bool {
+        at.checked_add(pat.len()).is_some_and(|end| end <= self.len())
+            && pat.bytes().enumerate().all(|(i, b)| self.rope.byte(at + i) == b)
     }
 
     pub fn point_of_byte(&self, byte: usize) -> Point {
+        let byte = self.floor_char(byte);
         let row = self.line_of_byte(byte);
         Point { row, col: byte - self.byte_of_line(row) }
     }
 
+    /// O byte de `p`; uma coluna no meio de um carácter desce ao início dele.
     pub fn byte_of_point(&self, p: Point) -> usize {
         let start = self.byte_of_line(p.row.min(self.line_count() - 1));
-        (start + p.col).min(self.line_end(self.line_of_byte(start)))
+        let b = start.saturating_add(p.col).min(self.line_end(self.line_of_byte(start)));
+        self.floor_char(b)
     }
 
     pub fn utf16_of_byte(&self, byte: usize) -> usize {
-        self.rope.utf16_code_unit_of_byte(byte)
+        self.rope.utf16_code_unit_of_byte(self.floor_char(byte))
     }
 
+    /// O byte da unidade UTF-16 `unit` (fora do texto = o fim; no meio de um par substituto = o
+    /// início do carácter).
     pub fn byte_of_utf16(&self, unit: usize) -> usize {
-        self.rope.byte_of_utf16_code_unit(unit)
+        let unit = unit.min(self.rope.utf16_len());
+        self.floor_char(self.rope.byte_of_utf16_code_unit(unit))
     }
 
     /// Byte do grafema anterior (para Backspace e seta esquerda).
@@ -149,6 +189,7 @@ impl Text {
         let start = self.byte_of_line(line);
         let s = self.line_string(line);
         let mut w = 0;
+        let tab = tab.max(1);
         for (i, g) in s.grapheme_indices(true) {
             let gw = if g == "\t" { tab - w % tab } else { 1 };
             if w + gw > col {
@@ -161,6 +202,7 @@ impl Text {
 }
 
 pub fn display_width(s: &str, tab: usize) -> usize {
+    let tab = tab.max(1);
     s.graphemes(true).fold(0, |w, g| if g == "\t" { w + tab - w % tab } else { w + 1 })
 }
 

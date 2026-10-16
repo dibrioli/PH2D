@@ -5,6 +5,7 @@ mod cronometro;
 mod dobras;
 mod erros;
 mod incremental;
+mod nao_ascii;
 mod indentacao;
 mod pares;
 mod queries;

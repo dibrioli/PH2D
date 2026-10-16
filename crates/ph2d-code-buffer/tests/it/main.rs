@@ -2,6 +2,7 @@
 
 mod agrupamento;
 mod busca;
+mod fronteiras;
 mod linhas;
 mod multicursor;
 mod tracos;

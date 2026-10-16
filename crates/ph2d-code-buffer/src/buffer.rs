@@ -85,9 +85,15 @@ impl Buffer {
         self.insert_each(|_| s.to_string(), kind)
     }
 
-    /// Como `insert`, mas com um texto por cursor (Enter com a indentação de cada linha).
+    /// Como `insert`, mas com um texto por cursor (Enter com a indentação de cada linha). O texto
+    /// de cada cursor passa pela mesma lei de fins de linha (colar `a\rb` num cursor de cada vez).
     pub fn insert_each(&mut self, mut f: impl FnMut(&Range) -> String, kind: EditKind) -> Edits {
-        let changes = self.selection.ranges().iter().map(|r| Change { range: r.span(), insert: f(r) }).collect();
+        let changes = self
+            .selection
+            .ranges()
+            .iter()
+            .map(|r| Change { range: r.span(), insert: normalize_newlines(&f(r)).into_owned() })
+            .collect();
         match ChangeSet::new(changes) {
             Some(cs) => {
                 let after = self.collapsed_after(&cs);

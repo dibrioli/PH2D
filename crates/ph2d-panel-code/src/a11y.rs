@@ -12,13 +12,34 @@ use unicode_segmentation::UnicodeSegmentation;
 /// O tecto de caracteres de um `TextRun` (o resto da linha não entra no nó).
 pub const RUN_CHARS: usize = 255;
 
-/// O texto do nó (até [`RUN_CHARS`] grafemas) e o comprimento em bytes de cada um.
+/// As unidades de um `TextRun`: os grafemas, e um grafema com mais de 255 bytes (o `u8` do
+/// AccessKit) partido por fronteira de carácter em pedaços que cabem. O texto e a posição do cursor
+/// contam ESTAS unidades, por isso a soma dos comprimentos é sempre o comprimento do texto.
+fn units(s: &str) -> impl Iterator<Item = &str> {
+    s.graphemes(true).flat_map(|g| {
+        let mut rest = g;
+        std::iter::from_fn(move || {
+            if rest.is_empty() {
+                return None;
+            }
+            let mut cut = rest.len().min(usize::from(u8::MAX));
+            while !rest.is_char_boundary(cut) {
+                cut -= 1;
+            }
+            let (head, tail) = rest.split_at(cut);
+            rest = tail;
+            Some(head)
+        })
+    })
+}
+
+/// O texto do nó (até [`RUN_CHARS`] unidades) e o comprimento em bytes de cada uma.
 pub(crate) fn clipped(line: &str) -> (String, Vec<u8>) {
     let mut value = String::new();
     let mut lens = Vec::new();
-    for g in line.graphemes(true).take(RUN_CHARS) {
-        value.push_str(g);
-        lens.push(u8::try_from(g.len()).unwrap_or(u8::MAX));
+    for u in units(line).take(RUN_CHARS) {
+        value.push_str(u);
+        lens.push(u8::try_from(u.len()).unwrap_or(u8::MAX));
     }
     (value, lens)
 }
@@ -32,10 +53,10 @@ fn position(buffer: &Buffer, lines: &[usize], base: NodeId, byte: usize) -> Opti
         (first, 0)
     } else if line > last || !lines.contains(&line) {
         let l = if line > last { last } else { *lines.iter().rev().find(|&&l| l < line).unwrap_or(&first) };
-        (l, t.line_string(l).graphemes(true).take(RUN_CHARS).count())
+        (l, units(&t.line_string(l)).take(RUN_CHARS).count())
     } else {
         let start = t.byte_of_line(line);
-        (line, t.slice(start..byte).graphemes(true).count().min(RUN_CHARS))
+        (line, units(&t.slice(start..byte)).take(RUN_CHARS).count())
     };
     Some(TextPosition { node: CodeView::a11y_run_id(base, line).into(), character_index: index })
 }

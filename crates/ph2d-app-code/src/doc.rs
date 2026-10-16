@@ -214,7 +214,7 @@ impl CodeDoc {
     fn bracket(&self) -> Option<(usize, usize)> {
         let t = self.buffer.text();
         let h = self.buffer.selection().primary().head;
-        [Some(h), h.checked_sub(1)]
+        [Some(h), (h > 0).then(|| t.prev_grapheme(h))]
             .into_iter()
             .flatten()
             .find_map(|b| self.syntax.matching_bracket(t, b).map(|m| (b, m)))

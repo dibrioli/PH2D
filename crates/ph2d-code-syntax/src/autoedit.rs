@@ -105,8 +105,10 @@ fn context_at(t: &Text, syn: &Syntax, byte: usize) -> Ctx {
         let (s, e) = (n.start_byte(), n.end_byte());
         match n.kind() {
             "comment" => {
-                let head = t.slice(s..(s + 4).min(e));
-                let block = head.starts_with("--[[") || head.starts_with("--[=");
+                // Bytes, nunca `s + 4` cortado: o 4.º byte de `-- é` cai dentro do `é`.
+                let block = ["--[[", "--[="]
+                    .iter()
+                    .any(|p| s + p.len() <= e && t.starts_with_at(s, p));
                 if s < byte && (byte < e || !block) {
                     return Ctx::Comment;
                 }

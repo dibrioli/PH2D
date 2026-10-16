@@ -4,7 +4,7 @@
 //! A cápsula levava o raio, a rotação, a pressão e o `arc_len` do dab da FRENTE a todos os sub-dabs.
 
 use super::super::media::PaintMedia;
-use super::capsula::{H, W, acesa, dif_cor, relevo, verde_laranja};
+use super::capsula::{H, W, acesa, relevo, verde_laranja};
 use super::*;
 use ph2d_painter_brush::TextureKind;
 
@@ -25,13 +25,6 @@ pub(super) struct Caso {
     pub(super) curva: bool,
     pub(super) follow: Follow,
     pub(super) pressao: bool,
-}
-
-/// O traço de 40 px do caso, a Spacing `sp`, e a tela que o dono vê (acesa no Impasto).
-pub(super) fn traco_caso(c: Caso, sp: f32, cont: bool) -> Vec<u8> {
-    let t = traco_tool(c, sp, cont, |_| {});
-    let cru = t.canvas_rgba.to_vec();
-    if c.impasto { acesa(&t, &cru) } else { cru }
 }
 
 /// A pressão do caso ao longo do traço (`f` em `[0, 1]`, o evento `k`).
@@ -123,31 +116,90 @@ pub(super) fn casos() -> impl Iterator<Item = Caso> {
     })
 }
 
-/// `(Δ com a caixa, Δ sem ela)` contra o traço denso, no miolo de raio 20.
-pub(super) fn mede(c: Caso) -> (f32, f32) {
-    let alvo = traco_caso(c, 0.025, false);
-    (
-        dif_cor(&traco_caso(c, 0.25, true), &alvo, 20.0),
-        dif_cor(&traco_caso(c, 0.25, false), &alvo, 20.0),
-    )
+/// O miolo do traço: os texels que o ALVO pinta (tinta `255 − min(rgb)` acima de 8 na tela crua), longe
+/// das pontas. ⚠️ A faixa recta em volta do eixo (`capsula::miolo`) mede só um pedaço de uma curva.
+fn miolo_do_alvo(cru: &[u8], r: f32) -> Vec<usize> {
+    let (x0, x1) = (
+        (X0 + 2.0 * r + 10.0) as usize,
+        (X1 - 2.0 * r - 10.0) as usize,
+    );
+    (0..(W * H) as usize)
+        .filter(|&i| {
+            let x = i % W as usize;
+            let p = &cru[i * 4..i * 4 + 3];
+            x >= x0 && x < x1 && 255 - p[0].min(p[1]).min(p[2]) > 8
+        })
+        .collect()
 }
 
-/// A barra, pela medida (15/10, depois da cura): o pior caso é o Impasto recto com pressão em `|seno|`,
-/// 0,0221 — o traço denso muda de DENSIDADE com o raio e a pressão tem quinas entre dois dabs (em rampa
-/// linear o mesmo caso mede 0,0106). Antes da cura: Impasto com pressão 0,099 (sem a caixa 0,147); Flow
-/// 0,131 (sem 0,000) e 0,028 no Digital; Rake em curva 0,021.
-const BARRA: f32 = 0.025;
+/// Média `|ΔRGB| / 255` nos texels `m`.
+fn dif(a: &[u8], b: &[u8], m: &[usize]) -> f32 {
+    let s: f32 = m
+        .iter()
+        .map(|&i| {
+            (0..3)
+                .map(|k| (f32::from(a[i * 4 + k]) - f32::from(b[i * 4 + k])).abs())
+                .sum::<f32>()
+                / 3.0
+        })
+        .sum();
+    s / m.len().max(1) as f32 / 255.0
+}
 
-/// ⭐ A régua por caso: o Continuous fica a [`BARRA`] do denso e a menos de METADE do traço sem a caixa
-/// (o portão discrimina; onde o traço sem ela já é o denso — o Flow recto no Impasto — basta a barra).
+/// A tela que o dono vê: acesa no Impasto.
+fn mostrada(t: &PainterTool, impasto: bool) -> Vec<u8> {
+    let cru = t.canvas_rgba.to_vec();
+    if impasto { acesa(t, &cru) } else { cru }
+}
+
+/// Contra o traço denso: o Continuous (`com`), o traço sem a caixa (`sem`) e a lei de antes do prompt 40
+/// (`velha`: a cápsula só desloca o centro, [`ph2d_painter_brush::capsula::com_so_o_centro`]).
+#[derive(Clone, Copy, Debug)]
+pub(super) struct Medida {
+    pub(super) com: f32,
+    pub(super) sem: f32,
+    pub(super) velha: f32,
+}
+
+pub(super) fn mede_com(c: Caso, ajusta: fn(&mut PainterTool)) -> Medida {
+    let alvo = traco_tool(c, 0.025, false, ajusta);
+    let m = miolo_do_alvo(&alvo.canvas_rgba, 20.0);
+    let alvo = mostrada(&alvo, c.impasto);
+    let d = |t: PainterTool| dif(&mostrada(&t, c.impasto), &alvo, &m);
+    Medida {
+        com: d(traco_tool(c, 0.25, true, ajusta)),
+        sem: d(traco_tool(c, 0.25, false, ajusta)),
+        velha: d(ph2d_painter_brush::capsula::com_so_o_centro(|| {
+            traco_tool(c, 0.25, true, ajusta)
+        })),
+    }
+}
+
+pub(super) fn mede(c: Caso) -> Medida {
+    mede_com(c, |_| {})
+}
+
+/// A barra, pela medida (15/10, depois da cura, régua do traço inteiro): o pior caso é o Impasto em curva
+/// com pressão em `|seno|`, 0,0287 — o traço denso muda de DENSIDADE com o raio e a pressão tem quinas entre
+/// dois dabs (em rampa linear, o Impasto recto mede metade). A lei velha nos mesmos casos: Impasto com
+/// pressão 0,079–0,090, Flow no Impasto 0,101–0,103 (sem a caixa 0,015–0,043: a caixa PIORAVA), Flow no
+/// Digital 0,025–0,040, Rake em curva no Impasto 0,029.
+const BARRA: f32 = 0.032;
+
+/// ⭐ A régua por caso: o Continuous fica a [`BARRA`] do denso e a menos de METADE do traço sem a caixa e do
+/// traço pela lei velha, onde esses passam da barra (o portão discrimina as duas coisas: a caixa age, e a
+/// interpolação age).
 #[test]
 fn o_sub_dab_da_capsula_e_o_dab_interpolado() {
     let mut falhas = Vec::new();
     for c in casos() {
-        let (com, sem) = mede(c);
-        println!("{c:?}: com {com:.4} · sem {sem:.4}");
-        if com > BARRA || (sem > BARRA && com > 0.5 * sem) {
-            falhas.push(format!("{c:?}: com {com:.4} · sem {sem:.4}"));
+        let Medida { com, sem, velha } = mede(c);
+        println!("{c:?}: com {com:.4} · sem {sem:.4} · velha {velha:.4}");
+        let longe = |x: f32| x > BARRA && com > 0.5 * x;
+        if com > BARRA || longe(sem) || longe(velha) {
+            falhas.push(format!(
+                "{c:?}: com {com:.4} · sem {sem:.4} · velha {velha:.4}"
+            ));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
@@ -213,7 +265,8 @@ fn no_modo(
 /// ⛔ **A caixa esmaecida é a caixa que não muda nada** (prompt 40 #5/#6): o Continuous só o lêem as rotas
 /// do carimbo (Paint, a borracha, a Máscara) num método que ESPAÇA; nos métodos sem Spacing (Dots, Airbrush
 /// — a caixa nem aparece lá, e agia) e nos modos de kernel próprio (Smear, Blur, Clone, Inpaint, Liquify,
-/// Sculpt, Knife: 0 texels medidos) ela esmaece. Por modo e método: inerte ⇔ com = sem, AO BYTE.
+/// Sculpt, Knife: 0 texels medidos) ela esmaece. Por modo e método: inerte ⇔ com = sem, AO BYTE, e muda
+/// exactamente onde a lei a lê.
 #[test]
 fn a_caixa_continuous_esmaece_onde_nao_age() {
     use ph2d_painter_brush::StrokeMethod as M;
@@ -235,10 +288,65 @@ fn a_caixa_continuous_esmaece_onde_nao_age() {
         let (tb, rb, inerte) = no_modo(modo, metodo, true);
         let muda = ta != tb || ra.iter().zip(&rb).any(|(a, b)| a.to_bits() != b.to_bits());
         println!("{modo} {metodo:?}: muda {muda} · esmaecida {inerte}");
-        if muda == inerte {
+        // E QUEM a lê é a lei: só as rotas do carimbo, num método que espaça.
+        let le = metodo == M::Space && matches!(modo, "paint" | "eraser" | "mask");
+        if muda == inerte || muda != le {
             falhas.push(format!(
                 "{modo} {metodo:?}: muda {muda} · esmaecida {inerte}"
             ));
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// Os ramos da lei que o pincel do smoke não aperta: a ROTAÇÃO (uma ponta achatada com Rake numa curva, e
+/// com a Simetria, onde o estado de trás é espelhado com o dab) e a PRESSÃO NA OPACIDADE (o Strength pela
+/// caneta, desligado de fábrica, num pincel ralo que não satura). No Digital, contra o traço denso.
+pub(super) fn mede_ramos() -> Vec<(&'static str, Medida)> {
+    let curva = Caso {
+        impasto: false,
+        curva: true,
+        follow: Follow::Rake,
+        pressao: false,
+    };
+    let recta = Caso {
+        curva: false,
+        follow: Follow::Off,
+        pressao: true,
+        ..curva
+    };
+    let ramos: [(&str, Caso, fn(&mut PainterTool)); 3] = [
+        ("Rake, ponta achatada", curva, |t| {
+            t.paint.brush.dab_flatten = 0.8;
+        }),
+        ("Rake, ponta achatada, Simetria", curva, |t| {
+            t.paint.brush.dab_flatten = 0.8;
+            t.paint.brush.symmetry.enabled = true;
+        }),
+        ("pressão na opacidade", recta, |t| {
+            t.paint.brush.strength = 0.15;
+            t.paint.dynamics.size_pressure = false;
+            t.paint.dynamics.strength_pressure = true;
+        }),
+    ];
+    ramos
+        .into_iter()
+        .map(|(nome, c, f)| (nome, mede_com(c, f)))
+        .collect()
+}
+
+/// ⭐ Os ramos: a rotação interpolada fica a menos de 70 % da lei velha (medido 0,61 nos dois: 0,021 ×
+/// 0,034 e 0,020 × 0,033 com a Simetria) e a [`BARRA`] do denso; a opacidade só pela barra — a União de ~10
+/// sub-dabs quase não a vê ponta a ponta (0,0080 × 0,0083), e o portão dela é o do leitor
+/// (`capsula_tests::o_sub_dab_leva_o_estado_interpolado`).
+#[test]
+fn os_ramos_da_capsula_giram_e_apertam_com_o_dab() {
+    let mut falhas = Vec::new();
+    for (n, m) in mede_ramos() {
+        println!("{n}: {m:?}");
+        let gira = n.starts_with("Rake");
+        if m.com > BARRA || (gira && m.com > 0.7 * m.velha) {
+            falhas.push(format!("{n}: {m:?}"));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));

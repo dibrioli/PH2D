@@ -50,6 +50,8 @@ fn as_leis_da_junta() {
 #[test]
 fn o_produto_corre_a_uniao() {
     assert_eq!(lei(), Lei::Uniao);
+    assert!(!so_o_centro(), "a lei velha armada no produto");
+    assert!(com_so_o_centro(so_o_centro) && !so_o_centro());
     assert_eq!((sub_passo_px(10.0), sub_passo_px(40.0)), (1.0, 2.0));
     com_lei(Lei::Media, Some(0.1), || {
         assert_eq!((lei(), sub_passo_px(40.0)), (Lei::Media, 8.0));
@@ -282,5 +284,99 @@ fn o_passo_so_existe_com_a_caixa_e_um_metodo_de_caminho() {
         dabs(true, StrokeMethod::DragDot)
             .iter()
             .all(|d| d.step == [0.0, 0.0])
+    );
+}
+
+/// ⭐ **O sub-dab leva o ESTADO interpolado** (prompt 40): `sub(k)` é `lerp(frente, trás, k/n)` do raio, da
+/// cobertura, do rotor (nlerp) e do arco; `Dab::capsula` tira o estado do [`crate::Dab::ante`] em razões
+/// sobre o dab da frente; e o leitor da cobertura usa-o — um texel que só o raio de TRÁS alcança pinta, e a
+/// cobertura de trás escala a passagem. A lei velha ([`com_so_o_centro`]) devolve a cápsula neutra.
+#[test]
+fn o_sub_dab_leva_o_estado_interpolado() {
+    let e = Estado {
+        raio: 2.0,
+        cobertura: 0.5,
+        rotor: [0.0, 1.0],
+        arco: -12.0,
+    };
+    let cap = Capsula::new([10.0, 0.0], 1.0)
+        .expect("cápsula")
+        .com_estado(e);
+    let s0 = cap.sub(0);
+    assert_eq!(
+        (s0.escala, s0.cobertura, s0.rotor, s0.arco),
+        (1.0, 1.0, None, 0.0)
+    );
+    let s5 = cap.sub(5);
+    assert_eq!(
+        (s5.off, s5.escala, s5.cobertura, s5.arco),
+        ([-5.0, 0.0], 1.5, 0.75, -6.0)
+    );
+    let r = s5.rotor.expect("gira");
+    let h = std::f32::consts::FRAC_1_SQRT_2;
+    assert!((r[0] - h).abs() < 1e-6 && (r[1] - h).abs() < 1e-6, "{r:?}");
+    assert_eq!(
+        com_so_o_centro(|| Capsula::new([10.0, 0.0], 1.0).map(|c| c.com_estado(e).sub(5).escala)),
+        Some(1.0)
+    );
+
+    // O estado sai do `ante` em razões sobre a frente.
+    let spec = crate::BrushSpec::default();
+    let d = crate::Dab {
+        center: [50.0, 50.0],
+        radius_px: 10.0,
+        coverage: 0.8,
+        color: [0.0; 3],
+        color_shift: [0.0; 3],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+        arc_len: 100.0,
+        stroke_radius_px: 10.0,
+        step: [10.0, 0.0],
+        ante: Some(crate::Ante {
+            radius_px: 20.0,
+            coverage: 0.4,
+            dir: [1.0, 0.0],
+            rotation: [1.0, 0.0],
+            arc_len: 90.0,
+        }),
+    };
+    let ec = d.capsula(&spec).expect("cápsula").estado();
+    assert_eq!(
+        (ec.raio, ec.cobertura, ec.rotor, ec.arco),
+        (2.0, 0.5, [1.0, 0.0], -10.0)
+    );
+
+    // O leitor da cobertura: atrás do centro anterior (x = 40), a 13 px dele — fora do raio 10, dentro
+    // do 20 do dab de trás; e a cobertura de trás escala a passagem junto dele (opacidade 0,1: o regime
+    // linear da União, onde ela não satura).
+    let fp = spec.dab_footprint([1.0, 0.0]);
+    let x = |c: Capsula, px: i64| {
+        crate::dab::silhouette_capsula(
+            &spec,
+            None,
+            fp,
+            c,
+            Lei::Uniao,
+            0.1,
+            px,
+            50,
+            [50.0, 50.0],
+            10.0,
+        )
+    };
+    let neutra = Capsula::new([10.0, 0.0], sub_passo_px(10.0)).expect("cápsula");
+    let larga = neutra.com_estado(Estado {
+        cobertura: 1.0,
+        ..ec
+    });
+    assert_eq!(x(neutra, 27), 0.0, "o raio da frente não alcança");
+    assert!(x(larga, 27) > 0.0, "o raio de trás alcança");
+    let rala = neutra.com_estado(Estado { raio: 1.0, ..ec });
+    assert!(
+        x(rala, 41) < 0.8 * x(neutra, 41),
+        "{} × {}",
+        x(rala, 41),
+        x(neutra, 41)
     );
 }

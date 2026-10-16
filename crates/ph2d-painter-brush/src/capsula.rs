@@ -61,11 +61,17 @@ impl Capsula {
             return None;
         }
         let n = (m / sub_px).ceil().min(MAX_SUB as f32) as u32;
+        // A lei velha (só o centro) não andava o arco; o produto anda-o pela corda.
+        let arco = if so_o_centro() {
+            0.0
+        } else {
+            -passo[0].hypot(passo[1])
+        };
         let estado = Estado {
             raio: 1.0,
             cobertura: 1.0,
             rotor: [1.0, 0.0],
-            arco: -passo[0].hypot(passo[1]),
+            arco,
         };
         (n >= 2).then_some(Self { passo, n, estado })
     }
@@ -74,6 +80,9 @@ impl Capsula {
     /// identidade é a identidade (a mesma rotação dos dois lados, ao bit).
     #[must_use]
     pub fn com_estado(self, mut e: Estado) -> Self {
+        if so_o_centro() {
+            return self;
+        }
         let l = e.rotor[0].hypot(e.rotor[1]);
         e.rotor = if !l.is_finite() || l < 1e-6 || (e.rotor[1].abs() <= 1e-6 && e.rotor[0] > 0.0) {
             [1.0, 0.0]
@@ -179,6 +188,23 @@ pub enum Lei {
 thread_local! {
     static LEI: Cell<Lei> = const { Cell::new(Lei::Uniao) };
     static SUB_PX: Cell<f32> = const { Cell::new(0.0) };
+    static SO_O_CENTRO: Cell<bool> = const { Cell::new(false) };
+}
+
+/// A lei de antes do prompt 40 está armada nesta thread: a cápsula só desloca o centro (o raio, a
+/// rotação, a pressão e o arco são os do dab da frente). Chave de MEDIÇÃO — o CONTROLO dos portões
+/// (`capsula_estado.rs`); o produto nunca a arma (há portão a afirmá-lo).
+#[must_use]
+pub fn so_o_centro() -> bool {
+    SO_O_CENTRO.with(Cell::get)
+}
+
+/// Corre `f` com a lei de antes do prompt 40 ([`so_o_centro`]); repõe ao sair.
+pub fn com_so_o_centro<R>(f: impl FnOnce() -> R) -> R {
+    let antes = SO_O_CENTRO.with(|c| c.replace(true));
+    let r = f();
+    SO_O_CENTRO.with(|c| c.set(antes));
+    r
 }
 
 /// A lei em vigor nesta thread (lida UMA vez por dab).

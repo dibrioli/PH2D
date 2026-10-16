@@ -97,7 +97,9 @@ Recontar contra o `main` do dia — o número é o do código.
   tela diz o tamanho, estado igual não se reavalia, «Recomeçar» a gravar grava recusa (`7d9c35a474`); vermelhos do
   fecho: balão pela porta do tema e do ritmo, área marcada dormente (`8f5d6408ca`).
 
-## §7 — Smoke do dono (PENDENTE) e fotos
+## §7 — Smoke do dono (OK, 16/10) e fotos
+
+> Dono, 16/10: *«smoke ok»* — cenas `=3` e `=4` aprovadas.
 
 Binário `--profile smoke` na worktree, 2.ª compilação:
 
@@ -128,7 +130,7 @@ binário FINAL (`991dcd4649`, 1930×1040, smoke) mostra a faixa translúcida do 
 4. Do dono, sem tratar: depois do Parar, pintar SEM gravar na mesma imagem fica escondido enquanto o clipe toca.
 5. O estado das ferramentas do trilho (fonte do Clone, Máscara/Selecção) não viaja no estado inicial (o censo só
    explora o painel de pincel).
-6. Smoke do dono de `=3` e `=4` por fazer. A dica do Motion ainda descodifica a trilha por quadro (plano §6.4).
+6. ~~Smoke do dono de `=3` e `=4`~~ — OK 16/10. A dica do Motion ainda descodifica a trilha por quadro (plano §6.4).
 
 ## Retomar
 

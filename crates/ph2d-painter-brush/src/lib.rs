@@ -192,7 +192,7 @@ pub use stamp_color::{
 pub use stamp_ramped::blit_stamp_ramped;
 pub use stroke::stabilize::lazy_mouse_step;
 pub use stroke::{
-    Dab, POLY_MAX_SIDES, POLY_MIN_SIDES, Stroke, StrokePoint, ellipse_perimeter,
+    Ante, Dab, POLY_MAX_SIDES, POLY_MIN_SIDES, Stroke, StrokePoint, ellipse_perimeter,
     flatten_catmull_rom, polygon_perimeter,
 };
 pub use stroke_method::{JitterUnit, StrokeMethod};

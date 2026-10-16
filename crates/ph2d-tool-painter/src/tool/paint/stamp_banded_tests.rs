@@ -45,6 +45,7 @@ pub(super) fn arc(n: usize, radius: f32) -> Vec<Dab> {
                 arc_len: 0.0,
                 stroke_radius_px: 12.0,
                 step: [0.0, 0.0],
+                ante: None,
             }
         })
         .collect()

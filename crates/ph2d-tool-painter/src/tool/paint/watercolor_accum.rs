@@ -495,7 +495,8 @@ impl PainterTool {
             let inv_r = 1.0 / r;
             // The dab-CAPSULE (Continuous): its sub-dabs back to the previous centre, oldest first — the
             // dense stroke's own passes over each pixel (the wash is a MAX union, the colour source-over).
-            let capsula = d.capsula();
+            // Only the centre moves here: the wash is a frozen medium (lista 26 C3), not the A11 law.
+            let capsula = d.capsula(&self.paint.brush);
             for k in (0..capsula.map_or(1, |c| c.n())).rev() {
                 let o = capsula.map_or([0.0, 0.0], |c| c.off(k));
                 let (cx, cy) = (d.center[0] + o[0], d.center[1] + o[1]);

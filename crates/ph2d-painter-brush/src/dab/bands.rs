@@ -363,12 +363,14 @@ pub(super) fn stamp_band(
                     py,
                     ctx.center,
                     ctx.radius,
-                    |o, x| {
+                    |s, r, x| {
                         let Some(cc) = cor_cap.as_mut() else { return };
                         cc.mais(x, || {
-                            let centro = [ctx.center[0] + o[0], ctx.center[1] + o[1]];
+                            let centro = [ctx.center[0] + s.off[0], ctx.center[1] + s.off[1]];
                             let forma = ctx.shape_cor.map(|sh| {
-                                crate::dab::shape_value_at(ctx.spec, sh, px, py, centro, ctx.radius)
+                                let base = sh.basis.sub(s.rotor, s.arco);
+                                let sh = crate::dab::ShapeInput { basis: &base, ..sh };
+                                crate::dab::shape_value_at(ctx.spec, sh, px, py, centro, r)
                             });
                             crate::ramp_alpha::ramp_texel(
                                 ctx.ramp.as_ref(),

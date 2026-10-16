@@ -86,9 +86,10 @@ pub fn shape_value_at(
 }
 
 /// ⭐ **The dab-CAPSULE's silhouette** at one canvas pixel ([`crate::capsula`], Continuous Spacing): the
-/// [`silhouette_at`] of each sub-dab — the falloff, the footprint and the Shape all shifted to the
-/// sub-dab's centre `center + off_k` — through the film cut, composed by `lei` with the per-pass opacity
-/// `c`. A procedural Shape under a zero falloff is skipped (it multiplies); an Image tip never is.
+/// [`silhouette_at`] of each sub-dab — the dab INTERPOLATED back to the previous one ([`crate::capsula::
+/// Capsula::sub`]: centre, radius, footprint rotation, arc length; its coverage scales the pass) —
+/// through the film cut, composed by `lei` with the per-pass opacity `c`. A procedural Shape under a
+/// zero falloff is skipped (it multiplies); an Image tip never is.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn silhouette_capsula(
@@ -114,13 +115,13 @@ pub fn silhouette_capsula(
         py,
         center,
         radius,
-        |_, _| {},
+        |_, _, _| {},
     )
 }
 
-/// [`silhouette_capsula`] that also hands `cada(off_k, x_k)` each sub-dab, front (`k = 0`) to back, with
-/// the `x_k` the [`crate::capsula::Junta`] composes — the capsule's COLOUR folds over the same sub-dabs
-/// in the same order ([`cor_capsula`], lista 26 A9).
+/// [`silhouette_capsula`] that also hands `cada(sub_k, raio_k, x_k)` each sub-dab, front (`k = 0`) to
+/// back, with the `x_k` the [`crate::capsula::Junta`] composes — the capsule's COLOUR folds over the same
+/// sub-dabs in the same order ([`cor_capsula`], lista 26 A9).
 #[allow(clippy::too_many_arguments)]
 #[inline]
 pub(crate) fn silhouette_capsula_com(
@@ -134,25 +135,35 @@ pub(crate) fn silhouette_capsula_com(
     py: i64,
     center: [f32; 2],
     radius: f32,
-    mut cada: impl FnMut([f32; 2], f32),
+    mut cada: impl FnMut(&crate::capsula::Sub, f32, f32),
 ) -> f32 {
-    let inv = 1.0 / radius;
     let (dx, dy) = (px as f32 + 0.5 - center[0], py as f32 + 0.5 - center[1]);
     let corpo = spec.deposits_height();
     let imagem = spec.shape.kind == crate::texture::TextureKind::Image;
+    let flow = spec.shape.flow;
     let mut j = crate::capsula::Junta::new(lei, c);
     for k in 0..cap.n() {
-        let o = cap.off(k);
-        let queda = spec.falloff_weight(footprint.falloff_t((dx - o[0]) * inv, (dy - o[1]) * inv));
+        let s = cap.sub(k);
+        let (o, r) = (s.off, radius * s.escala);
+        let inv = 1.0 / r;
+        let fp = s.rotor.map_or(footprint, |q| footprint.rotated_by(q));
+        let queda = spec.falloff_weight(fp.falloff_t((dx - o[0]) * inv, (dy - o[1]) * inv));
         let (x, forma) = match shape {
             Some(sh) if queda > 0.0 || imagem => {
+                let base;
+                let basis = if s.rotor.is_some() || (flow && s.arco != 0.0) {
+                    base = sh.basis.sub(s.rotor, s.arco);
+                    &base
+                } else {
+                    sh.basis
+                };
                 let raw = crate::texture::sample_shape_silhouette(
                     &spec.shape,
-                    sh.basis,
+                    basis,
                     px,
                     py,
                     [center[0] + o[0], center[1] + o[1]],
-                    radius,
+                    r,
                     sh.image,
                 );
                 let sv = crate::texture::remap_shape_value(raw, sh.ramp_lut);
@@ -161,8 +172,8 @@ pub(crate) fn silhouette_capsula_com(
             Some(_) => (0.0, 0.0),
             None => (queda, 1.0),
         };
-        let x = crate::height::film_coverage(corpo, x);
-        cada(o, x);
+        let x = crate::height::film_coverage(corpo, x) * s.cobertura;
+        cada(&s, r, x);
         j.mais(x, queda, forma);
     }
     j.fim()
@@ -492,8 +503,9 @@ fn stamp_dab_inner(
         &spec.shape,
         forma_extensao.as_ref().map(|s| s.basis),
     );
-    let (reach_x, reach_y) = (radius * ext_x + aa_pad, radius * ext_y + aa_pad);
-    // The capsule's box reaches back to its farthest sub-dab.
+    // The capsule's box reaches back to its farthest sub-dab, at its biggest radius.
+    let r_max = radius * capsula.map_or(1.0, crate::capsula::Capsula::escala_max);
+    let (reach_x, reach_y) = (r_max * ext_x + aa_pad, r_max * ext_y + aa_pad);
     let (lo, hi) = capsula.map_or(([0.0; 2], [0.0; 2]), crate::capsula::Capsula::caixa);
     let x0 = (cx + lo[0] - reach_x).floor().max(0.0) as i64;
     let y0 = (cy + lo[1] - reach_y).floor().max(0.0) as i64;

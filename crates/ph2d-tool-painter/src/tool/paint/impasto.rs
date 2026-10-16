@@ -380,7 +380,7 @@ impl PainterTool {
                     }),
                 grain: grain_basis.as_ref(),
                 grain_image: grain_image.as_ref(),
-                capsula: d.capsula(),
+                capsula: d.capsula(&spec),
             };
             // UN-paint this copy's standing wave lobe FIRST — before the dab's own deposit
             // touches `stroke_paint`, so the `(1 − paint)` weights recompute to the exact numbers

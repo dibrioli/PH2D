@@ -171,6 +171,14 @@ pub const IMPASTO_REFERENCE_RADIUS_PX: f32 = 10.0;
 #[inline]
 #[must_use]
 pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
+    derive_height_at(spec, spec.clamped_radius(), paint, grain)
+}
+
+/// [`derive_height`] for a dab of radius `raio` (already clamped) — a capsule's sub-dab
+/// ([`crate::capsula::Sub::escala`]) that won the texel lays the height of ITS radius.
+#[inline]
+#[must_use]
+pub fn derive_height_at(spec: &crate::BrushSpec, raio: f32, paint: f32, grain: f32) -> f32 {
     let depth = spec.effective_impasto_depth();
     let film = spec.effective_film_depth();
     let m = paint.clamp(0.0, 1.0);
@@ -191,7 +199,7 @@ pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
     // Uses the brush's base radius (`clamped_radius`) — exact for a constant-size stroke, which is the case
     // Enio is comparing; a pressure-tapered stroke scales uniformly by the base rather than per-dab, which is
     // a refinement noted for later, not a visible error.
-    let size_scale = spec.clamped_radius() / IMPASTO_REFERENCE_RADIUS_PX;
+    let size_scale = raio / IMPASTO_REFERENCE_RADIUS_PX;
     // The **Body** dial: at 1 the full body curve (plateau + wall), at 0 the paint's own profile
     // (falloff / Shape / Shape-Tone ramp sculpt the relief — a soft brush lays a perfectly rounded
     // ridge), in between the mesa family. Monotone in `m` at every setting, which is what lets the
@@ -389,8 +397,8 @@ pub fn accumulate_dab_height(
         .filter(|_| film_aa.is_none())
         .map(walk::SubPasso::new);
     let atras = capsula.map_or(sweep_len(dab), |c| sweep_len(dab).max(c.comprimento()));
-    let reach =
-        radius * tip_reach(spec, dab) + atras + crate::height_film::FilmAa::pad_px(&film_aa);
+    let r_max = radius * capsula.map_or(1.0, walk::SubPasso::escala_max);
+    let reach = r_max * tip_reach(spec, dab) + atras + crate::height_film::FilmAa::pad_px(&film_aa);
     let x0 = (cx - reach).floor().max(0.0) as i64;
     let y0 = (cy - reach).floor().max(0.0) as i64;
     let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);

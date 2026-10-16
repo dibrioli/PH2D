@@ -16,11 +16,39 @@ use std::cell::Cell;
 /// ([`ph2d_wet_paint::brush::BRISTLE_SIZE`] = 128) — passos maiores só repetem posições já lidas.
 pub const MAX_SUB: u32 = 128;
 
-/// O dab-cápsula: o passo e o número de sub-dabs.
+/// O dab-cápsula: o passo, o número de sub-dabs e o ESTADO do dab de trás relativo ao da frente.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Capsula {
     passo: [f32; 2],
     n: u32,
+    estado: Estado,
+}
+
+/// O dab de trás visto do da frente (prompt 40): o sub-dab `k` leva `lerp(frente, trás, k/n)` de cada um.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Estado {
+    /// O raio de trás sobre o da frente.
+    pub raio: f32,
+    /// A cobertura (a pressão) de trás sobre a da frente.
+    pub cobertura: f32,
+    /// O rotor da pegada de trás relativo ao da frente (`[1, 0]` = a mesma rotação).
+    pub rotor: [f32; 2],
+    /// O `arc_len` de trás menos o da frente, px (o Flow).
+    pub arco: f32,
+}
+
+/// O sub-dab `k`: o desvio do centro e o seu estado relativo ao da frente.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Sub {
+    pub off: [f32; 2],
+    /// O raio do sub-dab sobre o do dab.
+    pub escala: f32,
+    /// A cobertura do sub-dab sobre a do dab.
+    pub cobertura: f32,
+    /// A rotação a compor na pegada do dab; `None` = a mesma.
+    pub rotor: Option<[f32; 2]>,
+    /// O `arc_len` do sub-dab menos o do dab.
+    pub arco: f32,
 }
 
 impl Capsula {
@@ -33,7 +61,67 @@ impl Capsula {
             return None;
         }
         let n = (m / sub_px).ceil().min(MAX_SUB as f32) as u32;
-        (n >= 2).then_some(Self { passo, n })
+        let estado = Estado {
+            raio: 1.0,
+            cobertura: 1.0,
+            rotor: [1.0, 0.0],
+            arco: -passo[0].hypot(passo[1]),
+        };
+        (n >= 2).then_some(Self { passo, n, estado })
+    }
+
+    /// A mesma cápsula a interpolar até o estado `e` do dab de trás. Um rotor a menos de `1e-6` da
+    /// identidade é a identidade (a mesma rotação dos dois lados, ao bit).
+    #[must_use]
+    pub fn com_estado(self, mut e: Estado) -> Self {
+        let l = e.rotor[0].hypot(e.rotor[1]);
+        e.rotor = if !l.is_finite() || l < 1e-6 || (e.rotor[1].abs() <= 1e-6 && e.rotor[0] > 0.0) {
+            [1.0, 0.0]
+        } else {
+            [e.rotor[0] / l, e.rotor[1] / l]
+        };
+        Self { estado: e, ..self }
+    }
+
+    #[must_use]
+    pub fn estado(self) -> Estado {
+        self.estado
+    }
+
+    /// Se algum sub-dab gira a pegada.
+    #[must_use]
+    pub fn gira(self) -> bool {
+        self.estado.rotor != [1.0, 0.0]
+    }
+
+    /// O maior raio de um sub-dab sobre o do dab (`≥ 1`) — quanto a caixa cresce.
+    #[must_use]
+    pub fn escala_max(self) -> f32 {
+        self.estado.raio.max(1.0)
+    }
+
+    /// O sub-dab `k`: `t = k/n` do caminho de volta, cada campo interpolado em `t` (o rotor por nlerp,
+    /// que só se afasta do ângulo linear em giros grandes por passo; meia volta fica no da frente).
+    #[inline]
+    #[must_use]
+    pub fn sub(self, k: u32) -> Sub {
+        let t = k as f32 / self.n as f32;
+        let e = self.estado;
+        let lerp = |b: f32| 1.0 + (b - 1.0) * t;
+        let rotor = (e.rotor != [1.0, 0.0] && k > 0)
+            .then(|| {
+                let v = [1.0 + (e.rotor[0] - 1.0) * t, e.rotor[1] * t];
+                let l = v[0].hypot(v[1]);
+                (l > 1e-6).then(|| [v[0] / l, v[1] / l])
+            })
+            .flatten();
+        Sub {
+            off: self.off(k),
+            escala: lerp(e.raio),
+            cobertura: lerp(e.cobertura),
+            rotor,
+            arco: e.arco * t,
+        }
     }
 
     #[must_use]
@@ -174,19 +262,39 @@ impl Junta {
     }
 }
 
-/// The capsule of `d` as plain dabs, oldest first: the sub-dabs at `d.center + off_k` (`step` zero,
-/// the arc length drawn back with them), or `d` itself with no capsule. For a medium whose deposit is
-/// not a composition the stamp can fold — the Wet Paint gates each dab against the paper.
+/// The capsule of `d` as plain dabs, oldest first: each sub-dab the dab INTERPOLATED back to its
+/// [`crate::Dab::ante`] (centre, radius, coverage, heading/rotation, arc length; `step` zero), or `d`
+/// itself with no capsule. For a medium whose deposit is not a composition the stamp can fold — the Wet
+/// Paint gates each dab against the paper.
 pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> impl Iterator<Item = crate::Dab> + '_ {
     let cap = Capsula::new(d.step, sub_px);
     (0..cap.map_or(1, Capsula::n)).rev().map(move |k| {
         let o = cap.map_or([0.0, 0.0], |c| c.off(k));
-        crate::Dab {
+        let mut s = crate::Dab {
             center: [d.center[0] + o[0], d.center[1] + o[1]],
             arc_len: d.arc_len - o[0].hypot(o[1]),
             step: [0.0, 0.0],
+            ante: None,
             ..*d
+        };
+        if let (Some(c), Some(a)) = (cap, d.ante) {
+            let t = k as f32 / c.n() as f32;
+            let lerp = |f: f32, b: f32| f + (b - f) * t;
+            let nlerp = |f: [f32; 2], b: [f32; 2]| {
+                let v = [lerp(f[0], b[0]), lerp(f[1], b[1])];
+                let l = v[0].hypot(v[1]);
+                if l > 1e-6 { [v[0] / l, v[1] / l] } else { f }
+            };
+            s.radius_px = lerp(d.radius_px, a.radius_px);
+            s.coverage = lerp(d.coverage, a.coverage);
+            s.arc_len = lerp(d.arc_len, a.arc_len);
+            s.rotation = nlerp(d.rotation, a.rotation);
+            // An unset heading stays unset (the rotor reads it as the identity).
+            if d.dir != [0.0, 0.0] && a.dir != [0.0, 0.0] {
+                s.dir = nlerp(d.dir, a.dir);
+            }
         }
+        s
     })
 }
 

@@ -311,6 +311,23 @@ impl ShapeFrame {
 }
 
 impl TexDabBasis {
+    /// The frame of a capsule's sub-dab ([`crate::capsula::Sub`]): the footprint turned by its `rotor`
+    /// and, on a stroke, the arc length moved by `arco` (the Flow phase stays the path's).
+    #[must_use]
+    pub fn sub(&self, rotor: Option<[f32; 2]>, arco: f32) -> Self {
+        let mut b = *self;
+        if let Some(r) = rotor {
+            b.footprint = b.footprint.rotated_by(r);
+        }
+        if let ShapeFrame::Stroke { arc_len, unit_px } = b.frame {
+            b.frame = ShapeFrame::Stroke {
+                arc_len: arc_len + arco,
+                unit_px,
+            };
+        }
+        b
+    }
+
     /// The identity frame (no rotation, no jitter) — used when there is no texture.
     #[must_use]
     pub fn identity() -> Self {

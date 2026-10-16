@@ -206,7 +206,7 @@ impl PainterTool {
                 rampa,
                 mask.as_deref_mut(),
                 rotor,
-                d.capsula(),
+                d.capsula(&spec),
             ) {
                 let rect = Region {
                     x: r.x,

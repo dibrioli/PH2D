@@ -37,6 +37,7 @@ fn tiling_wrapped_copies_share_the_dabs_random_frame() {
         arc_len: 0.0,
         stroke_radius_px: 12.0,
         step: [0.0, 0.0],
+        ante: None,
     };
     // Reference: the same dab, centred, no tiling → the disc's own random frame.
     let mut r = white_canvas(64, 12.0);

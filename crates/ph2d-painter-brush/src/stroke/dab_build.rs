@@ -41,6 +41,7 @@ impl Stroke {
             Some(f) if self.spec.lays_capsules() => [thrown[0] - f[0], thrown[1] - f[1]],
             _ => [0.0, 0.0],
         };
+        self.dab_ante = self.ultimo.filter(|_| self.dab_step != [0.0, 0.0]);
     }
 
     /// Constrói UMA marca na posição onde a tinta já caiu (pós-arremesso) — a metade de
@@ -94,6 +95,7 @@ impl Stroke {
             arc_len: arc,
             stroke_radius_px: self.spec.clamped_radius(),
             step: self.dab_step,
+            ante: self.dab_ante,
         };
         // The TAPER, applied here and ONLY here, to every dab this engine emits — the instant it is
         // emitted, at the position the pointer put it. ⚠️ Nothing is ever held back: a taper is a
@@ -106,6 +108,7 @@ impl Stroke {
         if w < 1.0 {
             crate::taper::scale_dab(&mut dab, &self.spec.taper, w);
         }
+        self.ultimo = Some(Ante::de(&dab));
         dab
     }
 
@@ -146,6 +149,7 @@ impl Stroke {
             arc_len: 0.0,
             stroke_radius_px: self.spec.clamped_radius(),
             step: [0.0, 0.0],
+            ante: None,
         }
     }
 }

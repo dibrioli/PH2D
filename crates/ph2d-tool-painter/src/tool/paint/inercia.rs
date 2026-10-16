@@ -345,10 +345,17 @@ impl PainterTool {
                 Dependente::TexturaSemForma,
                 !b.shape_silhouette_active(self.paint.shape_image.is_some()),
             ),
-            // A cápsula é uma lei da PONTA, em todo meio: não age num método sem caminho (Drag Dot,
-            // Anchored, Grid Stamp), num Spacing já tão fino quanto o sub-passo, nem — na água — num
-            // passo que não passa de uma célula do motor (`wetpaint/dab_route.rs`).
+            // A cápsula é uma lei da PONTA, em todo meio: não age num método sem Spacing (Dots,
+            // Airbrush) nem sem caminho (Drag Dot, Anchored, Grid Stamp), num Spacing já tão fino quanto
+            // o sub-passo, nem — na água — num passo que não passa de uma célula do motor
+            // (`wetpaint/dab_route.rs`). Só a lêem as rotas do carimbo (Paint, a borracha, a Máscara) e a
+            // água: Smear, Blur, Clone, Inpaint, Liquify, Sculpt e Knife têm kernel próprio (medido,
+            // `sonda_p40_modos`: 0 texels de diferença com a caixa).
             (Dependente::ContinuoSemPasso, {
+                let le = matches!(
+                    self.paint.paint_mode,
+                    super::PaintMode::Paint | super::PaintMode::Mask | super::PaintMode::WetPaint
+                );
                 // O raio do traço: na água o do MOTOR (a lei da largura, `dab_spec.rs`). ⛔ Não o
                 // `stroke_spec()`: ele pergunta ao painel e voltava aqui (estouro de pilha, medido).
                 let raio = match (agua, &self.paint.wetpaint.largura) {
@@ -360,7 +367,7 @@ impl PainterTool {
                     radius_px: raio,
                     ..*b
                 };
-                !s.lays_capsules()
+                !le || !s.lays_capsules()
                     || (agua && s.dab_spacing_px() <= f32::from(self.paint.wetpaint.grid_ratio))
             }),
             // A cor da textura só a pintam as rotas do carimbo (`stamp_route.rs`, `is_color_mode`): a água

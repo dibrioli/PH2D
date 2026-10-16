@@ -51,7 +51,9 @@ fn caminho(c: &Caso, k: usize) -> ([f32; 2], f32) {
     let f = k as f32 / c.eventos as f32;
     let x = XA + (XB - XA) * f;
     let y = HH as f32 / 2.0 + c.curva * (f * std::f32::consts::PI * 2.0).sin();
-    let p = c.pressao.map_or(1.0, |(a, b)| a + (b - a) * (f * std::f32::consts::PI * 3.0).sin().abs());
+    let p = c.pressao.map_or(1.0, |(a, b)| {
+        a + (b - a) * (f * std::f32::consts::PI * 3.0).sin().abs()
+    });
     ([x, y], p)
 }
 
@@ -125,7 +127,10 @@ fn corre(c: &Caso, sp: f32, cont: bool) -> (PainterTool, Vec<u8>, Vec<f32>) {
 
 /// O miolo: texels com relevo no ALVO, longe das pontas.
 fn miolo(h_alvo: &[f32], r: f32) -> Vec<usize> {
-    let (x0, x1) = ((XA + 2.0 * r + 10.0) as usize, (XB - 2.0 * r - 10.0) as usize);
+    let (x0, x1) = (
+        (XA + 2.0 * r + 10.0) as usize,
+        (XB - 2.0 * r - 10.0) as usize,
+    );
     (0..(WW * HH) as usize)
         .filter(|&i| {
             let x = i % WW as usize;
@@ -137,7 +142,12 @@ fn miolo(h_alvo: &[f32], r: f32) -> Vec<usize> {
 fn dif_rgb(a: &[u8], b: &[u8], m: &[usize]) -> f32 {
     let s: f32 = m
         .iter()
-        .map(|&i| (0..3).map(|k| (f32::from(a[i * 4 + k]) - f32::from(b[i * 4 + k])).abs()).sum::<f32>() / 3.0)
+        .map(|&i| {
+            (0..3)
+                .map(|k| (f32::from(a[i * 4 + k]) - f32::from(b[i * 4 + k])).abs())
+                .sum::<f32>()
+                / 3.0
+        })
         .sum();
     s / m.len().max(1) as f32 / 255.0
 }
@@ -165,34 +175,170 @@ fn auditoria_l1_impasto_continuous() {
     let out = std::env::var("PH2D_SONDA_OUT").ok();
     let casos = [
         BASE,
-        Caso { nome: "120 px", tam: 120.0, ..BASE },
-        Caso { nome: "120 px, 14 ev (rato rápido)", tam: 120.0, eventos: 14, ..BASE },
-        Caso { nome: "40 px, 14 ev", eventos: 14, ..BASE },
-        Caso { nome: "120 px, pressão 0,3–1", tam: 120.0, pressao: Some((0.3, 1.0)), ..BASE },
-        Caso { nome: "120 px, curva 40", tam: 120.0, curva: 40.0, ..BASE },
-        Caso { nome: "120 px, Shape size 3", tam: 120.0, forma: 3.0, ..BASE },
-        Caso { nome: "120 px, Push 0,5", tam: 120.0, push: 0.5, ..BASE },
-        Caso { nome: "120 px, Smooth off", tam: 120.0, smooth: Some(false), ..BASE },
-        Caso { nome: "120 px, mapa Random", tam: 120.0, mapa: TextureMapping::Random, ..BASE },
-        Caso { nome: "120 px, sem rampa", tam: 120.0, rampa: false, ..BASE },
-        Caso { nome: "120 px, Jitter Scale 0,3", tam: 120.0, jitter_scale: 0.3, ..BASE },
-        Caso { nome: "120 px, pressão 0,6 fixa", tam: 120.0, pressao: Some((0.6, 0.6)), ..BASE },
-        Caso { nome: "120 px, Rake", tam: 120.0, extra: |b| b.shape.rake = true, ..BASE },
-        Caso { nome: "120 px, Flow", tam: 120.0, extra: |b| b.shape.flow = true, ..BASE },
-        Caso { nome: "120 px, Rake+Flow", tam: 120.0, extra: |b| { b.shape.rake = true; b.shape.flow = true; }, ..BASE },
-        Caso { nome: "120 px, Rake, curva 40", tam: 120.0, curva: 40.0, extra: |b| b.shape.rake = true, ..BASE },
-        Caso { nome: "120 px, Flow, curva 40", tam: 120.0, curva: 40.0, extra: |b| b.shape.flow = true, ..BASE },
-        Caso { nome: "120 px, ângulo 30", tam: 120.0, extra: |b| b.shape.angle_deg = 30, ..BASE },
-        Caso { nome: "120 px, Jitter Rotate 0,3", tam: 120.0, extra: |b| b.jitter_rotate = 0.3, ..BASE },
-        Caso { nome: "120 px, Stabilizer 0,5", tam: 120.0, extra: |b| b.stabilizer = 0.5, ..BASE },
-        Caso { nome: "120 px, Airbrush", tam: 120.0, extra: |b| b.stroke_method = ph2d_painter_brush::StrokeMethod::Airbrush, ..BASE },
-        Caso { nome: "120 px, spray 3", tam: 120.0, extra: |b| b.spray_count = 3, ..BASE },
-        Caso { nome: "40 px, DOCUMENTO (papel + camada vazia)", doc: true, ..BASE },
-        Caso { nome: "120 px, Line Speed, 14 ev", tam: 120.0, eventos: 14, extra: |b| b.line_kind = ph2d_painter_brush::line_kind::LineKind::Speed, ..BASE },
-        Caso { nome: "120 px, DOCUMENTO (papel + camada vazia)", tam: 120.0, doc: true, ..BASE },
-        Caso { nome: "120 px, DOCUMENTO, 14 ev", tam: 120.0, eventos: 14, doc: true, ..BASE },
+        Caso {
+            nome: "120 px",
+            tam: 120.0,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, 14 ev (rato rápido)",
+            tam: 120.0,
+            eventos: 14,
+            ..BASE
+        },
+        Caso {
+            nome: "40 px, 14 ev",
+            eventos: 14,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, pressão 0,3–1",
+            tam: 120.0,
+            pressao: Some((0.3, 1.0)),
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, curva 40",
+            tam: 120.0,
+            curva: 40.0,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Shape size 3",
+            tam: 120.0,
+            forma: 3.0,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Push 0,5",
+            tam: 120.0,
+            push: 0.5,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Smooth off",
+            tam: 120.0,
+            smooth: Some(false),
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, mapa Random",
+            tam: 120.0,
+            mapa: TextureMapping::Random,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, sem rampa",
+            tam: 120.0,
+            rampa: false,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Jitter Scale 0,3",
+            tam: 120.0,
+            jitter_scale: 0.3,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, pressão 0,6 fixa",
+            tam: 120.0,
+            pressao: Some((0.6, 0.6)),
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Rake",
+            tam: 120.0,
+            extra: |b| b.shape.rake = true,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Flow",
+            tam: 120.0,
+            extra: |b| b.shape.flow = true,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Rake+Flow",
+            tam: 120.0,
+            extra: |b| {
+                b.shape.rake = true;
+                b.shape.flow = true;
+            },
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Rake, curva 40",
+            tam: 120.0,
+            curva: 40.0,
+            extra: |b| b.shape.rake = true,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Flow, curva 40",
+            tam: 120.0,
+            curva: 40.0,
+            extra: |b| b.shape.flow = true,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, ângulo 30",
+            tam: 120.0,
+            extra: |b| b.shape.angle_deg = 30,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Jitter Rotate 0,3",
+            tam: 120.0,
+            extra: |b| b.jitter_rotate = 0.3,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Stabilizer 0,5",
+            tam: 120.0,
+            extra: |b| b.stabilizer = 0.5,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Airbrush",
+            tam: 120.0,
+            extra: |b| b.stroke_method = ph2d_painter_brush::StrokeMethod::Airbrush,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, spray 3",
+            tam: 120.0,
+            extra: |b| b.spray_count = 3,
+            ..BASE
+        },
+        Caso {
+            nome: "40 px, DOCUMENTO (papel + camada vazia)",
+            doc: true,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, Line Speed, 14 ev",
+            tam: 120.0,
+            eventos: 14,
+            extra: |b| b.line_kind = ph2d_painter_brush::line_kind::LineKind::Speed,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, DOCUMENTO (papel + camada vazia)",
+            tam: 120.0,
+            doc: true,
+            ..BASE
+        },
+        Caso {
+            nome: "120 px, DOCUMENTO, 14 ev",
+            tam: 120.0,
+            eventos: 14,
+            doc: true,
+            ..BASE
+        },
     ];
-    println!("| caso | Δacesa (0,25+C × 0,025) | Δrelevo | Δacesa (0,25 sem C × 0,025) | Δ(sem C × com C) |");
+    println!(
+        "| caso | Δacesa (0,25+C × 0,025) | Δrelevo | Δacesa (0,25 sem C × 0,025) | Δ(sem C × com C) |"
+    );
     println!("|---|---:|---:|---:|---:|");
     for c in casos {
         let (_, aa, ha) = corre(&c, 0.025, false);

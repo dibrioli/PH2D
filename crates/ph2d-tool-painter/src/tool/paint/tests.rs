@@ -206,8 +206,11 @@ mod undo_live_base_tests;
 mod watercolor_smudge_gate_tests; // o smudge não forka o canvas (doc 28 §5.73) // a premissa do S3, MEDIDA: o vivo serve de base p/ o delta? (doc 28 §5.20)
 
 mod acumulacao_por_meio; // Accumulate e Space Attenuation só onde o meio os oferece (doc 46)
+mod auditoria_l1_impasto; // auditoria lente 1 (15/10): o Continuous do Impasto fora da fixtura do portão
+mod auditoria_l2_seam; // AUDITORIA lente 2 (15/10): Continuous pela porta do painel — sonda, não portão
 mod brush_panel;
 mod capsula; // o Continuous que iguala o Spacing pequeno: a régua contra o alvo (prompt 34)
+mod capsula_estado; // prompt 40: o sub-dab da cápsula é o dab INTERPOLADO (raio, rotação, pressão, arco)
 mod cor_do_shape; // prompt 36: a rampa de cor da Shape não muda o Mapping nem desliga o Grain (14/10)
 mod curve_editor;
 mod custo_das_rampas; // prompt 36, Parte 2: o preço das rampas por meio e de N grãos (doc 37)
@@ -230,8 +233,7 @@ mod solid_carimbos; // o Solid com imagem no Shape enche-se de carimbos (smoke 1
 mod sonda_a8_carga_rampa; // lista 26 A8: que parâmetros da aguada apagam as cores da rampa do Shape
 mod sonda_a9_continuo_impasto; // lista 26 A9
 mod sonda_a9_impasto_luz; // smoke P39: o Impasto com Continuous na tela ILUMINADA (lista 26 C25)
-mod auditoria_l2_seam; // AUDITORIA lente 2 (15/10): Continuous pela porta do painel — sonda, não portão
-mod auditoria_l1_impasto; // auditoria lente 1 (15/10): o Continuous do Impasto fora da fixtura do portão
+mod sonda_p40_passo0; // prompt 40 passo 0: onde a caixa está ligada e a cápsula não age
 mod stroke_and_session;
 mod textura_tinge; // Bug #51: textura × tinta, o Randomize na textura, e o Randomize «a cada traço» (12/10)
 mod texture_and_tiling;

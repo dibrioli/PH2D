@@ -484,3 +484,23 @@ fn the_thrown_line_is_smooth_it_does_not_kink_once_per_frame() {
         );
     }
 }
+
+/// ⛔ **O preenchimento do arremesso não liga a cápsula sem a caixa** (prompt 40 #4, auditoria 15/10): o
+/// `fill_thrown_gap` gravava o sub-passo no `Dab::step` de cada dab do vão sem perguntar à porta
+/// [`BrushSpec::lays_capsules`] — com o Continuous DESLIGADO o Speed pintava cápsulas (Δ 0,046 × 0,142 na
+/// auditoria). Caixa desligada ⇒ nenhum passo; ligada ⇒ os dabs do vão levam-no (CONTROLO: o vão existe).
+#[test]
+fn the_thrown_gap_lays_capsules_only_with_the_box() {
+    let dt = 1.0 / 60.0;
+    let passos = |cont: bool| {
+        let sp = BrushSpec {
+            continuous_spacing: cont,
+            ..spec(0.25, LineKind::Speed)
+        };
+        let (dabs, _) = run_raw(sp, 8, 4, 400.0, dt, true);
+        dabs.iter().filter(|d| d.capsula(&sp).is_some()).count()
+    };
+    let (sem, com) = (passos(false), passos(true));
+    assert_eq!(sem, 0, "caixa desligada: {sem} dabs com cápsula");
+    assert!(com > 10, "controlo: com a caixa só {com} cápsulas");
+}

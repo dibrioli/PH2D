@@ -185,8 +185,10 @@ impl Stroke {
     /// espacamento e honrado ONDE A TINTA CAI, nunca onde a mao passou**.
     pub(super) fn emit(&mut self, mut dab: Dab, out: &mut Vec<Dab>) {
         self.note_thread_point(&dab);
-        if let Some(sub) = self.fill_thrown_gap(&dab, out) {
-            dab.step = sub; // the fills split the gap: this dab's travel is the last sub-step
+        if let Some((sub, ante)) = self.fill_thrown_gap(&dab, out) {
+            // The fills split the gap: this dab's travel is the last sub-step, back to the last fill.
+            dab.step = sub;
+            dab.ante = ante;
         }
         crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
     }
@@ -201,9 +203,14 @@ impl Stroke {
     /// ARREMESSADAS (pre-jitter), entao um pincel com scatter continua a espalhar em vez de desenhar
     /// uma fileira alinhada dentro do proprio vao.
     ///
-    /// Returns the sub-step the fills split the gap into ([`Dab::step`] of every fill and of `dab`), or
-    /// `None` when nothing was filled.
-    fn fill_thrown_gap(&mut self, dab: &Dab, out: &mut Vec<Dab>) -> Option<[f32; 2]> {
+    /// Returns the sub-step the fills split the gap into and the last fill's state ([`Dab::step`] and
+    /// [`Dab::ante`] of `dab`), or `None` when nothing was filled. Without Continuous ([`BrushSpec::
+    /// lays_capsules`]) the fills carry no step — the box is the only door to the capsule (prompt 40 #4).
+    fn fill_thrown_gap(
+        &mut self,
+        dab: &Dab,
+        out: &mut Vec<Dab>,
+    ) -> Option<([f32; 2], Option<Ante>)> {
         let (Some((from, from_arc)), Some((to, to_arc))) = (self.fill_from, self.last_thrown)
         else {
             return None;
@@ -218,6 +225,10 @@ impl Stroke {
         let n = ((gap / step).ceil() as usize).saturating_sub(1);
         #[allow(clippy::cast_precision_loss)]
         let sub = [d[0] / (n + 1) as f32, d[1] / (n + 1) as f32];
+        let capsulas = self.spec.lays_capsules();
+        let step = if capsulas { sub } else { [0.0, 0.0] };
+        // The first fill steps back from the dab before the gap; each next one from the fill before it.
+        let mut ante = dab.ante.filter(|_| capsulas);
         for k in 1..=n {
             #[allow(clippy::cast_precision_loss)]
             let t = k as f32 / (n + 1) as f32;
@@ -225,9 +236,11 @@ impl Stroke {
             let mut fill = *dab;
             fill.center = self.apply_jitter(p, dab.radius_px);
             fill.arc_len = from_arc + (to_arc - from_arc) * t;
-            fill.step = sub;
+            fill.step = step;
+            fill.ante = ante;
+            ante = Some(Ante::de(&fill)).filter(|_| capsulas);
             crate::symmetry::push_symmetric(out, fill, &self.spec.symmetry);
         }
-        Some(sub)
+        Some((step, ante))
     }
 }

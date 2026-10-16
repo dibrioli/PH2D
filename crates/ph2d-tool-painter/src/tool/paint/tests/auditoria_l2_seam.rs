@@ -41,10 +41,16 @@ fn monta(c: Caso, sp: f32, cont: bool) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (LW * LH * 4) as usize], LW, LH);
     let media = |t: &mut PainterTool, v: &str| {
-        ev(t, PanelEvent::SelectOption(ids::PAINTER_BRUSH_MEDIA, v.into()))
+        ev(
+            t,
+            PanelEvent::SelectOption(ids::PAINTER_BRUSH_MEDIA, v.into()),
+        )
     };
     if c.ordem == 2 && cont {
-        ev(&mut t, PanelEvent::Click(ids::PAINTER_BRUSH_CONTINUOUS_SPACING));
+        ev(
+            &mut t,
+            PanelEvent::Click(ids::PAINTER_BRUSH_CONTINUOUS_SPACING),
+        );
     }
     media(&mut t, "2");
     t.set_brush_color_srgb8([20, 30, 120]);
@@ -59,7 +65,10 @@ fn monta(c: Caso, sp: f32, cont: bool) -> PainterTool {
         t.paint.brush.shape.size = [3.0; 2];
     }
     if c.follow > 0 {
-        ev(&mut t, PanelEvent::SelectOption(ids::PAINTER_SHAPE_FOLLOW, c.follow.to_string()));
+        ev(
+            &mut t,
+            PanelEvent::SelectOption(ids::PAINTER_SHAPE_FOLLOW, c.follow.to_string()),
+        );
     }
     match c.ordem {
         5 => {
@@ -70,14 +79,26 @@ fn monta(c: Caso, sp: f32, cont: bool) -> PainterTool {
         }
         1 => {
             if cont {
-                ev(&mut t, PanelEvent::Click(ids::PAINTER_BRUSH_CONTINUOUS_SPACING));
+                ev(
+                    &mut t,
+                    PanelEvent::Click(ids::PAINTER_BRUSH_CONTINUOUS_SPACING),
+                );
             }
-            ev(&mut t, PanelEvent::SetValue(ids::PAINTER_BRUSH_SPACING, f64::from(sp)));
+            ev(
+                &mut t,
+                PanelEvent::SetValue(ids::PAINTER_BRUSH_SPACING, f64::from(sp)),
+            );
         }
         _ => {
-            ev(&mut t, PanelEvent::SetValue(ids::PAINTER_BRUSH_SPACING, f64::from(sp)));
+            ev(
+                &mut t,
+                PanelEvent::SetValue(ids::PAINTER_BRUSH_SPACING, f64::from(sp)),
+            );
             if cont && c.ordem != 2 {
-                ev(&mut t, PanelEvent::Click(ids::PAINTER_BRUSH_CONTINUOUS_SPACING));
+                ev(
+                    &mut t,
+                    PanelEvent::Click(ids::PAINTER_BRUSH_CONTINUOUS_SPACING),
+                );
             }
             if c.ordem == 3 {
                 media(&mut t, "0");
@@ -108,7 +129,11 @@ fn risca(t: &mut PainterTool, c: Caso) -> Vec<u8> {
     let n = c.eventos;
     let p = |k: usize| {
         let s = k as f32 / n as f32;
-        let pr = if c.caneta { 0.75 + 0.25 * (s * 9.0).sin() } else { 1.0 };
+        let pr = if c.caneta {
+            0.75 + 0.25 * (s * 9.0).sin()
+        } else {
+            1.0
+        };
         (caminho(c, s), pr)
     };
     let mk = |pos, pressure, phase| CanvasPointer {
@@ -162,7 +187,12 @@ fn miolo(c: Caso) -> Vec<usize> {
 fn dif(a: &[u8], b: &[u8], m: &[usize]) -> f32 {
     let s: f32 = m
         .iter()
-        .map(|&i| (0..3).map(|k| (f32::from(a[i * 4 + k]) - f32::from(b[i * 4 + k])).abs()).sum::<f32>() / 3.0)
+        .map(|&i| {
+            (0..3)
+                .map(|k| (f32::from(a[i * 4 + k]) - f32::from(b[i * 4 + k])).abs())
+                .sum::<f32>()
+                / 3.0
+        })
         .sum();
     s / m.len() as f32 / 255.0
 }
@@ -211,29 +241,124 @@ fn auditoria_l2_continuous_pela_porta() {
         fino: false,
     };
     let casos = [
-        Caso { ordem: 5, nome: "receita do portão (campo directo + fill)", ..base },
+        Caso {
+            ordem: 5,
+            nome: "receita do portão (campo directo + fill)",
+            ..base
+        },
         base,
-        Caso { ordem: 1, nome: "Continuous→Spacing", ..base },
-        Caso { ordem: 2, nome: "Continuous no Digital → Impasto", ..base },
-        Caso { ordem: 3, nome: "Continuous, Digital→Impasto", ..base },
-        Caso { ordem: 4, nome: "Continuous, knife→brush", ..base },
-        Caso { fabrica: true, nome: "rampa de fábrica", ..base },
-        Caso { dy: 40.0, nome: "inclinado (dy 40)", ..base },
-        Caso { curva: 25.0, nome: "curvo (amp 25)", ..base },
-        Caso { caneta: true, nome: "caneta (pressão 0,5–1)", ..base },
-        Caso { r: 50.0, nome: "r 50", ..base },
-        Caso { r: 50.0, dy: 40.0, curva: 15.0, fabrica: true, caneta: true, nome: "dono: r50 curvo fábrica caneta", ..base },
-        Caso { kind: TextureKind::Checker, dy: 40.0, nome: "Checker inclinado", ..base },
-        Caso { kind: TextureKind::Noise, dy: 40.0, nome: "Noise inclinado", ..base },
-        Caso { ordem: 6, nome: "Depth e Body mexidos DEPOIS do traço", ..base },
-        Caso { eventos: 12, nome: "12 eventos (40 px por evento)", ..base },
-        Caso { eventos: 6, curva: 15.0, nome: "6 eventos curvo", ..base },
-        Caso { fino: true, nome: "Shape Size 3", ..base },
-        Caso { follow: 1, curva: 25.0, nome: "Follow Rake curvo", ..base },
-        Caso { follow: 2, curva: 25.0, nome: "Follow Flow curvo", ..base },
-        Caso { r: 50.0, dy: 40.0, curva: 15.0, fabrica: true, eventos: 12, nome: "dono sem caneta: r50 curvo fábrica 12 ev", ..base },
+        Caso {
+            ordem: 1,
+            nome: "Continuous→Spacing",
+            ..base
+        },
+        Caso {
+            ordem: 2,
+            nome: "Continuous no Digital → Impasto",
+            ..base
+        },
+        Caso {
+            ordem: 3,
+            nome: "Continuous, Digital→Impasto",
+            ..base
+        },
+        Caso {
+            ordem: 4,
+            nome: "Continuous, knife→brush",
+            ..base
+        },
+        Caso {
+            fabrica: true,
+            nome: "rampa de fábrica",
+            ..base
+        },
+        Caso {
+            dy: 40.0,
+            nome: "inclinado (dy 40)",
+            ..base
+        },
+        Caso {
+            curva: 25.0,
+            nome: "curvo (amp 25)",
+            ..base
+        },
+        Caso {
+            caneta: true,
+            nome: "caneta (pressão 0,5–1)",
+            ..base
+        },
+        Caso {
+            r: 50.0,
+            nome: "r 50",
+            ..base
+        },
+        Caso {
+            r: 50.0,
+            dy: 40.0,
+            curva: 15.0,
+            fabrica: true,
+            caneta: true,
+            nome: "dono: r50 curvo fábrica caneta",
+            ..base
+        },
+        Caso {
+            kind: TextureKind::Checker,
+            dy: 40.0,
+            nome: "Checker inclinado",
+            ..base
+        },
+        Caso {
+            kind: TextureKind::Noise,
+            dy: 40.0,
+            nome: "Noise inclinado",
+            ..base
+        },
+        Caso {
+            ordem: 6,
+            nome: "Depth e Body mexidos DEPOIS do traço",
+            ..base
+        },
+        Caso {
+            eventos: 12,
+            nome: "12 eventos (40 px por evento)",
+            ..base
+        },
+        Caso {
+            eventos: 6,
+            curva: 15.0,
+            nome: "6 eventos curvo",
+            ..base
+        },
+        Caso {
+            fino: true,
+            nome: "Shape Size 3",
+            ..base
+        },
+        Caso {
+            follow: 1,
+            curva: 25.0,
+            nome: "Follow Rake curvo",
+            ..base
+        },
+        Caso {
+            follow: 2,
+            curva: 25.0,
+            nome: "Follow Flow curvo",
+            ..base
+        },
+        Caso {
+            r: 50.0,
+            dy: 40.0,
+            curva: 15.0,
+            fabrica: true,
+            eventos: 12,
+            nome: "dono sem caneta: r50 curvo fábrica 12 ev",
+            ..base
+        },
     ];
-    linha!("| caso | cont. no campo | spacing | lays_capsules | Δacesa 0,25+C vs denso | Δacesa 0,25 sem C vs denso | Δrelevo 0,25+C | Δ vs receita do portão |");
+    linha!(
+        "| caso | cont. no campo | spacing | lays_capsules | Δacesa 0,25+C vs denso | Δacesa 0,25 sem C vs denso | Δrelevo 0,25+C | Δ vs receita do portão |"
+    );
     linha!("|---|---|---:|---|---:|---:|---:|---:|");
     for c in casos {
         let m = miolo(c);

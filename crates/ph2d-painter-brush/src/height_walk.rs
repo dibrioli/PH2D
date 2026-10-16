@@ -191,8 +191,12 @@ fn walk_band(
             // lives in that space (see [`crate::height_film::FilmAa::film_at_lut`]).
             let wv = dab.footprint.apply([rx * inv_radius, ry * inv_radius]);
             let t = (wv[0] * wv[0] + wv[1] * wv[1]).sqrt();
+            // The capsule's winning sub-dab also hands its radius: the height scales with it.
+            let mut raio_w = spec.radius_px;
             let w = if let Some(c) = wk.capsula {
-                c.silhueta(wk, dx, dy, px, py) // `film_aa` is `None` here: `t`/`wv` go unread
+                let (w, r) = c.silhueta(wk, dx, dy, px, py); // `film_aa` is `None` here
+                raio_w = r;
+                w
             } else if ablate & crate::ablate::SILHOUETTE != 0 {
                 f32::from(t < 1.0) // MESMO suporte, sem falloff/Shape/mascara -- so a sonda arma isto
             } else {
@@ -309,10 +313,15 @@ fn walk_band(
             }
             planes.paint[i] = m;
             planes.grain[i] = gq;
-            planes.radius[i] = spec.radius_px;
+            planes.radius[i] = raio_w;
             // Derived from the STORED (quantised) grain, so the buffer and the re-derivation always
             // agree to the last bit — a live edit can never make the relief jump.
-            planes.height[i] = derive_height(spec, m, f32::from(gq) / 255.0);
+            planes.height[i] = if raio_w == spec.radius_px {
+                derive_height(spec, m, f32::from(gq) / 255.0)
+            } else {
+                let r = raio_w.clamp(0.5, crate::spec::MAX_BRUSH_RADIUS_PX);
+                crate::height::derive_height_at(spec, r, m, f32::from(gq) / 255.0)
+            };
             touched = true;
         }
     }
@@ -320,10 +329,11 @@ fn walk_band(
 }
 
 /// ⭐ **The relief of a dab-CAPSULE** ([`crate::capsula`], lista 26 C25): the dense stroke's relief, as
-/// the colour's [`crate::dab::silhouette_capsula`] is its pigment — the SAME sub-dabs (`off_k = −D·k/n`),
-/// each with the Shape at its own centre and its body swept back one sub-step (the dense stroke's chord),
-/// folded by the stroke envelope's own law, the `max` (`film_of` is monotone, so the film rides it).
-/// Read at the front dab's centre, the pattern stamped once per dab: the lattice of the owner's smoke.
+/// the colour's [`crate::dab::silhouette_capsula`] is its pigment — the SAME interpolated sub-dabs
+/// ([`crate::capsula::Capsula::sub`]: centre, radius, rotation, arc length, coverage), each with the Shape
+/// at its own centre and its body swept back one sub-step (the dense stroke's chord), folded by the
+/// stroke envelope's own law, the `max` (`film_of` is monotone, so the film rides it). Read at the front
+/// dab's centre, the pattern stamped once per dab: the lattice of the owner's smoke.
 #[derive(Clone, Copy)]
 pub(super) struct SubPasso {
     cap: crate::capsula::Capsula,
@@ -346,28 +356,51 @@ impl SubPasso {
         self.eixo.1 * self.cap.n() as f32
     }
 
-    /// The capsule's silhouette at the texel `(px, py)`, offset `(dx, dy)` from the front centre.
+    /// The biggest sub-dab radius over the dab's (`≥ 1`).
+    pub(super) fn escala_max(self) -> f32 {
+        self.cap.escala_max()
+    }
+
+    /// The capsule's silhouette at the texel `(px, py)`, offset `(dx, dy)` from the front centre, and the
+    /// raw radius of the sub-dab that wins it (the front's when none does).
     #[inline]
-    fn silhueta(self, wk: &Walk<'_, '_>, dx: f32, dy: f32, px: i64, py: i64) -> f32 {
+    fn silhueta(self, wk: &Walk<'_, '_>, dx: f32, dy: f32, px: i64, py: i64) -> (f32, f32) {
         let (spec, dab) = (wk.spec, wk.dab);
-        let Some(sh) = dab.shape else { return 0.0 };
+        let mut raio = spec.radius_px;
+        let Some(sh) = dab.shape else {
+            return (0.0, raio);
+        };
         let imagem = spec.shape.kind == crate::texture::TextureKind::Image;
+        let flow = spec.shape.flow;
         let mut w = 0.0f32;
         for k in 0..self.cap.n() {
-            let o = self.cap.off(k);
+            let s = self.cap.sub(k);
+            let (o, r) = (s.off, wk.radius * s.escala);
+            let inv = 1.0 / r;
+            let fp = s
+                .rotor
+                .map_or(dab.footprint, |q| dab.footprint.rotated_by(q));
             let (rx, ry) = sweep_residual(dx - o[0], dy - o[1], Some(self.eixo));
-            let queda = spec.falloff_weight(
-                dab.footprint
-                    .falloff_t(rx * wk.inv_radius, ry * wk.inv_radius),
-            );
+            let queda = spec.falloff_weight(fp.falloff_t(rx * inv, ry * inv));
             if queda <= 0.0 && !imagem {
                 continue; // a procedural Shape multiplies the falloff (as in the colour's capsule)
             }
             let c = [dab.center[0] + o[0], dab.center[1] + o[1]];
-            let forma = crate::dab::shape_value_at(spec, sh, px, py, c, wk.radius);
-            w = w.max(spec.compose_shape_silhouette(forma, queda));
+            let base;
+            let sh = if s.rotor.is_some() || (flow && s.arco != 0.0) {
+                base = sh.basis.sub(s.rotor, s.arco);
+                crate::dab::ShapeInput { basis: &base, ..sh }
+            } else {
+                sh
+            };
+            let forma = crate::dab::shape_value_at(spec, sh, px, py, c, r);
+            let x = spec.compose_shape_silhouette(forma, queda) * s.cobertura;
+            if x > w {
+                w = x;
+                raio = spec.radius_px * s.escala;
+            }
         }
-        w
+        (w, raio)
     }
 }
 

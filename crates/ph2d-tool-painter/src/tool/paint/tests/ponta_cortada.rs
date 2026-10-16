@@ -50,6 +50,7 @@ fn mede(t: &mut PainterTool, graus: f32, dinamica: bool) -> (i32, i32, usize) {
         arc_len: 0.0,
         stroke_radius_px: 10.0,
         step: [0.0, 0.0],
+        ante: None,
     };
     t.stamp_dabs(&[d]);
     let (mut ex, mut ey, mut n) = (0i32, 0i32, 0usize);

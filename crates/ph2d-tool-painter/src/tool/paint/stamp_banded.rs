@@ -303,7 +303,7 @@ fn stamp_plain_serial(
             None,
             mask.as_deref_mut(),
             spec.dab_rotor(d),
-            d.capsula(),
+            d.capsula(&spec),
         ) {
             touched = Some(touched.map_or(r, |a| union(a, r)));
         }

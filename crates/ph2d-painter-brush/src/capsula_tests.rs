@@ -72,6 +72,7 @@ fn os_sub_dabs_vao_do_centro_anterior_ao_dab() {
         arc_len: 30.0,
         stroke_radius_px: 20.0,
         step: [4.0, 0.0],
+        ante: None,
     };
     let s: Vec<_> = sub_dabs(&d, 1.0)
         .map(|s| (s.center, s.arc_len, s.step))
@@ -87,6 +88,7 @@ fn os_sub_dabs_vao_do_centro_anterior_ao_dab() {
     );
     let liso = crate::Dab {
         step: [0.0, 0.0],
+        ante: None,
         ..d
     };
     assert_eq!(sub_dabs(&liso, 1.0).count(), 1);

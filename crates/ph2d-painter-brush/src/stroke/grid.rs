@@ -76,6 +76,7 @@ impl Stroke {
             arc_len: 0.0,
             stroke_radius_px: radius,
             step: [0.0, 0.0],
+            ante: None,
         }
     }
 }

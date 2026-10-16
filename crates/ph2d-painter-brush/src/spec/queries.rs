@@ -336,12 +336,14 @@ impl BrushSpec {
 
     /// **Continuous Spacing** is armed: the option is on, the method spaces dabs along a path, and the
     /// step is wider than the capsule's sub-step — every dab then lays a CAPSULE ([`crate::capsula`]),
-    /// with ANY tip. The deliberate single marks (Drag Dot, Anchored, Grid Stamp) lay no path, and a
-    /// Spacing already as fine as [`crate::capsula::SUB_SPACING`] has nothing to fill.
+    /// with ANY tip. The method question is the panel's own ([`StrokeMethod::uses_spacing`], the rows the
+    /// box lives in): Dots and Airbrush have no Spacing — the box is hidden there and must not act (prompt
+    /// 40 #5) —, the single marks lay no path, and a Spacing already as fine as
+    /// [`crate::capsula::SUB_SPACING`] has nothing to fill.
     #[must_use]
     pub fn lays_capsules(&self) -> bool {
         self.continuous_spacing
-            && self.stroke_method.allows_jitter()
+            && self.stroke_method.uses_spacing()
             && self.dab_spacing_px() > crate::capsula::sub_passo_px(self.clamped_radius())
     }
 

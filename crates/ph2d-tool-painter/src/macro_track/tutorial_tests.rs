@@ -103,10 +103,32 @@ fn o_mostra_me_cumpre_a_fatia_fina() {
     }
 }
 
-/// Sem as referências (ainda por medir), nenhuma pincelada se cumpre — nem as feitas pelo
-/// «Mostra-me»; as de outra trilha recusam-se.
+/// ⭐ **Pular a pincelada e esperar não a cumpre** (W6d): nas 30 pinceladas em Wet Paint, o aluno que
+/// fez as anteriores certas NÃO faz a `k` e espera a água assentar — a aguada da anterior pinta sozinha
+/// a fatia nova. Nenhuma das 30 se cumpre.
 #[test]
-fn sem_referencias_nenhuma_pincelada_se_cumpre() {
+fn pular_a_pincelada_e_esperar_nao_cumpre_nenhuma() {
+    let ps = trinta();
+    let track = trilha_no_meio(PaintMedia::WetPaint, &ps, LADO);
+    let e = EnsinoDoPainter::medido(&track).expect("ensino");
+    let mut cumpre = Vec::new();
+    cada_aluno(&track, &ps, LADO, &[Variante::Nada], |k, _, t| {
+        if let Some(c) = criterio_de(&e, &track, k)
+            && e.razao(t, c).expect("medida") >= FRACAO_DA_GRAVADA_QUE_CUMPRE
+        {
+            cumpre.push(k);
+        }
+    });
+    assert!(
+        cumpre.is_empty(),
+        "o «Nada» cumpre as pinceladas {cumpre:?}"
+    );
+}
+
+/// Sem as medidas (ainda por chegar), nenhuma pincelada se cumpre — nem as feitas pelo «Mostra-me»;
+/// uma medida de outra pincelada recusa-se; elas chegam uma a uma.
+#[test]
+fn sem_medidas_nenhuma_pincelada_se_cumpre() {
     let track = trilha();
     let mut e = EnsinoDoPainter::de(&track).expect("ensino");
     assert!(e.a_medir());
@@ -116,32 +138,60 @@ fn sem_referencias_nenhuma_pincelada_se_cumpre() {
     }
     assenta(&mut t);
     assert_eq!(e.por_cumprir(&t), Some(0));
-    assert!(!e.com_referencias(Referencias(vec![1.0])), "outra trilha");
-    let r = EnsinoDoPainter::referencias(&track, &std::sync::atomic::AtomicBool::new(false))
-        .expect("mede")
-        .expect("sem paragem");
-    assert!(e.com_referencias(r));
+    let r = Referencia {
+        gravada: 0.9,
+        base: 0.0,
+    };
+    assert!(!e.com_medida(Medida {
+        k: 999,
+        referencia: r
+    }));
+    let mut ms = Vec::new();
+    assert_eq!(
+        e.mede(&track, &AtomicBool::new(false), |m| ms.push(m)),
+        Ok(true)
+    );
+    assert_eq!(ms.len(), 4);
+    assert!(e.com_medida(ms[0]));
+    assert!(!e.com_medida(ms[0]), "a mesma medida duas vezes");
+    assert_eq!(e.chegadas(), 1);
+    assert_eq!(e.por_cumprir(&t), Some(1), "só a 1.ª medida chegou");
+    for m in &ms[1..] {
+        assert!(e.com_medida(*m));
+    }
     assert!(!e.a_medir());
     assert_eq!(e.por_cumprir(&t), None);
 }
 
-/// Uma pincelada cuja gravada não pinta nada da parte nova (referência 0: uma borracha no papel em
-/// branco) não tem critério — a lei do Δ vazio.
+/// Uma pincelada que não acrescenta nada à água (a gravada pinta da parte nova o que a trilha sem ela
+/// já pinta; ou uma borracha no papel em branco) não tem critério — a lei do Δ vazio.
 #[test]
-fn uma_referencia_nula_nao_tem_criterio() {
+fn uma_pincelada_que_nao_acrescenta_a_agua_nao_tem_criterio() {
     let track = trilha();
     let mut e = EnsinoDoPainter::de(&track).expect("ensino");
-    let k = e.criterios[1].regiao.k;
-    assert!(e.com_referencias(Referencias(vec![0.9, 0.0, 0.8, 0.7])));
-    assert_eq!(e.criterios.len(), 3);
-    assert!(e.criterios.iter().all(|c| c.regiao.k != k));
+    let ks: Vec<usize> = e.criterios.iter().map(|c| c.regiao.k).collect();
+    let medidas = [(0.9, 0.1), (0.4, 0.4), (0.8, 0.0), (0.0, 0.0)];
+    for (&k, (gravada, base)) in ks.iter().zip(medidas) {
+        assert!(e.com_medida(Medida {
+            k,
+            referencia: Referencia { gravada, base },
+        }));
+    }
+    let ficam: Vec<usize> = e.criterios.iter().map(|c| c.regiao.k).collect();
+    assert_eq!(ficam, [ks[0], ks[2]]);
+    assert!(!e.a_medir());
 }
 
-/// Um pedido de paragem a meio devolve `None` (a `Macro` mudou: a medição é de outra versão).
+/// Um pedido de paragem a meio devolve `false` (a `Macro` mudou: a medição é de outra versão).
 #[test]
 fn a_medicao_para_a_pedido() {
-    let parar = std::sync::atomic::AtomicBool::new(true);
-    assert_eq!(EnsinoDoPainter::referencias(&trilha(), &parar), Ok(None));
+    let track = trilha();
+    let e = EnsinoDoPainter::de(&track).expect("ensino");
+    let parar = AtomicBool::new(true);
+    assert_eq!(
+        e.mede(&track, &parar, |_| panic!("nenhuma medida")),
+        Ok(false)
+    );
 }
 
 /// A parte nova de uma pincelada não tem píxeis de uma anterior.

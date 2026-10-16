@@ -124,6 +124,7 @@ fn mostra_me_so_com_uma_etapa_por_fazer() {
             false,
         ),
         (Some(PedidoDoTutorial::Pinta), true),
+        (Some(PedidoDoTutorial::APreparar), false),
     ] {
         let mut hero = HeroScreen::new(NodeId(1));
         quadro(&mut hero, &balao_de(pedido.clone(), vec![]));
@@ -156,4 +157,19 @@ fn as_frases_do_painter_dizem_o_modo_o_meio_e_a_area() {
     });
     assert!(meio.contains("Wet Paint") && !meio.contains('{'), "{meio}");
     assert!(corpo(PedidoDoTutorial::Pinta).contains("marked area"));
+}
+
+/// ⭐ «A preparar» (W6d): o total ainda não se sabe — o título é o de antes de começar, a frase diz que
+/// prepara, sem «Mostra-me» e com «Recomeçar».
+#[test]
+fn a_preparar_le_se_como_antes_de_comecar() {
+    let b = BalaoDoTutorial {
+        passo: 0,
+        total: 0,
+        ..balao_de(Some(PedidoDoTutorial::APreparar), vec![])
+    };
+    let (titulo, corpo) = b.frase();
+    assert_eq!(titulo, ph2d_i18n::tr("panel.macros.tutorial.before"));
+    assert_eq!(corpo, "Preparing this tutorial\u{2026}");
+    assert!(!b.pode_mostrar());
 }

@@ -312,3 +312,61 @@ fn outra_tela_diz_o_tamanho_gravado() {
     );
     assert!(!x.pode_mostrar());
 }
+
+/// ⭐ **O ensino prepara-se fora do quadro** (W6d, `03_plano_W6.md` §6.3): no 1.º quadro de uma versão
+/// o balão está «a preparar» — passo 0, total por saber, sem «Mostra-me» nem área — mesmo com a 1.ª
+/// pincelada já pintada; quando o trabalho chega, avança como antes. «Recomeçar» vale a preparar.
+#[test]
+fn uma_versao_nova_prepara_se_fora_do_quadro() {
+    use ph2d_macro::LeitorDaFamilia;
+    use ph2d_tool_painter::macro_track::tutorial::{mostra, regioes};
+    let mut b = Banca::nova();
+    b.activo = true;
+    b.abre();
+    b.t.set_paint_media(PaintMedia::WetPaint);
+    let doc = b
+        .sim
+        .world()
+        .get::<Macro>(ph2d_ecs::Entity::from_bits(b.bits))
+        .expect("macro")
+        .doc
+        .clone();
+    let track = ph2d_macro::codec::read(&doc).expect("lê").tracks.remove(0);
+    let k = regioes(&track, LADO, LADO).expect("regiões")[0].k;
+    mostra(&mut b.t, &track, k).expect("mostra");
+    b.assenta();
+    let x = b.um_quadro();
+    assert_eq!(
+        (x.passo, x.total, x.pedido.clone(), x.area.clone()),
+        (0, 0, Some(PedidoDoTutorial::APreparar), None),
+        "a preparar: nenhuma pincelada conta"
+    );
+    assert!(!x.pode_mostrar());
+    assert!(b.m.a_medir());
+    let x = b.quadro();
+    assert_eq!(
+        (x.passo, x.total, x.pedido),
+        (2, 4, Some(PedidoDoTutorial::Pinta)),
+        "o trabalho chegou: a 1.ª está feita"
+    );
+
+    // Uma versão nova (o autor deu uma dica) volta a preparar; «Recomeçar» vale.
+    let mut track = track;
+    let ancora =
+        ph2d_tool_painter::macro_track::etapas::LeitorDoPainter.etapas(&track.events)[k].inicio;
+    track.edicao_mut(ancora).dica = Some("Pinta o céu".into());
+    let mut d = ph2d_macro::codec::read(&doc).expect("lê");
+    d.tracks[0] = track;
+    b.sim
+        .world_mut()
+        .get_mut::<Macro>(ph2d_ecs::Entity::from_bits(b.bits))
+        .expect("macro")
+        .doc = ph2d_macro::codec::write(&d);
+    assert_eq!(b.um_quadro().pedido, Some(PedidoDoTutorial::APreparar));
+    b.m.pede(recomeca(b.bits));
+    assert_eq!(b.um_quadro().erro, None, "recomeçar a preparar");
+    let x = b.quadro();
+    assert_eq!((x.passo, x.dica.as_deref()), (1, Some("Pinta o céu")));
+    assert!(b.t.undo_last(), "o recomeçar é um passo de undo");
+    assert_eq!(b.quadro().passo, 2);
+}

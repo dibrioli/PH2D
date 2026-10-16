@@ -195,20 +195,14 @@ salta-se na reprodução (o tutorial não a ensina). `EnsinoDoPainter::{de, refe
 | Wet Paint 1024² | 97,4 / 96,7 / 95,9 / 97,6 | 100–101,1 | 81,2 / 88,6 / 79,4 / 80,7 — **83,4 / 91,6 / 82,8 / 82,7** | 50,0 / 58,1 / 52,2 / 52,6 — **51,4 / 60,1 / 54,4 / 53,9** | 0 / 6,2 / 5,0 / 3,6 |
 
 - Torta 1 r (normalizada) cai em 44,8–84,1 % — entre as duas, não decide.
-- **Decisão: `0.665`** — o meio do intervalo entre a fina mais cheia (60,1 %, Wet Paint 1024²) e a torta ½ r mais
+- **Decisão (W6c, SUBSTITUÍDA pela W6d, §6.4): `0.665`** — o meio do intervalo entre a fina mais cheia (60,1 %, Wet Paint 1024²) e a torta ½ r mais
   vazia (73,1 %, Digital): 6,4 pontos de margem para cada lado; o nada ≤ 15,6 %.
 - **A fatia fina** (30 pinceladas do Splash deslocadas 13 px, 512²; 24–26 de 28–30 critérios com a parte nova
   < 10 % da região): referência 15,9–81,0 % (Digital), 1,0–48,6 % (Watercolor), 4,5–67,4 % (Impasto), 40,9–83,7 %
   (Wet Paint); o «Mostra-me» e a exacta dão ≥ 99,8 % da referência nos quatro meios (antes: 42–61 %); o nada 0–0,2 %
   fora do Wet Paint.
-- ⚠️ **ABERTO — a aguada inunda a fatia fina no Wet Paint:** nas 30 pinceladas, o «Nada» (o aluno não faz a
-  pincelada k e espera 120 quadros) chega a 29,9–85,3 % da referência e CUMPRE 6 de 30 (as k = 5, 9, 13, 18, 22, 26:
-  68,0–85,3 %). Não é da normalização: pela fracção absoluta de antes o «Nada» já cumpria as k = 22 e 26 (≈ 70 % bruto).
-  A água da pincelada anterior pinta a orla nova sozinha; a exacta chega a 141,6 % da referência pela mesma razão (o
-  aluno espera mais que os 12 quadros entre pinceladas da gravação). Cura candidata (não feita: muda a lei): uma linha
-  de base contrafactual — a reprodução SEM a pincelada k desde o `Down` dela, assentada — e a razão
-  `(f − base) / (ref − base)`, com o Δ vazio quando `ref − base` é ~0; custa outra reprodução por pincelada (fora do
-  quadro). No Splash e nos outros três meios o «Nada» não cumpre nada.
+- ✅ **Fechado na W6d — a aguada inundava a fatia fina no Wet Paint** (30 pinceladas: o aluno que pula a
+  pincelada k e espera tinha 29,9–85,3 % da referência e CUMPRIA 6 de 30, k = 5, 9, 13, 18, 22, 26). Ver §6.4.
 
 **O custo das referências — fora do quadro** (sonda `sonda_o_custo_das_referencias`, Wet Paint, perfil smoke,
 mínimo de 3 intercaladas, `load` 3,6 → 7,1):
@@ -226,9 +220,7 @@ mínimo de 3 intercaladas, `load` 3,6 → 7,1):
   o balão mostra a 1.ª sem a dar por feita — função do estado, nenhum passo avança sem dados. A chave do progresso
   leva «referências chegadas». Um erro da reprodução (divergiu) diz-se no balão; um pânico do fio, como macro estragada.
   `Macros::a_medir()` expõe a espera (os testes da família esperam por ela).
-- ⚠️ **ABERTO — o `EnsinoDoPainter::de` continua no quadro** (já estava): 30,2 ms no Splash a 1024² e 168,5 ms nas
-  30 pinceladas a 1024², UMA vez por versão da `Macro` (um soluço ao abrir ou editar a macro). Passá-lo também ao fio
-  pede ao balão um estado «a preparar» (hoje sem critérios o balão daria tudo por feito).
+- ✅ **Fechado na W6d — o `EnsinoDoPainter::de` corria no quadro** (30 ms / 168 ms a 1024²). Ver §6.4.
 
 | Gate (por nome) | O quê |
 |---|---|
@@ -238,4 +230,65 @@ mínimo de 3 intercaladas, `load` 3,6 → 7,1):
 | `…::sem_referencias_nenhuma_pincelada_se_cumpre` · `…::uma_referencia_nula_nao_tem_criterio` · `…::a_medicao_para_a_pedido` | o estado «a medir», o Δ vazio pela referência 0, a paragem |
 | `ph2d-app-macros --test it tutorial` (10) | os do balão do Painter, agora com as referências pelo fio |
 
-**Por fazer na W6:** os dois ABERTOS do §6.3 (a aguada na fatia fina; o `de` no quadro), a prova de mutação da W6a+W6b, o fecho.
+### 6.4 A base sem a pincelada e o ensino fora do quadro (W6d, fechada 15/10)
+
+**A lei.** Cada critério leva `Referencia { gravada, base }`: `gravada` como na W6c; `base` = a fracção dos
+`novos` que a trilha que toca SEM a pincelada pinta, no MESMO instante — a pincelada apagada pela edição do
+produto (`etapas::apaga`) e a duração dela devolvida à etapa viva seguinte (`etapas::espera`), para o toque
+seguinte cair no mesmo tempo da macro. Cumpre-se quando `(f − base) / (gravada − base) ≥
+FRACAO_DA_GRAVADA_QUE_CUMPRE` (**`0.703`**); `gravada − base ≤ DELTA_MINIMO` (`0.005`) = sem critério (a lei do
+Δ vazio: a pincelada não acrescenta nada que a água não traga). A base recomeça do instantâneo da reprodução
+(`TocadorDoPainter::recomeca`, W5c) no 1.º evento em que as duas trilhas diferem; se a fita já consumiu uma
+resposta da pincelada, do estado inicial. `EnsinoDoPainter::{mede, com_medida, chegadas}`; as medidas chegam
+uma a uma (`Medida { k, referencia }`).
+
+**A medição** (sondas `sonda_a_fracao_por_meio` e `sonda_a_fatia_fina`, perfil smoke; % normalizada):
+
+| Trilha | Base | Exacta = «Mostra-me» | Torta ½ r (mín.) | Torta 1 r | Fina (máx.) | Nada = pular e esperar (máx.) |
+|---|---|---|---|---|---|---|
+| Splash, Digital / Watercolor / Impasto 512² | 0 | 100 | 73,1 / 74,0 / 74,0 | 44,8–76,6 | 43,8 / 44,3 / 44,5 | 0 |
+| Splash, Wet Paint 512² | 0 / 14,5 / 9,0 / 11,2 | 100–102,3 | 80,3 | 51,0–81,2 | 49,1 | 0,1 |
+| Splash, Wet Paint 1024² | 0 / 6,0 / 4,8 / 3,5 | 100–101,1 | 81,9 | 55,2–68,2 | 57,5 | 0 |
+| 30 pinceladas, Wet Paint 512² | ≤ 49,7 | 100–172,8 | — | — | — | **67,5** (k = 22) |
+| 30 pinceladas, os outros três meios | ≤ 0,1 | 100 | — | — | — | 0 |
+
+- O «Nada» da base no Splash fica a ≤ 0,1 ponto da base medida (o aluno que pula = a trilha sem ela).
+- **Decisão: `0.703`** — o meio de 67,5 (pular e esperar 120 quadros; a água continua a correr depois do
+  instante da base, 12 quadros na gravação) e 73,1 (torta ½ r, Digital): **2,8 pontos** de margem para cada
+  lado (eram 6,4 pela régua da W6c, cujo pior «falha» era a fina, 60,1 → 57,5 com a base).
+- `gravada − base`: 15,9–96,4 % (Digital), 1,0–86,1 (Watercolor), 4,5–93,3 (Impasto), 15,3–95,4 (Wet Paint):
+  `DELTA_MINIMO = 0.005` não tira critério a nenhuma fixtura; é a guarda da divisão.
+
+**O ensino fora do quadro.** O fio `macro-referencias` faz `EnsinoDoPainter::de` e depois `mede`, e manda
+ao quadro por um canal (`Chegada::{Ensino, Medida, Erro}`). Até o ensino chegar o balão está **«a preparar»**
+(`PedidoDoTutorial::APreparar`, `panel.macros.tutorial.preparing` = «Preparing this tutorial…»): passo 0 e
+total 0 (o título é o de antes de começar), nenhuma pincelada conta, sem «Mostra-me» nem área. **«Recomeçar»
+vale** — só precisa do estado inicial da trilha, é um passo de undo, e o botão não salta para dentro do cartão
+até 170 ms depois. A dica do autor lê-se no fio (`CriterioDaPincelada::dica`). A chave do progresso leva as
+medidas chegadas.
+
+**O custo** (sonda `sonda_o_custo_das_referencias`, Wet Paint, perfil smoke, mínimo de 3 intercaladas, `load`
+49 → 21 — os números absolutos estão inflados; a razão mede/reprodução é da mesma corrida):
+
+| Trilha | Eventos | `de` (fio) | Uma reprodução (W6c) | `mede` (gravada + bases) | No quadro, 1× por versão: lê + hash + cópia da trilha | Por quadro: compara os bytes |
+|---|---|---|---|---|---|---|
+| Splash 512² | 645 | 11,2 ms | 878 ms | 2 202 ms (2,5×) | 0,10 + 0,29 + 0,06 ms | 0,02 ms |
+| Splash 1024² | 645 | 30,7 ms | 1 180 ms | 2 389 ms (2,0×) | 0,31 + 1,13 + 0,28 ms | 0,08 ms |
+| 30 pinceladas 512² | 3 271 | 67,5 ms | 4 343 ms | 11 572 ms (2,7×) | 0,28 + 0,31 + 0,15 ms | 0,02 ms |
+| 30 pinceladas 1024² | 3 271 | 168,8 ms | 7 364 ms | 22 614 ms (3,1×) | 0,38 + 1,13 + 0,24 ms | 0,07 ms |
+
+- A 1.ª medida chega depois do toque da 2.ª pincelada da reprodução (não no fim); uma pincelada sem medida
+  não se cumpre.
+- **No quadro fica:** ler a `Macro` (o contentor, não os passos), o hash e a cópia da trilha para o fio, 1× por
+  versão (≤ 1,8 ms a 1024²); por quadro, a comparação dos bytes (≤ 0,08 ms), o `try_recv`, o preparo e a
+  avaliação só quando a chave muda (≤ 0,22 ms por pincelada). Nenhuma reprodução nem descodificação de passos
+  do Painter. (A dica do Motion ainda descodifica a trilha dele por quadro — fora deste item.)
+
+| Gate (por nome) | O quê |
+|---|---|
+| `ph2d-tool-painter --lib macro_track::tutorial::tests::pular_a_pincelada_e_esperar_nao_cumpre_nenhuma` | 30 pinceladas, Wet Paint 512²: o aluno que pula a k e espera não cumpre nenhuma. ⛔ VERMELHO pela régua da W6c: cumpria `[5, 9, 13, 18, 22, 26]` |
+| `…::sem_medidas_nenhuma_pincelada_se_cumpre` · `…::uma_pincelada_que_nao_acrescenta_a_agua_nao_tem_criterio` · `…::a_medicao_para_a_pedido` | as medidas uma a uma, o Δ vazio pela base, a paragem |
+| `ph2d-app-macros --test it tutorial_painter::uma_versao_nova_prepara_se_fora_do_quadro` | o 1.º quadro de uma versão está «a preparar» com a 1.ª já pintada; chegado o trabalho, passo 2; uma versão nova (a dica) volta a preparar; «Recomeçar» vale a preparar |
+| `ph2d-editor-core --lib tutorial_balao::tests::a_preparar_le_se_como_antes_de_comecar` | o título de antes de começar, a frase, sem «Mostra-me» |
+
+**Por fazer na W6:** a prova de mutação da W6a+W6b+W6d, o fecho.

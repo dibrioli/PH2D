@@ -42,6 +42,9 @@ pub enum PedidoDoTutorial {
     },
     /// Pintar a área marcada ([`AreaNaImagem`]).
     Pinta,
+    /// A família ainda prepara o tutorial fora do quadro (lê a gravação): o total ainda não se sabe e
+    /// nenhuma etapa conta. «Recomeçar» vale (só precisa do estado inicial); «Mostra-me» não.
+    APreparar,
 }
 
 /// Uma área numa imagem — o caminho de uma pincelada com o raio dela, em píxeis da imagem. A família
@@ -136,6 +139,7 @@ impl BalaoDoTutorial {
                 PedidoDoTutorial::Edita
                     | PedidoDoTutorial::AbreParaPintar
                     | PedidoDoTutorial::Meio { .. }
+                    | PedidoDoTutorial::APreparar
             )
         })
     }
@@ -194,6 +198,7 @@ impl BalaoDoTutorial {
                 &[("medium", &tr(chave_do_meio))],
             ),
             PedidoDoTutorial::Pinta => tr("panel.macros.tutorial.paint").to_owned(),
+            PedidoDoTutorial::APreparar => tr("panel.macros.tutorial.preparing").to_owned(),
         };
         (titulo, corpo)
     }

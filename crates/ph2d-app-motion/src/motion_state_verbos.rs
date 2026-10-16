@@ -57,6 +57,7 @@ impl MotionState {
             gpu_cook: ph2d_gpu_cook::GpuCook::new(),
             gpu_live: false,
             route_said: None,
+            fases: Default::default(),
             // **ON by default** (GPU/M5, 2026-07-18). It was opt-in for one
             // reason and the reason is gone: a GPU-resident cook does not feed
             // the CPU memo, so the graph panel's readouts, postage stamps, wire

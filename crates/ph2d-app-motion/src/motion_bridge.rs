@@ -45,6 +45,9 @@ pub mod gpu;
 #[path = "motion_bridge_surfaces.rs"]
 mod surfaces;
 
+/// O relógio de fases do quadro (doc 120 §8.3.1) — o custo fixo da rota híbrida.
+#[path = "motion_bridge_fases.rs"]
+pub(crate) mod fases;
 /// O COZIMENTO de um quadro — a porta que a ponte e a sonda do relógio chamam (doc 110 §14.1 (5)).
 #[path = "motion_bridge_quadro.rs"]
 pub(crate) mod quadro;

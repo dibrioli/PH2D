@@ -278,6 +278,7 @@ impl GpuCook {
         // ⭐ A ligação GUARDADA entre quadros (doc 122 §3): os mesmos buffers, o mesmo objecto.
         let bind_group = self.ligacoes.grupo(gpu, pipeline, &entries);
 
+        self.fases.despachos += 1;
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some(manifest.name),

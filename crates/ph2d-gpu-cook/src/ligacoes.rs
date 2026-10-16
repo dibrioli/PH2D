@@ -40,6 +40,8 @@ pub(crate) struct Ligacoes {
     uniformes: BTreeMap<Vec<u8>, (wgpu::Buffer, u64)>,
     grupos: BTreeMap<ChaveGrupo, (wgpu::BindGroup, u64)>,
     viragem: u64,
+    /// Grupos criados e reaproveitados desde a última viragem (o relógio de fases).
+    pub(crate) criados_reaproveitados: (u32, u32),
 }
 
 impl Ligacoes {
@@ -92,8 +94,10 @@ impl Ligacoes {
         };
         if let Some((g, uso)) = self.grupos.get_mut(&chave) {
             *uso = agora;
+            self.criados_reaproveitados.1 += 1;
             return g.clone();
         }
+        self.criados_reaproveitados.0 += 1;
         let entries: Vec<wgpu::BindGroupEntry> = entradas
             .iter()
             .map(|(i, b, o, t)| wgpu::BindGroupEntry {
@@ -125,6 +129,7 @@ impl Ligacoes {
     /// Uma viragem (um cozimento): o que ficou [`IDADE_MAX`] viragens sem uso morre.
     pub(crate) fn vira(&mut self) {
         self.viragem += 1;
+        self.criados_reaproveitados = (0, 0);
         let agora = self.viragem;
         self.uniformes
             .retain(|_, (_, uso)| agora - *uso <= IDADE_MAX);

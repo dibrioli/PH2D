@@ -40,11 +40,14 @@ impl GpuCook {
             let g = match reaproveita {
                 Some(g) => {
                     self.boundary_reuses += 1;
+                    self.fases.reaproveitadas += 1;
                     g
                 }
                 None => {
                     let g = stream::upload_stream(gpu, &mut self.pool, s);
                     self.boundary_uploads += 1;
+                    self.fases.enviadas += 1;
+                    self.fases.bytes_enviados += crate::fases::bytes_de(&g);
                     self.sent_boundaries
                         .insert(*node, ((*s).clone(), g.clone()));
                     g

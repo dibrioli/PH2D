@@ -58,6 +58,8 @@ mod encode;
 pub(crate) use encode::create_pipeline;
 pub mod error;
 mod estado;
+mod fases;
+pub use fases::FasesDoCozimento;
 pub mod field_name;
 mod formas;
 mod gather;
@@ -205,8 +207,11 @@ impl GpuCook {
         self.passe.larga();
 
         // As costuras que atravessam — e as que NÃO voltam a atravessar (ciclo 8, W1).
+        self.fases = FasesDoCozimento::default();
+        let t = std::time::Instant::now();
         let uploaded = self.enviar_costuras(gpu, boundary_streams);
-
+        self.fases.costuras = t.elapsed();
+        let t = std::time::Instant::now();
         let mut encoder = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -627,6 +632,7 @@ impl GpuCook {
         // What the panel gets to know about a GPU frame (see `last_counts`): the
         // host-side element count of every staged node, recorded once the walk is
         // done. Cheap (a map of `u32`) and honest — these ARE the dispatch sizes.
+        self.fases.estagios = t.elapsed();
         self.shape.record(&streams);
         self.tap_streams = streams.clone();
         if self.debug_retain {
@@ -646,9 +652,17 @@ impl GpuCook {
             default_size,
             styles,
         )?;
+        self.fases.saidas = t.elapsed() - self.fases.estagios;
         // ⭐ A leitura dos cartões vai no MESMO submit (doc 122 §5) — ver `crate::tap_voo`.
         let tap = self.tap_no_cozimento(gpu, &mut encoder);
-        gpu.queue.submit(Some(encoder.finish()));
+        self.fases.tap = t.elapsed() - self.fases.estagios - self.fases.saidas;
+        let comandos = encoder.finish();
+        self.fases.encode = t.elapsed();
+        let t = std::time::Instant::now();
+        gpu.queue.submit(Some(comandos));
+        self.fases.submit = t.elapsed();
+        (self.fases.grupos_criados, self.fases.grupos_reaproveitados) =
+            self.ligacoes.criados_reaproveitados;
         self.tap_depois_do_submit(tap);
 
         // D1 — the ping-pong: hold the `Arc`s of every node a `pre` edge reads,

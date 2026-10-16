@@ -420,6 +420,8 @@ pub struct MotionState {
     /// ⛔ **É VISTA, nunca documento** — não entra na captura, no undo nem no ficheiro; é a
     /// mesma lei do `gpu_live` acima. `None` = a ponte ainda não roteou este documento.
     pub route_said: Option<&'static str>,
+    /// O relógio de fases do último quadro ([`crate::motion_bridge::fases`]) — VISTA, como o `gpu_live`.
+    pub(crate) fases: crate::motion_bridge::fases::FasesDoQuadro,
     /// The GPU cook path — **ON by default** since the editor learned to read a
     /// GPU-resident frame (the tap feeds the readouts/probe/digest, Fase 4);
     /// `PH2D_GPU_COOK=0` opts back out. The CPU pump remains the CANONICAL

@@ -241,6 +241,7 @@ pub(super) fn cook_gpu(
     fixed_dt: f64,
     scopes: &TimeScopes,
 ) -> GpuOutcome {
+    let t = std::time::Instant::now();
     motion.gpu_live = false;
     // Fast-path guard so a GPU-off or sinkless document never plans.
     // ⚠️ **Os dois motivos separam-se aqui de propósito:** eles leem-se iguais numa recusa
@@ -335,7 +336,10 @@ pub(super) fn cook_gpu(
     // animação no primeiro sub-passo — com a cena a mexer-se, que é a forma mais cara de estar
     // errado. Fora de escopo, ela deixa de ser escrevível: *o erro que não compila não precisa de
     // gate.*
+    motion.fases.cercas = t.elapsed();
+    let t = std::time::Instant::now();
     let plan = plano_do_produto(motion, target as f64 * fixed_dt);
+    motion.fases.plano = t.elapsed();
     // Como este sink DESENHA (doc 89, folha 17): blend · pivô · filtro · ordem. Lido da
     // porta ÚNICA — a MESMA que o pump da CPU pergunta no laço de sinks —, e resolvido
     // AQUI, ao lado do sink que o plano escolheu: um segundo leitor teria liberdade de
@@ -431,8 +435,11 @@ pub(super) fn cook_gpu(
                 }
                 // ⚠️ **POR TIQUE**: um `value.lfo` dá outro número a cada sub-passo, e reutilizar
                 // o do plano congelaria a animação no primeiro deles.
+                let t = std::time::Instant::now();
                 let dirigidos = valores_dirigidos(motion, playhead);
+                motion.fases.dirigidos += t.elapsed();
                 motion.gpu_cook.set_driven(dirigidos);
+                let t = std::time::Instant::now();
                 let feito = motion.gpu_cook.cook_many(
                     gpu,
                     &motion.doc.graph,
@@ -445,6 +452,7 @@ pub(super) fn cook_gpu(
                     motion.default_size,
                     &estilos,
                 );
+                conta_o_cozimento(&mut motion.fases, &motion.gpu_cook, t);
                 forma::anota_a_mistura(&mut motion.formas_pedem_o_vello, feito)
             });
             if colisor::cerca_do_passe(motion, declara) {
@@ -473,6 +481,7 @@ pub(super) fn cook_gpu(
             // call: the march and the `pre` advance are per CALL, so one call per
             // boundary would advance the clock once per boundary and re-simulate
             // the shared prefix.
+            let t = std::time::Instant::now();
             let boundary_nodes: Vec<NodeId> = plan.boundaries.iter().map(|(n, _)| *n).collect();
             for tick in super::ticks_owed(motion.pump.last_cooked_tick(), target) {
                 motion.pump.advance_or_scrub_to_nodes_scoped(
@@ -484,6 +493,7 @@ pub(super) fn cook_gpu(
                     scopes,
                 );
             }
+            motion.fases.marcha = t.elapsed();
             // The clocks this frame owes the suffix. A hybrid plan CAN drive a loop since
             // ADR-0136 §5 — but only when every boundary is STATIC (a temporal one still
             // retreats at plan time, because that would be two sims of one state). A static
@@ -508,6 +518,7 @@ pub(super) fn cook_gpu(
             // condutor na bomba, e o `handed` empresta-a.
             // ⭐ E as ENTRADAS de cada tique (doc 128 §3.3): a bomba já as gravou ao marchar até à
             // fronteira; o condutor de cada tique lê as da fita.
+            let t = std::time::Instant::now();
             let mut replay = motion
                 .pump
                 .comeca_o_replay(relogios.first().and_then(|r| r.1).unwrap_or(target));
@@ -520,6 +531,7 @@ pub(super) fn cook_gpu(
                     valores_dirigidos(motion, playhead)
                 })
                 .collect();
+            motion.fases.dirigidos = t.elapsed();
             // Borrow-splitting: the cook takes `&motion.gpu_cook` mutably while the
             // streams live in `motion.pump`, so the hand-off is materialised first.
             let handed: Vec<(NodeId, &ph2d_nodegraph::attr::Stream)> = motion
@@ -540,6 +552,7 @@ pub(super) fn cook_gpu(
                     .zip(dirigidos)
                     .all(|(&(playhead, tick), d)| {
                         motion.gpu_cook.set_driven(d);
+                        let t = std::time::Instant::now();
                         let feito = motion.gpu_cook.cook_many(
                             gpu,
                             &motion.doc.graph,
@@ -552,6 +565,7 @@ pub(super) fn cook_gpu(
                             motion.default_size,
                             &estilos,
                         );
+                        conta_o_cozimento(&mut motion.fases, &motion.gpu_cook, t);
                         forma::anota_a_mistura(&mut motion.formas_pedem_o_vello, feito)
                     });
             }
@@ -574,6 +588,16 @@ pub(super) fn cook_gpu(
             GpuOutcome::Handled
         }
     }
+}
+
+/// Soma um `cook_many` (começado em `t`) e o que o `GpuCook` mediu dentro dele ao relógio do quadro.
+fn conta_o_cozimento(
+    fases: &mut super::fases::FasesDoQuadro,
+    cook: &ph2d_gpu_cook::GpuCook,
+    t: std::time::Instant,
+) {
+    fases.cook_many += t.elapsed();
+    fases.cozimento = fases.cozimento.soma(cook.fases_do_ultimo_cozimento());
 }
 
 /// Does editing `param` on a node of `type_name` **re-number** the emitter's ids

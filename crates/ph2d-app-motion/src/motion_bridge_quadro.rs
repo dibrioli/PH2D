@@ -34,6 +34,7 @@ pub(crate) fn o_quadro(
     fixed_dt: f64,
     mao: MaoDoEditor,
 ) {
+    let t0 = std::time::Instant::now();
     // The render output IS the Output node — the sink follows the graph (wire a
     // chain into an Output node and it draws). `None` (no Output node) → the pump
     // renders nothing. Recomputed each frame so add/delete/rewire just works.
@@ -80,8 +81,11 @@ pub(crate) fn o_quadro(
     // As MEMBRANAS: post-drain, pre-cook. O instante e' propriedade do GRUPO, entao
     // as tres moram numa porta so (`motion_externals`).
     motion.macro_quadro(playhead, fixed_dt);
+    let tomadas = t0.elapsed();
     coze(motion, gpu, playhead, fixed_dt);
     motion.macro_cozeu();
+    motion.fases.tomadas = tomadas;
+    motion.fases.total = t0.elapsed();
 }
 
 /// Coze o quadro do `playhead`: as membranas, e então a placa (`cook_gpu`) ou a bomba da CPU — sem os
@@ -118,6 +122,8 @@ fn coze(
     playhead: &ph2d_core::Playhead,
     fixed_dt: f64,
 ) {
+    motion.fases = Default::default();
+    let t = std::time::Instant::now();
     crate::motion_externals::publish_all(motion, playhead.time());
     motion.pump.define_a_tocar(playhead.is_playing());
     // Time scopes (M2.N1): each `motion.time_remap` node rewrites the clock of
@@ -186,10 +192,18 @@ fn coze(
     if gpu.is_none() {
         motion.gpu_live = false;
     }
+    motion.fases.preparo = t.elapsed();
+    let na_placa = |motion: &mut MotionState, gpu: &ph2d_gpu::GpuContext| {
+        let t = std::time::Instant::now();
+        let saida = gpu::cook_gpu(motion, gpu, target, fixed_dt, &scopes);
+        motion.fases.cook_gpu = t.elapsed();
+        saida
+    };
     if let Some(gpu) = gpu
         && motion.doc.bypassed_subgraphs.is_empty()
-        && let gpu::GpuOutcome::Handled = gpu::cook_gpu(motion, gpu, target, fixed_dt, &scopes)
+        && let gpu::GpuOutcome::Handled = na_placa(motion, gpu)
     {
+        let t = std::time::Instant::now();
         // ⭐ A origem de cada objecto Motion, na placa (doc ObjectsAndComponents 01 §13).
         crate::motion_objeto::origem::aplica_gpu(motion, gpu);
         // ⭐ P4 (doc 132 §4): as imagens das saídas em grupo saem das sprites para a placa de formas
@@ -204,8 +218,10 @@ fn coze(
             // doc 123 §8: o mundo da 1.ª cópia pela leitura dos cartões (zero download novo).
             ph2d_pan_diag::note_device_world(crate::pan_diag_tap::mundo_lido(motion));
         }
+        motion.fases.depois = t.elapsed();
         return;
     }
+    let t = std::time::Instant::now();
 
     // The graph the pump cooks: `doc.graph`, or a clone with every bypassed group
     // rewired to pass input[0] → output[0]. `None` (the common case) means the pump
@@ -235,6 +251,8 @@ fn coze(
             &scopes,
         );
     }
+    motion.fases.marcha = t.elapsed();
+    let t = std::time::Instant::now();
 
     relogio::regista(relogio, playhead.time());
     // ⭐ A origem de cada objecto Motion, ANTES do LOD (doc ObjectsAndComponents 01 §13).
@@ -266,4 +284,5 @@ fn coze(
             .collect();
         ph2d_pan_diag::note_instances(&motion.pump.instances, &vecs);
     }
+    motion.fases.depois = t.elapsed();
 }

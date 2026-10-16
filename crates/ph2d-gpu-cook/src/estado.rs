@@ -215,4 +215,6 @@ pub struct GpuCook {
     /// comportamento, então sem contador nenhum gate o distingue de não o fazer.
     pub(crate) boundary_uploads: u64,
     pub(crate) boundary_reuses: u64,
+    /// O relógio do último cozimento ([`crate::FasesDoCozimento`]).
+    pub(crate) fases: crate::FasesDoCozimento,
 }

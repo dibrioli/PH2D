@@ -191,7 +191,10 @@ fn medida_luz2d_w5v_caso() {
     let a = std::env::var("PH2D_W5V_CAMERA").map_or_else(
         |_| fabrica(alvo),
         |v| {
-            let n: Vec<f32> = v.split(',').map(|x| x.parse().expect("PH2D_W5V_CAMERA")).collect();
+            let n: Vec<f32> = v
+                .split(',')
+                .map(|x| x.parse().expect("PH2D_W5V_CAMERA"))
+                .collect();
             ph2d_render::Camera2d::new([n[0], n[1]], n[2])
                 .world_to_screen_affine(ph2d_host::WindowSize::new(alvo.0, alvo.1))
         },
@@ -199,7 +202,8 @@ fn medida_luz2d_w5v_caso() {
     // `PH2D_W5V_MUTA=<de>⇒<para>[⇐…]`: o texto do módulo das cascatas mutado (experimentos).
     let muta = |c: Config| match std::env::var("PH2D_W5V_MUTA") {
         Ok(m) => {
-            let mut fonte = ph2d_light2d_gpu::fonte_do_rc(c.aritmetica, c.armazenamento).to_string();
+            let mut fonte =
+                ph2d_light2d_gpu::fonte_do_rc(c.aritmetica, c.armazenamento).to_string();
             for par in m.split('⇐') {
                 let (de, para) = par.split_once('⇒').expect("<de>⇒<para>");
                 assert_eq!(fonte.matches(de).count(), 1, "a agulha: {de}");
@@ -316,14 +320,23 @@ fn medida_luz2d_w5v_caso() {
                 None => etapas.push((etapa, minimo(ms))),
             }
         }
-        let s: Vec<String> = etapas.iter().map(|(e, ms)| format!("{e} {ms:.3}")).collect();
-        eprintln!("F {rotulo} · etapas (mín, soma dos níveis): {}", s.join(" · "));
+        let s: Vec<String> = etapas
+            .iter()
+            .map(|(e, ms)| format!("{e} {ms:.3}"))
+            .collect();
+        eprintln!(
+            "F {rotulo} · etapas (mín, soma dos níveis): {}",
+            s.join(" · ")
+        );
     }
     let bytes = crate::comum::ler(&gpu, vista.fluencia(), 8);
-    let digital = bytes
-        .iter()
-        .fold(0xcbf2_9ce4_8422_2325_u64, |h, &b| (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3));
-    eprintln!("H {rotulo} · a fluência (FNV-1a de {} bytes): {digital:016x}", bytes.len());
+    let digital = bytes.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, &b| {
+        (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3)
+    });
+    eprintln!(
+        "H {rotulo} · a fluência (FNV-1a de {} bytes): {digital:016x}",
+        bytes.len()
+    );
     eprintln!(
         "W5v fim · {rotulo} · load {}",
         crate::medida_luz2d_w4b::loadavg().trim()
@@ -359,7 +372,8 @@ fn medida_luz2d_w5v_fundo_ao_bit() {
     let mut casos = crate::medida_luz2d_w5q::casos();
     let c8 = cena_do_smoke(8);
     casos.push(("cena 8".into(), c8.clone(), c8, fabrica((1920, 1080))));
-    let vizinhas = "        if !num_corpo(ponto_fino(vec2<u32>(vec2<i32>(alvo) + VIZINHAS_DO_FUNDO[k]))) {";
+    let vizinhas =
+        "        if !num_corpo(ponto_fino(vec2<u32>(vec2<i32>(alvo) + VIZINHAS_DO_FUNDO[k]))) {";
     let sem_vizinhas = "        if false && !num_corpo(ponto_fino(vec2<u32>(vec2<i32>(alvo) + VIZINHAS_DO_FUNDO[k]))) {";
     let forcado = [
         ("    if !FUNDO_SEM_LUZ || tau > 0.0", "    if tau > 0.0"),
@@ -420,7 +434,13 @@ fn medida_luz2d_w5v_fundo_ao_bit() {
                     .grade_da_fluencia()
                     .largura as usize;
                 let meia = |b: &[u8], i: usize| half::f16::from_le_bytes([b[i], b[i + 1]]).to_f32();
-                for (i, _) in antes.iter().zip(&novo).enumerate().filter(|(_, (x, y))| x != y).take(4) {
+                for (i, _) in antes
+                    .iter()
+                    .zip(&novo)
+                    .enumerate()
+                    .filter(|(_, (x, y))| x != y)
+                    .take(4)
+                {
                     let (t, canal) = (i / 8, (i % 8) / 2);
                     let base = t * 8;
                     let px = |b: &[u8]| [0, 2, 4, 6].map(|o| meia(b, base + o));
@@ -439,7 +459,10 @@ fn medida_luz2d_w5v_fundo_ao_bit() {
                     miolo_salta_o_fundo: false,
                     ..c
                 });
-                eprintln!("{nivel:?} · {rotulo} · antes contra antes: {} bytes", dif(&antes, &outra));
+                eprintln!(
+                    "{nivel:?} · {rotulo} · antes contra antes: {} bytes",
+                    dif(&antes, &outra)
+                );
             }
             todos_ao_bit &= d_corte == 0;
             let c1 = dif(
@@ -475,5 +498,8 @@ fn medida_luz2d_w5v_fundo_ao_bit() {
         "W5v fundo · o corte ao bit em todos: {todos_ao_bit} · os controlos mudaram {ctl:?} casos · load {}",
         crate::medida_luz2d_w4b::loadavg().trim()
     );
-    assert!(ctl[0] > 0 && ctl[1] > 0, "um controlo não mudou nenhum caso: a régua não vê o fundo");
+    assert!(
+        ctl[0] > 0 && ctl[1] > 0,
+        "um controlo não mudou nenhum caso: a régua não vê o fundo"
+    );
 }

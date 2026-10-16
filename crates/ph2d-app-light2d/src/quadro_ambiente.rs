@@ -81,7 +81,12 @@ fn hrc_por_fio(c: ph2d_light2d_gpu::Config) -> ph2d_light2d_gpu::Config {
 /// ⭐ W5v — a configuração do solver da VISTA do produto para o degrau `dg` na grade `g`: a ÚNICA porta
 /// (o quadro, a estufa e as réguas que medem o app — a aritmética é a do dispositivo, F16 na RTX).
 #[must_use]
-pub fn config_da_vista(device: &wgpu::Device, g: Grade, mundo_para_tela: Affine, dg: Degrau) -> Config {
+pub fn config_da_vista(
+    device: &wgpu::Device,
+    g: Grade,
+    mundo_para_tela: Affine,
+    dg: Degrau,
+) -> Config {
     hrc_por_fio(Config {
         aritmetica: Config::padrao_para(device, g).aritmetica,
         pe_na_borda: ligado("PH2D_LIGHT2D_PE"),
@@ -111,7 +116,9 @@ pub fn config_do_entorno(
     alvo_px: (u32, u32),
     dg: Degrau,
 ) -> Option<Config> {
-    let holografica = dg.holografica.then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO);
+    let holografica = dg
+        .holografica
+        .then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO);
     if dg.entorno <= 0.0 || holografica.is_none() || !ligado("PH2D_LIGHT2D_ENTORNO") {
         return None;
     }

@@ -574,7 +574,8 @@ impl LuzDoQuadro {
             self.custo_ms = Some(t.total() + extra);
             self.leituras += 1;
             let fluencia = r.solver.grade_da_fluencia();
-            let regiao = crate::grade::regiao_da_janela(fluencia, self.mundo_para_tela, self.alvo_px);
+            let regiao =
+                crate::grade::regiao_da_janela(fluencia, self.mundo_para_tela, self.alvo_px);
             let onde = (r.solver.config(), fluencia, regiao, self.alvo_px);
             renasce = leituras::relatar_custo(
                 &mut self.custo_janela,

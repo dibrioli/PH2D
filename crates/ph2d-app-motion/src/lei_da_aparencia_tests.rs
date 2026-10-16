@@ -409,8 +409,7 @@ fn uma_forma_solta_no_grafo() {
     // ⭐⭐⭐ **E a CENA QUE O DONO USOU** (`PH2D_GPU_COOK_DEMO=2`), que é o único sítio onde o
     // report pode ter nascido: a de laboratório acima não o reproduz.
     let mut cena = MotionState::new();
-    let sinks2 =
-        crate::motion_state::demo_router::build_level(Some("2"), &mut cena.doc, &cena.registry);
+    let sinks2 = crate::motion_demo_legend::monta("2", &mut cena.doc, &cena.registry).0;
     if let Some(&s2) = sinks2.first() {
         let g2 = cena.doc.graph.clone();
         let conta = |c: &mut MotionState, gr: &Graph, rot: &str| {
@@ -439,8 +438,7 @@ fn uma_forma_solta_no_grafo() {
     eprintln!("\n  cena │ maior sink │ tem grid");
     for nivel in ["2", "90", "91", "97", "110", "121"] {
         let mut c = MotionState::new();
-        let sinks =
-            crate::motion_state::demo_router::build_level(Some(nivel), &mut c.doc, &c.registry);
+        let sinks = crate::motion_demo_legend::monta(nivel, &mut c.doc, &c.registry).0;
         if sinks.is_empty() {
             continue;
         }

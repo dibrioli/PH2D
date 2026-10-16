@@ -80,6 +80,38 @@ fn pano_sem_fio(m: &mut MotionState) -> Vec<NodeId> {
     sinks
 }
 
+/// A MESMA `=116` sem o CARIMBO — o pano de pontos (só marcadores) que ela foi até 15/10: o
+/// `Duplicator` e a `Shape` saem, e a grade liga direto à escala (Bug #20, o «antes» do custo).
+fn pano_sem_forma(m: &mut MotionState) -> Vec<NodeId> {
+    let sinks = pano_com_fio(m);
+    let g = &mut m.doc.graph;
+    let dup = g
+        .nodes()
+        .iter()
+        .find(|i| i.type_name == "motion.duplicator")
+        .map(|i| i.id)
+        .expect("a `=116` carimba");
+    let (grade, _, _) = g.input_edge(dup, 1).expect("os pontos");
+    let (forma, _, _) = g.input_edge(dup, 0).expect("a forma");
+    let saidas: Vec<Edge> = g
+        .edges()
+        .iter()
+        .filter(|e| e.from.0 == dup)
+        .copied()
+        .collect();
+    for e in saidas {
+        g.disconnect(e.to.0, e.to.1);
+        g.connect(Edge {
+            from: (grade, 0),
+            ..e
+        })
+        .expect("grade -> escala");
+    }
+    g.remove_node(dup);
+    g.remove_node(forma);
+    sinks
+}
+
 /// Um condutor CARO (item 2): o `amount` de um `motion.scale` dirigido pela MÉDIA do
 /// comprimento de `P` sobre a grelha VIVA — a CPU tem de cozer a grelha inteira para o dar.
 fn condutor_caro(m: &mut MotionState) -> Vec<NodeId> {
@@ -178,6 +210,20 @@ const VARIANTES: &[Variante] = &[
         monta: pano_com_fio,
         placa: false,
         fios_na_placa: true,
+        condutores_na_placa: true,
+    },
+    Variante {
+        nome: "sem forma · placa",
+        monta: pano_sem_forma,
+        placa: true,
+        fios_na_placa: true,
+        condutores_na_placa: true,
+    },
+    Variante {
+        nome: "sem forma · fios=0",
+        monta: pano_sem_forma,
+        placa: true,
+        fios_na_placa: false,
         condutores_na_placa: true,
     },
     Variante {

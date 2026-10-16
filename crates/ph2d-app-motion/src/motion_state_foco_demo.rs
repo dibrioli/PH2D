@@ -39,8 +39,11 @@ use ph2d_nodegraph::graph::NodeId;
 /// O passo entre elementos, em unidades de MUNDO — o mesmo da cena `=111`, que é o que faz um
 /// pano ler como pano em vez de um borrão.
 const PASSO: f32 = 0.03;
-/// O tamanho de cada peça (o sink desenha um quad de tamanho `1`).
+/// O LADO de cada peça, um quadrado carimbado (`Shape` → `Duplicator`); o `motion.scale` põe-no à
+/// escala da cena.
 const PECA: f32 = 0.02;
+/// A cor das peças — saturada, para a mancha se ler contra o fundo.
+const COR: [f32; 3] = [0.95, 0.75, 0.25];
 /// 80 × 80 = 6 400 peças.
 const LADO: f32 = 80.0;
 /// A largura do pano, DERIVADA — nunca digitada duas vezes.
@@ -71,7 +74,9 @@ pub(super) fn captions() -> Vec<Caption> {
     ]
 }
 
-/// `grid → falloff → remap → scale → output`.
+/// `grid → scale → duplicator(shape) → falloff → remap → scale → output`. ⭐ A grade dá os LUGARES e o
+/// `Duplicator` carimba um quadrado em cada um (o molde da `=118`, Bug #20): sem forma a cena
+/// desenhava só os marcadores de ponto, e a mancha não crescia nada que se visse.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
@@ -98,13 +103,14 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     let cresce = g.add_node("motion.scale");
     g.set_param(cresce, "amount", CRESCIMENTO);
 
-    // A peça — sem isto o pano é um borrão sólido.
+    // O tamanho da peça, e a PEÇA: um quadrado carimbado em cada lugar da grade.
     let fit = g.add_node("motion.scale");
     g.set_param(fit, "amount", PECA);
+    let carimbo = super::jogo_demo::carimbo(g, COR, 384.0, 140.0)?;
 
     let out = g.add_node("motion.output");
 
-    for (i, n) in [grid, fit, campo, remap, cresce, out]
+    for (i, n) in [grid, fit, carimbo, campo, remap, cresce, out]
         .into_iter()
         .enumerate()
     {
@@ -118,16 +124,17 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         );
     }
 
-    for (from, to) in [
-        (grid, fit),
-        (fit, campo),
-        (campo, remap),
-        (remap, cresce),
-        (cresce, out),
+    for (from, to, porta) in [
+        (grid, fit, 0u16),
+        (fit, carimbo, 1),
+        (carimbo, campo, 0),
+        (campo, remap, 0),
+        (remap, cresce, 0),
+        (cresce, out, 0),
     ] {
         g.connect(Edge {
             from: (from, 0),
-            to: (to, 0),
+            to: (to, porta),
             delayed: false,
         })
         .ok()?;

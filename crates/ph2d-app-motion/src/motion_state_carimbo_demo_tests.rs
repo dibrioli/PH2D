@@ -195,7 +195,7 @@ fn o_roteador_monta_esta_cena_no_126() {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registram");
     let mut doc = MotionDoc::default();
-    let sinks = super::super::demo_router::build_level(Some("126"), &mut doc, &reg);
+    let sinks = crate::motion_demo_legend::monta("126", &mut doc, &reg).0;
     assert_eq!(sinks.len(), 1, "o `=126` monta a cena e ela tem uma saida");
     assert_eq!(
         dos(&doc, "motion.duplicator").len(),

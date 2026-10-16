@@ -87,6 +87,30 @@ pub(super) fn forma(
     Some(f)
 }
 
+/// ⭐ **O CARIMBO de uma cena de pontos** (Bug #20, `CLAUDE.md` §0.8): um quadrado de lado `1`
+/// (`Rectangle` de semi-lado `0,5`) num `Duplicator` com a ESCALA DO PONTO ligada
+/// (`point_scale = 1`), logo o `size` que a corrente já trazia continua a ser o LADO da peça, como
+/// era o do quad. Devolve o `Duplicator`; quem chama liga os pontos à porta `1` e a saída adiante.
+pub(super) fn carimbo(g: &mut Graph, rgb: [f32; 3], x: f32, y: f32) -> Option<NodeId> {
+    let no = no_em(0.0);
+    let f = forma(
+        g,
+        &no,
+        ph2d_node_motion_shape::ShapeKind::Rectangle,
+        MEIO_LADO_UNITARIO,
+        rgb,
+        x,
+        y + 110.0,
+    )?;
+    let dup = no(g, "motion.duplicator", x, y);
+    g.set_param(dup, "point_scale", 1.0);
+    liga(g, (f, 0), dup, 0, false)?;
+    Some(dup)
+}
+
+/// O semi-lado do quadrado de lado `1` (o `Rectangle` vive em raio `1`).
+pub(super) const MEIO_LADO_UNITARIO: f32 = 0.5;
+
 pub(super) fn entrada(
     g: &mut Graph,
     no: &impl Fn(&mut Graph, &str, f32, f32) -> NodeId,

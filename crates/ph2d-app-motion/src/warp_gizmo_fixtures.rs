@@ -63,6 +63,39 @@ pub(super) fn cena_do_dono(depois_do_mirror: bool) -> (MotionState, NodeId) {
     let mut m = MotionState::new();
     let sinks = crate::motion_demo_legend::monta("111", &mut m.doc, &m.registry).0;
     m.sinks = sinks;
+    // ⚠️ A cena do REPORT não tinha o carimbo (`Shape → Duplicator`, 15/10, Bug #20): com ele a forma
+    // fica na CPU e a rota é a HÍBRIDA, que não é onde o defeito vivia. Arranca-se, e a corrente volta
+    // a ser a de pontos que o dono tinha no ecrã.
+    let dup = m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.duplicator")
+        .map(|n| n.id)
+        .expect("a cena 111 carimba");
+    let (pontos, _, _) = m.doc.graph.input_edge(dup, 1).expect("os pontos");
+    let (forma, _, _) = m.doc.graph.input_edge(dup, 0).expect("a forma");
+    let saidas: Vec<Edge> = m
+        .doc
+        .graph
+        .edges()
+        .iter()
+        .filter(|e| e.from.0 == dup)
+        .copied()
+        .collect();
+    for e in saidas {
+        m.doc.graph.disconnect(e.to.0, e.to.1);
+        m.doc
+            .graph
+            .connect(Edge {
+                from: (pontos, 0),
+                ..e
+            })
+            .expect("encaixa");
+    }
+    m.doc.graph.remove_node(dup);
+    m.doc.graph.remove_node(forma);
     let acha = |t: &str| -> Option<NodeId> {
         m.doc
             .graph

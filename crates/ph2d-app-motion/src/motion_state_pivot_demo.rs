@@ -42,9 +42,11 @@ use ph2d_nodegraph::graph::NodeId;
 /// O passo entre elementos, em unidades de MUNDO — e a peça, a metade dele (a mesma razão que
 /// as cenas da conferência usam, que é o que faz um pano ler como pano em vez de um borrão).
 const PASSO: f32 = 0.03;
-/// O tamanho de cada peça. O sink desenha um quad de tamanho `1`, e é o `motion.scale` que o põe
-/// à escala da cena.
+/// O LADO de cada peça, um quadrado carimbado (`Shape` → `Duplicator`); o `motion.scale` põe-no à
+/// escala da cena.
 const PECA: f32 = 0.02;
+/// A cor das peças — saturada, para a torção se ler contra o fundo.
+const COR: [f32; 3] = [0.35, 0.7, 1.0];
 /// 80 × 80 = 6 400, que o espelho dobra para **12 800**.
 const LADO: f32 = 80.0;
 /// A largura do pano, derivada — nunca digitada duas vezes.
@@ -78,7 +80,9 @@ pub(super) fn captions() -> Vec<Caption> {
     ]
 }
 
-/// `grid → move → mirror → twist → transform → output`, com o pano fora da origem.
+/// `grid → scale → duplicator(shape) → move → mirror → twist → transform → output`, com o pano fora da
+/// origem. ⭐ A grade dá os LUGARES e o `Duplicator` carimba um quadrado em cada um (o molde da
+/// `=118`, Bug #20): sem forma a cena desenhava só os marcadores de ponto.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
@@ -89,9 +93,10 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     g.set_param(grid, "gap_x", PASSO);
     g.set_param(grid, "gap_y", PASSO);
 
-    // A peça — o sink desenha um quad de tamanho `1`, e sem isto o pano é um borrão sólido.
+    // O tamanho da peça, e a PEÇA: um quadrado carimbado em cada lugar da grade.
     let fit = g.add_node("motion.scale");
     g.set_param(fit, "amount", PECA);
+    let carimbo = super::jogo_demo::carimbo(g, COR, 384.0, 140.0)?;
 
     // O pano sai da origem — ver o cabeçalho: é isto que faz a escolha do pivô ter imagem.
     let mv = g.add_node("motion.move");
@@ -121,7 +126,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
     let out = g.add_node("motion.output");
 
-    for (i, n) in [grid, fit, mv, mirror, twist, xform, out]
+    for (i, n) in [grid, fit, carimbo, mv, mirror, twist, xform, out]
         .into_iter()
         .enumerate()
     {
@@ -134,11 +139,12 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
             },
         );
     }
-    g.set_pos(wind, Pos { x: 470.0, y: 330.0 });
+    g.set_pos(wind, Pos { x: 900.0, y: 330.0 });
 
     for (from, to, port) in [
         (grid, fit, 0u16),
-        (fit, mv, 0),
+        (fit, carimbo, 1),
+        (carimbo, mv, 0),
         (mv, mirror, 0),
         (mirror, twist, 0),
         (wind, twist, 1),

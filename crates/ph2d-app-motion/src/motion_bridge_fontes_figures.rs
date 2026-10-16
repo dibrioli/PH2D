@@ -59,6 +59,12 @@ fn colher(altura_mundo: f32) -> Vec<Stream> {
         .collect()
 }
 
+/// O LADO de uma peça carimbada (os panos de pontos levam um `Rectangle`, que vive em raio `1`):
+/// `2 · size`.
+fn lado_da_peca(size: f32) -> f32 {
+    2.0 * size
+}
+
 fn vec2(s: &Stream, col: &str) -> Vec<[f32; 2]> {
     match s.get(col) {
         Some(Column::Vec2(v)) => v.clone(),
@@ -74,10 +80,11 @@ fn vec2(s: &Stream, col: &str) -> Vec<[f32; 2]> {
 /// `30 px` com alturas que só o viewBox distinguia.
 ///
 /// `marca` diz o lado do quadrado em unidades de figura. ⚠️⚠️ **`None` (o lado vem da coluna
-/// `size`) só é honesto para uma peça que o sink desenha como QUAD.** As peças de texto e de forma
-/// são geometria VECTORIAL: ali o `size` é um factor de escala e não uma extensão, e desenhá-lo
-/// como lado dá quadrados de cem pixels sobre posições separadas por dois — a figura que esta
-/// função existe para não escrever. Para essas passa-se uma marca, e a legenda di-lo.
+/// `size`, [`lado_da_peca`]) só é honesto para o QUADRADO que a cena carimba nos panos de pontos.**
+/// As peças de texto e a estrela são geometria VECTORIAL de extensão própria: ali o `size` é um
+/// factor de escala, e desenhá-lo como lado dá quadrados de cem pixels sobre posições separadas
+/// por dois — a figura que esta função existe para não escrever. Para essas passa-se uma marca, e
+/// a legenda di-lo.
 fn svg_par(sets: &[&Stream], escala: f32, marca: Option<f32>) -> Vec<String> {
     // ⚠️ **Cada pano é CENTRADO no seu próprio centro, e só a ESCALA é partilhada.** Os dois panos
     // de um par vivem em metades opostas da cena (`±COL_X`), então uma moldura sobre as posições
@@ -105,7 +112,8 @@ fn svg_par(sets: &[&Stream], escala: f32, marca: Option<f32>) -> Vec<String> {
             let t = vec2(s, "size");
             let mut corpo = String::new();
             for (i, q) in p.iter().enumerate() {
-                let lado = marca.unwrap_or_else(|| t.get(i).map_or(1.0, |z| z[0]) * escala);
+                let lado =
+                    marca.unwrap_or_else(|| t.get(i).map_or(1.0, |z| lado_da_peca(z[0])) * escala);
                 corpo.push_str(&format!(
                     "<rect x=\"{:.2}\" y=\"{:.2}\" width=\"{lado:.2}\" height=\"{lado:.2}\" rx=\"{:.2}\" fill=\"{}\"/>",
                     q[0] - lado * 0.5,
@@ -162,7 +170,7 @@ fn svg_ecra(camara: &Stream, tabela: &Stream, zoom: f32) -> String {
     let centro = [centro[0] / n, centro[1] / n];
     let mut corpo = String::new();
     for (i, p) in cp.iter().enumerate() {
-        let lado = ct.get(i).map_or(1.0, |z| z[0]) * zoom;
+        let lado = ct.get(i).map_or(1.0, |z| lado_da_peca(z[0])) * zoom;
         corpo.push_str(&quadrado(
             W * 0.31 + (p[0] - centro[0]) * zoom,
             H * 0.5 - (p[1] - centro[1]) * zoom,
@@ -170,7 +178,10 @@ fn svg_ecra(camara: &Stream, tabela: &Stream, zoom: f32) -> String {
             draw::cor::FORTE,
         ));
     }
-    let lado_tabela = vec2(tabela, "size").first().map_or(1.0, |z| z[0]) * zoom;
+    let lado_tabela = vec2(tabela, "size")
+        .first()
+        .map_or(1.0, |z| lado_da_peca(z[0]))
+        * zoom;
     corpo.push_str(&quadrado(
         W * 0.84,
         H * 0.5,

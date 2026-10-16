@@ -27,7 +27,7 @@ fn toda_cena_de_ciclo_coze_pela_placa() {
     for n in super::CICLOS {
         let corrida = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let mut m = MotionState::new();
-            m.sinks = super::super::build_level(Some(n), &mut m.doc, &m.registry);
+            m.sinks = crate::motion_demo_legend::monta(n, &mut m.doc, &m.registry).0;
             assert!(!m.sinks.is_empty(), "a cena {n} monta");
             let mut playhead = ph2d_core::Playhead::new(1.0 / 60.0);
             playhead.play();

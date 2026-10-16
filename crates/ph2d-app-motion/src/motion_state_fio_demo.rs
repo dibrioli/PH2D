@@ -3,11 +3,14 @@
 //!
 //! ## O que ela encena
 //!
-//! Um pano no TECTO da grelha (`LADO_MAX_DE_GRELHA²`, hoje **32 761 peças**) e **um fio**: um
-//! `value.lfo` a comandar o tamanho de todas elas. É a cadeia mais simples que existe com um nó de
+//! Um pano no TECTO da grelha (`LADO_MAX_DE_GRELHA²`, hoje **32 761 quadrados**, `Shape` →
+//! `Duplicator`) e **um fio**: um `value.lfo` a comandar o tamanho de todos eles. É a cadeia mais simples que existe com um nó de
 //! valor — e era exactamente ela que, até à W1a, ia para a CPU **por causa do fio**. Medido a
 //! 07/10 pela porta do produto (doc 110 §14.2 (5)): `0,051 ms` por quadro na placa, `0,134` com o
 //! fio a derrubá-la (`2,6×`) — invisível a 60 fps; o que a cena ensina é a ROTA, no terminal.
+//! Com os quadrados (15/10, release, `sonda_o_relogio_do_ciclo_6`, mínimo de 7 rodadas): `0,185`
+//! na placa (rota HÍBRIDA: só a forma na CPU) contra `0,067` sem forma, e `0,476` com o fio a
+//! derrubá-la (`2,5×`); o quadro inteiro do app fica nos `16,7 ms` (vsync) nos dois.
 //!
 //! ⚠️ **A cena não tem A/B de quadrantes, e é de propósito:** o que mudou não é uma aparência, é
 //! **onde a cena corre**. Os dois lados da comparação não cabem no mesmo ecrã — eles são a MESMA
@@ -35,9 +38,15 @@ use ph2d_nodegraph::graph::NodeId;
 /// dizer `102 400` até 07/10 (doc 110 §14.2 (5)). *Uma cena que anuncia o que não produz ensina o
 /// contrário do que acontece* (§5.0): os três lêem daqui.
 const LADO: f32 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
-/// O vão entre peças. ⚠️ Apertado de propósito: a `320` de lado, um vão folgado põe o pano fora do
-/// alcance do zoom e a cena ensinaria *«não aparece nada»*.
-const VAO: f32 = 0.012;
+/// O vão entre peças. ⚠️ É ele que decide se o pano se LÊ: a `0,012` as `181` colunas cabiam em
+/// `2,2` unidades e cada peça media menos de um pixel na câmara de abertura; a `0,03` o pano tem
+/// `5,4` unidades e ainda cabe inteiro nela (`10` de altura).
+const VAO: f32 = 0.03;
+/// O `Size` do quadrado carimbado — o SEMI-lado (o `Rectangle` vive em raio `1`), `0,3` do vão:
+/// no pico da onda (`× 1,6`) o lado é `0,96` do vão e as peças não se tocam.
+pub(super) const MEIO_PECA: f32 = VAO * 0.3;
+/// A cor das peças, saturada para o pano se ver contra o fundo escuro.
+const COR: [f32; 3] = [0.95, 0.55, 0.2];
 /// O período do oscilador, em segundos — lento o suficiente para a respiração se ver num quadro
 /// parado, e não tão lento que o dono tenha de esperar para saber se algo mexe.
 const PERIODO: f32 = 2.0;
@@ -46,8 +55,9 @@ const AMPLITUDE: f32 = 0.6;
 
 /// A legenda que a cena pousa no canvas.
 pub(super) fn captions() -> Vec<Caption> {
+    // Debaixo do pano, derivada da meia-altura dele.
     vec![Caption::new(
-        [0.0, -2.6],
+        [0.0, -(LADO - 1.0) * VAO * 0.5 - 0.6],
         format!("{} pieces, ONE wire: the Value LFO sizes them all", pecas()),
     )]
 }
@@ -61,22 +71,45 @@ pub(super) fn pecas() -> String {
     }
 }
 
+/// O que carimba as peças.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) enum Carimbo {
+    /// O quadrado da cena.
+    Quadrado,
+    /// Outro `kind` da `source.shape` (o caso do dono: `5` = estrela).
+    Kind(f32),
+    /// NENHUM — a corrente só de pontos (os marcadores) que a cena desenhou até 15/10; o controlo
+    /// das sondas de custo.
+    Nenhum,
+}
+
 /// Monta a cena. Devolve o sink.
 ///
 /// ⚠️ A forma vem da env aqui e é ARGUMENTO em [`build_com`]: um ramo de ambiente dentro da lei
 /// torna a cena inalcançável de um teste — e foi um teste que precisou dela primeiro.
+/// `PH2D_FIO_FORMA=<kind>` troca o quadrado por outra forma; um valor negativo tira o carimbo.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
-    let forma = std::env::var("PH2D_FIO_FORMA")
+    let carimbo = match std::env::var("PH2D_FIO_FORMA")
         .ok()
-        .and_then(|v| v.parse::<f32>().ok());
-    build_com(doc, reg, forma)
+        .and_then(|v| v.parse::<f32>().ok())
+    {
+        None => Carimbo::Quadrado,
+        Some(k) if k < 0.0 => Carimbo::Nenhum,
+        Some(k) => Carimbo::Kind(k),
+    };
+    build_com(doc, reg, carimbo)
 }
 
-/// A cena, com a FORMA escolhida por quem chama — ver [`build`].
+/// `grid → duplicator(shape) → scale ← lfo → output`, com o carimbo escolhido por quem chama —
+/// ver [`build`].
+///
+/// ⭐ A grade dá os LUGARES, o `Duplicator` carimba um quadrado em cada um (o molde da `=118`), e o
+/// fio comanda o tamanho do que foi carimbado. ⚠️ O carimbo vem ANTES da escala: o `motion.scale`
+/// multiplica a coluna `size` que o carimbo escreveu (o semi-lado da forma).
 pub(super) fn build_com(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
-    forma_kind: Option<f32>,
+    carimbo: Carimbo,
 ) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
 
@@ -96,7 +129,34 @@ pub(super) fn build_com(
     // peça de tamanho negativo.
     g.set_param(lfo, "offset", 1.0);
 
-    for (de, para) in [(grelha, escala), (escala, saida)] {
+    let pecas = if carimbo == Carimbo::Nenhum {
+        grelha
+    } else {
+        let forma = super::jogo_demo::forma(
+            g,
+            &super::jogo_demo::no_em(0.0),
+            ph2d_node_motion_shape::ShapeKind::Rectangle,
+            MEIO_PECA,
+            COR,
+            -160.0,
+            200.0,
+        )?;
+        if let Carimbo::Kind(k) = carimbo {
+            g.set_param(forma, ph2d_node_motion_shape::param::KIND, k);
+        }
+        let dup = g.add_node("motion.duplicator");
+        g.set_pos(dup, Pos { x: -160.0, y: 0.0 });
+        for (de, porta) in [(forma, 0u16), (grelha, 1)] {
+            g.connect(Edge {
+                from: (de, 0),
+                to: (dup, porta),
+                delayed: false,
+            })
+            .ok()?;
+        }
+        dup
+    };
+    for (de, para) in [(pecas, escala), (escala, saida)] {
         g.connect(Edge {
             from: (de, 0),
             to: (para, 0),
@@ -104,51 +164,15 @@ pub(super) fn build_com(
         })
         .ok()?;
     }
-    // ⭐ **O FIO** — o assunto da cena. É esta linha, e só esta, que até à W1a mandava as 102 400
-    // peças para a CPU.
+    // ⭐ **O FIO** — o assunto da cena. É esta linha, e só esta, que até à W1a mandava as peças
+    // todas para a CPU.
     g.drive_param(escala, "amount", (lfo, 0)).ok()?;
 
-    // ⭐⭐ **O CASO DO DONO, reproduzível** (report de 2026-09-14: *«usando shape (exemplo: star)
-    // fps cai para 27»*). Com `PH2D_FIO_FORMA=<índice do kind>` as peças passam a ser uma FORMA
-    // carimbada em vez do quad de omissão.
-    //
-    // ⚠️ **É um knob de DIAGNÓSTICO e não um modo da cena**: a `=116` ensina onde a cena corre, e
-    // uma forma muda a resposta por DOIS motivos que nada têm a ver com o fio (o `source.shape`
-    // declara-se fonte vectorial viva e recusa o grafo antes de planear; o `motion.duplicator` é
-    // CPU-only). *Sem uma porta assim, o report do dono não é reproduzível por ninguém.*
-    if let Some(kind) = forma_kind {
-        let forma = g.add_node("source.shape");
-        g.set_param(forma, "kind", kind);
-        let carimbo = g.add_node("motion.duplicator");
-        g.connect(Edge {
-            from: (forma, 0),
-            to: (carimbo, 0),
-            delayed: false,
-        })
-        .ok()?;
-        g.connect(Edge {
-            from: (escala, 0),
-            to: (carimbo, 1),
-            delayed: false,
-        })
-        .ok()?;
-        // O carimbo entra ENTRE a escala e a saída: o fio continua a comandar o tamanho.
-        g.disconnect(saida, 0);
-        g.connect(Edge {
-            from: (carimbo, 0),
-            to: (saida, 0),
-            delayed: false,
-        })
-        .ok()?;
-        g.set_pos(forma, Pos { x: -60.0, y: 200.0 });
-        g.set_pos(carimbo, Pos { x: 40.0, y: 0.0 });
-    }
-
     for (no, x, y) in [
-        (grelha, -260.0, 0.0),
-        (lfo, -260.0, 160.0),
-        (escala, -60.0, 0.0),
-        (saida, 140.0, 0.0),
+        (grelha, -360.0, 0.0),
+        (lfo, -160.0, 360.0),
+        (escala, 40.0, 0.0),
+        (saida, 240.0, 0.0),
     ] {
         g.set_pos(no, Pos { x, y });
     }

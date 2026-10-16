@@ -2,29 +2,59 @@
 //!
 //! ⚠️⚠️ **Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente**
 //! (`CLAUDE.md` §5.0), e esta promete uma coisa que não se vê na imagem: **onde ela corre**. Se o
-//! anúncio manda o dono ler `device: o plano inteiro` no terminal, é este ficheiro que tem de
-//! garantir que é isso que lá vai aparecer — e que com o interruptor desligado aparece o contrário.
+//! anúncio manda o dono ler `device:` no terminal, é este ficheiro que tem de garantir que é isso
+//! que lá vai aparecer — e que com o interruptor desligado aparece o contrário.
+//!
+//! ⚠️ **Desde 15/10 as peças são QUADRADOS** (`Shape` → `Duplicator`, Bug #20) e a rota é a HÍBRIDA:
+//! a forma (UMA linha) coze na CPU e é a única fronteira; as `32 761` cópias, o fio e o tamanho
+//! são da placa. A régua do assunto é essa fronteira — nunca o `is_fully_gpu`, que um carimbo
+//! nunca dá.
 
 use super::*;
 use crate::motion_state::MotionState;
 
-/// Monta a cena e devolve `(estado, sink)`.
-fn cena() -> (MotionState, NodeId) {
+/// Monta a cena com o `carimbo` e devolve `(estado, sink)`.
+fn cena_com(carimbo: Carimbo) -> (MotionState, NodeId) {
     let mut m = MotionState::new();
-    let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    let sinks = build_com(&mut m.doc, &m.registry, carimbo).expect("a cena monta");
     let sink = *sinks.first().expect("um sink");
+    // A forma carimbada lê um EXTERNAL que a shell publica — sem ele o carimbo emite zero peças.
+    crate::motion_externals::publish_all(&mut m, 0.0);
     (m, sink)
 }
 
-/// ⭐⭐⭐ **A CENA CORRE NO DISPOSITIVO — que é a coisa inteira que ela existe para mostrar.**
+/// A cena do produto.
+fn cena() -> (MotionState, NodeId) {
+    cena_com(Carimbo::Quadrado)
+}
+
+/// Os tipos dos nós que o plano deixa na CPU (as fronteiras).
+fn na_cpu(m: &MotionState, plano: &ph2d_gpu_cook::plan::GpuPlan) -> Vec<String> {
+    plano
+        .boundaries
+        .iter()
+        .filter_map(|(n, _)| m.doc.graph.node(*n).map(|i| i.type_name.clone()))
+        .collect()
+}
+
+/// ⭐⭐⭐ **A CENA CORRE NO DISPOSITIVO — que é a coisa inteira que ela existe para mostrar.** A única
+/// fronteira é a FORMA (uma linha); o carimbo, o fio e o tamanho são da placa. ⚠️ O controlo: sem o
+/// carimbo a MESMA cadeia é reivindicada de ponta a ponta — a fronteira é a forma e nada mais.
 #[test]
 fn the_wire_scene_is_claimed_by_the_device() {
     let (mut m, sink) = cena();
     let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
+    assert_eq!(
+        na_cpu(&m, &plano),
+        vec!["source.shape".to_string()],
+        "a `=116` só pode deixar a FORMA na CPU -- o carimbo e o fio sao o assunto dela"
+    );
+    let (mut m0, sink0) = cena_com(Carimbo::Nenhum);
+    let plano0 = crate::motion_bridge::gpu::plano_do_produto_para(&mut m0, &[sink0], 0.0);
     assert!(
-        plano.is_fully_gpu(),
-        "a `=116` tem de ser reivindicada de ponta a ponta -- e' o assunto dela: {:?}",
-        plano.boundaries
+        plano0.is_fully_gpu(),
+        "controlo: sem carimbo o pano e' da placa de ponta a ponta: {:?}",
+        plano0.boundaries
     );
 }
 
@@ -39,9 +69,11 @@ fn with_the_switch_off_the_same_scene_falls_to_the_cpu() {
     let (mut m, sink) = cena();
     m.driven_gpu = false; // o `PH2D_MOTION_DRIVEN_GPU=0`, pela porta do produto
     let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
+    let fora = na_cpu(&m, &plano);
     assert!(
-        !plano.is_fully_gpu(),
-        "sem os valores a cena TEM de cair -- senao as duas corridas do anuncio sao iguais"
+        fora.iter().any(|t| t != "source.shape"),
+        "sem os valores a cena TEM de cair para la' da forma -- senao as duas corridas do anuncio \
+         sao iguais: {fora:?}"
     );
 }
 
@@ -66,7 +98,7 @@ fn the_wire_s_driver_never_takes_the_cpu_round_trip() {
         "a memória da CPU tem o condutor -- alguém o cozeu lá"
     );
     let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
-    assert!(plano.is_fully_gpu(), "{:?}", plano.boundaries);
+    assert_eq!(na_cpu(&m, &plano), vec!["source.shape".to_string()]);
     assert_eq!(
         plano.device_drivers.get(&escala).map(Vec::len),
         Some(1),
@@ -158,7 +190,11 @@ fn the_cloth_actually_breathes() {
 fn probe_what_the_shape_costs() {
     eprintln!("\n  caso                   | elementos | cook      | rota");
     eprintln!("  -----------------------|-----------|-----------|------------");
-    for (rotulo, forma) in [("quads (o de omissão)", None), ("estrelas", Some(5.0))] {
+    for (rotulo, forma) in [
+        ("sem forma (marcadores)", Carimbo::Nenhum),
+        ("quadrados (a cena)", Carimbo::Quadrado),
+        ("estrelas", Carimbo::Kind(5.0)),
+    ] {
         let mut m = MotionState::new();
         let sink = *build_com(&mut m.doc, &m.registry, forma)
             .expect("a cena monta")
@@ -173,11 +209,10 @@ fn probe_what_the_shape_costs() {
             .expect("coze");
         let ms = t.elapsed().as_secs_f64() * 1e3;
         let n = saida[0].as_stream().count();
-        let no_device =
-            crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0).is_fully_gpu();
+        let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
         eprintln!(
-            "  {rotulo:<22} | {n:>9} | {ms:>6.2} ms | {}",
-            if no_device { "dispositivo" } else { "⛔ CPU" }
+            "  {rotulo:<22} | {n:>9} | {ms:>6.2} ms | na CPU: {:?}",
+            na_cpu(&m, &plano)
         );
     }
 }

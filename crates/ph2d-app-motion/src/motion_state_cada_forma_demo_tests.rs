@@ -80,7 +80,9 @@ fn as_cenas_do_p1_e_do_p6_montam_com_o_filtro_em_cada_forma() {
     }
     let mut doc = MotionDoc::new();
     assert!(
-        !crate::motion_state::demo_router::build_level(Some("138"), &mut doc, &reg).is_empty(),
+        !crate::motion_demo_legend::monta("138", &mut doc, &reg)
+            .0
+            .is_empty(),
         "o roteador monta a `=138`"
     );
 }

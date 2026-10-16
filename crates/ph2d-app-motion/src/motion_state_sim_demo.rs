@@ -44,6 +44,8 @@ const ROWS: f32 = 5.0;
 /// chuva em vez de um bloco sólido a descer.
 const GAP: f32 = 0.42;
 const PECA: f32 = 0.16;
+/// A cor das peças — saturada, para a chuva se ler contra o fundo.
+const COR: [f32; 3] = [0.4, 0.8, 1.0];
 /// De que altura a chuva parte.
 const ALTURA: f32 = 2.4;
 
@@ -118,7 +120,11 @@ pub(super) fn captions() -> Vec<Caption> {
     ]
 }
 
-/// `grid → alto → tamanho → zone ⇄ (wind → step → collide) → output`.
+/// `grid → alto → tamanho → duplicator(shape) → zone ⇄ (wind → step → collide) → output`.
+///
+/// ⭐ O carimbo vem ANTES da simulação (o molde da `=118`, Bug #20): sem forma a cena desenhava só
+/// os marcadores de ponto. ⚠️ E isso dá às peças o colisor que a forma DECLARA (`Auto` do
+/// `sim.collide`): o quadrado pousa no bloco pela borda, e não pelo centro como o ponto pousava.
 ///
 /// ⚠️ **A aresta `zone → wind` é `delayed`** — é a entrada de estado que o motor gere, e é o
 /// que fecha o laço da simulação. A cena `=99` usa exactamente a mesma forma.
@@ -137,6 +143,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
     let tamanho = g.add_node("motion.scale");
     g.set_param(tamanho, "amount", PECA);
+
+    // A PEÇA: um quadrado carimbado em cada gota, do lado que o `tamanho` deu.
+    let carimbo = super::jogo_demo::carimbo(g, COR, 568.0, 120.0)?;
 
     // ⭐ O RELÓGIO do grafo, em `Loop`: a queda recomeça sozinha (ver o cabeçalho).
     let zone = g.add_node("sim.zone");
@@ -170,7 +179,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
     let out = g.add_node("motion.output");
 
-    for (i, n) in [grid, alto, tamanho, zone].into_iter().enumerate() {
+    for (i, n) in [grid, alto, tamanho, carimbo, zone].into_iter().enumerate() {
         g.set_pos(
             n,
             Pos {
@@ -194,7 +203,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     for (a, ap, b, bp, delayed) in [
         (grid, 0u16, alto, 0u16, false),
         (alto, 0, tamanho, 0, false),
-        (tamanho, 0, zone, 0, false),
+        (tamanho, 0, carimbo, 1, false),
+        (carimbo, 0, zone, 0, false),
         (zone, 0, vento, 0, true),
         (vento, 0, passo, 0, false),
         (passo, 0, bloco, 0, false),

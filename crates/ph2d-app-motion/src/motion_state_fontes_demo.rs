@@ -73,6 +73,13 @@ const COLUNA_ESCALA: f32 = 0.04;
 const EMISSOR_RITMO: f32 = 60.0;
 const EMISSOR_VIDA: f32 = 2.0;
 const EMISSOR_PECA: f32 = 0.16;
+/// O tiro e a gravidade do repuxo: sobe `v²/2g = 1` unidade e volta à altura da boca ao fim da
+/// vida (`2v/g = 2 s`). ⚠️ Sem o `motion.integrate` as partículas nasciam e morriam TODAS no ponto
+/// da boca (o emissor dá a posição de origem; deslocar é do integrador) — o pano era um ponto.
+const EMISSOR_TIRO: f32 = 2.0;
+const EMISSOR_GRAVIDADE: f32 = 2.0;
+/// A abertura do cone do tiro, em graus.
+const EMISSOR_CONE: f32 = 50.0;
 
 /// O lado da grelha do pano da câmara.
 const CAM_LADO: f32 = 3.0;
@@ -80,6 +87,11 @@ const CAM_VAO: f32 = 0.9;
 /// Quantos PIXELS de ecrã cada peça do pano da câmara mede, esteja o zoom onde estiver.
 /// ⚠️ **É a alavanca do passo do zoom** e não um teto: `size = pixels ÷ zoom`.
 const CAM_PIXELS: f32 = 40.0;
+
+/// A cor dos quadrados — a MESMA nos quatro panos que a carimbam (a lição é a FONTE).
+const COR: [f32; 3] = [0.45, 0.85, 0.55];
+/// O rótulo do cartão da forma que carimba os pontos — o que a separa da FONTE do pano.
+pub(super) const ROTULO_CARIMBO: &str = "Shape: the stamp";
 
 /// A escada do `motion.drive`: o CANAL (`X · Y · Rotation · Size …`).
 const CANAL_Y: f32 = 1.0;
@@ -104,21 +116,35 @@ fn liga(doc: &mut MotionDoc, de: NodeId, para: (NodeId, u16)) -> Option<()> {
         .ok()
 }
 
-/// `escala → move(centro) → output`, o final comum de todos os seis panos. ⚠️ **Ele é o mesmo em
-/// toda a cena de propósito:** o que muda de pano para pano é só a FONTE, que é a lição.
+/// `[carimbo →] escala → move(centro) → output`, o final comum de todos os seis panos. ⚠️ **Ele é o
+/// mesmo em toda a cena de propósito:** o que muda de pano para pano é só a FONTE, que é a lição.
+///
+/// ⭐ Os panos cuja fonte dá PONTOS (`carimba`: a tabela, o emissor, a grade da câmara) levam um
+/// quadrado carimbado em cada um (`Shape` → `Duplicator`, o molde da `=118`, Bug #20) — sem ele
+/// desenhavam só os marcadores de ponto. O texto e a estrela JÁ são formas e não o levam.
 fn pousa(
     doc: &mut MotionDoc,
     de: NodeId,
     tamanho: f32,
     centro: [f32; 2],
     y: f32,
+    carimba: bool,
 ) -> Option<NodeId> {
-    let s = no(doc, "motion.scale", 120.0, y);
+    let de = if carimba {
+        let dup = super::jogo_demo::carimbo(&mut doc.graph, COR, 120.0, y)?;
+        let (forma, _, _) = doc.graph.input_edge(dup, 0)?;
+        doc.graph.set_label(forma, ROTULO_CARIMBO);
+        liga(doc, de, (dup, 1))?;
+        dup
+    } else {
+        de
+    };
+    let s = no(doc, "motion.scale", 300.0, y);
     doc.graph.set_param(s, "amount", tamanho);
-    let mv = no(doc, "motion.move", 300.0, y);
+    let mv = no(doc, "motion.move", 480.0, y);
     doc.graph.set_param(mv, "dx", centro[0]);
     doc.graph.set_param(mv, "dy", centro[1]);
-    let o = no(doc, "motion.output", 480.0, y);
+    let o = no(doc, "motion.output", 660.0, y);
     liga(doc, de, (s, 0))?;
     liga(doc, s, (mv, 0))?;
     liga(doc, mv, (o, 0))?;
@@ -151,7 +177,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph
             .set_param(t, ph2d_node_source_text::param::SIZE, TEXTO_TAM);
         doc.graph.set_label(t, "Text: the word");
-        sinks.push(pousa(doc, t, 1.0, [-COL_X, fileira_y(0)], y)?);
+        sinks.push(pousa(doc, t, 1.0, [-COL_X, fileira_y(0)], y, false)?);
     }
     {
         let y = grafo_y(0, 1);
@@ -166,7 +192,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph
             .set_param(f, ph2d_node_motion_shape::param::SIZE, FORMA_TAM);
         doc.graph.set_label(f, "Shape: the shape");
-        sinks.push(pousa(doc, f, 1.0, [COL_X, fileira_y(0)], y)?);
+        sinks.push(pousa(doc, f, 1.0, [COL_X, fileira_y(0)], y, false)?);
     }
 
     // ── MEIO: O QUE EU TENHO — as linhas · as linhas MAIS uma coluna ────────────────────
@@ -205,7 +231,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
             liga(doc, a, (d, 1))?;
             d
         };
-        sinks.push(pousa(doc, ultimo, TABELA_PECA, [x, fileira_y(1)], y)?);
+        sinks.push(pousa(doc, ultimo, TABELA_PECA, [x, fileira_y(1)], y, true)?);
     }
 
     // ── BAIXO: O QUE A CENA DÁ — as partículas · a VISTA ────────────────────────────────
@@ -214,16 +240,37 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let e = no(doc, "motion.emitter", -400.0, y);
         doc.graph.set_param(e, "rate", EMISSOR_RITMO);
         doc.graph.set_param(e, "life", EMISSOR_VIDA);
-        doc.graph.set_param(e, "speed", 0.9);
-        doc.graph.set_param(e, "spread", 0.6);
+        doc.graph.set_param(e, "speed", EMISSOR_TIRO);
+        doc.graph.set_param(e, "spread", EMISSOR_CONE);
         doc.graph.set_param(e, "angle", 90.0);
+        // O `size` do emissor é a peça UNITÁRIA: quem lhe dá o lado é o `EMISSOR_PECA` da escala,
+        // como nos outros panos (o default `0,15` dava peças de um pixel).
+        doc.graph.set_param(e, "size", 1.0);
         doc.graph.set_label(e, "Emitter: where they are born");
+        // ⭐ A SIMULAÇÃO: o integrador desloca-as, e a gravidade (`force.wind` para baixo) volta pelo
+        // laço `pre` às `forces` — um repuxo.
+        let integra = no(doc, "motion.integrate", -220.0, y);
+        let gravidade = no(doc, "force.wind", -220.0, y + 110.0);
+        doc.graph.set_param(gravidade, "angle", 270.0);
+        doc.graph
+            .set_param(gravidade, "strength", EMISSOR_GRAVIDADE);
+        doc.graph.set_param(gravidade, "gust", 0.0);
+        liga(doc, e, (integra, 0))?;
+        doc.graph
+            .connect(Edge {
+                from: (integra, 0),
+                to: (gravidade, 0),
+                delayed: true,
+            })
+            .ok()?;
+        liga(doc, gravidade, (integra, 1))?;
         sinks.push(pousa(
             doc,
-            e,
+            integra,
             EMISSOR_PECA,
             [-COL_X, fileira_y(2) - 1.0],
             y,
+            true,
         )?);
     }
     {
@@ -251,7 +298,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         liga(doc, a, (d, 1))?;
         // ⚠️ **`1.0` na escala:** quem escreve o tamanho aqui é o `Drive` (`px ÷ zoom`), e um
         // `motion.scale` com outro número multiplicaria por cima do que a vista decidiu.
-        sinks.push(pousa(doc, d, 1.0, [COL_X, fileira_y(2)], y)?);
+        sinks.push(pousa(doc, d, 1.0, [COL_X, fileira_y(2)], y, true)?);
     }
 
     doc.graph.validate(reg).ok()?;

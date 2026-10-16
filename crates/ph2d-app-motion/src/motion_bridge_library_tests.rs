@@ -205,8 +205,7 @@ fn as_duas_cenas_de_banco_montam_e_o_kernel_do_dispositivo_fica() {
 
     for nivel in ["8", "9"] {
         let mut m = MotionState::new();
-        let sinks =
-            crate::motion_state::demo_router::build_level(Some(nivel), &mut m.doc, &m.registry);
+        let sinks = crate::motion_demo_legend::monta(nivel, &mut m.doc, &m.registry).0;
         assert!(
             !sinks.is_empty(),
             "a cena =({nivel}) tem de montar — ela valida contra o registo, logo isto \

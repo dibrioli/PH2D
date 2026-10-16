@@ -6,10 +6,8 @@
 //! **medido sobre a cena do produto**, com um param de diferença entre os dois braços.
 
 use super::*;
-use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::Column;
-use ph2d_nodegraph::cook::Cook;
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
@@ -22,10 +20,20 @@ fn registry() -> NodeRegistry {
 ///
 /// ⚠️ **O pico é sobre a corrida inteira de propósito:** o que separa os dois modos é aquilo
 /// a que a queda **chega a fazer**, e ler só o último quadro perderia a aceleração.
+///
+/// ⚠️ As peças são QUADRADOS carimbados, e a forma lê um EXTERNAL que a shell publica — sem ele o
+/// carimbo emite zero peças (`publish_all`, a porta do produto).
 fn corre(modo: Option<f32>, secs: f64) -> (f32, Vec<[f32; 2]>) {
-    let reg = registry();
-    let mut doc = MotionDoc::default();
-    let sinks = build(&mut doc, &reg).expect("a cena é bem tipada");
+    let mut m = crate::motion_state::MotionState::new();
+    let sinks = build(&mut m.doc, &m.registry).expect("a cena é bem tipada");
+    crate::motion_externals::publish_all(&mut m, 0.0);
+    let crate::motion_state::MotionState {
+        doc,
+        registry: reg,
+        pump,
+        ..
+    } = &mut m;
+    let cook = &mut pump.cook;
     if let Some(m) = modo {
         // O ÚNICO param que difere entre os dois braços.
         let vento = doc
@@ -37,13 +45,12 @@ fn corre(modo: Option<f32>, secs: f64) -> (f32, Vec<[f32; 2]>) {
             .id;
         doc.graph.set_param(vento, "mode", m);
     }
-    let mut cook = Cook::new();
     let last = (secs * 60.0) as u64;
     let (mut pico, mut fim) = (0.0f32, vec![]);
     for k in 0..=last {
         #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
         let t = k as f64 / 60.0;
-        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+        let s = cook.cook(&doc.graph, reg, sinks[0], t).expect("cozinha")[0]
             .as_stream()
             .clone();
         if let Some(Column::Vec2(v)) = s.get("vel") {
@@ -54,7 +61,7 @@ fn corre(modo: Option<f32>, secs: f64) -> (f32, Vec<[f32; 2]>) {
         {
             fim = v.clone();
         }
-        cook.advance_tick(&doc.graph, &reg, t).expect("avança");
+        cook.advance_tick(&doc.graph, reg, t).expect("avança");
     }
     (pico, fim)
 }

@@ -25,10 +25,20 @@ const CAMARA: usize = 5;
 /// A janela em que os gates da câmara medem — a altura é o numerador do zoom.
 const JANELA_H: u32 = 900;
 
+/// O nó `tipo` a montante do `sink` — ⚠️ sem o CARIMBO: o quadrado que os panos de pontos
+/// carimbam (`Shape: the stamp`) é a aparência, não a FONTE do pano, e contá-lo daria a quatro
+/// panos a fonte do pano da estrela.
 fn a_montante(g: &Graph, sink: NodeId, tipo: &str) -> Option<NodeId> {
     ph2d_nodegraph::cook::upstream_cone(g, sink)
         .into_iter()
+        .filter(|n| g.label(*n) != Some(ROTULO_CARIMBO))
         .find(|n| g.node(*n).is_some_and(|i| i.type_name == tipo))
+}
+
+/// O LADO de uma peça carimbada, em unidades de mundo: o `Rectangle` vive em raio `1`, logo o
+/// lado é `2 · size`.
+fn lado(size: f32) -> f32 {
+    2.0 * size
 }
 
 /// Monta uma cena NOVA, aplica `mexe`, PUBLICA as membranas do produto e devolve o stream do sink
@@ -240,7 +250,7 @@ fn the_camera_panel_measures_the_same_pixels_at_any_zoom() {
         let zoom = f32::from(u16::try_from(JANELA_H).expect("a janela")) / altura;
         let t = sizes_x(&s);
         assert!(!t.is_empty(), "o pano da camara tem pecas");
-        t[0] * zoom
+        lado(t[0]) * zoom
     };
     let perto = px(5.0);
     let longe = px(20.0);

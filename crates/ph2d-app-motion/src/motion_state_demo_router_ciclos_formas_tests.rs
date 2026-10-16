@@ -31,7 +31,15 @@ const QUADROS: u32 = 8;
 /// `(sink, cartões de aparência no cone, desenha formas?)` de cada sink da cena `n`.
 fn sinks_da_cena(n: &str) -> Vec<(NodeId, Vec<String>, bool)> {
     let mut m = MotionState::new();
-    let _ = super::super::build_level(Some(n), &mut m.doc, &m.registry);
+    // ⚠️ Pela porta `monta` (a TRAVA da legenda): o `build_level` direto publicava a legenda por
+    // cima da de quem varre as fichas em paralelo (`tapa` leu a do `=112` na `=40`, 15/10).
+    let _ = crate::motion_demo_legend::monta(n, &mut m.doc, &m.registry);
+    sinks_de(m)
+}
+
+/// O mesmo, para um documento já montado em `m` — coze `QUADROS` quadros pela porta do quadro e
+/// lê cada sink VISÍVEL (o `o_quadro` recalcula-os).
+fn sinks_de(mut m: MotionState) -> Vec<(NodeId, Vec<String>, bool)> {
     let mut playhead = ph2d_core::Playhead::new(1.0 / 60.0);
     playhead.play();
     for _ in 0..QUADROS {
@@ -65,10 +73,27 @@ fn sinks_da_cena(n: &str) -> Vec<(NodeId, Vec<String>, bool)> {
         .collect()
 }
 
+/// O CONTROLO das duas réguas: uma cena SÓ DE PONTOS (`grid → output`), montada aqui — a que as
+/// `=111`–`=113`, `=116` e quatro panos da `=119` eram até 15/10. Ela tem de ler como «não desenha».
+fn so_pontos() -> Vec<(NodeId, Vec<String>, bool)> {
+    use ph2d_nodegraph::graph::Edge;
+    let mut m = MotionState::new();
+    let g = &mut m.doc.graph;
+    let grid = g.add_node("motion.grid");
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .expect("grid -> output");
+    sinks_de(m)
+}
+
 /// ⭐⭐ **O GATE.** ⚠️ Piso de população: pelo menos 10 sinks com aparência em 6 cenas (medido
 /// 15/10: `=118`, `=133`–`=136`, `=138`, `=140`, `=142`) — `0 pedidos` lê-se igual a `0 defeitos`.
-/// ⚠️ Controlo: a `=111` (o pivô, sem cartão de aparência) não desenha forma nenhuma — a régua
-/// distingue um sink de pontos de um de formas.
+/// ⚠️ Controlo: a cena só de pontos ([`so_pontos`]) não desenha forma nenhuma — a régua distingue
+/// um sink de pontos de um de formas.
 #[test]
 fn toda_cena_de_ciclo_que_pinta_aparencia_desenha_formas() {
     let mut mudos = Vec::new();
@@ -97,10 +122,55 @@ fn toda_cena_de_ciclo_que_pinta_aparencia_desenha_formas() {
         "piso: so' {sinks_com_efeito} sink(s) com aparencia em {cenas_com_efeito} cena(s) -- a \
          regua varre o vazio"
     );
-    let controlo = sinks_da_cena("111");
+    let controlo = so_pontos();
     assert!(
-        controlo.iter().all(|(_, e, d)| e.is_empty() && !d),
-        "controlo: a =111 e' so' pontos e nao pinta aparencia: {controlo:?}"
+        !controlo.is_empty() && controlo.iter().all(|(_, e, d)| e.is_empty() && !d),
+        "controlo: a cena so' de pontos nao pinta aparencia: {controlo:?}"
+    );
+}
+
+/// ⭐⭐⭐ **TODA cena de ciclo desenha FORMAS em TODO sink visível** (`CLAUDE.md` §0.8, Bug #20) — e
+/// não só as que têm um cartão de aparência: uma cena de ciclo é o smoke que o dono segue, e um
+/// sink só de pontos mostra-lhe cruzinhas azuis (os marcadores) onde a lição devia estar. A
+/// varredura de 15/10 achou cinco: `=111`, `=112`, `=113`, `=116` (nenhum sink) e `=119` (4 de 6).
+///
+/// ⚠️ Piso de população: TODAS as cenas da [`super::CICLOS`] e pelo menos 56 sinks (contados a
+/// 15/10) — uma cena que deixasse de montar, ou um `o_quadro` que deixasse de ver sinks, leria
+/// «zero mudos». ⚠️ Controlo: a cena só de pontos ([`so_pontos`]) lê como muda.
+#[test]
+fn toda_cena_de_ciclo_desenha_formas_em_todo_sink_visivel() {
+    let mut mudos = Vec::new();
+    let (mut sinks_vistos, mut cenas) = (0usize, 0usize);
+    for n in super::CICLOS {
+        let sinks = sinks_da_cena(n);
+        assert!(!sinks.is_empty(), "a cena ={n} monta e tem sinks");
+        cenas += 1;
+        sinks_vistos += sinks.len();
+        let sem: Vec<_> = sinks
+            .iter()
+            .filter(|(_, _, d)| !d)
+            .map(|(s, _, _)| *s)
+            .collect();
+        if !sem.is_empty() {
+            mudos.push(format!(
+                "={n}: {} de {} sink(s) {sem:?}",
+                sem.len(),
+                sinks.len()
+            ));
+        }
+    }
+    assert!(
+        mudos.is_empty(),
+        "cenas de ciclo com sinks que desenham so' MARCADORES (sem forma): {mudos:#?}"
+    );
+    assert!(
+        cenas == super::CICLOS.len() && sinks_vistos >= 56,
+        "piso: {sinks_vistos} sink(s) em {cenas} cena(s) -- a regua varre o vazio"
+    );
+    let controlo = so_pontos();
+    assert!(
+        !controlo.is_empty() && controlo.iter().all(|(_, _, d)| !d),
+        "controlo: a cena so' de pontos tem de ler como muda: {controlo:?}"
     );
 }
 
@@ -157,6 +227,75 @@ fn todo_anuncio_que_promete_cor_tem_formas_em_todo_pano() {
             sinks.len()
         );
     }
+}
+
+/// **SONDA — a ROTA de cada cena:** os tipos que o plano do produto deixa na CPU (as fronteiras).
+/// `[]` = a placa de ponta a ponta; `["source.shape"]` = híbrida, só a forma na CPU.
+#[test]
+#[ignore = "sonda: corra à mão"]
+fn sonda_rota_das_cenas_de_ciclo() {
+    for n in super::CICLOS {
+        let mut m = MotionState::new();
+        let (sinks, _) = crate::motion_demo_legend::monta(n, &mut m.doc, &m.registry);
+        crate::motion_externals::publish_all(&mut m, 0.0);
+        let com = rota(&mut m, &sinks);
+        // O CONTROLO: a mesma cena com cada carimbo (`Shape → Duplicator`) arrancado — a rota de
+        // antes da forma.
+        let carimbos: Vec<NodeId> = m
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|i| i.type_name == "motion.duplicator")
+            .map(|i| i.id)
+            .filter(|d| {
+                m.doc.graph.input_edge(*d, 0).is_some_and(|(f, _, _)| {
+                    m.doc
+                        .graph
+                        .node(f)
+                        .is_some_and(|i| i.type_name == "source.shape")
+                })
+            })
+            .collect();
+        for d in carimbos {
+            let g = &mut m.doc.graph;
+            let Some((pontos, porta, _)) = g.input_edge(d, 1) else {
+                continue;
+            };
+            let forma = g.input_edge(d, 0).map(|e| e.0);
+            let saidas: Vec<_> = g
+                .edges()
+                .iter()
+                .filter(|e| e.from.0 == d)
+                .copied()
+                .collect();
+            for e in saidas {
+                g.disconnect(e.to.0, e.to.1);
+                let _ = g.connect(ph2d_nodegraph::graph::Edge {
+                    from: (pontos, u16::try_from(porta).expect("porta")),
+                    ..e
+                });
+            }
+            g.remove_node(d);
+            if let Some(f) = forma {
+                g.remove_node(f);
+            }
+        }
+        let sem = rota(&mut m, &sinks);
+        eprintln!("={n}: na CPU {com:?} · sem carimbo {sem:?}");
+    }
+}
+
+fn rota(m: &mut MotionState, sinks: &[NodeId]) -> Vec<String> {
+    let plano = crate::motion_bridge::gpu::plano_do_produto_para(m, sinks, 0.0);
+    let mut fora: Vec<String> = plano
+        .boundaries
+        .iter()
+        .filter_map(|(k, _)| m.doc.graph.node(*k).map(|i| i.type_name.clone()))
+        .collect();
+    fora.sort();
+    fora.dedup();
+    fora
 }
 
 /// **SONDA — a família inteira:** por cena, quantos sinks, quantos desenham forma, e os cartões de

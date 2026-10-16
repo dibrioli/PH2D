@@ -10,16 +10,7 @@
 //! mostrar a mesma imagem debaixo de duas legendas diferentes, e só um `md5sum` à mão as apanhou.
 
 use super::tutorial_draw as draw;
-use ph2d_motion_doc::MotionDoc;
-use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::Column;
-use ph2d_nodegraph::cook::Cook;
-
-fn registry() -> NodeRegistry {
-    let mut reg = NodeRegistry::new();
-    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
-    reg
-}
 
 /// Os instantes em que a fila é fotografada. **Seis, igualmente espaçados** — a mensagem da
 /// figura é o VÃO entre eles, e um vão só não tem com que ser comparado.
@@ -39,10 +30,20 @@ const COLUNAS: usize = 3;
 /// ⚠️ **Uma FILA e não a nuvem inteira:** as cinco fileiras da cena partem de alturas
 /// diferentes, então sobrepostas elas borram exactamente o vão que a figura existe para
 /// mostrar. A fila escolhida é a de cima, derivada do `y` máximo do primeiro instante.
+///
+/// ⚠️ As peças são QUADRADOS carimbados, e a forma lê um EXTERNAL que a shell publica (`publish_all`):
+/// sem ele o carimbo emite zero peças.
 fn colher(modo: f32) -> Vec<Vec<[f32; 2]>> {
-    let reg = registry();
-    let mut doc = MotionDoc::default();
-    let (sinks, _) = crate::motion_demo_legend::monta("113", &mut doc, &reg);
+    let mut m = crate::motion_state::MotionState::new();
+    let (sinks, _) = crate::motion_demo_legend::monta("113", &mut m.doc, &m.registry);
+    crate::motion_externals::publish_all(&mut m, 0.0);
+    let crate::motion_state::MotionState {
+        doc,
+        registry: reg,
+        pump,
+        ..
+    } = &mut m;
+    let cook = &mut pump.cook;
     let vento = doc
         .graph
         .nodes()
@@ -52,7 +53,6 @@ fn colher(modo: f32) -> Vec<Vec<[f32; 2]>> {
         .id;
     doc.graph.set_param(vento, "mode", modo);
 
-    let mut cook = Cook::new();
     let last = (ATE * 60.0) as u64;
     let passo = last / (AMOSTRAS as u64 - 1);
     let mut fila: Option<Vec<usize>> = None;
@@ -60,7 +60,7 @@ fn colher(modo: f32) -> Vec<Vec<[f32; 2]>> {
     for k in 0..=last {
         #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
         let t = k as f64 / 60.0;
-        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+        let s = cook.cook(&doc.graph, reg, sinks[0], t).expect("cozinha")[0]
             .as_stream()
             .clone();
         if let Some(Column::Vec2(v)) = s.get("P") {
@@ -86,7 +86,7 @@ fn colher(modo: f32) -> Vec<Vec<[f32; 2]>> {
                 fotos.push(quais.iter().map(|&i| v[i]).collect());
             }
         }
-        cook.advance_tick(&doc.graph, &reg, t).expect("avança");
+        cook.advance_tick(&doc.graph, reg, t).expect("avança");
     }
     fotos
 }

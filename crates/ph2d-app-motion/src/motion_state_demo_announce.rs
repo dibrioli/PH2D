@@ -218,14 +218,16 @@ pub(super) fn pilha() {
 /// é só um pano a respirar.
 pub(super) fn fio() {
     eprintln!(
-        "[cena 116] UM NUMERO QUE MANDA EM TUDO. Um pano de {pecas} pecas, e UM fio: o
-  cartao `LFO` manda no tamanho de todas elas.
+        "[cena 116] UM NUMERO QUE MANDA EM TUDO. Um pano de {pecas} QUADRADINHOS, e UM
+  fio: o cartao `LFO` manda no tamanho de todos eles.
 
-  1. Carregue em PLAY. O pano inteiro RESPIRA -- as pecas crescem e encolhem juntas.
+  1. Carregue em PLAY. O pano inteiro RESPIRA -- os quadradinhos crescem e encolhem
+     juntos (de' zoom para os ver um a um).
   2. Olhe o terminal de onde abriu o app, ABAIXO deste texto. Ha' uma linha colada a`
-     margem esquerda que comeca por `[motion-route]`, e ela tem de acabar em
-     `device: o plano inteiro`. E' essa linha que diz que as {pecas} pecas estao a ser
-     feitas pela PLACA GRAFICA.
+     margem esquerda que comeca por `[motion-route] device:`. E' essa linha que diz que
+     as {pecas} pecas estao a ser feitas pela PLACA GRAFICA.
+     (i) Ela diz HIBRIDO: o processador faz so' o desenho do quadradinho (UM), e a
+         placa carimba-o nos {pecas} lugares e manda no tamanho deles.
      (i) As linhas que aparecem AQUI DENTRO, recuadas, sao este texto a citar -- a de
          verdade e' a que esta' encostada a` margem, mais abaixo.
   3. Feche o app e abra OUTRA VEZ com o interruptor desta mudanca desligado (o comando
@@ -233,11 +235,12 @@ pub(super) fn fio() {
   4. Compare: a linha colada a` margem passa a comecar por `[motion-route] CPU:`. O
      pano respira IGUAL -- a diferenca nao se ve a olho neste tamanho.
      (i) Era isto que acontecia ANTES desta mudanca, em toda cena com um fio de valor:
-         a ligacao sozinha mandava o trabalho inteiro para o processador. Medido: 2,6
-         vezes mais caro aqui (0,13 contra 0,05 milesimos de segundo por quadro), e o
+         a ligacao sozinha mandava o trabalho inteiro para o processador. Medido: 2,5
+         vezes mais caro aqui (0,47 contra 0,19 milesimos de segundo por quadro), e o
          custo cresce com o numero de pecas.
 
-  DEU ERRADO se: o pano nao respirar; se o terminal nao disser NADA em nenhuma das duas
+  DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
+  perderam a forma); se o pano nao respirar; se o terminal nao disser NADA em nenhuma das duas
   corridas (o registo de rota nao esta' ligado -- confira a variavel); ou se as duas
   corridas disserem a MESMA coisa.",
         pecas = super::fio_demo::pecas()
@@ -261,6 +264,8 @@ pub(super) fn fontes() {
     eprintln!(
         "[cena 119] DE ONDE VEM AS COISAS. Seis panos, em tres fileiras. Em cada par muda
   a FONTE -- o que se faz com as pecas DEPOIS e' o mesmo nos seis.
+  (i) A tabela, as particulas e a grelha da camara dao LUGARES; em cada lugar o cartao
+      `Shape: the stamp` carimba o mesmo QUADRADINHO verde.
 
   1. Carregue em PLAY. So' a fileira de BAIXO se mexe (as particulas nascem e morrem);
      as outras duas nao precisam de tempo.
@@ -279,14 +284,16 @@ pub(super) fn fontes() {
      Abra-o, mude um numero da coluna «sales», guarde -- e no cartao `Table: the chart`
      escolha o ficheiro OUTRA VEZ no botao `Table File`. O grafico muda: escolher e'
      recarregar.
-  7. Fileira de BAIXO -- O QUE A CENA DA. A ESQUERDA as pecas NASCEM de um sitio e
-     morrem. A DIREITA e' uma grelha de nove.
+  7. Fileira de BAIXO -- O QUE A CENA DA. A ESQUERDA as pecas NASCEM de um sitio,
+     sobem num repuxo, caem e morrem (o `Integrate` move-as, o `Wind` puxa-as para
+     baixo). A DIREITA e' uma grelha de nove.
   8. DE' ZOOM (roda do rato). Tudo cresce -- menos as NOVE pecas da direita, que medem
      sempre o mesmo no ECRA. E' a VISTA a entrar no grafo: o tamanho delas e' pedido em
      pixels, e quem os converte e' a camara.
 
   DEU ERRADO se: os dois panos do meio ficarem IGUAIS (a coluna nao chegou); se a palavra
-  nao mudar ao escrever; se ao dar zoom as nove pecas crescerem como o resto; ou se algum
+  nao mudar ao escrever; se ao dar zoom as nove pecas crescerem como o resto; se algum
+  pano mostrar cruzinhas azuis finas em vez de quadradinhos (perdeu a forma); ou se algum
   pano estiver VAZIO -- um pano vazio quer dizer que a fonte dele nao entregou nada.",
         super::conferencia_mods::conferencia_demos_table::fixture_path().display()
     );
@@ -502,8 +509,8 @@ pub(super) fn material() {
 /// que o passo 1 é o transporte e não um cartão.
 pub(super) fn sim() {
     eprintln!(
-        "[cena 113] DEIXAR A FISICA DECIDIR (ciclo 5). Uma chuva de pecas cai sobre um
-  BLOCO, empilha-se em cima dele e escorrega pelos lados. A queda RECOMECA sozinha.
+        "[cena 113] DEIXAR A FISICA DECIDIR (ciclo 5). Uma chuva de QUADRADINHOS cai
+  sobre um BLOCO, pousa em cima dele e escorrega pelos lados. A queda RECOMECA sozinha.
 
   1. Carregue em PLAY. Sem isto nada cai -- esta cena e' uma simulacao.
   2. Clique no cartao `Collider`. Uma CAIXA aparece a` volta do bloco, no canvas.
@@ -517,14 +524,17 @@ pub(super) fn sim() {
   4. Ainda no `Wind`, abra a seccao `Gust` e arraste `Gust`: cada peca passa a ter a
      sua propria rajada, e a chuva cai torta.
 
+  DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
+  perderam a forma), ou se nada cair depois do PLAY.
+
   Tudo isto corre no dispositivo."
     );
 }
 
 pub(super) fn foco() {
     eprintln!(
-        "[cena 112] NEM TODOS AO MESMO TEMPO (ciclo 4). Um pano de pecas iguais, e uma
-  MANCHA delas maior -- quem decide quais e' o campo `Falloff`, e ele nasce de lado.
+        "[cena 112] NEM TODOS AO MESMO TEMPO (ciclo 4). Um pano de QUADRADINHOS iguais, e
+  uma MANCHA deles maior -- quem decide quais e' o campo `Falloff`, e ele nasce de lado.
 
   1. Clique no cartao `Falloff`. Uma CAIXA aparece a` volta da mancha, no canvas.
      Arraste-a: a mancha varre o pano. (Antes deste ciclo ele nao tinha alca.)
@@ -535,7 +545,10 @@ pub(super) fn foco() {
   4. No cartao `Remap`, arraste `Curvature`: a borda da mancha endurece ou
      amacia, sem a mancha mudar de sitio nem de tamanho.
 
-  Tudo isto corre no dispositivo."
+  DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
+  perderam a forma), ou se o pano inteiro crescer por igual.
+
+  Tudo isto corre no dispositivo -- so' o desenho do quadradinho (UM) sai do processador."
     );
 }
 
@@ -545,14 +558,18 @@ pub(super) fn foco() {
 /// está fora dele. O passo do smoke é trocar o `Pivot` do cartão `Twist`.
 pub(super) fn pivot() {
     eprintln!(
-        "[cena 111] EM TORNO DE QUE (ciclo 3). Um pano LONGE do centro do mundo, a
-  torcer-se em volta de um ponto que esta' FORA dele -- e' o defeito, encenado.
+        "[cena 111] EM TORNO DE QUE (ciclo 3). Um pano de QUADRADINHOS LONGE do centro do
+  mundo, a torcer-se em volta de um ponto que esta' FORA dele -- e' o defeito, encenado.
 
   1. No cartao `Twist`, na linha `Pivot`, troque `Point` por `Centroid`.
      O pano passa a torcer-se sobre si proprio, sem ninguem digitar um numero.
   2. Volte a `World Origin` para ver o defeito outra vez.
   3. No cartao `Transform`, arraste `Skew X`: o pano INCLINA-SE (1 = 45 graus).
 
-  Tudo isto corre no dispositivo, o espelho incluido."
+  DEU ERRADO se: aparecerem cruzinhas azuis finas em vez de quadradinhos (as pecas
+  perderam a forma), ou se o pano ja' abrir a torcer-se sobre si proprio.
+
+  Tudo isto corre no dispositivo, o espelho incluido -- so' o desenho do quadradinho
+  (UM) sai do processador."
     );
 }

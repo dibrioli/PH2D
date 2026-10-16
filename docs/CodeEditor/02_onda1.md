@@ -193,23 +193,16 @@ de p50 (51 → 7 500, ×21). Não é nosso (tabela rope × `&str` acima). Mais n
 
 **O que a tabela decide (orçamentos da Onda 1):**
 
-1. **Por tecla — tecla→pixel ≤ 2 ms de p50 e ≤ 5 ms de p99.9**, com a cena a tocar, vista até 100 linhas, em
-   QUALQUER tamanho de ficheiro. O recurso é o quadro: 5 ms deixam ≥ 3 ms de um quadro a 120 Hz (`8.33` ms)
-   para o resto do app. Medido a 51 linhas: p50 `1.35–1.86`, p99.9 `4.16–4.89` a `load 5–8`. Dentro dele:
-   - a tecla `≤ 0.2` ms (medido `0.13–0.16`);
-   - o paint `≤ 1.2` ms a 100 linhas (`0.56–1.17`);
-   - a placa com a leitura `≤ 1.4` ms (`0.71–1.37`).
-   ANTES, a 7 500 linhas o orçamento **estourava** (p50 `9.5–10.4`, p99.9 `20.4–23.3`) pelo defeito das dobras.
-   **DEPOIS (15/10, cena a tocar, 7 500 linhas):**
-   - **Vista de ~43 linhas: PASSA.** p50 `1.77`, p99.9 `3.05` a `load 6` (`2.02` / `3.67` a `load 9`).
-   - **Vista de 100 linhas: o p99.9 PASSA e o p50 REPROVA.** p99.9 `4.50`; p50 `2.75` (`2.81` a `load 9`,
-     `2.67` a `load 0.85`, ainda com o `changed_ranges`).
-
-   O que passa dos 2 ms a 100 linhas é sobretudo a pintura e a placa de 100 linhas pintadas: `0.885` +
-   `1.072` = `1.96` ms, cada uma dentro do seu sub-orçamento (`≤ 1.2` e `≤ 1.4`). Isto não depende do tamanho
-   do ficheiro. Por cima vem o reparse do tree-sitter (`0.42`). A soma dos três sub-orçamentos
-   (`0.2 + 1.2 + 1.4 = 2.8`) já passa dos 2 ms de p50. A tecla (`0.48–0.58` ms) passa do seu (`≤ 0.2`) só pelo
-   reparse do tree-sitter.
+1. **Por tecla — tecla→pixel ≤ 5 ms de p99.9**, com a cena a tocar, vista até 100 linhas, em QUALQUER tamanho
+   de ficheiro. **O recurso é o quadro a 120 Hz (`8.33` ms):** 5 ms deixam ≥ 3.3 ms ao resto do app. O p50 não é
+   orçamento — é o que a tabela mostra (a 1.ª redacção dizia «≤ 2 ms de p50» sem dizer de que recurso, e a soma
+   dos próprios sub-orçamentos já dava 2.8 ms: era um número escolhido, não medido; corrigido pelo coordenador
+   15/10). Sub-orçamentos por fase, p50, a 100 linhas visíveis: a tecla SEM o reparse `≤ 0.2` ms (medido
+   `0.05–0.16`); o reparse incremental, à parte, abaixo; o paint `≤ 1.2` ms (`0.56–1.17`); a placa com a leitura
+   `≤ 1.4` ms (`0.71–1.37`).
+   - ANTES, a 7 500 linhas o orçamento **estourava** (p50 `9.5–10.4`, p99.9 `20.4–23.3`) pelo defeito das dobras.
+   - **DEPOIS (15/10, cena a tocar): PASSA em todas as células.** Pior p99.9 `4.50` ms (7 500 linhas, vista de
+     100); vista de ~43 linhas `3.05`. p50: `1.77` (~43) e `2.75` (100) a `load 6`.
 2. **Por quadro sem tecla:** paint `≤ 1` ms de p50 a 100 linhas (`0.40–0.93`); a árvore a11y `≤ 0.2` ms de
    p50 (`0.08–0.20`); reparse `≤ 1` ms de p50 e realce das 100 linhas `≤ 0.5` ms (`0.58` e `0.42` a 7 500).
 3. **Ao salvar: Ctrl+S → selo dentro de UM quadro a 60 Hz** (`16.7` ms) até 7 500 linhas. Medido: `0.05` ms de
@@ -234,7 +227,10 @@ vista de 100 a 51 pinta 52). Nele, com a cena a tocar:
 
 O que sobra de crescimento é todo o reparse incremental do tree-sitter (`0.02` → `0.42` ms). O resto da
 tecla, a pintura, a placa e a a11y ficaram iguais entre 51 e 7 500. O aceite («uma edição num ficheiro de
-7 500 linhas não piora a latência») passa dentro do orçamento, mas não ao pé da letra.
+7 500 linhas não piora a latência») passa dentro do orçamento, mas não ao pé da letra: **fica ABERTO**, com
+o número, para a onda que mexe no caminho da tecla (a Onda 2 põe o `luau-lsp` assíncrono sobre um instantâneo
+da rope — o mesmo desenho tira o reparse do tree-sitter da tecla, com o reparse síncrono só onde a tecla
+precisa da árvore: o Enter e o `end`).
 
 **A próxima fase que cresce com o ficheiro é o reparse do tree-sitter**: `0.42` ms de p50 no texto da
 bancada, e `2.1` ms com as ~1 000 `ph2d.property` de topo vivas. Ainda não se mediu porque é que as

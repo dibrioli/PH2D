@@ -522,6 +522,8 @@ mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
 #[cfg(test)]
 mod gota_tests;
 #[cfg(test)]
+mod janela_do_rasto_tests; // a janela do rasto não corta o dab (smoke do dono 16/10)
+#[cfg(test)]
 mod lei_b_tests; // plano 27 W3: o padrão do Shape multiplica DEPOIS do portão do papel
 #[cfg(test)]
 mod medida_undo; // o Ctrl+Z com as opções da W1g (dono 10/10)
@@ -544,6 +546,8 @@ mod showwet_tests;
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
 #[cfg(test)]
 mod sonda_camadas; // as sondas das camadas de amarelo sobre azul (prompt 15)
+#[cfg(test)]
+mod sonda_corte; // o corte vertical no início do traço (smoke do dono 16/10)
 #[cfg(test)]
 mod sonda_fios; // O3: os fios finos do Rebelle saem dos knobs que o motor já tem?
 #[cfg(test)]

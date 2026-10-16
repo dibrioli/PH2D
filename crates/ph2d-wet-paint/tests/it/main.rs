@@ -43,4 +43,5 @@ mod solver_symmetry;
 mod spans;
 mod the_accumulate_declares_what_it_wrote;
 mod the_window_follows_the_brush;
+mod the_window_holds_the_whole_dab;
 mod transfer_accuracy;

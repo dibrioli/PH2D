@@ -17,7 +17,8 @@
 use crate::brush::{CellFn, ColorFn, for_each_stamp_pixel};
 
 mod deposit; // o que um dab POUSA — a lei da célula e o caminho por linhas (ADR-0175)
-mod transfer; // the window-landing half of §10 (LOC-cap split)
+mod janela;
+mod transfer; // the window-landing half of §10 (LOC-cap split) // a janela cresce NO LUGAR para caber cada dab (smoke do dono 16/10)
 use crate::grid::Grid;
 use crate::jsmath::js_round;
 use crate::opacity::alpha_of_mass;
@@ -101,6 +102,10 @@ pub struct Trail {
     /// O espaçamento do último segmento — a deriva da janela entre dois
     /// transfers é `window_size × spacing`, com `window_size` capado em 4.
     spacing: f64,
+    /// A CORDA do último segmento — na porta da lane é a distância entre dois dabs (o Spacing do pincel ×
+    /// o diâmetro, o sub-passo da cápsula), que pode passar muito do `spacing`: a deriva de uma janela é
+    /// `window_size × corda` (smoke do dono 16/10, os dabs 2 e 3 de cada janela cortados a direito).
+    corda: f64,
     /// A cor LIMPA de cada célula da janela, quando o hospedeiro a dá (a Shape Color, prompt 41): os
     /// dabs pousam-na misturada pela massa, e o transfer pousa-a com a sujidade da ponta
     /// ([`crate::colorops::ColorMix::carry`]). Vazia até o primeiro dab com cor.
@@ -207,6 +212,7 @@ impl Default for Trail {
             half: TRAIL_HALF,
             size: TRAIL_SIZE,
             spacing: 6.0,
+            corda: 0.0,
             tinta_r: Vec::new(),
             tinta_g: Vec::new(),
             tinta_b: Vec::new(),
@@ -234,6 +240,7 @@ impl Trail {
         self.prev_anchor_y = self.anchor_y;
         self.dab_count = 0;
         self.window_size = 0;
+        self.corda = 0.0;
         self.lx0 = 0;
         self.ly0 = 0;
         self.lx1 = -1;
@@ -258,43 +265,13 @@ impl Trail {
         self.limpo.fill(1.0);
     }
 
-    /// **A janela cresce para o pincel que chegou** — a lei do [`TRAIL_HALF`],
-    /// agora com o raio do PINCEL no lugar do 35 do modelo de referência.
-    ///
-    /// ⚠️ **Só CRESCE, nunca encolhe.** Encolher exigiria decidir o que fazer
-    /// com a tinta que já está na janela, e o ganho seria devolver memória no
-    /// meio de um traço — a troca errada. Um traço novo com pincel pequeno
-    /// reusa a janela grande e paga só a varredura, que o `lx0..lx1` já limita
-    /// ao que foi de fato tocado.
-    ///
-    /// ⚠️ **E o piso é `TRAIL_HALF`**, então todo pincel dentro do teto do
-    /// modelo JS produz a janela EXATA de antes: o fingerprint do ADR-0134 é
-    /// byte-idêntico por construção, e não por promessa.
+    /// **A janela cresce para o pincel que chegou** — a lei do [`TRAIL_HALF`] com o raio do PINCEL no
+    /// lugar do 35 do modelo de referência, e a deriva da janela pela CORDA quando ela passa do `spacing`
+    /// (a porta da lane, [`Self::corda`]). Só CRESCE, e no lugar ([`janela`]); o piso `TRAIL_HALF` deixa todo
+    /// pincel dentro do teto do modelo JS na janela EXATA de antes (o fingerprint do ADR-0134).
     fn fit_to(&mut self, radius: f64) {
-        let want = (((radius + 4.0 * self.spacing).ceil() as i32) + 2).max(TRAIL_HALF);
-        if want <= self.half {
-            return;
-        }
-        self.half = want;
-        self.size = want * 2 + 1;
-        let n = (self.size as usize) * (self.size as usize);
-        // As seis superfícies são re-semeadas: `pig`/`water`/`mask` em zero e as
-        // três do BICO na cor base, que é exatamente o que o `start_stroke`
-        // faz — a janela vazia não tem outro estado válido.
-        self.pig = vec![0.0; n];
-        self.water = vec![0.0; n];
-        self.mask = vec![0.0; n];
-        self.tip_r = vec![self.base_r as f32; n];
-        self.tip_g = vec![self.base_g as f32; n];
-        self.tip_b = vec![self.base_b as f32; n];
-        self.limpo.clear();
-        self.tinta_r.clear();
-        self.tinta_g.clear();
-        self.tinta_b.clear();
-        self.lx0 = 0;
-        self.ly0 = 0;
-        self.lx1 = -1;
-        self.ly1 = -1;
+        let deriva = 4.0 * self.spacing.max(self.corda);
+        self.crescer((((radius + deriva).ceil() as i32) + 2).max(TRAIL_HALF));
     }
 
     /// **A meia-largura VIVA da janela** — para o gate que julga o cap.
@@ -376,6 +353,7 @@ impl Trail {
             2.0
         };
         self.window_size = (chord_len / spacing.max(0.0001)).floor().min(cap) as u32;
+        self.corda = chord_len;
         // A deriva da janela entre transfers é `window_size × spacing`, e é
         // metade da conta do [`Trail::fit_to`]. Guardado aqui porque é o único
         // sítio que o conhece.
@@ -491,6 +469,7 @@ impl Trail {
         mode: Option<crate::par::Rows>,
     ) -> Accumulated {
         self.anchor_first_dab(dab);
+        self.ensure_fits(dab);
         if cor.is_some() {
             let n = self.pig.len();
             if self.tinta_r.len() != n {
@@ -511,11 +490,8 @@ impl Trail {
         if self.dab_count == 0 {
             self.anchor_x = js_round(dab.x) as i32;
             self.anchor_y = js_round(dab.y) as i32;
-            // ⚠️ **A janela é função do PINCEL, e cresce só AQUI.** Com
-            // `dab_count == 0` ela está vazia por construção (o `start_stroke`
-            // e todo transfer a zeram), então realocar não pode perder tinta
-            // acumulada — crescer no meio de uma janela invalidaria as
-            // coordenadas locais do que já está lá.
+            // A janela é função do PINCEL e da deriva; os dabs seguintes que não caibam fazem-na
+            // crescer no lugar ([`Self::ensure_fits`]), com a âncora fixa.
             self.fit_to(dab.r * dab.window_reach);
         }
     }
@@ -532,6 +508,7 @@ impl Trail {
         ext_bypass: bool,
     ) -> Accumulated {
         self.anchor_first_dab(dab);
+        self.ensure_fits(dab);
         let law = deposit::DepositLaw::new(p, dab, ext_bypass);
         let gain = law.gain();
         let anchor_x = self.anchor_x;
@@ -587,10 +564,9 @@ impl Trail {
     /// Accumulate one blend dab: a saturating mask, no water/tip/wetness
     /// writes.
     pub fn accumulate_blend(&mut self, g: &Grid, p: &Params, tex: &[f32], dab: &Dab) -> bool {
-        if self.dab_count == 0 {
-            self.anchor_x = js_round(dab.x) as i32;
-            self.anchor_y = js_round(dab.y) as i32;
-        }
+        // A janela do Blend também é medida pelo pincel (ela não era: raio 100 esfregava ± 61).
+        self.anchor_first_dab(dab);
+        self.ensure_fits(dab);
         let gate = p.k(Knob::PaperGate);
         let pig_cap = p.k(Knob::GateSaturation);
         let force = p.k(Knob::BlendForce);

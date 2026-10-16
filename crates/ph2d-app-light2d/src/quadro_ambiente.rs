@@ -49,6 +49,11 @@ fn hrc_duas_vezes() -> bool {
     ligado("PH2D_LIGHT2D_HRC_DUAS")
 }
 
+/// ⭐ W5x — `PH2D_LIGHT2D_HRC_BERCO=0`: o 1.º nascimento da holográfica em buffers (o da W5p; comparar).
+fn hrc_berco() -> bool {
+    ligado("PH2D_LIGHT2D_HRC_BERCO")
+}
+
 /// ⭐ W5r — `PH2D_LIGHT2D_HRC_COLUNAS=0`: a holográfica por linhas (o mesmo bit, mais lento; comparar).
 fn hrc_por_colunas() -> bool {
     ligado("PH2D_LIGHT2D_HRC_COLUNAS")
@@ -94,6 +99,7 @@ pub fn config_da_vista(
         // ⭐ W5o: `=0` volta à marcha a partir do ponto afastado (a penumbra deslocada, comparar).
         face_pelo_ponto: ligado("PH2D_LIGHT2D_FACE_PONTO"),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
+        hrc_berco: hrc_berco(),
         // ⭐ W5q: `=0` = o anel na grade inteira (o mesmo bit, mais lento; comparar).
         anel_por_ladrilhos: ligado("PH2D_LIGHT2D_LADRILHOS"),
         hrc_por_colunas: hrc_por_colunas(),
@@ -134,6 +140,7 @@ pub fn config_do_entorno(
         // ⭐ W5o: da vista só se lê a c0 do entorno (`Solver::somar_entorno`).
         so_a_c0: cortes_ligados(),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
+        hrc_berco: hrc_berco(),
         hrc_por_colunas: hrc_por_colunas(),
         ..Config::padrao_para(device, ge)
     }))

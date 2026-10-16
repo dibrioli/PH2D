@@ -2,7 +2,7 @@
 //! pelo tecto de 700 LOC (W5j).
 
 use ph2d_editor_core::luz_edits::NivelDaLuz;
-use ph2d_light2d_gpu::{Config, Grade, TemposMs};
+use ph2d_light2d_gpu::{Config, Grade, Medida, SondaDeMemoria, TemposMs};
 
 /// A configuração da vista, a grade da fluência, a região da janela nela e a janela.
 type Onde<'a> = (&'a Config, Grade, ([u32; 2], [u32; 2]), (u32, u32));
@@ -20,6 +20,8 @@ pub(super) fn relatar_custo(
     entorno: Option<&TemposMs>,
     onde: Onde<'_>,
     n: u32,
+    gpu: &ph2d_gpu::GpuContext,
+    buffers: &[(&'static str, wgpu::Buffer)],
 ) -> bool {
     if std::env::var_os("PH2D_LIGHT2D_CUSTO").is_none() {
         return false;
@@ -41,6 +43,9 @@ pub(super) fn relatar_custo(
         janela.n,
         janela.c2.len(),
     );
+    if janela.n == 0 {
+        relatar_memoria(janela, gpu, buffers);
+    }
     janela.total.clear();
     janela.c2.clear();
     janela.fina.clear();
@@ -99,6 +104,41 @@ pub(super) struct JanelaDeCusto {
     fina: Vec<f64>,
     geracao: u32,
     n: u32,
+    sonda: Option<SondaDeMemoria>,
+}
+
+/// ⭐ W5x — a BANDA de ler cada buffer grande da holográfica da vista, sozinho (1× por geração, na 1.ª
+/// janela): os zeros em páginas comprimíveis leem-se a ~4× a banda da DRAM, fora delas à banda da DRAM —
+/// o regime da `c2` do High é a soma destes (handoff W5x).
+fn relatar_memoria(
+    janela: &mut JanelaDeCusto,
+    gpu: &ph2d_gpu::GpuContext,
+    buffers: &[(&'static str, wgpu::Buffer)],
+) {
+    if janela.sonda.is_none() {
+        janela.sonda = SondaDeMemoria::nova(gpu);
+    }
+    let Some(sonda) = janela.sonda.as_ref() else {
+        return;
+    };
+    let mut soma = 0.0;
+    let partes: Vec<String> = buffers
+        .iter()
+        .map(|(nome, b)| {
+            let ms = sonda.ms(b, Medida::Ler, 3);
+            soma += ms;
+            format!(
+                "{} {:.0}",
+                nome.trim_start_matches("luz2d/buf/hrc_"),
+                b.size() as f64 / (ms * 1e-3) / 1e9
+            )
+        })
+        .collect();
+    eprintln!(
+        "[luz2d] memória g{} · Σler {soma:.3} ms · GB/s: {}",
+        janela.geracao,
+        partes.join(" · ")
+    );
 }
 
 fn min_e_mediana(v: &mut [f64]) -> (f64, f64) {

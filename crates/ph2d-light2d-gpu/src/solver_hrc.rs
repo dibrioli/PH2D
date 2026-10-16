@@ -87,6 +87,33 @@ pub(super) struct Holografica {
     amostra: wgpu::Sampler,
     vazia: wgpu::TextureView,
     fases: Option<fases::FasesHrc>,
+    /// ⭐ W5x — os buffers grandes (T, R, acumulado) com o rótulo: a régua do regime da `c2` mede cada um.
+    pub(super) grandes: Vec<(&'static str, wgpu::Buffer)>,
+}
+
+/// ⭐ W5x — o BERÇO do buffer `nome`: uma textura crua (nunca usada) com pelo menos os bytes dele; `None`
+/// se não cabe numa textura do dispositivo (o buffer nasce então onde calhar).
+fn berco(e: &Entradas<'_>, nome: &'static str) -> Option<wgpu::Texture> {
+    const TEXEL: u64 = 16;
+    let bytes = e.lista.buffers.iter().find(|b| b.nome == nome)?.bytes;
+    let lado = e.device.limits().max_texture_dimension_2d;
+    let altura = u32::try_from(bytes.div_ceil(TEXEL * u64::from(lado))).ok()?;
+    (altura <= lado).then(|| {
+        e.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("luz2d/tex/berco_hrc"),
+            size: wgpu::Extent3d {
+                width: lado,
+                height: altura.max(1),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba32Uint,
+            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        })
+    })
 }
 
 fn armazenado(binding: u32, leitura: bool) -> wgpu::BindGroupLayoutEntry {
@@ -272,16 +299,21 @@ impl Holografica {
         // a `c2` do High é rápida quando eles caem em memória já usada e largada (escrevê-los antes: igual).
         // ⭐ W5q: o acumulado renasce PRIMEIRO — por último era o único no regime lento (a soma 1,40 contra
         // 0,83 ms; handoff W5q §1).
+        // ⭐ W5x (`Config::hrc_berco`): o 1.º nascimento é em texturas cruas — as páginas ficam comprimíveis.
         let n_t = Quadrante::de(0, grade).n.max(Quadrante::de(1, grade).n) as usize + 1;
         if e.cfg.hrc_nasce_duas_vezes {
-            let primeiros: Vec<wgpu::Buffer> = hrc::NOMES_T[..n_t]
+            let nomes = hrc::NOMES_T[..n_t]
                 .iter()
                 .copied()
                 .chain(hrc::NOMES_R)
-                .chain([hrc::NOME_ACUMULADO])
-                .map(|n| (e.buffer)(n))
-                .collect();
-            drop(primeiros);
+                .chain([hrc::NOME_ACUMULADO]);
+            if e.cfg.hrc_berco {
+                let berco: Vec<Option<wgpu::Texture>> = nomes.map(|n| berco(e, n)).collect();
+                drop(berco);
+            } else {
+                let primeiros: Vec<wgpu::Buffer> = nomes.map(|n| (e.buffer)(n)).collect();
+                drop(primeiros);
+            }
             let _ = device.poll(wgpu::PollType::wait_indefinitely());
         }
         let cedo = e
@@ -483,6 +515,13 @@ impl Holografica {
             amostra,
             vazia,
             fases: None,
+            grandes: hrc::NOMES_T[..n_t]
+                .iter()
+                .copied()
+                .zip(t)
+                .chain(hrc::NOMES_R.into_iter().zip(r))
+                .chain([(hrc::NOME_ACUMULADO, acumulado)])
+                .collect(),
         };
         h.escrever(e.queue);
         h

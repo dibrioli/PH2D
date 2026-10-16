@@ -203,6 +203,11 @@ pub struct Config {
     /// e largada): a `c2` do High num processo novo 24,7 → 19,0 ms (`medida_luz2d_w5o_lastro`, handoff W5p
     /// §7). `false` = uma vez (`PH2D_LIGHT2D_HRC_DUAS=0` no app compara).
     pub hrc_nasce_duas_vezes: bool,
+    /// ⭐ W5x — com [`Self::hrc_nasce_duas_vezes`], o 1.º nascimento é um BERÇO de texturas cruas com os
+    /// bytes de cada buffer: o driver da NVIDIA deixa COMPRIMÍVEIS as páginas onde uma textura foi ligada,
+    /// e o buffer que nasce no buraco dela lê os seus zeros sem tocar na DRAM (handoff W5x). `false` = o
+    /// 1.º nascimento em buffers, o da W5p (`PH2D_LIGHT2D_HRC_BERCO=0` no app compara).
+    pub hrc_berco: bool,
     /// ⭐ W5r — os T e os R da cascata holográfica por COLUNAS (`v` o índice mais rápido): as leituras
     /// em diagonal ficam contíguas — o mesmo bit, outros endereços (handoff W5r). `false` = por linhas.
     pub hrc_por_colunas: bool,
@@ -435,6 +440,7 @@ impl Config {
             holografica: None,
             modulo_rc: None,
             hrc_nasce_duas_vezes: true,
+            hrc_berco: true,
             hrc_por_colunas: true,
             hrc_arcos_em_tabela: true,
             hrc_salta_o_vazio: true,

@@ -583,6 +583,8 @@ impl LuzDoQuadro {
                 te.as_ref(),
                 onde,
                 self.leituras,
+                gpu,
+                r.solver.buffers_da_holografica(),
             );
             if p.automatica {
                 let custo = crate::qualidade::Custo {

@@ -75,11 +75,6 @@ impl Store {
         self.errors
     }
 
-    /// Os bytes de texto guardados (o tecto [`CONSOLE_BYTES_MAX`] lê-os).
-    pub fn bytes(&self) -> usize {
-        self.bytes
-    }
-
     pub fn len(&self) -> usize {
         self.entries.len()
     }

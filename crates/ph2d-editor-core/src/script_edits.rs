@@ -105,10 +105,24 @@ pub struct InspectorScriptError {
 
 impl InspectorScriptError {
     /// Lê a 1.ª linha de uma mensagem do Luau: um `'símbolo'` no FIM vai para `symbol` e sai da
-    /// frase; aspas a meio da frase ficam (são palavras, não o culpado).
+    /// frase; aspas a meio da frase ficam (são palavras, não o culpado). O culpado entre parênteses
+    /// no fim (`… (global 'mover')`) sai também, e a espécie fica na frase (`… (global)`).
     #[must_use]
     pub fn from_luau(message: &str, line: Option<u32>) -> Self {
         let first = message.lines().next().unwrap_or_default().trim_end();
+        let paren = first.strip_suffix("')").and_then(|s| {
+            let open = s.rfind(" (")?;
+            let (kind, sym) = s[open + 2..].split_once(" '")?;
+            let word = !kind.is_empty() && kind.chars().all(char::is_alphabetic);
+            (word && !sym.is_empty() && !sym.contains('\'')).then(|| (&s[..open], kind, sym))
+        });
+        if let Some((head, kind, sym)) = paren {
+            return Self {
+                message: format!("{} ({kind})", head.trim_end()),
+                line,
+                symbol: Some(sym.to_owned()),
+            };
+        }
         let split = first
             .strip_suffix('\'')
             .and_then(|s| s.rfind('\'').map(|i| (&s[..i], &s[i + 1..])))
@@ -239,6 +253,43 @@ mod tests {
             InspectorScriptError::from_luau("got ''", None).symbol,
             None,
             "aspas vazias não são símbolo"
+        );
+    }
+
+    /// ⭐ (auditoria do fecho, item 19) O culpado ENTRE PARÊNTESES no fim — `(global 'mover')`, o
+    /// formato do Luau que diz o nome — sai também: o nome em chip, a espécie fica na frase.
+    #[test]
+    fn o_culpado_entre_parenteses_no_fim_sai_da_frase() {
+        for (cru, frase, simbolo) in [
+            (
+                "attempt to call a nil value (global 'mover')",
+                "attempt to call a nil value (global)",
+                "mover",
+            ),
+            (
+                "attempt to call a nil value (field 'andar')",
+                "attempt to call a nil value (field)",
+                "andar",
+            ),
+            (
+                "attempt to call a nil value (method 'pular')\nstack",
+                "attempt to call a nil value (method)",
+                "pular",
+            ),
+        ] {
+            let e = InspectorScriptError::from_luau(cru, Some(2));
+            assert_eq!(
+                (e.message.as_str(), e.symbol.as_deref()),
+                (frase, Some(simbolo)),
+                "{cru:?}"
+            );
+            assert!(!e.message.contains('\''), "aspas cruas na frase: {:?}", e.message);
+        }
+        // Controlo: parênteses que não acabam num símbolo ficam como estão.
+        let e = InspectorScriptError::from_luau("attempt to perform arithmetic (add) on nil", None);
+        assert_eq!(
+            (e.message.as_str(), e.symbol),
+            ("attempt to perform arithmetic (add) on nil", None)
         );
     }
 

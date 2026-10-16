@@ -72,11 +72,21 @@ pub enum DocError {
     BadScript {
         id: u64,
     },
+    /// ⛔ O contador de ids chegou ao fim da faixa (um id `u64::MAX`, ou o próprio contador lá):
+    /// o próximo script novo receberia um id que já está vivo. Ficheiro estragado — recusado.
+    IdsExhausted {
+        id: u64,
+    },
 }
 
 impl std::fmt::Display for DocError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
+        match self {
+            Self::IdsExhausted { id } => {
+                write!(f, "script id {id} is the last possible one, the file is damaged")
+            }
+            other => write!(f, "{other:?}"),
+        }
     }
 }
 
@@ -249,9 +259,14 @@ impl ScriptLibrary {
                 _ => {}
             }
         }
-        // O contador nunca volta a entregar um id vivo.
+        // O contador nunca volta a entregar um id vivo: sem um id livre depois do maior (nem do
+        // contador gravado), o ficheiro está estragado.
         let max = lib.scripts.keys().next_back().map_or(0, |i| i.0);
-        lib.next = lib.next.max(max + 1);
+        let after = max.checked_add(1).ok_or(DocError::IdsExhausted { id: max })?;
+        lib.next = lib.next.max(after);
+        if lib.next == u64::MAX {
+            return Err(DocError::IdsExhausted { id: lib.next });
+        }
         Ok(lib)
     }
 }

@@ -112,3 +112,42 @@ fn set_text_reports_a_change_only_when_it_changes() {
     assert!(!lib.set_text(ScriptId(1), "x"));
     assert!(!lib.set_text(ScriptId(77), "x"));
 }
+
+/// ⛔ (auditoria do fecho, item 15) Um id no FIM da faixa (`u64::MAX`, ou o contador gravado lá) é um
+/// ficheiro estragado: o próximo script novo receberia um id vivo. Recusado com uma frase legível —
+/// nunca `max + 1` a dar a volta.
+#[test]
+fn um_id_no_fim_da_faixa_e_recusado_com_frase() {
+    let mut lib = duas();
+    lib.scripts.insert(
+        ScriptId(u64::MAX),
+        ScriptDoc {
+            name: "fim.luau".into(),
+            text: String::new(),
+        },
+    );
+    let err = ScriptLibrary::from_bytes(&lib.to_bytes()).expect_err("recusado");
+    assert_eq!(err, DocError::IdsExhausted { id: u64::MAX });
+    let frase = err.to_string();
+    assert!(
+        !frase.contains('{') && frase.contains(&u64::MAX.to_string()),
+        "a frase: {frase}"
+    );
+    let mut lib = duas();
+    lib.next = u64::MAX;
+    assert!(matches!(
+        ScriptLibrary::from_bytes(&lib.to_bytes()),
+        Err(DocError::IdsExhausted { .. })
+    ));
+    // Controlo: o último id que ainda deixa um a seguir lê-se.
+    let mut lib = duas();
+    lib.scripts.insert(
+        ScriptId(u64::MAX - 2),
+        ScriptDoc {
+            name: "quase.luau".into(),
+            text: String::new(),
+        },
+    );
+    let back = ScriptLibrary::from_bytes(&lib.to_bytes()).expect("lê");
+    assert_eq!(back.next, u64::MAX - 1);
+}

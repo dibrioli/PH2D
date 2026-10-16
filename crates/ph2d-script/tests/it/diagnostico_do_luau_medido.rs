@@ -242,3 +242,29 @@ fn o_prazo_estourado_diz_a_linha_do_laco() {
         "{d:#}"
     );
 }
+
+/// ⭐ (auditoria do fecho, item 19) **Chamar um nome que não existe** — um global, um campo e um
+/// local nil. Medido: o Luau da casa NÃO acrescenta o nome (o `(global 'mover')` que o `luau`/outros
+/// Luau dão no fim). O cartão já o sabe tirar (`InspectorScriptError::from_luau`); se uma subida do
+/// Luau o passar a dar, isto fica vermelho e o gate do cartão diz se o símbolo sai.
+#[test]
+fn chamar_um_nome_que_nao_existe_esta_congelado() {
+    let h = host();
+    let cru = |src: &str| match update_error(&h, "bob.luau", src) {
+        mlua::Error::RuntimeError(s) => s.lines().next().unwrap_or_default().to_owned(),
+        e => panic!("{e:?}"),
+    };
+    let medidos = [
+        cru("function update(self, dt)\n  mover()\nend\n"),
+        cru("function update(self, dt)\n  self.andar()\nend\n"),
+        cru("function update(self, dt)\n  local passo = nil\n  passo()\nend\n"),
+    ];
+    assert_eq!(
+        medidos,
+        [
+            "bob.luau:2: attempt to call a nil value",
+            "bob.luau:2: attempt to call a nil value",
+            "bob.luau:3: attempt to call a nil value",
+        ]
+    );
+}

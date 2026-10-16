@@ -56,7 +56,7 @@ O motor recebe a ponta por três canais (`ph2d-wet-paint` `stamp_row_shaped`):
 | Follow (Off/Rake/Flow) | ✓, esmaece sem nada a girar (`FollowSemNada`) | idem | idem | idem |
 | Angle · Offset · Size · parâmetros | com tipo ≠ None | idem | idem | Bristles esmaece com Grain armado ou ferramenta que não deposita (`CerdasDaAgua`) |
 | Relief · Shine | ✓ (`impasto_applies`) | ✓ | — | — |
-| **Shape Color** (§5) | ✓ | ✓ | ✓ | oculta (`shape_ramp_offered`; lista 26 B9) |
+| **Shape Color** (§5) | ✓ | ✓ | ✓ | ✓ (cor por célula no depósito, prompt 41) |
 
 ## §5 — Shape Color (prompts 36/38) — uma porta: `ph2d-painter-brush/src/ramp_alpha.rs`
 

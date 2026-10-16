@@ -243,3 +243,42 @@ fn as_duas_rotas_pousam_a_mesma_cor_ao_bit() {
     assert!(s.4.iter().any(|&x| x != 0), "a tinta pousou");
     assert!(s == p, "a rota paralela pousou outra cor");
 }
+
+/// **Um traço SEM cor depois de um COM cor pousa a ponta, não a tinta velha** — a marca da cor por célula
+/// é da janela (o artista desliga a Shape Color entre dois traços).
+///
+/// **Mutação que sangra:** não apagar `tinta_na_janela` no `roll_window`.
+#[test]
+fn o_traco_sem_cor_depois_de_um_com_cor_pousa_a_ponta() {
+    let (mut e, mut t) = bancada(0.0);
+    pousa(&mut e, &mut t, VERMELHO, None);
+    assert!(pousa(&mut e, &mut t, VERMELHO, None));
+    let p = e.sim.gather_params(&e.tuning);
+    t.transfer_paint(e.active_grid_mut(), &p);
+    t.drop_remainder();
+    let mut e = Engine::new(200, 200);
+    e.tuning.set(Knob::Pickup, 0.0);
+    e.tuning.set(Knob::TipClean, 0.0);
+    t.start_stroke(100.0, 100.0, BASE, TrailMode::Paint);
+    t.on_segment(12.0, 12.0);
+    let p = e.sim.gather_params(&e.tuning);
+    let tex = e.bristle_texture_for_measure();
+    let sil = disco(100.0, 100.0, 20.0);
+    for _ in 0..2 {
+        let d = dab(100.0, 100.0, 20.0);
+        let g = e.active_grid_mut();
+        if t.accumulate_paint_shaped_cor(g, &p, &tex, &d, false, &sil, None, None, None, None)
+            .window_full
+        {
+            t.transfer_paint(g, &p);
+        }
+    }
+    let g = e.active_grid();
+    let i = 100 + 100 * g.s;
+    assert!(g.susp[i] > 0.0);
+    assert_eq!(
+        g.susp_rgb[i],
+        BASE.map(|c| c as f32),
+        "pousou a tinta do traço anterior"
+    );
+}

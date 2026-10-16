@@ -138,7 +138,7 @@ fn a_secao_desligada_e_o_traco_de_hoje_ao_byte() {
 /// **O modo TOM (B&W) da Shape age no Wet Paint** — era um controlo mudo: a rota da água nunca assava a
 /// LUT do tom, e a cena com o tom pintava ao byte a do Voronoi cru (a impressão `0x0138…` das duas).
 ///
-/// **Mutação que sangra:** tirar o `rampa_da_aguada` da rota do dab (`wetpaint/dab_route.rs`).
+/// **Mutação que sangra:** tirar o `ensure_shape_ramp_lut` do `rampa_da_aguada` (a rota do dab chama-o).
 #[test]
 fn o_tom_da_shape_age_no_wet_paint() {
     assert_ne!(
@@ -434,4 +434,21 @@ fn a_brocha_leva_a_cor_que_apanhou_com_a_rampa() {
     };
     let d = azul_depois(true) - azul_depois(false);
     assert!(d > 0.85, "o azul apanhado depois do cruzamento: {d:+.2}");
+}
+
+/// **Escolher um Grain no Wet Paint não apaga a Shape Color** — o B&W automático (a rampa do Grain fica dona
+/// da cor) só existe onde essa rampa é oferecida (Digital, Impasto); na água ele desligava a Shape Color sem
+/// dar cor nenhuma em troca. No Digital continua.
+///
+/// **Mutação que sangra:** o `on_grain_assigned` ligar o B&W em todo meio.
+#[test]
+fn escolher_um_grain_no_wet_paint_nao_apaga_a_shape_color() {
+    for (media, bw) in [(PaintMedia::WetPaint, false), (PaintMedia::Digital, true)] {
+        let mut t = cena_da_regua(media, Some((true, false)), 14.0);
+        t.set_brush_texture_kind(1);
+        assert_eq!(
+            t.paint.shape_color_ramp_bw, bw,
+            "{media:?}: o B&W depois do Grain"
+        );
+    }
 }

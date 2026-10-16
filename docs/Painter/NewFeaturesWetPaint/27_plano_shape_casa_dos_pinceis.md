@@ -70,7 +70,7 @@ a física (água, pigmento, papel ficam no Tuning) — muda **quem é dono da po
 | **W3** | a lei da célula do #47 pela medida da W0 | o Noise pinta (tabela antes/depois) · redondo ao bit OU prancha aprovada pelo dono |
 | **W4** | o painel por mídia (D8, C1) + C2 (o Solid no Wet Paint lê a ponta) se a W0 o pedir | censo dos controlos; seam do painel |
 | **W5** ✅ | limpeza (Flat/Fan se mortos), doc do Shape, smoke ao dono | suíte afetada + clippy + mutação nas leis novas |
-| **W6** | **Shape Color no Wet Paint** (ordem do dono 15/10, lista 26 A7): medir a cor por célula no depósito do motor e o custo por dab; depois as duas camadas pintam na água | o traço de hoje ao byte com a secção desligada (12 miniaturas + `fingerprint`) · a cor segue a textura (régua do P38) · prancha ao dono |
+| **W6** ✅ | **Shape Color no Wet Paint** (feito, prompt 41, 16/10) (ordem do dono 15/10, lista 26 A7): medir a cor por célula no depósito do motor e o custo por dab; depois as duas camadas pintam na água | o traço de hoje ao byte com a secção desligada (12 miniaturas + `fingerprint`) · a cor segue a textura (régua do P38) · prancha ao dono |
 
 ## §4 — Riscos e recusas
 

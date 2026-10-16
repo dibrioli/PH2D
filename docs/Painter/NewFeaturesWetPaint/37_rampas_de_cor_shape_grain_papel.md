@@ -112,7 +112,7 @@ Na Watercolor/Wet Paint o chão já entra no modelo óptico pela `cor_do_chao` �
 | # | Item | Faz? | Quanto custa | O que se perde se não fizer |
 |---|---|---|---|---|
 | B8 | Paper Color (rampa pela altura do papel), os 4 meios | **recomendo: fazer** | baixo: uma LUT por píxel na composição; ~300 LOC + portões | papel tingido/com vales coloridos só por camada pintada à mão |
-| B9 | Shape Color no Wet Paint | recomendo: **medir primeiro** (uma janela: cor por texel no depósito do motor) | médio-alto: mexe no motor que mais evolui; custo por carimbo desconhecido | o Wet Paint fica sem pontas coloridas (hoje: oculta, honesto) |
+| B9 | Shape Color no Wet Paint | **feito (prompt 41, 16/10)** — medido primeiro: a cor por célula num plano da janela, pousada com a sujidade da ponta | medido: ×1,06–1,11 o custo do traço; a rampa sobrevive à água nos 12 pincéis de fábrica | o Wet Paint fica sem pontas coloridas (hoje: oculta, honesto) |
 | B10 | Grain Color na Watercolor e no Wet Paint | recomendo: **não fazer** | alto e muda a física do papel/água | nada que o Rebelle tenha |
 | B11 | N secções de Grain | recomendo: **2 grãos com teto fixo**, se o dono quiser o efeito | ~1 500 LOC, +0,4 ms por dab de raio 48 por grão nas rotas por pixel; zero nas assadas | o 2.º grão hoje faz-se com a camada de Textura |
 | B12 | As duas rampas em cor ao mesmo tempo | hoje o Shape ganha; o Krita dá a vitória à textura | trocar é uma linha (`color_ramp_owner`) | — (só a escolha da lei) |

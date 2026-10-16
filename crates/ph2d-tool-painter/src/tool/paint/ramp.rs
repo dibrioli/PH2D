@@ -104,11 +104,21 @@ impl PainterTool {
     /// ramp's **B&W** filter so the Shape provides the silhouette TONE and the freshly-reset Grain ramp
     /// owns the COLOUR (Enio 2026-06-26). The user is free to turn B&W back off to let the Shape
     /// colourise instead. Bumps the tone version so the cached silhouette mask re-bakes.
+    ///
+    /// Only where the medium OFFERS the Grain ramp (Digital, Impasto): in the Watercolor and the Wet Paint
+    /// there is no Grain colour to hand over to, and the flip only switched the Shape Color off (prompt 41;
+    /// the census caught the Watercolor's greyed Grain changing the paint through it).
     pub(super) fn on_grain_assigned(&mut self) {
-        self.paint.shape_color_ramp_bw = true;
-        self.paint.shape_ramp_dirty = true;
+        use super::media::PaintMedia;
+        if matches!(
+            self.paint_media(),
+            PaintMedia::Digital | PaintMedia::Impasto
+        ) {
+            self.paint.shape_color_ramp_bw = true;
+            self.paint.shape_ramp_dirty = true;
+            self.paint.shape_ramp_version = self.paint.shape_ramp_version.wrapping_add(1);
+        }
         self.paint.texture_ramp_dirty = true;
-        self.paint.shape_ramp_version = self.paint.shape_ramp_version.wrapping_add(1);
         self.reset_brush_color_ramp();
     }
 

@@ -73,6 +73,8 @@ def main():
     ap.add_argument("--tilt", type=float, nargs=2, default=None, help="pen_tilt x y (graus) em todos os eventos")
     ap.add_argument("--dirty", action="store_true", help="dirty_brush no SET_BRUSH")
     ap.add_argument("--paint_type", default=None)
+    ap.add_argument("--cor_base", default=None, help="r,g,b da linha 3 (o azul da bancada por omissão)")
+    ap.add_argument("--cor_cruz", default=None, help="r,g,b do cruzamento (o vermelho por omissão)")
     ap.add_argument("--seca_cruz", type=int, default=None,
                     help="SIMULATION N + DRY antes do cruzamento vermelho: o azul da linha 3 SECO (prompt 42)")
     a = ap.parse_args()
@@ -118,13 +120,18 @@ def main():
     gesto_rep(ev, [(60, 300), (560, 300)], 3, lambda t: 0.15 + 0.85 * math.sin(t * math.pi))
     gesto_rep(ev, [(600, 300), (960, 300)], 25, cheio)
     # linha 3 — recto, cruzamento vermelho e um recto vermelho
+    rgb = lambda t: dict(zip("rgb", map(int, t.split(","))))
+    if a.cor_base:
+        cor_actual["cor"] = rgb(a.cor_base)
+        ev.append({"event_type": "SET_BRUSH_COLOR", "color": cor_actual["cor"]})
     gesto_rep(ev, [(60, 480), (560, 480)], 3, cheio)
     if a.seca_cruz is not None:
         ev.append({"event_type": "SIMULATION", "repeats": a.seca_cruz})
         ev.append({"event_type": "DRY"})
-    cor_actual["cor"] = VERMELHO
-    ev.append({"event_type": "SET_BRUSH_COLOR", "color": VERMELHO})
+    cor_actual["cor"] = rgb(a.cor_cruz) if a.cor_cruz else VERMELHO
+    ev.append({"event_type": "SET_BRUSH_COLOR", "color": cor_actual["cor"]})
     gesto_rep(ev, [(300, 400), (300, 560)], 3, cheio)
+    cor_actual["cor"] = VERMELHO
     gesto_rep(ev, [(700, 480), (960, 480)], 3, cheio)
     cor_actual["cor"] = AZUL
     ev.append({"event_type": "SET_BRUSH_COLOR", "color": AZUL})

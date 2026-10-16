@@ -189,6 +189,7 @@ pub fn apply_wet(
         sett,
         susp_rgb,
         sett_rgb,
+        vela,
         ..
     } = g;
     for_each_stamp_pixel(
@@ -228,7 +229,7 @@ pub fn apply_wet(
                         sett_rgb[i],
                         mix,
                         p.glaze,
-                        p.ecra,
+                        p.ecra.com_vela(vela[i]),
                         &mut out,
                     );
                 }
@@ -469,6 +470,7 @@ pub fn apply_smear(
         sett,
         sett_rgb,
         film,
+        vela,
         ..
     } = g;
     for_each_stamp_pixel(
@@ -584,7 +586,7 @@ pub fn apply_smear(
                             sett_rgb[i],
                             mix,
                             p.glaze,
-                            p.ecra,
+                            p.ecra.com_vela(vela[i]),
                             &mut out,
                         );
                     }

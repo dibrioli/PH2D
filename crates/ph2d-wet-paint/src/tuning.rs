@@ -72,9 +72,13 @@ pub enum Knob {
     /// re-soluble; Rebelle's "Re-wet" is stroke-driven). Appended LAST so
     /// every earlier discriminant — and the registry order — is untouched.
     WetLift,
+    /// **O Glaze do PINCEL** (prompt 42): a fracção da tinta deste pincel que FILTRA a de baixo (`0` = a lei
+    /// da obra, ao byte; `1` = multiplica — o marcador do Rebelle). Pousa com a tinta no plano
+    /// [`crate::grid::Grid::vela`]. Appended LAST, like `WetLift`.
+    Glaze,
 }
 
-pub const KNOB_COUNT: usize = 54;
+pub const KNOB_COUNT: usize = 55;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

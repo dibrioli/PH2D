@@ -402,8 +402,13 @@ pub fn render_pigment_row_visual(
                 }
                 let sc = lg.sett_rgb[i];
                 let uc = lg.susp_rgb[i];
-                let ([mut cr, mut cg, mut cb], la) =
-                    crate::assenta::cor_e_alfa(lei, sc.map(f64::from), uc.map(f64::from), a_s, a_f);
+                let ([mut cr, mut cg, mut cb], la) = crate::assenta::cor_e_alfa(
+                    lei.com_vela(lg.vela[i]),
+                    sc.map(f64::from),
+                    uc.map(f64::from),
+                    a_s,
+                    a_f,
+                );
                 let emboss_k = if com_relevo { lg.relevo[i] as f64 } else { 0.0 };
                 if paper_on || emboss_k != 0.0 {
                     // The tooth printed into the pigment — [`render_region`]'s

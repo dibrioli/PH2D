@@ -146,6 +146,7 @@ pub(crate) fn dry_cell(
     c: &DryConst,
     paper: f32,
     count: u32,
+    vela: f32,
     film: &mut f32,
     susp: &mut f32,
     sett: &mut f32,
@@ -161,6 +162,7 @@ pub(crate) fn dry_cell(
     let mut susp_rgb_c = *susp_rgb;
     let mut sett_rgb_c = *sett_rgb;
     let mix = c.mix;
+    let ecra = c.ecra.com_vela(vela);
 
     // Edge factor: fraction of the 3x3 neighbourhood carrying pigment. A full
     // block (9/9) reads e=1 (no boost); a rim cell reads e<1.
@@ -202,9 +204,9 @@ pub(crate) fn dry_cell(
         // SPEC §6.2 step 3 (the shared settle composite, on locals).
         let a_sett = alpha_of_mass(sett_c as f64);
         let a_in = alpha_of_mass(dm);
-        if c.ecra != crate::assenta::Ecra::Porto {
+        if ecra != crate::assenta::Ecra::Porto {
             sett_rgb_c = crate::assenta::assenta(
-                c.ecra,
+                ecra,
                 sett_rgb_c.map(f64::from),
                 susp_rgb_c.map(f64::from),
                 a_sett,
@@ -263,7 +265,7 @@ pub(crate) fn dry_cell(
                 sett_rgb_c,
                 mix,
                 c.glaze,
-                c.ecra,
+                ecra,
                 out,
             );
         }
@@ -321,8 +323,8 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
             let mut srgb = g.susp_rgb[i];
             let mut trgb = g.sett_rgb[i];
             dry_cell(
-                &c, g.paper[i], count, &mut film, &mut susp, &mut sett, &mut srgb, &mut trgb,
-                &mut out,
+                &c, g.paper[i], count, g.vela[i], &mut film, &mut susp, &mut sett, &mut srgb,
+                &mut trgb, &mut out,
             );
             g.film[i] = film;
             g.susp[i] = susp;
@@ -456,6 +458,7 @@ pub fn drying_pass_jacobi_rows(
         susp_rgb,
         sett_rgb,
         paper,
+        vela,
         row_lo,
         row_hi,
         spans_enabled,
@@ -466,6 +469,7 @@ pub fn drying_pass_jacobi_rows(
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
     let edge: &[u8] = &scratch.edge;
     let paper: &[f32] = paper;
+    let vela: &[f32] = vela;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     crate::par::walk_rows5(
         mode,
@@ -494,6 +498,7 @@ pub fn drying_pass_jacobi_rows(
                     &c,
                     paper[i],
                     u32::from(edge[i]),
+                    vela[i],
                     &mut a,
                     &mut b,
                     &mut d,

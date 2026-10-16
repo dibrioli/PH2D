@@ -53,6 +53,10 @@ pub struct Grid {
     /// O RELEVO da tinta da célula: o `Emboss` do pincel que a pousou, pesado pela massa (Bug #48 — o
     /// relevo viaja com a tinta; trocar de pincel não o muda). Escrito só em [`crate::trail::Trail::transfer_paint`].
     pub relevo: Vec<f32>,
+    /// **O GLAZE da tinta em suspensão** (prompt 42): a fracção que filtra a de baixo — o Glaze do pincel que a
+    /// pousou, pesado pela massa SUSPENSA (como o [`Self::relevo`]: trocar de pincel não muda a tinta da tela).
+    /// Lido pela lei do ecrã de cada célula ([`crate::assenta::Ecra::com_vela`]); `0` = a lei da obra.
+    pub vela: Vec<f32>,
     /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
     /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
     ///
@@ -208,6 +212,7 @@ impl Grid {
             sett: vec![0.0; n],
             sett_rgb: vec![[0.0; 3]; n],
             relevo: vec![0.0; n],
+            vela: vec![0.0; n],
             flow,
             vel_x: vec![0.0; fn_],
             vel_y: vec![0.0; fn_],
@@ -532,6 +537,7 @@ pub struct GridSnapshot {
     pub sett: Vec<f32>,
     pub sett_rgb: Vec<[f32; 3]>,
     pub relevo: Vec<f32>,
+    pub vela: Vec<f32>,
     pub vel_x: Vec<f32>,
     pub vel_y: Vec<f32>,
     pub wet: Vec<u8>,
@@ -564,6 +570,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         sett: g.sett.clone(),
         sett_rgb: g.sett_rgb.clone(),
         relevo: g.relevo.clone(),
+        vela: g.vela.clone(),
         vel_x: g.vel_x.clone(),
         vel_y: g.vel_y.clone(),
         wet: g.wet.clone(),
@@ -590,6 +597,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.sett.copy_from_slice(&s.sett);
     g.sett_rgb.copy_from_slice(&s.sett_rgb);
     g.relevo.copy_from_slice(&s.relevo);
+    g.vela.copy_from_slice(&s.vela);
     g.vel_x.copy_from_slice(&s.vel_x);
     g.vel_y.copy_from_slice(&s.vel_y);
     g.flow_x.fill(0.0);

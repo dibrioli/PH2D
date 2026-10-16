@@ -225,6 +225,7 @@ impl Trail {
         let drag_w2 = ((1.0 - drag) * 255.0).trunc() as i32; // sum < 256 on purpose, so
         let water_cap = p.k(Knob::WaterCap); // each drag leaks ~0.8% wetness
         let relevo = p.k(Knob::Emboss) as f32;
+        let vela = p.k(Knob::Glaze) as f32;
         let mut rx0 = w;
         let mut ry0 = h;
         let mut rx1 = 0;
@@ -273,7 +274,36 @@ impl Trail {
                     }
                 } else {
                     let in_a = alpha_of_mass(v);
+                    // ⭐ **O GLAZE do pincel** (prompt 42): a tinta de OUTRO pigmento que estava molhada aqui
+                    // assenta — a fracção Glaze × [`crate::colorops::outra_tinta`], pela lei do ecrã (o que se vê não
+                    // muda) — e a nova pousa por cima, numa camada que a filtra. A multiplicação é UMA por camada
+                    // (`assenta::cor_e_alfa`), nunca por carimbo: re-aplicada a cada dab levava o miolo ao preto.
+                    if vela > 0.0 && g.susp[i] > 0.0 {
+                        let d = crate::colorops::outra_tinta(
+                            g.susp_rgb[i].map(f64::from),
+                            ponta.map(f64::from),
+                        );
+                        let dm = g.susp[i] as f64 * f64::from(vela) * d;
+                        if dm > 0.0 {
+                            let e = p.ecra.com_vela(g.vela[i]);
+                            crate::grid::settle_composite(g, i, dm, p.mix, p.glaze, e, &mut out);
+                            g.sett[i] = (g.sett[i] as f64 + dm) as f32;
+                            g.susp[i] = (g.susp[i] as f64 - dm) as f32;
+                        }
+                    }
                     let old = g.susp[i] as f64;
+                    // O Glaze pousa com a tinta (a média, pela massa SUSPENSA) — e só onde há uma camada POR BAIXO:
+                    // sobre o papel limpo a tinta não filtra nada, e a parte do próprio traço que seca não é outra
+                    // camada (medido: com o Glaze em toda a tinta o recto escurecia ao secar, cobertura 0,90 → 0,93).
+                    let vela_aqui = if g.sett[i] > 0.0 { vela } else { 0.0 };
+                    let v_old = g.vela[i];
+                    if v_old != vela_aqui {
+                        g.vela[i] = if old > 0.0 {
+                            ((f64::from(v_old) * old + f64::from(vela_aqui) * v) / (old + v)) as f32
+                        } else {
+                            vela_aqui
+                        };
+                    }
                     if old > 0.0 {
                         // Opacity composite of the (possibly dirty) tip over the
                         // resident. (Sub-unit masses read alpha 0 from the table;
@@ -548,7 +578,7 @@ impl Trail {
                             sett_c,
                             mix,
                             p.glaze,
-                            p.ecra,
+                            p.ecra.com_vela(g.vela[i]),
                             &mut out,
                         );
                     }

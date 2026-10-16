@@ -595,4 +595,14 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
         0.25,
         None,
     ),
+    k(
+        Knob::Glaze,
+        KnobGroup::Paint,
+        "glaze",
+        0.0,
+        1.0,
+        0.01,
+        0.0,
+        None,
+    ),
 ];

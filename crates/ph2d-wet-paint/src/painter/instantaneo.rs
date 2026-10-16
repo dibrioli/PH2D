@@ -96,6 +96,7 @@ impl crate::grid::Grid {
             sett,
             sett_rgb,
             relevo,
+            vela,
             flow: _,
             vel_x,
             vel_y,
@@ -127,6 +128,7 @@ impl crate::grid::Grid {
             + de(sett)
             + de(sett_rgb)
             + de(relevo)
+            + de(vela)
             + de(vel_x)
             + de(vel_y)
             + de(flow_x)
@@ -153,6 +155,7 @@ impl crate::grid::GridSnapshot {
             + de(&self.sett)
             + de(&self.sett_rgb)
             + de(&self.relevo)
+            + de(&self.vela)
             + de(&self.vel_x)
             + de(&self.vel_y)
             + de(&self.wet)

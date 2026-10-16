@@ -44,6 +44,10 @@ pub enum Ecra {
         filme: f64,
         esconde: f64,
         molhada: f64,
+        /// **O Glaze da tinta da célula** (prompt 42, o plano [`crate::grid::Grid::vela`]): a fracção do filme que
+        /// FILTRA o assentado — `1` = a multiplicação das duas camadas sobre o branco (o marcador do Rebelle),
+        /// na fracção [`crate::colorops::vela_da_camada`] (medida no Rebelle). `0` = a lei da obra.
+        vela: f64,
     },
 }
 
@@ -53,10 +57,37 @@ impl Ecra {
     #[must_use]
     pub fn seco(self) -> Self {
         match self {
-            Ecra::Cobre { filme, esconde, .. } => Ecra::Cobre {
+            Ecra::Cobre {
+                filme,
+                esconde,
+                vela,
+                ..
+            } => Ecra::Cobre {
                 filme,
                 esconde,
                 molhada: 1.0,
+                vela,
+            },
+            e => e,
+        }
+    }
+
+    /// A lei da CÉLULA: a da sessão com o Glaze da tinta que lá está ([`crate::grid::Grid::vela`]). Só a lei do
+    /// Rebelle o lê; `0` devolve a da sessão ao bit.
+    #[inline]
+    #[must_use]
+    pub fn com_vela(self, v: f32) -> Self {
+        match self {
+            Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                ..
+            } if v > 0.0 => Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                vela: f64::from(v),
             },
             e => e,
         }
@@ -71,6 +102,7 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
         filme,
         esconde,
         molhada,
+        vela,
     } = e
     else {
         return (cor(e, sc, uc, a_s, a_f), a_s + a_f * (1.0 - a_s));
@@ -110,6 +142,15 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
     // bordas do óleo sobre o azul seco, `fixtures/rebelle/{oil,express}.png`).
     let mut r = [0, 1, 2].map(|k| t_s[k] * (1.0 - a_e) + c_eff[k] * a_e);
     velatura(&mut r, a_e, filme, 1.0, t_s, c_eff);
+    // O GLAZE do pincel: o filme FILTRA o assentado — a fracção `m` do ponto é o produto das duas camadas sobre o
+    // branco. Uma vez por camada (o filme e o assentado), nunca por carimbo: é o que não leva ao preto.
+    if vela > 0.0 {
+        let m = crate::colorops::vela_da_camada(vela, sc, uc);
+        for k in 0..3 {
+            let f = 255.0 - a_t * (255.0 - uc[k]);
+            r[k] += m * (t_s[k] * f / 255.0 - r[k]);
+        }
+    }
     let r = [0, 1, 2].map(|k| r[k].min(t_s[k].max(uc[k])));
     let la = a_s + a_e * (1.0 - a_s);
     molha(r, la)
@@ -396,6 +437,7 @@ mod tests {
         assert!(perto(s2, AM, 0.01), "{s2:?}");
         assert_eq!(assenta(e, [0.0; 3], AM, 0.0, 0.8, 0.3, 0.7), AM);
         let cobre = Ecra::Cobre {
+            vela: 0.0,
             filme: 0.2,
             esconde: 3.0,
             molhada: 1.0,
@@ -422,6 +464,7 @@ mod tests {
     #[test]
     fn na_lei_do_rebelle_assentar_preserva_o_ecra_seco() {
         let e = Ecra::Cobre {
+            vela: 0.0,
             filme: 0.2,
             esconde: 3.0,
             molhada: 1.6,
@@ -454,6 +497,7 @@ mod tests {
     #[test]
     fn assentar_azul_sobre_azul_nao_muda_o_tom() {
         let e = Ecra::Cobre {
+            vela: 0.0,
             filme: 0.0,
             esconde: 5.0,
             molhada: 1.0,
@@ -512,6 +556,7 @@ mod tests {
         let mut pior = (0.0f64, String::new());
         for esconde in [5.0, 2.0] {
             let e = Ecra::Cobre {
+                vela: 0.0,
                 filme: 0.0,
                 esconde,
                 molhada: 1.0,
@@ -561,6 +606,7 @@ mod tests {
         const QUASE_BRANCO: [f64; 3] = [248.0, 246.0, 240.0];
         let tintas = [AZUL, AM, VERMELHO, QUASE_BRANCO];
         let ecra = |esconde| Ecra::Cobre {
+            vela: 0.0,
             filme: crate::colorops::VELATURA_DO_FILME,
             esconde,
             molhada: crate::colorops::TINTA_MOLHADA_ESCURECE,
@@ -615,6 +661,7 @@ mod tests {
             crate::colorops::TINTA_ESCONDE_EM_VELATURA,
         ] {
             let e = Ecra::Cobre {
+                vela: 0.0,
                 filme: crate::colorops::VELATURA_DO_FILME,
                 esconde,
                 molhada: crate::colorops::TINTA_MOLHADA_ESCURECE,

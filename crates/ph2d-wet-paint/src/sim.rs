@@ -300,6 +300,7 @@ impl Sim {
                         self.esconde
                     },
                     molhada: self.molhada_escurece,
+                    vela: 0.0,
                 },
             },
         }

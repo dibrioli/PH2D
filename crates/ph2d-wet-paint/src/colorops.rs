@@ -220,6 +220,28 @@ pub fn velatura(
     }
 }
 
+/// **O Glaze de uma camada sobre outra** (prompt 42): a fracção do ponto que é o PRODUTO das duas camadas sobre o
+/// branco, para uma tinta de Glaze `vela`. Medida no Rebelle (16/10, `fixtures/rebelle/*seco.png`, `mb*`, `ink*`;
+/// fracção multiplicada no sRGB, por canal): a mesma tinta sobre si **0,48–0,51** (marcador) e 0,46–0,69 (caneta);
+/// amarelo sobre laranja (`d` 0,30) 0,61–0,89; vermelho sobre azul (`d` 0,71) **0,98** — `0,5 + 0,7·d`, no máximo 1.
+pub const VELA_DA_MESMA_TINTA: f64 = 0.5;
+/// O que a diferença de pigmento ([`diferenca_de_pigmento`]) soma ao [`VELA_DA_MESMA_TINTA`].
+pub const VELA_POR_DIFERENCA: f64 = 0.7;
+
+/// A fracção multiplicada de uma camada `cima` de Glaze `vela` sobre `baixo` ([`VELA_DA_MESMA_TINTA`]).
+#[inline]
+pub fn vela_da_camada(vela: f64, baixo: [f64; 3], cima: [f64; 3]) -> f64 {
+    vela * (VELA_DA_MESMA_TINTA + VELA_POR_DIFERENCA * diferenca_de_pigmento(baixo, cima)).min(1.0)
+}
+
+/// **Quanto da tinta molhada de uma célula é OUTRA tinta** para o pincel que chega (`0..1`): a parte da
+/// [`vela_da_camada`] que vem da diferença de pigmento, normalizada — a mesma tinta `0` (os carimbos de um traço
+/// não se empilham em camadas), vermelho sobre azul `1`.
+#[inline]
+pub fn outra_tinta(a: [f64; 3], b: [f64; 3]) -> f64 {
+    (VELA_POR_DIFERENCA / (1.0 - VELA_DA_MESMA_TINTA) * diferenca_de_pigmento(a, b)).min(1.0)
+}
+
 /// **Quão diferentes são os PIGMENTOS de duas tintas** (`0..1`): o seno do ângulo entre os perfis de absorção
 /// (`255 − cor`). A diluição muda o comprimento do perfil, não a direcção — a mesma tinta mais clara ou mais
 /// escura dá `0` (não se vela), e duas tintas diferentes velam o mesmo a qualquer diluição. ⛔ A distância

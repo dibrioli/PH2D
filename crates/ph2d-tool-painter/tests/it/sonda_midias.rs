@@ -319,6 +319,7 @@ fn aplica_variante(t: &mut PainterTool, v: &[(String, f64)]) {
                 "esconde" => e.sim.esconde = *x,
                 "camadas" => e.sim.camadas_transparentes = *x > 0.0,
                 "obra_km" | "obra_glaze" => {}
+                k if k.starts_with("k_") => {}
                 o => panic!("chave da lei: {o}"),
             }
         }
@@ -352,11 +353,18 @@ fn as_midias_com_os_knobs_de_hoje() {
                 let lei: Vec<String> = lei.iter().map(|(r, l)| format!("{r}→{l}")).collect();
                 std::thread::scope(|s2| {
                     for (vnome, v) in leis {
-                        let (p, lei) = (&p, &lei);
+                        let lei = &lei;
+                        // `k_<chave>=v`: um knob do PINCEL (o preset), pela mesma porta do produto.
+                        let mut p = p.clone();
+                        for (k, x) in v {
+                            if let Some(k) = k.strip_prefix("k_") {
+                                p.parametros.engine.insert(k.to_owned(), *x);
+                            }
+                        }
                         s2.spawn(move || {
                             let mut t = tela();
                             t.set_wet_relogio_fixo(true);
-                            assert!(t.wet_preset_aplicar(p).is_empty());
+                            assert!(t.wet_preset_aplicar(&p).is_empty());
                             t.set_brush_size_px(r.unwrap_or(c.alvo * 0.5));
                             // `PH2D_SONDA_KM=1`: as duas caixas K–M da tela (Pigment mixing + Glaze layering)
                             // ligadas — as opções da OBRA que nenhum preset guarda.
@@ -456,8 +464,14 @@ fn sonda_a_celula_do_cruzamento() {
         so.as_deref()
             .is_none_or(|q| q.split(',').any(|n| n == c.nome))
     }) {
-        let p = preset_de(c);
+        let p0 = preset_de(c);
         for (vnome, v) in &leis {
+            let mut p = p0.clone();
+            for (k, x) in v {
+                if let Some(k) = k.strip_prefix("k_") {
+                    p.parametros.engine.insert(k.to_owned(), *x);
+                }
+            }
             let mut t = tela();
             t.set_wet_relogio_fixo(true);
             assert!(t.wet_preset_aplicar(&p).is_empty());
@@ -481,6 +495,16 @@ fn sonda_a_celula_do_cruzamento() {
                             g.susp_rgb[i].map(|v| v.round()),
                             g.film[i]
                         );
+                        let e = e.sim.gather_params(&e.tuning).ecra.com_vela(g.vela[i]);
+                        let a = |m: f32| ph2d_wet_paint::opacity::alpha_of_mass(f64::from(m));
+                        let ecra = ph2d_wet_paint::assenta::sobre_branco(
+                            e.seco(),
+                            g.sett_rgb[i].map(f64::from),
+                            g.susp_rgb[i].map(f64::from),
+                            a(g.sett[i]),
+                            a(g.susp[i]),
+                        );
+                        println!("    vela {:.3} ecrã {:?}", g.vela[i], ecra.map(f64::round));
                     }
                 });
             };

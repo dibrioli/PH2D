@@ -52,7 +52,7 @@ Em `cb99619a93` (+ `22f433c65b`):
 - Tecto de LOC ✓ 2/2 · clippy na forma do `ship.sh` ✓ · check `--workspace --all-targets` warnings=deny ✓.
 - fmt ✗ na 1.ª passagem (4 ficheiros desta onda) → `22f433c65b`; `cargo fmt --all --check` ✓.
 - `target/*/incremental` reclamado.
-- Binário do smoke: (colado pela janela principal)
+- Binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida, depois de reclamar 3,6 GB de `target/*/incremental`): `Finished `smoke` profile [optimized] target(s) in 0.21s` — zero `Compiling`.
 
 ## Aberto (ordem)
 

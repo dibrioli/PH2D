@@ -82,7 +82,11 @@ fn codifica(s: &str, toks: &[(std::ops::Range<usize>, u64, u64)]) -> Value {
         let p = posicao(s, r.start);
         let (l, c) = pos(&p);
         let n = s[r.clone()].encode_utf16().count() as u64;
-        let (dl, dc) = if l == linha { (0, c - col) } else { (l - linha, c) };
+        let (dl, dc) = if l == linha {
+            (0, c - col)
+        } else {
+            (l - linha, c)
+        };
         data.extend([dl, dc, n, *tipo, *mods]);
         (linha, col) = (l, c);
     }
@@ -196,7 +200,10 @@ fn servir(
             }
         }
         if let Some(id) = msg.get("id") {
-            let uri = p["textDocument"]["uri"].as_str().unwrap_or_default().to_owned();
+            let uri = p["textDocument"]["uri"]
+                .as_str()
+                .unwrap_or_default()
+                .to_owned();
             let texto_de = |conta: fn(&mut Visto)| {
                 let mut v = visto.lock().unwrap();
                 conta(&mut v);

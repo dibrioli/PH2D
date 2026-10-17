@@ -80,7 +80,8 @@ fn tinta(m: &mut Mesa, id: ScriptId, at: usize) -> Ink {
 /// pergunta: uma pergunta só depois da pausa — a de 0,5 s, porque o script tem um erro.
 #[test]
 fn as_cores_chegam_na_pausa_e_o_global_que_nao_existe_pinta_de_alerta() {
-    let texto = "function update(self, dt)\n  ph2d.set(self.id, \"x\", dt)\n  pirnt(dt)\nend\n-- ph2d\n";
+    let texto =
+        "function update(self, dt)\n  ph2d.set(self.id, \"x\", dt)\n  pirnt(dt)\nend\n-- ph2d\n";
     let (mut m, id, visto) = mesa(texto, Duration::ZERO);
     let ph2d = texto.find("ph2d").unwrap();
     let set = ph2d + 5;
@@ -90,13 +91,33 @@ fn as_cores_chegam_na_pausa_e_o_global_que_nao_existe_pinta_de_alerta() {
     ate(&mut m, id, T0, "as cores não chegaram", |m| {
         m.docs().semantic_count(id) > 0
     });
-    assert_eq!(tinta(&mut m, id, ph2d), Ink::Builtin, "`ph2d` é da biblioteca");
-    assert_eq!(tinta(&mut m, id, set + 1), Ink::Builtin, "`ph2d.set` é da biblioteca");
-    assert_eq!(tinta(&mut m, id, dt), Ink::Parameter, "o uso de `dt` é o parâmetro");
-    assert_eq!(tinta(&mut m, id, com), Ink::Comment, "num comentário, a gramática manda");
-    ate(&mut m, id, T0, "o global que não existe não pintou de alerta", |m| {
-        m.docs().ink_painted(id, pirnt + 2) == Ink::Unresolved
-    });
+    assert_eq!(
+        tinta(&mut m, id, ph2d),
+        Ink::Builtin,
+        "`ph2d` é da biblioteca"
+    );
+    assert_eq!(
+        tinta(&mut m, id, set + 1),
+        Ink::Builtin,
+        "`ph2d.set` é da biblioteca"
+    );
+    assert_eq!(
+        tinta(&mut m, id, dt),
+        Ink::Parameter,
+        "o uso de `dt` é o parâmetro"
+    );
+    assert_eq!(
+        tinta(&mut m, id, com),
+        Ink::Comment,
+        "num comentário, a gramática manda"
+    );
+    ate(
+        &mut m,
+        id,
+        T0,
+        "o global que não existe não pintou de alerta",
+        |m| m.docs().ink_painted(id, pirnt + 2) == Ink::Unresolved,
+    );
     assert_eq!(cores(&visto), 1, "uma pergunta por versão");
     // Escrever uma letra a cada 0,1 s durante 3 s, no fim do ficheiro: nenhuma pausa, nenhuma pergunta.
     tecla(&mut m, id, Key::End, crate::ctrl(), None, "");
@@ -108,15 +129,27 @@ fn as_cores_chegam_na_pausa_e_o_global_que_nao_existe_pinta_de_alerta() {
         quadro_em(&mut m, t);
         std::thread::sleep(Duration::from_millis(2));
     }
-    nunca(&mut m, id, t + PAUSA_COM_ERROS - 1, "perguntou antes da pausa", |_| {
-        cores(&visto) == 1
-    });
-    ate(&mut m, id, t + PAUSA_COM_ERROS, "a pausa passou e não perguntou", |_| {
-        cores(&visto) == 2
-    });
-    nunca(&mut m, id, t + PAUSA * 4, "perguntou duas vezes a mesma versão", |_| {
-        cores(&visto) == 2
-    });
+    nunca(
+        &mut m,
+        id,
+        t + PAUSA_COM_ERROS - 1,
+        "perguntou antes da pausa",
+        |_| cores(&visto) == 1,
+    );
+    ate(
+        &mut m,
+        id,
+        t + PAUSA_COM_ERROS,
+        "a pausa passou e não perguntou",
+        |_| cores(&visto) == 2,
+    );
+    nunca(
+        &mut m,
+        id,
+        t + PAUSA * 4,
+        "perguntou duas vezes a mesma versão",
+        |_| cores(&visto) == 2,
+    );
 }
 
 /// Sem erros a pausa é a de 1,5 s.
@@ -124,15 +157,25 @@ fn as_cores_chegam_na_pausa_e_o_global_que_nao_existe_pinta_de_alerta() {
 fn sem_erros_a_pausa_e_a_longa() {
     let texto = "local x = ph2d.get(1, \"x\")\n";
     let (mut m, id, visto) = mesa(texto, Duration::ZERO);
-    ate(&mut m, id, T0, "as cores não chegaram", |_| cores(&visto) == 1);
-    letra(&mut m, id, 'q');
-    quadro_em(&mut m, T0);
-    nunca(&mut m, id, T0 + PAUSA - 1, "perguntou antes da pausa longa", |_| {
+    ate(&mut m, id, T0, "as cores não chegaram", |_| {
         cores(&visto) == 1
     });
-    ate(&mut m, id, T0 + PAUSA, "não perguntou depois da pausa", |_| {
-        cores(&visto) == 2
-    });
+    letra(&mut m, id, 'q');
+    quadro_em(&mut m, T0);
+    nunca(
+        &mut m,
+        id,
+        T0 + PAUSA - 1,
+        "perguntou antes da pausa longa",
+        |_| cores(&visto) == 1,
+    );
+    ate(
+        &mut m,
+        id,
+        T0 + PAUSA,
+        "não perguntou depois da pausa",
+        |_| cores(&visto) == 2,
+    );
 }
 
 /// ⭐ As cores seguem as edições: uma linha nova antes leva-as junto (na mesma tecla, sem perguntar);
@@ -151,8 +194,16 @@ fn as_cores_seguem_as_edicoes_e_largam_o_nome_tocado() {
     letra(&mut m, id, 'z');
     quadro_em(&mut m, T0);
     m.pinta(id);
-    assert_eq!(tinta(&mut m, id, ph2d + 1), Ink::Builtin, "a cor não seguiu o nome");
-    assert_ne!(tinta(&mut m, id, ph2d), Ink::Builtin, "a cor ficou no sítio velho");
+    assert_eq!(
+        tinta(&mut m, id, ph2d + 1),
+        Ink::Builtin,
+        "a cor não seguiu o nome"
+    );
+    assert_ne!(
+        tinta(&mut m, id, ph2d),
+        Ink::Builtin,
+        "a cor ficou no sítio velho"
+    );
     // Colado ao fim de `ph2d`: o nome passa a `ph2dq` e a cor da biblioteca sai na mesma tecla; a do
     // `set`, depois do ponto, anda e fica.
     tecla(&mut m, id, Key::Down, Modifiers::default(), None, "");
@@ -164,8 +215,16 @@ fn as_cores_seguem_as_edicoes_e_largam_o_nome_tocado() {
     quadro_em(&mut m, T0);
     m.pinta(id);
     let novo = ph2d + 1;
-    assert_ne!(tinta(&mut m, id, novo), Ink::Builtin, "um nome que mudou guardou a cor");
-    assert_eq!(tinta(&mut m, id, novo + 6), Ink::Builtin, "o `set` perdeu a cor");
+    assert_ne!(
+        tinta(&mut m, id, novo),
+        Ink::Builtin,
+        "um nome que mudou guardou a cor"
+    );
+    assert_eq!(
+        tinta(&mut m, id, novo + 6),
+        Ink::Builtin,
+        "o `set` perdeu a cor"
+    );
     assert_eq!(cores(&visto), 1, "seguir as edições não pergunta");
 }
 
@@ -183,10 +242,18 @@ fn uma_resposta_velha_nunca_pinta_no_sitio_errado() {
         quadro_em(&mut m, T0);
         m.pinta(id);
         assert_eq!(m.docs().semantic_count(id), 0, "a resposta velha entrou");
-        assert_ne!(tinta(&mut m, id, ph2d), Ink::Builtin, "pintou no sítio velho");
+        assert_ne!(
+            tinta(&mut m, id, ph2d),
+            Ink::Builtin,
+            "pintou no sítio velho"
+        );
         std::thread::sleep(Duration::from_millis(10));
     }
-    assert_eq!(cores(&visto), 1, "a 1.ª pergunta (a da versão velha) não chegou a ir");
+    assert_eq!(
+        cores(&visto),
+        1,
+        "a 1.ª pergunta (a da versão velha) não chegou a ir"
+    );
     ate(&mut m, id, T0 + PAUSA, "a pergunta nova não chegou", |m| {
         m.docs().ink_painted(id, ph2d + 1) == Ink::Builtin
     });

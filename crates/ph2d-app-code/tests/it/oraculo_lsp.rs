@@ -498,10 +498,14 @@ fn o_assistente_fixado_vai_a_definicao_e_pinta_as_cores() {
     };
     let ph2d = texto.find("ph2d").unwrap();
     let pirnt = texto.find("pirnt").unwrap();
-    espera(&mut m, "as cores do servidor não pintaram `ph2d.set`", &|m| {
-        m.docs().ink_painted(id, ph2d) == Ink::Builtin
-            && m.docs().ink_painted(id, ph2d + 6) == Ink::Builtin
-    });
+    espera(
+        &mut m,
+        "as cores do servidor não pintaram `ph2d.set`",
+        &|m| {
+            m.docs().ink_painted(id, ph2d) == Ink::Builtin
+                && m.docs().ink_painted(id, ph2d + 6) == Ink::Builtin
+        },
+    );
     espera(&mut m, "`pirnt` não pintou de alerta", &|m| {
         m.docs().ink_painted(id, pirnt + 1) == Ink::Unresolved
     });
@@ -531,5 +535,9 @@ fn o_assistente_fixado_vai_a_definicao_e_pinta_as_cores() {
     espera(&mut m, "o F12 em `set` não abriu a documentação", &|m| {
         m.docs().hover_of(id).is_some_and(|h| h.contains(doc))
     });
-    assert_eq!(m.docs().cursor_of(id), antes, "o F12 na API não mexe no cursor");
+    assert_eq!(
+        m.docs().cursor_of(id),
+        antes,
+        "o F12 na API não mexe no cursor"
+    );
 }

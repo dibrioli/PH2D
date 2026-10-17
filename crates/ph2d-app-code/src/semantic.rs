@@ -211,7 +211,11 @@ mod tests {
 
     #[test]
     fn pintar_por_cima_parte_o_trecho_de_baixo() {
-        let base = vec![(0..4, Ink::Keyword), (5..15, Ink::Variable), (16..18, Ink::Number)];
+        let base = vec![
+            (0..4, Ink::Keyword),
+            (5..15, Ink::Variable),
+            (16..18, Ink::Number),
+        ];
         let out = paint_over(base.clone(), 7..10, Ink::Builtin);
         assert_eq!(
             out,
@@ -224,7 +228,13 @@ mod tests {
             ]
         );
         // Num buraco entre trechos, e no fim.
-        assert_eq!(paint_over(base.clone(), 15..16, Ink::Unresolved)[2], (15..16, Ink::Unresolved));
-        assert_eq!(paint_over(base, 20..22, Ink::Unresolved)[3], (20..22, Ink::Unresolved));
+        assert_eq!(
+            paint_over(base.clone(), 15..16, Ink::Unresolved)[2],
+            (15..16, Ink::Unresolved)
+        );
+        assert_eq!(
+            paint_over(base, 20..22, Ink::Unresolved)[3],
+            (20..22, Ink::Unresolved)
+        );
     }
 }

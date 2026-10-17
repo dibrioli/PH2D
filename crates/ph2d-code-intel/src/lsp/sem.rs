@@ -183,7 +183,11 @@ mod tests {
         let t = Text::new("🙂🙂 ab\n");
         let v = json!({ "data": [0, 5, 2, 8, 0] });
         let got = tokens(&t, &l, &v);
-        assert_eq!(&t.to_string()[got[0].bytes.clone()], "ab", "UTF-16, não bytes");
+        assert_eq!(
+            &t.to_string()[got[0].bytes.clone()],
+            "ab",
+            "UTF-16, não bytes"
+        );
     }
 
     #[test]
@@ -197,7 +201,11 @@ mod tests {
         assert_eq!(definition(at, &json!([loc]))[0].bytes, ab);
         let link = json!([{ "targetUri": "file:///a", "targetSelectionRange": r,
             "targetRange": { "start": { "line": 0, "character": 0 }, "end": { "line": 0, "character": 14 } } }]);
-        assert_eq!(definition(at, &link)[0].bytes, ab, "o NOME, não a declaração inteira");
+        assert_eq!(
+            definition(at, &link)[0].bytes,
+            ab,
+            "o NOME, não a declaração inteira"
+        );
         assert!(definition(at, &json!([{ "uri": "file:///b", "range": r }])).is_empty());
         assert!(definition(at, &json!([])).is_empty());
         assert!(definition(at, &Value::Null).is_empty());

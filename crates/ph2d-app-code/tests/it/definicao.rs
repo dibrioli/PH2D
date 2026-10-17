@@ -7,8 +7,8 @@
 use crate::Mesa;
 use crate::assistente::{Partilhado, Plano, com_falso, converge, letra, tecla};
 use crate::completar::{T0, quadro_em};
-use crate::dicas::{ate, balao, nunca};
 use crate::ctrl;
+use crate::dicas::{ate, balao, nunca};
 use ph2d_editor_core::doc_surface::Key;
 use ph2d_host::Modifiers;
 use ph2d_script::ScriptId;
@@ -86,15 +86,27 @@ fn ctrl_clique_num_local_vai_para_a_declaracao() {
     let uso = TEXTO.find("= brilho").unwrap() + 2;
     let decl = TEXTO.find("local brilho").unwrap() + 6;
     clica_em(&mut m, id, uso + 1, Modifiers::default());
-    nunca(&mut m, id, T0, "um clique sem Ctrl perguntou ou saltou", |m| {
-        // O centro de uma letra põe o cursor de um lado ou do outro dela.
-        definicoes(&visto) == 0 && (uso + 1..=uso + 2).contains(&cursor(m, id))
-    });
+    nunca(
+        &mut m,
+        id,
+        T0,
+        "um clique sem Ctrl perguntou ou saltou",
+        |m| {
+            // O centro de uma letra põe o cursor de um lado ou do outro dela.
+            definicoes(&visto) == 0 && (uso + 1..=uso + 2).contains(&cursor(m, id))
+        },
+    );
     // Noutro byte (o mesmo seria um duplo clique: a mesa clica sempre no mesmo instante).
     clica_em(&mut m, id, uso + 3, ctrl());
-    ate(&mut m, id, T0, "o Ctrl+clique não saltou", |m| cursor(m, id) == decl);
+    ate(&mut m, id, T0, "o Ctrl+clique não saltou", |m| {
+        cursor(m, id) == decl
+    });
     assert_eq!(definicoes(&visto), 1);
-    assert_eq!(m.docs().hover_of(id), None, "um sítio no script não abre o balão");
+    assert_eq!(
+        m.docs().hover_of(id),
+        None,
+        "um sítio no script não abre o balão"
+    );
 }
 
 /// ⭐ F12 numa função da API (o servidor dá `[]`): abre a documentação no balão, já e sem mexer no
@@ -108,7 +120,10 @@ fn f12_na_api_abre_a_documentacao_e_o_cursor_fica() {
     ate(&mut m, id, T0, "o F12 não abriu a documentação", |m| {
         m.docs().hover_of(id).is_some()
     });
-    assert!(m.docs().hover_of(id).unwrap().contains("local set"), "o balão é o de `set`");
+    assert!(
+        m.docs().hover_of(id).unwrap().contains("local set"),
+        "o balão é o de `set`"
+    );
     assert_eq!(cursor(&mut m, id), set, "o cursor não sai do sítio");
     assert_eq!(definicoes(&visto), 1);
     let (pintado, _) = m.docs().hints_painted(id);
@@ -117,7 +132,9 @@ fn f12_na_api_abre_a_documentacao_e_o_cursor_fica() {
     let outro = TEXTO.find("update").unwrap();
     crate::dicas::aponta(&mut m, id, outro + 2);
     nunca(&mut m, id, T0, "o rato levou o balão do F12", |m| {
-        m.docs().hover_of(id).is_some_and(|h| h.contains("local set"))
+        m.docs()
+            .hover_of(id)
+            .is_some_and(|h| h.contains("local set"))
     });
     tecla(&mut m, id, Key::Escape, Modifiers::default(), None, "");
     assert_eq!(m.docs().hover_of(id), None, "uma tecla fecha-o");
@@ -130,7 +147,9 @@ fn ctrl_clique_numa_propriedade_vai_para_a_ph2d_property() {
     let uso = TEXTO.find("self.amplitude").unwrap() + 5;
     let decl = TEXTO.find("amplitude").unwrap();
     clica_em(&mut m, id, uso + 3, ctrl());
-    ate(&mut m, id, T0, "não foi à ph2d.property", |m| cursor(m, id) == decl);
+    ate(&mut m, id, T0, "não foi à ph2d.property", |m| {
+        cursor(m, id) == decl
+    });
     assert_eq!(m.docs().hover_of(id), None);
 }
 
@@ -186,7 +205,9 @@ fn a_definicao_e_as_cores_em_voo_nao_se_cancelam() {
     let uso = TEXTO.find("= brilho").unwrap() + 2;
     let decl = TEXTO.find("local brilho").unwrap() + 6;
     clica_em(&mut m, id, uso + 3, ctrl());
-    ate(&mut m, id, T0, "o Ctrl+clique não saltou", |m| cursor(m, id) == decl);
+    ate(&mut m, id, T0, "o Ctrl+clique não saltou", |m| {
+        cursor(m, id) == decl
+    });
     ate(&mut m, id, T0, "as cores em voo perderam-se", |m| {
         m.docs().semantic_count(id) > 0
     });
@@ -205,7 +226,11 @@ fn uma_composicao_antes_da_resposta_larga_o_salto() {
     assert!(m.docs().compose(id.0, Compose::Commit('é')));
     for _ in 0..40 {
         quadro_em(&mut m, T0);
-        assert_eq!(cursor(&mut m, id), antes + 'é'.len_utf8(), "a resposta velha saltou");
+        assert_eq!(
+            cursor(&mut m, id),
+            antes + 'é'.len_utf8(),
+            "a resposta velha saltou"
+        );
         std::thread::sleep(Duration::from_millis(10));
     }
 }

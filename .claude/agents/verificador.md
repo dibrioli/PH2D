@@ -19,9 +19,15 @@ Regras do repositório que valem para si:
   `PH2D_SUITE="motivo: …"`, CLAUDE.md §2) (exit `0` verde · `1` vermelho · `2` não
   compilou). Portão de fecho: `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh`
   (SÓ no fecho da linha ou com um motivo escrito em `PH2D_SUITE="motivo: …"` — a CADÊNCIA recusa o resto),
-  `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets`, clippy `--all-targets -D warnings`
-  (com `PH2D_SUITE=fecho` na frente — fora do fecho o guarda recusa o clippy),
+  clippy `--workspace --all-targets -- -D warnings` (com `PH2D_SUITE=fecho` na frente — fora do fecho
+  o guarda recusa o clippy; no fim de ONDA, `PH2D_SUITE=onda` e só as crates da onda),
   `cargo fmt --all --check`, `bash scripts/censos-da-arvore-combinada.sh`.
+- ⭐ **Ordem de uma bateria: o barato primeiro, a suíte por último** — `cargo fmt --check` → clippy →
+  censos/tectos → `nextest-impacted`. Um ✗ num portão barato: **pare e devolva ANTES da suíte** (a
+  suíte sobre código que vai mudar é corrida perdida; medido 14–17/10: metade dos fechos repetiam a
+  suíte por um fmt/clippy). O clippy com `-D warnings` sobre `--workspace --all-targets` já é o
+  `check` do workspace — não corra os dois.
+- **Re-verificação depois de um conserto = SÓ o que falhou, por nome.** Nunca a bateria inteira de novo.
 - Nunca canalize a saída de um portão por `| head`/`| tail` sem preservar o código de saída: leia o
   `Summary`/`test result:` e o exit code.
 - Teste que mede relógio ou alocações e reprova sem diff na crate dele: corra-o **sozinho 3×** com o

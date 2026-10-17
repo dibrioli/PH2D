@@ -999,7 +999,8 @@ de facto essenciais depois de uma implementação»*)** — e ela está nos scri
 | No meio do trabalho | os testes do item, **por nome** | o guarda (`.claude/hooks/tecto-de-recursos.sh`, R5) recusa a crate inteira sem nome |
 | A cada **10 commits** da linha | `bash scripts/nextest-impacted.sh` (a suíte do diff) | o script recusa antes disso (exit 3, em ~2 s) |
 | Imprescindível | crate inteira ou suíte com `PH2D_SUITE="motivo: <porquê>"` | o motivo fica no comando e no `.git/ph2d-suite-motivos.log` |
-| Fecho da linha · integração | `PH2D_SUITE=fecho …` | `/pd-linha-fechar`, `/pd-gate-fechamento`, `foundational-integrate.sh` |
+| Fim de ONDA (smoke do dono, janela nova; a linha continua) | fmt + clippy das crates da onda + testes da onda por nome; a suíte só se a cadência mandar (`PH2D_SUITE=onda`) | `/pd-onda-fechar` |
+| Fecho da LINHA (antes de integrar) · integração | `PH2D_SUITE=fecho …`, o barato primeiro e a suíte por último; depois de um conserto, só o que falhou | `/pd-linha-fechar`, `/pd-gate-fechamento`, `foundational-integrate.sh` |
 
 **Imprescindível é só isto:** mexeu num contrato congelado (CLAUDE.md §6) ou numa crate de que muitas
 dependem · mudou um formato gravado (schema, blob com versão) · mudou dependências/features de um

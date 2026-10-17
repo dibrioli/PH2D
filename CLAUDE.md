@@ -66,7 +66,7 @@
 | **Painel / widget / chrome** | DIRETRIZ §3.B |
 | **Modificar feature existente** | DIRETRIZ §3.D |
 | **Foundational** | Modo L: [ADR-0107](docs/architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md) · Modo C / contrato congelado: DIRETRIZ §3.C + §4 |
-| **Abrir / assumir / fechar uma linha** | [MODELO_ABERTURA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md) (`/pd-linha-abrir`) · [MODELO_TROCA_DE_AGENTE_NA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md) (`cd` + `pwd` + `git branch --show-current` ANTES de ler) · DIRETRIZ §1.5.9 (`/pd-linha-fechar`) |
+| **Abrir / assumir / fechar uma linha** | [MODELO_ABERTURA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md) (`/pd-linha-abrir`) · [MODELO_TROCA_DE_AGENTE_NA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md) (`cd` + `pwd` + `git branch --show-current` ANTES de ler) · fim de ONDA (smoke, janela nova): `/pd-onda-fechar` — sem a bateria · fechar a LINHA (antes de integrar): DIRETRIZ §1.5.9 (`/pd-linha-fechar`) |
 | **Integrar (só por ordem do Enio)** | `/pd-integracao` + DIRETRIZ §1.5.3 — `collision-surface.sh` pelo caminho ABSOLUTO em cada worktree; a coluna `base:` é o merge-base, leia o `main` no ficheiro; o degrau do schema reconta-se por `python3 scripts/schema-recount.py` |
 | **Rodar uma jornada Modo L** | [GUIA_JORNADA_MODO_L.md](docs/IntegracaoMultiAgente/GUIA_JORNADA_MODO_L.md) |
 | **Mover código da shell para uma crate** | [HOWTO_partir_uma_familia_da_shell.md](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md) — leia a §2 antes do primeiro ficheiro |

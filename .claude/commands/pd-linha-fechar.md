@@ -2,26 +2,35 @@
 description: Gate batched 1× sobre o diff acumulado, depois o handoff §1.5.9.
 argument-hint: [Nome da linha]
 ---
-Feche a linha `$1`.
+Feche a linha `$1` — **só antes de INTEGRAR**. Fim de uma onda (o dono faz o smoke e a janela troca,
+a linha continua) é `/pd-onda-fechar`, sem esta bateria: medido 14–17/10, fechar cada onda assim deu
+14 fechos por linha em 3 dias, metade repetidos.
 
-1. Gate batched, 1× sobre o diff acumulado (nunca por task):
-   - `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh` — a régua é o merge-base;
-     o default `origin/main` mede também o que ainda não foi enviado. Ele já força os gates
-     GLOBAIS (tectos de ficheiro, o tecto da shell, o censo de órfãos)
-   - `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` — um `dead_code` que só a
-     workspace inteira vê não aparece num `check -p`
+1. Gate batched, 1× sobre o diff acumulado (nunca por task), **NESTA ORDEM — o barato primeiro, a
+   suíte por último** (medido 14–17/10: a suíte corria primeiro, o fmt/clippy reprovava depois, e a
+   suíte corria de novo — «second pass», «round 3»). Um ✗ num portão barato: conserte ANTES de seguir.
+   - `cargo fmt --all`
+   - `PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings`
+     (+ features) — sem o `PH2D_SUITE=fecho` o guarda recusa: clippy é só do fecho (R7, dono 14/10).
+     ⭐ Com `-D warnings` sobre `--workspace --all-targets` ele JÁ é o `check` do workspace (o clippy
+     corre o rustc inteiro: um `dead_code` que só a workspace vê reprova aqui) — o
+     `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` à parte saiu
    - `bash scripts/check-standalone-optional.sh` + `bash scripts/check-workflow-packages.sh` —
      crate opcional que não compila sozinha · pacote apagado/renomeado que um workflow cita por `-p`
    - moveu código da shell? `git grep -n 'shells/desktop/src' -- crates tools`: cada leitor por
      caminho é gate seu, e corre no fecho
-   - `PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings`
-     (+ features) — sem o `PH2D_SUITE=fecho` o guarda recusa: clippy é só do fecho (R7, dono 14/10)
    - `cargo machete` — ⚠️ **obrigatório se a linha MOVEU código**: mudar código de casa não muda a linha do `Cargo.toml`, nada disso falha a compilar, e o CI reprova. Medido na W2 (12/09): **79** dependências mortas deixadas pelas mudanças de casa, que nenhuma linha correu ao fechar (HOWTO §2.18)
    - `shells/desktop/tests/it/file_loc_caps.rs` (o gate da shell; o workspace_file_loc_cap
      cobre só crates/ — essa lacuna já deixou vermelho latente 2×)
    - `arch_safe_clamp_only` e os arch-gates de shell (só correm na varredura impactada)
+   - **por último, a suíte:** `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh`
+     — a régua é o merge-base; o default `origin/main` mede também o que ainda não foi enviado. Ele já
+     força os gates GLOBAIS (tectos de ficheiro, o tecto da shell, o censo de órfãos)
    - auditoria com ≥2 lentes
-2. Corrija TODO ✗. Não escreva o handoff sobre árvore vermelha. ⛔ Mudou a LEI de propósito? Os
+2. Corrija TODO ✗. Não escreva o handoff sobre árvore vermelha. ⭐ **Depois do conserto, re-corra SÓ
+   o que falhou, por nome** (`cargo-test-narrow.sh <crate> <nome>`) — a suíte inteira volta sobre a
+   árvore COMBINADA no portão do integrador (`foundational-integrate.sh`), que é a que entra no `main`.
+   Só se o conserto mexeu numa crate de que muitas dependem: a suíte de novo, com `motivo:`. ⛔ Mudou a LEI de propósito? Os
    testes da lei antiga mudam NESTA linha — um vermelho «aberto no handoff» não entra no `main`
    (DIRETRIZ §1.5.3) e volta para cá.
 2-bis. ⭐⭐⭐ **O que só a ÁRVORE COMBINADA pega — e é VOCÊ quem o cura** (DIRETRIZ §1.5.9 item 5-bis):

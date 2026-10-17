@@ -101,14 +101,15 @@ D. git rebase main no início de cada jornada e antes de integrar, com o
    fora da sua pasta = você violou a regra B. ⚠️ `Solved` do Mergiraf
    não é prova: numa lista partilhada ele larga a remoção de um lado
    (13/09, 2 de 130) — `git range-diff ORIG_HEAD...HEAD` antes de seguir.
-E. Fechamento do módulo = `/pd-linha-fechar` (DIRETRIZ §1.5.9): gate
-   batched 1× — `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash
-   scripts/nextest-impacted.sh` · `CARGO_BUILD_WARNINGS=deny cargo check
-   --workspace --all-targets` · `PH2D_SUITE=fecho` clippy --all-targets
-   (fora do fecho o guarda recusa clippy e teste de crate inteira) · `cargo machete` ·
-   `bash scripts/check-standalone-optional.sh` · `bash
-   scripts/check-workflow-packages.sh` · auditoria ≥2 lentes + DIRETIVA
-   §3-§5. Então PARE — NÃO integre nem faça ship por conta própria. Quem funde
+E. Fim de ONDA (o dono faz o smoke, a janela troca, a linha continua) = `/pd-onda-fechar`:
+   fmt + clippy das crates da onda + os testes da onda por nome + smoke compilado + handoff de
+   continuação — **sem** a bateria (medido 14–17/10: fechar cada onda com ela deu 14 fechos por linha
+   em 3 dias). Fechamento do MÓDULO, antes de integrar = `/pd-linha-fechar` (DIRETRIZ §1.5.9): gate
+   batched 1×, **o barato primeiro e a suíte por último** — `cargo fmt` · `PH2D_SUITE=fecho` clippy
+   `--workspace --all-targets -- -D warnings` (já é o check do workspace) · `cargo machete` ·
+   `bash scripts/check-standalone-optional.sh` · `bash scripts/check-workflow-packages.sh` · por
+   último `PH2D_SUITE=fecho BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh` ·
+   auditoria ≥2 lentes + DIRETIVA §3-§5. Depois de um conserto, só o que falhou, por nome. Então PARE — NÃO integre nem faça ship por conta própria. Quem funde
    as linhas é um AGENTE INTEGRADOR DEDICADO, e só por ORDEM EXPLÍCITA
    do Enio (DIRETRIZ §1.5.3–1.5.4). Você NÃO roda foundational-integrate.sh.
 F. Ship (ship.sh + push + babysit CI): NUNCA por conta própria. É ordem

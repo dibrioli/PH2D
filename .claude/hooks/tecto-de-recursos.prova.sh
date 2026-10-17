@@ -78,6 +78,7 @@ t "só compilar os testes" 'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs --no
 t "a suíte do diff"       'bash scripts/nextest-impacted.sh'                false passa
 t "grep que MENCIONA narrow" 'grep -rn cargo-test-narrow.sh docs/'         false passa
 t "clippy no FECHO"       'PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings' false passa
+t "clippy no fim de ONDA" 'PH2D_SUITE=onda bash scripts/ph2d-run.sh cargo clippy -p ph2d-light2d-gpu --all-targets -- -D warnings' false passa
 t "sed -n (ler)"          'sed -n 1,40p crates/x/src/lib.rs'                false passa
 t "sed para OUTRO ficheiro" "sed -e 's/a/b/' x.rs > y.rs"                   false passa
 t "grep que MENCIONA sed -i" "grep -rn 'sed -i' docs/"                     false passa

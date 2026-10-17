@@ -75,6 +75,23 @@ fn ler(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups) nw:
   let s = acc.x ^ acc.y ^ acc.z ^ acc.w;
   if s == 0x12345679u { saida[0] = s; }
 }
+fn h(x: u32) -> u32 {
+  var v = x * 747796405u + 2891336453u;
+  v = ((v >> ((v >> 28u) + 4u)) ^ v) * 277803737u;
+  return (v >> 22u) ^ v;
+}
+@compute @workgroup_size(256)
+fn saltar(@builtin(global_invocation_id) g: vec3<u32>) {
+  var acc = vec4<u32>(0u);
+  var j = h(g.x);
+  for (var k = 0u; k < 16u; k++) {
+    j = h(j ^ k);
+    let i = j % (p.largura * p.altura);
+    acc ^= bitcast<vec4<u32>>(textureLoad(t, vec2<u32>(i % p.largura, i / p.largura), 0));
+  }
+  let s = acc.x ^ acc.y ^ acc.z ^ acc.w;
+  if s == 0x12345679u { saida[0] = s; }
+}
 ";
 
 /// O núcleo de medida.
@@ -99,8 +116,12 @@ pub struct SondaDeMemoria {
     ler: wgpu::ComputePipeline,
     saltar: wgpu::ComputePipeline,
     escrever: wgpu::ComputePipeline,
-    /// ⭐ W5y — ler uma textura: `[f32, u32]`.
-    texturas: [(wgpu::BindGroupLayout, wgpu::ComputePipeline); 2],
+    /// ⭐ W5y — ler uma textura: `[f32, u32]` (layout, em sequência, ⭐ W6a: aos saltos).
+    texturas: [(
+        wgpu::BindGroupLayout,
+        wgpu::ComputePipeline,
+        wgpu::ComputePipeline,
+    ); 2],
     saida: wgpu::Buffer,
     consultas: wgpu::QuerySet,
     resolvido: wgpu::Buffer,
@@ -187,15 +208,17 @@ impl SondaDeMemoria {
                 bind_group_layouts: &[Some(&bgl)],
                 immediate_size: 0,
             });
-            let pl = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("ler textura"),
-                layout: Some(&layout),
-                module: &modulo,
-                entry_point: Some("ler"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                cache: None,
-            });
-            (bgl, pl)
+            let pl = |e: &str| {
+                d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some(e),
+                    layout: Some(&layout),
+                    module: &modulo,
+                    entry_point: Some(e),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    cache: None,
+                })
+            };
+            (bgl, pl("ler"), pl("saltar"))
         };
         let pequeno = |nome: &'static str, usage: wgpu::BufferUsages| {
             d.create_buffer(&wgpu::BufferDescriptor {
@@ -252,6 +275,17 @@ impl SondaDeMemoria {
     /// lidos; `None` sem `TEXTURE_BINDING`, fora de 2D ou com amostra que não é `f32`/`u32`.
     #[must_use]
     pub fn ms_textura(&self, textura: &wgpu::Texture, n: usize) -> Option<(f64, u64)> {
+        self.medir_textura(textura, n, false)
+    }
+
+    /// ⭐ W6a — o mesmo aos SALTOS (4096 × 256 fios × 16 texels ao acaso): a ordem dos ladrilhos não
+    /// conta, a tradução de endereços sim. Os bytes são os dos texels lidos.
+    #[must_use]
+    pub fn ms_textura_aos_saltos(&self, textura: &wgpu::Texture, n: usize) -> Option<(f64, u64)> {
+        self.medir_textura(textura, n, true)
+    }
+
+    fn medir_textura(&self, textura: &wgpu::Texture, n: usize, saltos: bool) -> Option<(f64, u64)> {
         if !textura
             .usage()
             .contains(wgpu::TextureUsages::TEXTURE_BINDING)
@@ -260,13 +294,20 @@ impl SondaDeMemoria {
             return None;
         }
         let formato = textura.format();
-        let (bgl, pl) = match formato.sample_type(None, Some(self.device.features()))? {
+        let (bgl, ler, saltar) = match formato.sample_type(None, Some(self.device.features()))? {
             wgpu::TextureSampleType::Float { .. } => &self.texturas[0],
             wgpu::TextureSampleType::Uint => &self.texturas[1],
             _ => return None,
         };
         let (w, h) = (textura.width(), textura.height());
-        let bytes = u64::from(formato.block_copy_size(None)?) * u64::from(w) * u64::from(h);
+        let texel = u64::from(formato.block_copy_size(None)?);
+        let bytes = texel
+            * if saltos {
+                4096 * 256 * 16
+            } else {
+                u64::from(w) * u64::from(h)
+            };
+        let pl = if saltos { saltar } else { ler };
         let vista = textura.create_view(&wgpu::TextureViewDescriptor {
             base_mip_level: 0,
             mip_level_count: Some(1),

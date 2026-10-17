@@ -43,10 +43,13 @@ pub(super) fn relatar_custo(
                     r.blocks.len(),
                 )
             });
+        // ⭐ W6a: e o relógio de parede (ms desde a 1.ª leitura) — uma PARAGEM vê-se no intervalo.
+        let t0 = *janela.t0.get_or_insert_with(std::time::Instant::now);
         eprintln!(
-            "[luz2d] série g{} w{} · c2 {:.3} · total {total:.3} · aloc {n_aloc} {mib} MiB {blocos} blocos",
+            "[luz2d] série g{} w{} · t {:.1} · c2 {:.3} · total {total:.3} · aloc {n_aloc} {mib} MiB {blocos} blocos",
             janela.geracao,
             janela.n,
+            t0.elapsed().as_secs_f64() * 1e3,
             t.c2_total()
         );
     }
@@ -65,6 +68,21 @@ pub(super) fn relatar_custo(
     );
     // ⭐ W5y: `PH2D_LIGHT2D_FASES=1` — as etapas da holográfica da vista (somadas nos níveis), por janela.
     if let Some(f) = solvers.0.fases_da_hrc(gpu) {
+        // ⭐ W6a: e cada etapa por NÍVEL (o degrau de uma geração lenta mora num nível?).
+        let mut por_nivel: Vec<(&str, String)> = Vec::new();
+        for &(nome, nivel, ms, _) in &f {
+            let parte = format!(" n{nivel} {ms:.3}");
+            match por_nivel.iter_mut().find(|e| e.0 == nome) {
+                Some(e) => e.1.push_str(&parte),
+                None => por_nivel.push((nome, parte)),
+            }
+        }
+        for (nome, partes) in &por_nivel {
+            eprintln!(
+                "[luz2d] fases g{} w{} · {nome} ·{partes}",
+                janela.geracao, janela.n
+            );
+        }
         let mut etapas: Vec<(&str, f64)> = Vec::new();
         for (nome, _, ms, _) in f {
             match etapas.iter_mut().find(|e| e.0 == nome) {
@@ -84,7 +102,7 @@ pub(super) fn relatar_custo(
             partes.join(" · ")
         );
     }
-    if janela.n == 0 && std::env::var_os("PH2D_LIGHT2D_MEMORIA").is_some() {
+    if std::env::var_os("PH2D_LIGHT2D_MEMORIA").is_some() {
         relatar_memoria(janela, gpu, solvers);
     }
     janela.total.clear();
@@ -146,6 +164,7 @@ pub(super) struct JanelaDeCusto {
     geracao: u32,
     n: u32,
     sonda: Option<SondaDeMemoria>,
+    t0: Option<std::time::Instant>,
 }
 
 /// ⭐ W5x — `PH2D_LIGHT2D_MEMORIA=1` (com o `CUSTO`): a BANDA de ler cada buffer grande da holográfica da
@@ -163,7 +182,18 @@ fn relatar_memoria(
     let Some(sonda) = janela.sonda.as_ref() else {
         return;
     };
-    let g = janela.geracao;
+    let g = (janela.geracao, janela.n);
+    // ⭐ W6a: a lista em TODA janela (o degrau vem a meio da geração); a calibração e a holográfica só
+    // na 1.ª (a calibração aloca).
+    let primeira = janela.n == 0;
+    if !primeira {
+        for (quem, s) in [("vista", Some(vista)), ("entorno", entorno)] {
+            let Some(s) = s else { continue };
+            linha_de_memoria(g, quem, "lista", lista(sonda, s));
+            linha_de_memoria(g, quem, "saltos", lista_aos_saltos(sonda, s));
+        }
+        return;
+    }
     // ⭐ W5y — CALIBRAÇÃO: texturas NOVAS de zeros (64 MiB) — a sonda de texturas vê a compressão?
     let zeros: Vec<(&'static str, u64, f64)> = [
         ("zeros_rg32", wgpu::TextureFormat::Rg32Uint, 8_u32),
@@ -203,19 +233,41 @@ fn relatar_memoria(
             .iter()
             .map(|(nome, b)| (*nome, 4096 * 256 * 16 * 16, sonda.ms(b, Medida::Saltar, 3)));
         linha_de_memoria(g, quem, "saltos", saltos);
-        // ⭐ W5y: as texturas da lista (≥ 1 MiB; as menores cabem no L2) e os ladrilhos.
-        let (texturas, ladrilhos) = s.recursos_da_lista();
-        let outros = texturas
-            .filter_map(|(nome, t)| sonda.ms_textura(t, 3).map(|(ms, bytes)| (nome, bytes, ms)))
-            .filter(|(_, bytes, _)| *bytes >= 1 << 20)
-            .chain(ladrilhos.map(|(nome, b)| (nome, b.size(), sonda.ms(b, Medida::Ler, 3))));
-        linha_de_memoria(g, quem, "lista", outros);
+        linha_de_memoria(g, quem, "lista", lista(sonda, s));
+        linha_de_memoria(g, quem, "saltos", lista_aos_saltos(sonda, s));
     }
 }
 
-/// `[luz2d] memória g<g> · <quem> <grupo> · Σler <ms> ms · <nome> <GB/s>/<MiB> …`.
+/// ⭐ W6a: as texturas da lista ≥ 16 MiB aos SALTOS (a tradução de endereços, não a compressão).
+fn lista_aos_saltos<'a>(
+    sonda: &'a SondaDeMemoria,
+    s: &'a Solver,
+) -> impl Iterator<Item = (&'static str, u64, f64)> + 'a {
+    s.recursos_da_lista()
+        .0
+        .filter(|(_, t)| u64::from(t.width()) * u64::from(t.height()) * 4 >= 16 << 20)
+        .filter_map(|(nome, t)| {
+            sonda
+                .ms_textura_aos_saltos(t, 3)
+                .map(|(ms, bytes)| (nome, bytes, ms))
+        })
+}
+
+/// ⭐ W5y: as texturas da lista (≥ 1 MiB; as menores cabem no L2) e os ladrilhos, cada um sozinho.
+fn lista<'a>(
+    sonda: &'a SondaDeMemoria,
+    s: &'a Solver,
+) -> impl Iterator<Item = (&'static str, u64, f64)> + 'a {
+    let (texturas, ladrilhos) = s.recursos_da_lista();
+    texturas
+        .filter_map(|(nome, t)| sonda.ms_textura(t, 3).map(|(ms, bytes)| (nome, bytes, ms)))
+        .filter(|(_, bytes, _)| *bytes >= 1 << 20)
+        .chain(ladrilhos.map(|(nome, b)| (nome, b.size(), sonda.ms(b, Medida::Ler, 3))))
+}
+
+/// `[luz2d] memória g<g> w<w> · <quem> <grupo> · Σler <ms> ms · <nome> <GB/s>/<MiB> …`.
 fn linha_de_memoria(
-    g: u32,
+    (g, w): (u32, u32),
     quem: &str,
     grupo: &str,
     medidas: impl Iterator<Item = (&'static str, u64, f64)>,
@@ -236,7 +288,7 @@ fn linha_de_memoria(
         })
         .collect();
     eprintln!(
-        "[luz2d] memória g{g} · {quem} {grupo} · Σler {soma:.3} ms · GB/s/MiB: {}",
+        "[luz2d] memória g{g} w{w} · {quem} {grupo} · Σler {soma:.3} ms · GB/s/MiB: {}",
         partes.join(" · ")
     );
 }

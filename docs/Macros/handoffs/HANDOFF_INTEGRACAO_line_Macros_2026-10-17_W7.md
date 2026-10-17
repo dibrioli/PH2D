@@ -148,6 +148,30 @@ balão «Step 1 of 4» + Restart/Show me. **Smoke do dono: PENDENTE.**
     papel branco) mostra o palco durante o Play. O «no fim não salta» só vale para a imagem que tem a gravação (o
     fluxo real; gate (b)); na `=5` a sprite nunca a recebeu e, ao sair do clipe, volta à branca + a tinta do dono.
 
+## §9 — Integração no `main` (17/10)
+
+- Ramo `integ/Macros-2026-10-17` (rebase da linha inteira, 100 commits, sobre o `main` `df66f7c688`), `--ff-only` no primário;
+  a W5 e a W6 entraram junto com a W7. Merge-base antigo `0aab2c1cb6` → `df66f7c688` (172 commits no `main`).
+- **Conflitos (3 ficheiros, todos resolvidos pelos estágios `:1`/`:2`/`:3`)**: `fotografa_cena.sh` (o `main` trouxe o cache de
+  shaders PRÓPRIO + a espera do 1.º quadro aceso; ficou o dele e a `FOTO_RAJADA` da linha entra DEPOIS do guarda de zeros) ·
+  `menu_bar.rs` (`MODULE_TRUTHS`: 18 do `main` — saiu `SelectionActions` — + o `TOPBAR_MACROS` da linha = **19**) ·
+  `quantas_entradas_tem_cada_painel.rs` (o `inspector`: 87 → 88 do CodeEditor **e** 87 → 88 da W5d ⇒ **89**, contado). O `CLAUDE.md`
+  §5.1 conflituou 7× no mesmo sítio (a linha das Macros ao lado da nova do CodeEditor): `scripts` próprios do integrador pegaram a
+  linha das Macros da linha e o resto do `main`, com `assert` de que o `main` não a tocou. Cada commit rebaseado foi comparado com o
+  original (multiconjunto `+/-` por ficheiro): **só os 3 ficheiros acima diferem**; marcadores `<<<<<<<|=======|>>>>>>>||||||||` varridos nos 100 commits: 0.
+  Um `,` solto que a minha 1.ª resolução deixou na W5d foi curado no próprio commit (fixup + autosquash), não à parte.
+- **Recontagens**: `PROJECT_SCHEMA` **191** (sem degrau da linha; escada e tripla `(191, 13, 23)` iguais ao `main`) · ADR sem número novo (próximo
+  livre 0189) · registo de componentes 108/109/109 igual · contratos congelados intocados · `Cargo.lock` consistente (`cargo metadata --locked`;
+  `ph2d-app-macros` e `ph2d-panel-macros` são as 2 crates da linha) · sync dos geradores sem diff · cenas de smoke das Macros `=1..5`.
+- **Gate da árvore combinada**: `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` ✓ · `nextest-impacted` com `PH2D_SUITE=fecho`
+  **22 386 / 22 386** (26 lentos, 0 falhas — os dois flakes de carga do §6 NÃO reprovaram desta vez) · censos da árvore combinada 121/121 ·
+  `clippy --workspace --all-targets -D warnings` ✓ · `cargo fmt --check` ✓ · índices de docs/ADR ✓.
+- **Fora do `ff`**: `project-memory/MEMORY.md` (o primário o tem sujo por outras sessões) — o commit da linha que mudava o ponteiro da
+  barra de rolagem ficou neutralizado (`chore(integração Macros)`); o texto novo foi aplicado à mão ao ficheiro vivo.
+- **Dívida do `main` que NÃO é desta linha**: `typos` reprova em ficheiros do CodeEditor/UIUX já no `main` (o corpus
+  `docs/CodeEditor/ferramentas/corpus_erros/*`, fixtures `ph2d-code-*`, `loca` em `ph2d-text/src/bundled.rs`, `regenere` em
+  `ph2d-vec-scene/tests/it/stroke_v22_fixture.rs`, `project_traco_v189_tests.rs`); só o `ship.sh` corre o `typos`.
+
 ## Retomar
 
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && pwd && git branch --show-current`.

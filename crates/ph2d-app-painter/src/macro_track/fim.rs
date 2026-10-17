@@ -85,7 +85,7 @@ pub(super) fn versao_da_trilha(t: &Track) -> u64 {
     h.finish()
 }
 
-fn calcula(t: &Track, parar: &AtomicBool) -> Resultado {
+pub(super) fn calcula(t: &Track, parar: &AtomicBool) -> Resultado {
     let Some(g) = imagens_da_gravacao(t, parar)? else {
         return Ok(None);
     };

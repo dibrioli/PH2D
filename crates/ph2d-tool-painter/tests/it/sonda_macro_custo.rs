@@ -104,3 +104,32 @@ fn sonda_macro_custo() {
     }
     println!("[macro custo] load depois {}", carga().trim());
 }
+
+/// **A memória de UM instantâneo** (W7, o aberto da onda 1): o Splash em Wet Paint tocado até ao fim,
+/// e o que um instantâneo do tocador declara ao razão da RAM (`bytes_retidos`), a 1024² e 2048².
+#[test]
+#[ignore = "medição — --profile smoke --ignored --nocapture --test-threads=1"]
+fn sonda_a_memoria_de_um_instantaneo() {
+    for lado in [1024u32, 2048] {
+        let (bytes, _) =
+            ph2d_tool_painter::macro_track::roteiro::grava_o_splash(lado, 0).expect("grava");
+        let doc = ph2d_macro::codec::read(&bytes).expect("lê");
+        let tr = &doc.tracks[0];
+        let mut toc =
+            TocadorDoPainter::novo(&tr.initial, tr.events.iter().map(|e| e.payload.as_slice()))
+                .expect("tocador");
+        let mut maximo = 0usize;
+        for (i, e) in tr.events.iter().enumerate() {
+            let _ = toc.aplica(&e.payload);
+            if i % 64 == 0 {
+                maximo = maximo.max(toc.bytes_retidos());
+            }
+        }
+        maximo = maximo.max(toc.bytes_retidos());
+        println!(
+            "[instantâneo] {lado}²: até {:.1} MB por instantâneo ({} eventos)",
+            maximo as f64 / (1 << 20) as f64,
+            tr.events.len()
+        );
+    }
+}

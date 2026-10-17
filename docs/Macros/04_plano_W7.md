@@ -113,8 +113,28 @@ transferência (copiar/colar são portas recusadas).
 `Tutorial::dica_do_motion` por (hash dos bytes, trilha, k). Gate red-first
 `a_dica_do_motion_le_se_uma_vez_por_versao`: 5 descodificações em 5 quadros → 0.
 
-## Item 6 — os abertos da onda 1
+## Item 6 — os abertos da onda 1 (feito, `717f74f4c5` + a sonda da memória)
 
-Memória por instantâneo a 1024² com a água; o cozimento do Motion na placa na reprodução (o palco usa
-`MotionState::new()` — herda `PH2D_GPU_COOK`?); as tabelas de novo numa rodada só, intercaladas, o mínimo,
-com o `loadavg` ao lado.
+- **Instantâneos:** a lei já estava feita na W5c (um por etapa, tecto `1/32` da RAM, o passo dobra) — o
+  aberto da onda 1 estava desatualizado. O número que faltava: **72,3 MB** por instantâneo a 1024² e
+  **285,6 MB** a 2048² (Splash Wet Paint; `sonda_a_memoria_de_um_instantaneo`).
+- **O Motion na reprodução coze na placa:** o palco nasce de `MotionState::new()`, que lê `PH2D_GPU_COOK`
+  (herda a escolha do app). Placa × CPU no mesmo processo: abaixo. Nesta cena (36 formas) a CPU custa
+  10–15× menos com a placa sincronizada no fim do quadro; a política do cozimento é do Motion inteiro —
+  fica ABERTA no handoff, com estes números.
+- **As tabelas de novo, com a máquina CALMA** (smoke, mínimos, `load` 1,2 → 8,5, 17/10):
+
+| Medida | Onda 1 (load 11–46) | W7 (load 1,2–8,5) |
+|---|---|---|
+| Passo da água 1024² (só o passo · passo + composite) | 1,67 · 4,04 ms | **1,24 · 3,73 ms** |
+| Passo da água 2048² | 8,08 · 29,7 ms | **5,49 · 14,89 ms** |
+| Passo da água 4096² | 39,5 · 107 ms | **23,24 · 57,76 ms** |
+| Reproduzir um traço de 60 amostras 1024² (total · pior quadro) | 14,5 · 0,89 ms | **17,8 · 1,12 ms** |
+| Motion: aplicar + cozinhar um passo (24 passos, nó a nó, CPU) | ≤ 0,02 ms | **≤ 0,013 + 0,02 ms** |
+| Motion: re-simular do tique 0 ao 60 | 0,7 ms | **0,742 ms** |
+| Palcos do Motion, por palco (placa · CPU), N = 1 / 4 / 16 | ≈ 0,27 ms (placa) | **0,302 · 0,023 / 0,249 · 0,023 / 0,241 · 0,024 ms** |
+| Painter tocado em cena, quadro (mediana · pior), 1024² / 2048² | — | **2,48 · 44,84 / 5,90 · 51,82 ms** (3 e 10 de 127 acima de 16,7) |
+
+- O composite custa 2,5–3× o passo; a 2048²+ ao vivo um passo + composite não cabe num quadro de 60 Hz
+  (a lei «compor uma vez por quadro» da onda 1 continua a decisão). O traço reproduzido a 1024² subiu
+  (14,5 → 17,8 ms total): o pior quadro continua folgado (1,12 ms).

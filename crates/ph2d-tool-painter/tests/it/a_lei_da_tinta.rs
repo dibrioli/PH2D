@@ -94,7 +94,7 @@ pub fn cruzamento(px: &[u8], w: u32) -> f64 {
                 n += 1.0;
             }
         }
-        let [r, g, b] = s.map(|v| lin(((v / n) as f64).round().clamp(0.0, 255.0) as u8));
+        let [r, g, b] = s.map(|v| lin((v / n).round().clamp(0.0, 255.0) as u8));
         0.2126 * r + 0.7152 * g + 0.0722 * b
     };
     lum(294, 307) / lum(800, 860).min(lum(120, 200)).max(1e-6)

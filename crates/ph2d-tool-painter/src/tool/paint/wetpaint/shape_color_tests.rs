@@ -321,7 +321,11 @@ fn a_falloff_color_le_a_cobertura_como_no_digital() {
 fn a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica() {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let bib = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
-    assert_eq!(bib.entradas.len(), 12, "os pincéis de fábrica");
+    assert_eq!(
+        bib.entradas.len(),
+        17,
+        "os pincéis de fábrica (prompt 42: +5 de tinta e marcador)"
+    );
     let mut fracos = Vec::new();
     for e in &bib.entradas {
         let desvio = |c: Option<(bool, bool)>| {

@@ -361,4 +361,6 @@ pub const INTERNAS: &[&str] = &[
     "use_layers_as_flow",
     "use_layers_as_granulation",
     "use_layers_as_watercolor_paper",
+    // A SONDA do prompt 42 (`tests/it/sonda_midias.rs`): mexe no motor por baixo do painel — nunca se grava.
+    "wet_sonda_motor",
 ];

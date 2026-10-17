@@ -497,6 +497,7 @@ mod smooth_edges; // o Smooth Edges do Watercolor sobre a mancha do Wet Paint (d
 #[cfg(test)]
 pub(in crate::tool::paint) use composite::split as composite_split;
 mod offthread; // a sim FORA da thread do frame (o slot + o worker) — filho por LOC // the composite half (visual terms + veil) — child file (LOC cap)
+mod offthread_ritmo; // o worker RITMADO dos gates (W7) — filho por LOC
 
 #[cfg(test)]
 #[path = "wetpaint/grid_ratio_tests.rs"]

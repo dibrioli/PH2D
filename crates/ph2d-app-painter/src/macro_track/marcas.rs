@@ -4,7 +4,7 @@
 //! artista (uma ferramenta de imagem; desfazê-la desmarca sozinho, porque a régua é a diferença para a
 //! base). Gravar de novo é outra época: outra marca; a antiga fica para o desfazer da gravação.
 
-use super::{Atual, ChaveDaMarca, Fonte, PalcoDaPintura, PalcosDoPainter, fim};
+use super::{Atual, ChaveDaMarca, Fonte, LeSprite, PalcoDaPintura, PalcosDoPainter, fim};
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::macro_track::marca::{self, MarcaDoArtista};
 use std::collections::BTreeMap;
@@ -71,7 +71,7 @@ fn diferem(a: &[u8], b: &[u8], n: usize) -> Vec<u64> {
 pub(super) fn le_a_sprite<R: ?Sized>(
     p: &mut PalcoDaPintura,
     guardadas: &mut BTreeMap<ChaveDaMarca, Guardada>,
-    le: Option<&mut (dyn FnMut(u64, &mut R) -> Option<(Vec<u8>, u32, u32)> + '_)>,
+    le: Option<&mut LeSprite<'_, R>>,
     ranhuras: &mut R,
 ) {
     if p.atual.as_ref().is_some_and(|a| a.fonte == Fonte::Sprite) {
@@ -116,7 +116,7 @@ impl PalcosDoPainter {
     pub fn liga_a_marca<R: ?Sized>(
         &mut self,
         painter: Option<&mut PainterTool>,
-        le: &mut (dyn FnMut(u64, &mut R) -> Option<(Vec<u8>, u32, u32)> + '_),
+        le: &mut LeSprite<'_, R>,
         ranhuras: &mut R,
     ) {
         let ligada = painter.as_deref().and_then(PainterTool::bound_document);
@@ -141,7 +141,7 @@ impl PalcosDoPainter {
         let Some(t) = painter else {
             return;
         };
-        let Some((sprite, chave)) = alvo else {
+        let Some((_, chave)) = alvo else {
             if t.marca_do_artista().is_some() {
                 t.poe_a_marca(None);
             }

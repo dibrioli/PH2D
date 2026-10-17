@@ -33,13 +33,16 @@ pub(super) fn relatar_custo(
     // ⭐ W5y: `PH2D_LIGHT2D_SERIE=1` — cada leitura (a c2 muda DENTRO de uma geração: a janela esconde quando).
     if std::env::var_os("PH2D_LIGHT2D_SERIE").is_some() {
         // E o alocador da placa (o processo inteiro): um degrau da c2 casa com uma alocação de fora?
-        let (n_aloc, mib, blocos) = gpu.device.generate_allocator_report().map_or((0, 0, 0), |r| {
-            (
-                r.allocations.len(),
-                r.total_allocated_bytes >> 20,
-                r.blocks.len(),
-            )
-        });
+        let (n_aloc, mib, blocos) = gpu
+            .device
+            .generate_allocator_report()
+            .map_or((0, 0, 0), |r| {
+                (
+                    r.allocations.len(),
+                    r.total_allocated_bytes >> 20,
+                    r.blocks.len(),
+                )
+            });
         eprintln!(
             "[luz2d] série g{} w{} · c2 {:.3} · total {total:.3} · aloc {n_aloc} {mib} MiB {blocos} blocos",
             janela.geracao,
@@ -70,7 +73,10 @@ pub(super) fn relatar_custo(
             }
         }
         let soma: f64 = etapas.iter().map(|e| e.1).sum();
-        let partes: Vec<String> = etapas.iter().map(|(n, ms)| format!("{n} {ms:.3}")).collect();
+        let partes: Vec<String> = etapas
+            .iter()
+            .map(|(n, ms)| format!("{n} {ms:.3}"))
+            .collect();
         eprintln!(
             "[luz2d] fases g{} w{} · Σ {soma:.3} · {}",
             janela.geracao,
@@ -192,9 +198,10 @@ fn relatar_memoria(
             .map(|(nome, b)| (*nome, b.size(), sonda.ms(b, Medida::Ler, 3)));
         linha_de_memoria(g, quem, "hrc", hrc);
         // ⭐ W5y: aos SALTOS (4096 × 256 fios × 16 leituras de 16 B): a subida e a descida leem espalhado.
-        let saltos = s.buffers_da_holografica().iter().map(|(nome, b)| {
-            (*nome, 4096 * 256 * 16 * 16, sonda.ms(b, Medida::Saltar, 3))
-        });
+        let saltos = s
+            .buffers_da_holografica()
+            .iter()
+            .map(|(nome, b)| (*nome, 4096 * 256 * 16 * 16, sonda.ms(b, Medida::Saltar, 3)));
         linha_de_memoria(g, quem, "saltos", saltos);
         // ⭐ W5y: as texturas da lista (≥ 1 MiB; as menores cabem no L2) e os ladrilhos.
         let (texturas, ladrilhos) = s.recursos_da_lista();

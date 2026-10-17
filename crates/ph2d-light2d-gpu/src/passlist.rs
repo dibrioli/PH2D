@@ -346,6 +346,12 @@ impl PassList {
             mips: 1,
         });
 
+        // ⭐ W5z: os T e os R da holográfica em textura (`Config::hrc_niveis_em_textura`).
+        let niveis_em_textura = cfg.hrc_niveis_em_textura();
+        if niveis_em_textura {
+            texturas.extend(crate::hrc::texturas(fino));
+        }
+
         use wgpu::BufferUsages as B;
         let uniforme = B::UNIFORM | B::COPY_DST;
         let mut buffers = vec![
@@ -419,7 +425,11 @@ impl PassList {
         }
         // ⭐ W5c: a cascata holográfica (os T, o par R, o acumulado, o uniforme e os vazios).
         if cfg.holografica.is_some() {
-            buffers.extend(crate::hrc::buffers(fino, crate::hrc::n_passes(fino)));
+            buffers.extend(crate::hrc::buffers(
+                fino,
+                crate::hrc::n_passes(fino),
+                niveis_em_textura,
+            ));
         }
         if op.rebote.is_some() {
             buffers.push(Buffer {

@@ -180,7 +180,7 @@ pub(crate) const ANTES: &str = "2565d66bbf";
 /// Os ficheiros do módulo das cascatas pela ordem do `rc!` (`ph2d-light2d-gpu/src/shaders.rs`) com
 /// a aritmética f32 e o armazenamento f16 (o `Config::padrao`); [`modulo_antes`] confere a lista
 /// contra o módulo de hoje.
-const FICHEIROS_DO_RC: [&str; 12] = [
+const FICHEIROS_DO_RC: [&str; 13] = [
     "real_f32",
     "saida_f16",
     "queda",
@@ -192,6 +192,7 @@ const FICHEIROS_DO_RC: [&str; 12] = [
     "c4_rebote",
     "c3_borda",
     "c3_pe",
+    "hrc_niveis_buffer",
     "c2_hrc",
 ];
 
@@ -208,7 +209,8 @@ pub(crate) fn modulo_antes() -> &'static str {
             hoje,
             fonte_do_rc(
                 ph2d_light2d_gpu::Precisao::F32,
-                ph2d_light2d_gpu::Precisao::F16
+                ph2d_light2d_gpu::Precisao::F16,
+                false
             ),
             "a lista FICHEIROS_DO_RC não é a do rc!"
         );
@@ -220,8 +222,9 @@ pub(crate) fn modulo_antes() -> &'static str {
                     .arg(format!("{ANTES}:crates/ph2d-light2d-gpu/src/wgsl/{f}.wgsl"))
                     .output()
                     .expect("git show");
-                // ⭐ W5q: os ladrilhos nasceram depois do ANTES (lá, nenhum texto).
-                if *f == "ladrilhos" && !o.status.success() {
+                // ⭐ W5q: os ladrilhos nasceram depois do ANTES (lá, nenhum texto); ⭐ W5z: o prelúdio dos
+                // níveis também (lá, as ligações estavam no `c2_hrc`).
+                if matches!(*f, "ladrilhos" | "hrc_niveis_buffer") && !o.status.success() {
                     return String::new();
                 }
                 assert!(o.status.success(), "git show {f}");
@@ -386,7 +389,11 @@ fn medida_luz2d_w5p_compilador() {
             let fonte = if sobre_o_antes {
                 modulo_antes()
             } else {
-                fonte_do_rc(cfg.aritmetica, cfg.armazenamento)
+                fonte_do_rc(
+                    cfg.aritmetica,
+                    cfg.armazenamento,
+                    cfg.hrc_niveis_em_textura(),
+                )
             };
             let (entrada, proprias) = constantes_da_fina(cfg);
             let anel = format!("{entrada}_anel");

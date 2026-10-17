@@ -54,6 +54,11 @@ fn hrc_berco() -> bool {
     ligado("PH2D_LIGHT2D_HRC_BERCO")
 }
 
+/// ⭐ W5z — `PH2D_LIGHT2D_HRC_TEXTURAS=0`: os T e os R da holográfica em buffers (o berço; comparar).
+fn hrc_texturas() -> bool {
+    ligado("PH2D_LIGHT2D_HRC_TEXTURAS")
+}
+
 /// ⭐ W5r — `PH2D_LIGHT2D_HRC_COLUNAS=0`: a holográfica por linhas (o mesmo bit, mais lento; comparar).
 fn hrc_por_colunas() -> bool {
     ligado("PH2D_LIGHT2D_HRC_COLUNAS")
@@ -100,6 +105,7 @@ pub fn config_da_vista(
         face_pelo_ponto: ligado("PH2D_LIGHT2D_FACE_PONTO"),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),
+        hrc_em_texturas: hrc_texturas(),
         // ⭐ W5x: a régua da memória (`PH2D_LIGHT2D_MEMORIA=1`) mede os buffers da holográfica da vista;
         // ⭐ W5y: `=lista` mede só o que o solver já guarda (sem clones: a alocação do produto).
         hrc_guarda_os_grandes: std::env::var("PH2D_LIGHT2D_MEMORIA").is_ok_and(|v| v != "lista"),
@@ -144,6 +150,7 @@ pub fn config_do_entorno(
         so_a_c0: cortes_ligados(),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),
+        hrc_em_texturas: hrc_texturas(),
         hrc_por_colunas: hrc_por_colunas(),
         ..Config::padrao_para(device, ge)
     }))

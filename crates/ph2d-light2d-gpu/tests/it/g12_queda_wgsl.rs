@@ -126,12 +126,14 @@ fn g12_a_queda_wgsl_e_a_do_gabarito_nos_mesmos_mil_pontos() {
 fn g12_o_texto_da_queda_existe_uma_vez() {
     for a in [Precisao::F16, Precisao::F32] {
         for b in [Precisao::F16, Precisao::F32] {
-            let fonte = fonte_do_rc(a, b);
-            assert!(
-                fonte.contains(QUEDA_WGSL),
-                "o RC {a:?}/{b:?} não concatena queda.wgsl"
-            );
-            assert_eq!(fonte.matches("fn queda(").count(), 1, "RC {a:?}/{b:?}");
+            for t in [false, true] {
+                let fonte = fonte_do_rc(a, b, t);
+                assert!(
+                    fonte.contains(QUEDA_WGSL),
+                    "o RC {a:?}/{b:?}/{t} não concatena queda.wgsl"
+                );
+                assert_eq!(fonte.matches("fn queda(").count(), 1, "RC {a:?}/{b:?}/{t}");
+            }
         }
     }
     let pasta = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/wgsl");

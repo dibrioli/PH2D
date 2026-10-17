@@ -51,5 +51,6 @@ mod paridade_luz_recebida;
 mod redimensionar;
 mod smoke_cena_1;
 mod smoke_cenas_w4;
+mod sonda_compressao_das_texturas;
 mod sonda_regime_da_memoria;
 mod w4_artista;

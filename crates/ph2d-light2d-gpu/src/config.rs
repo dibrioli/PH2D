@@ -208,6 +208,10 @@ pub struct Config {
     /// e o buffer que nasce no buraco dela lê os seus zeros sem tocar na DRAM (handoff W5x). `false` = o
     /// 1.º nascimento em buffers, o da W5p (`PH2D_LIGHT2D_HRC_BERCO=0` no app compara).
     pub hrc_berco: bool,
+    /// ⭐ W5z — os T e os R da holográfica em TEXTURAS `Rg32Uint` (comprimíveis desde que nascem: o
+    /// berço deixa de depender da sorte do alocador; handoff W5z). `false` = em buffers
+    /// (`PH2D_LIGHT2D_HRC_TEXTURAS=0` no app compara). Efetivo: [`Self::hrc_niveis_em_textura`].
+    pub hrc_em_texturas: bool,
     /// ⭐ W5x — INSTRUMENTO: a holográfica guarda os seus buffers grandes para
     /// [`crate::Solver::buffers_da_holografica`] (as réguas do regime). `false` no produto: guardá-los
     /// atrasava a devolução da memória quando a placa recusa (`a_luz_recua_quando_a_placa_recusa_a_memoria`).
@@ -445,6 +449,7 @@ impl Config {
             modulo_rc: None,
             hrc_nasce_duas_vezes: true,
             hrc_berco: true,
+            hrc_em_texturas: true,
             hrc_guarda_os_grandes: false,
             hrc_por_colunas: true,
             hrc_arcos_em_tabela: true,

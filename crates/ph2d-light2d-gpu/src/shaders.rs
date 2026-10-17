@@ -31,7 +31,7 @@ pub(crate) const C3_MIOLO_BASE: &str = include_str!("wgsl/c3_miolo_base.wgsl");
 pub(crate) const C3_MASCARA: &str = include_str!("wgsl/c3_mascara.wgsl");
 
 macro_rules! rc {
-    ($real:literal, $saida:literal) => {
+    ($real:literal, $saida:literal, $niveis:literal) => {
         concat!(
             include_str!($real),
             include_str!($saida),
@@ -44,23 +44,72 @@ macro_rules! rc {
             include_str!("wgsl/c4_rebote.wgsl"),
             include_str!("wgsl/c3_borda.wgsl"),
             include_str!("wgsl/c3_pe.wgsl"),
+            include_str!($niveis),
             include_str!("wgsl/c2_hrc.wgsl")
         )
     };
 }
 
-const RC_F16_F16: &str = rc!("wgsl/real_f16.wgsl", "wgsl/saida_f16.wgsl");
-const RC_F16_F32: &str = rc!("wgsl/real_f16.wgsl", "wgsl/saida_f32.wgsl");
-const RC_F32_F16: &str = rc!("wgsl/real_f32.wgsl", "wgsl/saida_f16.wgsl");
-const RC_F32_F32: &str = rc!("wgsl/real_f32.wgsl", "wgsl/saida_f32.wgsl");
+/// `[aritmética][armazenamento][T e R em textura]`, `F16` antes de `F32`.
+const RC: [[[&str; 2]; 2]; 2] = [
+    [
+        [
+            rc!(
+                "wgsl/real_f16.wgsl",
+                "wgsl/saida_f16.wgsl",
+                "wgsl/hrc_niveis_buffer.wgsl"
+            ),
+            rc!(
+                "wgsl/real_f16.wgsl",
+                "wgsl/saida_f16.wgsl",
+                "wgsl/hrc_niveis_textura.wgsl"
+            ),
+        ],
+        [
+            rc!(
+                "wgsl/real_f16.wgsl",
+                "wgsl/saida_f32.wgsl",
+                "wgsl/hrc_niveis_buffer.wgsl"
+            ),
+            rc!(
+                "wgsl/real_f16.wgsl",
+                "wgsl/saida_f32.wgsl",
+                "wgsl/hrc_niveis_textura.wgsl"
+            ),
+        ],
+    ],
+    [
+        [
+            rc!(
+                "wgsl/real_f32.wgsl",
+                "wgsl/saida_f16.wgsl",
+                "wgsl/hrc_niveis_buffer.wgsl"
+            ),
+            rc!(
+                "wgsl/real_f32.wgsl",
+                "wgsl/saida_f16.wgsl",
+                "wgsl/hrc_niveis_textura.wgsl"
+            ),
+        ],
+        [
+            rc!(
+                "wgsl/real_f32.wgsl",
+                "wgsl/saida_f32.wgsl",
+                "wgsl/hrc_niveis_buffer.wgsl"
+            ),
+            rc!(
+                "wgsl/real_f32.wgsl",
+                "wgsl/saida_f32.wgsl",
+                "wgsl/hrc_niveis_textura.wgsl"
+            ),
+        ],
+    ],
+];
 
-/// O módulo das cascatas para `(aritmética, armazenamento)`.
+/// O módulo das cascatas para `(aritmética, armazenamento)`, com os T e os R da holográfica em textura
+/// (`niveis_em_textura`, ⭐ W5z: [`crate::Config::hrc_niveis_em_textura`]) ou em buffer.
 #[must_use]
-pub fn rc(aritmetica: Precisao, armazenamento: Precisao) -> &'static str {
-    match (aritmetica, armazenamento) {
-        (Precisao::F16, Precisao::F16) => RC_F16_F16,
-        (Precisao::F16, Precisao::F32) => RC_F16_F32,
-        (Precisao::F32, Precisao::F16) => RC_F32_F16,
-        (Precisao::F32, Precisao::F32) => RC_F32_F32,
-    }
+pub fn rc(aritmetica: Precisao, armazenamento: Precisao, niveis_em_textura: bool) -> &'static str {
+    let k = |p| usize::from(p == Precisao::F32);
+    RC[k(aritmetica)][k(armazenamento)][usize::from(niveis_em_textura)]
 }

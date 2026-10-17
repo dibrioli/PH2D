@@ -202,8 +202,12 @@ fn medida_luz2d_w5v_caso() {
     // `PH2D_W5V_MUTA=<de>⇒<para>[⇐…]`: o texto do módulo das cascatas mutado (experimentos).
     let muta = |c: Config| match std::env::var("PH2D_W5V_MUTA") {
         Ok(m) => {
-            let mut fonte =
-                ph2d_light2d_gpu::fonte_do_rc(c.aritmetica, c.armazenamento).to_string();
+            let mut fonte = ph2d_light2d_gpu::fonte_do_rc(
+                c.aritmetica,
+                c.armazenamento,
+                c.hrc_niveis_em_textura(),
+            )
+            .to_string();
             for par in m.split('⇐') {
                 let (de, para) = par.split_once('⇒').expect("<de>⇒<para>");
                 assert_eq!(fonte.matches(de).count(), 1, "a agulha: {de}");
@@ -345,7 +349,12 @@ fn medida_luz2d_w5v_caso() {
 
 /// O texto do módulo das cascatas (que leva o `c3_direta.wgsl`) com cada `de` trocado por `para` (uma vez).
 fn mutado(cfg: &Config, trocas: &[(&str, &str)]) -> &'static str {
-    let mut fonte = ph2d_light2d_gpu::fonte_do_rc(cfg.aritmetica, cfg.armazenamento).to_string();
+    let mut fonte = ph2d_light2d_gpu::fonte_do_rc(
+        cfg.aritmetica,
+        cfg.armazenamento,
+        cfg.hrc_niveis_em_textura(),
+    )
+    .to_string();
     for (de, para) in trocas {
         assert_eq!(fonte.matches(de).count(), 1, "a agulha do controlo: {de}");
         fonte = fonte.replacen(de, para, 1);

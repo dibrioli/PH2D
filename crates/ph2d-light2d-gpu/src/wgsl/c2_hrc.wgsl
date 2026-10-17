@@ -43,11 +43,8 @@ struct Hrc {
 }
 
 @group(3) @binding(4) var<uniform> hrc: Hrc;
-@group(3) @binding(5) var<storage, read> t_a: array<vec2<u32>>;
-@group(3) @binding(6) var<storage, read> t_b: array<vec2<u32>>;
-@group(3) @binding(7) var<storage, read_write> t_saida: array<vec2<u32>>;
-@group(3) @binding(8) var<storage, read> r_cima: array<vec2<u32>>;
-@group(3) @binding(9) var<storage, read_write> r_saida: array<vec2<u32>>;
+// ⭐ W5z: os T e os R (ligações 5–9) e os seus acessores (`ler_t_a`, `ler_t_b`, `ler_r_cima`,
+// `escrever_t`, `escrever_r`) vêm do prelúdio: `hrc_niveis_buffer.wgsl` ou `hrc_niveis_textura.wgsl`.
 @group(3) @binding(10) var<storage, read_write> acumulado: array<vec4<f32>>;
 // ⭐ W5r: o arco de cada cone (`arcos[2ⁿ + m]`), escrito uma vez pelo `hrc_arcos` (binding 13).
 @group(3) @binding(12) var<storage, read> arcos: array<f32>;
@@ -235,19 +232,19 @@ fn t_de_baixo(xi: u32, v: i32, k: u32) -> Par {
     if xi >= hrc.nx_baixo || v < 0 || v >= i32(hrc.eixo.y) {
         return VACUO;
     }
-    return desempacotar(t_a[indice_t(hrc.nx_baixo, hrc.nivel - 1u, xi, u32(v), k)]);
+    return desempacotar(ler_t_a(indice_t(hrc.nx_baixo, hrc.nivel - 1u, xi, u32(v), k)));
 }
 
 // T_n (t_a) e T_{n+1} (t_b) na fusão de cima para baixo.
 fn t_deste(xi: u32, v: u32, k: u32) -> Par {
-    return desempacotar(t_a[indice_t(hrc.nx, hrc.nivel, xi, v, k)]);
+    return desempacotar(ler_t_a(indice_t(hrc.nx, hrc.nivel, xi, v, k)));
 }
 
 fn t_de_cima(xi: u32, v: u32, k: u32) -> Par {
     if xi >= hrc.nx_cima {
         return VACUO;
     }
-    return desempacotar(t_b[indice_t(hrc.nx_cima, hrc.nivel + 1u, xi, v, k)]);
+    return desempacotar(ler_t_b(indice_t(hrc.nx_cima, hrc.nivel + 1u, xi, v, k)));
 }
 
 // R_{n+1} em (xi, v, j) — no topo, ou fora do que se guarda, o céu × o arco (o que está além).
@@ -256,7 +253,7 @@ fn r_de_cima(xi: u32, v: i32, j: u32) -> vec3<f32> {
     if hrc.topo == 1u || xi >= hrc.nx_cima || v < 0 || v >= i32(hrc.eixo.y) {
         return cas.ceu.rgb * arco(n, j);
     }
-    return desempacotar(r_cima[indice_r(hrc.nx_cima, n, xi, u32(v), j)]).r;
+    return desempacotar(ler_r_cima(indice_r(hrc.nx_cima, n, xi, u32(v), j))).r;
 }
 
 // A entrada do despacho 1D (dobrado em 2D: o limite de 65 535 grupos por eixo).
@@ -343,14 +340,14 @@ fn tracar_sonda(sv: vec2<u32>) {
     let l = leque(u, v, lado);
     if SALTA_O_VAZIO_HRC && caixa_vazia(min(l[0], min(l[1], l[2])), max(l[0], max(l[1], l[2]))) {
         for (var k = 0u; k <= (1u << n); k++) {
-            t_saida[indice_t(hrc.nx, n, sv.x, sv.y, k)] = empacotar(VACUO);
+            escrever_t(indice_t(hrc.nx, n, sv.x, sv.y, k), empacotar(VACUO));
         }
         return;
     }
     let m0 = meio(l[0]);
     for (var k = 0u; k <= (1u << n); k++) {
         let B = na_grade(u + lado, v + 2.0 * f32(k) - lado);
-        t_saida[indice_t(hrc.nx, n, sv.x, sv.y, k)] = empacotar(tracar_de(l[0], m0, B));
+        escrever_t(indice_t(hrc.nx, n, sv.x, sv.y, k), empacotar(tracar_de(l[0], m0, B)));
     }
 }
 
@@ -373,10 +370,10 @@ fn hrc_traca(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
     }
     let ab = pontas_da_traca(e);
     if SALTA_O_VAZIO_HRC && so_vazio(ab[0], ab[1]) {
-        t_saida[e] = empacotar(VACUO);
+        escrever_t(e, empacotar(VACUO));
         return;
     }
-    t_saida[e] = empacotar(tracar(ab[0], ab[1]));
+    escrever_t(e, empacotar(tracar(ab[0], ab[1])));
 }
 
 // A entrada (k, xi, v) de T_n pela fusão de T_{n−1}.
@@ -404,8 +401,8 @@ fn hrc_sobe(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
     if GRADE3D_HRC && COLUNAS_HRC {
         if gid.x < hrc.eixo.y {
-            t_saida[indice_t(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z)] =
-                empacotar(fusao_de_baixo(gid.z, gid.y, i32(gid.x)));
+            escrever_t(indice_t(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z),
+                empacotar(fusao_de_baixo(gid.z, gid.y, i32(gid.x))));
         }
         return;
     }
@@ -414,7 +411,7 @@ fn hrc_sobe(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
         return;
     }
     let d = decompor(e, (1u << hrc.nivel) + 1u);
-    t_saida[e] = empacotar(fusao_de_baixo(d.x, d.y, i32(d.z)));
+    escrever_t(e, empacotar(fusao_de_baixo(d.x, d.y, i32(d.z))));
 }
 
 // ── R_{N−1}..R0: a fusão de cima para baixo (Eq. 14–17) ──
@@ -428,8 +425,8 @@ fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
     }
     if GRADE3D_HRC && COLUNAS_HRC {
         if gid.x < hrc.eixo.y {
-            r_saida[indice_r(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z)] =
-                empacotar(Par(soma_da_descida(gid.z, gid.y, gid.x), 0.0));
+            escrever_r(indice_r(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z),
+                empacotar(Par(soma_da_descida(gid.z, gid.y, gid.x), 0.0)));
         }
         return;
     }
@@ -438,7 +435,7 @@ fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
         return;
     }
     let d = decompor(e, 1u << hrc.nivel);
-    r_saida[e] = empacotar(Par(soma_da_descida(d.x, d.y, d.z), 0.0));
+    escrever_r(e, empacotar(Par(soma_da_descida(d.x, d.y, d.z), 0.0)));
 }
 
 // R_n no cone `m` da sonda `(xi, v)`: as duas metades do cone.
@@ -484,15 +481,15 @@ fn subir_pares(gid: vec3<u32>) {
             break;
         }
         let par = fundir(b_ant, t_de_baixo(2u * xi + 1u, v + 2 * i32(c) - h, c));
-        t_saida[indice_t(hrc.nx, hrc.nivel, xi, gid.x, 2u * c)] = empacotar(par);
+        escrever_t(indice_t(hrc.nx, hrc.nivel, xi, gid.x, 2u * c), empacotar(par));
         if 2u * c + 1u > kmax {
             break;
         }
         let b_prox = t_de_baixo(2u * xi, v, c + 1u);
         let mais = fundir(b_prox, t_de_baixo(2u * xi + 1u, v + 2 * i32(c + 1u) - h, c));
         let menos = fundir(b_ant, t_de_baixo(2u * xi + 1u, v + 2 * i32(c) - h, c + 1u));
-        t_saida[indice_t(hrc.nx, hrc.nivel, xi, gid.x, 2u * c + 1u)] =
-            empacotar(Par(0.5 * (mais.r + menos.r), 0.5 * (mais.t + menos.t)));
+        escrever_t(indice_t(hrc.nx, hrc.nivel, xi, gid.x, 2u * c + 1u),
+            empacotar(Par(0.5 * (mais.r + menos.r), 0.5 * (mais.t + menos.t))));
         b_ant = b_prox;
     }
 }
@@ -538,7 +535,7 @@ fn descer_cones(gid: vec3<u32>) {
         var soma = vec3<f32>(0.0);
         soma += metade_da_descida(xi, v, m, 2u * m, t_ant);
         soma += metade_da_descida(xi, v, m + 1u, 2u * m + 1u, t_prox);
-        r_saida[indice_r(hrc.nx, hrc.nivel, xi, v, m)] = empacotar(Par(soma, 0.0));
+        escrever_r(indice_r(hrc.nx, hrc.nivel, xi, v, m), empacotar(Par(soma, 0.0)));
         t_ant = t_prox;
     }
 }
@@ -546,7 +543,7 @@ fn descer_cones(gid: vec3<u32>) {
 // O R0 do cone 0 na sonda `(u, v)` (o céu × o arco além da última).
 fn r0_na_sonda(u: u32, v: u32) -> vec3<f32> {
     if u < hrc.nx {
-        return desempacotar(r_cima[indice_r(hrc.nx, 0u, u, v, 0u)]).r;
+        return desempacotar(ler_r_cima(indice_r(hrc.nx, 0u, u, v, 0u))).r;
     }
     return cas.ceu.rgb * arco(0u, 0u);
 }

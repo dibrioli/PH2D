@@ -307,7 +307,13 @@ impl Solver {
             label: Some("luz2d c2_rc.wgsl"),
             source: wgpu::ShaderSource::Wgsl(
                 cfg.modulo_rc
-                    .unwrap_or_else(|| shaders::rc(cfg.aritmetica, cfg.armazenamento))
+                    .unwrap_or_else(|| {
+                        shaders::rc(
+                            cfg.aritmetica,
+                            cfg.armazenamento,
+                            cfg.hrc_niveis_em_textura(),
+                        )
+                    })
                     .into(),
             ),
         });
@@ -600,11 +606,13 @@ impl Solver {
         impl Iterator<Item = (&'static str, &wgpu::Texture)>,
         Option<(&'static str, &wgpu::Buffer)>,
     ) {
-        let texturas = self.lista.texturas.iter().map(|t| t.nome).zip(&self.texturas);
-        let ladrilhos = self
-            .ladrilhos
-            .as_ref()
-            .map(|l| (NOME_LADRILHOS, &l.buffer));
+        let texturas = self
+            .lista
+            .texturas
+            .iter()
+            .map(|t| t.nome)
+            .zip(&self.texturas);
+        let ladrilhos = self.ladrilhos.as_ref().map(|l| (NOME_LADRILHOS, &l.buffer));
         (texturas, ladrilhos)
     }
 

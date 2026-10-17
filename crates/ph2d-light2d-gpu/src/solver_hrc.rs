@@ -10,6 +10,10 @@ use crate::hrc::{self, Quadrante};
 /// ⭐ W5q — o instrumento das etapas (ficheiro irmão).
 #[path = "solver_hrc_fases.rs"]
 mod fases;
+/// ⭐ W5z — os T e os R em textura ou em buffer (ficheiro irmão).
+#[path = "solver_hrc_niveis.rs"]
+mod niveis;
+use niveis::Nivel;
 
 /// O espelho de `Hrc` do `c2_hrc.wgsl` (56 B).
 #[repr(C)]
@@ -194,15 +198,17 @@ impl Holografica {
             ],
         });
         let c0 = PassList::indice_da_c0(e.cfg);
+        let em_textura = e.cfg.hrc_niveis_em_textura();
+        let [n5, n6, n7, n8, n9] = niveis::layout(em_textura);
         let g3_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("luz2d c2 holográfica"),
             entries: &[
                 entrada_uniforme(4, wgpu::ShaderStages::COMPUTE),
-                armazenado(5, true),
-                armazenado(6, true),
-                armazenado(7, false),
-                armazenado(8, true),
-                armazenado(9, false),
+                n5,
+                n6,
+                n7,
+                n8,
+                n9,
                 armazenado(10, false),
                 entrada_escrita(11, e.lista.texturas[c0].formato),
                 armazenado(12, true),
@@ -306,6 +312,7 @@ impl Holografica {
                 .iter()
                 .copied()
                 .chain(hrc::NOMES_R)
+                .filter(|_| !em_textura)
                 .chain([hrc::NOME_ACUMULADO]);
             let relata = |quando| {
                 if e.cfg.hrc_guarda_os_grandes {
@@ -327,8 +334,9 @@ impl Holografica {
             .cfg
             .hrc_nasce_duas_vezes
             .then(|| (e.buffer)(hrc::NOME_ACUMULADO));
-        let t: Vec<wgpu::Buffer> = hrc::NOMES_T[..n_t].iter().map(|&n| (e.buffer)(n)).collect();
-        let r = hrc::NOMES_R.map(|nome| (e.buffer)(nome));
+        let nivel = |nome| Nivel::de(e, em_textura, nome);
+        let t: Vec<Nivel> = hrc::NOMES_T[..n_t].iter().map(|&n| nivel(n)).collect();
+        let r = hrc::NOMES_R.map(nivel);
         let acumulado = cedo.unwrap_or_else(|| (e.buffer)(hrc::NOME_ACUMULADO));
         if e.cfg.hrc_guarda_os_grandes {
             crate::sonda_memoria::relatar_o_alocador(device.device, "buffers");
@@ -338,36 +346,35 @@ impl Holografica {
         if e.cfg.hrc_arcos_em_tabela {
             escrever_arcos(e, &arcos);
         }
-        let [vazio_l, vazio_t, vazio_r] = hrc::NOMES_VAZIOS.map(|nome| (e.buffer)(nome));
+        let [vazio_l, vazio_t, vazio_r] = hrc::NOMES_VAZIOS.map(nivel);
         let com_cobertura = (e.buffer)(hrc::NOME_COM_COBERTURA);
 
         let mut uniformes = Vec::new();
         let mut passos = Vec::new();
-        let mut passo =
-            |etapa: Etapa, u: UniformeHrc, ligados: [&wgpu::Buffer; 5], grupos: [u32; 3]| {
-                let k = passos.len() as u64;
-                uniformes.push(u);
-                let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("luz2d c2 holográfica"),
-                    layout: &g3_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 4,
-                            resource: fatia_uniforme(&uniforme, k, size_of::<UniformeHrc>() as u64),
-                        },
-                        buf(5, ligados[0]),
-                        buf(6, ligados[1]),
-                        buf(7, ligados[2]),
-                        buf(8, ligados[3]),
-                        buf(9, ligados[4]),
-                        buf(10, &acumulado),
-                        vista(11, &e.vistas[c0]),
-                        buf(12, &arcos),
-                        buf(16, &com_cobertura),
-                    ],
-                });
-                passos.push((etapa, grupo, grupos));
-            };
+        let mut passo = |etapa: Etapa, u: UniformeHrc, ligados: [&Nivel; 5], grupos: [u32; 3]| {
+            let k = passos.len() as u64;
+            uniformes.push(u);
+            let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("luz2d c2 holográfica"),
+                layout: &g3_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: fatia_uniforme(&uniforme, k, size_of::<UniformeHrc>() as u64),
+                    },
+                    ligados[0].ligar(5),
+                    ligados[1].ligar(6),
+                    ligados[2].ligar(7),
+                    ligados[3].ligar(8),
+                    ligados[4].ligar(9),
+                    buf(10, &acumulado),
+                    vista(11, &e.vistas[c0]),
+                    buf(12, &arcos),
+                    buf(16, &com_cobertura),
+                ],
+            });
+            passos.push((etapa, grupo, grupos));
+        };
         let saida = UniformeHrc {
             quadrante: 0,
             nivel: 0,
@@ -531,6 +538,7 @@ impl Holografica {
                     .copied()
                     .zip(t)
                     .chain(hrc::NOMES_R.into_iter().zip(r))
+                    .filter_map(|(nome, n)| Some((nome, n.buffer()?)))
                     .chain([(hrc::NOME_ACUMULADO, acumulado)])
                     .collect()
             } else {

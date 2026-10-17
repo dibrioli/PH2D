@@ -47,10 +47,12 @@ fn escrever(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups
 }
 ";
 
-/// ⭐ W5y — ler uma textura inteira (nível 0) em sequência; a declaração da textura (`f32` ou `u32`)
-/// vem à frente ([`SondaDeMemoria::ms_textura`]).
+/// ⭐ W5y — ler uma textura inteira (nível 0); a declaração da textura (`f32` ou `u32`) vem à frente
+/// ([`SondaDeMemoria::ms_textura`]). ⭐ W5z: na ordem dos LADRILHOS (faixas de 64 B × 8 linhas) — em ordem de
+/// linha uma textura nova de zeros lia-se como ruído (541–620 GB/s), cega à compressão
+/// (`sonda_compressao_das_texturas`, handoff W5z).
 const WGSL_TEXTURA: &str = r"
-struct P { n: u32, largura: u32 }
+struct P { n: u32, largura: u32, altura: u32, tw: u32 }
 @group(0) @binding(1) var<storage, read_write> saida: array<u32>;
 @group(0) @binding(2) var<uniform> p: P;
 @compute @workgroup_size(256)
@@ -60,7 +62,14 @@ fn ler(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups) nw:
   var i = g.x;
   loop {
     if i >= p.n { break; }
-    acc ^= bitcast<vec4<u32>>(textureLoad(t, vec2<u32>(i % p.largura, i / p.largura), 0));
+    let por_faixa = p.tw * 8u;
+    let f = i / por_faixa;
+    let r = i % por_faixa;
+    let faixas = (p.largura + p.tw - 1u) / p.tw;
+    let c = vec2<u32>((f % faixas) * p.tw + r % p.tw, (f / faixas) * 8u + r / p.tw);
+    if c.x < p.largura && c.y < p.altura {
+      acc ^= bitcast<vec4<u32>>(textureLoad(t, c, 0));
+    }
     i += passo;
   }
   let s = acc.x ^ acc.y ^ acc.z ^ acc.w;
@@ -263,7 +272,9 @@ impl SondaDeMemoria {
             mip_level_count: Some(1),
             ..Default::default()
         });
-        let u = self.uniforme(w.saturating_mul(h), w);
+        let tw = (64 / formato.block_copy_size(None)?).max(1);
+        let total = w.div_ceil(tw) * tw * h.div_ceil(8) * 8;
+        let u = self.uniforme([total, w, h, tw]);
         let grupo = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("luz2d sonda de memória textura"),
             layout: bgl,
@@ -288,23 +299,21 @@ impl SondaDeMemoria {
         Some((ms, bytes))
     }
 
-    fn uniforme(&self, a: u32, b: u32) -> wgpu::Buffer {
+    fn uniforme(&self, v: [u32; 4]) -> wgpu::Buffer {
         let u = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("luz2d sonda uniforme"),
             size: 16,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let mut v = [0u8; 16];
-        v[..4].copy_from_slice(&a.to_le_bytes());
-        v[4..8].copy_from_slice(&b.to_le_bytes());
-        self.queue.write_buffer(&u, 0, &v);
+        let bytes: Vec<u8> = v.iter().flat_map(|x| x.to_le_bytes()).collect();
+        self.queue.write_buffer(&u, 0, &bytes);
         u
     }
 
     fn grupo(&self, dados: &wgpu::Buffer, modo: u32) -> wgpu::BindGroup {
         let tam = dados.size() / 16 * 16;
-        let u = self.uniforme(u32::try_from(tam / 16).unwrap_or(u32::MAX), modo);
+        let u = self.uniforme([u32::try_from(tam / 16).unwrap_or(u32::MAX), modo, 0, 0]);
         self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("luz2d sonda de memória"),
             layout: &self.bgl,

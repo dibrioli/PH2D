@@ -607,3 +607,47 @@ fn a_holografica_numa_grade_que_nao_e_potencia_de_dois() {
     // truncada (P17) a última coluna parcial de sondas lê o céu: 0,0167.
     assert!(e <= 0.0035, "{e:.4}");
 }
+
+/// ⭐ W5z — **os T e os R em textura dão o MESMO bit** que em buffer (só a memória muda): os três
+/// degraus × as três formas do despacho (3D por colunas · 1D por colunas · 1D por linhas), na penumbra
+/// e no céu e vidro. Controlo: cada lado aloca mesmo o que diz (os níveis na lista de texturas ou não).
+#[test]
+fn os_niveis_em_textura_dao_o_mesmo_bit() {
+    let Some(gpu) = gpu() else { return };
+    let formas = [(true, true), (false, true), (false, false)];
+    for (degrau, lado, texel) in DEGRAUS {
+        for (em_3d, colunas) in formas {
+            for (nome_cena, cena) in [
+                ("penumbra", penumbra_pelas_cascatas()),
+                ("céu e vidro", ceu_e_vidro()),
+            ] {
+                let cfg = |em_texturas| Config {
+                    hrc_em_texturas: em_texturas,
+                    hrc_grade_3d: em_3d,
+                    hrc_por_colunas: colunas,
+                    ..com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO))
+                };
+                let [textura, buffer] = [true, false].map(|t| {
+                    let mut s = Solver::novo(&gpu, cfg(t)).expect("solver");
+                    let declarada = s
+                        .pass_list()
+                        .texturas
+                        .iter()
+                        .any(|x| x.nome == "luz2d/buf/hrc_t0");
+                    assert_eq!(declarada, t, "controlo: os níveis em textura = {t}");
+                    s.quadro(&gpu, &cena);
+                    ler_fluencia(&gpu, &s)
+                });
+                let diferentes = textura
+                    .iter()
+                    .zip(&buffer)
+                    .filter(|(a, b)| a.map(f32::to_bits) != b.map(f32::to_bits))
+                    .count();
+                assert_eq!(
+                    diferentes, 0,
+                    "{degrau} 3d={em_3d} colunas={colunas} {nome_cena}: {diferentes} texels"
+                );
+            }
+        }
+    }
+}

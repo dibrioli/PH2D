@@ -2,7 +2,7 @@
 //! quadrantes, os níveis, as sondas e os bytes dos buffers. A MESMA conta dá a `PassList` (G5) e o
 //! plano dos passes do solver.
 
-use crate::passlist::Buffer;
+use crate::passlist::{Buffer, Textura};
 
 /// O máximo de níveis (2^19 texels de lado passa qualquer textura).
 pub(crate) const NIVEIS_MAX: usize = 20;
@@ -56,6 +56,14 @@ pub(crate) const NOMES_VAZIOS: [&str; 3] = [
 /// Bytes de uma entrada de T ou R (4 × f16).
 const ENTRADA: u64 = 8;
 
+/// ⭐ W5z — a largura (texels) das texturas dos T e dos R: o lado que todo dispositivo WebGPU dá, em
+/// ladrilhos de 8 × 8 (o `LADRILHOS_POR_LINHA_HRC` do `hrc_niveis_textura.wgsl` × 8).
+pub(crate) const LARGURA_DOS_NIVEIS: u32 = 8192;
+const _: () = assert!(LARGURA_DOS_NIVEIS == 1024 * 8);
+/// ⭐ W5z — as entradas que cabem numa textura de nível (`LARGURA_DOS_NIVEIS²`: a altura também é o lado
+/// garantido).
+const ENTRADAS_POR_TEXTURA: u64 = LARGURA_DOS_NIVEIS as u64 * LARGURA_DOS_NIVEIS as u64;
+
 /// ⭐ W5u — a grade (texels) a partir da qual a holográfica faz `Config::hrc_cones_por_fio` cones e
 /// `Config::hrc_pares_na_subida` pares por fio. O recurso é o PARALELISMO da placa: numa grade pequena,
 /// juntar entradas deixa fios a menos. Medido (RTX 5060 Ti, `c2` por processo, ms, 1 entrada por fio · 2/2
@@ -98,36 +106,76 @@ impl Quadrante {
     }
 }
 
-/// Os buffers da cascata holográfica para a grade `w × h`: T_0..T_N (o maior dos dois eixos), o par
-/// R, o acumulado, o uniforme (um por passe) e os vazios.
-pub(crate) fn buffers([w, h]: [u32; 2], passes: u64) -> Vec<Buffer> {
-    use wgpu::BufferUsages as B;
+/// Os T_0..T_N (o maior dos dois eixos) e o par R da grade `w × h`: `(nome, entradas)`.
+fn niveis([w, h]: [u32; 2]) -> Vec<(&'static str, u64)> {
     let quads = [Quadrante::de(0, [w, h]), Quadrante::de(1, [w, h])];
     let n_max = quads.iter().map(|q| q.n).max().unwrap_or(3);
-    let armazenado = B::STORAGE | B::COPY_DST;
-    let mut v: Vec<Buffer> = (0..=n_max)
-        .map(|n| Buffer {
-            nome: NOMES_T[n as usize],
-            bytes: ENTRADA
-                * quads
-                    .iter()
-                    .filter(|q| n <= q.n)
-                    .map(|q| q.entradas_t(n))
-                    .max()
-                    .unwrap_or(1),
-            usos: armazenado,
-        })
-        .collect();
     let r = quads
         .iter()
         .flat_map(|q| (0..q.n).map(|n| q.entradas_r(n)))
         .max()
         .unwrap_or(1);
-    v.extend(NOMES_R.map(|nome| Buffer {
+    (0..=n_max)
+        .map(|n| {
+            let t = quads
+                .iter()
+                .filter(|q| n <= q.n)
+                .map(|q| q.entradas_t(n))
+                .max()
+                .unwrap_or(1);
+            (NOMES_T[n as usize], t)
+        })
+        .chain(NOMES_R.map(|nome| (nome, r)))
+        .collect()
+}
+
+/// ⭐ W5z — os T e os R da grade `w × h` cabem em texturas de nível?
+pub(crate) fn niveis_cabem_em_textura(grade: [u32; 2]) -> bool {
+    niveis(grade)
+        .iter()
+        .all(|&(_, e)| e <= ENTRADAS_POR_TEXTURA)
+}
+
+/// ⭐ W5z — os T, o par R e os vazios em TEXTURAS `Rg32Uint` (com os rótulos dos buffers que substituem):
+/// [`LARGURA_DOS_NIVEIS`] de largura, a altura em ladrilhos de 8 linhas; os vazios 8 × 8.
+pub(crate) fn texturas(grade: [u32; 2]) -> Vec<Textura> {
+    use wgpu::TextureUsages as T;
+    let textura = |nome, tamanho| Textura {
         nome,
-        bytes: ENTRADA * r,
-        usos: armazenado,
-    }));
+        formato: wgpu::TextureFormat::Rg32Uint,
+        tamanho,
+        usos: T::STORAGE_BINDING | T::TEXTURE_BINDING,
+        mips: 1,
+    };
+    let por_ladrilho = 8 * u64::from(LARGURA_DOS_NIVEIS);
+    niveis(grade)
+        .into_iter()
+        .map(|(nome, e)| {
+            let altura = 8 * e.div_ceil(por_ladrilho).max(1);
+            textura(nome, [LARGURA_DOS_NIVEIS, altura as u32])
+        })
+        .chain(NOMES_VAZIOS.map(|nome| textura(nome, [8, 8])))
+        .collect()
+}
+
+/// Os buffers da cascata holográfica para a grade `w × h`: o acumulado, os arcos, a cobertura, o
+/// uniforme (um por passe) e — sem `niveis_em_textura` ([`texturas`]) — os T, o par R e os vazios.
+pub(crate) fn buffers([w, h]: [u32; 2], passes: u64, niveis_em_textura: bool) -> Vec<Buffer> {
+    use wgpu::BufferUsages as B;
+    let n_max = Quadrante::de(0, [w, h]).n.max(Quadrante::de(1, [w, h]).n);
+    let armazenado = B::STORAGE | B::COPY_DST;
+    let mut v: Vec<Buffer> = if niveis_em_textura {
+        Vec::new()
+    } else {
+        niveis([w, h])
+            .into_iter()
+            .map(|(nome, e)| Buffer {
+                nome,
+                bytes: ENTRADA * e,
+                usos: armazenado,
+            })
+            .collect()
+    };
     v.push(Buffer {
         nome: NOME_ACUMULADO,
         bytes: 16 * u64::from(w) * u64::from(h),
@@ -148,12 +196,30 @@ pub(crate) fn buffers([w, h]: [u32; 2], passes: u64) -> Vec<Buffer> {
         bytes: crate::passlist::PASSO_UNIFORME * passes,
         usos: B::UNIFORM | B::COPY_DST,
     });
-    v.extend(NOMES_VAZIOS.map(|nome| Buffer {
-        nome,
-        bytes: 16,
-        usos: armazenado,
-    }));
+    if !niveis_em_textura {
+        v.extend(NOMES_VAZIOS.map(|nome| Buffer {
+            nome,
+            bytes: 16,
+            usos: armazenado,
+        }));
+    }
     v
+}
+
+impl crate::Config {
+    /// ⭐ W5z — os T e os R da holográfica vão em textura: há holográfica, [`Self::hrc_em_texturas`],
+    /// cabem ([`LARGURA_DOS_NIVEIS`]² entradas por nível) e o módulo por cima ([`Self::modulo_rc`], das
+    /// réguas) traz o prelúdio de textura — um módulo de antes da W5z liga buffers.
+    #[must_use]
+    pub fn hrc_niveis_em_textura(&self) -> bool {
+        let g = self.grade_efetiva();
+        self.holografica.is_some()
+            && self.hrc_em_texturas
+            && niveis_cabem_em_textura([g.largura, g.altura])
+            && self
+                .modulo_rc
+                .is_none_or(|m| m.contains("fn texel_do_nivel("))
+    }
 }
 
 /// Quantos passes (despachos) a cascata holográfica grava por quadro: os ladrilhos com cobertura (W5s);

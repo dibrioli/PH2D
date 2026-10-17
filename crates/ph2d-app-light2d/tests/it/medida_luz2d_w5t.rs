@@ -22,7 +22,7 @@ const VARIANTES: [(&str, bool); 2] = [("1D", false), ("3D", true)];
 
 /// O módulo do produto com `de` trocado por `para` (uma vez).
 fn mutado(de: &str, para: &str) -> &'static str {
-    let s = ph2d_light2d_gpu::fonte_do_rc(Precisao::F32, Precisao::F16);
+    let s = ph2d_light2d_gpu::fonte_do_rc(Precisao::F32, Precisao::F16, true);
     assert_eq!(s.matches(de).count(), 1, "a âncora do controlo: {de}");
     Box::leak(s.replacen(de, para, 1).into_boxed_str())
 }

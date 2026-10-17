@@ -3,7 +3,9 @@
 //! fora do painel de pincel — sem ele no estado inicial, o tool novo que toca a macro pinta outra coisa.
 //!
 //! Cada caso prepara a ferramenta antes de armar, grava traços (e, na Seleção, uma forma acrescentada A
-//! GRAVAR, que se recompõe da lista de formas), toca a macro num tool novo e compara a tela ao byte.
+//! GRAVAR, que se recompõe da lista de formas), toca a macro num tool novo e compara a tela ao byte. Só
+//! o caso `SelecaoConvertida` (o «Convert to curve» a gravar) vê a LISTA de formas do inicial: somar uma
+//! forma compõe-se sobre a máscara e a base repostas (sobrevivente da prova de mutação da W7).
 //! Controlo: o mesmo caso sem a preparação dá outra tela (a preparação decide o que se pinta).
 
 use super::macro_comum::{Gravador, cp, texels_diferentes, toca};
@@ -73,8 +75,18 @@ fn traco(t: &mut PainterTool, mut g: Option<&mut Gravador>, de: [f32; 2], ate: [
 enum Caso {
     Clone,
     Selecao,
+    /// A Seleção e, A GRAVAR, o «Convert to curve»: recompõe a máscara SÓ da lista de formas (a máscara e
+    /// a base repostas não a salvam) — sem a lista no inicial, a 1.ª forma some.
+    SelecaoConvertida,
     Mascara,
 }
+
+const CASOS: [Caso; 4] = [
+    Caso::Clone,
+    Caso::Selecao,
+    Caso::SelecaoConvertida,
+    Caso::Mascara,
+];
 
 /// `prepara` = a ferramenta do caso antes de armar; devolve `(tela do tool que gravou, tela tocada)`.
 fn grava_e_toca(caso: Caso, prepara: bool) -> (Vec<u8>, Vec<u8>) {
@@ -97,7 +109,7 @@ fn grava_e_toca(caso: Caso, prepara: bool) -> (Vec<u8>, Vec<u8>) {
                 );
             }
         }
-        Caso::Selecao => {
+        Caso::Selecao | Caso::SelecaoConvertida => {
             if prepara {
                 modo(&mut t, None, "selection");
                 painel(
@@ -132,7 +144,7 @@ fn grava_e_toca(caso: Caso, prepara: bool) -> (Vec<u8>, Vec<u8>) {
             traco(&mut t, Some(&mut g), [20.0, 120.0], [140.0, 130.0]);
             traco(&mut t, Some(&mut g), [30.0, 150.0], [130.0, 100.0]);
         }
-        Caso::Selecao => {
+        Caso::Selecao | Caso::SelecaoConvertida => {
             traco(&mut t, Some(&mut g), [5.0, 60.0], [155.0, 70.0]);
             // A GRAVAR: mais uma forma, somada (recompõe-se da lista de formas que o inicial levou).
             modo(&mut t, Some(&mut g), "selection");
@@ -147,6 +159,13 @@ fn grava_e_toca(caso: Caso, prepara: bool) -> (Vec<u8>, Vec<u8>) {
                 PanelEvent::Click(ids::PAINTER_SEL_OP_IDS[1]),
             );
             traco(&mut t, Some(&mut g), [100.0, 90.0], [150.0, 150.0]);
+            if matches!(caso, Caso::SelecaoConvertida) {
+                painel(
+                    &mut t,
+                    Some(&mut g),
+                    PanelEvent::Click(ids::PAINTER_SEL_CONVERT),
+                );
+            }
             modo(&mut t, Some(&mut g), "brush");
             traco(&mut t, Some(&mut g), [5.0, 130.0], [155.0, 120.0]);
         }
@@ -164,7 +183,7 @@ fn grava_e_toca(caso: Caso, prepara: bool) -> (Vec<u8>, Vec<u8>) {
 #[test]
 fn o_estado_das_ferramentas_do_trilho_viaja_no_inicial() {
     let mut falhas = Vec::new();
-    for caso in [Caso::Clone, Caso::Selecao, Caso::Mascara] {
+    for caso in CASOS {
         let (a, b) = grava_e_toca(caso, true);
         let d = texels_diferentes(&a, &b);
         if d > 0 {
@@ -180,7 +199,7 @@ fn o_estado_das_ferramentas_do_trilho_viaja_no_inicial() {
 /// O controlo: sem a preparação a tela do tool que gravou é outra — o caso mede a preparação.
 #[test]
 fn sem_a_preparacao_a_tela_e_outra() {
-    for caso in [Caso::Clone, Caso::Selecao, Caso::Mascara] {
+    for caso in CASOS {
         let (com, _) = grava_e_toca(caso, true);
         let (sem, _) = grava_e_toca(caso, false);
         assert!(

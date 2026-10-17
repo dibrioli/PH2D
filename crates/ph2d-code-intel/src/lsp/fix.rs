@@ -190,6 +190,9 @@ mod tests {
             );
             json!({ "changes": changes })
         };
+        // Uma troca neste documento E outra noutro: a acção inteira cai.
+        let mut noutro = edit(0, 0, "x");
+        noutro["changes"]["file:///outro.luau"] = noutro["changes"][uri].clone();
         let v = json!([
             { "title": "Prefix 'init' with '_' to silence", "kind": "quickfix", "diagnostics": [],
               "edit": edit(0, 9, "_") },
@@ -199,7 +202,7 @@ mod tests {
               "edit": edit(0, 0, "") },
             { "title": "Extract to function", "kind": "refactor.extract", "diagnostics": [{ "code": 8 }] },
             { "title": "Noutro ficheiro", "kind": "quickfix", "diagnostics": [{ "code": 8 }],
-              "edit": { "changes": { "file:///outro.luau": [] } } }
+              "edit": noutro }
         ]);
         let f = fixes(uri, &t, &v);
         assert_eq!(f.len(), 1, "{f:?}");

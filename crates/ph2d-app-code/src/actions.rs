@@ -24,6 +24,9 @@ const UNKNOWN_GLOBAL: &str = "1001";
 const UNKNOWN_KEY: &str = "1002";
 /// O `kind` LSP de uma palavra reservada (a completion mistura-as com os nomes).
 const KEYWORD: u32 = 14;
+/// As palavras reservadas que são VALORES: `ture` → `true` (o Python também o sugere); as outras
+/// (`if`, `for`…) no lugar de um nome partem a sintaxe.
+const VALUE_KEYWORDS: [&str; 3] = ["true", "false", "nil"];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Action {
@@ -53,6 +56,16 @@ pub(crate) struct Actions {
     groups: [Vec<Action>; 3],
     pub selected: usize,
     pub top: usize,
+}
+
+/// Os nomes da completion que podem estar no lugar de um nome errado.
+fn candidate_names(items: &[ph2d_code_intel::Completion]) -> Vec<&str> {
+    items
+        .iter()
+        .filter(|i| i.kind != Some(KEYWORD) || VALUE_KEYWORDS.contains(&i.label.as_str()))
+        .filter(|i| is_ident(&i.label))
+        .map(|i| i.label.as_str())
+        .collect()
 }
 
 fn is_ident(s: &str) -> bool {
@@ -131,12 +144,7 @@ impl Actions {
                 }));
             }
             (Purpose::Candidates(typo), Answer::Completion(items)) => {
-                let names: Vec<&str> = items
-                    .iter()
-                    .filter(|i| i.kind != Some(KEYWORD) && is_ident(&i.label))
-                    .map(|i| i.label.as_str())
-                    .collect();
-                let near = did_you_mean(&text.slice(typo.clone()), names);
+                let near = did_you_mean(&text.slice(typo.clone()), candidate_names(&items));
                 self.did_you_mean(&typo, near);
             }
             (Purpose::TypeHints(word), Answer::TypeHints(hints)) => {
@@ -438,6 +446,27 @@ mod tests {
             "metade de uma palavra não se troca"
         );
         assert!(insertable("number") && insertable("boolean") && insertable("{ number }"));
+        let item = |label: &str, kind| ph2d_code_intel::Completion {
+            label: label.into(),
+            kind: Some(kind),
+            detail: None,
+            documentation: None,
+            sort_text: None,
+            filter: None,
+            insert: label.into(),
+            snippet: false,
+            replace: None,
+            command: None,
+        };
+        let items = [
+            item("print", 3),
+            item("if", 14),
+            item("true", 14),
+            item("dt", 6),
+            item("a b", 6),
+        ];
+        assert_eq!(candidate_names(&items), ["print", "true", "dt"]);
+        assert_eq!(did_you_mean("ture", candidate_names(&items)), ["true"]);
         assert!(!insertable("any") && !insertable("T") && !insertable("U2"));
     }
 }

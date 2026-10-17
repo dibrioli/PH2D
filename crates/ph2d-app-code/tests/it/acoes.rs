@@ -365,6 +365,8 @@ fn o_assistente_fixado_corrige_com_alt_enter() {
         ("pirnt", 2, "Did you mean print?"),
         ("proprety", 3, "Did you mean property?"),
         ("up =", 1, "Add type: boolean"),
+        // O gancho do motor: o servidor dá «Prefix 'update' with '_'» ao lint que a aba esconde.
+        ("update", 2, "No quick fixes here"),
     ] {
         let b = fonte.find(agulha).unwrap() + off;
         clica_em(&mut m, id, b, Modifiers::default());
@@ -376,6 +378,10 @@ fn o_assistente_fixado_corrige_com_alt_enter() {
         );
         let (titulos, ..) = m.docs().actions_of(id).unwrap();
         assert!(titulos.iter().any(|t| t == titulo), "{agulha}: {titulos:?}");
+        assert!(
+            !titulos.iter().any(|t| t.starts_with("Prefix")),
+            "{agulha}: o aviso que a aba esconde (o gancho) não dá correcção: {titulos:?}"
+        );
         tecla(&mut m, id, Key::Escape, Modifiers::default(), None, "");
     }
 }

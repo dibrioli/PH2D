@@ -113,6 +113,8 @@ pub fn frame<'a>(
         project_unsaved: false,
         assist: d.assist,
         completion: None,
+        hover: None,
+        signature: None,
     }
 }
 

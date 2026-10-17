@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 
 /// Como o `luau-lsp`: depois de `ph2d.` os membros da API (snippets, `sortText` 1); depois de
 /// `self.` só os campos ATRIBUÍDOS (aqui, `t`); depois de uma aspa, nada; senão globais e palavras.
-fn responde(texto: &str, b: usize) -> Value {
+pub(crate) fn responde(texto: &str, b: usize) -> Value {
     let antes = &texto[..b.min(texto.len())];
     let ini = antes
         .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
@@ -27,7 +27,8 @@ fn responde(texto: &str, b: usize) -> Value {
             .map(|e| {
                 json!({ "label": e.ident, "kind": 3, "sortText": "1", "insertTextFormat": 2,
                         "insertText": format!("{}(${{1:a}})$0", e.ident), "detail": e.luau_type,
-                        "documentation": { "kind": "markdown", "value": e.doc } })
+                        "documentation": { "kind": "markdown", "value": e.doc },
+                        "command": { "title": "", "command": "editor.action.triggerParameterHints" } })
             })
             .collect()
     } else if lead.ends_with("self.") {
@@ -56,7 +57,7 @@ fn mesa(scripts: &[(&str, &str)]) -> (Mesa, Vec<ScriptId>, Partilhado) {
     )
 }
 
-const T0: u128 = 1_000_000_000_000;
+pub(crate) const T0: u128 = 1_000_000_000_000;
 /// A pausa do `code_complete_delay` do Godot (I0b §7).
 const PAUSA: u128 = 300_000_000;
 
@@ -66,7 +67,7 @@ pub(crate) fn escreve(m: &mut Mesa, id: ScriptId, s: &str) {
     }
 }
 
-fn quadro_em(m: &mut Mesa, t: u128) {
+pub(crate) fn quadro_em(m: &mut Mesa, t: u128) {
     m.hero.store.note_clock(t);
     m.quadro();
 }
@@ -124,6 +125,7 @@ fn a_ordem_da_lista_e_a_do_godot() {
             filter: None,
             insert: (*n).to_owned(),
             snippet: false,
+            signature: false,
             usage: 0,
         })
         .collect();

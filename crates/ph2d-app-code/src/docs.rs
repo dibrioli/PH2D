@@ -492,6 +492,56 @@ impl CodeDocs {
         d.view.completion_painted()
     }
 
+    /// ⚠️ SONDA: o texto do balão do rato que a aba do script `id` tem para mostrar.
+    #[must_use]
+    pub fn hover_of(&self, id: ScriptId) -> Option<String> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        d.hints
+            .hover
+            .as_ref()?
+            .shown
+            .as_ref()
+            .map(|h| h.text.clone())
+    }
+
+    /// ⚠️ SONDA: a assinatura que a aba do script `id` mostra: o rótulo e o parâmetro marcado.
+    #[must_use]
+    pub fn signature_of(&self, id: ScriptId) -> Option<(String, Option<String>)> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        let s = d.hints.sig.as_ref()?.shown.as_ref()?;
+        Some((
+            s.label.clone(),
+            s.active.clone().map(|r| s.label[r].to_owned()),
+        ))
+    }
+
+    /// ⚠️ SONDA: o balão do rato e a assinatura que a aba do script `id` pintou no último quadro.
+    #[must_use]
+    pub fn hints_painted(
+        &self,
+        id: ScriptId,
+    ) -> (
+        Option<ph2d_panel_code::HintProbe>,
+        Option<ph2d_panel_code::HintProbe>,
+    ) {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map(|d| d.view.hints_painted())
+            .unwrap_or_default()
+    }
+
+    /// ⚠️ SONDA: o centro do carácter no byte `at` da aba do script `id` (onde o rato o aponta), se
+    /// está à vista.
+    #[must_use]
+    pub fn glyph_center(&self, id: ScriptId, at: usize) -> Option<(f32, f32)> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        let t = d.buffer.text();
+        let a = d.view.caret_rect(&d.buffer, at)?;
+        let b = d.view.caret_rect(&d.buffer, t.next_grapheme(at))?;
+        Some(((a.x + b.x) * 0.5, a.y + a.h * 0.5))
+    }
+
     /// ⚠️ SONDA: a gramática da aba do script `id`.
     #[must_use]
     pub fn grammar_of(&self, id: ScriptId) -> Option<GrammarProbe> {
@@ -613,7 +663,13 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn pointer_move(&mut self, id: u64, _input: PointerInput<'_>, x: f32, y: f32) -> bool {
-        self.doc(id).is_some_and(|d| d.drag_to(x, y))
+        let now = self.clock.0;
+        let Some(d) = self.doc(id) else { return false };
+        if d.drag_to(x, y) {
+            return true;
+        }
+        d.hover_at(x, y, now);
+        false
     }
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {

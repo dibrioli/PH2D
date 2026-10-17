@@ -8,6 +8,6 @@ pub mod pos;
 
 pub use grammar::GrammarWorker;
 pub use lsp::{
-    Answer, Completion, Diag, Event, Hover, LspSession, Req, ServerState, Ticket, uri_of,
+    Answer, Completion, Diag, Event, Hover, LspSession, Req, ServerState, Signature, Ticket, uri_of,
 };
 pub use pos::{Dirty, byte_of, bytes_of, position_of, range_of};

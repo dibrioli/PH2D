@@ -18,6 +18,7 @@ mod edit;
 mod find;
 mod folds;
 mod frame;
+mod hint;
 mod intel;
 mod keys;
 pub mod list;

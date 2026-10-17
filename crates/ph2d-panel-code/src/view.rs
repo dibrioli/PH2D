@@ -67,6 +67,8 @@ pub struct CodeView {
     pub(crate) underlines: Vec<Underline>,
     /// A lista de completação do último quadro.
     pub(crate) popup: Option<crate::popup::Painted>,
+    /// O balão do rato e a assinatura do último quadro.
+    pub(crate) hints: crate::hint::Painted,
     /// Os bytes que uma fila mostra (o resto da linha não se prepara nem se molda).
     pub(crate) render_cap: usize,
     /// A coluna da barra de estado da última (revisão, cursor, tab).
@@ -101,6 +103,7 @@ impl Default for CodeView {
             rows: Vec::new(),
             underlines: Vec::new(),
             popup: None,
+            hints: crate::hint::Painted::default(),
             render_cap: LINE_RENDER_BYTES_MAX,
             status_col: None,
         }

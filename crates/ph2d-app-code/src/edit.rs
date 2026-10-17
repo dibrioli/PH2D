@@ -118,6 +118,7 @@ impl CodeDoc {
             let code = self.syntax.in_code(self.buffer.text(), head);
             self.complete
                 .typed(self.buffer.text(), head, ch, code, self.last_input_ns);
+            self.hints.typed(ch, code);
         }
     }
 

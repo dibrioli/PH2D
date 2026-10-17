@@ -72,12 +72,13 @@ fn method_of(req: &Req) -> &'static str {
     match req {
         Req::Completion(_) => "textDocument/completion",
         Req::Hover(_) => "textDocument/hover",
+        Req::Signature(_) => "textDocument/signatureHelp",
     }
 }
 
 fn params_of(uri: &str, text: &Text, req: &Req) -> Value {
     match req {
-        Req::Completion(b) | Req::Hover(b) => params_at(uri, text, *b),
+        Req::Completion(b) | Req::Hover(b) | Req::Signature(b) => params_at(uri, text, *b),
     }
 }
 
@@ -85,6 +86,7 @@ fn parse(req: &Req, text: &Text, v: &Value) -> Answer {
     match req {
         Req::Completion(_) => Answer::Completion(answer::completion(text, v)),
         Req::Hover(_) => Answer::Hover(answer::hover(text, v)),
+        Req::Signature(_) => Answer::Signature(answer::signature(v)),
     }
 }
 

@@ -59,6 +59,8 @@ pub(crate) struct CodeDoc {
     pub(crate) assist: crate::problems::Held,
     /// A lista de completação (I4).
     pub(crate) complete: crate::complete::Completer,
+    /// O balão do rato e a ajuda de assinatura (I5).
+    pub(crate) hints: crate::hint::Hints,
     /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
     pub last_input_ns: u128,
     pub badge: Option<Badge>,
@@ -100,6 +102,7 @@ impl CodeDoc {
             diag_anchor: None,
             assist: crate::problems::Held::default(),
             complete: crate::complete::Completer::default(),
+            hints: crate::hint::Hints::default(),
             last_input_ns: 0,
             badge: None,
             project_unsaved: false,
@@ -145,6 +148,7 @@ impl CodeDoc {
         self.lsp.edits.extend_from_slice(edits);
         self.assist.edited(edits);
         self.complete.edited(edits);
+        self.hints.hover = None;
         if let Some(a) = &mut self.diag_anchor {
             for e in edits {
                 a.0 = map_byte(a.0, e);
@@ -301,6 +305,18 @@ impl CodeDoc {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
         let problems = self.problems();
         let shown = self.completion_shown();
+        let sig_doc = self
+            .hints
+            .sig
+            .as_ref()
+            .and_then(|s| s.shown.as_ref())
+            .map(|s| {
+                [s.param_doc.as_deref(), s.doc.as_deref()]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .join("\n\n")
+            });
         let closed = self.folds.marks(self.buffer.text());
         let bracket = self.bracket();
         if self.find.open {
@@ -315,6 +331,7 @@ impl CodeDoc {
             badge,
             project_unsaved,
             folds: closed_set,
+            hints,
             ..
         } = self;
         let mut spans = |r: std::ops::Range<usize>| -> Vec<(std::ops::Range<usize>, Ink)> {
@@ -360,6 +377,20 @@ impl CodeDoc {
                 selected: s.selected,
                 width_chars: s.width_chars,
                 doc: s.doc.as_deref(),
+            }),
+            hover: hints.hover.as_ref().and_then(|h| {
+                let shown = h.shown.as_ref()?;
+                Some(ph2d_panel_code::HoverView {
+                    word: h.word.clone(),
+                    text: &shown.text,
+                })
+            }),
+            signature: hints.sig.as_ref().and_then(|s| s.shown.as_ref()).map(|s| {
+                ph2d_panel_code::SignatureView {
+                    label: &s.label,
+                    active: s.active.clone(),
+                    doc: sig_doc.as_deref().filter(|d| !d.is_empty()),
+                }
             }),
         };
         view.paint(frame, code_r, scene, ts, theme);

@@ -89,6 +89,21 @@ pub struct CompletionView<'a> {
     pub doc: Option<&'a str>,
 }
 
+/// O balão do rato (I5): o que o assistente diz da palavra `word` (bytes do buffer), em Markdown.
+pub struct HoverView<'a> {
+    pub word: Range<usize>,
+    pub text: &'a str,
+}
+
+/// A ajuda de assinatura da chamada no cursor primário (I5).
+pub struct SignatureView<'a> {
+    pub label: &'a str,
+    /// O parâmetro activo, em bytes do `label` (marcado).
+    pub active: Option<Range<usize>>,
+    /// A documentação do parâmetro activo e a da função, em Markdown.
+    pub doc: Option<&'a str>,
+}
+
 /// Tudo o que um quadro do editor pinta.
 pub struct CodeFrame<'a> {
     pub buffer: &'a Buffer,
@@ -117,4 +132,6 @@ pub struct CodeFrame<'a> {
     /// `None` = o assistente está pronto (ou desligado de propósito): a barra não fala dele.
     pub assist: Option<Assist>,
     pub completion: Option<CompletionView<'a>>,
+    pub hover: Option<HoverView<'a>>,
+    pub signature: Option<SignatureView<'a>>,
 }

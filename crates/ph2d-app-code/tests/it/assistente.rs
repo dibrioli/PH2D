@@ -34,6 +34,9 @@ pub(crate) struct Visto {
     para_tras: Vec<(String, i64, i64)>,
     /// Os pedidos `textDocument/completion` recebidos.
     pub(crate) pedidos: usize,
+    /// Os pedidos `textDocument/hover` e `textDocument/signatureHelp` recebidos.
+    pub(crate) baloes: usize,
+    pub(crate) assinaturas: usize,
 }
 
 pub(crate) type Partilhado = Arc<Mutex<Visto>>;
@@ -48,6 +51,9 @@ pub(crate) struct Plano {
     pub(crate) regra: Option<fn(&str) -> Vec<Value>>,
     /// A resposta a `textDocument/completion` sobre o texto e o byte do pedido (`None` = `null`).
     pub(crate) completar: Option<fn(&str, usize) -> Value>,
+    /// As respostas a `textDocument/hover` e a `textDocument/signatureHelp` (`None` = `null`).
+    pub(crate) pairar: Option<fn(&str, usize) -> Value>,
+    pub(crate) assinar: Option<fn(&str, usize) -> Value>,
 }
 
 /// O byte da posição LSP `(linha, unidades UTF-16)`; além do fim da linha = o fim da linha.
@@ -159,12 +165,20 @@ fn servir(
         if let Some(id) = msg.get("id") {
             let result = if method == "initialize" {
                 json!({ "capabilities": {} })
-            } else if let (Some(f), "textDocument/completion") = (plano.completar, method.as_str())
-            {
+            } else if let Some(f) = match method.as_str() {
+                "textDocument/completion" => plano.completar,
+                "textDocument/hover" => plano.pairar,
+                "textDocument/signatureHelp" => plano.assinar,
+                _ => None,
+            } {
                 let uri = p["textDocument"]["uri"].as_str().unwrap_or_default();
                 let texto = {
                     let mut v = visto.lock().unwrap();
-                    v.pedidos += 1;
+                    match method.as_str() {
+                        "textDocument/completion" => v.pedidos += 1,
+                        "textDocument/hover" => v.baloes += 1,
+                        _ => v.assinaturas += 1,
+                    }
                     v.textos.get(uri).map(|t| t.1.clone())
                 };
                 let texto = texto.unwrap_or_default();

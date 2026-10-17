@@ -221,6 +221,10 @@ impl Intel {
                             .is_some_and(|s| s.ticket == Some(ticket))
                     };
                     let Some(d) = docs.iter_mut().find(asked) else {
+                        // O balão ou a assinatura de uma aba (os bilhetes são únicos na sessão).
+                        if let Some(d) = docs.iter_mut().find(|d| d.hints.owns(ticket)) {
+                            d.hints.answer(ticket, answer);
+                        }
                         continue;
                     };
                     match answer {
@@ -340,6 +344,51 @@ impl Intel {
             }
         }
         self.ask_completions(docs, now_ns);
+        self.ask_hints(docs, now_ns);
+    }
+
+    /// O balão cuja pausa passou e a assinatura cujo texto ou cursor mudou perguntam sobre o texto
+    /// que o servidor acabou de receber. Sem servidor que responda, fecham.
+    fn ask_hints(&mut self, docs: &mut [CodeDoc], now_ns: u128) {
+        let waiting = matches!(
+            self.state,
+            Some(ServerState::Starting | ServerState::Restarting)
+        );
+        let ready = matches!(self.state, Some(ServerState::Ready));
+        let Some(session) = self.session.as_mut() else {
+            return;
+        };
+        for d in docs.iter_mut() {
+            if d.hints.hover.is_none() && d.hints.sig.is_none() {
+                continue;
+            }
+            if !ready {
+                if !waiting {
+                    d.hints.close();
+                }
+                continue;
+            }
+            let current = Src::Doc {
+                serial: d.serial,
+                revision: d.buffer.revision(),
+            };
+            let Some(m) = self.mirrors.get(&d.script).filter(|m| m.src == current) else {
+                continue;
+            };
+            if let Some(h) = d.hints.hover.as_mut()
+                && h.ticket.is_none()
+                && h.due_ns <= now_ns
+            {
+                h.ticket = Some(session.ask(&m.uri, Req::Hover(h.word.start)));
+            }
+            let at = (d.buffer.revision(), d.buffer.selection().primary().head);
+            if let Some(s) = d.hints.sig.as_mut()
+                && s.asked != Some(at)
+            {
+                s.asked = Some(at);
+                s.ticket = Some(session.ask(&m.uri, Req::Signature(at.1)));
+            }
+        }
     }
 
     /// A pausa da lista passou: pergunta ao servidor sobre o texto que ele acabou de receber. Sem

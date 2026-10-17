@@ -134,7 +134,11 @@ fn sonda_quadro() {
             }
         }
     }
-    let perfil = if cfg!(debug_assertions) { "debug" } else { "otimizado" };
+    let perfil = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "otimizado"
+    };
     let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("\nperfil {perfil} · loadavg {load}");
     println!(

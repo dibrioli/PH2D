@@ -39,6 +39,8 @@ pub struct Item {
     pub insert: String,
     /// `insert` é um snippet LSP (`set(${1:entity})$0`).
     pub snippet: bool,
+    /// Aceitar abre a ajuda de assinatura (o `command` do item, I5).
+    pub signature: bool,
     pub usage: u32,
 }
 
@@ -544,6 +546,7 @@ impl Completer {
                 filter: c.filter,
                 insert: c.insert,
                 snippet: c.snippet,
+                signature: c.command.as_deref() == Some(crate::hint::PARAMETER_HINTS),
             })
             .collect();
         if q == Some("self") {
@@ -558,6 +561,7 @@ impl Completer {
                         filter: None,
                         insert: p.clone(),
                         snippet: false,
+                        signature: false,
                         usage: usage.get(&usage_key(q, p)).copied().unwrap_or(0),
                     });
                 }
@@ -654,6 +658,7 @@ mod tests {
             filter: None,
             insert: l.into(),
             snippet: false,
+            signature: false,
             usage: u,
         };
         let items = [
@@ -803,6 +808,7 @@ impl crate::doc::CodeDoc {
             return;
         };
         let (insert, caret) = insertion(item);
+        let signature = item.signature;
         let t = self.buffer.text();
         let typed = t.slice(replaced(s, head));
         let n = typed.len();
@@ -845,5 +851,8 @@ impl crate::doc::CodeDoc {
             .apply(cs, Some(Selection::new(cursors, main)), EditKind::Other);
         self.edited(&edits, true);
         self.complete.close();
+        if signature {
+            self.hints.open_signature();
+        }
     }
 }

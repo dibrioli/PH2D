@@ -10,6 +10,7 @@ mod busca;
 mod completar;
 mod console;
 mod despacho;
+mod dicas;
 mod dobras;
 mod gramatica;
 mod linha_longa;
@@ -196,6 +197,19 @@ impl Mesa {
         let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
         self.docs()
             .paint(id.0, AREA, &mut scene, &mut ts, &Theme::default());
+        self.ts = ts;
+    }
+
+    /// O rato sem botão em `(x, y)` da aba `id`.
+    pub fn rato(&mut self, id: ScriptId, x: f32, y: f32) {
+        use ph2d_editor_core::doc_surface::PointerInput;
+        let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
+        let input = PointerInput {
+            text: &mut ts,
+            mods: Modifiers::default(),
+            now_ns: 1,
+        };
+        let _ = self.docs().pointer_move(id.0, input, x, y);
         self.ts = ts;
     }
 

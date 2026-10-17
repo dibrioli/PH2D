@@ -11,7 +11,7 @@ use ph2d_code_lsp::{
     LspClient, ServerConfig, Solver, pinned_version, position_to_byte, resolve_binary,
 };
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -396,4 +396,72 @@ fn o_assistente_fixado_completa_a_api() {
     let mut l = abre(&mut m, c, "ph2d.set(self.id, \"");
     l.sort_unstable();
     assert_eq!(l, ["rotation", "scale_x", "scale_y", "x", "y"]);
+}
+
+/// ⭐ I5 com o `luau-lsp` FIXADO, pelo caminho do produto: dentro de `ph2d.set(e, |` a assinatura
+/// marca o 2.º parâmetro (`field`) e traz a documentação GERADA da `api_table` (a da função e a do
+/// tipo do parâmetro, pelo `--docs`); o rato parado sobre `set` mostra a documentação da função.
+#[test]
+fn o_assistente_fixado_marca_o_argumento_e_mostra_o_balao() {
+    use crate::assistente::tecla;
+    use crate::completar::{T0, escreve, quadro_em};
+    use ph2d_editor_core::doc_surface::Key;
+    use ph2d_script::api_table::{API, API_TYPES};
+    let _ = fixado();
+    let (m, ids) = Mesa::new(&[("a.luau", "local e = 1\n")]);
+    let mut m = m.com_assistente(ph2d_app_code::IntelServer::Pinned);
+    let id = ids[0];
+    m.pede(id);
+    tecla(&mut m, id, Key::End, crate::ctrl(), None, "");
+    quadro_em(&mut m, T0);
+    escreve(&mut m, id, "ph2d.set(e, ");
+    let fim = Instant::now() + Duration::from_secs(30);
+    let (label, activo) = loop {
+        quadro_em(&mut m, T0);
+        m.pinta(id);
+        if let Some((l, Some(a))) = m.docs().signature_of(id)
+            && a.starts_with("field")
+        {
+            break (l, a);
+        }
+        assert!(
+            Instant::now() < fim,
+            "a assinatura de ph2d.set não marcou `field`"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    };
+    assert!(label.contains("ph2d.set(entity"), "{label}");
+    let (_, s) = m.docs().hints_painted(id);
+    let s = s.expect("a assinatura pintou-se");
+    assert_eq!(
+        s.marked.join(" "),
+        activo,
+        "a marca pintada é o parâmetro activo"
+    );
+    let dito = s.lines.join(" ");
+    let set = API
+        .iter()
+        .find(|e| e.table == "ph2d" && e.ident == "set")
+        .unwrap();
+    let campo = API_TYPES.iter().find(|t| t.ident == "PoseField").unwrap();
+    for doc in [set.doc, campo.doc] {
+        assert!(dito.contains(doc), "falta «{doc}» em {:?}", s.lines);
+    }
+    // O balão sobre `set`.
+    let t = m.docs().text_of(id).unwrap();
+    let b = t.find("set(").unwrap() + 1;
+    let (x, y) = m.docs().glyph_center(id, b).expect("à vista");
+    m.rato(id, x, y);
+    let fim = Instant::now() + Duration::from_secs(30);
+    loop {
+        quadro_em(&mut m, T0 + 500_000_000);
+        if m.docs().hover_of(id).is_some_and(|h| h.contains(set.doc)) {
+            break;
+        }
+        assert!(
+            Instant::now() < fim,
+            "o balão de `set` não trouxe a documentação"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
 }

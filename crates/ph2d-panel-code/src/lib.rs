@@ -11,6 +11,7 @@ pub mod find_bar;
 pub mod frame;
 mod geom;
 mod glyphs;
+mod hint;
 pub mod line_cache;
 mod metrics;
 mod paint;
@@ -28,10 +29,11 @@ pub use console::{
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{
     Assist, Badge, COMPLETION_MAX_CHARS, COMPLETION_ROWS, CodeFrame, CompletionRow, CompletionView,
-    FoldMark, Problem, Severity,
+    FoldMark, HoverView, Problem, Severity, SignatureView,
 };
 pub use geom::Column;
 pub use glyphs::{PaintWork, paint_work};
+pub use hint::HintProbe;
 pub use line_cache::LineCache;
 pub use metrics::Metrics;
 pub use popup::CompletionHit;

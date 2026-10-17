@@ -9,7 +9,7 @@
 mod answer;
 mod worker;
 
-pub use answer::{Answer, Completion, Diag, Hover};
+pub use answer::{Answer, Completion, Diag, Hover, Signature};
 
 use crate::pos::Dirty;
 use ph2d_code_buffer::Text;
@@ -43,6 +43,7 @@ pub struct Ticket(pub u64);
 pub enum Req {
     Completion(usize),
     Hover(usize),
+    Signature(usize),
 }
 
 impl Req {
@@ -51,6 +52,7 @@ impl Req {
         match self {
             Self::Completion(_) => 0,
             Self::Hover(_) => 1,
+            Self::Signature(_) => 2,
         }
     }
 }

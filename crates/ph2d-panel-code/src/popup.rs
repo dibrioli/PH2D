@@ -231,7 +231,7 @@ impl CodeView {
 }
 
 /// `s` em no máximo `cols` colunas, com «…» no fim se foi cortado.
-fn elide(s: &str, cols: usize) -> String {
+pub(crate) fn elide(s: &str, cols: usize) -> String {
     if s.chars().count() <= cols {
         return s.to_owned();
     }
@@ -240,17 +240,25 @@ fn elide(s: &str, cols: usize) -> String {
     out
 }
 
-/// O texto de uma documentação em Markdown, sem a marcação que a mono mostraria crua.
-fn plain(md: &str) -> String {
+/// O texto de uma documentação em Markdown, sem a marcação que a mono mostraria crua (a régua
+/// `----------` do `luau-lsp` vira uma linha em branco).
+pub(crate) fn plain(md: &str) -> String {
     md.lines()
         .filter(|l| !l.trim_start().starts_with("```"))
-        .map(|l| l.replace("**", "").replace('`', ""))
+        .map(|l| {
+            let t = l.trim();
+            if t.len() >= 3 && t.chars().all(|c| c == '-') {
+                String::new()
+            } else {
+                l.replace("**", "").replace('`', "")
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
 
 /// As linhas de `s` partidas nos espaços para caber em `cols` colunas.
-fn wrap(s: &str, cols: usize) -> Vec<String> {
+pub(crate) fn wrap(s: &str, cols: usize) -> Vec<String> {
     let mut out = Vec::new();
     for para in s.lines() {
         let mut line = String::new();
@@ -293,6 +301,7 @@ mod tests {
         assert_eq!(wrap("aa bb cc", 5), ["aa bb", "cc"]);
         assert_eq!(wrap("um\n\ndois", 10), ["um", "", "dois"]);
         assert_eq!(plain("**Set** a `field`\n```lua\nx\n```"), "Set a field\nx");
+        assert_eq!(plain("```luau\nf()\n```\n----------\ndoc"), "f()\n\ndoc");
         assert_eq!(elide("abcdef", 4), "abc…");
     }
 }

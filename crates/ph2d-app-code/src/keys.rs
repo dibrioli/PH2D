@@ -45,6 +45,10 @@ impl CodeDoc {
         if !pressed {
             return out;
         }
+        // Uma tecla (que não seja só um modificador) larga o balão do rato.
+        if key != Key::Other || text.is_some() {
+            self.hints.hover = None;
+        }
         if let Some(f) = self.find.focus.filter(|_| self.find.open) {
             let cmd = mods.ctrl || mods.meta;
             // Os atalhos da barra continuam vivos dentro dela.
@@ -94,6 +98,7 @@ impl CodeDoc {
             Key::Backspace => self.backspace(cmd),
             Key::Delete => self.delete(cmd),
             Key::Tab => self.indent(shift),
+            Key::Escape if self.hints.sig.is_some() => self.hints.sig = None,
             Key::Escape => self.escape(),
             Key::Left => self.motion(if cmd { Motion::WordLeft } else { Motion::Left }, shift),
             Key::Right => self.motion(

@@ -27,6 +27,7 @@ impl CodeDoc {
         if !area.contains(x, y) {
             return false;
         }
+        self.hints.hover = None;
         if self.find.open
             && let Some(h) = self.find_view.hit(ts, x, y)
         {
@@ -143,6 +144,7 @@ impl CodeDoc {
 
     /// A roda: sobre o console rola-o, senão rola o texto — na horizontal com o Shift.
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32, shift: bool, console: &Store) {
+        self.hints.hover = None;
         if self.view.completion_hit(x, y).is_some() {
             let head = self.buffer.selection().primary().head;
             if let Some(len) = self

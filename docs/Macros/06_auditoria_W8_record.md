@@ -52,3 +52,28 @@
 
 `segue` a resolver a sprite parado (sem defeito); `por_reescrever` (gravação nova = outra crua ⇒ não se aplica);
 `reedita` com outro estado inicial (recomeça do zero, palco = B do zero, 0 texels).
+
+## Decisão do dono (17/10): opção 1 — MARCAR onde o artista mexe depois de gravar
+
+Recusadas: (2) durante a água o Play mostra só o clipe (o que se pinta nesse minuto não aparece); (3) voltar ao fim
+no Parar (a água que corre depois cobre o clipe inteiro). A W9 substitui a régua por IGUALDADE de píxeis
+(«≠ fim / ≠ início», `recebeu_a_gravacao`) por uma régua de AUTORIA:
+
+- Cada imagem com uma `Macro` leva uma marca por texel «o artista mexeu aqui depois da gravação» (1 byte/texel, ou
+  bits; ~1 MB a 1024²). Escreve-a toda escrita do ARTISTA na imagem depois do Parar — traço, borracha, preenchimento,
+  filtro, Apply de outra ferramenta, a escrita de píxeis da sprite —, NUNCA a água que corre sozinha nem a reescrita
+  de uma etapa editada (essa é da macro). Medir antes onde as escritas do Painter passam (os dabs/regiões sujas, o
+  `mark_dirty`), e a das sprites sem Painter (o funil `commit_edited_texture`).
+- A mistura: texel marcado ⇒ a imagem atual; senão ⇒ o palco. Some a `recebeu_a_gravacao` e a comparação com o
+  início/fim; a reescrita de uma etapa editada (2b) passa a reescrever os texels NÃO marcados.
+- A marca anda com o undo (desfazer um traço desmarca o que ele marcou) e com o projeto (gravada? — decidir e medir;
+  sem ela, abrir o projeto marca tudo como da macro).
+- Uma gravação nova zera a marca. A imagem que nunca recebeu a gravação (a `=5`): o clipe anima por baixo, o que o
+  artista pintou fica por cima — a mesma lei, sem caso especial.
+- O salto no fim do clipe (A2) continua (o clipe acaba no Parar; o dono recusou o Parar que espera a água) — dizer
+  no smoke.
+
+E no mesmo bloco, sem decisão: A3 (a ranhura não se re-sobe inteira a cada quadro da água: com a marca, a chave é a
+versão da MARCA, não a `content_revision`); A4 (o Loop re-escrito a cada Stop; o ▷ em Arrange — medir se é desenho
+da Timeline ou defeito e dizer ao dono). Gates: os «que faltavam» de A1–A4, com o worker REAL e o Painter ligado, e o
+oráculo NUNCA a função sob teste.

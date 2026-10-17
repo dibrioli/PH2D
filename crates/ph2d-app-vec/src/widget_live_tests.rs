@@ -465,3 +465,32 @@ fn o_icone_e_a_amostra_nao_desenham_duas_vezes() {
         "o desenho de um botão de ícone é o GLIFO — desenhá-lo também seria o ícone duas vezes"
     );
 }
+
+/// **A cor do corpo é a PINTADA, e um token ligado ao fill conta** — o sobrevivente da prova de
+/// mutação F18 (`path.fill` no lugar de `path.painted(bound).fill` passava verde).
+#[test]
+fn o_rotulo_le_se_sobre_o_token_ligado_ao_fill() {
+    const DARK: [u8; 4] = [32, 36, 44, 255];
+    let (mut scene, sim, map, xf) = dressed_in(WidgetKind::Button, ORANGE);
+    let id = scene.paths()[0].id;
+    let _ = &mut scene;
+    let view = ph2d_vec_scene::VecViewState {
+        bound: vec![ph2d_vec_scene::BoundStyle {
+            path: id,
+            fill: Some(ph2d_vec_scene::Rgba8::new(DARK[0], DARK[1], DARK[2], DARK[3])),
+            stroke: None,
+            alpha: None,
+            width: None,
+        }],
+        ..ph2d_vec_scene::VecViewState::default()
+    };
+    assert_ne!(readable(DARK), readable(ORANGE), "a fixture tem de mudar a tinta");
+    let mut text = TextSystem::without_system_fonts();
+    let skins = build(&scene, &sim, &map, &xf, &LiveGeometry::new(), &view, camera(), &mut text, Theme::Forge);
+    let inks = glyph_inks(&skins[&id].scene);
+    assert!(!inks.is_empty());
+    assert!(
+        inks.iter().all(|(_, c)| *c == readable(DARK)),
+        "o rótulo leu o fill LITERAL e não o token ligado: {inks:?}"
+    );
+}

@@ -5,9 +5,10 @@ use crate::style::Ink;
 use ph2d_code_buffer::Buffer;
 use std::ops::Range;
 
-/// Gravidade de uma marca na calha.
+/// Gravidade de uma marca na calha (a do LSP: informação e dica são `Info`, que a barra não conta).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
+    Info,
     Warning,
     Error,
 }

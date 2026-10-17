@@ -113,6 +113,12 @@ fn uma_contagem_de_um_fala_no_singular() {
         ]),
         "1 error · 2 warnings"
     );
+    // Informação e dica pintam-se, mas não são problemas que a barra conte.
+    assert_eq!(com(vec![p(Severity::Info)]), "No problems");
+    assert_eq!(
+        com(vec![p(Severity::Info), p(Severity::Warning)]),
+        "0 errors · 1 warning"
+    );
     assert_eq!(ph2d_panel_code::console_title_text(0), "Console");
     assert_eq!(ph2d_panel_code::console_title_text(1), "Console · 1 error");
     assert_eq!(ph2d_panel_code::console_title_text(2), "Console · 2 errors");

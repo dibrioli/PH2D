@@ -51,7 +51,11 @@ impl StatusLine {
             .iter()
             .filter(|p| p.severity == Severity::Error)
             .count();
-        let warnings = frame.problems.len() - errors;
+        let warnings = frame
+            .problems
+            .iter()
+            .filter(|p| p.severity == Severity::Warning)
+            .count();
         let problems = match (errors, warnings) {
             (0, 0) => (tr("code.status.no_problems").to_owned(), Tone::Plain),
             (e, w) => {

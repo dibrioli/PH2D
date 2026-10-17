@@ -55,6 +55,8 @@ pub(crate) struct CodeDoc {
     /// SINTAXE (esse o tree-sitter mostra vivo; os outros — uma declaração `ph2d.property` — ficam
     /// na calha enquanto há ●).
     diag_anchor: Option<(usize, bool)>,
+    /// Os diagnósticos do assistente de código, seguros entre respostas (seguem as edições).
+    pub(crate) assist: crate::problems::Held,
     /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
     pub last_input_ns: u128,
     pub badge: Option<Badge>,
@@ -94,6 +96,7 @@ impl CodeDoc {
             console_view: ConsoleView::default(),
             saved_diag: None,
             diag_anchor: None,
+            assist: crate::problems::Held::default(),
             last_input_ns: 0,
             badge: None,
             project_unsaved: false,
@@ -137,6 +140,7 @@ impl CodeDoc {
             self.syntax.edit_deferred(edits);
         }
         self.lsp.edits.extend_from_slice(edits);
+        self.assist.edited(edits);
         if let Some(a) = &mut self.diag_anchor {
             for e in edits {
                 a.0 = map_byte(a.0, e);
@@ -156,8 +160,9 @@ impl CodeDoc {
         self.folds.check(&mut self.syntax, self.buffer.text());
     }
 
-    /// Os problemas desta revisão (E7). O diagnóstico do texto salvo mostra-se na linha onde o seu
-    /// texto foi parar; um erro de sintaxe sai com o ● (o tree-sitter mostra-o vivo).
+    /// Os problemas desta revisão (E7, I3). O diagnóstico do texto salvo mostra-se na linha onde o seu
+    /// texto foi parar; um erro de sintaxe sai com o ● (o tree-sitter mostra-o vivo); os do
+    /// assistente, onde as edições os levaram.
     pub fn problems(&mut self) -> Vec<Problem> {
         self.derive();
         let dirty = self.buffer.is_dirty();
@@ -168,7 +173,7 @@ impl CodeDoc {
             }
             _ => None,
         };
-        problems(t, &self.derived.errors, saved)
+        problems(t, &self.derived.errors, saved, &self.assist)
     }
 
     /// O diagnóstico do Luau para o texto salvo (lido da cena em todo quadro): ancora-o quando muda.

@@ -42,6 +42,8 @@ struct Plano {
     atraso: Duration,
     /// O 1.º arranque morre depois deste número de `didChange`.
     morre_apos: Option<usize>,
+    /// Os diagnósticos que o servidor publica para um texto (`None` = um só, `v<versão>`, em 0:0).
+    regra: Option<fn(&str) -> Vec<Value>>,
 }
 
 /// O byte da posição LSP `(linha, unidades UTF-16)`; além do fim da linha = o fim da linha.
@@ -60,6 +62,24 @@ fn byte_de(s: &str, linha: u64, unidades: u64) -> usize {
         u += c.len_utf16() as u64;
     }
     s.len()
+}
+
+/// A posição LSP `{line, character}` (unidades UTF-16) do byte `b` de `s`.
+fn posicao(s: &str, b: usize) -> Value {
+    let inicio = s[..b].rfind('\n').map_or(0, |i| i + 1);
+    json!({ "line": s[..b].matches('\n').count(),
+            "character": s[inicio..b].encode_utf16().count() })
+}
+
+/// O servidor falso acusa cada `pirnt` do texto (um «Unknown global», como o `luau-lsp`).
+fn acusa_pirnt(s: &str) -> Vec<Value> {
+    s.match_indices("pirnt")
+        .map(|(b, w)| {
+            json!({ "range": { "start": posicao(s, b), "end": posicao(s, b + w.len()) },
+                    "severity": 1, "code": 1001,
+                    "message": "TypeError: Unknown global 'pirnt'; consider assigning to it first" })
+        })
+        .collect()
 }
 
 fn pos(v: &Value) -> (u64, u64) {
@@ -94,9 +114,9 @@ fn servir(
                     let uri = d["uri"].as_str().unwrap().to_owned();
                     let ver = d["version"].as_i64().unwrap();
                     *v.aberturas.entry(uri.clone()).or_default() += 1;
-                    v.textos
-                        .insert(uri.clone(), (ver, d["text"].as_str().unwrap().to_owned()));
-                    publica = Some((uri, ver));
+                    let texto = d["text"].as_str().unwrap().to_owned();
+                    v.textos.insert(uri.clone(), (ver, texto.clone()));
+                    publica = Some((uri, ver, texto));
                 }
                 "textDocument/didChange" => {
                     let uri = p["textDocument"]["uri"].as_str().unwrap().to_owned();
@@ -121,8 +141,8 @@ fn servir(
                             None => texto = novo.to_owned(),
                         }
                     }
-                    v.textos.insert(uri.clone(), (ver, texto));
-                    publica = Some((uri, ver));
+                    v.textos.insert(uri.clone(), (ver, texto.clone()));
+                    publica = Some((uri, ver, texto));
                     mudancas += 1;
                 }
                 "textDocument/didClose" => {
@@ -147,12 +167,18 @@ fn servir(
                 return;
             }
         }
-        if let Some((uri, ver)) = publica {
+        if let Some((uri, ver, texto)) = publica {
+            let diagnostics = plano.regra.map_or_else(
+                || {
+                    vec![json!({
+                        "range": { "start": { "line": 0, "character": 0 },
+                                   "end": { "line": 0, "character": 0 } },
+                        "severity": 1, "message": format!("v{ver}") })]
+                },
+                |f| f(&texto),
+            );
             let n = json!({ "jsonrpc": "2.0", "method": "textDocument/publishDiagnostics",
-                "params": { "uri": uri, "version": ver, "diagnostics": [{
-                    "range": { "start": { "line": 0, "character": 0 },
-                               "end": { "line": 0, "character": 0 } },
-                    "severity": 1, "message": format!("v{ver}") }] } });
+                "params": { "uri": uri, "version": ver, "diagnostics": diagnostics } });
             if write_message(&mut saida, &n).is_err() {
                 return;
             }
@@ -579,4 +605,176 @@ fn um_binario_que_nao_existe_para_o_assistente_e_nao_o_editor() {
     assert!(m.docs().assist_text().unwrap().contains("editing works"));
     letra(&mut m, id, 'q');
     assert_eq!(m.docs().text_of(id).as_deref(), Some("qx = 1\n"));
+}
+
+/// ⭐ I3: os sublinhados do assistente SEGURAM-SE entre respostas. Cada tecla avança a versão do
+/// servidor, e um servidor lento responde sempre atrás; pintado só o da versão corrente, o erro
+/// piscaria a cada tecla. Em todo quadro, a aba mostra o erro UMA vez e EXACTAMENTE sobre `pirnt`
+/// (seguiu as edições — com acento e emoji antes, numa string, para a conversão UTF-16); apagado o
+/// `pirnt`, o erro sai na MESMA tecla, sem esperar o servidor.
+#[test]
+fn os_sublinhados_seguram_se_entre_respostas() {
+    let (mut m, ids, visto) = com_falso(
+        &[("a.luau", "local s = \"\" pirnt(1)\n")],
+        Plano {
+            atraso: Duration::from_millis(15),
+            regra: Some(acusa_pirnt),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    let sobre_pirnt = |m: &mut Mesa, onde: &str| -> bool {
+        let ps = m.docs().problems_of(id);
+        let t = m.docs().text_of(id).unwrap();
+        match ps.as_slice() {
+            [] => false,
+            [p] => {
+                let c = p.culprit.clone().expect("com culpado");
+                assert_eq!(&t[c], "pirnt", "{onde}: o sublinhado saiu do sítio");
+                assert!(
+                    p.message.contains("Unknown global 'pirnt'"),
+                    "{onde}: {p:?}"
+                );
+                true
+            }
+            _ => panic!("{onde}: o erro saiu em dobro: {ps:#?}"),
+        }
+    };
+    let fim = Instant::now() + Duration::from_secs(10);
+    while !sobre_pirnt(&mut m, "abrir") {
+        assert!(Instant::now() < fim, "a 1.ª resposta não chegou");
+        m.quadro();
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    // Dentro da string, antes do `pirnt` da mesma linha.
+    tecla(&mut m, id, Key::Home, ctrl(), None, "");
+    for _ in 0.."local s = \"".len() {
+        tecla(&mut m, id, Key::Right, Modifiers::default(), None, "");
+    }
+    let mut atras = 0;
+    for (i, c) in "local é = 1 🙂 ".chars().cycle().take(60).enumerate() {
+        letra(&mut m, id, c);
+        assert!(
+            sobre_pirnt(&mut m, &format!("tecla {i}")),
+            "tecla {i}: o erro piscou"
+        );
+        m.quadro();
+        if m.docs().assist_diagnostics(id).1.is_none() {
+            atras += 1;
+        }
+        assert!(
+            sobre_pirnt(&mut m, &format!("quadro {i}")),
+            "quadro {i}: o erro piscou"
+        );
+    }
+    assert!(
+        atras > 0,
+        "o servidor nunca ficou atrás: o gate não prova o segurar"
+    );
+    // Apagar o `pirnt` (o fim da linha é `pirnt(1)`): o erro sai sem esperar a resposta.
+    tecla(&mut m, id, Key::End, Modifiers::default(), None, "");
+    for _ in 0.."pirnt(1)".len() {
+        tecla(&mut m, id, Key::Backspace, Modifiers::default(), None, "");
+    }
+    assert!(m.docs().problems_of(id).is_empty(), "o erro apagado ficou");
+    converge(&mut m, &visto, "fim");
+    for _ in 0..20 {
+        m.quadro();
+        assert!(m.docs().problems_of(id).is_empty());
+    }
+}
+
+/// O assistente que parou DE VEZ (morreu depois de responder e não voltou a arrancar) não deixa
+/// sublinhados a envelhecer na aba: sem quem os confirme, saem; a barra diz que parou.
+#[test]
+fn um_assistente_parado_nao_deixa_sublinhados() {
+    let visto = Partilhado::default();
+    let mut primeiro = Some(falso(
+        Plano {
+            regra: Some(acusa_pirnt),
+            morre_apos: Some(1),
+            ..Plano::default()
+        },
+        visto,
+        false,
+    ));
+    let liga: Connect = Box::new(move |wake| match primeiro.take() {
+        Some(mut c) => c(wake),
+        None => Err(LspError::Spawn(std::io::Error::other("não volta"))),
+    });
+    let (m, ids) = Mesa::new(&[("a.luau", "pirnt(1)\n")]);
+    let mut m = m.com_assistente(IntelServer::Custom(liga));
+    let id = ids[0];
+    m.pede(id);
+    let fim = Instant::now() + Duration::from_secs(10);
+    while m.docs().problems_of(id).is_empty() {
+        assert!(Instant::now() < fim, "a 1.ª resposta não chegou");
+        m.quadro();
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    tecla(&mut m, id, Key::End, Modifiers::default(), None, "");
+    letra(&mut m, id, ' ');
+    let fim = Instant::now() + Duration::from_secs(10);
+    while m.docs().assist_text().is_none() || !m.docs().problems_of(id).is_empty() {
+        assert!(
+            Instant::now() < fim,
+            "o assistente parou e o sublinhado ficou: {:?} {:?}",
+            m.docs().assist_reason(),
+            m.docs().problems_of(id)
+        );
+        m.quadro();
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(
+        m.docs().assist_text().as_deref(),
+        Some(
+            ph2d_panel_code::assist_line(ph2d_panel_code::Assist::Stopped)
+                .0
+                .as_str()
+        )
+    );
+}
+
+/// A resposta que chega com teclas AINDA por enviar (escritas depois do último quadro) cai no sítio:
+/// adoptada, desloca-se por elas. Cada volta: um quadro envia a versão `v`, o servidor responde-lhe
+/// fora do quadro, uma tecla entra antes do quadro seguinte, e é nesse quadro que a resposta a `v`
+/// é adoptada.
+#[test]
+fn uma_resposta_com_teclas_por_enviar_cai_no_sitio() {
+    let (mut m, ids, visto) = com_falso(
+        &[("a.luau", "local s = \"\" pirnt(1)\n")],
+        Plano {
+            regra: Some(acusa_pirnt),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    tecla(&mut m, id, Key::Home, ctrl(), None, "");
+    for _ in 0.."local s = \"".len() {
+        tecla(&mut m, id, Key::Right, Modifiers::default(), None, "");
+    }
+    let uri = uri_of(id.0, "a.luau");
+    for (i, c) in "é🙂ab".chars().cycle().take(12).enumerate() {
+        letra(&mut m, id, c);
+        m.quadro();
+        let v = m.docs().assist_diagnostics(id).0.expect("aberto");
+        let fim = Instant::now() + Duration::from_secs(10);
+        while visto.lock().unwrap().textos.get(&uri).map(|t| t.0) != Some(v as i64) {
+            assert!(
+                Instant::now() < fim,
+                "volta {i}: o servidor não recebeu a versão {v}"
+            );
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        std::thread::sleep(Duration::from_millis(20));
+        letra(&mut m, id, c);
+        m.quadro();
+        let t = m.docs().text_of(id).unwrap();
+        let ps = m.docs().problems_of(id);
+        assert_eq!(ps.len(), 1, "volta {i}: {ps:#?}");
+        let c = ps[0].culprit.clone().unwrap();
+        assert_eq!(t.get(c.clone()), Some("pirnt"), "volta {i}: {c:?} em {t:?}");
+    }
 }

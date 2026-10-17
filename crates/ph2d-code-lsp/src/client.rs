@@ -140,8 +140,9 @@ pub struct Diagnostic {
     pub range: Range,
     /// 1 error · 2 warning · 3 information · 4 hint.
     pub severity: Option<u8>,
-    /// `"1002"` (type error code), `"8"` (lint code) or `"SyntaxError"` — luau-lsp mixes numbers
-    /// and strings, so both are kept as text.
+    /// The Luau code as text: `"1002"` (type error), `"8"` (lint), `"1014"` (syntax error — the
+    /// message starts with `SyntaxError:`; measured, `docs/CodeEditor/03_onda2.md` I0c). luau-lsp
+    /// sends numbers; strings are kept as they come.
     pub code: Option<String>,
     pub message: String,
 }

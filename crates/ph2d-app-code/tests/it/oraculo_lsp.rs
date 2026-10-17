@@ -238,3 +238,119 @@ fn a_documentacao_gerada_chega_a_assinatura() {
         "{sig:#}"
     );
 }
+
+/// ⭐ I3 de ponta a ponta com o `luau-lsp` FIXADO: os erros do assistente aparecem na aba ENQUANTO se
+/// escreve, sem salvar, um por erro e no sítio.
+/// - a fixtura `erros_de_proposito` colada numa aba vazia: exactamente os dois `-- ERR` sublinhados;
+/// - o `bob.luau` canónico: nada (os ganchos `init`/`update` são do motor, não «nunca usados»);
+/// - `if x = 1 then x = 2 end`: UM problema (dois `1014`, o global e o lint fundem-se), com a
+///   mensagem do Luau no lugar do tree-sitter; o `end` em falta: UM;
+/// - `--!strict` num ficheiro acrescenta o erro de tipo só a ele.
+#[test]
+fn o_assistente_fixado_sublinha_o_que_se_escreve() {
+    use ph2d_editor_core::doc_surface::DocumentSurface;
+    let _ = fixado();
+    let erros = std::fs::read_to_string(
+        repo().join("crates/ph2d-code-lsp/tests/it/fixtures/erros_de_proposito.luau"),
+    )
+    .expect("fixtura");
+    let bob =
+        std::fs::read_to_string(repo().join("crates/ph2d-code-syntax/tests/it/fixtures/bob.luau"))
+            .expect("bob");
+    let sem_end = "function update(self, dt)\n  if dt then\n    print(1)\nend\n";
+    let (m, ids) = Mesa::new(&[
+        ("erros.luau", ""),
+        ("bob.luau", &bob),
+        ("sintaxe.luau", "if x = 1 then x = 2 end\n"),
+        ("sem_end.luau", sem_end),
+        ("estrito.luau", "--!strict\nlocal k = 5\nk()\n"),
+        ("frouxo.luau", "local k = 5\nk()\n"),
+    ]);
+    let mut m = m.com_assistente(ph2d_app_code::IntelServer::Pinned);
+    for id in &ids {
+        m.pede(*id);
+    }
+    let e = ids[0];
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let _ = m.docs().key(
+        e.0,
+        &mut ts,
+        ph2d_editor_core::doc_surface::KeyInput {
+            key: ph2d_editor_core::doc_surface::Key::Char('v'),
+            mods: crate::ctrl(),
+            pressed: true,
+            text: Some("v"),
+            paste: Some(erros.clone()),
+        },
+    );
+    // Cada aba com a resposta ao texto DELA e a árvore do worker assente.
+    let fim = std::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        m.quadro();
+        let pronto = ids.iter().all(|id| {
+            let d = m.docs();
+            d.assist_diagnostics(*id).1.is_some() && d.grammar_of(*id).is_some_and(|g| !g.stale)
+        });
+        if pronto {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < fim,
+            "sem resposta do luau-lsp ({:?})",
+            m.docs().assist_reason()
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert_eq!(m.docs().text_of(e).as_deref(), Some(erros.as_str()));
+    assert_eq!(m.texto_salvo(e), "", "nada se salvou");
+    let resumo = |m: &mut Mesa, id| -> Vec<(usize, String)> {
+        m.docs()
+            .problems_of(id)
+            .into_iter()
+            .map(|p| (p.line, p.message))
+            .collect()
+    };
+
+    // A fixtura: as linhas `-- ERR <code> <agulha>`, e só elas.
+    let esperado: Vec<(usize, &str)> = erros
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| !l.starts_with("--"))
+        .filter_map(|(i, l)| {
+            let (_, marca) = l.split_once("-- ERR ")?;
+            Some((i, marca.split_once(' ')?.1))
+        })
+        .collect();
+    assert_eq!(esperado.len(), 2, "a fixtura perdeu as marcas");
+    let visto = resumo(&mut m, e);
+    assert_eq!(visto.len(), esperado.len(), "{visto:#?}");
+    for ((linha, msg), (l, agulha)) in visto.iter().zip(&esperado) {
+        assert_eq!(linha, l, "{visto:#?}");
+        assert!(msg.contains(agulha), "linha {l}: «{msg}» sem {agulha}");
+    }
+    m.pinta(e);
+    let sublinhado: Vec<usize> = m.docs().underlines_of(e).iter().map(|u| u.line).collect();
+    assert_eq!(
+        sublinhado,
+        esperado.iter().map(|(l, _)| *l).collect::<Vec<_>>(),
+        "a pintura sublinha cada erro, no ecrã"
+    );
+
+    assert_eq!(resumo(&mut m, ids[1]), [], "o bob canónico está limpo");
+
+    let s = resumo(&mut m, ids[2]);
+    assert_eq!(s.len(), 1, "{s:#?}");
+    assert!(s[0].1.starts_with("SyntaxError: Expected 'then'"), "{s:#?}");
+    let s = resumo(&mut m, ids[3]);
+    assert_eq!(s.len(), 1, "{s:#?}");
+    assert!(s[0].1.starts_with("SyntaxError: Expected 'end'"), "{s:#?}");
+
+    let s = resumo(&mut m, ids[4]);
+    assert_eq!(s.len(), 1, "{s:#?}");
+    assert_eq!(s[0].0, 2);
+    assert!(
+        s[0].1.contains("Cannot call a value of type number"),
+        "{s:#?}"
+    );
+    assert_eq!(resumo(&mut m, ids[5]), [], "sem --!strict, o vizinho não");
+}

@@ -503,6 +503,7 @@ impl Palette {
         match s {
             Severity::Error => self.error,
             Severity::Warning => self.warn,
+            Severity::Info => self.info,
         }
     }
 }

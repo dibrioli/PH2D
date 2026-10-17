@@ -132,6 +132,32 @@ impl Intel {
         self.mirrors.get(&id).map(|m| m.version)
     }
 
+    /// Cada aba segura a última resposta do servidor ao texto DELA (I3): adopta-a quando chega, sobre
+    /// as edições que ainda não foram, e larga tudo se o servidor parou de vez.
+    fn hand_over(&self, docs: &mut [CodeDoc]) {
+        let stopped = matches!(self.state, Some(ServerState::Failed(_)));
+        for d in docs.iter_mut() {
+            if stopped {
+                d.assist.clear();
+                continue;
+            }
+            let Some(m) = self.mirrors.get(&d.script) else {
+                continue;
+            };
+            let ours = Src::Doc {
+                serial: d.serial,
+                revision: d.lsp.from,
+            };
+            if let Some((v, list)) = self.diags.get(&d.script)
+                && m.src == ours
+                && m.version == *v
+                && d.assist.version != Some(*v)
+            {
+                d.assist.adopt(*v, list, &d.lsp.edits);
+            }
+        }
+    }
+
     fn start(&mut self) {
         let connect = match self.server.take() {
             Some(IntelServer::Pinned) => match resolve_binary() {
@@ -167,6 +193,7 @@ impl Intel {
         let Some(session) = &self.session else {
             for d in docs.iter_mut() {
                 d.lsp.edits.clear();
+                d.assist.clear();
             }
             return;
         };
@@ -196,6 +223,7 @@ impl Intel {
             }
             self.diags.remove(&id);
         }
+        self.hand_over(docs);
         for (id, s) in lib.iter() {
             let uri = uri_of(id.0, &s.name);
             let (src, text, pending) = if let Some(d) = docs.iter_mut().find(|d| d.script == id) {

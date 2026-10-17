@@ -455,6 +455,16 @@ impl CodeDocs {
         }
     }
 
+    /// ⚠️ SONDA: os sublinhados de problema que a aba do script `id` pintou no último quadro.
+    #[must_use]
+    pub fn underlines_of(&self, id: ScriptId) -> Vec<ph2d_panel_code::Underline> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map(|d| d.view.last_underlines().to_vec())
+            .unwrap_or_default()
+    }
+
     /// ⚠️ SONDA: a gramática da aba do script `id`.
     #[must_use]
     pub fn grammar_of(&self, id: ScriptId) -> Option<GrammarProbe> {

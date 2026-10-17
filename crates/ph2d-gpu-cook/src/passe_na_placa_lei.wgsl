@@ -5,7 +5,7 @@
 const PNP_EPS: f32 = 1e-9;
 const PNP_FMAX: f32 = 3.4028235e38;
 
-struct U { n: u32, num_buckets: u32, repouso: f32, tem: u32, bi: u32, bo: u32, varreduras: u32, pad: u32 };
+struct U { n: u32, num_buckets: u32, repouso: f32, tem: u32, bi: u32, bo: u32, varreduras: u32, inverte: u32 };
 
 // Colisor: `kind` 0 nenhum, 1 disco (raio em m.x), 2 caixa (meias em m).
 struct Col { kind: u32, m: vec2<f32>, eixo: vec2<f32>, desvio: vec2<f32> };

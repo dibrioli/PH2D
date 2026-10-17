@@ -298,8 +298,14 @@ fn a_ordem_da_soma_dos_contactos_e_a_da_cpu_ao_bit() {
     let (cpu, _) = separa_com_relatorio(&s, 1);
     let cpu = coluna_p(&cpu.expect("a CPU separa"));
     let mut cook = GpuCook::default();
-    for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
+    for (caminho, tecto, inverte) in [
+        ("despachos", 0, false),
+        ("um grupo", u32::MAX, false),
+        ("despachos, chegada invertida", 0, true),
+        ("um grupo, chegada invertida", u32::MAX, true),
+    ] {
         cook.passe_um_grupo_ate(Some(tecto));
+        cook.passe_inverte_a_chegada(inverte);
         let (gp, _, _) = cook
             .separa_e_le(&gpu, &s, 1, ph2d_contact::REPOUSO_VISIVEL)
             .expect("a placa separa");
@@ -319,6 +325,64 @@ fn a_ordem_da_soma_dos_contactos_e_a_da_cpu_ao_bit() {
             gp[0][0],
             cpu[0][0]
         );
+    }
+}
+
+/// ⭐⭐ **A mesma ordem num balde GRANDE** (doc 120 §8.3.4): a ordenação é um fio por PEÇA, e um balde
+/// de milhares atravessa grupos — a fixtura acima tem quatro peças e o grande na célula VIZINHA (a
+/// fusão dos cursores). `K` discos minúsculos coincidentes (índices `1..=K`) e o grande no índice
+/// `K + 1`, os três no MESMO balde: dentro dele a ordem decrescente põe o grande primeiro. A soma
+/// crescente e a do grande primeiro divergem em f32 (controlo); a placa tem de dar os bits da CPU nos
+/// dois caminhos, com a chegada do `espalha` normal e INVERTIDA (nesta placa o atómico entrega por
+/// ordem, e um passe que não ordenasse passaria só com a normal — a mutação M6 sobreviveu assim).
+#[test]
+fn a_ordem_da_soma_num_balde_grande_e_a_da_cpu_ao_bit() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    const K: usize = 3000;
+    let t = 2f32.powi(-24);
+    let crescente = (0..K).fold(0.0f32, |a, _| a - t) - 4.0;
+    let grande_primeiro = (0..K).fold(-4.0f32, |a, _| a - t);
+    assert_ne!(
+        crescente.to_bits(),
+        grande_primeiro.to_bits(),
+        "a fixtura não separa as ordens"
+    );
+    let mut p = vec![[0.0, 0.0]];
+    p.extend(std::iter::repeat_n([1.0, 0.0], K));
+    p.push([0.5, 0.0]);
+    let mut s = corrente(p);
+    let minusculo = 0.5 + 2f32.powi(-23);
+    let mut raio = vec![0.5];
+    raio.extend(std::iter::repeat_n(minusculo, K));
+    raio.push(8.0);
+    esc(&mut s, COLLIDER_COLUMN, raio);
+    let (cpu, _) = separa_com_relatorio(&s, 1);
+    let cpu = coluna_p(&cpu.expect("a CPU separa"));
+    let mut cook = GpuCook::default();
+    for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
+        for inverte in [false, true] {
+            cook.passe_um_grupo_ate(Some(tecto));
+            cook.passe_inverte_a_chegada(inverte);
+            let (gp, _, _) = cook
+                .separa_e_le(&gpu, &s, 1, ph2d_contact::REPOUSO_VISIVEL)
+                .expect("a placa separa");
+            let diferentes = (0..s.count())
+                .filter(|&i| gp[i][0].to_bits() != cpu[i][0].to_bits())
+                .count();
+            eprintln!(
+                "{caminho} (chegada invertida {inverte}): peça 0 em x = CPU {:e} · placa {:e} · {diferentes} de {} peças com outros bits",
+                cpu[0][0],
+                gp[0][0],
+                s.count()
+            );
+            assert_eq!(
+                gp[0][0].to_bits(),
+                cpu[0][0].to_bits(),
+                "{caminho} (chegada invertida {inverte}): a placa somou os contactos do balde grande noutra ordem"
+            );
+        }
     }
 }
 

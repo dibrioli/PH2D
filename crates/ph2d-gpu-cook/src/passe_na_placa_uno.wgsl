@@ -63,7 +63,7 @@ fn main(@builtin(local_invocation_index) lid: u32) {
         pnp_barreira();
         for (var i = lid; i < n; i = i + 256u) { pnp_espalha(i, bi, lado); }
         pnp_barreira();
-        for (var b = lid; b < nb; b = b + 256u) { pnp_ordena(b); }
+        for (var i = lid; i < n; i = i + 256u) { pnp_ordena(i, bi, lado); }
         pnp_barreira();
         for (var i = lid; i < n; i = i + 256u) {
             let a = pnp_corrige(i, bi, bo, alc_max);

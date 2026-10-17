@@ -16,6 +16,7 @@ fn pnp_toca() {
         _ = atomicLoad(&cursor[0]);
         _ = sorted[0];
         _ = atomicLoad(&ctrl[0]);
+        _ = solto[0];
     }
 }
 
@@ -51,22 +52,27 @@ fn pnp_gira_conta(i: u32, bi: u32, lado: f32) {
     atomicAdd(&starts[pnp_balde(pnp_celula(est[bi + i].xy, lado), u.num_buckets)], 1u);
 }
 
-fn pnp_espalha(i: u32, bi: u32, lado: f32) {
+// Espalha em `solto`: cada balde no seu troco, em ordem de chegada (a do atomico). `u.inverte`
+// (so' o gate) da' ao fio `t` a peca `n - 1 - t`: a chegada ao contrario de uma placa cujo atomico
+// entregasse por ordem.
+fn pnp_espalha(t: u32, bi: u32, lado: f32) {
+    let i = select(t, u.n - 1u - t, u.inverte != 0u);
     if (u32(dec[4u * i].x) == 0u) { return; }
     let b = pnp_balde(pnp_celula(est[bi + i].xy, lado), u.num_buckets);
-    sorted[atomicLoad(&starts[b]) + atomicAdd(&cursor[b], 1u)] = i;
+    solto[atomicLoad(&starts[b]) + atomicAdd(&cursor[b], 1u)] = i;
 }
 
-// Cada balde por indice CRESCENTE (insercao: os baldes sao pequenos).
-fn pnp_ordena(b: u32) {
+// Cada balde por indice CRESCENTE, UM FIO POR PECA: o lugar de `i` e' quantos indices menores o
+// seu balde tem. O trabalho e' `Σk²`, que o `corrige` ja' paga (le o balde inteiro de cada peca);
+// a insercao por balde era `k²` SERIAL num fio (doc 120 §8.3.4).
+fn pnp_ordena(i: u32, bi: u32, lado: f32) {
+    if (u32(dec[4u * i].x) == 0u) { return; }
+    let b = pnp_balde(pnp_celula(est[bi + i].xy, lado), u.num_buckets);
     let lo = atomicLoad(&starts[b]);
     let hi = atomicLoad(&starts[b + 1u]);
-    for (var a = lo + 1u; a < hi; a = a + 1u) {
-        let x = sorted[a];
-        var c = a;
-        while (c > lo && sorted[c - 1u] > x) { sorted[c] = sorted[c - 1u]; c = c - 1u; }
-        sorted[c] = x;
-    }
+    var r = 0u;
+    for (var a = lo; a < hi; a = a + 1u) { r = r + select(0u, 1u, solto[a] < i); }
+    sorted[lo + r] = i;
 }
 
 // A cabeca de um cursor: o primeiro indice do balde que vive DE FACTO na celula `alvo` (duas

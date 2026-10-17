@@ -6,8 +6,9 @@
 //! aritmética vive em [`LEI`], porta a porta, e nada aqui a inventa.
 //!
 //! Por passe: `forma` + `massa` (o registo de cada peça e o `alcance_max`) → `inicia` → por
-//! varredura `gira` (forma rodada + contagem na grelha) → `scan` → `espalha` → `ordena` (cada balde
-//! por índice: os parceiros somam-se em ordem CRESCENTE, como na CPU) → `corrige` (Jacobi, lê uma
+//! varredura `gira` (forma rodada + contagem na grelha) → `scan` → `espalha` (em `solto`) → `ordena`
+//! (cada balde por índice, um fio por peça: os parceiros somam-se em ordem CRESCENTE, como na CPU;
+//! doc 120 §8.3.4) → `corrige` (Jacobi, lê uma
 //! fotografia, escreve a outra) → `decide` (a paragem, numa bandeira) → no fim `escreve`.
 //! ⚠️ **Sem leitura de volta**: uma varredura depois da paragem sai logo.
 
@@ -68,8 +69,12 @@ pub(crate) struct Passe {
     /// O tecto do caminho de UM grupo — `None` = [`PECAS_PARA_UM_GRUPO`]; só a sonda o muda (as
     /// duas variantes no MESMO processo, `MEDIR_VELOCIDADE.md`).
     pub(crate) um_grupo_ate: Option<u32>,
-    /// Salta o `ordena` no caminho de despachos — só a sonda (o relógio vale, a soma não).
+    /// Troca o `ordena` por uma cópia de `solto` no caminho de despachos — só a sonda (o relógio
+    /// vale, a soma não).
     pub(crate) sem_ordenar: bool,
+    /// O `espalha` chega ao contrário (`u.inverte`) — só o gate: nesta placa o atómico entrega por
+    /// ordem, e sem isto um passe que não ordena passa nos portões de ordem.
+    pub(crate) inverte_a_chegada: bool,
     /// Quanto o processador levou a ENCOMENDAR o último passe (a sonda lê).
     pub(crate) encode: std::time::Duration,
     /// O `ctrl` do último passe (`[alcance_max, andou, parado, varreduras, candidatos]`).
@@ -138,7 +143,7 @@ const R: &str = "read";
 const RW: &str = "read_write";
 
 /// As ligações de toda a VARREDURA — o mesmo leiaute nos dois caminhos (ver `pnp_toca`).
-const VARREDURA: [(&str, &str); 7] = [
+const VARREDURA: [(&str, &str); 8] = [
     ("dec: array<vec4<f32>>", R),
     ("ago: array<vec4<f32>>", RW),
     ("est: array<vec4<f32>>", RW),
@@ -146,6 +151,7 @@ const VARREDURA: [(&str, &str); 7] = [
     ("cursor: array<atomic<u32>>", RW),
     ("sorted: array<u32>", RW),
     ("ctrl: array<atomic<u32>>", RW),
+    ("solto: array<u32>", RW),
 ];
 const FNS: &str = include_str!("passe_na_placa_varredura.wgsl");
 
@@ -233,7 +239,7 @@ fn fontes() -> [(&'static str, String); 10] {
         "    if (i >= u.n || atomicLoad(&ctrl[2]) != 0u) { return; }\n    pnp_espalha(i, u.bi, lado);",
     );
     let ordena = passo(
-        "    if (i >= u.num_buckets || atomicLoad(&ctrl[2]) != 0u) { return; }\n    pnp_ordena(i);",
+        "    if (i >= u.n || atomicLoad(&ctrl[2]) != 0u) { return; }\n    pnp_ordena(i, u.bi, lado);",
     );
     let (corrige, uno) = fontes_do_corrige();
     let decide = modulo(
@@ -366,6 +372,12 @@ impl GpuCook {
         self.passe.sem_ordenar = sim;
     }
 
+    /// Inverte a ordem de chegada do `espalha` — só o gate.
+    #[doc(hidden)]
+    pub fn passe_inverte_a_chegada(&mut self, sim: bool) {
+        self.passe.inverte_a_chegada = sim;
+    }
+
     /// ⭐ **O `Relatorio` do passe na placa** (doc 130 §5) — o que o perfilador do quadro mostra
     /// (varreduras · peças · vizinhos), lido SEM espera: chame depois de cada cozimento; a cópia
     /// encomendada nele é mapeada aqui e lida num quadro seguinte. `None` até à 1.ª leitura.
@@ -474,6 +486,7 @@ impl GpuCook {
         let starts = novo(pool, (u64::from(nb) + 1) * 4);
         let cursor = novo(pool, u64::from(nb) * 4);
         let sorted = novo(pool, n64 * 4);
+        let solto = novo(pool, n64 * 4);
         let ctrl = novo(pool, 32);
         let p_out = novo(pool, n64 * 8);
         let rot_out = novo(pool, n64 * 4);
@@ -490,6 +503,7 @@ impl GpuCook {
         } else {
             n
         };
+        let inverte = u32::from(self.passe.inverte_a_chegada);
         let uni = |bi: u32, bo: u32| {
             let b = gpu.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("ph2d-passe u"),
@@ -497,7 +511,7 @@ impl GpuCook {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
-            let campos = [n, nb, repouso.to_bits(), tem, bi, bo, varreduras, 0];
+            let campos = [n, nb, repouso.to_bits(), tem, bi, bo, varreduras, inverte];
             gpu.queue.write_buffer(&b, 0, bytemuck::cast_slice(&campos));
             b
         };
@@ -525,7 +539,9 @@ impl GpuCook {
             grupo(
                 gpu,
                 pipe,
-                &[u, &dec, &ago, &est, &starts, &cursor, &sorted, &ctrl],
+                &[
+                    u, &dec, &ago, &est, &starts, &cursor, &sorted, &ctrl, &solto,
+                ],
             )
         };
         if um_grupo {
@@ -550,8 +566,10 @@ impl GpuCook {
                     .scan
                     .exclusive(gpu, enc, &starts, nb + 1, &mut scratch);
                 despacha(enc, &pipes.espalha, ge, n);
-                if !self.passe.sem_ordenar {
-                    despacha(enc, &pipes.ordena, go, nb);
+                if self.passe.sem_ordenar {
+                    enc.copy_buffer_to_buffer(&solto, 0, &sorted, 0, n64 * 4);
+                } else {
+                    despacha(enc, &pipes.ordena, go, n);
                 }
                 despacha(enc, &pipes.corrige, gc, n);
                 despacha(enc, &pipes.decide, &gd, 1);

@@ -517,6 +517,78 @@ cuja cadeia deixa uma fronteira temporal; o número passava a vir do mapa da CPU
 | condutor com estado cozido pelo `valores_dirigidos`, fora da marcha (a 1.ª cura) | placa = CPU sem envelope (`max|ΔP|` 2,247) | nunca: o estado só anda na marcha |
 | harness de paridade sem `publish_all` por quadro | CPU com × sem envelope = 0 em 150 tiques | o controlo do envelope é obrigatório em todo gate desta família |
 
+#### §8.3.4 — ✅ A `=137` a ×11 (17/10): a ordenação dos baldes do passe de colisão era um fio por balde
+
+O aberto 3 do handoff `=139`: a `=137` a ×11 custava 1,44 s por quadro nas DUAS rotas do carimbo. A sonda
+`sonda_as_fases_do_quadro_hibrido`
+([`motion_state_demo_carimbo_escala_tests.rs`](../../crates/ph2d-app-motion/src/motion_state_demo_carimbo_escala_tests.rs))
+ganhou cena × escala (`PH2D_SONDA_ESCALAS`), rotas à escolha (`PH2D_SONDA_ROTAS`: `B` hoje · `SO` sem
+ordenar · `S1` uma varredura · `C` sem colisor) e um censo na CPU (`PH2D_SONDA_CENSO`).
+
+**Onde ia o tempo** (mesmo processo, intercalado, mínimo, smoke, RTX 5060 Ti; load 216 → 38; ms por
+quadro):
+
+| escala | B | SO | S1 | C |
+|---|---:|---:|---:|---:|
+| ×1 | 2,08 | 2,14 | 0,93 | 0,67 |
+| ×4 | 42,7 | 25,0 | 3,7 | 0,75 |
+| ×11 | 1 539 | 344 | 114 | 0,91 |
+
+99,95 % do quadro a ×11 é o passe (a `espera` da placa); a ordenação é 78 % dele.
+
+**O censo** (corrente da saída, rota da CPU, tique 31):
+
+| escala | peças | `alcance_max` | toques/peça | candidatos/peça | baldes ocupados | maior balde | passe da CPU |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ×1 | 256 | 0,54 | 9,4 | 70,9 | 34 | 15 | 2,3 ms |
+| ×4 | 4 096 | 2,28 | 164 | 1 248 | 34 | 261 | 235 ms |
+| ×11 | 30 976 | 6,33 | 1 247 | 9 577 | 28 | 2 973 | 10 630 ms |
+
+**Mecanismo:** o `amplia` aumenta a galáxia (o espaçamento da grelha fica), e o raio da `=137` é `0,8·|P|`.
+O lado da célula (`2·alcance_max`) cresce com a galáxia ⇒ ~30 células em qualquer escala, e cada balde
+leva `N/30` peças. A inserção por balde (`pnp_ordena(b)`, um fio por balde) era `k²` SERIAL: a ×11, ~2,2
+milhões de trocas num fio, 16 vezes por quadro. Qualquer pilha apertada enche um balde do mesmo modo.
+
+**A cura:** `pnp_espalha` escreve em `solto` (ordem de chegada do atómico), e `pnp_ordena(i, bi, lado)` é
+UM FIO POR PEÇA: o lugar de `i` no balde é quantos índices menores o balde tem. O trabalho é `Σk²`, que o
+`corrige` já paga (lê o balde inteiro de cada peça), e a ordem é a crescente da CPU. Vale nos dois
+caminhos (despachos e um grupo).
+
+**Resultado** (mesmo processo, load 164 → 194; ms por quadro):
+
+| escala | antes (B, tabela acima) | depois (B) | SO (piso, no mesmo processo) | C |
+|---|---:|---:|---:|---:|
+| ×1 | 2,08 | 1,50 | 1,57 | 0,38 |
+| ×4 | 42,7 | 22,0 | 22,5 | 0,53 |
+| ×11 | 1 539 | **225** | 233 | 0,71 |
+
+Desistência declarada antes: ×11 ≤ 1,3 × SO e ×1 sem piorar > 10 % (o custo do passe `B − C` a ×1: 1,12
+ms, contra 1,25 e 1,41 nas duas rodadas anteriores). Passou: a ordenação ficou ao nível do piso.
+
+**O que sobra a ×11** (225 ms): o `corrige` sobre 297 milhões de candidatos por varredura (~14 ms cada),
+dos quais 13 % se tocam. Uma grelha que respeite o alcance de cada peça corta no máximo 7,7× — e os toques
+crescem com `N²` nesta cena por construção (o raio cresce com a galáxia), logo o `amplia` da `=137` mede
+contacto denso, não o tecto da grelha.
+
+**Os gates:**
+- `a_ordem_da_soma_num_balde_grande_e_a_da_cpu_ao_bit` (novo, placa): 3 000 discos minúsculos coincidentes
+  e o grande no MESMO balde, os dois caminhos × a chegada do `espalha` normal e INVERTIDA
+  (`GpuCook::passe_inverte_a_chegada` → `u.inverte`, o antigo `pad`); 0 de 3 002 peças com outros bits.
+- `a_ordem_da_soma_dos_contactos_e_a_da_cpu_ao_bit` passa a correr também com a chegada invertida.
+- Os do passe e da `=137`: `passe_na_placa::` 7/7, `colisor_nome` 5/5.
+- Mutação 6/6 sangraram: M1 decrescente · M2 `<=` · M3 escreve a ordem de chegada · M4 sem ordenar no
+  caminho de um grupo · M5 metade das peças · M6 sem ordenar nos despachos. M1, M3 e M6 só pelo portão do
+  balde grande, e só depois de o grande ir para o mesmo balde e de a chegada se inverter (ver recusas).
+
+**⛔ Recusas MEDIDAS**
+
+| recusa | medido | veredito |
+|---|---|---|
+| inserção por balde, um fio por balde («os baldes são pequenos») | maior balde 2 973 a ×11; 1,19 s dos 1,54 s do quadro | nunca: o caminho crítico é o maior balde |
+| variante S1 armada por `m.sinks` antes do 1.º quadro | relatório com 16 varreduras, tempo igual a B | as saídas procuram-se pelo TIPO; `m.sinks` só se enche no `o_quadro` |
+| censo pela tomada antes do `o_quadro` | tomada vazia (o `o_quadro` rearma as tomadas dele) | um tique a mais pela bomba, com as tomadas da sonda e sem o passe |
+| portão de ordem com o grande na célula VIZINHA e a chegada natural | M1 (decrescente), M3 e M6 (sem ordenar) sobreviveram: entre minúsculos iguais a ordem é exacta, e o atómico desta placa entrega por ordem | o grande no MESMO balde e a chegada invertida por interruptor de gate |
+
 ### §8.4 — ✅ W1(b).1 e W1(b).2 FECHADAS (2026-09-24)
 
 **O kernel** ([`ph2d-node-motion-duplicator/src/kernel.rs`](../../crates/ph2d-node-motion-duplicator/src/kernel.rs)):

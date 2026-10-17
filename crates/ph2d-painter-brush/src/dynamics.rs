@@ -58,7 +58,7 @@ impl Dynamics {
     #[must_use]
     pub fn coverage_scale(&self, pressure: f32) -> f32 {
         let g = self.strength_curve;
-        let p = if g == 1.0 || !(g > 0.0) {
+        let p = if g == 1.0 || g.is_nan() || g <= 0.0 {
             pressure
         } else {
             pressure.clamp(0.0, 1.0).powf(g)

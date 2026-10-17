@@ -114,7 +114,9 @@ cores = a do Godot 4.7.2. Cor de alerta: `danger` reprovou (3,49–4,39:1 na lin
 
 ## 8. ABERTO
 
-- O sublinhado de «link» com Ctrl+rato (`symbol_lookup_on_click` do Godot, VS Code) **não** foi feito.
+- Ctrl+rato sobre um nome clicável: ponteiro em **mão** + sublinhado de «link» (`symbol_lookup_on_click`
+  do Godot, VS Code) **não** foi feito. **Smoke do dono OK (17/10)**, e ele pediu isto para o ACABAMENTO
+  (fim da fila, I15): só sobre o que o Ctrl+clique de facto leva a algum sítio.
 - F13–F24 não são traduzidos (`Key::F` leva o número, a shell só emite F1–F12).
 - A definição noutro script não existe (cada script é um ambiente, I0b §6 — nunca acontece).
 - O servidor parado mantém as cores (seguem as edições até a próxima pergunta que não vem).

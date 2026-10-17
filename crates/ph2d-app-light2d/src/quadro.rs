@@ -457,7 +457,11 @@ impl LuzDoQuadro {
                 return;
             }
             self.montagens += 1;
-            Solver::novo_com(gpu, cfg, &self.fabrica).map(|solver| {
+            Solver::novo_com(gpu, cfg, &self.fabrica).map(|mut solver| {
+                // ⭐ W5y — INSTRUMENTO: as etapas da holográfica, cada uma no seu passe (a c2 fica 0).
+                if std::env::var_os("PH2D_LIGHT2D_FASES").is_some() {
+                    let _ = solver.medir_fases_da_hrc(gpu);
+                }
                 let vista = solver
                     .fluencia()
                     .create_view(&wgpu::TextureViewDescriptor::default());
@@ -487,6 +491,7 @@ impl LuzDoQuadro {
             self.alvo_px,
         );
         r.solver.regiao_fina(inicio, fim);
+        let sozinha = leituras::sozinha(gpu);
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -540,13 +545,20 @@ impl LuzDoQuadro {
                 ..self.cena.clone()
             };
             e.gravar_com_sprites(gpu, &mut enc, &sem_ceu, &sprites);
+            if sozinha >= 2 {
+                enc = leituras::enviar_e_esperar(gpu, enc);
+            }
         }
         r.solver.somar_entorno(gpu, self.entorno.as_ref());
         self.relatorio = Some(
             r.solver
                 .gravar_com_sprites(gpu, &mut enc, &self.cena, &sprites),
         );
-        gpu.queue.submit([enc.finish()]);
+        if sozinha >= 1 {
+            drop(leituras::enviar_e_esperar(gpu, enc));
+        } else {
+            gpu.queue.submit([enc.finish()]);
+        }
         if let Some((t0, acesa @ false)) = &mut self.tempo {
             *acesa = true;
             let placa = gpu.adapter.get_info();
@@ -584,7 +596,7 @@ impl LuzDoQuadro {
                 onde,
                 self.leituras,
                 gpu,
-                r.solver.buffers_da_holografica(),
+                (&r.solver, self.entorno.as_ref()),
             );
             if p.automatica {
                 let custo = crate::qualidade::Custo {

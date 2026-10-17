@@ -591,6 +591,23 @@ impl Solver {
         self.hrc.as_ref().map_or(&[], |h| &h.grandes)
     }
 
+    /// ⭐ W5y — DIAGNÓSTICO: as texturas da lista e o buffer dos ladrilhos, com o rótulo — emprestados
+    /// (o solver já os guarda: a régua não muda a alocação, ao contrário dos clones da holográfica).
+    #[doc(hidden)]
+    pub fn recursos_da_lista(
+        &self,
+    ) -> (
+        impl Iterator<Item = (&'static str, &wgpu::Texture)>,
+        Option<(&'static str, &wgpu::Buffer)>,
+    ) {
+        let texturas = self.lista.texturas.iter().map(|t| t.nome).zip(&self.texturas);
+        let ladrilhos = self
+            .ladrilhos
+            .as_ref()
+            .map(|l| (NOME_LADRILHOS, &l.buffer));
+        (texturas, ladrilhos)
+    }
+
     /// A configuração efetiva (a grade já estendida).
     #[must_use]
     pub fn config(&self) -> &Config {

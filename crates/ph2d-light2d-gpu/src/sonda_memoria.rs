@@ -47,6 +47,27 @@ fn escrever(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups
 }
 ";
 
+/// ⭐ W5y — ler uma textura inteira (nível 0) em sequência; a declaração da textura (`f32` ou `u32`)
+/// vem à frente ([`SondaDeMemoria::ms_textura`]).
+const WGSL_TEXTURA: &str = r"
+struct P { n: u32, largura: u32 }
+@group(0) @binding(1) var<storage, read_write> saida: array<u32>;
+@group(0) @binding(2) var<uniform> p: P;
+@compute @workgroup_size(256)
+fn ler(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
+  let passo = nw.x * 256u;
+  var acc = vec4<u32>(0u);
+  var i = g.x;
+  loop {
+    if i >= p.n { break; }
+    acc ^= bitcast<vec4<u32>>(textureLoad(t, vec2<u32>(i % p.largura, i / p.largura), 0));
+    i += passo;
+  }
+  let s = acc.x ^ acc.y ^ acc.z ^ acc.w;
+  if s == 0x12345679u { saida[0] = s; }
+}
+";
+
 /// O núcleo de medida.
 #[derive(Clone, Copy)]
 pub enum Medida {
@@ -69,6 +90,8 @@ pub struct SondaDeMemoria {
     ler: wgpu::ComputePipeline,
     saltar: wgpu::ComputePipeline,
     escrever: wgpu::ComputePipeline,
+    /// ⭐ W5y — ler uma textura: `[f32, u32]`.
+    texturas: [(wgpu::BindGroupLayout, wgpu::ComputePipeline); 2],
     saida: wgpu::Buffer,
     consultas: wgpu::QuerySet,
     resolvido: wgpu::Buffer,
@@ -125,6 +148,46 @@ impl SondaDeMemoria {
                 cache: None,
             })
         };
+        let textura = |tipo: &str, amostra: wgpu::TextureSampleType| {
+            let modulo = d.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("luz2d sonda de memória textura"),
+                source: wgpu::ShaderSource::Wgsl(
+                    format!("@group(0) @binding(0) var t: texture_2d<{tipo}>;\n{WGSL_TEXTURA}")
+                        .into(),
+                ),
+            });
+            let bgl = d.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("luz2d sonda de memória textura"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: amostra,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    entrada(1, armazem),
+                    entrada(2, wgpu::BufferBindingType::Uniform),
+                ],
+            });
+            let layout = d.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("luz2d sonda de memória textura"),
+                bind_group_layouts: &[Some(&bgl)],
+                immediate_size: 0,
+            });
+            let pl = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("ler textura"),
+                layout: Some(&layout),
+                module: &modulo,
+                entry_point: Some("ler"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            });
+            (bgl, pl)
+        };
         let pequeno = |nome: &'static str, usage: wgpu::BufferUsages| {
             d.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(nome),
@@ -139,6 +202,10 @@ impl SondaDeMemoria {
             ler: pipeline("ler"),
             saltar: pipeline("saltar"),
             escrever: pipeline("escrever"),
+            texturas: [
+                textura("f32", wgpu::TextureSampleType::Float { filterable: false }),
+                textura("u32", wgpu::TextureSampleType::Uint),
+            ],
             bgl,
             saida: pequeno("luz2d sonda saida", wgpu::BufferUsages::STORAGE),
             consultas: d.create_query_set(&wgpu::QuerySetDescriptor {
@@ -172,18 +239,72 @@ impl SondaDeMemoria {
             .fold(f64::INFINITY, f64::min)
     }
 
-    fn grupo(&self, dados: &wgpu::Buffer, modo: u32) -> wgpu::BindGroup {
-        let tam = dados.size() / 16 * 16;
+    /// ⭐ W5y — o mínimo de `n` leituras de `textura` inteira (nível 0, em sequência), em ms, e os bytes
+    /// lidos; `None` sem `TEXTURE_BINDING`, fora de 2D ou com amostra que não é `f32`/`u32`.
+    #[must_use]
+    pub fn ms_textura(&self, textura: &wgpu::Texture, n: usize) -> Option<(f64, u64)> {
+        if !textura
+            .usage()
+            .contains(wgpu::TextureUsages::TEXTURE_BINDING)
+            || textura.dimension() != wgpu::TextureDimension::D2
+        {
+            return None;
+        }
+        let formato = textura.format();
+        let (bgl, pl) = match formato.sample_type(None, Some(self.device.features()))? {
+            wgpu::TextureSampleType::Float { .. } => &self.texturas[0],
+            wgpu::TextureSampleType::Uint => &self.texturas[1],
+            _ => return None,
+        };
+        let (w, h) = (textura.width(), textura.height());
+        let bytes = u64::from(formato.block_copy_size(None)?) * u64::from(w) * u64::from(h);
+        let vista = textura.create_view(&wgpu::TextureViewDescriptor {
+            base_mip_level: 0,
+            mip_level_count: Some(1),
+            ..Default::default()
+        });
+        let u = self.uniforme(w.saturating_mul(h), w);
+        let grupo = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("luz2d sonda de memória textura"),
+            layout: bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&vista),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.saida.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: u.as_entire_binding(),
+                },
+            ],
+        });
+        let ms = (0..n.max(1))
+            .map(|_| self.mede(pl, &grupo))
+            .fold(f64::INFINITY, f64::min);
+        Some((ms, bytes))
+    }
+
+    fn uniforme(&self, a: u32, b: u32) -> wgpu::Buffer {
         let u = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("luz2d sonda uniforme"),
             size: 16,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let mut b = [0u8; 16];
-        b[..4].copy_from_slice(&u32::try_from(tam / 16).unwrap_or(u32::MAX).to_le_bytes());
-        b[4..8].copy_from_slice(&modo.to_le_bytes());
-        self.queue.write_buffer(&u, 0, &b);
+        let mut v = [0u8; 16];
+        v[..4].copy_from_slice(&a.to_le_bytes());
+        v[4..8].copy_from_slice(&b.to_le_bytes());
+        self.queue.write_buffer(&u, 0, &v);
+        u
+    }
+
+    fn grupo(&self, dados: &wgpu::Buffer, modo: u32) -> wgpu::BindGroup {
+        let tam = dados.size() / 16 * 16;
+        let u = self.uniforme(u32::try_from(tam / 16).unwrap_or(u32::MAX), modo);
         self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("luz2d sonda de memória"),
             layout: &self.bgl,

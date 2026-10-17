@@ -2,7 +2,7 @@
 //! pelo tecto de 700 LOC (W5j).
 
 use ph2d_editor_core::luz_edits::NivelDaLuz;
-use ph2d_light2d_gpu::{Config, Grade, Medida, SondaDeMemoria, TemposMs};
+use ph2d_light2d_gpu::{Config, Grade, Medida, Solver, SondaDeMemoria, TemposMs};
 
 /// A configuração da vista, a grade da fluência, a região da janela nela e a janela.
 type Onde<'a> = (&'a Config, Grade, ([u32; 2], [u32; 2]), (u32, u32));
@@ -21,7 +21,7 @@ pub(super) fn relatar_custo(
     onde: Onde<'_>,
     n: u32,
     gpu: &ph2d_gpu::GpuContext,
-    buffers: &[(&'static str, wgpu::Buffer)],
+    solvers: (&Solver, Option<&Solver>),
 ) -> bool {
     if std::env::var_os("PH2D_LIGHT2D_CUSTO").is_none() {
         return false;
@@ -30,6 +30,23 @@ pub(super) fn relatar_custo(
     janela.total.push(total);
     janela.c2.push(t.c2_total());
     janela.fina.push(t.c3_fina);
+    // ⭐ W5y: `PH2D_LIGHT2D_SERIE=1` — cada leitura (a c2 muda DENTRO de uma geração: a janela esconde quando).
+    if std::env::var_os("PH2D_LIGHT2D_SERIE").is_some() {
+        // E o alocador da placa (o processo inteiro): um degrau da c2 casa com uma alocação de fora?
+        let (n_aloc, mib, blocos) = gpu.device.generate_allocator_report().map_or((0, 0, 0), |r| {
+            (
+                r.allocations.len(),
+                r.total_allocated_bytes >> 20,
+                r.blocks.len(),
+            )
+        });
+        eprintln!(
+            "[luz2d] série g{} w{} · c2 {:.3} · total {total:.3} · aloc {n_aloc} {mib} MiB {blocos} blocos",
+            janela.geracao,
+            janela.n,
+            t.c2_total()
+        );
+    }
     if !n.is_multiple_of(60) {
         return false;
     }
@@ -43,8 +60,26 @@ pub(super) fn relatar_custo(
         janela.n,
         janela.c2.len(),
     );
+    // ⭐ W5y: `PH2D_LIGHT2D_FASES=1` — as etapas da holográfica da vista (somadas nos níveis), por janela.
+    if let Some(f) = solvers.0.fases_da_hrc(gpu) {
+        let mut etapas: Vec<(&str, f64)> = Vec::new();
+        for (nome, _, ms, _) in f {
+            match etapas.iter_mut().find(|e| e.0 == nome) {
+                Some(e) => e.1 += ms,
+                None => etapas.push((nome, ms)),
+            }
+        }
+        let soma: f64 = etapas.iter().map(|e| e.1).sum();
+        let partes: Vec<String> = etapas.iter().map(|(n, ms)| format!("{n} {ms:.3}")).collect();
+        eprintln!(
+            "[luz2d] fases g{} w{} · Σ {soma:.3} · {}",
+            janela.geracao,
+            janela.n,
+            partes.join(" · ")
+        );
+    }
     if janela.n == 0 && std::env::var_os("PH2D_LIGHT2D_MEMORIA").is_some() {
-        relatar_memoria(janela, gpu, buffers);
+        relatar_memoria(janela, gpu, solvers);
     }
     janela.total.clear();
     janela.c2.clear();
@@ -109,11 +144,12 @@ pub(super) struct JanelaDeCusto {
 
 /// ⭐ W5x — `PH2D_LIGHT2D_MEMORIA=1` (com o `CUSTO`): a BANDA de ler cada buffer grande da holográfica da
 /// vista, sozinho (1× por geração, na 1.ª janela): os zeros em páginas comprimíveis leem-se a ~4× a banda da DRAM, fora delas à banda da DRAM —
-/// o regime da `c2` do High é a soma destes (handoff W5x).
+/// o regime da `c2` do High é a soma destes (handoff W5x). ⭐ W5y: e as texturas da lista e os ladrilhos, da vista
+/// e do entorno (emprestados: não mudam a alocação; `=lista` dispensa os clones da holográfica).
 fn relatar_memoria(
     janela: &mut JanelaDeCusto,
     gpu: &ph2d_gpu::GpuContext,
-    buffers: &[(&'static str, wgpu::Buffer)],
+    (vista, entorno): (&Solver, Option<&Solver>),
 ) {
     if janela.sonda.is_none() {
         janela.sonda = SondaDeMemoria::nova(gpu);
@@ -121,24 +157,82 @@ fn relatar_memoria(
     let Some(sonda) = janela.sonda.as_ref() else {
         return;
     };
+    let g = janela.geracao;
+    for (quem, s) in [("vista", Some(vista)), ("entorno", entorno)] {
+        let Some(s) = s else { continue };
+        let hrc = s
+            .buffers_da_holografica()
+            .iter()
+            .map(|(nome, b)| (*nome, b.size(), sonda.ms(b, Medida::Ler, 3)));
+        linha_de_memoria(g, quem, "hrc", hrc);
+        // ⭐ W5y: aos SALTOS (4096 × 256 fios × 16 leituras de 16 B): a subida e a descida leem espalhado.
+        let saltos = s.buffers_da_holografica().iter().map(|(nome, b)| {
+            (*nome, 4096 * 256 * 16 * 16, sonda.ms(b, Medida::Saltar, 3))
+        });
+        linha_de_memoria(g, quem, "saltos", saltos);
+        // ⭐ W5y: as texturas da lista (≥ 1 MiB; as menores cabem no L2) e os ladrilhos.
+        let (texturas, ladrilhos) = s.recursos_da_lista();
+        let outros = texturas
+            .filter_map(|(nome, t)| sonda.ms_textura(t, 3).map(|(ms, bytes)| (nome, bytes, ms)))
+            .filter(|(_, bytes, _)| *bytes >= 1 << 20)
+            .chain(ladrilhos.map(|(nome, b)| (nome, b.size(), sonda.ms(b, Medida::Ler, 3))));
+        linha_de_memoria(g, quem, "lista", outros);
+    }
+}
+
+/// `[luz2d] memória g<g> · <quem> <grupo> · Σler <ms> ms · <nome> <GB/s>/<MiB> …`.
+fn linha_de_memoria(
+    g: u32,
+    quem: &str,
+    grupo: &str,
+    medidas: impl Iterator<Item = (&'static str, u64, f64)>,
+) {
     let mut soma = 0.0;
-    let partes: Vec<String> = buffers
-        .iter()
-        .map(|(nome, b)| {
-            let ms = sonda.ms(b, Medida::Ler, 3);
+    let partes: Vec<String> = medidas
+        .map(|(nome, bytes, ms)| {
             soma += ms;
+            let curto = nome
+                .trim_start_matches("luz2d/buf/hrc_")
+                .trim_start_matches("luz2d/buf/")
+                .trim_start_matches("luz2d/tex/");
             format!(
-                "{} {:.0}",
-                nome.trim_start_matches("luz2d/buf/hrc_"),
-                b.size() as f64 / (ms * 1e-3) / 1e9
+                "{curto} {:.0}/{:.1}",
+                bytes as f64 / (ms * 1e-3) / 1e9,
+                bytes as f64 / f64::from(1 << 20)
             )
         })
         .collect();
     eprintln!(
-        "[luz2d] memória g{} · Σler {soma:.3} ms · GB/s: {}",
-        janela.geracao,
+        "[luz2d] memória g{g} · {quem} {grupo} · Σler {soma:.3} ms · GB/s/MiB: {}",
         partes.join(" · ")
     );
+}
+
+/// ⭐ W5y — INSTRUMENTO `PH2D_LIGHT2D_SOZINHA=1|2`: a luz corre com a placa ociosa (1: espera antes e
+/// depois do envio dela; 2: e o entorno num envio próprio). O carimbo de um passe conta o tempo de parede,
+/// o trabalho que corre AO LADO incluído. 0 sem a variável (e sem espera).
+pub(super) fn sozinha(gpu: &ph2d_gpu::GpuContext) -> u8 {
+    let n = std::env::var("PH2D_LIGHT2D_SOZINHA")
+        .ok()
+        .and_then(|v| v.trim().parse::<u8>().ok())
+        .unwrap_or(0);
+    if n > 0 {
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    }
+    n
+}
+
+/// Envia `enc`, espera a placa e devolve um codificador novo.
+pub(super) fn enviar_e_esperar(
+    gpu: &ph2d_gpu::GpuContext,
+    enc: wgpu::CommandEncoder,
+) -> wgpu::CommandEncoder {
+    gpu.queue.submit([enc.finish()]);
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    gpu.device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("luz2d quadro do editor"),
+        })
 }
 
 fn min_e_mediana(v: &mut [f64]) -> (f64, f64) {

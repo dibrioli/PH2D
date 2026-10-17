@@ -100,8 +100,9 @@ pub fn config_da_vista(
         face_pelo_ponto: ligado("PH2D_LIGHT2D_FACE_PONTO"),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),
-        // ⭐ W5x: a régua da memória (`PH2D_LIGHT2D_MEMORIA=1`) mede os buffers da holográfica da vista.
-        hrc_guarda_os_grandes: std::env::var_os("PH2D_LIGHT2D_MEMORIA").is_some(),
+        // ⭐ W5x: a régua da memória (`PH2D_LIGHT2D_MEMORIA=1`) mede os buffers da holográfica da vista;
+        // ⭐ W5y: `=lista` mede só o que o solver já guarda (sem clones: a alocação do produto).
+        hrc_guarda_os_grandes: std::env::var("PH2D_LIGHT2D_MEMORIA").is_ok_and(|v| v != "lista"),
         // ⭐ W5q: `=0` = o anel na grade inteira (o mesmo bit, mais lento; comparar).
         anel_por_ladrilhos: ligado("PH2D_LIGHT2D_LADRILHOS"),
         hrc_por_colunas: hrc_por_colunas(),

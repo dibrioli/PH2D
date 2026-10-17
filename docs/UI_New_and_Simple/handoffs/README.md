@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**63 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **63** são handoffs (registro **morto**).
+**69 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **69** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -77,7 +77,13 @@
 | 2026-10-12 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F13_SELECIONAR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F13_SELECIONAR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-12 — F13: O MODO FORMA SELECCIONA, A *RESIZE BOX* GUARDA O TRAÇO,… |
 | 2026-10-13 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-13_F14b.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-13_F14b.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 13/10 — F14b: três relatos do smoke da F14 |
 | 2026-10-13 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-13_F14_QUINAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-13_F14_QUINAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-13 — F14: O «CORNER ROUND» EM TODA FORMA QUE TEM QUINA |
-| 2026-10-13 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-13_F14b.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-13_F14b.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-13 — F14b: OS TRÊS RELATOS DO SMOKE DA F14 |
+| 2026-10-13 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-13_F14b.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-13_F14b.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-13 — F14b: OS TRÊS RELATOS DO SMOKE DA F14 |
+| 2026-10-14 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-14_REABERTA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-14_REABERTA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 14/10 — reaberta sobre o main novo |
+| 2026-10-15 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F15_BARRA_DE_CONTROLE.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F15_BARRA_DE_CONTROLE.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 15/10 — F15 (a ④ recebe Arrange/Align) feita; próximo: a barra de contro… |
+| 2026-10-15 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16_BARRA_DE_CONTROLE.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16_BARRA_DE_CONTROLE.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 15/10 — F16 a/b (a ② vira a barra de controle do Illustrator, o traço) f… |
+| 2026-10-15 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16c_TRACEJADO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16c_TRACEJADO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 15/10 — F16c (tracejado em até três pares, seta por ponta) feita |
+| 2026-10-16 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-16_F17_ABAS.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-16_F17_ABAS.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 16/10 — F17 (abas Drawing/Interface no painel do vetor) feita |
+| 2026-10-17 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-17 — F16–F17 (barra de controle, tracejado em pares, abas Drawing… |
 
 ---
 

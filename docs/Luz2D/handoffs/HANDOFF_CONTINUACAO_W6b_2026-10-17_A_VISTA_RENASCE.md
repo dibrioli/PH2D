@@ -2,7 +2,8 @@
 
 > Regras R1–R9: as do [handoff W5f](HANDOFF_CONTINUACAO_W5f_2026-10-11.md). Linha `line/Luz2D` reaberta sobre o
 > `main` `ad5f8fe39c` (W5x–W6a integradas em 17/10). Item 1 do §3 da [W6a](HANDOFF_CONTINUACAO_W6a_2026-10-17_O_EVENTO_DO_DRIVER.md):
-> a cura C1, com o kill-criterion escrito lá ANTES de medir. Placa RTX 5060 Ti, `wgpu` 29.0.4. **EM CURSO.**
+> a cura C1, com o kill-criterion escrito lá ANTES de medir. Placa RTX 5060 Ti, `wgpu` 29.0.4. Commits:
+> `fe49f1a384` (C1) · `c249604f7c` (C1b, variante) · o deste handoff (C1b é a única; a C1 sai). **C1b PASSA.**
 
 ## 1. A cura C1 (`fe49f1a384`)
 
@@ -47,3 +48,39 @@ A vista larga-se, a placa espera (`device.poll(wait)`) que o driver a destrua, e
 sítio. Régua: a da §2 (C1b × OFF, 6 + 6 limpos, intercalados). **Passa** se C1b 6/6 ≤ 11,65, os blocos do alocador
 depois do renascimento = antes (12), e sem ela ≥ 1 processo com o evento (≥ 12,2). **Morre** se algum C1b ≥ 12,2,
 renasce > 2× ou a imagem muda. Se nem passa nem morre: fica a melhor das duas pela mediana dos 6.
+
+**Medido** (12 processos, 12 limpos, `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=2` no binário de `c249604f7c`):
+
+| | c2 do último terço (ms) | blocos antes → depois |
+|---|---|---|
+| **C1b** | 11,522 · 11,497 · 11,533 · 11,486 · 11,483 · 11,485 | 12 → 12 (6/6) |
+| **OFF** | 12,567 · 12,909 · 12,496 · 12,617 · 12,615 · 12,972 | 12 → 12 |
+
+Evento em 12/12 (2,8–89 s depois do nascimento); cada C1b renasce 1×, depois do pico. **PASSA**: 6/6 ≤ 11,65, os
+blocos iguais, OFF 6/6 ≥ 12,2, ≤ 2 renascimentos, os bits iguais (o portão corre o mesmo `renascer`). A C1b ficou o
+único caminho (`device.poll(wait)` depois de largar a vista, no fim do quadro); a C1 sai do código.
+
+## 4. ABERTO, por ordem
+
+1. Itens 2–3 do §4 da W5z: o berço e o nascer 2× só servem o caminho em buffer (retirar é decisão de produto) ·
+   «bloco inteiro × páginas» (W5x §5.2, só noutra placa) · W5w §8 itens 2–4.
+2. O piso do vigia inclui a 1.ª leitura de cada nascimento, sistematicamente mais baixa (11,24 contra ~11,7 depois;
+   §2): a assinatura dispara mais cedo sob contenção. Medido sem consequência na régua (≤ 1 renascimento nos limpos);
+   não mexido — a assinatura é a do kill-criterion.
+3. Os outros solvers (o entorno) não renascem: o evento mede-se na `c2` da vista (W6a §2).
+
+## 5. ⛔ Recusas MEDIDAS (somam às da W6a §4, W5z §5, W5y §5 e W5x §8)
+
+| Recusa | Medida |
+|---|---|
+| C1: renascer sem soltar a vista velha (a nova monta-se no quadro seguinte) | Não passa: 11,80–11,89 com evento (1/6 ≤ 11,65); o alocador 12 → 16–17 blocos e +1 GB que não volta (§2). |
+| Um detector de «alheios» só pela lista de COMPUTAÇÃO do `nvidia-smi` | Cego ao Chrome (só G): a contenção dele leu-se como c2 de 15–18 (§2). |
+
+## 6. Para o integrador
+
+Sem contrato congelado, sem schema. API nova `doc(hidden)`: `LuzDoQuadro::renascer_a_vista` (o portão). Ficheiros
+novos: `src/quadro_renasce.rs`, `tests/it/a_vista_renasce_com_os_mesmos_bits.rs`. Variável nova:
+`PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` (desliga). LOC: `quadro.rs` 697/700 (só a fiação: o campo, a montagem, a leitura
+e o fim do quadro) · `quadro_renasce.rs` ~200. CLAUDE.md §5.1 Luz 2D: «Último:» para este handoff.
+Roteiros da régua (fora do repo): laço ABBA sobre `mede_custo_no_app.sh` com o detector da tabela INTEIRA do
+`nvidia-smi` (C e G, com lista branca da área de trabalho) e 60 s de placa livre antes de cada processo.

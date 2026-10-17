@@ -1,11 +1,11 @@
-//! ⭐ W6b — **C1: a vista renasce quando a PLACA a degrada** (handoff W6a §3). Um evento interno do driver
-//! (1× por processo, depois de um dos primeiros nascimentos) deixa a `c2` da vista ~+0,9 ms até ela
-//! renascer; depois dele todo nascimento é rápido. O vigia lê a `c2` que o governador já lê a cada quadro e
+//! ⭐ W6b — **a vista renasce quando a PLACA a degrada** ([handoff W6b](../../../docs/Luz2D/handoffs/HANDOFF_CONTINUACAO_W6b_2026-10-17_A_VISTA_RENASCE.md)).
+//! Um evento interno do driver (1× por processo) deixa a `c2` da vista ~+0,9 ms até ela renascer; depois dele
+//! todo nascimento é rápido. O vigia lê a `c2` que o governador já lê a cada quadro e
 //! reconhece a ASSINATURA: uma leitura ≥ [`PICO`]× o piso da geração e, nas [`LEITURAS_DEPOIS`] seguintes, o
 //! mínimo ≥ piso + max([`MARGEM_MS`], [`MARGEM_REL`]·piso). No máximo [`MAX_POR_PROCESSO`] vezes; o nascimento
-//! é determinístico (os bits não mudam). `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` desliga (a régua ON × OFF); `=2` é a
-//! C1b: a vista velha SOLTA-SE antes de a nova montar (W6b §3 — montada com a velha viva no driver, a nova ia
-//! para blocos novos do alocador, 12 → 16–17, e ficava +0,15–0,25 ms).
+//! é determinístico (os bits não mudam). A vista velha SOLTA-SE antes de a nova montar: montada com a velha viva
+//! no driver, a nova ia para blocos novos do alocador (12 → 16–17) e ficava +0,15–0,25 ms (W6b §2–3).
+//! `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` desliga (a régua ON × OFF).
 
 /// A leitura que DISPARA a vigília: a do evento vai a ~2,6× e ~4,7× o piso (W6a §2).
 const PICO: f64 = 2.0;
@@ -21,8 +21,6 @@ const MAX_POR_PROCESSO: u32 = 2;
 #[derive(Debug, Default)]
 pub(super) struct Vigia {
     ligado: bool,
-    /// ⭐ C1b: espera a placa destruir a vista velha antes de a nova montar.
-    solta_antes: bool,
     /// O mínimo da `c2` desde o último nascimento.
     piso: Option<f64>,
     /// Vigília aberta: `(piso no pico, leituras que faltam, mínimo delas)`.
@@ -33,14 +31,11 @@ pub(super) struct Vigia {
 }
 
 impl Vigia {
-    /// Ligado salvo `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0`; `=2` = a C1b (lida em execução: o MESMO binário
-    /// mede as variantes).
+    /// Ligado salvo `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` (lida em execução: o MESMO binário mede os dois).
     pub(super) fn do_ambiente() -> Self {
-        let v = std::env::var("PH2D_LIGHT2D_RENASCE_SE_DEGRADA").unwrap_or_default();
-        Self {
-            solta_antes: v.trim() == "2",
-            ..Self::com(v.trim() != "0")
-        }
+        let desligado =
+            std::env::var("PH2D_LIGHT2D_RENASCE_SE_DEGRADA").is_ok_and(|v| v.trim() == "0");
+        Self::com(!desligado)
     }
 
     pub(super) fn com(ligado: bool) -> Self {
@@ -91,8 +86,8 @@ impl Vigia {
         false
     }
 
-    /// O fim do quadro: havendo pedido, a vista larga-se (a próxima `gravar_com` monta-a de novo) — com a
-    /// C1b, depois de a placa a destruir.
+    /// O fim do quadro: havendo pedido, a vista larga-se e a placa espera destruí-la; a próxima `gravar_com`
+    /// monta a nova nos mesmos blocos.
     pub(super) fn renascer(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
@@ -100,9 +95,7 @@ impl Vigia {
     ) {
         if std::mem::take(&mut self.pedido) {
             *vista = None;
-            if self.solta_antes {
-                let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-            }
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         }
     }
 }

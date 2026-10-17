@@ -81,7 +81,7 @@ Vazio inclusive para o `layout.rs` da W6 (o padrão não o alcança; ver §3 do 
 ## §5 — Contadores (DELTA sobre o merge-base)
 
 Crates novas: **0** na W7 (2 na linha, W5d). Chaves i18n W7: **0**. Schema, ADR, contratos: 0. Cenas de smoke das Macros:
-`=1..4` (a próxima é `=5`). Recontar contra o `main` do dia — o número é o do código.
+`=1..5` (a próxima é `=6`; gate `ph2d-app-macros` `tests/it/cenas_do_smoke.rs`). Recontar contra o `main` do dia — o número é o do código.
 
 ## §6 — Prova de fecho (17/10)
 
@@ -106,17 +106,21 @@ Crates novas: **0** na W7 (2 na linha, W5d). Chaves i18n W7: **0**. Schema, ADR,
 Binário `--profile smoke` na worktree, 2.ª compilação:
 
 ```
-    Finished `smoke` profile [optimized] target(s) in 0.24s
+    Finished `smoke` profile [optimized] target(s) in 0.50s
 ```
 
-1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && PH2D_MACRO_SMOKE=1 ./target/smoke/ph2d-host-desktop`
-   — pintar à mão na imagem (modo Paint) e dar Play: a tinta fica por cima do clipe e, no fim do clipe, a imagem não
-   salta. Pintar ENQUANTO o clipe toca: o traço aparece. ⚠️ O caminho do traço ao vivo pela pré-visualização da PLACA em
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && PH2D_MACRO_SMOKE=5 ./target/smoke/ph2d-host-desktop`
+   — a cena abre JÁ pronta: a imagem «Canvas» seleccionada em modo Paint (barra BRUSH · C&F · PICK…), o clipe «Macro»
+   parado em Time 0, Autoplay desligado (`c32fb9ace4`; a `=1` continua a ensinar o Splash que toca sozinho). Pintar à
+   mão na imagem e dar o Play da Timeline (▷, painel de baixo): a tinta fica por cima do clipe e, no fim do clipe, a
+   imagem não salta. Pintar ENQUANTO o clipe toca: o traço aparece. ⚠️ O caminho do traço ao vivo pela pré-visualização da PLACA em
    Wet Paint só tem gate pelo contador — CONFIRMAR no smoke. Errado: a tinta some ao dar Play, ou a imagem salta no fim.
 2. `… PH2D_MACRO_SMOKE=4 ./target/smoke/ph2d-host-desktop` — pintar a pincelada por cima da faixa: o balão avança no
    momento de soltar; pular e esperar: não avança.
 
-Fotos (`fotografa_cena.sh`, 1930×1040, `smoke`): `=4` abre com a faixa marcada + balão «Step 1 of 4» + Restart/Show me;
+Fotos (`fotografa_cena.sh`, 1930×1040, `smoke`): `=5` (`/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/a0080127-b09b-4ff2-8804-aac5af83d76e/scratchpad/cena5.png`,
+espera 12 s) abre com a barra do Painter, a Canvas seleccionada na Hierarchy, Time 0, ▷ parado, Autoplay desmarcado,
+estado EDIT e o painel Macros com 4 passos; `=4` abre com a faixa marcada + balão «Step 1 of 4» + Restart/Show me;
 `=1` abre com a macro no clipe e o painel Macros com 4 passos. **Smoke do dono: PENDENTE.**
 
 ## §8 — ABERTO
@@ -135,7 +139,7 @@ Fotos (`fotografa_cena.sh`, 1930×1040, `smoke`): `=4` abre com a faixa marcada 
 8. Com etapas editadas, o último quadro mostra o editado e salta para a imagem crua quando o clipe pára (consequência de
    «fim = gravação crua»).
 9. `censo_dos_controlos.rs` tem 1 391 linhas (dívida anterior, em `tests/`).
-10. Smoke do dono de `=1` e `=4` (§7).
+10. Smoke do dono de `=5` e `=4` (§7).
 
 ## Retomar
 

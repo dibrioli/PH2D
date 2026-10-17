@@ -237,10 +237,29 @@ pub fn vela_da_camada(vela: f64, baixo: [f64; 3], cima: [f64; 3]) -> f64 {
 /// **Quanto da tinta molhada de uma célula é OUTRA tinta** para o pincel que chega (`0..1`): a parte da
 /// [`vela_da_camada`] que vem da diferença de pigmento, normalizada — a mesma tinta `0` (os carimbos de um traço
 /// não se empilham em camadas), vermelho sobre azul `1`.
+///
+/// Abaixo de [`OUTRA_TINTA_MINIMA`] é a MESMA tinta: a ponta suja (o azul que o vermelho apanhou) não faz de cada
+/// carimbo uma camada nova.
 #[inline]
 pub fn outra_tinta(a: [f64; 3], b: [f64; 3]) -> f64 {
-    (VELA_POR_DIFERENCA / (1.0 - VELA_DA_MESMA_TINTA) * diferenca_de_pigmento(a, b)).min(1.0)
+    let v =
+        (VELA_POR_DIFERENCA / (1.0 - VELA_DA_MESMA_TINTA) * diferenca_de_pigmento(a, b)).min(1.0);
+    if v < OUTRA_TINTA_MINIMA { 0.0 } else { v }
 }
+
+/// **O ruído da ponta suja** (prompt 42, `sonda_o_custo_do_glaze` + `sonda_a_celula_do_cruzamento`, o cruzamento
+/// de Glaze 1; sem Glaze o traço custa 15 ms):
+///
+/// | corte | traço | Dip Pen g0,8 · g1 (ecrã R) | Marker Bullet g1 |
+/// |---|---|---|---|
+/// | 0 | 99 ms | 97 · 51 | 21 |
+/// | **0,1** | **42 ms** | 97 · 47 | 19 |
+/// | 0,2 | 40 ms | 90 · 40 | 19 |
+/// | 0,4 | 47 ms | 90 · 40 | 19 (g0,8: 74) |
+///
+/// Sem corte, cada carimbo assentava um pouco da tinta da própria célula pela inversa (o Newton); 0,1 tira-o sem
+/// mudar o cruzamento; acima, ele já muda.
+pub const OUTRA_TINTA_MINIMA: f64 = 0.1;
 
 /// **Quão diferentes são os PIGMENTOS de duas tintas** (`0..1`): o seno do ângulo entre os perfis de absorção
 /// (`255 − cor`). A diluição muda o comprimento do perfil, não a direcção — a mesma tinta mais clara ou mais

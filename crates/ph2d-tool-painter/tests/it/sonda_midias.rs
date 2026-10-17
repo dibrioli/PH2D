@@ -521,3 +521,83 @@ fn sonda_a_celula_do_cruzamento() {
         }
     }
 }
+
+/// **SONDA (prompt 42): o CUSTO do Glaze** — o cruzamento da bancada (o azul recto e o vermelho que o cruza) e
+/// 120 quadros de água, com o Glaze do pincel 0 e 1 INTERCALADOS no mesmo processo; o mínimo de 9 por variante
+/// (`docs/DevOps/MEDIR_VELOCIDADE.md`).
+#[test]
+#[ignore = "sonda: o custo do Glaze (prompt 42); corre-se à mão"]
+fn sonda_o_custo_do_glaze() {
+    use super::sonda_gestos::{AZUL, VERMELHO, gesto};
+    let base = super::midias_de_fabrica::de_fabrica("Wet Liner");
+    let mut minimos = [(f64::MAX, f64::MAX); 2];
+    for volta in 0..18 {
+        let k = volta % 2;
+        let mut p = base.clone();
+        p.parametros.engine.insert("glaze".to_owned(), k as f64);
+        let mut t = tela();
+        t.set_wet_relogio_fixo(true);
+        assert!(t.wet_preset_aplicar(&p).is_empty());
+        t.set_brush_size_px(18.0);
+        t.set_brush_color_srgb8(AZUL);
+        gesto(&mut t, &[[60.0, 480.0], [560.0, 480.0]], 3.0, |_| 1.0);
+        t.set_brush_color_srgb8(VERMELHO);
+        let t0 = std::time::Instant::now();
+        gesto(&mut t, &[[300.0, 400.0], [300.0, 560.0]], 3.0, |_| 1.0);
+        let traco = t0.elapsed().as_secs_f64() * 1e3;
+        let t1 = std::time::Instant::now();
+        for _ in 0..120 {
+            t.on_tick(1000.0 / 60.0);
+        }
+        let agua = t1.elapsed().as_secs_f64() * 1e3;
+        minimos[k] = (minimos[k].0.min(traco), minimos[k].1.min(agua));
+    }
+    for (k, (traco, agua)) in minimos.iter().enumerate() {
+        println!("[custo] Glaze {k}: traço vermelho {traco:.1} ms · 120 quadros {agua:.1} ms");
+    }
+}
+
+// TMP-EQUIV (remover): a receita da sonda contra o preset de fábrica gerado.
+#[test]
+#[ignore = "tmp"]
+fn tmp_equivalencia() {
+    let out = saida();
+    let so = ["z_IB2_g100", "z_DP_g80", "z_IK_g90", "z_MB_h75", "z_ML_h90"];
+    let fab = [("z_IB2_g100", "Ink Brush"), ("z_DP_g80", "Dip Pen"), ("z_IK_g90", "Ink Bullet"), ("z_MB_h75", "Marker Bullet"), ("z_ML_h90", "Marker Liner")];
+    let fase = std::env::var("TMP_FASE").unwrap_or_default();
+    let todas = receitas();
+    std::thread::scope(|s| {
+        for c in todas.iter().filter(|c| so.contains(&c.nome.as_str())) {
+            let out = &out;
+            let fase = &fase;
+            s.spawn(move || {
+                let pinta = |p: &Preset, r: f32, q: u32, nome: String| {
+                    let mut t = tela();
+                    t.set_wet_relogio_fixo(true);
+                    assert!(t.wet_preset_aplicar(p).is_empty());
+                    t.set_brush_size_px(r);
+                    let (px, w, h) = pinta_cena_ate(&mut t, q);
+                    escreve_ppm(&out.join(format!("{nome}.ppm")), &px, w, h);
+                    println!("[eq] {nome:<28} raio {r:.3} fnv {:#018x}", fnv1a(&px));
+                };
+                if fase == "fab" {
+                    let n = fab.iter().find(|f| f.0 == c.nome).unwrap().1;
+                    let p = super::midias_de_fabrica::de_fabrica(n);
+                    pinta(&p, c.alvo * 0.5, 480, format!("{}_fab480", c.nome));
+                    pinta(&p, c.alvo * 0.5, 1800, format!("{}_fab1800", c.nome));
+                    return;
+                }
+                let p = preset_de(c);
+                let lei: Vec<(f32, f32)> = RAIOS_CANDIDATO.iter().map(|&r| (r, largura_ao_raio(&p, r))).collect();
+                let r = raio_para(&lei, c.alvo).unwrap();
+                pinta(&p, r, 480, format!("{}_sonda480", c.nome));
+                pinta(&p, r, 1800, format!("{}_sonda1800", c.nome));
+                let mut q = p.clone();
+                for k in ["felt", "bristleCount", "bristleSize"] {
+                    q.parametros.engine.remove(k);
+                }
+                pinta(&q, r, 480, format!("{}_semcerdas480", c.nome));
+            });
+        }
+    });
+}

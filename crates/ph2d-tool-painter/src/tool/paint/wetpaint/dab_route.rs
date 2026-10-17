@@ -354,15 +354,16 @@ impl PainterTool {
             // O alcance da ponta de imagem (Bug #52): o motor percorre `r · reach` células, e a
             // janela do rasto cabe o máximo do traço (com rotação por dab, o disco de qualquer ângulo).
             // A ponta reta (prompt 44): o canto do quadrado rodado sai do disco — a caixa é a da pegada
-            // DESTE dab (`fp`, com a rotação dele), e a janela a do canto em qualquer ângulo.
+            // DESTE dab (`fp`, com a rotação dele); a janela só precisa do canto em QUALQUER ângulo quando a
+            // pegada roda por dab (o Follow, o Jitter Rotate) — fixa, a do dab basta (medido: 1,21× o custo).
             let mut reach = spec.dab_tip_reach(shape_basis.as_ref());
             if spec.dab_quina > 0.0 {
                 let e = fp.extent();
                 reach = reach.max(e[0].max(e[1]));
             }
-            let janela = if spec.shape_has_per_dab_rotation(shape_image.is_some())
-                || spec.dab_quina > 0.0
-            {
+            let quina_roda =
+                spec.dab_quina > 0.0 && (spec.follows_stroke() || spec.has_per_dab_rotation());
+            let janela = if spec.shape_has_per_dab_rotation(shape_image.is_some()) || quina_roda {
                 spec.tip_reach().max(reach)
             } else {
                 reach

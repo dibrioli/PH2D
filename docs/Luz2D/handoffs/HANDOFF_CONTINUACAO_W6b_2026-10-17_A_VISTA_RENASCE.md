@@ -62,18 +62,25 @@ blocos iguais, OFF 6/6 ≥ 12,2, ≤ 2 renascimentos, os bits iguais (o portão 
 
 ## 4. ABERTO, por ordem
 
-1. Itens 2–3 do §4 da W5z: o berço e o nascer 2× só servem o caminho em buffer (retirar é decisão de produto) ·
+1. **O piscar do renascimento.** O pedido larga a vista no FIM do `gravar_com`; o `ligar` desse quadro vê a luz
+   apagada (receptores neutros): UM quadro sem luz, 1× por sessão (e o rebote volta a assentar em ~11 quadros, K9).
+   Largar e montar no início do quadro seguinte (`67c2e1bdac`, revertido) tira o piscar mas reprova (§5): os
+   receptores ainda seguram a fluência velha (bind groups do `ligar` anterior) quando a nova monta. Cura proposta,
+   por medir: a vista nova ADOTA a textura da fluência da velha (limpa: os bits da nova), ou o `ligar` solta os
+   receptores antes da montagem. Kill-criterion a escrever ANTES: o da §3, mais «nenhum quadro sem luz» (o portão).
+2. Itens 2–3 do §4 da W5z: o berço e o nascer 2× só servem o caminho em buffer (retirar é decisão de produto) ·
    «bloco inteiro × páginas» (W5x §5.2, só noutra placa) · W5w §8 itens 2–4.
-2. O piso do vigia inclui a 1.ª leitura de cada nascimento, sistematicamente mais baixa (11,24 contra ~11,7 depois;
+3. O piso do vigia inclui a 1.ª leitura de cada nascimento, sistematicamente mais baixa (11,24 contra ~11,7 depois;
    §2): a assinatura dispara mais cedo sob contenção. Medido sem consequência na régua (≤ 1 renascimento nos limpos);
    não mexido — a assinatura é a do kill-criterion.
-3. Os outros solvers (o entorno) não renascem: o evento mede-se na `c2` da vista (W6a §2).
+4. Os outros solvers (o entorno) não renascem: o evento mede-se na `c2` da vista (W6a §2).
 
 ## 5. ⛔ Recusas MEDIDAS (somam às da W6a §4, W5z §5, W5y §5 e W5x §8)
 
 | Recusa | Medida |
 |---|---|
 | C1: renascer sem soltar a vista velha (a nova monta-se no quadro seguinte) | Não passa: 11,80–11,89 com evento (1/6 ≤ 11,65); o alocador 12 → 16–17 blocos e +1 GB que não volta (§2). |
+| Largar, esperar e montar no início do quadro seguinte (sem o quadro sem luz; `67c2e1bdac`, revertido) | 2 processos limpos: 11,648 · 11,624, o alocador 12 → **13** blocos — reprova os «blocos iguais»; a fluência velha ainda presa nos receptores. |
 | Um detector de «alheios» só pela lista de COMPUTAÇÃO do `nvidia-smi` | Cego ao Chrome (só G): a contenção dele leu-se como c2 de 15–18 (§2). |
 
 ## 6. Para o integrador
@@ -82,5 +89,27 @@ Sem contrato congelado, sem schema. API nova `doc(hidden)`: `LuzDoQuadro::renasc
 novos: `src/quadro_renasce.rs`, `tests/it/a_vista_renasce_com_os_mesmos_bits.rs`. Variável nova:
 `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` (desliga). LOC: `quadro.rs` 697/700 (só a fiação: o campo, a montagem, a leitura
 e o fim do quadro) · `quadro_renasce.rs` ~200. CLAUDE.md §5.1 Luz 2D: «Último:» para este handoff.
+## 7. Fecho da onda e smoke
+
+`cargo fmt --all` · `clippy -p ph2d-app-light2d --all-targets -D warnings` (`PH2D_SUITE=onda`) · os testes da onda
+por nome (`renasce`, o censo HR-15 e as isenções; o dos bits na placa) · `nextest-impacted` (a cadência mandou,
+placa em exclusão): **11 925 / 11 925 verdes** (726 s). Binário do smoke, 2.ª corrida:
+```
+▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.24s
+```
+Smoke do dono (prefs hoje: `light_quality=low`, `light_auto=0`; vale também o da W5x §7, ainda por fazer):
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=5 cargo run -p ph2d-host-desktop --profile smoke`
+   no LG (2560×1080), janela maximizada.
+2. Settings ▸ 2D Light: Quality High, automático desligado. Na Hierarchy clicar «Lâmpada» e ler no Inspector
+   «Quality: High (…), NN ms of GPU per frame». Esperar 1–2 min.
+3. Esperado: nos primeiros segundos (às vezes até ~1,5 min) o número dá um salto e assenta; o terminal escreve UMA
+   vez «[luz2d] a placa degradou a vista … renasce (1/2)». Depois disso o número fica ~1 ms ABAIXO do mesmo teste
+   com `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` à frente do comando (sem a cura).
+4. Deu errado se: a imagem fica diferente depois do renascimento, «renasce» aparece com o PC parado mais de 1×, ou
+   o número não desce em relação ao `=0`. ⚠️ Conhecido (ABERTO §4.1): no instante do renascimento a luz pisca
+   UM quadro (as sombras somem e voltam) e a luz refletida volta em ~0,2 s — diga se incomoda.
+
 Roteiros da régua (fora do repo): laço ABBA sobre `mede_custo_no_app.sh` com o detector da tabela INTEIRA do
 `nvidia-smi` (C e G, com lista branca da área de trabalho) e 60 s de placa livre antes de cada processo.

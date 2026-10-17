@@ -51,7 +51,7 @@ impl Vigia {
         self.vigilia = None;
     }
 
-    /// Uma leitura da `c2` (ms). `true` = a vista renasce no próximo quadro ([`Self::renascer`]).
+    /// Uma leitura da `c2` (ms). `true` = a vista renasce no fim deste quadro ([`Self::renascer`]).
     pub(super) fn ler(&mut self, c2: f64) -> bool {
         if !self.ligado || self.renascidas >= MAX_POR_PROCESSO || !c2.is_finite() {
             return false;
@@ -86,8 +86,8 @@ impl Vigia {
         false
     }
 
-    /// O início do quadro seguinte ao pedido: a vista larga-se, a placa espera destruí-la e o MESMO quadro monta
-    /// a nova nos mesmos blocos (nenhum quadro sai sem luz).
+    /// O fim do quadro: havendo pedido, a vista larga-se e a placa espera destruí-la; a próxima `gravar_com`
+    /// monta a nova nos mesmos blocos.
     pub(super) fn renascer(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
@@ -101,7 +101,7 @@ impl Vigia {
 }
 
 impl super::LuzDoQuadro {
-    /// ⭐ W6b — PORTÃO: a vista renasce no próximo [`Self::gravar_com`] pelo MESMO caminho do vigia
+    /// ⭐ W6b — PORTÃO: a vista renasce no fim do próximo [`Self::gravar_com`] pelo MESMO caminho do vigia
     /// (sem o evento do driver, que não se provoca daqui).
     #[doc(hidden)]
     pub fn renascer_a_vista(&mut self) {

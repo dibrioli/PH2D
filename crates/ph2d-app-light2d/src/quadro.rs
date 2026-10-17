@@ -31,6 +31,8 @@ pub use ambiente::{config_da_vista, config_do_entorno};
 mod entorno;
 #[path = "quadro_leituras.rs"]
 mod leituras;
+#[path = "quadro_renasce.rs"]
+mod renasce;
 
 /// A chave de que a fina dos tetos depende: a janela, o degrau base e os tetos.
 type ChaveDosTetos = ((u32, u32), Degrau, crate::teto::Tetos);
@@ -99,6 +101,8 @@ pub struct LuzDoQuadro {
     montagens: u32,
     leituras: u32,
     custo_janela: leituras::JanelaDeCusto,
+    /// ⭐ W6b: a vista renasce quando a placa a degrada ([`renasce`]).
+    vigia: renasce::Vigia,
     /// ⭐ W5i: a estufa das pipelines (desligada por omissão: os portões medem o quadro síncrono).
     forno: crate::forno::Forno,
     /// ⭐ W5i: a configuração deste quadro ainda está na estufa — o quadro sai sem luz, sem travar.
@@ -157,6 +161,7 @@ impl LuzDoQuadro {
             montagens: 0,
             leituras: 0,
             custo_janela: leituras::JanelaDeCusto::default(),
+            vigia: renasce::Vigia::do_ambiente(),
             forno: crate::forno::Forno::default(),
             aquecendo: false,
             adiantado: false,
@@ -457,6 +462,7 @@ impl LuzDoQuadro {
                 return;
             }
             self.montagens += 1;
+            self.vigia.nasceu();
             Solver::novo_com(gpu, cfg, &self.fabrica).map(|mut solver| {
                 // ⭐ W5y — INSTRUMENTO: as etapas da holográfica, cada uma no seu passe (a c2 fica 0).
                 if std::env::var_os("PH2D_LIGHT2D_FASES").is_some() {
@@ -598,6 +604,7 @@ impl LuzDoQuadro {
                 gpu,
                 (&r.solver, self.entorno.as_ref()),
             );
+            renasce |= self.vigia.ler(t.c2_total());
             if p.automatica {
                 let custo = crate::qualidade::Custo {
                     por_nivel: t.por_nivel(),
@@ -606,7 +613,7 @@ impl LuzDoQuadro {
                 self.governador.ler(custo, p.nivel);
             }
         }
-        if renasce {
+        if self.vigia.tomar_pedido() || renasce {
             self.resolvido = None;
         }
     }

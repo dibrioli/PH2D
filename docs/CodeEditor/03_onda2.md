@@ -77,3 +77,19 @@ seguinte; o resto entra em lotes.
 | I0 | (este lote) | as quatro tabelas acima |
 | I1 — núcleo | (este lote) | `ph2d-code-syntax`: `Syntax::edit_deferred`/`job`/`adopt`/`fresh` + `closer_tokens` lidos da `indents.scm`; `AutoEdit` só pede a árvore exacta no Enter, no auto-par e com um token de recuo no início da linha. Testes: `incremental::reparse_fora_da_tecla_com_edicoes_pelo_meio_segue_o_parse_do_zero` (151 passos válidos iguais ao zero, 316 edições entre trabalho e adopção, 0 reparses síncronos) · `incremental::a_tecla_de_letra_nao_reparsa_e_o_end_no_inicio_da_linha_sim`. **Falta:** o worker da gramática no app (`ph2d-code-intel`) + o `CodeDoc` usar `edit_deferred` e derivar por `generation` + o gate por contagem no `ph2d-app-code` + a `bancada` (regra de Fatin) |
 | I2 — núcleo | (este lote) | `ph2d-code-lsp`: `request_async`/`cancel`, `connect` (servidor no processo, para os falsos), `Wake`, `did_open_at`/`did_change_at` com versão, `PublishedDiagnostics.version`. `ph2d-code-intel` (NOVA): `LspSession` (worker dono do cliente; `Dirty` = a troca única de um lote; conversões O(log n) pela rope). Testes: `sessao::um_servidor_lento_nunca_faz_o_quadro_esperar` (100 teclas + drenos ≪ 1 s com o servidor a dormir 1 s) · `um_pedido_novo_do_mesmo_genero_cancela_o_velho` · `um_servidor_que_morre_depois_de_responder_volta_com_os_documentos` · `um_arranque_partido_para_e_so_o_retry_tenta_outra_vez` · `sujo::a_faixa_suja_reconstroi_o_texto_novo_em_lotes_aleatorios` (2 000 sementes). **Falta:** os pedidos restantes (assinatura, definição, referências, rename, inlay, ações, tokens, símbolos) + `--docs` + a ligação no `ph2d-app-code` |
+
+## Próximo passo (para a janela seguinte — ler isto e o «Estado» acima basta)
+
+1. **I1 no app:** um worker da gramática em `ph2d-code-intel` (uma thread, o seu `luau_parser()`,
+   `ReparseJob` → `Reparsed` por canal, chave = `ScriptId`). `CodeDoc::edited` passa a
+   `syntax.edit_deferred` e submete `syntax.job(text)`; `ph2d_app_code::frame` drena e chama
+   `adopt` (e re-submete se devolver `true`). `Derived` passa a chavear por `(revision, generation)`;
+   `toggle_fold`/`unfold_cursor`/`fold_all`/`set_saved_diag` chamam `syntax.fresh` antes de perguntar.
+   Gate sem relógio em `ph2d-app-code`: letras por `DocumentSurface::key` com quadros pelo meio ⇒
+   `sync_reparses() == 0`. Depois a `bancada::tecla_pixel` (regra de Fatin: 7 500 dentro do ruído de
+   duas réplicas intercaladas da célula 51).
+2. **I2 no app:** `CodeDocs` dono de uma `LspSession` (arranque preguiçoso no 1.º documento aberto;
+   `resolve_binary` falhado ⇒ estado `Failed` com frase na barra); `open` de TODOS os scripts da
+   biblioteca; `change` com `Dirty::of(edits, len_antes)` em cada lote; `--docs=<json>` gerado da
+   `api_table` (formato em I0b §3).
+3. Depois I3 → I4 (janelinha) → I5/I6/I11 → I7 → I8 → I10 → I9/I12/I14 → I13 → I15, como na Ordem.

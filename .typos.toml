@@ -411,6 +411,9 @@ extend-ignore-identifiers-re = [
 # NVIDIA FleX (the position-based-dynamics solver `motion.collide` cites for its
 # averaged Jacobi push-apart). Checked as a whole so it is not split into `Fle`.
 FleX = "FleX"
+# `UPnP` (Universal Plug and Play, `UPnP-IGD`) na sonda de rede do MiroClone W22 e na saída dela —
+# o typos parte-o nas maiúsculas e lê `Pn`. Conferido inteiro, como o `FleX`.
+UPnP = "UPnP"
 
 [default.extend-words]
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1038,6 +1041,10 @@ resistencias = "resistencias"
 # DENTRO de nomes compostos (a mesma lição de 17/09 e 20/09).
 projecto = "projecto"  # pt-PT «projeto», dentro de `projecto_antigo` (ph2d-skeleton-live)
 cose = "cose"  # pt «cose» (de coser), dentro de `onde_os_membros_se_sobrepoem_nada_se_cose_por_cima`
+# Ship de 2026-10-17 (oito linhas). Critério de sempre — *allowlistar isto pode esconder um typo real?*
+caracter = "caracter"  # pt-PT «carácter» sem acento, DENTRO de nomes de teste (ph2d-code-buffer/-intel); o `^caracter$` acima só casa o identificador inteiro
+regenere = "regenere"  # pt, conjuntivo de «regenerar» («nunca o regenere», doc das fixtures v22/v189)
+loca = "loca"  # a tabela `loca` do OpenType/TrueType (índice dos glifos), `read_fonts` em ph2d-text — nome próprio
 
 [files]
 extend-exclude = [
@@ -1128,4 +1135,14 @@ extend-exclude = [
     # (o doc 29 cita-o como fonte) e escreve `UE`/`UE5` — a sigla do Unreal Engine. Isentar a palavra
     # `UE` esconderia um `USE` mal escrito no repo inteiro — por isso exclui-se o FICHEIRO.
     "docs/Components/pesquisa/dossie_navegacao_2026-10-01.md",
+    # CodeEditor (Onda 2): ficheiros cujo CONTEÚDO é o erro de grafia de propósito — o corpus de
+    # mutantes (`tehn`, `ned`, `velcoity`… são os erros que o editor tem de apanhar), a saída BRUTA
+    # do luau-lsp sobre eles (`Key 'proprety' not found`), a sonda que os escreve e a fixtura do
+    # gancho mal escrito (`ganchos.luau`, o caso do gate `ganchos.rs`). Isentar as palavras
+    # esconderia um `then`/`end`/`update` mal escrito no repo inteiro — exclui-se o FICHEIRO.
+    "docs/CodeEditor/ferramentas/corpus_erros/*.tsv",
+    "docs/CodeEditor/ferramentas/corpus_erros/*.jsonl",
+    "docs/CodeEditor/ferramentas/medicoes_onda2/I0b_bruto.json",
+    "docs/CodeEditor/ferramentas/lspprobe2.py",
+    "crates/ph2d-code-lsp/tests/it/fixtures/ganchos.luau",
 ]

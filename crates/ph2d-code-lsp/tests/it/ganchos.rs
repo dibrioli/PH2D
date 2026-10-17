@@ -1,6 +1,6 @@
 //! The engine hooks (`init` · `update` · `on_signal`, the `-- @hook` lines that `ph2d.d.luau` gets from
 //! `api_table::HOOKS`) are not reported as unused — and the filter takes NOTHING else: an unused local
-//! function, a misspelt hook (`updte`) and a LOCAL function named like a hook still warn.
+//! function, a misspelt hook (line 4 of the fixture) and a LOCAL function named like a hook still warn.
 
 use std::collections::BTreeSet;
 

@@ -369,7 +369,10 @@ fn sonda_corte_ablacao_da_janela() {
                     };
                     let (te, td, th) = borda_vertical(&tela_pintada(&t));
                     let (je, jd, jm) = janela_refeita(&dabs, 2.0);
-                    grava(&t, &format!("abl_{fnome}_h{host_sp}_s{tamanho}_{larga}"));
+                    grava(
+                        &t,
+                        &format!("ablacao_{fnome}_h{host_sp}_s{tamanho}_{larga}"),
+                    );
                     r.push((
                         t.canvas_rgba.clone(),
                         antes,

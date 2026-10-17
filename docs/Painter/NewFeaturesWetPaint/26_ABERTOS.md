@@ -74,6 +74,8 @@
 | C24 | ~~**Texture Color no Continuous**~~ — a metade da COR fechou em A9 (15/10); a metade do RELEVO caiu como causa (igual com e sem Continuous) e é o C25. | [handoff P38 §6](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-15_P38_COR_DO_SHAPE_EM_CAMADAS.md) |
 | C25 | ~~**Impasto: o RELEVO não recebia o Continuous**~~ — **feito (15/10, `783fb4fcde`, 2.º smoke do dono):** o relevo lia o Shape no centro do dab e varria a corda; agora, com Continuous, lê-o em cada sub-dab da cápsula (`HeightDab::capsula`, `height_walk.rs` `SubPasso`). Voronoi S=0,25 + Continuous × 0,025, tela ILUMINADA: Δ 0,144 → 0,0009. Sem Continuous o relevo com Spacing alto continua o de antes (é o Spacing). [prancha](39_prancha_impasto_continuous.png) · [BUGS #55](../BUGS_painter_fechados_41_a_46.md) | 2.º smoke do dono 15/10 |
 | C26 | **Watercolor com ponta de IMAGEM e só a Falloff Color:** a borda escurecida passou a sair na cor da rampa (mesma lei do `deposito_dono`, 15/10); para rampa opaca a densidade fica ao byte, só a cor da borda muda. Por confirmar no smoke se é o esperado. | handoff P39 §9 |
+| C27 | **A cobertura da rampa de pressão** (prompt 44): com `pressureOpacity` 1 o Wet Flat/Gouache Flat esmaecem a 0,54/0,62 da pressão 1 na pressão ~0,46; o Rebelle 0,42/0,43. A rampa do `Dynamics` é linear — uma CURVA de pressão por pincel, por medir. | [44 §6](44_medicao_as_formas.md) |
+| C28 | **O Airbrush e a pressão** (P43 §6 → 44): o Spray 2 esmaece (0,63/0,34), o nosso estreita. Os knobs de pressão do pincel existem desde o 44; mudar o Airbrush muda um pincel de fábrica — decisão do dono. E a 20 px a textura lê 28,0 contra 22,5 (a janela 5×5 num traço de 10–13 px?). | [44 §6](44_medicao_as_formas.md) |
 
 ## D — Processo
 

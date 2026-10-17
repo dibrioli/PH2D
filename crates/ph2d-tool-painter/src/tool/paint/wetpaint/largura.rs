@@ -68,6 +68,11 @@ pub(crate) struct LeiDaLargura {
     /// `(raio do motor, largura)`, ambos a crescer estritamente — em `f64`, os números do ficheiro tal
     /// como vieram (um `f32` alargado escreve-se com 17 algarismos e não volta igual pelo JSON).
     pontos: Vec<(f64, f64)>,
+    /// ⭐ O pincel tem um traço MÍNIMO (prompt 44): a tabela mediu raios abaixo do primeiro ponto que não
+    /// deixam tinta à vista (a ponta reta e achatada da Gouache Flat: 1,8 → 0 px, 2,1 → 5 px). Abaixo do
+    /// menor traço que se vê pinta-se ESSE quando o raio proporcional cai num raio MEDIDO sem tinta (até
+    /// este, `0` = nenhum) — os pincéis cujo raio proporcional pinta ficam como estavam.
+    sem_tinta_ate: f64,
 }
 
 impl LeiDaLargura {
@@ -76,15 +81,25 @@ impl LeiDaLargura {
     /// dois pontos úteis.
     pub(crate) fn de_tabela(t: &[[f64; 2]]) -> Option<Self> {
         let mut pontos: Vec<(f64, f64)> = Vec::with_capacity(t.len());
+        let mut sem_tinta_ate = 0.0f64;
         for &[r, l] in t {
-            if l <= 0.0 || !r.is_finite() || !l.is_finite() {
+            if !r.is_finite() || !l.is_finite() {
+                continue;
+            }
+            if l <= 0.0 {
+                if pontos.is_empty() {
+                    sem_tinta_ate = sem_tinta_ate.max(r);
+                }
                 continue;
             }
             if pontos.last().is_none_or(|&(r0, l0)| r > r0 && l > l0) {
                 pontos.push((r, l));
             }
         }
-        (pontos.len() >= 2).then_some(Self { pontos })
+        (pontos.len() >= 2).then_some(Self {
+            pontos,
+            sem_tinta_ate,
+        })
     }
 
     /// A lei de quem MEDE: o raio do motor é `escala ×` o pedido (a «largura» `2 · raio` da tabela).
@@ -92,6 +107,7 @@ impl LeiDaLargura {
         let k = f64::from(escala);
         Self {
             pontos: vec![(k, 2.0), (k * 8192.0, 16384.0)],
+            sem_tinta_ate: 0.0,
         }
     }
 
@@ -105,6 +121,7 @@ impl LeiDaLargura {
         self.pontos
             .iter()
             .flat_map(|&(r, l)| [r.to_bits(), l.to_bits()])
+            .chain((self.sem_tinta_ate > 0.0).then_some(self.sem_tinta_ate.to_bits()))
             .flat_map(u64::to_le_bytes)
             .fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
                 (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3)
@@ -125,7 +142,8 @@ impl LeiDaLargura {
         let alvo = 2.0 * raio;
         let (r0, l0) = self.pontos[0];
         if alvo <= l0 {
-            return r0 * alvo / l0;
+            let r = r0 * alvo / l0;
+            return if r < self.sem_tinta_ate { r0 } else { r };
         }
         for w in self.pontos.windows(2) {
             let ((ra, la), (rb, lb)) = (w[0], w[1]);
@@ -156,6 +174,8 @@ mod tests {
         assert_eq!(lei.raio_do_motor(5.0), 8.0);
         assert_eq!(lei.raio_do_motor(7.5), 12.0);
         assert_eq!(lei.raio_do_motor(1.0), 2.0);
+        // O traço mínimo (prompt 44): o raio proporcional 1,6 cai abaixo do 2 MEDIDO sem tinta → o menor que pinta.
+        assert_eq!(lei.raio_do_motor(0.8), 4.0);
         assert_eq!(lei.raio_do_motor(20.0), 32.0);
         assert!(LeiDaLargura::de_tabela(&[[2.0, 0.0], [4.0, 3.0]]).is_none());
     }

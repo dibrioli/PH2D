@@ -46,6 +46,18 @@ fn parametros(r: &Receita) -> Parametros {
     let rel = caminho_relativo(MOTOR_DOS_PRESETS, r.meio, r.grupo, r.nome);
     let mut p = match std::fs::read(raiz().join(&rel)) {
         Ok(bytes) => ler(&bytes).expect("o ficheiro de fábrica lê-se").parametros,
+        // As formas (prompt 44) nascem do Wet Round — a ponta, as cerdas e a lei dele; a receita muda o resto.
+        Err(_) if matches!(r.nome, "Wet Flat" | "Gouache Flat") => {
+            let rel = caminho_relativo(MOTOR_DOS_PRESETS, "Watercolor", "Fluid", "Wet Round");
+            let mut p = ler(&std::fs::read(raiz().join(rel)).unwrap())
+                .expect("o Wet Round de fábrica")
+                .parametros;
+            (p.name, p.group) = (r.nome.to_owned(), r.grupo.to_owned());
+            p.brush.insert("dab_quina".to_owned(), serde_json::json!(0.0));
+            p.engine.insert("pressureSize".to_owned(), 0.9);
+            p.engine.insert("pressureOpacity".to_owned(), 0.0);
+            p
+        }
         Err(_) => {
             let mut t = PainterTool::default();
             t.set_paint_media(PaintMedia::WetPaint);

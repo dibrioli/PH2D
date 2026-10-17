@@ -5,7 +5,7 @@ use ph2d_brush_presets::Tilt;
 use serde_json::{Value, json};
 
 /// Quantos presets a fábrica tem — CONTADO (`the_factory_presets_are_counted`), nunca escolhido.
-pub const PRESETS_DE_FABRICA: usize = 18;
+pub const PRESETS_DE_FABRICA: usize = 20;
 
 /// O grão `kind` de lado `lado` no slot Grain do pincel (o JSON do `BrushSpec::texture`).
 pub fn grao(kind: &str, lado: f64) -> Value {
@@ -516,7 +516,60 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         achatado: None,
         pincel: &[("falloff", "\"Smooth\""), ("shape", SEM_FORMA)],
     },
+    // ⭐ As FORMAS (prompt 44, doc 44): o Wet Round com a ponta RETA (quina 1, dura 0,9 — a ponta macia lê-se
+    // redonda), um pouco mais alta que larga e FIXA na tela (o rato do Rebelle não roda a ponta), e a pressão
+    // que ESMAECE em vez de estreitar. Watercolor › Flat do Rebelle (`wcflat`).
+    Receita {
+        meio: "Watercolor",
+        grupo: "Fluid",
+        nome: "Wet Flat",
+        water: 1.0,
+        opacity: 1.0,
+        pigment: PIGMENTO_DO_FLAT,
+        pickup: 1.0,
+        gate: 0.4,
+        evaporation: 1.0,
+        edge: 12.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.9,
+        size_px: None,
+        extras: &[("pressureSize", 0.3), ("pressureOpacity", 1.0)],
+        grao: None,
+        spacing: None,
+        achatado: Some((0.12, 90)),
+        pincel: &[("dab_quina", "1.0")],
+    },
+    // A guache FLAT do Rebelle (`gouacheflat`, Gouache › Gouache Flat): a mesma ponta, mais alta que larga, e o
+    // DOBRO da tinta (cobertura 0,50 × 0,32). A Gouache Round não entra: no Rebelle ela é o nosso Round (18 §4.3).
+    Receita {
+        meio: "Watercolor",
+        grupo: "Gouache",
+        nome: "Gouache Flat",
+        water: 1.0,
+        opacity: 1.0,
+        pigment: PIGMENTO_DA_GUACHE,
+        pickup: 1.0,
+        gate: 0.4,
+        evaporation: 1.0,
+        edge: 12.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.9,
+        size_px: None,
+        extras: &[("pressureSize", 0.3), ("pressureOpacity", 1.0)],
+        grao: None,
+        spacing: None,
+        achatado: Some((0.2, 90)),
+        pincel: &[("dab_quina", "1.0")],
+    },
 ];
+
+/// O pigmento do Wet Flat e da Gouache Flat (doc 44 §3, lote 3).
+const PIGMENTO_DO_FLAT: f64 = 50.0;
+const PIGMENTO_DA_GUACHE: f64 = 100.0;
 
 /// O Shape sem forma (nem cerdas): a ponta é só a queda — o aerógrafo.
 const SEM_FORMA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;

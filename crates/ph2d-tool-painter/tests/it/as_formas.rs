@@ -4,6 +4,7 @@
 use super::midias_de_fabrica::de_fabrica;
 use super::sonda_gestos::{pinta_cena_ate, tela};
 use ph2d_editor_core::Tool;
+use ph2d_editor_core::tool::RasterEditTool;
 
 /// O CUSTO da ponta reta (doc 44 §5): a cena da bancada com o Wet Round e com o mesmo de quina 1, no MESMO
 /// processo, intercaladas em 9 rodadas; o resumo é o MÍNIMO (`docs/DevOps/MEDIR_VELOCIDADE.md`).
@@ -41,4 +42,96 @@ fn measure_o_custo_da_ponta_reta() {
         b / a,
         std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
     );
+}
+
+/// Um só carimbo (Down + Up no mesmo ponto) do Wet Round DURO com a quina `q` e o ângulo `graus`, seco; devolve
+/// a área pintada (cobertura > 0,08) em px.
+fn area_de_um_carimbo(q: f64, graus: u16) -> f64 {
+    let mut p = de_fabrica("Wet Round");
+    for (k, v) in [
+        ("dab_quina", serde_json::json!(q)),
+        ("dab_angle_deg", serde_json::json!(graus)),
+        ("hardness", serde_json::json!(1.0)),
+    ] {
+        p.parametros.brush.insert(k.to_owned(), v);
+    }
+    p.parametros.engine.insert("pigmentPerDab".to_owned(), 600.0);
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(&p).is_empty());
+    t.set_brush_size_px(60.0);
+    super::sonda_gestos::gesto(&mut t, &[[500.0, 320.0], [500.0, 320.0]], 3.0, |_| 1.0);
+    for _ in 0..60 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let (px, _, _) = t.run_full();
+    let papel = [px[0], px[1], px[2]];
+    px.as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|c| (0..3).any(|k| f64::from(c[k].abs_diff(papel[k])) / 255.0 > 0.08))
+        .count() as f64
+}
+
+/// ⭐ **A ponta reta chega ao CARIMBO molhado, e o canto não é cortado** (prompt 44): o quadrado tem `4/π ≈
+/// 1,27×` a área do disco, a 0° E a 45° — onde o canto sai do disco do raio (a caixa do motor tem de o
+/// conter: cortado pela caixa `±r`, o quadrado rodado daria `1,05×`). Sem a quina no `fp_raio`, 1,00×.
+#[test]
+fn a_ponta_reta_pinta_um_quadrado_inteiro() {
+    let [disco, q0, q45] = std::thread::scope(|s| {
+        [(0.0, 0), (1.0, 0), (1.0, 45)]
+            .map(|(q, a)| s.spawn(move || area_de_um_carimbo(q, a)))
+            .map(|h| h.join().unwrap())
+    });
+    for (nome, a) in [("0°", q0), ("45°", q45)] {
+        let r = a / disco;
+        assert!(
+            r > 1.15,
+            "a ponta reta a {nome} pinta {r:.3}× a área do disco ({a} px contra {disco}) — o quadrado é 1,27×"
+        );
+    }
+}
+
+/// SONDA (prompt 44): a largura nos raios PEQUENOS de cada ingrediente do Flat sobre o Wet Round (a mesma tabela
+/// de largura) — qual deles deixa o traço fino sem tinta.
+#[test]
+#[ignore = "sonda: a largura do Flat nos raios pequenos (prompt 44); corre-se à mão"]
+fn sonda_os_raios_pequenos_do_flat() {
+    let variantes: [(&str, &[(&str, serde_json::Value)]); 6] = [
+        ("base", &[]),
+        ("dura", &[("hardness", serde_json::json!(0.9))]),
+        ("quina", &[("dab_quina", serde_json::json!(1.0))]),
+        ("chato", &[("dab_flatten", serde_json::json!(0.12)), ("dab_angle_deg", serde_json::json!(90))]),
+        ("dura+quina", &[("hardness", serde_json::json!(0.9)), ("dab_quina", serde_json::json!(1.0))]),
+        (
+            "flat",
+            &[
+                ("hardness", serde_json::json!(0.9)),
+                ("dab_quina", serde_json::json!(1.0)),
+                ("dab_flatten", serde_json::json!(0.12)),
+                ("dab_angle_deg", serde_json::json!(90)),
+            ],
+        ),
+    ];
+    std::thread::scope(|s| {
+        for (nome, campos) in variantes {
+            s.spawn(move || {
+                let mut p = de_fabrica("Wet Round");
+                for (k, v) in campos {
+                    p.parametros.brush.insert((*k).to_owned(), v.clone());
+                }
+                let l: Vec<String> = [1.5f32, 2.0, 2.5, 3.0, 4.0]
+                    .iter()
+                    .map(|&r| {
+                        let (px, w, h) = super::sonda_gestos::traco_recto_com(r, 480, |t| {
+                            t.set_wet_relogio_fixo(true);
+                            assert!(t.wet_preset_aplicar(&p).is_empty());
+                        });
+                        format!("{r}→{}", super::sonda_gestos::largura_que_se_ve(&px, w, h))
+                    })
+                    .collect();
+                println!("[pequenos] {nome:<11} {}", l.join(" "));
+            });
+        }
+    });
 }

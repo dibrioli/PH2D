@@ -93,6 +93,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.painter.presets.folder.marker" => "Marker",
         "app.painter.presets.folder.airbrush" => "Airbrush",
         "app.painter.presets.folder.spray" => "Spray",
+        "app.painter.presets.folder.gouache" => "Gouache",
         _ => return None,
     })
 }

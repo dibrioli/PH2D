@@ -269,3 +269,53 @@ fn a_regua_da_ponta_e_a_do_python() {
     );
     assert!(recta.abs() < 1e-12, "recta {recta}");
 }
+
+/// **A RAMPA da pressão** (prompt 44): na linha 2 da bancada (x 60 → 560, pressão `0,15 + 0,85·sen(πt)`), a
+/// largura a meio do máximo e a cobertura mediana (> 0,08) na pressão ~0,46 (x 120) ÷ as da pressão 1 (x 310),
+/// medianas de 9 colunas em y 250..350. Papel = a mediana das 3 linhas de cima e de baixo da IMAGEM. Rebelle:
+/// o Round estreita (0,44 / 0,59), o Flat esmaece (0,83 / 0,42).
+pub fn rampa(rgba: &[u8], w: u32, h: u32) -> (f64, f64) {
+    let (w, h) = (w as usize, h as usize);
+    let px = |x: usize, y: usize| {
+        let i = (y * w + x) * 4;
+        [rgba[i], rgba[i + 1], rgba[i + 2]].map(f64::from)
+    };
+    let mut papel = [0.0; 3];
+    for (k, p) in papel.iter_mut().enumerate() {
+        let mut v: Vec<f64> = [0, 1, 2, h - 3, h - 2, h - 1]
+            .iter()
+            .flat_map(|&y| (0..w).map(move |x| px(x, y)[k]))
+            .collect();
+        v.sort_by(f64::total_cmp);
+        let n = v.len();
+        *p = 0.5 * (v[(n - 1) / 2] + v[n / 2]);
+    }
+    let c = |x: usize, y: usize| {
+        let a = px(x, y);
+        (0..3).map(|k| (a[k] - papel[k]).abs()).fold(0.0, f64::max) / 255.0
+    };
+    let mediana = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        let n = v.len();
+        0.5 * (v[(n - 1) / 2] + v[n / 2])
+    };
+    let coluna = |xc: usize| {
+        let (mut larg, mut cob) = (Vec::new(), Vec::new());
+        for x in xc - 4..=xc + 4 {
+            let col: Vec<f64> = (250..350).map(|y| c(x, y)).collect();
+            let m = col.iter().copied().fold(0.0, f64::max);
+            if m < 0.08 {
+                larg.push(0.0);
+                cob.push(0.0);
+                continue;
+            }
+            let a = col.iter().position(|&v| v >= 0.5 * m).unwrap();
+            let b = col.iter().rposition(|&v| v >= 0.5 * m).unwrap();
+            larg.push((b - a + 1) as f64);
+            cob.push(mediana(col.iter().copied().filter(|&v| v > 0.08).collect()));
+        }
+        (mediana(larg), mediana(cob))
+    };
+    let ((l0, c0), (l1, c1)) = (coluna(120), coluna(310));
+    (l0 / l1.max(1e-6), c0 / c1.max(1e-6))
+}

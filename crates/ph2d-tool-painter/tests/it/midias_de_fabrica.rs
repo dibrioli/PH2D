@@ -31,6 +31,10 @@ enum Metrica {
     Cruzamento,
     /// A uniformidade ao longo do traço (`uniformidade_cv`): o pó do aerógrafo (prompt 43).
     Cv,
+    /// O RECUO da ponta (`regua_midia::ponta`): a ponta reta do Flat (prompt 44).
+    Ponta,
+    /// A rampa da pressão (`regua_midia::rampa`): a largura na pressão ~0,46 ÷ na 1 (prompt 44).
+    RampaLargura,
     /// A largura a meio do máximo (px): ± 2 px da foto — o controlo é pintado à MESMA largura, então não
     /// distingue nada; é a condição de toda a comparação (05 §4.1).
     Largura,
@@ -47,6 +51,8 @@ impl Metrica {
             Metrica::Tinta => c.tinta,
             Metrica::Cruzamento => c.cruz,
             Metrica::Cv => m.cv,
+            Metrica::Ponta => c.ponta,
+            Metrica::RampaLargura => c.rampa,
             Metrica::Largura => m.largura,
         }
     }
@@ -63,6 +69,10 @@ impl Metrica {
             // O controlo da sessão de 16/10: o Dip Pen de 11/10 refeito deu 0,283 contra 0,223.
             Metrica::Cruzamento => 0.06,
             Metrica::Cv => 0.012,
+            // O rápido × o vermelho da mesma foto (doc 44 §1).
+            Metrica::Ponta => 0.045,
+            // Um traço só por foto: 1 px de largura nos dois pontos (≈ 0,04).
+            Metrica::RampaLargura => 0.05,
             Metrica::Largura => 1.0,
         }
     }
@@ -76,6 +86,9 @@ struct FamiliaC {
     deitado: f64,
     tinta: f64,
     cruz: f64,
+    ponta: f64,
+    /// A largura da rampa (a cobertura dela é o aberto do doc 44 §6).
+    rampa: f64,
 }
 
 impl FamiliaC {
@@ -133,6 +146,8 @@ impl FamiliaC {
             deitado: acima(&deitado),
             tinta: miolo[miolo.len() / 2],
             cruz: super::a_lei_da_tinta::cruzamento(px, w as u32),
+            ponta: super::regua_midia::ponta(px, w as u32),
+            rampa: super::regua_midia::rampa(px, w as u32, (px.len() / 4 / w) as u32).0,
         }
     }
 }
@@ -150,7 +165,9 @@ struct Midia {
     metricas: &'static [(Metrica, f64)],
 }
 
-use Metrica::{Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Textura, Tinta};
+use Metrica::{
+    Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Ponta, RampaLargura, Textura, Tinta,
+};
 
 // ⚠️ Os três do óleo levam os valores que o DONO afinou a olho contra o Rebelle (11/10, «vamos deixar esses
 // valores»); a régua reprovava Textura do Oil Bristle (8,46 contra 5,86) e da Acrylic Round (30,4 contra 3,13)
@@ -158,7 +175,7 @@ use Metrica::{Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Textura, T
 // O Chato e a Tinta (prompt 23, aceites 12/10) são os dois pontos que o dono VIU: a mutação «preset de antes»
 // sangra cada um sozinho (Oil 0,950 · Express 0,906).
 #[rustfmt::skip]
-const MIDIAS: [Midia; 14] = [
+const MIDIAS: [Midia; 16] = [
     Midia { preset: "Wet Liner", foto: "wcliner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
     Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
     Midia { preset: "Acrylic Round", foto: "oilround", raio: 19.5, metricas: &[(Cobertura, 0.880), (Borda, 0.595)] },
@@ -177,6 +194,10 @@ const MIDIAS: [Midia; 14] = [
     // O aerógrafo (prompt 43): o PÓ — a textura, a uniformidade e a orla larga são dele; o «período» não conta
     // (a repetição do Rebelle varia 0,005, o controlo fica a 0,013 — doc 43 §2).
     Midia { preset: "Airbrush", foto: "airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (Largura, 26.0)] },
+    // As formas (prompt 44, doc 44 §3): a ponta reta e a pressão que não estreita. A cobertura da rampa fica de
+    // fora — a nossa vai a 0,54/0,62 contra 0,42/0,43 (aberto, doc 44 §6).
+    Midia { preset: "Wet Flat", foto: "wcflat", raio: 17.0, metricas: &[(Cobertura, 0.315), (Ponta, 0.096), (RampaLargura, 0.829), (Largura, 34.0)] },
+    Midia { preset: "Gouache Flat", foto: "gouacheflat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (Largura, 39.0)] },
 ];
 
 pub(super) fn de_fabrica(nome: &str) -> Preset {

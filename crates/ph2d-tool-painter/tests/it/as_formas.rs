@@ -40,7 +40,9 @@ fn measure_o_custo_da_ponta_reta() {
         a * 1e3,
         b * 1e3,
         b / a,
-        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
     );
 }
 
@@ -55,7 +57,9 @@ fn area_de_um_carimbo(q: f64, graus: u16) -> f64 {
     ] {
         p.parametros.brush.insert(k.to_owned(), v);
     }
-    p.parametros.engine.insert("pigmentPerDab".to_owned(), 600.0);
+    p.parametros
+        .engine
+        .insert("pigmentPerDab".to_owned(), 600.0);
     let mut t = tela();
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(&p).is_empty());
@@ -101,8 +105,20 @@ fn sonda_os_raios_pequenos_do_flat() {
         ("base", &[]),
         ("dura", &[("hardness", serde_json::json!(0.9))]),
         ("quina", &[("dab_quina", serde_json::json!(1.0))]),
-        ("chato", &[("dab_flatten", serde_json::json!(0.12)), ("dab_angle_deg", serde_json::json!(90))]),
-        ("dura+quina", &[("hardness", serde_json::json!(0.9)), ("dab_quina", serde_json::json!(1.0))]),
+        (
+            "chato",
+            &[
+                ("dab_flatten", serde_json::json!(0.12)),
+                ("dab_angle_deg", serde_json::json!(90)),
+            ],
+        ),
+        (
+            "dura+quina",
+            &[
+                ("hardness", serde_json::json!(0.9)),
+                ("dab_quina", serde_json::json!(1.0)),
+            ],
+        ),
         (
             "flat",
             &[
@@ -134,4 +150,93 @@ fn sonda_os_raios_pequenos_do_flat() {
             });
         }
     });
+}
+
+/// A área de um traço curto em DIAGONAL (45°) do Wet Round duro de quina 1: `segue` = o Shape segue o traço (a
+/// pegada roda por dab para 45°); senão o ângulo FIXO de 45° — o mesmo quadrado, pela caixa estática.
+fn area_da_diagonal(segue: bool) -> f64 {
+    let mut p = de_fabrica("Wet Round");
+    let b = &mut p.parametros.brush;
+    b.insert("dab_quina".to_owned(), serde_json::json!(1.0));
+    b.insert("hardness".to_owned(), serde_json::json!(1.0));
+    b.insert(
+        "dab_angle_deg".to_owned(),
+        serde_json::json!(if segue { 0 } else { 45 }),
+    );
+    if segue {
+        b.get_mut("shape").unwrap()["rake"] = serde_json::json!(true);
+    }
+    p.parametros
+        .engine
+        .insert("pigmentPerDab".to_owned(), 600.0);
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(&p).is_empty());
+    t.set_brush_size_px(60.0);
+    super::sonda_gestos::gesto(&mut t, &[[460.0, 280.0], [540.0, 360.0]], 3.0, |_| 1.0);
+    for _ in 0..60 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let (px, _, _) = t.run_full();
+    let papel = [px[0], px[1], px[2]];
+    px.as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|c| (0..3).any(|k| f64::from(c[k].abs_diff(papel[k])) / 255.0 > 0.08))
+        .count() as f64
+}
+
+/// ⭐ **A ponta reta que RODA com o traço não perde os cantos** (mutação M6 do P44): com o Follow a pegada roda por
+/// dab e o canto sai da caixa estática — o alcance do motor é o da pegada DESTE dab. O mesmo quadrado a 45° fixo é
+/// a referência.
+#[test]
+fn a_ponta_reta_que_segue_o_traco_nao_perde_os_cantos() {
+    let [segue, fixa] = std::thread::scope(|s| {
+        [true, false]
+            .map(|v| s.spawn(move || area_da_diagonal(v)))
+            .map(|h| h.join().unwrap())
+    });
+    assert!(
+        segue / fixa > 0.97,
+        "a seguir o traço pinta {:.3}× a área do mesmo quadrado fixo ({segue} contra {fixa})",
+        segue / fixa
+    );
+}
+
+/// A cobertura da RAMPA de pressão (`regua_midia::rampa`) do Wet Flat com a `pressureOpacity` dada.
+fn rampa_do_flat(opacidade: f64) -> (f64, f64) {
+    let mut p = de_fabrica("Wet Flat");
+    p.parametros
+        .engine
+        .insert("pressureOpacity".to_owned(), opacidade);
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(&p).is_empty());
+    t.set_brush_size_px(17.0);
+    t.set_brush_color_srgb8(super::sonda_gestos::AZUL);
+    super::sonda_gestos::gesto(&mut t, &[[60.0, 300.0], [560.0, 300.0]], 3.0, |f| {
+        0.15 + 0.85 * (f * std::f32::consts::PI).sin()
+    });
+    for _ in 0..480 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let (px, w, h) = t.run_full();
+    super::regua_midia::rampa(&px, w, h)
+}
+
+/// ⭐ **A pressão → a OPACIDADE do pincel esmaece a rampa** (mutação M8 do P44): o Wet Flat com `pressureOpacity`
+/// 1 contra o mesmo a 0 — a cobertura na pressão ~0,46 cai (medido 0,54 contra ~0,7); a largura não muda com ela.
+#[test]
+fn a_pressao_do_pincel_esmaece_a_rampa() {
+    let [com, sem] = std::thread::scope(|s| {
+        [1.0, 0.0]
+            .map(|o| s.spawn(move || rampa_do_flat(o)))
+            .map(|h| h.join().unwrap())
+    });
+    assert!(
+        com.1 < sem.1 - 0.08,
+        "a opacidade da pressão não esmaece: cobertura {:.3} com ela, {:.3} sem",
+        com.1,
+        sem.1
+    );
 }

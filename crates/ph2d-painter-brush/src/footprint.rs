@@ -575,14 +575,20 @@ mod outline_tests {
                 for k in 0..32 {
                     let t = k as f32 / 32.0;
                     let p = [(t * 6.0).cos() * 0.9, (t * 6.0).sin() * 0.9];
-                    assert_eq!(nu.falloff_t(p[0], p[1]).to_bits(), nu.with_quina(0.0).falloff_t(p[0], p[1]).to_bits());
+                    assert_eq!(
+                        nu.falloff_t(p[0], p[1]).to_bits(),
+                        nu.with_quina(0.0).falloff_t(p[0], p[1]).to_bits()
+                    );
                 }
             }
         }
         let quadrado = FootprintDeform::identity().with_quina(1.0);
         assert!(quadrado.falloff_t(0.9, 0.9) < 1.0);
         assert!(FootprintDeform::identity().falloff_t(0.9, 0.9) > 1.0);
-        assert!((quadrado.falloff_t(1.0, 0.3) - 1.0).abs() < 1e-6, "o lado do quadrado é RECTO");
+        assert!(
+            (quadrado.falloff_t(1.0, 0.3) - 1.0).abs() < 1e-6,
+            "o lado do quadrado é RECTO"
+        );
     }
 
     /// O corpus de curvaturas: a plana (o caminho de sempre) e três dobras reais — uma quadrática

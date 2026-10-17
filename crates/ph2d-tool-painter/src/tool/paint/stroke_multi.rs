@@ -285,8 +285,11 @@ impl PainterTool {
         if !bool_shapes.is_empty() {
             for contour in self.stroke_boolean_contours(&bool_shapes, off) {
                 if contour.len() >= 2 {
-                    let mut stroke =
-                        Stroke::new(self.stroke_spec(), self.dinamica_do_traco(), self.paint.seed);
+                    let mut stroke = Stroke::new(
+                        self.stroke_spec(),
+                        self.dinamica_do_traco(),
+                        self.paint.seed,
+                    );
                     scratch.clear();
                     stroke.fill_polyline_preview(&contour, &mut scratch);
                     dabs.extend_from_slice(&scratch);

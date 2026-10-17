@@ -53,7 +53,8 @@ fn parametros(r: &Receita) -> Parametros {
                 .expect("o Wet Round de fábrica")
                 .parametros;
             (p.name, p.group) = (r.nome.to_owned(), r.grupo.to_owned());
-            p.brush.insert("dab_quina".to_owned(), serde_json::json!(0.0));
+            p.brush
+                .insert("dab_quina".to_owned(), serde_json::json!(0.0));
             p.engine.insert("pressureSize".to_owned(), 0.9);
             p.engine.insert("pressureOpacity".to_owned(), 0.0);
             p

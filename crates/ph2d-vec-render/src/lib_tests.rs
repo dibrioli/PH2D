@@ -586,7 +586,8 @@ fn the_widget_skin_goes_over_the_drawing_or_replaces_it() {
     );
     assert_eq!(
         paths_with(true),
-        bare + three,
+        // +2: o recorte da pele pelo contorno da forma — a abertura e o fecho da camada.
+        bare + three + 2,
         "o desenho tem de ser o CORPO e a pele ir por cima (F18)"
     );
 }

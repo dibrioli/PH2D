@@ -219,11 +219,43 @@ fn draw_one(
     // retângulo da forma), então entra SEM transform — o contrato da `FxImage` ao lado. O FX,
     // quando há, já compôs tudo o que se vê desta forma.
     if let (None, Some(skin)) = (fx.get(&path.id), skin) {
+        // F18: por cima do desenho, a pele é RECORTADA pelo contorno dele (o *clip content* do
+        // Figma) — a moldura inclui o transbordo do traço, e o conteúdo vazava das quinas.
+        let clip = skin
+            .over_drawing
+            .then(|| outline_on_screen(path, xforms, live, camera));
+        if let Some(c) = &clip {
+            target.push_clip(c);
+        }
         target.inner_mut().append(skin.scene.inner(), None);
+        if clip.is_some() {
+            target.pop_layer();
+        }
     }
     if layered {
         target.pop_layer();
     }
+}
+
+/// O contorno PREENCHIDO de uma forma em pixels de tela — a geometria viva, se houver, como no
+/// desenho acima.
+fn outline_on_screen(
+    path: &VecPath,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    camera: Affine,
+) -> ph2d_vector::BezPath {
+    let mut out = ph2d_vector::BezPath::new();
+    let mut eat = |p: &VecPath, xf: Affine| {
+        let mut b = crate::build::build_bezpath(p);
+        b.apply_affine(xf);
+        out.extend(b);
+    };
+    match live.get(&path.id) {
+        Some(items) => items.iter().for_each(|i| eat(i, camera)),
+        None => eat(path, path_to_screen(xforms, path.id, camera)),
+    }
+    out
 }
 
 /// Encoda uma [`FxImage`] na cena, no retângulo de tela dela. RGBA reta (a mesma política do

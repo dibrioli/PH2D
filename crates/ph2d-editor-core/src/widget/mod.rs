@@ -190,7 +190,7 @@ pub use segmented_adaptive::{
     SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_segmented_adaptive,
 };
 pub use skin::{
-    SkinParam, WidgetKind, inline_option_rect, paint_widget_skin, paint_widget_skin_with,
+    Drawing, SkinParam, WidgetKind, inline_option_rect, paint_widget_skin, paint_widget_skin_with,
 };
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider, paint_slider_track};
 pub use slider_with_chip::{

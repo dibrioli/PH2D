@@ -145,7 +145,7 @@ fn skin_slider_track_px(rect: Rect) -> f32 {
 mod geometry;
 pub use geometry::inline_option_rect;
 mod kind;
-pub use kind::WidgetKind;
+pub use kind::{Drawing, WidgetKind};
 
 /// **A PORTA ÚNICA**: pinta a pele de `kind` em `rect`, pelo pintor real do catálogo.
 ///

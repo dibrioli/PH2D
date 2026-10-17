@@ -19,6 +19,9 @@ use crate::visuals::{Chrome, Stroke, WidgetVisuals, Widgets};
 pub enum Body {
     /// O desenho do artista já pintou o corpo; `under` é a cor dele (`None` = sem preenchimento).
     Drawing { under: Option<Color> },
+    /// O desenho é o CHÃO onde um controlo menor pousa (a caixa do checkbox, o interruptor): as
+    /// partes do controlo ficam, guardadas a `≥ 3:1` do chão; a tinta lê-se sobre ele.
+    Ground { under: Option<Color> },
     /// Não há desenho debaixo (o painel gerado): a pele pinta o corpo na cor do artista.
     Flat { colour: Color },
 }
@@ -28,7 +31,7 @@ impl Body {
     #[must_use]
     pub const fn ground(self) -> Option<Color> {
         match self {
-            Self::Drawing { under } => under,
+            Self::Drawing { under } | Self::Ground { under } => under,
             Self::Flat { colour } => Some(colour),
         }
     }
@@ -304,8 +307,8 @@ fn surface(body: Body, rank: Rank, theme: Theme) -> Color {
     };
     let layer = ink(body, theme).unwrap_or_else(|| ColorToken::Text1.resolve_unscoped(theme));
     match body {
-        Body::Drawing { .. } if k == 0.0 => TRANSPARENT,
-        Body::Drawing { .. } => with_alpha(Color { a: 255, ..layer }, k),
+        Body::Drawing { .. } | Body::Ground { .. } if k == 0.0 => TRANSPARENT,
+        Body::Drawing { .. } | Body::Ground { .. } => with_alpha(Color { a: 255, ..layer }, k),
         Body::Flat { colour } => over(colour, layer, k),
     }
 }
@@ -318,6 +321,9 @@ fn graphic(body: Body, base: Color, theme: Theme) -> Color {
 }
 
 fn dressed(body: Body, role: Role, base: Color, theme: Theme) -> Color {
+    if let (Body::Ground { .. }, Role::Surface(_) | Role::Line | Role::Graphic) = (body, role) {
+        return graphic(body, base, theme);
+    }
     match role {
         Role::Surface(rank) => surface(body, rank, theme),
         Role::Line => TRANSPARENT,
@@ -349,6 +355,19 @@ pub(crate) fn scoped(token: ColorToken, base: Color, theme: Theme) -> Color {
 }
 
 fn dress_visuals(body: Body, v: WidgetVisuals, rank: Rank, theme: Theme) -> WidgetVisuals {
+    if let Body::Ground { .. } = body {
+        let guard = |s: Stroke| Stroke::new(s.width, graphic(body, s.color, theme));
+        return WidgetVisuals {
+            bg_fill: graphic(body, v.bg_fill, theme),
+            weak_bg_fill: graphic(body, v.weak_bg_fill, theme),
+            bg_stroke: guard(v.bg_stroke),
+            fg_stroke: Stroke::new(
+                v.fg_stroke.width,
+                dressed(body, Role::Ink(InkLevel::Primary), v.fg_stroke.color, theme),
+            ),
+            corner_radius: v.corner_radius,
+        };
+    }
     WidgetVisuals {
         bg_fill: surface(body, rank, theme),
         weak_bg_fill: surface(body, rank, theme),
@@ -381,6 +400,16 @@ pub(crate) fn scoped_chrome(c: Chrome, theme: Theme) -> Chrome {
         return c;
     };
     let guard = |s: Stroke| Stroke::new(s.width, graphic(body, s.color, theme));
+    if let Body::Ground { .. } = body {
+        return Chrome {
+            panel_border: guard(c.panel_border),
+            field_border: guard(c.field_border),
+            field_focus: guard(c.field_focus),
+            field_fill: graphic(body, c.field_fill, theme),
+            selected: guard(c.selected),
+            ..c
+        };
+    }
     Chrome {
         panel_border: Stroke::NONE,
         field_border: Stroke::NONE,

@@ -91,9 +91,8 @@ pub fn paint_icon_path(
     let transform = Affine::translate((tx, ty)) * Affine::scale(scale);
     let stroke = Stroke::new(stroke_width as f64);
     let brush = Brush::Solid(color);
-    scene
-        .inner_mut()
-        .stroke(&stroke, transform, &brush, None, path);
+    // Pela porta que GRAVA (mesma codificação): a régua da F18 tem de ver o glifo.
+    scene.stroke_path(&stroke, transform, &brush, path);
 }
 
 /// O respiro que [`paint_icon_path`] deixa à volta do ícone num rectângulo de lado `side`.

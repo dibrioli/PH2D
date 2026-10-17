@@ -15,6 +15,17 @@
 /// ⚠️ O código de cada variante é um **literal explícito**, nunca a ordem do enum: o número viaja
 /// no documento, e reordenar o enum re-pintaria em silêncio toda arte já salva. Acrescentar um
 /// tipo é acrescentar um código novo no fim — nunca reciclar um.
+/// O que o desenho de uma forma vestida É — ver [`WidgetKind::drawing`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Drawing {
+    /// O desenho é o corpo; a pele põe o conteúdo por cima.
+    Body,
+    /// O desenho é o chão de um controlo menor que a moldura.
+    Ground,
+    /// O desenho foi consumido como outra coisa (o glifo, a cor) e a pele o substitui.
+    Consumed,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum WidgetKind {
     Button,
@@ -147,11 +158,21 @@ impl WidgetKind {
     /// [`SkinParam::body`]: super::SkinParam::body
     #[must_use]
     pub const fn wears_the_drawing(self) -> bool {
+        !matches!(self.drawing(), Drawing::Consumed)
+    }
+
+    /// **O que o desenho É para este tipo** (F18) — `match` exaustivo, a porta única de que
+    /// [`Self::wears_the_drawing`] deriva.
+    ///
+    /// `Ground` é o controlo MENOR que a moldura (a caixa `h × h` do checkbox, o interruptor):
+    /// o desenho é o chão onde ele pousa, e as partes dele ficam (medido na foto F18: apagá-las
+    /// como corpo deixava o interruptor sem polegar e o checkbox sem caixa).
+    #[must_use]
+    pub const fn drawing(self) -> Drawing {
         match self {
-            WidgetKind::IconButton | WidgetKind::ColorSwatch => false,
+            WidgetKind::IconButton | WidgetKind::ColorSwatch => Drawing::Consumed,
+            WidgetKind::Toggle | WidgetKind::Checkbox => Drawing::Ground,
             WidgetKind::Button
-            | WidgetKind::Toggle
-            | WidgetKind::Checkbox
             | WidgetKind::Slider
             | WidgetKind::ProgressBar
             | WidgetKind::Tag
@@ -166,7 +187,7 @@ impl WidgetKind {
             | WidgetKind::Tabs
             | WidgetKind::RadioGroup
             | WidgetKind::SegmentedAdaptive
-            | WidgetKind::Dropdown => true,
+            | WidgetKind::Dropdown => Drawing::Body,
         }
     }
 

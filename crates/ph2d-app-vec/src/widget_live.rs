@@ -47,7 +47,7 @@
 
 use ph2d_ecs::{Entity, Name, SimWorld, VecWidget, VecWidgetIcon};
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::widget::{SkinParam, WidgetKind, icon_glyph, paint_widget_skin};
+use ph2d_editor_core::widget::{Drawing, SkinParam, WidgetKind, icon_glyph, paint_widget_skin};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -142,12 +142,20 @@ fn colour_of(fill: &Paint) -> [u8; 4] {
 
 /// **O corpo de uma forma vestida** (F18): o desenho, e a cor dele — a do fill PINTADO (o token
 /// ligado à forma conta, como no `dispatch`), viva, então o Hover gravado chega ao rótulo.
-fn body_of(path: &ph2d_vec_scene::VecPath, bound: Option<&ph2d_vec_scene::BoundStyle>) -> Body {
+fn body_of(
+    kind: WidgetKind,
+    path: &ph2d_vec_scene::VecPath,
+    bound: Option<&ph2d_vec_scene::BoundStyle>,
+) -> Option<Body> {
     let under = path.painted(bound).fill.as_ref().map(|f| {
         let [r, g, b, a] = colour_of(f);
         ph2d_tokens::Color { r, g, b, a }
     });
-    Body::Drawing { under }
+    match kind.drawing() {
+        Drawing::Body => Some(Body::Drawing { under }),
+        Drawing::Ground => Some(Body::Ground { under }),
+        Drawing::Consumed => None,
+    }
 }
 
 /// Pinta as peles deste frame. Vazio = nenhuma forma veste um widget, e o `dispatch` desenha o
@@ -215,9 +223,7 @@ pub fn build(
             // da pele: um controle de opções sem nenhuma acesa lê-se como quebrado, não como
             // vazio. O valor VIVO é do painel, que tem o store; o canvas é prévia.
             selected: 0,
-            body: kind
-                .wears_the_drawing()
-                .then(|| body_of(path, view.bound_style(path.id))),
+            body: body_of(kind, path, view.bound_style(path.id)),
         };
         paint_widget_skin(kind, &label, param, rect, &mut skin, text, theme);
         out.insert(

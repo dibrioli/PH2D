@@ -65,6 +65,30 @@ fn paint(kind: WidgetKind, theme: Theme, body: Option<Body>) -> Painted {
     Painted { ops, inks }
 }
 
+/// O corpo que a ponte do canvas dá a este tipo sobre `under` (a porta `WidgetKind::drawing`).
+fn worn(kind: WidgetKind, under: TokenColor) -> Option<Body> {
+    match kind.drawing() {
+        Drawing::Body => Some(Body::Drawing { under: Some(under) }),
+        Drawing::Ground => Some(Body::Ground { under: Some(under) }),
+        Drawing::Consumed => None,
+    }
+}
+
+/// Uma operação OPACA de conteúdo (preenchimento, traço ou glifo).
+fn opaque_parts(p: &Painted) -> (usize, usize) {
+    let shapes = p
+        .ops
+        .iter()
+        .filter(|op| match op {
+            DrawOp::Fill { brush, .. } | DrawOp::Stroke { brush, .. } => {
+                solid(brush).is_some_and(|c| c[3] == 255)
+            }
+            _ => false,
+        })
+        .count();
+    (shapes, p.inks.iter().filter(|c| c[3] == 255).count())
+}
+
 fn solid(brush: &Brush) -> Option<[u8; 4]> {
     match brush {
         Brush::Solid(c) => Some(c.to_rgba8().to_u8_array()),
@@ -116,7 +140,7 @@ fn nenhuma_superficie_do_tema_cobre_o_desenho() {
                 seen_bodies += 1;
             }
             for under in bodies(theme) {
-                let p = paint(kind, theme, Some(Body::Drawing { under: Some(under) }));
+                let p = paint(kind, theme, worn(kind, under));
                 assert!(
                     !p.ops.iter().any(covers_the_frame),
                     "{kind:?} {theme:?} {under:?}: um corpo do tema cobre o desenho"
@@ -143,7 +167,7 @@ fn o_conteudo_le_se_sobre_o_desenho() {
                 continue;
             }
             for under in bodies(theme) {
-                let p = paint(kind, theme, Some(Body::Drawing { under: Some(under) }));
+                let p = paint(kind, theme, worn(kind, under));
                 let ink = readable_on(under, theme);
                 for c in p.inks.iter().filter(|c| c[3] == 255) {
                     let r = token(*c).contrast_ratio(&under);
@@ -157,6 +181,50 @@ fn o_conteudo_le_se_sobre_o_desenho() {
                     );
                     assert!(ink.contrast_ratio(&under) >= INK_MIN);
                 }
+            }
+        }
+    }
+}
+
+/// **Cada pele vestida guarda o seu conteúdo** — medido na foto F18: o interruptor sem polegar e o
+/// checkbox sem caixa, porque as partes deles eram apagadas como se fossem o corpo.
+///
+/// Por tipo, por extenso: quantas formas opacas e quantos glifos opacos, no MÍNIMO, sobrevivem. O
+/// `Divider` declara zero — o desenho É a linha.
+#[test]
+fn cada_pele_vestida_guarda_o_seu_conteudo() {
+    let want = |kind: WidgetKind| -> (usize, usize) {
+        match kind {
+            WidgetKind::Divider => (0, 0),
+            // O `paint_toggle` não recebe texto: o interruptor é só as peças.
+            WidgetKind::Toggle => (1, 0),
+            WidgetKind::Checkbox => (1, 1),
+            WidgetKind::Slider | WidgetKind::ProgressBar | WidgetKind::Spinner => (1, 0),
+            WidgetKind::LevelMeter => (1, 0),
+            WidgetKind::Dropdown => (1, 1),
+            WidgetKind::Button
+            | WidgetKind::Tag
+            | WidgetKind::TextInput
+            | WidgetKind::Card
+            | WidgetKind::SectionHeader
+            | WidgetKind::ListItem
+            | WidgetKind::NumberInput
+            | WidgetKind::Tabs
+            | WidgetKind::RadioGroup
+            | WidgetKind::SegmentedAdaptive => (0, 1),
+            WidgetKind::IconButton | WidgetKind::ColorSwatch => (0, 0),
+        }
+    };
+    for theme in Theme::ALL {
+        for kind in WidgetKind::ALL {
+            for under in bodies(theme) {
+                let got = opaque_parts(&paint(kind, theme, worn(kind, under)));
+                let (shapes, glyphs) = want(kind);
+                assert!(
+                    got.0 >= shapes && got.1 >= glyphs,
+                    "{kind:?} {theme:?} {under:?}: sobrou {got:?}, o mínimo é {:?}",
+                    (shapes, glyphs)
+                );
             }
         }
     }

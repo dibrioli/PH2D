@@ -141,7 +141,10 @@ contexto*. As alavancas, por ordem:
 - ⛔ **Código de família vive em `crates/ph2d-app-<família>`; a shell é COMPOSIÇÃO.** A catraca
   `the_shell_only_shrinks` reprova o crescimento — a cura é MOVER, nunca subir o número
   ([HOWTO](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md)).
-- Smoke = `--profile smoke` (3 s); `--release` só para smoke de PERFORMANCE. Linker `mold` no Linux
+- Smoke = `--profile smoke` (3 s); `--release` só para smoke de PERFORMANCE. ⛔ **Sonda/teste pesado
+  também em `--profile smoke`** — remontar depois de uma edição: 114 s em `--release` × 3,1 s em `smoke`
+  (17/10, motion); o guarda R8 recusa `cargo test --release` salvo `PH2D_RELEASE="mede velocidade"`
+  (o relógio da CPU é o único número que muda). Linker `mold` no Linux
   (global, nunca no repo); nada de Cranelift. Detalhe: DIRETRIZ §6 e §6.7.
 
 ## §3 — CI / ship

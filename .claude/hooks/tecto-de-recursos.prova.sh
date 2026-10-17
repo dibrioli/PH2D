@@ -43,6 +43,9 @@ t "nextest de uma crate"  'bash scripts/ph2d-run.sh cargo nextest run -p ph2d-ec
 t "seguido de ;"          'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs; echo fim' false deny
 # ⭐ R7 — clippy no meio do trabalho; R6 — edição que não prova que casou (dono 14/10).
 t "clippy de uma crate"   'bash scripts/ph2d-run.sh cargo clippy -p ph2d-ecs --all-targets' false deny
+# ⭐ R8 — `--release` só para medir velocidade (17/10: 114 s × 3 s a remontar).
+t "sonda em --release"    'bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --lib --release -- --ignored toda_cena' false deny
+t "--release --no-run"    'bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --lib --release --no-run' false deny
 t "clippy do workspace"   'bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings' false deny
 t "sed -i"                "sed -i 's/velho/novo/' crates/x/src/lib.rs"     false deny
 t "sed -E -i.bak"         "cd crates && sed -E -i.bak 's/a/b/' x.rs"         false deny
@@ -78,6 +81,9 @@ t "só compilar os testes" 'bash scripts/ph2d-run.sh cargo test -p ph2d-ecs --no
 t "a suíte do diff"       'bash scripts/nextest-impacted.sh'                false passa
 t "grep que MENCIONA narrow" 'grep -rn cargo-test-narrow.sh docs/'         false passa
 t "clippy no FECHO"       'PH2D_SUITE=fecho bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings' false passa
+t "sonda em smoke"        'bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --lib --profile smoke -- --ignored toda_cena' false passa
+t "release que MEDE velocidade" 'PH2D_RELEASE="mede velocidade" bash scripts/ph2d-run.sh cargo test -p ph2d-eval-motion --release --test fita_memoria -- --nocapture' false passa
+t "build --release (smoke de performance)" 'bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --release' false passa
 t "clippy no fim de ONDA" 'PH2D_SUITE=onda bash scripts/ph2d-run.sh cargo clippy -p ph2d-light2d-gpu --all-targets -- -D warnings' false passa
 t "sed -n (ler)"          'sed -n 1,40p crates/x/src/lib.rs'                false passa
 t "sed para OUTRO ficheiro" "sed -e 's/a/b/' x.rs > y.rs"                   false passa

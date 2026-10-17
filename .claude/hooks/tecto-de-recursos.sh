@@ -155,6 +155,27 @@ No fecho da linha (/pd-linha-fechar, /pd-gate-fechamento):
 Imprescindível agora (ex.: a linha mudou uma regra de lint): PH2D_SUITE=\"motivo: <porquê>\" ${cmd}"
 fi
 
+# ── R8 · teste em `--release` só para medir VELOCIDADE ────────────────────────
+# Medido 17/10 (máquina ociosa, intercalado, mínimo de 2): remontar os testes da `ph2d-app-motion`
+# depois de uma edição de código custa 114 s em `--release` (thin LTO + `codegen-units = 1`: refaz a
+# crate inteira num só núcleo) e 3,1 s em `--profile smoke` (o mesmo `opt-level`, incremental) — 37×.
+# 14–17/10: 35 corridas `--release` só na motion, 103 min. O NÚMERO de uma sonda de resultado é o mesmo
+# nos dois (nada de fast-math; o perfil não muda a aritmética); só o RELÓGIO da CPU difere.
+if printf '%s' "$exe" | grep -qE '(^|[;&|(`[:space:]])cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?(test|nextest[[:space:]]+run)[[:space:]][^;&|]*--release' \
+   && ! printf '%s' "$exe" | grep -qE 'PH2D_RELEASE='; then
+  recusa "⛔ Teste em \`--release\` sem medir velocidade.
+
+Remontar em \`--release\` depois de uma edição custa ~114 s; em \`--profile smoke\` (o mesmo
+nível de otimização) ~3 s — medido 17/10. O resultado de uma sonda é o mesmo nos dois." \
+"Sonda de RESULTADO (números, bits, contagens, a placa de vídeo):
+
+  ${cmd/--release/--profile smoke}
+
+Mede o RELÓGIO da CPU (ms por quadro, custo de um passe) — aí o \`release\` é o que se mede:
+
+  PH2D_RELEASE=\"mede velocidade\" ${cmd}"
+fi
+
 # ── R6 · edição por script tem de PROVAR que casou ────────────────────────────
 # Um `str.replace()` / `re.sub()` que não casa e um `sed -i` cujo padrão não existe são no-ops
 # SILENCIOSOS: o script diz «ok» e o ficheiro não mudou (CLAUDE.md §2). Medido em 14/10 (7 dias):

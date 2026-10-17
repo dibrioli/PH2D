@@ -42,7 +42,7 @@
 #
 # USO — sempre com o NOME do teste (dono 14/10; sem nome o guarda R5 recusa):
 #   bash scripts/cargo-test-narrow.sh ph2d-timeline nesting
-#   bash scripts/cargo-test-narrow.sh ph2d-tool-painter --release -- --ignored dab_
+#   bash scripts/cargo-test-narrow.sh ph2d-tool-painter --profile smoke -- --ignored dab_   # nunca --release (R8)
 #   PH2D_SKIP_CHECK=1 bash scripts/cargo-test-narrow.sh ph2d-ecs weapon   # pula a porta
 #   PH2D_SUITE="motivo: crate nova" bash scripts/cargo-test-narrow.sh ph2d-node-x   # a crate inteira
 set -uo pipefail

@@ -974,6 +974,7 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
 | Quer rodar o teste do ITEM | `bash scripts/cargo-test-narrow.sh <crate> <nome_ou_pedaço>` (tecto de 900 s, varre órfãos) | 1-5s |
 | Quer a crate INTEIRA | só se for **imprescindível** (lista abaixo): `PH2D_SUITE="motivo: <porquê>" bash scripts/cargo-test-narrow.sh <crate>` — sem o motivo o guarda recusa | 5-75s |
 | Teste PESADO (malha, campo, física) | `bash scripts/ph2d-run.sh cargo nextest run -p <crate> --cargo-profile ci-test -E 'test(<nome>)'` — no `dev` uma suíte custou 55 min | — |
+| Sonda otimizada (GPU, números, bits) | `cargo test -p <crate> --profile smoke -- --ignored <nome>` — **nunca `--release`**: remontar custa 114 s × 3,1 s (17/10); o guarda R8 recusa. Só mede o RELÓGIO da CPU? `PH2D_RELEASE="mede velocidade"` | 3 s a remontar |
 | A suíte do diff | `bash scripts/nextest-impacted.sh` — corre a cada **10 commits** da linha; antes disso recusa | 1-20 min |
 | Editou foundational, quer ver downstream | `cargo check --workspace` | 30-60s warm |
 | Vai commitar | **nada** — não há hook de commit (conferido 14/10: nenhum `pre-commit` instalado); a validação é a cadência do §6.2 | 0s |

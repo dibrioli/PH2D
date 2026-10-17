@@ -398,17 +398,18 @@ mod tests {
 
     #[test]
     fn a_previa_corta_a_volta_do_que_muda() {
+        let marca = |a: usize, b: usize| std::iter::once(a..b).collect::<Vec<_>>();
         let l = PreviewLine {
             text: format!("{}amplitude", "x".repeat(60)),
-            changed: vec![60..69],
+            changed: marca(60, 69),
         };
         let (t, c) = crop(&l, 20);
         assert!(t.starts_with('…') && t.ends_with("amplitude"), "{t}");
         assert_eq!(&t[c[0].clone()], "amplitude");
         let curta = PreviewLine {
             text: "local d = s * amplitude".into(),
-            changed: vec![14..23],
+            changed: marca(14, 23),
         };
-        assert_eq!(crop(&curta, 50), (curta.text.clone(), vec![14..23]));
+        assert_eq!(crop(&curta, 50), (curta.text.clone(), marca(14, 23)));
     }
 }

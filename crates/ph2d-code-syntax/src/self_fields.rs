@@ -37,10 +37,10 @@ impl Syntax {
         }
         let mut out = SelfFields::default();
         for i in 0..root.child_count() {
-            let Some(f) = root.child(i as u32) else {
+            let Some(f) = root.child(i) else {
                 continue;
             };
-            let local = root.field_name_for_child(i as u32) == Some("local_declaration");
+            let local = root.field_name_for_child(i) == Some("local_declaration");
             let hook = f.kind() == "function_declaration"
                 && !local
                 && f.child_by_field_name("name").is_some_and(|n| {

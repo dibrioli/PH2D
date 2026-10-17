@@ -53,3 +53,4 @@ metadata:
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
 - ⛔⛔⛔ [24 provas VERDES sobre um componente que não andava — todas entravam pelo canal INTERNO, que fica ABAIXO da metade partida do gesto](feedback_the_inner_channel_fixture_is_below_the_break.md)
 - ⛔⛔⛔ [Paridade é uma RELAÇÃO (dois motores que ignoram a mesma feature concordam) — e uma FRACÇÃO afoga o fenómeno: a barra lia `99,579 %` de `99,5` com o pior byte a `12` contra `1`](feedback_two_engines_that_both_ignore_a_feature_agree_perfectly.md)
+- ⛔⛔ [Empate resolvido por `round` é artefacto do QUADRANTE, não decisão — passa em todo gate até o dono o encontrar](feedback_a_tie_broken_by_rounding_is_a_quadrant_artefact_not_a_law.md)

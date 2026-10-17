@@ -150,3 +150,4 @@ alisamento de um bake não é efeito colateral — é o que o protege, e existe 
 crua de `8` nós, mesmo a `64` amostras ele fica `2,9×` mais caro e `1,3`–`1,8×` pior que
 `bind + lei de hoje` — a subdivisão do bind é graduada pelas juntas, e isso é informação que o
 fitter não tem.
+- ⛔⛔ [Atribuição VELHA de um vermelho não cobre o suspeito de HOJE — abla o teu e confirma o número AO BIT](feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect.md)

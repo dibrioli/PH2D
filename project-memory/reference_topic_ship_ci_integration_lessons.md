@@ -40,3 +40,7 @@ metadata:
 - ⛔⛔ [Portão série × paralelo verde em `dev` não prova o `ci-test`: o LLVM 21–22 vectoriza `tile[base + ((x−1) & mask)]` como cópia contígua com overflow-checks a o2 (o `paper_rows`, 11/10) — copie os troços](feedback_a_serial_parallel_gate_must_run_in_the_ship_profile.md)
 - ⭐ [Estudo de velocidade 12–13/10: gate de placa lento = cache NVIDIA cheio; gabarito ao bit 3×; seletor preciso; main só verde](project_speed_study_2026_10_12_gate_critical_path.md)
 - ⛔⛔ [Qualquer processo sem o tecto APARA o cache de todos — o app do dono reabre a frio; nunca `import-environment` cru](feedback_the_shader_cache_is_trimmed_by_any_process_without_the_cap.md)
+- [e o `cargo-check-narrow.sh` é cego aos `tests/it/`](feedback_the_inner_loop_check_script_is_blind_to_its_own_integration_tests.md)
+- ⛔ [Um `-D warnings` que só corre no `ship.sh` é um portão que a LINHA nunca vê — 4 avisos de uma wave descobertos pela seguinte](feedback_a_deny_warnings_that_only_runs_at_ship_is_a_gate_the_line_never_sees.md)
+- [CI corre 26 de 313 membros](project_ci_runs_26_of_313_workspace_members.md) · [`field-eval` custa 55 min da suíte em DEBUG](reference_one_field_eval_test_costs_55_minutes_of_the_debug_suite.md)
+- ⛔ [E o `cargo check` NUNCA avalia um `const { assert!(…) }` de dentro de uma função — verde no laço interno, `E0080` só no build](feedback_cargo_check_never_evaluates_an_inline_const_assert.md)

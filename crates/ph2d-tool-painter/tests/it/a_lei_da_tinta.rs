@@ -16,9 +16,10 @@ const RAIO_DA_CENA: f32 = 18.0;
 
 /// `(preset, caixas da obra ligadas, fnv1a da cena)` — pinados em `f46fcffb2a`; os 5 de tinta e marcador
 /// (prompt 42) em `ddc782e9f0`, antes do pó (prompt 43); o Airbrush em `4fa48c25df`, antes das formas (prompt 44), e
-/// refeito por ORDEM DO DONO no smoke do 44 (a pressão do Spray 2: esmaece, não estreita).
+/// refeito por ORDEM DO DONO no smoke do 44 (a pressão do Spray 2: esmaece, não estreita); o Wet Flat e a Gouache
+/// Flat pinados com a lei de antes do prompt 45 (a dos 20 de cima, ao bit).
 #[rustfmt::skip]
-const CENAS: [(&str, bool, u64); 20] = [
+const CENAS: [(&str, bool, u64); 22] = [
     ("Wet Round", false, 0xfce64c9627dc5bc3),
     ("Wet Wash", false, 0x782a0a8a8ed9c439),
     ("Wet Dry Brush", false, 0x1a361614679dde9a),
@@ -37,6 +38,8 @@ const CENAS: [(&str, bool, u64); 20] = [
     ("Marker Bullet", false, 0xe8d6f9b5bef7d373),
     ("Marker Liner", false, 0x1bdda019316e5682),
     ("Airbrush", false, 0xf18e31b033e37f16),
+    ("Wet Flat", false, 0x9802020009417e6d),
+    ("Gouache Flat", false, 0xb6ebb9a07409badb),
     ("Wet Round", true, 0x44016d14e50f2119),
     ("Wet Liner", true, 0x7a276b4a53ec4531),
 ];

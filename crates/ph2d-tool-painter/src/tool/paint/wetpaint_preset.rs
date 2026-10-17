@@ -25,6 +25,8 @@ mod medida_preview;
 mod miniatura;
 mod preview;
 #[cfg(test)]
+mod shape_color_tests;
+#[cfg(test)]
 mod tests;
 
 pub use miniatura::{DIAMETRO_DA_MINIATURA, miniatura_do_preset};
@@ -387,6 +389,12 @@ impl PainterTool {
         if let Some(v) = prm.heavy_edge {
             self.set_wet_borda_que_pesa(v);
         }
+        // A Shape Color (prompt 45): a do pincel, ou NENHUMA — ausente tira a do pincel anterior.
+        let mut sc = super::shape_ramp::EstadoDaShapeColor::default();
+        if let Some(v) = &prm.shape_color {
+            sc.ler_json(v);
+        }
+        self.set_shape_color_estado(&sc);
         // A largura prometida (W2): a lei MEDIDA do preset; um ficheiro sem ela (de antes da W2) usa a
         // do Wet Round, o pincel de fábrica.
         self.paint.wetpaint.largura = Some(
@@ -491,6 +499,7 @@ impl PainterTool {
         });
         p.live_water = Some(w.agua_viva);
         p.heavy_edge = Some(w.borda_que_pesa);
+        p.shape_color = self.shape_color_estado().para_json_se_mexida();
         // A lei da largura do pincel de onde ele veio (W2): um pincel mexido guarda a do preset-base.
         if let Some(lei) = &w.largura {
             p.width_table = lei.tabela();

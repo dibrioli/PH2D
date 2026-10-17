@@ -218,7 +218,7 @@ fn mascara(w: u32, h: u32, fase: u32) -> Vec<u8> {
         .collect()
 }
 
-fn ferramenta() -> PainterTool {
+pub(super) fn ferramenta() -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
     t.set_paint_media(PaintMedia::WetPaint);
@@ -315,7 +315,7 @@ fn um_preset_sem_tilt_nao_mexe_na_inclinacao() {
     );
 }
 
-fn pinta(t: &mut PainterTool) -> Vec<u8> {
+pub(super) fn pinta(t: &mut PainterTool) -> Vec<u8> {
     risca(t, [23, 101, 179]);
     t.run_full().0
 }
@@ -345,7 +345,7 @@ fn risca(t: &mut PainterTool, cor: [u8; 3]) {
     }
 }
 
-fn pelo_ficheiro(prm: Parametros, texturas: BTreeMap<String, Vec<u8>>) -> Preset {
+pub(super) fn pelo_ficheiro(prm: Parametros, texturas: BTreeMap<String, Vec<u8>>) -> Preset {
     let p = Preset {
         parametros: prm,
         origem: Origem::Utilizador,

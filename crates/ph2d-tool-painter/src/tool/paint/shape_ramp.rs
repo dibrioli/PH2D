@@ -97,11 +97,7 @@ impl PainterTool {
 
     /// Reset the Shape Colour section to defaults: ramp off, the default gradient, B&W off.
     pub fn reset_shape_ramp(&mut self) {
-        self.paint.shape_color_ramp = ph2d_color::ColorRamp::default();
-        self.paint.shape_color_ramp_enabled = false;
-        self.paint.shape_color_ramp_bw = false;
-        self.paint.shape_camadas = Default::default(); // Texture Color só, Falloff Color de fábrica
-        self.shape_ramp_changed();
+        self.set_shape_color_estado(&EstadoDaShapeColor::default());
     }
 
     /// Replace the Shape Colour Ramp (`ph2d_color::ColorRamp`); re-bakes the LUTs. Symmetry with
@@ -151,11 +147,63 @@ impl PainterTool {
     }
 }
 
-/// The Shape Color section as one value (on, B&W, the Texture Color ramp, the layers).
-#[derive(Clone, Debug)]
+/// The Shape Color section as one value (on, B&W, the Texture Color ramp, the layers). `Default` = the
+/// factory one: the ramp off, the default gradients, B&W off, the Texture Color on top.
+#[derive(Clone, Debug, Default)]
 pub(super) struct EstadoDaShapeColor {
     ligada: bool,
     bw: bool,
     rampa: ph2d_color::ColorRamp,
     camadas: super::shape_camadas::CamadasDoShape,
+}
+
+impl EstadoDaShapeColor {
+    /// **A Shape Color por NOME** — a lei única que o pincel salvo (`Parametros::shape_color`, prompt 45) e o
+    /// estado inicial de uma macro gravam. As rampas vão pelo `serde` do `ColorRamp`.
+    pub(super) fn para_json(&self) -> serde_json::Value {
+        let c = &self.camadas;
+        serde_json::json!({
+            "ligada": self.ligada,
+            "bw": self.bw,
+            "rampa": self.rampa,
+            "textura": c.textura,
+            "queda": c.queda,
+            "queda_rampa": c.queda_rampa,
+            "queda_primeiro": c.queda_primeiro,
+            "blend": c.blend as u8,
+            "opacidade_textura": c.opacidade_textura,
+            "opacidade_queda": c.opacidade_queda,
+        })
+    }
+
+    /// O [`Self::para_json`] de agora, ou `None` quando é o de fábrica (o pincel sem a rampa grava nada).
+    pub(super) fn para_json_se_mexida(&self) -> Option<serde_json::Value> {
+        let v = self.para_json();
+        (v != Self::default().para_json()).then_some(v)
+    }
+
+    /// Lê `v` por cima de `self`: um campo ausente (ou ilegível) fica como está.
+    pub(super) fn ler_json(&mut self, v: &serde_json::Value) {
+        let rampa = |k: &str| serde_json::from_value::<ph2d_color::ColorRamp>(v[k].clone()).ok();
+        let bool_ = |k: &str, base: bool| v[k].as_bool().unwrap_or(base);
+        let opacidade =
+            |k: &str, base: f32| v[k].as_f64().map_or(base, |x| (x as f32).clamp(0.0, 1.0));
+        if let Some(r) = rampa("rampa") {
+            self.rampa = r;
+        }
+        self.ligada = bool_("ligada", self.ligada);
+        self.bw = bool_("bw", self.bw);
+        let c = &mut self.camadas;
+        if let Some(r) = rampa("queda_rampa") {
+            c.queda_rampa = r;
+        }
+        c.textura = bool_("textura", c.textura);
+        c.queda = bool_("queda", c.queda);
+        c.queda_primeiro = bool_("queda_primeiro", c.queda_primeiro);
+        if let Some(m) = v["blend"].as_u64().and_then(|n| u8::try_from(n).ok()) {
+            c.blend = ph2d_painter_brush::BrushBlend::from_u8(m);
+        }
+        c.opacidade_textura = opacidade("opacidade_textura", c.opacidade_textura);
+        c.opacidade_queda = opacidade("opacidade_queda", c.opacidade_queda);
+    }
 }

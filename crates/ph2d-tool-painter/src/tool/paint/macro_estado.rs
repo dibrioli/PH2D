@@ -2,7 +2,7 @@
 //! do Wet Paint pela porta do PRESET (knobs, máscaras, texturas), o meio e a ferramenta na mão, e por cima
 //! deles cada PINCEL inteiro ([`super::wetpaint_preset::campos_da_macro`]) — o vivo e o guardado de cada
 //! modo (`brush_by_mode`: trocar de meio ou de ferramenta a gravar carrega o do destino) —, mais o estado
-//! do meio e do traço que o preset não guarda. Tudo por NOME (JSON): um campo novo num leitor antigo
+//! do meio e do traço que o preset não guarda. A Shape Color vai no preset (prompt 45). Tudo por NOME (JSON): um campo novo num leitor antigo
 //! salta, um campo ausente fica o de fábrica; um estado de antes da W6c (sem `meio`) é Wet Paint.
 //!
 //! A completude é gateada pelo censo dos controlos (`ph2d-panel-painter-layers`,
@@ -36,7 +36,6 @@ impl PainterTool {
         let w = &self.paint.wetpaint;
         let p = &self.paint;
         let campos = campos_da_macro();
-        let c = &p.shape_camadas;
         let v = json!({
             "meio": self.paint_media().to_u8(),
             "modo": self.active_paint_mode_id(),
@@ -62,19 +61,6 @@ impl PainterTool {
                 "paper_visual": w.paper_visual,
                 "opacidade": w.opacidade,
                 "relogio_fixo": w.relogio_fixo,
-            },
-            // A Shape Color (prompt 41: pinta no Wet Paint) — o preset não a guarda.
-            "shape_color": {
-                "ligada": p.shape_color_ramp_enabled,
-                "bw": p.shape_color_ramp_bw,
-                "rampa": p.shape_color_ramp,
-                "textura": c.textura,
-                "queda": c.queda,
-                "queda_rampa": c.queda_rampa,
-                "queda_primeiro": c.queda_primeiro,
-                "blend": c.blend as u8,
-                "opacidade_textura": c.opacidade_textura,
-                "opacidade_queda": c.opacidade_queda,
             },
             "traco": {
                 "seed": p.seed,
@@ -191,51 +177,13 @@ impl PainterTool {
         Ok(())
     }
 
-    /// A Shape Color de [`Self::macro_estado`], pelas portas do painel (cada uma re-assa as LUTs); um campo
-    /// ausente fica como está.
+    /// A Shape Color de uma macro gravada ANTES do prompt 45 (o preset não a levava; hoje vai no
+    /// `Parametros::shape_color`): por cima da que o preset pôs; um campo ausente fica como está.
     fn macro_shape_color_aplica(&mut self, sc: &Value) {
-        let rampa = |k: &str| serde_json::from_value::<ph2d_color::ColorRamp>(sc[k].clone()).ok();
-        if let Some(r) = rampa("rampa") {
-            self.set_shape_color_ramp(r);
-        }
-        if let Some(r) = rampa("queda_rampa") {
-            self.set_shape_falloff_ramp(r);
-        }
-        if let Some(b) = sc["ligada"].as_bool() {
-            self.set_shape_ramp_enabled(b);
-        }
-        if sc["bw"]
-            .as_bool()
-            .is_some_and(|b| b != self.paint.shape_color_ramp_bw)
-        {
-            self.toggle_shape_ramp_bw();
-        }
-        if sc["textura"]
-            .as_bool()
-            .is_some_and(|b| b != self.paint.shape_camadas.textura)
-        {
-            self.toggle_shape_texture_color();
-        }
-        if sc["queda"]
-            .as_bool()
-            .is_some_and(|b| b != self.paint.shape_camadas.queda)
-        {
-            self.toggle_shape_falloff_color();
-        }
-        if sc["queda_primeiro"]
-            .as_bool()
-            .is_some_and(|b| b != self.paint.shape_camadas.queda_primeiro)
-        {
-            self.swap_shape_color_layers();
-        }
-        if let Some(m) = sc["blend"].as_u64().and_then(|n| u8::try_from(n).ok()) {
-            self.set_shape_color_blend(m);
-        }
-        if let Some(x) = sc["opacidade_textura"].as_f64() {
-            self.set_shape_texture_opacity(x as f32);
-        }
-        if let Some(x) = sc["opacidade_queda"].as_f64() {
-            self.set_shape_falloff_opacity(x as f32);
+        if sc.is_object() {
+            let mut e = self.shape_color_estado();
+            e.ler_json(sc);
+            self.set_shape_color_estado(&e);
         }
     }
 }

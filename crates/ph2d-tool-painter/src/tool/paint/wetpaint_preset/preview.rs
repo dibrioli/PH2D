@@ -161,9 +161,8 @@ impl PainterTool {
     /// pincel deposita também quando a activa é o Smear (gate `o_preview_pinta_o_pincel_mesmo_com…`).
     /// `exata` = o pincel no tamanho REAL (o preview vivo); senão preso à miniatura dos ficheiros.
     ///
-    /// A Shape Color entra só no preview vivo: a miniatura é o que o PRESET reproduz, e o preset não a
-    /// guarda (pergunta B13 ao dono) — com ela a miniatura mostraria cores que o ficheiro não devolve
-    /// (gate `a_miniatura_nao_pinta_a_shape_color`).
+    /// A Shape Color entra nos dois: o preset guarda-a (prompt 45), e a miniatura mostra o que o ficheiro
+    /// devolve (gate `a_miniatura_pinta_a_shape_color`).
     fn instalar_cena(&mut self, c: &CenaDoPreview, exata: bool) {
         let mut brush = c.brush;
         if !exata {
@@ -196,9 +195,7 @@ impl PainterTool {
         (w.agua_viva, w.borda_que_pesa) = c.opcoes;
         w.opacidade = c.opacidade;
         w.largura.clone_from(&c.largura);
-        if exata {
-            self.set_shape_color_estado(&c.shape_color);
-        }
+        self.set_shape_color_estado(&c.shape_color);
         self.paint.eraser = false;
         self.invalidate_composite();
     }

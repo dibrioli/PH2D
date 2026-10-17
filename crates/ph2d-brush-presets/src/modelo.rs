@@ -94,6 +94,11 @@ pub struct Parametros {
     /// **A Borda que pesa** do Wet Paint (W1g, `0..1`). `None` = um preset de antes dela (não mexe).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub heavy_edge: Option<f64>,
+    /// **A Shape Color do pincel** (prompt 45, B13 do dono): as rampas Texture Color + Falloff Color, a ordem,
+    /// o Blend, a Opacity de cada uma e o B&W, por NOME. `None` = sem rampa: aplicar o pincel TIRA a do
+    /// anterior (um preset é o pincel inteiro). O meio lê-a; o formato não sobe de versão.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape_color: Option<Value>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }
@@ -115,6 +120,7 @@ impl Parametros {
             tilt: None,
             live_water: None,
             heavy_edge: None,
+            shape_color: None,
             extra: BTreeMap::new(),
         }
     }

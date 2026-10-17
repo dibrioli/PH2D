@@ -268,11 +268,10 @@ fn a_chave_ve_a_shape_color() {
     }
 }
 
-/// **A miniatura dos ficheiros NÃO pinta a Shape Color**: o preset não a guarda (pergunta B13 ao dono),
-/// e uma miniatura com cores que o preset não reproduz mentiria. O controlo do mesmo par é o preview
-/// vivo ([`o_preview_mostra_a_shape_color`]).
+/// **A miniatura dos ficheiros pinta a Shape Color** (prompt 45): o preset guarda-a, e a miniatura mostra o
+/// que ele devolve — até ao 45 não a guardava e esta régua pedia o contrário.
 #[test]
-fn a_miniatura_nao_pinta_a_shape_color() {
+fn a_miniatura_pinta_a_shape_color() {
     let mini = |ligada: bool| {
         let mut t = molhado();
         com_shape_color(&mut t, ligada);
@@ -284,7 +283,7 @@ fn a_miniatura_nao_pinta_a_shape_color() {
         ));
         ultimo
     };
-    assert_eq!(mini(true), mini(false));
+    assert_ne!(mini(true), mini(false));
 }
 
 #[test]

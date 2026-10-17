@@ -235,3 +235,113 @@ fn an_empty_device_driver_leaves_the_override_like_the_cpu() {
     let pares = nas_duas(&g, &reg, out);
     assert!(pior(&pares) < EPS, "as rotas divergem em {}", pior(&pares));
 }
+
+/// A galáxia da `=139`: `grid → integrate ⇢pre⇢ falloff → vortex → attractor → integrate.forces`,
+/// com o `strength` do redemoinho dirigido por `map_range ← adsr` (laço próprio). `gatilho` liga
+/// ao envelope um `value.input` de gatilho disparado por um LFO — uma fronteira TEMPORAL.
+/// Devolve `(grafo, saída, integrate, vortex)`.
+fn galaxia_com_envelope(gatilho: bool) -> (Graph, NodeId, NodeId, NodeId) {
+    let mut g = Graph::new();
+    let fio = |g: &mut Graph, a: (NodeId, u16), b: NodeId, porta: u16, pre: bool| {
+        g.connect(Edge {
+            from: a,
+            to: (b, porta),
+            delayed: pre,
+        })
+        .unwrap();
+    };
+    let grid = g.add_node("motion.grid");
+    let ig = g.add_node("motion.integrate");
+    let nucleo = g.add_node("motion.falloff");
+    let vx = g.add_node("force.vortex");
+    let ima = g.add_node("force.attractor");
+    let out = g.add_node("motion.output");
+    fio(&mut g, (grid, 0), ig, 0, false);
+    fio(&mut g, (ig, 0), nucleo, 0, true);
+    fio(&mut g, (nucleo, 0), vx, 0, false);
+    fio(&mut g, (vx, 0), ima, 0, false);
+    fio(&mut g, (ima, 0), ig, 1, false);
+    fio(&mut g, (ig, 0), out, 0, false);
+    let env = g.add_node("pulse.adsr");
+    fio(&mut g, (env, 0), env, 1, true);
+    let forca = g.add_node("value.map_range");
+    fio(&mut g, (env, 0), forca, 0, false);
+    g.drive_param(vx, "strength", (forca, 0)).unwrap();
+    if gatilho {
+        let quadrado = g.add_node("value.lfo");
+        g.set_param(quadrado, "wave", 2.0);
+        let batida = g.add_node("value.input");
+        g.set_param(batida, "kind", 2.0);
+        g.drive_param(batida, "fire", (quadrado, 0)).unwrap();
+        fio(&mut g, (batida, 5), env, 0, false);
+    }
+    (g, out, ig, vx)
+}
+
+/// ⛔⛔ **Um condutor cuja cadeia deixa uma fronteira TEMPORAL não vai para a placa** (doc 120
+/// §8.3.3): ela fazia o recuo expulsar o laço INTEIRO da `=139` — o `Integrate` da galáxia na CPU
+/// por causa do gatilho do envelope, `~5×` o quadro a ×11. A CPU dá o número por tique, e o laço
+/// fica na placa. ⚠️ O controlo: sem o gatilho a mesma cadeia continua condutor na placa.
+#[test]
+fn a_temporal_driver_chain_stays_on_the_cpu_and_keeps_the_loop_on_the_device() {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).unwrap();
+    let forca = |vx: NodeId| -> DrivenParams {
+        [(vx, [("strength".to_string(), Some(0.8))].into())].into()
+    };
+    // O controlo: sem fronteira, o condutor coze na placa e o laço também.
+    let (g, out, ig, vx) = galaxia_com_envelope(false);
+    assert!(ph2d_gpu_cook::device_driven_params(&g, &reg, &reg).contains(&(vx, "strength".into())));
+    let p = plan_with_device_drivers(&g, &reg, &reg, &[out], &DrivenParams::new());
+    assert!(p.drives_a_loop() && p.device_drivers.contains_key(&vx), "{p:?}");
+    // Com o gatilho: o número vem da CPU, e o `Integrate` continua estágio.
+    let (g, out, ig2, vx) = galaxia_com_envelope(true);
+    assert_eq!(ig, ig2);
+    assert!(
+        !ph2d_gpu_cook::device_driven_params(&g, &reg, &reg).contains(&(vx, "strength".into())),
+        "a CPU tem de cozer o condutor que a placa recusa"
+    );
+    let p = plan_with_device_drivers(&g, &reg, &reg, &[out], &forca(vx));
+    assert!(p.device_drivers.is_empty(), "{:?}", p.device_drivers);
+    assert!(p.drives_a_loop(), "o laço saiu da placa: fronteiras {:?}", p.boundaries);
+    assert!(p.stages.iter().any(|s| s.node == ig));
+    assert!(p.boundaries.is_empty(), "{:?}", p.boundaries);
+    // ⛔ E o condutor COM ESTADO (o envelope lê o seu `pre`) vai na lista que a marcha avança: cozido
+    // à parte, o estado dele não andava e a galáxia girava sem a batida.
+    let (src, _) = *g.param_sources(vx).unwrap().get("strength").unwrap();
+    assert_eq!(p.condutores_na_marcha, vec![src]);
+}
+
+/// ⛔ **Uma fronteira de porta ≠ 0 recua quem a lê** — a entrega da bomba é a saída `0` de cada nó,
+/// e a porta `5` (o pulso) de um gatilho chegaria à placa como a coluna da porta `0`.
+#[test]
+fn a_side_port_boundary_recedes_its_reader() {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).unwrap();
+    let mut g = Graph::new();
+    let batida = g.add_node("value.input");
+    g.set_param(batida, "kind", 2.0);
+    let env = g.add_node("pulse.adsr");
+    let out = g.add_node("motion.output");
+    for (a, b, porta) in [((batida, 5), env, 0), ((env, 0), out, 0)] {
+        g.connect(Edge {
+            from: a,
+            to: (b, porta),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    let p = plan_with_device_drivers(&g, &reg, &reg, &[out], &DrivenParams::new());
+    assert!(!p.stages.iter().any(|s| s.node == env), "{p:?}");
+    assert!(p.boundaries.iter().all(|(_, porta)| *porta == 0), "{:?}", p.boundaries);
+    // O controlo: pela porta `0` o envelope encena-se, com a fronteira na porta `0`.
+    g.disconnect(env, 0).unwrap();
+    g.connect(Edge {
+        from: (batida, 0),
+        to: (env, 0),
+        delayed: false,
+    })
+    .unwrap();
+    let p = plan_with_device_drivers(&g, &reg, &reg, &[out], &DrivenParams::new());
+    assert!(p.stages.iter().any(|s| s.node == env), "{p:?}");
+}

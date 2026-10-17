@@ -3,7 +3,7 @@
 //! vive *o que um nó é* (elegível, a caminhada, as colunas); aqui vive *que saídas se pedem e
 //! quando o laço recua*.
 
-use super::{DrivenParams, GpuPlan, Walk, eligible};
+use super::{DrivenParams, GpuPlan, GpuSource, Walk, eligible};
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::gpu::KernelResolver;
 use ph2d_nodegraph::graph::{Graph, NodeId};
@@ -94,7 +94,7 @@ pub fn plan_with_device_drivers(
 /// Driven params are refused **conservatively**: the driver is a wire into
 /// another subtree that may be temporal, and chasing it buys nothing today — a
 /// template with a driven param simply keeps the pre-ADR-0136 retreat.
-fn boundary_is_static(graph: &Graph, ops: &dyn OpResolver, node: NodeId) -> bool {
+pub(super) fn boundary_is_static(graph: &Graph, ops: &dyn OpResolver, node: NodeId) -> bool {
     let mut seen: BTreeSet<NodeId> = BTreeSet::new();
     let mut stack = vec![node];
     while let Some(n) = stack.pop() {
@@ -170,9 +170,29 @@ fn plan_forbidding(
             stages: Vec::new(),
             sinks: Vec::new(),
             device_drivers: BTreeMap::new(),
+            condutores_na_marcha: Vec::new(),
         };
     }
 
+    // ⛔ **Uma fronteira de porta ≠ 0 recua quem a lê** (doc 120 §8.3.3): a entrega da bomba é a
+    // saída 0 de cada nó (`boundary_streams`) e a placa chaveia-a pelo nó, então a porta `5` de um
+    // gatilho chegaria como a coluna da porta `0`. Hoje nenhuma cena o alcança (a sonda
+    // `sonda_os_defeitos_latentes_da_entrega`); o recuo é o mesmo do laço, um nó de cada vez.
+    let leem_porta_lateral: Vec<NodeId> = walk
+        .stages
+        .iter()
+        .filter(|s| {
+            s.inputs
+                .iter()
+                .any(|i| matches!(i, GpuSource::Boundary(_, p) if *p != 0))
+        })
+        .map(|s| s.node)
+        .collect();
+    if !leem_porta_lateral.is_empty() {
+        let mut next = forbidden.clone();
+        next.extend(leem_porta_lateral);
+        return plan_forbidding(graph, ops, kernels, sinks, &next, (driven, condutores));
+    }
     // A staged node that feeds a `pre` edge owns simulation state. If the plan
     // ALSO leaves a CPU boundary, the caller would cook that boundary on the
     // pump — and the pump, to do so, re-cooks this node's chain with ITS OWN
@@ -222,13 +242,17 @@ fn plan_forbidding(
             stages: Vec::new(),
             sinks: Vec::new(),
             device_drivers: BTreeMap::new(),
+            condutores_na_marcha: Vec::new(),
         };
     }
 
+    let condutores_na_marcha =
+        super::condutor::condutores_com_estado(graph, ops, &walk.stages, &walk.device_drivers);
     GpuPlan {
         boundaries: walk.boundaries,
         stages: walk.stages,
         sinks: staged_sinks,
         device_drivers: walk.device_drivers,
+        condutores_na_marcha,
     }
 }

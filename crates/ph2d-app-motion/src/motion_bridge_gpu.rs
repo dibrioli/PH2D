@@ -188,6 +188,8 @@ fn substep_clocks(
         .collect()
 }
 
+#[path = "motion_bridge_gpu_marcha.rs"]
+mod marcha;
 // Os valores dos params dirigidos e o plano do produto — irmão pelo tecto de LOC.
 #[path = "motion_bridge_gpu_dirigidos.rs"]
 mod dirigidos;
@@ -386,6 +388,11 @@ pub(super) fn cook_gpu(
         &plan.boundaries,
         estagios_que_despacham(&plan, &motion.registry, declara),
     );
+    // ⛔ Um condutor com estado é prefixo da CPU: só a marcha do ramo híbrido o avança (doc 120 §8.3.3).
+    let route = match route {
+        GpuRoute::FullyGpu if !plan.condutores_na_marcha.is_empty() => GpuRoute::Hybrid,
+        r => r,
+    };
     match route {
         GpuRoute::Cpu if !scopes.is_empty() => fell(
             motion,
@@ -472,81 +479,27 @@ pub(super) fn cook_gpu(
             }
         }
         GpuRoute::Hybrid => {
-            // Cook the CPU prefix up to EVERY boundary on the pump, marching each
-            // owed tick (a sequential prefix must sim each), then upload their
-            // streams to the GPU suffix. Time scopes are empty here (the route
-            // gate refused otherwise).
-            //
-            // The node list comes from the plan, and the whole set goes in one
-            // call: the march and the `pre` advance are per CALL, so one call per
-            // boundary would advance the clock once per boundary and re-simulate
-            // the shared prefix.
-            let t = std::time::Instant::now();
-            let boundary_nodes: Vec<NodeId> = plan.boundaries.iter().map(|(n, _)| *n).collect();
-            for tick in super::ticks_owed(motion.pump.last_cooked_tick(), target) {
-                motion.pump.advance_or_scrub_to_nodes_scoped(
-                    &motion.doc.graph,
-                    &motion.registry,
-                    &boundary_nodes,
-                    tick,
-                    |t| t as f64 * fixed_dt,
-                    scopes,
-                );
-            }
-            motion.fases.marcha = t.elapsed();
-            // The clocks this frame owes the suffix. A hybrid plan CAN drive a loop since
-            // ADR-0136 §5 — but only when every boundary is STATIC (a temporal one still
-            // retreats at plan time, because that would be two sims of one state). A static
-            // boundary is a constant, so the SAME hand-off serves every marched tick, and the
-            // loop keeps its sequence exactly like the FullyGpu arm: rewind if owed, then march.
-            // A stateless hybrid has one clock and nothing to sequence.
-            // ⚠️ Sem hand-off nada coze (abaixo), e o `rewind_for` não pode correr sozinho: ele
-            // RESTAURA um ponto de controlo na placa.
-            let ha_entrega = !motion.pump.boundary_streams().is_empty();
-            let relogios: Vec<(f64, Option<u64>)> = if !ha_entrega {
-                Vec::new()
-            } else if plan.drives_a_loop() {
-                let ticks: Vec<u64> = (motion.gpu_cook.rewind_for(target)..=target).collect();
-                substep_clocks(&ticks, sub, fixed_dt, true)
-            } else {
-                vec![(target as f64 * fixed_dt, None)]
-            };
-            // ⛔⛔⛔ **OS VALORES DIRIGIDOS, POR TIQUE — a lei do FullyGpu, que este ramo não tinha**
-            // (report do Enio, 2026-10-03: *«o Vortex continua com o valor do cartão»*). O plano
-            // encenava o nó com fio e o cozedor resolvia o `strength` sem o mapa, caindo no
-            // override. ⚠️ Derivados ANTES do empréstimo abaixo: `valores_dirigidos` coze o
-            // condutor na bomba, e o `handed` empresta-a.
-            // ⭐ E as ENTRADAS de cada tique (doc 128 §3.3): a bomba já as gravou ao marchar até à
-            // fronteira; o condutor de cada tique lê as da fita.
-            let t = std::time::Instant::now();
-            let mut replay = motion
-                .pump
-                .comeca_o_replay(relogios.first().and_then(|r| r.1).unwrap_or(target));
-            let dirigidos: Vec<ph2d_gpu_cook::DrivenParams> = relogios
-                .iter()
-                .map(|&(playhead, tick)| {
-                    motion
-                        .pump
-                        .entradas_do_replay(&mut replay, tick.unwrap_or(target));
-                    valores_dirigidos(motion, playhead)
-                })
-                .collect();
-            motion.fases.dirigidos = t.elapsed();
-            // Borrow-splitting: the cook takes `&motion.gpu_cook` mutably while the
-            // streams live in `motion.pump`, so the hand-off is materialised first.
+            // Cook the CPU prefix up to EVERY boundary — and every stateful CPU driver — on the
+            // pump, ONE call per tick for the whole set (the march and the `pre` advance are per
+            // CALL), then upload the boundary streams to the GPU suffix ([`marcha`]).
+            let marcha::Entrega {
+                relogios,
+                dirigidos,
+            } = marcha::marcha(motion, &plan, target, sub, fixed_dt, scopes);
+            // Borrow-splitting: the cook takes `&motion.gpu_cook` mutably while the streams live
+            // in `motion.pump`, so the hand-off is materialised first — only the plan's boundaries
+            // (the march also cooked the drivers).
             let handed: Vec<(NodeId, &ph2d_nodegraph::attr::Stream)> = motion
                 .pump
                 .boundary_streams()
                 .iter()
+                .filter(|(n, _)| plan.boundaries.iter().any(|(b, _)| b == n))
                 .map(|(n, s)| (*n, s))
                 .collect();
-            // A boundary that failed to cook is simply missing, and the sequencer
-            // validates the set against `plan.boundaries` — so an incomplete
-            // hand-off is REFUSED (`BoundaryMismatch`) rather than dispatched
-            // against an empty stream. Letting it try is deliberate: the check
-            // lives in one place, and duplicating it here would be a second
-            // opinion about what a complete hand-off is.
-            if !handed.is_empty() {
+            // A boundary that failed to cook is simply missing, and the sequencer validates the
+            // set against `plan.boundaries` — an incomplete hand-off is REFUSED
+            // (`BoundaryMismatch`) rather than dispatched against an empty stream.
+            if !relogios.is_empty() {
                 motion.gpu_live = relogios
                     .iter()
                     .zip(dirigidos)

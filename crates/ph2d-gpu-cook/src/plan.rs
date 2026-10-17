@@ -66,6 +66,10 @@ pub struct GpuPlan {
     /// condutor)]`. O condutor é estágio ANTES do consumidor, e o sequenciador copia o `v[0]` dele
     /// para o campo do uniform — o número nunca passa pela CPU.
     pub device_drivers: BTreeMap<NodeId, Vec<(String, NodeId)>>,
+    /// ⛔ **Os condutores COM ESTADO que a CPU dirige** (doc 120 §8.3.3): a fonte de um param de
+    /// estágio cujo número vem do mapa da CPU e cuja cadeia tem um `pre` ou um `Stateful`. A marcha
+    /// da bomba tem de os avançar em passo com a placa — cozidos à parte, o estado deles não anda.
+    pub condutores_na_marcha: Vec<NodeId>,
 }
 
 impl GpuPlan {

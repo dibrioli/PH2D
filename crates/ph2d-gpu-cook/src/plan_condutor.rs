@@ -47,8 +47,54 @@ pub(super) fn na_placa(
     (port == 0
         && entra_no_uniform
         && mapa_puro(kernels, ty, k)
-        && eligible(graph, ops, kernels, src, claimed, forbidden, (driven, true)))
+        && eligible(graph, ops, kernels, src, claimed, forbidden, (driven, true))
+        && !deixa_fronteira_temporal(graph, ops, kernels, src))
     .then_some(src)
+}
+
+/// ⛔ **A cadeia do condutor, encenada na placa, deixaria uma fronteira TEMPORAL?** Essa fronteira
+/// faz o recuo (`plan_uniao`) expulsar TODO laço do plano — na `=139` o `Integrate` da galáxia
+/// saía por causa do gatilho do envelope que acelera o redemoinho (doc 120 §8.3.3). Cozido na CPU,
+/// o condutor dá o mesmo número por tique, sem fronteira — e, com estado, a marcha avança-o
+/// ([`condutores_com_estado`]).
+///
+/// ⚠️ Pergunta ESTÁTICA (mapa vazio, sem a caminhada): a mesma resposta para o
+/// [`device_driven_params`] e para o planeador, que é o que as faz concordar.
+fn deixa_fronteira_temporal(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    condutor: NodeId,
+) -> bool {
+    let (vazio, sem_mapa) = (BTreeSet::new(), DrivenParams::new());
+    let mut encenados = BTreeSet::new();
+    let mut pilha = vec![condutor];
+    while let Some(n) = pilha.pop() {
+        if encenados.contains(&n) {
+            continue;
+        }
+        if !eligible(graph, ops, kernels, n, &encenados, &vazio, (&sem_mapa, true)) {
+            if super::uniao::boundary_is_static(graph, ops, n) {
+                continue;
+            }
+            return true;
+        }
+        encenados.insert(n);
+        let Some(op) = graph.node(n).and_then(|i| ops.resolve(i.type_id())) else {
+            continue;
+        };
+        for porta in 0..op.manifest().inputs.len() {
+            if let Some((src, _, false)) = graph.input_edge(n, porta) {
+                pilha.push(src);
+            }
+        }
+        for p in graph.param_sources(n).into_iter().flat_map(|f| f.keys()) {
+            if let Some(src) = na_placa(graph, ops, kernels, n, p, &encenados, &vazio, &sem_mapa) {
+                pilha.push(src);
+            }
+        }
+    }
+    false
 }
 
 /// **Os fios que a placa dirige** — o que a ponte NÃO coze na CPU (`valores_dirigidos`). Uma
@@ -68,4 +114,56 @@ pub fn device_driven_params(
         .filter(|(n, p)| na_placa(graph, ops, kernels, *n, p, &vazio, &vazio, &sem_mapa).is_some())
         .map(|(n, p)| (n, p.clone()))
         .collect()
+}
+
+/// ⛔ **[`GpuPlan::condutores_na_marcha`](super::GpuPlan::condutores_na_marcha)**: por estágio, a
+/// fonte de cada param cujo número vem do mapa da CPU (não é condutor na placa) e cuja cadeia tem
+/// estado. Uma vez cada, na ordem dos estágios.
+pub(super) fn condutores_com_estado(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    stages: &[super::GpuStage],
+    device_drivers: &std::collections::BTreeMap<NodeId, Vec<(String, NodeId)>>,
+) -> Vec<NodeId> {
+    let mut fora: Vec<NodeId> = Vec::new();
+    for s in stages {
+        let na_placa = device_drivers.get(&s.node);
+        for (p, (src, _)) in graph.param_sources(s.node).into_iter().flat_map(|f| f.iter()) {
+            if na_placa.is_some_and(|v| v.iter().any(|(q, _)| q == p)) || fora.contains(src) {
+                continue;
+            }
+            if cadeia_com_estado(graph, ops, *src) {
+                fora.push(*src);
+            }
+        }
+    }
+    fora
+}
+
+/// A cadeia de `n` (fios de entrada e condutores) tem um `pre` ou um efeito `Stateful`? Um nó sem
+/// op responde que sim: na dúvida, a marcha avança-o.
+fn cadeia_com_estado(graph: &Graph, ops: &dyn OpResolver, n: NodeId) -> bool {
+    let mut vistos = BTreeSet::new();
+    let mut pilha = vec![n];
+    while let Some(k) = pilha.pop() {
+        if !vistos.insert(k) {
+            continue;
+        }
+        let Some(op) = graph.node(k).and_then(|i| ops.resolve(i.type_id())) else {
+            return true;
+        };
+        let man = op.manifest();
+        if man.effect == ph2d_nodegraph::effect::Effect::Stateful {
+            return true;
+        }
+        for porta in 0..man.inputs.len() {
+            match graph.input_edge(k, porta) {
+                Some((_, _, true)) => return true,
+                Some((src, _, false)) => pilha.push(src),
+                None => {}
+            }
+        }
+        pilha.extend(graph.param_sources(k).into_iter().flat_map(|f| f.values().map(|(s, _)| *s)));
+    }
+    false
 }

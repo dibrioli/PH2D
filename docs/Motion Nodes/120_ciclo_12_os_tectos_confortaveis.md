@@ -303,7 +303,7 @@ AO BIT e reprovou por 120 lanes a 1 ULP. Rotação dos pontos: pior \|Δpos\| `0
 **Rota medida pela porta do produto** (sonda `sonda_o_carimbo_com_escala`,
 [`motion_state_demo_carimbo_escala_tests.rs`](../../crates/ph2d-app-motion/src/motion_state_demo_carimbo_escala_tests.rs)):
 `=111`, `=112`, `=132`, `=136`, `=137`, `=141` ficam só com o `Shape` no processador; `=62` com `Shape` +
-`Combine`; `=139` continua com a simulação na CPU por OUTRA fronteira (`Integrate`); `=120`/`=125` passam a
+`Combine`; `=139` continua com a simulação na CPU por OUTRA fronteira (`Integrate`; fechado no §8.3.3); `=120`/`=125` passam a
 ter Bones/Skin como fronteiras; `=131` o Verlet Rope; `=119` Table/Text/Camera. Outras fronteiras, OUTRO
 tecto (não o carimbo): `=98` (`transfer` = 1 e 3), `=134` (Time Remap ⇒ cena toda na CPU), `=51` (Boids e
 Soft Body).
@@ -424,6 +424,98 @@ e 2 um passe partilhado.
 |---|---|---|
 | cura 1a/1b — a LUT por conteúdo e o pool por ordem, para a ligação guardada acertar na cadeia do carimbo (código em `09af314f76`) | =132: 25 → 8 grupos criados; sobre o passe único, −10 a −35 µs na montagem (3–9 % da lacuna) | não entra (< 20 %); a mesma família do doc 131 C.7 (−0,03 ms) |
 | cura 3 — fusão de kernels consecutivos | não construída: resto de 2–3 µs por despacho depois do passe único | não se constrói enquanto o resto por despacho medido ficar < 5 µs |
+
+#### §8.3.3 — ✅ A `=139` simula a galáxia na placa (16/10): o condutor com estado entra na MARCHA
+
+**Diagnóstico** (sonda `sonda_a_fronteira_do_integrate`,
+[`motion_state_demo_fronteira_integrate_tests.rs`](../../crates/ph2d-app-motion/src/motion_state_demo_fronteira_integrate_tests.rs)),
+por ablação pela porta do produto, um fio de cada vez:
+- Não era recusa do kernel, da porta nem do param dirigido. Era o RECUO do plano (`plan_uniao.rs`).
+- Com os condutores na placa, o envelope (`pulse.adsr`, laço próprio) era encenado como condutor do
+  `strength` do redemoinho, e deixava a `batida` (`value.input` com o `fire` dirigido pelo LFO) como
+  fronteira NÃO estática.
+- Uma fronteira não estática expulsa TODA fonte de `pre` do plano: o envelope e, de arrasto, o `Integrate`.
+
+| variante (mesma cena) | `Integrate` na placa |
+|---|---|
+| hoje | não (fronteiras: `Shape` estática, `Integrate`) |
+| sem o `pre` do envelope | não (a `batida` continua fronteira) |
+| sem o gatilho no envelope | sim |
+| sem o fio no redemoinho | sim |
+| condutores na CPU (`condutores_na_placa = false`) | sim |
+
+**A família** (`sonda_o_condutor_que_expulsa_o_laco`, todas as cenas do roteador, condutores na placa ×
+na CPU): só a `=139` perdia o laço. As `=116/=117/=136` ganham um estágio com o condutor na placa e
+ficam como estão.
+
+**Kill-criterion, declarado ANTES do build:** a cura entra se cortar o quadro de `B` em ≥ 25 % E ≥ 100 µs
+a ×4 OU a ×11. A ×1 a escolha A/B é decisão de rota (a lacuna da `=120`), não esta cura.
+
+**Medido** (RTX 5060 Ti, perfil smoke, quadro inteiro, MÍNIMO de 7 blocos de 20 quadros, µs):
+- r-diag: no MESMO processo, load 27–35. A variante «condutores na CPU» é o plano da cura (mesma escala
+  de custo; ainda sem a marcha do envelope).
+- r-cura: depois da cura, load 29–46.
+
+| escala | A (CPU) r-diag | B antes r-diag | plano da cura r-diag | A r-cura | **B depois r-cura** |
+|---|---|---|---|---|---|
+| ×1 | 108 | 276 | 249 | 118 | **277** |
+| ×4 | 695 | 783 | 254 | 810 | **280** |
+| ×11 | 2 610 | 1 533 | 321 | 3 552 | **400** |
+
+Passa o critério com folga: −67 % a ×4 e −79 % a ×11 no mesmo processo. A ×1 a A continua a ganhar.
+
+**⛔ A 1.ª cura estava ERRADA, e o controlo do gate apanhou-a.** Ela recusava, no `na_placa`, o condutor
+cuja cadeia deixa uma fronteira temporal; o número passava a vir do mapa da CPU (`valores_dirigidos`).
+- A placa deu a galáxia da CPU SEM o envelope: `max|ΔP|` placa × CPU = 2,247, igual a CPU com × sem
+  envelope.
+- Mecanismo: a marcha da rota híbrida só avança o `pre` do cone das fronteiras
+  ([`cook.rs`](../../crates/ph2d-nodegraph/src/cook.rs), `advance_tick_inner` com `so`). Um condutor com
+  estado cozido à parte nunca avança: o envelope ficava em zero.
+- E o harness também mentia: sem `publish_all` por quadro a batida nunca dispara, nem na CPU. O controlo
+  «CPU com × sem envelope > 100·ε» é o que separa as duas coisas.
+
+**O desenho:**
+1. **Planeador** ([`plan_condutor.rs`](../../crates/ph2d-gpu-cook/src/plan_condutor.rs)):
+   - O condutor cuja cadeia deixaria uma fronteira temporal não vai para a placa (`deixa_fronteira_temporal`,
+     pergunta estática). O `device_driven_params` e a caminhada dão a mesma resposta.
+   - O plano lista os **`condutores_na_marcha`**: a fonte de cada param de estágio que vem do mapa da CPU e
+     cuja cadeia tem `pre` ou `Stateful`.
+2. **Rota** ([`motion_bridge_gpu_marcha.rs`](../../crates/ph2d-app-motion/src/motion_bridge_gpu_marcha.rs)):
+   - A bomba marcha as fronteiras E os condutores na marcha. A entrega à placa filtra-se às fronteiras.
+   - Com laço na placa, a marcha anda EM PASSO com ela: cada tique que a placa deve marcha-se na bomba e o
+     mapa dele lê-se logo a seguir.
+   - Um plano sem fronteiras mas com condutores na marcha vai pelo ramo híbrido (a única rota que marcha).
+3. **Guarda** ([`plan_uniao.rs`](../../crates/ph2d-gpu-cook/src/plan_uniao.rs)): uma fronteira de porta ≠ 0
+   recua o estágio que a lê. A entrega da bomba é a saída 0 de cada nó, e a placa chaveia-a pelo nó
+   (`GpuSource::Boundary(n, _)`).
+   - Por isso NÃO se pôs o envelope na placa com a `batida` como fronteira: o pulso (porta 5) chegaria
+     como a coluna da porta 0.
+   - Hoje nenhuma cena alcança a porta ≠ 0 (`sonda_os_defeitos_latentes_da_entrega`).
+
+**Os gates:**
+- `a_galaxia_da_139_na_placa_e_a_da_cpu` (placa):
+  - quadros de 1 a 7 tiques (`[1, 2, 7, 1, 4, 3]`) até 2,5 s, nas duas formas do plano: com as estrelas
+    (fronteira `Shape`) e sem elas (nenhuma fronteira);
+  - `max|ΔP|` placa × CPU = 7,2·10⁻⁷ ≤ `EPS_SIM` 2·10⁻³;
+  - controlos: 24 forças distintas, e CPU com × sem envelope = 2,289.
+- `um_condutor_na_placa_nunca_custa_o_laco` (sem placa, 0,2 s): em toda cena, os condutores na placa nunca
+  tiram o laço que eles na CPU deixam, e a galáxia da `=139` é estágio.
+- `ph2d-gpu-cook`: `a_temporal_driver_chain_stays_on_the_cpu_and_keeps_the_loop_on_the_device` (com o
+  controlo sem gatilho) e `a_side_port_boundary_recedes_its_reader` (com o controlo pela porta 0).
+- Mutação 6/6 sangraram, todas por asserção:
+  - M1 sem a regra do `na_placa` → a `=139` perde o laço;
+  - M2 lista vazia → 1 força, `max|ΔP|` 2,289;
+  - M3 sem o passo-a-passo → 5,2·10⁻³ nos quadros de vários tiques;
+  - M4 sem a troca para o ramo híbrido → «sem as estrelas» vira fully-GPU e congela;
+  - M5 sem a guarda → fronteira de porta 5;
+  - M6 marcha sem os condutores → congela.
+
+**⛔ Recusas MEDIDAS**
+
+| recusa | medido | veredito |
+|---|---|---|
+| condutor com estado cozido pelo `valores_dirigidos`, fora da marcha (a 1.ª cura) | placa = CPU sem envelope (`max|ΔP|` 2,247) | nunca: o estado só anda na marcha |
+| harness de paridade sem `publish_all` por quadro | CPU com × sem envelope = 0 em 150 tiques | o controlo do envelope é obrigatório em todo gate desta família |
 
 ### §8.4 — ✅ W1(b).1 e W1(b).2 FECHADAS (2026-09-24)
 

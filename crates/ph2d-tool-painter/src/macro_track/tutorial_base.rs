@@ -3,9 +3,9 @@
 
 use super::mede::Paragem;
 use super::{Curva, EnsinoDoPainter, idade_de, toca};
-use crate::tool::PainterTool;
 use crate::macro_track::etapas::{self, LeitorDoPainter};
 use crate::macro_track::tocar::{ErroDaMacro, TocadorDoPainter, respostas_de};
+use crate::tool::PainterTool;
 use ph2d_macro::{LeitorDaFamilia, Track};
 
 /// **A trilha que toca sem a pincelada `k`**: apagada pela edição do produto, e o tempo dela devolvido

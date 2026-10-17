@@ -111,7 +111,11 @@ fn sonda_quanto_espera_o_aluno() {
                 quadro(&mut a);
                 q += 1;
             };
-            let ate = es[0].criterios[ci].referencia.as_ref().expect("medida").ate();
+            let ate = es[0].criterios[ci]
+                .referencia
+                .as_ref()
+                .expect("medida")
+                .ate();
             let mut a = t;
             let mut nada = vec![(0.0f32, 0.0f32); PASSOS.len()];
             let mut pior = (0.0f32, 0);
@@ -120,7 +124,11 @@ fn sonda_quanto_espera_o_aluno() {
                 let dentro = idade(&a) <= ate;
                 for (j, e) in es.iter().enumerate() {
                     let r = razao(e, &a, ci);
-                    let x = if dentro { &mut nada[j].0 } else { &mut nada[j].1 };
+                    let x = if dentro {
+                        &mut nada[j].0
+                    } else {
+                        &mut nada[j].1
+                    };
                     if j == atual && dentro && r > pior.0 {
                         pior = (r, idade(&a));
                     }
@@ -214,7 +222,11 @@ fn sonda_quando_a_fracao_assenta() {
     use Variante::{Exacta, Nada};
     let ps30 = trinta();
     println!("load antes: {}", carga());
-    for (ps, lado) in [(&SPLASH[..], 512u32), (&SPLASH[..], 1024), (&ps30[..8], 512)] {
+    for (ps, lado) in [
+        (&SPLASH[..], 512u32),
+        (&SPLASH[..], 1024),
+        (&ps30[..8], 512),
+    ] {
         let track = trilha_no_meio(PaintMedia::WetPaint, ps, lado);
         let e = EnsinoDoPainter::de(&track).expect("ensino");
         #[expect(clippy::cast_precision_loss, reason = "o lado cabe num f32")]

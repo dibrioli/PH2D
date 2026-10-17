@@ -28,7 +28,9 @@ pub(super) const PASSO_DA_CURVA: u32 = 1;
 /// Os fios trabalhadores de uma medição: um quarto dos núcleos (o editor e as outras famílias ficam
 /// com o resto), pelo menos um.
 pub(super) fn fios() -> usize {
-    std::thread::available_parallelism().map_or(1, |n| n.get() / 4).max(1)
+    std::thread::available_parallelism()
+        .map_or(1, |n| n.get() / 4)
+        .max(1)
 }
 
 /// Pararam a medição: quem a pediu (a `Macro` mudou) ou ela própria (um erro a meio).
@@ -170,11 +172,9 @@ fn trabalha<'a>(
             return;
         };
         let feita = match t {
-            Trabalho::Gravada { i, c, toc, antes } => (
-                i,
-                false,
-                Ok(base::assentada(e, toc, c, antes, passo, p)),
-            ),
+            Trabalho::Gravada { i, c, toc, antes } => {
+                (i, false, Ok(base::assentada(e, toc, c, antes, passo, p)))
+            }
             Trabalho::Base {
                 i,
                 s,
@@ -262,7 +262,15 @@ impl<F: FnMut(Medida)> Reproducao<'_, F> {
                     .instantaneo()
                     .expect("o tool de um tocador nunca grava nem tem worker: tem instantâneo");
                 let antes = std::mem::take(&mut janelas[bases.len() + i].amostras);
-                if !self.manda(&tx, Trabalho::Gravada { i, c, toc: copia, antes })? {
+                if !self.manda(
+                    &tx,
+                    Trabalho::Gravada {
+                        i,
+                        c,
+                        toc: copia,
+                        antes,
+                    },
+                )? {
                     return Ok(false);
                 }
             }

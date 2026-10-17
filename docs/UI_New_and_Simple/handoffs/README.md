@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**69 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **69** são handoffs (registro **morto**).
+**70 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **70** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -83,6 +83,7 @@
 | 2026-10-15 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16_BARRA_DE_CONTROLE.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16_BARRA_DE_CONTROLE.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 15/10 — F16 a/b (a ② vira a barra de controle do Illustrator, o traço) f… |
 | 2026-10-15 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16c_TRACEJADO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16c_TRACEJADO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 15/10 — F16c (tracejado em até três pares, seta por ponta) feita |
 | 2026-10-16 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-16_F17_ABAS.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-16_F17_ABAS.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 16/10 — F17 (abas Drawing/Interface no painel do vetor) feita |
+| 2026-10-17 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-17_F18_O_DESENHO_E_O_CORPO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-17_F18_O_DESENHO_E_O_CORPO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 17/10 — F18 (o desenho é o corpo do widget) feita |
 | 2026-10-17 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-17 — F16–F17 (barra de controle, tracejado em pares, abas Drawing… |
 
 ---

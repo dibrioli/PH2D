@@ -71,7 +71,7 @@ Em `cb99619a93` (+ `22f433c65b`):
 
 ## Smoke ao dono
 
-Nenhuma foto foi tirada nesta onda. A imagem é a mesma de antes (o gate prova-o); o ganho de velocidade é invisível no tamanho da demo (a CPU é mais rápida a ×1) e só aparece com uma grade maior.
+Fotografada (`fotografa_cena.sh PH2D_GPU_COOK_DEMO=139 1930 1040`, esperas 3 s e 4,2 s): a galáxia de 256 estrelas inclinada aos 3,43 s e em losango aos 4,65 s, 60 fps, a faixa verde da fita na régua. A imagem é a mesma de antes (o gate prova-o); o ganho de velocidade é invisível no tamanho da demo (a CPU é mais rápida a ×1) e só aparece com uma grade maior.
 
 1. Abra o terminal e rode: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && PH2D_GPU_COOK_DEMO=139 cargo run -p ph2d-host-desktop --profile smoke`
 2. Quando a janela abrir, vá na ferramenta Motion: a galáxia de estrelas toca por 5 segundos e para.

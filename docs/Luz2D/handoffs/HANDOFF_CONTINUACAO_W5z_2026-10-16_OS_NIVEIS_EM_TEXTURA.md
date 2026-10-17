@@ -101,6 +101,14 @@ pelo nextest isolado: **verde** · `os_niveis_em_textura_dao_o_mesmo_bit` · G5 
 (`workspace_src_files_under_loc_cap`, `shell_files_respect_hr18_loc_cap`) · `check-standalone-optional` ·
 `cargo machete`: verdes. A placa esteve com a `line_motion_value` (cadeado recusou 300 s; repetido, sem forçar).
 
+Binário do smoke (HEAD `89f059a377`, `target/*/incremental` reclamado antes), 2.ª corrida:
+```
+▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.35s
+```
+Régua do loop (20 sessões): paralelismo 1,13 (✗) · respostas/sessão 145 (✓) · test:check 3,1× (✗) · edições sem
+conferir 1,0 % (✓) · contexto por passo 268 mil (✗) · contexto inicial 65 mil (✓).
+
 Smoke do dono: o da [W5x §7](HANDOFF_CONTINUACAO_W5x_2026-10-15_O_BERCO_DA_HOLOGRAFICA.md)
 continua válido; a W5z muda só a memória (mesma imagem, mesmo número ou melhor). Comparar com
 `PH2D_LIGHT2D_HRC_TEXTURAS=0` à frente do comando.

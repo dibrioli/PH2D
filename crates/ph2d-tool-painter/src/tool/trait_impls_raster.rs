@@ -142,19 +142,7 @@ impl PainterTool {
         // is, for every other non-destructive thing in this tool too.)
         let full = Region { x: 0, y: 0, w, h };
         if !self.is_trivial_stack() {
-            let active = self.layers.active().unwrap_or(RtLayerId(0));
-            let src = ToolPixelSource {
-                active_id: active,
-                active_rgba: &self.canvas_rgba,
-                images: &self.images,
-            };
-            let mut rgba = self.composto_pelo_vidro(&src, full).unwrap_or_else(|| {
-                let mut c = composite(&self.layers, &src, w, h);
-                self.compoe_sobre_o_papel(&mut c, full);
-                c
-            });
-            self.apply_impasto_light(&mut rgba, full);
-            return (rgba, w, h);
+            return (self.pilha_aplicada(), w, h);
         }
         // Trivial single-layer fast path: take the Arc out so refcount==1 →
         // `unwrap_or_clone` returns the inner Vec without allocation.
@@ -167,6 +155,42 @@ impl PainterTool {
             self.apply_impasto_light(&mut rgba, full);
         }
         (rgba, w, h)
+    }
+
+    /// A pilha não trivial achatada como o Apply a escreve (composição, papel, relevo).
+    fn pilha_aplicada(&self) -> Vec<u8> {
+        let (w, h) = self.source_size;
+        let full = Region { x: 0, y: 0, w, h };
+        let active = self.layers.active().unwrap_or(RtLayerId(0));
+        let src = ToolPixelSource {
+            active_id: active,
+            active_rgba: &self.canvas_rgba,
+            images: &self.images,
+        };
+        let mut rgba = self.composto_pelo_vidro(&src, full).unwrap_or_else(|| {
+            let mut c = composite(&self.layers, &src, w, h);
+            self.compoe_sobre_o_papel(&mut c, full);
+            c
+        });
+        self.apply_impasto_light(&mut rgba, full);
+        rgba
+    }
+
+    /// **A imagem que o Apply escreveria agora na sprite** (RGBA8 straight), sem mexer na pintura nem
+    /// na pré-visualização do editor — o [`RasterEditTool::run_full`] que não consome a tela. Inclui o
+    /// traço em voo. `None` = sem documento.
+    #[must_use]
+    pub fn imagem_aplicada(&self) -> Option<(Vec<u8>, u32, u32)> {
+        if self.canvas_rgba.is_empty() {
+            return None;
+        }
+        let (w, h) = self.source_size;
+        if !self.is_trivial_stack() {
+            return Some((self.pilha_aplicada(), w, h));
+        }
+        let mut rgba = self.canvas_rgba.to_vec();
+        self.apply_impasto_light(&mut rgba, Region { x: 0, y: 0, w, h });
+        Some((rgba, w, h))
     }
 
     fn deactivate_corpo(&mut self) {

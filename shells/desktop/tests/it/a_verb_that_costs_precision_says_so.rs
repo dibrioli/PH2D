@@ -42,6 +42,8 @@ use std::path::{Path, PathBuf};
 
 /// A porta por onde os pixels de um sprite são lidos.
 const READS_PIXELS: &str = "read_sprite_source(";
+/// A mesma porta em alfa reto (`texture_edit::read_sprite_straight`), também entregue como fecho.
+const READS_PIXELS_STRAIGHT: &str = "read_sprite_straight";
 
 /// **CHAMADAS** que satisfazem o gate — procuradas no corpo, nunca num comentário.
 ///
@@ -104,7 +106,7 @@ fn every_pixel_consumer_declares_what_it_costs() {
     for path in &files {
         let src = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {path:?}: {e}"));
         let body = code_without_comments(&src);
-        if !body.contains(READS_PIXELS) {
+        if !body.contains(READS_PIXELS) && !body.contains(READS_PIXELS_STRAIGHT) {
             continue;
         }
         let declared = CALLS.iter().any(|c| body.contains(c)) || src.contains(READONLY_MARKER);

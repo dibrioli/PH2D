@@ -552,3 +552,28 @@ pub fn tela_no_fim(track: &Track) -> Result<Vec<u8>, ErroDaMacro> {
     }
     Ok(ph2d_editor_core::tool::RasterEditTool::run_full(toc.tool_mut()).0)
 }
+
+/// **A imagem ao fim da GRAVAÇÃO** — os `events` crus, sem as edições das etapas: o que o editor tinha
+/// no Parar —, como o Apply a escreve na sprite (RGBA8 straight). A régua de «o artista pintou depois do
+/// Parar» (W7 item 1). `Ok(None)` = `parar`.
+///
+/// # Errors
+/// O [`ErroDaMacro`] da reprodução.
+pub fn imagem_no_fim_da_gravacao(
+    track: &Track,
+    parar: &AtomicBool,
+) -> Result<Option<(Vec<u8>, u32, u32)>, ErroDaMacro> {
+    let mut toc = TocadorDoPainter::novo(
+        &track.initial,
+        track.events.iter().map(|e| e.payload.as_slice()),
+    )?;
+    for e in &track.events {
+        if parar.load(Ordering::Relaxed) {
+            return Ok(None);
+        }
+        toc.aplica(&e.payload)?;
+    }
+    Ok(Some(ph2d_editor_core::tool::RasterEditTool::run_full(
+        toc.tool_mut(),
+    )))
+}

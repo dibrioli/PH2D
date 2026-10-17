@@ -120,24 +120,9 @@ impl crate::App {
             toasts,
             self.held_button.is_some(),
             crate::input_dispatch::fill_drag::fill_drag_armed(),
-            // O funil de leitura de textura desta shell, entregue como fecho: a crate da
-            // família não conhece o `texture_edit` nem o `SourceRead` dele.
-            // PRECISION-READONLY: o fecho só entrega os pixels ao canvas de TRABALHO do Painter; a
-            // escrita de volta na sprite é o Apply (`hero_intents::image_edit::painter`), por
-            // `commit_edited_texture`, que avisa por dentro.
-            |entity, sim, renderer, asset_db, atlas_asset_map| {
-                crate::hero_intents::texture_edit::read_sprite_source(
-                    entity,
-                    sim,
-                    renderer,
-                    asset_db,
-                    atlas_asset_map,
-                )
-                .map(|src| {
-                    let straight = src.image.into_straight();
-                    (straight.pixels, straight.width, straight.height)
-                })
-            },
+            // O funil de leitura desta shell: a família não conhece o `texture_edit`.
+            // PRECISION-READONLY: o bind só lê; a escrita de volta é o Apply.
+            crate::hero_intents::texture_edit::read_sprite_straight,
             &note_preview_px,
         );
         // Live-preview a non-selected sprite used as the brush Shape (so its opacity/blend remote-

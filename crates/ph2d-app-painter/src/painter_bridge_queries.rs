@@ -7,6 +7,14 @@
 
 use ph2d_editor_core::ToolRegistry;
 
+/// **O Painter do registo, activo ou não** — a porta da shell para o `PainterTool` concreto por id.
+pub fn o_painter(tools: &mut ToolRegistry) -> Option<&mut ph2d_tool_painter::PainterTool> {
+    tools
+        .tool_by_id_mut(&ph2d_editor_core::ToolId::new("painter"))?
+        .as_any_mut()
+        .downcast_mut()
+}
+
 /// Apply a Painter layers drag-reparent (W3 T3.8) emitted by the dispatch on Up
 /// of an active layer-row drag. The active `PainterTool` reverses
 /// `NodeId`→`LayerId` and applies `move_into_group` / reorder. Mirror of

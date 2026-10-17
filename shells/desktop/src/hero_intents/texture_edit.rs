@@ -51,6 +51,21 @@ pub(crate) struct SourceRead {
     pub pixels_16: Option<Vec<u16>>,
 }
 
+/// [`read_sprite_source`] em RGBA8 straight, o que as famílias pedem (o bind do Painter, o palco das
+/// macros). PRECISION-READONLY: quem chama só lê; a escrita de volta é o Apply.
+pub(crate) fn read_sprite_straight(
+    entity: Entity,
+    sim: &SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+) -> Option<(Vec<u8>, u32, u32)> {
+    read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map).map(|src| {
+        let straight = src.image.into_straight();
+        (straight.pixels, straight.width, straight.height)
+    })
+}
+
 /// Read `entity`'s sprite source as a [`SpriteImage`] carrying its native
 /// [`AlphaMode`] — Atlas resolves to the straight asset pixels; Individual
 /// reads the texture back, premultiplied iff `Sprite.premultiplied`.

@@ -372,6 +372,20 @@ fn o_apply_assa_o_papel() {
     );
 }
 
+/// **A IMAGEM APLICADA É O APPLY SEM O CONSUMIR** (Macros W7 item 1): nos quatro meios, com papel, a
+/// mesma imagem que o `run_full`, e a tela continua lá depois de a ler.
+#[test]
+fn a_imagem_aplicada_e_o_apply_sem_o_consumir() {
+    use ph2d_editor_core::tool::RasterEditTool;
+    for meio in MEIOS {
+        let mut t = com_papel(meio, CREME, true);
+        let (viva, _, _) = t.imagem_aplicada().expect("há documento");
+        let (outra, _, _) = t.imagem_aplicada().expect("ler não consome");
+        assert!(viva == outra, "{meio:?}: ler mudou a imagem");
+        assert!(t.run_full().0 == viva, "{meio:?}: não é a imagem do Apply");
+    }
+}
+
 /// **A PISTA RÁPIDA TAMBÉM COMPÕE SOBRE O PAPEL** — depois de a imagem inteira ser entregue, um traço
 /// novo recompõe só a região suja: o papel em volta dele, dentro dessa região, continua o papel.
 #[test]

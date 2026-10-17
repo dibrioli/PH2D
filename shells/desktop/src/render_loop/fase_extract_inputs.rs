@@ -40,11 +40,22 @@ impl crate::App {
             sim,
             toasts,
             painter_macros,
+            tools,
+            asset_db,
+            atlas_asset_map: atlas,
             ..
         } = FrameGfx::of(gfx);
         painter_macros.segue(sim.world_mut());
         let gravada = ph2d_app_macros::com(|m| m.sprite_gravada());
-        let palcos = painter_macros.sobe(renderer, toasts, gravada);
+        use crate::hero_intents::texture_edit::read_sprite_straight as reta;
+        // PRECISION-READONLY: a imagem atual (o Painter ligado, senão a sprite) só se compara (W7).
+        let mut le = |b, r: &mut _| reta(ph2d_ecs::Entity::from_bits(b), sim, r, asset_db, atlas);
+        let painter = ph2d_app_painter::painter_bridge_queries::o_painter(tools).map(|t| &*t);
+        let atuais = ph2d_app_painter::macro_track::Atuais {
+            painter,
+            le_sprite: Some(&mut le),
+        };
+        let palcos = painter_macros.sobe(renderer, toasts, gravada, atuais);
         palcos
             .into_iter()
             .map(|t| sim_extract::PreviewOverride {

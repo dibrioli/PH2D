@@ -468,15 +468,25 @@ fn a_dashed_shape_closes_its_loop_without_a_seam() {
     assert!(closed, "e' fechado");
     let d = ph2d_vec_scene::dash_fit::dash_lengths_for(&cooked, path.stroke.as_ref().unwrap())
         .expect("ha' tracejado");
-    let n = total / (d[0] + d[1]);
+    // ⚠️ A porta é a do TRAÇADOR: o período sai alongado pela `FOLGA_DO_AJUSTE` (o fecho cai DENTRO
+    // do último vão, `BUGS_vector.md` #42). Fecha a volta o período SEM a folga; e a sobra que a
+    // folga cria no fim tem de caber no último vão — senão nasce a lasca no fecho.
+    let folga = 1.0 + ph2d_vec_scene::dash_fit::FOLGA_DO_AJUSTE;
+    let n = total / d.period() * folga;
     assert!(
         (n - n.round()).abs() < 1e-9,
         "o padrao tem de fechar a volta: cabem {n} periodos em {total}"
     );
+    let sobra = n.round() * d.period() - total;
+    let ultimo_vao = d.as_slice()[d.as_slice().len() - 1];
+    assert!(
+        sobra > 0.0 && sobra < ultimo_vao,
+        "o fecho tem de cair DENTRO do ultimo vao: sobra {sobra}, vao {ultimo_vao}"
+    );
     // E o controle: SEM ajuste o padrão NÃO fecha — é o defeito, medido, para que este gate
     // não fique verde num mundo onde o ajuste é a identidade.
     let raw = path.stroke.as_ref().unwrap().dash_lengths().expect("cru");
-    let n_raw = total / (raw[0] + raw[1]);
+    let n_raw = total / raw.period();
     assert!(
         (n_raw - n_raw.round()).abs() > 1e-3,
         "esta fixture tem de ter emenda SEM o ajuste, senao nao prova nada: {n_raw}"

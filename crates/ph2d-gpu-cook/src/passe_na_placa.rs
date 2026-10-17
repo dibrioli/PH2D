@@ -68,6 +68,8 @@ pub(crate) struct Passe {
     /// O tecto do caminho de UM grupo — `None` = [`PECAS_PARA_UM_GRUPO`]; só a sonda o muda (as
     /// duas variantes no MESMO processo, `MEDIR_VELOCIDADE.md`).
     pub(crate) um_grupo_ate: Option<u32>,
+    /// Salta o `ordena` no caminho de despachos — só a sonda (o relógio vale, a soma não).
+    pub(crate) sem_ordenar: bool,
     /// Quanto o processador levou a ENCOMENDAR o último passe (a sonda lê).
     pub(crate) encode: std::time::Duration,
     /// O `ctrl` do último passe (`[alcance_max, andou, parado, varreduras, candidatos]`).
@@ -358,6 +360,12 @@ impl GpuCook {
         self.passe.um_grupo_ate = n;
     }
 
+    /// Salta a ordenação dos baldes no caminho de despachos — só a sonda.
+    #[doc(hidden)]
+    pub fn passe_sem_ordenar(&mut self, sim: bool) {
+        self.passe.sem_ordenar = sim;
+    }
+
     /// ⭐ **O `Relatorio` do passe na placa** (doc 130 §5) — o que o perfilador do quadro mostra
     /// (varreduras · peças · vizinhos), lido SEM espera: chame depois de cada cozimento; a cópia
     /// encomendada nele é mapeada aqui e lida num quadro seguinte. `None` até à 1.ª leitura.
@@ -542,7 +550,9 @@ impl GpuCook {
                     .scan
                     .exclusive(gpu, enc, &starts, nb + 1, &mut scratch);
                 despacha(enc, &pipes.espalha, ge, n);
-                despacha(enc, &pipes.ordena, go, nb);
+                if !self.passe.sem_ordenar {
+                    despacha(enc, &pipes.ordena, go, nb);
+                }
                 despacha(enc, &pipes.corrige, gc, n);
                 despacha(enc, &pipes.decide, &gd, 1);
             }

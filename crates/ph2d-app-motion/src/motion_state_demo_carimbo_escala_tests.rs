@@ -280,13 +280,15 @@ pub(super) fn le_as_fases(
 }
 
 /// As rotas da [`sonda_as_fases_do_quadro_hibrido`]: `A` o carimbo recusado (a de antes) · `B` hoje ·
-/// `S1` hoje com UMA varredura do passe em cada sink · `C` hoje sem colisor (o `Drive` que escreve
-/// `collider` passa a escrever o nome do controlo: nenhum passe arma).
+/// `S1` hoje com UMA varredura do passe em cada sink · `SO` hoje sem a ordenação dos baldes do passe
+/// · `C` hoje sem colisor (o `Drive` que escreve `collider` passa a escrever o nome do controlo:
+/// nenhum passe arma). ⚠️ As saídas procuram-se pelo TIPO: `m.sinks` só se enche no 1.º quadro.
 fn arma_a_rota(m: &mut MotionState, rota: &str) {
     match rota {
         "A" => rota_de_antes(m),
+        "SO" => m.gpu_cook.passe_sem_ordenar(true),
         "S1" => {
-            for s in m.sinks.clone() {
+            for s in saidas(m) {
                 m.doc
                     .graph
                     .set_param(s, ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_PARAM, 1.0);
@@ -306,6 +308,118 @@ fn arma_a_rota(m: &mut MotionState, rota: &str) {
             }
         }
         _ => {}
+    }
+}
+
+fn saidas(m: &MotionState) -> Vec<ph2d_nodegraph::graph::NodeId> {
+    m.doc
+        .graph
+        .nodes()
+        .iter()
+        .filter(|n| n.type_name == "motion.output")
+        .map(|n| n.id)
+        .collect()
+}
+
+/// **O censo do passe** da cena `n` a `×k`, pela rota da CPU depois de 30 quadros, sobre a corrente
+/// que chega a cada saída: os pares que se TOCAM (círculos de alcance, pares ordenados, força
+/// bruta) contra os candidatos da grelha da CPU; a grelha da PLACA (lado `2·alcance_max`, a chave
+/// `grid::cpu_bucket`) em baldes ocupados, o maior e `Σk²` (o trabalho da ordenação por inserção);
+/// e o passe inteiro da CPU (16 varreduras) no relógio.
+fn censo_do_passe(n: &str, k: f32, dt: f64) {
+    use ph2d_nodegraph::attr::Column;
+    let Some(mut c) = monta_demo(n) else { return };
+    amplia(&mut c, k);
+    c.gpu_enabled = false;
+    let alimenta: Vec<_> = saidas(&c)
+        .iter()
+        .filter_map(|&s| c.doc.graph.input_edge(s, 0).map(|(f, _, _)| (s, f)))
+        .collect();
+    let mut ph = ph2d_core::Playhead::new(dt);
+    ph.play();
+    for _ in 0..30 {
+        ph.advance_ticks(1);
+        crate::motion_bridge::quadro::o_quadro(
+            &mut c,
+            None,
+            &mut ph,
+            dt,
+            crate::motion_bridge::quadro::MaoDoEditor::default(),
+        );
+    }
+    // O `o_quadro` rearma as tomadas dele: um tique a mais pela bomba, com as nossas e sem o passe.
+    #[expect(clippy::cast_possible_truncation, reason = "sonda: tiques pequenos")]
+    let tique = (ph.time() / dt).round() as u64 + 1;
+    let t = tique as f64 * dt;
+    crate::motion_externals::publish_all(&mut c, t);
+    c.pump
+        .set_taps(&alimenta.iter().map(|(_, f)| *f).collect::<Vec<_>>());
+    c.pump.mark_dirty();
+    c.pump.set_separa_o_desenho(false);
+    let sinks: Vec<_> = alimenta.iter().map(|(s, _)| *s).collect();
+    let _ = c.pump.pump(
+        &c.doc.graph,
+        &c.registry,
+        &sinks,
+        tique,
+        t,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+    );
+    for (saida, f) in alimenta {
+        let Some(s) = c
+            .pump
+            .tap_streams()
+            .iter()
+            .find(|(no, _)| *no == f)
+            .map(|(_, s)| s.clone())
+        else {
+            eprintln!("CENSO ={n} ×{k}: sem tomada do nó {f:?}");
+            continue;
+        };
+        let (Some(cols), Some(Column::Vec2(p))) = (ph2d_contact::colisores(&s), s.get("P")) else {
+            eprintln!("CENSO ={n} ×{k} saída {saida:?}: não declara colisor");
+            continue;
+        };
+        let pecas: Vec<(usize, f32)> = cols
+            .iter()
+            .enumerate()
+            .filter_map(|(i, c)| c.map(|c| (i, c.alcance())))
+            .filter(|(_, a)| *a > 0.0)
+            .collect();
+        let alc_max = pecas.iter().fold(0.0f32, |a, (_, b)| a.max(*b));
+        let mut toques = 0usize;
+        for (x, &(i, ai)) in pecas.iter().enumerate() {
+            for &(j, aj) in &pecas[x + 1..] {
+                let d = [p[i][0] - p[j][0], p[i][1] - p[j][1]];
+                if d[0] * d[0] + d[1] * d[1] < (ai + aj) * (ai + aj) {
+                    toques += 2;
+                }
+            }
+        }
+        let (cand_cpu, grandes) = ph2d_contact::candidatos_e_grandes(&cols, p, &[]);
+        #[expect(clippy::cast_possible_truncation, reason = "sonda: peças < 2³²")]
+        let nb = ph2d_gpu_cook::grid::num_buckets(p.len() as u32);
+        let mut baldes = vec![0u64; nb as usize];
+        for &(i, _) in &pecas {
+            baldes[ph2d_gpu_cook::grid::cpu_bucket(p[i], 2.0 * alc_max, nb) as usize] += 1;
+        }
+        let ocupados = baldes.iter().filter(|&&b| b > 0).count();
+        let maior = baldes.iter().max().copied().unwrap_or(0);
+        let soma_k2: u64 = baldes.iter().map(|b| b * b).sum();
+        let t = Instant::now();
+        let (_, r) = ph2d_contact::passe::separa_com_relatorio(&s, 16);
+        let cpu_ms = t.elapsed().as_secs_f64() * 1e3;
+        #[expect(clippy::cast_precision_loss, reason = "sonda")]
+        let por = |x: usize| x as f64 / pecas.len().max(1) as f64;
+        eprintln!(
+            "CENSO ={n} ×{k} saída {saida:?}: {} peças · alcance_max {alc_max:.3} · TOQUES {toques} ({:.1} por peça) · candidatos CPU {cand_cpu} ({:.1} por peça, {grandes} grandes) · baldes da placa {ocupados}/{nb} ocupados, o maior {maior}, Σk² {soma_k2} · passe da CPU {cpu_ms:.1} ms ({} varreduras, {} candidatos)",
+            pecas.len(),
+            por(toques),
+            por(cand_cpu),
+            r.varreduras,
+            r.candidatos
+        );
     }
 }
 
@@ -404,6 +518,9 @@ fn sonda_as_fases_do_quadro_hibrido() {
         if monta_demo(n).is_none() {
             eprintln!("FASES ={n}: a cena não existe");
             continue;
+        }
+        if std::env::var("PH2D_SONDA_CENSO").is_ok() {
+            censo_do_passe(n, k, dt);
         }
         let mut ms: Vec<MotionState> = rotas
             .iter()

@@ -330,8 +330,8 @@ mediana fica afastada do mínimo; os ganhos grandes são firmes. A → B, ms por
 **O kill-criterion K2 disparou — e a decisão do dono foi manter (16/10).** Declarado ANTES: «B mais lento
 que A em qualquer das =132/=137/=139 ⇒ volta a recusar». Disparou no tamanho de demonstração (=139 ×1
 `0,116 → 0,581`; =137 ×1). O K2 media o custo FIXO do despacho em cenas de centenas de estrelas, não o
-tecto (§0.0): com o pano a escalar a rota nova ganha de 5,7× (=136) a 9× (=132). **Aberto, o PRÓXIMO:** o
-custo fixo (+0,06 a +0,6 ms por quadro nas cenas pequenas; a =120 fica 3× mais lenta mesmo a ×11 por ter
+tecto (§0.0): com o pano a escalar a rota nova ganha de 5,7× (=136) a 9× (=132). **Aberto, o PRÓXIMO
+(✅ fechado em §8.3.2 — era o passe por despacho):** o custo fixo (+0,06 a +0,6 ms por quadro nas cenas pequenas; a =120 fica 3× mais lenta mesmo a ×11 por ter
 muitas costuras CPU→placa) — a mesma família do aberto 2 do handoff LÍNGUA (o `Shape` estático da =116
 recozido a cada quadro).
 
@@ -340,6 +340,90 @@ recozido a cada quadro).
 | recusa | medido | veredito |
 |---|---|---|
 | K2 «B mais lento que A nas cenas de demo ⇒ reverter» | 16/10: dispara a ×1 (custo fixo do despacho), inverte a ×4–×11 nas galáxias (até 9×) | recusado como régua do TECTO: mede o custo fixo, não o teto — o custo fixo é aberto próprio |
+
+#### §8.3.2 — ✅ O custo fixo da rota híbrida (16/10): UM passe de computação para os despachos consecutivos
+
+**Diagnóstico** (`6cdc8d1895`, relógio `FasesDoCozimento`): o custo é POR DESPACHO, e cada sítio do
+`ph2d-gpu-cook` abria o SEU `begin_compute_pass`. Três curas candidatas foram medidas como variantes em
+execução, no MESMO processo (`09af314f76`; sonda `sonda_as_curas_do_custo_fixo`,
+[`motion_state_demo_curas_custo_fixo_tests.rs`](../../crates/ph2d-app-motion/src/motion_state_demo_curas_custo_fixo_tests.rs)):
+1a LUT por conteúdo, 1b pool por ordem (o `n`-ésimo pedido recebe o buffer do `n`-ésimo do quadro anterior)
+e 2 um passe partilhado.
+
+**Kill-criterion, declarado ANTES do build:**
+- Linhas que decidem: =120/=132/=119 ×1; para a cura 1, =132/=136 ×1.
+- Uma cura entra se cumprir tudo:
+  - corta ≥ 20 % da lacuna B−A em ≥ 2 linhas que decidem;
+  - a distância mínimo–mediana é menor que o efeito;
+  - nenhuma linha piora > 3 %;
+  - a saída é idêntica ao bit.
+- A cura 3 (fusão) só se constrói com lacuna restante na =120 ≥ 150 µs E um resto por despacho ≥ 5 µs.
+
+**Medido:**
+- Montagem: RTX 5060 Ti, perfil smoke, quadro inteiro (`o_quadro` + espera da placa), MÍNIMO das médias de
+  blocos de 20 quadros, mediana ao lado.
+- Três rodadas, todas com a saída ao bit:
+  - r1: 7 rodadas, load 16 → 22;
+  - r2: 11 rodadas, load 28;
+  - r3: 11 rodadas, load 9; o gémeo de `B·antes` ficou a ≤ 22 µs dele, salvo a =136 ×11.
+- A tabela é a r3 (µs, mínimo). As r1/r2 dão o mesmo sinal em todas as linhas.
+
+| cena | A (antes do carimbo) | B·antes (um passe por despacho) | **B (hoje)** | Δ | passes | espera da placa | `finish` |
+|---|---|---|---|---|---|---|---|
+| =120 ×1 | 133 | 650 | **458** | −192 | 36 → 2 | 211 → 95 | 121 → 51 |
+| =132 ×1 | 437 | 666 | **485** | −181 | 36 → 6 | 225 → 128 | 152 → 74 |
+| =119 ×1 | 591 | 771 | **472** | −299 | 44 → 3 | 241 → 96 | 196 → 62 |
+| =136 ×1 | 207 | 383 | **243** | −140 | 16 → 3 | 105 → 64 | 118 → 45 |
+| =112 ×1 | 161 | 229 | **154** | −75 | 10 → 2 | 89 → 58 | 71 → 28 |
+| =125 ×1 | 182 | 238 | **173** | −65 | 9 → 2 | 69 → 42 | 68 → 28 |
+| =111 ×1 | 577 | 647 | **488** | −159 | 24 → 9 | 238 → 178 | 265 → 182 |
+| =132 ×11 | 7 599 | 1 121 | **750** | −371 | 36 → 6 | 425 → 292 | 327 → 155 |
+| =136 ×11 | 2 512 | 579 | **343** | −236 | 16 → 3 | 187 → 122 | 135 → 54 |
+
+**A lei:**
+1. **Cada passe de computação custa ~3,5 µs de espera na placa e ~2–3 µs de `finish`.** Na =120,
+   34 passes a menos tiram 116 µs de espera e 70 de `finish`. Na =119, 41 passes a menos tiram 145 e 134.
+   A montagem dos estágios na CPU quase não muda: o custo estava no passe, não no despacho.
+2. **Com o passe único, a rota híbrida empata com a A ou ganha-lhe** em =119/=112/=125/=111. Sobram três
+   lacunas:
+   - =132: +48 µs;
+   - =136: +36 µs;
+   - =120: +325 µs, mas a A dela é toda CPU e não é custo de despacho: é o preço de ir à placa.
+3. **O resto por despacho fica em 2–3 µs** (=132: 48 µs / 22 despachos a mais; =136: 36 / 11), abaixo
+   dos 5 µs. Por isso a fusão (cura 3) **não se construiu**.
+4. **Cura 1:** baixa os grupos criados na =132 (25 → 8) e na =136 (12 → 8), e não acerta mais que isso
+   (as faltas que sobram são combinações novas de buffers já vistos). Sobre o passe único, a montagem dos
+   estágios cai 10–35 µs, 3–9 % da lacuna, abaixo dos 20 %. Sem passe único, o efeito dela ficou dentro
+   do ruído do gémeo: a 1a é um no-op na =120, que tem zero LUTs, e mesmo assim leu −192 µs a load 22.
+
+**O desenho:**
+- O codificador do cozimento é o `Gravador`
+  ([`gravador.rs`](../../crates/ph2d-gpu-cook/src/gravador.rs)). Cada sítio pede o passe por `passe()`.
+- O `DerefMut` FECHA o passe antes de qualquer cópia, limpeza ou `finish`, porque o wgpu tranca o
+  codificador enquanto há um passe vivo.
+- `scan`, `reduce`, `grid`, `voronoi`, `dono` e `passe_na_placa` têm API pública com codificador cru
+  (os testes usam-na). Continuam com passe próprio: o `Gravador` cede-lhes o codificador já fechado.
+- O passe por despacho de antes continua disponível pelo MESMO código (`um_passe_por_despacho`), só para a
+  sonda e para o gate.
+
+**O gate** `um_passe_da_a_mesma_saida_com_menos_passes` (placa):
+- Cobre =132/=120/=119/=136/=112 a ×1 e ×4, 40 quadros por variante.
+- Exige saída ao bit, ≥ 3× menos passes e **zero erros de validação num âmbito próprio**.
+- ⛔ Sem o âmbito, as mutações do `DerefMut` e do `finish` SOBREVIVIAM. O produto só escreve os erros do
+  dispositivo no terminal (`relata_erros_do_dispositivo`). E como os dois lados passam pelo mesmo
+  `Gravador`, a mutação estraga-os por igual e a igualdade continua verde.
+- Mutação 4/4:
+  - M1: `passe()` abre sempre;
+  - M2: `DerefMut` sem fechar;
+  - M3: lei invertida no `cook_many`;
+  - M4: `finish` sem fechar.
+
+**⛔ Recusas MEDIDAS**
+
+| recusa | medido | veredito |
+|---|---|---|
+| cura 1a/1b — a LUT por conteúdo e o pool por ordem, para a ligação guardada acertar na cadeia do carimbo (código em `09af314f76`) | =132: 25 → 8 grupos criados; sobre o passe único, −10 a −35 µs na montagem (3–9 % da lacuna) | não entra (< 20 %); a mesma família do doc 131 C.7 (−0,03 ms) |
+| cura 3 — fusão de kernels consecutivos | não construída: resto de 2–3 µs por despacho depois do passe único | não se constrói enquanto o resto por despacho medido ficar < 5 µs |
 
 ### §8.4 — ✅ W1(b).1 e W1(b).2 FECHADAS (2026-09-24)
 

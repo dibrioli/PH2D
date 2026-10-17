@@ -191,3 +191,21 @@ fn a_definicao_e_as_cores_em_voo_nao_se_cancelam() {
         m.docs().semantic_count(id) > 0
     });
 }
+
+/// Uma edição que NÃO é tecla (um acento composto, IME) antes da resposta também larga o salto.
+#[test]
+fn uma_composicao_antes_da_resposta_larga_o_salto() {
+    use ph2d_editor_core::doc_surface::{Compose, DocumentSurface};
+    let (mut m, id, _visto) = mesa(Duration::from_millis(40));
+    let uso = TEXTO.find("= brilho").unwrap() + 2;
+    clica_em(&mut m, id, uso + 3, ctrl());
+    // O quadro que pergunta; a composição logo a seguir, com a pergunta em voo.
+    quadro_em(&mut m, T0);
+    let antes = cursor(&mut m, id);
+    assert!(m.docs().compose(id.0, Compose::Commit('é')));
+    for _ in 0..40 {
+        quadro_em(&mut m, T0);
+        assert_eq!(cursor(&mut m, id), antes + 'é'.len_utf8(), "a resposta velha saltou");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}

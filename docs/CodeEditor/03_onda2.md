@@ -72,7 +72,7 @@ seguinte; o resto entra em lotes.
 | I4 | [I4_lista_aberta.md](ferramentas/medicoes_onda2/I4_lista_aberta.md) · [oráculo Godot](ferramentas/godot_oraculo/corre_completar.sh) | **Sondas de 16–17/10.** `luau-lsp` com `snippetSupport`: `insertText` snippet (`set(${1:entity}, ${2:field}, ${3:value})$0`, `insertTextFormat` 2) e `command: editor.action.triggerParameterHints` (para o I5); nunca filtra (`ph2d.se` = os 17) nem diz `isIncomplete`; sem `textEdit`; `self.` só dá campos ATRIBUÍDOS (nunca as `ph2d.property`); em `ph2d.set(self.id, "|")` os 5 campos (kind 21, `sortText` 2); `pr`/linha vazia = 54 (palavras 8, globais 4); o `context.triggerKind` não muda nada; 1–7 ms. **Godot 4.7.2 corrido** (`CodeEdit` headless): `completion_lines` 7, `completion_max_width` 50; filtro = subsequência sem caixa; ordem = 5 faixas (prefixo exacto · prefixo · trecho exacto · trecho · letras soltas) → início → nº de letras com outra caixa → fim → nome sem caixa com `_` depois das letras → nome; uma palavra que começa por dígito não abre (23 casos na fixtura). **Bancada** (`loadavg` 88): lista aberta × fechada no p50 = `1.49/1.50` (51) e `1.46/1.44` (7 500) ms; p99.9 `4.55` e `5.15` (réplicas do controlo distam até `0.95` sob esta carga). |
 | I0d | [I0d_stylua.md](ferramentas/medicoes_onda2/I0d_stylua.md) · [manifesto rascunho](ferramentas/stylua/) | StyLua **2.5.2** (2.6.0 de 10/10 ainda < 2 semanas), MPL-2.0 (+ créditos das deps MIT/Apache no binário), sha256 = `digest` do GitHub nos 7 zips; macOS por arquitectura. Formata 51 linhas em 3,1 ms p50, 3 000 em 44, 7 500 em 108 (≈ 10 µs/linha + 0,5–2 ms de arranque) ⇒ **não cabe no quadro a 60 Hz acima de ~800 linhas** ⇒ I13 usa o kill-criterion: Ctrl+S aplica e dá o selo no quadro; o StyLua corre fora e entra como UM passo de undo só se o texto não mudou. ⚠️ 2.5.2 muda código em silêncio (`{ read number }` → `{ readnumber }`) ⇒ sempre `--verify`. Erro de sintaxe: exit 2, stdout vazio (nunca texto parcial). `--config-path` isola de toda config do sistema. O manifesto NÃO pode chamar-se `stylua.toml` (o StyLua lê-o como config). |
 
-## Estado (16/10)
+## Estado (16–17/10; I0–I5 no main a 17/10)
 
 | # | Commit | Prova |
 |---|---|---|
@@ -86,7 +86,9 @@ seguinte; o resto entra em lotes.
 
 ## Próximo passo (para a janela seguinte — ler isto e o «Estado» acima basta)
 
-1. ~~I1 no app~~, ~~I2 no app~~, ~~I3~~, ~~I4~~ e ~~I5~~ — feitos (ver Estado).
+1. ~~I0~~–~~I5~~ — feitos e **no main a 17/10** (`df66f7c688`, árvore combinada 19 007/19 007;
+   [handoff §12](handoffs/HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-17_ONDA2_I5.md)). A linha foi
+   reaberta sobre o `main` (`ad5f8fe39c`): o `PROJECT_SCHEMA` lá é **191**, não 190.
 2. **I6** (Ctrl+clique / F12: o `luau-lsp` dá `[]` na API — I0b §5 —, então numa função da API abre
    a documentação: o balão do I5 é a superfície) e **I11** (tokens semânticos, `full` só, 16–30 ms
    a 7 500 linhas: chegam assíncronos como o resto, `Req` novo de outro género).

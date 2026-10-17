@@ -503,7 +503,6 @@ fn sonda_a_terceira_camada() {
         for (nome, raio) in pinceis {
             for (vnome, knobs) in &variantes {
                 let esperas = &esperas;
-                let raio_x = raio_x;
                 s.spawn(move || {
                 let raio = raio * raio_x;
                 let mut p = de_fabrica(nome);

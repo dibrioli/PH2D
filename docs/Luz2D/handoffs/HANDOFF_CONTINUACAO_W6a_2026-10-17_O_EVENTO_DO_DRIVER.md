@@ -64,3 +64,19 @@ analisadores alinham a série com o relógio de parede pelo `mtime` do `app.log`
 Sem contrato congelado, sem schema. API nova `doc(hidden)`: `SondaDeMemoria::ms_textura_aos_saltos`. LOC:
 `quadro_leituras.rs` 380 · `sonda_memoria.rs` 428 (teto 700). CLAUDE.md §5.1 Luz 2D: «Último:» para este handoff.
 **O smoke da W5x/W5z ainda não voltou do dono** — integrar é ordem dele (17/10), não aprovação.
+
+## 6. Integração no main (17/10, ordem do dono; depois de Motion, UIUX, CodeEditor e Macros)
+
+`scripts/foundational-integrate.sh` sobre o `main` `8aef5c3854` (a linha: 54 commits sobre `0aab2c1cb6`; o main
+tinha andado 274). Sobreposição textual com o main: só `CLAUDE.md` (entradas diferentes da §5.1; o rebase passou
+sem conflito). Semântica: nenhum ficheiro que o main mudou usa `ph2d_light2d_gpu`/`fonte_do_rc`/`Config` da luz.
+Registos regenerados sem mudança · staleness verde · `CARGO_BUILD_WARNINGS=deny cargo check --workspace
+--all-targets` verde · `nextest-impacted` (fecho, inclui os arch-gates da shell — `file_loc_caps`,
+`architecture_the_shell_only_shrinks`, `architecture_no_orphan_source_file` —, com a placa em exclusão):
+**11 910 / 11 910 verdes** (590 s) · `--ff-only` no main. Os 54 commits rebaseados comparados um a um com os
+originais (multiconjunto das linhas +/−): iguais; controlo positivo (1.º × 2.º) difere. Zero marcadores.
+Antes, o delta da W6a: `fmt` · `check` deny · `clippy -D warnings` (fecho) · censo HR-15 e isenções · caps de LOC ·
+`sonda_compressao_das_texturas` (placa): verdes.
+**Latente, de fora da linha:** `cargo` avisa «output filename collision» entre os exemplos `probe_cost` de
+`ph2d-table` e `ph2d-node-source-lsystem` (ambos do Motion, 29–30/08) — aviso do cargo, não do rustc: o portão
+deny não o vê; «may become a hard error in the future».

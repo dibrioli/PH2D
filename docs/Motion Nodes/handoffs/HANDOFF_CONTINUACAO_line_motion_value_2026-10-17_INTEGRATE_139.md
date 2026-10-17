@@ -6,7 +6,7 @@
 
 ## Onde a linha está
 
-- Worktree `Worktrees/line-motion-value`, branch `line/motion-value`, base = `main` `0aab2c1cb6` (não andou). **Linha NÃO integrada**; só integra por ordem do Enio.
+- Worktree `Worktrees/line-motion-value`, branch `line/motion-value`. ✅ **INTEGRADA no `main` a 17/10** (ff de `0aab2c1cb6` a `4c4b8a3930` + `db535d2a10`, a §5.1; árvore combinada 17 769/17 770 — o vermelho foi `ph2d-physics-ecs measure_player_budget::the_cost_of_a_player_is_linear_in_their_number`, flake de carga já na tabela, 3/3 sozinho a load 78). **Linha REABERTA** sobre `db535d2a10`: a próxima onda parte daqui; a superfície de colisão abaixo é história, já está no `main`.
 - Esta onda: `cb99619a93` (a cura + os gates + o doc 120 §8.3.3) · `22f433c65b` (fmt dos quatro ficheiros) · o commit de docs deste handoff.
 - **Superfície de colisão:**
   - `crates/ph2d-gpu-cook/src/plan.rs`: campo público NOVO `GpuPlan::condutores_na_marcha`. Quem construa `GpuPlan` por literal parte; hoje só o `plan_uniao.rs` o faz.

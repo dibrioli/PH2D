@@ -205,7 +205,8 @@ pub fn join(
 }
 
 /// [`join`], e `nat` recebe como o NAT DESTE lado mapeia, logo que os STUN respondem (o painel avisa
-/// do simétrico) — sempre ANTES do resultado.
+/// do simétrico) — sempre antes de o convidado DESISTIR (num sucesso rápido pode chegar depois, e aí
+/// já não importa).
 ///
 /// # Errors
 /// Os de [`join`].

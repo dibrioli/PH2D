@@ -494,7 +494,11 @@ fn joining_by_link_searches_the_internet_and_a_closed_room_says_what_to_do() {
     let closed = tr("board.live.link_closed");
     assert_eq!(g.documents.told(), Some(closed.as_str()));
     let l = &g.documents.live_view().link;
-    assert_eq!(l.failed.as_deref(), Some(closed.as_str()), "a frase saiu do painel");
+    assert_eq!(
+        l.failed.as_deref(),
+        Some(closed.as_str()),
+        "a frase saiu do painel"
+    );
     assert_eq!(l.searching, None);
 }
 
@@ -517,8 +521,14 @@ fn a_guest_on_a_strict_network_hears_that_it_may_be_blocking() {
         crate::live::internet_local_for_tests();
         fake_nat_for_tests(m);
         let mut g = hero("Bia");
-        g.documents.ask_live(LiveRequest::JoinLink { link: link.clone() });
-        assert!(until(&mut g, 10, |g| g.documents.live_view().link.failed.is_some()));
+        g.documents
+            .ask_live(LiveRequest::JoinLink { link: link.clone() });
+        assert!(until(&mut g, 10, |g| g
+            .documents
+            .live_view()
+            .link
+            .failed
+            .is_some()));
         assert_eq!(g.documents.told(), Some(tr(key).as_str()), "{m:?}");
     }
 }
@@ -566,14 +576,24 @@ fn fotos_dos_estados_da_cena_22() {
     bia.documents.ask_live(LiveRequest::JoinLink {
         link: silent.link(),
     });
-    assert!(until(&mut bia, 5, |g| g.documents.live_view().link.strict_nat));
+    assert!(until(&mut bia, 5, |g| g
+        .documents
+        .live_view()
+        .link
+        .strict_nat));
     cam.shot(&mut bia, "b0_a_procurar_na_internet");
     bia.documents.ask_live(LiveRequest::Leave);
     service(&mut bia);
 
     let (_n, closed) = closed_room_link();
-    bia.documents.ask_live(LiveRequest::JoinLink { link: closed });
-    assert!(until(&mut bia, 10, |g| g.documents.live_view().link.failed.is_some()));
+    bia.documents
+        .ask_live(LiveRequest::JoinLink { link: closed });
+    assert!(until(&mut bia, 10, |g| g
+        .documents
+        .live_view()
+        .link
+        .failed
+        .is_some()));
     cam.shot(&mut bia, "b1_a_sala_fechou");
 }
 

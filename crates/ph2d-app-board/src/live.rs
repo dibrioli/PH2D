@@ -59,9 +59,9 @@ mod fac;
 #[path = "live_internet.rs"]
 mod internet;
 use fac::{announce, fac_view, refusal_key};
-use internet::{Internet, Route, dial, internet_tick, invite_internet, join_by};
 #[cfg(test)]
 pub(crate) use internet::fake_nat_for_tests;
+use internet::{Internet, Route, dial, internet_tick, invite_internet, join_by};
 
 #[derive(Default)]
 struct State {

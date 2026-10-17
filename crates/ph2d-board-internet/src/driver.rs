@@ -16,9 +16,8 @@ use std::time::{Duration, Instant};
 use bytes::{Buf, Bytes, BytesMut};
 use ph2d_board_net::Wire;
 use quinn_proto::{
-    ClientConfig, Connection, ConnectionError, ConnectionHandle, DatagramEvent, Dir, Endpoint,
-    EndpointConfig, Event, ReadError, StreamEvent, StreamId, TransportConfig, TransportErrorCode,
-    VarInt, WriteError,
+    ClientConfig, Connection, ConnectionHandle, DatagramEvent, Dir, Endpoint, EndpointConfig,
+    Event, ReadError, StreamEvent, StreamId, TransportConfig, VarInt, WriteError,
 };
 
 use crate::node::{Inner, Msg, decode_via, encode_via};
@@ -102,41 +101,9 @@ impl Conn {
     }
 }
 
-#[derive(Default)]
-struct Dial {
-    reply: Option<Sender<io::Result<Accepted>>>,
-    conns: Vec<ConnectionHandle>,
-    tried: Vec<SocketAddr>,
-    winner: Option<ConnectionHandle>,
-    /// Mais endereços ainda podem chegar: com todos os caminhos caídos, espera em vez de desistir.
-    open: bool,
-    /// Porque caiu o último caminho.
-    why: Option<ErrorKind>,
-}
-
-/// O pacote nem sai desta máquina para lá (sem rota, sem rede, endereço local que já não existe): o
-/// caminho está morto agora, não daqui a um prazo.
-fn unroutable(k: ErrorKind) -> bool {
-    matches!(
-        k,
-        ErrorKind::NetworkUnreachable
-            | ErrorKind::HostUnreachable
-            | ErrorKind::NetworkDown
-            | ErrorKind::AddrNotAvailable
-    )
-}
-
-/// Porque uma ligação a meio caminho caiu, na língua do `io` (o `room_is_gone` do app lê a recusa).
-fn lost_kind(e: &ConnectionError) -> ErrorKind {
-    match e {
-        ConnectionError::ConnectionClosed(c) if c.error_code == TransportErrorCode::CONNECTION_REFUSED => {
-            ErrorKind::ConnectionRefused
-        }
-        ConnectionError::TimedOut => ErrorKind::TimedOut,
-        ConnectionError::Reset => ErrorKind::ConnectionReset,
-        _ => ErrorKind::ConnectionAborted,
-    }
-}
+#[path = "driver_dial.rs"]
+mod dial;
+use dial::{Dial, lost_kind, unroutable};
 
 pub(crate) struct Driver {
     ep: Endpoint,
@@ -349,96 +316,6 @@ impl Driver {
                 let _ = self.net.send(t.destination, &self.buf[..t.size]);
             }
             None => {}
-        }
-    }
-
-    fn dial(
-        &mut self,
-        id: u64,
-        addrs: &[SocketAddr],
-        reply: Option<Sender<io::Result<Accepted>>>,
-        open: bool,
-    ) {
-        if self.stopping.is_some() {
-            if let Some(r) = reply {
-                let _ = r.send(Err(ErrorKind::BrokenPipe.into()));
-            }
-            return;
-        }
-        // Endereços que chegam depois de a tentativa acabar (o ponto de encontro é lento; ela ganhou,
-        // foi cancelada ou desistiu) não a ressuscitam.
-        let first = reply.is_some();
-        if !first && self.dials.get(&id).is_none_or(|d| d.reply.is_none()) {
-            return;
-        }
-        let now = Instant::now();
-        let d = self.dials.entry(id).or_default();
-        if first {
-            d.reply = reply;
-            d.open = open;
-        }
-        for a in addrs.iter().copied().map(canonical) {
-            if d.tried.contains(&a) {
-                continue;
-            }
-            d.tried.push(a);
-            if !self.net.reaches(a) {
-                d.why = Some(ErrorKind::HostUnreachable);
-                continue;
-            }
-            match self.ep.connect(now, self.client.clone(), a, tls::NAME) {
-                Ok((h, q)) => {
-                    self.conns.insert(h, Conn::new(q, Some(id)));
-                    d.conns.push(h);
-                }
-                Err(_) => d.why = Some(ErrorKind::AddrNotAvailable),
-            }
-        }
-        self.give_up_if_lost(id);
-    }
-
-    /// ⭐ Auditoria A2 — todos os caminhos da tentativa caíram e não vêm mais endereços: o convidado
-    /// sabe JÁ (com o porquê do último), em vez de esperar o prazo inteiro.
-    fn give_up_if_lost(&mut self, id: u64) {
-        let Some(d) = self.dials.get_mut(&id) else {
-            return;
-        };
-        if d.open || d.winner.is_some() {
-            return;
-        }
-        let alive = d
-            .conns
-            .iter()
-            .any(|h| self.conns.get(h).is_some_and(|c| !c.closed));
-        if alive {
-            return;
-        }
-        if let Some(r) = d.reply.take() {
-            let why = d.why.unwrap_or(ErrorKind::HostUnreachable);
-            let _ = r.send(Err(why.into()));
-        }
-    }
-
-    /// Um caminho da tentativa `dial` caiu por `why`.
-    fn path_lost(&mut self, dial: Option<u64>, why: ErrorKind) {
-        let Some(id) = dial else {
-            return;
-        };
-        if let Some(d) = self.dials.get_mut(&id) {
-            d.why = Some(why);
-        }
-        self.give_up_if_lost(id);
-    }
-
-    fn cancel(&mut self, id: u64) {
-        let Some(d) = self.dials.remove(&id) else {
-            return;
-        };
-        let now = Instant::now();
-        for h in d.conns.into_iter().filter(|h| Some(*h) != d.winner) {
-            if let Some(c) = self.conns.get_mut(&h) {
-                c.close(now);
-            }
         }
     }
 

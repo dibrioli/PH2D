@@ -519,7 +519,7 @@ fn the_corner_rises_above_the_stats_hud_in_a_narrow_window() {
     let live = button_node(NavButton::Live);
     let hud = |t: &mut T| {
         let vp = Rect::new(0.0, 0.0, t.vp_w, t.vp_h);
-        let layout = crate::screens::hero::frame_layout::frame_layout(&mut t.hero, vp, &mut t.ts);
+        let layout = crate::screens::hero::frame_layout::frame_layout(&t.hero, vp, &mut t.ts);
         crate::screens::hero::bottom_hud::bottom_hud_rect(&layout, &mut t.ts, t.hero.stats)
     };
     let rows = |t: &T| {
@@ -571,7 +571,10 @@ fn painted(t: &mut T, before: usize, key: &str) {
     );
     let ink = text.chars().filter(|c| !c.is_whitespace()).count();
     let now = glyphs(t);
-    assert!(now >= before + ink, "«{key}» não se pintou: {before} → {now}");
+    assert!(
+        now >= before + ink,
+        "«{key}» não se pintou: {before} -> {now}"
+    );
 }
 
 /// ⭐ ADR-0187 — a rede que pode bloquear o convite diz-se em palavras simples: o anfitrião clica
@@ -628,7 +631,9 @@ fn joining_by_link_says_it_searches_the_internet_and_what_to_do_when_it_fails() 
     t.paint();
     let texts = live_board::row_texts(&t.hero);
     assert!(
-        !texts.iter().any(|r| r == ph2d_i18n::tr("board.live.connecting")),
+        !texts
+            .iter()
+            .any(|r| r == ph2d_i18n::tr("board.live.connecting")),
         "por link disse o «Connecting…» da rede local"
     );
     let hint = ph2d_i18n::tr_with("board.live.link_searching_hint", &[("s", &30)]);

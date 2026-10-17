@@ -164,7 +164,11 @@ fn sem_nenhum_caminho_possivel_cai_na_hora() {
         .err()
         .unwrap();
     assert_eq!(e.kind(), ErrorKind::HostUnreachable);
-    assert!(t.elapsed() < Duration::from_millis(500), "{:?}", t.elapsed());
+    assert!(
+        t.elapsed() < Duration::from_millis(500),
+        "{:?}",
+        t.elapsed()
+    );
 }
 
 /// Aberta, a tentativa com o caminho caído ESPERA (o ponto de encontro pode trazer outros); um

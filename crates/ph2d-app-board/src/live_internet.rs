@@ -196,9 +196,9 @@ pub(super) fn link_failed(hero: &mut HeroScreen, route: &Route, e: &net::JoinErr
     let key = match e {
         net::JoinError::WrongCode | net::JoinError::InvalidCode => "board.live.link_old",
         net::JoinError::Unreachable(K::ConnectionRefused) => "board.live.link_closed",
-        net::JoinError::Unreachable(K::NetworkUnreachable | K::NetworkDown | K::AddrNotAvailable) => {
-            "board.live.link_offline"
-        }
+        net::JoinError::Unreachable(
+            K::NetworkUnreachable | K::NetworkDown | K::AddrNotAvailable,
+        ) => "board.live.link_offline",
         net::JoinError::Unreachable(_) if hero.documents.live_view().link.strict_nat => {
             "board.live.link_unreachable_strict"
         }

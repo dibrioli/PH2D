@@ -175,7 +175,9 @@ fn um_link_de_uma_sala_fechada_falha_logo_e_nao_no_prazo() {
     );
     assert_eq!(
         r.err(),
-        Some(JoinError::Unreachable(std::io::ErrorKind::ConnectionRefused))
+        Some(JoinError::Unreachable(
+            std::io::ErrorKind::ConnectionRefused
+        ))
     );
     assert!(t.elapsed() < Duration::from_secs(3), "{:?}", t.elapsed());
 }
@@ -231,7 +233,9 @@ fn uma_dht_calada_nao_segura_a_espera_inteira() {
     );
     assert_eq!(
         r.err(),
-        Some(JoinError::Unreachable(std::io::ErrorKind::ConnectionRefused))
+        Some(JoinError::Unreachable(
+            std::io::ErrorKind::ConnectionRefused
+        ))
     );
     eprintln!("DHT calada: desistiu em {:?}", t.elapsed());
     assert!(t.elapsed() < Duration::from_secs(20), "{:?}", t.elapsed());

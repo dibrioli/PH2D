@@ -698,7 +698,7 @@ mod leak_tests {
     /// oráculo e não existe — a thread é solta de propósito.
     #[test]
     fn a_finished_session_does_not_leave_a_worker_simulating_forever() {
-        let w = SimWorker::spawn();
+        let w = SimWorker::spawn(None);
         // O motor VAI para o worker: é este o estado em que o vazamento existe (com
         // ele em casa, o laço externo observa o canal fechado e sai sozinho).
         let mut e = Engine::new(64, 64);

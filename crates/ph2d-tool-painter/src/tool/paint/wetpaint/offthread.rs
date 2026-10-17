@@ -36,7 +36,7 @@
 //! A aritmética do motor, a ordem dos estágios e o fingerprint pinado — só **quem chama**
 //! `step_stage` muda. A suíte de aceitação dirige o engine direto e não vê esta camada.
 
-use super::fita::{self, Divergencia, MarcaDaAgua, Pergunta, RespostaDoWorker};
+use super::fita::{self, Divergencia, MarcaDaAgua, Pergunta, RespostaDoWorker, RitmoDaAgua};
 use ph2d_wet_paint::painter::Engine;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -115,6 +115,37 @@ pub(in crate::tool::paint) struct SimWorker {
     /// isto, o tick traria o engine de volta a cada frame e o worker perderia ~30% do núcleo
     /// esperando.
     steps: Arc<AtomicU64>,
+    /// `Some` = o worker anda num ritmo escrito ([`RitmoDaAgua`]), não ao relógio.
+    ritmo: Option<Ritmado>,
+}
+
+/// O lado da thread do quadro de um worker ritmado: o ciclo dos pedidos sem espera, e as entregas
+/// cuja quota o worker já correu (`feitas`) — ler o worker antes disso seria ler o relógio outra vez.
+struct Ritmado {
+    nao_volta: Vec<bool>,
+    pedidos: usize,
+    entregues: u64,
+    feitas: Arc<AtomicU64>,
+}
+
+impl Ritmado {
+    /// O próximo pedido sem espera encontra o motor?
+    fn volta(&mut self) -> bool {
+        let n = self.nao_volta.len().max(1);
+        let nao = self
+            .nao_volta
+            .get(self.pedidos % n)
+            .copied()
+            .unwrap_or(false);
+        self.pedidos += 1;
+        !nao
+    }
+
+    fn espera_a_quota(&self) {
+        while self.feitas.load(Ordering::Acquire) < self.entregues {
+            std::thread::yield_now();
+        }
+    }
 }
 
 /// Copia o motor que está nesta thread; um motor com o worker não se alcança por `&self` e PANICA
@@ -196,22 +227,43 @@ impl Drop for SimWorker {
 }
 
 impl SimWorker {
-    /// Sobe a thread.
-    fn spawn() -> Self {
+    /// Sobe a thread — ao relógio, ou no ritmo escrito de um gate.
+    fn spawn(ritmo: Option<&RitmoDaAgua>) -> Self {
         let (to_worker, rx_engine) = channel::<Box<Engine>>();
         let (to_ui, back) = channel::<Box<Engine>>();
         let want = Arc::new(AtomicBool::new(false));
         let steps = Arc::new(AtomicU64::new(0));
         let (w, st) = (Arc::clone(&want), Arc::clone(&steps));
+        let ritmado = ritmo.map(|r| {
+            let feitas = Arc::new(AtomicU64::new(0));
+            let lado_do_worker = (r.estagios.clone(), Arc::clone(&feitas));
+            let lado_da_ui = Ritmado {
+                nao_volta: r.nao_volta.clone(),
+                pedidos: 0,
+                entregues: 0,
+                feitas,
+            };
+            (lado_do_worker, lado_da_ui)
+        });
+        let (worker, ui) = match ritmado {
+            Some((w, u)) => (Some(w), Some(u)),
+            None => (None, None),
+        };
         std::thread::Builder::new()
             .name("ph2d-wet-sim".into())
-            .spawn(move || worker_loop(&rx_engine, &to_ui, &w, &st))
+            .spawn(move || match worker {
+                Some((estagios, feitas)) => {
+                    worker_ritmado(&rx_engine, &to_ui, &w, &st, &estagios, &feitas);
+                }
+                None => worker_loop(&rx_engine, &to_ui, &w, &st),
+            })
             .expect("a thread da sim de agua");
         Self {
             to_worker,
             back,
             want,
             steps,
+            ritmo: ui,
         }
     }
 }
@@ -293,6 +345,42 @@ fn worker_loop(
     }
 }
 
+/// O worker de um gate ([`RitmoDaAgua`]): cada entrega corre a sua quota de estágios, com a mesma
+/// regra de «nada a fazer» do relógio, e espera o pedido. O `Drop` do [`SimWorker`] arma o `want` e
+/// fecha os canais, como no relógio.
+fn worker_ritmado(
+    rx: &Receiver<Box<Engine>>,
+    tx: &Sender<Box<Engine>>,
+    want: &AtomicBool,
+    steps: &AtomicU64,
+    estagios: &[u32],
+    feitas: &AtomicU64,
+) {
+    let mut entrega = 0usize;
+    while let Ok(mut engine) = rx.recv() {
+        let quota = estagios
+            .get(entrega % estagios.len().max(1))
+            .copied()
+            .unwrap_or(0);
+        entrega += 1;
+        for _ in 0..quota {
+            if !engine.sim.step_pending() && !engine.sim_should_run() {
+                break;
+            }
+            if engine.step_stage().is_some() {
+                steps.fetch_add(1, Ordering::Release);
+            }
+        }
+        feitas.fetch_add(1, Ordering::Release);
+        while !want.swap(false, Ordering::AcqRel) {
+            std::thread::yield_now();
+        }
+        if tx.send(engine).is_err() {
+            return;
+        }
+    }
+}
+
 impl super::WetSession {
     /// **Traz o motor para casa** — a porta que TODO caminho que alcança a
     /// sessão chama antes de tocar o engine. No-op quando ele já está aqui
@@ -340,6 +428,9 @@ impl super::WetSession {
             EngineSlot::Roteiro(_) => return self.volta_do_roteiro(Pergunta::TentaVoltar),
             EngineSlot::Away => {}
         }
+        if let Some(voltou) = self.pede_ritmado() {
+            return self.recebe(voltou);
+        }
         let Some(w) = self.worker.as_ref() else {
             return false;
         };
@@ -359,12 +450,31 @@ impl super::WetSession {
             EngineSlot::Roteiro(_) => return self.volta_do_roteiro(Pergunta::TentaVoltar),
             EngineSlot::Away => {}
         }
+        if let Some(voltou) = self.pede_ritmado() {
+            return self.recebe(voltou);
+        }
         let Some(w) = self.worker.as_ref() else {
             return false;
         };
         w.want.store(true, Ordering::Release);
         let voltou = w.back.try_recv().ok();
         self.recebe(voltou)
+    }
+
+    /// O pedido sem espera a um worker RITMADO: depois da quota da entrega, o ciclo `nao_volta` decide;
+    /// quando volta, espera-o (a resposta não pode depender de quanto a máquina demorou). `None` = o
+    /// worker anda ao relógio.
+    fn pede_ritmado(&mut self) -> Option<Option<Box<Engine>>> {
+        let w = self.worker.as_mut()?;
+        let r = w.ritmo.as_mut()?;
+        r.espera_a_quota();
+        w.want.store(true, Ordering::Release);
+        if !r.volta() {
+            return Some(None);
+        }
+        Some(Some(
+            w.back.recv().expect("o worker ritmado devolve o engine"),
+        ))
     }
 
     /// O resultado de um pedido sem espera: o motor (se veio) vai para casa, e a fita grava a resposta.
@@ -434,6 +544,9 @@ impl super::WetSession {
         let Some(w) = self.worker.as_ref() else {
             return 0;
         };
+        if let Some(r) = &w.ritmo {
+            r.espera_a_quota();
+        }
         let n = w.steps.load(Ordering::Acquire);
         if let Some(f) = &self.fita {
             fita::trava(f).grava(RespostaDoWorker::Passos(n));
@@ -462,7 +575,10 @@ impl super::WetSession {
             self.roteiro_teve_worker = true;
             return;
         }
-        let w = self.worker.get_or_insert_with(SimWorker::spawn);
+        let ritmo = self.ritmo.clone();
+        let w = self
+            .worker
+            .get_or_insert_with(|| SimWorker::spawn(ritmo.as_ref()));
         // ⚠️ **DESARMA o pedido antes de entregar** — um `want` que sobrevive à
         // entrega é uma pergunta que já foi respondida, e o worker a responde de
         // novo: ele recebe o motor, faz `want.swap(false)` na PRIMEIRA linha do
@@ -481,6 +597,9 @@ impl super::WetSession {
             w.to_worker.send(engine).is_ok(),
             "o worker morreu com o canal de ida vivo"
         );
+        if let Some(r) = w.ritmo.as_mut() {
+            r.entregues += 1;
+        }
     }
 }
 

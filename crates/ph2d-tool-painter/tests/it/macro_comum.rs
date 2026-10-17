@@ -4,9 +4,8 @@ use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Raste
 use ph2d_macro::{MacroDoc, MacroRecorder, RefRect, TrackId};
 use ph2d_tool_painter::PaintMedia;
 use ph2d_tool_painter::PainterTool;
-use ph2d_tool_painter::macro_track::FAMILIA;
 use ph2d_tool_painter::macro_track::tocar::TocadorDoPainter;
-use std::time::{Duration, Instant};
+use ph2d_tool_painter::macro_track::{FAMILIA, RitmoDaAgua};
 
 /// A gravação do lado de quem chama: o tempo é do quadro (`16,666 ms`), nunca do relógio de parede.
 pub struct Gravador {
@@ -84,8 +83,19 @@ pub fn texels_diferentes(a: &[u8], b: &[u8]) -> usize {
     a.chunks(4).zip(b.chunks(4)).filter(|(x, y)| x != y).count()
 }
 
-/// Seis pinceladas com esperas REAIS e a água no worker — a gravação do produto.
-pub fn grava_no_worker(n: u32) -> MacroDoc {
+/// O worker num ritmo escrito (W7): estágios por entrega e pedidos sem espera que não o encontram, em
+/// números que não são múltiplos do passo — o motor volta EM VOO e há lotes adiados. Com as esperas de
+/// parede de antes, cada gravação era outra (o `macro_agua` vermelho sozinho a `load ~4`).
+pub fn ritmo() -> RitmoDaAgua {
+    RitmoDaAgua {
+        estagios: vec![3, 5, 2, 7, 4, 1, 6],
+        nao_volta: vec![false, false, false, true],
+    }
+}
+
+/// Seis pinceladas molhadas com a água no worker (ritmado) — a gravação do produto; devolve também o
+/// tool que gravou.
+pub fn grava_no_worker_e_o_tool(n: u32) -> (PainterTool, MacroDoc) {
     const ROTEIRO: [([f32; 2], [f32; 2], [u8; 3]); 6] = [
         ([0.15, 0.4], [0.85, 0.4], [200, 50, 30]),
         ([0.2, 0.2], [0.8, 0.7], [30, 80, 200]),
@@ -94,25 +104,22 @@ pub fn grava_no_worker(n: u32) -> MacroDoc {
         ([0.3, 0.8], [0.7, 0.3], [150, 40, 160]),
         ([0.25, 0.5], [0.75, 0.5], [20, 20, 20]),
     ];
-    const ESPERAS_MS: [u64; 6] = [150, 300, 120, 250, 90, 200];
+    /// A espera depois de cada traço, em quadros (eram 150–300 ms de parede).
+    const ESPERAS: [u32; 6] = [9, 18, 7, 15, 5, 12];
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (n * n * 4) as usize], n, n);
     t.set_paint_media(PaintMedia::WetPaint);
     t.set_brush_size_px(30.0 * n as f32 / 1024.0);
+    t.set_wet_ritmo_de_teste(Some(ritmo()));
     let mut g = Gravador::arma(&mut t);
     let s = n as f32;
-    const QUADRO: Duration = Duration::from_micros(16_666);
     let quadro = |t: &mut PainterTool, g: &mut Gravador, ev: &[_]| {
-        let a = Instant::now();
         for &e in ev {
             t.on_canvas_pointer(e);
         }
         let _ = t.take_preview_arc();
         t.on_tick(1000.0 / 60.0);
         g.quadro(t);
-        if let Some(r) = QUADRO.checked_sub(a.elapsed()) {
-            std::thread::sleep(r);
-        }
     };
     for (k, (de, ate, cor)) in ROTEIRO.iter().enumerate() {
         t.set_brush_color_srgb8(*cor);
@@ -131,10 +138,15 @@ pub fn grava_no_worker(n: u32) -> MacroDoc {
             quadro(&mut t, &mut g, &ev);
         }
         quadro(&mut t, &mut g, &[cp(p(30), PointerPhase::Up)]);
-        let fim = Instant::now() + Duration::from_millis(ESPERAS_MS[k]);
-        while Instant::now() < fim {
+        for _ in 0..ESPERAS[k] {
             quadro(&mut t, &mut g, &[]);
         }
     }
-    g.para(&mut t)
+    let doc = g.para(&mut t);
+    (t, doc)
+}
+
+/// [`grava_no_worker_e_o_tool`] sem o tool.
+pub fn grava_no_worker(n: u32) -> MacroDoc {
+    grava_no_worker_e_o_tool(n).1
 }

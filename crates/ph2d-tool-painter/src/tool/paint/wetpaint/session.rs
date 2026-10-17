@@ -138,6 +138,8 @@ pub(in crate::tool::paint) struct WetSession {
     pub(super) fita: Option<super::fita::FitaPartilhada>,
     /// A tocar: o motor já foi ao worker do roteiro (o equivalente de `worker.is_some()`).
     pub(super) roteiro_teve_worker: bool,
+    /// O ritmo escrito do worker de um gate ([`super::fita::RitmoDaAgua`]), herdado do tool.
+    pub(super) ritmo: Option<super::fita::RitmoDaAgua>,
 }
 
 /// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.
@@ -273,6 +275,7 @@ impl Clone for WetSession {
             adiados,
             fita,
             roteiro_teve_worker,
+            ritmo,
         } = self;
         assert!(
             worker.is_none(),
@@ -296,6 +299,7 @@ impl Clone for WetSession {
             adiados: adiados.clone(),
             fita: fita.clone(),
             roteiro_teve_worker: *roteiro_teve_worker,
+            ritmo: ritmo.clone(),
         }
     }
 }

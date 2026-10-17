@@ -31,7 +31,7 @@ mod tests;
 
 use crate::tool::PainterTool;
 use crate::tool::paint::fita::{self, Fita, FitaPartilhada};
-pub use crate::tool::paint::fita::{Divergencia, MarcaDaAgua, RespostaDoWorker};
+pub use crate::tool::paint::fita::{Divergencia, MarcaDaAgua, RespostaDoWorker, RitmoDaAgua};
 pub use passo::Passo;
 use std::sync::{Arc, Mutex};
 

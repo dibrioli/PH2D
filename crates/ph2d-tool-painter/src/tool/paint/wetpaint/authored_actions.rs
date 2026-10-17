@@ -83,6 +83,7 @@ impl PainterTool {
             adiados: Vec::new(),
             fita: self.paint.wetpaint.fita.clone(),
             roteiro_teve_worker: false,
+            ritmo: self.paint.wetpaint.ritmo.clone(),
         });
         true
     }

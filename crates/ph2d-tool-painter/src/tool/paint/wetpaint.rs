@@ -162,6 +162,8 @@ pub(crate) struct WetPaintState {
     pub(super) largura: Option<largura::LeiDaLargura>,
     /// A fita da macro ([`fita`]) que cada sessão nova herda.
     pub(super) fita: Option<fita::FitaPartilhada>,
+    /// O ritmo escrito do worker ([`fita::RitmoDaAgua`]) que cada sessão nova herda — só gates.
+    pub(super) ritmo: Option<fita::RitmoDaAgua>,
 }
 
 /// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
@@ -201,6 +203,7 @@ impl Default for WetPaintState {
             preset_pedido: None,
             largura: Some(largura::LeiDaLargura::de_omissao()),
             fita: None,
+            ritmo: None,
         }
     }
 }
@@ -212,6 +215,12 @@ impl PainterTool {
     /// thread própria (`wetpaint/offthread.rs`).
     pub fn set_wet_relogio_fixo(&mut self, ligado: bool) {
         self.paint.wetpaint.relogio_fixo = ligado.then_some(0.0);
+    }
+
+    /// **O worker da água num ritmo escrito** ([`fita::RitmoDaAgua`]) — para os gates que gravam a água
+    /// NO worker e precisam da mesma gravação duas vezes. Vale para as sessões que nascerem.
+    pub fn set_wet_ritmo_de_teste(&mut self, ritmo: Option<fita::RitmoDaAgua>) {
+        self.paint.wetpaint.ritmo = ritmo;
     }
 
     /// Instala (ou tira) a fita da macro: no estado, para as sessões que nascerem, e na sessão viva.

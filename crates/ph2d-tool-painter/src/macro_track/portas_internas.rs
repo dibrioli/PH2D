@@ -289,6 +289,7 @@ pub const INTERNAS: &[&str] = &[
     "set_wet_largura_crua",
     "set_wet_preview_intensity",
     "set_wet_relogio_fixo",
+    "set_wet_ritmo_de_teste",
     "set_wet_smooth_edges",
     "set_wetpaint_armed",
     "set_wire_history_norm",

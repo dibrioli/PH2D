@@ -77,6 +77,19 @@ pub enum Divergencia {
 
 pub type FitaPartilhada = Arc<Mutex<Fita>>;
 
+/// **O worker num RITMO escrito, sem relógio** — só para os gates que gravam a água NO worker (W7).
+///
+/// O worker real anda ao relógio de parede: quantos estágios ele correu quando o motor volta é função da
+/// máquina, e o gate `macro_agua` (um toque com o passo EM VOO) era vermelho sozinho a `load ~4` e verde
+/// sob carga. Ritmado, cada entrega ao worker corre `estagios[i]` estágios (em ciclo) e o worker
+/// espera o pedido; cada pedido SEM espera (o tique, o ponteiro) volta de mãos vazias quando
+/// `nao_volta[j]` (em ciclo). A fita grava as mesmas três respostas que no relógio real.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RitmoDaAgua {
+    pub estagios: Vec<u32>,
+    pub nao_volta: Vec<bool>,
+}
+
 /// A fita para ler ou escrever. Um pânico com ela travada não a estraga: as respostas são valores.
 pub(crate) fn trava(f: &FitaPartilhada) -> MutexGuard<'_, Fita> {
     f.lock().unwrap_or_else(PoisonError::into_inner)

@@ -1,85 +1,25 @@
 //! ⭐ **Gate 1 das macros: o Wet Paint gravado com a água no WORKER reproduz-se AO BYTE** (plano
 //! `docs/Macros/01_plano_onda1.md` §5.1).
 //!
-//! A fixture tem o fenómeno: traços molhados com esperas REAIS, a água a correr na thread dela, e a
-//! gravação repete-se até um traço pousar com um passo EM VOO (a marca com estágio) — é aí que a
-//! reprodução por segundos, ou por passos inteiros, divergia (sonda `sonda_macro_bcd_reproducao`:
-//! 24 239 texels entre corridas, 29 891 na reprodução sem drenar). Verde = 0 texels no fim e depois
-//! de +40 passos. Controlo positivo: uma marca da fita adulterada num estágio ⇒ a reprodução muda.
+//! A fixture tem o fenómeno: traços molhados, a água a correr na thread dela, e traços que pousam com
+//! um passo EM VOO (a marca com estágio) — é aí que a reprodução por segundos, ou por passos inteiros,
+//! divergia (sonda `sonda_macro_bcd_reproducao`: 24 239 texels entre corridas, 29 891 na reprodução
+//! sem drenar). Verde = 0 texels no fim e depois de +40 passos. Controlo positivo: uma marca da fita
+//! adulterada num estágio ⇒ a reprodução muda.
+//!
+//! O worker anda num RITMO ESCRITO ([`RitmoDaAgua`], W7), não ao relógio: com esperas reais o toque a
+//! meio de um passo era sorte da máquina (vermelho sozinho a `load ~4`, verde sob carga). O ritmo põe
+//! o fenómeno na fixture À PRIMEIRA, com pedidos que voltam de mãos vazias pelo meio.
 
-use super::macro_comum::{Gravador, cp, texels_diferentes, toca};
-use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool, Tool};
-use ph2d_tool_painter::PaintMedia;
+use super::macro_comum::{grava_no_worker_e_o_tool, texels_diferentes, toca};
+use ph2d_editor_core::tool::{PointerPhase, RasterEditTool, Tool};
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::macro_track::{MarcaDaAgua, Passo, RespostaDoWorker};
-use std::time::{Duration, Instant};
 
 const N: u32 = 512;
-const QUADRO: Duration = Duration::from_micros(16_666);
-const AMOSTRAS: u32 = 30;
-const POR_QUADRO: u32 = 3;
-/// `(de, até, cor)` em fracções da tela. Seis toques por gravação: o toque cai a meio de um passo da
-/// água só quando o worker está A CORRER um (ele dorme entre passos), então cada toque é uma tentativa.
-const ROTEIRO: [([f32; 2], [f32; 2], [u8; 3]); 6] = [
-    ([0.15, 0.4], [0.85, 0.4], [200, 50, 30]),
-    ([0.2, 0.2], [0.8, 0.7], [30, 80, 200]),
-    ([0.5, 0.15], [0.5, 0.85], [230, 200, 30]),
-    ([0.15, 0.6], [0.85, 0.62], [40, 160, 70]),
-    ([0.3, 0.8], [0.7, 0.3], [150, 40, 160]),
-    ([0.25, 0.5], [0.75, 0.5], [20, 20, 20]),
-];
-const ESPERAS_MS: [u64; 6] = [150, 300, 120, 250, 90, 200];
-
-fn ferramenta() -> PainterTool {
-    let mut t = PainterTool::default();
-    t.set_source(vec![255u8; (N * N * 4) as usize], N, N);
-    t.set_paint_media(PaintMedia::WetPaint);
-    t.set_brush_size_px(30.0 * N as f32 / 1024.0);
-    t
-}
-
-/// Um quadro do app: os eventos, a pré-visualização que a ponte drena, o tique, e o resto do quadro.
-fn quadro(t: &mut PainterTool, g: &mut Gravador, eventos: &[CanvasPointer]) {
-    let a = Instant::now();
-    for &e in eventos {
-        t.on_canvas_pointer(e);
-    }
-    let _ = t.take_preview_arc();
-    t.on_tick(1000.0 / 60.0);
-    g.quadro(t);
-    if let Some(r) = QUADRO.checked_sub(a.elapsed()) {
-        std::thread::sleep(r);
-    }
-}
 
 fn corrida() -> (PainterTool, ph2d_macro::MacroDoc) {
-    let mut t = ferramenta();
-    let mut g = Gravador::arma(&mut t);
-    let s = N as f32;
-    for (k, (de, ate, cor)) in ROTEIRO.iter().enumerate() {
-        t.set_brush_color_srgb8(*cor);
-        let p = |i: u32| {
-            let f = i as f32 / AMOSTRAS as f32;
-            [
-                s * (de[0] + (ate[0] - de[0]) * f),
-                s * (de[1] + (ate[1] - de[1]) * f),
-            ]
-        };
-        quadro(&mut t, &mut g, &[cp(p(0), PointerPhase::Down)]);
-        for q in 0..AMOSTRAS / POR_QUADRO {
-            let ev: Vec<_> = (1..=POR_QUADRO)
-                .map(|m| cp(p(q * POR_QUADRO + m), PointerPhase::Move))
-                .collect();
-            quadro(&mut t, &mut g, &ev);
-        }
-        quadro(&mut t, &mut g, &[cp(p(AMOSTRAS), PointerPhase::Up)]);
-        let fim = Instant::now() + Duration::from_millis(ESPERAS_MS[k]);
-        while Instant::now() < fim {
-            quadro(&mut t, &mut g, &[]);
-        }
-    }
-    let doc = g.para(&mut t);
-    (t, doc)
+    grava_no_worker_e_o_tool(N)
 }
 
 fn respostas(doc: &ph2d_macro::MacroDoc) -> Vec<Passo> {
@@ -121,18 +61,36 @@ fn marca_no_toque(doc: &ph2d_macro::MacroDoc) -> Option<usize> {
     })
 }
 
-/// Grava até a fixture conter o fenómeno (um toque a meio de um passo).
+/// A gravação, que TEM de conter o fenómeno (um toque a meio de um passo) e um pedido sem espera que
+/// voltou de mãos vazias.
 fn corrida_com_o_fenomeno() -> (PainterTool, ph2d_macro::MacroDoc, usize) {
-    for _ in 0..10 {
-        let (t, doc) = corrida();
-        if let Some(i) = marca_no_toque(&doc) {
-            return (t, doc, i);
-        }
-    }
-    panic!(
-        "em 10 gravações (60 toques) nenhum traço pousou com a água a meio de um passo: a fixture não \
-         contém o fenómeno (a água não correu no worker?)"
-    )
+    let (t, doc) = corrida();
+    let Some(i) = marca_no_toque(&doc) else {
+        panic!(
+            "nenhum dos 6 traços pousou com a água a meio de um passo: a fixture não contém o fenómeno \
+             (o ritmo do worker deu passos inteiros?)"
+        )
+    };
+    assert!(
+        doc.tracks[0].events.iter().any(|e| matches!(
+            Passo::descodifica(&e.payload),
+            Ok(Passo::Agua(RespostaDoWorker::NaoVoltou))
+        )),
+        "nenhum pedido voltou de mãos vazias: a fixture não exercita a resposta que adia o lote"
+    );
+    (t, doc, i)
+}
+
+/// O ritmo é a lei do gate: a mesma gravação duas vezes, ao byte (com o relógio, cada corrida era outra).
+#[test]
+fn a_gravacao_no_worker_ritmado_e_a_mesma_duas_vezes() {
+    let (_, a) = corrida();
+    let (_, b) = corrida();
+    assert_eq!(
+        ph2d_macro::codec::write(&a),
+        ph2d_macro::codec::write(&b),
+        "duas gravações com o mesmo ritmo diferem: algo da água ainda anda ao relógio da máquina"
+    );
 }
 
 /// +40 passos no relógio fixo e o bake — a água escondida que a tela ainda não mostra.

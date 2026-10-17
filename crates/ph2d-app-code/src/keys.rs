@@ -11,15 +11,21 @@ use ph2d_host::Modifiers;
 /// As letras dos acordes Ctrl/Cmd que o editor usa (no texto e nos campos da busca).
 const CHORDS: [char; 11] = ['a', 'c', 'd', 'f', 'g', 'h', 's', 'v', 'x', 'y', 'z'];
 
-/// O acorde é do editor? Os outros (Ctrl+K a paleta, Ctrl+O abrir, Ctrl+Espaço…) NÃO são tomados:
-/// a shell segue para o atalho dela.
+/// O acorde é do editor? Os outros (Ctrl+K a paleta, Ctrl+O abrir…) NÃO são tomados: a shell segue
+/// para o atalho dela.
 pub(crate) fn foreign_chord(key: Key, mods: Modifiers) -> bool {
     (mods.ctrl || mods.meta)
         && match key {
             Key::Char(c) => !CHORDS.contains(&c),
-            Key::Space | Key::Other => true,
+            Key::Other => true,
             _ => false,
         }
+}
+
+/// Ctrl+Espaço: a lista de completação na hora — só com o TEXTO do script em foco (decisão do dono,
+/// 17/10); num campo (busca, lista de scripts) segue para a shell, onde é o modo foco.
+pub(crate) fn suggest_chord(key: Key, mods: Modifiers) -> bool {
+    (mods.ctrl || mods.meta) && key == Key::Space
 }
 
 impl CodeDoc {
@@ -78,6 +84,11 @@ impl CodeDoc {
         let cmd = mods.ctrl || mods.meta;
         let shift = mods.shift;
         match key {
+            Key::Space if cmd => self.complete.open_now(
+                self.buffer.text(),
+                self.buffer.selection().primary().head,
+                self.last_input_ns,
+            ),
             Key::Char(c) if cmd => out.copy = self.chord(c, shift, paste),
             Key::Enter => self.enter(),
             Key::Backspace => self.backspace(cmd),
@@ -118,6 +129,7 @@ impl CodeDoc {
         let head = self.buffer.selection().primary().head;
         match key {
             Key::Char(_) | Key::Space | Key::Other if !cmd => {}
+            Key::Space => {}
             Key::Backspace | Key::Delete | Key::Left | Key::Right if !cmd && !shift => {
                 self.complete.moved(self.buffer.text(), head);
             }

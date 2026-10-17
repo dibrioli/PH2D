@@ -637,7 +637,15 @@ impl DocumentSurface for CodeDocs {
             text,
             paste,
         } = input;
-        if crate::keys::foreign_chord(key, mods) {
+        let in_field = self.list.focus.is_some()
+            || self
+                .docs
+                .iter()
+                .find(|d| d.script.0 == id)
+                .is_some_and(|d| d.find.open && d.find.focus.is_some());
+        if crate::keys::foreign_chord(key, mods)
+            || (crate::keys::suggest_chord(key, mods) && in_field)
+        {
             return KeyOutcome::default();
         }
         if self.list.focus.is_some() {

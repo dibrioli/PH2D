@@ -378,3 +378,34 @@ fn sem_assistente_a_lista_nao_abre() {
         assert_eq!(m.docs().completion_of(id), None);
     }
 }
+
+/// Ctrl+Espaço abre a lista NA HORA (sem a pausa), e também num comentário (pedida à mão).
+#[test]
+fn ctrl_espaco_abre_a_lista_na_hora() {
+    let (mut m, ids, _) = mesa(&[("a.luau", ""), ("b.luau", "-- \n")]);
+    for (id, antes) in [(ids[0], ""), (ids[1], "")] {
+        m.pede(id);
+        tecla(&mut m, id, Key::End, Modifiers::default(), None, antes);
+        quadro_em(&mut m, T0);
+        escreve(&mut m, id, "ph2d.se");
+        tecla(&mut m, id, Key::Space, ctrl(), Some(" "), "");
+        assert_eq!(
+            m.docs().text_of(id).map(|t| t.contains("ph2d.se ")),
+            Some(false),
+            "não escreve o espaço"
+        );
+        let fim = Instant::now() + Duration::from_secs(10);
+        loop {
+            quadro_em(&mut m, T0);
+            if let Some((l, _)) = m.docs().completion_of(id) {
+                assert_eq!(l[0], "set");
+                break;
+            }
+            assert!(
+                Instant::now() < fim,
+                "Ctrl+Espaço não abriu a lista sem a pausa"
+            );
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+}

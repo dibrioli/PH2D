@@ -138,8 +138,9 @@ fn o_ime_depois_de_clicar_na_aba_chega_ao_documento() {
     assert_eq!(m.docs().text_of(ids[0]).as_deref(), Some("ç"));
 }
 
-/// ⛔ Item 6: os acordes que o editor não usa (Ctrl+K — a paleta, Ctrl+O — abrir, Ctrl+Espaço) eram
-/// tomados e morriam; não tomados, a shell segue para o atalho (o `match` dos atalhos vem depois).
+/// ⛔ Item 6: os acordes que o editor não usa (Ctrl+K — a paleta, Ctrl+O — abrir) eram tomados e
+/// morriam; não tomados, a shell segue para o atalho (o `match` dos atalhos vem depois). Ctrl+Espaço
+/// é do editor só no TEXTO (a lista de completação, I4 da Onda 2); num campo é da shell (o modo foco).
 #[test]
 fn os_acordes_que_o_editor_nao_usa_seguem_para_a_shell() {
     let (mut m, ids) = Mesa::new(&[("bob.luau", "local a = 1\n")]);
@@ -147,14 +148,17 @@ fn os_acordes_que_o_editor_nao_usa_seguem_para_a_shell() {
     for (k, t) in [
         (BoardKey::Char('k'), Some("k")),
         (BoardKey::Char('o'), Some("o")),
-        (BoardKey::Space, Some(" ")),
     ] {
         assert!(
             !tecla_da_shell(&mut m, k, ctrl(), t),
             "Ctrl+{k:?} foi tomado pelo editor"
         );
     }
-    // Com a barra de busca focada também.
+    assert!(
+        tecla_da_shell(&mut m, BoardKey::Space, ctrl(), Some(" ")),
+        "Ctrl+Espaço no texto é a lista de completação"
+    );
+    // Com a barra de busca focada também — e aí Ctrl+Espaço é da shell.
     assert!(tecla_da_shell(
         &mut m,
         BoardKey::Char('f'),
@@ -167,6 +171,10 @@ fn os_acordes_que_o_editor_nao_usa_seguem_para_a_shell() {
         ctrl(),
         Some("k")
     ));
+    assert!(
+        !tecla_da_shell(&mut m, BoardKey::Space, ctrl(), Some(" ")),
+        "Ctrl+Espaço num campo é o modo foco"
+    );
     assert_eq!(m.docs().text_of(ids[0]).as_deref(), Some("local a = 1\n"));
     // Controlo: os do editor continuam dele.
     assert!(tecla_da_shell(

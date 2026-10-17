@@ -2,7 +2,8 @@
 //! cursor, filtrado e ordenado no cliente enquanto se escreve.
 //!
 //! - **Abre sozinha** numa pausa de [`AUTO_OPEN_NS`] depois de uma letra de palavra, de `.`/`:` ou de
-//!   uma aspa (o `code_complete_delay` do Godot, I0b §7); fora de strings e comentários.
+//!   uma aspa (o `code_complete_delay` do Godot, I0b §7); fora de strings e comentários. **Ctrl+Espaço**
+//!   abre-a na hora, em qualquer sítio (só no texto do script: no resto do app é o modo foco).
 //! - **Filtro e ordem**: a lei do `CodeEdit` do Godot, corrido sobre entradas nossas
 //!   (`tests/it/fixtures/godot_completar.txt`): subsequência sem caixa, cinco faixas (prefixo exacto ·
 //!   prefixo · trecho exacto · trecho · letras soltas), depois a posição, a caixa, o fim e o nome. Entre
@@ -434,6 +435,29 @@ impl Completer {
                 typed: String::new(),
             });
         }
+    }
+
+    /// Pedida à mão (Ctrl+Espaço): sem pausa, e também numa string ou num comentário. Uma sessão da
+    /// mesma palavra fica (e perde a pausa que faltava).
+    pub fn open_now(&mut self, text: &Text, head: usize, now_ns: u128) {
+        let Some(w) = word_at(text, head) else {
+            self.session = None;
+            return;
+        };
+        if let Some(s) = self.session.as_mut().filter(|s| s.anchor == w.start) {
+            s.due_ns = s.due_ns.min(now_ns);
+            return;
+        }
+        self.session = Some(Session {
+            anchor: w.start,
+            qualifier: w.qualifier,
+            due_ns: now_ns,
+            ticket: None,
+            items: None,
+            selected: 0,
+            top: 0,
+            typed: String::new(),
+        });
     }
 
     /// Depois de apagar ou de mover o cursor: a sessão morre se o cursor saiu da palavra.

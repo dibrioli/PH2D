@@ -20,16 +20,9 @@
 //!    passa a apontar para ele. Sem isto o sprite carregado referenciaria a textura morta do save.
 
 use ph2d_ecs::{Entity, PaintedDoc};
-use ph2d_editor_core::ToolId;
 use ph2d_render::{Sprite, SpriteSource};
-use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::tool::persist::PaintedDocument;
 use std::collections::BTreeMap;
-
-/// O id do Painter no registry (o mesmo que o `vector_bridge` usa para o dele).
-fn painter_id() -> ToolId {
-    ToolId::new("painter")
-}
 
 impl crate::App {
     /// Carimba um [`PaintedDoc`] em cada sprite que o Painter tem documento, e devolve o mapa
@@ -42,10 +35,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return BTreeMap::new();
         };
-        let Some(painter) = gfx
-            .tools
-            .tool_by_id_mut(&painter_id())
-            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+        let Some(painter) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools)
         else {
             return BTreeMap::new();
         };
@@ -83,9 +73,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return Vec::new();
         };
-        gfx.tools
-            .tool_by_id_mut(&painter_id())
-            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+        ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools)
             .map(|p| p.collect_documents(&ids))
             .unwrap_or_default()
     }
@@ -123,11 +111,7 @@ impl crate::App {
         // 2. Instala no Painter e compõe os pixels que o sprite deve mostrar. O composite sai do
         //    caminho NORMAL do preview (que já assa a luz do impasto) — não há um segundo bake aqui.
         let mut baked: Vec<(u64, Vec<u8>, u32, u32)> = Vec::new();
-        if let Some(painter) = gfx
-            .tools
-            .tool_by_id_mut(&painter_id())
-            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
-        {
+        if let Some(painter) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools) {
             for (bits, id) in &targets {
                 let Some(doc) = by_id.get(id).cloned() else {
                     continue; // sprite carimbado sem documento no arquivo — nada a devolver

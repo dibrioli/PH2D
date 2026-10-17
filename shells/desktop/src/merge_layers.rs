@@ -49,10 +49,7 @@ use crate::hero_intents::MergedLayers;
 /// e trocar-lhe a ferramenta da mão seria decidir por ele. O documento fica **à espera**: o
 /// `bind_document` guarda-o na cache por sprite, e abrir o Painter nessa sprite devolve-o.
 pub(crate) fn install(tools: &mut ToolRegistry, doc: &MergedLayers, toasts: &mut ToastQueue) {
-    let Some(painter) = tools
-        .tool_by_id_mut(&ph2d_editor_core::ToolId::new("painter"))
-        .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
-    else {
+    let Some(painter) = ph2d_app_painter::painter_bridge_queries::o_painter(tools) else {
         // ⚠️ Diz-se, e não se cala: a sprite fundida existe e desenha certo, mas a metade que o
         // artista pediu — as camadas — não aconteceu. Um verbo que faz metade em silêncio é pior
         // que um que falha.

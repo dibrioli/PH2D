@@ -4,7 +4,6 @@
 
 use ph2d_app_macros::{Cena, Familias, erros, etapas::Injectadas};
 use ph2d_app_motion::macro_track::vistas::{EtapasDoMotion, do_motion};
-use ph2d_tool_painter::PainterTool;
 
 /// As etapas das famílias que a MACROS não conhece: a composição injecta o Motion.
 pub(super) const ETAPAS: Injectadas<'static> = &[&EtapasDoMotion];
@@ -31,10 +30,7 @@ impl crate::App {
             .tools
             .active()
             .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"));
-        let painter = gfx
-            .tools
-            .tool_by_id_mut(&pintor)
-            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>());
+        let painter = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools);
         let mut f = Familias {
             painter,
             painter_activo,

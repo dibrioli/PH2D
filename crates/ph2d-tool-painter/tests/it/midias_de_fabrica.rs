@@ -35,6 +35,8 @@ enum Metrica {
     Ponta,
     /// A rampa da pressão (`regua_midia::rampa`): a largura na pressão ~0,46 ÷ na 1 (prompt 44).
     RampaLargura,
+    /// A rampa da pressão: a COBERTURA mediana na pressão ~0,46 ÷ na 1 — o esmaecer (prompt 45).
+    RampaCobertura,
     /// A largura a meio do máximo (px): ± 2 px da foto — o controlo é pintado à MESMA largura, então não
     /// distingue nada; é a condição de toda a comparação (05 §4.1).
     Largura,
@@ -53,6 +55,7 @@ impl Metrica {
             Metrica::Cv => m.cv,
             Metrica::Ponta => c.ponta,
             Metrica::RampaLargura => c.rampa,
+            Metrica::RampaCobertura => c.rampa_cob,
             Metrica::Largura => m.largura,
         }
     }
@@ -73,6 +76,8 @@ impl Metrica {
             Metrica::Ponta => 0.045,
             // Um traço só por foto: 1 px de largura nos dois pontos (≈ 0,04).
             Metrica::RampaLargura => 0.05,
+            // Um traço só por foto e nenhuma repetição: não medido. 0,04 deixa o controlo a > 5× dele.
+            Metrica::RampaCobertura => 0.04,
             Metrica::Largura => 1.0,
         }
     }
@@ -87,8 +92,9 @@ struct FamiliaC {
     tinta: f64,
     cruz: f64,
     ponta: f64,
-    /// A largura da rampa (a cobertura dela é o aberto do doc 44 §6).
+    /// A rampa da pressão: a largura e a cobertura (`regua_midia::rampa`).
     rampa: f64,
+    rampa_cob: f64,
 }
 
 impl FamiliaC {
@@ -141,13 +147,15 @@ impl FamiliaC {
             .filter(|&v| v > 0.15 * pico)
             .collect();
         miolo.sort_by(f64::total_cmp);
+        let (rampa, rampa_cob) = super::regua_midia::rampa(px, w as u32, (px.len() / 4 / w) as u32);
         Self {
             de_pe,
             deitado: acima(&deitado),
             tinta: miolo[miolo.len() / 2],
             cruz: super::a_lei_da_tinta::cruzamento(px, w as u32),
             ponta: super::regua_midia::ponta(px, w as u32),
-            rampa: super::regua_midia::rampa(px, w as u32, (px.len() / 4 / w) as u32).0,
+            rampa,
+            rampa_cob,
         }
     }
 }
@@ -166,7 +174,8 @@ struct Midia {
 }
 
 use Metrica::{
-    Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Ponta, RampaLargura, Textura, Tinta,
+    Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Ponta, RampaCobertura, RampaLargura,
+    Textura, Tinta,
 };
 
 // ⚠️ Os três do óleo levam os valores que o DONO afinou a olho contra o Rebelle (11/10, «vamos deixar esses
@@ -193,11 +202,10 @@ const MIDIAS: [Midia; 16] = [
     Midia { preset: "Marker Liner", foto: "marker", raio: 9.0, metricas: &[(Cobertura, 0.910), (Textura, 2.116), (Borda, 0.716), (Cruzamento, 0.016)] },
     // O aerógrafo (prompt 43): o PÓ — a textura, a uniformidade e a orla larga são dele; o «período» não conta
     // (a repetição do Rebelle varia 0,005, o controlo fica a 0,013 — doc 43 §2).
-    Midia { preset: "Airbrush", foto: "airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (Largura, 26.0)] },
-    // As formas (prompt 44, doc 44 §3): a ponta reta e a pressão que não estreita. A cobertura da rampa fica de
-    // fora — a nossa vai a 0,54/0,62 contra 0,42/0,43 (aberto, doc 44 §6).
-    Midia { preset: "Wet Flat", foto: "wcflat", raio: 17.0, metricas: &[(Cobertura, 0.315), (Ponta, 0.096), (RampaLargura, 0.829), (Largura, 34.0)] },
-    Midia { preset: "Gouache Flat", foto: "gouacheflat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (Largura, 39.0)] },
+    Midia { preset: "Airbrush", foto: "airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (RampaLargura, 0.63), (RampaCobertura, 0.34), (Largura, 26.0)] },
+    // As formas (prompt 44, doc 44 §3): a ponta reta e a pressão que não estreita e ESMAECE (prompt 45, doc 45).
+    Midia { preset: "Wet Flat", foto: "wcflat", raio: 17.0, metricas: &[(Cobertura, 0.315), (Ponta, 0.096), (RampaLargura, 0.829), (RampaCobertura, 0.42), (Largura, 34.0)] },
+    Midia { preset: "Gouache Flat", foto: "gouacheflat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (RampaCobertura, 0.43), (Largura, 39.0)] },
 ];
 
 pub(super) fn de_fabrica(nome: &str) -> Preset {

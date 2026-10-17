@@ -11,6 +11,7 @@ mod util;
 
 mod a_lei_do_glaze;
 mod a_lei_do_po;
+mod a_opacidade_do_dab;
 mod acceptance;
 mod acceptance_budget;
 mod cor_por_celula;

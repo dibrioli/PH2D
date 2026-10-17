@@ -300,6 +300,7 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.wet_tuning.knob.dust" => "Brush dust",
         "panel.wet_tuning.knob.pressureSize" => "Pressure size",
         "panel.wet_tuning.knob.pressureOpacity" => "Pressure opacity",
+        "panel.wet_tuning.knob.pressureOpacityCurve" => "Pressure opacity curve",
         "panel.wet_tuning.km_mixing" => "Pigment mixing (K-M)",
         "panel.wet_tuning.km_glaze" => "Glaze layering (K-M)",
         "panel.wet_tuning.note" => {

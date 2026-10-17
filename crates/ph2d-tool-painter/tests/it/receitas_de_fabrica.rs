@@ -510,14 +510,15 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.3,
         size_px: None,
-        // A pressão do Spray 2 (dono, smoke do P44: «como no Rebelle»): o Rebelle esmaece (rampa 0,63/0,34). Os
-        // números LITERAIS dele (tamanho 0, opacidade 1) dão 0,92/0,80 aqui — a opacidade quase não morde num
-        // pincel seco de pouca tinta (doc 44 §6); o mais perto medido: tamanho 0,5 → 0,56/0,62 (hoje 0,44/0,54).
+        // A pressão do Spray 2 (dono, smoke do P44: «como no Rebelle»): rampa 0,63/0,34. Com a opacidade que
+        // POUSA (prompt 45) e a curva 1,5: 0,60/0,35. Os números LITERAIS dele (tamanho 0) esmaecem igual mas
+        // não afinam (largura 1,00) — doc 45 §2.
         extras: &[
             ("drag", 0.0),
             ("dust", 0.8),
             ("pressureSize", 0.5),
             ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.5),
         ],
         grao: None,
         spacing: None,
@@ -543,7 +544,11 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: None,
-        extras: &[("pressureSize", 0.3), ("pressureOpacity", 1.0)],
+        extras: &[
+            ("pressureSize", 0.3),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", CURVA_DO_FLAT),
+        ],
         grao: None,
         spacing: None,
         achatado: Some((0.12, 90)),
@@ -567,7 +572,11 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: None,
-        extras: &[("pressureSize", 0.3), ("pressureOpacity", 1.0)],
+        extras: &[
+            ("pressureSize", 0.3),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", CURVA_DA_GUACHE),
+        ],
         grao: None,
         spacing: None,
         achatado: Some((0.2, 90)),
@@ -578,6 +587,10 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
 /// O pigmento do Wet Flat e da Gouache Flat (doc 44 §3, lote 3).
 const PIGMENTO_DO_FLAT: f64 = 50.0;
 const PIGMENTO_DA_GUACHE: f64 = 100.0;
+/// A curva da pressão → opacidade (prompt 45, doc 45 §2): a rampa da cena seca contra o Rebelle — Flat 0,41
+/// (0,42), Gouache Flat 0,42 (0,43).
+const CURVA_DO_FLAT: f64 = 1.75;
+const CURVA_DA_GUACHE: f64 = 2.0;
 
 /// O Shape sem forma (nem cerdas): a ponta é só a queda — o aerógrafo.
 const SEM_FORMA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;

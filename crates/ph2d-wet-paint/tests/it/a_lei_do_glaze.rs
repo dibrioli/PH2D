@@ -238,6 +238,7 @@ fn pouso(e: &mut Engine, cor: [f64; 3], glaze: f64) -> GridSnapshot {
         dry_gate: 0.2,
         reach: 1.0,
         window_reach: 1.0,
+        opacity: 1.0,
     };
     assert!(
         (0..8).any(|_| t.accumulate_paint(g, &p, &tex, &d, false).window_full),

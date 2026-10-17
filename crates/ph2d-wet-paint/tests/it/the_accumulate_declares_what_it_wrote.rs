@@ -38,6 +38,7 @@ fn dab() -> Dab {
         dry_gate: 0.0,
         reach: 1.0,
         window_reach: 1.0,
+        opacity: 1.0,
     }
 }
 

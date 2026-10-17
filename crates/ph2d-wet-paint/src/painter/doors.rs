@@ -48,6 +48,7 @@ impl Engine {
             dry_gate,
             reach: 1.0,
             window_reach: 1.0,
+            opacity: self.opacidade_do_dab,
         };
         (dab, water_unit)
     }

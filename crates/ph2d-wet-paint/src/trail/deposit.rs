@@ -111,6 +111,8 @@ pub(super) struct DepositLaw {
     mix: ColorMix,
     /// O pó deste dab — `None` com o [`Knob::Dust`] a 0 (o carimbo contínuo, ao byte).
     po: Option<Po>,
+    /// [`Dab::opacity`]: multiplica o que pousa, como o `sv`.
+    opacidade: f64,
 }
 
 impl DepositLaw {
@@ -127,6 +129,7 @@ impl DepositLaw {
             water_amount: dab.water_amount,
             mix: p.mix,
             po: Po::de(p.k(Knob::Dust), p.semente_do_po, dab),
+            opacidade: dab.opacity,
         }
     }
 
@@ -186,6 +189,7 @@ impl DepositLaw {
             return None;
         }
         deposit *= sv;
+        deposit *= self.opacidade;
         if !self.ext_bypass {
             // Wet-edge softening extension: thin the rim on wet paper.
             let softness = (film as f64 / 3.0).min(1.0) * self.ext_wet_soften;

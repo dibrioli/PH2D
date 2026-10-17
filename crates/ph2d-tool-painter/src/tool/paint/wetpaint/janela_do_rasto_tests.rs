@@ -67,6 +67,7 @@ pub(super) fn cresce_a_janela(t: &mut PainterTool) {
             dry_gate: 0.0,
             reach: 1.0,
             window_reach: 1.0,
+            opacity: 1.0,
         };
         let _ = tr.accumulate_paint(e.active_grid_mut(), &p, &tex, &longe, false);
         tr.drop_remainder();

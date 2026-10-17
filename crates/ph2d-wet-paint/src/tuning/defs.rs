@@ -635,4 +635,14 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
         0.0,
         None,
     ),
+    k(
+        Knob::PressureOpacityCurve,
+        KnobGroup::Paint,
+        "pressureOpacityCurve",
+        0.25,
+        4.0,
+        0.05,
+        1.0,
+        None,
+    ),
 ];

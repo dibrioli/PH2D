@@ -205,14 +205,19 @@ fn a_ponta_reta_que_segue_o_traco_nao_perde_os_cantos() {
 
 /// A cobertura da RAMPA de pressão (`regua_midia::rampa`) do Wet Flat com a `pressureOpacity` dada.
 fn rampa_do_flat(opacidade: f64) -> (f64, f64) {
-    let mut p = de_fabrica("Wet Flat");
-    p.parametros
-        .engine
-        .insert("pressureOpacity".to_owned(), opacidade);
+    rampa_de("Wet Flat", 17.0, &[("pressureOpacity", opacidade)])
+}
+
+/// A RAMPA de pressão (largura, cobertura) do preset `nome` com os knobs dados, só a linha 2 da bancada.
+fn rampa_de(nome: &str, raio: f32, knobs: &[(&str, f64)]) -> (f64, f64) {
+    let mut p = de_fabrica(nome);
+    for &(k, v) in knobs {
+        p.parametros.engine.insert(k.to_owned(), v);
+    }
     let mut t = tela();
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(&p).is_empty());
-    t.set_brush_size_px(17.0);
+    t.set_brush_size_px(raio);
     t.set_brush_color_srgb8(super::sonda_gestos::AZUL);
     super::sonda_gestos::gesto(&mut t, &[[60.0, 300.0], [560.0, 300.0]], 3.0, |f| {
         0.15 + 0.85 * (f * std::f32::consts::PI).sin()
@@ -239,4 +244,105 @@ fn a_pressao_do_pincel_esmaece_a_rampa() {
         com.1,
         sem.1
     );
+}
+
+/// ⭐ **A opacidade da pressão MORDE no pó** (prompt 45, C28): o Airbrush com os números do Spray 2 (tamanho 0,
+/// opacidade 1, curva linear) esmaece na pressão ~0,46 — antes do 45 a pressão entrava antes do tecto do
+/// carimbo e o pó pousava o mesmo (medido 1,02; com a opacidade que pousa, 0,61).
+#[test]
+fn a_opacidade_da_pressao_morde_no_po() {
+    let (_, cob) = rampa_de(
+        "Airbrush",
+        15.0,
+        &[
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+        ],
+    );
+    assert!(cob < 0.75, "o Airbrush não esmaece com a pressão: {cob:.3}");
+}
+
+/// **A curva da pressão → opacidade** (prompt 45, C27): a curva 2 esmaece o Wet Flat mais que a linear no
+/// toque leve (medido 0,27 contra 0,54) e não lhe mexe na largura.
+#[test]
+fn a_curva_esmaece_mais_no_toque_leve() {
+    let [linear, curva] = std::thread::scope(|s| {
+        [1.0, 2.0]
+            .map(|g| {
+                s.spawn(move || {
+                    rampa_de(
+                        "Wet Flat",
+                        17.0,
+                        &[("pressureOpacity", 1.0), ("pressureOpacityCurve", g)],
+                    )
+                })
+            })
+            .map(|h| h.join().unwrap())
+    });
+    assert!(
+        curva.1 < linear.1 - 0.1,
+        "a curva não esmaece: {:.3} contra {:.3} linear",
+        curva.1,
+        linear.1
+    );
+    assert!(
+        (curva.0 - linear.0).abs() < 0.08,
+        "a curva mexeu na largura: {curva:?} × {linear:?}"
+    );
+}
+
+/// **Sonda (ignorada) do prompt 45**: a rampa (largura, cobertura) de cada pincel com pressão na cena seca da
+/// bancada, por curva `pressureOpacityCurve` (`PH2D_SONDA_CURVAS`, vírgulas; omissão `1`). Doc 45 §2.
+#[test]
+#[ignore = "sonda: a rampa de pressão por curva; corre-se à mão"]
+fn sonda_o_esmaecer_da_pressao() {
+    type Caso = (
+        &'static str,
+        &'static str,
+        f32,
+        &'static [(&'static str, f64)],
+    );
+    const CASOS: [Caso; 7] = [
+        ("flat", "Wet Flat", 17.0, &[]),
+        ("gouache", "Gouache Flat", 19.5, &[]),
+        ("air", "Airbrush", 15.0, &[]),
+        ("air_spray2", "Airbrush", 15.0, &[("pressureSize", 0.0)]),
+        ("ctl17", "Wet Round", 17.0, &[]),
+        ("ctl19", "Wet Round", 19.5, &[]),
+        ("ctl15", "Wet Round", 15.0, &[]),
+    ];
+    let curvas: Vec<f64> = std::env::var("PH2D_SONDA_CURVAS")
+        .map(|s| s.split(',').filter_map(|x| x.trim().parse().ok()).collect())
+        .unwrap_or_else(|_| vec![1.0]);
+    let r: Vec<_> = std::thread::scope(|s| {
+        let hs: Vec<_> = curvas
+            .iter()
+            .flat_map(|&g| CASOS.map(move |c| (g, c)))
+            .filter(|(g, (id, ..))| *g == curvas[0] || !id.starts_with("ctl"))
+            .map(|(g, (id, nome, raio, knobs))| {
+                s.spawn(move || {
+                    let mut p = de_fabrica(nome);
+                    for (k, v) in knobs {
+                        p.parametros.engine.insert((*k).to_owned(), *v);
+                    }
+                    if !id.starts_with("ctl") {
+                        p.parametros
+                            .engine
+                            .insert("pressureOpacityCurve".to_owned(), g);
+                    }
+                    let mut t = tela();
+                    t.set_wet_relogio_fixo(true);
+                    assert!(t.wet_preset_aplicar(&p).is_empty());
+                    t.set_brush_size_px(raio);
+                    let (px, w, h) = pinta_cena_ate(&mut t, 1800);
+                    (g, id, super::regua_midia::rampa(&px, w, h))
+                })
+            })
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    for (g, id, (l, c)) in r {
+        println!("[rampa] curva={g} {id} larg={l:.3} cob={c:.3}");
+    }
 }

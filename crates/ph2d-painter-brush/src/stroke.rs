@@ -621,13 +621,10 @@ impl Stroke {
     /// Space-attenuation multiplier for the current method — applied to the spaced fills
     /// (Space/Line/Arc), `1.0` for the per-event methods.
     fn method_overlap(&self) -> f32 {
-        match self.spec.stroke_method {
-            StrokeMethod::Space
-            | StrokeMethod::Line
-            | StrokeMethod::Arc
-            | StrokeMethod::Ellipse
-            | StrokeMethod::Polygon => self.overlap,
-            _ => 1.0,
+        if self.spec.stroke_method.is_spaced_fill() {
+            self.overlap
+        } else {
+            1.0
         }
     }
 

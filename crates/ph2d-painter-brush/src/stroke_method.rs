@@ -275,6 +275,16 @@ impl StrokeMethod {
         !matches!(self, Self::DragDot | Self::Anchored | Self::GridStamp)
     }
 
+    /// The spaced FILLS (Space / Line / Arc / Ellipse / Polygon): their dabs carry the space-attenuation
+    /// factor in the coverage ([`crate::BrushSpec::method_overlap_factor`]); the per-event methods don't.
+    #[must_use]
+    pub fn is_spaced_fill(self) -> bool {
+        matches!(
+            self,
+            Self::Space | Self::Line | Self::Arc | Self::Ellipse | Self::Polygon
+        )
+    }
+
     /// True for the freehand methods that drive the texture **Rake** warm-up: the stroke holds its
     /// opening dabs until travel defines a confident heading, then releases them at that angle (see
     /// [`crate::Stroke`]). Only the motion-driven painters — Airbrush is timer-driven (often parked, so

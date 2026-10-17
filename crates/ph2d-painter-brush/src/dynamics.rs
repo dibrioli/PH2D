@@ -17,6 +17,9 @@ pub struct Dynamics {
     pub size_min: f32,
     /// Coverage multiplier at pressure 0 when [`Self::strength_pressure`], `0..1`.
     pub strength_min: f32,
+    /// The coverage CURVE: the pressure is raised to it before the ramp (`1` = linear, the law of
+    /// always, bit for bit; `> 1` fades faster at a light touch — prompt 45).
+    pub strength_curve: f32,
 }
 
 impl Default for Dynamics {
@@ -28,6 +31,7 @@ impl Default for Dynamics {
             strength_pressure: false,
             size_min: 0.1,
             strength_min: 0.0,
+            strength_curve: 1.0,
         }
     }
 }
@@ -53,7 +57,13 @@ impl Dynamics {
     /// Coverage multiplier for a given pressure in `[0, 1]`.
     #[must_use]
     pub fn coverage_scale(&self, pressure: f32) -> f32 {
-        ramp(self.strength_pressure, self.strength_min, pressure)
+        let g = self.strength_curve;
+        let p = if g == 1.0 || !(g > 0.0) {
+            pressure
+        } else {
+            pressure.clamp(0.0, 1.0).powf(g)
+        };
+        ramp(self.strength_pressure, self.strength_min, p)
     }
 }
 
@@ -79,6 +89,7 @@ mod tests {
             strength_pressure: false,
             size_min: 0.1,
             strength_min: 0.1,
+            strength_curve: 1.0,
         };
         assert!((d.radius_scale(0.0) - 1.0).abs() < 1e-6);
         assert!((d.coverage_scale(0.0) - 1.0).abs() < 1e-6);
@@ -93,5 +104,33 @@ mod tests {
         };
         assert!((d.radius_scale(0.0) - 0.25).abs() < 1e-6);
         assert!((d.radius_scale(0.5) - 0.625).abs() < 1e-6); // 0.25 + 0.75*0.5
+    }
+
+    /// The coverage curve (prompt 45): `1` is the linear ramp bit for bit; `2` squares the pressure before
+    /// the ramp; it never touches the radius.
+    #[test]
+    fn the_coverage_curve_shapes_the_pressure_only() {
+        let lin = Dynamics {
+            strength_pressure: true,
+            strength_min: 0.2,
+            ..Default::default()
+        };
+        let sq = Dynamics {
+            strength_curve: 2.0,
+            ..lin
+        };
+        for p in [0.0, 0.15, 0.46, 0.5, 1.0] {
+            assert_eq!(
+                Dynamics {
+                    strength_curve: 1.0,
+                    ..lin
+                }
+                .coverage_scale(p)
+                .to_bits(),
+                (0.2 + 0.8 * p).to_bits()
+            );
+            assert!((sq.coverage_scale(p) - (0.2 + 0.8 * p * p)).abs() < 1e-6);
+            assert_eq!(sq.radius_scale(p).to_bits(), lin.radius_scale(p).to_bits());
+        }
     }
 }

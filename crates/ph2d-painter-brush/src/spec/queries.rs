@@ -418,6 +418,17 @@ impl BrushSpec {
         self.dash_ratio < 1.0
     }
 
+    /// The space-attenuation factor THIS stroke method puts in each dab's coverage: the spaced fills
+    /// carry [`Self::space_overlap_factor`], the per-event methods `1` (`Stroke::method_overlap`).
+    #[must_use]
+    pub fn method_overlap_factor(&self) -> f32 {
+        if self.stroke_method.is_spaced_fill() {
+            self.space_overlap_factor()
+        } else {
+            1.0
+        }
+    }
+
     /// "Adjust Strength for Spacing" multiplier applied to each dab's coverage, in `(0, 1]`.
     ///
     /// Behavioural reference (clean-room): Blender's overlap integral over the falloff curve.

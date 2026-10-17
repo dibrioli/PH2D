@@ -86,9 +86,12 @@ pub enum Knob {
     /// **A pressão → a OPACIDADE, do pincel** (prompt 44): quanto a tinta do dab cai com a pressão (`0` = a
     /// lei de sempre; `1` = nada na pressão 0 — o Flat do Rebelle). Lido pelo hospedeiro.
     PressureOpacity,
+    /// **A CURVA da pressão → opacidade, do pincel** (prompt 45): a pressão sobe a ela antes da rampa (`1` =
+    /// linear; `> 1` esmaece mais depressa no toque leve — o Flat do Rebelle ~1,75). Lido pelo hospedeiro.
+    PressureOpacityCurve,
 }
 
-pub const KNOB_COUNT: usize = 58;
+pub const KNOB_COUNT: usize = 59;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

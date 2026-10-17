@@ -62,6 +62,11 @@ impl PainterTool {
         // eraser — this early-out only covers the guard killing the session
         // between the route decision and here (the batch then does nothing).
         let erasing = self.paint.eraser;
+        // ⭐ A pressão → OPACIDADE do pincel (prompt 45) pousa como opacidade: o `b` do motor fica o do
+        // toque inteiro e a fracção da pressão multiplica o que pousa (`Dab::opacity`). Só no PINCEL que
+        // pinta; o resto lê o `b` de sempre. Doc 45 §2.
+        let opacidade_da_pressao = (self.dinamica_do_traco().strength_pressure && !erasing)
+            .then(|| brush.method_overlap_factor().clamp(0.0, 1.0));
         let nasceu_agora = self.paint.wetpaint.session.is_none();
         if self.paint.wetpaint.session.is_none() {
             if erasing {
@@ -320,7 +325,15 @@ impl PainterTool {
                 sess.engine.set_stroke_color(li, ink(d.color));
                 sess.lanes[li].ink = d.color;
             }
-            let b = ((d.coverage / strength).clamp(0.0, 1.0) as f64) * 10.0;
+            let (b, opacidade) = match opacidade_da_pressao {
+                Some(ov) if wet_tool == WetTool::Paint => (
+                    f64::from(ov) * 10.0,
+                    (f64::from(d.coverage) / (f64::from(strength) * f64::from(ov)).max(1e-9))
+                        .clamp(0.0, 1.0),
+                ),
+                _ => (((d.coverage / strength).clamp(0.0, 1.0) as f64) * 10.0, 1.0),
+            };
+            sess.engine.opacidade_do_dab = opacidade;
             // Per-dab silhouette closure — the impasto walk's exact recipe
             // (spec at the dab's radius → rotor → footprint → Shape basis in
             // the stroke frame), evaluated per engine cell (cell − 1 = px).
@@ -587,6 +600,7 @@ impl PainterTool {
             }
             sess.lanes[li].pos = d.center;
         }
+        sess.engine.opacidade_do_dab = 1.0;
         let deposit_ms = t_dep.elapsed().as_secs_f32() * 1e3;
         self.paint.wetpaint.session = Some(taken);
         let t_comp = std::time::Instant::now();

@@ -55,7 +55,8 @@ impl crate::PainterTool {
     /// ⭐ **A pressão do traço** (prompt 44): a do tool, e no Wet Paint a do PINCEL — os knobs
     /// [`Knob::PressureSize`] (o raio na pressão 0 é `1 − ela`; `0,9` = os 10 % de sempre, ao bit) e
     /// [`Knob::PressureOpacity`] (`0` = a lei de sempre; acima dela a tinta do dab segue a pressão, o Flat
-    /// do Rebelle). Lido UMA vez por traço, no `Stroke::new`.
+    /// do Rebelle) com a curva [`Knob::PressureOpacityCurve`] (prompt 45). Lido UMA vez por traço, no
+    /// `Stroke::new`.
     #[must_use]
     pub(crate) fn dinamica_do_traco(&self) -> ph2d_painter_brush::Dynamics {
         let mut d = self.paint.dynamics;
@@ -66,6 +67,7 @@ impl crate::PainterTool {
             if po > 0.0 {
                 d.strength_pressure = true;
                 d.strength_min = (1.0 - po) as f32;
+                d.strength_curve = k.get(Knob::PressureOpacityCurve) as f32;
             }
         }
         d

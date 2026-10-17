@@ -68,6 +68,11 @@ pub struct Dab {
     /// O alcance que a JANELA do rasto tem de caber (`≥ reach`): o máximo do traço — com a rotação
     /// sorteada por dab o `reach` varia, e a janela só cresce no primeiro dab.
     pub window_reach: f64,
+    /// A OPACIDADE do dab que o hospedeiro manda (a pressão do pincel, prompt 45): multiplica o que POUSA,
+    /// depois do tecto `1` do carimbo e do portão do papel (`trail/deposit.rs::cell`) — antes do tecto o
+    /// miolo do dab satura e só a borda esmaece (medido: 0,80 contra 0,34 do Rebelle). `1` = o dab de
+    /// sempre, ao bit.
+    pub opacity: f64,
 }
 
 #[derive(Clone)]

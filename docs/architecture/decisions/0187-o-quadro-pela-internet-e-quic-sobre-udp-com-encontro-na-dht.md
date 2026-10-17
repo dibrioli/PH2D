@@ -55,6 +55,26 @@ casa do dono (doc 11 §1) disse: o router NÃO fala UPnP-IGD, NAT-PMP nem PCP; o
    `tokio`** na árvore.
 7. **O degrau 1 (UPnP/NAT-PMP/PCP) fica DEPOIS**: o router do dono não fala nenhum (doc 11 §1); entra só
    quando a tabela §1 mostrar uma casa onde furar falha e o router o aceita.
+8. **Falha rápida (auditoria A2, W22c 17/10): quem entra sabe LOGO que todos os caminhos caíram, mas só
+   depois de o ponto de encontro responder.** O motor marca cada caminho de uma tentativa que cai e
+   guarda o porquê — a recusa do QUIC (`CONNECTION_REFUSED`: a máquina responde e ninguém ouve, a sala
+   fechou) ⇒ `ConnectionRefused`; o pacote que nem sai desta máquina (`NetworkUnreachable`,
+   `HostUnreachable`, `NetworkDown`, `AddrNotAvailable` no `send_to` de um caminho por abrir) ⇒ esse
+   porquê; o QUIC que esgota ⇒ `TimedOut`. Sem nenhum caminho vivo, a tentativa desiste **só com a lista
+   de endereços FECHADA**: `Node::dial` nasce fechada; `Node::dial_open` (a do `join`) fecha com
+   `DialAdder::done`, que o convidado manda quando o item do anfitrião chegou da DHT, quando não há
+   ponto de encontro, ou quando a DHT não responde (`Rendezvous::reachable` = `bootstrapped`, só
+   perguntado depois de uma publicação falhar — no caminho feliz não custa nada). O `done` vai pelo
+   MESMO canal, depois do último `add`: os endereços acabados de juntar contam. Antes, a recusa nem era
+   lida (o caminho morto esperava o `LINK_TIMEOUT` de 30 s inteiro).
+9. **A rede que bloqueia diz-se em palavras simples.** `Mapping::Dependent` (NAT simétrico: os STUN de
+   destinos diferentes vêem portas diferentes) põe `LiveView.link.strict_nat`: o anfitrião vê-o com o
+   link pronto («This internet connection may keep people in other houses out…»), o convidado à espera
+   (o `join_noting` entrega o `Mapping` dele ANTES do resultado). Quem entra por link vê que se procura
+   o quadro **na internet** e até quando (o prazo vem da família), nunca o «Connecting…» da rede local;
+   ao falhar, a frase escolhe-se pelo porquê — sala fechada (recusa) · link velho (chave errada) · sem
+   internet (sem rota) · não achado (com a rede que bloqueia, se medida) — e FICA no painel por cima de
+   «Join by link» até a próxima tentativa (o aviso curto some; o dono testa de outra casa).
 
 ## Alternativas recusadas (o preço)
 
@@ -94,6 +114,10 @@ retransmissor cego.
 |---|---|---|
 | vazão do fio em `127.0.0.1`, 64 MiB, mínimo de 3 intercalados (`medida_vazao`, `#[ignore]`) | QUIC **378 MiB/s** · TCP 5 256 MiB/s | `loadavg` 17 (outras linhas): o absoluto é pessimista; o que importa é a ordem — ~30× uma internet de casa de 100 Mbit (~12 MiB/s), por isso os tubos de 4 MiB (`RECV_HIGH`/`SEND_HIGH`, RAM por ligação) nunca são o gargalo e o retrato de 57,5 MiB (`MAX_FRAME`, 10/10) leva ~0,15 s em loopback |
 | a crate inteira (25 testes, inclui a DHT local e as duas casas atrás de NAT) | ~3–17 s | 3 corridas seguidas verdes |
+| W22c (17/10) — o link de uma sala FECHADA (só o caminho que recusa, sem DHT), prazo 30 s | desiste em **< 3 s** (antes: os 30 s) | `um_link_de_uma_sala_fechada_falha_logo_e_nao_no_prazo`; no app, a frase chega em < 5 s (`joining_by_link_searches_the_internet…`) |
+| W22c — a DHT CALADA (o nó de arranque não responde) + o caminho que recusa | desiste em **4,1 s** | `uma_dht_calada_nao_segura_a_espera_inteira`; `loadavg` 47 |
+| W22c — o link VELHO (porta que recusa) + DHT com o endereço novo | entra | `com_ponto_de_encontro_o_caminho_caido_nao_acaba_a_espera` (a lista aberta não desiste) |
+| W22c — `cargo check -p ph2d-board-internet` para `x86_64-pc-windows-gnu` e `aarch64-apple-darwin` | ✓ os dois | sem `mingw` nem SDK da Apple nesta máquina: o C da `ring` (só o build script; o `check` não liga objectos) com `CC=clang`, `-DRING_CORE_NOSTDLIBINC=1` (o modo de compilação cruzada da própria `ring`) e, no Mac, `-ffreestanding` + um `TargetConditionals.h` de 5 macros. O Rust desta crate e da `ph2d-board-net` foi verificado para os dois alvos; **ligar e correr** num Windows/Mac real continua aberto |
 
 ## Consequências
 
@@ -101,5 +125,6 @@ retransmissor cego.
   `ph2d-board-net` expõe `Wire`/`Door`/`Invite`/`InviteKey` e `Host::open_door`/`Guest::join_with_key`.
 - O app ganha «Convidar pela internet» (copia o link) e «Entrar por link»; a cena de teste 22 ensaia o convite
   com duas janelas no mesmo computador.
-- Abertos: o furo real (acima); o NAT simétrico detectado (`Mapping::Dependent`) ainda não muda a UI; o
-  degrau 1.
+- Abertos: o furo real (acima); o degrau 1; correr num Windows/Mac REAL (a compilação já passa, §Medições).
+  Fechados na W22c (17/10): a falha rápida (decisão 8), o NAT simétrico na UI e as frases da espera e da
+  falha (decisão 9).

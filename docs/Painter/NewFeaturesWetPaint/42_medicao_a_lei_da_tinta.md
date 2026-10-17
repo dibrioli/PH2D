@@ -89,3 +89,27 @@ branco: o 1.º envio da sessão foi antes de a tela existir.)
 - **O formato**: o Glaze é o knob `glaze` no mapa `engine` do preset, por NOME — um preset sem a chave lê 0 (a lei
   da obra); `SCHEMA` fica 1 (o leitor ignora chaves que não conhece: um build antigo pinta-o sem Glaze, não o
   recusa nem o lê errado). A macro leva-o (o estado inicial é o preset capturado).
+
+## §6 — O halo do Ink Brush e o «azul por cima» (prompt 42b, sondas `sonda_o_perfil_do_cruzamento` e `sonda_as_metricas_das_variantes`)
+
+**Mecanismo (medido célula a célula, Glaze 1 contra Glaze 0):** o assentar do Glaze levava 100 % do azul molhado para
+`sett` mesmo onde o carimbo quase nada pousava — na orla mole da coluna (dureza 0,1) a célula `x 279` recebia ~2 de
+vermelho e assentava 1 083 de azul, MAS ficava com a água toda (filme 0,63, suspenso 0). Essa água LIMPA escoava para o
+azul vizinho ainda molhado e levava-lhe o pigmento: `x 277` (y 488) suspenso 440 → 265 → 115 em 0 / 60 / 120 quadros,
+assentado seco 184 contra 750 do azul (o halo, +72 de luminância). Com Glaze 0 a mesma célula tem suspenso 1 084 e
+nada escoa. Refutado: a difusão (`extDiffusion` 0 → halo +75) e o arrasto (só desloca o azul ~6 px para baixo, igual
+com Glaze 0).
+
+**Lei:** a camada que vai para baixo leva a sua água (`film × (1 − dm/susp)`, `trail/transfer.rs`). Halo +72 → sem
+halo branco; Glaze 0 ao byte. A orla fica com uma linha azul mais escura (o azul molhado que entra na célula agora seca).
+
+| recusado (medido) | porquê |
+|---|---|
+| assentar pela cobertura do carimbo (`× in_a`) | halo +9, mas o resto do azul repinta-se de vermelho a cada carimbo: Ink Brush 0,51, Marker Bullet 0,18 |
+| rampa `min(1, in_a/A0)` + água | cura também a linha da orla; custa aos marcadores (A0 0,01: Liner 0,060, Bullet 0,038; 0,05: 0,072/0,070) |
+| o arrasto não move a camada de baixo | congela as estrias de cerda do azul (riscas horizontais) |
+| vela sem média pela massa | muda os outros quatro (Dip Pen 0,217 → 0,128, Ink Bullet 0,113 → 0,055) |
+
+**Receitas:** Ink Brush Glaze 1 → **0,8** (a fracção multiplicada que o oráculo mediu, §3: 0,76 · 0,82): cruzamento
+0,257 (Rebelle 0,239), miolo (97,40,68) contra (95,37,55). Marker Liner dureza 0,9 → **0,55**, medida à lei de
+largura do próprio preset (raio 9): borda 0,721 (Rebelle 0,716), textura 2,78, cruzamento 0,043.

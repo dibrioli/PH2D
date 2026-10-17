@@ -477,7 +477,7 @@ fn sonda_a_celula_do_cruzamento() {
             assert!(t.wet_preset_aplicar(&p).is_empty());
             t.set_brush_size_px(c.raio.unwrap_or(c.alvo * 0.5));
             aplica_variante(&mut t, v);
-            let mut le = |t: &mut PainterTool, quando: &str| {
+            let le = |t: &mut PainterTool, quando: &str| {
                 t.wet_sonda_motor(|e| {
                     let g = e.active_grid();
                     let razao = 1000.0 / g.w as f64;
@@ -518,6 +518,112 @@ fn sonda_a_celula_do_cruzamento() {
                 t.on_tick(1000.0 / 60.0);
             }
             le(&mut t, "seco");
+        }
+    }
+}
+
+/// **SONDA (prompt 42b): o PERFIL do cruzamento no tempo** — as células da linha azul (`y` 480) de um lado ao outro
+/// do vermelho (`PH2D_SONDA_XS="250,260,…"`, na escala da cena), depois do azul, depois do vermelho e em
+/// `PH2D_SONDA_TEMPOS` quadros: assentado, suspenso, filme, vela e o ecrã seco. Mostra onde nasce o halo.
+#[test]
+#[ignore = "sonda: o perfil do cruzamento no tempo (prompt 42b); corre-se à mão"]
+fn sonda_o_perfil_do_cruzamento() {
+    use super::sonda_gestos::{AZUL, VERMELHO, gesto};
+    let so = std::env::var("PH2D_SONDA_SO").ok();
+    let xs: Vec<f64> = std::env::var("PH2D_SONDA_XS").map_or_else(
+        |_| (0..=20).map(|k| 250.0 + 5.0 * f64::from(k)).collect(),
+        |v| v.split(',').map(|x| x.parse().unwrap()).collect(),
+    );
+    let tempos: Vec<u32> = std::env::var("PH2D_SONDA_TEMPOS").map_or_else(
+        |_| vec![0, 30, 120, 480, 1800],
+        |v| v.split(',').map(|x| x.parse().unwrap()).collect(),
+    );
+    let ys: Vec<f64> = std::env::var("PH2D_SONDA_YS").map_or_else(
+        |_| vec![480.0],
+        |v| v.split(',').map(|x| x.parse().unwrap()).collect(),
+    );
+    let leis = variantes();
+    for c in receitas().iter().filter(|c| {
+        so.as_deref()
+            .is_none_or(|q| q.split(',').any(|n| n == c.nome))
+    }) {
+        let p0 = preset_de(c);
+        for (vnome, v) in &leis {
+            let mut p = p0.clone();
+            for (k, x) in v {
+                if let Some(k) = k.strip_prefix("k_") {
+                    p.parametros.engine.insert(k.to_owned(), *x);
+                }
+            }
+            let mut t = tela();
+            t.set_wet_relogio_fixo(true);
+            assert!(t.wet_preset_aplicar(&p).is_empty());
+            t.set_brush_size_px(c.raio.unwrap_or(c.alvo * 0.5));
+            aplica_variante(&mut t, v);
+            let (xs, ys) = (&xs, &ys);
+            let le = |t: &mut PainterTool, quando: &str| {
+                t.wet_sonda_motor(|e| {
+                    let g = e.active_grid();
+                    let razao = 1000.0 / g.w as f64;
+                    let ecra0 = e.sim.gather_params(&e.tuning).ecra;
+                    for &y in ys {
+                        println!("[perfil {}@{vnome}] {quando} y {y} (razão {razao:.2})", c.nome);
+                        for &x in xs {
+                            let (cx, cy) = ((x / razao) as usize + 1, (y / razao) as usize + 1);
+                            let i = cx + cy * g.s;
+                            let ec = ecra0.com_vela(g.vela[i]);
+                            let a = |m: f32| ph2d_wet_paint::opacity::alpha_of_mass(f64::from(m));
+                            let ecra = ph2d_wet_paint::assenta::sobre_branco(
+                                ec.seco(),
+                                g.sett_rgb[i].map(f64::from),
+                                g.susp_rgb[i].map(f64::from),
+                                a(g.sett[i]),
+                                a(g.susp[i]),
+                            );
+                            println!(
+                                "  x {x:5.0} sett {:7.1} {:?} susp {:7.1} {:?} film {:.4} wet {:3} vela {:.3} → {:?}",
+                                g.sett[i],
+                                g.sett_rgb[i].map(|v| v.round() as i32),
+                                g.susp[i],
+                                g.susp_rgb[i].map(|v| v.round() as i32),
+                                g.film[i],
+                                g.wet[i],
+                                g.vela[i],
+                                ecra.map(|v| v.round() as i32)
+                            );
+                        }
+                    }
+                });
+            };
+            // `PH2D_SONDA_CENA=azul|vermelho`: só um dos traços (a massa de cada um, para o balanço do cruzamento).
+            let cena = std::env::var("PH2D_SONDA_CENA").unwrap_or_default();
+            if cena != "vermelho" {
+                t.set_brush_color_srgb8(AZUL);
+                gesto(&mut t, &[[60.0, 480.0], [560.0, 480.0]], 3.0, |_| 1.0);
+                le(&mut t, "azul");
+            }
+            if cena != "azul" {
+                t.set_brush_color_srgb8(VERMELHO);
+                gesto(&mut t, &[[300.0, 400.0], [300.0, 560.0]], 3.0, |_| 1.0);
+            }
+            let mut feito = 0;
+            for &q in &tempos {
+                for _ in feito..q {
+                    t.on_tick(1000.0 / 60.0);
+                }
+                feito = q;
+                le(&mut t, &format!("vermelho+{q}"));
+            }
+            if let Ok(dir) = std::env::var("PH2D_SONDA_OUT") {
+                let (px, w, h) = ph2d_editor_core::tool::RasterEditTool::run_full(&mut t);
+                std::fs::create_dir_all(&dir).unwrap();
+                escreve_ppm(
+                    &Path::new(&dir).join(format!("perfil_{}@{vnome}.ppm", c.nome)),
+                    &px,
+                    w,
+                    h,
+                );
+            }
         }
     }
 }

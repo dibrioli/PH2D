@@ -391,7 +391,9 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.1,
         size_px: None,
-        extras: &[("extDiffusion", 0.01), ("glaze", 1.0)],
+        // Glaze 0,8: a fracção multiplicada que o oráculo MEDIU nesta tinta (doc 42 §3: 0,76 · 0,82); o 1,0 de antes
+        // compensava o halo e o azul arrastado para baixo (doc 42 §6).
+        extras: &[("extDiffusion", 0.01), ("glaze", 0.8)],
         grao: None,
         spacing: None,
         achatado: None,
@@ -466,7 +468,8 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         achatado: None,
         pincel: &[],
     },
-    // Marker › Marker Liner: o mesmo marcador, mais duro (a foto é fina: 18 px).
+    // Marker › Marker Liner: o mesmo marcador, a foto é fina (18 px): a dureza
+    // medida à lei de largura do PRÓPRIO preset (raio 9; doc 42 §6) — 0,9 dava a borda 0,874 (Rebelle 0,716).
     Receita {
         meio: "Marker",
         grupo: "Marker",
@@ -481,7 +484,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
-        hardness: 0.9,
+        hardness: 0.55,
         size_px: None,
         extras: &[("glaze", 1.0)],
         grao: None,

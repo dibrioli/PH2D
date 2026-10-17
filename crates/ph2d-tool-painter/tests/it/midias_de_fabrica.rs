@@ -267,3 +267,95 @@ fn cada_preset_parece_a_sua_midia() {
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
+
+/// **SONDA (prompt 42b): as métricas de um preset com knobs trocados** — `PH2D_SONDA_PRESETS="Ink Brush,…"` (por
+/// omissão a tinta e o marcador) × `PH2D_SONDA_KNOBS="nome:k=v,b.k=v|…"` (`k` no mapa do motor, `b.k` no do
+/// pincel; a variante vazia é o preset de fábrica), a cena seca medida como [`cada_preset_parece_a_sua_midia`],
+/// com o vale de cada métrica. `PH2D_SONDA_RAIO=<r>` troca o raio da cena.
+#[test]
+#[ignore = "sonda: as métricas das variantes de um preset (prompt 42b); corre-se à mão"]
+fn sonda_as_metricas_das_variantes() {
+    let presets: Vec<String> = std::env::var("PH2D_SONDA_PRESETS").map_or_else(
+        |_| {
+            [
+                "Ink Bullet",
+                "Dip Pen",
+                "Ink Brush",
+                "Marker Bullet",
+                "Marker Liner",
+            ]
+            .map(str::to_owned)
+            .to_vec()
+        },
+        |v| v.split(',').map(str::to_owned).collect(),
+    );
+    let variantes: Vec<(String, Vec<(String, f64)>)> = std::env::var("PH2D_SONDA_KNOBS")
+        .map_or_else(
+            |_| vec![(String::new(), Vec::new())],
+            |v| {
+                v.split('|')
+                    .map(|s| {
+                        let (n, kv) = s.split_once(':').unwrap_or((s, ""));
+                        let kv = kv
+                            .split(',')
+                            .filter(|x| !x.is_empty())
+                            .map(|x| {
+                                let (k, v) = x.split_once('=').unwrap();
+                                (k.to_owned(), v.parse().unwrap())
+                            })
+                            .collect();
+                        (n.to_owned(), kv)
+                    })
+                    .collect()
+            },
+        );
+    let raio_fixo: Option<f32> = std::env::var("PH2D_SONDA_RAIO")
+        .ok()
+        .and_then(|v| v.parse().ok());
+    let round = &de_fabrica("Wet Round");
+    std::thread::scope(|s| {
+        for nome in &presets {
+            let m = MIDIAS.iter().find(|m| m.preset == nome).unwrap();
+            let raio = raio_fixo.unwrap_or(m.raio);
+            let c = s.spawn(move || cena_seca(round, raio, &[]));
+            let hs: Vec<_> = variantes
+                .iter()
+                .map(|(vn, kv)| {
+                    let mut p = de_fabrica(nome);
+                    for (k, x) in kv {
+                        if let Some(b) = k.strip_prefix("b.") {
+                            p.parametros
+                                .brush
+                                .insert(b.to_owned(), serde_json::json!(x));
+                        } else {
+                            p.parametros.engine.insert(k.clone(), *x);
+                        }
+                    }
+                    let f = format!("{nome}@{vn}");
+                    (vn, s.spawn(move || cena_seca(&p, raio, &[f])))
+                })
+                .collect();
+            let c = c.join().unwrap();
+            for (vn, h) in hs {
+                let n = h.join().unwrap();
+                let linha: Vec<String> = m
+                    .metricas
+                    .iter()
+                    .map(|&(met, r)| {
+                        let (nv, cv) = (met.de(&n), met.de(&c));
+                        let ok = match met {
+                            Tinta => (nv - r).abs() < 4.0 * met.ruido(),
+                            Cruzamento => (nv - r).abs() < 3.0 * met.ruido(),
+                            _ => no_vale(nv, r, cv),
+                        };
+                        format!(
+                            "{met:?} {nv:.3} (R {r} c {cv:.3}){}",
+                            if ok { "" } else { " ✗" }
+                        )
+                    })
+                    .collect();
+                println!("[metricas] {nome}@{vn} r {raio}: {}", linha.join(" · "));
+            }
+        }
+    });
+}

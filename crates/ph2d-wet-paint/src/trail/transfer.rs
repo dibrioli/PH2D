@@ -287,6 +287,11 @@ impl Trail {
                         if dm > 0.0 {
                             let e = p.ecra.com_vela(g.vela[i]);
                             crate::grid::settle_composite(g, i, dm, p.mix, p.glaze, e, &mut out);
+                            // A camada que vai para BAIXO leva a sua água (a fracção que assentou): deixada no
+                            // filme, a orla do traço novo (que quase nada pousa) virava água LIMPA ao lado do azul
+                            // molhado e escoava-o — o halo branco do Ink Brush (doc 42 §6).
+                            let fica = 1.0 - dm / g.susp[i] as f64;
+                            g.film[i] = (g.film[i] as f64 * fica) as f32;
                             g.sett[i] = (g.sett[i] as f64 + dm) as f32;
                             g.susp[i] = (g.susp[i] as f64 - dm) as f32;
                         }

@@ -20,7 +20,11 @@ ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-color   = { path = "../ph2d-color" }
 # Pure-Rust ZIP read/write. `default-features = false` keeps wasm
 # clean (no `time`, no `deflate64`).
-zip = { version = "8", default-features = false, features = ["deflate"] }
+# `9`, not `8`: RUSTSEC-2026-0367/0368/0369 (extract() keeps SUID/SGID bits and
+# follows attacker symlinks) are fixed only in `>=9.0.0`. We never call
+# `extract()` (import reads entries by name into memory), but the fixed major
+# was reachable, so it is an upgrade and not an ignore.
+zip = { version = "9", default-features = false, features = ["deflate"] }
 # Pure-Rust read-only XML parser; we hand-write the simple ORA XML
 # on export to avoid pulling a second XML dep.
 roxmltree = { version = "0.21", default-features = false }

@@ -73,7 +73,15 @@ fn deixa_fronteira_temporal(
         if encenados.contains(&n) {
             continue;
         }
-        if !eligible(graph, ops, kernels, n, &encenados, &vazio, (&sem_mapa, true)) {
+        if !eligible(
+            graph,
+            ops,
+            kernels,
+            n,
+            &encenados,
+            &vazio,
+            (&sem_mapa, true),
+        ) {
             if super::uniao::boundary_is_static(graph, ops, n) {
                 continue;
             }
@@ -128,7 +136,11 @@ pub(super) fn condutores_com_estado(
     let mut fora: Vec<NodeId> = Vec::new();
     for s in stages {
         let na_placa = device_drivers.get(&s.node);
-        for (p, (src, _)) in graph.param_sources(s.node).into_iter().flat_map(|f| f.iter()) {
+        for (p, (src, _)) in graph
+            .param_sources(s.node)
+            .into_iter()
+            .flat_map(|f| f.iter())
+        {
             if na_placa.is_some_and(|v| v.iter().any(|(q, _)| q == p)) || fora.contains(src) {
                 continue;
             }
@@ -163,7 +175,12 @@ fn cadeia_com_estado(graph: &Graph, ops: &dyn OpResolver, n: NodeId) -> bool {
                 None => {}
             }
         }
-        pilha.extend(graph.param_sources(k).into_iter().flat_map(|f| f.values().map(|(s, _)| *s)));
+        pilha.extend(
+            graph
+                .param_sources(k)
+                .into_iter()
+                .flat_map(|f| f.values().map(|(s, _)| *s)),
+        );
     }
     false
 }

@@ -293,7 +293,10 @@ fn a_temporal_driver_chain_stays_on_the_cpu_and_keeps_the_loop_on_the_device() {
     let (g, out, ig, vx) = galaxia_com_envelope(false);
     assert!(ph2d_gpu_cook::device_driven_params(&g, &reg, &reg).contains(&(vx, "strength".into())));
     let p = plan_with_device_drivers(&g, &reg, &reg, &[out], &DrivenParams::new());
-    assert!(p.drives_a_loop() && p.device_drivers.contains_key(&vx), "{p:?}");
+    assert!(
+        p.drives_a_loop() && p.device_drivers.contains_key(&vx),
+        "{p:?}"
+    );
     // Com o gatilho: o número vem da CPU, e o `Integrate` continua estágio.
     let (g, out, ig2, vx) = galaxia_com_envelope(true);
     assert_eq!(ig, ig2);
@@ -303,7 +306,11 @@ fn a_temporal_driver_chain_stays_on_the_cpu_and_keeps_the_loop_on_the_device() {
     );
     let p = plan_with_device_drivers(&g, &reg, &reg, &[out], &forca(vx));
     assert!(p.device_drivers.is_empty(), "{:?}", p.device_drivers);
-    assert!(p.drives_a_loop(), "o laço saiu da placa: fronteiras {:?}", p.boundaries);
+    assert!(
+        p.drives_a_loop(),
+        "o laço saiu da placa: fronteiras {:?}",
+        p.boundaries
+    );
     assert!(p.stages.iter().any(|s| s.node == ig));
     assert!(p.boundaries.is_empty(), "{:?}", p.boundaries);
     // ⛔ E o condutor COM ESTADO (o envelope lê o seu `pre`) vai na lista que a marcha avança: cozido
@@ -333,7 +340,11 @@ fn a_side_port_boundary_recedes_its_reader() {
     }
     let p = plan_with_device_drivers(&g, &reg, &reg, &[out], &DrivenParams::new());
     assert!(!p.stages.iter().any(|s| s.node == env), "{p:?}");
-    assert!(p.boundaries.iter().all(|(_, porta)| *porta == 0), "{:?}", p.boundaries);
+    assert!(
+        p.boundaries.iter().all(|(_, porta)| *porta == 0),
+        "{:?}",
+        p.boundaries
+    );
     // O controlo: pela porta `0` o envelope encena-se, com a fronteira na porta `0`.
     g.disconnect(env, 0).unwrap();
     g.connect(Edge {

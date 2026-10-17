@@ -52,7 +52,10 @@ const VARIANTES: &[(&str, Ajuste)] = &[
     }),
     ("sem_gatilho_no_envelope", |m| {
         let e = um(m, "pulse.adsr");
-        m.doc.graph.disconnect(e, 0).expect("o envelope tem gatilho");
+        m.doc
+            .graph
+            .disconnect(e, 0)
+            .expect("o envelope tem gatilho");
     }),
     ("sem_fio_no_redemoinho", |m| {
         let v = um(m, "force.vortex");
@@ -174,7 +177,10 @@ fn um_condutor_na_placa_nunca_custa_o_laco() {
             perdem.push(n);
         }
     }
-    assert!(perdem.is_empty(), "o condutor na placa expulsa o laço em {perdem:?}");
+    assert!(
+        perdem.is_empty(),
+        "o condutor na placa expulsa o laço em {perdem:?}"
+    );
     // O controlo: a varredura viu laços (senão passaria sem ler nada).
     assert!(com_laco >= 10, "só {com_laco} cenas com laço na placa");
     let mut m = com_saidas(CENA).expect("a =139 monta");
@@ -227,12 +233,18 @@ fn cadeia_com_estado(m: &MotionState, n: NodeId) -> Option<String> {
 #[ignore = "sonda: corra à mão"]
 fn sonda_os_defeitos_latentes_da_entrega() {
     for n in (1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL).map(|n| n.to_string()) {
-        let Some(mut m) = com_saidas(&n) else { continue };
+        let Some(mut m) = com_saidas(&n) else {
+            continue;
+        };
         let plano = crate::motion_bridge::gpu::plano_do_produto(&mut m, 0.5);
         let g = &m.doc.graph;
         let tipo = |k: NodeId| g.node(k).map(|i| i.type_name.clone()).unwrap_or_default();
         for (b, porta) in plano.boundaries.iter().filter(|(_, p)| *p != 0) {
-            eprintln!("={n} (a) fronteira {}#{porta} · laço {}", tipo(*b), plano.drives_a_loop());
+            eprintln!(
+                "={n} (a) fronteira {}#{porta} · laço {}",
+                tipo(*b),
+                plano.drives_a_loop()
+            );
         }
         let cone: std::collections::BTreeSet<NodeId> = plano
             .boundaries
@@ -358,10 +370,14 @@ fn a_galaxia_da_139_na_placa_e_a_da_cpu() {
             forcas.len()
         );
         if forcas.len() <= 2 || envelope <= 100.0 * EPS_SIM {
-            falhas.push(format!("{forma}: o envelope não mexeu a galáxia ({envelope:e})"));
+            falhas.push(format!(
+                "{forma}: o envelope não mexeu a galáxia ({envelope:e})"
+            ));
         }
         if d > EPS_SIM {
-            falhas.push(format!("{forma}: a galáxia da placa afastou-se da CPU ({d:e})"));
+            falhas.push(format!(
+                "{forma}: a galáxia da placa afastou-se da CPU ({d:e})"
+            ));
         }
     }
     assert!(falhas.is_empty(), "{falhas:#?}");
@@ -376,7 +392,11 @@ fn delta(a: &[[f32; 2]], b: &[[f32; 2]]) -> f32 {
 
 /// O `P` da galáxia da `=139` (com `forma` e `ajuste`) pela CPU, com os quadros do calendário: as
 /// entradas publicadas uma vez por quadro e os tiques devidos marchados, como a rota da CPU.
-fn p_da_cpu(galaxia: NodeId, forma: Ajuste, ajuste: impl FnOnce(&mut MotionState)) -> Vec<[f32; 2]> {
+fn p_da_cpu(
+    galaxia: NodeId,
+    forma: Ajuste,
+    ajuste: impl FnOnce(&mut MotionState),
+) -> Vec<[f32; 2]> {
     let dt = 1.0 / 60.0;
     let mut cpu = com_saidas(CENA).expect("a =139 monta");
     forma(&mut cpu);
@@ -412,7 +432,11 @@ fn p_da_cpu(galaxia: NodeId, forma: Ajuste, ajuste: impl FnOnce(&mut MotionState
 }
 
 /// O plano de uma cena (10 quadros pela porta do produto): `(laço na placa, nós encenados, rota)`.
-fn plano_de(n: &str, condutores: bool, gpu: &ph2d_gpu::GpuContext) -> Option<(bool, usize, &'static str)> {
+fn plano_de(
+    n: &str,
+    condutores: bool,
+    gpu: &ph2d_gpu::GpuContext,
+) -> Option<(bool, usize, &'static str)> {
     let mut m = monta_demo(n)?;
     m.condutores_na_placa = condutores;
     let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
@@ -429,7 +453,11 @@ fn plano_de(n: &str, condutores: bool, gpu: &ph2d_gpu::GpuContext) -> Option<(bo
     }
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     let plano = crate::motion_bridge::gpu::plano_do_produto(&mut m, ph.time());
-    Some((plano.drives_a_loop(), plano.stages.len(), m.route_said.unwrap_or("—")))
+    Some((
+        plano.drives_a_loop(),
+        plano.stages.len(),
+        m.route_said.unwrap_or("—"),
+    ))
 }
 
 /// **A FAMÍLIA** (§0.10): toda cena do roteador com os condutores na placa (hoje) e na CPU — as
@@ -447,7 +475,11 @@ fn sonda_o_condutor_que_expulsa_o_laco() {
         };
         if hoje.0 != cpu.0 || hoje.1 != cpu.1 || hoje.2 != cpu.2 {
             mudam += 1;
-            let marca = if cpu.0 && !hoje.0 { "⛔ LAÇO EXPULSO" } else { "" };
+            let marca = if cpu.0 && !hoje.0 {
+                "⛔ LAÇO EXPULSO"
+            } else {
+                ""
+            };
             eprintln!(
                 "={n} {marca}\n  hoje laço {} · {} estágios · «{}»\n  cpu  laço {} · {} estágios · «{}»",
                 hoje.0, hoje.1, hoje.2, cpu.0, cpu.1, cpu.2

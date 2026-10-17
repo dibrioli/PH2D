@@ -105,6 +105,7 @@
 | 2026-10-15 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-15_LINGUA.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-15_LINGUA.md) | continuação | fila viva: a língua das cenas — tudo o que uma cena pinta é inglês, censo que monta cada nível; régua de língua medida contra 195 textos; guarda do heredoc; legenda da =142 |
 | 2026-10-16 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-16_CARIMBO.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-16_CARIMBO.md) | continuação | o carimbo na placa — `point_scale > 0` e pontos com `rot` (=132 ×11 9×, =136 5,7×); custo fixo da rota híbrida em aberto |
 | 2026-10-16 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-16_PASSE_UNICO.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-16_PASSE_UNICO.md) | continuação | fila viva: o custo fixo da rota híbrida era o passe por despacho — UM passe para os despachos consecutivos (−65 a −371 µs por quadro, saída ao bit); curas 1 e 3 recusadas pelo kill-criterion |
+| 2026-10-17 | ◆ | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-17_INTEGRATE_139.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-17_INTEGRATE_139.md) | continuação | fila viva: a `=139` simula a galáxia na placa — o condutor com estado entra na marcha (×4 783 → 254 µs, ×11 1 533 → 321 µs); guarda da porta lateral; mutação 6/6 |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

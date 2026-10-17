@@ -275,11 +275,12 @@ impl PainterTool {
     }
 
     /// O documento volta ao de `t0` (o estado inicial de uma macro, do mesmo tamanho): um passo de
-    /// undo estrutural. A água em curso assenta antes.
+    /// undo estrutural. A água em curso assenta antes; a idade dela volta com o desenho.
     pub(crate) fn recomeca_com(&mut self, t0: &PainterTool) {
         self.wetpaint_end_session();
         let before = self.snapshot_model();
         self.restore_model(t0.snapshot_model());
+        self.desde_o_ultimo_up = t0.desde_o_ultimo_up;
         self.edited_since_bind = true;
         self.commit_structural_edit(before);
         self.invalidate_composite();

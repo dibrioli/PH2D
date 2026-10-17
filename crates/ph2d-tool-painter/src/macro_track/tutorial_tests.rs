@@ -482,6 +482,28 @@ fn recomecar_volta_ao_inicio_num_passo_de_undo() {
     assert_eq!(e.por_cumprir(&t), Some(1), "o desfazer volta ao feito");
 }
 
+/// **«Recomeçar» volta a idade da água com o desenho** (W8, `docs/Macros/05_plano_W8.md` item 5): a
+/// idade é o relógio da água — a tela volta ao início, a idade volta à do início (nenhum `Up`); o
+/// desfazer devolve a tinta já assentada (a água acabou no recomeçar), avaliada no fim das curvas.
+#[test]
+fn recomecar_volta_a_idade_ao_inicio() {
+    let track = trilha_no_meio(PaintMedia::Digital, &SPLASH, LADO);
+    let e = EnsinoDoPainter::medido(&track).expect("ensino");
+    let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    let t0 = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    mostra(&mut t, &track, e.criterios[0].regiao.k).expect("mostra");
+    espera(&mut t);
+    assert!(idade_de(&t).is_some_and(|a| a > 0), "controlo: o aluno tem idade");
+    recomeca(&mut t, &track).expect("recomeça");
+    assert_eq!(
+        t.segundos_desde_o_ultimo_up(),
+        t0.segundos_desde_o_ultimo_up(),
+        "a tela voltou ao início e a idade ficou a do aluno"
+    );
+    assert!(t.undo_last(), "o recomeçar é um passo");
+    assert_eq!(idade(&t), u32::MAX, "a tinta devolvida já assentou");
+}
+
 /// «Mostra-me» pinta com o pincel da gravação e devolve o do aluno.
 #[test]
 fn mostra_me_devolve_a_cor_e_o_tamanho_do_aluno() {

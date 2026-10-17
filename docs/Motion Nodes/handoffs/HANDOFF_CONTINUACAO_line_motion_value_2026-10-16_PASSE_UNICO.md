@@ -62,6 +62,8 @@ Verde em `c2d8fb243e`:
     como o `dispatch` faz.
 
 Mutação refeita sobre o gate final: 4/4 (a =138 sangra primeiro).
+`target/*/incremental` reclamado (6,9 GB). Binário do smoke (`cargo build -p ph2d-host-desktop --profile
+smoke`, 2.ª corrida): `Finished `smoke` profile [optimized] target(s) in 0.21s` — zero `Compiling`.
 
 ## Aberto (ordem)
 

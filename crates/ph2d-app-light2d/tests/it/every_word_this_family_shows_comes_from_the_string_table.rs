@@ -10,11 +10,28 @@ const TABLE: &str = "crates/ph2d-i18n/src/luz2d.rs";
 
 const FORA: &[Isento] = &[];
 
-const NOT_LANGUAGE: &[Excecao] = &[(
-    "quadro.rs",
-    "luz2d quadro do editor",
-    "o rótulo de DEPURAÇÃO do encoder do wgpu (o que o RenderDoc mostra) — nunca pintado",
-)];
+const NOT_LANGUAGE: &[Excecao] = &[
+    (
+        "quadro.rs",
+        "luz2d quadro do editor",
+        "o rótulo de DEPURAÇÃO do encoder do wgpu (o que o RenderDoc mostra) — nunca pintado",
+    ),
+    (
+        "quadro_leituras.rs",
+        "luz2d quadro do editor",
+        "o mesmo rótulo de DEPURAÇÃO do encoder, no instrumento (`PH2D_LIGHT2D_CUSTO=1`) — nunca pintado",
+    ),
+    (
+        "quadro_leituras.rs",
+        "luz2d sonda calibração",
+        "o rótulo de DEPURAÇÃO da textura de calibração da régua de memória (W5y) — nunca pintado",
+    ),
+    (
+        "quadro_leituras.rs",
+        "calibração",
+        "a etiqueta da linha do instrumento no TERMINAL (`PH2D_LIGHT2D_MEMORIA`, W5y) — nunca pintada",
+    ),
+];
 
 #[test]
 fn every_word_this_family_shows_comes_from_the_string_table() {

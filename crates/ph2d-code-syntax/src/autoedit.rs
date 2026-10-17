@@ -7,6 +7,7 @@
 //! tem fechos de bloco). Cada gesto é UM passo de undo e vale em todos os cursores.
 
 use crate::Syntax;
+use crate::indent::may_dedent;
 use ph2d_code_buffer::{
     Buffer, Change, ChangeSet, EditKind, Edits, Range, Selection, Text, is_word_char,
 };
@@ -197,7 +198,7 @@ impl AutoEdit {
         };
         let after = Selection::new(afters, buf.selection().primary_index());
         let edits = buf.apply(cs, Some(after), kind);
-        syn.edit(&edits, buf.text());
+        syn.edit_deferred(&edits);
         edits
     }
 
@@ -214,7 +215,12 @@ impl AutoEdit {
             let (from, to) = (r.from(), r.to());
             let line = t.line_of_byte(from);
             let first = indent_end(t, line);
-            was_dedent.push(first < t.line_end(line) && syn.dedents_at(t, first));
+            was_dedent.push(
+                first < t.line_end(line) && may_dedent(t, first) && {
+                    syn.fresh(t);
+                    syn.dedents_at(t, first)
+                },
+            );
             let open = closer_of(ch).filter(|_| self.close_pairs);
             let plan = if !r.is_empty() {
                 match open {
@@ -261,9 +267,13 @@ impl AutoEdit {
 
     /// A lei do Godot para abrir o par: nunca em comentário; nunca antes de letra/dígito/`_`; as
     /// aspas também não dentro de string nem logo depois de letra/dígito (`don't`).
-    fn closes_here(&self, t: &Text, syn: &Syntax, at: usize, ch: char) -> bool {
+    fn closes_here(&self, t: &Text, syn: &mut Syntax, at: usize, ch: char) -> bool {
+        if char_at(t, at).is_some_and(is_word_char) {
+            return false;
+        }
+        syn.fresh(t);
         let ctx = context_at(t, syn, at);
-        if ctx == Ctx::Comment || char_at(t, at).is_some_and(is_word_char) {
+        if ctx == Ctx::Comment {
             return false;
         }
         !(is_quote(ch) && (ctx == Ctx::String || char_before(t, at).is_some_and(is_word_char)))
@@ -288,9 +298,15 @@ impl AutoEdit {
                 continue;
             }
             let was = was_dedent.get(i).copied().unwrap_or(false);
-            if !(was || syn.dedents_at(t, first)) {
+            if !(was
+                || (may_dedent(t, first) && {
+                    syn.fresh(t);
+                    syn.dedents_at(t, first)
+                }))
+            {
                 continue;
             }
+            syn.fresh(t);
             let want = self.level(syn.line_indent_level(t, line));
             if t.slice(start..first) == want {
                 continue;
@@ -317,7 +333,7 @@ impl AutoEdit {
             return Vec::new();
         };
         let edits = buf.apply(cs, None, EditKind::Typing);
-        syn.edit(&edits, buf.text());
+        syn.edit_deferred(&edits);
         edits
     }
 
@@ -325,6 +341,7 @@ impl AutoEdit {
     /// um bloco; entre `(`/`[`/`{` e o seu fecho abre três linhas com o meio indentado.
     pub fn on_enter(&self, buf: &mut Buffer, syn: &mut Syntax) -> Edits {
         let t = buf.text();
+        syn.fresh(t);
         let mut plans = Vec::new();
         for r in buf.selection().ranges() {
             let (from, to) = (r.from(), r.to());
@@ -413,7 +430,7 @@ impl AutoEdit {
             return Vec::new();
         };
         let edits = buf.apply(cs, None, EditKind::Deleting);
-        syn.edit(&edits, buf.text());
+        syn.edit_deferred(&edits);
         edits
     }
 }

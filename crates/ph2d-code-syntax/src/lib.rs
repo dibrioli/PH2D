@@ -21,8 +21,9 @@ pub use autoedit::{AutoEdit, IndentStyle, closer_of};
 pub use errors::SyntaxError;
 pub use fold::{Fold, fold_captures_visited};
 pub use highlight::{HighlightKind, HighlightSpan};
+pub use indent::closer_tokens;
 pub use queries::{
     CaptureUse, FOLDS_SCM, HIGHLIGHTS_SCM, INDENTS_SCM, capture_table, highlight_captures,
     unevaluated_predicates,
 };
-pub use syntax::Syntax;
+pub use syntax::{ReparseJob, Reparsed, Syntax, luau_parser};

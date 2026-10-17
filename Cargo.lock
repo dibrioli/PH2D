@@ -5694,6 +5694,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-code-intel"
+version = "0.0.0"
+dependencies = [
+ "fastrand",
+ "ph2d-code-buffer",
+ "ph2d-code-lsp",
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-code-lsp"
 version = "0.0.0"
 dependencies = [

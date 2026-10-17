@@ -12,6 +12,47 @@ use ph2d_code_buffer::Text;
 use std::collections::BTreeSet;
 use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
+/// Os tokens que a `indents.scm` marca `@indent.end`/`@indent.branch` (`end`, `else`, `}`…), lidos
+/// da PRÓPRIA query: só uma linha que começa por um deles pode recuar, então a tecla só pede a árvore
+/// exacta ([`Syntax::fresh`]) quando o token da linha é um destes.
+pub fn closer_tokens() -> &'static [String] {
+    static TOKENS: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    TOKENS.get_or_init(|| {
+        let mut out = Vec::new();
+        let mut block: Vec<String> = Vec::new();
+        for line in queries::INDENTS_SCM.lines().map(str::trim) {
+            if line.starts_with('[') {
+                block.clear();
+            } else if let Some(tok) = line.strip_prefix('"').and_then(|l| l.strip_suffix('"')) {
+                block.push(tok.to_owned());
+            } else if line == "] @indent.end" || line == "] @indent.branch" {
+                out.append(&mut block);
+            }
+        }
+        out
+    })
+}
+
+/// O token (palavra, ou um carácter de pontuação) que começa em `byte`.
+pub(crate) fn token_at(text: &Text, byte: usize) -> String {
+    let rest = text.slice(byte..text.line_end(text.line_of_byte(byte)));
+    let word: String = rest
+        .chars()
+        .take_while(|c| ph2d_code_buffer::is_word_char(*c))
+        .collect();
+    if word.is_empty() {
+        rest.chars().next().map(String::from).unwrap_or_default()
+    } else {
+        word
+    }
+}
+
+/// O token em `byte` pode recuar a linha (lexicamente) — sem esta pergunta a árvore não é precisa.
+pub(crate) fn may_dedent(text: &Text, byte: usize) -> bool {
+    let tok = token_at(text, byte);
+    closer_tokens().iter().any(|c| *c == tok)
+}
+
 /// O nó tem a captura `cap` num padrão enraizado NELE (não num descendente).
 fn has_capture(text: &Text, node: Node, cap: u32) -> bool {
     let q = queries::get();

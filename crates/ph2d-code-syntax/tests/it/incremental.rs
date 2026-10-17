@@ -224,3 +224,112 @@ fn escrever_bob_tecla_a_tecla_e_apagar_segue_o_parse_do_zero() {
     println!("escrever e apagar bob: {conta:?}");
     assert!(conta.validos >= 100, "{conta:?}");
 }
+
+/// I1 (Onda 2): a árvore que o worker reparsa FORA da tecla — trabalhos tomados e adoptados a
+/// qualquer altura, com edições pelo meio — acaba igual à do reparse síncrono (a mesma lei acima).
+#[test]
+fn reparse_fora_da_tecla_com_edicoes_pelo_meio_segue_o_parse_do_zero() {
+    let mut rng = fastrand::Rng::with_seed(0x0F0A_7EC1);
+    let mut b = Buffer::new(BOB);
+    let mut syn = Syntax::new(b.text());
+    let mut worker = ph2d_code_syntax::luau_parser();
+    let mut em_voo: Option<ph2d_code_syntax::ReparseJob> = None;
+    let mut conta = Conta::default();
+    let (mut adoptados, mut com_edicoes_pelo_meio) = (0, 0);
+    let mut passo = 0;
+    while passo < 600 {
+        let k = rng.usize(1..=4);
+        let mut ops = vec![Op::Troca; k];
+        ops.extend(vec![Op::Desfaz; k]);
+        let n = ops.len();
+        for (i, op) in ops.into_iter().enumerate() {
+            let edits = match op {
+                Op::Troca => b.apply(
+                    random_changes(&b.text().to_string(), &mut rng),
+                    None,
+                    EditKind::Other,
+                ),
+                Op::Desfaz | Op::Refaz => b.undo(),
+            };
+            syn.edit_deferred(&edits);
+            if em_voo.is_none() {
+                em_voo = syn.job(b.text());
+            } else if !edits.is_empty() {
+                com_edicoes_pelo_meio += 1;
+            }
+            if rng.u8(0..3) == 0
+                && let Some(job) = em_voo.take()
+            {
+                adoptados += 1;
+                if syn.adopt(job.run(&mut worker)) {
+                    em_voo = syn.job(b.text());
+                }
+            }
+            // O quadro assenta às vezes, e sempre no fim do episódio (texto válido outra vez).
+            if i + 1 == n || rng.u8(0..4) == 0 {
+                while syn.is_stale() {
+                    let job = em_voo
+                        .take()
+                        .or_else(|| syn.job(b.text()))
+                        .expect("velha sem trabalho");
+                    syn.adopt(job.run(&mut worker));
+                }
+                confere(&syn, &b, passo, &mut conta);
+            }
+            passo += 1;
+        }
+    }
+    println!(
+        "fora da tecla: {conta:?}, {adoptados} adoptados, {com_edicoes_pelo_meio} com edições pelo meio"
+    );
+    assert!(conta.validos >= 20 && conta.quebrados >= 20, "{conta:?}");
+    assert!(
+        com_edicoes_pelo_meio >= 50,
+        "o traço não pôs edições entre um trabalho e a sua adopção"
+    );
+    assert_eq!(
+        syn.sync_reparses(),
+        0,
+        "ninguém chamou `fresh`, e houve reparse síncrono"
+    );
+}
+
+/// I1: os tokens de recuo lidos da `indents.scm` são exactamente os que a query marca, e escrever
+/// letras no meio de uma linha nunca pede a árvore exacta (zero reparses síncronos).
+#[test]
+fn a_tecla_de_letra_nao_reparsa_e_o_end_no_inicio_da_linha_sim() {
+    let mut toks = ph2d_code_syntax::closer_tokens().to_vec();
+    toks.sort();
+    assert_eq!(toks, [")", "else", "elseif", "end", "until", "}"]);
+    let auto = ph2d_code_syntax::AutoEdit::new(ph2d_code_syntax::IndentStyle::Spaces(2));
+    let mut b = Buffer::new(BOB);
+    let mut syn = Syntax::new(b.text());
+    let linha = crate::line_of(BOB, "self.t = self.t + dt");
+    let fim = b.text().line_end(linha);
+    b.set_selection(ph2d_code_buffer::Selection::single(
+        ph2d_code_buffer::Range::cursor(fim),
+    ));
+    for c in "abcde".chars() {
+        auto.on_char(&mut b, &mut syn, c);
+    }
+    assert!(
+        syn.is_stale(),
+        "as letras deviam deixar a árvore velha (reparse fora da tecla)"
+    );
+    assert_eq!(
+        syn.sync_reparses(),
+        0,
+        "uma letra no meio da linha reparsou na tecla"
+    );
+    // Linha nova (o Enter pede a árvore) e `end` no início dela: o recuo pede a árvore exacta.
+    auto.on_enter(&mut b, &mut syn);
+    let depois_do_enter = syn.sync_reparses();
+    assert_eq!(depois_do_enter, 1, "o Enter tem de reparsar a árvore velha");
+    for c in "end".chars() {
+        auto.on_char(&mut b, &mut syn, c);
+    }
+    assert!(
+        syn.sync_reparses() > depois_do_enter,
+        "o `end` no início da linha não pediu a árvore"
+    );
+}

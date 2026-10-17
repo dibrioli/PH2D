@@ -1,0 +1,198 @@
+//! A sessão assíncrona do `luau-lsp`: o quadro NUNCA espera o servidor.
+//!
+//! Lei (`docs/CodeEditor/03_onda2.md` I2): o lado do quadro só ENVIA (instantâneos da rope — um
+//! `Arc` — e pedidos etiquetados) e só DRENA (`try_recv`). Um worker é dono do [`LspClient`]: converte
+//! bytes ↔ UTF-16 sobre o instantâneo da VERSÃO de cada pedido, manda `didChange` incremental e
+//! devolve respostas com a versão a que respondem. Quem pinta decide o que fazer com uma resposta
+//! velha (o servidor ecoa a versão em `publishDiagnostics`, medido 16/10).
+
+mod answer;
+mod worker;
+
+pub use answer::{Answer, Completion, Diag, Hover};
+
+use crate::pos::Dirty;
+use ph2d_code_buffer::Text;
+use ph2d_code_lsp::{LspClient, LspError, ServerConfig};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread;
+
+/// O endereço de um documento no servidor (os scripts do projeto não estão em disco).
+pub fn uri_of(script_name: &str) -> String {
+    format!("file:///ph2d-project/{script_name}")
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Ticket(pub u64);
+
+/// O que se pergunta, em BYTES do texto da versão do pedido.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Req {
+    Completion(usize),
+    Hover(usize),
+}
+
+impl Req {
+    /// Dois pedidos do mesmo género sobre o mesmo documento: o novo torna o velho inútil.
+    fn kind(&self) -> u8 {
+        match self {
+            Self::Completion(_) => 0,
+            Self::Hover(_) => 1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServerState {
+    Starting,
+    Ready,
+    /// Morreu e está a ser reposto (os documentos abertos voltam a ser enviados).
+    Restarting,
+    /// Não arrancou, ou morreu outra vez antes de responder: só um [`LspSession::retry`] tenta de novo.
+    Failed(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Event {
+    Diagnostics {
+        uri: String,
+        version: u64,
+        list: Vec<Diag>,
+    },
+    Answer {
+        ticket: Ticket,
+        uri: String,
+        version: u64,
+        answer: Answer,
+    },
+    State(ServerState),
+}
+
+pub(crate) enum Inbox {
+    Open {
+        uri: String,
+        version: u64,
+        text: Text,
+    },
+    Change {
+        uri: String,
+        version: u64,
+        text: Text,
+        dirty: Dirty,
+    },
+    Close(String),
+    Ask {
+        ticket: Ticket,
+        uri: String,
+        req: Req,
+    },
+    Cancel(Ticket),
+    Reply {
+        ticket: Ticket,
+        result: Result<serde_json::Value, LspError>,
+    },
+    /// Uma notificação chegou ao cliente (ou o servidor foi-se): é hora de `pump`.
+    Wake,
+    Retry,
+    Shutdown,
+}
+
+/// Arranca (ou re-arranca) o servidor; a sessão dá-lhe a função que acorda o worker.
+pub type Connect =
+    Box<dyn FnMut(ph2d_code_lsp::client::Wake) -> Result<LspClient, LspError> + Send>;
+
+/// O lado do quadro.
+pub struct LspSession {
+    inbox: Sender<Inbox>,
+    events: Receiver<Event>,
+    next: u64,
+    worker: Option<thread::JoinHandle<()>>,
+}
+
+impl LspSession {
+    /// O `luau-lsp` fixado com `config`.
+    pub fn start(config: ServerConfig) -> Self {
+        Self::with_connect(Box::new(move |wake| {
+            LspClient::start_with_wake(config.clone(), Some(wake))
+        }))
+    }
+
+    /// Qualquer servidor (os falsos dos testes: lento, que morre).
+    pub fn with_connect(connect: Connect) -> Self {
+        let (inbox, rx) = mpsc::channel();
+        let (tx, events) = mpsc::channel();
+        let me = inbox.clone();
+        let worker = thread::Builder::new()
+            .name("ph2d-code-intel-lsp".into())
+            .spawn(move || worker::run(connect, me, rx, tx))
+            .expect("thread do worker do luau-lsp");
+        Self {
+            inbox,
+            events,
+            next: 0,
+            worker: Some(worker),
+        }
+    }
+
+    pub fn open(&self, uri: &str, version: u64, text: &Text) {
+        let _ = self.inbox.send(Inbox::Open {
+            uri: uri.to_owned(),
+            version,
+            text: text.clone(),
+        });
+    }
+
+    /// `text` é o texto DEPOIS das edições do lote; `dirty` diz onde ele difere do anterior.
+    pub fn change(&self, uri: &str, version: u64, text: &Text, dirty: Dirty) {
+        let _ = self.inbox.send(Inbox::Change {
+            uri: uri.to_owned(),
+            version,
+            text: text.clone(),
+            dirty,
+        });
+    }
+
+    pub fn close(&self, uri: &str) {
+        let _ = self.inbox.send(Inbox::Close(uri.to_owned()));
+    }
+
+    /// Pergunta sobre o texto da ÚLTIMA versão enviada de `uri`. Um pedido do mesmo género ainda por
+    /// responder sobre o mesmo documento é cancelado.
+    pub fn ask(&mut self, uri: &str, req: Req) -> Ticket {
+        self.next += 1;
+        let ticket = Ticket(self.next);
+        let _ = self.inbox.send(Inbox::Ask {
+            ticket,
+            uri: uri.to_owned(),
+            req,
+        });
+        ticket
+    }
+
+    pub fn cancel(&self, ticket: Ticket) {
+        let _ = self.inbox.send(Inbox::Cancel(ticket));
+    }
+
+    pub fn retry(&self) {
+        let _ = self.inbox.send(Inbox::Retry);
+    }
+
+    /// Tudo o que chegou desde a última vez — nunca bloqueia.
+    pub fn drain(&self) -> Vec<Event> {
+        self.events.try_iter().collect()
+    }
+
+    /// Espera um evento (só para testes e sondas — o quadro usa [`Self::drain`]).
+    pub fn wait(&self, timeout: std::time::Duration) -> Option<Event> {
+        self.events.recv_timeout(timeout).ok()
+    }
+}
+
+impl Drop for LspSession {
+    fn drop(&mut self) {
+        let _ = self.inbox.send(Inbox::Shutdown);
+        if let Some(w) = self.worker.take() {
+            let _ = w.join();
+        }
+    }
+}

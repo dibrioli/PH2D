@@ -35,6 +35,7 @@ pub(super) fn parse_notification(method: &str, params: Value) -> Notification {
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_owned(),
+            version: params.get("version").and_then(Value::as_i64),
             diagnostics: params
                 .get("diagnostics")
                 .and_then(Value::as_array)

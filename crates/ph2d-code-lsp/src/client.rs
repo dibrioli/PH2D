@@ -1,29 +1,29 @@
-//! A small, synchronous LSP client for `luau-lsp` over stdio: one reader thread demultiplexes
-//! responses (by id) from notifications; server requests (`workspace/configuration`, …) are answered
-//! on that thread. A dead child surfaces as [`LspError::ServerDied`] and [`LspClient::restart`]
-//! brings it back with the open documents re-sent.
+//! A small LSP client for `luau-lsp` over stdio: one reader thread demultiplexes responses (by id)
+//! from notifications; server requests (`workspace/configuration`, …) are answered on that thread.
+//! [`LspClient::request`] blocks; [`LspClient::request_async`] hands the answer to a callback on the
+//! reader thread (the editor's worker never waits). A dead child surfaces as
+//! [`LspError::ServerDied`] and [`LspClient::restart`] brings it back with the open documents re-sent.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
-use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
 
-use crate::framing::{read_message, write_message};
+use crate::framing::write_message;
 
 mod json;
+mod reader;
 use crate::position::{Position, Range, position_to_byte};
-use json::{
-    answer_server_request, hover_text, initialize_params, parse_notification, range_json,
-    text_position,
-};
+use json::{hover_text, initialize_params, range_json, text_position};
+use reader::reader_loop;
 
 /// The luau-lsp lint `FunctionUnused` (its number in `code`).
 const LINT_FUNCTION_UNUSED: &str = "8";
@@ -142,6 +142,9 @@ pub struct Diagnostic {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PublishedDiagnostics {
     pub uri: String,
+    /// The document version these diagnostics are for (luau-lsp 1.70.1 echoes the `didOpen` /
+    /// `didChange` version — measured 16/10); `None` when the server omits it.
+    pub version: Option<i64>,
     pub diagnostics: Vec<Diagnostic>,
     pub received: Instant,
 }
@@ -174,15 +177,25 @@ pub struct CompletionItem {
     pub detail: Option<String>,
 }
 
-type Pending = Arc<Mutex<BTreeMap<i64, Sender<Result<Value, LspError>>>>>;
+/// Who receives one response: a channel (blocking `request`) or a callback (`request_async`). It
+/// runs ON THE READER THREAD, so it must only hand the value on.
+type Waiter = Box<dyn FnOnce(Result<Value, LspError>) + Send>;
+type Pending = Arc<Mutex<BTreeMap<i64, Waiter>>>;
+type Writer = Arc<Mutex<Box<dyn Write + Send>>>;
+
+/// Called on the reader thread after every notification is queued (and when the server goes away),
+/// so a worker blocked on its own inbox learns there is something to [`LspClient::pump`].
+pub type Wake = Arc<dyn Fn() + Send + Sync>;
 
 const STDERR_TAIL: usize = 200;
 
 pub struct LspClient {
     config: ServerConfig,
-    child: Child,
-    stdin: Arc<Mutex<ChildStdin>>,
+    /// `None` when connected to an in-process server ([`LspClient::connect`]).
+    child: Option<Child>,
+    stdin: Writer,
     pending: Pending,
+    wake: Option<Wake>,
     alive: Arc<AtomicBool>,
     notifications: Receiver<Notification>,
     stderr_tail: Arc<Mutex<VecDeque<String>>>,
@@ -201,6 +214,11 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 impl LspClient {
     /// Spawns the server and completes `initialize` / `initialized`.
     pub fn start(config: ServerConfig) -> Result<Self, LspError> {
+        Self::start_with_wake(config, None)
+    }
+
+    /// [`Self::start`], with `wake` called whenever a notification arrives.
+    pub fn start_with_wake(config: ServerConfig, wake: Option<Wake>) -> Result<Self, LspError> {
         let mut child = Command::new(&config.binary)
             .args(config.args())
             .stdin(Stdio::piped())
@@ -208,14 +226,10 @@ impl LspClient {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(LspError::Spawn)?;
-        let stdin = Arc::new(Mutex::new(child.stdin.take().expect("piped stdin")));
+        let stdin = child.stdin.take().expect("piped stdin");
         let stdout = child.stdout.take().expect("piped stdout");
         let stderr = child.stderr.take().expect("piped stderr");
-        let pending: Pending = Arc::default();
-        let alive = Arc::new(AtomicBool::new(true));
         let stderr_tail: Arc<Mutex<VecDeque<String>>> = Arc::default();
-        let (tx, rx) = mpsc::channel();
-
         {
             let tail = stderr_tail.clone();
             thread::Builder::new()
@@ -231,11 +245,55 @@ impl LspClient {
                 })
                 .map_err(LspError::Spawn)?;
         }
+        Self::over(
+            config,
+            Box::new(stdin),
+            Box::new(stdout),
+            Some(child),
+            stderr_tail,
+            wake,
+        )
+    }
+
+    /// Talks LSP over an arbitrary pipe pair instead of the pinned binary — an in-process server
+    /// (the slow/dying fakes of the editor's tests). [`Self::restart`] is refused: there is no
+    /// process to start again.
+    pub fn connect(
+        config: ServerConfig,
+        to_server: Box<dyn Write + Send>,
+        from_server: Box<dyn Read + Send>,
+        wake: Option<Wake>,
+    ) -> Result<Self, LspError> {
+        Self::over(config, to_server, from_server, None, Arc::default(), wake)
+    }
+
+    fn over(
+        config: ServerConfig,
+        to_server: Box<dyn Write + Send>,
+        from_server: Box<dyn Read + Send>,
+        child: Option<Child>,
+        stderr_tail: Arc<Mutex<VecDeque<String>>>,
+        wake: Option<Wake>,
+    ) -> Result<Self, LspError> {
+        let stdin: Writer = Arc::new(Mutex::new(to_server));
+        let pending: Pending = Arc::default();
+        let alive = Arc::new(AtomicBool::new(true));
+        let (tx, rx) = mpsc::channel();
         {
             let (stdin, pending, alive) = (stdin.clone(), pending.clone(), alive.clone());
+            let wake = wake.clone();
             thread::Builder::new()
                 .name("luau-lsp-reader".into())
-                .spawn(move || reader_loop(BufReader::new(stdout), &stdin, &pending, &alive, &tx))
+                .spawn(move || {
+                    reader_loop(
+                        BufReader::new(from_server),
+                        &stdin,
+                        &pending,
+                        &alive,
+                        &tx,
+                        wake.as_deref(),
+                    );
+                })
                 .map_err(LspError::Spawn)?;
         }
 
@@ -249,6 +307,7 @@ impl LspClient {
             child,
             stdin,
             pending,
+            wake,
             alive,
             notifications: rx,
             stderr_tail,
@@ -276,7 +335,11 @@ impl LspClient {
 
     /// False once the server process ended (or its stdout closed).
     pub fn is_alive(&mut self) -> bool {
-        self.alive.load(Ordering::SeqCst) && matches!(self.child.try_wait(), Ok(None))
+        self.alive.load(Ordering::SeqCst)
+            && self
+                .child
+                .as_mut()
+                .is_none_or(|c| matches!(c.try_wait(), Ok(None)))
     }
 
     /// The last lines the server wrote to stderr.
@@ -302,11 +365,16 @@ impl LspClient {
     /// Kills the server (if still running) and starts a new one with the same config, re-opening
     /// every tracked document at its current text.
     pub fn restart(&mut self) -> Result<(), LspError> {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-        let mut fresh = Self::start(self.config.clone())?;
-        for (uri, (_, text)) in &self.documents {
-            fresh.did_open(uri, text)?;
+        let Some(child) = self.child.as_mut() else {
+            return Err(LspError::Protocol(
+                "an in-process server cannot be restarted".into(),
+            ));
+        };
+        let _ = child.kill();
+        let _ = child.wait();
+        let mut fresh = Self::start_with_wake(self.config.clone(), self.wake.clone())?;
+        for (uri, (version, text)) in &self.documents {
+            fresh.did_open_at(uri, *version, text)?;
         }
         fresh.messages = std::mem::take(&mut self.messages);
         *self = fresh;
@@ -315,7 +383,10 @@ impl LspClient {
 
     fn died(&mut self) -> LspError {
         self.alive.store(false, Ordering::SeqCst);
-        let status = self.child.try_wait().ok().flatten();
+        let status = self
+            .child
+            .as_mut()
+            .and_then(|c| c.try_wait().ok().flatten());
         LspError::ServerDied {
             status,
             stderr_tail: self.stderr_tail().join("\n"),
@@ -334,17 +405,39 @@ impl LspClient {
         self.send(&json!({ "jsonrpc": "2.0", "method": method, "params": params }))
     }
 
-    /// Sends a request and blocks until its response (or the timeout / the server's death).
-    pub fn request(&mut self, method: &str, params: Value) -> Result<Value, LspError> {
+    /// Sends a request; `done` receives its response ON THE READER THREAD (or `ServerDied` if the
+    /// server goes away first). Returns the id, for [`Self::cancel`].
+    pub fn request_async(
+        &mut self,
+        method: &str,
+        params: Value,
+        done: impl FnOnce(Result<Value, LspError>) + Send + 'static,
+    ) -> Result<i64, LspError> {
         self.next_id += 1;
         let id = self.next_id;
-        let (tx, rx) = mpsc::channel();
-        lock(&self.pending).insert(id, tx);
+        lock(&self.pending).insert(id, Box::new(done));
         let body = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
         if let Err(e) = self.send(&body) {
             lock(&self.pending).remove(&id);
             return Err(e);
         }
+        Ok(id)
+    }
+
+    /// Forgets a pending request (its callback never runs) and tells the server (`$/cancelRequest`).
+    pub fn cancel(&mut self, id: i64) -> Result<(), LspError> {
+        if lock(&self.pending).remove(&id).is_none() {
+            return Ok(());
+        }
+        self.notify("$/cancelRequest", json!({ "id": id }))
+    }
+
+    /// Sends a request and blocks until its response (or the timeout / the server's death).
+    pub fn request(&mut self, method: &str, params: Value) -> Result<Value, LspError> {
+        let (tx, rx) = mpsc::channel();
+        let id = self.request_async(method, params, move |r| {
+            let _ = tx.send(r);
+        })?;
         match rx.recv_timeout(self.config.request_timeout) {
             Ok(Ok(v)) => Ok(v),
             Ok(Err(LspError::Server { code, message, .. })) => Err(LspError::Server {
@@ -366,10 +459,40 @@ impl LspClient {
     }
 
     pub fn did_open(&mut self, uri: &str, text: &str) -> Result<(), LspError> {
-        self.documents.insert(uri.to_owned(), (1, text.to_owned()));
+        self.did_open_at(uri, 1, text)
+    }
+
+    /// `didOpen` at an explicit `version` (the editor uses its buffer revision: the server echoes
+    /// it in `publishDiagnostics`, measured with luau-lsp 1.70.1).
+    pub fn did_open_at(&mut self, uri: &str, version: i32, text: &str) -> Result<(), LspError> {
+        self.documents
+            .insert(uri.to_owned(), (version, text.to_owned()));
         self.notify(
             "textDocument/didOpen",
-            json!({ "textDocument": { "uri": uri, "languageId": "luau", "version": 1, "text": text } }),
+            json!({ "textDocument": { "uri": uri, "languageId": "luau", "version": version, "text": text } }),
+        )
+    }
+
+    /// Replaces `range` with `new_text` and sets the document to `version` (which must grow).
+    pub fn did_change_at(
+        &mut self,
+        uri: &str,
+        version: i32,
+        range: Range,
+        new_text: &str,
+    ) -> Result<(), LspError> {
+        let (v, text) = self
+            .documents
+            .get_mut(uri)
+            .ok_or_else(|| LspError::Protocol(format!("didChange on unopened {uri}")))?;
+        let a = position_to_byte(text, range.start);
+        let b = position_to_byte(text, range.end).max(a);
+        text.replace_range(a..b, new_text);
+        *v = version;
+        self.notify(
+            "textDocument/didChange",
+            json!({ "textDocument": { "uri": uri, "version": version },
+                    "contentChanges": [{ "range": range_json(range), "text": new_text }] }),
         )
     }
 
@@ -512,85 +635,35 @@ impl LspClient {
         let r = self.request("shutdown", Value::Null).map(drop);
         let _ = self.notify("exit", Value::Null);
         let deadline = Instant::now() + Duration::from_secs(2);
+        let Some(child) = self.child.as_mut() else {
+            return r;
+        };
         while Instant::now() < deadline {
-            if matches!(self.child.try_wait(), Ok(Some(_))) {
+            if matches!(child.try_wait(), Ok(Some(_))) {
                 return r;
             }
             thread::sleep(Duration::from_millis(10));
         }
-        let _ = self.child.kill();
-        let _ = self.child.wait();
+        let _ = child.kill();
+        let _ = child.wait();
         r
     }
 
-    /// The child's pid (for RSS sampling in probes).
+    /// The child's pid (for RSS sampling in probes); `0` for an in-process server.
     pub fn pid(&self) -> u32 {
-        self.child.id()
+        self.child.as_ref().map_or(0, Child::id)
     }
 }
 
 impl Drop for LspClient {
     fn drop(&mut self) {
-        if matches!(self.child.try_wait(), Ok(None)) {
-            let _ = self.child.kill();
-            let _ = self.child.wait();
+        if let Some(c) = self.child.as_mut()
+            && matches!(c.try_wait(), Ok(None))
+        {
+            let _ = c.kill();
+            let _ = c.wait();
         }
     }
-}
-
-fn reader_loop(
-    mut stdout: impl BufRead,
-    stdin: &Mutex<ChildStdin>,
-    pending: &Pending,
-    alive: &AtomicBool,
-    tx: &Sender<Notification>,
-) {
-    while let Ok(Some(msg)) = read_message(&mut stdout) {
-        let method = msg.get("method").and_then(Value::as_str);
-        match (msg.get("id"), method) {
-            (Some(id), Some(method)) => {
-                let result = answer_server_request(method, msg.get("params"));
-                let reply = json!({ "jsonrpc": "2.0", "id": id, "result": result });
-                if write_message(&mut *lock(stdin), &reply).is_err() {
-                    break;
-                }
-            }
-            (Some(id), None) => {
-                let Some(id) = id.as_i64() else { continue };
-                let Some(waiter) = lock(pending).remove(&id) else {
-                    continue;
-                };
-                let r = match msg.get("error") {
-                    Some(e) => Err(LspError::Server {
-                        method: String::new(),
-                        code: e.get("code").and_then(Value::as_i64).unwrap_or(0),
-                        message: e
-                            .get("message")
-                            .and_then(Value::as_str)
-                            .unwrap_or_default()
-                            .to_owned(),
-                    }),
-                    None => Ok(msg.get("result").cloned().unwrap_or(Value::Null)),
-                };
-                let _ = waiter.send(r);
-            }
-            (None, Some(method)) => {
-                let _ = tx.send(parse_notification(
-                    method,
-                    msg.get("params").cloned().unwrap_or(Value::Null),
-                ));
-            }
-            (None, None) => {}
-        }
-    }
-    alive.store(false, Ordering::SeqCst);
-    for (_, waiter) in std::mem::take(&mut *lock(pending)) {
-        let _ = waiter.send(Err(LspError::ServerDied {
-            status: None,
-            stderr_tail: String::new(),
-        }));
-    }
-    let _ = tx.send(Notification::Exited);
 }
 
 /// The names of the `-- @hook <name>: <type>` lines of a definitions file — the global functions

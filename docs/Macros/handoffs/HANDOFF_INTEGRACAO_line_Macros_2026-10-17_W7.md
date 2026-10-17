@@ -23,7 +23,8 @@
 
 1. **A imagem é do artista** (decisão do dono 16/10: «decida pelo melhor… sem olhar custos») — `ea4597fce9`,
    `5549cbad24`, `e64721d213`. No Play, o píxel = a imagem ATUAL onde ela difere da imagem do FIM da gravação CRUA
-   (sem edições de etapa); onde não difere, o palco. O traço ao vivo conta; o último quadro = a atual ao byte. O fim vem
+   (sem edições de etapa) **e da do INÍCIO** (`de8f9684c5`: com «≠ fim» só, a imagem que nunca recebeu a gravação
+   escondia o clipe inteiro — a `=1` tocava branca); onde não difere, o palco. O traço ao vivo conta; o último quadro = a atual ao byte. O fim vem
    de um fio por versão da trilha crua (`fim.rs`); a mistura está em `PalcosDoPainter::sobe`. O Painter por id vem da
    família (`painter_bridge_queries::o_painter`; a shell encolhe 10 linhas). Gate do fim cru: `e64721d213`.
    Custo medido (1024², `smoke`, load 25→38, NÃO calmo): palco só **1,506 ms**; mistura sem mudança **1,884**; Painter a
@@ -106,22 +107,25 @@ Crates novas: **0** na W7 (2 na linha, W5d). Chaves i18n W7: **0**. Schema, ADR,
 Binário `--profile smoke` na worktree, 2.ª compilação:
 
 ```
-    Finished `smoke` profile [optimized] target(s) in 0.50s
+    Finished `smoke` profile [optimized] target(s) in 0.23s
 ```
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && PH2D_MACRO_SMOKE=5 ./target/smoke/ph2d-host-desktop`
    — a cena abre JÁ pronta: a imagem «Canvas» seleccionada em modo Paint (barra BRUSH · C&F · PICK…), o clipe «Macro»
-   parado em Time 0, Autoplay desligado (`c32fb9ace4`; a `=1` continua a ensinar o Splash que toca sozinho). Pintar à
-   mão na imagem e dar o Play da Timeline (▷, painel de baixo): a tinta fica por cima do clipe e, no fim do clipe, a
-   imagem não salta. Pintar ENQUANTO o clipe toca: o traço aparece. ⚠️ O caminho do traço ao vivo pela pré-visualização da PLACA em
-   Wet Paint só tem gate pelo contador — CONFIRMAR no smoke. Errado: a tinta some ao dar Play, ou a imagem salta no fim.
+   parado em Time 0 sobre a tela BRANCA, Autoplay desligado (`c32fb9ace4`, `de8f9684c5`: a gravação da `=5` tem 0,5 s
+   parados antes da 1.ª pincelada; a `=1` continua a ensinar o Splash que toca sozinho). Pintar à mão na imagem e dar
+   o Play da Timeline (▷, painel de baixo): as quatro pinceladas aparecem POR BAIXO da tinta do dono; com o Loop o
+   clipe volta à tela branca e recomeça, e a tinta fica. Pintar ENQUANTO o clipe toca: o traço aparece. ⚠️ O caminho do traço ao vivo pela pré-visualização da PLACA em
+   Wet Paint só tem gate pelo contador — CONFIRMAR no smoke. Errado: a tinta some ao dar Play, ou as pinceladas não aparecem.
 2. `… PH2D_MACRO_SMOKE=4 ./target/smoke/ph2d-host-desktop` — pintar a pincelada por cima da faixa: o balão avança no
    momento de soltar; pular e esperar: não avança.
 
-Fotos (`fotografa_cena.sh`, 1930×1040, `smoke`): `=5` (`/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/a0080127-b09b-4ff2-8804-aac5af83d76e/scratchpad/cena5.png`,
-espera 12 s) abre com a barra do Painter, a Canvas seleccionada na Hierarchy, Time 0, ▷ parado, Autoplay desmarcado,
-estado EDIT e o painel Macros com 4 passos; `=4` abre com a faixa marcada + balão «Step 1 of 4» + Restart/Show me;
-`=1` abre com a macro no clipe e o painel Macros com 4 passos. **Smoke do dono: PENDENTE.**
+Fotos (`fotografa_cena.sh`, 1930×1040, `smoke`), em `/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/a0080127-b09b-4ff2-8804-aac5af83d76e/scratchpad/`:
+`cena5b.png` (+ `_02`, `_03`: 12, 22 e 32 s) — a barra do Painter, a Canvas seleccionada, Time 0, ▷ parado, Autoplay
+desmarcado, a tela BRANCA (0 texels azuis nas três; a 1.ª foto, `cena5.png`, a 1 fps sob load ~300, tinha 54: o 1.º
+toque do instante 0 antes de o fim chegar), passos 0,90 · 1,52 · 2,13 · 2,75; `cena1b.png` — a `=1` a 0,383 s com a
+1.ª pincelada azul a pintar (antes da cura, `cena1.png` a 0,633 s, tela branca); `=4` abre com a faixa marcada +
+balão «Step 1 of 4» + Restart/Show me. **Smoke do dono: PENDENTE.**
 
 ## §8 — ABERTO
 
@@ -140,6 +144,9 @@ estado EDIT e o painel Macros com 4 passos; `=4` abre com a faixa marcada + bal�
    «fim = gravação crua»).
 9. `censo_dos_controlos.rs` tem 1 391 linhas (dívida anterior, em `tests/`).
 10. Smoke do dono de `=5` e `=4` (§7).
+11. Com a lei refinada (fim E início), um píxel que o artista devolve exactamente à imagem do início (borracha até ao
+    papel branco) mostra o palco durante o Play. O «no fim não salta» só vale para a imagem que tem a gravação (o
+    fluxo real; gate (b)); na `=5` a sprite nunca a recebeu e, ao sair do clipe, volta à branca + a tinta do dono.
 
 ## Retomar
 

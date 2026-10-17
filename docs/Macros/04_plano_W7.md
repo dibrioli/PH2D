@@ -25,6 +25,12 @@ píxel do palco — o traço ao vivo incluído. No último quadro do clipe a ima
 salto de quando o clipe acaba). Recusadas: (A) só ceder enquanto se pinta (o salto fica ao sair do modo),
 (C) pintar pára o clipe, (D) aviso e fica como está.
 
+**Refinada na linha (17/10, `de8f9684c5`):** a atual só ganha onde difere do fim **E do início** da gravação.
+Com «≠ fim» só, uma imagem que nunca recebeu a gravação (a das cenas `=1`/`=5`, uma `Macro` posta noutra
+imagem, a gravação desfeita) escondia o clipe INTEIRO — a foto da `=1` a 0,633 s mostrava a tela branca. O
+preço: um píxel que o artista devolve exactamente à imagem do início (borracha até ao papel) mostra o palco
+durante o Play. Gate `na_imagem_do_inicio_da_gravacao_o_clipe_anima_e_a_pintura_fica_por_cima`.
+
 ## Item 2 — a folga da régua no Wet Paint
 
 **A lei (W7): a MESMA idade da água.** A idade = quadros (60 Hz) desde o último `Up` na tela, contados pelos

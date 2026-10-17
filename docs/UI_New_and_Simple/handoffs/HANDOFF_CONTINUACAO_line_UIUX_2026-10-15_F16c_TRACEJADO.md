@@ -61,7 +61,7 @@ fazer também. Os `.log` irmãos das fotos ficam não rastreados.
 ## 5 — ABERTO
 
 1. ~~Popover do traço sem recorte nem rolagem~~ — FEITO 16/10 (`f62d175678`, §6).
-2. Smoke do dono: cena 24 OK (16/10, «smoke ok», depois das correções da faixa e do Inner/Outer); a 23 sem confirmação explícita.
+2. Smoke do dono: cena 24 OK (16/10, «smoke ok», depois das correções da faixa e do Inner/Outer); painel do traço numa janela baixa (rolagem + roda, `d2e190b0c7`) OK (16/10, «smoke ok»); a 23 sem confirmação explícita.
 3. No fecho: clippy + suíte `PH2D_SUITE=fecho`; CLAUDE.md §5.1 UI/UX (lista de smoke `6..24` e o «Último:»).
 4. A placa (`ph2d-shape-gpu`, `tracejado_do_eixo`) só percorre UM par; 2–3 pares caem na cerca `FLAG_SO_CONFORME`
    (mesma imagem; mais lento só sob escala não uniforme). Estender o shader é uma onda própria, medida.

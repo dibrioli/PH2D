@@ -70,7 +70,9 @@ vestido desenha-se como botão do tema com o nome «Path 0 (1)» — a cor azul 
 - Suíte de fecho, 1.ª corrida: `20 473/20 479` (6 falhas): 4 curadas (`b3539ca4ab` ×2, `8ccaeb349d`, `7fed1c82af`);
   2 flakes de carga sem diff da linha — `ph2d-timeline` `motion_path_perf` e `ph2d-light2d-gpu` `g4` (passam sozinhos;
   ver [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md)).
-- 2.ª corrida: <a preencher>
+- Binário do smoke JÁ compilado na worktree (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª saída):
+  `Finished \`smoke\` profile [optimized] target(s) in 0.24s` — zero «Compiling».
+- 2.ª corrida (`PH2D_SUITE=fecho`, depois das curas): **20 479 / 20 479 verdes** (508 s, 8 660 saltados), os dois flakes de carga passaram; `cargo fmt --check` limpo; clippy do workspace verde (`84363d7663`).
 
 ## 5 — ABERTO
 

@@ -44,6 +44,19 @@ baixo — o marcador é a multiplicação pura: (20,0,15) contra (191,0,18)⊙(2
 na água. Os flags dos 281 presets dizem o mesmo: `use_glazing` é verdadeiro na aquarela Round (0,93) e falso no Ink
 Bullet (0,12) e no Marker Bullet (0,016) — o escurecer é da FERRAMENTA, não da opção.
 
+## §3b — O oráculo, terceira corrida: a MESMA tinta (fixtures `mbazulmolhado`, `inkazulazul`, `mblaranja`)
+
+| cruzamento (Rebelle) | fracção multiplicada (sRGB, por canal) |
+|---|---|
+| marcador azul sobre o mesmo azul (molhado) | 0,48 · 0,49 · 0,51 |
+| caneta azul sobre o mesmo azul (seco) | 0,69 · 0,55 · 0,46 |
+| marcador amarelo sobre laranja (`d` 0,30) | 0,67 · 0,89 · 0,61 |
+| marcador vermelho sobre azul (`d` 0,71) | 0,98 |
+
+A mesma tinta também filtra (metade) — a «diferença de pigmento» sozinha dava 0 e o marcador ficava em 0,34.
+⇒ `vela_da_camada = Glaze × min(1, 0,5 + 0,7·d)` (`colorops`). (A cena «marcador azul sobre o azul SECO» saiu em
+branco: o 1.º envio da sessão foi antes de a tela existir.)
+
 ## §4 — A decisão (padrão-ouro, delegada; o dono pode vetar)
 
 - **Uma lei do pincel: o Glaze `g ∈ [0, 1]`** — a fracção da camada de cima que FILTRA a de baixo (`0` = a lei da obra,
@@ -55,3 +68,24 @@ Bullet (0,12) e no Marker Bullet (0,016) — o escurecer é da FERRAMENTA, não 
 - **A mistura do pincel NÃO entra**: a tabela do §2 mostra que nenhuma mistura reproduz o cruzamento sem a velatura
   composta, e o §3 que o Rebelle não depende do molhado. Um knob de mistura por pincel não mudaria nenhum dos cinco —
   seria um controlo sem leitor que decide. A «Pigment mixing» continua da obra.
+
+## §5 — A lei como ficou, e o que ela custa
+
+- **Só onde há camada por baixo**: o Glaze de um carimbo sobre o papel limpo é 0 — com ele em toda a tinta o recto
+  escurecia ao secar (cobertura 0,90 → 0,93; portão `o_traco_sozinho_nao_muda_com_o_glaze`, ao byte).
+- **A fracção fixa-se no POUSO**, contra a camada de baixo de então (o plano guarda `vela_da_camada`, não o Glaze):
+  lida da cor de agora, caía 0,94 → 0,77 enquanto o assentado absorvia o filme e o cruzamento do marcador clareava
+  19 → 33 ao secar; fixa, 21 → 21.
+- **O assentar guarda o ecrã** pela inversa (Newton) com o limiar próprio `CEGO_COM_GLAZE` = 0,01 onde há Glaze: na
+  grelha de 300 estados, a lei da obra muda > 1,5 níveis em 41 (pior 42,6); Glaze 0,5 em 11 (6,4); Glaze 1 em 15
+  (12,7). Sem o palpite fechado do produto e com o limiar de antes: 70 e 33. Há SEMPRE uma cor que guarda o ecrã
+  (força bruta < 0,4, `sonda_alcance`).
+- **O azul que sobe ao secar** nas tintas molhadas (+5 a +24 no canal B do cruzamento) é o ESCOAMENTO do traço
+  vizinho, ainda molhado (com nivelamento, capilaridade e gravidade desligados: +1 a +5; a lei de hoje sem Glaze
+  +5). Nos marcadores (água 0,1) ≤ 5. Física da tinta molhada, não a lei — aberto no handoff.
+- **Custo** (`sonda_o_custo_do_glaze`, mínimo de 9 intercalados, Wet Liner, o vermelho que cruza o azul): o traço
+  15 ms sem Glaze, 42 ms com Glaze 1 (99 ms antes de `OUTRA_TINTA_MINIMA` = 0,1 — a ponta suja fazia de cada
+  carimbo uma camada); 120 quadros de água 483 → 526 ms (+9 %).
+- **O formato**: o Glaze é o knob `glaze` no mapa `engine` do preset, por NOME — um preset sem a chave lê 0 (a lei
+  da obra); `SCHEMA` fica 1 (o leitor ignora chaves que não conhece: um build antigo pinta-o sem Glaze, não o
+  recusa nem o lê errado). A macro leva-o (o estado inicial é o preset capturado).

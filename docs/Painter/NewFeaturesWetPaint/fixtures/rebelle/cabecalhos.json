@@ -1482,5 +1482,93 @@
    "SIMULATION": 1
   },
   "sha256": "62bf5cb965252cdf14377fa37123416cec793dd6ff95e76fcc2e039cadd77a20"
+ },
+ "mbazulmolhado": {
+  "tool": "MARKER",
+  "preset": "Marker/Bullet",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "1d03cc57ef24d25bb316f64d357537dd630f23e17cf2ccb3d970a16f1a4b0e34"
+ },
+ "inkazulazul": {
+  "tool": "INK_PEN",
+  "preset": "Pen/Bullet",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240,
+   240
+  ],
+  "eventos": {
+   "DRY": 1,
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 2
+  },
+  "sha256": "2405591a661caff45d8de873f9dc8a676e7276f5906b68e667d5f44b48041903"
+ },
+ "mblaranja": {
+  "tool": "MARKER",
+  "preset": "Marker/Bullet",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240,
+   240
+  ],
+  "eventos": {
+   "DRY": 1,
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 3,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 2
+  },
+  "sha256": "c3f7b18037f82c73feef9a5b6af1f9fe6d452528ca78a9d5b3a0977b33b00b03"
  }
 }

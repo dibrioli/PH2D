@@ -62,3 +62,13 @@ Os mesmos gestos (`ferramentas/gera_eventos.py --seca_cruz 240`): depois do azul
 | `markerbulletseco.png` | MARKER | Marker/Bullet | 40 | 100 | — | 7 | Default/EX00 White Simple | `5c3ca3c2024a0f00` | [240, 240] |
 | `wcroundseco.png` | WATERCOLOR | Watercolor/Round | 40 | 100 | — | 7 | Default/EX00 White Simple | `0498037ee88c3b56` | [240, 240] |
 | `p42dippen.png` | INK_PEN | Pen/Dip Pen | 40 | 100 | — | 7 | Default/EX00 White Simple | `62bf5cb965252cdf` | [240] |
+
+## A MESMA tinta (sessão de 2026-10-16, prompt 42)
+
+`gera_eventos.py --cor_base/--cor_cruz` (e `--seca_cruz 240` onde diz SECO). A cena «marcador azul sobre o azul SECO» saiu em branco (o 1.º envio antes da tela) e não entra.
+
+| ficheiro | ferramenta | preset | cruzamento | sha256 (16) |
+|---|---|---|---|---|
+| `mbazulmolhado.png` | MARKER | Marker/Bullet | azul sobre azul, molhado | `1d03cc57ef24d25b` |
+| `inkazulazul.png` | INK_PEN | Pen/Bullet | azul sobre azul SECO | `2405591a661caff4` |
+| `mblaranja.png` | MARKER | Marker/Bullet | amarelo sobre laranja SECO | `c3f7b18037f82c73` |

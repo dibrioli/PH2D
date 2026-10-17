@@ -91,7 +91,7 @@ impl DashLengths {
 
     /// Os pares `[traço, vão]`.
     pub fn pairs(&self) -> impl Iterator<Item = [f64; 2]> + '_ {
-        self.as_slice().chunks_exact(2).map(|c| [c[0], c[1]])
+        self.as_slice().as_chunks::<2>().0.iter().copied()
     }
 
     /// O comprimento de UMA volta do padrão.

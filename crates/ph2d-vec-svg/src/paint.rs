@@ -156,7 +156,7 @@ pub(crate) fn traco(s: &usvg::Stroke) -> (StrokeSpec, Lost) {
     let (dash, perdeu_dash) = match s.dasharray() {
         Some(d) if d.len() >= 2 && width > 0.0 => {
             let mut p = ph2d_vec_scene::DashPattern::single(0.0, 0.0);
-            for (k, par) in d.chunks_exact(2).take(MAX_DASH_PAIRS).enumerate() {
+            for (k, par) in d.as_chunks::<2>().0.iter().take(MAX_DASH_PAIRS).enumerate() {
                 p.pairs[k] = [f64::from(par[0]) / width, f64::from(par[1]) / width];
             }
             (

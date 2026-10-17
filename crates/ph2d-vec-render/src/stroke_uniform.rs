@@ -367,19 +367,19 @@ pub use ph2d_vec_scene::dash_fit::FOLGA_DO_AJUSTE;
 /// aqui vale para os até três pares (F16c) com fase `0` — o que o `kurbo_stroke` produz.
 pub fn ajusta_no_ecra(pen: &mut Stroke, screen: &BezPath) {
     let n = pen.dash_pattern.len();
-    if n == 0 || n % 2 != 0 || n > 2 * ph2d_vec_scene::MAX_DASH_PAIRS || pen.dash_offset != 0.0 {
+    if n == 0
+        || !n.is_multiple_of(2)
+        || n > 2 * ph2d_vec_scene::MAX_DASH_PAIRS
+        || pen.dash_offset != 0.0
+    {
         return;
     }
     let Some((total, fechado)) = maior_contorno(screen) else {
         return;
     };
-    let pares: Vec<[f64; 2]> = pen
-        .dash_pattern
-        .chunks_exact(2)
-        .map(|c| [c[0], c[1]])
-        .collect();
+    let (pares, _) = pen.dash_pattern.as_chunks::<2>();
     let ajuste = ph2d_vec_scene::dash_fit::fit_traced(
-        ph2d_vec_scene::DashLengths::from_pairs(&pares),
+        ph2d_vec_scene::DashLengths::from_pairs(pares),
         total,
         fechado,
     );

@@ -177,7 +177,7 @@ fn rails(path: &VecPath, s: &StrokeSpec) -> Option<VecPath> {
 
 /// Roda e vira o trilho `rail` para começar junto do início do contorno de origem mais próximo e
 /// percorrer no mesmo sentido dele.
-fn same_start(rail: &mut Vec<VecVertex>, origins: &[&[VecVertex]]) {
+fn same_start(rail: &mut [VecVertex], origins: &[&[VecVertex]]) {
     let d2 = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2);
     let near = |start: [f64; 2], r: &[VecVertex]| {
         r.iter()

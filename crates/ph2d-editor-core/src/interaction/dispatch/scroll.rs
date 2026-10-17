@@ -18,7 +18,7 @@
 //!    a bar that was never painted cannot be pressed, so a published owner always exists by the time
 //!    a press reaches it.
 
-use super::super::{InteractiveState, WidgetEvent, WidgetStore};
+use super::super::{WidgetEvent, WidgetStore};
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_a11y::NodeId;

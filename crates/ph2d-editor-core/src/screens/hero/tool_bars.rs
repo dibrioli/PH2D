@@ -68,7 +68,12 @@ pub fn placed(
             *r = super::mirrored(area, *r);
         }
     }
-    if let Some((groups, sizes, below)) = action_rows(bars, pinned) {
+    if let Some(ActionRows {
+        groups,
+        sizes,
+        below,
+    }) = action_rows(bars, pinned)
+    {
         let rows = [sizes.as_slice(), below.as_slice()];
         // Os ícones da ④ lêem-se ao lado da COLUNA, não ao das caras do Quadro (foto da cena 9).
         let s = super::button_px();
@@ -85,12 +90,18 @@ pub fn placed(
     out
 }
 
-/// As linhas da ④ quando ela está à vista: os grupos da 1.ª (o chrome, fixar, fecha-a), os tamanhos
-/// deles e os da 2.ª.
-fn action_rows(
-    bars: &ToolBars,
-    pinned: bool,
-) -> Option<(Vec<Vec<BarButton>>, Vec<usize>, Vec<usize>)> {
+/// As linhas da ④ quando ela está à vista.
+struct ActionRows {
+    /// Os grupos da 1.ª linha (o chrome, fixar, fecha-a).
+    groups: Vec<Vec<BarButton>>,
+    /// Os tamanhos deles.
+    sizes: Vec<usize>,
+    /// Os tamanhos dos grupos da 2.ª linha.
+    below: Vec<usize>,
+}
+
+/// As linhas da ④ quando ela está à vista; `None` quando não está.
+fn action_rows(bars: &ToolBars, pinned: bool) -> Option<ActionRows> {
     let has_actions = bars
         .actions
         .iter()
@@ -103,7 +114,11 @@ fn action_rows(
     groups.push(chrome_group(pinned));
     let sizes = groups.iter().map(Vec::len).collect();
     let below = bars.actions_below.iter().map(Vec::len).collect();
-    Some((groups, sizes, below))
+    Some(ActionRows {
+        groups,
+        sizes,
+        below,
+    })
 }
 
 /// ⭐ **A margem de CIMA de um enquadramento neste quadro** (px lógicos): a da ④ que está à vista,
@@ -114,9 +129,12 @@ pub fn frame_top_margin(hero: &HeroScreen) -> f32 {
     hero.store
         .tool_bars()
         .and_then(|bars| action_rows(bars, pinned))
-        .map_or_else(super::frame_margin, |(_, sizes, below)| {
-            super::frame_top_margin(&[&sizes, &below], super::button_px(), pinned)
-        })
+        .map_or_else(
+            super::frame_margin,
+            |ActionRows { sizes, below, .. }| {
+                super::frame_top_margin(&[&sizes, &below], super::button_px(), pinned)
+            },
+        )
 }
 
 /// Os blocos de [`placed`] (a coluna, o flyout, a ④), como intervalos na lista: cada um é um

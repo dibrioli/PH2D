@@ -31,6 +31,9 @@ fn tracejado(align: StrokeAlign, join: LineJoin) -> StrokeSpec {
     }
 }
 
+/// Uma fixtura de forma: o caminho fechado que leva o traço pedido.
+type Forma = fn(StrokeSpec) -> VecPath;
+
 /// O rectângulo da cena 24 (lado `1,6`, à volta da origem).
 const R: [f64; 4] = [-0.8, -0.8, 0.8, 0.8];
 
@@ -189,7 +192,7 @@ fn os_pontos_alinhados_encostam_no_caminho_do_lado_certo() {
 /// pontas inteiros (na borda recta e na CURVA, e no FURO da rosquinha, no sentido da região).
 #[test]
 fn a_tinta_tracejada_fica_toda_de_um_lado() {
-    let formas: [(&str, fn(StrokeSpec) -> VecPath); 3] = [
+    let formas: [(&str, Forma); 3] = [
         ("rect", rect),
         ("rosquinha", rosquinha),
         ("circulo", |s| circulo(0.8, s)),

@@ -158,6 +158,32 @@ fn relatar_memoria(
         return;
     };
     let g = janela.geracao;
+    // ⭐ W5y — CALIBRAÇÃO: texturas NOVAS de zeros (64 MiB) — a sonda de texturas vê a compressão?
+    let zeros: Vec<(&'static str, u64, f64)> = [
+        ("zeros_rg32", wgpu::TextureFormat::Rg32Uint, 8_u32),
+        ("zeros_rgba32", wgpu::TextureFormat::Rgba32Uint, 16),
+    ]
+    .into_iter()
+    .filter_map(|(nome, format, texel)| {
+        let lado = gpu.device.limits().max_texture_dimension_2d;
+        let t = gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("luz2d sonda calibração"),
+            size: wgpu::Extent3d {
+                width: lado,
+                height: ((64 << 20) / (texel * lado)).min(lado),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        sonda.ms_textura(&t, 3).map(|(ms, bytes)| (nome, bytes, ms))
+    })
+    .collect();
+    linha_de_memoria(g, "calibração", "texturas", zeros.into_iter());
     for (quem, s) in [("vista", Some(vista)), ("entorno", entorno)] {
         let Some(s) = s else { continue };
         let hrc = s

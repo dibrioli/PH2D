@@ -307,14 +307,21 @@ impl Holografica {
                 .copied()
                 .chain(hrc::NOMES_R)
                 .chain([hrc::NOME_ACUMULADO]);
+            let relata = |quando| {
+                if e.cfg.hrc_guarda_os_grandes {
+                    crate::sonda_memoria::relatar_o_alocador(device.device, quando);
+                }
+            };
             if e.cfg.hrc_berco {
                 let berco: Vec<Option<wgpu::Texture>> = nomes.map(|n| berco(e, n)).collect();
+                relata("vivo");
                 drop(berco);
             } else {
                 let primeiros: Vec<wgpu::Buffer> = nomes.map(|n| (e.buffer)(n)).collect();
                 drop(primeiros);
             }
             let _ = device.poll(wgpu::PollType::wait_indefinitely());
+            relata("largado");
         }
         let cedo = e
             .cfg
@@ -323,6 +330,9 @@ impl Holografica {
         let t: Vec<wgpu::Buffer> = hrc::NOMES_T[..n_t].iter().map(|&n| (e.buffer)(n)).collect();
         let r = hrc::NOMES_R.map(|nome| (e.buffer)(nome));
         let acumulado = cedo.unwrap_or_else(|| (e.buffer)(hrc::NOME_ACUMULADO));
+        if e.cfg.hrc_guarda_os_grandes {
+            crate::sonda_memoria::relatar_o_alocador(device.device, "buffers");
+        }
         let uniforme = (e.buffer)(hrc::NOME_UNIFORME);
         let arcos = (e.buffer)(hrc::NOME_ARCOS);
         if e.cfg.hrc_arcos_em_tabela {

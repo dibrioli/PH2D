@@ -362,3 +362,17 @@ impl SondaDeMemoria {
         ticks as f64 * f64::from(self.queue.get_timestamp_period()) * 1e-6
     }
 }
+
+/// ⭐ W5y — DIAGNÓSTICO do berço: a memória que o alocador RESERVA (blocos) e a que está alocada. O
+/// `gpu-allocator` destrói um bloco geral que fica vazio (salvo o último): se as texturas do berço
+/// esvaziam o bloco ao morrer, os buffers nascem num bloco novo, sem a compressão.
+pub(crate) fn relatar_o_alocador(device: &wgpu::Device, quando: &str) {
+    if let Some(r) = device.generate_allocator_report() {
+        eprintln!(
+            "[luz2d] berço {quando} · reservado {} MiB · alocado {} MiB · {} blocos",
+            r.total_reserved_bytes >> 20,
+            r.total_allocated_bytes >> 20,
+            r.blocks.len()
+        );
+    }
+}

@@ -106,3 +106,14 @@ aceites estão no §6 (4); provas de mutação no §3.
    não se provoca em 127.0.0.1); (c) em `connected()`, um caminho que liga mas não abre o fluxo fecha sem
    reavaliar a tentativa — só acontece com o nó a fechar.
 5. Da W22b, sem mudança: a auditoria B2 (furos a pedido de quem tem o link, aceite) e o degrau 1 (UPnP/NAT-PMP/PCP).
+
+## 7 — Integrado no `main` (17/10)
+
+Depois de Motion · UIUX · Vector · CodeEditor · Macros · Luz2D (ordem do dono). Rebase sobre `6341b20dc8`: 3 conflitos,
+resolvidos pelos estágios — o índice dos ADR (0187 entra antes do 0188; contador 193, `adr-index.sh --check` ✓), o
+`CLAUDE.md` (só a entrada do Quadro vem da linha) e a `fotografa_cena.sh` (o `main` já tinha a mesma cura, com um guarda
+a mais: fica a dele). `Cargo.lock` fundido limpo (35 pacotes da `ph2d-board-internet`). Recontagens: ADR 0187 livre ·
+`PROJECT_SCHEMA` 191 / tripla `(191, 13, 23)` intacta · registos 108/109/109 · cena 22. Árvore combinada:
+`cargo check --workspace --all-targets` (avisos = erro) ✓ · censos 12/12 ✓ · `nextest-impacted` **17 754/17 754** · clippy
+`--workspace --all-targets -D warnings` ✓. Merge `--ff-only`; sem push (ship é outra ordem). O ramo
+`backup/MiroClone-pre-rebase-0aab2c1` guarda a ponta antiga e pode ser apagado.

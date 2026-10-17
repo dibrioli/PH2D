@@ -53,9 +53,13 @@ preset, o traço mínimo, a régua da ponta.
 ## §6 — Aberto
 
 - **A cobertura da rampa** (lista 26 C27): 0,54/0,62 contra 0,42/0,43 do Rebelle — a rampa linear do `Dynamics`.
-- **O Airbrush e a pressão** (C28): os knobs existem; mudar o Airbrush mexe num pincel de fábrica — pergunta do smoke.
+- **Smoke do dono (17/10)**: OK, salvo o «Square tip» travado em 1 — o `is_param_field` não reclamava o id (a row
+  revertia ao soltar); curado em `bfc868d90f` com gate de costura vermelho sem a cura.
+- **O Airbrush** (C28, ordem do dono «como no Rebelle»): tamanho 0,5 + opacidade 1 (`36963d8e1a`, identidade
+  re-pinada) → rampa 0,56/0,62 contra 0,63/0,34; os números literais do Spray 2 dão 0,92/0,80 — a opacidade da
+  pressão quase não morde no pincel seco de pouca tinta. Mecanismo por achar (C27 + C28) → prompt 45.
 - **Custo**: 1,12× por traço com a ponta reta — a área do quadrado (4/π), não a conta.
-- **B13/B14** (do P42), perguntas do smoke.
+- **B13 = SIM** (a Shape Color no pincel salvo) → prompt 45. **B14 = a mistura fica da obra inteira** (fechado).
 
 ## §7 — Fecho
 

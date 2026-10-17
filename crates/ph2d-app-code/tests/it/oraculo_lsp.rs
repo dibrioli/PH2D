@@ -119,7 +119,7 @@ fn o_culpado_do_tree_sitter_e_o_range_do_luau_lsp() {
     );
 }
 
-fn fixado() -> PathBuf {
+pub(crate) fn fixado() -> PathBuf {
     match resolve_binary() {
         Ok((p, _)) => p,
         Err(e) => panic!(

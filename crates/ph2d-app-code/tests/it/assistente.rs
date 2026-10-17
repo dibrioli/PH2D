@@ -40,6 +40,8 @@ pub(crate) struct Visto {
     /// Os pedidos `textDocument/definition` e `semanticTokens/full` recebidos.
     pub(crate) definicoes: usize,
     pub(crate) cores: usize,
+    /// Os pedidos `textDocument/codeAction` recebidos (I7).
+    pub(crate) acoes: usize,
 }
 
 pub(crate) type Partilhado = Arc<Mutex<Visto>>;
@@ -48,6 +50,9 @@ pub(crate) type Partilhado = Arc<Mutex<Visto>>;
 pub(crate) type Sitios = Vec<std::ops::Range<usize>>;
 /// Os tokens de um texto: `(bytes, tipo, modificadores)`.
 pub(crate) type Tokens = Vec<(std::ops::Range<usize>, u64, u64)>;
+/// `textDocument/codeAction`: o uri e o texto do documento, o byte do início da faixa e os
+/// diagnósticos do `context` → a resposta.
+pub(crate) type Agir = fn(&str, &str, usize, &[Value]) -> Value;
 
 #[derive(Clone, Copy, Default)]
 pub(crate) struct Plano {
@@ -68,6 +73,8 @@ pub(crate) struct Plano {
     /// `semanticTokens/full`: `(bytes, tipo, modificadores)` de cada nome, pela ordem do texto, na
     /// legenda do `luau-lsp` 1.70.1 (`None` = `null`).
     pub(crate) colorir: Option<fn(&str) -> Tokens>,
+    /// `textDocument/codeAction` (`None` = `null`).
+    pub(crate) agir: Option<Agir>,
 }
 
 /// As capacidades que o `luau-lsp` 1.70.1 anunciou (a legenda dos tokens vem daqui).
@@ -117,7 +124,7 @@ fn byte_de(s: &str, linha: u64, unidades: u64) -> usize {
 }
 
 /// A posição LSP `{line, character}` (unidades UTF-16) do byte `b` de `s`.
-fn posicao(s: &str, b: usize) -> Value {
+pub(crate) fn posicao(s: &str, b: usize) -> Value {
     let inicio = s[..b].rfind('\n').map_or(0, |i| i + 1);
     json!({ "line": s[..b].matches('\n').count(),
             "character": s[inicio..b].encode_utf16().count() })
@@ -232,6 +239,14 @@ fn servir(
                         })
                         .collect(),
                 )
+            } else if let Some(f) = plano.agir.filter(|_| method == "textDocument/codeAction") {
+                let texto = texto_de(|v| v.acoes += 1);
+                let (l, c) = pos(&p["range"]["start"]);
+                let ctx = p["context"]["diagnostics"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default();
+                f(&uri, &texto, byte_de(&texto, l, c), &ctx)
             } else if let Some(f) = plano
                 .colorir
                 .filter(|_| method == "textDocument/semanticTokens/full")

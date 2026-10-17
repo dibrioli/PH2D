@@ -62,7 +62,7 @@ fn mesa(atraso: Duration) -> (Mesa, ScriptId, Partilhado) {
     (m, id, visto)
 }
 
-fn clica_em(m: &mut Mesa, id: ScriptId, byte: usize, mods: Modifiers) {
+pub(crate) fn clica_em(m: &mut Mesa, id: ScriptId, byte: usize, mods: Modifiers) {
     let (x, y) = m
         .docs()
         .glyph_center(id, byte)
@@ -70,7 +70,7 @@ fn clica_em(m: &mut Mesa, id: ScriptId, byte: usize, mods: Modifiers) {
     m.clica(id, x, y, mods);
 }
 
-fn cursor(m: &mut Mesa, id: ScriptId) -> usize {
+pub(crate) fn cursor(m: &mut Mesa, id: ScriptId) -> usize {
     m.docs().cursor_of(id).expect("aberto").1
 }
 

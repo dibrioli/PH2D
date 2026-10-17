@@ -80,6 +80,10 @@ pub struct RowSpec {
     /// tinha quando o código foi escrito. Quem quer a cor VIVA olha a moldura no canvas, que lê o
     /// documento a cada quadro.
     pub rgba: Option<[u8; 4]>,
+    /// **A cor do CORPO que o artista desenhou** — o widget veste-a no lugar da superfície do tema
+    /// (F18). Irmã do [`Self::rgba`], nunca ele: aquele é o que uma swatch MOSTRA, este é de que
+    /// cor o controle É. `None` = o tema, como hoje.
+    pub body: Option<[u8; 4]>,
     /// **O glifo que esta row desenha**, quando o tipo dela É um botão de ícone — o desenho da
     /// forma que veste o widget, em **texto SVG**.
     ///
@@ -154,12 +158,9 @@ pub fn emit(spec: &PanelSpec) -> String {
         out.push_str(",\n        key: ");
         push_str_literal(&mut out, &r.key);
         out.push_str(",\n        rgba: ");
-        match r.rgba {
-            None => out.push_str("None"),
-            Some([r8, g8, b8, a8]) => {
-                out.push_str(&format!("Some([{r8}, {g8}, {b8}, {a8}])"));
-            }
-        }
+        push_opt_rgba(&mut out, r.rgba);
+        out.push_str(",\n        body: ");
+        push_opt_rgba(&mut out, r.body);
         out.push_str(",\n        icon: ");
         push_opt_str(&mut out, r.icon.as_deref());
         out.push_str(",\n        icon_slug: ");
@@ -178,6 +179,14 @@ pub fn emit(spec: &PanelSpec) -> String {
     }
     out.push_str("];\n");
     out
+}
+
+/// `Some([r, g, b, a])` ou `None` — o campo opcional de cor.
+fn push_opt_rgba(out: &mut String, v: Option<[u8; 4]>) {
+    match v {
+        None => out.push_str("None"),
+        Some([r8, g8, b8, a8]) => out.push_str(&format!("Some([{r8}, {g8}, {b8}, {a8}])")),
+    }
 }
 
 /// Um literal de texto escapado — a metade que o [`push_opt_str`] embrulha em `Some`.

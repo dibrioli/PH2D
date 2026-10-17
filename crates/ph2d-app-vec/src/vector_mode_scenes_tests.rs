@@ -26,6 +26,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "24"
             | "25"
             | "26"
+            | "27"
+            | "28"
     ) {
         1
     } else {
@@ -50,6 +52,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "24"
             | "25"
             | "26"
+            | "27"
+            | "28"
     );
     let handles = match s {
         "15" => 1,
@@ -64,6 +68,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
         "24" => 10,
         "25" => 11,
         "26" => 12,
+        "27" => 13,
+        "28" => 14,
         _ => 0,
     };
     let quick = match s {
@@ -168,6 +174,11 @@ fn as_faixas_de_estagios_nao_se_cruzam() {
             crate::vector_mode_interface::FIRST,
             crate::vector_mode_interface::LAST,
             "25/26",
+        ),
+        (
+            crate::vector_mode_vestidos::FIRST,
+            crate::vector_mode_vestidos::LAST,
+            "27/28",
         ),
     ]);
     faixas.sort_unstable();

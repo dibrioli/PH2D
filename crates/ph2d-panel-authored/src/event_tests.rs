@@ -31,6 +31,7 @@ fn row_of(kind: WidgetKind) -> (ph2d_a11y::NodeId, String) {
         key: key.clone(),
         id,
         rgba: None,
+        body: None,
         icon: None,
         icon_id: None,
         options: vec!["A".into(), "B".into(), "C".into()],

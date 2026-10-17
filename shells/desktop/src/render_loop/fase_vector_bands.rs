@@ -58,15 +58,15 @@ impl crate::App {
         };
         let vec_fx = self.fx_live.images();
         let vec_patterns = self.texture_pattern_live.tiles();
-        // As PELES de widget deste frame (plano UI/UX W6.2). Cozidas AQUI, depois do `sync`
-        // (senão uma forma recém-marcada ainda não tem entidade) e com a câmera na mão —
-        // quem sabe onde a forma está na tela é quem tem a projeção.
+        // As PELES de widget deste frame (W6.2), depois do `sync` (uma forma recém-marcada já
+        // tem entidade) e com a câmera na mão: quem sabe onde a forma está é quem tem a projeção.
         let vec_skins = crate::widget_live::build(
             vec_scene,
             sim,
             &self.vec.entities,
             &vec_xf,
             &vec_live,
+            &vec_view,
             cam_affine,
             paint_ctx.text,
             // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.

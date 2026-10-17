@@ -8,6 +8,7 @@ fn row(kind: &str, label: &str, key: &str) -> RowSpec {
         label: label.into(),
         key: key.into(),
         rgba: None,
+        body: None,
         icon: None,
         icon_slug: None,
         options: Vec::new(),
@@ -160,6 +161,26 @@ fn the_colour_comes_out_as_a_literal_only_where_it_exists() {
     );
 }
 
+/// **O corpo sai no SEU campo, ao lado da cor e nunca dentro dela** (F18).
+///
+/// ⚠️ Um botão de corpo azul não é uma swatch: emitir o azul em `rgba` faria o painel gerado
+/// mostrar um xadrez de cor onde o artista desenhou um botão.
+#[test]
+fn the_body_comes_out_beside_the_colour_never_inside_it() {
+    let src = emit(&PanelSpec {
+        id: "demo".into(),
+        title: "Demo".into(),
+        rows: vec![RowSpec {
+            body: Some([40, 120, 240, 255]),
+            ..row("Button", "Go", "go")
+        }],
+    });
+    assert!(
+        src.contains("rgba: None,\n        body: Some([40, 120, 240, 255]),"),
+        "o corpo nao saiu no seu campo:\n{src}"
+    );
+}
+
 /// **O glifo sai como um literal de string, e só onde ele existe.**
 ///
 /// ⚠️ E ele passa pelo MESMO escapador do rótulo: um `d` de SVG não tem aspas hoje, mas o campo é
@@ -177,7 +198,9 @@ fn the_glyph_comes_out_as_a_string_only_where_it_exists() {
         ],
     });
     assert!(
-        src.contains("label: \"Opacity\",\n        key: \"opacity\",\n        rgba: None,\n        icon: None,"),
+        src.contains(
+            "label: \"Opacity\",\n        key: \"opacity\",\n        rgba: None,\n        body: None,\n        icon: None,"
+        ),
         "quem nao tem glifo emitiu alguma coisa:\n{src}"
     );
     assert!(

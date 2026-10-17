@@ -164,6 +164,8 @@ pub struct Authored {
     label: String,
     key: String,
     rgba: Option<[u8; 4]>,
+    /// A cor do CORPO que o artista desenhou — irmã do `rgba`, nunca ele (F18).
+    body: Option<[u8; 4]>,
     drawn: Option<BezPath>,
     chosen: Option<IconId>,
     options: Vec<String>,
@@ -189,6 +191,10 @@ fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<Authored>) {
         let label = label_of(sim, e).unwrap_or_default();
         let rgba = kind
             .takes_colour()
+            .then(|| colour_of(sim, scene, e))
+            .flatten();
+        let body = kind
+            .wears_the_drawing()
             .then(|| colour_of(sim, scene, e))
             .flatten();
         let (drawn, chosen) = if kind.takes_icon() {
@@ -217,6 +223,7 @@ fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<Authored>) {
             key: key_of(&label),
             label,
             rgba,
+            body,
             drawn,
             chosen,
             options,
@@ -267,6 +274,7 @@ pub fn of(sim: &SimWorld, scene: &VecScene, frame: Entity) -> PanelSpec {
             key: a.key,
             label: a.label,
             rgba: a.rgba,
+            body: a.body,
             // ⚠️ Só AQUI a curva vira texto, e é a viagem do próprio kurbo — o painel vivo nunca a
             // faz, porque ele já tem a curva. Um `to_svg` no laço de pintura seria um formatador
             // de string por quadro para reconstruir o que já estava na mão.
@@ -293,6 +301,7 @@ pub fn live_rows(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<Authore
             label: a.label,
             key: a.key,
             rgba: a.rgba,
+            body: a.body,
             icon: a.drawn,
             icon_id: a.chosen,
             options: a.options,

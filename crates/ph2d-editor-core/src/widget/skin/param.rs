@@ -76,6 +76,10 @@ pub struct SkinParam<'a> {
     /// e a resposta tem de manter o controle utilizável. A pele responde *"deram-me um índice
     /// que não nomeia nada; o que DESENHO?"* — e a resposta não pode inventar uma escolha.
     pub selected: usize,
+    /// **O corpo do widget** (F18): `None` = o tema (o neutro, byte a byte); `Drawing` = o
+    /// desenho do artista já está por baixo; `Flat` = pinte o corpo na cor do artista. Quem o monta
+    /// pergunta a [`WidgetKind::wears_the_drawing`](super::WidgetKind::wears_the_drawing).
+    pub body: Option<ph2d_tokens::skin_body::Body>,
 }
 
 /// **Qual opção esta pele marca** — `None` quando o índice não nomeia nenhuma.

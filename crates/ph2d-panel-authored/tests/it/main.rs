@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod seam_authored;
+mod seam_authored_body;
 mod seam_authored_long_list;
 mod seam_authored_options;
 mod seam_authored_popover;

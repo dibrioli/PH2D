@@ -49,6 +49,7 @@ fn long_list() -> (ph2d_a11y::NodeId, String) {
         key: key.clone(),
         id,
         rgba: None,
+        body: None,
         icon: None,
         icon_id: None,
         options: (0..options()).map(|i| format!("Op{i}")).collect(),

@@ -60,6 +60,7 @@ fn build_for(
         map,
         xf,
         &LiveGeometry::new(),
+        &ph2d_vec_scene::VecViewState::default(),
         camera(),
         &mut text,
         Theme::Forge,
@@ -83,7 +84,7 @@ fn a_marked_shape_is_painted_by_the_catalogue() {
     let (scene, sim, map, xf, id) = scene_with(Some(WidgetKind::Button.code()), Some("Save"));
     let skins = build_for(&scene, &sim, &map, &xf);
     let skin = skins.get(&id).expect("a forma marcada tem pele");
-    let e = skin.inner().encoding();
+    let e = skin.scene.inner().encoding();
     assert!(
         e.n_paths > 0 || !e.resources.glyph_runs.is_empty(),
         "a pele nao desenhou nada"
@@ -161,8 +162,8 @@ fn the_frame_follows_the_pose() {
         build_for(&scene, &sim, &map, &xf)
     };
 
-    let a = here.get(&id).unwrap().inner().encoding().path_data.clone();
-    let b = there.get(&id).unwrap().inner().encoding().path_data.clone();
+    let a = here.get(&id).unwrap().scene.inner().encoding().path_data.clone();
+    let b = there.get(&id).unwrap().scene.inner().encoding().path_data.clone();
     assert!(!a.is_empty(), "o Card nao emitiu geometria");
     assert_ne!(
         a, b,
@@ -183,7 +184,7 @@ fn the_label_is_the_entity_name_and_a_nameless_shape_still_draws() {
     let glyphs = |sk: &WidgetSkins| -> Vec<(u32, u32, u32)> {
         sk.get(&id)
             .unwrap()
-            .inner()
+            .scene.inner()
             .encoding()
             .resources
             .glyphs
@@ -227,7 +228,7 @@ fn the_swatch_on_the_canvas_wears_its_own_fill() {
         let e = skins
             .get(&id)
             .expect("a forma marcada tem pele")
-            .inner()
+            .scene.inner()
             .encoding();
         (e.n_paths, e.path_data.clone(), e.draw_data.clone())
     };
@@ -239,13 +240,19 @@ fn the_swatch_on_the_canvas_wears_its_own_fill() {
         "a swatch do canvas pintou igual com duas tintas — a ponte nao le o preenchimento"
     );
 
+    // ⭐ F18: o Slider NÃO pinta a cor — o desenho a pinta por baixo. Recolorir a forma não lhe
+    // muda a GEOMETRIA nem põe a tinta do artista dentro da pele; só a tinta do conteúdo se
+    // reescolhe contra o corpo novo (`skin_body`).
     let a = skin_of(WidgetKind::Slider, [200, 40, 40]);
     let b = skin_of(WidgetKind::Slider, [40, 40, 200]);
-    assert_eq!(
-        a, b,
-        "o Slider respondeu ao preenchimento da forma — recolorir a arte mudaria um controle \
-         que nao fala de cor"
-    );
+    assert_eq!((a.0, &a.1), (b.0, &b.1), "recolorir mudou a geometria do Slider");
+    for (skin, rgb) in [(&a, [200, 40, 40]), (&b, [40, 40, 200])] {
+        let fill = u32::from_ne_bytes([rgb[0], rgb[1], rgb[2], 255]);
+        assert!(
+            !skin.2.contains(&fill),
+            "o Slider pintou o preenchimento do artista DENTRO da pele — o corpo é o desenho"
+        );
+    }
 }
 
 /// **O botão de ícone do canvas veste o DESENHO da própria forma** — o irmão exato do gate acima.
@@ -279,7 +286,7 @@ fn the_icon_button_on_the_canvas_wears_its_own_drawing() {
         let e = skins
             .get(&id)
             .expect("a forma marcada tem pele")
-            .inner()
+            .scene.inner()
             .encoding();
         (e.n_paths, e.path_data.clone(), e.draw_data.clone())
     };
@@ -332,7 +339,7 @@ fn the_chosen_icon_beats_the_drawing_and_removing_it_gives_the_drawing_back() {
         let e = skins
             .get(&id)
             .expect("a forma marcada tem pele")
-            .inner()
+            .scene.inner()
             .encoding();
         (e.n_paths, e.path_data.clone(), e.draw_data.clone())
     };
@@ -354,5 +361,107 @@ fn the_chosen_icon_beats_the_drawing_and_removing_it_gives_the_drawing_back() {
         skin_of(Some("nao-existe")),
         drawn,
         "um slug desconhecido nao caiu no desenho"
+    );
+}
+
+// ── F18: o DESENHO é o corpo (`vetor_nova_ui/29_plano_F18_…md` §6, gates 1, 7 e 8) ──────────
+
+/// Uma forma vestida de `kind`, chamada «Play», pintada de `fill`.
+fn dressed_in(kind: WidgetKind, fill: [u8; 4]) -> (VecScene, ph2d_ecs::SimWorld, VecEntityMap, VecXforms) {
+    let (mut scene, sim, map, xf, id) = scene_with(Some(kind.code()), Some("Play"));
+    let [r, g, b, a] = fill;
+    scene.path_mut(id).expect("a forma existe").fill =
+        Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(r, g, b, a)));
+    (scene, sim, map, xf)
+}
+
+/// O canvas inteiro desta cena: a ponte REAL e o `dispatch` REAL.
+fn canvas_of(scene: &VecScene, sim: &ph2d_ecs::SimWorld, map: &VecEntityMap, xf: &VecXforms) -> ph2d_vector::VectorScene {
+    let skins = build_for(scene, sim, map, xf);
+    let mut out = ph2d_vector::VectorScene::new();
+    ph2d_vec_render::dispatch(
+        scene,
+        &ph2d_vec_scene::VecViewState::default(),
+        xf,
+        &LiveGeometry::new(),
+        &ph2d_vec_render::FxImages::new(),
+        &skins,
+        &ph2d_vec_render::PatternTiles::new(),
+        &ph2d_vec_render::BrushArts::new(),
+        &ph2d_vec_render::DilatedPaints::new(),
+        camera(),
+        &mut out,
+    );
+    out
+}
+
+/// O índice, no fluxo de tinta, da cor opaca `c` — ou `None`.
+fn ink_index(scene: &ph2d_vector::VectorScene, c: [u8; 4]) -> Option<usize> {
+    scene.inner().encoding().draw_data.iter().position(|w| w.to_ne_bytes() == c)
+}
+
+/// As corridas de glifos: `(índice no fluxo de tinta, tinta)`.
+fn glyph_inks(scene: &ph2d_vector::VectorScene) -> Vec<(usize, [u8; 4])> {
+    let e = scene.inner().encoding();
+    e.resources
+        .glyph_runs
+        .iter()
+        .map(|r| (r.stream_offsets.draw_data, e.draw_data[r.stream_offsets.draw_data].to_ne_bytes()))
+        .collect()
+}
+
+fn readable(c: [u8; 4]) -> [u8; 4] {
+    let [r, g, b, a] = c;
+    let k = ph2d_tokens::skin_body::readable_on(ph2d_tokens::Color { r, g, b, a }, Theme::Forge);
+    [k.r, k.g, k.b, k.a]
+}
+
+const BLUE: [u8; 4] = [40, 120, 240, 255];
+const ORANGE: [u8; 4] = [240, 140, 40, 255];
+
+/// **O botão do dono aparece AZUL, com o rótulo legível POR CIMA** (cena 25).
+#[test]
+fn o_corpo_da_pele_vestida_e_o_desenho() {
+    let (scene, sim, map, xf) = dressed_in(WidgetKind::Button, BLUE);
+    let out = canvas_of(&scene, &sim, &map, &xf);
+    let body = ink_index(&out, BLUE).expect("o fill azul do artista não foi desenhado");
+    let label = glyph_inks(&out);
+    assert!(!label.is_empty(), "o rótulo sumiu");
+    for (at, ink) in &label {
+        assert!(*at > body, "o rótulo tem de vir DEPOIS do corpo");
+        assert_eq!(*ink, readable(BLUE), "o rótulo não é a tinta legível sobre o azul");
+    }
+}
+
+/// **O Hover gravado chega ao rótulo**: a pose escreve o fill (laranja) e a tinta reescolhe-se.
+#[test]
+fn o_fill_do_estado_chega_ao_corpo_e_ao_rotulo() {
+    let (scene, sim, map, xf) = dressed_in(WidgetKind::Button, ORANGE);
+    let out = canvas_of(&scene, &sim, &map, &xf);
+    assert!(ink_index(&out, ORANGE).is_some(), "o laranja do Hover não foi desenhado");
+    assert!(ink_index(&out, BLUE).is_none());
+    assert!(glyph_inks(&out).iter().all(|(_, c)| *c == readable(ORANGE)));
+    // Sobre o azul e o laranja do dono a tinta legível é a MESMA (escura): a viragem mede-se
+    // contra um fill escuro.
+    const DARK: [u8; 4] = [32, 36, 44, 255];
+    assert_ne!(readable(DARK), readable(ORANGE), "a fixture tem de mudar a tinta");
+    let (scene, sim, map, xf) = dressed_in(WidgetKind::Button, DARK);
+    let out = canvas_of(&scene, &sim, &map, &xf);
+    assert!(glyph_inks(&out).iter().all(|(_, c)| *c == readable(DARK)));
+}
+
+/// **O ícone e a amostra continuam a SUBSTITUIR** — o desenho deles já foi consumido.
+#[test]
+fn o_icone_e_a_amostra_nao_desenham_duas_vezes() {
+    for kind in WidgetKind::ALL {
+        let (scene, sim, map, xf) = dressed_in(kind, BLUE);
+        let skins = build_for(&scene, &sim, &map, &xf);
+        let skin = skins.values().next().expect("vestida tem pele");
+        assert_eq!(skin.over_drawing, kind.wears_the_drawing(), "{kind:?}");
+    }
+    let (scene, sim, map, xf) = dressed_in(WidgetKind::IconButton, BLUE);
+    assert!(
+        ink_index(&canvas_of(&scene, &sim, &map, &xf), BLUE).is_none(),
+        "o desenho de um botão de ícone é o GLIFO — desenhá-lo também seria o ícone duas vezes"
     );
 }

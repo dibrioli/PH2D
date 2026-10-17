@@ -47,6 +47,7 @@ fn spec_the_file_declares() -> PanelSpec {
                 label: r.label.to_string(),
                 key: r.key.to_string(),
                 rgba: r.rgba,
+                body: r.body,
                 icon: r.icon.map(str::to_string),
                 icon_slug: r.icon_slug.map(str::to_string),
                 options: r.options.iter().map(|o| (*o).to_string()).collect(),

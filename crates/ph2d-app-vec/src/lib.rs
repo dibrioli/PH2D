@@ -224,6 +224,7 @@ mod vector_mode_estrela;
 mod vector_mode_handles;
 /// As cenas 25 e 26 (F17): o botão feito interface, nas abas Drawing e Interface.
 mod vector_mode_interface;
+mod vector_mode_vestidos;
 /// A cena 21 (F14): as quinas arredondadas em toda forma que as tem.
 mod vector_mode_quinas;
 /// A cena 20 (F13): o modo Forma selecciona — o clique desarma e traz as alças.

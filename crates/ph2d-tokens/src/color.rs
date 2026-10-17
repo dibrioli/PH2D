@@ -596,7 +596,15 @@ impl ColorToken {
     /// ([`crate::overrides`]) — é isto que faz um valor editado no painel de Tokens re-vestir o
     /// app inteiro, porque esta função é a porta única dos 44 widgets. Sem override nenhum a
     /// pergunta custa **uma leitura de bool** e o resultado é byte-idêntico ao de sempre.
+    ///
+    /// ⚠️ **E a F18 pôs uma camada por CIMA dela**: dentro de um [`crate::skin_body::dress`] a
+    /// resposta é a do papel do token sobre o desenho do artista.
     pub fn resolve(self, theme: Theme) -> Color {
+        crate::skin_body::scoped(self, self.resolve_unscoped(theme), theme)
+    }
+
+    /// A resposta sem o escopo da pele — a do tema e da camada autorada.
+    pub(crate) fn resolve_unscoped(self, theme: Theme) -> Color {
         // ⚠️ A cadeia de ALIASES é seguida pela camada de override, e o que volta é ou uma cor ou
         // o token em que ela terminou — cuja FÁBRICA é lida aqui embaixo, pela mesma tabela de
         // sempre. É isso que faz `border → surface` valer o `surface` **deste modo** sem que a

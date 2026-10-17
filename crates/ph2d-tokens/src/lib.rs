@@ -70,6 +70,8 @@ pub mod radius;
 /// **A chave decide a família** — a porta única por onde uma tabela de FORA (o arquivo de projeto,
 /// um `.tokens.json` DTCG) encontra o token a que pertence.
 pub mod route;
+/// ⭐ **O corpo de uma pele vestida** (F18) — o tema pelo PAPEL de cada token sobre o desenho.
+pub mod skin_body;
 pub mod slider_style;
 pub mod spacing;
 pub mod stroke;

@@ -24,6 +24,12 @@
 //!
 //! ⇒ **O desenho responde ONDE e O QUÊ** (o retângulo e o tipo); **os tokens respondem COMO**.
 //!
+//! ⭐ **F18 (17/10): o desenho passou a ser o CORPO, e continua sem 44 assinaturas novas.** A W7
+//! trouxe os estados gravados (o Hover muda o fill da forma), e a pele deitava-os fora. Agora um
+//! [`SkinParam::body`] abre o escopo [`ph2d_tokens::skin_body`]: os MESMOS pintores, os mesmos
+//! tokens, mas o tema responde pelo papel de cada um — superfície = o desenho, tinta = a legível
+//! sobre ele. Sem corpo, tudo ao bit como antes. Plano: `vetor_nova_ui/29_plano_F18_…md`.
+//!
 //! ⚠️ **E o dia que esta nota previa CHEGOU** (2026-08-09). Ela dizia que um mapeamento por-tipo
 //! — *"o preenchimento da forma vira a cor da swatch"* — era *"uma tabela de 44 casos especiais,
 //! deliberadamente NÃO construída"*, e que ele nasceria *"no dia em que um tipo precisar de um
@@ -214,6 +220,9 @@ pub fn paint_widget_skin_with(
     theme: Theme,
 ) {
     let _ = id;
+    // F18: com um corpo, o tema responde pelo PAPEL de cada token até ao fim desta função — os
+    // pintores não sabem que vestem um desenho.
+    let _dressed = param.body.map(ph2d_tokens::skin_body::dress);
     match kind {
         WidgetKind::Button => {
             let mut b = Button::new(id, label);

@@ -138,6 +138,18 @@ impl VectorScene {
         }
     }
 
+    /// Preenche `shape` (a porta que grava do `Scene::fill`). A curva só se materializa quando a
+    /// cena GRAVA; a codificação é a mesma do `inner_mut().fill(..)`.
+    pub fn fill_shape(&mut self, rule: Fill, transform: Affine, brush: &Brush, shape: &impl Shape) {
+        self.inner.fill(rule, transform, brush, None, shape);
+        self.rec(|| DrawOp::Fill {
+            rule,
+            transform,
+            brush: brush.clone(),
+            path: shape.to_path(0.1),
+        });
+    }
+
     /// Contorna `shape` (a porta que grava do `Scene::stroke`).
     pub fn stroke_path(
         &mut self,

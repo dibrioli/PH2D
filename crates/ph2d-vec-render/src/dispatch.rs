@@ -161,15 +161,12 @@ fn draw_one(
     let layered = blend::open_object_layer(target, scene, xforms, live, fx, path, bound, camera);
     // O FX da forma, se houver, TOMA o lugar do desenho: a pilha já compôs tudo o que se
     // vê desta forma (halo incluído) numa imagem só, no z dela.
+    let skin = skins.get(&path.id);
     if let Some(img) = fx.get(&path.id) {
         draw_fx_image(img, target);
-    } else if let Some(skin) = skins.get(&path.id) {
-        // ⚠️ A pele já foi pintada em coordenadas de TELA (o shell cruzou a câmera para
-        // achar o retângulo da forma), então ela entra SEM transform — o mesmo contrato
-        // da `FxImage` ao lado, e pela mesma razão: quem sabe onde a forma está na tela é
-        // quem tem a câmera, e ele já respondeu.
-        target.inner_mut().append(skin.inner(), None);
-    } else {
+    } else if skin.is_none_or(|s| s.over_drawing) {
+        // ⭐ F18: uma forma vestida (`over_drawing`) desenha-se AQUI como qualquer outra — o
+        // desenho é o CORPO do widget — e a pele entra por cima, logo abaixo.
         // (A TINTA que os tokens dão a esta forma foi perguntada UMA vez, acima — e ela
         // vale também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho
         // têm id próprio, então procurá-las na tabela não acharia nada e o token pararia
@@ -217,6 +214,12 @@ fn draw_one(
                 },
             );
         }
+    }
+    // ⚠️ A pele já foi pintada em coordenadas de TELA (o shell cruzou a câmera para achar o
+    // retângulo da forma), então entra SEM transform — o contrato da `FxImage` ao lado. O FX,
+    // quando há, já compôs tudo o que se vê desta forma.
+    if let (None, Some(skin)) = (fx.get(&path.id), skin) {
+        target.inner_mut().append(skin.scene.inner(), None);
     }
     if layered {
         target.pop_layer();

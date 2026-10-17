@@ -33,12 +33,12 @@ const PAPEL_HOVER: usize = 1;
 /// O primeiro estágio — um por gesto, no buraco entre a cena 19 (`110..=120`) e a 20 (`130..`).
 pub(crate) const FIRST: u8 = 121;
 const DESENHA_ESTRELA: u8 = FIRST + 1;
-const CORES: u8 = DESENHA_ESTRELA + 1;
+pub(crate) const CORES: u8 = DESENHA_ESTRELA + 1;
 const PICK: u8 = CORES + 1;
-const CREATE: u8 = PICK + 1;
-const WEAR: u8 = CREATE + 1;
-const GRAVA_DEFAULT: u8 = WEAR + 1;
-const GRAVA_HOVER: u8 = GRAVA_DEFAULT + 1;
+pub(crate) const CREATE: u8 = PICK + 1;
+pub(crate) const WEAR: u8 = CREATE + 1;
+pub(crate) const GRAVA_DEFAULT: u8 = WEAR + 1;
+pub(crate) const GRAVA_HOVER: u8 = GRAVA_DEFAULT + 1;
 pub(crate) const LAST: u8 = GRAVA_HOVER + 1;
 
 fn solido(c: [u8; 3]) -> Option<Paint> {
@@ -58,7 +58,8 @@ fn gravado(i: usize) -> bool {
     ph2d_panel_vector::state::ui_states_state().is_some_and(|s| s.recorded[i])
 }
 
-/// Um passo das cenas 25/26 (`interface` = a 26); devolve o próximo estágio, se mudou.
+/// Um passo das cenas 25/26 (`interface` = a 26); devolve o próximo estágio, se mudou. `end` é o
+/// estágio depois do último: `9` (feito), ou o primeiro das 27/28, que continuam daqui.
 pub fn step(
     stage: u8,
     vec: &mut VecState,
@@ -66,6 +67,7 @@ pub fn step(
     sim: &ph2d_ecs::SimWorld,
     hero: &mut HeroScreen,
     interface: bool,
+    end: u8,
 ) -> Option<u8> {
     let feitas = vec.entities.len();
     let botao = vec.entities.keys().next().copied();
@@ -142,7 +144,7 @@ pub fn step(
             if interface {
                 hero.apply_event(WidgetEvent::Click(ids::VECTOR_VIEW_INTERFACE));
             }
-            Some(9)
+            Some(end)
         }
         _ => None,
     }

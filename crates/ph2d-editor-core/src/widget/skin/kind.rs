@@ -138,6 +138,38 @@ impl WidgetKind {
         matches!(self, WidgetKind::ColorSwatch)
     }
 
+    /// **O DESENHO é o corpo deste tipo?** (F18) — a porta única de *«a pele pinta por cima da
+    /// forma, ou no lugar dela?»*. Perguntada por quem monta o [`SkinParam::body`].
+    ///
+    /// `false` só onde o desenho já foi CONSUMIDO como outra coisa: o glifo de um `IconButton` e a
+    /// cor de uma `ColorSwatch` — desenhá-lo também seria o ícone e a cor duas vezes.
+    ///
+    /// [`SkinParam::body`]: super::SkinParam::body
+    #[must_use]
+    pub const fn wears_the_drawing(self) -> bool {
+        match self {
+            WidgetKind::IconButton | WidgetKind::ColorSwatch => false,
+            WidgetKind::Button
+            | WidgetKind::Toggle
+            | WidgetKind::Checkbox
+            | WidgetKind::Slider
+            | WidgetKind::ProgressBar
+            | WidgetKind::Tag
+            | WidgetKind::TextInput
+            | WidgetKind::Card
+            | WidgetKind::SectionHeader
+            | WidgetKind::ListItem
+            | WidgetKind::Spinner
+            | WidgetKind::Divider
+            | WidgetKind::NumberInput
+            | WidgetKind::LevelMeter
+            | WidgetKind::Tabs
+            | WidgetKind::RadioGroup
+            | WidgetKind::SegmentedAdaptive
+            | WidgetKind::Dropdown => true,
+        }
+    }
+
     /// **Este tipo CONSOME um ícone?** — a porta única do canal [`SkinParam::icon`].
     ///
     /// Irmã exata de [`Self::takes_colour`], perguntada pelos mesmos dois CONSTRUTORES e nunca

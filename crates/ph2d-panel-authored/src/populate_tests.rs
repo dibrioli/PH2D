@@ -25,6 +25,7 @@ fn every_kind_agrees_with_itself_about_being_a_control() {
             key: "x".to_string(),
             id: ph2d_a11y::NodeId(1),
             rgba: None,
+            body: None,
             icon: None,
             icon_id: None,
             options: Vec::new(),

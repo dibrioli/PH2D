@@ -38,6 +38,8 @@ pub struct RowConst {
     pub label: &'static str,
     pub key: &'static str,
     pub rgba: Option<[u8; 4]>,
+    /// A cor do corpo desenhado — ver [`Row::body`].
+    pub body: Option<[u8; 4]>,
     /// O glifo, em texto SVG — ver [`Row::icon`], que é a curva reconstituída dele.
     pub icon: Option<&'static str>,
     /// O slug do ícone ESCOLHIDO do catálogo — a outra rota, exclusiva com a de cima.
@@ -62,6 +64,9 @@ pub struct Row {
     pub id: NodeId,
     /// A cor que esta row mostra, quando o tipo dela É uma cor — ver [`ph2d_editor_core::widget::SkinParam`].
     pub rgba: Option<[u8; 4]>,
+    /// A cor do CORPO que o artista desenhou (F18): o widget veste-a no lugar da superfície do
+    /// tema. Irmã do `rgba`, nunca ele — aquele é o que a swatch MOSTRA. `None` = o tema.
+    pub body: Option<[u8; 4]>,
     /// O glifo DESENHADO, quando o tipo dela É um botão de ícone e o artista não escolheu um.
     ///
     /// ⚠️ **Curva, e não o texto SVG que o gerado carrega** — a conversão acontece UMA vez, aqui
@@ -158,13 +163,14 @@ impl Row {
 /// ⚠️ `ok()` e não `expect`: a string vem de código GERADO por `to_svg`, então malformada ela não
 /// pode estar — mas um painel que entra em pânico ao abrir trocaria um ícone ausente pela
 /// aplicação inteira. Sem curva, o botão desenha a moldura, que é o neutro que o pintor já tem.
-fn resolve(kind: WidgetKind, label: &str, key: &str, rgba: Option<[u8; 4]>) -> Row {
+fn resolve(r: &RowConst) -> Row {
     Row {
-        kind,
-        label: label.to_string(),
-        key: key.to_string(),
-        id: crate::ids::authored_row_id(key),
-        rgba,
+        kind: r.kind,
+        label: r.label.to_string(),
+        key: r.key.to_string(),
+        id: crate::ids::authored_row_id(r.key),
+        rgba: r.rgba,
+        body: r.body,
         icon: None,
         icon_id: None,
         options: Vec::new(),
@@ -190,7 +196,7 @@ pub fn baked() -> &'static [Row] {
                 icon: r.icon.and_then(|d| BezPath::from_svg(d).ok()),
                 icon_id: r.icon_slug.and_then(IconId::from_slug),
                 options: r.options.iter().map(|o| (*o).to_string()).collect(),
-                ..resolve(r.kind, r.label, r.key, r.rgba)
+                ..resolve(r)
             })
             .collect()
     })

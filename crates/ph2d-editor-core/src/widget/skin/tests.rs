@@ -26,6 +26,9 @@ mod param;
 #[path = "axis_tests.rs"]
 mod axis;
 
+#[path = "body_tests.rs"]
+mod body;
+
 /// A impressão digital de uma cena: os caminhos, os bytes de geometria e de tinta, **e os
 /// glifos**.
 ///

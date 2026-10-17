@@ -29,13 +29,13 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
         .and_then(|s| s.parse::<u8>().ok().filter(|n| n.to_string() == s))
         .unwrap_or(0);
     Scene {
-        want: if matches!(n, 6 | 7 | 9..=26) { 1 } else { 9 },
+        want: if matches!(n, 6 | 7 | 9..=28) { 1 } else { 9 },
         weld: n == 7,
-        bars: matches!(n, 9..=26),
+        bars: matches!(n, 9..=28),
         reach: n == 10,
         nav: n == 11,
         frame: n == 14,
-        handles: if (15..=26).contains(&n) { n - 14 } else { 0 },
+        handles: if (15..=28).contains(&n) { n - 14 } else { 0 },
         quick: match n {
             12 => 1,
             13 => 2,
@@ -50,7 +50,8 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
 /// setas — 110–120 em `vector_mode_setas`) · 6 = a 20 (F13, 130–136 em `vector_mode_seleciona`) ·
 /// 7 = a 21 (F14, `vector_mode_quinas`) · 8 = a 22 (o Alinhar na ④, `vector_mode_alinhar`) · 9 = a
 /// 23 (F16, `vector_mode_controle`) · 10 = a 24 (F16c, o tracejado, `vector_mode_tracejado`) ·
-/// 11 e 12 = a 25 e a 26 (F17, as abas, `vector_mode_interface`).
+/// 11 e 12 = a 25 e a 26 (F17, as abas, `vector_mode_interface`) · 13 e 14 = a 27 e a 28 (F18,
+/// começam pela 25 e seguem em `vector_mode_vestidos`).
 /// `None` = fora da família.
 pub(super) fn handles_first(handles: u8) -> Option<u8> {
     Some(match handles {
@@ -65,7 +66,7 @@ pub(super) fn handles_first(handles: u8) -> Option<u8> {
         8 => crate::vector_mode_alinhar::FIRST,
         9 => crate::vector_mode_controle::FIRST,
         10 => crate::vector_mode_tracejado::FIRST,
-        11 | 12 => crate::vector_mode_interface::FIRST,
+        11..=14 => crate::vector_mode_interface::FIRST,
         _ => 70,
     })
 }

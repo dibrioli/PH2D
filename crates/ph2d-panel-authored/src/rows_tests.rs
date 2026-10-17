@@ -16,6 +16,7 @@ fn the_rows_are_the_generated_table_in_order() {
         assert_eq!(r.label, c.label);
         assert_eq!(r.key, c.key);
         assert_eq!(r.rgba, c.rgba);
+        assert_eq!(r.body, c.body);
         // ⚠️ Compara a CURVA reconstituída com o texto de origem, e não os dois textos: é a
         // travessia que pode perder, e é ela que decide se o painel desenha o glifo do artista.
         assert_eq!(
@@ -83,6 +84,7 @@ fn only_the_kinds_that_respond_are_controls() {
             key: "x".to_string(),
             id: ph2d_a11y::NodeId(1),
             rgba: None,
+            body: None,
             icon: None,
             icon_id: None,
             options: Vec::new(),
@@ -228,6 +230,7 @@ fn only_the_section_header_folds_and_it_is_never_a_control() {
         key: "x".to_string(),
         id: ph2d_a11y::NodeId(1),
         rgba: None,
+        body: None,
         icon: None,
         icon_id: None,
         options: Vec::new(),
@@ -286,6 +289,7 @@ fn the_open_document_wins_over_the_pasted_code_and_giving_it_back_restores_it() 
         key: "ao_vivo".to_string(),
         id: crate::ids::authored_row_id("ao_vivo"),
         rgba: None,
+        body: None,
         icon: None,
         icon_id: None,
         options: Vec::new(),

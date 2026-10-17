@@ -29,6 +29,11 @@
 //! forma vira a cor da swatch"*) é uma tabela de casos especiais e está deliberadamente **não
 //! construído**; ver o doc de [`ph2d_editor_core::widget::paint_widget_skin`].
 //!
+//! ⭐ **F18 (17/10): o DESENHO passou a ser o corpo.** A forma desenha-se como sempre e a pele vai
+//! por cima com o conteúdo, num escopo do tema que torna as superfícies transparentes e escolhe a
+//! tinta legível sobre a cor PINTADA da forma ([`ph2d_tokens::skin_body`]). Os tokens continuam a
+//! responder COMO — agora pelo papel de cada um.
+//!
 //! # O widget é pintado em pixels de TELA
 //!
 //! Um token é um número em **px** — `Radius::Md.px()`, `ICON_BTN_SIZE_PX`, o corpo do texto em pt.
@@ -46,7 +51,8 @@ use ph2d_editor_core::widget::{SkinParam, WidgetKind, icon_glyph, paint_widget_s
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
-use ph2d_vec_render::{LiveGeometry, WidgetSkins};
+use ph2d_tokens::skin_body::Body;
+use ph2d_vec_render::{LiveGeometry, WidgetSkin, WidgetSkins};
 use ph2d_vec_scene::{Paint, VecPathId, VecScene, VecXforms};
 use ph2d_vector::Affine;
 
@@ -134,6 +140,16 @@ fn colour_of(fill: &Paint) -> [u8; 4] {
     [c.r, c.g, c.b, c.a]
 }
 
+/// **O corpo de uma forma vestida** (F18): o desenho, e a cor dele — a do fill PINTADO (o token
+/// ligado à forma conta, como no `dispatch`), viva, então o Hover gravado chega ao rótulo.
+fn body_of(path: &ph2d_vec_scene::VecPath, bound: Option<&ph2d_vec_scene::BoundStyle>) -> Body {
+    let under = path.painted(bound).fill.as_ref().map(|f| {
+        let [r, g, b, a] = colour_of(f);
+        ph2d_tokens::Color { r, g, b, a }
+    });
+    Body::Drawing { under }
+}
+
 /// Pinta as peles deste frame. Vazio = nenhuma forma veste um widget, e o `dispatch` desenha o
 /// que sempre desenhou.
 ///
@@ -146,6 +162,7 @@ pub fn build(
     map: &VecEntityMap,
     xforms: &VecXforms,
     live: &LiveGeometry,
+    view: &ph2d_vec_scene::VecViewState,
     camera: Affine,
     text: &mut TextSystem,
     theme: Theme,
@@ -198,9 +215,18 @@ pub fn build(
             // da pele: um controle de opções sem nenhuma acesa lê-se como quebrado, não como
             // vazio. O valor VIVO é do painel, que tem o store; o canvas é prévia.
             selected: 0,
+            body: kind
+                .wears_the_drawing()
+                .then(|| body_of(path, view.bound_style(path.id))),
         };
         paint_widget_skin(kind, &label, param, rect, &mut skin, text, theme);
-        out.insert(path.id, skin);
+        out.insert(
+            path.id,
+            WidgetSkin {
+                scene: skin,
+                over_drawing: param.body.is_some(),
+            },
+        );
     }
     out
 }

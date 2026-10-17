@@ -12,7 +12,7 @@
 use super::rect_to_vello;
 use crate::published::radius_scale;
 use crate::zones::Rect;
-use ph2d_vector::{Affine, Color, Fill, RoundedRect, Stroke, VectorScene};
+use ph2d_vector::{Affine, Brush, Color, Fill, RoundedRect, Stroke, VectorScene};
 fn scale_radius(r: f32) -> f32 {
     let s = radius_scale();
     if s == 1.0 {
@@ -39,9 +39,7 @@ pub fn fill_rounded_rect(scene: &mut VectorScene, rect: Rect, radius: f32, color
         (rect.y + rect.h) as f64,
         radius as f64,
     );
-    scene
-        .inner_mut()
-        .fill(Fill::NonZero, Affine::IDENTITY, color, None, &rr);
+    scene.fill_shape(Fill::NonZero, Affine::IDENTITY, &Brush::Solid(color), &rr);
 }
 
 /// ⭐⭐⭐ **Preenche um rect com um raio POR CANTO** — a lei do grupo de botões do Blender.
@@ -76,18 +74,19 @@ pub fn fill_rounded_rect_radii(
         (rect.y + rect.h) as f64,
         (tl, tr, br, bl),
     );
-    scene
-        .inner_mut()
-        .fill(Fill::NonZero, Affine::IDENTITY, color, None, &rr);
+    scene.fill_shape(Fill::NonZero, Affine::IDENTITY, &Brush::Solid(color), &rr);
 }
 
 /// Stroke an axis-aligned rect (sharp corners) with the given line
 /// width and color. Default `Stroke` uses round joins/caps.
 pub fn stroke_rect(scene: &mut VectorScene, rect: Rect, width: f32, color: Color) {
     let stroke = Stroke::new(width as f64);
-    scene
-        .inner_mut()
-        .stroke(&stroke, Affine::IDENTITY, color, None, &rect_to_vello(rect));
+    scene.stroke_path(
+        &stroke,
+        Affine::IDENTITY,
+        &Brush::Solid(color),
+        &rect_to_vello(rect),
+    );
 }
 
 /// Stroke a rect with rounded corners. Same defaults as
@@ -113,9 +112,7 @@ pub fn stroke_rounded_rect(
         radius as f64,
     );
     let stroke = Stroke::new(width as f64);
-    scene
-        .inner_mut()
-        .stroke(&stroke, Affine::IDENTITY, color, None, &rr);
+    scene.stroke_path(&stroke, Affine::IDENTITY, &Brush::Solid(color), &rr);
 }
 
 /// ⭐⭐ **O CONTORNO de uma peça de GRUPO** — a irmã traçada do [`fill_rounded_rect_radii`].
@@ -155,9 +152,7 @@ pub fn stroke_rounded_rect_radii(
         ),
     );
     let stroke = Stroke::new(width as f64);
-    scene
-        .inner_mut()
-        .stroke(&stroke, Affine::IDENTITY, color, None, &rr);
+    scene.stroke_path(&stroke, Affine::IDENTITY, &Brush::Solid(color), &rr);
 }
 
 #[cfg(test)]

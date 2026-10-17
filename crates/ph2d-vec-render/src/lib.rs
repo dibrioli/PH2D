@@ -291,10 +291,18 @@ pub type FxImages = std::collections::BTreeMap<VecPathId, FxImage>;
 /// — que alcança as duas — pinta o widget pelo **pintor REAL** numa cena de rascunho e a entrega
 /// pronta; aqui ela só é anexada no **z da forma**, exactamente como uma [`FxImage`].
 ///
-/// ⚠️ E ela **substitui** o desenho, não o acompanha: uma forma que veste um widget é a MOLDURA
-/// dele (onde e que tamanho), não uma silhueta a desenhar por baixo — pintar as duas mostraria o
-/// retângulo do artista sangrando pelas bordas do controle.
-pub type WidgetSkins = std::collections::BTreeMap<VecPathId, ph2d_vector::VectorScene>;
+/// ⭐ **F18: o desenho é o CORPO** (`over_drawing`): a forma desenha-se como sempre e a pele entra
+/// POR CIMA, no z dela — o rótulo, a marca, o valor. Só quem já CONSUMIU o desenho (o glifo de um
+/// botão de ícone, a cor de uma amostra) o substitui. Quem decide é o
+/// `WidgetKind::wears_the_drawing` do catálogo; esta crate só obedece à bandeira.
+pub type WidgetSkins = std::collections::BTreeMap<VecPathId, WidgetSkin>;
+
+/// A pele de UMA forma, já pintada em pixels de tela.
+pub struct WidgetSkin {
+    pub scene: ph2d_vector::VectorScene,
+    /// `true` = o desenho da forma é o corpo e a pele vai por cima; `false` = a pele substitui.
+    pub over_drawing: bool,
+}
 
 /// ⭐⭐⭐ **A porta que desenha o DOCUMENTO** — as duas metades (o mundo · a receita aberta).
 mod dispatch;

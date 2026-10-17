@@ -48,6 +48,9 @@ ph2d-ui-codegen = { path = "../ph2d-ui-codegen" }
 # A régua lexical do HR-15 — o gate que impede texto do PROGRAMA de entrar nos ficheiros escritos à
 # mão deste painel (o texto do desenho é do artista; ver a nota do `ph2d-i18n` acima).
 ph2d-label-census = { path = "../ph2d-label-census" }
+# O gate do corpo (F18) pinta pela porta REAL do painel numa cena que GRAVA — o `PaintCtx` pede um
+# `TextSystem`, e o arnês do testkit não devolve a cena que pintou.
+ph2d-text = { path = "../ph2d-text" }
 
 [lints]
 workspace = true

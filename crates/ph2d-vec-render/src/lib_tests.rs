@@ -515,13 +515,13 @@ fn the_dispatch_draws_the_token_colour_not_the_literal() {
     );
 }
 
-/// **A PELE de widget SUBSTITUI o desenho** (plano UI/UX W6.2) — no z da forma, como o FX raster.
+/// **A PELE de widget vai POR CIMA do desenho, ou o SUBSTITUI** (W6.2 + F18) — no z da forma.
 ///
 /// ⚠️ Sem este gate, tirar a injeção do `dispatch` deixaria a `widget_live` a cozinhar um mapa
 /// que ninguém desenha: os seis gates da ponte ficam VERDES (eles perguntam ao mapa) e o produto
 /// mostra o retângulo cru. É o buraco que separa *"a pele foi pintada"* de *"a pele aparece"*.
 #[test]
-fn the_widget_skin_replaces_the_drawing() {
+fn the_widget_skin_goes_over_the_drawing_or_replaces_it() {
     let (scene, id) = one_square();
     let (view, xf) = (VecViewState::default(), VecXforms::default());
 
@@ -552,27 +552,42 @@ fn the_widget_skin_replaces_the_drawing() {
         );
     }
     let three = skin.inner().encoding().n_paths;
-    let mut skins = WidgetSkins::new();
-    skins.insert(id, skin);
-
-    let mut dressed = VectorScene::new();
-    dispatch(
-        &scene,
-        &view,
-        &xf,
-        &LiveGeometry::new(),
-        &FxImages::new(),
-        &skins,
-        &PatternTiles::new(),
-        &crate::BrushArts::new(),
-        &crate::DilatedPaints::new(),
-        Affine::IDENTITY,
-        &mut dressed,
-    );
+    let paths_with = |over_drawing: bool| {
+        let mut one = VectorScene::new();
+        one.inner_mut().append(skin.inner(), None);
+        let mut skins = WidgetSkins::new();
+        skins.insert(
+            id,
+            crate::WidgetSkin {
+                scene: one,
+                over_drawing,
+            },
+        );
+        let mut dressed = VectorScene::new();
+        dispatch(
+            &scene,
+            &view,
+            &xf,
+            &LiveGeometry::new(),
+            &FxImages::new(),
+            &skins,
+            &PatternTiles::new(),
+            &crate::BrushArts::new(),
+            &crate::DilatedPaints::new(),
+            Affine::IDENTITY,
+            &mut dressed,
+        );
+        dressed.inner().encoding().n_paths
+    };
     assert_eq!(
-        dressed.inner().encoding().n_paths,
+        paths_with(false),
         three,
         "a pele nao SUBSTITUIU o desenho (nem apareceu, nem tomou o lugar dele)"
+    );
+    assert_eq!(
+        paths_with(true),
+        bare + three,
+        "o desenho tem de ser o CORPO e a pele ir por cima (F18)"
     );
 }
 

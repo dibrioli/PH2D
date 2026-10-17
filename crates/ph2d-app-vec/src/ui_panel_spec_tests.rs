@@ -170,6 +170,62 @@ fn only_the_swatch_carries_the_shapes_fill() {
     );
 }
 
+/// **O botão leva o preenchimento como CORPO, a swatch como COR** — cada um no seu campo (F18).
+///
+/// ⚠️ As duas formas são pintadas: um campo só, com dois sentidos, pintaria o xadrez no botão ou
+/// o azul na swatch. E a tabela VIVA leva o mesmo corpo que o código gerado.
+#[test]
+fn the_button_wears_the_fill_as_its_body_and_the_swatch_shows_it() {
+    use ph2d_vec_scene::{Paint, Rgba8, VecPath, rectangle};
+    let mut sim = SimWorld::new();
+    let mut scene = VecScene::new();
+    let frame = sim
+        .world_mut()
+        .spawn((Name("Color".into()), Transform::IDENTITY))
+        .id();
+    for (name, kind, c) in [
+        ("Go", WidgetKind::Button, [40, 120, 240]),
+        ("Tint", WidgetKind::ColorSwatch, [214, 92, 64]),
+    ] {
+        let mut p: VecPath = rectangle([-1.0, -0.4], [1.0, 0.4]);
+        p.fill = Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
+        let id = scene.push_path(p);
+        let e = sim
+            .world_mut()
+            .spawn((
+                Name(name.into()),
+                Transform::IDENTITY,
+                VecPathRef(id),
+                VecWidget { kind: kind.code() },
+            ))
+            .id();
+        sim.world_mut().entity_mut(e).insert(ChildOf(frame));
+    }
+    let spec = of(&sim, &scene, frame);
+    let got: Vec<(&str, Option<[u8; 4]>, Option<[u8; 4]>)> = spec
+        .rows
+        .iter()
+        .map(|r| (r.kind.as_str(), r.rgba, r.body))
+        .collect();
+    assert_eq!(
+        got,
+        vec![
+            ("Button", None, Some([40, 120, 240, 255])),
+            ("ColorSwatch", Some([214, 92, 64, 255]), None),
+        ],
+        "o corpo e a cor trocaram de campo, ou um deles nao saiu do preenchimento"
+    );
+    let live: Vec<Option<[u8; 4]>> = live_rows(&sim, &scene, frame)
+        .iter()
+        .map(|r| r.body)
+        .collect();
+    assert_eq!(
+        live,
+        vec![Some([40, 120, 240, 255]), None],
+        "a tabela viva perdeu o corpo que o codigo gerado leva"
+    );
+}
+
 /// **Uma forma SEM preenchimento deixa a swatch vazia** — e vazia É a resposta.
 ///
 /// ⚠️ `None` não é um erro nem um fallback de conveniência: o pintor desenha o tabuleiro de

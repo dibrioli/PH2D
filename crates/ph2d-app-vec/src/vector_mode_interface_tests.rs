@@ -40,6 +40,7 @@ impl Cena {
             &self.sim,
             &mut self.hero,
             interface,
+            9,
         );
         ph2d_vec_entities::entities::sync(&mut self.sim, &mut self.scene, &mut self.vec.entities);
         crate::shape_live::make_committed_shape_live(

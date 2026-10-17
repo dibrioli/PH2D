@@ -295,6 +295,15 @@ fn paint_body(
                 store.skin_live(row.id),
                 SkinParam {
                     rgba: row.rgba,
+                    // O corpo que o artista desenhou, no lugar da superfície do tema (F18).
+                    body: row.body.map(|c| ph2d_tokens::skin_body::Body::Flat {
+                        colour: ph2d_tokens::Color {
+                            r: c[0],
+                            g: c[1],
+                            b: c[2],
+                            a: c[3],
+                        },
+                    }),
                     options: &row.options,
                     // A seleção é estado VIVO, e mora onde a de todo controle do app mora — o
                     // `WidgetStore`. Um mapa próprio aqui seria um painel gerado que seleciona

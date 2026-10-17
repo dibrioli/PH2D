@@ -64,6 +64,7 @@ fn two_sections() -> Vec<rows::Row> {
         key: key.to_string(),
         id: ph2d_panel_authored::ids::authored_row_id(key),
         rgba: None,
+        body: None,
         icon: None,
         icon_id: None,
         options: Vec::new(),

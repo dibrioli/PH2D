@@ -142,10 +142,11 @@ impl Widgets {
     /// A tabela deste tema.
     #[must_use]
     pub fn of(theme: Theme) -> Self {
-        match Inputs::of(theme) {
+        let w = match Inputs::of(theme) {
             Some(inputs) => Self::modern(inputs),
             None => Self::classic(theme),
-        }
+        };
+        crate::skin_body::scoped_widgets(w, theme)
     }
 
     fn modern(inputs: Inputs) -> Self {
@@ -246,10 +247,11 @@ impl Chrome {
     /// O cromo deste tema.
     #[must_use]
     pub fn of(theme: Theme) -> Self {
-        match Inputs::of(theme) {
+        let c = match Inputs::of(theme) {
             Some(inputs) => Self::modern(inputs),
             None => Self::classic(theme),
-        }
+        };
+        crate::skin_body::scoped_chrome(c, theme)
     }
 
     fn modern(inputs: Inputs) -> Self {

@@ -368,6 +368,7 @@ impl ModeFamily for Family<'_> {
 /// `=23` (F16): a barra de controle e o painel do traço aberto (`vector_mode_controle`).
 /// `=24` (F16c): o tracejado em pares e a seta por ponta, no painel do traço (`vector_mode_tracejado`).
 /// `=25`/`=26` (F17): o botão feito interface, nas abas Drawing e Interface (`vector_mode_interface`).
+/// `=27`/`=28` (F18): o desenho é o corpo — a 25 e uma fila vestida; a 28 mostra o Hover (`vector_mode_vestidos`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -558,9 +559,18 @@ pub fn smoke_step(
             }
         }
         s @ crate::vector_mode_interface::FIRST..=crate::vector_mode_interface::LAST => {
-            let interface = HANDLES.load(Ordering::Relaxed) == 12;
+            let h = HANDLES.load(Ordering::Relaxed);
+            // As 27/28 continuam pela fila vestida (`vector_mode_vestidos`).
+            let end = if h >= 13 { crate::vector_mode_vestidos::FIRST } else { 9 };
             if let Some(next) =
-                crate::vector_mode_interface::step(s, vec, scene, sim, hero, interface)
+                crate::vector_mode_interface::step(s, vec, scene, sim, hero, h == 12, end)
+            {
+                go(next);
+            }
+        }
+        s @ crate::vector_mode_vestidos::FIRST..=crate::vector_mode_vestidos::LAST => {
+            let hover = HANDLES.load(Ordering::Relaxed) == 14;
+            if let Some(next) = crate::vector_mode_vestidos::step(s, vec, scene, sim, hero, hover)
             {
                 go(next);
             }

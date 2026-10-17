@@ -194,6 +194,7 @@ fn a_dropdown_without_options_is_still_a_live_control() {
         key: key.clone(),
         id,
         rgba: None,
+        body: None,
         icon: None,
         icon_id: None,
         options: Vec::new(),

@@ -2,7 +2,13 @@
 
 use ph2d_wet_paint::assenta::{Ecra, assenta, sobre_branco};
 use ph2d_wet_paint::colorops::{outra_tinta, vela_da_camada};
+use ph2d_wet_paint::grid::{
+    GridSnapshot, restore_grid, restore_grid_region, snapshot_grid, snapshot_grid_region,
+};
 use ph2d_wet_paint::opacity::alpha_of_mass;
+use ph2d_wet_paint::painter::Engine;
+use ph2d_wet_paint::trail::{Dab, Trail, TrailMode};
+use ph2d_wet_paint::tuning::Knob;
 
 const COBRE: Ecra = Ecra::Cobre {
     filme: 0.0,
@@ -161,4 +167,161 @@ fn sonda_alcance() {
             melhor.0, melhor.1
         );
     }
+}
+
+/// ⭐ **Onde o filme escuro esconde um canal, assentar guarda o ecrã** (a inversa FECHADA do `assenta`): os
+/// estados onde o Newton, sozinho, ficava no palpite — o verde sob o azul-noite a Glaze 0,5 e o amarelo sob o
+/// azul a Glaze 1. Medido: com a inversa 0,009 e 0,000 níveis; sem ela 10,87 e 2,83.
+#[test]
+fn assentar_sob_o_filme_que_esconde_um_canal_guarda_o_ecra() {
+    for (vela, sc, uc, ms, mf, desce) in [
+        (
+            0.5,
+            [40.0, 160.0, 60.0],
+            [20.0, 20.0, 60.0],
+            3000.0,
+            600.0,
+            0.3,
+        ),
+        (
+            1.0,
+            [245.0, 205.0, 25.0],
+            [23.0, 101.0, 179.0],
+            1500.0,
+            8000.0,
+            0.6,
+        ),
+    ] {
+        let e = COBRE.com_vela(vela);
+        let dm = mf * desce;
+        let (a_s, a_f) = (alpha_of_mass(ms), alpha_of_mass(mf));
+        let (a_s2, a_f2) = (alpha_of_mass(ms + dm), alpha_of_mass(mf - dm));
+        let alvo = sobre_branco(e, sc, uc, a_s, a_f);
+        let depois = sobre_branco(e, assenta(e, sc, uc, a_s, a_f, a_s2, a_f2), uc, a_s2, a_f2);
+        let d = (0..3)
+            .map(|k| (depois[k] - alvo[k]).abs())
+            .fold(0.0, f64::max);
+        assert!(
+            d < 1.0,
+            "Glaze {vela}, sc {sc:?} sob uc {uc:?}: o ecrã mudou {d:.2} níveis ao assentar"
+        );
+    }
+}
+
+const AZUL: [f64; 3] = [23.0, 101.0, 179.0];
+const VERMELHO: [f64; 3] = [191.0, 0.0, 18.0];
+
+/// O motor de 200² sem arrasto (o pouso de cada célula lê só a própria célula).
+fn motor() -> Engine {
+    let mut e = Engine::new(200, 200);
+    e.tuning.set(Knob::Drag, 0.0);
+    e
+}
+
+/// Um pouso da tinta `cor` com o Glaze `glaze`: dabs de raio 20 em `(100, 100)` até a janela encher, e o
+/// transfer. Devolve o grid de ANTES do transfer.
+fn pouso(e: &mut Engine, cor: [f64; 3], glaze: f64) -> GridSnapshot {
+    e.tuning.set(Knob::Glaze, glaze);
+    let p = e.sim.gather_params(&e.tuning);
+    let tex = e.bristle_texture_for_measure();
+    let mut t = Trail::default();
+    t.start_stroke(100.0, 100.0, cor, TrailMode::Paint);
+    t.on_segment(12.0, 12.0);
+    let g = e.active_grid_mut();
+    let d = Dab {
+        x: 100.0,
+        y: 100.0,
+        r: 20.0,
+        hardness: 0.5,
+        intensity: 40.0,
+        water_amount: 0.5,
+        dry_gate: 0.2,
+        reach: 1.0,
+        window_reach: 1.0,
+    };
+    assert!(
+        (0..8).any(|_| t.accumulate_paint(g, &p, &tex, &d, false).window_full),
+        "a janela enche"
+    );
+    let antes = snapshot_grid(g);
+    t.transfer_paint(g, &p);
+    antes
+}
+
+/// ⭐ **A camada que desce leva a sua água** (doc 42 §6, o halo branco do Ink Brush): o vermelho de Glaze 0,5
+/// sobre o azul molhado assenta a massa `dm`, e o filme da célula cai na MESMA proporção, `film × dm/susp` —
+/// medido contra o mesmo pouso a Glaze 0 (que não assenta nada), célula a célula.
+#[test]
+fn a_camada_que_desce_leva_a_sua_agua() {
+    let mut e = motor();
+    pouso(&mut e, AZUL, 0.0);
+    let molhado = snapshot_grid(e.active_grid());
+    let mut corre = |glaze: f64| {
+        restore_grid(e.active_grid_mut(), &molhado);
+        let antes = pouso(&mut e, VERMELHO, glaze);
+        (antes, snapshot_grid(e.active_grid()))
+    };
+    let (antes, sem) = corre(0.0);
+    let (antes_com, com) = corre(0.5);
+    assert_eq!(antes.film, antes_com.film, "o Glaze não muda o carimbo");
+    let (mut n, mut pior) = (0, 0.0f64);
+    for i in 0..antes.film.len() {
+        let dm = f64::from(com.sett[i]) - f64::from(sem.sett[i]);
+        if dm < 1.0 {
+            continue;
+        }
+        let esperado = f64::from(antes.film[i]) * dm / f64::from(antes.susp[i]);
+        let caiu = f64::from(sem.film[i]) - f64::from(com.film[i]);
+        pior = pior.max((caiu - esperado).abs() / esperado);
+        n += 1;
+    }
+    assert!(n > 50, "o pouso assentou em {n} células");
+    assert!(
+        pior < 1e-3,
+        "o filme não caiu na proporção do que assentou: erro relativo {pior:.4} em {n} células"
+    );
+}
+
+/// O azul pousado, e por cima o vermelho de Glaze 1 — que escreve a fracção que filtra (`vela`).
+fn glaze_sobre_azul(e: &mut Engine, entre: impl FnOnce(&mut Engine)) -> GridSnapshot {
+    pouso(e, AZUL, 0.0);
+    entre(e);
+    let antes = snapshot_grid(e.active_grid());
+    pouso(e, VERMELHO, 1.0);
+    let n = e.active_grid().vela.iter().filter(|v| **v > 0.0).count();
+    assert!(n > 50, "o Glaze escreveu a vela em {n} células");
+    antes
+}
+
+/// **Desfazer o Glaze devolve a vela** — o Ctrl+Z do motor (`capture_history`/`undo`) e o recorte regional
+/// (`snapshot_grid_region`, o rascunho das figuras): sem ela a tinta de baixo continuava filtrada.
+#[test]
+fn desfazer_o_glaze_devolve_a_vela() {
+    let mut e = motor();
+    let antes = glaze_sobre_azul(&mut e, Engine::capture_history);
+    assert!(e.undo());
+    let g = e.active_grid();
+    let n = g
+        .vela
+        .iter()
+        .zip(&antes.vela)
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(n, 0, "undo: {n} células com a vela do Glaze desfeito");
+    assert_eq!(g.sett, antes.sett);
+
+    let mut e = motor();
+    let mut recorte = None;
+    let antes = glaze_sobre_azul(&mut e, |e| {
+        recorte = snapshot_grid_region(e.active_grid(), 50, 50, 150, 150);
+    });
+    restore_grid_region(e.active_grid_mut(), &recorte.expect("o recorte"));
+    let g = e.active_grid();
+    let n = g
+        .vela
+        .iter()
+        .zip(&antes.vela)
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(n, 0, "recorte: {n} células com a vela do Glaze desfeito");
 }

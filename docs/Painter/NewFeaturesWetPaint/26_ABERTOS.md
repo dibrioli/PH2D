@@ -42,6 +42,8 @@
 | B12 | **Qual rampa ganha quando as DUAS estão em cor:** hoje o Shape; o Krita dá a vitória à textura. Trocar é uma linha (`color_ramp_owner`). | [doc 37 §5](37_rampas_de_cor_shape_grain_papel.md) |
 | B13 | **A Shape Color no pincel salvo do Wet Paint?** Hoje um pincel salvo (e os de fábrica) não leva as rampas — vivem no estado da ferramenta (a macro já as leva). Guardar é degrau do formato dos presets. | [handoff P41 §6](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-16_P41_SHAPE_COLOR_WET.md) |
 
+| B14 | **O Glaze do pincel numa caixa ao lado das da obra?** Hoje «Brush glaze» é uma linha do Tuning › Paint (0..1, gravada com o pincel); as caixas «Pigment mixing»/«Glaze layering» valem para a obra. A mistura (K–M) por pincel NÃO foi feita: não muda nenhum dos 5 pincéis do bloco A (medido, 42 §4). | [42_medicao](42_medicao_a_lei_da_tinta.md) |
+
 ## C — Defeitos e lacunas conhecidos (técnicos)
 
 | # | O quê | Fonte |

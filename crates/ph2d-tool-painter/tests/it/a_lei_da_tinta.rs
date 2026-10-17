@@ -254,3 +254,40 @@ fn trocar_de_pincel_nao_muda_a_tinta_da_tela() {
         "{n} px mudaram ao trocar o Glaze do pincel depois de pintar"
     );
 }
+
+/// ⭐ **Um pincel gravado leva o seu Glaze**: o Wet Liner de Glaze 0,6 capturado sobre uma base SEM a chave
+/// grava `glaze` 0,6 — e o capturado, aplicado, pinta a cena da bancada do original ao byte.
+#[test]
+fn um_pincel_gravado_leva_o_seu_glaze() {
+    let mut t = tela();
+    assert!(t.wet_preset_aplicar(&liner_com_glaze(0.6)).is_empty());
+    let mut base = de_fabrica("Wet Liner").parametros;
+    base.engine.remove("glaze");
+    let (capturado, texturas) = t.wet_preset_capturar(&base);
+    let g = capturado.engine.get("glaze").copied();
+    assert!(
+        g.is_some_and(|g| (g - 0.6).abs() < 1e-6),
+        "o pincel gravado tem o Glaze {g:?}"
+    );
+    let mut de_volta = liner_com_glaze(0.6);
+    de_volta.parametros = capturado;
+    de_volta.texturas = texturas;
+    let original = liner_com_glaze(0.6);
+    let [a, b] = std::thread::scope(|s| {
+        [&original, &de_volta]
+            .map(|p| s.spawn(move || cena_com(p, 480)))
+            .map(|h| h.join().unwrap())
+    });
+    let n =
+        a.0.chunks(4)
+            .zip(b.0.chunks(4))
+            .filter(|(p, q)| p != q)
+            .count();
+    assert_eq!(
+        n,
+        0,
+        "{n} px mudaram ao re-aplicar o pincel gravado (cruzamento {:.3} contra {:.3})",
+        cruzamento(&a.0, a.1),
+        cruzamento(&b.0, b.1)
+    );
+}

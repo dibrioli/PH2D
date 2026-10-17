@@ -199,6 +199,14 @@ fn sem_nada_a_corrigir_a_janelinha_diz_e_uma_tecla_fecha() {
     alt_enter(&mut m, id);
     tecla(&mut m, id, Key::Escape, Modifiers::default(), None, "");
     assert_eq!(m.docs().actions_of(id), None, "Esc fecha-as");
+    // Uma tecla que não edita (a seta) também as fecha, e anda.
+    alt_enter(&mut m, id);
+    quadro_em(&mut m, T0);
+    assert!(m.docs().actions_of(id).is_some());
+    let antes = cursor(&mut m, id);
+    tecla(&mut m, id, Key::Left, Modifiers::default(), None, "");
+    assert_eq!(m.docs().actions_of(id), None, "a seta fecha-as");
+    assert_eq!(cursor(&mut m, id), antes - 1, "e anda");
 }
 
 /// A completion do servidor no início do nome errado: as candidatas do «você quis dizer».
@@ -321,6 +329,16 @@ fn uma_composicao_com_as_accoes_em_voo_fecha_as() {
     quadro_em(&mut m, T0);
     assert!(m.docs().compose(id.0, Compose::Commit('é')));
     let depois = texto(&mut m, id);
+    // As três perguntas foram antes da composição: espera a ÚLTIMA (as dicas de tipo) ser
+    // respondida — sem isto a janela do `nunca` acaba antes de o servidor lento responder.
+    let v = visto.clone();
+    ate(
+        &mut m,
+        id,
+        T0,
+        "o servidor não respondeu às dicas de tipo",
+        move |_| v.lock().unwrap().tipos == 1,
+    );
     nunca(
         &mut m,
         id,
@@ -384,4 +402,53 @@ fn o_assistente_fixado_corrige_com_alt_enter() {
         );
         tecla(&mut m, id, Key::Escape, Modifiers::default(), None, "");
     }
+}
+
+/// O servidor falso acusa o gancho `init` de «nunca usado» (o `luau-lsp` fá-lo em todo script; o
+/// cliente do PH2D esconde-o pelas `-- @hook` das definições, que o falso não tem).
+fn acusa_gancho(s: &str) -> Vec<Value> {
+    let b = s.find("function init").unwrap() + "function ".len();
+    vec![
+        json!({ "range": { "start": posicao(s, b), "end": posicao(s, b + 4) },
+                 "severity": 2, "code": 8,
+                 "message": "FunctionUnused: Function 'init' is never used; prefix with '_' to silence" }),
+    ]
+}
+
+/// ⭐ O aviso que a aba ESCONDE (o gancho do motor) não vai no `context`: a quickfix do servidor,
+/// que só ecoa o que se mandou, não aparece — «Prefix 'init' with '_'» partiria o gancho.
+#[test]
+fn um_gancho_do_motor_nao_ganha_correccao() {
+    let (mut m, ids, visto) = com_falso(
+        &[("a.luau", TEXTO)],
+        Plano {
+            regra: Some(acusa_gancho),
+            completar: Some(candidatas),
+            agir: Some(agir),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    converge(&mut m, &visto, "abrir");
+    ate(
+        &mut m,
+        id,
+        T0,
+        "o aviso do gancho não chegou à aba",
+        |m| {
+            m.docs()
+                .assist_diagnostics(id)
+                .1
+                .is_some_and(|l| l.iter().any(|d| d.code.as_deref() == Some("8")))
+        },
+    );
+    let init = TEXTO.find("function init").unwrap() + "function ".len();
+    clica_em(&mut m, id, init + 1, Modifiers::default());
+    alt_enter(&mut m, id);
+    ate(&mut m, id, T0, "as acções não chegaram", |m| {
+        m.docs().actions_of(id).is_some()
+    });
+    let (titulos, ..) = m.docs().actions_of(id).unwrap();
+    assert_eq!(titulos, ["No quick fixes here"]);
 }

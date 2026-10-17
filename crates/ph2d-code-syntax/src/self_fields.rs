@@ -141,9 +141,9 @@ fn use_of_self(n: Node, text: &Text, out: &mut SelfFields) -> Option<()> {
             }
             Some(())
         }
-        // `self:m()`: o método pode vir de uma metatable — nem leitura nem fuga.
-        "method_index_expression" => Some(()),
-        _ => None,
+        // O único outro índice com `table` é `self:m()`: o método pode vir de uma metatable — nem
+        // leitura nem fuga.
+        _ => Some(()),
     }
 }
 

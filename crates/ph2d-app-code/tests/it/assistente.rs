@@ -42,6 +42,8 @@ pub(crate) struct Visto {
     pub(crate) cores: usize,
     /// Os pedidos `textDocument/codeAction` recebidos (I7).
     pub(crate) acoes: usize,
+    /// Os pedidos `textDocument/inlayHint` recebidos (respondidos com `null`).
+    pub(crate) tipos: usize,
 }
 
 pub(crate) type Partilhado = Arc<Mutex<Visto>>;
@@ -273,6 +275,9 @@ fn servir(
                 let (l, c) = pos(&p["position"]);
                 f(&texto, byte_de(&texto, l, c))
             } else {
+                if method == "textDocument/inlayHint" {
+                    visto.lock().unwrap().tipos += 1;
+                }
                 Value::Null
             };
             if write_message(

@@ -109,6 +109,8 @@ slow-timeout = { period = "60s", terminate-after = 6 }
 # (`-j 1`, load 42 → 19): `pular_…` 40,3 s · `uma_versao_nova_…` 40,0 s · `a_mao_torta_…` 33,9 s ·
 # `o_aluno_exacto_…` 27,3 s · `cada_pincelada_…` 21,5 s · `mudar_a_macro_…` 20,4 s · `o_mostra_me_…` 12,3 s; os
 # sete juntos (load ~50, todos CPU) 85–151 s. ~10× sob a suíte: 10 × 60 s ≈ 15× o mais lento sozinho.
+# 17/10 (prova de mutação da W7): o `pular_…` passou a esperar 1 080 quadros FIXOS (antes: até a última idade
+# das curvas, ~972) — 39,8 / 44,6 s sozinho (`--test-threads 1`, load 15 / 7 → 18): cabe na mesma faixa.
 [[profile.default.overrides]]
 filter = 'test(=macro_track::tutorial::tests::pular_a_pincelada_e_esperar_nao_cumpre_nenhuma) + test(=macro_track::tutorial::tests::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao) + test(=macro_track::tutorial::tests::o_aluno_exacto_cumpre_no_quadro_do_up) + test(=macro_track::tutorial::tests::cada_pincelada_so_se_cumpre_feita_e_o_desfazer_a_volta) + test(=macro_track::tutorial::tests::o_mostra_me_cumpre_a_fatia_fina) + test(=tutorial_painter::uma_versao_nova_prepara_se_fora_do_quadro) + test(=tutorial_painter::mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha)'
 slow-timeout = { period = "60s", terminate-after = 10 }

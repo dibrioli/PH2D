@@ -163,13 +163,18 @@ fn o_aluno_exacto_cumpre_no_quadro_do_up() {
 }
 
 /// ⭐ **Pular a pincelada e esperar não a cumpre** (W6d; W7 em cada idade): o aluno que fez as
-/// anteriores certas NÃO faz a `k` e espera — a aguada da anterior pinta sozinha a fatia nova —, até a
-/// idade dele passar a última das curvas da `k`, e é avaliado em cada quadro: nunca se cumpre, nem pela
-/// razão, nem pela porta do balão ([`EnsinoDoPainter::por_cumprir`] pára na 1.ª com critério desde a
-/// `k`), esta a cada 32 quadros. Só as pinceladas que cumpriam pela régua da W6c, para caber no prazo
-/// de um gate (cada medida são 960 quadros de água).
+/// anteriores certas NÃO faz a `k` e espera — a aguada da anterior pinta sozinha a fatia nova —
+/// `ESPERA_DE_QUEM_PULA` quadros, e é avaliado em cada quadro: nunca se cumpre, nem pela razão, nem
+/// pela porta do balão ([`EnsinoDoPainter::por_cumprir`] pára na 1.ª com critério desde a `k`), esta a
+/// cada 32 quadros. Só as pinceladas que cumpriam pela régua da W6c, para caber no prazo de um gate
+/// (cada medida são 960 quadros de água). ⛔ VERMELHO com `QUADROS_ATE_ASSENTAR = 0` (a régua medida no
+/// corte, o defeito da W6d).
 #[test]
 fn pular_a_pincelada_e_esperar_nao_cumpre_nenhuma() {
+    /// Quanto o aluno que pula espera: um número FIXO (no produto ele espera o que quiser), além dos 960
+    /// quadros das curvas e 2 s a mais. ⛔ Nunca derivado das curvas: a W7 parava na última idade delas, e
+    /// com as curvas curtas (medidas no corte) o aluno era avaliado só até ao corte — a mutação passava.
+    const ESPERA_DE_QUEM_PULA: u32 = 1080;
     const KS: [usize; 6] = [5, 9, 13, 18, 22, 26];
     let (ps, track, e) = trinta_em_wet_paint(Some(&KS));
     assert_eq!(e.criterios.len(), KS.len(), "todas as KS têm critério");
@@ -196,9 +201,8 @@ fn pular_a_pincelada_e_esperar_nao_cumpre_nenhuma() {
             .criterios
             .iter()
             .position(|c| ks[k..].contains(&c.regiao.k));
-        let ate = c.referencia.as_ref().expect("medida").ate();
         let mut q = 0u32;
-        while idade(&a) <= ate {
+        while q < ESPERA_DE_QUEM_PULA {
             let r = e.razao(&a, c).expect("medida");
             if r >= FRACAO_DA_GRAVADA_QUE_CUMPRE {
                 return (Some((k, idade(&a), r)), None);

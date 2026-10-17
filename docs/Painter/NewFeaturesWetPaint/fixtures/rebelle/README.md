@@ -72,3 +72,13 @@ Os mesmos gestos (`ferramentas/gera_eventos.py --seca_cruz 240`): depois do azul
 | `mbazulmolhado.png` | MARKER | Marker/Bullet | azul sobre azul, molhado | `1d03cc57ef24d25b` |
 | `inkazulazul.png` | INK_PEN | Pen/Bullet | azul sobre azul SECO | `2405591a661caff4` |
 | `mblaranja.png` | MARKER | Marker/Bullet | amarelo sobre laranja SECO | `c3f7b18037f82c73` |
+
+## O aerógrafo a três tamanhos (sessão de 2026-10-17, prompt 43)
+
+Os mesmos gestos (`gera_eventos.py AIRBRUSH "Default/Spray 2" … --size_px N`), estado A, recorte 1000×640. `airbrush40b.png` é o CONTROLO da sessão: o `airbrush` de 07/10 refeito com eventos byte-iguais. Comando exacto no campo `comando` de `cabecalhos.json`.
+
+| ficheiro | ferramenta | preset | size_px | Size (slider) | semente | papel | sha256 (16) | SIMULATION |
+|---|---|---|---|---|---|---|---|---|
+| `airbrush20.png` | AIRBRUSH | Default/Spray 2 | 20 | 9.3 | 7 | Default/EX00 White Simple | `26ef6c5cddb0be7a` | [240] |
+| `airbrush80.png` | AIRBRUSH | Default/Spray 2 | 80 | 23.6 | 7 | Default/EX00 White Simple | `ecf51447dd38c69c` | [240] |
+| `airbrush40b.png` | AIRBRUSH | Default/Spray 2 | 40 | 14.8 | 7 | Default/EX00 White Simple | `151a0ab747a781ac` | [240] |

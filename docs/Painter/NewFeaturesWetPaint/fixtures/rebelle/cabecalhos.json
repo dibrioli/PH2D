@@ -1570,5 +1570,93 @@
    "SIMULATION": 2
   },
   "sha256": "c3f7b18037f82c73feef9a5b6af1f9fe6d452528ca78a9d5b3a0977b33b00b03"
+ },
+ "airbrush20": {
+  "tool": "AIRBRUSH",
+  "preset": "Default/Spray 2",
+  "size_px": 20.0,
+  "size_slider": 9.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "26ef6c5cddb0be7aef149fff250ddda5404ba2ea296ddc3d958eb2c671ea5aa4",
+  "comando": "python3 -I ferramentas/gera_eventos.py AIRBRUSH \"Default/Spray 2\" Z:/home/enio/Apps/rebelle/oraculo/saida airbrush20 --size_px 20 > ev.json; corte em ev_A.json (sem SAVE, até ao 1.º SIMULATION, como no regenera2.sh); node ferramentas/ws_eventos.mjs ev_A.json 6000 2; inj.sh \"click 1853 273; key ctrl+a; type 100; key enter\" (zoom 100 %); foto.sh; magick -crop 1000x640+480+220 — sessão 2026-10-17 (gotas_inicia.sh, Registration Try→Pro, New Artwork cancelado), ordem airbrush40b · airbrush20 · airbrush80, Rebelle 8.3.4 Trial"
+ },
+ "airbrush80": {
+  "tool": "AIRBRUSH",
+  "preset": "Default/Spray 2",
+  "size_px": 80.0,
+  "size_slider": 23.6,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "ecf51447dd38c69c0ee88a59cdb1d7e773d118869ed124d5ec9f302afdbe29f2",
+  "comando": "python3 -I ferramentas/gera_eventos.py AIRBRUSH \"Default/Spray 2\" Z:/home/enio/Apps/rebelle/oraculo/saida airbrush80 --size_px 80 > ev.json; corte em ev_A.json (sem SAVE, até ao 1.º SIMULATION, como no regenera2.sh); node ferramentas/ws_eventos.mjs ev_A.json 6000 2; inj.sh \"click 1853 273; key ctrl+a; type 100; key enter\" (zoom 100 %); foto.sh; magick -crop 1000x640+480+220 — sessão 2026-10-17 (gotas_inicia.sh, Registration Try→Pro, New Artwork cancelado), ordem airbrush40b · airbrush20 · airbrush80, Rebelle 8.3.4 Trial"
+ },
+ "airbrush40b": {
+  "tool": "AIRBRUSH",
+  "preset": "Default/Spray 2",
+  "size_px": 40.0,
+  "size_slider": 14.8,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "151a0ab747a781ac6f28ae363b3ef42b2949c7a03340486254f534363ae4022a",
+  "comando": "python3 -I ferramentas/gera_eventos.py AIRBRUSH \"Default/Spray 2\" Z:/home/enio/Apps/rebelle/oraculo/saida airbrush40b --size_px 40 > ev.json; corte em ev_A.json (sem SAVE, até ao 1.º SIMULATION, como no regenera2.sh); node ferramentas/ws_eventos.mjs ev_A.json 6000 2; inj.sh \"click 1853 273; key ctrl+a; type 100; key enter\" (zoom 100 %); foto.sh; magick -crop 1000x640+480+220 — sessão 2026-10-17 (gotas_inicia.sh, Registration Try→Pro, New Artwork cancelado), ordem airbrush40b · airbrush20 · airbrush80, Rebelle 8.3.4 Trial",
+  "nota": "controlo de reprodução do `airbrush` (07/10): eventos byte-iguais aos de ev_airbrush_A.json"
  }
 }

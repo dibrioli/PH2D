@@ -39,7 +39,41 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// caminho de um hover.
 pub type UiMachines = BTreeMap<VecPathId, Machine>;
 
+/// **O [`request`] que PARTE DA CENA** (F18) — a porta do Show e dos sinais.
+///
+/// ⚠️ Uma máquina parada supõe que a cena mostra o estado onde ela está; o artista que pintou a
+/// forma depois de gravar o Default desmente-a, e o Show do Default era recusado (medido na cena
+/// 25: o botão ficava laranja). Aqui ela lê a cena pela MESMA porta que o *Rec* usa
+/// ([`crate::ui_state_edit::capture`]) antes de pedir.
+pub fn request_seen(
+    machines: &mut UiMachines,
+    states: &StateSets,
+    world: (&SimWorld, &VecScene, &VecEntityMap),
+    host: VecPathId,
+    role: StateRole,
+) {
+    let (sim, scene, map) = world;
+    if let Some(m) = machines.get_mut(&host) {
+        let now = m
+            .live_ids()
+            .map(|id| crate::ui_state_edit::capture(sim, scene, map, id))
+            .collect();
+        m.settle_on(now);
+    } else if let Some(mut m) = Machine::new(states.get(host).to_vec()) {
+        let now = m
+            .live_ids()
+            .map(|id| crate::ui_state_edit::capture(sim, scene, map, id))
+            .collect();
+        m.settle_on(now);
+        machines.insert(host, m);
+    }
+    request(machines, states, host, role);
+}
+
 /// **Pede a `host` que vá para `role`.** Cria a máquina se ela ainda não existe.
+///
+/// ⚠️ Supõe que a cena é a pose viva da máquina (a Preview acabou de a instalar). Quem pede
+/// sobre uma cena que o artista pode ter mexido usa o [`request_seen`].
 ///
 /// ⚠️ A máquina nasce parada no primeiro estado gravado, e é por isso que a construção lê a
 /// tabela inteira: partir de um estado inventado faria a primeira transição vir de uma pose que
@@ -189,6 +223,48 @@ mod tests {
 
     fn x(machines: &UiMachines, host: VecPathId) -> f64 {
         machines[&host].pose()[0].translation[0]
+    }
+
+    /// ⭐ **F18 — o Show do Default devolve a cor mesmo depois de o artista pintar por cima.**
+    ///
+    /// Medido na cena 25: Default gravado azul, a forma pintada de laranja e o Hover gravado; o
+    /// Show do Default não fazia NADA (a máquina nascia no Default e o atalho do `go_to` dizia
+    /// «já estou lá»). A porta antiga é o controlo e fica a recusar; a `request_seen` lê a cena.
+    #[test]
+    fn o_show_do_default_parte_da_cena_e_devolve_a_cor() {
+        use ph2d_vec_scene::{Paint, Rgba8};
+        let mut sim = SimWorld::default();
+        let mut map = VecEntityMap::new();
+        let mut scene = VecScene::new();
+        let host = scene.push_path(ph2d_vec_scene::rectangle([-1.0, -0.4], [1.0, 0.4]));
+        let e = sim
+            .world_mut()
+            .spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::VecPathRef(host)))
+            .id();
+        map.insert(host, e.to_bits());
+        let paint = |scene: &mut VecScene, c: [u8; 3]| {
+            scene.path_mut(host).unwrap().fill =
+                Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
+        };
+        let mut states = StateSets::default();
+        for (role, c) in [(StateRole::Default, [40, 120, 240]), (StateRole::Hover, [240, 140, 40])] {
+            paint(&mut scene, c);
+            let mut st = UiState::new(role);
+            st.objects = vec![crate::ui_state_edit::capture(&sim, &scene, &map, host)];
+            states.set(host, st);
+        }
+        let blue = Some(Paint::Solid(Rgba8::new(40, 120, 240, 255)));
+
+        let mut old = UiMachines::new();
+        request(&mut old, &states, host, StateRole::Default);
+        assert!(!old[&host].is_animating(), "o controlo: a porta antiga recusa (o defeito)");
+
+        let mut machines = UiMachines::new();
+        request_seen(&mut machines, &states, (&sim, &scene, &map), host, StateRole::Default);
+        let m = machines.get_mut(&host).unwrap();
+        assert!(m.is_animating(), "o Show do Default não partiu da cena laranja");
+        m.advance(10.0);
+        assert_eq!(m.pose()[0].fill, blue, "a cena não voltou ao azul gravado");
     }
 
     /// ⭐ **UM SINAL MOVE A CENA** — a composição que o frame corre: o nome encontra quem

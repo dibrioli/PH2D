@@ -60,9 +60,7 @@ impl crate::App {
                 self.vec.path_pick = Some(crate::vec_pick::PathPick::WidgetBind(at));
             }
         }
-        // OS ESTADOS de UI (W7). ⚠️ O **Show** não escreve pose aqui: ele DEVOLVE o pedido, e
-        // quem o honra é a máquina — uma escrita direta seria a segunda porta para *"pôr a
-        // cena nesta pose"*, e a diferença entre as duas é o tween que o artista autorou.
+        // OS ESTADOS (W7): o Show DEVOLVE o pedido e a máquina o honra (o tween autorado).
         if let Some(verb) = pending_ui_state {
             let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
             if let Some((host, role)) = crate::vec_ui_state_edit::apply(
@@ -73,7 +71,10 @@ impl crate::App {
                 ui_states,
                 verb,
             ) {
-                crate::render_loop::ui_state_bridge::request(ui_machines, ui_states, host, role);
+                let world = (&*sim, &*vec_scene, &self.vec.entities);
+                crate::render_loop::ui_state_bridge::request_seen(
+                    ui_machines, ui_states, world, host, role,
+                );
             }
         }
         // ⭐ **O SINAL MOVE A CENA** — o consumidor da tabela de ligação (item 4 do estudo dos

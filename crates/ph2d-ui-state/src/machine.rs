@@ -83,6 +83,22 @@ impl Machine {
         })
     }
 
+    /// **Parada, ela parte do que a CENA mostra** (F18). O artista mexe na forma depois de gravar
+    /// (pinta-a de laranja e grava o Hover): a pose viva que a máquina supunha — a do Default em
+    /// que nasceu — já não é a cena, e o atalho do [`Self::go_to`] recusava o Show do Default.
+    /// `now` traz uma pose por objecto, na ordem da viva. Em voo, não toca: quem escreve a cena
+    /// é ela.
+    pub fn settle_on(&mut self, now: Vec<ObjectPose>) {
+        if self.flight.is_none() && now.len() == self.live.len() {
+            self.live = now;
+        }
+    }
+
+    /// Os objectos da pose viva, pela ordem dela — quem lê a cena para [`Self::settle_on`].
+    pub fn live_ids(&self) -> impl Iterator<Item = ph2d_vec_scene::VecPathId> + '_ {
+        self.live.iter().map(|p| p.id)
+    }
+
     /// O índice do estado em que ela **está** — ou de onde ela SAIU, se há uma transição no ar.
     #[must_use]
     pub fn current(&self) -> usize {

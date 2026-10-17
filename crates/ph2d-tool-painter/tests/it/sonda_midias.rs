@@ -647,7 +647,9 @@ fn sonda_o_custo_do_glaze() {
         t.set_brush_size_px(18.0);
         t.set_brush_color_srgb8(AZUL);
         gesto(&mut t, &[[60.0, 480.0], [560.0, 480.0]], 3.0, |_| 1.0);
-        t.set_brush_color_srgb8(VERMELHO);
+        // `PH2D_SONDA_MESMA=1`: o traço que cruza é da MESMA tinta (o primeiro toque assenta a de baixo, doc 42 §7).
+        let mesma = std::env::var("PH2D_SONDA_MESMA").is_ok_and(|v| v == "1");
+        t.set_brush_color_srgb8(if mesma { AZUL } else { VERMELHO });
         let t0 = std::time::Instant::now();
         gesto(&mut t, &[[300.0, 400.0], [300.0, 560.0]], 3.0, |_| 1.0);
         let traco = t0.elapsed().as_secs_f64() * 1e3;

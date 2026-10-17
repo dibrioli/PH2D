@@ -118,6 +118,13 @@ pub struct Trail {
     limpo: Vec<f32>,
     /// Algum dab desta janela trouxe a cor por célula.
     tinta_na_janela: bool,
+    /// As células da grade com tinta molhada de OUTROS traços que ESTE ainda não tocou (só com Glaze): tiradas da
+    /// grade no primeiro transfer do traço, antes de ele pousar nada — com a Live Water a tinta do próprio traço corre
+    /// para células secas, e essas não contam. No primeiro toque a tinta de lá vira a camada de baixo — também a mesma
+    /// tinta (doc 42 §7).
+    por_assentar: Vec<bool>,
+    /// O traço ainda não tirou o [`Self::por_assentar`] da grade.
+    por_assentar_pendente: bool,
 }
 
 /// Canvas rect touched by a transfer (cell coords, inclusive).
@@ -218,6 +225,8 @@ impl Default for Trail {
             tinta_b: Vec::new(),
             limpo: Vec::new(),
             tinta_na_janela: false,
+            por_assentar: Vec::new(),
+            por_assentar_pendente: false,
         }
     }
 }
@@ -231,6 +240,7 @@ impl Trail {
         self.tip_g.fill(color[1] as f32);
         self.tip_b.fill(color[2] as f32);
         self.limpo.fill(1.0);
+        self.por_assentar_pendente = true;
         self.base_r = color[0];
         self.base_g = color[1];
         self.base_b = color[2];

@@ -113,3 +113,61 @@ halo branco; Glaze 0 ao byte. A orla fica com uma linha azul mais escura (o azul
 **Receitas:** Ink Brush Glaze 1 → **0,8** (a fracção multiplicada que o oráculo mediu, §3: 0,76 · 0,82): cruzamento
 0,257 (Rebelle 0,239), miolo (97,40,68) contra (95,37,55). Marker Liner dureza 0,9 → **0,55**, medida à lei de
 largura do próprio preset (raio 9): borda 0,721 (Rebelle 0,716), textura 2,78, cruzamento 0,043.
+
+## §7 — A 3.ª camada da mesma tinta clareava (smoke do dono 16/10; sondas `sonda_a_terceira_camada`, `sonda_a_celula_que_clareia`)
+
+**O defeito** (capturas do dono): três–quatro traços do MESMO vermelho; onde o último passa sobre a zona escura de duas
+camadas aparece uma cunha/faixa mais clara de borda reta, com um «reflexo» quase da cor pura ((188, 50, 50) dentro de
+(166, 34, 34)) — só com a tinta de baixo ainda molhada. Reproduzido nos 5 pincéis de Glaze (cena `camadas`: dois
+horizontais meio sobrepostos, um vertical, uma diagonal; esperas por traço; luz linear por número de camadas).
+
+**Dois mecanismos, medidos célula a célula:**
+
+1. **A mesma tinta molhada nunca era camada.** O assentar no pouso só corria para OUTRA tinta (`outra_tinta` ≥ 0,1); a
+   mesma tinta molhada fundia-se na água e a fracção não subia: o 3.º traço molhado sobre o 2.º não escurecia NADA (Dip
+   Pen, `[1800, 0]`: as 252 células de 3 camadas antes e depois do traço, ecrã (170,7; 37,8) igual) e o escoamento,
+   que só pode tirar filme de uma célula saturada (a cobertura satura em 3 000), deixava-a mais clara que as de 2
+   (+1–7 % na mediana). Com nivelamento, capilaridade e gravidade a 0 o clarear some — refuta o arrasto, o re-molhar e
+   a recolha (cada um desligado, o clarear fica). Um traço molhado sobre molhado (espera 0) nem a 2.ª camada escurecia
+   — o Rebelle escurece igual molhado e seco (§3, §3b `mbazulmolhado`).
+2. **A fracção sobre um RESTO de assentado.** `vela_aqui` pedia só `sett > 0`: o arrasto do traço novo leva a orla de
+   uma camada (2 473 → 6,4) e a célula de massa < 1 contava como camada. O traço pousava ali com a fracção inteira; ao
+   secar, a inversa do assentar guardava o ecrã com um assentado BRANCO ((254, 252, 252)) e a célula secava mais clara
+   que a tinta: 2 395 · 3 651 · 2 992 células (Dip Pen · Ink Bullet · Marker Bullet), até +15,5 níveis — o reflexo, e a
+   borda reta é a frente do arrasto.
+
+**A lei** (`trail/transfer.rs`, `colorops::vela_sobre`): o primeiro toque de um traço numa célula que estava MOLHADA
+antes dele assenta a tinta de lá — é de OUTRO traço — também a mesma tinta (`Trail::por_assentar`, tirado da grade no
+1.º transfer do traço); e a fracção pesa a cobertura da camada de baixo até `COBERTURA_QUE_FILTRA` 0,5 (a tabela no
+código: 0,5 cura 2 395 → 1 sem mexer no cruzamento; 1 custava ao Ink Brush 0,257 → 0,311). ⛔ «As células que o traço
+ainda não TOCOU» em vez de «as molhadas antes dele» falha com a Live Water: a tinta do próprio traço corre à frente e a
+orla vela-se a si mesma (os três azuis sozinhos, Glaze 1 contra 0, o pior canal: Dip Pen 119 · com o retrato 13 · o
+motor de antes 39; Marker Bullet 35 · 49; Ink Brush 14 · 14).
+
+| luz linear, cena `camadas` `[1800, 0, 0]` | 1 | 2 | 3 | 4 | miolo de 1 camada, p95 |
+|---|---|---|---|---|---|
+| Marker Bullet antes | 0,1396 | 0,0937 | **0,0937** | **0,0948** | 0,1500 |
+| Marker Bullet depois | 0,1396 | 0,0937 | 0,0799 | 0,0730 | 0,1430 |
+| Dip Pen antes | 0,1396 | 0,1000 | **0,1067** | 0,1033 | 0,1526 |
+| Dip Pen depois | 0,1396 | 0,1000 | 0,0960 | 0,0950 | 0,1406 |
+
+Depois, as 5 × {seco, molhado sobre molhado, 60/60, `[1800,0,0]`, `[1800,1800,0]`} × 2 cenas são monótonas e o molhado
+dá o mesmo que o seco (Marker Bullet 0,1396 → 0,0937 → 0,0799 → 0,0730 em todas). O Dip Pen (Glaze 0,8) converge para o
+ponto fixo `(1−m)·u / ((1−m) + m·(1−u/255))` já na 3.ª camada. Cruzamento das mídias: Ink Bullet 0,113 → 0,104 (Rebelle
+0,117) · Dip Pen 0,217 → 0,208 (0,223) · Ink Brush 0,257 · Marker Bullet 0,025 → 0,015 (0,016) · Marker Liner 0,043 →
+0,037 (0,016). Glaze 0 ao byte. Custo (carga ~20, só relativo): o traço que cruza a MESMA tinta molhada 18 → 31 ms com
+Glaze 1 (outra tinta 20 → 28 ms); a água igual.
+
+Portões `a_lei_da_tinta::a_terceira_camada_da_mesma_tinta_nao_clareia` (vermelho no `2e43def369`: Marker Bullet
+0,1396 · 0,0937 · 0,0937 · 0,0948) e `o_primeiro_toque_nao_assenta_o_proprio_traco_com_agua_viva` (Dip Pen ≤ 25 níveis).
+Mutação 5/5 sangram (sem a cobertura · sem o primeiro toque · o retrato nunca tirado de novo · o primeiro toque com
+`outra_tinta` · o retrato = todas as células).
+
+| recusado (medido) | porquê |
+|---|---|
+| a fracção × cobertura inteira (`COBERTURA_QUE_FILTRA` 1) | Ink Brush 0,257 → 0,311, Liner 0,037 → 0,045; o pálido igual ao de 0,5 |
+| só a cobertura, sem o primeiro toque | o clarear da 3.ª camada fica (Dip Pen 0,1000 → 0,1067) |
+| só o primeiro toque | os 2 397 · 3 393 · 3 074 assentados pálidos ficam |
+
+**Aberto:** o resto (Marker Bullet 30 células, +5,1) é a orla de cima de uma camada SECA que o arrasto do traço novo leva
+(o arrasto move o assentado, lei do port, também com Glaze 0); o mesmo traço sobre si próprio não faz camada.

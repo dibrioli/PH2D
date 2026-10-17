@@ -291,3 +291,583 @@ fn um_pincel_gravado_leva_o_seu_glaze() {
         cruzamento(&b.0, b.1)
     );
 }
+
+/// O vermelho do smoke do dono (16/10, as duas capturas: o traço sozinho (190, 55, 55), duas camadas (166, 34, 34)).
+const VERMELHO_DO_DONO: [u8; 3] = [190, 55, 55];
+
+/// Um traço recto da cena das camadas.
+type Traco = [[f32; 2]; 2];
+
+/// A luminância (luz linear) de um pixel RGBA — a do [`cruzamento`].
+fn luz(px: &[u8], i: usize) -> f64 {
+    let lin = |v: u8| {
+        let c = f64::from(v) / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * lin(px[i]) + 0.7152 * lin(px[i + 1]) + 0.0722 * lin(px[i + 2])
+}
+
+fn dist_ao_traco(p: [f32; 2], [a, b]: Traco) -> f32 {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let f = (((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)).clamp(0.0, 1.0);
+    ((p[0] - a[0] - f * dx).powi(2) + (p[1] - a[1] - f * dy).powi(2)).sqrt()
+}
+
+/// A meia largura que se VÊ de um traço horizontal do pincel `p` ao raio `raio` (metade do contraste ao papel).
+fn meia_largura(p: &ph2d_brush_presets::Preset, raio: f32) -> f32 {
+    use super::sonda_gestos::{H, gesto};
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_brush_size_px(raio);
+    t.set_brush_color_srgb8(VERMELHO_DO_DONO);
+    gesto(&mut t, &[[200.0, 320.0], [800.0, 320.0]], 3.0, |_| 1.0);
+    let (px, w, _) = t.run_full();
+    let col: Vec<f64> = (0..H as usize)
+        .map(|y| luz(&px, (y * w as usize + 500) * 4))
+        .collect();
+    let miolo = col[320];
+    let n = col.iter().filter(|&&l| l < (1.0 + miolo) * 0.5).count();
+    n as f32 * 0.5
+}
+
+/// As luminâncias por NÚMERO de camadas: cada pixel conta os traços em cujo miolo está (a menos de `0,75·hw`);
+/// fica de fora quem está na orla de algum (entre `0,75·hw` e `1,25·hw`). Devolve, por camadas `k`, as luzes.
+fn luzes_por_camadas(px: &[u8], w: u32, h: u32, tracos: &[Traco], hw: f32) -> Vec<Vec<f64>> {
+    let mut por = vec![Vec::new(); tracos.len() + 1];
+    for y in 0..h as usize {
+        for x in 0..w as usize {
+            let p = [x as f32, y as f32];
+            let mut k = 0;
+            let mut orla = false;
+            for &t in tracos {
+                let d = dist_ao_traco(p, t);
+                if d < 0.75 * hw {
+                    k += 1;
+                } else if d < 1.25 * hw {
+                    orla = true;
+                }
+            }
+            if !orla && k > 0 {
+                por[k].push(luz(px, (y * w as usize + x) * 4));
+            }
+        }
+    }
+    por
+}
+
+fn quantil(v: &[f64], q: f64) -> f64 {
+    let mut v = v.to_vec();
+    v.sort_by(f64::total_cmp);
+    v.get(((v.len() as f64 - 1.0) * q).round() as usize)
+        .copied()
+        .unwrap_or(f64::NAN)
+}
+
+/// A cena das camadas da MESMA tinta: `tracos` um a um, com `esperas[k − 1]` quadros de 60 Hz antes do traço `k`
+/// (a última repete-se) e `depois`
+/// quadros no fim; `le(t, k)` corre depois do traço `k` (e `k = n` no fim).
+fn pinta_camadas(
+    p: &ph2d_brush_presets::Preset,
+    raio: f32,
+    tracos: &[Traco],
+    esperas: &[u32],
+    depois: u32,
+    mut le: impl FnMut(&mut ph2d_tool_painter::PainterTool, usize),
+) -> (Vec<u8>, u32, u32) {
+    use super::sonda_gestos::gesto;
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_brush_size_px(raio);
+    t.set_brush_color_srgb8(VERMELHO_DO_DONO);
+    for (k, tr) in tracos.iter().enumerate() {
+        if k > 0 {
+            for _ in 0..esperas[(k - 1).min(esperas.len() - 1)] {
+                t.on_tick(1000.0 / 60.0);
+            }
+        }
+        gesto(&mut t, tr, 3.0, |_| 1.0);
+        le(&mut t, k);
+    }
+    for _ in 0..depois {
+        t.on_tick(1000.0 / 60.0);
+    }
+    le(&mut t, tracos.len());
+    t.run_full()
+}
+
+/// As duas cenas: `camadas` (dois horizontais meio sobrepostos, um vertical, uma diagonal — 1, 2, 3 e 4
+/// camadas em regiões limpas) e `estrela` (três traços por um ponto, a 1.ª captura do dono).
+fn cenas_das_camadas(hw: f32) -> [(&'static str, Vec<Traco>); 2] {
+    let mut c = cenas_das_camadas_(hw);
+    // `PH2D_SONDA_INVERTE=1`: cada traço no sentido contrário.
+    if std::env::var("PH2D_SONDA_INVERTE").is_ok_and(|v| v == "1") {
+        for (_, t) in &mut c {
+            t.iter_mut().for_each(|t| t.reverse());
+        }
+    }
+    c
+}
+
+fn cenas_das_camadas_(hw: f32) -> [(&'static str, Vec<Traco>); 2] {
+    [
+        (
+            "camadas",
+            vec![
+                [[150.0, 300.0], [850.0, 300.0]],
+                [[150.0, 300.0 + 0.5 * hw], [850.0, 300.0 + 0.5 * hw]],
+                [[500.0, 120.0], [500.0, 560.0]],
+                [[330.0, 520.0], [700.0, 100.0]],
+            ],
+        ),
+        (
+            "estrela",
+            vec![
+                [[150.0, 320.0], [850.0, 320.0]],
+                [[380.0, 80.0], [620.0, 560.0]],
+                [[260.0, 500.0], [740.0, 140.0]],
+            ],
+        ),
+    ]
+}
+
+/// Os pincéis de Glaze de fábrica e o raio do portão das mídias.
+const PINCEIS_DE_GLAZE: [(&str, f32); 5] = [
+    ("Ink Bullet", 21.0),
+    ("Dip Pen", 19.0),
+    ("Ink Brush", 20.0),
+    ("Marker Bullet", 20.0),
+    ("Marker Liner", 9.0),
+];
+
+/// **SONDA (smoke do dono 16/10): a 3.ª camada da MESMA tinta clareia.** Para cada pincel de Glaze × espera entre
+/// traços (`PH2D_SONDA_ESPERAS`, quadros; 0 = molhado sobre molhado) × cena: por número de camadas, a luz mediana e
+/// a mais clara (p95), e a fracção dos pixels de `k` camadas mais claros que a mediana de `k − 1`. Com
+/// `PH2D_SONDA_CELULAS=1`, as células ao longo de `y` 300 + hw/4 (a faixa de 2 camadas da cena `camadas`) através
+/// do vertical, depois de cada traço.
+#[test]
+#[ignore = "sonda: a terceira camada da mesma tinta (smoke 16/10); corre-se à mão"]
+fn sonda_a_terceira_camada() {
+    let so = std::env::var("PH2D_SONDA_SO").ok();
+    let esperas: Vec<Vec<u32>> = std::env::var("PH2D_SONDA_ESPERAS").map_or_else(
+        |_| vec![vec![0], vec![120], vec![1800]],
+        |v| {
+            v.split(',')
+                .map(|x| x.split('/').map(|y| y.parse().unwrap()).collect())
+                .collect()
+        },
+    );
+    let raio_x: f32 = std::env::var("PH2D_SONDA_RAIO_X").map_or(1.0, |v| v.parse().unwrap());
+    let celulas = std::env::var("PH2D_SONDA_CELULAS").is_ok();
+    // `PH2D_SONDA_KS="nome:knob=v,knob=v|…"`: variantes do pincel (as chaves do mapa `engine` do preset).
+    let variantes: Vec<(String, Vec<(String, f64)>)> = std::env::var("PH2D_SONDA_KS").map_or_else(
+        |_| vec![(String::new(), Vec::new())],
+        |v| {
+            v.split('|')
+                .map(|x| {
+                    let (n, kv) = x.split_once(':').unwrap_or((x, ""));
+                    let kv = kv
+                        .split(',')
+                        .filter(|y| !y.is_empty())
+                        .map(|y| {
+                            let (k, v) = y.split_once('=').unwrap();
+                            (k.to_owned(), v.parse().unwrap())
+                        })
+                        .collect();
+                    (n.to_owned(), kv)
+                })
+                .collect()
+        },
+    );
+    std::thread::scope(|s| {
+        // `PH2D_SONDA_SO`: os pincéis (qualquer um de fábrica; raio 20 fora dos de Glaze).
+        let pinceis: Vec<(&str, f32)> = so.as_deref().map_or_else(
+            || PINCEIS_DE_GLAZE.to_vec(),
+            |q| {
+                q.split(',')
+                    .map(|n| {
+                        let r = PINCEIS_DE_GLAZE
+                            .iter()
+                            .find(|(m, _)| *m == n)
+                            .map_or(20.0, |x| x.1);
+                        (n, r)
+                    })
+                    .collect()
+            },
+        );
+        for (nome, raio) in pinceis {
+            for (vnome, knobs) in &variantes {
+                let esperas = &esperas;
+                let raio_x = raio_x;
+                s.spawn(move || {
+                let raio = raio * raio_x;
+                let mut p = de_fabrica(nome);
+                for (k, x) in knobs {
+                    p.parametros.engine.insert(k.clone(), *x);
+                }
+                let hw = meia_largura(&p, raio);
+                let mut linhas = vec![format!("[camadas] {nome}@{vnome} raio {raio} hw {hw:.1}")];
+                for espera in esperas {
+                    let ne = format!("{espera:?}");
+                    for (cena, tracos) in cenas_das_camadas(hw) {
+                        let mut cel = Vec::new();
+                        let yc = 300.0 + hw * 0.25;
+                        let (px, w, h) = pinta_camadas(&p, raio, &tracos, espera, 1800, |t, k| {
+                            if !celulas || cena != "camadas" {
+                                return;
+                            }
+                            t.wet_sonda_motor(|e| {
+                                let g = e.active_grid();
+                                let razao = 1000.0 / g.w as f64;
+                                let ecra0 = e.sim.gather_params(&e.tuning).ecra;
+                                cel.push(format!("    depois do traço {k} (y {yc:.0}):"));
+                                for dx in (-36..=36).step_by(6) {
+                                    let x = 500.0 + f64::from(dx) * f64::from(hw) / 24.0;
+                                    let (cx, cy) =
+                                        ((x / razao) as usize + 1, (f64::from(yc) / razao) as usize + 1);
+                                    let i = cx + cy * g.s;
+                                    let a = |m: f32| {
+                                        ph2d_wet_paint::opacity::alpha_of_mass(f64::from(m))
+                                    };
+                                    let ec = ph2d_wet_paint::assenta::sobre_branco(
+                                        ecra0.com_vela(g.vela[i]).seco(),
+                                        g.sett_rgb[i].map(f64::from),
+                                        g.susp_rgb[i].map(f64::from),
+                                        a(g.sett[i]),
+                                        a(g.susp[i]),
+                                    );
+                                    cel.push(format!(
+                                        "      x {x:5.0} sett {:7.1} {:?} susp {:7.1} {:?} film {:.3} vela {:.3} → {:?}",
+                                        g.sett[i],
+                                        g.sett_rgb[i].map(|v| v.round() as i32),
+                                        g.susp[i],
+                                        g.susp_rgb[i].map(|v| v.round() as i32),
+                                        g.film[i],
+                                        g.vela[i],
+                                        ec.map(|v| v.round() as i32)
+                                    ));
+                                }
+                            });
+                        });
+                        let por = luzes_por_camadas(&px, w, h, &tracos, hw);
+                        let mut l = format!("  espera {ne:>11} {cena:<8}");
+                        for k in 1..por.len() {
+                            let claros = if k > 1 {
+                                let m = quantil(&por[k - 1], 0.5);
+                                por[k].iter().filter(|&&v| v > m).count() as f64
+                                    / por[k].len().max(1) as f64
+                            } else {
+                                0.0
+                            };
+                            l += &format!(
+                                " | {k}: n {:5} med {:.4} p95 {:.4} >med{} {:.2}",
+                                por[k].len(),
+                                quantil(&por[k], 0.5),
+                                quantil(&por[k], 0.95),
+                                k - 1,
+                                claros
+                            );
+                        }
+                        linhas.push(l);
+                        linhas.extend(cel);
+                        if let Ok(dir) = std::env::var("PH2D_SONDA_OUT") {
+                            let mut f = format!("P6\n{w} {h}\n255\n").into_bytes();
+                            px.as_chunks::<4>().0.iter().for_each(|q| f.extend_from_slice(&q[..3]));
+                            std::fs::write(format!("{dir}/camadas_{nome}{vnome}_{cena}_{}.ppm", ne.replace(", ", "-")), &f)
+                                .unwrap();
+                        }
+                    }
+                }
+                println!("{}", linhas.join("\n"));
+            });
+            }
+        }
+    });
+}
+
+/// O estado de uma célula e o ecrã seco dela.
+#[derive(Clone, Copy, Debug)]
+struct Celula {
+    sett: f32,
+    sett_rgb: [f32; 3],
+    susp: f32,
+    susp_rgb: [f32; 3],
+    film: f32,
+    vela: f32,
+    ecra: [f64; 3],
+}
+
+impl std::fmt::Display for Celula {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "sett {:7.1} {:?} susp {:7.1} {:?} film {:.3} vela {:.3} → {:?}",
+            self.sett,
+            self.sett_rgb.map(|v| v.round() as i32),
+            self.susp,
+            self.susp_rgb.map(|v| v.round() as i32),
+            self.film,
+            self.vela,
+            self.ecra.map(|v| v.round() as i32)
+        )
+    }
+}
+
+/// Todas as células do motor e a razão pixel/célula.
+fn celulas(t: &mut ph2d_tool_painter::PainterTool) -> (Vec<Celula>, f64, usize) {
+    let mut out = (Vec::new(), 0.0, 0);
+    t.wet_sonda_motor(|e| {
+        let ecra0 = e.sim.gather_params(&e.tuning).ecra;
+        let g = e.active_grid();
+        let a = |m: f32| ph2d_wet_paint::opacity::alpha_of_mass(f64::from(m));
+        out.1 = 1000.0 / g.w as f64;
+        out.2 = g.s;
+        out.0 = (0..g.sett.len())
+            .map(|i| Celula {
+                sett: g.sett[i],
+                sett_rgb: g.sett_rgb[i],
+                susp: g.susp[i],
+                susp_rgb: g.susp_rgb[i],
+                film: g.film[i],
+                vela: g.vela[i],
+                ecra: ph2d_wet_paint::assenta::sobre_branco(
+                    ecra0.com_vela(g.vela[i]).seco(),
+                    g.sett_rgb[i].map(f64::from),
+                    g.susp_rgb[i].map(f64::from),
+                    a(g.sett[i]),
+                    a(g.susp[i]),
+                ),
+            })
+            .collect();
+    });
+    out
+}
+
+/// **SONDA: a CÉLULA que clareia** — a cena `camadas` (os 3 primeiros), `PH2D_SONDA_ESPERA` quadros entre traços (omissão 120):
+/// o estado de cada célula do miolo das 3 camadas ANTES do 3.º traço (A), logo DEPOIS (B), +30 quadros (C) e seca
+/// (D). Lista as que acabam mais claras que em A (as piores) e conta as que escurecem.
+#[test]
+#[ignore = "sonda: a célula que clareia na 3.ª camada (smoke 16/10); corre-se à mão"]
+fn sonda_a_celula_que_clareia() {
+    use super::sonda_gestos::gesto;
+    let nome = std::env::var("PH2D_SONDA_SO").unwrap_or_else(|_| "Dip Pen".to_owned());
+    let espera: Vec<u32> = std::env::var("PH2D_SONDA_ESPERA").map_or_else(
+        |_| vec![120, 120],
+        |v| v.split('/').map(|x| x.parse().unwrap()).collect(),
+    );
+    let mut p = de_fabrica(&nome);
+    // `PH2D_SONDA_K="knob=v,…"`: o pincel com outros knobs.
+    for kv in std::env::var("PH2D_SONDA_K")
+        .unwrap_or_default()
+        .split(',')
+        .filter(|x| !x.is_empty())
+    {
+        let (k, v) = kv.split_once('=').unwrap();
+        p.parametros.engine.insert(k.to_owned(), v.parse().unwrap());
+    }
+    let raio = PINCEIS_DE_GLAZE.iter().find(|(n, _)| *n == nome).unwrap().1;
+    let hw = meia_largura(&p, raio);
+    let [(_, mut tracos), _] = cenas_das_camadas(hw);
+    tracos.truncate(3);
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(&p).is_empty());
+    t.set_brush_size_px(raio);
+    t.set_brush_color_srgb8(VERMELHO_DO_DONO);
+    let espera_ = |t: &mut ph2d_tool_painter::PainterTool, n: u32| {
+        for _ in 0..n {
+            t.on_tick(1000.0 / 60.0);
+        }
+    };
+    gesto(&mut t, &tracos[0], 3.0, |_| 1.0);
+    espera_(&mut t, espera[0]);
+    gesto(&mut t, &tracos[1], 3.0, |_| 1.0);
+    espera_(&mut t, espera[espera.len() - 1]);
+    let (a, razao, s) = celulas(&mut t);
+    gesto(&mut t, &tracos[2], 3.0, |_| 1.0);
+    let (b, _, _) = celulas(&mut t);
+    espera_(&mut t, 30);
+    let (c, _, _) = celulas(&mut t);
+    espera_(&mut t, 1800);
+    let (d, _, _) = celulas(&mut t);
+    let lum = |e: [f64; 3]| 0.2126 * e[0] + 0.7152 * e[1] + 0.0722 * e[2];
+    let mut claras = Vec::new();
+    let (mut n, mut escurece) = (0, 0);
+    for i in 0..a.len() {
+        let (cx, cy) = (i % s, i / s);
+        let px = [
+            ((cx as f64 - 0.5) * razao) as f32,
+            ((cy as f64 - 0.5) * razao) as f32,
+        ];
+        if !tracos.iter().all(|&tr| dist_ao_traco(px, tr) < 0.6 * hw) {
+            continue;
+        }
+        n += 1;
+        let dl = lum(d[i].ecra) - lum(a[i].ecra);
+        if dl > 0.5 {
+            claras.push((dl, i, px));
+        } else if dl < -0.5 {
+            escurece += 1;
+        }
+    }
+    claras.sort_by(|x, y| y.0.total_cmp(&x.0));
+    // As células cuja cor ASSENTADA é mais clara que a tinta pura no fim (a lei nunca as dá; a cobertura das orlas
+    // não conta): onde estão e a história delas.
+    let pura = lum(VERMELHO_DO_DONO.map(f64::from));
+    let mut palidas: Vec<(f64, usize, [f32; 2], usize)> = (0..a.len())
+        .filter_map(|i| {
+            let (cx, cy) = (i % s, i / s);
+            let px = [
+                ((cx as f64 - 1.0) * razao) as f32,
+                ((cy as f64 - 1.0) * razao) as f32,
+            ];
+            let k = tracos
+                .iter()
+                .filter(|&&tr| dist_ao_traco(px, tr) < 0.75 * hw)
+                .count();
+            let dl = lum(d[i].sett_rgb.map(f64::from)) - pura;
+            (k > 0 && d[i].sett > 0.0 && dl > 1.0).then_some((dl, i, px, k))
+        })
+        .collect();
+    palidas.sort_by(|x, y| y.0.total_cmp(&x.0));
+    println!(
+        "  {} células com o assentado mais claro que a tinta (> 1 nível)",
+        palidas.len()
+    );
+    for &(dl, i, px, k) in palidas.iter().take(4) {
+        println!(
+            "  ({:.0}, {:.0}) {k} camadas, +{dl:.1} sobre a tinta",
+            px[0], px[1]
+        );
+        for (q, c) in [("A", &a), ("B", &b), ("C", &c), ("D", &d)] {
+            println!("     {q} {}", c[i]);
+        }
+    }
+    // A média do ecrã e do estado nas células de 2 camadas (1.º e 2.º, longe do 3.º) e de 3, em A · B · C · D.
+    for (rotulo, quer) in [("2 camadas", 2usize), ("3 camadas", 3)] {
+        let sel: Vec<usize> = (0..a.len())
+            .filter(|&i| {
+                let (cx, cy) = (i % s, i / s);
+                let px = [
+                    ((cx as f64 - 1.0) * razao) as f32,
+                    ((cy as f64 - 1.0) * razao) as f32,
+                ];
+                let dentro = |k: usize| dist_ao_traco(px, tracos[k]) < 0.6 * hw;
+                let fora = |k: usize| dist_ao_traco(px, tracos[k]) > 1.4 * hw;
+                dentro(0) && dentro(1) && if quer == 2 { fora(2) } else { dentro(2) }
+            })
+            .collect();
+        let n = sel.len().max(1) as f64;
+        for (q, c) in [("A", &a), ("B", &b), ("C", &c), ("D", &d)] {
+            let m = |f: &dyn Fn(&Celula) -> f64| sel.iter().map(|&i| f(&c[i])).sum::<f64>() / n;
+            println!(
+                "  {rotulo} ({}) {q}: ecrã [{:.1}, {:.1}, {:.1}] sett {:.0} [{:.0}, {:.0}] susp {:.0} film {:.3} vela {:.3}",
+                sel.len(),
+                m(&|c| c.ecra[0]),
+                m(&|c| c.ecra[1]),
+                m(&|c| c.ecra[2]),
+                m(&|c| f64::from(c.sett)),
+                m(&|c| f64::from(c.sett_rgb[0])),
+                m(&|c| f64::from(c.sett_rgb[1])),
+                m(&|c| f64::from(c.susp)),
+                m(&|c| f64::from(c.film)),
+                m(&|c| f64::from(c.vela)),
+            );
+        }
+    }
+    println!(
+        "[célula] {nome} espera {espera:?} hw {hw:.1}: {n} células de 3 camadas · {} clareiam > 0,5 · {escurece} escurecem",
+        claras.len()
+    );
+    for &(dl, i, px) in claras.iter().take(10) {
+        println!("  ({:.0}, {:.0}) Δlum +{dl:.1}", px[0], px[1]);
+        for (q, c) in [("A", &a), ("B", &b), ("C", &c), ("D", &d)] {
+            println!("     {q} {}", c[i]);
+        }
+    }
+}
+
+/// ⭐ **A 3.ª camada da mesma tinta não clareia** (smoke do dono 16/10, doc 42 §7). A cena `camadas` com o 1.º traço
+/// seco e o 2.º e o 3.º MOLHADOS sobre o anterior (o caso do dono): cada uma das três primeiras camadas escurece a
+/// mediana (luz linear) e a 4.ª não clareia — a lei de camadas que o Rebelle mede igual molhada e seca (§3, §3b) —, e
+/// nenhum miolo de uma camada só fica mais claro que a tinta (o reflexo claro das capturas).
+#[test]
+fn a_terceira_camada_da_mesma_tinta_nao_clareia() {
+    let medidos = std::thread::scope(|s| {
+        [("Marker Bullet", 30.0), ("Dip Pen", 28.5)]
+            .map(|(nome, raio)| {
+                s.spawn(move || {
+                    let p = de_fabrica(nome);
+                    let hw = meia_largura(&p, raio);
+                    let [(_, tracos), _] = cenas_das_camadas_(hw);
+                    let (px, w, h) =
+                        pinta_camadas(&p, raio, &tracos, &[1800, 0, 0], 1800, |_, _| {});
+                    (nome, luzes_por_camadas(&px, w, h, &tracos, hw))
+                })
+            })
+            .map(|h| h.join().unwrap())
+    });
+    let mut q = VERMELHO_DO_DONO.to_vec();
+    q.push(255);
+    let pura = luz(&q, 0);
+    for (nome, por) in &medidos {
+        let med: Vec<f64> = por[1..].iter().map(|v| quantil(v, 0.5)).collect();
+        let claro = quantil(&por[1], 0.95);
+        assert!(
+            med[1] < med[0] - 0.002 && med[2] < med[1] - 0.002 && med[3] <= med[2] + 1e-9,
+            "{nome}: cada camada da mesma tinta escurece — medianas 1..4 {med:.4?}"
+        );
+        assert!(
+            claro < pura * 1.04,
+            "{nome}: uma camada só mais clara que a tinta — p95 {claro:.4} contra {pura:.4}"
+        );
+    }
+}
+
+/// **O primeiro toque só assenta a tinta de OUTRO traço** (doc 42 §7): com a Live Water a água corre com o traço aberto
+/// e a tinta do próprio traço chega a células que ele ainda não tocou — tomadas pelo toque, a orla do traço velava-se a
+/// si mesma. Os três azuis de [`o_traco_sozinho_nao_muda_com_o_glaze`] com a Live Water, Dip Pen de Glaze 1 contra 0:
+/// o pior canal muda ≤ 25 níveis (medido 13; com as células TOCADAS em vez das molhadas antes do traço, 119; o motor de
+/// `2e43def369`, 39 — a Live Water já movia o assentado do traço sob o Glaze).
+#[test]
+fn o_primeiro_toque_nao_assenta_o_proprio_traco_com_agua_viva() {
+    use super::sonda_gestos::{AZUL, gesto};
+    let [a, b] = std::thread::scope(|s| {
+        [0.0, 1.0]
+            .map(|g| {
+                s.spawn(move || {
+                    let mut p = de_fabrica("Dip Pen");
+                    p.parametros.engine.insert("glaze".to_owned(), g);
+                    let mut t = tela();
+                    t.set_wet_relogio_fixo(true);
+                    assert!(t.wet_preset_aplicar(&p).is_empty());
+                    t.set_wet_agua_viva(true);
+                    t.set_brush_size_px(RAIO_DA_CENA);
+                    t.set_brush_color_srgb8(AZUL);
+                    for y in [120.0, 300.0, 480.0] {
+                        gesto(&mut t, &[[60.0, y], [560.0, y]], 3.0, |_| 1.0);
+                    }
+                    for _ in 0..1800 {
+                        t.on_tick(1000.0 / 60.0);
+                    }
+                    t.run_full().0
+                })
+            })
+            .map(|h| h.join().unwrap())
+    });
+    let pior = a
+        .chunks(4)
+        .zip(b.chunks(4))
+        .flat_map(|(p, q)| (0..3).map(move |c| (i32::from(p[c]) - i32::from(q[c])).abs()))
+        .max()
+        .unwrap_or(0);
+    assert!(
+        pior <= 25,
+        "a Live Water: o traço sozinho muda {pior} níveis com o Glaze"
+    );
+}

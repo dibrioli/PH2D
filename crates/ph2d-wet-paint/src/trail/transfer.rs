@@ -226,6 +226,10 @@ impl Trail {
         let water_cap = p.k(Knob::WaterCap); // each drag leaks ~0.8% wetness
         let relevo = p.k(Knob::Emboss) as f32;
         let vela = p.k(Knob::Glaze) as f32;
+        if vela > 0.0 && std::mem::take(&mut self.por_assentar_pendente) {
+            self.por_assentar.clear();
+            self.por_assentar.extend(g.susp.iter().map(|&m| m > 0.0));
+        }
         let mut rx0 = w;
         let mut ry0 = h;
         let mut rx1 = 0;
@@ -265,6 +269,10 @@ impl Trail {
                         ponta[k] = (w * f64::from(limpa[k]) + sujidade).clamp(0.0, 255.0) as f32;
                     }
                 }
+                // ⭐ A tinta molhada de OUTRO traço (o primeiro toque deste nela) é sempre outra camada, também a
+                // mesma tinta — molhado ou seco, cada traço de Glaze escurece (doc 42 §7).
+                let primeiro = vela > 0.0
+                    && (self.por_assentar.get_mut(i)).is_some_and(|f| std::mem::replace(f, false));
                 let seco = ponta_seca && g.film[i] <= FILM_TRACO;
                 if seco {
                     pousa_seco(g, i, v, ponta, p, &mut out);
@@ -279,10 +287,14 @@ impl Trail {
                     // muda) — e a nova pousa por cima, numa camada que a filtra. A multiplicação é UMA por camada
                     // (`assenta::cor_e_alfa`), nunca por carimbo: re-aplicada a cada dab levava o miolo ao preto.
                     if vela > 0.0 && g.susp[i] > 0.0 {
-                        let d = crate::colorops::outra_tinta(
-                            g.susp_rgb[i].map(f64::from),
-                            ponta.map(f64::from),
-                        );
+                        let d = if primeiro {
+                            1.0
+                        } else {
+                            crate::colorops::outra_tinta(
+                                g.susp_rgb[i].map(f64::from),
+                                ponta.map(f64::from),
+                            )
+                        };
                         let dm = g.susp[i] as f64 * f64::from(vela) * d;
                         if dm > 0.0 {
                             let e = p.ecra.com_vela(g.vela[i]);
@@ -301,12 +313,16 @@ impl Trail {
                     // sobre o papel limpo a tinta não filtra nada, e a parte do próprio traço que seca não é outra
                     // camada (medido: com o Glaze em toda a tinta o recto escurecia ao secar, cobertura 0,90 → 0,93).
                     // A fracção que filtra fixa-se AQUI, contra a camada de baixo de agora
-                    // ([`crate::colorops::vela_da_camada`]): o assentado que depois absorve o filme não a muda.
+                    // ([`crate::colorops::vela_da_camada`]): o assentado que depois absorve o filme não a muda. Pesa a
+                    // COBERTURA dessa camada ([`crate::colorops::vela_sobre`]): sobre um resto de nada, nada filtra.
                     let vela_aqui = if vela > 0.0 && g.sett[i] > 0.0 {
-                        crate::colorops::vela_da_camada(
-                            f64::from(vela),
-                            g.sett_rgb[i].map(f64::from),
-                            ponta.map(f64::from),
+                        crate::colorops::vela_sobre(
+                            crate::colorops::vela_da_camada(
+                                f64::from(vela),
+                                g.sett_rgb[i].map(f64::from),
+                                ponta.map(f64::from),
+                            ),
+                            alpha_of_mass(f64::from(g.sett[i])),
                         ) as f32
                     } else {
                         0.0

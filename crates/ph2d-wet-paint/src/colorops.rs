@@ -234,6 +234,30 @@ pub fn vela_da_camada(vela: f64, baixo: [f64; 3], cima: [f64; 3]) -> f64 {
     vela * (VELA_DA_MESMA_TINTA + VELA_POR_DIFERENCA * diferenca_de_pigmento(baixo, cima)).min(1.0)
 }
 
+/// **A cobertura da camada de baixo a partir da qual ela filtra INTEIRA** ([`vela_sobre`]; smoke do dono 16/10, a 3.ª
+/// camada que clareava, doc 42 §7). Abaixo dela a fracção cai em proporção: um resto de assentado (a orla que o
+/// arrasto do pincel leva, uma célula com massa < 1) não é uma camada — com a fracção inteira sobre ele, a inversa do
+/// assentar guardava o ecrã com um assentado BRANCO e a célula secava mais clara que a tinta (até +10 níveis).
+/// `sonda_a_celula_que_clareia`, os 3 primeiros traços de `camadas`, seco · molhado sobre molhado (células com o
+/// assentado mais claro que a tinta, Dip Pen · Ink Bullet · Marker Bullet; o cruzamento das mídias, Ink Brush ·
+/// Marker Liner):
+///
+/// | cobertura | Dip Pen | Ink Bullet | Marker Bullet | Ink Brush | Marker Liner |
+/// |---|---|---|---|---|---|
+/// | só `> 0` (antes) | 2 397 (+7,5) | 3 393 (+15,0) | 3 074 (+15,5) | 0,257 | 0,037 |
+/// | **0,5** | **1 (+1,8)** | **22 (+3,8)** | **30 (+5,1)** | **0,257** | **0,037** |
+/// | 1 (o produto pela cobertura) | 0 | 15 (+2,8) | 24 (+4,7) | 0,311 | 0,045 |
+///
+/// (Rebelle 0,239 · 0,016; o motor de `2e43def369`: 2 395 · 3 651 · 2 992.) O resto em 0,5 é a orla de cima de uma
+/// camada SECA que o arrasto do traço novo leva.
+pub const COBERTURA_QUE_FILTRA: f64 = 0.5;
+
+/// A fracção `vela` ([`vela_da_camada`]) sobre uma camada de baixo de cobertura `a_baixo` ([`COBERTURA_QUE_FILTRA`]).
+#[inline]
+pub fn vela_sobre(vela: f64, a_baixo: f64) -> f64 {
+    vela * (a_baixo / COBERTURA_QUE_FILTRA).min(1.0)
+}
+
 /// **Quanto da tinta molhada de uma célula é OUTRA tinta** para o pincel que chega (`0..1`): a parte da
 /// [`vela_da_camada`] que vem da diferença de pigmento, normalizada — a mesma tinta `0` (os carimbos de um traço
 /// não se empilham em camadas), vermelho sobre azul `1`.

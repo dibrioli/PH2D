@@ -30,10 +30,7 @@ Anterior: [P41](HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-16_P41_SHAPE_
   `OUTRA_TINTA_MINIMA` 0,1) assenta pela lei do ecrã e leva a sua água. `Ecra::Cobre { vela }` + `com_vela` em render,
   secagem (as duas rotas), Dry canvas, re-molhar e ferramentas: o ponto mistura o PRODUTO das duas camadas sobre o branco.
   `assenta`: palpite com a inversa fechada do produto e `CEGO_COM_GLAZE` 0,01 (só com vela).
-- **Recusados (medido, 42 §2–§6)**: as caixas da obra no preset (não escurecem a caneta nem o marcador) · K–M + velatura
-  (preto) · a fracção pela diferença de pigmento só (0,34 no marcador) · o Glaze em toda a tinta (o recto escurecia ao secar)
-  · a fracção lida da cor de agora (clareava 19 → 33 ao secar) · mais iterações / Newton 3×3 · assentar pela cobertura do
-  carimbo (custa aos marcadores) · prender o arrasto (estrias em riscas).
+- **Recusados (medido)**: a lista com os números está no 42 §2–§7 — não reconstrua sem a ler.
 - **A mistura por pincel NÃO entrou** (decisão técnica, 42 §4): nenhuma mistura reproduz o cruzamento e o Rebelle não depende
   do molhado — seria um controlo sem leitor que decide. A «Pigment mixing» fica da obra. Pergunta ao dono: B14.
 - **Formato**: o Glaze vai no mapa `engine` do preset, por nome; um preset sem a chave lê 0. **`SCHEMA` fica 1** — o leitor
@@ -85,3 +82,12 @@ panel-painter-layers, i18n, app-painter com `panel-painter-layers`) ✓ · `next
 `assenta.rs` 721 → 426 LOC (os testes em `assenta/tests.rs`), um `as f64` do clippy; fora do diff: `motion_path_perf`
 (passou sozinho, carga) e os dois K3 da Luz 2D (a placa estava com a `line_luz2d`; os mesmos do P41 §6).
 Smoke `--profile smoke` 2×: «Finished … in 0.50s».
+
+## §8 — Smoke do dono (16/10): a 3.ª camada da mesma tinta MOLHADA clareava ([42 §7](../NewFeaturesWetPaint/42_medicao_a_lei_da_tinta.md))
+
+Dois mecanismos no pouso: (1) a mesma tinta molhada nunca virava camada (só `outra_tinta` assentava) e o escoamento
+clareava as 3 camadas; (2) o resto de assentado que o arrasto deixa contava como camada (ao secar, assentado branco,
+até +15,5). Cura: o 1.º toque de um traço numa célula molhada ANTES dele assenta-a (`Trail::por_assentar`); a camada só
+filtra na cobertura que tem (`colorops::vela_sobre`, `COBERTURA_QUE_FILTRA` 0,5). Portões `a_terceira_camada_da_mesma_tinta_nao_clareia`
+(vermelho no `2e43def369`) e `o_primeiro_toque_nao_assenta_o_proprio_traco_com_agua_viva`; mutação 5/5. Cruzamentos de fábrica:
+0,104 · 0,208 · 0,257 · 0,015 · 0,037. Aberto: +5 em 30 células do Marker Bullet (o arrasto leva a orla de uma camada SECA).

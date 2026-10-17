@@ -82,6 +82,28 @@ que não se aplica, nunca reordenar; o bloco do componente recolhível.
 - Pela D3 a «vista de criação de UI» é um **Layout por tarefa** (o utilizador escolhe), e o botão da ① é
   o atalho para ele — não um `DrawMode` novo (que repetiria a mistura que a D3 mediu).
 
-## §5 — Decisão do dono
+## §5 — Decisão do dono (16/10)
 
-(por preencher)
+1. **Abas + botão.** O painel do vetor ganha duas abas NO PRÓPRIO TÍTULO (nada de faixa nova — a recusa de
+   31/08): **«Desenho»** e **«Interface»**. Um **interruptor no fim da coluna ①**, separado das ferramentas,
+   troca para «Interface» e **tinge levemente o palco** (segundo indicador, NN/g). Não muda o que o clique faz.
+2. **Arrumar a ordem como o Figma**, uma só para todo objecto: Componente → Posição (+ Constraints) → Layout →
+   Aparência → Preenchimento → Traço → Texto → Efeitos → **Avançado** (recolhido: Blend, Morph, Envelope,
+   Pattern on Path, Contour, Boolean, Expand…). O que não se aplica some; nada muda de lugar.
+
+## §6 — Esboço do plano (para a janela que implementa — `/pd-feature`, plano primeiro)
+
+- **Quem vai para cada aba** (proposta, a fechar no plano): «Interface» = Componente (Prefab), Frame, Clip,
+  Layout, Constraints, Widget Skin, States, Morph States; «Desenho» = o resto. A Posição/Transform aparece nas
+  duas (é do objecto). Medir antes: abrir cada secção de UI e confirmar que nenhuma tem knob morto (§5.0
+  «controlo morto»).
+- **O estado da aba é do HERÓI/VISTA** (D3: Layout por tarefa, o utilizador escolhe), não um `DrawMode` novo;
+  o botão da ① e o clique na aba escrevem o MESMO campo; o tinto do palco lê-o.
+- **Contextual sem botão**: seleccionar um componente/instância com a aba «Desenho» aberta mostra um
+  aviso-chip «Interface ▸» no título (descoberta, NN/g: o que vive só num modo esconde-se).
+- **Portas/gates a respeitar**: `paint_body_plan.rs` (a ordem é uma tabela — reordenar é a mesma lista),
+  `COLLAPSED_BY_DEFAULT`, `a_altura_de_abertura_de_um_painel_so_encolhe` (`887` deve DESCER: as secções da
+  outra aba saem da conta), `every_painted_column_and_action_button_answers_a_real_pointer` (o interruptor),
+  censos de i18n/tooltip, `architecture_panel_wiring_parity`. Zero hex / literal de UI (HR-15).
+- **Smoke**: cena nova `PH2D_OBJECT_MODE_SMOKE=25` com um componente de UI (botão com estados) e uma forma
+  comum, fotografada nas duas abas.

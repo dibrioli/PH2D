@@ -604,7 +604,7 @@ impl LuzDoQuadro {
                 gpu,
                 (&r.solver, self.entorno.as_ref()),
             );
-            renasce |= self.vigia.ler(t.c2_total());
+            self.vigia.ler(t.c2_total());
             if p.automatica {
                 let custo = crate::qualidade::Custo {
                     por_nivel: t.por_nivel(),
@@ -613,9 +613,10 @@ impl LuzDoQuadro {
                 self.governador.ler(custo, p.nivel);
             }
         }
-        if self.vigia.tomar_pedido() || renasce {
+        if renasce {
             self.resolvido = None;
         }
+        self.vigia.renascer(gpu, &mut self.resolvido);
     }
 
     /// O que os receptores leem; `None` = apagada.

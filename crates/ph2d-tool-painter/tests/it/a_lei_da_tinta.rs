@@ -14,9 +14,10 @@ use ph2d_tool_painter::ids;
 /// O raio das cenas de identidade: o do recto da bancada a meia escala dos presets.
 const RAIO_DA_CENA: f32 = 18.0;
 
-/// `(preset, caixas da obra ligadas, fnv1a da cena)` — pinados em `f46fcffb2a`.
+/// `(preset, caixas da obra ligadas, fnv1a da cena)` — pinados em `f46fcffb2a`; os 5 de tinta e marcador
+/// (prompt 42) em `ddc782e9f0`, antes do pó (prompt 43).
 #[rustfmt::skip]
-const CENAS: [(&str, bool, u64); 14] = [
+const CENAS: [(&str, bool, u64); 19] = [
     ("Wet Round", false, 0xfce64c9627dc5bc3),
     ("Wet Wash", false, 0x782a0a8a8ed9c439),
     ("Wet Dry Brush", false, 0x1a361614679dde9a),
@@ -29,6 +30,11 @@ const CENAS: [(&str, bool, u64); 14] = [
     ("Charcoal", false, 0x3b6500d86d772fd6),
     ("Soft Pastel", false, 0xf99dd413f5f0218e),
     ("Oil Pastel", false, 0x235fe3c132334588),
+    ("Ink Bullet", false, 0x7d8b4981994b64c6),
+    ("Dip Pen", false, 0xff9830389709ba89),
+    ("Ink Brush", false, 0x7a0e448f92965f65),
+    ("Marker Bullet", false, 0xe8d6f9b5bef7d373),
+    ("Marker Liner", false, 0x1bdda019316e5682),
     ("Wet Round", true, 0x44016d14e50f2119),
     ("Wet Liner", true, 0x7a276b4a53ec4531),
 ];

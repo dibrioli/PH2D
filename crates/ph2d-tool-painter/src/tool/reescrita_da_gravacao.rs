@@ -128,6 +128,7 @@ impl PainterTool {
         para: &ModeloDoFim,
         transacao: u64,
     ) -> usize {
+        self.macro_recusa("reescreve_a_gravacao");
         let mut depois = self.snapshot_model();
         let n = reescreve(&mut depois, &de.0, &para.0, self.undo.marca.marca.as_ref());
         if n == 0 {

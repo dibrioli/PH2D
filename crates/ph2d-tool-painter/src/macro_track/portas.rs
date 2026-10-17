@@ -124,6 +124,10 @@ pub const PORTAS: &[Porta] = &[
     // — inerentes, recusadas —
     r("bind_document", OUTRO_DOCUMENTO),
     r("reescreve_a_gravacao", ETAPA_EDITADA),
+    a(
+        "poe_a_marca",
+        "a marca do artista: quem mostra a macro em cena dá-a ao Painter; não muda a obra (W9)",
+    ),
     r("install_document", OUTRO_DOCUMENTO),
     r("baked_document_pixels", OUTRO_DOCUMENTO),
     r("open_layer_of", OUTRO_DOCUMENTO),

@@ -250,7 +250,7 @@ impl MarcaDoArtista {
 
     /// **O formato gravado**: versão, tamanho, época e as palavras por corridas (zeros contados).
     #[must_use]
-    pub fn codifica(&self) -> Vec<u8> {
+    pub fn codifica(&self) -> Vec<u8> /* COLOR-RAW-OK: os bits da marca, não cor */ {
         let mut out = Vec::new();
         out.push(FORMATO);
         out.extend_from_slice(&self.w.to_le_bytes());

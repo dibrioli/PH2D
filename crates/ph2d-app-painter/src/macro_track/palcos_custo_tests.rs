@@ -317,7 +317,8 @@ fn sonda_o_custo_da_marca() {
         };
         let mut nunca = |_: u64, _: &mut Placa| None;
         v.palcos.segue(&mut v.world);
-        v.palcos.liga_a_marca(Some(&mut t), &mut nunca, &mut v.placa);
+        v.palcos
+            .liga_a_marca(Some(&mut t), &mut nunca, &mut v.placa);
         if marcada {
             t.set_brush_size_px(24.0);
             for i in 0..=8u16 {
@@ -339,7 +340,10 @@ fn sonda_o_custo_da_marca() {
         v.t = t;
         v
     };
-    let mut vs = [nova("água, sem marca", false), nova("água, pincelada marcada", true)];
+    let mut vs = [
+        nova("água, sem marca", false),
+        nova("água, pincelada marcada", true),
+    ];
     let quadro = |v: &mut V| -> f64 {
         // O ritmo do editor: o worker devolve a água entre quadros.
         std::thread::sleep(std::time::Duration::from_millis(16));

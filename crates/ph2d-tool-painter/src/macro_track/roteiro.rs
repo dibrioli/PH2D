@@ -244,7 +244,10 @@ type Maquina<'a> = (&'a crate::macro_track::RitmoDaAgua, &'a [f32]);
 #[derive(Clone, Copy)]
 enum Relogio<'a> {
     Fixo,
-    #[cfg_attr(not(test), expect(dead_code, reason = "só os gates gravam ao ritmo de uma máquina"))]
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "só os gates gravam ao ritmo de uma máquina")
+    )]
     Maquina(Maquina<'a>),
     Worker,
 }

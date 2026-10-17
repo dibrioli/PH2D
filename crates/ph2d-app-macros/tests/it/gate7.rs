@@ -818,9 +818,16 @@ fn o_laco_que_toca_acompanha_cada_parar() {
         b.tl.doc.clip_length_override(clip).expect("a duração")
     };
     let d1 = grava(&mut b, &mut relogio, 1);
-    assert_eq!(relogio.loop_range(), Some((0.0, d1)), "o 1.º Parar não armou o laço que toca");
+    assert_eq!(
+        relogio.loop_range(),
+        Some((0.0, d1)),
+        "o 1.º Parar não armou o laço que toca"
+    );
     let d2 = grava(&mut b, &mut relogio, 3);
-    assert!(d2 > d1 + 0.1, "controlo: a 2.ª gravação é mais longa ({d1} → {d2})");
+    assert!(
+        d2 > d1 + 0.1,
+        "controlo: a 2.ª gravação é mais longa ({d1} → {d2})"
+    );
     assert_eq!(
         b.tl.doc.active_loop_for(true),
         Some((0.0, d2)),

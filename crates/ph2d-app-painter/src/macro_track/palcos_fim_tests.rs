@@ -4,11 +4,11 @@
 //! reprodução à parte (`MacroEmCena`) e a régua do pincel/diff à parte — nunca a mistura sob teste. E o
 //! fim da trilha que toca (W8 2b/4), que só a reescrita de uma etapa pede.
 
+use super::super::PalcoDaPintura;
 use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool};
-use ph2d_tool_painter::macro_track::tocar::ErroDaMacro;
 use ph2d_tool_painter::macro_track::marca::MarcaDoArtista;
-use super::super::PalcoDaPintura;
+use ph2d_tool_painter::macro_track::tocar::ErroDaMacro;
 
 const LADO: u32 = 64;
 
@@ -166,7 +166,12 @@ impl Clipe {
     }
 
     fn palco_mut(&mut self) -> &mut PalcoDaPintura {
-        match self.palcos.lidos.get_mut(&self.e.to_bits()).map(|l| &mut l.palco) {
+        match self
+            .palcos
+            .lidos
+            .get_mut(&self.e.to_bits())
+            .map(|l| &mut l.palco)
+        {
             Some(Ok(Some(p))) => p,
             _ => panic!("o palco existe"),
         }
@@ -422,10 +427,7 @@ fn apagar_ate_ao_papel_depois_do_parar_fica_apagado_no_play() {
                 .iter()
                 .filter(|&&k| c.palco[k * 4..k * 4 + 4] != dp[k * 4..k * 4 + 4])
                 .count();
-            assert!(
-                pintados > 0,
-                "controlo: o palco tinha tinta onde se apagou"
-            );
+            assert!(pintados > 0, "controlo: o palco tinha tinta onde se apagou");
             break;
         }
         q += 1;
@@ -443,7 +445,11 @@ fn sem_o_painter_o_que_mudou_na_sprite_fica_por_cima_e_desfazer_volta_ao_clipe()
     let (lidas, qual) = (std::cell::Cell::new(0), std::cell::Cell::new(0u8));
     let mut le = |_: u64, _: &mut Placa| {
         lidas.set(lidas.get() + 1);
-        Some((if qual.get() == 1 { &atual } else { &fim }.clone(), LADO, LADO))
+        Some((
+            if qual.get() == 1 { &atual } else { &fim }.clone(),
+            LADO,
+            LADO,
+        ))
     };
     let mut c = Clipe::novo(&doc);
     let id = |b: &[u8]| ph2d_ecs::SpritePixels(ph2d_asset::AssetId::from_bytes(b));
@@ -454,7 +460,11 @@ fn sem_o_painter_o_que_mudou_na_sprite_fica_por_cima_e_desfazer_volta_ao_clipe()
     qual.set(1);
     c.world.entity_mut(c.e).insert(id(&atual));
     let r = c.quadro_ligado(2.0 / 60.0, None, &mut le);
-    assert_eq!(lidas.get(), antes + 1, "os píxeis mudaram e a sprite não se releu");
+    assert_eq!(
+        lidas.get(),
+        antes + 1,
+        "os píxeis mudaram e a sprite não se releu"
+    );
     let mudou = diferem(&fim, &atual);
     assert!(
         r == esperado(&c.palco, &premul(&atual), |i| mudou.contains(&i)),
@@ -465,7 +475,10 @@ fn sem_o_painter_o_que_mudou_na_sprite_fica_por_cima_e_desfazer_volta_ao_clipe()
     qual.set(0);
     c.world.entity_mut(c.e).insert(id(&fim));
     let r = c.quadro_ligado(4.0 / 60.0, None, &mut le);
-    assert!(r == c.palco, "o desfazer da ferramenta não devolveu o clipe");
+    assert!(
+        r == c.palco,
+        "o desfazer da ferramenta não devolveu o clipe"
+    );
 }
 
 /// **Gravar de novo começa outra marca; desfazer a gravação devolve a antiga**: com uma pincelada
@@ -548,7 +561,10 @@ fn a_marca_gravada_no_projeto_volta_igual() {
     let mut w2 = World::new();
     let e2 = w2.spawn((MacroTempo { segundos: 0.0 }, StableId(42))).id();
     let mut aberto = Clipe::com(w2, e2, &doc);
-    assert!(aberto.palcos.restaura_marcas(&bytes), "as marcas não se leram");
+    assert!(
+        aberto.palcos.restaura_marcas(&bytes),
+        "as marcas não se leram"
+    );
     let mut le = |_: u64, _: &mut Placa| Some((depois.clone(), LADO, LADO));
     let r = aberto.quadro_ligado(0.1, None, &mut le);
     assert!(
@@ -595,7 +611,11 @@ fn a_agua_sem_marca_nao_le_nem_sobe_e_com_marca_sobe_so_a_caixa() {
         "controlo: a água correu"
     );
     assert_eq!(
-        (c.palco_mut().versao_da_atual, c.placa.substituidas, c.placa.regioes),
+        (
+            c.palco_mut().versao_da_atual,
+            c.placa.substituidas,
+            c.placa.regioes
+        ),
         (leituras, inteiras, regioes),
         "sem marca, a água leu a imagem ou subiu a ranhura"
     );

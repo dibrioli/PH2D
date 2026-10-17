@@ -280,3 +280,54 @@ impl UndoController {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_editor_core::tool::RasterEditTool;
+
+    /// ⭐ **Um passo que a água atravessou marca só o que é do artista**: o passo muda duas linhas da tela;
+    /// a água escreveu a 1.ª (fora de qualquer disco) e a 2.ª é do artista ⇒ só a 2.ª fica marcada; um
+    /// disco do pincel sobre a 1.ª devolve-lhe o que ele cobre. (M1 da prova de 17/10 sobrevivia.)
+    #[test]
+    fn um_passo_marca_o_que_mudou_salvo_o_que_so_a_agua_mudou() {
+        const L: u32 = 16;
+        let mut t = crate::PainterTool::default();
+        t.set_source(vec![255; (L * L * 4) as usize], L, L);
+        for disco in [false, true] {
+            let mut c = UndoController::default();
+            c.marca.poe(Some(MarcaDoArtista::nova(L, L, 1)));
+            let before = t.snapshot_model();
+            let mut after = before.clone();
+            let mut px = before.canvas_rgba.as_ref().clone();
+            let linha = |y: u32| (y * L) as usize * 4..((y + 1) * L) as usize * 4;
+            px[linha(0)].fill(10);
+            px[linha(8)].fill(20);
+            after.canvas_rgba = Arc::new(px.clone());
+            // A água escreveu a linha 0 (a caixa como estava, e a tela depois).
+            c.marca.agua_mudou(
+                &before.canvas_rgba[linha(0)],
+                &px,
+                L as usize,
+                (0, 0, L as usize, 1),
+            );
+            if disco {
+                c.marca.disco(8.0, 0.5, 0.6, false);
+            }
+            c.record_structural_hinted(before, after, None);
+            let m = c.marca.marca.as_ref().expect("a marca");
+            let marcados: Vec<usize> = (0..(L * L) as usize).filter(|&i| m.marcado(i)).collect();
+            let artista: Vec<usize> = ((8 * L) as usize..(9 * L) as usize).collect();
+            if disco {
+                assert!(marcados.contains(&8) && marcados.ends_with(&artista));
+                assert_eq!(
+                    marcados.len(),
+                    artista.len() + 2,
+                    "o disco devolve só o que cobre"
+                );
+            } else {
+                assert_eq!(marcados, artista, "a água marcou");
+            }
+        }
+    }
+}

@@ -57,13 +57,17 @@ fn espera_a_agua(t: &mut PainterTool) -> usize {
 
 /// Um traço recto de `de` a `ate` (texels), um quadro por evento.
 fn traco(t: &mut PainterTool, de: [f32; 2], ate: [f32; 2]) {
-    const N: usize = 8;
-    for i in 0..=N {
+    traco_de(t, de, ate, 8, false);
+}
+
+/// [`traco`] com `n` movimentos, um quadro do editor (16 ms) por evento (`em_baixo` = o Down já foi).
+fn traco_de(t: &mut PainterTool, de: [f32; 2], ate: [f32; 2], n: usize, em_baixo: bool) {
+    for i in 0..=n {
         #[expect(clippy::cast_precision_loss, reason = "poucos passos")]
-        let f = i as f32 / N as f32;
+        let f = i as f32 / n as f32;
         let phase = match i {
-            0 => PointerPhase::Down,
-            N => PointerPhase::Up,
+            0 if !em_baixo => PointerPhase::Down,
+            i if i == n => PointerPhase::Up,
             _ => PointerPhase::Move,
         };
         t.on_canvas_pointer(CanvasPointer {
@@ -73,6 +77,9 @@ fn traco(t: &mut PainterTool, de: [f32; 2], ate: [f32; 2]) {
             phase,
         });
         quadro(t);
+        if n > 8 {
+            std::thread::sleep(Duration::from_millis(15));
+        }
     }
 }
 
@@ -85,7 +92,11 @@ fn distancia(i: usize, de: [f32; 2], ate: [f32; 2]) -> f32 {
     ];
     let d = [ate[0] - de[0], ate[1] - de[1]];
     let l2 = d[0] * d[0] + d[1] * d[1];
-    let s = (((p[0] - de[0]) * d[0] + (p[1] - de[1]) * d[1]) / l2).clamp(0.0, 1.0);
+    let s = if l2 > 0.0 {
+        (((p[0] - de[0]) * d[0] + (p[1] - de[1]) * d[1]) / l2).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
     let q = [de[0] + d[0] * s - p[0], de[1] + d[1] * s - p[1]];
     (q[0] * q[0] + q[1] * q[1]).sqrt()
 }
@@ -134,10 +145,38 @@ fn a_pincelada_do_artista_marca_onde_o_pincel_passou_e_o_desfazer_a_desliga() {
     let (de, ate) = ([12.0, 118.0], [60.0, 118.0]);
     t.set_brush_color_srgb8([20, 20, 200]);
     t.set_brush_size_px(6.0);
-    traco(&mut t, de, ate);
+    // O raio do disco do pincel, calibrado no 1.º dab (os discos provisórios), e um traço longo ao ritmo
+    // do editor: a água da tinta nova escorre DENTRO do passo, e o que ela muda fora do disco não é marca.
+    t.on_canvas_pointer(CanvasPointer {
+        pos: de,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase: PointerPhase::Down,
+    });
+    quadro(&mut t);
+    let n = (LADO * LADO) as usize;
+    let r0 = {
+        let m = marca(&t);
+        (0..n)
+            .filter(|&i| m.marcado(i))
+            .map(|i| distancia(i, de, de))
+            .fold(0.0_f32, f32::max)
+    };
+    assert!(r0 > 3.0, "controlo: o 1.º dab marcou (raio {r0})");
+    traco_de(&mut t, de, ate, 40, true);
+    let halo = |m: &MarcaDoArtista| {
+        (0..n)
+            .filter(|&i| m.marcado(i) && distancia(i, de, ate) > r0 + 0.75)
+            .count()
+    };
+    assert_eq!(halo(&marca(&t)), 0, "a água da tinta fora do disco marcou");
     espera_a_agua(&mut t);
     let m = marca(&t);
-    let n = (LADO * LADO) as usize;
+    assert_eq!(
+        halo(&m),
+        0,
+        "depois da água, marcas fora do disco do pincel"
+    );
     let longe: Vec<usize> = (0..n)
         .filter(|&i| m.marcado(i) && distancia(i, de, ate) > ALCANCE)
         .collect();
@@ -215,7 +254,9 @@ fn a_reescrita_e_o_recomecar_nao_marcam_e_a_reescrita_salta_o_marcado() {
     let mut editada = crua.clone();
     edita_tamanho(&mut editada, 1, 30.0).expect("edita");
     let nao = AtomicBool::new(false);
-    let de = imagens_da_gravacao(&crua, &nao).expect("toca").expect("fim");
+    let de = imagens_da_gravacao(&crua, &nao)
+        .expect("toca")
+        .expect("fim");
     let para = imagens_da_gravacao(&editada, &nao)
         .expect("toca")
         .expect("fim");
@@ -255,7 +296,10 @@ fn a_reescrita_e_o_recomecar_nao_marcam_e_a_reescrita_salta_o_marcado() {
             .all(|&i| depois[i * 4..i * 4 + 4] == fim_novo[i * 4..i * 4 + 4]),
         "controlo: o que muda passa ao fim novo"
     );
-    assert!(!diferem(&antes, &depois).is_empty(), "controlo: a reescrita mudou a tela");
+    assert!(
+        !diferem(&antes, &depois).is_empty(),
+        "controlo: a reescrita mudou a tela"
+    );
     assert_eq!(
         marca(&t).palavras(),
         m.palavras(),
@@ -270,7 +314,6 @@ fn a_reescrita_e_o_recomecar_nao_marcam_e_a_reescrita_salta_o_marcado() {
     );
     assert_eq!(marca(&t).palavras(), m.palavras(), "recomeçar marcou");
 }
-
 
 /// W9 A3 — **a imagem na caixa é o recorte da inteira, ao byte**: no papel (Wet Paint, a composição
 /// sobre o papel), no Impasto (a luz do relevo lê os vizinhos fora da caixa) e numa tela simples; e
@@ -288,9 +331,17 @@ fn a_imagem_na_caixa_e_o_recorte_da_inteira() {
         grava_nos_meios_e_o_tool(LADO, &SPLASH, &[PaintMedia::Impasto]).expect("grava");
     let mut simples = PainterTool::default();
     simples.set_source(vec![90; (LADO * LADO * 4) as usize], LADO, LADO);
-    for (nome, t) in [("papel", &papel), ("impasto", &impasto), ("simples", &simples)] {
+    for (nome, t) in [
+        ("papel", &papel),
+        ("impasto", &impasto),
+        ("simples", &simples),
+    ] {
         let inteira = imagem(t);
-        for caixa in [(0, 0, LADO, LADO), (3, 5, 40, 17), (LADO - 9, LADO - 4, 9, 4)] {
+        for caixa in [
+            (0, 0, LADO, LADO),
+            (3, 5, 40, 17),
+            (LADO - 9, LADO - 4, 9, 4),
+        ] {
             assert_eq!(
                 t.imagem_aplicada_na_caixa(caixa),
                 Some(recorte(&inteira, LADO, caixa)),

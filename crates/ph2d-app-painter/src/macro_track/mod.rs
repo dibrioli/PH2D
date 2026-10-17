@@ -192,8 +192,6 @@ pub struct PalcosDoPainter {
     transacao: Option<u64>,
     /// As marcas do artista por imagem e gravação (W9; [`marcas`]).
     marcas: BTreeMap<ChaveDaMarca, marcas::Guardada>,
-    /// A imagem cuja marca o Painter tem: `(sprite, chave)`.
-    ligado: Option<(u64, ChaveDaMarca)>,
     /// Os gates trocam o cálculo do fim (um que falha).
     #[cfg(test)]
     calcula_o_fim: Option<fim::Calculo>,
@@ -310,13 +308,7 @@ fn premultiplica_na_caixa(espelho: &mut [u8], rgba: &[u8], largura: u32, c: Caix
 
 /// **A lei da mistura** (W9): em `out` (o retângulo `c` do palco), cada texel que o artista marcou passa
 /// a ser o da imagem `atual` (premultiplicada, de largura `largura`); os outros ficam o palco.
-fn mistura_na_caixa(
-    out: &mut [u8],
-    marca: &MarcaDoArtista,
-    atual: &[u8],
-    largura: u32,
-    c: Caixa,
-) {
+fn mistura_na_caixa(out: &mut [u8], marca: &MarcaDoArtista, atual: &[u8], largura: u32, c: Caixa) {
     let (lw, x, w) = (largura as usize, c.0 as usize, c.2 as usize);
     for (j, o) in out.chunks_exact_mut(w * 4).enumerate().take(c.3 as usize) {
         let linha = (c.1 as usize + j) * lw + x;

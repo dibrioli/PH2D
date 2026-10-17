@@ -42,10 +42,18 @@ fn o_delta_liga_so_o_que_era_novo_e_o_desfazer_devolve_a_marca_de_antes() {
     }
     let d = m.une_bits(&bits);
     for (i, b) in d.palavras.iter().map(|p| p.1).enumerate() {
-        assert_eq!(b & antes[i], 0, "o delta só leva bits que estavam desligados");
+        assert_eq!(
+            b & antes[i],
+            0,
+            "o delta só leva bits que estavam desligados"
+        );
     }
     m.aplica(&d, false);
-    assert_eq!(*m.palavras().as_ref(), antes, "desfazer devolve a marca de antes");
+    assert_eq!(
+        *m.palavras().as_ref(),
+        antes,
+        "desfazer devolve a marca de antes"
+    );
     m.aplica(&d, true);
     assert!(m.marcado(63) && m.marcado(40));
     // Outra época não se aplica.
@@ -65,8 +73,15 @@ fn o_formato_gravado_volta_igual() {
     assert_eq!((l.tamanho(), l.epoca()), (m.tamanho(), m.epoca()));
     assert_eq!(l.caixa(), m.caixa());
     let cru = m.palavras().len() * 8;
-    assert!(b.len() * 8 < cru, "{} de {cru} bytes: as corridas de zeros não se gravam", b.len());
+    assert!(
+        b.len() * 8 < cru,
+        "{} de {cru} bytes: as corridas de zeros não se gravam",
+        b.len()
+    );
     assert!(MarcaDoArtista::descodifica(&b[..b.len() - 3]).is_none());
     let vazia = MarcaDoArtista::nova(1024, 1024, 1).codifica();
-    assert_eq!(MarcaDoArtista::descodifica(&vazia).map(|m| m.vazia()), Some(true));
+    assert_eq!(
+        MarcaDoArtista::descodifica(&vazia).map(|m| m.vazia()),
+        Some(true)
+    );
 }

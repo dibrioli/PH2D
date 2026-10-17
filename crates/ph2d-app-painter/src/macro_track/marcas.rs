@@ -87,11 +87,7 @@ pub(super) fn le_a_sprite<R: ?Sized>(
         img: lida.as_ref().map(|(rgba, w, h)| {
             let mut rgba = rgba.clone();
             ph2d_render::premul::premultiply_rgba8(&mut rgba);
-            Arc::new(fim::Imagem {
-                rgba,
-                w: *w,
-                h: *h,
-            })
+            Arc::new(fim::Imagem { rgba, w: *w, h: *h })
         }),
     });
     let Some((rgba, w, h)) = lida else {
@@ -143,14 +139,12 @@ impl PalcosDoPainter {
             le_a_sprite(p, &mut self.marcas, Some(&mut *le), ranhuras);
         }
         let Some(t) = painter else {
-            self.ligado = None;
             return;
         };
         let Some((sprite, chave)) = alvo else {
             if t.marca_do_artista().is_some() {
                 t.poe_a_marca(None);
             }
-            self.ligado = None;
             return;
         };
         let dims = t.canvas_size();
@@ -161,14 +155,15 @@ impl PalcosDoPainter {
         if g.vale().tamanho() != dims {
             *g = Guardada::nova(dims, chave.1);
         }
-        let fresca = self.ligado != Some((sprite, chave))
-            || t.marca_do_artista()
-                .is_none_or(|m| m.epoca() != chave.1 || m.tamanho() != dims);
+        // Ligar outra imagem limpa a marca do Painter (`bind_document`): sem marca, ou de outra
+        // gravação, ele recebe a desta.
+        let fresca = t
+            .marca_do_artista()
+            .is_none_or(|m| m.epoca() != chave.1 || m.tamanho() != dims);
         if fresca {
             let m = g.vale().clone();
             t.poe_a_marca(Some(m.clone()));
             g.marca = m;
-            self.ligado = Some((sprite, chave));
         } else if let Some(m) = t.marca_do_artista()
             && m.versao() != g.marca.versao()
         {
@@ -219,7 +214,6 @@ impl PalcosDoPainter {
     /// (nada se restaura).
     pub fn restaura_marcas(&mut self, b: &[u8]) -> bool {
         self.marcas.clear();
-        self.ligado = None;
         if b.is_empty() {
             return true;
         }

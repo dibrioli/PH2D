@@ -17,7 +17,7 @@ impl GpuCook {
     pub(crate) fn encode_concat(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         ports: &[usize],
         inputs: &[GpuStream],
     ) -> GpuStream {
@@ -33,7 +33,7 @@ impl GpuCook {
     pub(crate) fn encode_join(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         fontes: &[&GpuStream],
         fills: &[ConcatFill],
     ) -> GpuStream {

@@ -71,6 +71,14 @@ pub struct BufferPool {
     /// to observe it is how a budget rule goes years without firing
     /// ([[feedback_a_rule_that_never_observes_cannot_fire]]).
     allocations: usize,
+    /// A variante `pool_por_ordem` (doc 120 §8.3.2): o `n`-ésimo pedido de um cozimento recebe o
+    /// buffer que o `n`-ésimo pedido do anterior recebeu, se estiver livre — identidade estável
+    /// por estágio, para a ligação guardada acertar. `Weak`: não conta no `strong_count` que o
+    /// [`Self::reclaim`] lê.
+    pub(crate) por_ordem: bool,
+    /// Os pedidos deste cozimento, por ordem, e os do anterior.
+    pedidos: Vec<std::sync::Weak<wgpu::Buffer>>,
+    anteriores: Vec<std::sync::Weak<wgpu::Buffer>>,
 }
 
 impl BufferPool {
@@ -84,7 +92,16 @@ impl BufferPool {
     /// Take (or create) a storage buffer of at least `bytes`.
     pub fn acquire(&mut self, gpu: &GpuContext, bytes: u64) -> Arc<wgpu::Buffer> {
         let class = bytes.max(16).next_power_of_two();
-        let buf = match self.free.get_mut(&class).and_then(Vec::pop) {
+        let o_mesmo = self
+            .anteriores
+            .get(self.pedidos.len())
+            .filter(|_| self.por_ordem)
+            .and_then(|w| {
+                let lista = self.free.get_mut(&class)?;
+                let i = lista.iter().position(|b| std::ptr::eq(Arc::as_ptr(b), w.as_ptr()))?;
+                Some(lista.remove(i))
+            });
+        let buf = match o_mesmo.or_else(|| self.free.get_mut(&class).and_then(Vec::pop)) {
             Some(b) => b,
             None => {
                 self.allocations += 1;
@@ -96,6 +113,9 @@ impl BufferPool {
                 }))
             }
         };
+        if self.por_ordem {
+            self.pedidos.push(Arc::downgrade(&buf));
+        }
         self.handed_out.push(Arc::clone(&buf));
         buf
     }
@@ -118,6 +138,7 @@ impl BufferPool {
     /// Return every no-longer-referenced buffer to the free lists. Call after
     /// the frame's `GpuStream`s have been dropped (top of the next cook).
     pub fn reclaim(&mut self) {
+        self.anteriores = std::mem::take(&mut self.pedidos);
         for buf in std::mem::take(&mut self.handed_out) {
             if Arc::strong_count(&buf) == 1 {
                 self.free.entry(buf.size()).or_default().push(buf);

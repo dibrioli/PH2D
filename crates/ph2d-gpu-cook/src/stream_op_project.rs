@@ -22,7 +22,7 @@ impl GpuCook {
     pub(crate) fn encode_project(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         graph: &Graph,
         node: NodeId,
         manifest: &'static NodeManifest,

@@ -29,7 +29,7 @@ impl GpuCook {
     pub(crate) fn encode_disparo(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         slots: [usize; 3],
         f: &FiredBirth,
         (template, nao_herda): (usize, &[&str]),
@@ -111,7 +111,7 @@ impl GpuCook {
     fn nascer(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         slot: usize,
         kernel: &GpuKernel,
         (graph, node, manifest): (&Graph, NodeId, &'static NodeManifest),

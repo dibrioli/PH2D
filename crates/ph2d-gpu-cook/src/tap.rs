@@ -245,11 +245,13 @@ impl GpuCook {
         pedido: &Pedido,
         persistente: bool,
     ) -> Option<(wgpu::Buffer, Vec<Slot>)> {
-        let mut encoder = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("ph2d-gpu-cook tap"),
-            });
+        let mut encoder = crate::gravador::Gravador::new(
+            gpu.device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("ph2d-gpu-cook tap"),
+                }),
+            false,
+        );
         let feito = self.codifica_tap(gpu, &mut encoder, pedido, persistente)?;
         gpu.queue.submit(Some(encoder.finish()));
         Some(feito)
@@ -261,7 +263,7 @@ impl GpuCook {
     pub(crate) fn codifica_tap(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         pedido: &Pedido,
         persistente: bool,
     ) -> Option<(wgpu::Buffer, Vec<Slot>)> {
@@ -352,7 +354,7 @@ impl GpuCook {
         // One pass, one dispatch per column — all inside a single encoder, so the
         // whole tap is one submit no matter how many nodes are being watched.
         {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            let pass = encoder.passe(&wgpu::ComputePassDescriptor {
                 label: Some("ph2d-gpu-cook tap pass"),
                 timestamp_writes: None,
             });

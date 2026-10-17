@@ -63,7 +63,7 @@ impl GpuCook {
     pub(crate) fn encode_kernel_stage(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         stage_idx: usize,
         cache_salt: u64,
         kernel: &GpuKernel,
@@ -280,7 +280,7 @@ impl GpuCook {
 
         self.fases.despachos += 1;
         {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            let pass = encoder.passe(&wgpu::ComputePassDescriptor {
                 label: Some(manifest.name),
                 timestamp_writes: None,
             });
@@ -329,10 +329,10 @@ impl GpuCook {
     /// identity ramp there, matching the CPU `eval`'s passthrough.
     ///
     /// No encoder: a LUT is CPU-computed data written straight to a buffer, not a
-    /// compute pass. Immutable `&self` (unlike the grid, which owns a pipeline) so
-    /// the caller can build it before its `&mut self` encode loop.
+    /// compute pass. With the `luts_por_conteudo` variant the buffer is reused by
+    /// content, like a uniform (doc 120 §8.3.2).
     pub(crate) fn build_luts(
-        &self,
+        &mut self,
         gpu: &GpuContext,
         specs: &[LutSpec],
         graph: &Graph,
@@ -352,13 +352,12 @@ impl GpuCook {
                 let mut table = vec![0.0f32; n];
                 (spec.fill)(text, &mut table);
                 let bytes: Vec<u8> = table.iter().flat_map(|v| v.to_le_bytes()).collect();
-                let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("ph2d-gpu-cook lut"),
-                    size: bytes.len() as u64,
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                });
-                gpu.queue.write_buffer(&buffer, 0, &bytes);
+                if !self.variantes.luts_por_conteudo {
+                    self.fases.luts_criadas += 1;
+                    return crate::ligacoes::cria_tabela(gpu, &bytes);
+                }
+                let (buffer, criada) = self.ligacoes.tabela(gpu, &bytes);
+                self.fases.luts_criadas += u32::from(criada);
                 buffer
             })
             .collect()
@@ -371,7 +370,7 @@ impl GpuCook {
     pub(crate) fn build_grid(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         spec: &GridSpec,
         inputs: &[GpuStream],
         graph: &Graph,

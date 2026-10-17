@@ -253,6 +253,13 @@ impl StreamOpPipes {
         self.scan.vira();
     }
 
+    /// Os grupos `(criados, reaproveitados)` desde a última viragem (o relógio de fases).
+    pub(crate) fn conta_grupos(&self) -> (u32, u32) {
+        self.ligacoes
+            .lock()
+            .map_or((0, 0), |l| l.criados_reaproveitados)
+    }
+
     /// Esquece as memórias — a variante «a frio» da sonda.
     pub(crate) fn esquece(&self) {
         if let Ok(mut l) = self.ligacoes.lock() {
@@ -265,7 +272,7 @@ impl StreamOpPipes {
     fn fill(
         &self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         r: FillRegion<'_>,
         hold: &mut Vec<wgpu::Buffer>,
     ) {
@@ -283,7 +290,7 @@ impl StreamOpPipes {
             (uni, g)
         };
         {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            let pass = encoder.passe(&wgpu::ComputePassDescriptor {
                 label: Some("ph2d-stream-op fill"),
                 timestamp_writes: None,
             });
@@ -301,7 +308,7 @@ impl StreamOpPipes {
     fn pass(
         &self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         pipeline: &wgpu::ComputePipeline,
         n: u32,
         stride: u32,
@@ -324,7 +331,7 @@ impl StreamOpPipes {
             (uni.clone(), g)
         };
         {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            let pass = encoder.passe(&wgpu::ComputePassDescriptor {
                 label: Some("ph2d-stream-op"),
                 timestamp_writes: None,
             });
@@ -345,7 +352,7 @@ impl GpuCook {
     pub(crate) fn encode_compact(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         slot_idx: usize,
         predicate: &GpuKernel,
         graph: &Graph,
@@ -478,7 +485,7 @@ impl GpuCook {
         encoder.copy_buffer_to_buffer(&scan_buf, u64::from(n - 1) * 4, &staging, 0, 4);
         encoder.copy_buffer_to_buffer(&flags, u64::from(n - 1) * 4, &staging, 4, 4);
         let done = std::mem::replace(
-            encoder,
+            &mut **encoder,
             gpu.device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("ph2d-gpu-cook chain (post-compact)"),
@@ -561,7 +568,7 @@ impl GpuCook {
     pub(crate) fn encode_source_gather(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         out: GpuStream,
         template: Option<&GpuStream>,
         count: u32,

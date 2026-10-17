@@ -150,7 +150,7 @@ impl GpuCook {
     pub(crate) fn tap_no_cozimento(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
     ) -> Option<Option<(wgpu::Buffer, Vec<Slot>)>> {
         self.tap_voo.cozimento_viu_pedido = !self.tap_voo.pedido.vazio();
         if self.tap_voo.pedido.vazio() || self.tap_voo.em_voo.is_some() {

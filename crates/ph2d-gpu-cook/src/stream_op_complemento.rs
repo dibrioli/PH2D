@@ -39,7 +39,7 @@ impl GpuCook {
     pub(super) fn encode_complement(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         v: Varredura<'_>,
         complement: &[ComplementPort],
     ) -> Vec<(u16, GpuStream)> {

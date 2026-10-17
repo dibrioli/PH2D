@@ -24,6 +24,8 @@ use std::collections::BTreeMap;
 
 #[path = "motion_state_demo_carimbo_escala_tests.rs"]
 mod carimbo_escala;
+#[path = "motion_state_demo_curas_custo_fixo_tests.rs"]
+mod curas_do_custo_fixo;
 #[path = "motion_state_demo_rota_frases_tests.rs"]
 mod frases_de_rota;
 #[path = "motion_state_demo_rota_medida_tests.rs"]

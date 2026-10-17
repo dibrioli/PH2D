@@ -216,7 +216,7 @@ impl GpuCook {
     pub(crate) fn run_reduces(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         specs: &'static [ReduceSpec],
         inputs: &[GpuStream],
         graph: &Graph,
@@ -308,7 +308,7 @@ impl GpuCook {
             }
             let bind_group = self.ligacoes.grupo(gpu, pipeline, &entries);
             {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                let pass = encoder.passe(&wgpu::ComputePassDescriptor {
                     label: Some("ph2d-reduce map"),
                     timestamp_writes: None,
                 });

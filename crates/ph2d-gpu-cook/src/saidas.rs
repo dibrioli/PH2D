@@ -71,7 +71,7 @@ impl GpuCook {
     pub(crate) fn baixar_as_saidas(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         plan: &GpuPlan,
         streams: &BTreeMap<NodeId, GpuStream>,
         boundary_streams: &[(NodeId, &Stream)],

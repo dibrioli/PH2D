@@ -29,7 +29,7 @@ fn recusa_a_escala_do_ponto(p: &dyn Fn(&str) -> f32) -> bool {
 }
 
 /// A rota `A`: o kernel registado, sem variante, com a recusa de antes.
-fn rota_de_antes(m: &mut MotionState) {
+pub(super) fn rota_de_antes(m: &mut MotionState) {
     let k = *m
         .registry
         .gpu_kernel(CARIMBO)
@@ -47,7 +47,7 @@ fn rota_de_antes(m: &mut MotionState) {
 
 /// Multiplica o lado de toda grelha da cena por `k` (cortado no tecto de lado): o MESMO grafo com
 /// `k²` vezes os pontos, para medir o tecto e não o custo fixo do despacho.
-fn amplia(m: &mut MotionState, k: f32) {
+pub(super) fn amplia(m: &mut MotionState, k: f32) {
     let grelhas: Vec<_> = m
         .doc
         .graph
@@ -95,7 +95,7 @@ fn porque_o_carimbo_fica(m: &mut MotionState, t: f64) -> Vec<String> {
         .collect()
 }
 
-fn numero(var: &str, omissao: usize) -> usize {
+pub(super) fn numero(var: &str, omissao: usize) -> usize {
     std::env::var(var)
         .ok()
         .and_then(|v| v.parse().ok())
@@ -204,7 +204,7 @@ fn sonda_o_carimbo_com_escala() {
 }
 
 /// As fases que a [`sonda_as_fases_do_quadro_hibrido`] imprime, na ordem.
-const FASES: [&str; 21] = [
+pub(super) const FASES: [&str; 21] = [
     "tomadas",
     "preparo",
     "cercas",
@@ -230,7 +230,11 @@ const FASES: [&str; 21] = [
 
 /// Um quadro lido pelo relógio de fases, em µs, mais `(bytes, enviadas, reaproveitadas,
 /// despachos, grupos criados, grupos reaproveitados)`.
-fn le_as_fases(m: &MotionState, espera: Duration, formas: Duration) -> ([f64; 21], [f64; 6]) {
+pub(super) fn le_as_fases(
+    m: &MotionState,
+    espera: Duration,
+    formas: Duration,
+) -> ([f64; 21], [f64; 6]) {
     let f = m.fases;
     let us = |d: Duration| d.as_secs_f64() * 1e6;
     let hibrida = m.route_said.is_some_and(|r| r.contains("HIBRIDO"));

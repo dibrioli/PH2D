@@ -31,6 +31,33 @@ pub struct FasesDoCozimento {
     /// Grupos de ligação dos kernels criados de novo × achados na cache entre quadros.
     pub grupos_criados: u32,
     pub grupos_reaproveitados: u32,
+    /// Dos grupos criados (só com [`VariantesDoCozimento::diagnostica`]): com um buffer que nenhuma
+    /// ligação desta viragem nem da anterior tinha × só com buffers já vistos noutra combinação.
+    pub faltas_por_buffer_novo: u32,
+    pub faltas_por_combinacao: u32,
+    /// Os grupos dos passes estruturais (o gather do carimbo, a compactação): criados × da cache.
+    pub grupos_de_stream_op_criados: u32,
+    pub grupos_de_stream_op_reaproveitados: u32,
+    /// Tabelas (LUT) criadas neste cozimento.
+    pub luts_criadas: u32,
+    /// Buffers que o pool criou neste cozimento.
+    pub buffers_alocados: u32,
+    /// Passes de computação abertos no codificador do cozimento.
+    pub passes: u32,
+}
+
+/// **As variantes do custo fixo da rota híbrida** (doc 120 §8.3.2), escolhidas em execução para a
+/// sonda intercalada as medir no MESMO processo. Todas desligadas = o código de sempre.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct VariantesDoCozimento {
+    /// 1a — a tabela (LUT) reaproveitada pelo conteúdo, como o uniforme.
+    pub luts_por_conteudo: bool,
+    /// 1b — o `n`-ésimo pedido ao pool recebe o buffer que o `n`-ésimo do cozimento anterior teve.
+    pub pool_por_ordem: bool,
+    /// 2 — os despachos consecutivos partilham UM passe de computação.
+    pub um_passe: bool,
+    /// Conta a CAUSA de cada grupo criado (guarda cada buffer ligado — custa µs, fora da régua).
+    pub diagnostica: bool,
 }
 
 impl FasesDoCozimento {
@@ -50,6 +77,15 @@ impl FasesDoCozimento {
             despachos: self.despachos + o.despachos,
             grupos_criados: self.grupos_criados + o.grupos_criados,
             grupos_reaproveitados: self.grupos_reaproveitados + o.grupos_reaproveitados,
+            faltas_por_buffer_novo: self.faltas_por_buffer_novo + o.faltas_por_buffer_novo,
+            faltas_por_combinacao: self.faltas_por_combinacao + o.faltas_por_combinacao,
+            grupos_de_stream_op_criados: self.grupos_de_stream_op_criados
+                + o.grupos_de_stream_op_criados,
+            grupos_de_stream_op_reaproveitados: self.grupos_de_stream_op_reaproveitados
+                + o.grupos_de_stream_op_reaproveitados,
+            luts_criadas: self.luts_criadas + o.luts_criadas,
+            buffers_alocados: self.buffers_alocados + o.buffers_alocados,
+            passes: self.passes + o.passes,
         }
     }
 }
@@ -59,6 +95,14 @@ impl crate::GpuCook {
     #[must_use]
     pub fn fases_do_ultimo_cozimento(&self) -> FasesDoCozimento {
         self.fases
+    }
+
+    /// Liga as variantes do custo fixo — só a sonda (doc 120 §8.3.2).
+    #[doc(hidden)]
+    pub fn usa_variantes(&mut self, v: VariantesDoCozimento) {
+        self.variantes = v;
+        self.pool.por_ordem = v.pool_por_ordem;
+        self.ligacoes.diagnostica = v.diagnostica;
     }
 }
 

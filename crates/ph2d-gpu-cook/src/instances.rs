@@ -98,7 +98,7 @@ impl GpuCook {
     pub(crate) fn encode_lowering(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         uniform_slot: usize,
         stream: &GpuStream,
         primeiro: u32,
@@ -215,7 +215,7 @@ impl GpuCook {
             layout: &pipeline.get_bind_group_layout(0),
             entries: &entries,
         });
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+        let pass = encoder.passe(&wgpu::ComputePassDescriptor {
             label: Some("ph2d-gpu-cook lowering"),
             timestamp_writes: None,
         });

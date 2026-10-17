@@ -59,7 +59,8 @@ pub(crate) use encode::create_pipeline;
 pub mod error;
 mod estado;
 mod fases;
-pub use fases::FasesDoCozimento;
+pub use fases::{FasesDoCozimento, VariantesDoCozimento};
+mod gravador;
 pub mod field_name;
 mod formas;
 mod gather;
@@ -208,15 +209,18 @@ impl GpuCook {
 
         // As costuras que atravessam — e as que NÃO voltam a atravessar (ciclo 8, W1).
         self.fases = FasesDoCozimento::default();
+        let alocados = self.pool.allocations();
         let t = std::time::Instant::now();
         let uploaded = self.enviar_costuras(gpu, boundary_streams);
         self.fases.costuras = t.elapsed();
         let t = std::time::Instant::now();
-        let mut encoder = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("ph2d-gpu-cook chain"),
-            });
+        let mut encoder = gravador::Gravador::new(
+            gpu.device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("ph2d-gpu-cook chain"),
+                }),
+            self.variantes.um_passe,
+        );
 
         // Every claimed node's output, threaded in topological order. The plan
         // named each input's source, so this is a lookup, never a search.
@@ -656,6 +660,7 @@ impl GpuCook {
         // ⭐ A leitura dos cartões vai no MESMO submit (doc 122 §5) — ver `crate::tap_voo`.
         let tap = self.tap_no_cozimento(gpu, &mut encoder);
         self.fases.tap = t.elapsed() - self.fases.estagios - self.fases.saidas;
+        self.fases.passes = encoder.passes;
         let comandos = encoder.finish();
         self.fases.encode = t.elapsed();
         let t = std::time::Instant::now();
@@ -663,6 +668,17 @@ impl GpuCook {
         self.fases.submit = t.elapsed();
         (self.fases.grupos_criados, self.fases.grupos_reaproveitados) =
             self.ligacoes.criados_reaproveitados;
+        (
+            self.fases.faltas_por_buffer_novo,
+            self.fases.faltas_por_combinacao,
+        ) = self.ligacoes.faltas_por_buffer_novo_e_por_combinacao;
+        if let Some(p) = &self.stream_op_pipes {
+            (
+                self.fases.grupos_de_stream_op_criados,
+                self.fases.grupos_de_stream_op_reaproveitados,
+            ) = p.conta_grupos();
+        }
+        self.fases.buffers_alocados = (self.pool.allocations() - alocados) as u32;
         self.tap_depois_do_submit(tap);
 
         // D1 — the ping-pong: hold the `Arc`s of every node a `pre` edge reads,

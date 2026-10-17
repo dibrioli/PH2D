@@ -24,7 +24,7 @@ impl GpuCook {
     pub(crate) fn encode_carry<'k>(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         slot: usize,
         op: &'k StreamOp,
         kernels: &dyn KernelResolver,

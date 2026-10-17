@@ -273,7 +273,7 @@ impl VoronoiPipes {
     fn pass(
         &self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         pipeline: &wgpu::ComputePipeline,
         uni_bytes: [u8; 32],
         n: u32,
@@ -303,7 +303,7 @@ impl VoronoiPipes {
             entries: &entries,
         });
         {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            let pass = encoder.passe(&wgpu::ComputePassDescriptor {
                 label: Some("ph2d-voronoi"),
                 timestamp_writes: None,
             });
@@ -338,7 +338,7 @@ impl GpuCook {
     pub(crate) fn encode_algorithm(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         alg: &GpuAlgorithm,
         graph: &Graph,
         node: NodeId,
@@ -358,7 +358,7 @@ impl GpuCook {
     fn encode_lloyd_voronoi(
         &mut self,
         gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::gravador::Gravador,
         alg: &GpuAlgorithm,
         graph: &Graph,
         node: NodeId,
@@ -550,9 +550,11 @@ pub fn jfa_assignment(
         .write_buffer(&pts, 0, bytemuck::cast_slice(points));
     let grid_a = mk(u64::from(cells) * 4, storage);
     let grid_b = mk(u64::from(cells) * 4, storage);
-    let mut encoder = gpu
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    let mut encoder = crate::gravador::Gravador::new(
+        gpu.device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default()),
+        false,
+    );
     encoder.clear_buffer(&grid_a, 0, None);
     let mut hold = Vec::new();
     let metric = metric_code(metric as f32);

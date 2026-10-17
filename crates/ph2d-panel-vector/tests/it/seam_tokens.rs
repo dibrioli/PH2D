@@ -469,7 +469,8 @@ fn every_token_slot_is_alive_and_lists_its_own_table() {
     for slot in ids::TOKEN_SLOTS {
         // ⭐ F17: os chips dos VÃOS vivem na Layout (aba Interface); os outros no desenho.
         let mut host = crate::host_aberto();
-        let aba = if [ids::VECTOR_TOKEN_GAP_MAIN, ids::VECTOR_TOKEN_GAP_CROSS].contains(&slot.chip) {
+        let aba = if [ids::VECTOR_TOKEN_GAP_MAIN, ids::VECTOR_TOKEN_GAP_CROSS].contains(&slot.chip)
+        {
             ids::VECTOR_TAB_INTERFACE
         } else {
             ids::VECTOR_TAB_DRAWING

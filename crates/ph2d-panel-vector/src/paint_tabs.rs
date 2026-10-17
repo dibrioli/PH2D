@@ -12,8 +12,8 @@ use crate::ids;
 use crate::state::Aba;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::paint::{fill_circle, resolve};
+use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::widget::panel_chrome::{PANEL_HEAD_PAD, panel_close_button_rect};
 use ph2d_editor_core::widget::{TabItem, Tabs, paint_tabs_with_hover};
 use ph2d_editor_core::zones::Rect;
@@ -22,8 +22,16 @@ use ph2d_tokens::{ColorToken, Spacing, Theme};
 
 /// As abas, pela ordem em que se pintam e registam: `(id, aba, chave do rótulo)`.
 pub(crate) const ABAS: [(ph2d_a11y::NodeId, Aba, &str); 2] = [
-    (ids::VECTOR_TAB_DRAWING, Aba::Drawing, "panel.vector.tab.drawing"),
-    (ids::VECTOR_TAB_INTERFACE, Aba::Interface, "panel.vector.tab.interface"),
+    (
+        ids::VECTOR_TAB_DRAWING,
+        Aba::Drawing,
+        "panel.vector.tab.drawing",
+    ),
+    (
+        ids::VECTOR_TAB_INTERFACE,
+        Aba::Interface,
+        "panel.vector.tab.interface",
+    ),
 ];
 
 /// A aba de um id de aba — `None` = não é uma aba.
@@ -62,7 +70,12 @@ pub(crate) fn apply_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
 pub(crate) fn tabs_rect(panel: Rect) -> Rect {
     let close = panel_close_button_rect(panel);
     let x = panel.x + PANEL_HEAD_PAD;
-    Rect::new(x, close.y, (close.x - Spacing::Sm.px() - x).max(0.0), close.h)
+    Rect::new(
+        x,
+        close.y,
+        (close.x - Spacing::Sm.px() - x).max(0.0),
+        close.h,
+    )
 }
 
 /// A fila, com a aba aberta escolhida.
@@ -74,7 +87,12 @@ pub(crate) fn abas() -> Tabs {
         .map(|(id, _, chave)| TabItem::new(*id, tr(chave)))
         .collect();
     let idx = ABAS.iter().position(|(_, a, _)| *a == aberta).unwrap_or(0);
-    Tabs::new(ids::VECTOR_TABS, <crate::VectorPanel as ph2d_editor_core::panel::Panel>::TITLE.tr(), items).selected(idx)
+    Tabs::new(
+        ids::VECTOR_TABS,
+        <crate::VectorPanel as ph2d_editor_core::panel::Panel>::TITLE.tr(),
+        items,
+    )
+    .selected(idx)
 }
 
 /// Pinta as abas no título e regista o alvo de cada uma. Chamado DEPOIS do corpo: o último a

@@ -64,7 +64,10 @@ fn cada_aba_pinta_so_as_suas_seccoes() {
     let mut host = crate::host_aberto();
     assert_eq!(state::aba(), Aba::Drawing, "o painel nasce no desenho");
     assert!(pintada(&mut host, t::VECTOR_SECTION_FILL).is_some());
-    assert!(pintada(&mut host, t::VECTOR_SECTION_SNAP).is_some(), "o Snap é das duas abas");
+    assert!(
+        pintada(&mut host, t::VECTOR_SECTION_SNAP).is_some(),
+        "o Snap é das duas abas"
+    );
     assert!(
         pintada(&mut host, ids::VECTOR_SECTION_COMPONENT).is_none(),
         "a Component pintou na aba Drawing"
@@ -72,7 +75,10 @@ fn cada_aba_pinta_so_as_suas_seccoes() {
     clica(&mut host, ids::VECTOR_TAB_INTERFACE, "a aba Interface");
     assert_eq!(state::aba(), Aba::Interface);
     assert!(pintada(&mut host, ids::VECTOR_SECTION_COMPONENT).is_some());
-    assert!(pintada(&mut host, t::VECTOR_SECTION_SNAP).is_some(), "o Snap é das duas abas");
+    assert!(
+        pintada(&mut host, t::VECTOR_SECTION_SNAP).is_some(),
+        "o Snap é das duas abas"
+    );
     assert!(
         pintada(&mut host, t::VECTOR_SECTION_FILL).is_none(),
         "o Fill pintou na aba Interface"
@@ -92,7 +98,11 @@ fn as_duas_portas_escrevem_a_mesma_aba() {
         let bars = ph2d_panel_vector::bars::tool_bars(host.store(), None, Vec::new());
         let ultimo = bars.column.last().and_then(|g| g.first()).cloned();
         let b = ultimo.expect("a coluna ① perdeu o último grupo");
-        assert_eq!(b.id, ids::VECTOR_VIEW_INTERFACE, "o interruptor não é o último da ①");
+        assert_eq!(
+            b.id,
+            ids::VECTOR_VIEW_INTERFACE,
+            "o interruptor não é o último da ①"
+        );
         (b.on, bars.stage_tint)
     };
     assert_eq!(interruptor(&host), (false, None));
@@ -100,22 +110,34 @@ fn as_duas_portas_escrevem_a_mesma_aba() {
         &mut VectorPanelState,
         WidgetEvent::Click(ids::VECTOR_VIEW_INTERFACE),
     );
-    assert_eq!(state::aba(), Aba::Interface, "o interruptor não abriu a Interface");
+    assert_eq!(
+        state::aba(),
+        Aba::Interface,
+        "o interruptor não abriu a Interface"
+    );
     assert_eq!(
         interruptor(&host),
         (true, Some(ph2d_tokens::ColorToken::StageTintUi))
     );
     clica(&mut host, ids::VECTOR_TAB_DRAWING, "a aba Drawing");
-    assert_eq!(interruptor(&host), (false, None), "a aba e o interruptor discordam");
-    host.apply_panel_event::<VectorPanel>(
-        &mut VectorPanelState,
-        WidgetEvent::Click(ids::VECTOR_VIEW_INTERFACE),
+    assert_eq!(
+        interruptor(&host),
+        (false, None),
+        "a aba e o interruptor discordam"
     );
     host.apply_panel_event::<VectorPanel>(
         &mut VectorPanelState,
         WidgetEvent::Click(ids::VECTOR_VIEW_INTERFACE),
     );
-    assert_eq!(state::aba(), Aba::Drawing, "o 2.º clique no interruptor volta ao desenho");
+    host.apply_panel_event::<VectorPanel>(
+        &mut VectorPanelState,
+        WidgetEvent::Click(ids::VECTOR_VIEW_INTERFACE),
+    );
+    assert_eq!(
+        state::aba(),
+        Aba::Drawing,
+        "o 2.º clique no interruptor volta ao desenho"
+    );
 }
 
 /// ⭐⭐ **O grupo Advanced dobra os sete juntos, e um membro nunca foge dele.** Fixture: uma ordem
@@ -130,23 +152,33 @@ fn o_grupo_avancado_dobra_os_sete_juntos() {
         t::VECTOR_SECTION_FILL,
         t::VECTOR_SECTION_MORPH,
     ]);
-    let membros = [
-        t::VECTOR_SECTION_BLEND,
-        t::VECTOR_SECTION_MORPH,
-    ];
+    let membros = [t::VECTOR_SECTION_BLEND, t::VECTOR_SECTION_MORPH];
     // ⚠️ Os dois que pintam sem seleção (as escolhas do Pick Shapes são uma 2.ª seleção — ver
     // `the_blend_and_morph_survive…`); os outros cinco escondem-se sozinhos sem forma.
     let cab = pintada(&mut host, ids::VECTOR_SECTION_ADVANCED).expect("o grupo não pintou");
     for m in membros {
-        assert!(pintada(&mut host, m).is_none(), "{m:?} pintou com o grupo dobrado");
+        assert!(
+            pintada(&mut host, m).is_none(),
+            "{m:?} pintou com o grupo dobrado"
+        );
     }
-    clica(&mut host, ids::VECTOR_SECTION_ADVANCED, "o cabeçalho Advanced");
+    clica(
+        &mut host,
+        ids::VECTOR_SECTION_ADVANCED,
+        "o cabeçalho Advanced",
+    );
     assert!(!host.store().is_collapsed(ids::VECTOR_SECTION_ADVANCED));
     let ys: Vec<f32> = membros
         .iter()
-        .map(|m| pintada(&mut host, *m).unwrap_or_else(|| panic!("{m:?} não pintou")).y)
+        .map(|m| {
+            pintada(&mut host, *m)
+                .unwrap_or_else(|| panic!("{m:?} não pintou"))
+                .y
+        })
         .collect();
-    let (lo, hi) = ys.iter().fold((f32::MAX, f32::MIN), |(a, b), y| (a.min(*y), b.max(*y)));
+    let (lo, hi) = ys
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), y| (a.min(*y), b.max(*y)));
     assert!(lo > cab.y, "um membro pintou ACIMA do cabeçalho do grupo");
     let fill = pintada(&mut host, t::VECTOR_SECTION_FILL).expect("o Fill sumiu");
     assert!(fill.y < cab.y, "o Fill caiu dentro do grupo");
@@ -162,7 +194,10 @@ fn o_grupo_avancado_dobra_os_sete_juntos() {
                 && r.y < hi
         })
         .collect();
-    assert!(estranhas.is_empty(), "secções de fora entre os membros: {estranhas:?}");
+    assert!(
+        estranhas.is_empty(),
+        "secções de fora entre os membros: {estranhas:?}"
+    );
 }
 
 /// ⭐⭐ **A ordem gravada do DONO não esconde a ordem do Figma** (época, `28_plano_F17…` §2). Fixture:
@@ -199,10 +234,8 @@ fn a_ordem_gravada_do_dono_cede_a_ordem_do_figma_uma_vez() {
         "só as quatro secções do vetor saem da ordem gravada (Inspector e Painter ficam)"
     );
     // O artista arrasta o Stroke para cima do Snap DEPOIS da época: o arrasto manda.
-    host.store_mut().set_section_order(vec![
-        t::VECTOR_SECTION_STROKE,
-        t::VECTOR_SECTION_SNAP,
-    ]);
+    host.store_mut()
+        .set_section_order(vec![t::VECTOR_SECTION_STROKE, t::VECTOR_SECTION_SNAP]);
     assert!(
         y(&mut host, t::VECTOR_SECTION_STROKE) < y(&mut host, t::VECTOR_SECTION_SNAP),
         "o arrasto depois da época foi esquecido"

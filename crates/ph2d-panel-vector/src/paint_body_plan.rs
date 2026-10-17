@@ -306,16 +306,19 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     #[allow(clippy::wildcard_imports)]
     use crate::ids::*;
     use crate::section_scope as scope;
+    use Onde::{Ambas, Drawing, Interface};
     #[allow(clippy::wildcard_imports)]
     use ph2d_tool_vector::ids::*;
-    use Onde::{Ambas, Drawing, Interface};
     let mut p = Seccoes::new();
     // ⛔ D10: `Tool` → coluna ①; o catálogo `Shape` → flyout da ①; `Pencil` e `Symmetry` →
     // fila ②; `Path` → ② (no Node) e ④. ⛔ O Alinhar e o Arrange (15/10) → barra ④.
     // ① O COMPONENTE em cima (Figma UI3: «component controls deserved top billing»).
-    p.seccao(VECTOR_SECTION_COMPONENT, scope::ALWAYS, Interface, |b, y| {
-        b.component_section(y)
-    });
+    p.seccao(
+        VECTOR_SECTION_COMPONENT,
+        scope::ALWAYS,
+        Interface,
+        |b, y| b.component_section(y),
+    );
     // ② A POSIÇÃO — o Transform, as Constraints (só para o filho de uma moldura) e o encaixe.
     p.seccao(VECTOR_SECTION_TRANSFORM, scope::ALWAYS, Ambas, |b, y| {
         b.transform_section(y)
@@ -323,7 +326,9 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     p.seccao(VECTOR_SECTION_ANCHORS, scope::ALWAYS, Interface, |b, y| {
         b.anchors_section(y)
     });
-    p.seccao(VECTOR_SECTION_SNAP, scope::ALWAYS, Ambas, |b, y| b.snap_section(y));
+    p.seccao(VECTOR_SECTION_SNAP, scope::ALWAYS, Ambas, |b, y| {
+        b.snap_section(y)
+    });
     // ③ O CONTÊINER e o LAYOUT (Figma: «aligns with how products are built in code»).
     p.seccao(VECTOR_SECTION_FRAME, scope::ALWAYS, Interface, |b, y| {
         b.frame_section(y)
@@ -350,9 +355,12 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     p.seccao(VECTOR_SECTION_STROKE, scope::ALWAYS, Drawing, |b, y| {
         b.stroke_style(snap, y)
     });
-    p.seccao(VECTOR_SECTION_TEXPAT_STROKE, scope::ALWAYS, Drawing, |b, y| {
-        b.texture_pattern_section(1, y)
-    });
+    p.seccao(
+        VECTOR_SECTION_TEXPAT_STROKE,
+        scope::ALWAYS,
+        Drawing,
+        |b, y| b.texture_pattern_section(1, y),
+    );
     p.seccao(VECTOR_SECTION_BRUSH, scope::ALWAYS, Drawing, |b, y| {
         b.brush_section(y)
     });
@@ -391,27 +399,39 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
         "panel.vector.section.advanced",
         Drawing,
         |p| {
-            p.seccao(VECTOR_SECTION_EXPAND, scope::WHEN_SELECTED, Drawing, |b, y| {
-                b.expand_section(y)
-            });
+            p.seccao(
+                VECTOR_SECTION_EXPAND,
+                scope::WHEN_SELECTED,
+                Drawing,
+                |b, y| b.expand_section(y),
+            );
             p.seccao(VECTOR_SECTION_BLEND, scope::ALWAYS, Drawing, |b, y| {
                 b.blend_section(snap, y)
             });
             p.seccao(VECTOR_SECTION_MORPH, scope::ALWAYS, Drawing, |b, y| {
                 b.morph_section(y)
             });
-            p.seccao(VECTOR_SECTION_ENVELOPE, scope::WHEN_SELECTED, Drawing, |b, y| {
-                b.envelope_section(y)
-            });
-            p.seccao(VECTOR_SECTION_PATTERNPATH, scope::ALWAYS, Drawing, |b, y| {
-                b.patternpath_section(y)
-            });
+            p.seccao(
+                VECTOR_SECTION_ENVELOPE,
+                scope::WHEN_SELECTED,
+                Drawing,
+                |b, y| b.envelope_section(y),
+            );
+            p.seccao(
+                VECTOR_SECTION_PATTERNPATH,
+                scope::ALWAYS,
+                Drawing,
+                |b, y| b.patternpath_section(y),
+            );
             p.seccao(VECTOR_SECTION_CONTOUR, scope::ALWAYS, Drawing, |b, y| {
                 b.contour_section(y)
             });
-            p.seccao(VECTOR_SECTION_BOOLEAN, scope::WHEN_SELECTED, Drawing, |b, y| {
-                b.boolean_section(y)
-            });
+            p.seccao(
+                VECTOR_SECTION_BOOLEAN,
+                scope::WHEN_SELECTED,
+                Drawing,
+                |b, y| b.boolean_section(y),
+            );
         },
     );
     // ⑧ O COMPORTAMENTO (o Prototype do Figma): a pele e os estados.
@@ -421,9 +441,12 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     p.seccao(VECTOR_SECTION_STATES, scope::ALWAYS, Interface, |b, y| {
         b.ui_states_section(y)
     });
-    p.seccao(VECTOR_SECTION_MORPH_STATES, scope::ALWAYS, Interface, |b, y| {
-        b.morph_states_section(y)
-    });
+    p.seccao(
+        VECTOR_SECTION_MORPH_STATES,
+        scope::ALWAYS,
+        Interface,
+        |b, y| b.morph_states_section(y),
+    );
     p
 }
 
@@ -519,9 +542,7 @@ mod tests {
                 Onde::Drawing
             };
             assert_eq!(onde, esperada, "a secção {id:?} está na aba errada");
-            let g = avancado
-                .contains(&id)
-                .then_some(VECTOR_SECTION_ADVANCED);
+            let g = avancado.contains(&id).then_some(VECTOR_SECTION_ADVANCED);
             assert_eq!(grupo, g, "a secção {id:?} está no grupo errado");
         }
     }

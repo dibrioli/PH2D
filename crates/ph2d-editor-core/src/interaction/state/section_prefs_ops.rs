@@ -415,13 +415,25 @@ mod tests {
         assert!(s.take_section_prefs_dirty(), "esquecer pede gravação");
         s.set_section_order(vec![C, A, B, D]);
         s.adopt_natural_order(PAINEL, 1, &[A, C]);
-        assert_eq!(s.section_order(), &[C, A, B, D], "o arrasto depois da época manda");
+        assert_eq!(
+            s.section_order(),
+            &[C, A, B, D],
+            "o arrasto depois da época manda"
+        );
         let mut r = WidgetStore::with_capacity(4);
         restore_section_prefs_text(&mut r, &section_prefs_text(&s));
         r.adopt_natural_order(PAINEL, 1, &[A, C]);
-        assert_eq!(r.section_order(), &[C, A, B, D], "a época viaja no ficheiro");
+        assert_eq!(
+            r.section_order(),
+            &[C, A, B, D],
+            "a época viaja no ficheiro"
+        );
         r.adopt_natural_order(PAINEL, 2, &[A, C]);
-        assert_eq!(r.section_order(), &[B, D], "uma época nova esquece outra vez");
+        assert_eq!(
+            r.section_order(),
+            &[B, D],
+            "uma época nova esquece outra vez"
+        );
     }
 
     /// O arrasto só vira activo depois do limiar.

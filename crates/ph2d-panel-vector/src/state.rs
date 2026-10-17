@@ -131,8 +131,8 @@ pub use ui_states_state::{UiStatesState, set_ui_states_state, ui_states_state};
 /// ⭐⭐ **QUE ABA do painel está aberta** (F17) — Drawing ou Interface; uma escrita, três cliques.
 #[path = "state_aba.rs"]
 mod aba_state;
-pub use aba_state::{Aba, aba, seleccao_tem_interface};
 pub(crate) use aba_state::set_aba;
+pub use aba_state::{Aba, aba, seleccao_tem_interface};
 
 /// ⭐ **QUAL POPOVER ESTÁ ABERTO neste quadro** — irmão pelo teto de 600 LOC, e o corte é por
 /// ASSUNTO: os quatro slots respondem a **uma** pergunta (*que chip guardou o rect para o passe

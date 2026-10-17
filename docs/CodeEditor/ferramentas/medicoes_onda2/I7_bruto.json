@@ -1,0 +1,5458 @@
+{
+ "loadavg": [
+  "14.57",
+  "44.21",
+  "25.42"
+ ],
+ "lsp": {
+  "args": [
+   "/home/enio/.cache/ph2d/luau-lsp/1.70.1/luau-lsp",
+   "lsp",
+   "--stdio",
+   "--definitions:@ph2d=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-5f3b24ab50658691.d.luau",
+   "--docs=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-docs-2649bfff572254a5.json"
+  ],
+  "nao_estrito": {
+   "diagnosticos": [
+    {
+     "code": 1002,
+     "severity": 1,
+     "message": "TypeError: Key 'proprety' not found in table '{ attach_script: (number, string) -> (), color: (number, number, number, number?) -> Color, despawn: (number) -> (), emit: (string) -> (), find_by_name: (string) -> number?, get: (number, \"rotat",
+     "range": {
+      "end": {
+       "character": 13,
+       "line": 7
+      },
+      "start": {
+       "character": 0,
+       "line": 7
+      }
+     },
+     "linha": "ph2d.proprety(\"speed\", 2.0, { min = 0, max = 10 })     -- quão depressa",
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 1001,
+     "severity": 1,
+     "message": "TypeError: Unknown global 'pirnt'; consider assigning to it first",
+     "range": {
+      "end": {
+       "character": 7,
+       "line": 31
+      },
+      "start": {
+       "character": 2,
+       "line": 31
+      }
+     },
+     "linha": "pirnt(1)",
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 8,
+     "severity": 2,
+     "message": "FunctionUnused: Function 'init' is never used; prefix with '_' to silence",
+     "range": {
+      "end": {
+       "character": 13,
+       "line": 21
+      },
+      "start": {
+       "character": 9,
+       "line": 21
+      }
+     },
+     "linha": "function init(self)",
+     "acoes": [
+      {
+       "title": "Prefix 'init' with '_' to silence",
+       "kind": "quickfix",
+       "isPreferred": false,
+       "edits": [
+        {
+         "range": {
+          "end": {
+           "character": 9,
+           "line": 21
+          },
+          "start": {
+           "character": 9,
+           "line": 21
+          }
+         },
+         "newText": "_"
+        }
+       ]
+      },
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 8,
+     "severity": 2,
+     "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence",
+     "range": {
+      "end": {
+       "character": 15,
+       "line": 28
+      },
+      "start": {
+       "character": 9,
+       "line": 28
+      }
+     },
+     "linha": "function update(self, dt)",
+     "acoes": [
+      {
+       "title": "Prefix 'update' with '_' to silence",
+       "kind": "quickfix",
+       "isPreferred": false,
+       "edits": [
+        {
+         "range": {
+          "end": {
+           "character": 9,
+           "line": 28
+          },
+          "start": {
+           "character": 9,
+           "line": 28
+          }
+         },
+         "newText": "_"
+        }
+       ]
+      },
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    }
+   ],
+   "no_cursor": {
+    "pirnt_inicio": {
+     "ms": 0.04023999645141885,
+     "pos": {
+      "line": 31,
+      "character": 2
+     },
+     "codes_no_contexto": [
+      1001
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "pirnt_meio": {
+     "ms": 0.035099998058285564,
+     "pos": {
+      "line": 31,
+      "character": 4
+     },
+     "codes_no_contexto": [
+      1001
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "pirnt_fim": {
+     "ms": 0.03845000173896551,
+     "pos": {
+      "line": 31,
+      "character": 7
+     },
+     "codes_no_contexto": [
+      1001
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "proprety_inicio": {
+     "ms": 0.06220099749043584,
+     "pos": {
+      "line": 7,
+      "character": 5
+     },
+     "codes_no_contexto": [
+      1002
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "proprety_meio": {
+     "ms": 0.038060003134887666,
+     "pos": {
+      "line": 7,
+      "character": 9
+     },
+     "codes_no_contexto": [
+      1002
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "proprety_fim": {
+     "ms": 0.03676999767776579,
+     "pos": {
+      "line": 7,
+      "character": 13
+     },
+     "codes_no_contexto": [
+      1002
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "ampiltude_inicio": {
+     "ms": 0.03305100108264014,
+     "pos": {
+      "line": 43,
+      "character": 21
+     },
+     "codes_no_contexto": [],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "ampiltude_meio": {
+     "ms": 0.025890003598760813,
+     "pos": {
+      "line": 43,
+      "character": 25
+     },
+     "codes_no_contexto": [],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "ampiltude_fim": {
+     "ms": 0.025459994503762573,
+     "pos": {
+      "line": 43,
+      "character": 30
+     },
+     "codes_no_contexto": [],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    }
+   },
+   "completion": {
+    "pirnt_depois_do_ponto_ou_inicio": {
+     "ms": 0.5129519995534793,
+     "bytes": 13332,
+     "count": 55,
+     "isIncomplete": null,
+     "tem_o_alvo": true,
+     "alvo_item": {
+      "label": "print",
+      "kind": 3,
+      "sortText": "4",
+      "textEdit": null,
+      "insertText": "print()"
+     },
+     "labels": [
+      "const",
+      "export",
+      "return",
+      "for",
+      "repeat",
+      "local",
+      "while",
+      "if",
+      "rawlen",
+      "typeof",
+      "coroutine",
+      "rawget",
+      "rawequal",
+      "utf8",
+      "type",
+      "setfenv",
+      "do",
+      "require",
+      "assert",
+      "debug",
+      "buffer",
+      "print",
+      "bit32",
+      "motion",
+      "function",
+      "string",
+      "next",
+      "unpack",
+      "getmetatable",
+      "dt",
+      "init",
+      "ipairs",
+      "update",
+      "math",
+      "loadstring",
+      "table",
+      "error",
+      "getfenv",
+      "self",
+      "_G",
+      "tostring",
+      "select",
+      "pcall",
+      "integer",
+      "newproxy",
+      "os",
+      "ph2d",
+      "xpcall",
+      "vector",
+      "setmetatable",
+      "gcinfo",
+      "tonumber",
+      "rawset",
+      "_VERSION",
+      "pairs"
+     ]
+    },
+    "pirnt_fim_da_palavra": {
+     "ms": 0.20606099860742688,
+     "bytes": 12189,
+     "count": 51,
+     "isIncomplete": null,
+     "tem_o_alvo": true,
+     "alvo_item": {
+      "label": "print",
+      "kind": 3,
+      "sortText": "4",
+      "textEdit": null,
+      "insertText": null
+     },
+     "labels": [
+      "nil",
+      "false",
+      "if",
+      "rawlen",
+      "typeof",
+      "coroutine",
+      "rawget",
+      "rawequal",
+      "utf8",
+      "type",
+      "setfenv",
+      "require",
+      "assert",
+      "debug",
+      "buffer",
+      "print",
+      "bit32",
+      "motion",
+      "function",
+      "string",
+      "next",
+      "unpack",
+      "getmetatable",
+      "not",
+      "dt",
+      "init",
+      "ipairs",
+      "update",
+      "math",
+      "loadstring",
+      "table",
+      "error",
+      "getfenv",
+      "self",
+      "_G",
+      "tostring",
+      "select",
+      "pcall",
+      "integer",
+      "newproxy",
+      "os",
+      "ph2d",
+      "true",
+      "xpcall",
+      "vector",
+      "setmetatable",
+      "gcinfo",
+      "tonumber",
+      "rawset",
+      "_VERSION",
+      "pairs"
+     ]
+    },
+    "proprety_depois_do_ponto_ou_inicio": {
+     "ms": 0.09992100240197033,
+     "bytes": 5556,
+     "count": 17,
+     "isIncomplete": null,
+     "tem_o_alvo": true,
+     "alvo_item": {
+      "label": "property",
+      "kind": 3,
+      "sortText": "1",
+      "textEdit": null,
+      "insertText": null
+     },
+     "labels": [
+      "vec2",
+      "state_set",
+      "state_keys",
+      "attach_script",
+      "emit",
+      "get",
+      "color",
+      "set",
+      "wait",
+      "despawn",
+      "property",
+      "find_by_name",
+      "state_get",
+      "input",
+      "spawn",
+      "spawn_named",
+      "state_clear"
+     ]
+    },
+    "proprety_fim_da_palavra": {
+     "ms": 0.08168999920599163,
+     "bytes": 5556,
+     "count": 17,
+     "isIncomplete": null,
+     "tem_o_alvo": true,
+     "alvo_item": {
+      "label": "property",
+      "kind": 3,
+      "sortText": "1",
+      "textEdit": null,
+      "insertText": null
+     },
+     "labels": [
+      "vec2",
+      "state_set",
+      "state_keys",
+      "attach_script",
+      "emit",
+      "get",
+      "color",
+      "set",
+      "wait",
+      "despawn",
+      "property",
+      "find_by_name",
+      "state_get",
+      "input",
+      "spawn",
+      "spawn_named",
+      "state_clear"
+     ]
+    },
+    "ampiltude_depois_do_ponto_ou_inicio": {
+     "ms": 0.04109000292373821,
+     "bytes": 1759,
+     "count": 12,
+     "isIncomplete": null,
+     "tem_o_alvo": false,
+     "alvo_item": null,
+     "labels": [
+      "wave",
+      "tint",
+      "was_up",
+      "id",
+      "direction",
+      "base_y",
+      "speed",
+      "base_x",
+      "top_signal",
+      "t",
+      "ampiltude",
+      "active"
+     ]
+    },
+    "ampiltude_fim_da_palavra": {
+     "ms": 0.03705099516082555,
+     "bytes": 1759,
+     "count": 12,
+     "isIncomplete": null,
+     "tem_o_alvo": false,
+     "alvo_item": null,
+     "labels": [
+      "wave",
+      "tint",
+      "was_up",
+      "id",
+      "direction",
+      "base_y",
+      "speed",
+      "base_x",
+      "top_signal",
+      "t",
+      "ampiltude",
+      "active"
+     ]
+    }
+   },
+   "resolve": {
+    "Extract to function": {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "isPreferred": false,
+     "edits": [
+      {
+       "range": {
+        "end": {
+         "character": 0,
+         "line": 32
+        },
+        "start": {
+         "character": 0,
+         "line": 31
+        }
+       },
+       "newText": "  local function extracted()\n      pirnt(1)\n  end\n  extracted()\n"
+      }
+     ],
+     "command": {
+      "arguments": [
+       "file:///ph2d-project/i7_nao_estrito.luau",
+       {
+        "character": 17,
+        "line": 31
+       }
+      ],
+      "command": "luau-lsp.rename",
+      "title": "Rename Symbol"
+     }
+    },
+    "Extract to local variable": {
+     "title": "Extract to local variable",
+     "kind": "refactor.extract",
+     "isPreferred": false,
+     "edits": [
+      {
+       "range": {
+        "end": {
+         "character": 0,
+         "line": 31
+        },
+        "start": {
+         "character": 0,
+         "line": 31
+        }
+       },
+       "newText": "  local extracted = pirnt(1)\n"
+      },
+      {
+       "range": {
+        "end": {
+         "character": 10,
+         "line": 31
+        },
+        "start": {
+         "character": 2,
+         "line": 31
+        }
+       },
+       "newText": "extracted"
+      }
+     ],
+     "command": {
+      "arguments": [
+       "file:///ph2d-project/i7_nao_estrito.luau",
+       {
+        "character": 8,
+        "line": 31
+       }
+      ],
+      "command": "luau-lsp.rename",
+      "title": "Rename Symbol"
+     }
+    }
+   },
+   "inlay_tipos": {
+    "ms": 0.11052999616367742,
+    "bytes": 6533,
+    "n_total": 42,
+    "tipos": [
+     {
+      "pos": {
+       "character": 19,
+       "line": 21
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "()"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": ()",
+        "range": {
+         "end": {
+          "character": 19,
+          "line": 21
+         },
+         "start": {
+          "character": 19,
+          "line": 21
+         }
+        }
+       }
+      ],
+      "linha": "function init(self)"
+     },
+     {
+      "pos": {
+       "character": 18,
+       "line": 21
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "{+ base_x: number?, base_y: number?, ... 3 more ...... *TRUNCATED*"
+       }
+      ],
+      "textEdits": [],
+      "linha": "function init(self)"
+     },
+     {
+      "pos": {
+       "character": 25,
+       "line": 28
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "()"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": ()",
+        "range": {
+         "end": {
+          "character": 25,
+          "line": 28
+         },
+         "start": {
+          "character": 25,
+          "line": 28
+         }
+        }
+       }
+      ],
+      "linha": "function update(self, dt)"
+     },
+     {
+      "pos": {
+       "character": 20,
+       "line": 28
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "{+ active: T, ampiltude: number, base_x: U, ... 9 more ...... *TRUNCATED*"
+       }
+      ],
+      "textEdits": [],
+      "linha": "function update(self, dt)"
+     },
+     {
+      "pos": {
+       "character": 24,
+       "line": 28
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "V"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": T",
+        "range": {
+         "end": {
+          "character": 24,
+          "line": 28
+         },
+         "start": {
+          "character": 24,
+          "line": 28
+         }
+        }
+       }
+      ],
+      "linha": "function update(self, dt)"
+     },
+     {
+      "pos": {
+       "character": 9,
+       "line": 33
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "number"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": number",
+        "range": {
+         "end": {
+          "character": 9,
+          "line": 33
+         },
+         "start": {
+          "character": 9,
+          "line": 33
+         }
+        }
+       }
+      ],
+      "linha": "local s"
+     },
+     {
+      "pos": {
+       "character": 14,
+       "line": 42
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "any"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": any",
+        "range": {
+         "end": {
+          "character": 14,
+          "line": 42
+         },
+         "start": {
+          "character": 14,
+          "line": 42
+         }
+        }
+       }
+      ],
+      "linha": "local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3"
+     },
+     {
+      "pos": {
+       "character": 9,
+       "line": 43
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "any"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": any",
+        "range": {
+         "end": {
+          "character": 9,
+          "line": 43
+         },
+         "start": {
+          "character": 9,
+          "line": 43
+         }
+        }
+       }
+      ],
+      "linha": "local d = s * self.ampiltude * brilho"
+     },
+     {
+      "pos": {
+       "character": 10,
+       "line": 46
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "boolean"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": boolean",
+        "range": {
+         "end": {
+          "character": 10,
+          "line": 46
+         },
+         "start": {
+          "character": 10,
+          "line": 46
+         }
+        }
+       }
+      ],
+      "linha": "local up = s > 0.98"
+     }
+    ]
+   }
+  },
+  "strict": {
+   "diagnosticos": [
+    {
+     "code": 1002,
+     "severity": 1,
+     "message": "TypeError: Key 'proprety' not found in table '{ attach_script: (number, string) -> (), color: (number, number, number, number?) -> Color, despawn: (number) -> (), emit: (string) -> (), find_by_name: (string) -> number?, get: (number, \"rotat",
+     "range": {
+      "end": {
+       "character": 13,
+       "line": 8
+      },
+      "start": {
+       "character": 0,
+       "line": 8
+      }
+     },
+     "linha": "ph2d.proprety(\"speed\", 2.0, { min = 0, max = 10 })     -- quão depressa",
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 1030,
+     "severity": 1,
+     "message": "TypeError: Unknown type used in + operation; consider adding a type annotation to 'self'",
+     "range": {
+      "end": {
+       "character": 22,
+       "line": 31
+      },
+      "start": {
+       "character": 11,
+       "line": 31
+      }
+     },
+     "linha": "self.t = self.t + dt",
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Inline variable 'self'",
+       "kind": "refactor.inline",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 1001,
+     "severity": 1,
+     "message": "TypeError: Unknown global 'pirnt'; consider assigning to it first",
+     "range": {
+      "end": {
+       "character": 7,
+       "line": 32
+      },
+      "start": {
+       "character": 2,
+       "line": 32
+      }
+     },
+     "linha": "pirnt(1)",
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 1030,
+     "severity": 1,
+     "message": "TypeError: Unknown type used in + operation; consider adding a type annotation to 'self'",
+     "range": {
+      "end": {
+       "character": 43,
+       "line": 43
+      },
+      "start": {
+       "character": 18,
+       "line": 43
+      }
+     },
+     "linha": "local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3",
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Inline variable 'self'",
+       "kind": "refactor.inline",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 1030,
+     "severity": 1,
+     "message": "TypeError: Unknown type used in + operation; consider adding a type annotation to 'self'",
+     "range": {
+      "end": {
+       "character": 59,
+       "line": 45
+      },
+      "start": {
+       "character": 25,
+       "line": 45
+      }
+     },
+     "linha": "ph2d.set(self.id, \"x\", self.base_x + d * self.direction.x)",
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Inline variable 'self'",
+       "kind": "refactor.inline",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 1030,
+     "severity": 1,
+     "message": "TypeError: Unknown type used in + operation; consider adding a type annotation to 'self'",
+     "range": {
+      "end": {
+       "character": 59,
+       "line": 46
+      },
+      "start": {
+       "character": 25,
+       "line": 46
+      }
+     },
+     "linha": "ph2d.set(self.id, \"y\", self.base_y + d * self.direction.y)",
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Inline variable 'self'",
+       "kind": "refactor.inline",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 8,
+     "severity": 2,
+     "message": "FunctionUnused: Function 'init' is never used; prefix with '_' to silence",
+     "range": {
+      "end": {
+       "character": 13,
+       "line": 22
+      },
+      "start": {
+       "character": 9,
+       "line": 22
+      }
+     },
+     "linha": "function init(self)",
+     "acoes": [
+      {
+       "title": "Prefix 'init' with '_' to silence",
+       "kind": "quickfix",
+       "isPreferred": false,
+       "edits": [
+        {
+         "range": {
+          "end": {
+           "character": 9,
+           "line": 22
+          },
+          "start": {
+           "character": 9,
+           "line": 22
+          }
+         },
+         "newText": "_"
+        }
+       ]
+      },
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    {
+     "code": 8,
+     "severity": 2,
+     "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence",
+     "range": {
+      "end": {
+       "character": 15,
+       "line": 29
+      },
+      "start": {
+       "character": 9,
+       "line": 29
+      }
+     },
+     "linha": "function update(self, dt)",
+     "acoes": [
+      {
+       "title": "Prefix 'update' with '_' to silence",
+       "kind": "quickfix",
+       "isPreferred": false,
+       "edits": [
+        {
+         "range": {
+          "end": {
+           "character": 9,
+           "line": 29
+          },
+          "start": {
+           "character": 9,
+           "line": 29
+          }
+         },
+         "newText": "_"
+        }
+       ]
+      },
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    }
+   ],
+   "no_cursor": {
+    "pirnt_inicio": {
+     "ms": 0.03234999894630164,
+     "pos": {
+      "line": 32,
+      "character": 2
+     },
+     "codes_no_contexto": [
+      1001
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "pirnt_meio": {
+     "ms": 0.0319299942930229,
+     "pos": {
+      "line": 32,
+      "character": 4
+     },
+     "codes_no_contexto": [
+      1001
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "pirnt_fim": {
+     "ms": 0.03314000059617683,
+     "pos": {
+      "line": 32,
+      "character": 7
+     },
+     "codes_no_contexto": [
+      1001
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "proprety_inicio": {
+     "ms": 0.054869997256901115,
+     "pos": {
+      "line": 8,
+      "character": 5
+     },
+     "codes_no_contexto": [
+      1002
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "proprety_meio": {
+     "ms": 0.04011100099887699,
+     "pos": {
+      "line": 8,
+      "character": 9
+     },
+     "codes_no_contexto": [
+      1002
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "proprety_fim": {
+     "ms": 0.03591000131564215,
+     "pos": {
+      "line": 8,
+      "character": 13
+     },
+     "codes_no_contexto": [
+      1002
+     ],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "ampiltude_inicio": {
+     "ms": 0.030689996492583305,
+     "pos": {
+      "line": 44,
+      "character": 21
+     },
+     "codes_no_contexto": [],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "ampiltude_meio": {
+     "ms": 0.02670999674592167,
+     "pos": {
+      "line": 44,
+      "character": 25
+     },
+     "codes_no_contexto": [],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    },
+    "ampiltude_fim": {
+     "ms": 0.025320005079265684,
+     "pos": {
+      "line": 44,
+      "character": 30
+     },
+     "codes_no_contexto": [],
+     "acoes": [
+      {
+       "title": "Sort requires",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to local variable",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Extract to function",
+       "kind": "refactor.extract",
+       "isPreferred": false,
+       "edits": []
+      },
+      {
+       "title": "Sort services",
+       "kind": "source.organizeImports",
+       "isPreferred": false,
+       "edits": []
+      }
+     ]
+    }
+   },
+   "completion": {
+    "pirnt_depois_do_ponto_ou_inicio": {
+     "ms": 0.41198200051439926,
+     "bytes": 13332,
+     "count": 55,
+     "isIncomplete": null,
+     "tem_o_alvo": true,
+     "alvo_item": {
+      "label": "print",
+      "kind": 3,
+      "sortText": "4",
+      "textEdit": null,
+      "insertText": "print()"
+     },
+     "labels": [
+      "const",
+      "export",
+      "return",
+      "for",
+      "repeat",
+      "local",
+      "while",
+      "if",
+      "rawlen",
+      "typeof",
+      "coroutine",
+      "rawget",
+      "rawequal",
+      "utf8",
+      "type",
+      "setfenv",
+      "do",
+      "require",
+      "assert",
+      "debug",
+      "buffer",
+      "print",
+      "bit32",
+      "motion",
+      "function",
+      "string",
+      "next",
+      "unpack",
+      "getmetatable",
+      "dt",
+      "init",
+      "ipairs",
+      "update",
+      "math",
+      "loadstring",
+      "table",
+      "error",
+      "getfenv",
+      "self",
+      "_G",
+      "tostring",
+      "select",
+      "pcall",
+      "integer",
+      "newproxy",
+      "os",
+      "ph2d",
+      "xpcall",
+      "vector",
+      "setmetatable",
+      "gcinfo",
+      "tonumber",
+      "rawset",
+      "_VERSION",
+      "pairs"
+     ]
+    },
+    "pirnt_fim_da_palavra": {
+     "ms": 0.18875100067816675,
+     "bytes": 12189,
+     "count": 51,
+     "isIncomplete": null,
+     "tem_o_alvo": true,
+     "alvo_item": {
+      "label": "print",
+      "kind": 3,
+      "sortText": "4",
+      "textEdit": null,
+      "insertText": null
+     },
+     "labels": [
+      "nil",
+      "false",
+      "if",
+      "rawlen",
+      "typeof",
+      "coroutine",
+      "rawget",
+      "rawequal",
+      "utf8",
+      "type",
+      "setfenv",
+      "require",
+      "assert",
+      "debug",
+      "buffer",
+      "print",
+      "bit32",
+      "motion",
+      "function",
+      "string",
+      "next",
+      "unpack",
+      "getmetatable",
+      "not",
+      "dt",
+      "init",
+      "ipairs",
+      "update",
+      "math",
+      "loadstring",
+      "table",
+      "error",
+      "getfenv",
+      "self",
+      "_G",
+      "tostring",
+      "select",
+      "pcall",
+      "integer",
+      "newproxy",
+      "os",
+      "ph2d",
+      "true",
+      "xpcall",
+      "vector",
+      "setmetatable",
+      "gcinfo",
+      "tonumber",
+      "rawset",
+      "_VERSION",
+      "pairs"
+     ]
+    },
+    "proprety_depois_do_ponto_ou_inicio": {
+     "ms": 0.09402000432601199,
+     "bytes": 5556,
+     "count": 17,
+     "isIncomplete": null,
+     "tem_o_alvo": true,
+     "alvo_item": {
+      "label": "property",
+      "kind": 3,
+      "sortText": "1",
+      "textEdit": null,
+      "insertText": null
+     },
+     "labels": [
+      "vec2",
+      "state_set",
+      "state_keys",
+      "attach_script",
+      "emit",
+      "get",
+      "color",
+      "set",
+      "wait",
+      "despawn",
+      "property",
+      "find_by_name",
+      "state_get",
+      "input",
+      "spawn",
+      "spawn_named",
+      "state_clear"
+     ]
+    },
+    "proprety_fim_da_palavra": {
+     "ms": 0.080110999988392,
+     "bytes": 5556,
+     "count": 17,
+     "isIncomplete": null,
+     "tem_o_alvo": true,
+     "alvo_item": {
+      "label": "property",
+      "kind": 3,
+      "sortText": "1",
+      "textEdit": null,
+      "insertText": null
+     },
+     "labels": [
+      "vec2",
+      "state_set",
+      "state_keys",
+      "attach_script",
+      "emit",
+      "get",
+      "color",
+      "set",
+      "wait",
+      "despawn",
+      "property",
+      "find_by_name",
+      "state_get",
+      "input",
+      "spawn",
+      "spawn_named",
+      "state_clear"
+     ]
+    },
+    "ampiltude_depois_do_ponto_ou_inicio": {
+     "ms": 0.040191000152844936,
+     "bytes": 1759,
+     "count": 12,
+     "isIncomplete": null,
+     "tem_o_alvo": false,
+     "alvo_item": null,
+     "labels": [
+      "wave",
+      "tint",
+      "was_up",
+      "id",
+      "direction",
+      "base_y",
+      "speed",
+      "base_x",
+      "top_signal",
+      "t",
+      "ampiltude",
+      "active"
+     ]
+    },
+    "ampiltude_fim_da_palavra": {
+     "ms": 0.03522999759297818,
+     "bytes": 1759,
+     "count": 12,
+     "isIncomplete": null,
+     "tem_o_alvo": false,
+     "alvo_item": null,
+     "labels": [
+      "wave",
+      "tint",
+      "was_up",
+      "id",
+      "direction",
+      "base_y",
+      "speed",
+      "base_x",
+      "top_signal",
+      "t",
+      "ampiltude",
+      "active"
+     ]
+    }
+   },
+   "resolve": {
+    "Extract to function": {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "isPreferred": false,
+     "edits": [
+      {
+       "range": {
+        "end": {
+         "character": 0,
+         "line": 33
+        },
+        "start": {
+         "character": 0,
+         "line": 32
+        }
+       },
+       "newText": "  local function extracted()\n      pirnt(1)\n  end\n  extracted()\n"
+      }
+     ],
+     "command": {
+      "arguments": [
+       "file:///ph2d-project/i7_strict.luau",
+       {
+        "character": 17,
+        "line": 32
+       }
+      ],
+      "command": "luau-lsp.rename",
+      "title": "Rename Symbol"
+     }
+    },
+    "Extract to local variable": {
+     "title": "Extract to local variable",
+     "kind": "refactor.extract",
+     "isPreferred": false,
+     "edits": [
+      {
+       "range": {
+        "end": {
+         "character": 0,
+         "line": 32
+        },
+        "start": {
+         "character": 0,
+         "line": 32
+        }
+       },
+       "newText": "  local extracted = pirnt(1)\n"
+      },
+      {
+       "range": {
+        "end": {
+         "character": 10,
+         "line": 32
+        },
+        "start": {
+         "character": 2,
+         "line": 32
+        }
+       },
+       "newText": "extracted"
+      }
+     ],
+     "command": {
+      "arguments": [
+       "file:///ph2d-project/i7_strict.luau",
+       {
+        "character": 8,
+        "line": 32
+       }
+      ],
+      "command": "luau-lsp.rename",
+      "title": "Rename Symbol"
+     }
+    }
+   },
+   "inlay_tipos": {
+    "ms": 0.10607999865897,
+    "bytes": 6535,
+    "n_total": 42,
+    "tipos": [
+     {
+      "pos": {
+       "character": 19,
+       "line": 22
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "()"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": ()",
+        "range": {
+         "end": {
+          "character": 19,
+          "line": 22
+         },
+         "start": {
+          "character": 19,
+          "line": 22
+         }
+        }
+       }
+      ],
+      "linha": "function init(self)"
+     },
+     {
+      "pos": {
+       "character": 18,
+       "line": 22
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "{+ base_x: number?, base_y: number?, ... 3 more ...... *TRUNCATED*"
+       }
+      ],
+      "textEdits": [],
+      "linha": "function init(self)"
+     },
+     {
+      "pos": {
+       "character": 25,
+       "line": 29
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "()"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": ()",
+        "range": {
+         "end": {
+          "character": 25,
+          "line": 29
+         },
+         "start": {
+          "character": 25,
+          "line": 29
+         }
+        }
+       }
+      ],
+      "linha": "function update(self, dt)"
+     },
+     {
+      "pos": {
+       "character": 20,
+       "line": 29
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "{+ active: T, ampiltude: number, base_x: U, ... 9 more ...... *TRUNCATED*"
+       }
+      ],
+      "textEdits": [],
+      "linha": "function update(self, dt)"
+     },
+     {
+      "pos": {
+       "character": 24,
+       "line": 29
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "V"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": T",
+        "range": {
+         "end": {
+          "character": 24,
+          "line": 29
+         },
+         "start": {
+          "character": 24,
+          "line": 29
+         }
+        }
+       }
+      ],
+      "linha": "function update(self, dt)"
+     },
+     {
+      "pos": {
+       "character": 9,
+       "line": 34
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "number"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": number",
+        "range": {
+         "end": {
+          "character": 9,
+          "line": 34
+         },
+         "start": {
+          "character": 9,
+          "line": 34
+         }
+        }
+       }
+      ],
+      "linha": "local s"
+     },
+     {
+      "pos": {
+       "character": 14,
+       "line": 43
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "any"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": any",
+        "range": {
+         "end": {
+          "character": 14,
+          "line": 43
+         },
+         "start": {
+          "character": 14,
+          "line": 43
+         }
+        }
+       }
+      ],
+      "linha": "local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3"
+     },
+     {
+      "pos": {
+       "character": 9,
+       "line": 44
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "any"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": any",
+        "range": {
+         "end": {
+          "character": 9,
+          "line": 44
+         },
+         "start": {
+          "character": 9,
+          "line": 44
+         }
+        }
+       }
+      ],
+      "linha": "local d = s * self.ampiltude * brilho"
+     },
+     {
+      "pos": {
+       "character": 10,
+       "line": 47
+      },
+      "label": [
+       {
+        "value": ": "
+       },
+       {
+        "value": "boolean"
+       }
+      ],
+      "textEdits": [
+       {
+        "newText": ": boolean",
+        "range": {
+         "end": {
+          "character": 10,
+          "line": 47
+         },
+         "start": {
+          "character": 10,
+          "line": 47
+         }
+        }
+       }
+      ],
+      "linha": "local up = s > 0.98"
+     }
+    ]
+   }
+  }
+ },
+ "cliente": {
+  "sem_capacidades": {
+   "init_com_diag": [
+    {
+     "title": "Prefix 'init' with '_' to silence",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [
+      8
+     ],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort requires",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove all unused code",
+     "kind": "source",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort services",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    }
+   ],
+   "init_sem_diag": [
+    {
+     "title": "Prefix 'init' with '_' to silence",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort requires",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove all unused code",
+     "kind": "source",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort services",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    }
+   ],
+   "sobra_com_diag": [
+    {
+     "title": "Prefix 'sobra' with '_' to silence",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [
+      8
+     ],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove unused function: 'sobra'",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [
+      8
+     ],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort requires",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove all unused code",
+     "kind": "source",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to local variable",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Inline variable 'sobra'",
+     "kind": "refactor.inline",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort services",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    }
+   ],
+   "sobra_sem_diag": [
+    {
+     "title": "Prefix 'sobra' with '_' to silence",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove unused function: 'sobra'",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort requires",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove all unused code",
+     "kind": "source",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to local variable",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Inline variable 'sobra'",
+     "kind": "refactor.inline",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort services",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    }
+   ],
+   "inlay_n": 42
+  },
+  "com_capacidades": {
+   "init_com_diag": [
+    {
+     "title": "Prefix 'init' with '_' to silence",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [
+      8
+     ],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort requires",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove all unused code",
+     "kind": "source",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort services",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    }
+   ],
+   "init_sem_diag": [
+    {
+     "title": "Prefix 'init' with '_' to silence",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort requires",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove all unused code",
+     "kind": "source",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort services",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    }
+   ],
+   "sobra_com_diag": [
+    {
+     "title": "Prefix 'sobra' with '_' to silence",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [
+      8
+     ],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove unused function: 'sobra'",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [
+      8
+     ],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort requires",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove all unused code",
+     "kind": "source",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to local variable",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Inline variable 'sobra'",
+     "kind": "refactor.inline",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort services",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    }
+   ],
+   "sobra_sem_diag": [
+    {
+     "title": "Prefix 'sobra' with '_' to silence",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove unused function: 'sobra'",
+     "kind": "quickfix",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort requires",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Remove all unused code",
+     "kind": "source",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to local variable",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Extract to function",
+     "kind": "refactor.extract",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Inline variable 'sobra'",
+     "kind": "refactor.inline",
+     "tem_edit": false,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    },
+    {
+     "title": "Sort services",
+     "kind": "source.organizeImports",
+     "tem_edit": true,
+     "diagnostics": [],
+     "forma": "CodeAction"
+    }
+   ],
+   "inlay_n": 42
+  }
+ },
+ "oraculos": {
+  "versoes": {
+   "python": "3.14.8",
+   "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+   "godot": "4.7.2.stable.arch_linux.ed1daf0bf"
+  },
+  "godot_log_se_vazio": null,
+  "casos": [
+   {
+    "familia": "campo",
+    "typo": "ampiltude",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "amplitude"
+    ],
+    "python": "amplitude",
+    "rustc": "amplitude",
+    "godot": "amplitude",
+    "godot_similarity": 0.625,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"ampiltude\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "amplitde",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "amplitude"
+    ],
+    "python": "amplitude",
+    "rustc": "amplitude",
+    "godot": "amplitude",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"amplitde\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "amplitudee",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "amplitude"
+    ],
+    "python": "amplitude",
+    "rustc": "amplitude",
+    "godot": "amplitude",
+    "godot_similarity": 0.94117647409439,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"amplitudee\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "amplitode",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "amplitude"
+    ],
+    "python": "amplitude",
+    "rustc": "amplitude",
+    "godot": "amplitude",
+    "godot_similarity": 0.75,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"amplitode\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "aplitde",
+    "osa": 2,
+    "lev": 2,
+    "mais_perto_osa": [
+     "amplitude"
+    ],
+    "python": "amplitude",
+    "rustc": "amplitude",
+    "godot": "amplitude",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"aplitde\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "ampl",
+    "osa": 4,
+    "lev": 4,
+    "mais_perto_osa": [
+     "id",
+     "t",
+     "tint",
+     "wave"
+    ],
+    "python": null,
+    "rustc": null,
+    "godot": "amplitude",
+    "godot_similarity": 0.54545456171036,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"ampl\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "Amplitude",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "amplitude"
+    ],
+    "python": "amplitude",
+    "rustc": "amplitude",
+    "godot": "amplitude",
+    "godot_similarity": 0.875,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"Amplitude\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "AMPLITUDE",
+    "osa": 9,
+    "lev": 9,
+    "mais_perto_osa": [
+     "active",
+     "amplitude",
+     "base_x",
+     "base_y",
+     "direction",
+     "id",
+     "speed",
+     "t",
+     "tint",
+     "was_up",
+     "wave"
+    ],
+    "python": null,
+    "rustc": "amplitude",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"AMPLITUDE\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "sped",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "speed"
+    ],
+    "python": "speed",
+    "rustc": "speed",
+    "godot": "speed",
+    "godot_similarity": 0.85714286565781,
+    "godot_similarity_de": "speed",
+    "godot_erro": "ERROR: The InputMap action \"sped\" doesn't exist. Did you mean \"speed\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "sepeed",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "speed"
+    ],
+    "python": "speed",
+    "rustc": "speed",
+    "godot": "speed",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "speed",
+    "godot_erro": "ERROR: The InputMap action \"sepeed\" doesn't exist. Did you mean \"speed\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "seped",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "speed"
+    ],
+    "python": "speed",
+    "rustc": "speed",
+    "godot": "speed",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "speed",
+    "godot_erro": "ERROR: The InputMap action \"seped\" doesn't exist. Did you mean \"speed\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "actve",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "active"
+    ],
+    "python": "active",
+    "rustc": "active",
+    "godot": "active",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "active",
+    "godot_erro": "ERROR: The InputMap action \"actve\" doesn't exist. Did you mean \"active\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "atcive",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "active"
+    ],
+    "python": "active",
+    "rustc": "active",
+    "godot": "active",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "active",
+    "godot_erro": "ERROR: The InputMap action \"atcive\" doesn't exist. Did you mean \"active\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "top_sginal",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "top_signal"
+    ],
+    "python": "top_signal",
+    "rustc": "top_signal",
+    "godot": "top_signal",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "top_signal",
+    "godot_erro": "ERROR: The InputMap action \"top_sginal\" doesn't exist. Did you mean \"top_signal\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "topsignal",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "top_signal"
+    ],
+    "python": "top_signal",
+    "rustc": "top_signal",
+    "godot": "top_signal",
+    "godot_similarity": 0.82352942228317,
+    "godot_similarity_de": "top_signal",
+    "godot_erro": "ERROR: The InputMap action \"topsignal\" doesn't exist. Did you mean \"top_signal\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "wav",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "wave"
+    ],
+    "python": "wave",
+    "rustc": "wave",
+    "godot": "wave",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "wave",
+    "godot_erro": "ERROR: The InputMap action \"wav\" doesn't exist. Did you mean \"wave\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "waev",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "wave"
+    ],
+    "python": null,
+    "rustc": "wave",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "wave",
+    "godot_erro": "ERROR: The InputMap action \"waev\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "dirction",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "direction"
+    ],
+    "python": "direction",
+    "rustc": "direction",
+    "godot": "direction",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "direction",
+    "godot_erro": "ERROR: The InputMap action \"dirction\" doesn't exist. Did you mean \"direction\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "direcion",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "direction"
+    ],
+    "python": "direction",
+    "rustc": "direction",
+    "godot": "direction",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "direction",
+    "godot_erro": "ERROR: The InputMap action \"direcion\" doesn't exist. Did you mean \"direction\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "tnit",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "tint"
+    ],
+    "python": null,
+    "rustc": "tint",
+    "godot": null,
+    "godot_similarity": 0.18181818723679,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"tnit\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "base_z",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "base_x",
+     "base_y"
+    ],
+    "python": "base_x",
+    "rustc": "base_x",
+    "godot": "base_x",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "base_x",
+    "godot_erro": "ERROR: The InputMap action \"base_z\" doesn't exist. Did you mean \"base_x\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "baes_x",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "base_x"
+    ],
+    "python": "base_x",
+    "rustc": "base_x",
+    "godot": "base_x",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "base_x",
+    "godot_erro": "ERROR: The InputMap action \"baes_x\" doesn't exist. Did you mean \"base_x\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "tt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "t"
+    ],
+    "python": "t",
+    "rustc": "t",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"tt\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "i",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "id",
+     "t"
+    ],
+    "python": "id",
+    "rustc": "t",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"i\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "was_upp",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "was_up"
+    ],
+    "python": "was_up",
+    "rustc": "was_up",
+    "godot": "was_up",
+    "godot_similarity": 0.90909093618393,
+    "godot_similarity_de": "was_up",
+    "godot_erro": "ERROR: The InputMap action \"was_upp\" doesn't exist. Did you mean \"was_up\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "xyz",
+    "osa": 3,
+    "lev": 3,
+    "mais_perto_osa": [
+     "id",
+     "t"
+    ],
+    "python": null,
+    "rustc": null,
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"xyz\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "banana",
+    "osa": 4,
+    "lev": 4,
+    "mais_perto_osa": [
+     "base_x",
+     "base_y"
+    ],
+    "python": null,
+    "rustc": null,
+    "godot": null,
+    "godot_similarity": 0.28571429848671,
+    "godot_similarity_de": "top_signal",
+    "godot_erro": "ERROR: The InputMap action \"banana\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "apmlitude",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "amplitude"
+    ],
+    "python": "amplitude",
+    "rustc": "amplitude",
+    "godot": "amplitude",
+    "godot_similarity": 0.625,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"apmlitude\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "aplitude",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "amplitude"
+    ],
+    "python": "amplitude",
+    "rustc": "amplitude",
+    "godot": "amplitude",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"aplitude\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "aqplitude",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "amplitude"
+    ],
+    "python": "amplitude",
+    "rustc": "amplitude",
+    "godot": "amplitude",
+    "godot_similarity": 0.75,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"aqplitude\" doesn't exist. Did you mean \"amplitude\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "seed",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "speed"
+    ],
+    "python": "speed",
+    "rustc": "speed",
+    "godot": "speed",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "speed",
+    "godot_erro": "ERROR: The InputMap action \"seed\" doesn't exist. Did you mean \"speed\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "sqeed",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "speed"
+    ],
+    "python": "speed",
+    "rustc": "speed",
+    "godot": "speed",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "speed",
+    "godot_erro": "ERROR: The InputMap action \"sqeed\" doesn't exist. Did you mean \"speed\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "ative",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "active"
+    ],
+    "python": "active",
+    "rustc": "active",
+    "godot": "active",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "active",
+    "godot_erro": "ERROR: The InputMap action \"ative\" doesn't exist. Did you mean \"active\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "aqtive",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "active"
+    ],
+    "python": "active",
+    "rustc": "active",
+    "godot": "active",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "active",
+    "godot_erro": "ERROR: The InputMap action \"aqtive\" doesn't exist. Did you mean \"active\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "tpo_signal",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "top_signal"
+    ],
+    "python": "top_signal",
+    "rustc": "top_signal",
+    "godot": "top_signal",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "top_signal",
+    "godot_erro": "ERROR: The InputMap action \"tpo_signal\" doesn't exist. Did you mean \"top_signal\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "tp_signal",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "top_signal"
+    ],
+    "python": "top_signal",
+    "rustc": "top_signal",
+    "godot": "top_signal",
+    "godot_similarity": 0.82352942228317,
+    "godot_similarity_de": "top_signal",
+    "godot_erro": "ERROR: The InputMap action \"tp_signal\" doesn't exist. Did you mean \"top_signal\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "tqp_signal",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "top_signal"
+    ],
+    "python": "top_signal",
+    "rustc": "top_signal",
+    "godot": "top_signal",
+    "godot_similarity": 0.77777779102325,
+    "godot_similarity_de": "top_signal",
+    "godot_erro": "ERROR: The InputMap action \"tqp_signal\" doesn't exist. Did you mean \"top_signal\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "wvae",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "wave"
+    ],
+    "python": null,
+    "rustc": "wave",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "amplitude",
+    "godot_erro": "ERROR: The InputMap action \"wvae\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "wve",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "wave"
+    ],
+    "python": "wave",
+    "rustc": "wave",
+    "godot": "wave",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "wave",
+    "godot_erro": "ERROR: The InputMap action \"wve\" doesn't exist. Did you mean \"wave\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "wqve",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "wave"
+    ],
+    "python": "wave",
+    "rustc": "wave",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "wave",
+    "godot_erro": "ERROR: The InputMap action \"wqve\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "driection",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "direction"
+    ],
+    "python": "direction",
+    "rustc": "direction",
+    "godot": "direction",
+    "godot_similarity": 0.625,
+    "godot_similarity_de": "direction",
+    "godot_erro": "ERROR: The InputMap action \"driection\" doesn't exist. Did you mean \"direction\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "drection",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "direction"
+    ],
+    "python": "direction",
+    "rustc": "direction",
+    "godot": "direction",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "direction",
+    "godot_erro": "ERROR: The InputMap action \"drection\" doesn't exist. Did you mean \"direction\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "dqrection",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "direction"
+    ],
+    "python": "direction",
+    "rustc": "direction",
+    "godot": "direction",
+    "godot_similarity": 0.75,
+    "godot_similarity_de": "direction",
+    "godot_erro": "ERROR: The InputMap action \"dqrection\" doesn't exist. Did you mean \"direction\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "tnt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "tint"
+    ],
+    "python": "tint",
+    "rustc": "tint",
+    "godot": "tint",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "tint",
+    "godot_erro": "ERROR: The InputMap action \"tnt\" doesn't exist. Did you mean \"tint\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "tqnt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "tint"
+    ],
+    "python": "tint",
+    "rustc": "tint",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "tint",
+    "godot_erro": "ERROR: The InputMap action \"tqnt\" doesn't exist."
+   },
+   {
+    "familia": "campo",
+    "typo": "bsae_x",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "base_x"
+    ],
+    "python": "base_x",
+    "rustc": "base_x",
+    "godot": "base_x",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "base_x",
+    "godot_erro": "ERROR: The InputMap action \"bsae_x\" doesn't exist. Did you mean \"base_x\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "bse_x",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "base_x"
+    ],
+    "python": "base_x",
+    "rustc": "base_x",
+    "godot": "base_x",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "base_x",
+    "godot_erro": "ERROR: The InputMap action \"bse_x\" doesn't exist. Did you mean \"base_x\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "bqse_x",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "base_x"
+    ],
+    "python": "base_x",
+    "rustc": "base_x",
+    "godot": "base_x",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "base_x",
+    "godot_erro": "ERROR: The InputMap action \"bqse_x\" doesn't exist. Did you mean \"base_x\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "bsae_y",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "base_y"
+    ],
+    "python": "base_y",
+    "rustc": "base_y",
+    "godot": "base_y",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "base_y",
+    "godot_erro": "ERROR: The InputMap action \"bsae_y\" doesn't exist. Did you mean \"base_y\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "bse_y",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "base_y"
+    ],
+    "python": "base_y",
+    "rustc": "base_y",
+    "godot": "base_y",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "base_y",
+    "godot_erro": "ERROR: The InputMap action \"bse_y\" doesn't exist. Did you mean \"base_y\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "bqse_y",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "base_y"
+    ],
+    "python": "base_y",
+    "rustc": "base_y",
+    "godot": "base_y",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "base_y",
+    "godot_erro": "ERROR: The InputMap action \"bqse_y\" doesn't exist. Did you mean \"base_y\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "wsa_up",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "was_up"
+    ],
+    "python": "was_up",
+    "rustc": "was_up",
+    "godot": "was_up",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "was_up",
+    "godot_erro": "ERROR: The InputMap action \"wsa_up\" doesn't exist. Did you mean \"was_up\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "ws_up",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "was_up"
+    ],
+    "python": "was_up",
+    "rustc": "was_up",
+    "godot": "was_up",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "was_up",
+    "godot_erro": "ERROR: The InputMap action \"ws_up\" doesn't exist. Did you mean \"was_up\"?"
+   },
+   {
+    "familia": "campo",
+    "typo": "wqs_up",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "was_up"
+    ],
+    "python": "was_up",
+    "rustc": "was_up",
+    "godot": "was_up",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "was_up",
+    "godot_erro": "ERROR: The InputMap action \"wqs_up\" doesn't exist. Did you mean \"was_up\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "pirnt",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "print"
+    ],
+    "python": "print",
+    "rustc": "print",
+    "godot": null,
+    "godot_similarity": 0.25,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"pirnt\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "prnt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "print"
+    ],
+    "python": "print",
+    "rustc": "print",
+    "godot": "print",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"prnt\" doesn't exist. Did you mean \"print\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "priint",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "print"
+    ],
+    "python": "print",
+    "rustc": "print",
+    "godot": "print",
+    "godot_similarity": 0.88888889551163,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"priint\" doesn't exist. Did you mean \"print\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "Print",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "print"
+    ],
+    "python": "print",
+    "rustc": "print",
+    "godot": "print",
+    "godot_similarity": 0.75,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"Print\" doesn't exist. Did you mean \"print\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "prit",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "print"
+    ],
+    "python": "print",
+    "rustc": "print",
+    "godot": "print",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"prit\" doesn't exist. Did you mean \"print\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "paris",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "pairs"
+    ],
+    "python": "pairs",
+    "rustc": "pairs",
+    "godot": null,
+    "godot_similarity": 0.25,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"paris\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "ipars",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "ipairs"
+    ],
+    "python": "ipairs",
+    "rustc": "ipairs",
+    "godot": "ipairs",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "ipairs",
+    "godot_erro": "ERROR: The InputMap action \"ipars\" doesn't exist. Did you mean \"ipairs\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "mat",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "math"
+    ],
+    "python": "math",
+    "rustc": "math",
+    "godot": "math",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "math",
+    "godot_erro": "ERROR: The InputMap action \"mat\" doesn't exist. Did you mean \"math\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "maht",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "math"
+    ],
+    "python": null,
+    "rustc": "math",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "math",
+    "godot_erro": "ERROR: The InputMap action \"maht\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "tostrnig",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "tostring"
+    ],
+    "python": "tostring",
+    "rustc": "tostring",
+    "godot": "tostring",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "tostring",
+    "godot_erro": "ERROR: The InputMap action \"tostrnig\" doesn't exist. Did you mean \"tostring\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tonumbr",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "tonumber"
+    ],
+    "python": "tonumber",
+    "rustc": "tonumber",
+    "godot": "tonumber",
+    "godot_similarity": 0.76923078298569,
+    "godot_similarity_de": "tonumber",
+    "godot_erro": "ERROR: The InputMap action \"tonumbr\" doesn't exist. Did you mean \"tonumber\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "p2hd",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "ph2d"
+    ],
+    "python": null,
+    "rustc": "ph2d",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"p2hd\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "updtae",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "update"
+    ],
+    "python": "update",
+    "rustc": "update",
+    "godot": "update",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "update",
+    "godot_erro": "ERROR: The InputMap action \"updtae\" doesn't exist. Did you mean \"update\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "inti",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "init"
+    ],
+    "python": null,
+    "rustc": "init",
+    "godot": "print",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"inti\" doesn't exist. Did you mean \"print\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "errro",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "error"
+    ],
+    "python": "error",
+    "rustc": "error",
+    "godot": "error",
+    "godot_similarity": 1.0,
+    "godot_similarity_de": "error",
+    "godot_erro": "ERROR: The InputMap action \"errro\" doesn't exist. Did you mean \"error\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "pint",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "print"
+    ],
+    "python": "print",
+    "rustc": "print",
+    "godot": "print",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"pint\" doesn't exist. Did you mean \"print\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "pqint",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "print"
+    ],
+    "python": "print",
+    "rustc": "print",
+    "godot": "print",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"pqint\" doesn't exist. Did you mean \"print\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "piars",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "pairs"
+    ],
+    "python": "pairs",
+    "rustc": "pairs",
+    "godot": null,
+    "godot_similarity": 0.25,
+    "godot_similarity_de": "pairs",
+    "godot_erro": "ERROR: The InputMap action \"piars\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "pirs",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "pairs"
+    ],
+    "python": "pairs",
+    "rustc": "pairs",
+    "godot": "pairs",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "pairs",
+    "godot_erro": "ERROR: The InputMap action \"pirs\" doesn't exist. Did you mean \"pairs\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "pqirs",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "pairs"
+    ],
+    "python": "pairs",
+    "rustc": "pairs",
+    "godot": "pairs",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "pairs",
+    "godot_erro": "ERROR: The InputMap action \"pqirs\" doesn't exist. Did you mean \"pairs\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "iapirs",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "ipairs"
+    ],
+    "python": "pairs",
+    "rustc": "ipairs",
+    "godot": "pairs",
+    "godot_similarity": 0.44444444775581,
+    "godot_similarity_de": "pairs",
+    "godot_erro": "ERROR: The InputMap action \"iapirs\" doesn't exist. Did you mean \"pairs\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "iairs",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "ipairs",
+     "pairs"
+    ],
+    "python": "pairs",
+    "rustc": "ipairs",
+    "godot": "pairs",
+    "godot_similarity": 0.75,
+    "godot_similarity_de": "pairs",
+    "godot_erro": "ERROR: The InputMap action \"iairs\" doesn't exist. Did you mean \"pairs\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "iqairs",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "ipairs"
+    ],
+    "python": "ipairs",
+    "rustc": "ipairs",
+    "godot": "pairs",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "pairs",
+    "godot_erro": "ERROR: The InputMap action \"iqairs\" doesn't exist. Did you mean \"pairs\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "mtah",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "math"
+    ],
+    "python": null,
+    "rustc": "math",
+    "godot": null,
+    "godot_similarity": 0.28571429848671,
+    "godot_similarity_de": "table",
+    "godot_erro": "ERROR: The InputMap action \"mtah\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "mth",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "math"
+    ],
+    "python": "math",
+    "rustc": "math",
+    "godot": "math",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "math",
+    "godot_erro": "ERROR: The InputMap action \"mth\" doesn't exist. Did you mean \"math\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "mqth",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "math"
+    ],
+    "python": "math",
+    "rustc": "math",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "math",
+    "godot_erro": "ERROR: The InputMap action \"mqth\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "srting",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "string"
+    ],
+    "python": "string",
+    "rustc": "string",
+    "godot": "string",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "string",
+    "godot_erro": "ERROR: The InputMap action \"srting\" doesn't exist. Did you mean \"string\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "sring",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "string"
+    ],
+    "python": "string",
+    "rustc": "string",
+    "godot": "string",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "string",
+    "godot_erro": "ERROR: The InputMap action \"sring\" doesn't exist. Did you mean \"string\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "sqring",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "string"
+    ],
+    "python": "string",
+    "rustc": "string",
+    "godot": "string",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "string",
+    "godot_erro": "ERROR: The InputMap action \"sqring\" doesn't exist. Did you mean \"string\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tbale",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "table"
+    ],
+    "python": "table",
+    "rustc": "table",
+    "godot": null,
+    "godot_similarity": 0.25,
+    "godot_similarity_de": "table",
+    "godot_erro": "ERROR: The InputMap action \"tbale\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "tble",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "table"
+    ],
+    "python": "table",
+    "rustc": "table",
+    "godot": "table",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "table",
+    "godot_erro": "ERROR: The InputMap action \"tble\" doesn't exist. Did you mean \"table\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tqble",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "table"
+    ],
+    "python": "table",
+    "rustc": "table",
+    "godot": "table",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "table",
+    "godot_erro": "ERROR: The InputMap action \"tqble\" doesn't exist. Did you mean \"table\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tpye",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "type"
+    ],
+    "python": null,
+    "rustc": "type",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"tpye\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "tpe",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "type"
+    ],
+    "python": "type",
+    "rustc": "type",
+    "godot": "type",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "type",
+    "godot_erro": "ERROR: The InputMap action \"tpe\" doesn't exist. Did you mean \"type\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tqpe",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "type"
+    ],
+    "python": "type",
+    "rustc": "type",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "type",
+    "godot_erro": "ERROR: The InputMap action \"tqpe\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "tsotring",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "tostring"
+    ],
+    "python": "string",
+    "rustc": "tostring",
+    "godot": "string",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "string",
+    "godot_erro": "ERROR: The InputMap action \"tsotring\" doesn't exist. Did you mean \"string\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tstring",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "string",
+     "tostring"
+    ],
+    "python": "string",
+    "rustc": "string",
+    "godot": "string",
+    "godot_similarity": 0.90909093618393,
+    "godot_similarity_de": "string",
+    "godot_erro": "ERROR: The InputMap action \"tstring\" doesn't exist. Did you mean \"string\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tqstring",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "tostring"
+    ],
+    "python": "tostring",
+    "rustc": "tostring",
+    "godot": "string",
+    "godot_similarity": 0.83333331346512,
+    "godot_similarity_de": "string",
+    "godot_erro": "ERROR: The InputMap action \"tqstring\" doesn't exist. Did you mean \"string\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tnoumber",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "tonumber"
+    ],
+    "python": "tonumber",
+    "rustc": "tonumber",
+    "godot": "tonumber",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "tonumber",
+    "godot_erro": "ERROR: The InputMap action \"tnoumber\" doesn't exist. Did you mean \"tonumber\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tnumber",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "tonumber"
+    ],
+    "python": "tonumber",
+    "rustc": "tonumber",
+    "godot": "tonumber",
+    "godot_similarity": 0.76923078298569,
+    "godot_similarity_de": "tonumber",
+    "godot_erro": "ERROR: The InputMap action \"tnumber\" doesn't exist. Did you mean \"tonumber\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "tqnumber",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "tonumber"
+    ],
+    "python": "tonumber",
+    "rustc": "tonumber",
+    "godot": "tonumber",
+    "godot_similarity": 0.71428573131561,
+    "godot_similarity_de": "tonumber",
+    "godot_erro": "ERROR: The InputMap action \"tqnumber\" doesn't exist. Did you mean \"tonumber\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "eror",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "error"
+    ],
+    "python": "error",
+    "rustc": "error",
+    "godot": "error",
+    "godot_similarity": 0.85714286565781,
+    "godot_similarity_de": "error",
+    "godot_erro": "ERROR: The InputMap action \"eror\" doesn't exist. Did you mean \"error\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "eqror",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "error"
+    ],
+    "python": "error",
+    "rustc": "error",
+    "godot": "error",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "error",
+    "godot_erro": "ERROR: The InputMap action \"eqror\" doesn't exist. Did you mean \"error\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "asert",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "assert"
+    ],
+    "python": "assert",
+    "rustc": "assert",
+    "godot": "assert",
+    "godot_similarity": 0.88888889551163,
+    "godot_similarity_de": "assert",
+    "godot_erro": "ERROR: The InputMap action \"asert\" doesn't exist. Did you mean \"assert\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "aqsert",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "assert"
+    ],
+    "python": "assert",
+    "rustc": "assert",
+    "godot": "assert",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "assert",
+    "godot_erro": "ERROR: The InputMap action \"aqsert\" doesn't exist. Did you mean \"assert\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "sleect",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "select"
+    ],
+    "python": "select",
+    "rustc": "select",
+    "godot": "select",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "select",
+    "godot_erro": "ERROR: The InputMap action \"sleect\" doesn't exist. Did you mean \"select\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "slect",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "select"
+    ],
+    "python": "select",
+    "rustc": "select",
+    "godot": "select",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "select",
+    "godot_erro": "ERROR: The InputMap action \"slect\" doesn't exist. Did you mean \"select\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "sqlect",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "select"
+    ],
+    "python": "select",
+    "rustc": "select",
+    "godot": "select",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "select",
+    "godot_erro": "ERROR: The InputMap action \"sqlect\" doesn't exist. Did you mean \"select\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "nxet",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "next"
+    ],
+    "python": null,
+    "rustc": "next",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"nxet\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "nxt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "next"
+    ],
+    "python": "next",
+    "rustc": "next",
+    "godot": "next",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "next",
+    "godot_erro": "ERROR: The InputMap action \"nxt\" doesn't exist. Did you mean \"next\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "nqxt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "next"
+    ],
+    "python": "next",
+    "rustc": "next",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "next",
+    "godot_erro": "ERROR: The InputMap action \"nqxt\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "rqeuire",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "require"
+    ],
+    "python": "require",
+    "rustc": "require",
+    "godot": "require",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "require",
+    "godot_erro": "ERROR: The InputMap action \"rqeuire\" doesn't exist. Did you mean \"require\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "rquire",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "require"
+    ],
+    "python": "require",
+    "rustc": "require",
+    "godot": "require",
+    "godot_similarity": 0.72727274894714,
+    "godot_similarity_de": "require",
+    "godot_erro": "ERROR: The InputMap action \"rquire\" doesn't exist. Did you mean \"require\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "rqquire",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "require"
+    ],
+    "python": "require",
+    "rustc": "require",
+    "godot": "require",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "require",
+    "godot_erro": "ERROR: The InputMap action \"rqquire\" doesn't exist. Did you mean \"require\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "p2d",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "ph2d"
+    ],
+    "python": "ph2d",
+    "rustc": "ph2d",
+    "godot": "ph2d",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "ph2d",
+    "godot_erro": "ERROR: The InputMap action \"p2d\" doesn't exist. Did you mean \"ph2d\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "pq2d",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "ph2d"
+    ],
+    "python": "ph2d",
+    "rustc": "ph2d",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "ph2d",
+    "godot_erro": "ERROR: The InputMap action \"pq2d\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "iint",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "init"
+    ],
+    "python": "print",
+    "rustc": "init",
+    "godot": "print",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "print",
+    "godot_erro": "ERROR: The InputMap action \"iint\" doesn't exist. Did you mean \"print\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "iit",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "init"
+    ],
+    "python": "init",
+    "rustc": "init",
+    "godot": "init",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "init",
+    "godot_erro": "ERROR: The InputMap action \"iit\" doesn't exist. Did you mean \"init\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "iqit",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "init"
+    ],
+    "python": "init",
+    "rustc": "init",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "init",
+    "godot_erro": "ERROR: The InputMap action \"iqit\" doesn't exist."
+   },
+   {
+    "familia": "global",
+    "typo": "udpate",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "update"
+    ],
+    "python": "update",
+    "rustc": "update",
+    "godot": "update",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "update",
+    "godot_erro": "ERROR: The InputMap action \"udpate\" doesn't exist. Did you mean \"update\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "udate",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "update"
+    ],
+    "python": "update",
+    "rustc": "update",
+    "godot": "update",
+    "godot_similarity": 0.66666668653488,
+    "godot_similarity_de": "update",
+    "godot_erro": "ERROR: The InputMap action \"udate\" doesn't exist. Did you mean \"update\"?"
+   },
+   {
+    "familia": "global",
+    "typo": "uqdate",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "update"
+    ],
+    "python": "update",
+    "rustc": "update",
+    "godot": "update",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "update",
+    "godot_erro": "ERROR: The InputMap action \"uqdate\" doesn't exist. Did you mean \"update\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "proprety",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "property"
+    ],
+    "python": "property",
+    "rustc": "property",
+    "godot": "property",
+    "godot_similarity": 0.71428573131561,
+    "godot_similarity_de": "property",
+    "godot_erro": "ERROR: The InputMap action \"proprety\" doesn't exist. Did you mean \"property\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "propery",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "property"
+    ],
+    "python": "property",
+    "rustc": "property",
+    "godot": "property",
+    "godot_similarity": 0.76923078298569,
+    "godot_similarity_de": "property",
+    "godot_erro": "ERROR: The InputMap action \"propery\" doesn't exist. Did you mean \"property\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "gte",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "get"
+    ],
+    "python": null,
+    "rustc": "get",
+    "godot": null,
+    "godot_similarity": 0.20000000298023,
+    "godot_similarity_de": "state_get",
+    "godot_erro": "ERROR: The InputMap action \"gte\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "stt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "set"
+    ],
+    "python": "set",
+    "rustc": "set",
+    "godot": null,
+    "godot_similarity": 0.20000000298023,
+    "godot_similarity_de": "state_get",
+    "godot_erro": "ERROR: The InputMap action \"stt\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "emti",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "emit"
+    ],
+    "python": null,
+    "rustc": "emit",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "emit",
+    "godot_erro": "ERROR: The InputMap action \"emti\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "colr",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "color"
+    ],
+    "python": "color",
+    "rustc": "color",
+    "godot": "color",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "color",
+    "godot_erro": "ERROR: The InputMap action \"colr\" doesn't exist. Did you mean \"color\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "vec",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "vec2"
+    ],
+    "python": "vec2",
+    "rustc": "vec2",
+    "godot": "vec2",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "vec2",
+    "godot_erro": "ERROR: The InputMap action \"vec\" doesn't exist. Did you mean \"vec2\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "spwan",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "spawn"
+    ],
+    "python": "spawn",
+    "rustc": "spawn",
+    "godot": null,
+    "godot_similarity": 0.28571429848671,
+    "godot_similarity_de": "wait",
+    "godot_erro": "ERROR: The InputMap action \"spwan\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "despwan",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "despawn"
+    ],
+    "python": "despawn",
+    "rustc": "despawn",
+    "godot": "despawn",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "despawn",
+    "godot_erro": "ERROR: The InputMap action \"despwan\" doesn't exist. Did you mean \"despawn\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "state_gte",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "state_get"
+    ],
+    "python": "state_get",
+    "rustc": "state_get",
+    "godot": "state_get",
+    "godot_similarity": 0.875,
+    "godot_similarity_de": "state_get",
+    "godot_erro": "ERROR: The InputMap action \"state_gte\" doesn't exist. Did you mean \"state_get\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "find_by_nme",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "find_by_name"
+    ],
+    "python": "find_by_name",
+    "rustc": "find_by_name",
+    "godot": "find_by_name",
+    "godot_similarity": 0.85714286565781,
+    "godot_similarity_de": "find_by_name",
+    "godot_erro": "ERROR: The InputMap action \"find_by_nme\" doesn't exist. Did you mean \"find_by_name\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "attach",
+    "osa": 5,
+    "lev": 5,
+    "mais_perto_osa": [
+     "get",
+     "set",
+     "spawn",
+     "vec2",
+     "wait"
+    ],
+    "python": null,
+    "rustc": null,
+    "godot": "attach_script",
+    "godot_similarity": 0.58823531866074,
+    "godot_similarity_de": "attach_script",
+    "godot_erro": "ERROR: The InputMap action \"attach\" doesn't exist. Did you mean \"attach_script\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "ste",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "set"
+    ],
+    "python": null,
+    "rustc": "set",
+    "godot": "state_get",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "state_get",
+    "godot_erro": "ERROR: The InputMap action \"ste\" doesn't exist. Did you mean \"state_get\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "st",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "set"
+    ],
+    "python": "set",
+    "rustc": "set",
+    "godot": null,
+    "godot_similarity": 0.22222222387791,
+    "godot_similarity_de": "state_get",
+    "godot_erro": "ERROR: The InputMap action \"st\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "sqt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "set"
+    ],
+    "python": "set",
+    "rustc": "set",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "set",
+    "godot_erro": "ERROR: The InputMap action \"sqt\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "gt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "get"
+    ],
+    "python": "get",
+    "rustc": "get",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "set",
+    "godot_erro": "ERROR: The InputMap action \"gt\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "gqt",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "get"
+    ],
+    "python": "get",
+    "rustc": "get",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "set",
+    "godot_erro": "ERROR: The InputMap action \"gqt\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "ipnut",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "input"
+    ],
+    "python": "input",
+    "rustc": "input",
+    "godot": null,
+    "godot_similarity": 0.25,
+    "godot_similarity_de": "input",
+    "godot_erro": "ERROR: The InputMap action \"ipnut\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "iput",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "input"
+    ],
+    "python": "input",
+    "rustc": "input",
+    "godot": "input",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "input",
+    "godot_erro": "ERROR: The InputMap action \"iput\" doesn't exist. Did you mean \"input\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "iqput",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "input"
+    ],
+    "python": "input",
+    "rustc": "input",
+    "godot": "input",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "input",
+    "godot_erro": "ERROR: The InputMap action \"iqput\" doesn't exist. Did you mean \"input\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "eimt",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "emit"
+    ],
+    "python": null,
+    "rustc": "emit",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "set",
+    "godot_erro": "ERROR: The InputMap action \"eimt\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "eit",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "emit"
+    ],
+    "python": "emit",
+    "rustc": "emit",
+    "godot": "emit",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "emit",
+    "godot_erro": "ERROR: The InputMap action \"eit\" doesn't exist. Did you mean \"emit\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "eqit",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "emit"
+    ],
+    "python": "emit",
+    "rustc": "emit",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "emit",
+    "godot_erro": "ERROR: The InputMap action \"eqit\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "fnid_by_name",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "find_by_name"
+    ],
+    "python": "find_by_name",
+    "rustc": "find_by_name",
+    "godot": "find_by_name",
+    "godot_similarity": 0.72727274894714,
+    "godot_similarity_de": "find_by_name",
+    "godot_erro": "ERROR: The InputMap action \"fnid_by_name\" doesn't exist. Did you mean \"find_by_name\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "fnd_by_name",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "find_by_name"
+    ],
+    "python": "find_by_name",
+    "rustc": "find_by_name",
+    "godot": "find_by_name",
+    "godot_similarity": 0.85714286565781,
+    "godot_similarity_de": "find_by_name",
+    "godot_erro": "ERROR: The InputMap action \"fnd_by_name\" doesn't exist. Did you mean \"find_by_name\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "fqnd_by_name",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "find_by_name"
+    ],
+    "python": "find_by_name",
+    "rustc": "find_by_name",
+    "godot": "find_by_name",
+    "godot_similarity": 0.81818181276321,
+    "godot_similarity_de": "find_by_name",
+    "godot_erro": "ERROR: The InputMap action \"fqnd_by_name\" doesn't exist. Did you mean \"find_by_name\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sapwn",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "spawn"
+    ],
+    "python": "spawn",
+    "rustc": "spawn",
+    "godot": null,
+    "godot_similarity": 0.25,
+    "godot_similarity_de": "spawn",
+    "godot_erro": "ERROR: The InputMap action \"sapwn\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "sawn",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "spawn"
+    ],
+    "python": "spawn",
+    "rustc": "spawn",
+    "godot": "spawn",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "spawn",
+    "godot_erro": "ERROR: The InputMap action \"sawn\" doesn't exist. Did you mean \"spawn\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sqawn",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "spawn"
+    ],
+    "python": "spawn",
+    "rustc": "spawn",
+    "godot": "spawn",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "spawn",
+    "godot_erro": "ERROR: The InputMap action \"sqawn\" doesn't exist. Did you mean \"spawn\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sapwn_named",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "spawn_named"
+    ],
+    "python": "spawn_named",
+    "rustc": "spawn_named",
+    "godot": "spawn_named",
+    "godot_similarity": 0.69999998807907,
+    "godot_similarity_de": "spawn_named",
+    "godot_erro": "ERROR: The InputMap action \"sapwn_named\" doesn't exist. Did you mean \"spawn_named\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sawn_named",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "spawn_named"
+    ],
+    "python": "spawn_named",
+    "rustc": "spawn_named",
+    "godot": "spawn_named",
+    "godot_similarity": 0.84210526943207,
+    "godot_similarity_de": "spawn_named",
+    "godot_erro": "ERROR: The InputMap action \"sawn_named\" doesn't exist. Did you mean \"spawn_named\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sqawn_named",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "spawn_named"
+    ],
+    "python": "spawn_named",
+    "rustc": "spawn_named",
+    "godot": "spawn_named",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "spawn_named",
+    "godot_erro": "ERROR: The InputMap action \"sqawn_named\" doesn't exist. Did you mean \"spawn_named\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "dsepawn",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "despawn"
+    ],
+    "python": "spawn",
+    "rustc": "despawn",
+    "godot": "spawn",
+    "godot_similarity": 0.60000002384186,
+    "godot_similarity_de": "spawn",
+    "godot_erro": "ERROR: The InputMap action \"dsepawn\" doesn't exist. Did you mean \"spawn\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "dspawn",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "despawn",
+     "spawn"
+    ],
+    "python": "spawn",
+    "rustc": "spawn",
+    "godot": "spawn",
+    "godot_similarity": 0.88888889551163,
+    "godot_similarity_de": "spawn",
+    "godot_erro": "ERROR: The InputMap action \"dspawn\" doesn't exist. Did you mean \"spawn\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "dqspawn",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "despawn"
+    ],
+    "python": "despawn",
+    "rustc": "despawn",
+    "godot": "spawn",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "spawn",
+    "godot_erro": "ERROR: The InputMap action \"dqspawn\" doesn't exist. Did you mean \"spawn\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "atach_script",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "attach_script"
+    ],
+    "python": "attach_script",
+    "rustc": "attach_script",
+    "godot": "attach_script",
+    "godot_similarity": 0.95652174949646,
+    "godot_similarity_de": "attach_script",
+    "godot_erro": "ERROR: The InputMap action \"atach_script\" doesn't exist. Did you mean \"attach_script\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "aqtach_script",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "attach_script"
+    ],
+    "python": "attach_script",
+    "rustc": "attach_script",
+    "godot": "attach_script",
+    "godot_similarity": 0.83333331346512,
+    "godot_similarity_de": "attach_script",
+    "godot_erro": "ERROR: The InputMap action \"aqtach_script\" doesn't exist. Did you mean \"attach_script\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "porperty",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "property"
+    ],
+    "python": "property",
+    "rustc": "property",
+    "godot": "property",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "property",
+    "godot_erro": "ERROR: The InputMap action \"porperty\" doesn't exist. Did you mean \"property\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "poperty",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "property"
+    ],
+    "python": "property",
+    "rustc": "property",
+    "godot": "property",
+    "godot_similarity": 0.76923078298569,
+    "godot_similarity_de": "property",
+    "godot_erro": "ERROR: The InputMap action \"poperty\" doesn't exist. Did you mean \"property\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "pqoperty",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "property"
+    ],
+    "python": "property",
+    "rustc": "property",
+    "godot": "property",
+    "godot_similarity": 0.71428573131561,
+    "godot_similarity_de": "property",
+    "godot_erro": "ERROR: The InputMap action \"pqoperty\" doesn't exist. Did you mean \"property\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "vce2",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "vec2"
+    ],
+    "python": null,
+    "rustc": "vec2",
+    "godot": null,
+    "godot_similarity": 0.0,
+    "godot_similarity_de": "set",
+    "godot_erro": "ERROR: The InputMap action \"vce2\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "vc2",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "vec2"
+    ],
+    "python": "vec2",
+    "rustc": "vec2",
+    "godot": "vec2",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "vec2",
+    "godot_erro": "ERROR: The InputMap action \"vc2\" doesn't exist. Did you mean \"vec2\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "vqc2",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "vec2"
+    ],
+    "python": "vec2",
+    "rustc": "vec2",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "vec2",
+    "godot_erro": "ERROR: The InputMap action \"vqc2\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "cloor",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "color"
+    ],
+    "python": "color",
+    "rustc": "color",
+    "godot": "color",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "color",
+    "godot_erro": "ERROR: The InputMap action \"cloor\" doesn't exist. Did you mean \"color\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "clor",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "color"
+    ],
+    "python": "color",
+    "rustc": "color",
+    "godot": "color",
+    "godot_similarity": 0.57142859697342,
+    "godot_similarity_de": "color",
+    "godot_erro": "ERROR: The InputMap action \"clor\" doesn't exist. Did you mean \"color\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "cqlor",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "color"
+    ],
+    "python": "color",
+    "rustc": "color",
+    "godot": "color",
+    "godot_similarity": 0.5,
+    "godot_similarity_de": "color",
+    "godot_erro": "ERROR: The InputMap action \"cqlor\" doesn't exist. Did you mean \"color\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "satte_get",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "state_get"
+    ],
+    "python": "state_get",
+    "rustc": "state_get",
+    "godot": "state_get",
+    "godot_similarity": 0.75,
+    "godot_similarity_de": "state_get",
+    "godot_erro": "ERROR: The InputMap action \"satte_get\" doesn't exist. Did you mean \"state_get\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sate_get",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "state_get"
+    ],
+    "python": "state_get",
+    "rustc": "state_get",
+    "godot": "state_get",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "state_get",
+    "godot_erro": "ERROR: The InputMap action \"sate_get\" doesn't exist. Did you mean \"state_get\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sqate_get",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "state_get"
+    ],
+    "python": "state_get",
+    "rustc": "state_get",
+    "godot": "state_get",
+    "godot_similarity": 0.75,
+    "godot_similarity_de": "state_get",
+    "godot_erro": "ERROR: The InputMap action \"sqate_get\" doesn't exist. Did you mean \"state_get\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "satte_set",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "state_set"
+    ],
+    "python": "state_set",
+    "rustc": "state_set",
+    "godot": "state_set",
+    "godot_similarity": 0.75,
+    "godot_similarity_de": "state_set",
+    "godot_erro": "ERROR: The InputMap action \"satte_set\" doesn't exist. Did you mean \"state_set\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sate_set",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "state_set"
+    ],
+    "python": "state_set",
+    "rustc": "state_set",
+    "godot": "state_set",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "state_set",
+    "godot_erro": "ERROR: The InputMap action \"sate_set\" doesn't exist. Did you mean \"state_set\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sqate_set",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "state_set"
+    ],
+    "python": "state_set",
+    "rustc": "state_set",
+    "godot": "state_set",
+    "godot_similarity": 0.75,
+    "godot_similarity_de": "state_set",
+    "godot_erro": "ERROR: The InputMap action \"sqate_set\" doesn't exist. Did you mean \"state_set\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "satte_keys",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "state_keys"
+    ],
+    "python": "state_keys",
+    "rustc": "state_keys",
+    "godot": "state_keys",
+    "godot_similarity": 0.77777779102325,
+    "godot_similarity_de": "state_keys",
+    "godot_erro": "ERROR: The InputMap action \"satte_keys\" doesn't exist. Did you mean \"state_keys\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sate_keys",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "state_keys"
+    ],
+    "python": "state_keys",
+    "rustc": "state_keys",
+    "godot": "state_keys",
+    "godot_similarity": 0.82352942228317,
+    "godot_similarity_de": "state_keys",
+    "godot_erro": "ERROR: The InputMap action \"sate_keys\" doesn't exist. Did you mean \"state_keys\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sqate_keys",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "state_keys"
+    ],
+    "python": "state_keys",
+    "rustc": "state_keys",
+    "godot": "state_keys",
+    "godot_similarity": 0.77777779102325,
+    "godot_similarity_de": "state_keys",
+    "godot_erro": "ERROR: The InputMap action \"sqate_keys\" doesn't exist. Did you mean \"state_keys\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "satte_clear",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "state_clear"
+    ],
+    "python": "state_clear",
+    "rustc": "state_clear",
+    "godot": "state_clear",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "state_clear",
+    "godot_erro": "ERROR: The InputMap action \"satte_clear\" doesn't exist. Did you mean \"state_clear\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sate_clear",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "state_clear"
+    ],
+    "python": "state_clear",
+    "rustc": "state_clear",
+    "godot": "state_clear",
+    "godot_similarity": 0.84210526943207,
+    "godot_similarity_de": "state_clear",
+    "godot_erro": "ERROR: The InputMap action \"sate_clear\" doesn't exist. Did you mean \"state_clear\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "sqate_clear",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "state_clear"
+    ],
+    "python": "state_clear",
+    "rustc": "state_clear",
+    "godot": "state_clear",
+    "godot_similarity": 0.80000001192093,
+    "godot_similarity_de": "state_clear",
+    "godot_erro": "ERROR: The InputMap action \"sqate_clear\" doesn't exist. Did you mean \"state_clear\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "wiat",
+    "osa": 1,
+    "lev": 2,
+    "mais_perto_osa": [
+     "wait"
+    ],
+    "python": null,
+    "rustc": "wait",
+    "godot": null,
+    "godot_similarity": 0.18181818723679,
+    "godot_similarity_de": "state_get",
+    "godot_erro": "ERROR: The InputMap action \"wiat\" doesn't exist."
+   },
+   {
+    "familia": "membro",
+    "typo": "wit",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "wait"
+    ],
+    "python": "wait",
+    "rustc": "wait",
+    "godot": "emit",
+    "godot_similarity": 0.40000000596046,
+    "godot_similarity_de": "emit",
+    "godot_erro": "ERROR: The InputMap action \"wit\" doesn't exist. Did you mean \"emit\"?"
+   },
+   {
+    "familia": "membro",
+    "typo": "wqit",
+    "osa": 1,
+    "lev": 1,
+    "mais_perto_osa": [
+     "wait"
+    ],
+    "python": "wait",
+    "rustc": "wait",
+    "godot": null,
+    "godot_similarity": 0.33333334326744,
+    "godot_similarity_de": "emit",
+    "godot_erro": "ERROR: The InputMap action \"wqit\" doesn't exist."
+   }
+  ]
+ },
+ "loadavg_fim": [
+  "16.76",
+  "44.17",
+  "25.51"
+ ]
+}

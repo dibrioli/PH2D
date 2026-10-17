@@ -183,3 +183,25 @@ fn the_shine_row_lands_on_the_paints_material() {
         tool.brush_settings().impasto_shine
     );
 }
+
+/// **O «Square tip» POUSA no tool** (smoke do dono, 17/10: *«travado em 1, não consigo reduzir»*): a row do
+/// Wet Paint (prompt 44) era pintada e editável mas o `is_param_field` não a reclamava — revertia ao soltar.
+///
+/// **Mutação que tem de sangrar:** tirar `PAINTER_BRUSH_DAB_QUINA` do `is_param_field`.
+#[test]
+fn the_square_tip_row_lands_on_the_tool() {
+    let mut tool = digital();
+    tool.set_paint_media(PaintMedia::WetPaint);
+    tool.set_brush_dab_quina(1.0);
+    let id = ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_QUINA;
+    let (mut host, mut st, rects) = painted(&tool);
+    assert!(
+        rect_of(&rects, id).is_some(),
+        "a row `Square tip` não foi pintada no Wet Paint"
+    );
+    host.store_mut().set_number_value(id, 0.3);
+    host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
+    pump(&mut host, &mut tool);
+    let q = tool.brush_settings().dab_quina;
+    assert!((q - 0.3).abs() < 1e-3, "`Square tip` não pousou no tool; leu {q}");
+}

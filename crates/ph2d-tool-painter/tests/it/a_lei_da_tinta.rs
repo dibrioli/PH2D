@@ -15,7 +15,8 @@ use ph2d_tool_painter::ids;
 const RAIO_DA_CENA: f32 = 18.0;
 
 /// `(preset, caixas da obra ligadas, fnv1a da cena)` — pinados em `f46fcffb2a`; os 5 de tinta e marcador
-/// (prompt 42) em `ddc782e9f0`, antes do pó (prompt 43); o Airbrush em `4fa48c25df`, antes das formas (prompt 44).
+/// (prompt 42) em `ddc782e9f0`, antes do pó (prompt 43); o Airbrush em `4fa48c25df`, antes das formas (prompt 44), e
+/// refeito por ORDEM DO DONO no smoke do 44 (a pressão do Spray 2: esmaece, não estreita).
 #[rustfmt::skip]
 const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Round", false, 0xfce64c9627dc5bc3),
@@ -35,7 +36,7 @@ const CENAS: [(&str, bool, u64); 20] = [
     ("Ink Brush", false, 0x7a0e448f92965f65),
     ("Marker Bullet", false, 0xe8d6f9b5bef7d373),
     ("Marker Liner", false, 0x1bdda019316e5682),
-    ("Airbrush", false, 0x5f6509ed2b699be5),
+    ("Airbrush", false, 0xf18e31b033e37f16),
     ("Wet Round", true, 0x44016d14e50f2119),
     ("Wet Liner", true, 0x7a276b4a53ec4531),
 ];

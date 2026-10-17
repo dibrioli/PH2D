@@ -510,7 +510,15 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.3,
         size_px: None,
-        extras: &[("drag", 0.0), ("dust", 0.8)],
+        // A pressão do Spray 2 (dono, smoke do P44: «como no Rebelle»): o Rebelle esmaece (rampa 0,63/0,34). Os
+        // números LITERAIS dele (tamanho 0, opacidade 1) dão 0,92/0,80 aqui — a opacidade quase não morde num
+        // pincel seco de pouca tinta (doc 44 §6); o mais perto medido: tamanho 0,5 → 0,56/0,62 (hoje 0,44/0,54).
+        extras: &[
+            ("drag", 0.0),
+            ("dust", 0.8),
+            ("pressureSize", 0.5),
+            ("pressureOpacity", 1.0),
+        ],
         grao: None,
         spacing: None,
         achatado: None,

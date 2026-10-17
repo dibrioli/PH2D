@@ -122,10 +122,15 @@ fn parametros(r: &Receita) -> Parametros {
     .into_iter()
     .chain(r.extras.iter().copied())
     {
+        // Um knob que o ficheiro ainda não grava (a pressão do pincel, prompt 44) entra também — desde que
+        // seja do REGISTO.
         assert!(
-            p.engine.insert(chave.to_owned(), v).is_some(),
+            ph2d_wet_paint::tuning::KNOB_DEFS
+                .iter()
+                .any(|d| d.key == chave),
             "knob {chave} existe"
         );
+        p.engine.insert(chave.to_owned(), v);
     }
     // As cerdas: no motor só num ficheiro de antes da W2; depois dela estão no Shape, e o ficheiro é a fonte.
     for (chave, v) in [

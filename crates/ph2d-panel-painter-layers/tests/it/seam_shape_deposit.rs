@@ -203,5 +203,8 @@ fn the_square_tip_row_lands_on_the_tool() {
     host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
     pump(&mut host, &mut tool);
     let q = tool.brush_settings().dab_quina;
-    assert!((q - 0.3).abs() < 1e-3, "`Square tip` não pousou no tool; leu {q}");
+    assert!(
+        (q - 0.3).abs() < 1e-3,
+        "`Square tip` não pousou no tool; leu {q}"
+    );
 }

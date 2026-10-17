@@ -540,7 +540,7 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "graph-bg" => r.dark_1.color(),
         "graph-grid" => r.mono.with_alpha(0.06),
         "graph-marquee" => r.accent.with_alpha(0.18),
-        "stage-tint-ui" => r.info.with_alpha(if inputs.dark { 0.08 } else { 0.07 }),
+        "stage-tint-ui" => r.info.with_alpha(if inputs.dark { 0.13 } else { 0.10 }),
         "graph-inert" => r.base.with_alpha(0.62),
         // ── a timeline: os 16 apelidos, por construção ──
         "timeline-curve"

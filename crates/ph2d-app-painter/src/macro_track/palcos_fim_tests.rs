@@ -616,6 +616,23 @@ fn o_filme_da_mascara_do_painter_ligado_fica_por_cima_do_clipe() {
     ph2d_render::premul::premultiply_rgba8(&mut e);
     assert!(e != sem_filme, "controlo: o filme muda o que se vê");
     assert!(r == e, "o filme da máscara não está por cima do clipe");
+    // Só a COR do filme muda: a ranhura sobe de novo com ela (a versão do filme na chave da subida).
+    t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
+        ph2d_tool_painter::ids::PAINTER_MASK_COLOR[2],
+    ));
+    let r2 = c.quadro(
+        meio,
+        Atuais {
+            painter: Some(&t),
+            le_sprite: Some(&mut nunca),
+        },
+    );
+    let mut e2 = sem_filme.clone();
+    ph2d_render::premul::unpremultiply_rgba8(&mut e2);
+    t.tinge_com_a_mascara(&mut e2, (0, 0, LADO, LADO));
+    ph2d_render::premul::premultiply_rgba8(&mut e2);
+    assert!(e2 != e, "controlo: a cor nova muda o filme");
+    assert!(r2 == e2, "a cor nova do filme não subiu à ranhura");
 }
 
 #[path = "palcos_reescrita_tests.rs"]

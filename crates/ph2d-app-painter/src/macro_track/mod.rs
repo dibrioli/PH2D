@@ -178,6 +178,8 @@ pub struct PalcosDoPainter {
     soltas: Vec<u32>,
     /// O que sobe à ranhura (reusado entre quadros).
     premul: Vec<u8>,
+    /// A transação da última reescrita de uma etapa editada, à espera do passo global (W8 item 2b).
+    transacao: Option<u64>,
     /// Os gates seguram o fio do fim para ver o palco antes de ele chegar.
     #[cfg(test)]
     segura_o_fim: bool,

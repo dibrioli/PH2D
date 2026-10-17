@@ -118,18 +118,18 @@ impl PainterTool {
         para: &ModeloDoFim,
         transacao: u64,
     ) -> usize {
-        self.wetpaint_end_session();
-        let before = self.snapshot_model();
         let mut depois = self.snapshot_model();
         let n = reescreve(&mut depois, &de.0, &para.0);
         if n == 0 {
             return 0;
         }
-        let profundidade = self.undo.undo_depth();
+        self.wetpaint_end_session();
+        let before = self.snapshot_model();
         self.restore_model(depois);
         self.edited_since_bind = true;
+        self.undo.transacao_seguinte = Some(transacao);
         self.commit_structural_edit(before);
-        self.undo.marca_o_topo(profundidade, transacao);
+        self.undo.transacao_seguinte = None;
         self.invalidate_composite();
         n
     }

@@ -47,7 +47,19 @@
 
 Sonda `sonda_a_corrida_partilhada` (smoke): a base que o produto mede contra a gravada da anterior
 continuada no relógio fixo até à idade em que a base acaba, no critério da k; 30 pinceladas, 512² e 1024²
-no relógio fixo e 512² com o worker ritmado e quadros irregulares. **Resultado: por medir.**
+no relógio fixo e 512² com o worker ritmado e quadros irregulares (17/10, `load` 7 → 94, não calmo):
+
+| Gravação | iguais ao bit | pior erro (% da régua) | `mede` · as partilhadas |
+|---|---|---|---|
+| 512², relógio fixo | 29 de 29 | 0,00 | 304,5 · 177,3 s |
+| 1024², relógio fixo | 29 de 29 | 0,00 | 1 283,6 · 677,5 s |
+| 512², a máquina (worker ritmado, quadros irregulares) | **0 de 29** | **42,86** (k 27; 6,52 · 5,39 · 5,31 nas k 29, 25, 24) | 570,0 · 200,7 s |
+
+⛔ **Recusado, MEDIDO:** a igualdade do relógio fixo é por construção (a fita do roteiro é o relógio
+fixo). Numa gravação de artista a base reproduz a espera pela fita (o ritmo dele) e a gravada assenta no
+relógio fixo: 4 das 29 pinceladas passam a margem de 6,55 pontos. Partilhar mudaria a régua do aluno.
+O custo de ~10 min a 1024² fica (a 1.ª medida chega em 9–14 s, cada pincelada cumpre-se quando a dela
+chega).
 
 ## Item 4 — o fio do fim que cai (feito: `03087e26d1`)
 
@@ -72,3 +84,15 @@ assentada (avaliada no fim das curvas). Gate `recomecar_volta_a_idade_ao_inicio`
 
 1 478 linhas → 616 + 684 + 187, incluídos no mesmo módulo (os nomes dos testes que os docs citam ficam).
 Prova: sha256 da concatenação = o do original; `--list` dá os mesmos 5 testes.
+
+## Prova de mutação e auditoria (17/10)
+
+- **Mutação: 18/18** — 16 sangraram na 1.ª prova; M5 (a transação conservada na absorção) ganhou o gate
+  `a_absorcao_conserva_a_transacao_do_topo` (provado VERMELHO sob a mutação); M16 (a versão do filme da
+  máscara na chave da subida) é EQUIVALENTE, medido: trocar só a cor do filme já muda a versão do documento
+  do Painter (o gate da cor passa com e sem ela) — a versão fica na chave como a lei explícita.
+- **Auditoria (2 lentes)** — curados: a transação passa ao REGISTO (`transacao_seguinte`) e não se marca
+  depois (com a fila no tecto o passo não crescia e ficava sem ela); uma leitura da sprite que falha espera
+  o quadro seguinte até ao prazo (cancelava para sempre); a transação pendente vive no palco
+  (`toma_a_transacao`) e o quadro em que a reescrita aterra regista o passo global (um passo adiado colava-a
+  a uma acção alheia); nunca a meio de um gesto; a sessão da água só acaba se houver o que reescrever.

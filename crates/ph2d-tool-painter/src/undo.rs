@@ -352,6 +352,9 @@ pub struct UndoController {
     pub write_state: window::WriteState,
     undo: Vec<UndoEntry>,
     redo: Vec<UndoEntry>,
+    /// A transação do PRÓXIMO passo simples que o registo guardar (W8, a reescrita de uma etapa
+    /// editada); quem a pôs limpa-a depois do registo (um passo descartado não a leva).
+    pub(crate) transacao_seguinte: Option<u64>,
     /// **A base de todo delta**: o endpoint adjacente ao topo, materializado — o `after` da entrada no
     /// topo do `undo`, que é também o `before` da entrada no topo do `redo`.
     ///
@@ -400,6 +403,7 @@ impl UndoController {
             write_state: window::WriteState::default(),
             undo: Vec::new(),
             redo: Vec::new(),
+            transacao_seguinte: None,
             cursor: None,
             #[cfg(test)]
             installed: None,
@@ -530,16 +534,6 @@ impl UndoController {
     #[must_use]
     pub fn transacao_do_topo(&self, redo: bool) -> Option<u64> {
         if redo { self.redo.last() } else { self.undo.last() }.and_then(|e| e.transacao)
-    }
-
-    /// Marca com `t` o passo que entrou depois de a pilha ter `profundidade_antes` passos (nenhum, se
-    /// o registo o descartou).
-    pub(crate) fn marca_o_topo(&mut self, profundidade_antes: usize, t: u64) {
-        if self.undo.len() > profundidade_antes
-            && let Some(e) = self.undo.last_mut()
-        {
-            e.transacao = Some(t);
-        }
     }
 
     /// Retained undo depth (for tests / memory introspection).

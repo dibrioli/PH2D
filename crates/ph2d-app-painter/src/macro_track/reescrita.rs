@@ -66,9 +66,21 @@ impl PalcosDoPainter {
             .any(|l| matches!(&l.palco, Ok(Some(p)) if p.por_reescrever.is_some()))
     }
 
-    /// **Por quadro, antes de [`Self::sobe`]**: aplica as reescritas cujos fins (o antigo e o novo) já
-    /// chegaram. `painter` = o Painter do editor (o documento dele, se está ligado à sprite); senão a
-    /// sprite lê-se por `le` e escreve-se por `escreve`. Devolve a transação, se escreveu.
+    /// A transação da última reescrita, até o passo global a levar ([`Self::toma_a_transacao`]).
+    #[must_use]
+    pub fn transacao(&self) -> Option<u64> {
+        self.transacao
+    }
+
+    /// O passo global regista-se: leva a transação.
+    pub fn toma_a_transacao(&mut self) -> Option<u64> {
+        self.transacao.take()
+    }
+
+    /// **Por quadro, antes de [`Self::sobe`]** (nunca a meio de um gesto): aplica as reescritas cujos
+    /// fins (o antigo e o novo) já chegaram. `painter` = o Painter do editor (o documento dele, se está
+    /// ligado à sprite); senão a sprite lê-se por `le` e escreve-se por `escreve`. Devolve a transação,
+    /// se escreveu; ela fica também à espera do passo global ([`Self::toma_a_transacao`]).
     pub fn reescreve<R: ?Sized>(
         &mut self,
         mut painter: Option<&mut PainterTool>,
@@ -80,7 +92,9 @@ impl PalcosDoPainter {
         let calculo = self.calcula_o_fim;
         #[cfg(not(test))]
         let calculo = None;
-        let mut transacao = None;
+        // Uma transação ainda por registar continua: o passo global leva as duas.
+        let mut transacao = self.transacao;
+        let mut escreveu = false;
         for l in self.lidos.values_mut() {
             let Ok(Some(p)) = &mut l.palco else {
                 continue;
@@ -102,8 +116,9 @@ impl PalcosDoPainter {
             let ligado = painter
                 .as_deref_mut()
                 .filter(|t| t.bound_document() == Some(sprite));
+            let prazo = pr.desde.elapsed() >= ESPERA_PELA_AGUA;
             let n = if let Some(t) = ligado {
-                if !t.agua_parada() && pr.desde.elapsed() < ESPERA_PELA_AGUA {
+                if !t.agua_parada() && !prazo {
                     continue;
                 }
                 let t_id =
@@ -129,6 +144,8 @@ impl PalcosDoPainter {
                         }
                         n
                     }
+                    // Um quadro sem leitura tenta no seguinte, até ao prazo; outro tamanho não casa.
+                    None if !prazo => continue,
                     _ => 0,
                 }
             };
@@ -136,8 +153,10 @@ impl PalcosDoPainter {
             // A imagem mudou: a mistura relê-a.
             if n > 0 {
                 p.atual = None;
+                escreveu = true;
             }
         }
-        transacao
+        self.transacao = transacao;
+        transacao.filter(|_| escreveu)
     }
 }

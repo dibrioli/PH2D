@@ -346,3 +346,30 @@ fn a_declared_window_newer_than_the_cursor_is_not_read() {
         "a janela mais nova que o cursor não pode responder por ele"
     );
 }
+
+/// **W8 — a TRANSAÇÃO do topo sobrevive à absorção** (`docs/Macros/05_plano_W8.md` §2b): o passo da
+/// reescrita de uma etapa editada leva-a; o escorrido que o passo seguinte absorve re-parte esse topo, e
+/// desfeito o seguinte o topo ainda a leva — senão o Ctrl+Z global já não desfazia a imagem.
+#[test]
+fn a_absorcao_conserva_a_transacao_do_topo() {
+    let traco = bloco(3, 6, 3, 6, 0x22);
+    let mut c = UndoController::new(DEFAULT_MAX_BYTES);
+    c.transacao_seguinte = Some(9);
+    c.record_structural(tela(&[]), tela(&traco));
+    c.transacao_seguinte = None;
+    assert_eq!(c.transacao_do_topo(false), Some(9), "controlo: o passo leva a transação");
+    let mut escorrido = traco.clone();
+    escorrido.extend(bloco(11, 13, 10, 12, 0x33));
+    let mut seguinte = escorrido.clone();
+    seguinte.push(((8, 1), 0x44));
+    ABSORB_FIRED.with(|f| f.set(0));
+    c.record_structural(tela(&escorrido), tela(&seguinte));
+    assert_eq!(ABSORB_FIRED.with(std::cell::Cell::get), 1, "controlo: a absorção correu");
+    assert_eq!(c.transacao_do_topo(false), None, "o passo seguinte não é da transação");
+    assert!(c.undo(&tela(&seguinte)).is_some(), "desfaz o seguinte");
+    assert_eq!(
+        c.transacao_do_topo(false),
+        Some(9),
+        "a absorção apagou a transação do passo que ela esticou"
+    );
+}

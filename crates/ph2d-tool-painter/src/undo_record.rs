@@ -143,7 +143,8 @@ impl UndoController {
         // dele). Instalar o cursor primeiro deixaria o journal vazio quando o delta fosse partido, e o
         // guard cairia no caminho de sempre — silenciosamente, com todos os gates verdes.
         let src = self.relief_source(&before, &cursor);
-        let entry = UndoEntry::split(before, after, None, hint, src);
+        let mut entry = UndoEntry::split(before, after, None, hint, src);
+        entry.transacao = self.transacao_seguinte.take();
         if self.discard_if_relief_is_lost(&entry, &cursor) {
             return;
         }

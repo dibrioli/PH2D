@@ -67,8 +67,8 @@ impl crate::App {
             };
             let painter = ph2d_app_painter::painter_bridge_queries::o_painter(tools);
             let mut porta: Porta<'_> = (&mut *sim, &mut *renderer, &mut *toasts);
-            if let Some(t) = painter_macros.reescreve(painter, &mut le, &mut escreve, &mut porta) {
-                self.undo_transacao = Some(t);
+            if self.held_button.is_none() {
+                painter_macros.reescreve(painter, &mut le, &mut escreve, &mut porta);
             }
         }
         let gravada = ph2d_app_macros::com(|m| m.sprite_gravada());

@@ -370,7 +370,9 @@ impl crate::App {
         if std::mem::take(&mut self.prefab_cancel_pending) {
             self.prefab_cancel = self.capture_project();
         }
-        let had_input = std::mem::take(&mut self.any_input_this_frame);
+        // A reescrita de uma etapa editada aterrou: o passo regista-se já, com a transação dela.
+        let had_input = std::mem::take(&mut self.any_input_this_frame)
+            || self.gfx.as_ref().is_some_and(|g| g.painter_macros.transacao().is_some());
         // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
         // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o
         // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.
@@ -545,7 +547,8 @@ impl crate::App {
             // mesma mecânica do próprio `undo_baseline`.
             let agora = self.field_selection_mark();
             let mark = std::mem::replace(&mut self.undo_baseline_selection, agora);
-            self.undo.push_undo_em(base, mark, self.undo_transacao.take());
+            let t = self.gfx.as_mut().and_then(|g| g.painter_macros.toma_a_transacao());
+            self.undo.push_undo_em(base, mark, t);
             if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                 h.documents.scene_stepped();
             }

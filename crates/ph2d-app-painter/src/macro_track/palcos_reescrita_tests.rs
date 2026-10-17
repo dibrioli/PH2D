@@ -23,7 +23,10 @@ impl Clipe {
                 le_sprite: Some(&mut *le),
             },
         );
-        self.palcos.reescreve(p.as_deref_mut(), le, escreve, &mut self.placa)
+        let t = self.palcos.reescreve(p.as_deref_mut(), le, escreve, &mut self.placa);
+        // O passo global regista-se e leva-a (a shell, no `post_frame_undo`).
+        assert_eq!(self.palcos.toma_a_transacao(), t, "a transação espera o passo global");
+        t
     }
 
     /// Troca o `Macro.doc` e corre quadros até a reescrita acabar; devolve as transações.

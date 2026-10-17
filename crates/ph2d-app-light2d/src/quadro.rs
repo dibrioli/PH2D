@@ -419,6 +419,7 @@ impl LuzDoQuadro {
             self.erro = Some(ErroSolver::SemMemoria { bytes });
             return;
         }
+        self.vigia.renascer(gpu, &mut self.resolvido);
         let (fina, captura) = (self.fina, self.captura);
         // ⭐ W5c: a cascata holográfica (o degrau escolhe-a; a troca recria o solver).
         let holografica = self
@@ -616,7 +617,6 @@ impl LuzDoQuadro {
         if renasce {
             self.resolvido = None;
         }
-        self.vigia.renascer(gpu, &mut self.resolvido);
     }
 
     /// O que os receptores leem; `None` = apagada.

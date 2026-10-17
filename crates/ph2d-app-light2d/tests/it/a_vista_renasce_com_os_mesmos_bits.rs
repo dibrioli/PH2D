@@ -1,6 +1,7 @@
-//! ⭐⭐ W6b — **a vista que renasce (a cura C1) dá os MESMOS bits** que a vista nova (handoff W6a §3: o
-//! kill-criterion «a imagem muda»). O renascimento vai pelo caminho do vigia ([`LuzDoQuadro::renascer_a_vista`]);
-//! o evento do driver que o dispara não se provoca daqui (o vigia tem os seus testes por leitura).
+//! ⭐⭐ W6b — **a vista que renasce dá os MESMOS bits** que a vista nova (handoff W6a §3: o kill-criterion «a
+//! imagem muda») **e nenhum quadro sai sem luz**. O renascimento vai pelo caminho do vigia
+//! ([`LuzDoQuadro::renascer_a_vista`]); o evento do driver que o dispara não se provoca daqui (o vigia tem os seus
+//! testes por leitura).
 //!
 //! A régua: o High (a holográfica, os níveis em textura) na cena 5, `K` quadros depois de nascer — a nova
 //! contra a renascida, ao bit; o controlo: a mesma vista ANTES de renascer, com o rebote mais assente, difere.
@@ -56,15 +57,9 @@ fn a_vista_renascida_da_os_mesmos_bits_que_a_nova() {
 
     let mut l = LuzDoQuadro::com_degrau(degrau);
     let antes = quadros(&gpu, &mut l, &w, &r, K + 1);
-    // O pedido vale no FIM do quadro (o do vigia também): este desenha e larga a vista; o seguinte monta.
+    // O pedido vale no quadro SEGUINTE (o do vigia também): larga, espera a placa e monta nele — e `quadros`
+    // exige a luz acesa em cada um, o do renascimento incluído.
     l.renascer_a_vista();
-    let afim = Camera2d::default().world_to_screen_affine(WindowSize::new(TAM.0, TAM.1));
-    l.preparar(&w, afim, TAM);
-    l.gravar(&gpu, &mut PresentWorld::new(), &r);
-    assert!(
-        l.solver().is_none() && l.montagens() == 1,
-        "o pedido não largou a vista no fim do quadro"
-    );
     let depois = quadros(&gpu, &mut l, &w, &r, K);
     assert_eq!(l.montagens(), 2, "a vista não renasceu");
     assert_ne!(

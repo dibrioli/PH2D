@@ -108,7 +108,7 @@ impl PainterTool {
         let has_shape_image = self.paint.shape_image.is_some();
         let textured = base.shape_silhouette_active(has_shape_image)
             || base.texture.is_active()
-            || base.dab_flatten > 0.0;
+            || base.pegada_anisotropica();
         let per_dab_rotation =
             base.has_per_dab_rotation() || base.shape_has_per_dab_rotation(has_shape_image);
         // Shape / Grain Colour Ramps act as B&W coverage TONES here (no colour painted); the cached mask

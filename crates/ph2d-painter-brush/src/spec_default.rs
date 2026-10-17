@@ -119,6 +119,7 @@ impl Default for BrushSpec {
             dab_flatten: 0.0,
             dab_curve: crate::FootprintCurve::flat(),
             dab_angle_deg: 0,
+            dab_quina: 0.0,
             color_jitter_enabled: false,
             color_jitter_hue: 0.0,
             color_jitter_sat: 0.0,

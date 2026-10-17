@@ -79,6 +79,15 @@ fn the_predicate_refuses_exactly_the_laws_the_kernel_does_not_carry() {
         "o crossfade Kubelka–Munk do pigmento é outra lei, e ela lê o alfa do destino"
     );
 
+    let reta = BrushSpec {
+        dab_quina: 0.5,
+        ..BrushSpec::default()
+    };
+    assert!(
+        !eligible(&reta),
+        "a ponta reta (prompt 44) é outra norma — o kernel lê `|M·p|₂` e pintá-la-ia redonda"
+    );
+
     let mut body = BrushSpec {
         impasto: true,
         impasto_depth: 0.5,

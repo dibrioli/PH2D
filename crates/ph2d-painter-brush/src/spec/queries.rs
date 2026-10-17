@@ -21,6 +21,37 @@ impl BrushSpec {
     pub fn footprint_deform(&self) -> crate::footprint::FootprintDeform {
         crate::footprint::FootprintDeform::new(self.dab_flatten, self.dab_angle_deg)
             .with_curve(self.dab_curve)
+            .with_quina(self.dab_quina)
+    }
+
+    /// ⭐ **A pegada NÃO é invariante à rotação** — achatada ou com a ponta reta ([`Self::dab_quina`]).
+    /// A pergunta de quem decide se o ângulo do dab se VÊ (o Jitter Rotate, o Follow, as rotas que
+    /// servem a máscara de orientação constante).
+    #[must_use]
+    pub fn pegada_anisotropica(&self) -> bool {
+        self.dab_flatten > 0.0 || self.dab_quina > 0.0
+    }
+
+    /// O alcance da PEGADA em raios: o maior raio da ponta reta em qualquer ângulo
+    /// (`1 / (1 − q + q/√2)`, o canto) — `1` sem quina, ao bit.
+    #[must_use]
+    pub fn alcance_da_quina(&self) -> f32 {
+        if self.dab_quina <= 0.0 {
+            return 1.0;
+        }
+        let q = self.dab_quina.min(1.0);
+        1.0 / (1.0 - q * (1.0 - std::f32::consts::FRAC_1_SQRT_2))
+    }
+
+    /// A caixa da pegada deste pincel em raios (`≥ 1` por eixo): `[1, 1]` sem quina, ao bit; com ela a
+    /// [`crate::footprint::FootprintDeform::extent`] — o quadrado rodado sai do disco.
+    #[must_use]
+    pub fn caixa_da_pegada(&self) -> [f32; 2] {
+        if self.dab_quina <= 0.0 {
+            return [1.0, 1.0];
+        }
+        let e = self.footprint_deform().extent();
+        [e[0].max(1.0), e[1].max(1.0)]
     }
 
     /// Whether **Randomize Color** has any non-zero amount (so enabling it would actually change a
@@ -45,7 +76,7 @@ impl BrushSpec {
         // the bug — with both slots off it has no cache to serve and resolves `d.rotation` per pixel.
         self.jitter_rotate > 0.0
             && self.stroke_method.allows_jitter()
-            && (self.dab_flatten > 0.0
+            && (self.pegada_anisotropica()
                 || (self.texture.is_active() && self.texture.mapping.uses_dab_rotation()))
     }
 
@@ -65,10 +96,11 @@ impl BrushSpec {
     /// por ele: inflar a mais é inócuo, a menos deixa rasto (Bug #24). O achatamento só encolhe a ponta.
     #[must_use]
     pub fn tip_reach(&self) -> f32 {
+        let quina = self.alcance_da_quina();
         if !self.shape.is_active() {
-            return 1.0;
+            return quina;
         }
-        crate::texture::image_tip_radius(&self.shape).map_or(1.0, |r| r.max(1.0))
+        crate::texture::image_tip_radius(&self.shape).map_or(quina, |r| r.max(quina))
     }
 
     /// O alcance de UM dab em raios (`≥ 1`): a ponta de imagem com a base dele (Angle + a rotação
@@ -77,7 +109,7 @@ impl BrushSpec {
     #[must_use]
     pub fn dab_tip_reach(&self, basis: Option<&crate::texture::TexDabBasis>) -> f32 {
         let e = crate::tip::dab_extent(
-            [1.0, 1.0],
+            self.caixa_da_pegada(),
             &self.shape,
             basis.filter(|_| self.shape.is_active()),
         );
@@ -89,8 +121,10 @@ impl BrushSpec {
     /// alargada não perder nitidez. `1` sem ponta de imagem ⇒ o assado de sempre, ao bit.
     #[must_use]
     pub fn stamp_domain(&self, has_shape_image: bool) -> f32 {
+        let pegada = self.caixa_da_pegada();
+        let pegada = pegada[0].max(pegada[1]);
         if !self.shape_silhouette_active(has_shape_image) {
-            return 1.0;
+            return pegada;
         }
         let basis = crate::texture::shape_basis(
             &self.shape,
@@ -99,7 +133,7 @@ impl BrushSpec {
             self.footprint_deform(),
             crate::texture::ShapeFrame::Static,
         );
-        crate::tip::stamp_domain(&self.shape, Some(&basis))
+        crate::tip::stamp_domain(&self.shape, Some(&basis)).max(pegada)
     }
 
     /// ⭐ **O Solid enche-se de CARIMBOS** ([`crate::solid_carimbos`]) em vez da mancha lisa: a ponta é

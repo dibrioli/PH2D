@@ -353,8 +353,16 @@ impl PainterTool {
             });
             // O alcance da ponta de imagem (Bug #52): o motor percorre `r · reach` células, e a
             // janela do rasto cabe o máximo do traço (com rotação por dab, o disco de qualquer ângulo).
-            let reach = spec.dab_tip_reach(shape_basis.as_ref());
-            let janela = if spec.shape_has_per_dab_rotation(shape_image.is_some()) {
+            // A ponta reta (prompt 44): o canto do quadrado rodado sai do disco — a caixa é a da pegada
+            // DESTE dab (`fp`, com a rotação dele), e a janela a do canto em qualquer ângulo.
+            let mut reach = spec.dab_tip_reach(shape_basis.as_ref());
+            if spec.dab_quina > 0.0 {
+                let e = fp.extent();
+                reach = reach.max(e[0].max(e[1]));
+            }
+            let janela = if spec.shape_has_per_dab_rotation(shape_image.is_some())
+                || spec.dab_quina > 0.0
+            {
                 spec.tip_reach().max(reach)
             } else {
                 reach
@@ -392,7 +400,7 @@ impl PainterTool {
             // último bit do raio, e com a água a correr no traço esse bit vira píxeis (o censo mediu o
             // Jitter Rotate e o ângulo a «mudar a tinta» de um carimbo sem ângulo). O Shape e o Grain
             // seguem a pegada rodada (`fp`): neles o ângulo é real.
-            let fp_raio = if spec.dab_flatten <= 0.0 && spec.dab_curve.is_flat() {
+            let fp_raio = if !spec.pegada_anisotropica() && spec.dab_curve.is_flat() {
                 ph2d_painter_brush::FootprintDeform::new(0.0, 0)
             } else {
                 fp

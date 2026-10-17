@@ -165,3 +165,107 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
         largura: mediana(&mut larguras),
     }
 }
+
+/// As pontas isoladas da bancada (`midias_regua.py::PONTAS`): o traço RÁPIDO e o vermelho recto — x0, y0, x1, y1.
+pub const PONTAS: [[u32; 4]; 2] = [[575, 260, 990, 340], [650, 455, 990, 505]];
+
+/// **O RECUO da ponta** (prompt 44, `midias_regua.py::ponta`): quanto a ponta a ±0,7 da meia-largura fica atrás
+/// da do eixo, ÷ a meia-largura, na média das 4 pontas de [`PONTAS`] — redonda ≈ 0,29, reta ≈ 0. A máscara é
+/// a cobertura acima de metade do p90 da tinta (> 0,08); a ponta de uma linha é a 1.ª/última coluna onde ≥ 2
+/// das 3 linhas da faixa estão na máscara.
+pub fn ponta(rgba: &[u8], w: u32) -> f64 {
+    let mut recuos = Vec::new();
+    for [x0, y0, x1, y1] in PONTAS {
+        let (cw, ch) = ((x1 - x0) as usize, (y1 - y0) as usize);
+        let px = |x: usize, y: usize| {
+            let i = ((y0 as usize + y) * w as usize + x0 as usize + x) * 4;
+            [rgba[i], rgba[i + 1], rgba[i + 2]].map(f64::from)
+        };
+        let mut papel = [0.0; 3];
+        for (k, p) in papel.iter_mut().enumerate() {
+            let mut v: Vec<f64> = [0, 1, ch - 2, ch - 1]
+                .iter()
+                .flat_map(|&y| (0..cw).map(move |x| px(x, y)[k]))
+                .collect();
+            v.sort_by(f64::total_cmp);
+            let n = v.len();
+            *p = if n % 2 == 1 {
+                v[n / 2]
+            } else {
+                0.5 * (v[n / 2 - 1] + v[n / 2])
+            };
+        }
+        let c: Vec<f64> = (0..ch)
+            .flat_map(|y| (0..cw).map(move |x| (x, y)))
+            .map(|(x, y)| {
+                let a = px(x, y);
+                (0..3).map(|k| (a[k] - papel[k]).abs()).fold(0.0, f64::max) / 255.0
+            })
+            .collect();
+        // O p90 da tinta, interpolado como o `np.percentile`.
+        let mut tinta: Vec<f64> = c.iter().copied().filter(|&v| v > 0.08).collect();
+        tinta.sort_by(f64::total_cmp);
+        let pos = 0.9 * (tinta.len() - 1) as f64;
+        let (i, f) = (pos.floor() as usize, pos.fract());
+        let p90 = tinta[i] + f * (tinta[(i + 1).min(tinta.len() - 1)] - tinta[i]);
+        let mask: Vec<bool> = c.iter().map(|&v| v > 0.5 * p90).collect();
+        let prof: Vec<usize> = (0..ch)
+            .map(|y| (0..cw).filter(|&x| mask[y * cw + x]).count())
+            .collect();
+        let max = *prof.iter().max().unwrap();
+        let linhas: Vec<usize> = (0..ch).filter(|&y| prof[y] * 2 > max).collect();
+        let (topo, base) = (linhas[0] as f64, *linhas.last().unwrap() as f64);
+        let (yc, hw) = ((topo + base) / 2.0, (base - topo + 1.0) / 2.0);
+        let pontas = |dy: f64| {
+            let lados: &[f64] = if dy == 0.0 { &[0.0] } else { &[-1.0, 1.0] };
+            let (mut e, mut d) = (0.0, 0.0);
+            for &sg in lados {
+                let r = (yc + sg * dy).round() as usize;
+                let dentro = |x: usize| (r - 1..=r + 1).filter(|&y| mask[y * cw + x]).count() >= 2;
+                e += (0..cw).find(|&x| dentro(x)).unwrap() as f64;
+                d += (0..cw).rfind(|&x| dentro(x)).unwrap() as f64;
+            }
+            (e / lados.len() as f64, d / lados.len() as f64)
+        };
+        let (eixo, fora) = (pontas(0.0), pontas(0.7 * hw));
+        recuos.push((fora.0 - eixo.0) / hw);
+        recuos.push((eixo.1 - fora.1) / hw);
+    }
+    recuos.iter().sum::<f64>() / recuos.len() as f64
+}
+
+/// ⭐ **A régua da ponta em Rust é a do Python** e distingue o redondo do recto: os dois traços de [`PONTAS`]
+/// desenhados sem AA (raio 17, tampas de disco × rectas), os números do `midias_regua.py::ponta` sobre a MESMA
+/// imagem (17/10): `0,228571…` e `0`.
+#[test]
+fn a_regua_da_ponta_e_a_do_python() {
+    let sintetica = |redonda: bool| {
+        let (w, h) = (1000usize, 640usize);
+        let mut px = vec![255u8; w * h * 4];
+        for (xa, xb, yc) in [(600i64, 960i64, 300i64), (700, 960, 480)] {
+            let r = 17i64;
+            for y in 0..h as i64 {
+                for x in 0..w as i64 {
+                    let corpo = x >= xa && x <= xb && (y - yc).abs() <= r;
+                    let tampa = if redonda {
+                        (x - xa).pow(2) + (y - yc).pow(2) <= r * r
+                            || (x - xb).pow(2) + (y - yc).pow(2) <= r * r
+                    } else {
+                        x >= xa - r && x <= xb + r && (y - yc).abs() <= r
+                    };
+                    if corpo || tampa {
+                        let i = (y as usize * w + x as usize) * 4;
+                        px[i..i + 3].copy_from_slice(&[40, 60, 200]);
+                    }
+                }
+            }
+        }
+        ponta(&px, w as u32)
+    };
+    let (redonda, recta) = (sintetica(true), sintetica(false));
+    assert!(
+        (redonda - 0.228_571_428_571_428_56).abs() < 1e-12,
+        "redonda {redonda}"
+    );
+    assert!(recta.abs() < 1e-12, "recta {recta}");
+}

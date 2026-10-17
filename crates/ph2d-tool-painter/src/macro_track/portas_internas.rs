@@ -101,6 +101,7 @@ pub const INTERNAS: &[&str] = &[
     "set_brush_color_jitter_scope",
     "set_brush_dab_angle",
     "set_brush_dab_flatten",
+    "set_brush_dab_quina",
     "set_brush_dash_length_norm",
     "set_brush_dash_ratio",
     "set_brush_depth",

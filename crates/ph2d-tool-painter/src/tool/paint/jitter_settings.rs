@@ -429,6 +429,7 @@ impl PainterTool {
         self.paint.brush.hardness = d.hardness;
         self.paint.brush.dab_flatten = d.dab_flatten;
         self.paint.brush.dab_angle_deg = d.dab_angle_deg;
+        self.paint.brush.dab_quina = d.dab_quina;
     }
 
     /// Reset the **Stroke** section to defaults (method / spacing / Adjust-Strength / jitter group /

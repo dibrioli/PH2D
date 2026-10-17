@@ -4,7 +4,8 @@ Rebelle e o controlo ctl.png (o Wet Round à mesma largura, SECO — ponha-o no 
 {"nome":"ctl","base":"Wet Round","raio":…}), nas métricas que contam (MS) + a largura ± 2 px, ordenado; no fim, as
 que passam tudo pela distância ao Rebelle (soma |n−r| ÷ |c−r|).
 
-uso: midias_lote.py <dir do lote> <docs/Painter/NewFeaturesWetPaint> [foto, omissão airbrush]
+uso: midias_lote.py <dir do lote> <docs/Painter/NewFeaturesWetPaint> [foto, omissão airbrush] [métricas,…] [prefixo]
+  (o controlo é `<dir>/ctl.png`, ou `PH2D_LOTE_CTL=<nome>`; o prefixo filtra as receitas do lote)
 ⚠️ Meça SECO (PH2D_SONDA_SECA=1320) e lembre que o preset de fábrica traz a SUA lei de largura (43 §4).
 """
 import sys, os, glob
@@ -18,14 +19,15 @@ for p in glob.glob(d + "/*.ppm"):
         Image.open(p).save(q)
 FOTO = sys.argv[3] if len(sys.argv) > 3 else "airbrush"
 R = metricas(F + f"/fixtures/rebelle/{FOTO}.png")
-C = metricas(d + "/ctl.png")
-MS = ["cob", "tex", "borda", "orla", "cv", "cruz"]
+C = metricas(d + "/" + os.environ.get("PH2D_LOTE_CTL", "ctl") + ".png")
+MS = sys.argv[4].split(",") if len(sys.argv) > 4 else ["cob", "tex", "borda", "orla", "cv", "cruz"]
+PREFIXO = sys.argv[5] if len(sys.argv) > 5 else ""
 print("R   " + " ".join(f"{m} {R[m]:.3f}" for m in MS) + f" larg {R['larg']:.0f}")
 print("C   " + " ".join(f"{m} {C[m]:.3f}" for m in MS) + f" larg {C['larg']:.0f}")
 rows = []
 for q in sorted(glob.glob(d + "/*.png")):
     n = os.path.basename(q)[:-4]
-    if n == "ctl": continue
+    if n == "ctl" or not n.startswith(PREFIXO): continue
     N = metricas(q)
     if N is None: print(n, "sem traço"); continue
     ok = []

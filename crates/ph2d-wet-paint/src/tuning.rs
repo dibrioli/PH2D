@@ -79,9 +79,16 @@ pub enum Knob {
     /// **O PÓ do pincel** (prompt 43): cada dab pousa a tinta em PARTÍCULAS — uma fracção das células recebe
     /// a dose das outras (`0` = o carimbo contínuo, ao byte; `1` = uma célula em 20). O aerógrafo.
     Dust,
+    /// **A pressão → o TAMANHO, do pincel** (prompt 44): quanto o raio cai com a pressão da caneta
+    /// (`0,9` = a lei de sempre, o raio a 10 % na pressão 0; `0` = não muda). Lido pelo HOSPEDEIRO
+    /// (`ph2d_painter_brush::Dynamics`); o motor não o vê.
+    PressureSize,
+    /// **A pressão → a OPACIDADE, do pincel** (prompt 44): quanto a tinta do dab cai com a pressão (`0` = a
+    /// lei de sempre; `1` = nada na pressão 0 — o Flat do Rebelle). Lido pelo hospedeiro.
+    PressureOpacity,
 }
 
-pub const KNOB_COUNT: usize = 56;
+pub const KNOB_COUNT: usize = 58;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

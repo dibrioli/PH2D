@@ -70,11 +70,14 @@ pub(crate) fn paint_shape_dab_gizmo(
     let minor = r * (1.0 - flatten);
     let a = f32::from(brush.dab_angle_deg).to_radians();
     let (ca, sa) = (a.cos(), a.sin());
+    // O contorno é o da PEGADA que o motor amostra (`outline_at`): com a ponta reta (prompt 44) ele é o
+    // quadrado arredondado, não uma elipse desenhada à parte.
+    let pegada = ph2d_tool_painter::FootprintDeform::new(flatten, brush.dab_angle_deg)
+        .with_quina(brush.dab_quina);
     let ellipse: Vec<(f32, f32)> = (0..=SEGS)
         .map(|i| {
-            let t = i as f32 / SEGS as f32 * std::f32::consts::TAU;
-            let (lx, ly) = (r * t.cos(), minor * t.sin());
-            (cx + lx * ca - ly * sa, cy + lx * sa + ly * ca)
+            let p = pegada.outline_at(i as f32 / SEGS as f32);
+            (cx + r * p[0], cy + r * p[1])
         })
         .collect();
     stroke_polyline(

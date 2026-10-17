@@ -8,7 +8,9 @@ o Rebelle e o controlo, e o controlo tem de ficar FORA (senão a métrica não d
 uso: midias_regua.py <dir dos nossos .png> <dir fixtures/rebelle> <controlo> <nosso:rebelle:m1,m2,…>…
   métricas: cob (cobertura do miolo) · tex (textura %) · borda (borda/miolo) · orla (px) · cv · per (fração do
   período) · larg (px) · cruz (luminância do CRUZAMENTO vermelho×azul ÷ a menor das duas fora dele: < 1 = escurece,
-  como o marcador e a tinta do Rebelle; ~1 = o de cima tapa)
+  como o marcador e a tinta do Rebelle; ~1 = o de cima tapa) · ponta (o RECUO da ponta, prompt 44: quanto
+  a ponta a ±0,7 da meia-largura fica atrás da do eixo, ÷ a meia-largura, média das 4 pontas isoladas — o
+  traço RÁPIDO e o vermelho recto; redonda ≈ 0,29, reta ≈ 0)
 """
 import os
 import sys
@@ -37,12 +39,51 @@ def cruzamento(png):
     return lum(med(294, 307)) / max(min(lum(med(800, 860)), lum(med(120, 200))), 1e-6)
 
 
+# As pontas isoladas da bancada: o traço RÁPIDO (y 300, x 600→960) e o vermelho recto (y 480, x 700→960). O
+# recto de cima não serve: a ponta direita toca a curva em S. Recorte: x0, y0, x1, y1.
+PONTAS = ((575, 260, 990, 340), (650, 455, 990, 505))
+FRACAO_DA_PONTA = 0.7
+
+
+def recuo_das_pontas(c):
+    """(esquerda, direita) de um traço horizontal na cobertura `c` do recorte: a máscara é `c` acima de metade
+    do p90 da tinta; o eixo e a meia-largura vêm das linhas com mais de metade da máxima; a ponta de uma
+    linha é a 1.ª/última coluna onde ≥ 2 das 3 linhas da faixa estão na máscara."""
+    tinta = c[c > 0.08]
+    mask = c > 0.5 * np.percentile(tinta, 90)
+    prof = mask.sum(1)
+    linhas = np.where(prof > 0.5 * prof.max())[0]
+    yc, hw = (linhas[0] + linhas[-1]) / 2, (linhas[-1] - linhas[0] + 1) / 2
+
+    def pontas(dy):
+        e, d = [], []
+        for sg in ((0,) if dy == 0 else (-1, 1)):
+            r = int(round(yc + sg * dy))
+            xs = np.where(mask[r - 1:r + 2].sum(0) >= 2)[0]
+            e.append(xs[0]); d.append(xs[-1])
+        return np.mean(e), np.mean(d)
+
+    eixo, fora = pontas(0), pontas(FRACAO_DA_PONTA * hw)
+    return (fora[0] - eixo[0]) / hw, (eixo[1] - fora[1]) / hw
+
+
+def ponta(png):
+    a = np.asarray(Image.open(png).convert("RGB")).astype(float)
+    r = []
+    for x0, y0, x1, y1 in PONTAS:
+        s = a[y0:y1, x0:x1]
+        papel = np.median(np.concatenate([s[:2].reshape(-1, 3), s[-2:].reshape(-1, 3)]), 0)
+        r.extend(recuo_das_pontas(np.abs(s - papel).max(2) / 255.0))
+    return float(np.mean(r))
+
+
 def metricas(png):
     r = mede(png, RECTO)
     if "erro" in r:
         return None
     m = {k: r[v] for k, v in CHAVE.items()}
     m["cruz"] = cruzamento(png)
+    m["ponta"] = ponta(png)
     return m
 
 

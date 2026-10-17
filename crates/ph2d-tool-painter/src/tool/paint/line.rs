@@ -547,7 +547,7 @@ impl PainterTool {
         if path.len() < 2 {
             return;
         }
-        let mut stroke = Stroke::new(self.stroke_spec(), self.paint.dynamics, seed);
+        let mut stroke = Stroke::new(self.stroke_spec(), self.dinamica_do_traco(), seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polyline_preview(&path, &mut dabs);
         self.restamp_shapes_preview(&dabs); // active shape + every parked shape onto one baseline

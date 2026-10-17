@@ -36,7 +36,7 @@ impl PainterTool {
         let has_shape_image = self.paint.shape_image.is_some();
         let textured = base.shape_silhouette_active(has_shape_image)
             || base.texture.is_active()
-            || base.dab_flatten > 0.0;
+            || base.pegada_anisotropica();
         // Per-dab-rotating Shape/Grain (Rake / Random) or Jitter Rotate isn't scale-invariant → route it
         // (with any canvas-fixed Grain Mapping) through the per-pixel Grain path. View-static → the fast
         // cached mask; untextured → the plain round falloff.

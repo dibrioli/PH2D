@@ -54,6 +54,8 @@ pub(super) struct StampKey {
     /// The dab flatten + rotate reshapes the cached mask into a rotated ellipse, so they key it.
     dab_flatten: f32,
     dab_angle_deg: u16,
+    /// A ponta reta (prompt 44) reshapes the cached mask too.
+    dab_quina: f32,
     /// The **film** ([`ph2d_painter_brush::height::film_coverage`]) reshapes the baked SILHOUETTE — a
     /// brush laying body lays no pigment where it lays no body. So it keys the mask: without this, ticking
     /// Impasto would go on blitting the un-cut mask until something else happened to invalidate it.
@@ -485,6 +487,7 @@ impl PainterTool {
             granulation: brush.effective_granulation(),
             dab_flatten: brush.dab_flatten,
             dab_angle_deg: brush.dab_angle_deg,
+            dab_quina: brush.dab_quina,
             size,
         };
         if self.paint.stamp_cache.as_ref().map(|(_, k)| *k) == Some(key) {

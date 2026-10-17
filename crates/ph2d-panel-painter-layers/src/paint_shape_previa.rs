@@ -62,7 +62,7 @@ pub(crate) fn camadas_da_previa(
             brush.shape_offset,
             brush.shape_size,
             brush.shape_params,
-            FootprintDeform::new(brush.dab_flatten, brush.dab_angle_deg),
+            FootprintDeform::new(brush.dab_flatten, brush.dab_angle_deg).with_quina(brush.dab_quina),
             f,
             None,
             image,

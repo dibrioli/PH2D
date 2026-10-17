@@ -121,6 +121,26 @@ pub(crate) fn paint_shape_section(
     // ── Flatten + rotate gizmo — below the Falloff preview, above the Texture picker (Enio 2026-06-26).
     //    Squishes/rotates the whole dab footprint (falloff + Shape + View-Grain). ──
     y = crate::paint_shape_dab::paint_shape_dab_gizmo(ctx, theme, x, content_w, y, brush);
+    // ── A ponta RETA (prompt 44): a quina da mesma pegada, logo abaixo do gizmo que a desenha. Só no Wet
+    //    Paint (a ordem de 07/10: só ele evolui; o device do Digital não a carimba). ──
+    if brush.wetpaint {
+        let sec = seccao_da_forma(ctx);
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr("panel.painter_layers.shape.square_tip"),
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_QUINA,
+            brush.dab_quina,
+            0.0,
+            1.0,
+            crate::number_field::FINE_STEP,
+            2,
+            sec,
+        );
+    }
 
     // ── Texture source picker (None / procedural kinds / Image) — the same kinds as the Grain. Picking
     //    Image opens a file pick (or use the Hierarchy "Use as Brush Shape"); None reverts to the bare
@@ -407,7 +427,7 @@ fn paint_shape_preview(
         brush.shape_offset,
         brush.shape_size,
         brush.shape_params,
-        FootprintDeform::new(brush.dab_flatten, brush.dab_angle_deg),
+        FootprintDeform::new(brush.dab_flatten, brush.dab_angle_deg).with_quina(brush.dab_quina),
         &lut,
         None,
         image_mask.as_ref(),

@@ -94,6 +94,8 @@ pub(super) struct ColorStampKey {
     grain_ramp_version: u64,
     dab_flatten: f32,
     dab_angle_deg: u16,
+    /// A ponta reta (prompt 44) reshapes the cached mask too.
+    dab_quina: f32,
     size: u32,
 }
 
@@ -433,6 +435,7 @@ impl PainterTool {
             },
             dab_flatten: brush.dab_flatten,
             dab_angle_deg: brush.dab_angle_deg,
+            dab_quina: brush.dab_quina,
             size,
         };
         if self.paint.color_stamp_cache.as_ref().map(|(_, k)| *k) == Some(key) {
@@ -508,6 +511,7 @@ impl PainterTool {
             },
             dab_flatten: brush.dab_flatten,
             dab_angle_deg: brush.dab_angle_deg,
+            dab_quina: brush.dab_quina,
             size: PREVIEW_SIZE,
         });
         if want
@@ -586,6 +590,8 @@ pub(super) struct RampColorStampKey {
     ramp_index: ph2d_painter_brush::RampIndex,
     dab_flatten: f32,
     dab_angle_deg: u16,
+    /// A ponta reta (prompt 44) reshapes the cached mask too.
+    dab_quina: f32,
     size: u32,
 }
 
@@ -666,6 +672,7 @@ impl PainterTool {
             ramp_index: owner.index(),
             dab_flatten: brush.dab_flatten,
             dab_angle_deg: brush.dab_angle_deg,
+            dab_quina: brush.dab_quina,
             size,
         };
         if self.paint.ramp_color_stamp_cache.as_ref().map(|(_, k)| *k) == Some(key) {

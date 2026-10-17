@@ -219,6 +219,9 @@ pub const PAINTER_BRUSH_DAB_GIZMO: NodeId = hash_node_id("painter_brush.dab_gizm
 /// Dab **Flatten** value sink (`0..1`). `SetValue` → `set_brush_dab_flatten`.
 pub const PAINTER_BRUSH_DAB_FLATTEN: NodeId = hash_node_id("painter_brush.dab_flatten");
 
+/// Dab **Square tip** value sink (`0..1`, prompt 44). `SetValue` → `set_brush_dab_quina`.
+pub const PAINTER_BRUSH_DAB_QUINA: NodeId = hash_node_id("painter_brush.dab_quina");
+
 /// Dab **rotation** value sink (whole degrees). `SetValue` → `set_brush_dab_angle`.
 pub const PAINTER_BRUSH_DAB_ANGLE: NodeId = hash_node_id("painter_brush.dab_angle");
 

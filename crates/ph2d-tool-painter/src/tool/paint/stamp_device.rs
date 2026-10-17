@@ -74,6 +74,9 @@ pub type DeviceStamp = Box<dyn Fn(&DeviceStampJob<'_>) -> Option<Vec<u8>> + Send
 ///   o traço volta à rota em banda. Não é um defeito — é o preço, e ele está medido no handoff.
 /// - **Smooth Edges tem de estar desligado.** O AA do filme amostra a cadeia de silhueta NOVE vezes
 ///   por texel contra uma base deformada; ele não é um valor tabelável, é um passe.
+/// - **Sem a ponta reta** (`dab_quina`, prompt 44). O kernel lê `t = |M·p|₂` pelas [`ph2d_painter_brush::FootprintDeform::linear_rows`];
+///   a quina é a norma `(1 − q)·|f|₂ + q·|f|∞`, que ele não conhece — sem esta cláusula a ponta reta sairia
+///   redonda no Digital.
 ///
 /// ⚠️ **`deposits_height` NÃO está aqui, de propósito** — o filme (`film_coverage`) é uma função
 /// escalar pura da silhueta, então ele entra na TABELA em [`build_lut`], e o depósito do Impasto
@@ -83,6 +86,7 @@ pub fn eligible(brush: &BrushSpec) -> bool {
     matches!(brush.blend, BrushBlend::Mix)
         && brush.effective_pigment_mix() == 0.0
         && !brush.film_aa_wanted(false)
+        && brush.dab_quina == 0.0
 }
 
 /// A tabela que sobe ao device — **preenchida com as funções que o produto usa**, na ordem que ele

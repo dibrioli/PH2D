@@ -42,7 +42,7 @@ const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 30] = [
+pub const CAMPOS_DO_PINCEL: [&str; 31] = [
     "hardness",
     "falloff",
     "custom_falloff",
@@ -63,6 +63,7 @@ pub const CAMPOS_DO_PINCEL: [&str; 30] = [
     "shape",
     "dab_flatten",
     "dab_angle_deg",
+    "dab_quina",
     "dab_curve",
     "color_jitter_enabled",
     "color_jitter_hue",

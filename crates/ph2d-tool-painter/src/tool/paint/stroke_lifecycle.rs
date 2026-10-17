@@ -192,7 +192,7 @@ impl PainterTool {
         // contra a dobra VIVA da arte (ver `Stroke::set_canvas_dab`). ⛔ Sem isto o traço inteiro
         // usa a dobra do sítio onde começou.
         self.paint.stroke_authored = Some(self.authored_spec());
-        let mut stroke = Stroke::new(spec, self.paint.dynamics, self.paint.seed);
+        let mut stroke = Stroke::new(spec, self.dinamica_do_traco(), self.paint.seed);
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).
         self.paint.tex_rng = self.paint.seed ^ 0x7465_7874_7572_6573;

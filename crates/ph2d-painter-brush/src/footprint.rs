@@ -107,6 +107,11 @@ pub struct FootprintDeform {
     /// A rotação POR DAB que [`Self::rotated_by`] compôs (Jitter Rotate, a tangente do Rake/Flow), sem a
     /// pegada fixa do pincel — o referencial das cerdas ([`Self::so_o_rotor`]). Não entra no `apply`.
     rotor: [f32; 2],
+    /// ⭐ **A QUINA da ponta** (`0..1`, prompt 44 — a ponta reta do Flat): a distância que o falloff lê
+    /// deixa de ser só a euclidiana e passa a `(1 − q)·|f|₂ + q·|f|∞` no referencial da pegada — `0` o
+    /// disco de sempre (ao bit, o mesmo `sqrt`), `1` o quadrado. Sem transcendentes (HR-5): `sqrt` e
+    /// `max` são exactos.
+    quina: f32,
 }
 
 impl FootprintDeform {
@@ -119,6 +124,7 @@ impl FootprintDeform {
             inv_minor: 1.0,
             curve: FootprintCurve::flat(),
             rotor: [1.0, 0.0],
+            quina: 0.0,
         }
     }
 
@@ -134,6 +140,7 @@ impl FootprintDeform {
             inv_minor: 1.0 / (1.0 - f),
             curve: FootprintCurve::flat(),
             rotor: [1.0, 0.0],
+            quina: 0.0,
         }
     }
 
@@ -141,7 +148,35 @@ impl FootprintDeform {
     /// skip the transform entirely for a plain round dab.
     #[must_use]
     pub fn is_identity(self) -> bool {
-        self.inv_minor == 1.0 && self.cos == 1.0 && self.sin == 0.0 && self.curve.is_flat()
+        self.inv_minor == 1.0
+            && self.cos == 1.0
+            && self.sin == 0.0
+            && self.curve.is_flat()
+            && self.quina == 0.0
+    }
+
+    /// A pegada com a QUINA `q` (`0..1`, ver o campo): `0` deixa-a como estava, ao bit.
+    #[must_use]
+    pub fn with_quina(self, q: f32) -> Self {
+        Self {
+            quina: q.clamp(0.0, 1.0),
+            ..self
+        }
+    }
+
+    /// A quina desta pegada (`0` = a ponta redonda).
+    #[must_use]
+    pub fn quina(self) -> f32 {
+        self.quina
+    }
+
+    /// O raio do `1/norma` ao longo da direcção `(c, s)` do referencial — `1` sem quina.
+    #[inline]
+    fn raio_da_quina(self, c: f32, s: f32) -> f32 {
+        if self.quina == 0.0 {
+            return 1.0;
+        }
+        1.0 / ((1.0 - self.quina) + self.quina * c.abs().max(s.abs()))
     }
 
     /// ⭐⭐⭐ **A pegada com a CURVATURA da arte por baixo dela** ([`FootprintCurve`]).
@@ -180,6 +215,7 @@ impl FootprintDeform {
                 self.rotor[0] * rotor[0] - self.rotor[1] * rotor[1],
                 self.rotor[0] * rotor[1] + self.rotor[1] * rotor[0],
             ],
+            quina: self.quina,
         }
     }
 
@@ -256,6 +292,9 @@ impl FootprintDeform {
     /// bit (`× 1` e `4 · 1` são exactos).
     fn level_outline_at(self, t: f32, level: f32) -> [f32; 2] {
         let (sen, cos) = (t * std::f32::consts::TAU).sin_cos();
+        // A fronteira da quina na direcção `(cos, sen)` do referencial está a `raio_da_quina` (exacto).
+        let q = self.raio_da_quina(cos, sen);
+        let (sen, cos) = (sen * q, cos * q);
         let menor = sen * self.minor_fraction();
         let elipse = [
             cos * self.cos - menor * self.sin,
@@ -345,9 +384,21 @@ impl FootprintDeform {
             // correspondente. Exacto, sem amostragem.
             let m = self.minor_fraction();
             let (c, s) = (self.cos, self.sin);
-            return [
+            let elipse = [
                 (c * c + s * s * m * m).sqrt(),
                 (s * s + c * c * m * m).sqrt(),
+            ];
+            if self.quina == 0.0 {
+                return elipse;
+            }
+            // ⭐ A bola da quina fica entre o disco e o quadrado (`|f|∞ ≤ N(f)`, `N(f) ≥ |f|₂·(1 − q +
+            // q/√2)`): a caixa é a menor das duas que a CONTÊM — o quadrado (a norma dual `1`, exacta em
+            // `q = 1`) e a elipse escalada pelo maior raio da quina.
+            let quadrado = [c.abs() + m * s.abs(), s.abs() + m * c.abs()];
+            let r = 1.0 / (1.0 - self.quina * (1.0 - std::f32::consts::FRAC_1_SQRT_2));
+            return [
+                quadrado[0].min(elipse[0] * r),
+                quadrado[1].min(elipse[1] * r),
             ];
         }
         self.extent_at(1.0)
@@ -426,7 +477,11 @@ impl FootprintDeform {
     #[must_use]
     pub fn falloff_t(self, u: f32, v: f32) -> f32 {
         let d = self.apply([u, v]);
-        (d[0] * d[0] + d[1] * d[1]).sqrt()
+        let l2 = (d[0] * d[0] + d[1] * d[1]).sqrt();
+        if self.quina == 0.0 {
+            return l2;
+        }
+        (1.0 - self.quina) * l2 + self.quina * d[0].abs().max(d[1].abs())
     }
 }
 
@@ -448,26 +503,86 @@ mod outline_tests {
         for flatten in [0.0_f32, 0.2, 0.5, DAB_FLATTEN_MAX] {
             for angle in [0_u16, 17, 90, 233] {
                 for curve in CURVAS {
-                    let fp = FootprintDeform::new(flatten, angle).with_curve(curve);
-                    for k in 0..64 {
-                        let p = fp.outline_at(k as f32 / 64.0);
-                        let t = fp.falloff_t(p[0], p[1]);
-                        casos += 1;
-                        assert!(
-                            (t - 1.0).abs() < 1e-4,
-                            "com flatten {flatten}, ângulo {angle}° e curvatura {curve:?}, o \
-                             contorno em {k}/64 tem falloff {t} — ele não é a fronteira que o \
-                             amostrador usa"
-                        );
+                    for quina in QUINAS {
+                        let fp = FootprintDeform::new(flatten, angle)
+                            .with_curve(curve)
+                            .with_quina(quina);
+                        for k in 0..64 {
+                            let p = fp.outline_at(k as f32 / 64.0);
+                            let t = fp.falloff_t(p[0], p[1]);
+                            casos += 1;
+                            assert!(
+                                (t - 1.0).abs() < 1e-4,
+                                "com flatten {flatten}, ângulo {angle}°, quina {quina} e curvatura \
+                                 {curve:?}, o contorno em {k}/64 tem falloff {t} — ele não é a \
+                                 fronteira que o amostrador usa"
+                            );
+                        }
                     }
                 }
             }
         }
         assert_eq!(
             casos,
-            4 * 4 * CURVAS.len() * 64,
+            4 * 4 * CURVAS.len() * QUINAS.len() * 64,
             "o corpus mudou de tamanho"
         );
+    }
+
+    /// As quinas do corpus: o disco (o caminho de sempre), uma ponta arredondada e o quadrado.
+    const QUINAS: [f32; 3] = [0.0, 0.6, 1.0];
+
+    /// ⭐ **A CAIXA CONTÉM A QUINA** (prompt 44): o motor percorre a caixa de [`FootprintDeform::extent`];
+    /// um canto da ponta reta fora dela é tinta cortada. Varre-se o contorno exacto de cada pegada.
+    #[test]
+    fn the_box_contains_the_square_tip() {
+        for flatten in [0.0_f32, 0.2, 0.5, DAB_FLATTEN_MAX] {
+            for angle in [0_u16, 17, 45, 90, 233] {
+                for quina in QUINAS {
+                    let fp = FootprintDeform::new(flatten, angle).with_quina(quina);
+                    let e = fp.extent();
+                    let mut maior = [0.0_f32; 2];
+                    for k in 0..720 {
+                        let p = fp.outline_at(k as f32 / 720.0);
+                        maior = [maior[0].max(p[0].abs()), maior[1].max(p[1].abs())];
+                    }
+                    for i in 0..2 {
+                        assert!(
+                            maior[i] <= e[i] * 1.000_1,
+                            "flatten {flatten}, ângulo {angle}°, quina {quina}: o contorno chega a \
+                             {maior:?} e a caixa é {e:?}"
+                        );
+                    }
+                    if quina == 1.0 {
+                        assert!(
+                            (maior[0] - e[0]).abs() < 2e-3 && (maior[1] - e[1]).abs() < 2e-3,
+                            "o quadrado tem a caixa EXACTA ({maior:?} contra {e:?})"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// ⭐ **A QUINA 0 É A PEGADA DE SEMPRE, AO BIT**, e a quina 1 é o QUADRADO: o canto do referencial
+    /// `(0,9; 0,9)` fica dentro da ponta reta e fora da redonda.
+    #[test]
+    fn quina_zero_is_the_disc_and_one_is_the_square() {
+        for flatten in [0.0_f32, 0.5] {
+            for angle in [0_u16, 17, 233] {
+                let nu = FootprintDeform::new(flatten, angle);
+                assert_eq!(nu, nu.with_quina(0.0));
+                for k in 0..32 {
+                    let t = k as f32 / 32.0;
+                    let p = [(t * 6.0).cos() * 0.9, (t * 6.0).sin() * 0.9];
+                    assert_eq!(nu.falloff_t(p[0], p[1]).to_bits(), nu.with_quina(0.0).falloff_t(p[0], p[1]).to_bits());
+                }
+            }
+        }
+        let quadrado = FootprintDeform::identity().with_quina(1.0);
+        assert!(quadrado.falloff_t(0.9, 0.9) < 1.0);
+        assert!(FootprintDeform::identity().falloff_t(0.9, 0.9) > 1.0);
+        assert!((quadrado.falloff_t(1.0, 0.3) - 1.0).abs() < 1e-6, "o lado do quadrado é RECTO");
     }
 
     /// O corpus de curvaturas: a plana (o caminho de sempre) e três dobras reais — uma quadrática

@@ -21,6 +21,7 @@ mod macro_traco;
 mod macro_trilho;
 mod macro_tutorial_fill;
 mod measure_undo_capacity;
+mod as_formas;
 mod midias_de_fabrica;
 mod o_po_do_aerografo;
 mod os_outros_meios_nao_mudam;

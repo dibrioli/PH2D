@@ -202,6 +202,12 @@ impl PainterTool {
         self.paint.brush.dab_flatten = v.clamp(0.0, 1.0);
     }
 
+    /// Set the **Square tip** (`0..1`, clamped; prompt 44) — the corner of the dab footprint: `0` round,
+    /// `1` square in the flatten/rotate frame ([`ph2d_painter_brush::FootprintDeform::with_quina`]).
+    pub fn set_brush_dab_quina(&mut self, v: f32) {
+        self.paint.brush.dab_quina = v.clamp(0.0, 1.0);
+    }
+
     /// Set the **Dab rotation** of the flatten/rotate gizmo in whole **degrees**.
     pub fn set_brush_dab_angle(&mut self, deg: f32) {
         self.paint.brush.dab_angle_deg =

@@ -332,7 +332,7 @@ impl PainterTool {
                 Dependente::FollowSemNada,
                 !b.shape_silhouette_active(self.paint.shape_image.is_some())
                     && b.shape.kind != ph2d_painter_brush::TextureKind::Bristles
-                    && b.dab_flatten <= 0.0
+                    && !b.pegada_anisotropica()
                     && !(b.grain_samples(self.paint.texture_image.is_some())
                         && matches!(
                             b.texture.mapping,

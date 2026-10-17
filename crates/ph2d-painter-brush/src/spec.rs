@@ -288,6 +288,10 @@ pub struct BrushSpec {
     /// **Dab rotation** in whole degrees (`0..=360`) of the flatten/rotate frame — rotates the
     /// elliptical footprint and, even when round, the pattern sampled within it.
     pub dab_angle_deg: u16,
+    /// ⭐ **A ponta RETA** (`0..1`, prompt 44 — o Flat do Rebelle): a quina da pegada
+    /// ([`crate::footprint::FootprintDeform::with_quina`]) — `0` o disco de sempre, `1` o quadrado no
+    /// referencial do Flatten/Angle. Medido e porquê: `docs/Painter/NewFeaturesWetPaint/44_medicao_as_formas.md`.
+    pub dab_quina: f32,
     /// ⭐⭐⭐ **A CURVATURA da arte debaixo do dab** — os graus `2` e `3` da pegada
     /// ([`crate::FootprintCurve`]). ⛔ **NÃO é um knob do artista**: ela é DERIVADA da malha que a
     /// sprite desenha, e quem a escreve é o [`crate::canvas_warp::warped_dab`], pela mesma porta

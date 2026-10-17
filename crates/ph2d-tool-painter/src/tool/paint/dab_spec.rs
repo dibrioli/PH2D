@@ -171,7 +171,8 @@ impl PainterTool {
     #[must_use]
     pub fn cursor_dab(&self) -> (f32, ph2d_painter_brush::FootprintDeform) {
         let b = self.paint.brush;
-        let pegada = ph2d_painter_brush::FootprintDeform::new(b.dab_flatten, b.dab_angle_deg);
+        let pegada = ph2d_painter_brush::FootprintDeform::new(b.dab_flatten, b.dab_angle_deg)
+            .with_quina(b.dab_quina);
         (
             b.radius_px,
             pegada.rotated_by(b.follow_rotor(self.live_heading())),

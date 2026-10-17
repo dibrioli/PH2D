@@ -189,8 +189,14 @@ fn preset_de(c: &Receita) -> Preset {
         for (k, v) in &c.knobs {
             assert!(q.engine.insert(k.clone(), *v).is_some(), "knob {k}");
         }
+        // Um campo que o ficheiro de fábrica ainda não grava (a ponta reta, prompt 44) entra também — desde
+        // que seja do pincel.
         for (k, v) in &c.brush {
-            assert!(q.brush.insert(k.clone(), v.clone()).is_some(), "campo {k}");
+            assert!(
+                ph2d_tool_painter::CAMPOS_DO_PINCEL.contains(&k.as_str()),
+                "campo {k}"
+            );
+            q.brush.insert(k.clone(), v.clone());
         }
         return p;
     }

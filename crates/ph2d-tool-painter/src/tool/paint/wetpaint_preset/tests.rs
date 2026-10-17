@@ -125,6 +125,7 @@ fn pincel_mexido() -> BrushSpec {
         shape: tex(5, 45),
         dab_flatten: 0.3,
         dab_angle_deg: 25,
+        dab_quina: 0.6,
         dab_curve: FootprintCurve::from_rows([[0.05, 0.0, 0.02, 0.0, 0.0, 0.0, 0.0]; 2]),
         color_jitter_enabled: true,
         color_jitter_hue: 0.05,

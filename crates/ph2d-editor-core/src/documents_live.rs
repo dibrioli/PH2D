@@ -81,6 +81,28 @@ pub enum LiveInternet {
     Failed(String),
 }
 
+/// ADR-0187 — a internet como o painel a explica: a espera de quem entra por link, a rede desta casa,
+/// e porque a última entrada por link falhou.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct LiveLink {
+    /// A entrar por LINK (não pela rede local): o painel diz que procura o quadro na internet, e por
+    /// quanto tempo no máximo (s).
+    pub searching: Option<u32>,
+    /// A rede DESTA casa muda o endereço por destino (NAT simétrico, medido pelo STUN): o convite pode
+    /// não passar. O anfitrião vê-o com o link pronto; o convidado, à espera.
+    pub strict_nat: bool,
+    /// A frase da última entrada por link que falhou (o que fazer), até a próxima tentativa.
+    pub failed: Option<String>,
+}
+
+impl LiveLink {
+    /// A sessão acabou: a espera e a medição saem; a frase da falha fica (ela explica o fim).
+    pub fn ended(&mut self) {
+        self.searching = None;
+        self.strict_nat = false;
+    }
+}
+
 /// Uma pessoa na sala.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LivePeer {
@@ -184,6 +206,8 @@ pub struct LiveView {
     pub firewall: LiveFirewall,
     /// ADR-0187 — a entrada pela internet (só o anfitrião).
     pub internet: LiveInternet,
+    /// ADR-0187 — a espera por link, a rede que bloqueia, a falha.
+    pub link: LiveLink,
     /// ADR-0182 — o modo privado e a votação da sala, como os desenho.
     pub fac: LiveFac,
     requests: Vec<LiveRequest>,

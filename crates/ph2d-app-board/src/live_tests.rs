@@ -2,6 +2,8 @@
 //! thread), a rede local de verdade em 127.0.0.1, o código do anfitrião.
 
 use super::*;
+use std::sync::mpsc;
+
 use ph2d_a11y::NodeId;
 use ph2d_board_model::{Board, BoardOp, Element, Rgba, RichText, Shape, ShapeType, Style};
 use ph2d_editor_core::documents::live::LiveRequest;

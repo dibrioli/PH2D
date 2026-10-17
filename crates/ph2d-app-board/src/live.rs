@@ -7,7 +7,6 @@
 
 use std::cell::RefCell;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::mpsc;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -44,7 +43,7 @@ enum Live {
         board: Option<BoardId>,
         route: Route,
         /// Uma tentativa de ligar a decorrer (numa thread) e o seu resultado.
-        dialing: Option<mpsc::Receiver<Result<net::Guest, net::JoinError>>>,
+        dialing: Option<internet::Dialing>,
         /// Desde quando está caída (`None` = ligada, ou a 1.ª entrada).
         lost: Option<Instant>,
         last_try: Option<Instant>,
@@ -61,6 +60,8 @@ mod fac;
 mod internet;
 use fac::{announce, fac_view, refusal_key};
 use internet::{Internet, Route, dial, internet_tick, invite_internet, join_by};
+#[cfg(test)]
+pub(crate) use internet::fake_nat_for_tests;
 
 #[derive(Default)]
 struct State {
@@ -154,6 +155,7 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
                 addrs,
             };
             v.board = Some(id);
+            v.link = Default::default();
             hero.documents
                 .tell(tr_with("board.live.opened", &[("code", &code)]));
             st.fw.probe(Some(n.port()));
@@ -394,8 +396,8 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
         return Some(live);
     };
     // Uma tentativa de ligar acabou?
-    if let Some(rx) = &dialing
-        && let Ok(r) = rx.try_recv()
+    if let Some(d) = &dialing
+        && let Some(r) = d.poll(hero)
     {
         dialing = None;
         match r {
@@ -407,15 +409,9 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
                 }
             }
             Err(e) if board.is_none() => {
-                let link_lost = matches!(
-                    (&route, &e),
-                    (Route::Link { .. }, net::JoinError::Unreachable(_))
-                );
-                hero.documents.tell(if link_lost {
-                    tr("board.live.link_unreachable").to_owned()
-                } else {
-                    join_error(&e)
-                });
+                if !internet::link_failed(hero, &route, &e) {
+                    hero.documents.tell(join_error(&e));
+                }
                 return None;
             }
             // Acaba já, com a cópia (antes gastava o minuto e os códigos velhos travavam a sala nova).
@@ -657,6 +653,7 @@ fn stop(hero: &mut HeroScreen) {
     v.others.clear();
     v.fac = LiveFac::default();
     v.internet = LiveInternet::Off;
+    v.link.ended();
     v.following = None;
     if let Some(b) = board.and_then(|id| hero.documents.board_mut(id)) {
         b.set_session(None);

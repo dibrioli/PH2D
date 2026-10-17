@@ -123,6 +123,32 @@ fn um_link_sem_enderecos_acha_o_anfitriao_no_ponto_de_encontro() {
     joined_and_talk(&h, &g);
 }
 
+/// O que o painel avisa: dois destinos STUN a ver portas DIFERENTES = NAT simétrico; o mesmo endereço
+/// = furar funciona; um só destino (ou o mesmo IP duas vezes) não chega para dizer.
+#[test]
+fn o_nat_simetrico_le_se_pelos_destinos_do_stun() {
+    use crate::Reflexive;
+    let r = |server: &str, mapped: &str| Reflexive {
+        server: server.parse().unwrap(),
+        mapped: mapped.parse().unwrap(),
+    };
+    let same = [
+        r("198.51.100.1:3478", "203.0.113.5:40000"),
+        r("198.51.100.2:3478", "203.0.113.5:40000"),
+    ];
+    assert_eq!(mapping(&same), Mapping::Independent);
+    let moved = [
+        r("198.51.100.1:3478", "203.0.113.5:40000"),
+        r("198.51.100.2:3478", "203.0.113.5:40007"),
+    ];
+    assert_eq!(mapping(&moved), Mapping::Dependent);
+    let one_ip = [
+        r("198.51.100.1:3478", "203.0.113.5:40000"),
+        r("198.51.100.1:19302", "203.0.113.5:40007"),
+    ];
+    assert_eq!(mapping(&one_ip), Mapping::Unknown);
+}
+
 /// Um nó que responde e recusa (sem entrada aberta): a máquina do anfitrião ainda lá, a sala não.
 fn refusing() -> (Node, std::net::SocketAddr) {
     let n = Node::bind(&NodeConfig::default()).unwrap();

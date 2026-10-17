@@ -432,6 +432,97 @@ fn the_internet_scene_copies_a_link_and_a_second_window_joins_by_it() {
     assert!(both, "o anfitrião não vê a Bia");
 }
 
+/// ADR-0187 — o anfitrião numa rede de NAT SIMÉTRICO (os STUN «medem» `Dependent`) fica a saber, no
+/// painel, que quem está fora pode não entrar; o controlo (sem NAT) não diz nada.
+#[test]
+fn a_host_on_a_strict_network_is_told_the_link_may_not_get_through() {
+    use crate::live::fake_nat_for_tests;
+    use ph2d_board_internet::Mapping;
+    use ph2d_editor_core::documents::live::LiveInternet;
+    for strict in [false, true] {
+        reset_for_tests();
+        crate::live::internet_local_for_tests();
+        fake_firewall_for_tests(Probe::default(), vec![]);
+        fake_nat_for_tests(if strict {
+            Mapping::Dependent
+        } else {
+            Mapping::Independent
+        });
+        let mut host = hero("Ana");
+        scene_internet(&mut host);
+        assert!(until(&mut host, 10, |h| matches!(
+            h.documents.live_view().internet,
+            LiveInternet::Ready { .. }
+        )));
+        assert_eq!(host.documents.live_view().link.strict_nat, strict);
+        host.documents.ask_live(LiveRequest::Leave);
+        service(&mut host);
+        assert!(
+            !host.documents.live_view().link.strict_nat,
+            "a medição ficou depois da sessão"
+        );
+    }
+}
+
+/// Um link para um endereço onde nada responde à sala: um nó vivo e SEM entrada (recusa).
+fn closed_room_link() -> (ph2d_board_internet::Node, String) {
+    let n = ph2d_board_internet::Node::bind(&ph2d_board_internet::NodeConfig::default()).unwrap();
+    let invite = ph2d_board_net::Invite {
+        key: ph2d_board_net::InviteKey::random(),
+        addrs: vec![SocketAddr::from(([127, 0, 0, 1], n.port()))],
+    };
+    (n, invite.link())
+}
+
+/// ⭐ ADR-0187 + auditoria A2 — quem entra por link vê que se PROCURA na internet (e até quando), não o
+/// «Connecting…» da rede local; a sala fechada responde logo (não aos 30 s) e a frase, que fica no
+/// painel, diz o que fazer.
+#[test]
+fn joining_by_link_searches_the_internet_and_a_closed_room_says_what_to_do() {
+    reset_for_tests();
+    crate::live::internet_local_for_tests();
+    let (_n, link) = closed_room_link();
+    let mut g = hero("Bia");
+    g.documents.ask_live(LiveRequest::JoinLink { link });
+    service(&mut g);
+    assert_eq!(g.documents.live_view().role, LiveRole::Joining);
+    assert_eq!(g.documents.live_view().link.searching, Some(30));
+    let t = Instant::now();
+    assert!(until(&mut g, 10, |g| g.documents.live_view().role
+        == LiveRole::Off));
+    assert!(t.elapsed() < Duration::from_secs(5), "{:?}", t.elapsed());
+    let closed = tr("board.live.link_closed");
+    assert_eq!(g.documents.told(), Some(closed.as_str()));
+    let l = &g.documents.live_view().link;
+    assert_eq!(l.failed.as_deref(), Some(closed.as_str()), "a frase saiu do painel");
+    assert_eq!(l.searching, None);
+}
+
+/// O convidado numa rede de NAT simétrico ouve, ao falhar, que a rede DELE pode bloquear e o que
+/// tentar; sem a medição, a frase é a de sempre. (Só IPv6 no link e o nó sem IPv6: nenhum caminho.)
+#[test]
+fn a_guest_on_a_strict_network_hears_that_it_may_be_blocking() {
+    use crate::live::fake_nat_for_tests;
+    use ph2d_board_internet::Mapping;
+    let link = ph2d_board_net::Invite {
+        key: ph2d_board_net::InviteKey::random(),
+        addrs: vec!["[2001:db8::7]:4000".parse().unwrap()],
+    }
+    .link();
+    for (m, key) in [
+        (Mapping::Independent, "board.live.link_unreachable"),
+        (Mapping::Dependent, "board.live.link_unreachable_strict"),
+    ] {
+        reset_for_tests();
+        crate::live::internet_local_for_tests();
+        fake_nat_for_tests(m);
+        let mut g = hero("Bia");
+        g.documents.ask_live(LiveRequest::JoinLink { link: link.clone() });
+        assert!(until(&mut g, 10, |g| g.documents.live_view().link.failed.is_some()));
+        assert_eq!(g.documents.told(), Some(tr(key).as_str()), "{m:?}");
+    }
+}
+
 #[test]
 fn a_link_that_is_not_ours_is_refused_with_its_sentence() {
     reset_for_tests();

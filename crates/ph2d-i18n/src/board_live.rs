@@ -34,7 +34,35 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.live.join_link_tip" => "Join with the link you pasted in the code field",
         "board.live.link_bad" => "That isn't a PH2D board link",
         "board.live.link_unreachable" => {
-            "Couldn't reach the board of that link. Is the other person still hosting it?"
+            "Couldn't find the board of that link. Ask the host to keep the board open in Live, \
+             then click Join by link again"
+        }
+        "board.live.link_unreachable_strict" => {
+            "Couldn't find the board of that link. Your internet connection may be blocking it: \
+             try another one, like your phone's hotspot, then click Join by link again"
+        }
+        "board.live.link_closed" => {
+            "The board of that link isn't open anymore. Ask the host to invite you again and \
+             paste the new link"
+        }
+        "board.live.link_old" => {
+            "That link is from an older invitation. Ask the host for the new link"
+        }
+        "board.live.link_offline" => {
+            "This computer isn't connected to the internet. Check the connection, then click \
+             Join by link again"
+        }
+        "board.live.link_searching" => "Looking for the board on the internet…",
+        "board.live.link_searching_hint" => {
+            "This can take up to {s} seconds while the two computers find each other"
+        }
+        "board.live.nat_strict_host" => {
+            "This internet connection may keep people in other houses out. If they can't join, \
+             host from another connection, like a phone's hotspot"
+        }
+        "board.live.nat_strict_guest" => {
+            "Your internet connection may keep you out. If it fails, try another connection, \
+             like your phone's hotspot"
         }
         "board.live.code_short" => "The code has 6 letters and numbers",
         "board.live.connecting" => "Connecting…",

@@ -510,6 +510,111 @@ fn a_pasted_link_keeps_its_case_and_joins_by_link() {
     assert_eq!(t.asked(), want, "o Enter também");
 }
 
+/// Os glifos pintados nesta imagem (todos os textos).
+fn glyphs(t: &mut T) -> usize {
+    runs(&t.scene()).iter().map(|r| r.1).sum()
+}
+
+/// `text` está nas filas do painel E foi pintado: a imagem com ele tem pelo menos os glifos dele a
+/// mais que `before` (a mesma imagem sem ele).
+fn painted(t: &mut T, before: usize, key: &str) {
+    let text = ph2d_i18n::tr(key);
+    assert!(
+        live_board::row_texts(&t.hero).iter().any(|r| r == text),
+        "«{key}» não está no painel: {:?}",
+        live_board::row_texts(&t.hero)
+    );
+    let ink = text.chars().filter(|c| !c.is_whitespace()).count();
+    let now = glyphs(t);
+    assert!(now >= before + ink, "«{key}» não se pintou: {before} → {now}");
+}
+
+/// ⭐ ADR-0187 — a rede que pode bloquear o convite diz-se em palavras simples: o anfitrião clica
+/// «Invite over the internet» (o clique real), o link fica pronto numa rede de NAT simétrico e o painel
+/// avisa; sem a medição, nada.
+#[test]
+fn a_strict_network_is_said_to_the_host_in_plain_words() {
+    use crate::documents::live::LiveInternet;
+    let mut t = T::new();
+    t.open_live();
+    t.room(LiveRole::Hosting {
+        code: "ABCDEF".into(),
+        addrs: vec!["10.0.0.5:47320".into()],
+    });
+    t.asked();
+    t.live_click(Hit::Button(LiveButton::InviteInternet));
+    assert_eq!(t.asked(), vec![LiveRequest::InviteInternet]);
+    t.hero.documents.live_view_mut().internet = LiveInternet::Ready {
+        link: "ph2d-board://v1/#x".into(),
+    };
+    t.paint();
+    let before = glyphs(&mut t);
+    let warn = ph2d_i18n::tr("board.live.nat_strict_host");
+    assert!(!live_board::row_texts(&t.hero).iter().any(|r| r == warn));
+    t.hero.documents.live_view_mut().link.strict_nat = true;
+    t.paint();
+    painted(&mut t, before, "board.live.nat_strict_host");
+    // O botão continua lá e clicável por baixo do aviso.
+    t.live_click(Hit::Button(LiveButton::InviteInternet));
+    assert_eq!(t.asked(), vec![LiveRequest::InviteInternet]);
+}
+
+/// ⭐ ADR-0187 — quem entra por link (o clique real em «Join by link») vê que se PROCURA o quadro na
+/// internet e até quando — não o «Connecting…» da rede local —, com o aviso da rede dele se for o
+/// caso; ao falhar, a frase do que fazer fica no painel por cima de «Join by link».
+#[test]
+fn joining_by_link_says_it_searches_the_internet_and_what_to_do_when_it_fails() {
+    const CODE: NodeId = crate::ids::BOARD_LIVE_CODE_INPUT;
+    let mut t = T::new();
+    t.open_live();
+    t.shell_click_id(CODE, "o campo do código");
+    assert!(crate::interaction::apply_clipboard_paste(
+        &mut t.hero.store,
+        CODE,
+        "ph2d-board://v1/127.0.0.1:5000#AbCdEfGhIjKlMnOpQrStUv"
+    ));
+    t.asked();
+    t.live_click(Hit::Button(LiveButton::JoinLink));
+    assert!(matches!(&t.asked()[..], [LiveRequest::JoinLink { .. }]));
+    // A família responde como em `join_by` (link) e na medição do STUN.
+    let lv = t.hero.documents.live_view_mut();
+    lv.role = LiveRole::Joining;
+    lv.link.searching = Some(30);
+    t.paint();
+    let texts = live_board::row_texts(&t.hero);
+    assert!(
+        !texts.iter().any(|r| r == ph2d_i18n::tr("board.live.connecting")),
+        "por link disse o «Connecting…» da rede local"
+    );
+    let hint = ph2d_i18n::tr_with("board.live.link_searching_hint", &[("s", &30)]);
+    assert!(texts.contains(&hint), "{texts:?}");
+    let before = glyphs(&mut t);
+    t.hero.documents.live_view_mut().link.strict_nat = true;
+    t.paint();
+    painted(&mut t, before, "board.live.nat_strict_guest");
+    t.live_click(Hit::Button(LiveButton::Cancel));
+    assert_eq!(t.asked(), vec![LiveRequest::Leave]);
+    // Pela rede local, a espera é a de sempre.
+    t.hero.documents.live_view_mut().link = Default::default();
+    t.paint();
+    assert!(
+        live_board::row_texts(&t.hero)
+            .iter()
+            .any(|r| r == ph2d_i18n::tr("board.live.connecting"))
+    );
+    // Falhou: de volta ao `Off`, a frase fica no painel e «Join by link» clica-se outra vez.
+    let lv = t.hero.documents.live_view_mut();
+    lv.role = LiveRole::Off;
+    t.paint();
+    let before = glyphs(&mut t);
+    t.hero.documents.live_view_mut().link.failed =
+        Some(ph2d_i18n::tr("board.live.link_closed").to_owned());
+    t.paint();
+    painted(&mut t, before, "board.live.link_closed");
+    t.live_click(Hit::Button(LiveButton::JoinLink));
+    assert!(matches!(&t.asked()[..], [LiveRequest::JoinLink { .. }]));
+}
+
 /// ADR-0187 — o anfitrião vê «Invite over the internet» e ele pede a entrada pela internet; a
 /// preparar, o botão sai e fica a frase; pronta, «Copy the link again» pede o mesmo.
 #[test]

@@ -305,18 +305,27 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
                 TypeToken::Xs,
                 ColorToken::Text2,
             )],
-            LiveInternet::Ready { .. } => vec![
-                text(
+            LiveInternet::Ready { .. } => {
+                let mut v = vec![text(
                     "board.live.invite_net_ready",
                     TypeToken::Xs,
                     ColorToken::Text2,
-                ),
-                button(
+                )];
+                // A rede desta casa muda o endereço por destino: quem está fora pode não entrar.
+                if lv.link.strict_nat {
+                    v.push(text(
+                        "board.live.nat_strict_host",
+                        TypeToken::Xs,
+                        ColorToken::Text1,
+                    ));
+                }
+                v.push(button(
                     LiveButton::InviteInternet,
                     "board.live.invite_net_again",
                     false,
-                ),
-            ],
+                ));
+                v
+            }
             LiveInternet::Failed(why) => vec![
                 Row::Text(why.clone(), TypeToken::Xs, ColorToken::Text2),
                 button(LiveButton::InviteInternet, "board.live.invite_net", false),
@@ -349,6 +358,10 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
             }
             out.extend(FIELDS.iter().map(|(k, id)| Row::Field(k, *id)));
             out.push(button(LiveButton::Join, "board.live.join", true));
+            // ADR-0187 — porque a última entrada por link falhou, e o que fazer.
+            if let Some(why) = &lv.link.failed {
+                out.push(Row::Text(why.clone(), TypeToken::Xs, ColorToken::Text1));
+            }
             out.push(text(
                 "board.live.link_hint",
                 TypeToken::Xs,
@@ -356,14 +369,34 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
             ));
             out.push(button(LiveButton::JoinLink, "board.live.join_link", false));
         }
-        LiveRole::Joining => {
-            out.push(text(
-                "board.live.connecting",
-                TypeToken::Sm,
-                ColorToken::Text1,
-            ));
-            out.push(button(LiveButton::Cancel, "board.live.cancel", false));
-        }
+        // ADR-0187 — por link, a espera é a da internet (até `s` segundos), não a da rede local.
+        LiveRole::Joining => match lv.link.searching {
+            Some(s) => {
+                out.push(text(
+                    "board.live.link_searching",
+                    TypeToken::Sm,
+                    ColorToken::Text1,
+                ));
+                let hint = tr_with("board.live.link_searching_hint", &[("s", &s.to_string())]);
+                out.push(Row::Text(hint, TypeToken::Xs, ColorToken::Text2));
+                if lv.link.strict_nat {
+                    out.push(text(
+                        "board.live.nat_strict_guest",
+                        TypeToken::Xs,
+                        ColorToken::Text1,
+                    ));
+                }
+                out.push(button(LiveButton::Cancel, "board.live.cancel", false));
+            }
+            None => {
+                out.push(text(
+                    "board.live.connecting",
+                    TypeToken::Sm,
+                    ColorToken::Text1,
+                ));
+                out.push(button(LiveButton::Cancel, "board.live.cancel", false));
+            }
+        },
         LiveRole::Hosting { code, addrs } => {
             out.push(Row::Code(show_code(code)));
             out.push(text("board.live.share", TypeToken::Xs, ColorToken::Text2));
@@ -385,6 +418,18 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
         }
     }
     out
+}
+
+/// Os textos das filas do painel como o `rows` os monta (os testes: a frase certa no papel certo).
+#[cfg(test)]
+pub(crate) fn row_texts(hero: &HeroScreen) -> Vec<String> {
+    rows(hero)
+        .into_iter()
+        .filter_map(|r| match r {
+            Row::Text(t, ..) => Some(t),
+            _ => None,
+        })
+        .collect()
 }
 
 /// A altura de uma fila (sem o vão).

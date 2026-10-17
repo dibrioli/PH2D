@@ -6,10 +6,10 @@ use std::net::SocketAddr;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use ph2d_board_internet::{DhtMode, InternetConfig, InternetHost};
+use ph2d_board_internet::{DhtMode, InternetConfig, InternetHost, Mapping};
 use ph2d_board_net as net;
 use ph2d_board_sync as sync;
-use ph2d_editor_core::documents::live::{LiveInternet, LiveRole};
+use ph2d_editor_core::documents::live::{LiveInternet, LiveLink, LiveRole};
 use ph2d_editor_core::screens::HeroScreen;
 use ph2d_i18n::{tr, tr_with};
 
@@ -98,7 +98,9 @@ pub(super) fn internet_tick(st: &mut State, hero: &mut HeroScreen) {
             ih.attach(net);
             let link = ih.link();
             hero.store.set_clipboard_copy(link.clone());
-            hero.documents.live_view_mut().internet = LiveInternet::Ready { link };
+            let v = hero.documents.live_view_mut();
+            v.internet = LiveInternet::Ready { link };
+            v.link.strict_nat = strict(ih.mapping());
             hero.documents
                 .tell(tr("board.live.invite_net_ready").to_owned());
             st.internet = Internet::On(ih);
@@ -114,6 +116,13 @@ pub(super) fn internet_tick(st: &mut State, hero: &mut HeroScreen) {
 
 pub(super) fn join_by(st: &mut State, hero: &mut HeroScreen, route: Route) {
     let me = hero.documents.author().to_owned();
+    // Por link, o painel diz que procura na internet e por quanto tempo no máximo.
+    let searching = matches!(route, Route::Link { .. })
+        .then(|| u32::try_from(LINK_TIMEOUT.as_secs()).unwrap_or(u32::MAX));
+    hero.documents.live_view_mut().link = LiveLink {
+        searching,
+        ..LiveLink::default()
+    };
     st.live = Some(Live::Guest {
         net: None,
         s: sync::Guest::new(random(), me, random(), random()),
@@ -126,22 +135,98 @@ pub(super) fn join_by(st: &mut State, hero: &mut HeroScreen, route: Route) {
     hero.documents.live_view_mut().role = LiveRole::Joining;
 }
 
+/// Uma tentativa de ligar a decorrer (numa thread): o resultado e, por link, a medição do NAT deste
+/// lado (chega antes, quando os STUN respondem).
+pub(super) struct Dialing {
+    rx: mpsc::Receiver<Result<net::Guest, net::JoinError>>,
+    nat: Option<mpsc::Receiver<Mapping>>,
+}
+
+impl Dialing {
+    /// O resultado, se acabou. A medição do NAT vai para o painel logo que chega; entrar acaba a
+    /// espera por link.
+    pub(super) fn poll(&self, hero: &mut HeroScreen) -> Option<Result<net::Guest, net::JoinError>> {
+        if let Some(m) = self.nat.as_ref().and_then(|n| n.try_recv().ok()) {
+            hero.documents.live_view_mut().link.strict_nat = strict(m);
+        }
+        let r = self.rx.try_recv().ok()?;
+        if r.is_ok() {
+            hero.documents.live_view_mut().link.searching = None;
+        }
+        Some(r)
+    }
+}
+
 /// Liga numa thread à parte: o ecrã nunca espera pela rede.
-pub(super) fn dial(route: &Route) -> mpsc::Receiver<Result<net::Guest, net::JoinError>> {
+pub(super) fn dial(route: &Route) -> Dialing {
     let (tx, rx) = mpsc::channel();
+    let (ntx, nrx) = mpsc::channel();
+    let link = matches!(route, Route::Link { .. });
     let route = route.clone();
     std::thread::spawn(move || {
         let r = match route {
             Route::Lan { addr, code } => net::Guest::connect(addr, &code, CONNECT_TIMEOUT, waker()),
-            Route::Link { invite, local } => ph2d_board_internet::join(
+            Route::Link { invite, local } => ph2d_board_internet::join_noting(
                 &invite,
                 &internet_config(local),
                 LINK_TIMEOUT,
                 net::Liveness::default(),
                 waker(),
+                move |m| {
+                    let _ = ntx.send(m);
+                },
             ),
         };
         let _ = tx.send(r);
     });
-    rx
+    Dialing {
+        rx,
+        nat: link.then_some(nrx),
+    }
+}
+
+/// ⭐ A entrada por link falhou antes de chegar ao quadro: a frase diz o que fazer, pelo porquê (a
+/// sala fechou, o link é velho, esta máquina está sem internet, ou não se achou — com a rede que
+/// bloqueia, se foi medida), e fica no painel até a próxima tentativa. `false` = não foi por link.
+pub(super) fn link_failed(hero: &mut HeroScreen, route: &Route, e: &net::JoinError) -> bool {
+    use std::io::ErrorKind as K;
+    if !matches!(route, Route::Link { .. }) {
+        return false;
+    }
+    let key = match e {
+        net::JoinError::WrongCode | net::JoinError::InvalidCode => "board.live.link_old",
+        net::JoinError::Unreachable(K::ConnectionRefused) => "board.live.link_closed",
+        net::JoinError::Unreachable(K::NetworkUnreachable | K::NetworkDown | K::AddrNotAvailable) => {
+            "board.live.link_offline"
+        }
+        net::JoinError::Unreachable(_) if hero.documents.live_view().link.strict_nat => {
+            "board.live.link_unreachable_strict"
+        }
+        net::JoinError::Unreachable(_) => "board.live.link_unreachable",
+        _ => return false,
+    };
+    let why = tr(key).to_owned();
+    hero.documents.live_view_mut().link.failed = Some(why.clone());
+    hero.documents.tell(why);
+    true
+}
+
+/// O NAT desta casa muda o endereço por destino (simétrico): furar não chega, o convite pode não
+/// passar.
+fn strict(m: Mapping) -> bool {
+    #[cfg(test)]
+    let m = FAKE_NAT.get().unwrap_or(m);
+    m == Mapping::Dependent
+}
+
+#[cfg(test)]
+thread_local! {
+    static FAKE_NAT: std::cell::Cell<Option<Mapping>> = const { std::cell::Cell::new(None) };
+}
+
+/// Para os testes da família: nesta thread, os STUN «medem» `m` (a rede de casa dos testes não tem
+/// NAT nenhum).
+#[cfg(test)]
+pub(crate) fn fake_nat_for_tests(m: Mapping) {
+    FAKE_NAT.set(Some(m));
 }

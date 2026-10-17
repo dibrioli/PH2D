@@ -20,6 +20,8 @@ mod paint;
 
 pub use others::paint as paint_others;
 pub use paint::{paint, paint_button};
+#[cfg(test)]
+pub(crate) use paint::row_texts;
 
 /// De quanto em quanto tempo o painel aberto (e sem sessão) volta a procurar quadros na rede. É o
 /// ritmo do aviso da família na rede local, não um tecto: uma procura é um pacote.

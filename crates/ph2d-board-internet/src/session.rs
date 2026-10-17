@@ -191,8 +191,9 @@ fn watch_guests(rv: &Rendezvous, node: &Node, mine: &[SocketAddr], stop: &Atomic
 /// Entra pelo convite: o fio pelo primeiro caminho que responder em `timeout`, e o aperto de mão.
 ///
 /// # Errors
-/// `Unreachable` = nenhum caminho até ao anfitrião; `WrongCode` = a chave não é a dele (o link é de
-/// outra sala ou a sala fechou e abriu de novo); os outros, como na rede local.
+/// `Unreachable` = nenhum caminho até ao anfitrião — logo que todos caem e o ponto de encontro já
+/// respondeu, sem esperar o prazo (o porquê em [`crate::Dialer::wait`]); `WrongCode` = a chave não é
+/// a dele (o link é de outra sala ou a sala fechou e abriu de novo); os outros, como na rede local.
 pub fn join(
     invite: &Invite,
     cfg: &InternetConfig,
@@ -200,8 +201,25 @@ pub fn join(
     live: Liveness,
     waker: Waker,
 ) -> Result<Guest, JoinError> {
+    join_noting(invite, cfg, timeout, live, waker, |_| {})
+}
+
+/// [`join`], e `nat` recebe como o NAT DESTE lado mapeia, logo que os STUN respondem (o painel avisa
+/// do simétrico) — sempre ANTES do resultado.
+///
+/// # Errors
+/// Os de [`join`].
+pub fn join_noting(
+    invite: &Invite,
+    cfg: &InternetConfig,
+    timeout: Duration,
+    live: Liveness,
+    waker: Waker,
+    nat: impl FnOnce(Mapping) + Send + 'static,
+) -> Result<Guest, JoinError> {
     let node = cfg.node().map_err(|e| JoinError::Unreachable(e.kind()))?;
-    let dialer = node.dial(&invite.addrs);
+    // Aberta: o ponto de encontro ainda pode trazer os endereços do anfitrião depois.
+    let dialer = node.dial_open(&invite.addrs);
     let stop = Arc::new(AtomicBool::new(false));
     let helper = {
         let (node, adder, key, cfg, stop) = (
@@ -211,7 +229,7 @@ pub fn join(
             cfg.clone(),
             Arc::clone(&stop),
         );
-        thread::spawn(move || announce_guest(&node, &adder, &key, &cfg, &stop))
+        thread::spawn(move || announce_guest(&node, &adder, &key, &cfg, &stop, nat))
     };
     let got = dialer.wait(timeout);
     stop.store(true, Ordering::Release);
@@ -223,31 +241,44 @@ pub fn join(
     Guest::join_with_key(wire, &invite.key, SHAKE, live, waker)
 }
 
+/// O convidado no ponto de encontro: publica os seus candidatos (para o anfitrião furar) e junta os do
+/// anfitrião à tentativa. A lista de endereços FECHA ([`DialAdder::done`]) quando o item do anfitrião
+/// chegou, ou quando não há ponto de encontro (nenhum, ou a DHT não responde): só então a tentativa
+/// sem caminhos vivos desiste antes do prazo.
 fn announce_guest(
     node: &Node,
     adder: &DialAdder,
     key: &InviteKey,
     cfg: &InternetConfig,
     stop: &AtomicBool,
+    nat: impl FnOnce(Mapping),
 ) {
     let seen = node.stun(&cfg.stun, STUN_WAIT);
-    let mine = candidates(node, &seen);
+    nat(mapping(&seen));
     let Ok(Some(rv)) = Rendezvous::new(&cfg.dht, key) else {
+        adder.done();
         return;
     };
-    let (mut published, mut host_seq) = (None::<Instant>, None);
+    let mine = candidates(node, &seen);
+    let (mut published, mut host_seq, mut asked) = (None::<Instant>, None, false);
     while !stop.load(Ordering::Acquire) {
-        if published.is_none_or(|t| t.elapsed() >= GUEST_REPUBLISH)
-            && rv.publish(Role::Guest, &mine)
-        {
-            published = Some(Instant::now());
+        if published.is_none_or(|t| t.elapsed() >= GUEST_REPUBLISH) {
+            if rv.publish(Role::Guest, &mine) {
+                published = Some(Instant::now());
+            } else if !std::mem::replace(&mut asked, true) && !rv.reachable() {
+                adder.done();
+                return;
+            }
         }
         if stop.load(Ordering::Acquire) {
             break;
         }
         if let Some((seq, addrs)) = rv.fetch(Role::Host, host_seq) {
-            host_seq = Some(seq);
             adder.add(&addrs);
+            if host_seq.is_none() {
+                adder.done();
+            }
+            host_seq = Some(seq);
         }
         nap(stop, GUEST_POLL);
     }

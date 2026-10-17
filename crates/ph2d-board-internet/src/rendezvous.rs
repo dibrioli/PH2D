@@ -192,6 +192,13 @@ impl Rendezvous {
         block_on(self.dht.put_mutable(item, None)).is_ok()
     }
 
+    /// A DHT responde (achou nós): `false` = sem rede, ou os nós de arranque calados — nada virá por
+    /// aqui. Bloqueia o tempo de uma procura.
+    #[must_use]
+    pub fn reachable(&self) -> bool {
+        block_on(self.dht.bootstrapped())
+    }
+
     /// O item mais recente de `role` mais novo que `newer_than` (bloqueia o tempo de uma leitura).
     #[must_use]
     pub fn fetch(&self, role: Role, newer_than: Option<i64>) -> Option<(i64, Vec<SocketAddr>)> {

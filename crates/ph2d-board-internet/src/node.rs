@@ -47,7 +47,11 @@ pub(crate) enum Msg {
         id: u64,
         addrs: Vec<SocketAddr>,
         reply: Option<Sender<io::Result<Accepted>>>,
+        /// Mais endereços ainda podem chegar ([`DialAdder::done`] fecha a lista).
+        open: bool,
     },
+    /// A lista de endereços da tentativa fechou: sem caminhos vivos, ela desiste já.
+    Settled(u64),
     Cancel(u64),
     Listen(Sender<Option<Accepted>>),
     Write(ConnectionHandle, Bytes),
@@ -189,15 +193,28 @@ impl Node {
         })
     }
 
-    /// Começa a ligar-se a `addrs` (todos ao mesmo tempo).
+    /// Começa a ligar-se a `addrs` (todos ao mesmo tempo). Quando todos caem, a tentativa desiste
+    /// logo, sem esperar o prazo.
     #[must_use]
     pub fn dial(&self, addrs: &[SocketAddr]) -> Dialer {
+        self.dial_with(addrs, false)
+    }
+
+    /// Como [`Node::dial`], mas outros endereços ainda podem chegar ([`DialAdder::add`]): com todos os
+    /// caminhos caídos ela continua à espera até [`DialAdder::done`].
+    #[must_use]
+    pub fn dial_open(&self, addrs: &[SocketAddr]) -> Dialer {
+        self.dial_with(addrs, true)
+    }
+
+    fn dial_with(&self, addrs: &[SocketAddr], open: bool) -> Dialer {
         let id = self.inner.next_dial.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = mpsc::channel();
         self.inner.send(Msg::Dial {
             id,
             addrs: addrs.to_vec(),
             reply: Some(tx),
+            open,
         });
         Dialer {
             node: Arc::clone(&self.inner),
@@ -264,7 +281,15 @@ impl DialAdder {
             id: self.id,
             addrs: addrs.to_vec(),
             reply: None,
+            open: true,
         });
+    }
+
+    /// Não vêm mais endereços (o ponto de encontro já respondeu, ou não há): se todos os caminhos
+    /// estão caídos, a tentativa desiste já. Vai pelo mesmo canal que o [`DialAdder::add`], depois
+    /// dele: os endereços acabados de juntar contam.
+    pub fn done(&self) {
+        self.node.send(Msg::Settled(self.id));
     }
 }
 
@@ -280,7 +305,9 @@ impl Dialer {
     /// Espera o primeiro fio.
     ///
     /// # Errors
-    /// `TimedOut` = ninguém respondeu a tempo; outro = todos os caminhos falharam.
+    /// `TimedOut` = ninguém respondeu a tempo; outro = todos os caminhos caíram (o porquê do último:
+    /// `ConnectionRefused` = a máquina respondeu e ninguém ouvia; `NetworkUnreachable` e afins = o
+    /// pacote nem saiu desta; `HostUnreachable` = nenhum caminho que este nó alcance).
     pub fn wait(&self, timeout: Duration) -> io::Result<(Box<dyn Wire>, SocketAddr)> {
         match self.rx.recv_timeout(timeout) {
             Ok(r) => r,

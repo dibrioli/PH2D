@@ -123,6 +123,94 @@ fn um_link_sem_enderecos_acha_o_anfitriao_no_ponto_de_encontro() {
     joined_and_talk(&h, &g);
 }
 
+/// Um nó que responde e recusa (sem entrada aberta): a máquina do anfitrião ainda lá, a sala não.
+fn refusing() -> (Node, std::net::SocketAddr) {
+    let n = Node::bind(&NodeConfig::default()).unwrap();
+    let at = (std::net::Ipv4Addr::LOCALHOST, n.port()).into();
+    (n, at)
+}
+
+/// ⭐ Auditoria A2 — sem ponto de encontro, todos os caminhos do link caídos ⇒ o convidado sabe LOGO
+/// (com a recusa, que o app lê como «a sala fechou»), e não aos 30 s.
+#[test]
+fn um_link_de_uma_sala_fechada_falha_logo_e_nao_no_prazo() {
+    let (_n, at) = refusing();
+    let invite = Invite {
+        key: ph2d_board_net::InviteKey::random(),
+        addrs: vec![at],
+    };
+    let t = Instant::now();
+    let r = join(
+        &invite,
+        &offline(),
+        Duration::from_secs(30),
+        Liveness::default(),
+        waker(),
+    );
+    assert_eq!(
+        r.err(),
+        Some(JoinError::Unreachable(std::io::ErrorKind::ConnectionRefused))
+    );
+    assert!(t.elapsed() < Duration::from_secs(3), "{:?}", t.elapsed());
+}
+
+/// ⭐ A2, o outro lado — com ponto de encontro, o caminho do link caído NÃO acaba a espera: o anfitrião
+/// mudou de porta (o link tem a velha) e o ponto de encontro traz a nova.
+#[test]
+fn com_ponto_de_encontro_o_caminho_caido_nao_acaba_a_espera() {
+    let net = mainline::Testnet::builder(10).build().unwrap();
+    let cfg = InternetConfig {
+        dht: DhtMode::Bootstrap(net.bootstrap.clone()),
+        ..offline()
+    };
+    let mut h = lan_host();
+    let ih = InternetHost::open(&mut h, &cfg).unwrap();
+    let (_n, old) = refusing();
+    let stale = Invite {
+        key: ih.invite().key.clone(),
+        addrs: vec![old],
+    };
+    let g = join(
+        &stale,
+        &cfg,
+        Duration::from_secs(20),
+        Liveness::default(),
+        waker(),
+    )
+    .expect("o ponto de encontro deu o endereço novo");
+    joined_and_talk(&h, &g);
+}
+
+/// A DHT que não responde (o nó de arranque calado) não segura a espera inteira: sem ponto de encontro
+/// que funcione e com os caminhos caídos, desiste antes do prazo.
+#[test]
+fn uma_dht_calada_nao_segura_a_espera_inteira() {
+    let mute = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+    let cfg = InternetConfig {
+        dht: DhtMode::Bootstrap(vec![mute.local_addr().unwrap().to_string()]),
+        ..offline()
+    };
+    let (_n, at) = refusing();
+    let invite = Invite {
+        key: ph2d_board_net::InviteKey::random(),
+        addrs: vec![at],
+    };
+    let t = Instant::now();
+    let r = join(
+        &invite,
+        &cfg,
+        Duration::from_secs(30),
+        Liveness::default(),
+        waker(),
+    );
+    assert_eq!(
+        r.err(),
+        Some(JoinError::Unreachable(std::io::ErrorKind::ConnectionRefused))
+    );
+    eprintln!("DHT calada: desistiu em {:?}", t.elapsed());
+    assert!(t.elapsed() < Duration::from_secs(20), "{:?}", t.elapsed());
+}
+
 /// Duas casas, cada uma atrás do seu NAT (mapeamento independente, filtro por endereço): o convite só
 /// leva o endereço de FORA do anfitrião. Sem ponto de encontro o anfitrião nunca sabe para onde furar.
 fn two_homes(with_dht: bool) -> Result<(), JoinError> {

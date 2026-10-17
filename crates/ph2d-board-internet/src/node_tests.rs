@@ -142,16 +142,57 @@ fn o_tempo_de_leitura_esgota_como_no_tcp() {
     assert!(t.elapsed() >= Duration::from_millis(140));
 }
 
+/// Auditoria A2 — `a` não abriu entrada e recusa: com o único caminho caído, a tentativa diz «recusado»
+/// logo, e não ao fim do prazo (antes: `TimedOut` aos 30 s do link).
 #[test]
-fn ninguem_a_escuta_e_a_tentativa_esgota() {
+fn ninguem_a_escuta_e_a_tentativa_cai_logo() {
     let (a, b) = (node(false), node(false));
-    // `a` não abriu entrada: recusa.
+    let t = Instant::now();
+    let e = b.dial(&[loop4(&a)]).wait(T).err().unwrap();
+    assert_eq!(e.kind(), ErrorKind::ConnectionRefused);
+    assert!(t.elapsed() < Duration::from_secs(2), "{:?}", t.elapsed());
+}
+
+/// Nenhum caminho que este nó alcance (só IPv6, sem o socket IPv6): cai na hora.
+#[test]
+fn sem_nenhum_caminho_possivel_cai_na_hora() {
+    let b = node(false);
+    let t = Instant::now();
     let e = b
-        .dial(&[loop4(&a)])
-        .wait(Duration::from_millis(1500))
+        .dial(&["[2001:db8::7]:4000".parse().unwrap()])
+        .wait(T)
         .err()
         .unwrap();
-    assert_eq!(e.kind(), ErrorKind::TimedOut);
+    assert_eq!(e.kind(), ErrorKind::HostUnreachable);
+    assert!(t.elapsed() < Duration::from_millis(500), "{:?}", t.elapsed());
+}
+
+/// Aberta, a tentativa com o caminho caído ESPERA (o ponto de encontro pode trazer outros); um
+/// endereço que responde, juntado depois, ganha. Fechada a lista sem nenhum vivo, desiste.
+#[test]
+fn aberta_a_tentativa_espera_os_enderecos_que_ainda_vem() {
+    let (dead, host, b) = (node(false), node(false), node(false));
+    let door = host.door();
+    let acc = thread::spawn(move || door.accept().map(|(w, _)| w));
+    let d = b.dial_open(&[loop4(&dead)]);
+    assert_eq!(
+        d.wait(Duration::from_millis(800)).err().unwrap().kind(),
+        ErrorKind::TimedOut,
+        "desistiu com a lista ainda aberta"
+    );
+    d.adder().add(&[loop4(&host)]);
+    d.adder().done();
+    let (mut w, peer) = d.wait(T).expect("o endereço juntado depois ganha");
+    assert_eq!(peer, loop4(&host));
+    w.write_all(b"!").unwrap();
+    assert!(acc.join().unwrap().is_ok());
+
+    let d = b.dial_open(&[loop4(&dead)]);
+    let t = Instant::now();
+    d.adder().done();
+    let e = d.wait(T).err().unwrap();
+    assert_eq!(e.kind(), ErrorKind::ConnectionRefused);
+    assert!(t.elapsed() < Duration::from_secs(2), "{:?}", t.elapsed());
 }
 
 #[test]

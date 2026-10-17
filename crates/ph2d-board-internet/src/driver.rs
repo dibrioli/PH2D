@@ -16,8 +16,9 @@ use std::time::{Duration, Instant};
 use bytes::{Buf, Bytes, BytesMut};
 use ph2d_board_net::Wire;
 use quinn_proto::{
-    ClientConfig, Connection, ConnectionHandle, DatagramEvent, Dir, Endpoint, EndpointConfig,
-    Event, ReadError, StreamEvent, StreamId, TransportConfig, VarInt, WriteError,
+    ClientConfig, Connection, ConnectionError, ConnectionHandle, DatagramEvent, Dir, Endpoint,
+    EndpointConfig, Event, ReadError, StreamEvent, StreamId, TransportConfig, TransportErrorCode,
+    VarInt, WriteError,
 };
 
 use crate::node::{Inner, Msg, decode_via, encode_via};
@@ -45,16 +46,17 @@ struct Net {
 }
 
 impl Net {
-    fn send(&self, to: SocketAddr, payload: &[u8]) {
+    /// O erro só interessa a quem está a abrir um caminho ([`unroutable`]); o resto perde-se como um
+    /// datagrama perdido.
+    fn send(&self, to: SocketAddr, payload: &[u8]) -> io::Result<()> {
         if let Some(via) = self.via {
-            let _ = self.s4.send_to(&encode_via(to, payload), via);
-            return;
+            return self.s4.send_to(&encode_via(to, payload), via).map(drop);
         }
-        let _ = match (to, &self.s6) {
-            (SocketAddr::V4(_), _) => self.s4.send_to(payload, to),
-            (SocketAddr::V6(_), Some(s6)) => s6.send_to(payload, to),
-            (SocketAddr::V6(_), None) => return,
-        };
+        match (to, &self.s6) {
+            (SocketAddr::V4(_), _) => self.s4.send_to(payload, to).map(drop),
+            (SocketAddr::V6(_), Some(s6)) => s6.send_to(payload, to).map(drop),
+            (SocketAddr::V6(_), None) => Err(ErrorKind::HostUnreachable.into()),
+        }
     }
 
     fn reaches(&self, to: SocketAddr) -> bool {
@@ -106,6 +108,34 @@ struct Dial {
     conns: Vec<ConnectionHandle>,
     tried: Vec<SocketAddr>,
     winner: Option<ConnectionHandle>,
+    /// Mais endereços ainda podem chegar: com todos os caminhos caídos, espera em vez de desistir.
+    open: bool,
+    /// Porque caiu o último caminho.
+    why: Option<ErrorKind>,
+}
+
+/// O pacote nem sai desta máquina para lá (sem rota, sem rede, endereço local que já não existe): o
+/// caminho está morto agora, não daqui a um prazo.
+fn unroutable(k: ErrorKind) -> bool {
+    matches!(
+        k,
+        ErrorKind::NetworkUnreachable
+            | ErrorKind::HostUnreachable
+            | ErrorKind::NetworkDown
+            | ErrorKind::AddrNotAvailable
+    )
+}
+
+/// Porque uma ligação a meio caminho caiu, na língua do `io` (o `room_is_gone` do app lê a recusa).
+fn lost_kind(e: &ConnectionError) -> ErrorKind {
+    match e {
+        ConnectionError::ConnectionClosed(c) if c.error_code == TransportErrorCode::CONNECTION_REFUSED => {
+            ErrorKind::ConnectionRefused
+        }
+        ConnectionError::TimedOut => ErrorKind::TimedOut,
+        ConnectionError::Reset => ErrorKind::ConnectionReset,
+        _ => ErrorKind::ConnectionAborted,
+    }
 }
 
 pub(crate) struct Driver {
@@ -212,7 +242,18 @@ impl Driver {
     fn on(&mut self, m: Msg) {
         match m {
             Msg::Datagram(from, data) => self.datagram(from, data),
-            Msg::Dial { id, addrs, reply } => self.dial(id, &addrs, reply),
+            Msg::Dial {
+                id,
+                addrs,
+                reply,
+                open,
+            } => self.dial(id, &addrs, reply, open),
+            Msg::Settled(id) => {
+                if let Some(d) = self.dials.get_mut(&id) {
+                    d.open = false;
+                }
+                self.give_up_if_lost(id);
+            }
             Msg::Cancel(id) => self.cancel(id),
             Msg::Listen(tx) => {
                 if self.stopping.is_none() {
@@ -236,7 +277,7 @@ impl Driver {
             }
             Msg::Stun(to, id, reply) => {
                 self.stuns.insert(id, (reply, Instant::now()));
-                self.net.send(to, &stun::request(&id));
+                let _ = self.net.send(to, &stun::request(&id));
             }
             Msg::Stop => self.begin_stop(),
         }
@@ -290,7 +331,7 @@ impl Driver {
                 self.buf.clear();
                 if self.listen.is_none() {
                     let t = self.ep.refuse(inc, &mut self.buf);
-                    self.net.send(t.destination, &self.buf[..t.size]);
+                    let _ = self.net.send(t.destination, &self.buf[..t.size]);
                     return;
                 }
                 match self.ep.accept(inc, now, &mut self.buf, None) {
@@ -299,46 +340,94 @@ impl Driver {
                     }
                     Err(e) => {
                         if let Some(t) = e.response {
-                            self.net.send(t.destination, &self.buf[..t.size]);
+                            let _ = self.net.send(t.destination, &self.buf[..t.size]);
                         }
                     }
                 }
             }
-            Some(DatagramEvent::Response(t)) => self.net.send(t.destination, &self.buf[..t.size]),
+            Some(DatagramEvent::Response(t)) => {
+                let _ = self.net.send(t.destination, &self.buf[..t.size]);
+            }
             None => {}
         }
     }
 
-    fn dial(&mut self, id: u64, addrs: &[SocketAddr], reply: Option<Sender<io::Result<Accepted>>>) {
+    fn dial(
+        &mut self,
+        id: u64,
+        addrs: &[SocketAddr],
+        reply: Option<Sender<io::Result<Accepted>>>,
+        open: bool,
+    ) {
         if self.stopping.is_some() {
             if let Some(r) = reply {
                 let _ = r.send(Err(ErrorKind::BrokenPipe.into()));
             }
             return;
         }
-        // Endereços que chegam depois de a tentativa acabar (o ponto de encontro é lento) não a
-        // ressuscitam.
-        if reply.is_none() && !self.dials.contains_key(&id) {
+        // Endereços que chegam depois de a tentativa acabar (o ponto de encontro é lento; ela ganhou,
+        // foi cancelada ou desistiu) não a ressuscitam.
+        let first = reply.is_some();
+        if !first && self.dials.get(&id).is_none_or(|d| d.reply.is_none()) {
             return;
         }
         let now = Instant::now();
         let d = self.dials.entry(id).or_default();
-        if reply.is_some() {
+        if first {
             d.reply = reply;
-        }
-        if d.winner.is_some() {
-            return;
+            d.open = open;
         }
         for a in addrs.iter().copied().map(canonical) {
-            if d.tried.contains(&a) || !self.net.reaches(a) {
+            if d.tried.contains(&a) {
                 continue;
             }
             d.tried.push(a);
-            if let Ok((h, q)) = self.ep.connect(now, self.client.clone(), a, tls::NAME) {
-                self.conns.insert(h, Conn::new(q, Some(id)));
-                d.conns.push(h);
+            if !self.net.reaches(a) {
+                d.why = Some(ErrorKind::HostUnreachable);
+                continue;
+            }
+            match self.ep.connect(now, self.client.clone(), a, tls::NAME) {
+                Ok((h, q)) => {
+                    self.conns.insert(h, Conn::new(q, Some(id)));
+                    d.conns.push(h);
+                }
+                Err(_) => d.why = Some(ErrorKind::AddrNotAvailable),
             }
         }
+        self.give_up_if_lost(id);
+    }
+
+    /// ⭐ Auditoria A2 — todos os caminhos da tentativa caíram e não vêm mais endereços: o convidado
+    /// sabe JÁ (com o porquê do último), em vez de esperar o prazo inteiro.
+    fn give_up_if_lost(&mut self, id: u64) {
+        let Some(d) = self.dials.get_mut(&id) else {
+            return;
+        };
+        if d.open || d.winner.is_some() {
+            return;
+        }
+        let alive = d
+            .conns
+            .iter()
+            .any(|h| self.conns.get(h).is_some_and(|c| !c.closed));
+        if alive {
+            return;
+        }
+        if let Some(r) = d.reply.take() {
+            let why = d.why.unwrap_or(ErrorKind::HostUnreachable);
+            let _ = r.send(Err(why.into()));
+        }
+    }
+
+    /// Um caminho da tentativa `dial` caiu por `why`.
+    fn path_lost(&mut self, dial: Option<u64>, why: ErrorKind) {
+        let Some(id) = dial else {
+            return;
+        };
+        if let Some(d) = self.dials.get_mut(&id) {
+            d.why = Some(why);
+        }
+        self.give_up_if_lost(id);
     }
 
     fn cancel(&mut self, id: u64) {
@@ -361,7 +450,7 @@ impl Driver {
         if self.next_punch.is_some_and(|t| t <= now) {
             self.punches.retain(|p| p.1 > now);
             for (a, _) in &self.punches {
-                self.net.send(*a, PUNCH);
+                let _ = self.net.send(*a, PUNCH);
             }
             self.next_punch = (!self.punches.is_empty()).then(|| now + PUNCH_EVERY);
         }
@@ -393,6 +482,7 @@ impl Driver {
             self.event(h, e, now, node);
         }
         self.flush(h);
+        let mut dead = None;
         if let Some(c) = self.conns.get_mut(&h) {
             let peer_done = c.stream.as_ref().is_some_and(|(_, p)| p.lock().eof);
             if c.closing.is_some() && c.acked && peer_done {
@@ -403,8 +493,21 @@ impl Driver {
                 let Some(t) = c.q.poll_transmit(now, 1, &mut self.buf) else {
                     break;
                 };
-                self.net.send(t.destination, &self.buf[..t.size]);
+                let sent = self.net.send(t.destination, &self.buf[..t.size]);
+                // Um caminho do convidado ainda por abrir cujo pacote nem sai desta máquina morreu.
+                if let Err(e) = sent
+                    && c.dial.is_some()
+                    && c.stream.is_none()
+                    && !c.closed
+                    && unroutable(e.kind())
+                {
+                    c.close(now);
+                    dead = Some((c.dial, e.kind()));
+                }
             }
+        }
+        if let Some((dial, why)) = dead {
+            self.path_lost(dial, why);
         }
         if drained && let Some((_, p)) = self.conns.remove(&h).and_then(|c| c.stream) {
             p.lose();
@@ -414,12 +517,14 @@ impl Driver {
     fn event(&mut self, h: ConnectionHandle, e: Event, now: Instant, node: &Weak<Inner>) {
         match e {
             Event::Connected => self.connected(h, now, node),
-            Event::ConnectionLost { .. } => {
+            Event::ConnectionLost { reason } => {
                 if let Some(c) = self.conns.get_mut(&h) {
                     c.closed = true;
                     if let Some((_, p)) = &c.stream {
                         p.lose();
                     }
+                    let dial = c.dial;
+                    self.path_lost(dial, lost_kind(&reason));
                 }
             }
             Event::Stream(StreamEvent::Opened { dir: Dir::Bi }) => self.accept_streams(h, node),

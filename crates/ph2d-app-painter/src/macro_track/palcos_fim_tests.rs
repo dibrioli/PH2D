@@ -6,6 +6,9 @@ use super::*;
 
 const LADO: u32 = 64;
 
+/// O leitor da imagem de um sprite que a ranhura mostra.
+type LeSprite<'a> = dyn FnMut(u64, &mut Placa) -> Option<(Vec<u8>, u32, u32)> + 'a;
+
 fn premul(rgba: &[u8]) -> Vec<u8> {
     let mut v = rgba.to_vec();
     ph2d_render::premul::premultiply_rgba8(&mut v);
@@ -15,8 +18,10 @@ fn premul(rgba: &[u8]) -> Vec<u8> {
 /// A lei, escrita à parte: a atual onde difere do fim, senão o palco (as três premultiplicadas).
 fn esperado(palco: &[u8], fim: &[u8], atual: &[u8]) -> Vec<u8> {
     palco
-        .chunks_exact(4)
-        .zip(fim.chunks_exact(4).zip(atual.chunks_exact(4)))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(fim.as_chunks::<4>().0.iter().zip(atual.as_chunks::<4>().0))
         .flat_map(|(p, (f, a))| if f == a { p } else { a }.to_vec())
         .collect()
 }
@@ -103,12 +108,7 @@ impl Clipe {
     }
 
     /// Repete o quadro em `t` até o fio do fim acabar.
-    fn espera_o_fim(
-        &mut self,
-        t: f64,
-        painter: Option<&PainterTool>,
-        le: &mut dyn FnMut(u64, &mut Placa) -> Option<(Vec<u8>, u32, u32)>,
-    ) {
+    fn espera_o_fim(&mut self, t: f64, painter: Option<&PainterTool>, le: &mut LeSprite<'_>) {
         let t0 = std::time::Instant::now();
         while !self.o_fim_chegou() {
             assert!(t0.elapsed().as_secs() < 120, "o fim não chegou em 120 s");
@@ -186,8 +186,7 @@ impl Clipe {
     /// A versão e a imagem do fim do palco (o fio já acabou).
     fn o_fim(&mut self) -> (u64, std::sync::Arc<super::super::fim::Imagem>) {
         let Some(Lido {
-            palco: Ok(Some(p)),
-            ..
+            palco: Ok(Some(p)), ..
         }) = self.palcos.lidos.get_mut(&self.e.to_bits())
         else {
             panic!("o palco existe");
@@ -218,7 +217,10 @@ fn o_fim_e_a_trilha_crua_e_editar_uma_etapa_nao_o_recalcula() {
         &ph2d_macro::codec::read(&editada).expect("lê-se").tracks[0],
     )
     .expect("toca");
-    assert_ne!(fim_editado, fim, "controlo: a etapa editada muda o fim do clipe");
+    assert_ne!(
+        fim_editado, fim,
+        "controlo: a etapa editada muda o fim do clipe"
+    );
     let atual = pintada_depois(&fim);
     let (fim_p, atual_p) = (premul(&fim), premul(&atual));
     let mut le = |_: u64, _: &mut Placa| Some((atual.clone(), LADO, LADO));
@@ -240,7 +242,10 @@ fn o_fim_e_a_trilha_crua_e_editar_uma_etapa_nao_o_recalcula() {
     );
     assert!(c.o_fim_chegou(), "editar uma etapa recomeçou o fio do fim");
     let (versao_depois, img_depois) = c.o_fim();
-    assert_eq!(versao_depois, versao, "editar uma etapa mudou a versão do fim");
+    assert_eq!(
+        versao_depois, versao,
+        "editar uma etapa mudou a versão do fim"
+    );
     assert!(
         std::sync::Arc::ptr_eq(&img_depois, &img),
         "editar uma etapa recalculou a imagem do fim"

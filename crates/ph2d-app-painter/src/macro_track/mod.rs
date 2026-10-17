@@ -275,13 +275,16 @@ fn mistura_na_caixa(out: &mut [u8], fim: &[u8], atual: &[u8], largura: u32, c: C
 
 type Caixa = (u32, u32, u32, u32);
 
+/// A imagem do fim, a atual, e a chave da mistura (versão da atual, versão do fim).
+type Mistura = (Arc<fim::Imagem>, Arc<fim::Imagem>, (u64, u64));
+
 /// A imagem do fim e a atual de `p`, quando as duas existem com o tamanho do espelho, e a chave da
 /// mistura. Lê a atual quando a fonte muda (o Painter ligado mudou, ou o palco acordou).
 fn mistura_de<R: ?Sized>(
     p: &mut PalcoDaPintura,
     atuais: &mut Atuais<'_, R>,
     ranhuras: &mut R,
-) -> Option<(Arc<fim::Imagem>, Arc<fim::Imagem>, (u64, u64))> {
+) -> Option<Mistura> {
     let fim = Arc::clone(p.fim.colhe()?);
     let sprite = p.sprite?;
     let fonte = match atuais
@@ -311,7 +314,7 @@ fn mistura_de<R: ?Sized>(
     let atual = Arc::clone(p.atual.as_ref()?.img.as_ref()?);
     let dims = p.tamanho_do_espelho?;
     ((fim.w, fim.h) == dims && (atual.w, atual.h) == dims && fim.rgba.len() == atual.rgba.len())
-        .then(|| (fim, atual, (p.versao_da_atual, p.fim.versao)))
+        .then_some((fim, atual, (p.versao_da_atual, p.fim.versao)))
 }
 
 impl PalcosDoPainter {

@@ -32,14 +32,14 @@
 //! # A ordem das camadas
 //!
 //! ⚠️ **De baixo para cima, na ordem em que o «over» as compôs.** A fusão itera as fontes e põe
-//! cada uma *sobre* o acumulado, por isso a última fica em cima; o [`PainterTool::add_raster_layer_with_pixels`]
+//! cada uma *sobre* o acumulado, por isso a última fica em cima; o
+//! [`ph2d_tool_painter::PainterTool::add_raster_layer_with_pixels`]
 //! insere no topo, por isso adicioná-las por essa mesma ordem reproduz a pilha. Trocar a ordem aqui
 //! daria um documento que compõe diferente do que a sprite mostra — e ninguém saberia qual dos dois
 //! está certo.
 
 use ph2d_editor_core::{Toast, ToastQueue, ToolRegistry};
 use ph2d_i18n::{tr, tr_with};
-use ph2d_tool_painter::PainterTool;
 
 use crate::hero_intents::MergedLayers;
 
@@ -95,6 +95,7 @@ pub(crate) fn install(tools: &mut ToolRegistry, doc: &MergedLayers, toasts: &mut
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_tool_painter::PainterTool;
 
     fn doc(layers: Vec<(&str, Vec<u8>)>, w: u32, h: u32) -> MergedLayers {
         MergedLayers {

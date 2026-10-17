@@ -207,7 +207,7 @@ fn pular_a_pincelada_e_esperar_nao_cumpre_nenhuma() {
             if r >= FRACAO_DA_GRAVADA_QUE_CUMPRE {
                 return (Some((k, idade(&a), r)), None);
             }
-            if q % 32 == 0 && e.por_cumprir(&a) != esperada {
+            if q.is_multiple_of(32) && e.por_cumprir(&a) != esperada {
                 return (None, Some((k, idade(&a), esperada, e.por_cumprir(&a))));
             }
             quadro(&mut a);

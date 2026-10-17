@@ -285,11 +285,13 @@ fn sonda_o_custo_da_mistura() {
     let fim = ph2d_tool_painter::macro_track::etapas::tela_no_fim(&lido.tracks[0]).expect("toca");
     let mut atual = fim.clone();
     for px in atual
-        .chunks_exact_mut(4)
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
         .skip(300 * LADO as usize)
         .take(80 * LADO as usize)
     {
-        px.copy_from_slice(&[200, 30, 40, 255]);
+        *px = [200, 30, 40, 255];
     }
     struct V {
         nome: &'static str,
@@ -309,8 +311,10 @@ fn sonda_o_custo_da_mistura() {
             },
             MacroTempo { segundos: INICIO_S },
         ));
-        let mut palcos = PalcosDoPainter::default();
-        palcos.segura_o_fim = segura;
+        let palcos = PalcosDoPainter {
+            segura_o_fim: segura,
+            ..Default::default()
+        };
         V {
             nome,
             sim,

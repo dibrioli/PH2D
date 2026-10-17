@@ -510,6 +510,51 @@ fn a_pasted_link_keeps_its_case_and_joins_by_link() {
     assert_eq!(t.asked(), want, "o Enter também");
 }
 
+/// ⭐ O HUD de estatísticas é centrado na JANELA; numa janela estreita passava por cima do canto do
+/// quadro (foto da cena 22 a 1366×768 com os painéis laterais: o «Live» meio tapado, a fila da
+/// navegação inteira por baixo). A fila sobe por cima dele e o «Live» abre o painel pelo clique da
+/// shell; na janela larga, a fila fica onde estava.
+#[test]
+fn the_corner_rises_above_the_stats_hud_in_a_narrow_window() {
+    let live = button_node(NavButton::Live);
+    let hud = |t: &mut T| {
+        let vp = Rect::new(0.0, 0.0, t.vp_w, t.vp_h);
+        let layout = crate::screens::hero::frame_layout::frame_layout(&mut t.hero, vp, &mut t.ts);
+        crate::screens::hero::bottom_hud::bottom_hud_rect(&layout, &mut t.ts, t.hero.stats)
+    };
+    let rows = |t: &T| {
+        crate::screens::hero::board_nav::button_rects(crate::screens::hero::board_nav::corner(
+            &t.hero,
+            t.hero.last_canvas,
+        ))
+    };
+    let mut t = T::new();
+    let wide = rows(&t);
+    assert_eq!(
+        wide,
+        crate::screens::hero::board_nav::button_rects(t.hero.last_canvas),
+        "na janela larga a fila mudou de sítio"
+    );
+    t.vp_w = 640.0; // LITERAL-PX-OK: uma janela mais estreita que o HUD (≈1 000 px de texto)
+    t.paint();
+    t.paint();
+    let h = hud(&mut t);
+    let under = |r: &Rect| r.x < h.x + h.w && h.x < r.x + r.w && r.y + r.h > h.y;
+    assert!(
+        crate::screens::hero::board_nav::button_rects(t.hero.last_canvas)
+            .iter()
+            .any(|(_, r)| under(r)),
+        "o controlo: sem a cura, a fila cai debaixo do HUD"
+    );
+    for (b, r) in rows(&t) {
+        assert!(!under(&r), "{b:?} {r:?} está debaixo do HUD {h:?}");
+    }
+    t.open_live();
+    assert!(live_board::is_open(&t.hero), "o «Live» não abriu");
+    let (_, y) = t.find(live).expect("pintado");
+    assert!(y < h.y, "o «Live» pinta-se em {y}, o HUD começa em {}", h.y);
+}
+
 /// Os glifos pintados nesta imagem (todos os textos).
 fn glyphs(t: &mut T) -> usize {
     runs(&t.scene()).iter().map(|r| r.1).sum()

@@ -82,6 +82,35 @@ pub fn paint_bottom_hud(
     theme: Theme,
     stats: BottomHudStats,
 ) {
+    let bar = bar(stats);
+    let rect = rect_of(&bar, layout, text_system);
+    paint_status_bar(&bar, rect, scene, text_system, theme);
+}
+
+/// Onde o HUD se pinta: centrado na JANELA, da largura que o texto pede (o canto do quadro desvia-se
+/// dele quando a área do quadro é estreita).
+#[must_use]
+pub fn bottom_hud_rect(
+    layout: &HeroLayout,
+    text_system: &mut TextSystem,
+    stats: BottomHudStats,
+) -> Rect {
+    rect_of(&bar(stats), layout, text_system)
+}
+
+fn rect_of(bar: &StatusBar, layout: &HeroLayout, text_system: &mut TextSystem) -> Rect {
+    let pref_w = bar
+        .preferred_width(text_system)
+        .min(layout.viewport.w - 40.0); // LITERAL-PX-OK: HUD viewport margin (chrome-specific)
+    Rect::new(
+        layout.viewport.x + (layout.viewport.w - pref_w) * 0.5,
+        layout.bottom_hud.y,
+        pref_w,
+        layout.bottom_hud.h,
+    )
+}
+
+fn bar(stats: BottomHudStats) -> StatusBar {
     // Format `entity_count` with a `K` suffix above 999 so the
     // segment width stays predictable when the scene scales up.
     let sprite_label = if stats.sprite_count >= 1_000 {
@@ -97,7 +126,7 @@ pub fn paint_bottom_hud(
     } else {
         ph2d_i18n::tr_with("chrome.hud.draws", &[("n", &stats.draws)])
     };
-    let bar = StatusBar::new(
+    StatusBar::new(
         NodeId(300),
         tr("chrome.hud.editor_statistics"),
         vec![
@@ -140,17 +169,7 @@ pub fn paint_bottom_hud(
             StatusSegment::new("100%"),
             StatusSegment::new(tr("chrome.hud.scene_name")).tone(SegmentTone::Muted),
         ],
-    );
-    let pref_w = bar
-        .preferred_width(text_system)
-        .min(layout.viewport.w - 40.0); // LITERAL-PX-OK: HUD viewport margin (chrome-specific)
-    let rect = Rect::new(
-        layout.viewport.x + (layout.viewport.w - pref_w) * 0.5,
-        layout.bottom_hud.y,
-        pref_w,
-        layout.bottom_hud.h,
-    );
-    paint_status_bar(&bar, rect, scene, text_system, theme);
+    )
 }
 
 /// ⑤ **O rodapé fala do módulo?** — a dica e as leituras, só no layout que o módulo É (o *Vetor*,

@@ -100,6 +100,7 @@ fn rect_bits(r: Rect) -> [u32; 4] {
 }
 
 pub(super) fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, theme: Theme) {
+    let area = super::corner(hero, area);
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -153,7 +154,7 @@ pub(super) fn down(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     if !hero.documents.live.nav.minimap_open {
         return false;
     }
-    let r = minimap_rect(hero.last_canvas);
+    let r = minimap_rect(super::corner(hero, hero.last_canvas));
     if !(x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h) {
         return false;
     }

@@ -81,12 +81,13 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     let step = btn() + ph2d_tokens::control_gap_px();
     // O chão da coluna: acima dos botões do canto e do minimapa aberto (a lista do histórico passava
     // por baixo deles — foto a9 da cena 14).
-    let mut floor = super::super::button_rects(area)
+    let corner = super::super::corner(hero, area);
+    let mut floor = super::super::button_rects(corner)
         .iter()
         .map(|(_, r)| r.y)
         .fold(area.y + area.h, f32::min);
     if hero.documents.live.nav.minimap_open {
-        floor = floor.min(super::super::minimap_rect(area).y);
+        floor = floor.min(super::super::minimap_rect(corner).y);
     }
     // Um painel de `fit` filas da lista tem `fit + 3` filas e a moldura do cartão (`2·pad − vão`).
     // As listas paginam até UMA fila; o que nem assim cabe (uma janela baixa) rola, abaixo.

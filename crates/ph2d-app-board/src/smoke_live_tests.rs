@@ -523,6 +523,60 @@ fn a_guest_on_a_strict_network_hears_that_it_may_be_blocking() {
     }
 }
 
+/// 📷 A cena 22 (ADR-0187) nos estados que a foto da JANELA não alcança (pedem um clique): o anfitrião
+/// com o link pronto numa rede de NAT simétrico, e quem entra por link — à procura (um endereço que
+/// não responde: a espera inteira) com a rede dele a bloquear, e a sala fechada com a frase do que
+/// fazer. Corre à mão e LÊ-SE cada foto:
+///
+/// ```text
+/// PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-board --lib fotos_dos_estados_da_cena_22 -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "fotografias: correm-se à mão com a placa"]
+fn fotos_dos_estados_da_cena_22() {
+    use crate::live::{fake_nat_for_tests, internet_local_for_tests};
+    use crate::smoke::shots::Shots;
+    use ph2d_board_internet::Mapping;
+    use ph2d_editor_core::documents::live::LiveInternet;
+    let mut cam = Shots::new("ph2d_w22c_fotos");
+    let fresh = || {
+        reset_for_tests();
+        internet_local_for_tests();
+        fake_firewall_for_tests(Probe::default(), vec![]);
+        fake_nat_for_tests(Mapping::Dependent);
+    };
+    fresh();
+    let mut ana = hero("Ana");
+    scene_internet(&mut ana);
+    assert!(until(&mut ana, 10, |h| matches!(
+        h.documents.live_view().internet,
+        LiveInternet::Ready { .. }
+    )));
+    cam.shot(&mut ana, "a0_link_pronto_rede_estrita");
+    drop(ana);
+
+    fresh();
+    let mut bia = hero("Bia");
+    super::super::scene_two_boards(&mut bia);
+    live_board::toggle(&mut bia);
+    let silent = ph2d_board_net::Invite {
+        key: ph2d_board_net::InviteKey::random(),
+        addrs: vec![SocketAddr::from(([192, 0, 2, 1], 9))],
+    };
+    bia.documents.ask_live(LiveRequest::JoinLink {
+        link: silent.link(),
+    });
+    assert!(until(&mut bia, 5, |g| g.documents.live_view().link.strict_nat));
+    cam.shot(&mut bia, "b0_a_procurar_na_internet");
+    bia.documents.ask_live(LiveRequest::Leave);
+    service(&mut bia);
+
+    let (_n, closed) = closed_room_link();
+    bia.documents.ask_live(LiveRequest::JoinLink { link: closed });
+    assert!(until(&mut bia, 10, |g| g.documents.live_view().link.failed.is_some()));
+    cam.shot(&mut bia, "b1_a_sala_fechou");
+}
+
 #[test]
 fn a_link_that_is_not_ours_is_refused_with_its_sentence() {
     reset_for_tests();

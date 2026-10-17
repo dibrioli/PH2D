@@ -17,6 +17,8 @@ struct T {
     clock: u128,
     /// A altura da janela (a de nascença; os testes da janela baixa encolhem-na).
     vp_h: f32,
+    /// A largura da janela (os testes da janela estreita encolhem-na).
+    vp_w: f32,
 }
 
 fn ptr(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
@@ -39,6 +41,7 @@ impl T {
             ts: TextSystem::without_system_fonts(),
             clock: 1_000_000_000_000,
             vp_h: HERO_VIEWPORT_H,
+            vp_w: HERO_VIEWPORT_W,
         };
         t.paint();
         t.hero.apply_event(WidgetEvent::Click(ids::DOC_TAB_NEW));
@@ -48,7 +51,7 @@ impl T {
 
     fn paint(&mut self) {
         let mut scene = VectorScene::new();
-        let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, self.vp_h);
+        let vp = Rect::new(0.0, 0.0, self.vp_w, self.vp_h);
         paint_hero_screen(&mut self.hero, vp, &mut scene, &mut self.ts);
     }
 

@@ -274,6 +274,12 @@ pub fn paint_hero_screen(
         }
         // W19 — no NOSSO ecrã inteiro o vídeo tapa a área: as barras do quadro nem se pintam (nem se agarram).
         if !super::board_video::fullscreen(hero) {
+            // O canto do quadro sobe por cima do HUD de baixo quando ele o tapa (foto da cena 22 a
+            // 1366×768: o «Live» meio tapado, a fila da navegação inteira por baixo).
+            let hud = (hero.view.stats_visible
+                && super::bottom_hud::module_hint(&hero.store).is_none())
+            .then(|| super::bottom_hud::bottom_hud_rect(&layout, text_system, hero.stats));
+            super::board_nav::clear_of(hero, r, hud);
             super::board_nav::paint(hero, r, scene, text_system);
             super::board_bar::paint(hero, r, scene, text_system);
         }

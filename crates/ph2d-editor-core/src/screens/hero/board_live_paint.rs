@@ -86,7 +86,7 @@ fn paint_avatars(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts:
     if lv.role == LiveRole::Off || lv.peers.is_empty() {
         return;
     }
-    let nav = super::super::super::button_rects(area);
+    let nav = super::super::super::button_rects(super::super::super::corner(hero, area));
     let Some(live) = nav
         .iter()
         .find(|(b, _)| *b == super::super::super::NavButton::Live)
@@ -358,16 +358,16 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
             }
             out.extend(FIELDS.iter().map(|(k, id)| Row::Field(k, *id)));
             out.push(button(LiveButton::Join, "board.live.join", true));
-            // ADR-0187 — porque a última entrada por link falhou, e o que fazer.
-            if let Some(why) = &lv.link.failed {
-                out.push(Row::Text(why.clone(), TypeToken::Xs, ColorToken::Text1));
-            }
             out.push(text(
                 "board.live.link_hint",
                 TypeToken::Xs,
                 ColorToken::Text3,
             ));
             out.push(button(LiveButton::JoinLink, "board.live.join_link", false));
+            // ADR-0187 — porque a última entrada por link falhou, e o que fazer (debaixo do botão dela).
+            if let Some(why) = &lv.link.failed {
+                out.push(Row::Text(why.clone(), TypeToken::Xs, ColorToken::Text1));
+            }
         }
         // ADR-0187 — por link, a espera é a da internet (até `s` segundos), não a da rede local.
         LiveRole::Joining => match lv.link.searching {
@@ -448,7 +448,8 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
     let theme = hero.theme;
     ensure_fields(&mut hero.store);
     let (x, y0, w) = super::super::panels::column(hero, area);
-    let room = (super::super::panels::bottom(area) - y0).max(0.0);
+    let corner = super::super::super::corner(hero, area);
+    let room = (super::super::panels::bottom(corner) - y0).max(0.0);
     let (s, pad, g) = (btn(), Spacing::Sm.px(), ph2d_tokens::control_gap_px());
     let inner = w - 2.0 * pad;
     let all = rows(hero);

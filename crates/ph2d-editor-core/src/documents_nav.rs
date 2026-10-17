@@ -30,6 +30,9 @@ pub(crate) struct Nav {
     pub(crate) fit_pending: bool,
     /// O que enquadrar em vez do quadro inteiro (uma cena que reserva a margem dos painéis).
     pub(crate) fit_box: Option<[f64; 4]>,
+    /// O chão da fila do canto quando o HUD de baixo a tapa (janela estreita com os painéis laterais
+    /// abertos), escrito a cada pintura: a fila e o que se apoia nela sobem por cima dele.
+    pub(crate) floor: Option<f32>,
 }
 
 /// O mundo `extent` encaixado (com a proporção dele) no rectângulo `r` do ecrã.

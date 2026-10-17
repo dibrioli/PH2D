@@ -185,6 +185,29 @@ pub fn button_rects(area: Rect) -> Vec<(NavButton, Rect)> {
     out
 }
 
+/// Guarda o chão da fila do canto: o topo do HUD de baixo quando ele tapa um botão da fila, senão
+/// nenhum (a área inteira). Chamado a cada pintura, antes de pintar o canto.
+pub(crate) fn clear_of(hero: &mut HeroScreen, area: Rect, hud: Option<Rect>) {
+    let hits = |h: &Rect| {
+        button_rects(area)
+            .iter()
+            .any(|(_, r)| r.x < h.x + h.w && h.x < r.x + r.w && r.y < h.y + h.h && h.y < r.y + r.h)
+    };
+    hero.documents.live.nav.floor = hud
+        .filter(hits)
+        .map(|h| h.y - ph2d_tokens::control_gap_px());
+}
+
+/// A área do canto: a do quadro sem a faixa do HUD que tapava a fila ([`clear_of`]). A fila, o
+/// minimapa, os avatares e o fundo dos painéis medem-se por ela; a câmara, nunca.
+#[must_use]
+pub(crate) fn corner(hero: &HeroScreen, area: Rect) -> Rect {
+    match hero.documents.live.nav.floor {
+        Some(f) if f < area.y + area.h => Rect::new(area.x, area.y, area.w, (f - area.y).max(0.0)),
+        _ => area,
+    }
+}
+
 /// A margem do «enquadrar» (px de ecrã).
 fn fit_margin() -> f64 {
     f64::from(Spacing::Xl4.px())
@@ -396,7 +419,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     team::paint(hero, area, scene, ts);
     team::live_board::paint(hero, area, scene, ts);
     search::paint_fields(hero, area, scene, ts, theme);
-    let rects = button_rects(area);
+    let rects = button_rects(corner(hero, area));
     for part in [&rects[..TEAM.len()], &rects[TEAM.len()..]] {
         panel(
             scene,

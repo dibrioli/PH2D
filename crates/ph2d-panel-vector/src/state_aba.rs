@@ -39,7 +39,7 @@ pub(crate) fn set_aba(aba: Aba) {
 /// ⚠️ Conta o que a seleção JÁ É, nunca o que ela pode vir a ser: a Component oferece *Create* a
 /// qualquer forma e a States tem hospedeiro em qualquer forma — contá-las acenderia a marca sempre.
 #[must_use]
-pub(crate) fn seleccao_tem_interface() -> bool {
+pub fn seleccao_tem_interface() -> bool {
     let componente = super::component_state().is_some_and(|c| c.is_main || c.is_instance);
     let pele = super::widget_skin_state().is_some_and(|w| w.selected.is_some() || w.unknown);
     let estados =

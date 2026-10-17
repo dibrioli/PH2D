@@ -97,6 +97,6 @@ pub fn set_ui_states_state(state: Option<UiStatesState>) {
 
 /// O estado da seleção — `None` = não oferecer a seção.
 #[must_use]
-pub(crate) fn ui_states_state() -> Option<UiStatesState> {
+pub fn ui_states_state() -> Option<UiStatesState> {
     STATES.with(|s| s.borrow().clone())
 }

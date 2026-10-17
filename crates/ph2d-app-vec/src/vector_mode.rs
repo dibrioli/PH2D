@@ -367,6 +367,7 @@ impl ModeFamily for Family<'_> {
 /// `=22` (15/10): o Arrange e o Alinhar nas duas linhas da ④ (`vector_mode_alinhar`).
 /// `=23` (F16): a barra de controle e o painel do traço aberto (`vector_mode_controle`).
 /// `=24` (F16c): o tracejado em pares e a seta por ponta, no painel do traço (`vector_mode_tracejado`).
+/// `=25`/`=26` (F17): o botão feito interface, nas abas Drawing e Interface (`vector_mode_interface`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -388,7 +389,7 @@ pub fn smoke_step(
     static QUICK: AtomicU8 = AtomicU8::new(0);
     // A cena 14 (F8): enquadrar tudo — estágios 60–63 em `vector_mode_frame`.
     static FRAME: AtomicU8 = AtomicU8::new(0);
-    // As cenas 15..24: a família das alças — `scenes::handles_first`.
+    // As cenas 15..26: a família das alças — `scenes::handles_first`.
     static HANDLES: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
@@ -553,6 +554,14 @@ pub fn smoke_step(
         }
         s @ crate::vector_mode_tracejado::FIRST..=crate::vector_mode_tracejado::LAST => {
             if let Some(next) = crate::vector_mode_tracejado::step(s, vec, scene, hero) {
+                go(next);
+            }
+        }
+        s @ crate::vector_mode_interface::FIRST..=crate::vector_mode_interface::LAST => {
+            let interface = HANDLES.load(Ordering::Relaxed) == 12;
+            if let Some(next) =
+                crate::vector_mode_interface::step(s, vec, scene, sim, hero, interface)
+            {
                 go(next);
             }
         }

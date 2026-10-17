@@ -24,6 +24,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "22"
             | "23"
             | "24"
+            | "25"
+            | "26"
     ) {
         1
     } else {
@@ -46,6 +48,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "22"
             | "23"
             | "24"
+            | "25"
+            | "26"
     );
     let handles = match s {
         "15" => 1,
@@ -58,6 +62,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
         "22" => 8,
         "23" => 9,
         "24" => 10,
+        "25" => 11,
+        "26" => 12,
         _ => 0,
     };
     let quick = match s {
@@ -99,4 +105,77 @@ fn a_cena_24_comeca_no_tracejado_e_a_15_nas_alcas() {
         assert_eq!(handles_first(h), Some(first), "família {h}");
     }
     assert_eq!(handles_first(0), None);
+}
+
+/// ⭐ **As cenas 25 e 26 começam no mesmo 1.º estágio** (o das abas, F17) e distinguem-se pelo
+/// `handles` — a 26 é a 25 com o clique no interruptor da ①.
+#[test]
+fn as_cenas_25_e_26_comecam_nas_abas() {
+    assert_eq!((of(Some("25")).handles, of(Some("26")).handles), (11, 12));
+    for h in [11, 12] {
+        assert_eq!(
+            handles_first(h),
+            Some(crate::vector_mode_interface::FIRST),
+            "família {h}"
+        );
+    }
+}
+
+/// ⭐ **As faixas de estágios do `smoke_step` não se cruzam.** Um braço de faixa que apanha o
+/// estágio de outra cena corre-a com o passo ERRADO, e a cena pára muda (medido 16/10: a 25
+/// nascia em `246`, que é o `PICK` da 24 — a 24 tem quatro formas e acaba em `247`). As faixas
+/// literais são as do `match` do `smoke_step`; as dos módulos, os `FIRST`/`LAST` deles.
+#[test]
+fn as_faixas_de_estagios_nao_se_cruzam() {
+    let mut faixas: Vec<(u8, u8, &str)> = vec![
+        (1, 6, "base"),
+        (9, 10, "feito/seletor"),
+        (13, 16, "7"),
+        (20, 21, "9"),
+        (30, 32, "10"),
+        (40, 41, "11"),
+        (50, 56, "12/13"),
+        (60, 63, "14"),
+        (70, 76, "15"),
+        (80, 84, "16"),
+        (90, 93, "17"),
+        (100, 103, "18"),
+        (110, 120, "19"),
+        (130, 136, "20"),
+    ];
+    faixas.extend([
+        (
+            crate::vector_mode_quinas::FIRST,
+            crate::vector_mode_quinas::LAST,
+            "21",
+        ),
+        (
+            crate::vector_mode_alinhar::FIRST,
+            crate::vector_mode_alinhar::LAST,
+            "22",
+        ),
+        (
+            crate::vector_mode_controle::FIRST,
+            crate::vector_mode_controle::LAST,
+            "23",
+        ),
+        (
+            crate::vector_mode_tracejado::FIRST,
+            crate::vector_mode_tracejado::LAST,
+            "24",
+        ),
+        (
+            crate::vector_mode_interface::FIRST,
+            crate::vector_mode_interface::LAST,
+            "25/26",
+        ),
+    ]);
+    faixas.sort_unstable();
+    for w in faixas.windows(2) {
+        let ((_, fim, a), (inicio, _, b)) = (w[0], w[1]);
+        assert!(
+            inicio > fim,
+            "a faixa da cena {b} cruza a da cena {a}: {faixas:?}"
+        );
+    }
 }

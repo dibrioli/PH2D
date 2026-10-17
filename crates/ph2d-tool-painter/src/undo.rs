@@ -282,6 +282,8 @@ struct UndoEntry {
     /// **A transação** a que este passo pertence (W8 item 2b, `docs/Macros/05_plano_W8.md`): o passo
     /// global com o mesmo número desfaz-se com ele (`undo_route.rs` da shell).
     transacao: Option<u64>,
+    /// **O que este passo ligou na marca do artista** (W9, [`marca_viva`]): o desfazer desliga-o.
+    marca: Option<crate::macro_track::marca::DeltaDaMarca>,
 }
 
 impl UndoEntry {
@@ -300,6 +302,7 @@ impl UndoEntry {
             planes,
             kind,
             transacao: None,
+            marca: None,
         }
     }
 
@@ -329,7 +332,8 @@ impl UndoEntry {
     /// Os bytes que esta entrada retém: os deltas mais os pixels de bbox que o preview carrega.
     fn heap_bytes(&self) -> usize {
         let patch = |m: &ModelSnapshot| m.preview_patch.as_ref().map_or(0, |p| p.pixels.len());
-        self.planes.heap_bytes() + patch(&self.before) + patch(&self.after)
+        let marca = self.marca.as_ref().map_or(0, |d| d.heap_bytes());
+        self.planes.heap_bytes() + patch(&self.before) + patch(&self.after) + marca
     }
 }
 
@@ -355,6 +359,8 @@ pub struct UndoController {
     /// A transação do PRÓXIMO passo simples que o registo guardar (W8, a reescrita de uma etapa
     /// editada); quem a pôs limpa-a depois do registo (um passo descartado não a leva).
     pub(crate) transacao_seguinte: Option<u64>,
+    /// **A marca do artista** da imagem deste documento e o passo em curso (W9, [`marca_viva`]).
+    pub(crate) marca: marca_viva::MarcaViva,
     /// **A base de todo delta**: o endpoint adjacente ao topo, materializado — o `after` da entrada no
     /// topo do `undo`, que é também o `before` da entrada no topo do `redo`.
     ///
@@ -404,6 +410,7 @@ impl UndoController {
             undo: Vec::new(),
             redo: Vec::new(),
             transacao_seguinte: None,
+            marca: marca_viva::MarcaViva::default(),
             cursor: None,
             #[cfg(test)]
             installed: None,
@@ -450,6 +457,7 @@ impl UndoController {
             return None;
         };
         let entry = self.undo.pop().expect("o topo que acabamos de ler");
+        self.marca_anda(&entry, false);
         self.redo.push(entry);
         // O cursor ANDA com a história: o estado que acabamos de instalar é o adjacente do novo topo.
         self.set_cursor((*restore).clone());
@@ -473,6 +481,7 @@ impl UndoController {
             return None;
         };
         let entry = self.redo.pop().expect("o topo que acabamos de ler");
+        self.marca_anda(&entry, true);
         self.undo.push(entry);
         self.set_cursor((*restore).clone());
         Some(restore)
@@ -629,6 +638,9 @@ mod record; // como uma ENTRADA nasce: o cursor anda, o delta e partido, o cap m
 
 #[path = "undo_absorb.rs"]
 pub(crate) mod absorb; // a reconciliacao com escritas que nao passaram pela historia
+
+#[path = "undo_marca.rs"]
+pub(crate) mod marca_viva; // a marca do artista: o que cada passo ligou (W9)
 
 /// **Até onde um PASSO alcança** — filho pelo mesmo motivo do [`absorb`]: ele lê o `UndoEntry`
 /// privado. O corte: *o que a história guarda* fica aqui, *quanto da tela um passo obriga a repintar*

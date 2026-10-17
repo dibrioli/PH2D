@@ -34,6 +34,8 @@ impl PainterTool {
     /// shows is `lerp(base, free, keep)` ([`Self::stamp_dabs_gated`]). Nothing is made invisible — only the
     /// paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
+        // A marca do artista (W9): o pincel cobre estes dabs; o registo do passo confere-os.
+        self.marca_os_dabs(dabs, self.paint.brush.tip_reach(), false);
         // **Style: Solid** (W7) — o preenchimento de um gesto CUMULATIVO é uma transação própria, e
         // o snapshot dela tem de conter todo dab e nenhum fill. Descascar antes do lote e
         // re-escrever depois mora NESTA porta, e não nos seis sítios do ciclo de traço, pelo motivo

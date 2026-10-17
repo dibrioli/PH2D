@@ -458,6 +458,7 @@ pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};
 mod layer_edit;
 /// O papel do documento: a cor sob as camadas (pedido do dono, 2026-10-05).
 mod papel;
+mod marca_do_artista; // onde o artista escreveu depois da gravação (W9)
 mod reescrita_da_gravacao; // editar uma etapa da macro reescreve a imagem (W8 item 2b)
 mod runtime;
 mod trait_impls;

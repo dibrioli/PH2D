@@ -33,6 +33,8 @@ impl PainterTool {
         if dabs.is_empty() || w == 0 || h == 0 || !(live || self.paint.wetpaint.deposit_pass) {
             return;
         }
+        // A marca do artista (W9): a tinta destes dabs aparece pela água — marcam já.
+        self.marca_os_dabs(dabs, brush.tip_reach(), true);
         self.wetpaint_guard();
         // A água corre com o traço aberto (W1e, F6): o lote que chega com o motor na simulação NÃO
         // espera o estágio em voo — fica na fila e pousa no tick; com o motor em casa, a fila pousa

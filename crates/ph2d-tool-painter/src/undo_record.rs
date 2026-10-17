@@ -135,6 +135,7 @@ impl UndoController {
         hint: Option<crate::compositor::Region>,
     ) {
         self.absorb_foreign_writes(&before);
+        let marca = self.marca_do_passo(&before, &after, hint);
         // O cursor tem de ser o `after` COMPLETO, então ele é tirado ANTES do split (que o esvazia). É
         // um clone de `Arc`s, não de pixels.
         let cursor = after.clone();
@@ -145,6 +146,7 @@ impl UndoController {
         let src = self.relief_source(&before, &cursor);
         let mut entry = UndoEntry::split(before, after, None, hint, src);
         entry.transacao = self.transacao_seguinte.take();
+        entry.marca = marca;
         if self.discard_if_relief_is_lost(&entry, &cursor) {
             return;
         }
@@ -166,6 +168,7 @@ impl UndoController {
         after: ModelSnapshot,
     ) {
         self.absorb_foreign_writes(&before);
+        let marca = self.marca_do_passo(&before, &after, None);
         if self.redo.is_empty()
             && let Some(top) = self.undo.last()
             && top.kind == Some(kind)
@@ -184,7 +187,15 @@ impl UndoController {
             // não bate e o guard recusa sozinho — a fonte é passada mesmo assim porque *quem decide é o
             // guard*, e uma lista de rotas que "não precisam perguntar" é a enumeração que apodrece.
             let src = self.relief_source(&first_before, &cursor);
-            let entry = UndoEntry::split(*first_before, after, Some(kind), None, src);
+            let mut entry = UndoEntry::split(*first_before, after, Some(kind), None, src);
+            // O run desfaz-se de uma vez: leva o que os passos dele ligaram.
+            entry.marca = match (old.marca, marca) {
+                (Some(mut a), Some(b)) => {
+                    a.junta(&b);
+                    Some(a)
+                }
+                (a, b) => a.or(b),
+            };
             if self.discard_if_relief_is_lost(&entry, &cursor) {
                 return;
             }
@@ -196,7 +207,8 @@ impl UndoController {
         }
         let cursor = after.clone();
         let src = self.relief_source(&before, &cursor);
-        let entry = UndoEntry::split(before, after, Some(kind), None, src);
+        let mut entry = UndoEntry::split(before, after, Some(kind), None, src);
+        entry.marca = marca;
         if self.discard_if_relief_is_lost(&entry, &cursor) {
             return;
         }

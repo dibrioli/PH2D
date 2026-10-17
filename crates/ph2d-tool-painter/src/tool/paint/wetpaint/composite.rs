@@ -97,6 +97,14 @@ impl PainterTool {
         } else {
             (px0, py0, px1, py1)
         };
+        // A marca do artista (W9): o que a água muda aqui não é do artista — guarda-se a caixa como está.
+        let agua_antes: Option<Vec<u8>> = self.undo.marca.ativa().then(|| {
+            let mut v = Vec::with_capacity((px1 - px0) * (py1 - py0) * 4);
+            for y in py0..py1 {
+                v.extend_from_slice(&self.canvas_rgba[(y * w + px0) * 4..(y * w + px1) * 4]);
+            }
+            v
+        });
         let layers: Vec<RenderLayer<'_>> = sess
             .engine
             .layers
@@ -413,6 +421,11 @@ impl PainterTool {
         // sem declaração, todos daqui). Em DEBUG o `split` confere que a janela verdadeira cabe nesta.
         self.declare_wrote(Some(region));
         self.mark_dirty(region);
+        if let Some(antes) = agua_antes {
+            self.undo
+                .marca
+                .agua_mudou(&antes, &self.canvas_rgba, w, (px0, py0, px1, py1));
+        }
     }
 }
 

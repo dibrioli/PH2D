@@ -173,6 +173,8 @@ impl UndoController {
         self.bytes -= old_bytes;
         let mut entry = UndoEntry::split(*first_before, before.clone(), kind, None, None);
         entry.transacao = transacao;
+        // A água absorvida não é do artista: o passo continua a ligar o que ligava.
+        entry.marca = top.marca.take();
         if let Some(canvas) = cheap {
             *entry.planes.canvas_mut() = canvas;
         }

@@ -7,6 +7,7 @@ use super::PainterTool;
 use crate::compositor::LayerImage;
 use crate::layers::LayerId as RtLayerId;
 use crate::macro_track::etapas::ModeloDoFim;
+use crate::macro_track::marca::MarcaDoArtista;
 use crate::undo::ModelSnapshot;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -56,8 +57,14 @@ fn texel(s: &ModelSnapshot, px: &[u8], id: RtLayerId, i: usize) -> Texel {
 }
 
 /// Reescreve em `alvo` os texels iguais aos de `de` com os de `para`, camada a camada (as que existem nos
-/// três com o mesmo tamanho). Devolve quantos mudaram.
-fn reescreve(alvo: &mut ModelSnapshot, de: &ModelSnapshot, para: &ModelSnapshot) -> usize {
+/// três com o mesmo tamanho), salvo onde o artista escreveu depois da gravação (`marca`, W9). Devolve
+/// quantos mudaram.
+fn reescreve(
+    alvo: &mut ModelSnapshot,
+    de: &ModelSnapshot,
+    para: &ModelSnapshot,
+    marca: Option<&MarcaDoArtista>,
+) -> usize {
     let (w, h) = alvo.canvas_size;
     let n = w as usize * h as usize;
     if de.canvas_size != (w, h) || para.canvas_size != (w, h) {
@@ -78,7 +85,9 @@ fn reescreve(alvo: &mut ModelSnapshot, de: &ModelSnapshot, para: &ModelSnapshot)
         if a.len() != n * 4 || d.len() != n * 4 || p.len() != n * 4 {
             continue;
         }
+        let marca = marca.filter(|m| m.tamanho() == (w, h));
         let trocar: Vec<usize> = (0..n)
+            .filter(|&i| !marca.is_some_and(|m| m.marcado(i)))
             .filter(|&i| texel(alvo, a, id, i) == texel(de, d, id, i))
             .filter(|&i| texel(para, p, id, i) != texel(de, d, id, i))
             .collect();
@@ -120,7 +129,7 @@ impl PainterTool {
         transacao: u64,
     ) -> usize {
         let mut depois = self.snapshot_model();
-        let n = reescreve(&mut depois, &de.0, &para.0);
+        let n = reescreve(&mut depois, &de.0, &para.0, self.undo.marca.marca.as_ref());
         if n == 0 {
             return 0;
         }
@@ -129,7 +138,10 @@ impl PainterTool {
         self.restore_model(depois);
         self.edited_since_bind = true;
         self.undo.transacao_seguinte = Some(transacao);
+        // A reescrita é da macro: não marca (W9).
+        self.undo.marca.suspensa = true;
         self.commit_structural_edit(before);
+        self.undo.marca.suspensa = false;
         self.undo.transacao_seguinte = None;
         self.invalidate_composite();
         n

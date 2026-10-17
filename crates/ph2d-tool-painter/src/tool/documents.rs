@@ -150,6 +150,8 @@ impl PainterTool {
             Some(doc) => self.restore_doc(doc), // bring back its cached multi-layer stack
             None => self.abre_a_sprite(rgba, width, height), // fresh (or the sprite's flat texture)
         }
+        // A marca do artista é da imagem: quem mostra a macro dá a desta (W9).
+        self.undo.marca.poe(None);
         self.serve_pending_layer(entity);
     }
 

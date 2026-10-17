@@ -173,6 +173,7 @@ impl PainterTool {
     /// torna a migração incremental em vez de tudo-ou-nada.
     pub(crate) fn begin_undo_step(&mut self) {
         self.absorb_foreign_writes_now();
+        self.undo.marca.comeca_o_passo();
         self.audit_cursor_is_reconstructible();
         self.undo.write_state.begin_step(self.undo_writes);
     }
@@ -282,7 +283,10 @@ impl PainterTool {
         self.restore_model(t0.snapshot_model());
         self.desde_o_ultimo_up = t0.desde_o_ultimo_up;
         self.edited_since_bind = true;
+        // O «Recomeçar» é da macro: não marca (W9).
+        self.undo.marca.suspensa = true;
         self.commit_structural_edit(before);
+        self.undo.marca.suspensa = false;
         self.invalidate_composite();
     }
 

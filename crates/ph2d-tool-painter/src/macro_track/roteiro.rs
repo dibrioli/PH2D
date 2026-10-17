@@ -116,7 +116,27 @@ pub fn grava_no_papel_ligado(
         &[],
         Tela::Ligada(entidade),
         &[PaintMedia::WetPaint],
-        None,
+        Relogio::Fixo,
+    )
+}
+
+/// [`grava_no_papel_ligado`] com a água no WORKER de verdade (o ritmo da parede), como o editor grava — e
+/// a água continua nele depois do Parar.
+#[must_use]
+pub fn grava_no_papel_ligado_com_o_worker(
+    lado: u32,
+    entidade: u64,
+    n: usize,
+) -> Option<(PainterTool, Vec<u8>, f64)> {
+    let ps: Vec<Pincelada> = SPLASH.iter().copied().cycle().take(n).collect();
+    grava_com(
+        lado,
+        0,
+        &ps,
+        &[],
+        Tela::Ligada(entidade),
+        &[PaintMedia::WetPaint],
+        Relogio::Worker,
     )
 }
 
@@ -174,7 +194,7 @@ pub(crate) fn grava_nos_meios_e_o_tool(
     ps: &[Pincelada],
     meios: &[PaintMedia],
 ) -> Option<(PainterTool, Vec<u8>)> {
-    grava_com(lado, 0, ps, &[], Tela::Fonte, meios, None).map(|(t, b, _)| (t, b))
+    grava_com(lado, 0, ps, &[], Tela::Fonte, meios, Relogio::Fixo).map(|(t, b, _)| (t, b))
 }
 
 /// [`grava_pinceladas_como_a_maquina`] e o tool que gravou, parado no Parar (o editor depois dele).
@@ -192,7 +212,7 @@ pub(crate) fn grava_como_a_maquina_e_o_tool(
         &[],
         Tela::Fonte,
         &[PaintMedia::WetPaint],
-        Some((ritmo, dts)),
+        Relogio::Maquina((ritmo, dts)),
     )
 }
 
@@ -205,7 +225,7 @@ fn grava(
     meios: &[PaintMedia],
 ) -> Option<(Vec<u8>, f64)> {
     let tela = if papel { Tela::Papel } else { Tela::Fonte };
-    grava_com(lado, alvo, ps, antes, tela, meios, None).map(|(_, b, s)| (b, s))
+    grava_com(lado, alvo, ps, antes, tela, meios, Relogio::Fixo).map(|(_, b, s)| (b, s))
 }
 
 /// A tela em que se grava: a fonte do tool, a sprite aberta no papel, ou o Painter LIGADO à sprite
@@ -220,6 +240,15 @@ enum Tela {
 /// A máquina de uma gravação: o ritmo da água no worker e a duração de cada quadro, em ms.
 type Maquina<'a> = (&'a crate::macro_track::RitmoDaAgua, &'a [f32]);
 
+/// O relógio da água a gravar: o fixo (a régua), o ritmo escrito de uma máquina, ou o worker real.
+#[derive(Clone, Copy)]
+enum Relogio<'a> {
+    Fixo,
+    #[cfg_attr(not(test), expect(dead_code, reason = "só os gates gravam ao ritmo de uma máquina"))]
+    Maquina(Maquina<'a>),
+    Worker,
+}
+
 fn grava_com(
     lado: u32,
     alvo: u64,
@@ -227,7 +256,7 @@ fn grava_com(
     antes: &[u32],
     tela: Tela,
     meios: &[PaintMedia],
-    maquina: Option<Maquina<'_>>,
+    relogio: Relogio<'_>,
 ) -> Option<(PainterTool, Vec<u8>, f64)> {
     let meio = |k: usize| meios.get(k).or(meios.last()).copied();
     let mut t = PainterTool::default();
@@ -239,9 +268,10 @@ fn grava_com(
         Tela::Fonte => t.set_source(branca, lado, lado),
     }
     t.set_paint_media(meio(0)?);
-    match maquina {
-        Some((r, _)) => t.set_wet_ritmo_de_teste(Some(r.clone())),
-        None => t.set_wet_relogio_fixo(true),
+    match relogio {
+        Relogio::Maquina((r, _)) => t.set_wet_ritmo_de_teste(Some(r.clone())),
+        Relogio::Fixo => t.set_wet_relogio_fixo(true),
+        Relogio::Worker => {}
     }
     #[expect(
         clippy::cast_precision_loss,
@@ -255,13 +285,13 @@ fn grava_com(
         drop(t.take_preview_arc());
         let agora = MacroTime::from_secs_f64(s).0;
         // O relógio fixo grava `q / 60` exactos (os bytes das gravações dos gates não mudam).
-        match maquina {
-            Some((_, d)) => {
+        match relogio {
+            Relogio::Maquina((_, d)) => {
                 let dt = d[q as usize % d.len()];
                 t.on_tick(dt);
                 s += f64::from(dt) / 1000.0;
             }
-            None => {
+            Relogio::Fixo | Relogio::Worker => {
                 t.on_tick(DT_MS);
                 s = f64::from(q + 1) / 60.0;
             }

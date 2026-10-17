@@ -13,6 +13,7 @@ pub mod em_cena;
 pub mod etapas;
 pub mod inicial;
 pub mod instantaneos;
+pub mod marca;
 pub mod passo;
 pub mod portas;
 mod portas_internas;
@@ -28,6 +29,8 @@ mod custo_w5e_tests;
 mod etapas_tests;
 #[cfg(test)]
 mod fim_tests;
+#[cfg(test)]
+mod marca_painter_tests;
 #[cfg(test)]
 mod tests;
 

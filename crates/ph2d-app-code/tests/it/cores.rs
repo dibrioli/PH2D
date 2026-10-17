@@ -13,7 +13,6 @@ use ph2d_editor_core::doc_surface::Key;
 use ph2d_host::Modifiers;
 use ph2d_panel_code::Ink;
 use ph2d_script::ScriptId;
-use std::ops::Range;
 use std::time::{Duration, Instant};
 
 /// `idle_parse_delay` e `idle_parse_delay_with_errors_found` do Godot 4.7.2.
@@ -27,7 +26,7 @@ const BIBLIOTECA: u64 = 4 | 512;
 
 /// Como o `luau-lsp`: todo `ph2d` (até num comentário — o editor é que não o pinta lá), o membro
 /// depois de `ph2d.`, `print`, e todo `dt`. Nunca `pirnt`.
-pub(crate) fn colore(s: &str) -> Vec<(Range<usize>, u64, u64)> {
+pub(crate) fn colore(s: &str) -> crate::assistente::Tokens {
     let mut out = Vec::new();
     for (i, _) in s.match_indices("ph2d") {
         out.push((i..i + 4, 8, BIBLIOTECA));

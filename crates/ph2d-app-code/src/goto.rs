@@ -42,10 +42,9 @@ impl CodeDoc {
         if self.sem.ticket == Some(ticket) {
             self.sem.answer(ticket, answer);
         } else if let Some(g) = self.goto.take_if(|g| g.ticket == Some(ticket)) {
-            match answer {
-                Answer::Definition(targets) => self.arrive(uri, &g.word, &targets),
-                // O servidor recusou ou foi-se: nada a mostrar.
-                _ => {}
+            // Outra resposta = o servidor recusou ou foi-se: nada a mostrar.
+            if let Answer::Definition(targets) = answer {
+                self.arrive(uri, &g.word, &targets);
             }
         } else {
             self.hints.answer(ticket, answer);

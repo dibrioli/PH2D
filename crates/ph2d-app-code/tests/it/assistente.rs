@@ -44,6 +44,11 @@ pub(crate) struct Visto {
 
 pub(crate) type Partilhado = Arc<Mutex<Visto>>;
 
+/// Os sítios de uma definição (bytes no documento do pedido).
+pub(crate) type Sitios = Vec<std::ops::Range<usize>>;
+/// Os tokens de um texto: `(bytes, tipo, modificadores)`.
+pub(crate) type Tokens = Vec<(std::ops::Range<usize>, u64, u64)>;
+
 #[derive(Clone, Copy, Default)]
 pub(crate) struct Plano {
     /// Antes de ler cada mensagem.
@@ -59,10 +64,10 @@ pub(crate) struct Plano {
     pub(crate) assinar: Option<fn(&str, usize) -> Value>,
     /// `textDocument/definition`: os bytes, NESTE documento, de onde o nome no byte do pedido está
     /// definido (`None` = `null`).
-    pub(crate) definir: Option<fn(&str, usize) -> Vec<std::ops::Range<usize>>>,
+    pub(crate) definir: Option<fn(&str, usize) -> Sitios>,
     /// `semanticTokens/full`: `(bytes, tipo, modificadores)` de cada nome, pela ordem do texto, na
     /// legenda do `luau-lsp` 1.70.1 (`None` = `null`).
-    pub(crate) colorir: Option<fn(&str) -> Vec<(std::ops::Range<usize>, u64, u64)>>,
+    pub(crate) colorir: Option<fn(&str) -> Tokens>,
 }
 
 /// As capacidades que o `luau-lsp` 1.70.1 anunciou (a legenda dos tokens vem daqui).

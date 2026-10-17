@@ -306,13 +306,14 @@ impl Holografica {
         // ⭐ W5q: o acumulado renasce PRIMEIRO — por último era o único no regime lento (a soma 1,40 contra
         // 0,83 ms; handoff W5q §1).
         // ⭐ W5x (`Config::hrc_berco`): o 1.º nascimento é em texturas cruas — as páginas ficam comprimíveis.
+        // ⭐ W5z: com os níveis em textura, nasce UMA vez (medido: a mesma `c2`, placa ociosa ou não).
         let n_t = Quadrante::de(0, grade).n.max(Quadrante::de(1, grade).n) as usize + 1;
-        if e.cfg.hrc_nasce_duas_vezes {
+        let duas_vezes = e.cfg.hrc_nasce_duas_vezes && !em_textura;
+        if duas_vezes {
             let nomes = hrc::NOMES_T[..n_t]
                 .iter()
                 .copied()
                 .chain(hrc::NOMES_R)
-                .filter(|_| !em_textura)
                 .chain([hrc::NOME_ACUMULADO]);
             let relata = |quando| {
                 if e.cfg.hrc_guarda_os_grandes {
@@ -330,10 +331,7 @@ impl Holografica {
             let _ = device.poll(wgpu::PollType::wait_indefinitely());
             relata("largado");
         }
-        let cedo = e
-            .cfg
-            .hrc_nasce_duas_vezes
-            .then(|| (e.buffer)(hrc::NOME_ACUMULADO));
+        let cedo = duas_vezes.then(|| (e.buffer)(hrc::NOME_ACUMULADO));
         let nivel = |nome| Nivel::de(e, em_textura, nome);
         let t: Vec<Nivel> = hrc::NOMES_T[..n_t].iter().map(|&n| nivel(n)).collect();
         let r = hrc::NOMES_R.map(nivel);

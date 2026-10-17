@@ -201,7 +201,7 @@ pub struct Config {
     pub modulo_rc: Option<&'static str>,
     /// ⭐ W5p — os buffers da cascata holográfica nascem, largam-se e nascem de novo (em memória já usada
     /// e largada): a `c2` do High num processo novo 24,7 → 19,0 ms (`medida_luz2d_w5o_lastro`, handoff W5p
-    /// §7). `false` = uma vez (`PH2D_LIGHT2D_HRC_DUAS=0` no app compara).
+    /// §7). `false` = uma vez (`PH2D_LIGHT2D_HRC_DUAS=0` no app compara). ⭐ W5z: só com os níveis em buffer.
     pub hrc_nasce_duas_vezes: bool,
     /// ⭐ W5x — com [`Self::hrc_nasce_duas_vezes`], o 1.º nascimento é um BERÇO de texturas cruas com os
     /// bytes de cada buffer: o driver da NVIDIA deixa COMPRIMÍVEIS as páginas onde uma textura foi ligada,

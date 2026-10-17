@@ -13,15 +13,14 @@ use std::collections::BTreeMap;
 /// O lado da tela, em pixels (o plano §6).
 pub const LADO: u32 = 1024;
 
-/// **A cena**: a tela e o `Macro` gravado nela. Devolve os bits da sprite e a duração da macro, para a
-/// shell montar o clipe.
-pub fn monta(
+/// A tela branca com o Splash gravado (`ModoDaMacro::Fiel`): os bits da sprite e a duração da macro.
+fn tela_com_splash(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
-    cell_idx: u32,
-    pixels_per_meter: f32,
+    (cell_idx, pixels_per_meter): (u32, f32),
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+    nivel: u8,
 ) -> Option<(u64, f64)> {
     let (_, bits) = ph2d_image_import::spawn_blank_canvas(
         sim,
@@ -34,7 +33,7 @@ pub fn monta(
         pixels_per_meter,
         atlas_asset_map,
     )
-    .map_err(|e| eprintln!("[macro smoke =1] could not spawn the canvas: {e}"))
+    .map_err(|e| eprintln!("[macro smoke ={nivel}] could not spawn the canvas: {e}"))
     .ok()?;
     let (doc, duracao) = ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 4)?;
     sim.world_mut()
@@ -43,10 +42,61 @@ pub fn monta(
             doc,
             modo: ModoDaMacro::Fiel,
         });
+    Some((bits, duracao))
+}
+
+/// **A cena**: a tela e o `Macro` gravado nela. Devolve os bits da sprite e a duração da macro, para a
+/// shell montar o clipe.
+pub fn monta(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+) -> Option<(u64, f64)> {
+    let (bits, duracao) = tela_com_splash(
+        sim,
+        renderer,
+        asset_db,
+        (cell_idx, pixels_per_meter),
+        atlas_asset_map,
+        1,
+    )?;
     eprintln!(
         "[macro smoke =1] 'Canvas' (white, {LADO}²) carries a recorded macro: four Wet Paint strokes \
          ({duracao:.1} s). The scene runs (top-bar Play): the strokes land and the water flows between \
          them; every loop goes back to the white canvas."
+    );
+    Some((bits, duracao))
+}
+
+/// `PH2D_MACRO_SMOKE=5` — **a imagem é do artista** (`docs/Macros/04_plano_W7.md` item 1): a mesma
+/// tela com o Splash gravado, mas a cena abre PARADA no início (sem Autoplay, a cena não corre) e a
+/// imagem em modo Paint — o artista pinta, dá o Play da Timeline e a tinta dele fica por cima da
+/// macro; pinta durante o Play e o traço aparece. Devolve o que [`monta`] devolve; a shell monta o
+/// clipe sem o tocar e abre a imagem em Paint ([`crate::composite_smoke::arm_hero`]).
+pub fn monta_artista(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+) -> Option<(u64, f64)> {
+    let (bits, duracao) = tela_com_splash(
+        sim,
+        renderer,
+        asset_db,
+        (cell_idx, pixels_per_meter),
+        atlas_asset_map,
+        5,
+    )?;
+    eprintln!(
+        "[macro smoke =5] 'Canvas' (white, {LADO}²) carries a recorded macro: four Wet Paint strokes \
+         ({duracao:.1} s), stopped at the start. It opens in Paint mode: paint something, then press \
+         the Timeline's Play — your paint stays on top of the strokes, and the picture does not jump \
+         when the clip ends. Paint while it plays: the stroke shows."
     );
     Some((bits, duracao))
 }

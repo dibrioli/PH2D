@@ -1,7 +1,5 @@
-//! `PH2D_MACRO_SMOKE=1|2` (e os tutoriais `=3`/`=4`, sem clipe) — **as macros em cena** (`docs/Macros/01_plano_onda1.md` §6): `=1` o Splash
-//! (Painter), `=2` o Motion nó a nó. A família monta o objecto e grava a macro; aqui monta-se o clipe
-//! que a conduz — `add_macro_clip`, o laço do clipe `[0, D]` e o Autoplay — e a cena corre como pelo
-//! Play da barra de cima. Cada volta do laço recua a macro ao início.
+//! `PH2D_MACRO_SMOKE` — as cenas de [`ph2d_app_macros::CENAS_DO_SMOKE`]. A família monta o objecto e
+//! grava a macro; aqui monta-se o clipe (`add_macro_clip`, o laço `[0, D]`, o Autoplay) e a cena corre.
 
 use ph2d_editor_core::panel::PanelHostInternal;
 
@@ -44,6 +42,7 @@ impl crate::App {
         }
         let montada = match nivel.as_str() {
             "1" => self.com_tela(ph2d_app_painter::macro_track::smoke::monta),
+            "5" => self.com_tela(ph2d_app_painter::macro_track::smoke::monta_artista),
             "2" => self
                 .with_motion_scene(ph2d_app_motion::macro_track::smoke::monta)
                 .flatten(),
@@ -69,13 +68,7 @@ impl crate::App {
                 }
                 return;
             }
-            _ => {
-                eprintln!(
-                    "[macro smoke] PH2D_MACRO_SMOKE={nivel}: the scenes are 1 (Splash), 2 (Motion \
-                     node by node), 3 (the 'do it' tutorial) and 4 (the painting tutorial)"
-                );
-                None
-            }
+            _ => ph2d_app_macros::cena_desconhecida(&nivel),
         };
         let Some((bits, duracao)) = montada else {
             return;
@@ -86,11 +79,17 @@ impl crate::App {
         };
         doc.set_active(clip);
         doc.set_active_loop_for(true, Some((0.0, duracao)));
-        doc.set_autoplay(clip, true);
-        self.timeline_intents
-            .push(ph2d_timeline::TimelineIntent::RunScene);
+        let parada = ph2d_app_macros::a_cena_abre_parada(&nivel);
+        doc.set_autoplay(clip, !parada);
+        if !parada {
+            self.timeline_intents
+                .push(ph2d_timeline::TimelineIntent::RunScene);
+        }
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.gizmo.replace_selection(Some(bits));
+            if parada {
+                ph2d_app_painter::composite_smoke::arm_hero(hero, bits);
+            }
             hero.set_panel_visible("timeline", true);
             hero.set_panel_visible("hierarchy", true);
             // As etapas à vista: o painel MACROS (lista e propriedades) e a linha «Macro steps».

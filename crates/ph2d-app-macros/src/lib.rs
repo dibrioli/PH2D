@@ -60,9 +60,27 @@ pub struct Cena<'a> {
 pub use conferencia::Partidas;
 
 /// As cenas de `PH2D_MACRO_SMOKE`: `=1` o Splash (Painter), `=2` o Motion nó a nó, `=3` o tutorial
-/// «fazer» do Motion, `=4` o do Painter. Cada uma monta-se na família que grava; o clipe que conduz as duas primeiras
-/// monta-o a composição (`render_loop/macro_smoke.rs`).
-pub const CENAS_DO_SMOKE: u32 = 4;
+/// «fazer» do Motion, `=4` o do Painter, `=5` a imagem é do artista (W7 item 1). Cada uma monta-se na
+/// família que grava; o clipe que conduz `=1`, `=2` e `=5` monta-o a composição
+/// (`render_loop/macro_smoke.rs`).
+pub const CENAS_DO_SMOKE: u32 = 5;
+
+/// **A cena abre PARADA?** — `=5` (`docs/Macros/04_plano_W7.md` item 1): o clipe sem Autoplay, a cena
+/// sem correr e a imagem em modo Paint, porque o 1.º passo do smoke é o artista pintar. As outras com
+/// clipe correm sozinhas.
+#[must_use]
+pub fn a_cena_abre_parada(nivel: &str) -> bool {
+    nivel == "5"
+}
+
+/// O nível de `PH2D_MACRO_SMOKE` que nenhuma cena serve: diz ao terminal quais há.
+pub fn cena_desconhecida<T>(nivel: &str) -> Option<T> {
+    eprintln!(
+        "[macro smoke] PH2D_MACRO_SMOKE={nivel}: the scenes are 1 (Splash), 2 (Motion node by node), \
+         3 (the 'do it' tutorial), 4 (the painting tutorial) and 5 (paint, then play: your paint stays)"
+    );
+    None
+}
 
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {

@@ -26,7 +26,7 @@ mod palcos_custo_tests;
 #[cfg(test)]
 #[path = "palcos_tests.rs"]
 mod palcos_tests;
-/// `PH2D_MACRO_SMOKE=1` — a cena do Splash.
+/// `PH2D_MACRO_SMOKE=1|4|5` — as cenas do Splash (tocar, o tutorial, a imagem do artista).
 pub mod smoke;
 
 /// As ranhuras de textura da cena (o `IndividualTextureStore` do renderer; um duplo nos gates).

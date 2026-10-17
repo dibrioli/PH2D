@@ -133,6 +133,30 @@ pub fn grava_no_papel_nos_meios(
     grava(lado, alvo, &ps, &[], true, meios)
 }
 
+/// As pinceladas `ps` gravadas como o Splash, com a água no worker ao ritmo `ritmo` e o quadro `dts[q]`
+/// (em ciclo) — o relógio irregular de uma máquina, e não o fixo dos outros roteiros (W8, a sonda da
+/// corrida partilhada).
+#[cfg(test)]
+pub(crate) fn grava_pinceladas_como_a_maquina(
+    lado: u32,
+    ps: &[Pincelada],
+    ritmo: &crate::macro_track::RitmoDaAgua,
+    dts: &[f32],
+) -> Option<(Vec<u8>, f64)> {
+    grava_como_a_maquina_e_o_tool(lado, ps, ritmo, dts).map(|(_, b, s)| (b, s))
+}
+
+/// [`grava_pinceladas_como_a_maquina`] e o tool que gravou, parado no Parar (o editor depois dele).
+#[cfg(test)]
+pub(crate) fn grava_como_a_maquina_e_o_tool(
+    lado: u32,
+    ps: &[Pincelada],
+    ritmo: &crate::macro_track::RitmoDaAgua,
+    dts: &[f32],
+) -> Option<(PainterTool, Vec<u8>, f64)> {
+    grava_com(lado, 0, ps, &[], false, &[PaintMedia::WetPaint], Some((ritmo, dts)))
+}
+
 fn grava(
     lado: u32,
     alvo: u64,
@@ -141,6 +165,21 @@ fn grava(
     papel: bool,
     meios: &[PaintMedia],
 ) -> Option<(Vec<u8>, f64)> {
+    grava_com(lado, alvo, ps, antes, papel, meios, None).map(|(_, b, s)| (b, s))
+}
+
+/// A máquina de uma gravação: o ritmo da água no worker e a duração de cada quadro, em ms.
+type Maquina<'a> = (&'a crate::macro_track::RitmoDaAgua, &'a [f32]);
+
+fn grava_com(
+    lado: u32,
+    alvo: u64,
+    ps: &[Pincelada],
+    antes: &[u32],
+    papel: bool,
+    meios: &[PaintMedia],
+    maquina: Option<Maquina<'_>>,
+) -> Option<(PainterTool, Vec<u8>, f64)> {
     let meio = |k: usize| meios.get(k).or(meios.last()).copied();
     let mut t = PainterTool::default();
     let n = usize::try_from(lado).ok()?;
@@ -150,7 +189,10 @@ fn grava(
         t.set_source(vec![255u8; n * n * 4], lado, lado);
     }
     t.set_paint_media(meio(0)?);
-    t.set_wet_relogio_fixo(true);
+    match maquina {
+        Some((r, _)) => t.set_wet_ritmo_de_teste(Some(r.clone())),
+        None => t.set_wet_relogio_fixo(true),
+    }
     #[expect(
         clippy::cast_precision_loss,
         reason = "o lado de uma tela cabe num f32"
@@ -158,11 +200,22 @@ fn grava(
     let l = lado as f32;
     let mut rec = MacroRecorder::new(RefRect { w: l, h: l }, 0);
     let trilha = t.macro_abre(&mut rec, alvo).ok()?;
-    let mut q: u32 = 0;
+    let (mut q, mut s): (u32, f64) = (0, 0.0);
     let mut quadro = |t: &mut PainterTool, rec: &mut MacroRecorder| -> Option<()> {
         drop(t.take_preview_arc());
-        t.on_tick(DT_MS);
-        let agora = MacroTime::from_secs_f64(f64::from(q) / 60.0).0;
+        let agora = MacroTime::from_secs_f64(s).0;
+        // O relógio fixo grava `q / 60` exactos (os bytes das gravações dos gates não mudam).
+        match maquina {
+            Some((_, d)) => {
+                let dt = d[q as usize % d.len()];
+                t.on_tick(dt);
+                s += f64::from(dt) / 1000.0;
+            }
+            None => {
+                t.on_tick(DT_MS);
+                s = f64::from(q + 1) / 60.0;
+            }
+        }
         for c in t.macro_passos() {
             rec.push(trilha, agora, c).ok()?;
         }
@@ -205,11 +258,12 @@ fn grava(
     for _ in 0..CAUDA {
         quadro(&mut t, &mut rec)?;
     }
-    let fim = MacroTime::from_secs_f64(f64::from(q) / 60.0).0;
+    drop(quadro);
+    let fim = MacroTime::from_secs_f64(s).0;
     for c in t.macro_para() {
         rec.push(trilha, fim, c).ok()?;
     }
-    Some((ph2d_macro::codec::write(&rec.finish()), f64::from(q) / 60.0))
+    Some((t, ph2d_macro::codec::write(&rec.finish()), s))
 }
 
 #[cfg(test)]

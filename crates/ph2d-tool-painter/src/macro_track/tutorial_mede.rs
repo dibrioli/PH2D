@@ -40,7 +40,12 @@ pub(super) struct Paragem<'a> {
     daqui: &'a AtomicBool,
 }
 
-impl Paragem<'_> {
+impl<'a> Paragem<'a> {
+    #[cfg(test)]
+    pub(super) fn de(de_fora: &'a AtomicBool, daqui: &'a AtomicBool) -> Self {
+        Self { de_fora, daqui }
+    }
+
     pub(super) fn pediu(self) -> bool {
         self.de_fora.load(Ordering::Relaxed) || self.daqui.load(Ordering::Relaxed)
     }

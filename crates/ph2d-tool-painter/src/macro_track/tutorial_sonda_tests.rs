@@ -15,6 +15,8 @@ use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool}
 
 #[path = "tutorial_sonda_w7_tests.rs"]
 mod w7;
+#[path = "tutorial_sonda_w8_tests.rs"]
+mod w8;
 
 pub(super) fn quadro(t: &mut PainterTool) {
     drop(t.take_preview_arc());

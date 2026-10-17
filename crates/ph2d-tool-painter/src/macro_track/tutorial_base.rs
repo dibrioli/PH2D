@@ -178,17 +178,30 @@ impl Amostras {
 /// curva é a fracção assentada. `None` = parou.
 pub(super) fn assentada(
     e: &EnsinoDoPainter,
+    toc: TocadorDoPainter,
+    c: usize,
+    pontos: Amostras,
+    passo: u32,
+    parar: Paragem<'_>,
+) -> Option<Curva> {
+    assentada_por(e, toc, c, pontos, passo, parar, QUADROS_ATE_ASSENTAR)
+}
+
+/// [`assentada`] com no máximo `quadros` quadros depois do corte.
+pub(super) fn assentada_por(
+    e: &EnsinoDoPainter,
     mut toc: TocadorDoPainter,
     c: usize,
     mut pontos: Amostras,
     passo: u32,
     parar: Paragem<'_>,
+    quadros: u32,
 ) -> Option<Curva> {
     toc.passa_ao_relogio_fixo();
     let t = toc.tool_mut();
     let mut q = 0;
     loop {
-        let parou = q >= QUADROS_ATE_ASSENTAR || t.wet_assentada();
+        let parou = q >= quadros || t.wet_assentada();
         if parou || q % passo.max(1) == 0 {
             pontos.le(e, t, c);
         }

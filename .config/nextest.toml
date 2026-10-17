@@ -99,10 +99,19 @@ priority = -100
 # HANDOFF_CONTINUACAO_..._VELOCIDADE_2 §4).
 # 15/10 (Macros W6d, o tutorial do Painter): as 30 pinceladas em Wet Paint — `pular_a_pincelada_…` 24,0 s
 # sozinho (load 16) e MORTO aos 180 s sob a suíte (load ~200); `a_mao_torta_…` (4 meios) 10,4 s sozinho / 106 s
-# sob a mesma suíte. ~10× sob a suíte: o tecto de 6 × 60 s dá ~15× do medido sozinho.
+# sob a mesma suíte. ~10× sob a suíte: o tecto de 6 × 60 s dá ~15× do medido sozinho. (W7: passaram ao de baixo.)
 [[profile.default.overrides]]
-filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(=presets_de_fabrica::a_largura_e_a_prometida) + test(=midias_de_fabrica::cada_preset_parece_a_sua_midia) + test(=macro_track::tutorial::tests::pular_a_pincelada_e_esperar_nao_cumpre_nenhuma) + test(=macro_track::tutorial::tests::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao)'
+filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(=presets_de_fabrica::a_largura_e_a_prometida) + test(=midias_de_fabrica::cada_preset_parece_a_sua_midia)'
 slow-timeout = { period = "60s", terminate-after = 6 }
+
+# 17/10 (Macros W7, a MESMA idade da água): cada medida do tutorial do Painter em Wet Paint são 960 quadros de
+# água (~7 ms cada a 512²), duas por pincelada, em `fios()` = núcleos/4 fios. Os gates que medem a água, sozinhos
+# (`-j 1`, load 42 → 19): `pular_…` 40,3 s · `uma_versao_nova_…` 40,0 s · `a_mao_torta_…` 33,9 s ·
+# `o_aluno_exacto_…` 27,3 s · `cada_pincelada_…` 21,5 s · `mudar_a_macro_…` 20,4 s · `o_mostra_me_…` 12,3 s; os
+# sete juntos (load ~50, todos CPU) 85–151 s. ~10× sob a suíte: 10 × 60 s ≈ 15× o mais lento sozinho.
+[[profile.default.overrides]]
+filter = 'test(=macro_track::tutorial::tests::pular_a_pincelada_e_esperar_nao_cumpre_nenhuma) + test(=macro_track::tutorial::tests::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao) + test(=macro_track::tutorial::tests::o_aluno_exacto_cumpre_no_quadro_do_up) + test(=macro_track::tutorial::tests::cada_pincelada_so_se_cumpre_feita_e_o_desfazer_a_volta) + test(=macro_track::tutorial::tests::o_mostra_me_cumpre_a_fatia_fina) + test(=tutorial_painter::uma_versao_nova_prepara_se_fora_do_quadro) + test(=tutorial_painter::mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha)'
+slow-timeout = { period = "60s", terminate-after = 10 }
 
 # ── Tecto GLOBAL e as três regras que viviam em scripts ─────────────────────────
 #

@@ -329,6 +329,9 @@ pub struct PainterTool {
     mask_view_grayscale: Option<RtLayerId>,
     /// A gravação de uma macro em curso ([`crate::macro_track`]); `None` = nada a gravar.
     pub(crate) macro_gravacao: Option<Box<crate::macro_track::Gravacao>>,
+    /// Segundos (pelos `dt` do [`Tool::on_tick`]) desde o último `Up` na tela; `None` = nenhum ainda. A
+    /// idade da água do tutorial ([`PainterTool::segundos_desde_o_ultimo_up`]).
+    desde_o_ultimo_up: Option<f64>,
 }
 
 /// Which arm the last preview drain ([`PainterTool::take_preview_arc`]) took. A `PH2D_PAINT_PERF`
@@ -419,6 +422,7 @@ impl Default for PainterTool {
             shape_source_preview_dirty: false,
             mask_view_grayscale: None,
             macro_gravacao: None,
+            desde_o_ultimo_up: None,
         }
     }
 }

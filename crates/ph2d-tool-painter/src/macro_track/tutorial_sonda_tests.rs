@@ -13,13 +13,24 @@ use crate::macro_track::roteiro::{
 };
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool};
 
+#[path = "tutorial_sonda_w7_tests.rs"]
+mod w7;
+
 pub(super) fn quadro(t: &mut PainterTool) {
     drop(t.take_preview_arc());
     t.on_tick(DT_MS);
 }
 
 /// O aluno pinta `p` como o roteiro grava: ponteiro a cada quadro, depois o intervalo.
-fn pinta(t: &mut PainterTool, p: &Pincelada, lado: f32) {
+pub(super) fn pinta(t: &mut PainterTool, p: &Pincelada, lado: f32) {
+    traca(t, p, lado);
+    for _ in 0..ENTRE {
+        quadro(t);
+    }
+}
+
+/// O traço de `p` até ao quadro do `Up`, inclusive.
+pub(super) fn traca(t: &mut PainterTool, p: &Pincelada, lado: f32) {
     t.set_brush_color_srgb8(p.cor);
     t.set_brush_size_px(p.tamanho_px);
     for i in 0..=TRACO {
@@ -36,9 +47,6 @@ fn pinta(t: &mut PainterTool, p: &Pincelada, lado: f32) {
             tilt: [0.0, 0.0],
             phase,
         });
-        quadro(t);
-    }
-    for _ in 0..ENTRE {
         quadro(t);
     }
 }
@@ -67,8 +75,32 @@ fn deslocada(p: &Pincelada, d: f32, lado: f32) -> Pincelada {
     }
 }
 
+/// Quadros até a água do aluno `t` parar (o tecto da régua): o balão avalia a cada quadro e o
+/// «pintado» só cresce, logo o que o aluno alcança é o que ele tem com a água ASSENTADA (W7).
+pub(super) fn assenta(t: &mut PainterTool) -> u32 {
+    let mut q = 0;
+    while q < base::QUADROS_ATE_ASSENTAR && !t.wet_assentada() {
+        quadro(t);
+        q += 1;
+    }
+    q
+}
+
 /// A variante `v` da pincelada `p` (a `j` da gravação `track`) no aluno `t`, e a água a assentar.
 fn faz(t: &mut PainterTool, track: &Track, j: usize, p: &Pincelada, v: Variante, l: f32) {
+    faz_sem_assentar(t, track, j, p, v, l);
+    assenta(t);
+}
+
+/// [`faz`] sem esperar a água.
+pub(super) fn faz_sem_assentar(
+    t: &mut PainterTool,
+    track: &Track,
+    j: usize,
+    p: &Pincelada,
+    v: Variante,
+    l: f32,
+) {
     match v {
         Variante::Exacta => pinta(t, p, l),
         Variante::Desloca(d) => pinta(t, &deslocada(p, d, l), l),
@@ -109,9 +141,6 @@ fn faz(t: &mut PainterTool, track: &Track, j: usize, p: &Pincelada, v: Variante,
             }
         }
     }
-    for _ in 0..CAUDA {
-        quadro(t);
-    }
 }
 
 /// O aluno que fez certas as pinceladas do Splash antes da `k` e a `k` na variante `v`.
@@ -127,7 +156,8 @@ pub(super) fn aluno(track: &Track, k: usize, v: Variante, lado: u32) -> PainterT
 }
 
 /// Cada pincelada `k` de `ps` (as gravadas em `track`) em cada variante de `vs`: o aluno com as
-/// anteriores certas (pintadas uma vez; cada variante corre num instantâneo dele).
+/// anteriores certas (pintadas uma vez; cada variante corre num instantâneo dele, em lotes de fios
+/// paralelos — a água de cada um assenta sozinha). `f` corre pela ordem, neste fio.
 pub(super) fn cada_aluno(
     track: &Track,
     ps: &[Pincelada],
@@ -137,15 +167,30 @@ pub(super) fn cada_aluno(
 ) {
     #[expect(clippy::cast_precision_loss, reason = "o lado cabe num f32")]
     let l = lado as f32;
+    let lote = 2 * mede::fios();
     let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    let mut por_fazer: Vec<(usize, Variante, PainterTool)> = Vec::new();
+    let mut corre = |por_fazer: &mut Vec<(usize, Variante, PainterTool)>| {
+        std::thread::scope(|sc| {
+            for (k, v, a) in por_fazer.iter_mut() {
+                let p = &ps[*k];
+                sc.spawn(move || faz(a, track, *k, p, *v, l));
+            }
+        });
+        for (k, v, a) in por_fazer.drain(..) {
+            f(k, v, &a);
+        }
+    };
     for (k, p) in ps.iter().enumerate() {
         for &v in vs {
-            let mut a = t.instantaneo().expect("instantâneo do aluno");
-            faz(&mut a, track, k, p, v, l);
-            f(k, v, &a);
+            por_fazer.push((k, v, t.instantaneo().expect("instantâneo do aluno")));
+            if por_fazer.len() >= lote {
+                corre(&mut por_fazer);
+            }
         }
         pinta(&mut t, p, l);
     }
+    corre(&mut por_fazer);
 }
 
 /// O critério da pincelada `j` da gravação (`None` = sem critério).
@@ -262,8 +307,12 @@ fn sonda_a_fracao_por_meio() {
             .criterios
             .iter()
             .map(|c| {
-                let r = c.referencia.expect("medida");
-                format!("{:.1} (base {:.1})", 100.0 * r.gravada, 100.0 * r.base)
+                let r = c.referencia.as_ref().expect("medida");
+                format!(
+                    "{:.1} (base {:.1})",
+                    100.0 * r.gravada.fim(),
+                    100.0 * r.base.fim()
+                )
             })
             .collect();
         println!("{m:?} {lado}² · referência {} %", refs.join(" / "));
@@ -328,18 +377,22 @@ fn sonda_a_fatia_fina() {
         let (mut finas, mut rmin, mut rmax) = (0, f32::MAX, 0.0f32);
         for c in e.criterios.iter().filter(|c| fina(c)) {
             finas += 1;
-            let r = c.referencia.expect("medida").gravada;
+            let r = c.referencia.as_ref().expect("medida").gravada.fim();
             (rmin, rmax) = (rmin.min(r), rmax.max(r));
         }
         let (mut dmin, mut dmax, mut bmax) = (f32::MAX, 0.0f32, 0.0f32);
         for c in &e.criterios {
-            let r = c.referencia.expect("medida");
-            (dmin, dmax, bmax) = (dmin.min(r.delta()), dmax.max(r.delta()), bmax.max(r.base));
+            let r = c.referencia.as_ref().expect("medida");
+            (dmin, dmax, bmax) = (
+                dmin.min(r.delta()),
+                dmax.max(r.delta()),
+                bmax.max(r.base.fim()),
+            );
         }
         let mut deltas: Vec<f32> = e
             .criterios
             .iter()
-            .map(|c| c.referencia.expect("medida").delta())
+            .map(|c| c.referencia.as_ref().expect("medida").delta())
             .collect();
         deltas.sort_by(f32::total_cmp);
         let menores: Vec<String> = deltas
@@ -370,13 +423,13 @@ fn sonda_a_fatia_fina() {
             };
             let r = e.razao(t, c).expect("medida");
             if matches!(v, Nada) && r >= FRACAO_DA_GRAVADA_QUE_CUMPRE {
-                let rf = c.referencia.expect("medida");
+                let rf = c.referencia.as_ref().expect("medida");
                 nada_cumpre.push(format!(
                     "{k} ({} de {} px, ref {:.1} %, base {:.1} %, nada {:.1} %)",
                     c.novos.len(),
                     rasteriza(&c.regiao, lado, lado).len(),
-                    100.0 * rf.gravada,
-                    100.0 * rf.base,
+                    100.0 * rf.gravada.fim(),
+                    100.0 * rf.base.fim(),
                     100.0 * r
                 ));
             }
@@ -411,42 +464,48 @@ fn sonda_a_fatia_fina() {
     }
 }
 
-fn carga() -> String {
+pub(super) fn carga() -> String {
     std::fs::read_to_string("/proc/loadavg").unwrap_or_default()
 }
 
-/// ⭐ **O custo de medir** (W6c, W6d): «uma reprodução» = a trilha que toca do estado inicial (o custo
-/// das referências da W6c); «mede» = [`EnsinoDoPainter::mede`] (a gravada e a base de cada pincelada);
-/// [`EnsinoDoPainter::de`]; e o que fica no quadro uma vez por versão: ler a `Macro`, o hash dos bytes,
-/// a cópia da trilha para o fio, e por quadro a comparação dos bytes. O Splash e as 30 pinceladas em
-/// Wet Paint, a 512² e 1024². Intercaladas, o MÍNIMO de 3.
+/// O tempo de [`EnsinoDoPainter::mede_com`] com `n` fios: (até à 1.ª medida, total), em ms.
+fn tempo_de_medir(t: &Track, n: usize) -> (u128, u128) {
+    let e = EnsinoDoPainter::de(t).expect("de");
+    let t0 = std::time::Instant::now();
+    let mut primeira = None;
+    e.mede_com(t, &AtomicBool::new(false), mede::PASSO_DA_CURVA, n, |_| {
+        primeira.get_or_insert_with(|| t0.elapsed().as_millis());
+    })
+    .expect("mede");
+    (primeira.unwrap_or(0), t0.elapsed().as_millis())
+}
+
+/// ⭐ **O custo de medir** (W6c, W6d, W7): «uma reprodução» = a trilha que toca do estado inicial;
+/// [`EnsinoDoPainter::de`]; o que fica no quadro uma vez por versão (ler a `Macro`, o hash dos bytes, a
+/// cópia da trilha para o fio) e por quadro (comparar os bytes) — intercaladas, o MÍNIMO de 3. E
+/// «mede» (as curvas da gravada e da base de cada pincelada, W7): até à 1.ª medida e o total, com
+/// [`mede::fios`] fios e com um, intercaladas, o mínimo de 2. O Splash em Wet Paint, 512² e 1024².
 #[test]
-#[ignore = "sonda de medição (W6c/W6d): o custo de medir"]
+#[ignore = "sonda de medição (W6c/W6d/W7): o custo de medir"]
 fn sonda_o_custo_das_referencias() {
     use std::hash::{Hash, Hasher};
-    let ps = trinta();
-    let casos: Vec<(String, Vec<u8>, Track)> = [
-        (&SPLASH[..], 512u32),
-        (&SPLASH[..], 1024),
-        (&ps[..], 512),
-        (&ps[..], 1024),
-    ]
-    .into_iter()
-    .map(|(ps, lado)| {
-        let (b, _) = grava_pinceladas(lado, 0, ps, &[]).expect("grava");
-        let t = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
-        (format!("{} pinceladas {lado}²", ps.len()), b, t)
-    })
-    .collect();
-    println!("load antes: {}", carga());
-    let mut m = vec![[u128::MAX; 7]; casos.len()];
-    let parar = AtomicBool::new(false);
+    let casos: Vec<(String, Vec<u8>, Track)> = [512u32, 1024]
+        .into_iter()
+        .map(|lado| {
+            let (b, _) = grava_pinceladas(lado, 0, &SPLASH, &[]).expect("grava");
+            let t = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
+            (format!("4 pinceladas {lado}²"), b, t)
+        })
+        .collect();
+    println!("load antes: {} · fios {}", carga(), mede::fios());
+    let mut m = vec![[u128::MAX; 6]; casos.len()];
+    let mut medir = vec![[(u128::MAX, u128::MAX); 2]; casos.len()];
     let tempo = |m: &mut u128, f: &mut dyn FnMut()| {
         let t0 = std::time::Instant::now();
         f();
         *m = (*m).min(t0.elapsed().as_micros());
     };
-    for _ in 0..3 {
+    for volta in 0..3 {
         for (i, (_, b, t)) in casos.iter().enumerate() {
             let mm = &mut m[i];
             tempo(&mut mm[0], &mut || {
@@ -464,33 +523,38 @@ fn sonda_o_custo_das_referencias() {
                 }
                 std::hint::black_box(toc.tool().canvas_size());
             });
-            let e = EnsinoDoPainter::de(t).expect("de");
             tempo(&mut mm[2], &mut || {
-                let mut n = 0;
-                e.mede(t, &parar, |_| n += 1).expect("mede");
-                std::hint::black_box(n);
-            });
-            tempo(&mut mm[3], &mut || {
                 std::hint::black_box(ph2d_macro::codec::read(b).expect("lê"));
             });
-            tempo(&mut mm[4], &mut || {
+            tempo(&mut mm[3], &mut || {
                 let mut h = std::hash::DefaultHasher::new();
                 b.hash(&mut h);
                 std::hint::black_box(h.finish());
             });
-            tempo(&mut mm[5], &mut || {
+            tempo(&mut mm[4], &mut || {
                 std::hint::black_box(t.clone());
             });
             let c = b.clone();
-            tempo(&mut mm[6], &mut || {
+            tempo(&mut mm[5], &mut || {
                 std::hint::black_box(std::hint::black_box(&c) == b);
             });
+            if volta < 2 {
+                // Alternadas: muitos fios primeiro numa volta, um fio primeiro na outra.
+                let ordem = if volta == 0 { [0, 1] } else { [1, 0] };
+                for j in ordem {
+                    let n = if j == 0 { mede::fios() } else { 1 };
+                    let (a, z) = tempo_de_medir(t, n);
+                    let x = &mut medir[i][j];
+                    *x = (x.0.min(a), x.1.min(z));
+                }
+            }
         }
     }
-    for ((nome, b, t), x) in casos.iter().zip(m) {
+    for ((nome, b, t), (x, md)) in casos.iter().zip(m.iter().zip(&medir)) {
         println!(
-            "{nome} ({} eventos, {} KB): de {} µs · uma reprodução {} µs · mede {} µs · lê {} µs · \
-             hash {} µs · cópia da trilha {} µs · compara os bytes {} µs",
+            "{nome} ({} eventos, {} KB): de {} µs · uma reprodução {} µs · lê {} µs · hash {} µs · cópia \
+             da trilha {} µs · compara os bytes {} µs · mede ({} fios) 1.ª {} ms, total {} ms · mede (1 \
+             fio) 1.ª {} ms, total {} ms",
             t.events.len(),
             b.len() / 1024,
             x[0],
@@ -499,10 +563,35 @@ fn sonda_o_custo_das_referencias() {
             x[3],
             x[4],
             x[5],
-            x[6]
+            mede::fios(),
+            md[0].0,
+            md[0].1,
+            md[1].0,
+            md[1].1
         );
     }
     println!("load depois: {}", carga());
+}
+
+/// ⭐ **O custo de medir as 30 pinceladas** (W7): [`EnsinoDoPainter::mede`] em Wet Paint a 512² e
+/// 1024² — até à 1.ª medida e o total, uma vez cada (o `loadavg` ao lado).
+#[test]
+#[ignore = "sonda de medição (W7): o custo de medir as 30 pinceladas"]
+fn sonda_o_custo_de_medir_as_trinta() {
+    let ps = trinta();
+    for lado in [512u32, 1024] {
+        let (b, _) = grava_pinceladas(lado, 0, &ps, &[]).expect("grava");
+        let t = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
+        let antes = carga();
+        let (a, z) = tempo_de_medir(&t, mede::fios());
+        println!(
+            "30 pinceladas {lado}² ({} eventos): mede ({} fios) 1.ª {a} ms, total {z} ms · load {} → {}",
+            t.events.len(),
+            mede::fios(),
+            antes.trim(),
+            carga().trim()
+        );
+    }
 }
 
 /// **O custo de uma avaliação** (W6, a auditoria): as 30 pinceladas, o aluno com as 15 primeiras
@@ -529,8 +618,8 @@ fn sonda_o_custo_da_avaliacao() {
     }
     let antes = |t: &PainterTool| {
         e.criterios.iter().position(|c| {
-            let r = c.referencia.expect("medida");
-            fracao(&e, t, &c.novos, 0) - r.base < FRACAO_DA_GRAVADA_QUE_CUMPRE * r.delta()
+            let (b, d) = c.referencia.as_ref().expect("medida").em(idade(t));
+            fracao(&e, t, &c.novos, 0) - b < FRACAO_DA_GRAVADA_QUE_CUMPRE * d
         })
     };
     assert_eq!(antes(&t), e.por_cumprir(&t), "as duas réguas concordam");
@@ -540,7 +629,7 @@ fn sonda_o_custo_da_avaliacao() {
             "  {i}: nova {} de {toda} px, pintada {:.1} %, referência {:.1} %",
             c.novos.len(),
             100.0 * e.fracao_pintada(&t, c),
-            100.0 * c.referencia.expect("medida").gravada
+            100.0 * c.referencia.as_ref().expect("medida").gravada.fim()
         );
     }
     let (mut a, mut d) = (u128::MAX, u128::MAX);

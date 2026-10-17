@@ -42,8 +42,20 @@ struct Banca {
     bits: u64,
 }
 
+/// O meio do Splash da banca: Digital, sem água — medir a água custa 960 quadros por medida (W7) e
+/// estas bancas ensaiam o balão, não a água. As que medem a água ([`Banca::com_agua`]) dizem-no.
+const MEIO: PaintMedia = PaintMedia::Digital;
+
 impl Banca {
     fn nova() -> Self {
+        let (doc, _) =
+            ph2d_tool_painter::macro_track::roteiro::grava_no_papel_nos_meios(LADO, 0, &[MEIO; 4])
+                .expect("grava");
+        Self::com(doc)
+    }
+
+    /// O Splash em Wet Paint: a medição demora (a água assenta).
+    fn com_agua() -> Self {
         let (doc, _) =
             ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 4).expect("grava");
         Self::com(doc)
@@ -168,14 +180,14 @@ fn o_balao_pede_a_imagem_em_paint_e_depois_o_meio() {
         "aberta noutra imagem: nenhuma"
     );
     b.abre();
-    b.t.set_paint_media(PaintMedia::Digital);
+    b.t.set_paint_media(PaintMedia::WetPaint);
     assert_eq!(
         b.quadro().pedido,
         Some(PedidoDoTutorial::Meio {
-            chave_do_meio: "tool.painter.media.wet_paint"
+            chave_do_meio: MEIO.name_key()
         })
     );
-    b.t.set_paint_media(PaintMedia::WetPaint);
+    b.t.set_paint_media(MEIO);
     let x = b.quadro();
     assert_eq!(
         (x.passo, x.pedido.clone()),
@@ -223,7 +235,7 @@ fn mostra_me_desfazer_e_recomecar_no_painter() {
     let mut b = Banca::nova();
     b.activo = true;
     b.abre();
-    b.t.set_paint_media(PaintMedia::WetPaint);
+    b.t.set_paint_media(MEIO);
     assert_eq!(b.quadro().passo, 1);
     b.pede(mostra_me);
     b.assenta();
@@ -334,7 +346,7 @@ fn outra_tela_diz_o_tamanho_gravado() {
 #[test]
 fn uma_versao_nova_prepara_se_fora_do_quadro() {
     use ph2d_tool_painter::macro_track::tutorial::{mostra, regioes};
-    let mut b = Banca::nova();
+    let mut b = Banca::com_agua();
     b.activo = true;
     b.abre();
     b.t.set_paint_media(PaintMedia::WetPaint);
@@ -381,7 +393,7 @@ fn uma_versao_nova_prepara_se_fora_do_quadro() {
 /// uma versão que já não existe.
 #[test]
 fn mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha() {
-    let mut b = Banca::nova();
+    let mut b = Banca::com_agua();
     b.um_quadro();
     assert!(b.m.a_medir(), "a 1.ª versão mede-se");
     b.da_dica("Pinta o céu");

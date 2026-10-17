@@ -7,9 +7,10 @@
 //!   cobre. Uma pincelada por cima de outra cumpria-se com a tinta da anterior.
 //! - **«Pintado»** = algum píxel de alguma camada difere do estado inicial (uma camada que o aluno
 //!   criou conta pela tinta que tem).
-//! - **A régua é a GRAVADA** (W6c) **sem a água** (W6d): cumpre-se quando o aluno acrescenta à água
-//!   [`FRACAO_DA_GRAVADA_QUE_CUMPRE`] do que a pincelada gravada acrescenta da parte nova — a base é a
-//!   gravação SEM a pincelada (a aguada da anterior pinta sozinha uma fatia nova).
+//! - **A régua é a GRAVADA** (W6c) **sem a água** (W6d) **na MESMA idade** (W7): cumpre-se quando o
+//!   aluno acrescenta à água [`FRACAO_DA_GRAVADA_QUE_CUMPRE`] do que a pincelada gravada acrescenta da
+//!   parte nova — a base é a gravação SEM a pincelada (a aguada da anterior pinta sozinha uma fatia
+//!   nova); as duas são curvas, lidas na idade do aluno desde o último `Up` ([`idade`]).
 //! - **«Mostra-me»** = o caminho gravado pelas portas do tool vivo, com a cor e o tamanho da
 //!   pincelada (os do aluno voltam depois): um passo de undo.
 
@@ -20,11 +21,12 @@ use super::tocar::{ErroDaMacro, TocadorDoPainter};
 use crate::PaintMedia;
 use crate::tool::PainterTool;
 use ph2d_macro::{LeitorDaFamilia, Track};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 #[path = "tutorial_base.rs"]
 mod base;
-use base::SemAPincelada;
+#[path = "tutorial_mede.rs"]
+mod mede;
 
 /// A pincelada `k` (o endereço da GRAVAÇÃO) numa tela `w × h`.
 #[derive(Clone, Debug, PartialEq)]
@@ -178,25 +180,110 @@ pub struct CriterioDaPincelada {
     pub dica: Option<String>,
 }
 
-/// Quanto dos `novos` de uma pincelada a GRAVAÇÃO pinta, com ela e sem ela, no mesmo instante.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Referencia {
-    /// A trilha que toca.
-    pub gravada: f32,
-    /// A trilha que toca SEM esta pincelada: o que a água das outras pinta sozinha.
-    pub base: f32,
-}
+/// **Uma fracção ao longo do assentar** (W7): `(idade, fracção)` por idade crescente, nunca vazia — a
+/// idade em quadros (60 Hz) desde o último `Up` da trilha medida
+/// ([`PainterTool::segundos_desde_o_ultimo_up`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Curva(pub Vec<(u32, f32)>);
 
-impl Referencia {
-    /// O que a pincelada acrescenta à água.
+impl Curva {
+    /// A mesma fracção em qualquer idade.
     #[must_use]
-    pub fn delta(self) -> f32 {
-        self.gravada - self.base
+    pub fn constante(f: f32) -> Self {
+        Self(vec![(0, f)])
+    }
+
+    /// A fracção na idade `q`, interpolada entre os pontos; antes do 1.º vale o 1.º, depois do último
+    /// o último.
+    #[must_use]
+    pub fn em(&self, q: u32) -> f32 {
+        let i = self.0.partition_point(|&(a, _)| a <= q);
+        match (i.checked_sub(1).map(|j| self.0[j]), self.0.get(i)) {
+            (Some((a, fa)), Some(&(b, fb))) => {
+                #[expect(clippy::cast_precision_loss, reason = "idades em quadros")]
+                let x = (q - a) as f32 / (b - a) as f32;
+                fa + (fb - fa) * x
+            }
+            (Some((_, f)), None) | (None, Some(&(_, f))) => f,
+            (None, None) => 0.0,
+        }
+    }
+
+    /// A fracção do último ponto (a água assentada).
+    #[must_use]
+    pub fn fim(&self) -> f32 {
+        self.0.last().map_or(0.0, |p| p.1)
+    }
+
+    /// A idade do último ponto.
+    #[must_use]
+    pub fn ate(&self) -> u32 {
+        self.0.last().map_or(0, |p| p.0)
     }
 }
 
+/// Quanto dos `novos` de uma pincelada a GRAVAÇÃO pinta, com ela e sem ela, ao longo do assentar —
+/// cada curva na idade da SUA trilha.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Referencia {
+    /// A trilha que toca, desde o `Up` da pincelada.
+    pub gravada: Curva,
+    /// A trilha que toca SEM esta pincelada (o que a água das outras pinta sozinha), desde o `Up` da
+    /// anterior que lá ficou.
+    pub base: Curva,
+}
+
+impl Referencia {
+    /// As duas curvas constantes.
+    #[must_use]
+    pub fn constante(gravada: f32, base: f32) -> Self {
+        Self {
+            gravada: Curva::constante(gravada),
+            base: Curva::constante(base),
+        }
+    }
+
+    /// O que a pincelada acrescenta à água ASSENTADA (a lei do Δ vazio).
+    #[must_use]
+    pub fn delta(&self) -> f32 {
+        self.gravada.fim() - self.base.fim()
+    }
+
+    /// A base e o que a pincelada acrescenta na idade `q` (o acréscimo nunca abaixo de
+    /// [`DELTA_MINIMO`]: a guarda da divisão).
+    #[must_use]
+    pub fn em(&self, q: u32) -> (f32, f32) {
+        let b = self.base.em(q);
+        (b, (self.gravada.em(q) - b).max(DELTA_MINIMO))
+    }
+
+    /// A idade a partir da qual nenhuma das duas muda.
+    #[must_use]
+    pub fn ate(&self) -> u32 {
+        self.gravada.ate().max(self.base.ate())
+    }
+}
+
+/// A idade de `t` em quadros (60 Hz) desde o último `Up` na tela; `None` = nenhum.
+#[must_use]
+pub fn idade_de(t: &PainterTool) -> Option<u32> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "segundos ≥ 0, saturado"
+    )]
+    t.segundos_desde_o_ultimo_up()
+        .map(|s| (s * 60.0).round().min(f64::from(u32::MAX)) as u32)
+}
+
+/// A idade do aluno `t` ([`idade_de`]); sem `Up` nenhum, depois de toda curva.
+#[must_use]
+pub fn idade(t: &PainterTool) -> u32 {
+    idade_de(t).unwrap_or(u32::MAX)
+}
+
 /// A medida da pincelada `k` (o endereço da gravação).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Medida {
     pub k: usize,
     pub referencia: Referencia,
@@ -319,76 +406,6 @@ impl EnsinoDoPainter {
         self.chegadas
     }
 
-    /// **Mede cada critério** de `track`, com a régua do aluno (o «pintado»), no instante antes do
-    /// toque da pincelada SEGUINTE (ou no fim) — a água que corre depois do levantar conta, como conta
-    /// para o aluno:
-    ///
-    /// - `gravada`: a trilha que toca, reproduzida do estado inicial;
-    /// - `base`: a MESMA trilha com a pincelada apagada ([`etapas::apaga`]) e o tempo dela devolvido
-    ///   à etapa seguinte ([`etapas::espera`]) — o toque seguinte cai no mesmo instante. Recomeça do
-    ///   instantâneo da reprodução no 1.º evento em que as duas diferem (W5c).
-    ///
-    /// Uma porta recusada salta-se (o tutorial não a ensina). `chega` recebe cada medida pela ordem
-    /// das pinceladas. `Ok(false)` = `parar` pediu-o a meio.
-    ///
-    /// # Errors
-    /// [`ErroDaMacro`] — a reprodução divergiu.
-    pub fn mede(
-        &self,
-        track: &Track,
-        parar: &AtomicBool,
-        mut chega: impl FnMut(Medida),
-    ) -> Result<bool, ErroDaMacro> {
-        let tocavel = track
-            .tocavel(&LeitorDoPainter)
-            .map_err(ErroDaMacro::Edicao)?;
-        let ps = pinceladas_em(track, &tocavel)?;
-        // (o evento antes do qual se mede, o critério), pela ordem dos eventos.
-        let mut fronteiras = Vec::new();
-        let mut bases = Vec::new();
-        for (j, p) in ps.iter().enumerate() {
-            let Some(c) = self.criterios.iter().position(|c| c.regiao.k == p.k) else {
-                continue;
-            };
-            let fronteira = ps.get(j + 1).map_or(tocavel.events.len(), |q| q.inicio);
-            fronteiras.push((fronteira, c));
-            bases.push(SemAPincelada::de(track, &tocavel, p.k, c, fronteira)?);
-        }
-        bases.sort_by_key(|b| b.desde);
-        let mut base = vec![None; self.criterios.len()];
-        let mut toc = TocadorDoPainter::novo(
-            &tocavel.initial,
-            tocavel.events.iter().map(|e| e.payload.as_slice()),
-        )?;
-        let (mut f, mut b) = (fronteiras.iter().peekable(), bases.iter().peekable());
-        for i in 0..=tocavel.events.len() {
-            while let Some(s) = b.next_if(|s| s.desde == i) {
-                match s.mede(self, track, &toc, parar)? {
-                    Some(x) => base[s.c] = Some(x),
-                    None => return Ok(false),
-                }
-            }
-            while let Some(&(_, c)) = f.next_if(|&&(antes_de, _)| antes_de == i) {
-                let crit = &self.criterios[c];
-                chega(Medida {
-                    k: crit.regiao.k,
-                    referencia: Referencia {
-                        gravada: self.fracao_pintada(toc.tool(), crit),
-                        base: base[c].expect("a base mede-se antes da fronteira"),
-                    },
-                });
-            }
-            let Some(ev) = tocavel.events.get(i) else {
-                break;
-            };
-            if parar.load(Ordering::Relaxed) {
-                return Ok(false);
-            }
-            toca(&mut toc, &ev.payload)?;
-        }
-        Ok(true)
-    }
-
     /// As camadas do aluno `t` ao lado das do inicial, emparelhadas UMA vez por avaliação; `None` numa
     /// tela de outro tamanho.
     fn camadas<'a>(&'a self, t: &'a PainterTool) -> Option<Camadas<'a>> {
@@ -424,34 +441,48 @@ impl EnsinoDoPainter {
         self.camadas(t).map_or(0.0, |cs| Self::fracao(&cs, c))
     }
 
-    /// O que o aluno `t` acrescentou à água em `c`, sobre o que a gravada acrescenta:
-    /// `(fracção pintada − base) / (gravada − base)` (`None` = por medir).
+    /// O que o aluno `t` acrescentou à água em `c`, sobre o que a gravada acrescenta, na idade dele
+    /// ([`idade`]): `(fracção pintada − base(τ)) / (gravada(τ) − base(τ))` (`None` = por medir).
     #[must_use]
     pub fn razao(&self, t: &PainterTool, c: &CriterioDaPincelada) -> Option<f32> {
-        let r = c.referencia?;
-        Some((self.fracao_pintada(t, c) - r.base) / r.delta())
+        let (b, d) = c.referencia.as_ref()?.em(idade(t));
+        Some((self.fracao_pintada(t, c) - b) / d)
+    }
+
+    /// A idade de `t` na chave de quem guarda a avaliação: depois da última idade amostrada nenhuma
+    /// curva muda, e a chave também não.
+    #[must_use]
+    pub fn idade_na_chave(&self, t: &PainterTool) -> u32 {
+        let ate = self
+            .criterios
+            .iter()
+            .filter_map(|c| c.referencia.as_ref().map(Referencia::ate))
+            .max()
+            .unwrap_or(0);
+        idade(t).min(ate)
     }
 }
 
 /// ⭐ **A fracção do que a GRAVADA acrescenta à água que cumpre uma pincelada** —
-/// `(fracção pintada − base) / (gravada − base) ≥ isto`. MEDIDA (W6d, `03_plano_W6.md` §6.3, as sondas
-/// deste módulo; mín./máx. das pinceladas, % normalizada):
+/// `(fracção pintada − base(τ)) / (gravada(τ) − base(τ)) ≥ isto`, na idade τ do aluno. MEDIDA (W7,
+/// `04_plano_W7.md` item 2, as sondas deste módulo; smoke; % normalizada, o aluno avaliado na idade dele
+/// depois de a água assentar; o Nada também em cada idade):
 ///
-/// | Trilha | Exacta = «Mostra-me» | Torta ½ r (mín.) | Fina (máx.) | Nada = pular e esperar (máx.) |
+/// | Trilha | Exacta = «Mostra-me» | Torta ½ r (mín.) | Fina (máx.) | Nada (máx.): nas curvas / depois |
 /// |---|---|---|---|---|
-/// | Splash, Digital 512² | 100 | 73,1 | 43,8 | 0 |
-/// | Splash, Watercolor 512² | 100 | 74,0 | 44,3 | 0 |
-/// | Splash, Impasto 512² | 100 | 74,0 | 44,5 | 0 |
-/// | Splash, Wet Paint 512² | 100–102,3 | 80,3 | 49,1 | 0,1 |
-/// | Splash, Wet Paint 1024² | 100–101,1 | 81,9 | 57,5 | 0 |
-/// | 30 pinceladas, Wet Paint 512² | 100–172,8 | — | — | 67,5 |
+/// | Splash, Digital / Watercolor / Impasto 512² | 100 | 73,1 / 74,0 / 74,0 | 43,8 / 44,3 / 44,5 | 0 / 0 |
+/// | Splash, Wet Paint 512² | 100 | 74,6 | 55,6 | 0 / 8,3 |
+/// | Splash, Wet Paint 1024² | 100 | 80,2 | 60,0 | 0 / 4,9 |
+/// | 30 pinceladas, os quatro meios 512² | 100 (no `Up`, Wet Paint) | — | — | 0 / 7,3 (Wet Paint) |
 ///
-/// O meio do intervalo 67,5–73,1: 2,8 pontos de margem para cada lado.
-pub const FRACAO_DA_GRAVADA_QUE_CUMPRE: f32 = 0.703;
+/// O meio do intervalo 60,0 (a fina, Wet Paint 1024²) – 73,1 (a torta, Digital): 6,55 pontos de margem
+/// para cada lado.
+pub const FRACAO_DA_GRAVADA_QUE_CUMPRE: f32 = 0.6655;
 
-/// **O que uma pincelada tem de acrescentar à água** (`gravada − base`) para ter critério — abaixo,
-/// a lei do Δ vazio. MEDIDO (W6d): o menor Δ real nas sondas é 1,0 % (Watercolor, uma fatia fina; Wet
-/// Paint 15,3 %); o aluno que pula a pincelada fica a ≤ 0,1 ponto da base (Splash, Wet Paint).
+/// **O que uma pincelada tem de acrescentar à água** (`gravada − base`, no fim das curvas) para ter
+/// critério — abaixo, a lei do Δ vazio; e o piso do acréscimo em cada idade (a guarda da divisão).
+/// MEDIDO (W6d; W7 com a água assentada): o menor Δ real nas sondas é 1,0 % (Watercolor, uma fatia
+/// fina; Wet Paint 19,7 %).
 pub const DELTA_MINIMO: f32 = 0.005;
 
 impl EnsinoDoPainter {
@@ -463,9 +494,11 @@ impl EnsinoDoPainter {
         let Some(cs) = self.camadas(t) else {
             return (!self.criterios.is_empty()).then_some(0);
         };
+        let q = idade(t);
         self.criterios.iter().position(|c| {
-            c.referencia.is_none_or(|r| {
-                Self::fracao(&cs, c) - r.base < FRACAO_DA_GRAVADA_QUE_CUMPRE * r.delta()
+            c.referencia.as_ref().is_none_or(|r| {
+                let (b, d) = r.em(q);
+                Self::fracao(&cs, c) - b < FRACAO_DA_GRAVADA_QUE_CUMPRE * d
             })
         })
     }

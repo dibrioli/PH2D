@@ -25,9 +25,9 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread::JoinHandle;
 
 /// A chave da avaliação do Painter: a versão da trilha, a imagem ligada, o tamanho da tela, a
-/// revisão do conteúdo ([`PainterTool::content_revision`]) e as medidas chegadas — a mesma chave, o
-/// mesmo estado.
-type ChaveDoProgresso = (u64, Option<u64>, (u32, u32), (u64, u64), usize);
+/// revisão do conteúdo ([`PainterTool::content_revision`]), as medidas chegadas e a idade da água
+/// ([`EnsinoDoPainter::idade_na_chave`]) — a mesma chave, o mesmo estado.
+type ChaveDoProgresso = (u64, Option<u64>, (u32, u32), (u64, u64), usize, u32);
 
 /// O que o fio do ensino manda ao quadro, por ordem.
 enum Chegada {
@@ -39,7 +39,7 @@ enum Chegada {
 
 /// **O ensino de uma versão FORA do quadro** (W6c/W6d, `docs/Macros/03_plano_W6.md` §6.3): o fio
 /// `macro-referencias` lê a trilha ([`EnsinoDoPainter::de`]: 30–170 ms a 1024²) e depois mede cada
-/// pincelada — a gravada e a base, uma a uma (2–23 s a 1024²). Até o ensino chegar o balão está «a
+/// pincelada — as curvas da gravada e da base, em poucos fios trabalhadores dele (W7). Até o ensino chegar o balão está «a
 /// preparar»; uma pincelada sem medida não se cumpre. Largar o trabalho pára o fio.
 struct Trabalho {
     parar: Arc<AtomicBool>,
@@ -280,6 +280,7 @@ impl Tutorial {
                     t.canvas_size(),
                     t.content_revision(),
                     e.chegadas(),
+                    e.idade_na_chave(t),
                 );
                 let feitas = match self.progresso {
                     Some((c, n)) if c == chave => n,

@@ -15,12 +15,25 @@ impl CanvasPaintTool for PainterTool {
                 let (w, h) = t.macro_referencia();
                 crate::macro_track::Passo::de_ponteiro(ev, w, h)
             },
-            { self.on_canvas_pointer_corpo(ev) }
+            {
+                if ev.phase == PointerPhase::Up {
+                    self.desde_o_ultimo_up = Some(0.0);
+                }
+                self.on_canvas_pointer_corpo(ev)
+            }
         )
     }
 }
 
 impl PainterTool {
+    /// **A idade da água**: segundos desde o último `Up` na tela, contados pelos `dt` do `on_tick` (o
+    /// relógio do tool, nunca o de parede); `None` = nenhum `Up` ainda. O tutorial compara o aluno com a
+    /// gravada na MESMA idade (`docs/Macros/04_plano_W7.md` item 2).
+    #[must_use]
+    pub fn segundos_desde_o_ultimo_up(&self) -> Option<f64> {
+        self.desde_o_ultimo_up
+    }
+
     fn on_canvas_pointer_corpo(&mut self, ev: CanvasPointer) -> bool {
         if ev.phase == PointerPhase::Hover {
             return false; // hover is cursor/preview only

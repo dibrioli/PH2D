@@ -44,6 +44,9 @@ impl Tool for PainterTool {
     /// Per-frame heartbeat (ADR-0040-amendment-2): airbrush timer + stabilizer catch-up; `dt_ms` = real wall ms since last frame.
     fn on_tick(&mut self, dt_ms: f32) {
         crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Tique(dt_ms), {
+            if let Some(s) = &mut self.desde_o_ultimo_up {
+                *s += f64::from(dt_ms) * 1e-3;
+            }
             self.paint_tick(dt_ms * 1e-3)
         })
     }

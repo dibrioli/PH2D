@@ -1,24 +1,27 @@
 //! Os gates do tutorial «fazer» do Painter (W6b, `docs/Macros/03_plano_W6.md` §6): o Splash gravado
 //! a 512², um aluno no estado inicial.
 
-use super::sonda::{MEIOS, Variante, cada_aluno, criterio_de, quadro, trilha_no_meio, trinta};
+use super::sonda::{
+    MEIOS, Variante, cada_aluno, criterio_de, pinta, quadro, traca, trilha_no_meio, trinta,
+};
 use super::*;
-use crate::macro_track::roteiro::{CAUDA, SPLASH, grava_nos_meios, grava_pinceladas};
+use crate::macro_track::roteiro::{self, CAUDA, SPLASH, grava_nos_meios, grava_pinceladas};
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 const LADO: u32 = 512;
 /// A entidade a que o tool no estado inicial liga o documento.
 const ALVO: u64 = inicial::ENTIDADE_DO_TOCADOR;
 
-fn trilha() -> Track {
-    let (b, _) = grava_pinceladas(LADO, 0, &SPLASH, &[0; 4]).expect("grava");
-    ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0)
-}
-
-fn assenta(t: &mut PainterTool) {
+/// O aluno espera 2 s (a água ainda corre: a régua compara-o na idade dele, W7).
+fn espera(t: &mut PainterTool) {
     for _ in 0..CAUDA {
         quadro(t);
     }
+}
+
+fn trilha() -> Track {
+    let (b, _) = grava_pinceladas(LADO, 0, &SPLASH, &[0; 4]).expect("grava");
+    ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0)
 }
 
 /// Cada pincelada cumpre-se só quando feita («Mostra-me» = a gravada), e o Ctrl+Z volta o passo — nos
@@ -33,7 +36,7 @@ fn cada_pincelada_so_se_cumpre_feita_e_o_desfazer_a_volta() {
         assert_eq!(e.por_cumprir(&t), Some(0), "{m:?}: nada feito");
         for (i, c) in e.criterios.iter().enumerate() {
             mostra(&mut t, &track, c.regiao.k).expect("mostra");
-            assenta(&mut t);
+            espera(&mut t);
             assert_eq!(
                 e.por_cumprir(&t),
                 (i + 1 < 4).then_some(i + 1),
@@ -41,14 +44,14 @@ fn cada_pincelada_so_se_cumpre_feita_e_o_desfazer_a_volta() {
             );
         }
         assert!(t.undo_last(), "a última pincelada desfaz-se");
-        assenta(&mut t);
+        espera(&mut t);
         assert_eq!(
             e.por_cumprir(&t),
             Some(3),
             "{m:?}: o desfazer volta o passo"
         );
         assert!(t.redo_last());
-        assenta(&mut t);
+        espera(&mut t);
         assert_eq!(e.por_cumprir(&t), None, "{m:?}: o refazer avança");
     }
 }
@@ -95,7 +98,7 @@ fn o_mostra_me_cumpre_a_fatia_fina() {
         let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
         for c in &e.criterios {
             mostra(&mut t, &track, c.regiao.k).expect("mostra");
-            assenta(&mut t);
+            espera(&mut t);
         }
         let r = e.razao(&t, c).expect("medida");
         assert!(r >= FRACAO_DA_GRAVADA_QUE_CUMPRE, "{m:?}: {r}");
@@ -103,45 +106,129 @@ fn o_mostra_me_cumpre_a_fatia_fina() {
     }
 }
 
-/// ⭐ **Pular a pincelada e esperar não a cumpre** (W6d): nas 30 pinceladas em Wet Paint, o aluno que
-/// fez as anteriores certas NÃO faz a `k` e espera a água assentar — a aguada da anterior pinta sozinha
-/// a fatia nova. Nenhuma das 30 se cumpre — nem pela razão, nem pela porta do balão
-/// ([`EnsinoDoPainter::por_cumprir`] pára na 1.ª com critério desde a `k`: a base, que a aguada das
-/// outras pinta sozinha, desconta-se lá também).
-#[test]
-fn pular_a_pincelada_e_esperar_nao_cumpre_nenhuma() {
+/// As 30 pinceladas em Wet Paint, 512², e o ensino com as medidas só das pinceladas `ks` (as
+/// outras saem dos critérios; `None` = todas).
+fn trinta_em_wet_paint(ks: Option<&[usize]>) -> (Vec<roteiro::Pincelada>, Track, EnsinoDoPainter) {
     let ps = trinta();
     let track = trilha_no_meio(PaintMedia::WetPaint, &ps, LADO);
-    let e = EnsinoDoPainter::medido(&track).expect("ensino");
+    let mut e = EnsinoDoPainter::de(&track).expect("ensino");
+    if let Some(ks) = ks {
+        let gravadas = regioes(&track, LADO, LADO).expect("regiões");
+        e.criterios
+            .retain(|c| ks.iter().any(|&j| gravadas[j].k == c.regiao.k));
+    }
+    let mut ms = Vec::new();
+    assert_eq!(
+        e.mede(&track, &AtomicBool::new(false), |m| ms.push(m)),
+        Ok(true)
+    );
+    for m in ms {
+        e.com_medida(m);
+    }
+    (ps, track, e)
+}
+
+/// ⭐ **O aluno exacto cumpre no quadro do `Up`** (W7, a MESMA idade da água): nas 30 pinceladas em
+/// Wet Paint, o aluno que fez as anteriores certas faz a `k` exacta — no quadro do `Up` (idade 1) a
+/// razão já cumpre e o balão passa à seguinte. ⛔ VERMELHO pela régua da água assentada (W7, parte 1:
+/// esperava 0–321 quadros) e pelas curvas que começavam no toque da seguinte (razão 37–69 % nestas).
+/// As quatro em que a água corre mais nos 12 quadros antes do toque seguinte, para caber no prazo.
+#[test]
+fn o_aluno_exacto_cumpre_no_quadro_do_up() {
+    const KS: [usize; 4] = [13, 21, 25, 29];
+    let (ps, track, e) = trinta_em_wet_paint(Some(&KS));
+    assert_eq!(e.criterios.len(), KS.len(), "todas as KS têm critério");
+    let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    #[expect(clippy::cast_precision_loss, reason = "o lado cabe num f32")]
+    let l = LADO as f32;
+    let mut falha = Vec::new();
+    for (k, p) in ps.iter().enumerate() {
+        if let Some(c) = criterio_de(&e, &track, k) {
+            let mut a = t.instantaneo().expect("instantâneo do aluno");
+            traca(&mut a, p, l);
+            let r = e.razao(&a, c).expect("medida");
+            let i = e.criterios.iter().position(|x| x.regiao.k == c.regiao.k);
+            let balao = e.por_cumprir(&a);
+            let passou = balao.is_none_or(|b| i.is_some_and(|i| b > i));
+            if r < FRACAO_DA_GRAVADA_QUE_CUMPRE || !passou {
+                falha.push((k, idade(&a), r, balao));
+            }
+        }
+        pinta(&mut t, p, l);
+    }
+    assert!(
+        falha.is_empty(),
+        "o aluno exacto não cumpre no Up (k, idade, razão, por_cumprir): {falha:?}"
+    );
+}
+
+/// ⭐ **Pular a pincelada e esperar não a cumpre** (W6d; W7 em cada idade): o aluno que fez as
+/// anteriores certas NÃO faz a `k` e espera — a aguada da anterior pinta sozinha a fatia nova —, até a
+/// idade dele passar a última das curvas da `k`, e é avaliado em cada quadro: nunca se cumpre, nem pela
+/// razão, nem pela porta do balão ([`EnsinoDoPainter::por_cumprir`] pára na 1.ª com critério desde a
+/// `k`), esta a cada 32 quadros. Só as pinceladas que cumpriam pela régua da W6c, para caber no prazo
+/// de um gate (cada medida são 960 quadros de água).
+#[test]
+fn pular_a_pincelada_e_esperar_nao_cumpre_nenhuma() {
+    const KS: [usize; 6] = [5, 9, 13, 18, 22, 26];
+    let (ps, track, e) = trinta_em_wet_paint(Some(&KS));
+    assert_eq!(e.criterios.len(), KS.len(), "todas as KS têm critério");
     let ks: Vec<usize> = regioes(&track, LADO, LADO)
         .expect("regiões")
         .iter()
         .map(|r| r.k)
         .collect();
-    let mut cumpre = Vec::new();
-    let mut passa = Vec::new();
-    cada_aluno(&track, &ps, LADO, &[Variante::Nada], |k, _, t| {
-        if let Some(c) = criterio_de(&e, &track, k)
-            && e.razao(t, c).expect("medida") >= FRACAO_DA_GRAVADA_QUE_CUMPRE
-        {
-            cumpre.push(k);
+    #[expect(clippy::cast_precision_loss, reason = "o lado cabe num f32")]
+    let l = LADO as f32;
+    // Os alunos que pulam, cada um num fio: (k, o aluno com as anteriores certas).
+    let mut alunos = Vec::new();
+    let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    for (k, p) in ps.iter().enumerate() {
+        if criterio_de(&e, &track, k).is_some() {
+            alunos.push((k, t.instantaneo().expect("instantâneo do aluno")));
         }
+        pinta(&mut t, p, l);
+    }
+    let (e, track, ks) = (&e, &track, &ks);
+    let espera = |k: usize, mut a: PainterTool| {
+        let c = criterio_de(e, track, k).expect("critério");
         let esperada = e
             .criterios
             .iter()
             .position(|c| ks[k..].contains(&c.regiao.k));
-        let balao = e.por_cumprir(t);
-        if balao != esperada {
-            passa.push((k, esperada, balao));
+        let ate = c.referencia.as_ref().expect("medida").ate();
+        let mut q = 0u32;
+        while idade(&a) <= ate {
+            let r = e.razao(&a, c).expect("medida");
+            if r >= FRACAO_DA_GRAVADA_QUE_CUMPRE {
+                return (Some((k, idade(&a), r)), None);
+            }
+            if q % 32 == 0 && e.por_cumprir(&a) != esperada {
+                return (None, Some((k, idade(&a), esperada, e.por_cumprir(&a))));
+            }
+            quadro(&mut a);
+            q += 1;
         }
+        (None, None)
+    };
+    let feitos: Vec<_> = std::thread::scope(|sc| {
+        let fios: Vec<_> = alunos
+            .into_iter()
+            .map(|(k, a)| sc.spawn(move || espera(k, a)))
+            .collect();
+        fios.into_iter()
+            .map(|f| f.join().expect("o aluno"))
+            .collect()
     });
+    let cumpre: Vec<_> = feitos.iter().filter_map(|x| x.0).collect();
+    let passa: Vec<_> = feitos.iter().filter_map(|x| x.1).collect();
     assert!(
         cumpre.is_empty(),
-        "o «Nada» cumpre as pinceladas {cumpre:?}"
+        "o «Nada» cumpre (k, idade, razão): {cumpre:?}"
     );
     assert!(
         passa.is_empty(),
-        "o balão passa a pincelada pulada (k, esperada, por_cumprir): {passa:?}"
+        "o balão passa a pincelada pulada (k, idade, esperada, por_cumprir): {passa:?}"
     );
 }
 
@@ -156,10 +243,7 @@ fn outra_tela_nao_se_avalia_nem_chamada_por_dentro() {
     for k in ks {
         assert!(e.com_medida(Medida {
             k,
-            referencia: Referencia {
-                gravada: 0.9,
-                base: 0.0,
-            },
+            referencia: Referencia::constante(0.9, 0.0),
         }));
     }
     assert!(!e.a_medir());
@@ -190,22 +274,19 @@ fn outra_tela_nao_se_avalia_nem_chamada_por_dentro() {
 /// uma medida de outra pincelada recusa-se; elas chegam uma a uma.
 #[test]
 fn sem_medidas_nenhuma_pincelada_se_cumpre() {
-    let track = trilha();
+    // Digital: a medição da água custa 960 quadros por medida (W7) e o que aqui se ensaia é a chegada.
+    let track = trilha_no_meio(PaintMedia::Digital, &SPLASH, LADO);
     let mut e = EnsinoDoPainter::de(&track).expect("ensino");
     assert!(e.a_medir());
     let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
     for c in &e.criterios {
         mostra(&mut t, &track, c.regiao.k).expect("mostra");
     }
-    assenta(&mut t);
+    espera(&mut t);
     assert_eq!(e.por_cumprir(&t), Some(0));
-    let r = Referencia {
-        gravada: 0.9,
-        base: 0.0,
-    };
     assert!(!e.com_medida(Medida {
         k: 999,
-        referencia: r
+        referencia: Referencia::constante(0.9, 0.0),
     }));
     let mut ms = Vec::new();
     assert_eq!(
@@ -213,12 +294,12 @@ fn sem_medidas_nenhuma_pincelada_se_cumpre() {
         Ok(true)
     );
     assert_eq!(ms.len(), 4);
-    assert!(e.com_medida(ms[0]));
-    assert!(!e.com_medida(ms[0]), "a mesma medida duas vezes");
+    assert!(e.com_medida(ms[0].clone()));
+    assert!(!e.com_medida(ms[0].clone()), "a mesma medida duas vezes");
     assert_eq!(e.chegadas(), 1);
     assert_eq!(e.por_cumprir(&t), Some(1), "só a 1.ª medida chegou");
     for m in &ms[1..] {
-        assert!(e.com_medida(*m));
+        assert!(e.com_medida(m.clone()));
     }
     assert!(!e.a_medir());
     assert_eq!(e.por_cumprir(&t), None);
@@ -235,7 +316,7 @@ fn uma_pincelada_que_nao_acrescenta_a_agua_nao_tem_criterio() {
     for (&k, (gravada, base)) in ks.iter().zip(medidas) {
         assert!(e.com_medida(Medida {
             k,
-            referencia: Referencia { gravada, base },
+            referencia: Referencia::constante(gravada, base),
         }));
     }
     let ficam: Vec<usize> = e.criterios.iter().map(|c| c.regiao.k).collect();
@@ -328,7 +409,7 @@ fn o_meio_pedido_e_o_da_pincelada_corrente() {
     let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
     assert_eq!(e.preparo(Some(&t), true, ALVO), None, "a 1.ª em Wet Paint");
     mostra(&mut t, &track, e.criterios[0].regiao.k).expect("mostra");
-    assenta(&mut t);
+    espera(&mut t);
     assert_eq!(e.por_cumprir(&t), Some(1));
     assert_eq!(
         e.preparo(Some(&t), true, ALVO),
@@ -341,7 +422,7 @@ fn o_meio_pedido_e_o_da_pincelada_corrente() {
     ));
     assert_eq!(e.preparo(Some(&t), true, ALVO), None);
     mostra(&mut t, &track, e.criterios[1].regiao.k).expect("mostra");
-    assenta(&mut t);
+    espera(&mut t);
     assert_eq!(e.por_cumprir(&t), None, "a 2.ª pintada em Watercolor");
 }
 
@@ -385,11 +466,11 @@ fn recomecar_a_gravar_grava_uma_recusa() {
 /// «Recomeçar» volta a tela ao início num passo de undo, e o desfazer volta ao feito.
 #[test]
 fn recomecar_volta_ao_inicio_num_passo_de_undo() {
-    let track = trilha();
+    let track = trilha_no_meio(PaintMedia::Digital, &SPLASH, LADO);
     let e = EnsinoDoPainter::medido(&track).expect("ensino");
     let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
     mostra(&mut t, &track, e.criterios[0].regiao.k).expect("mostra");
-    assenta(&mut t);
+    espera(&mut t);
     assert_eq!(e.por_cumprir(&t), Some(1));
     recomeca(&mut t, &track).expect("recomeça");
     assert_eq!(e.por_cumprir(&t), Some(0), "de volta ao início");

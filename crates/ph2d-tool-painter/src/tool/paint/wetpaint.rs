@@ -223,6 +223,16 @@ impl PainterTool {
         self.paint.wetpaint.ritmo = ritmo;
     }
 
+    /// **A água parou** — sem sessão molhada, ou o motor sem fluido nem passo em voo: o passo seguinte
+    /// já não corre (`sim_step_stage` devolve sem mexer). A régua do tutorial mede aqui (W7).
+    pub(crate) fn wet_assentada(&mut self) -> bool {
+        let Some(s) = self.paint.wetpaint.session.as_mut() else {
+            return true;
+        };
+        s.bring_home();
+        !s.engine.sim.step_pending() && !s.engine.active_grid().has_fluid
+    }
+
     /// Instala (ou tira) a fita da macro: no estado, para as sessões que nascerem, e na sessão viva.
     pub(crate) fn wet_instala_fita(&mut self, f: Option<fita::FitaPartilhada>) {
         if let Some(s) = self.paint.wetpaint.session.as_mut() {

@@ -91,6 +91,12 @@ fazer também. Os `.log` irmãos das fotos ficam não rastreados.
   `panel::paint_popover_scrollbar` (o censo `architecture_dropdown_lists_use_the_door` proíbe a barra à
   mão num painel). Gate `on_a_short_window_the_stroke_panel_scrolls_inside_the_region` (herói real,
   janela a meia altura, controlo de transbordo); mutações «sem recorte dos hits» e «sem encolher» → vermelho.
+- **A roda sobre o painel do traço dava ZOOM no canvas** (report do dono, `d2e190b0c7`): a shell só dá a roda
+  ao herói quando `chrome_panel_at` → `panel_at` acha um `panel_rect`, e os dropdowns pintados sobre o canvas
+  (o painel do traço, as listas da fila) vivem no slot `dropdown_popover`. `WidgetStore::open_dropdown_popover_at`
+  é agora a pergunta única (o despacho da roda e o `chrome_panel_at` usam-na). O gate da janela baixa pergunta
+  `chrome_panel_at` como a shell; mutação → vermelho. Lição: o teste anterior chamava `handle_wheel` e saltava
+  a pergunta da shell — um gate de roda tem de passar pela porta que a SHELL consulta.
 - **`VECTOR_RULERS_OFF/ON`** saíram com o canal `pending_rulers` inteiro (as réguas são do menu View, que
   escreve `hero.view` direto); o nome do ficheiro `fase_compound_snap_rulers.rs` ficou (só o cabeçalho mudou).
 - Verificação: os 3 gates novos + 10 por nome dos censos tocados (`clamp_calls…`, `no_magic_numeric…`,

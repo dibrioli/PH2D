@@ -870,3 +870,451 @@ fn o_primeiro_toque_nao_assenta_o_proprio_traco_com_agua_viva() {
         "a Live Water: o traço sozinho muda {pior} níveis com o Glaze"
     );
 }
+
+/// A cena dos MUITOS cruzamentos (smoke do dono 17/10): seis traços do mesmo vermelho em direcções várias.
+const MUITOS: [Traco; 6] = [
+    [[100.0, 200.0], [900.0, 260.0]],
+    [[150.0, 520.0], [850.0, 120.0]],
+    [[300.0, 80.0], [700.0, 580.0]],
+    [[100.0, 380.0], [900.0, 330.0]],
+    [[600.0, 60.0], [350.0, 600.0]],
+    [[120.0, 120.0], [880.0, 500.0]],
+];
+
+/// A luz linear de uma cor sRGB 0..255.
+fn luz_rgb(c: [f64; 3]) -> f64 {
+    let lin = |v: f64| {
+        let c = (v / 255.0).clamp(0.0, 1.0);
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
+}
+
+/// As LINHAS CLARAS dentro da tinta escura, no ecrã das CÉLULAS (`l`, `w` × `h`, luz linear): uma célula mais clara
+/// por mais de `limiar` (razão) que as DUAS do outro lado, a 2 ou 3 células numa das quatro direcções, ambas já de
+/// várias camadas (abaixo de 85 % da tinta pura) — uma crista fina, não a orla entre uma zona clara e uma escura.
+/// Devolve (quantas, a pior razão).
+fn linhas_claras(l: &[f64], w: usize, h: usize, limiar: f64) -> (usize, f64) {
+    let pura = luz_rgb(VERMELHO_DO_DONO.map(f64::from));
+    let (mut n, mut pior) = (0, 1.0f64);
+    for y in 3..h - 3 {
+        for x in 3..w - 3 {
+            let c = l[y * w + x];
+            let mut r = 0.0f64;
+            for (dx, dy) in [(1i64, 0i64), (0, 1), (1, 1), (1, -1)] {
+                for k in [2i64, 3] {
+                    let at = |sx: i64| {
+                        l[((y as i64 + sx * k * dy) as usize) * w
+                            + (x as i64 + sx * k * dx) as usize]
+                    };
+                    let lado = at(1).max(at(-1));
+                    if lado < 0.85 * pura && lado > 0.0 {
+                        r = r.max(c / lado);
+                    }
+                }
+            }
+            if r > 1.0 + limiar {
+                n += 1;
+            }
+            pior = pior.max(r);
+        }
+    }
+    (n, pior)
+}
+
+/// O ecrã das células (luz linear) e a largura da grade (sem o anel).
+fn luz_das_celulas(t: &mut ph2d_tool_painter::PainterTool) -> (Vec<f64>, usize, usize) {
+    let (c, _, s) = celulas(t);
+    let h = c.len() / s;
+    let l = c.iter().map(|c| luz_rgb(c.ecra)).collect();
+    (l, s, h)
+}
+
+/// **SONDA (smoke do dono 17/10): as bordas que esbranquiçam depois de vários cruzamentos.** Os pincéis de
+/// `PH2D_SONDA_SO` (omissão: os 5 de Glaze) × `PH2D_SONDA_ESPERAS` (quadros entre traços) × o Glaze do preset e 0 (o
+/// controlo): as linhas claras ([`linhas_claras`], > 4 %) 1 quadro depois do último traço e a 240 e 1 800.
+#[test]
+#[ignore = "sonda: as bordas que esbranquiçam (smoke 17/10); corre-se à mão"]
+fn sonda_as_bordas() {
+    use super::sonda_gestos::gesto;
+    let so = std::env::var("PH2D_SONDA_SO").ok();
+    let esperas: Vec<u32> = std::env::var("PH2D_SONDA_ESPERAS").map_or_else(
+        |_| vec![0, 60, 300],
+        |v| v.split(',').map(|x| x.parse().unwrap()).collect(),
+    );
+    let raio_x: f32 = std::env::var("PH2D_SONDA_RAIO_X").map_or(1.5, |v| v.parse().unwrap());
+    let pinceis: Vec<(&str, f32)> = so.as_deref().map_or_else(
+        || PINCEIS_DE_GLAZE.to_vec(),
+        |q| {
+            q.split(',')
+                .map(|n| {
+                    let r = PINCEIS_DE_GLAZE
+                        .iter()
+                        .find(|(m, _)| *m == n)
+                        .map_or(20.0, |x| x.1);
+                    (n, r)
+                })
+                .collect()
+        },
+    );
+    std::thread::scope(|s| {
+        for (nome, raio) in pinceis {
+            for &espera in &esperas {
+                for controlo in [false, true] {
+                    s.spawn(move || {
+                        let mut p = de_fabrica(nome);
+                        if controlo {
+                            p.parametros.engine.insert("glaze".to_owned(), 0.0);
+                        }
+                        let mut t = tela();
+                        t.set_wet_relogio_fixo(true);
+                        assert!(t.wet_preset_aplicar(&p).is_empty());
+                        t.set_brush_size_px(raio * raio_x);
+                        t.set_brush_color_srgb8(VERMELHO_DO_DONO);
+                        for (k, tr) in MUITOS.iter().enumerate() {
+                            if k > 0 {
+                                for _ in 0..espera {
+                                    t.on_tick(1000.0 / 60.0);
+                                }
+                            }
+                            gesto(&mut t, tr, 3.0, |_| 1.0);
+                        }
+                        let mut l = format!(
+                            "[bordas] {nome:<13} {} espera {espera:4}:",
+                            if controlo { "Glaze 0" } else { "Glaze  " }
+                        );
+                        let mut feito = 0;
+                        let mut antes: Vec<f64> = Vec::new();
+                        // `PH2D_SONDA_FIM=q`: a foto (e o fim) em `q` quadros em vez de 1 800.
+                        let fim: u32 = std::env::var("PH2D_SONDA_FIM").map_or(1800, |v| v.parse().unwrap());
+                        for q in [1u32, 240, 1800].into_iter().filter(|&q| q <= fim).chain((fim < 1800).then_some(fim)) {
+                            for _ in feito..q {
+                                t.on_tick(1000.0 / 60.0);
+                            }
+                            feito = q;
+                            let (lc, wc, hc) = luz_das_celulas(&mut t);
+                            let (n, pior) = linhas_claras(&lc, wc, hc, 0.04);
+                            // As que CLAREIAM com a água: > 4 % mais claras que logo depois do traço, na tinta.
+                            let pura = luz_rgb(VERMELHO_DO_DONO.map(f64::from));
+                            let conta = |teto: f64| {
+                                lc.iter()
+                                    .zip(&antes)
+                                    .filter(|&(&d, &a)| a < teto && a > 0.0 && d > a * 1.04)
+                                    .count()
+                            };
+                            let (escuras, toda) = if antes.is_empty() {
+                                antes = lc.clone();
+                                (0, 0)
+                            } else {
+                                (conta(0.85 * pura), conta(0.6))
+                            };
+                            l += &format!(
+                                " | +{q}: {n:5} cristas, pior {pior:.3}; clareiam {escuras:5} escuras · {toda:5} na tinta"
+                            );
+                            if q == fim
+                                && let Ok(dir) = std::env::var("PH2D_SONDA_OUT")
+                            {
+                                let (px, w, h) = t.run_full();
+                                let mut f = format!("P6\n{w} {h}\n255\n").into_bytes();
+                                px.as_chunks::<4>().0.iter().for_each(|c| f.extend_from_slice(&c[..3]));
+                                std::fs::write(
+                                    format!("{dir}/bordas_{nome}_{espera}_{}_{fim}.ppm", u8::from(controlo)),
+                                    &f,
+                                )
+                                .unwrap();
+                            }
+                        }
+                        println!("{l}");
+                    });
+                }
+            }
+        }
+    });
+}
+
+/// **SONDA: a CÉLULA da linha clara** — a cena [`MUITOS`] com `PH2D_SONDA_SO` (omissão Marker Bullet) e
+/// `PH2D_SONDA_ESPERA` (omissão 0): as 3 células mais claras que a vizinhança aos 240 quadros, com o estado delas e dos
+/// vizinhos a 1, 60 e 240 quadros depois do último traço — e o estado delas DEPOIS DE CADA TRAÇO.
+#[test]
+#[ignore = "sonda: a célula da linha clara (smoke 17/10); corre-se à mão"]
+fn sonda_a_celula_da_borda() {
+    use super::sonda_gestos::gesto;
+    let nome = std::env::var("PH2D_SONDA_SO").unwrap_or_else(|_| "Marker Bullet".to_owned());
+    let espera: u32 = std::env::var("PH2D_SONDA_ESPERA").map_or(0, |v| v.parse().unwrap());
+    let raio = PINCEIS_DE_GLAZE
+        .iter()
+        .find(|(n, _)| *n == nome)
+        .map_or(20.0, |x| x.1)
+        * 1.5;
+    let p = de_fabrica(&nome);
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(&p).is_empty());
+    t.set_brush_size_px(raio);
+    t.set_brush_color_srgb8(VERMELHO_DO_DONO);
+    t.wet_sonda_motor(|e| {
+        println!(
+            "[borda] a lei do ecrã: {:?}",
+            e.sim.gather_params(&e.tuning).ecra
+        )
+    });
+    let mut por_traco = Vec::new();
+    for (k, tr) in MUITOS.iter().enumerate() {
+        if k > 0 {
+            for _ in 0..espera {
+                t.on_tick(1000.0 / 60.0);
+            }
+        }
+        gesto(&mut t, tr, 3.0, |_| 1.0);
+        por_traco.push(celulas(&mut t).0);
+    }
+    // `PH2D_SONDA_QUADRO="x,y"`: essa célula (pixels da tela) a cada quadro, até 60, e as 4 vizinhas.
+    if let Ok(v) = std::env::var("PH2D_SONDA_QUADRO") {
+        let (x, y) = v.split_once(',').unwrap();
+        let (x, y): (f64, f64) = (x.parse().unwrap(), y.parse().unwrap());
+        for q in 0..60 {
+            let (c, razao, s) = celulas(&mut t);
+            let i = (y / razao) as usize * s + s + (x / razao) as usize + 1;
+            println!("[quadro {q:2}] {}", c[i]);
+            for (nm, d) in [
+                ("x−1", i - 1),
+                ("x+1", i + 1),
+                ("y−1", i - s),
+                ("y+1", i + s),
+            ] {
+                println!("      {nm} {}", c[d]);
+            }
+            t.on_tick(1000.0 / 60.0);
+        }
+        return;
+    }
+    let mut fotos = Vec::new();
+    let mut feito = 0;
+    for q in [1u32, 60, 240] {
+        for _ in feito..q {
+            t.on_tick(1000.0 / 60.0);
+        }
+        feito = q;
+        fotos.push(celulas(&mut t));
+    }
+    let (c, razao, s) = &fotos[2];
+    let h = c.len() / s;
+    let l: Vec<f64> = c.iter().map(|c| luz_rgb(c.ecra)).collect();
+    let mut piores = Vec::new();
+    for y in 3..h - 3 {
+        for x in 3..s - 3 {
+            let (n, r) = {
+                let mut janela = vec![0.0; 49];
+                for dy in 0..7 {
+                    for dx in 0..7 {
+                        janela[dy * 7 + dx] = l[(y + dy - 3) * s + x + dx - 3];
+                    }
+                }
+                linhas_claras(&janela, 7, 7, 0.04)
+            };
+            if n > 0 {
+                piores.push((r, x, y));
+            }
+        }
+    }
+    piores.sort_by(|a, b| b.0.total_cmp(&a.0));
+    // `PH2D_SONDA_PX="x,y;x,y"`: estas posições (pixels da tela) em vez das piores.
+    if let Ok(v) = std::env::var("PH2D_SONDA_PX") {
+        piores = v
+            .split(';')
+            .map(|q| {
+                let (x, y) = q.split_once(',').unwrap();
+                let (x, y): (f64, f64) = (x.parse().unwrap(), y.parse().unwrap());
+                (0.0, (x / razao) as usize + 1, (y / razao) as usize + 1)
+            })
+            .collect();
+    }
+    println!(
+        "[borda] {nome} espera {espera}: {} células claras",
+        piores.len()
+    );
+    let mut vistos: Vec<(usize, usize)> = Vec::new();
+    for &(r, x, y) in &piores {
+        if std::env::var("PH2D_SONDA_PX").is_err()
+            && vistos
+                .iter()
+                .any(|&(a, b)| a.abs_diff(x) < 10 && b.abs_diff(y) < 10)
+        {
+            continue;
+        }
+        vistos.push((x, y));
+        if vistos.len() > 3 && std::env::var("PH2D_SONDA_PX").is_err() {
+            break;
+        }
+        println!(
+            "  célula ({x}, {y}) = px ({:.0}, {:.0}), razão {r:.3}",
+            (x as f64 - 1.0) * razao,
+            (y as f64 - 1.0) * razao
+        );
+        for (k, pt) in por_traco.iter().enumerate() {
+            println!("     traço {k}: {}", pt[y * s + x]);
+        }
+        for (q, (f, _, _)) in [1, 60, 240].iter().zip(&fotos) {
+            println!("     +{q:3}: {}", f[y * s + x]);
+        }
+        for (nm, d) in [
+            ("x−2", y * s + x - 2),
+            ("x+2", y * s + x + 2),
+            ("y−2", (y - 2) * s + x),
+            ("y+2", (y + 2) * s + x),
+        ] {
+            println!("     {nm} +240: {}", c[d]);
+        }
+    }
+}
+
+/// **SONDA: a ORLA de um traço sobre duas camadas** — dois horizontais iguais (y 300) e um vertical (x 500) cujas
+/// orlas cruzam a faixa de 2 camadas; `PH2D_SONDA_ESPERAS="a/b"` quadros antes do 2.º e do 3.º. O ecrã das células ao
+/// longo de y 300 (x 440..560) logo depois do vertical, a +60 e +1 800, e o estado da célula mais clara da orla.
+#[test]
+#[ignore = "sonda: a orla de um traço sobre duas camadas (smoke 17/10); corre-se à mão"]
+fn sonda_a_orla() {
+    let so = std::env::var("PH2D_SONDA_SO").unwrap_or_else(|_| "Marker Bullet".to_owned());
+    let esperas: Vec<Vec<u32>> = std::env::var("PH2D_SONDA_ESPERAS").map_or_else(
+        |_| vec![vec![1800, 0], vec![1800, 60], vec![1800, 1800], vec![0, 0]],
+        |v| {
+            v.split(',')
+                .map(|x| x.split('/').map(|y| y.parse().unwrap()).collect())
+                .collect()
+        },
+    );
+    for nome in so.split(',') {
+        let raio = PINCEIS_DE_GLAZE
+            .iter()
+            .find(|(n, _)| *n == nome)
+            .map_or(20.0, |x| x.1)
+            * 1.5;
+        for g in [None, Some(0.0)] {
+            for espera in &esperas {
+                let mut p = de_fabrica(nome);
+                if let Some(g) = g {
+                    p.parametros.engine.insert("glaze".to_owned(), g);
+                }
+                let tracos: [Traco; 3] = [
+                    [[150.0, 300.0], [850.0, 300.0]],
+                    [[850.0, 300.0], [150.0, 300.0]],
+                    // `PH2D_SONDA_DIAG=1`: o 3.º em diagonal (cruza y 300 em x ≈ 500).
+                    if std::env::var("PH2D_SONDA_DIAG").is_ok() {
+                        [[370.0, 100.0], [630.0, 500.0]]
+                    } else {
+                        [[500.0, 100.0], [500.0, 560.0]]
+                    },
+                ];
+                let mut t = tela();
+                t.set_wet_relogio_fixo(true);
+                assert!(t.wet_preset_aplicar(&p).is_empty());
+                t.set_brush_size_px(raio);
+                t.set_brush_color_srgb8(VERMELHO_DO_DONO);
+                let mut linha = format!(
+                    "[orla] {nome} {} espera {espera:?}:",
+                    if g.is_some() { "Glaze 0" } else { "Glaze  " }
+                );
+                let mut fotos = Vec::new();
+                for (k, tr) in tracos.iter().enumerate() {
+                    if k > 0 {
+                        for _ in 0..espera[(k - 1).min(espera.len() - 1)] {
+                            t.on_tick(1000.0 / 60.0);
+                        }
+                    }
+                    super::sonda_gestos::gesto(&mut t, tr, 3.0, |_| 1.0);
+                    if k == 1 {
+                        fotos.push(celulas(&mut t));
+                    }
+                }
+                let mut feito = 0;
+                for q in [0u32, 60, 1800] {
+                    for _ in feito..q {
+                        t.on_tick(1000.0 / 60.0);
+                    }
+                    feito = q;
+                    fotos.push(celulas(&mut t));
+                }
+                for (rot, (c, razao, s)) in ["antes", "+0", "+60", "+1800"].iter().zip(&fotos) {
+                    let lum: Vec<f64> = (440..=560)
+                        .step_by(4)
+                        .map(|x| {
+                            let i = (300.0 / razao) as usize * s
+                                + s
+                                + (f64::from(x) / razao) as usize
+                                + 1;
+                            luz_rgb(c[i].ecra)
+                        })
+                        .collect();
+                    let fora = (lum[0] + lum[1] + lum[lum.len() - 1] + lum[lum.len() - 2]) / 4.0;
+                    let pico = lum.iter().copied().fold(0.0, f64::max);
+                    linha += &format!(" | {rot}: fora {fora:.4} pico {pico:.4}");
+                    if std::env::var("PH2D_SONDA_PERFIL").is_ok() {
+                        linha += &format!(
+                            "\n      {:?}",
+                            lum.iter()
+                                .map(|v| (v * 1e4).round() / 1e4)
+                                .collect::<Vec<_>>()
+                        );
+                    }
+                }
+                println!("{linha}");
+            }
+        }
+    }
+}
+
+/// As células da tinta de várias camadas (abaixo de 85 % da tinta pura) que CLAREIAM mais de 4 % enquanto a água corre
+/// `quadros` depois do último traço da cena [`MUITOS`].
+fn clareiam_nas_escuras(nome: &str, espera: u32, quadros: u32) -> usize {
+    use super::sonda_gestos::gesto;
+    let raio = PINCEIS_DE_GLAZE
+        .iter()
+        .find(|(n, _)| *n == nome)
+        .map_or(20.0, |x| x.1)
+        * 1.5;
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(&de_fabrica(nome)).is_empty());
+    t.set_brush_size_px(raio);
+    t.set_brush_color_srgb8(VERMELHO_DO_DONO);
+    for (k, tr) in MUITOS.iter().enumerate() {
+        if k > 0 {
+            for _ in 0..espera {
+                t.on_tick(1000.0 / 60.0);
+            }
+        }
+        gesto(&mut t, tr, 3.0, |_| 1.0);
+    }
+    t.on_tick(1000.0 / 60.0);
+    let (antes, _, _) = luz_das_celulas(&mut t);
+    for _ in 1..quadros {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let (depois, _, _) = luz_das_celulas(&mut t);
+    let teto = 0.85 * luz_rgb(VERMELHO_DO_DONO.map(f64::from));
+    depois
+        .iter()
+        .zip(&antes)
+        .filter(|&(&d, &a)| a < teto && a > 0.0 && d > a * 1.04)
+        .count()
+}
+
+/// ⭐ **As bordas não esbranquiçam depois de vários cruzamentos** (smoke do dono 17/10, doc 42 §8): os seis traços de
+/// [`MUITOS`] e a água a correr — a tinta de várias camadas não clareia (as linhas finas que seguiam a orla de cada
+/// traço). Medido: Marker Bullet molhado sobre molhado 975 células → 60; Ink Bullet com 5 s entre traços 923 → 299.
+#[test]
+fn as_bordas_nao_esbranquicam_depois_de_varios_cruzamentos() {
+    let [marcador, tinta] = std::thread::scope(|s| {
+        [("Marker Bullet", 0, 240), ("Ink Bullet", 300, 1800)]
+            .map(|(n, e, q)| s.spawn(move || clareiam_nas_escuras(n, e, q)))
+            .map(|h| h.join().unwrap())
+    });
+    assert!(
+        marcador <= 150 && tinta <= 500,
+        "a tinta de várias camadas clareia com a água: Marker Bullet {marcador}, Ink Bullet {tinta} células"
+    );
+}

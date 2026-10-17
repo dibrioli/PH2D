@@ -18,8 +18,7 @@ Anterior: [P41](HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-16_P41_SHAPE_
   ganhou `--seca_cruz`, `--cor_base`, `--cor_cruz`): a tinta e o marcador escurecem IGUAL molhado e seco (Ink 0,117/0,101
   · Dip Pen 0,223/0,304 · Ink Brush 0,239/0,187 · marcadores 0,016/0,016) ⇒ lei de CAMADAS. Fracção multiplicada:
   a mesma tinta 0,5; amarelo/laranja 0,61–0,89; vermelho/azul 0,98.
-- ⚠️ Há outra linha a usar telas virtuais: feche a do Rebelle por `ferramentas/gotas_fecha.sh` (só a sua), NUNCA o
-  `fecha.sh` do oráculo. O teste do Rebelle tem 21 dias (16/10).
+- ⚠️ Feche o Rebelle só com `ferramentas/gotas_fecha.sh` (há outras telas virtuais).
 
 ## §3 — A lei
 
@@ -53,10 +52,8 @@ canal · a água que desce · desfazer devolve a vela. Censo do painel, linhas e
 
 ## §5 — Mutação
 
-**13/13 sangram** (agente de mutação; controlo verde antes, âncoras 1×): o Glaze desligado · sem «camada por baixo» ·
-sem o assentar no pouso · a camada sem a sua água · `com_vela` mudo · o produto desligado · `CEGO_COM_GLAZE` = 0,1 · sem a
-inversa fechada · a mesma tinta 0 · `outra_tinta` sempre 1 · o undo sem `vela` (motor e recorte) · a captura sem `glaze`.
-Os 4 últimos sobreviviam na 1.ª rodada e ganharam portão próprio.
+**13/13 sangram** na lei (os 4 sobreviventes da 1.ª rodada ganharam portão: a água que desce, a inversa fechada, o
+undo da `vela`, o pincel gravado leva o Glaze); depois 5/5 (3.ª camada) e 4/4 (bordas). A lista: 42 §5–§8.
 
 ## §6 — Aberto
 
@@ -65,10 +62,8 @@ Os 4 últimos sobreviviam na 1.ª rodada e ganharam portão próprio.
 - **Ink Brush**: a faixa de cima do cruzamento (~8 px) fica vermelha — o arrasto (lei antiga, também com Glaze 0) empurra o
   azul para baixo; uma linha azul fina nas bordas da coluna (o azul vizinho entra na célula da orla). Halo +35 (era +72).
 - **Chão do marcador**: 0,025–0,043 contra 0,016 (Glaze 1 é o tecto da lei).
-- **A foto `marker` do Rebelle**: o vermelho vertical sai tão largo como o do Bullet (o horizontal tem 18 px) — conferir a
-  sessão de 11/10 antes de usar a coluna vertical dela.
-- **O plano `vela` não ESCOA** com a água (como o `relevo`): a tinta de Glaze que corre para uma célula vizinha mostra-se
-  pela lei dela. Medir antes de mexer (o custo é nos passes quentes).
+- **A foto `marker` do Rebelle**: o vermelho vertical sai tão largo como o do Bullet — conferir a sessão de 11/10.
+- **O plano `vela` não ESCOA** com a água (como o `relevo`) — medir antes de mexer.
 - **Custo**: o traço que cruza outra tinta com Glaze 1 custa 42 ms contra 15 sem Glaze (Wet Liner, `sonda_o_custo_do_glaze`);
   a água +9 %.
 - **B13** (a Shape Color no pincel salvo) — pergunta do smoke, a mesma família do que o preset leva.
@@ -91,3 +86,7 @@ até +15,5). Cura: o 1.º toque de um traço numa célula molhada ANTES dele ass
 filtra na cobertura que tem (`colorops::vela_sobre`, `COBERTURA_QUE_FILTRA` 0,5). Portões `a_terceira_camada_da_mesma_tinta_nao_clareia`
 (vermelho no `2e43def369`) e `o_primeiro_toque_nao_assenta_o_proprio_traco_com_agua_viva`; mutação 5/5. Cruzamentos de fábrica:
 0,104 · 0,208 · 0,257 · 0,015 · 0,037. Aberto: +5 em 30 células do Marker Bullet (o arrasto leva a orla de uma camada SECA).
+- **17/10, as linhas claras nas bordas** ([42 §8](../NewFeaturesWetPaint/42_medicao_a_lei_da_tinta.md)): a água traz a mesma tinta
+  à orla e o «tapar extra» (esconde 5) tratava o produto dela como OUTRA tinta — catraca até (165,53,53). Cura: só com
+  Glaze, a mesma tinta medida na densidade óptica (`colorops::a_mesma_tinta_filtrada`) não tapa. Marker Bullet 975 → 60
+  células; portões `as_bordas_nao_esbranquicam_depois_de_varios_cruzamentos`, `a_mesma_tinta_que_entra_nao_clareia_o_glaze`; 4/4.

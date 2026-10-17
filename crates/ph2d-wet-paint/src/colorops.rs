@@ -305,6 +305,18 @@ pub fn diferenca_de_pigmento(a: [f64; 3], b: [f64; 3]) -> f64 {
     (1.0 - cos2).sqrt()
 }
 
+/// **A mesma tinta FILTRADA por si** (smoke do dono 17/10, doc 42 §8): `c` e o produto `c·c/255` da camada de Glaze
+/// apontam em direcções diferentes no perfil `255 − cor` — o ponto fixo das camadas do vermelho (151,29,29) já passa
+/// de [`OUTRA_TINTA_MINIMA`] contra (190,55,55) —, mas na mesma na DENSIDADE ÓPTICA `−ln(cor/255)`, onde o produto é o
+/// dobro do perfil. Abaixo do mesmo corte, nessa medida, é a mesma tinta.
+#[inline]
+pub fn a_mesma_tinta_filtrada(a: [f64; 3], b: [f64; 3]) -> bool {
+    // `255 − od`: a mesma conta do ângulo de [`diferenca_de_pigmento`], sobre o perfil `od`.
+    let od = |c: [f64; 3]| c.map(|v| 255.0 + (v.max(1.0) / 255.0).min(1.0).ln());
+    VELA_POR_DIFERENCA / (1.0 - VELA_DA_MESMA_TINTA) * diferenca_de_pigmento(od(a), od(b))
+        < OUTRA_TINTA_MINIMA
+}
+
 /// K–M weighted mean of up to 4 engine colors (the advection's incoming-color
 /// mean when pigment mixing is ON): mixtures are linear in K/S, so average
 /// the corners' K/S ratios with the pull weights.

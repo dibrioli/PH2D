@@ -135,7 +135,14 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
     // O tapar EXTRA é da diferença de pigmento: a mesma tinta sobre si mesma só soma pigmento (sem ele,
     // re-molhar o azul para dentro de um filme azul clareava-o — medido no teste das transferências).
     let h = 1.0 - (1.0 - a_f).powf(esconde);
-    let a_e = a_t + (h - a_t).max(0.0) * crate::colorops::diferenca_de_pigmento(sc, uc);
+    // Sob o Glaze, a mesma tinta filtrada por si não é OUTRA a tapar: com o extra, cada filme fino que a água traz
+    // clareava o assentado escuro e o assentar guardava-o — as linhas claras na orla (doc 42 §8).
+    let d = if vela > 0.0 && crate::colorops::a_mesma_tinta_filtrada(sc, uc) {
+        0.0
+    } else {
+        crate::colorops::diferenca_de_pigmento(sc, uc)
+    };
+    let a_e = a_t + (h - a_t).max(0.0) * d;
     let t_s = sc.map(|v| 255.0 - a_s * (255.0 - v));
     let c_eff = uc.map(|v| 255.0 - (a_t / a_e) * (255.0 - v));
     // ⛔ A CAIXA das tintas (Bug #50): o tapar extra pinta-se com a tinta diluída em BRANCO — é o que faz o claro

@@ -325,3 +325,113 @@ fn desfazer_o_glaze_devolve_a_vela() {
         .count();
     assert_eq!(n, 0, "recorte: {n} células com a vela do Glaze desfeito");
 }
+
+/// **SONDA (smoke do dono 17/10): a linha clara na orla** — um filme FINO da mesma tinta sobre um assentado escuro
+/// de Glaze (a célula da orla de um traço novo sobre várias camadas: `sonda_a_celula_da_borda`) secando aos poucos:
+/// o ecrã a cada passe do assentar, e o melhor da força bruta (existe uma cor que o guarda?).
+#[test]
+#[ignore = "sonda: a linha clara na orla (smoke 17/10)"]
+fn sonda_a_linha_clara() {
+    for (vela, sc, ms, mf) in [
+        (0.535f32, [166.0, 34.0, 34.0], 3307.0, 348.0),
+        (0.5, [190.0, 55.0, 55.0], 1962.0, 4533.0),
+        (0.5, [166.0, 34.0, 34.0], 3307.0, 1500.0),
+        (0.5, [166.0, 34.0, 34.0], 3307.0, 100.0),
+    ] {
+        let uc = [190.0, 55.0, 55.0];
+        let e = COBRE.com_vela(vela);
+        let alvo = sobre_branco(e, sc, uc, alpha_of_mass(ms), alpha_of_mass(mf));
+        let (mut s, mut m_s, mut m_f) = (sc, ms, mf);
+        let mut linha = format!(
+            "vela {vela} sc {sc:?} {ms}/{mf}: alvo {:?}",
+            alvo.map(f64::round)
+        );
+        for passo in 0..80 {
+            let dm = if m_f < 1.0 { m_f } else { m_f * 0.08 };
+            let (a_s, a_f) = (alpha_of_mass(m_s), alpha_of_mass(m_f));
+            let (a_s2, a_f2) = (alpha_of_mass(m_s + dm), alpha_of_mass(m_f - dm));
+            s = assenta(e, s, uc, a_s, a_f, a_s2, a_f2);
+            m_s += dm;
+            m_f -= dm;
+            if passo % 10 == 9 || m_f <= 0.0 {
+                let y = sobre_branco(e, s, uc, alpha_of_mass(m_s), alpha_of_mass(m_f));
+                linha += &format!(" | {passo}: f {m_f:.0} {:?}", y.map(f64::round));
+            }
+            if m_f <= 0.0 {
+                break;
+            }
+        }
+        println!("{linha}");
+    }
+}
+
+/// **SONDA: a catraca da orla** — um assentado escuro de Glaze que recebe, a cada ciclo, um pouco da MESMA tinta
+/// (`entra`, o escoamento do traço vizinho, sem guardar o ecrã) e a assenta toda (guardando-o): o ecrã ao fim de N
+/// ciclos. Uma lei monótona só escurece (ou fica).
+#[test]
+#[ignore = "sonda: a catraca da orla (smoke 17/10)"]
+fn sonda_a_catraca_da_orla() {
+    let uc = [190.0, 55.0, 55.0];
+    for (vela, sc, ms, entra) in [
+        (0.535f32, [166.0, 34.0, 34.0], 3307.0, 100.0),
+        (0.535, [166.0, 34.0, 34.0], 3307.0, 30.0),
+        (0.5, [190.0, 55.0, 55.0], 3307.0, 100.0),
+        (0.5, [150.0, 28.0, 28.0], 6000.0, 100.0),
+        (0.535, [166.0, 34.0, 34.0], 900.0, 100.0),
+    ] {
+        let e = COBRE.com_vela(vela);
+        let inicio = sobre_branco(e, sc, uc, alpha_of_mass(ms), 0.0);
+        let (mut s, mut m_s) = (sc, ms);
+        let mut linha = format!(
+            "vela {vela} sc {sc:?} m {ms} entra {entra}: {:?}",
+            inicio.map(f64::round)
+        );
+        for ciclo in 1..=40 {
+            let (a_s, a_f) = (alpha_of_mass(m_s), alpha_of_mass(entra));
+            let molhado = sobre_branco(e, s, uc, a_s, a_f);
+            s = assenta(e, s, uc, a_s, a_f, alpha_of_mass(m_s + entra), 0.0);
+            m_s += entra;
+            if ciclo % 10 == 0 || ciclo == 1 {
+                linha += &format!(
+                    " | {ciclo}: molhado {:?} seco {:?}",
+                    molhado.map(f64::round),
+                    sobre_branco(e, s, uc, alpha_of_mass(m_s), 0.0).map(f64::round)
+                );
+            }
+        }
+        println!("{linha}");
+    }
+}
+
+/// ⭐ **A mesma tinta que ENTRA não clareia o Glaze** (smoke do dono 17/10, doc 42 §8): um assentado escuro de Glaze
+/// (o vermelho sobre si) que recebe, ciclo a ciclo, um filme fino da mesma tinta e o assenta — o escoamento na orla
+/// de um traço — só escurece até o ponto fixo das camadas. Com o tapar extra da tinta diluída em branco a contar o
+/// produto como OUTRA tinta, o verde subia 34 → 52 (a linha esbranquiçada).
+#[test]
+fn a_mesma_tinta_que_entra_nao_clareia_o_glaze() {
+    let uc = [190.0, 55.0, 55.0];
+    let e = COBRE.com_vela(0.535);
+    let (mut s, mut m_s) = ([166.0, 34.0, 34.0], 3307.0);
+    let mut antes = sobre_branco(e, s, uc, alpha_of_mass(m_s), 0.0);
+    for ciclo in 0..40 {
+        let a_s = alpha_of_mass(m_s);
+        s = assenta(
+            e,
+            s,
+            uc,
+            a_s,
+            alpha_of_mass(100.0),
+            alpha_of_mass(m_s + 100.0),
+            0.0,
+        );
+        m_s += 100.0;
+        let agora = sobre_branco(e, s, uc, alpha_of_mass(m_s), 0.0);
+        for k in 0..3 {
+            assert!(
+                agora[k] <= antes[k] + 0.5,
+                "ciclo {ciclo}, canal {k}: {antes:?} → {agora:?}"
+            );
+        }
+        antes = agora;
+    }
+}

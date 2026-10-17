@@ -171,3 +171,41 @@ Mutação 5/5 sangram (sem a cobertura · sem o primeiro toque · o retrato nunc
 
 **Aberto:** o resto (Marker Bullet 30 células, +5,1) é a orla de cima de uma camada SECA que o arrasto do traço novo leva
 (o arrasto move o assentado, lei do port, também com Glaze 0); o mesmo traço sobre si próprio não faz camada.
+
+## §8 — As bordas esbranquiçavam com a água (smoke do dono 17/10; sondas `sonda_as_bordas`, `sonda_a_celula_da_borda`, `sonda_a_catraca_da_orla`)
+
+**O defeito**: depois de muitos traços do mesmo vermelho, linhas finas mais claras ((128, 34) dentro de (115, 17)) seguem a
+orla de cada traço por dentro das zonas de várias camadas, e crescem enquanto a água corre. Reproduzido nos 5 pincéis
+(cena `MUITOS`, seis traços; espera 0 · 60 · 300): logo depois do último traço a tela está lisa; as linhas nascem com a
+água (Marker Bullet: 975 células de várias camadas clareiam > 4 % em 240 quadros). Com Glaze 0 não há camadas escuras
+(o controlo não as pode fazer: o cruzamento é a tinta pura).
+
+**Mecanismo (célula a célula, quadro a quadro)**: na orla de um traço novo fica um filme FINO da mesma tinta sobre um
+assentado escuro de Glaze. A água traz-lhe, ciclo a ciclo, um pouco do traço vizinho e o assentar guarda o ecrã — mas
+cada entrada CLAREIA: o tapar extra da lei (`esconde` 5, pintado com a tinta diluída em branco, Bug #50) pesa a
+`diferenca_de_pigmento` entre o assentado e a tinta, e o produto da mesma tinta (166, 34, 34) aponta noutra direcção do
+perfil `255 − cor` que (190, 55, 55) (0,035; o ponto fixo das camadas (151, 29, 29) passa até o corte `outra_tinta`).
+Catraca: o verde sobe 34 → 52 em 40 ciclos (o assentar sozinho guarda o ecrã ao nível; a sonda `sonda_a_linha_clara`).
+
+**A lei** (`assenta::cor_e_alfa`, `colorops::a_mesma_tinta_filtrada`): sob o Glaze, a mesma tinta filtrada por si não é
+OUTRA tinta a tapar — medida na DENSIDADE ÓPTICA `−ln(cor/255)`, onde o produto é o dobro do perfil, com o corte de
+sempre (`OUTRA_TINTA_MINIMA`). A catraca vai ao ponto fixo (147–152, 29–31); o cruzamento vermelho × azul fica igual.
+
+| recusado (medido) | porquê |
+|---|---|
+| sem tapar extra sob todo o Glaze | cura as linhas, mas o cruzamento das tintas cai: Ink Bullet 0,104 → 0,092, Dip Pen 0,208 → 0,176 (Rebelle 0,117 · 0,223) |
+| o corte de `outra_tinta` no perfil linear | o ponto fixo já é «outra tinta»: a catraca volta a (165, 53) |
+| o menor das duas diferenças (sem corte) | 0,014–0,06 ainda bastam: as linhas iguais |
+
+| células de várias camadas que clareiam (+1 800) | antes | depois |
+|---|---|---|
+| Marker Bullet espera 0 · 60 · 300 | 975 · 872 · 510 | 60 · 61 · 7 |
+| Marker Liner 0 · 60 · 300 | 299 · 198 · 125 | 59 · 20 · 11 |
+| Ink Bullet 0 · 60 · 300 | 597 · 1 276 · 923 | 450 · 808 · 299 |
+| Dip Pen 0 · 60 · 300 | 90 · 818 · 3 260 | 81 · 624 · 1 917 |
+| Ink Brush 0 · 60 · 300 | 4 395 · 3 940 · 3 967 | 4 370 · 3 873 · 3 916 |
+
+O resto das tintas com água é o clarear de secar sem linhas (Ink Brush com Glaze 0 clareia 89 570 células na tinta).
+Portões `a_lei_da_tinta::as_bordas_nao_esbranquicam_depois_de_varios_cruzamentos` e `a_lei_do_glaze::
+a_mesma_tinta_que_entra_nao_clareia_o_glaze` (vermelhos no `039ddd8379`); mutação 4/4 (sem a regra · perfil linear ·
+corte 0 · sem «vela > 0», este pelo portão de identidade).

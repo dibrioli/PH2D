@@ -11,9 +11,11 @@
 //! prova que cada controlo vivo muda o traço).
 
 use super::censo_dos_controlos::{
-    Bancada, Gesto, diferenca, em_paralelo, gestos, nome, nomes, risca,
+    Bancada, Gesto, diferenca, em_paralelo, gestos, gestos_da, nome, nomes, risca,
 };
-use ph2d_editor_core::tool::RasterEditTool;
+use ph2d_editor_core::tool::{
+    CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, RasterEditTool, Tool,
+};
 use ph2d_tool_painter::PaintMedia;
 use ph2d_tool_painter::macro_track::tocar::TocadorDoPainter;
 
@@ -22,16 +24,28 @@ use ph2d_tool_painter::macro_track::tocar::TocadorDoPainter;
 fn ensaio_em(meio: PaintMedia, g: &Gesto, durante: bool) -> Result<usize, String> {
     let mut b = Bancada::nova(meio, &[]);
     let mut lixo = super::censo_dos_controlos::Entrega::default();
-    if !durante {
-        b.aplica(g, &mut lixo);
+    if durante {
+        return grava_e_compara_com(b, |b| b.aplica(g, &mut lixo));
     }
+    b.aplica(g, &mut lixo);
+    grava_e_compara(b)
+}
+
+/// Arma JÁ, risca os dois traços, pára e toca num tool novo: os texels que diferem.
+fn grava_e_compara(b: Bancada) -> Result<usize, String> {
+    grava_e_compara_com(b, |_| {})
+}
+
+/// [`grava_e_compara`] com `depois_de_armar` feito a gravar, antes dos traços.
+fn grava_e_compara_com(
+    mut b: Bancada,
+    depois_de_armar: impl FnOnce(&mut Bancada),
+) -> Result<usize, String> {
     let (inicial, _) = b
         .tool
         .macro_grava()
         .map_err(|r| format!("a gravação não armou: {r:?}"))?;
-    if durante {
-        b.aplica(g, &mut lixo);
-    }
+    depois_de_armar(&mut b);
     let mut cargas = Vec::new();
     let _ = risca(&mut b.tool);
     cargas.extend(b.tool.macro_para());
@@ -147,5 +161,112 @@ fn um_estado_inicial_velho_muda_a_reproducao() {
         alguma,
         "nenhum dos 60 primeiros controlos muda a reprodução quando o inicial é o de ANTES do gesto: o gate \
          não distingue um estado inicial que leva o controlo de um que o perde"
+    );
+}
+
+/// As ferramentas do TRILHO (W7): a preparação na tela é o que elas sabem antes de armar.
+const TRILHO: [&str; 3] = ["clone", "mask", "selection"];
+
+/// Um gesto na tela de `de` a `ate`, pela porta do ponteiro (um clique quando são o mesmo ponto).
+fn na_tela(t: &mut ph2d_tool_painter::PainterTool, de: [f32; 2], ate: [f32; 2]) {
+    let p = |pos, phase| CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    t.on_canvas_pointer(p(de, PointerPhase::Down));
+    for k in 1..=12 {
+        let f = k as f32 / 12.0;
+        let pos = [de[0] + (ate[0] - de[0]) * f, de[1] + (ate[1] - de[1]) * f];
+        t.on_canvas_pointer(p(pos, PointerPhase::Move));
+        let _ = t.take_preview_arc();
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(p(ate, PointerPhase::Up));
+    let _ = t.take_preview_arc();
+    t.on_tick(1000.0 / 60.0);
+}
+
+/// A bancada na ferramenta `modo`, com o que ela sabe preparado na tela: a fonte do Clone, uma
+/// proteção da Máscara, um rectângulo da Seleção.
+fn no_trilho(meio: PaintMedia, modo: &str) -> Bancada {
+    use ph2d_tool_painter::ids;
+    let mut b = Bancada::nova(meio, &[]);
+    b.no_modo(modo);
+    let t = &mut b.tool;
+    match modo {
+        "clone" => {
+            t.handle_panel_event(PanelEvent::Click(ids::PAINTER_BRUSH_CLONE_SET_SOURCE));
+            na_tela(t, [100.0, 100.0], [100.0, 100.0]);
+            assert!(t.clone_has_source(), "{meio:?}: a fonte escolheu-se");
+        }
+        "mask" => {
+            t.handle_panel_event(PanelEvent::Click(ids::PAINTER_MASK_BRUSH[0]));
+            na_tela(t, [0.0, 70.0], [128.0, 80.0]);
+            assert!(t.mask_scratch_active(), "{meio:?}: a máscara pintou-se");
+        }
+        _ => {
+            t.handle_panel_event(PanelEvent::Click(ids::PAINTER_SEL_MODE_IDS[2]));
+            na_tela(t, [10.0, 10.0], [70.0, 120.0]);
+            assert!(t.selection_active(), "{meio:?}: a seleção existe");
+        }
+    }
+    b.aplica(
+        &Gesto::Nenhum,
+        &mut super::censo_dos_controlos::Entrega::default(),
+    );
+    b
+}
+
+/// O controlo `g` da ferramenta `modo` mexido ANTES de armar, depois da preparação; os traços com a
+/// ferramenta (o Clone) ou com o pincel (a Máscara e a Seleção restringem-no).
+fn ensaio_no_trilho(meio: PaintMedia, modo: &str, g: &Gesto) -> Result<usize, String> {
+    let mut b = no_trilho(meio, modo);
+    b.aplica(g, &mut super::censo_dos_controlos::Entrega::default());
+    if modo != "clone" {
+        b.no_modo("brush");
+    }
+    grava_e_compara(b)
+}
+
+/// ⭐ **O estado inicial leva o que as ferramentas do trilho sabem, e cada controlo delas** (W7): em
+/// cada meio, para Clone, Máscara e Seleção, a preparação na tela e cada controlo que o painel pinta
+/// SÓ nessa ferramenta (os do pincel já estão no censo de cima), mexidos antes de armar.
+#[test]
+fn o_estado_inicial_leva_as_ferramentas_do_trilho() {
+    let nomes = nomes();
+    let (mut total, mut falhas) = (0, Vec::new());
+    for meio in MEIOS {
+        let do_pincel: Vec<_> = gestos(meio, &[]).iter().filter_map(Gesto::id).collect();
+        for modo in TRILHO {
+            let mut todos: Vec<Gesto> = gestos_da(no_trilho(meio, modo))
+                .into_iter()
+                .filter(|g| g.id().is_some_and(|id| !do_pincel.contains(&id)))
+                .collect();
+            assert!(
+                !todos.is_empty(),
+                "{meio:?} · {modo}: o painel não pintou controlo próprio nenhum — a bancada partiu-se"
+            );
+            todos.insert(0, Gesto::Nenhum);
+            total += todos.len();
+            let resultados = em_paralelo(&todos, |g| ensaio_no_trilho(meio, modo, g));
+            for (g, r) in todos.iter().zip(resultados) {
+                let quem = g
+                    .id()
+                    .map_or_else(|| "a preparação".to_owned(), |id| nome(&nomes, id));
+                match r {
+                    Ok(0) => {}
+                    Ok(n) => falhas.push(format!("{meio:?} · {modo} · {quem}: {n} texels")),
+                    Err(e) => falhas.push(format!("{meio:?} · {modo} · {quem}: {e}")),
+                }
+            }
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "{} de {total} ensaios das ferramentas do trilho NÃO chegam à reprodução pelo estado inicial:\n{}",
+        falhas.len(),
+        falhas.join("\n")
     );
 }

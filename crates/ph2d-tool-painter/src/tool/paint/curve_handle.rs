@@ -13,7 +13,7 @@
 
 /// How an anchor's two Bézier tangent handles behave under editing. The wire `u8` (`0..=3`) is the value
 /// the right-click menu parks in the shell and hands back to [`super::PainterTool::set_curve_handle_kind`].
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) enum HandleKind {
     Free,
     Aligned,

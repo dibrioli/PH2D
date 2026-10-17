@@ -11,7 +11,10 @@ use std::sync::Arc;
 
 /// A parametric selection primitive. `Ellipse`/`Rect`/`Freehand` carry a native on-canvas gizmo in Edit
 /// mode; `Raster` (Automatic flood, or any op with no parametric form) is a frozen coverage buffer.
-#[derive(Clone, Debug, PartialEq)]
+///
+/// Serializa-se no estado inicial de uma macro (`macro_estado::trilho`, W7) por NOME; a cobertura do
+/// `Raster` viaja à parte, crua (`#[serde(skip)]`).
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub(crate) enum SelectionShape {
     /// Axis-or-rotated ellipse: `center`, unit axis `u`, semi-axes `rx`/`ry` (image px). Native gizmo =
     /// the Ellipse editor.
@@ -39,12 +42,15 @@ pub(crate) enum SelectionShape {
     /// selection). Produced by the Free-Hand lasso (raw) and Convert-to-Curve (fitted).
     Freehand { model: CurveModel, u: [f32; 2] },
     /// Non-parametric coverage (Automatic flood) — no gizmo; rasterizes to its stored buffer verbatim.
-    Raster { crisp: Arc<Vec<u8>> },
+    Raster {
+        #[serde(skip)]
+        crisp: Arc<Vec<u8>>,
+    },
 }
 
 /// One entry in the selection list: a parametric shape plus the boolean operator that folds it into the
 /// running mask (`0` New/replace · `1` Add/union · `2` Remove/subtract).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub(crate) struct SelectionEntry {
     pub shape: SelectionShape,
     pub op: u8,

@@ -16,6 +16,7 @@ mod macro_etapas;
 mod macro_instantaneos;
 mod macro_portas;
 mod macro_traco;
+mod macro_trilho;
 mod measure_undo_capacity;
 mod midias_de_fabrica;
 mod os_outros_meios_nao_mudam;

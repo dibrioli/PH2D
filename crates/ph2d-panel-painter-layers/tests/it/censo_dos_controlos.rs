@@ -440,6 +440,17 @@ impl Bancada {
         b
     }
 
+    /// A ferramenta do trilho `modo` pelo botão do trilho (a porta gravada do painel), e o painel
+    /// re-pintado com as secções dela.
+    pub(crate) fn no_modo(&mut self, modo: &str) {
+        self.tool
+            .handle_panel_event(ph2d_editor_core::tool::PanelEvent::SelectOption(
+                ph2d_editor_core::ids::PAINTER_PAINT_MODE,
+                modo.to_owned(),
+            ));
+        self.aplica(&Gesto::Nenhum, &mut Entrega::default());
+    }
+
     /// Um gesto pela porta do ponteiro, dois quadros do app, e o painel re-pintado com o resultado.
     pub(crate) fn aplica(&mut self, gesto: &Gesto, entrega: &mut Entrega) {
         let eventos = conduz(&mut self.host, &mut self.st, &self.rects, gesto);
@@ -478,12 +489,17 @@ pub(crate) fn diferenca(a: &[u8], b: &[u8]) -> (usize, u64, u8) {
 /// Os gestos que a tela oferece: um por número/slider, um clique por botão/cabeçalho, e uma opção de
 /// cada menu (o menu aberto pinta as opções, que viram gestos próprios).
 pub(crate) fn gestos(media: PaintMedia, armar: &[Gesto]) -> Vec<Gesto> {
+    gestos_da(Bancada::nova(media, armar))
+}
+
+/// [`gestos`] de uma bancada já preparada (a ferramenta do trilho escolhida, a tela tocada).
+pub(crate) fn gestos_da(b: Bancada) -> Vec<Gesto> {
     let Bancada {
         mut host,
         mut st,
         rects,
         ..
-    } = Bancada::nova(media, armar);
+    } = b;
     let mut out = Vec::new();
     for (id, _) in &rects {
         match host.store().get(*id) {

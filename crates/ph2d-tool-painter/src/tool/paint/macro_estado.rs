@@ -16,6 +16,7 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 mod tela;
+mod trilho;
 
 /// Porque as configurações não se aplicaram.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,8 +29,10 @@ pub enum ErroDoEstado {
 impl PainterTool {
     /// As configurações de agora: o JSON e as texturas (PNG por id).
     pub(crate) fn macro_estado(&self) -> (String, BTreeMap<String, Vec<u8>>) {
-        let (preset, texturas) =
+        let (preset, mut texturas) =
             self.wet_preset_capturar(&Parametros::novo("WetPaint", "macro", "macro"));
+        let (trilho, crus) = self.macro_trilho();
+        texturas.extend(crus);
         let w = &self.paint.wetpaint;
         let p = &self.paint;
         let campos = campos_da_macro();
@@ -47,6 +50,7 @@ impl PainterTool {
             "falloff_armado": p.falloff_armed,
             "metodo_por_meio": p.method_by_media,
             "tela": self.macro_tela(),
+            "trilho": trilho,
             "wet": {
                 "grid_ratio": w.grid_ratio,
                 "flow_ratio": w.flow_ratio,
@@ -77,10 +81,11 @@ impl PainterTool {
     pub(crate) fn macro_estado_aplica(
         &mut self,
         texto: &str,
-        texturas: BTreeMap<String, Vec<u8>>,
+        mut texturas: BTreeMap<String, Vec<u8>>,
     ) -> Result<(), ErroDoEstado> {
         let v: Value =
             serde_json::from_str(texto).map_err(|e| ErroDoEstado::Json(e.to_string()))?;
+        let crus = trilho::separa(&mut texturas);
         let parametros: Parametros = serde_json::from_value(v["preset"].clone())
             .map_err(|e| ErroDoEstado::Json(e.to_string()))?;
         let preset = Preset {
@@ -131,6 +136,7 @@ impl PainterTool {
             }
         }
         self.macro_tela_aplica(&v["tela"]);
+        self.macro_trilho_aplica(&v["trilho"], crus)?;
         let wv = &v["wet"];
         let w = &mut self.paint.wetpaint;
         let u8_ = |x: &Value, base: u8| {

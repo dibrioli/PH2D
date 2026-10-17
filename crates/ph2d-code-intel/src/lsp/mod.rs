@@ -7,10 +7,12 @@
 //! velha (o servidor ecoa a versão em `publishDiagnostics`, medido 16/10).
 
 mod answer;
+mod fix;
 mod sem;
 mod worker;
 
 pub use answer::{Answer, Completion, Diag, Hover, Signature};
+pub use fix::{Edit, Fix, TypeHint};
 pub use sem::{Sem, SemToken, Target};
 
 use crate::pos::Dirty;
@@ -50,6 +52,13 @@ pub enum Req {
     Definition(usize),
     /// Os tokens semânticos do documento inteiro (I11; o `luau-lsp` não tem `range`).
     Tokens,
+    /// As correcções do servidor na faixa, com os diagnósticos que a aba MOSTRA ali (I7).
+    Fixes(std::ops::Range<usize>, Vec<Diag>),
+    /// A lista de completação em `usize` como candidatas do «você quis dizer» (I7): outro género
+    /// que a da lista, para que as duas nunca se cancelem.
+    Candidates(usize),
+    /// As dicas de tipo do documento (I7, «adicionar tipo»).
+    TypeHints,
 }
 
 impl Req {
@@ -61,6 +70,9 @@ impl Req {
             Self::Signature(_) => 2,
             Self::Definition(_) => 3,
             Self::Tokens => 4,
+            Self::Fixes(..) => 5,
+            Self::Candidates(_) => 6,
+            Self::TypeHints => 7,
         }
     }
 }

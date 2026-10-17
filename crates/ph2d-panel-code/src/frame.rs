@@ -87,6 +87,17 @@ pub struct CompletionView<'a> {
     pub width_chars: usize,
     /// A documentação da seleccionada (a caixa ao lado).
     pub doc: Option<&'a str>,
+    /// A prévia da acção seleccionada (I7; no lugar da documentação): as linhas como ficam.
+    pub preview: &'a [PreviewLine],
+    /// A lista é de acções de contexto (Alt+Enter), não de completação.
+    pub actions: bool,
+}
+
+/// Uma linha da prévia de uma acção: o texto como fica e o que nele muda (bytes do texto).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PreviewLine {
+    pub text: String,
+    pub changed: Vec<Range<usize>>,
 }
 
 /// O balão do rato (I5): o que o assistente diz da palavra `word` (bytes do buffer), em Markdown.

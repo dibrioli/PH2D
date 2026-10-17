@@ -35,12 +35,15 @@ impl CodeDoc {
         self.hints.owns(ticket)
             || self.sem.ticket == Some(ticket)
             || self.goto.as_ref().is_some_and(|g| g.ticket == Some(ticket))
+            || self.actions.as_ref().is_some_and(|a| a.owns(ticket))
     }
 
     /// A resposta `ticket` a um pedido sobre o documento `uri` (este).
     pub(crate) fn answer(&mut self, ticket: Ticket, uri: &str, answer: Answer) {
         if self.sem.ticket == Some(ticket) {
             self.sem.answer(ticket, answer);
+        } else if self.actions.as_ref().is_some_and(|a| a.owns(ticket)) {
+            self.actions_answer(ticket, answer);
         } else if let Some(g) = self.goto.take_if(|g| g.ticket == Some(ticket)) {
             // Outra resposta = o servidor recusou ou foi-se: nada a mostrar.
             if let Answer::Definition(targets) = answer {

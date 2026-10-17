@@ -87,7 +87,7 @@ fn shift(r: &Range<usize>, e: &TextEdit) -> Option<Range<usize>> {
 /// Um gancho que o MOTOR chama, declarado global (`function init(self)`): o lint «nunca usada» do
 /// servidor não sabe do motor (I0b §2, medido em todo script). Uma `local function init` não é
 /// gancho e o aviso fica.
-fn engine_hook(text: &Text, d: &Diag, bytes: &Range<usize>) -> bool {
+pub(crate) fn engine_hook(text: &Text, d: &Diag, bytes: &Range<usize>) -> bool {
     if d.code.as_deref() != Some(FUNCTION_UNUSED) {
         return false;
     }

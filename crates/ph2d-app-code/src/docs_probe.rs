@@ -65,6 +65,19 @@ impl CodeDocs {
         ))
     }
 
+    /// ⚠️ SONDA: as acções de contexto (I7) que a aba do script `id` mostra agora — os títulos, o
+    /// índice da seleccionada e a prévia dela; `None` = fechadas ou à espera do assistente.
+    #[must_use]
+    pub fn actions_of(&self, id: ScriptId) -> Option<(Vec<String>, usize, Vec<String>)> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        let s = d.actions_shown()?;
+        Some((
+            s.rows.into_iter().map(|r| r.label).collect(),
+            s.selected,
+            s.preview.into_iter().map(|l| l.text).collect(),
+        ))
+    }
+
     /// ⚠️ SONDA: as linhas que a lista da aba `id` pintou no último quadro (índice, rótulo,
     /// seleccionada) e o centro de cada uma (onde o clique a aceita).
     #[must_use]

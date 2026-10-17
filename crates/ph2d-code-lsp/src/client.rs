@@ -90,9 +90,12 @@ impl ServerConfig {
 }
 
 /// The settings PH2D answers to `workspace/configuration` (section `luau-lsp`): a standard Luau
-/// host, and no fetching of Roblox's FFlags (reproducible across machines).
+/// host, no fetching of Roblox's FFlags (reproducible across machines), and the type inlay hints
+/// (the «add type» fix; off, `textDocument/inlayHint` answers `[]` — I7 measurement §2).
 pub fn ph2d_settings() -> Value {
-    json!({ "platform": { "type": "standard" }, "fflags": { "sync": false } })
+    json!({ "platform": { "type": "standard" }, "fflags": { "sync": false },
+            "inlayHints": { "parameterNames": "none", "variableTypes": true,
+                            "parameterTypes": true, "functionReturnTypes": true } })
 }
 
 #[derive(Debug)]

@@ -82,6 +82,13 @@ impl CodeDoc {
         if self.preedit.as_ref().is_some_and(|p| p.1) {
             self.preedit = None;
         }
+        if self.actions.is_some() {
+            if self.actions_key(key, mods, text) {
+                self.reveal();
+                return out;
+            }
+            self.actions = None;
+        }
         if self.completion_key(key, mods) {
             self.reveal();
             return out;
@@ -99,6 +106,8 @@ impl CodeDoc {
                 self.last_input_ns,
             ),
             Key::Char(c) if cmd => out.copy = self.chord(c, shift, paste),
+            // Alt+Enter: as acções de contexto no cursor (I7).
+            Key::Enter if mods.alt && !cmd && !shift => self.open_actions(),
             Key::Enter => self.enter(),
             Key::Backspace => self.backspace(cmd),
             Key::Delete => self.delete(cmd),

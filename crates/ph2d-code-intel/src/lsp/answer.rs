@@ -70,6 +70,9 @@ pub enum Answer {
     /// Vazio = o servidor não sabe onde (a API: o `d.luau` não é navegável, I0b §5).
     Definition(Vec<super::Target>),
     Tokens(Vec<super::SemToken>),
+    /// As `quickfix` com edição que ecoam um diagnóstico mandado (I7).
+    Fixes(Vec<super::Fix>),
+    TypeHints(Vec<super::TypeHint>),
     /// O servidor recusou, morreu ou o pedido não pôde ir (o texto diz porquê).
     Failed(String),
 }

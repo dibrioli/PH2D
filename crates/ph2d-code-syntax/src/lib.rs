@@ -16,6 +16,7 @@ mod fold;
 mod highlight;
 mod indent;
 mod queries;
+mod self_fields;
 mod syntax;
 
 pub use autoedit::{AutoEdit, IndentStyle, closer_of};
@@ -27,4 +28,5 @@ pub use queries::{
     CaptureUse, FOLDS_SCM, HIGHLIGHTS_SCM, INDENTS_SCM, capture_table, highlight_captures,
     unevaluated_predicates,
 };
+pub use self_fields::SelfFields;
 pub use syntax::{ReparseJob, Reparsed, Retired, Syntax, luau_parser};

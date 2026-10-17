@@ -60,6 +60,7 @@ pub fn frame(
         follow_library(docs, lib);
     }
     docs.pump();
+    docs.lint();
     let ask = save(
         docs,
         world,

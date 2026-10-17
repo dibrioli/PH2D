@@ -2,7 +2,7 @@
 //! se não couber), sete linhas no máximo, as letras que casaram realçadas, o tipo à direita e a
 //! documentação da seleccionada numa caixa ao lado. A superfície é o `Popover` do design system.
 
-use crate::frame::{COMPLETION_MAX_CHARS, COMPLETION_ROWS, CodeFrame, CompletionView};
+use crate::frame::{COMPLETION_MAX_CHARS, COMPLETION_ROWS, CodeFrame, CompletionView, PreviewLine};
 use crate::palette::Palette;
 use crate::style::Ink;
 use crate::view::CodeView;
@@ -22,6 +22,8 @@ pub(crate) struct Painted {
     /// Cada linha à vista: o índice na lista inteira, a caixa, o rótulo e se é a seleccionada.
     pub rows: Vec<(usize, Rect, String, bool)>,
     pub doc: Option<Rect>,
+    /// A lista é de acções (o nome para o leitor de ecrã).
+    pub actions: bool,
 }
 
 /// Uma linha pintada da lista, como a sonda a dá: o índice, o rótulo, se é a seleccionada e o centro.
@@ -83,6 +85,7 @@ impl CodeView {
             rect,
             rows: Vec::new(),
             doc: None,
+            actions: c.actions,
         };
         for (k, row) in c.rows.iter().take(COMPLETION_ROWS).enumerate() {
             let i = c.top + k;
@@ -118,7 +121,9 @@ impl CodeView {
             painted.rows.push((i, r, row.label.clone(), selected));
         }
         pop_popover_clip(scene);
-        if let Some(doc) = c.doc.filter(|d| !d.trim().is_empty()) {
+        if !c.preview.is_empty() {
+            painted.doc = self.paint_preview(scene, ts, pal, c.preview, rect, tr);
+        } else if let Some(doc) = c.doc.filter(|d| !d.trim().is_empty()) {
             painted.doc = self.paint_doc(scene, ts, pal, doc, rect, tr);
         }
         self.popup = Some(painted);
@@ -160,6 +165,47 @@ impl CodeView {
         for (k, l) in lines.iter().enumerate() {
             let y = r.y + pad + k as f32 * lh;
             self.paint_mono(ts, scene, pal, l, Ink::Plain, x + pad, y, x + w - pad);
+        }
+        pop_popover_clip(scene);
+        Some(r)
+    }
+
+    /// A prévia da acção seleccionada ao lado da lista, como a documentação: cada linha como fica,
+    /// cortada à volta do que muda, e o que muda marcado.
+    fn paint_preview(
+        &mut self,
+        scene: &mut VectorScene,
+        ts: &mut TextSystem,
+        pal: &Palette,
+        lines: &[PreviewLine],
+        list: Rect,
+        tr: Rect,
+    ) -> Option<Rect> {
+        let pad = self.pad();
+        let lh = self.m.line_h;
+        let cols = COMPLETION_MAX_CHARS;
+        let w = cols as f32 * self.m.advance + 2.0 * pad;
+        let x = if list.x + list.w + w <= tr.x + tr.w {
+            list.x + list.w
+        } else if list.x - w >= tr.x {
+            list.x - w
+        } else {
+            return None;
+        };
+        let lines = &lines[..lines.len().min(COMPLETION_ROWS)];
+        let r = Rect::new(x, list.y, w, lines.len() as f32 * lh + 2.0 * pad);
+        paint_popover(&Popover::new(NodeId(0)), r, scene, pal.theme);
+        push_popover_clip(r, scene);
+        for (k, l) in lines.iter().enumerate() {
+            let y = r.y + pad + k as f32 * lh;
+            let (text, changed) = crop(l, cols);
+            for m in &changed {
+                let a = text[..m.start].chars().count() as f32;
+                let n = text[m.clone()].chars().count().max(1) as f32;
+                let mark = Rect::new(x + pad + a * self.m.advance, y, n * self.m.advance, lh);
+                scene.fill_rect(rect_to_vello(mark), pal.match_);
+            }
+            self.paint_mono(ts, scene, pal, &text, Ink::Plain, x + pad, y, x + w - pad);
         }
         pop_popover_clip(scene);
         Some(r)
@@ -212,7 +258,11 @@ impl CodeView {
         let mut out = vec![(
             list,
             NodeBuilder::new(Role::ListBox)
-                .label(ph2d_i18n::tr("code.a11y.completion"))
+                .label(ph2d_i18n::tr(if p.actions {
+                    "code.a11y.actions"
+                } else {
+                    "code.a11y.completion"
+                }))
                 .bounds(x, y, w, h)
                 .children(p.rows.iter().map(|r| opt(r.0)))
                 .build(),
@@ -232,6 +282,43 @@ impl CodeView {
         }
         Some((list, active, out))
     }
+}
+
+/// Uma linha da prévia em no máximo `cols` colunas, com o 1.º trecho que muda à vista: corta à
+/// esquerda (com «…») se ele passa do fim, e à direita com [`elide`]. As faixas seguem o corte.
+pub(crate) fn crop(l: &PreviewLine, cols: usize) -> (String, Vec<std::ops::Range<usize>>) {
+    let chars = l.text.chars().count();
+    let first_end = l
+        .changed
+        .first()
+        .map_or(0, |m| l.text[..m.end].chars().count());
+    let skip = if chars > cols && first_end + 2 > cols {
+        (first_end + 2 - cols + 1).min(chars)
+    } else {
+        0
+    };
+    let cut = l
+        .text
+        .char_indices()
+        .nth(skip)
+        .map_or(l.text.len(), |(b, _)| b);
+    let lead = if skip > 0 { "…" } else { "" };
+    let whole = format!("{lead}{}", &l.text[cut..]);
+    let text = elide(&whole, cols);
+    // O «…» do fim não é do texto: nenhuma marca entra nele.
+    let keep = if text == whole {
+        text.len()
+    } else {
+        text.len() - '…'.len_utf8()
+    };
+    let shift = |b: usize| (b.max(cut) - cut + lead.len()).min(keep);
+    let changed = l
+        .changed
+        .iter()
+        .map(|m| shift(m.start)..shift(m.end))
+        .filter(|m| m.start < keep || m.is_empty())
+        .collect();
+    (text, changed)
 }
 
 /// `s` em no máximo `cols` colunas, com «…» no fim se foi cortado.
@@ -307,5 +394,21 @@ mod tests {
         assert_eq!(plain("**Set** a `field`\n```lua\nx\n```"), "Set a field\nx");
         assert_eq!(plain("```luau\nf()\n```\n----------\ndoc"), "f()\n\ndoc");
         assert_eq!(elide("abcdef", 4), "abc…");
+    }
+
+    #[test]
+    fn a_previa_corta_a_volta_do_que_muda() {
+        let l = PreviewLine {
+            text: format!("{}amplitude", "x".repeat(60)),
+            changed: vec![60..69],
+        };
+        let (t, c) = crop(&l, 20);
+        assert!(t.starts_with('…') && t.ends_with("amplitude"), "{t}");
+        assert_eq!(&t[c[0].clone()], "amplitude");
+        let curta = PreviewLine {
+            text: "local d = s * amplitude".into(),
+            changed: vec![14..23],
+        };
+        assert_eq!(crop(&curta, 50), (curta.text.clone(), vec![14..23]));
     }
 }

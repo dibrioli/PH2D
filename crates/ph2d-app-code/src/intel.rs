@@ -204,6 +204,9 @@ impl Intel {
                 d.lsp.edits.clear();
                 d.assist.clear();
                 d.complete.close();
+                if let Some(a) = d.actions.as_mut() {
+                    a.offline();
+                }
             }
             return;
         };
@@ -406,13 +409,20 @@ impl Intel {
             return;
         };
         for d in docs.iter_mut() {
-            if d.hints.hover.is_none() && d.hints.sig.is_none() && d.goto.is_none() {
+            if d.hints.hover.is_none()
+                && d.hints.sig.is_none()
+                && d.goto.is_none()
+                && d.actions.is_none()
+            {
                 continue;
             }
             if !ready {
                 if !waiting {
                     d.hints.close();
                     d.goto = None;
+                    if let Some(a) = d.actions.as_mut() {
+                        a.offline();
+                    }
                 }
                 continue;
             }
@@ -423,6 +433,9 @@ impl Intel {
             let Some(m) = self.mirrors.get(&d.script).filter(|m| m.src == current) else {
                 continue;
             };
+            if let Some(a) = d.actions.as_mut() {
+                a.send(|req| session.ask(&m.uri, req));
+            }
             if let Some(g) = d.goto.as_mut()
                 && g.ticket.is_none()
             {

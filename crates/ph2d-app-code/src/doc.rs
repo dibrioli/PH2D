@@ -65,6 +65,10 @@ pub(crate) struct CodeDoc {
     pub(crate) sem: crate::semantic::SemHeld,
     /// Ctrl+clique / F12 à espera do assistente (I6).
     pub(crate) goto: Option<crate::goto::Goto>,
+    /// As acções de contexto do Alt+Enter (I7).
+    pub(crate) actions: Option<crate::actions::Actions>,
+    /// Os campos do `self` que ninguém dá (I7).
+    pub(crate) lint: crate::lint::Lint,
     /// As cores que o último quadro pintou (a sonda `ink_painted`).
     pub(crate) painted: Vec<(std::ops::Range<usize>, Ink)>,
     /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
@@ -111,6 +115,8 @@ impl CodeDoc {
             hints: crate::hint::Hints::default(),
             sem: crate::semantic::SemHeld::default(),
             goto: None,
+            actions: None,
+            lint: crate::lint::Lint::default(),
             painted: Vec::new(),
             last_input_ns: 0,
             badge: None,
@@ -158,6 +164,8 @@ impl CodeDoc {
         self.assist.edited(edits);
         self.sem.edited(edits);
         self.goto = None;
+        self.actions = None;
+        self.lint.edited(edits);
         self.complete.edited(edits);
         self.hints.hover = None;
         if let Some(a) = &mut self.diag_anchor {
@@ -192,7 +200,10 @@ impl CodeDoc {
             }
             _ => None,
         };
-        problems(t, &self.derived.errors, saved, &self.assist)
+        let mut out = problems(t, &self.derived.errors, saved, &self.assist);
+        out.extend(self.lint.problems(t));
+        out.sort_by_key(|p| (p.line, p.culprit.as_ref().map(|c| c.start)));
+        out
     }
 
     /// O diagnóstico do Luau para o texto salvo (lido da cena em todo quadro): ancora-o quando muda.
@@ -315,7 +326,7 @@ impl CodeDoc {
     ) {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
         let problems = self.problems();
-        let shown = self.completion_shown();
+        let shown = self.actions_shown().or_else(|| self.completion_shown());
         let sig_doc = self
             .hints
             .sig
@@ -390,6 +401,8 @@ impl CodeDoc {
                 selected: s.selected,
                 width_chars: s.width_chars,
                 doc: s.doc.as_deref(),
+                preview: &s.preview,
+                actions: s.actions,
             }),
             hover: hints.hover.as_ref().and_then(|h| {
                 let shown = h.shown.as_ref()?;

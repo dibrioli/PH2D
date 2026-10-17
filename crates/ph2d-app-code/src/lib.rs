@@ -9,6 +9,7 @@
 //!
 //! [`ScriptId`]: ph2d_script::ScriptId
 
+mod actions;
 pub mod commands;
 pub mod complete;
 mod complete_doc;
@@ -24,6 +25,7 @@ mod goto;
 mod hint;
 mod intel;
 mod keys;
+mod lint;
 pub mod list;
 mod pointer;
 pub mod problems;

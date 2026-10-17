@@ -2,6 +2,7 @@
 //! entregues pelo leitor do cliente, notificações). Nunca há relógio a girar: ele dorme em `recv`.
 
 use super::answer::{self, Answer, Diag};
+use super::fix;
 use super::sem::{self, Legend};
 use super::{Connect, Event, Inbox, Req, ServerState, Ticket};
 use crate::pos::{position_of, range_of};
@@ -79,15 +80,22 @@ fn method_of(req: &Req) -> &'static str {
         Req::Signature(_) => "textDocument/signatureHelp",
         Req::Definition(_) => "textDocument/definition",
         Req::Tokens => "textDocument/semanticTokens/full",
+        Req::Fixes(..) => "textDocument/codeAction",
+        Req::Candidates(_) => "textDocument/completion",
+        Req::TypeHints => "textDocument/inlayHint",
     }
 }
 
 fn params_of(uri: &str, text: &Text, req: &Req) -> Value {
     match req {
-        Req::Completion(b) | Req::Hover(b) | Req::Signature(b) | Req::Definition(b) => {
-            params_at(uri, text, *b)
-        }
+        Req::Completion(b)
+        | Req::Hover(b)
+        | Req::Signature(b)
+        | Req::Definition(b)
+        | Req::Candidates(b) => params_at(uri, text, *b),
         Req::Tokens => json!({ "textDocument": { "uri": uri } }),
+        Req::Fixes(r, diags) => fix::params(uri, text, r.clone(), diags),
+        Req::TypeHints => fix::hint_params(uri, text),
     }
 }
 
@@ -96,7 +104,9 @@ impl Worker {
     fn parse(&self, f: &Flight, v: &Value) -> Answer {
         let text = &f.text;
         match &f.req {
-            Req::Completion(_) => Answer::Completion(answer::completion(text, v)),
+            Req::Completion(_) | Req::Candidates(_) => {
+                Answer::Completion(answer::completion(text, v))
+            }
             Req::Hover(_) => Answer::Hover(answer::hover(text, v)),
             Req::Signature(_) => Answer::Signature(answer::signature(v)),
             Req::Definition(_) => Answer::Definition(sem::definition(
@@ -110,6 +120,8 @@ impl Worker {
                 v,
             )),
             Req::Tokens => Answer::Tokens(sem::tokens(text, &self.legend, v)),
+            Req::Fixes(..) => Answer::Fixes(fix::fixes(&f.uri, text, v)),
+            Req::TypeHints => Answer::TypeHints(fix::type_hints(text, v)),
         }
     }
 }

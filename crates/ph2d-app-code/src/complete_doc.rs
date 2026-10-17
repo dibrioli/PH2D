@@ -44,6 +44,9 @@ pub(crate) struct Shown {
     pub selected: usize,
     pub width_chars: usize,
     pub doc: Option<String>,
+    /// A prévia da acção seleccionada (só as acções do I7 a têm).
+    pub preview: Vec<ph2d_panel_code::PreviewLine>,
+    pub actions: bool,
 }
 
 impl crate::doc::CodeDoc {
@@ -81,6 +84,8 @@ impl crate::doc::CodeDoc {
             selected: s.selected,
             width_chars,
             doc: sel.documentation.clone().or_else(|| sel.detail.clone()),
+            preview: Vec::new(),
+            actions: false,
         })
     }
 

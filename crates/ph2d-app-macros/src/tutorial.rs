@@ -151,6 +151,9 @@ pub(crate) struct Tutorial {
     /// A 1.ª pincelada por cumprir no último estado avaliado: o progresso é função do estado, e um
     /// estado igual não se reavalia (a cada quadro seriam todas as pinceladas cumpridas outra vez).
     progresso: Option<(ChaveDoProgresso, usize)>,
+    /// A dica do autor na etapa corrente do Motion, por (hash dos bytes, trilha, k): lida uma vez — por
+    /// quadro seria descodificar a trilha inteira (o Painter lê-a no fio).
+    dica_do_motion: Option<((u64, usize, usize), Option<String>)>,
 }
 
 /// O objecto do tutorial: a imagem em que o Painter pinta (a `Macro` do Painter vive na imagem que
@@ -422,8 +425,21 @@ impl Tutorial {
                 b.dica = match etapas[i].familia {
                     FamiliaDaMacro::Painter => etapas[i].dica.clone(),
                     FamiliaDaMacro::Motion => {
-                        let (_, doc) = self.le(bits, bytes).ok()?;
-                        crate::etapas::dica(f.etapas, &doc.tracks[etapas[i].trilha], etapas[i].e.k)
+                        let chave = (
+                            self.le(bits, bytes).ok()?.0,
+                            etapas[i].trilha,
+                            etapas[i].e.k,
+                        );
+                        if self
+                            .dica_do_motion
+                            .as_ref()
+                            .is_none_or(|(c, _)| *c != chave)
+                        {
+                            let (_, doc) = self.le(bits, bytes).ok()?;
+                            let d = crate::etapas::dica(f.etapas, &doc.tracks[chave.1], chave.2);
+                            self.dica_do_motion = Some((chave, d));
+                        }
+                        self.dica_do_motion.as_ref().and_then(|(_, d)| d.clone())
                     }
                 };
             }

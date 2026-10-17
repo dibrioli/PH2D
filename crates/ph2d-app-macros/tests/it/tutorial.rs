@@ -5,7 +5,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_app_macros::{Cena, Familias, Macros};
-use ph2d_ecs::{Macro, ModoDaMacro, SimWorld, StableId};
+use ph2d_ecs::{Entity, Macro, ModoDaMacro, SimWorld, StableId};
 use ph2d_editor_core::macro_edits::{
     CampoDaEtapa, ErroDaMacroView, EtapaView, FamiliaDaMacro, MacroRequest,
 };
@@ -77,10 +77,16 @@ impl TutorialDaFamilia for Aluno {
     }
 }
 
+thread_local! {
+    /// Quantas vezes a trilha foi descodificada em etapas (neste fio: cada teste corre no seu).
+    static DESCODIFICADAS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// O leitor e as etapas do Motion de brinquedo: a família MACROS só lhes pede a chave e a família.
 struct Leitor;
 impl LeitorDaFamilia for Leitor {
     fn etapas(&self, ev: &[Event]) -> Vec<Etapa> {
+        DESCODIFICADAS.set(DESCODIFICADAS.get() + 1);
         (0..ev.len()).map(|i| Etapa { inicio: i, fim: i }).collect()
     }
     fn e_relogio(&self, _: &[u8]) -> bool {
@@ -253,4 +259,36 @@ fn fora_do_modo_fazer_nao_ha_balao() {
         let mut b = Banca::nova(modo);
         assert_eq!(b.quadro(), None, "{modo:?}");
     }
+}
+
+/// ⭐ **A dica do Motion lê-se uma vez por versão** (W7; `03_plano_W6.md` §6.4 deixava-a por quadro):
+/// com o balão na etapa que tem o texto do autor, quadros com os mesmos bytes não descodificam a
+/// trilha; uma versão nova (outra dica) lê-se no quadro seguinte.
+#[test]
+fn a_dica_do_motion_le_se_uma_vez_por_versao() {
+    let mut b = Banca::nova(ModoDaMacro::Fazer);
+    b.quadro();
+    b.m.pede(MacroRequest::MostraMe {
+        entity_bits: b.bits,
+    });
+    assert_eq!(b.quadro().expect("balão").dica.as_deref(), Some(DICA));
+    DESCODIFICADAS.set(0);
+    for _ in 0..5 {
+        assert_eq!(b.quadro().expect("balão").dica.as_deref(), Some(DICA));
+    }
+    assert_eq!(
+        DESCODIFICADAS.get(),
+        0,
+        "cinco quadros com os mesmos bytes descodificaram a trilha"
+    );
+    let e = Entity::from_bits(b.bits);
+    let mut doc =
+        ph2d_macro::codec::read(&b.sim.world().get::<Macro>(e).expect("macro").doc).expect("lê");
+    doc.tracks[0].edicoes[0].dica = Some("Outra.".into());
+    b.sim.world_mut().get_mut::<Macro>(e).expect("macro").doc = ph2d_macro::codec::write(&doc);
+    assert_eq!(
+        b.quadro().expect("balão").dica.as_deref(),
+        Some("Outra."),
+        "a versão nova lê-se"
+    );
 }

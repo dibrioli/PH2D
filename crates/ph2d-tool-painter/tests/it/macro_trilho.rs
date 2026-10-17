@@ -5,7 +5,7 @@
 //! Cada caso prepara a ferramenta antes de armar, grava traços (e, na Seleção, uma forma acrescentada A
 //! GRAVAR, que se recompõe da lista de formas), toca a macro num tool novo e compara a tela ao byte. Só
 //! o caso `SelecaoConvertida` (o «Convert to curve» a gravar) vê a LISTA de formas do inicial: somar uma
-//! forma compõe-se sobre a máscara e a base repostas (sobrevivente da prova de mutação da W7).
+//! forma compõe-se sobre a máscara e a base já devolvidas (sobrevivente da prova de mutação da W7).
 //! Controlo: o mesmo caso sem a preparação dá outra tela (a preparação decide o que se pinta).
 
 use super::macro_comum::{Gravador, cp, texels_diferentes, toca};
@@ -76,7 +76,7 @@ enum Caso {
     Clone,
     Selecao,
     /// A Seleção e, A GRAVAR, o «Convert to curve»: recompõe a máscara SÓ da lista de formas (a máscara e
-    /// a base repostas não a salvam) — sem a lista no inicial, a 1.ª forma some.
+    /// a base já devolvidas não a salvam) — sem a lista no inicial, a 1.ª forma some.
     SelecaoConvertida,
     Mascara,
 }

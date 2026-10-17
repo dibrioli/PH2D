@@ -70,8 +70,16 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
     //    Boolean do painel ABERTAS (nascem recolhidas; abri-las é um clique do artista). ⚠️ Abrir o
     //    painel do traço da barra NÃO serve: ele molda os MESMOS textos da secção Stroke (`+1`).
     h.store.set_area_commands(Vec::new(), Vec::new());
+    // ⚠️ **E o grupo ▸ Advanced ABERTO** (F17, 16/10): a Boolean mudou-se para dentro dele com
+    //    Expand, Blend, Morph, Envelope, Pattern on Path e Contour, e o grupo nasce dobrado — sem
+    //    abri-lo a Boolean aberta acima não pintava, nem as outras seis, e a fixtura caiu para `1 024`
+    //    textos (o tecto); aberto, `1 130`. O texto não sumiu do app: está a um clique, como o do
+    //    Snap. Prova (16/10): com a cache a `clear` em vez de rodar, esta fixtura molda `1 105`
+    //    textos no quadro parado (vermelho); sem o grupo, `1 024` cabem numa geração, a cache
+    //    partida nunca roda e só o controlo de vacuidade abaixo o diz.
     for s in [
         ph2d_tool_vector::ids::VECTOR_SECTION_SNAP,
+        ph2d_panel_vector::ids::VECTOR_SECTION_ADVANCED,
         ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
     ] {
         h.store.set_collapsed(s, false);

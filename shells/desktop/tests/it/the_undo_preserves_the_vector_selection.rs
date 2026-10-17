@@ -138,7 +138,7 @@ fn the_step_carries_the_selection_and_the_restore_prefers_it() {
         .nth(1)
         .expect("post_frame_undo existe");
     assert!(
-        post.contains("push_undo(base, mark)"),
+        post.contains("push_undo_em(base, mark,"),
         "o passo nasce sem a selecção que lhe pertence — a fila volta a ser só estado"
     );
 }

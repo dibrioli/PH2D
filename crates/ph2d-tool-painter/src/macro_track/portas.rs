@@ -55,6 +55,8 @@ const FORMA_OU_SELECAO: &str =
 const CAMADAS_COMO_PINCEL: &str =
     "lê as camadas como textura do pincel ou do papel: a macro não as guarda";
 const ACESSOR: &str = "acessor do contrato: não muda nada";
+const ETAPA_EDITADA: &str =
+    "a edição de uma etapa chega à imagem: obra da própria macro, nunca um passo de outra";
 const GRAVACAO: &str =
     "arma, drena ou pára a gravação (o painel MACROS): controla a macro, não é um passo da obra";
 
@@ -77,6 +79,7 @@ pub const PORTAS: &[Porta] = &[
     a("macro_abre", GRAVACAO),
     a("macro_passos", GRAVACAO),
     a("macro_para", GRAVACAO),
+    a("agua_parada", ACESSOR),
     // — inerentes, gravadas —
     g("on_canvas_hover"),
     g("undo_last"),
@@ -120,6 +123,7 @@ pub const PORTAS: &[Porta] = &[
     g("set_uniform_scale"),
     // — inerentes, recusadas —
     r("bind_document", OUTRO_DOCUMENTO),
+    r("reescreve_a_gravacao", ETAPA_EDITADA),
     r("install_document", OUTRO_DOCUMENTO),
     r("baked_document_pixels", OUTRO_DOCUMENTO),
     r("open_layer_of", OUTRO_DOCUMENTO),

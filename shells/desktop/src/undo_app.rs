@@ -340,6 +340,19 @@ impl crate::App {
         }
     }
 
+    /// A reescrita de uma etapa editada de uma macro (W8): `aterrou` = escreveu, e o passo global
+    /// regista-se já com a transação dela; senão = ainda espera (o passo global não regista).
+    fn reescrita(&self, aterrou: bool) -> bool {
+        self.gfx.as_ref().is_some_and(|g| {
+            let p = &g.painter_macros;
+            if aterrou {
+                p.transacao().is_some()
+            } else {
+                p.a_reescrever()
+            }
+        })
+    }
+
     /// **O log do undo está ligado?** Cacheado — os três sítios que o consultam correm por
     /// passo de undo, e ler o ambiente é caro o suficiente para não o fazer em cada um.
     pub(crate) fn undo_log_on() -> bool {
@@ -375,12 +388,7 @@ impl crate::App {
         if std::mem::take(&mut self.prefab_cancel_pending) {
             self.prefab_cancel = self.capture_project();
         }
-        // A reescrita de uma etapa editada aterrou: o passo regista-se já, com a transação dela.
-        let had_input = std::mem::take(&mut self.any_input_this_frame)
-            || self
-                .gfx
-                .as_ref()
-                .is_some_and(|g| g.painter_macros.transacao().is_some());
+        let had_input = std::mem::take(&mut self.any_input_this_frame) || self.reescrita(true);
         // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
         // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o
         // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.
@@ -438,11 +446,7 @@ impl crate::App {
             Some(tr("shell.undo_app.colorize_a_recalcular"))
         } else if ph2d_app_macros::com(|m| m.a_conferir()) {
             Some(tr("shell.undo_app.macro_a_conferir"))
-        } else if self
-            .gfx
-            .as_ref()
-            .is_some_and(|g| g.painter_macros.a_reescrever())
-        {
+        } else if self.reescrita(false) {
             Some(tr("shell.undo_app.macro_a_reescrever"))
         } else if self.ui_state_live {
             Some(tr("shell.undo_app.transicao_de_estado_de"))

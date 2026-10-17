@@ -15,7 +15,7 @@ impl Clipe {
         le: &mut LeSprite<'_>,
         escreve: &mut EscreveSprite<'_, Placa>,
     ) -> Option<u64> {
-        let mut p = painter;
+        let p = painter;
         self.quadro(
             f64::from(q) / 60.0,
             Atuais {
@@ -23,9 +23,7 @@ impl Clipe {
                 le_sprite: Some(&mut *le),
             },
         );
-        let t = self
-            .palcos
-            .reescreve(p.as_deref_mut(), le, escreve, &mut self.placa);
+        let t = self.palcos.reescreve(p, le, escreve, &mut self.placa);
         // O passo global regista-se e leva-a (a shell, no `post_frame_undo`).
         assert_eq!(
             self.palcos.toma_a_transacao(),

@@ -262,6 +262,7 @@ mod tests {
         );
         let junto: Vec<&str> = r.iter().map(|r| &s[r.clone()]).collect();
         assert_eq!(junto.join(" "), s);
-        assert_eq!(wrap_ranges("curto", 20), [0..5]);
+        let curto = wrap_ranges("curto", 20);
+        assert_eq!((curto.len(), curto[0].start, curto[0].end), (1, 0, 5));
     }
 }

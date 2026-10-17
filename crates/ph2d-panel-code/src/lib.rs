@@ -36,7 +36,7 @@ pub use glyphs::{PaintWork, paint_work};
 pub use hint::HintProbe;
 pub use line_cache::LineCache;
 pub use metrics::Metrics;
-pub use popup::CompletionHit;
+pub use popup::{CompletionHit, CompletionPaintedRow};
 pub use script_list::{ListField, ListHit, ListRow, ScriptList, ScriptListView};
 pub use status::{StatusLine, Tone, assist_line, badge_line};
 pub use style::Ink;

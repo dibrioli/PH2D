@@ -50,7 +50,7 @@ pub(crate) fn token_at(text: &Text, byte: usize) -> String {
 /// O token em `byte` pode recuar a linha (lexicamente) — sem esta pergunta a árvore não é precisa.
 pub(crate) fn may_dedent(text: &Text, byte: usize) -> bool {
     let tok = token_at(text, byte);
-    closer_tokens().iter().any(|c| *c == tok)
+    closer_tokens().contains(&tok)
 }
 
 /// O nó tem a captura `cap` num padrão enraizado NELE (não num descendente).

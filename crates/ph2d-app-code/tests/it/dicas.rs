@@ -356,14 +356,20 @@ fn um_assistente_parado_nao_deixa_a_assinatura() {
     m.pede(a);
     quadro_em(&mut m, T0);
     escreve(&mut m, a, "f(");
-    ate(&mut m, a, T0, "não abriu", |m| m.docs().signature_of(a).is_some());
+    ate(&mut m, a, T0, "não abriu", |m| {
+        m.docs().signature_of(a).is_some()
+    });
     // O servidor morre com uma edição NOUTRO script: na aba da assinatura não há pedido em voo
     // que falhe, só o estado do assistente a fecha.
     m.pede(b);
     escreve(&mut m, b, "x");
-    ate(&mut m, a, T0, "o assistente parou e a assinatura ficou", |m| {
-        m.docs().assist_text().is_some() && m.docs().signature_of(a).is_none()
-    });
+    ate(
+        &mut m,
+        a,
+        T0,
+        "o assistente parou e a assinatura ficou",
+        |m| m.docs().assist_text().is_some() && m.docs().signature_of(a).is_none(),
+    );
 }
 
 /// Numa string ou num comentário, `(` e `,` não abrem (nem perguntam); o controlo, em código, abre.

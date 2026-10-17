@@ -11,9 +11,11 @@
 
 pub mod commands;
 pub mod complete;
+mod complete_doc;
 mod console;
 mod doc;
 mod docs;
+mod docs_probe;
 mod edit;
 mod find;
 mod folds;

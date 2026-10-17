@@ -85,7 +85,7 @@ impl Lado {
         }
         self.job.push(ms(t));
         self.k += 1;
-        if self.k % 3 == 0 {
+        if self.k.is_multiple_of(3) {
             // O quadro: o worker já acabou (16 ms depois, no app) — espera-se FORA da régua.
             self.worker.wait_all();
             let t = Instant::now();
@@ -98,7 +98,7 @@ impl Lado {
             }
             self.pump.push(ms(t));
             let t = Instant::now();
-            if (self.k / 3) % 2 == 0 {
+            if (self.k / 3).is_multiple_of(2) {
                 drop(retired);
                 self.largar_aqui.push(ms(t));
             } else {
@@ -106,7 +106,7 @@ impl Lado {
                 self.largar_no_worker.push(ms(t));
             }
         }
-        if self.k % 5 == 0 {
+        if self.k.is_multiple_of(5) {
             for _ in 0..5 {
                 let e = self.buf.delete_backward();
                 self.syn.edit_deferred(&e);
@@ -123,8 +123,11 @@ fn sonda_quadro() {
         for _ in 0..60 {
             l.tecla();
         }
-        (l.edit.clear(), l.job.clear(), l.pump.clear());
-        (l.largar_aqui.clear(), l.largar_no_worker.clear());
+        l.edit.clear();
+        l.job.clear();
+        l.pump.clear();
+        l.largar_aqui.clear();
+        l.largar_no_worker.clear();
     }
     for r in 0..40 {
         for i in 0..2 {

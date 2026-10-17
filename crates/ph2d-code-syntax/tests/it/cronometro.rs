@@ -351,7 +351,7 @@ fn reparse_por_forma_do_topo() {
                 .filter(|(_, c)| **c >= 5)
                 .filter_map(|(s, c)| s.strip_prefix(pre).map(|s| (s, *c)))
                 .collect();
-            v.sort_by(|a, b| b.1.cmp(&a.1));
+            v.sort_by_key(|x| std::cmp::Reverse(x.1));
             v.iter()
                 .take(2)
                 .map(|(s, c)| format!("`{s}` {:.0}", *c as f64 / 10.0))

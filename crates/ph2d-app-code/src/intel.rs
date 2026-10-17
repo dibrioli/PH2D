@@ -455,7 +455,7 @@ fn pinned(bin: PathBuf) -> Connect {
 /// conteúdo em `<cache>/ph2d/luau-lsp/<versão>/api/`.
 pub(crate) fn support_files() -> std::io::Result<(PathBuf, PathBuf)> {
     let dir = ph2d_code_lsp::resolve::cache_dir()
-        .map_or_else(|| std::env::temp_dir().join("ph2d-luau-lsp"), |d| d)
+        .unwrap_or_else(|| std::env::temp_dir().join("ph2d-luau-lsp"))
         .join("api");
     std::fs::create_dir_all(&dir)?;
     let put = |stem: &str, ext: &str, body: &str| -> std::io::Result<PathBuf> {

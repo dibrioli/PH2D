@@ -7,6 +7,7 @@ use crate::palette::Palette;
 use crate::style::Ink;
 use crate::view::CodeView;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_editor_core::math::safe_clamp_ord;
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::widget::{Popover, paint_popover, pop_popover_clip, push_popover_clip};
 use ph2d_editor_core::zones::Rect;
@@ -22,6 +23,12 @@ pub(crate) struct Painted {
     pub rows: Vec<(usize, Rect, String, bool)>,
     pub doc: Option<Rect>,
 }
+
+/// Uma linha pintada da lista, como a sonda a dá: o índice, o rótulo, se é a seleccionada e o centro.
+pub type CompletionPaintedRow = (usize, String, bool, (f32, f32));
+
+/// A `ListBox`, a opção activa e os nós de todas as opções.
+type ListA11y = (NodeId, Option<NodeId>, Vec<(NodeId, Node)>);
 
 /// Onde caiu um clique na lista.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,7 +66,7 @@ impl CodeView {
         let tr = self.text_rect();
         let pad = self.pad();
         let lh = self.m.line_h;
-        let cols = c.width_chars.clamp(1, COMPLETION_MAX_CHARS) as f32;
+        let cols = safe_clamp_ord(c.width_chars, 1, COMPLETION_MAX_CHARS) as f32;
         let w = (cols * self.m.advance + 2.0 * pad).min(tr.w);
         let h = c.rows.len().min(COMPLETION_ROWS) as f32 * lh + 2.0 * pad;
         let x = (at.x - pad).min(tr.x + tr.w - w).max(tr.x);
@@ -171,7 +178,7 @@ impl CodeView {
 
     /// ⚠️ SONDA: as linhas que a lista pintou no último quadro (índice, rótulo, seleccionada, centro).
     #[must_use]
-    pub fn completion_painted(&self) -> Option<Vec<(usize, String, bool, (f32, f32))>> {
+    pub fn completion_painted(&self) -> Option<Vec<CompletionPaintedRow>> {
         self.popup.as_ref().map(|p| {
             p.rows
                 .iter()
@@ -189,10 +196,7 @@ impl CodeView {
 
     /// Os nós da lista aberta: a `ListBox` e uma opção por linha à vista; a id da seleccionada é o
     /// `active_descendant` do `Document`.
-    pub(crate) fn completion_a11y(
-        &self,
-        base: NodeId,
-    ) -> Option<(NodeId, Option<NodeId>, Vec<(NodeId, Node)>)> {
+    pub(crate) fn completion_a11y(&self, base: NodeId) -> Option<ListA11y> {
         let p = self.popup.as_ref()?;
         let list = NodeId(base.0 + A11Y_LIST);
         let opt = |i: usize| NodeId(list.0 + 1 + i as u64);

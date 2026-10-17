@@ -73,7 +73,7 @@ aquelas páginas podem sair para o disco — é por isso que subir o tecto é se
 aqui e não reabre o travamento de
 [`project_ramtarget_noswap_fragments_memory_and_freezes`](../../project-memory/project_ramtarget_noswap_fragments_memory_and_freezes.md).
 
-⇒ **no primário, todo comando pesado leva `PH2D_MEM_MAX=96G`** (`46,5` do disco
+⭐ **Desde 17/10 a porta faz isto SOZINHA:** sem `PH2D_MEM_MAX`, no primário o default é `24G` + o que o `tmpfs` já ocupa (`df` no momento) — a regra manual abaixo não era seguida (o portão do CLAUDE.md morreu 2× no primário em 17/10). Histórico: ⇒ **no primário, todo comando pesado leva `PH2D_MEM_MAX=96G`** (`46,5` do disco
 em RAM + os `48` que uma linha tem). Quem reclamar o `tmpfs`
 ([`DIRETIVA_FIM_DE_DIA`](../IntegracaoMultiAgente/DIRETIVA_FIM_DE_DIA.md) §2-bis)
 pode voltar ao tecto de uma linha — e tem de **reconferir esta nota**, que é a lei

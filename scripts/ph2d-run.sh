@@ -75,6 +75,18 @@ nucleos="$(nproc)"
 pct="${PH2D_CPU_PCT:-50}"
 quota="$(( nucleos * pct ))%"
 mem="${PH2D_MEM_MAX:-24G}"
+# ⛔ No PRIMÁRIO o `target/debug` é um `tmpfs` cujas páginas ficam cobradas a ESTA fatia
+# (TETOS_DE_RECURSO_POR_LINHA §1.1): um tecto de 24G que já começa com ~36G gastos mata o teste calado.
+# A cura lá era a regra manual «leve PH2D_MEM_MAX=96G» — e ninguém a seguia (17/10: o portão do
+# CLAUDE.md morreu 2× assim no primário). Sem `PH2D_MEM_MAX` explícito, o default soma o que o disco
+# em RAM já ocupa: a linha recebe os mesmos 24G de trabalho que qualquer outra.
+if [ -z "${PH2D_MEM_MAX:-}" ]; then
+  _ram="$(readlink -f "$raiz/target/debug" 2>/dev/null)"
+  if [ -n "$_ram" ] && [ "$(stat -f -c %T "$_ram" 2>/dev/null)" = "tmpfs" ]; then
+    _usado_g="$(df --output=used -BG "$_ram" 2>/dev/null | tail -1 | tr -dc '0-9')"
+    [ -n "$_usado_g" ] && mem="$(( 24 + _usado_g ))G"
+  fi
+fi
 prazo="${PH2D_PRAZO:-1800}"
 
 # ── a fatia da linha, idempotente ─────────────────────────────────────────────

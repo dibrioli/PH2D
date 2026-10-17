@@ -1,0 +1,1 @@
+error: could not format from stdin: failed to format from stdin: error parsing: unexpected token `` (30:1 to 52:4), expected `end` to close function body block

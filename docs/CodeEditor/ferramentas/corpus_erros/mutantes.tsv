@@ -1,0 +1,1104 @@
+id	ficheiro	operador	linha	antes	depois
+bob__base__000	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	base	0		
+bob__igual_por_atribuicao__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	igual_por_atribuicao	36	if self.wave == "square" then	if self.wave = "square" then
+bob__igual_por_atribuicao__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	igual_por_atribuicao	38	elseif self.wave == "still" then	elseif self.wave = "still" then
+bob__atribuicao_por_igual__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	25	self.base_x = ph2d.get(self.id, "x")	self.base_x == ph2d.get(self.id, "x")
+bob__atribuicao_por_igual__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	26	self.base_y = ph2d.get(self.id, "y")	self.base_y == ph2d.get(self.id, "y")
+bob__atribuicao_por_igual__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	27	self.t = 0	self.t == 0
+bob__atribuicao_por_igual__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	28	self.was_up = false	self.was_up == false
+bob__atribuicao_por_igual__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	33	self.t = self.t + dt	self.t == self.t + dt
+bob__atribuicao_por_igual__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s == math.sin(self.t * self.speed) >= 0 and 1 or -1
+bob__atribuicao_por_igual__007	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	39	s = 0	s == 0
+bob__atribuicao_por_igual__008	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	41	s = math.sin(self.t * self.speed)	s == math.sin(self.t * self.speed)
+bob__atribuicao_por_igual__009	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho == (self.tint.r + self.tint.g + self.tint.b) / 3
+bob__atribuicao_por_igual__010	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	45	local d = s * self.amplitude * brilho	local d == s * self.amplitude * brilho
+bob__atribuicao_por_igual__011	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	48	local up = s > 0.98	local up == s > 0.98
+bob__atribuicao_por_igual__012	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	atribuicao_por_igual	52	self.was_up = up	self.was_up == up
+bob__diferente_estilo_c__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	diferente_estilo_c	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not self.was_up and self.top_signal != "" then
+bob__logico_estilo_c__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	logico_estilo_c	32	if not self.active then return end	if ! self.active then return end
+bob__logico_estilo_c__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	logico_estilo_c	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(self.t * self.speed) >= 0 && 1 or -1
+bob__logico_estilo_c__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	logico_estilo_c	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(self.t * self.speed) >= 0 and 1 || -1
+bob__logico_estilo_c__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	logico_estilo_c	49	if up and not self.was_up and self.top_signal ~= "" then	if up && not self.was_up and self.top_signal ~= "" then
+bob__logico_estilo_c__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	logico_estilo_c	49	if up and not self.was_up and self.top_signal ~= "" then	if up and ! self.was_up and self.top_signal ~= "" then
+bob__logico_estilo_c__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	logico_estilo_c	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not self.was_up && self.top_signal ~= "" then
+bob__comparacao_invertida__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	comparacao_invertida	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(self.t * self.speed) => 0 and 1 or -1
+bob__sem_end__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_end	29	end	
+bob__sem_end__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_end	32	if not self.active then return end	if not self.active then return
+bob__sem_end__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_end	42	end	
+bob__sem_end__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_end	51	end	
+bob__sem_end__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_end	53	end	
+bob__sem_then__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_then	32	if not self.active then return end	if not self.active  return end
+bob__sem_then__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_then	36	if self.wave == "square" then	if self.wave == "square"
+bob__sem_then__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_then	38	elseif self.wave == "still" then	elseif self.wave == "still"
+bob__sem_then__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_then	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not self.was_up and self.top_signal ~= ""
+bob__sem_fecha_parenteses__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	9	ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)	ph2d.property("amplitude", 1.0, { min = 0, max = 4 }  -- quanto sobe (metros)
+bob__sem_fecha_parenteses__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	10	ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa	ph2d.property("speed", 2.0, { min = 0, max = 10 }     -- quão depressa
+bob__sem_fecha_parenteses__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	11	ph2d.property("active", true)                          -- desligado = fica parado	ph2d.property("active", true                          -- desligado = fica parado
+bob__sem_fecha_parenteses__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	12	ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)	ph2d.property("top_signal", ""                        -- o grito, a cada topo (vazio = calado)
+bob__sem_fecha_parenteses__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } }
+bob__sem_fecha_parenteses__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", ph2d.vec2(0, 1, { min = -1, max = 1 })
+bob__sem_fecha_parenteses__007	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 }
+bob__sem_fecha_parenteses__008	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d.property("tint", ph2d.color(1, 1, 1)
+bob__sem_fecha_parenteses__009	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	24	function init(self)	function init(self
+bob__sem_fecha_parenteses__010	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	25	self.base_x = ph2d.get(self.id, "x")	self.base_x = ph2d.get(self.id, "x"
+bob__sem_fecha_parenteses__011	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	26	self.base_y = ph2d.get(self.id, "y")	self.base_y = ph2d.get(self.id, "y"
+bob__sem_fecha_parenteses__012	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	31	function update(self, dt)	function update(self, dt
+bob__sem_fecha_parenteses__013	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(self.t * self.speed >= 0 and 1 or -1
+bob__sem_fecha_parenteses__014	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	41	s = math.sin(self.t * self.speed)	s = math.sin(self.t * self.speed
+bob__sem_fecha_parenteses__015	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (self.tint.r + self.tint.g + self.tint.b / 3
+bob__sem_fecha_parenteses__016	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.id, "x", self.base_x + d * self.direction.x
+bob__sem_fecha_parenteses__017	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.id, "y", self.base_y + d * self.direction.y
+bob__sem_fecha_parenteses__018	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_parenteses	50	ph2d.emit(self.top_signal)	ph2d.emit(self.top_signal
+bob__sem_fecha_chave__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_chave	9	ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)	ph2d.property("amplitude", 1.0, { min = 0, max = 4 )  -- quanto sobe (metros)
+bob__sem_fecha_chave__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_chave	10	ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa	ph2d.property("speed", 2.0, { min = 0, max = 10 )     -- quão depressa
+bob__sem_fecha_chave__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_chave	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine", { options = { "sine", "square", "still"  })
+bob__sem_fecha_chave__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_chave	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } )
+bob__sem_fecha_chave__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_chave	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 )
+bob__sem_fecha_aspas__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	9	ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)	ph2d.property("amplitude, 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)
+bob__sem_fecha_aspas__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	10	ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa	ph2d.property("speed, 2.0, { min = 0, max = 10 })     -- quão depressa
+bob__sem_fecha_aspas__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	11	ph2d.property("active", true)                          -- desligado = fica parado	ph2d.property("active, true)                          -- desligado = fica parado
+bob__sem_fecha_aspas__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	12	ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)	ph2d.property("top_signal, "")                        -- o grito, a cada topo (vazio = calado)
+bob__sem_fecha_aspas__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	12	ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)	ph2d.property("top_signal", ")                        -- o grito, a cada topo (vazio = calado)
+bob__sem_fecha_aspas__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave, "sine", { options = { "sine", "square", "still" } })
+bob__sem_fecha_aspas__007	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine, { options = { "sine", "square", "still" } })
+bob__sem_fecha_aspas__008	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine", { options = { "sine, "square", "still" } })
+bob__sem_fecha_aspas__009	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine", { options = { "sine", "square, "still" } })
+bob__sem_fecha_aspas__010	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine", { options = { "sine", "square", "still } })
+bob__sem_fecha_aspas__011	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction, ph2d.vec2(0, 1), { min = -1, max = 1 })
+bob__sem_fecha_aspas__012	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d.property("tint, ph2d.color(1, 1, 1))
+bob__sem_fecha_aspas__013	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	25	self.base_x = ph2d.get(self.id, "x")	self.base_x = ph2d.get(self.id, "x)
+bob__sem_fecha_aspas__014	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	26	self.base_y = ph2d.get(self.id, "y")	self.base_y = ph2d.get(self.id, "y)
+bob__sem_fecha_aspas__015	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	36	if self.wave == "square" then	if self.wave == "square then
+bob__sem_fecha_aspas__016	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	38	elseif self.wave == "still" then	elseif self.wave == "still then
+bob__sem_fecha_aspas__017	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.id, "x, self.base_x + d * self.direction.x)
+bob__sem_fecha_aspas__018	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.id, "y, self.base_y + d * self.direction.y)
+bob__sem_fecha_aspas__019	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_fecha_aspas	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not self.was_up and self.top_signal ~= " then
+bob__else_if__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	else_if	38	elseif self.wave == "still" then	else if self.wave == "still" then
+bob__palavra_chave_trocada__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	24	function init(self)	funtcion init(self)
+bob__palavra_chave_trocada__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	29	end	ned
+bob__palavra_chave_trocada__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	31	function update(self, dt)	funtcion update(self, dt)
+bob__palavra_chave_trocada__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	32	if not self.active then return end	fi not self.active then return end
+bob__palavra_chave_trocada__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	32	if not self.active then return end	if ont self.active then return end
+bob__palavra_chave_trocada__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	32	if not self.active then return end	if not self.active tehn return end
+bob__palavra_chave_trocada__007	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	32	if not self.active then return end	if not self.active then reutrn end
+bob__palavra_chave_trocada__008	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	32	if not self.active then return end	if not self.active then return ned
+bob__palavra_chave_trocada__009	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	35	local s	lcoal s
+bob__palavra_chave_trocada__010	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	36	if self.wave == "square" then	fi self.wave == "square" then
+bob__palavra_chave_trocada__011	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	36	if self.wave == "square" then	if self.wave == "square" tehn
+bob__palavra_chave_trocada__012	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(self.t * self.speed) >= 0 nad 1 or -1
+bob__palavra_chave_trocada__013	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(self.t * self.speed) >= 0 and 1 ro -1
+bob__palavra_chave_trocada__014	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	38	elseif self.wave == "still" then	elesif self.wave == "still" then
+bob__palavra_chave_trocada__015	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	38	elseif self.wave == "still" then	elseif self.wave == "still" tehn
+bob__palavra_chave_trocada__016	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	40	else	esle
+bob__palavra_chave_trocada__017	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	42	end	ned
+bob__palavra_chave_trocada__018	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	lcoal brilho = (self.tint.r + self.tint.g + self.tint.b) / 3
+bob__palavra_chave_trocada__019	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	45	local d = s * self.amplitude * brilho	lcoal d = s * self.amplitude * brilho
+bob__palavra_chave_trocada__020	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	48	local up = s > 0.98	lcoal up = s > 0.98
+bob__palavra_chave_trocada__021	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	49	if up and not self.was_up and self.top_signal ~= "" then	fi up and not self.was_up and self.top_signal ~= "" then
+bob__palavra_chave_trocada__022	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	49	if up and not self.was_up and self.top_signal ~= "" then	if up nad not self.was_up and self.top_signal ~= "" then
+bob__palavra_chave_trocada__023	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	49	if up and not self.was_up and self.top_signal ~= "" then	if up and ont self.was_up and self.top_signal ~= "" then
+bob__palavra_chave_trocada__024	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not self.was_up nad self.top_signal ~= "" then
+bob__palavra_chave_trocada__025	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not self.was_up and self.top_signal ~= "" tehn
+bob__palavra_chave_trocada__026	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	51	end	ned
+bob__palavra_chave_trocada__027	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	palavra_chave_trocada	53	end	ned
+bob__identificador_trocado__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	9	ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)	p2hd.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)
+bob__identificador_trocado__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	10	ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa	p2hd.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa
+bob__identificador_trocado__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	11	ph2d.property("active", true)                          -- desligado = fica parado	p2hd.property("active", true)                          -- desligado = fica parado
+bob__identificador_trocado__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	12	ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)	p2hd.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)
+bob__identificador_trocado__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	p2hd.property("wave", "sine", { options = { "sine", "square", "still" } })
+bob__identificador_trocado__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	p2hd.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })
+bob__identificador_trocado__007	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", p2hd.vec2(0, 1), { min = -1, max = 1 })
+bob__identificador_trocado__008	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	22	ph2d.property("tint", ph2d.color(1, 1, 1))	p2hd.property("tint", ph2d.color(1, 1, 1))
+bob__identificador_trocado__009	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d.property("tint", p2hd.color(1, 1, 1))
+bob__identificador_trocado__010	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	24	function init(self)	function iint(self)
+bob__identificador_trocado__011	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	24	function init(self)	function init(slef)
+bob__identificador_trocado__012	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	25	self.base_x = ph2d.get(self.id, "x")	slef.base_x = ph2d.get(self.id, "x")
+bob__identificador_trocado__013	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	25	self.base_x = ph2d.get(self.id, "x")	self.base_x = p2hd.get(self.id, "x")
+bob__identificador_trocado__014	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	25	self.base_x = ph2d.get(self.id, "x")	self.base_x = ph2d.get(slef.id, "x")
+bob__identificador_trocado__015	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	26	self.base_y = ph2d.get(self.id, "y")	slef.base_y = ph2d.get(self.id, "y")
+bob__identificador_trocado__016	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	26	self.base_y = ph2d.get(self.id, "y")	self.base_y = p2hd.get(self.id, "y")
+bob__identificador_trocado__017	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	26	self.base_y = ph2d.get(self.id, "y")	self.base_y = ph2d.get(slef.id, "y")
+bob__identificador_trocado__018	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	27	self.t = 0	slef.t = 0
+bob__identificador_trocado__019	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	28	self.was_up = false	slef.was_up = false
+bob__identificador_trocado__020	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	31	function update(self, dt)	function upadte(self, dt)
+bob__identificador_trocado__021	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	31	function update(self, dt)	function update(slef, dt)
+bob__identificador_trocado__022	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	31	function update(self, dt)	function update(self, td)
+bob__identificador_trocado__023	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	32	if not self.active then return end	if not slef.active then return end
+bob__identificador_trocado__024	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	33	self.t = self.t + dt	slef.t = self.t + dt
+bob__identificador_trocado__025	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	33	self.t = self.t + dt	self.t = slef.t + dt
+bob__identificador_trocado__026	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	33	self.t = self.t + dt	self.t = self.t + td
+bob__identificador_trocado__027	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	35	local s	local ss
+bob__identificador_trocado__028	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	36	if self.wave == "square" then	if slef.wave == "square" then
+bob__identificador_trocado__029	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	ss = math.sin(self.t * self.speed) >= 0 and 1 or -1
+bob__identificador_trocado__030	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = mtah.sin(self.t * self.speed) >= 0 and 1 or -1
+bob__identificador_trocado__031	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(slef.t * self.speed) >= 0 and 1 or -1
+bob__identificador_trocado__032	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(self.t * slef.speed) >= 0 and 1 or -1
+bob__identificador_trocado__033	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	38	elseif self.wave == "still" then	elseif slef.wave == "still" then
+bob__identificador_trocado__034	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	39	s = 0	ss = 0
+bob__identificador_trocado__035	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	41	s = math.sin(self.t * self.speed)	ss = math.sin(self.t * self.speed)
+bob__identificador_trocado__036	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	41	s = math.sin(self.t * self.speed)	s = mtah.sin(self.t * self.speed)
+bob__identificador_trocado__037	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	41	s = math.sin(self.t * self.speed)	s = math.sin(slef.t * self.speed)
+bob__identificador_trocado__038	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	41	s = math.sin(self.t * self.speed)	s = math.sin(self.t * slef.speed)
+bob__identificador_trocado__039	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brliho = (self.tint.r + self.tint.g + self.tint.b) / 3
+bob__identificador_trocado__040	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (slef.tint.r + self.tint.g + self.tint.b) / 3
+bob__identificador_trocado__041	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (self.tint.r + slef.tint.g + self.tint.b) / 3
+bob__identificador_trocado__042	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (self.tint.r + self.tint.g + slef.tint.b) / 3
+bob__identificador_trocado__043	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	45	local d = s * self.amplitude * brilho	local dd = s * self.amplitude * brilho
+bob__identificador_trocado__044	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	45	local d = s * self.amplitude * brilho	local d = ss * self.amplitude * brilho
+bob__identificador_trocado__045	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	45	local d = s * self.amplitude * brilho	local d = s * slef.amplitude * brilho
+bob__identificador_trocado__046	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	45	local d = s * self.amplitude * brilho	local d = s * self.amplitude * brliho
+bob__identificador_trocado__047	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	p2hd.set(self.id, "x", self.base_x + d * self.direction.x)
+bob__identificador_trocado__048	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(slef.id, "x", self.base_x + d * self.direction.x)
+bob__identificador_trocado__049	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.id, "x", slef.base_x + d * self.direction.x)
+bob__identificador_trocado__050	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.id, "x", self.base_x + dd * self.direction.x)
+bob__identificador_trocado__051	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.id, "x", self.base_x + d * slef.direction.x)
+bob__identificador_trocado__052	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	p2hd.set(self.id, "y", self.base_y + d * self.direction.y)
+bob__identificador_trocado__053	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(slef.id, "y", self.base_y + d * self.direction.y)
+bob__identificador_trocado__054	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.id, "y", slef.base_y + d * self.direction.y)
+bob__identificador_trocado__055	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.id, "y", self.base_y + dd * self.direction.y)
+bob__identificador_trocado__056	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.id, "y", self.base_y + d * slef.direction.y)
+bob__identificador_trocado__057	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	48	local up = s > 0.98	local pu = s > 0.98
+bob__identificador_trocado__058	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	48	local up = s > 0.98	local up = ss > 0.98
+bob__identificador_trocado__059	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	49	if up and not self.was_up and self.top_signal ~= "" then	if pu and not self.was_up and self.top_signal ~= "" then
+bob__identificador_trocado__060	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not slef.was_up and self.top_signal ~= "" then
+bob__identificador_trocado__061	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not self.was_up and slef.top_signal ~= "" then
+bob__identificador_trocado__062	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	50	ph2d.emit(self.top_signal)	p2hd.emit(self.top_signal)
+bob__identificador_trocado__063	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	50	ph2d.emit(self.top_signal)	ph2d.emit(slef.top_signal)
+bob__identificador_trocado__064	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	52	self.was_up = up	slef.was_up = up
+bob__identificador_trocado__065	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	identificador_trocado	52	self.was_up = up	self.was_up = pu
+bob__membro_trocado__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	9	ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)	ph2d.proeprty("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)
+bob__membro_trocado__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	10	ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa	ph2d.proeprty("speed", 2.0, { min = 0, max = 10 })     -- quão depressa
+bob__membro_trocado__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	11	ph2d.property("active", true)                          -- desligado = fica parado	ph2d.proeprty("active", true)                          -- desligado = fica parado
+bob__membro_trocado__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	12	ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)	ph2d.proeprty("top_signal", "")                        -- o grito, a cada topo (vazio = calado)
+bob__membro_trocado__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.proeprty("wave", "sine", { options = { "sine", "square", "still" } })
+bob__membro_trocado__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.proeprty("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })
+bob__membro_trocado__007	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", ph2d.vce2(0, 1), { min = -1, max = 1 })
+bob__membro_trocado__008	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d.proeprty("tint", ph2d.color(1, 1, 1))
+bob__membro_trocado__009	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d.property("tint", ph2d.cloor(1, 1, 1))
+bob__membro_trocado__010	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	25	self.base_x = ph2d.get(self.id, "x")	self.baes_x = ph2d.get(self.id, "x")
+bob__membro_trocado__011	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	25	self.base_x = ph2d.get(self.id, "x")	self.base_x = ph2d.egt(self.id, "x")
+bob__membro_trocado__012	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	25	self.base_x = ph2d.get(self.id, "x")	self.base_x = ph2d.get(self.di, "x")
+bob__membro_trocado__013	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	26	self.base_y = ph2d.get(self.id, "y")	self.baes_y = ph2d.get(self.id, "y")
+bob__membro_trocado__014	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	26	self.base_y = ph2d.get(self.id, "y")	self.base_y = ph2d.egt(self.id, "y")
+bob__membro_trocado__015	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	26	self.base_y = ph2d.get(self.id, "y")	self.base_y = ph2d.get(self.di, "y")
+bob__membro_trocado__016	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	27	self.t = 0	self.tt = 0
+bob__membro_trocado__017	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	28	self.was_up = false	self.wa_sup = false
+bob__membro_trocado__018	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	32	if not self.active then return end	if not self.acitve then return end
+bob__membro_trocado__019	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	33	self.t = self.t + dt	self.tt = self.t + dt
+bob__membro_trocado__020	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	33	self.t = self.t + dt	self.t = self.tt + dt
+bob__membro_trocado__021	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	36	if self.wave == "square" then	if self.wvae == "square" then
+bob__membro_trocado__022	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.isn(self.t * self.speed) >= 0 and 1 or -1
+bob__membro_trocado__023	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(self.tt * self.speed) >= 0 and 1 or -1
+bob__membro_trocado__024	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin(self.t * self.seped) >= 0 and 1 or -1
+bob__membro_trocado__025	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	38	elseif self.wave == "still" then	elseif self.wvae == "still" then
+bob__membro_trocado__026	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	41	s = math.sin(self.t * self.speed)	s = math.isn(self.t * self.speed)
+bob__membro_trocado__027	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	41	s = math.sin(self.t * self.speed)	s = math.sin(self.tt * self.speed)
+bob__membro_trocado__028	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	41	s = math.sin(self.t * self.speed)	s = math.sin(self.t * self.seped)
+bob__membro_trocado__029	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (self.tnit.r + self.tint.g + self.tint.b) / 3
+bob__membro_trocado__030	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (self.tint.rr + self.tint.g + self.tint.b) / 3
+bob__membro_trocado__031	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (self.tint.r + self.tnit.g + self.tint.b) / 3
+bob__membro_trocado__032	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (self.tint.r + self.tint.gg + self.tint.b) / 3
+bob__membro_trocado__033	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (self.tint.r + self.tint.g + self.tnit.b) / 3
+bob__membro_trocado__034	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	44	local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3	local brilho = (self.tint.r + self.tint.g + self.tint.bb) / 3
+bob__membro_trocado__035	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	45	local d = s * self.amplitude * brilho	local d = s * self.ampiltude * brilho
+bob__membro_trocado__036	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.est(self.id, "x", self.base_x + d * self.direction.x)
+bob__membro_trocado__037	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.di, "x", self.base_x + d * self.direction.x)
+bob__membro_trocado__038	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.id, "x", self.baes_x + d * self.direction.x)
+bob__membro_trocado__039	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.id, "x", self.base_x + d * self.dircetion.x)
+bob__membro_trocado__040	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.id, "x", self.base_x + d * self.direction.xx)
+bob__membro_trocado__041	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.est(self.id, "y", self.base_y + d * self.direction.y)
+bob__membro_trocado__042	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.di, "y", self.base_y + d * self.direction.y)
+bob__membro_trocado__043	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.id, "y", self.baes_y + d * self.direction.y)
+bob__membro_trocado__044	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.id, "y", self.base_y + d * self.dircetion.y)
+bob__membro_trocado__045	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.id, "y", self.base_y + d * self.direction.yy)
+bob__membro_trocado__046	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not self.wa_sup and self.top_signal ~= "" then
+bob__membro_trocado__047	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	49	if up and not self.was_up and self.top_signal ~= "" then	if up and not self.was_up and self.top_isgnal ~= "" then
+bob__membro_trocado__048	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	50	ph2d.emit(self.top_signal)	ph2d.eimt(self.top_signal)
+bob__membro_trocado__049	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	50	ph2d.emit(self.top_signal)	ph2d.emit(self.top_isgnal)
+bob__membro_trocado__050	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	membro_trocado	52	self.was_up = up	self.wa_sup = up
+bob__ponto_por_dois_pontos__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	9	ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)	ph2d:property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)
+bob__ponto_por_dois_pontos__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	10	ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa	ph2d:property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa
+bob__ponto_por_dois_pontos__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	11	ph2d.property("active", true)                          -- desligado = fica parado	ph2d:property("active", true)                          -- desligado = fica parado
+bob__ponto_por_dois_pontos__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	12	ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)	ph2d:property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)
+bob__ponto_por_dois_pontos__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d:property("wave", "sine", { options = { "sine", "square", "still" } })
+bob__ponto_por_dois_pontos__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d:property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })
+bob__ponto_por_dois_pontos__007	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", ph2d:vec2(0, 1), { min = -1, max = 1 })
+bob__ponto_por_dois_pontos__008	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d:property("tint", ph2d.color(1, 1, 1))
+bob__ponto_por_dois_pontos__009	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d.property("tint", ph2d:color(1, 1, 1))
+bob__ponto_por_dois_pontos__010	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	25	self.base_x = ph2d.get(self.id, "x")	self.base_x = ph2d:get(self.id, "x")
+bob__ponto_por_dois_pontos__011	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	26	self.base_y = ph2d.get(self.id, "y")	self.base_y = ph2d:get(self.id, "y")
+bob__ponto_por_dois_pontos__012	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math:sin(self.t * self.speed) >= 0 and 1 or -1
+bob__ponto_por_dois_pontos__013	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	41	s = math.sin(self.t * self.speed)	s = math:sin(self.t * self.speed)
+bob__ponto_por_dois_pontos__014	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d:set(self.id, "x", self.base_x + d * self.direction.x)
+bob__ponto_por_dois_pontos__015	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d:set(self.id, "y", self.base_y + d * self.direction.y)
+bob__ponto_por_dois_pontos__016	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	ponto_por_dois_pontos	50	ph2d.emit(self.top_signal)	ph2d:emit(self.top_signal)
+bob__sem_self_no_parametro__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_self_no_parametro	24	function init(self)	function init()
+bob__sem_self_no_parametro__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	sem_self_no_parametro	31	function update(self, dt)	function update( dt)
+bob__argumento_a_menos__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	9	ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)	ph2d.property("amplitude", 1.0)  -- quanto sobe (metros)
+bob__argumento_a_menos__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	10	ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa	ph2d.property("speed", 2.0)     -- quão depressa
+bob__argumento_a_menos__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	11	ph2d.property("active", true)                          -- desligado = fica parado	ph2d.property("active")                          -- desligado = fica parado
+bob__argumento_a_menos__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	12	ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)	ph2d.property("top_signal")                        -- o grito, a cada topo (vazio = calado)
+bob__argumento_a_menos__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine")
+bob__argumento_a_menos__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", ph2d.vec2(0, 1))
+bob__argumento_a_menos__007	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", ph2d.vec2(0), { min = -1, max = 1 })
+bob__argumento_a_menos__008	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d.property("tint")
+bob__argumento_a_menos__009	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d.property("tint", ph2d.color(1, 1))
+bob__argumento_a_menos__010	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	25	self.base_x = ph2d.get(self.id, "x")	self.base_x = ph2d.get(self.id)
+bob__argumento_a_menos__011	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	26	self.base_y = ph2d.get(self.id, "y")	self.base_y = ph2d.get(self.id)
+bob__argumento_a_menos__012	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	37	s = math.sin(self.t * self.speed) >= 0 and 1 or -1	s = math.sin() >= 0 and 1 or -1
+bob__argumento_a_menos__013	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	41	s = math.sin(self.t * self.speed)	s = math.sin()
+bob__argumento_a_menos__014	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set(self.id, "x")
+bob__argumento_a_menos__015	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set(self.id, "y")
+bob__argumento_a_menos__016	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumento_a_menos	50	ph2d.emit(self.top_signal)	ph2d.emit()
+bob__argumentos_trocados__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	9	ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)	ph2d.property(1.0, "amplitude", { min = 0, max = 4 })  -- quanto sobe (metros)
+bob__argumentos_trocados__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	10	ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa	ph2d.property(2.0, "speed", { min = 0, max = 10 })     -- quão depressa
+bob__argumentos_trocados__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	11	ph2d.property("active", true)                          -- desligado = fica parado	ph2d.property(true, "active")                          -- desligado = fica parado
+bob__argumentos_trocados__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	12	ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)	ph2d.property("", "top_signal")                        -- o grito, a cada topo (vazio = calado)
+bob__argumentos_trocados__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("sine", "wave", { options = { "sine", "square", "still" } })
+bob__argumentos_trocados__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property(ph2d.vec2(0, 1), "direction", { min = -1, max = 1 })
+bob__argumentos_trocados__007	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", ph2d.vec2(1, 0), { min = -1, max = 1 })
+bob__argumentos_trocados__008	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	22	ph2d.property("tint", ph2d.color(1, 1, 1))	ph2d.property(ph2d.color(1, 1, 1), "tint")
+bob__argumentos_trocados__009	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	25	self.base_x = ph2d.get(self.id, "x")	self.base_x = ph2d.get("x", self.id)
+bob__argumentos_trocados__010	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	26	self.base_y = ph2d.get(self.id, "y")	self.base_y = ph2d.get("y", self.id)
+bob__argumentos_trocados__011	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	46	ph2d.set(self.id, "x", self.base_x + d * self.direction.x)	ph2d.set("x", self.id, self.base_x + d * self.direction.x)
+bob__argumentos_trocados__012	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	argumentos_trocados	47	ph2d.set(self.id, "y", self.base_y + d * self.direction.y)	ph2d.set("y", self.id, self.base_y + d * self.direction.y)
+bob__virgula_em_falta__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	virgula_em_falta	9	ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)	ph2d.property("amplitude", 1.0, { min = 0 max = 4 })  -- quanto sobe (metros)
+bob__virgula_em_falta__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	virgula_em_falta	10	ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa	ph2d.property("speed", 2.0, { min = 0 max = 10 })     -- quão depressa
+bob__virgula_em_falta__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	virgula_em_falta	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine", { options = { "sine" "square", "still" } })
+bob__virgula_em_falta__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	virgula_em_falta	15	ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })	ph2d.property("wave", "sine", { options = { "sine", "square" "still" } })
+bob__virgula_em_falta__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	virgula_em_falta	18	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })	ph2d.property("direction", ph2d.vec2(0, 1), { min = -1 max = 1 })
+bob__inicializacao_esquecida__001	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	inicializacao_esquecida	25	self.base_x = ph2d.get(self.id, "x")	
+bob__inicializacao_esquecida__002	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	inicializacao_esquecida	26	self.base_y = ph2d.get(self.id, "y")	
+bob__inicializacao_esquecida__003	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	inicializacao_esquecida	27	self.t = 0	
+bob__inicializacao_esquecida__004	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	inicializacao_esquecida	28	self.was_up = false	
+bob__inicializacao_esquecida__005	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	inicializacao_esquecida	33	self.t = self.t + dt	
+bob__inicializacao_esquecida__006	crates/ph2d-code-syntax/tests/it/fixtures/bob.luau	inicializacao_esquecida	52	self.was_up = up	
+script_boot__base__000	crates/ph2d-app-components/src/script_boot.luau	base	0		
+script_boot__sem_fecha_parenteses__001	crates/ph2d-app-components/src/script_boot.luau	sem_fecha_parenteses	2	print("[lua] ph2d-host-desktop integration demo: ScriptHost OK")	print("[lua] ph2d-host-desktop integration demo: ScriptHost OK"
+script_boot__sem_fecha_aspas__001	crates/ph2d-app-components/src/script_boot.luau	sem_fecha_aspas	2	print("[lua] ph2d-host-desktop integration demo: ScriptHost OK")	print("[lua] ph2d-host-desktop integration demo: ScriptHost OK)
+script_boot__identificador_trocado__001	crates/ph2d-app-components/src/script_boot.luau	identificador_trocado	2	print("[lua] ph2d-host-desktop integration demo: ScriptHost OK")	pirnt("[lua] ph2d-host-desktop integration demo: ScriptHost OK")
+script_boot__argumento_a_menos__001	crates/ph2d-app-components/src/script_boot.luau	argumento_a_menos	2	print("[lua] ph2d-host-desktop integration demo: ScriptHost OK")	print()
+ph2d_script_attach__base__000	runtime/luau/examples/ph2d_script_attach.luau	base	0		
+ph2d_script_attach__igual_por_atribuicao__001	runtime/luau/examples/ph2d_script_attach.luau	igual_por_atribuicao	26	if hp == nil then	if hp = nil then
+ph2d_script_attach__igual_por_atribuicao__002	runtime/luau/examples/ph2d_script_attach.luau	igual_por_atribuicao	46	if target == nil then	if target = nil then
+ph2d_script_attach__atribuicao_por_igual__001	runtime/luau/examples/ph2d_script_attach.luau	atribuicao_por_igual	25	local hp = ph2d.state_get(self, "hp")	local hp == ph2d.state_get(self, "hp")
+ph2d_script_attach__atribuicao_por_igual__002	runtime/luau/examples/ph2d_script_attach.luau	atribuicao_por_igual	34	local hp = ph2d.state_get(self, "hp") :: number?	local hp == ph2d.state_get(self, "hp") :: number?
+ph2d_script_attach__atribuicao_por_igual__003	runtime/luau/examples/ph2d_script_attach.luau	atribuicao_por_igual	45	local target = ph2d.find_by_name("Companion")	local target == ph2d.find_by_name("Companion")
+ph2d_script_attach__logico_estilo_c__001	runtime/luau/examples/ph2d_script_attach.luau	logico_estilo_c	35	if hp and hp > 0 then	if hp && hp > 0 then
+ph2d_script_attach__sem_end__001	runtime/luau/examples/ph2d_script_attach.luau	sem_end	28	end	
+ph2d_script_attach__sem_end__002	runtime/luau/examples/ph2d_script_attach.luau	sem_end	30	end	
+ph2d_script_attach__sem_end__003	runtime/luau/examples/ph2d_script_attach.luau	sem_end	37	end	
+ph2d_script_attach__sem_end__004	runtime/luau/examples/ph2d_script_attach.luau	sem_end	38	end	
+ph2d_script_attach__sem_end__005	runtime/luau/examples/ph2d_script_attach.luau	sem_end	51	end	
+ph2d_script_attach__sem_end__006	runtime/luau/examples/ph2d_script_attach.luau	sem_end	52	end	
+ph2d_script_attach__sem_then__001	runtime/luau/examples/ph2d_script_attach.luau	sem_then	26	if hp == nil then	if hp == nil
+ph2d_script_attach__sem_then__002	runtime/luau/examples/ph2d_script_attach.luau	sem_then	35	if hp and hp > 0 then	if hp and hp > 0
+ph2d_script_attach__sem_then__003	runtime/luau/examples/ph2d_script_attach.luau	sem_then	46	if target == nil then	if target == nil
+ph2d_script_attach__sem_fecha_parenteses__001	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	21	local function init(self: number)	local function init(self: number
+ph2d_script_attach__sem_fecha_parenteses__002	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	25	local hp = ph2d.state_get(self, "hp")	local hp = ph2d.state_get(self, "hp"
+ph2d_script_attach__sem_fecha_parenteses__003	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	27	ph2d.state_set(self, "hp", 100)	ph2d.state_set(self, "hp", 100
+ph2d_script_attach__sem_fecha_parenteses__004	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	29	ph2d.state_set(self, "name", "Enemy")	ph2d.state_set(self, "name", "Enemy"
+ph2d_script_attach__sem_fecha_parenteses__005	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	32	local function tick(self: number, dt: number)	local function tick(self: number, dt: number
+ph2d_script_attach__sem_fecha_parenteses__006	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	34	local hp = ph2d.state_get(self, "hp") :: number?	local hp = ph2d.state_get(self, "hp" :: number?
+ph2d_script_attach__sem_fecha_parenteses__007	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	36	ph2d.state_set(self, "hp", hp - dt)	ph2d.state_set(self, "hp", hp - dt
+ph2d_script_attach__sem_fecha_parenteses__008	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	44	local function ensure_companion(self_id: number)	local function ensure_companion(self_id: number
+ph2d_script_attach__sem_fecha_parenteses__009	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	45	local target = ph2d.find_by_name("Companion")	local target = ph2d.find_by_name("Companion"
+ph2d_script_attach__sem_fecha_parenteses__010	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	47	ph2d.spawn_named("Companion")	ph2d.spawn_named("Companion"
+ph2d_script_attach__sem_fecha_parenteses__011	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_parenteses	50	ph2d.emit("alert")	ph2d.emit("alert"
+ph2d_script_attach__sem_fecha_chave__001	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_chave	58	}	
+ph2d_script_attach__sem_fecha_aspas__001	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_aspas	25	local hp = ph2d.state_get(self, "hp")	local hp = ph2d.state_get(self, "hp)
+ph2d_script_attach__sem_fecha_aspas__002	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_aspas	27	ph2d.state_set(self, "hp", 100)	ph2d.state_set(self, "hp, 100)
+ph2d_script_attach__sem_fecha_aspas__003	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_aspas	29	ph2d.state_set(self, "name", "Enemy")	ph2d.state_set(self, "name, "Enemy")
+ph2d_script_attach__sem_fecha_aspas__004	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_aspas	29	ph2d.state_set(self, "name", "Enemy")	ph2d.state_set(self, "name", "Enemy)
+ph2d_script_attach__sem_fecha_aspas__005	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_aspas	34	local hp = ph2d.state_get(self, "hp") :: number?	local hp = ph2d.state_get(self, "hp) :: number?
+ph2d_script_attach__sem_fecha_aspas__006	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_aspas	36	ph2d.state_set(self, "hp", hp - dt)	ph2d.state_set(self, "hp, hp - dt)
+ph2d_script_attach__sem_fecha_aspas__007	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_aspas	45	local target = ph2d.find_by_name("Companion")	local target = ph2d.find_by_name("Companion)
+ph2d_script_attach__sem_fecha_aspas__008	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_aspas	47	ph2d.spawn_named("Companion")	ph2d.spawn_named("Companion)
+ph2d_script_attach__sem_fecha_aspas__009	runtime/luau/examples/ph2d_script_attach.luau	sem_fecha_aspas	50	ph2d.emit("alert")	ph2d.emit("alert)
+ph2d_script_attach__palavra_chave_trocada__001	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	21	local function init(self: number)	lcoal function init(self: number)
+ph2d_script_attach__palavra_chave_trocada__002	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	21	local function init(self: number)	local funtcion init(self: number)
+ph2d_script_attach__palavra_chave_trocada__003	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	25	local hp = ph2d.state_get(self, "hp")	lcoal hp = ph2d.state_get(self, "hp")
+ph2d_script_attach__palavra_chave_trocada__004	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	26	if hp == nil then	fi hp == nil then
+ph2d_script_attach__palavra_chave_trocada__005	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	26	if hp == nil then	if hp == nil tehn
+ph2d_script_attach__palavra_chave_trocada__006	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	28	end	ned
+ph2d_script_attach__palavra_chave_trocada__007	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	30	end	ned
+ph2d_script_attach__palavra_chave_trocada__008	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	32	local function tick(self: number, dt: number)	lcoal function tick(self: number, dt: number)
+ph2d_script_attach__palavra_chave_trocada__009	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	32	local function tick(self: number, dt: number)	local funtcion tick(self: number, dt: number)
+ph2d_script_attach__palavra_chave_trocada__010	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	34	local hp = ph2d.state_get(self, "hp") :: number?	lcoal hp = ph2d.state_get(self, "hp") :: number?
+ph2d_script_attach__palavra_chave_trocada__011	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	35	if hp and hp > 0 then	fi hp and hp > 0 then
+ph2d_script_attach__palavra_chave_trocada__012	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	35	if hp and hp > 0 then	if hp nad hp > 0 then
+ph2d_script_attach__palavra_chave_trocada__013	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	35	if hp and hp > 0 then	if hp and hp > 0 tehn
+ph2d_script_attach__palavra_chave_trocada__014	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	37	end	ned
+ph2d_script_attach__palavra_chave_trocada__015	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	38	end	ned
+ph2d_script_attach__palavra_chave_trocada__016	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	44	local function ensure_companion(self_id: number)	lcoal function ensure_companion(self_id: number)
+ph2d_script_attach__palavra_chave_trocada__017	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	44	local function ensure_companion(self_id: number)	local funtcion ensure_companion(self_id: number)
+ph2d_script_attach__palavra_chave_trocada__018	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	45	local target = ph2d.find_by_name("Companion")	lcoal target = ph2d.find_by_name("Companion")
+ph2d_script_attach__palavra_chave_trocada__019	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	46	if target == nil then	fi target == nil then
+ph2d_script_attach__palavra_chave_trocada__020	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	46	if target == nil then	if target == nil tehn
+ph2d_script_attach__palavra_chave_trocada__021	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	48	else	esle
+ph2d_script_attach__palavra_chave_trocada__022	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	51	end	ned
+ph2d_script_attach__palavra_chave_trocada__023	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	52	end	ned
+ph2d_script_attach__palavra_chave_trocada__024	runtime/luau/examples/ph2d_script_attach.luau	palavra_chave_trocada	54	return {	reutrn {
+ph2d_script_attach__identificador_trocado__001	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	21	local function init(self: number)	local function iint(self: number)
+ph2d_script_attach__identificador_trocado__002	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	21	local function init(self: number)	local function init(slef: number)
+ph2d_script_attach__identificador_trocado__003	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	25	local hp = ph2d.state_get(self, "hp")	local ph = ph2d.state_get(self, "hp")
+ph2d_script_attach__identificador_trocado__004	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	25	local hp = ph2d.state_get(self, "hp")	local hp = p2hd.state_get(self, "hp")
+ph2d_script_attach__identificador_trocado__005	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	25	local hp = ph2d.state_get(self, "hp")	local hp = ph2d.state_get(slef, "hp")
+ph2d_script_attach__identificador_trocado__006	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	26	if hp == nil then	if ph == nil then
+ph2d_script_attach__identificador_trocado__007	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	27	ph2d.state_set(self, "hp", 100)	p2hd.state_set(self, "hp", 100)
+ph2d_script_attach__identificador_trocado__008	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	27	ph2d.state_set(self, "hp", 100)	ph2d.state_set(slef, "hp", 100)
+ph2d_script_attach__identificador_trocado__009	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	29	ph2d.state_set(self, "name", "Enemy")	p2hd.state_set(self, "name", "Enemy")
+ph2d_script_attach__identificador_trocado__010	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	29	ph2d.state_set(self, "name", "Enemy")	ph2d.state_set(slef, "name", "Enemy")
+ph2d_script_attach__identificador_trocado__011	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	32	local function tick(self: number, dt: number)	local function tcik(self: number, dt: number)
+ph2d_script_attach__identificador_trocado__012	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	32	local function tick(self: number, dt: number)	local function tick(slef: number, dt: number)
+ph2d_script_attach__identificador_trocado__013	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	32	local function tick(self: number, dt: number)	local function tick(self: number, td: number)
+ph2d_script_attach__identificador_trocado__014	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	34	local hp = ph2d.state_get(self, "hp") :: number?	local ph = ph2d.state_get(self, "hp") :: number?
+ph2d_script_attach__identificador_trocado__015	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	34	local hp = ph2d.state_get(self, "hp") :: number?	local hp = p2hd.state_get(self, "hp") :: number?
+ph2d_script_attach__identificador_trocado__016	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	34	local hp = ph2d.state_get(self, "hp") :: number?	local hp = ph2d.state_get(slef, "hp") :: number?
+ph2d_script_attach__identificador_trocado__017	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	35	if hp and hp > 0 then	if ph and hp > 0 then
+ph2d_script_attach__identificador_trocado__018	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	35	if hp and hp > 0 then	if hp and ph > 0 then
+ph2d_script_attach__identificador_trocado__019	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	36	ph2d.state_set(self, "hp", hp - dt)	p2hd.state_set(self, "hp", hp - dt)
+ph2d_script_attach__identificador_trocado__020	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	36	ph2d.state_set(self, "hp", hp - dt)	ph2d.state_set(slef, "hp", hp - dt)
+ph2d_script_attach__identificador_trocado__021	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	36	ph2d.state_set(self, "hp", hp - dt)	ph2d.state_set(self, "hp", ph - dt)
+ph2d_script_attach__identificador_trocado__022	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	36	ph2d.state_set(self, "hp", hp - dt)	ph2d.state_set(self, "hp", hp - td)
+ph2d_script_attach__identificador_trocado__023	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	44	local function ensure_companion(self_id: number)	local function ensure_ocmpanion(self_id: number)
+ph2d_script_attach__identificador_trocado__024	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	44	local function ensure_companion(self_id: number)	local function ensure_companion(sefl_id: number)
+ph2d_script_attach__identificador_trocado__025	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	45	local target = ph2d.find_by_name("Companion")	local tagret = ph2d.find_by_name("Companion")
+ph2d_script_attach__identificador_trocado__026	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	45	local target = ph2d.find_by_name("Companion")	local target = p2hd.find_by_name("Companion")
+ph2d_script_attach__identificador_trocado__027	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	46	if target == nil then	if tagret == nil then
+ph2d_script_attach__identificador_trocado__028	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	47	ph2d.spawn_named("Companion")	p2hd.spawn_named("Companion")
+ph2d_script_attach__identificador_trocado__029	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	50	ph2d.emit("alert")	p2hd.emit("alert")
+ph2d_script_attach__identificador_trocado__030	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	55	init = init,	init = iint,
+ph2d_script_attach__identificador_trocado__031	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	56	tick = tick,	tick = tcik,
+ph2d_script_attach__identificador_trocado__032	runtime/luau/examples/ph2d_script_attach.luau	identificador_trocado	57	ensure_companion = ensure_companion,	ensure_companion = ensure_ocmpanion,
+ph2d_script_attach__membro_trocado__001	runtime/luau/examples/ph2d_script_attach.luau	membro_trocado	25	local hp = ph2d.state_get(self, "hp")	local hp = ph2d.staet_get(self, "hp")
+ph2d_script_attach__membro_trocado__002	runtime/luau/examples/ph2d_script_attach.luau	membro_trocado	27	ph2d.state_set(self, "hp", 100)	ph2d.staet_set(self, "hp", 100)
+ph2d_script_attach__membro_trocado__003	runtime/luau/examples/ph2d_script_attach.luau	membro_trocado	29	ph2d.state_set(self, "name", "Enemy")	ph2d.staet_set(self, "name", "Enemy")
+ph2d_script_attach__membro_trocado__004	runtime/luau/examples/ph2d_script_attach.luau	membro_trocado	34	local hp = ph2d.state_get(self, "hp") :: number?	local hp = ph2d.staet_get(self, "hp") :: number?
+ph2d_script_attach__membro_trocado__005	runtime/luau/examples/ph2d_script_attach.luau	membro_trocado	36	ph2d.state_set(self, "hp", hp - dt)	ph2d.staet_set(self, "hp", hp - dt)
+ph2d_script_attach__membro_trocado__006	runtime/luau/examples/ph2d_script_attach.luau	membro_trocado	45	local target = ph2d.find_by_name("Companion")	local target = ph2d.find_yb_name("Companion")
+ph2d_script_attach__membro_trocado__007	runtime/luau/examples/ph2d_script_attach.luau	membro_trocado	47	ph2d.spawn_named("Companion")	ph2d.spaw_nnamed("Companion")
+ph2d_script_attach__membro_trocado__008	runtime/luau/examples/ph2d_script_attach.luau	membro_trocado	50	ph2d.emit("alert")	ph2d.eimt("alert")
+ph2d_script_attach__ponto_por_dois_pontos__001	runtime/luau/examples/ph2d_script_attach.luau	ponto_por_dois_pontos	25	local hp = ph2d.state_get(self, "hp")	local hp = ph2d:state_get(self, "hp")
+ph2d_script_attach__ponto_por_dois_pontos__002	runtime/luau/examples/ph2d_script_attach.luau	ponto_por_dois_pontos	27	ph2d.state_set(self, "hp", 100)	ph2d:state_set(self, "hp", 100)
+ph2d_script_attach__ponto_por_dois_pontos__003	runtime/luau/examples/ph2d_script_attach.luau	ponto_por_dois_pontos	29	ph2d.state_set(self, "name", "Enemy")	ph2d:state_set(self, "name", "Enemy")
+ph2d_script_attach__ponto_por_dois_pontos__004	runtime/luau/examples/ph2d_script_attach.luau	ponto_por_dois_pontos	34	local hp = ph2d.state_get(self, "hp") :: number?	local hp = ph2d:state_get(self, "hp") :: number?
+ph2d_script_attach__ponto_por_dois_pontos__005	runtime/luau/examples/ph2d_script_attach.luau	ponto_por_dois_pontos	36	ph2d.state_set(self, "hp", hp - dt)	ph2d:state_set(self, "hp", hp - dt)
+ph2d_script_attach__ponto_por_dois_pontos__006	runtime/luau/examples/ph2d_script_attach.luau	ponto_por_dois_pontos	45	local target = ph2d.find_by_name("Companion")	local target = ph2d:find_by_name("Companion")
+ph2d_script_attach__ponto_por_dois_pontos__007	runtime/luau/examples/ph2d_script_attach.luau	ponto_por_dois_pontos	47	ph2d.spawn_named("Companion")	ph2d:spawn_named("Companion")
+ph2d_script_attach__ponto_por_dois_pontos__008	runtime/luau/examples/ph2d_script_attach.luau	ponto_por_dois_pontos	50	ph2d.emit("alert")	ph2d:emit("alert")
+ph2d_script_attach__sem_self_no_parametro__001	runtime/luau/examples/ph2d_script_attach.luau	sem_self_no_parametro	21	local function init(self: number)	local function init()
+ph2d_script_attach__sem_self_no_parametro__002	runtime/luau/examples/ph2d_script_attach.luau	sem_self_no_parametro	32	local function tick(self: number, dt: number)	local function tick( dt: number)
+ph2d_script_attach__argumento_a_menos__001	runtime/luau/examples/ph2d_script_attach.luau	argumento_a_menos	25	local hp = ph2d.state_get(self, "hp")	local hp = ph2d.state_get(self)
+ph2d_script_attach__argumento_a_menos__002	runtime/luau/examples/ph2d_script_attach.luau	argumento_a_menos	27	ph2d.state_set(self, "hp", 100)	ph2d.state_set(self, "hp")
+ph2d_script_attach__argumento_a_menos__003	runtime/luau/examples/ph2d_script_attach.luau	argumento_a_menos	29	ph2d.state_set(self, "name", "Enemy")	ph2d.state_set(self, "name")
+ph2d_script_attach__argumento_a_menos__004	runtime/luau/examples/ph2d_script_attach.luau	argumento_a_menos	34	local hp = ph2d.state_get(self, "hp") :: number?	local hp = ph2d.state_get(self) :: number?
+ph2d_script_attach__argumento_a_menos__005	runtime/luau/examples/ph2d_script_attach.luau	argumento_a_menos	36	ph2d.state_set(self, "hp", hp - dt)	ph2d.state_set(self, "hp")
+ph2d_script_attach__argumento_a_menos__006	runtime/luau/examples/ph2d_script_attach.luau	argumento_a_menos	45	local target = ph2d.find_by_name("Companion")	local target = ph2d.find_by_name()
+ph2d_script_attach__argumento_a_menos__007	runtime/luau/examples/ph2d_script_attach.luau	argumento_a_menos	47	ph2d.spawn_named("Companion")	ph2d.spawn_named()
+ph2d_script_attach__argumento_a_menos__008	runtime/luau/examples/ph2d_script_attach.luau	argumento_a_menos	50	ph2d.emit("alert")	ph2d.emit()
+ph2d_script_attach__argumentos_trocados__001	runtime/luau/examples/ph2d_script_attach.luau	argumentos_trocados	25	local hp = ph2d.state_get(self, "hp")	local hp = ph2d.state_get("hp", self)
+ph2d_script_attach__argumentos_trocados__002	runtime/luau/examples/ph2d_script_attach.luau	argumentos_trocados	27	ph2d.state_set(self, "hp", 100)	ph2d.state_set("hp", self, 100)
+ph2d_script_attach__argumentos_trocados__003	runtime/luau/examples/ph2d_script_attach.luau	argumentos_trocados	29	ph2d.state_set(self, "name", "Enemy")	ph2d.state_set("name", self, "Enemy")
+ph2d_script_attach__argumentos_trocados__004	runtime/luau/examples/ph2d_script_attach.luau	argumentos_trocados	34	local hp = ph2d.state_get(self, "hp") :: number?	local hp = ph2d.state_get("hp", self) :: number?
+ph2d_script_attach__argumentos_trocados__005	runtime/luau/examples/ph2d_script_attach.luau	argumentos_trocados	36	ph2d.state_set(self, "hp", hp - dt)	ph2d.state_set("hp", self, hp - dt)
+ph2d_script_attach__virgula_em_falta__001	runtime/luau/examples/ph2d_script_attach.luau	virgula_em_falta	55	init = init,	init = init
+ph2d_script_attach__virgula_em_falta__002	runtime/luau/examples/ph2d_script_attach.luau	virgula_em_falta	56	tick = tick,	tick = tick
+case_2_coroutine__base__000	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	base	0		
+case_2_coroutine__sem_end__001	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	sem_end	9	end	
+case_2_coroutine__sem_end__002	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	sem_end	10	end	
+case_2_coroutine__sem_do__001	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	sem_do	6	for _ = 1, 10 do	for _ = 1, 10
+case_2_coroutine__sem_fecha_parenteses__001	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	sem_fecha_parenteses	5	local function fade_routine()	local function fade_routine(
+case_2_coroutine__sem_fecha_parenteses__002	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	sem_fecha_parenteses	7	ph2d.wait(0.1)	ph2d.wait(0.1
+case_2_coroutine__palavra_chave_trocada__001	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	palavra_chave_trocada	5	local function fade_routine()	lcoal function fade_routine()
+case_2_coroutine__palavra_chave_trocada__002	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	palavra_chave_trocada	5	local function fade_routine()	local funtcion fade_routine()
+case_2_coroutine__palavra_chave_trocada__003	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	palavra_chave_trocada	6	for _ = 1, 10 do	ofr _ = 1, 10 do
+case_2_coroutine__palavra_chave_trocada__004	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	palavra_chave_trocada	6	for _ = 1, 10 do	for _ = 1, 10 od
+case_2_coroutine__palavra_chave_trocada__005	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	palavra_chave_trocada	9	end	ned
+case_2_coroutine__palavra_chave_trocada__006	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	palavra_chave_trocada	10	end	ned
+case_2_coroutine__palavra_chave_trocada__007	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	palavra_chave_trocada	12	return fade_routine	reutrn fade_routine
+case_2_coroutine__identificador_trocado__001	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	identificador_trocado	5	local function fade_routine()	local function fade_orutine()
+case_2_coroutine__identificador_trocado__002	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	identificador_trocado	6	for _ = 1, 10 do	for __ = 1, 10 do
+case_2_coroutine__identificador_trocado__003	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	identificador_trocado	7	ph2d.wait(0.1)	p2hd.wait(0.1)
+case_2_coroutine__identificador_trocado__004	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	identificador_trocado	12	return fade_routine	return fade_orutine
+case_2_coroutine__membro_trocado__001	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	membro_trocado	7	ph2d.wait(0.1)	ph2d.wiat(0.1)
+case_2_coroutine__ponto_por_dois_pontos__001	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	ponto_por_dois_pontos	7	ph2d.wait(0.1)	ph2d:wait(0.1)
+case_2_coroutine__argumento_a_menos__001	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	argumento_a_menos	7	ph2d.wait(0.1)	ph2d.wait()
+case_2_coroutine__indice_zero__001	docs/scripting/examples/spike/lsp/case_2_coroutine.luau	indice_zero	6	for _ = 1, 10 do	for _ = 0, 10 do
+c7_typical_script__base__000	tests/spike/c7_typical_script.luau	base	0		
+c7_typical_script__igual_por_atribuicao__001	tests/spike/c7_typical_script.luau	igual_por_atribuicao	25	if self.state == "idle" then	if self.state = "idle" then
+c7_typical_script__igual_por_atribuicao__002	tests/spike/c7_typical_script.luau	igual_por_atribuicao	29	elseif self.state == "walk" then	elseif self.state = "walk" then
+c7_typical_script__igual_por_atribuicao__003	tests/spike/c7_typical_script.luau	igual_por_atribuicao	36	elseif self.state == "run" then	elseif self.state = "run" then
+c7_typical_script__igual_por_atribuicao__004	tests/spike/c7_typical_script.luau	igual_por_atribuicao	50	if self.hp == 0 then	if self.hp = 0 then
+c7_typical_script__igual_por_atribuicao__005	tests/spike/c7_typical_script.luau	igual_por_atribuicao	64	return self.flags[name] == true	return self.flags[name] = true
+c7_typical_script__igual_por_atribuicao__006	tests/spike/c7_typical_script.luau	igual_por_atribuicao	70	if npc_id == "elder" then	if npc_id = "elder" then
+c7_typical_script__igual_por_atribuicao__007	tests/spike/c7_typical_script.luau	igual_por_atribuicao	77	elseif npc_id == "merchant" then	elseif npc_id = "merchant" then
+c7_typical_script__igual_por_atribuicao__008	tests/spike/c7_typical_script.luau	igual_por_atribuicao	100	if message == "damage" then	if message = "damage" then
+c7_typical_script__igual_por_atribuicao__009	tests/spike/c7_typical_script.luau	igual_por_atribuicao	102	elseif message == "heal" then	elseif message = "heal" then
+c7_typical_script__igual_por_atribuicao__010	tests/spike/c7_typical_script.luau	igual_por_atribuicao	104	elseif message == "set_velocity" then	elseif message = "set_velocity" then
+c7_typical_script__igual_por_atribuicao__011	tests/spike/c7_typical_script.luau	igual_por_atribuicao	107	elseif message == "talk_to" then	elseif message = "talk_to" then
+c7_typical_script__atribuicao_por_igual__001	tests/spike/c7_typical_script.luau	atribuicao_por_igual	5	local Player = {}	local Player == {}
+c7_typical_script__atribuicao_por_igual__002	tests/spike/c7_typical_script.luau	atribuicao_por_igual	6	Player.__index = Player	Player.__index == Player
+c7_typical_script__atribuicao_por_igual__003	tests/spike/c7_typical_script.luau	atribuicao_por_igual	9	local self = setmetatable({}, Player)	local self == setmetatable({}, Player)
+c7_typical_script__atribuicao_por_igual__004	tests/spike/c7_typical_script.luau	atribuicao_por_igual	10	self.name = name	self.name == name
+c7_typical_script__atribuicao_por_igual__005	tests/spike/c7_typical_script.luau	atribuicao_por_igual	11	self.hp = hp	self.hp == hp
+c7_typical_script__atribuicao_por_igual__006	tests/spike/c7_typical_script.luau	atribuicao_por_igual	12	self.max_hp = hp	self.max_hp == hp
+c7_typical_script__atribuicao_por_igual__007	tests/spike/c7_typical_script.luau	atribuicao_por_igual	13	self.state = "idle"	self.state == "idle"
+c7_typical_script__atribuicao_por_igual__008	tests/spike/c7_typical_script.luau	atribuicao_por_igual	14	self.position = { x = 0, y = 0 }	self.position == { x = 0, y = 0 }
+c7_typical_script__atribuicao_por_igual__009	tests/spike/c7_typical_script.luau	atribuicao_por_igual	15	self.velocity = { x = 0, y = 0 }	self.velocity == { x = 0, y = 0 }
+c7_typical_script__atribuicao_por_igual__010	tests/spike/c7_typical_script.luau	atribuicao_por_igual	16	self.inventory = {}	self.inventory == {}
+c7_typical_script__atribuicao_por_igual__011	tests/spike/c7_typical_script.luau	atribuicao_por_igual	17	self.flags = {}	self.flags == {}
+c7_typical_script__atribuicao_por_igual__012	tests/spike/c7_typical_script.luau	atribuicao_por_igual	22	self.position.x = self.position.x + self.velocity.x * dt	self.position.x == self.position.x + self.velocity.x * dt
+c7_typical_script__atribuicao_por_igual__013	tests/spike/c7_typical_script.luau	atribuicao_por_igual	23	self.position.y = self.position.y + self.velocity.y * dt	self.position.y == self.position.y + self.velocity.y * dt
+c7_typical_script__atribuicao_por_igual__014	tests/spike/c7_typical_script.luau	atribuicao_por_igual	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed == math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__atribuicao_por_igual__015	tests/spike/c7_typical_script.luau	atribuicao_por_igual	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed == math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__atribuicao_por_igual__016	tests/spike/c7_typical_script.luau	atribuicao_por_igual	45	self.state = to	self.state == to
+c7_typical_script__atribuicao_por_igual__017	tests/spike/c7_typical_script.luau	atribuicao_por_igual	49	self.hp = math.max(0, self.hp - amount)	self.hp == math.max(0, self.hp - amount)
+c7_typical_script__atribuicao_por_igual__018	tests/spike/c7_typical_script.luau	atribuicao_por_igual	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp == math.min(self.max_hp, self.hp + amount)
+c7_typical_script__atribuicao_por_igual__019	tests/spike/c7_typical_script.luau	atribuicao_por_igual	60	self.flags[name] = value	self.flags[name] == value
+c7_typical_script__atribuicao_por_igual__020	tests/spike/c7_typical_script.luau	atribuicao_por_igual	67	local Dialogue = {}	local Dialogue == {}
+c7_typical_script__atribuicao_por_igual__021	tests/spike/c7_typical_script.luau	atribuicao_por_igual	87	local Animation = {}	local Animation == {}
+c7_typical_script__atribuicao_por_igual__022	tests/spike/c7_typical_script.luau	atribuicao_por_igual	90	local clamped = math.clamp(t, 0, 1)	local clamped == math.clamp(t, 0, 1)
+c7_typical_script__atribuicao_por_igual__023	tests/spike/c7_typical_script.luau	atribuicao_por_igual	95	local clamped = math.clamp(t, 0, 1)	local clamped == math.clamp(t, 0, 1)
+c7_typical_script__atribuicao_por_igual__024	tests/spike/c7_typical_script.luau	atribuicao_por_igual	105	player.velocity.x = payload.x	player.velocity.x == payload.x
+c7_typical_script__atribuicao_por_igual__025	tests/spike/c7_typical_script.luau	atribuicao_por_igual	106	player.velocity.y = payload.y	player.velocity.y == payload.y
+c7_typical_script__logico_estilo_c__001	tests/spike/c7_typical_script.luau	logico_estilo_c	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 || math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__sem_end__001	tests/spike/c7_typical_script.luau	sem_end	19	end	
+c7_typical_script__sem_end__002	tests/spike/c7_typical_script.luau	sem_end	28	end	
+c7_typical_script__sem_end__003	tests/spike/c7_typical_script.luau	sem_end	35	end	
+c7_typical_script__sem_end__004	tests/spike/c7_typical_script.luau	sem_end	40	end	
+c7_typical_script__sem_end__005	tests/spike/c7_typical_script.luau	sem_end	41	end	
+c7_typical_script__sem_end__006	tests/spike/c7_typical_script.luau	sem_end	42	end	
+c7_typical_script__sem_end__007	tests/spike/c7_typical_script.luau	sem_end	46	end	
+c7_typical_script__sem_end__008	tests/spike/c7_typical_script.luau	sem_end	52	end	
+c7_typical_script__sem_end__009	tests/spike/c7_typical_script.luau	sem_end	53	end	
+c7_typical_script__sem_end__010	tests/spike/c7_typical_script.luau	sem_end	57	end	
+c7_typical_script__sem_end__011	tests/spike/c7_typical_script.luau	sem_end	61	end	
+c7_typical_script__sem_end__012	tests/spike/c7_typical_script.luau	sem_end	65	end	
+c7_typical_script__sem_end__013	tests/spike/c7_typical_script.luau	sem_end	76	end	
+c7_typical_script__sem_end__014	tests/spike/c7_typical_script.luau	sem_end	82	end	
+c7_typical_script__sem_end__015	tests/spike/c7_typical_script.luau	sem_end	83	end	
+c7_typical_script__sem_end__016	tests/spike/c7_typical_script.luau	sem_end	85	end	
+c7_typical_script__sem_end__017	tests/spike/c7_typical_script.luau	sem_end	92	end	
+c7_typical_script__sem_end__018	tests/spike/c7_typical_script.luau	sem_end	97	end	
+c7_typical_script__sem_end__019	tests/spike/c7_typical_script.luau	sem_end	109	end	
+c7_typical_script__sem_end__020	tests/spike/c7_typical_script.luau	sem_end	111	end	
+c7_typical_script__sem_then__001	tests/spike/c7_typical_script.luau	sem_then	25	if self.state == "idle" then	if self.state == "idle"
+c7_typical_script__sem_then__002	tests/spike/c7_typical_script.luau	sem_then	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1
+c7_typical_script__sem_then__003	tests/spike/c7_typical_script.luau	sem_then	29	elseif self.state == "walk" then	elseif self.state == "walk"
+c7_typical_script__sem_then__004	tests/spike/c7_typical_script.luau	sem_then	31	if speed < 0.1 then	if speed < 0.1
+c7_typical_script__sem_then__005	tests/spike/c7_typical_script.luau	sem_then	33	elseif speed > 5 then	elseif speed > 5
+c7_typical_script__sem_then__006	tests/spike/c7_typical_script.luau	sem_then	36	elseif self.state == "run" then	elseif self.state == "run"
+c7_typical_script__sem_then__007	tests/spike/c7_typical_script.luau	sem_then	38	if speed < 5 then	if speed < 5
+c7_typical_script__sem_then__008	tests/spike/c7_typical_script.luau	sem_then	50	if self.hp == 0 then	if self.hp == 0
+c7_typical_script__sem_then__009	tests/spike/c7_typical_script.luau	sem_then	70	if npc_id == "elder" then	if npc_id == "elder"
+c7_typical_script__sem_then__010	tests/spike/c7_typical_script.luau	sem_then	71	if player:has_flag("met_elder") then	if player:has_flag("met_elder")
+c7_typical_script__sem_then__011	tests/spike/c7_typical_script.luau	sem_then	77	elseif npc_id == "merchant" then	elseif npc_id == "merchant"
+c7_typical_script__sem_then__012	tests/spike/c7_typical_script.luau	sem_then	78	if #player.inventory > 5 then	if #player.inventory > 5
+c7_typical_script__sem_then__013	tests/spike/c7_typical_script.luau	sem_then	100	if message == "damage" then	if message == "damage"
+c7_typical_script__sem_then__014	tests/spike/c7_typical_script.luau	sem_then	102	elseif message == "heal" then	elseif message == "heal"
+c7_typical_script__sem_then__015	tests/spike/c7_typical_script.luau	sem_then	104	elseif message == "set_velocity" then	elseif message == "set_velocity"
+c7_typical_script__sem_then__016	tests/spike/c7_typical_script.luau	sem_then	107	elseif message == "talk_to" then	elseif message == "talk_to"
+c7_typical_script__sem_fecha_parenteses__001	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	8	function Player.new(name: string, hp: number)	function Player.new(name: string, hp: number
+c7_typical_script__sem_fecha_parenteses__002	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	9	local self = setmetatable({}, Player)	local self = setmetatable({}, Player
+c7_typical_script__sem_fecha_parenteses__003	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	21	function Player:tick(dt: number)	function Player:tick(dt: number
+c7_typical_script__sem_fecha_parenteses__004	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x > 0.1 or math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__sem_fecha_parenteses__005	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y > 0.1 then
+c7_typical_script__sem_fecha_parenteses__006	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	27	self:transition("walk")	self:transition("walk"
+c7_typical_script__sem_fecha_parenteses__007	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2
+c7_typical_script__sem_fecha_parenteses__008	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	32	self:transition("idle")	self:transition("idle"
+c7_typical_script__sem_fecha_parenteses__009	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	34	self:transition("run")	self:transition("run"
+c7_typical_script__sem_fecha_parenteses__010	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2
+c7_typical_script__sem_fecha_parenteses__011	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	39	self:transition("walk")	self:transition("walk"
+c7_typical_script__sem_fecha_parenteses__012	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	44	function Player:transition(to: string)	function Player:transition(to: string
+c7_typical_script__sem_fecha_parenteses__013	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	48	function Player:on_damage(amount: number, source: string)	function Player:on_damage(amount: number, source: string
+c7_typical_script__sem_fecha_parenteses__014	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	49	self.hp = math.max(0, self.hp - amount)	self.hp = math.max(0, self.hp - amount
+c7_typical_script__sem_fecha_parenteses__015	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	51	self:transition("dead")	self:transition("dead"
+c7_typical_script__sem_fecha_parenteses__016	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	55	function Player:on_heal(amount: number)	function Player:on_heal(amount: number
+c7_typical_script__sem_fecha_parenteses__017	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math.min(self.max_hp, self.hp + amount
+c7_typical_script__sem_fecha_parenteses__018	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	59	function Player:set_flag(name: string, value: boolean)	function Player:set_flag(name: string, value: boolean
+c7_typical_script__sem_fecha_parenteses__019	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	63	function Player:has_flag(name: string): boolean	function Player:has_flag(name: string: boolean
+c7_typical_script__sem_fecha_parenteses__020	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	69	function Dialogue.run(player, npc_id: string)	function Dialogue.run(player, npc_id: string
+c7_typical_script__sem_fecha_parenteses__021	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	71	if player:has_flag("met_elder") then	if player:has_flag("met_elder" then
+c7_typical_script__sem_fecha_parenteses__022	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	74	player:set_flag("met_elder", true)	player:set_flag("met_elder", true
+c7_typical_script__sem_fecha_parenteses__023	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	89	function Animation.tween(start: number, finish: number, t: number): number	function Animation.tween(start: number, finish: number, t: number: number
+c7_typical_script__sem_fecha_parenteses__024	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	90	local clamped = math.clamp(t, 0, 1)	local clamped = math.clamp(t, 0, 1
+c7_typical_script__sem_fecha_parenteses__025	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	91	return start + (finish - start) * clamped	return start + (finish - start * clamped
+c7_typical_script__sem_fecha_parenteses__026	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	94	function Animation.ease_out(t: number): number	function Animation.ease_out(t: number: number
+c7_typical_script__sem_fecha_parenteses__027	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	95	local clamped = math.clamp(t, 0, 1)	local clamped = math.clamp(t, 0, 1
+c7_typical_script__sem_fecha_parenteses__028	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	96	return 1 - (1 - clamped) * (1 - clamped)	return 1 - (1 - clamped * (1 - clamped)
+c7_typical_script__sem_fecha_parenteses__029	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	96	return 1 - (1 - clamped) * (1 - clamped)	return 1 - (1 - clamped) * (1 - clamped
+c7_typical_script__sem_fecha_parenteses__030	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	99	local function on_message(player, message: string, payload)	local function on_message(player, message: string, payload
+c7_typical_script__sem_fecha_parenteses__031	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	101	player:on_damage(payload.amount, payload.source)	player:on_damage(payload.amount, payload.source
+c7_typical_script__sem_fecha_parenteses__032	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	103	player:on_heal(payload.amount)	player:on_heal(payload.amount
+c7_typical_script__sem_fecha_parenteses__033	tests/spike/c7_typical_script.luau	sem_fecha_parenteses	108	return Dialogue.run(player, payload.npc_id)	return Dialogue.run(player, payload.npc_id
+c7_typical_script__sem_fecha_chave__001	tests/spike/c7_typical_script.luau	sem_fecha_chave	5	local Player = {}	local Player = {
+c7_typical_script__sem_fecha_chave__002	tests/spike/c7_typical_script.luau	sem_fecha_chave	9	local self = setmetatable({}, Player)	local self = setmetatable({, Player)
+c7_typical_script__sem_fecha_chave__003	tests/spike/c7_typical_script.luau	sem_fecha_chave	14	self.position = { x = 0, y = 0 }	self.position = { x = 0, y = 0
+c7_typical_script__sem_fecha_chave__004	tests/spike/c7_typical_script.luau	sem_fecha_chave	15	self.velocity = { x = 0, y = 0 }	self.velocity = { x = 0, y = 0
+c7_typical_script__sem_fecha_chave__005	tests/spike/c7_typical_script.luau	sem_fecha_chave	16	self.inventory = {}	self.inventory = {
+c7_typical_script__sem_fecha_chave__006	tests/spike/c7_typical_script.luau	sem_fecha_chave	17	self.flags = {}	self.flags = {
+c7_typical_script__sem_fecha_chave__007	tests/spike/c7_typical_script.luau	sem_fecha_chave	60	self.flags[name] = value	self.flags[name = value
+c7_typical_script__sem_fecha_chave__008	tests/spike/c7_typical_script.luau	sem_fecha_chave	64	return self.flags[name] == true	return self.flags[name == true
+c7_typical_script__sem_fecha_chave__009	tests/spike/c7_typical_script.luau	sem_fecha_chave	67	local Dialogue = {}	local Dialogue = {
+c7_typical_script__sem_fecha_chave__010	tests/spike/c7_typical_script.luau	sem_fecha_chave	87	local Animation = {}	local Animation = {
+c7_typical_script__sem_fecha_chave__011	tests/spike/c7_typical_script.luau	sem_fecha_chave	118	}	
+c7_typical_script__sem_fecha_aspas__001	tests/spike/c7_typical_script.luau	sem_fecha_aspas	13	self.state = "idle"	self.state = "idle
+c7_typical_script__sem_fecha_aspas__002	tests/spike/c7_typical_script.luau	sem_fecha_aspas	25	if self.state == "idle" then	if self.state == "idle then
+c7_typical_script__sem_fecha_aspas__003	tests/spike/c7_typical_script.luau	sem_fecha_aspas	27	self:transition("walk")	self:transition("walk)
+c7_typical_script__sem_fecha_aspas__004	tests/spike/c7_typical_script.luau	sem_fecha_aspas	29	elseif self.state == "walk" then	elseif self.state == "walk then
+c7_typical_script__sem_fecha_aspas__005	tests/spike/c7_typical_script.luau	sem_fecha_aspas	32	self:transition("idle")	self:transition("idle)
+c7_typical_script__sem_fecha_aspas__006	tests/spike/c7_typical_script.luau	sem_fecha_aspas	34	self:transition("run")	self:transition("run)
+c7_typical_script__sem_fecha_aspas__007	tests/spike/c7_typical_script.luau	sem_fecha_aspas	36	elseif self.state == "run" then	elseif self.state == "run then
+c7_typical_script__sem_fecha_aspas__008	tests/spike/c7_typical_script.luau	sem_fecha_aspas	39	self:transition("walk")	self:transition("walk)
+c7_typical_script__sem_fecha_aspas__009	tests/spike/c7_typical_script.luau	sem_fecha_aspas	51	self:transition("dead")	self:transition("dead)
+c7_typical_script__sem_fecha_aspas__010	tests/spike/c7_typical_script.luau	sem_fecha_aspas	70	if npc_id == "elder" then	if npc_id == "elder then
+c7_typical_script__sem_fecha_aspas__011	tests/spike/c7_typical_script.luau	sem_fecha_aspas	71	if player:has_flag("met_elder") then	if player:has_flag("met_elder) then
+c7_typical_script__sem_fecha_aspas__012	tests/spike/c7_typical_script.luau	sem_fecha_aspas	72	return "Welcome back, traveler."	return "Welcome back, traveler.
+c7_typical_script__sem_fecha_aspas__013	tests/spike/c7_typical_script.luau	sem_fecha_aspas	74	player:set_flag("met_elder", true)	player:set_flag("met_elder, true)
+c7_typical_script__sem_fecha_aspas__014	tests/spike/c7_typical_script.luau	sem_fecha_aspas	75	return "I have been waiting for you."	return "I have been waiting for you.
+c7_typical_script__sem_fecha_aspas__015	tests/spike/c7_typical_script.luau	sem_fecha_aspas	77	elseif npc_id == "merchant" then	elseif npc_id == "merchant then
+c7_typical_script__sem_fecha_aspas__016	tests/spike/c7_typical_script.luau	sem_fecha_aspas	79	return "Looks like you've been busy."	return "Looks like you've been busy.
+c7_typical_script__sem_fecha_aspas__017	tests/spike/c7_typical_script.luau	sem_fecha_aspas	81	return "Care to see my wares?"	return "Care to see my wares?
+c7_typical_script__sem_fecha_aspas__018	tests/spike/c7_typical_script.luau	sem_fecha_aspas	84	return "..."	return "...
+c7_typical_script__sem_fecha_aspas__019	tests/spike/c7_typical_script.luau	sem_fecha_aspas	100	if message == "damage" then	if message == "damage then
+c7_typical_script__sem_fecha_aspas__020	tests/spike/c7_typical_script.luau	sem_fecha_aspas	102	elseif message == "heal" then	elseif message == "heal then
+c7_typical_script__sem_fecha_aspas__021	tests/spike/c7_typical_script.luau	sem_fecha_aspas	104	elseif message == "set_velocity" then	elseif message == "set_velocity then
+c7_typical_script__sem_fecha_aspas__022	tests/spike/c7_typical_script.luau	sem_fecha_aspas	107	elseif message == "talk_to" then	elseif message == "talk_to then
+c7_typical_script__else_if__001	tests/spike/c7_typical_script.luau	else_if	29	elseif self.state == "walk" then	else if self.state == "walk" then
+c7_typical_script__else_if__002	tests/spike/c7_typical_script.luau	else_if	33	elseif speed > 5 then	else if speed > 5 then
+c7_typical_script__else_if__003	tests/spike/c7_typical_script.luau	else_if	36	elseif self.state == "run" then	else if self.state == "run" then
+c7_typical_script__else_if__004	tests/spike/c7_typical_script.luau	else_if	77	elseif npc_id == "merchant" then	else if npc_id == "merchant" then
+c7_typical_script__else_if__005	tests/spike/c7_typical_script.luau	else_if	102	elseif message == "heal" then	else if message == "heal" then
+c7_typical_script__else_if__006	tests/spike/c7_typical_script.luau	else_if	104	elseif message == "set_velocity" then	else if message == "set_velocity" then
+c7_typical_script__else_if__007	tests/spike/c7_typical_script.luau	else_if	107	elseif message == "talk_to" then	else if message == "talk_to" then
+c7_typical_script__palavra_chave_trocada__001	tests/spike/c7_typical_script.luau	palavra_chave_trocada	5	local Player = {}	lcoal Player = {}
+c7_typical_script__palavra_chave_trocada__002	tests/spike/c7_typical_script.luau	palavra_chave_trocada	8	function Player.new(name: string, hp: number)	funtcion Player.new(name: string, hp: number)
+c7_typical_script__palavra_chave_trocada__003	tests/spike/c7_typical_script.luau	palavra_chave_trocada	9	local self = setmetatable({}, Player)	lcoal self = setmetatable({}, Player)
+c7_typical_script__palavra_chave_trocada__004	tests/spike/c7_typical_script.luau	palavra_chave_trocada	18	return self	reutrn self
+c7_typical_script__palavra_chave_trocada__005	tests/spike/c7_typical_script.luau	palavra_chave_trocada	19	end	ned
+c7_typical_script__palavra_chave_trocada__006	tests/spike/c7_typical_script.luau	palavra_chave_trocada	21	function Player:tick(dt: number)	funtcion Player:tick(dt: number)
+c7_typical_script__palavra_chave_trocada__007	tests/spike/c7_typical_script.luau	palavra_chave_trocada	25	if self.state == "idle" then	fi self.state == "idle" then
+c7_typical_script__palavra_chave_trocada__008	tests/spike/c7_typical_script.luau	palavra_chave_trocada	25	if self.state == "idle" then	if self.state == "idle" tehn
+c7_typical_script__palavra_chave_trocada__009	tests/spike/c7_typical_script.luau	palavra_chave_trocada	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	fi math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__palavra_chave_trocada__010	tests/spike/c7_typical_script.luau	palavra_chave_trocada	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 ro math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__palavra_chave_trocada__011	tests/spike/c7_typical_script.luau	palavra_chave_trocada	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 tehn
+c7_typical_script__palavra_chave_trocada__012	tests/spike/c7_typical_script.luau	palavra_chave_trocada	28	end	ned
+c7_typical_script__palavra_chave_trocada__013	tests/spike/c7_typical_script.luau	palavra_chave_trocada	29	elseif self.state == "walk" then	elesif self.state == "walk" then
+c7_typical_script__palavra_chave_trocada__014	tests/spike/c7_typical_script.luau	palavra_chave_trocada	29	elseif self.state == "walk" then	elseif self.state == "walk" tehn
+c7_typical_script__palavra_chave_trocada__015	tests/spike/c7_typical_script.luau	palavra_chave_trocada	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	lcoal speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__palavra_chave_trocada__016	tests/spike/c7_typical_script.luau	palavra_chave_trocada	31	if speed < 0.1 then	fi speed < 0.1 then
+c7_typical_script__palavra_chave_trocada__017	tests/spike/c7_typical_script.luau	palavra_chave_trocada	31	if speed < 0.1 then	if speed < 0.1 tehn
+c7_typical_script__palavra_chave_trocada__018	tests/spike/c7_typical_script.luau	palavra_chave_trocada	33	elseif speed > 5 then	elesif speed > 5 then
+c7_typical_script__palavra_chave_trocada__019	tests/spike/c7_typical_script.luau	palavra_chave_trocada	33	elseif speed > 5 then	elseif speed > 5 tehn
+c7_typical_script__palavra_chave_trocada__020	tests/spike/c7_typical_script.luau	palavra_chave_trocada	35	end	ned
+c7_typical_script__palavra_chave_trocada__021	tests/spike/c7_typical_script.luau	palavra_chave_trocada	36	elseif self.state == "run" then	elesif self.state == "run" then
+c7_typical_script__palavra_chave_trocada__022	tests/spike/c7_typical_script.luau	palavra_chave_trocada	36	elseif self.state == "run" then	elseif self.state == "run" tehn
+c7_typical_script__palavra_chave_trocada__023	tests/spike/c7_typical_script.luau	palavra_chave_trocada	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	lcoal speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__palavra_chave_trocada__024	tests/spike/c7_typical_script.luau	palavra_chave_trocada	38	if speed < 5 then	fi speed < 5 then
+c7_typical_script__palavra_chave_trocada__025	tests/spike/c7_typical_script.luau	palavra_chave_trocada	38	if speed < 5 then	if speed < 5 tehn
+c7_typical_script__palavra_chave_trocada__026	tests/spike/c7_typical_script.luau	palavra_chave_trocada	40	end	ned
+c7_typical_script__palavra_chave_trocada__027	tests/spike/c7_typical_script.luau	palavra_chave_trocada	41	end	ned
+c7_typical_script__palavra_chave_trocada__028	tests/spike/c7_typical_script.luau	palavra_chave_trocada	42	end	ned
+c7_typical_script__palavra_chave_trocada__029	tests/spike/c7_typical_script.luau	palavra_chave_trocada	44	function Player:transition(to: string)	funtcion Player:transition(to: string)
+c7_typical_script__palavra_chave_trocada__030	tests/spike/c7_typical_script.luau	palavra_chave_trocada	46	end	ned
+c7_typical_script__palavra_chave_trocada__031	tests/spike/c7_typical_script.luau	palavra_chave_trocada	48	function Player:on_damage(amount: number, source: string)	funtcion Player:on_damage(amount: number, source: string)
+c7_typical_script__palavra_chave_trocada__032	tests/spike/c7_typical_script.luau	palavra_chave_trocada	50	if self.hp == 0 then	fi self.hp == 0 then
+c7_typical_script__palavra_chave_trocada__033	tests/spike/c7_typical_script.luau	palavra_chave_trocada	50	if self.hp == 0 then	if self.hp == 0 tehn
+c7_typical_script__palavra_chave_trocada__034	tests/spike/c7_typical_script.luau	palavra_chave_trocada	52	end	ned
+c7_typical_script__palavra_chave_trocada__035	tests/spike/c7_typical_script.luau	palavra_chave_trocada	53	end	ned
+c7_typical_script__palavra_chave_trocada__036	tests/spike/c7_typical_script.luau	palavra_chave_trocada	55	function Player:on_heal(amount: number)	funtcion Player:on_heal(amount: number)
+c7_typical_script__palavra_chave_trocada__037	tests/spike/c7_typical_script.luau	palavra_chave_trocada	57	end	ned
+c7_typical_script__palavra_chave_trocada__038	tests/spike/c7_typical_script.luau	palavra_chave_trocada	59	function Player:set_flag(name: string, value: boolean)	funtcion Player:set_flag(name: string, value: boolean)
+c7_typical_script__palavra_chave_trocada__039	tests/spike/c7_typical_script.luau	palavra_chave_trocada	61	end	ned
+c7_typical_script__palavra_chave_trocada__040	tests/spike/c7_typical_script.luau	palavra_chave_trocada	63	function Player:has_flag(name: string): boolean	funtcion Player:has_flag(name: string): boolean
+c7_typical_script__palavra_chave_trocada__041	tests/spike/c7_typical_script.luau	palavra_chave_trocada	64	return self.flags[name] == true	reutrn self.flags[name] == true
+c7_typical_script__palavra_chave_trocada__042	tests/spike/c7_typical_script.luau	palavra_chave_trocada	65	end	ned
+c7_typical_script__palavra_chave_trocada__043	tests/spike/c7_typical_script.luau	palavra_chave_trocada	67	local Dialogue = {}	lcoal Dialogue = {}
+c7_typical_script__palavra_chave_trocada__044	tests/spike/c7_typical_script.luau	palavra_chave_trocada	69	function Dialogue.run(player, npc_id: string)	funtcion Dialogue.run(player, npc_id: string)
+c7_typical_script__palavra_chave_trocada__045	tests/spike/c7_typical_script.luau	palavra_chave_trocada	70	if npc_id == "elder" then	fi npc_id == "elder" then
+c7_typical_script__palavra_chave_trocada__046	tests/spike/c7_typical_script.luau	palavra_chave_trocada	70	if npc_id == "elder" then	if npc_id == "elder" tehn
+c7_typical_script__palavra_chave_trocada__047	tests/spike/c7_typical_script.luau	palavra_chave_trocada	71	if player:has_flag("met_elder") then	fi player:has_flag("met_elder") then
+c7_typical_script__palavra_chave_trocada__048	tests/spike/c7_typical_script.luau	palavra_chave_trocada	71	if player:has_flag("met_elder") then	if player:has_flag("met_elder") tehn
+c7_typical_script__palavra_chave_trocada__049	tests/spike/c7_typical_script.luau	palavra_chave_trocada	72	return "Welcome back, traveler."	reutrn "Welcome back, traveler."
+c7_typical_script__palavra_chave_trocada__050	tests/spike/c7_typical_script.luau	palavra_chave_trocada	73	else	esle
+c7_typical_script__palavra_chave_trocada__051	tests/spike/c7_typical_script.luau	palavra_chave_trocada	75	return "I have been waiting for you."	reutrn "I have been waiting for you."
+c7_typical_script__palavra_chave_trocada__052	tests/spike/c7_typical_script.luau	palavra_chave_trocada	76	end	ned
+c7_typical_script__palavra_chave_trocada__053	tests/spike/c7_typical_script.luau	palavra_chave_trocada	77	elseif npc_id == "merchant" then	elesif npc_id == "merchant" then
+c7_typical_script__palavra_chave_trocada__054	tests/spike/c7_typical_script.luau	palavra_chave_trocada	77	elseif npc_id == "merchant" then	elseif npc_id == "merchant" tehn
+c7_typical_script__palavra_chave_trocada__055	tests/spike/c7_typical_script.luau	palavra_chave_trocada	78	if #player.inventory > 5 then	fi #player.inventory > 5 then
+c7_typical_script__palavra_chave_trocada__056	tests/spike/c7_typical_script.luau	palavra_chave_trocada	78	if #player.inventory > 5 then	if #player.inventory > 5 tehn
+c7_typical_script__palavra_chave_trocada__057	tests/spike/c7_typical_script.luau	palavra_chave_trocada	79	return "Looks like you've been busy."	reutrn "Looks like you've been busy."
+c7_typical_script__palavra_chave_trocada__058	tests/spike/c7_typical_script.luau	palavra_chave_trocada	80	else	esle
+c7_typical_script__palavra_chave_trocada__059	tests/spike/c7_typical_script.luau	palavra_chave_trocada	81	return "Care to see my wares?"	reutrn "Care to see my wares?"
+c7_typical_script__palavra_chave_trocada__060	tests/spike/c7_typical_script.luau	palavra_chave_trocada	82	end	ned
+c7_typical_script__palavra_chave_trocada__061	tests/spike/c7_typical_script.luau	palavra_chave_trocada	83	end	ned
+c7_typical_script__palavra_chave_trocada__062	tests/spike/c7_typical_script.luau	palavra_chave_trocada	84	return "..."	reutrn "..."
+c7_typical_script__palavra_chave_trocada__063	tests/spike/c7_typical_script.luau	palavra_chave_trocada	85	end	ned
+c7_typical_script__palavra_chave_trocada__064	tests/spike/c7_typical_script.luau	palavra_chave_trocada	87	local Animation = {}	lcoal Animation = {}
+c7_typical_script__palavra_chave_trocada__065	tests/spike/c7_typical_script.luau	palavra_chave_trocada	89	function Animation.tween(start: number, finish: number, t: number): number	funtcion Animation.tween(start: number, finish: number, t: number): number
+c7_typical_script__palavra_chave_trocada__066	tests/spike/c7_typical_script.luau	palavra_chave_trocada	90	local clamped = math.clamp(t, 0, 1)	lcoal clamped = math.clamp(t, 0, 1)
+c7_typical_script__palavra_chave_trocada__067	tests/spike/c7_typical_script.luau	palavra_chave_trocada	91	return start + (finish - start) * clamped	reutrn start + (finish - start) * clamped
+c7_typical_script__palavra_chave_trocada__068	tests/spike/c7_typical_script.luau	palavra_chave_trocada	92	end	ned
+c7_typical_script__palavra_chave_trocada__069	tests/spike/c7_typical_script.luau	palavra_chave_trocada	94	function Animation.ease_out(t: number): number	funtcion Animation.ease_out(t: number): number
+c7_typical_script__palavra_chave_trocada__070	tests/spike/c7_typical_script.luau	palavra_chave_trocada	95	local clamped = math.clamp(t, 0, 1)	lcoal clamped = math.clamp(t, 0, 1)
+c7_typical_script__palavra_chave_trocada__071	tests/spike/c7_typical_script.luau	palavra_chave_trocada	96	return 1 - (1 - clamped) * (1 - clamped)	reutrn 1 - (1 - clamped) * (1 - clamped)
+c7_typical_script__palavra_chave_trocada__072	tests/spike/c7_typical_script.luau	palavra_chave_trocada	97	end	ned
+c7_typical_script__palavra_chave_trocada__073	tests/spike/c7_typical_script.luau	palavra_chave_trocada	99	local function on_message(player, message: string, payload)	lcoal function on_message(player, message: string, payload)
+c7_typical_script__palavra_chave_trocada__074	tests/spike/c7_typical_script.luau	palavra_chave_trocada	99	local function on_message(player, message: string, payload)	local funtcion on_message(player, message: string, payload)
+c7_typical_script__palavra_chave_trocada__075	tests/spike/c7_typical_script.luau	palavra_chave_trocada	100	if message == "damage" then	fi message == "damage" then
+c7_typical_script__palavra_chave_trocada__076	tests/spike/c7_typical_script.luau	palavra_chave_trocada	100	if message == "damage" then	if message == "damage" tehn
+c7_typical_script__palavra_chave_trocada__077	tests/spike/c7_typical_script.luau	palavra_chave_trocada	102	elseif message == "heal" then	elesif message == "heal" then
+c7_typical_script__palavra_chave_trocada__078	tests/spike/c7_typical_script.luau	palavra_chave_trocada	102	elseif message == "heal" then	elseif message == "heal" tehn
+c7_typical_script__palavra_chave_trocada__079	tests/spike/c7_typical_script.luau	palavra_chave_trocada	104	elseif message == "set_velocity" then	elesif message == "set_velocity" then
+c7_typical_script__palavra_chave_trocada__080	tests/spike/c7_typical_script.luau	palavra_chave_trocada	104	elseif message == "set_velocity" then	elseif message == "set_velocity" tehn
+c7_typical_script__palavra_chave_trocada__081	tests/spike/c7_typical_script.luau	palavra_chave_trocada	107	elseif message == "talk_to" then	elesif message == "talk_to" then
+c7_typical_script__palavra_chave_trocada__082	tests/spike/c7_typical_script.luau	palavra_chave_trocada	107	elseif message == "talk_to" then	elseif message == "talk_to" tehn
+c7_typical_script__palavra_chave_trocada__083	tests/spike/c7_typical_script.luau	palavra_chave_trocada	108	return Dialogue.run(player, payload.npc_id)	reutrn Dialogue.run(player, payload.npc_id)
+c7_typical_script__palavra_chave_trocada__084	tests/spike/c7_typical_script.luau	palavra_chave_trocada	109	end	ned
+c7_typical_script__palavra_chave_trocada__085	tests/spike/c7_typical_script.luau	palavra_chave_trocada	110	return nil	reutrn nil
+c7_typical_script__palavra_chave_trocada__086	tests/spike/c7_typical_script.luau	palavra_chave_trocada	111	end	ned
+c7_typical_script__palavra_chave_trocada__087	tests/spike/c7_typical_script.luau	palavra_chave_trocada	113	return {	reutrn {
+c7_typical_script__identificador_trocado__001	tests/spike/c7_typical_script.luau	identificador_trocado	5	local Player = {}	local Plyaer = {}
+c7_typical_script__identificador_trocado__002	tests/spike/c7_typical_script.luau	identificador_trocado	6	Player.__index = Player	Plyaer.__index = Player
+c7_typical_script__identificador_trocado__003	tests/spike/c7_typical_script.luau	identificador_trocado	6	Player.__index = Player	Player.__index = Plyaer
+c7_typical_script__identificador_trocado__004	tests/spike/c7_typical_script.luau	identificador_trocado	8	function Player.new(name: string, hp: number)	function Plyaer.new(name: string, hp: number)
+c7_typical_script__identificador_trocado__005	tests/spike/c7_typical_script.luau	identificador_trocado	8	function Player.new(name: string, hp: number)	function Player.new(nmae: string, hp: number)
+c7_typical_script__identificador_trocado__006	tests/spike/c7_typical_script.luau	identificador_trocado	8	function Player.new(name: string, hp: number)	function Player.new(name: string, ph: number)
+c7_typical_script__identificador_trocado__007	tests/spike/c7_typical_script.luau	identificador_trocado	9	local self = setmetatable({}, Player)	local slef = setmetatable({}, Player)
+c7_typical_script__identificador_trocado__008	tests/spike/c7_typical_script.luau	identificador_trocado	9	local self = setmetatable({}, Player)	local self = setmeattable({}, Player)
+c7_typical_script__identificador_trocado__009	tests/spike/c7_typical_script.luau	identificador_trocado	9	local self = setmetatable({}, Player)	local self = setmetatable({}, Plyaer)
+c7_typical_script__identificador_trocado__010	tests/spike/c7_typical_script.luau	identificador_trocado	10	self.name = name	slef.name = name
+c7_typical_script__identificador_trocado__011	tests/spike/c7_typical_script.luau	identificador_trocado	10	self.name = name	self.name = nmae
+c7_typical_script__identificador_trocado__012	tests/spike/c7_typical_script.luau	identificador_trocado	11	self.hp = hp	slef.hp = hp
+c7_typical_script__identificador_trocado__013	tests/spike/c7_typical_script.luau	identificador_trocado	11	self.hp = hp	self.hp = ph
+c7_typical_script__identificador_trocado__014	tests/spike/c7_typical_script.luau	identificador_trocado	12	self.max_hp = hp	slef.max_hp = hp
+c7_typical_script__identificador_trocado__015	tests/spike/c7_typical_script.luau	identificador_trocado	12	self.max_hp = hp	self.max_hp = ph
+c7_typical_script__identificador_trocado__016	tests/spike/c7_typical_script.luau	identificador_trocado	13	self.state = "idle"	slef.state = "idle"
+c7_typical_script__identificador_trocado__017	tests/spike/c7_typical_script.luau	identificador_trocado	14	self.position = { x = 0, y = 0 }	slef.position = { x = 0, y = 0 }
+c7_typical_script__identificador_trocado__018	tests/spike/c7_typical_script.luau	identificador_trocado	15	self.velocity = { x = 0, y = 0 }	slef.velocity = { x = 0, y = 0 }
+c7_typical_script__identificador_trocado__019	tests/spike/c7_typical_script.luau	identificador_trocado	16	self.inventory = {}	slef.inventory = {}
+c7_typical_script__identificador_trocado__020	tests/spike/c7_typical_script.luau	identificador_trocado	17	self.flags = {}	slef.flags = {}
+c7_typical_script__identificador_trocado__021	tests/spike/c7_typical_script.luau	identificador_trocado	18	return self	return slef
+c7_typical_script__identificador_trocado__022	tests/spike/c7_typical_script.luau	identificador_trocado	21	function Player:tick(dt: number)	function Plyaer:tick(dt: number)
+c7_typical_script__identificador_trocado__023	tests/spike/c7_typical_script.luau	identificador_trocado	21	function Player:tick(dt: number)	function Player:tick(td: number)
+c7_typical_script__identificador_trocado__024	tests/spike/c7_typical_script.luau	identificador_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	slef.position.x = self.position.x + self.velocity.x * dt
+c7_typical_script__identificador_trocado__025	tests/spike/c7_typical_script.luau	identificador_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	self.position.x = slef.position.x + self.velocity.x * dt
+c7_typical_script__identificador_trocado__026	tests/spike/c7_typical_script.luau	identificador_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	self.position.x = self.position.x + slef.velocity.x * dt
+c7_typical_script__identificador_trocado__027	tests/spike/c7_typical_script.luau	identificador_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	self.position.x = self.position.x + self.velocity.x * td
+c7_typical_script__identificador_trocado__028	tests/spike/c7_typical_script.luau	identificador_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	slef.position.y = self.position.y + self.velocity.y * dt
+c7_typical_script__identificador_trocado__029	tests/spike/c7_typical_script.luau	identificador_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	self.position.y = slef.position.y + self.velocity.y * dt
+c7_typical_script__identificador_trocado__030	tests/spike/c7_typical_script.luau	identificador_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	self.position.y = self.position.y + slef.velocity.y * dt
+c7_typical_script__identificador_trocado__031	tests/spike/c7_typical_script.luau	identificador_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	self.position.y = self.position.y + self.velocity.y * td
+c7_typical_script__identificador_trocado__032	tests/spike/c7_typical_script.luau	identificador_trocado	25	if self.state == "idle" then	if slef.state == "idle" then
+c7_typical_script__identificador_trocado__033	tests/spike/c7_typical_script.luau	identificador_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if mtah.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__identificador_trocado__034	tests/spike/c7_typical_script.luau	identificador_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(slef.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__identificador_trocado__035	tests/spike/c7_typical_script.luau	identificador_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or mtah.abs(self.velocity.y) > 0.1 then
+c7_typical_script__identificador_trocado__036	tests/spike/c7_typical_script.luau	identificador_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or math.abs(slef.velocity.y) > 0.1 then
+c7_typical_script__identificador_trocado__037	tests/spike/c7_typical_script.luau	identificador_trocado	27	self:transition("walk")	slef:transition("walk")
+c7_typical_script__identificador_trocado__038	tests/spike/c7_typical_script.luau	identificador_trocado	29	elseif self.state == "walk" then	elseif slef.state == "walk" then
+c7_typical_script__identificador_trocado__039	tests/spike/c7_typical_script.luau	identificador_trocado	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local seped = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__identificador_trocado__040	tests/spike/c7_typical_script.luau	identificador_trocado	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = mtah.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__identificador_trocado__041	tests/spike/c7_typical_script.luau	identificador_trocado	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(slef.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__identificador_trocado__042	tests/spike/c7_typical_script.luau	identificador_trocado	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.x ^ 2 + slef.velocity.y ^ 2)
+c7_typical_script__identificador_trocado__043	tests/spike/c7_typical_script.luau	identificador_trocado	31	if speed < 0.1 then	if seped < 0.1 then
+c7_typical_script__identificador_trocado__044	tests/spike/c7_typical_script.luau	identificador_trocado	32	self:transition("idle")	slef:transition("idle")
+c7_typical_script__identificador_trocado__045	tests/spike/c7_typical_script.luau	identificador_trocado	33	elseif speed > 5 then	elseif seped > 5 then
+c7_typical_script__identificador_trocado__046	tests/spike/c7_typical_script.luau	identificador_trocado	34	self:transition("run")	slef:transition("run")
+c7_typical_script__identificador_trocado__047	tests/spike/c7_typical_script.luau	identificador_trocado	36	elseif self.state == "run" then	elseif slef.state == "run" then
+c7_typical_script__identificador_trocado__048	tests/spike/c7_typical_script.luau	identificador_trocado	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local seped = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__identificador_trocado__049	tests/spike/c7_typical_script.luau	identificador_trocado	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = mtah.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__identificador_trocado__050	tests/spike/c7_typical_script.luau	identificador_trocado	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(slef.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__identificador_trocado__051	tests/spike/c7_typical_script.luau	identificador_trocado	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.x ^ 2 + slef.velocity.y ^ 2)
+c7_typical_script__identificador_trocado__052	tests/spike/c7_typical_script.luau	identificador_trocado	38	if speed < 5 then	if seped < 5 then
+c7_typical_script__identificador_trocado__053	tests/spike/c7_typical_script.luau	identificador_trocado	39	self:transition("walk")	slef:transition("walk")
+c7_typical_script__identificador_trocado__054	tests/spike/c7_typical_script.luau	identificador_trocado	44	function Player:transition(to: string)	function Plyaer:transition(to: string)
+c7_typical_script__identificador_trocado__055	tests/spike/c7_typical_script.luau	identificador_trocado	44	function Player:transition(to: string)	function Player:transition(ot: string)
+c7_typical_script__identificador_trocado__056	tests/spike/c7_typical_script.luau	identificador_trocado	45	self.state = to	slef.state = to
+c7_typical_script__identificador_trocado__057	tests/spike/c7_typical_script.luau	identificador_trocado	45	self.state = to	self.state = ot
+c7_typical_script__identificador_trocado__058	tests/spike/c7_typical_script.luau	identificador_trocado	48	function Player:on_damage(amount: number, source: string)	function Plyaer:on_damage(amount: number, source: string)
+c7_typical_script__identificador_trocado__059	tests/spike/c7_typical_script.luau	identificador_trocado	48	function Player:on_damage(amount: number, source: string)	function Player:on_damage(amuont: number, source: string)
+c7_typical_script__identificador_trocado__060	tests/spike/c7_typical_script.luau	identificador_trocado	48	function Player:on_damage(amount: number, source: string)	function Player:on_damage(amount: number, soruce: string)
+c7_typical_script__identificador_trocado__061	tests/spike/c7_typical_script.luau	identificador_trocado	49	self.hp = math.max(0, self.hp - amount)	slef.hp = math.max(0, self.hp - amount)
+c7_typical_script__identificador_trocado__062	tests/spike/c7_typical_script.luau	identificador_trocado	49	self.hp = math.max(0, self.hp - amount)	self.hp = mtah.max(0, self.hp - amount)
+c7_typical_script__identificador_trocado__063	tests/spike/c7_typical_script.luau	identificador_trocado	49	self.hp = math.max(0, self.hp - amount)	self.hp = math.max(0, slef.hp - amount)
+c7_typical_script__identificador_trocado__064	tests/spike/c7_typical_script.luau	identificador_trocado	49	self.hp = math.max(0, self.hp - amount)	self.hp = math.max(0, self.hp - amuont)
+c7_typical_script__identificador_trocado__065	tests/spike/c7_typical_script.luau	identificador_trocado	50	if self.hp == 0 then	if slef.hp == 0 then
+c7_typical_script__identificador_trocado__066	tests/spike/c7_typical_script.luau	identificador_trocado	51	self:transition("dead")	slef:transition("dead")
+c7_typical_script__identificador_trocado__067	tests/spike/c7_typical_script.luau	identificador_trocado	55	function Player:on_heal(amount: number)	function Plyaer:on_heal(amount: number)
+c7_typical_script__identificador_trocado__068	tests/spike/c7_typical_script.luau	identificador_trocado	55	function Player:on_heal(amount: number)	function Player:on_heal(amuont: number)
+c7_typical_script__identificador_trocado__069	tests/spike/c7_typical_script.luau	identificador_trocado	56	self.hp = math.min(self.max_hp, self.hp + amount)	slef.hp = math.min(self.max_hp, self.hp + amount)
+c7_typical_script__identificador_trocado__070	tests/spike/c7_typical_script.luau	identificador_trocado	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = mtah.min(self.max_hp, self.hp + amount)
+c7_typical_script__identificador_trocado__071	tests/spike/c7_typical_script.luau	identificador_trocado	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math.min(slef.max_hp, self.hp + amount)
+c7_typical_script__identificador_trocado__072	tests/spike/c7_typical_script.luau	identificador_trocado	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math.min(self.max_hp, slef.hp + amount)
+c7_typical_script__identificador_trocado__073	tests/spike/c7_typical_script.luau	identificador_trocado	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math.min(self.max_hp, self.hp + amuont)
+c7_typical_script__identificador_trocado__074	tests/spike/c7_typical_script.luau	identificador_trocado	59	function Player:set_flag(name: string, value: boolean)	function Plyaer:set_flag(name: string, value: boolean)
+c7_typical_script__identificador_trocado__075	tests/spike/c7_typical_script.luau	identificador_trocado	59	function Player:set_flag(name: string, value: boolean)	function Player:set_flag(nmae: string, value: boolean)
+c7_typical_script__identificador_trocado__076	tests/spike/c7_typical_script.luau	identificador_trocado	59	function Player:set_flag(name: string, value: boolean)	function Player:set_flag(name: string, vlaue: boolean)
+c7_typical_script__identificador_trocado__077	tests/spike/c7_typical_script.luau	identificador_trocado	60	self.flags[name] = value	slef.flags[name] = value
+c7_typical_script__identificador_trocado__078	tests/spike/c7_typical_script.luau	identificador_trocado	60	self.flags[name] = value	self.flags[nmae] = value
+c7_typical_script__identificador_trocado__079	tests/spike/c7_typical_script.luau	identificador_trocado	60	self.flags[name] = value	self.flags[name] = vlaue
+c7_typical_script__identificador_trocado__080	tests/spike/c7_typical_script.luau	identificador_trocado	63	function Player:has_flag(name: string): boolean	function Plyaer:has_flag(name: string): boolean
+c7_typical_script__identificador_trocado__081	tests/spike/c7_typical_script.luau	identificador_trocado	63	function Player:has_flag(name: string): boolean	function Player:has_flag(nmae: string): boolean
+c7_typical_script__identificador_trocado__082	tests/spike/c7_typical_script.luau	identificador_trocado	64	return self.flags[name] == true	return slef.flags[name] == true
+c7_typical_script__identificador_trocado__083	tests/spike/c7_typical_script.luau	identificador_trocado	64	return self.flags[name] == true	return self.flags[nmae] == true
+c7_typical_script__identificador_trocado__084	tests/spike/c7_typical_script.luau	identificador_trocado	67	local Dialogue = {}	local Diaolgue = {}
+c7_typical_script__identificador_trocado__085	tests/spike/c7_typical_script.luau	identificador_trocado	69	function Dialogue.run(player, npc_id: string)	function Diaolgue.run(player, npc_id: string)
+c7_typical_script__identificador_trocado__086	tests/spike/c7_typical_script.luau	identificador_trocado	69	function Dialogue.run(player, npc_id: string)	function Dialogue.run(plyaer, npc_id: string)
+c7_typical_script__identificador_trocado__087	tests/spike/c7_typical_script.luau	identificador_trocado	69	function Dialogue.run(player, npc_id: string)	function Dialogue.run(player, np_cid: string)
+c7_typical_script__identificador_trocado__088	tests/spike/c7_typical_script.luau	identificador_trocado	70	if npc_id == "elder" then	if np_cid == "elder" then
+c7_typical_script__identificador_trocado__089	tests/spike/c7_typical_script.luau	identificador_trocado	71	if player:has_flag("met_elder") then	if plyaer:has_flag("met_elder") then
+c7_typical_script__identificador_trocado__090	tests/spike/c7_typical_script.luau	identificador_trocado	74	player:set_flag("met_elder", true)	plyaer:set_flag("met_elder", true)
+c7_typical_script__identificador_trocado__091	tests/spike/c7_typical_script.luau	identificador_trocado	77	elseif npc_id == "merchant" then	elseif np_cid == "merchant" then
+c7_typical_script__identificador_trocado__092	tests/spike/c7_typical_script.luau	identificador_trocado	78	if #player.inventory > 5 then	if #plyaer.inventory > 5 then
+c7_typical_script__identificador_trocado__093	tests/spike/c7_typical_script.luau	identificador_trocado	87	local Animation = {}	local Aniamtion = {}
+c7_typical_script__identificador_trocado__094	tests/spike/c7_typical_script.luau	identificador_trocado	89	function Animation.tween(start: number, finish: number, t: number): number	function Aniamtion.tween(start: number, finish: number, t: number): number
+c7_typical_script__identificador_trocado__095	tests/spike/c7_typical_script.luau	identificador_trocado	89	function Animation.tween(start: number, finish: number, t: number): number	function Animation.tween(satrt: number, finish: number, t: number): number
+c7_typical_script__identificador_trocado__096	tests/spike/c7_typical_script.luau	identificador_trocado	89	function Animation.tween(start: number, finish: number, t: number): number	function Animation.tween(start: number, fiinsh: number, t: number): number
+c7_typical_script__identificador_trocado__097	tests/spike/c7_typical_script.luau	identificador_trocado	89	function Animation.tween(start: number, finish: number, t: number): number	function Animation.tween(start: number, finish: number, tt: number): number
+c7_typical_script__identificador_trocado__098	tests/spike/c7_typical_script.luau	identificador_trocado	90	local clamped = math.clamp(t, 0, 1)	local clmaped = math.clamp(t, 0, 1)
+c7_typical_script__identificador_trocado__099	tests/spike/c7_typical_script.luau	identificador_trocado	90	local clamped = math.clamp(t, 0, 1)	local clamped = mtah.clamp(t, 0, 1)
+c7_typical_script__identificador_trocado__100	tests/spike/c7_typical_script.luau	identificador_trocado	90	local clamped = math.clamp(t, 0, 1)	local clamped = math.clamp(tt, 0, 1)
+c7_typical_script__identificador_trocado__101	tests/spike/c7_typical_script.luau	identificador_trocado	91	return start + (finish - start) * clamped	return satrt + (finish - start) * clamped
+c7_typical_script__identificador_trocado__102	tests/spike/c7_typical_script.luau	identificador_trocado	91	return start + (finish - start) * clamped	return start + (fiinsh - start) * clamped
+c7_typical_script__identificador_trocado__103	tests/spike/c7_typical_script.luau	identificador_trocado	91	return start + (finish - start) * clamped	return start + (finish - satrt) * clamped
+c7_typical_script__identificador_trocado__104	tests/spike/c7_typical_script.luau	identificador_trocado	91	return start + (finish - start) * clamped	return start + (finish - start) * clmaped
+c7_typical_script__identificador_trocado__105	tests/spike/c7_typical_script.luau	identificador_trocado	94	function Animation.ease_out(t: number): number	function Aniamtion.ease_out(t: number): number
+c7_typical_script__identificador_trocado__106	tests/spike/c7_typical_script.luau	identificador_trocado	94	function Animation.ease_out(t: number): number	function Animation.ease_out(tt: number): number
+c7_typical_script__identificador_trocado__107	tests/spike/c7_typical_script.luau	identificador_trocado	95	local clamped = math.clamp(t, 0, 1)	local clmaped = math.clamp(t, 0, 1)
+c7_typical_script__identificador_trocado__108	tests/spike/c7_typical_script.luau	identificador_trocado	95	local clamped = math.clamp(t, 0, 1)	local clamped = mtah.clamp(t, 0, 1)
+c7_typical_script__identificador_trocado__109	tests/spike/c7_typical_script.luau	identificador_trocado	95	local clamped = math.clamp(t, 0, 1)	local clamped = math.clamp(tt, 0, 1)
+c7_typical_script__identificador_trocado__110	tests/spike/c7_typical_script.luau	identificador_trocado	96	return 1 - (1 - clamped) * (1 - clamped)	return 1 - (1 - clmaped) * (1 - clamped)
+c7_typical_script__identificador_trocado__111	tests/spike/c7_typical_script.luau	identificador_trocado	96	return 1 - (1 - clamped) * (1 - clamped)	return 1 - (1 - clamped) * (1 - clmaped)
+c7_typical_script__identificador_trocado__112	tests/spike/c7_typical_script.luau	identificador_trocado	99	local function on_message(player, message: string, payload)	local function on_msesage(player, message: string, payload)
+c7_typical_script__identificador_trocado__113	tests/spike/c7_typical_script.luau	identificador_trocado	99	local function on_message(player, message: string, payload)	local function on_message(plyaer, message: string, payload)
+c7_typical_script__identificador_trocado__114	tests/spike/c7_typical_script.luau	identificador_trocado	99	local function on_message(player, message: string, payload)	local function on_message(player, messag: string, payload)
+c7_typical_script__identificador_trocado__115	tests/spike/c7_typical_script.luau	identificador_trocado	99	local function on_message(player, message: string, payload)	local function on_message(player, message: string, palyoad)
+c7_typical_script__identificador_trocado__116	tests/spike/c7_typical_script.luau	identificador_trocado	100	if message == "damage" then	if messag == "damage" then
+c7_typical_script__identificador_trocado__117	tests/spike/c7_typical_script.luau	identificador_trocado	101	player:on_damage(payload.amount, payload.source)	plyaer:on_damage(payload.amount, payload.source)
+c7_typical_script__identificador_trocado__118	tests/spike/c7_typical_script.luau	identificador_trocado	101	player:on_damage(payload.amount, payload.source)	player:on_damage(palyoad.amount, payload.source)
+c7_typical_script__identificador_trocado__119	tests/spike/c7_typical_script.luau	identificador_trocado	101	player:on_damage(payload.amount, payload.source)	player:on_damage(payload.amount, palyoad.source)
+c7_typical_script__identificador_trocado__120	tests/spike/c7_typical_script.luau	identificador_trocado	102	elseif message == "heal" then	elseif messag == "heal" then
+c7_typical_script__identificador_trocado__121	tests/spike/c7_typical_script.luau	identificador_trocado	103	player:on_heal(payload.amount)	plyaer:on_heal(payload.amount)
+c7_typical_script__identificador_trocado__122	tests/spike/c7_typical_script.luau	identificador_trocado	103	player:on_heal(payload.amount)	player:on_heal(palyoad.amount)
+c7_typical_script__identificador_trocado__123	tests/spike/c7_typical_script.luau	identificador_trocado	104	elseif message == "set_velocity" then	elseif messag == "set_velocity" then
+c7_typical_script__identificador_trocado__124	tests/spike/c7_typical_script.luau	identificador_trocado	105	player.velocity.x = payload.x	plyaer.velocity.x = payload.x
+c7_typical_script__identificador_trocado__125	tests/spike/c7_typical_script.luau	identificador_trocado	105	player.velocity.x = payload.x	player.velocity.x = palyoad.x
+c7_typical_script__identificador_trocado__126	tests/spike/c7_typical_script.luau	identificador_trocado	106	player.velocity.y = payload.y	plyaer.velocity.y = payload.y
+c7_typical_script__identificador_trocado__127	tests/spike/c7_typical_script.luau	identificador_trocado	106	player.velocity.y = payload.y	player.velocity.y = palyoad.y
+c7_typical_script__identificador_trocado__128	tests/spike/c7_typical_script.luau	identificador_trocado	107	elseif message == "talk_to" then	elseif messag == "talk_to" then
+c7_typical_script__identificador_trocado__129	tests/spike/c7_typical_script.luau	identificador_trocado	108	return Dialogue.run(player, payload.npc_id)	return Diaolgue.run(player, payload.npc_id)
+c7_typical_script__identificador_trocado__130	tests/spike/c7_typical_script.luau	identificador_trocado	108	return Dialogue.run(player, payload.npc_id)	return Dialogue.run(plyaer, payload.npc_id)
+c7_typical_script__identificador_trocado__131	tests/spike/c7_typical_script.luau	identificador_trocado	108	return Dialogue.run(player, payload.npc_id)	return Dialogue.run(player, palyoad.npc_id)
+c7_typical_script__identificador_trocado__132	tests/spike/c7_typical_script.luau	identificador_trocado	114	Player = Player,	Player = Plyaer,
+c7_typical_script__identificador_trocado__133	tests/spike/c7_typical_script.luau	identificador_trocado	115	Dialogue = Dialogue,	Dialogue = Diaolgue,
+c7_typical_script__identificador_trocado__134	tests/spike/c7_typical_script.luau	identificador_trocado	116	Animation = Animation,	Animation = Aniamtion,
+c7_typical_script__identificador_trocado__135	tests/spike/c7_typical_script.luau	identificador_trocado	117	on_message = on_message,	on_message = on_msesage,
+c7_typical_script__membro_trocado__001	tests/spike/c7_typical_script.luau	membro_trocado	6	Player.__index = Player	Player.__nidex = Player
+c7_typical_script__membro_trocado__002	tests/spike/c7_typical_script.luau	membro_trocado	8	function Player.new(name: string, hp: number)	function Player.enw(name: string, hp: number)
+c7_typical_script__membro_trocado__003	tests/spike/c7_typical_script.luau	membro_trocado	10	self.name = name	self.nmae = name
+c7_typical_script__membro_trocado__004	tests/spike/c7_typical_script.luau	membro_trocado	11	self.hp = hp	self.ph = hp
+c7_typical_script__membro_trocado__005	tests/spike/c7_typical_script.luau	membro_trocado	12	self.max_hp = hp	self.ma_xhp = hp
+c7_typical_script__membro_trocado__006	tests/spike/c7_typical_script.luau	membro_trocado	13	self.state = "idle"	self.satte = "idle"
+c7_typical_script__membro_trocado__007	tests/spike/c7_typical_script.luau	membro_trocado	14	self.position = { x = 0, y = 0 }	self.postiion = { x = 0, y = 0 }
+c7_typical_script__membro_trocado__008	tests/spike/c7_typical_script.luau	membro_trocado	15	self.velocity = { x = 0, y = 0 }	self.velcoity = { x = 0, y = 0 }
+c7_typical_script__membro_trocado__009	tests/spike/c7_typical_script.luau	membro_trocado	16	self.inventory = {}	self.invnetory = {}
+c7_typical_script__membro_trocado__010	tests/spike/c7_typical_script.luau	membro_trocado	17	self.flags = {}	self.falgs = {}
+c7_typical_script__membro_trocado__011	tests/spike/c7_typical_script.luau	membro_trocado	21	function Player:tick(dt: number)	function Player:tcik(dt: number)
+c7_typical_script__membro_trocado__012	tests/spike/c7_typical_script.luau	membro_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	self.postiion.x = self.position.x + self.velocity.x * dt
+c7_typical_script__membro_trocado__013	tests/spike/c7_typical_script.luau	membro_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	self.position.xx = self.position.x + self.velocity.x * dt
+c7_typical_script__membro_trocado__014	tests/spike/c7_typical_script.luau	membro_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	self.position.x = self.postiion.x + self.velocity.x * dt
+c7_typical_script__membro_trocado__015	tests/spike/c7_typical_script.luau	membro_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	self.position.x = self.position.xx + self.velocity.x * dt
+c7_typical_script__membro_trocado__016	tests/spike/c7_typical_script.luau	membro_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	self.position.x = self.position.x + self.velcoity.x * dt
+c7_typical_script__membro_trocado__017	tests/spike/c7_typical_script.luau	membro_trocado	22	self.position.x = self.position.x + self.velocity.x * dt	self.position.x = self.position.x + self.velocity.xx * dt
+c7_typical_script__membro_trocado__018	tests/spike/c7_typical_script.luau	membro_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	self.postiion.y = self.position.y + self.velocity.y * dt
+c7_typical_script__membro_trocado__019	tests/spike/c7_typical_script.luau	membro_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	self.position.yy = self.position.y + self.velocity.y * dt
+c7_typical_script__membro_trocado__020	tests/spike/c7_typical_script.luau	membro_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	self.position.y = self.postiion.y + self.velocity.y * dt
+c7_typical_script__membro_trocado__021	tests/spike/c7_typical_script.luau	membro_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	self.position.y = self.position.yy + self.velocity.y * dt
+c7_typical_script__membro_trocado__022	tests/spike/c7_typical_script.luau	membro_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	self.position.y = self.position.y + self.velcoity.y * dt
+c7_typical_script__membro_trocado__023	tests/spike/c7_typical_script.luau	membro_trocado	23	self.position.y = self.position.y + self.velocity.y * dt	self.position.y = self.position.y + self.velocity.yy * dt
+c7_typical_script__membro_trocado__024	tests/spike/c7_typical_script.luau	membro_trocado	25	if self.state == "idle" then	if self.satte == "idle" then
+c7_typical_script__membro_trocado__025	tests/spike/c7_typical_script.luau	membro_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.bas(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__membro_trocado__026	tests/spike/c7_typical_script.luau	membro_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velcoity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__membro_trocado__027	tests/spike/c7_typical_script.luau	membro_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.xx) > 0.1 or math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__membro_trocado__028	tests/spike/c7_typical_script.luau	membro_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or math.bas(self.velocity.y) > 0.1 then
+c7_typical_script__membro_trocado__029	tests/spike/c7_typical_script.luau	membro_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velcoity.y) > 0.1 then
+c7_typical_script__membro_trocado__030	tests/spike/c7_typical_script.luau	membro_trocado	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.yy) > 0.1 then
+c7_typical_script__membro_trocado__031	tests/spike/c7_typical_script.luau	membro_trocado	27	self:transition("walk")	self:tranistion("walk")
+c7_typical_script__membro_trocado__032	tests/spike/c7_typical_script.luau	membro_trocado	29	elseif self.state == "walk" then	elseif self.satte == "walk" then
+c7_typical_script__membro_trocado__033	tests/spike/c7_typical_script.luau	membro_trocado	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.srqt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__membro_trocado__034	tests/spike/c7_typical_script.luau	membro_trocado	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velcoity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__membro_trocado__035	tests/spike/c7_typical_script.luau	membro_trocado	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.xx ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__membro_trocado__036	tests/spike/c7_typical_script.luau	membro_trocado	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.x ^ 2 + self.velcoity.y ^ 2)
+c7_typical_script__membro_trocado__037	tests/spike/c7_typical_script.luau	membro_trocado	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.yy ^ 2)
+c7_typical_script__membro_trocado__038	tests/spike/c7_typical_script.luau	membro_trocado	32	self:transition("idle")	self:tranistion("idle")
+c7_typical_script__membro_trocado__039	tests/spike/c7_typical_script.luau	membro_trocado	34	self:transition("run")	self:tranistion("run")
+c7_typical_script__membro_trocado__040	tests/spike/c7_typical_script.luau	membro_trocado	36	elseif self.state == "run" then	elseif self.satte == "run" then
+c7_typical_script__membro_trocado__041	tests/spike/c7_typical_script.luau	membro_trocado	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.srqt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__membro_trocado__042	tests/spike/c7_typical_script.luau	membro_trocado	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velcoity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__membro_trocado__043	tests/spike/c7_typical_script.luau	membro_trocado	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.xx ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__membro_trocado__044	tests/spike/c7_typical_script.luau	membro_trocado	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.x ^ 2 + self.velcoity.y ^ 2)
+c7_typical_script__membro_trocado__045	tests/spike/c7_typical_script.luau	membro_trocado	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.yy ^ 2)
+c7_typical_script__membro_trocado__046	tests/spike/c7_typical_script.luau	membro_trocado	39	self:transition("walk")	self:tranistion("walk")
+c7_typical_script__membro_trocado__047	tests/spike/c7_typical_script.luau	membro_trocado	44	function Player:transition(to: string)	function Player:tranistion(to: string)
+c7_typical_script__membro_trocado__048	tests/spike/c7_typical_script.luau	membro_trocado	45	self.state = to	self.satte = to
+c7_typical_script__membro_trocado__049	tests/spike/c7_typical_script.luau	membro_trocado	48	function Player:on_damage(amount: number, source: string)	function Player:on_admage(amount: number, source: string)
+c7_typical_script__membro_trocado__050	tests/spike/c7_typical_script.luau	membro_trocado	49	self.hp = math.max(0, self.hp - amount)	self.ph = math.max(0, self.hp - amount)
+c7_typical_script__membro_trocado__051	tests/spike/c7_typical_script.luau	membro_trocado	49	self.hp = math.max(0, self.hp - amount)	self.hp = math.amx(0, self.hp - amount)
+c7_typical_script__membro_trocado__052	tests/spike/c7_typical_script.luau	membro_trocado	49	self.hp = math.max(0, self.hp - amount)	self.hp = math.max(0, self.ph - amount)
+c7_typical_script__membro_trocado__053	tests/spike/c7_typical_script.luau	membro_trocado	50	if self.hp == 0 then	if self.ph == 0 then
+c7_typical_script__membro_trocado__054	tests/spike/c7_typical_script.luau	membro_trocado	51	self:transition("dead")	self:tranistion("dead")
+c7_typical_script__membro_trocado__055	tests/spike/c7_typical_script.luau	membro_trocado	55	function Player:on_heal(amount: number)	function Player:onh_eal(amount: number)
+c7_typical_script__membro_trocado__056	tests/spike/c7_typical_script.luau	membro_trocado	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.ph = math.min(self.max_hp, self.hp + amount)
+c7_typical_script__membro_trocado__057	tests/spike/c7_typical_script.luau	membro_trocado	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math.imn(self.max_hp, self.hp + amount)
+c7_typical_script__membro_trocado__058	tests/spike/c7_typical_script.luau	membro_trocado	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math.min(self.ma_xhp, self.hp + amount)
+c7_typical_script__membro_trocado__059	tests/spike/c7_typical_script.luau	membro_trocado	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math.min(self.max_hp, self.ph + amount)
+c7_typical_script__membro_trocado__060	tests/spike/c7_typical_script.luau	membro_trocado	59	function Player:set_flag(name: string, value: boolean)	function Player:setf_lag(name: string, value: boolean)
+c7_typical_script__membro_trocado__061	tests/spike/c7_typical_script.luau	membro_trocado	60	self.flags[name] = value	self.falgs[name] = value
+c7_typical_script__membro_trocado__062	tests/spike/c7_typical_script.luau	membro_trocado	63	function Player:has_flag(name: string): boolean	function Player:hasf_lag(name: string): boolean
+c7_typical_script__membro_trocado__063	tests/spike/c7_typical_script.luau	membro_trocado	64	return self.flags[name] == true	return self.falgs[name] == true
+c7_typical_script__membro_trocado__064	tests/spike/c7_typical_script.luau	membro_trocado	69	function Dialogue.run(player, npc_id: string)	function Dialogue.urn(player, npc_id: string)
+c7_typical_script__membro_trocado__065	tests/spike/c7_typical_script.luau	membro_trocado	71	if player:has_flag("met_elder") then	if player:hasf_lag("met_elder") then
+c7_typical_script__membro_trocado__066	tests/spike/c7_typical_script.luau	membro_trocado	74	player:set_flag("met_elder", true)	player:setf_lag("met_elder", true)
+c7_typical_script__membro_trocado__067	tests/spike/c7_typical_script.luau	membro_trocado	78	if #player.inventory > 5 then	if #player.invnetory > 5 then
+c7_typical_script__membro_trocado__068	tests/spike/c7_typical_script.luau	membro_trocado	89	function Animation.tween(start: number, finish: number, t: number): number	function Animation.tewen(start: number, finish: number, t: number): number
+c7_typical_script__membro_trocado__069	tests/spike/c7_typical_script.luau	membro_trocado	90	local clamped = math.clamp(t, 0, 1)	local clamped = math.calmp(t, 0, 1)
+c7_typical_script__membro_trocado__070	tests/spike/c7_typical_script.luau	membro_trocado	94	function Animation.ease_out(t: number): number	function Animation.eas_eout(t: number): number
+c7_typical_script__membro_trocado__071	tests/spike/c7_typical_script.luau	membro_trocado	95	local clamped = math.clamp(t, 0, 1)	local clamped = math.calmp(t, 0, 1)
+c7_typical_script__membro_trocado__072	tests/spike/c7_typical_script.luau	membro_trocado	101	player:on_damage(payload.amount, payload.source)	player:on_admage(payload.amount, payload.source)
+c7_typical_script__membro_trocado__073	tests/spike/c7_typical_script.luau	membro_trocado	101	player:on_damage(payload.amount, payload.source)	player:on_damage(payload.amuont, payload.source)
+c7_typical_script__membro_trocado__074	tests/spike/c7_typical_script.luau	membro_trocado	101	player:on_damage(payload.amount, payload.source)	player:on_damage(payload.amount, payload.soruce)
+c7_typical_script__membro_trocado__075	tests/spike/c7_typical_script.luau	membro_trocado	103	player:on_heal(payload.amount)	player:onh_eal(payload.amount)
+c7_typical_script__membro_trocado__076	tests/spike/c7_typical_script.luau	membro_trocado	103	player:on_heal(payload.amount)	player:on_heal(payload.amuont)
+c7_typical_script__membro_trocado__077	tests/spike/c7_typical_script.luau	membro_trocado	105	player.velocity.x = payload.x	player.velcoity.x = payload.x
+c7_typical_script__membro_trocado__078	tests/spike/c7_typical_script.luau	membro_trocado	105	player.velocity.x = payload.x	player.velocity.xx = payload.x
+c7_typical_script__membro_trocado__079	tests/spike/c7_typical_script.luau	membro_trocado	105	player.velocity.x = payload.x	player.velocity.x = payload.xx
+c7_typical_script__membro_trocado__080	tests/spike/c7_typical_script.luau	membro_trocado	106	player.velocity.y = payload.y	player.velcoity.y = payload.y
+c7_typical_script__membro_trocado__081	tests/spike/c7_typical_script.luau	membro_trocado	106	player.velocity.y = payload.y	player.velocity.yy = payload.y
+c7_typical_script__membro_trocado__082	tests/spike/c7_typical_script.luau	membro_trocado	106	player.velocity.y = payload.y	player.velocity.y = payload.yy
+c7_typical_script__membro_trocado__083	tests/spike/c7_typical_script.luau	membro_trocado	108	return Dialogue.run(player, payload.npc_id)	return Dialogue.urn(player, payload.npc_id)
+c7_typical_script__membro_trocado__084	tests/spike/c7_typical_script.luau	membro_trocado	108	return Dialogue.run(player, payload.npc_id)	return Dialogue.run(player, payload.np_cid)
+c7_typical_script__dois_pontos_por_ponto__001	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	21	function Player:tick(dt: number)	function Player.tick(dt: number)
+c7_typical_script__dois_pontos_por_ponto__002	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	27	self:transition("walk")	self.transition("walk")
+c7_typical_script__dois_pontos_por_ponto__003	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	32	self:transition("idle")	self.transition("idle")
+c7_typical_script__dois_pontos_por_ponto__004	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	34	self:transition("run")	self.transition("run")
+c7_typical_script__dois_pontos_por_ponto__005	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	39	self:transition("walk")	self.transition("walk")
+c7_typical_script__dois_pontos_por_ponto__006	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	44	function Player:transition(to: string)	function Player.transition(to: string)
+c7_typical_script__dois_pontos_por_ponto__007	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	48	function Player:on_damage(amount: number, source: string)	function Player.on_damage(amount: number, source: string)
+c7_typical_script__dois_pontos_por_ponto__008	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	51	self:transition("dead")	self.transition("dead")
+c7_typical_script__dois_pontos_por_ponto__009	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	55	function Player:on_heal(amount: number)	function Player.on_heal(amount: number)
+c7_typical_script__dois_pontos_por_ponto__010	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	59	function Player:set_flag(name: string, value: boolean)	function Player.set_flag(name: string, value: boolean)
+c7_typical_script__dois_pontos_por_ponto__011	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	63	function Player:has_flag(name: string): boolean	function Player.has_flag(name: string): boolean
+c7_typical_script__dois_pontos_por_ponto__012	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	71	if player:has_flag("met_elder") then	if player.has_flag("met_elder") then
+c7_typical_script__dois_pontos_por_ponto__013	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	74	player:set_flag("met_elder", true)	player.set_flag("met_elder", true)
+c7_typical_script__dois_pontos_por_ponto__014	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	101	player:on_damage(payload.amount, payload.source)	player.on_damage(payload.amount, payload.source)
+c7_typical_script__dois_pontos_por_ponto__015	tests/spike/c7_typical_script.luau	dois_pontos_por_ponto	103	player:on_heal(payload.amount)	player.on_heal(payload.amount)
+c7_typical_script__ponto_por_dois_pontos__001	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	8	function Player.new(name: string, hp: number)	function Player:new(name: string, hp: number)
+c7_typical_script__ponto_por_dois_pontos__002	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math:abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__ponto_por_dois_pontos__003	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or math:abs(self.velocity.y) > 0.1 then
+c7_typical_script__ponto_por_dois_pontos__004	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math:sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__ponto_por_dois_pontos__005	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math:sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)
+c7_typical_script__ponto_por_dois_pontos__006	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	49	self.hp = math.max(0, self.hp - amount)	self.hp = math:max(0, self.hp - amount)
+c7_typical_script__ponto_por_dois_pontos__007	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math:min(self.max_hp, self.hp + amount)
+c7_typical_script__ponto_por_dois_pontos__008	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	69	function Dialogue.run(player, npc_id: string)	function Dialogue:run(player, npc_id: string)
+c7_typical_script__ponto_por_dois_pontos__009	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	89	function Animation.tween(start: number, finish: number, t: number): number	function Animation:tween(start: number, finish: number, t: number): number
+c7_typical_script__ponto_por_dois_pontos__010	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	90	local clamped = math.clamp(t, 0, 1)	local clamped = math:clamp(t, 0, 1)
+c7_typical_script__ponto_por_dois_pontos__011	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	94	function Animation.ease_out(t: number): number	function Animation:ease_out(t: number): number
+c7_typical_script__ponto_por_dois_pontos__012	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	95	local clamped = math.clamp(t, 0, 1)	local clamped = math:clamp(t, 0, 1)
+c7_typical_script__ponto_por_dois_pontos__013	tests/spike/c7_typical_script.luau	ponto_por_dois_pontos	108	return Dialogue.run(player, payload.npc_id)	return Dialogue:run(player, payload.npc_id)
+c7_typical_script__argumento_a_menos__001	tests/spike/c7_typical_script.luau	argumento_a_menos	9	local self = setmetatable({}, Player)	local self = setmetatable({})
+c7_typical_script__argumento_a_menos__002	tests/spike/c7_typical_script.luau	argumento_a_menos	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs() > 0.1 or math.abs(self.velocity.y) > 0.1 then
+c7_typical_script__argumento_a_menos__003	tests/spike/c7_typical_script.luau	argumento_a_menos	26	if math.abs(self.velocity.x) > 0.1 or math.abs(self.velocity.y) > 0.1 then	if math.abs(self.velocity.x) > 0.1 or math.abs() > 0.1 then
+c7_typical_script__argumento_a_menos__004	tests/spike/c7_typical_script.luau	argumento_a_menos	27	self:transition("walk")	self:transition()
+c7_typical_script__argumento_a_menos__005	tests/spike/c7_typical_script.luau	argumento_a_menos	30	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt()
+c7_typical_script__argumento_a_menos__006	tests/spike/c7_typical_script.luau	argumento_a_menos	32	self:transition("idle")	self:transition()
+c7_typical_script__argumento_a_menos__007	tests/spike/c7_typical_script.luau	argumento_a_menos	34	self:transition("run")	self:transition()
+c7_typical_script__argumento_a_menos__008	tests/spike/c7_typical_script.luau	argumento_a_menos	37	local speed = math.sqrt(self.velocity.x ^ 2 + self.velocity.y ^ 2)	local speed = math.sqrt()
+c7_typical_script__argumento_a_menos__009	tests/spike/c7_typical_script.luau	argumento_a_menos	39	self:transition("walk")	self:transition()
+c7_typical_script__argumento_a_menos__010	tests/spike/c7_typical_script.luau	argumento_a_menos	49	self.hp = math.max(0, self.hp - amount)	self.hp = math.max(0)
+c7_typical_script__argumento_a_menos__011	tests/spike/c7_typical_script.luau	argumento_a_menos	51	self:transition("dead")	self:transition()
+c7_typical_script__argumento_a_menos__012	tests/spike/c7_typical_script.luau	argumento_a_menos	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math.min(self.max_hp)
+c7_typical_script__argumento_a_menos__013	tests/spike/c7_typical_script.luau	argumento_a_menos	71	if player:has_flag("met_elder") then	if player:has_flag() then
+c7_typical_script__argumento_a_menos__014	tests/spike/c7_typical_script.luau	argumento_a_menos	74	player:set_flag("met_elder", true)	player:set_flag("met_elder")
+c7_typical_script__argumento_a_menos__015	tests/spike/c7_typical_script.luau	argumento_a_menos	90	local clamped = math.clamp(t, 0, 1)	local clamped = math.clamp(t, 0)
+c7_typical_script__argumento_a_menos__016	tests/spike/c7_typical_script.luau	argumento_a_menos	95	local clamped = math.clamp(t, 0, 1)	local clamped = math.clamp(t, 0)
+c7_typical_script__argumento_a_menos__017	tests/spike/c7_typical_script.luau	argumento_a_menos	101	player:on_damage(payload.amount, payload.source)	player:on_damage(payload.amount)
+c7_typical_script__argumento_a_menos__018	tests/spike/c7_typical_script.luau	argumento_a_menos	103	player:on_heal(payload.amount)	player:on_heal()
+c7_typical_script__argumento_a_menos__019	tests/spike/c7_typical_script.luau	argumento_a_menos	108	return Dialogue.run(player, payload.npc_id)	return Dialogue.run(player)
+c7_typical_script__argumentos_trocados__001	tests/spike/c7_typical_script.luau	argumentos_trocados	9	local self = setmetatable({}, Player)	local self = setmetatable(Player, {})
+c7_typical_script__argumentos_trocados__002	tests/spike/c7_typical_script.luau	argumentos_trocados	49	self.hp = math.max(0, self.hp - amount)	self.hp = math.max(self.hp - amount, 0)
+c7_typical_script__argumentos_trocados__003	tests/spike/c7_typical_script.luau	argumentos_trocados	56	self.hp = math.min(self.max_hp, self.hp + amount)	self.hp = math.min(self.hp + amount, self.max_hp)
+c7_typical_script__argumentos_trocados__004	tests/spike/c7_typical_script.luau	argumentos_trocados	74	player:set_flag("met_elder", true)	player:set_flag(true, "met_elder")
+c7_typical_script__argumentos_trocados__005	tests/spike/c7_typical_script.luau	argumentos_trocados	90	local clamped = math.clamp(t, 0, 1)	local clamped = math.clamp(0, t, 1)
+c7_typical_script__argumentos_trocados__006	tests/spike/c7_typical_script.luau	argumentos_trocados	95	local clamped = math.clamp(t, 0, 1)	local clamped = math.clamp(0, t, 1)
+c7_typical_script__argumentos_trocados__007	tests/spike/c7_typical_script.luau	argumentos_trocados	101	player:on_damage(payload.amount, payload.source)	player:on_damage(payload.source, payload.amount)
+c7_typical_script__argumentos_trocados__008	tests/spike/c7_typical_script.luau	argumentos_trocados	108	return Dialogue.run(player, payload.npc_id)	return Dialogue.run(payload.npc_id, player)
+c7_typical_script__virgula_em_falta__001	tests/spike/c7_typical_script.luau	virgula_em_falta	14	self.position = { x = 0, y = 0 }	self.position = { x = 0 y = 0 }
+c7_typical_script__virgula_em_falta__002	tests/spike/c7_typical_script.luau	virgula_em_falta	15	self.velocity = { x = 0, y = 0 }	self.velocity = { x = 0 y = 0 }
+c7_typical_script__virgula_em_falta__003	tests/spike/c7_typical_script.luau	virgula_em_falta	114	Player = Player,	Player = Player
+c7_typical_script__virgula_em_falta__004	tests/spike/c7_typical_script.luau	virgula_em_falta	115	Dialogue = Dialogue,	Dialogue = Dialogue
+c7_typical_script__virgula_em_falta__005	tests/spike/c7_typical_script.luau	virgula_em_falta	116	Animation = Animation,	Animation = Animation
+c7_typical_script__inicializacao_esquecida__001	tests/spike/c7_typical_script.luau	inicializacao_esquecida	6	Player.__index = Player	
+c7_typical_script__inicializacao_esquecida__002	tests/spike/c7_typical_script.luau	inicializacao_esquecida	10	self.name = name	
+c7_typical_script__inicializacao_esquecida__003	tests/spike/c7_typical_script.luau	inicializacao_esquecida	11	self.hp = hp	
+c7_typical_script__inicializacao_esquecida__004	tests/spike/c7_typical_script.luau	inicializacao_esquecida	12	self.max_hp = hp	
+c7_typical_script__inicializacao_esquecida__005	tests/spike/c7_typical_script.luau	inicializacao_esquecida	13	self.state = "idle"	
+c7_typical_script__inicializacao_esquecida__006	tests/spike/c7_typical_script.luau	inicializacao_esquecida	14	self.position = { x = 0, y = 0 }	
+c7_typical_script__inicializacao_esquecida__007	tests/spike/c7_typical_script.luau	inicializacao_esquecida	15	self.velocity = { x = 0, y = 0 }	
+c7_typical_script__inicializacao_esquecida__008	tests/spike/c7_typical_script.luau	inicializacao_esquecida	16	self.inventory = {}	
+c7_typical_script__inicializacao_esquecida__009	tests/spike/c7_typical_script.luau	inicializacao_esquecida	17	self.flags = {}	
+c7_typical_script__inicializacao_esquecida__010	tests/spike/c7_typical_script.luau	inicializacao_esquecida	22	self.position.x = self.position.x + self.velocity.x * dt	
+c7_typical_script__inicializacao_esquecida__011	tests/spike/c7_typical_script.luau	inicializacao_esquecida	23	self.position.y = self.position.y + self.velocity.y * dt	
+c7_typical_script__inicializacao_esquecida__012	tests/spike/c7_typical_script.luau	inicializacao_esquecida	45	self.state = to	
+c7_typical_script__inicializacao_esquecida__013	tests/spike/c7_typical_script.luau	inicializacao_esquecida	49	self.hp = math.max(0, self.hp - amount)	
+c7_typical_script__inicializacao_esquecida__014	tests/spike/c7_typical_script.luau	inicializacao_esquecida	56	self.hp = math.min(self.max_hp, self.hp + amount)	
+c7_typical_script__inicializacao_esquecida__015	tests/spike/c7_typical_script.luau	inicializacao_esquecida	105	player.velocity.x = payload.x	
+c7_typical_script__inicializacao_esquecida__016	tests/spike/c7_typical_script.luau	inicializacao_esquecida	106	player.velocity.y = payload.y	
+coro_timing__base__000	tests/spike/coro_timing.luau	base	0		
+coro_timing__sem_end__001	tests/spike/coro_timing.luau	sem_end	9	end	
+coro_timing__sem_fecha_parenteses__001	tests/spike/coro_timing.luau	sem_fecha_parenteses	7	function task_body(seconds: number)	function task_body(seconds: number
+coro_timing__sem_fecha_parenteses__002	tests/spike/coro_timing.luau	sem_fecha_parenteses	8	ph2d.wait(seconds)	ph2d.wait(seconds
+coro_timing__palavra_chave_trocada__001	tests/spike/coro_timing.luau	palavra_chave_trocada	7	function task_body(seconds: number)	funtcion task_body(seconds: number)
+coro_timing__palavra_chave_trocada__002	tests/spike/coro_timing.luau	palavra_chave_trocada	9	end	ned
+coro_timing__identificador_trocado__001	tests/spike/coro_timing.luau	identificador_trocado	7	function task_body(seconds: number)	function tas_kbody(seconds: number)
+coro_timing__identificador_trocado__002	tests/spike/coro_timing.luau	identificador_trocado	7	function task_body(seconds: number)	function task_body(seocnds: number)
+coro_timing__identificador_trocado__003	tests/spike/coro_timing.luau	identificador_trocado	8	ph2d.wait(seconds)	p2hd.wait(seconds)
+coro_timing__identificador_trocado__004	tests/spike/coro_timing.luau	identificador_trocado	8	ph2d.wait(seconds)	ph2d.wait(seocnds)
+coro_timing__membro_trocado__001	tests/spike/coro_timing.luau	membro_trocado	8	ph2d.wait(seconds)	ph2d.wiat(seconds)
+coro_timing__ponto_por_dois_pontos__001	tests/spike/coro_timing.luau	ponto_por_dois_pontos	8	ph2d.wait(seconds)	ph2d:wait(seconds)
+coro_timing__argumento_a_menos__001	tests/spike/coro_timing.luau	argumento_a_menos	8	ph2d.wait(seconds)	ph2d.wait()
+gc_stress__base__000	tests/spike/gc_stress.luau	base	0		
+gc_stress__atribuicao_por_igual__001	tests/spike/gc_stress.luau	atribuicao_por_igual	6	local persistent = table.create(10000)	local persistent == table.create(10000)
+gc_stress__atribuicao_por_igual__002	tests/spike/gc_stress.luau	atribuicao_por_igual	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] == { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }
+gc_stress__atribuicao_por_igual__003	tests/spike/gc_stress.luau	atribuicao_por_igual	11	local coroutines = table.create(1000)	local coroutines == table.create(1000)
+gc_stress__atribuicao_por_igual__004	tests/spike/gc_stress.luau	atribuicao_por_igual	13	coroutines[i] = coroutine.create(function()	coroutines[i] == coroutine.create(function()
+gc_stress__atribuicao_por_igual__005	tests/spike/gc_stress.luau	atribuicao_por_igual	22	local local_garbage = {}	local local_garbage == {}
+gc_stress__atribuicao_por_igual__006	tests/spike/gc_stress.luau	atribuicao_por_igual	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j] == { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }
+gc_stress__concat_com_mais__001	tests/spike/gc_stress.luau	concat_com_mais	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" + i }
+gc_stress__sem_end__001	tests/spike/gc_stress.luau	sem_end	9	end	
+gc_stress__sem_end__002	tests/spike/gc_stress.luau	sem_end	15	end)	)
+gc_stress__sem_end__003	tests/spike/gc_stress.luau	sem_end	18	end	
+gc_stress__sem_end__004	tests/spike/gc_stress.luau	sem_end	25	end	
+gc_stress__sem_end__005	tests/spike/gc_stress.luau	sem_end	27	end	
+gc_stress__sem_do__001	tests/spike/gc_stress.luau	sem_do	7	for i = 1, 10000 do	for i = 1, 10000
+gc_stress__sem_do__002	tests/spike/gc_stress.luau	sem_do	12	for i = 1, 1000 do	for i = 1, 1000
+gc_stress__sem_do__003	tests/spike/gc_stress.luau	sem_do	23	for j = 1, 50 do	for j = 1, 50
+gc_stress__sem_fecha_parenteses__001	tests/spike/gc_stress.luau	sem_fecha_parenteses	6	local persistent = table.create(10000)	local persistent = table.create(10000
+gc_stress__sem_fecha_parenteses__002	tests/spike/gc_stress.luau	sem_fecha_parenteses	11	local coroutines = table.create(1000)	local coroutines = table.create(1000
+gc_stress__sem_fecha_parenteses__003	tests/spike/gc_stress.luau	sem_fecha_parenteses	13	coroutines[i] = coroutine.create(function()	coroutines[i] = coroutine.create(function(
+gc_stress__sem_fecha_parenteses__004	tests/spike/gc_stress.luau	sem_fecha_parenteses	14	ph2d.wait(1000.0) -- effectively never resumes during test	ph2d.wait(1000.0 -- effectively never resumes during test
+gc_stress__sem_fecha_parenteses__005	tests/spike/gc_stress.luau	sem_fecha_parenteses	15	end)	end
+gc_stress__sem_fecha_parenteses__006	tests/spike/gc_stress.luau	sem_fecha_parenteses	17	coroutine.resume(coroutines[i])	coroutine.resume(coroutines[i]
+gc_stress__sem_fecha_parenteses__007	tests/spike/gc_stress.luau	sem_fecha_parenteses	21	function tick_alloc()	function tick_alloc(
+gc_stress__sem_fecha_chave__001	tests/spike/gc_stress.luau	sem_fecha_chave	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }
+gc_stress__sem_fecha_chave__002	tests/spike/gc_stress.luau	sem_fecha_chave	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i
+gc_stress__sem_fecha_chave__003	tests/spike/gc_stress.luau	sem_fecha_chave	13	coroutines[i] = coroutine.create(function()	coroutines[i = coroutine.create(function()
+gc_stress__sem_fecha_chave__004	tests/spike/gc_stress.luau	sem_fecha_chave	17	coroutine.resume(coroutines[i])	coroutine.resume(coroutines[i)
+gc_stress__sem_fecha_chave__005	tests/spike/gc_stress.luau	sem_fecha_chave	22	local local_garbage = {}	local local_garbage = {
+gc_stress__sem_fecha_chave__006	tests/spike/gc_stress.luau	sem_fecha_chave	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }
+gc_stress__sem_fecha_chave__007	tests/spike/gc_stress.luau	sem_fecha_chave	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3  }
+gc_stress__sem_fecha_chave__008	tests/spike/gc_stress.luau	sem_fecha_chave	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 }
+gc_stress__sem_fecha_aspas__001	tests/spike/gc_stress.luau	sem_fecha_aspas	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_ .. i }
+gc_stress__sem_fecha_aspas__002	tests/spike/gc_stress.luau	sem_fecha_aspas	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j] = { tag = "ephemeral, n = j, tbl = { 1, 2, 3 } }
+gc_stress__palavra_chave_trocada__001	tests/spike/gc_stress.luau	palavra_chave_trocada	6	local persistent = table.create(10000)	lcoal persistent = table.create(10000)
+gc_stress__palavra_chave_trocada__002	tests/spike/gc_stress.luau	palavra_chave_trocada	7	for i = 1, 10000 do	ofr i = 1, 10000 do
+gc_stress__palavra_chave_trocada__003	tests/spike/gc_stress.luau	palavra_chave_trocada	7	for i = 1, 10000 do	for i = 1, 10000 od
+gc_stress__palavra_chave_trocada__004	tests/spike/gc_stress.luau	palavra_chave_trocada	9	end	ned
+gc_stress__palavra_chave_trocada__005	tests/spike/gc_stress.luau	palavra_chave_trocada	11	local coroutines = table.create(1000)	lcoal coroutines = table.create(1000)
+gc_stress__palavra_chave_trocada__006	tests/spike/gc_stress.luau	palavra_chave_trocada	12	for i = 1, 1000 do	ofr i = 1, 1000 do
+gc_stress__palavra_chave_trocada__007	tests/spike/gc_stress.luau	palavra_chave_trocada	12	for i = 1, 1000 do	for i = 1, 1000 od
+gc_stress__palavra_chave_trocada__008	tests/spike/gc_stress.luau	palavra_chave_trocada	13	coroutines[i] = coroutine.create(function()	coroutines[i] = coroutine.create(funtcion()
+gc_stress__palavra_chave_trocada__009	tests/spike/gc_stress.luau	palavra_chave_trocada	15	end)	ned)
+gc_stress__palavra_chave_trocada__010	tests/spike/gc_stress.luau	palavra_chave_trocada	18	end	ned
+gc_stress__palavra_chave_trocada__011	tests/spike/gc_stress.luau	palavra_chave_trocada	21	function tick_alloc()	funtcion tick_alloc()
+gc_stress__palavra_chave_trocada__012	tests/spike/gc_stress.luau	palavra_chave_trocada	22	local local_garbage = {}	lcoal local_garbage = {}
+gc_stress__palavra_chave_trocada__013	tests/spike/gc_stress.luau	palavra_chave_trocada	23	for j = 1, 50 do	ofr j = 1, 50 do
+gc_stress__palavra_chave_trocada__014	tests/spike/gc_stress.luau	palavra_chave_trocada	23	for j = 1, 50 do	for j = 1, 50 od
+gc_stress__palavra_chave_trocada__015	tests/spike/gc_stress.luau	palavra_chave_trocada	25	end	ned
+gc_stress__palavra_chave_trocada__016	tests/spike/gc_stress.luau	palavra_chave_trocada	26	return #local_garbage	reutrn #local_garbage
+gc_stress__palavra_chave_trocada__017	tests/spike/gc_stress.luau	palavra_chave_trocada	27	end	ned
+gc_stress__identificador_trocado__001	tests/spike/gc_stress.luau	identificador_trocado	6	local persistent = table.create(10000)	local perssitent = table.create(10000)
+gc_stress__identificador_trocado__002	tests/spike/gc_stress.luau	identificador_trocado	6	local persistent = table.create(10000)	local persistent = tbale.create(10000)
+gc_stress__identificador_trocado__003	tests/spike/gc_stress.luau	identificador_trocado	7	for i = 1, 10000 do	for ii = 1, 10000 do
+gc_stress__identificador_trocado__004	tests/spike/gc_stress.luau	identificador_trocado	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	perssitent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }
+gc_stress__identificador_trocado__005	tests/spike/gc_stress.luau	identificador_trocado	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[ii] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }
+gc_stress__identificador_trocado__006	tests/spike/gc_stress.luau	identificador_trocado	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = ii, y = i * 2, z = i * 3, name = "entity_" .. i }
+gc_stress__identificador_trocado__007	tests/spike/gc_stress.luau	identificador_trocado	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = i, y = ii * 2, z = i * 3, name = "entity_" .. i }
+gc_stress__identificador_trocado__008	tests/spike/gc_stress.luau	identificador_trocado	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = i, y = i * 2, z = ii * 3, name = "entity_" .. i }
+gc_stress__identificador_trocado__009	tests/spike/gc_stress.luau	identificador_trocado	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. ii }
+gc_stress__identificador_trocado__010	tests/spike/gc_stress.luau	identificador_trocado	11	local coroutines = table.create(1000)	local corotuines = table.create(1000)
+gc_stress__identificador_trocado__011	tests/spike/gc_stress.luau	identificador_trocado	11	local coroutines = table.create(1000)	local coroutines = tbale.create(1000)
+gc_stress__identificador_trocado__012	tests/spike/gc_stress.luau	identificador_trocado	12	for i = 1, 1000 do	for ii = 1, 1000 do
+gc_stress__identificador_trocado__013	tests/spike/gc_stress.luau	identificador_trocado	13	coroutines[i] = coroutine.create(function()	corotuines[i] = coroutine.create(function()
+gc_stress__identificador_trocado__014	tests/spike/gc_stress.luau	identificador_trocado	13	coroutines[i] = coroutine.create(function()	coroutines[ii] = coroutine.create(function()
+gc_stress__identificador_trocado__015	tests/spike/gc_stress.luau	identificador_trocado	13	coroutines[i] = coroutine.create(function()	coroutines[i] = coruotine.create(function()
+gc_stress__identificador_trocado__016	tests/spike/gc_stress.luau	identificador_trocado	14	ph2d.wait(1000.0) -- effectively never resumes during test	p2hd.wait(1000.0) -- effectively never resumes during test
+gc_stress__identificador_trocado__017	tests/spike/gc_stress.luau	identificador_trocado	17	coroutine.resume(coroutines[i])	coruotine.resume(coroutines[i])
+gc_stress__identificador_trocado__018	tests/spike/gc_stress.luau	identificador_trocado	17	coroutine.resume(coroutines[i])	coroutine.resume(corotuines[i])
+gc_stress__identificador_trocado__019	tests/spike/gc_stress.luau	identificador_trocado	17	coroutine.resume(coroutines[i])	coroutine.resume(coroutines[ii])
+gc_stress__identificador_trocado__020	tests/spike/gc_stress.luau	identificador_trocado	21	function tick_alloc()	function ticka_lloc()
+gc_stress__identificador_trocado__021	tests/spike/gc_stress.luau	identificador_trocado	22	local local_garbage = {}	local localg_arbage = {}
+gc_stress__identificador_trocado__022	tests/spike/gc_stress.luau	identificador_trocado	23	for j = 1, 50 do	for jj = 1, 50 do
+gc_stress__identificador_trocado__023	tests/spike/gc_stress.luau	identificador_trocado	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	localg_arbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }
+gc_stress__identificador_trocado__024	tests/spike/gc_stress.luau	identificador_trocado	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[jj] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }
+gc_stress__identificador_trocado__025	tests/spike/gc_stress.luau	identificador_trocado	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j] = { tag = "ephemeral", n = jj, tbl = { 1, 2, 3 } }
+gc_stress__identificador_trocado__026	tests/spike/gc_stress.luau	identificador_trocado	26	return #local_garbage	return #localg_arbage
+gc_stress__membro_trocado__001	tests/spike/gc_stress.luau	membro_trocado	6	local persistent = table.create(10000)	local persistent = table.craete(10000)
+gc_stress__membro_trocado__002	tests/spike/gc_stress.luau	membro_trocado	11	local coroutines = table.create(1000)	local coroutines = table.craete(1000)
+gc_stress__membro_trocado__003	tests/spike/gc_stress.luau	membro_trocado	13	coroutines[i] = coroutine.create(function()	coroutines[i] = coroutine.craete(function()
+gc_stress__membro_trocado__004	tests/spike/gc_stress.luau	membro_trocado	14	ph2d.wait(1000.0) -- effectively never resumes during test	ph2d.wiat(1000.0) -- effectively never resumes during test
+gc_stress__membro_trocado__005	tests/spike/gc_stress.luau	membro_trocado	17	coroutine.resume(coroutines[i])	coroutine.reusme(coroutines[i])
+gc_stress__ponto_por_dois_pontos__001	tests/spike/gc_stress.luau	ponto_por_dois_pontos	6	local persistent = table.create(10000)	local persistent = table:create(10000)
+gc_stress__ponto_por_dois_pontos__002	tests/spike/gc_stress.luau	ponto_por_dois_pontos	11	local coroutines = table.create(1000)	local coroutines = table:create(1000)
+gc_stress__ponto_por_dois_pontos__003	tests/spike/gc_stress.luau	ponto_por_dois_pontos	13	coroutines[i] = coroutine.create(function()	coroutines[i] = coroutine:create(function()
+gc_stress__ponto_por_dois_pontos__004	tests/spike/gc_stress.luau	ponto_por_dois_pontos	14	ph2d.wait(1000.0) -- effectively never resumes during test	ph2d:wait(1000.0) -- effectively never resumes during test
+gc_stress__ponto_por_dois_pontos__005	tests/spike/gc_stress.luau	ponto_por_dois_pontos	17	coroutine.resume(coroutines[i])	coroutine:resume(coroutines[i])
+gc_stress__argumento_a_menos__001	tests/spike/gc_stress.luau	argumento_a_menos	6	local persistent = table.create(10000)	local persistent = table.create()
+gc_stress__argumento_a_menos__002	tests/spike/gc_stress.luau	argumento_a_menos	11	local coroutines = table.create(1000)	local coroutines = table.create()
+gc_stress__argumento_a_menos__003	tests/spike/gc_stress.luau	argumento_a_menos	13	coroutines[i] = coroutine.create(function()	coroutines[i] = coroutine.create()
+gc_stress__argumento_a_menos__004	tests/spike/gc_stress.luau	argumento_a_menos	14	ph2d.wait(1000.0) -- effectively never resumes during test	ph2d.wait() -- effectively never resumes during test
+gc_stress__argumento_a_menos__005	tests/spike/gc_stress.luau	argumento_a_menos	17	coroutine.resume(coroutines[i])	coroutine.resume()
+gc_stress__indice_zero__001	tests/spike/gc_stress.luau	indice_zero	7	for i = 1, 10000 do	for i = 0, 10000 do
+gc_stress__indice_zero__002	tests/spike/gc_stress.luau	indice_zero	12	for i = 1, 1000 do	for i = 0, 1000 do
+gc_stress__indice_zero__003	tests/spike/gc_stress.luau	indice_zero	23	for j = 1, 50 do	for j = 0, 50 do
+gc_stress__virgula_em_falta__001	tests/spike/gc_stress.luau	virgula_em_falta	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = i y = i * 2, z = i * 3, name = "entity_" .. i }
+gc_stress__virgula_em_falta__002	tests/spike/gc_stress.luau	virgula_em_falta	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = i, y = i * 2 z = i * 3, name = "entity_" .. i }
+gc_stress__virgula_em_falta__003	tests/spike/gc_stress.luau	virgula_em_falta	8	persistent[i] = { x = i, y = i * 2, z = i * 3, name = "entity_" .. i }	persistent[i] = { x = i, y = i * 2, z = i * 3 name = "entity_" .. i }
+gc_stress__virgula_em_falta__004	tests/spike/gc_stress.luau	virgula_em_falta	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j] = { tag = "ephemeral" n = j, tbl = { 1, 2, 3 } }
+gc_stress__virgula_em_falta__005	tests/spike/gc_stress.luau	virgula_em_falta	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j] = { tag = "ephemeral", n = j tbl = { 1, 2, 3 } }
+gc_stress__virgula_em_falta__006	tests/spike/gc_stress.luau	virgula_em_falta	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1 2, 3 } }
+gc_stress__virgula_em_falta__007	tests/spike/gc_stress.luau	virgula_em_falta	24	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2, 3 } }	local_garbage[j] = { tag = "ephemeral", n = j, tbl = { 1, 2 3 } }
+hello__base__000	tests/spike/hello.luau	base	0		
+hello__igual_por_atribuicao__001	tests/spike/hello.luau	igual_por_atribuicao	11	if frame_count % 10 == 0 then	if frame_count % 10 = 0 then
+hello__atribuicao_por_igual__001	tests/spike/hello.luau	atribuicao_por_igual	5	local frame_count = 0	local frame_count == 0
+hello__sem_end__001	tests/spike/hello.luau	sem_end	13	end	
+hello__sem_end__002	tests/spike/hello.luau	sem_end	14	end	
+hello__sem_then__001	tests/spike/hello.luau	sem_then	11	if frame_count % 10 == 0 then	if frame_count % 10 == 0
+hello__sem_fecha_parenteses__001	tests/spike/hello.luau	sem_fecha_parenteses	7	print("hello from luau — runtime initialized")	print("hello from luau — runtime initialized"
+hello__sem_fecha_parenteses__002	tests/spike/hello.luau	sem_fecha_parenteses	9	function update(frame: number)	function update(frame: number
+hello__sem_fecha_parenteses__003	tests/spike/hello.luau	sem_fecha_parenteses	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print(string.format("frame %d (count=%d)", frame, frame_count)
+hello__sem_fecha_aspas__001	tests/spike/hello.luau	sem_fecha_aspas	7	print("hello from luau — runtime initialized")	print("hello from luau — runtime initialized)
+hello__sem_fecha_aspas__002	tests/spike/hello.luau	sem_fecha_aspas	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print(string.format("frame %d (count=%d), frame, frame_count))
+hello__palavra_chave_trocada__001	tests/spike/hello.luau	palavra_chave_trocada	5	local frame_count = 0	lcoal frame_count = 0
+hello__palavra_chave_trocada__002	tests/spike/hello.luau	palavra_chave_trocada	9	function update(frame: number)	funtcion update(frame: number)
+hello__palavra_chave_trocada__003	tests/spike/hello.luau	palavra_chave_trocada	11	if frame_count % 10 == 0 then	fi frame_count % 10 == 0 then
+hello__palavra_chave_trocada__004	tests/spike/hello.luau	palavra_chave_trocada	11	if frame_count % 10 == 0 then	if frame_count % 10 == 0 tehn
+hello__palavra_chave_trocada__005	tests/spike/hello.luau	palavra_chave_trocada	13	end	ned
+hello__palavra_chave_trocada__006	tests/spike/hello.luau	palavra_chave_trocada	14	end	ned
+hello__identificador_trocado__001	tests/spike/hello.luau	identificador_trocado	5	local frame_count = 0	local fram_ecount = 0
+hello__identificador_trocado__002	tests/spike/hello.luau	identificador_trocado	7	print("hello from luau — runtime initialized")	pirnt("hello from luau — runtime initialized")
+hello__identificador_trocado__003	tests/spike/hello.luau	identificador_trocado	9	function update(frame: number)	function upadte(frame: number)
+hello__identificador_trocado__004	tests/spike/hello.luau	identificador_trocado	9	function update(frame: number)	function update(farme: number)
+hello__identificador_trocado__005	tests/spike/hello.luau	identificador_trocado	10	frame_count += 1	fram_ecount += 1
+hello__identificador_trocado__006	tests/spike/hello.luau	identificador_trocado	11	if frame_count % 10 == 0 then	if fram_ecount % 10 == 0 then
+hello__identificador_trocado__007	tests/spike/hello.luau	identificador_trocado	12	print(string.format("frame %d (count=%d)", frame, frame_count))	pirnt(string.format("frame %d (count=%d)", frame, frame_count))
+hello__identificador_trocado__008	tests/spike/hello.luau	identificador_trocado	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print(stirng.format("frame %d (count=%d)", frame, frame_count))
+hello__identificador_trocado__009	tests/spike/hello.luau	identificador_trocado	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print(string.format("frame %d (count=%d)", farme, frame_count))
+hello__identificador_trocado__010	tests/spike/hello.luau	identificador_trocado	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print(string.format("frame %d (count=%d)", frame, fram_ecount))
+hello__membro_trocado__001	tests/spike/hello.luau	membro_trocado	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print(string.fomrat("frame %d (count=%d)", frame, frame_count))
+hello__ponto_por_dois_pontos__001	tests/spike/hello.luau	ponto_por_dois_pontos	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print(string:format("frame %d (count=%d)", frame, frame_count))
+hello__argumento_a_menos__001	tests/spike/hello.luau	argumento_a_menos	7	print("hello from luau — runtime initialized")	print()
+hello__argumento_a_menos__002	tests/spike/hello.luau	argumento_a_menos	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print()
+hello__argumento_a_menos__003	tests/spike/hello.luau	argumento_a_menos	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print(string.format("frame %d (count=%d)", frame))
+hello__argumentos_trocados__001	tests/spike/hello.luau	argumentos_trocados	12	print(string.format("frame %d (count=%d)", frame, frame_count))	print(string.format(frame, "frame %d (count=%d)", frame_count))
+hello__mais_mais__001	tests/spike/hello.luau	mais_mais	10	frame_count += 1	frame_count ++

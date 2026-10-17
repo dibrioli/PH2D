@@ -1,0 +1,1103 @@
+{"mutant": "bob__argumento_a_menos__001", "diags": []}
+{"mutant": "bob__argumento_a_menos__002", "diags": []}
+{"mutant": "bob__argumento_a_menos__003", "diags": [{"fase": "topo", "kind": "Decl:BadDefault", "line": 11, "message": "property 'active' needs a number, boolean, string, ph2d.vec2 or ph2d.color default"}]}
+{"mutant": "bob__argumento_a_menos__004", "diags": [{"fase": "topo", "kind": "Decl:BadDefault", "line": 12, "message": "property 'top_signal' needs a number, boolean, string, ph2d.vec2 or ph2d.color default"}]}
+{"mutant": "bob__argumento_a_menos__005", "diags": []}
+{"mutant": "bob__argumento_a_menos__006", "diags": []}
+{"mutant": "bob__argumento_a_menos__007", "diags": [{"fase": "topo", "kind": "Runtime", "line": 18, "message": "bad argument #2: error converting Lua nil to f64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__argumento_a_menos__008", "diags": [{"fase": "topo", "kind": "Decl:BadDefault", "line": 22, "message": "property 'tint' needs a number, boolean, string, ph2d.vec2 or ph2d.color default"}]}
+{"mutant": "bob__argumento_a_menos__009", "diags": [{"fase": "topo", "kind": "Runtime", "line": 22, "message": "bad argument #3: error converting Lua nil to f64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__argumento_a_menos__010", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "bad argument #2: error converting Lua nil to String (expected string or number)"}]}
+{"mutant": "bob__argumento_a_menos__011", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 26, "message": "bad argument #2: error converting Lua nil to String (expected string or number)"}]}
+{"mutant": "bob__argumento_a_menos__012", "diags": []}
+{"mutant": "bob__argumento_a_menos__013", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 41, "message": "missing argument #1 to 'sin' (number expected)"}]}
+{"mutant": "bob__argumento_a_menos__014", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "bad argument #3: error converting Lua nil to f64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__argumento_a_menos__015", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "bad argument #3: error converting Lua nil to f64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__argumento_a_menos__016", "diags": []}
+{"mutant": "bob__argumentos_trocados__001", "diags": [{"fase": "topo", "kind": "Decl:BadName", "line": 9, "message": "'1' is not a valid property name"}]}
+{"mutant": "bob__argumentos_trocados__002", "diags": [{"fase": "topo", "kind": "Decl:BadName", "line": 10, "message": "'2' is not a valid property name"}]}
+{"mutant": "bob__argumentos_trocados__003", "diags": [{"fase": "topo", "kind": "Runtime", "line": 11, "message": "bad argument #1: error converting Lua boolean to String (expected string or number)"}]}
+{"mutant": "bob__argumentos_trocados__004", "diags": [{"fase": "topo", "kind": "Decl:BadName", "line": 12, "message": "'' is not a valid property name"}]}
+{"mutant": "bob__argumentos_trocados__005", "diags": [{"fase": "topo", "kind": "Decl:BadHint", "line": 15, "message": "property 'sine': min/max/step need a number or ph2d.vec2 default, step > 0 and min <= max"}]}
+{"mutant": "bob__argumentos_trocados__006", "diags": [{"fase": "topo", "kind": "Runtime", "line": 18, "message": "bad argument #1: error converting Lua table to String (expected string or number)"}]}
+{"mutant": "bob__argumentos_trocados__007", "diags": []}
+{"mutant": "bob__argumentos_trocados__008", "diags": [{"fase": "topo", "kind": "Runtime", "line": 22, "message": "bad argument #1: error converting Lua table to String (expected string or number)"}]}
+{"mutant": "bob__argumentos_trocados__009", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "bad argument #1: error converting Lua string to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__argumentos_trocados__010", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 26, "message": "bad argument #1: error converting Lua string to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__argumentos_trocados__011", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "bad argument #1: error converting Lua string to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__argumentos_trocados__012", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "bad argument #1: error converting Lua string to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__atribuicao_por_igual__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__atribuicao_por_igual__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__atribuicao_por_igual__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 27, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__atribuicao_por_igual__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 28, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__atribuicao_por_igual__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 33, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__atribuicao_por_igual__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__atribuicao_por_igual__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 39, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__atribuicao_por_igual__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 41, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__atribuicao_por_igual__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 44, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "bob__atribuicao_por_igual__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 45, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "bob__atribuicao_por_igual__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 48, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "bob__atribuicao_por_igual__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 52, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__base__000", "diags": []}
+{"mutant": "bob__comparacao_invertida__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Expected identifier when parsing expression, got '='"}]}
+{"mutant": "bob__diferente_estilo_c__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Unexpected '!='; did you mean '~='?"}]}
+{"mutant": "bob__else_if__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 54, "message": "Expected 'end' (to close 'function' at line 31), got <eof>; did you forget to close 'then' at line 49?"}]}
+{"mutant": "bob__identificador_trocado__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 9, "message": "attempt to index nil with 'property'"}]}
+{"mutant": "bob__identificador_trocado__002", "diags": [{"fase": "topo", "kind": "Runtime", "line": 10, "message": "attempt to index nil with 'property'"}]}
+{"mutant": "bob__identificador_trocado__003", "diags": [{"fase": "topo", "kind": "Runtime", "line": 11, "message": "attempt to index nil with 'property'"}]}
+{"mutant": "bob__identificador_trocado__004", "diags": [{"fase": "topo", "kind": "Runtime", "line": 12, "message": "attempt to index nil with 'property'"}]}
+{"mutant": "bob__identificador_trocado__005", "diags": [{"fase": "topo", "kind": "Runtime", "line": 15, "message": "attempt to index nil with 'property'"}]}
+{"mutant": "bob__identificador_trocado__006", "diags": [{"fase": "topo", "kind": "Runtime", "line": 18, "message": "attempt to index nil with 'property'"}]}
+{"mutant": "bob__identificador_trocado__007", "diags": [{"fase": "topo", "kind": "Runtime", "line": 18, "message": "attempt to index nil with 'vec2'"}]}
+{"mutant": "bob__identificador_trocado__008", "diags": [{"fase": "topo", "kind": "Runtime", "line": 22, "message": "attempt to index nil with 'property'"}]}
+{"mutant": "bob__identificador_trocado__009", "diags": [{"fase": "topo", "kind": "Runtime", "line": 22, "message": "attempt to index nil with 'color'"}]}
+{"mutant": "bob__identificador_trocado__010", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 33, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__identificador_trocado__011", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "attempt to index nil with 'id'"}]}
+{"mutant": "bob__identificador_trocado__012", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "attempt to index nil with 'base_x'"}]}
+{"mutant": "bob__identificador_trocado__013", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "attempt to index nil with 'get'"}]}
+{"mutant": "bob__identificador_trocado__014", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "attempt to index nil with 'id'"}]}
+{"mutant": "bob__identificador_trocado__015", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 26, "message": "attempt to index nil with 'base_y'"}]}
+{"mutant": "bob__identificador_trocado__016", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 26, "message": "attempt to index nil with 'get'"}]}
+{"mutant": "bob__identificador_trocado__017", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 26, "message": "attempt to index nil with 'id'"}]}
+{"mutant": "bob__identificador_trocado__018", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 27, "message": "attempt to index nil with 't'"}]}
+{"mutant": "bob__identificador_trocado__019", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 28, "message": "attempt to index nil with 'was_up'"}]}
+{"mutant": "bob__identificador_trocado__020", "diags": []}
+{"mutant": "bob__identificador_trocado__021", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 32, "message": "attempt to index nil with 'active'"}]}
+{"mutant": "bob__identificador_trocado__022", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 33, "message": "attempt to perform arithmetic (add) on number and nil"}]}
+{"mutant": "bob__identificador_trocado__023", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 32, "message": "attempt to index nil with 'active'"}]}
+{"mutant": "bob__identificador_trocado__024", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 33, "message": "attempt to index nil with 't'"}]}
+{"mutant": "bob__identificador_trocado__025", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 33, "message": "attempt to index nil with 't'"}]}
+{"mutant": "bob__identificador_trocado__026", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 33, "message": "attempt to perform arithmetic (add) on number and nil"}]}
+{"mutant": "bob__identificador_trocado__027", "diags": []}
+{"mutant": "bob__identificador_trocado__028", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 36, "message": "attempt to index nil with 'wave'"}]}
+{"mutant": "bob__identificador_trocado__029", "diags": []}
+{"mutant": "bob__identificador_trocado__030", "diags": []}
+{"mutant": "bob__identificador_trocado__031", "diags": []}
+{"mutant": "bob__identificador_trocado__032", "diags": []}
+{"mutant": "bob__identificador_trocado__033", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 38, "message": "attempt to index nil with 'wave'"}]}
+{"mutant": "bob__identificador_trocado__034", "diags": []}
+{"mutant": "bob__identificador_trocado__035", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 45, "message": "attempt to perform arithmetic (mul) on nil and number"}]}
+{"mutant": "bob__identificador_trocado__036", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 41, "message": "attempt to index nil with 'sin'"}]}
+{"mutant": "bob__identificador_trocado__037", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 41, "message": "attempt to index nil with 't'"}]}
+{"mutant": "bob__identificador_trocado__038", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 41, "message": "attempt to index nil with 'speed'"}]}
+{"mutant": "bob__identificador_trocado__039", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 45, "message": "attempt to perform arithmetic (mul) on number and nil"}]}
+{"mutant": "bob__identificador_trocado__040", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 44, "message": "attempt to index nil with 'tint'"}]}
+{"mutant": "bob__identificador_trocado__041", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 44, "message": "attempt to index nil with 'tint'"}]}
+{"mutant": "bob__identificador_trocado__042", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 44, "message": "attempt to index nil with 'tint'"}]}
+{"mutant": "bob__identificador_trocado__043", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to perform arithmetic (mul) on nil and number"}]}
+{"mutant": "bob__identificador_trocado__044", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 45, "message": "attempt to perform arithmetic (mul) on nil and number"}]}
+{"mutant": "bob__identificador_trocado__045", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 45, "message": "attempt to index nil with 'amplitude'"}]}
+{"mutant": "bob__identificador_trocado__046", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 45, "message": "attempt to perform arithmetic (mul) on number and nil"}]}
+{"mutant": "bob__identificador_trocado__047", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to index nil with 'set'"}]}
+{"mutant": "bob__identificador_trocado__048", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to index nil with 'id'"}]}
+{"mutant": "bob__identificador_trocado__049", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to index nil with 'base_x'"}]}
+{"mutant": "bob__identificador_trocado__050", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to perform arithmetic (mul) on nil and number"}]}
+{"mutant": "bob__identificador_trocado__051", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to index nil with 'direction'"}]}
+{"mutant": "bob__identificador_trocado__052", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to index nil with 'set'"}]}
+{"mutant": "bob__identificador_trocado__053", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to index nil with 'id'"}]}
+{"mutant": "bob__identificador_trocado__054", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to index nil with 'base_y'"}]}
+{"mutant": "bob__identificador_trocado__055", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to perform arithmetic (mul) on nil and number"}]}
+{"mutant": "bob__identificador_trocado__056", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to index nil with 'direction'"}]}
+{"mutant": "bob__identificador_trocado__057", "diags": []}
+{"mutant": "bob__identificador_trocado__058", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 48, "message": "attempt to compare number < nil"}]}
+{"mutant": "bob__identificador_trocado__059", "diags": []}
+{"mutant": "bob__identificador_trocado__060", "diags": []}
+{"mutant": "bob__identificador_trocado__061", "diags": []}
+{"mutant": "bob__identificador_trocado__062", "diags": []}
+{"mutant": "bob__identificador_trocado__063", "diags": []}
+{"mutant": "bob__identificador_trocado__064", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 52, "message": "attempt to index nil with 'was_up'"}]}
+{"mutant": "bob__identificador_trocado__065", "diags": []}
+{"mutant": "bob__igual_por_atribuicao__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "bob__igual_por_atribuicao__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 38, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "bob__inicializacao_esquecida__001", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__inicializacao_esquecida__002", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__inicializacao_esquecida__003", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 33, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__inicializacao_esquecida__004", "diags": []}
+{"mutant": "bob__inicializacao_esquecida__005", "diags": []}
+{"mutant": "bob__inicializacao_esquecida__006", "diags": []}
+{"mutant": "bob__logico_estilo_c__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Unexpected '!'; did you mean 'not'?"}]}
+{"mutant": "bob__logico_estilo_c__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Unexpected '&&'; did you mean 'and'?"}]}
+{"mutant": "bob__logico_estilo_c__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Unexpected '||'; did you mean 'or'?"}]}
+{"mutant": "bob__logico_estilo_c__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Unexpected '&&'; did you mean 'and'?"}]}
+{"mutant": "bob__logico_estilo_c__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Unexpected '!'; did you mean 'not'?"}]}
+{"mutant": "bob__logico_estilo_c__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Unexpected '&&'; did you mean 'and'?"}]}
+{"mutant": "bob__membro_trocado__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 9, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__002", "diags": [{"fase": "topo", "kind": "Runtime", "line": 10, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__003", "diags": [{"fase": "topo", "kind": "Runtime", "line": 11, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__004", "diags": [{"fase": "topo", "kind": "Runtime", "line": 12, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__005", "diags": [{"fase": "topo", "kind": "Runtime", "line": 15, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__006", "diags": [{"fase": "topo", "kind": "Runtime", "line": 18, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__007", "diags": [{"fase": "topo", "kind": "Runtime", "line": 18, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__008", "diags": [{"fase": "topo", "kind": "Runtime", "line": 22, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__009", "diags": [{"fase": "topo", "kind": "Runtime", "line": 22, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__010", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__membro_trocado__011", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__012", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "bad argument #1: error converting Lua nil to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__membro_trocado__013", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__membro_trocado__014", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 26, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__015", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 26, "message": "bad argument #1: error converting Lua nil to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__membro_trocado__016", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 33, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__membro_trocado__017", "diags": []}
+{"mutant": "bob__membro_trocado__018", "diags": []}
+{"mutant": "bob__membro_trocado__019", "diags": []}
+{"mutant": "bob__membro_trocado__020", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 33, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__membro_trocado__021", "diags": []}
+{"mutant": "bob__membro_trocado__022", "diags": []}
+{"mutant": "bob__membro_trocado__023", "diags": []}
+{"mutant": "bob__membro_trocado__024", "diags": []}
+{"mutant": "bob__membro_trocado__025", "diags": []}
+{"mutant": "bob__membro_trocado__026", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 41, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__027", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 41, "message": "attempt to perform arithmetic (mul) on nil and number"}]}
+{"mutant": "bob__membro_trocado__028", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 41, "message": "attempt to perform arithmetic (mul) on number and nil"}]}
+{"mutant": "bob__membro_trocado__029", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 44, "message": "attempt to index nil with 'r'"}]}
+{"mutant": "bob__membro_trocado__030", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 44, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__membro_trocado__031", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 44, "message": "attempt to index nil with 'g'"}]}
+{"mutant": "bob__membro_trocado__032", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 44, "message": "attempt to perform arithmetic (add) on number and nil"}]}
+{"mutant": "bob__membro_trocado__033", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 44, "message": "attempt to index nil with 'b'"}]}
+{"mutant": "bob__membro_trocado__034", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 44, "message": "attempt to perform arithmetic (add) on number and nil"}]}
+{"mutant": "bob__membro_trocado__035", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 45, "message": "attempt to perform arithmetic (mul) on number and nil"}]}
+{"mutant": "bob__membro_trocado__036", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__037", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "bad argument #1: error converting Lua nil to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__membro_trocado__038", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__membro_trocado__039", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to index nil with 'x'"}]}
+{"mutant": "bob__membro_trocado__040", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "attempt to perform arithmetic (mul) on number and nil"}]}
+{"mutant": "bob__membro_trocado__041", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to call a nil value"}]}
+{"mutant": "bob__membro_trocado__042", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "bad argument #1: error converting Lua nil to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__membro_trocado__043", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "bob__membro_trocado__044", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to index nil with 'y'"}]}
+{"mutant": "bob__membro_trocado__045", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "attempt to perform arithmetic (mul) on number and nil"}]}
+{"mutant": "bob__membro_trocado__046", "diags": []}
+{"mutant": "bob__membro_trocado__047", "diags": []}
+{"mutant": "bob__membro_trocado__048", "diags": []}
+{"mutant": "bob__membro_trocado__049", "diags": []}
+{"mutant": "bob__membro_trocado__050", "diags": []}
+{"mutant": "bob__palavra_chave_trocada__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 29, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 31, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Expected 'then' when parsing if statement, got 'self'"}]}
+{"mutant": "bob__palavra_chave_trocada__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "bob__palavra_chave_trocada__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 33, "message": "Expected 'end' (to close 'then' at line 32), got 'self'"}]}
+{"mutant": "bob__palavra_chave_trocada__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 35, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "bob__palavra_chave_trocada__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 38, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 38, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "bob__palavra_chave_trocada__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 40, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 42, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__018", "diags": [{"fase": "topo", "kind": "Syntax", "line": 44, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__019", "diags": [{"fase": "topo", "kind": "Syntax", "line": 45, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__020", "diags": [{"fase": "topo", "kind": "Syntax", "line": 48, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__021", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__022", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Expected 'then' when parsing if statement, got 'nad'"}]}
+{"mutant": "bob__palavra_chave_trocada__023", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Expected 'then' when parsing if statement, got 'self'"}]}
+{"mutant": "bob__palavra_chave_trocada__024", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Expected 'then' when parsing if statement, got 'nad'"}]}
+{"mutant": "bob__palavra_chave_trocada__025", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "bob__palavra_chave_trocada__026", "diags": [{"fase": "topo", "kind": "Syntax", "line": 51, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__palavra_chave_trocada__027", "diags": [{"fase": "topo", "kind": "Syntax", "line": 53, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "bob__ponto_por_dois_pontos__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 9, "message": "bad argument #1: error converting Lua table to String (expected string or number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__002", "diags": [{"fase": "topo", "kind": "Runtime", "line": 10, "message": "bad argument #1: error converting Lua table to String (expected string or number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__003", "diags": [{"fase": "topo", "kind": "Runtime", "line": 11, "message": "bad argument #1: error converting Lua table to String (expected string or number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__004", "diags": [{"fase": "topo", "kind": "Runtime", "line": 12, "message": "bad argument #1: error converting Lua table to String (expected string or number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__005", "diags": [{"fase": "topo", "kind": "Runtime", "line": 15, "message": "bad argument #1: error converting Lua table to String (expected string or number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__006", "diags": [{"fase": "topo", "kind": "Runtime", "line": 18, "message": "bad argument #1: error converting Lua table to String (expected string or number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__007", "diags": [{"fase": "topo", "kind": "Runtime", "line": 18, "message": "bad argument #1: error converting Lua table to f64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__008", "diags": [{"fase": "topo", "kind": "Runtime", "line": 22, "message": "bad argument #1: error converting Lua table to String (expected string or number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__009", "diags": [{"fase": "topo", "kind": "Runtime", "line": 22, "message": "bad argument #1: error converting Lua table to f64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__010", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "bad argument #1: error converting Lua table to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__011", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 26, "message": "bad argument #1: error converting Lua table to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__012", "diags": []}
+{"mutant": "bob__ponto_por_dois_pontos__013", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 41, "message": "invalid argument #1 to 'sin' (number expected, got table)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__014", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 46, "message": "bad argument #1: error converting Lua table to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__015", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 47, "message": "bad argument #1: error converting Lua table to u64 (expected number or string coercible to number)"}]}
+{"mutant": "bob__ponto_por_dois_pontos__016", "diags": []}
+{"mutant": "bob__sem_end__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 54, "message": "Expected 'end' (to close 'function' at line 24), got <eof>; did you forget to close 'then' at line 49?"}]}
+{"mutant": "bob__sem_end__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 33, "message": "Expected 'end' (to close 'then' at line 32), got '='"}]}
+{"mutant": "bob__sem_end__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 54, "message": "Expected 'end' (to close 'function' at line 31), got <eof>; did you forget to close 'then' at line 49?"}]}
+{"mutant": "bob__sem_end__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 54, "message": "Expected 'end' (to close 'function' at line 31), got <eof>; did you forget to close 'then' at line 49?"}]}
+{"mutant": "bob__sem_end__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 54, "message": "Expected 'end' (to close 'function' at line 31), got <eof>; did you forget to close 'then' at line 49?"}]}
+{"mutant": "bob__sem_fecha_aspas__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 11, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Expected ')' (to close '(' at column 14), got malformed string"}]}
+{"mutant": "bob__sem_fecha_aspas__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected ')' (to close '(' at column 14), got 'sine'"}]}
+{"mutant": "bob__sem_fecha_aspas__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected ')' (to close '(' at column 14), got 'sine'"}]}
+{"mutant": "bob__sem_fecha_aspas__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "bob__sem_fecha_aspas__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "bob__sem_fecha_aspas__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 18, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 22, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 38, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 46, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__018", "diags": [{"fase": "topo", "kind": "Syntax", "line": 47, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_aspas__019", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "bob__sem_fecha_chave__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Expected '}' (to close '{' at column 33), got ')'"}]}
+{"mutant": "bob__sem_fecha_chave__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Expected '}' (to close '{' at column 29), got ')'"}]}
+{"mutant": "bob__sem_fecha_chave__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected '}' (to close '{' at column 31), got ')'"}]}
+{"mutant": "bob__sem_fecha_chave__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected '}' (to close '{' at column 31), got ')'"}]}
+{"mutant": "bob__sem_fecha_chave__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 18, "message": "Expected '}' (to close '{' at column 45), got ')'"}]}
+{"mutant": "bob__sem_fecha_parenteses__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Expected ')' (to close '(' at line 9), got 'ph2d'"}]}
+{"mutant": "bob__sem_fecha_parenteses__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 11, "message": "Expected ')' (to close '(' at line 10), got 'ph2d'"}]}
+{"mutant": "bob__sem_fecha_parenteses__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Expected ')' (to close '(' at line 11), got 'ph2d'"}]}
+{"mutant": "bob__sem_fecha_parenteses__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected ')' (to close '(' at line 12), got 'ph2d'"}]}
+{"mutant": "bob__sem_fecha_parenteses__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 18, "message": "Expected ')' (to close '(' at line 15), got 'ph2d'"}]}
+{"mutant": "bob__sem_fecha_parenteses__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 22, "message": "Expected ')' (to close '(' at line 18), got 'ph2d'"}]}
+{"mutant": "bob__sem_fecha_parenteses__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 22, "message": "Expected ')' (to close '(' at line 18), got 'ph2d'"}]}
+{"mutant": "bob__sem_fecha_parenteses__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Expected ')' (to close '(' at line 22), got 'function'"}]}
+{"mutant": "bob__sem_fecha_parenteses__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Expected ')' (to close '(' at line 24), got 'self'"}]}
+{"mutant": "bob__sem_fecha_parenteses__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Expected ')' (to close '(' at line 25), got 'self'"}]}
+{"mutant": "bob__sem_fecha_parenteses__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 27, "message": "Expected ')' (to close '(' at line 26), got 'self'"}]}
+{"mutant": "bob__sem_fecha_parenteses__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Expected ')' (to close '(' at line 31), got 'if'"}]}
+{"mutant": "bob__sem_fecha_parenteses__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 38, "message": "Expected ')' (to close '(' at line 37), got 'elseif'"}]}
+{"mutant": "bob__sem_fecha_parenteses__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 42, "message": "Expected ')' (to close '(' at line 41), got 'end'"}]}
+{"mutant": "bob__sem_fecha_parenteses__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 45, "message": "Expected ')' (to close '(' at line 44), got 'local'"}]}
+{"mutant": "bob__sem_fecha_parenteses__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 47, "message": "Expected ')' (to close '(' at line 46), got 'ph2d'"}]}
+{"mutant": "bob__sem_fecha_parenteses__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 48, "message": "Expected ')' (to close '(' at line 47), got 'local'"}]}
+{"mutant": "bob__sem_fecha_parenteses__018", "diags": [{"fase": "topo", "kind": "Syntax", "line": 51, "message": "Expected ')' (to close '(' at line 50), got 'end'"}]}
+{"mutant": "bob__sem_self_no_parametro__001", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 25, "message": "attempt to index nil with 'id'"}]}
+{"mutant": "bob__sem_self_no_parametro__002", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 32, "message": "attempt to index nil with 'active'"}]}
+{"mutant": "bob__sem_then__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Expected 'then' when parsing if statement, got 'return'"}]}
+{"mutant": "bob__sem_then__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Expected 'then' when parsing if statement, got 's'"}]}
+{"mutant": "bob__sem_then__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 39, "message": "Expected 'then' when parsing if statement, got 's'"}]}
+{"mutant": "bob__sem_then__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 50, "message": "Expected 'then' when parsing if statement, got 'ph2d'"}]}
+{"mutant": "bob__virgula_em_falta__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "bob__virgula_em_falta__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "bob__virgula_em_falta__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected '}' (to close '{' at column 43), got \"square\""}]}
+{"mutant": "bob__virgula_em_falta__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected '}' (to close '{' at column 43), got \"still\""}]}
+{"mutant": "bob__virgula_em_falta__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 18, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "c7_typical_script__argumento_a_menos__001", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__002", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__003", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__004", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__005", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__006", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__007", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__008", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__009", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__010", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__011", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__012", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__013", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__014", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__015", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__016", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__017", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__018", "diags": []}
+{"mutant": "c7_typical_script__argumento_a_menos__019", "diags": []}
+{"mutant": "c7_typical_script__argumentos_trocados__001", "diags": []}
+{"mutant": "c7_typical_script__argumentos_trocados__002", "diags": []}
+{"mutant": "c7_typical_script__argumentos_trocados__003", "diags": []}
+{"mutant": "c7_typical_script__argumentos_trocados__004", "diags": []}
+{"mutant": "c7_typical_script__argumentos_trocados__005", "diags": []}
+{"mutant": "c7_typical_script__argumentos_trocados__006", "diags": []}
+{"mutant": "c7_typical_script__argumentos_trocados__007", "diags": []}
+{"mutant": "c7_typical_script__argumentos_trocados__008", "diags": []}
+{"mutant": "c7_typical_script__atribuicao_por_igual__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 5, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 6, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 11, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 13, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 14, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 16, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 17, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 22, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 23, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 30, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 45, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__018", "diags": [{"fase": "topo", "kind": "Syntax", "line": 56, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__019", "diags": [{"fase": "topo", "kind": "Syntax", "line": 60, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__020", "diags": [{"fase": "topo", "kind": "Syntax", "line": 67, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__021", "diags": [{"fase": "topo", "kind": "Syntax", "line": 87, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__022", "diags": [{"fase": "topo", "kind": "Syntax", "line": 90, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__023", "diags": [{"fase": "topo", "kind": "Syntax", "line": 95, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__024", "diags": [{"fase": "topo", "kind": "Syntax", "line": 105, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__atribuicao_por_igual__025", "diags": [{"fase": "topo", "kind": "Syntax", "line": 106, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__base__000", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__001", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__002", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__003", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__004", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__005", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__006", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__007", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__008", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__009", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__010", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__011", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__012", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__013", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__014", "diags": []}
+{"mutant": "c7_typical_script__dois_pontos_por_ponto__015", "diags": []}
+{"mutant": "c7_typical_script__else_if__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__else_if__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Expected 'end' (to close 'else' at line 33), got 'elseif'"}]}
+{"mutant": "c7_typical_script__else_if__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__else_if__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 69), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__else_if__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 99), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__else_if__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 99), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__else_if__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 99), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__identificador_trocado__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 6, "message": "attempt to index nil with '__index'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__002", "diags": [{"fase": "topo", "kind": "Runtime", "line": 6, "message": "attempt to index nil with '__index'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__003", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__004", "diags": [{"fase": "topo", "kind": "Runtime", "line": 8, "message": "attempt to index nil with 'new'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__005", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__006", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__007", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__008", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__009", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__010", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__011", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__012", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__013", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__014", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__015", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__016", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__017", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__018", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__019", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__020", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__021", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__022", "diags": [{"fase": "topo", "kind": "Runtime", "line": 21, "message": "attempt to index nil with 'tick'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__023", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__024", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__025", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__026", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__027", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__028", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__029", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__030", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__031", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__032", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__033", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__034", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__035", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__036", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__037", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__038", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__039", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__040", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__041", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__042", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__043", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__044", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__045", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__046", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__047", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__048", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__049", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__050", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__051", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__052", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__053", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__054", "diags": [{"fase": "topo", "kind": "Runtime", "line": 44, "message": "attempt to index nil with 'transition'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__055", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__056", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__057", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__058", "diags": [{"fase": "topo", "kind": "Runtime", "line": 48, "message": "attempt to index nil with 'on_damage'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__059", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__060", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__061", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__062", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__063", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__064", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__065", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__066", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__067", "diags": [{"fase": "topo", "kind": "Runtime", "line": 55, "message": "attempt to index nil with 'on_heal'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__068", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__069", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__070", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__071", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__072", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__073", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__074", "diags": [{"fase": "topo", "kind": "Runtime", "line": 59, "message": "attempt to index nil with 'set_flag'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__075", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__076", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__077", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__078", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__079", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__080", "diags": [{"fase": "topo", "kind": "Runtime", "line": 63, "message": "attempt to index nil with 'has_flag'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__081", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__082", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__083", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__084", "diags": [{"fase": "topo", "kind": "Runtime", "line": 69, "message": "attempt to index nil with 'run'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__085", "diags": [{"fase": "topo", "kind": "Runtime", "line": 69, "message": "attempt to index nil with 'run'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__086", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__087", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__088", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__089", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__090", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__091", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__092", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__093", "diags": [{"fase": "topo", "kind": "Runtime", "line": 89, "message": "attempt to index nil with 'tween'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__094", "diags": [{"fase": "topo", "kind": "Runtime", "line": 89, "message": "attempt to index nil with 'tween'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__095", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__096", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__097", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__098", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__099", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__100", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__101", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__102", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__103", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__104", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__105", "diags": [{"fase": "topo", "kind": "Runtime", "line": 94, "message": "attempt to index nil with 'ease_out'"}]}
+{"mutant": "c7_typical_script__identificador_trocado__106", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__107", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__108", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__109", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__110", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__111", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__112", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__113", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__114", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__115", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__116", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__117", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__118", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__119", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__120", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__121", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__122", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__123", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__124", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__125", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__126", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__127", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__128", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__129", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__130", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__131", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__132", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__133", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__134", "diags": []}
+{"mutant": "c7_typical_script__identificador_trocado__135", "diags": []}
+{"mutant": "c7_typical_script__igual_por_atribuicao__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 29, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 50, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 64, "message": "Expected 'end' (to close 'function' at line 63), got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 70, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 77, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 100, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 102, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 104, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__igual_por_atribuicao__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 107, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "c7_typical_script__inicializacao_esquecida__001", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__002", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__003", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__004", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__005", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__006", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__007", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__008", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__009", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__010", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__011", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__012", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__013", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__014", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__015", "diags": []}
+{"mutant": "c7_typical_script__inicializacao_esquecida__016", "diags": []}
+{"mutant": "c7_typical_script__logico_estilo_c__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Unexpected '||'; did you mean 'or'?"}]}
+{"mutant": "c7_typical_script__membro_trocado__001", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__002", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__003", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__004", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__005", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__006", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__007", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__008", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__009", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__010", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__011", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__012", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__013", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__014", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__015", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__016", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__017", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__018", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__019", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__020", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__021", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__022", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__023", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__024", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__025", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__026", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__027", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__028", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__029", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__030", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__031", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__032", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__033", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__034", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__035", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__036", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__037", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__038", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__039", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__040", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__041", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__042", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__043", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__044", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__045", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__046", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__047", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__048", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__049", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__050", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__051", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__052", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__053", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__054", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__055", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__056", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__057", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__058", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__059", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__060", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__061", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__062", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__063", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__064", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__065", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__066", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__067", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__068", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__069", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__070", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__071", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__072", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__073", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__074", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__075", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__076", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__077", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__078", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__079", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__080", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__081", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__082", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__083", "diags": []}
+{"mutant": "c7_typical_script__membro_trocado__084", "diags": []}
+{"mutant": "c7_typical_script__palavra_chave_trocada__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 5, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 8, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 18, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 19, "message": "Expected 'end' (to close 'function' at line 8), got 'ned'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 21, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Expected 'then' when parsing if statement, got 'ro'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 28, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 29, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 29, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 30, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 31, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 31, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__018", "diags": [{"fase": "topo", "kind": "Syntax", "line": 33, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__019", "diags": [{"fase": "topo", "kind": "Syntax", "line": 33, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__020", "diags": [{"fase": "topo", "kind": "Syntax", "line": 35, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__021", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__022", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__023", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__024", "diags": [{"fase": "topo", "kind": "Syntax", "line": 38, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__025", "diags": [{"fase": "topo", "kind": "Syntax", "line": 38, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__026", "diags": [{"fase": "topo", "kind": "Syntax", "line": 40, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__027", "diags": [{"fase": "topo", "kind": "Syntax", "line": 41, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__028", "diags": [{"fase": "topo", "kind": "Syntax", "line": 42, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__029", "diags": [{"fase": "topo", "kind": "Syntax", "line": 44, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__030", "diags": [{"fase": "topo", "kind": "Syntax", "line": 46, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__031", "diags": [{"fase": "topo", "kind": "Syntax", "line": 48, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__032", "diags": [{"fase": "topo", "kind": "Syntax", "line": 50, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__033", "diags": [{"fase": "topo", "kind": "Syntax", "line": 50, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__034", "diags": [{"fase": "topo", "kind": "Syntax", "line": 52, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__035", "diags": [{"fase": "topo", "kind": "Syntax", "line": 53, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__036", "diags": [{"fase": "topo", "kind": "Syntax", "line": 55, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__037", "diags": [{"fase": "topo", "kind": "Syntax", "line": 57, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__038", "diags": [{"fase": "topo", "kind": "Syntax", "line": 59, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__039", "diags": [{"fase": "topo", "kind": "Syntax", "line": 61, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__040", "diags": [{"fase": "topo", "kind": "Syntax", "line": 63, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__041", "diags": [{"fase": "topo", "kind": "Syntax", "line": 64, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__042", "diags": [{"fase": "topo", "kind": "Syntax", "line": 65, "message": "Expected 'end' (to close 'function' at line 63), got 'ned'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__043", "diags": [{"fase": "topo", "kind": "Syntax", "line": 67, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__044", "diags": [{"fase": "topo", "kind": "Syntax", "line": 69, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__045", "diags": [{"fase": "topo", "kind": "Syntax", "line": 70, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__046", "diags": [{"fase": "topo", "kind": "Syntax", "line": 70, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__047", "diags": [{"fase": "topo", "kind": "Syntax", "line": 71, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__048", "diags": [{"fase": "topo", "kind": "Syntax", "line": 71, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__049", "diags": []}
+{"mutant": "c7_typical_script__palavra_chave_trocada__050", "diags": [{"fase": "topo", "kind": "Syntax", "line": 73, "message": "Expected 'end' (to close 'then' at line 71), got 'esle'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__051", "diags": []}
+{"mutant": "c7_typical_script__palavra_chave_trocada__052", "diags": [{"fase": "topo", "kind": "Syntax", "line": 76, "message": "Expected 'end' (to close 'else' at line 73), got 'ned'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__053", "diags": [{"fase": "topo", "kind": "Syntax", "line": 77, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__054", "diags": [{"fase": "topo", "kind": "Syntax", "line": 77, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__055", "diags": [{"fase": "topo", "kind": "Syntax", "line": 78, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__056", "diags": [{"fase": "topo", "kind": "Syntax", "line": 78, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__057", "diags": []}
+{"mutant": "c7_typical_script__palavra_chave_trocada__058", "diags": [{"fase": "topo", "kind": "Syntax", "line": 80, "message": "Expected 'end' (to close 'then' at line 78), got 'esle'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__059", "diags": []}
+{"mutant": "c7_typical_script__palavra_chave_trocada__060", "diags": [{"fase": "topo", "kind": "Syntax", "line": 82, "message": "Expected 'end' (to close 'else' at line 80), got 'ned'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__061", "diags": [{"fase": "topo", "kind": "Syntax", "line": 83, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__062", "diags": []}
+{"mutant": "c7_typical_script__palavra_chave_trocada__063", "diags": [{"fase": "topo", "kind": "Syntax", "line": 85, "message": "Expected 'end' (to close 'function' at line 69), got 'ned'; did you forget to close 'then' at line 77?"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__064", "diags": [{"fase": "topo", "kind": "Syntax", "line": 87, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__065", "diags": [{"fase": "topo", "kind": "Syntax", "line": 89, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__066", "diags": [{"fase": "topo", "kind": "Syntax", "line": 90, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__067", "diags": [{"fase": "topo", "kind": "Syntax", "line": 91, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__068", "diags": [{"fase": "topo", "kind": "Syntax", "line": 92, "message": "Expected 'end' (to close 'function' at line 89), got 'ned'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__069", "diags": [{"fase": "topo", "kind": "Syntax", "line": 94, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__070", "diags": [{"fase": "topo", "kind": "Syntax", "line": 95, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__071", "diags": [{"fase": "topo", "kind": "Syntax", "line": 96, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__072", "diags": [{"fase": "topo", "kind": "Syntax", "line": 97, "message": "Expected 'end' (to close 'function' at line 94), got 'ned'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__073", "diags": [{"fase": "topo", "kind": "Syntax", "line": 99, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__074", "diags": [{"fase": "topo", "kind": "Syntax", "line": 99, "message": "Expected '(', '{' or <string> when parsing function call, got ','"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__075", "diags": [{"fase": "topo", "kind": "Syntax", "line": 100, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__076", "diags": [{"fase": "topo", "kind": "Syntax", "line": 100, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__077", "diags": [{"fase": "topo", "kind": "Syntax", "line": 102, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__078", "diags": [{"fase": "topo", "kind": "Syntax", "line": 102, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__079", "diags": [{"fase": "topo", "kind": "Syntax", "line": 104, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__080", "diags": [{"fase": "topo", "kind": "Syntax", "line": 104, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__081", "diags": [{"fase": "topo", "kind": "Syntax", "line": 107, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__082", "diags": [{"fase": "topo", "kind": "Syntax", "line": 107, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__083", "diags": [{"fase": "topo", "kind": "Syntax", "line": 108, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__084", "diags": [{"fase": "topo", "kind": "Syntax", "line": 109, "message": "Expected 'end' (to close 'then' at line 107), got 'ned'"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__085", "diags": [{"fase": "topo", "kind": "Syntax", "line": 110, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__086", "diags": [{"fase": "topo", "kind": "Syntax", "line": 111, "message": "Expected 'end' (to close 'function' at line 99), got 'ned'; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__palavra_chave_trocada__087", "diags": [{"fase": "topo", "kind": "Runtime", "line": 113, "message": "attempt to call a nil value"}]}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__001", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__002", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__003", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__004", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__005", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__006", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__007", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__008", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__009", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__010", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__011", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__012", "diags": []}
+{"mutant": "c7_typical_script__ponto_por_dois_pontos__013", "diags": []}
+{"mutant": "c7_typical_script__sem_end__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 21, "message": "Expected 'end' (to close 'function' at line 8), got 'function'"}]}
+{"mutant": "c7_typical_script__sem_end__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 44), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 48), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 48), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 55), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 59), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 67, "message": "Expected 'end' (to close 'function' at line 63), got 'local'"}]}
+{"mutant": "c7_typical_script__sem_end__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 77, "message": "Expected 'end' (to close 'else' at line 73), got 'elseif'"}]}
+{"mutant": "c7_typical_script__sem_end__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 69), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected 'end' (to close 'function' at line 69), got <eof>; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_end__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 87, "message": "Expected 'end' (to close 'function' at line 69), got 'local'; did you forget to close 'then' at line 77?"}]}
+{"mutant": "c7_typical_script__sem_end__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 94, "message": "Expected 'end' (to close 'function' at line 89), got 'function'"}]}
+{"mutant": "c7_typical_script__sem_end__018", "diags": [{"fase": "topo", "kind": "Syntax", "line": 99, "message": "Expected 'end' (to close 'function' at line 94), got 'local'"}]}
+{"mutant": "c7_typical_script__sem_end__019", "diags": [{"fase": "topo", "kind": "Syntax", "line": 110, "message": "Expected 'end' (to close 'then' at line 107), got 'return'"}]}
+{"mutant": "c7_typical_script__sem_end__020", "diags": [{"fase": "topo", "kind": "Syntax", "line": 113, "message": "Expected 'end' (to close 'function' at line 99), got 'return'; did you forget to close 'then' at line 107?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 13, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 27, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 29, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 34, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 39, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 51, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 70, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 71, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 72, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 74, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 75, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 77, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 79, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 81, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__018", "diags": [{"fase": "topo", "kind": "Syntax", "line": 84, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__019", "diags": [{"fase": "topo", "kind": "Syntax", "line": 100, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__020", "diags": [{"fase": "topo", "kind": "Syntax", "line": 102, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__021", "diags": [{"fase": "topo", "kind": "Syntax", "line": 104, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_aspas__022", "diags": [{"fase": "topo", "kind": "Syntax", "line": 107, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 6, "message": "Expected '}' (to close '{' at line 5), got '='"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Expected identifier when parsing expression, got ','"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 16, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 17, "message": "Expected '}' (to close '{' at line 16), got '='"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 18, "message": "Expected identifier when parsing expression, got 'return'"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 60, "message": "Expected ']' (to close '[' at column 15), got '='"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 65, "message": "Expected ']' (to close '[' at line 64), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 69, "message": "Expected '(' when parsing function, got 'Dialogue'"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 89, "message": "Expected '(' when parsing function, got 'Animation'"}]}
+{"mutant": "c7_typical_script__sem_fecha_chave__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 119, "message": "Expected identifier when parsing expression, got <eof>"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Expected ')' (to close '(' at line 8), got 'local'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Expected ')' (to close '(' at line 9), got 'self'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 22, "message": "Expected ')' (to close '(' at line 21), got 'self'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Expected ')' (to close '(' at column 20), got 'then'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Expected ')' (to close '(' at column 55), got 'then'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 28, "message": "Expected ')' (to close '(' at line 27), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 31, "message": "Expected ')' (to close '(' at line 30), got 'if'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 33, "message": "Expected ')' (to close '(' at line 32), got 'elseif'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 35, "message": "Expected ')' (to close '(' at line 34), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 38, "message": "Expected ')' (to close '(' at line 37), got 'if'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 40, "message": "Expected ')' (to close '(' at line 39), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 45, "message": "Expected ')' (to close '(' at line 44), got 'self'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 49, "message": "Expected ')' (to close '(' at line 48), got 'self'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 50, "message": "Expected ')' (to close '(' at line 49), got 'if'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 52, "message": "Expected ')' (to close '(' at line 51), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 56, "message": "Expected ')' (to close '(' at line 55), got 'self'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 57, "message": "Expected ')' (to close '(' at line 56), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__018", "diags": [{"fase": "topo", "kind": "Syntax", "line": 60, "message": "Expected ')' (to close '(' at line 59), got 'self'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__019", "diags": [{"fase": "topo", "kind": "Syntax", "line": 63, "message": "Expected ')' (to close '(' at column 25), got ':'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__020", "diags": [{"fase": "topo", "kind": "Syntax", "line": 70, "message": "Expected ')' (to close '(' at line 69), got 'if'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__021", "diags": [{"fase": "topo", "kind": "Syntax", "line": 71, "message": "Expected ')' (to close '(' at column 27), got 'then'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__022", "diags": [{"fase": "topo", "kind": "Syntax", "line": 75, "message": "Expected ')' (to close '(' at line 74), got 'return'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__023", "diags": [{"fase": "topo", "kind": "Syntax", "line": 89, "message": "Expected ')' (to close '(' at column 25), got ':'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__024", "diags": [{"fase": "topo", "kind": "Syntax", "line": 91, "message": "Expected ')' (to close '(' at line 90), got 'return'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__025", "diags": [{"fase": "topo", "kind": "Syntax", "line": 92, "message": "Expected ')' (to close '(' at line 91), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__026", "diags": [{"fase": "topo", "kind": "Syntax", "line": 94, "message": "Expected ')' (to close '(' at column 28), got ':'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__027", "diags": [{"fase": "topo", "kind": "Syntax", "line": 96, "message": "Expected ')' (to close '(' at line 95), got 'return'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__028", "diags": [{"fase": "topo", "kind": "Syntax", "line": 97, "message": "Expected ')' (to close '(' at line 96), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__029", "diags": [{"fase": "topo", "kind": "Syntax", "line": 97, "message": "Expected ')' (to close '(' at line 96), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__030", "diags": [{"fase": "topo", "kind": "Syntax", "line": 100, "message": "Expected ')' (to close '(' at line 99), got 'if'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__031", "diags": [{"fase": "topo", "kind": "Syntax", "line": 102, "message": "Expected ')' (to close '(' at line 101), got 'elseif'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__032", "diags": [{"fase": "topo", "kind": "Syntax", "line": 104, "message": "Expected ')' (to close '(' at line 103), got 'elseif'"}]}
+{"mutant": "c7_typical_script__sem_fecha_parenteses__033", "diags": [{"fase": "topo", "kind": "Syntax", "line": 109, "message": "Expected ')' (to close '(' at line 108), got 'end'"}]}
+{"mutant": "c7_typical_script__sem_then__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Expected 'then' when parsing if statement, got 'if'"}]}
+{"mutant": "c7_typical_script__sem_then__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 27, "message": "Expected 'then' when parsing if statement, got 'self'"}]}
+{"mutant": "c7_typical_script__sem_then__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 30, "message": "Expected 'then' when parsing if statement, got 'local'"}]}
+{"mutant": "c7_typical_script__sem_then__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Expected 'then' when parsing if statement, got 'self'"}]}
+{"mutant": "c7_typical_script__sem_then__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 34, "message": "Expected 'then' when parsing if statement, got 'self'"}]}
+{"mutant": "c7_typical_script__sem_then__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Expected 'then' when parsing if statement, got 'local'"}]}
+{"mutant": "c7_typical_script__sem_then__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 39, "message": "Expected 'then' when parsing if statement, got 'self'"}]}
+{"mutant": "c7_typical_script__sem_then__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 51, "message": "Expected 'then' when parsing if statement, got 'self'"}]}
+{"mutant": "c7_typical_script__sem_then__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 71, "message": "Expected 'then' when parsing if statement, got 'if'"}]}
+{"mutant": "c7_typical_script__sem_then__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 72, "message": "Expected 'then' when parsing if statement, got 'return'"}]}
+{"mutant": "c7_typical_script__sem_then__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 78, "message": "Expected 'then' when parsing if statement, got 'if'"}]}
+{"mutant": "c7_typical_script__sem_then__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 79, "message": "Expected 'then' when parsing if statement, got 'return'"}]}
+{"mutant": "c7_typical_script__sem_then__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 101, "message": "Expected 'then' when parsing if statement, got 'player'"}]}
+{"mutant": "c7_typical_script__sem_then__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 103, "message": "Expected 'then' when parsing if statement, got 'player'"}]}
+{"mutant": "c7_typical_script__sem_then__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 105, "message": "Expected 'then' when parsing if statement, got 'player'"}]}
+{"mutant": "c7_typical_script__sem_then__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 108, "message": "Expected 'then' when parsing if statement, got 'return'"}]}
+{"mutant": "c7_typical_script__virgula_em_falta__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 14, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "c7_typical_script__virgula_em_falta__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "c7_typical_script__virgula_em_falta__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 115, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "c7_typical_script__virgula_em_falta__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 116, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "c7_typical_script__virgula_em_falta__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 117, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "case_2_coroutine__argumento_a_menos__001", "diags": []}
+{"mutant": "case_2_coroutine__base__000", "diags": []}
+{"mutant": "case_2_coroutine__identificador_trocado__001", "diags": []}
+{"mutant": "case_2_coroutine__identificador_trocado__002", "diags": []}
+{"mutant": "case_2_coroutine__identificador_trocado__003", "diags": []}
+{"mutant": "case_2_coroutine__identificador_trocado__004", "diags": []}
+{"mutant": "case_2_coroutine__indice_zero__001", "diags": []}
+{"mutant": "case_2_coroutine__membro_trocado__001", "diags": []}
+{"mutant": "case_2_coroutine__palavra_chave_trocada__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 5, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "case_2_coroutine__palavra_chave_trocada__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Expected <eof>, got 'end'"}]}
+{"mutant": "case_2_coroutine__palavra_chave_trocada__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 6, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "case_2_coroutine__palavra_chave_trocada__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 6, "message": "Expected 'do' when parsing for loop, got 'od'"}]}
+{"mutant": "case_2_coroutine__palavra_chave_trocada__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "case_2_coroutine__palavra_chave_trocada__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "case_2_coroutine__palavra_chave_trocada__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "case_2_coroutine__ponto_por_dois_pontos__001", "diags": []}
+{"mutant": "case_2_coroutine__sem_do__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 7, "message": "Expected 'do' when parsing for loop, got 'ph2d'"}]}
+{"mutant": "case_2_coroutine__sem_end__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 13, "message": "Expected 'end' (to close 'function' at line 5), got <eof>; did you forget to close 'do' at line 6?"}]}
+{"mutant": "case_2_coroutine__sem_end__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 13, "message": "Expected 'end' (to close 'function' at line 5), got <eof>; did you forget to close 'do' at line 6?"}]}
+{"mutant": "case_2_coroutine__sem_fecha_parenteses__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 6, "message": "Expected identifier when parsing variable name, got 'for'"}]}
+{"mutant": "case_2_coroutine__sem_fecha_parenteses__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Expected ')' (to close '(' at line 7), got 'end'"}]}
+{"mutant": "coro_timing__argumento_a_menos__001", "diags": []}
+{"mutant": "coro_timing__base__000", "diags": []}
+{"mutant": "coro_timing__identificador_trocado__001", "diags": []}
+{"mutant": "coro_timing__identificador_trocado__002", "diags": []}
+{"mutant": "coro_timing__identificador_trocado__003", "diags": []}
+{"mutant": "coro_timing__identificador_trocado__004", "diags": []}
+{"mutant": "coro_timing__membro_trocado__001", "diags": []}
+{"mutant": "coro_timing__palavra_chave_trocada__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 7, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "coro_timing__palavra_chave_trocada__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "coro_timing__ponto_por_dois_pontos__001", "diags": []}
+{"mutant": "coro_timing__sem_end__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Expected 'end' (to close 'function' at line 7), got <eof>"}]}
+{"mutant": "coro_timing__sem_fecha_parenteses__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 8, "message": "Expected ')' (to close '(' at line 7), got 'ph2d'"}]}
+{"mutant": "coro_timing__sem_fecha_parenteses__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Expected ')' (to close '(' at line 8), got 'end'"}]}
+{"mutant": "gc_stress__argumento_a_menos__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 6, "message": "missing argument #1 to 'create' (number expected)"}]}
+{"mutant": "gc_stress__argumento_a_menos__002", "diags": [{"fase": "topo", "kind": "Runtime", "line": 11, "message": "missing argument #1 to 'create' (number expected)"}]}
+{"mutant": "gc_stress__argumento_a_menos__003", "diags": [{"fase": "topo", "kind": "Runtime", "line": 13, "message": "missing argument #1 to 'create' (function expected)"}]}
+{"mutant": "gc_stress__argumento_a_menos__004", "diags": []}
+{"mutant": "gc_stress__argumento_a_menos__005", "diags": [{"fase": "topo", "kind": "Runtime", "line": 17, "message": "missing argument #1 to 'resume' (thread expected)"}]}
+{"mutant": "gc_stress__atribuicao_por_igual__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 6, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "gc_stress__atribuicao_por_igual__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 8, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__atribuicao_por_igual__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 11, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "gc_stress__atribuicao_por_igual__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 13, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__atribuicao_por_igual__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 22, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "gc_stress__atribuicao_por_igual__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__base__000", "diags": []}
+{"mutant": "gc_stress__concat_com_mais__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 8, "message": "attempt to perform arithmetic (add) on string and number"}]}
+{"mutant": "gc_stress__identificador_trocado__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 8, "message": "attempt to index nil with number"}]}
+{"mutant": "gc_stress__identificador_trocado__002", "diags": [{"fase": "topo", "kind": "Runtime", "line": 6, "message": "attempt to index nil with 'create'"}]}
+{"mutant": "gc_stress__identificador_trocado__003", "diags": [{"fase": "topo", "kind": "Runtime", "line": 8, "message": "attempt to perform arithmetic (mul) on nil and number"}]}
+{"mutant": "gc_stress__identificador_trocado__004", "diags": [{"fase": "topo", "kind": "Runtime", "line": 8, "message": "attempt to index nil with number"}]}
+{"mutant": "gc_stress__identificador_trocado__005", "diags": [{"fase": "topo", "kind": "Runtime", "line": 8, "message": "table index is nil"}]}
+{"mutant": "gc_stress__identificador_trocado__006", "diags": []}
+{"mutant": "gc_stress__identificador_trocado__007", "diags": [{"fase": "topo", "kind": "Runtime", "line": 8, "message": "attempt to perform arithmetic (mul) on nil and number"}]}
+{"mutant": "gc_stress__identificador_trocado__008", "diags": [{"fase": "topo", "kind": "Runtime", "line": 8, "message": "attempt to perform arithmetic (mul) on nil and number"}]}
+{"mutant": "gc_stress__identificador_trocado__009", "diags": [{"fase": "topo", "kind": "Runtime", "line": 8, "message": "attempt to concatenate string with nil"}]}
+{"mutant": "gc_stress__identificador_trocado__010", "diags": [{"fase": "topo", "kind": "Runtime", "line": 13, "message": "attempt to index nil with number"}]}
+{"mutant": "gc_stress__identificador_trocado__011", "diags": [{"fase": "topo", "kind": "Runtime", "line": 11, "message": "attempt to index nil with 'create'"}]}
+{"mutant": "gc_stress__identificador_trocado__012", "diags": [{"fase": "topo", "kind": "Runtime", "line": 13, "message": "table index is nil"}]}
+{"mutant": "gc_stress__identificador_trocado__013", "diags": [{"fase": "topo", "kind": "Runtime", "line": 13, "message": "attempt to index nil with number"}]}
+{"mutant": "gc_stress__identificador_trocado__014", "diags": [{"fase": "topo", "kind": "Runtime", "line": 13, "message": "table index is nil"}]}
+{"mutant": "gc_stress__identificador_trocado__015", "diags": [{"fase": "topo", "kind": "Runtime", "line": 13, "message": "attempt to index nil with 'create'"}]}
+{"mutant": "gc_stress__identificador_trocado__016", "diags": []}
+{"mutant": "gc_stress__identificador_trocado__017", "diags": [{"fase": "topo", "kind": "Runtime", "line": 17, "message": "attempt to index nil with 'resume'"}]}
+{"mutant": "gc_stress__identificador_trocado__018", "diags": [{"fase": "topo", "kind": "Runtime", "line": 17, "message": "attempt to index nil with number"}]}
+{"mutant": "gc_stress__identificador_trocado__019", "diags": [{"fase": "topo", "kind": "Runtime", "line": 17, "message": "invalid argument #1 to 'resume' (thread expected, got nil)"}]}
+{"mutant": "gc_stress__identificador_trocado__020", "diags": []}
+{"mutant": "gc_stress__identificador_trocado__021", "diags": []}
+{"mutant": "gc_stress__identificador_trocado__022", "diags": []}
+{"mutant": "gc_stress__identificador_trocado__023", "diags": []}
+{"mutant": "gc_stress__identificador_trocado__024", "diags": []}
+{"mutant": "gc_stress__identificador_trocado__025", "diags": []}
+{"mutant": "gc_stress__identificador_trocado__026", "diags": []}
+{"mutant": "gc_stress__indice_zero__001", "diags": []}
+{"mutant": "gc_stress__indice_zero__002", "diags": []}
+{"mutant": "gc_stress__indice_zero__003", "diags": []}
+{"mutant": "gc_stress__membro_trocado__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 6, "message": "attempt to call a nil value"}]}
+{"mutant": "gc_stress__membro_trocado__002", "diags": [{"fase": "topo", "kind": "Runtime", "line": 11, "message": "attempt to call a nil value"}]}
+{"mutant": "gc_stress__membro_trocado__003", "diags": [{"fase": "topo", "kind": "Runtime", "line": 13, "message": "attempt to call a nil value"}]}
+{"mutant": "gc_stress__membro_trocado__004", "diags": []}
+{"mutant": "gc_stress__membro_trocado__005", "diags": [{"fase": "topo", "kind": "Runtime", "line": 17, "message": "attempt to call a nil value"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 6, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 7, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 7, "message": "Expected 'do' when parsing for loop, got 'od'"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 11, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Expected 'do' when parsing for loop, got 'od'"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 14, "message": "Expected ')' (to close '(' at line 13), got 'ph2d'"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 18, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 21, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 22, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 23, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 23, "message": "Expected 'do' when parsing for loop, got 'od'"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "gc_stress__palavra_chave_trocada__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 27, "message": "Expected 'end' (to close 'function' at line 21), got 'ned'; did you forget to close 'do' at line 23?"}]}
+{"mutant": "gc_stress__ponto_por_dois_pontos__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 6, "message": "invalid argument #1 to 'create' (number expected, got table)"}]}
+{"mutant": "gc_stress__ponto_por_dois_pontos__002", "diags": [{"fase": "topo", "kind": "Runtime", "line": 11, "message": "invalid argument #1 to 'create' (number expected, got table)"}]}
+{"mutant": "gc_stress__ponto_por_dois_pontos__003", "diags": [{"fase": "topo", "kind": "Runtime", "line": 13, "message": "invalid argument #1 to 'create' (function expected, got table)"}]}
+{"mutant": "gc_stress__ponto_por_dois_pontos__004", "diags": []}
+{"mutant": "gc_stress__ponto_por_dois_pontos__005", "diags": [{"fase": "topo", "kind": "Runtime", "line": 17, "message": "invalid argument #1 to 'resume' (thread expected, got table)"}]}
+{"mutant": "gc_stress__sem_do__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 8, "message": "Expected 'do' when parsing for loop, got 'persistent'"}]}
+{"mutant": "gc_stress__sem_do__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 13, "message": "Expected 'do' when parsing for loop, got 'coroutines'"}]}
+{"mutant": "gc_stress__sem_do__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Expected 'do' when parsing for loop, got 'local_garbage'"}]}
+{"mutant": "gc_stress__sem_end__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 28, "message": "Expected 'end' (to close 'do' at line 7), got <eof>; did you forget to close 'do' at line 23?"}]}
+{"mutant": "gc_stress__sem_end__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected identifier when parsing expression, got ')'"}]}
+{"mutant": "gc_stress__sem_end__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 28, "message": "Expected 'end' (to close 'do' at line 12), got <eof>; did you forget to close 'do' at line 23?"}]}
+{"mutant": "gc_stress__sem_end__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 28, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'do' at line 23?"}]}
+{"mutant": "gc_stress__sem_end__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 28, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'do' at line 23?"}]}
+{"mutant": "gc_stress__sem_fecha_aspas__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 8, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "gc_stress__sem_fecha_aspas__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "gc_stress__sem_fecha_chave__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 8, "message": "Expected ']' (to close '[' at column 15), got '='"}]}
+{"mutant": "gc_stress__sem_fecha_chave__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Expected '}' (to close '{' at line 8), got 'end'"}]}
+{"mutant": "gc_stress__sem_fecha_chave__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 13, "message": "Expected ']' (to close '[' at column 15), got '='"}]}
+{"mutant": "gc_stress__sem_fecha_chave__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 17, "message": "Expected ']' (to close '[' at column 32), got ')'"}]}
+{"mutant": "gc_stress__sem_fecha_chave__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 23, "message": "Expected identifier when parsing expression, got 'for'"}]}
+{"mutant": "gc_stress__sem_fecha_chave__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Expected ']' (to close '[' at column 22), got '='"}]}
+{"mutant": "gc_stress__sem_fecha_chave__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Expected '}' (to close '{' at line 24), got 'end'"}]}
+{"mutant": "gc_stress__sem_fecha_chave__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Expected '}' (to close '{' at line 24), got 'end'"}]}
+{"mutant": "gc_stress__sem_fecha_parenteses__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 7, "message": "Expected ')' (to close '(' at line 6), got 'for'"}]}
+{"mutant": "gc_stress__sem_fecha_parenteses__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Expected ')' (to close '(' at line 11), got 'for'"}]}
+{"mutant": "gc_stress__sem_fecha_parenteses__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 14, "message": "Expected ')' (to close '(' at line 13), got '.'"}]}
+{"mutant": "gc_stress__sem_fecha_parenteses__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected ')' (to close '(' at line 14), got 'end'"}]}
+{"mutant": "gc_stress__sem_fecha_parenteses__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 17, "message": "Expected ')' (to close '(' at line 13), got 'coroutine'"}]}
+{"mutant": "gc_stress__sem_fecha_parenteses__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 18, "message": "Expected ')' (to close '(' at line 17), got 'end'"}]}
+{"mutant": "gc_stress__sem_fecha_parenteses__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 22, "message": "Expected identifier when parsing variable name, got 'local'"}]}
+{"mutant": "gc_stress__virgula_em_falta__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 8, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "gc_stress__virgula_em_falta__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 8, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "gc_stress__virgula_em_falta__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 8, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "gc_stress__virgula_em_falta__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "gc_stress__virgula_em_falta__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "gc_stress__virgula_em_falta__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Expected '}' (to close '{' at column 62), got '2'"}]}
+{"mutant": "gc_stress__virgula_em_falta__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 24, "message": "Expected '}' (to close '{' at column 62), got '3'"}]}
+{"mutant": "hello__argumento_a_menos__001", "diags": []}
+{"mutant": "hello__argumento_a_menos__002", "diags": []}
+{"mutant": "hello__argumento_a_menos__003", "diags": []}
+{"mutant": "hello__argumentos_trocados__001", "diags": []}
+{"mutant": "hello__atribuicao_por_igual__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 5, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "hello__base__000", "diags": []}
+{"mutant": "hello__identificador_trocado__001", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 10, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "hello__identificador_trocado__002", "diags": [{"fase": "topo", "kind": "Runtime", "line": 7, "message": "attempt to call a nil value"}]}
+{"mutant": "hello__identificador_trocado__003", "diags": []}
+{"mutant": "hello__identificador_trocado__004", "diags": []}
+{"mutant": "hello__identificador_trocado__005", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 10, "message": "attempt to perform arithmetic (add) on nil and number"}]}
+{"mutant": "hello__identificador_trocado__006", "diags": [{"fase": "tique0", "kind": "Runtime", "line": 11, "message": "attempt to perform arithmetic (mod) on nil and number"}]}
+{"mutant": "hello__identificador_trocado__007", "diags": []}
+{"mutant": "hello__identificador_trocado__008", "diags": []}
+{"mutant": "hello__identificador_trocado__009", "diags": []}
+{"mutant": "hello__identificador_trocado__010", "diags": []}
+{"mutant": "hello__igual_por_atribuicao__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 11, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "hello__mais_mais__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "hello__membro_trocado__001", "diags": []}
+{"mutant": "hello__palavra_chave_trocada__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 5, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "hello__palavra_chave_trocada__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "hello__palavra_chave_trocada__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 11, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "hello__palavra_chave_trocada__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 11, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "hello__palavra_chave_trocada__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 13, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "hello__palavra_chave_trocada__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 14, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "hello__ponto_por_dois_pontos__001", "diags": []}
+{"mutant": "hello__sem_end__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected 'end' (to close 'function' at line 9), got <eof>; did you forget to close 'then' at line 11?"}]}
+{"mutant": "hello__sem_end__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 15, "message": "Expected 'end' (to close 'function' at line 9), got <eof>; did you forget to close 'then' at line 11?"}]}
+{"mutant": "hello__sem_fecha_aspas__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 7, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "hello__sem_fecha_aspas__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "hello__sem_fecha_parenteses__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 9, "message": "Expected ')' (to close '(' at line 7), got 'function'"}]}
+{"mutant": "hello__sem_fecha_parenteses__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 10, "message": "Expected ')' (to close '(' at line 9), got 'frame_count'"}]}
+{"mutant": "hello__sem_fecha_parenteses__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 13, "message": "Expected ')' (to close '(' at line 12), got 'end'"}]}
+{"mutant": "hello__sem_then__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 12, "message": "Expected 'then' when parsing if statement, got 'print'"}]}
+{"mutant": "ph2d_script_attach__argumento_a_menos__001", "diags": []}
+{"mutant": "ph2d_script_attach__argumento_a_menos__002", "diags": []}
+{"mutant": "ph2d_script_attach__argumento_a_menos__003", "diags": []}
+{"mutant": "ph2d_script_attach__argumento_a_menos__004", "diags": []}
+{"mutant": "ph2d_script_attach__argumento_a_menos__005", "diags": []}
+{"mutant": "ph2d_script_attach__argumento_a_menos__006", "diags": []}
+{"mutant": "ph2d_script_attach__argumento_a_menos__007", "diags": []}
+{"mutant": "ph2d_script_attach__argumento_a_menos__008", "diags": []}
+{"mutant": "ph2d_script_attach__argumentos_trocados__001", "diags": []}
+{"mutant": "ph2d_script_attach__argumentos_trocados__002", "diags": []}
+{"mutant": "ph2d_script_attach__argumentos_trocados__003", "diags": []}
+{"mutant": "ph2d_script_attach__argumentos_trocados__004", "diags": []}
+{"mutant": "ph2d_script_attach__argumentos_trocados__005", "diags": []}
+{"mutant": "ph2d_script_attach__atribuicao_por_igual__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "ph2d_script_attach__atribuicao_por_igual__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 34, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "ph2d_script_attach__atribuicao_por_igual__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 45, "message": "Expected identifier when parsing expression, got '=='"}]}
+{"mutant": "ph2d_script_attach__base__000", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__001", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__002", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__003", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__004", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__005", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__006", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__007", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__008", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__009", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__010", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__011", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__012", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__013", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__014", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__015", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__016", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__017", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__018", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__019", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__020", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__021", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__022", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__023", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__024", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__025", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__026", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__027", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__028", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__029", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__030", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__031", "diags": []}
+{"mutant": "ph2d_script_attach__identificador_trocado__032", "diags": []}
+{"mutant": "ph2d_script_attach__igual_por_atribuicao__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "ph2d_script_attach__igual_por_atribuicao__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 46, "message": "Expected 'then' when parsing if statement, got '='"}]}
+{"mutant": "ph2d_script_attach__logico_estilo_c__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 35, "message": "Unexpected '&&'; did you mean 'and'?"}]}
+{"mutant": "ph2d_script_attach__membro_trocado__001", "diags": []}
+{"mutant": "ph2d_script_attach__membro_trocado__002", "diags": []}
+{"mutant": "ph2d_script_attach__membro_trocado__003", "diags": []}
+{"mutant": "ph2d_script_attach__membro_trocado__004", "diags": []}
+{"mutant": "ph2d_script_attach__membro_trocado__005", "diags": []}
+{"mutant": "ph2d_script_attach__membro_trocado__006", "diags": []}
+{"mutant": "ph2d_script_attach__membro_trocado__007", "diags": []}
+{"mutant": "ph2d_script_attach__membro_trocado__008", "diags": []}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 21, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 21, "message": "Expected '(', '{' or <string> when parsing function call, got ')'"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 28, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 30, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 32, "message": "Expected '(', '{' or <string> when parsing function call, got ','"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 34, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 35, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__012", "diags": [{"fase": "topo", "kind": "Syntax", "line": 35, "message": "Expected 'then' when parsing if statement, got 'nad'"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__013", "diags": [{"fase": "topo", "kind": "Syntax", "line": 35, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__014", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__015", "diags": [{"fase": "topo", "kind": "Syntax", "line": 38, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__016", "diags": [{"fase": "topo", "kind": "Syntax", "line": 44, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__017", "diags": [{"fase": "topo", "kind": "Syntax", "line": 44, "message": "Expected '(', '{' or <string> when parsing function call, got ')'"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__018", "diags": [{"fase": "topo", "kind": "Syntax", "line": 45, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__019", "diags": [{"fase": "topo", "kind": "Syntax", "line": 46, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__020", "diags": [{"fase": "topo", "kind": "Syntax", "line": 46, "message": "Expected 'then' when parsing if statement, got 'tehn'"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__021", "diags": [{"fase": "topo", "kind": "Syntax", "line": 48, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__022", "diags": [{"fase": "topo", "kind": "Syntax", "line": 51, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__023", "diags": [{"fase": "topo", "kind": "Syntax", "line": 52, "message": "Incomplete statement: expected assignment or a function call"}]}
+{"mutant": "ph2d_script_attach__palavra_chave_trocada__024", "diags": [{"fase": "topo", "kind": "Runtime", "line": 54, "message": "attempt to call a nil value"}]}
+{"mutant": "ph2d_script_attach__ponto_por_dois_pontos__001", "diags": []}
+{"mutant": "ph2d_script_attach__ponto_por_dois_pontos__002", "diags": []}
+{"mutant": "ph2d_script_attach__ponto_por_dois_pontos__003", "diags": []}
+{"mutant": "ph2d_script_attach__ponto_por_dois_pontos__004", "diags": []}
+{"mutant": "ph2d_script_attach__ponto_por_dois_pontos__005", "diags": []}
+{"mutant": "ph2d_script_attach__ponto_por_dois_pontos__006", "diags": []}
+{"mutant": "ph2d_script_attach__ponto_por_dois_pontos__007", "diags": []}
+{"mutant": "ph2d_script_attach__ponto_por_dois_pontos__008", "diags": []}
+{"mutant": "ph2d_script_attach__sem_end__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 59, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'then' at line 35?"}]}
+{"mutant": "ph2d_script_attach__sem_end__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 59, "message": "Expected 'end' (to close 'function' at line 21), got <eof>; did you forget to close 'then' at line 35?"}]}
+{"mutant": "ph2d_script_attach__sem_end__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 59, "message": "Expected 'end' (to close 'function' at line 32), got <eof>; did you forget to close 'then' at line 35?"}]}
+{"mutant": "ph2d_script_attach__sem_end__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 59, "message": "Expected 'end' (to close 'function' at line 32), got <eof>; did you forget to close 'then' at line 35?"}]}
+{"mutant": "ph2d_script_attach__sem_end__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 59, "message": "Expected 'end' (to close 'function' at line 44), got <eof>; did you forget to close 'else' at line 48?"}]}
+{"mutant": "ph2d_script_attach__sem_end__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 59, "message": "Expected 'end' (to close 'function' at line 44), got <eof>"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_aspas__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_aspas__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 27, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_aspas__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 29, "message": "Expected ')' (to close '(' at column 19), got 'Enemy'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_aspas__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 29, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_aspas__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 34, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_aspas__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_aspas__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 45, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_aspas__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 47, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_aspas__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 50, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_chave__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 59, "message": "Expected identifier when parsing expression, got <eof>"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 25, "message": "Expected ')' (to close '(' at line 21), got 'local'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 26, "message": "Expected ')' (to close '(' at line 25), got 'if'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 28, "message": "Expected ')' (to close '(' at line 27), got 'end'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__004", "diags": [{"fase": "topo", "kind": "Syntax", "line": 30, "message": "Expected ')' (to close '(' at line 29), got 'end'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__005", "diags": [{"fase": "topo", "kind": "Syntax", "line": 34, "message": "Expected ')' (to close '(' at line 32), got 'local'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__006", "diags": [{"fase": "topo", "kind": "Syntax", "line": 35, "message": "Expected ')' (to close '(' at line 34), got 'if'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__007", "diags": [{"fase": "topo", "kind": "Syntax", "line": 37, "message": "Expected ')' (to close '(' at line 36), got 'end'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__008", "diags": [{"fase": "topo", "kind": "Syntax", "line": 45, "message": "Expected ')' (to close '(' at line 44), got 'local'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__009", "diags": [{"fase": "topo", "kind": "Syntax", "line": 46, "message": "Expected ')' (to close '(' at line 45), got 'if'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__010", "diags": [{"fase": "topo", "kind": "Syntax", "line": 48, "message": "Expected ')' (to close '(' at line 47), got 'else'"}]}
+{"mutant": "ph2d_script_attach__sem_fecha_parenteses__011", "diags": [{"fase": "topo", "kind": "Syntax", "line": 51, "message": "Expected ')' (to close '(' at line 50), got 'end'"}]}
+{"mutant": "ph2d_script_attach__sem_self_no_parametro__001", "diags": []}
+{"mutant": "ph2d_script_attach__sem_self_no_parametro__002", "diags": []}
+{"mutant": "ph2d_script_attach__sem_then__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 27, "message": "Expected 'then' when parsing if statement, got 'ph2d'"}]}
+{"mutant": "ph2d_script_attach__sem_then__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 36, "message": "Expected 'then' when parsing if statement, got 'ph2d'"}]}
+{"mutant": "ph2d_script_attach__sem_then__003", "diags": [{"fase": "topo", "kind": "Syntax", "line": 47, "message": "Expected 'then' when parsing if statement, got 'ph2d'"}]}
+{"mutant": "ph2d_script_attach__virgula_em_falta__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 56, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "ph2d_script_attach__virgula_em_falta__002", "diags": [{"fase": "topo", "kind": "Syntax", "line": 57, "message": "Expected ',' after table constructor element"}]}
+{"mutant": "script_boot__argumento_a_menos__001", "diags": []}
+{"mutant": "script_boot__base__000", "diags": []}
+{"mutant": "script_boot__identificador_trocado__001", "diags": [{"fase": "topo", "kind": "Runtime", "line": 2, "message": "attempt to call a nil value"}]}
+{"mutant": "script_boot__sem_fecha_aspas__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 2, "message": "Malformed string; did you forget to finish it?"}]}
+{"mutant": "script_boot__sem_fecha_parenteses__001", "diags": [{"fase": "topo", "kind": "Syntax", "line": 3, "message": "Expected ')' (to close '(' at line 2), got <eof>"}]}

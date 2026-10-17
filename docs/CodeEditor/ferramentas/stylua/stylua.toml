@@ -1,0 +1,52 @@
+# DRAFT — the pinned StyLua (owner decision 6, 16/10; CodeEditor Onda 2 I0d → I13). Same shape as
+# `crates/ph2d-code-lsp/luau-lsp.toml`: ONE source for the version; a fetch script downloads from here and
+# the formatter crate reads `version` to find the cache at ${XDG_CACHE_HOME:-$HOME/.cache}/ph2d/stylua/<version>/.
+#
+# ⚠ When this moves into its crate, RENAME it (e.g. `stylua-pin.toml`): `stylua.toml` is the file name StyLua
+# itself looks for as a formatting config in the cwd — measured, see medicoes_onda2/I0d_stylua.md §Achados.
+#
+# The sha256 of each asset was computed locally over the downloaded zip on 2026-10-16 and matches the
+# `digest` GitHub publishes for the asset. Each zip holds ONLY the binary (no LICENSE inside) — the MPL-2.0
+# notice and the link to the source are ours to ship in the credits/licences screen.
+# Upgrading = new version + new sha256 for EVERY asset, then re-run the formatter gates (a Luau syntax the
+# pinned version does not know can change code: 2.5.2 rewrites `{ read T }` as `{ readT }`; `--verify` catches it).
+#
+# Why 2.5.2 and not 2.6.0: 2.6.0 was published 2026-10-10 (6 days old on 2026-10-16), under the two-week floor;
+# it becomes eligible on 2026-10-24 and fixes the `{ read T }` rewrite above.
+
+version = "2.5.2"
+licence = "MPL-2.0"
+source = "https://github.com/JohnnyMorganz/StyLua/tree/v2.5.2"
+release = "https://github.com/JohnnyMorganz/StyLua/releases/tag/v2.5.2"
+published = "2026-05-16"
+
+# glibc build (needs GLIBC_2.34 — the same floor luau-lsp 1.70.1 already imposes). The static musl build
+# (`stylua-linux-x86_64-musl.zip`, sha256 ca6f1cf52eaf69e6632b81acef9c197aa24b85eb30d2455a35e7dbe28ae77c72)
+# has no glibc floor but formats ~35-45 % slower (measured, I0d).
+[asset.linux-x86_64]
+url = "https://github.com/JohnnyMorganz/StyLua/releases/download/v2.5.2/stylua-linux-x86_64.zip"
+sha256 = "bcb0d855e91f102f28a370e850f8566b3b44b79e6274d806ea5246837c0fd5ab"
+binary = "stylua"
+
+# Key named like luau-lsp.toml (`linux-arm64`); the release asset says `aarch64`.
+[asset.linux-arm64]
+url = "https://github.com/JohnnyMorganz/StyLua/releases/download/v2.5.2/stylua-linux-aarch64.zip"
+sha256 = "0ef2ebf0b7e5a652b65c4cb96c6d9ffb3981a98547de3c764465bbf54a8d761a"
+binary = "stylua"
+
+# No universal Mach-O for StyLua: one asset PER ARCH (unlike luau-lsp's single `macos`), so the fetch
+# script must branch on `uname -m` on Darwin too.
+[asset.macos-x86_64]
+url = "https://github.com/JohnnyMorganz/StyLua/releases/download/v2.5.2/stylua-macos-x86_64.zip"
+sha256 = "53c50a1605d0a6345d160a1a5a21db40bcf2bf9cd23c17f7c277a63a1bff3a7f"
+binary = "stylua"
+
+[asset.macos-arm64]
+url = "https://github.com/JohnnyMorganz/StyLua/releases/download/v2.5.2/stylua-macos-aarch64.zip"
+sha256 = "92ff0889e16324801bc072692974bb67f8161e62010fc90f96c62a17f81f32c7"
+binary = "stylua"
+
+[asset.windows-x86_64]
+url = "https://github.com/JohnnyMorganz/StyLua/releases/download/v2.5.2/stylua-windows-x86_64.zip"
+sha256 = "e77d0ea1226b8b389b43f702240091249a96eea25857281f90ea24d0eb9eb969"
+binary = "stylua.exe"

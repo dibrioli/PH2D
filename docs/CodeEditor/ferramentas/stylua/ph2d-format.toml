@@ -1,0 +1,17 @@
+# The StyLua formatting config PH2D passes with `--config-path` (never named `stylua.toml`/`.stylua.toml`,
+# so StyLua's own cwd lookup can never pick it up by accident — and passing it explicitly means no
+# config of the user's home, cwd or `.editorconfig` is ever read: `--config-path` short-circuits the search).
+# Indentation = the editor's (`ph2d-app-code` doc.rs `INDENT = Spaces(2)`); everything else = StyLua defaults,
+# written out so a StyLua upgrade that changes a default cannot change our output silently.
+syntax = "Luau"
+column_width = 120
+line_endings = "Unix"
+indent_type = "Spaces"
+indent_width = 2
+quote_style = "AutoPreferDouble"
+call_parentheses = "Always"
+collapse_simple_statement = "Never"
+space_after_function_names = "Never"
+
+[sort_requires]
+enabled = false

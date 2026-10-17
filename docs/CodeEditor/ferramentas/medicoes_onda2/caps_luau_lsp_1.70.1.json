@@ -1,0 +1,121 @@
+{
+ "capabilities": {
+  "callHierarchyProvider": true,
+  "codeActionProvider": {
+   "codeActionKinds": [
+    "quickfix",
+    "refactor.extract",
+    "refactor.inline",
+    "source",
+    "source.organizeImports"
+   ],
+   "resolveProvider": true
+  },
+  "colorProvider": true,
+  "completionProvider": {
+   "completionItem": {
+    "labelDetailsSupport": true
+   },
+   "resolveProvider": false,
+   "triggerCharacters": [
+    ".",
+    ":",
+    "'",
+    "\"",
+    "/",
+    "\n"
+   ]
+  },
+  "declarationProvider": false,
+  "definitionProvider": true,
+  "diagnosticProvider": {
+   "identifier": "luau",
+   "interFileDependencies": true,
+   "workspaceDiagnostics": true
+  },
+  "documentLinkProvider": {
+   "resolveProvider": false
+  },
+  "documentOnTypeFormattingProvider": {
+   "firstTriggerCharacter": "{"
+  },
+  "documentSymbolProvider": true,
+  "foldingRangeProvider": true,
+  "hoverProvider": true,
+  "implementationProvider": false,
+  "inlayHintProvider": true,
+  "positionEncoding": "utf-16",
+  "referencesProvider": true,
+  "renameProvider": true,
+  "semanticTokensProvider": {
+   "full": true,
+   "legend": {
+    "tokenModifiers": [
+     "declaration",
+     "definition",
+     "readonly",
+     "static",
+     "deprecated",
+     "abstract",
+     "async",
+     "modification",
+     "documentation",
+     "defaultLibrary"
+    ],
+    "tokenTypes": [
+     "namespace",
+     "type",
+     "class",
+     "enum",
+     "interface",
+     "struct",
+     "typeParameter",
+     "parameter",
+     "variable",
+     "property",
+     "enumMember",
+     "event",
+     "function",
+     "method",
+     "macro",
+     "keyword",
+     "modifier",
+     "comment",
+     "string",
+     "number",
+     "regexp",
+     "operator",
+     "decorator"
+    ]
+   },
+   "range": false
+  },
+  "signatureHelpProvider": {
+   "triggerCharacters": [
+    "(",
+    ","
+   ]
+  },
+  "textDocumentSync": {
+   "change": 2,
+   "openClose": true,
+   "save": {
+    "includeText": false
+   },
+   "willSave": false,
+   "willSaveWaitUntil": false
+  },
+  "typeDefinitionProvider": true,
+  "workspace": {
+   "workspaceFolders": {
+    "changeNotifications": false,
+    "supported": true
+   }
+  },
+  "workspaceSymbolProvider": true
+ },
+ "serverInfo": {
+  "name": "Luau",
+  "version": "1.70.1"
+ }
+}

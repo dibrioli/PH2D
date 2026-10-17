@@ -1,0 +1,48 @@
+codigo	classe	sitios	pct	pct_acum	primeira	pct_por_operador	gravidade	exemplo	operadores
+Syntax	Incomplete statement: expected assignment or a function call	140	20.9	20.9	140	12.4	erro	Incomplete statement: expected assignment or a function call	palavra_chave_trocada 110, atribuicao_por_igual 29, mais_mais 1
+Syntax	Expected ')' (to close '(' at <pos>), got <tok>	79	11.8	32.7	79	5.7	erro	Expected ')' (to close '(' at column 14), got malformed string	sem_fecha_parenteses 74, sem_fecha_aspas 4, palavra_chave_trocada 1
+Syntax	Expected 'then' when parsing if statement, got <tok>	69	10.3	43.0	69	11.6	erro	Expected 'then' when parsing if statement, got '='	palavra_chave_trocada 30, sem_then 24, igual_por_atribuicao 15
+Runtime	attempt to index nil with <x>	65	9.7	52.8	65	4.1	erro	attempt to index nil with 'property'	identificador_trocado 58, membro_trocado 5, sem_self_no_parametro 2
+Syntax	Malformed string; did you forget to finish it?	49	7.3	60.1	49	4.9	erro	Malformed string; did you forget to finish it?	sem_fecha_aspas 49
+Syntax	Expected 'end' (to close <kw> at <pos>), got <eof>; did you forget to close <kw> at <pos>?	36	5.4	65.5	36	8.7	erro	Expected 'end' (to close 'function' at line 31), got <eof>; did you forget to close 'then' at line 49?	sem_end 29, else_if 7
+Runtime	attempt to perform arithmetic (<op>) on nil and number	33	4.9	70.4	33	1.6	erro	attempt to perform arithmetic (add) on nil and number	identificador_trocado 16, membro_trocado 14, inicializacao_esquecida 3
+Syntax	Expected identifier when parsing expression, got <tok>	23	3.4	73.8	23	8.4	erro	Expected identifier when parsing expression, got '=='	atribuicao_por_igual 18, sem_fecha_chave 3, comparacao_invertida 1, sem_end 1
+Runtime	attempt to call a nil value	22	3.3	77.1	22	0.8	erro	attempt to call a nil value	membro_trocado 18, palavra_chave_trocada 2, identificador_trocado 2
+Syntax	Expected 'end' (to close <kw> at <pos>), got <tok>	19	2.8	80.0	19	2.3	erro	Expected 'end' (to close 'then' at line 32), got 'self'	palavra_chave_trocada 10, sem_end 7, else_if 1, igual_por_atribuicao 1
+Syntax	Expected ',' after table constructor element	19	2.8	82.8	19	5.0	erro	Expected ',' after table constructor element	virgula_em_falta 15, sem_fecha_aspas 2, sem_fecha_chave 2
+Syntax	Expected '}' (to close '{' at <pos>), got <tok>	14	2.1	84.9	14	3.3	erro	Expected '}' (to close '{' at column 33), got ')'	sem_fecha_chave 10, virgula_em_falta 4
+Runtime	bad argument #<n>: error converting Lua table to String (expected string or number)	9	1.3	86.2	9	1.3	erro	bad argument #1: error converting Lua table to String (expected string or number)	ponto_por_dois_pontos 7, argumentos_trocados 2
+Runtime	bad argument #<n>: error converting Lua nil to <número> (expected number or string coercible to number)	8	1.2	87.4	8	0.6	erro	bad argument #2: error converting Lua nil to f64 (expected number or string coercible to number)	argumento_a_menos 4, membro_trocado 4
+Syntax	Expected 'do' when parsing for loop, got <tok>	8	1.2	88.6	8	5.6	erro	Expected 'do' when parsing for loop, got 'od'	palavra_chave_trocada 4, sem_do 4
+Runtime	bad argument #<n>: error converting Lua table to <número> (expected number or string coercible to number)	6	0.9	89.5	6	0.7	erro	bad argument #1: error converting Lua table to f64 (expected number or string coercible to number)	ponto_por_dois_pontos 6
+Syntax	Expected ']' (to close '[' at <pos>), got <tok>	6	0.9	90.4	6	1.3	erro	Expected ']' (to close '[' at column 15), got '='	sem_fecha_chave 6
+Syntax	Expected 'end' (to close <kw> at <pos>), got <tok>; did you forget to close <kw> at <pos>?	5	0.7	91.2	5	0.4	erro	Expected 'end' (to close 'function' at line 69), got 'ned'; did you forget to close 'then' at line 77?	palavra_chave_trocada 3, sem_end 2
+Runtime	attempt to index nil with number	5	0.7	91.9	5	0.1	erro	attempt to index nil with number	identificador_trocado 5
+Runtime	bad argument #<n>: error converting Lua string to <número> (expected number or string coercible to number)	4	0.6	92.5	4	0.8	erro	bad argument #1: error converting Lua string to u64 (expected number or string coercible to number)	argumentos_trocados 4
+Syntax	Unexpected '&&'; did you mean 'and'?	4	0.6	93.1	4	2.7	erro	Unexpected '&&'; did you mean 'and'?	logico_estilo_c 4
+Syntax	Expected '(', '{' or <string> when parsing function call, got <tok>	4	0.6	93.7	4	0.1	erro	Expected '(', '{' or <string> when parsing function call, got ','	palavra_chave_trocada 4
+Decl:BadDefault	property <x> needs a number, boolean, string, ph2d.vec2 or ph2d.color default	3	0.4	94.2	3	0.3	erro	property 'active' needs a number, boolean, string, ph2d.vec2 or ph2d.color default	argumento_a_menos 3
+Runtime	missing argument #<n> to <x> (number expected)	3	0.4	94.6	3	0.3	erro	missing argument #1 to 'sin' (number expected)	argumento_a_menos 3
+Decl:BadName	<x> is not a valid property name	3	0.4	95.1	3	0.6	erro	'1' is not a valid property name	argumentos_trocados 3
+Runtime	invalid argument #<n> to <x> (number expected, got table)	3	0.4	95.5	3	0.4	erro	invalid argument #1 to 'sin' (number expected, got table)	ponto_por_dois_pontos 3
+Runtime	table index is nil	3	0.4	96.0	3	0.1	erro	table index is nil	identificador_trocado 3
+Runtime	bad argument #<n>: error converting Lua nil to String (expected string or number)	2	0.3	96.3	2	0.2	erro	bad argument #2: error converting Lua nil to String (expected string or number)	argumento_a_menos 2
+Syntax	Unexpected '!'; did you mean 'not'?	2	0.3	96.6	2	1.4	erro	Unexpected '!'; did you mean 'not'?	logico_estilo_c 2
+Syntax	Unexpected '||'; did you mean 'or'?	2	0.3	96.9	2	1.4	erro	Unexpected '||'; did you mean 'or'?	logico_estilo_c 2
+Syntax	Expected '(' when parsing function, got <tok>	2	0.3	97.2	2	0.4	erro	Expected '(' when parsing function, got 'Dialogue'	sem_fecha_chave 2
+Syntax	Expected identifier when parsing expression, got <eof>	2	0.3	97.5	2	0.4	erro	Expected identifier when parsing expression, got <eof>	sem_fecha_chave 2
+Syntax	Expected identifier when parsing variable name, got <tok>	2	0.3	97.8	2	0.1	erro	Expected identifier when parsing variable name, got 'for'	sem_fecha_parenteses 2
+Syntax	Expected 'end' (to close <kw> at <pos>), got <eof>	2	0.3	98.1	2	0.3	erro	Expected 'end' (to close 'function' at line 7), got <eof>	sem_end 2
+Runtime	bad argument #<n>: error converting Lua boolean to String (expected string or number)	1	0.1	98.2	1	0.2	erro	bad argument #1: error converting Lua boolean to String (expected string or number)	argumentos_trocados 1
+Decl:BadHint	property <x>: min/max/step need a number or ph2d.vec2 default, step > <n> and min <= max	1	0.1	98.4	1	0.2	erro	property 'sine': min/max/step need a number or ph2d.vec2 default, step > 0 and min <= max	argumentos_trocados 1
+Syntax	Unexpected '!='; did you mean '~='?	1	0.1	98.5	1	5.5	erro	Unexpected '!='; did you mean '~='?	diferente_estilo_c 1
+Runtime	attempt to compare number < nil	1	0.1	98.7	1	0.0	erro	attempt to compare number < nil	identificador_trocado 1
+Syntax	Expected <eof>, got <tok>	1	0.1	98.8	1	0.0	erro	Expected <eof>, got 'end'	palavra_chave_trocada 1
+Runtime	missing argument #<n> to <x> (function expected)	1	0.1	99.0	1	0.1	erro	missing argument #1 to 'create' (function expected)	argumento_a_menos 1
+Runtime	missing argument #<n> to <x> (thread expected)	1	0.1	99.1	1	0.1	erro	missing argument #1 to 'resume' (thread expected)	argumento_a_menos 1
+Runtime	attempt to perform arithmetic (<op>) on string and number	1	0.1	99.3	1	5.5	erro	attempt to perform arithmetic (add) on string and number	concat_com_mais 1
+Runtime	attempt to concatenate string with nil	1	0.1	99.4	1	0.0	erro	attempt to concatenate string with nil	identificador_trocado 1
+Runtime	invalid argument #<n> to <x> (thread expected, got nil)	1	0.1	99.6	1	0.0	erro	invalid argument #1 to 'resume' (thread expected, got nil)	identificador_trocado 1
+Runtime	invalid argument #<n> to <x> (function expected, got table)	1	0.1	99.7	1	0.1	erro	invalid argument #1 to 'create' (function expected, got table)	ponto_por_dois_pontos 1
+Runtime	invalid argument #<n> to <x> (thread expected, got table)	1	0.1	99.9	1	0.1	erro	invalid argument #1 to 'resume' (thread expected, got table)	ponto_por_dois_pontos 1
+Syntax	Expected ')' (to close '(' at <pos>), got <eof>	1	0.1	100.0	1	0.1	erro	Expected ')' (to close '(' at line 2), got <eof>	sem_fecha_parenteses 1

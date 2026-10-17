@@ -1,6 +1,6 @@
-//! **As imagens ao início e ao fim da gravação, fora do quadro** (W7 item 1, `docs/Macros/04_plano_W7.md`;
-//! W8 itens 2b/2c/4, `docs/Macros/05_plano_W8.md`): a régua de «o artista pintou depois do Parar».
-//! Calcula-se num fio próprio por versão da trilha QUE TOCA (o estado inicial e os eventos com as
+//! **A imagem do fim da gravação, fora do quadro** (W7 item 1, `docs/Macros/04_plano_W7.md`; W8 itens
+//! 2b/2c/4, `docs/Macros/05_plano_W8.md`): a régua da reescrita de uma etapa editada — só ela a pede
+//! desde a W9 (a mistura é pela marca). Calcula-se num fio próprio por versão da trilha QUE TOCA (o estado inicial e os eventos com as
 //! edições das etapas; o nome e a dica não a mudam), com a água assentada; largar o trabalho pára o
 //! fio. Um erro da reprodução ou um pânico do fio dizem-se ao artista ([`FimDaGravacao::erro`]).
 
@@ -19,11 +19,10 @@ pub(super) struct Imagem {
     pub(super) h: u32,
 }
 
-/// As imagens das pontas da gravação, premultiplicadas: o fim e o início (do tamanho do fim); o fim
-/// straight (o que se escreve numa sprite) e o documento do fim (a régua da reescrita, W8 item 2b).
+/// A imagem do fim da gravação, premultiplicada; o fim straight (o que se escreve numa sprite) e o
+/// documento do fim — a régua da reescrita de uma etapa editada (W8 item 2b).
 pub(super) struct Gravacao {
     pub(super) fim: Imagem,
-    pub(super) inicio: Vec<u8>,
     pub(super) fim_reto: Vec<u8>,
     pub(super) modelo: ModeloDoFim,
 }
@@ -89,16 +88,14 @@ pub(super) fn calcula(t: &Track, parar: &AtomicBool) -> Resultado {
     let Some(g) = imagens_da_gravacao(t, parar)? else {
         return Ok(None);
     };
-    let (mut rgba, mut inicio) = (g.fim.clone(), g.inicio);
+    let mut rgba = g.fim.clone();
     ph2d_render::premul::premultiply_rgba8(&mut rgba);
-    ph2d_render::premul::premultiply_rgba8(&mut inicio);
     Ok(Some(Arc::new(Gravacao {
         fim: Imagem {
             rgba,
             w: g.w,
             h: g.h,
         },
-        inicio,
         fim_reto: g.fim,
         modelo: g.modelo,
     })))

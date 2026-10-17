@@ -62,14 +62,16 @@ fn em(q: u64) -> MacroTempo {
 }
 
 #[derive(Default)]
-struct Placa {
-    proxima: u32,
-    adquiridas: Vec<u32>,
-    substituidas: usize,
-    regioes: usize,
-    soltas: Vec<u32>,
+pub(super) struct Placa {
+    pub(super) proxima: u32,
+    pub(super) adquiridas: Vec<u32>,
+    pub(super) substituidas: usize,
+    pub(super) regioes: usize,
+    pub(super) soltas: Vec<u32>,
+    /// As caixas de cada subida parcial.
+    pub(super) caixas: Vec<(u32, u32, u32, u32)>,
     /// O que cada ranhura tem: (largura, rgba premultiplicado).
-    texturas: std::collections::BTreeMap<u32, (u32, Vec<u8>)>,
+    pub(super) texturas: std::collections::BTreeMap<u32, (u32, Vec<u8>)>,
 }
 
 impl RanhurasDaCena for Placa {
@@ -93,6 +95,7 @@ impl RanhurasDaCena for Placa {
         rgba: &[u8],
     ) -> Result<(), String> {
         self.regioes += 1;
+        self.caixas.push((x, y, w, h));
         let (lw, t) = self.texturas.get_mut(&id).ok_or("ranhura desconhecida")?;
         let (lw, x, w) = (*lw as usize, x as usize, w as usize);
         for (j, linha) in rgba.chunks_exact(w * 4).enumerate().take(h as usize) {

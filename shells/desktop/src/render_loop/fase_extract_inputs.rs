@@ -76,8 +76,10 @@ impl crate::App {
                     p.2.push(ph2d_editor_core::toast::Toast::error(m));
                 }
             };
-            let painter = ph2d_app_painter::painter_bridge_queries::o_painter(tools);
+            let mut painter = ph2d_app_painter::painter_bridge_queries::o_painter(tools);
             let mut porta: Porta<'_> = (&mut *sim, &mut *renderer, &mut *toasts);
+            // W9: a marca do artista — o Painter ligado recebe a da imagem e devolve-a.
+            painter_macros.liga_a_marca(painter.as_deref_mut(), &mut le, &mut porta);
             if self.held_button.is_none() {
                 painter_macros.reescreve(painter, &mut le, &mut escreve, &mut porta);
             }

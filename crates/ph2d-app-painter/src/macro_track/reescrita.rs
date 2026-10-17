@@ -38,17 +38,24 @@ pub type LeSprite<'a, R> = dyn FnMut(u64, &mut R) -> Option<(Vec<u8>, u32, u32)>
 /// Escreve os píxeis (RGBA8 straight, `w`×`h`) na sprite (bits) — a porta de edição de imagem da shell.
 pub type EscreveSprite<'a, R> = dyn FnMut(u64, Vec<u8>, u32, u32, &mut R) + 'a;
 
-/// `rgba` onde ainda é `de` passa a `para` (straight, do mesmo tamanho). Quantos texels mudaram.
-fn reescreve_a_imagem(rgba: &mut [u8], de: &[u8], para: &[u8]) -> usize {
+/// `rgba` onde ainda é `de` passa a `para` (straight, do mesmo tamanho), salvo onde o artista marcou
+/// (W9). Quantos texels mudaram.
+fn reescreve_a_imagem(
+    rgba: &mut [u8],
+    de: &[u8],
+    para: &[u8],
+    marca: Option<&ph2d_tool_painter::macro_track::marca::MarcaDoArtista>,
+) -> usize {
     let mut n = 0;
-    for ((a, d), p) in rgba
+    for (k, ((a, d), p)) in rgba
         .as_chunks_mut::<4>()
         .0
         .iter_mut()
         .zip(de.as_chunks::<4>().0)
         .zip(para.as_chunks::<4>().0)
+        .enumerate()
     {
-        if a == d && d != p {
+        if a == d && d != p && !marca.is_some_and(|m| m.marcado(k)) {
             *a = *p;
             n += 1;
         }
@@ -134,11 +141,20 @@ impl PalcosDoPainter {
                             && rgba.len() == de.fim_reto.len()
                             && rgba.len() == para.fim_reto.len() =>
                     {
-                        let n = reescreve_a_imagem(&mut rgba, &de.fim_reto, &para.fim_reto);
+                        let g = p.chave.and_then(|c| self.marcas.get_mut(&c));
+                        let marca = g
+                            .as_ref()
+                            .and_then(|g| g.efetiva.as_ref().or(Some(&g.marca)))
+                            .filter(|m| m.tamanho() == (w, h));
+                        let n = reescreve_a_imagem(&mut rgba, &de.fim_reto, &para.fim_reto, marca);
                         if n > 0 {
                             transacao
                                 .get_or_insert_with(|| TRANSACOES.fetch_add(1, Ordering::Relaxed));
                             escreve(sprite, rgba, w, h, ranhuras);
+                            // A escrita é da macro: a base relê-se (o que o artista marcou fica).
+                            if let Some(g) = g {
+                                g.rebase();
+                            }
                         }
                         n
                     }

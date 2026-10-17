@@ -8,21 +8,22 @@
 //! entidade o tiver; um quadro sem `MacroTempo` tira-o da cena sem o recozer. A ranhura de textura de
 //! um palco que morre ou renasce devolve-se no quadro seguinte.
 //!
-//! **A imagem é do artista** (W7 item 1, `docs/Macros/04_plano_W7.md`; W8 item 2a,
-//! `docs/Macros/05_plano_W8.md`): numa imagem que RECEBEU a gravação, onde a imagem ATUAL difere da do fim
-//! ([`fim`]: a trilha que toca, a água assentada), a ranhura mostra a atual — apagar até ao papel fica
-//! apagado; numa que nunca a recebeu, só onde ela difere do fim E do início (o clipe anima por baixo da
-//! pintura). Nos outros píxeis, o palco.
+//! **A imagem é do artista** (W9, `docs/Macros/07_plano_W9.md`; a decisão do dono em
+//! `docs/Macros/06_auditoria_W8_record.md`): onde o artista escreveu depois da gravação (a marca,
+//! [`ph2d_tool_painter::macro_track::marca`]), a ranhura mostra a imagem ATUAL; nos outros texels, o
+//! palco. A água que corre depois do Parar não marca: o Rewind mostra o clipe, não a imagem final.
 
 use ph2d_ecs::{Entity, Macro, MacroTempo, StableId, World};
 use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::macro_track::em_cena::MacroEmCena;
+use ph2d_tool_painter::macro_track::marca::{self as marca_do_artista, MarcaDoArtista};
 use ph2d_tool_painter::macro_track::tocar::ErroDaMacro;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 mod fim;
+mod marcas;
 mod reescrita;
 pub use reescrita::{EscreveSprite, LeSprite};
 #[cfg(test)]
@@ -125,6 +126,9 @@ struct Atual {
     img: Option<Arc<fim::Imagem>>,
 }
 
+/// A chave da marca de uma imagem: o `StableId` da sprite e a época da gravação.
+type ChaveDaMarca = (u64, u64);
+
 /// A fonte da textura de uma sprite e a identidade dos píxeis próprios dela: muda a cada edição da
 /// imagem (o funil `commit_edited_texture` da shell cunha os dois).
 type PixeisDaSprite = (
@@ -145,17 +149,21 @@ struct PalcoDaPintura {
     fim: fim::FimDaGravacao,
     /// O fim que a imagem ainda tem, depois de uma edição de etapa (W8 item 2b).
     por_reescrever: Option<reescrita::PorReescrever>,
-    /// A imagem atual recebeu a gravação, para a chave `(versao_da_atual, versão do fim)`.
-    recebeu: Option<((u64, u64), bool)>,
+    /// A época da gravação ([`marca_do_artista::epoca_da_gravacao`]).
+    epoca: u64,
+    /// A chave da marca da sprite-alvo (resolvida no quadro).
+    chave: Option<ChaveDaMarca>,
     atual: Option<Atual>,
     /// Sobe a cada [`Atual`] nova.
     versao_da_atual: u64,
     /// A tela do palco premultiplicada, inteira, e o tamanho dela.
     espelho: Vec<u8>,
     tamanho_do_espelho: Option<(u32, u32)>,
-    /// O que a ranhura tem: a mistura `(versao_da_atual, versão do fim)` (`None` = só o palco) e a
+    /// O que a ranhura tem: a mistura `(versao_da_atual, versão da marca)` (`None` = só o palco) e a
     /// versão do filme da máscara do Painter ligado por cima (`None` = sem filme).
     mistura_subida: (Option<(u64, u64)>, Option<u64>),
+    /// A caixa da marca na última mistura subida (o que volta ao palco se a marca encolher).
+    caixa_misturada: Option<Caixa>,
 }
 
 struct Lido {
@@ -180,9 +188,10 @@ pub struct PalcosDoPainter {
     premul: Vec<u8>,
     /// A transação da última reescrita de uma etapa editada, à espera do passo global (W8 item 2b).
     transacao: Option<u64>,
-    /// Os gates seguram o fio do fim para ver o palco antes de ele chegar.
-    #[cfg(test)]
-    segura_o_fim: bool,
+    /// As marcas do artista por imagem e gravação (W9; [`marcas`]).
+    marcas: BTreeMap<ChaveDaMarca, marcas::Guardada>,
+    /// A imagem cuja marca o Painter tem: `(sprite, chave)`.
+    ligado: Option<(u64, ChaveDaMarca)>,
     /// Os gates trocam o cálculo do fim (um que falha).
     #[cfg(test)]
     calcula_o_fim: Option<fim::Calculo>,
@@ -206,6 +215,7 @@ fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
     let Some(trilha) = trilha_do_painter(&m.doc) else {
         return Ok(None);
     };
+    let epoca = marca_do_artista::epoca_da_gravacao(&trilha);
     Ok(Some(PalcoDaPintura {
         em_cena,
         sprite: None,
@@ -215,12 +225,14 @@ fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
         toca: false,
         fim: fim::FimDaGravacao::de(trilha),
         por_reescrever: None,
-        recebeu: None,
+        epoca,
+        chave: None,
         atual: None,
         versao_da_atual: 0,
         espelho: Vec::new(),
         tamanho_do_espelho: None,
         mistura_subida: (None, None),
+        caixa_misturada: None,
     }))
 }
 
@@ -242,6 +254,8 @@ fn relido(velho: Option<Lido>, m: &Macro, tique: u32, soltas: &mut Vec<u32>) -> 
             && fim::versao_da_trilha(&trilha) != p.fim.versao
         {
             let mesma_gravacao = fim::versao_crua(&trilha) == p.fim.crua;
+            // Gravar de novo é outra época: outra marca (a antiga fica guardada para o desfazer).
+            p.epoca = marca_do_artista::epoca_da_gravacao(&trilha);
             let antigo = std::mem::replace(&mut p.fim, fim::FimDaGravacao::de(trilha));
             // Uma edição de etapa: a imagem ainda tem o fim antigo (o mais antigo, se já esperava).
             if !mesma_gravacao {
@@ -291,49 +305,28 @@ fn premultiplica_na_caixa(espelho: &mut [u8], rgba: &[u8], largura: u32, c: Caix
     }
 }
 
-/// **A imagem `atual` recebeu a gravação** `g` (W8 item 2a): onde a gravação pinta (o fim difere do
-/// início), há mais píxeis iguais ao fim do que ao início. A desfeita, a de outra imagem e a que nunca a
-/// teve ficam do lado do início.
-fn recebeu_a_gravacao(g: &fim::Gravacao, atual: &[u8]) -> bool {
-    let (f, i, at) = (
-        g.fim.rgba.as_chunks::<4>().0,
-        g.inicio.as_chunks::<4>().0,
-        atual.as_chunks::<4>().0,
-    );
-    let (mut no_fim, mut no_inicio) = (0usize, 0usize);
-    for ((f, i), a) in f.iter().zip(i).zip(at) {
-        if f != i {
-            no_fim += usize::from(a == f);
-            no_inicio += usize::from(a == i);
-        }
-    }
-    no_fim > no_inicio
-}
-
-/// **A lei da mistura**: em `out` (o retângulo `c` do palco), cada píxel onde a imagem atual difere da do
-/// fim — e, se ela não `recebeu` a gravação, também da do início — passa a ser o da atual. Todas
-/// premultiplicadas, de largura `largura`.
+/// **A lei da mistura** (W9): em `out` (o retângulo `c` do palco), cada texel que o artista marcou passa
+/// a ser o da imagem `atual` (premultiplicada, de largura `largura`); os outros ficam o palco.
 fn mistura_na_caixa(
     out: &mut [u8],
-    g: &fim::Gravacao,
+    marca: &MarcaDoArtista,
     atual: &[u8],
-    recebeu: bool,
     largura: u32,
     c: Caixa,
 ) {
     let (lw, x, w) = (largura as usize, c.0 as usize, c.2 as usize);
     for (j, o) in out.chunks_exact_mut(w * 4).enumerate().take(c.3 as usize) {
-        let a = ((c.1 as usize + j) * lw + x) * 4;
-        let r = a..a + w * 4;
-        let (f, i, at) = (&g.fim.rgba[r.clone()], &g.inicio[r.clone()], &atual[r]);
-        let (f, i, at) = (
-            f.as_chunks::<4>().0,
-            i.as_chunks::<4>().0,
-            at.as_chunks::<4>().0,
-        );
-        for (k, o) in o.as_chunks_mut::<4>().0.iter_mut().enumerate() {
-            if f[k] != at[k] && (recebeu || i[k] != at[k]) {
-                *o = at[k];
+        let linha = (c.1 as usize + j) * lw + x;
+        let at = &atual[linha * 4..(linha + w) * 4];
+        for (k, (o, a)) in o
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .zip(at.as_chunks::<4>().0)
+            .enumerate()
+        {
+            if marca.marcado(linha + k) {
+                *o = *a;
             }
         }
     }
@@ -341,66 +334,71 @@ fn mistura_na_caixa(
 
 type Caixa = (u32, u32, u32, u32);
 
-/// As pontas da gravação, a imagem atual, e a chave da mistura (versão da atual, versão do fim).
-type Mistura = (Arc<fim::Gravacao>, Arc<fim::Imagem>, (u64, u64));
-
-/// O fio do fim de `p`, colhido (pelo cálculo dos gates, se o trocaram).
-fn colhe_o_fim(
-    p: &mut PalcoDaPintura,
-    calculo: Option<fim::Calculo>,
-) -> Option<Arc<fim::Gravacao>> {
-    match calculo {
-        Some(f) => p.fim.colhe_com(f),
-        None => p.fim.colhe(),
-    }
-    .map(Arc::clone)
+/// O que sobe: nada, a tela inteira, ou só um retângulo.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Subida {
+    Nada,
+    Inteira,
+    Caixa(Caixa),
 }
 
-/// A imagem do fim e a atual de `p`, quando as duas existem com o tamanho do espelho, e a chave da
-/// mistura. Lê a atual quando a fonte muda (o Painter ligado mudou, ou o palco acordou).
-fn mistura_de<R: ?Sized>(
+impl Subida {
+    fn com(self, outra: Self) -> Self {
+        match (self, outra) {
+            (Self::Nada, x) | (x, Self::Nada) => x,
+            (Self::Inteira, _) | (_, Self::Inteira) => Self::Inteira,
+            (Self::Caixa(a), Self::Caixa(b)) => Self::Caixa(marca_do_artista::une(Some(a), b)),
+        }
+    }
+
+    fn da(caixa: Option<Caixa>) -> Self {
+        caixa.map_or(Self::Nada, Self::Caixa)
+    }
+}
+
+/// **A imagem atual de `p` e a marca que vale sobre ela**, quando há o que misturar: a marca do Painter
+/// ligado à sprite (lida dele, viva) ou a da sprite ([`marcas`]). A imagem do Painter só se lê com a
+/// marca por vazia (W9, A3: a água que corre sem marca não custa uma leitura por quadro).
+fn atual_e_marca<R: ?Sized>(
     p: &mut PalcoDaPintura,
+    guardadas: &mut BTreeMap<ChaveDaMarca, marcas::Guardada>,
     atuais: &mut Atuais<'_, R>,
     ranhuras: &mut R,
-    calculo: Option<fim::Calculo>,
-) -> Option<Mistura> {
-    let gravacao = colhe_o_fim(p, calculo)?;
-    let fim = &gravacao.fim;
-    let sprite = p.sprite?;
-    let fonte = match atuais
+) -> Option<(Arc<fim::Imagem>, MarcaDoArtista)> {
+    let (sprite, chave) = (p.sprite?, p.chave?);
+    let painter = atuais
         .painter
-        .filter(|t| t.bound_document() == Some(sprite))
-    {
-        Some(t) => Fonte::Painter(t.content_revision(), t.canvas_version()),
-        None => Fonte::Sprite,
+        .filter(|t| t.bound_document() == Some(sprite));
+    let marca = match painter {
+        Some(t) => t
+            .marca_do_artista()
+            .filter(|m| m.epoca() == chave.1)
+            .cloned()?,
+        None => {
+            marcas::le_a_sprite(p, guardadas, atuais.le_sprite.as_deref_mut(), ranhuras);
+            guardadas.get(&chave)?.efetiva.clone()?
+        }
     };
-    if p.atual.as_ref().map(|a| a.fonte) != Some(fonte) {
-        let lida = match fonte {
-            Fonte::Painter(..) => atuais.painter.and_then(PainterTool::imagem_aplicada),
-            Fonte::Sprite => atuais
-                .le_sprite
-                .as_mut()
-                .and_then(|le| le(sprite, ranhuras)),
-        };
-        p.versao_da_atual += 1;
-        p.atual = Some(Atual {
-            fonte,
-            img: lida.map(|(mut rgba, w, h)| {
-                ph2d_render::premul::premultiply_rgba8(&mut rgba);
-                Arc::new(fim::Imagem { rgba, w, h })
-            }),
-        });
+    if marca.vazia() {
+        return None;
+    }
+    if let Some(t) = painter {
+        let fonte = Fonte::Painter(t.content_revision(), t.canvas_version());
+        if p.atual.as_ref().map(|a| a.fonte) != Some(fonte) {
+            p.versao_da_atual += 1;
+            p.atual = Some(Atual {
+                fonte,
+                img: t.imagem_aplicada().map(|(mut rgba, w, h)| {
+                    ph2d_render::premul::premultiply_rgba8(&mut rgba);
+                    Arc::new(fim::Imagem { rgba, w, h })
+                }),
+            });
+        }
     }
     let atual = Arc::clone(p.atual.as_ref()?.img.as_ref()?);
     let dims = p.tamanho_do_espelho?;
-    ((fim.w, fim.h) == dims && (atual.w, atual.h) == dims && fim.rgba.len() == atual.rgba.len())
-        .then(|| {
-            (
-                Arc::clone(&gravacao),
-                atual,
-                (p.versao_da_atual, p.fim.versao),
-            )
-        })
+    ((atual.w, atual.h) == dims && marca.tamanho() == dims && atual.rgba.len() == p.espelho.len())
+        .then_some((atual, marca))
 }
 
 impl PalcosDoPainter {
@@ -489,6 +487,13 @@ impl PalcosDoPainter {
             }
             p.sprite = sprite;
             p.pixeis_da_sprite = pixeis;
+            // A marca é da sprite e da gravação: o `StableId` dela (o do próprio objecto, sem alvo).
+            let sid = if alvo == 0 {
+                world.get::<StableId>(e).map(|s| s.0)
+            } else {
+                Some(alvo)
+            };
+            p.chave = sid.or(sprite).map(|s| (s, p.epoca));
             let Some(s) = segundos else {
                 continue;
             };
@@ -500,12 +505,12 @@ impl PalcosDoPainter {
         world.increment_change_tick();
     }
 
-    /// **Sobe a tela de cada palco que toca e mudou** — só o retângulo que mudou desde a subida anterior,
-    /// quando a ranhura já tem a tela daquele tamanho — e devolve as sprites a trocar no extract. Devolve
-    /// primeiro as ranhuras dos palcos que se foram.
+    /// **Sobe a tela de cada palco que toca e mudou** — só o retângulo que mudou desde a subida anterior
+    /// (o do palco e o da marca), quando a ranhura já tem a tela daquele tamanho — e devolve as sprites a
+    /// trocar no extract. Devolve primeiro as ranhuras dos palcos que se foram.
     ///
     /// `cede` = a sprite que o Painter está a gravar: mostra o traço vivo do editor, não a macro.
-    /// `atuais` = de onde vem a imagem atual da sprite (a mistura do W7 item 1).
+    /// `atuais` = de onde vem a imagem atual da sprite (a mistura pela marca, W9).
     pub fn sobe<R: RanhurasDaCena + ?Sized>(
         &mut self,
         ranhuras: &mut R,
@@ -516,10 +521,6 @@ impl PalcosDoPainter {
         for id in self.soltas.drain(..) {
             ranhuras.solta(id);
         }
-        #[cfg(test)]
-        let (segura, calculo) = (self.segura_o_fim, self.calcula_o_fim);
-        #[cfg(not(test))]
-        let (segura, calculo) = (false, None);
         let mut trocas = Vec::new();
         for l in self.lidos.values_mut() {
             let Ok(Some(p)) = &mut l.palco else {
@@ -528,8 +529,7 @@ impl PalcosDoPainter {
             if !p.toca {
                 continue;
             }
-            // `Some(None)` = sobe a tela inteira; `Some(Some(c))` = só o retângulo `c`.
-            let mut a_subir: Option<Option<Caixa>> = None;
+            let mut a_subir = Subida::Nada;
             if let Some((rgba, w, h)) = p.em_cena.toma_a_tela() {
                 let caixa = p.em_cena.caixa_da_tela().filter(|&(_, _, cw, ch)| {
                     p.tamanho_do_espelho == Some((w, h)) && cw > 0 && ch > 0
@@ -543,38 +543,39 @@ impl PalcosDoPainter {
                         p.tamanho_do_espelho = Some((w, h));
                     }
                 }
-                a_subir = Some(caixa);
+                a_subir = caixa.map_or(Subida::Inteira, Subida::Caixa);
             }
-            let mistura = if segura {
-                None
-            } else {
-                mistura_de(p, &mut atuais, ranhuras, calculo)
-            };
+            let mistura = atual_e_marca(p, &mut self.marcas, &mut atuais, ranhuras);
             // O Painter ligado a esta sprite com a máscara viva: o filme dele por cima (W8 item 6b).
             let mascara = atuais
                 .painter
                 .filter(|t| p.sprite.is_some() && t.bound_document() == p.sprite)
                 .and_then(|t| Some((t, t.versao_da_mascara()?)));
-            let chave = (mistura.as_ref().map(|m| m.2), mascara.map(|m| m.1));
-            let recebeu = mistura.as_ref().map(|(g, atual, chave)| match p.recebeu {
-                Some((c, r)) if c == *chave => r,
-                _ => {
-                    let r = recebeu_a_gravacao(g, &atual.rgba);
-                    p.recebeu = Some((*chave, r));
-                    r
-                }
-            });
-            if chave != p.mistura_subida {
-                a_subir = Some(None);
+            let caixa_da_marca = mistura.as_ref().and_then(|(_, m)| m.caixa());
+            let chave = (
+                mistura
+                    .as_ref()
+                    .map(|(_, m)| (p.versao_da_atual, m.versao())),
+                mascara.map(|m| m.1),
+            );
+            if chave.1 != p.mistura_subida.1 {
+                a_subir = Subida::Inteira;
+            } else if chave.0 != p.mistura_subida.0 {
+                // Só o que a marca cobre agora ou cobria na subida anterior muda.
+                a_subir = a_subir
+                    .com(Subida::da(caixa_da_marca))
+                    .com(Subida::da(p.caixa_misturada));
             }
-            if let (Some(caixa), Some((w, h))) = (a_subir, p.tamanho_do_espelho) {
-                let caixa = caixa.filter(|_| p.tamanho == Some((w, h)));
+            if let (true, Some((w, h))) = (a_subir != Subida::Nada, p.tamanho_do_espelho) {
+                let caixa = match a_subir {
+                    Subida::Caixa(c) if p.tamanho == Some((w, h)) => Some(c),
+                    _ => None,
+                };
                 let c = caixa.unwrap_or((0, 0, w, h));
                 self.premul.clear();
                 recorta(&p.espelho, w, c, &mut self.premul);
-                if let Some((gravacao, atual, _)) = &mistura {
-                    let r = recebeu.unwrap_or(false);
-                    mistura_na_caixa(&mut self.premul, gravacao, &atual.rgba, r, w, c);
+                if let Some((atual, marca)) = &mistura {
+                    mistura_na_caixa(&mut self.premul, marca, &atual.rgba, w, c);
                 }
                 if let Some((t, _)) = mascara {
                     ph2d_render::premul::unpremultiply_rgba8(&mut self.premul);
@@ -588,10 +589,10 @@ impl PalcosDoPainter {
                         p.ranhura = Some(id);
                     }),
                 };
-                (p.tamanho, p.mistura_subida) = match (&subida, caixa) {
-                    (Ok(()), None) => (Some((w, h)), chave),
-                    (Ok(()), Some(_)) => (p.tamanho, chave),
-                    (Err(_), _) => (None, chave),
+                (p.tamanho, p.mistura_subida, p.caixa_misturada) = match (&subida, caixa) {
+                    (Ok(()), None) => (Some((w, h)), chave, caixa_da_marca),
+                    (Ok(()), Some(_)) => (p.tamanho, chave, caixa_da_marca),
+                    (Err(_), _) => (None, chave, caixa_da_marca),
                 };
                 if let Err(e) = subida {
                     toasts.push(Toast::error(ph2d_i18n::tr_with(

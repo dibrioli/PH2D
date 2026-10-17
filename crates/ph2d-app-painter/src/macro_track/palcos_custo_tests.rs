@@ -264,159 +264,116 @@ fn sonda_subir_a_tela() {
     }
 }
 
-/// **W7 item 1: o custo da mistura** — o Splash no papel a 1024², o `sobe` (a placa sincronizada) em três
-/// variantes do MESMO processo, blocos intercalados por ordem rodada, o MÍNIMO por quadro: o palco
-/// sozinho (o de hoje), a mistura com uma imagem atual parada (pintada depois do Parar), e a mistura com
-/// o Painter ligado a pintar em cada quadro (a imagem atual muda: lê-se, premultiplica-se e sobe inteira).
+/// **W9 A3: o custo do quadro com a água a correr** (`docs/Macros/06_auditoria_W8_record.md` A3: a W8
+/// relia a imagem e subia a ranhura inteira a cada quadro da água — 6,6 ms média / 12,5 ms máx, `smoke`,
+/// só CPU). A 1024², gravado no Painter ligado com a água no worker real, o `liga_a_marca` + `sobe` (o
+/// duplo de CPU das ranhuras, como na auditoria) em duas variantes do MESMO processo, blocos
+/// intercalados por ordem rodada, o MÍNIMO por quadro e o máximo de um quadro: sem marca, e com uma
+/// pincelada marcada (a imagem relê-se e só a caixa dela sobe).
+///
+/// `bash scripts/ph2d-run.sh cargo test -p ph2d-app-painter --profile smoke --lib -- --ignored
+/// --nocapture sonda_o_custo_da_marca`
 #[test]
-#[ignore = "placa: sonda de custo, precisa de adapter de GPU"]
-fn sonda_o_custo_da_mistura() {
-    use super::Atuais;
-    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+#[ignore = "sonda de custo (W9 A3)"]
+fn sonda_o_custo_da_marca() {
+    use super::palcos_tests::Placa;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool};
     use ph2d_tool_painter::PainterTool;
     const LADO: u32 = 1024;
     let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
-    let gpu = GpuContext::new(GpuContext::default_instance(), None).expect("adaptador de GPU");
-    let atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
-    let mut r = SpriteRenderer::new(gpu.clone(), ph2d_render::GameRt::FORMAT, atlas, 8);
-    let (doc, d) =
-        ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 4).expect("grava");
-    let lido = ph2d_macro::codec::read(&doc).expect("lê-se");
-    let fim = ph2d_tool_painter::macro_track::etapas::tela_no_fim(&lido.tracks[0]).expect("toca");
-    let mut atual = fim.clone();
-    for px in atual
-        .as_chunks_mut::<4>()
-        .0
-        .iter_mut()
-        .skip(300 * LADO as usize)
-        .take(80 * LADO as usize)
-    {
-        *px = [200, 30, 40, 255];
-    }
     struct V {
         nome: &'static str,
-        sim: SimWorld,
+        world: ph2d_ecs::World,
         palcos: PalcosDoPainter,
-        pintor: Option<PainterTool>,
-        t: f64,
-        k: u32,
+        placa: Placa,
+        t: PainterTool,
         min: f64,
+        max: f64,
     }
-    let nova = |nome, segura, pintor: Option<PainterTool>| {
-        let mut sim = SimWorld::new();
-        sim.world_mut().spawn((
+    let nova = |nome, marcada: bool| {
+        let mut world = ph2d_ecs::World::new();
+        let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
+        let (mut t, doc, _) =
+            ph2d_tool_painter::macro_track::roteiro::grava_no_papel_ligado_com_o_worker(
+                LADO,
+                e.to_bits(),
+                4,
+            )
+            .expect("grava");
+        world.entity_mut(e).insert((
             Macro {
-                doc: doc.clone(),
+                doc,
                 modo: ModoDaMacro::Fiel,
             },
-            MacroTempo { segundos: INICIO_S },
+            MacroTempo { segundos: 0.0 },
         ));
-        let palcos = PalcosDoPainter {
-            segura_o_fim: segura,
-            ..Default::default()
-        };
-        V {
+        let mut v = V {
             nome,
-            sim,
-            palcos,
-            pintor,
-            t: INICIO_S,
-            k: 0,
+            world,
+            palcos: PalcosDoPainter::default(),
+            placa: Placa::default(),
+            t: PainterTool::default(),
             min: f64::MAX,
+            max: 0.0,
+        };
+        let mut nunca = |_: u64, _: &mut Placa| None;
+        v.palcos.segue(&mut v.world);
+        v.palcos.liga_a_marca(Some(&mut t), &mut nunca, &mut v.placa);
+        if marcada {
+            t.set_brush_size_px(24.0);
+            for i in 0..=8u16 {
+                let phase = match i {
+                    0 => PointerPhase::Down,
+                    8 => PointerPhase::Up,
+                    _ => PointerPhase::Move,
+                };
+                t.on_canvas_pointer(CanvasPointer {
+                    pos: [100.0 + 40.0 * f32::from(i), 900.0],
+                    pressure: 1.0,
+                    tilt: [0.0, 0.0],
+                    phase,
+                });
+                drop(t.take_preview_arc());
+                t.on_tick(16.667);
+            }
         }
+        v.t = t;
+        v
     };
-    let mut vs = [
-        nova("palco sozinho (hoje)", true, None),
-        nova("mistura, atual parada", false, None),
-        nova("mistura, a pintar", false, Some(PainterTool::default())),
-    ];
-    let quadro = |v: &mut V, r: &mut SpriteRenderer| -> f64 {
-        let mut q = v.sim.world_mut().query::<&mut MacroTempo>();
-        for mut m in q.iter_mut(v.sim.world_mut()) {
-            m.segundos = v.t;
-        }
-        v.palcos.segue(v.sim.world_mut());
-        if let Some(p) = &mut v.pintor {
-            v.k += 1;
-            p.on_canvas_pointer(CanvasPointer {
-                pos: [
-                    100.0 + f32::from(u16::try_from(v.k % 800).unwrap_or(0)),
-                    100.0,
-                ],
-                pressure: 1.0,
-                tilt: [0.0, 0.0],
-                phase: PointerPhase::Move,
-            });
-        }
-        let mut le = |_: u64, _: &mut SpriteRenderer| Some((atual.clone(), LADO, LADO));
+    let mut vs = [nova("água, sem marca", false), nova("água, pincelada marcada", true)];
+    let quadro = |v: &mut V| -> f64 {
+        drop(v.t.take_preview_arc());
+        v.t.on_tick(16.667);
+        let mut nunca = |_: u64, _: &mut Placa| None;
         let t0 = std::time::Instant::now();
+        v.palcos.segue(&mut v.world);
+        v.palcos
+            .liga_a_marca(Some(&mut v.t), &mut nunca, &mut v.placa);
         let trocas = v.palcos.sobe(
-            r,
+            &mut v.placa,
             &mut ToastQueue::default(),
             None,
-            Atuais {
-                painter: v.pintor.as_ref(),
-                le_sprite: Some(&mut le),
+            super::Atuais {
+                painter: Some(&v.t),
+                le_sprite: Some(&mut nunca),
             },
         );
-        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         assert_eq!(trocas.len(), 1);
-        v.t += 1.0 / 60.0;
-        if v.t > d {
-            v.t = INICIO_S;
-        }
         t0.elapsed().as_secs_f64() * 1e3
     };
-    // O painter ligado é a sprite do Macro: os bits do mundo de cada variante.
     for v in &mut vs {
-        if let Some(p) = &mut v.pintor {
-            let e = v
-                .sim
-                .world_mut()
-                .query::<(ph2d_ecs::Entity, &Macro)>()
-                .iter(v.sim.world())
-                .next()
-                .map(|(e, _)| e.to_bits())
-                .expect("o macro");
-            p.bind_document(e, fim.clone(), LADO, LADO);
-            p.set_brush_size_px(12.0);
-            p.on_canvas_pointer(CanvasPointer {
-                pos: [100.0, 100.0],
-                pressure: 1.0,
-                tilt: [0.0, 0.0],
-                phase: PointerPhase::Down,
-            });
-        }
+        quadro(v);
     }
-    // Aquecimento: o fio do fim acaba e a 1.ª mistura sobe.
-    let t0 = std::time::Instant::now();
-    for v in &mut vs {
-        quadro(v, &mut r);
-    }
-    while vs[1..].iter().any(|v| {
-        v.palcos
-            .lidos
-            .values()
-            .any(|l| matches!(&l.palco, Ok(Some(p)) if !p.fim.acabou()))
-    }) {
-        assert!(t0.elapsed().as_secs() < 600, "o fim não chegou");
-        std::thread::sleep(std::time::Duration::from_millis(20));
-        for v in &mut vs[1..] {
-            quadro(v, &mut r);
-        }
-    }
-    eprintln!(
-        "o fim chegou em {:.1} s; load antes: {}",
-        t0.elapsed().as_secs_f64(),
-        carga().trim()
-    );
+    eprintln!("load antes: {}", carga().trim());
     let k = vs.len();
     for rodada in 0..RODADAS * 2 {
         for i in 0..k {
             let v = &mut vs[(rodada + i) % k];
             let mut soma = 0.0;
             for _ in 0..BLOCO {
-                soma += quadro(v, &mut r);
+                let ms = quadro(v);
+                v.max = v.max.max(ms);
+                soma += ms;
             }
             #[expect(clippy::cast_precision_loss, reason = "BLOCO pequeno")]
             let ms = soma / BLOCO as f64;
@@ -424,10 +381,14 @@ fn sonda_o_custo_da_mistura() {
         }
     }
     eprintln!("load depois: {}", carga().trim());
-    for v in &vs {
+    for v in &mut vs {
+        let correu = !v.t.agua_parada();
+        let marcados = v.t.marca_do_artista().map_or(0, |m| m.quantos());
         eprintln!(
-            "[w7] {LADO}² {:<24} sobe: {:.3} ms/quadro (mínimo de blocos de {BLOCO})",
-            v.nome, v.min
+            "[w9 A3] {LADO}² {:<26} liga+sobe: {:.3} ms/quadro (mínimo de blocos de {BLOCO}), máx \
+             {:.3} ms · água ainda a correr: {correu} · marcados: {marcados} · subidas inteiras {} · \
+             parciais {}",
+            v.nome, v.min, v.max, v.placa.substituidas, v.placa.regioes
         );
     }
 }

@@ -50,6 +50,16 @@ fn toda_cena_de_ciclo_coze_pela_placa() {
                     leu |= m.gpu_cook.tap_fresca();
                 }
             }
+            // A leitura em voo pode não ter caído entre dois quadros do laço (a placa partilhada
+            // sob carga, 16/10: o passe por despacho e o passe único reprovavam por igual a load
+            // 20): espera-se UMA vez pela placa e recolhe-se — o controlo é que ela CHEGA e se LÊ.
+            if viva && !leu {
+                let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                let _ = m
+                    .gpu_cook
+                    .tap_sem_espera(&gpu, ph2d_gpu_cook::tap::TAP_SAMPLES);
+                leu = m.gpu_cook.tap_fresca();
+            }
             (viva, leu)
         }));
         match corrida {

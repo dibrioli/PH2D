@@ -115,7 +115,10 @@ fn sonda_as_curas_do_custo_fixo() {
     ];
     let vs = VARIANTES;
     let nv = vs.len();
-    let i_quadro = FASES.iter().position(|f| *f == "quadro").expect("a fase quadro");
+    let i_quadro = FASES
+        .iter()
+        .position(|f| *f == "quadro")
+        .expect("a fase quadro");
     for &(n, k) in casos {
         if so.as_ref().is_some_and(|f| !f.iter().any(|x| x == n)) {
             continue;
@@ -191,18 +194,24 @@ fn sonda_as_curas_do_custo_fixo() {
                     format!("DIFERE: {difs} (tamanhos iguais: {tamanho})")
                 }
             };
-            let fases: Vec<String> = ["o_quadro", "espera", "encode", "estagios", "finish", "submit"]
-                .iter()
-                .map(|f| {
-                    let j = FASES.iter().position(|x| x == f).expect("fase");
-                    let (a, b) = resumo(i, j);
-                    format!("{f} {a:.1} ({b:.1})")
-                })
-                .collect();
+            let fases: Vec<String> = [
+                "o_quadro", "espera", "encode", "estagios", "finish", "submit",
+            ]
+            .iter()
+            .map(|f| {
+                let j = FASES.iter().position(|x| x == f).expect("fase");
+                let (a, b) = resumo(i, j);
+                format!("{f} {a:.1} ({b:.1})")
+            })
+            .collect();
             eprintln!(
                 "CURAS ={n} ×{k} {nome} · quadro {q:.1} µs ({med:.1}) · B−variante {:+.1} µs = {:.0} % da lacuna B−A ({lacuna:+.1}) · {} · {paridade}",
                 qb - q,
-                if lacuna.abs() > f64::EPSILON { 100.0 * (qb - q) / lacuna } else { 0.0 },
+                if lacuna.abs() > f64::EPSILON {
+                    100.0 * (qb - q) / lacuna
+                } else {
+                    0.0
+                },
                 fases.join(" · ")
             );
         }
@@ -210,8 +219,10 @@ fn sonda_as_curas_do_custo_fixo() {
     eprintln!("CURAS load no fim {}", carga().trim());
 }
 
-/// ⭐ **O GATE do passe único** (doc 120 §8.3.2): as cenas que o mediram, a escalas `1` e `4`, pelo
-/// codificador de hoje e pelo de antes, `40` quadros cada — a MESMA saída ao bit (instâncias e
+/// ⭐ **O GATE do passe único** (doc 120 §8.3.2): as cenas que o mediram e a =138/=139, a escalas
+/// `1` e `4`, pelo codificador de hoje e pelo de antes, montadas como o `dispatch` as monta, `60`
+/// quadros com vários tiques cada (vários cozimentos por quadro) e a leitura dos cartões pedida,
+/// que se codifica DENTRO do cozimento — a MESMA saída ao bit (instâncias e
 /// formas) com pelo menos `3×` menos passes (medido: `=132` `36 → 6`, `=120` `36 → 2`, `=119`
 /// `44 → 3`) e ZERO erros de validação — o produto só os escreve no terminal, e uma cópia dentro do
 /// passe aberto estraga os DOIS lados por igual (a mutação do `DerefMut` sobreviveu à igualdade).
@@ -221,16 +232,21 @@ fn um_passe_da_a_mesma_saida_com_menos_passes() {
     let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
         .expect("sem adapter");
     let dt = 1.0 / 60.0;
-    for n in ["132", "120", "119", "136", "112"] {
+    for n in ["138", "139", "132", "120", "119", "136", "112"] {
         for k in [1.0, 4.0] {
             let lados = [true, false].map(|por_despacho| {
-                let mut m = monta(n, k, (false, por_despacho));
+                // A montagem do `dispatch` (a de `toda_cena_de_ciclo_coze_pela_placa`): sem a CPU pedida.
+                let mut m = MotionState::new();
+                m.sinks = crate::motion_demo_legend::monta(n, &mut m.doc, &m.registry).0;
+                amplia(&mut m, k);
+                m.gpu_cook.um_passe_por_despacho(por_despacho);
                 let mut ph = ph2d_core::Playhead::new(dt);
                 ph.play();
-                let mut passes = 0;
+                let (mut passes, mut leu, mut viva) = (0, false, false);
                 let ambito = gpu.device.push_error_scope(wgpu::ErrorFilter::Validation);
-                for _ in 0..40 {
-                    ph.advance_ticks(1);
+                // Vários tiques por quadro, como o produto recupera os devidos: vários cozimentos.
+                for q in 0..60 {
+                    ph.advance_ticks([1, 2, 7, 1, 4, 3][q % 6]);
                     crate::motion_bridge::quadro::o_quadro(
                         &mut m,
                         Some(&gpu),
@@ -239,11 +255,27 @@ fn um_passe_da_a_mesma_saida_com_menos_passes() {
                         crate::motion_bridge::quadro::MaoDoEditor::default(),
                     );
                     passes = m.fases.cozimento.passes;
+                    // A leitura dos cartões, como o `dispatch` a pede: codifica-se no cozimento.
+                    if m.gpu_live {
+                        viva = true;
+                        let _ = m
+                            .gpu_cook
+                            .tap_sem_espera(&gpu, ph2d_gpu_cook::tap::TAP_SAMPLES);
+                        leu |= m.gpu_cook.tap_fresca();
+                    }
                 }
                 let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
                 if let Some(e) = ja_resolvido(ambito.pop()) {
                     panic!("={n} ×{k} (por despacho: {por_despacho}): o dispositivo recusou: {e}");
                 }
+                assert!(
+                    viva,
+                    "={n} ×{k}: a cena não correu na placa — o gate não mediria nada"
+                );
+                assert!(
+                    leu,
+                    "={n} ×{k} (por despacho: {por_despacho}): a leitura dos cartões nunca chegou"
+                );
                 (passes, saida(&gpu, &m))
             });
             let [(antes, sa), (hoje, sh)] = lados;

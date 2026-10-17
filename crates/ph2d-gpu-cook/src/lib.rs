@@ -60,10 +60,10 @@ pub mod error;
 mod estado;
 mod fases;
 pub use fases::FasesDoCozimento;
-mod gravador;
 pub mod field_name;
 mod formas;
 mod gather;
+mod gravador;
 pub mod grid;
 pub mod instances;
 mod lifecycle;
@@ -666,15 +666,7 @@ impl GpuCook {
         let t = std::time::Instant::now();
         gpu.queue.submit(Some(comandos));
         self.fases.submit = t.elapsed();
-        (self.fases.grupos_criados, self.fases.grupos_reaproveitados) =
-            self.ligacoes.criados_reaproveitados;
-        if let Some(p) = &self.stream_op_pipes {
-            (
-                self.fases.grupos_de_stream_op_criados,
-                self.fases.grupos_de_stream_op_reaproveitados,
-            ) = p.conta_grupos();
-        }
-        self.fases.buffers_alocados = (self.pool.allocations() - alocados) as u32;
+        self.conta_o_cozimento(alocados);
         self.tap_depois_do_submit(tap);
 
         // D1 — the ping-pong: hold the `Arc`s of every node a `pre` edge reads,

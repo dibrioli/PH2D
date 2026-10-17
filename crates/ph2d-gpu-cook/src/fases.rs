@@ -74,6 +74,20 @@ impl crate::GpuCook {
         self.fases
     }
 
+    /// Os contadores do fim de um cozimento: os grupos de ligação e os buffers que o pool criou
+    /// desde `alocados`.
+    pub(crate) fn conta_o_cozimento(&mut self, alocados: usize) {
+        (self.fases.grupos_criados, self.fases.grupos_reaproveitados) =
+            self.ligacoes.criados_reaproveitados;
+        if let Some(p) = &self.stream_op_pipes {
+            (
+                self.fases.grupos_de_stream_op_criados,
+                self.fases.grupos_de_stream_op_reaproveitados,
+            ) = p.conta_grupos();
+        }
+        self.fases.buffers_alocados = (self.pool.allocations() - alocados) as u32;
+    }
+
     /// **Um passe de computação POR DESPACHO** — o codificador de antes do doc 120 §8.3.2, pelo
     /// MESMO código; só a sonda e o gate A×B o ligam.
     #[doc(hidden)]

@@ -79,6 +79,12 @@ fn o_formato_gravado_volta_igual() {
         b.len()
     );
     assert!(MarcaDoArtista::descodifica(&b[..b.len() - 3]).is_none());
+    // Um cabeçalho forjado não aloca: acima do tecto do raster é recusado.
+    let mut forjado = vec![FORMATO];
+    forjado.extend_from_slice(&u32::MAX.to_le_bytes());
+    forjado.extend_from_slice(&u32::MAX.to_le_bytes());
+    forjado.extend_from_slice(&0u64.to_le_bytes());
+    assert!(MarcaDoArtista::descodifica(&forjado).is_none());
     let vazia = MarcaDoArtista::nova(1024, 1024, 1).codifica();
     assert_eq!(
         MarcaDoArtista::descodifica(&vazia).map(|m| m.vazia()),

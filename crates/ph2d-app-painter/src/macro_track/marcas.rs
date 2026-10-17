@@ -96,8 +96,11 @@ pub(super) fn le_a_sprite<R: ?Sized>(
     let g = guardadas
         .entry(chave)
         .or_insert_with(|| Guardada::nova((w, h), chave.1));
+    // Outro tamanho (um Trim, um Padding): a marca fica guardada e não se mistura (a gravação é de
+    // outro tamanho); o desfazer da ferramenta devolve o tamanho e a marca volta a valer.
     if g.marca.tamanho() != (w, h) {
-        *g = Guardada::nova((w, h), chave.1);
+        g.efetiva = None;
+        return;
     }
     let mut efetiva = g.marca.clone();
     match &g.base {
@@ -152,8 +155,12 @@ impl PalcosDoPainter {
             .marcas
             .entry(chave)
             .or_insert_with(|| Guardada::nova(dims, chave.1));
+        // O Painter com a imagem noutro tamanho: nada a marcar, e a marca guardada fica.
         if g.vale().tamanho() != dims {
-            *g = Guardada::nova(dims, chave.1);
+            if t.marca_do_artista().is_some() {
+                t.poe_a_marca(None);
+            }
+            return;
         }
         // Ligar outra imagem limpa a marca do Painter (`bind_document`): sem marca, ou de outra
         // gravação, ele recebe a desta.

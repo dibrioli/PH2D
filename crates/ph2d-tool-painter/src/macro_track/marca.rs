@@ -281,8 +281,13 @@ impl MarcaDoArtista {
         }
         let mut r = Leitor(b);
         let (w, h, epoca) = (r.u32()?, r.u32()?, r.u64()?);
+        // Um ficheiro não aloca o que quer: o tecto é o do raster que um ficheiro abre.
+        let lado = ph2d_imageio::MAX_RASTER_DIMENSION;
+        if w > lado || h > lado {
+            return None;
+        }
         let n = palavras_para(w, h);
-        let mut p = Vec::with_capacity(n);
+        let mut p = Vec::new();
         while !r.0.is_empty() {
             let (zeros, cheias) = (r.u32()? as usize, r.u32()? as usize);
             if p.len() + zeros + cheias > n {

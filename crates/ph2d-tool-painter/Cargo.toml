@@ -82,6 +82,8 @@ serde_json = "1"
 # A trilha do Painter numa macro (`src/macro_track/`, ADR-0186): o núcleo (formato, registos etiquetados)
 # e o documento do estado inicial pelo wire canónico do projeto (postcard), o MESMO recorte que o disco guarda.
 ph2d-macro = { path = "../ph2d-macro" }
+# W9: o tecto do raster que um ficheiro abre (a marca do artista gravada).
+ph2d-imageio = { path = "../ph2d-imageio" }
 postcard = { version = "1", features = ["alloc"] }
 # Data-parallel watercolor composite (ADR-0109 exception to the no-rayon default): the per-pixel optical
 # reconstruction is embarrassingly parallel + byte-identical (disjoint output rows, no reduction, no RNG),

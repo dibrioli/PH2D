@@ -89,6 +89,8 @@ impl PainterTool {
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
+        // A marca do artista (W9): os discos da pré-visualização anterior saem com ela.
+        self.undo.marca.recomeca_os_discos();
         let restore_us = t_restore.elapsed().as_micros() as u64;
         let t_relief = std::time::Instant::now();
         // The pixels were just restored to their pre-preview state and the WHOLE shape is about to be

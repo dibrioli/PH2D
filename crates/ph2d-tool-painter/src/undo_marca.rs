@@ -115,6 +115,40 @@ impl MarcaViva {
         }
     }
 
+    /// A água recebe uma COBERTURA (a mancha do Solid, os fios): `cov` (`0..=255`) na caixa `(x, y, w, h)`
+    /// — os texels cobertos marcam como os dabs que entram na água.
+    pub(crate) fn cobertura_na_agua(&mut self, (x, y, w, h): (u32, u32, u32, u32), cov: &[u8]) {
+        let n = self.palavras();
+        let Some(m) = self.marca.as_mut() else {
+            return;
+        };
+        if self.na_agua.len() != n {
+            zera(&mut self.na_agua, n);
+        }
+        if self.antes_do_passo.is_none() {
+            self.antes_do_passo = Some(Arc::clone(m.palavras()));
+        }
+        let (mw, mh) = m.tamanho();
+        let mut bits = vec![0u64; n];
+        for j in 0..h.min(mh.saturating_sub(y)) {
+            for i in 0..w.min(mw.saturating_sub(x)) {
+                if cov.get((j * w + i) as usize).is_some_and(|&c| c > 0) {
+                    let k = ((y + j) * mw + x + i) as usize;
+                    marca::liga(&mut self.na_agua, k);
+                    marca::liga(&mut bits, k);
+                }
+            }
+        }
+        m.une_bits(&bits);
+    }
+
+    /// A pré-visualização carimba-se de novo inteira (Line, Drag Dot, as formas): os discos da anterior
+    /// deixam de valer.
+    pub(crate) fn recomeca_os_discos(&mut self) {
+        self.tira_o_provisorio();
+        self.discos.fill(0);
+    }
+
     /// Um passo começa: a água de antes dele já não conta.
     pub(crate) fn comeca_o_passo(&mut self) {
         self.agua.fill(0);

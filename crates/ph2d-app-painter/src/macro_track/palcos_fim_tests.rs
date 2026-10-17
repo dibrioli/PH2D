@@ -481,6 +481,39 @@ fn sem_o_painter_o_que_mudou_na_sprite_fica_por_cima_e_desfazer_volta_ao_clipe()
     );
 }
 
+/// **Uma ferramenta que muda o tamanho não apaga a marca**: a sprite pintada (marcada), depois cortada
+/// (outro tamanho: a ranhura é o palco — a gravação é de outro tamanho), depois o desfazer devolve o
+/// tamanho e a pintura volta por cima do clipe. ⛔ A 2.ª lente da auditoria de 17/10: o tamanho novo
+/// recriava a marca vazia e o desfazer não a devolvia.
+#[test]
+fn mudar_o_tamanho_e_desfazer_devolve_a_marca() {
+    let (doc, _, fim) = gravada_no_papel();
+    let atual = pintada_depois(&fim);
+    let cortada = vec![255u8; ((LADO / 2) * (LADO / 2) * 4) as usize];
+    let qual = std::cell::Cell::new(0u8);
+    let mut le = |_: u64, _: &mut Placa| match qual.get() {
+        0 => Some((fim.clone(), LADO, LADO)),
+        1 => Some((atual.clone(), LADO, LADO)),
+        _ => Some((cortada.clone(), LADO / 2, LADO / 2)),
+    };
+    let mut c = Clipe::novo(&doc);
+    let id = |b: &[u8]| ph2d_ecs::SpritePixels(ph2d_asset::AssetId::from_bytes(b));
+    let passo = |c: &mut Clipe, q: u8, img: &[u8], t: f64, le: &mut LeSprite<'_>| {
+        qual.set(q);
+        c.world.entity_mut(c.e).insert(id(img));
+        c.quadro_ligado(t, None, le)
+    };
+    passo(&mut c, 0, &fim, 0.02, &mut le);
+    let mudou = diferem(&fim, &atual);
+    let mistura = |c: &Clipe| esperado(&c.palco, &premul(&atual), |i| mudou.contains(&i));
+    let r = passo(&mut c, 1, &atual, 0.03, &mut le);
+    assert!(r == mistura(&c), "controlo: a pintura aparece por cima");
+    let r = passo(&mut c, 2, &cortada, 0.04, &mut le);
+    assert!(r == c.palco, "noutro tamanho a ranhura não é o palco");
+    let r = passo(&mut c, 1, &atual, 0.05, &mut le);
+    assert!(r == mistura(&c), "o desfazer do corte não devolveu a marca");
+}
+
 /// **Gravar de novo começa outra marca; desfazer a gravação devolve a antiga**: com uma pincelada
 /// marcada, outra gravação na sprite deixa a ranhura no palco dela (nada marcado nessa época); a
 /// gravação antiga de volta (o desfazer global devolve a `Macro`) mostra a pincelada outra vez.

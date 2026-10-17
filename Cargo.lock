@@ -9510,6 +9510,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-i18n",
+ "ph2d-imageio",
  "ph2d-inpaint",
  "ph2d-layer-ops",
  "ph2d-light",

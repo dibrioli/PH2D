@@ -382,6 +382,10 @@ fn atual_e_marca<R: ?Sized>(
         let caixa = marca.caixa()?;
         if p.atual.as_ref().map(|a| a.fonte) != Some(fonte) || p.caixa_lida != Some(caixa) {
             let (w, h) = p.tamanho_do_espelho?;
+            // A caixa é em texels do Painter: só se copia com a imagem do tamanho do palco.
+            if t.canvas_size() != (w, h) || marca.tamanho() != (w, h) {
+                return None;
+            }
             let mut img = match p.atual.take() {
                 Some(Atual {
                     fonte: Fonte::Painter(..),

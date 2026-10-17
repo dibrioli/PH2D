@@ -110,6 +110,34 @@ fn o_solid_enche_a_regiao_na_agua() {
     );
 }
 
+/// W9 (`docs/Macros/07_plano_W9.md`) — **a mancha do Solid na água marca o artista**: ela aparece pela
+/// água (não por dabs), e o miolo dela fica marcado; sem Solid o miolo não se marca (o controlo). ⛔ A
+/// 2.ª lente da auditoria de 17/10: o `pousa_na_agua` não marcava e o Play mostrava o clipe por cima.
+#[test]
+fn a_mancha_do_solid_na_agua_marca_o_miolo() {
+    use crate::macro_track::marca::MarcaDoArtista;
+    let miolo = |t: &PainterTool| {
+        let m = t.marca_do_artista().expect("a marca");
+        (54..74usize)
+            .flat_map(|y| (54..74usize).map(move |x| y * LADO as usize + x))
+            .filter(|&i| m.marcado(i))
+            .count()
+    };
+    let mut linha = agua(4.0);
+    linha.poe_a_marca(Some(MarcaDoArtista::nova(LADO, LADO, 1)));
+    gesto(&mut linha, &LACO, 10);
+    assert_eq!(miolo(&linha), 0, "controlo: sem Solid o miolo não se marca");
+    let mut mancha = agua(4.0);
+    mancha.poe_a_marca(Some(MarcaDoArtista::nova(LADO, LADO, 1)));
+    mancha.paint.brush.style_solid = true;
+    gesto(&mut mancha, &LACO, 10);
+    assert_eq!(
+        miolo(&mancha),
+        400,
+        "a mancha do Solid na água não marcou o miolo"
+    );
+}
+
 /// **A MANCHA ENCHE AO SOLTAR** (escolha do dono, 2026-10-05) — durante o gesto a água mostra só o
 /// traço; o pen-up enche a região (`enche_a_mancha_na_agua`).
 #[test]

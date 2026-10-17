@@ -42,6 +42,10 @@ impl PainterTool {
         if rect.w == 0 || rect.h == 0 {
             return;
         }
+        // A marca do artista (W9): a tinta desta cobertura aparece pela água.
+        self.undo
+            .marca
+            .cobertura_na_agua((rect.x, rect.y, rect.w, rect.h), cov);
         let cor = self.paint.brush.color;
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;

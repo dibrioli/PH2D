@@ -323,8 +323,8 @@ fn a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica() {
     let bib = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
     assert_eq!(
         bib.entradas.len(),
-        17,
-        "os pincéis de fábrica (prompt 42: +5 de tinta e marcador)"
+        18,
+        "os pincéis de fábrica (prompt 42: +5 de tinta e marcador; prompt 43: o Airbrush)"
     );
     let mut fracos = Vec::new();
     for e in &bib.entradas {

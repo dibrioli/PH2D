@@ -184,16 +184,16 @@ mod tests {
         }
     }
 
-    /// 29 visible knobs (10 Paint — incl. Staining and the brush Glaze of prompt 42, promoted out of Hidden
+    /// 30 visible knobs (11 Paint — incl. Staining, the brush Glaze of prompt 42 and the brush Dust of prompt 43, promoted out of Hidden
     /// by doc 23; as 4 cerdas saíram para o Shape a 13/10, plano 27 W2 — + 7 Water + 6 Physics (Leveling, Level Clamp, Capillary e Brake foram para o cartão Wet Paint a 13/10) + 5 Tools — incl. the doc-23
     /// Rewet lift — + 1 Relief) — the registry's visible surface, whole. O PAPER (6) saiu
     /// na W1e (F2); do grupo dele só o relevo da tinta (Emboss) voltou, a 11/10. O Spacing saiu
     /// para o Hidden a 11/10 (o do pincel é o do Stroke).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 29);
+        assert_eq!(rows().len(), 30);
         for g in [
-            (KnobGroup::Paint, 10),
+            (KnobGroup::Paint, 11),
             (KnobGroup::Water, 7),
             (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 5),

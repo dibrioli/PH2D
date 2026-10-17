@@ -326,7 +326,7 @@ fn sonda_o_custo_da_mistura() {
         nova("mistura, atual parada", false, None),
         nova("mistura, a pintar", false, Some(PainterTool::default())),
     ];
-    let mut quadro = |v: &mut V, r: &mut SpriteRenderer| -> f64 {
+    let quadro = |v: &mut V, r: &mut SpriteRenderer| -> f64 {
         let mut q = v.sim.world_mut().query::<&mut MacroTempo>();
         for mut m in q.iter_mut(v.sim.world_mut()) {
             m.segundos = v.t;

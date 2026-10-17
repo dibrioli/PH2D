@@ -1,7 +1,8 @@
 //! **SONDA — o custo do quadro com N palcos do Motion a tocar** (W4, a prova do bloco; régua
 //! `docs/DevOps/MEDIR_VELOCIDADE.md`): N objectos com a macro da cena `PH2D_MACRO_SMOKE=2` conduzidos
 //! no mesmo instante, cozendo na placa — `PalcosDasMacros::segue` com a placa sincronizada no fim do
-//! quadro, em blocos intercalados por ordem rodada; o resumo é o MÍNIMO (mediana ao lado).
+//! quadro, em blocos intercalados por ordem rodada; o resumo é o MÍNIMO (mediana ao lado). W7 (o aberto
+//! da onda 1, «a sonda mediu a CPU»): cada N também SEM a placa (o cozimento na CPU), intercalado.
 //! Mede o cozimento; o desenho de cada palco (camada, filtros) é do presente da shell.
 //!
 //! `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --profile smoke --lib --
@@ -21,6 +22,7 @@ const INICIO_S: f64 = 11.0;
 
 struct Variante {
     n: usize,
+    placa: bool,
     sim: SimWorld,
     palcos: PalcosDasMacros,
     t: f64,
@@ -34,7 +36,9 @@ fn quadro(v: &mut Variante, mundo: &MundoDaCena, gpu: &GpuContext) -> f64 {
         m.segundos = t;
     }
     let t0 = std::time::Instant::now();
-    let tocados = v.palcos.segue(v.sim.world_mut(), mundo, Some(gpu));
+    let tocados = v
+        .palcos
+        .segue(v.sim.world_mut(), mundo, v.placa.then_some(gpu));
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     let ms = t0.elapsed().as_secs_f64() * 1e3;
     assert_eq!(tocados.len(), 1, "todos tocam o mesmo dono");
@@ -58,7 +62,8 @@ fn sonda_n_palcos_do_motion() {
     let mundo = MundoDaCena::default();
     let mut vs: Vec<Variante> = NS
         .iter()
-        .map(|&n| {
+        .flat_map(|&n| [(n, true), (n, false)])
+        .map(|(n, placa)| {
             let mut sim = SimWorld::new();
             for _ in 0..n {
                 sim.world_mut().spawn((
@@ -71,6 +76,7 @@ fn sonda_n_palcos_do_motion() {
             }
             Variante {
                 n,
+                placa,
                 sim,
                 palcos: PalcosDasMacros::default(),
                 t: INICIO_S,
@@ -83,8 +89,9 @@ fn sonda_n_palcos_do_motion() {
         let t0 = std::time::Instant::now();
         quadro(v, &mundo, &gpu);
         eprintln!(
-            "N={:>2}: 1.º quadro (0 → {INICIO_S} s) {:.1} ms",
+            "N={:>2} {}: 1.º quadro (0 → {INICIO_S} s) {:.1} ms",
             v.n,
+            if v.placa { "placa" } else { "CPU" },
             t0.elapsed().as_secs_f64() * 1e3
         );
         for _ in 0..5 {
@@ -93,19 +100,24 @@ fn sonda_n_palcos_do_motion() {
     }
     for r in 0..RODADAS {
         for k in 0..vs.len() {
-            let v = &mut vs[(r + k) % NS.len()];
+            let n = vs.len();
+            let v = &mut vs[(r + k) % n];
             for _ in 0..BLOCO {
                 let ms = quadro(v, &mundo, &gpu);
                 v.ms.push(ms);
             }
         }
     }
-    eprintln!("\n  N palcos | mín ms/quadro | mediana | mín por palco");
+    eprintln!("\n  N palcos | coze  | mín ms/quadro | mediana | mín por palco");
     for v in &vs {
         let (min, med) = min_med(&v.ms);
         #[expect(clippy::cast_precision_loss, reason = "N pequeno")]
         let por = min / v.n as f64;
-        eprintln!("  {:>8} | {min:>13.3} | {med:>7.3} | {por:>13.3}", v.n);
+        let coze = if v.placa { "placa" } else { "CPU" };
+        eprintln!(
+            "  {:>8} | {coze:<5} | {min:>13.3} | {med:>7.3} | {por:>13.3}",
+            v.n
+        );
     }
     eprintln!("load depois: {}", carga().trim());
 }

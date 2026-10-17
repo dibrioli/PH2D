@@ -241,6 +241,9 @@ impl Macros {
             let d = self.duracoes.de(bits, &bytes, outras);
             if (d - fim).abs() > 1e-6 {
                 c.timeline.doc.retime_macro_clip(clip, bits, d);
+                if clip == c.timeline.doc.active_index() {
+                    instala::rearma_o_laco(c.timeline, c.intents);
+                }
             }
         }
     }

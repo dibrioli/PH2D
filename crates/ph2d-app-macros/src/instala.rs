@@ -5,7 +5,7 @@ use crate::Cena;
 use crate::etapas::Injectadas;
 use ph2d_ecs::{Entity, Macro, ModoDaMacro};
 use ph2d_macro::MacroDoc;
-use ph2d_timeline::TimelineDoc;
+use ph2d_timeline::{TimelineDoc, TimelineIntent, TimelineState};
 
 /// O nome do clipe que o Parar cria (conteúdo do artista depois: ele renomeia-o).
 pub const NOME_DO_CLIPE: &str = "app.macros.clip_name";
@@ -61,7 +61,22 @@ pub fn instala(
     st.history.begin(&st.doc);
     let r = clipe(&mut st.doc, dono, d);
     st.history.commit_if_changed(&st.doc);
+    rearma_o_laco(st, c.intents);
     r
+}
+
+/// **O laço que TOCA re-arma-se** (A4, W9): o documento guarda o laço do clipe, mas quem faz o laço é a
+/// cópia viva no relógio da vista — e essa só se arma por uma intenção. A mesma porta do arrasto da
+/// régua (`SetLoop`), com o laço que o documento já tem. O laço da macro é o da aba Keys; na Arrange a
+/// troca de aba re-arma o relógio do clipe (`sync_transport_loop`) e o laço do Arrange não é dela.
+pub(crate) fn rearma_o_laco(tl: &TimelineState, intents: &mut Vec<TimelineIntent>) {
+    if !tl.keys_mode {
+        return;
+    }
+    intents.push(TimelineIntent::SetLoop {
+        range: tl.doc.active_loop_for(true),
+        ping_pong: tl.doc.active_ping_pong_for(true),
+    });
 }
 
 fn clipe(tl: &mut TimelineDoc, dono: u64, d: f64) -> Result<usize, &'static str> {

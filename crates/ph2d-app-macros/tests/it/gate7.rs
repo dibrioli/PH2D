@@ -785,3 +785,50 @@ fn gate7_os_passos_do_motion_levam_o_relogio_do_quadro_em_que_correu() {
         "o passo leva o relógio do quadro em que o Motion correu"
     );
 }
+
+/// A4 (W9, `docs/Macros/06_auditoria_W8_record.md`) — ⭐ **o laço que TOCA acompanha cada Parar**: o
+/// documento já re-cronometrava o laço do clipe, mas o relógio da aba Keys (a cópia viva que faz o laço)
+/// só se re-arma por uma intenção; a regravação mais longa tocava o laço antigo. O Parar arma o relógio
+/// com o laço do documento, pela porta da Timeline (`SetLoop`), em cada gravação.
+#[test]
+fn o_laco_que_toca_acompanha_cada_parar() {
+    let mut b = Banca::nova();
+    b.tl.keys_mode = true;
+    let mut relogio = ph2d_core::Playhead::default();
+    let l = LADO as f32;
+    let grava = |b: &mut Banca, relogio: &mut ph2d_core::Playhead, n: usize| -> f64 {
+        b.pinta();
+        b.carrega(ids::MACROS_RECORD);
+        b.quadro();
+        for k in 0..n {
+            #[expect(clippy::cast_precision_loss, reason = "poucas pinceladas")]
+            let y = (0.2 + 0.2 * k as f32) * l;
+            b.pincelada([0.1 * l, y], [0.9 * l, y]);
+        }
+        b.pinta();
+        b.carrega(ids::MACROS_STOP);
+        b.quadro();
+        for i in std::mem::take(&mut b.intents) {
+            ph2d_timeline::apply_intent(&mut b.tl, relogio, i);
+        }
+        let clip =
+            b.tl.doc
+                .clip_named(b.bits, ph2d_i18n::tr("app.macros.clip_name"))
+                .expect("o clipe");
+        b.tl.doc.clip_length_override(clip).expect("a duração")
+    };
+    let d1 = grava(&mut b, &mut relogio, 1);
+    assert_eq!(relogio.loop_range(), Some((0.0, d1)), "o 1.º Parar não armou o laço que toca");
+    let d2 = grava(&mut b, &mut relogio, 3);
+    assert!(d2 > d1 + 0.1, "controlo: a 2.ª gravação é mais longa ({d1} → {d2})");
+    assert_eq!(
+        b.tl.doc.active_loop_for(true),
+        Some((0.0, d2)),
+        "controlo: o documento re-cronometra o laço"
+    );
+    assert_eq!(
+        relogio.loop_range(),
+        Some((0.0, d2)),
+        "o 2.º Parar deixou o laço que toca no antigo"
+    );
+}

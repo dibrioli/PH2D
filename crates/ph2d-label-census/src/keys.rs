@@ -72,7 +72,12 @@ pub fn keys_used(repo: &Path, prefix: &str, tables: &[&str]) -> BTreeMap<String,
             let p = e.path();
             let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
             if p.is_dir() {
-                if matches!(name, "target" | ".git" | "docs" | "Worktrees") {
+                // ⛔ Uma pasta com `.git` dentro é OUTRA checkout (uma worktree de linha, ou a de um
+                //    subagente em `.claude/worktrees/`): o código dela é de outro ramo, e o censo do
+                //    ship de 17/10 acusou chaves que só existiam lá. O nome não basta; a marca sim.
+                if matches!(name, "target" | ".git" | "docs" | "Worktrees")
+                    || p.join(".git").exists()
+                {
                     continue;
                 }
                 walk(&p, out);

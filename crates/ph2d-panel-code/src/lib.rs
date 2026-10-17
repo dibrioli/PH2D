@@ -25,12 +25,12 @@ pub use console::{
     ConsoleHit, ConsoleRow, ConsoleSource, ConsoleView, title_text as console_title_text,
 };
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
-pub use frame::{Badge, CodeFrame, FoldMark, Problem, Severity};
+pub use frame::{Assist, Badge, CodeFrame, FoldMark, Problem, Severity};
 pub use geom::Column;
 pub use glyphs::{PaintWork, paint_work};
 pub use line_cache::LineCache;
 pub use metrics::Metrics;
 pub use script_list::{ListField, ListHit, ListRow, ScriptList, ScriptListView};
-pub use status::{StatusLine, Tone, badge_line};
+pub use status::{StatusLine, Tone, assist_line, badge_line};
 pub use style::Ink;
 pub use view::{CodeView, Hit, Underline};

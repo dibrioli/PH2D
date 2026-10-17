@@ -17,6 +17,7 @@ mod edit;
 mod find;
 mod folds;
 mod frame;
+mod intel;
 mod keys;
 pub mod list;
 mod pointer;
@@ -26,6 +27,7 @@ pub mod smoke;
 
 pub use docs::{CodeDocs, GrammarProbe, ParkedFootprint, SaveKind};
 pub use frame::frame;
+pub use intel::IntelServer;
 
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {

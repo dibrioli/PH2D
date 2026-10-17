@@ -285,3 +285,78 @@ pub fn luau_definitions() -> String {
     }
     out
 }
+
+/// O pacote com que o editor carrega o [`luau_definitions`] (`--definitions:@ph2d=…`): os símbolos da
+/// base de documentação começam por ele (`@ph2d/global/ph2d.set`, medido em
+/// `docs/CodeEditor/ferramentas/medicoes_onda2/I0b_luau_lsp_respostas.md` §3).
+pub const DEFINITIONS_PACKAGE: &str = "@ph2d";
+
+/// Os parâmetros `(nome, tipo)` de um tipo de função `(a: T, b: U?) -> R`, separados nas vírgulas
+/// de topo (um `{ string }` ou um `(x) -> y` dentro de um tipo não parte).
+#[must_use]
+pub fn luau_params(luau_type: &str) -> Vec<(&str, &str)> {
+    let Some(body) = luau_type.strip_prefix('(') else {
+        return Vec::new();
+    };
+    let mut depth = 0usize;
+    let mut end = body.len();
+    let mut cuts = vec![0];
+    for (i, c) in body.char_indices() {
+        match c {
+            '(' | '{' | '[' | '<' => depth += 1,
+            ')' if depth == 0 => {
+                end = i;
+                break;
+            }
+            ')' | '}' | ']' | '>' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => cuts.push(i + 1),
+            _ => {}
+        }
+    }
+    cuts.push(end + 1);
+    cuts.windows(2)
+        .map(|w| body[w[0]..w[1] - 1].trim())
+        .filter(|p| !p.is_empty())
+        .map(|p| match p.split_once(':') {
+            Some((n, t)) => (n.trim(), t.trim()),
+            None => ("", p),
+        })
+        .collect()
+}
+
+/// ⭐ **A base de documentação do `luau-lsp`** (`--docs=<json>`), gerada da tabela: a documentação
+/// de cada global e de cada função, e os parâmetros pelo NOME. A de um parâmetro só chega ao
+/// servidor como SÍMBOLO de outra entrada (`…/param/<i>`; texto directo ali sai vazio — I0b §3), e
+/// o texto é o do tipo exportado que ele usa (`entity: Entity` ⇒ a linha do `Entity`).
+#[must_use]
+pub fn luau_docs() -> String {
+    use serde_json::{Map, Value, json};
+    let type_doc = |ty: &str| {
+        let ty = ty.trim_end_matches('?');
+        API_TYPES.iter().find(|t| t.ident == ty).map(|t| t.doc)
+    };
+    let mut m = Map::new();
+    for g in API_GLOBALS {
+        m.insert(
+            format!("{DEFINITIONS_PACKAGE}/global/{}", g.ident),
+            json!({ "documentation": g.doc }),
+        );
+    }
+    for e in API {
+        let sym = format!("{DEFINITIONS_PACKAGE}/global/{}.{}", e.table, e.ident);
+        let mut params = Vec::new();
+        for (i, (name, ty)) in luau_params(e.luau_type).into_iter().enumerate() {
+            let doc = match type_doc(ty) {
+                Some(d) => {
+                    let p = format!("{sym}/param/{i}");
+                    m.insert(p.clone(), json!({ "documentation": d }));
+                    p
+                }
+                None => String::new(),
+            };
+            params.push(json!({ "name": name, "documentation": doc }));
+        }
+        m.insert(sym, json!({ "documentation": e.doc, "params": params }));
+    }
+    serde_json::to_string_pretty(&Value::Object(m)).expect("JSON de valores simples")
+}

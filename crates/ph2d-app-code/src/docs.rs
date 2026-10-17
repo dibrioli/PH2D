@@ -71,6 +71,8 @@ pub struct CodeDocs {
     recovery_dir: Option<std::path::PathBuf>,
     /// O reparse fora da tecla (Onda 2, I1); a thread nasce com o 1.º trabalho.
     grammar: Option<GrammarWorker<ScriptId>>,
+    /// O assistente de código (Onda 2, I2); arranca no 1.º documento aberto.
+    pub(crate) intel: crate::intel::Intel,
 }
 
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
@@ -105,6 +107,7 @@ impl Default for CodeDocs {
             pressed: false,
             recovery_dir: None,
             grammar: None,
+            intel: crate::intel::Intel::default(),
         }
     }
 }
@@ -113,6 +116,7 @@ impl Default for CodeDocs {
 /// desfazer, no `Buffer`) e o que a biblioteca tinha; a árvore da gramática, a cache de layouts, a
 /// busca e a vista largam-se ao fechar e refazem-se ao reabrir ([`CodeDoc::unpark`]).
 pub(crate) struct Parked {
+    pub serial: u64,
     pub title: String,
     pub buffer: ph2d_code_buffer::Buffer,
     pub synced: String,
@@ -142,6 +146,52 @@ impl CodeDocs {
         let d = self.doc(id)?;
         d.last_input_ns = now;
         Some(d)
+    }
+
+    /// Que assistente de código a família liga (por omissão o `luau-lsp` fixado). Antes do 1.º
+    /// documento aberto — depois disso a sessão já arrancou.
+    pub fn set_intel_server(&mut self, server: crate::IntelServer) {
+        self.intel = crate::intel::Intel::new(server);
+    }
+
+    /// O que a barra diz do assistente de código no script aberto (`None` = pronto ou desligado).
+    #[must_use]
+    pub fn assist_text(&self) -> Option<String> {
+        self.intel
+            .assist()
+            .map(|a| ph2d_panel_code::assist_line(a).0)
+    }
+
+    /// ⚠️ SONDA: a razão crua do assistente não estar pronto.
+    #[must_use]
+    pub fn assist_reason(&self) -> Option<String> {
+        self.intel.reason().map(str::to_owned)
+    }
+
+    /// ⚠️ SONDA: os diagnósticos do assistente para o texto que ele tem AGORA do script `id`, e a
+    /// versão desse texto.
+    #[must_use]
+    pub fn assist_diagnostics(
+        &self,
+        id: ScriptId,
+    ) -> (Option<u64>, Option<Vec<ph2d_code_intel::Diag>>) {
+        (
+            self.intel.version(id),
+            self.intel.diagnostics(id).map(<[_]>::to_vec),
+        )
+    }
+
+    /// O texto que o editor mostra do script `id` quando a aba está fechada com ● (`None` = não
+    /// estacionado).
+    #[must_use]
+    pub fn parked_text(&self, id: ScriptId) -> Option<String> {
+        self.parked.get(&id).map(|p| p.buffer.text().to_string())
+    }
+
+    /// Envia ao assistente o que mudou nos scripts desde o último quadro (e arranca-o no 1.º
+    /// documento aberto).
+    pub(crate) fn sync_intel(&mut self, lib: &ph2d_script::ScriptLibrary) {
+        self.intel.sync(&mut self.docs, &self.parked, lib);
     }
 
     /// A pasta dos ficheiros de recuperação (os textos por gravar de um projecto que se trocou).
@@ -478,9 +528,10 @@ impl DocumentSurface for CodeDocs {
             .paint(list_r, id, &|s| dirty.contains(&s), scene, text, theme);
         let (now, steady) = self.clock;
         let typing = self.list.focus.is_none();
+        let assist = self.intel.assist();
         if let Some((doc, store)) = self.split(id) {
             let lit = typing && blink_on(now, doc.last_input_ns, steady);
-            doc.paint(doc_r, scene, text, theme, store, lit);
+            doc.paint(doc_r, scene, text, theme, store, (lit, assist));
         }
     }
 
@@ -662,6 +713,10 @@ impl DocumentSurface for CodeDocs {
 
     fn command(&mut self, id: u64, cmd: ph2d_a11y::NodeId) -> bool {
         self.list.focus = None;
+        if cmd == crate::commands::CMD_RESTART_ASSIST {
+            self.intel.retry();
+            return true;
+        }
         let did = self.touched(id).is_some_and(|d| {
             let did = d.run(cmd);
             if did {

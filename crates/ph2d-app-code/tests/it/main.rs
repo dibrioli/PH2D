@@ -4,6 +4,7 @@
 
 mod a11y;
 mod abrir;
+mod assistente;
 mod bancada;
 mod busca;
 mod console;
@@ -59,8 +60,11 @@ impl Mesa {
             scripts.iter().map(|(n, t)| lib.insert(n, *t)).collect()
         };
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.documents
-            .install_surface(Box::new(CodeDocs::default()));
+        // Sem assistente de código por omissão: o `luau-lsp` real arrancaria em cada teste. Os do
+        // assistente ligam o seu ([`Mesa::com_assistente`]).
+        let mut docs = CodeDocs::default();
+        docs.set_intel_server(ph2d_app_code::IntelServer::Off);
+        hero.documents.install_surface(Box::new(docs));
         (
             Self {
                 sim,
@@ -88,6 +92,12 @@ impl Mesa {
         if self.host.is_none() {
             self.host = Some(ScriptHost::new().expect("vm"));
         }
+        self
+    }
+
+    /// Com este assistente de código (antes de abrir a 1.ª aba).
+    pub fn com_assistente(mut self, server: ph2d_app_code::IntelServer) -> Self {
+        self.docs().set_intel_server(server);
         self
     }
 

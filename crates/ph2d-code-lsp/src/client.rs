@@ -45,6 +45,9 @@ pub struct ServerConfig {
     pub solver: Solver,
     /// `--base-luaurc` (lint/mode defaults for every file).
     pub base_luaurc: Option<PathBuf>,
+    /// `--docs=<json>`: the documentation base (signature and parameter docs). Only the command line
+    /// reaches the server — `types.documentationFiles` is ignored with a null `rootUri` (I0b §3).
+    pub docs: Option<PathBuf>,
     pub request_timeout: Duration,
 }
 
@@ -55,6 +58,7 @@ impl ServerConfig {
             definitions: Vec::new(),
             solver: Solver::Old,
             base_luaurc: None,
+            docs: None,
             request_timeout: Duration::from_secs(30),
         }
     }
@@ -71,6 +75,9 @@ impl ServerConfig {
         }
         if let Some(rc) = &self.base_luaurc {
             a.push(format!("--base-luaurc={}", rc.display()));
+        }
+        if let Some(docs) = &self.docs {
+            a.push(format!("--docs={}", docs.display()));
         }
         if self.solver == Solver::New {
             a.push("--flag:LuauSolverV2=true".to_owned());

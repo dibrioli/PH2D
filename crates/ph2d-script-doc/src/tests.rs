@@ -151,3 +151,33 @@ fn um_id_no_fim_da_faixa_e_recusado_com_frase() {
     let back = ScriptLibrary::from_bytes(&lib.to_bytes()).expect("lê");
     assert_eq!(back.next, u64::MAX - 1);
 }
+
+/// A revisão muda a cada mudança de conteúdo (e só então), é única entre bibliotecas, e fica fora
+/// da igualdade e do ficheiro.
+#[test]
+fn a_revisao_muda_com_o_conteudo_e_so_com_ele() {
+    let mut lib = ScriptLibrary::new();
+    let mut vistas = std::collections::BTreeSet::new();
+    let muda = |lib: &ScriptLibrary, deve: bool, vistas: &mut std::collections::BTreeSet<u64>| {
+        assert_eq!(vistas.insert(lib.revision()), deve, "{}", lib.revision());
+    };
+    muda(&lib, true, &mut vistas);
+    let id = lib.insert("a.luau", "x = 1");
+    muda(&lib, true, &mut vistas);
+    assert!(!lib.set_text(id, "x = 1"));
+    muda(&lib, false, &mut vistas);
+    assert!(lib.set_text(id, "x = 2"));
+    muda(&lib, true, &mut vistas);
+    lib.rename(id, "a.luau");
+    muda(&lib, false, &mut vistas);
+    lib.rename(id, "b.luau");
+    muda(&lib, true, &mut vistas);
+    let lido = ScriptLibrary::from_bytes(&lib.to_bytes()).expect("lê");
+    assert_eq!(lido, lib);
+    muda(&lido, true, &mut vistas);
+    assert_eq!(lib.clone().revision(), lib.revision());
+    assert!(lib.remove(id).is_some());
+    muda(&lib, true, &mut vistas);
+    assert!(lib.remove(id).is_none());
+    muda(&lib, false, &mut vistas);
+}

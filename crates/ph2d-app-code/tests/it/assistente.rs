@@ -1,0 +1,582 @@
+//! I2 no app (Onda 2, `docs/CodeEditor/03_onda2.md`): o assistente de código vê o texto que o editor
+//! MOSTRA, de todos os scripts do projeto, e nunca faz a tecla esperar. O servidor aqui é FALSO, no
+//! processo: reconstrói cada documento pelo que recebe (`didOpen` + `didChange` incremental em
+//! UTF-16, com a conversão dele, não a do editor), publica um diagnóstico por versão, e pode ser lento
+//! ou morrer.
+
+use crate::{Mesa, ctrl};
+use ph2d_app_code::IntelServer;
+use ph2d_app_code::commands::CMD_RESTART_ASSIST;
+use ph2d_code_intel::lsp::Connect;
+use ph2d_code_intel::uri_of;
+use ph2d_code_lsp::framing::{read_message, write_message};
+use ph2d_code_lsp::{LspClient, LspError, ServerConfig};
+use ph2d_editor_core::doc_surface::{DocumentSurface, Key, KeyInput};
+use ph2d_host::Modifiers;
+use ph2d_script::{ProjectScripts, ScriptId};
+use ph2d_text::TextSystem;
+use serde_json::{Value, json};
+use std::collections::BTreeMap;
+use std::io::BufReader;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+#[derive(Default)]
+struct Visto {
+    ligacoes: usize,
+    /// uri → (versão, texto), do servidor VIVO (um arranque novo começa vazio).
+    textos: BTreeMap<String, (i64, String)>,
+    /// `didOpen` por uri, em todos os arranques.
+    aberturas: BTreeMap<String, usize>,
+    mudancas: usize,
+    /// Uma versão que não subiu (uri, antes, depois).
+    para_tras: Vec<(String, i64, i64)>,
+}
+
+type Partilhado = Arc<Mutex<Visto>>;
+
+#[derive(Clone, Copy, Default)]
+struct Plano {
+    /// Antes de ler cada mensagem.
+    atraso: Duration,
+    /// O 1.º arranque morre depois deste número de `didChange`.
+    morre_apos: Option<usize>,
+}
+
+/// O byte da posição LSP `(linha, unidades UTF-16)`; além do fim da linha = o fim da linha.
+fn byte_de(s: &str, linha: u64, unidades: u64) -> usize {
+    let inicio = s
+        .split_inclusive('\n')
+        .take(linha as usize)
+        .map(str::len)
+        .sum::<usize>();
+    let resto = &s[inicio.min(s.len())..];
+    let mut u = 0;
+    for (i, c) in resto.char_indices() {
+        if c == '\n' || u >= unidades {
+            return inicio + i;
+        }
+        u += c.len_utf16() as u64;
+    }
+    s.len()
+}
+
+fn pos(v: &Value) -> (u64, u64) {
+    (
+        v["line"].as_u64().unwrap(),
+        v["character"].as_u64().unwrap(),
+    )
+}
+
+fn servir(
+    entrada: std::io::PipeReader,
+    mut saida: std::io::PipeWriter,
+    plano: Plano,
+    visto: Partilhado,
+    arranque: usize,
+) {
+    let mut r = BufReader::new(entrada);
+    let mut mudancas = 0usize;
+    loop {
+        std::thread::sleep(plano.atraso);
+        let Ok(Some(msg)) = read_message(&mut r) else {
+            return;
+        };
+        let method = msg["method"].as_str().unwrap_or_default().to_owned();
+        let p = &msg["params"];
+        let mut publica = None;
+        {
+            let mut v = visto.lock().unwrap();
+            match method.as_str() {
+                "textDocument/didOpen" => {
+                    let d = &p["textDocument"];
+                    let uri = d["uri"].as_str().unwrap().to_owned();
+                    let ver = d["version"].as_i64().unwrap();
+                    *v.aberturas.entry(uri.clone()).or_default() += 1;
+                    v.textos
+                        .insert(uri.clone(), (ver, d["text"].as_str().unwrap().to_owned()));
+                    publica = Some((uri, ver));
+                }
+                "textDocument/didChange" => {
+                    let uri = p["textDocument"]["uri"].as_str().unwrap().to_owned();
+                    let ver = p["textDocument"]["version"].as_i64().unwrap();
+                    v.mudancas += 1;
+                    let (antes, texto) =
+                        v.textos.get(&uri).cloned().expect("didChange sem didOpen");
+                    if ver <= antes {
+                        v.para_tras.push((uri.clone(), antes, ver));
+                    }
+                    let mut texto = texto;
+                    for c in p["contentChanges"].as_array().unwrap() {
+                        let novo = c["text"].as_str().unwrap();
+                        match c.get("range") {
+                            Some(rg) => {
+                                let (l0, c0) = pos(&rg["start"]);
+                                let (l1, c1) = pos(&rg["end"]);
+                                let a = byte_de(&texto, l0, c0);
+                                let b = byte_de(&texto, l1, c1);
+                                texto.replace_range(a..b, novo);
+                            }
+                            None => texto = novo.to_owned(),
+                        }
+                    }
+                    v.textos.insert(uri.clone(), (ver, texto));
+                    publica = Some((uri, ver));
+                    mudancas += 1;
+                }
+                "textDocument/didClose" => {
+                    let uri = p["textDocument"]["uri"].as_str().unwrap();
+                    v.textos.remove(uri);
+                }
+                _ => {}
+            }
+        }
+        if let Some(id) = msg.get("id") {
+            let result = if method == "initialize" {
+                json!({ "capabilities": {} })
+            } else {
+                Value::Null
+            };
+            if write_message(
+                &mut saida,
+                &json!({ "jsonrpc": "2.0", "id": id, "result": result }),
+            )
+            .is_err()
+            {
+                return;
+            }
+        }
+        if let Some((uri, ver)) = publica {
+            let n = json!({ "jsonrpc": "2.0", "method": "textDocument/publishDiagnostics",
+                "params": { "uri": uri, "version": ver, "diagnostics": [{
+                    "range": { "start": { "line": 0, "character": 0 },
+                               "end": { "line": 0, "character": 0 } },
+                    "severity": 1, "message": format!("v{ver}") }] } });
+            if write_message(&mut saida, &n).is_err() {
+                return;
+            }
+        }
+        if arranque == 0 && plano.morre_apos == Some(mudancas) {
+            return;
+        }
+    }
+}
+
+/// Liga um servidor falso novo a cada chamada; `falha_primeiro` = o 1.º arranque não chega a ligar.
+fn falso(plano: Plano, visto: Partilhado, falha_primeiro: bool) -> Connect {
+    Box::new(move |wake| {
+        let arranque = {
+            let mut v = visto.lock().unwrap();
+            v.ligacoes += 1;
+            v.textos.clear();
+            v.ligacoes - 1
+        };
+        if falha_primeiro && arranque == 0 {
+            return Err(LspError::Spawn(std::io::Error::other("arranque partido")));
+        }
+        let (srv_in, cli_out) = std::io::pipe().expect("cano");
+        let (cli_in, srv_out) = std::io::pipe().expect("cano");
+        let v = visto.clone();
+        std::thread::spawn(move || servir(srv_in, srv_out, plano, v, arranque));
+        LspClient::connect(
+            ServerConfig::new(PathBuf::from("falso")),
+            Box::new(cli_out),
+            Box::new(cli_in),
+            Some(wake),
+        )
+    })
+}
+
+fn com_falso(scripts: &[(&str, &str)], plano: Plano) -> (Mesa, Vec<ScriptId>, Partilhado) {
+    let visto = Partilhado::default();
+    let (m, ids) = Mesa::new(scripts);
+    let m = m.com_assistente(IntelServer::Custom(falso(plano, visto.clone(), false)));
+    (m, ids, visto)
+}
+
+fn tecla(m: &mut Mesa, id: ScriptId, key: Key, mods: Modifiers, text: Option<&str>, paste: &str) {
+    let mut ts = TextSystem::without_system_fonts();
+    let input = KeyInput {
+        key,
+        mods,
+        pressed: true,
+        text,
+        paste: (!paste.is_empty()).then(|| paste.to_owned()),
+    };
+    let _ = m.docs().key(id.0, &mut ts, input);
+}
+
+fn letra(m: &mut Mesa, id: ScriptId, c: char) {
+    tecla(
+        m,
+        id,
+        Key::Other,
+        Modifiers::default(),
+        Some(&c.to_string()),
+        "",
+    );
+}
+
+/// O que o editor MOSTRA de cada script: a aba aberta, a fechada com ●, senão a biblioteca.
+fn mostrado(m: &mut Mesa) -> BTreeMap<String, String> {
+    let lib: Vec<(ScriptId, String, String)> = m
+        .sim
+        .world()
+        .resource::<ProjectScripts>()
+        .iter()
+        .map(|(id, d)| (id, d.name.clone(), d.text.clone()))
+        .collect();
+    lib.into_iter()
+        .map(|(id, nome, texto)| {
+            let d = m.docs();
+            let t = d.text_of(id).or_else(|| d.parked_text(id)).unwrap_or(texto);
+            (uri_of(id.0, &nome), t)
+        })
+        .collect()
+}
+
+fn do_servidor(visto: &Partilhado) -> BTreeMap<String, String> {
+    visto
+        .lock()
+        .unwrap()
+        .textos
+        .iter()
+        .map(|(u, (_, t))| (u.clone(), t.clone()))
+        .collect()
+}
+
+/// Dá quadros até o servidor ter o que o editor mostra (o worker escreve fora do quadro).
+fn converge(m: &mut Mesa, visto: &Partilhado, onde: &str) {
+    let fim = Instant::now() + Duration::from_secs(20);
+    loop {
+        m.quadro();
+        let (a, b) = (mostrado(m), do_servidor(visto));
+        if a == b {
+            return;
+        }
+        assert!(
+            Instant::now() < fim,
+            "{onde}: o servidor não alcançou o editor\neditor: {a:#?}\nservidor: {b:#?}"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+/// ⛔ Gate: depois de qualquer sequência de gestos — letras com acento e emoji, Enter, apagar,
+/// colar várias linhas, desfazer/refazer, salvar, fechar com ● e reabrir, abrir outro script, o
+/// texto mudado por fora, renomear, um script novo e um apagado — o servidor tem EXACTAMENTE o texto
+/// que o editor mostra de cada script. Só arranca na 1.ª aba; a escrita vai por `didChange` (a aba
+/// que nunca se renomeia abre-se UMA vez); as versões só sobem.
+#[test]
+fn o_assistente_ve_o_texto_que_o_editor_mostra() {
+    let (mut m, ids, visto) = com_falso(
+        &[
+            ("a.luau", "local x = 1\n-- ação 😀\n"),
+            ("b.luau", "function update(self, dt)\nend\n"),
+            ("c.luau", "print(\"c\")\n"),
+        ],
+        Plano::default(),
+    );
+    for _ in 0..3 {
+        m.quadro();
+    }
+    assert_eq!(
+        visto.lock().unwrap().ligacoes,
+        0,
+        "arrancou sem nenhuma aba aberta"
+    );
+    let (a, b, c) = (ids[0], ids[1], ids[2]);
+    m.pede(a);
+    converge(&mut m, &visto, "abrir a 1.ª aba");
+    assert_eq!(
+        do_servidor(&visto).len(),
+        3,
+        "todos os scripts do projeto, não só a aba"
+    );
+    let mut cur = a;
+    let mut extra: Option<ScriptId> = None;
+    let mut rng = fastrand::Rng::with_seed(0x1_2A55);
+    let letras = ['a', 'é', '😀', ' ', 'z', '('];
+    for i in 0..400 {
+        if m.docs().text_of(cur).is_none() {
+            m.pede(cur);
+        }
+        match rng.u8(0..24) {
+            0..=7 => letra(&mut m, cur, letras[rng.usize(0..letras.len())]),
+            8 => tecla(
+                &mut m,
+                cur,
+                Key::Enter,
+                Modifiers::default(),
+                Some("\r"),
+                "",
+            ),
+            9 => tecla(&mut m, cur, Key::Backspace, Modifiers::default(), None, ""),
+            10 => tecla(&mut m, cur, Key::Delete, Modifiers::default(), None, ""),
+            11 => tecla(&mut m, cur, Key::Char('v'), ctrl(), Some("v"), "x\n é😀\n"),
+            12 => tecla(&mut m, cur, Key::Char('z'), ctrl(), Some("z"), ""),
+            13 => tecla(&mut m, cur, Key::Char('y'), ctrl(), Some("y"), ""),
+            14 => tecla(&mut m, cur, Key::Char('s'), ctrl(), Some("s"), ""),
+            15 => tecla(&mut m, cur, Key::Up, Modifiers::default(), None, ""),
+            16 => m.docs().close(cur.0),
+            17 => cur = [a, b][rng.usize(0..2)],
+            18 => {
+                let mut lib = m.sim.world_mut().resource_mut::<ProjectScripts>();
+                lib.set_text(c, &format!("print({i}) -- ç\n"));
+            }
+            19 => {
+                let mut lib = m.sim.world_mut().resource_mut::<ProjectScripts>();
+                lib.rename(c, &format!("c{}.luau", i % 3));
+            }
+            20 => {
+                let mut lib = m.sim.world_mut().resource_mut::<ProjectScripts>();
+                match extra.take() {
+                    Some(e) => {
+                        lib.remove(e);
+                    }
+                    None => extra = Some(lib.insert("extra.luau", "-- novo\n")),
+                }
+            }
+            _ => tecla(&mut m, cur, Key::End, Modifiers::default(), None, ""),
+        }
+        if rng.bool() {
+            m.quadro();
+        }
+        if i % 40 == 39 {
+            converge(&mut m, &visto, &format!("gesto {i}"));
+        }
+    }
+    converge(&mut m, &visto, "fim");
+    // A aba fechada com ●: o servidor fica com o texto POR SALVAR (não o da biblioteca), e reabri-la
+    // não lhe manda nada (é o mesmo texto). O laço acima reabre a aba logo a seguir — nunca o vê.
+    if m.docs().text_of(a).is_none() {
+        m.pede(a);
+    }
+    letra(&mut m, a, 'Q');
+    m.quadro();
+    m.docs().close(a.0);
+    assert!(m.docs().is_parked(a));
+    assert_ne!(m.docs().parked_text(a), Some(m.texto_salvo(a)));
+    converge(&mut m, &visto, "fechada com ●");
+    let mudancas = visto.lock().unwrap().mudancas;
+    m.pede(a);
+    converge(&mut m, &visto, "reaberta");
+    assert_eq!(
+        visto.lock().unwrap().mudancas,
+        mudancas,
+        "reabrir mandou texto ao servidor"
+    );
+    let v = visto.lock().unwrap();
+    assert_eq!(v.ligacoes, 1);
+    assert!(
+        v.para_tras.is_empty(),
+        "versões que não subiram: {:?}",
+        v.para_tras
+    );
+    assert!(
+        v.mudancas > 50,
+        "a escrita não foi por didChange: {}",
+        v.mudancas
+    );
+    let ua = uri_of(a.0, "a.luau");
+    assert_eq!(
+        v.aberturas.get(&ua),
+        Some(&1),
+        "a aba que se escreve reabriu-se: {:?}",
+        v.aberturas
+    );
+    assert_eq!(
+        m.docs().assist_text(),
+        None,
+        "pronto, a barra não fala do assistente"
+    );
+}
+
+/// ⛔ Gate: um servidor que demora 1 s em CADA mensagem nunca segura a tecla nem o quadro — 60
+/// teclas com quadros pelo meio custam muito menos que UMA espera dessas. E o texto chega-lhe.
+#[test]
+fn um_servidor_lento_nunca_segura_a_tecla() {
+    let (mut m, ids, _visto) = com_falso(
+        &[("a.luau", "local x = 1\n")],
+        Plano {
+            atraso: Duration::from_secs(1),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    let t0 = Instant::now();
+    for i in 0..60 {
+        letra(&mut m, id, char::from(b'a' + (i % 26) as u8));
+        m.quadro();
+    }
+    let gasto = t0.elapsed();
+    assert!(
+        gasto < Duration::from_millis(800),
+        "a tecla esperou o servidor: {gasto:?}"
+    );
+    assert_eq!(
+        m.docs().text_of(id).unwrap().len(),
+        "local x = 1\n".len() + 60
+    );
+    assert!(
+        m.docs()
+            .assist_text()
+            .is_some_and(|t| t.starts_with("Starting")),
+        "o `initialize` ainda não voltou: a barra diz que está a arrancar"
+    );
+}
+
+/// ⛔ Gate: o servidor morre a meio da escrita; o editor continua a escrever, a sessão repõe-no
+/// sozinha, e o servidor novo recebe o texto de AGORA de cada script.
+#[test]
+fn um_servidor_que_morre_a_meio_volta_com_o_texto_de_agora() {
+    let (mut m, ids, visto) = com_falso(
+        &[("a.luau", "local x = 1\n"), ("b.luau", "-- b\n")],
+        Plano {
+            morre_apos: Some(5),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    converge(&mut m, &visto, "abrir");
+    for i in 0..30 {
+        letra(&mut m, id, char::from(b'a' + (i % 26) as u8));
+        m.quadro();
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    converge(&mut m, &visto, "depois da morte");
+    assert_eq!(
+        visto.lock().unwrap().ligacoes,
+        2,
+        "a sessão não repôs o servidor (ou repô-lo duas vezes)"
+    );
+    assert_eq!(
+        m.docs().text_of(id).unwrap().len(),
+        "local x = 1\n".len() + 30
+    );
+    assert_eq!(m.docs().assist_text(), None);
+}
+
+/// ⛔ Gate: um diagnóstico de uma versão velha nunca sai para quem pinta — em cada quadro, o que a
+/// sonda dá é o da versão que o servidor tem AGORA (o falso escreve `v<versão>`). Controlo: com o
+/// servidor alcançado, o diagnóstico da última versão está lá.
+#[test]
+fn um_diagnostico_de_versao_velha_nunca_sai() {
+    let (mut m, ids, visto) = com_falso(
+        &[("a.luau", "local x = 1\n")],
+        Plano {
+            atraso: Duration::from_millis(3),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    for i in 0..80 {
+        letra(&mut m, id, char::from(b'a' + (i % 26) as u8));
+        m.quadro();
+        if let (Some(v), Some(d)) = m.docs().assist_diagnostics(id) {
+            assert_eq!(d.len(), 1);
+            assert_eq!(
+                d[0].message,
+                format!("v{v}"),
+                "quadro {i}: diagnóstico de outra versão"
+            );
+        }
+    }
+    converge(&mut m, &visto, "fim");
+    let fim = Instant::now() + Duration::from_secs(10);
+    let (v, d) = loop {
+        m.quadro();
+        if let (Some(v), Some(d)) = m.docs().assist_diagnostics(id) {
+            break (v, d);
+        }
+        assert!(
+            Instant::now() < fim,
+            "o diagnóstico da última versão não chegou"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    };
+    assert_eq!(d[0].message, format!("v{v}"));
+    assert!(v > 1, "a versão não subiu com a escrita: {v}");
+}
+
+/// ⛔ Gate: o assistente não arranca — o editor escreve na mesma, a barra diz que está parado e
+/// como o repor; o comando «Restart Code Assistant» liga-o, e o servidor recebe o texto de agora.
+#[test]
+fn sem_assistente_o_editor_escreve_e_o_restart_liga_o() {
+    let visto = Partilhado::default();
+    let (m, ids) = Mesa::new(&[("a.luau", "local x = 1\n")]);
+    let mut m = m.com_assistente(IntelServer::Custom(falso(
+        Plano::default(),
+        visto.clone(),
+        true,
+    )));
+    let id = ids[0];
+    m.pede(id);
+    let fim = Instant::now() + Duration::from_secs(10);
+    while m.docs().assist_reason().is_none() {
+        assert!(
+            Instant::now() < fim,
+            "o arranque partido não chegou à barra"
+        );
+        m.quadro();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let barra = m.docs().assist_text().expect("a barra fala do assistente");
+    assert!(
+        barra.contains("editing works") && barra.contains("Restart"),
+        "{barra}"
+    );
+    assert!(
+        m.docs()
+            .assist_reason()
+            .unwrap()
+            .contains("arranque partido")
+    );
+    letra(&mut m, id, 'q');
+    m.quadro();
+    assert_eq!(m.docs().text_of(id).as_deref(), Some("qlocal x = 1\n"));
+    assert!(m.docs().command(id.0, CMD_RESTART_ASSIST));
+    converge(&mut m, &visto, "depois do Restart");
+    assert_eq!(visto.lock().unwrap().ligacoes, 2);
+    let fim = Instant::now() + Duration::from_secs(10);
+    while m.docs().assist_text().is_some() {
+        assert!(
+            Instant::now() < fim,
+            "a barra não se calou com o assistente pronto"
+        );
+        m.quadro();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+/// O binário que não existe: a barra diz que parou (e a razão crua diz porquê), a escrita segue.
+#[test]
+fn um_binario_que_nao_existe_para_o_assistente_e_nao_o_editor() {
+    let (m, ids) = Mesa::new(&[("a.luau", "x = 1\n")]);
+    let mut m = m.com_assistente(IntelServer::Binary(PathBuf::from(
+        "/ph2d-nao-existe/luau-lsp",
+    )));
+    let id = ids[0];
+    m.pede(id);
+    let fim = Instant::now() + Duration::from_secs(10);
+    while m.docs().assist_reason().is_none() {
+        assert!(Instant::now() < fim);
+        m.quadro();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert!(
+        m.docs()
+            .assist_reason()
+            .unwrap()
+            .contains("could not start"),
+        "{:?}",
+        m.docs().assist_reason()
+    );
+    assert!(m.docs().assist_text().unwrap().contains("editing works"));
+    letra(&mut m, id, 'q');
+    assert_eq!(m.docs().text_of(id).as_deref(), Some("qx = 1\n"));
+}

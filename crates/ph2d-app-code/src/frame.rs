@@ -70,6 +70,9 @@ pub fn frame(
     if let Some(h) = host {
         hear(docs, h);
     }
+    if let Some(lib) = world.get_resource::<ProjectScripts>() {
+        docs.sync_intel(lib);
+    }
     match ask {
         Some(SaveKind::Save) => hero.file_menu.save = true,
         Some(SaveKind::SaveAs) => hero.file_menu.save_as = true,

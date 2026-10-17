@@ -24,7 +24,14 @@ fn tecla(m: &mut Mesa, id: ScriptId, key: Key, mods: Modifiers, text: Option<&st
 }
 
 fn letra(m: &mut Mesa, id: ScriptId, c: char) {
-    tecla(m, id, Key::Char(c), Modifiers::default(), Some(&c.to_string()), "");
+    tecla(
+        m,
+        id,
+        Key::Char(c),
+        Modifiers::default(),
+        Some(&c.to_string()),
+        "",
+    );
 }
 
 /// O cursor no fim da linha que contém `agulha` (pelo teclado: Ctrl+Home, ↓, End).
@@ -111,10 +118,17 @@ fn as_teclas_sem_arvore_nunca_reparsam_na_tecla() {
         desfeitos += 1;
     }
     assenta(&mut m, id);
-    assert_eq!(sonda(&mut m, id).sync_reparses, 0, "o desfazer reparsou na tecla");
+    assert_eq!(
+        sonda(&mut m, id).sync_reparses,
+        0,
+        "o desfazer reparsou na tecla"
+    );
     let (mut zero, ids0) = Mesa::new(&[("bob.luau", &grande)]);
     zero.pede(ids0[0]);
-    assert!(zero.docs().problems_of(ids0[0]).is_empty(), "o texto do início é válido");
+    assert!(
+        zero.docs().problems_of(ids0[0]).is_empty(),
+        "o texto do início é válido"
+    );
     let alvo = grande.find("self.t = self.t + dt").unwrap_or(0);
     let faixa = alvo.saturating_sub(3_000)..(alvo + 3_000).min(grande.len());
     let mut lidos = 0;
@@ -133,7 +147,10 @@ fn as_teclas_sem_arvore_nunca_reparsam_na_tecla() {
     );
     // Controlo: uma letra (árvore velha) e o Enter logo a seguir — esse reparse é na tecla.
     letra(&mut m, id, 'q');
-    assert!(sonda(&mut m, id).stale, "a letra devia deixar a árvore velha");
+    assert!(
+        sonda(&mut m, id).stale,
+        "a letra devia deixar a árvore velha"
+    );
     tecla(&mut m, id, Key::Enter, Modifiers::default(), Some("\r"), "");
     assert_eq!(
         sonda(&mut m, id).sync_reparses,

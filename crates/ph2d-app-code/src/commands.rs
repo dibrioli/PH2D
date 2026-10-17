@@ -15,15 +15,22 @@ pub const CMD_REPLACE: NodeId = hash_node_id("code_cmd_replace");
 pub const CMD_GOTO: NodeId = hash_node_id("code_cmd_goto");
 pub const CMD_FOLD_ALL: NodeId = hash_node_id("code_cmd_fold_all");
 pub const CMD_UNFOLD_ALL: NodeId = hash_node_id("code_cmd_unfold_all");
+/// O assistente de código parado: procura o programa outra vez e volta a ligá-lo (I2).
+pub const CMD_RESTART_ASSIST: NodeId = hash_node_id("code_cmd_restart_assistant");
 
 /// `(id, chave do rótulo, menu)` — a tabela única, lida pelos menus, pela paleta e pelo despacho.
-const TABLE: [(NodeId, &str, DocMenu); 6] = [
+const TABLE: [(NodeId, &str, DocMenu); 7] = [
     (CMD_SAVE, "code.cmd.save", DocMenu::File),
     (CMD_FIND, "code.cmd.find", DocMenu::Edit),
     (CMD_REPLACE, "code.cmd.replace", DocMenu::Edit),
     (CMD_GOTO, "code.cmd.goto", DocMenu::Edit),
     (CMD_FOLD_ALL, "code.cmd.fold_all", DocMenu::Edit),
     (CMD_UNFOLD_ALL, "code.cmd.unfold_all", DocMenu::Edit),
+    (
+        CMD_RESTART_ASSIST,
+        "code.cmd.restart_assistant",
+        DocMenu::Edit,
+    ),
 ];
 
 /// Os comandos da aba.

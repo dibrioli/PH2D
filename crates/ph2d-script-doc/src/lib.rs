@@ -44,10 +44,12 @@ pub struct ScriptDoc {
 }
 
 /// **A biblioteca de scripts do projeto.**
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct ScriptLibrary {
     next: u64,
     scripts: BTreeMap<ScriptId, ScriptDoc>,
+    /// Ver [`Self::revision`]; fora do ficheiro e da igualdade (diz QUANDO, não O QUÊ).
+    revision: u64,
 }
 
 impl Default for ScriptLibrary {
@@ -55,8 +57,22 @@ impl Default for ScriptLibrary {
         Self {
             next: 1,
             scripts: BTreeMap::new(),
+            revision: fresh_revision(),
         }
     }
+}
+
+impl PartialEq for ScriptLibrary {
+    fn eq(&self, other: &Self) -> bool {
+        self.next == other.next && self.scripts == other.scripts
+    }
+}
+
+impl Eq for ScriptLibrary {}
+
+fn fresh_revision() -> u64 {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 /// Porque um blob de biblioteca não se lê.
@@ -112,6 +128,14 @@ impl ScriptLibrary {
         self.scripts.len()
     }
 
+    /// Muda a cada texto, nome ou script que entra ou sai — ÚNICA no processo (duas bibliotecas
+    /// nunca a partilham depois de mexidas), para quem segue a biblioteca saber barato que tem de
+    /// olhar (o assistente de código do editor). Um clone sem mudança guarda-a.
+    #[must_use]
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.scripts.is_empty()
@@ -145,6 +169,7 @@ impl ScriptLibrary {
                 text: text.into(),
             },
         );
+        self.revision = fresh_revision();
         id
     }
 
@@ -153,6 +178,7 @@ impl ScriptLibrary {
         match self.scripts.get_mut(&id) {
             Some(d) if d.text != text => {
                 text.clone_into(&mut d.text);
+                self.revision = fresh_revision();
                 true
             }
             _ => false,
@@ -166,12 +192,17 @@ impl ScriptLibrary {
         }
         let name = self.unique_name(name, Some(id));
         let d = self.scripts.get_mut(&id)?;
-        d.name.clone_from(&name);
+        if d.name != name {
+            d.name.clone_from(&name);
+            self.revision = fresh_revision();
+        }
         Some(name)
     }
 
     pub fn remove(&mut self, id: ScriptId) -> Option<ScriptDoc> {
-        self.scripts.remove(&id)
+        let d = self.scripts.remove(&id)?;
+        self.revision = fresh_revision();
+        Some(d)
     }
 
     /// `wanted` se livre; senão «stem N.ext» com o menor `N ≥ 2` livre. Um «stem N» pedido conta a

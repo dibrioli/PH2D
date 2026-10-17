@@ -73,6 +73,7 @@ pub struct Deco {
     pub bracket: Option<(usize, usize)>,
     pub preedit: Option<String>,
     pub badge: Option<Badge>,
+    pub assist: Option<ph2d_panel_code::Assist>,
 }
 
 pub fn ts() -> TextSystem {
@@ -110,6 +111,7 @@ pub fn frame<'a>(
         tab: TAB,
         badge: d.badge.as_ref(),
         project_unsaved: false,
+        assist: d.assist,
     }
 }
 

@@ -67,4 +67,32 @@ impl Dirty {
             new: a..b,
         })
     }
+
+    /// A troca que leva `old` a `new` sem saber as edições (o texto trocado por fora: outra fonte,
+    /// um salvar de outra porta): o prefixo e o sufixo comuns, em fronteiras de carácter. `None` =
+    /// textos iguais. O(n) — só nas trocas de fonte, nunca na tecla.
+    pub fn between(old: &Text, new: &Text) -> Option<Self> {
+        let (o, n) = (old.rope(), new.rope());
+        let max = old.len().min(new.len());
+        let mut pre = o.bytes().zip(n.bytes()).take_while(|(a, b)| a == b).count();
+        if pre == old.len() && pre == new.len() {
+            return None;
+        }
+        pre = old.floor_char(pre);
+        let mut suf = o
+            .bytes()
+            .rev()
+            .zip(n.bytes().rev())
+            .take(max - pre)
+            .take_while(|(a, b)| a == b)
+            .count();
+        // Os bytes do sufixo são os mesmos nos dois: uma fronteira num é fronteira no outro.
+        while suf > 0 && old.floor_char(old.len() - suf) != old.len() - suf {
+            suf -= 1;
+        }
+        Some(Self {
+            old: pre..old.len() - suf,
+            new: pre..new.len() - suf,
+        })
+    }
 }

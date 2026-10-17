@@ -41,6 +41,19 @@ pub enum Badge {
     Saved,
 }
 
+/// O assistente de código (o `luau-lsp`) quando NÃO está pronto — a barra di-lo; pronto, cala-se.
+/// Em todos os casos o editor continua a editar, realçar e salvar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Assist {
+    Starting,
+    /// Morreu depois de ter respondido: está a ser reposto sozinho.
+    Restarting,
+    /// O programa não está instalado onde o editor o procura.
+    Missing,
+    /// Não arrancou, ou morreu outra vez antes de responder: só o comando «Restart» tenta de novo.
+    Stopped,
+}
+
 /// Tudo o que um quadro do editor pinta.
 pub struct CodeFrame<'a> {
     pub buffer: &'a Buffer,
@@ -66,4 +79,6 @@ pub struct CodeFrame<'a> {
     pub badge: Option<&'a Badge>,
     /// O último Ctrl+S aplicou o script mas o projecto ainda não tem ficheiro (o selo di-lo).
     pub project_unsaved: bool,
+    /// `None` = o assistente está pronto (ou desligado de propósito): a barra não fala dele.
+    pub assist: Option<Assist>,
 }

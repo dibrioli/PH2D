@@ -32,6 +32,11 @@ struct Derived {
 
 pub(crate) struct CodeDoc {
     pub script: ScriptId,
+    /// O número deste texto no processo (um estacionado que volta guarda-o): o espelho do assistente
+    /// de código sabe por ele que o texto é o MESMO que já enviou ([`crate::intel`]).
+    pub serial: u64,
+    /// As edições ainda por enviar ao assistente de código.
+    pub(crate) lsp: crate::intel::Pending,
     pub title: String,
     pub buffer: Buffer,
     /// O texto da biblioteca da última vez que a aba e ela concordaram (abrir, salvar).
@@ -67,10 +72,16 @@ pub(crate) struct CodeDoc {
 
 impl CodeDoc {
     pub fn new(script: ScriptId, title: &str, text: &str) -> Self {
+        static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
         let buffer = Buffer::new(text);
         let syntax = Syntax::new(buffer.text());
         Self {
             script,
+            serial: SERIAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            lsp: crate::intel::Pending {
+                from: buffer.revision(),
+                edits: Vec::new(),
+            },
             title: title.to_owned(),
             buffer,
             synced: text.to_owned(),
@@ -97,6 +108,7 @@ impl CodeDoc {
     /// Fecha com alterações por salvar: fica só o texto e o histórico ([`crate::docs::Parked`]).
     pub fn park(self) -> crate::docs::Parked {
         crate::docs::Parked {
+            serial: self.serial,
             title: self.title,
             buffer: self.buffer,
             synced: self.synced,
@@ -107,6 +119,8 @@ impl CodeDoc {
     pub fn unpark(script: ScriptId, p: crate::docs::Parked) -> Self {
         let mut d = Self::new(script, &p.title, "");
         d.syntax = Syntax::new(p.buffer.text());
+        d.serial = p.serial;
+        d.lsp.from = p.buffer.revision();
         d.buffer = p.buffer;
         d.synced = p.synced;
         d
@@ -122,6 +136,7 @@ impl CodeDoc {
         if syntax_too {
             self.syntax.edit_deferred(edits);
         }
+        self.lsp.edits.extend_from_slice(edits);
         if let Some(a) = &mut self.diag_anchor {
             for e in edits {
                 a.0 = map_byte(a.0, e);
@@ -272,7 +287,7 @@ impl CodeDoc {
         ts: &mut TextSystem,
         theme: &Theme,
         console: &crate::console::Store,
-        blink_on: bool,
+        (blink_on, assist): (bool, Option<ph2d_panel_code::Assist>),
     ) {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
         let problems = self.problems();
@@ -326,6 +341,7 @@ impl CodeDoc {
             tab: TAB,
             badge: badge.as_ref(),
             project_unsaved: *project_unsaved,
+            assist,
         };
         view.paint(frame, code_r, scene, ts, theme);
         if let Some(r) = find_r {

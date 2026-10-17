@@ -829,7 +829,10 @@ fn tecla_pixel() {
             celulas
                 .iter()
                 .find(|c| {
-                    c.cena == cena && c.vista == JANELA && c.linhas == linhas && c.replica == replica
+                    c.cena == cena
+                        && c.vista == JANELA
+                        && c.linhas == linhas
+                        && c.replica == replica
                 })
                 .expect("célula da regra de Fatin")
         };
@@ -844,7 +847,11 @@ fn tecla_pixel() {
             let excesso = qg - qa.max(qb);
             println!(
                 "| {} | {nome} | {qa:.3} | {qb:.3} | {ruido:.3} | {qg:.3} | {excesso:+.3} | {} |",
-                if cena == Cena::Tocando { "a tocar" } else { "parada" },
+                if cena == Cena::Tocando {
+                    "a tocar"
+                } else {
+                    "parada"
+                },
                 if excesso <= ruido { "passa" } else { "REPROVA" }
             );
         }

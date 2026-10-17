@@ -128,6 +128,68 @@ fn as_definicoes_saem_da_tabela() {
     }
 }
 
+/// A base de documentação do `luau-lsp` sai da tabela: cada global e cada função com a sua linha,
+/// os parâmetros pelo nome e na ordem da assinatura, e a documentação de um parâmetro de tipo
+/// exportado é um SÍMBOLO que aponta a linha desse tipo (texto directo sai vazio no servidor).
+#[test]
+fn a_base_de_documentacao_sai_da_tabela() {
+    use ph2d_script::api_table::{DEFINITIONS_PACKAGE, luau_docs, luau_params};
+    let v: serde_json::Value = serde_json::from_str(&luau_docs()).expect("JSON");
+    let doc = |k: &str| v[k]["documentation"].as_str().map(str::to_owned);
+    for g in API_GLOBALS {
+        let k = format!("{DEFINITIONS_PACKAGE}/global/{}", g.ident);
+        assert_eq!(doc(&k).as_deref(), Some(g.doc), "{k}");
+    }
+    let mut com_tipo = 0;
+    for e in API {
+        let k = format!("{DEFINITIONS_PACKAGE}/global/{}.{}", e.table, e.ident);
+        assert_eq!(doc(&k).as_deref(), Some(e.doc), "{k}");
+        let ps = v[&k]["params"].as_array().expect("params");
+        let sig = luau_params(e.luau_type);
+        // Tantos parâmetros quantos `nome:` na assinatura, cada um um identificador.
+        assert_eq!(
+            ps.len(),
+            e.luau_type
+                .split(") ->")
+                .next()
+                .unwrap()
+                .matches(':')
+                .count(),
+            "{k}"
+        );
+        for (i, ((name, ty), p)) in sig.iter().zip(ps).enumerate() {
+            assert!(
+                !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'),
+                "{k}: {name:?}"
+            );
+            assert_eq!(p["name"].as_str(), Some(*name), "{k}");
+            let tipo = API_TYPES
+                .iter()
+                .find(|t| t.ident == ty.trim_end_matches('?'));
+            let d = p["documentation"].as_str().unwrap();
+            match tipo {
+                Some(t) => {
+                    com_tipo += 1;
+                    assert_eq!(d, format!("{k}/param/{i}"), "{k}");
+                    assert_eq!(doc(d).as_deref(), Some(t.doc), "{k}");
+                }
+                None => assert_eq!(d, "", "{k}: {name}"),
+            }
+        }
+    }
+    // Controlo: a ramificação do tipo exportado corre (o `entity: Entity` do `ph2d.set`, …).
+    assert!(com_tipo >= 5, "{com_tipo}");
+    assert_eq!(
+        luau_params("(f: (x: number) -> (), t: { string }, n: number?) -> ()"),
+        vec![
+            ("f", "(x: number) -> ()"),
+            ("t", "{ string }"),
+            ("n", "number?")
+        ]
+    );
+    assert!(luau_params("() -> number").is_empty());
+}
+
 /// Os ganchos da tabela são EXACTAMENTE os nomes que o motor pede (`.hook("…")` no fonte da crate,
 /// fora dos testes) — gancho novo na cena sem linha em `HOOKS` ⇒ vermelho, e vice-versa.
 #[test]

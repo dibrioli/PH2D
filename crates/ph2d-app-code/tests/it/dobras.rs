@@ -116,9 +116,16 @@ fn a_fechada_cuja_estrutura_deixou_de_existir_abre_se() {
 fn dobrar_logo_depois_de_uma_tecla_pergunta_a_arvore_do_texto() {
     let (mut m, id) = aberto(BOB);
     vai(&mut m, id, 24);
-    let (x, y) = m.docs().fold_marker(id, 23).expect("o marcador do init à vista");
+    let (x, y) = m
+        .docs()
+        .fold_marker(id, 23)
+        .expect("o marcador do init à vista");
     m.clica(id, x, y, Modifiers::default());
-    assert_eq!(m.docs().closed_folds(id), vec![(23, 28)], "controlo: o clique fecha");
+    assert_eq!(
+        m.docs().closed_folds(id),
+        vec![(23, 28)],
+        "controlo: o clique fecha"
+    );
     m.clica(id, x, y, Modifiers::default());
     assert!(m.docs().closed_folds(id).is_empty(), "controlo: e reabre");
     m.escreve(id, "--");

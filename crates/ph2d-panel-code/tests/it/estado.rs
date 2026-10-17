@@ -56,6 +56,34 @@ fn posicao_problemas_e_selo() {
     assert_eq!(tom, Tone::Error);
 }
 
+/// O assistente de código só fala quando NÃO está pronto, e diz que a edição continua.
+#[test]
+fn o_assistente_so_aparece_quando_nao_esta_pronto() {
+    use ph2d_panel_code::Assist;
+    let buf = Buffer::new("a\n");
+    assert_eq!(status(&buf, &Deco::default()).assist, None);
+    let mut textos = std::collections::BTreeSet::new();
+    for (a, tom) in [
+        (Assist::Starting, Tone::Plain),
+        (Assist::Restarting, Tone::Warning),
+        (Assist::Missing, Tone::Warning),
+        (Assist::Stopped, Tone::Warning),
+    ] {
+        let d = Deco {
+            assist: Some(a),
+            ..Deco::default()
+        };
+        let (texto, t) = status(&buf, &d).assist.expect("peça do assistente");
+        if matches!(a, Assist::Missing | Assist::Stopped) {
+            assert!(texto.contains("editing works"), "{a:?}: {texto}");
+        }
+        assert_eq!(t, tom, "{a:?}");
+        textos.insert(texto);
+    }
+    // Cada estado diz uma coisa sua (uma chave trocada daria dois textos iguais).
+    assert_eq!(textos.len(), 4, "{textos:?}");
+}
+
 /// ⛔ «1 errors · 0 warnings» e «Console · 1 errors» (foto `code_smoke_2.png`): a forma de UM.
 #[test]
 fn uma_contagem_de_um_fala_no_singular() {

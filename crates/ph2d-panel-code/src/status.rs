@@ -1,7 +1,7 @@
 //! A barra de estado do editor: `linha:coluna` do cursor primário, a contagem de problemas e o selo
 //! do último salvar. Todo texto vem do `ph2d-i18n` (chaves `code.status.*`).
 
-use crate::frame::{Badge, CodeFrame, Severity};
+use crate::frame::{Assist, Badge, CodeFrame, Severity};
 use crate::palette::Palette;
 use crate::view::CodeView;
 use ph2d_editor_core::paint::{label_column_width, paint_text_elided, rect_to_vello};
@@ -25,6 +25,7 @@ pub enum Tone {
 pub struct StatusLine {
     pub position: String,
     pub problems: (String, Tone),
+    pub assist: Option<(String, Tone)>,
     pub badge: Option<(String, Tone)>,
 }
 
@@ -75,9 +76,22 @@ impl StatusLine {
         Self {
             position,
             problems,
+            assist: frame.assist.map(assist_line),
             badge: badge_line(frame.badge, frame.project_unsaved),
         }
     }
+}
+
+/// O texto e o tom da peça do assistente (a pintura e as sondas lêem o MESMO).
+#[must_use]
+pub fn assist_line(a: Assist) -> (String, Tone) {
+    let (key, tone) = match a {
+        Assist::Starting => ("code.status.assist_starting", Tone::Plain),
+        Assist::Restarting => ("code.status.assist_restarting", Tone::Warning),
+        Assist::Missing => ("code.status.assist_missing", Tone::Warning),
+        Assist::Stopped => ("code.status.assist_stopped", Tone::Warning),
+    };
+    (tr(key).to_owned(), tone)
 }
 
 /// O texto e o tom do selo (a pintura e as sondas lêem o MESMO). `project_unsaved` = o script foi
@@ -174,6 +188,8 @@ pub(crate) fn paint(
         );
         x += w + gap;
     }
+    // O selo (o resultado do salvar) ganha o seu lugar à direita; o assistente cabe no que sobra.
+    let mut end = right;
     if let Some((text, tone)) = &s.badge {
         let w = label_column_width(ts, font, [text.as_str()]);
         let bx = (right - w).max(x);
@@ -185,6 +201,19 @@ pub(crate) fn paint(
             y,
             font,
             (right - bx).max(0.0),
+            color(pal, *tone),
+        );
+        end = bx - gap;
+    }
+    if let Some((text, tone)) = &s.assist {
+        paint_text_elided(
+            ts,
+            scene,
+            text,
+            x,
+            y,
+            font,
+            (end - x).max(0.0),
             color(pal, *tone),
         );
     }

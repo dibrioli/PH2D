@@ -41,6 +41,8 @@ serde = { version = "1", features = ["derive"] }
 ph2d-script-doc = { path = "../ph2d-script-doc" }
 # O degrau v2 → v3 do blob do `LuauScript` no `WorldSnapshot` do projeto (`project_scripts`).
 postcard = { version = "1", features = ["alloc"] }
+# A base de documentação do `luau-lsp` (`api_table::luau_docs`, `--docs=<json>`), gerada da tabela.
+serde_json = "1"
 
 [dev-dependencies]
 proptest = "1.11.0"

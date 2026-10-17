@@ -27,6 +27,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O Ctrl+S da aba nunca abre diálogo: sem ficheiro de projecto, aplica e di-lo.
         "code.status.project_unsaved" => "Script applied · project not saved yet — File ▸ Save As…",
         "code.status.project_unsaved_after" => "{badge} · project not saved yet — File ▸ Save As…",
+        // O assistente de código (`luau-lsp`) quando não está pronto: o editor continua a editar.
+        "code.status.assist_starting" => "Starting code assistant…",
+        "code.status.assist_restarting" => "Code assistant stopped — restarting it…",
+        "code.status.assist_missing" => {
+            "Code assistant not installed — editing works, without suggestions"
+        }
+        "code.status.assist_stopped" => {
+            "Code assistant stopped — editing works; Edit ▸ Restart Code Assistant"
+        }
         // A barra de buscar/substituir e o «Go to line» (E9).
         "code.find.placeholder" => "Find",
         "code.find.replace_placeholder" => "Replace",
@@ -72,6 +81,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.goto" => "Go to Line\u{2026} \u{00b7} Cmd+G",
         "code.cmd.fold_all" => "Fold All",
         "code.cmd.unfold_all" => "Unfold All",
+        "code.cmd.restart_assistant" => "Restart Code Assistant",
         // E11: a lista de scripts do projeto, à esquerda dentro da aba.
         "code.list.title" => "Scripts",
         "code.list.filter" => "Filter",

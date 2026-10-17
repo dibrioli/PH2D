@@ -17,9 +17,22 @@ use ph2d_code_lsp::{LspClient, LspError, ServerConfig};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
-/// O endereço de um documento no servidor (os scripts do projeto não estão em disco).
-pub fn uri_of(script_name: &str) -> String {
-    format!("file:///ph2d-project/{script_name}")
+/// O endereço de um documento no servidor (os scripts do projeto não estão em disco): o id faz-no
+/// único (dois nomes que se escrevem igual depois de codificados nunca colidem), o nome lê-se nas
+/// mensagens, e a extensão `.luau` é a que diz ao servidor que é Luau.
+pub fn uri_of(script: u64, name: &str) -> String {
+    let mut out = format!("file:///ph2d-project/{script}/");
+    for b in name.bytes() {
+        if b.is_ascii_alphanumeric() || b"-._~".contains(&b) {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    if !name.ends_with(".luau") && !name.ends_with(".lua") {
+        out.push_str(".luau");
+    }
+    out
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -188,10 +201,21 @@ impl LspSession {
     }
 }
 
+/// Quanto o fecho da sessão espera o worker: um servidor preso responderia ao `shutdown` só no
+/// prazo do pedido (30 s) — fechar o editor nunca espera isso.
+const DROP_WAIT: std::time::Duration = std::time::Duration::from_secs(1);
+
 impl Drop for LspSession {
+    /// Pede o fim e espera até [`DROP_WAIT`]; depois disso o worker acaba sozinho (o cliente mata o
+    /// processo ao largar-se).
     fn drop(&mut self) {
         let _ = self.inbox.send(Inbox::Shutdown);
-        if let Some(w) = self.worker.take() {
+        let Some(w) = self.worker.take() else { return };
+        let deadline = std::time::Instant::now() + DROP_WAIT;
+        while !w.is_finished() && std::time::Instant::now() < deadline {
+            thread::sleep(std::time::Duration::from_millis(2));
+        }
+        if w.is_finished() {
             let _ = w.join();
         }
     }

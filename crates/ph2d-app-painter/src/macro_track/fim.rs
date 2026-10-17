@@ -13,6 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 
 /// Uma imagem RGBA8 premultiplicada, com o tamanho.
+#[derive(Clone)]
 pub(super) struct Imagem {
     pub(super) rgba: Vec<u8>,
     pub(super) w: u32,

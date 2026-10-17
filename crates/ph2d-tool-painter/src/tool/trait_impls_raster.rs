@@ -193,6 +193,40 @@ impl PainterTool {
         Some((rgba, w, h))
     }
 
+    /// [`Self::imagem_aplicada`] só na caixa `(x, y, w, h)` (RGBA8 straight, `w × h`): igual ao recorte
+    /// da inteira — a composição é texel a texel e a luz do relevo lê os campos inteiros. Uma macro em
+    /// cena só precisa do que a marca do artista cobre (W9 A3). `None` = sem documento ou fora dele.
+    #[must_use]
+    pub fn imagem_aplicada_na_caixa(&self, (x, y, w, h): (u32, u32, u32, u32)) -> Option<Vec<u8>> {
+        let (sw, sh) = self.source_size;
+        if self.canvas_rgba.is_empty() || w == 0 || h == 0 || x + w > sw || y + h > sh {
+            return None;
+        }
+        let r = Region { x, y, w, h };
+        let mut rgba = if self.is_trivial_stack() {
+            let mut v = Vec::with_capacity((w * h * 4) as usize);
+            for j in y..y + h {
+                let a = ((j * sw + x) * 4) as usize;
+                v.extend_from_slice(&self.canvas_rgba[a..a + (w * 4) as usize]);
+            }
+            v
+        } else {
+            let active = self.layers.active().unwrap_or(RtLayerId(0));
+            let src = ToolPixelSource {
+                active_id: active,
+                active_rgba: &self.canvas_rgba,
+                images: &self.images,
+            };
+            self.composto_pelo_vidro(&src, r).unwrap_or_else(|| {
+                let mut c = crate::compositor::composite_region(&self.layers, &src, sw, sh, r);
+                self.compoe_sobre_o_papel(&mut c, r);
+                c
+            })
+        };
+        self.apply_impasto_light(&mut rgba, r);
+        Some(rgba)
+    }
+
     fn deactivate_corpo(&mut self) {
         self.replace_canvas(Arc::new(Vec::new()));
         self.source_size = (0, 0);

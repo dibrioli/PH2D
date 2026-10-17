@@ -271,3 +271,32 @@ fn a_reescrita_e_o_recomecar_nao_marcam_e_a_reescrita_salta_o_marcado() {
     assert_eq!(marca(&t).palavras(), m.palavras(), "recomeçar marcou");
 }
 
+
+/// W9 A3 — **a imagem na caixa é o recorte da inteira, ao byte**: no papel (Wet Paint, a composição
+/// sobre o papel), no Impasto (a luz do relevo lê os vizinhos fora da caixa) e numa tela simples; e
+/// fora do documento é `None`.
+#[test]
+fn a_imagem_na_caixa_e_o_recorte_da_inteira() {
+    use super::roteiro::{SPLASH, grava_nos_meios_e_o_tool};
+    let recorte = |img: &[u8], l: u32, (x, y, w, h): (u32, u32, u32, u32)| -> Vec<u8> {
+        (y..y + h)
+            .flat_map(|j| img[((j * l + x) * 4) as usize..((j * l + x + w) * 4) as usize].to_vec())
+            .collect()
+    };
+    let (papel, _, _) = grava_no_papel_ligado_com_o_worker(LADO, 7, 2).expect("grava");
+    let (impasto, _) =
+        grava_nos_meios_e_o_tool(LADO, &SPLASH, &[PaintMedia::Impasto]).expect("grava");
+    let mut simples = PainterTool::default();
+    simples.set_source(vec![90; (LADO * LADO * 4) as usize], LADO, LADO);
+    for (nome, t) in [("papel", &papel), ("impasto", &impasto), ("simples", &simples)] {
+        let inteira = imagem(t);
+        for caixa in [(0, 0, LADO, LADO), (3, 5, 40, 17), (LADO - 9, LADO - 4, 9, 4)] {
+            assert_eq!(
+                t.imagem_aplicada_na_caixa(caixa),
+                Some(recorte(&inteira, LADO, caixa)),
+                "{nome}: a caixa {caixa:?} não é o recorte da inteira"
+            );
+        }
+        assert_eq!(t.imagem_aplicada_na_caixa((LADO - 2, 0, 3, 1)), None);
+    }
+}

@@ -164,6 +164,8 @@ struct PalcoDaPintura {
     mistura_subida: (Option<(u64, u64)>, Option<u64>),
     /// A caixa da marca na última mistura subida (o que volta ao palco se a marca encolher).
     caixa_misturada: Option<Caixa>,
+    /// A caixa que a última leitura do Painter trouxe (o resto da imagem atual não se lê).
+    caixa_lida: Option<Caixa>,
 }
 
 struct Lido {
@@ -233,6 +235,7 @@ fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
         tamanho_do_espelho: None,
         mistura_subida: (None, None),
         caixa_misturada: None,
+        caixa_lida: None,
     }))
 }
 
@@ -357,8 +360,8 @@ impl Subida {
 }
 
 /// **A imagem atual de `p` e a marca que vale sobre ela**, quando há o que misturar: a marca do Painter
-/// ligado à sprite (lida dele, viva) ou a da sprite ([`marcas`]). A imagem do Painter só se lê com a
-/// marca por vazia (W9, A3: a água que corre sem marca não custa uma leitura por quadro).
+/// ligado à sprite (lida dele, viva) ou a da sprite ([`marcas`]). Do Painter lê-se só a caixa da marca,
+/// e só com ela por vazia (W9, A3: a água que corre sem marca não custa nada; com marca, a caixa).
 fn atual_e_marca<R: ?Sized>(
     p: &mut PalcoDaPintura,
     guardadas: &mut BTreeMap<ChaveDaMarca, marcas::Guardada>,
@@ -384,14 +387,33 @@ fn atual_e_marca<R: ?Sized>(
     }
     if let Some(t) = painter {
         let fonte = Fonte::Painter(t.content_revision(), t.canvas_version());
-        if p.atual.as_ref().map(|a| a.fonte) != Some(fonte) {
+        let caixa = marca.caixa()?;
+        if p.atual.as_ref().map(|a| a.fonte) != Some(fonte) || p.caixa_lida != Some(caixa) {
+            let (w, h) = p.tamanho_do_espelho?;
+            let mut img = match p.atual.take() {
+                Some(Atual {
+                    fonte: Fonte::Painter(..),
+                    img: Some(a),
+                }) if (a.w, a.h) == (w, h) => Arc::unwrap_or_clone(a),
+                _ => fim::Imagem {
+                    rgba: vec![0; (w * h * 4) as usize],
+                    w,
+                    h,
+                },
+            };
+            let lida = t.imagem_aplicada_na_caixa(caixa).map(|mut c| {
+                ph2d_render::premul::premultiply_rgba8(&mut c);
+                let (x, y, cw, _) = caixa;
+                for (j, linha) in c.chunks_exact((cw * 4) as usize).enumerate() {
+                    let a = (((y as usize + j) * w as usize) + x as usize) * 4;
+                    img.rgba[a..a + linha.len()].copy_from_slice(linha);
+                }
+            });
             p.versao_da_atual += 1;
+            p.caixa_lida = lida.map(|()| caixa);
             p.atual = Some(Atual {
                 fonte,
-                img: t.imagem_aplicada().map(|(mut rgba, w, h)| {
-                    ph2d_render::premul::premultiply_rgba8(&mut rgba);
-                    Arc::new(fim::Imagem { rgba, w, h })
-                }),
+                img: p.caixa_lida.map(|_| Arc::new(img)),
             });
         }
     }

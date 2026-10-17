@@ -268,8 +268,9 @@ fn sonda_subir_a_tela() {
 /// relia a imagem e subia a ranhura inteira a cada quadro da água — 6,6 ms média / 12,5 ms máx, `smoke`,
 /// só CPU). A 1024², gravado no Painter ligado com a água no worker real, o `liga_a_marca` + `sobe` (o
 /// duplo de CPU das ranhuras, como na auditoria) em duas variantes do MESMO processo, blocos
-/// intercalados por ordem rodada, o MÍNIMO por quadro e o máximo de um quadro: sem marca, e com uma
-/// pincelada marcada (a imagem relê-se e só a caixa dela sobe).
+/// intercalados por ordem rodada, quadros ao ritmo do editor (60 Hz: o worker devolve a água entre
+/// eles), a média e o máximo como na auditoria: sem marca, e com uma pincelada marcada (a imagem
+/// relê-se a cada passo da água e só a caixa dela sobe).
 ///
 /// `bash scripts/ph2d-run.sh cargo test -p ph2d-app-painter --profile smoke --lib -- --ignored
 /// --nocapture sonda_o_custo_da_marca`
@@ -287,8 +288,7 @@ fn sonda_o_custo_da_marca() {
         palcos: PalcosDoPainter,
         placa: Placa,
         t: PainterTool,
-        min: f64,
-        max: f64,
+        ms: Vec<f64>,
     }
     let nova = |nome, marcada: bool| {
         let mut world = ph2d_ecs::World::new();
@@ -313,8 +313,7 @@ fn sonda_o_custo_da_marca() {
             palcos: PalcosDoPainter::default(),
             placa: Placa::default(),
             t: PainterTool::default(),
-            min: f64::MAX,
-            max: 0.0,
+            ms: Vec::new(),
         };
         let mut nunca = |_: u64, _: &mut Placa| None;
         v.palcos.segue(&mut v.world);
@@ -342,6 +341,8 @@ fn sonda_o_custo_da_marca() {
     };
     let mut vs = [nova("água, sem marca", false), nova("água, pincelada marcada", true)];
     let quadro = |v: &mut V| -> f64 {
+        // O ritmo do editor: o worker devolve a água entre quadros.
+        std::thread::sleep(std::time::Duration::from_millis(16));
         drop(v.t.take_preview_arc());
         v.t.on_tick(16.667);
         let mut nunca = |_: u64, _: &mut Placa| None;
@@ -369,26 +370,29 @@ fn sonda_o_custo_da_marca() {
     for rodada in 0..RODADAS * 2 {
         for i in 0..k {
             let v = &mut vs[(rodada + i) % k];
-            let mut soma = 0.0;
             for _ in 0..BLOCO {
                 let ms = quadro(v);
-                v.max = v.max.max(ms);
-                soma += ms;
+                v.ms.push(ms);
             }
-            #[expect(clippy::cast_precision_loss, reason = "BLOCO pequeno")]
-            let ms = soma / BLOCO as f64;
-            v.min = v.min.min(ms);
         }
     }
     eprintln!("load depois: {}", carga().trim());
     for v in &mut vs {
         let correu = !v.t.agua_parada();
         let marcados = v.t.marca_do_artista().map_or(0, |m| m.quantos());
+        v.ms.sort_by(f64::total_cmp);
+        #[expect(clippy::cast_precision_loss, reason = "centenas de quadros")]
+        let media = v.ms.iter().sum::<f64>() / v.ms.len() as f64;
         eprintln!(
-            "[w9 A3] {LADO}² {:<26} liga+sobe: {:.3} ms/quadro (mínimo de blocos de {BLOCO}), máx \
-             {:.3} ms · água ainda a correr: {correu} · marcados: {marcados} · subidas inteiras {} · \
-             parciais {}",
-            v.nome, v.min, v.max, v.placa.substituidas, v.placa.regioes
+            "[w9 A3] {LADO}² {:<26} liga+sobe por quadro: média {media:.3} ms · mediana {:.3} · máx \
+             {:.3} ({} quadros a 60 Hz) · água ainda a correr: {correu} · marcados: {marcados} · \
+             subidas inteiras {} · parciais {}",
+            v.nome,
+            v.ms[v.ms.len() / 2],
+            v.ms[v.ms.len() - 1],
+            v.ms.len(),
+            v.placa.substituidas,
+            v.placa.regioes
         );
     }
 }

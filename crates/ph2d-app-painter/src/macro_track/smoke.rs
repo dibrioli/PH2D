@@ -100,9 +100,11 @@ pub fn monta_artista(
     )?;
     eprintln!(
         "[macro smoke =5] 'Canvas' (white, {LADO}²) carries a recorded macro: four Wet Paint strokes \
-         ({duracao:.1} s), stopped at the start. It opens in Paint mode: paint something, then press \
-         the Timeline's Play — your paint stays on top of the strokes, and the picture does not jump \
-         when the clip ends. Paint while it plays: the stroke shows."
+         ({duracao:.1} s), stopped at the start. It opens in Paint mode. Play it in the Timeline's \
+         Keys tab: the strokes replay on the white canvas, and what you paint stays on top. Record \
+         your own (Record, paint, Stop) and Rewind while the water still runs: the clip starts \
+         white — only what you paint after Stop shows over it. When a clip ends, the canvas shows \
+         its own picture."
     );
     Some((bits, duracao))
 }

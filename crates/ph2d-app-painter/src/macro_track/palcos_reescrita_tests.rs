@@ -23,9 +23,15 @@ impl Clipe {
                 le_sprite: Some(&mut *le),
             },
         );
-        let t = self.palcos.reescreve(p.as_deref_mut(), le, escreve, &mut self.placa);
+        let t = self
+            .palcos
+            .reescreve(p.as_deref_mut(), le, escreve, &mut self.placa);
         // O passo global regista-se e leva-a (a shell, no `post_frame_undo`).
-        assert_eq!(self.palcos.toma_a_transacao(), t, "a transação espera o passo global");
+        assert_eq!(
+            self.palcos.toma_a_transacao(),
+            t,
+            "a transação espera o passo global"
+        );
         t
     }
 
@@ -49,7 +55,10 @@ impl Clipe {
             if q > 1 && !self.palcos.a_reescrever() {
                 return transacoes;
             }
-            assert!(t0.elapsed().as_secs() < 120, "a reescrita não acabou em 120 s");
+            assert!(
+                t0.elapsed().as_secs() < 120,
+                "a reescrita não acabou em 120 s"
+            );
             std::thread::sleep(std::time::Duration::from_millis(2));
             q += 1;
         }
@@ -88,7 +97,11 @@ fn editar_uma_etapa_reescreve_a_sprite_e_devolve_a_transacao() {
     c.espera_o_fim(0.0, None, &mut le);
 
     let t = c.edita_e_espera(&editada, None, &mut le, &mut escreve);
-    assert_eq!((t.len(), escritas.get()), (1, 1), "uma escrita, uma transação");
+    assert_eq!(
+        (t.len(), escritas.get()),
+        (1, 1),
+        "uma escrita, uma transação"
+    );
     let depois = img.borrow().clone();
     assert!(
         depois == reescrita(&atual, &fim, &fim_editado),
@@ -98,16 +111,30 @@ fn editar_uma_etapa_reescreve_a_sprite_e_devolve_a_transacao() {
 
     // Editar de volta (outra edição, a imagem ficou): reescreve de volta.
     let t2 = c.edita_e_espera(&doc, None, &mut le, &mut escreve);
-    assert_eq!((t2.len(), escritas.get()), (1, 2), "editar de volta reescreve");
-    assert!(*img.borrow() == atual, "editar de volta não devolveu a imagem");
+    assert_eq!(
+        (t2.len(), escritas.get()),
+        (1, 2),
+        "editar de volta reescreve"
+    );
+    assert!(
+        *img.borrow() == atual,
+        "editar de volta não devolveu a imagem"
+    );
     assert_ne!(t2[0], t[0], "a transação de cada reescrita é outra");
 
     // O desfazer global: a imagem e o documento voltam juntos — nada a escrever.
     c.edita_e_espera(&editada, None, &mut le, &mut escreve);
     *img.borrow_mut() = atual.clone();
     let t3 = c.edita_e_espera(&doc, None, &mut le, &mut escreve);
-    assert!(t3.is_empty(), "com a imagem já devolvida, a reescrita escreveu");
-    assert_eq!(escritas.get(), 3, "com a imagem já devolvida, a reescrita escreveu");
+    assert!(
+        t3.is_empty(),
+        "com a imagem já devolvida, a reescrita escreveu"
+    );
+    assert_eq!(
+        escritas.get(),
+        3,
+        "com a imagem já devolvida, a reescrita escreveu"
+    );
 }
 
 /// ⭐ **O Painter ligado à sprite**: a gravação feita nele (como o artista grava), a água parada; editar a
@@ -120,7 +147,11 @@ fn editar_uma_etapa_reescreve_o_painter_ligado_num_passo_com_a_transacao() {
     let (mut t, doc, _) =
         ph2d_tool_painter::macro_track::roteiro::grava_no_papel_ligado(LADO, e.to_bits(), 2)
             .expect("grava");
-    assert_eq!(t.bound_document(), Some(e.to_bits()), "controlo: o Painter está ligado");
+    assert_eq!(
+        t.bound_document(),
+        Some(e.to_bits()),
+        "controlo: o Painter está ligado"
+    );
     let t0 = std::time::Instant::now();
     while !t.agua_parada() {
         assert!(t0.elapsed().as_secs() < 120, "a água do editor não parou");
@@ -128,7 +159,11 @@ fn editar_uma_etapa_reescreve_o_painter_ligado_num_passo_com_a_transacao() {
         t.on_tick(16.0);
     }
     let fim = fim_de(&doc);
-    assert_eq!(t.imagem_aplicada().expect("documento").0, fim, "controlo: o editor é o fim");
+    assert_eq!(
+        t.imagem_aplicada().expect("documento").0,
+        fim,
+        "controlo: o editor é o fim"
+    );
     world.entity_mut(e).insert(Macro {
         doc: doc.clone(),
         modo: ModoDaMacro::Fiel,
@@ -150,7 +185,10 @@ fn editar_uma_etapa_reescreve_o_painter_ligado_num_passo_com_a_transacao() {
         panic!("com o Painter ligado não se escreve a sprite")
     };
     // O palco nasce com a gravação (o editor está no fim dela).
-    assert_eq!(c.quadro_e_reescreve(0, Some(&mut t), &mut nunca, &mut nao_escreve), None);
+    assert_eq!(
+        c.quadro_e_reescreve(0, Some(&mut t), &mut nunca, &mut nao_escreve),
+        None
+    );
     let editada = com_a_etapa_editada(&doc);
     let transacoes = c.edita_e_espera(&editada, Some(&mut t), &mut nunca, &mut nao_escreve);
     assert_eq!(transacoes.len(), 1, "uma transação");
@@ -165,7 +203,11 @@ fn editar_uma_etapa_reescreve_o_painter_ligado_num_passo_com_a_transacao() {
         "o Painter não foi reescrito para o fim editado"
     );
     assert!(t.undo_last(), "o desfazer");
-    assert_eq!(t.imagem_aplicada().expect("documento").0, fim, "o desfazer não devolveu o fim");
+    assert_eq!(
+        t.imagem_aplicada().expect("documento").0,
+        fim,
+        "o desfazer não devolveu o fim"
+    );
 }
 
 /// O cálculo do fim do produto, devagar (as duas edições chegam antes de a 1.ª reescrever).
@@ -240,7 +282,10 @@ fn a_reescrita_espera_a_agua_do_editor_parar() {
     let mut nao_escreve = |_: u64, _: Vec<u8>, _: u32, _: u32, _: &mut Placa| {
         panic!("com o Painter ligado não se escreve a sprite")
     };
-    assert_eq!(c.quadro_e_reescreve(0, Some(&mut t), &mut nunca, &mut nao_escreve), None);
+    assert_eq!(
+        c.quadro_e_reescreve(0, Some(&mut t), &mut nunca, &mut nao_escreve),
+        None
+    );
     let editada = com_a_etapa_editada(&doc);
     c.world.entity_mut(c.e).insert(Macro {
         doc: editada.clone(),
@@ -252,10 +297,16 @@ fn a_reescrita_espera_a_agua_do_editor_parar() {
         let parada = t.agua_parada();
         let r = c.quadro_e_reescreve(q, Some(&mut t), &mut nunca, &mut nao_escreve);
         if let Some(x) = r {
-            assert!(parada, "a reescrita correu com a água do editor a correr (quadro {q})");
+            assert!(
+                parada,
+                "a reescrita correu com a água do editor a correr (quadro {q})"
+            );
             break x;
         }
-        assert!(t0.elapsed().as_secs() < 120, "a reescrita não acabou em 120 s");
+        assert!(
+            t0.elapsed().as_secs() < 120,
+            "a reescrita não acabou em 120 s"
+        );
         drop(t.take_preview_arc());
         t.on_tick(16.0);
         q += 1;

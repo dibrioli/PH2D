@@ -109,7 +109,15 @@ pub fn grava_no_papel_ligado(
     n: usize,
 ) -> Option<(PainterTool, Vec<u8>, f64)> {
     let ps: Vec<Pincelada> = SPLASH.iter().copied().cycle().take(n).collect();
-    grava_com(lado, 0, &ps, &[], true, &[PaintMedia::WetPaint], None, Some(entidade))
+    grava_com(
+        lado,
+        0,
+        &ps,
+        &[],
+        Tela::Ligada(entidade),
+        &[PaintMedia::WetPaint],
+        None,
+    )
 }
 
 /// As pinceladas `ps` gravadas como o Splash, com `antes[k]` quadros parados a mais antes da `k`.
@@ -166,7 +174,7 @@ pub(crate) fn grava_nos_meios_e_o_tool(
     ps: &[Pincelada],
     meios: &[PaintMedia],
 ) -> Option<(PainterTool, Vec<u8>)> {
-    grava_com(lado, 0, ps, &[], false, meios, None, None).map(|(t, b, _)| (t, b))
+    grava_com(lado, 0, ps, &[], Tela::Fonte, meios, None).map(|(t, b, _)| (t, b))
 }
 
 /// [`grava_pinceladas_como_a_maquina`] e o tool que gravou, parado no Parar (o editor depois dele).
@@ -177,7 +185,15 @@ pub(crate) fn grava_como_a_maquina_e_o_tool(
     ritmo: &crate::macro_track::RitmoDaAgua,
     dts: &[f32],
 ) -> Option<(PainterTool, Vec<u8>, f64)> {
-    grava_com(lado, 0, ps, &[], false, &[PaintMedia::WetPaint], Some((ritmo, dts)), None)
+    grava_com(
+        lado,
+        0,
+        ps,
+        &[],
+        Tela::Fonte,
+        &[PaintMedia::WetPaint],
+        Some((ritmo, dts)),
+    )
 }
 
 fn grava(
@@ -188,7 +204,17 @@ fn grava(
     papel: bool,
     meios: &[PaintMedia],
 ) -> Option<(Vec<u8>, f64)> {
-    grava_com(lado, alvo, ps, antes, papel, meios, None, None).map(|(_, b, s)| (b, s))
+    let tela = if papel { Tela::Papel } else { Tela::Fonte };
+    grava_com(lado, alvo, ps, antes, tela, meios, None).map(|(_, b, s)| (b, s))
+}
+
+/// A tela em que se grava: a fonte do tool, a sprite aberta no papel, ou o Painter LIGADO à sprite
+/// (bits) — como o artista grava.
+#[derive(Clone, Copy)]
+enum Tela {
+    Fonte,
+    Papel,
+    Ligada(u64),
 }
 
 /// A máquina de uma gravação: o ritmo da água no worker e a duração de cada quadro, em ms.
@@ -199,20 +225,18 @@ fn grava_com(
     alvo: u64,
     ps: &[Pincelada],
     antes: &[u32],
-    papel: bool,
+    tela: Tela,
     meios: &[PaintMedia],
     maquina: Option<Maquina<'_>>,
-    ligado_a: Option<u64>,
 ) -> Option<(PainterTool, Vec<u8>, f64)> {
     let meio = |k: usize| meios.get(k).or(meios.last()).copied();
     let mut t = PainterTool::default();
     let n = usize::try_from(lado).ok()?;
-    if let Some(e) = ligado_a {
-        t.bind_document(e, vec![255u8; n * n * 4], lado, lado);
-    } else if papel {
-        t.abre_a_sprite(vec![255u8; n * n * 4], lado, lado);
-    } else {
-        t.set_source(vec![255u8; n * n * 4], lado, lado);
+    let branca = vec![255u8; n * n * 4];
+    match tela {
+        Tela::Ligada(e) => t.bind_document(e, branca, lado, lado),
+        Tela::Papel => t.abre_a_sprite(branca, lado, lado),
+        Tela::Fonte => t.set_source(branca, lado, lado),
     }
     t.set_paint_media(meio(0)?);
     match maquina {
@@ -284,7 +308,6 @@ fn grava_com(
     for _ in 0..CAUDA {
         quadro(&mut t, &mut rec)?;
     }
-    drop(quadro);
     let fim = MacroTime::from_secs_f64(s).0;
     for c in t.macro_para() {
         rec.push(trilha, fim, c).ok()?;

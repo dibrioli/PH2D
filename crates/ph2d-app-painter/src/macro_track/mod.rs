@@ -345,7 +345,10 @@ type Caixa = (u32, u32, u32, u32);
 type Mistura = (Arc<fim::Gravacao>, Arc<fim::Imagem>, (u64, u64));
 
 /// O fio do fim de `p`, colhido (pelo cálculo dos gates, se o trocaram).
-fn colhe_o_fim(p: &mut PalcoDaPintura, calculo: Option<fim::Calculo>) -> Option<Arc<fim::Gravacao>> {
+fn colhe_o_fim(
+    p: &mut PalcoDaPintura,
+    calculo: Option<fim::Calculo>,
+) -> Option<Arc<fim::Gravacao>> {
     match calculo {
         Some(f) => p.fim.colhe_com(f),
         None => p.fim.colhe(),
@@ -553,14 +556,12 @@ impl PalcosDoPainter {
                 .filter(|t| p.sprite.is_some() && t.bound_document() == p.sprite)
                 .and_then(|t| Some((t, t.versao_da_mascara()?)));
             let chave = (mistura.as_ref().map(|m| m.2), mascara.map(|m| m.1));
-            let recebeu = mistura.as_ref().map(|(g, atual, chave)| {
-                match p.recebeu {
-                    Some((c, r)) if c == *chave => r,
-                    _ => {
-                        let r = recebeu_a_gravacao(g, &atual.rgba);
-                        p.recebeu = Some((*chave, r));
-                        r
-                    }
+            let recebeu = mistura.as_ref().map(|(g, atual, chave)| match p.recebeu {
+                Some((c, r)) if c == *chave => r,
+                _ => {
+                    let r = recebeu_a_gravacao(g, &atual.rgba);
+                    p.recebeu = Some((*chave, r));
+                    r
                 }
             });
             if chave != p.mistura_subida {

@@ -121,8 +121,7 @@ impl PalcosDoPainter {
                 if !t.agua_parada() && !prazo {
                     continue;
                 }
-                let t_id =
-                    transacao.unwrap_or_else(|| TRANSACOES.fetch_add(1, Ordering::Relaxed));
+                let t_id = transacao.unwrap_or_else(|| TRANSACOES.fetch_add(1, Ordering::Relaxed));
                 let n = t.reescreve_a_gravacao(&de.modelo, &para.modelo, t_id);
                 if n > 0 {
                     transacao = Some(t_id);
@@ -137,9 +136,8 @@ impl PalcosDoPainter {
                     {
                         let n = reescreve_a_imagem(&mut rgba, &de.fim_reto, &para.fim_reto);
                         if n > 0 {
-                            transacao.get_or_insert_with(|| {
-                                TRANSACOES.fetch_add(1, Ordering::Relaxed)
-                            });
+                            transacao
+                                .get_or_insert_with(|| TRANSACOES.fetch_add(1, Ordering::Relaxed));
                             escreve(sprite, rgba, w, h, ranhuras);
                         }
                         n

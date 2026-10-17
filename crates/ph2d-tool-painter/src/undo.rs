@@ -533,7 +533,12 @@ impl UndoController {
     /// A transação do passo que um desfazer (`redo == false`) ou um refazer aplicaria agora.
     #[must_use]
     pub fn transacao_do_topo(&self, redo: bool) -> Option<u64> {
-        if redo { self.redo.last() } else { self.undo.last() }.and_then(|e| e.transacao)
+        if redo {
+            self.redo.last()
+        } else {
+            self.undo.last()
+        }
+        .and_then(|e| e.transacao)
     }
 
     /// Retained undo depth (for tests / memory introspection).

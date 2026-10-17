@@ -49,7 +49,11 @@ impl crate::App {
         // W8 item 2b: a etapa editada reescreve a imagem; a transação vai com o passo global.
         {
             use crate::hero_intents::texture_edit::{commit_edited_texture, read_sprite_straight};
-            type Porta<'p> = (&'p mut SimWorld, &'p mut SpriteRenderer, &'p mut ph2d_editor_core::toast::ToastQueue);
+            type Porta<'p> = (
+                &'p mut SimWorld,
+                &'p mut SpriteRenderer,
+                &'p mut ph2d_editor_core::toast::ToastQueue,
+            );
             let (db, at) = (&*asset_db, &*atlas);
             let mut le = |b, p: &mut Porta<'_>| {
                 read_sprite_straight(ph2d_ecs::Entity::from_bits(b), p.0, p.1, db, at)
@@ -57,11 +61,18 @@ impl crate::App {
             let mut escreve = |b, rgba, w, h, p: &mut Porta<'_>| {
                 let e = ph2d_ecs::Entity::from_bits(b);
                 #[expect(clippy::cast_precision_loss, reason = "o tamanho de uma sprite")]
-                let tam = p.0.world().get::<ph2d_render::Sprite>(e).map_or([w as f32, h as f32], |s| s.size);
+                let tam =
+                    p.0.world()
+                        .get::<ph2d_render::Sprite>(e)
+                        .map_or([w as f32, h as f32], |s| s.size);
                 use ph2d_render::premul::{AlphaMode, SpriteImage};
-                let img = SpriteImage::from_bytes(w, h, rgba, AlphaMode::Straight).into_premultiplied();
+                let img =
+                    SpriteImage::from_bytes(w, h, rgba, AlphaMode::Straight).into_premultiplied();
                 if let Err(x) = commit_edited_texture(e, p.0, p.1, db, &img, tam, p.2) {
-                    let m = ph2d_i18n::tr_with("app.painter.macro_reescrita.write_failed", &[("e", &x)]);
+                    let m = ph2d_i18n::tr_with(
+                        "app.painter.macro_reescrita.write_failed",
+                        &[("e", &x)],
+                    );
                     p.2.push(ph2d_editor_core::toast::Toast::error(m));
                 }
             };

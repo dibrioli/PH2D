@@ -86,8 +86,12 @@ fn editar_uma_etapa_reescreve_a_imagem_onde_ela_ainda_e_a_gravacao() {
     let mut editada = crua.clone();
     edita_tamanho(&mut editada, 1, 30.0).expect("edita");
     let nao = AtomicBool::new(false);
-    let de = imagens_da_gravacao(&crua, &nao).expect("toca").expect("não parou");
-    let para = imagens_da_gravacao(&editada, &nao).expect("toca").expect("não parou");
+    let de = imagens_da_gravacao(&crua, &nao)
+        .expect("toca")
+        .expect("não parou");
+    let para = imagens_da_gravacao(&editada, &nao)
+        .expect("toca")
+        .expect("não parou");
     assert_eq!(
         t.imagem_aplicada().expect("documento").0,
         de.fim,
@@ -110,7 +114,10 @@ fn editar_uma_etapa_reescreve_a_imagem_onde_ela_ainda_e_a_gravacao() {
         });
         t.on_tick(16.0);
     }
-    assert!(diferem(&de.fim, &para.fim) > 0, "controlo: a edição muda o fim");
+    assert!(
+        diferem(&de.fim, &para.fim) > 0,
+        "controlo: a edição muda o fim"
+    );
     let snap_antes = t.snapshot_model();
     let ativa = snap_antes.layers.active().expect("camada ativa");
     // Os planos de um texel da camada ativa: cor, relevo (bits), cobertura, material.
@@ -122,7 +129,10 @@ fn editar_uma_etapa_reescreve_a_imagem_onde_ela_ainda_e_a_gravacao() {
         };
         (
             px[k * 4..k * 4 + 4].to_vec(),
-            s.heights.get(&ativa).and_then(|v| v.get(k)).map(|h| h.to_bits()),
+            s.heights
+                .get(&ativa)
+                .and_then(|v| v.get(k))
+                .map(|h| h.to_bits()),
             s.covers.get(&ativa).and_then(|v| v.get(k)).copied(),
             s.mats.get(&ativa).and_then(|v| v.get(k)).copied(),
         )
@@ -133,33 +143,49 @@ fn editar_uma_etapa_reescreve_a_imagem_onde_ela_ainda_e_a_gravacao() {
         .collect();
     assert!(do_artista.iter().any(|&a| a), "controlo: o artista pintou");
     assert!(
-        (0..n_tex).any(|k| !do_artista[k] && texel(&de.modelo.0, k).1 != texel(&para.modelo.0, k).1),
+        (0..n_tex)
+            .any(|k| !do_artista[k] && texel(&de.modelo.0, k).1 != texel(&para.modelo.0, k).1),
         "controlo: a edição muda o relevo da gravação"
     );
     let antes = t.imagem_aplicada().expect("documento").0;
 
     let n = t.reescreve_a_gravacao(&de.modelo, &para.modelo, 7);
     assert!(n > 0, "a edição não reescreveu nada");
-    assert_eq!(t.transacao_do_topo(false), Some(7), "o passo não leva a transação");
+    assert_eq!(
+        t.transacao_do_topo(false),
+        Some(7),
+        "o passo não leva a transação"
+    );
     let vivo = t.snapshot_model();
-    for k in 0..n_tex {
-        let esperado = if do_artista[k] { &snap_antes } else { &para.modelo.0 };
+    for (k, &artista) in do_artista.iter().enumerate() {
+        let esperado = if artista { &snap_antes } else { &para.modelo.0 };
         assert!(
             texel(&vivo, k) == texel(esperado, k),
             "o texel {k} ({}) não segue a lei: {:?} × {:?}",
-            if do_artista[k] { "do artista" } else { "da gravação" },
+            if artista {
+                "do artista"
+            } else {
+                "da gravação"
+            },
             texel(&vivo, k),
             texel(esperado, k)
         );
     }
 
     assert!(t.undo_last(), "o desfazer");
-    assert_eq!(t.imagem_aplicada().expect("documento").0, antes, "o desfazer não devolveu a imagem");
+    assert_eq!(
+        t.imagem_aplicada().expect("documento").0,
+        antes,
+        "o desfazer não devolveu a imagem"
+    );
     let desfeito = t.snapshot_model();
     assert!(
         (0..n_tex).all(|k| texel(&desfeito, k) == texel(&snap_antes, k)),
         "o desfazer não devolveu os planos"
     );
-    assert_eq!(t.transacao_do_topo(true), Some(7), "o refazer não leva a transação");
+    assert_eq!(
+        t.transacao_do_topo(true),
+        Some(7),
+        "o refazer não leva a transação"
+    );
 }
-

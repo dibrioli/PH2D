@@ -340,7 +340,12 @@ impl ProjectUndo {
 
     /// [`Self::push_undo`] de um passo da `transacao` — o passo de outra fila (o do Painter) que se
     /// desfaz com este (W8, `undo_route.rs`).
-    pub(crate) fn push_undo_em(&mut self, pre: ProjectState, mark: SelectionMark, transacao: Option<u64>) {
+    pub(crate) fn push_undo_em(
+        &mut self,
+        pre: ProjectState,
+        mark: SelectionMark,
+        transacao: Option<u64>,
+    ) {
         if self.undo.len() >= UNDO_CAP {
             self.undo.remove(0);
         }
@@ -351,7 +356,12 @@ impl ProjectUndo {
 
     /// A transação do passo que um desfazer (`redo == false`) ou um refazer aplicaria agora.
     pub(crate) fn transacao_do_topo(&self, redo: bool) -> Option<u64> {
-        if redo { self.redo.last() } else { self.undo.last() }.and_then(|p| p.3)
+        if redo {
+            self.redo.last()
+        } else {
+            self.undo.last()
+        }
+        .and_then(|p| p.3)
     }
 
     /// A hora do degrau que o próximo desfazer leva (o que o próximo refazer leva, com `redo`).

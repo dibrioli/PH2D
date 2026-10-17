@@ -320,12 +320,17 @@ impl crate::App {
             self.apply_project_with(&state, Some(&mark));
             // O passo do Painter da mesma transação (a imagem de uma etapa editada) vai junto.
             if let Some(t) = transacao
-                && let Some(p) = self.gfx.as_mut().and_then(|g| {
-                    ph2d_app_painter::painter_bridge_queries::o_painter(&mut g.tools)
-                })
+                && let Some(p) = self
+                    .gfx
+                    .as_mut()
+                    .and_then(|g| ph2d_app_painter::painter_bridge_queries::o_painter(&mut g.tools))
                 && p.transacao_do_topo(redo) == Some(t)
             {
-                if redo { p.redo_last() } else { p.undo_last() };
+                if redo {
+                    p.redo_last()
+                } else {
+                    p.undo_last()
+                };
             }
             if Self::undo_log_on() {
                 eprintln!("[undo] {} aplicado", if redo { "redo" } else { "undo" });
@@ -372,7 +377,10 @@ impl crate::App {
         }
         // A reescrita de uma etapa editada aterrou: o passo regista-se já, com a transação dela.
         let had_input = std::mem::take(&mut self.any_input_this_frame)
-            || self.gfx.as_ref().is_some_and(|g| g.painter_macros.transacao().is_some());
+            || self
+                .gfx
+                .as_ref()
+                .is_some_and(|g| g.painter_macros.transacao().is_some());
         // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
         // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o
         // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.
@@ -547,7 +555,10 @@ impl crate::App {
             // mesma mecânica do próprio `undo_baseline`.
             let agora = self.field_selection_mark();
             let mark = std::mem::replace(&mut self.undo_baseline_selection, agora);
-            let t = self.gfx.as_mut().and_then(|g| g.painter_macros.toma_a_transacao());
+            let t = self
+                .gfx
+                .as_mut()
+                .and_then(|g| g.painter_macros.toma_a_transacao());
             self.undo.push_undo_em(base, mark, t);
             if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                 h.documents.scene_stepped();

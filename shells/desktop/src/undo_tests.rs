@@ -160,9 +160,21 @@ fn push_undo_then_undo_redo_alternate() {
     stack.push_undo_em(s1.clone(), m0.clone(), Some(42));
     assert_eq!(stack.transacao_do_topo(false), Some(42));
     let _ = stack.undo(s0.clone(), m0.clone());
-    assert_eq!((stack.transacao_do_topo(false), stack.transacao_do_topo(true)), (None, Some(42)));
+    assert_eq!(
+        (
+            stack.transacao_do_topo(false),
+            stack.transacao_do_topo(true)
+        ),
+        (None, Some(42))
+    );
     let _ = stack.redo(s1.clone(), m0);
-    assert_eq!((stack.transacao_do_topo(false), stack.transacao_do_topo(true)), (Some(42), None));
+    assert_eq!(
+        (
+            stack.transacao_do_topo(false),
+            stack.transacao_do_topo(true)
+        ),
+        (Some(42), None)
+    );
 }
 /// O diff de undo depende disto: capturar o MESMO estado duas vezes tem de dar
 /// snapshots IGUAIS. Se não, o `post_frame_undo` registraria um passo espúrio a

@@ -357,15 +357,27 @@ fn a_absorcao_conserva_a_transacao_do_topo() {
     c.transacao_seguinte = Some(9);
     c.record_structural(tela(&[]), tela(&traco));
     c.transacao_seguinte = None;
-    assert_eq!(c.transacao_do_topo(false), Some(9), "controlo: o passo leva a transação");
+    assert_eq!(
+        c.transacao_do_topo(false),
+        Some(9),
+        "controlo: o passo leva a transação"
+    );
     let mut escorrido = traco.clone();
     escorrido.extend(bloco(11, 13, 10, 12, 0x33));
     let mut seguinte = escorrido.clone();
     seguinte.push(((8, 1), 0x44));
     ABSORB_FIRED.with(|f| f.set(0));
     c.record_structural(tela(&escorrido), tela(&seguinte));
-    assert_eq!(ABSORB_FIRED.with(std::cell::Cell::get), 1, "controlo: a absorção correu");
-    assert_eq!(c.transacao_do_topo(false), None, "o passo seguinte não é da transação");
+    assert_eq!(
+        ABSORB_FIRED.with(std::cell::Cell::get),
+        1,
+        "controlo: a absorção correu"
+    );
+    assert_eq!(
+        c.transacao_do_topo(false),
+        None,
+        "o passo seguinte não é da transação"
+    );
     assert!(c.undo(&tela(&seguinte)).is_some(), "desfaz o seguinte");
     assert_eq!(
         c.transacao_do_topo(false),

@@ -32,14 +32,7 @@ fn esperado(palco: &[u8], fim: &[u8], atual: &[u8], recebeu: bool) -> Vec<u8> {
         .iter()
         .zip(fim.as_chunks::<4>().0.iter().zip(atual.as_chunks::<4>().0))
         .zip(ini.as_chunks::<4>().0)
-        .flat_map(|((p, (f, a)), i)| {
-            if f == a || (!recebeu && i == a) {
-                p
-            } else {
-                a
-            }
-            .to_vec()
-        })
+        .flat_map(|((p, (f, a)), i)| if f == a || (!recebeu && i == a) { p } else { a }.to_vec())
         .collect()
 }
 
@@ -210,7 +203,13 @@ fn o_que_se_pintou_depois_do_parar_aparece_por_cima_do_clipe() {
                     .0
                     .iter()
                     .zip(atual_p.as_chunks::<4>().0)
-                    .zip(corria.as_chunks::<4>().0.iter().zip(fim_p.as_chunks::<4>().0))
+                    .zip(
+                        corria
+                            .as_chunks::<4>()
+                            .0
+                            .iter()
+                            .zip(fim_p.as_chunks::<4>().0)
+                    )
                     .all(|((r, a), (p, f))| r == a || p != f),
                 "(b) no último quadro a ranhura é a imagem atual, salvo a água que corria no Parar"
             );
@@ -294,7 +293,10 @@ fn o_fim_e_a_trilha_que_toca_e_editar_uma_etapa_o_recalcula() {
     );
     c.espera_o_fim(2.0 / 60.0, None, &mut le);
     let (versao_depois, img) = c.o_fim();
-    assert_ne!(versao_depois, versao, "editar a cor não mudou a versão do fim");
+    assert_ne!(
+        versao_depois, versao,
+        "editar a cor não mudou a versão do fim"
+    );
     assert!(
         img.fim.rgba == premul(&fim_editado),
         "o fim não é o da trilha editada"
@@ -345,7 +347,10 @@ fn apagar_ate_ao_papel_numa_imagem_que_recebeu_a_gravacao_fica_apagado() {
 }
 
 /// O cálculo do fim que entra em pânico (o fio cai).
-fn panica(_: &ph2d_macro::Track, _: &std::sync::atomic::AtomicBool) -> super::super::fim::Resultado {
+fn panica(
+    _: &ph2d_macro::Track,
+    _: &std::sync::atomic::AtomicBool,
+) -> super::super::fim::Resultado {
     panic!("o fio do fim caiu (gate)")
 }
 
@@ -362,7 +367,10 @@ fn o_fio_do_fim_que_cai_ou_falha_diz_se_ao_artista() {
     let (doc, _, fim) = gravada_no_papel();
     let mut le = |_: u64, _: &mut Placa| Some((fim.clone(), LADO, LADO));
     for (calculo, esperado_erro) in [
-        (panica as super::super::fim::Calculo, ErroDaMacro::FioCaiu("macro-fim")),
+        (
+            panica as super::super::fim::Calculo,
+            ErroDaMacro::FioCaiu("macro-fim"),
+        ),
         (falha, ErroDaMacro::PortaRecusada("gate".into())),
     ] {
         let mut c = Clipe::novo(&doc);
@@ -523,7 +531,6 @@ fn na_imagem_do_inicio_da_gravacao_o_clipe_anima_e_a_pintura_fica_por_cima() {
     assert_ne!(ini_p, fim_p, "controlo: a gravação pinta a branca");
 }
 
-
 /// W8 item 6a — **a sprite sem o Painter ligado relê-se quando os píxeis dela mudam** (um Trim, um
 /// filtro, o Apply de outro objecto: a identidade `SpritePixels` muda), não só quando o palco acorda; sem
 /// mudança, não se relê. ⛔ VERMELHO na W7: a pintura nova só aparecia no Play seguinte.
@@ -550,12 +557,19 @@ fn a_sprite_sem_painter_rele_se_quando_os_pixeis_dela_mudam() {
         )
     };
     let r = quadro(&mut c, 1, &mut le);
-    assert!(r == c.palco, "controlo: a sprite igual ao fim mostra o palco");
+    assert!(
+        r == c.palco,
+        "controlo: a sprite igual ao fim mostra o palco"
+    );
     let antes = lidas.get();
     mudou.set(true);
     c.world.entity_mut(c.e).insert(id(&atual));
     let r = quadro(&mut c, 2, &mut le);
-    assert_eq!(lidas.get(), antes + 1, "os píxeis da sprite mudaram e ela não se releu");
+    assert_eq!(
+        lidas.get(),
+        antes + 1,
+        "os píxeis da sprite mudaram e ela não se releu"
+    );
     assert!(
         r == esperado(&c.palco, &premul(&fim), &premul(&atual), true),
         "a pintura nova da sprite não aparece por cima do clipe"
@@ -582,7 +596,9 @@ fn o_filme_da_mascara_do_painter_ligado_fica_por_cima_do_clipe() {
         ph2d_editor_core::ids::PAINTER_PAINT_MODE,
         "mask".into(),
     ));
-    t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(ph2d_tool_painter::ids::PAINTER_MASK_BRUSH[0]));
+    t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
+        ph2d_tool_painter::ids::PAINTER_MASK_BRUSH[0],
+    ));
     for (i, phase) in [
         PointerPhase::Down,
         PointerPhase::Move,
@@ -600,7 +616,10 @@ fn o_filme_da_mascara_do_painter_ligado_fica_por_cima_do_clipe() {
         });
         t.on_tick(16.0);
     }
-    assert!(t.versao_da_mascara().is_some(), "controlo: a máscara pintou-se");
+    assert!(
+        t.versao_da_mascara().is_some(),
+        "controlo: a máscara pintou-se"
+    );
     let r = c.quadro(
         meio,
         Atuais {

@@ -71,7 +71,8 @@ fn reescreve(alvo: &mut ModelSnapshot, de: &ModelSnapshot, para: &ModelSnapshot)
         .collect();
     let mut mudados = 0;
     for id in ids {
-        let (Some(a), Some(d), Some(p)) = (pixeis(alvo, id), pixeis(de, id), pixeis(para, id)) else {
+        let (Some(a), Some(d), Some(p)) = (pixeis(alvo, id), pixeis(de, id), pixeis(para, id))
+        else {
             continue;
         };
         if a.len() != n * 4 || d.len() != n * 4 || p.len() != n * 4 {

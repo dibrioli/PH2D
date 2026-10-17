@@ -493,7 +493,10 @@ fn recomecar_volta_a_idade_ao_inicio() {
     let t0 = inicial::tool_no_inicial(&track.initial).expect("inicial");
     mostra(&mut t, &track, e.criterios[0].regiao.k).expect("mostra");
     espera(&mut t);
-    assert!(idade_de(&t).is_some_and(|a| a > 0), "controlo: o aluno tem idade");
+    assert!(
+        idade_de(&t).is_some_and(|a| a > 0),
+        "controlo: o aluno tem idade"
+    );
     recomeca(&mut t, &track).expect("recomeça");
     assert_eq!(
         t.segundos_desde_o_ultimo_up(),

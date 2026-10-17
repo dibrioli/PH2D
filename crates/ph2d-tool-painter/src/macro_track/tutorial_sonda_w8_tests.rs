@@ -138,7 +138,8 @@ fn sonda_a_corrida_partilhada() {
     };
     let dts = [16.667, 12.5, 20.8, 16.667, 18.9, 14.4];
     let ps = trinta();
-    let casos: [(&str, Box<dyn Fn() -> Option<(Vec<u8>, f64)>>); 3] = [
+    type Grava<'a> = Box<dyn Fn() -> Option<(Vec<u8>, f64)> + 'a>;
+    let casos: [(&str, Grava<'_>); 3] = [
         (
             "512², relógio fixo",
             Box::new(|| grava_pinceladas(512, 0, &ps, &[])),

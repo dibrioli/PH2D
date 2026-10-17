@@ -12,6 +12,8 @@
 use crate::console::Store;
 use crate::doc::CodeDoc;
 use ph2d_a11y::{Node, NodeId};
+use ph2d_code_intel::GrammarWorker;
+use ph2d_code_syntax::HighlightKind;
 use ph2d_editor_core::ToastQueue;
 use ph2d_editor_core::doc_surface::{
     Compose, DocCommand, DocTab, DocumentSurface, KeyInput, KeyOutcome, PointerInput,
@@ -67,6 +69,17 @@ pub struct CodeDocs {
     pressed: bool,
     /// `None` = a pasta do sistema ([`crate::recovery::default_dir`]).
     recovery_dir: Option<std::path::PathBuf>,
+    /// O reparse fora da tecla (Onda 2, I1); a thread nasce com o 1.º trabalho.
+    grammar: Option<GrammarWorker<ScriptId>>,
+}
+
+/// O que a gramática de uma aba fez (a sonda do gate da tecla).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GrammarProbe {
+    /// Reparses feitos NA hora (o Enter, o recuo do `end`, uma dobra) — nunca por uma letra.
+    pub sync_reparses: u64,
+    /// A árvore ainda não tem as últimas edições.
+    pub stale: bool,
 }
 
 /// O meio-período do piscar do cursor: o token `Slow` (o do piscar do F4, 1,25 Hz — abaixo dos 3 Hz
@@ -91,6 +104,7 @@ impl Default for CodeDocs {
             active: None,
             pressed: false,
             recovery_dir: None,
+            grammar: None,
         }
     }
 }
@@ -353,6 +367,78 @@ impl CodeDocs {
             .and_then(|d| d.console_view.row_rect(i))
     }
 
+    /// Envia ao worker o reparse de cada aba cuja árvore velha ainda não está toda num trabalho (o
+    /// novo substitui o que estava em voo).
+    fn submit(&mut self) {
+        for d in &mut self.docs {
+            if let Some(job) = d.syntax.job(d.buffer.text()) {
+                self.grammar
+                    .get_or_insert_with(GrammarWorker::spawn)
+                    .submit(d.script, job);
+            }
+        }
+    }
+
+    /// Traz as árvores que o worker acabou (nunca espera) e envia as que ainda faltam. Corre em todo
+    /// quadro da família e antes de pintar: o realce alcança a tecla no quadro seguinte.
+    pub fn pump(&mut self) {
+        if let Some(g) = &mut self.grammar {
+            let mut retired = Vec::new();
+            for (id, r) in g.drain() {
+                // Uma aba fechada (ou recriada) deixa a resposta sem dono: larga-se no worker.
+                match self.docs.iter_mut().find(|d| d.script == id) {
+                    Some(d) => {
+                        d.syntax.adopt_into(r, &mut retired);
+                    }
+                    None => drop(r),
+                }
+            }
+            g.retire(retired);
+        }
+        self.submit();
+    }
+
+    /// ⚠️ SONDA: espera que o worker acabe o que tem em mãos, SEM o trazer (o próximo quadro traz).
+    pub fn wait_grammar(&mut self) {
+        if let Some(g) = &mut self.grammar {
+            g.wait_all();
+        }
+    }
+
+    /// ⚠️ SONDA: a gramática da aba do script `id`.
+    #[must_use]
+    pub fn grammar_of(&self, id: ScriptId) -> Option<GrammarProbe> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        Some(GrammarProbe {
+            sync_reparses: d.syntax.sync_reparses(),
+            stale: d.syntax.is_stale(),
+        })
+    }
+
+    /// ⚠️ SONDA: o centro do marcador de dobra da linha `line` na calha (onde o clique abre/fecha a
+    /// dobra), se a linha está à vista. O clique só é dobra se o último quadro pintou ali uma.
+    #[must_use]
+    pub fn fold_marker(&self, id: ScriptId, line: usize) -> Option<(f32, f32)> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        let r = d
+            .view
+            .caret_rect(&d.buffer, d.buffer.text().byte_of_line(line))?;
+        let x = d.view.text_rect().x - d.view.metrics().fold_w * 0.5;
+        Some((x, r.y + r.h * 0.5))
+    }
+
+    /// ⚠️ SONDA: o realce que a aba do script `id` pinta no byte `at` (`None` = texto sem cor).
+    #[must_use]
+    pub fn highlight_at(&self, id: ScriptId, at: usize) -> Option<HighlightKind> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        d.syntax
+            .highlights(d.buffer.text(), at..at + 1)
+            .into_iter()
+            .filter(|h| h.range.contains(&at))
+            .map(|h| h.kind)
+            .last()
+    }
+
     fn split(&mut self, id: u64) -> Option<(&mut CodeDoc, &mut Store)> {
         let doc = self.docs.iter_mut().find(|d| d.script.0 == id)?;
         let store = self.consoles.entry(doc.script).or_default();
@@ -380,6 +466,7 @@ impl DocumentSurface for CodeDocs {
         text: &mut TextSystem,
         theme: &Theme,
     ) {
+        self.pump();
         self.area = area;
         let (list_r, doc_r) = self.split_area(area);
         let dirty: Vec<ScriptId> = self
@@ -483,10 +570,12 @@ impl DocumentSurface for CodeDocs {
                 return out;
             }
         }
-        match self.touched(id) {
+        let out = match self.touched(id) {
             Some(d) => d.key(key, mods, pressed, text, paste.as_deref()),
             None => KeyOutcome::default(),
-        }
+        };
+        self.submit();
+        out
     }
 
     fn compose(&mut self, id: u64, c: Compose<'_>) -> bool {
@@ -505,6 +594,7 @@ impl DocumentSurface for CodeDocs {
                 d.preedit = None;
                 d.type_text(ch.encode_utf8(&mut [0; 4]));
                 d.reveal();
+                self.submit();
             }
             Compose::DeadKey(ComposeKey::Dead(ch)) => d.preedit = Some((ch.to_string(), true)),
             // Só toma o que é dela: sem composição em curso, o Esc é do editor e o Shift da tecla.
@@ -535,11 +625,13 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn undo(&mut self, id: u64, redo: bool) -> bool {
-        self.touched(id).is_some_and(|d| {
+        let did = self.touched(id).is_some_and(|d| {
             let did = d.undo(redo);
             d.reveal();
             did
-        })
+        });
+        self.submit();
+        did
     }
 
     fn a11y(&self, id: u64) -> Vec<(NodeId, Node)> {
@@ -570,13 +662,15 @@ impl DocumentSurface for CodeDocs {
 
     fn command(&mut self, id: u64, cmd: ph2d_a11y::NodeId) -> bool {
         self.list.focus = None;
-        self.touched(id).is_some_and(|d| {
+        let did = self.touched(id).is_some_and(|d| {
             let did = d.run(cmd);
             if did {
                 d.reveal();
             }
             did
-        })
+        });
+        self.submit();
+        did
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -4873,9 +4873,11 @@ name = "ph2d-app-code"
 version = "0.0.0"
 dependencies = [
  "bumpalo",
+ "fastrand",
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-code-buffer",
+ "ph2d-code-intel",
  "ph2d-code-lsp",
  "ph2d-code-syntax",
  "ph2d-ecs",
@@ -5700,6 +5702,7 @@ dependencies = [
  "fastrand",
  "ph2d-code-buffer",
  "ph2d-code-lsp",
+ "ph2d-code-syntax",
  "serde_json",
 ]
 

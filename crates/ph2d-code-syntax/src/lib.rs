@@ -26,4 +26,4 @@ pub use queries::{
     CaptureUse, FOLDS_SCM, HIGHLIGHTS_SCM, INDENTS_SCM, capture_table, highlight_captures,
     unevaluated_predicates,
 };
-pub use syntax::{ReparseJob, Reparsed, Syntax, luau_parser};
+pub use syntax::{ReparseJob, Reparsed, Retired, Syntax, luau_parser};

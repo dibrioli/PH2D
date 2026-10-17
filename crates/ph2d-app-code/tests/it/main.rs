@@ -9,6 +9,7 @@ mod busca;
 mod console;
 mod despacho;
 mod dobras;
+mod gramatica;
 mod linha_longa;
 mod lista;
 mod onda1;

@@ -59,6 +59,7 @@ pub fn frame(
     if let Some(lib) = world.get_resource::<ProjectScripts>() {
         follow_library(docs, lib);
     }
+    docs.pump();
     let ask = save(
         docs,
         world,

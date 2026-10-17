@@ -3,4 +3,5 @@
 mod falso;
 
 mod sessao;
+mod sonda_quadro;
 mod sujo;

@@ -16,6 +16,8 @@ authors.workspace = true
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-code-buffer = { path = "../ph2d-code-buffer" }
+# O reparse fora da tecla (Onda 2, I1): o worker da gramática.
+ph2d-code-intel = { path = "../ph2d-code-intel" }
 ph2d-code-syntax = { path = "../ph2d-code-syntax" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
@@ -38,6 +40,8 @@ ph2d-render = { path = "../ph2d-render" }
 wgpu = "29.0.4"
 # O carácter confirmado do IME entra pela porta do hero (`handle_text_input`), que pede a arena.
 bumpalo = "3"
+# Os traços ao acaso do gate da tecla (I1).
+fastrand = "2"
 
 [lints]
 workspace = true

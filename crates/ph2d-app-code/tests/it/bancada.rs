@@ -1,7 +1,7 @@
 //! ⏱ **E14 — a bancada tecla→pixel** (MEDIÇÃO, não é gate). Tabela e orçamentos:
 //! `docs/CodeEditor/02_onda1.md` §Medições (E14).
 //!
-//! Por TECLA, o caminho do app: `DocumentSurface::key` (buffer + `AutoEdit` + reparse incremental) →
+//! Por TECLA, o caminho do app: `DocumentSurface::key` (buffer + `AutoEdit`; o reparse vai ao worker da gramática, I1) →
 //! [cena a tocar: `scene_sync` + `scene_tick` do `ScriptHost`] → `ph2d_app_code::frame` → `paint` da
 //! aba numa `VectorScene` (problemas, dobras, realce das linhas visíveis) → `VelloPass` na placa →
 //! cópia de UMA faixa do alvo (a linha do cursor) para a memória, onde se confirma o glifo novo. Fora
@@ -37,7 +37,9 @@ const GRANDE: usize = 7_500;
 /// a meio do ficheiro (cópia 72 de 147).
 const ALVO_BOB: usize = 30;
 const ALVO_GRANDE: usize = ALVO_BOB + 51 * 72;
-const RODADAS: usize = 10;
+/// 40 × 25 = 1 000 teclas por célula: com 250 o p99.9 era UMA tecla e a regra de Fatin trocava de
+/// veredito entre rodadas (I1, 16/10).
+const RODADAS: usize = 40;
 const BLOCO: usize = 25;
 /// Quadros sem tecla entre duas teclas (a 60 Hz e ~10 teclas/s há ~6); pintados e na placa.
 const ENTRE: usize = 2;
@@ -107,9 +109,13 @@ fn resumo(v: &[f64]) -> String {
 }
 
 fn p50(v: &[f64]) -> f64 {
+    quantil(v, 0.5)
+}
+
+fn quantil(v: &[f64], p: f64) -> f64 {
     let mut s = v.to_vec();
     s.sort_by(f64::total_cmp);
-    s[(s.len() - 1) / 2]
+    s[((s.len() - 1) as f64 * p).round() as usize]
 }
 
 struct Placa {
@@ -259,6 +265,9 @@ struct Celula {
     cena: Cena,
     linhas: usize,
     vista: usize,
+    /// A 2.ª cópia de uma célula, intercalada com as outras: a distância entre as duas é o RUÍDO
+    /// da rodada (a régua da regra de Fatin, I1 da Onda 2).
+    replica: bool,
     m: Mesa,
     id: ScriptId,
     area: Rect,
@@ -347,7 +356,7 @@ impl Celula {
             } else {
                 "~43 linhas"
             }
-        )
+        ) + if self.replica { " (réplica)" } else { "" }
     }
 
     fn nova(
@@ -382,6 +391,7 @@ impl Celula {
             cena,
             linhas,
             vista,
+            replica: false,
             m,
             id,
             area,
@@ -727,6 +737,11 @@ fn tecla_pixel() {
             }
         }
     }
+    for cena in [Cena::Parada, Cena::Tocando] {
+        let mut r = Celula::nova(cena, 51, JANELA, alturas[0].1, &mut ts, &mut placa, &theme);
+        r.replica = true;
+        celulas.push(r);
+    }
     let mut salvar = [
         Salvar::nova(51, &mut ts, &theme),
         Salvar::nova(GRANDE, &mut ts, &theme),
@@ -783,7 +798,7 @@ fn tecla_pixel() {
         celulas[0].s.total.len()
     );
     println!(
-        "| cena · documento · vista | linhas pintadas | 1.º quadro | tecla→pixel | tecla (buffer+AutoEdit+reparse) | quadro (+cena) | paint | placa + leitura | a11y por tecla | paint sem mudança |"
+        "| cena · documento · vista | linhas pintadas | 1.º quadro | tecla→pixel | tecla (buffer+AutoEdit) | quadro (+cena) | paint | placa + leitura | a11y por tecla | paint sem mudança |"
     );
     println!("|---|---|---|---|---|---|---|---|---|---|");
     for c in &celulas {
@@ -800,6 +815,50 @@ fn tecla_pixel() {
             resumo(&c.s.a11y),
             resumo(&c.s.quente),
         );
+    }
+    // A regra de Fatin ao pé da letra (I1): na vista de ~43 linhas (o único par que pinta o mesmo
+    // número de linhas), a tecla a 7 500 linhas não passa da de 51 mais do que as duas réplicas da de
+    // 51 distam uma da outra. O ruído mede-se nesta rodada; não se escolhe.
+    println!(
+        "\nRegra de Fatin (vista ~43 linhas, tecla→pixel, ms): 7 500 − max(51 a, 51 b) ≤ |51 a − 51 b|"
+    );
+    println!("| cena | quantil | 51 (a) | 51 (b) | ruído | 7 500 | excesso | veredito |");
+    println!("|---|---|---|---|---|---|---|---|");
+    for cena in [Cena::Parada, Cena::Tocando] {
+        let acha = |linhas: usize, replica: bool| {
+            celulas
+                .iter()
+                .find(|c| {
+                    c.cena == cena && c.vista == JANELA && c.linhas == linhas && c.replica == replica
+                })
+                .expect("célula da regra de Fatin")
+        };
+        let (a, b, g) = (acha(51, false), acha(51, true), acha(GRANDE, false));
+        for (nome, p) in [("min", 0.0), ("p50", 0.5), ("p99", 0.99), ("p99.9", 0.999)] {
+            let (qa, qb, qg) = (
+                quantil(&a.s.total, p),
+                quantil(&b.s.total, p),
+                quantil(&g.s.total, p),
+            );
+            let ruido = (qa - qb).abs();
+            let excesso = qg - qa.max(qb);
+            println!(
+                "| {} | {nome} | {qa:.3} | {qb:.3} | {ruido:.3} | {qg:.3} | {excesso:+.3} | {} |",
+                if cena == Cena::Tocando { "a tocar" } else { "parada" },
+                if excesso <= ruido { "passa" } else { "REPROVA" }
+            );
+        }
+        // A cauda por fase: onde ATERRA o que excede (min / p50 / p99 / p99.9).
+        for c in [a, b, g] {
+            println!(
+                "|   fases · {} | tecla {} · quadro (+cena) {} · paint {} · placa {} |",
+                c.nome(),
+                resumo(&c.s.key),
+                resumo(&c.s.quadro),
+                resumo(&c.s.paint),
+                resumo(&c.s.placa)
+            );
+        }
     }
     println!(
         "\nCtrl+S → selo «Reloaded · 3 objects» (cena a tocar), ms; n = {}",
@@ -820,7 +879,7 @@ fn tecla_pixel() {
         gram[0].reparse.len()
     );
     println!(
-        "| documento | reparse incremental | estrutura mudada (`changed_ranges`, só com dobras fechadas) | dobras do ficheiro (`folds`, só o Fold All) | dobras de 100 linhas (`folds_in`, a pintura) | erros | realce de 100 linhas |"
+        "| documento | reparse incremental (no worker, fora da tecla) | estrutura mudada (`changed_ranges`, só com dobras fechadas) | dobras do ficheiro (`folds`, só o Fold All) | dobras de 100 linhas (`folds_in`, a pintura) | erros | realce de 100 linhas |"
     );
     println!("|---|---|---|---|---|---|---|");
     for g in &gram {

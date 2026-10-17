@@ -71,7 +71,9 @@ fn uma_dobra_fechada_sobrevive_a_uma_edicao_acima_e_abre_quando_o_cursor_entra()
 }
 
 /// Uma dobra fechada cuja estrutura deixou de existir abre-se, e escrevê-la de volta não a fecha.
-/// Controlo: depois de cada passo, toda fechada é uma dobra viva (mesmo início, mesmo fim).
+/// Controlo: depois de cada passo, toda fechada é uma dobra viva (mesmo início, mesmo fim). A
+/// re-conferência espera a árvore do worker (I1, `docs/CodeEditor/03_onda2.md`): a árvore velha
+/// diria a forma de antes da edição.
 #[test]
 fn a_fechada_cuja_estrutura_deixou_de_existir_abre_se() {
     let (mut m, id) = aberto(BOB);
@@ -91,6 +93,7 @@ fn a_fechada_cuja_estrutura_deixou_de_existir_abre_se() {
         None,
     );
     m.tecla(id, Key::Backspace, Modifiers::default(), None);
+    m.docs().wait_grammar();
     m.pinta(id);
     assert!(
         !m.docs().closed_folds(id).iter().any(|f| f.0 == 23),
@@ -100,8 +103,61 @@ fn a_fechada_cuja_estrutura_deixou_de_existir_abre_se() {
     fechadas_existem(&mut m, id);
     // Escreve-a de volta: nada se fecha sozinho.
     m.escreve(id, "function init(self)");
+    m.docs().wait_grammar();
     m.pinta(id);
     assert!(!m.docs().closed_folds(id).iter().any(|f| f.0 == 23));
+    fechadas_existem(&mut m, id);
+}
+
+/// Dobrar logo a seguir a uma tecla (árvore ainda velha, I1) pergunta a árvore do texto de AGORA:
+/// `--` no início de `function init(self)` desfaz a função, e o clique no marcador que o último quadro
+/// pintou não fecha nada. Controlo: sem a tecla, o mesmo clique fecha e reabre a dobra.
+#[test]
+fn dobrar_logo_depois_de_uma_tecla_pergunta_a_arvore_do_texto() {
+    let (mut m, id) = aberto(BOB);
+    vai(&mut m, id, 24);
+    let (x, y) = m.docs().fold_marker(id, 23).expect("o marcador do init à vista");
+    m.clica(id, x, y, Modifiers::default());
+    assert_eq!(m.docs().closed_folds(id), vec![(23, 28)], "controlo: o clique fecha");
+    m.clica(id, x, y, Modifiers::default());
+    assert!(m.docs().closed_folds(id).is_empty(), "controlo: e reabre");
+    m.escreve(id, "--");
+    assert!(m.docs().grammar_of(id).expect("aberto").stale);
+    m.clica(id, x, y, Modifiers::default());
+    assert!(
+        m.docs().closed_folds(id).is_empty(),
+        "dobrou uma função que o texto já não tem: {:?}",
+        m.docs().closed_folds(id)
+    );
+}
+
+/// Com dobras fechadas, as teclas sobre a árvore VELHA não perguntam nada à gramática das dobras (a
+/// velha diria a forma de antes): a re-conferência espera a árvore do worker, e então corre.
+#[test]
+fn com_dobras_fechadas_a_tecla_sobre_a_arvore_velha_nao_confere_as_dobras() {
+    let (mut m, id) = aberto(BOB);
+    assert!(m.docs().command(id.0, CMD_FOLD_ALL));
+    m.pinta(id);
+    vai(&mut m, id, 24);
+    m.tecla(id, Key::End, Modifiers::default(), None);
+    assert!(m.docs().closed_folds(id).contains(&(23, 28)));
+    let antes = fold_captures_visited();
+    m.escreve(id, " -- x");
+    assert!(m.docs().grammar_of(id).expect("aberto").stale);
+    assert_eq!(
+        fold_captures_visited() - antes,
+        0,
+        "a tecla conferiu as dobras contra a árvore velha"
+    );
+    // Controlo: com a árvore do worker, a conferência corre (e a dobra, intacta, fica fechada).
+    m.docs().wait_grammar();
+    m.quadro();
+    let _ = m.docs().problems_of(id);
+    assert!(
+        fold_captures_visited() > antes,
+        "controlo: a conferência nunca correu (o contador está morto?)"
+    );
+    assert!(m.docs().closed_folds(id).contains(&(23, 28)));
     fechadas_existem(&mut m, id);
 }
 

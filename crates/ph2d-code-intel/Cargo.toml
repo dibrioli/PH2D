@@ -11,10 +11,12 @@ authors.workspace = true
 
 [dependencies]
 # O trabalho FORA da tecla do editor de scripts (CodeEditor Onda 2, `docs/CodeEditor/03_onda2.md`):
-# a sessão assíncrona do `luau-lsp` fixado (`ph2d-code-lsp`) sobre instantâneos da rope
+# o reparse do tree-sitter (`ph2d-code-syntax`) e a sessão assíncrona do `luau-lsp` fixado
+# (`ph2d-code-lsp`), sobre instantâneos da rope
 # (`ph2d-code-buffer`). Sem UI: o quadro só drena um canal.
 ph2d-code-buffer = { path = "../ph2d-code-buffer" }
 ph2d-code-lsp = { path = "../ph2d-code-lsp" }
+ph2d-code-syntax = { path = "../ph2d-code-syntax" }
 serde_json = "1"
 
 [dev-dependencies]

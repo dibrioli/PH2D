@@ -24,7 +24,7 @@ pub mod problems;
 mod recovery;
 pub mod smoke;
 
-pub use docs::{CodeDocs, ParkedFootprint, SaveKind};
+pub use docs::{CodeDocs, GrammarProbe, ParkedFootprint, SaveKind};
 pub use frame::frame;
 
 /// A declaração da família à shell.

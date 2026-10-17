@@ -22,10 +22,11 @@ pub(crate) const TAB: usize = 4;
 /// A indentação que o editor escreve: a do `bob.luau` e de todo script do projeto.
 pub(crate) const INDENT: IndentStyle = IndentStyle::Spaces(2);
 
-/// O que a gramática disse sobre UMA revisão do texto.
+/// O que a gramática disse sobre UMA revisão do texto e UMA forma da árvore: a árvore adoptada do
+/// worker muda a resposta sem mudar o texto.
 #[derive(Default)]
 struct Derived {
-    revision: Option<u64>,
+    key: Option<(u64, u64)>,
     errors: Vec<SyntaxError>,
 }
 
@@ -111,14 +112,15 @@ impl CodeDoc {
         d
     }
 
-    /// A gramática segue `edits` (as do `Buffer` — o `AutoEdit` já a avança sozinho) e as dobras
+    /// A gramática segue `edits` (as do `Buffer` — o `AutoEdit` já a avança sozinho) SEM reparse: a
+    /// árvore fica velha até o worker trazer a nova ([`crate::docs::CodeDocs::pump`]). As dobras
     /// fechadas andam com o texto.
     pub fn edited(&mut self, edits: &[TextEdit], syntax_too: bool) {
         if edits.is_empty() {
             return;
         }
         if syntax_too {
-            self.syntax.edit(edits, self.buffer.text());
+            self.syntax.edit_deferred(edits);
         }
         if let Some(a) = &mut self.diag_anchor {
             for e in edits {
@@ -130,12 +132,12 @@ impl CodeDoc {
     }
 
     fn derive(&mut self) {
-        let rev = self.buffer.revision();
-        if self.derived.revision == Some(rev) {
+        let key = (self.buffer.revision(), self.syntax.generation());
+        if self.derived.key == Some(key) {
             return;
         }
         self.derived.errors = self.syntax.errors();
-        self.derived.revision = Some(rev);
+        self.derived.key = Some(key);
         self.folds.check(&mut self.syntax, self.buffer.text());
     }
 
@@ -159,6 +161,8 @@ impl CodeDoc {
         if diag == self.saved_diag {
             return;
         }
+        // Erro de sintaxe ou não: a pergunta é a árvore EXACTA (uma vez por diagnóstico novo).
+        self.syntax.fresh(self.buffer.text());
         self.derive();
         let t = self.buffer.text();
         self.diag_anchor = diag.as_ref().and_then(|d| d.line).map(|n| {
@@ -173,6 +177,7 @@ impl CodeDoc {
 
     /// Dobra (ou desdobra) todas as dobras do texto (a única pergunta pelo ficheiro inteiro).
     pub fn fold_all(&mut self, fold: bool) {
+        self.syntax.fresh(self.buffer.text());
         self.derive();
         let t = self.buffer.text();
         let all = if fold {
@@ -209,6 +214,7 @@ impl CodeDoc {
 
     /// Abre/fecha a dobra que começa na linha `line`.
     pub fn toggle_fold(&mut self, line: usize) {
+        self.syntax.fresh(self.buffer.text());
         self.derive();
         let t = self.buffer.text();
         if let Some(f) = self.syntax.fold_at(t, line) {
@@ -217,7 +223,8 @@ impl CodeDoc {
         }
     }
 
-    /// Abre as dobras fechadas que escondem a linha do cursor primário.
+    /// Abre as dobras fechadas que escondem a linha do cursor primário. Corre em TODA tecla (o
+    /// `reveal`): as dobras fechadas seguem o texto sozinhas, a árvore velha basta.
     pub fn unfold_cursor(&mut self) {
         self.derive();
         let t = self.buffer.text();

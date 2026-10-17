@@ -51,13 +51,19 @@ impl ClosedFolds {
     }
 
     /// Re-confere contra a gramática as fechadas que a edição ou a mudança de estrutura tocou: a que
-    /// ainda começa na sua linha acerta o fim; a que deixou de existir abre-se.
+    /// ainda começa na sua linha acerta o fim; a que deixou de existir abre-se. Com a árvore VELHA
+    /// (reparse fora da tecla) espera: o tocado acumula-se e confere-se contra a árvore que o worker
+    /// trouxer — a velha diria a forma de antes da edição.
     pub fn check(&mut self, syntax: &mut Syntax, t: &Text) {
-        let touched = self.touched.take();
         if self.list.is_empty() {
+            self.touched = None;
             syntax.disarm_changes();
             return;
         }
+        if syntax.is_stale() {
+            return;
+        }
+        let touched = self.touched.take();
         let changed = syntax.changed_since_mark();
         let meets = |r: &Range<usize>, a: usize, b: usize| r.start <= b && a <= r.end;
         self.list.retain_mut(|c| {

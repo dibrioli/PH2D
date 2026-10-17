@@ -46,7 +46,9 @@ pub enum Ecra {
         molhada: f64,
         /// **O Glaze da tinta da célula** (prompt 42, o plano [`crate::grid::Grid::vela`]): a fracção do filme que
         /// FILTRA o assentado — `1` = a multiplicação das duas camadas sobre o branco (o marcador do Rebelle),
-        /// na fracção [`crate::colorops::vela_da_camada`] (medida no Rebelle). `0` = a lei da obra.
+        /// nesta fracção — a [`crate::colorops::vela_da_camada`] FIXADA no pouso, contra a camada de baixo de então
+        /// (lida da cor de agora, caía 0,94 → 0,77 enquanto o assentado absorvia o filme e o cruzamento clareava
+        /// +14 níveis ao secar). `0` = a lei da obra.
         vela: f64,
     },
 }
@@ -145,7 +147,7 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
     // O GLAZE do pincel: o filme FILTRA o assentado — a fracção `m` do ponto é o produto das duas camadas sobre o
     // branco. Uma vez por camada (o filme e o assentado), nunca por carimbo: é o que não leva ao preto.
     if vela > 0.0 {
-        let m = crate::colorops::vela_da_camada(vela, sc, uc);
+        let m = vela;
         for k in 0..3 {
             let f = 255.0 - a_t * (255.0 - uc[k]);
             r[k] += m * (t_s[k] * f / 255.0 - r[k]);
@@ -192,6 +194,20 @@ pub fn cor(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> [f64; 3] 
     }
 }
 
+/// A sensibilidade do ecrã a uma cor (níveis por nível) abaixo da qual o [`resolve`] não a corrige: onde o filme
+/// grosso a esconde, corrigi-la escrevia uma cor ESCONDIDA que aparecia quando o filme afinava (o miolo
+/// esverdeava +24 ao secar).
+const CEGO: f64 = 0.1;
+
+/// O mesmo sob o Glaze (prompt 42): o PRODUTO das camadas deixa o assentado à vista em todo canal que o filme não
+/// zera, com sensibilidade pequena mas real — com [`CEGO`] o assentar ficava no palpite e o ecrã mudava.
+/// Grelha `assentar_guarda_o_ecra_com_o_glaze` (estados > 1,5 · o pior; Glaze 0,5 | 1): `0,1` 70 · 7,39 | 33 ·
+/// 12,71 — `0,03` 19 · 6,41 | 15 · 12,71 — **`0,01`** 11 · 6,41 | 15 · 12,71 (`0,001` igual; a força bruta
+/// local acha 7 · 6,41 | 10 · 10,48). Secar de vez (5 % por passe, 12 pares × 4 massas) desliza em média
+/// 4,1 → 2,4 níveis a Glaze 0,55 e 2,8 → 2,6 a 1, o pior igual. ⛔ Newton CONJUNTO 3×3 com retrocesso não ganha
+/// nada sobre este (11 · 6,41 | 15 · 12,69).
+const CEGO_COM_GLAZE: f64 = 0.01;
+
 /// Newton por canal sobre a cor que muda (`x`), a partir do palpite físico, até o ecrã voltar a `alvo`
 /// (a velatura do filme não compõe em passos: o palpite deixa um resto). A derivada é numérica — com o
 /// filme grosso a velatura pesa mais que a cobertura (medido: assumir `1 − a` dava passos 4× grandes e o
@@ -200,7 +216,14 @@ pub fn cor(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> [f64; 3] 
 /// ⛔ Os canais NÃO são independentes: o tapar extra pesa a diferença de pigmento das TRÊS cores, e mexer
 /// num canal muda o ecrã dos outros. Cada canal lê o ecrã DEPOIS do anterior (Bug #49: com o ecrã do
 /// início da volta, a derivada do verde media a mudança do vermelho e o assentado ia a verde-água).
-fn resolve(mut x: [f64; 3], alvo: [f64; 3], ecra: impl Fn([f64; 3]) -> [f64; 3]) -> [f64; 3] {
+///
+/// `cego`: a sensibilidade abaixo da qual o canal fica no palpite ([`CEGO`]; [`CEGO_COM_GLAZE`] sob o Glaze).
+fn resolve(
+    mut x: [f64; 3],
+    alvo: [f64; 3],
+    cego: f64,
+    ecra: impl Fn([f64; 3]) -> [f64; 3],
+) -> [f64; 3] {
     const H: f64 = 0.5;
     let mut y = ecra(x);
     for _ in 0..4 {
@@ -218,7 +241,7 @@ fn resolve(mut x: [f64; 3], alvo: [f64; 3], ecra: impl Fn([f64; 3]) -> [f64; 3])
             // Onde o ecrã quase não vê esta cor (o filme grosso esconde o assentado) o palpite físico
             // fica: corrigi-lo ali escrevia uma cor ESCONDIDA que aparecia quando o filme afinava
             // (medido: o miolo esverdeava +24 ao secar).
-            if d.abs() < 0.1 {
+            if d.abs() < cego {
                 continue;
             }
             let passo = ((y[c] - alvo[c]) / d).clamp(-48.0, 48.0);
@@ -243,7 +266,7 @@ pub fn assenta(
     a_f2: f64,
 ) -> [f64; 3] {
     let e = e.seco();
-    if let Ecra::Cobre { .. } = e {
+    if let Ecra::Cobre { vela, .. } = e {
         let alvo = sobre_branco(e, sc, uc, a_s, a_f);
         if a_s <= 0.0 && a_f2 <= 0.0 {
             return uc;
@@ -266,12 +289,8 @@ pub fn assenta(
         // filme de antes sobre o de depois, canal a canal. Sem ela o Newton ficava no palpite onde o filme
         // escuro esconde um canal (a regra de cima) e o cruzamento clareava ao secar (medido: até 19 níveis, e
         // a força bruta achava a cor certa a < 0,4).
-        if let Ecra::Cobre { vela, .. } = e
-            && vela > 0.0
-            && a_s > 0.0
-            && a_s2 > 0.0
-        {
-            let m = crate::colorops::vela_da_camada(vela, sc, uc);
+        if vela > 0.0 && a_s > 0.0 && a_s2 > 0.0 {
+            let m = vela;
             for k in 0..3 {
                 let t_s = 255.0 - a_s * (255.0 - sc[k]);
                 let (f, f2) = (
@@ -283,7 +302,8 @@ pub fn assenta(
                 x0[k] += m * (produto - x0[k]);
             }
         }
-        return resolve(x0, alvo, |x| sobre_branco(e, x, uc, a_s2, a_f2));
+        let cego = if vela > 0.0 { CEGO_COM_GLAZE } else { CEGO };
+        return resolve(x0, alvo, cego, |x| sobre_branco(e, x, uc, a_s2, a_f2));
     }
     let alvo = cor(e, sc, uc, a_s, a_f);
     if a_f2 <= 0.0 {
@@ -311,7 +331,7 @@ pub fn assenta(
                 };
                 [0, 1, 2].map(|c| sc[c] + (uc[c] - sc[c]) * w)
             };
-            resolve(x0, alvo, |x| cor(e, x, uc, a_s2, a_f2))
+            resolve(x0, alvo, CEGO, |x| cor(e, x, uc, a_s2, a_f2))
         }
     }
 }
@@ -336,7 +356,7 @@ fn levanta_cobre(
         let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
         [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
     };
-    resolve(x0, alvo, |x| sobre_branco(e, sc, x, a_s2, a_f2))
+    resolve(x0, alvo, CEGO, |x| sobre_branco(e, sc, x, a_s2, a_f2))
 }
 
 /// **A caixa das tintas** do re-molhar: o filme que a água leva fica, por canal, entre a cor dele (`fica`) e a
@@ -396,7 +416,7 @@ pub fn levanta(
                 let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
                 [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
             };
-            resolve(x0, alvo, |x| cor(e, sc, x, a_s2, a_f2))
+            resolve(x0, alvo, CEGO, |x| cor(e, sc, x, a_s2, a_f2))
         }
     }
 }

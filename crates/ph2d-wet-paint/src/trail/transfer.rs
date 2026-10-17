@@ -295,7 +295,17 @@ impl Trail {
                     // O Glaze pousa com a tinta (a média, pela massa SUSPENSA) — e só onde há uma camada POR BAIXO:
                     // sobre o papel limpo a tinta não filtra nada, e a parte do próprio traço que seca não é outra
                     // camada (medido: com o Glaze em toda a tinta o recto escurecia ao secar, cobertura 0,90 → 0,93).
-                    let vela_aqui = if g.sett[i] > 0.0 { vela } else { 0.0 };
+                    // A fracção que filtra fixa-se AQUI, contra a camada de baixo de agora
+                    // ([`crate::colorops::vela_da_camada`]): o assentado que depois absorve o filme não a muda.
+                    let vela_aqui = if vela > 0.0 && g.sett[i] > 0.0 {
+                        crate::colorops::vela_da_camada(
+                            f64::from(vela),
+                            g.sett_rgb[i].map(f64::from),
+                            ponta.map(f64::from),
+                        ) as f32
+                    } else {
+                        0.0
+                    };
                     let v_old = g.vela[i];
                     if v_old != vela_aqui {
                         g.vela[i] = if old > 0.0 {

@@ -62,7 +62,11 @@ fn a_tinta_e_do_tema_quando_o_tema_chega() {
 fn fora_do_escopo_a_resposta_e_a_de_sempre() {
     for theme in THEMES {
         for &t in ColorToken::ALL {
-            assert_eq!(t.resolve(theme), t.resolve_unscoped(theme), "{t:?} {theme:?}");
+            assert_eq!(
+                t.resolve(theme),
+                t.resolve_unscoped(theme),
+                "{t:?} {theme:?}"
+            );
         }
     }
 }
@@ -81,10 +85,14 @@ fn dentro_do_escopo_cada_papel_responde_pelo_desenho() {
                 Role::Ink(InkLevel::Primary) => assert_eq!(c, ink, "{t:?}"),
                 Role::Ink(InkLevel::OnAccent) => {
                     let accent = ColorToken::Accent.resolve(theme);
-                    assert!(c.contrast_ratio(&accent) >= INK_MIN.min(
-                        t.resolve_unscoped(theme)
-                            .contrast_ratio(&ColorToken::Accent.resolve_unscoped(theme))
-                    ), "{t:?} {theme:?}");
+                    assert!(
+                        c.contrast_ratio(&accent)
+                            >= INK_MIN.min(
+                                t.resolve_unscoped(theme)
+                                    .contrast_ratio(&ColorToken::Accent.resolve_unscoped(theme))
+                            ),
+                        "{t:?} {theme:?}"
+                    );
                 }
                 Role::Ink(_) => assert!(c.a < 255 && Color { a: 255, ..c } == ink, "{t:?}"),
                 Role::Graphic => {
@@ -149,7 +157,11 @@ fn sem_preenchimento_o_conteudo_fica_o_do_tema() {
 #[test]
 fn o_escopo_nao_deixa_residuo_nem_num_panico() {
     let theme = Theme::Dark;
-    let before = (ColorToken::Bg2.resolve(theme), Widgets::of(theme), Chrome::of(theme));
+    let before = (
+        ColorToken::Bg2.resolve(theme),
+        Widgets::of(theme),
+        Chrome::of(theme),
+    );
     {
         let _a = dress(Body::Flat {
             colour: rgb(40, 120, 240),
@@ -158,7 +170,11 @@ fn o_escopo_nao_deixa_residuo_nem_num_panico() {
             let _b = dress(Body::Drawing { under: None });
             assert_eq!(ColorToken::Bg2.resolve(theme).a, 0, "o de dentro manda");
         }
-        assert_eq!(ColorToken::Bg2.resolve(theme), rgb(40, 120, 240), "volta ao de fora");
+        assert_eq!(
+            ColorToken::Bg2.resolve(theme),
+            rgb(40, 120, 240),
+            "volta ao de fora"
+        );
     }
     let r = std::panic::catch_unwind(|| {
         let _g = dress(Body::Drawing { under: None });
@@ -166,7 +182,11 @@ fn o_escopo_nao_deixa_residuo_nem_num_panico() {
     });
     assert!(r.is_err());
     assert_eq!(
-        (ColorToken::Bg2.resolve(theme), Widgets::of(theme), Chrome::of(theme)),
+        (
+            ColorToken::Bg2.resolve(theme),
+            Widgets::of(theme),
+            Chrome::of(theme)
+        ),
         before
     );
 }

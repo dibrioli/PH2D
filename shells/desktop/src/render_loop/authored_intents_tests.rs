@@ -230,6 +230,7 @@ fn row_of(kind: WidgetKind) -> Row {
         key: "x".to_owned(),
         id: ph2d_panel_authored::ids::authored_row_id("x"),
         rgba: None,
+        body: None,
         icon: None,
         icon_id: None,
         options: Vec::new(),
@@ -330,6 +331,7 @@ fn publish_blend_row() {
         key: "blend".to_owned(),
         id: ph2d_panel_authored::ids::authored_row_id("blend"),
         rgba: None,
+        body: None,
         icon: None,
         icon_id: None,
         options: vec![

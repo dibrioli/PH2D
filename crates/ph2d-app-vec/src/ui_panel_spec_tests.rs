@@ -202,7 +202,8 @@ fn the_button_wears_the_fill_as_its_body_and_the_swatch_shows_it() {
         sim.world_mut().entity_mut(e).insert(ChildOf(frame));
     }
     let spec = of(&sim, &scene, frame);
-    let got: Vec<(&str, Option<[u8; 4]>, Option<[u8; 4]>)> = spec
+    type Cores<'a> = (&'a str, Option<[u8; 4]>, Option<[u8; 4]>);
+    let got: Vec<Cores> = spec
         .rows
         .iter()
         .map(|r| (r.kind.as_str(), r.rgba, r.body))

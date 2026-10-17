@@ -247,7 +247,10 @@ mod tests {
                 Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
         };
         let mut states = StateSets::default();
-        for (role, c) in [(StateRole::Default, [40, 120, 240]), (StateRole::Hover, [240, 140, 40])] {
+        for (role, c) in [
+            (StateRole::Default, [40, 120, 240]),
+            (StateRole::Hover, [240, 140, 40]),
+        ] {
             paint(&mut scene, c);
             let mut st = UiState::new(role);
             st.objects = vec![crate::ui_state_edit::capture(&sim, &scene, &map, host)];
@@ -257,12 +260,24 @@ mod tests {
 
         let mut old = UiMachines::new();
         request(&mut old, &states, host, StateRole::Default);
-        assert!(!old[&host].is_animating(), "o controlo: a porta antiga recusa (o defeito)");
+        assert!(
+            !old[&host].is_animating(),
+            "o controlo: a porta antiga recusa (o defeito)"
+        );
 
         let mut machines = UiMachines::new();
-        request_seen(&mut machines, &states, (&sim, &scene, &map), host, StateRole::Default);
+        request_seen(
+            &mut machines,
+            &states,
+            (&sim, &scene, &map),
+            host,
+            StateRole::Default,
+        );
         let m = machines.get_mut(&host).unwrap();
-        assert!(m.is_animating(), "o Show do Default não partiu da cena laranja");
+        assert!(
+            m.is_animating(),
+            "o Show do Default não partiu da cena laranja"
+        );
         m.advance(10.0);
         assert_eq!(m.pose()[0].fill, blue, "a cena não voltou ao azul gravado");
     }

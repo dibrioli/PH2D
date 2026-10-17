@@ -224,7 +224,6 @@ mod vector_mode_estrela;
 mod vector_mode_handles;
 /// As cenas 25 e 26 (F17): o botão feito interface, nas abas Drawing e Interface.
 mod vector_mode_interface;
-mod vector_mode_vestidos;
 /// A cena 21 (F14): as quinas arredondadas em toda forma que as tem.
 mod vector_mode_quinas;
 /// A cena 20 (F13): o modo Forma selecciona — o clique desarma e traz as alças.
@@ -237,6 +236,7 @@ mod vector_mode_stroke;
 mod vector_mode_tracejado;
 /// A cena 18 (F12 A): o traço das formas das fotos do dono, para o antes × depois do bico.
 mod vector_mode_tracos;
+mod vector_mode_vestidos;
 
 /// A lei do AUTO LAYOUT de uma forma — veio da shell na integracao de 2026-09-20,
 /// por CORTE da catraca `the_shell_only_shrinks` (ADR-0153: o passe publica ONDE as

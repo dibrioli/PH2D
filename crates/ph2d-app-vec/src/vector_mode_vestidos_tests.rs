@@ -146,7 +146,11 @@ impl Cena {
             );
             // O fim da transição: a pose do papel instalada.
             if let Some((host, role)) = pedido {
-                let poses = self.states.role(host, role).expect("o papel gravado").clone();
+                let poses = self
+                    .states
+                    .role(host, role)
+                    .expect("o papel gravado")
+                    .clone();
                 for p in &poses.objects {
                     crate::ui_state_edit::install(
                         &mut self.sim,
@@ -209,7 +213,11 @@ fn a_fila_veste_e_o_botao_mostra_o_hover_so_na_28() {
         }
         let botao = so_um(&c.vec).expect("uma seleção só");
         assert_eq!(veste(&c.vec, &c.sim, botao), Some(WidgetKind::Button));
-        let cor = if hover { [240, 140, 40] } else { [40, 120, 240] };
+        let cor = if hover {
+            [240, 140, 40]
+        } else {
+            [40, 120, 240]
+        };
         assert_eq!(
             c.scene.path(botao).unwrap().fill,
             solido(cor),

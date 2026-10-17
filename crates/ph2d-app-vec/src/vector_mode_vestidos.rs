@@ -80,7 +80,8 @@ pub fn step(
             let kind = ShapeKind::RoundRect;
             let a = [c[0] - MEIA[0], c[1] - MEIA[1]];
             vec.shape.on_press(scene, kind, kind.defaults(), a, 0.01, k);
-            vec.shape.on_drag(scene, [c[0] + MEIA[0], c[1] + MEIA[1]], k);
+            vec.shape
+                .on_drag(scene, [c[0] + MEIA[0], c[1] + MEIA[1]], k);
             vec.shape.on_release(scene);
             (i + 1 == FILA.len()).then_some(VESTE)
         }

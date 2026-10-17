@@ -162,8 +162,22 @@ fn the_frame_follows_the_pose() {
         build_for(&scene, &sim, &map, &xf)
     };
 
-    let a = here.get(&id).unwrap().scene.inner().encoding().path_data.clone();
-    let b = there.get(&id).unwrap().scene.inner().encoding().path_data.clone();
+    let a = here
+        .get(&id)
+        .unwrap()
+        .scene
+        .inner()
+        .encoding()
+        .path_data
+        .clone();
+    let b = there
+        .get(&id)
+        .unwrap()
+        .scene
+        .inner()
+        .encoding()
+        .path_data
+        .clone();
     assert!(!a.is_empty(), "o Card nao emitiu geometria");
     assert_ne!(
         a, b,
@@ -184,7 +198,8 @@ fn the_label_is_the_entity_name_and_a_nameless_shape_still_draws() {
     let glyphs = |sk: &WidgetSkins| -> Vec<(u32, u32, u32)> {
         sk.get(&id)
             .unwrap()
-            .scene.inner()
+            .scene
+            .inner()
             .encoding()
             .resources
             .glyphs
@@ -228,7 +243,8 @@ fn the_swatch_on_the_canvas_wears_its_own_fill() {
         let e = skins
             .get(&id)
             .expect("a forma marcada tem pele")
-            .scene.inner()
+            .scene
+            .inner()
             .encoding();
         (e.n_paths, e.path_data.clone(), e.draw_data.clone())
     };
@@ -245,7 +261,11 @@ fn the_swatch_on_the_canvas_wears_its_own_fill() {
     // reescolhe contra o corpo novo (`skin_body`).
     let a = skin_of(WidgetKind::Slider, [200, 40, 40]);
     let b = skin_of(WidgetKind::Slider, [40, 40, 200]);
-    assert_eq!((a.0, &a.1), (b.0, &b.1), "recolorir mudou a geometria do Slider");
+    assert_eq!(
+        (a.0, &a.1),
+        (b.0, &b.1),
+        "recolorir mudou a geometria do Slider"
+    );
     for (skin, rgb) in [(&a, [200, 40, 40]), (&b, [40, 40, 200])] {
         let fill = u32::from_ne_bytes([rgb[0], rgb[1], rgb[2], 255]);
         assert!(
@@ -286,7 +306,8 @@ fn the_icon_button_on_the_canvas_wears_its_own_drawing() {
         let e = skins
             .get(&id)
             .expect("a forma marcada tem pele")
-            .scene.inner()
+            .scene
+            .inner()
             .encoding();
         (e.n_paths, e.path_data.clone(), e.draw_data.clone())
     };
@@ -339,7 +360,8 @@ fn the_chosen_icon_beats_the_drawing_and_removing_it_gives_the_drawing_back() {
         let e = skins
             .get(&id)
             .expect("a forma marcada tem pele")
-            .scene.inner()
+            .scene
+            .inner()
             .encoding();
         (e.n_paths, e.path_data.clone(), e.draw_data.clone())
     };
@@ -367,16 +389,25 @@ fn the_chosen_icon_beats_the_drawing_and_removing_it_gives_the_drawing_back() {
 // ── F18: o DESENHO é o corpo (`vetor_nova_ui/29_plano_F18_…md` §6, gates 1, 7 e 8) ──────────
 
 /// Uma forma vestida de `kind`, chamada «Play», pintada de `fill`.
-fn dressed_in(kind: WidgetKind, fill: [u8; 4]) -> (VecScene, ph2d_ecs::SimWorld, VecEntityMap, VecXforms) {
+fn dressed_in(
+    kind: WidgetKind,
+    fill: [u8; 4],
+) -> (VecScene, ph2d_ecs::SimWorld, VecEntityMap, VecXforms) {
     let (mut scene, sim, map, xf, id) = scene_with(Some(kind.code()), Some("Play"));
     let [r, g, b, a] = fill;
-    scene.path_mut(id).expect("a forma existe").fill =
-        Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(r, g, b, a)));
+    scene.path_mut(id).expect("a forma existe").fill = Some(ph2d_vec_scene::Paint::solid(
+        ph2d_vec_scene::Rgba8::new(r, g, b, a),
+    ));
     (scene, sim, map, xf)
 }
 
 /// O canvas inteiro desta cena: a ponte REAL e o `dispatch` REAL.
-fn canvas_of(scene: &VecScene, sim: &ph2d_ecs::SimWorld, map: &VecEntityMap, xf: &VecXforms) -> ph2d_vector::VectorScene {
+fn canvas_of(
+    scene: &VecScene,
+    sim: &ph2d_ecs::SimWorld,
+    map: &VecEntityMap,
+    xf: &VecXforms,
+) -> ph2d_vector::VectorScene {
     let skins = build_for(scene, sim, map, xf);
     let mut out = ph2d_vector::VectorScene::new();
     ph2d_vec_render::dispatch(
@@ -397,7 +428,12 @@ fn canvas_of(scene: &VecScene, sim: &ph2d_ecs::SimWorld, map: &VecEntityMap, xf:
 
 /// O índice, no fluxo de tinta, da cor opaca `c` — ou `None`.
 fn ink_index(scene: &ph2d_vector::VectorScene, c: [u8; 4]) -> Option<usize> {
-    scene.inner().encoding().draw_data.iter().position(|w| w.to_ne_bytes() == c)
+    scene
+        .inner()
+        .encoding()
+        .draw_data
+        .iter()
+        .position(|w| w.to_ne_bytes() == c)
 }
 
 /// As corridas de glifos: `(índice no fluxo de tinta, tinta)`.
@@ -406,7 +442,12 @@ fn glyph_inks(scene: &ph2d_vector::VectorScene) -> Vec<(usize, [u8; 4])> {
     e.resources
         .glyph_runs
         .iter()
-        .map(|r| (r.stream_offsets.draw_data, e.draw_data[r.stream_offsets.draw_data].to_ne_bytes()))
+        .map(|r| {
+            (
+                r.stream_offsets.draw_data,
+                e.draw_data[r.stream_offsets.draw_data].to_ne_bytes(),
+            )
+        })
         .collect()
 }
 
@@ -429,7 +470,11 @@ fn o_corpo_da_pele_vestida_e_o_desenho() {
     assert!(!label.is_empty(), "o rótulo sumiu");
     for (at, ink) in &label {
         assert!(*at > body, "o rótulo tem de vir DEPOIS do corpo");
-        assert_eq!(*ink, readable(BLUE), "o rótulo não é a tinta legível sobre o azul");
+        assert_eq!(
+            *ink,
+            readable(BLUE),
+            "o rótulo não é a tinta legível sobre o azul"
+        );
     }
 }
 
@@ -438,13 +483,20 @@ fn o_corpo_da_pele_vestida_e_o_desenho() {
 fn o_fill_do_estado_chega_ao_corpo_e_ao_rotulo() {
     let (scene, sim, map, xf) = dressed_in(WidgetKind::Button, ORANGE);
     let out = canvas_of(&scene, &sim, &map, &xf);
-    assert!(ink_index(&out, ORANGE).is_some(), "o laranja do Hover não foi desenhado");
+    assert!(
+        ink_index(&out, ORANGE).is_some(),
+        "o laranja do Hover não foi desenhado"
+    );
     assert!(ink_index(&out, BLUE).is_none());
     assert!(glyph_inks(&out).iter().all(|(_, c)| *c == readable(ORANGE)));
     // Sobre o azul e o laranja do dono a tinta legível é a MESMA (escura): a viragem mede-se
     // contra um fill escuro.
     const DARK: [u8; 4] = [32, 36, 44, 255];
-    assert_ne!(readable(DARK), readable(ORANGE), "a fixture tem de mudar a tinta");
+    assert_ne!(
+        readable(DARK),
+        readable(ORANGE),
+        "a fixture tem de mudar a tinta"
+    );
     let (scene, sim, map, xf) = dressed_in(WidgetKind::Button, DARK);
     let out = canvas_of(&scene, &sim, &map, &xf);
     assert!(glyph_inks(&out).iter().all(|(_, c)| *c == readable(DARK)));
@@ -477,16 +529,32 @@ fn o_rotulo_le_se_sobre_o_token_ligado_ao_fill() {
     let view = ph2d_vec_scene::VecViewState {
         bound: vec![ph2d_vec_scene::BoundStyle {
             path: id,
-            fill: Some(ph2d_vec_scene::Rgba8::new(DARK[0], DARK[1], DARK[2], DARK[3])),
+            fill: Some(ph2d_vec_scene::Rgba8::new(
+                DARK[0], DARK[1], DARK[2], DARK[3],
+            )),
             stroke: None,
             alpha: None,
             width: None,
         }],
         ..ph2d_vec_scene::VecViewState::default()
     };
-    assert_ne!(readable(DARK), readable(ORANGE), "a fixture tem de mudar a tinta");
+    assert_ne!(
+        readable(DARK),
+        readable(ORANGE),
+        "a fixture tem de mudar a tinta"
+    );
     let mut text = TextSystem::without_system_fonts();
-    let skins = build(&scene, &sim, &map, &xf, &LiveGeometry::new(), &view, camera(), &mut text, Theme::Forge);
+    let skins = build(
+        &scene,
+        &sim,
+        &map,
+        &xf,
+        &LiveGeometry::new(),
+        &view,
+        camera(),
+        &mut text,
+        Theme::Forge,
+    );
     let inks = glyph_inks(&skins[&id].scene);
     assert!(!inks.is_empty());
     assert!(

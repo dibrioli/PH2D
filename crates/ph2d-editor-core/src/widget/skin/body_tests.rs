@@ -148,7 +148,10 @@ fn nenhuma_superficie_do_tema_cobre_o_desenho() {
             }
         }
     }
-    assert!(seen_bodies >= 4 * Theme::ALL.len(), "a régua não vê corpos: {seen_bodies}");
+    assert!(
+        seen_bodies >= 4 * Theme::ALL.len(),
+        "a régua não vê corpos: {seen_bodies}"
+    );
 }
 
 /// **O conteúdo lê-se sobre o desenho**: toda tinta opaca (glifo ou gráfico) a `≥ 3:1` do corpo,
@@ -171,7 +174,10 @@ fn o_conteudo_le_se_sobre_o_desenho() {
                 let ink = readable_on(under, theme);
                 for c in p.inks.iter().filter(|c| c[3] == 255) {
                     let r = token(*c).contrast_ratio(&under);
-                    assert!(r >= 3.0, "{kind:?} {theme:?} {under:?}: glifo {c:?} a {r:.2}:1");
+                    assert!(
+                        r >= 3.0,
+                        "{kind:?} {theme:?} {under:?}: glifo {c:?} a {r:.2}:1"
+                    );
                 }
                 if LABELLED.contains(&kind) {
                     assert!(

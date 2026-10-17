@@ -288,7 +288,11 @@ fn over(base: Color, top: Color, k: f32) -> Color {
 /// tema, levada para a tinta nova.
 fn tertiary_alpha(theme: Theme) -> f32 {
     let l = |t: ColorToken| t.resolve_unscoped(theme).relative_luminance();
-    let (lo, hi, mid) = (l(ColorToken::Bg1), l(ColorToken::Text1), l(ColorToken::Text3));
+    let (lo, hi, mid) = (
+        l(ColorToken::Bg1),
+        l(ColorToken::Text1),
+        l(ColorToken::Text3),
+    );
     if (hi - lo).abs() < f64::EPSILON {
         return 1.0;
     }

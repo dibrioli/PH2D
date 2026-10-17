@@ -72,9 +72,8 @@ impl crate::App {
                 verb,
             ) {
                 let world = (&*sim, &*vec_scene, &self.vec.entities);
-                crate::render_loop::ui_state_bridge::request_seen(
-                    ui_machines, ui_states, world, host, role,
-                );
+                let seen = crate::render_loop::ui_state_bridge::request_seen;
+                seen(ui_machines, ui_states, world, host, role);
             }
         }
         // ⭐ **O SINAL MOVE A CENA** — o consumidor da tabela de ligação (item 4 do estudo dos

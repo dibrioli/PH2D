@@ -82,7 +82,20 @@ ruído: a cobertura, a ponta, o chato da guache, a largura da rampa e a largura)
 
 ## §5 — Portões, custo e mutação
 
-(no fecho)
+- **Identidade**: as 18 de fábrica ao byte (`a_lei_da_tinta::sem_glaze_…`, o Airbrush pinado em `4fa48c25df` antes de
+  qualquer lei) — verdes depois da quina, da pressão e do traço mínimo.
+- `ph2d-painter-brush` `footprint.rs`: o contorno é a curva de nível do amostrador com a quina (corpus × 3 quinas),
+  a caixa CONTÉM a ponta reta (exacta no quadrado), quina 0 = a pegada ao bit e 1 = o quadrado.
+- `ph2d-tool-painter` `it/as_formas.rs`: o carimbo de quina 1 pinta ≥ 1,15× a área do disco a 0° e a 45° (o
+  canto fora do disco); `it/midias_de_fabrica.rs` (16 mídias): o Wet Flat e a Gouache Flat com a cobertura, a
+  ponta, a largura da rampa (e o chato da guache); `it/regua_midia.rs`: a ponta em Rust = a do Python;
+  `stamp_device_tests`: a ponta reta não vai ao device; `largura.rs`: o traço mínimo; `wetpaint_preset/tests`: a
+  quina viaja no preset (0,6, campo por campo); contagens: fábrica 20, `rows` 32 (Paint 13), cor da rampa 20.
+- **Custo** (`as_formas::measure_o_custo_da_ponta_reta`, `--profile smoke`, 9 rodadas intercaladas, o mínimo,
+  `load` 24): a 1.ª versão alargava a janela do rasto para o canto em qualquer ângulo — **1,21×**; só quando a
+  pegada roda por dab (Follow, Jitter Rotate) — **1,12×**, e esse resto é a ÁREA: o quadrado cobre 4/π = 1,27× o
+  disco, o motor simula mais células molhadas. A conta da norma (um `max` e uma FMA) não se vê.
+- **Mutação 12/12** (handoff P44 §5): M6 e M8 sobreviveram à 1.ª rodada e ganharam portão.
 
 ## §6 — Aberto
 

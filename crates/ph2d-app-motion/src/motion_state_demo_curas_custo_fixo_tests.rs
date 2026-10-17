@@ -1,10 +1,9 @@
-//! **SONDA — as curas do custo fixo da rota híbrida** (doc 120 §8.3.2). A rota de antes (`A`, o
-//! carimbo recusado), a de hoje (`B`), um gémeo de `B` (o controlo da régua e da paridade) e `B` com
-//! cada variante do [`ph2d_gpu_cook::VariantesDoCozimento`] — todas no MESMO processo, em blocos
-//! intercalados por ordem rodada, resumo = o MÍNIMO das médias de bloco, mediana ao lado
-//! ([MEDIR_VELOCIDADE](../../../docs/DevOps/MEDIR_VELOCIDADE.md)). Antes da régua, um bloco com a
-//! diagnose das faltas da cache ligada (fora da régua: guardar cada buffer custa µs); no fim, a
-//! saída de cada variante contra a de `B`, ao bit.
+//! **O custo fixo da rota híbrida: UM passe de computação para os despachos consecutivos** (doc 120
+//! §8.3.2). A sonda: a rota de antes (`A`, o carimbo recusado), `B` com o codificador de antes (um
+//! passe por despacho), um gémeo dela (o controlo da régua e da paridade) e `B` de hoje — no MESMO
+//! processo, em blocos intercalados por ordem rodada, resumo = o MÍNIMO das médias de bloco, mediana
+//! ao lado ([MEDIR_VELOCIDADE](../../../docs/DevOps/MEDIR_VELOCIDADE.md)); no fim, a saída de cada
+//! variante contra a de `B·antes`, ao bit. O gate: [`um_passe_da_a_mesma_saida_com_menos_passes`].
 //!
 //! `__GL_SHADER_DISK_CACHE=0 PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion \
 //!     --profile smoke --lib sonda_as_curas_do_custo_fixo -- --ignored --nocapture --test-threads=1`
@@ -13,27 +12,35 @@
 use super::carimbo_escala::{FASES, amplia, le_as_fases, numero, rota_de_antes};
 use super::medida::monta_demo;
 use crate::motion_state::MotionState;
-use ph2d_gpu_cook::VariantesDoCozimento;
 use std::time::Instant;
 
-/// `(nome, rota de antes, variantes)`. O índice `1` é a régua da paridade e da diferença.
-fn variantes() -> Vec<(&'static str, bool, VariantesDoCozimento)> {
-    let v = |luts, pool, passe| VariantesDoCozimento {
-        luts_por_conteudo: luts,
-        pool_por_ordem: pool,
-        um_passe: passe,
-        diagnostica: false,
-    };
-    vec![
-        ("A", true, v(false, false, false)),
-        ("B", false, v(false, false, false)),
-        ("B·gémeo", false, v(false, false, false)),
-        ("B+1a", false, v(true, false, false)),
-        ("B+1b", false, v(false, true, false)),
-        ("B+1", false, v(true, true, false)),
-        ("B+2", false, v(false, false, true)),
-        ("B+1+2", false, v(true, true, true)),
-    ]
+/// O resultado de um futuro que o wgpu nativo já resolveu (o `pop` de um âmbito de erros).
+fn ja_resolvido<F: std::future::Future>(f: F) -> F::Output {
+    let mut f = std::pin::pin!(f);
+    let mut cx = std::task::Context::from_waker(std::task::Waker::noop());
+    match f.as_mut().poll(&mut cx) {
+        std::task::Poll::Ready(v) => v,
+        std::task::Poll::Pending => panic!("o âmbito de erros do wgpu não resolveu"),
+    }
+}
+
+/// `(nome, rota de antes, um passe por despacho)`. O índice `1` é a régua da paridade e da diferença.
+const VARIANTES: [(&str, bool, bool); 4] = [
+    ("A", true, true),
+    ("B·antes", false, true),
+    ("B·antes·gémeo", false, true),
+    ("B", false, false),
+];
+
+/// A cena `n` com o grelha × `k`, pela rota e pelo codificador pedidos.
+fn monta(n: &str, k: f32, (antes, por_despacho): (bool, bool)) -> MotionState {
+    let mut m = monta_demo(n).expect("a cena existe");
+    if antes {
+        rota_de_antes(&mut m);
+    }
+    amplia(&mut m, k);
+    m.gpu_cook.um_passe_por_despacho(por_despacho);
+    m
 }
 
 /// O que se lê de volta para a paridade: as instâncias (em texto, que dá a mesma resposta que os
@@ -106,7 +113,7 @@ fn sonda_as_curas_do_custo_fixo() {
         ("132", 11.0),
         ("136", 11.0),
     ];
-    let vs = variantes();
+    let vs = VARIANTES;
     let nv = vs.len();
     let i_quadro = FASES.iter().position(|f| *f == "quadro").expect("a fase quadro");
     for &(n, k) in casos {
@@ -117,18 +124,7 @@ fn sonda_as_curas_do_custo_fixo() {
             eprintln!("CURAS ={n}: a cena não existe");
             continue;
         }
-        let mut ms: Vec<MotionState> = vs
-            .iter()
-            .map(|(_, antes, v)| {
-                let mut m = monta_demo(n).expect("a cena existe");
-                if *antes {
-                    rota_de_antes(&mut m);
-                }
-                amplia(&mut m, k);
-                m.gpu_cook.usa_variantes(*v);
-                m
-            })
-            .collect();
+        let mut ms: Vec<MotionState> = vs.iter().map(|(_, a, p)| monta(n, k, (*a, *p))).collect();
         let mut phs: Vec<ph2d_core::Playhead> = (0..nv)
             .map(|_| {
                 let mut p = ph2d_core::Playhead::new(dt);
@@ -143,31 +139,19 @@ fn sonda_as_curas_do_custo_fixo() {
                 quadro(&mut ms[i], &mut phs[i], &mut placas[i]);
             }
         }
-        // A diagnose das faltas, fora da régua: o último de 5 quadros com ela ligada.
-        for (i, (nome, _, v)) in vs.iter().enumerate() {
-            ms[i].gpu_cook.usa_variantes(VariantesDoCozimento {
-                diagnostica: true,
-                ..*v
-            });
-            for _ in 0..5 {
-                quadro(&mut ms[i], &mut phs[i], &mut placas[i]);
-            }
+        for (i, (nome, _, _)) in vs.iter().enumerate() {
             let c = ms[i].fases.cozimento;
             eprintln!(
-                "CURAS ={n} ×{k} {nome} rota «{}» · por quadro: {} despachos de kernel, {} passes · grupos {} criados ({} com buffer novo, {} por combinação nova) / {} da cache · stream-op {} criados / {} da cache · {} LUT criadas · {} buffers alocados",
+                "CURAS ={n} ×{k} {nome} rota «{}» · por quadro: {} despachos de kernel, {} passes · grupos {} criados / {} da cache · stream-op {} criados / {} da cache · {} buffers alocados",
                 ms[i].route_said.unwrap_or("?"),
                 c.despachos,
                 c.passes,
                 c.grupos_criados,
-                c.faltas_por_buffer_novo,
-                c.faltas_por_combinacao,
                 c.grupos_reaproveitados,
                 c.grupos_de_stream_op_criados,
                 c.grupos_de_stream_op_reaproveitados,
-                c.luts_criadas,
                 c.buffers_alocados
             );
-            ms[i].gpu_cook.usa_variantes(*v);
         }
         let mut blocos: Vec<Vec<[f64; 21]>> = vec![Vec::new(); nv];
         for r in 0..rodadas {
@@ -224,4 +208,54 @@ fn sonda_as_curas_do_custo_fixo() {
         }
     }
     eprintln!("CURAS load no fim {}", carga().trim());
+}
+
+/// ⭐ **O GATE do passe único** (doc 120 §8.3.2): as cenas que o mediram, a escalas `1` e `4`, pelo
+/// codificador de hoje e pelo de antes, `40` quadros cada — a MESMA saída ao bit (instâncias e
+/// formas) com pelo menos `3×` menos passes (medido: `=132` `36 → 6`, `=120` `36 → 2`, `=119`
+/// `44 → 3`) e ZERO erros de validação — o produto só os escreve no terminal, e uma cópia dentro do
+/// passe aberto estraga os DOIS lados por igual (a mutação do `DerefMut` sobreviveu à igualdade).
+#[test]
+#[ignore = "placa: needs a GPU adapter; run with --ignored"]
+fn um_passe_da_a_mesma_saida_com_menos_passes() {
+    let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
+        .expect("sem adapter");
+    let dt = 1.0 / 60.0;
+    for n in ["132", "120", "119", "136", "112"] {
+        for k in [1.0, 4.0] {
+            let lados = [true, false].map(|por_despacho| {
+                let mut m = monta(n, k, (false, por_despacho));
+                let mut ph = ph2d_core::Playhead::new(dt);
+                ph.play();
+                let mut passes = 0;
+                let ambito = gpu.device.push_error_scope(wgpu::ErrorFilter::Validation);
+                for _ in 0..40 {
+                    ph.advance_ticks(1);
+                    crate::motion_bridge::quadro::o_quadro(
+                        &mut m,
+                        Some(&gpu),
+                        &ph,
+                        dt,
+                        crate::motion_bridge::quadro::MaoDoEditor::default(),
+                    );
+                    passes = m.fases.cozimento.passes;
+                }
+                let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                if let Some(e) = ja_resolvido(ambito.pop()) {
+                    panic!("={n} ×{k} (por despacho: {por_despacho}): o dispositivo recusou: {e}");
+                }
+                (passes, saida(&gpu, &m))
+            });
+            let [(antes, sa), (hoje, sh)] = lados;
+            assert!(
+                !sa.0.is_empty() || !sa.1.is_empty(),
+                "={n} ×{k}: a cena não desenhou nada — o gate não mediria nada"
+            );
+            assert_eq!(sa, sh, "={n} ×{k}: o passe único mudou a saída");
+            assert!(
+                hoje * 3 <= antes,
+                "={n} ×{k}: {hoje} passes com o passe único contra {antes} por despacho"
+            );
+        }
+    }
 }

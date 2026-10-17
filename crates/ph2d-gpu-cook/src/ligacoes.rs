@@ -32,39 +32,16 @@ struct ChaveGrupo {
     entradas: Vec<(u32, wgpu::Buffer, u64, Option<std::num::NonZeroU64>)>,
 }
 
-/// Uma tabela (LUT) só de leitura, escrita uma vez com `bytes`.
-pub(crate) fn cria_tabela(gpu: &GpuContext, bytes: &[u8]) -> wgpu::Buffer {
-    let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("ph2d-gpu-cook lut"),
-        size: bytes.len() as u64,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    });
-    gpu.queue.write_buffer(&buffer, 0, bytes);
-    buffer
-}
-
 /// Uma entrada de ligação que é uma FATIA de um buffer — `(binding, buffer, offset, size)`.
 pub(crate) type Fatia<'a> = (u32, &'a wgpu::Buffer, u64, Option<std::num::NonZeroU64>);
 
 #[derive(Default)]
 pub(crate) struct Ligacoes {
     uniformes: BTreeMap<Vec<u8>, (wgpu::Buffer, u64)>,
-    /// As tabelas (LUT) por CONTEÚDO — só com a variante `luts_por_conteudo` (doc 120 §8.3.2).
-    tabelas: BTreeMap<Vec<u8>, (wgpu::Buffer, u64)>,
     grupos: BTreeMap<ChaveGrupo, (wgpu::BindGroup, u64)>,
     viragem: u64,
     /// Grupos criados e reaproveitados desde a última viragem (o relógio de fases).
     pub(crate) criados_reaproveitados: (u32, u32),
-    /// Dos criados: com um buffer que nenhuma ligação desta viragem nem da anterior tinha × só com
-    /// buffers já vistos noutra combinação (a causa da falta, doc 120 §8.3.2). Só com
-    /// [`Self::diagnostica`]: guardar cada buffer ligado custa µs, fora da régua.
-    pub(crate) faltas_por_buffer_novo_e_por_combinacao: (u32, u32),
-    pub(crate) diagnostica: bool,
-    vistos: (
-        std::collections::BTreeSet<wgpu::Buffer>,
-        std::collections::BTreeSet<wgpu::Buffer>,
-    ),
 }
 
 impl Ligacoes {
@@ -115,29 +92,12 @@ impl Ligacoes {
                 .map(|(i, b, o, t)| (*i, (*b).clone(), *o, *t))
                 .collect(),
         };
-        let mut novo = false;
-        if self.diagnostica {
-            let (antes, agora_vistos) = &mut self.vistos;
-            novo = chave
-                .entradas
-                .iter()
-                .any(|(_, b, _, _)| !antes.contains(b) && !agora_vistos.contains(b));
-            agora_vistos.extend(chave.entradas.iter().map(|(_, b, _, _)| b.clone()));
-        }
         if let Some((g, uso)) = self.grupos.get_mut(&chave) {
             *uso = agora;
             self.criados_reaproveitados.1 += 1;
             return g.clone();
         }
         self.criados_reaproveitados.0 += 1;
-        if self.diagnostica {
-            let f = &mut self.faltas_por_buffer_novo_e_por_combinacao;
-            if novo {
-                f.0 += 1;
-            } else {
-                f.1 += 1;
-            }
-        }
         let entries: Vec<wgpu::BindGroupEntry> = entradas
             .iter()
             .map(|(i, b, o, t)| wgpu::BindGroupEntry {
@@ -170,34 +130,16 @@ impl Ligacoes {
     pub(crate) fn vira(&mut self) {
         self.viragem += 1;
         self.criados_reaproveitados = (0, 0);
-        self.faltas_por_buffer_novo_e_por_combinacao = (0, 0);
-        self.vistos.0 = std::mem::take(&mut self.vistos.1);
         let agora = self.viragem;
         self.uniformes
             .retain(|_, (_, uso)| agora - *uso <= IDADE_MAX);
-        self.tabelas.retain(|_, (_, uso)| agora - *uso <= IDADE_MAX);
         self.grupos.retain(|_, (_, uso)| agora - *uso <= IDADE_MAX);
-    }
-
-    /// A tabela (LUT) só de leitura com estes bytes — o mesmo buffer enquanto o conteúdo for o
-    /// mesmo, como o [`Self::uniforme`]. O `bool` diz se a criou agora (o chamador conta-a).
-    pub(crate) fn tabela(&mut self, gpu: &GpuContext, bytes: &[u8]) -> (wgpu::Buffer, bool) {
-        let agora = self.viragem;
-        if let Some((b, uso)) = self.tabelas.get_mut(bytes) {
-            *uso = agora;
-            return (b.clone(), false);
-        }
-        let b = cria_tabela(gpu, bytes);
-        self.tabelas.insert(bytes.to_vec(), (b.clone(), agora));
-        (b, true)
     }
 
     /// Esquece tudo — a variante «a frio» da sonda intercalada (o custo antigo, pelo MESMO código).
     pub(crate) fn esquece(&mut self) {
         self.uniformes.clear();
-        self.tabelas.clear();
         self.grupos.clear();
-        self.vistos = Default::default();
     }
 
     /// `(uniformes, ligações)` vivos — a régua de que a memória não cresce sem tecto.

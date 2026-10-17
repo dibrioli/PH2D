@@ -329,10 +329,10 @@ impl GpuCook {
     /// identity ramp there, matching the CPU `eval`'s passthrough.
     ///
     /// No encoder: a LUT is CPU-computed data written straight to a buffer, not a
-    /// compute pass. With the `luts_por_conteudo` variant the buffer is reused by
-    /// content, like a uniform (doc 120 §8.3.2).
+    /// compute pass. Immutable `&self` (unlike the grid, which owns a pipeline) so
+    /// the caller can build it before its `&mut self` encode loop.
     pub(crate) fn build_luts(
-        &mut self,
+        &self,
         gpu: &GpuContext,
         specs: &[LutSpec],
         graph: &Graph,
@@ -352,12 +352,13 @@ impl GpuCook {
                 let mut table = vec![0.0f32; n];
                 (spec.fill)(text, &mut table);
                 let bytes: Vec<u8> = table.iter().flat_map(|v| v.to_le_bytes()).collect();
-                if !self.variantes.luts_por_conteudo {
-                    self.fases.luts_criadas += 1;
-                    return crate::ligacoes::cria_tabela(gpu, &bytes);
-                }
-                let (buffer, criada) = self.ligacoes.tabela(gpu, &bytes);
-                self.fases.luts_criadas += u32::from(criada);
+                let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("ph2d-gpu-cook lut"),
+                    size: bytes.len() as u64,
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                gpu.queue.write_buffer(&buffer, 0, &bytes);
                 buffer
             })
             .collect()

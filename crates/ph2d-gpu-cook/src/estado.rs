@@ -217,6 +217,6 @@ pub struct GpuCook {
     pub(crate) boundary_reuses: u64,
     /// O relógio do último cozimento ([`crate::FasesDoCozimento`]).
     pub(crate) fases: crate::FasesDoCozimento,
-    /// As variantes do custo fixo que a sonda liga ([`crate::VariantesDoCozimento`]).
-    pub(crate) variantes: crate::VariantesDoCozimento,
+    /// O codificador de antes: um passe de computação por despacho ([`crate::gravador`]).
+    pub(crate) passe_por_despacho: bool,
 }

@@ -59,7 +59,7 @@ pub(crate) use encode::create_pipeline;
 pub mod error;
 mod estado;
 mod fases;
-pub use fases::{FasesDoCozimento, VariantesDoCozimento};
+pub use fases::FasesDoCozimento;
 mod gravador;
 pub mod field_name;
 mod formas;
@@ -219,7 +219,7 @@ impl GpuCook {
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("ph2d-gpu-cook chain"),
                 }),
-            self.variantes.um_passe,
+            !self.passe_por_despacho,
         );
 
         // Every claimed node's output, threaded in topological order. The plan
@@ -668,10 +668,6 @@ impl GpuCook {
         self.fases.submit = t.elapsed();
         (self.fases.grupos_criados, self.fases.grupos_reaproveitados) =
             self.ligacoes.criados_reaproveitados;
-        (
-            self.fases.faltas_por_buffer_novo,
-            self.fases.faltas_por_combinacao,
-        ) = self.ligacoes.faltas_por_buffer_novo_e_por_combinacao;
         if let Some(p) = &self.stream_op_pipes {
             (
                 self.fases.grupos_de_stream_op_criados,

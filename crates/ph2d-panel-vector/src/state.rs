@@ -129,6 +129,12 @@ mod ui_states_state;
 pub(crate) use ui_states_state::ui_states_state;
 pub use ui_states_state::{UiStatesState, set_ui_states_state};
 
+/// ⭐⭐ **QUE ABA do painel está aberta** (F17) — Drawing ou Interface; uma escrita, três cliques.
+#[path = "state_aba.rs"]
+mod aba_state;
+pub use aba_state::{Aba, aba};
+pub(crate) use aba_state::{seleccao_tem_interface, set_aba};
+
 /// ⭐ **QUAL POPOVER ESTÁ ABERTO neste quadro** — irmão pelo teto de 600 LOC, e o corte é por
 /// ASSUNTO: os quatro slots respondem a **uma** pergunta (*que chip guardou o rect para o passe
 /// diferido?*), e nenhuma outra parte deste ficheiro fala de popovers.

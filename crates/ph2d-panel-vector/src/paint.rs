@@ -7,7 +7,7 @@
 //!   shell hides the real Inspector while the `vector` tool is active).
 //! - Chrome publish (`set_panel_rect`) so dispatch can hit-test it.
 //! - Canonical chrome: dark-glass surface + corner dots, drag / resize dock
-//!   handles, [`paint_panel_title`], an X close button, then the body:
+//!   handles, the title TABS (`paint_tabs`, F17), an X close button, then the body:
 //!   a Width slider+chip row, a Stroke colour-swatch row, and a Fill
 //!   colour-swatch row with a "None" button. Every painter is the SHARED
 //!   source-of-truth from `panel_chrome` / `widget`.
@@ -22,8 +22,8 @@ use crate::state::{self, VectorPanelState, set_last_content_h, set_last_visible_
 use crate::{VectorPanel, ids};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_surface, paint_panel_title, panel_close_button_rect,
+    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_close_button, paint_panel_surface,
+    panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{SCROLLBAR_W, VECTOR_SCROLLBAR_ID, number_input_min_w_px};
 use ph2d_editor_core::zones::Rect;
@@ -336,14 +336,14 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         let _hit_index = ctx.host.hit_index_mut();
     }
 
-    // Canonical panel title — reserve room on the right for the X close button.
-    let title_size = paint_panel_title(
-        rect,
-        VectorPanel::TITLE.tr(),
-        PANEL_HEADER_CLOSE_RESERVE,
-        ctx.scene,
-        ctx.text_system,
-        theme,
+    // ⭐ F17: o título são as ABAS «Drawing / Interface» (`paint_tabs`), pintadas DEPOIS do corpo
+    // para ganharem o clique; a banda é a do título de sempre, logo o corpo começa no mesmo `y`.
+    let title_size = TypeToken::Lg.px();
+    // ⭐ A ordem gravada antes da ordem do Figma esquece-se UMA vez (época, `28_plano_F17…` §2).
+    ctx.host.store_mut().adopt_natural_order(
+        ph2d_editor_core::ids::VECTOR_PANEL,
+        crate::paint_body_plan::VECTOR_ORDER_EPOCH,
+        crate::ids::VECTOR_SECTIONS,
     );
 
     // Canonical X close button (painted on the chrome).
@@ -428,6 +428,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         ph2d_editor_core::ids::VECTOR_CLOSE,
         panel_close_button_rect(rect),
     );
+    crate::paint_tabs::paint(ctx, rect, theme);
 
     // ② F16: o painel do traço e as listas que a barra de controle abre — ANTES dos popovers
     // diferidos abaixo, porque o das pontas pode nascer DENTRO do painel do traço.

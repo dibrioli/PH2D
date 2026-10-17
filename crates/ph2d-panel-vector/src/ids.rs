@@ -52,3 +52,5 @@ mod vector_bar;
 pub use vector_bar::*;
 mod vector_width;
 pub use vector_width::*;
+mod vector_aba;
+pub use vector_aba::*;

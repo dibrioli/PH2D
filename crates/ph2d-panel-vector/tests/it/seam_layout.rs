@@ -73,7 +73,7 @@ fn clear() {
 
 /// Clica de verdade no widget `id` e exige que o Click chegue ao barramento.
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -107,7 +107,7 @@ fn painted(id: ph2d_a11y::NodeId) -> bool {
 
 /// O retângulo em que o painel pintou `id`.
 fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
 }
@@ -245,7 +245,7 @@ fn the_four_direction_chips_are_reachable_and_reach_the_bus() {
 /// via o número mudar, e o commit caía no catch-all"*. Um gate que medisse o clique aqui ficaria
 /// **VERDE sobre exactamente esse defeito**.
 fn commit_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
         .unwrap_or_else(|| panic!("{what} nao foi PINTADO com area clicavel"));
@@ -387,7 +387,7 @@ fn the_padding_mode_swaps_which_fields_are_painted() {
     assert!(!painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_T));
 
     // O chip Each é panel-local: ele muda o que é pintado sem passar pela shell.
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_LAYOUT_PAD_EACH_MODE)
@@ -418,7 +418,7 @@ fn the_padding_mode_swaps_which_fields_are_painted() {
     );
 
     // Volta ao *All*, senão o modo vaza para os outros gates deste binário (é thread-local).
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_LAYOUT_PAD_ALL_MODE)
         .expect("o chip All e' pintado");

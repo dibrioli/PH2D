@@ -701,7 +701,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // ⛔ **−2 +1 (15/10, `line/UIUX`): o ARRANGE e o ALINHAR saíram para a ④ (`e4b067baab`) e o
         // SNAP voltou ao painel (F16, `c35be32de1`)** — a linha não reconferiu esta conta nos dois
         // commits; o `33` foi CONTADO (o gate imprimiu `left: 33`).
-        33,
+        // +1 (F17, 16/10): ADVANCED — o cabeçalho do grupo que dobra as sete secções raras
+        // juntas. ⚠️ O `34` foi CONTADO (o gate imprimiu `left: 34`).
+        34,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

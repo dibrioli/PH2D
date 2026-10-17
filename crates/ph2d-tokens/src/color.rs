@@ -450,6 +450,12 @@ color_tokens! {
     /// the very cards it is selecting, and an opaque fill would hide them.
     GraphMarquee => "graph-marquee",
 
+    /// `stage-tint-ui` — a lavagem LEVE da área de desenho na vista de INTERFACE do vetor (F17,
+    /// dono 16/10): o 2.º indicador do modo (NN/g), o 1.º é o interruptor aceso na coluna ①.
+    /// Translúcida POR CONTRATO: a arte continua a ler-se por baixo; o tom é o `info`, que nenhum
+    /// gizmo nem a seleção usa.
+    StageTintUi => "stage-tint-ui",
+
     /// `graph-inert` — translucent scrim laid over a node the cook never pulled: a card
     /// nothing downstream consumes. Translucent BY CONTRACT (it is a veil over a card that
     /// must stay legible and grabbable, not a repaint of it), and the PANEL's own

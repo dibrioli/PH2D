@@ -759,23 +759,30 @@ fn every_bar_button_reaches_the_panel_door() {
     );
 }
 
-/// ⭐ Contêiner, Interação e Avançado nascem RECOLHIDOS — e a escolha do artista manda.
+/// ⭐ O grupo **Advanced** e as duas secções de interface grandes (States, Morph States) nascem
+/// RECOLHIDOS; as outras de interface ABREM, porque agora vivem na aba delas (F17, dono 16/10 —
+/// o artista foi lá para elas; Figma: «Constraints abertas por omissão»).
 #[test]
-fn the_container_interaction_and_advanced_start_folded() {
+fn the_advanced_group_and_the_two_big_interface_sections_start_folded() {
     let host = ph2d_ui_testkit::MockPanelHost::with_panel::<VectorPanel>();
     for id in [
-        ph2d_tool_vector::ids::VECTOR_SECTION_FRAME,
+        p::VECTOR_SECTION_ADVANCED,
         p::VECTOR_SECTION_STATES,
+        p::VECTOR_SECTION_MORPH_STATES,
         ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
+        ph2d_tool_vector::ids::VECTOR_SECTION_SNAP,
     ] {
         assert!(host.store().is_collapsed(id), "{id:?} nasce aberto");
     }
-    assert!(
-        !host
-            .store()
-            .is_collapsed(ph2d_tool_vector::ids::VECTOR_SECTION_FILL),
-        "o Fill nasce à vista"
-    );
+    for id in [
+        ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
+        ph2d_tool_vector::ids::VECTOR_SECTION_FRAME,
+        p::VECTOR_SECTION_LAYOUT,
+        p::VECTOR_SECTION_COMPONENT,
+        p::VECTOR_SECTION_WIDGET,
+    ] {
+        assert!(!host.store().is_collapsed(id), "{id:?} nasce recolhido");
+    }
 }
 
 /// O painel já não pinta o gesto: nenhuma das secções que saíram está na lista dele.

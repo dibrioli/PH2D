@@ -59,7 +59,7 @@ fn arm(spring: Option<(f32, f32)>) {
 /// ⭐ **PRESENÇA e AUSÊNCIA: uma família de linhas de cada vez.**
 #[test]
 fn the_spring_rows_replace_the_duration_and_curve_rows() {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut st = VectorPanelState;
 
     arm(None);
@@ -131,7 +131,7 @@ fn the_spring_rows_replace_the_duration_and_curve_rows() {
 #[test]
 fn the_spring_checkbox_reaches_the_bus() {
     arm(None);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(
@@ -168,7 +168,7 @@ fn both_spring_knobs_reach_the_bus() {
         ph2d_panel_vector::ids::VECTOR_STATE_DAMPING,
     ] {
         arm(Some((12.0, 1.0)));
-        let mut host = crate::host_aberto();
+        let mut host = crate::host_na_interface();
         let mut st = VectorPanelState;
         host.set_slider_value(id, 0.75);
         host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::ValueChanged(id));

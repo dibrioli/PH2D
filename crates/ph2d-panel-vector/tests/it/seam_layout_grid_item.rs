@@ -76,7 +76,7 @@ const ROWS: [(&str, ph2d_a11y::NodeId); 2] = [
 #[test]
 fn a_child_of_a_flex_frame_still_gets_grow_and_shrink() {
     publish(false);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut st = VectorPanelState;
     for (name, id) in ROWS {
         assert!(
@@ -95,7 +95,7 @@ fn a_child_of_a_flex_frame_still_gets_grow_and_shrink() {
 #[test]
 fn a_child_of_a_grid_frame_is_not_offered_grow_or_shrink() {
     publish(true);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut st = VectorPanelState;
     for (name, id) in ROWS {
         assert!(

@@ -77,7 +77,7 @@ fn with_all(recorded: [bool; 4], preview: Option<bool>, move_all: Option<bool>) 
 
 fn rect_under(st: UiStatesState, id: ph2d_a11y::NodeId) -> Option<Rect> {
     state::set_ui_states_state(Some(st));
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
 }
@@ -85,7 +85,7 @@ fn rect_under(st: UiStatesState, id: ph2d_a11y::NodeId) -> Option<Rect> {
 /// Clica de verdade no widget `id` e exige que o Click chegue ao barramento.
 fn click_reaches_bus(st: UiStatesState, id: ph2d_a11y::NodeId, what: &str) {
     state::set_ui_states_state(Some(st));
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -167,7 +167,7 @@ fn an_empty_role_offers_only_the_recorder() {
 #[test]
 fn no_host_no_section() {
     clear();
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     for i in 0..ids::MAX_STATE_ROLES {
         assert!(
@@ -190,7 +190,7 @@ fn no_host_no_section() {
 fn the_duration_slider_is_alive_and_reaches_the_bus() {
     clear();
     state::set_ui_states_state(Some(with([true, false, false, false])));
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(

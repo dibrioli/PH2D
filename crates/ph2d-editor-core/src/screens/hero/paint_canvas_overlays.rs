@@ -13,6 +13,14 @@ pub(super) fn paint_canvas_overlays(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
 ) {
+    // ⭐ F17: o TINTO do palco que o módulo na mão pede (a vista de interface do vetor) — por cima
+    // da arte e por baixo de tudo o que se pinta a seguir (réguas, gizmos, barras).
+    if let Some(token) = hero.store.tool_bars().and_then(|b| b.stage_tint) {
+        scene.fill_rect(
+            crate::paint::rect_to_vello(layout.draw_area),
+            crate::paint::resolve(token, hero.theme),
+        );
+    }
     // **As RÉGUAS** (plano 25 §9, a W6.2), por cima da grade e por baixo de tudo o mais: elas
     // são chrome de borda, e a arte passa por baixo delas como passa por baixo do Inspector.
     // O zero é a origem da GRADE — um número, dois consumidores.

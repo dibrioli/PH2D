@@ -92,6 +92,10 @@ pub struct ToolBars {
     pub hint: String,
     /// ⑤ as leituras do rodapé (coordenadas, encaixe), já formatadas.
     pub readout: Vec<String>,
+    /// ⭐ **O tinto do palco** — a lavagem translúcida que o módulo pede sobre a área de desenho,
+    /// por cima da arte e por baixo das réguas e gizmos (F17: a vista de interface do vetor). Vem
+    /// com as barras porque só vale com a ferramenta do módulo na mão. `None` = palco limpo.
+    pub stage_tint: Option<ColorToken>,
 }
 
 impl ToolBars {

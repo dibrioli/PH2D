@@ -106,13 +106,20 @@ fn every_painted_column_and_action_button_answers_a_real_pointer() {
                 b.label
             );
             let _ = hero.bus.drain().count();
+            let aba = ph2d_panel_vector::state::aba();
             for e in ev {
                 hero.apply_event(e);
             }
+            // F17: o interruptor da vista de interface é do PAINEL — o efeito é a aba trocar.
+            let trocou = ph2d_panel_vector::state::aba() != aba;
             let chegou = hero.bus.drain().any(
                 |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if i == b.id),
             ) || hero.store.picker_target().is_some()
-                || b.id == ph2d_editor_core::ids::SELECTION_ACTIONS_PIN;
+                || b.id == ph2d_editor_core::ids::SELECTION_ACTIONS_PIN
+                || (b.id == ph2d_panel_vector::ids::VECTOR_VIEW_INTERFACE && trocou);
+            if trocou {
+                hero.apply_event(WidgetEvent::Click(b.id));
+            }
             assert!(
                 chegou,
                 "{mode:?}: «{}» clicou e não chegou à ferramenta",

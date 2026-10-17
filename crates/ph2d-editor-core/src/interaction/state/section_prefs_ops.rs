@@ -33,6 +33,9 @@ pub struct SectionPrefs {
     /// *Save Custom Theme* (2026-09-30). `None` = nunca gravou; `Some(vazio)` = gravou «todas no
     /// tema do app», que é uma combinação legítima. Ver [`tema_custom`].
     custom: Option<BTreeMap<NodeId, Theme>>,
+    /// ⭐ **A ÉPOCA da ordem natural de cada painel** que esta ordem gravada já conhece (F17,
+    /// 16/10) — ver [`WidgetStore::adopt_natural_order`]. Ausente = `0`.
+    epochs: BTreeMap<NodeId, u32>,
     /// Mudou algo que se GRAVA (tema ou ordem) desde a última vez que a shell perguntou.
     dirty: bool,
 }
@@ -91,6 +94,21 @@ impl WidgetStore {
             self.section_prefs.order = order;
             self.section_prefs.dirty = true;
         }
+    }
+
+    /// ⭐⭐ **Esquece UMA vez as posições gravadas das `sections` de `panel`** quando a época que a
+    /// ordem gravada conhece é menor que `epoch` — o painel mudou o DESENHO da ordem natural (F17: a
+    /// ordem do Figma, dono 16/10) e a lista antiga mandaria sobre ela para sempre
+    /// ([`ordena_seccoes`] põe a gravada à frente). Depois disto o arrasto volta a gravar e a mandar.
+    /// Idempotente: chamada em todo quadro, só age na primeira.
+    pub fn adopt_natural_order(&mut self, panel: NodeId, epoch: u32, sections: &[NodeId]) {
+        let p = &mut self.section_prefs;
+        if p.epochs.get(&panel).copied().unwrap_or(0) >= epoch {
+            return;
+        }
+        p.order.retain(|id| !sections.contains(id));
+        p.epochs.insert(panel, epoch);
+        p.dirty = true;
     }
 
     /// Instala o que a shell LEU do disco, sem marcar nada para gravar.
@@ -219,6 +237,9 @@ pub fn section_prefs_text(store: &WidgetStore) -> String {
     for (id, t) in store.section_themes() {
         let _ = writeln!(s, "theme.{}={}", id.0, t.id());
     }
+    for (id, e) in &store.section_prefs.epochs {
+        let _ = writeln!(s, "epoch.{}={e}", id.0);
+    }
     tema_custom::escreve(store, &mut s);
     s
 }
@@ -228,6 +249,7 @@ pub fn section_prefs_text(store: &WidgetStore) -> String {
 pub fn restore_section_prefs_text(store: &mut WidgetStore, text: &str) {
     let mut order = Vec::new();
     let mut themes = BTreeMap::new();
+    let mut epochs = BTreeMap::new();
     let mut custom = tema_custom::Leitura::default();
     for line in text.lines() {
         let Some((k, v)) = line.trim().split_once('=') else {
@@ -244,11 +266,16 @@ pub fn restore_section_prefs_text(store: &mut WidgetStore, text: &str) {
             && let (Ok(id), Some(t)) = (id.parse(), Theme::from_id(v.trim()))
         {
             themes.insert(NodeId(id), t);
+        } else if let Some(id) = k.strip_prefix("epoch.")
+            && let (Ok(id), Ok(e)) = (id.parse(), v.trim().parse())
+        {
+            epochs.insert(NodeId(id), e);
         } else {
             custom.linha(k, v);
         }
     }
     store.restore_section_prefs(order, themes);
+    store.section_prefs.epochs = epochs;
     store.section_prefs.custom = custom.fim();
 }
 
@@ -372,6 +399,29 @@ mod tests {
             !b.take_section_prefs_dirty(),
             "ler do disco nao pede gravacao"
         );
+    }
+
+    /// ⭐⭐ **A época esquece a ordem gravada UMA vez, e só a do painel que mudou** (F17). Depois
+    /// dela o arrasto do artista volta a mandar — também depois de gravar e reler o ficheiro.
+    /// *Mutações: sem o teste da época ⇒ o 2.º arrasto é apagado; sem gravar a época ⇒ a releitura
+    /// apaga-o.*
+    #[test]
+    fn a_epoca_esquece_a_ordem_gravada_uma_vez() {
+        const PAINEL: NodeId = NodeId(100);
+        let mut s = WidgetStore::with_capacity(4);
+        s.restore_section_prefs(vec![C, A, B, D], BTreeMap::new());
+        s.adopt_natural_order(PAINEL, 1, &[A, C]);
+        assert_eq!(s.section_order(), &[B, D], "só as secções do painel saem");
+        assert!(s.take_section_prefs_dirty(), "esquecer pede gravação");
+        s.set_section_order(vec![C, A, B, D]);
+        s.adopt_natural_order(PAINEL, 1, &[A, C]);
+        assert_eq!(s.section_order(), &[C, A, B, D], "o arrasto depois da época manda");
+        let mut r = WidgetStore::with_capacity(4);
+        restore_section_prefs_text(&mut r, &section_prefs_text(&s));
+        r.adopt_natural_order(PAINEL, 1, &[A, C]);
+        assert_eq!(r.section_order(), &[C, A, B, D], "a época viaja no ficheiro");
+        r.adopt_natural_order(PAINEL, 2, &[A, C]);
+        assert_eq!(r.section_order(), &[B, D], "uma época nova esquece outra vez");
     }
 
     /// O arrasto só vira activo depois do limiar.

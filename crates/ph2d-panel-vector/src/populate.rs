@@ -246,6 +246,11 @@ pub fn populate(store: &mut WidgetStore) {
     for id in crate::paint_body_plan::COLLAPSED_BY_DEFAULT {
         store.set_collapsed_if_unchosen(id, true);
     }
+    // ⭐ F17: as duas abas do título e o interruptor da coluna ① (a mesma escrita, `paint_tabs`).
+    for (id, _, _) in crate::paint_tabs::ABAS {
+        button(store, id);
+    }
+    button(store, crate::ids::VECTOR_VIEW_INTERFACE);
     // ⭐ As duas amostras abrem o seletor partilhado num Down — marcadas AQUI e não no paint do
     // painel, porque a coluna ① e a fila ② (D10) pintam-nas com o painel fechado. Uma pertença a
     // conjunto, pelo tempo de vida do build.

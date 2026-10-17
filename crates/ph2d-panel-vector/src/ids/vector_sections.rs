@@ -87,4 +87,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     // ⭐ OS ESTADOS do MORPH (plano 32 W7): a máquina que decide em que forma o objecto está.
     // ⛔ Seção PRÓPRIA, e não uma sub-lista da de cima — ver o módulo `vector_morph`.
     super::VECTOR_SECTION_MORPH_STATES,
+    // ▸ O GRUPO Advanced (F17, dono 16/10): o cabeçalho que dobra as sete secções raras juntas.
+    super::VECTOR_SECTION_ADVANCED,
 ];

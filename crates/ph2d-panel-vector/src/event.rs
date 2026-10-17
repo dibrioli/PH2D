@@ -364,6 +364,7 @@ pub(crate) fn apply_event(
         // 200 LOC por função.
         other => {
             crate::paint_markers::apply_event(host, other)
+                || crate::paint_tabs::apply_event(host, other)
                 || crate::paint_dashes::apply_event(host, other)
                 || crate::paint_connector::apply_event(host, other)
                 || crate::paint_layout::apply_event(host, other)

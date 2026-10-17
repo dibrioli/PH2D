@@ -73,6 +73,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bar.swap" => "Swap fill and stroke",
         "panel.vector.bar.default" => "Default colours",
         "panel.vector.bar.focus" => "Edit the other colour",
+        // ① F17 (dono 16/10): o interruptor da vista de interface, no fim da coluna.
+        "panel.vector.bar.interface" => "Interface view \u{00b7} the panel shows the UI settings",
+        // As ABAS do título do painel (F17) e o grupo recolhido do desenho raro.
+        "panel.vector.tab.drawing" => "Drawing",
+        "panel.vector.tab.interface" => "Interface",
+        "panel.vector.section.advanced" => "Advanced",
         "panel.vector.bar.symmetry" => "Symmetry",
         // ② a BARRA DE CONTROLE (F16, a do Illustrator): o nome, o traço e a opacidade.
         "panel.vector.bar.name.none" => "No selection",

@@ -320,6 +320,16 @@ fn column(snap: &VectorStyleSnapshot, focus_stroke: bool) -> Vec<Vec<BarButton>>
             BarFamily::Neutral,
         ),
     ]);
+    // ⭐ F17 (dono 16/10): o interruptor da vista de INTERFACE — no FIM, num grupo só dele e longe
+    // das ferramentas (o seletor de modo do Figma): troca a aba do painel e tinge o palco, e o
+    // clique no canvas continua o da ferramenta acesa.
+    groups.push(vec![button(
+        crate::ids::VECTOR_VIEW_INTERFACE,
+        IconId::Prefab,
+        named("panel.vector.bar.interface", None),
+        crate::state::aba() == crate::state::Aba::Interface,
+        BarFamily::Neutral,
+    )]);
     groups
 }
 
@@ -394,6 +404,9 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
         selection,
         hint: tr(hint_key_for(&snap)).to_owned(),
         readout,
+        // O 2.º indicador da vista de interface (NN/g): o 1.º é o interruptor aceso.
+        stage_tint: (crate::state::aba() == crate::state::Aba::Interface)
+            .then_some(ph2d_tokens::ColorToken::StageTintUi),
     }
 }
 

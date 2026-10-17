@@ -106,6 +106,9 @@ fn a_section_header_never_promises_a_body_that_is_not_there() {
 #[test]
 fn the_blend_and_morph_survive_an_empty_selection_because_picks_are_a_second_selection() {
     let mut hero = hero_with_vector_panel();
+    // F17: as duas vivem no grupo ▸ Advanced, que nasce dobrado — a pergunta aqui é a SELEÇÃO.
+    hero.store
+        .set_collapsed(ph2d_panel_vector::ids::VECTOR_SECTION_ADVANCED, false);
     ph2d_panel_vector::set_current_selection_count(0);
     paint_in(&mut hero, snap_of(DrawMode::PickBlend));
     assert!(

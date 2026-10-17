@@ -124,7 +124,10 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
             assert!(model.is_item(id), "{mode:?}: «{label}» fora do modelo");
             let _ = hero.bus.drain().count();
             let swatch = global_palette_bars::is_swatch(&hero.store, id);
+            let aba = ph2d_panel_vector::state::aba();
             global_palette::route_global_pick(&mut hero, id);
+            // F17: o interruptor da vista de interface é do PAINEL — o efeito é a aba trocar.
+            let trocou = ph2d_panel_vector::state::aba() != aba;
             let chegou = if swatch {
                 hero.store.picker_target() == Some(id)
             } else if LISTAS.contains(&id) {
@@ -144,7 +147,11 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
                     _ => false,
                 }) || hero.store.picker_target().is_some()
                     || id == ids::SELECTION_ACTIONS_PIN
+                    || (id == ph2d_panel_vector::ids::VECTOR_VIEW_INTERFACE && trocou)
             };
+            if trocou {
+                global_palette::route_global_pick(&mut hero, id);
+            }
             assert!(
                 chegou,
                 "{mode:?}: «{label}» escolhido na paleta não chegou ao painel"

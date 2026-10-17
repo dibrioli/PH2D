@@ -354,7 +354,7 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
     state::set_frame_clip(None);
     state::set_frame_present(false);
     state::set_layout_flow(None);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut st = VectorPanelState;
     for id in [ids::VECTOR_TOKEN_GAP_MAIN, ids::VECTOR_TOKEN_GAP_CROSS] {
         assert!(
@@ -385,7 +385,7 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
             justify: ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_START,
             columns: 2.0,
         }));
-        let mut host = crate::host_aberto();
+        let mut host = crate::host_na_interface();
         let mut st = VectorPanelState;
         assert!(
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TOKEN_GAP_MAIN)
@@ -467,7 +467,14 @@ fn every_token_slot_is_alive_and_lists_its_own_table() {
     }));
 
     for slot in ids::TOKEN_SLOTS {
+        // ⭐ F17: os chips dos VÃOS vivem na Layout (aba Interface); os outros no desenho.
         let mut host = crate::host_aberto();
+        let aba = if [ids::VECTOR_TOKEN_GAP_MAIN, ids::VECTOR_TOKEN_GAP_CROSS].contains(&slot.chip) {
+            ids::VECTOR_TAB_INTERFACE
+        } else {
+            ids::VECTOR_TAB_DRAWING
+        };
+        crate::abre_aba(&mut host, aba);
         let mut st = VectorPanelState;
         press(
             &mut host,

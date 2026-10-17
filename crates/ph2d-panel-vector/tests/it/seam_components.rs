@@ -66,7 +66,7 @@ fn instance_with_overrides() -> ComponentState {
 
 fn rect_under(st: ComponentState, id: ph2d_a11y::NodeId) -> Option<Rect> {
     state::set_component_state(Some(st));
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
 }
@@ -74,7 +74,7 @@ fn rect_under(st: ComponentState, id: ph2d_a11y::NodeId) -> Option<Rect> {
 /// Clica de verdade no widget `id` e exige que o Click chegue ao barramento.
 fn click_reaches_bus(st: ComponentState, id: ph2d_a11y::NodeId, what: &str) {
     state::set_component_state(Some(st));
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -223,7 +223,7 @@ fn update_main_and_swap_are_reachable_and_reach_the_bus() {
 #[test]
 fn the_section_is_not_painted_without_a_selection() {
     clear();
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     for id in [
         ids::VECTOR_SECTION_COMPONENT,

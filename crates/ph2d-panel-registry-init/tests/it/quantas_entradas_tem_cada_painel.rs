@@ -2139,7 +2139,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    `9 × ROW_H_PX (25) = 225` exactos. ⚠️ Recolher não se aplica; quem mudar isto mude a lista.
     // ⬆️ `3 091 → 3 116` em 2026-10-11 (UIUX F9), pela MESMA razão: uma fileira nova, o apelido
     //    `shape-handle` (as alças de parâmetro das formas): `1 × ROW_H_PX (25)` exactos.
-    ("tokens", 3116.0),
+    // ⬆️ `3 116 → 3 141` em 2026-10-16 (UIUX F17), pela MESMA razão: a fileira do `stage-tint-ui`
+    //    (o tinto do palco na vista de interface do vetor): `1 × ROW_H_PX (25)` exactos.
+    ("tokens", 3141.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.
@@ -2153,7 +2155,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬇️ `916 → 887` em 2026-10-15 (F16c, o tracejado em pares): os dois sliders Dash/Gap viraram UMA
     //    linha «Dash / Gap 1», e as dos pares 2–3 só aparecem quando o par anterior traça. Com as três
     //    sempre à vista eram `937` (o gate reprovou-as). Medido pelo gate.
-    ("vector", 887.0),
+    // ⬇️ `887 → 612` em 2026-10-16 (F17, as abas Drawing/Interface e a ordem do Figma): o Blend e o
+    //    Morph (os dois raros que pintam sem seleção) entraram no grupo ▸ Advanced, que nasce
+    //    recolhido — só o cabeçalho dele fica à vista. A abertura mede-se na aba Drawing (a de
+    //    nascença). Medido pelo gate.
+    ("vector", 612.0),
     // ⬆️ `1 281 → 1 317` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (era
     //    um risco entre elas): cada fronteira à vista paga o vão entre cartões em vez do separador,
     //    e o último cartão fecha-se com a folga dele.

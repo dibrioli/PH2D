@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod architecture_sections_read_the_document;
+mod as_abas_do_titulo; // F17: Drawing / Interface, o interruptor da ① e o grupo Advanced
 mod as_notas_vivem_nas_seccoes; // notas em qualquer painel (2026-10-01)
 mod as_seccoes_arrastam_e_tem_tema;
 mod bool_registration_parity;
@@ -62,4 +63,22 @@ pub fn host_aberto() -> ph2d_ui_testkit::MockPanelHost {
     let mut h = ph2d_ui_testkit::MockPanelHost::with_panel::<ph2d_panel_vector::VectorPanel>();
     h.open_all_sections();
     h
+}
+
+/// ⭐ **O mesmo host, com a aba «Interface» aberta pelo CLIQUE na aba** (F17): as secções de UI
+/// (componente, moldura, layout, âncoras, pele, estados) só pintam lá. ⚠️ A aba é estado da
+/// thread do teste: os hosts seguintes do mesmo teste continuam na Interface.
+pub fn host_na_interface() -> ph2d_ui_testkit::MockPanelHost {
+    let mut h = host_aberto();
+    abre_aba(&mut h, ph2d_panel_vector::ids::VECTOR_TAB_INTERFACE);
+    h
+}
+
+/// Abre a aba `tab` pelo mesmo evento que o ponteiro produz sobre ela.
+pub fn abre_aba(h: &mut ph2d_ui_testkit::MockPanelHost, tab: ph2d_a11y::NodeId) {
+    let mut st = ph2d_panel_vector::state::VectorPanelState;
+    h.apply_panel_event::<ph2d_panel_vector::VectorPanel>(
+        &mut st,
+        ph2d_editor_core::interaction::WidgetEvent::Click(tab),
+    );
 }

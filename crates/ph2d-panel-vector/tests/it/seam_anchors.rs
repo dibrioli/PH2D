@@ -49,14 +49,14 @@ fn clear() {
 }
 
 fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
 }
 
 /// Clica de verdade no widget `id` e exige que o Click chegue ao barramento.
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)

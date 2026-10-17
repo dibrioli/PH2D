@@ -42,7 +42,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 
 /// Clica de verdade no widget `id` e exige que o Click chegue ao barramento.
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -122,7 +122,7 @@ fn the_show_as_panel_switch_is_reachable_and_reaches_the_bus() {
 fn the_switch_shows_whether_the_panel_is_open() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     for open in [false, true] {
         state::set_frame_panel_open(open);
@@ -149,7 +149,7 @@ fn the_switch_shows_whether_the_panel_is_open() {
 fn the_frame_section_is_absent_without_a_frame() {
     state::set_frame_clip(None);
     state::set_frame_present(false);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut panel_state = VectorPanelState;
     for id in [
         ph2d_panel_vector::ids::VECTOR_FRAME_CLIP_OFF,

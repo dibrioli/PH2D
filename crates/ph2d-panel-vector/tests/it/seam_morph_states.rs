@@ -115,7 +115,7 @@ fn poses() -> UiStatesState {
 }
 
 fn painted(id: ph2d_a11y::NodeId) -> Option<Rect> {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut ps = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut ps, VIEWPORT, id)
 }
@@ -168,7 +168,7 @@ fn ui_poses_never_make_the_morph_states_section_appear() {
 fn the_make_button_is_alive_and_reaches_the_bus() {
     clear();
     set_morph_states_state(Some(can_make(3)));
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut ps = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::VECTOR_MORPH_STATES_MAKE)
@@ -234,7 +234,7 @@ fn the_key_button_of_every_row_opens_the_event_list() {
         );
     }
     // E a opção dentro do menu chega ao bus — ela é o que de facto escreve no mundo.
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut ps = VectorPanelState;
     let opt = ids::morph_shape_key_option_id(0, 1);
     let chip = host
@@ -283,7 +283,7 @@ fn the_key_button_of_every_row_opens_the_event_list() {
 fn the_preview_toggle_is_alive_and_reaches_the_bus() {
     clear();
     set_morph_states_state(Some(machine()));
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_na_interface();
     let mut ps = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(

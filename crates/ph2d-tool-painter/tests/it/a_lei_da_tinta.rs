@@ -8,6 +8,7 @@ use super::midias_de_fabrica::de_fabrica;
 use super::sonda_gestos::{fnv1a, pinta_cena_ate, tela};
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::PanelEvent;
+use ph2d_editor_core::tool::RasterEditTool;
 use ph2d_tool_painter::ids;
 
 /// O raio das cenas de identidade: o do recto da bancada a meia escala dos presets.
@@ -67,5 +68,141 @@ fn sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes() {
         mudaram.is_empty(),
         "a cena mudou — a lei da obra deixou de ser a de antes:\n{}",
         mudaram.join("\n")
+    );
+}
+
+/// A régua do cruzamento do 18 §2 (`ferramentas/midias_regua.py::cruzamento`): a luminância (luz linear) do
+/// miolo do cruzamento ÷ a menor das duas tintas fora dele — `< 1` escurece, `~1` o de cima tapa.
+pub fn cruzamento(px: &[u8], w: u32) -> f64 {
+    let lin = |v: u8| {
+        let c = f64::from(v) / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let lum = |x0: usize, x1: usize| {
+        let mut s = [0.0; 3];
+        let mut n = 0.0;
+        for y in 474..487 {
+            for x in x0..x1 {
+                let i = (y * w as usize + x) * 4;
+                for (c, v) in s.iter_mut().enumerate() {
+                    *v += f64::from(px[i + c]);
+                }
+                n += 1.0;
+            }
+        }
+        let [r, g, b] = s.map(|v| lin(((v / n) as f64).round().clamp(0.0, 255.0) as u8));
+        0.2126 * r + 0.7152 * g + 0.0722 * b
+    };
+    lum(294, 307) / lum(800, 860).min(lum(120, 200)).max(1e-6)
+}
+
+/// O Wet Liner (duro, cheio) com o Glaze do pincel `g` — a mesma receita, só a lei muda.
+fn liner_com_glaze(g: f64) -> ph2d_brush_presets::Preset {
+    let mut p = de_fabrica("Wet Liner");
+    p.parametros.engine.insert("glaze".to_owned(), g);
+    p
+}
+
+fn cena_com(p: &ph2d_brush_presets::Preset, quadros: u32) -> (Vec<u8>, u32) {
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_brush_size_px(RAIO_DA_CENA);
+    let (px, w, _) = pinta_cena_ate(&mut t, quadros);
+    (px, w)
+}
+
+/// ⭐ **O Glaze do pincel escurece o cruzamento, graduado** (doc 42 §3: Rebelle 0,12–0,30 a tinta, 0,016 o
+/// marcador; o nosso tapava — 1,00). Vermelho antes: sem a lei (`vela` = 0 no pouso) os três dão o de Glaze 0.
+#[test]
+fn o_glaze_do_pincel_escurece_o_cruzamento() {
+    let [c0, c5, c1] = std::thread::scope(|s| {
+        [0.0, 0.5, 1.0]
+            .map(|g| {
+                s.spawn(move || {
+                    let (px, w) = cena_com(&liner_com_glaze(g), 1800);
+                    cruzamento(&px, w)
+                })
+            })
+            .map(|h| h.join().unwrap())
+    });
+    assert!(
+        c0 > 0.7,
+        "sem Glaze, a lei da obra (o Wet Liner é aquarela): {c0:.3}"
+    );
+    assert!(
+        c1 < 0.35,
+        "Glaze 1 multiplica as camadas: {c1:.3} (medido 0,221 no Wet Liner, aquarela; os pincéis de tinta \
+         e marcador, mais carregados, chegam a 0,04–0,06 — Rebelle 0,016)"
+    );
+    assert!(c1 < c5 && c5 < c0, "graduado: {c0:.3} > {c5:.3} > {c1:.3}");
+}
+
+/// **O traço sozinho não muda com o Glaze** — sobre o papel limpo a tinta não filtra nada, e a parte do próprio
+/// traço que seca não é outra camada (medido: com o Glaze em toda a tinta o recto escurecia, cobertura 0,90 →
+/// 0,93). Os traços AZUIS da bancada (sem o vermelho que os cruza), a água corrida: Glaze 1 = Glaze 0 ao byte.
+/// (Com o cruzamento, a linha 3 inteira muda até 24 níveis: o azul que assenta debaixo do vermelho muda a água
+/// dela — é o cruzamento, não o traço.)
+#[test]
+fn o_traco_sozinho_nao_muda_com_o_glaze() {
+    use super::sonda_gestos::{AZUL, gesto};
+    let [a, b] = std::thread::scope(|s| {
+        [0.0, 1.0]
+            .map(|g| {
+                s.spawn(move || {
+                    let mut t = tela();
+                    t.set_wet_relogio_fixo(true);
+                    assert!(t.wet_preset_aplicar(&liner_com_glaze(g)).is_empty());
+                    t.set_brush_size_px(RAIO_DA_CENA);
+                    t.set_brush_color_srgb8(AZUL);
+                    for y in [120.0, 300.0, 480.0] {
+                        gesto(&mut t, &[[60.0, y], [560.0, y]], 3.0, |_| 1.0);
+                    }
+                    for _ in 0..1800 {
+                        t.on_tick(1000.0 / 60.0);
+                    }
+                    t.run_full().0
+                })
+            })
+            .map(|h| h.join().unwrap())
+    });
+    let n = a.chunks(4).zip(b.chunks(4)).filter(|(p, q)| p != q).count();
+    assert_eq!(n, 0, "{n} px de um traço sozinho mudaram com o Glaze");
+}
+
+/// ⭐ **Trocar de pincel não muda a tinta que está na tela** (a lei VIAJA com a tinta, como o relevo do Bug #48):
+/// o cruzamento de Glaze 1 e, antes de a água correr, o MESMO pincel com Glaze 0 — a tela que seca é a de quem
+/// não trocou, ao byte. Uma lei da sim inteira (o knob lido no ecrã) mudaria o cruzamento molhado.
+#[test]
+fn trocar_de_pincel_nao_muda_a_tinta_da_tela() {
+    let [a, b] = std::thread::scope(|s| {
+        [false, true]
+            .map(|troca| {
+                s.spawn(move || {
+                    let mut t = tela();
+                    t.set_wet_relogio_fixo(true);
+                    assert!(t.wet_preset_aplicar(&liner_com_glaze(1.0)).is_empty());
+                    t.set_brush_size_px(RAIO_DA_CENA);
+                    let (px, _, _) = pinta_cena_ate(&mut t, 0);
+                    drop(px);
+                    if troca {
+                        assert!(t.wet_preset_aplicar(&liner_com_glaze(0.0)).is_empty());
+                    }
+                    for _ in 0..1800 {
+                        t.on_tick(1000.0 / 60.0);
+                    }
+                    t.run_full().0
+                })
+            })
+            .map(|h| h.join().unwrap())
+    });
+    let n = a.chunks(4).zip(b.chunks(4)).filter(|(p, q)| p != q).count();
+    assert_eq!(
+        n, 0,
+        "{n} px mudaram ao trocar o Glaze do pincel depois de pintar"
     );
 }

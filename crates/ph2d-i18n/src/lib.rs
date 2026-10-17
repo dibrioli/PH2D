@@ -286,10 +286,13 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.wet_tuning.group.experimental" => "Experimental",
         "panel.wet_tuning.group.relief" => "Relief",
         "panel.wet_tuning.knob.emboss" => "Emboss",
+        // O Glaze do PINCEL (prompt 42): guardado com o pincel, vale para a tinta dele — a nota do cartão Experimental
+        // diz que as duas caixas valem para a tinta da OBRA inteira e que o do pincel age por cima delas.
+        "panel.wet_tuning.knob.glaze" => "Brush glaze",
         "panel.wet_tuning.km_mixing" => "Pigment mixing (K-M)",
         "panel.wet_tuning.km_glaze" => "Glaze layering (K-M)",
         "panel.wet_tuning.note" => {
-            "Kubelka-Munk subtractive color. Further gated extensions (diffusion, backrun, fingering, dry-brush, render extras) ship neutral; see the tuning registry's hidden group."
+            "These two boxes apply to all the paint of the artwork (Kubelka-Munk subtractive color). Brush glaze (Paint) is saved with the brush and acts on top of them: its paint filters the layers below. Further gated extensions (diffusion, backrun, fingering, dry-brush, render extras) ship neutral; see the tuning registry's hidden group."
         }
         "panel.wet_tuning.knob.pigmentPerDab" => "Pigment per dab",
         "panel.wet_tuning.knob.paperGate" => "Paper gate",

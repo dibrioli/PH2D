@@ -256,12 +256,33 @@ pub fn assenta(
         } else {
             0.0
         };
-        let x0 = if a_s <= 0.0 || a_s2 <= 0.0 {
+        let mut x0 = if a_s <= 0.0 || a_s2 <= 0.0 {
             uc
         } else {
             let r = sobre_branco(e, sc, uc, a_s, a_dm);
             r.map(|v| (255.0 - (255.0 - v) / a_s2).clamp(0.0, 255.0))
         };
+        // O GLAZE (prompt 42): a parte multiplicada tem inversa FECHADA — o assentado novo é o de antes vezes o
+        // filme de antes sobre o de depois, canal a canal. Sem ela o Newton ficava no palpite onde o filme
+        // escuro esconde um canal (a regra de cima) e o cruzamento clareava ao secar (medido: até 19 níveis, e
+        // a força bruta achava a cor certa a < 0,4).
+        if let Ecra::Cobre { vela, .. } = e
+            && vela > 0.0
+            && a_s > 0.0
+            && a_s2 > 0.0
+        {
+            let m = crate::colorops::vela_da_camada(vela, sc, uc);
+            for k in 0..3 {
+                let t_s = 255.0 - a_s * (255.0 - sc[k]);
+                let (f, f2) = (
+                    255.0 - a_f * (255.0 - uc[k]),
+                    255.0 - a_f2 * (255.0 - uc[k]),
+                );
+                let t_s2 = if f2 > 0.0 { t_s * f / f2 } else { t_s };
+                let produto = (255.0 - (255.0 - t_s2) / a_s2).clamp(0.0, 255.0);
+                x0[k] += m * (produto - x0[k]);
+            }
+        }
         return resolve(x0, alvo, |x| sobre_branco(e, x, uc, a_s2, a_f2));
     }
     let alvo = cor(e, sc, uc, a_s, a_f);

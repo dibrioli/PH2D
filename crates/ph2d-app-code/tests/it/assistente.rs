@@ -37,6 +37,9 @@ pub(crate) struct Visto {
     /// Os pedidos `textDocument/hover` e `textDocument/signatureHelp` recebidos.
     pub(crate) baloes: usize,
     pub(crate) assinaturas: usize,
+    /// Os pedidos `textDocument/definition` e `semanticTokens/full` recebidos.
+    pub(crate) definicoes: usize,
+    pub(crate) cores: usize,
 }
 
 pub(crate) type Partilhado = Arc<Mutex<Visto>>;
@@ -54,6 +57,36 @@ pub(crate) struct Plano {
     /// As respostas a `textDocument/hover` e a `textDocument/signatureHelp` (`None` = `null`).
     pub(crate) pairar: Option<fn(&str, usize) -> Value>,
     pub(crate) assinar: Option<fn(&str, usize) -> Value>,
+    /// `textDocument/definition`: os bytes, NESTE documento, de onde o nome no byte do pedido está
+    /// definido (`None` = `null`).
+    pub(crate) definir: Option<fn(&str, usize) -> Vec<std::ops::Range<usize>>>,
+    /// `semanticTokens/full`: `(bytes, tipo, modificadores)` de cada nome, pela ordem do texto, na
+    /// legenda do `luau-lsp` 1.70.1 (`None` = `null`).
+    pub(crate) colorir: Option<fn(&str) -> Vec<(std::ops::Range<usize>, u64, u64)>>,
+}
+
+/// As capacidades que o `luau-lsp` 1.70.1 anunciou (a legenda dos tokens vem daqui).
+fn capacidades() -> Value {
+    let c: Value = serde_json::from_str(include_str!(
+        "../../../../docs/CodeEditor/ferramentas/medicoes_onda2/caps_luau_lsp_1.70.1.json"
+    ))
+    .expect("as capacidades gravadas");
+    c["capabilities"].clone()
+}
+
+/// `SemanticTokens.data`: (linha, início) relativos ao anterior, comprimento em UTF-16.
+fn codifica(s: &str, toks: &[(std::ops::Range<usize>, u64, u64)]) -> Value {
+    let (mut linha, mut col) = (0u64, 0u64);
+    let mut data = Vec::new();
+    for (r, tipo, mods) in toks {
+        let p = posicao(s, r.start);
+        let (l, c) = pos(&p);
+        let n = s[r.clone()].encode_utf16().count() as u64;
+        let (dl, dc) = if l == linha { (0, c - col) } else { (l - linha, c) };
+        data.extend([dl, dc, n, *tipo, *mods]);
+        (linha, col) = (l, c);
+    }
+    json!({ "data": data })
 }
 
 /// O byte da posição LSP `(linha, unidades UTF-16)`; além do fim da linha = o fim da linha.
@@ -82,7 +115,7 @@ fn posicao(s: &str, b: usize) -> Value {
 }
 
 /// O servidor falso acusa cada `pirnt` do texto (um «Unknown global», como o `luau-lsp`).
-fn acusa_pirnt(s: &str) -> Vec<Value> {
+pub(crate) fn acusa_pirnt(s: &str) -> Vec<Value> {
     s.match_indices("pirnt")
         .map(|(b, w)| {
             json!({ "range": { "start": posicao(s, b), "end": posicao(s, b + w.len()) },
@@ -163,8 +196,36 @@ fn servir(
             }
         }
         if let Some(id) = msg.get("id") {
+            let uri = p["textDocument"]["uri"].as_str().unwrap_or_default().to_owned();
+            let texto_de = |conta: fn(&mut Visto)| {
+                let mut v = visto.lock().unwrap();
+                conta(&mut v);
+                v.textos.get(&uri).map(|t| t.1.clone()).unwrap_or_default()
+            };
             let result = if method == "initialize" {
-                json!({ "capabilities": {} })
+                json!({ "capabilities": capacidades() })
+            } else if let Some(f) = plano
+                .definir
+                .filter(|_| method == "textDocument/definition")
+            {
+                let texto = texto_de(|v| v.definicoes += 1);
+                let (l, c) = pos(&p["position"]);
+                let sitios = f(&texto, byte_de(&texto, l, c));
+                Value::Array(
+                    sitios
+                        .into_iter()
+                        .map(|r| {
+                            json!({ "uri": uri, "range": {
+                                "start": posicao(&texto, r.start), "end": posicao(&texto, r.end) } })
+                        })
+                        .collect(),
+                )
+            } else if let Some(f) = plano
+                .colorir
+                .filter(|_| method == "textDocument/semanticTokens/full")
+            {
+                let texto = texto_de(|v| v.cores += 1);
+                codifica(&texto, &f(&texto))
             } else if let Some(f) = match method.as_str() {
                 "textDocument/completion" => plano.completar,
                 "textDocument/hover" => plano.pairar,

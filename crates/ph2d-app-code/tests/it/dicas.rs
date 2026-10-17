@@ -24,7 +24,7 @@ fn e_palavra(c: char) -> bool {
 }
 
 /// Como o `luau-lsp`: o tipo do nome sob o cursor num bloco `luau`, e a régua antes da documentação.
-fn balao(texto: &str, b: usize) -> Value {
+pub(crate) fn balao(texto: &str, b: usize) -> Value {
     let ini = texto[..b].rfind(|c| !e_palavra(c)).map_or(0, |i| i + 1);
     let fim = texto[b..]
         .find(|c| !e_palavra(c))
@@ -115,7 +115,13 @@ fn mesa(scripts: &[(&str, &str)]) -> (Mesa, Vec<ScriptId>, Partilhado) {
 }
 
 /// Quadros no instante `t` (o tempo real a correr) até `feito`; reprova em 10 s.
-fn ate(m: &mut Mesa, id: ScriptId, t: u128, onde: &str, mut feito: impl FnMut(&mut Mesa) -> bool) {
+pub(crate) fn ate(
+    m: &mut Mesa,
+    id: ScriptId,
+    t: u128,
+    onde: &str,
+    mut feito: impl FnMut(&mut Mesa) -> bool,
+) {
     let fim = Instant::now() + Duration::from_secs(10);
     loop {
         quadro_em(m, t);
@@ -129,7 +135,13 @@ fn ate(m: &mut Mesa, id: ScriptId, t: u128, onde: &str, mut feito: impl FnMut(&m
 }
 
 /// 25 quadros no instante `t`, com tempo real para uma resposta chegar, e `nada` em cada um.
-fn nunca(m: &mut Mesa, id: ScriptId, t: u128, onde: &str, mut nada: impl FnMut(&mut Mesa) -> bool) {
+pub(crate) fn nunca(
+    m: &mut Mesa,
+    id: ScriptId,
+    t: u128,
+    onde: &str,
+    mut nada: impl FnMut(&mut Mesa) -> bool,
+) {
     for _ in 0..25 {
         quadro_em(m, t);
         m.pinta(id);
@@ -138,7 +150,7 @@ fn nunca(m: &mut Mesa, id: ScriptId, t: u128, onde: &str, mut nada: impl FnMut(&
     }
 }
 
-fn aponta(m: &mut Mesa, id: ScriptId, byte: usize) {
+pub(crate) fn aponta(m: &mut Mesa, id: ScriptId, byte: usize) {
     let (x, y) = m
         .docs()
         .glyph_center(id, byte)

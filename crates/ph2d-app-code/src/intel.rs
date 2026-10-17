@@ -147,8 +147,6 @@ impl Intel {
         for d in docs.iter_mut() {
             if stopped {
                 d.assist.clear();
-                d.sem = crate::semantic::SemHeld::default();
-                d.goto = None;
                 continue;
             }
             let Some(m) = self.mirrors.get(&d.script) else {

@@ -9,6 +9,8 @@ mod bancada;
 mod busca;
 mod completar;
 mod console;
+mod cores;
+mod definicao;
 mod despacho;
 mod dicas;
 mod dobras;

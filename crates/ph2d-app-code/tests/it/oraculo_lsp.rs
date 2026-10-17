@@ -465,3 +465,71 @@ fn o_assistente_fixado_marca_o_argumento_e_mostra_o_balao() {
         std::thread::sleep(Duration::from_millis(5));
     }
 }
+
+/// ⭐ I6 e I11 com o `luau-lsp` FIXADO, pelo caminho do produto: Ctrl+clique num uso de um local vai à
+/// declaração; F12 em `ph2d.set` (o servidor dá `[]`) abre a documentação GERADA no balão; as cores
+/// do servidor pintam `ph2d` e `set` na cor da biblioteca (o tree-sitter dá-lhes variável e função),
+/// e `pirnt` — que não tem token nenhum — na de alerta, pelo diagnóstico.
+#[test]
+fn o_assistente_fixado_vai_a_definicao_e_pinta_as_cores() {
+    use crate::assistente::tecla;
+    use crate::completar::{T0, quadro_em};
+    use ph2d_editor_core::doc_surface::Key;
+    use ph2d_host::Modifiers;
+    use ph2d_panel_code::Ink;
+    use ph2d_script::api_table::API;
+    let _ = fixado();
+    let texto = "local brilho = 1\nfunction update(self, dt)\n  ph2d.set(self.id, \"x\", brilho)\n  pirnt(dt)\nend\n";
+    let (m, ids) = Mesa::new(&[("a.luau", texto)]);
+    let mut m = m.com_assistente(ph2d_app_code::IntelServer::Pinned);
+    let id = ids[0];
+    m.pede(id);
+    let espera = |m: &mut Mesa, onde: &str, feito: &dyn Fn(&mut Mesa) -> bool| {
+        let fim = Instant::now() + Duration::from_secs(30);
+        loop {
+            quadro_em(m, T0);
+            m.pinta(id);
+            if feito(m) {
+                return;
+            }
+            assert!(Instant::now() < fim, "{onde}");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    };
+    let ph2d = texto.find("ph2d").unwrap();
+    let pirnt = texto.find("pirnt").unwrap();
+    espera(&mut m, "as cores do servidor não pintaram `ph2d.set`", &|m| {
+        m.docs().ink_painted(id, ph2d) == Ink::Builtin
+            && m.docs().ink_painted(id, ph2d + 6) == Ink::Builtin
+    });
+    espera(&mut m, "`pirnt` não pintou de alerta", &|m| {
+        m.docs().ink_painted(id, pirnt + 1) == Ink::Unresolved
+    });
+    assert_ne!(
+        m.docs().ink_painted(id, texto.find("brilho)").unwrap()),
+        Ink::Builtin,
+        "um local não é da biblioteca"
+    );
+    // Ctrl+clique no `brilho` da chamada → a declaração da 1.ª linha.
+    let uso = texto.find("brilho)").unwrap() + 2;
+    let (x, y) = m.docs().glyph_center(id, uso).expect("à vista");
+    m.clica(id, x, y, crate::ctrl());
+    espera(&mut m, "o Ctrl+clique não foi à declaração", &|m| {
+        m.docs().cursor_of(id).map(|c| c.1) == Some(6)
+    });
+    // F12 em `set` → a documentação da função, e o cursor fica.
+    let set = ph2d + 6;
+    let (x, y) = m.docs().glyph_center(id, set).expect("à vista");
+    m.clica(id, x, y, Modifiers::default());
+    let antes = m.docs().cursor_of(id);
+    tecla(&mut m, id, Key::F(12), Modifiers::default(), None, "");
+    let doc = API
+        .iter()
+        .find(|e| e.table == "ph2d" && e.ident == "set")
+        .unwrap()
+        .doc;
+    espera(&mut m, "o F12 em `set` não abriu a documentação", &|m| {
+        m.docs().hover_of(id).is_some_and(|h| h.contains(doc))
+    });
+    assert_eq!(m.docs().cursor_of(id), antes, "o F12 na API não mexe no cursor");
+}

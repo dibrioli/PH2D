@@ -160,6 +160,12 @@ const FORA: &[(&str, &str, &str)] = &[
         "as ABAS do painel (Brush · Layers): uma navegação entre vistas, pedida assim pelo dono \
          (2026-09-09), e não uma propriedade — um nome ao lado dela não diria nada",
     ),
+    (
+        "vector",
+        "vector.tab.drawing",
+        "as ABAS do título do painel do vetor (Drawing · Interface, F17, dono 16/10): navegação \
+         entre vistas, irmã das do Painter — elas SÃO o título, e um nome ao lado não diria nada",
+    ),
 ];
 
 /// ⭐⭐⭐ **NENHUMA ESCOLHA DO APP É MONTADA À MÃO** — todo grupo segmentado a toda a largura, em

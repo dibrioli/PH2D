@@ -90,6 +90,12 @@ const NOT_LANGUAGE_TEXT: &[ph2d_label_census::gate::Excecao] = &[
         "a mesma sintaxe do `sections.txt` — o tema de uma secção, chave e `Theme::id`",
     ),
     (
+        "interaction/state/section_prefs_ops.rs",
+        "epoch.{}={e}",
+        "a mesma sintaxe do `sections.txt` — a ÉPOCA da ordem natural de um painel (F17, 16/10), \
+         chave que o próprio leitor procura",
+    ),
+    (
         "interaction/state/section_prefs_ops/tema_custom.rs",
         "custom=1",
         "a mesma sintaxe do `sections.txt` — a marca de que o TEMA CUSTOM foi gravado (2026-09-30), \

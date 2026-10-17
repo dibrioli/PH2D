@@ -62,7 +62,7 @@ branco: o 1.º envio da sessão foi antes de a tela existir.)
 - **Uma lei do pincel: o Glaze `g ∈ [0, 1]`** — a fracção da camada de cima que FILTRA a de baixo (`0` = a lei da obra,
   ao byte; `1` = multiplica). Guardado por célula num plano `vela` que pousa com a tinta (como o `relevo`), lido pela
   lei do ecrã de cada célula — trocar de pincel não muda a tinta que já está na tela.
-- **No pouso**, a tinta de outro pigmento que estava MOLHADA na célula assenta (na fracção `g ×` a diferença de pigmento,
+- **No pouso**, a tinta de outro pigmento que estava MOLHADA na célula assenta (na fracção `g × outra_tinta` — §5 —,
   preservando o ecrã) e a tinta nova forma uma camada por cima: a multiplicação acontece UMA vez por camada, nunca por
   carimbo (o que levava ao preto).
 - **A mistura do pincel NÃO entra**: a tabela do §2 mostra que nenhuma mistura reproduz o cruzamento sem a velatura

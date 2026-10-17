@@ -174,6 +174,54 @@ fn o_traco_sozinho_nao_muda_com_o_glaze() {
     assert_eq!(n, 0, "{n} px de um traço sozinho mudaram com o Glaze");
 }
 
+/// **Sonda da prancha (doc 42)**: os 5 pincéis de tinta e marcador SEM o Glaze (a mesma receita com a chave
+/// `glaze` a 0), na cena da bancada seca ao raio do portão das mídias — `sem_glaze_<preset>.ppm` em
+/// `PH2D_SONDA_OUT`, ao lado dos `midia_<preset>.ppm` de `cada_preset_parece_a_sua_midia`
+/// (`ferramentas/prancha_lei_da_tinta.py` monta a prancha).
+#[test]
+#[ignore = "sonda: a prancha da lei da tinta (prompt 42); corre-se à mão"]
+fn sonda_prancha_sem_glaze() {
+    let dir = std::env::var("PH2D_SONDA_OUT").expect("PH2D_SONDA_OUT");
+    std::fs::create_dir_all(&dir).unwrap();
+    const RAIOS: [(&str, f32); 5] = [
+        ("Ink Bullet", 21.0),
+        ("Dip Pen", 19.0),
+        ("Ink Brush", 20.0),
+        ("Marker Bullet", 20.0),
+        ("Marker Liner", 9.0),
+    ];
+    std::thread::scope(|s| {
+        for (nome, raio) in RAIOS {
+            let dir = &dir;
+            s.spawn(move || {
+                let mut p = de_fabrica(nome);
+                assert!(
+                    p.parametros
+                        .engine
+                        .insert("glaze".to_owned(), 0.0)
+                        .is_some(),
+                    "{nome}: o preset tem a chave glaze"
+                );
+                let mut t = tela();
+                t.set_wet_relogio_fixo(true);
+                assert!(t.wet_preset_aplicar(&p).is_empty());
+                t.set_brush_size_px(raio);
+                let (px, w, h) = pinta_cena_ate(&mut t, 1800);
+                let mut f = format!("P6\n{w} {h}\n255\n").into_bytes();
+                px.as_chunks::<4>()
+                    .0
+                    .iter()
+                    .for_each(|q| f.extend_from_slice(&q[..3]));
+                std::fs::write(format!("{dir}/sem_glaze_{nome}.ppm"), &f).unwrap();
+                println!(
+                    "[prancha] {nome:<14} sem Glaze: cruzamento {:.3}",
+                    cruzamento(&px, w)
+                );
+            });
+        }
+    });
+}
+
 /// ⭐ **Trocar de pincel não muda a tinta que está na tela** (a lei VIAJA com a tinta, como o relevo do Bug #48):
 /// o cruzamento de Glaze 1 e, antes de a água correr, o MESMO pincel com Glaze 0 — a tela que seca é a de quem
 /// não trocou, ao byte. Uma lei da sim inteira (o knob lido no ecrã) mudaria o cruzamento molhado.

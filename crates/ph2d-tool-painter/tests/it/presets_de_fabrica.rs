@@ -8,6 +8,8 @@
 //! PH2D_REGERA_PRESETS=1 cargo test -p ph2d-tool-painter --profile smoke --test it \
 //!     gera_os_presets_de_fabrica -- --ignored --nocapture
 //! ```
+//!
+//! `PH2D_REGERA_SO="Ink Brush,Dip Pen"` regera só esses.
 
 use super::receitas_de_fabrica::{DIREITA, PRESETS_DE_FABRICA, RECEITAS, Receita, grao};
 use super::sonda_gestos::{fnv1a, largura_que_se_ve, traco_recto_alto};
@@ -175,7 +177,12 @@ fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
 #[ignore = "gerador: escreve assets/brushes/WetPainter (PH2D_REGERA_PRESETS=1)"]
 fn gera_os_presets_de_fabrica() {
     let escreve = std::env::var("PH2D_REGERA_PRESETS").as_deref() == Ok("1");
-    for r in &RECEITAS {
+    // `PH2D_REGERA_SO="Nome,Nome"`: só esses (cada preset custa ~2 min de lei da largura sob carga).
+    let so = std::env::var("PH2D_REGERA_SO").ok();
+    for r in RECEITAS.iter().filter(|r| {
+        so.as_deref()
+            .is_none_or(|s| s.split(',').any(|n| n == r.nome))
+    }) {
         let mut preset = Preset {
             parametros: parametros(r),
             origem: Origem::Fabrica,

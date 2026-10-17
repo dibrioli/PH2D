@@ -27,6 +27,8 @@ enum Metrica {
     Chato,
     /// A tinta mediana no miolo do A2–F2 (0 = papel): a claridade do Express Oil (prompt 23).
     Tinta,
+    /// O CRUZAMENTO vermelho × azul (18 §2): a identidade da tinta e do marcador (prompt 42).
+    Cruzamento,
 }
 
 impl Metrica {
@@ -38,6 +40,7 @@ impl Metrica {
             Metrica::Orla => m.orla,
             Metrica::Chato => c.de_pe / c.deitado,
             Metrica::Tinta => c.tinta,
+            Metrica::Cruzamento => c.cruz,
         }
     }
     fn ruido(self) -> f64 {
@@ -50,6 +53,8 @@ impl Metrica {
             // lida como a cobertura.
             Metrica::Chato => 0.05,
             Metrica::Tinta => 0.012,
+            // O controlo da sessão de 16/10: o Dip Pen de 11/10 refeito deu 0,283 contra 0,223.
+            Metrica::Cruzamento => 0.06,
         }
     }
 }
@@ -61,6 +66,7 @@ struct FamiliaC {
     de_pe: f64,
     deitado: f64,
     tinta: f64,
+    cruz: f64,
 }
 
 impl FamiliaC {
@@ -117,6 +123,7 @@ impl FamiliaC {
             de_pe,
             deitado: acima(&deitado),
             tinta: miolo[miolo.len() / 2],
+            cruz: super::a_lei_da_tinta::cruzamento(px, w as u32),
         }
     }
 }
@@ -134,7 +141,7 @@ struct Midia {
     metricas: &'static [(Metrica, f64)],
 }
 
-use Metrica::{Borda, Chato, Cobertura, Orla, Textura, Tinta};
+use Metrica::{Borda, Chato, Cobertura, Cruzamento, Orla, Textura, Tinta};
 
 // ⚠️ Os três do óleo levam os valores que o DONO afinou a olho contra o Rebelle (11/10, «vamos deixar esses
 // valores»); a régua reprovava Textura do Oil Bristle (8,46 contra 5,86) e da Acrylic Round (30,4 contra 3,13)
@@ -142,7 +149,7 @@ use Metrica::{Borda, Chato, Cobertura, Orla, Textura, Tinta};
 // O Chato e a Tinta (prompt 23, aceites 12/10) são os dois pontos que o dono VIU: a mutação «preset de antes»
 // sangra cada um sozinho (Oil 0,950 · Express 0,906).
 #[rustfmt::skip]
-const MIDIAS: [Midia; 8] = [
+const MIDIAS: [Midia; 13] = [
     Midia { preset: "Wet Liner", foto: "wcliner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
     Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
     Midia { preset: "Acrylic Round", foto: "oilround", raio: 19.5, metricas: &[(Cobertura, 0.880), (Borda, 0.595)] },
@@ -151,6 +158,13 @@ const MIDIAS: [Midia; 8] = [
     Midia { preset: "Charcoal", foto: "charcoal", raio: 10.5, metricas: &[(Cobertura, 0.384), (Borda, 0.378), (Orla, 15.0)] },
     Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0)] },
     Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0)] },
+    // A tinta e o marcador (prompt 42): o Cruzamento é o da foto MOLHADA; a Borda e a Orla só onde o Round
+    // não as tem (Ink Bullet: borda 1,00 nos dois; Orla 1 nos marcadores e nas canetas).
+    Midia { preset: "Ink Bullet", foto: "ink", raio: 21.0, metricas: &[(Cobertura, 0.862), (Textura, 0.395), (Cruzamento, 0.117)] },
+    Midia { preset: "Dip Pen", foto: "dippen", raio: 19.0, metricas: &[(Cobertura, 0.856), (Textura, 1.433), (Borda, 0.910), (Cruzamento, 0.223)] },
+    Midia { preset: "Ink Brush", foto: "inkbrush", raio: 20.0, metricas: &[(Cobertura, 0.722), (Textura, 1.266), (Borda, 0.793), (Orla, 5.0), (Cruzamento, 0.239)] },
+    Midia { preset: "Marker Bullet", foto: "markerbullet", raio: 20.0, metricas: &[(Cobertura, 0.909), (Textura, 0.658), (Borda, 0.768), (Cruzamento, 0.016)] },
+    Midia { preset: "Marker Liner", foto: "marker", raio: 9.0, metricas: &[(Cobertura, 0.910), (Textura, 2.116), (Borda, 0.716), (Cruzamento, 0.016)] },
 ];
 
 pub(super) fn de_fabrica(nome: &str) -> Preset {
@@ -191,7 +205,7 @@ fn no_vale(n: f64, r: f64, c: f64) -> bool {
 #[test]
 fn cada_preset_parece_a_sua_midia() {
     let round = &de_fabrica("Wet Round");
-    // Todas as cenas de uma vez: as 8 mídias e o controlo UMA vez por largura (o Wet Round não depende da
+    // Todas as cenas de uma vez: as mídias e o controlo UMA vez por largura (o Wet Round não depende da
     // mídia). Medido 11/10: 57 → 46 s.
     let mut raios: Vec<f32> = MIDIAS.iter().map(|m| m.raio).collect();
     raios.sort_by(f32::total_cmp);
@@ -228,8 +242,11 @@ fn cada_preset_parece_a_sua_midia() {
             let (nv, cv) = (met.de(n), met.de(c));
             // A Tinta é uma FAIXA dos dois lados do Rebelle: o controlo (o Round, aquarela: 0,18) fica do lado
             // CLARO e o defeito medido do Express Oil era o opaco (0,91) — o vale aprovava-o (prompt 23).
+            // O Cruzamento também: o vale (meio caminho do controlo, 0,96) aprovaria 0,49 para um marcador de
+            // 0,016 — a faixa de 3× o ruído do Rebelle é o que o distingue da tinta.
             let dentro = match met {
                 Tinta => (nv - r).abs() < 4.0 * met.ruido(),
+                Cruzamento => (nv - r).abs() < 3.0 * met.ruido(),
                 _ => no_vale(nv, r, cv),
             };
             if !dentro {

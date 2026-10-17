@@ -1,9 +1,9 @@
-//! **A imagem ao fim da gravação, fora do quadro** (W7 item 1, `docs/Macros/04_plano_W7.md`): a régua
-//! de «o artista pintou depois do Parar». Calcula-se num fio próprio por versão da trilha CRUA do
+//! **As imagens ao início e ao fim da gravação, fora do quadro** (W7 item 1, `docs/Macros/04_plano_W7.md`):
+//! a régua de «o artista pintou depois do Parar». Calcula-se num fio próprio por versão da trilha CRUA do
 //! Painter (o estado inicial e os eventos: editar uma etapa não a muda); largar o trabalho pára o fio.
 
 use ph2d_macro::Track;
-use ph2d_tool_painter::macro_track::etapas::imagem_no_fim_da_gravacao;
+use ph2d_tool_painter::macro_track::etapas::imagens_da_gravacao;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -16,8 +16,14 @@ pub(super) struct Imagem {
     pub(super) h: u32,
 }
 
+/// As imagens das pontas da gravação, premultiplicadas: o fim e o início (do tamanho do fim).
+pub(super) struct Gravacao {
+    pub(super) fim: Imagem,
+    pub(super) inicio: Vec<u8>,
+}
+
 /// `None` = a reprodução falhou ou parou: fica o palco sozinho.
-type Resultado = Option<Arc<Imagem>>;
+type Resultado = Option<Arc<Gravacao>>;
 
 enum Estado {
     PorArrancar(Track),
@@ -54,9 +60,18 @@ pub(super) fn versao_da_trilha(t: &Track) -> u64 {
 }
 
 fn calcula(t: &Track, parar: &AtomicBool) -> Resultado {
-    let (mut rgba, w, h) = imagem_no_fim_da_gravacao(t, parar).ok()??;
+    let g = imagens_da_gravacao(t, parar).ok()??;
+    let (mut rgba, mut inicio) = (g.fim, g.inicio);
     ph2d_render::premul::premultiply_rgba8(&mut rgba);
-    Some(Arc::new(Imagem { rgba, w, h }))
+    ph2d_render::premul::premultiply_rgba8(&mut inicio);
+    Some(Arc::new(Gravacao {
+        fim: Imagem {
+            rgba,
+            w: g.w,
+            h: g.h,
+        },
+        inicio,
+    }))
 }
 
 impl FimDaGravacao {
@@ -68,7 +83,7 @@ impl FimDaGravacao {
     }
 
     /// Arranca o fio (uma vez) e colhe o que ele acabou. `Some` = a imagem chegou.
-    pub(super) fn colhe(&mut self) -> Option<&Arc<Imagem>> {
+    pub(super) fn colhe(&mut self) -> Option<&Arc<Gravacao>> {
         if let Estado::PorArrancar(_) = &self.estado
             && let Estado::PorArrancar(t) =
                 std::mem::replace(&mut self.estado, Estado::Pronto(None))

@@ -86,6 +86,20 @@ pub fn grava_no_papel(lado: u32, alvo: u64, n: usize) -> Option<(Vec<u8>, f64)> 
     grava(lado, alvo, &ps, &[], true, &[PaintMedia::WetPaint])
 }
 
+/// Como [`grava_no_papel`], com `entrada` quadros parados antes da 1.ª pincelada — o Gravar antes do 1.º
+/// toque, como o artista grava: o instante 0 é a tela de partida (em [`grava_no_papel`] o instante 0 já
+/// traz o 1.º toque do pincel).
+#[must_use]
+pub fn grava_no_papel_com_entrada(
+    lado: u32,
+    alvo: u64,
+    n: usize,
+    entrada: u32,
+) -> Option<(Vec<u8>, f64)> {
+    let ps: Vec<Pincelada> = SPLASH.iter().copied().cycle().take(n).collect();
+    grava(lado, alvo, &ps, &[entrada], true, &[PaintMedia::WetPaint])
+}
+
 /// As pinceladas `ps` gravadas como o Splash, com `antes[k]` quadros parados a mais antes da `k`.
 pub(crate) fn grava_pinceladas(
     lado: u32,
@@ -200,8 +214,42 @@ fn grava(
 
 #[cfg(test)]
 mod tests {
-    use super::grava_o_splash;
+    use super::{grava_no_papel, grava_no_papel_com_entrada, grava_o_splash};
     use crate::macro_track::em_cena::MacroEmCena;
+
+    /// Texels não brancos da tela do palco de `doc` no instante `t`.
+    fn pintados_em(doc: &[u8], t: f64) -> usize {
+        let mut m = MacroEmCena::de(doc).expect("lê-se").expect("trilha");
+        m.segue(t).expect("toca");
+        let (tela, _, _) = m.toma_a_tela().expect("a tela mostra-se");
+        tela.as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[..3] != [255; 3])
+            .count()
+    }
+
+    /// A cena `PH2D_MACRO_SMOKE=5` abre com o clipe parado no instante 0: a gravação com ENTRADA mostra
+    /// aí a tela branca e pinta depois. ⛔ O controlo: no papel sem entrada o instante 0 já tem o 1.º
+    /// toque (a mancha da 1.ª foto da `=5`, 17/10).
+    #[test]
+    fn com_entrada_o_instante_0_e_a_tela_branca() {
+        let (sem, _) = grava_no_papel(128, 0, 1).expect("arma");
+        assert!(
+            pintados_em(&sem, 0.0) > 0,
+            "controlo: sem entrada, o instante 0 traz o 1.º toque"
+        );
+        let (com, d) = grava_no_papel_com_entrada(128, 0, 1, 30).expect("arma");
+        assert_eq!(
+            pintados_em(&com, 0.0),
+            0,
+            "com entrada, o instante 0 é a tela branca"
+        );
+        assert!(
+            pintados_em(&com, d) > 128 * 128 / 50,
+            "controlo: a gravação pinta"
+        );
+    }
 
     /// A cena `PH2D_MACRO_SMOKE=1` ensina o que acontece: o Splash tocado até ao fim pinta as quatro
     /// cores na tela branca, e o início é a tela branca.

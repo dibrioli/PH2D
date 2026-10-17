@@ -13,14 +13,19 @@ use std::collections::BTreeMap;
 /// O lado da tela, em pixels (o plano §6).
 pub const LADO: u32 = 1024;
 
-/// A tela branca com o Splash gravado (`ModoDaMacro::Fiel`): os bits da sprite e a duração da macro.
+/// Os quadros parados antes da 1.ª pincelada da cena `=5`: o clipe abre parado no instante 0, e ali a
+/// tela é branca.
+pub const ENTRADA_DA_CENA_DO_ARTISTA: u32 = 30;
+
+/// A tela branca com o Splash gravado (`ModoDaMacro::Fiel`), `entrada` quadros parados antes da 1.ª
+/// pincelada: os bits da sprite e a duração da macro.
 fn tela_com_splash(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     (cell_idx, pixels_per_meter): (u32, f32),
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
-    nivel: u8,
+    (nivel, entrada): (u8, u32),
 ) -> Option<(u64, f64)> {
     let (_, bits) = ph2d_image_import::spawn_blank_canvas(
         sim,
@@ -35,7 +40,8 @@ fn tela_com_splash(
     )
     .map_err(|e| eprintln!("[macro smoke ={nivel}] could not spawn the canvas: {e}"))
     .ok()?;
-    let (doc, duracao) = ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 4)?;
+    let roteiro = ph2d_tool_painter::macro_track::roteiro::grava_no_papel_com_entrada;
+    let (doc, duracao) = roteiro(LADO, 0, 4, entrada)?;
     sim.world_mut()
         .entity_mut(Entity::from_bits(bits))
         .insert(Macro {
@@ -61,7 +67,7 @@ pub fn monta(
         asset_db,
         (cell_idx, pixels_per_meter),
         atlas_asset_map,
-        1,
+        (1, 0),
     )?;
     eprintln!(
         "[macro smoke =1] 'Canvas' (white, {LADO}²) carries a recorded macro: four Wet Paint strokes \
@@ -90,7 +96,7 @@ pub fn monta_artista(
         asset_db,
         (cell_idx, pixels_per_meter),
         atlas_asset_map,
-        5,
+        (5, ENTRADA_DA_CENA_DO_ARTISTA),
     )?;
     eprintln!(
         "[macro smoke =5] 'Canvas' (white, {LADO}²) carries a recorded macro: four Wet Paint strokes \

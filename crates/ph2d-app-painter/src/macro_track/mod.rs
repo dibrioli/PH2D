@@ -9,7 +9,8 @@
 //! um palco que morre ou renasce devolve-se no quadro seguinte.
 //!
 //! **A imagem é do artista** (W7 item 1, `docs/Macros/04_plano_W7.md`): onde a imagem ATUAL difere da
-//! imagem do fim da gravação ([`fim`]), a ranhura mostra a atual; nos outros píxeis, o palco.
+//! imagem do fim E da do início da gravação ([`fim`]), a ranhura mostra a atual; nos outros píxeis, o
+//! palco — numa imagem que nunca recebeu a gravação (a do início) o clipe anima.
 
 use ph2d_ecs::{Entity, Macro, MacroTempo, StableId, World};
 use ph2d_editor_core::toast::{Toast, ToastQueue};
@@ -258,16 +259,21 @@ fn premultiplica_na_caixa(espelho: &mut [u8], rgba: &[u8], largura: u32, c: Caix
 }
 
 /// **A lei da mistura**: em `out` (o retângulo `c` do palco), cada píxel onde a imagem atual difere da do
-/// fim passa a ser o da atual. As três premultiplicadas; `fim` e `atual` de largura `largura`.
-fn mistura_na_caixa(out: &mut [u8], fim: &[u8], atual: &[u8], largura: u32, c: Caixa) {
+/// fim E da do início da gravação passa a ser o da atual. Todas premultiplicadas, de largura `largura`.
+fn mistura_na_caixa(out: &mut [u8], g: &fim::Gravacao, atual: &[u8], largura: u32, c: Caixa) {
     let (lw, x, w) = (largura as usize, c.0 as usize, c.2 as usize);
     for (j, o) in out.chunks_exact_mut(w * 4).enumerate().take(c.3 as usize) {
         let a = ((c.1 as usize + j) * lw + x) * 4;
-        let (f, at) = (&fim[a..a + w * 4], &atual[a..a + w * 4]);
-        let pares = f.as_chunks::<4>().0.iter().zip(at.as_chunks::<4>().0);
-        for (o, (f, at)) in o.as_chunks_mut::<4>().0.iter_mut().zip(pares) {
-            if f != at {
-                *o = *at;
+        let r = a..a + w * 4;
+        let (f, i, at) = (&g.fim.rgba[r.clone()], &g.inicio[r.clone()], &atual[r]);
+        let (f, i, at) = (
+            f.as_chunks::<4>().0,
+            i.as_chunks::<4>().0,
+            at.as_chunks::<4>().0,
+        );
+        for (k, o) in o.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+            if f[k] != at[k] && i[k] != at[k] {
+                *o = at[k];
             }
         }
     }
@@ -275,8 +281,8 @@ fn mistura_na_caixa(out: &mut [u8], fim: &[u8], atual: &[u8], largura: u32, c: C
 
 type Caixa = (u32, u32, u32, u32);
 
-/// A imagem do fim, a atual, e a chave da mistura (versão da atual, versão do fim).
-type Mistura = (Arc<fim::Imagem>, Arc<fim::Imagem>, (u64, u64));
+/// As pontas da gravação, a imagem atual, e a chave da mistura (versão da atual, versão do fim).
+type Mistura = (Arc<fim::Gravacao>, Arc<fim::Imagem>, (u64, u64));
 
 /// A imagem do fim e a atual de `p`, quando as duas existem com o tamanho do espelho, e a chave da
 /// mistura. Lê a atual quando a fonte muda (o Painter ligado mudou, ou o palco acordou).
@@ -285,7 +291,8 @@ fn mistura_de<R: ?Sized>(
     atuais: &mut Atuais<'_, R>,
     ranhuras: &mut R,
 ) -> Option<Mistura> {
-    let fim = Arc::clone(p.fim.colhe()?);
+    let gravacao = Arc::clone(p.fim.colhe()?);
+    let fim = &gravacao.fim;
     let sprite = p.sprite?;
     let fonte = match atuais
         .painter
@@ -314,7 +321,13 @@ fn mistura_de<R: ?Sized>(
     let atual = Arc::clone(p.atual.as_ref()?.img.as_ref()?);
     let dims = p.tamanho_do_espelho?;
     ((fim.w, fim.h) == dims && (atual.w, atual.h) == dims && fim.rgba.len() == atual.rgba.len())
-        .then_some((fim, atual, (p.versao_da_atual, p.fim.versao)))
+        .then(|| {
+            (
+                Arc::clone(&gravacao),
+                atual,
+                (p.versao_da_atual, p.fim.versao),
+            )
+        })
 }
 
 impl PalcosDoPainter {
@@ -462,8 +475,8 @@ impl PalcosDoPainter {
                 let c = caixa.unwrap_or((0, 0, w, h));
                 self.premul.clear();
                 recorta(&p.espelho, w, c, &mut self.premul);
-                if let Some((fim, atual, _)) = &mistura {
-                    mistura_na_caixa(&mut self.premul, &fim.rgba, &atual.rgba, w, c);
+                if let Some((gravacao, atual, _)) = &mistura {
+                    mistura_na_caixa(&mut self.premul, gravacao, &atual.rgba, w, c);
                 }
                 let subida = match (p.ranhura, caixa) {
                     (Some(id), Some(c)) => ranhuras.substitui_regiao(id, c, &self.premul),

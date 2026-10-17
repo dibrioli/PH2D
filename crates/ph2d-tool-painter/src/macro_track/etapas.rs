@@ -553,27 +553,41 @@ pub fn tela_no_fim(track: &Track) -> Result<Vec<u8>, ErroDaMacro> {
     Ok(ph2d_editor_core::tool::RasterEditTool::run_full(toc.tool_mut()).0)
 }
 
-/// **A imagem ao fim da GRAVAÇÃO** — os `events` crus, sem as edições das etapas: o que o editor tinha
-/// no Parar —, como o Apply a escreve na sprite (RGBA8 straight). A régua de «o artista pintou depois do
-/// Parar» (W7 item 1). `Ok(None)` = `parar`.
+/// As imagens do início e do fim de uma gravação (RGBA8 straight, `w`×`h`).
+pub struct ImagensDaGravacao {
+    pub inicio: Vec<u8>,
+    pub fim: Vec<u8>,
+    pub w: u32,
+    pub h: u32,
+}
+
+/// **As imagens ao início e ao fim da GRAVAÇÃO** — os `events` crus, sem as edições das etapas: o que o
+/// editor tinha ao Gravar e no Parar —, como o Apply as escreve na sprite. A régua de «o artista pintou
+/// depois do Parar» (W7 item 1): o que difere das duas é dele. `Ok(None)` = `parar`.
 ///
 /// # Errors
 /// O [`ErroDaMacro`] da reprodução.
-pub fn imagem_no_fim_da_gravacao(
+pub fn imagens_da_gravacao(
     track: &Track,
     parar: &AtomicBool,
-) -> Result<Option<(Vec<u8>, u32, u32)>, ErroDaMacro> {
+) -> Result<Option<ImagensDaGravacao>, ErroDaMacro> {
     let mut toc = TocadorDoPainter::novo(
         &track.initial,
         track.events.iter().map(|e| e.payload.as_slice()),
     )?;
+    let (inicio, wi, hi) = ph2d_editor_core::tool::RasterEditTool::run_full(toc.tool_mut());
     for e in &track.events {
         if parar.load(Ordering::Relaxed) {
             return Ok(None);
         }
         toc.aplica(&e.payload)?;
     }
-    Ok(Some(ph2d_editor_core::tool::RasterEditTool::run_full(
-        toc.tool_mut(),
-    )))
+    let (fim, w, h) = ph2d_editor_core::tool::RasterEditTool::run_full(toc.tool_mut());
+    // Uma gravação que muda o tamanho da tela não tem píxeis do início a comparar.
+    let inicio = if (wi, hi) == (w, h) {
+        inicio
+    } else {
+        fim.clone()
+    };
+    Ok(Some(ImagensDaGravacao { inicio, fim, w, h }))
 }

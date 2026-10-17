@@ -1,6 +1,6 @@
 //! W7 item 1, `docs/Macros/04_plano_W7.md` — **a imagem é do artista**: onde a imagem atual difere da
-//! imagem do fim da gravação, a ranhura mostra a atual; nos outros píxeis, o palco. O fim é o da trilha
-//! CRUA (editar uma etapa não o muda).
+//! imagem do fim E da do início da gravação, a ranhura mostra a atual; nos outros píxeis, o palco. O fim
+//! é o da trilha CRUA (editar uma etapa não o muda).
 
 use super::*;
 
@@ -15,14 +15,21 @@ fn premul(rgba: &[u8]) -> Vec<u8> {
     v
 }
 
-/// A lei, escrita à parte: a atual onde difere do fim, senão o palco (as três premultiplicadas).
+/// A imagem do início das gravações no papel, premultiplicada: a branca.
+fn inicio_p() -> Vec<u8> {
+    vec![255; (LADO * LADO * 4) as usize]
+}
+
+/// A lei, escrita à parte: a atual onde difere do fim e do início, senão o palco (premultiplicadas).
 fn esperado(palco: &[u8], fim: &[u8], atual: &[u8]) -> Vec<u8> {
+    let ini = inicio_p();
     palco
         .as_chunks::<4>()
         .0
         .iter()
         .zip(fim.as_chunks::<4>().0.iter().zip(atual.as_chunks::<4>().0))
-        .flat_map(|(p, (f, a))| if f == a { p } else { a }.to_vec())
+        .zip(ini.as_chunks::<4>().0)
+        .flat_map(|((p, (f, a)), i)| if f == a || i == a { p } else { a }.to_vec())
         .collect()
 }
 
@@ -184,7 +191,7 @@ fn o_que_se_pintou_depois_do_parar_aparece_por_cima_do_clipe() {
 
 impl Clipe {
     /// A versão e a imagem do fim do palco (o fio já acabou).
-    fn o_fim(&mut self) -> (u64, std::sync::Arc<super::super::fim::Imagem>) {
+    fn o_fim(&mut self) -> (u64, std::sync::Arc<super::super::fim::Gravacao>) {
         let Some(Lido {
             palco: Ok(Some(p)), ..
         }) = self.palcos.lidos.get_mut(&self.e.to_bits())
@@ -284,7 +291,7 @@ fn o_fim_e_a_trilha_crua_e_editar_uma_etapa_nao_o_recalcula() {
     }
     let (_, img) = c.o_fim();
     assert!(
-        (img.w, img.h) == (LADO, LADO) && img.rgba == fim_p,
+        (img.fim.w, img.fim.h) == (LADO, LADO) && img.fim.rgba == fim_p && img.inicio == inicio_p(),
         "o fim não é o da trilha crua (a imagem no Parar)"
     );
 }
@@ -366,4 +373,61 @@ fn o_traco_ao_vivo_do_painter_aparece_por_cima_do_clipe() {
         r == esperado(&c.palco, &premul(&fim), &editor_p),
         "(d) o traço em voo não aparece por cima do clipe"
     );
+}
+
+/// (f) — ⭐ **a imagem que nunca recebeu a gravação** (a do INÍCIO dela: as cenas `PH2D_MACRO_SMOKE=1`
+/// e `=5`, uma `Macro` posta noutra imagem, a gravação desfeita): o clipe anima por cima dela e o que o
+/// artista pintou nela fica por cima do clipe. ⛔ VERMELHO com a lei «atual ≠ fim ⇒ atual»: a branca
+/// difere do fim em todo píxel que a macro pinta, e a ranhura ficava branca o clipe inteiro (a foto da
+/// `=1` a 0,633 s, 17/10).
+#[test]
+fn na_imagem_do_inicio_da_gravacao_o_clipe_anima_e_a_pintura_fica_por_cima() {
+    let (doc, d, fim) = gravada_no_papel();
+    let atual = pintada_depois(&vec![255; (LADO * LADO * 4) as usize]);
+    let (ini_p, fim_p, atual_p) = (inicio_p(), premul(&fim), premul(&atual));
+    let mut le = |_: u64, _: &mut Placa| Some((atual.clone(), LADO, LADO));
+    let mut c = Clipe::novo(&doc);
+    c.espera_o_fim(0.0, None, &mut le);
+    let pintado = (8 * LADO as usize + 8) * 4;
+    let mut q = 0u32;
+    loop {
+        let t = f64::from(q) / 60.0;
+        let r = c.quadro(
+            t,
+            Atuais {
+                painter: None,
+                le_sprite: Some(&mut le),
+            },
+        );
+        assert!(
+            r[pintado..pintado + 4] == atual_p[pintado..pintado + 4],
+            "(f) quadro {q}: a pintura na imagem do início não está por cima do clipe"
+        );
+        if t > d + 0.05 {
+            let da_macro = r
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(
+                    fim_p
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .zip(ini_p.as_chunks::<4>().0),
+                )
+                .filter(|(px, (f, i))| f != i && px == f)
+                .count();
+            assert!(
+                da_macro > (LADO * LADO / 20) as usize,
+                "(f) no último quadro só {da_macro} píxeis mostram a macro: a imagem do início escondeu o clipe"
+            );
+            assert!(
+                r == esperado(&c.palco, &fim_p, &atual_p),
+                "(f) no último quadro a ranhura não segue a lei"
+            );
+            break;
+        }
+        q += 1;
+    }
+    assert_ne!(ini_p, fim_p, "controlo: a gravação pinta a branca");
 }

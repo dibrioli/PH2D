@@ -56,7 +56,7 @@ fn the_same_bytes_under_todays_header_do_not_open_the_same() {
     assert_eq!(&hoje[..2], &[0xBD, 0x01], "o fixture é um v189");
     // O `190` é o 1.º degrau com o traço novo (o `191` acrescentou só os scripts): é o cabeçalho
     // que lê estes bytes pela forma NOVA do `StrokeSpec`, fora do âmbito do `189`.
-    assert!(PROJECT_SCHEMA >= 190);
+    const { assert!(PROJECT_SCHEMA >= 190) };
     hoje[0] = 0xBE;
     let certo = le(V189, "traco_v189_certo").expect("um v189 abre");
     let torto = le(&hoje, "traco_v189_torto");

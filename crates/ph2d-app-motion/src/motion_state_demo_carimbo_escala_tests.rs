@@ -279,11 +279,42 @@ pub(super) fn le_as_fases(
     )
 }
 
+/// As rotas da [`sonda_as_fases_do_quadro_hibrido`]: `A` o carimbo recusado (a de antes) · `B` hoje ·
+/// `S1` hoje com UMA varredura do passe em cada sink · `C` hoje sem colisor (o `Drive` que escreve
+/// `collider` passa a escrever o nome do controlo: nenhum passe arma).
+fn arma_a_rota(m: &mut MotionState, rota: &str) {
+    match rota {
+        "A" => rota_de_antes(m),
+        "S1" => {
+            for s in m.sinks.clone() {
+                m.doc
+                    .graph
+                    .set_param(s, ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_PARAM, 1.0);
+            }
+        }
+        "C" => {
+            let nomeados: Vec<_> = m
+                .doc
+                .graph
+                .node_text_params()
+                .iter()
+                .filter(|(_, t)| t.get("column").is_some_and(|c| c == "collider"))
+                .map(|(n, _)| *n)
+                .collect();
+            for n in nomeados {
+                m.doc.graph.set_text_param(n, "column", "colisor");
+            }
+        }
+        _ => {}
+    }
+}
+
 /// **SONDA — ONDE está o custo fixo da rota híbrida** (doc 120 §8.3.1, o aberto do custo fixo): a
-/// MESMA cena pela rota `A` (o carimbo recusado, a de antes) e pela `B` (hoje), intercaladas em
+/// MESMA cena por cada rota de [`arma_a_rota`] (`PH2D_SONDA_ROTAS`, omissão `A,B`), intercaladas em
 /// blocos rodados, e por cada fase do quadro o MÍNIMO das médias de bloco (mediana ao lado). O
 /// `quadro` é o da sonda irmã (`o_quadro` + a espera da placa); o passe de formas
-/// (`decide_o_quadro`, da shell) cronometra-se À PARTE, depois da espera.
+/// (`decide_o_quadro`, da shell) cronometra-se À PARTE, depois da espera. Com `PH2D_SONDA_ESCALAS`
+/// os casos são `PH2D_SONDA_CENAS × escalas`; o `Relatorio` do passe imprime-se por rota.
 ///
 /// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --profile smoke --lib \
 ///     sonda_as_fases_do_quadro_hibrido -- --ignored --nocapture --test-threads=1`
@@ -335,7 +366,7 @@ fn sonda_as_fases_do_quadro_hibrido() {
         let _ = crate::motion_shape_placa::decide_o_quadro(placa, &gpu, m, (true, true), cam);
         le_as_fases(m, espera, t.elapsed())
     };
-    let casos: &[(&str, f32)] = &[
+    let fixos: Vec<(String, f32)> = [
         ("120", 1.0),
         ("112", 1.0),
         ("125", 1.0),
@@ -345,36 +376,60 @@ fn sonda_as_fases_do_quadro_hibrido() {
         ("136", 1.0),
         ("132", 11.0),
         ("136", 11.0),
-    ];
-    for &(n, k) in casos {
+    ]
+    .iter()
+    .map(|&(n, k)| (n.to_string(), k))
+    .collect();
+    let casos: Vec<(String, f32)> = match (std::env::var("PH2D_SONDA_ESCALAS"), &so) {
+        (Ok(e), Some(cenas)) => cenas
+            .iter()
+            .flat_map(|n| {
+                e.split(',')
+                    .filter_map(|v| v.parse().ok())
+                    .map(move |k| (n.clone(), k))
+            })
+            .collect(),
+        _ => fixos,
+    };
+    let rotas: Vec<String> = std::env::var("PH2D_SONDA_ROTAS")
+        .unwrap_or_else(|_| "A,B".into())
+        .split(',')
+        .map(str::to_string)
+        .collect();
+    for (n, k) in &casos {
+        let (n, k) = (n.as_str(), *k);
         if so.as_ref().is_some_and(|f| !f.iter().any(|x| x == n)) {
             continue;
         }
-        let Some(mut va) = monta_demo(n) else {
+        if monta_demo(n).is_none() {
             eprintln!("FASES ={n}: a cena não existe");
             continue;
-        };
-        rota_de_antes(&mut va);
-        amplia(&mut va, k);
-        let mut vb = monta_demo(n).expect("a cena existe");
-        amplia(&mut vb, k);
-        let mut ph = [ph2d_core::Playhead::new(dt), ph2d_core::Playhead::new(dt)];
-        for p in &mut ph {
-            p.play();
         }
-        let (pa, pb) = ph.split_at_mut(1);
-        let (pa, pb) = (&mut pa[0], &mut pb[0]);
-        let mut placas = [
-            crate::motion_shape_placa::PlacaDeFormas::default(),
-            crate::motion_shape_placa::PlacaDeFormas::default(),
-        ];
-        let (qa, qb) = placas.split_at_mut(1);
-        let (qa, qb) = (&mut qa[0], &mut qb[0]);
+        let mut ms: Vec<MotionState> = rotas
+            .iter()
+            .map(|r| {
+                let mut m = monta_demo(n).expect("a cena existe");
+                arma_a_rota(&mut m, r);
+                amplia(&mut m, k);
+                m
+            })
+            .collect();
+        let mut ph: Vec<ph2d_core::Playhead> = rotas
+            .iter()
+            .map(|_| {
+                let mut p = ph2d_core::Playhead::new(dt);
+                p.play();
+                p
+            })
+            .collect();
+        let mut placas: Vec<crate::motion_shape_placa::PlacaDeFormas> =
+            rotas.iter().map(|_| Default::default()).collect();
         for _ in 0..30 {
-            quadro(&mut va, pa, qa);
-            quadro(&mut vb, pb, qb);
+            for i in 0..rotas.len() {
+                quadro(&mut ms[i], &mut ph[i], &mut placas[i]);
+            }
         }
-        for (rota, m) in [("A", &mut va), ("B", &mut vb)] {
+        for (rota, m) in rotas.iter().zip(ms.iter_mut()) {
             let t = m.doc.graph.clone();
             let plano = crate::motion_bridge::gpu::plano_do_produto(m, 0.5);
             let tipos: Vec<String> = plano
@@ -389,33 +444,38 @@ fn sonda_as_fases_do_quadro_hibrido() {
                 tipos.len()
             );
         }
-        // Por rota: as médias de cada bloco (fases) e a soma dos contadores.
-        let mut blocos: [Vec<[f64; 21]>; 2] = [Vec::new(), Vec::new()];
-        let mut contas = [[0.0f64; 6]; 2];
-        let mut corre = |i: usize, m: &mut MotionState, p: &mut ph2d_core::Playhead, q: &mut _| {
-            let mut s = [0.0f64; 21];
-            for _ in 0..bloco {
-                let (f, c) = quadro(m, p, q);
-                for (a, b) in s.iter_mut().zip(f) {
-                    *a += b / bloco as f64;
-                }
-                for (a, b) in contas[i].iter_mut().zip(c) {
-                    *a += b;
-                }
-            }
-            blocos[i].push(s);
-        };
+        // Por rota: as médias de cada bloco (fases) e a soma dos contadores; a ordem roda a cada
+        // rodada.
+        let mut blocos: Vec<Vec<[f64; 21]>> = rotas.iter().map(|_| Vec::new()).collect();
+        let mut contas = vec![[0.0f64; 6]; rotas.len()];
         for r in 0..rodadas {
-            if r % 2 == 0 {
-                corre(0, &mut va, pa, qa);
-                corre(1, &mut vb, pb, qb);
-            } else {
-                corre(1, &mut vb, pb, qb);
-                corre(0, &mut va, pa, qa);
+            for j in 0..rotas.len() {
+                let i = (j + r) % rotas.len();
+                let mut s = [0.0f64; 21];
+                for _ in 0..bloco {
+                    let (f, c) = quadro(&mut ms[i], &mut ph[i], &mut placas[i]);
+                    for (a, b) in s.iter_mut().zip(f) {
+                        *a += b / bloco as f64;
+                    }
+                    for (a, b) in contas[i].iter_mut().zip(c) {
+                        *a += b;
+                    }
+                }
+                blocos[i].push(s);
             }
         }
         let quadros = (bloco * rodadas) as f64;
-        for (i, rota) in ["A", "B"].iter().enumerate() {
+        for (i, rota) in rotas.iter().enumerate() {
+            let r = ms[i].pump.ultimo_relatorio();
+            eprintln!(
+                "FASES ={n} ×{k} {rota} passe: {} peças · {} varreduras · {} candidatos ({:.1} por peça) · {} grandes · {} instâncias na placa",
+                r.pecas,
+                r.varreduras,
+                r.candidatos,
+                r.vizinhos_por_peca(),
+                r.grandes,
+                ms[i].gpu_cook.instances().map_or(0, |v| v.len())
+            );
             let linha: Vec<String> = FASES
                 .iter()
                 .enumerate()

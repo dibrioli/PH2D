@@ -94,6 +94,15 @@ impl crate::App {
         // current_preview drain + pending_commit capture; on-canvas
         // overlay paints the canvas RGBA over the sprite footprint.
         // Sidebar Procreate-style lands in W2 (ph2d-panel-painter).
+        // O passo global da mesma transação (a etapa editada de uma macro, W8) desfaz-se com este.
+        let redo = self.painter_redo_requested;
+        if (redo || self.painter_undo_requested)
+            && let Some(t) = ph2d_app_painter::painter_bridge_queries::o_painter(tools)
+                .and_then(|p| p.transacao_do_topo(redo))
+            && self.undo.transacao_do_topo(redo) == Some(t)
+        {
+            self.undo_request = Some(redo);
+        }
         let painter_dispatch_t0 = Instant::now();
         let painter_apply_committed = ph2d_app_painter::painter_bridge::dispatch(
             hero,

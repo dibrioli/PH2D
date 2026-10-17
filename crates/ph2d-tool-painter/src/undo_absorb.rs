@@ -129,7 +129,7 @@ impl UndoController {
         let Some(mut top) = self.undo.pop() else {
             return;
         };
-        let (kind, old_bytes) = (top.kind, top.heap_bytes());
+        let (kind, old_bytes, transacao) = (top.kind, top.heap_bytes(), top.transacao);
         // ⭐ **O CANVAS vai pelo caminho barato quando ele dá a MESMA resposta** (medido 2026-09-24:
         // a materialização era uma cópia de 67 MB e o re-split voltava a varrer os 67 MB para achar
         // uma janela que o topo e o detector já conheciam — `~9–11 ms` de um pen-down de `~25`). A
@@ -172,6 +172,7 @@ impl UndoController {
         }
         self.bytes -= old_bytes;
         let mut entry = UndoEntry::split(*first_before, before.clone(), kind, None, None);
+        entry.transacao = transacao;
         if let Some(canvas) = cheap {
             *entry.planes.canvas_mut() = canvas;
         }

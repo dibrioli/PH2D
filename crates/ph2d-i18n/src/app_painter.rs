@@ -44,6 +44,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.painter.painter_bridge_shape_preview.shape_preview_upload_failed" => {
             "Painter: could not upload the brush-shape preview to the GPU ({e})."
         }
+        "app.painter.macro_reescrita.write_failed" => {
+            "Macro: could not rewrite the image after the step edit ({e})."
+        }
         "app.painter.painter_bridge_upload.preview_upload_failed" => {
             "Painter: could not upload the preview to the GPU ({e}). Trying again next frame."
         }

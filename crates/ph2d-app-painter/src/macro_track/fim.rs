@@ -5,7 +5,7 @@
 //! fio. Um erro da reprodução ou um pânico do fio dizem-se ao artista ([`FimDaGravacao::erro`]).
 
 use ph2d_macro::Track;
-use ph2d_tool_painter::macro_track::etapas::{LeitorDoPainter, imagens_da_gravacao};
+use ph2d_tool_painter::macro_track::etapas::{LeitorDoPainter, ModeloDoFim, imagens_da_gravacao};
 use ph2d_tool_painter::macro_track::tocar::ErroDaMacro;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
@@ -19,10 +19,13 @@ pub(super) struct Imagem {
     pub(super) h: u32,
 }
 
-/// As imagens das pontas da gravação, premultiplicadas: o fim e o início (do tamanho do fim).
+/// As imagens das pontas da gravação, premultiplicadas: o fim e o início (do tamanho do fim); o fim
+/// straight (o que se escreve numa sprite) e o documento do fim (a régua da reescrita, W8 item 2b).
 pub(super) struct Gravacao {
     pub(super) fim: Imagem,
     pub(super) inicio: Vec<u8>,
+    pub(super) fim_reto: Vec<u8>,
+    pub(super) modelo: ModeloDoFim,
 }
 
 /// `Ok(None)` = parou (o trabalho largou-se).
@@ -43,6 +46,8 @@ enum Estado {
 pub(super) struct FimDaGravacao {
     /// A versão da trilha que toca ([`versao_da_trilha`]).
     pub(super) versao: u64,
+    /// A versão da gravação crua ([`versao_crua`]).
+    pub(super) crua: u64,
     estado: Estado,
 }
 
@@ -52,6 +57,18 @@ impl Drop for FimDaGravacao {
             parar.store(true, Ordering::Relaxed);
         }
     }
+}
+
+/// O hash da gravação CRUA (o estado inicial e os eventos, sem as edições das etapas): a mesma em duas
+/// versões ⇒ a mudança foi uma edição de etapa (a reescrita da imagem, W8 item 2b).
+pub(super) fn versao_crua(t: &Track) -> u64 {
+    let mut h = DefaultHasher::new();
+    t.initial.hash(&mut h);
+    for e in &t.events {
+        e.t.hash(&mut h);
+        e.payload.hash(&mut h);
+    }
+    h.finish()
 }
 
 /// O hash do que a imagem do fim lê da trilha: o estado inicial e os eventos da trilha que toca. Uma
@@ -72,7 +89,7 @@ fn calcula(t: &Track, parar: &AtomicBool) -> Resultado {
     let Some(g) = imagens_da_gravacao(t, parar)? else {
         return Ok(None);
     };
-    let (mut rgba, mut inicio) = (g.fim, g.inicio);
+    let (mut rgba, mut inicio) = (g.fim.clone(), g.inicio);
     ph2d_render::premul::premultiply_rgba8(&mut rgba);
     ph2d_render::premul::premultiply_rgba8(&mut inicio);
     Ok(Some(Arc::new(Gravacao {
@@ -82,6 +99,8 @@ fn calcula(t: &Track, parar: &AtomicBool) -> Resultado {
             h: g.h,
         },
         inicio,
+        fim_reto: g.fim,
+        modelo: g.modelo,
     })))
 }
 
@@ -92,6 +111,7 @@ impl FimDaGravacao {
     pub(super) fn de(track: Track) -> Self {
         Self {
             versao: versao_da_trilha(&track),
+            crua: versao_crua(&track),
             estado: Estado::PorArrancar(track),
         }
     }

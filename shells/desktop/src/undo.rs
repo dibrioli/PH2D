@@ -325,20 +325,33 @@ pub(crate) struct SelectionMark {
 pub(crate) struct ProjectUndo {
     /// Cada degrau leva a hora do `undo_tick` (MiroClone B5(4)): o `Ctrl+Z` da cena compara-a com a da
     /// última operação de abas.
-    undo: Vec<(ProjectState, SelectionMark, u64)>,
-    redo: Vec<(ProjectState, SelectionMark, u64)>,
+    /// O 4.º campo é a transação do Painter que se desfaz com o degrau (W8).
+    undo: Vec<(ProjectState, SelectionMark, u64, Option<u64>)>,
+    redo: Vec<(ProjectState, SelectionMark, u64, Option<u64>)>,
 }
 
 impl ProjectUndo {
     /// Empurra um estado-pré (o baseline antes da ação detectada) **com a selecção que lhe
     /// pertencia**. Limpa o redo.
+    #[cfg(test)]
     pub(crate) fn push_undo(&mut self, pre: ProjectState, mark: SelectionMark) {
+        self.push_undo_em(pre, mark, None);
+    }
+
+    /// [`Self::push_undo`] de um passo da `transacao` — o passo de outra fila (o do Painter) que se
+    /// desfaz com este (W8, `undo_route.rs`).
+    pub(crate) fn push_undo_em(&mut self, pre: ProjectState, mark: SelectionMark, transacao: Option<u64>) {
         if self.undo.len() >= UNDO_CAP {
             self.undo.remove(0);
         }
         self.undo
-            .push((pre, mark, ph2d_editor_core::documents::undo_tick()));
+            .push((pre, mark, ph2d_editor_core::documents::undo_tick(), transacao));
         self.redo.clear();
+    }
+
+    /// A transação do passo que um desfazer (`redo == false`) ou um refazer aplicaria agora.
+    pub(crate) fn transacao_do_topo(&self, redo: bool) -> Option<u64> {
+        if redo { self.redo.last() } else { self.undo.last() }.and_then(|p| p.3)
     }
 
     /// A hora do degrau que o próximo desfazer leva (o que o próximo refazer leva, com `redo`).
@@ -375,9 +388,9 @@ impl ProjectUndo {
         current: ProjectState,
         agora: SelectionMark,
     ) -> Option<(ProjectState, SelectionMark)> {
-        let (state, mark, _) = self.undo.pop()?;
+        let (state, mark, _, t) = self.undo.pop()?;
         self.redo
-            .push((current, agora, ph2d_editor_core::documents::undo_tick()));
+            .push((current, agora, ph2d_editor_core::documents::undo_tick(), t));
         Some((state, mark))
     }
 
@@ -388,9 +401,9 @@ impl ProjectUndo {
         current: ProjectState,
         agora: SelectionMark,
     ) -> Option<(ProjectState, SelectionMark)> {
-        let (state, mark, _) = self.redo.pop()?;
+        let (state, mark, _, t) = self.redo.pop()?;
         self.undo
-            .push((current, agora, ph2d_editor_core::documents::undo_tick()));
+            .push((current, agora, ph2d_editor_core::documents::undo_tick(), t));
         Some((state, mark))
     }
 }

@@ -553,13 +553,18 @@ pub fn tela_no_fim(track: &Track) -> Result<Vec<u8>, ErroDaMacro> {
     Ok(ph2d_editor_core::tool::RasterEditTool::run_full(toc.tool_mut()).0)
 }
 
-/// As imagens do início e do fim de uma gravação (RGBA8 straight, `w`×`h`).
+/// As imagens do início e do fim de uma gravação (RGBA8 straight, `w`×`h`), e o documento do fim.
 pub struct ImagensDaGravacao {
     pub inicio: Vec<u8>,
     pub fim: Vec<u8>,
     pub w: u32,
     pub h: u32,
+    pub modelo: ModeloDoFim,
 }
+
+/// **O documento do fim de uma gravação** (camadas, relevo, cobertura, material) — a régua por texel da
+/// reescrita de uma etapa editada ([`PainterTool::reescreve_a_gravacao`], W8 item 2b).
+pub struct ModeloDoFim(pub(crate) crate::undo::ModelSnapshot);
 
 /// ⭐ **Quadros (60 Hz) que a água da imagem do fim corre no máximo depois do último evento** (W8 item
 /// 2c, `docs/Macros/05_plano_W8.md`): a água do editor continua depois do Parar até parar sozinha, e a
@@ -607,11 +612,18 @@ pub fn imagens_da_gravacao(
         ph2d_editor_core::tool::Tool::on_tick(t, super::roteiro::DT_MS);
     }
     let (fim, w, h) = t.imagem_aplicada().unwrap_or_else(vazia);
+    let modelo = ModeloDoFim(t.snapshot_model());
     // Uma gravação que muda o tamanho da tela não tem píxeis do início a comparar.
     let inicio = if (wi, hi) == (w, h) {
         inicio
     } else {
         fim.clone()
     };
-    Ok(Some(ImagensDaGravacao { inicio, fim, w, h }))
+    Ok(Some(ImagensDaGravacao {
+        inicio,
+        fim,
+        w,
+        h,
+        modelo,
+    }))
 }

@@ -279,6 +279,9 @@ struct UndoEntry {
     /// `Some` for a coalescible action — see [`CoalesceKind`]. Plain entries carry `None` and thereby
     /// BREAK any run in progress.
     kind: Option<CoalesceKind>,
+    /// **A transação** a que este passo pertence (W8 item 2b, `docs/Macros/05_plano_W8.md`): o passo
+    /// global com o mesmo número desfaz-se com ele (`undo_route.rs` da shell).
+    transacao: Option<u64>,
 }
 
 impl UndoEntry {
@@ -296,6 +299,7 @@ impl UndoEntry {
             after: Box::new(after),
             planes,
             kind,
+            transacao: None,
         }
     }
 
@@ -520,6 +524,22 @@ impl UndoController {
     #[must_use]
     pub fn can_redo(&self) -> bool {
         !self.redo.is_empty()
+    }
+
+    /// A transação do passo que um desfazer (`redo == false`) ou um refazer aplicaria agora.
+    #[must_use]
+    pub fn transacao_do_topo(&self, redo: bool) -> Option<u64> {
+        if redo { self.redo.last() } else { self.undo.last() }.and_then(|e| e.transacao)
+    }
+
+    /// Marca com `t` o passo que entrou depois de a pilha ter `profundidade_antes` passos (nenhum, se
+    /// o registo o descartou).
+    pub(crate) fn marca_o_topo(&mut self, profundidade_antes: usize, t: u64) {
+        if self.undo.len() > profundidade_antes
+            && let Some(e) = self.undo.last_mut()
+        {
+            e.transacao = Some(t);
+        }
     }
 
     /// Retained undo depth (for tests / memory introspection).

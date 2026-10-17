@@ -407,6 +407,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.undo_app.transicao_de_estado_de" => "transicao de estado de UI ao vivo",
         "shell.undo_app.colorize_a_recalcular" => "colorize a recalcular",
         "shell.undo_app.macro_a_conferir" => "uma macro a conferir",
+        "shell.undo_app.macro_a_reescrever" => "uma macro a reescrever a imagem",
         "shell.undo_app.botao_do_rato_em_baixo" => "botao do rato em baixo",
         "shell.undo_route.shift_z" => "Shift+Z",
         "shell.vec_component_general.that_copy_cannot" => "That copy cannot become this prefab",

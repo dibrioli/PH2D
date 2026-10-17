@@ -860,6 +860,7 @@ impl App {
             undo_baseline: None,
             undo_baseline_selection: crate::undo::SelectionMark::default(),
             undo_request: None,
+            undo_transacao: None,
             undo_button: None,
             any_input_this_frame: false,
             preview_drive: ph2d_preview_drive::PreviewDrive::default(),

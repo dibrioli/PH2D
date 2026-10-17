@@ -310,6 +310,7 @@ impl crate::App {
             return;
         };
         let agora = self.field_selection_mark();
+        let transacao = self.undo.transacao_do_topo(redo);
         let restored = if redo {
             self.undo.redo(current, agora)
         } else {
@@ -317,6 +318,15 @@ impl crate::App {
         };
         if let Some((state, mark)) = restored {
             self.apply_project_with(&state, Some(&mark));
+            // O passo do Painter da mesma transação (a imagem de uma etapa editada) vai junto.
+            if let Some(t) = transacao
+                && let Some(p) = self.gfx.as_mut().and_then(|g| {
+                    ph2d_app_painter::painter_bridge_queries::o_painter(&mut g.tools)
+                })
+                && p.transacao_do_topo(redo) == Some(t)
+            {
+                if redo { p.redo_last() } else { p.undo_last() };
+            }
             if Self::undo_log_on() {
                 eprintln!("[undo] {} aplicado", if redo { "redo" } else { "undo" });
             }
@@ -418,6 +428,12 @@ impl crate::App {
             Some(tr("shell.undo_app.colorize_a_recalcular"))
         } else if ph2d_app_macros::com(|m| m.a_conferir()) {
             Some(tr("shell.undo_app.macro_a_conferir"))
+        } else if self
+            .gfx
+            .as_ref()
+            .is_some_and(|g| g.painter_macros.a_reescrever())
+        {
+            Some(tr("shell.undo_app.macro_a_reescrever"))
         } else if self.ui_state_live {
             Some(tr("shell.undo_app.transicao_de_estado_de"))
         } else if !had_input {
@@ -529,7 +545,7 @@ impl crate::App {
             // mesma mecânica do próprio `undo_baseline`.
             let agora = self.field_selection_mark();
             let mark = std::mem::replace(&mut self.undo_baseline_selection, agora);
-            self.undo.push_undo(base, mark);
+            self.undo.push_undo_em(base, mark, self.undo_transacao.take());
             if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                 h.documents.scene_stepped();
             }

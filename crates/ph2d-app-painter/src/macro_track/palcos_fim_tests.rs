@@ -540,7 +540,7 @@ fn a_sprite_sem_painter_rele_se_quando_os_pixeis_dela_mudam() {
     let id = |b: &[u8]| ph2d_ecs::SpritePixels(ph2d_asset::AssetId::from_bytes(b));
     c.world.entity_mut(c.e).insert(id(&fim));
     c.espera_o_fim(0.0, None, &mut le);
-    let mut quadro = |c: &mut Clipe, q: u32, le: &mut LeSprite<'_>| {
+    let quadro = |c: &mut Clipe, q: u32, le: &mut LeSprite<'_>| {
         c.quadro(
             f64::from(q) / 60.0,
             Atuais {
@@ -617,3 +617,6 @@ fn o_filme_da_mascara_do_painter_ligado_fica_por_cima_do_clipe() {
     assert!(e != sem_filme, "controlo: o filme muda o que se vê");
     assert!(r == e, "o filme da máscara não está por cima do clipe");
 }
+
+#[path = "palcos_reescrita_tests.rs"]
+mod reescrita_tests;

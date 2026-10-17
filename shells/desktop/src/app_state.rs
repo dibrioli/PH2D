@@ -797,6 +797,8 @@ pub(crate) struct App {
     /// Ctrl+Z / Ctrl+Y pendente (`Some(redo)`), setado pelo teclado e drenado no
     /// `post_frame_undo` (onde `self` está livre do borrow do render loop).
     pub(crate) undo_request: Option<bool>,
+    /// A transação da reescrita de uma etapa editada (W8): o próximo passo global leva-a.
+    pub(crate) undo_transacao: Option<u64>,
     /// Clique nos botões **Undo/Redo da barra** (`TOOL_UNDO`/`TOOL_REDO`), drenado do
     /// action bus. Vai para o MESMO `undo_or_redo` do Ctrl+Z — não é um 2º caminho, é o
     /// mesmo caminho armado de outro lugar (o bus é drenado sob o borrow do `gfx`, então o

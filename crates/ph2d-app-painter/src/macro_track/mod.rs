@@ -23,6 +23,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 mod fim;
+mod reescrita;
+pub use reescrita::{EscreveSprite, LeSprite};
 #[cfg(test)]
 #[path = "palcos_custo_tests.rs"]
 mod palcos_custo_tests;
@@ -141,6 +143,8 @@ struct PalcoDaPintura {
     tamanho: Option<(u32, u32)>,
     toca: bool,
     fim: fim::FimDaGravacao,
+    /// O fim que a imagem ainda tem, depois de uma edição de etapa (W8 item 2b).
+    por_reescrever: Option<reescrita::PorReescrever>,
     /// A imagem atual recebeu a gravação, para a chave `(versao_da_atual, versão do fim)`.
     recebeu: Option<((u64, u64), bool)>,
     atual: Option<Atual>,
@@ -208,6 +212,7 @@ fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
         tamanho: None,
         toca: false,
         fim: fim::FimDaGravacao::de(trilha),
+        por_reescrever: None,
         recebeu: None,
         atual: None,
         versao_da_atual: 0,
@@ -234,7 +239,14 @@ fn relido(velho: Option<Lido>, m: &Macro, tique: u32, soltas: &mut Vec<u32>) -> 
         if let Some(trilha) = trilha_do_painter(&m.doc)
             && fim::versao_da_trilha(&trilha) != p.fim.versao
         {
-            p.fim = fim::FimDaGravacao::de(trilha);
+            let mesma_gravacao = fim::versao_crua(&trilha) == p.fim.crua;
+            let antigo = std::mem::replace(&mut p.fim, fim::FimDaGravacao::de(trilha));
+            // Uma edição de etapa: a imagem ainda tem o fim antigo (o mais antigo, se já esperava).
+            if !mesma_gravacao {
+                p.por_reescrever = None;
+            } else if p.por_reescrever.is_none() {
+                p.por_reescrever = Some(reescrita::PorReescrever::de(antigo));
+            }
         }
         return match palco {
             Ok(Some(())) => Lido {
@@ -452,9 +464,7 @@ impl PalcosDoPainter {
             };
             let acordou = segundos.is_some() && !p.toca;
             p.toca = segundos.is_some();
-            let Some(s) = segundos else {
-                continue;
-            };
+            // A sprite resolve-se mesmo parado: a reescrita de uma etapa editada é fora do Play.
             let alvo = p.em_cena.alvo();
             let sprite = if alvo == 0 {
                 Some(e)
@@ -474,6 +484,9 @@ impl PalcosDoPainter {
             }
             p.sprite = sprite;
             p.pixeis_da_sprite = pixeis;
+            let Some(s) = segundos else {
+                continue;
+            };
             // Um passo que falha pára a macro nele e fica em `MacroEmCena::erro`: a sprite continua a
             // mostrar o que a macro pintou até lá.
             let _ = p.em_cena.segue(s);

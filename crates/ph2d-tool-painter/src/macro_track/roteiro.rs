@@ -100,6 +100,18 @@ pub fn grava_no_papel_com_entrada(
     grava(lado, alvo, &ps, &[entrada], true, &[PaintMedia::WetPaint])
 }
 
+/// [`grava_no_papel`] no Painter do editor LIGADO à sprite `entidade` (bits) — como o artista grava:
+/// escolhe a sprite, depois grava — e esse tool, parado no Parar.
+#[must_use]
+pub fn grava_no_papel_ligado(
+    lado: u32,
+    entidade: u64,
+    n: usize,
+) -> Option<(PainterTool, Vec<u8>, f64)> {
+    let ps: Vec<Pincelada> = SPLASH.iter().copied().cycle().take(n).collect();
+    grava_com(lado, 0, &ps, &[], true, &[PaintMedia::WetPaint], None, Some(entidade))
+}
+
 /// As pinceladas `ps` gravadas como o Splash, com `antes[k]` quadros parados a mais antes da `k`.
 pub(crate) fn grava_pinceladas(
     lado: u32,
@@ -146,6 +158,17 @@ pub(crate) fn grava_pinceladas_como_a_maquina(
     grava_como_a_maquina_e_o_tool(lado, ps, ritmo, dts).map(|(_, b, s)| (b, s))
 }
 
+/// As pinceladas `ps` gravadas nos `meios` (como [`grava_nos_meios`]) e o tool que gravou, parado no
+/// Parar (o editor depois dele).
+#[cfg(test)]
+pub(crate) fn grava_nos_meios_e_o_tool(
+    lado: u32,
+    ps: &[Pincelada],
+    meios: &[PaintMedia],
+) -> Option<(PainterTool, Vec<u8>)> {
+    grava_com(lado, 0, ps, &[], false, meios, None, None).map(|(t, b, _)| (t, b))
+}
+
 /// [`grava_pinceladas_como_a_maquina`] e o tool que gravou, parado no Parar (o editor depois dele).
 #[cfg(test)]
 pub(crate) fn grava_como_a_maquina_e_o_tool(
@@ -154,7 +177,7 @@ pub(crate) fn grava_como_a_maquina_e_o_tool(
     ritmo: &crate::macro_track::RitmoDaAgua,
     dts: &[f32],
 ) -> Option<(PainterTool, Vec<u8>, f64)> {
-    grava_com(lado, 0, ps, &[], false, &[PaintMedia::WetPaint], Some((ritmo, dts)))
+    grava_com(lado, 0, ps, &[], false, &[PaintMedia::WetPaint], Some((ritmo, dts)), None)
 }
 
 fn grava(
@@ -165,7 +188,7 @@ fn grava(
     papel: bool,
     meios: &[PaintMedia],
 ) -> Option<(Vec<u8>, f64)> {
-    grava_com(lado, alvo, ps, antes, papel, meios, None).map(|(_, b, s)| (b, s))
+    grava_com(lado, alvo, ps, antes, papel, meios, None, None).map(|(_, b, s)| (b, s))
 }
 
 /// A máquina de uma gravação: o ritmo da água no worker e a duração de cada quadro, em ms.
@@ -179,11 +202,14 @@ fn grava_com(
     papel: bool,
     meios: &[PaintMedia],
     maquina: Option<Maquina<'_>>,
+    ligado_a: Option<u64>,
 ) -> Option<(PainterTool, Vec<u8>, f64)> {
     let meio = |k: usize| meios.get(k).or(meios.last()).copied();
     let mut t = PainterTool::default();
     let n = usize::try_from(lado).ok()?;
-    if papel {
+    if let Some(e) = ligado_a {
+        t.bind_document(e, vec![255u8; n * n * 4], lado, lado);
+    } else if papel {
         t.abre_a_sprite(vec![255u8; n * n * 4], lado, lado);
     } else {
         t.set_source(vec![255u8; n * n * 4], lado, lado);

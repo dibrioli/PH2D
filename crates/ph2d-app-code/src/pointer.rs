@@ -48,6 +48,14 @@ impl CodeDoc {
             }
             return true;
         }
+        match self.view.completion_hit(x, y) {
+            Some(ph2d_panel_code::CompletionHit::Row(i)) => {
+                self.accept_completion(i);
+                return true;
+            }
+            Some(ph2d_panel_code::CompletionHit::Body) => return true,
+            None => self.complete.close(),
+        }
         self.find.focus = None;
         match self.view.hit(&self.buffer, x, y) {
             Hit::Text(b) => self.click_text(b, mods, now_ns),
@@ -135,7 +143,24 @@ impl CodeDoc {
 
     /// A roda: sobre o console rola-o, senão rola o texto — na horizontal com o Shift.
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32, shift: bool, console: &Store) {
-        if self.console_view.area().contains(x, y) {
+        if self.view.completion_hit(x, y).is_some() {
+            let head = self.buffer.selection().primary().head;
+            if let Some(len) = self
+                .complete
+                .shown(self.buffer.text(), head)
+                .map(|l| l.len())
+            {
+                // Uma linha por toque da roda, no mínimo (o trackpad manda fracções).
+                let lines = -dy / self.view.metrics().line_h;
+                let lines = if lines.abs() < 1.0 {
+                    lines.signum() as isize
+                } else {
+                    lines.round() as isize
+                };
+                self.complete
+                    .scroll(lines, len, ph2d_panel_code::COMPLETION_ROWS);
+            }
+        } else if self.console_view.area().contains(x, y) {
             self.console_view.scroll_by(dy, console.len());
         } else if shift {
             self.view.scroll_x_by(-dy);

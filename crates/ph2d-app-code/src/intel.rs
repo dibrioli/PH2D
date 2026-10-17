@@ -10,7 +10,7 @@ use crate::doc::CodeDoc;
 use crate::docs::Parked;
 use ph2d_code_buffer::{Text, TextEdit};
 use ph2d_code_intel::lsp::Connect;
-use ph2d_code_intel::{Diag, Dirty, Event, LspSession, ServerState, uri_of};
+use ph2d_code_intel::{Answer, Diag, Dirty, Event, LspSession, Req, ServerState, uri_of};
 use ph2d_code_lsp::{LspClient, ServerConfig, resolve_binary};
 use ph2d_panel_code::Assist;
 use ph2d_script::ScriptId;
@@ -64,6 +64,8 @@ pub(crate) struct Intel {
     missing: Option<String>,
     mirrors: BTreeMap<ScriptId, Mirror>,
     diags: BTreeMap<ScriptId, (u64, Vec<Diag>)>,
+    /// O uso de cada nome nos scripts do projeto, na revisão da biblioteca em que se contou.
+    usage: Option<(u64, BTreeMap<String, u32>)>,
 }
 
 impl Default for Intel {
@@ -81,6 +83,7 @@ impl Intel {
             missing: None,
             mirrors: BTreeMap::new(),
             diags: BTreeMap::new(),
+            usage: None,
         }
     }
 
@@ -186,6 +189,7 @@ impl Intel {
         docs: &mut [CodeDoc],
         parked: &BTreeMap<ScriptId, Parked>,
         lib: &ph2d_script::ScriptLibrary,
+        now_ns: u128,
     ) {
         if self.session.is_none() && !self.off() && self.missing.is_none() && !docs.is_empty() {
             self.start();
@@ -194,6 +198,7 @@ impl Intel {
             for d in docs.iter_mut() {
                 d.lsp.edits.clear();
                 d.assist.clear();
+                d.complete.close();
             }
             return;
         };
@@ -208,7 +213,25 @@ impl Intel {
                         self.diags.insert(*id, (version, list));
                     }
                 }
-                Event::Answer { .. } => {}
+                Event::Answer { ticket, answer, .. } => {
+                    let asked = |d: &&mut CodeDoc| {
+                        d.complete
+                            .session
+                            .as_ref()
+                            .is_some_and(|s| s.ticket == Some(ticket))
+                    };
+                    let Some(d) = docs.iter_mut().find(asked) else {
+                        continue;
+                    };
+                    match answer {
+                        Answer::Completion(items) => {
+                            let props = d.syntax.declared_properties(d.buffer.text());
+                            let usage = usage_of(&mut self.usage, lib);
+                            d.complete.answer(ticket, items, &props, usage);
+                        }
+                        _ => d.complete.close(),
+                    }
+                }
             }
         }
         let gone: Vec<ScriptId> = self
@@ -316,7 +339,56 @@ impl Intel {
                 }
             }
         }
+        self.ask_completions(docs, now_ns);
     }
+
+    /// A pausa da lista passou: pergunta ao servidor sobre o texto que ele acabou de receber. Sem
+    /// servidor que responda (parado, em falta), a lista não abre.
+    fn ask_completions(&mut self, docs: &mut [CodeDoc], now_ns: u128) {
+        let waiting = matches!(
+            self.state,
+            Some(ServerState::Starting | ServerState::Restarting)
+        );
+        let ready = matches!(self.state, Some(ServerState::Ready));
+        let Some(session) = self.session.as_mut() else {
+            return;
+        };
+        for d in docs.iter_mut() {
+            let Some(s) = d.complete.session.as_mut() else {
+                continue;
+            };
+            if s.ticket.is_some() || s.due_ns > now_ns {
+                continue;
+            }
+            if !ready {
+                if !waiting {
+                    d.complete.close();
+                }
+                continue;
+            }
+            let current = Src::Doc {
+                serial: d.serial,
+                revision: d.buffer.revision(),
+            };
+            let Some(m) = self.mirrors.get(&d.script).filter(|m| m.src == current) else {
+                continue;
+            };
+            let head = d.buffer.selection().primary().head;
+            s.ticket = Some(session.ask(&m.uri, Req::Completion(head)));
+        }
+    }
+}
+
+/// O uso de cada nome no projeto, contado de novo só quando a biblioteca muda.
+fn usage_of<'a>(
+    cache: &'a mut Option<(u64, BTreeMap<String, u32>)>,
+    lib: &ph2d_script::ScriptLibrary,
+) -> &'a BTreeMap<String, u32> {
+    if cache.as_ref().is_none_or(|c| c.0 != lib.revision()) {
+        let u = crate::complete::usage(lib.iter().map(|(_, s)| s.text.as_str()));
+        *cache = Some((lib.revision(), u));
+    }
+    &cache.as_ref().expect("acabado de contar").1
 }
 
 /// O `luau-lsp` `bin` com as definições e a documentação geradas da API (ficheiros por conteúdo na

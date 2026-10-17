@@ -122,7 +122,7 @@ pub(super) fn initialize_params() -> Value {
             "textDocument": {
                 "synchronization": { "didSave": false },
                 "publishDiagnostics": {},
-                "completion": { "completionItem": { "snippetSupport": false } },
+                "completion": { "completionItem": { "snippetSupport": true } },
                 "hover": { "contentFormat": ["markdown", "plaintext"] }
             }
         },

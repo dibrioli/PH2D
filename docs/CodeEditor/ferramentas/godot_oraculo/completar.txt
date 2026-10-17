@@ -1,0 +1,26 @@
+# Entrada NOSSA do oráculo da lista de completação (I4). `nomes:` = os candidatos (os 17 membros da
+# api_table + vizinhos com caixa, dígito e `_`); cada outra linha é o que o artista escreveu.
+nomes: vec2 state_set state_keys attach_script emit get color set wait despawn property find_by_name state_get input spawn spawn_named state_clear Settings reset asset STATE Vec2 getAll get_all _private
+s
+se
+st
+sts
+SET
+set
+Set
+gt
+e
+sn
+ss
+as
+stat
+x
+sc
+v
+V
+ga
+gA
+_
+2
+get
+p

@@ -71,6 +71,10 @@ impl CodeDoc {
         if self.preedit.as_ref().is_some_and(|p| p.1) {
             self.preedit = None;
         }
+        if self.completion_key(key, mods) {
+            self.reveal();
+            return out;
+        }
         let cmd = mods.ctrl || mods.meta;
         let shift = mods.shift;
         match key {
@@ -108,6 +112,16 @@ impl CodeDoc {
                 }
             }
             _ => {}
+        }
+        // A lista segue a palavra: escrever já a pôs (`type_text`); apagar ou andar dentro dela
+        // mantém-na; o resto fecha-a.
+        let head = self.buffer.selection().primary().head;
+        match key {
+            Key::Char(_) | Key::Space | Key::Other if !cmd => {}
+            Key::Backspace | Key::Delete | Key::Left | Key::Right if !cmd && !shift => {
+                self.complete.moved(self.buffer.text(), head);
+            }
+            _ => self.complete.close(),
         }
         self.reveal();
         out

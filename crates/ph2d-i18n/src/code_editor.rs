@@ -62,6 +62,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // Os problemas vivos do texto (E7), enquanto se escreve.
         "code.problem.syntax" => "Syntax error",
         "code.problem.missing" => "Missing {sym}",
+        // A lista de completação (I4): o detalhe de uma propriedade `ph2d.property` depois de
+        // `self.`, e o nome da lista para o leitor de ecrã.
+        "code.complete.property" => "property",
+        "code.a11y.completion" => "Suggestions",
         // O fim de uma linha com dobra fechada.
         "code.fold.ellipsis" => "…",
         // Outro projecto aberto com textos por gravar: ficaram em ficheiros (nunca em silêncio).

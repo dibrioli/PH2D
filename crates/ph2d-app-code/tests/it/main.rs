@@ -7,6 +7,7 @@ mod abrir;
 mod assistente;
 mod bancada;
 mod busca;
+mod completar;
 mod console;
 mod despacho;
 mod dobras;

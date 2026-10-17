@@ -57,6 +57,8 @@ pub(crate) struct CodeDoc {
     diag_anchor: Option<(usize, bool)>,
     /// Os diagnósticos do assistente de código, seguros entre respostas (seguem as edições).
     pub(crate) assist: crate::problems::Held,
+    /// A lista de completação (I4).
+    pub(crate) complete: crate::complete::Completer,
     /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
     pub last_input_ns: u128,
     pub badge: Option<Badge>,
@@ -97,6 +99,7 @@ impl CodeDoc {
             saved_diag: None,
             diag_anchor: None,
             assist: crate::problems::Held::default(),
+            complete: crate::complete::Completer::default(),
             last_input_ns: 0,
             badge: None,
             project_unsaved: false,
@@ -141,6 +144,7 @@ impl CodeDoc {
         }
         self.lsp.edits.extend_from_slice(edits);
         self.assist.edited(edits);
+        self.complete.edited(edits);
         if let Some(a) = &mut self.diag_anchor {
             for e in edits {
                 a.0 = map_byte(a.0, e);
@@ -296,6 +300,7 @@ impl CodeDoc {
     ) {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
         let problems = self.problems();
+        let shown = self.completion_shown();
         let closed = self.folds.marks(self.buffer.text());
         let bracket = self.bracket();
         if self.find.open {
@@ -347,6 +352,15 @@ impl CodeDoc {
             badge: badge.as_ref(),
             project_unsaved: *project_unsaved,
             assist,
+            completion: shown.as_ref().map(|s| ph2d_panel_code::CompletionView {
+                anchor: s.anchor,
+                rows: &s.rows,
+                total: s.total,
+                top: s.top,
+                selected: s.selected,
+                width_chars: s.width_chars,
+                doc: s.doc.as_deref(),
+            }),
         };
         view.paint(frame, code_r, scene, ts, theme);
         if let Some(r) = find_r {

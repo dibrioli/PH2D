@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 #[derive(Default)]
-struct Visto {
+pub(crate) struct Visto {
     ligacoes: usize,
     /// uri → (versão, texto), do servidor VIVO (um arranque novo começa vazio).
     textos: BTreeMap<String, (i64, String)>,
@@ -32,18 +32,22 @@ struct Visto {
     mudancas: usize,
     /// Uma versão que não subiu (uri, antes, depois).
     para_tras: Vec<(String, i64, i64)>,
+    /// Os pedidos `textDocument/completion` recebidos.
+    pub(crate) pedidos: usize,
 }
 
-type Partilhado = Arc<Mutex<Visto>>;
+pub(crate) type Partilhado = Arc<Mutex<Visto>>;
 
 #[derive(Clone, Copy, Default)]
-struct Plano {
+pub(crate) struct Plano {
     /// Antes de ler cada mensagem.
-    atraso: Duration,
+    pub(crate) atraso: Duration,
     /// O 1.º arranque morre depois deste número de `didChange`.
-    morre_apos: Option<usize>,
+    pub(crate) morre_apos: Option<usize>,
     /// Os diagnósticos que o servidor publica para um texto (`None` = um só, `v<versão>`, em 0:0).
-    regra: Option<fn(&str) -> Vec<Value>>,
+    pub(crate) regra: Option<fn(&str) -> Vec<Value>>,
+    /// A resposta a `textDocument/completion` sobre o texto e o byte do pedido (`None` = `null`).
+    pub(crate) completar: Option<fn(&str, usize) -> Value>,
 }
 
 /// O byte da posição LSP `(linha, unidades UTF-16)`; além do fim da linha = o fim da linha.
@@ -155,6 +159,17 @@ fn servir(
         if let Some(id) = msg.get("id") {
             let result = if method == "initialize" {
                 json!({ "capabilities": {} })
+            } else if let (Some(f), "textDocument/completion") = (plano.completar, method.as_str())
+            {
+                let uri = p["textDocument"]["uri"].as_str().unwrap_or_default();
+                let texto = {
+                    let mut v = visto.lock().unwrap();
+                    v.pedidos += 1;
+                    v.textos.get(uri).map(|t| t.1.clone())
+                };
+                let texto = texto.unwrap_or_default();
+                let (l, c) = pos(&p["position"]);
+                f(&texto, byte_de(&texto, l, c))
             } else {
                 Value::Null
             };
@@ -190,7 +205,7 @@ fn servir(
 }
 
 /// Liga um servidor falso novo a cada chamada; `falha_primeiro` = o 1.º arranque não chega a ligar.
-fn falso(plano: Plano, visto: Partilhado, falha_primeiro: bool) -> Connect {
+pub(crate) fn falso(plano: Plano, visto: Partilhado, falha_primeiro: bool) -> Connect {
     Box::new(move |wake| {
         let arranque = {
             let mut v = visto.lock().unwrap();
@@ -214,14 +229,24 @@ fn falso(plano: Plano, visto: Partilhado, falha_primeiro: bool) -> Connect {
     })
 }
 
-fn com_falso(scripts: &[(&str, &str)], plano: Plano) -> (Mesa, Vec<ScriptId>, Partilhado) {
+pub(crate) fn com_falso(
+    scripts: &[(&str, &str)],
+    plano: Plano,
+) -> (Mesa, Vec<ScriptId>, Partilhado) {
     let visto = Partilhado::default();
     let (m, ids) = Mesa::new(scripts);
     let m = m.com_assistente(IntelServer::Custom(falso(plano, visto.clone(), false)));
     (m, ids, visto)
 }
 
-fn tecla(m: &mut Mesa, id: ScriptId, key: Key, mods: Modifiers, text: Option<&str>, paste: &str) {
+pub(crate) fn tecla(
+    m: &mut Mesa,
+    id: ScriptId,
+    key: Key,
+    mods: Modifiers,
+    text: Option<&str>,
+    paste: &str,
+) {
     let mut ts = TextSystem::without_system_fonts();
     let input = KeyInput {
         key,
@@ -233,7 +258,7 @@ fn tecla(m: &mut Mesa, id: ScriptId, key: Key, mods: Modifiers, text: Option<&st
     let _ = m.docs().key(id.0, &mut ts, input);
 }
 
-fn letra(m: &mut Mesa, id: ScriptId, c: char) {
+pub(crate) fn letra(m: &mut Mesa, id: ScriptId, c: char) {
     tecla(
         m,
         id,
@@ -273,7 +298,7 @@ fn do_servidor(visto: &Partilhado) -> BTreeMap<String, String> {
 }
 
 /// Dá quadros até o servidor ter o que o editor mostra (o worker escreve fora do quadro).
-fn converge(m: &mut Mesa, visto: &Partilhado, onde: &str) {
+pub(crate) fn converge(m: &mut Mesa, visto: &Partilhado, onde: &str) {
     let fim = Instant::now() + Duration::from_secs(20);
     loop {
         m.quadro();

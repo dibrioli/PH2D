@@ -191,7 +191,8 @@ impl CodeDocs {
     /// Envia ao assistente o que mudou nos scripts desde o último quadro (e arranca-o no 1.º
     /// documento aberto).
     pub(crate) fn sync_intel(&mut self, lib: &ph2d_script::ScriptLibrary) {
-        self.intel.sync(&mut self.docs, &self.parked, lib);
+        self.intel
+            .sync(&mut self.docs, &self.parked, lib, self.clock.0);
     }
 
     /// A pasta dos ficheiros de recuperação (os textos por gravar de um projecto que se trocou).
@@ -463,6 +464,32 @@ impl CodeDocs {
             .find(|d| d.script == id)
             .map(|d| d.view.last_underlines().to_vec())
             .unwrap_or_default()
+    }
+
+    /// ⚠️ SONDA: a lista de completação que a aba do script `id` mostra agora (os rótulos, pela
+    /// ordem, e o índice da seleccionada); `None` = fechada.
+    #[must_use]
+    pub fn completion_of(&mut self, id: ScriptId) -> Option<(Vec<String>, usize)> {
+        let d = self.docs.iter_mut().find(|d| d.script == id)?;
+        let head = d.buffer.selection().primary().head;
+        let list = d.complete.shown(d.buffer.text(), head)?;
+        let s = d.complete.session.as_ref()?;
+        let items = s.items.as_ref()?;
+        Some((
+            list.iter().map(|(i, _)| items[*i].label.clone()).collect(),
+            s.selected,
+        ))
+    }
+
+    /// ⚠️ SONDA: as linhas que a lista da aba `id` pintou no último quadro (índice, rótulo,
+    /// seleccionada) e o centro de cada uma (onde o clique a aceita).
+    #[must_use]
+    pub fn completion_painted(
+        &self,
+        id: ScriptId,
+    ) -> Option<Vec<(usize, String, bool, (f32, f32))>> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        d.view.completion_painted()
     }
 
     /// ⚠️ SONDA: a gramática da aba do script `id`.

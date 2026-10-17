@@ -11,6 +11,7 @@
 mod autoedit;
 mod brackets;
 mod errors;
+mod facts;
 mod fold;
 mod highlight;
 mod indent;

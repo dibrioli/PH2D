@@ -15,6 +15,7 @@ pub mod line_cache;
 mod metrics;
 mod paint;
 mod palette;
+mod popup;
 pub mod script_list;
 mod status;
 pub mod style;
@@ -25,11 +26,15 @@ pub use console::{
     ConsoleHit, ConsoleRow, ConsoleSource, ConsoleView, title_text as console_title_text,
 };
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
-pub use frame::{Assist, Badge, CodeFrame, FoldMark, Problem, Severity};
+pub use frame::{
+    Assist, Badge, COMPLETION_MAX_CHARS, COMPLETION_ROWS, CodeFrame, CompletionRow, CompletionView,
+    FoldMark, Problem, Severity,
+};
 pub use geom::Column;
 pub use glyphs::{PaintWork, paint_work};
 pub use line_cache::LineCache;
 pub use metrics::Metrics;
+pub use popup::CompletionHit;
 pub use script_list::{ListField, ListHit, ListRow, ScriptList, ScriptListView};
 pub use status::{StatusLine, Tone, assist_line, badge_line};
 pub use style::Ink;

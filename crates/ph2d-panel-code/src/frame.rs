@@ -55,6 +55,40 @@ pub enum Assist {
     Stopped,
 }
 
+/// As linhas que a lista de completação mostra de uma vez: o `completion_lines` do `CodeEdit` do
+/// Godot 4.7.2 (oráculo corrido em 16/10, `docs/CodeEditor/03_onda2.md` I4).
+pub const COMPLETION_ROWS: usize = 7;
+/// A largura máxima da lista, em colunas da mono: o `completion_max_width` do mesmo oráculo.
+pub const COMPLETION_MAX_CHARS: usize = 50;
+
+/// Uma linha da lista de completação.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CompletionRow {
+    pub label: String,
+    /// As letras que casaram com o que se escreveu (bytes do rótulo).
+    pub matched: Vec<Range<usize>>,
+    pub ink: Ink,
+    /// O tipo, à direita (cortado se não couber).
+    pub detail: Option<String>,
+}
+
+/// A lista de completação aberta: a janela das linhas à vista.
+pub struct CompletionView<'a> {
+    /// O byte onde começa a palavra: a lista alinha-se por ele, por baixo da linha (por cima se não
+    /// couber).
+    pub anchor: usize,
+    /// As linhas `top .. top + rows.len()` da lista inteira.
+    pub rows: &'a [CompletionRow],
+    pub total: usize,
+    pub top: usize,
+    /// O índice (na lista inteira) da seleccionada.
+    pub selected: usize,
+    /// A largura que a lista inteira pede, em colunas (fixa enquanto se rola).
+    pub width_chars: usize,
+    /// A documentação da seleccionada (a caixa ao lado).
+    pub doc: Option<&'a str>,
+}
+
 /// Tudo o que um quadro do editor pinta.
 pub struct CodeFrame<'a> {
     pub buffer: &'a Buffer,
@@ -82,4 +116,5 @@ pub struct CodeFrame<'a> {
     pub project_unsaved: bool,
     /// `None` = o assistente está pronto (ou desligado de propósito): a barra não fala dele.
     pub assist: Option<Assist>,
+    pub completion: Option<CompletionView<'a>>,
 }

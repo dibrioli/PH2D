@@ -107,9 +107,17 @@ pub(crate) fn field_key(buf: &mut Buffer, k: FieldKey<'_>) -> FieldOut {
 impl CodeDoc {
     /// Escreve `s` em todos os cursores, carácter a carácter pelo `AutoEdit` (pares, recuo do `end`).
     pub fn type_text(&mut self, s: &str) {
+        let mut last = None;
         for ch in printable(s) {
             let edits = self.auto.on_char(&mut self.buffer, &mut self.syntax, ch);
             self.edited(&edits, false);
+            last = Some(ch);
+        }
+        if let Some(ch) = last {
+            let head = self.buffer.selection().primary().head;
+            let code = self.syntax.in_code(self.buffer.text(), head);
+            self.complete
+                .typed(self.buffer.text(), head, ch, code, self.last_input_ns);
         }
     }
 

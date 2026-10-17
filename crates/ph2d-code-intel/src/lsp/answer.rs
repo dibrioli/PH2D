@@ -33,8 +33,12 @@ pub struct Completion {
     pub detail: Option<String>,
     pub documentation: Option<String>,
     pub sort_text: Option<String>,
+    /// O texto pelo qual se filtra (`filterText`; `None` = o rótulo).
+    pub filter: Option<String>,
     /// O texto a inserir (`insertText`, ou o `textEdit`), e a faixa que ele troca.
     pub insert: String,
+    /// `insert` é um snippet (`insertTextFormat` 2: `set(${1:entity})$0`).
+    pub snippet: bool,
     pub replace: Option<Range<usize>>,
 }
 
@@ -106,7 +110,9 @@ pub(crate) fn completion(text: &Text, v: &Value) -> Vec<Completion> {
                 detail: str_of(i, "detail"),
                 documentation: i.get("documentation").map(markup).filter(|s| !s.is_empty()),
                 sort_text: str_of(i, "sortText"),
+                filter: str_of(i, "filterText"),
                 insert,
+                snippet: i.get("insertTextFormat").and_then(Value::as_u64) == Some(2),
                 replace,
                 label,
             }

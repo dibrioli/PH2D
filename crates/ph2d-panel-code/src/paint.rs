@@ -60,6 +60,7 @@ impl CodeView {
         self.paint_carets(&frame, scene, &pal);
         scene.pop_layer();
         self.paint_gutter(&frame, scene, &pal);
+        self.paint_completion(&frame, scene, ts, &pal);
         let head = frame.buffer.selection().primary().head;
         let k = (frame.buffer.revision(), head, self.tab);
         if self.status_col.is_none_or(|c| c.0 != k) {
@@ -460,8 +461,16 @@ impl CodeView {
         if let Some(sel) = selection(buffer, &lines, base) {
             doc.set_text_selection(sel);
         }
+        let list = self.completion_a11y(base);
+        if let Some((id, active, _)) = &list {
+            doc.push_child((*id).into());
+            if let Some(a) = active {
+                doc.set_active_descendant((*a).into());
+            }
+        }
         out.push((base, doc));
         out.extend(runs);
+        out.extend(list.into_iter().flat_map(|l| l.2));
         out
     }
 }

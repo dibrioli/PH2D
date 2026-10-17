@@ -112,6 +112,7 @@ pub fn frame<'a>(
         badge: d.badge.as_ref(),
         project_unsaved: false,
         assist: d.assist,
+        completion: None,
     }
 }
 

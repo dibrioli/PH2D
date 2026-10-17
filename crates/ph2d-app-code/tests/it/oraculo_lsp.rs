@@ -354,3 +354,46 @@ fn o_assistente_fixado_sublinha_o_que_se_escreve() {
     );
     assert_eq!(resumo(&mut m, ids[5]), [], "sem --!strict, o vizinho não");
 }
+
+/// ⭐ I4 com o `luau-lsp` FIXADO, pelo caminho do produto: depois de `ph2d.` a lista é EXACTAMENTE a
+/// `api_table` (um membro a mais ou a menos reprova aqui); depois de `self.` entram as propriedades
+/// declaradas e os campos atribuídos; dentro de `ph2d.set(self.id, "|")`, os cinco campos que o
+/// tipo aceita; e aceitar `set` deixa o cursor nos parênteses.
+#[test]
+fn o_assistente_fixado_completa_a_api() {
+    use crate::completar::abre;
+    let _ = fixado();
+    let props =
+        "ph2d.property(\"amplitude\", 1)\nfunction update(self, dt)\n  self.t = 0\n  \nend\n";
+    let (m, ids) = Mesa::new(&[("a.luau", ""), ("b.luau", props), ("c.luau", "")]);
+    let mut m = m.com_assistente(ph2d_app_code::IntelServer::Pinned);
+    for id in &ids {
+        m.pede(*id);
+    }
+    let mut l = abre(&mut m, ids[0], "ph2d.");
+    let mut api: Vec<&str> = ph2d_script::api_table::API
+        .iter()
+        .filter(|e| e.table == "ph2d")
+        .map(|e| e.ident)
+        .collect();
+    l.sort_unstable();
+    api.sort_unstable();
+    assert_eq!(l, api);
+    // `self.` na linha vazia do `update`.
+    let b = ids[1];
+    let k = |m: &mut Mesa, key, mods| crate::assistente::tecla(m, b, key, mods, None, "");
+    use ph2d_editor_core::doc_surface::Key;
+    k(&mut m, Key::Home, crate::ctrl());
+    for _ in 0..3 {
+        k(&mut m, Key::Down, ph2d_host::Modifiers::default());
+    }
+    k(&mut m, Key::End, ph2d_host::Modifiers::default());
+    let mut l = abre(&mut m, b, "self.");
+    l.sort_unstable();
+    assert_eq!(l, ["amplitude", "t"]);
+    // O literal: os campos de `ph2d.set`.
+    let c = ids[2];
+    let mut l = abre(&mut m, c, "ph2d.set(self.id, \"");
+    l.sort_unstable();
+    assert_eq!(l, ["rotation", "scale_x", "scale_y", "x", "y"]);
+}

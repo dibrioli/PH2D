@@ -10,6 +10,7 @@
 //! [`ScriptId`]: ph2d_script::ScriptId
 
 pub mod commands;
+pub mod complete;
 mod console;
 mod doc;
 mod docs;

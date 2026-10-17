@@ -2,6 +2,7 @@
 //! entregues pelo leitor do cliente, notificações). Nunca há relógio a girar: ele dorme em `recv`.
 
 use super::answer::{self, Answer, Diag};
+use super::sem::{self, Legend};
 use super::{Connect, Event, Inbox, Req, ServerState, Ticket};
 use crate::pos::{position_of, range_of};
 use ph2d_code_buffer::Text;
@@ -37,6 +38,8 @@ struct Worker {
     /// O servidor respondeu alguma coisa desde o último arranque: uma morte agora repõe-no; uma morte
     /// antes disso é um arranque partido e fica em [`ServerState::Failed`].
     healthy: bool,
+    /// A legenda dos tokens semânticos do servidor deste arranque.
+    legend: Legend,
 }
 
 pub(super) fn run(connect: Connect, me: Sender<Inbox>, rx: Receiver<Inbox>, tx: Sender<Event>) {
@@ -48,6 +51,7 @@ pub(super) fn run(connect: Connect, me: Sender<Inbox>, rx: Receiver<Inbox>, tx: 
         docs: BTreeMap::new(),
         flights: BTreeMap::new(),
         healthy: false,
+        legend: Legend::default(),
     };
     w.emit(Event::State(ServerState::Starting));
     w.boot();
@@ -73,20 +77,40 @@ fn method_of(req: &Req) -> &'static str {
         Req::Completion(_) => "textDocument/completion",
         Req::Hover(_) => "textDocument/hover",
         Req::Signature(_) => "textDocument/signatureHelp",
+        Req::Definition(_) => "textDocument/definition",
+        Req::Tokens => "textDocument/semanticTokens/full",
     }
 }
 
 fn params_of(uri: &str, text: &Text, req: &Req) -> Value {
     match req {
-        Req::Completion(b) | Req::Hover(b) | Req::Signature(b) => params_at(uri, text, *b),
+        Req::Completion(b) | Req::Hover(b) | Req::Signature(b) | Req::Definition(b) => {
+            params_at(uri, text, *b)
+        }
+        Req::Tokens => json!({ "textDocument": { "uri": uri } }),
     }
 }
 
-fn parse(req: &Req, text: &Text, v: &Value) -> Answer {
-    match req {
-        Req::Completion(_) => Answer::Completion(answer::completion(text, v)),
-        Req::Hover(_) => Answer::Hover(answer::hover(text, v)),
-        Req::Signature(_) => Answer::Signature(answer::signature(v)),
+impl Worker {
+    /// A resposta `v` ao pedido `f`, em bytes do texto da versão do pedido.
+    fn parse(&self, f: &Flight, v: &Value) -> Answer {
+        let text = &f.text;
+        match &f.req {
+            Req::Completion(_) => Answer::Completion(answer::completion(text, v)),
+            Req::Hover(_) => Answer::Hover(answer::hover(text, v)),
+            Req::Signature(_) => Answer::Signature(answer::signature(v)),
+            Req::Definition(_) => Answer::Definition(sem::definition(
+                |uri| {
+                    if uri == f.uri {
+                        Some(text.clone())
+                    } else {
+                        self.docs.get(uri).map(|d| d.text.clone())
+                    }
+                },
+                v,
+            )),
+            Req::Tokens => Answer::Tokens(sem::tokens(text, &self.legend, v)),
+        }
     }
 }
 
@@ -108,6 +132,7 @@ impl Worker {
         let wake = self.wake();
         match (self.connect)(wake) {
             Ok(mut c) => {
+                self.legend = Legend::of(c.capabilities());
                 let mut err = None;
                 for (uri, d) in &mut self.docs {
                     d.sent.clear();
@@ -214,7 +239,7 @@ impl Worker {
                 let answer = match &result {
                     Ok(v) => {
                         self.healthy = true;
-                        parse(&f.req, &f.text, v)
+                        self.parse(&f, v)
                     }
                     Err(e) => Answer::Failed(e.to_string()),
                 };

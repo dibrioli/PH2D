@@ -20,6 +20,7 @@ mod edit;
 mod find;
 mod folds;
 mod frame;
+mod goto;
 mod hint;
 mod intel;
 mod keys;
@@ -27,6 +28,7 @@ pub mod list;
 mod pointer;
 pub mod problems;
 mod recovery;
+mod semantic;
 pub mod smoke;
 
 pub use docs::{CodeDocs, GrammarProbe, ParkedFootprint, SaveKind};

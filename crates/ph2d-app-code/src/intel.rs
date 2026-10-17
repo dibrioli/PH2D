@@ -36,6 +36,8 @@ struct Mirror {
     version: u64,
     text: Text,
     src: Src,
+    /// O relógio da última mudança enviada (0 = aberto assim): a pausa das cores conta daqui.
+    changed_ns: u128,
 }
 
 /// De onde vem o texto de um script. Duas fontes iguais = o mesmo texto, sem olhar para ele.
@@ -66,6 +68,8 @@ pub(crate) struct Intel {
     diags: BTreeMap<ScriptId, (u64, Vec<Diag>)>,
     /// O uso de cada nome nos scripts do projeto, na revisão da biblioteca em que se contou.
     usage: Option<(u64, BTreeMap<String, u32>)>,
+    /// Os arranques do servidor (as cores perguntam-se de novo a cada um).
+    boots: u64,
 }
 
 impl Default for Intel {
@@ -84,6 +88,7 @@ impl Intel {
             mirrors: BTreeMap::new(),
             diags: BTreeMap::new(),
             usage: None,
+            boots: 0,
         }
     }
 
@@ -142,6 +147,8 @@ impl Intel {
         for d in docs.iter_mut() {
             if stopped {
                 d.assist.clear();
+                d.sem = crate::semantic::SemHeld::default();
+                d.goto = None;
                 continue;
             }
             let Some(m) = self.mirrors.get(&d.script) else {
@@ -204,7 +211,12 @@ impl Intel {
         };
         for e in session.drain() {
             match e {
-                Event::State(s) => self.state = Some(s),
+                Event::State(s) => {
+                    if matches!(s, ServerState::Starting | ServerState::Restarting) {
+                        self.boots += 1;
+                    }
+                    self.state = Some(s);
+                }
                 Event::Diagnostics { uri, version, list } => {
                     let owner = self.mirrors.iter().find(|(_, m)| m.uri == uri);
                     if let Some((id, m)) = owner
@@ -213,7 +225,12 @@ impl Intel {
                         self.diags.insert(*id, (version, list));
                     }
                 }
-                Event::Answer { ticket, answer, .. } => {
+                Event::Answer {
+                    ticket,
+                    answer,
+                    uri,
+                    ..
+                } => {
                     let asked = |d: &&mut CodeDoc| {
                         d.complete
                             .session
@@ -221,9 +238,10 @@ impl Intel {
                             .is_some_and(|s| s.ticket == Some(ticket))
                     };
                     let Some(d) = docs.iter_mut().find(asked) else {
-                        // O balão ou a assinatura de uma aba (os bilhetes são únicos na sessão).
-                        if let Some(d) = docs.iter_mut().find(|d| d.hints.owns(ticket)) {
-                            d.hints.answer(ticket, answer);
+                        // O balão, a assinatura, as cores ou a definição de uma aba (os bilhetes
+                        // são únicos na sessão).
+                        if let Some(d) = docs.iter_mut().find(|d| d.owns(ticket)) {
+                            d.answer(ticket, &uri, answer);
                         }
                         continue;
                     };
@@ -314,6 +332,7 @@ impl Intel {
                     m.src = src;
                     if let Some(dirty) = dirty {
                         m.version += 1;
+                        m.changed_ns = now_ns;
                         session.change(&uri, m.version, &text, dirty);
                         m.text = text;
                     }
@@ -327,6 +346,7 @@ impl Intel {
                         version: m.version,
                         text,
                         src,
+                        changed_ns: now_ns,
                     };
                 }
                 None => {
@@ -338,6 +358,7 @@ impl Intel {
                             version: 1,
                             text,
                             src,
+                            changed_ns: 0,
                         },
                     );
                 }
@@ -345,6 +366,34 @@ impl Intel {
         }
         self.ask_completions(docs, now_ns);
         self.ask_hints(docs, now_ns);
+        self.ask_tokens(docs, now_ns);
+    }
+
+    /// As cores (I11): uma pergunta por versão, numa pausa da escrita, sobre o texto que o servidor
+    /// acabou de receber.
+    fn ask_tokens(&mut self, docs: &mut [CodeDoc], now_ns: u128) {
+        if !matches!(self.state, Some(ServerState::Ready)) {
+            return;
+        }
+        let Some(session) = self.session.as_mut() else {
+            return;
+        };
+        for d in docs.iter_mut() {
+            let current = Src::Doc {
+                serial: d.serial,
+                revision: d.buffer.revision(),
+            };
+            let Some(m) = self.mirrors.get(&d.script).filter(|m| m.src == current) else {
+                continue;
+            };
+            let at = (self.boots, m.version);
+            let idle = crate::semantic::SemHeld::idle_ns(&d.assist);
+            if d.sem.asked == Some(at) || now_ns < m.changed_ns.saturating_add(idle) {
+                continue;
+            }
+            d.sem.asked = Some(at);
+            d.sem.ticket = Some(session.ask(&m.uri, Req::Tokens));
+        }
     }
 
     /// O balão cuja pausa passou e a assinatura cujo texto ou cursor mudou perguntam sobre o texto
@@ -359,12 +408,13 @@ impl Intel {
             return;
         };
         for d in docs.iter_mut() {
-            if d.hints.hover.is_none() && d.hints.sig.is_none() {
+            if d.hints.hover.is_none() && d.hints.sig.is_none() && d.goto.is_none() {
                 continue;
             }
             if !ready {
                 if !waiting {
                     d.hints.close();
+                    d.goto = None;
                 }
                 continue;
             }
@@ -375,6 +425,11 @@ impl Intel {
             let Some(m) = self.mirrors.get(&d.script).filter(|m| m.src == current) else {
                 continue;
             };
+            if let Some(g) = d.goto.as_mut()
+                && g.ticket.is_none()
+            {
+                g.ticket = Some(session.ask(&m.uri, Req::Definition(g.word.start)));
+            }
             if let Some(h) = d.hints.hover.as_mut()
                 && h.ticket.is_none()
                 && h.due_ns <= now_ns

@@ -9,6 +9,15 @@ impl Syntax {
     /// Os nomes das `ph2d.property("<nome>", …)` do topo, pela ordem.
     #[must_use]
     pub fn declared_properties(&self, text: &Text) -> Vec<String> {
+        self.property_declarations(text)
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect()
+    }
+
+    /// As `ph2d.property("<nome>", …)` do topo, pela ordem: o nome e os bytes dele (dentro das aspas).
+    #[must_use]
+    pub fn property_declarations(&self, text: &Text) -> Vec<(String, std::ops::Range<usize>)> {
         let root = self.tree().root_node();
         let mut c = root.walk();
         root.named_children(&mut c)
@@ -21,7 +30,7 @@ impl Syntax {
                 let args = n.child_by_field_name("arguments")?;
                 let first = args.named_child(0).filter(|a| a.kind() == "string")?;
                 let content = first.child_by_field_name("content")?;
-                Some(text.slice(content.byte_range()))
+                Some((text.slice(content.byte_range()), content.byte_range()))
             })
             .collect()
     }

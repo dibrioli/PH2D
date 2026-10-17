@@ -2149,7 +2149,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬆️ `3 141 → 3 466` em 2026-10-15 (CodeEditor), pela MESMA razão: treze fileiras novas, as
     //    cores do editor de scripts (`code-bg`, `code-gutter`, `code-line-current` + dez tintas de
     //    realce): `13 × ROW_H_PX (25) = 325` exactos (somados ao `3 141` do main, que traz o UIUX F17).
-    ("tokens", 3466.0),
+    // ⬆️ `3 466 → 3 491` em 2026-10-17 (CodeEditor I11), pela MESMA razão: a fileira do
+    //    `code-unresolved` (o global que não existe): `1 × ROW_H_PX (25)` exactos.
+    ("tokens", 3491.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

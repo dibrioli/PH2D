@@ -148,6 +148,26 @@ impl CodeDocs {
         Some((x, r.y + r.h * 0.5))
     }
 
+    /// ⚠️ SONDA: a cor com que o último quadro pintou o byte `at` da aba do script `id` (`Plain` =
+    /// texto sem cor, ou não pintado).
+    #[must_use]
+    pub fn ink_painted(&self, id: ScriptId, at: usize) -> ph2d_panel_code::Ink {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .and_then(|d| d.painted.iter().rev().find(|(r, _)| r.contains(&at)))
+            .map_or(ph2d_panel_code::Ink::Plain, |(_, k)| *k)
+    }
+
+    /// ⚠️ SONDA: quantas cores do assistente a aba do script `id` segura.
+    #[must_use]
+    pub fn semantic_count(&self, id: ScriptId) -> usize {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map_or(0, |d| d.sem.list.len())
+    }
+
     /// ⚠️ SONDA: o realce que a aba do script `id` pinta no byte `at` (`None` = texto sem cor).
     #[must_use]
     pub fn highlight_at(&self, id: ScriptId, at: usize) -> Option<HighlightKind> {

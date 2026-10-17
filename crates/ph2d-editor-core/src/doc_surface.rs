@@ -43,6 +43,8 @@ pub enum Key {
     PageUp,
     PageDown,
     Other,
+    /// Uma tecla de função (`F(12)` = F12).
+    F(u8),
 }
 
 /// O que uma tecla fez.

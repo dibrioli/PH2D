@@ -214,7 +214,8 @@ pub struct LspClient {
     documents: BTreeMap<String, (i32, String)>,
     diagnostics: BTreeMap<String, PublishedDiagnostics>,
     messages: Vec<ServerMessage>,
-    server_info: Value,
+    /// The `initialize` result (`serverInfo`, `capabilities`).
+    init: Value,
     engine_hooks: BTreeSet<String>,
 }
 
@@ -326,11 +327,11 @@ impl LspClient {
             documents: BTreeMap::new(),
             diagnostics: BTreeMap::new(),
             messages: Vec::new(),
-            server_info: Value::Null,
+            init: Value::Null,
             engine_hooks,
         };
         let result = client.request("initialize", initialize_params())?;
-        client.server_info = result.get("serverInfo").cloned().unwrap_or(Value::Null);
+        client.init = result;
         client.notify("initialized", json!({}))?;
         Ok(client)
     }
@@ -341,7 +342,12 @@ impl LspClient {
 
     /// `serverInfo` from `initialize` (name + version).
     pub fn server_info(&self) -> &Value {
-        &self.server_info
+        &self.init["serverInfo"]
+    }
+
+    /// `capabilities` from `initialize` (the semantic tokens legend lives here).
+    pub fn capabilities(&self) -> &Value {
+        &self.init["capabilities"]
     }
 
     /// False once the server process ended (or its stdout closed).

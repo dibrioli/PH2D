@@ -4,7 +4,7 @@
 use crate::docs::SaveKind;
 use crate::find::FindState;
 use crate::folds::ClosedFolds;
-use crate::problems::{ink_of, problems};
+use crate::problems::problems;
 use ph2d_code_buffer::{Buffer, TextEdit};
 use ph2d_code_syntax::{AutoEdit, IndentStyle, Syntax, SyntaxError};
 use ph2d_editor_core::zones::Rect;
@@ -61,6 +61,12 @@ pub(crate) struct CodeDoc {
     pub(crate) complete: crate::complete::Completer,
     /// O balão do rato e a ajuda de assinatura (I5).
     pub(crate) hints: crate::hint::Hints,
+    /// As cores do assistente (I11).
+    pub(crate) sem: crate::semantic::SemHeld,
+    /// Ctrl+clique / F12 à espera do assistente (I6).
+    pub(crate) goto: Option<crate::goto::Goto>,
+    /// As cores que o último quadro pintou (a sonda `ink_painted`).
+    pub(crate) painted: Vec<(std::ops::Range<usize>, Ink)>,
     /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
     pub last_input_ns: u128,
     pub badge: Option<Badge>,
@@ -103,6 +109,9 @@ impl CodeDoc {
             assist: crate::problems::Held::default(),
             complete: crate::complete::Completer::default(),
             hints: crate::hint::Hints::default(),
+            sem: crate::semantic::SemHeld::default(),
+            goto: None,
+            painted: Vec::new(),
             last_input_ns: 0,
             badge: None,
             project_unsaved: false,
@@ -147,6 +156,8 @@ impl CodeDoc {
         }
         self.lsp.edits.extend_from_slice(edits);
         self.assist.edited(edits);
+        self.sem.edited(edits);
+        self.goto = None;
         self.complete.edited(edits);
         self.hints.hover = None;
         if let Some(a) = &mut self.diag_anchor {
@@ -332,14 +343,16 @@ impl CodeDoc {
             project_unsaved,
             folds: closed_set,
             hints,
+            sem,
+            assist: held,
+            painted,
             ..
         } = self;
+        painted.clear();
         let mut spans = |r: std::ops::Range<usize>| -> Vec<(std::ops::Range<usize>, Ink)> {
-            syntax
-                .highlights(buffer.text(), r)
-                .into_iter()
-                .map(|h| (h.range, ink_of(h.kind)))
-                .collect()
+            let s = crate::semantic::spans(syntax, buffer.text(), sem, &held.list, r);
+            painted.extend(s.iter().cloned());
+            s
         };
         // Só as dobras das linhas que a vista pinta (a calha, o «…», o clique).
         let mut marks = |lines: std::ops::Range<usize>| -> Vec<FoldMark> {

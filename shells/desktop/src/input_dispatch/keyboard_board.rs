@@ -60,6 +60,18 @@ fn board_key(code: KeyCode) -> BoardKey {
         KeyCode::Tab => BoardKey::Tab,
         KeyCode::PageUp => BoardKey::PageUp,
         KeyCode::PageDown => BoardKey::PageDown,
+        KeyCode::F1 => BoardKey::F(1),
+        KeyCode::F2 => BoardKey::F(2),
+        KeyCode::F3 => BoardKey::F(3),
+        KeyCode::F4 => BoardKey::F(4),
+        KeyCode::F5 => BoardKey::F(5),
+        KeyCode::F6 => BoardKey::F(6),
+        KeyCode::F7 => BoardKey::F(7),
+        KeyCode::F8 => BoardKey::F(8),
+        KeyCode::F9 => BoardKey::F(9),
+        KeyCode::F10 => BoardKey::F(10),
+        KeyCode::F11 => BoardKey::F(11),
+        KeyCode::F12 => BoardKey::F(12),
         _ => BoardKey::Other,
     }
 }

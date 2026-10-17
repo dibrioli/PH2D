@@ -3,7 +3,7 @@
 //! Desenho por REGRA, não por gosto: o benefício do realce de sintaxe é fraco na literatura, e o que
 //! sobra dele é legibilidade e distinção. Então a régua é:
 //!
-//! - **ler-se** — toda tinta de texto (as dez `code-*`, mais `text-1` das identificadoras e `text-2`
+//! - **ler-se** — toda tinta de texto (as onze `code-*`, mais `text-1` das identificadoras e `text-2`
 //!   da pontuação) a ≥ 4,5:1 (WCAG 2.2 AA 1.4.3) sobre o `code-bg` **e** sobre a
 //!   `code-line-current`, que é onde o olho está a ler; o sublinhado de erro (`danger`) a ≥ 3:1
 //!   (1.4.11, um gráfico); os números de linha (`text-3`) a ≥ 3:1 sobre a calha;
@@ -67,7 +67,7 @@ fn opaque(c: Color) -> Color {
 #[test]
 fn the_code_inks_read_and_differ() {
     let inks = inks();
-    assert_eq!(inks.len(), 10, "a tabela perdeu tintas do editor: {inks:?}");
+    assert_eq!(inks.len(), 11, "a tabela perdeu tintas do editor: {inks:?}");
     for t in MEANING {
         assert!(inks.contains(&t), "{} saiu da tabela de contraste", t.key());
     }

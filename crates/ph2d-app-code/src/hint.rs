@@ -29,6 +29,8 @@ pub(crate) struct Hovering {
     /// Perguntado (uma vez por palavra).
     pub ticket: Option<Ticket>,
     pub shown: Option<Hover>,
+    /// Aberto por um comando (a definição na API, I6): o rato não o leva.
+    pub pinned: bool,
 }
 
 #[derive(Debug, Default)]
@@ -49,6 +51,9 @@ pub(crate) struct Hints {
 impl Hints {
     /// O rato mexeu-se sobre `word` (`None` = sobre nada que tenha balão) no instante `now_ns`.
     pub fn pointer(&mut self, word: Option<Range<usize>>, now_ns: u128) {
+        if self.hover.as_ref().is_some_and(|h| h.pinned) {
+            return;
+        }
         let Some(word) = word else {
             self.hover = None;
             return;
@@ -65,9 +70,21 @@ impl Hints {
                     due_ns: now_ns + HOVER_PAUSE_NS,
                     ticket: None,
                     shown: None,
+                    pinned: false,
                 });
             }
         }
+    }
+
+    /// O balão de `word` já (sem a pausa do rato), preso a ela.
+    pub fn pin(&mut self, word: Range<usize>) {
+        self.hover = Some(Hovering {
+            word,
+            due_ns: 0,
+            ticket: None,
+            shown: None,
+            pinned: true,
+        });
     }
 
     /// Abre a assinatura (ou pergunta outra vez, se já está aberta).

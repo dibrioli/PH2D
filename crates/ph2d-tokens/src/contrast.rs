@@ -115,6 +115,9 @@ pub const CONTRAST_PAIRS: &[ContrastPair] = &[
     code_ink(ColorToken::CodeProperty),
     code_ink(ColorToken::CodeOperator),
     code_ink(ColorToken::CodeComment),
+    // O global que não existe (CodeEditor I11). Não é o `danger`: medido 17/10, ele fica a
+    // 3,49–4,39:1 na linha do cursor em 6 temas e a ΔE 0,044 do `code-constant` em 6.
+    code_ink(ColorToken::CodeUnresolved),
 ];
 
 /// Uma tinta do editor de scripts sobre o `code-bg` — é TEXTO, logo a barra de texto.

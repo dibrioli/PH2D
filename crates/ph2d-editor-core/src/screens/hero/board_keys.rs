@@ -32,6 +32,8 @@ pub enum BoardKey {
     PageUp,
     PageDown,
     Other,
+    /// Uma tecla de função (`F(12)` = F12).
+    F(u8),
 }
 
 /// O que a tecla fez.

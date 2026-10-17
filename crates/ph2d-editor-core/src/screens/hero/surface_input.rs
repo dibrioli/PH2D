@@ -28,6 +28,7 @@ fn key_of(k: BoardKey) -> Key {
         BoardKey::PageUp => Key::PageUp,
         BoardKey::PageDown => Key::PageDown,
         BoardKey::Other => Key::Other,
+        BoardKey::F(n) => Key::F(n),
     }
 }
 

@@ -67,6 +67,9 @@ pub enum Answer {
     Hover(Option<Hover>),
     /// `None` = o cursor não está numa chamada.
     Signature(Option<Signature>),
+    /// Vazio = o servidor não sabe onde (a API: o `d.luau` não é navegável, I0b §5).
+    Definition(Vec<super::Target>),
+    Tokens(Vec<super::SemToken>),
     /// O servidor recusou, morreu ou o pedido não pôde ir (o texto diz porquê).
     Failed(String),
 }

@@ -1,0 +1,2693 @@
+{
+ "loadavg": [
+  "4.27",
+  "4.71",
+  "3.06"
+ ],
+ "app": {
+  "args": [
+   "/home/enio/.cache/ph2d/luau-lsp/1.70.1/luau-lsp",
+   "lsp",
+   "--stdio",
+   "--definitions:@ph2d=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-5f3b24ab50658691.d.luau",
+   "--docs=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-docs-2649bfff572254a5.json"
+  ],
+  "tokens": {
+   "ms": 5.226564000622602,
+   "bytes": 1388,
+   "result_keys": [
+    "data"
+   ],
+   "tokens": [
+    {
+     "line": 6,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 6,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 6,
+     "col": 34,
+     "len": 3,
+     "text": "min",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 6,
+     "col": 43,
+     "len": 3,
+     "text": "max",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 7,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 7,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 7,
+     "col": 30,
+     "len": 3,
+     "text": "min",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 7,
+     "col": 39,
+     "len": 3,
+     "text": "max",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 8,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 8,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 9,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 9,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 12,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 12,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 12,
+     "col": 32,
+     "len": 7,
+     "text": "options",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 15,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 15,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 15,
+     "col": 27,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 15,
+     "col": 32,
+     "len": 4,
+     "text": "vec2",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 15,
+     "col": 46,
+     "len": 3,
+     "text": "min",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 15,
+     "col": 56,
+     "len": 3,
+     "text": "max",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 19,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 19,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 19,
+     "col": 22,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 19,
+     "col": 27,
+     "len": 5,
+     "text": "color",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 21,
+     "col": 14,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 7,
+     "len": 6,
+     "text": "base_x",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 22,
+     "col": 16,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 21,
+     "len": 3,
+     "text": "get",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 25,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 30,
+     "len": 2,
+     "text": "id",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 23,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 23,
+     "col": 7,
+     "len": 6,
+     "text": "base_y",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 23,
+     "col": 16,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 23,
+     "col": 21,
+     "len": 3,
+     "text": "get",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 23,
+     "col": 25,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 23,
+     "col": 30,
+     "len": 2,
+     "text": "id",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 24,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 24,
+     "col": 7,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 25,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 25,
+     "col": 7,
+     "len": 6,
+     "text": "was_up",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 28,
+     "col": 16,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 28,
+     "col": 22,
+     "len": 2,
+     "text": "dt",
+     "type": "parameter",
+     "mods": []
+    },
+    {
+     "line": 29,
+     "col": 9,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 29,
+     "col": 14,
+     "len": 6,
+     "text": "active",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 30,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 30,
+     "col": 7,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 30,
+     "col": 11,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 30,
+     "col": 16,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 30,
+     "col": 20,
+     "len": 2,
+     "text": "dt",
+     "type": "parameter",
+     "mods": []
+    },
+    {
+     "line": 33,
+     "col": 5,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 33,
+     "col": 10,
+     "len": 4,
+     "text": "wave",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 34,
+     "col": 8,
+     "len": 4,
+     "text": "math",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 34,
+     "col": 13,
+     "len": 3,
+     "text": "sin",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 34,
+     "col": 17,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 34,
+     "col": 22,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 34,
+     "col": 26,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 34,
+     "col": 31,
+     "len": 5,
+     "text": "speed",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 35,
+     "col": 9,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 35,
+     "col": 14,
+     "len": 4,
+     "text": "wave",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 38,
+     "col": 8,
+     "len": 4,
+     "text": "math",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 38,
+     "col": 13,
+     "len": 3,
+     "text": "sin",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 38,
+     "col": 17,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 38,
+     "col": 22,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 38,
+     "col": 26,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 38,
+     "col": 31,
+     "len": 5,
+     "text": "speed",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 18,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 41,
+     "col": 23,
+     "len": 4,
+     "text": "tint",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 28,
+     "len": 1,
+     "text": "r",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 32,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 41,
+     "col": 37,
+     "len": 4,
+     "text": "tint",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 42,
+     "len": 1,
+     "text": "g",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 46,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 41,
+     "col": 51,
+     "len": 4,
+     "text": "tint",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 56,
+     "len": 1,
+     "text": "b",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 42,
+     "col": 16,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 42,
+     "col": 21,
+     "len": 9,
+     "text": "amplitude",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 43,
+     "col": 2,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 7,
+     "len": 3,
+     "text": "set",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 11,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 16,
+     "len": 2,
+     "text": "id",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 43,
+     "col": 25,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 30,
+     "len": 6,
+     "text": "base_x",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 43,
+     "col": 43,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 48,
+     "len": 9,
+     "text": "direction",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 43,
+     "col": 58,
+     "len": 1,
+     "text": "x",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 44,
+     "col": 2,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 7,
+     "len": 3,
+     "text": "set",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 11,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 16,
+     "len": 2,
+     "text": "id",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 44,
+     "col": 25,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 30,
+     "len": 6,
+     "text": "base_y",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 44,
+     "col": 43,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 48,
+     "len": 9,
+     "text": "direction",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 44,
+     "col": 58,
+     "len": 1,
+     "text": "y",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 46,
+     "col": 16,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 46,
+     "col": 21,
+     "len": 6,
+     "text": "was_up",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 46,
+     "col": 32,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 46,
+     "col": 37,
+     "len": 10,
+     "text": "top_signal",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 47,
+     "col": 4,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 47,
+     "col": 9,
+     "len": 4,
+     "text": "emit",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 47,
+     "col": 14,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 47,
+     "col": 19,
+     "len": 10,
+     "text": "top_signal",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 49,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 49,
+     "col": 7,
+     "len": 6,
+     "text": "was_up",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 52,
+     "col": 0,
+     "len": 5,
+     "text": "print",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 52,
+     "col": 6,
+     "len": 4,
+     "text": "math",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 52,
+     "col": 11,
+     "len": 3,
+     "text": "sin",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 54,
+     "col": 21,
+     "len": 1,
+     "text": "x",
+     "type": "parameter",
+     "mods": []
+    },
+    {
+     "line": 54,
+     "col": 31,
+     "len": 1,
+     "text": "x",
+     "type": "parameter",
+     "mods": []
+    },
+    {
+     "line": 55,
+     "col": 15,
+     "len": 5,
+     "text": "ajuda",
+     "type": "function",
+     "mods": []
+    },
+    {
+     "line": 56,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 57,
+     "col": 0,
+     "len": 5,
+     "text": "print",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 57,
+     "col": 20,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 57,
+     "col": 25,
+     "len": 3,
+     "text": "set",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    }
+   ]
+  },
+  "definition": {
+   "local_brilho_uso": {
+    "ms": 0.08284100113087334,
+    "pos": {
+     "line": 42,
+     "character": 33
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 14,
+        "line": 41
+       },
+       "start": {
+        "character": 8,
+        "line": 41
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "ph2d.set": {
+    "ms": 0.04507999983616173,
+    "pos": {
+     "line": 43,
+     "character": 7
+    },
+    "result": []
+   },
+   "ph2d_tabela": {
+    "ms": 0.02505999873392284,
+    "pos": {
+     "line": 43,
+     "character": 2
+    },
+    "result": []
+   },
+   "self.t_leitura": {
+    "ms": 0.02517000029911287,
+    "pos": {
+     "line": 30,
+     "character": 16
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 8,
+        "line": 30
+       },
+       "start": {
+        "character": 7,
+        "line": 30
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "self.amplitude": {
+    "ms": 0.023559998226119205,
+    "pos": {
+     "line": 42,
+     "character": 21
+    },
+    "result": []
+   },
+   "dt_param_uso": {
+    "ms": 0.0935909993131645,
+    "pos": {
+     "line": 30,
+     "character": 20
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 24,
+        "line": 28
+       },
+       "start": {
+        "character": 22,
+        "line": 28
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "print": {
+    "ms": 0.04709999848273583,
+    "pos": {
+     "line": 52,
+     "character": 0
+    },
+    "result": []
+   },
+   "pirnt": {
+    "ms": 0.032930998713709414,
+    "pos": {
+     "line": 53,
+     "character": 0
+    },
+    "result": []
+   },
+   "math.sin": {
+    "ms": 0.0897899990377482,
+    "pos": {
+     "line": 52,
+     "character": 11
+    },
+    "result": []
+   },
+   "ajuda_uso": {
+    "ms": 0.06897099956404418,
+    "pos": {
+     "line": 55,
+     "character": 15
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 20,
+        "line": 54
+       },
+       "start": {
+        "character": 15,
+        "line": 54
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "quieto_uso": {
+    "ms": 0.09351100015919656,
+    "pos": {
+     "line": 57,
+     "character": 6
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 12,
+        "line": 55
+       },
+       "start": {
+        "character": 6,
+        "line": 55
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "ph2d.proprety": {
+    "ms": 0.04122000245843083,
+    "pos": {
+     "line": 56,
+     "character": 5
+    },
+    "result": []
+   }
+  },
+  "partido": {
+   "ms": 0.16407099974458106,
+   "raw": {
+    "data": [
+     1,
+     12,
+     4,
+     8,
+     516,
+     0,
+     5,
+     3,
+     12,
+     516
+    ]
+   },
+   "tokens": [
+    {
+     "line": 1,
+     "col": 12,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 1,
+     "col": 17,
+     "len": 3,
+     "text": "get",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    }
+   ]
+  },
+  "depois_de_editar": {
+   "ms": 0.6517239999084268,
+   "result_keys": [
+    "data"
+   ],
+   "n": 116
+  }
+ },
+ "i0b": {
+  "args": [
+   "/home/enio/.cache/ph2d/luau-lsp/1.70.1/luau-lsp",
+   "lsp",
+   "--stdio",
+   "--definitions:@ph2d=/home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor/runtime/luau/ph2d.d.luau"
+  ],
+  "tokens": {
+   "ms": 3.894496003340464,
+   "bytes": 1388,
+   "result_keys": [
+    "data"
+   ],
+   "tokens": [
+    {
+     "line": 6,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 6,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 6,
+     "col": 34,
+     "len": 3,
+     "text": "min",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 6,
+     "col": 43,
+     "len": 3,
+     "text": "max",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 7,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 7,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 7,
+     "col": 30,
+     "len": 3,
+     "text": "min",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 7,
+     "col": 39,
+     "len": 3,
+     "text": "max",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 8,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 8,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 9,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 9,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 12,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 12,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 12,
+     "col": 32,
+     "len": 7,
+     "text": "options",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 15,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 15,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 15,
+     "col": 27,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 15,
+     "col": 32,
+     "len": 4,
+     "text": "vec2",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 15,
+     "col": 46,
+     "len": 3,
+     "text": "min",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 15,
+     "col": 56,
+     "len": 3,
+     "text": "max",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 19,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 19,
+     "col": 5,
+     "len": 8,
+     "text": "property",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 19,
+     "col": 22,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 19,
+     "col": 27,
+     "len": 5,
+     "text": "color",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 21,
+     "col": 14,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 7,
+     "len": 6,
+     "text": "base_x",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 22,
+     "col": 16,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 21,
+     "len": 3,
+     "text": "get",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 25,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 22,
+     "col": 30,
+     "len": 2,
+     "text": "id",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 23,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 23,
+     "col": 7,
+     "len": 6,
+     "text": "base_y",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 23,
+     "col": 16,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 23,
+     "col": 21,
+     "len": 3,
+     "text": "get",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 23,
+     "col": 25,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 23,
+     "col": 30,
+     "len": 2,
+     "text": "id",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 24,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 24,
+     "col": 7,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 25,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 25,
+     "col": 7,
+     "len": 6,
+     "text": "was_up",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 28,
+     "col": 16,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 28,
+     "col": 22,
+     "len": 2,
+     "text": "dt",
+     "type": "parameter",
+     "mods": []
+    },
+    {
+     "line": 29,
+     "col": 9,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 29,
+     "col": 14,
+     "len": 6,
+     "text": "active",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 30,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 30,
+     "col": 7,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 30,
+     "col": 11,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 30,
+     "col": 16,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 30,
+     "col": 20,
+     "len": 2,
+     "text": "dt",
+     "type": "parameter",
+     "mods": []
+    },
+    {
+     "line": 33,
+     "col": 5,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 33,
+     "col": 10,
+     "len": 4,
+     "text": "wave",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 34,
+     "col": 8,
+     "len": 4,
+     "text": "math",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 34,
+     "col": 13,
+     "len": 3,
+     "text": "sin",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 34,
+     "col": 17,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 34,
+     "col": 22,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 34,
+     "col": 26,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 34,
+     "col": 31,
+     "len": 5,
+     "text": "speed",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 35,
+     "col": 9,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 35,
+     "col": 14,
+     "len": 4,
+     "text": "wave",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 38,
+     "col": 8,
+     "len": 4,
+     "text": "math",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 38,
+     "col": 13,
+     "len": 3,
+     "text": "sin",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 38,
+     "col": 17,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 38,
+     "col": 22,
+     "len": 1,
+     "text": "t",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 38,
+     "col": 26,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 38,
+     "col": 31,
+     "len": 5,
+     "text": "speed",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 18,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 41,
+     "col": 23,
+     "len": 4,
+     "text": "tint",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 28,
+     "len": 1,
+     "text": "r",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 32,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 41,
+     "col": 37,
+     "len": 4,
+     "text": "tint",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 42,
+     "len": 1,
+     "text": "g",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 46,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 41,
+     "col": 51,
+     "len": 4,
+     "text": "tint",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 41,
+     "col": 56,
+     "len": 1,
+     "text": "b",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 42,
+     "col": 16,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 42,
+     "col": 21,
+     "len": 9,
+     "text": "amplitude",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 43,
+     "col": 2,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 7,
+     "len": 3,
+     "text": "set",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 11,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 16,
+     "len": 2,
+     "text": "id",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 43,
+     "col": 25,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 30,
+     "len": 6,
+     "text": "base_x",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 43,
+     "col": 43,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 43,
+     "col": 48,
+     "len": 9,
+     "text": "direction",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 43,
+     "col": 58,
+     "len": 1,
+     "text": "x",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 44,
+     "col": 2,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 7,
+     "len": 3,
+     "text": "set",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 11,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 16,
+     "len": 2,
+     "text": "id",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 44,
+     "col": 25,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 30,
+     "len": 6,
+     "text": "base_y",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 44,
+     "col": 43,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 44,
+     "col": 48,
+     "len": 9,
+     "text": "direction",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 44,
+     "col": 58,
+     "len": 1,
+     "text": "y",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 46,
+     "col": 16,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 46,
+     "col": 21,
+     "len": 6,
+     "text": "was_up",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 46,
+     "col": 32,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 46,
+     "col": 37,
+     "len": 10,
+     "text": "top_signal",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 47,
+     "col": 4,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 47,
+     "col": 9,
+     "len": 4,
+     "text": "emit",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 47,
+     "col": 14,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 47,
+     "col": 19,
+     "len": 10,
+     "text": "top_signal",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 49,
+     "col": 2,
+     "len": 4,
+     "text": "self",
+     "type": "property",
+     "mods": [
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 49,
+     "col": 7,
+     "len": 6,
+     "text": "was_up",
+     "type": "property",
+     "mods": []
+    },
+    {
+     "line": 52,
+     "col": 0,
+     "len": 5,
+     "text": "print",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 52,
+     "col": 6,
+     "len": 4,
+     "text": "math",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 52,
+     "col": 11,
+     "len": 3,
+     "text": "sin",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 54,
+     "col": 21,
+     "len": 1,
+     "text": "x",
+     "type": "parameter",
+     "mods": []
+    },
+    {
+     "line": 54,
+     "col": 31,
+     "len": 1,
+     "text": "x",
+     "type": "parameter",
+     "mods": []
+    },
+    {
+     "line": 55,
+     "col": 15,
+     "len": 5,
+     "text": "ajuda",
+     "type": "function",
+     "mods": []
+    },
+    {
+     "line": 56,
+     "col": 0,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 57,
+     "col": 0,
+     "len": 5,
+     "text": "print",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 57,
+     "col": 20,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 57,
+     "col": 25,
+     "len": 3,
+     "text": "set",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    }
+   ]
+  },
+  "definition": {
+   "local_brilho_uso": {
+    "ms": 0.07985100091900676,
+    "pos": {
+     "line": 42,
+     "character": 33
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 14,
+        "line": 41
+       },
+       "start": {
+        "character": 8,
+        "line": 41
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "ph2d.set": {
+    "ms": 0.0692510002409108,
+    "pos": {
+     "line": 43,
+     "character": 7
+    },
+    "result": []
+   },
+   "ph2d_tabela": {
+    "ms": 0.029409999115159735,
+    "pos": {
+     "line": 43,
+     "character": 2
+    },
+    "result": []
+   },
+   "self.t_leitura": {
+    "ms": 0.02710999979171902,
+    "pos": {
+     "line": 30,
+     "character": 16
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 8,
+        "line": 30
+       },
+       "start": {
+        "character": 7,
+        "line": 30
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "self.amplitude": {
+    "ms": 0.025949997507268563,
+    "pos": {
+     "line": 42,
+     "character": 21
+    },
+    "result": []
+   },
+   "dt_param_uso": {
+    "ms": 0.022940999770071357,
+    "pos": {
+     "line": 30,
+     "character": 20
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 24,
+        "line": 28
+       },
+       "start": {
+        "character": 22,
+        "line": 28
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "print": {
+    "ms": 0.022259999241214246,
+    "pos": {
+     "line": 52,
+     "character": 0
+    },
+    "result": []
+   },
+   "pirnt": {
+    "ms": 0.02342999869142659,
+    "pos": {
+     "line": 53,
+     "character": 0
+    },
+    "result": []
+   },
+   "math.sin": {
+    "ms": 0.023090000468073413,
+    "pos": {
+     "line": 52,
+     "character": 11
+    },
+    "result": []
+   },
+   "ajuda_uso": {
+    "ms": 0.023470998712582514,
+    "pos": {
+     "line": 55,
+     "character": 15
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 20,
+        "line": 54
+       },
+       "start": {
+        "character": 15,
+        "line": 54
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "quieto_uso": {
+    "ms": 0.02135000249836594,
+    "pos": {
+     "line": 57,
+     "character": 6
+    },
+    "result": [
+     {
+      "range": {
+       "end": {
+        "character": 12,
+        "line": 55
+       },
+       "start": {
+        "character": 6,
+        "line": 55
+       }
+      },
+      "uri": "file:///ph2d-project/sonda.luau"
+     }
+    ]
+   },
+   "ph2d.proprety": {
+    "ms": 0.02121000215993263,
+    "pos": {
+     "line": 56,
+     "character": 5
+    },
+    "result": []
+   }
+  },
+  "partido": {
+   "ms": 0.0977810013864655,
+   "raw": {
+    "data": [
+     1,
+     12,
+     4,
+     8,
+     516,
+     0,
+     5,
+     3,
+     12,
+     516
+    ]
+   },
+   "tokens": [
+    {
+     "line": 1,
+     "col": 12,
+     "len": 4,
+     "text": "ph2d",
+     "type": "variable",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    },
+    {
+     "line": 1,
+     "col": 17,
+     "len": 3,
+     "text": "get",
+     "type": "function",
+     "mods": [
+      "readonly",
+      "defaultLibrary"
+     ]
+    }
+   ]
+  },
+  "depois_de_editar": {
+   "ms": 0.4769830011355225,
+   "result_keys": [
+    "data"
+   ],
+   "n": 116
+  }
+ },
+ "loadavg_fim": [
+  "4.27",
+  "4.71",
+  "3.06"
+ ]
+}

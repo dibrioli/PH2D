@@ -48,6 +48,7 @@ impl CodeDoc {
         // Uma tecla (que não seja só um modificador) larga o balão do rato.
         if key != Key::Other || text.is_some() {
             self.hints.hover = None;
+            self.goto = None;
         }
         if let Some(f) = self.find.focus.filter(|_| self.find.open) {
             let cmd = mods.ctrl || mods.meta;
@@ -88,6 +89,10 @@ impl CodeDoc {
         let cmd = mods.ctrl || mods.meta;
         let shift = mods.shift;
         match key {
+            // F12: ir para a definição do nome no cursor (I6).
+            Key::F(12) if !cmd && !shift => {
+                self.go_to_definition(self.buffer.selection().primary().head);
+            }
             Key::Space if cmd => self.complete.open_now(
                 self.buffer.text(),
                 self.buffer.selection().primary().head,

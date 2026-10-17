@@ -123,7 +123,12 @@ pub(super) fn initialize_params() -> Value {
                 "synchronization": { "didSave": false },
                 "publishDiagnostics": {},
                 "completion": { "completionItem": { "snippetSupport": true } },
-                "hover": { "contentFormat": ["markdown", "plaintext"] }
+                "hover": { "contentFormat": ["markdown", "plaintext"] },
+                "definition": {},
+                // Só `full` (o `luau-lsp` 1.70.1 não tem `range` nem `delta`, I0b §6); a legenda vem
+                // da resposta do servidor.
+                "semanticTokens": { "requests": { "full": true }, "formats": ["relative"],
+                                    "tokenTypes": [], "tokenModifiers": [] }
             }
         },
         "initializationOptions": {}

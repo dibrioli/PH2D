@@ -1,5 +1,5 @@
 //! O rato na aba: clicar põe o cursor, arrastar selecciona, duplo-clique selecciona a palavra,
-//! Alt+clique junta um cursor, Shift+clique estende; a calha dobra/selecciona a linha; a barra de
+//! Alt+clique junta um cursor, Shift+clique estende, Ctrl+clique vai para a definição (I6); a calha dobra/selecciona a linha; a barra de
 //! busca e o console respondem aos seus alvos.
 
 use crate::console::Store;
@@ -28,6 +28,7 @@ impl CodeDoc {
             return false;
         }
         self.hints.hover = None;
+        self.goto = None;
         if self.find.open
             && let Some(h) = self.find_view.hit(ts, x, y)
         {
@@ -99,6 +100,9 @@ impl CodeDoc {
             self.buffer
                 .set_selection(Selection::single(Range::cursor(b)));
             self.drag = Some(b);
+            if mods.ctrl || mods.meta {
+                self.go_to_definition(b);
+            }
         }
         self.buffer.seal_history();
     }

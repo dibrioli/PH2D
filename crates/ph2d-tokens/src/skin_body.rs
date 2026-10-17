@@ -200,6 +200,7 @@ impl ColorToken {
             | T::CodeConstant
             | T::CodeProperty
             | T::CodeOperator
+            | T::CodeUnresolved
             | T::CodeComment => Role::Graphic,
         }
     }

@@ -20,10 +20,12 @@ pub enum Ink {
     Operator,
     Punctuation,
     Builtin,
+    /// Um nome que o assistente não resolve (um global que não existe, I11).
+    Unresolved,
 }
 
 impl Ink {
-    pub const ALL: [Ink; 14] = [
+    pub const ALL: [Ink; 15] = [
         Ink::Plain,
         Ink::Keyword,
         Ink::Function,
@@ -38,6 +40,7 @@ impl Ink {
         Ink::Operator,
         Ink::Punctuation,
         Ink::Builtin,
+        Ink::Unresolved,
     ];
 
     /// O token da cor deste tipo.
@@ -48,6 +51,7 @@ impl Ink {
             Ink::Keyword => ColorToken::CodeKeyword,
             Ink::Function => ColorToken::CodeFunction,
             Ink::Builtin => ColorToken::CodeBuiltin,
+            Ink::Unresolved => ColorToken::CodeUnresolved,
             Ink::Type => ColorToken::CodeType,
             Ink::String => ColorToken::CodeString,
             Ink::Number => ColorToken::CodeNumber,

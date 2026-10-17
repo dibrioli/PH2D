@@ -563,6 +563,8 @@ color_tokens! {
     CodeProperty => "code-property",
     CodeOperator => "code-operator",
     CodeComment => "code-comment",
+    /// `code-unresolved` — o nome que o assistente não resolve (um global que não existe, I11).
+    CodeUnresolved => "code-unresolved",
 }
 
 impl ColorToken {

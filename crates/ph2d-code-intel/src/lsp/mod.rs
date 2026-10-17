@@ -7,9 +7,11 @@
 //! velha (o servidor ecoa a versão em `publishDiagnostics`, medido 16/10).
 
 mod answer;
+mod sem;
 mod worker;
 
 pub use answer::{Answer, Completion, Diag, Hover, Signature};
+pub use sem::{Sem, SemToken, Target};
 
 use crate::pos::Dirty;
 use ph2d_code_buffer::Text;
@@ -44,6 +46,10 @@ pub enum Req {
     Completion(usize),
     Hover(usize),
     Signature(usize),
+    /// Onde o nome em `usize` está definido (I6).
+    Definition(usize),
+    /// Os tokens semânticos do documento inteiro (I11; o `luau-lsp` não tem `range`).
+    Tokens,
 }
 
 impl Req {
@@ -53,6 +59,8 @@ impl Req {
             Self::Completion(_) => 0,
             Self::Hover(_) => 1,
             Self::Signature(_) => 2,
+            Self::Definition(_) => 3,
+            Self::Tokens => 4,
         }
     }
 }

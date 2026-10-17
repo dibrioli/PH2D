@@ -56,8 +56,7 @@ impl crate::App {
         let antigo = ver <= crate::project_schema::PROJECT_SCHEMA_TRACO_V22;
         let _traco_v22 = antigo.then(ph2d_vec_scene::StrokeLayoutV22::enter);
         let (mut file, migrated_counter) = match ver {
-            // O `191` tem a forma do vivo: só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
-            PROJECT_SCHEMA | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => {
+            PROJECT_SCHEMA => {
                 match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
                     Ok((_, f)) => (f, None),
                     Err(e) => {
@@ -140,11 +139,22 @@ impl crate::App {
             // `Vec` vazio no postcard é o byte `0` — o v190 (e o v189, que só difere no traço, já
             // coberto pelo âmbito acima) lê-se com o tipo vivo acrescentando-o. Os blobs do
             // `LuauScript` passam de v2 (o caminho) a v3; o load importa os caminhos.
+            // ⭐ **192 → 193: as marcas do artista** (W9 das Macros): o campo novo é o ÚLTIMO, e o `0` do
+            // `Vec` vazio acrescentado lê o v192 com o tipo vivo (os anteriores levam-no também). O `191`
+            // tem a mesma forma; só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
+            192 | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0]].concat()) {
+                Ok((_, f)) => (f, None),
+                Err(e) => {
+                    eprintln!("[proj] v{ver} ilegivel: {e}");
+                    self.toast_refused("shell.project_load.project_refused_format_191", &e);
+                    return None;
+                }
+            },
             190 | crate::project_schema::PROJECT_SCHEMA_TRACO_V22 => {
                 use ph2d_app_components::script_project::read_before_scripts;
                 match read_before_scripts(
                     ver,
-                    &bytes,
+                    &[&bytes[..], &[0]].concat(),
                     |f: &mut ProjectFile| &mut f.state.world,
                     PROJECT_SCHEMA,
                 ) {

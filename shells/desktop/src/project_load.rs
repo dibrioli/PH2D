@@ -106,6 +106,7 @@ impl crate::App {
         if let Some(gfx) = self.gfx.as_mut() {
             ph2d_app_components::script_project::install(gfx.sim.world_mut(), scripts.lib);
         }
+        let marcas = std::mem::take(&mut file.marcas_do_artista);
         self.project_install_accepted(
             path,
             file,
@@ -121,6 +122,12 @@ impl crate::App {
         }
         if let Some(n) = scripts.notice {
             self.toast(n);
+        }
+        // As marcas do artista (W9): uma ilegível não recusa o projeto — o clipe toca por cima.
+        if let Some(gfx) = self.gfx.as_mut()
+            && !gfx.painter_macros.restaura_marcas(&marcas)
+        {
+            self.toast(ph2d_i18n::tr("shell.project_load.macro_marks_unreadable").to_owned());
         }
     }
 

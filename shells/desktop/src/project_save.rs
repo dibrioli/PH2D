@@ -130,6 +130,14 @@ impl crate::App {
                 .as_ref()
                 .map(|g| ph2d_app_components::script_project::save(g.sim.world()))
                 .unwrap_or_default(),
+            marcas_do_artista: self
+                .gfx
+                .as_mut()
+                .map(|g| {
+                    let t = ph2d_app_painter::painter_bridge_queries::o_painter(&mut g.tools);
+                    g.painter_macros.marcas_a_gravar(t.map(|t| &*t))
+                })
+                .unwrap_or_default(),
             // ⚠️ **A taxonomia NÃO está aqui, e a ausência é a decisão** (v105): ela viaja dentro
             // do `state`, que é a unidade do undo — ver [`crate::project_library`]. Um campo aqui
             // seria a **segunda** resposta à mesma pergunta, e a que o load lesse ganharia sem

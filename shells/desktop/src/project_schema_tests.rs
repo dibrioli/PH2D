@@ -313,7 +313,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `scripts: Vec<u8>` no fim do `ProjectFile`, `LuauScript` v3. A tripla NÃO vê este degrau.
         // ⚠️ **`192` em 2026-10-19** (`line/UIUX`, F22b) — a opacidade do objeto é canal de estado:
         // os `<= 191` passam as poses à opacidade da forma. A tripla NÃO vê este degrau.
-        (192, 13, 23),
+        // ⚠️ **`193` em 2026-10-17** (`line/Macros-Automação`, W9) — as MARCAS DO ARTISTA:
+        // `marcas_do_artista: Vec<u8>` no fim do `ProjectFile`. A tripla NÃO vê este degrau.
+        (193, 13, 23),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

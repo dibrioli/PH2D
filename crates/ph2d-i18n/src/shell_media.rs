@@ -197,6 +197,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.project_load.project_refused_format_189" => {
             "Project refused: format 189 or 190 file is unreadable ({e})"
         }
+        "shell.project_load.project_refused_format_191" => {
+            "Project refused: format 191 file is unreadable ({e})"
+        }
+        "shell.project_load.macro_marks_unreadable" => {
+            "Macro marks unreadable \u{2014} the clip plays over what you painted after recording"
+        }
         "shell.project_load.project_migrated_from_189" => {
             "Project migrated from format {ver} to {PROJECT_SCHEMA} \u{2014} its scripts now live inside the project"
         }

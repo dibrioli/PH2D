@@ -55,6 +55,7 @@ fn the_world_settings_survive_the_project_file() {
         pattern_art: Vec::new(),
         boards: Vec::new(),
         scripts: Vec::new(),
+        marcas_do_artista: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");
@@ -125,6 +126,7 @@ fn the_project_scale_and_unit_survive_the_project_file() {
         pattern_art: Vec::new(),
         boards: Vec::new(),
         scripts: Vec::new(),
+        marcas_do_artista: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");

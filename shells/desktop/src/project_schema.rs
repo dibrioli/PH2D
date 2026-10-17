@@ -480,7 +480,18 @@
 /// mexer. Registos de componentes: `0`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 192;
+///
+/// # `192 → 193` — **as marcas do artista** (`line/Macros-Automação`, W9, 2026-10-17)
+///
+/// Campo novo no FIM do `ProjectFile`: `marcas_do_artista: Vec<u8>` — por imagem com macro, onde o
+/// artista escreveu depois da gravação (`docs/Macros/07_plano_W9.md`), blob com versão PRÓPRIA (o
+/// formato de `PalcosDoPainter::marcas_a_gravar`). ⭐ **COM leitura dos anteriores:** o campo novo é o
+/// ÚLTIMO e o postcard é posicional — os braços `192`/`191`, `190` e `189` acrescentam o `0` do `Vec` vazio
+/// (um projecto antigo abre sem marcas: o clipe toca por cima de tudo, como na W8). Gate:
+/// `project_marcas_tests`. Registos de componentes: `0`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 193;
 
 /// O último degrau em que a opacidade não era canal de estado (as poses diziam sempre `1`).
 pub(crate) const PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS: u32 = 191;

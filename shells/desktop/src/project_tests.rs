@@ -426,6 +426,7 @@ fn project_file_round_trips_through_postcard() {
         // NÃO-vazio pela razão do `input_map` acima: dois quadros com nome.
         boards: two_boards().to_bytes().unwrap(),
         scripts: Vec::new(),
+        marcas_do_artista: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -578,6 +579,10 @@ mod boards;
 /// **Os SCRIPTS no arquivo** (CodeEditor T7, v190) — filho pela mesma razão.
 #[path = "project_scripts_tests.rs"]
 mod scripts;
+
+/// **As MARCAS DO ARTISTA no arquivo** (Macros W9, v192) — filho pela mesma razão.
+#[path = "project_marcas_tests.rs"]
+mod marcas;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — filho (`#[path]`) pelo
 /// teto de LOC do HR-18, e FILHO e não irmão porque as fixtures desta suíte

@@ -75,6 +75,7 @@ fn a_recorded_run_survives_the_file() {
         pattern_art: Vec::new(),
         boards: Vec::new(),
         scripts: Vec::new(),
+        marcas_do_artista: Vec::new(),
     };
     std::fs::write(
         &path,

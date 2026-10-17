@@ -29,7 +29,8 @@ fn a_v190_project_keeps_the_script_text_and_the_reference() {
         scripts: lib.to_bytes(),
         ..bare_file(estado(LuauScript::library(id)))
     };
-    let path = tmp_path("scripts_v190");
+    // Outro nome que o dos braços antigos (`scripts_v190`): no mesmo processo os dois colidiam.
+    let path = tmp_path("scripts_vivo");
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");
     let (back, cfg, x) = abre_e_corre(&path);

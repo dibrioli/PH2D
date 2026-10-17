@@ -64,6 +64,7 @@ pub(super) fn bare_file(state: ProjectState) -> ProjectFile {
         pattern_art: Vec::new(),
         boards: Vec::new(),
         scripts: Vec::new(),
+        marcas_do_artista: Vec::new(),
     }
 }
 

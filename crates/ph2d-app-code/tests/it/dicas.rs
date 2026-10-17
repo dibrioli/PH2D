@@ -329,7 +329,8 @@ fn a_assinatura_abre_em_parentese_e_virgula_e_marca_o_argumento() {
     });
 }
 
-/// O assistente que parou DE VEZ não deixa a assinatura aberta a envelhecer na aba.
+/// O assistente que parou DE VEZ não deixa a assinatura aberta a envelhecer na aba (mesmo sem um
+/// pedido dela em voo).
 #[test]
 fn um_assistente_parado_nao_deixa_a_assinatura() {
     use crate::assistente::falso;
@@ -349,23 +350,20 @@ fn um_assistente_parado_nao_deixa_a_assinatura() {
             "não volta",
         ))),
     });
-    let (m, ids) = Mesa::new(&[("a.luau", "")]);
+    let (m, ids) = Mesa::new(&[("a.luau", ""), ("b.luau", "")]);
     let mut m = m.com_assistente(ph2d_app_code::IntelServer::Custom(liga));
-    let id = ids[0];
-    m.pede(id);
+    let (a, b) = (ids[0], ids[1]);
+    m.pede(a);
     quadro_em(&mut m, T0);
-    escreve(&mut m, id, "f(");
-    ate(&mut m, id, T0, "não abriu", |m| {
-        m.docs().signature_of(id).is_some()
+    escreve(&mut m, a, "f(");
+    ate(&mut m, a, T0, "não abriu", |m| m.docs().signature_of(a).is_some());
+    // O servidor morre com uma edição NOUTRO script: na aba da assinatura não há pedido em voo
+    // que falhe, só o estado do assistente a fecha.
+    m.pede(b);
+    escreve(&mut m, b, "x");
+    ate(&mut m, a, T0, "o assistente parou e a assinatura ficou", |m| {
+        m.docs().assist_text().is_some() && m.docs().signature_of(a).is_none()
     });
-    escreve(&mut m, id, "a");
-    ate(
-        &mut m,
-        id,
-        T0,
-        "o assistente parou e a assinatura ficou",
-        |m| m.docs().assist_text().is_some() && m.docs().signature_of(id).is_none(),
-    );
 }
 
 /// Numa string ou num comentário, `(` e `,` não abrem (nem perguntam); o controlo, em código, abre.

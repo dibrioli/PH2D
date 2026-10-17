@@ -19,6 +19,7 @@
 - [Corpus da pesquisa ossos+vetor (23/09), fora do repo](reference_vector_bones_research_corpus_2026_09_23.md)
 - [Enio (dibrioli): dono/decisor; o dev é a LLM · ⛔ SEMPRE PT-BR](user_role.md)
 - ⭐ [Dono decidiu (06/10): o PH2D TERÁ versão no navegador, mas NÃO agora — 1.º degrau: AVIF fora do `wasm32`](project_web_shell_decided_by_owner_2026_10_06.md)
+- ⭐ [Editor de scripts Luau (15/10): script DENTRO do projeto · `luau-lsp` empacotado · IA só no FIM · arrastar objetos para o código](project_code_editor_owner_decisions_2026_10_15.md)
 - [Onde mora cada coisa — tabela verificada](reference_canonical_files.md)
 - [GPU tests headless (evidência velha Mac/Metal)](reference_gpu_tests_run_headless_metal.md)
 - [transcripts medem o agente — agent-loop-profile.sh](reference_session_transcripts_are_a_measurable_instrument.md)
@@ -45,14 +46,12 @@
 - ⛔ [Tilemap (TOP-20 #17) é do projeto `docs/Tilling`, não da line/components — o dono mandou pular (16/09)](project_tilemap_belongs_to_the_tiling_project.md)
 - ⛔ [Painel lateral de params do Motion VAI SAIR (params só no cartão) — não invista nele (19/09)](project_o_painel_lateral_dos_params_do_motion_vai_sair.md)
 - ⛔ [Só o Wet Paint evolui (07/10): Digital/Impasto/Watercolor ficam; prompt da linha em NewFeaturesWetPaint/04](project_wet_paint_is_the_only_painter_mode_to_evolve_2026_10_07.md)
-- ⛔⛔ [Recusa que só o TERMINAL vê é um botão mudo — o doc dizia «a frase que o artista lê» e eram três `eprintln!`](feedback_a_refusal_only_the_terminal_sees.md)
 - ⛔⛔ [Um SELO é texto E chave da COR — traduzi-lo apaga o tom](feedback_a_badge_is_painted_text_and_the_key_of_its_own_colour.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
 - ⛔ [Restaurar uma mutação com `mv` devolve mtime ANTIGO e o cargo guarda o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)
 - ⛔⛔ [Um CORTE de LOC move os imports também — a lint corrida antes do corte não vale, e foi o build do dono que apanhou os órfãos](feedback_a_cut_moves_the_imports_too_relint_after_it.md)
-- ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
-- 📚 [Comunicação & decisão: mais (67) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
+- 📚 [Comunicação & decisão: mais (70) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (15)](reference_topic_git_hazards.md)
@@ -137,7 +136,7 @@
 - [Registro de painel — (5) sítios](reference_topic_panel_registration.md) · [Gotchas de código (36)](reference_topic_code_gotchas.md)
 - ⛔ [Renomear um símbolo por NOME destrói a PROSA que o cita — num repo onde o porquê vive em doc-comments, a memória histórica é a vítima mais comum](feedback_a_rename_by_name_cannot_tell_an_address_from_a_memory.md)
 - ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)
-- ⛔ [O dono de um id de BARRA DE ROLAGEM é o DESPACHO — declarado no painel, o polegar pinta e nunca se agarra (há um vivo: o painel de ossos)](feedback_the_owner_of_a_scrollbar_id_is_the_dispatch.md)
+- ⛔ [O dono de um id de BARRA DE ROLAGEM é o DESPACHO — declarado no painel, o polegar pinta e nunca se agarra (o do painel de ossos já foi curado)](feedback_the_owner_of_a_scrollbar_id_is_the_dispatch.md)
 - ⛔ [O oráculo ensina a PERGUNTA; a resposta depende da natureza da SUA entrada — um NÍVEL e um EVENTO pedem paragens opostas](feedback_an_oracle_teaches_the_question_the_answer_depends_on_your_input_kind.md)
 - ⛔ [Um EVENTO lido como ESTADO acerta pelo tempo que ninguém o apagar — a etiqueta dependia de o relógio estar a andar](feedback_an_event_read_as_state_is_right_for_as_long_as_nobody_clears_it.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais (45) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)

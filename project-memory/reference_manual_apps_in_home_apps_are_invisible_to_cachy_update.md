@@ -1,6 +1,6 @@
 ---
 name: reference_manual_apps_in_home_apps_are_invisible_to_cachy_update
-description: "Apps descompactados à mão em ~/Apps (chrome, obsidian, keepassxc, github-desktop, alchemy, gh) não existem para o pacman, logo o cachy-update (= arch-update) nunca os lista; o Chrome foi migrado para o AUR via paru em 2026-08-23"
+description: "cachy-update (= arch-update) só vê o pacman; apps em ~/Apps são invisíveis; e o passo do AUR aborta na revisão do paru (curado 15/10 com SkipReview/SudoLoop/CleanAfter)"
 metadata: 
   node_type: memory
   type: reference
@@ -30,3 +30,10 @@ e é o único SEM pacote no AUR: tgz em `https://cascadeur.com/rest/download/bui
 com `QT_QPA_PLATFORM=xcb` (o pacote só traz o backend X11) + `FONTCONFIG_PATH=/etc/fonts`. Atualizar
 = baixar de novo e trocar a pasta. **GDevelop** (23/09) entrou do jeito certo desde o início: `gdevelop-bin` do AUR (AppImage oficial do GitHub, arrastando `electron32-bin` do AUR + `asar` de `extra`), construído com `makepkg` e instalado por `pacman -U` ⇒ visível ao cachy-update. ⚠️ Instalar pelo pacman exige senha (sudo) — prepare o
 pacote e entregue UM comando, por [[feedback_a_red_checksum_is_acted_on_by_the_agent_not_escalated]].
+
+**15/10/2026 — «o gestor não atualiza o AUR»:** o passo do AUR saía em 45 s sem construir nada
+(journal: nenhum `pacman` do paru entre o -Syu dos repos e o `paccache` final) = abortou na
+REVISÃO interativa do paru. O mesmo `paru --devel -Syu` com `--noconfirm` instalou os 5.
+Cura em `~/.config/paru/paru.conf`: `SkipReview` + `SudoLoop` + `CleanAfter` (o cache tinha
+14 GB de pacotes velhos). Para reproduzir sem terminal: `SUDO_ASKPASS=<script> paru ... --sudoflags=-A`,
+e apague o script no fim.

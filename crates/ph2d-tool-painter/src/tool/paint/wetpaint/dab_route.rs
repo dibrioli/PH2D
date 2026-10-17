@@ -333,7 +333,6 @@ impl PainterTool {
                 ),
                 _ => (((d.coverage / strength).clamp(0.0, 1.0) as f64) * 10.0, 1.0),
             };
-            sess.engine.opacidade_do_dab = opacidade;
             // Per-dab silhouette closure — the impasto walk's exact recipe
             // (spec at the dab's radius → rotor → footprint → Shape basis in
             // the stroke frame), evaluated per engine cell (cell − 1 = px).
@@ -570,6 +569,7 @@ impl PainterTool {
                     cell_y,
                     b,
                     cell_r,
+                    opacidade,
                     Some(&sil),
                     grain_arg,
                     padrao_arg,
@@ -600,7 +600,6 @@ impl PainterTool {
             }
             sess.lanes[li].pos = d.center;
         }
-        sess.engine.opacidade_do_dab = 1.0;
         let deposit_ms = t_dep.elapsed().as_secs_f32() * 1e3;
         self.paint.wetpaint.session = Some(taken);
         let t_comp = std::time::Instant::now();

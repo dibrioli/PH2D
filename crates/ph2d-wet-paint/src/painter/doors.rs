@@ -48,7 +48,7 @@ impl Engine {
             dry_gate,
             reach: 1.0,
             window_reach: 1.0,
-            opacity: self.opacidade_do_dab,
+            opacity: 1.0,
         };
         (dab, water_unit)
     }
@@ -121,11 +121,12 @@ impl Engine {
         grain: Option<crate::brush::CellFn<'_>>,
         padrao: Option<crate::brush::CellFn<'_>>,
     ) {
-        self.dispatch_pressure_dab_lane_cor(lane, x, y, b, r, sil, grain, padrao, None);
+        self.dispatch_pressure_dab_lane_cor(lane, x, y, b, r, 1.0, sil, grain, padrao, None);
     }
 
     /// [`Self::dispatch_pressure_dab_lane`] com a COR de cada célula (a Shape Color do hospedeiro,
-    /// [`crate::trail::Trail::accumulate_paint_shaped_cor`]); só o caminho com silhueta a lê.
+    /// [`crate::trail::Trail::accumulate_paint_shaped_cor`]; só o caminho com silhueta a lê) e a
+    /// `opacidade` do dab ([`crate::trail::Dab::opacity`], a pressão do pincel — `1` = a de sempre).
     #[allow(clippy::too_many_arguments)]
     pub fn dispatch_pressure_dab_lane_cor(
         &mut self,
@@ -134,6 +135,7 @@ impl Engine {
         y: f64,
         b: f64,
         r: f64,
+        opacidade: f64,
         sil: Option<crate::brush::CellFn<'_>>,
         grain: Option<crate::brush::CellFn<'_>>,
         padrao: Option<crate::brush::CellFn<'_>>,
@@ -144,6 +146,7 @@ impl Engine {
             .gather_params(&self.tuning)
             .com_pigmento(self.sliders.pigmento);
         let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
+        dab.opacity = opacidade;
         if sil.is_some() {
             [dab.reach, dab.window_reach] = self.silhouette_reach;
         }

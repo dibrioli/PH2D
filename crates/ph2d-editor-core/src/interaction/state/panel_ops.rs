@@ -315,4 +315,19 @@ impl WidgetStore {
     pub fn dropdown_popover(&self) -> Option<(NodeId, Rect)> {
         self.dropdown_popover
     }
+
+    /// ⭐ **O dropdown ABERTO sob o ponto** (lógico) — a única resposta a *«a roda e o ponteiro aqui
+    /// são de um popover?»*: o despacho da roda e o [`crate::screens::hero::HeroScreen::chrome_panel_at`]
+    /// perguntam-lhe. Um popover pintado sobre o CANVAS (as listas e o painel do traço da fila) não
+    /// tem `panel_rect`; sem esta pergunta a shell dava a roda ao zoom do canvas (dono 16/10).
+    #[must_use]
+    pub fn open_dropdown_popover_at(&self, x: f32, y: f32) -> Option<NodeId> {
+        let (dd, rect) = self.dropdown_popover?;
+        (rect.contains(x, y)
+            && matches!(
+                self.get(dd),
+                Some(crate::interaction::InteractiveState::Dropdown { open: true, .. })
+            ))
+        .then_some(dd)
+    }
 }

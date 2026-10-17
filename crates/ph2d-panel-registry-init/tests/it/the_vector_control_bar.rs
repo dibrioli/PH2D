@@ -342,6 +342,18 @@ fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
         fora.is_empty(),
         "linhas do painel do traço clicáveis FORA dele: {fora:?}"
     );
+    // A pergunta da SHELL antes de dar a roda ao zoom do canvas (`cursor_over_hero_panel`): sobre o
+    // painel do traço a resposta é ele (dono 16/10: a roda dava zoom no canvas e não rolava).
+    let meio = (pop.x + pop.w * 0.5, pop.y + pop.h * 0.5);
+    assert!(
+        (hero.escala().factor() - 1.0).abs() < 1e-6,
+        "o teste lê px lógicos como físicos"
+    );
+    assert_eq!(
+        hero.chrome_panel_at(meio.0, meio.1),
+        Some(id),
+        "a roda sobre o painel do traço vai para o canvas (a shell não o vê como chrome)"
+    );
 
     let arena = Bump::new();
     let _ = hero.handle_wheel(
@@ -371,6 +383,15 @@ fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
     assert!(
         cap.is_none_or(|c| c.y >= pop.y - 0.5),
         "rolado, a ponta saiu por cima do painel e continua clicável: {cap:?}"
+    );
+    // O CONTROLO: fechado, o mesmo ponto deixa de ser do painel do traço (a roda volta ao canvas).
+    if let Some(InteractiveState::Dropdown { open, .. }) = hero.store.get_mut(id) {
+        *open = false;
+    }
+    assert_ne!(
+        hero.chrome_panel_at(meio.0, meio.1),
+        Some(id),
+        "fechado, o painel do traço continua a engolir a roda"
     );
     ph2d_panel_vector::set_stroke_paint_kind(None);
 }

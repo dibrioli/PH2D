@@ -86,13 +86,7 @@ pub fn dispatch_wheel<'frame>(
     // An OPEN dropdown popover scrolls first — it floats on top of any panel, and its rect lives in a
     // dedicated slot (not `panel_rects`) so `panel_at` isn't polluted. Its scroll value + heights use
     // the `panel_scroll`/`panel_*_h` tables keyed by the dropdown id.
-    if let Some((dd, rect)) = store.dropdown_popover()
-        && rect.contains(event.x, event.y)
-        && matches!(
-            store.get(dd),
-            Some(InteractiveState::Dropdown { open: true, .. })
-        )
-    {
+    if let Some(dd) = store.open_dropdown_popover_at(event.x, event.y) {
         store.wheel_panel(dd, event.delta_y);
         return events.into_bump_slice();
     }

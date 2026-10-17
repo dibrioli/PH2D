@@ -65,15 +65,18 @@ impl HeroScreen {
         self.hit_index.hit(x, y)
     }
 
-    /// O painel sob um ponto FÍSICO da janela. A apresentação do quadro (W8) cobre a janela
-    /// inteira: nenhum painel por baixo dela recebe o ponteiro.
+    /// O painel sob um ponto FÍSICO da janela — um dropdown ABERTO primeiro: ele flutua por cima de
+    /// tudo, também do canvas. A apresentação do quadro (W8) cobre a janela inteira: nenhum painel
+    /// por baixo dela recebe o ponteiro.
     #[must_use]
     pub fn chrome_panel_at(&self, x: f32, y: f32) -> Option<NodeId> {
         if super::board_nav::team::show::showing(self) {
             return None;
         }
         let (x, y) = self.escala().to_logical((x, y));
-        self.store.panel_at(x, y)
+        self.store
+            .open_dropdown_popover_at(x, y)
+            .or_else(|| self.store.panel_at(x, y))
     }
 
     /// F9 — o chrome legado entra ou sai; devolve o estado novo. Durante a apresentação do quadro

@@ -10,6 +10,7 @@
 mod util;
 
 mod a_lei_do_glaze;
+mod a_lei_do_po;
 mod acceptance;
 mod acceptance_budget;
 mod cor_por_celula;

@@ -20,6 +20,7 @@ mod macro_traco;
 mod macro_trilho;
 mod measure_undo_capacity;
 mod midias_de_fabrica;
+mod o_po_do_aerografo;
 mod os_outros_meios_nao_mudam;
 mod presets_de_fabrica;
 mod receitas_de_fabrica;

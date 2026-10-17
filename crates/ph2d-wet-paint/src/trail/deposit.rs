@@ -77,7 +77,8 @@ impl Po {
             let b = v.to_bits();
             (b ^ (b >> 32)) as i32
         };
-        let semente = (crate::rng::hash2(dobra(dab.x), dobra(dab.y), semente) * 4_294_967_296.0) as u32;
+        let semente =
+            (crate::rng::hash2(dobra(dab.x), dobra(dab.y), semente) * 4_294_967_296.0) as u32;
         let fase = [1, 3].map(|k| crate::rng::hash2(k, k + 1, semente) * GOTA_DO_PO);
         Some(Self {
             p: 1.0 - POEIRA_MAXIMA * po.min(1.0),

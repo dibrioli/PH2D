@@ -116,7 +116,12 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
         }
         let tinta: Vec<f64> = col.iter().copied().filter(|&v| v > 0.08).collect();
         perfil.push(tinta.iter().sum::<f64>() / tinta.len() as f64);
-        let meio = |t: f64| (col.iter().position(|&v| v >= t), col.iter().rposition(|&v| v >= t));
+        let meio = |t: f64| {
+            (
+                col.iter().position(|&v| v >= t),
+                col.iter().rposition(|&v| v >= t),
+            )
+        };
         if let (Some(a), Some(b)) = meio(0.5 * m) {
             larguras.push((b - a + 1) as f64);
         }
@@ -147,7 +152,8 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
     let np = perfil.len();
     let corpo = &perfil[(0.1 * np as f64) as usize..(0.9 * np as f64) as usize];
     let mc = corpo.iter().sum::<f64>() / corpo.len().max(1) as f64;
-    let dc = (corpo.iter().map(|v| (v - mc).powi(2)).sum::<f64>() / corpo.len().max(1) as f64).sqrt();
+    let dc =
+        (corpo.iter().map(|v| (v - mc).powi(2)).sum::<f64>() / corpo.len().max(1) as f64).sqrt();
     let media = residuos.iter().sum::<f64>() / n.max(1.0);
     let var = residuos.iter().map(|r| (r - media).powi(2)).sum::<f64>() / n.max(1.0);
     Medida {

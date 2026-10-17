@@ -605,4 +605,14 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
         0.0,
         None,
     ),
+    k(
+        Knob::Dust,
+        KnobGroup::Paint,
+        "dust",
+        0.0,
+        1.0,
+        0.01,
+        0.0,
+        None,
+    ),
 ];

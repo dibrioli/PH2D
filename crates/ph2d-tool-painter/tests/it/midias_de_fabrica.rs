@@ -29,6 +29,11 @@ enum Metrica {
     Tinta,
     /// O CRUZAMENTO vermelho × azul (18 §2): a identidade da tinta e do marcador (prompt 42).
     Cruzamento,
+    /// A uniformidade ao longo do traço (`uniformidade_cv`): o pó do aerógrafo (prompt 43).
+    Cv,
+    /// A largura a meio do máximo (px): ± 2 px da foto — o controlo é pintado à MESMA largura, então não
+    /// distingue nada; é a condição de toda a comparação (05 §4.1).
+    Largura,
 }
 
 impl Metrica {
@@ -41,6 +46,8 @@ impl Metrica {
             Metrica::Chato => c.de_pe / c.deitado,
             Metrica::Tinta => c.tinta,
             Metrica::Cruzamento => c.cruz,
+            Metrica::Cv => m.cv,
+            Metrica::Largura => m.largura,
         }
     }
     fn ruido(self) -> f64 {
@@ -55,6 +62,8 @@ impl Metrica {
             Metrica::Tinta => 0.012,
             // O controlo da sessão de 16/10: o Dip Pen de 11/10 refeito deu 0,283 contra 0,223.
             Metrica::Cruzamento => 0.06,
+            Metrica::Cv => 0.012,
+            Metrica::Largura => 1.0,
         }
     }
 }
@@ -141,7 +150,7 @@ struct Midia {
     metricas: &'static [(Metrica, f64)],
 }
 
-use Metrica::{Borda, Chato, Cobertura, Cruzamento, Orla, Textura, Tinta};
+use Metrica::{Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Textura, Tinta};
 
 // ⚠️ Os três do óleo levam os valores que o DONO afinou a olho contra o Rebelle (11/10, «vamos deixar esses
 // valores»); a régua reprovava Textura do Oil Bristle (8,46 contra 5,86) e da Acrylic Round (30,4 contra 3,13)
@@ -149,7 +158,7 @@ use Metrica::{Borda, Chato, Cobertura, Cruzamento, Orla, Textura, Tinta};
 // O Chato e a Tinta (prompt 23, aceites 12/10) são os dois pontos que o dono VIU: a mutação «preset de antes»
 // sangra cada um sozinho (Oil 0,950 · Express 0,906).
 #[rustfmt::skip]
-const MIDIAS: [Midia; 13] = [
+const MIDIAS: [Midia; 14] = [
     Midia { preset: "Wet Liner", foto: "wcliner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
     Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
     Midia { preset: "Acrylic Round", foto: "oilround", raio: 19.5, metricas: &[(Cobertura, 0.880), (Borda, 0.595)] },
@@ -165,6 +174,9 @@ const MIDIAS: [Midia; 13] = [
     Midia { preset: "Ink Brush", foto: "inkbrush", raio: 20.0, metricas: &[(Cobertura, 0.722), (Textura, 1.266), (Borda, 0.793), (Orla, 5.0), (Cruzamento, 0.239)] },
     Midia { preset: "Marker Bullet", foto: "markerbullet", raio: 20.0, metricas: &[(Cobertura, 0.909), (Textura, 0.658), (Borda, 0.768), (Cruzamento, 0.016)] },
     Midia { preset: "Marker Liner", foto: "marker", raio: 9.0, metricas: &[(Cobertura, 0.910), (Textura, 2.116), (Borda, 0.716), (Cruzamento, 0.016)] },
+    // O aerógrafo (prompt 43): o PÓ — a textura, a uniformidade e a orla larga são dele; o «período» não conta
+    // (a repetição do Rebelle varia 0,005, o controlo fica a 0,013 — doc 43 §2).
+    Midia { preset: "Airbrush", foto: "airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (Largura, 26.0)] },
 ];
 
 pub(super) fn de_fabrica(nome: &str) -> Preset {
@@ -247,6 +259,7 @@ fn cada_preset_parece_a_sua_midia() {
             let dentro = match met {
                 Tinta => (nv - r).abs() < 4.0 * met.ruido(),
                 Cruzamento => (nv - r).abs() < 3.0 * met.ruido(),
+                Largura => (nv - r).abs() <= 2.0 * met.ruido(),
                 _ => no_vale(nv, r, cv),
             };
             if !dentro {
@@ -258,7 +271,7 @@ fn cada_preset_parece_a_sua_midia() {
             // O CONTROLO: o Wet Round tem de estar longe da foto (3× o ruído do Rebelle) — senão a
             // métrica não distingue a mídia e o vale aprovaria um Round com outro nome.
             assert!(
-                (cv - r).abs() > 3.0 * met.ruido(),
+                matches!(met, Largura) || (cv - r).abs() > 3.0 * met.ruido(),
                 "{}: o Wet Round dá {met:?} {cv:.3}, a foto {} dá {r}: a métrica não distingue a mídia",
                 m.preset,
                 m.foto

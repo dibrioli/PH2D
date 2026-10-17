@@ -5,7 +5,7 @@ use ph2d_brush_presets::Tilt;
 use serde_json::{Value, json};
 
 /// Quantos presets a fábrica tem — CONTADO (`the_factory_presets_are_counted`), nunca escolhido.
-pub const PRESETS_DE_FABRICA: usize = 17;
+pub const PRESETS_DE_FABRICA: usize = 18;
 
 /// O grão `kind` de lado `lado` no slot Grain do pincel (o JSON do `BrushSpec::texture`).
 pub fn grao(kind: &str, lado: f64) -> Value {
@@ -492,4 +492,31 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         achatado: None,
         pincel: &[],
     },
+    // Airbrush › Spray › Airbrush: o PÓ (prompt 43) — gotas de 2 px, uma em quatro por dab, seco, sem cerdas;
+    // contra o Rebelle «Airbrush/Default/Spray 2» (doc 43 §4: a mais perto do Rebelle das 7/7).
+    Receita {
+        meio: "Airbrush",
+        grupo: "Spray",
+        nome: "Airbrush",
+        water: 0.0,
+        opacity: 1.0,
+        pigment: 9.0,
+        pickup: 1.0,
+        gate: 0.0,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.3,
+        size_px: None,
+        extras: &[("drag", 0.0), ("dust", 0.8)],
+        grao: None,
+        spacing: None,
+        achatado: None,
+        pincel: &[("falloff", "\"Smooth\""), ("shape", SEM_FORMA)],
+    },
 ];
+
+/// O Shape sem forma (nem cerdas): a ponta é só a queda — o aerógrafo.
+const SEM_FORMA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;

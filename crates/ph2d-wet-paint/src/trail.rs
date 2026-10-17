@@ -545,7 +545,7 @@ impl Trail {
         } = g;
         let body = |i: usize, x: i32, y: i32, fall: f64, texv: f64| {
             let Some((deposit, wb)) =
-                law.cell(susp[i], sett[i], paper[i], film[i], fall, texv, 1.0)
+                law.cell(susp[i], sett[i], paper[i], film[i], fall, texv, 1.0, x, y)
             else {
                 return;
             };

@@ -289,6 +289,8 @@ fn tr_ingles(key: &str) -> &'static str {
         // O Glaze do PINCEL (prompt 42): guardado com o pincel, vale para a tinta dele — a nota do cartão Experimental
         // diz que as duas caixas valem para a tinta da OBRA inteira e que o do pincel age por cima delas.
         "panel.wet_tuning.knob.glaze" => "Brush glaze",
+        // O PÓ do pincel (prompt 43): guardado com o pincel — a tinta cai em gotas de 2 px (o aerógrafo).
+        "panel.wet_tuning.knob.dust" => "Brush dust",
         "panel.wet_tuning.km_mixing" => "Pigment mixing (K-M)",
         "panel.wet_tuning.km_glaze" => "Glaze layering (K-M)",
         "panel.wet_tuning.note" => {

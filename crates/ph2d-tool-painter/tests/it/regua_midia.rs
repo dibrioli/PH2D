@@ -15,6 +15,11 @@ pub struct Medida {
     pub borda: f64,
     /// A mediana da transição 10 → 90 % do máximo da coluna, em cima e em baixo (px).
     pub orla: f64,
+    /// A uniformidade ao longo do traço: o desvio ÷ a média da cobertura de cada coluna (> 0,08), fora dos
+    /// 10 % de cada ponta (`uniformidade_cv`).
+    pub cv: f64,
+    /// A mediana da largura a meio do máximo de cada coluna (px, `largura_mediana_px`).
+    pub largura: f64,
 }
 
 /// `mede_traco.mede(png, crop)`: `c = max|px − papel| / 255` (papel = mediana das 2 linhas de cima e
@@ -97,11 +102,23 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
     }
     let borda = (so / no.max(1.0)) / cobertura.max(1e-6);
     let mut orlas = Vec::new();
-    for x in 0..cw {
+    // As colunas do traço (a primeira e a última com alguma célula > 0,08) e, nelas, o perfil e a largura.
+    let tem = |x: usize| (0..ch).any(|y| c[y * cw + x] > 0.08);
+    let (xa, xb) = ((0..cw).find(|&x| tem(x)), (0..cw).rfind(|&x| tem(x)));
+    let mut perfil = Vec::new();
+    let mut larguras = Vec::new();
+    for x in xa.unwrap_or(0)..=xb.unwrap_or(0) {
         let col: Vec<f64> = (0..ch).map(|y| c[y * cw + x]).collect();
         let m = col.iter().copied().fold(0.0, f64::max);
         if m < 0.08 {
+            perfil.push(0.0);
             continue;
+        }
+        let tinta: Vec<f64> = col.iter().copied().filter(|&v| v > 0.08).collect();
+        perfil.push(tinta.iter().sum::<f64>() / tinta.len() as f64);
+        let meio = |t: f64| (col.iter().position(|&v| v >= t), col.iter().rposition(|&v| v >= t));
+        if let (Some(a), Some(b)) = meio(0.5 * m) {
+            larguras.push((b - a + 1) as f64);
         }
         let (lo, hi) = (0.1 * m, 0.9 * m);
         let primeiro = |t: f64| col.iter().position(|&v| v >= t).unwrap();
@@ -118,6 +135,19 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
     } else {
         0.5 * (orlas[k / 2 - 1] + orlas[k / 2])
     };
+    let mediana = |v: &mut Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        let k = v.len();
+        match k {
+            0 => 0.0,
+            _ if k % 2 == 1 => v[k / 2],
+            _ => 0.5 * (v[k / 2 - 1] + v[k / 2]),
+        }
+    };
+    let np = perfil.len();
+    let corpo = &perfil[(0.1 * np as f64) as usize..(0.9 * np as f64) as usize];
+    let mc = corpo.iter().sum::<f64>() / corpo.len().max(1) as f64;
+    let dc = (corpo.iter().map(|v| (v - mc).powi(2)).sum::<f64>() / corpo.len().max(1) as f64).sqrt();
     let media = residuos.iter().sum::<f64>() / n.max(1.0);
     let var = residuos.iter().map(|r| (r - media).powi(2)).sum::<f64>() / n.max(1.0);
     Medida {
@@ -125,5 +155,7 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
         textura: 100.0 * var.sqrt() / cobertura.max(1e-6),
         borda,
         orla,
+        cv: dc / mc.max(1e-6),
+        largura: mediana(&mut larguras),
     }
 }

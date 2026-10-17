@@ -361,6 +361,13 @@ impl PainterTool {
             let grain_basis = grain_active.then(|| {
                 ph2d_painter_brush::texture::dab_basis(&spec.texture, &mut *tex_rng, canvas_wh, fp)
             });
+            // O PÓ (prompt 43): a semente das partículas deste dab, um passo do MESMO fluxo (o splitmix64 do
+            // pincel) — só com o pó ligado, para que nenhum outro pincel veja o fluxo mudar.
+            if sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::Dust) > 0.0 {
+                *tex_rng = tex_rng.wrapping_add(0x9E37_79B9_7F4A_7C15);
+                let z = (*tex_rng ^ (*tex_rng >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+                sess.engine.sim.semente_do_po = (z ^ (z >> 31)) as u32;
+            }
             let inv_r = 1.0 / d.radius_px.max(0.01);
             // ⚠️ A silhueta é avaliada em espaço de CANVAS, sempre — só
             // AMOSTRADA por célula. É por isso que a razão da grade não muda a

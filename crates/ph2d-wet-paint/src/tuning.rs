@@ -76,9 +76,12 @@ pub enum Knob {
     /// da obra, ao byte; `1` = multiplica — o marcador do Rebelle). Pousa com a tinta no plano
     /// [`crate::grid::Grid::vela`]. Appended LAST, like `WetLift`.
     Glaze,
+    /// **O PÓ do pincel** (prompt 43): cada dab pousa a tinta em PARTÍCULAS — uma fracção das células recebe
+    /// a dose das outras (`0` = o carimbo contínuo, ao byte; `1` = uma célula em 20). O aerógrafo.
+    Dust,
 }
 
-pub const KNOB_COUNT: usize = 55;
+pub const KNOB_COUNT: usize = 56;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

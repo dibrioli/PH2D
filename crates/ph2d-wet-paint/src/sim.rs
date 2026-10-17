@@ -49,6 +49,8 @@ pub struct Params {
     pub pickup_assentado: f64,
     /// A lei do ecrã que assentar e re-molhar preservam ([`crate::assenta`]), com a velatura do filme.
     pub ecra: crate::assenta::Ecra,
+    /// [`Sim::semente_do_po`].
+    pub semente_do_po: u32,
 }
 
 impl Params {
@@ -127,6 +129,9 @@ pub struct Sim {
     /// ([`crate::colorops::TINTA_ESCONDE_EM_VELATURA`] no lugar de [`Sim::esconde`]). Lido só por
     /// [`Sim::gather_params`]: o ecrã e as transferências verticais vêem a MESMA lei.
     pub camadas_transparentes: bool,
+    /// **A semente do PÓ deste dab** ([`Knob::Dust`]): o hospedeiro sorteia-a por dab do fluxo do traço
+    /// (dabs parados no mesmo lugar pousam pontos novos); o motor mistura-lhe o centro do dab.
+    pub semente_do_po: u32,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -204,6 +209,7 @@ impl Default for Sim {
             molhada_escurece: 1.0,
             esconde: 1.0,
             camadas_transparentes: false,
+            semente_do_po: 0,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -303,6 +309,7 @@ impl Sim {
                     vela: 0.0,
                 },
             },
+            semente_do_po: self.semente_do_po,
         }
     }
 }

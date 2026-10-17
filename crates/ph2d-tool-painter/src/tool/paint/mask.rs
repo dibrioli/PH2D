@@ -477,6 +477,21 @@ impl PainterTool {
         }
     }
 
+    /// **A versão do filme da máscara** (W8 item 6b, `docs/Macros/05_plano_W8.md`): muda a cada escrita
+    /// na máscara e a cada cor do filme; `None` = sem máscara viva (nada a tingir).
+    #[must_use]
+    pub fn versao_da_mascara(&self) -> Option<u64> {
+        self.mask_scratch_active()
+            .then(|| self.mask_scratch_gen << 8 | u64::from(self.paint.mask_overlay_color))
+    }
+
+    /// **O filme da máscara sobre a região `caixa` = (x, y, w, h) de uma imagem já composta** (`rgba`
+    /// straight, do tamanho da caixa) — a mesma tinta que a pré-visualização do editor põe por cima do
+    /// composto. Para quem mostra a imagem por outra porta (o palco de uma macro). Sem máscara viva, nada.
+    pub fn tinge_com_a_mascara(&self, rgba: &mut [u8], (x, y, w, h): (u32, u32, u32, u32)) {
+        self.apply_mask_overlay_region(rgba, Region { x, y, w, h });
+    }
+
     /// The overlay applied to ONE re-composited sub-region — the partial fast lane's twin of
     /// [`Self::apply_mask_overlay`]. `buf` is a `bbox`-sized region buffer (row-major within `bbox`);
     /// the scratch is full-canvas, so each region pixel reads its GLOBAL coverage. The tint is

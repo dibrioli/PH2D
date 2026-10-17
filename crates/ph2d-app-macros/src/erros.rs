@@ -14,7 +14,7 @@ pub fn do_painter(e: &Pi) -> ErroDaMacroView {
         Pi::Inicial(I::VersaoFutura(_)) => erro(VERSAO_NOVA),
         Pi::Inicial(I::Texturas(t)) => erro_com(TEXTURAS, t.join(", ")),
         Pi::Inicial(_) => erro(INICIAL),
-        Pi::Passo(_) => erro(ESTRAGADA),
+        Pi::Passo(_) | Pi::FioCaiu(_) => erro(ESTRAGADA),
         Pi::PortaRecusada(p) => erro_com(PORTA, p.clone()),
         Pi::PassoDesconhecido(_) => erro(PASSO_NOVO),
         Pi::Divergiu(_) => erro(DIVERGIU),

@@ -27,6 +27,8 @@ mod custo_w5e_tests;
 #[cfg(test)]
 mod etapas_tests;
 #[cfg(test)]
+mod fim_tests;
+#[cfg(test)]
 mod tests;
 
 use crate::tool::PainterTool;

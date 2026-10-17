@@ -1,9 +1,12 @@
-//! **As imagens ao início e ao fim da gravação, fora do quadro** (W7 item 1, `docs/Macros/04_plano_W7.md`):
-//! a régua de «o artista pintou depois do Parar». Calcula-se num fio próprio por versão da trilha CRUA do
-//! Painter (o estado inicial e os eventos: editar uma etapa não a muda); largar o trabalho pára o fio.
+//! **As imagens ao início e ao fim da gravação, fora do quadro** (W7 item 1, `docs/Macros/04_plano_W7.md`;
+//! W8 itens 2b/2c/4, `docs/Macros/05_plano_W8.md`): a régua de «o artista pintou depois do Parar».
+//! Calcula-se num fio próprio por versão da trilha QUE TOCA (o estado inicial e os eventos com as
+//! edições das etapas; o nome e a dica não a mudam), com a água assentada; largar o trabalho pára o
+//! fio. Um erro da reprodução ou um pânico do fio dizem-se ao artista ([`FimDaGravacao::erro`]).
 
 use ph2d_macro::Track;
-use ph2d_tool_painter::macro_track::etapas::imagens_da_gravacao;
+use ph2d_tool_painter::macro_track::etapas::{LeitorDoPainter, imagens_da_gravacao};
+use ph2d_tool_painter::macro_track::tocar::ErroDaMacro;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -22,8 +25,11 @@ pub(super) struct Gravacao {
     pub(super) inicio: Vec<u8>,
 }
 
-/// `None` = a reprodução falhou ou parou: fica o palco sozinho.
-type Resultado = Option<Arc<Gravacao>>;
+/// `Ok(None)` = parou (o trabalho largou-se).
+pub(super) type Resultado = Result<Option<Arc<Gravacao>>, ErroDaMacro>;
+
+/// O cálculo do fim de uma trilha (o do produto, [`calcula`]; os gates trocam-no).
+pub(super) type Calculo = fn(&Track, &AtomicBool) -> Resultado;
 
 enum Estado {
     PorArrancar(Track),
@@ -31,11 +37,11 @@ enum Estado {
         parar: Arc<AtomicBool>,
         fio: JoinHandle<Resultado>,
     },
-    Pronto(Resultado),
+    Pronto(Result<Arc<Gravacao>, ErroDaMacro>),
 }
 
 pub(super) struct FimDaGravacao {
-    /// A versão da trilha crua ([`versao_da_trilha`]).
+    /// A versão da trilha que toca ([`versao_da_trilha`]).
     pub(super) versao: u64,
     estado: Estado,
 }
@@ -48,31 +54,39 @@ impl Drop for FimDaGravacao {
     }
 }
 
-/// O hash do que a imagem do fim lê da trilha: o estado inicial e os eventos.
+/// O hash do que a imagem do fim lê da trilha: o estado inicial e os eventos da trilha que toca. Uma
+/// edição que não se toca entra como a trilha crua (a reprodução dela dá o erro).
 pub(super) fn versao_da_trilha(t: &Track) -> u64 {
     let mut h = DefaultHasher::new();
     t.initial.hash(&mut h);
-    for e in &t.events {
+    let tocavel = t.tocavel(&LeitorDoPainter);
+    for e in tocavel.as_ref().map_or(&t.events, |x| &x.events) {
         e.t.hash(&mut h);
         e.payload.hash(&mut h);
     }
+    tocavel.is_ok().hash(&mut h);
     h.finish()
 }
 
 fn calcula(t: &Track, parar: &AtomicBool) -> Resultado {
-    let g = imagens_da_gravacao(t, parar).ok()??;
+    let Some(g) = imagens_da_gravacao(t, parar)? else {
+        return Ok(None);
+    };
     let (mut rgba, mut inicio) = (g.fim, g.inicio);
     ph2d_render::premul::premultiply_rgba8(&mut rgba);
     ph2d_render::premul::premultiply_rgba8(&mut inicio);
-    Some(Arc::new(Gravacao {
+    Ok(Some(Arc::new(Gravacao {
         fim: Imagem {
             rgba,
             w: g.w,
             h: g.h,
         },
         inicio,
-    }))
+    })))
 }
+
+/// O nome do fio (o que o pânico diz).
+const FIO: &str = "macro-fim";
 
 impl FimDaGravacao {
     pub(super) fn de(track: Track) -> Self {
@@ -84,30 +98,51 @@ impl FimDaGravacao {
 
     /// Arranca o fio (uma vez) e colhe o que ele acabou. `Some` = a imagem chegou.
     pub(super) fn colhe(&mut self) -> Option<&Arc<Gravacao>> {
+        self.colhe_com(calcula)
+    }
+
+    /// [`Self::colhe`] com o cálculo `f` (os gates fazem-no falhar).
+    pub(super) fn colhe_com(&mut self, f: Calculo) -> Option<&Arc<Gravacao>> {
         if let Estado::PorArrancar(_) = &self.estado
-            && let Estado::PorArrancar(t) =
-                std::mem::replace(&mut self.estado, Estado::Pronto(None))
+            && let Estado::PorArrancar(t) = std::mem::replace(
+                &mut self.estado,
+                Estado::Pronto(Err(ErroDaMacro::FioCaiu(FIO))),
+            )
         {
             let parar = Arc::new(AtomicBool::new(false));
             let p = Arc::clone(&parar);
-            self.estado = match std::thread::Builder::new()
-                .name("macro-fim".into())
-                .spawn(move || calcula(&t, &p))
+            // O fio que não arranca fica o erro acima.
+            if let Ok(fio) = std::thread::Builder::new()
+                .name(FIO.into())
+                .spawn(move || f(&t, &p))
             {
-                Ok(fio) => Estado::Corre { parar, fio },
-                // O fio não arrancou: fica o palco sozinho.
-                Err(_) => Estado::Pronto(None),
-            };
+                self.estado = Estado::Corre { parar, fio };
+            }
         }
         if let Estado::Corre { fio, .. } = &self.estado
             && fio.is_finished()
-            && let Estado::Corre { fio, .. } =
-                std::mem::replace(&mut self.estado, Estado::Pronto(None))
+            && let Estado::Corre { fio, .. } = std::mem::replace(
+                &mut self.estado,
+                Estado::Pronto(Err(ErroDaMacro::FioCaiu(FIO))),
+            )
         {
-            self.estado = Estado::Pronto(fio.join().ok().flatten());
+            self.estado = Estado::Pronto(match fio.join() {
+                Ok(Ok(Some(g))) => Ok(g),
+                Ok(Err(e)) => Err(e),
+                // Parar só se pede ao largar o trabalho: aqui é um pânico ou o fio que parou sozinho.
+                Ok(Ok(None)) | Err(_) => Err(ErroDaMacro::FioCaiu(FIO)),
+            });
         }
         match &self.estado {
-            Estado::Pronto(r) => r.as_ref(),
+            Estado::Pronto(Ok(g)) => Some(g),
+            _ => None,
+        }
+    }
+
+    /// Porque a imagem do fim não veio: a reprodução falhou ou o fio caiu.
+    pub(super) fn erro(&self) -> Option<&ErroDaMacro> {
+        match &self.estado {
+            Estado::Pronto(Err(e)) => Some(e),
             _ => None,
         }
     }

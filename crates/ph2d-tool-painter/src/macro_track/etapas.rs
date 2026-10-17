@@ -561,9 +561,16 @@ pub struct ImagensDaGravacao {
     pub h: u32,
 }
 
-/// **As imagens ao início e ao fim da GRAVAÇÃO** — os `events` crus, sem as edições das etapas: o que o
-/// editor tinha ao Gravar e no Parar —, como o Apply as escreve na sprite. A régua de «o artista pintou
-/// depois do Parar» (W7 item 1): o que difere das duas é dele. `Ok(None)` = `parar`.
+/// ⭐ **Quadros (60 Hz) que a água da imagem do fim corre no máximo depois do último evento** (W8 item
+/// 2c, `docs/Macros/05_plano_W8.md`): a água do editor continua depois do Parar até parar sozinha, e a
+/// imagem do fim é essa — assentada. Medido (W7, `QUADROS_ATE_ASSENTAR` da régua): a água das
+/// pinceladas de teste pára em 2 645–3 562 quadros. O tecto é de CPU do fio do fim: 10 min de
+/// simulação, ~45 s de um núcleo a 1024² (1,24 ms por passo, `04_plano_W7.md` item 6).
+pub const QUADROS_ATE_A_AGUA_DO_FIM_PARAR: u32 = 36_000;
+
+/// **As imagens ao início e ao fim da gravação, como ela TOCA** — com as edições das etapas (W8 item
+/// 2b: editar uma etapa muda a imagem) e a água assentada (2c) —, como o Apply as escreve na sprite. A
+/// régua de «o artista pintou depois do Parar» (W7 item 1). `Ok(None)` = `parar`.
 ///
 /// # Errors
 /// O [`ErroDaMacro`] da reprodução.
@@ -571,18 +578,35 @@ pub fn imagens_da_gravacao(
     track: &Track,
     parar: &AtomicBool,
 ) -> Result<Option<ImagensDaGravacao>, ErroDaMacro> {
+    let tocavel = track
+        .tocavel(&LeitorDoPainter)
+        .map_err(ErroDaMacro::Edicao)?;
     let mut toc = TocadorDoPainter::novo(
-        &track.initial,
-        track.events.iter().map(|e| e.payload.as_slice()),
+        &tocavel.initial,
+        tocavel.events.iter().map(|e| e.payload.as_slice()),
     )?;
-    let (inicio, wi, hi) = ph2d_editor_core::tool::RasterEditTool::run_full(toc.tool_mut());
-    for e in &track.events {
+    // ⛔ Nunca o `run_full`: numa pilha trivial ele LEVA a tela, e o fim saía vazio (W7).
+    let vazia = || (Vec::new(), 0, 0);
+    let (inicio, wi, hi) = toc.tool().imagem_aplicada().unwrap_or_else(vazia);
+    for e in &tocavel.events {
         if parar.load(Ordering::Relaxed) {
             return Ok(None);
         }
         toc.aplica(&e.payload)?;
     }
-    let (fim, w, h) = ph2d_editor_core::tool::RasterEditTool::run_full(toc.tool_mut());
+    toc.passa_ao_relogio_fixo();
+    let t = toc.tool_mut();
+    for _ in 0..QUADROS_ATE_A_AGUA_DO_FIM_PARAR {
+        if t.wet_assentada() {
+            break;
+        }
+        if parar.load(Ordering::Relaxed) {
+            return Ok(None);
+        }
+        t.drena_sem_compor();
+        ph2d_editor_core::tool::Tool::on_tick(t, super::roteiro::DT_MS);
+    }
+    let (fim, w, h) = t.imagem_aplicada().unwrap_or_else(vazia);
     // Uma gravação que muda o tamanho da tela não tem píxeis do início a comparar.
     let inicio = if (wi, hi) == (w, h) {
         inicio

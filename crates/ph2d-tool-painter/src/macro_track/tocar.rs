@@ -29,6 +29,8 @@ pub enum ErroDaMacro {
     Preset(String),
     /// Uma edição de etapa que não cabe na gravação.
     Edicao(ph2d_macro::ErroDeEdicao),
+    /// O fio que calculava algo da macro (o nome dele) entrou em pânico.
+    FioCaiu(&'static str),
 }
 
 pub struct TocadorDoPainter {

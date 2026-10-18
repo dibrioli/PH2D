@@ -66,3 +66,32 @@ morre** (entre 10 e 50 %, ou o custo acima de 5 %): não entra; vira recusa medi
 robusta (a bisseção que confere a saída pela normal).
 
 **Controlo**: o produto de hoje tem de REPROVAR o item 1 na mesma corrida (já reprova: 1–14 pretos por fase).
+
+## 3. Rodada 1 — a contínua por 4 leituras: NÃO ENTRA (`target/w6d/decide1.log`, `lista.log`)
+
+Pela letra do §2: escuros nas faixas rentes 179 → 56 (31 %, o item 1 pede ≤ 10 %), o pior −0,97; os bits fora dos corpos
+IGUAIS (0 em ~3,7 M por configuração, 24 configurações); o custo da C3 3,41 → 8,21 ms (cena 5) e 2,21 → 5,35 (cena 6),
+intercalado, mínimo de 7, mas com `load` 54–73. ⇒ **nem passa nem morre: não entra** (e o custo sozinho reprovaria).
+
+A lista dos pretos (zoom 1,6, 8 fases) separa DUAS famílias:
+
+| | (a) rentes no lado ACESO (< 86° da lâmpada), a placa ≈ só o ambiente (0,03 contra ~2,3) | (b) nas PONTAS (≥ 86°: a penumbra dos tangentes) |
+|---|---|---|
+| produto | 43 | 16 |
+| contínua (4 leituras) | **2** | 16 |
+| sem borda exata | 2 | 27 |
+
+⇒ o mecanismo do §1 CONFIRMADO para a família (a) — os pontos escuros das fotos — e a (b) é OUTRO (a penumbra dos
+tangentes, a W5h já a mediu: o pior texel do anel −27 %, «é a W5g»), que nenhuma das três toca.
+
+## 4. A candidata 2 e o seu kill-criterion (escrito ANTES de medir)
+
+**O campo de distância** (o mesmo `BORDA_CONTINUA`, outra forma): o `c3_borda` grava no 4.º canal a DISTÂNCIA COM SINAL
+no centro do texel (o parcial: −recuo; o fio: cobertura − ½; o cheio/vazio da faixa: a do parcial vizinho, a reta
+emprestada; o resto: ±1) e o `meio` decide «dentro» pela bilinear dela ≥ 0 — UM `textureGather` (o mesmo preço da
+cobertura de hoje), contínua por construção, exata numa borda reta (a bilinear reproduz uma função linear).
+
+**PASSA** (contra o produto da MESMA corrida, 3 zooms × 8 fases + o disco de imagem): (1a) os escuros da família (a)
+≤ 10 % dos do produto e o pior deles ≥ −0,25; (1b) os da família (b) ≤ os do produto + 2; (2)–(4) como no §2; (5) o
+custo da C3 ≤ +5 % (intercalado; com `load` > 5 o número vai com o `load` ao lado e repete-se se passar de +5 %).
+**MORRE**: (a) > 50 % · um portão vermelho · os bits de fora mudam · o custo > +20 %. Entre os dois: não entra.

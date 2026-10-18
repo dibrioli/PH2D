@@ -31,10 +31,12 @@ pub const PARK_PX: f64 = ph2d_editor_core::HANDLE_SIZE_PX as f64 * 0.5 + HIT_PX;
 
 /// ⭐ **De quem são as alças** (F10): o modo da ferramenta e o latch do «armado no catálogo»
 /// (`VecState::shape_armed`) — a MESMA pergunta que os campos fazem.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Gate {
     pub mode: DrawMode,
     pub armed: bool,
+    /// A régua das faixas dos campos `Px` (raios, cantos) — a do painel (plano 31).
+    pub doc: ph2d_editor_core::DocPx,
 }
 
 impl Gate {
@@ -42,6 +44,7 @@ impl Gate {
     pub const SHAPE: Self = Self {
         mode: DrawMode::Shape,
         armed: false,
+        doc: ph2d_editor_core::DocPx::DEFAULT,
     };
 
     /// O portão do quadro, lido do estado vetorial.
@@ -50,6 +53,7 @@ impl Gate {
         Self {
             mode: vec.draw_config.mode,
             armed: vec.shape_armed,
+            doc: vec.doc,
         }
     }
 }
@@ -76,6 +80,7 @@ struct Target {
     inv: Xform,
     /// A escala de mundo (a caneta do traço mede-se sob ela — a caixa do gizmo).
     scale: [f64; 2],
+    doc: ph2d_editor_core::DocPx,
 }
 
 impl Target {
@@ -103,6 +108,7 @@ impl Target {
             inv: xf.inverse()?,
             xf,
             scale: [f64::from(pose.scale.x), f64::from(pose.scale.y)],
+            doc: gate.doc,
         })
     }
 
@@ -160,15 +166,8 @@ impl Target {
         law::handles_of(self.kind)
             .iter()
             .map(|h| {
-                let g = law::handle_grip(
-                    self.kind,
-                    h,
-                    &self.values,
-                    self.half(),
-                    px_to_world,
-                    park,
-                    &ck,
-                );
+                let g =
+                    law::handle_grip(self.kind, h, &self.values, self.half(), self.doc, park, &ck);
                 if h.spot == law::Spot::Rail {
                     g.map(|p| [p[0] + margin, p[1]])
                 } else {
@@ -230,7 +229,7 @@ pub fn view(
     let track = hot_handle
         .and_then(|k| law::handles_of(t.kind).get(k))
         .map(|h| {
-            law::track(t.kind, h, &t.values, t.half(), px_to_world, &t.cook())
+            law::track(t.kind, h, &t.values, t.half(), t.doc, &t.cook())
                 .into_iter()
                 .map(|p| t.xf.apply(p))
                 .collect()
@@ -397,6 +396,7 @@ pub fn drag(
         mods,
         t.half(),
         px_to_world,
+        t.doc,
         &t.cook(),
     );
     write(sim, scene, map, selection, gate, new)

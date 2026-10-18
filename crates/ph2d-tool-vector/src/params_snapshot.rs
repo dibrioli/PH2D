@@ -72,9 +72,19 @@ pub struct VectorStyleSnapshot {
     /// (`cap`/`join` são os espelhos ANTIGOS, e é por isso que o `vector_bridge` ainda carrega
     /// um `match` de três braços para cada um.)
     pub align: StrokeAlign,
+    /// **Os campos em que a seleção múltipla DIFERE** — o painel pinta-os como «misto» (amostra
+    /// riscada, número em branco, nenhum segmento aceso). Não é da tool: a ponte calcula-o da cena
+    /// (`mixed_of`) e escreve-o aqui depois do `ui_snapshot`. Vazio com uma forma só.
+    pub mixed: crate::StyleFields,
 }
 
 impl VectorStyleSnapshot {
+    /// O campo `f` tem UM valor na seleção — o painel pode mostrá-lo (senão pinta «misto»)?
+    #[must_use]
+    pub fn agrees(&self, f: crate::StyleFields) -> bool {
+        !self.mixed.any(f)
+    }
+
     /// **"É bidirecional?" é uma pergunta DERIVADA** — a linha tem ponta nos dois extremos.
     ///
     /// O botão Both Ends lê daqui e o clique reescreve as PONTAS (nunca um flag próprio):
@@ -107,6 +117,7 @@ impl Default for VectorStyleSnapshot {
             marker_end: Marker::None,
             marker_scale: [DEFAULT_MARKER_SCALE; 2],
             marker_round: DEFAULT_MARKER_ROUND,
+            mixed: crate::StyleFields::NONE,
         }
     }
 }

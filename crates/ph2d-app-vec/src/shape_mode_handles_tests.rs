@@ -61,7 +61,7 @@ impl Mesa {
             &self.sim,
             &mut self.tools,
             &mut self.store,
-            PX,
+            crate::doc_of(PX),
         );
         // As posições dos objectos, como a shell as dá à caneta a cada quadro (o pick lê-as).
         let xf = ph2d_vec_entities::transform::build(&self.sim, &self.vec.entities);

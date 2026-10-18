@@ -17,6 +17,16 @@ fn arrow_hand() -> (Vec<P2>, P2) {
     (held_with(&p, 1.0, 0, 0.5, 1.0), tip)
 }
 
+/// O estilo da mão desta fixtura: traço de 3 em MUNDO (a cena desenha a 1 unidade por px). A
+/// largura chega à caneta já em mundo desde o plano 31 — o `PenStyle::default()` são 3 px do
+/// DOCUMENTO (0,03), cem vezes mais fino que a fixtura.
+fn estilo() -> crate::PenStyle {
+    crate::PenStyle {
+        stroke_w: 3.0,
+        ..crate::PenStyle::default()
+    }
+}
+
 fn held_pencil(style: crate::PenStyle) -> (ph2d_vec_scene::VecScene, crate::Pencil, P2, u128) {
     let mut scene = ph2d_vec_scene::VecScene::default();
     let mut pencil = crate::Pencil::default();
@@ -41,7 +51,7 @@ fn held_pencil(style: crate::PenStyle) -> (ph2d_vec_scene::VecScene, crate::Penc
 /// `Open` é √20 larguras); o caminho acaba na ponta desenhada.
 #[test]
 fn holding_an_arrow_puts_the_head_on_the_live_path_and_release_keeps_it() {
-    let (mut scene, mut pencil, tip, _) = held_pencil(crate::PenStyle::default());
+    let (mut scene, mut pencil, tip, _) = held_pencil(estilo());
     let id = pencil.active_path().unwrap();
     let p = scene.path(id).unwrap();
     let s = p.stroke.as_ref().unwrap();
@@ -72,7 +82,7 @@ fn holding_an_arrow_puts_the_head_on_the_live_path_and_release_keeps_it() {
 /// **`Esc` devolve o traço livre SEM ponta** (e com o tamanho de ponta do estilo).
 #[test]
 fn esc_gives_back_the_free_stroke_without_the_head() {
-    let (mut scene, mut pencil, _, _) = held_pencil(crate::PenStyle::default());
+    let (mut scene, mut pencil, _, _) = held_pencil(estilo());
     let id = pencil.active_path().unwrap();
     assert!(pencil.quick_dismiss(&mut scene));
     let p = scene.path(id).unwrap();
@@ -96,7 +106,7 @@ fn esc_gives_back_the_free_stroke_without_the_head() {
 /// tamanho dobra quando a seta dobra).
 #[test]
 fn the_drag_scales_and_turns_the_whole_arrow() {
-    let (mut scene, mut pencil, _, t) = held_pencil(crate::PenStyle::default());
+    let (mut scene, mut pencil, _, t) = held_pencil(estilo());
     let id = pencil.active_path().unwrap();
     let (s0, v0) = {
         let p = scene.path(id).unwrap();
@@ -133,7 +143,7 @@ fn the_drag_scales_and_turns_the_whole_arrow() {
 /// **O `Shift` a meio** regulariza o cabo e a seta continua seta, com a ponta.
 #[test]
 fn the_shift_mid_hold_keeps_the_arrow_and_its_head() {
-    let (mut scene, mut pencil, _, t) = held_pencil(crate::PenStyle::default());
+    let (mut scene, mut pencil, _, t) = held_pencil(estilo());
     let id = pencil.active_path().unwrap();
     assert_eq!(
         pencil.hold_tick(&mut scene, t + 2 * HOLD_NS, true, true),
@@ -154,7 +164,7 @@ fn the_shift_mid_hold_keeps_the_arrow_and_its_head() {
 fn an_armed_head_is_the_arrows_and_its_tip_lands_on_the_drawn_tip() {
     let style = crate::PenStyle {
         marker_end: Marker::Triangle,
-        ..crate::PenStyle::default()
+        ..estilo()
     };
     let (scene, pencil, tip, _) = held_pencil(style);
     let p = scene.path(pencil.active_path().unwrap()).unwrap();
@@ -182,7 +192,7 @@ fn the_ends_go_back_to_the_style_when_the_shape_stops_being_an_arrow() {
         marker_end: Marker::Triangle,
         marker_scale_start: 1.7,
         marker_scale_end: 2.3,
-        ..crate::PenStyle::default()
+        ..estilo()
     };
     let arrow = arrow_ends(&style, [None, Some(30.0)], 3.0);
     assert_eq!(
@@ -199,7 +209,7 @@ fn the_ends_go_back_to_the_style_when_the_shape_stops_being_an_arrow() {
     let back = arrow_ends(&style, [None; 2], 3.0);
     assert_eq!(back.markers, [Marker::Bar, Marker::Triangle]);
     assert_eq!((back.scale, back.inset), ([1.7, 2.3], [0.0; 2]));
-    let plain = arrow_ends(&crate::PenStyle::default(), [Some(30.0), Some(30.0)], 3.0);
+    let plain = arrow_ends(&estilo(), [Some(30.0), Some(30.0)], 3.0);
     assert_eq!(
         plain.markers,
         [Marker::Open; 2],
@@ -207,7 +217,7 @@ fn the_ends_go_back_to_the_style_when_the_shape_stops_being_an_arrow() {
     );
     // ⭐ F16c — **cada ponta alcança a SUA farpa**: farpas de 30 e 60 dão tamanhos 1:2, e não a
     // média das duas (a lei de antes, com UM tamanho para as duas pontas).
-    let desiguais = arrow_ends(&crate::PenStyle::default(), [Some(30.0), Some(60.0)], 3.0);
+    let desiguais = arrow_ends(&estilo(), [Some(30.0), Some(60.0)], 3.0);
     assert!(
         (desiguais.scale[1] / desiguais.scale[0] - 2.0).abs() < 1e-9,
         "cada ponta tem o tamanho da sua farpa: {:?}",

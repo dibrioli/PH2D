@@ -279,7 +279,8 @@ fn an_armed_head_that_recedes_the_path_keeps_receding_it_while_the_tip_is_dragge
     let (mut scene, mut pencil) = (VecScene::default(), Pencil::default());
     pencil.set_style(crate::PenStyle {
         marker_end: ph2d_vec_scene::Marker::Triangle,
-        stroke_w_px: 4.0,
+        // Mundo: o `quick` desenha a 1 unidade por px.
+        stroke_w: 4.0,
         ..crate::PenStyle::default()
     });
     let id = quick(

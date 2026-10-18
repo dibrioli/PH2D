@@ -152,9 +152,12 @@ pub fn published(
     sel: &[VecPathId],
 ) -> Option<ph2d_panel_vector::state::Appearance> {
     let p = scene.path(*sel.first()?)?;
+    let outras = || sel.iter().filter_map(|id| scene.path(*id));
     Some(ph2d_panel_vector::state::Appearance {
         opacity: p.opacity.get(),
         blend: p.blend,
+        mixed_opacity: outras().any(|o| o.opacity != p.opacity),
+        mixed_blend: outras().any(|o| o.blend != p.blend),
         layers: p
             .paints
             .iter()

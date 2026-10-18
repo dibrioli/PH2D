@@ -21,7 +21,7 @@ fn a_rounding_dragged_to_the_corner_is_exactly_zero() {
                 continue;
             };
             let v = k.defaults();
-            let Some((lo, hi, false)) = range_world(k, *i, 1.0) else {
+            let Some((lo, hi, false)) = range_world(k, *i, doc_of(1.0)) else {
                 continue;
             };
             let mut z = v;
@@ -35,9 +35,9 @@ fn a_rounding_dragged_to_the_corner_is_exactly_zero() {
                 continue;
             };
             let to = |p: [f64; 2]| {
-                let q = handle_grip(k, h, &v, half, 1.0, 18.0, &ck).expect("grip");
+                let q = handle_grip(k, h, &v, half, doc_of(1.0), 18.0, &ck).expect("grip");
                 let mut d = HandleDrag::start(n, v, q, q, half);
-                drag(k, &mut d, p, Mods::default(), half, 1.0, &ck)[*i]
+                drag(k, &mut d, p, Mods::default(), half, 1.0, doc_of(1.0), &ck)[*i]
             };
             assert!(
                 to(zero) == lo,

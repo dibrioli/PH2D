@@ -310,7 +310,7 @@ impl PenTool {
     ) -> PenClick {
         let close_dist = 12.0 * px_to_world;
         let hit_r = 10.0 * px_to_world;
-        let stroke_w = self.style.stroke_w_px * px_to_world;
+        let stroke_w = self.style.stroke_w;
 
         // Desenhando → continua o pen (adiciona/fecha).
         if let Some(id) = self.active {

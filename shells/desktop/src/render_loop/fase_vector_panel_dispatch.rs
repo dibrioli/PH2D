@@ -58,7 +58,7 @@ impl crate::App {
         // `dispatch` acabou de sincronizar com a ferramenta (`pen.set_style`). Um sítio mais
         // tarde leria a ficha do quadro anterior.
         if pending_stroke_present {
-            crate::vec_stroke_present::toggle(vec_scene, &self.vec.pen, vec_px_to_world);
+            crate::vec_stroke_present::toggle(vec_scene, &self.vec.pen);
         }
         ph2d_panel_vector::state::set_stroke_present(
             crate::vec_stroke_present::selected_stroke_present(vec_scene, &self.vec.pen),

@@ -3,6 +3,7 @@
 //! `super::*` continua sendo o modulo `tool`.
 
 use super::*;
+use crate::StyleFields;
 use crate::ids;
 use crate::params::{WIDTH_MAX_PX, WIDTH_MIN_PX};
 use ph2d_a11y::NodeId;
@@ -25,22 +26,27 @@ fn fresh_tool_defaults() {
 #[test]
 fn authoring_a_width_arms_the_one_shot_and_a_colour_does_not() {
     let mut t = VectorTool::new();
-    assert!(!t.take_width_authored(), "nasce desarmado");
+    assert!(t.take_authored().is_empty(), "nasce desarmado");
 
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_WIDTH, 0.7));
-    assert!(t.take_width_authored(), "a largura foi autorada");
+    assert_eq!(
+        t.take_authored(),
+        StyleFields::WIDTH,
+        "a largura, e só ela, foi autorada"
+    );
     assert!(
-        !t.take_width_authored(),
+        t.take_authored().is_empty(),
         "e é ONE-SHOT: dois frames depois a largura não pode voltar a ser escrita sozinha"
     );
 
     t.set_stroke_rgba([220, 60, 60, 255]);
+    let f = t.take_authored();
     assert!(
-        t.take_apply_to_selected(),
+        f.has(StyleFields::STROKE_RGB),
         "a cor ainda pede o restyle (o controlo)"
     );
     assert!(
-        !t.take_width_authored(),
+        !f.any(StyleFields::WIDTH),
         "mas uma escolha de COR nunca autora largura — se autorasse, um pick reengrossaria a linha"
     );
 }
@@ -57,11 +63,11 @@ fn width_slider_maps_normalized_to_px() {
 #[test]
 fn set_stroke_sets_colour_and_flags_apply() {
     let mut t = VectorTool::new();
-    assert!(!t.take_apply_to_selected());
+    assert!(t.take_authored().is_empty());
     t.set_stroke_rgba([220, 60, 60, 255]);
     assert_eq!(t.stroke_rgba(), [220, 60, 60, 255]);
-    assert!(t.take_apply_to_selected());
-    assert!(!t.take_apply_to_selected(), "drained");
+    assert!(!t.take_authored().is_empty());
+    assert!(t.take_authored().is_empty(), "drained");
 }
 
 #[test]
@@ -69,7 +75,7 @@ fn set_fill_sets_colour_and_flags_apply() {
     let mut t = VectorTool::new();
     t.set_fill_rgba([70, 190, 90, 255]);
     assert_eq!(t.fill_rgba(), [70, 190, 90, 255]);
-    assert!(t.take_apply_to_selected());
+    assert!(!t.take_authored().is_empty());
 }
 
 #[test]
@@ -78,7 +84,11 @@ fn opacity_sliders_set_fill_and_stroke_alpha_and_flag_apply() {
     // Fill Opacity → 0 % = invisible (replaces the old "None" button).
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_FILL_OPACITY, 0.0));
     assert_eq!(t.fill_rgba()[3], 0);
-    assert!(t.take_apply_to_selected());
+    assert_eq!(
+        t.take_authored(),
+        StyleFields::FILL_A,
+        "só a alfa do preenchimento"
+    );
     // Fill Opacity → 100 %.
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_FILL_OPACITY, 1.0));
     assert_eq!(t.fill_rgba()[3], 255);
@@ -88,7 +98,11 @@ fn opacity_sliders_set_fill_and_stroke_alpha_and_flag_apply() {
         PanelEvent::SetValue(ids::VECTOR_STROKE_OPACITY, 0.5),
     );
     assert_eq!(t.stroke_rgba()[3], 128);
-    assert!(t.take_apply_to_selected());
+    assert_eq!(
+        t.take_authored(),
+        StyleFields::FILL_A | StyleFields::STROKE_A,
+        "as duas alfas, e nada mais"
+    );
 }
 
 #[test]
@@ -120,7 +134,7 @@ fn mode_buttons_switch_the_draw_mode() {
         assert_eq!(t.mode(), want);
     }
     // Trocar de modo NAO e edicao de Style -> nunca marca recolor.
-    assert!(!t.take_apply_to_selected());
+    assert!(t.take_authored().is_empty());
 }
 
 /// **Gate do seam do catálogo:** o botão de CADA forma escolhe aquela forma E arma o
@@ -181,7 +195,7 @@ fn stroke_cap_join_dash_arms() {
     Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_CAP_ROUND));
     assert_eq!(t.cap(), StrokeCap::Round);
     assert!(
-        t.take_apply_to_selected(),
+        !t.take_authored().is_empty(),
         "cap change restyles the selection"
     );
     Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_JOIN_BEVEL));
@@ -194,14 +208,14 @@ fn stroke_cap_join_dash_arms() {
         Some(3.0),
         "3 = tres larguras"
     );
-    assert!(t.take_apply_to_selected());
+    assert!(!t.take_authored().is_empty());
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH_NUM, 99.0));
     assert!((t.dash_pattern().expect("tracejado").pairs[0][0] - DASH_MAX).abs() < 1e-6);
-    assert!(t.take_apply_to_selected());
+    assert!(!t.take_authored().is_empty());
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP_NUM, 99.0));
     assert!((t.dash_pattern().expect("tracejado").pairs[0][1] - GAP_MAX).abs() < 1e-6);
     assert!(
-        t.take_apply_to_selected(),
+        !t.take_authored().is_empty(),
         "gap change restyles the selection"
     );
     // Snapshot carries them.
@@ -231,7 +245,7 @@ fn markers_reach_the_style_and_flag_the_selection() {
     assert_eq!(t.marker_end(), Marker::Triangle);
     assert_eq!(t.marker_start(), Marker::None, "o outro seletor nao mexeu");
     assert!(
-        t.take_apply_to_selected(),
+        !t.take_authored().is_empty(),
         "a ponta e Style: reestiliza a selecao"
     );
 
@@ -281,7 +295,7 @@ fn adopting_markers_does_not_arm_a_restyle() {
     assert_eq!(t.marker_start(), Marker::Circle);
     assert_eq!(t.marker_end(), Marker::Open);
     assert!(
-        !t.take_apply_to_selected(),
+        t.take_authored().is_empty(),
         "selecionar nao pode reescrever o caminho"
     );
 }
@@ -338,20 +352,20 @@ fn id_label_icon_stable() {
 fn the_head_size_and_round_reach_the_tool_and_clamp_to_their_range() {
     let mut t = VectorTool::new();
     assert!(
-        !t.take_apply_to_selected(),
+        t.take_authored().is_empty(),
         "a tool nova nasce sem restyle pendente"
     );
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, 2.5));
     assert!((t.marker_scale()[0] - 2.5).abs() < 1e-9);
     assert!(
-        t.take_apply_to_selected(),
+        !t.take_authored().is_empty(),
         "mudar o tamanho da cabeca tem de reestilizar o traco SELECIONADO — senao o numero \
          muda no painel e a seta continua igual na tela"
     );
 
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_ROUND, 0.75));
     assert!((t.marker_round() - 0.75).abs() < 1e-9);
-    assert!(t.take_apply_to_selected());
+    assert!(!t.take_authored().is_empty());
 
     // A faixa satura nos dois extremos (o mesmo clamp que o `set_number_range` da caixa).
     Tool::handle_panel_event(
@@ -391,7 +405,7 @@ fn both_ends_toggles_in_both_directions_and_stays_derived() {
     assert_eq!(t.marker_start(), crate::params::DEFAULT_BOTH_ENDS_MARKER);
     assert_eq!(t.marker_end(), crate::params::DEFAULT_BOTH_ENDS_MARKER);
     assert!(
-        t.take_apply_to_selected(),
+        !t.take_authored().is_empty(),
         "a dupla via e Style: tem de reestilizar o traco selecionado"
     );
 
@@ -454,13 +468,13 @@ fn both_ends_mirrors_a_lone_start_marker_instead_of_clobbering_it() {
 #[test]
 fn adopting_a_paths_markers_also_adopts_its_head_size_and_round() {
     let mut t = VectorTool::new();
-    let _ = t.take_apply_to_selected();
+    let _ = t.take_authored();
     t.adopt_markers(Marker::None, Marker::Triangle, [2.0, 3.0], 0.5);
     assert_eq!(t.marker_end(), Marker::Triangle);
     assert_eq!(t.marker_scale(), [2.0, 3.0], "cada ponta com o seu tamanho");
     assert!((t.marker_round() - 0.5).abs() < 1e-9);
     assert!(
-        !t.take_apply_to_selected(),
+        t.take_authored().is_empty(),
         "adotar e LER o documento — se marcasse, selecionar um caminho ja o reescreveria"
     );
     // Um save corrompido (escala absurda) e clampado na adocao, nao propagado.
@@ -660,21 +674,21 @@ fn the_bucket_ink_is_not_the_selections_style() {
 
     // Fora do balde a cor CONTINUA a ser estilo — é assim que o Select pinta o que está escolhido.
     t.set_mode(DrawMode::Select);
-    let _ = t.take_apply_to_selected();
+    let _ = t.take_authored();
     let _ = t.take_colour_authored();
     t.set_fill_rgba([10, 20, 30, 255]);
     assert!(
-        t.take_apply_to_selected(),
+        !t.take_authored().is_empty(),
         "no Select, escolher uma cor de preenchimento tem de restilar a seleccao"
     );
 
     // Com o balde na mão, a mesma escolha é só a TINTA: não restila nem solta o token.
     t.set_mode(DrawMode::Bucket);
-    let _ = t.take_apply_to_selected();
+    let _ = t.take_authored();
     let _ = t.take_colour_authored();
     t.set_fill_rgba([40, 50, 60, 255]);
     assert!(
-        !t.take_apply_to_selected(),
+        t.take_authored().is_empty(),
         "com o balde na mao a cor e' a tinta da ferramenta, nao o estilo da forma escolhida"
     );
     assert!(

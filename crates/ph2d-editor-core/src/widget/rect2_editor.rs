@@ -198,6 +198,7 @@ pub fn paint_rect2_editor(
     paint_rect2_editor_with_state(
         v,
         [None; 4],
+        [false; 4],
         [0; 4],
         [None; 4],
         rect,
@@ -214,6 +215,7 @@ pub fn paint_rect2_editor(
 pub fn paint_rect2_editor_with_state(
     v: &Rect2Editor,
     buffers: [Option<&str>; 4],
+    mixed: [bool; 4],
     carets: [usize; 4],
     selection_anchors: [Option<usize>; 4],
     rect: Rect,
@@ -265,6 +267,7 @@ pub fn paint_rect2_editor_with_state(
         paint_number_input_with_buffer(
             input,
             buffers[i],
+            mixed[i],
             carets[i],
             selection_anchors[i],
             field_rect,

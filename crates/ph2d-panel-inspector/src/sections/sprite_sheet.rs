@@ -115,6 +115,7 @@ pub(crate) fn paint_sprite_sheet_section(
         paint_number_input_with_buffer(
             &input,
             Some(buffer),
+            store.number_input_mixed(id),
             caret,
             anchor,
             rect,

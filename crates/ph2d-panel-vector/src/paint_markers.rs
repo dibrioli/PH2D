@@ -81,25 +81,31 @@ pub(crate) fn seed(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     let snap = state::current_snapshot();
     let focus = store.focus_id();
     let [scale_start, scale_end] = snap.marker_scale;
-    for (id, field, value) in [
+    use ph2d_tool_vector::StyleFields as F;
+    for (id, field, value, campo) in [
         (
             ph2d_tool_vector::ids::VECTOR_MARKER_SCALE,
             &params::MARKER_SCALE,
             scale_start,
+            F::MARKER_SCALE_START,
         ),
         (
             ph2d_tool_vector::ids::VECTOR_MARKER_SCALE_END,
             &params::MARKER_SCALE,
             scale_end,
+            F::MARKER_SCALE_END,
         ),
         (
             ph2d_tool_vector::ids::VECTOR_MARKER_ROUND,
             &params::MARKER_ROUND,
             snap.marker_round,
+            F::MARKER_ROUND,
         ),
     ] {
         store.set_number_range(id, field.min, field.max, field.step);
-        if focus != Some(id) {
+        if !snap.agrees(campo) {
+            store.blank_number_input(id);
+        } else if focus != Some(id) {
             store.set_number_value(id, shapes::clamp_to(field, value));
         }
     }
@@ -203,7 +209,15 @@ impl BodyCtx<'_> {
             vec![DropdownOption::new(
                 id,
                 (),
-                crate::nomes_do_motor::ponta(marker_of(snap, slot).label()),
+                if snap.agrees(if slot == 0 {
+                    ph2d_tool_vector::StyleFields::MARKER_START
+                } else {
+                    ph2d_tool_vector::StyleFields::MARKER_END
+                }) {
+                    crate::nomes_do_motor::ponta(marker_of(snap, slot).label())
+                } else {
+                    tr("panel.vector.mixed")
+                },
             )],
         )
         .selected(())

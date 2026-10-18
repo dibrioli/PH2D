@@ -70,11 +70,25 @@ pub(crate) fn symmetry_kind(id: ph2d_a11y::NodeId) -> Option<ph2d_symmetry::Symm
         .find(|k| crate::params::symmetry_kind_id(*k) == id)
 }
 
+pub use crate::StyleFields;
 use crate::params::{
     DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, marker_from_value,
     slider_to_opacity, slider_to_px,
 };
 use ph2d_vec_scene::{Marker, StrokeAlign};
+
+/// Os bits que uma cor nova `to` arma contra a velha `from`: o RGB e a alfa separados, cada um só
+/// se mudou (o seletor aberto relê a cada quadro, e uma releitura igual não é um gesto).
+fn rgba_fields(from: [u8; 4], to: [u8; 4], rgb: StyleFields, a: StyleFields) -> StyleFields {
+    let mut f = StyleFields::NONE;
+    if from[..3] != to[..3] {
+        f |= rgb;
+    }
+    if from[3] != to[3] {
+        f |= a;
+    }
+    f
+}
 
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
 /// seed source for the tool's defaults (and a stable named-colour reference);
@@ -172,7 +186,7 @@ pub struct VectorTool {
     dash: [[f64; 2]; ph2d_vec_scene::MAX_DASH_PAIRS],
     /// **Pontas do traço** (arrowheads): a do começo e a do fim. Propriedade do stroke,
     /// como cap/join/dash — valem para o próximo caminho desenhado E para o selecionado
-    /// (o bridge as reaplica no `take_apply_to_selected`).
+    /// (o bridge as reaplica pelos bits de [`Self::authored`]).
     marker_start: Marker,
     marker_end: Marker,
     /// **Tamanho** de cada ponta (`[começo, fim]`, múltiplo do que a largura dita) e
@@ -186,24 +200,17 @@ pub struct VectorTool {
     /// (o painel mostra a verdade e a edição aplica-se a ele) mas NÃO as arma: o dono, 10/10, depois
     /// das setas do QuickShape — *«todo traço está herdando uma ponta pequena. Não deveria»*.
     armed: ArmedHead,
-    /// Set when a colour changes → the shell recolours the selected path.
-    /// Drained by [`Self::take_apply_to_selected`].
-    apply_to_selected: bool,
-    /// **A largura foi AUTORADA neste gesto** — armado no braço `VECTOR_WIDTH`, drenado por
-    /// [`Self::take_width_authored`].
+    /// **Os campos que o painel MUDOU neste gesto** (plano 31) — cada setter arma o SEU bit, e a ponte
+    /// escreve na seleção só esses campos, em cada forma. Drenado por [`Self::take_authored`].
     ///
-    /// ⚠️ Ele existe porque *"a largura acompanha o tool"* e *"uma escolha de COR não pode
-    /// reengrossar a linha"* são as duas metades de UMA pergunta, e o bridge respondia à segunda
-    /// perguntando ao store se o **slider estava em ARRASTO** — uma enumeração de UMA forma de
-    /// autorar. Digitar na caixa ao lado escreve o valor do slider sem nunca o pôr em `Dragging`,
-    /// então a largura chegava ao tool e **nunca à forma selecionada** (Enio 2026-08-01: *"modificar
-    /// o valor da caixa de texto ao lado do slider Width não muda o stroke"*). Quem sabe que uma
-    /// largura foi autorada é quem a recebeu — e é aqui.
-    width_authored: bool,
+    /// ⛔ Era um `apply_to_selected: bool` («algo mudou»), e a ponte gravava o estilo INTEIRO da tool
+    /// em todas as selecionadas: mexer na Width de uma forma vermelha e de uma azul pintava as duas
+    /// de vermelho. A cor arma só quando o valor MUDA — o seletor aberto relê a cada quadro.
+    authored: StyleFields,
     /// **Uma COR foi autorada neste gesto** — `(fill, stroke)`, armado nos dois setters e drenado
     /// por [`Self::take_colour_authored`].
     ///
-    /// ⚠️ Irmão exacto do [`Self::width_authored`], e existe pela decisão de produto do plano de
+    /// ⚠️ Irmão do bit `WIDTH` de [`Self::authored`], e existe pela decisão de produto do plano de
     /// UI/UX W4a: **escolher uma cor SOLTA o token** daquela propriedade (o *detach* do Figma).
     /// Sem ele o artista escolheria uma cor, o token continuaria a cobri-la, e a swatch mostraria
     /// um valor que a arte não usa — o pior estado possível para um controlo.
@@ -240,8 +247,7 @@ impl Default for VectorTool {
             marker_scale: [crate::params::DEFAULT_MARKER_SCALE; 2],
             marker_round: crate::params::DEFAULT_MARKER_ROUND,
             armed: ArmedHead::default(),
-            apply_to_selected: false,
-            width_authored: false,
+            authored: StyleFields::NONE,
             colour_authored: (false, false),
         }
     }
@@ -428,7 +434,7 @@ impl VectorTool {
             self.marker_end = head;
         }
         (self.armed.start, self.armed.end) = (self.marker_start, self.marker_end);
-        self.apply_to_selected = true;
+        self.authored |= StyleFields::MARKER_START | StyleFields::MARKER_END;
     }
 
     /// Escreve o tamanho de UMA ponta (`slot`) / o arredondamento (clampados à faixa que o painel
@@ -436,7 +442,7 @@ impl VectorTool {
     fn set_marker_scale(&mut self, slot: usize, v: f64) {
         self.marker_scale[slot] = crate::shapes::clamp_to(&crate::params::MARKER_SCALE, v);
         self.armed.scale[slot] = self.marker_scale[slot];
-        self.apply_to_selected = true;
+        self.authored |= StyleFields::marker_scale(slot);
     }
 
     /// Escreve o traço (`gap = false`) ou o vão (`gap = true`) do par `k` do tracejado, na faixa
@@ -448,22 +454,22 @@ impl VectorTool {
             (crate::params::DASH_MIN, crate::params::DASH_MAX)
         };
         self.dash[k][usize::from(gap)] = v.clamp(lo, hi);
-        self.apply_to_selected = true;
+        self.authored |= StyleFields::dash(k, gap);
     }
     fn set_marker_round(&mut self, v: f64) {
         self.marker_round = crate::shapes::clamp_to(&crate::params::MARKER_ROUND, v);
         self.armed.round = self.marker_round;
-        self.apply_to_selected = true;
+        self.authored |= StyleFields::MARKER_ROUND;
     }
 
     /// Set the cap / join + flag the selected path for restyle.
     fn set_cap(&mut self, cap: StrokeCap) {
         self.cap = cap;
-        self.apply_to_selected = true;
+        self.authored |= StyleFields::CAP;
     }
     fn set_join(&mut self, join: StrokeJoin) {
         self.join = join;
-        self.apply_to_selected = true;
+        self.authored |= StyleFields::JOIN;
     }
     /// Escolhe de que lado da linha a faixa cai + marca a seleção para reestilizar.
     ///
@@ -471,7 +477,7 @@ impl VectorTool {
     /// tela e não só para a próxima desenhada.
     fn set_stroke_align(&mut self, align: StrokeAlign) {
         self.align = align;
-        self.apply_to_selected = true;
+        self.authored |= StyleFields::ALIGN;
     }
 
     /// Escolhe a ponta do começo / do fim + marca a seleção para reestilizar (mesmo
@@ -480,12 +486,12 @@ impl VectorTool {
     fn set_marker_start(&mut self, m: Marker) {
         self.marker_start = m;
         self.armed.start = m;
-        self.apply_to_selected = true;
+        self.authored |= StyleFields::MARKER_START;
     }
     fn set_marker_end(&mut self, m: Marker) {
         self.marker_end = m;
         self.armed.end = m;
-        self.apply_to_selected = true;
+        self.authored |= StyleFields::MARKER_END;
     }
 
     /// Mode + shape parameters the shell mirrors to drive the `ShapeTool`.
@@ -514,8 +520,13 @@ impl VectorTool {
     /// not rejected here — the panel drives opaque picks).
     pub fn set_stroke_rgba(&mut self, rgba: [u8; 4]) {
         self.colour_authored.1 |= self.stroke != rgba;
+        self.authored |= rgba_fields(
+            self.stroke,
+            rgba,
+            StyleFields::STROKE_RGB,
+            StyleFields::STROKE_A,
+        );
         self.stroke = rgba;
-        self.apply_to_selected = true;
     }
 
     /// Set the fill colour (picker read-back) + flag the selected path for
@@ -534,10 +545,11 @@ impl VectorTool {
     pub fn set_fill_rgba(&mut self, rgba: [u8; 4]) {
         let e_estilo = self.mode != crate::DrawMode::Bucket;
         self.colour_authored.0 |= e_estilo && self.fill != rgba;
+        if e_estilo {
+            self.authored |=
+                rgba_fields(self.fill, rgba, StyleFields::FILL_RGB, StyleFields::FILL_A);
+        }
         self.fill = rgba;
-        // ⚠️ `|=`, nunca `=`: outra edição do mesmo quadro (o traço) pode já ter armado, e um `=`
-        // aqui desarmava-a em silêncio.
-        self.apply_to_selected |= e_estilo;
     }
 
     /// Project the current Style into the snapshot the docked panel paints.
@@ -562,21 +574,15 @@ impl VectorTool {
             marker_end: self.marker_end,
             marker_scale: self.marker_scale,
             marker_round: self.marker_round,
+            // A tool não sabe da seleção; a ponte escreve-o (`mixed_of`).
+            mixed: StyleFields::NONE,
         }
     }
 
-    /// Drain the "recolour the selected path" request (set on any colour change).
-    pub fn take_apply_to_selected(&mut self) -> bool {
-        std::mem::take(&mut self.apply_to_selected)
-    }
-
-    /// Drena *"a largura foi autorada"* — verdadeiro pelo arrasto do slider **e** pela caixa
-    /// numérica ao lado, porque as duas chegam pelo MESMO `SetValue(VECTOR_WIDTH)`.
-    ///
-    /// É o que o bridge pergunta antes de reescrever a largura da seleção; uma escolha de cor
-    /// deixa-o falso, e é isso que impede um pick de reengrossar a linha.
-    pub fn take_width_authored(&mut self) -> bool {
-        std::mem::take(&mut self.width_authored)
+    /// Drena os campos que o painel mudou desde a última drenagem — ver [`Self::authored`]. A
+    /// largura entra pelo arrasto do slider **e** pela caixa numérica (o mesmo `SetValue`).
+    pub fn take_authored(&mut self) -> StyleFields {
+        std::mem::take(&mut self.authored)
     }
 
     /// `(fill, stroke)` — uma cor foi autorada desde a última drenagem? Ver

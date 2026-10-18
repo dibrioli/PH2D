@@ -21,17 +21,11 @@ impl VectorTool {
         match event {
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_WIDTH => {
                 self.stroke_width_px = slider_to_px(v as f32);
-                // Also restyle the selected path (mirror of a colour change), so
-                // the width slider affects the path you're looking at — not just
-                // the next one drawn.
-                self.apply_to_selected = true;
-                // ⚠️ E diz que foi a LARGURA que mudou. O bridge precisa das duas metades: a
-                // primeira abre o restyle, a segunda decide se a largura entra nele — sem a
-                // segunda ele perguntava ao slider se estava em arrasto, e a caixa numérica (que
-                // chega por AQUI, pelo mesmo evento) ficava muda sobre a forma selecionada.
-                self.width_authored = true;
+                // A caixa numérica chega por AQUI também (o mesmo evento): sem o bit ela ficava
+                // muda sobre a forma selecionada (Enio 2026-08-01).
+                self.authored |= StyleFields::WIDTH;
             }
-            // **Os dois knobs do LÁPIS.** Nenhum deles restila a seleção (`apply_to_selected`):
+            // **Os dois knobs do LÁPIS.** Nenhum deles restila a seleção (nenhum bit de `authored`):
             // eles descrevem como a MÃO é capturada, não como o traço é pintado — mexer neles não
             // pode reescrever uma curva que já está no documento.
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_PENCIL_FIDELITY => {
@@ -52,11 +46,11 @@ impl VectorTool {
             // picker only sets RGB. `0 %` alpha ⇒ invisible (no fill).
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_FILL_OPACITY => {
                 self.fill[3] = slider_to_opacity(v as f32);
-                self.apply_to_selected = true;
+                self.authored |= StyleFields::FILL_A;
             }
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_STROKE_OPACITY => {
                 self.stroke[3] = slider_to_opacity(v as f32);
-                self.apply_to_selected = true;
+                self.authored |= StyleFields::STROKE_A;
             }
             // Draw-mode segmented row: switches the canvas gesture. No recolour
             // (mode is not a Style change) — the shell reads `mode()` to route.
@@ -161,7 +155,7 @@ impl VectorTool {
             // contado pelo censo de focalizabilidade, e o valor não tinha para onde ir: o artista
             // arrastava a barra, o chip mudava, e a contagem ficava pregada no `6` do default.
             //
-            // ⚠️ **Nenhum `apply_to_selected` aqui.** A simetria é um MODO de desenho: as cópias
+            // ⚠️ **Nenhum bit de `authored` aqui.** A simetria é um MODO de desenho: as cópias
             // são desenho enquanto ela está ligada, e o Apply é que as consolida. Restilar a
             // selecção a partir daqui reescreveria a `SymmetrySpec` de uma forma que já fechou.
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_SYM_SEGMENTS => {

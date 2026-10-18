@@ -247,6 +247,7 @@ impl RowCtx<'_> {
         paint_number_input_with_buffer(
             &input,
             Some(buffer),
+            self.store.number_input_mixed(id),
             caret,
             anchor,
             rect,

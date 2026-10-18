@@ -266,6 +266,7 @@ pub fn paint_tool_rail_axis(
                 color,
                 active,
                 sub,
+                mixed,
                 ..
             } => {
                 let chip_rect = slot_rect;
@@ -273,10 +274,14 @@ pub fn paint_tool_rail_axis(
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let is_active = *active || state == ButtonState::Pressed;
                 // The chip IS the colour box — fill it with the live paint colour (this button doubles as
-                // the colour selector).
-                let [cr, cg, cb, ca] = *color;
-                let fill = ph2d_vector::Color::from_rgba8(cr, cg, cb, ca); // LITERAL-COLOR-OK: user paint colour
-                fill_rounded_rect(scene, chip_rect, radius, fill);
+                // the colour selector) — or the «mixed» face when the selection disagrees.
+                if *mixed {
+                    crate::widget::paint_mixed_swatch(chip_rect, scene, theme);
+                } else {
+                    let [cr, cg, cb, ca] = *color;
+                    let fill = ph2d_vector::Color::from_rgba8(cr, cg, cb, ca); // LITERAL-COLOR-OK: user paint colour
+                    fill_rounded_rect(scene, chip_rect, radius, fill);
+                }
                 // State border — Accent when active/pressed/hovered, same as the icon chips.
                 let (border, border_w) = match state {
                     ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
@@ -391,6 +396,7 @@ pub fn paint_tool_rail_axis(
                     store.number_value(*id).unwrap_or(0.0),
                     display.as_deref(),
                     buffer,
+                    store.number_input_mixed(*id),
                     caret,
                     anchor,
                     scene,

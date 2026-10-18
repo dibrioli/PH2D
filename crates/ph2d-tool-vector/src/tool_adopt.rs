@@ -45,7 +45,7 @@ impl VectorTool {
     /// ⚠️ **NÃO marca `apply_to_selected`** — adotar é LER o documento; armar aqui faria a
     /// seleção ser reescrita com o que ela já é, todo frame, e um passo de undo com ela.
     ///
-    /// A largura entra em **px de tela** (a unidade que a tool guarda), convertida pelo chamador:
+    /// A largura entra em **px do documento** (a unidade que a tool guarda), convertida pelo chamador:
     /// o `StrokeSpec` a traz em MUNDO, e a conversão tem um dono só.
     pub fn adopt_stroke(&mut self, s: &ph2d_vec_scene::StrokeSpec, width_px: f64) {
         let c = s.color();

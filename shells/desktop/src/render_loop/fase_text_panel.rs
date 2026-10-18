@@ -5,7 +5,7 @@ use super::*;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
-    pub(super) fn fase_text_panel(&mut self, vec_px_to_world: f64) {
+    pub(super) fn fase_text_panel(&mut self) {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -21,7 +21,6 @@ impl crate::App {
             &mut self.vec.text_edit,
             self.vec.draw_config.mode,
             &self.vec.pen,
-            vec_px_to_world,
             vec_scene,
         );
         // Publica a string da sessão ativa para o painel exibir (read-only na

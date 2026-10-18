@@ -255,7 +255,7 @@ impl ShapeTool {
     fn build(&self) -> VecPath {
         let (a, b) = self.bounds();
         let mut path = ph2d_vec_scene::cook(self.kind, a, b, &self.values);
-        let stroke_w = self.style.stroke_w_px * self.px_to_world;
+        let stroke_w = self.style.stroke_w;
         // Forma ABERTA (linha / arco / espiral) nunca tem fill — não há interior.
         path.fill = if !self.kind.is_closed() || self.style.fill.a == 0 {
             None

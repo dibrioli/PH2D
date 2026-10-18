@@ -158,6 +158,7 @@ pub(crate) fn chip(
     paint_number_input_with_buffer(
         &input,
         Some(&buf),
+        ctx.host.store().number_input_mixed(id),
         caret,
         anchor,
         rect,

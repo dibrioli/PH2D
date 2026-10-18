@@ -73,6 +73,7 @@ pub(super) fn paint_vector_section(
     crate::widget::paint_number_input_with_buffer(
         &nx,
         Some(bx),
+        store.number_input_mixed(ids::INSP_SAMPLE_V3_X),
         cx,
         ax,
         x_rect,
@@ -100,6 +101,7 @@ pub(super) fn paint_vector_section(
     crate::widget::paint_number_input_with_buffer(
         &ny,
         Some(by),
+        store.number_input_mixed(ids::INSP_SAMPLE_V3_Y),
         cy,
         ay,
         y_rect,

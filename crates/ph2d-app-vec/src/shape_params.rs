@@ -117,7 +117,7 @@ pub fn apply_shape_field(
     values: &mut ShapeValues,
     id: NodeId,
     v: f64,
-    px_to_world: f64,
+    doc: ph2d_editor_core::DocPx,
 ) -> bool {
     let Some(i) = shape_field_index(id) else {
         return false;
@@ -126,17 +126,21 @@ pub fn apply_shape_field(
         return false; // campo de outra forma
     }
     // Autora em UI (o clamp vale na unidade que o usuário vê), depois atravessa a fronteira.
-    let mut ui = shapes::to_ui(kind, values, px_to_world);
+    let mut ui = shapes::to_ui(kind, values, doc);
     ui[i] = v;
     shapes::clamp(kind, &mut ui);
-    *values = shapes::to_world(kind, &ui, px_to_world);
+    *values = shapes::to_world(kind, &ui, doc);
     true
 }
 
 /// Os valores de uma forma na unidade de UI (o que a tool adota e o painel mostra).
 #[must_use]
-pub fn ui_values_of(kind: ShapeKind, world: &ShapeValues, px_to_world: f64) -> ShapeValues {
-    shapes::to_ui(kind, world, px_to_world)
+pub fn ui_values_of(
+    kind: ShapeKind,
+    world: &ShapeValues,
+    doc: ph2d_editor_core::DocPx,
+) -> ShapeValues {
+    shapes::to_ui(kind, world, doc)
 }
 
 /// **De quem são os campos de forma NESTE frame** — o par que decide a semente.
@@ -250,9 +254,10 @@ pub fn frame_fields(
     sim: &SimWorld,
     tools: &mut ph2d_editor_core::ToolRegistry,
     store: &mut WidgetStore,
-    px_to_world: f64,
+    doc: ph2d_editor_core::DocPx,
 ) {
     use crate::vector_bridge::{adopt_shape_values, shape_catalog, take_shape_armed};
+    vec.doc = doc;
     let sel = vec.pen.selected_paths().to_vec();
     let alvo_vivo = panel_shape_target(sim, &vec.entities, &sel).map(|(id, ..)| id);
     if alvo_vivo != vec.shape_armed_target {
@@ -278,7 +283,7 @@ pub fn frame_fields(
     // A conversão para UI é UMA, aqui: o store que o painel pinta e a tool que adota leem o
     // MESMO array. Sem alvo, o que a tool guarda para aquele tipo (já em UI: o próximo desenho).
     let ui = match target.as_ref() {
-        Some((_, _, kind, world)) => ui_values_of(*kind, world, px_to_world),
+        Some((_, _, kind, world)) => ui_values_of(*kind, world, doc),
         None => catalog.map(|(_, v)| v).unwrap_or_default(),
     };
     let por_fora = target.is_some()

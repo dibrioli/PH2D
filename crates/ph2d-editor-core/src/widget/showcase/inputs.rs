@@ -101,6 +101,7 @@ pub(super) fn paint_inputs_section(
     paint_number_input_with_buffer(
         &num,
         Some(n_buffer),
+        store.number_input_mixed(ids::INSP_SAMPLE_NUMBER),
         n_caret,
         n_anchor,
         r,

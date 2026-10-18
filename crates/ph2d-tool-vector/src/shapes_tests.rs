@@ -60,10 +60,18 @@ fn the_px_fields_round_trip_across_the_unit_boundary() {
     let mut ui: ShapeValues = [0.0; MAX_SHAPE_FIELDS];
     ui[0] = 5.0; // Sides (Count — não viaja)
     ui[1] = 30.0; // Radius (Px — viaja)
-    let world = to_world(ShapeKind::Polygon, &ui, PTW);
+    let world = to_world(
+        ShapeKind::Polygon,
+        &ui,
+        ph2d_editor_core::DocPx::new((1.0 / PTW) as f32),
+    );
     assert!((world[0] - 5.0).abs() < 1e-9, "contagem não vira mundo");
     assert!((world[1] - 0.3).abs() < 1e-9, "30 px x 0.01 = 0.3 de mundo");
-    let back = to_ui(ShapeKind::Polygon, &world, PTW);
+    let back = to_ui(
+        ShapeKind::Polygon,
+        &world,
+        ph2d_editor_core::DocPx::new((1.0 / PTW) as f32),
+    );
     assert!((back[1] - 30.0).abs() < 1e-9, "voltou a 30 px");
 }
 

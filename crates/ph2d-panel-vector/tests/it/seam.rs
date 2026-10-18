@@ -101,8 +101,9 @@ fn fill_opacity_slider_sets_alpha_through_seam() {
         "Fill Opacity → 0 never cleared the fill alpha through the seam"
     );
     assert!(
-        tool.take_apply_to_selected(),
-        "Opacity change must flag the selected path for recolour"
+        tool.take_authored()
+            .has(ph2d_tool_vector::StyleFields::FILL_A),
+        "Opacity change must flag the selected path's fill alpha for recolour"
     );
 }
 
@@ -489,7 +490,8 @@ fn every_marker_option_reaches_the_tool_and_closes_its_chip() {
         "escolher a ponta do COMECO mexeu na do FIM — os ids de opcao colidiram"
     );
     assert!(
-        tool.take_apply_to_selected(),
+        tool.take_authored()
+            .has(ph2d_tool_vector::StyleFields::MARKER_START),
         "a ponta e Style: a escolha tem de reestilizar o caminho selecionado"
     );
 }

@@ -21,6 +21,8 @@ pub enum BarFace {
     Swatch {
         rgba: Option<[u8; 4]>,
         ring: bool,
+        /// A seleção múltipla tem cores diferentes: pinta-se o «misto» (plano 31 da UI nova).
+        mixed: bool,
     },
     /// O CONTORNO de uma forma, num quadrado unitário (`0..1`, y para baixo) — a mesma geometria
     /// que o módulo desenha, nunca um segundo desenho (a lei da barra do Quadro).

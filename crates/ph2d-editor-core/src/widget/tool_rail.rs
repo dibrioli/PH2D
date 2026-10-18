@@ -120,6 +120,9 @@ pub enum ToolRailEntry {
         color: [u8; 4],
         active: bool,
         sub: String,
+        /// A seleção múltipla tem cores DIFERENTES aqui: o chip pinta o «misto» (o mesmo do
+        /// [`crate::widget::paint_mixed_swatch`]) em vez de uma cor que só uma das formas tem.
+        mixed: bool,
     },
     /// ⭐ **Um chip cujo ícone é um CAMINHO, não um `IconId`** — o que as ferramentas de imagem
     /// têm: o `icon_fn` do manifesto devolve um `BezPath` de 24×24, e não há entrada no catálogo
@@ -214,7 +217,17 @@ impl ToolRailEntry {
             color,
             active: false,
             sub: String::new(),
+            mixed: false,
         }
+    }
+
+    /// Builder: o chip de cor passa a dizer «misto» (no-op nas outras variantes).
+    #[must_use]
+    pub fn mixed(mut self, on: bool) -> Self {
+        if let Self::Swatch { mixed, .. } = &mut self {
+            *mixed = on;
+        }
+        self
     }
 
     /// Builder shortcut for the Icon/Swatch variants — sets the vertical

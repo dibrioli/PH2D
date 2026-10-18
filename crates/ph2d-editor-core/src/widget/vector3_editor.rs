@@ -95,6 +95,7 @@ pub fn paint_vector3_editor(
     paint_vector3_editor_with_state(
         v,
         [None; 3],
+        [false; 3],
         [0; 3],
         [None; 3],
         rect,
@@ -111,6 +112,7 @@ pub fn paint_vector3_editor(
 pub fn paint_vector3_editor_with_state(
     v: &Vector3Editor,
     buffers: [Option<&str>; 3],
+    mixed: [bool; 3],
     carets: [usize; 3],
     selection_anchors: [Option<usize>; 3],
     rect: Rect,
@@ -152,6 +154,7 @@ pub fn paint_vector3_editor_with_state(
         paint_number_input_with_buffer(
             input,
             buffers[i],
+            mixed[i],
             carets[i],
             selection_anchors[i],
             field_rect,

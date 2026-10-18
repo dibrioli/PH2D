@@ -5,6 +5,7 @@
 //! ESCOLHA — qual é a próxima opção e como ela se chama.
 
 use crate::shapes::{FieldDesc, FieldUnit, SHAPES, ShapeDesc, ShapeGroup};
+use ph2d_editor_core::DocPx;
 use ph2d_vec_scene::{ShapeKind, ShapeValues};
 
 /// O descritor de `kind` (todo `ShapeKind` tem um — o gate abaixo garante).
@@ -28,32 +29,27 @@ pub fn shapes_in(group: ShapeGroup) -> impl Iterator<Item = &'static ShapeDesc> 
     SHAPES.iter().filter(move |d| d.group == group)
 }
 
-/// Valores autorados (UI) → valores de DOCUMENTO (mundo). Só os campos `Px` viajam;
-/// contagens, razões e ângulos são os mesmos dos dois lados.
+/// Valores autorados (UI) → valores de DOCUMENTO (mundo). Só os campos `Px` viajam, e em px do
+/// DOCUMENTO ([`DocPx`], plano 31): o mesmo «Corner round 10» dá o mesmo canto a qualquer zoom.
+/// Contagens, razões e ângulos são os mesmos dos dois lados.
 #[must_use]
-pub fn to_world(kind: ShapeKind, ui: &ShapeValues, px_to_world: f64) -> ShapeValues {
+pub fn to_world(kind: ShapeKind, ui: &ShapeValues, doc: DocPx) -> ShapeValues {
     let mut out = *ui;
     for (i, f) in desc(kind).fields.iter().enumerate() {
         if f.unit == FieldUnit::Px {
-            out[i] = ui[i] * px_to_world;
+            out[i] = doc.to_world(ui[i]);
         }
     }
     out
 }
 
-/// Valores de DOCUMENTO (mundo) → valores autorados (UI) — o inverso exato de
-/// [`to_world`]. `px_to_world` degenerado devolve os campos `Px` zerados (em vez de
-/// infinito).
+/// Valores de DOCUMENTO (mundo) → valores autorados (UI) — o inverso exato de [`to_world`].
 #[must_use]
-pub fn to_ui(kind: ShapeKind, world: &ShapeValues, px_to_world: f64) -> ShapeValues {
+pub fn to_ui(kind: ShapeKind, world: &ShapeValues, doc: DocPx) -> ShapeValues {
     let mut out = *world;
     for (i, f) in desc(kind).fields.iter().enumerate() {
         if f.unit == FieldUnit::Px {
-            out[i] = if px_to_world > 0.0 {
-                world[i] / px_to_world
-            } else {
-                0.0
-            };
+            out[i] = doc.of_world(world[i]);
         }
     }
     out

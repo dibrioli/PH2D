@@ -383,6 +383,7 @@ pub fn dispatch_key<'frame>(
                 use std::fmt::Write;
                 let _ = write!(buffer, "{}", format_number(*value));
                 *caret = buffer.len();
+                store.clear_number_input_mixed(id);
                 events.push(WidgetEvent::ValueChanged(id));
             }
         }
@@ -402,6 +403,7 @@ pub fn dispatch_key<'frame>(
                 use std::fmt::Write;
                 let _ = write!(buffer, "{}", format_number(*value));
                 *caret = buffer.len();
+                store.clear_number_input_mixed(id);
                 events.push(WidgetEvent::ValueChanged(id));
             }
         }

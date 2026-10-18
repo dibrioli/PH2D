@@ -5,7 +5,7 @@ use super::*;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
-    pub(super) fn fase_shape_fields(&mut self, vec_px_to_world: f64) {
+    pub(super) fn fase_shape_fields(&mut self) {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -25,7 +25,7 @@ impl crate::App {
             sim,
             tools,
             &mut hero.store,
-            vec_px_to_world,
+            ph2d_editor_core::DocPx::of(&hero.project),
         );
     }
 }

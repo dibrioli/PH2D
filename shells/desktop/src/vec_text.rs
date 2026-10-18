@@ -51,7 +51,7 @@ impl crate::app_state::App {
         }
         // O texto herda o Style ATIVO do painel do vetor (fill/stroke/width/cap/join)
         // — a mesma regra das formas — capturado no clique.
-        let (fill, stroke) = resolve_style(&self.vec.pen.style(), self.vec_px_to_world());
+        let (fill, stroke) = resolve_style(&self.vec.pen.style());
         self.vec.text_edit = Some(VecTextEdit {
             origin: world,
             size: self.vec.text.size, // o tamanho corrente do painel (Size slider)
@@ -186,7 +186,7 @@ pub(crate) fn axes_of(edit: &VecTextEdit) -> Vec<(ph2d_vector_font::AxisTag, f32
 /// frame: se o Fill/Stroke/Width/Cap/Join mudou (o usuário mexeu no painel enquanto
 /// digitava), regenera os glyphs com o novo Paint — texto em edição herda o Style em
 /// TEMPO REAL, como o Enio pediu. Guardado por igualdade: sem mudança, não regenera.
-/// Fn livre (recebe pen + cena + px_to_world) para o render loop poder chamá-la com
+/// Fn livre (recebe pen + cena) para o render loop poder chamá-la com
 /// os campos já emprestados, sem tomar o `App` inteiro.
 ///
 /// **Sair do modo Text COMMITA a sessão** (`*edit = None`): os glyphs viram paths
@@ -199,7 +199,6 @@ pub(crate) fn sync_active_text_style(
     edit: &mut Option<VecTextEdit>,
     mode: ph2d_tool_vector::DrawMode,
     pen: &ph2d_vec_edit::PenTool,
-    px_to_world: f64,
     scene: &mut ph2d_vec_scene::VecScene,
 ) {
     if mode != ph2d_tool_vector::DrawMode::Text {
@@ -209,7 +208,7 @@ pub(crate) fn sync_active_text_style(
     let Some(edit) = edit.as_mut() else {
         return;
     };
-    let (fill, stroke) = resolve_style(&pen.style(), px_to_world);
+    let (fill, stroke) = resolve_style(&pen.style());
     if edit.fill != fill || edit.stroke != stroke {
         edit.fill = fill;
         edit.stroke = stroke;

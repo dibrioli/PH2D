@@ -143,6 +143,7 @@ mod geometry;
 pub use geometry::inline_option_rect;
 mod kind;
 pub use kind::{Drawing, WidgetKind};
+mod number;
 
 /// **A PORTA ÚNICA**: pinta a pele de `kind` em `rect`, pelo pintor real do catálogo.
 ///
@@ -323,34 +324,7 @@ pub fn paint_widget_skin_with(
         WidgetKind::Spinner => paint_spinner(&Spinner::new(id, label), rect, scene, theme),
         WidgetKind::Divider => paint_divider(&Divider::new(id), rect, scene, theme),
         WidgetKind::NumberInput => {
-            // ⚠️ `step`/`min`/`max` ficam nos defaults do construtor de propósito: eles governam o
-            // que um GESTO produz, e o gesto é do painel — a pele responde *que aparência tem um
-            // campo numérico*, e nenhum dos três a muda. Autorá-los seria um parâmetro por-tipo
-            // sem consumidor (ver o doc do `ALL`).
-            let mut n = NumberInput::new(id, label, f64::from(PREVIEW_VALUE));
-            // O buffer do estado vivo é o que o artista está DIGITANDO; sem estado, o pintor
-            // formata o `value` sozinho — é o que o `None` significa aqui.
-            let mut buf: Option<&str> = None;
-            let (mut caret, mut anchor) = (0usize, None);
-            if let Some((
-                InteractiveState::NumberInput {
-                    state,
-                    value,
-                    buffer,
-                    caret: c,
-                    selection_anchor,
-                    ..
-                },
-                t,
-            )) = live
-            {
-                n = n.visual((*state, t));
-                n.value = *value;
-                buf = Some(buffer.as_str());
-                caret = *c;
-                anchor = *selection_anchor;
-            }
-            paint_number_input_with_buffer(&n, buf, caret, anchor, rect, scene, text_system, theme);
+            number::paint_number_skin(id, label, live, rect, scene, text_system, theme);
         }
         WidgetKind::ColorSwatch => {
             // ⚠️ **Sem parâmetro, a swatch mostra o XADREZ** — e isso não é um fallback de

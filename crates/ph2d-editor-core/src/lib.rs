@@ -209,7 +209,7 @@ pub use interaction::{
     ContextMenuKind, ContextMenuRequest, HitIndex, InteractiveState, WidgetEvent, WidgetStore,
     dispatch_key, dispatch_pointer, dispatch_text_input, dispatch_tick,
 };
-pub use length::{LengthDisplay, decimals_for, format_value};
+pub use length::{DocPx, LengthDisplay, decimals_for, format_value};
 pub use paint::{
     Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,
     paint_text_title, paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,

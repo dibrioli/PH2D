@@ -135,6 +135,7 @@ fn the_unit_is_ink_inside_the_box_and_never_a_second_box() {
         paint_number_input_with_buffer(
             &NumberInput::new(NodeId(1), "", 1.25).suffix(suffix),
             None,
+            false,
             0,
             None,
             Rect::new(0.0, 0.0, 160.0, 22.0),
@@ -172,6 +173,7 @@ fn while_typing_the_field_shows_only_what_was_typed() {
                 .suffix(Some("m"))
                 .state(state),
             Some("1.25"),
+            false,
             4,
             None,
             Rect::new(0.0, 0.0, 160.0, 22.0),
@@ -212,6 +214,7 @@ fn a_unidade_sai_inteira_ou_nao_sai() {
             paint_number_input_with_buffer(
                 &NumberInput::new(NodeId(1), "", 1234.5).suffix(Some("px")),
                 None,
+                false,
                 0,
                 None,
                 Rect::new(0.0, 0.0, w, 22.0),
@@ -309,4 +312,107 @@ fn o_piso_da_caixa_obedece_ao_tamanho_do_texto() {
         }
     }
     ph2d_text::set_active_text_style(UiTextStyle::default());
+}
+
+/// ⭐ **O «misto» do BulkSelect chega à TINTA.** O `blank_number_input` só esvaziava o buffer, e
+/// todo pintor sem foco formata o `value` — o «misto» nunca aparecia (Inspector e painel do vetor).
+/// A régua é a cena emitida pelas duas portas (caixa e chip), lidas pelos acessores do store.
+/// (Mutação: apagar o braço do «misto» num dos pintores ⇒ o campo misto pinta o número, RED.)
+#[test]
+fn o_misto_pinta_em_branco_sem_foco_e_volta_com_o_valor() {
+    use crate::interaction::{InteractiveState, WidgetStore};
+    let id = NodeId(9);
+    let mut store = WidgetStore::with_capacity(4);
+    store.register(
+        id,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 3.0,
+            buffer: "3".into(),
+            caret: 0,
+            last_committed: 3.0,
+            selection_anchor: None,
+        },
+    );
+    let glifos = |store: &WidgetStore| {
+        let (state, buffer, caret, anchor) = store.number_chip_view(id);
+        let mixed = store.number_input_mixed(id);
+        let value = store.number_value(id).unwrap_or(0.0);
+        let mut text = TextSystem::without_system_fonts();
+        let mut caixa = VectorScene::new();
+        paint_number_input_with_buffer(
+            &NumberInput::new(id, "", value)
+                .suffix(Some("px"))
+                .state(state),
+            buffer,
+            mixed,
+            caret,
+            anchor,
+            Rect::new(0.0, 0.0, 160.0, 22.0),
+            &mut caixa,
+            &mut text,
+            Theme::Dark,
+        );
+        let mut chip = VectorScene::new();
+        crate::widget::paint_number_chip(
+            Rect::new(0.0, 0.0, 80.0, 22.0),
+            state,
+            value,
+            Some("3 px"),
+            buffer,
+            mixed,
+            caret,
+            anchor,
+            &mut chip,
+            &mut text,
+            Theme::Dark,
+        );
+        (
+            caixa.inner().encoding().resources.glyph_runs.len(),
+            chip.inner().encoding().resources.glyph_runs.len(),
+        )
+    };
+    let (caixa, chip) = glifos(&store);
+    assert!(
+        caixa > 0 && chip > 0,
+        "controlo: o campo concordante pinta o número"
+    );
+
+    store.blank_number_input(id);
+    assert!(store.number_input_mixed(id));
+    assert_eq!(
+        glifos(&store),
+        (0, 0),
+        "o campo misto ainda pinta um número"
+    );
+
+    // Com foco o campo misto pinta o que o artista escreve.
+    if let Some(InteractiveState::NumberInput { state, buffer, .. }) = store.get_mut(id) {
+        *state = TextInputState::Focused;
+        buffer.push_str("12");
+    }
+    let (caixa, chip) = glifos(&store);
+    assert!(
+        caixa > 0 && chip > 0,
+        "o campo misto com foco não mostra o que se escreve"
+    );
+    if let Some(InteractiveState::NumberInput { state, .. }) = store.get_mut(id) {
+        *state = TextInputState::Normal;
+    }
+
+    store.set_number_value(id, 5.0);
+    assert!(
+        !store.number_input_mixed(id),
+        "um valor escrito não apagou o «misto»"
+    );
+    let (caixa, chip) = glifos(&store);
+    assert!(caixa > 0 && chip > 0, "o número não voltou à caixa");
+
+    // Com foco, o `blank_number_input` é no-op (não briga com a digitação).
+    store.set_focus(Some(id));
+    store.blank_number_input(id);
+    assert!(
+        !store.number_input_mixed(id),
+        "o campo focado ficou «misto»"
+    );
 }

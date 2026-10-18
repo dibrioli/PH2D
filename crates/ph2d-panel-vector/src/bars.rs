@@ -264,6 +264,11 @@ fn column(snap: &VectorStyleSnapshot, focus_stroke: bool) -> Vec<Vec<BarButton>>
         face: BarFace::Swatch {
             rgba: (rgba[3] > 0).then_some(rgba),
             ring,
+            mixed: !snap.agrees(if ring {
+                ph2d_tool_vector::StyleFields::STROKE_RGB
+            } else {
+                ph2d_tool_vector::StyleFields::FILL_RGB
+            }),
         },
         label: named(key, None),
         on,

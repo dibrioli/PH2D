@@ -14,6 +14,7 @@
 use ph2d_vec_scene::{ShapeKind, ShapeValues, VecPath};
 
 use crate::shapes::{self, FieldUnit};
+use ph2d_editor_core::DocPx;
 
 /// Onde uma alça fica: um ponto do contorno que o `cook` devolve.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -292,7 +293,7 @@ pub fn handle_grip(
     h: &HandleDesc,
     values: &ShapeValues,
     half: [f64; 2],
-    px_to_world: f64,
+    doc: DocPx,
     park_at: f64,
     cook: &dyn Fn(&ShapeValues) -> VecPath,
 ) -> Option<[f64; 2]> {
@@ -336,7 +337,7 @@ pub fn handle_grip(
     let mut lo = *values;
     let mut up = *values;
     for &i in h.fields {
-        let (min, max, _) = range_world(kind, i, px_to_world)?;
+        let (min, max, _) = range_world(kind, i, doc)?;
         lo[i] = min;
         up[i] = min + (max - min) * 1e-3;
     }
@@ -427,10 +428,10 @@ impl HandleDrag {
 
 /// A faixa de AUTORIA do campo `i` em unidades de documento (os `Px` atravessam a fronteira
 /// pela mesma conta do painel) e se ele é inteiro.
-fn range_world(kind: ShapeKind, i: usize, px_to_world: f64) -> Option<(f64, f64, bool)> {
+fn range_world(kind: ShapeKind, i: usize, doc: DocPx) -> Option<(f64, f64, bool)> {
     let f = shapes::desc(kind).fields.get(i)?;
     let k = if f.unit == FieldUnit::Px {
-        px_to_world
+        doc.to_world(1.0)
     } else {
         1.0
     };
@@ -438,13 +439,20 @@ fn range_world(kind: ShapeKind, i: usize, px_to_world: f64) -> Option<(f64, f64,
     Some((f.min * k, f.max * k, int))
 }
 
+/// A régua de documento em que `px_to_world` mundo valem um px — as fixturas falam a escala delas.
+#[cfg(test)]
+pub(crate) fn doc_of(px_to_world: f64) -> DocPx {
+    #[expect(clippy::cast_possible_truncation, reason = "escala de fixtura")]
+    DocPx::new((1.0 / px_to_world) as f32)
+}
+
 /// O passo do campo `i` em unidades de documento (o de autoria; nunca zero).
-fn step_world(kind: ShapeKind, i: usize, px_to_world: f64) -> f64 {
+fn step_world(kind: ShapeKind, i: usize, doc: DocPx) -> f64 {
     let Some(f) = shapes::desc(kind).fields.get(i) else {
         return 1.0;
     };
     let k = if f.unit == FieldUnit::Px {
-        px_to_world
+        doc.to_world(1.0)
     } else {
         1.0
     };
@@ -454,6 +462,10 @@ fn step_world(kind: ShapeKind, i: usize, px_to_world: f64) -> f64 {
 /// ⭐ **O arrasto** — os valores novos da forma com o ponteiro em `p` (local). Parte sempre dos
 /// valores do PRESS: o arrasto é uma função da mão, não um acumulador de erro.
 #[must_use]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a forma, o arrasto, a mão e as duas réguas: a do ECRÃ (encaixe) e a do DOCUMENTO (faixas)"
+)]
 pub fn drag(
     kind: ShapeKind,
     d: &mut HandleDrag,
@@ -461,6 +473,7 @@ pub fn drag(
     mods: Mods,
     half: [f64; 2],
     px_to_world: f64,
+    doc: DocPx,
     cook: &dyn Fn(&ShapeValues) -> VecPath,
 ) -> ShapeValues {
     let Some(h) = handles_of(kind).get(d.handle) else {
@@ -487,7 +500,7 @@ pub fn drag(
     match h.law {
         Law::Winding => {
             if let Some(&i) = fields.first()
-                && let Some((lo, hi, _)) = range_world(kind, i, px_to_world)
+                && let Some((lo, hi, _)) = range_world(kind, i, doc)
             {
                 let deg = snap(360.0 * d.at_press[i] + d.wound);
                 v[i] = (deg / 360.0).clamp(lo, hi);
@@ -495,12 +508,12 @@ pub fn drag(
         }
         Law::Sweep { start } => {
             if let Some(&i) = fields.first()
-                && let Some((lo, hi, _)) = range_world(kind, i, px_to_world)
+                && let Some((lo, hi, _)) = range_world(kind, i, doc)
             {
                 let s0 = d.at_press[start];
                 let end = snap(s0 + sweep_of(d.at_press[i]) + d.wound);
                 if mods.pairs {
-                    if let Some((slo, shi, _)) = range_world(kind, start, px_to_world) {
+                    if let Some((slo, shi, _)) = range_world(kind, start, doc) {
                         let s = end - sweep_of(d.at_press[i]);
                         v[start] = (s - slo).rem_euclid(shi - slo + 1.0) + slo;
                     }
@@ -511,8 +524,8 @@ pub fn drag(
         }
         Law::ArcStart { sweep } => {
             if let Some(&i) = fields.first()
-                && let Some((lo, hi, _)) = range_world(kind, i, px_to_world)
-                && let Some((slo, shi, _)) = range_world(kind, sweep, px_to_world)
+                && let Some((lo, hi, _)) = range_world(kind, i, doc)
+                && let Some((slo, shi, _)) = range_world(kind, sweep, doc)
             {
                 let s0 = d.at_press[i];
                 let end = s0 + sweep_of(d.at_press[sweep]);
@@ -526,8 +539,8 @@ pub fn drag(
         }
         Law::BoxPoint => {
             if let [iu, iv] = fields
-                && let Some((ulo, uhi, _)) = range_world(kind, *iu, px_to_world)
-                && let Some((vlo, vhi, _)) = range_world(kind, *iv, px_to_world)
+                && let Some((ulo, uhi, _)) = range_world(kind, *iu, doc)
+                && let Some((vlo, vhi, _)) = range_world(kind, *iv, doc)
             {
                 let (hx, hy) = (half[0].max(1e-12), half[1].max(1e-12));
                 let (dx, dy) = (p[0] - d.origin[0], p[1] - d.origin[1]);
@@ -537,14 +550,14 @@ pub fn drag(
         }
         Law::Steps => {
             if let Some(&i) = fields.first()
-                && let Some((lo, hi, int)) = range_world(kind, i, px_to_world)
+                && let Some((lo, hi, int)) = range_world(kind, i, doc)
             {
                 let rise = (p[1] - d.origin[1]) / (2.0 * half[1].max(1e-12))
                     * if h.down { -1.0 } else { 1.0 };
                 let delta = if int {
                     (rise * STEPS_PER_BOX).round()
                 } else {
-                    let step = step_world(kind, i, px_to_world);
+                    let step = step_world(kind, i, doc);
                     (rise * (hi - lo) / step).round() * step
                 };
                 v[i] = (d.at_press[i] + delta).clamp(lo, hi);
@@ -570,7 +583,7 @@ pub fn drag(
             let before = fields.first().map(|&i| v[i]);
             for _ in 0..rounds {
                 for &i in fields {
-                    if let Some((lo, hi, int)) = range_world(kind, i, px_to_world) {
+                    if let Some((lo, hi, int)) = range_world(kind, i, doc) {
                         v[i] = best_on_track(&mut v, i, lo, hi, int, &metric);
                         if !int {
                             v[i] =
@@ -602,13 +615,13 @@ pub fn track(
     h: &HandleDesc,
     values: &ShapeValues,
     half: [f64; 2],
-    px_to_world: f64,
+    doc: DocPx,
     cook: &dyn Fn(&ShapeValues) -> VecPath,
 ) -> Vec<[f64; 2]> {
     let ([i], Law::Nearest | Law::Radial) = (h.fields, h.law) else {
         return Vec::new();
     };
-    let Some((lo, hi, _)) = range_world(kind, *i, px_to_world) else {
+    let Some((lo, hi, _)) = range_world(kind, *i, doc) else {
         return Vec::new();
     };
     let mut v = *values;

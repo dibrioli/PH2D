@@ -73,9 +73,10 @@ impl TokenCtx {
 /// `stroke.default = 1.5 px` vale **0,015** unidades — 1,58 pt numa moldura de telefone, que mede
 /// 8 unidades no lado maior.
 ///
-/// ⚠️ **NÃO é o `px_to_world` da câmera**, embora a row *Width* do painel fale nele: aquele número
-/// é px de TELA no zoom do momento, então resolver por ele faria o traço mudar de espessura quando
-/// o artista se aproximasse — e o valor SALVO dependeria de onde ele estava olhando.
+/// ⚠️ **NÃO é o `px_to_world` da câmera**: aquele número é px de TELA no zoom do momento, então
+/// resolver por ele faria o traço mudar de espessura quando o artista se aproximasse — e o valor
+/// SALVO dependeria de onde ele estava olhando. A row *Width* do painel fala a MESMA régua desta
+/// função desde o plano 31 (`ph2d_editor_core::DocPx`).
 ///
 /// Chave desconhecida devolve `None` pelo mesmo motivo que a cor: o LITERAL do documento tem de
 /// valer, e nunca um comprimento de emergência.

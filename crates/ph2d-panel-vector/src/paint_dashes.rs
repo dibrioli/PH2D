@@ -58,7 +58,9 @@ pub(crate) fn seed(store: &mut WidgetStore) {
         ] {
             let (lo, hi) = range(gap);
             store.set_number_range(id, lo, hi, DASH_STEP);
-            if focus != Some(id) {
+            if !snap.agrees(ph2d_tool_vector::StyleFields::dash(k, gap)) {
+                store.blank_number_input(id);
+            } else if focus != Some(id) {
                 store.set_number_value(id, safe_clamp_f64(v, lo, hi));
             }
         }

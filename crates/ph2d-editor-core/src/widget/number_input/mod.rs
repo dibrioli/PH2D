@@ -240,7 +240,7 @@ pub fn paint_number_input(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    paint_number_input_with_buffer(input, None, 0, None, rect, scene, text_system, theme)
+    paint_number_input_with_buffer(input, None, false, 0, None, rect, scene, text_system, theme)
 }
 
 /// Like [`paint_number_input`] but renders the in-progress edit
@@ -248,12 +248,15 @@ pub fn paint_number_input(
 /// and a caret byte offset when reading live state from a
 /// [`crate::interaction::WidgetStore`]; otherwise pass `None`.
 /// `selection_anchor` paints a selection background when non-None
-/// and the input is focused.
+/// and the input is focused. `mixed` — o «misto» do BulkSelect
+/// ([`crate::interaction::WidgetStore::number_input_mixed`]): sem foco, o campo pinta em branco
+/// (sem número nem unidade).
 #[allow(clippy::too_many_arguments)]
 #[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub fn paint_number_input_with_buffer(
     input: &NumberInput,
     buffer: Option<&str>,
+    mixed: bool,
     caret: usize,
     selection_anchor: Option<usize>,
     rect: Rect,
@@ -271,8 +274,10 @@ pub fn paint_number_input_with_buffer(
     let chip_w = stepper_width(rect);
     let pad_x = crate::widget::field_pad_x();
     let value_text_owned;
+    let misto = mixed && input.state != TextInputState::Focused;
     let value_text: &str = match buffer {
         Some(b) if input.state == TextInputState::Focused => b,
+        _ if misto => "",
         _ => {
             value_text_owned = format_number(input.value);
             value_text_owned.as_str()
@@ -364,7 +369,7 @@ pub fn paint_number_input_with_buffer(
     //    comportamento certo, porque o VALOR é o que não pode desaparecer.
     if let Some(suffix) = input
         .suffix
-        .filter(|_| input.state != TextInputState::Focused)
+        .filter(|_| input.state != TextInputState::Focused && !misto)
     {
         let gap = Spacing::Xs.px();
         let num_w = text_system.prefix_width(value_text, font_size);

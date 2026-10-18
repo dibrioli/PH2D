@@ -113,3 +113,64 @@ fn o_clique_em_espaco_morto_continua_a_largar_o_foco() {
         "o despachante nao emitiu o Blur: {evts:?}"
     );
 }
+
+/// ⭐ **O «misto» entra VAZIO e só escreve o que o artista digitou.** Focar e sair sem digitar não
+/// escreve nada (as formas que diferem continuam a diferir); digitar o número do PRIMÁRIO escreve-o
+/// na seleção inteira — no «misto» o primário não é o valor de ninguém.
+/// (Mutação: tirar o `mixed ||` do `commit_number_buffer` ⇒ o 2.º `ValueChanged` some, RED.)
+#[test]
+fn o_misto_entra_vazio_e_digitar_o_numero_do_primario_escreve() {
+    let id = NodeId(42);
+    let mut store = WidgetStore::with_capacity(4);
+    store.register(
+        id,
+        InteractiveState::NumberInput {
+            state: crate::widget::TextInputState::Normal,
+            value: 3.0,
+            buffer: "3".to_string(),
+            caret: 0,
+            last_committed: 3.0,
+            selection_anchor: None,
+        },
+    );
+    store.blank_number_input(id);
+    let arena = Bump::new();
+    let mudou = |evts: &[WidgetEvent]| {
+        evts.iter()
+            .any(|e| matches!(e, WidgetEvent::ValueChanged(x) if *x == id))
+    };
+
+    store.set_focus(Some(id));
+    super::super::init_number_buffer(&mut store, id);
+    match store.get(id) {
+        Some(InteractiveState::NumberInput { buffer, .. }) => {
+            assert!(buffer.is_empty(), "o «misto» entrou com {buffer:?}");
+        }
+        _ => panic!("o campo deixou de ser um NumberInput"),
+    }
+    let evts = crate::interaction::blur_focus(&mut store, &arena);
+    assert!(
+        !mudou(evts),
+        "sair sem digitar escreveu no campo misto: {evts:?}"
+    );
+    assert!(
+        store.number_input_mixed(id),
+        "sair sem digitar apagou o «misto»"
+    );
+
+    store.set_focus(Some(id));
+    super::super::init_number_buffer(&mut store, id);
+    if let Some(InteractiveState::NumberInput { buffer, caret, .. }) = store.get_mut(id) {
+        buffer.push('3');
+        *caret = 1;
+    }
+    let evts = crate::interaction::blur_focus(&mut store, &arena);
+    assert!(
+        mudou(evts),
+        "digitar o número do primário não escreveu: {evts:?}"
+    );
+    assert!(
+        !store.number_input_mixed(id),
+        "o valor digitado não apagou o «misto»"
+    );
+}

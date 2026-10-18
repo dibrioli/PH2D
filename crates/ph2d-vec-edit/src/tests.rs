@@ -444,7 +444,7 @@ fn set_style_colors_new_paths_and_survives_clear() {
     let mut pen = PenTool::new();
     let style = PenStyle {
         stroke: Rgba8::new(200, 40, 40, 255),
-        stroke_w_px: 5.0,
+        stroke_w: 0.05,
         fill: Rgba8::new(40, 200, 40, 128),
         ..PenStyle::default()
     };
@@ -452,7 +452,8 @@ fn set_style_colors_new_paths_and_survives_clear() {
     pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
     let s = scene.paths()[0].stroke.as_ref().expect("stroke");
     assert_eq!(s.color(), style.stroke);
-    assert_eq!(s.width, style.stroke_w_px * PTW);
+    // A largura chega já em MUNDO (a ponte converte pelo px do documento) — o zoom não entra.
+    assert_eq!(s.width, style.stroke_w);
     // Fechar aplica o fill do estilo.
     pen.on_release();
     pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap);

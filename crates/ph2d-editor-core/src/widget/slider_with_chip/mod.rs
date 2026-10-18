@@ -240,6 +240,7 @@ pub fn paint_slider_with_chip_layout(
         chip_value,
         display_override,
         chip_buffer,
+        store.number_input_mixed(chip_id),
         chip_caret,
         chip_anchor,
         scene,

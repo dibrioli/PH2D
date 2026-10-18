@@ -51,12 +51,15 @@ mod shape_handles_table;
 /// de `shapes` (teto de LOC). Re-exportado dali, então quem consome não percebe o corte.
 mod shapes_fields;
 mod shapes_units;
+/// Os CAMPOS do estilo: o que um gesto escreveu e onde a seleção múltipla difere (plano 31).
+pub mod style_fields;
 pub mod tool;
 
 pub use params::{
     DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, VertexSel, VertexType,
     px_to_slider, slider_to_px,
 };
+pub use style_fields::StyleFields;
 pub use tool::{
     DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_RADIUS_PX,
     DEFAULT_POLYGON_SIDES, DEFAULT_SPIRAL_TURNS, DEFAULT_STAR_INNER, DEFAULT_STAR_INNER_RADIUS_PX,

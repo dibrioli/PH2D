@@ -63,6 +63,7 @@ pub fn paint_slider_row(
         value as f64,
         Some(&display),
         None,
+        false,
         0,
         None,
         scene,

@@ -60,8 +60,8 @@ pub fn both_ends_label(on: bool) -> &'static str {
     BOTH_ENDS_NAMES.get(usize::from(on)).copied().unwrap_or("")
 }
 
-/// Minimum / maximum stroke width in screen pixels (inclusive range the Width
-/// slider spans).
+/// Minimum / maximum stroke width in DOCUMENT pixels (`DocPx`, plano 31 — o mesmo número a qualquer
+/// zoom; inclusive range the Width slider spans).
 /// **ZERO é alcançável, e significa SEM TRAÇO** (Enio, 2026-07-16).
 ///
 /// Era `1.0`, e o slider batia numa parede: arrastar até o fim deixava uma linha de 1px que o
@@ -78,7 +78,7 @@ pub fn both_ends_label(on: bool) -> &'static str {
 /// (`StrokeSpec{width:0}` preserva a COR, `None` a esquece). É o que faz o zero ser reversível:
 /// arrastar de volta devolve o traço que estava lá.
 pub const WIDTH_MIN_PX: f64 = 0.0;
-/// O teto da largura, em px de tela. **100 por decisão do Enio (2026-08-01)** — os 20 anteriores
+/// O teto da largura, em px do documento. **100 por decisão do Enio (2026-08-01)** — os 20 anteriores
 /// não eram um limite de recurso nenhum, e prendiam o traço a um quinto do que a ferramenta faz.
 ///
 /// ⚠️ **O que MUDA com ele é a RESOLUÇÃO do slider, e o escape já existe:** a mesma barra passa a

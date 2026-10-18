@@ -5,15 +5,15 @@
 //! compõe-se uma vez e desvanece) e o **modo de mistura** (como ela se compõe com o que está por
 //! baixo dela na pilha de z).
 //!
-//! # A lei da selecção múltipla: MOSTRA o primário, ESCREVE em todos
+//! # A lei da selecção múltipla: MOSTRA «misto» onde diferem, ESCREVE o campo tocado em todas
 //!
-//! ⚠️ É a lei que a fileira de verbos booleanos já paga, e ela veio de um report: *tocar num filho
-//! selecciona o GRUPO*, então o sujeito de um readout é o **primário** — a forma que o artista
-//! apontou. Escrever, ao contrário, é uma ordem sobre a selecção inteira, como o restyle.
-//!
-//! ⛔ **A alternativa — mostrar «misto» — foi recusada:** ela obriga um terceiro estado em cada
-//! controlo (um slider sem valor, um chip sem nome) e o artista fica sem saber o que vai acontecer
-//! ao arrastar. Mostrar o primário responde *o que este objecto é*, e é o que ele aponta.
+//! ⭐ **Plano 31 da UI nova (decisão do dono, 18/10)** — revoga o «mostra o primário» que aqui
+//! estava. O primário mentia sobre as outras formas, e com o restyle a gravar o estilo INTEIRO ele
+//! APAGAVA: mexer na Width de duas formas pintava as duas com a cor do primário. O terceiro estado
+//! já existia nos widgets (amostra «misto», número em branco do BulkSelect do Inspector), e a
+//! objeção registada — *«o artista fica sem saber o que vai acontecer ao arrastar»* — cai com a
+//! escrita POR CAMPO: arrastar dá a todas esse valor, e nada mais muda. O slider fica no primário.
+//! A leitura mora em `paint_stack::published` (`mixed_opacity`, `mixed_blend`).
 
 use ph2d_vec_scene::{BlendMode, Opacity, VecPathId, VecScene};
 

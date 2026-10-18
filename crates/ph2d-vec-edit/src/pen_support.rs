@@ -23,8 +23,10 @@ const PEN_FILL: Rgba8 = Rgba8::new(90, 150, 230, 120);
 pub struct PenStyle {
     /// Cor do traço dos paths desenhados.
     pub stroke: Rgba8,
-    /// Largura do traço em **pixels de tela** (o shell multiplica por `px_to_world`).
-    pub stroke_w_px: f64,
+    /// Largura do traço em **MUNDO**, já convertida do px do DOCUMENTO pela ponte (`DocPx`, plano
+    /// 31). ⛔ Era px de TELA multiplicado pelo `px_to_world` em cada produtor: o mesmo «3» dava
+    /// linhas diferentes a 50 % e a 400 %.
+    pub stroke_w: f64,
     /// Preenchimento aplicado ao FECHAR um path.
     pub fill: Rgba8,
     /// Ponta / junção do traço.
@@ -51,7 +53,8 @@ impl Default for PenStyle {
     fn default() -> Self {
         Self {
             stroke: PEN_STROKE,
-            stroke_w_px: 3.0,
+            // 3 px do documento a 100 px/m (o default do projeto).
+            stroke_w: 0.03,
             fill: PEN_FILL,
             cap: LineCap::Butt,
             join: LineJoin::Miter,

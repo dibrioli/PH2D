@@ -135,7 +135,6 @@ impl App {
     /// A seta não é enfeite: um conector sem ponta é só uma linha, e o diagrama perde a
     /// direção. É `marker_end` por default — e continua sendo Style (o painel a troca).
     pub(crate) fn connector_down(&mut self, world: [f64; 2]) -> bool {
-        let px_to_world = self.vec_px_to_world();
         let style = self.vec.pen.style();
         let start = self.end_at(world);
         let Some(gfx) = self.gfx.as_mut() else {
@@ -144,7 +143,7 @@ impl App {
         let mut path = ph2d_vec_scene::line(world, world);
         path.stroke = Some(ph2d_vec_scene::StrokeSpec {
             paint: ph2d_vec_scene::StrokePaint::Solid(style.stroke),
-            width: style.stroke_w_px * px_to_world,
+            width: style.stroke_w,
             cap: style.cap,
             join: style.join,
             // Um conector é uma linha ABERTA, então o alinhamento é inerte aqui — mas ele viaja

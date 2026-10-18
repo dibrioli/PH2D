@@ -37,6 +37,10 @@ use super::*;
 /// that display engineering units while the linked slider still drives
 /// a 0..1 normalised value).
 ///
+/// `mixed` — o «misto» do BulkSelect
+/// ([`crate::interaction::WidgetStore::number_input_mixed`]): sem foco o campo pinta em branco, e
+/// ganha do `display_override`; com foco pinta o buffer, como sempre.
+///
 /// [`apply_number_stepper_if_hit`]: crate::interaction::dispatch
 #[allow(clippy::too_many_arguments)]
 pub fn paint_number_chip(
@@ -45,6 +49,7 @@ pub fn paint_number_chip(
     value: f64,
     display_override: Option<&str>,
     buffer: Option<&str>,
+    mixed: bool,
     caret: usize,
     selection_anchor: Option<usize>,
     scene: &mut VectorScene,
@@ -57,6 +62,7 @@ pub fn paint_number_chip(
         value,
         display_override,
         buffer,
+        mixed,
         caret,
         selection_anchor,
         scene,
@@ -83,6 +89,7 @@ pub fn paint_number_chip_flat(
     value: f64,
     display_override: Option<&str>,
     buffer: Option<&str>,
+    mixed: bool,
     caret: usize,
     selection_anchor: Option<usize>,
     scene: &mut VectorScene,
@@ -95,6 +102,7 @@ pub fn paint_number_chip_flat(
         value,
         display_override,
         buffer,
+        mixed,
         caret,
         selection_anchor,
         scene,
@@ -112,6 +120,7 @@ fn paint_number_chip_inner(
     value: f64,
     display_override: Option<&str>,
     buffer: Option<&str>,
+    mixed: bool,
     caret: usize,
     selection_anchor: Option<usize>,
     scene: &mut VectorScene,
@@ -144,6 +153,8 @@ fn paint_number_chip_inner(
     let display_owned;
     let display = match (focused, buffer, display_override) {
         (true, Some(b), _) => b,
+        // BulkSelect: a seleção difere aqui — sem foco, o campo fica em branco (o «misto»).
+        (false, _, _) if mixed => "",
         (_, _, Some(s)) => s,
         _ => {
             display_owned = crate::interaction::format_number(value);

@@ -321,14 +321,14 @@ fn what_the_apply_writes_the_selection_reads_back() {
 fn adopting_a_style_does_not_arm_the_restyle() {
     use ph2d_tool_vector::VectorTool;
     let mut tool = VectorTool::default();
-    assert!(!tool.take_apply_to_selected(), "o default nao arma");
+    assert!(tool.take_authored().is_empty(), "o default nao arma");
     tool.adopt_stroke(
         &style().onto(&StrokeSpec::new(style().color, 0.2), 0.2),
         10.0,
     );
     tool.adopt_fill([1, 2, 3, 4]);
     assert!(
-        !tool.take_apply_to_selected(),
+        tool.take_authored().is_empty(),
         "adotar armou a reescrita da selecao"
     );
 }
@@ -371,7 +371,14 @@ fn selecting_a_path_reseeds_the_store_not_only_the_tool() {
     let mut tool = VectorTool::default();
     let mut pen = PenTool::default();
     pen.select(Some(id));
-    super::style::seed_style_from_selection(&mut tool, &mut store, &pen, &scene, world_to_px, None);
+    super::style::seed_style_from_selection(
+        &mut tool,
+        &mut store,
+        &pen,
+        &scene,
+        ph2d_editor_core::DocPx::new(world_to_px as f32),
+        None,
+    );
 
     assert!(
         (tool.stroke_width_px() - width_world * world_to_px).abs() < 1e-9,

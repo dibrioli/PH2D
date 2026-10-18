@@ -308,6 +308,7 @@ fn paint_px_chip(ctx: &mut PaintCtx, theme: Theme, rect: Rect, id: ph2d_a11y::No
         *caret = buffer.len();
         *last_committed = f64::from(value);
     }
+    let mixed = store.number_input_mixed(id);
     let (st, buf, caret, anchor) = match store.get(id) {
         Some(InteractiveState::NumberInput {
             state,
@@ -324,6 +325,7 @@ fn paint_px_chip(ctx: &mut PaintCtx, theme: Theme, rect: Rect, id: ph2d_a11y::No
         f64::from(value),
         None,
         Some(&buf),
+        mixed,
         caret,
         anchor,
         ctx.scene,

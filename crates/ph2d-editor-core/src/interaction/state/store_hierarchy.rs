@@ -421,6 +421,7 @@ impl WidgetStore {
         // last-applied dragged value (effectively a no-op), defeating
         // audit fix #2.
         let dragging_this = matches!(self.number_input_drag.as_ref(), Some(d) if d.id == id);
+        self.mixed_numbers.remove(&id);
         if let Some(InteractiveState::NumberInput {
             value,
             buffer,
@@ -447,6 +448,10 @@ impl WidgetStore {
     /// restores `last_committed` WITHOUT emitting `ValueChanged`, so the
     /// diverging values are never stomped). No-op while this input is
     /// focused or being drag-scrubbed so it doesn't fight live input.
+    ///
+    /// ⚠️ O buffer vazio sozinho não chega aos pintores (sem foco eles formatam o `value`, e um
+    /// buffer vazio também é o de um campo por semear): quem os faz pintar em branco é a marca
+    /// [`Self::number_input_mixed`].
     pub fn blank_number_input(&mut self, id: NodeId) {
         if self.focus_id == Some(id) {
             return;
@@ -456,6 +461,20 @@ impl WidgetStore {
         }
         if let Some(InteractiveState::NumberInput { buffer, .. }) = self.states.get_mut(&id) {
             buffer.clear();
+            self.mixed_numbers.insert(id);
         }
+    }
+
+    /// O «misto» deste campo (ver [`Self::blank_number_input`]). Os pintores pintam em branco
+    /// quando `true` e o campo não tem foco; qualquer valor escrito (programático ou do artista)
+    /// apaga-o.
+    #[must_use]
+    pub fn number_input_mixed(&self, id: NodeId) -> bool {
+        self.mixed_numbers.contains(&id)
+    }
+
+    /// Um valor do ARTISTA (digitado, setinha, arrasto) chegou a este campo: deixa de ser «misto».
+    pub(crate) fn clear_number_input_mixed(&mut self, id: NodeId) {
+        self.mixed_numbers.remove(&id);
     }
 }

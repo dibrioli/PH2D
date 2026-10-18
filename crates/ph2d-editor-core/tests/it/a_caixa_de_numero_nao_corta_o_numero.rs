@@ -50,6 +50,7 @@ fn pinta(display: &str) -> Vec<ph2d_editor_core::text_elide::elisao::Medido> {
             0.5,
             Some(display),
             None,
+            false,
             0,
             None,
             &mut cena,

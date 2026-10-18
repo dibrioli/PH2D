@@ -207,6 +207,7 @@ fn paint_fields_row_inner(
         paint_number_input_with_buffer(
             &input,
             Some(buffer),
+            store.number_input_mixed(id),
             caret,
             anchor,
             rect,
@@ -347,6 +348,7 @@ pub fn paint_field_row_value(
     id: NodeId,
     value: f64,
     buffer: Option<&str>,
+    mixed: bool,
     caret: usize,
     anchor: Option<usize>,
     visual: (crate::widget::TextInputState, f32),
@@ -362,6 +364,7 @@ pub fn paint_field_row_value(
     paint_number_input_with_buffer(
         &input,
         buffer,
+        mixed,
         caret,
         anchor,
         rect,

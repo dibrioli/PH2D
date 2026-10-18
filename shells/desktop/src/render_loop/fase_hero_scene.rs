@@ -37,7 +37,7 @@ impl crate::App {
             self.fase_selection_mirror_filters(sel);
             self.fase_selection_mirror_effects_envelope(env_container);
         }
-        self.fase_shape_fields(vec_px_to_world);
+        self.fase_shape_fields();
         self.fase_vector_upkeeps();
         let (drawing, reparent_intent) =
             self.fase_vector_tree_settle(fase_vector_tree_settle::TreeSettleIntents {

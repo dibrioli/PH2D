@@ -182,6 +182,60 @@ pub fn format_value(v: f64, decimals: usize) -> String {
     format!("{v:.decimals$}")
 }
 
+/// **O PIXEL DO DOCUMENTO** — a régua de toda medida de DESENHO que o artista autora em px: a
+/// espessura do traço, os raios e cantos das formas (plano 31 da UI nova).
+///
+/// É o `pixels_per_meter` do projeto e mais nada: o mesmo «3» dá a mesma linha a 50 % e a 400 %, e o
+/// número que o painel mostra não muda com o zoom (Illustrator, Figma, Inkscape; o Blender removeu
+/// o «Screen Space» no 4.3). ⛔ O `px_to_world` da câmera NÃO é esta régua — ele fica para o que é
+/// da MÃO e do ECRÃ (raio de clique, tolerância do lápis, realces).
+///
+/// Um tipo, e não um `f64` solto, para que a régua de tela não volte por engano: as funções que
+/// recebiam o `px_to_world` passam a pedir isto, e o compilador aponta cada chamador.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct DocPx {
+    pixels_per_meter: f64,
+}
+
+impl DocPx {
+    /// A régua do projeto por omissão (`DEFAULT_PIXELS_PER_METER`) — para os `const` e as fixturas.
+    pub const DEFAULT: Self = Self {
+        pixels_per_meter: crate::project::DEFAULT_PIXELS_PER_METER as f64,
+    };
+
+    /// A régua de um projeto. Um `pixels_per_meter` não-positivo (escrita direta no campo
+    /// público) cai no piso da UI em vez de dar infinito.
+    #[must_use]
+    pub fn new(pixels_per_meter: f32) -> Self {
+        Self {
+            pixels_per_meter: f64::from(pixels_per_meter.max(crate::project::MIN_PIXELS_PER_METER)),
+        }
+    }
+
+    #[must_use]
+    pub fn of(p: &ProjectSettings) -> Self {
+        Self::new(p.pixels_per_meter)
+    }
+
+    /// Px do documento → metros de mundo.
+    #[must_use]
+    pub fn to_world(self, px: f64) -> f64 {
+        px / self.pixels_per_meter
+    }
+
+    /// Metros de mundo → px do documento — o inverso exato de [`Self::to_world`].
+    #[must_use]
+    pub fn of_world(self, world: f64) -> f64 {
+        world * self.pixels_per_meter
+    }
+}
+
+impl Default for DocPx {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
 #[cfg(test)]
 #[path = "length_tests.rs"]
 mod tests;

@@ -65,13 +65,18 @@ fn the_panel_arms_only_the_field_it_touched() {
 #[test]
 fn the_second_dash_pair_and_the_end_head_size_reach_the_tool() {
     let mut t = VectorTool::new();
-    let _ = t.take_apply_to_selected();
+    let _ = t.take_authored();
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH_NUM, 4.0));
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP_NUM, 2.0));
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH_2, 1.0));
-    assert!(t.take_apply_to_selected(), "o par 2 reestiliza a selecao");
+    use crate::StyleFields as F;
+    assert_eq!(
+        t.take_authored(),
+        F::dash(0, false) | F::dash(0, true) | F::dash(1, false),
+        "cada número do tracejado arma o SEU campo (plano 31)"
+    );
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP_2, 0.5));
-    assert!(t.take_apply_to_selected());
+    assert_eq!(t.take_authored(), F::dash(1, true));
     let p = t.dash_pattern().expect("ha' tracejado");
     assert_eq!(p.pairs[0], [4.0, 2.0], "o par 1 ficou");
     assert_eq!(p.pairs[1], [1.0, 0.5], "o par 2 chegou");
@@ -85,6 +90,6 @@ fn the_second_dash_pair_and_the_end_head_size_reach_the_tool() {
         PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE_END, 2.5),
     );
     assert_eq!(t.marker_scale(), [antes[0], 2.5], "so' o fim mudou");
-    assert!(t.take_apply_to_selected());
+    assert_eq!(t.take_authored(), F::MARKER_SCALE_END);
     assert_eq!(t.ui_snapshot().marker_scale, [antes[0], 2.5]);
 }

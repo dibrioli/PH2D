@@ -66,6 +66,10 @@ pub struct Appearance {
     /// ⚠️ **O painel pinta-a ao contrário** (o topo em cima, como o Illustrator), e essa inversão
     /// vive num sítio só: senão o artista arrasta uma camada para cima e ela desce.
     pub layers: Vec<PaintRow>,
+    /// A seleção múltipla tem opacidades / modos DIFERENTES: o número fica em branco e o chip do
+    /// modo diz «misto» (plano 31; revoga o «mostra o primário» do `appearance.rs`).
+    pub mixed_opacity: bool,
+    pub mixed_blend: bool,
 }
 
 thread_local! {

@@ -35,14 +35,14 @@ fn traco(scene: &VecScene, id: VecPathId) -> Option<StrokeSpec> {
 fn a_shape_can_gain_a_stroke_it_was_not_born_with() {
     let (mut scene, pen, id) = cena(false);
     assert!(traco(&scene, id).is_none(), "a fixtura tem de comecar sem");
-    assert!(toggle(&mut scene, &pen, 1.0));
+    assert!(toggle(&mut scene, &pen));
     assert!(
         traco(&scene, id).is_some(),
         "a forma continua sem traco - o buraco esta' de pe'"
     );
 }
 
-/// ⚠️⚠️ **O traço novo sai da ficha da FERRAMENTA, e a largura cruza o `px_to_world`.**
+/// ⚠️⚠️ **O traço novo sai da ficha da FERRAMENTA, e a largura chega em MUNDO (plano 31).**
 ///
 /// Um default escrito na porta seria uma segunda resposta a *"que traço uma coisa nova recebe?"*, e
 /// a forma vestida pela caixa sairia diferente da desenhada pela ferramenta de forma.
@@ -51,11 +51,12 @@ fn the_new_stroke_comes_from_the_tool_style_not_from_a_default() {
     let (mut scene, mut pen, id) = cena(false);
     let mut estilo = pen.style();
     estilo.stroke = Rgba8::new(200, 30, 40, 255);
-    estilo.stroke_w_px = 8.0;
+    // 8 px a 0,25 de mundo por px — a ponte entrega a largura já em mundo.
+    estilo.stroke_w = 8.0 * 0.25;
     estilo.cap = ph2d_vec_scene::LineCap::Round;
     pen.set_style(estilo);
 
-    assert!(toggle(&mut scene, &pen, 0.25));
+    assert!(toggle(&mut scene, &pen));
     let s = traco(&scene, id).expect("vestiu");
     assert_eq!(
         s.color(),
@@ -81,9 +82,9 @@ fn the_new_stroke_comes_from_the_tool_style_not_from_a_default() {
 #[test]
 fn unchecking_removes_the_stroke_and_rechecking_brings_one_back() {
     let (mut scene, pen, id) = cena(true);
-    assert!(toggle(&mut scene, &pen, 1.0));
+    assert!(toggle(&mut scene, &pen));
     assert!(traco(&scene, id).is_none(), "tirar nao tirou");
-    assert!(toggle(&mut scene, &pen, 1.0));
+    assert!(toggle(&mut scene, &pen));
     assert!(traco(&scene, id).is_some(), "voltar a por nao pos");
 }
 
@@ -124,7 +125,7 @@ fn there_is_no_answer_without_exactly_one_shape_selected() {
     assert_eq!(selected_stroke_present(&scene3, &muitos), None);
     // E a porta também não age — senão o clique escreveria numa das duas, à sorte.
     let cena_antes = scene3.clone();
-    assert!(!toggle(&mut scene3, &muitos, 1.0));
+    assert!(!toggle(&mut scene3, &muitos));
     assert!(scene3 == cena_antes, "a porta mexeu numa seleccao multipla");
 }
 
@@ -144,17 +145,16 @@ fn there_is_no_answer_without_exactly_one_shape_selected() {
 fn the_box_dresses_a_shape_exactly_like_the_tool_draws_one() {
     let (mut scene, mut pen, id) = cena(false);
     let mut estilo = pen.style();
-    estilo.stroke_w_px = 5.0;
+    estilo.stroke_w = 5.0 * 0.4;
     estilo.join = ph2d_vec_scene::LineJoin::Bevel;
     estilo.dash = Some(ph2d_vec_scene::DashPattern::single(3.0, 2.0));
     estilo.marker_end = ph2d_vec_scene::Marker::Triangle;
     pen.set_style(estilo);
 
-    let px_to_world = 0.4;
-    assert!(toggle(&mut scene, &pen, px_to_world));
+    assert!(toggle(&mut scene, &pen));
     assert_eq!(
         traco(&scene, id).expect("vestiu"),
-        estilo.stroke_spec(estilo.stroke_w_px * px_to_world),
+        estilo.stroke_spec(estilo.stroke_w),
         "a caixa e a ferramenta deixaram de dar o MESMO traco"
     );
 }

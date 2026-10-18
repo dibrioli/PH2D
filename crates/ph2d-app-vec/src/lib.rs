@@ -227,6 +227,8 @@ mod vector_mode_handles;
 mod vector_mode_interface;
 /// As cenas 29 e 30 (F19): o painel lê a forma depois do Show do Hover.
 mod vector_mode_le_a_forma;
+/// As cenas 31 e 32 (F20): a seleção de duas diz «misto»; a Width na unidade do documento.
+mod vector_mode_misto;
 /// A cena 21 (F14): as quinas arredondadas em toda forma que as tem.
 mod vector_mode_quinas;
 /// A cena 20 (F13): o modo Forma selecciona — o clique desarma e traz as alças.
@@ -322,4 +324,12 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
 /// Um roteador-interruptor desta família — ver a nota do [`FAMILY`] sobre o `max_level`.
 const fn r(env: &'static str) -> ph2d_app_host::SmokeRouter {
     ph2d_app_host::SmokeRouter { env, max_level: 1 }
+}
+
+/// A régua de documento em que `px_to_world` de mundo valem um px — as fixturas falam a escala
+/// delas (plano 31: os campos `Px` atravessam pelo `DocPx`, nunca pelo zoom).
+#[cfg(test)]
+pub(crate) fn doc_of(px_to_world: f64) -> ph2d_editor_core::DocPx {
+    #[expect(clippy::cast_possible_truncation, reason = "escala de fixtura")]
+    ph2d_editor_core::DocPx::new((1.0 / px_to_world) as f32)
 }

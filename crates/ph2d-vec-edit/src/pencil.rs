@@ -313,11 +313,7 @@ impl Pencil {
         };
         let shape = self.hold.shape();
         let heads = shape.as_ref().map_or([None; 2], |s| s.heads());
-        let ends = arrow_ends(
-            &self.style,
-            heads,
-            self.style.stroke_w_px * self.px_to_world,
-        );
+        let ends = arrow_ends(&self.style, heads, self.style.stroke_w);
         let (verts, closed) = match shape {
             Some(s) => {
                 let p = s.to_path();
@@ -348,10 +344,7 @@ impl Pencil {
             fill: None,
             // A largura é autorada em px de tela e a geometria só fala mundo — a conversão usa o
             // `px_to_world` congelado no press, como a `ShapeTool`.
-            stroke: Some(
-                self.style
-                    .stroke_spec(self.style.stroke_w_px * self.px_to_world),
-            ),
+            stroke: Some(self.style.stroke_spec(self.style.stroke_w)),
             ..VecPath::default()
         }
     }

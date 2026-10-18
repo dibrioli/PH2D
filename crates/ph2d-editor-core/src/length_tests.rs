@@ -190,3 +190,20 @@ fn a_degenerate_scale_does_not_poison_the_document() {
     };
     assert!(d.to_world(150.0).is_finite());
 }
+
+/// **O pixel do documento vai e volta ao bit, e não conhece o zoom** (plano 31): a espessura e os
+/// raios que o artista digita atravessam por aqui.
+#[test]
+fn o_pixel_do_documento_vai_e_volta() {
+    for ppm in [DEFAULT_PIXELS_PER_METER, 37.5, 1.0] {
+        let d = super::DocPx::new(ppm);
+        for px in [0.0_f64, 3.0, 2.952, 100.0] {
+            assert!(
+                (d.of_world(d.to_world(px)) - px).abs() < 1e-9,
+                "{ppm} @ {px}"
+            );
+        }
+    }
+    assert!((super::DocPx::default().to_world(3.0) - 0.03).abs() < 1e-12);
+    assert!(super::DocPx::new(0.0).to_world(3.0).is_finite());
+}

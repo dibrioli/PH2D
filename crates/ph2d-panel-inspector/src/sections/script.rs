@@ -446,6 +446,7 @@ fn controlo(
             paint_number_input_with_buffer(
                 &input,
                 Some(buffer),
+                store.number_input_mixed(id),
                 caret,
                 anchor,
                 ctrl,
@@ -529,6 +530,7 @@ fn controlo(
                 paint_number_input_with_buffer(
                     &input,
                     Some(buffer),
+                    store.number_input_mixed(id),
                     caret,
                     anchor,
                     r,

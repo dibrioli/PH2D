@@ -60,7 +60,7 @@ fn variants(kind: ShapeKind, h: &HandleDesc) -> Vec<ShapeValues> {
     for t in [0.1, 0.35, 0.7] {
         let mut v = kind.defaults();
         for &i in h.fields {
-            let (lo, hi, int) = range_world(kind, i, PX).expect("campo do descritor");
+            let (lo, hi, int) = range_world(kind, i, doc_of(PX)).expect("campo do descritor");
             let x = lo + (hi - lo) * t;
             v[i] = if int { x.round() } else { x };
         }
@@ -143,7 +143,7 @@ fn the_hand_takes_the_handle_where_it_is_dropped() {
             for b in variants(kind, h).into_iter().skip(1) {
                 let qb = handle_point(h, &b, HALF, &ck).expect("ponto do alvo");
                 let mut d = HandleDrag::start(k, def, q0, q0, HALF);
-                let r = drag(kind, &mut d, qb, Mods::default(), HALF, PX, &ck);
+                let r = drag(kind, &mut d, qb, Mods::default(), HALF, PX, doc_of(PX), &ck);
                 let qr = handle_point(h, &r, HALF, &ck).expect("ponto do resultado");
                 match h.law {
                     Law::Count => assert_eq!(
@@ -153,7 +153,7 @@ fn the_hand_takes_the_handle_where_it_is_dropped() {
                     ),
                     // O ponto da caixa: os campos andam o que a mão andou, em frações da caixa.
                     Law::BoxPoint => {
-                        let f = |i: usize| range_world(kind, h.fields[i], PX).unwrap();
+                        let f = |i: usize| range_world(kind, h.fields[i], doc_of(PX)).unwrap();
                         let (fu, fv) = (f(0), f(1));
                         let u = def[h.fields[0]] + (qb[0] - q0[0]) / (2.0 * HALF[0]);
                         let w = def[h.fields[1]] - (qb[1] - q0[1]) / (2.0 * HALF[1]);
@@ -194,7 +194,7 @@ fn grabbing_a_handle_off_centre_does_not_move_it() {
             };
             let p = [q[0] + 0.03, q[1] - 0.02];
             let mut d = HandleDrag::start(k, v, p, q, HALF);
-            let r = drag(kind, &mut d, p, Mods::default(), HALF, PX, &ck);
+            let r = drag(kind, &mut d, p, Mods::default(), HALF, PX, doc_of(PX), &ck);
             for &i in h.fields {
                 assert!(
                     (r[i] - v[i]).abs() < 1e-6 * (1.0 + v[i].abs()),
@@ -228,13 +228,13 @@ fn a_corner_handle_sits_inside_the_corner_at_the_arc_centre() {
             (q[0].abs() - HALF[0]).abs() < 1e-9 && (q[1].abs() - HALF[1]).abs() < 1e-9,
             "o ponto verdadeiro de raio zero é a quina: {q:?}"
         );
-        let g = handle_grip(kind, h, &v, HALF, PX, 0.25, &ck).unwrap();
+        let g = handle_grip(kind, h, &v, HALF, doc_of(PX), 0.25, &ck).unwrap();
         assert!(
             (g[0] - (q[0] + sx * 0.25)).abs() < 1e-9 && (g[1] - (q[1] + sy * 0.25)).abs() < 1e-9,
             "canto {k}: na diagonal {g:?}"
         );
         v[0] = 0.8;
-        let g = handle_grip(kind, h, &v, HALF, PX, 0.25, &ck).unwrap();
+        let g = handle_grip(kind, h, &v, HALF, doc_of(PX), 0.25, &ck).unwrap();
         assert!(
             (g[0] - (q[0] + sx * 0.8)).abs() < 1e-6 && (g[1] - (q[1] + sy * 0.8)).abs() < 1e-6,
             "canto {k}: no centro do arco {g:?}"
@@ -273,6 +273,7 @@ fn alt_rounds_only_the_grabbed_corner() {
             },
             HALF,
             PX,
+            doc_of(PX),
             &ck,
         );
         let (before, after) = (radii(&v), radii(&alone));
@@ -291,7 +292,7 @@ fn alt_rounds_only_the_grabbed_corner() {
             }
         }
         let mut d = HandleDrag::start(k, v, q, q, HALF);
-        let all = drag(kind, &mut d, p, Mods::default(), HALF, PX, &ck);
+        let all = drag(kind, &mut d, p, Mods::default(), HALF, PX, doc_of(PX), &ck);
         let after = radii(&all);
         for c in 0..4 {
             assert!(
@@ -320,7 +321,7 @@ pub(super) fn spin(
     for s in 1..=steps {
         let a = (a0 + turn_deg * f64::from(s) / f64::from(steps)).to_radians();
         let p = [HALF[0] * r * a.cos(), HALF[1] * r * a.sin()];
-        out = drag(kind, &mut d, p, mods, HALF, PX, &ck);
+        out = drag(kind, &mut d, p, mods, HALF, PX, doc_of(PX), &ck);
     }
     out
 }
@@ -505,7 +506,7 @@ pub(super) fn replay(
     for s in 1..=12 {
         let t = f64::from(s) / 12.0;
         let p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-        out = drag(kind, &mut d, p, mods, half, 1.0, &ck);
+        out = drag(kind, &mut d, p, mods, half, 1.0, doc_of(1.0), &ck);
     }
     out
 }

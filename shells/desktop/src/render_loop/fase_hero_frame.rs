@@ -308,7 +308,6 @@ impl crate::App {
                 pending_vec_shape_param: take(&mut pd.pending_vec_shape_param),
                 pending_vec_connector: take(&mut pd.pending_vec_connector),
             },
-            vec_px_to_world,
         )?;
         let fase_text_fields::TextFieldsOut {
             editing_session,
@@ -401,7 +400,7 @@ impl crate::App {
         self.fase_canvas_overlays(window_size);
         self.fase_selection_highlight(flip_active, flip_style, viewport);
 
-        self.fase_text_panel(vec_px_to_world);
+        self.fase_text_panel();
 
         self.fase_entity_sync(vec_cfg);
         Some(())

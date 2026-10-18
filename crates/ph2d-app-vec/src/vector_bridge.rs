@@ -11,7 +11,7 @@
 //!    tool via [`VectorTool::set_stroke_rgba`] / [`VectorTool::set_fill_rgba`].
 //! 3. **Style sync** — copy the tool's stroke / fill / width into the Pen so
 //!    newly drawn paths honour the Style.
-//! 4. **Recolour selected** — when a colour changed (`take_apply_to_selected`),
+//! 4. **Restyle selected** — the fields the panel changed (`take_authored`, plano 31),
 //!    recolour the selected path. (The undo step is the GLOBAL queue's, by state
 //!    diff; the per-gesture `RECOLOR_PRE` snapshot died with the vector `History`
 //!    on 2026-09-12 — it fed a stack nobody undid.)
@@ -28,11 +28,17 @@ use ph2d_vec_edit::{PenStyle, PenTool, ShapeTool};
 use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::VecScene;
 
+/// Campo a campo: a escrita e a leitura («misto») da seleção múltipla (plano 31).
+#[path = "vector_bridge_fields.rs"]
+mod fields;
 /// O estilo do traço (o registro que o painel edita, o detector e o escritor — juntos de
 /// propósito). Módulo irmão pelo teto de LOC; o doc dele explica por que os três não se
 /// separam.
 #[path = "vector_bridge_style.rs"]
 mod style;
+pub use fields::mixed_of;
+use fields::{fill_merge, restyle_selected_fields};
+use ph2d_tool_vector::StyleFields;
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
 /// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
 pub use style::{StrokeStyle, restyle_selected_strokes, seed_fill_from_paint};
@@ -234,20 +240,10 @@ pub fn dispatch(
     // mudou por mão alheia (antes de qualquer leitura do Style abaixo, senão o frame ainda
     // pintaria o antigo). A régua fecha-se em `note_style_seen`, depois do passo 4.
     //
-    // ⚠️ A largura viaja em px de TELA na tool e em MUNDO no documento; a conversão tem um dono
-    // só, e é este (`px_to_world` é o recíproco).
-    seed_style_from_selection(
-        tool,
-        &mut hero.store,
-        pen,
-        scene,
-        if px_to_world > 0.0 {
-            1.0 / px_to_world
-        } else {
-            0.0
-        },
-        grad_handle,
-    );
+    // ⭐ A largura viaja em px do DOCUMENTO na tool e em MUNDO no documento; a régua é o
+    // `pixels_per_meter` do projeto, NUNCA o zoom (plano 31: o mesmo «3» a qualquer zoom).
+    let doc = ph2d_editor_core::DocPx::of(&hero.project);
+    seed_style_from_selection(tool, &mut hero.store, pen, scene, doc, grad_handle);
 
     // **Uma cor autorada SOLTA o token** (plano UI/UX W4a) — o one-shot do tool, drenado aqui e
     // consumido pelo passe que tem o mundo e a seleção na mão.
@@ -278,7 +274,7 @@ pub fn dispatch(
     // ── 3. New paths honour the tool's Style (pen + shape share it). ──────
     let style = PenStyle {
         stroke: rgba(stroke),
-        stroke_w_px: tool.stroke_width_px(),
+        stroke_w: doc.to_world(tool.stroke_width_px()),
         fill: rgba(fill),
         cap,
         join,
@@ -311,7 +307,9 @@ pub fn dispatch(
     // a forma selecionada** (Enio 2026-08-01). Quem sabe a segunda é o TOOL, que recebeu o evento.
     // ⛔ A PRIMEIRA pergunta morreu em 2026-09-12 com a `History` do vetor, o único leitor dela: o
     // passo de undo é o da fila GLOBAL, que regista por diff de estado.
-    let width_authored = tool.take_width_authored();
+    // ⭐ **Os CAMPOS que o gesto mudou** (plano 31): cada forma selecionada recebe só esses.
+    let authored = tool.take_authored();
+    let width_authored = authored.has(StyleFields::WIDTH);
     // **Digitar uma espessura SOLTA o token dela** (W4c.4) — a mesma lei da cor, pelo mesmo canal.
     if width_authored {
         crate::bindings::note_authored(ph2d_ecs::BoundProp::StrokeWidth);
@@ -326,9 +324,9 @@ pub fn dispatch(
             .and_then(|f| selected_grad_color(f, h))
             .is_some()
     });
-    if tool.take_apply_to_selected() {
+    if !authored.is_empty() {
         // Restyle EVERY selected path, not just the primary — a multi-selection
-        // (marquee, Shift+click, or all the glyphs of a text block) recolours as one
+        // (marquee, Shift+click, or all the glyphs of a text block) restyles as one
         // (Enio 2026-07-11). A gradient-handle recolour is the one exception: the
         // handle addresses the PRIMARY path's fill slot, so it stays single-path.
         let sel_ids: Vec<ph2d_vec_scene::VecPathId> = if active_handle.is_some() {
@@ -336,17 +334,10 @@ pub fn dispatch(
         } else {
             pen.selected_paths().to_vec()
         };
-        let new_stroke = rgba(stroke);
-        // ⭐ **A cor de preenchimento viaja CRUA daqui para baixo** (W6). Ela era pré-digerida num
-        // `Option<Rgba8>` — `alfa 0 => None` —, o que era a convenção do SÓLIDO aplicada antes de
-        // saber a espécie da tinta; num padrão a mesma leitura destruiria a grade e o ladrilho.
-        // *Uma decisão tomada antes de conhecer o sujeito é uma decisão tomada pelo caso errado.*
-        let new_w = tool.stroke_width_px() * px_to_world;
-        // A ficha ÚNICA do traço: a mesma que detecta a mudança e a que a grava (as pontas,
-        // o tamanho e o arredondamento delas viajam aqui — um campo só num dos dois lados
-        // seria um controle que mexe no número e não muda nada na tela).
+        let new_w = doc.to_world(tool.stroke_width_px());
+        // A ficha do traço: o escritor campo a campo É o detector (`onto_fields(s) != *s`).
         let stroke_style = StrokeStyle {
-            color: new_stroke,
+            color: rgba(stroke),
             cap,
             join,
             align,
@@ -356,55 +347,48 @@ pub fn dispatch(
             marker_scale,
             marker_round,
         };
+        let stroke_campos = authored & StyleFields::STROKE;
+        let fill_campos = authored & StyleFields::FILL;
+        // ⭐ A cor de preenchimento viaja CRUA (W6): a lei da espécie de tinta vive inteira no
+        // `apply_fill_colour`; aqui só se compõe o RGB e/ou a alfa novos sobre a cor de CADA forma.
+        let fill_of =
+            |p: &ph2d_vec_scene::VecPath| fill_merge(p.fill.as_ref(), rgba(fill), fill_campos);
         let differs = |p: &ph2d_vec_scene::VecPath| {
-            let stroke_differs = p.stroke.as_ref().is_some_and(|s| {
-                stroke_style.differs_from(s)
-                    || (width_authored && (s.width - new_w).abs() > f64::EPSILON)
-            });
-            let fill_differs = if let Some(h) = active_handle {
-                // Recolour the selected gradient slot (point / ramp stop).
-                p.fill.as_ref().and_then(|f| selected_grad_color(f, h)) != Some(rgba(fill))
-            } else {
-                // ⭐ Sem alça de gradiente, o que um pick faz depende da ESPÉCIE da tinta, e a lei
-                // inteira vive numa porta só (`apply_fill_colour`): gradiente intocável, padrão
-                // recolorido e desvanecido, sólido/vazio substituído. Perguntar é aplicá-la num
-                // clone — *a decisão escrita aqui e no escritor eram duas leis a manter iguais à
-                // mão, e a do padrão faltava numa delas.*
-                let mut sondagem = p.fill.clone();
-                apply_fill_colour(&mut sondagem, p.closed, rgba(fill))
-            };
+            let stroke_differs = !stroke_campos.is_empty()
+                && p.stroke
+                    .as_ref()
+                    .is_some_and(|s| stroke_style.onto_fields(s, new_w, stroke_campos) != *s);
+            let fill_differs = !fill_campos.is_empty()
+                && if let Some(h) = active_handle {
+                    p.fill.as_ref().and_then(|f| selected_grad_color(f, h)) != Some(rgba(fill))
+                } else {
+                    let mut sondagem = p.fill.clone();
+                    apply_fill_colour(&mut sondagem, p.closed, fill_of(p))
+                };
             stroke_differs || fill_differs
         };
-        let will_change = sel_ids.iter().any(|&id| {
-            scene
-                .paths()
-                .iter()
-                .find(|p| p.id == id)
-                .is_some_and(&differs)
-        });
+        let will_change = sel_ids
+            .iter()
+            .any(|&id| scene.path(id).is_some_and(&differs));
         if will_change {
-            // O TRAÇO de todos os selecionados, de uma vez (a largura só acompanha quando FOI
-            // autorada — arrastando o slider ou digitando na caixa; uma escolha de cor nunca pode
-            // reengrossar a linha, e é o `None` daqui que a impede).
-            restyle_selected_strokes(
-                scene,
-                &sel_ids,
-                &stroke_style,
-                width_authored.then_some(new_w),
-            );
-            for &id in &sel_ids {
-                let Some(path) = scene.path_mut(id) else {
-                    continue;
-                };
-                if let Some(h) = active_handle {
-                    // Recolour the selected gradient slot (never converts to solid).
-                    if let Some(paint) = path.fill.as_mut() {
-                        set_selected_grad_color(paint, h, rgba(fill));
+            if !stroke_campos.is_empty() {
+                restyle_selected_fields(scene, &sel_ids, &stroke_style, new_w, stroke_campos);
+            }
+            if !fill_campos.is_empty() {
+                for &id in &sel_ids {
+                    let Some(path) = scene.path_mut(id) else {
+                        continue;
+                    };
+                    if let Some(h) = active_handle {
+                        // Recolour the selected gradient slot (never converts to solid).
+                        if let Some(paint) = path.fill.as_mut() {
+                            set_selected_grad_color(paint, h, rgba(fill));
+                        }
+                    } else {
+                        let c = fill_of(path);
+                        let closed = path.closed;
+                        apply_fill_colour(&mut path.fill, closed, c);
                     }
-                } else {
-                    // A MESMA porta que o `differs` sondou — nunca uma segunda cópia da decisão.
-                    let closed = path.closed;
-                    apply_fill_colour(&mut path.fill, closed, rgba(fill));
                 }
             }
         }
@@ -414,8 +398,13 @@ pub fn dispatch(
     //
     // ⚠️ Esta primeira publicação fica AQUI porque é a única que lê a TOOL (`ui_snapshot`),
     // que é um empréstimo mútuo do registry; o resto do passo 5 mora no módulo irmão.
+    let mixed = mixed_of(pen, scene);
+    fields::blank_mixed_numbers(&mut hero.store, tool, mixed);
     ph2d_panel_vector::set_current_vector_style(if vector_active {
-        Some(tool.ui_snapshot())
+        Some(ph2d_tool_vector::VectorStyleSnapshot {
+            mixed,
+            ..tool.ui_snapshot()
+        })
     } else {
         None
     });
@@ -457,6 +446,9 @@ mod tests;
 #[cfg(test)]
 #[path = "vector_bridge_alheia_tests.rs"]
 mod alheia_tests;
+#[cfg(test)]
+#[path = "vector_bridge_misto_tests.rs"]
+mod misto_tests;
 
 /// A TRADUÇÃO do vocabulário tool ⟷ documento — módulo irmão pelo teto de 600 LOC (HR-18).
 #[path = "vector_bridge_vocab.rs"]

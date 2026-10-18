@@ -29,7 +29,7 @@ fn the_arrow_row_has_a_fixed_place_beside_the_visible_box() {
             let rails: Vec<[f64; 2]> = handles_of(k)
                 .iter()
                 .filter(|h| h.spot == Spot::Rail)
-                .map(|h| handle_grip(k, h, &v, HALF, 1.0, PARK, &ck).expect("grip"))
+                .map(|h| handle_grip(k, h, &v, HALF, doc_of(1.0), PARK, &ck).expect("grip"))
                 .collect();
             if rails.is_empty() {
                 break;
@@ -51,7 +51,8 @@ fn the_arrow_row_has_a_fixed_place_beside_the_visible_box() {
 
 fn drag_rail(kind: ShapeKind, i: usize, v: ShapeValues, rise: f64) -> ShapeValues {
     let ck = cooker(kind, HALF);
-    let q = handle_grip(kind, &handles_of(kind)[i], &v, HALF, 1.0, PARK, &ck).expect("grip");
+    let q =
+        handle_grip(kind, &handles_of(kind)[i], &v, HALF, doc_of(1.0), PARK, &ck).expect("grip");
     let mut d = HandleDrag::start(i, v, q, q, HALF);
     drag(
         kind,
@@ -60,6 +61,7 @@ fn drag_rail(kind: ShapeKind, i: usize, v: ShapeValues, rise: f64) -> ShapeValue
         Mods::default(),
         HALF,
         1.0,
+        doc_of(1.0),
         &ck,
     )
 }
@@ -162,7 +164,7 @@ fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
                 .filter(|p| *p != mid)
                 .collect();
             for h in handles_of(k).iter().filter(|h| h.spot == Spot::Rail) {
-                let p = handle_grip(k, h, &v, half, 1.0, park, &ck).expect("grip");
+                let p = handle_grip(k, h, &v, half, doc_of(1.0), park, &ck).expect("grip");
                 if (p[1] - (hi[1] - (hi[1] - lo[1]) * 0.25)).abs() < 1e-9 {
                     a_um_quarto += 1;
                 } else if (p[1] - mid[1]).abs() < 1e-9 {
@@ -209,7 +211,7 @@ fn no_arrow_lands_on_another_handle() {
                 for s in 0..=8 {
                     let mut v = k.defaults();
                     v[i] = f.min + (f.max - f.min) * f64::from(s) / 8.0;
-                    let g = |h: &HandleDesc| handle_grip(k, h, &v, half, 1.0, 18.0, &ck);
+                    let g = |h: &HandleDesc| handle_grip(k, h, &v, half, doc_of(1.0), 18.0, &ck);
                     let rails: Vec<_> = hs
                         .iter()
                         .filter(|h| h.spot == Spot::Rail)

@@ -490,6 +490,7 @@ pub(crate) fn paint_ramp_chip(
         *caret = buffer.len();
         *last_committed = value;
     }
+    let mixed = store.number_input_mixed(chip_id);
     let (st, buf, caret, anchor) = match store.get(chip_id) {
         Some(InteractiveState::NumberInput {
             state,
@@ -506,6 +507,7 @@ pub(crate) fn paint_ramp_chip(
         value,
         None,
         Some(&buf),
+        mixed,
         caret,
         anchor,
         ctx.scene,

@@ -62,6 +62,8 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
         opacity: 1.0,
         blend: ph2d_vec_scene::BlendMode::Normal,
         layers: Vec::new(),
+        mixed_opacity: false,
+        mixed_blend: false,
     }));
     let barras = ph2d_panel_vector::bars::tool_bars(&h.store, None, Vec::new());
     h.store.set_tool_bars(Some(barras));

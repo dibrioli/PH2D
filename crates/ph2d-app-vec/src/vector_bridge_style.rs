@@ -46,16 +46,13 @@ impl StrokeStyle {
     /// O traço `s` já é esta ficha, ou reescrevê-lo mudaria alguma coisa? (A largura fica de
     /// fora: ela só acompanha a tool enquanto o slider é arrastado.)
     pub fn differs_from(&self, s: &StrokeSpec) -> bool {
-        s.color() != self.color
-            || s.cap != self.cap
-            || s.join != self.join
-            || s.align != self.align
-            || s.dash != self.dash
-            || s.marker_start != self.marker_start
-            || s.marker_end != self.marker_end
-            || (s.marker_scale_start - self.marker_scale[0]).abs() > f64::EPSILON
-            || (s.marker_scale_end - self.marker_scale[1]).abs() > f64::EPSILON
-            || (s.marker_round - self.marker_round).abs() > f64::EPSILON
+        // O ESCRITOR é o detector (plano 31): um campo que um lado conhece e o outro não deixou de
+        // ser possível.
+        self.onto_fields(
+            s,
+            s.width,
+            ph2d_tool_vector::StyleFields::STROKE.without(ph2d_tool_vector::StyleFields::WIDTH),
+        ) != *s
     }
 
     /// O `StrokeSpec` desta ficha com a largura `width`, **escrito sobre `old`**.
@@ -87,9 +84,20 @@ impl StrokeStyle {
     /// caça há três waves — e é também o que faria o [`Self::differs_from`] disparar **todo
     /// quadro**, com cada um a virar um passo de undo.
     pub fn onto(&self, old: &StrokeSpec, width: f64) -> StrokeSpec {
-        use ph2d_vec_scene::StrokePaint;
-        let paint = match &old.paint {
-            StrokePaint::Solid(_) => StrokePaint::Solid(self.color),
+        self.onto_fields(old, width, ph2d_tool_vector::StyleFields::STROKE)
+    }
+}
+
+/// **A cor `color` escrita DENTRO da tinta do traço** — a espécie da tinta sobrevive (ver o
+/// [`StrokeStyle::onto`]). A porta única da cor do traço, partilhada pelo escritor campo a campo.
+pub(super) fn recolour_stroke_paint(
+    old: &ph2d_vec_scene::StrokePaint,
+    color: Rgba8,
+) -> ph2d_vec_scene::StrokePaint {
+    use ph2d_vec_scene::StrokePaint;
+    {
+        match old {
+            StrokePaint::Solid(_) => StrokePaint::Solid(color),
             // ⭐ **A MESMA lei do padrão** (plano 35 §7.2): a ficha possui uma COR, nunca a TINTA.
             // Um pincel guarda a cor de recurso, e é ela que a swatch mostra.
             //
@@ -109,7 +117,7 @@ impl StrokeStyle {
             // porque o amostrador quer um `f32`; aqui a opacidade é a alfa desta cor e mais nada.
             StrokePaint::Brush(b) => {
                 let mut b = b.clone();
-                b.fallback = self.color;
+                b.fallback = color;
                 StrokePaint::Brush(b)
             }
             StrokePaint::Pattern(p) => {
@@ -130,22 +138,9 @@ impl StrokeStyle {
                 // ⭐ **E a conta mora numa PORTA desde a W6** ([`recolour_pattern`]): o
                 // preenchimento faz exactamente isto do outro lado, e duas cópias do `a/255`
                 // divergiriam no dia em que uma ganhasse um arredondamento.
-                recolour_pattern(&mut p, self.color);
+                recolour_pattern(&mut p, color);
                 StrokePaint::Pattern(p)
             }
-        };
-        StrokeSpec {
-            paint,
-            width,
-            cap: self.cap,
-            join: self.join,
-            align: self.align,
-            dash: self.dash,
-            marker_start: self.marker_start,
-            marker_end: self.marker_end,
-            marker_scale_start: self.marker_scale[0],
-            marker_scale_end: self.marker_scale[1],
-            marker_round: self.marker_round,
         }
     }
 }
@@ -253,20 +248,19 @@ pub fn restyle_selected_strokes(
     style: &StrokeStyle,
     new_width: Option<f64>,
 ) -> usize {
-    let mut n = 0;
-    for &id in selection {
-        let Some(path) = scene.path_mut(id) else {
-            continue;
-        };
-        // Um caminho SEM traço (só preenchimento) não tem o que reestilizar — e ganhar um
-        // traço do nada seria a UI inventando geometria.
-        let Some(old) = path.stroke.as_ref() else {
-            continue;
-        };
-        path.stroke = Some(style.onto(old, new_width.unwrap_or(old.width)));
-        n += 1;
-    }
-    n
+    use ph2d_tool_vector::StyleFields as F;
+    let campos = if new_width.is_some() {
+        F::STROKE
+    } else {
+        F::STROKE.without(F::WIDTH)
+    };
+    super::fields::restyle_selected_fields(
+        scene,
+        selection,
+        style,
+        new_width.unwrap_or(0.0),
+        campos,
+    )
 }
 
 /// The colour the selected gradient handle addresses on `fill` — a multi-point
@@ -392,7 +386,7 @@ fn reseed_open_picker(
 ///
 /// ⚠️ **Ela era `seed_markers_from_selection` e adotava SÓ as pontas** — cor, largura, cap, join,
 /// dash e o alinhamento novo ficavam com o último valor autorado. Não era só display: o
-/// `take_apply_to_selected` REESCREVE a seleção com o que a tool tem, então tocar um único
+/// `take_apply_to_selected` de então REESCREVIA a seleção com o que a tool tem, então tocar um único
 /// controle empurrava o estilo velho inteiro para cima da forma recém-selecionada. Report do
 /// Enio, 2026-08-01: *"as propriedades ainda não são atualizadas para o objeto selecionado"*.
 ///
@@ -413,7 +407,7 @@ pub fn seed_style_from_selection(
     store: &mut ph2d_editor_core::interaction::WidgetStore,
     pen: &PenTool,
     scene: &VecScene,
-    world_to_px: f64,
+    doc: ph2d_editor_core::DocPx,
     grad_handle: Option<GradHandle>,
 ) {
     let now = seen_of(pen, scene);
@@ -443,7 +437,7 @@ pub fn seed_style_from_selection(
     let Some(stroke) = path.stroke.as_ref() else {
         return;
     };
-    tool.adopt_stroke(stroke, stroke.width * world_to_px);
+    tool.adopt_stroke(stroke, doc.of_world(stroke.width));
     reseed_open_picker(
         store,
         ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,

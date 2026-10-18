@@ -911,6 +911,8 @@ fn the_control_bar_leads_with_name_colours_and_stroke() {
         opacity: 1.0,
         blend: ph2d_vec_scene::BlendMode::Normal,
         layers: Vec::new(),
+        mixed_opacity: false,
+        mixed_blend: false,
     }));
     let one = Retrato {
         sel: 1,

@@ -81,6 +81,8 @@ fn publica(layers: Vec<PaintRow>) {
         opacity: 1.0,
         blend: BlendMode::Normal,
         layers,
+        mixed_opacity: false,
+        mixed_blend: false,
     }));
 }
 

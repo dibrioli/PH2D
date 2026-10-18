@@ -13,7 +13,6 @@ impl crate::App {
     pub(super) fn fase_connector_and_shape_params(
         &mut self,
         intents: ConnectorAndShapeParamsIntents,
-        vec_px_to_world: f64,
     ) -> Option<Vec<ph2d_vec_scene::VecPathId>> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
@@ -59,7 +58,7 @@ impl crate::App {
                 self.vec.draw_config.mode,
                 self.vec.shape_armed,
                 |kind, values| {
-                    crate::vec_shape_params::apply_shape_field(kind, values, id, v, vec_px_to_world)
+                    crate::vec_shape_params::apply_shape_field(kind, values, id, v, self.vec.doc)
                 },
             );
         }

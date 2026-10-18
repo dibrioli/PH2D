@@ -8,6 +8,17 @@
 
 use super::*;
 use ph2d_i18n::tr;
+use ph2d_tool_vector::StyleFields;
+
+/// O texto do chip de um número: vazio quando a seleção difere nesse campo (o BulkSelect do
+/// Inspector — o número em branco é o «misto»), senão o valor arredondado.
+pub(crate) fn mixed_or(snap: &VectorStyleSnapshot, f: StyleFields, v: f64) -> String {
+    if snap.agrees(f) {
+        format!("{}", v.round() as i64)
+    } else {
+        String::new()
+    }
+}
 
 impl BodyCtx<'_> {
     /// Width + Stroke swatch + Stroke opacity + Cap / Join + Dash / Gap.
@@ -109,7 +120,7 @@ impl BodyCtx<'_> {
             .number_value(ph2d_tool_vector::ids::VECTOR_WIDTH_NUM)
             .unwrap_or(snap.stroke_width_px);
         // **O TOKEN da ESPESSURA** (W4c.4). ⚠️ A rachura vai sobre o CHIP da row de Width, e não
-        // sobre a row inteira: é o número que mente — ele mostra a largura AUTORADA (em px de tela)
+        // sobre a row inteira: é o número que mente — ele mostra a largura AUTORADA (em px do documento)
         // enquanto o traço desenha o comprimento que o token dá. O retângulo vem da porta do
         // widget, para a marca não cair ao lado do campo num painel estreito, onde a row empilha.
         let width_row = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
@@ -119,7 +130,7 @@ impl BodyCtx<'_> {
             ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
             track,
             px,
-            &format!("{}", px.round() as i64),
+            &mixed_or(snap, StyleFields::WIDTH, px),
             y,
         );
         // ⚠️ Oferecida sob a MESMA condição da cor do traço, e pela metade que falta: um token de
@@ -140,6 +151,7 @@ impl BodyCtx<'_> {
         let (proximo, stroke_swatch_rect) = self.colour_swatch_row_rect(
             ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
             snap.stroke,
+            !snap.agrees(StyleFields::STROKE_RGB),
             tr("panel.vector.section.stroke"),
             y,
         );
@@ -169,7 +181,7 @@ impl BodyCtx<'_> {
             ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY_NUM,
             track,
             pct,
-            &format!("{}", pct.round() as i64),
+            &mixed_or(snap, StyleFields::STROKE_A, pct),
             y,
         );
 
@@ -194,17 +206,17 @@ impl BodyCtx<'_> {
                 (
                     ph2d_tool_vector::ids::VECTOR_CAP_BUTT,
                     tr("panel.vector.stroke.butt"),
-                    snap.cap == StrokeCap::Butt,
+                    snap.cap == StrokeCap::Butt && snap.agrees(StyleFields::CAP),
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_CAP_ROUND,
                     tr("panel.vector.stroke.round"),
-                    snap.cap == StrokeCap::Round,
+                    snap.cap == StrokeCap::Round && snap.agrees(StyleFields::CAP),
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_CAP_SQUARE,
                     tr("panel.vector.stroke.square"),
-                    snap.cap == StrokeCap::Square,
+                    snap.cap == StrokeCap::Square && snap.agrees(StyleFields::CAP),
                 ),
             ],
             y,
@@ -215,17 +227,17 @@ impl BodyCtx<'_> {
                 (
                     ph2d_tool_vector::ids::VECTOR_JOIN_MITER,
                     tr("panel.vector.stroke.miter"),
-                    snap.join == StrokeJoin::Miter,
+                    snap.join == StrokeJoin::Miter && snap.agrees(StyleFields::JOIN),
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_JOIN_ROUND,
                     tr("panel.vector.stroke.round"),
-                    snap.join == StrokeJoin::Round,
+                    snap.join == StrokeJoin::Round && snap.agrees(StyleFields::JOIN),
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_JOIN_BEVEL,
                     tr("panel.vector.stroke.bevel"),
-                    snap.join == StrokeJoin::Bevel,
+                    snap.join == StrokeJoin::Bevel && snap.agrees(StyleFields::JOIN),
                 ),
             ],
             y,
@@ -239,17 +251,17 @@ impl BodyCtx<'_> {
                 (
                     ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE,
                     tr("panel.vector.stroke.centre"),
-                    snap.align == StrokeAlign::Centre,
+                    snap.align == StrokeAlign::Centre && snap.agrees(StyleFields::ALIGN),
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_ALIGN_INNER,
                     tr("panel.vector.stroke.inner"),
-                    snap.align == StrokeAlign::Inner,
+                    snap.align == StrokeAlign::Inner && snap.agrees(StyleFields::ALIGN),
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_ALIGN_OUTER,
                     tr("panel.vector.stroke.outer"),
-                    snap.align == StrokeAlign::Outer,
+                    snap.align == StrokeAlign::Outer && snap.agrees(StyleFields::ALIGN),
                 ),
             ],
             y,

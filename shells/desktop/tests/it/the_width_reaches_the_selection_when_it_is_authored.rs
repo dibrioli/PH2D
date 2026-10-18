@@ -25,6 +25,11 @@
 //!    que o Ctrl+Z nunca leu. O passo de undo é o da fila global, por diff do quadro, e o
 //!    `width_dragging` saiu do bridge com ela. As duas AUSÊNCIAS acima continuam a guardar a
 //!    regressão (a largura e o detector não podem voltar a perguntar pelo arrasto).
+//!
+//! ⭐ **Plano 31 (18/10):** o one-shot da largura virou o bit `WIDTH` da máscara `StyleFields`
+//! (`take_authored`), e o detector É o escritor campo a campo (`onto_fields(s) != *s`). O
+//! comportamento tem gate de unidade pelo `dispatch` real em `ph2d-app-vec`
+//! (`vector_bridge_misto_tests.rs`); as âncoras abaixo seguem a lei nova.
 
 const SRC: &str = include_str!("../../../../crates/ph2d-app-vec/src/vector_bridge.rs");
 
@@ -37,12 +42,13 @@ fn at(needle: &str) -> usize {
 
 #[test]
 fn the_authored_width_comes_from_the_tool_not_from_the_slider_state() {
-    at("let width_authored = tool.take_width_authored();");
+    at("let authored = tool.take_authored();");
+    at("let width_authored = authored.has(StyleFields::WIDTH);");
 }
 
 #[test]
 fn the_width_handed_to_the_restyle_is_the_authored_one() {
-    at("width_authored.then_some(new_w)");
+    at("let new_w = doc.to_world(tool.stroke_width_px());");
     assert!(
         !SRC.contains("width_dragging.then_some("),
         "a largura entregue ao `restyle_selected_strokes` voltou a sair do ESTADO do slider — \
@@ -53,7 +59,7 @@ fn the_width_handed_to_the_restyle_is_the_authored_one() {
 
 #[test]
 fn the_change_detector_counts_a_width_that_was_authored() {
-    at("width_authored && (s.width - new_w).abs()");
+    at("stroke_style.onto_fields(s, new_w, stroke_campos) != *s");
     assert!(
         !SRC.contains("width_dragging && (s.width"),
         "o detector voltou a perguntar pelo ARRASTO: num traço em que só a largura mudou o \

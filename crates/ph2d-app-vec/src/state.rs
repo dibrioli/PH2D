@@ -445,6 +445,9 @@ pub struct VecState {
     /// [`Self::shape_armed_target`] apaga o latch quando a selecção muda (desenhar selecciona a
     /// forma nova, então o ciclo Live Shape volta sozinho).
     pub shape_armed: bool,
+    /// **A régua do pixel do DOCUMENTO** deste quadro (plano 31): os raios e cantos das alças de
+    /// forma atravessam por ela, como o painel. Escrita pelo `shape_params::frame_fields`.
+    pub doc: ph2d_editor_core::DocPx,
 
     /// ⭐⭐⭐ **O PEDAÇO que o Trim vai apagar** (plano 38) — o que o cursor aponta neste quadro, e
     /// `None` quando ele não aponta nada. O realce desenha-o e o clique apaga-o, **pela mesma

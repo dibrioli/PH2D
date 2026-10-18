@@ -54,6 +54,7 @@ fn no_piso_o_numero_sai_inteiro_e_arredondado() {
                 v,
                 None,
                 None,
+                false,
                 0,
                 None,
                 &mut scene,

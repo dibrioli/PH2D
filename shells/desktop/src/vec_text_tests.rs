@@ -60,7 +60,7 @@ fn leaving_text_mode_commits_the_session() {
         wrap_width: None,
     });
     let pen = ph2d_vec_edit::PenTool::default();
-    sync_active_text_style(&mut edit, DrawMode::Select, &pen, 0.01, &mut scene);
+    sync_active_text_style(&mut edit, DrawMode::Select, &pen, &mut scene);
     assert!(edit.is_none(), "modo != Text termina a sessão (commit)");
 }
 
@@ -94,7 +94,7 @@ fn active_text_restyles_live_when_the_panel_style_changes() {
         fill: Rgba8::new(10, 200, 30, 255),
         ..PenStyle::default()
     });
-    sync_active_text_style(&mut edit, DrawMode::Text, &pen, 0.0, &mut scene);
+    sync_active_text_style(&mut edit, DrawMode::Text, &pen, &mut scene);
     let gid = edit.as_ref().unwrap().id.expect("o compound do texto");
     let fill = scene
         .paths()

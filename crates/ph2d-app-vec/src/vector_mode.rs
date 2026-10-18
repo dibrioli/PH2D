@@ -370,6 +370,7 @@ impl ModeFamily for Family<'_> {
 /// `=25`/`=26` (F17): o botão feito interface, nas abas Drawing e Interface (`vector_mode_interface`).
 /// `=27`/`=28` (F18): o desenho é o corpo — a 25 e uma fila vestida; a 28 mostra o Hover (`vector_mode_vestidos`).
 /// `=29`/`=30` (F19): o painel lê a forma depois do Show; a 30 muda a Width (`vector_mode_le_a_forma`).
+/// `=31`/`=32` (F20): duas formas dizem «misto»; a 32 muda a Width das duas (`vector_mode_misto`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -577,6 +578,12 @@ pub fn smoke_step(
             let espessura = HANDLES.load(Ordering::Relaxed) == 16;
             if let Some(next) = crate::vector_mode_le_a_forma::step(s, vec, scene, hero, espessura)
             {
+                go(next);
+            }
+        }
+        s @ crate::vector_mode_misto::FIRST..=crate::vector_mode_misto::LAST => {
+            let espessura = HANDLES.load(Ordering::Relaxed) == 18;
+            if let Some(next) = crate::vector_mode_misto::step(s, vec, scene, hero, espessura) {
                 go(next);
             }
         }

@@ -237,6 +237,7 @@ impl NumericInputWithUnit {
 pub fn paint_numeric_input_with_unit(
     widget: &NumericInputWithUnit,
     buffer: Option<&str>,
+    mixed: bool,
     caret: usize,
     selection_anchor: Option<usize>,
     host: Rect,
@@ -247,6 +248,7 @@ pub fn paint_numeric_input_with_unit(
     paint_number_input_with_buffer(
         &widget.input.clone().suffix(Some(widget.unit.suffix())),
         buffer,
+        mixed,
         caret,
         selection_anchor,
         widget.input_rect(host),
@@ -332,6 +334,7 @@ mod tests {
         paint_numeric_input_with_unit(
             &widget,
             None,
+            false,
             0,
             None,
             Rect::new(0.0, 0.0, 200.0, 28.0),

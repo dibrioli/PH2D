@@ -284,6 +284,7 @@ impl BodyCtx<'_> {
         let (proximo_y, fill_swatch_rect) = self.colour_swatch_row_rect(
             ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
             snap.fill,
+            !snap.agrees(ph2d_tool_vector::StyleFields::FILL_RGB),
             tr("panel.vector.section.fill"),
             y,
         );
@@ -312,7 +313,7 @@ impl BodyCtx<'_> {
             ph2d_tool_vector::ids::VECTOR_FILL_OPACITY_NUM,
             track,
             pct,
-            &format!("{}", pct.round() as i64),
+            &stroke::mixed_or(snap, ph2d_tool_vector::StyleFields::FILL_A, pct),
             y,
         )
     }

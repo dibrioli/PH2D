@@ -106,6 +106,8 @@ pub(super) fn apply_chip_value_with_mirror(
     } else {
         return (new_display, false);
     }
+    // A porta única do valor do artista (digitado, setinha, arrasto): o «misto» acaba aqui.
+    store.clear_number_input_mixed(chip_id);
     let Some(slider_id) = store.linked_slider(chip_id) else {
         return (new_display, false);
     };
@@ -209,6 +211,9 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
             *value = derived;
         }
     }
+    // O «misto» entra VAZIO: sair sem digitar falha o parse e não escreve nada, e qualquer número
+    // digitado — mesmo o do primário — é um valor para a seleção inteira (`commit_number_buffer`).
+    let mixed = store.number_input_mixed(id);
     if let Some(InteractiveState::NumberInput {
         state,
         value,
@@ -220,8 +225,10 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
     {
         *state = crate::widget::TextInputState::Focused;
         buffer.clear();
-        use std::fmt::Write;
-        let _ = write!(buffer, "{}", super::format_number(*value));
+        if !mixed {
+            use std::fmt::Write;
+            let _ = write!(buffer, "{}", super::format_number(*value));
+        }
         *caret = buffer.len();
         *last_committed = *value;
         // **Focus selects ALL** — a numeric chip is a readout the artist
@@ -357,8 +364,10 @@ pub(super) fn commit_number_buffer<'a>(
         }
     };
     let mut new_value: Option<f64> = None;
+    // Num campo «misto» o primário não é o valor da seleção: digitar o número dele também muda.
+    let mixed = store.number_input_mixed(id);
     if let Some(parsed) = parsed_value
-        && (parsed - prev_value).abs() > f64::EPSILON
+        && (mixed || (parsed - prev_value).abs() > f64::EPSILON)
     {
         // Mirror helper writes chip, slider (inverse-projected, clamped),
         // and re-syncs the chip if the slider clamped. Returns the

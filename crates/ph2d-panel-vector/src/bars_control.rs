@@ -113,12 +113,14 @@ pub(super) fn control_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> 
             tr("panel.vector.bar.fill"),
             snap.fill,
         )
+        .mixed(!snap.agrees(ph2d_tool_vector::StyleFields::FILL_RGB))
         .with_sub(tr("panel.vector.bar.sub.fill")),
         ToolRailEntry::swatch(
             ids::VECTOR_STROKE_SWATCH,
             tr("panel.vector.bar.stroke"),
             snap.stroke,
         )
+        .mixed(!snap.agrees(ph2d_tool_vector::StyleFields::STROKE_RGB))
         .with_sub(tr("panel.vector.bar.sub.stroke")),
         list(
             crate::ids::VECTOR_BAR_STROKE,
@@ -131,7 +133,8 @@ pub(super) fn control_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> 
             ids::VECTOR_WIDTH_NUM,
             tr("panel.vector.bar.width"),
             tr("panel.vector.bar.sub.width"),
-            None,
+            // Seleção com espessuras diferentes: o «W» fica em branco (o «misto» dos números).
+            (!snap.agrees(ph2d_tool_vector::StyleFields::WIDTH)).then(String::new),
         ),
     ];
     // O perfil é VIVO na seleção (ADR-0148): sem forma selecionada não há a quem o dar.
@@ -164,12 +167,12 @@ pub(super) fn control_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> 
             tr("panel.vector.bar.sub.kind"),
         ));
     }
-    if crate::state::current_appearance().is_some() {
+    if let Some(a) = crate::state::current_appearance() {
         v.push(ToolRailEntry::number(
             crate::ids::VECTOR_OBJ_OPACITY_NUM,
             tr("panel.vector.bar.opacity"),
             tr("panel.vector.bar.sub.opacity"),
-            None,
+            a.mixed_opacity.then(String::new),
         ));
     }
     v

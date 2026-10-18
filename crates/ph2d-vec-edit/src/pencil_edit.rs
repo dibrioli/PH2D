@@ -137,7 +137,7 @@ impl Pencil {
 
     /// Ao soltar uma forma do QuickShape: ela passa a ser oferecida.
     pub(super) fn offer_shape_edit(&mut self, path: VecPathId, shape: QuickShape) {
-        let w = self.style.stroke_w_px * self.px_to_world;
+        let w = self.style.stroke_w;
         let inset = arrow_ends(&self.style, shape.heads(), w).inset;
         self.edit = Some(ShapeEdit {
             path,

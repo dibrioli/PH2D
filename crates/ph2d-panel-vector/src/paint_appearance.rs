@@ -72,10 +72,14 @@ impl BodyCtx<'_> {
             ids::VECTOR_OBJ_OPACITY_NUM,
             track,
             pct,
-            &format!("{}", pct.round() as i64),
+            &if a.mixed_opacity {
+                String::new()
+            } else {
+                format!("{}", pct.round() as i64)
+            },
             y,
         );
-        let y = self.blend_row(a.blend, y);
+        let y = self.blend_row(a.blend, a.mixed_blend, y);
         // ⭐⭐⭐ **E A PILHA** (v20) — as camadas por cima do chão, do topo para baixo.
         //
         // ⚠️ **Depois das duas do OBJECTO de propósito:** elas descrevem como a forma INTEIRA se
@@ -86,7 +90,7 @@ impl BodyCtx<'_> {
 
     /// O chip do modo de mistura. Abre o popover no passe DIFERIDO — sem ele o `push_clip` do
     /// scroll da seção cortaria a lista na borda (a lei dos outros cinco popovers desta janela).
-    fn blend_row(&mut self, atual: ph2d_vec_scene::BlendMode, y: f32) -> f32 {
+    fn blend_row(&mut self, atual: ph2d_vec_scene::BlendMode, misto: bool, y: f32) -> f32 {
         let chip = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         let open = matches!(
             self.store.get(crate::ids::VECTOR_OBJ_BLEND),
@@ -99,7 +103,11 @@ impl BodyCtx<'_> {
             vec![DropdownOption::new(
                 crate::ids::VECTOR_OBJ_BLEND,
                 (),
-                nome(atual),
+                if misto {
+                    tr("panel.vector.mixed")
+                } else {
+                    nome(atual)
+                },
             )],
         )
         .selected(())

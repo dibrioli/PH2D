@@ -289,6 +289,7 @@ pub(super) fn num_row_unit(
     paint_number_input_with_buffer(
         &input.suffix(unit.map(ph2d_editor_core::widget::Unit::suffix)),
         Some(buffer),
+        store.number_input_mixed(id),
         caret,
         anchor,
         row.control,

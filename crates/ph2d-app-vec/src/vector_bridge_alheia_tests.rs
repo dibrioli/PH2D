@@ -18,8 +18,9 @@ const AZUL: [u8; 4] = [40, 120, 240, 255];
 const BRANCO: [u8; 4] = [240, 240, 245, 255];
 const LARANJA: [u8; 4] = [240, 140, 40, 255];
 const AMARELO: [u8; 4] = [250, 210, 60, 255];
-/// Mundo por píxel de ecrã: 3 px de traço = `0,06` em mundo.
-const PX: f64 = 0.02;
+/// Mundo por píxel de ecrã a 100 % (a régua do documento por omissão, plano 31): 3 px de traço =
+/// `0,03` em mundo, e o número do painel é o mesmo a qualquer zoom.
+const PX: f64 = 0.01;
 
 fn rgba(c: [u8; 4]) -> Rgba8 {
     Rgba8::new(c[0], c[1], c[2], c[3])

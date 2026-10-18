@@ -342,6 +342,7 @@ fn the_star_valley_never_twists() {
         Mods::default(),
         [1.0, 1.0],
         0.01,
+        doc_of(0.01),
         &ck,
     );
     assert_eq!(out[7], 0.0, "a torção ficou");
@@ -369,7 +370,7 @@ fn the_tip_handle_slides_down_the_tip_axis_and_rounds_the_tips() {
     );
     let p = [0.0, 0.85];
     let mut d = HandleDrag::start(i, v, q, q, half);
-    let out = drag(k, &mut d, p, Mods::default(), half, 0.01, &ck);
+    let out = drag(k, &mut d, p, Mods::default(), half, 0.01, doc_of(0.01), &ck);
     assert!(out[2] > 0.0, "a ponta arredondou");
     let r = handle_point(h, &out, half, &ck).unwrap();
     assert!(
@@ -380,7 +381,7 @@ fn the_tip_handle_slides_down_the_tip_axis_and_rounds_the_tips() {
     // mora (a caixa abraça o contorno COZIDO): sem e com arredondamento (a foto da cena 16).
     for vals in [v, out] {
         let top = handle_point(h, &vals, half, &ck).unwrap()[1];
-        let g = handle_grip(k, h, &vals, half, 1.0, 0.1, &ck).unwrap();
+        let g = handle_grip(k, h, &vals, half, doc_of(1.0), 0.1, &ck).unwrap();
         assert!(
             (g[1] - (top - 0.1)).abs() < 1e-9 && g[0].abs() < 1e-9,
             "desenhada para dentro: {g:?} (topo {top})"
@@ -430,6 +431,7 @@ fn the_points_widget_steps_the_count_up_and_down() {
                 Mods::default(),
                 half,
                 1.0,
+                doc_of(1.0),
                 &ck,
             );
             assert_eq!(out[0], v[0] + want, "{k:?}: dy {dy}");
@@ -478,6 +480,7 @@ fn alt_moves_only_the_grabbed_side_of_the_trapezoid() {
             },
             half,
             1.0,
+            doc_of(1.0),
             &ck,
         );
         assert!(
@@ -490,7 +493,7 @@ fn alt_moves_only_the_grabbed_side_of_the_trapezoid() {
             "Alt: o outro lado ({other}) ficou"
         );
         let mut d = HandleDrag::start(h, v, grip, grip, half);
-        let both = drag(k, &mut d, p, Mods::default(), half, 1.0, &ck);
+        let both = drag(k, &mut d, p, Mods::default(), half, 1.0, doc_of(1.0), &ck);
         assert!(
             (corner(&both, other)[0] - corner(&v, other)[0]).abs() > 0.1,
             "sem Alt os dois andam juntos"
@@ -509,7 +512,7 @@ fn the_diamond_middle_handle_is_drawn_inside_the_box_edge() {
     let v = k.defaults();
     let h = &handles_of(k)[0];
     let truth = handle_point(h, &v, half, &ck).unwrap();
-    let grip = handle_grip(k, h, &v, half, 1.0, 0.3, &ck).unwrap();
+    let grip = handle_grip(k, h, &v, half, doc_of(1.0), 0.3, &ck).unwrap();
     assert!(
         (truth[0] - half[0]).abs() < 1e-9,
         "o vértice está na aresta da caixa"
@@ -519,7 +522,16 @@ fn the_diamond_middle_handle_is_drawn_inside_the_box_edge() {
         "a alça desenha-se para dentro: {grip:?}"
     );
     let mut d = HandleDrag::start(0, v, grip, truth, half);
-    let held = drag(k, &mut d, grip, Mods::default(), half, 1.0, &ck);
+    let held = drag(
+        k,
+        &mut d,
+        grip,
+        Mods::default(),
+        half,
+        1.0,
+        doc_of(1.0),
+        &ck,
+    );
     assert!(
         (held[0] - v[0]).abs() < 1e-9,
         "agarrar e soltar não muda o meio"

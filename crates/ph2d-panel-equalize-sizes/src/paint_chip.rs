@@ -88,6 +88,7 @@ pub(crate) fn paint_labeled_chip(
         value,
         Some(&display),
         buffer,
+        store.number_input_mixed(chip_id),
         caret,
         anchor,
         scene,

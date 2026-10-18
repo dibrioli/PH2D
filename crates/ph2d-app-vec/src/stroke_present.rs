@@ -36,8 +36,8 @@ pub fn selected_stroke_present(scene: &VecScene, pen: &PenTool) -> Option<bool> 
 /// **Inverte o traço da forma selecionada** — dá um se não tem, tira se tem. `true` se mudou.
 ///
 /// ⚠️⚠️ **O traço novo sai da ficha da FERRAMENTA** (`pen.style()`), pela **mesma** porta que a
-/// ferramenta de forma usa ao criar (`PenStyle::stroke_spec`, com a largura em px convertida pelo
-/// mesmo `px_to_world`). Um default escrito aqui seria uma segunda resposta a *"que traço uma coisa
+/// ferramenta de forma usa ao criar (`PenStyle::stroke_spec`, com a largura que a ponte já pôs em
+/// mundo). Um default escrito aqui seria uma segunda resposta a *"que traço uma coisa
 /// nova recebe?"*, e a forma vestida pela caixa sairia diferente da desenhada.
 ///
 /// ⚠️ **Tirar DESTRÓI a ficha** — é o modelo do Figma, não o do Illustrator (onde a largura
@@ -46,7 +46,7 @@ pub fn selected_stroke_present(scene: &VecScene, pen: &PenTool) -> Option<bool> 
 /// voltar a marcar devolve o que se está a ver. ⛔ Guardar a ficha removida **no documento** seria
 /// estado invisível a envenenar o undo; guardá-la na shell seria estado de sessão que o save não
 /// leva.
-pub fn toggle(scene: &mut VecScene, pen: &PenTool, px_to_world: f64) -> bool {
+pub fn toggle(scene: &mut VecScene, pen: &PenTool) -> bool {
     let [id] = pen.selected_paths() else {
         return false;
     };
@@ -55,7 +55,7 @@ pub fn toggle(scene: &mut VecScene, pen: &PenTool, px_to_world: f64) -> bool {
         return false;
     };
     let style = pen.style();
-    let novo = (!tem).then(|| style.stroke_spec(style.stroke_w_px * px_to_world));
+    let novo = (!tem).then(|| style.stroke_spec(style.stroke_w));
     let Some(path) = scene.path_mut(id) else {
         return false;
     };

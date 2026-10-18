@@ -133,7 +133,7 @@ impl crate::App {
                     let values = ph2d_tool_vector::shapes::to_world(
                         kind,
                         &self.vec.draw_config.values,
-                        px_to_world,
+                        self.vec.doc,
                     );
                     self.vec.shape.on_press(
                         &mut gfx.vec_scene,

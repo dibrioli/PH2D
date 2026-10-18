@@ -56,13 +56,22 @@ fn an_angle_handle_lives_outside_the_rim_off_the_box_handles() {
     let h = &handles_of(k)[st];
     let truth = handle_point(h, &v, HALF, &ck).unwrap();
     assert!((truth[0] - HALF[0]).abs() < 1e-9 && truth[1].abs() < 1e-9);
-    let g = handle_grip(k, h, &v, HALF, PX, 0.25, &ck).unwrap();
+    let g = handle_grip(k, h, &v, HALF, doc_of(PX), 0.25, &ck).unwrap();
     assert!(
         (g[0] - (HALF[0] + 0.25)).abs() < 1e-9 && g[1].abs() < 1e-9,
         "{g:?}"
     );
     // Num raio pequeno também fica fora (a haste não depende do tamanho).
-    let tiny = handle_grip(k, h, &v, [0.3, 0.3], PX, 0.25, &cooker(k, [0.3, 0.3])).unwrap();
+    let tiny = handle_grip(
+        k,
+        h,
+        &v,
+        [0.3, 0.3],
+        doc_of(PX),
+        0.25,
+        &cooker(k, [0.3, 0.3]),
+    )
+    .unwrap();
     assert!((tiny[0] - 0.55).abs() < 1e-9, "{tiny:?}");
     // Agarrada no sítio DESENHADO (a pega mede-se a ele) e levada a 40° de volta perto do centro
     // (meio raio): o ângulo da mão é o que conta.
@@ -77,6 +86,7 @@ fn an_angle_handle_lives_outside_the_rim_off_the_box_handles() {
             Mods::default(),
             HALF,
             PX,
+            doc_of(PX),
             &ck,
         );
     }

@@ -113,7 +113,7 @@ impl BodyCtx<'_> {
         label: &str,
         y: f32,
     ) -> f32 {
-        self.colour_swatch_row_rect(id, colour, label, y).0
+        self.colour_swatch_row_rect(id, colour, false, label, y).0
     }
 
     /// ⭐⭐⭐ **A MESMA linha, devolvendo também o RECT que a swatch ocupou.**
@@ -137,6 +137,7 @@ impl BodyCtx<'_> {
         &mut self,
         id: ph2d_a11y::NodeId,
         colour: [u8; 4],
+        mixed: bool,
         label: &str,
         y: f32,
     ) -> (f32, Rect) {
@@ -152,7 +153,7 @@ impl BodyCtx<'_> {
             label,
             id,
             colour,
-            false,
+            mixed,
             ph2d_editor_core::property_row::Seccao::apenas_campos(1),
         );
         (y + self.row_h + self.row_gap, self.caixa_da_swatch(y))

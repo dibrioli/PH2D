@@ -85,7 +85,7 @@ fn build(app: &mut crate::App) {
         // largura visível e a cor que identifica o par.
         pencil.set_style(ph2d_vec_edit::PenStyle {
             stroke: Rgba8::new(rgb[0], rgb[1], rgb[2], 255),
-            stroke_w_px: 3.0,
+            stroke_w: ph2d_editor_core::DocPx::DEFAULT.to_world(3.0),
             ..ph2d_vec_edit::PenStyle::default()
         });
         pencil.set_fidelity_px(fidelity);

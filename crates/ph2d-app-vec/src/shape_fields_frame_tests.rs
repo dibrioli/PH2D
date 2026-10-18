@@ -49,22 +49,22 @@ fn the_latch_arms_on_the_catalog_click_and_the_selection_change_disarms_it() {
     vec.draw_config.mode = DrawMode::Shape;
     let (mut t, mut store) = (tools(), store());
     // Sem clique: a forma viva manda (o ciclo Live Shape).
-    frame_fields(&mut vec, &sim, &mut t, &mut store, PX);
+    frame_fields(&mut vec, &sim, &mut t, &mut store, crate::doc_of(PX));
     assert!(!vec.shape_armed);
     assert_eq!(field(&store, 0), Some(ShapeKind::Star.defaults()[0]));
     // O clique no Polígono do catálogo: armado, e os campos são os do Polígono.
     tool(&mut t).set_shape(ShapeKind::Polygon);
-    frame_fields(&mut vec, &sim, &mut t, &mut store, PX);
+    frame_fields(&mut vec, &sim, &mut t, &mut store, crate::doc_of(PX));
     assert!(vec.shape_armed, "o clique no catálogo não acendeu o latch");
     assert_eq!(vec.shape_last_focus, Some((None, ShapeKind::Polygon)));
     // A seleção muda (nada seleccionado): o latch apaga-se.
     vec.pen.select_many(&[]);
-    frame_fields(&mut vec, &sim, &mut t, &mut store, PX);
+    frame_fields(&mut vec, &sim, &mut t, &mut store, crate::doc_of(PX));
     assert!(!vec.shape_armed, "a seleção mudou e o latch ficou aceso");
     // Os dois no MESMO quadro (outra seleção + um clique): ganha o clique.
     vec.pen.select_many(&[star]);
     tool(&mut t).set_shape(ShapeKind::Polygon);
-    frame_fields(&mut vec, &sim, &mut t, &mut store, PX);
+    frame_fields(&mut vec, &sim, &mut t, &mut store, crate::doc_of(PX));
     assert!(
         vec.shape_armed,
         "o desarme correu depois do arme e apagou o clique"
@@ -80,10 +80,10 @@ fn the_seed_memo_is_the_pair_and_without_a_target_the_catalog_seeds() {
     let (mut t, mut store) = (tools(), store());
     let sim = SimWorld::default();
     tool(&mut t).set_shape(ShapeKind::Star);
-    frame_fields(&mut vec, &sim, &mut t, &mut store, PX);
+    frame_fields(&mut vec, &sim, &mut t, &mut store, crate::doc_of(PX));
     assert_eq!(field(&store, 0), Some(ShapeKind::Star.defaults()[0]));
     tool(&mut t).set_shape(ShapeKind::Polygon);
-    frame_fields(&mut vec, &sim, &mut t, &mut store, PX);
+    frame_fields(&mut vec, &sim, &mut t, &mut store, crate::doc_of(PX));
     assert_eq!(vec.shape_last_focus, Some((None, ShapeKind::Polygon)));
     let want = tool(&mut t).shape_values(ShapeKind::Polygon)[0];
     assert_eq!(
@@ -106,7 +106,7 @@ fn a_change_from_a_canvas_handle_reseeds_the_fields() {
     };
     vec.pen.select_many(&[star]);
     let (mut t, mut store) = (tools(), store());
-    frame_fields(&mut vec, &sim, &mut t, &mut store, PX);
+    frame_fields(&mut vec, &sim, &mut t, &mut store, crate::doc_of(PX));
     assert_eq!(field(&store, 1), Some(ShapeKind::Star.defaults()[1]));
     // Uma escrita que não veio dos campos (a alça escreve pela MESMA porta).
     let sel = [star];
@@ -122,7 +122,7 @@ fn a_change_from_a_canvas_handle_reseeds_the_fields() {
             true
         }
     ));
-    frame_fields(&mut vec, &sim, &mut t, &mut store, PX);
+    frame_fields(&mut vec, &sim, &mut t, &mut store, crate::doc_of(PX));
     assert_eq!(
         field(&store, 1),
         Some(0.8),
@@ -132,6 +132,6 @@ fn a_change_from_a_canvas_handle_reseeds_the_fields() {
     // reposto).
     let id = ph2d_tool_vector::ids::vector_shape_field_id(1);
     store.set_number_value(id, 0.81);
-    frame_fields(&mut vec, &sim, &mut t, &mut store, PX);
+    frame_fields(&mut vec, &sim, &mut t, &mut store, crate::doc_of(PX));
     assert_eq!(field(&store, 1), Some(0.81), "re-semeou sem a forma mudar");
 }

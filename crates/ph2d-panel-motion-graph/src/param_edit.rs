@@ -258,6 +258,7 @@ pub(crate) fn paint(
     ph2d_editor_core::widget::paint_number_input_with_buffer(
         &input,
         Some(&buf),
+        ctx.host.store().number_input_mixed(param_edit_id()),
         caret,
         anchor,
         field,

@@ -74,7 +74,7 @@ fn a_shape_field_recooks_the_selected_live_shape_in_place() {
         DrawMode::Select,
         false,
         |k, v| {
-            apply_shape_field(k, v, field(0), 7.0, 1.0) // 7 lados
+            apply_shape_field(k, v, field(0), 7.0, crate::doc_of(1.0)) // 7 lados
         },
     );
 
@@ -122,7 +122,7 @@ fn a_field_that_the_shape_does_not_have_leaves_it_alone() {
         &[id],
         DrawMode::Select,
         false,
-        |k, v| apply_shape_field(k, v, field(0), 9.0, 1.0),
+        |k, v| apply_shape_field(k, v, field(0), 9.0, crate::doc_of(1.0)),
     );
     assert!(!edited, "a pilula nao tem campo 0");
     assert_eq!(anchors(&scene, id), before, "a geometria nao foi re-cozida");
@@ -139,8 +139,8 @@ fn every_declared_field_of_every_shape_moves_its_geometry() {
             let mut lo = k.defaults();
             let mut hi = k.defaults();
             assert!(
-                apply_shape_field(k, &mut lo, field(i), f.min, 1.0)
-                    && apply_shape_field(k, &mut hi, field(i), f.max, 1.0),
+                apply_shape_field(k, &mut lo, field(i), f.min, crate::doc_of(1.0))
+                    && apply_shape_field(k, &mut hi, field(i), f.max, crate::doc_of(1.0)),
                 "{k:?}.{}: o campo nao foi aceito",
                 f.label
             );
@@ -166,8 +166,8 @@ fn every_declared_field_of_every_shape_moves_its_geometry() {
                 || (0..d.fields.len()).filter(|&j| j != i).any(|j| {
                     [d.fields[j].min, d.fields[j].max].into_iter().any(|m| {
                         let (mut a, mut b) = (lo, hi);
-                        apply_shape_field(k, &mut a, field(j), m, 1.0)
-                            && apply_shape_field(k, &mut b, field(j), m, 1.0)
+                        apply_shape_field(k, &mut a, field(j), m, crate::doc_of(1.0))
+                            && apply_shape_field(k, &mut b, field(j), m, crate::doc_of(1.0))
                             && cook(a) != cook(b)
                     })
                 });
@@ -194,13 +194,19 @@ fn every_px_field_round_trips_across_the_unit_boundary() {
                 continue;
             }
             let mut world = k.defaults();
-            assert!(apply_shape_field(k, &mut world, field(i), 30.0, PTW));
+            assert!(apply_shape_field(
+                k,
+                &mut world,
+                field(i),
+                30.0,
+                crate::doc_of(PTW)
+            ));
             assert!(
                 (world[i] - 30.0 * PTW).abs() < 1e-9,
                 "{k:?}.{}: guardado em MUNDO (px x px_to_world)",
                 f.label
             );
-            let ui = ui_values_of(k, &world, PTW);
+            let ui = ui_values_of(k, &world, crate::doc_of(PTW));
             assert!(
                 (ui[i] - 30.0).abs() < 1e-9,
                 "{k:?}.{}: voltou a 30 px",
@@ -367,7 +373,7 @@ fn an_armed_artist_does_not_write_into_the_shape_that_is_still_selected() {
         &[id],
         DrawMode::Shape,
         true,
-        |k, v| apply_shape_field(k, v, field(0), 9.0, 1.0),
+        |k, v| apply_shape_field(k, v, field(0), 9.0, crate::doc_of(1.0)),
     );
     assert!(
         !touched,
@@ -388,7 +394,7 @@ fn an_armed_artist_does_not_write_into_the_shape_that_is_still_selected() {
         &[id],
         DrawMode::Shape,
         false,
-        |k, v| apply_shape_field(k, v, field(0), 9.0, 1.0),
+        |k, v| apply_shape_field(k, v, field(0), 9.0, crate::doc_of(1.0)),
     ));
     assert_ne!(anchors(&scene, id).len(), before.len());
 }

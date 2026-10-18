@@ -430,7 +430,7 @@ mod tests {
             fill: Rgba8::new(200, 30, 30, 255),
             ..PenStyle::default()
         };
-        let (fill, stroke) = resolve_style(&style, 0.01);
+        let (fill, stroke) = resolve_style(&style);
         assert!(fill.is_some(), "fill opaco vira Some");
         assert!(stroke.is_some(), "traço sempre presente");
         let clear = PenStyle {
@@ -438,7 +438,7 @@ mod tests {
             ..PenStyle::default()
         };
         assert!(
-            resolve_style(&clear, 0.01).0.is_none(),
+            resolve_style(&clear).0.is_none(),
             "fill transparente = None"
         );
     }

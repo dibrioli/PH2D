@@ -190,7 +190,12 @@ fn face(hero: &mut HeroScreen, scene: &mut VectorScene, theme: Theme, b: &BarBut
             fg,
             StrokeToken::Default.px(),
         ),
-        BarFace::Swatch { rgba, ring } => paint_swatch(scene, theme, inner(r), *rgba, *ring, fg),
+        BarFace::Swatch { mixed: true, .. } => {
+            crate::widget::paint_mixed_swatch(inner(r), scene, theme);
+        }
+        BarFace::Swatch { rgba, ring, .. } => {
+            paint_swatch(scene, theme, inner(r), *rgba, *ring, fg)
+        }
         BarFace::Outline(path) => {
             // O contorno da forma cresce como os ícones (1,5× o miolo, preso ao botão).
             let m = inner(r);

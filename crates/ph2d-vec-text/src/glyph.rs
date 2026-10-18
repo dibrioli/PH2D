@@ -118,14 +118,14 @@ pub fn kerning_by_default() -> bool {
     *KEY.get_or_init(|| std::env::var("PH2D_TEXT_KERNING").map_or(true, |v| v != "0"))
 }
 
-/// Resolve o Style do Pen (fill/stroke/width em px) no par (fill, stroke) que cada
+/// Resolve o Style do Pen (fill/stroke/width já em mundo) no par (fill, stroke) que cada
 /// glyph-path recebe — mesma regra das formas (`shape.rs`): sem preenchimento quando
 /// alpha 0; traço sempre presente (o render pula width/alpha 0). Assim o texto herda
 /// Fill/Stroke/Width/Cap/Join do painel do vetor como qualquer forma.
 #[must_use]
-pub fn resolve_style(style: &PenStyle, px_to_world: f64) -> (Option<Paint>, Option<StrokeSpec>) {
+pub fn resolve_style(style: &PenStyle) -> (Option<Paint>, Option<StrokeSpec>) {
     let fill = (style.fill.a != 0).then(|| Paint::solid(style.fill));
-    let stroke = Some(style.stroke_spec(style.stroke_w_px * px_to_world));
+    let stroke = Some(style.stroke_spec(style.stroke_w));
     (fill, stroke)
 }
 

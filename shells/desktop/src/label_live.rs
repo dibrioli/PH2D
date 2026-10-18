@@ -420,8 +420,7 @@ impl crate::app_state::App {
             }
             LabelHit::New(host, anchor) => {
                 // O rótulo herda o Style ATIVO do painel, como qualquer texto.
-                let (fill, stroke) =
-                    crate::vec_glyph::resolve_style(&self.vec.pen.style(), self.vec_px_to_world());
+                let (fill, stroke) = crate::vec_glyph::resolve_style(&self.vec.pen.style());
                 self.vec.text_edit = Some(ph2d_app_vec::text_edit::VecTextEdit {
                     // A âncora é só a semente do caret na 1ª letra: quem manda na pose é o
                     // [`upkeep`], que a re-deriva do hospedeiro a cada frame.

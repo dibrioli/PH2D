@@ -93,6 +93,7 @@ pub(super) fn paint_inspector_w6_section(
     paint_rect2_editor_with_state(
         &rect2,
         [Some(bx), Some(by), Some(bw), Some(bh)],
+        ids::INSP_SAMPLE_W6_RECT.map(|id| store.number_input_mixed(id)),
         [cx, cy, cw, ch],
         [ax, ay, aw, ah],
         rect2_host,
@@ -124,6 +125,7 @@ pub(super) fn paint_inspector_w6_section(
     paint_numeric_input_with_unit(
         &unit_widget,
         Some(ub),
+        store.number_input_mixed(ids::INSP_SAMPLE_W6_UNIT),
         uc,
         ua,
         unit_host,

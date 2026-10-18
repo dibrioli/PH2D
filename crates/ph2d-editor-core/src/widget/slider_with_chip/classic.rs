@@ -115,6 +115,7 @@ pub(super) fn paint_classic_row(
         chip_value,
         display_override,
         chip_buffer,
+        store.number_input_mixed(chip_id),
         chip_caret,
         chip_anchor,
         scene,

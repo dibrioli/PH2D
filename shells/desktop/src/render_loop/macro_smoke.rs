@@ -45,8 +45,8 @@ impl crate::App {
         let Ok(nivel) = std::env::var("PH2D_MACRO_SMOKE") else {
             return;
         };
-        if nivel == "6" {
-            self.caminho_do_dono();
+        if matches!(nivel.as_str(), "5" | "6") {
+            self.caminho_do_dono(nivel == "6");
         }
         if self.gfx.as_ref().is_none_or(|g| g.hero_screen.is_none())
             || FEITO.swap(true, std::sync::atomic::Ordering::Relaxed)
@@ -114,20 +114,32 @@ impl crate::App {
     }
     /// `PH2D_MACRO_SMOKE=6` — **o caminho do dono** ([`ph2d_app_painter::macro_track::caminho`]): os
     /// gestos pelas portas de sempre (o painel MACROS, o ponteiro da tela, o transporte da Keys) e a
-    /// linha de diagnóstico a cada décimo de segundo.
-    fn caminho_do_dono(&mut self) {
+    /// linha de diagnóstico a cada décimo de segundo. Na `=5` (`conduz = false`) só o registo: o dono
+    /// faz o caminho à mão.
+    fn caminho_do_dono(&mut self, conduz: bool) {
         use ph2d_app_painter::macro_track::caminho::{Caminho, Gesto, regista};
         let Some(&bits) = TELA.get() else {
             return;
         };
         let (ms, gestos, diag) = CAMINHO.with_borrow_mut(|c| {
             let (t0, cam) = c.get_or_insert_with(|| {
-                regista(&ph2d_app_painter::macro_track::caminho::anuncio());
+                regista(&ph2d_app_painter::macro_track::caminho::anuncio(conduz));
                 (std::time::Instant::now(), Caminho::default())
             });
             let ms = u64::try_from(t0.elapsed().as_millis()).unwrap_or(u64::MAX);
-            (ms, cam.gestos_ate(ms), cam.hora_do_diagnostico(ms))
+            let gestos = if conduz {
+                cam.gestos_ate(ms)
+            } else {
+                Vec::new()
+            };
+            (ms, gestos, cam.hora_do_diagnostico(ms))
         });
+        // Os pedidos à Timeline deste quadro (os do painel chegam aqui antes do dreno).
+        if !self.timeline_intents.is_empty() {
+            let mut i = format!("{:?}", self.timeline_intents);
+            i.truncate(400);
+            regista(&format!("{ms} ms: intents {i}"));
+        }
         for g in gestos {
             regista(&format!("{ms} ms: {g:?}"));
             match g {
@@ -180,8 +192,14 @@ impl crate::App {
             .painter_macros
             .diagnostico(bits, cede, painter.as_deref());
         let (ph, clip) = (self.playhead.time(), self.clip_playhead.time());
+        let (keys, playing) = (self.timeline.keys_mode, self.playhead.is_playing());
+        let laco = self.timeline.doc.active_loop_for(keys);
+        let etapas: Vec<String> = (self.timeline_view.macro_etapas.iter())
+            .map(|e| format!("{:.2}", e.t0))
+            .collect();
         regista(&format!(
-            "{ms} ms: {quadros} frames playhead={ph:.2} clip={clip:.2} t={t:?} gravando={gravando:?} {linha}"
+            "{ms} ms: {quadros} frames keys={keys} playing={playing} playhead={ph:.2} clip={clip:.2} \
+             loop={laco:?} t={t:?} steps={etapas:?} gravando={gravando:?} {linha}"
         ));
     }
 

@@ -138,22 +138,29 @@ impl Caminho {
     }
 }
 
-/// O que a cena `=6` diz ao abrir.
+/// O que a cena diz ao abrir: a `=6` (`conduz`) faz o caminho sozinha; a `=5` só o regista.
 #[must_use]
-pub fn anuncio() -> String {
+pub fn anuncio(conduz: bool) -> String {
+    let f = ficheiro_do_registo();
+    if !conduz {
+        return format!(
+            "this session is logged every 0.1 s (Record, Stop, the Timeline clock, the canvas) to {}",
+            f.display()
+        );
+    }
     format!(
         "the app does the path by itself — Record, two Wet Paint strokes, Stop, Rewind and Play in the \
          Timeline's Keys tab ({:?}). Do not touch the mouse for 15 s. Watch the canvas after Play: the \
          top stroke must appear first and the lower one about 1.5 s later. This log is also written to {}",
         variante(),
-        ficheiro_do_registo().display()
+        f.display()
     )
 }
 
-/// O ficheiro onde a cena `=6` deixa o que a consola diz (o dono corre-a; a LLM lê-o depois).
+/// O ficheiro onde as cenas `=5` e `=6` deixam o que a consola diz (o dono corre-as; a LLM lê-o depois).
 #[must_use]
 pub fn ficheiro_do_registo() -> std::path::PathBuf {
-    std::env::temp_dir().join("ph2d-cena6.log")
+    std::env::temp_dir().join("ph2d-macro-smoke.log")
 }
 
 /// **Uma linha do registo**: na consola e no [`ficheiro_do_registo`] (recomeçado na 1.ª linha).
@@ -164,7 +171,7 @@ pub fn regista(linha: &str) {
     ABERTO.call_once(|| {
         let _ = std::fs::write(&caminho, "");
     });
-    eprintln!("[macro smoke =6] {linha}");
+    eprintln!("[macro smoke] {linha}");
     if let Ok(mut f) = std::fs::OpenOptions::new().append(true).open(&caminho) {
         let _ = writeln!(f, "{linha}");
     }

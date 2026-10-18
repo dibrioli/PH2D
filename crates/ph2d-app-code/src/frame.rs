@@ -63,6 +63,16 @@ pub fn frame(
     docs.lint();
     docs.notes();
     docs.fix_hover(&mut hero.motion);
+    crate::link::frame(
+        docs,
+        world,
+        &mut hero.undo_links,
+        host.as_deref_mut(),
+        toasts,
+    );
+    for d in &mut docs.docs {
+        d.occurrences_tick();
+    }
     let ask = save(
         docs,
         world,

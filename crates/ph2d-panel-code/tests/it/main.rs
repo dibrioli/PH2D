@@ -115,6 +115,8 @@ pub fn frame<'a>(
         completion: None,
         hover: None,
         signature: None,
+        occurrences: &[],
+        rename: None,
     }
 }
 

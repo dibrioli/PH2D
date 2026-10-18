@@ -69,6 +69,8 @@ pub struct CodeView {
     pub(crate) popup: Option<crate::popup::Painted>,
     /// O balão do rato e a assinatura do último quadro.
     pub(crate) hints: crate::hint::Painted,
+    /// A caixinha do rename do último quadro: a caixa, a nota e o nome escrito (`None` = só a nota).
+    pub(crate) rename_box: Option<(Rect, String, Option<String>)>,
     /// Os bytes que uma fila mostra (o resto da linha não se prepara nem se molda).
     pub(crate) render_cap: usize,
     /// A coluna da barra de estado da última (revisão, cursor, tab).
@@ -104,6 +106,7 @@ impl Default for CodeView {
             underlines: Vec::new(),
             popup: None,
             hints: crate::hint::Painted::default(),
+            rename_box: None,
             render_cap: LINE_RENDER_BYTES_MAX,
             status_col: None,
         }

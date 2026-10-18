@@ -71,7 +71,7 @@ pub(crate) fn params(uri: &str, text: &Text, bytes: Range<usize>, diags: &[Diag]
 }
 
 /// As trocas de `edit` (`WorkspaceEdit`) no documento `uri`; `None` = toca noutro documento.
-fn edits_of(uri: &str, text: &Text, edit: &Value) -> Option<Vec<Edit>> {
+pub(crate) fn edits_of(uri: &str, text: &Text, edit: &Value) -> Option<Vec<Edit>> {
     let mut out = Vec::new();
     let mut put = |list: &Value| {
         for e in list.as_array().into_iter().flatten() {

@@ -50,6 +50,15 @@ impl CodeDoc {
             self.hints.hover = None;
             self.goto = None;
         }
+        if self.rename.is_some() {
+            out.copy = self.rename_key(FieldKey {
+                key,
+                mods,
+                text,
+                paste,
+            });
+            return out;
+        }
         if let Some(f) = self.find.focus.filter(|_| self.find.open) {
             let cmd = mods.ctrl || mods.meta;
             // Os atalhos da barra continuam vivos dentro dela.
@@ -89,6 +98,13 @@ impl CodeDoc {
             }
             self.actions = None;
         }
+        if self.refs.is_some() {
+            if self.refs_key(key, mods) {
+                self.reveal();
+                return out;
+            }
+            self.refs = None;
+        }
         if self.completion_key(key, mods) {
             self.reveal();
             return out;
@@ -100,6 +116,9 @@ impl CodeDoc {
             Key::F(12) if !cmd && !shift => {
                 self.go_to_definition(self.buffer.selection().primary().head);
             }
+            // F2: renomear o nome no cursor; Shift+F12: a lista dos sítios dele (I10).
+            Key::F(2) if !cmd && !shift => self.start_rename(),
+            Key::F(12) if !cmd && shift => self.open_refs(),
             Key::Space if cmd => self.complete.open_now(
                 self.buffer.text(),
                 self.buffer.selection().primary().head,

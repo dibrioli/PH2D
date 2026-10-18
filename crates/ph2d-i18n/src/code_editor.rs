@@ -72,6 +72,31 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.action.add_type" => "Add type: {type}",
         "code.action.none" => "No quick fixes here",
         "code.a11y.actions" => "Quick fixes",
+        // Renomear (I10, F2): a ajuda por baixo do campo e porque um nome não serve; o desfazer de um
+        // rename de propriedade, que mora no texto e na cena, recusado por inteiro.
+        "code.rename.hint" => "Enter to rename · Esc to cancel",
+        "code.rename.hint_objects" => "Enter to rename · keeps the value of {count} objects",
+        "code.rename.hint_objects_one" => "Enter to rename · keeps the value of 1 object",
+        "code.rename.nothing" => "Nothing to rename here",
+        "code.rename.member" => "“{name}” belongs to another table — rename it where it is made",
+        "code.rename.hook" => "The engine calls “{name}” by this name",
+        "code.rename.escapes" => "self is passed around in this script — rename “{name}” by hand",
+        "code.rename.invalid" => "“{name}” is not a valid name",
+        "code.rename.reserved" => "“{name}” is a reserved word",
+        "code.rename.in_use" => "“{name}” is already used in this script",
+        "code.rename.taken" => "A property “{name}” already exists",
+        "code.rename.offline" => "The code assistant is not running",
+        "code.rename.failed" => "The code assistant could not rename this",
+        "code.a11y.rename" => "Rename: {note}",
+        // Shift+F12 (I10): uma linha da lista dos sítios de um nome, e o nome da lista.
+        "code.refs.row" => "{line}: {code}",
+        "code.a11y.references" => "References",
+        "code.undo.family_ahead" => {
+            "Undo the script edits made after the rename first — it changed the script and the scene together"
+        }
+        "code.undo.global_ahead" => {
+            "Undo the scene changes made after the rename first — it changed the script and the scene together"
+        }
         // O fim de uma linha com dobra fechada.
         "code.fold.ellipsis" => "…",
         // Outro projecto aberto com textos por gravar: ficaram em ficheiros (nunca em silêncio).
@@ -92,6 +117,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.fold_all" => "Fold All",
         "code.cmd.unfold_all" => "Unfold All",
         "code.cmd.restart_assistant" => "Restart Code Assistant",
+        "code.cmd.rename" => "Rename Symbol \u{00b7} F2",
+        "code.cmd.references" => "Find References \u{00b7} Shift+F12",
         // E11: a lista de scripts do projeto, à esquerda dentro da aba.
         "code.list.title" => "Scripts",
         "code.list.filter" => "Filter",

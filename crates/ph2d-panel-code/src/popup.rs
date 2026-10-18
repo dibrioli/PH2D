@@ -2,7 +2,9 @@
 //! se não couber), sete linhas no máximo, as letras que casaram realçadas, o tipo à direita e a
 //! documentação da seleccionada numa caixa ao lado. A superfície é o `Popover` do design system.
 
-use crate::frame::{COMPLETION_MAX_CHARS, COMPLETION_ROWS, CodeFrame, CompletionView, PreviewLine};
+use crate::frame::{
+    COMPLETION_MAX_CHARS, COMPLETION_ROWS, CodeFrame, CompletionView, ListKind, PreviewLine,
+};
 use crate::palette::Palette;
 use crate::style::Ink;
 use crate::view::CodeView;
@@ -22,8 +24,8 @@ pub(crate) struct Painted {
     /// Cada linha à vista: o índice na lista inteira, a caixa, o rótulo e se é a seleccionada.
     pub rows: Vec<(usize, Rect, String, bool)>,
     pub doc: Option<Rect>,
-    /// A lista é de acções (o nome para o leitor de ecrã).
-    pub actions: bool,
+    /// O que a lista é (o nome para o leitor de ecrã).
+    pub kind: ListKind,
 }
 
 /// Uma linha pintada da lista, como a sonda a dá: o índice, o rótulo, se é a seleccionada e o centro.
@@ -85,14 +87,14 @@ impl CodeView {
             rect,
             rows: Vec::new(),
             doc: None,
-            actions: c.actions,
+            kind: c.kind,
         };
         for (k, row) in c.rows.iter().take(COMPLETION_ROWS).enumerate() {
             let i = c.top + k;
             let r = Rect::new(x, y + pad + k as f32 * lh, w, lh);
             let selected = i == c.selected;
             // A 1.ª acção do Alt+Enter nasce escolhida mas não carregada: o foco, não o bloco cheio.
-            if selected && c.actions {
+            if selected && c.kind != ListKind::Completion {
                 ph2d_editor_core::widget::paint_popover_row_focus(scene, r, pal.theme);
             } else if selected {
                 ph2d_editor_core::widget::paint_popover_row_highlight(scene, r, pal.theme);
@@ -261,10 +263,10 @@ impl CodeView {
         let mut out = vec![(
             list,
             NodeBuilder::new(Role::ListBox)
-                .label(ph2d_i18n::tr(if p.actions {
-                    "code.a11y.actions"
-                } else {
-                    "code.a11y.completion"
+                .label(ph2d_i18n::tr(match p.kind {
+                    ListKind::Completion => "code.a11y.completion",
+                    ListKind::Actions => "code.a11y.actions",
+                    ListKind::References => "code.a11y.references",
                 }))
                 .bounds(x, y, w, h)
                 .children(p.rows.iter().map(|r| opt(r.0)))

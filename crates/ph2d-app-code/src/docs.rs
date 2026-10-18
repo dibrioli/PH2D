@@ -74,6 +74,8 @@ pub struct CodeDocs {
     grammar: Option<GrammarWorker<ScriptId>>,
     /// O assistente de código (Onda 2, I2); arranca no 1.º documento aberto.
     pub(crate) intel: crate::intel::Intel,
+    /// Os passos ligados à fila global do undo (I10, [`crate::link`]).
+    pub(crate) links: crate::link::Links,
 }
 
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
@@ -109,6 +111,7 @@ impl Default for CodeDocs {
             recovery_dir: None,
             grammar: None,
             intel: crate::intel::Intel::default(),
+            links: crate::link::Links::default(),
             seen: crate::note::Seen::default(),
         }
     }

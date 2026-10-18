@@ -27,6 +27,12 @@ impl CodeDoc {
         if !area.contains(x, y) {
             return false;
         }
+        if self.rename.is_some() {
+            if self.view.rename_contains(x, y) {
+                return true;
+            }
+            self.rename = None;
+        }
         if let Some(i) = self.view.hint_button_at(x, y) {
             self.apply_fix(i);
             return true;
@@ -38,6 +44,7 @@ impl CodeDoc {
         self.hints.hover = None;
         self.goto = None;
         let acting = self.actions.is_some();
+        let listing = self.refs.is_some();
         if self.find.open
             && let Some(h) = self.find_view.hit(ts, x, y)
         {
@@ -64,6 +71,10 @@ impl CodeDoc {
                 self.apply_action(i);
                 return true;
             }
+            Some(ph2d_panel_code::CompletionHit::Row(i)) if listing => {
+                self.refs_go(i);
+                return true;
+            }
             Some(ph2d_panel_code::CompletionHit::Row(i)) => {
                 self.accept_completion(i);
                 return true;
@@ -72,6 +83,7 @@ impl CodeDoc {
             None => {
                 self.complete.close();
                 self.actions = None;
+                self.refs = None;
             }
         }
         self.find.focus = None;
@@ -165,7 +177,9 @@ impl CodeDoc {
     /// A roda: sobre o console rola-o, senão rola o texto — na horizontal com o Shift.
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32, shift: bool, console: &Store) {
         self.hints.hover = None;
-        if self.view.completion_hit(x, y).is_some() && self.actions.is_some() {
+        if self.view.completion_hit(x, y).is_some() && self.refs.is_some() {
+            self.refs_scroll(-(dy / self.view.metrics().line_h).round() as isize);
+        } else if self.view.completion_hit(x, y).is_some() && self.actions.is_some() {
             let lines = -dy / self.view.metrics().line_h;
             self.actions_scroll(if lines.abs() < 1.0 {
                 lines.signum() as isize

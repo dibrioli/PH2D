@@ -291,7 +291,17 @@ impl CodeDoc {
         self.edited(&edits, true);
     }
 
+    /// Desfazer/refazer na aba. Um grupo ligado à fila global (I10, [`crate::link`]) não anda aqui:
+    /// o pedido vai a ela, e o texto anda quando ela andar.
     pub fn undo(&mut self, redo: bool) -> bool {
+        if let Some(l) = self.buffer.history().top_link(redo) {
+            self.link_ask = Some((l, redo));
+            return true;
+        }
+        self.undo_text(redo)
+    }
+
+    pub(crate) fn undo_text(&mut self, redo: bool) -> bool {
         let edits = if redo {
             self.buffer.redo()
         } else {

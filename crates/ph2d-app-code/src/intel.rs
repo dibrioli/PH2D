@@ -18,6 +18,9 @@ use ph2d_script::api_table::{DEFINITIONS_PACKAGE, luau_definitions, luau_docs};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+#[path = "intel_names.rs"]
+mod names;
+
 /// Que servidor a família liga.
 pub enum IntelServer {
     /// O `luau-lsp` fixado (`resolve_binary`), com as definições e a documentação geradas da API.
@@ -204,6 +207,8 @@ impl Intel {
                 d.lsp.edits.clear();
                 d.assist.clear();
                 d.complete.close();
+                d.rename_offline();
+                d.occ.want = None;
                 if let Some(a) = d.actions.as_mut() {
                     a.offline();
                 }
@@ -371,6 +376,7 @@ impl Intel {
         self.ask_completions(docs, now_ns);
         self.ask_hints(docs, now_ns);
         self.ask_tokens(docs, now_ns);
+        self.ask_names(docs);
     }
 
     /// As cores (I11): uma pergunta por versão, numa pausa da escrita, sobre o texto que o servidor

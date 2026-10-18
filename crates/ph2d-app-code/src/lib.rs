@@ -25,12 +25,15 @@ mod goto;
 mod hint;
 mod intel;
 mod keys;
+mod link;
 mod lint;
 pub mod list;
 mod note;
 mod pointer;
 pub mod problems;
 mod recovery;
+mod refs;
+mod rename;
 mod semantic;
 pub mod smoke;
 

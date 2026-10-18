@@ -69,6 +69,14 @@ pub(crate) struct CodeDoc {
     pub(crate) actions: Option<crate::actions::Actions>,
     /// Os campos do `self` que ninguém dá (I7).
     pub(crate) lint: crate::lint::Lint,
+    /// A caixinha do F2 (I10), e o rename de propriedade à espera da metade da cena.
+    pub(crate) rename: Option<crate::rename::Renaming>,
+    pub(crate) scene_rename: Option<crate::rename::SceneRename>,
+    /// Ctrl+Z sobre um grupo ligado: o elo e o sentido, à espera do quadro da família.
+    pub(crate) link_ask: Option<(u64, bool)>,
+    /// As ocorrências do nome sob o cursor (I10), e a lista delas do Shift+F12.
+    pub(crate) occ: crate::refs::Occurrences,
+    pub(crate) refs: Option<crate::refs::RefsList>,
     /// As cores que o último quadro pintou (a sonda `ink_painted`).
     pub(crate) painted: Vec<(std::ops::Range<usize>, Ink)>,
     /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
@@ -117,6 +125,11 @@ impl CodeDoc {
             goto: None,
             actions: None,
             lint: crate::lint::Lint::default(),
+            rename: None,
+            scene_rename: None,
+            link_ask: None,
+            occ: crate::refs::Occurrences::default(),
+            refs: None,
             painted: Vec::new(),
             last_input_ns: 0,
             badge: None,
@@ -166,6 +179,9 @@ impl CodeDoc {
         self.goto = None;
         self.actions = None;
         self.lint.edited(edits);
+        self.rename = None;
+        self.refs = None;
+        self.occ.edited();
         self.complete.edited(edits);
         self.hints.hover = None;
         if let Some(a) = &mut self.diag_anchor {
@@ -327,7 +343,10 @@ impl CodeDoc {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
         let problems = self.problems();
         let note = self.note_sections(&problems);
-        let shown = self.actions_shown().or_else(|| self.completion_shown());
+        let shown = self
+            .actions_shown()
+            .or_else(|| self.refs_shown())
+            .or_else(|| self.completion_shown());
         let sig_doc = self
             .hints
             .sig
@@ -342,6 +361,7 @@ impl CodeDoc {
             });
         let closed = self.folds.marks(self.buffer.text());
         let bracket = self.bracket();
+        let rename_note = self.rename_note();
         if self.find.open {
             self.find.refresh(&self.buffer);
         }
@@ -358,6 +378,8 @@ impl CodeDoc {
             sem,
             assist: held,
             painted,
+            occ,
+            rename,
             ..
         } = self;
         painted.clear();
@@ -403,7 +425,7 @@ impl CodeDoc {
                 width_chars: s.width_chars,
                 doc: s.doc.as_deref(),
                 preview: &s.preview,
-                actions: s.actions,
+                kind: s.kind,
             }),
             hover: hints.hover.as_ref().and_then(|h| {
                 let assistant = h.shown.as_ref().map(|s| s.text.as_str());
@@ -428,6 +450,13 @@ impl CodeDoc {
                     active: s.active.clone(),
                     doc: sig_doc.as_deref().filter(|d| !d.is_empty()),
                 }
+            }),
+            occurrences: &occ.ranges,
+            rename: rename.as_ref().map(|r| ph2d_panel_code::RenameView {
+                word: r.word.clone(),
+                field: r.kind.as_ref().map(|_| &r.field),
+                hint: &rename_note.0,
+                error: rename_note.1.as_deref(),
             }),
         };
         view.paint(frame, code_r, scene, ts, theme);

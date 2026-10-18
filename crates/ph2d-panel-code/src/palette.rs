@@ -17,6 +17,8 @@ pub(crate) struct Palette {
     pub match_: Color,
     pub match_current: Color,
     pub match_edge: Color,
+    /// As ocorrências do nome sob o cursor (I10): neutro, abaixo da busca e da selecção.
+    pub occurrence: Color,
     pub bracket: Color,
     pub caret: Color,
     pub caret_other: Color,
@@ -48,6 +50,7 @@ impl Palette {
             match_: c(ColorToken::InfoSoft),
             match_current: c(ColorToken::WarnSoft),
             match_edge: c(ColorToken::Warn),
+            occurrence: c(ColorToken::Bg3),
             bracket: c(ColorToken::BorderStrong),
             caret: c(ColorToken::Text1),
             caret_other: c(ColorToken::Text2),

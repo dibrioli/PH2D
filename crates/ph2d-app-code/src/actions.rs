@@ -318,7 +318,7 @@ impl CodeDoc {
             width_chars,
             doc: None,
             preview,
-            actions: true,
+            kind: ph2d_panel_code::ListKind::Actions,
         })
     }
 
@@ -416,17 +416,31 @@ impl CodeDoc {
 /// Anda `delta` na lista de `len` (dá a volta nas pontas, como a da completação) e mantém a
 /// seleccionada à vista.
 fn step(a: &mut Actions, delta: isize, len: usize, rows: usize) {
-    let n = len as isize;
-    a.selected = if delta.abs() == 1 {
-        (a.selected as isize + delta).rem_euclid(n) as usize
+    (a.selected, a.top) = step_in(a.selected, a.top, delta, len, rows);
+}
+
+/// A seta (dá a volta) ou a página (pára no fim) numa janelinha de `rows` linhas sobre `len`.
+pub(crate) fn step_in(
+    selected: usize,
+    top: usize,
+    delta: isize,
+    len: usize,
+    rows: usize,
+) -> (usize, usize) {
+    let n = len.max(1) as isize;
+    let s = if delta.abs() == 1 {
+        (selected as isize + delta).rem_euclid(n) as usize
     } else {
-        (a.selected as isize + delta).clamp(0, n - 1) as usize
+        (selected as isize + delta).clamp(0, n - 1) as usize
     };
-    if a.selected < a.top {
-        a.top = a.selected;
-    } else if a.selected >= a.top + rows {
-        a.top = a.selected + 1 - rows;
-    }
+    let t = if s < top {
+        s
+    } else if s >= top + rows {
+        s + 1 - rows
+    } else {
+        top
+    };
+    (s, t)
 }
 
 #[cfg(test)]

@@ -36,12 +36,27 @@ impl CodeDoc {
             || self.sem.ticket == Some(ticket)
             || self.goto.as_ref().is_some_and(|g| g.ticket == Some(ticket))
             || self.actions.as_ref().is_some_and(|a| a.owns(ticket))
+            || self.occ.ticket == Some(ticket)
+            || self
+                .rename
+                .as_ref()
+                .and_then(|r| r.sent.as_ref())
+                .is_some_and(|s| s.1 == Some(ticket))
     }
 
     /// A resposta `ticket` a um pedido sobre o documento `uri` (este).
     pub(crate) fn answer(&mut self, ticket: Ticket, uri: &str, answer: Answer) {
         if self.sem.ticket == Some(ticket) {
             self.sem.answer(ticket, answer);
+        } else if self.occ.ticket == Some(ticket) {
+            self.occurrences_answer(answer);
+        } else if self
+            .rename
+            .as_ref()
+            .and_then(|r| r.sent.as_ref())
+            .is_some_and(|s| s.1 == Some(ticket))
+        {
+            self.rename_answer(answer);
         } else if self.actions.as_ref().is_some_and(|a| a.owns(ticket)) {
             self.actions_answer(ticket, answer);
         } else if let Some(f) = self

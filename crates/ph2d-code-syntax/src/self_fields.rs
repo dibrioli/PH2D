@@ -15,6 +15,9 @@ pub struct SelfFields {
     pub assigned: Vec<String>,
     /// Cada leitura `self.<nome>`: o nome e os bytes dele.
     pub reads: Vec<(String, Range<usize>)>,
+    /// TODOS os sítios de um campo (dados e lidos, `self.x`, `self["x"]`, `function self.x`): o nome e
+    /// os bytes dele (o conteúdo da string, no `self["x"]`) — o rename do I10.
+    pub sites: Vec<(String, Range<usize>)>,
 }
 
 impl SelfFields {
@@ -86,6 +89,8 @@ fn walk(n: Node, text: &Text, out: &mut SelfFields) -> Option<()> {
         {
             let field = m.child_by_field_name(if method { "method" } else { "field" })?;
             out.give(text.slice(field.byte_range()));
+            out.sites
+                .push((text.slice(field.byte_range()), field.byte_range()));
         }
         if method || params(n).iter().any(|p| is_self(*p, text)) {
             return Some(());
@@ -124,6 +129,7 @@ fn use_of_self(n: Node, text: &Text, out: &mut SelfFields) -> Option<()> {
         "dot_index_expression" => {
             let f = p.child_by_field_name("field")?;
             let name = text.slice(f.byte_range());
+            out.sites.push((name.clone(), f.byte_range()));
             if is_target(p) {
                 out.give(name);
             } else {
@@ -136,8 +142,10 @@ fn use_of_self(n: Node, text: &Text, out: &mut SelfFields) -> Option<()> {
                 .child_by_field_name("field")
                 .filter(|f| f.kind() == "string")?;
             let content = f.child_by_field_name("content")?;
+            let name = text.slice(content.byte_range());
+            out.sites.push((name.clone(), content.byte_range()));
             if is_target(p) {
-                out.give(text.slice(content.byte_range()));
+                out.give(name);
             }
             Some(())
         }
@@ -170,6 +178,12 @@ mod tests {
         assert_eq!(reads(&f), ["amplitude", "tint", "w"]);
         let (_, r) = &f.reads[0];
         assert_eq!(&src[r.clone()], "amplitude");
+        let sites: Vec<&str> = f.sites.iter().map(|(_, r)| &src[r.clone()]).collect();
+        assert_eq!(
+            sites,
+            ["t", "k", "t", "a", "b", "amplitude", "tint", "w", "cb"]
+        );
+        assert!(f.sites.iter().all(|(n, r)| src[r.clone()] == **n));
     }
 
     #[test]

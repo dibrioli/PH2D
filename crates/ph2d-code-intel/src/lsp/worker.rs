@@ -2,9 +2,9 @@
 //! entregues pelo leitor do cliente, notificações). Nunca há relógio a girar: ele dorme em `recv`.
 
 use super::answer::{self, Answer, Diag};
-use super::fix;
 use super::sem::{self, Legend};
 use super::{Connect, Event, Inbox, Req, ServerState, Ticket};
+use super::{fix, rename};
 use crate::pos::{position_of, range_of};
 use ph2d_code_buffer::Text;
 use ph2d_code_lsp::client::Wake;
@@ -67,7 +67,7 @@ pub(super) fn run(connect: Connect, me: Sender<Inbox>, rx: Receiver<Inbox>, tx: 
     }
 }
 
-fn params_at(uri: &str, text: &Text, byte: usize) -> Value {
+pub(crate) fn params_at(uri: &str, text: &Text, byte: usize) -> Value {
     let p = position_of(text, byte);
     json!({ "textDocument": { "uri": uri },
             "position": { "line": p.line, "character": p.character } })
@@ -83,6 +83,8 @@ fn method_of(req: &Req) -> &'static str {
         Req::Fixes(..) => "textDocument/codeAction",
         Req::Candidates(_) => "textDocument/completion",
         Req::TypeHints => "textDocument/inlayHint",
+        Req::Rename(..) => "textDocument/rename",
+        Req::References(_) => "textDocument/references",
     }
 }
 
@@ -96,6 +98,8 @@ fn params_of(uri: &str, text: &Text, req: &Req) -> Value {
         Req::Tokens => json!({ "textDocument": { "uri": uri } }),
         Req::Fixes(r, diags) => fix::params(uri, text, r.clone(), diags),
         Req::TypeHints => fix::hint_params(uri, text),
+        Req::Rename(b, name) => rename::rename_params(uri, text, *b, name),
+        Req::References(b) => rename::references_params(uri, text, *b),
     }
 }
 
@@ -122,6 +126,8 @@ impl Worker {
             Req::Tokens => Answer::Tokens(sem::tokens(text, &self.legend, v)),
             Req::Fixes(..) => Answer::Fixes(fix::fixes(&f.uri, text, v)),
             Req::TypeHints => Answer::TypeHints(fix::type_hints(text, v)),
+            Req::Rename(..) => Answer::Rename(rename::rename(&f.uri, text, v)),
+            Req::References(_) => Answer::References(rename::references(&f.uri, text, v)),
         }
     }
 }

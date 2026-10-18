@@ -199,4 +199,61 @@ impl CodeDocs {
             .map(|h| h.kind)
             .next_back()
     }
+
+    /// ⚠️ SONDA: as ocorrências realçadas na aba do script `id` (I10).
+    #[must_use]
+    pub fn occurrences_of(&self, id: ScriptId) -> Vec<std::ops::Range<usize>> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map(|d| d.occ.ranges.clone())
+            .unwrap_or_default()
+    }
+
+    /// ⚠️ SONDA: a caixinha do rename (I10): o nome escrito (`None` = só a razão), a ajuda e a razão.
+    #[must_use]
+    pub fn rename_of(&self, id: ScriptId) -> Option<(Option<String>, String, Option<String>)> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        let r = d.rename.as_ref()?;
+        let (hint, why) = d.rename_note();
+        Some((
+            r.kind.as_ref().map(|_| r.field.text().to_string()),
+            hint,
+            why,
+        ))
+    }
+
+    /// ⚠️ SONDA: quantas vezes o assistente arrancou (um que morre e volta conta outra vez).
+    #[must_use]
+    pub fn assist_boots(&self) -> u64 {
+        self.intel.boots()
+    }
+
+    /// ⚠️ SONDA: a lista do Shift+F12 (I10): as linhas e a seleccionada.
+    #[must_use]
+    pub fn references_of(&self, id: ScriptId) -> Option<(Vec<String>, usize)> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        let r = d.refs.as_ref()?;
+        Some((
+            d.refs_rows(r).into_iter().map(|x| x.label).collect(),
+            r.selected,
+        ))
+    }
+
+    /// ⚠️ SONDA: a caixa da caixinha do rename no último quadro pintado.
+    #[must_use]
+    pub fn rename_rect_of(&self, id: ScriptId) -> Option<ph2d_editor_core::zones::Rect> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)?
+            .view
+            .rename_rect()
+    }
+
+    /// ⚠️ SONDA: o elo do grupo que o próximo desfazer (`redo = false`) ou refazer da aba tiraria.
+    #[must_use]
+    pub fn top_link_of(&self, id: ScriptId, redo: bool) -> Option<u64> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        d.buffer.history().top_link(redo)
+    }
 }

@@ -15,6 +15,7 @@ mod facts;
 mod fold;
 mod highlight;
 mod indent;
+mod names;
 mod queries;
 mod self_fields;
 mod syntax;
@@ -24,6 +25,7 @@ pub use errors::SyntaxError;
 pub use fold::{Fold, fold_captures_visited};
 pub use highlight::{HighlightKind, HighlightSpan};
 pub use indent::closer_tokens;
+pub use names::{LUAU_KEYWORDS, NameAt, is_identifier};
 pub use queries::{
     CaptureUse, FOLDS_SCM, HIGHLIGHTS_SCM, INDENTS_SCM, capture_table, highlight_captures,
     unevaluated_predicates,

@@ -73,6 +73,10 @@ pub enum Answer {
     /// As `quickfix` com edição que ecoam um diagnóstico mandado (I7).
     Fixes(Vec<super::Fix>),
     TypeHints(Vec<super::TypeHint>),
+    /// As trocas do rename neste documento; `None` = nenhuma, ou alguma fora dele (I10).
+    Rename(Option<Vec<super::Edit>>),
+    /// Os sítios do nome neste documento, ordenados (I10).
+    References(Vec<Range<usize>>),
     /// O servidor recusou, morreu ou o pedido não pôde ir (o texto diz porquê).
     Failed(String),
 }

@@ -17,13 +17,18 @@ pub const CMD_FOLD_ALL: NodeId = hash_node_id("code_cmd_fold_all");
 pub const CMD_UNFOLD_ALL: NodeId = hash_node_id("code_cmd_unfold_all");
 /// O assistente de código parado: procura o programa outra vez e volta a ligá-lo (I2).
 pub const CMD_RESTART_ASSIST: NodeId = hash_node_id("code_cmd_restart_assistant");
+/// Renomear o nome no cursor (I10, F2), e a lista dos sítios dele (Shift+F12).
+pub const CMD_RENAME: NodeId = hash_node_id("code_cmd_rename");
+pub const CMD_REFERENCES: NodeId = hash_node_id("code_cmd_references");
 
 /// `(id, chave do rótulo, menu)` — a tabela única, lida pelos menus, pela paleta e pelo despacho.
-const TABLE: [(NodeId, &str, DocMenu); 7] = [
+const TABLE: [(NodeId, &str, DocMenu); 9] = [
     (CMD_SAVE, "code.cmd.save", DocMenu::File),
     (CMD_FIND, "code.cmd.find", DocMenu::Edit),
     (CMD_REPLACE, "code.cmd.replace", DocMenu::Edit),
     (CMD_GOTO, "code.cmd.goto", DocMenu::Edit),
+    (CMD_RENAME, "code.cmd.rename", DocMenu::Edit),
+    (CMD_REFERENCES, "code.cmd.references", DocMenu::Edit),
     (CMD_FOLD_ALL, "code.cmd.fold_all", DocMenu::Edit),
     (CMD_UNFOLD_ALL, "code.cmd.unfold_all", DocMenu::Edit),
     (
@@ -54,6 +59,8 @@ impl CodeDoc {
             CMD_FIND => self.find.open_find(&self.buffer, false),
             CMD_REPLACE => self.find.open_find(&self.buffer, true),
             CMD_GOTO => self.find.open_goto(),
+            CMD_RENAME => self.start_rename(),
+            CMD_REFERENCES => self.open_refs(),
             CMD_FOLD_ALL => self.fold_all(true),
             CMD_UNFOLD_ALL => self.fold_all(false),
             _ => return false,

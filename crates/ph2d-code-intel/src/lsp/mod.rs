@@ -8,6 +8,7 @@
 
 mod answer;
 mod fix;
+mod rename;
 mod sem;
 mod worker;
 
@@ -59,6 +60,10 @@ pub enum Req {
     Candidates(usize),
     /// As dicas de tipo do documento (I7, «adicionar tipo»).
     TypeHints,
+    /// Renomear o nome em `usize` para o texto dado (I10). ⛔ Nunca sobre um membro: o servidor morre.
+    Rename(usize, String),
+    /// Os sítios do nome em `usize` neste documento, com a declaração (I10).
+    References(usize),
 }
 
 impl Req {
@@ -73,6 +78,8 @@ impl Req {
             Self::Fixes(..) => 5,
             Self::Candidates(_) => 6,
             Self::TypeHints => 7,
+            Self::Rename(..) => 8,
+            Self::References(_) => 9,
         }
     }
 }

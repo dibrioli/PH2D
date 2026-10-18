@@ -62,6 +62,7 @@ impl CodeView {
         self.paint_gutter(&frame, scene, &pal);
         self.paint_completion(&frame, scene, ts, &pal);
         self.paint_hints(&frame, scene, ts, &pal);
+        self.paint_rename(&frame, scene, ts, &pal);
         let head = frame.buffer.selection().primary().head;
         let k = (frame.buffer.revision(), head, self.tab);
         if self.status_col.is_none_or(|c| c.0 != k) {
@@ -244,6 +245,13 @@ impl CodeView {
                     stroke_rect(scene, r, StrokeToken::Thin.px(), pal.match_edge);
                 }
             });
+        }
+        for o in frame.occurrences {
+            if o.end >= vs && o.start <= ve {
+                self.each_seg(buffer, o.start, o.end, false, |_, r| {
+                    scene.fill_rect(rect_to_vello(r), pal.occurrence);
+                });
+            }
         }
         for r in buffer.selection().ranges() {
             if !r.is_empty() && r.to() >= vs && r.from() <= ve {
@@ -473,10 +481,15 @@ impl CodeView {
         for id in roots {
             doc.push_child(id.into());
         }
+        let rename = self.rename_a11y(base);
+        if let Some((id, _)) = &rename {
+            doc.push_child((*id).into());
+        }
         out.push((base, doc));
         out.extend(runs);
         out.extend(list.into_iter().flat_map(|l| l.2));
         out.extend(hints);
+        out.extend(rename);
         out
     }
 }

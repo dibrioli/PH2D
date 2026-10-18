@@ -100,8 +100,16 @@ pub struct CompletionView<'a> {
     pub doc: Option<&'a str>,
     /// A prévia da acção seleccionada (I7; no lugar da documentação): as linhas como ficam.
     pub preview: &'a [PreviewLine],
-    /// A lista é de acções de contexto (Alt+Enter), não de completação.
-    pub actions: bool,
+    pub kind: ListKind,
+}
+
+/// O que a janelinha lista: a completação, as acções de contexto do Alt+Enter (I7) ou os sítios de um
+/// nome do Shift+F12 (I10). As duas últimas nascem com a 1.ª linha em foco neutro, não no acento.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ListKind {
+    Completion,
+    Actions,
+    References,
 }
 
 /// Uma linha da prévia de uma acção: o texto como fica e o que nele muda (bytes do texto).
@@ -169,4 +177,18 @@ pub struct CodeFrame<'a> {
     pub completion: Option<CompletionView<'a>>,
     pub hover: Option<HoverView<'a>>,
     pub signature: Option<SignatureView<'a>>,
+    /// As ocorrências do nome sob o cursor (I10), realçadas.
+    pub occurrences: &'a [Range<usize>],
+    pub rename: Option<RenameView<'a>>,
+}
+
+/// A caixinha do rename (I10), por baixo de `word` (bytes do buffer).
+pub struct RenameView<'a> {
+    pub word: Range<usize>,
+    /// O nome novo; `None` = não há o que renomear aqui e a caixinha só diz porquê.
+    pub field: Option<&'a Buffer>,
+    /// A ajuda por baixo do campo.
+    pub hint: &'a str,
+    /// Porque o nome não serve (no lugar da ajuda, a vermelho).
+    pub error: Option<&'a str>,
 }

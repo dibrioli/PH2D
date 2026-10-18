@@ -87,6 +87,9 @@ pub enum Target {
     Board(BoardId),
     Surface(SurfaceTab),
     New,
+    /// W23 — só com abas a mais: a aba anterior / a seguinte (a fila segue a activa).
+    Prev,
+    Next,
 }
 
 impl Target {
@@ -97,6 +100,8 @@ impl Target {
             Target::Board(id) => tab_node_id(id),
             Target::Surface(tab) => surface_tab_node_id(tab),
             Target::New => ids::DOC_TAB_NEW,
+            Target::Prev => ids::DOC_TAB_PREV,
+            Target::Next => ids::DOC_TAB_NEXT,
         }
     }
 }
@@ -108,6 +113,7 @@ impl Target {
 /// nem `Scene` e `+` cabem — uma aba por cima de um menu abriria o menu errado. `editing` = a aba
 /// que é o campo de renomear e o texto dele: ela mede pelo maior dos dois, para o campo crescer.
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn tab_rects(
     bar: Rect,
     start_x: f32,
@@ -115,6 +121,7 @@ pub fn tab_rects(
     boards: &BoardSet,
     surfaces: &[(SurfaceTab, DocTab)],
     editing: Option<(BoardId, &str)>,
+    active: Target,
     text_system: &mut TextSystem,
 ) -> Vec<(Target, Rect)> {
     let font = TypeToken::Sm.px();
@@ -124,34 +131,87 @@ pub fn tab_rects(
     if free < 0.0 {
         return Vec::new();
     }
-    let n = boards.boards().len() + surfaces.len();
+    // As abas de documento pela ordem, cada uma com a largura que o nome pede.
+    let mut items: Vec<(Target, f32)> = Vec::with_capacity(boards.boards().len() + surfaces.len());
+    for b in boards.boards() {
+        let mut text_w = text_system.prefix_width(&b.name, font);
+        if let Some((_, buf)) = editing.filter(|(id, _)| *id == b.id) {
+            text_w = text_w.max(text_system.prefix_width(buf, font));
+        }
+        items.push((Target::Board(b.id), rect_for_label(text_w)));
+    }
+    for (tab, doc) in surfaces {
+        let natural = super::slot_tabs_face::natural_w(&surface_title(doc), text_system);
+        items.push((Target::Surface(*tab), natural));
+    }
+    let n = items.len();
     let share = if n == 0 { 0.0 } else { free / n as f32 };
-    let mut out = Vec::with_capacity(n + 2);
+    // W23 — o piso de uma aba: quatro letras e o recuo (abaixo dele o nome deixa de se ler).
+    let floor = rect_for_label(4.0 * font); // LITERAL-PX-OK: quatro letras de largo
+    let mut out = Vec::with_capacity(n + 4);
     let mut x = start_x;
     let mut push = |t: Target, w: f32, out: &mut Vec<(Target, Rect)>| {
         out.push((t, Rect::new(x, bar.y, w, bar.h)));
         x += w;
     };
     push(Target::Scene, scene_w, &mut out);
-    for b in boards.boards() {
-        let mut text_w = text_system.prefix_width(&b.name, font);
-        if let Some((_, buf)) = editing.filter(|(id, _)| *id == b.id) {
-            text_w = text_w.max(text_system.prefix_width(buf, font));
+    if share >= floor || n == 0 {
+        for (t, natural) in items {
+            push(t, natural.min(share), &mut out);
         }
-        let natural = rect_for_label(text_w);
-        push(Target::Board(b.id), natural.min(share), &mut out);
-    }
-    for (tab, doc) in surfaces {
-        let natural = super::slot_tabs_face::natural_w(&surface_title(doc), text_system);
-        push(Target::Surface(*tab), natural.min(share), &mut out);
+    } else {
+        // Abas a mais: ‹ › escolhem a anterior/seguinte e a janela mostra a activa no meio.
+        let room = (free - 2.0 * new_w).max(0.0);
+        let k = ((room / floor).floor() as usize).clamp(1, n);
+        let w = room / k as f32;
+        let at = items.iter().position(|(t, _)| *t == active).unwrap_or(0);
+        let start = at.saturating_sub(k / 2).min(n - k);
+        push(Target::Prev, new_w, &mut out);
+        for &(t, natural) in &items[start..start + k] {
+            push(t, natural.min(w), &mut out);
+        }
+        push(Target::Next, new_w, &mut out);
     }
     push(Target::New, new_w, &mut out);
     out
 }
 
+/// W23 — a aba `step` lugares ao lado da activa (dá a volta), pela ordem das abas.
+fn neighbour(hero: &HeroScreen, step: isize) -> Option<Target> {
+    let docs = &hero.documents;
+    let order: Vec<Target> = docs
+        .boards()
+        .boards()
+        .iter()
+        .map(|b| Target::Board(b.id))
+        .chain(
+            docs.surfaces()
+                .tabs()
+                .into_iter()
+                .map(|(t, _)| Target::Surface(t)),
+        )
+        .collect();
+    let n = order.len() as isize;
+    if n == 0 {
+        return None;
+    }
+    let now = match (docs.active(), docs.surface_active()) {
+        (Some(b), _) => Target::Board(b),
+        (None, Some(t)) => Target::Surface(t),
+        (None, None) => return order.first().copied(),
+    };
+    let at = order.iter().position(|t| *t == now).unwrap_or(0) as isize;
+    order.get((at + step).rem_euclid(n) as usize).copied()
+}
+
 /// Regista as duas abas fixas. Chamado pelo `pre_populate` do hero.
 pub fn populate(store: &mut WidgetStore) {
-    for id in [ids::DOC_TAB_SCENE, ids::DOC_TAB_NEW] {
+    for id in [
+        ids::DOC_TAB_SCENE,
+        ids::DOC_TAB_NEW,
+        ids::DOC_TAB_PREV,
+        ids::DOC_TAB_NEXT,
+    ] {
         register(store, id);
     }
     super::document_tabs_menu::populate(store);
@@ -248,6 +308,7 @@ pub fn paint(
         hero_docs.boards(),
         &surfaces,
         editing,
+        active,
         text_system,
     );
     let dragged = hero_docs.tab_drag.map(|d| Target::Board(d.board));
@@ -287,6 +348,16 @@ pub fn paint(
             theme,
         );
         match t {
+            Target::Prev | Target::Next => {
+                let s = INLINE_ICON_PX;
+                let icon = Rect::new(r.x + (r.w - s) / 2.0, r.y + (r.h - s) / 2.0, s, s);
+                let glyph = if t == Target::Prev {
+                    IconId::ChevronLeft
+                } else {
+                    IconId::ChevronRight
+                };
+                paint_icon(scene, glyph, icon, fg, StrokeToken::Default.px());
+            }
             Target::New => {
                 let s = INLINE_ICON_PX;
                 let icon = Rect::new(r.x + (r.w - s) / 2.0, r.y + (r.h - s) / 2.0, s, s);
@@ -423,6 +494,14 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     };
     if id == ids::DOC_TAB_SCENE {
         hero.documents.activate(None);
+        return true;
+    }
+    if id == ids::DOC_TAB_PREV || id == ids::DOC_TAB_NEXT {
+        match neighbour(hero, if id == ids::DOC_TAB_PREV { -1 } else { 1 }) {
+            Some(Target::Board(b)) => hero.documents.activate(Some(b)),
+            Some(Target::Surface(t)) => hero.documents.activate_surface(t),
+            _ => {}
+        }
         return true;
     }
     for (tab, _) in hero.documents.surfaces().tabs() {

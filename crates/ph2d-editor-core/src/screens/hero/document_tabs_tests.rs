@@ -174,7 +174,7 @@ fn tabs_sit_between_start_and_end_without_overlap() {
     for i in 0..6 {
         set.create(format!("A board with a long name {i}"));
     }
-    let tabs = tab_rects(bar, 260.0, 900.0, &set, &[], None, &mut text);
+    let tabs = tab_rects(bar, 260.0, 900.0, &set, &[], None, Target::Scene, &mut text);
     assert_eq!(tabs.len(), 8, "Scene + 6 quadros + New");
     assert_eq!(tabs[0].0, Target::Scene);
     assert_eq!(tabs[7].0, Target::New);
@@ -191,7 +191,7 @@ fn tabs_sit_between_start_and_end_without_overlap() {
         );
     }
     assert!(
-        tab_rects(bar, 260.0, 270.0, &set, &[], None, &mut text).is_empty(),
+        tab_rects(bar, 260.0, 270.0, &set, &[], None, Target::Scene, &mut text).is_empty(),
         "sem espaço não se pinta nada"
     );
 }
@@ -221,4 +221,76 @@ fn loading_registers_every_tab_and_returns_to_the_scene() {
     repaint(&mut hero, &mut text);
     click(&mut hero, tab_node_id(a));
     assert_eq!(hero.documents.active(), Some(a));
+}
+
+/// ⭐ W23 B5 — com quadros a mais para a fila, nenhuma aba fica abaixo do piso (quatro letras): a fila
+/// mostra uma janela com a ACTIVA dentro e ‹ › nas pontas; sem transbordo as setas não existem.
+#[test]
+fn too_many_boards_show_a_window_with_the_active_one_and_arrows() {
+    let mut text = TextSystem::without_system_fonts();
+    let bar = Rect::new(0.0, 0.0, 1366.0, 28.0);
+    let mut set = BoardSet::default();
+    let ids: Vec<BoardId> = (0..40).map(|i| set.create(format!("Board {i}"))).collect();
+    let floor = rect_for_label(4.0 * TypeToken::Sm.px());
+    for &active in &[ids[0], ids[20], ids[39]] {
+        let tabs = tab_rects(
+            bar,
+            260.0,
+            900.0,
+            &set,
+            &[],
+            None,
+            Target::Board(active),
+            &mut text,
+        );
+        assert_eq!(tabs[1].0, Target::Prev);
+        assert_eq!(tabs[tabs.len() - 2].0, Target::Next);
+        assert!(
+            tabs.iter().any(|(t, _)| *t == Target::Board(active)),
+            "a activa fora da fila"
+        );
+        for (t, r) in &tabs {
+            if let Target::Board(b) = t {
+                let name = &set.get(*b).unwrap().name;
+                let natural = rect_for_label(text.prefix_width(name, TypeToken::Sm.px()));
+                let want = floor.min(natural);
+                assert!(r.w + 0.001 >= want, "{t:?} com {} < {want}", r.w);
+            }
+        }
+        let last = tabs[tabs.len() - 1].1;
+        assert!(last.x + last.w <= 900.0 + 0.001);
+    }
+    let few = BoardSet::default();
+    let tabs = tab_rects(bar, 260.0, 900.0, &few, &[], None, Target::Scene, &mut text);
+    assert!(
+        !tabs
+            .iter()
+            .any(|(t, _)| matches!(t, Target::Prev | Target::Next))
+    );
+}
+
+/// ⭐ W23 B5 — com 40 quadros a «›» pintada abre o quadro seguinte e a «‹» o anterior (dá a volta),
+/// pelo clique real na barra; a aba aberta continua à vista.
+#[test]
+fn the_tab_arrows_open_the_next_and_previous_board() {
+    let (mut hero, mut text) = painted();
+    let ids: Vec<BoardId> = (0..40)
+        .map(|i| hero.documents.create(format!("Board {i}")))
+        .collect();
+    for id in &ids {
+        register_board(&mut hero.store, *id);
+    }
+    hero.documents.activate(Some(ids[0]));
+    repaint(&mut hero, &mut text);
+    click(&mut hero, ids::DOC_TAB_NEXT);
+    repaint(&mut hero, &mut text);
+    assert_eq!(hero.documents.active(), Some(ids[1]));
+    click(&mut hero, ids::DOC_TAB_PREV);
+    click(&mut hero, ids::DOC_TAB_PREV);
+    repaint(&mut hero, &mut text);
+    assert_eq!(hero.documents.active(), Some(ids[39]), "dá a volta");
+    assert!(
+        find(&hero, tab_node_id(ids[39])).is_some(),
+        "a aberta está na fila"
+    );
 }

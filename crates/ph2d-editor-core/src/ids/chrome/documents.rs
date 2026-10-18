@@ -31,6 +31,9 @@ pub const BOARD_POLL_NAME_INPUT: NodeId = hash_node_id("board_poll_name_input");
 pub const BOARD_LIVE_CODE_INPUT: NodeId = hash_node_id("board_live_code_input");
 pub const BOARD_LIVE_ADDR_INPUT: NodeId = hash_node_id("board_live_addr_input");
 pub const BOARD_LIVE_LINK_INPUT: NodeId = hash_node_id("board_live_link_input");
+/// W23 — as setas da fila das abas de documento quando não cabem todas.
+pub const DOC_TAB_PREV: NodeId = hash_node_id("doc_tab_prev");
+pub const DOC_TAB_NEXT: NodeId = hash_node_id("doc_tab_next");
 /// W23 — menu do botão direito num elemento do quadro.
 pub const CTX_MENU_BOARD_EL_COPY: NodeId = hash_node_id("ctx_menu_board_el_copy");
 pub const CTX_MENU_BOARD_EL_PASTE: NodeId = hash_node_id("ctx_menu_board_el_paste");

@@ -57,7 +57,7 @@ pub fn line_target(rest: &str, lines: usize) -> Option<(usize, Option<usize>)> {
         Some("") | None => None,
         Some(c) => Some(c.parse::<usize>().ok()?.max(1)),
     };
-    Some((line.clamp(1, lines.max(1)), col))
+    Some((crate::math::safe_clamp_ord(line, 1, lines.max(1)), col))
 }
 
 fn only(model: &PaletteModel, groups: Vec<PaletteGroup>) -> PaletteModel {

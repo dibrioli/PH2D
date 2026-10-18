@@ -143,8 +143,9 @@ fn the_step_carries_the_selection_and_the_restore_prefers_it() {
         .split("pub(crate) fn post_frame_undo")
         .nth(1)
         .expect("post_frame_undo existe");
+    // Desde o I10 (CodeEditor) o passo nasce por `push_linked` (estado, marca, elo do undo global).
     assert!(
-        post.contains("self.empurra(") && empurra.contains("push_undo_em(base, mark,"),
+        post.contains("self.empurra(") && empurra.contains("push_linked(base, mark,"),
         "o passo nasce sem a selecção que lhe pertence — a fila volta a ser só estado"
     );
 }

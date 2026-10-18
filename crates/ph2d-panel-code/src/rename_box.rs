@@ -38,10 +38,11 @@ impl CodeView {
         let pad = Spacing::Xs.px();
         let line = font() + 2.0 * Spacing::Sm.px();
         let note = r.error.unwrap_or(r.hint);
-        let chars = note
-            .chars()
-            .count()
-            .clamp(RENAME_MIN_CHARS, COMPLETION_MAX_CHARS);
+        let chars = ph2d_editor_core::math::safe_clamp_ord(
+            note.chars().count(),
+            RENAME_MIN_CHARS,
+            COMPLETION_MAX_CHARS,
+        );
         let w = (chars as f32 * self.m.advance + 2.0 * pad).min(tr.w);
         let h = r.field.map_or(0.0, |_| line + pad) + line + 2.0 * pad;
         let x = (at.x - pad).min(tr.x + tr.w - w).max(tr.x);

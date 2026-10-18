@@ -78,3 +78,5 @@ F19 cena 28 — Fill do painel e FILL da barra `[240,140,40]`, LINE `[240,240,24
 7. Opacidade dirigida (timeline) e cor por token são valores de VISTA (`VecDrivenStyle`, `vec_view.bound`), não `VecPath`: o painel mostra o valor autorado (o token tem hachura).
 8. Herdados do F18: ABERTO 3 (aparência de checkbox/toggle, BUGS #26), 4 (Preview com rato real não fotografado), 5 (tracejado na placa só percorre 1 par, profiler das sondas do Motion, grupos visuais), 6 (sinais chamam `request`).
 9. `CLAUDE.md` §5.1 UI/UX: **não** alterado nesta janela; ao fechar a linha, trocar o link do último handoff e o intervalo do smoke (`…26` → `…30`).
+
+> ✅ **Smoke do dono: OK (18/10)** — cenas 28, 29 e 30 e os passos manuais (desfazer, seletor aberto, Preview).

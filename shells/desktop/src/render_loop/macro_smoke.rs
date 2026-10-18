@@ -150,6 +150,15 @@ impl crate::App {
                     self.timeline_reveal_after_apply = true;
                 }
                 Gesto::Play => self.timeline_intents.push(TimelineIntent::TogglePlay),
+                // A porta do botão: o `EditorAction` que o clique levanta.
+                Gesto::PlayDeCima => {
+                    if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                        hero.bus
+                            .push(ph2d_editor_core::action_bus::EditorAction::Transport(
+                                ph2d_editor_core::action_bus::TransportCmd::Play,
+                            ));
+                    }
+                }
                 Gesto::Desce(uv) | Gesto::Move(uv) => {
                     let Some((px, py)) = self.ponto_da_tela(bits, uv) else {
                         continue;

@@ -37,27 +37,27 @@ const LADO: u32 = 128;
 const QUADRO_US: u64 = 16_667;
 const DT_MS: f32 = 1000.0 / 60.0;
 
-struct Banca {
+pub(crate) struct Banca {
     sim: SimWorld,
     painter: PainterTool,
     /// O Motion como a composição o passa: a gravadora e o objecto em edição (esta crate não
     /// depende da família dele).
     motion: MotionDeBrinquedo,
     motion_em_edicao: Option<u64>,
-    tl: TimelineState,
+    pub(crate) tl: TimelineState,
     intents: Vec<TimelineIntent>,
-    m: Macros,
+    pub(crate) m: Macros,
     host: MockPanelHost,
     st: MacrosPanelState,
     agora: u64,
-    bits: u64,
+    pub(crate) bits: u64,
     rects: Vec<(NodeId, Rect)>,
     /// O Painter é a ferramenta activa.
     activo: bool,
 }
 
 impl Banca {
-    fn nova() -> Self {
+    pub(crate) fn nova() -> Self {
         let mut sim = SimWorld::new();
         let bits = sim.world_mut().spawn_empty().id().to_bits();
         let mut painter = PainterTool::default();
@@ -84,7 +84,7 @@ impl Banca {
     }
 
     /// Um quadro do editor: o Painter anda, depois a `fase_macros` da shell.
-    fn quadro(&mut self) {
+    pub(crate) fn quadro(&mut self) {
         drop(self.painter.take_preview_arc());
         self.painter.on_tick(DT_MS);
         self.agora += QUADRO_US;
@@ -106,7 +106,7 @@ impl Banca {
     }
 
     /// A shell publica o instantâneo e o painel pinta; os gestos que a pintura levanta vão à família.
-    fn pinta(&mut self) {
+    pub(crate) fn pinta(&mut self) {
         let f = Familias {
             painter: Some(&mut self.painter),
             painter_activo: self.activo,
@@ -134,7 +134,7 @@ impl Banca {
     }
 
     /// Carregar no meio do controlo, como o rato: o store tem de o considerar focável.
-    fn carrega(&mut self, id: NodeId) {
+    pub(crate) fn carrega(&mut self, id: NodeId) {
         let r = self
             .rect(id)
             .unwrap_or_else(|| panic!("o painel nunca pintou {id:?}"));
@@ -161,7 +161,7 @@ impl Banca {
         self.quadro();
     }
 
-    fn pincelada(&mut self, de: [f32; 2], para: [f32; 2]) {
+    pub(crate) fn pincelada(&mut self, de: [f32; 2], para: [f32; 2]) {
         const PASSOS: u32 = 10;
         for i in 0..=PASSOS {
             #[expect(clippy::cast_precision_loss, reason = "poucos passos")]

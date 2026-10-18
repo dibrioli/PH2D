@@ -26,6 +26,8 @@ pub enum Gesto {
     Play,
     /// O Wet Paint no seletor de meio do Painter.
     MeioWet,
+    /// O Play da barra de cima (corre a cena: só os clipes em Autoplay tocam).
+    PlayDeCima,
 }
 
 /// Como o dono pode ter feito o caminho (`PH2D_MACRO_CAMINHO`): as variantes correm na mesma rodada.
@@ -41,6 +43,8 @@ pub enum Variante {
     Splash,
     /// Parar e ▷, sem ⏮.
     SemRewind,
+    /// O caminho do smoke do dono de 18/10: Parar e o Play da barra de cima.
+    Topo,
 }
 
 /// A variante desta corrida.
@@ -51,6 +55,7 @@ pub fn variante() -> Variante {
         Ok("meio") => Variante::Meio,
         Ok("splash") => Variante::Splash,
         Ok("semrewind") => Variante::SemRewind,
+        Ok("topo") => Variante::Topo,
         _ => Variante::Base,
     }
 }
@@ -96,10 +101,15 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
     pincelada(&mut r, d + t1, 0.30, dura);
     pincelada(&mut r, d + t2, 0.50, dura);
     r.push((d + para, Gesto::Para));
-    if v != Variante::SemRewind {
+    if !matches!(v, Variante::SemRewind | Variante::Topo) {
         r.push((d + rewind, Gesto::Rewind));
     }
-    r.push((d + play, Gesto::Play));
+    let play_g = if v == Variante::Topo {
+        Gesto::PlayDeCima
+    } else {
+        Gesto::Play
+    };
+    r.push((d + play, play_g));
     r
 }
 
@@ -256,6 +266,7 @@ mod tests {
             Variante::Meio,
             Variante::Splash,
             Variante::SemRewind,
+            Variante::Topo,
         ] {
             let r = roteiro(v);
             assert!(
@@ -271,12 +282,12 @@ mod tests {
             assert_eq!((desce.len(), sobe.len()), (2, 2), "{v:?}: duas pinceladas");
             assert!(grava < desce[0] && desce[0] < sobe[0] && sobe[0] < desce[1]);
             assert!(sobe[1] < para, "{v:?}: Parar depois da 2.ª pincelada");
-            assert_eq!(
-                r.last().unwrap().1,
-                Gesto::Play,
-                "{v:?}: o ▷ fecha o caminho"
+            assert!(
+                matches!(r.last().unwrap().1, Gesto::Play | Gesto::PlayDeCima),
+                "{v:?}: o Play fecha o caminho"
             );
-            assert_eq!(pos(Gesto::Rewind).is_some(), v != Variante::SemRewind);
+            let sem = matches!(v, Variante::SemRewind | Variante::Topo);
+            assert_eq!(pos(Gesto::Rewind).is_some(), !sem);
             assert!(r.iter().all(|(_, g)| match g {
                 Gesto::Desce([u, v]) | Gesto::Move([u, v]) =>
                     (0.0..=1.0).contains(u) && (0.0..=1.0).contains(v),

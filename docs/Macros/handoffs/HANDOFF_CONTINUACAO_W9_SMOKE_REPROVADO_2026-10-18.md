@@ -68,3 +68,20 @@ numerados e as fotos.
   e o que o dono fez à mão que nenhuma variante tem. **Próximo passo:** o dono corre a `=6` no próprio ecrã sem tocar
   no rato e diz se as pinceladas vêm uma de cada vez; o `$TMPDIR/ph2d-cena6.log` dessa corrida diz o resto (fps, `troca`,
   ranhura × editor por 100 ms). Se ali sair certo, a diferença está num gesto feito à mão — pedir ao dono a sequência exacta.
+
+## CAUSA achada e curada (18/10) — o Play de CIMA, e o Autoplay que a 2.ª tomada herdava
+
+- O dono confirmou: a `=6` sai certa no ecrã dele; gravar à mão não. A `=5` passou a registar o caminho à mão
+  (o mesmo registo da `=6`, sem gestos, `$TMPDIR/ph2d-macro-smoke.log`, com os pedidos à Timeline de cada quadro).
+  O registo do dono (60 fps): Parar → `SetLoop` (o rearme da A4) → **`RunScene`** — o Play da barra de CIMA
+  (`TransportCmd::Play` → `ph2d_transport::runtime_intent`), sem `Scrub` nem `TogglePlay`. Daí em diante
+  `t=None`, `toca=false`, `troca=false`: o `MacroTempo` some, o palco sai de cena e a sprite mostra a própria
+  imagem (a final, `editor=20097`) ⇒ «os dois traços aparecem de uma vez».
+- Porquê: o Play de cima só toca os clipes em **Autoplay** (lei do dono, a Godot). `instala::clipe` dava
+  Autoplay ao clipe NOVO, mas ao re-cronometrar o clipe que o objecto já tinha deixava o Autoplay de antes — e
+  a `=5` monta-o desligado (abre parada). Cura: o Parar dá sempre o mesmo clipe, em Autoplay
+  (`crates/ph2d-app-macros/src/instala.rs`). Gate `gravar_de_novo` (o painel MACROS clicado, sobre um clipe sem
+  Autoplay): vermelho antes da cura, verde depois.
+- Prova no app: `PH2D_MACRO_SMOKE=6 PH2D_MACRO_CAMINHO=topo` (Parar e o Play de cima) — `t=Some`, a de cima
+  aos 1,0–1,6 s, a de baixo aos 2,6–3,2 s; fotos Time 0 (branco, Autoplay ✓) · 1,44 · 2,05 (só a de cima).
+- Aberto (baixo): o piscar de 1–2 quadros depois do Parar (a marca da época antiga com `troca=true`).

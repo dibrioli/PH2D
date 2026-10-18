@@ -80,9 +80,12 @@ pub(crate) fn rearma_o_laco(tl: &TimelineState, intents: &mut Vec<TimelineIntent
 }
 
 fn clipe(tl: &mut TimelineDoc, dono: u64, d: f64) -> Result<usize, &'static str> {
+    // Gravar de novo dá o mesmo clipe que a 1.ª tomada: em Autoplay, para o Play de cima a tocar (smoke
+    // do dono 18/10 — com o Autoplay de antes desligado, a tela mostrava a imagem final de uma vez).
     if let Some(clip) = clipe_de(tl, dono) {
         tl.retime_macro_clip(clip, dono, d);
         tl.set_active(clip);
+        tl.set_autoplay(clip, true);
         return Ok(clip);
     }
     let clip = tl

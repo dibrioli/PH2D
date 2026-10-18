@@ -1,6 +1,6 @@
 //! ⭐ W6e — **o campo da borda é o da geometria**: a distância com sinal que o `c3_borda` grava no
 //! centro de cada texel da captura (o 4.º canal, a lei da W6d) contra a distância EXATA ao polígono do
-//! corpo, nos texels a menos de um texel da borda. O canto (o parcial do vértice com a sua reta
+//! corpo, nos texels a menos de um texel da borda (e o sinal até [`LONGE`]). O canto (o parcial do vértice com a sua reta
 //! diagonal arredondava-o: o texel do canto convexo no ambiente, handoff W6e §1) e o sinal do cheio
 //! junto às retas inclinadas de um vértice girado (a mutação M3 da W6d, que só o F3 da crate gpu via)
 //! não se veem na luz de nenhum outro portão do app.
@@ -24,6 +24,8 @@ const FHD: (u32, u32) = (1920, 1080);
 pub(crate) const GIRO: f32 = 0.5;
 /// A zona do CANTO: a menos disto (texels da captura) de um vértice.
 const ZONA_DO_CANTO: f64 = 1.5;
+/// Até esta distância à borda (texels da captura) a régua confere o sinal (além de 1, só ele).
+const LONGE: f64 = 3.0;
 
 /// A distância de `p` à borda do polígono `v` (metros) e se está dentro.
 pub(crate) fn ao_poligono(v: &[[f32; 2]], p: [f64; 2]) -> (f64, bool) {
@@ -92,11 +94,16 @@ pub(crate) fn campo_lido(
             let p = g.centro(i, j);
             let (d, dentro) = ao_poligono(v, p);
             let exata = if dentro { d } else { -d } / g.texel_m;
-            if exata.abs() > 1.0 {
+            if exata.abs() > LONGE {
                 continue;
             }
             let k = (j * g.largura + i) as usize * 8;
             let lido = f64::from(half::f16::from_le_bytes([bytes[k + 6], bytes[k + 7]]).to_f32());
+            // Longe da borda (o caminho rápido do `c3_borda`: ±1) só o sinal.
+            if exata.abs() > 1.0 {
+                r.sinal[1] += usize::from((lido >= 0.0) != (exata >= 0.0));
+                continue;
+            }
             let canto = v
                 .iter()
                 .any(|q| (f64::from(q[0]) - p[0]).hypot(f64::from(q[1]) - p[1]) < ZONA_DO_CANTO * g.texel_m);

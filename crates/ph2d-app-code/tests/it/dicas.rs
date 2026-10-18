@@ -421,7 +421,11 @@ fn aceitar_uma_funcao_da_lista_abre_a_assinatura() {
     m.pede(a);
     let _ = abre(&mut m, a, "ph2d.se");
     tecla(&mut m, a, Key::Tab, sem_tecla(), None, "");
-    assert_eq!(m.docs().text_of(a).as_deref(), Some("ph2d.set()"));
+    assert_eq!(
+        m.docs().text_of(a).as_deref(),
+        Some("ph2d.set(entity, \"x\", value)"),
+        "com os buracos do esqueleto (I12)"
+    );
     ate(
         &mut m,
         a,

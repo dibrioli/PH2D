@@ -183,9 +183,15 @@ fn the_undo_link_travels_with_its_step_and_dies_with_the_redo() {
     assert_eq!(stack.top_link(false), Some(l));
     assert_eq!(stack.top_link(true), None);
     let _ = stack.undo(s0.clone(), mark()).unwrap();
-    assert_eq!((stack.top_link(false), stack.top_link(true)), (None, Some(l)));
+    assert_eq!(
+        (stack.top_link(false), stack.top_link(true)),
+        (None, Some(l))
+    );
     let _ = stack.redo(s0.clone(), mark()).unwrap();
-    assert_eq!((stack.top_link(false), stack.top_link(true)), (Some(l), None));
+    assert_eq!(
+        (stack.top_link(false), stack.top_link(true)),
+        (Some(l), None)
+    );
     let _ = stack.undo(s0.clone(), mark()).unwrap();
     assert_eq!(stack.links().collect::<Vec<_>>(), [l]);
     stack.push_undo(s0, mark());

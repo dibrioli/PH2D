@@ -331,10 +331,11 @@ fn a_lista_pinta_se_clica_se_e_rola() {
     );
     let (alvo, nome) = (p2[1].3, p2[1].1.clone());
     m.clica(id, alvo.0, alvo.1, Modifiers::default());
-    assert_eq!(
-        m.docs().text_of(id),
-        Some(format!("ph2d.{nome}()")),
-        "o clique aceita a linha"
+    // A chamada entra com os buracos do esqueleto da tabela (I12): `ph2d.<nome>(…)`.
+    let t = m.docs().text_of(id).unwrap_or_default();
+    assert!(
+        t.starts_with(&format!("ph2d.{nome}(")) && t.ends_with(')'),
+        "o clique aceita a linha: {t}"
     );
 }
 

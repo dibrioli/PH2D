@@ -199,7 +199,10 @@ mod tests {
         let at = |p: &str| src.find(p).unwrap() + p.len();
         assert!(s.at_top_level(&t, at("\nupd")));
         assert!(!s.at_top_level(&t, at("  x")));
-        assert!(!s.at_top_level(&t, at("x = 1\n  ")), "a linha vazia antes do `end`");
+        assert!(
+            !s.at_top_level(&t, at("x = 1\n  ")),
+            "a linha vazia antes do `end`"
+        );
         assert!(!s.at_top_level(&t, at("  y")));
         assert!(s.at_top_level(&t, at("function up")));
         assert!(s.at_top_level(&t, at("end\n")));
@@ -215,7 +218,10 @@ mod tests {
         let edits = b.insert("\n  on_");
         s.edit_deferred(&edits);
         assert!(s.is_stale());
-        assert!(!s.at_top_level(b.text(), 22), "o `on_` está no corpo do `init`");
+        assert!(
+            !s.at_top_level(b.text(), 22),
+            "o `on_` está no corpo do `init`"
+        );
     }
 
     #[test]

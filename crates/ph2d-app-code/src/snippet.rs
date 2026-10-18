@@ -44,16 +44,28 @@ impl Parser<'_> {
             self.i += 1;
         }
         (self.i > start)
-            .then(|| self.s[start..self.i].iter().collect::<String>().parse().ok())
+            .then(|| {
+                self.s[start..self.i]
+                    .iter()
+                    .collect::<String>()
+                    .parse()
+                    .ok()
+            })
             .flatten()
     }
 
     fn var(&mut self) -> Option<String> {
         let start = self.i;
-        if !self.peek().is_some_and(|c| c == '_' || c.is_ascii_alphabetic()) {
+        if !self
+            .peek()
+            .is_some_and(|c| c == '_' || c.is_ascii_alphabetic())
+        {
             return None;
         }
-        while self.peek().is_some_and(|c| c == '_' || c.is_ascii_alphanumeric()) {
+        while self
+            .peek()
+            .is_some_and(|c| c == '_' || c.is_ascii_alphanumeric())
+        {
             self.i += 1;
         }
         Some(self.s[start..self.i].iter().collect())
@@ -467,7 +479,11 @@ mod tests {
         assert_eq!(e.end, Some(25));
         let e = parse("const ${1:x} = ${2:0}; log($1);$0");
         assert_eq!(e.text, "const x = 0; log(x);");
-        assert_eq!(e.stops[0], vec![6..7, 17..18], "a cópia leva o texto do número");
+        assert_eq!(
+            e.stops[0],
+            vec![6..7, 17..18],
+            "a cópia leva o texto do número"
+        );
         let e = parse("a\\$b ${1|um,dois|} ${2:f(${3:x})} $TM_X ${V:omissão} \\}");
         assert_eq!(e.text, "a$b um f(x) TM_X omissão }");
         assert_eq!(e.stops, vec![vec![4..6], vec![7..11], vec![9..10]]);

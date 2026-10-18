@@ -24,7 +24,8 @@ pub(crate) fn params(luau_type: &str) -> Vec<(&str, &str, bool)> {
         return Vec::new();
     };
     // `->` não fecha nada: o `>` dele não conta.
-    let shut = |prev: Option<char>, c: char| matches!(c, ')' | '}') || (c == '>' && prev != Some('-'));
+    let shut =
+        |prev: Option<char>, c: char| matches!(c, ')' | '}') || (c == '>' && prev != Some('-'));
     let mut depth = 0i32;
     let mut end = inner.len();
     let mut prev = None;
@@ -43,7 +44,10 @@ pub(crate) fn params(luau_type: &str) -> Vec<(&str, &str, bool)> {
     let list = &inner[..end];
     let mut out = Vec::new();
     let (mut depth, mut from, mut prev) = (0i32, 0usize, None);
-    for (i, c) in list.char_indices().chain(std::iter::once((list.len(), ','))) {
+    for (i, c) in list
+        .char_indices()
+        .chain(std::iter::once((list.len(), ',')))
+    {
         if matches!(c, '(' | '{' | '<') {
             depth += 1;
         } else if shut(prev, c) {
@@ -132,7 +136,14 @@ pub(crate) fn skeletons(text: &Text, syntax: &Syntax, start: usize) -> Vec<Item>
     let mut out: Vec<Item> = HOOKS
         .iter()
         .filter(|h| !syntax.declares_global_function(text, h.ident))
-        .map(|h| item(h.ident, "code.complete.hook", h.doc, hook_snippet(h, !after_function)))
+        .map(|h| {
+            item(
+                h.ident,
+                "code.complete.hook",
+                h.doc,
+                hook_snippet(h, !after_function),
+            )
+        })
         .collect();
     if !after_function && let Some(p) = api_entry("ph2d", "property") {
         out.push(item(
@@ -145,11 +156,8 @@ pub(crate) fn skeletons(text: &Text, syntax: &Syntax, start: usize) -> Vec<Item>
     out
 }
 
-/// Os esqueletos da sessão de completação `s` (só uma palavra sem qualificador os aceita).
+/// Os esqueletos da sessão de completação `s` (um membro, `ph2d.x`, tem o `ph2d.` antes: nenhum).
 pub(crate) fn local_items(text: &Text, syntax: &Syntax, s: &crate::complete::Session) -> Vec<Item> {
-    if s.qualifier.is_some() {
-        return Vec::new();
-    }
     skeletons(text, syntax, s.anchor)
 }
 
@@ -184,7 +192,10 @@ mod tests {
         );
         assert_eq!(
             params("(f: (number, string) -> (), t: { a: number }) -> ()"),
-            [("f", "(number, string) -> ()", false), ("t", "{ a: number }", false)]
+            [
+                ("f", "(number, string) -> ()", false),
+                ("t", "{ a: number }", false)
+            ]
         );
         assert_eq!(params("() -> number"), []);
     }

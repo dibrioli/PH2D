@@ -142,7 +142,9 @@ pub fn scoped<'a>(
             };
         };
         let label = match col {
-            Some(c) => ph2d_i18n::tr_with("chrome.palette.goto_line_col", &[("line", &n), ("col", &c)]),
+            Some(c) => {
+                ph2d_i18n::tr_with("chrome.palette.goto_line_col", &[("line", &n), ("col", &c)])
+            }
             None => ph2d_i18n::tr_with("chrome.palette.goto_line_n", &[("line", &n)]),
         };
         let group = PaletteGroup {
@@ -211,11 +213,17 @@ mod tests {
     fn fixture() -> (PaletteModel, PaletteScopes) {
         let model = PaletteModel {
             title: "Commands".into(),
-            groups: vec![group("This tab", vec![item("Save Script", 1), item("Find…", 2)])],
+            groups: vec![group(
+                "This tab",
+                vec![item("Save Script", 1), item("Find…", 2)],
+            )],
             toggle: None,
         };
         let scopes = PaletteScopes {
-            symbols: Some(group("Symbols", vec![item("update", 10), item("speed", 11)])),
+            symbols: Some(group(
+                "Symbols",
+                vec![item("update", 10), item("speed", 11)],
+            )),
             line: Some(LineScope {
                 id: NodeId(20),
                 lines: 12,
@@ -238,12 +246,19 @@ mod tests {
     fn os_prefixos_estreitam() {
         let (m, sc) = fixture();
         let s = |q: &str| scoped(&m, q, Some(&sc));
-        assert_eq!(labels(&s("")), ["Save Script", "Find…"], "vazio: só os comandos");
+        assert_eq!(
+            labels(&s("")),
+            ["Save Script", "Find…"],
+            "vazio: só os comandos"
+        );
         assert_eq!(labels(&s("upd")), ["update"], "escrito: os símbolos também");
         assert_eq!(labels(&s(">")), ["Save Script", "Find…"]);
         assert_eq!(labels(&s(">upd")), Vec::<String>::new(), "`>` só comandos");
         assert_eq!(labels(&s("@")), ["update", "speed"]);
-        assert_eq!((labels(&s("@sp")), s("@sp").top), (vec!["speed".to_owned()], Some(NodeId(11))));
+        assert_eq!(
+            (labels(&s("@sp")), s("@sp").top),
+            (vec!["speed".to_owned()], Some(NodeId(11)))
+        );
         assert_eq!(s("@").top, Some(NodeId(10)), "`@` + Enter: o 1.º símbolo");
         assert_eq!(s(":3").top, Some(NodeId(20)));
         assert_eq!(s(":").top, None);
@@ -251,6 +266,10 @@ mod tests {
         assert_eq!(line_target("99", 12), Some((12, None)), "prende à última");
         assert_eq!(line_target("5:3", 12), Some((5, Some(3))));
         assert_eq!(line_target("x", 12), None);
-        assert_eq!(labels(&scoped(&m, "@", None)), Vec::<String>::new(), "sem prefixos: a lei de sempre");
+        assert_eq!(
+            labels(&scoped(&m, "@", None)),
+            Vec::<String>::new(),
+            "sem prefixos: a lei de sempre"
+        );
     }
 }

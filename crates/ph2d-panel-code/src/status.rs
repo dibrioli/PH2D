@@ -84,9 +84,7 @@ impl StatusLine {
             problems,
             assist: frame.assist.map(assist_line),
             badge: badge_line(frame.badge, frame.project_unsaved),
-            mode: frame
-                .strict
-                .then(|| tr("code.status.strict").to_owned()),
+            mode: frame.strict.then(|| tr("code.status.strict").to_owned()),
         }
     }
 }

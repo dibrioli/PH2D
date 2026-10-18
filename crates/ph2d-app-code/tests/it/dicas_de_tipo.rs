@@ -4,10 +4,10 @@
 //! dela, a selecção que começa ali começa depois dela, um clique nela dá a posição dela, escrever ali
 //! empurra-a.
 
+use crate::Mesa;
 use crate::assistente::{Partilhado, Plano, com_falso, converge, letra, tecla};
 use crate::completar::T0;
 use crate::dicas::{ate, nunca};
-use crate::Mesa;
 use ph2d_app_code::commands::CMD_TYPE_HINTS;
 use ph2d_editor_core::doc_surface::{DocumentSurface, Key};
 use ph2d_host::Modifiers;
@@ -63,16 +63,24 @@ fn rotulo(m: &mut Mesa, id: ScriptId) -> String {
 #[test]
 fn desligadas_por_omissao_e_o_comando_liga_e_desliga() {
     let (mut m, id, visto) = mesa();
-    nunca(&mut m, id, T0 + 10_000_000_000, "desligadas: nada se pergunta", |m| {
-        m.docs().inlays_of(id).is_empty()
-    });
+    nunca(
+        &mut m,
+        id,
+        T0 + 10_000_000_000,
+        "desligadas: nada se pergunta",
+        |m| m.docs().inlays_of(id).is_empty(),
+    );
     assert_eq!(visto.lock().unwrap().tipos, 0);
     assert_eq!(rotulo(&mut m, id), "Show Type Hints");
     liga(&mut m, id);
     assert_eq!(rotulo(&mut m, id), "Hide Type Hints");
-    ate(&mut m, id, T0 + 20_000_000_000, "as dicas não chegaram", |m| {
-        !m.docs().inlays_of(id).is_empty()
-    });
+    ate(
+        &mut m,
+        id,
+        T0 + 20_000_000_000,
+        "as dicas não chegaram",
+        |m| !m.docs().inlays_of(id).is_empty(),
+    );
     assert_eq!(
         m.docs().inlays_of(id),
         [(7, ": number".to_owned())],
@@ -87,9 +95,13 @@ fn desligadas_por_omissao_e_o_comando_liga_e_desliga() {
 fn a_dica_nao_tem_coluna_o_cursor_a_seleccao_e_o_clique() {
     let (mut m, id, _) = mesa();
     liga(&mut m, id);
-    ate(&mut m, id, T0 + 20_000_000_000, "as dicas não chegaram", |m| {
-        !m.docs().inlays_of(id).is_empty()
-    });
+    ate(
+        &mut m,
+        id,
+        T0 + 20_000_000_000,
+        "as dicas não chegaram",
+        |m| !m.docs().inlays_of(id).is_empty(),
+    );
     m.pinta(id);
     let caret = |m: &mut Mesa, at: usize| m.docs().caret_rect_at(id, at).expect("à vista");
     let adv = caret(&mut m, 6).x - caret(&mut m, 5).x;
@@ -117,9 +129,17 @@ fn a_dica_nao_tem_coluna_o_cursor_a_seleccao_e_o_clique() {
         assert_eq!(m.docs().cursor_of(id), Some((0, 7)), "clique a {f} da dica");
     }
     m.clica(id, fim_da_dica + adv * 0.25, y, Modifiers::default());
-    assert_eq!(m.docs().cursor_of(id), Some((0, 7)), "o 1.º quarto do espaço");
+    assert_eq!(
+        m.docs().cursor_of(id),
+        Some((0, 7)),
+        "o 1.º quarto do espaço"
+    );
     m.clica(id, fim_da_dica + adv * 0.75, y, Modifiers::default());
-    assert_eq!(m.docs().cursor_of(id), Some((0, 8)), "o último quarto do espaço");
+    assert_eq!(
+        m.docs().cursor_of(id),
+        Some((0, 8)),
+        "o último quarto do espaço"
+    );
     // A seta salta a dica inteira: do 7 vai ao 8.
     m.clica(id, c7.x + 1.0, y, Modifiers::default());
     tecla(&mut m, id, Key::Right, Modifiers::default(), None, "");
@@ -130,9 +150,13 @@ fn a_dica_nao_tem_coluna_o_cursor_a_seleccao_e_o_clique() {
 fn escrever_na_posicao_da_dica_empurra_a() {
     let (mut m, id, _) = mesa();
     liga(&mut m, id);
-    ate(&mut m, id, T0 + 20_000_000_000, "as dicas não chegaram", |m| {
-        !m.docs().inlays_of(id).is_empty()
-    });
+    ate(
+        &mut m,
+        id,
+        T0 + 20_000_000_000,
+        "as dicas não chegaram",
+        |m| !m.docs().inlays_of(id).is_empty(),
+    );
     m.pinta(id);
     let c = m.docs().caret_rect_at(id, 7).expect("à vista");
     m.clica(id, c.x + 1.0, c.y + c.h * 0.5, Modifiers::default());

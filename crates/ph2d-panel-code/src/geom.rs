@@ -70,15 +70,15 @@ pub(crate) fn x_of_byte_after(layout: &Layout<Ink>, dl: &DisplayLine, b: usize) 
     x_of_disp(layout, dl.to_disp_after(b))
 }
 
-/// O byte do buffer (relativo à linha) mais próximo de `x`: o meio de cada coluna decide; um clique
-/// sobre uma dica (I9) dá a posição dela, de qualquer lado.
+/// O byte do buffer (relativo à linha) mais próximo de `x`: o meio de cada coluna decide. Uma dica
+/// (I9) é uma coluna à parte com o dono da posição dela — a coluna seguinte tem o MESMO dono, por isso
+/// um clique em qualquer lado da dica dá a posição dela; colada ao carácter seguinte, mudaria o meio.
 pub(crate) fn byte_at_x(layout: &Layout<Ink>, dl: &DisplayLine, x: f32, line_len: usize) -> usize {
     let mut out = line_len;
     // (byte, x0, x1, é dica)
     let mut prev: Option<(usize, f32, f32, bool)> = None;
     let mut decide = |c: (usize, f32, f32, bool)| -> bool {
-        let edge = if c.3 { c.2 } else { (c.1 + c.2) * 0.5 };
-        if x < edge {
+        if x < (c.1 + c.2) * 0.5 {
             out = c.0;
             return false;
         }

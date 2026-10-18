@@ -277,7 +277,13 @@ impl CodeDocs {
         self.docs
             .iter()
             .find(|d| d.script == id)
-            .map(|d| d.inlay.list.iter().map(|h| (h.at, h.label.clone())).collect())
+            .map(|d| {
+                d.inlay
+                    .list
+                    .iter()
+                    .map(|h| (h.at, h.label.clone()))
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
@@ -291,7 +297,12 @@ impl CodeDocs {
     /// ⚠️ SONDA: os retângulos que o último quadro pinta para os bytes `s..e` do script `id` (a
     /// selecção e as marcas pintam-se por eles).
     #[must_use]
-    pub fn segments_of(&self, id: ScriptId, s: usize, e: usize) -> Vec<ph2d_editor_core::zones::Rect> {
+    pub fn segments_of(
+        &self,
+        id: ScriptId,
+        s: usize,
+        e: usize,
+    ) -> Vec<ph2d_editor_core::zones::Rect> {
         self.docs
             .iter()
             .find(|d| d.script == id)

@@ -669,7 +669,11 @@ fn os_esqueletos_preenchidos_passam_limpos_normal_e_estrito() {
         }
         let texto = m.docs().text_of(id).expect("aberta");
         assert!(texto.contains("ph2d.property(\"altura\", 1)"), "{texto}");
-        assert!(texto.contains("function on_signal(self: ScriptSelf, signal: string)\n  print(self.id)"), "{texto}");
+        assert!(
+            texto
+                .contains("function on_signal(self: ScriptSelf, signal: string)\n  print(self.id)"),
+            "{texto}"
+        );
         let fim = Instant::now() + Duration::from_secs(30);
         loop {
             quadro_em(&mut m, T0 + 60_000_000_000);

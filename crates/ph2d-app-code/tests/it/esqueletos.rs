@@ -53,7 +53,11 @@ fn o_gancho_entra_com_o_1o_buraco_seleccionado_e_o_tab_anda() {
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     assert_eq!(m.docs().text_of(id).as_deref(), Some(UPDATE));
     assert_eq!(sel(&mut m, id), [16..20], "`self` seleccionado");
-    assert_eq!(m.docs().snippet_of(id), Some(vec![34..36]), "o `dt` marcado");
+    assert_eq!(
+        m.docs().snippet_of(id),
+        Some(vec![34..36]),
+        "o `dt` marcado"
+    );
     escreve(&mut m, id, "me");
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     assert_eq!(sel(&mut m, id), [32..34], "Tab: o `dt`");
@@ -77,6 +81,21 @@ fn o_gancho_entra_com_o_1o_buraco_seleccionado_e_o_tab_anda() {
     assert_eq!(sel(&mut m, id), [16..20]);
     tecla(&mut m, id, Key::Char('z'), ctrl());
     assert_eq!(m.docs().text_of(id).as_deref(), Some("upd"));
+    // Desfazer acaba a sessão: refeito o modelo, o Tab é o de sempre.
+    tecla(&mut m, id, Key::Char('z'), ctrl_shift());
+    assert_eq!(
+        m.docs().snippet_of(id),
+        None,
+        "refazer não traz a sessão de volta"
+    );
+}
+
+fn ctrl_shift() -> Modifiers {
+    Modifiers {
+        ctrl: true,
+        shift: true,
+        ..Modifiers::default()
+    }
 }
 
 #[test]
@@ -165,7 +184,12 @@ fn cada_gancho_da_tabela_tem_esqueleto() {
         tecla(&mut m, id, Key::Tab, Modifiers::default());
         let t = m.docs().text_of(id).unwrap();
         let sig = h.luau_type.split(" -> ").next().unwrap();
-        assert_eq!(t, format!("function {}{sig}\n  \nend", h.ident), "{}", h.ident);
+        assert_eq!(
+            t,
+            format!("function {}{sig}\n  \nend", h.ident),
+            "{}",
+            h.ident
+        );
         let primeiro = sig.trim_start_matches('(').split(':').next().unwrap();
         let s = sel(&mut m, id)[0].clone();
         assert_eq!(&t[s], primeiro, "{}: o 1.º parâmetro seleccionado", h.ident);

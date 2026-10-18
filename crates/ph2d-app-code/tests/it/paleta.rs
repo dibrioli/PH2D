@@ -56,7 +56,10 @@ fn os_simbolos_e_as_linhas_do_script_activo() {
 fn arroba_leva_ao_inicio_do_nome_e_dois_pontos_a_linha() {
     let (mut m, id) = aberta(BOB);
     paleta(&mut m, "@upd");
-    assert_eq!(m.docs().cursor_of(id), Some((7, BOB.find("update(").unwrap())));
+    assert_eq!(
+        m.docs().cursor_of(id),
+        Some((7, BOB.find("update(").unwrap()))
+    );
     paleta(&mut m, "@");
     assert_eq!(
         m.docs().cursor_of(id),
@@ -64,9 +67,15 @@ fn arroba_leva_ao_inicio_do_nome_e_dois_pontos_a_linha() {
         "`@` + Enter: o 1.º símbolo MOSTRADO (o cartão das funções vem primeiro)"
     );
     paleta(&mut m, ":4");
-    assert_eq!(m.docs().cursor_of(id), Some((3, BOB.find("function init").unwrap())));
+    assert_eq!(
+        m.docs().cursor_of(id),
+        Some((3, BOB.find("function init").unwrap()))
+    );
     paleta(&mut m, ":5:3");
-    assert_eq!(m.docs().cursor_of(id), Some((4, BOB.find("  self.t").unwrap() + 2)));
+    assert_eq!(
+        m.docs().cursor_of(id),
+        Some((4, BOB.find("  self.t").unwrap() + 2))
+    );
     paleta(&mut m, ":99");
     assert_eq!(
         m.docs().cursor_of(id),
@@ -80,10 +89,28 @@ fn arroba_leva_ao_inicio_do_nome_e_dois_pontos_a_linha() {
     for c in ">update".chars() {
         m.hero.store.command_palette_push_char(c);
     }
-    assert_eq!(m.hero.store.command_palette_top(), None, "`>update` não é um símbolo");
+    assert_eq!(
+        m.hero.store.command_palette_top(),
+        None,
+        "`>update` não é um símbolo"
+    );
+    m.hero.store.close_command_palette();
+    global_palette::open(&mut m.hero);
+    for c in ">save".chars() {
+        m.hero.store.command_palette_push_char(c);
+    }
+    assert_eq!(
+        m.hero.store.command_palette_top(),
+        Some(ph2d_app_code::commands::CMD_SAVE),
+        "`>save` é o comando da aba"
+    );
     m.hero.store.close_command_palette();
     paleta(&mut m, "@nada_disto");
-    assert_eq!(m.docs().cursor_of(id), Some((10, BOB.len())), "nada casa: o cursor fica");
+    assert_eq!(
+        m.docs().cursor_of(id),
+        Some((10, BOB.len())),
+        "nada casa: o cursor fica"
+    );
 }
 
 #[test]
@@ -102,10 +129,51 @@ fn strict_poe_e_tira_a_linha_num_passo_e_o_rotulo_diz_o_que_faz() {
     assert_eq!(m.docs().text_of(id), Some(format!("--!strict\n{BOB}")));
     assert_eq!(rotulo(&mut m), "Turn Off Strict Types (--!strict)");
     m.tecla(id, Key::Char('z'), ctrl(), Some("z"));
-    assert_eq!(m.docs().text_of(id).as_deref(), Some(BOB), "um passo de undo");
+    assert_eq!(
+        m.docs().text_of(id).as_deref(),
+        Some(BOB),
+        "um passo de undo"
+    );
     // Uma diretiva depois do comentário do topo conta, e o comando tira-a.
     let com = format!("-- bob\n--!strict\n{}", &BOB[7..]);
     let (mut m, id) = aberta(&com);
     assert!(m.docs().command(id.0, CMD_STRICT));
     assert_eq!(m.docs().text_of(id).as_deref(), Some(BOB));
+}
+
+/// Clicar no cartão de um símbolo (não só o Enter) leva lá: o clique da paleta reconhece os itens dos
+/// prefixos.
+#[test]
+fn clicar_num_simbolo_da_paleta_leva_la() {
+    let (mut m, id) = aberta(BOB);
+    global_palette::open(&mut m.hero);
+    for c in "@ini".chars() {
+        m.hero.store.command_palette_push_char(c);
+    }
+    let alvo = m
+        .hero
+        .store
+        .command_palette_scopes()
+        .and_then(|s| s.symbols.as_ref())
+        .and_then(|g| {
+            g.subs
+                .iter()
+                .flat_map(|s| &s.items)
+                .find(|i| i.label == "init")
+        })
+        .map(|i| i.id)
+        .expect("o `init` está nos símbolos");
+    assert!(
+        m.hero
+            .apply_event(ph2d_editor_core::interaction::WidgetEvent::Click(alvo))
+    );
+    assert!(
+        !m.hero.store.command_palette_open(),
+        "o clique fechou a paleta"
+    );
+    global_palette::drain(&mut m.hero);
+    assert_eq!(
+        m.docs().cursor_of(id),
+        Some((3, BOB.find("init(").unwrap()))
+    );
 }

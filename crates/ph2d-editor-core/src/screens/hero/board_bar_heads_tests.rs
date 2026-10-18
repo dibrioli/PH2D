@@ -103,3 +103,37 @@ fn two_fingers_pan_the_board_and_a_pinch_zooms_it() {
     assert!(board_view::wheel(&mut t.hero, x, y, -16.0));
     assert!(cam(&t).zoom != c2.zoom, "a roda continua a dar zoom");
 }
+
+/// ⭐ W23 B5 — o botão direito numa caixa (sem selecção) selecciona-a e abre o menu dela: «Duplicate»
+/// faz a cópia, «Delete» apaga — pelo caminho real (o Down antes do despacho, a linha pintada
+/// clicada, o comando na pintura seguinte). No vazio o botão direito não abre nada.
+#[test]
+fn right_click_on_a_shape_opens_its_menu() {
+    let mut t = T::new();
+    t.key(BoardKey::Char('r'), Modifiers::default(), Some("r"));
+    let (a, b) = (t.at(0.2, 0.4), t.at(0.3, 0.5));
+    t.drag(a, b);
+    t.key(BoardKey::Escape, Modifiers::default(), None);
+    // Pela porta da shell: o quadro recebe o carregar e o largar do botão direito.
+    let right = |t: &mut T, (x, y): (f32, f32)| {
+        for kind in [PointerKind::Down, PointerKind::Up] {
+            let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
+            board_view::pointer(h, inp(ts, c), kind, PointerButton::Secondary, x, y, true);
+        }
+        t.paint();
+    };
+    let (empty, shape) = (t.at(0.9, 0.9), t.at(0.25, 0.45));
+    right(&mut t, empty);
+    assert!(
+        t.hero.store.context_menu().is_none(),
+        "no vazio não há menu"
+    );
+    right(&mut t, shape);
+    assert_eq!(t.elements().len(), 1);
+    assert!(t.hero.store.context_menu().is_some(), "o menu não abriu");
+    t.shell_click_id(crate::ids::CTX_MENU_BOARD_EL_DUPLICATE, "Duplicate");
+    assert_eq!(t.elements().len(), 2, "a cópia");
+    right(&mut t, shape);
+    t.shell_click_id(crate::ids::CTX_MENU_BOARD_EL_DELETE, "Delete");
+    assert_eq!(t.elements().len(), 1, "apagou a seleccionada");
+}

@@ -334,6 +334,9 @@ pub enum ContextMenuKind {
     BoardTab {
         board: u64,
     },
+    /// W23 — botão direito num ELEMENTO do quadro activo: *Copy · Paste · Duplicate · Bring to front ·
+    /// Send to back · Lock · Delete* sobre a selecção (`board_menu`).
+    BoardElement,
     /// A pergunta *«apagar este quadro?»* — desenha o próprio corpo
     /// (`document_tabs_menu::paint_confirm_delete`, que conhece o nome).
     ConfirmDeleteBoard {
@@ -445,6 +448,7 @@ impl ContextMenuKind {
         Self::TimelineStrip { lane: 0, strip: 0 },
         Self::TimelineMarker { index: 0 },
         Self::BoardTab { board: 0 },
+        Self::BoardElement,
         Self::ConfirmDeleteBoard { board: 0 },
         Self::SendToBoard { row: NodeId(1) },
     ];

@@ -137,7 +137,7 @@ pub fn cursor(hero: &HeroScreen, x: f32, y: f32) -> Option<BoardCursor> {
 }
 
 /// Ecrã → ponteiro no mundo do quadro.
-fn world_pointer(board: &Board, area: Area, x: f32, y: f32, mods: Modifiers) -> Pointer {
+pub(crate) fn world_pointer(board: &Board, area: Area, x: f32, y: f32, mods: Modifiers) -> Pointer {
     Pointer {
         world: board.camera.to_world(area, [f64::from(x), f64::from(y)]),
         px: 1.0 / board.camera.zoom,
@@ -249,6 +249,11 @@ fn canvas_down(
         PointerButton::Middle => return pan(hero),
         PointerButton::Primary if space => return pan(hero),
         PointerButton::Primary => {}
+        // W23 B5 — o botão direito numa forma abre o menu dela.
+        PointerButton::Secondary => {
+            super::board_menu::open(hero, x, y);
+            return true;
+        }
         _ => return true,
     }
     let p = world_pointer(board, area, x, y, input.mods);

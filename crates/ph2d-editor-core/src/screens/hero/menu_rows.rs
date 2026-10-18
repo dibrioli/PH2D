@@ -117,6 +117,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::TimelineMarker { .. } => &ids::TIMELINE_MARKER_MENU,
         // A aba de um quadro (MiroClone); a pergunta de apagar desenha o próprio corpo.
         ContextMenuKind::BoardTab { .. } => menu_tables::BOARD_TAB_ROWS,
+        ContextMenuKind::BoardElement => menu_tables::BOARD_ELEMENT_ROWS,
         ContextMenuKind::ConfirmDeleteBoard { .. } => &[],
         // O modal «Send to board» desenha o próprio corpo (`send_to_board::paint`).
         ContextMenuKind::SendToBoard { .. } => &[],

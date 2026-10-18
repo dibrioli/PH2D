@@ -411,6 +411,7 @@ pub fn gap_px() -> f32 {
 /// real): sem o aceitar, carregar duas vezes depressa no `+` criaria UM quadro só.
 pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if super::document_tabs_menu::apply_event(hero, event)
+        || super::board_menu::apply_event(hero, event)
         || super::board_bar::apply_event(hero, event)
         || super::board_video_bar::apply_event(hero, event)
         || super::board_nav::apply_event(hero, event)

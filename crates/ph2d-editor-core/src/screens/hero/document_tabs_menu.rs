@@ -285,7 +285,10 @@ pub(super) fn populate(store: &mut WidgetStore) {
         ids::CTX_MENU_BOARD_DELETE,
         ids::CTX_MENU_BOARD_DELETE_CONFIRM,
         ids::CTX_MENU_BOARD_DELETE_CANCEL,
-    ] {
+    ]
+    .into_iter()
+    .chain(super::board_menu::row_ids())
+    {
         store.register(
             id,
             InteractiveState::Button {

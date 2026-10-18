@@ -670,3 +670,15 @@ pub(super) const BOARD_TAB_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_BOARD_IMPORT, "board.menu.import"),
     menu_row(ids::CTX_MENU_BOARD_DELETE, "board.menu.delete"),
 ];
+
+/// W23 — as linhas de `ContextMenuKind::BoardElement` (o botão direito numa forma do quadro, o Miro):
+/// a cópia, a ordem, travar, e o destrutivo por último.
+pub(super) const BOARD_ELEMENT_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_BOARD_EL_COPY, "board.el.copy"),
+    menu_row(ids::CTX_MENU_BOARD_EL_PASTE, "board.el.paste"),
+    menu_row(ids::CTX_MENU_BOARD_EL_DUPLICATE, "board.el.duplicate"),
+    menu_row(ids::CTX_MENU_BOARD_EL_FRONT, "board.el.front"),
+    menu_row(ids::CTX_MENU_BOARD_EL_BACK, "board.el.back"),
+    menu_row(ids::CTX_MENU_BOARD_EL_LOCK, "board.el.lock"),
+    menu_row(ids::CTX_MENU_BOARD_EL_DELETE, "board.el.delete"),
+];

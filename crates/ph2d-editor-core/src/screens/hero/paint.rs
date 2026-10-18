@@ -259,6 +259,7 @@ pub fn paint_hero_screen(
             super::board_nav::fit::settle(hero, r);
         }
         let theme = hero.theme;
+        super::board_menu::run_pending(hero, text_system);
         if let Some((board, live)) = hero.documents.active_parts() {
             // As rotas das setas vêm do editor: uma cache, a mesma que o clique lê.
             let ed = super::board_view::editor(&mut live.editor, theme);

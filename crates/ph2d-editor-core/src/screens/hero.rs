@@ -62,6 +62,7 @@ pub mod topbar;
 pub mod board_bar;
 pub mod board_images;
 pub mod board_keys;
+mod board_menu;
 pub mod board_nav;
 pub mod board_video;
 pub mod board_video_bar;

@@ -80,7 +80,8 @@ numerados e as fotos.
 - Porquê: o Play de cima só toca os clipes em **Autoplay** (lei do dono, a Godot). `instala::clipe` dava
   Autoplay ao clipe NOVO, mas ao re-cronometrar o clipe que o objecto já tinha deixava o Autoplay de antes — e
   a `=5` monta-o desligado (abre parada). Cura: o Parar dá sempre o mesmo clipe, em Autoplay
-  (`crates/ph2d-app-macros/src/instala.rs`). Gate `gravar_de_novo` (o painel MACROS clicado, sobre um clipe sem
+  (`crates/ph2d-app-macros/src/instala.rs`). ⚠️ **Refinado no mesmo dia** (`a4e39b8418`, decisão de 18/10): só
+  quando nenhum OUTRO clipe do objecto é a entrada — se é, ele fica ([handoff W9 §2 item 10](HANDOFF_INTEGRACAO_line_Macros_2026-10-17_W9.md)). Gate `gravar_de_novo` (o painel MACROS clicado, sobre um clipe sem
   Autoplay): vermelho antes da cura, verde depois.
 - Prova no app: `PH2D_MACRO_SMOKE=6 PH2D_MACRO_CAMINHO=topo` (Parar e o Play de cima) — `t=Some`, a de cima
   aos 1,0–1,6 s, a de baixo aos 2,6–3,2 s; fotos Time 0 (branco, Autoplay ✓) · 1,44 · 2,05 (só a de cima).

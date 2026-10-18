@@ -274,7 +274,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     assert!((b.tl.doc.clip_length_override(clip).unwrap() - duracao).abs() < 1e-9);
     assert!(
         b.tl.doc.autoplay_entries().contains(&(b.bits, clip)),
-        "o clipe nasce em Autoplay"
+        "sem outro clipe na animação, o clipe nasce em Autoplay"
     );
 
     b.pinta();

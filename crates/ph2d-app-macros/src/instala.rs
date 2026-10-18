@@ -5,7 +5,7 @@ use crate::Cena;
 use crate::etapas::Injectadas;
 use ph2d_ecs::{Entity, Macro, ModoDaMacro};
 use ph2d_macro::MacroDoc;
-use ph2d_timeline::{TimelineDoc, TimelineIntent, TimelineState};
+use ph2d_timeline::{PropKind, TimelineDoc, TimelineIntent, TimelineState};
 
 /// O nome do clipe que o Parar cria (conteúdo do artista depois: ele renomeia-o).
 pub const NOME_DO_CLIPE: &str = "app.macros.clip_name";
@@ -97,11 +97,24 @@ fn clipe(tl: &mut TimelineDoc, dono: u64, d: f64) -> Result<usize, &'static str>
 
 /// **O Autoplay do Parar não rouba a entrada do artista** (decisão de 18/10, handoff W9 §8 item 4): o clipe
 /// da macro passa a ser a entrada — o Play de cima toca a gravação nova, em qualquer tomada — só quando
-/// nenhum OUTRO clipe do objecto o é; o `set_autoplay` desligaria esse outro.
+/// nenhum OUTRO clipe do objecto o é; o `set_autoplay` desligaria esse outro. Um clipe que toca a macro
+/// (uma tomada antiga renomeada) não é a escolha do artista: esse cede.
 fn entra_se_ninguem_entra(tl: &mut TimelineDoc, dono: u64, clip: usize) {
-    if tl.entry_clip_of(dono).is_none_or(|e| e == clip) {
+    if tl
+        .entry_clip_of(dono)
+        .is_none_or(|e| e == clip || toca_a_macro(tl, e, dono))
+    {
         tl.set_autoplay(clip, true);
     }
+}
+
+/// O clipe `c` tem a faixa do relógio da macro de `dono`.
+fn toca_a_macro(tl: &TimelineDoc, c: usize, dono: u64) -> bool {
+    tl.binding_for(dono, PropKind::MacroTime).is_some_and(|b| {
+        tl.clips()
+            .get(c)
+            .is_some_and(|nc| nc.clip.track(b.target).is_some())
+    })
 }
 
 /// As durações que tocam, por objecto — refeitas só quando os bytes da `Macro` mudam (a sincronização

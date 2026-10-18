@@ -52,7 +52,7 @@ pub use mind::{
     settle as mind_settle,
 };
 pub use ops::{BoardOp, apply_batch};
-pub use organize::{FRAME_FILL, Frame, GroupId, MAX_TAGS, Org, Tag};
+pub use organize::{FRAME_FILL, Frame, GroupId, MAX_TAGS, Org, Tag, far_frame};
 pub use poll::{Poll, PollId};
 pub use rich::{Mark, Marks, RichText, Span};
 pub use session::SESSION_ID_BIT;

@@ -1,38 +1,53 @@
 use super::free_of;
 use crate::zones::Rect;
 
+/// A área do quadro a 1366×768 com os dois painéis laterais abertos (foto de 18/10, cena 22).
 const AREA: Rect = Rect {
     x: 312.0,
     y: 22.0,
-    w: 1310.0,
-    h: 990.0,
+    w: 746.0,
+    h: 718.0,
 };
+/// O cartão «Live» no canto de cima à direita.
+const LIVE: Rect = Rect {
+    x: 810.0,
+    y: 30.0,
+    w: 240.0,
+    h: 365.0,
+};
+const M: f64 = 16.0;
 
 #[test]
-fn each_cover_cuts_the_free_rect_on_the_side_that_keeps_more() {
-    // A cena 22 a 1930×1040 (foto de 18/10): a barra à esquerda, o cartão «Live» em cima à direita,
-    // a fila do canto em baixo à direita e o HUD em baixo ao meio.
-    let bar = Rect::new(316.0, 30.0, 32.0, 515.0);
-    let live = Rect::new(1374.0, 30.0, 240.0, 365.0);
-    let corner = Rect::new(1474.0, 942.0, 144.0, 68.0);
-    let hud = Rect::new(462.0, 962.0, 1006.0, 30.0);
-    let free = free_of(AREA, &[corner, bar, hud, live]);
-    assert_eq!(free, Rect::new(348.0, 22.0, 1026.0, 940.0));
-    // Nada a tapar: a área inteira; uma coberta fora dela não corta nada.
-    assert_eq!(free_of(AREA, &[]), AREA);
-    assert_eq!(free_of(AREA, &[Rect::new(0.0, 0.0, 300.0, 900.0)]), AREA);
+fn a_wide_scene_goes_below_the_card_and_a_tall_one_beside_it() {
+    let wide = [0.0, 0.0, 1640.0, 880.0];
+    assert_eq!(
+        free_of(AREA, &[LIVE], wide, M),
+        Rect::new(312.0, 395.0, 746.0, 345.0)
+    );
+    let tall = [0.0, 0.0, 400.0, 1600.0];
+    assert_eq!(
+        free_of(AREA, &[LIVE], tall, M),
+        Rect::new(312.0, 22.0, 498.0, 718.0)
+    );
 }
 
 #[test]
-fn a_tall_cover_on_the_right_keeps_the_left_and_a_wide_one_at_the_bottom_keeps_the_top() {
-    let right = Rect::new(1500.0, 22.0, 122.0, 990.0);
+fn every_cover_cuts_and_none_outside_does() {
+    let bx = [0.0, 0.0, 1000.0, 1000.0];
+    assert_eq!(free_of(AREA, &[], bx, M), AREA);
     assert_eq!(
-        free_of(AREA, &[right]),
-        Rect::new(312.0, 22.0, 1188.0, 990.0)
+        free_of(AREA, &[Rect::new(0.0, 0.0, 300.0, 900.0)], bx, M),
+        AREA
     );
-    let bottom = Rect::new(312.0, 900.0, 1310.0, 112.0);
-    assert_eq!(
-        free_of(AREA, &[bottom]),
-        Rect::new(312.0, 22.0, 1310.0, 878.0)
-    );
+    // A barra das ferramentas à esquerda e a fila do canto em baixo à direita: nada as toca.
+    let bar = Rect::new(316.0, 30.0, 32.0, 515.0);
+    let corner = Rect::new(940.0, 614.0, 114.0, 66.0);
+    let free = free_of(AREA, &[bar, corner, LIVE], bx, M);
+    for c in [bar, corner, LIVE] {
+        let apart = free.x + free.w <= c.x
+            || c.x + c.w <= free.x
+            || free.y + free.h <= c.y
+            || c.y + c.h <= free.y;
+        assert!(apart, "{free:?} toca {c:?}");
+    }
 }

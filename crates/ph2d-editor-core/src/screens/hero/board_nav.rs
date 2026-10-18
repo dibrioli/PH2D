@@ -551,13 +551,7 @@ fn paint_links(hero: &mut HeroScreen, area: [f64; 4], scene: &mut VectorScene, t
             continue;
         };
         // Dentro de um frame visto de longe o elemento não se pinta: o ícone também não.
-        let hidden = board.doc.frame_chain(*id).iter().any(|f| {
-            board
-                .doc
-                .get(*f)
-                .is_some_and(|f| f.h * board.camera.zoom < far)
-        });
-        if hidden {
+        if board.doc.under_far_frame(*id, board.camera.zoom, far) {
             continue;
         }
         let [x0, y0, x1, _] = el.aabb();

@@ -269,6 +269,10 @@ pub fn paint_hero_screen(
             let overlay = ed.overlay(&mut board.doc, text_system);
             live.render_cache.cropping = overlay.crop.map(|(id, _)| id);
             // W7 — com uma votação aberta o resultado anterior esconde-se; os `+` vão por cima.
+            ed.know_detail(
+                board.camera.zoom,
+                live.render_cache.detail.frame_title_only_px,
+            );
             let marks = ed.vote_marks(&board.doc);
             live.render_cache.hide_votes = ed.vote().is_some();
             let routes = ed.routes(&board.doc);

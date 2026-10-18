@@ -164,7 +164,13 @@ fn paint_avatars(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts:
         );
         let fg = resolve(ColorToken::Text1, theme);
         paint_text_centered(ts, scene, &more, r, TypeToken::Xs.px(), fg);
+        let id = node(Hit::Button(LiveButton::Everyone));
+        register(&mut hero.store, id);
+        hero.store
+            .set_tooltip(id, tr("board.live.everyone_tip").to_owned());
+        hero.hit_index.register(id, r);
     }
+    hero.documents.live_view.panel.avatars_shown = shown;
 }
 
 /// c21 — o selo «Following {name}» no topo ao centro (com o × que larga), e a moldura da área na
@@ -251,7 +257,8 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
     let text = |k: &str, t, c| Row::Text(tr(k).to_owned(), t, c);
     let people = || {
         let mut v = vec![text("board.live.people", TypeToken::Sm, ColorToken::Text2)];
-        for p in &lv.peers {
+        let from = lv.panel.people_from % lv.peers.len().max(1);
+        for p in lv.peers[from..].iter().chain(&lv.peers[..from]) {
             let name = if p.me {
                 tr_with("board.live.you", &[("name", &p.name)])
             } else {
@@ -475,7 +482,11 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
             if seen > fit {
                 if seen == fit + 1 {
                     let more = tr_with("board.live.more", &[("n", &(lists - fit).to_string())]);
-                    kept.push(Row::Text(more, TypeToken::Xs, ColorToken::Text3));
+                    kept.push(if matches!(r, Row::Person(..)) {
+                        Row::Button(LiveButton::MorePeople, more, false)
+                    } else {
+                        Row::Text(more, TypeToken::Xs, ColorToken::Text3)
+                    });
                 }
                 continue;
             }
@@ -483,6 +494,8 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
         kept.push(r);
     }
     let all = kept;
+    hero.documents.live_view.panel.people_shown =
+        all.iter().filter(|r| matches!(r, Row::Person(..))).count();
     let h = pad * 2.0 + s + g + all.iter().map(|r| row_h(r, ts, inner) + g).sum::<f32>();
     let card = Rect::new(x, y0, w, h);
     super::super::panels::card(scene, card, theme);

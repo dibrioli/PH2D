@@ -60,10 +60,14 @@ pub enum LiveButton {
     InviteInternet,
     /// `Off` — ADR-0187: entrar pelo link colado no campo do código.
     JoinLink,
+    /// W23 A3 — o «+n» ao lado dos avatares: abre o painel na lista, a partir de quem não coube.
+    Everyone,
+    /// W23 A3 — o «+n» da lista do painel: as pessoas seguintes (dá a volta).
+    MorePeople,
 }
 
 /// ⛔ Só se ACRESCENTA no fim: o id de um botão é a posição dele aqui.
-const ALL: [LiveButton; 14] = [
+const ALL: [LiveButton; 16] = [
     LiveButton::Close,
     LiveButton::Surface,
     LiveButton::Open,
@@ -78,6 +82,8 @@ const ALL: [LiveButton; 14] = [
     LiveButton::FirewallRemove,
     LiveButton::InviteInternet,
     LiveButton::JoinLink,
+    LiveButton::Everyone,
+    LiveButton::MorePeople,
 ];
 
 /// O que um id derivado é.
@@ -137,6 +143,8 @@ fn tooltip_key(b: LiveButton) -> &'static str {
         LiveButton::FirewallRemove => "board.live.fw_remove_tip",
         LiveButton::InviteInternet => "board.live.invite_net_tip",
         LiveButton::JoinLink => "board.live.join_link_tip",
+        LiveButton::Everyone => "board.live.everyone_tip",
+        LiveButton::MorePeople => "board.live.more_people_tip",
     }
 }
 
@@ -418,6 +426,18 @@ fn button(hero: &mut HeroScreen, b: LiveButton) {
         LiveButton::FirewallRemove => ask(hero, LiveRequest::FirewallRemove),
         LiveButton::InviteInternet => ask(hero, LiveRequest::InviteInternet),
         LiveButton::JoinLink => join_link(hero),
+        LiveButton::Everyone => {
+            if !hero.documents.live_view.panel.open {
+                toggle(hero);
+            }
+            let p = &mut hero.documents.live_view.panel;
+            p.people_from = p.avatars_shown;
+        }
+        LiveButton::MorePeople => {
+            let n = hero.documents.live_view.peers.len().max(1);
+            let p = &mut hero.documents.live_view.panel;
+            p.people_from = (p.people_from + p.people_shown.max(1)) % n;
+        }
         LiveButton::Surface | LiveButton::Badge => {}
     }
 }

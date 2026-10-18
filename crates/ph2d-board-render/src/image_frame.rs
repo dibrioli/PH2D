@@ -68,3 +68,41 @@ pub(crate) fn paint(
         scene.stroke_path(&stroke, t, &Brush::Solid(cache.ink.color(c)), &o.fill);
     }
 }
+
+/// ⭐ W23 A4 — o FUNDO à mão de um vídeo (o rascunho, ou o preenchimento às riscas): a lei das formas
+/// sem o contorno (a moldura pinta-o depois, [`paint`]). `false` = o fundo é liso e quem chama pinta-o.
+pub(crate) fn paint_hand_back(
+    scene: &mut VectorScene,
+    cache: &mut RenderCache,
+    el: &Element,
+    st: &Style,
+    t: Affine,
+    board: u64,
+) -> bool {
+    let hand = st.sketch || st.look.fill_style != ph2d_board_model::FillStyle::Solid;
+    if st.fill.is_none() || !hand {
+        return false;
+    }
+    let mut back = el.clone();
+    *back.style_mut() = st.clone();
+    back.style_mut().stroke = None;
+    let shape = Shape {
+        kind: ShapeType::Rectangle,
+        style: back.style().clone(),
+        text: RichText::default(),
+    };
+    // A 2.ª entrada do MESMO elemento nas caches (a 1.ª é a moldura): sem ela as duas expulsavam-se.
+    let (frame, at) = (cache.frame, (board, !el.id.0));
+    let o = crate::cached_outline(&mut cache.outlines, frame, at, &shape, el.w, el.h);
+    crate::sketch::paint_shape(
+        scene,
+        &mut cache.sketch,
+        frame,
+        at,
+        &back,
+        ShapeType::Rectangle,
+        o,
+        t,
+    );
+    true
+}

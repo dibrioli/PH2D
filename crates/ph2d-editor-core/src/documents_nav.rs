@@ -47,8 +47,8 @@ pub(crate) struct Nav {
     pub(crate) fit_hold: Option<FitHold>,
     /// O que os painéis fixos do quadro pintaram por cima dele (ecrã), recolhido entre duas pinturas.
     pub(crate) covers: Vec<Rect>,
-    /// A parte da área que eles deixaram livre na última pintura.
-    pub(crate) free: Option<Rect>,
+    /// As da última pintura (as que um clique ou uma tecla de enquadrar descontam).
+    pub(crate) shown: Vec<Rect>,
     /// O chão da fila do canto quando o HUD de baixo a tapa (janela estreita com os painéis laterais
     /// abertos), escrito a cada pintura: a fila e o que se apoia nela sobem por cima dele.
     pub(crate) floor: Option<f32>,

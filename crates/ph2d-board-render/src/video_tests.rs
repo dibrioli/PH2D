@@ -370,3 +370,59 @@ fn a_video_half_out_of_view_stays_live() {
         "meio fora da vista com 560×315 à vista pausava o vídeo"
     );
 }
+
+/// ⭐ W23 A4 — o fundo «às riscas» de um vídeo pinta-se às riscas, pela lei das formas: riscas na cor
+/// do fundo (traços), nenhum preenchimento liso nela — e continua por trás do tocador.
+#[test]
+fn a_hatched_video_background_is_painted_hatched() {
+    let mut b = board("AAAAAAAAAA6", false);
+    let id = vid_of(&b);
+    let yellow = Rgba([255, 236, 153, 255]);
+    let mut el = b.doc.get(id).unwrap().clone();
+    let st = el.style_mut();
+    (st.stroke, st.stroke_width, st.fill) = (None, 4.0, Some(yellow));
+    st.look.fill_style = ph2d_board_model::FillStyle::Hachure;
+    let _ = BoardOp::Put(el).apply(&mut b.doc);
+    let mut c = RenderCache::default();
+    c.videos.activate(id);
+    c.videos.status = Some(PlayerStatus::default());
+    c.videos.frame = Some((flat([7, 7, 7, 255], 560, 315), [560, 315]));
+    let o = ops(&b, &mut c);
+    let ink = crate::doc_color(yellow);
+    let solid = o
+        .iter()
+        .any(|d| matches!(d, DrawOp::Fill { brush: Brush::Solid(k), .. } if *k == ink));
+    assert!(!solid, "o fundo às riscas pintou-se liso");
+    let hatch = o
+        .iter()
+        .position(|d| matches!(d, DrawOp::Stroke { brush: Brush::Solid(k), .. } if *k == ink))
+        .expect("as riscas do fundo não se desenharam");
+    let frame = o
+        .iter()
+        .position(|d| matches!(d, DrawOp::Image(i) if i.image.rgba()[..4] == [7, 7, 7, 255]))
+        .expect("o quadro do tocador");
+    assert!(
+        hatch < frame,
+        "as riscas por trás do tocador: {hatch} < {frame}"
+    );
+}
+
+/// W23 A5 — o anel de «a carregar» GIRA de um desenho para o seguinte (o passo vem do contador de
+/// desenhos do quadro, e a janela redesenha a cada quadro): duas pinturas seguidas, dois arcos.
+#[test]
+fn the_loading_ring_turns_from_one_paint_to_the_next() {
+    let ink = Brush::Solid(crate::token(ColorToken::Text1, Theme::Forge));
+    let ring = |o: &[DrawOp]| {
+        o.iter()
+            .filter(|d| matches!(d, DrawOp::Stroke { brush, .. } if *brush == ink))
+            .map(|d| format!("{d:?}"))
+            .collect::<Vec<_>>()
+    };
+    let b = board("AAAAAAAAAA4", false);
+    let mut c = RenderCache::default();
+    c.videos.activate(vid_of(&b));
+    let first = ring(&ops(&b, &mut c));
+    let second = ring(&ops(&b, &mut c));
+    assert_eq!(first.len(), 1, "um arco: {first:?}");
+    assert_ne!(first, second, "o anel parou");
+}

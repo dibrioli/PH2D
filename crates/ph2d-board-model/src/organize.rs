@@ -207,6 +207,16 @@ impl BoardDoc {
         out
     }
 
+    /// `id` mora dentro de um frame visto de tão longe ([`far_frame`]) que nada dentro dele se desenha
+    /// — nem se clica.
+    #[must_use]
+    pub fn under_far_frame(&self, id: ElementId, zoom: f64, title_only_px: f64) -> bool {
+        self.frame_chain(id).iter().any(|f| {
+            self.get(*f)
+                .is_some_and(|f| far_frame(f, zoom, title_only_px))
+        })
+    }
+
     /// Tudo o que vive dentro de `frame`, a qualquer profundidade (filhos, netos…), por id — os nós
     /// escondidos por um ramo recolhido incluídos.
     #[must_use]
@@ -293,3 +303,10 @@ impl BoardDoc {
 #[cfg(test)]
 #[path = "organize_tests.rs"]
 mod tests;
+
+/// ⭐ O frame `f` visto ao `zoom` mostra só o fundo e o título: a altura dele no ecrã fica abaixo de
+/// `title_only_px` (W5). A MESMA conta para o desenho, os ícones e os cliques do que mora dentro dele.
+#[must_use]
+pub fn far_frame(f: &Element, zoom: f64, title_only_px: f64) -> bool {
+    f.h * zoom < title_only_px
+}

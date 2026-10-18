@@ -227,6 +227,12 @@ pub(crate) struct LivePanel {
     pub avatars: Vec<u64>,
     /// O endereço de cada linha de «achados» pintada, pela ordem.
     pub found: Vec<String>,
+    /// Quantos avatares a fila do canto mostrou (o «+n» ao lado dela abre a lista a partir daí).
+    pub avatars_shown: usize,
+    /// A 1.ª pessoa da lista do painel (a lista dá a volta) e quantas ele mostrou: o «+n» da lista
+    /// mostra as seguintes.
+    pub people_from: usize,
+    pub people_shown: usize,
 }
 
 impl LiveView {

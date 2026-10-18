@@ -11,17 +11,19 @@ use crate::documents::nav::FitHold;
 use crate::zones::Rect;
 use ph2d_board_model::Camera;
 
-/// A área do quadro e a parte dela que nada tapa (ecrã, `[x, y, w, h]`).
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// A área do quadro e o que os painéis fixos pintaram por cima dela na última pintura (ecrã).
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct View {
-    pub(crate) area: [f64; 4],
-    pub(crate) free: [f64; 4],
+    pub(crate) area: Rect,
+    pub(crate) covers: Vec<Rect>,
 }
 
 impl View {
-    /// Enquadra `bbox` (mundo) na parte livre.
-    pub(crate) fn fit(self, cam: &mut Camera, bbox: [f64; 4]) {
-        cam.fit_in(self.area, self.free, bbox, super::fit_margin());
+    /// Enquadra `bbox` (mundo) na parte livre que o deixa MAIOR.
+    pub(crate) fn fit(&self, cam: &mut Camera, bbox: [f64; 4]) {
+        let m = super::fit_margin();
+        let free = free_of(self.area, &self.covers, bbox, m);
+        cam.fit_in(area_of(self.area), area_of(free), bbox, m);
     }
 }
 
@@ -34,19 +36,24 @@ pub(crate) fn cover(hero: &mut HeroScreen, r: Rect) {
 
 /// A vista em que um clique ou uma tecla enquadram: a da última pintura.
 pub(crate) fn view(hero: &HeroScreen) -> View {
-    let area = hero.last_canvas;
-    let free = hero.documents.live.nav.free.unwrap_or(area);
     View {
-        area: area_of(area),
-        free: area_of(free),
+        area: hero.last_canvas,
+        covers: hero.documents.live.nav.shown.clone(),
     }
 }
 
-/// ⭐ O rectângulo de `area` que fica livre: cada coberta (a maior primeiro) corta-o pelo lado que
-/// guarda mais área.
+/// ⭐ O rectângulo de `area` que fica livre para enquadrar `bbox` (mundo) com `margin` px: cada
+/// coberta (a maior primeiro) corta-o pelo lado em que `bbox` cabe MAIOR — numa janela estreita uma
+/// cena larga vai para baixo do cartão «Live», uma alta para o lado dele.
 #[must_use]
-pub(crate) fn free_of(area: Rect, covers: &[Rect]) -> Rect {
+pub(crate) fn free_of(area: Rect, covers: &[Rect], bbox: [f64; 4], margin: f64) -> Rect {
     let size = |r: &Rect| r.w.max(0.0) * r.h.max(0.0);
+    let (bw, bh) = ((bbox[2] - bbox[0]).max(1e-9), (bbox[3] - bbox[1]).max(1e-9));
+    let zoom = |r: &Rect| {
+        let w = (f64::from(r.w) - 2.0 * margin) / bw;
+        let h = (f64::from(r.h) - 2.0 * margin) / bh;
+        w.min(h)
+    };
     let mut covers = covers.to_vec();
     covers.sort_by(|a, b| size(b).total_cmp(&size(a)));
     let mut r = area;
@@ -61,23 +68,29 @@ pub(crate) fn free_of(area: Rect, covers: &[Rect]) -> Rect {
             Rect::new(r.x, c.y + c.h, r.w, y1 - c.y - c.h),
             Rect::new(r.x, r.y, r.w, c.y - r.y),
         ];
-        if let Some(best) = cuts.into_iter().max_by(|a, b| size(a).total_cmp(&size(b))) {
+        if let Some(best) = cuts
+            .into_iter()
+            .filter(|k| k.w > 0.0 && k.h > 0.0)
+            .max_by(|a, b| zoom(a).total_cmp(&zoom(b)))
+        {
             r = best;
         }
     }
     r
 }
 
-/// ⭐ Antes de desenhar o quadro: a parte livre desta pintura (das cobertas da anterior) e o
-/// enquadramento que espera por ela.
+/// ⭐ Antes de desenhar o quadro: as cobertas da pintura anterior viram a vista desta, e o
+/// enquadramento que espera pela área refaz-se se ela mudou.
 pub(crate) fn settle(hero: &mut HeroScreen, area: Rect) {
     let nav = &mut hero.documents.live.nav;
-    let covers = std::mem::take(&mut nav.covers);
-    let free = free_of(area, &covers);
-    nav.free = Some(free);
+    nav.shown = std::mem::take(&mut nav.covers);
     let target = nav.fit_box.take();
     let pending = std::mem::take(&mut nav.fit_pending);
     let held = nav.fit_hold.take();
+    let view = View {
+        area,
+        covers: nav.shown.clone(),
+    };
     let Some(board) = hero.documents.active_board_mut() else {
         return;
     };
@@ -91,16 +104,14 @@ pub(crate) fn settle(hero: &mut HeroScreen, area: Rect) {
         Some(h) if h.board == board.id && h.camera == board.camera => h,
         _ => return,
     };
-    let view = View {
-        area: area_of(area),
-        free: area_of(free),
-    };
-    if hold.at != Some((view.area, view.free)) {
-        if let Some(bx) = hold.target.or_else(|| board.doc.extent()) {
+    if let Some(bx) = hold.target.or_else(|| board.doc.extent()) {
+        let m = super::fit_margin();
+        let at = (area_of(area), area_of(free_of(area, &view.covers, bx, m)));
+        if hold.at != Some(at) {
             view.fit(&mut board.camera, bx);
+            hold.at = Some(at);
+            hold.camera = board.camera;
         }
-        hold.at = Some((view.area, view.free));
-        hold.camera = board.camera;
     }
     hero.documents.live.nav.fit_hold = Some(hold);
 }

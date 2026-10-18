@@ -79,6 +79,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.live.unfollow_tip" => "Stop following",
         "board.live.following" => "Following {name}",
         "board.live.more" => "+{n}",
+        "board.live.everyone_tip" => "Everyone on this board",
+        "board.live.more_people_tip" => "Show the others",
         // ── os avisos curtos (a família mostra-os) ──
         "board.live.joined" => "{name} joined",
         "board.live.left" => "{name} left",

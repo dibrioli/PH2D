@@ -293,10 +293,12 @@ pub(crate) fn paint(
     }
     let outer = crate::image::box_path(el, st.round);
     scene.push_layer_shape(VelloBlend::default(), 1.0, tb, &outer);
-    let bg = st
-        .fill
-        .map_or_else(|| token(ColorToken::Bg3, theme), crate::doc_color);
-    scene.fill_path(&outer, &Brush::Solid(bg), tb);
+    if !crate::image_frame::paint_hand_back(scene, cache, el, st, tb, board) {
+        let bg = st
+            .fill
+            .map_or_else(|| token(ColorToken::Bg3, theme), crate::doc_color);
+        scene.fill_path(&outer, &Brush::Solid(bg), tb);
+    }
     // O tocador recortado no SEU rectângulo (os cantos concêntricos aos da caixa: o traço, metade para
     // dentro, fica a ≥ meio traço dele).
     if inset > 0.0 {

@@ -333,6 +333,8 @@ pub struct Editor {
     cropping: Option<crop::Cropping>,
     /// W16 — o tamanho natural de cada ficheiro do quadro ([`Editor::know_files`]).
     natural: std::collections::BTreeMap<ph2d_board_model::FileId, [u32; 2]>,
+    /// W23 A8 — o zoom e o limiar do «frame visto de longe» da última vista ([`Editor::know_detail`]).
+    far: Option<(f64, f64)>,
 }
 
 impl Editor {
@@ -370,6 +372,7 @@ impl Editor {
             unread: BTreeSet::new(),
             cropping: None,
             natural: std::collections::BTreeMap::new(),
+            far: None,
         }
     }
 

@@ -454,3 +454,44 @@ fn a_locked_note_takes_no_stamp() {
     assert_eq!(w.el(a).stamps().len(), 1);
     assert!(w.el(l).stamps().is_empty(), "a travada não muda");
 }
+
+/// ⭐ W23 A8 — dentro de um frame visto de longe (o desenho mostra só o fundo e o título) os círculos
+/// de votar e as fichas dos carimbos não se mostram nem aceitam o clique: o editor sabe o limiar da
+/// vista ([`Editor::know_detail`]) e conta pela MESMA porta do desenho.
+#[test]
+fn a_frame_seen_from_far_hides_and_refuses_votes_and_stamps() {
+    let mut w = world();
+    let a = w.sticky([0.0, 0.0], "a", 1, &[]);
+    w.ed.select(&w.doc, [a]);
+    w.ed.stamp(&mut w.doc, &mut w.h, Stamp::Heart);
+    w.ed.select(&w.doc, []);
+    let f = w.ed.new_frame(&mut w.doc, [-50.0, -50.0, 400.0, 400.0]);
+    let fid = f.id;
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(f)]);
+    let mut el = w.doc.get(a).unwrap().clone();
+    el.frame = Some(fid);
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
+    assert!(w.ed.start_vote(&w.doc, VoteSetup::default()));
+    let plus = w.plus(a);
+    let el = w.doc.get(a).unwrap().clone();
+    let r = ph2d_board_model::stamp_chips(&el)[0].1;
+    let chip = [el.x + (r[0] + r[2]) / 2.0, el.y + (r[1] + r[3]) / 2.0];
+    // De perto: 400 × 1 = 400 px de frame no ecrã, acima dos 96 — tudo à vista.
+    w.ed.know_detail(1.0, 96.0);
+    assert!(w.ed.vote_marks(&w.doc).iter().any(|m| m.id == a));
+    // De longe: 400 × 0,1 = 40 px — nem círculo nem clique, nem no `+` nem na ficha.
+    w.ed.know_detail(0.1, 96.0);
+    assert!(w.ed.vote_marks(&w.doc).is_empty());
+    w.click(plus, NONE);
+    assert_eq!(w.ed.vote().unwrap().mine(a), 0, "o `+` escondido votou");
+    w.click(chip, NONE);
+    assert_eq!(
+        w.doc.get(a).unwrap().stamps()[0].count,
+        1,
+        "a ficha escondida somou"
+    );
+    // De perto outra vez, os dois respondem.
+    w.ed.know_detail(1.0, 96.0);
+    w.click(plus, NONE);
+    assert_eq!(w.ed.vote().unwrap().mine(a), 1);
+}

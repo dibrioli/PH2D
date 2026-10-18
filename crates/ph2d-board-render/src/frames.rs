@@ -90,7 +90,7 @@ pub(crate) fn paint_backs(
         if line.width > 0.0 {
             scene.stroke_path(&line, Affine::IDENTITY, &brush, r);
         }
-        if f.h * zoom < detail.frame_title_only_px {
+        if ph2d_board_model::far_frame(f, zoom, detail.frame_title_only_px) {
             far.insert(f.id);
         }
     }

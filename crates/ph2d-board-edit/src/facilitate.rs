@@ -35,6 +35,18 @@ fn inside(p: [f64; 2], (c, d): ([f64; 2], f64)) -> bool {
 }
 
 impl Editor {
+    /// W23 A8 — o zoom e o limiar do «frame visto de longe» com que a vista desenha
+    /// ([`ph2d_board_model::far_frame`]): o que mora num frame assim não mostra nem aceita os
+    /// círculos de votar nem as fichas dos carimbos.
+    pub fn know_detail(&mut self, zoom: f64, title_only_px: f64) {
+        self.far = Some((zoom, title_only_px));
+    }
+
+    fn out_of_sight(&self, doc: &BoardDoc, id: ElementId) -> bool {
+        self.far
+            .is_some_and(|(z, px)| doc.under_far_frame(id, z, px))
+    }
+
     /// V2 — os círculos de votar de cada votável da sessão, de trás para a frente.
     #[must_use]
     pub fn vote_marks(&self, doc: &BoardDoc) -> Vec<VoteMark> {
@@ -49,7 +61,7 @@ impl Editor {
             .iter()
             .filter(|id| !self.unread.contains(id) || s.mine(**id) > 0)
             .filter_map(|id| doc.get(*id))
-            .filter(|e| !e.is_hidden())
+            .filter(|e| !e.is_hidden() && !self.out_of_sight(doc, e.id))
             .collect();
         els.sort_by(|a, b| a.z.cmp(&b.z));
         els.into_iter()
@@ -106,7 +118,7 @@ impl Editor {
                 return true;
             }
         }
-        let Some((id, stamp)) = chip_at(doc, p.world) else {
+        let Some((id, stamp)) = chip_where(doc, p.world, |e| !self.out_of_sight(doc, e.id)) else {
             return false;
         };
         let Some(mut el) = doc.get(id).cloned() else {
@@ -125,7 +137,19 @@ impl Editor {
 /// S3 — a ficha de carimbo debaixo de `p` (a do elemento de cima).
 #[must_use]
 pub fn chip_at(doc: &BoardDoc, p: [f64; 2]) -> Option<(ElementId, Stamp)> {
-    let mut els: Vec<&Element> = doc.live().filter(|e| !e.stamps().is_empty()).collect();
+    chip_where(doc, p, |_| true)
+}
+
+/// [`chip_at`] só entre os elementos que `shown` deixa.
+fn chip_where(
+    doc: &BoardDoc,
+    p: [f64; 2],
+    shown: impl Fn(&Element) -> bool,
+) -> Option<(ElementId, Stamp)> {
+    let mut els: Vec<&Element> = doc
+        .live()
+        .filter(|e| !e.stamps().is_empty() && shown(e))
+        .collect();
     els.sort_by(|a, b| b.z.cmp(&a.z));
     els.into_iter().find_map(|el| {
         let q = local(el, p);

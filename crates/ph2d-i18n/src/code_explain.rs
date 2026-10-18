@@ -88,11 +88,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.explain.unknown_key_here.why" => {
             "This table has no “{key}”. Check the spelling — Alt+Enter suggests the closest name, and after the dot the list shows every name that exists."
         }
-        "code.explain.too_few_args" => "Too few values for “{name}”: it takes {expects}, and gets {given}",
+        "code.explain.too_few_args" => {
+            "Too few values for “{name}”: it takes {expects}, and gets {given}"
+        }
         "code.explain.too_few_args.why" => {
             "Add the missing values between the parentheses. Typing ( shows what each one is."
         }
-        "code.explain.too_many_args" => "Too many values for “{name}”: it takes {expects}, and gets {given}",
+        "code.explain.too_many_args" => {
+            "Too many values for “{name}”: it takes {expects}, and gets {given}"
+        }
         "code.explain.too_many_args.why" => {
             "Remove the extra values. Typing ( shows what each one is."
         }

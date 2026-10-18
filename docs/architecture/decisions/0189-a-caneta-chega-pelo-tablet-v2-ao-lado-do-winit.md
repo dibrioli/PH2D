@@ -29,9 +29,11 @@ anuncia o `zwp_tablet_manager_v2` na **versão 2**. A pressão morre na shell: `
    `PenEvent`s, UM por `frame`, sem coalescer, com o tempo em ms — testável sem compositor; `wayland` (Linux) — o
    fio que fala com o compositor, filtra a superfície da janela e põe o cursor da ferramenta. X11 e Windows
    entram depois pela MESMA `sessao` (fontes novas, mesma saída).
-3. **A porta na shell**: a fila drena-se a cada quadro, no mesmo ponto do receptor de «soltar», e cada
-   `PenEvent` entra pelas MESMAS portas do rato (`on_cursor_moved`/`on_mouse_input`) — logo a caneta conduz a UI
-   inteira. A ponta é o botão primário; o botão de baixo (`BTN_STYLUS`) é o do meio, o de cima (`BTN_STYLUS2`) o
+3. **A porta na shell**: a fila drena-se no TOPO de cada quadro — antes do carimbo coalescido do Painter, onde os
+   eventos do winit já chegaram (no ponto do receptor de «soltar» o Move coalescido esperaria um quadro) — e cada
+   `PenEvent`, convertido por `ph2d_pen::ponteiro`, entra pelas MESMAS portas do rato (`pointer_moved`/
+   `pointer_button`, as que o `on_cursor_moved`/`on_mouse_input` do winit também chamam) — logo a caneta conduz a
+   UI inteira. A ponta é o botão primário; o botão de baixo (`BTN_STYLUS`) é o do meio, o de cima (`BTN_STYLUS2`) o
    secundário (a convenção do GNOME/Krita). Coordenadas lógicas × o factor de escala.
 4. **A pressão viaja no `PointerEvent::pressure`; a inclinação e a ponta de borracha viajam na FONTE**:
    `PointerSource::Pencil` (sem leitor) passa a `Pen(PenInfo { tilt_cdeg: [i16; 2], eraser: bool })`. Nenhuma

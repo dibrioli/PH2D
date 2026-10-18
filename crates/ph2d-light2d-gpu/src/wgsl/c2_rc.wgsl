@@ -57,9 +57,6 @@ override BORDA_EXATA: bool = false;
 override BORDA_CONTINUA: bool = false;
 // ⭐ W6d — a luz direta dos texels de FORA também pela borda exata (o `Config::borda_fora`).
 override BORDA_FORA: bool = false;
-// ⭐ W6d — com a contínua, «dentro» ⟺ o campo ≥ 0 OU a reta por texel: o campo chanfra o canto convexo
-// (handoff W6d §14), a reta por texel não; as frestas desta, o campo cobre.
-override BORDA_UNIAO: bool = false;
 var<private> borda_aqui: bool = true;
 
 struct Cascata {
@@ -107,19 +104,8 @@ struct Meio {
 }
 
 // O meio em `pc` (texels das cascatas): fora da grade, nada; dentro ⟺ cobertura interpolada ≥ ½ —
-// na captura ligada, na escala dela. A marcha (o transporte).
+// na captura ligada, na escala dela.
 fn meio(pc: vec2<f32>) -> Meio {
-    return meio_de(pc, false);
-}
-
-// ⭐ W6d — o meio das perguntas de GEOMETRIA (o `num_corpo`, o τ do texel): com a `BORDA_UNIAO`. A marcha
-// fica sem ela: o código dela embutido em cada passo da marcha custava +0,45 ms na fina mesmo sem correr
-// (handoff W6d §17); o que a união põe fora o campo também põe, e a marcha nunca nasce dentro.
-fn meio_geo(pc: vec2<f32>) -> Meio {
-    return meio_de(pc, BORDA_UNIAO);
-}
-
-fn meio_de(pc: vec2<f32>, uniao: bool) -> Meio {
     var m = Meio(1.0, 0.0, vec2<i32>(0), false, vec4<f32>(0.0));
     let p = pc * ESCALA_DA_CAPTURA;
     let n = vec2<f32>(cas.tamanho) * ESCALA_DA_CAPTURA;
@@ -135,8 +121,7 @@ fn meio_de(pc: vec2<f32>, uniao: bool) -> Meio {
     if BORDA_EXATA && BORDA_CONTINUA && borda_aqui {
         // ⭐ W6d — a distância com sinal no centro de cada texel (`c3_borda`), bilinear: contínua.
         let s = textureGather(3, cobertura, vizinhos, (base + 1.0) / n);
-        if mix(mix(s.w, s.z, fr.x), mix(s.x, s.y, fr.x), fr.y) < 0.0
-            && !(uniao && any(s > vec4<f32>(-1.0)) && dentro_exato(p, n, c)) {
+        if mix(mix(s.w, s.z, fr.x), mix(s.x, s.y, fr.x), fr.y) < 0.0 {
             return m;
         }
     } else if BORDA_EXATA && borda_aqui {
@@ -171,7 +156,7 @@ fn meio_de(pc: vec2<f32>, uniao: bool) -> Meio {
 // ⭐ W5k — `pc` está DENTRO de um CORPO (τ < 1: todo emissor e todo oclusor de opacidade > 0): o
 // predicado GEOMÉTRICO da C3 (preencher, o pé na face, o `x⁺` do rebote). A marcha lê o τ (transporte).
 fn num_corpo(pc: vec2<f32>) -> bool {
-    return meio_geo(pc).tau < 1.0;
+    return meio(pc).tau < 1.0;
 }
 
 // ⭐ W5d — `p` (texels da captura ligada, grade `n`) está DENTRO pela borda EXATA da cobertura: a
@@ -189,8 +174,7 @@ fn dentro_exato(p: vec2<f32>, n: vec2<f32>, c: f32) -> bool {
     if e.g == 0.0 && e.b == 0.0 {
         return c >= 0.5;
     }
-    // Na contínua o 4.º canal do parcial é a distância no centro: −recuo.
-    return dot(p - floor(p) - 0.5, e.gb) >= select(e.a, -e.a, BORDA_CONTINUA);
+    return dot(p - floor(p) - 0.5, e.gb) >= e.a;
 }
 
 // Quanto se pode andar a partir de `p` sem chegar a um ponto «dentro». O JFA dá a célula-semente

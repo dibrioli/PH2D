@@ -324,3 +324,68 @@ Os dois discos (a mesma forma pela camada dos outros e pela imagem) diferem só 
 da borda redistribui ±0,06 % entre eles. A tolerância é um máximo AMOSTRADO sob a lei antiga — por remedir com o
 seu controlo: a M12 da W5e (a camada lida como não premultiplicada, −0,39 % sob a lei antiga) sob a lei nova, no lote
 da prova de mutação; a tolerância nova só entra se a M12 ficar claramente acima dela.
+
+## 20. Prova de mutação (agente `mutacao`, sobre `886f86f16f`; controlo A–D verdes antes; `load` ≤ 7)
+
+A = `a_borda_nao_tem_pontos_pretos` · B = `o_interior_do_opaco_nao_depende_da_posicao_na_grade` · C =
+`as_formas_redondas_nao_saem_em_facetas` · D = `o_disco_de_imagem_nao_sai_em_facetas`. **6/6 sangraram**, todas compilam:
+
+| mutação | sangra | a linha |
+|---|---|---|
+| M1 o ramo do campo no `meio_de` → `if false` | A | polígono (−0,838; 1) |
+| M2 o rente no `c3_direta` → `rente = false` | A | imagem (−0,944; 1) |
+| M3 o sinal da reta emprestada (`!=` → `==`) | A | polígono (−0,838; 1) |
+| M4 o caminho rápido do `c3_borda` (±1 trocados) | A B C D | 1 024 errados, TV −1,99 |
+| M5 a união fora do `meio_geo` | B | lei antiga 2 errados (pior 0,238) — o defeito do §13 |
+| M6 o recuo do `dentro_exato` na contínua (`e.a` cru) | A | imagem (−0,835; 2) |
+
+**M12 da W5e sob a lei nova** (a camada dos outros lida não premultiplicada; medição): Disco grande −0,33 → **−0,44 %**,
+pequeno −0,29 → −0,30 %. ⇒ `TOL_REBOTE_OUTROS` 0,003 → **0,0036** (o produto −0,33 % + 10 %): a M12 fica 0,08 acima
+(na W5e: 0,09). A tabela vai no doc-comment da constante.
+
+## 21. ⛔ A união QUEBRA o F3 no vértice girado (`f3_*.log`, `vertice.log`) — a 6c não fica
+
+A bateria inteira da `ph2d-light2d-gpu` (42 + 6; a janela anterior corria 10) achou
+`c3_grade_fina::o_interior_de_um_opaco_e_o_exterior_mais_proximo` vermelho — e é da UNIÃO (o `Config::padrao`
+trocado, um processo por lei): penumbra RMSE antes **0,0563** · sem a união **0,0559** · produto (+ união) **0,1129**
+(teto 0,062). O pior texel é o do PRÓPRIO vértice do quadrado girado da `penumbra` (155, 257): sem a união 0,203 ·
+união **0,286** (= só a face acesa) · gabarito 0,207 — o espelho do canto da caixa (lá a união devolvia a média das
+duas faces, aqui tira-a). ⇒ a união não é uma cura de CANTO: é o envelope de fora das duas leis, e junta os erros
+para fora de ambas (as retas por texel inclinadas pelo Sobel junto ao vértice saem para fora do lado de lá).
+
+## 22. A candidata 7 — o campo com a reta PRÓPRIA de cada vizinho — e o seu kill-criterion (escrito ANTES de medir)
+
+Sem a união. No `c3_borda`, o cheio/vazio da faixa deixa de emprestar retas com a normal do PRÓPRIO Sobel (no
+canto ela é diagonal: o chanfro de ~1,3 texel da captura) e usa a reta de cada parcial vizinho com a normal DELE
+(o Sobel da 3×3 dele, lido da 5×5) e o recuo pela área dele: cheio = a MENOR distância ≥ 0 (num convexo o interior
+é a interseção dos semiplanos de apoio: a distância é o mínimo — exata no canto convexo); vazio = a maior < 0;
+nenhuma ⇒ ±1. O parcial fica com a sua reta. `Config::borda_retas_proprias` (override `BORDA_RETAS_PROPRIAS`).
+
+**Régua** (um processo, intercalada): o censo + anéis + bits + custo (§2/§15) com as variantes antes · sem a união ·
+produto (união) · **retas próprias**; e, por portão, `o_interior_do_opaco_nao_depende_da_posicao_na_grade` (B) e o
+F3 (`o_interior_de_um_opaco_e_o_exterior_mais_proximo`) com as retas próprias ligadas no padrão. **PASSA**: B verde
+(lei antiga ≤ 1) · o F3 verde · (a) ≤ 14 e o pior ≥ −0,25 · (b) ≤ 42 · anéis sem regressão · bits fora 0 · C3 ≤ +5 %
+sobre antes nas cenas 5 e 6. **MORRE**: B ou F3 vermelho, bits de fora, um preto < −0,25 novo.
+
+## 23. Rodada 12 — a candidata 7 ENTRA; a união SAI (`decide12.log`, `f3_retas.log`, `b_retas.log`, `vertice12.log`)
+
+| (`load` 5–7; custo o mínimo de 7, intercalado) | (a) | (b) | B (caixa) | F3 penumbra | vértice girado | canto da caixa | C3 cena 5 / 6 |
+|---|---|---|---|---|---|---|---|
+| antes da W6d | 139 (−0,964) | 40 | verde | 0,0563 | 0,203 | 0,575 | 3,384 / 2,191 |
+| campo, empréstimo pela normal própria (`739fb6cfb1`) | 1 (−0,176) | 36 | **vermelho** | 0,0559 | 0,203 | **0,012** | 3,044 / 2,095 |
+| campo + união (`886f86f16f`) | 0 | 30 | verde | **0,1129** ✗ | **0,286** | 0,575 | 3,501 / 2,277 |
+| **campo, retas PRÓPRIAS dos vizinhos** | 1 (−0,176) | 37 | **verde** | **0,0531** | **0,209** (gab. 0,207) | **0,012** | **3,047 / 2,094** |
+
+Anéis iguais em todo zoom; bits de fora 0 em 24. ⇒ a candidata 7 passa todos os itens do §22 e custa MENOS que antes
+da W6d (−10 % / −4 %: o campo por um `textureGather` na fina; a 5×5 só na faixa, a borda 0,50 ms como o empréstimo).
+A união foi RETIRADA do código (o `meio_geo`, o `BORDA_UNIAO`, o recuo lido como −distância no `dentro_exato`) e o
+empréstimo pela normal própria também (`reta_emprestada`): as retas próprias são a lei, sem interruptor.
+
+**ABERTO (medido, fora dos portões):** o texel EXATAMENTE no canto da caixa (1,8516; 0,9141 — a 0,22 texel fino das
+duas faces, por isso fora do gabarito do portão B) sai 0,012 (o ambiente) contra 0,575 da W5d. Mecanismo (§14): o
+PARCIAL do vértice guarda a sua reta diagonal (o Sobel de duas faces, −0,207 no centro quando o vértice lá está) e o
+iso-0 corta o canto ~0,45 texel da captura; o texel do canto remapeia para esse arredondado. Cura candidata (por
+medir): o parcial cuja normal discorda de todos os vizinhos parciais (o vértice) toma a distância pela interseção
+(convexo: o mínimo; côncavo: o máximo — o teste `d₂(c_q₁) + d₁(c_q₂) > 0`) das retas dos parciais a DOIS texels
+(as adjacentes saem inclinadas ~16° pelo próprio vértice) — 7×7 só nesses texels. Régua: a sonda
+`medida_luz2d_w6d_canto` (o texel do canto contra o «sem o campo») + um gabarito de canto no portão B.

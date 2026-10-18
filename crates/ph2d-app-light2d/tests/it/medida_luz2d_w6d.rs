@@ -293,16 +293,11 @@ fn censo_da_borda(fl: &Fluencia, r: &Redondo, gab: &CenaDeLuz, tx: f64) -> Strin
 
 const ERRADO_BORDA: f64 = 0.10;
 
-/// As variantes da decisão (handoff W6d §15): antes da W6d (a reta por texel, sem o fora), o produto
-/// sem a união (`739fb6cfb1`), o produto (+ a união); o iso-½ só na lista.
-const DIAG: [&str; 4] = [
-    "antes da W6d",
-    "sem a união",
-    "produto",
-    "sem borda exata",
-];
+/// As variantes da decisão: antes da W6d (a reta por texel, sem o fora) e o produto; o iso-½ só na
+/// lista. (As rodadas 9–12 mediram também a união e o empréstimo pela normal própria: handoff W6d §16–§23.)
+const DIAG: [&str; 3] = ["antes da W6d", "produto", "sem borda exata"];
 /// As da decisão; as outras só na lista (`PH2D_W6D_LISTA`).
-const N_DECIDE: usize = 3;
+const N_DECIDE: usize = 2;
 
 fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_gpu::Config {
     let c = config(gpu, a, false);
@@ -310,11 +305,9 @@ fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_
         0 => ph2d_light2d_gpu::Config {
             borda_continua: false,
             borda_fora: false,
-            borda_uniao: false,
             ..c
         },
-        1 => ph2d_light2d_gpu::Config { borda_uniao: false, ..c },
-        3 => ph2d_light2d_gpu::Config { borda_exata: false, ..c },
+        2 => ph2d_light2d_gpu::Config { borda_exata: false, ..c },
         _ => c,
     }
 }
@@ -492,7 +485,7 @@ fn angulo(centro: [f64; 2], p: [f64; 2], lampada: [f64; 2]) -> f64 {
 
 /// ⭐ W6d §14 — o canto da caixa (o `o_interior_do_opaco`, zoom 1, fase 3/8, a lei antiga): a luz
 /// contra o gabarito numa janela 9×9 em volta dos dois texels que saíam pretos, nas variantes produto ×
-/// sem a união × sem o campo. À mão (cabeçalho, nome `medida_luz2d_w6d_canto`). (A sonda de cor do
+/// sem o campo. À mão (cabeçalho, nome `medida_luz2d_w6d_canto`). (A sonda de cor do
 /// `c3_fina` que mediu o ponto remapeado e a normal foi retirada: handoff W6d §14.)
 #[test]
 #[ignore = "a sonda do canto da W6d: corre-se à mão"]
@@ -525,7 +518,6 @@ fn medida_luz2d_w6d_canto() {
     eprintln!("texel {tx:.5} · face direita x = {dir:.4} · topo y = {topo:.4} · loadavg {}", loadavg());
     let variantes = [
         ("produto", base),
-        ("sem a união", ph2d_light2d_gpu::Config { borda_uniao: false, ..base }),
         ("sem o campo", ph2d_light2d_gpu::Config { borda_continua: false, ..base }),
     ];
     let mut gab = None;

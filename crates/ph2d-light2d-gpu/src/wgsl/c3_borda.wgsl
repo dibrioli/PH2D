@@ -47,8 +47,8 @@ fn recuo_de(u: vec2<f32>, a: f32) -> f32 {
 
 // O que o `c3_borda` grava no texel `t` dada a sua 3×3 `k` (as coordenadas presas à textura, como a
 // leitura direta): `(normal para dentro, recuo)` de um parcial; na contínua (`BORDA_CONTINUA`) o 3.º é a
-// DISTÂNCIA com sinal no centro — o parcial −recuo, o fio cobertura − ½, o cheio/vazio da faixa a reta
-// emprestada ([`reta_emprestada`]), o resto ±1.
+// DISTÂNCIA com sinal no centro — o parcial −recuo, o fio cobertura − ½, o cheio/vazio da faixa pelas
+// retas dos vizinhos ([`pelas_retas_proprias`]), o resto ±1.
 fn linha_de(t: vec2<i32>, n: vec2<i32>, k: array<f32, 9>) -> vec3<f32> {
     let a = k[4];
     if a > 0.0 && a < 1.0 {
@@ -62,41 +62,45 @@ fn linha_de(t: vec2<i32>, n: vec2<i32>, k: array<f32, 9>) -> vec3<f32> {
     if !BORDA_CONTINUA {
         return vec3<f32>(0.0);
     }
-    let r = reta_emprestada(t, n, k, a >= 1.0);
-    return vec3<f32>(0.0, 0.0, select(-r.z, select(-1.0, 1.0, a >= 1.0), all(r.xy == vec2<f32>(0.0))));
+    return vec3<f32>(0.0, 0.0, pelas_retas_proprias(t, n, a >= 1.0));
 }
 
-// ⭐ W6d — a reta de um texel CHEIO ou VAZIO da faixa (`BORDA_CONTINUA`): a normal pelo Sobel do PRÓPRIO
-// 3×3 e, de cada parcial vizinho (dentro da textura), a reta com essa normal que deixa dentro a área
-// dele, transladada para o centro deste; fica a que passa mais perto, com o sinal conferido (cheio ⇒
-// dentro no centro). Nenhuma ⇒ zero (a distância fica ±1). (A reta de cada vizinho pelo Sobel DELE
-// custava +0,20 ms a 1080p: handoff W6d §9.)
-fn reta_emprestada(t: vec2<i32>, n: vec2<i32>, k: array<f32, 9>, cheio: bool) -> vec3<f32> {
-    var melhor = vec3<f32>(0.0);
-    var perto = 1e9;
-    var u = vec2<f32>(0.0);
-    for (var j = 0; j < 3; j++) {
-        for (var i = 0; i < 3; i++) {
-            let o = vec2<i32>(i - 1, j - 1);
+// ⭐ W6d — a distância com sinal no centro de um CHEIO ou VAZIO da faixa pela reta PRÓPRIA de cada parcial
+// vizinho (o Sobel da 3×3 dele, da 5×5 lida aqui; o recuo pela área dele): cheio = a menor ≥ 0 (num
+// convexo o interior é a interseção dos semiplanos de apoio), vazio = a maior < 0; nenhuma ⇒ ±1. A reta
+// com a normal do PRÓPRIO Sobel (diagonal no canto) chanfrava o canto convexo ~1,3 texel (handoff W6d §14).
+fn pelas_retas_proprias(t: vec2<i32>, n: vec2<i32>, cheio: bool) -> f32 {
+    var c: array<f32, 25>;
+    for (var j = 0; j < 5; j++) {
+        for (var i = 0; i < 5; i++) {
+            let q = clamp(t + vec2<i32>(i - 2, j - 2), vec2<i32>(0), n - 1);
+            c[j * 5 + i] = textureLoad(borda_cobertura, q, 0).r;
+        }
+    }
+    var melhor = select(-1.0, 1.0, cheio);
+    for (var j = 1; j < 4; j++) {
+        for (var i = 1; i < 4; i++) {
+            let a = c[j * 5 + i];
+            let o = vec2<i32>(i - 2, j - 2);
             let q = t + o;
-            let a = k[j * 3 + i];
-            if (i == 1 && j == 1) || any(q < vec2<i32>(0)) || any(q >= n) || a <= 0.0 || a >= 1.0 {
+            if (i == 2 && j == 2) || any(q < vec2<i32>(0)) || any(q >= n) || a <= 0.0 || a >= 1.0 {
                 continue;
             }
+            let k = array<f32, 9>(
+                c[(j - 1) * 5 + i - 1], c[(j - 1) * 5 + i], c[(j - 1) * 5 + i + 1],
+                c[j * 5 + i - 1], a, c[j * 5 + i + 1],
+                c[(j + 1) * 5 + i - 1], c[(j + 1) * 5 + i], c[(j + 1) * 5 + i + 1],
+            );
+            let u = normal_sobel(k);
             if all(u == vec2<f32>(0.0)) {
-                u = normal_sobel(k);
-                if all(u == vec2<f32>(0.0)) {
-                    return melhor;
-                }
-            }
-            // dentro ⟺ (x − c_q)·u ≥ r  ⟺  (x − c_t)·u ≥ r + (c_q − c_t)·u.
-            let recuo = recuo_de(u, a) + dot(vec2<f32>(o), u);
-            if (-recuo >= 0.0) != cheio {
                 continue;
             }
-            if abs(recuo) < perto {
-                perto = abs(recuo);
-                melhor = vec3<f32>(u, recuo);
+            // dentro ⟺ (x − c_q)·u ≥ r; no centro deste, x − c_q = −o.
+            let d = -dot(vec2<f32>(o), u) - recuo_de(u, a);
+            if cheio && d >= 0.0 {
+                melhor = min(melhor, d);
+            } else if !cheio && d < 0.0 {
+                melhor = max(melhor, d);
             }
         }
     }

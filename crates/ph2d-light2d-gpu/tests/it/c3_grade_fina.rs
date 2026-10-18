@@ -616,3 +616,54 @@ fn sonda_a_face_pelo_ponto() {
         eprintln!("{linha}");
     }
 }
+
+/// ⭐ W6d §21 — o vértice do quadrado girado da [`penumbra`] (o pior texel do F3 com a união, (155, 257)):
+/// a luz contra o gabarito do F3 numa janela 7×7, nas leis antes da W6d × o produto (as rodadas 11–12
+/// mediram também a união: handoff W6d §21–§23). À mão (`--ignored --nocapture`, nome `medida_w6d_vertice_girado`).
+#[test]
+#[ignore = "a sonda do vértice da W6d: corre-se à mão"]
+fn medida_w6d_vertice_girado() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[2];
+    let cena = penumbra();
+    let base = Config {
+        fina: FINA,
+        captura: 2 * FINA,
+        miolo: None,
+        ..Config::padrao(grade(lado, texel))
+    };
+    let lei = ph2d_light2d_ref::Gabarito::com_miolo(&cena, EXTERIOR);
+    for (nome, cfg) in [
+        (
+            "antes da W6d",
+            Config {
+                borda_continua: false,
+                borda_fora: false,
+                ..base
+            },
+        ),
+        ("produto", base),
+    ] {
+        let (f, g) = rodar(&gpu, cfg, &cena);
+        let mut r = gabarito_por(&g, |p| lei.fluencia(p));
+        let fundo = crate::comum::dentro_de_opaco(&cena, &g);
+        for k in (0..r.len()).filter(|&k| fundo(k)) {
+            r[k] = media_no_texel(&cena, &lei, &g, k, r[k]);
+        }
+        let w = g.largura as usize;
+        eprintln!("== {nome} · placa/gabarito (* = dentro do opaco), linhas de cima para baixo");
+        for j in (254..=260).rev() {
+            let mut linha = format!("j {j}:");
+            for i in 152..=158 {
+                let k = j * w + i;
+                linha += &format!(
+                    " {:.3}/{:.3}{}",
+                    f[k][1],
+                    r[k][1],
+                    if fundo(k) { "*" } else { " " }
+                );
+            }
+            eprintln!("{linha}");
+        }
+    }
+}

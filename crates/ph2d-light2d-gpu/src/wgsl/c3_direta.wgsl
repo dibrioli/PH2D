@@ -498,7 +498,7 @@ fn peso_de_fora(t: vec2<i32>) -> f32 {
     if c0_tau < 1.0 {
         return 1.0;
     }
-    let tau = meio_geo(vec2<f32>(t) + 0.5).tau;
+    let tau = meio(vec2<f32>(t) + 0.5).tau;
     return select(1.0, 0.0, tau > 0.0 && tau < 1.0);
 }
 
@@ -903,7 +903,7 @@ fn fundo_do_grupo(alvo: vec2<u32>, na_regiao: bool, lid: u32) -> bool {
     var tau = 1.0;
     var fundo = true;
     if na_regiao {
-        tau = meio_geo(ponto_fino(alvo)).tau;
+        tau = meio(ponto_fino(alvo)).tau;
         fundo = no_fundo(alvo, tau);
     }
     if !fundo {
@@ -927,7 +927,7 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocat
         return;
     }
     borda_aqui = true;
-    let tau = meio_geo(ponto_fino(alvo)).tau;
+    let tau = meio(ponto_fino(alvo)).tau;
     let onde = onde_calcular(alvo);
     let lt = luz_do_texel(alvo, onde, tau, false, true);
     guardar_fina(alvo, onde, lt.l, lt.t, tau);
@@ -1036,7 +1036,7 @@ fn luz_das_lampadas(P: vec2<f32>, P0: vec2<f32>, modo: u32, inicial: vec3<f32>) 
                 // No canto a face não corta a abertura numa reta: a marcha do ponto rente.
                 if any(nf != vec2<f32>(0.0)) {
                     medir = false;
-                    let translucido = meio_geo(P0).tau > 0.0;
+                    let translucido = meio(P0).tau > 0.0;
                     if FACE_PELO_PONTO {
                         let f = na_face_pelo_ponto(P, nf, k, translucido);
                         v = f.v;
@@ -1175,7 +1175,7 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_i
         return;
     }
     borda_aqui = true;
-    let tau = meio_geo(ponto_fino(id)).tau;
+    let tau = meio(ponto_fino(id)).tau;
     let onde = onde_calcular(id);
     let lt = luz_do_texel(id, onde, tau, true, true);
     guardar_fina(id, onde, lt.l, lt.t, tau);

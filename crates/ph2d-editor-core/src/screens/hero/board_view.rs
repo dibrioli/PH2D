@@ -254,7 +254,6 @@ fn canvas_down(
             super::board_menu::open(hero, x, y);
             return true;
         }
-        _ => return true,
     }
     let p = world_pointer(board, area, x, y, input.mods);
     let view = view_rect(board, area);

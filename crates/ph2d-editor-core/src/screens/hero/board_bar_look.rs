@@ -2,7 +2,7 @@
 //! de LOC): o balão de cada controlo, o que está seleccionado, e os ícones — o contorno da forma e a
 //! seta desenhados com a MESMA geometria do quadro.
 
-use super::{FONT_SIZES, HEADS, Item, OPACITIES, Selected, WIDTHS, node, palette};
+use super::{FONT_SIZES, Item, OPACITIES, Selected, WIDTHS, node, palette};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, resolve};

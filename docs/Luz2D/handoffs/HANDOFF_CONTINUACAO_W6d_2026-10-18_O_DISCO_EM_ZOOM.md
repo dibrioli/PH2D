@@ -156,3 +156,10 @@ vizinhos 0,403 · o campo inteiro 0,715 ⇒ as leituras +0,14 ms, a RETA de cada
 A reta emprestada sem o Sobel do vizinho: o texel da faixa tira a NORMAL do seu próprio 3×3 (as leituras que a busca do
 vizinho já faz) e, de cada parcial vizinho, só a cobertura (o recuo pela área com essa normal, transladado). Itens e
 limiares: os do §6 (0 bits de fora; (1a) ≤ 10 % e o pior ≥ −0,25; o custo ≤ +5 %).
+
+## 11. Rodada 5 — a reta emprestada barata: a qualidade igual, o custo ainda acima (`decide5.log`, `load` 1,5)
+
+(1a) 139 → 1 (−0,176) · (1b) 36 · anéis sem regressão · bits 0 · o produto idêntico — a mesma qualidade da rodada 4. Custo
+C3 cena 5 3,391 → 3,605 (+6,3 %), cena 6 2,189 → 2,382 (+8,8 %) ✗; a borda 0,376 → 0,637. **Candidata 5b** (só custo, o
+mesmo critério do §10, escrito antes de medir): o `c3_borda_quad` — 2×2 texels por invocação, o bloco 4×4 lido uma vez,
+o bloco sem parcial grava ±1 sem conta; o produto continua no `c3_borda` (uma função por texel partilhada, `linha_de`).

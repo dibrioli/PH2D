@@ -20,8 +20,8 @@ pub mod events;
 pub mod filter;
 
 pub use events::{
-    CloseAction, KeyEvent, KeyKind, Lifecycle, Modifiers, PointerButton, PointerEvent, PointerKind,
-    PenInfo, PointerSource, WheelEvent, WindowSize,
+    CloseAction, KeyEvent, KeyKind, Lifecycle, Modifiers, PenInfo, PointerButton, PointerEvent,
+    PointerKind, PointerSource, WheelEvent, WindowSize,
 };
 pub use filter::ImageFilterMode;
 

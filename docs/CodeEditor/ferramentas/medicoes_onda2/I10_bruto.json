@@ -1,0 +1,4126 @@
+{
+ "loadavg": [
+  "2.54",
+  "5.63",
+  "22.51"
+ ],
+ "caps": {
+  "renameProvider": true,
+  "referencesProvider": true,
+  "documentHighlightProvider": null,
+  "linkedEditingRangeProvider": null
+ },
+ "args": [
+  "/home/enio/.cache/ph2d/luau-lsp/1.70.1/luau-lsp",
+  "lsp",
+  "--stdio",
+  "--definitions:@ph2d=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-5f3b24ab50658691.d.luau",
+  "--docs=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-docs-2649bfff572254a5.json"
+ ],
+ "diags": [
+  [
+   8,
+   "FunctionUnused: Function 'init' is never used; prefix with '_' to silence"
+  ],
+  [
+   8,
+   "FunctionUnused: Function 'update' is never used; prefix with '_' to silence"
+  ],
+  [
+   7,
+   "LocalUnused: Variable 'tag' is never used; prefix with '_' to silence"
+  ],
+  [
+   8,
+   "FunctionUnused: Function 'com_sombra' is never used; prefix with '_' to silence"
+  ],
+  [
+   4,
+   "LocalShadow: Variable 'x' shadows previous declaration at line 57"
+  ]
+ ],
+ "bob": {
+  "local_brilho_decl": {
+   "pos": {
+    "line": 41,
+    "character": 8
+   },
+   "palavra": "brilho",
+   "linha": "local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3",
+   "refs_decl_True": {
+    "ms": 0.2409719891147688,
+    "lugares": [
+     [
+      41,
+      8,
+      14
+     ],
+     [
+      42,
+      51,
+      57
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.03566000668797642,
+    "lugares": [
+     [
+      41,
+      8,
+      14
+     ],
+     [
+      42,
+      51,
+      57
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.03758100501727313,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       41,
+       8,
+       14,
+       "renomeado"
+      ],
+      [
+       42,
+       51,
+       57,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.027620000764727592,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       41,
+       8,
+       14,
+       "end"
+      ],
+      [
+       42,
+       51,
+       57,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.055711003369651735,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.02602000313345343,
+    "novo": "s",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       41,
+       8,
+       14,
+       "s"
+      ],
+      [
+       42,
+       51,
+       57,
+       "s"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.02614999539218843,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       41,
+       8,
+       14,
+       "brilho"
+      ],
+      [
+       42,
+       51,
+       57,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "local_brilho_uso": {
+   "pos": {
+    "line": 42,
+    "character": 51
+   },
+   "palavra": "brilho",
+   "linha": "local tag = \"🎈\"; local d = s * self.amplitude * brilho",
+   "refs_decl_True": {
+    "ms": 0.024389999452978373,
+    "lugares": [
+     [
+      41,
+      8,
+      14
+     ],
+     [
+      42,
+      51,
+      57
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.03326099249534309,
+    "lugares": [
+     [
+      41,
+      8,
+      14
+     ],
+     [
+      42,
+      51,
+      57
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.027079993742518127,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       41,
+       8,
+       14,
+       "renomeado"
+      ],
+      [
+       42,
+       51,
+       57,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.02366000262554735,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       41,
+       8,
+       14,
+       "end"
+      ],
+      [
+       42,
+       51,
+       57,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.02046099689323455,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.024569992092438042,
+    "novo": "s",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       41,
+       8,
+       14,
+       "s"
+      ],
+      [
+       42,
+       51,
+       57,
+       "s"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.024990004021674395,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       41,
+       8,
+       14,
+       "brilho"
+      ],
+      [
+       42,
+       51,
+       57,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "local_s": {
+   "pos": {
+    "line": 32,
+    "character": 8
+   },
+   "palavra": "s",
+   "linha": "local s",
+   "refs_decl_True": {
+    "ms": 0.027820002287626266,
+    "lugares": [
+     [
+      32,
+      8,
+      9
+     ],
+     [
+      34,
+      4,
+      5
+     ],
+     [
+      36,
+      4,
+      5
+     ],
+     [
+      38,
+      4,
+      5
+     ],
+     [
+      42,
+      30,
+      31
+     ],
+     [
+      45,
+      13,
+      14
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.025870001991279423,
+    "lugares": [
+     [
+      32,
+      8,
+      9
+     ],
+     [
+      34,
+      4,
+      5
+     ],
+     [
+      36,
+      4,
+      5
+     ],
+     [
+      38,
+      4,
+      5
+     ],
+     [
+      42,
+      30,
+      31
+     ],
+     [
+      45,
+      13,
+      14
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.032010007998906076,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 6,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       32,
+       8,
+       9,
+       "renomeado"
+      ],
+      [
+       34,
+       4,
+       5,
+       "renomeado"
+      ],
+      [
+       36,
+       4,
+       5,
+       "renomeado"
+      ],
+      [
+       38,
+       4,
+       5,
+       "renomeado"
+      ],
+      [
+       42,
+       30,
+       31,
+       "renomeado"
+      ],
+      [
+       45,
+       13,
+       14,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.03296999784652144,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 6,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       32,
+       8,
+       9,
+       "end"
+      ],
+      [
+       34,
+       4,
+       5,
+       "end"
+      ],
+      [
+       36,
+       4,
+       5,
+       "end"
+      ],
+      [
+       38,
+       4,
+       5,
+       "end"
+      ],
+      [
+       42,
+       30,
+       31,
+       "end"
+      ],
+      [
+       45,
+       13,
+       14,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.020911000319756567,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.031319999834522605,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 6,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       32,
+       8,
+       9,
+       "brilho"
+      ],
+      [
+       34,
+       4,
+       5,
+       "brilho"
+      ],
+      [
+       36,
+       4,
+       5,
+       "brilho"
+      ],
+      [
+       38,
+       4,
+       5,
+       "brilho"
+      ],
+      [
+       42,
+       30,
+       31,
+       "brilho"
+      ],
+      [
+       45,
+       13,
+       14,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.031409988878294826,
+    "novo": "s",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 6,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       32,
+       8,
+       9,
+       "s"
+      ],
+      [
+       34,
+       4,
+       5,
+       "s"
+      ],
+      [
+       36,
+       4,
+       5,
+       "s"
+      ],
+      [
+       38,
+       4,
+       5,
+       "s"
+      ],
+      [
+       42,
+       30,
+       31,
+       "s"
+      ],
+      [
+       45,
+       13,
+       14,
+       "s"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "param_dt_decl": {
+   "pos": {
+    "line": 28,
+    "character": 22
+   },
+   "palavra": "dt",
+   "linha": "function update(self, dt)",
+   "refs_decl_True": {
+    "ms": 0.02382999809924513,
+    "lugares": [
+     [
+      28,
+      22,
+      24
+     ],
+     [
+      30,
+      20,
+      22
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.023030996089801192,
+    "lugares": [
+     [
+      28,
+      22,
+      24
+     ],
+     [
+      30,
+      20,
+      22
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.02370000584051013,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       22,
+       24,
+       "renomeado"
+      ],
+      [
+       30,
+       20,
+       22,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.02305000089108944,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       22,
+       24,
+       "end"
+      ],
+      [
+       30,
+       20,
+       22,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.020970997866243124,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.02269999822601676,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       22,
+       24,
+       "brilho"
+      ],
+      [
+       30,
+       20,
+       22,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.024199995095841587,
+    "novo": "dt",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       22,
+       24,
+       "dt"
+      ],
+      [
+       30,
+       20,
+       22,
+       "dt"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "param_dt_uso": {
+   "pos": {
+    "line": 30,
+    "character": 20
+   },
+   "palavra": "dt",
+   "linha": "self.t = self.t + dt",
+   "refs_decl_True": {
+    "ms": 0.023419997887685895,
+    "lugares": [
+     [
+      28,
+      22,
+      24
+     ],
+     [
+      30,
+      20,
+      22
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.024609995307400823,
+    "lugares": [
+     [
+      28,
+      22,
+      24
+     ],
+     [
+      30,
+      20,
+      22
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.02418099029455334,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       22,
+       24,
+       "renomeado"
+      ],
+      [
+       30,
+       20,
+       22,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.023290005628950894,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       22,
+       24,
+       "end"
+      ],
+      [
+       30,
+       20,
+       22,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.019669998437166214,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.022559994249604642,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       22,
+       24,
+       "brilho"
+      ],
+      [
+       30,
+       20,
+       22,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.02309000410605222,
+    "novo": "dt",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       22,
+       24,
+       "dt"
+      ],
+      [
+       30,
+       20,
+       22,
+       "dt"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "param_self": {
+   "pos": {
+    "line": 28,
+    "character": 16
+   },
+   "palavra": "self",
+   "linha": "function update(self, dt)",
+   "refs_decl_True": {
+    "ms": 0.049080990720540285,
+    "lugares": [
+     [
+      28,
+      16,
+      20
+     ],
+     [
+      29,
+      9,
+      13
+     ],
+     [
+      30,
+      2,
+      6
+     ],
+     [
+      30,
+      11,
+      15
+     ],
+     [
+      33,
+      5,
+      9
+     ],
+     [
+      34,
+      17,
+      21
+     ],
+     [
+      34,
+      26,
+      30
+     ],
+     [
+      35,
+      9,
+      13
+     ],
+     [
+      38,
+      17,
+      21
+     ],
+     [
+      38,
+      26,
+      30
+     ],
+     [
+      41,
+      18,
+      22
+     ],
+     [
+      41,
+      32,
+      36
+     ],
+     [
+      41,
+      46,
+      50
+     ],
+     [
+      42,
+      34,
+      38
+     ],
+     [
+      43,
+      11,
+      15
+     ],
+     [
+      43,
+      25,
+      29
+     ],
+     [
+      43,
+      43,
+      47
+     ],
+     [
+      44,
+      11,
+      15
+     ],
+     [
+      44,
+      25,
+      29
+     ],
+     [
+      44,
+      43,
+      47
+     ],
+     [
+      46,
+      16,
+      20
+     ],
+     [
+      46,
+      32,
+      36
+     ],
+     [
+      47,
+      14,
+      18
+     ],
+     [
+      49,
+      2,
+      6
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.046630011638626456,
+    "lugares": [
+     [
+      28,
+      16,
+      20
+     ],
+     [
+      29,
+      9,
+      13
+     ],
+     [
+      30,
+      2,
+      6
+     ],
+     [
+      30,
+      11,
+      15
+     ],
+     [
+      33,
+      5,
+      9
+     ],
+     [
+      34,
+      17,
+      21
+     ],
+     [
+      34,
+      26,
+      30
+     ],
+     [
+      35,
+      9,
+      13
+     ],
+     [
+      38,
+      17,
+      21
+     ],
+     [
+      38,
+      26,
+      30
+     ],
+     [
+      41,
+      18,
+      22
+     ],
+     [
+      41,
+      32,
+      36
+     ],
+     [
+      41,
+      46,
+      50
+     ],
+     [
+      42,
+      34,
+      38
+     ],
+     [
+      43,
+      11,
+      15
+     ],
+     [
+      43,
+      25,
+      29
+     ],
+     [
+      43,
+      43,
+      47
+     ],
+     [
+      44,
+      11,
+      15
+     ],
+     [
+      44,
+      25,
+      29
+     ],
+     [
+      44,
+      43,
+      47
+     ],
+     [
+      46,
+      16,
+      20
+     ],
+     [
+      46,
+      32,
+      36
+     ],
+     [
+      47,
+      14,
+      18
+     ],
+     [
+      49,
+      2,
+      6
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.0674699986120686,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 24,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       16,
+       20,
+       "renomeado"
+      ],
+      [
+       29,
+       9,
+       13,
+       "renomeado"
+      ],
+      [
+       30,
+       2,
+       6,
+       "renomeado"
+      ],
+      [
+       30,
+       11,
+       15,
+       "renomeado"
+      ],
+      [
+       33,
+       5,
+       9,
+       "renomeado"
+      ],
+      [
+       34,
+       17,
+       21,
+       "renomeado"
+      ],
+      [
+       34,
+       26,
+       30,
+       "renomeado"
+      ],
+      [
+       35,
+       9,
+       13,
+       "renomeado"
+      ],
+      [
+       38,
+       17,
+       21,
+       "renomeado"
+      ],
+      [
+       38,
+       26,
+       30,
+       "renomeado"
+      ],
+      [
+       41,
+       18,
+       22,
+       "renomeado"
+      ],
+      [
+       41,
+       32,
+       36,
+       "renomeado"
+      ],
+      [
+       41,
+       46,
+       50,
+       "renomeado"
+      ],
+      [
+       42,
+       34,
+       38,
+       "renomeado"
+      ],
+      [
+       43,
+       11,
+       15,
+       "renomeado"
+      ],
+      [
+       43,
+       25,
+       29,
+       "renomeado"
+      ],
+      [
+       43,
+       43,
+       47,
+       "renomeado"
+      ],
+      [
+       44,
+       11,
+       15,
+       "renomeado"
+      ],
+      [
+       44,
+       25,
+       29,
+       "renomeado"
+      ],
+      [
+       44,
+       43,
+       47,
+       "renomeado"
+      ],
+      [
+       46,
+       16,
+       20,
+       "renomeado"
+      ],
+      [
+       46,
+       32,
+       36,
+       "renomeado"
+      ],
+      [
+       47,
+       14,
+       18,
+       "renomeado"
+      ],
+      [
+       49,
+       2,
+       6,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.06647000554949045,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 24,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       16,
+       20,
+       "end"
+      ],
+      [
+       29,
+       9,
+       13,
+       "end"
+      ],
+      [
+       30,
+       2,
+       6,
+       "end"
+      ],
+      [
+       30,
+       11,
+       15,
+       "end"
+      ],
+      [
+       33,
+       5,
+       9,
+       "end"
+      ],
+      [
+       34,
+       17,
+       21,
+       "end"
+      ],
+      [
+       34,
+       26,
+       30,
+       "end"
+      ],
+      [
+       35,
+       9,
+       13,
+       "end"
+      ],
+      [
+       38,
+       17,
+       21,
+       "end"
+      ],
+      [
+       38,
+       26,
+       30,
+       "end"
+      ],
+      [
+       41,
+       18,
+       22,
+       "end"
+      ],
+      [
+       41,
+       32,
+       36,
+       "end"
+      ],
+      [
+       41,
+       46,
+       50,
+       "end"
+      ],
+      [
+       42,
+       34,
+       38,
+       "end"
+      ],
+      [
+       43,
+       11,
+       15,
+       "end"
+      ],
+      [
+       43,
+       25,
+       29,
+       "end"
+      ],
+      [
+       43,
+       43,
+       47,
+       "end"
+      ],
+      [
+       44,
+       11,
+       15,
+       "end"
+      ],
+      [
+       44,
+       25,
+       29,
+       "end"
+      ],
+      [
+       44,
+       43,
+       47,
+       "end"
+      ],
+      [
+       46,
+       16,
+       20,
+       "end"
+      ],
+      [
+       46,
+       32,
+       36,
+       "end"
+      ],
+      [
+       47,
+       14,
+       18,
+       "end"
+      ],
+      [
+       49,
+       2,
+       6,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.030010996852070093,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.06859000131953508,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 24,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       16,
+       20,
+       "brilho"
+      ],
+      [
+       29,
+       9,
+       13,
+       "brilho"
+      ],
+      [
+       30,
+       2,
+       6,
+       "brilho"
+      ],
+      [
+       30,
+       11,
+       15,
+       "brilho"
+      ],
+      [
+       33,
+       5,
+       9,
+       "brilho"
+      ],
+      [
+       34,
+       17,
+       21,
+       "brilho"
+      ],
+      [
+       34,
+       26,
+       30,
+       "brilho"
+      ],
+      [
+       35,
+       9,
+       13,
+       "brilho"
+      ],
+      [
+       38,
+       17,
+       21,
+       "brilho"
+      ],
+      [
+       38,
+       26,
+       30,
+       "brilho"
+      ],
+      [
+       41,
+       18,
+       22,
+       "brilho"
+      ],
+      [
+       41,
+       32,
+       36,
+       "brilho"
+      ],
+      [
+       41,
+       46,
+       50,
+       "brilho"
+      ],
+      [
+       42,
+       34,
+       38,
+       "brilho"
+      ],
+      [
+       43,
+       11,
+       15,
+       "brilho"
+      ],
+      [
+       43,
+       25,
+       29,
+       "brilho"
+      ],
+      [
+       43,
+       43,
+       47,
+       "brilho"
+      ],
+      [
+       44,
+       11,
+       15,
+       "brilho"
+      ],
+      [
+       44,
+       25,
+       29,
+       "brilho"
+      ],
+      [
+       44,
+       43,
+       47,
+       "brilho"
+      ],
+      [
+       46,
+       16,
+       20,
+       "brilho"
+      ],
+      [
+       46,
+       32,
+       36,
+       "brilho"
+      ],
+      [
+       47,
+       14,
+       18,
+       "brilho"
+      ],
+      [
+       49,
+       2,
+       6,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.07774999539833516,
+    "novo": "self",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 24,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       16,
+       20,
+       "self"
+      ],
+      [
+       29,
+       9,
+       13,
+       "self"
+      ],
+      [
+       30,
+       2,
+       6,
+       "self"
+      ],
+      [
+       30,
+       11,
+       15,
+       "self"
+      ],
+      [
+       33,
+       5,
+       9,
+       "self"
+      ],
+      [
+       34,
+       17,
+       21,
+       "self"
+      ],
+      [
+       34,
+       26,
+       30,
+       "self"
+      ],
+      [
+       35,
+       9,
+       13,
+       "self"
+      ],
+      [
+       38,
+       17,
+       21,
+       "self"
+      ],
+      [
+       38,
+       26,
+       30,
+       "self"
+      ],
+      [
+       41,
+       18,
+       22,
+       "self"
+      ],
+      [
+       41,
+       32,
+       36,
+       "self"
+      ],
+      [
+       41,
+       46,
+       50,
+       "self"
+      ],
+      [
+       42,
+       34,
+       38,
+       "self"
+      ],
+      [
+       43,
+       11,
+       15,
+       "self"
+      ],
+      [
+       43,
+       25,
+       29,
+       "self"
+      ],
+      [
+       43,
+       43,
+       47,
+       "self"
+      ],
+      [
+       44,
+       11,
+       15,
+       "self"
+      ],
+      [
+       44,
+       25,
+       29,
+       "self"
+      ],
+      [
+       44,
+       43,
+       47,
+       "self"
+      ],
+      [
+       46,
+       16,
+       20,
+       "self"
+      ],
+      [
+       46,
+       32,
+       36,
+       "self"
+      ],
+      [
+       47,
+       14,
+       18,
+       "self"
+      ],
+      [
+       49,
+       2,
+       6,
+       "self"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "self_campo_amplitude": {
+   "pos": {
+    "line": 42,
+    "character": 39
+   },
+   "palavra": "amplitude",
+   "linha": "local tag = \"🎈\"; local d = s * self.amplitude * brilho",
+   "refs_decl_True": {
+    "ms": 0.02710999979171902,
+    "lugares": [],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.023710003006272018,
+    "lugares": [],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.026640002033673227,
+    "novo": "renomeado",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "rename_reservada": {
+    "ms": 0.024280001525767148,
+    "novo": "end",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "rename_invalido": {
+    "ms": 0.02252000558655709,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.045890992623753846,
+    "novo": "brilho",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "rename_igual": {
+    "ms": 0.030089999199844897,
+    "novo": "amplitude",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "self_campo_t": {
+   "pos": {
+    "line": 24,
+    "character": 7
+   },
+   "palavra": "t",
+   "linha": "self.t = 0",
+   "refs_decl_True": {
+    "ms": 0.022070002160035074,
+    "lugares": [],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.02099000266753137,
+    "lugares": [],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.023639993742108345,
+    "novo": "renomeado",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "rename_reservada": {
+    "ms": 0.02165099431294948,
+    "novo": "end",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "rename_invalido": {
+    "ms": 0.02055999357253313,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.020929990569129586,
+    "novo": "brilho",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "rename_igual": {
+    "ms": 0.021379993995651603,
+    "novo": "t",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "literal_property": {
+   "pos": {
+    "line": 6,
+    "character": 15
+   },
+   "palavra": "amplitude",
+   "linha": "ph2d.property(\"amplitude\", 1.0, { min = 0, max = 4 })  -- qu",
+   "refs_decl_True": {
+    "ms": 0.0214300089282915,
+    "lugares": null,
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.020419989596121013,
+    "lugares": null,
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.023030006559565663,
+    "novo": "renomeado",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "rename_reservada": {
+    "ms": 0.02457998925819993,
+    "novo": "end",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "rename_invalido": {
+    "ms": 0.020930005121044815,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.02274999860674143,
+    "novo": "brilho",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "rename_igual": {
+    "ms": 0.024069988285191357,
+    "novo": "amplitude",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Unable to find symbol to rename"
+    }
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "api_membro_set": {
+   "pos": {
+    "line": 43,
+    "character": 7
+   },
+   "palavra": "set",
+   "linha": "ph2d.set(self.id, \"x\", self.base_x + d * self.direction.x)",
+   "refs_decl_True": {
+    "ms": null,
+    "lugares": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "refs_decl_False": {
+    "ms": null,
+    "lugares": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "rename_valido": {
+    "ms": null,
+    "novo": "renomeado",
+    "res": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "rename_reservada": {
+    "ms": null,
+    "novo": "end",
+    "res": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "rename_invalido": {
+    "ms": 0.11574100062716752,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": null,
+    "novo": "brilho",
+    "res": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "rename_igual": {
+    "ms": null,
+    "novo": "set",
+    "res": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "api_global_ph2d": {
+   "pos": {
+    "line": 43,
+    "character": 2
+   },
+   "palavra": "ph2d",
+   "linha": "ph2d.set(self.id, \"x\", self.base_x + d * self.direction.x)",
+   "refs_decl_True": {
+    "ms": 0.31037199369166046,
+    "lugares": [
+     [
+      6,
+      0,
+      4
+     ],
+     [
+      7,
+      0,
+      4
+     ],
+     [
+      8,
+      0,
+      4
+     ],
+     [
+      9,
+      0,
+      4
+     ],
+     [
+      12,
+      0,
+      4
+     ],
+     [
+      15,
+      0,
+      4
+     ],
+     [
+      15,
+      27,
+      31
+     ],
+     [
+      19,
+      0,
+      4
+     ],
+     [
+      19,
+      22,
+      26
+     ],
+     [
+      22,
+      16,
+      20
+     ],
+     [
+      23,
+      16,
+      20
+     ],
+     [
+      43,
+      2,
+      6
+     ],
+     [
+      44,
+      2,
+      6
+     ],
+     [
+      47,
+      4,
+      8
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.05063100252300501,
+    "lugares": [
+     [
+      6,
+      0,
+      4
+     ],
+     [
+      7,
+      0,
+      4
+     ],
+     [
+      8,
+      0,
+      4
+     ],
+     [
+      9,
+      0,
+      4
+     ],
+     [
+      12,
+      0,
+      4
+     ],
+     [
+      15,
+      0,
+      4
+     ],
+     [
+      15,
+      27,
+      31
+     ],
+     [
+      19,
+      0,
+      4
+     ],
+     [
+      19,
+      22,
+      26
+     ],
+     [
+      22,
+      16,
+      20
+     ],
+     [
+      23,
+      16,
+      20
+     ],
+     [
+      43,
+      2,
+      6
+     ],
+     [
+      44,
+      2,
+      6
+     ],
+     [
+      47,
+      4,
+      8
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.042530009523034096,
+    "novo": "renomeado",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Cannot rename a global variable"
+    }
+   },
+   "rename_reservada": {
+    "ms": 0.02291100099682808,
+    "novo": "end",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Cannot rename a global variable"
+    }
+   },
+   "rename_invalido": {
+    "ms": 0.020149993360973895,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.018890001229010522,
+    "novo": "brilho",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Cannot rename a global variable"
+    }
+   },
+   "rename_igual": {
+    "ms": 0.017469996237196028,
+    "novo": "ph2d",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Cannot rename a global variable"
+    }
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "stdlib_math": {
+   "pos": {
+    "line": 34,
+    "character": 8
+   },
+   "palavra": "math",
+   "linha": "s = math.sin(self.t * self.speed) >= 0 and 1 or -1",
+   "refs_decl_True": {
+    "ms": 0.021769999875687063,
+    "lugares": [
+     [
+      34,
+      8,
+      12
+     ],
+     [
+      38,
+      8,
+      12
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.020010003936477005,
+    "lugares": [
+     [
+      34,
+      8,
+      12
+     ],
+     [
+      38,
+      8,
+      12
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.01812000118661672,
+    "novo": "renomeado",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Cannot rename a global variable"
+    }
+   },
+   "rename_reservada": {
+    "ms": 0.017270009266212583,
+    "novo": "end",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Cannot rename a global variable"
+    }
+   },
+   "rename_invalido": {
+    "ms": 0.015811005141586065,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.016589998267591,
+    "novo": "brilho",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Cannot rename a global variable"
+    }
+   },
+   "rename_igual": {
+    "ms": 0.016489997506141663,
+    "novo": "math",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "Cannot rename a global variable"
+    }
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "stdlib_membro_sin": {
+   "pos": {
+    "line": 34,
+    "character": 13
+   },
+   "palavra": "sin",
+   "linha": "s = math.sin(self.t * self.speed) >= 0 and 1 or -1",
+   "refs_decl_True": {
+    "ms": null,
+    "lugares": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "refs_decl_False": {
+    "ms": null,
+    "lugares": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "rename_valido": {
+    "ms": null,
+    "novo": "renomeado",
+    "res": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "rename_reservada": {
+    "ms": null,
+    "novo": "end",
+    "res": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "rename_invalido": {
+    "ms": 0.06448100612033159,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": null,
+    "novo": "brilho",
+    "res": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "rename_igual": {
+    "ms": null,
+    "novo": "sin",
+    "res": null,
+    "erro": {
+     "morreu": -11
+    }
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "gancho_update": {
+   "pos": {
+    "line": 28,
+    "character": 9
+   },
+   "palavra": "update",
+   "linha": "function update(self, dt)",
+   "refs_decl_True": {
+    "ms": 0.31064300856087357,
+    "lugares": [
+     [
+      28,
+      9,
+      15
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.03772000491153449,
+    "lugares": [
+     [
+      28,
+      9,
+      15
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.03892999666277319,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 1,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       9,
+       15,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.02390101144555956,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 1,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       9,
+       15,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.03371000639162958,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.02099000266753137,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 1,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       9,
+       15,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.019269995391368866,
+    "novo": "update",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 1,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       28,
+       9,
+       15,
+       "update"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "global_do_script_decl": {
+   "pos": {
+    "line": 52,
+    "character": 9
+   },
+   "palavra": "ajuda",
+   "linha": "function ajuda(v)",
+   "refs_decl_True": {
+    "ms": 0.022069987608119845,
+    "lugares": [
+     [
+      52,
+      9,
+      14
+     ],
+     [
+      61,
+      13,
+      18
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.023589993361383677,
+    "lugares": [
+     [
+      52,
+      9,
+      14
+     ],
+     [
+      61,
+      13,
+      18
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.02343099913559854,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       52,
+       9,
+       14,
+       "renomeado"
+      ],
+      [
+       61,
+       13,
+       18,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.02212999970652163,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       52,
+       9,
+       14,
+       "end"
+      ],
+      [
+       61,
+       13,
+       18,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.018609993276186287,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.021320011001080275,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       52,
+       9,
+       14,
+       "brilho"
+      ],
+      [
+       61,
+       13,
+       18,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.020961000700481236,
+    "novo": "ajuda",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       52,
+       9,
+       14,
+       "ajuda"
+      ],
+      [
+       61,
+       13,
+       18,
+       "ajuda"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "global_do_script_uso": {
+   "pos": {
+    "line": 61,
+    "character": 13
+   },
+   "palavra": "ajuda",
+   "linha": "return x + ajuda(x)",
+   "refs_decl_True": {
+    "ms": 0.02156999835278839,
+    "lugares": [
+     [
+      52,
+      9,
+      14
+     ],
+     [
+      61,
+      13,
+      18
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.019970000721514225,
+    "lugares": [
+     [
+      52,
+      9,
+      14
+     ],
+     [
+      61,
+      13,
+      18
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.022060994524508715,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       52,
+       9,
+       14,
+       "renomeado"
+      ],
+      [
+       61,
+       13,
+       18,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.021109997760504484,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       52,
+       9,
+       14,
+       "end"
+      ],
+      [
+       61,
+       13,
+       18,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.017990008927881718,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.021189989638514817,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       52,
+       9,
+       14,
+       "brilho"
+      ],
+      [
+       61,
+       13,
+       18,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.022690001060254872,
+    "novo": "ajuda",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       52,
+       9,
+       14,
+       "ajuda"
+      ],
+      [
+       61,
+       13,
+       18,
+       "ajuda"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "local_function": {
+   "pos": {
+    "line": 55,
+    "character": 15
+   },
+   "palavra": "com_sombra",
+   "linha": "local function com_sombra()",
+   "refs_decl_True": {
+    "ms": 0.019350001821294427,
+    "lugares": [
+     [
+      55,
+      15,
+      25
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.018359991372562945,
+    "lugares": [
+     [
+      55,
+      15,
+      25
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.020270003005862236,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 1,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       55,
+       15,
+       25,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.019620012608356774,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 1,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       55,
+       15,
+       25,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.018129998352378607,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.01886000973172486,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 1,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       55,
+       15,
+       25,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.01855001028161496,
+    "novo": "com_sombra",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 1,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       55,
+       15,
+       25,
+       "com_sombra"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "sombra_interna": {
+   "pos": {
+    "line": 58,
+    "character": 10
+   },
+   "palavra": "x",
+   "linha": "local x = 2",
+   "refs_decl_True": {
+    "ms": 0.02064999716822058,
+    "lugares": [
+     [
+      58,
+      10,
+      11
+     ],
+     [
+      59,
+      10,
+      11
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.019719998817890882,
+    "lugares": [
+     [
+      58,
+      10,
+      11
+     ],
+     [
+      59,
+      10,
+      11
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.023159998818300664,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       58,
+       10,
+       11,
+       "renomeado"
+      ],
+      [
+       59,
+       10,
+       11,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.021020998246967793,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       58,
+       10,
+       11,
+       "end"
+      ],
+      [
+       59,
+       10,
+       11,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.018100006855092943,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.02186000347137451,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       58,
+       10,
+       11,
+       "brilho"
+      ],
+      [
+       59,
+       10,
+       11,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.021309999283403158,
+    "novo": "x",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 2,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       58,
+       10,
+       11,
+       "x"
+      ],
+      [
+       59,
+       10,
+       11,
+       "x"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "sombra_externa": {
+   "pos": {
+    "line": 56,
+    "character": 8
+   },
+   "palavra": "x",
+   "linha": "local x = 1",
+   "refs_decl_True": {
+    "ms": 0.022189997253008187,
+    "lugares": [
+     [
+      56,
+      8,
+      9
+     ],
+     [
+      61,
+      9,
+      10
+     ],
+     [
+      61,
+      19,
+      20
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.020899999071843922,
+    "lugares": [
+     [
+      56,
+      8,
+      9
+     ],
+     [
+      61,
+      9,
+      10
+     ],
+     [
+      61,
+      19,
+      20
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.024450011551380157,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 3,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       56,
+       8,
+       9,
+       "renomeado"
+      ],
+      [
+       61,
+       9,
+       10,
+       "renomeado"
+      ],
+      [
+       61,
+       19,
+       20,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.023140994017012417,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 3,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       56,
+       8,
+       9,
+       "end"
+      ],
+      [
+       61,
+       9,
+       10,
+       "end"
+      ],
+      [
+       61,
+       19,
+       20,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.017269994714297354,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.022779990104027092,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 3,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       56,
+       8,
+       9,
+       "brilho"
+      ],
+      [
+       61,
+       9,
+       10,
+       "brilho"
+      ],
+      [
+       61,
+       19,
+       20,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.021940009901300073,
+    "novo": "x",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 3,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       56,
+       8,
+       9,
+       "x"
+      ],
+      [
+       61,
+       9,
+       10,
+       "x"
+      ],
+      [
+       61,
+       19,
+       20,
+       "x"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  },
+  "emoji_d": {
+   "pos": {
+    "line": 42,
+    "character": 26
+   },
+   "palavra": "d",
+   "linha": "local tag = \"🎈\"; local d = s * self.amplitude * brilho",
+   "refs_decl_True": {
+    "ms": 0.02256000880151987,
+    "lugares": [
+     [
+      42,
+      26,
+      27
+     ],
+     [
+      43,
+      39,
+      40
+     ],
+     [
+      44,
+      39,
+      40
+     ]
+    ],
+    "erro": null
+   },
+   "refs_decl_False": {
+    "ms": 0.02120999852195382,
+    "lugares": [
+     [
+      42,
+      26,
+      27
+     ],
+     [
+      43,
+      39,
+      40
+     ],
+     [
+      44,
+      39,
+      40
+     ]
+    ],
+    "erro": null
+   },
+   "rename_valido": {
+    "ms": 0.02693000715225935,
+    "novo": "renomeado",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 3,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       42,
+       26,
+       27,
+       "renomeado"
+      ],
+      [
+       43,
+       39,
+       40,
+       "renomeado"
+      ],
+      [
+       44,
+       39,
+       40,
+       "renomeado"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_reservada": {
+    "ms": 0.02430099993944168,
+    "novo": "end",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 3,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       42,
+       26,
+       27,
+       "end"
+      ],
+      [
+       43,
+       39,
+       40,
+       "end"
+      ],
+      [
+       44,
+       39,
+       40,
+       "end"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_invalido": {
+    "ms": 0.017780010239221156,
+    "novo": "1x-y",
+    "res": null,
+    "erro": {
+     "code": -32803,
+     "data": null,
+     "message": "The new name must be a valid identifier starting with a character or underscore"
+    }
+   },
+   "rename_existente": {
+    "ms": 0.023720000172033906,
+    "novo": "brilho",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 3,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       42,
+       26,
+       27,
+       "brilho"
+      ],
+      [
+       43,
+       39,
+       40,
+       "brilho"
+      ],
+      [
+       44,
+       39,
+       40,
+       "brilho"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "rename_igual": {
+    "ms": 0.023299988242797554,
+    "novo": "d",
+    "res": {
+     "forma": [
+      "changes"
+     ],
+     "n": 3,
+     "uris": [
+      "file:///ph2d-project/i10_bob.luau"
+     ],
+     "edits": [
+      [
+       42,
+       26,
+       27,
+       "d"
+      ],
+      [
+       43,
+       39,
+       40,
+       "d"
+      ],
+      [
+       44,
+       39,
+       40,
+       "d"
+      ]
+     ]
+    },
+    "erro": null
+   },
+   "prepareRename": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/prepareRename"
+   },
+   "documentHighlight": {
+    "code": -32601,
+    "data": null,
+    "message": "method not found / supported: textDocument/documentHighlight"
+   }
+  }
+ },
+ "dois_documentos_self": {
+  "forma": [
+   "changes"
+  ],
+  "n": 24,
+  "uris": [
+   "file:///ph2d-project/i10_bob.luau"
+  ],
+  "edits": [
+   [
+    28,
+    16,
+    20,
+    "eu"
+   ],
+   [
+    29,
+    9,
+    13,
+    "eu"
+   ],
+   [
+    30,
+    2,
+    6,
+    "eu"
+   ],
+   [
+    30,
+    11,
+    15,
+    "eu"
+   ],
+   [
+    33,
+    5,
+    9,
+    "eu"
+   ],
+   [
+    34,
+    17,
+    21,
+    "eu"
+   ],
+   [
+    34,
+    26,
+    30,
+    "eu"
+   ],
+   [
+    35,
+    9,
+    13,
+    "eu"
+   ],
+   [
+    38,
+    17,
+    21,
+    "eu"
+   ],
+   [
+    38,
+    26,
+    30,
+    "eu"
+   ],
+   [
+    41,
+    18,
+    22,
+    "eu"
+   ],
+   [
+    41,
+    32,
+    36,
+    "eu"
+   ],
+   [
+    41,
+    46,
+    50,
+    "eu"
+   ],
+   [
+    42,
+    34,
+    38,
+    "eu"
+   ],
+   [
+    43,
+    11,
+    15,
+    "eu"
+   ],
+   [
+    43,
+    25,
+    29,
+    "eu"
+   ],
+   [
+    43,
+    43,
+    47,
+    "eu"
+   ],
+   [
+    44,
+    11,
+    15,
+    "eu"
+   ],
+   [
+    44,
+    25,
+    29,
+    "eu"
+   ],
+   [
+    44,
+    43,
+    47,
+    "eu"
+   ],
+   [
+    46,
+    16,
+    20,
+    "eu"
+   ],
+   [
+    46,
+    32,
+    36,
+    "eu"
+   ],
+   [
+    47,
+    14,
+    18,
+    "eu"
+   ],
+   [
+    49,
+    2,
+    6,
+    "eu"
+   ]
+  ]
+ },
+ "mortes": [
+  {
+   "sitio": "api_membro_set",
+   "pedido": "textDocument/references",
+   "codigo": -11
+  },
+  {
+   "sitio": "api_membro_set",
+   "pedido": "textDocument/references",
+   "codigo": -11
+  },
+  {
+   "sitio": "api_membro_set",
+   "pedido": "textDocument/rename",
+   "codigo": -11
+  },
+  {
+   "sitio": "api_membro_set",
+   "pedido": "textDocument/rename",
+   "codigo": -11
+  },
+  {
+   "sitio": "api_membro_set",
+   "pedido": "textDocument/rename",
+   "codigo": -11
+  },
+  {
+   "sitio": "api_membro_set",
+   "pedido": "textDocument/rename",
+   "codigo": -11
+  },
+  {
+   "sitio": "stdlib_membro_sin",
+   "pedido": "textDocument/references",
+   "codigo": -11
+  },
+  {
+   "sitio": "stdlib_membro_sin",
+   "pedido": "textDocument/references",
+   "codigo": -11
+  },
+  {
+   "sitio": "stdlib_membro_sin",
+   "pedido": "textDocument/rename",
+   "codigo": -11
+  },
+  {
+   "sitio": "stdlib_membro_sin",
+   "pedido": "textDocument/rename",
+   "codigo": -11
+  },
+  {
+   "sitio": "stdlib_membro_sin",
+   "pedido": "textDocument/rename",
+   "codigo": -11
+  },
+  {
+   "sitio": "stdlib_membro_sin",
+   "pedido": "textDocument/rename",
+   "codigo": -11
+  }
+ ],
+ "tempos": {
+  "None": {
+   "refs_local": {
+    "p50": 0.018780003301799297,
+    "max": 0.29875199834350497,
+    "n": 2
+   },
+   "rename_local": {
+    "p50": 0.01942550443345681,
+    "max": 0.03443099558353424,
+    "n": 2
+   },
+   "rename_param_self": {
+    "p50": 0.07323049794649705,
+    "max": 0.12366099690552801,
+    "n": 24
+   },
+   "mortes": []
+  },
+  "7500": {
+   "refs_local": {
+    "p50": 0.0959605022217147,
+    "max": 10.44549499056302,
+    "n": 2
+   },
+   "rename_local": {
+    "p50": 0.11523099965415895,
+    "max": 0.1570610038470477,
+    "n": 2
+   },
+   "rename_param_self": {
+    "p50": 0.2566270050010644,
+    "max": 0.3137820021947846,
+    "n": 24
+   },
+   "mortes": []
+  }
+ },
+ "loadavg_fim": [
+  "1.58",
+  "3.31",
+  "17.68"
+ ]
+}

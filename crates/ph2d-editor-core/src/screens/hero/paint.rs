@@ -280,6 +280,7 @@ pub fn paint_hero_screen(
             let text = overlay.text.as_ref();
             ph2d_board_render::paint(board, area, scene, theme, text_system, cache, routes, text);
             ph2d_board_render::paint_overlay(board, area, scene, theme, &overlay, ed.metrics());
+            super::board_view::paint_bulk_hint(board, ed, area, text, scene, text_system);
             ph2d_board_render::paint_votes(board, area, scene, text_system, cache, &marks);
         }
         // W19 — no NOSSO ecrã inteiro o vídeo tapa a área: as barras do quadro nem se pintam (nem se agarram).

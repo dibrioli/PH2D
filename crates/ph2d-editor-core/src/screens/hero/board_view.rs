@@ -369,3 +369,42 @@ pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> 
 #[cfg(test)]
 #[path = "board_view_tests.rs"]
 mod tests;
+
+/// W23 B5 — o rascunho EM MASSA vazio diz o que fazer: a frase onde a escrita começa, na tinta da
+/// nota a meia força (some à 1.ª letra).
+pub(crate) fn paint_bulk_hint(
+    board: &Board,
+    ed: &Editor,
+    area: Area,
+    text: Option<&ph2d_board_edit::TextOverlay>,
+    scene: &mut ph2d_vector::VectorScene,
+    ts: &mut TextSystem,
+) {
+    let Some(t) = text.filter(|t| ed.bulk_draft() == Some(t.element)) else {
+        return;
+    };
+    let Some(el) = board.doc.get(t.element) else {
+        return;
+    };
+    if el.shape().is_none_or(|s| !s.text.is_empty()) {
+        return;
+    }
+    let z = board.camera.zoom;
+    let [x, y] = board
+        .camera
+        .to_screen(area, [el.x + t.origin[0], el.y + t.origin[1]]);
+    let w = (el.w - 2.0 * t.origin[0]).max(0.0) * z;
+    let Rgba([r, g, b, a]) = el.style().text_color;
+    let ink = ph2d_vector::Color::from_rgba8(r, g, b, a / 2);
+    let font = (el.style().font_size * z) as f32;
+    crate::paint::paint_text_block(
+        ts,
+        scene,
+        ph2d_i18n::tr("board.note.bulk_hint"),
+        x as f32,
+        y as f32,
+        font,
+        w as f32,
+        ink,
+    );
+}

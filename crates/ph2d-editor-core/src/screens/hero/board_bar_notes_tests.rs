@@ -215,3 +215,32 @@ fn the_four_dot_handle_arranges_the_notes() {
         t.notes().iter().map(|e| e.y.round() as i64).collect();
     assert_eq!(ys.len(), 2, "não ficou em duas linhas");
 }
+
+/// Os glifos pintados nesta imagem (todos os textos).
+fn glyphs(t: &mut T) -> usize {
+    let mut scene = VectorScene::new();
+    let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+    paint_hero_screen(&mut t.hero, vp, &mut scene, &mut t.ts);
+    let res = &scene.inner().encoding().resources;
+    res.glyph_runs.iter().map(|r| r.glyphs.len()).sum()
+}
+
+/// ⭐ W23 B5 — o rascunho em massa VAZIO diz o que fazer (a frase pinta-se dentro dele); a 1.ª letra
+/// tira-a.
+#[test]
+fn the_empty_bulk_draft_says_what_to_do() {
+    let mut t = T::new();
+    t.click_bar(Item::Tool(Tool::Shape(ShapeType::Sticky)));
+    t.click_bar(Item::Bulk);
+    let empty = glyphs(&mut t);
+    t.typed("x");
+    let typed = glyphs(&mut t);
+    let hint = ph2d_i18n::tr("board.note.bulk_hint")
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .count();
+    assert!(
+        empty >= typed + hint - 1,
+        "a frase não se pintou no rascunho vazio: {empty} -> {typed} (frase de {hint})"
+    );
+}

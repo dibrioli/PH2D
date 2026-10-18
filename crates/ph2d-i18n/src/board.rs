@@ -54,6 +54,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.head.end.triangle" => "End: triangle",
         "board.head.end.circle" => "End: dot",
         "board.head.end.bar" => "End: bar",
+        "board.note.bulk_hint" => "One idea per line. Press Esc or Ctrl+Enter to make the notes",
         // W23 — a grelha de todas as pontas.
         "board.head.start.more" => "Start: more tips",
         "board.head.start.triangle_open" => "Start: triangle outline",

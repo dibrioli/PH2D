@@ -228,6 +228,12 @@ impl Editor {
         self.open_text(doc, nid)
     }
 
+    /// W23 — o rascunho em massa aberto agora (o ecrã pinta nele, vazio, o que fazer).
+    #[must_use]
+    pub fn bulk_draft(&self) -> Option<ElementId> {
+        self.bulk
+    }
+
     /// ⭐ **O modo EM MASSA** — um rascunho tracejado (uma nota larga, fora do desfazer) centrado em
     /// `c`, já a escrever: uma ideia por linha. Ao terminar (`Esc`, `Ctrl+Enter`, clicar fora), cada
     /// linha com texto vira uma nota, em fila, e o rascunho sai — UM passo.

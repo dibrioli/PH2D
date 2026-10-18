@@ -179,6 +179,30 @@ impl Banca {
         }
     }
 
+    /// Um objecto Motion em edição (o Painter sai da mão); devolve os bits dele.
+    pub(crate) fn objecto_motion(&mut self, id: u64) -> u64 {
+        self.activo = false;
+        self.motion_em_edicao = Some(id);
+        self.sim
+            .world_mut()
+            .spawn(ph2d_ecs::StableId(id))
+            .id()
+            .to_bits()
+    }
+
+    /// Gravar ▸ um passo do Motion ▸ Parar.
+    pub(crate) fn grava_um_passo_do_motion(&mut self) {
+        self.m.pede(MacroRequest::Grava);
+        self.quadro();
+        assert_eq!(self.m.gravando(), Some(FamiliaDaMacro::Motion));
+        self.quadro();
+        self.m.depois_do_motion(&mut Brinquedo(vec![vec![0xEE]]));
+        self.quadro();
+        self.m.pede(MacroRequest::Para);
+        self.quadro();
+        assert_eq!(self.m.gravando(), None);
+    }
+
     /// Quadros até a conferência fora do quadro acabar.
     fn espera_a_conferencia(&mut self) {
         let t0 = std::time::Instant::now();

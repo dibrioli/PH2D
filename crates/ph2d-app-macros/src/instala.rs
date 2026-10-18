@@ -80,12 +80,10 @@ pub(crate) fn rearma_o_laco(tl: &TimelineState, intents: &mut Vec<TimelineIntent
 }
 
 fn clipe(tl: &mut TimelineDoc, dono: u64, d: f64) -> Result<usize, &'static str> {
-    // Gravar de novo dá o mesmo clipe que a 1.ª tomada: em Autoplay, para o Play de cima a tocar (smoke
-    // do dono 18/10 — com o Autoplay de antes desligado, a tela mostrava a imagem final de uma vez).
     if let Some(clip) = clipe_de(tl, dono) {
         tl.retime_macro_clip(clip, dono, d);
         tl.set_active(clip);
-        tl.set_autoplay(clip, true);
+        entra_se_ninguem_entra(tl, dono, clip);
         return Ok(clip);
     }
     let clip = tl
@@ -93,8 +91,17 @@ fn clipe(tl: &mut TimelineDoc, dono: u64, d: f64) -> Result<usize, &'static str>
         .map_err(ph2d_timeline::ClipRefusal::message_key)?;
     tl.set_active(clip);
     tl.set_active_loop_for(true, Some((0.0, d)));
-    tl.set_autoplay(clip, true);
+    entra_se_ninguem_entra(tl, dono, clip);
     Ok(clip)
+}
+
+/// **O Autoplay do Parar não rouba a entrada do artista** (decisão de 18/10, handoff W9 §8 item 4): o clipe
+/// da macro passa a ser a entrada — o Play de cima toca a gravação nova, em qualquer tomada — só quando
+/// nenhum OUTRO clipe do objecto o é; o `set_autoplay` desligaria esse outro.
+fn entra_se_ninguem_entra(tl: &mut TimelineDoc, dono: u64, clip: usize) {
+    if tl.entry_clip_of(dono).is_none_or(|e| e == clip) {
+        tl.set_autoplay(clip, true);
+    }
 }
 
 /// As durações que tocam, por objecto — refeitas só quando os bytes da `Macro` mudam (a sincronização

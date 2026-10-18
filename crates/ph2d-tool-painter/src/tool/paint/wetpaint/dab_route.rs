@@ -201,6 +201,7 @@ impl PainterTool {
         // `texv`, que hoje vinha do tapete do próprio motor) — a silhueta fica o contorno da ponta. Um Shape
         // que não é Bristles não tem cerdas: a ponta é LISA (`texv = 1`, D4).
         let cerdas = brush.shape.kind == ph2d_painter_brush::TextureKind::Bristles;
+        let fios = self.fios_do_pincel();
         let shape_active = brush.shape_silhouette_active(shape_image.is_some()) && !cerdas;
         // The artist's GRAIN replaces the engine's bristle texture (W2.4).
         // The bristle IS the fluid's default grain, so an armed Grain slot
@@ -484,6 +485,16 @@ impl PainterTool {
                     image: shape_image.as_ref(),
                     ramp_lut: None,
                 });
+            let (centro_x, centro_y) = (
+                grid_map::px_to_cell(f64::from(x), ratio),
+                grid_map::px_to_cell(f64::from(y), ratio),
+            );
+            // Os FIOS (W2): a pressão de cada fio e a oscilação, no comprimento de caminho do dab, em px.
+            let fios_dab = fios.no_dab(
+                f64::from(d.arc_len),
+                [f64::from(d.dir[0]), f64::from(d.dir[1])],
+                f64::from(d.radius_px / d.stroke_radius_px.max(1e-3)),
+            );
             let cor = rampa.as_ref().map(|r| {
                 move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
                     let v = forma_da_cor.map(|si| valor_da_forma(si, cx, cy));
@@ -491,9 +502,23 @@ impl PainterTool {
                     [c[0] * 255.0, c[1] * 255.0, c[2] * 255.0, c[3]]
                 }
             });
-            let cor_arg = cor
-                .as_ref()
-                .map(|c| c as ph2d_wet_paint::brush::ColorFn<'_>);
+            // A cor de cada FIO (W2, o ruído HSLuv) sobre a da Shape Color ou a do dab.
+            let px_cel = f64::from(ratio);
+            let cor_fios = fios_dab.filter(|_| fios.tem_cor()).map(|f| {
+                let (cor, base) = (cor.as_ref(), d.color.map(|c| c * 255.0));
+                move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
+                    let c = cor.map_or([base[0], base[1], base[2], 1.0], |c| c(cx, cy, queda));
+                    let dc = [f64::from(cx) - centro_x, f64::from(cy) - centro_y];
+                    let rgb =
+                        f.cor_do_fio([c[0], c[1], c[2]], f.no_ponto(dc.map(|v| v * px_cel)).fio);
+                    [rgb[0], rgb[1], rgb[2], c[3]]
+                }
+            });
+            let cor_arg = match (cor_fios.as_ref(), cor.as_ref()) {
+                (Some(c), _) => Some(c as ph2d_wet_paint::brush::ColorFn<'_>),
+                (None, Some(c)) => Some(c as ph2d_wet_paint::brush::ColorFn<'_>),
+                (None, None) => None,
+            };
             let gimg = grain_image.as_ref();
             let grain = grain_basis.as_ref().map(|gb| {
                 move |cx: i32, cy: i32| -> f64 {
@@ -513,10 +538,6 @@ impl PainterTool {
             // As cerdas do Shape, pela MESMA porta do Grain e no referencial do motor: o desvio em células ao
             // centro do dab (`x − cx`, como `brush.rs::stamp_row_shaped`) — no neutro, o `sample_bristle` do
             // motor ao bit. Um Grain armado continua a tomar o lugar delas (W2.4; D7 medido no 27 §6.7).
-            let (centro_x, centro_y) = (
-                grid_map::px_to_cell(f64::from(x), ratio),
-                grid_map::px_to_cell(f64::from(y), ratio),
-            );
             let cerdas_sb = shape_basis.as_ref().filter(|_| cerdas && grain.is_none());
             let cerdas_fn = cerdas_sb.map(|sb| {
                 let forma = &spec_ref.shape;
@@ -524,14 +545,22 @@ impl PainterTool {
                 let raio = d.radius_px;
                 move |cx: i32, cy: i32| -> f64 {
                     let (fx, fy) = (f64::from(cx), f64::from(cy));
-                    ph2d_painter_brush::texture::bristles_at(
-                        forma,
-                        sb,
-                        [fx - centro_x, fy - centro_y],
-                        [fx, fy],
-                        px_por_celula,
-                        raio,
-                    )
+                    let dc = [fx - centro_x, fy - centro_y];
+                    let tapete = |q: [f64; 2]| {
+                        ph2d_painter_brush::texture::bristles_at(
+                            forma,
+                            sb,
+                            q,
+                            [fx, fy],
+                            px_por_celula,
+                            raio,
+                        )
+                    };
+                    let Some(f) = fios_dab else {
+                        return tapete(dc);
+                    };
+                    let p = f.no_ponto(dc.map(|v| v * px_por_celula));
+                    p.ganho * tapete(p.q.map(|v| v / px_por_celula))
                 }
             });
             let lisa = |_: i32, _: i32| -> f64 { 1.0 };

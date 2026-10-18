@@ -29,6 +29,8 @@
 #![allow(clippy::should_implement_trait)]
 
 pub mod assenta;
+pub mod bristles_cor;
+pub mod bristles_fios;
 pub mod brush;
 pub mod colorops;
 pub mod drying;

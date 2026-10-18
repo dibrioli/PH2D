@@ -115,9 +115,34 @@ pub enum Knob {
     TiltSmooth,
     /// O atraso da inclinação lida, em px de caminho (`0` = nenhum; o Rebelle: ~170).
     TiltLag,
+    /// **Os fios com física própria** (W2, [`crate::bristles_fios::Fios`]), lidos pelo hospedeiro quando o Shape é
+    /// Bristles; sem painel (W8). A amplitude da pressão de cada fio (`0` = a lei de antes).
+    BristlePressure,
+    /// O comprimento de caminho (px) em que a pressão de um fio e a oscilação mudam.
+    BristleNoiseLength,
+    /// A largura de um fio (px).
+    BristleLaneWidth,
+    /// A amplitude da onda da largura dos fios (`0` = fixa).
+    BristleWave,
+    /// O comprimento da onda da largura (px de caminho).
+    BristleWaveLength,
+    /// A oscilação do pincel na normal do traço (px; `0` = nenhuma).
+    BristleOscillation,
+    /// O «Random Span»: o desvio (px) de cada fio da sua faixa (`0` = nenhum).
+    BristleSpan,
+    /// O comprimento de caminho (px) em que o desvio de um fio muda.
+    BristleSpanLength,
+    /// O ruído de cor de cada fio em HSLuv: o matiz (voltas) — `0` = nenhum.
+    BristleNoiseHue,
+    /// … a saturação (fracção de 100).
+    BristleNoiseSat,
+    /// … a luminosidade (fracção de 100).
+    BristleNoiseLight,
+    /// Quanto a mão leve levanta os fios fracos (`0` = nada).
+    BristleLift,
 }
 
-pub const KNOB_COUNT: usize = 71;
+pub const KNOB_COUNT: usize = 83;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

@@ -211,7 +211,19 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: Some(103.0),
         // O chato (prompt 23, aceite do dono 12/10): lâmina de pé, 0,68 = 1 − 13/41 (o traço de pé e o
         // deitado da foto); o feltro fecha as falhas que a lâmina fina abria. Régua: `mede_familia_c.py`.
-        extras: &[("felt", 0.05), ("bristleStrength", 2.0), ("emboss", 0.7)],
+        // Os FIOS (W2, doc 48_medicao §3): cada fio claro ou escuro pela cor (o óleo satura: a pressão só abriria
+        // falhas), a pressão própria e a mão leve que os levanta. Textura 2,75 → 3,85 (Rebelle 5,86: o resto são
+        // as sombras do relevo de cada fio, W3), carris 0,00 → 3,03 (3,32), CV 0,017, período 2 %.
+        extras: &[
+            ("felt", 0.05),
+            ("bristleStrength", 2.0),
+            ("emboss", 0.7),
+            ("bristlePressure", 1.2),
+            ("bristleLaneWidth", 1.5),
+            ("bristleLift", 0.4),
+            ("bristleNoiseSat", 0.3),
+            ("bristleNoiseLight", 0.25),
+        ],
         grao: None,
         spacing: Some(0.01),
         achatado: Some((0.68, 90)),
@@ -259,7 +271,19 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 900.0,
         hardness: 0.9,
         size_px: Some(64.0),
-        extras: &[("felt", 0.0), ("bristleStrength", 2.0), ("emboss", 0.2)],
+        // Os FIOS (W2, doc 48_medicao §3): as faixas do Hairy do Rebelle são quase CONSTANTES pelo traço (carris
+        // 0,85) e a textura dele é o contraste entre elas ⇒ a pressão de cada fio quase constante (ruído 2000 px)
+        // e forte, e a mão leve que levanta os fracos. Textura 3,2 → 7,9 (9,0), CV 0,009 (0,008), carris 0,88,
+        // leve 11,5 (10,2), forte 7,1 (7,3); o período 47 % a 6 px do carimbo dele não se copia (03 §3.1).
+        extras: &[
+            ("felt", 0.0),
+            ("bristleStrength", 2.0),
+            ("emboss", 0.2),
+            ("bristlePressure", 2.5),
+            ("bristleLaneWidth", 2.0),
+            ("bristleLift", 0.2),
+            ("bristleNoiseLength", 2000.0),
+        ],
         grao: None,
         spacing: Some(0.01),
         achatado: None,

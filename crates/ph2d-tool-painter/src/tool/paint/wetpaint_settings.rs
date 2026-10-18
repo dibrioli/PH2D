@@ -100,6 +100,29 @@ impl crate::PainterTool {
             lag_px: k.get(Knob::TiltLag) as f32,
         }
     }
+
+    /// ⭐ **Os fios do pincel** (W2, `ph2d_wet_paint::bristles_fios`): os knobs [`Knob::BristlePressure`] …
+    /// [`Knob::BristleOscillation`]; o neutro = o tapete de antes ao bit.
+    #[must_use]
+    pub(crate) fn fios_do_pincel(&self) -> ph2d_wet_paint::bristles_fios::Fios {
+        let k = &self.paint.wetpaint.knobs;
+        ph2d_wet_paint::bristles_fios::Fios {
+            pressao: k.get(Knob::BristlePressure),
+            levanta: k.get(Knob::BristleLift),
+            ruido_px: k.get(Knob::BristleNoiseLength),
+            largura_px: k.get(Knob::BristleLaneWidth),
+            onda: k.get(Knob::BristleWave),
+            onda_px: k.get(Knob::BristleWaveLength),
+            oscilacao_px: k.get(Knob::BristleOscillation),
+            span_px: k.get(Knob::BristleSpan),
+            span_comprimento_px: k.get(Knob::BristleSpanLength),
+            cor: [
+                k.get(Knob::BristleNoiseHue),
+                k.get(Knob::BristleNoiseSat),
+                k.get(Knob::BristleNoiseLight),
+            ],
+        }
+    }
 }
 
 impl WetKnobs {

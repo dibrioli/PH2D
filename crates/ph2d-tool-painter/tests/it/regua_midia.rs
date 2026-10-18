@@ -20,6 +20,14 @@ pub struct Medida {
     pub cv: f64,
     /// A mediana da largura a meio do máximo de cada coluna (px, `largura_mediana_px`).
     pub largura: f64,
+    /// O período dominante ao longo do traço (px) e a fracção da potência que leva (`periodo_px`,
+    /// `periodo_fracao`): o carimbo ou o carril que se vê.
+    pub periodo: f64,
+    pub periodo_fracao: f64,
+    /// ⭐ **Os CARRIS** (W2, `ferramentas/carril.py`): a mediana, nas linhas do miolo que cruzam ≥ 80 % do corpo
+    /// do traço (fora dos 10 % de cada ponta), do desvio da cobertura AO LONGO da linha, em % da cobertura do
+    /// miolo — `0` = cada linha constante pelo traço inteiro (o tapete arrastado pela lane).
+    pub carril: f64,
 }
 
 /// `mede_traco.mede(png, crop)`: `c = max|px − papel| / 255` (papel = mediana das 2 linhas de cima e
@@ -156,6 +164,27 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
         (corpo.iter().map(|v| (v - mc).powi(2)).sum::<f64>() / corpo.len().max(1) as f64).sqrt();
     let media = residuos.iter().sum::<f64>() / n.max(1.0);
     let var = residuos.iter().map(|r| (r - media).powi(2)).sum::<f64>() / n.max(1.0);
+    let (periodo, periodo_fracao) = periodo(corpo);
+    let carril = {
+        let (x0, n) = (xa.unwrap_or(0), np);
+        let (a, b) = (
+            x0 + (0.1 * n as f64) as usize,
+            x0 + (0.9 * n as f64) as usize,
+        );
+        let mut d: Vec<f64> = (0..ch)
+            .filter_map(|y| {
+                let v: Vec<f64> = (a..b)
+                    .filter(|&x| miolo[y * cw + x])
+                    .map(|x| c[y * cw + x])
+                    .collect();
+                (v.len() as f64 > 0.8 * (b - a) as f64).then(|| {
+                    let m = v.iter().sum::<f64>() / v.len() as f64;
+                    (v.iter().map(|x| (x - m).powi(2)).sum::<f64>() / v.len() as f64).sqrt()
+                })
+            })
+            .collect();
+        100.0 * mediana(&mut d) / cobertura.max(1e-6)
+    };
     Medida {
         cobertura,
         textura: 100.0 * var.sqrt() / cobertura.max(1e-6),
@@ -163,7 +192,48 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
         orla,
         cv: dc / mc.max(1e-6),
         largura: mediana(&mut larguras),
+        periodo,
+        periodo_fracao,
+        carril,
     }
+}
+
+/// `mede_traco.py`: o período dominante (px) do perfil ao longo do traço e a fracção da potência dele — o
+/// perfil menos a média 31 px (bordo replicado), janela de Hann, `|rfft|²`, períodos acima de 200 px fora.
+fn periodo(corpo: &[f64]) -> (f64, f64) {
+    let n = corpo.len();
+    if n < 4 {
+        return (f64::INFINITY, 0.0);
+    }
+    let at = |i: isize| corpo[i.clamp(0, n as isize - 1) as usize];
+    let det: Vec<f64> = (0..n as isize)
+        .map(|i| {
+            let m = (-15..=15).map(|d| at(i + d)).sum::<f64>() / 31.0;
+            let hann = 0.5 - 0.5 * (std::f64::consts::TAU * i as f64 / (n - 1) as f64).cos();
+            (at(i) - m) * hann
+        })
+        .collect();
+    let spec: Vec<f64> = (0..=n / 2)
+        .map(|k| {
+            let f = k as f64 / n as f64;
+            if f < 1.0 / 200.0 {
+                return 0.0;
+            }
+            let (re, im) = det
+                .iter()
+                .enumerate()
+                .fold((0.0, 0.0), |(re, im), (i, &v)| {
+                    let a = std::f64::consts::TAU * f * i as f64;
+                    (re + v * a.cos(), im - v * a.sin())
+                });
+            re * re + im * im
+        })
+        .collect();
+    let k = (0..spec.len())
+        .max_by(|&a, &b| spec[a].total_cmp(&spec[b]))
+        .unwrap();
+    let total = spec.iter().sum::<f64>().max(1e-9);
+    (n as f64 / k.max(1) as f64, spec[k] / total)
 }
 
 /// As pontas isoladas da bancada (`midias_regua.py::PONTAS`): o traço RÁPIDO e o vermelho recto — x0, y0, x1, y1.
@@ -220,10 +290,17 @@ pub fn ponta(rgba: &[u8], w: u32) -> f64 {
             let lados: &[f64] = if dy == 0.0 { &[0.0] } else { &[-1.0, 1.0] };
             let (mut e, mut d) = (0.0, 0.0);
             for &sg in lados {
-                let r = (yc + sg * dy).round() as usize;
-                let dentro = |x: usize| (r - 1..=r + 1).filter(|&y| mask[y * cw + x]).count() >= 2;
-                e += (0..cw).find(|&x| dentro(x)).unwrap() as f64;
-                d += (0..cw).rfind(|&x| dentro(x)).unwrap() as f64;
+                let r0 = (yc + sg * dy).round() as usize;
+                let dentro =
+                    |r: usize, x: usize| (r - 1..=r + 1).filter(|&y| mask[y * cw + x]).count() >= 2;
+                // A linha cai numa FALHA entre fios (W2): a linha com tinta mais perto, até 3 px.
+                let r = [0, -1, 1, -2, 2, -3, 3]
+                    .iter()
+                    .map(|&o| (r0 as i64 + o).clamp(1, ch as i64 - 2) as usize)
+                    .find(|&r| (0..cw).any(|x| dentro(r, x)))
+                    .unwrap_or(r0);
+                e += (0..cw).find(|&x| dentro(r, x)).unwrap() as f64;
+                d += (0..cw).rfind(|&x| dentro(r, x)).unwrap() as f64;
             }
             (e / lados.len() as f64, d / lados.len() as f64)
         };

@@ -93,7 +93,7 @@ impl Metrica {
 /// A régua da família C (`ferramentas/mede_familia_c.py`, as mesmas janelas): a largura do traço vermelho DE
 /// PÉ em D4 e D6 (fora do cruzamento), a do azul DEITADO A2–F2 e a tinta mediana no miolo dele.
 #[derive(Debug)]
-struct FamiliaC {
+pub(super) struct FamiliaC {
     de_pe: f64,
     deitado: f64,
     tinta: f64,
@@ -104,6 +104,9 @@ struct FamiliaC {
     rampa_cob: f64,
     /// As pontas da rampa (`regua_midia::pontas`).
     pontas: f64,
+    /// A textura no leve e no forte da rampa (`os_fios::LEVE`/`FORTE`, W2).
+    pub leve: f64,
+    pub forte: f64,
 }
 
 impl FamiliaC {
@@ -166,6 +169,8 @@ impl FamiliaC {
             rampa,
             rampa_cob,
             pontas: super::regua_midia::pontas(px, w as u32),
+            leve: mede(px, w as u32, super::os_fios::LEVE).textura,
+            forte: mede(px, w as u32, super::os_fios::FORTE).textura,
         }
     }
 }
@@ -231,7 +236,7 @@ pub(super) fn de_fabrica(nome: &str) -> Preset {
         .preset
 }
 
-fn cena_seca(p: &Preset, raio: f32, ficheiros: &[String]) -> (Medida, FamiliaC) {
+pub(super) fn cena_seca(p: &Preset, raio: f32, ficheiros: &[String]) -> (Medida, FamiliaC) {
     let mut t = tela();
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());

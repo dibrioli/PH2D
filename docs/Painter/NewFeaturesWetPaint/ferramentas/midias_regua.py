@@ -58,8 +58,13 @@ def recuo_das_pontas(c):
     def pontas(dy):
         e, d = [], []
         for sg in ((0,) if dy == 0 else (-1, 1)):
-            r = int(round(yc + sg * dy))
-            xs = np.where(mask[r - 1:r + 2].sum(0) >= 2)[0]
+            r0 = int(round(yc + sg * dy))
+            # a linha cai numa FALHA entre fios (W2): a linha com tinta mais perto, até 3 px
+            for o in (0, -1, 1, -2, 2, -3, 3):
+                r = min(max(r0 + o, 1), mask.shape[0] - 2)
+                xs = np.where(mask[r - 1:r + 2].sum(0) >= 2)[0]
+                if len(xs):
+                    break
             e.append(xs[0]); d.append(xs[-1])
         return np.mean(e), np.mean(d)
 

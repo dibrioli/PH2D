@@ -434,3 +434,65 @@ fn a_borracha_tira_o_relevo() {
     assert!(apagada < 1e-3, "a borracha deixou relevo ({apagada} px)");
     assert!(intacta > 0.1, "o resto do traço perdeu o relevo ({intacta})");
 }
+
+/// **SONDA (W3): o que o relevo CUSTA** — o move (o carimbo + o compositor, onde a luz corre) e o tick do Oil
+/// Bristle com e sem o relevo, numa tela `PH2D_SONDA_LADO` (2048) ao raio 40: as duas variantes no MESMO
+/// processo, intercaladas em 7 rodadas de ordem rodada, o resumo é o MÍNIMO (MEDIR_VELOCIDADE.md).
+#[test]
+#[ignore = "sonda: o custo do relevo; corre-se à mão"]
+fn sonda_o_custo_do_relevo() {
+    use ph2d_editor_core::Tool;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+    let lado: u32 = std::env::var("PH2D_SONDA_LADO").map_or(2048, |v| v.parse().unwrap());
+    let p = de_fabrica("Oil Bristle");
+    let variantes = [
+        ("sem", com_knobs(p.clone(), "-bristleHeight"), true),
+        ("com, luz apagada", p.clone(), false),
+        ("com", p, true),
+    ];
+    let mede = |p: &ph2d_brush_presets::Preset, luz: bool| -> (f64, f64, f64) {
+        let mut t = ph2d_tool_painter::PainterTool::default();
+        t.set_source(vec![255u8; (lado * lado * 4) as usize], lado, lado);
+        t.set_wet_relogio_fixo(true);
+        assert!(t.wet_preset_aplicar(p).is_empty());
+        t.set_brush_size_px(40.0);
+        if !luz {
+            t.set_impasto_light_intensity(0.0);
+        }
+        let y = lado as f32 * 0.5;
+        let cp = |x: f32, phase| CanvasPointer {
+            pos: [x, y],
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(cp(100.0, PointerPhase::Down));
+        let mut moves = Vec::new();
+        let mut ticks = Vec::new();
+        for k in 1..=150 {
+            let t0 = std::time::Instant::now();
+            t.on_canvas_pointer(cp(100.0 + 6.0 * k as f32, PointerPhase::Move));
+            moves.push(t0.elapsed().as_secs_f64() * 1e3);
+            let t1 = std::time::Instant::now();
+            t.on_tick(1000.0 / 60.0);
+            ticks.push(t1.elapsed().as_secs_f64() * 1e3);
+        }
+        t.on_canvas_pointer(cp(1000.0, PointerPhase::Up));
+        moves.sort_by(f64::total_cmp);
+        ticks.sort_by(f64::total_cmp);
+        (moves[moves.len() / 2], moves[moves.len() - 1], ticks[ticks.len() - 1])
+    };
+    let mut melhor = [(f64::MAX, f64::MAX, f64::MAX); 3];
+    for rodada in 0..7 {
+        for j in 0..3 {
+            let i = (rodada + j) % 3;
+            let (a, b, c) = mede(&variantes[i].1, variantes[i].2);
+            let m = &mut melhor[i];
+            *m = (m.0.min(a), m.1.min(b), m.2.min(c));
+        }
+    }
+    for (i, (n, _, _)) in variantes.iter().enumerate() {
+        let (a, b, c) = melhor[i];
+        println!("[custo] {lado}² {n}: move mediana {a:.3} ms · move pior {b:.3} ms · tick pior {c:.3} ms");
+    }
+}

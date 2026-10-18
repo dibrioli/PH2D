@@ -282,3 +282,58 @@ fn atras_de_dois_nats_o_ponto_de_encontro_faz_o_anfitriao_furar() {
 fn atras_de_dois_nats_sem_ponto_de_encontro_nao_entra() {
     assert!(matches!(two_homes(false), Err(JoinError::Unreachable(_))));
 }
+
+/// ⭐ A12 (W23) — quem volta pelo link depois de cair volta pela MESMA porta (o anfitrião vê o mesmo
+/// endereço) e com o MESMO cliente do ponto de encontro; antes, cada tentativa abria um nó e uma DHT.
+#[test]
+fn quem_volta_pelo_link_volta_pela_mesma_porta_e_o_mesmo_ponto_de_encontro() {
+    let net = mainline::Testnet::builder(10).build().unwrap();
+    let cfg = InternetConfig {
+        dht: DhtMode::Bootstrap(net.bootstrap.clone()),
+        ..offline()
+    };
+    let mut h = lan_host();
+    let ih = InternetHost::open(&mut h, &cfg).unwrap();
+    let lg = LinkGuest::new(ih.invite().clone());
+    let arrive = |h: &Host| {
+        let end = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < end {
+            if let Some((id, peer)) = h.poll().into_iter().find_map(|e| match e {
+                NetEvent::Joined(id, peer) => Some((id, peer)),
+                _ => None,
+            }) {
+                return (id, peer);
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        panic!("ninguém chegou");
+    };
+    let rv_now = |lg: &LinkGuest| {
+        let end = Instant::now() + Duration::from_secs(10);
+        loop {
+            if let Some(rv) = lg.rv.lock().unwrap().clone() {
+                return rv;
+            }
+            assert!(Instant::now() < end, "o ponto de encontro não abriu");
+            thread::sleep(Duration::from_millis(10));
+        }
+    };
+    let join = || {
+        lg.join(
+            &cfg,
+            Duration::from_secs(20),
+            Liveness::default(),
+            waker(),
+            |_| {},
+        )
+    };
+    let g = join().expect("entra");
+    let (id, first) = arrive(&h);
+    let rv = rv_now(&lg);
+    h.kick(id);
+    drop(g);
+    let _g = join().expect("volta");
+    let (_, again) = arrive(&h);
+    assert_eq!(again, first, "voltou por outra porta");
+    assert!(Arc::ptr_eq(&rv, &rv_now(&lg)), "outro cliente da DHT");
+}

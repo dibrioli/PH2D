@@ -8,8 +8,8 @@
 
 use std::io;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -218,28 +218,102 @@ pub fn join_noting(
     waker: Waker,
     nat: impl FnOnce(Mapping) + Send + 'static,
 ) -> Result<Guest, JoinError> {
-    let node = cfg.node().map_err(|e| JoinError::Unreachable(e.kind()))?;
-    // Aberta: o ponto de encontro ainda pode trazer os endereços do anfitrião depois.
-    let dialer = node.dial_open(&invite.addrs);
-    let stop = Arc::new(AtomicBool::new(false));
-    let helper = {
-        let (node, adder, key, cfg, stop) = (
-            node.clone(),
-            dialer.adder(),
-            invite.key.clone(),
-            cfg.clone(),
-            Arc::clone(&stop),
-        );
-        thread::spawn(move || announce_guest(&node, &adder, &key, &cfg, &stop, nat))
-    };
-    let got = dialer.wait(timeout);
-    stop.store(true, Ordering::Release);
-    drop(dialer);
-    if helper.is_finished() {
-        let _ = helper.join();
+    LinkGuest::new(invite.clone()).join(cfg, timeout, live, waker, nat)
+}
+
+/// ⭐ Quem entra por um link, ao longo da SESSÃO (A12, W23): um nó e um cliente do ponto de encontro
+/// para todas as tentativas — ao voltar depois de uma queda, a mesma porta UDP (o NAT de casa e os
+/// furos do anfitrião ainda valem) e sem arrancar outra vez a DHT. Clonar partilha-os.
+#[derive(Clone)]
+pub struct LinkGuest {
+    invite: Invite,
+    node: Arc<Mutex<Option<Node>>>,
+    rv: Arc<Mutex<Option<Arc<Rendezvous>>>>,
+}
+
+impl LinkGuest {
+    #[must_use]
+    pub fn new(invite: Invite) -> Self {
+        Self {
+            invite,
+            node: Arc::default(),
+            rv: Arc::default(),
+        }
     }
-    let (wire, _) = got.map_err(|e| JoinError::Unreachable(e.kind()))?;
-    Guest::join_with_key(wire, &invite.key, SHAKE, live, waker)
+
+    #[must_use]
+    pub fn invite(&self) -> &Invite {
+        &self.invite
+    }
+
+    /// Uma tentativa: [`join_noting`] sobre o nó e o ponto de encontro da sessão (a `cfg` da primeira
+    /// tentativa faz os dois; as seguintes só dão o STUN e o prazo).
+    ///
+    /// # Errors
+    /// Os de [`join`].
+    pub fn join(
+        &self,
+        cfg: &InternetConfig,
+        timeout: Duration,
+        live: Liveness,
+        waker: Waker,
+        nat: impl FnOnce(Mapping) + Send + 'static,
+    ) -> Result<Guest, JoinError> {
+        let node = self
+            .node(cfg)
+            .map_err(|e| JoinError::Unreachable(e.kind()))?;
+        // Aberta: o ponto de encontro ainda pode trazer os endereços do anfitrião depois.
+        let dialer = node.dial_open(&self.invite.addrs);
+        let stop = Arc::new(AtomicBool::new(false));
+        let helper = {
+            let (me, node, adder, cfg, stop) = (
+                self.clone(),
+                node.clone(),
+                dialer.adder(),
+                cfg.clone(),
+                Arc::clone(&stop),
+            );
+            thread::spawn(move || {
+                let seen = node.stun(&cfg.stun, STUN_WAIT);
+                nat(mapping(&seen));
+                match me.rendezvous(&cfg.dht) {
+                    Some(rv) => announce_guest(&node, &adder, &rv, &seen, &stop),
+                    None => adder.done(),
+                }
+            })
+        };
+        let got = dialer.wait(timeout);
+        stop.store(true, Ordering::Release);
+        drop(dialer);
+        if helper.is_finished() {
+            let _ = helper.join();
+        }
+        let (wire, _) = got.map_err(|e| JoinError::Unreachable(e.kind()))?;
+        Guest::join_with_key(wire, &self.invite.key, SHAKE, live, waker)
+    }
+
+    fn node(&self, cfg: &InternetConfig) -> io::Result<Node> {
+        let mut n = self.node.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(n) = &*n {
+            return Ok(n.clone());
+        }
+        let node = cfg.node()?;
+        *n = Some(node.clone());
+        Ok(node)
+    }
+
+    /// O ponto de encontro da sessão (`None` = nenhum; o socket que não abriu tenta-se outra vez na
+    /// tentativa seguinte).
+    fn rendezvous(&self, mode: &DhtMode) -> Option<Arc<Rendezvous>> {
+        let mut rv = self.rv.lock().unwrap_or_else(PoisonError::into_inner);
+        if rv.is_none() {
+            *rv = Rendezvous::new(mode, &self.invite.key)
+                .ok()
+                .flatten()
+                .map(Arc::new);
+        }
+        rv.clone()
+    }
 }
 
 /// O convidado no ponto de encontro: publica os seus candidatos (para o anfitrião furar) e junta os do
@@ -249,18 +323,11 @@ pub fn join_noting(
 fn announce_guest(
     node: &Node,
     adder: &DialAdder,
-    key: &InviteKey,
-    cfg: &InternetConfig,
+    rv: &Rendezvous,
+    seen: &[crate::node::Reflexive],
     stop: &AtomicBool,
-    nat: impl FnOnce(Mapping),
 ) {
-    let seen = node.stun(&cfg.stun, STUN_WAIT);
-    nat(mapping(&seen));
-    let Ok(Some(rv)) = Rendezvous::new(&cfg.dht, key) else {
-        adder.done();
-        return;
-    };
-    let mine = candidates(node, &seen);
+    let mine = candidates(node, seen);
     let (mut published, mut host_seq, mut asked) = (None::<Instant>, None, false);
     while !stop.load(Ordering::Acquire) {
         if published.is_none_or(|t| t.elapsed() >= GUEST_REPUBLISH) {

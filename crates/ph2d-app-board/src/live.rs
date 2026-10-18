@@ -188,7 +188,8 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             match net::Invite::parse(&link) {
                 Ok(invite) => {
                     let local = st.internet_local;
-                    join_by(st, hero, Route::Link { invite, local });
+                    let guest = ph2d_board_internet::LinkGuest::new(invite);
+                    join_by(st, hero, Route::Link { guest, local });
                 }
                 Err(_) => hero.documents.tell(tr("board.live.link_bad").to_owned()),
             }

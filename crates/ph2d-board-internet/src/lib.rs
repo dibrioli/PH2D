@@ -29,4 +29,4 @@ pub use candidates::{Mapping, STUN_SERVERS, candidates, mapping, resolve};
 pub use driver::CLOSE_GRACE;
 pub use node::{DialAdder, Dialer, Node, NodeConfig, Reflexive, decode_via, encode_via};
 pub use rendezvous::{DhtMode, Rendezvous, Role};
-pub use session::{InternetConfig, InternetHost, PUNCH_FOR, join, join_noting};
+pub use session::{InternetConfig, InternetHost, LinkGuest, PUNCH_FOR, join, join_noting};

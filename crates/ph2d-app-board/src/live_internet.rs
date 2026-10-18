@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use ph2d_board_internet::{DhtMode, InternetConfig, InternetHost, Mapping};
+use ph2d_board_internet::{DhtMode, InternetConfig, InternetHost, LinkGuest, Mapping};
 use ph2d_board_net as net;
 use ph2d_board_sync as sync;
 use ph2d_editor_core::documents::live::{LiveInternet, LiveLink, LiveRole};
@@ -24,8 +24,9 @@ const LINK_TIMEOUT: Duration = Duration::from_secs(30);
 pub(super) enum Route {
     /// A rede local: o endereço e o código curto.
     Lan { addr: SocketAddr, code: String },
-    /// ADR-0187 — a internet: o convite (candidatos + chave); `local` = só esta máquina (testes).
-    Link { invite: net::Invite, local: bool },
+    /// ADR-0187 — a internet: o convite (candidatos + chave) e o nó e o ponto de encontro da sessão,
+    /// os mesmos a cada volta (A12); `local` = só esta máquina (testes).
+    Link { guest: LinkGuest, local: bool },
 }
 
 /// ADR-0187 — a entrada pela internet do anfitrião.
@@ -166,8 +167,7 @@ pub(super) fn dial(route: &Route) -> Dialing {
     std::thread::spawn(move || {
         let r = match route {
             Route::Lan { addr, code } => net::Guest::connect(addr, &code, CONNECT_TIMEOUT, waker()),
-            Route::Link { invite, local } => ph2d_board_internet::join_noting(
-                &invite,
+            Route::Link { guest, local } => guest.join(
                 &internet_config(local),
                 LINK_TIMEOUT,
                 net::Liveness::default(),
@@ -230,3 +230,7 @@ thread_local! {
 pub(crate) fn fake_nat_for_tests(m: Mapping) {
     FAKE_NAT.set(Some(m));
 }
+
+#[cfg(test)]
+#[path = "live_link_tests.rs"]
+mod tests;

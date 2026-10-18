@@ -1,9 +1,12 @@
-//! ⭐⭐ W6b — **a vista que renasce (a cura C1) dá os MESMOS bits** que a vista nova (handoff W6a §3: o
-//! kill-criterion «a imagem muda»). O renascimento vai pelo caminho do vigia ([`LuzDoQuadro::renascer_a_vista`]);
-//! o evento do driver que o dispara não se provoca daqui (o vigia tem os seus testes por leitura).
+//! ⭐⭐ W6b/W6c — **a vista que renasce dá os MESMOS bits** que a vista nova (handoff W6a §3: o kill-criterion
+//! «a imagem muda») **e nenhum quadro sai sem luz** ([W6c §1](../../../../docs/Luz2D/handoffs/HANDOFF_CONTINUACAO_W6c_2026-10-17_O_PISCAR_DO_RENASCIMENTO.md)):
+//! o que o `ligar` vê (`recebida()`) existe depois de TODO `gravar`, o do renascimento incluído. O renascimento vai
+//! pelo caminho do vigia ([`LuzDoQuadro::renascer_a_vista`]); o evento do driver que o dispara não se provoca daqui
+//! (o vigia tem os seus testes por leitura).
 //!
 //! A régua: o High (a holográfica, os níveis em textura) na cena 5, `K` quadros depois de nascer — a nova
-//! contra a renascida, ao bit; o controlo: a mesma vista ANTES de renascer, com o rebote mais assente, difere.
+//! contra a renascida, ao bit; os controlos: a mesma vista ANTES de renascer, com o rebote mais assente, difere; e
+//! a C1b (no fim do quadro do pedido) deixa o quadro do pedido sem luz.
 
 use bevy_ecs::world::World;
 use ph2d_app_light2d::qualidade::degrau_do;
@@ -31,6 +34,7 @@ fn quadros(
         assert!(l.preparar(w, afim, TAM), "a cena 5 tem luz");
         l.gravar(gpu, &mut PresentWorld::new(), r);
         assert!(l.acesa(), "o solver recusou: {:?}", l.erro());
+        assert!(l.recebida().is_some(), "um quadro saiu sem luz");
     }
     ler(gpu, l.solver().expect("solver").fluencia(), 8)
 }
@@ -54,31 +58,61 @@ fn a_vista_renascida_da_os_mesmos_bits_que_a_nova() {
         "a régua tem de ser o caminho do produto no High (holográfica em textura)"
     );
 
-    let mut l = LuzDoQuadro::com_degrau(degrau);
-    let antes = quadros(&gpu, &mut l, &w, &r, K + 1);
-    // O pedido vale no FIM do quadro (o do vigia também): este desenha e larga a vista; o seguinte monta.
-    l.renascer_a_vista();
+    // Controlo: a C1b larga a vista no FIM do quadro do pedido — o `ligar` dele não vê luz nenhuma.
+    let mut c1b = LuzDoQuadro::com_degrau(degrau).renasce_ao("fim");
+    quadros(&gpu, &mut c1b, &w, &r, K);
+    c1b.renascer_a_vista();
     let afim = Camera2d::default().world_to_screen_affine(WindowSize::new(TAM.0, TAM.1));
-    l.preparar(&w, afim, TAM);
-    l.gravar(&gpu, &mut PresentWorld::new(), &r);
+    c1b.preparar(&w, afim, TAM);
+    c1b.gravar(&gpu, &mut PresentWorld::new(), &r);
     assert!(
-        l.solver().is_none() && l.montagens() == 1,
-        "o pedido não largou a vista no fim do quadro"
+        c1b.recebida().is_none(),
+        "controlo: a C1b tem de deixar o quadro do pedido sem luz (senão a asserção é cega)"
     );
-    let depois = quadros(&gpu, &mut l, &w, &r, K);
-    assert_eq!(l.montagens(), 2, "a vista não renasceu");
-    assert_ne!(
-        antes, bits_nova,
-        "controlo: K+1 quadros sem renascer têm de diferir de K (senão a régua é cega)"
+
+    for momento in ["adota", "solta"] {
+        let mut l = LuzDoQuadro::com_degrau(degrau).renasce_ao(momento);
+        let antes = quadros(&gpu, &mut l, &w, &r, K + 1);
+        let velha = l.solver().expect("solver").fluencia().clone();
+        // O pedido vale no quadro SEGUINTE: larga, espera a placa e monta nele — e `quadros` exige a luz em cada um.
+        l.renascer_a_vista();
+        let depois = quadros(&gpu, &mut l, &w, &r, K);
+        assert_eq!(l.montagens(), 2, "{momento}: a vista não renasceu");
+        assert_eq!(
+            *l.solver().expect("solver").fluencia() == velha,
+            momento == "adota",
+            "{momento}: só a (a) adota a textura da fluência"
+        );
+        assert_ne!(
+            antes, bits_nova,
+            "controlo: K+1 quadros sem renascer têm de diferir de K (senão a régua é cega)"
+        );
+        let diferentes = depois
+            .iter()
+            .zip(&bits_nova)
+            .filter(|(a, b)| a != b)
+            .count();
+        assert_eq!(
+            (depois.len(), diferentes),
+            (bits_nova.len(), 0),
+            "{momento}: a vista renascida difere da nova em {diferentes} bytes"
+        );
+    }
+
+    // A adotada NASCE com os bits de uma nova (zerada). A cena 5 reescreve a fluência inteira antes de a ler, e só
+    // uma leitura ANTES do 1.º quadro vê a diferença (sem o zerar, isto reprova e o resto passa).
+    let suja = nova.solver().expect("solver").fluencia().clone();
+    assert!(
+        ler(&gpu, &suja, 8).iter().any(|&b| b != 0),
+        "controlo: a fluência da nova tem luz"
     );
-    let diferentes = depois
-        .iter()
-        .zip(&bits_nova)
-        .filter(|(a, b)| a != b)
-        .count();
-    assert_eq!(
-        (depois.len(), diferentes),
-        (bits_nova.len(), 0),
-        "a vista renascida difere da nova em {diferentes} bytes"
+    let fabrica = ph2d_light2d_gpu::Fabrica::default();
+    let adotada =
+        ph2d_light2d_gpu::Solver::novo_adotando(&gpu, *cfg, &fabrica, suja.clone()).expect("adota");
+    assert!(*adotada.fluencia() == suja, "a fluência não foi adotada");
+    let limpa = ph2d_light2d_gpu::Solver::novo_com(&gpu, *cfg, &fabrica).expect("nova");
+    assert!(
+        ler(&gpu, adotada.fluencia(), 8) == ler(&gpu, limpa.fluencia(), 8),
+        "a fluência adotada não nasce com os bits de uma nova"
     );
 }

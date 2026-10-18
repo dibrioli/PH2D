@@ -239,6 +239,7 @@ impl Solver {
         gpu: &GpuContext,
         pedido: Config,
         fabrica: &crate::Fabrica,
+        mut adotada: Option<wgpu::Texture>,
     ) -> Result<Self, ErroSolver> {
         pedido.validar()?;
         let conta = std::sync::atomic::AtomicU64::new(0);
@@ -265,7 +266,8 @@ impl Solver {
         let texturas: Vec<wgpu::Texture> = lista
             .texturas
             .iter()
-            .map(|t| criar_textura(&device, t))
+            .enumerate()
+            .map(|(i, t)| nascer::textura(&device, t, i, &mut adotada))
             .collect();
         let buffer = |nome: &'static str| {
             let b = lista

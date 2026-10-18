@@ -419,6 +419,7 @@ impl LuzDoQuadro {
             self.erro = Some(ErroSolver::SemMemoria { bytes });
             return;
         }
+        self.vigia.renascer_no_inicio(gpu, &mut self.resolvido);
         let (fina, captura) = (self.fina, self.captura);
         // ⭐ W5c: a cascata holográfica (o degrau escolhe-a; a troca recria o solver).
         let holografica = self
@@ -463,7 +464,7 @@ impl LuzDoQuadro {
             }
             self.montagens += 1;
             self.vigia.nasceu();
-            Solver::novo_com(gpu, cfg, &self.fabrica).map(|mut solver| {
+            self.vigia.nova(gpu, cfg, &self.fabrica).map(|mut solver| {
                 // ⭐ W5y — INSTRUMENTO: as etapas da holográfica, cada uma no seu passe (a c2 fica 0).
                 if std::env::var_os("PH2D_LIGHT2D_FASES").is_some() {
                     let _ = solver.medir_fases_da_hrc(gpu);
@@ -616,7 +617,7 @@ impl LuzDoQuadro {
         if renasce {
             self.resolvido = None;
         }
-        self.vigia.renascer(gpu, &mut self.resolvido);
+        self.vigia.renascer_no_fim(gpu, &mut self.resolvido);
     }
 
     /// O que os receptores leem; `None` = apagada.

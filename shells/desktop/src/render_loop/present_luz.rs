@@ -25,6 +25,9 @@ impl crate::App {
             flip_compose,
             ..
         } = gfx;
+        if luz2d.soltar_se_renasce(surface.gpu(), renderer, band_blit) {
+            flip_compose.receber_luz(surface.gpu(), None);
+        }
         luz2d.recolher(sim.world());
         let flip_models = ph2d_flip_entities::transform::build(sim, &self.flip_state.entities);
         let mut flip_luz = ph2d_app_flip::pass::luz::OclusaoDoFlip {

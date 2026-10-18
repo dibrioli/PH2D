@@ -5,7 +5,8 @@
 //! mínimo ≥ piso + max([`MARGEM_MS`], [`MARGEM_REL`]·piso). No máximo [`MAX_POR_PROCESSO`] vezes; o nascimento
 //! é determinístico (os bits não mudam). A vista velha SOLTA-SE antes de a nova montar: montada com a velha viva
 //! no driver, a nova ia para blocos novos do alocador (12 → 16–17) e ficava +0,15–0,25 ms (W6b §2–3).
-//! `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` desliga (a régua ON × OFF).
+//! `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` desliga (a régua ON × OFF); `=adota|solta` são as curas do quadro sem luz
+//! ([handoff W6c](../../../docs/Luz2D/handoffs/HANDOFF_CONTINUACAO_W6c_2026-10-17_O_PISCAR_DO_RENASCIMENTO.md)).
 
 /// A leitura que DISPARA a vigília: a do evento vai a ~2,6× e ~4,7× o piso (W6a §2).
 const PICO: f64 = 2.0;
@@ -16,6 +17,28 @@ const MARGEM_MS: f64 = 0.3;
 const MARGEM_REL: f64 = 0.03;
 /// O tecto de renascimentos: o evento é 1× por processo; o 2.º cobre um falso positivo.
 const MAX_POR_PROCESSO: u32 = 2;
+
+/// Onde a vista renasce (W6c §1).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Momento {
+    /// C1b: no fim do quadro do pedido — o `ligar` dele vê a luz apagada.
+    #[default]
+    Fim,
+    /// (a): no início do seguinte; a vista nova ADOTA a textura da fluência da velha.
+    Adota,
+    /// (b): no início do seguinte; quem chama soltou os receptores antes ([`super::LuzDoQuadro::soltar_se_renasce`]).
+    Solta,
+}
+
+impl Momento {
+    fn de(v: &str) -> Self {
+        match v.trim() {
+            "adota" => Self::Adota,
+            "solta" => Self::Solta,
+            _ => Self::Fim,
+        }
+    }
+}
 
 /// O vigia da `c2` da vista ([`Self::ler`] a cada leitura de custo, [`Self::nasceu`] a cada montagem).
 #[derive(Debug, Default)]
@@ -28,14 +51,19 @@ pub(super) struct Vigia {
     renascidas: u32,
     /// O renascimento pedido (pelo vigia, ou pelo portão dos bits: [`super::LuzDoQuadro::renascer_a_vista`]).
     pedido: bool,
+    momento: Momento,
+    /// (a): a fluência da vista que morreu, para a próxima montagem ([`Self::nova`]).
+    adotada: Option<wgpu::Texture>,
 }
 
 impl Vigia {
     /// Ligado salvo `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` (lida em execução: o MESMO binário mede os dois).
     pub(super) fn do_ambiente() -> Self {
-        let desligado =
-            std::env::var("PH2D_LIGHT2D_RENASCE_SE_DEGRADA").is_ok_and(|v| v.trim() == "0");
-        Self::com(!desligado)
+        let v = std::env::var("PH2D_LIGHT2D_RENASCE_SE_DEGRADA").unwrap_or_default();
+        Self {
+            momento: Momento::de(&v),
+            ..Self::com(v.trim() != "0")
+        }
     }
 
     pub(super) fn com(ligado: bool) -> Self {
@@ -86,16 +114,47 @@ impl Vigia {
         false
     }
 
-    /// O fim do quadro: havendo pedido, a vista larga-se e a placa espera destruí-la; a próxima `gravar_com`
-    /// monta a nova nos mesmos blocos.
-    pub(super) fn renascer(
+    /// O fim do quadro (C1b): havendo pedido, a vista larga-se e a placa espera destruí-la; a próxima
+    /// `gravar_com` monta a nova nos mesmos blocos.
+    pub(super) fn renascer_no_fim(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
         vista: &mut Option<super::Resolvido>,
     ) {
-        if std::mem::take(&mut self.pedido) {
+        if self.momento == Momento::Fim && std::mem::take(&mut self.pedido) {
             *vista = None;
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        }
+    }
+
+    /// O início do quadro seguinte ao pedido (a, b): a vista larga-se — (a) guardando a textura da fluência —, a
+    /// placa espera destruir o resto e o MESMO quadro monta a nova (nenhum quadro sai sem luz).
+    pub(super) fn renascer_no_inicio(
+        &mut self,
+        gpu: &ph2d_gpu::GpuContext,
+        vista: &mut Option<super::Resolvido>,
+    ) {
+        if self.momento == Momento::Fim || !std::mem::take(&mut self.pedido) {
+            return;
+        }
+        let velha = vista.take();
+        if self.momento == Momento::Adota {
+            self.adotada = velha.as_ref().map(|r| r.solver.fluencia().clone());
+        }
+        drop(velha);
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    }
+
+    /// A montagem da vista: com a fluência adotada, se houver.
+    pub(super) fn nova(
+        &mut self,
+        gpu: &ph2d_gpu::GpuContext,
+        cfg: ph2d_light2d_gpu::Config,
+        fabrica: &ph2d_light2d_gpu::Fabrica,
+    ) -> Result<ph2d_light2d_gpu::Solver, ph2d_light2d_gpu::ErroSolver> {
+        match self.adotada.take() {
+            Some(f) => ph2d_light2d_gpu::Solver::novo_adotando(gpu, cfg, fabrica, f),
+            None => ph2d_light2d_gpu::Solver::novo_com(gpu, cfg, fabrica),
         }
     }
 }
@@ -106,6 +165,31 @@ impl super::LuzDoQuadro {
     #[doc(hidden)]
     pub fn renascer_a_vista(&mut self) {
         self.vigia.pedido = true;
+    }
+
+    /// ⭐ W6c — PORTÃO: o momento do renascimento pelo nome da variável (`adota`, `solta`; outro = a C1b).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn renasce_ao(mut self, momento: &str) -> Self {
+        self.vigia.momento = Momento::de(momento);
+        self
+    }
+
+    /// ⭐ W6c (b) — ANTES do [`Self::gravar_com`]: havendo renascimento pedido, os receptores largam a fluência
+    /// velha (o `ligar` deste quadro acende-os com a nova). `true` = solte também o blit do Flip.
+    #[must_use]
+    pub fn soltar_se_renasce(
+        &self,
+        gpu: &ph2d_gpu::GpuContext,
+        renderer: &mut ph2d_render::SpriteRenderer,
+        colagem: &mut ph2d_render::BandBlit,
+    ) -> bool {
+        let solta = self.vigia.pedido && self.vigia.momento == Momento::Solta;
+        if solta {
+            renderer.receber_luz(None);
+            colagem.receber_luz(gpu, None);
+        }
+        solta
     }
 }
 

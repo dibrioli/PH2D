@@ -11,6 +11,7 @@
 mod cluster;
 mod command;
 mod crop;
+mod cursor;
 mod facilitate;
 mod frame_box;
 mod gesture;
@@ -48,6 +49,7 @@ use ph2d_board_route::RouteCache;
 pub use cluster::{
     CLUSTER_BETWEEN, CLUSTER_GAP, CLUSTER_PAD, CLUSTER_TITLE_WORDS, ClusterBy, ClusterNames,
 };
+pub use cursor::BoardCursor;
 pub use facilitate::{VOTE_MINUS_STEP, VoteMark, chip_at};
 pub use frame_box::Frame;
 pub use gesture::Down;

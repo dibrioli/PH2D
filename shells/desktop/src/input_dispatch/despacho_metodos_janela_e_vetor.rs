@@ -250,6 +250,19 @@ impl crate::App {
                 {
                     // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
                     icon
+                } else if let Some(c) = ph2d_editor_core::screens::hero::board_view::cursor(
+                    h,
+                    self.last_pointer.0,
+                    self.last_pointer.1,
+                ) {
+                    use ph2d_editor_core::screens::hero::board_view::BoardCursor as B;
+                    match c {
+                        B::ResizeNs => CursorIcon::NsResize,
+                        B::ResizeEw => CursorIcon::EwResize,
+                        B::ResizeNesw => CursorIcon::NeswResize,
+                        B::ResizeNwse => CursorIcon::NwseResize,
+                        B::Rotate => CursorIcon::Grab,
+                    }
                 } else {
                     CursorIcon::Default
                 }

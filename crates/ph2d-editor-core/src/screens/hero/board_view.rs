@@ -121,6 +121,21 @@ pub fn set_tool(hero: &mut HeroScreen, tool: ph2d_board_edit::Tool) {
     }
 }
 
+pub use ph2d_board_edit::BoardCursor;
+
+/// W23 B5 — o cursor que o quadro pede em `(x, y)` (ecrã): sobre uma pega da selecção, a seta do eixo
+/// dela ou a de rodar. A janela traduz para o cursor do sistema.
+#[must_use]
+pub fn cursor(hero: &HeroScreen, x: f32, y: f32) -> Option<BoardCursor> {
+    if hero.documents.surface_active().is_some() || !inside(hero.last_canvas, x, y) {
+        return None;
+    }
+    let board = hero.documents.active_board()?;
+    let ed = hero.documents.live.editor.as_ref()?;
+    let p = world_pointer(board, area_of(hero.last_canvas), x, y, Modifiers::default());
+    ed.cursor_at(&board.doc, p)
+}
+
 /// Ecrã → ponteiro no mundo do quadro.
 fn world_pointer(board: &Board, area: Area, x: f32, y: f32, mods: Modifiers) -> Pointer {
     Pointer {

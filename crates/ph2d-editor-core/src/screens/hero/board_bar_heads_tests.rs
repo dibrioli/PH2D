@@ -1,4 +1,4 @@
-//! W23 B5 — a grelha de TODAS as pontas, pelo caminho real do ecrã.
+//! W23 B5 — a grelha de TODAS as pontas e o cursor sobre as pegas, pelo caminho real do ecrã.
 
 use super::*;
 
@@ -37,4 +37,29 @@ fn the_more_tips_grid_offers_every_head_of_the_catalog() {
         t.arrows()[0].connector().unwrap().heads[0],
         Head::ZeroOrMany
     );
+}
+
+/// ⭐ W23 B5 — sobre a pega da direita de uma caixa seleccionada o ecrã pede a seta ↔ (a janela muda o
+/// cursor do sistema por esta porta); no meio da caixa, nada.
+#[test]
+fn the_screen_asks_for_the_resize_cursor_over_a_handle() {
+    use ph2d_board_edit::{BoardCursor, Dir, Handle};
+    let mut t = T::new();
+    t.key(BoardKey::Char('r'), Modifiers::default(), Some("r"));
+    let (a, b) = (t.at(0.2, 0.4), t.at(0.3, 0.5));
+    t.drag(a, b);
+    t.paint();
+    let area = board_view::area_of(t.hero.last_canvas);
+    let (board, live) = t.hero.documents.active_parts().unwrap();
+    let ed = live.editor.as_ref().unwrap();
+    let f = ed.frame(&board.doc).expect("a caixa seleccionada");
+    let px = 1.0 / board.camera.zoom;
+    let at = f.handle(Handle::Resize(Dir::E), px, ed.metrics());
+    let [x, y] = board.camera.to_screen(area, at);
+    let [cx, cy] = board.camera.to_screen(area, f.center);
+    assert_eq!(
+        board_view::cursor(&t.hero, x as f32, y as f32),
+        Some(BoardCursor::ResizeEw)
+    );
+    assert_eq!(board_view::cursor(&t.hero, cx as f32, cy as f32), None);
 }

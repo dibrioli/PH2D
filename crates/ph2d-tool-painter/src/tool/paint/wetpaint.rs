@@ -560,7 +560,9 @@ mod offthread_ritmo; // o worker RITMADO dos gates (W7) — filho por LOC
 mod grid_ratio_tests; // os gates de PRODUTO da razão da grade
 #[cfg(test)]
 #[path = "wetpaint/relevo_tests.rs"]
-mod relevo_tests; // o Emboss do Tuning morde sem papel (dono 11/10)
+mod relevo_tests;
+#[path = "wetpaint/sil_memo.rs"]
+mod sil_memo; // a silhueta do dab guardada para o pente do relevo (W3b) // o Emboss do Tuning morde sem papel (dono 11/10)
 
 #[cfg(test)]
 #[path = "wetpaint/flow_ratio_tests.rs"]

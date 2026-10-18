@@ -241,6 +241,22 @@ pub const MIN_CELLS_DEPOSIT: usize = 6 << 10;
 /// salta o papel em branco —, e por isso o piso dele é mais alto.
 pub const MIN_CELLS_TIP: usize = 16 << 10;
 
+/// Piso do PENTE do relevo dos fios (W3b, [`crate::painter::Engine::pentear_relevo`]), em células da caixa da
+/// pegada da lâmina do óleo — medido por `tests/it/measure_pente_rows.rs` (release, load 1,6, as duas rotas
+/// ALTERNADAS, mínimo de 15; a lei real dos fios e do relevo):
+///
+/// ```text
+///   raio  células   série ms  paralelo ms  razão
+///     16      525     0,018      0,019      0,95x   <- prejuízo
+///     24      969     0,039      0,009      4,56x
+///     40    2 573     0,109      0,032      3,44x
+///   51,5    4 173     0,181      0,039      4,63x   (o Oil Bristle de fábrica, 103 px)
+///    120   20 169     0,960      0,098      9,84x
+/// ```
+///
+/// O piso fica entre a última linha em prejuízo e a primeira em ganho.
+pub const MIN_CELLS_PENTE: usize = 3 << 8;
+
 /// Os pisos do PAPEL (ADR-0175 §3-bis), medidos por `tests/it/measure_paper_rows.rs` (release,
 /// `load 5`, as duas rotas ALTERNADAS, mínimo de 9):
 ///

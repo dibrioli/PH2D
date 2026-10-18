@@ -593,6 +593,12 @@ impl PainterTool {
                 let (e, alc) = (fp_raio.extent(), sess.engine.silhouette_reach[0].max(1.0));
                 [0, 1].map(|i| cell_r * alc * f64::from(e[i]))
             };
+            // O depósito e o pente leem a MESMA silhueta: guardada no dab ([`super::sil_memo`]), ao byte.
+            let memo = relevo_dab.map(|_| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
+            let sil = |cx: i32, cy: i32| -> f64 {
+                memo.as_ref()
+                    .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
+            };
             if erasing {
                 // W2.6: the same §9 mapping, routed to the engine's ERASER —
                 // silhouette and grain shape the erase exactly as they shape

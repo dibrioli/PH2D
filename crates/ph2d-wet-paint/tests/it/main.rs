@@ -32,6 +32,7 @@ mod measure_long_session;
 mod measure_paper_rows;
 mod measure_parallel_rows;
 mod measure_pass_cost;
+mod measure_pente_rows;
 mod measure_transfer_candidates;
 mod measure_transport_range;
 mod paper_rows;

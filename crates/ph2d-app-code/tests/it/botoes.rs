@@ -79,9 +79,13 @@ fn o_botao_do_balao_corrige_como_o_alt_enter_num_passo() {
     nunca(&mut m, id, t1 + PAUSA - 1, "o botão antes da pausa", |m| {
         botoes(m, id).is_empty()
     });
-    ate(&mut m, id, t1 + PAUSA, "o balão não trouxe o botão", |m| {
-        !botoes(m, id).is_empty()
-    });
+    ate(
+        &mut m,
+        id,
+        t1 + PAUSA,
+        "o balão não trouxe o botão",
+        |m| !botoes(m, id).is_empty(),
+    );
     assert_eq!(rotulos(&mut m, id), ["Did you mean amplitude?"]);
     assert_eq!(quente(&mut m, id), None, "nasce neutro");
 
@@ -102,29 +106,42 @@ fn o_botao_do_balao_corrige_como_o_alt_enter_num_passo() {
         .iter()
         .find(|n| n.1.role() == Role::Button && n.1.label() == Some("Did you mean amplitude?"))
         .expect("o botão no leitor de ecrã");
-    assert!(balao.1.children().contains(&botao.0.into()), "filho do balão");
+    assert!(
+        balao.1.children().contains(&botao.0.into()),
+        "filho do balão"
+    );
 
     m.clica(id, x, y, Modifiers::default());
     assert_eq!(texto(&mut m, id), esperado, "o mesmo texto que o Alt+Enter");
     m.pinta(id);
     assert!(!aberto(&mut m, id), "aplicada, o balão fecha");
     ctrl_z(&mut m, id);
-    assert_eq!(texto(&mut m, id), TEXTO, "um Ctrl+Z desfaz a correcção inteira");
+    assert_eq!(
+        texto(&mut m, id),
+        TEXTO,
+        "um Ctrl+Z desfaz a correcção inteira"
+    );
 }
 
 /// O ponto da calha da linha leva os mesmos botões que o sublinhado (os do culpado da linha).
 #[test]
 fn o_ponto_da_calha_leva_os_mesmos_botoes() {
     let (mut m, id) = sem_assistente(TEXTO);
-    let linha = TEXTO[..TEXTO.find("ampiltude").unwrap()].matches('\n').count();
+    let linha = TEXTO[..TEXTO.find("ampiltude").unwrap()]
+        .matches('\n')
+        .count();
     let t1 = T0 + 10 * PAUSA;
     quadro_em(&mut m, t1);
     m.pinta(id);
     let (x, y) = m.docs().problem_dot(id, linha).expect("o ponto da linha");
     m.rato(id, x, y);
-    ate(&mut m, id, t1 + PAUSA, "a calha não trouxe o botão", |m| {
-        !botoes(m, id).is_empty()
-    });
+    ate(
+        &mut m,
+        id,
+        t1 + PAUSA,
+        "a calha não trouxe o botão",
+        |m| !botoes(m, id).is_empty(),
+    );
     assert_eq!(rotulos(&mut m, id), ["Did you mean amplitude?"]);
     let (bx, by) = botoes(&mut m, id)[0].0;
     m.clica(id, bx, by, Modifiers::default());
@@ -150,9 +167,13 @@ fn com_o_servidor_os_botoes_sao_os_do_alt_enter() {
     quadro_em(&mut m, t1);
     m.pinta(id);
     aponta(&mut m, id, errado + 2);
-    ate(&mut m, id, t1 + PAUSA, "os botões do servidor não chegaram", |m| {
-        botoes(m, id).len() == 2
-    });
+    ate(
+        &mut m,
+        id,
+        t1 + PAUSA,
+        "os botões do servidor não chegaram",
+        |m| botoes(m, id).len() == 2,
+    );
     assert_eq!(rotulos(&mut m, id), titulos);
     let (x, y) = botoes(&mut m, id)[0].0;
     m.clica(id, x, y, Modifiers::default());
@@ -184,10 +205,16 @@ fn nada_a_corrigir_nenhum_botao() {
     m.pinta(id);
     let (x, y) = m.docs().problem_dot(id, 0).expect("o ponto da linha 1");
     m.rato(id, x, y);
-    ate(&mut m, id, t1 + PAUSA, "a calha não explicou", |m| aberto(m, id));
-    nunca(&mut m, id, t1 + 4 * PAUSA, "um botão sem correcção", |m| {
-        botoes(m, id).is_empty()
+    ate(&mut m, id, t1 + PAUSA, "a calha não explicou", |m| {
+        aberto(m, id)
     });
+    nunca(
+        &mut m,
+        id,
+        t1 + 4 * PAUSA,
+        "um botão sem correcção",
+        |m| botoes(m, id).is_empty(),
+    );
 
     let t2 = t1 + 10 * PAUSA;
     quadro_em(&mut m, t2);
@@ -195,9 +222,13 @@ fn nada_a_corrigir_nenhum_botao() {
     ate(&mut m, id, t2 + PAUSA, "a palavra não teve balão", |m| {
         aberto(m, id)
     });
-    nunca(&mut m, id, t2 + 4 * PAUSA, "um botão numa palavra sem problema", |m| {
-        botoes(m, id).is_empty()
-    });
+    nunca(
+        &mut m,
+        id,
+        t2 + 4 * PAUSA,
+        "um botão numa palavra sem problema",
+        |m| botoes(m, id).is_empty(),
+    );
 }
 
 /// Clicar no texto do balão (fora dos botões) não põe o cursor por baixo dele nem o fecha.
@@ -218,6 +249,10 @@ fn o_clique_no_texto_do_balao_fica_nele() {
     m.clica(id, x, y, Modifiers::default());
     m.pinta(id);
     assert!(aberto(&mut m, id), "o balão fica");
-    assert_eq!(crate::definicao::cursor(&mut m, id), antes, "o cursor não mexe");
+    assert_eq!(
+        crate::definicao::cursor(&mut m, id),
+        antes,
+        "o cursor não mexe"
+    );
     assert_eq!(texto(&mut m, id), TEXTO);
 }

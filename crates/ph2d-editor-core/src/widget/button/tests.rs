@@ -207,7 +207,12 @@ fn paint_smoke_loading_renders_spinner() {
 fn on_an_elevated_surface_the_hover_never_paints_the_surface_colour() {
     for theme in Theme::ALL {
         let surface = ColorToken::BgElev.resolve(theme);
-        for kind in [ButtonKind::Default, ButtonKind::IconOnly { icon: IconId::Close }] {
+        for kind in [
+            ButtonKind::Default,
+            ButtonKind::IconOnly {
+                icon: IconId::Close,
+            },
+        ] {
             let b = fixture().kind(kind).on_elevated();
             for state in [ButtonState::Hovered, ButtonState::Focused] {
                 let bg = b.clone().state(state).bg_color(theme);

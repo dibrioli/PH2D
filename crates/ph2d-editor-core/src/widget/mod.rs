@@ -81,7 +81,8 @@ pub use blender_color_picker::{
     rgba_to_hsv, value_pick, wheel_pick,
 };
 pub use button::{
-    Button, ButtonKind, ButtonState, ButtonSurface, ICON_BUTTON_SIZE_PX, button_label_font, paint_button,
+    Button, ButtonKind, ButtonState, ButtonSurface, ICON_BUTTON_SIZE_PX, button_label_font,
+    paint_button,
 };
 pub use button_surface::{
     GroupCell, GroupPos, SEGMENT_HAIRLINE, block_cells, block_cells_of, chip_axis_color,

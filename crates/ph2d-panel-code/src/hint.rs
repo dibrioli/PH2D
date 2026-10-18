@@ -192,8 +192,7 @@ impl CodeView {
         } else {
             n as f32 * (ROW_H_PX + gap)
         };
-        let rows_in =
-            |space: f32| ((space - 2.0 * pad - buttons_h) / lh).floor().max(0.0) as usize;
+        let rows_in = |space: f32| ((space - 2.0 * pad - buttons_h) / lh).floor().max(0.0) as usize;
         let below = rows_in(tr.y + tr.h - (at.y + at.h));
         let above = rows_in(at.y - tr.y);
         let up = (up && above > 0)

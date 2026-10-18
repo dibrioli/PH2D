@@ -95,3 +95,34 @@ cobertura de hoje), contínua por construção, exata numa borda reta (a bilinea
 ≤ 10 % dos do produto e o pior deles ≥ −0,25; (1b) os da família (b) ≤ os do produto + 2; (2)–(4) como no §2; (5) o
 custo da C3 ≤ +5 % (intercalado; com `load` > 5 o número vai com o `load` ao lado e repete-se se passar de +5 %).
 **MORRE**: (a) > 50 % · um portão vermelho · os bits de fora mudam · o custo > +20 %. Entre os dois: não entra.
+
+## 5. Rodada 2 — o campo: NÃO ENTRA sozinho (`decide2.log`); o 2.º mecanismo (`lista2–4.log`)
+
+Contra o §4: (1a) 139 → 12 (8,6 %) ✓ mas o pior dos 12 ainda −0,97 ✗ · (1b) 40 → 38 ✓ · anéis iguais ou melhores (zoom
+0,8: 10 errados → 0) ✓ · bits de fora 0 ✓ · custo C3 cena 5 3,37 → 3,68 ms (+9 %; a borda 0,37 → 0,71, a fina igual;
+`load` 10–49) ✗ ⇒ não entra.
+
+Os 12 que sobram (zoom 3,2, d −0,06 a −0,10, a placa = o ambiente): nenhuma etapa os move — sem face, sem face pelo
+ponto, sem pé, sem miolo, sem média no eixo: os MESMOS texels. O que os move: **a marcha da luz direta dos texels de
+FORA pela borda exata também** (`Config::borda_fora`, `BORDA_FORA`). O campo (como a reta por texel) erra ~0,1 texel; um
+texel rente que ele põe FORA marcha pelo iso-½ (W5d: «a C3 desliga-a na luz direta dos texels de FORA»), e para o iso-½ ele
+está DENTRO: a marcha nasce dentro do corpo e sai tapada. Lista, zoom 3,2, 8 fases + imagem:
+
+| | (a) polígono | (b) polígono | (a) imagem | (b) imagem |
+|---|---|---|---|---|
+| produto | 69 | 14 | 8 | 11 |
+| campo | 5 | 10 | 3 | 12 |
+| **campo + fora** | **0** | **5** | **0** | 12 |
+| exata (reta por texel) + fora | 7 | 14 | 0 | 12 |
+| sem borda exata | 4 | 17 | 0 | 11 |
+
+⇒ os DOIS mecanismos: a fresta da reta por texel (cura: o campo) e os dois predicados (cura: o mesmo na marcha de fora).
+A M4 da W5d («equivalente: escolha de custo, a mesma foto») NÃO era equivalente — a foto não via um texel rente.
+
+## 6. A candidata 3 — o campo + fora — e o seu kill-criterion (escrito ANTES de medir)
+
+O campo (§4) + `borda_fora`, e o `c3_borda` com a vizinhança 12×12 do grupo em memória partilhada (a mesma conta, menos
+leituras). Régua, variantes e itens (2)–(4) como no §4. **PASSA**: (1a) a família (a) ≤ 10 % do produto E o pior dela
+≥ −0,25 · (1b) ≤ produto + 2 · (5) o custo da C3 ≤ +5 % (intercalado, o mínimo de 7, cenas 5 e 6; com `load` > 5 o
+número vai com o `load` e repete-se se passar de +5 %). **MORRE**: (a) > 50 % · portão vermelho · bits de fora · custo
+> +20 %. Entre: não entra.

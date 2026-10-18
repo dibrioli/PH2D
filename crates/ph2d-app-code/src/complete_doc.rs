@@ -126,7 +126,6 @@ impl crate::doc::CodeDoc {
     /// Aceita a linha `index` da lista mostrada: troca a palavra escrita em CADA cursor que a tem
     /// pela proposta, num passo de undo, com o cursor onde o snippet o põe.
     pub(crate) fn accept_completion(&mut self, index: usize) {
-        use ph2d_code_buffer::{Change, ChangeSet, EditKind, Range as Cursor, Selection};
         let head = self.buffer.selection().primary().head;
         let Some(list) = self.complete.shown(self.buffer.text(), head) else {
             return;
@@ -137,7 +136,7 @@ impl crate::doc::CodeDoc {
         let Some(item) = s.items.as_ref().and_then(|v| v.get(*i)) else {
             return;
         };
-        let (insert, caret) = insertion(item);
+        let exp = insertion(item);
         let signature = item.signature;
         let t = self.buffer.text();
         let typed = t.slice(replaced(s, head));
@@ -152,34 +151,7 @@ impl crate::doc::CodeDoc {
             .map(|r| (r.head - n, r.head, *r == primary))
             .collect();
         spots.sort_by_key(|s| s.0);
-        let changes = spots
-            .iter()
-            .map(|&(a, b, _)| Change {
-                range: a..b,
-                insert: insert.clone(),
-            })
-            .collect();
-        let Some(cs) = ChangeSet::new(changes) else {
-            return;
-        };
-        let mut delta = 0isize;
-        let mut cursors = Vec::with_capacity(spots.len());
-        let mut main = 0;
-        for &(a, b, is_primary) in &spots {
-            let at = (a as isize + delta) as usize + caret;
-            if is_primary {
-                main = cursors.len();
-            }
-            cursors.push(Cursor::cursor(at));
-            delta += insert.len() as isize - (b - a) as isize;
-        }
-        if cursors.is_empty() {
-            return;
-        }
-        let edits = self
-            .buffer
-            .apply(cs, Some(Selection::new(cursors, main)), EditKind::Other);
-        self.edited(&edits, true);
+        self.insert_snippet(&spots, &exp);
         self.complete.close();
         if signature {
             self.hints.open_signature();

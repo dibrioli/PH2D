@@ -34,6 +34,7 @@ impl CodeDoc {
     pub(crate) fn owns(&self, ticket: Ticket) -> bool {
         self.hints.owns(ticket)
             || self.sem.ticket == Some(ticket)
+            || self.inlay.ticket == Some(ticket)
             || self.goto.as_ref().is_some_and(|g| g.ticket == Some(ticket))
             || self.actions.as_ref().is_some_and(|a| a.owns(ticket))
             || self.occ.ticket == Some(ticket)
@@ -48,6 +49,8 @@ impl CodeDoc {
     pub(crate) fn answer(&mut self, ticket: Ticket, uri: &str, answer: Answer) {
         if self.sem.ticket == Some(ticket) {
             self.sem.answer(ticket, answer);
+        } else if self.inlay.ticket == Some(ticket) {
+            self.inlay.answer(ticket, answer);
         } else if self.occ.ticket == Some(ticket) {
             self.occurrences_answer(answer);
         } else if self

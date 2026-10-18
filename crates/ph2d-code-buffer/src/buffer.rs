@@ -84,6 +84,15 @@ impl Buffer {
         self.selection = sel.with_ranges(clamped);
     }
 
+    /// Muda a seleção SEM partir o grupo de escrita em curso: o salto entre os buracos de um modelo
+    /// (I12) — o que se escreve no buraco seguinte desfaz-se junto com o do anterior (o VS Code,
+    /// medição I9_I12_I14 §I12).
+    pub fn jump_selection(&mut self, sel: Selection) {
+        let from = self.selection.clone();
+        self.set_selection(sel);
+        self.history.carry(&from, self.selection.clone());
+    }
+
     /// A ÚNICA porta de mutação: aplica, mapeia a seleção (ou usa `after`) e regista no histórico.
     pub fn apply(&mut self, cs: ChangeSet, after: Option<Selection>, kind: EditKind) -> Edits {
         // As pontas de cada troca descem à fronteira de carácter (o `crop` entra em pânico no meio

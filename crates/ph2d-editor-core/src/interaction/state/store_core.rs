@@ -83,6 +83,7 @@ impl WidgetStore {
             command_pick: None,
             command_palette_query: String::new(),
             command_palette_toggled: false,
+            command_palette_scope: Default::default(),
             section_outline_color: BTreeMap::new(),
             section_prefs: Default::default(),
             notes_per_panel: BTreeMap::new(),

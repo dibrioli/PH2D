@@ -213,63 +213,6 @@ pub(crate) fn word_at(text: &Text, head: usize) -> Option<Word> {
     })
 }
 
-/// O que um snippet LSP insere sem paragens (os buracos chegam no I12): o texto antes da 1.ª
-/// paragem numerada e depois da última, e o cursor na 1.ª (`set(${1:a}, ${2:b})$0` → `set(|)`).
-#[must_use]
-pub fn expand(snippet: &str) -> (String, usize) {
-    // (texto, paragens: (número, byte no texto))
-    let mut text = String::new();
-    let mut stops: Vec<(u32, usize, usize)> = Vec::new();
-    let mut it = snippet.chars().peekable();
-    let mut depth: Vec<(u32, usize)> = Vec::new();
-    while let Some(c) = it.next() {
-        match c {
-            '\\' => {
-                if let Some(n) = it.next() {
-                    text.push(n);
-                }
-            }
-            '$' if it.peek().is_some_and(char::is_ascii_digit) => {
-                let mut n = 0;
-                while let Some(d) = it.peek().and_then(|d| d.to_digit(10)) {
-                    n = n * 10 + d;
-                    it.next();
-                }
-                stops.push((n, text.len(), text.len()));
-            }
-            '$' if it.peek() == Some(&'{') => {
-                it.next();
-                let mut n = 0;
-                while let Some(d) = it.peek().and_then(|d| d.to_digit(10)) {
-                    n = n * 10 + d;
-                    it.next();
-                }
-                if it.peek() == Some(&':') {
-                    it.next();
-                }
-                depth.push((n, text.len()));
-            }
-            '}' if !depth.is_empty() => {
-                let (n, at) = depth.pop().unwrap_or((0, 0));
-                stops.push((n, at, text.len()));
-            }
-            _ => text.push(c),
-        }
-    }
-    let numbered: Vec<&(u32, usize, usize)> = stops.iter().filter(|s| s.0 > 0).collect();
-    match (numbered.first(), numbered.last()) {
-        (Some(first), Some(last)) => {
-            let a = numbered.iter().map(|s| s.1).min().unwrap_or(first.1);
-            let b = numbered.iter().map(|s| s.2).max().unwrap_or(last.2);
-            (format!("{}{}", &text[..a], &text[b..]), a)
-        }
-        _ => {
-            let at = stops.iter().find(|s| s.0 == 0).map_or(text.len(), |s| s.1);
-            (text, at)
-        }
-    }
-}
-
 /// Quantas vezes cada nome aparece nos scripts do projeto (fora de strings e comentários), e cada
 /// `a.b`/`a:b` também (a chave de um membro de `ph2d`).
 #[must_use]
@@ -522,12 +465,14 @@ impl Completer {
         }
     }
 
-    /// A resposta do servidor ao pedido `ticket` (as propriedades do `self` juntam-se aqui).
+    /// A resposta do servidor ao pedido `ticket`: as propriedades do `self` e os esqueletos (`local`,
+    /// I12) juntam-se aqui, e uma chamada da API leva o esqueleto dela no lugar do snippet do servidor.
     pub fn answer(
         &mut self,
         ticket: Ticket,
         items: Vec<ph2d_code_intel::Completion>,
         properties: &[String],
+        local: Vec<Item>,
         usage: &BTreeMap<String, u32>,
     ) -> bool {
         let Some(s) = self.session.as_mut().filter(|s| s.ticket == Some(ticket)) else {
@@ -548,7 +493,19 @@ impl Completer {
                 snippet: c.snippet,
                 signature: c.command.as_deref() == Some(crate::hint::PARAMETER_HINTS),
             })
+            .map(|mut i| {
+                if let Some(e) = q.and_then(|q| crate::skeleton::api_entry(q, &i.label)) {
+                    i.insert = crate::skeleton::call_snippet(e);
+                    i.snippet = true;
+                }
+                i
+            })
             .collect();
+        for l in local {
+            if list.iter().all(|i| i.label != l.label) {
+                list.push(l);
+            }
+        }
         if q == Some("self") {
             for p in properties {
                 if list.iter().all(|i| &i.label != p) {
@@ -572,6 +529,25 @@ impl Completer {
     }
 }
 
+impl Completer {
+    /// Sem servidor que responda: a pausa passou e a lista abre só com o que é nosso (`local`, os
+    /// esqueletos do I12) — ou fecha, se não há nada.
+    pub fn offline(&mut self, local: impl FnOnce(&Session) -> Vec<Item>, now_ns: u128) {
+        let Some(s) = self.session.as_mut() else {
+            return;
+        };
+        if s.items.is_some() || s.due_ns > now_ns {
+            return;
+        }
+        let l = local(s);
+        if l.is_empty() {
+            self.session = None;
+        } else {
+            s.items = Some(l);
+        }
+    }
+}
+
 impl Session {
     fn follow(&mut self, rows: usize) {
         if self.selected < self.top {
@@ -582,13 +558,17 @@ impl Session {
     }
 }
 
-/// O texto a inserir para `item` sobre a palavra, e onde fica o cursor (bytes desde o início).
+/// O texto a inserir para `item` sobre a palavra, com os buracos do snippet (I12).
 #[must_use]
-pub(crate) fn insertion(item: &Item) -> (String, usize) {
+pub(crate) fn insertion(item: &Item) -> crate::snippet::Expanded {
     if item.snippet {
-        expand(&item.insert)
+        crate::snippet::parse(&item.insert)
     } else {
-        (item.insert.clone(), item.insert.len())
+        crate::snippet::Expanded {
+            text: item.insert.clone(),
+            stops: Vec::new(),
+            end: None,
+        }
     }
 }
 
@@ -600,18 +580,6 @@ pub(crate) fn replaced(s: &Session, head: usize) -> Range<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn um_snippet_insere_o_nome_e_os_parenteses_com_o_cursor_dentro() {
-        assert_eq!(
-            expand("set(${1:entity}, ${2:field}, ${3:value})$0"),
-            ("set()".into(), 4)
-        );
-        assert_eq!(expand("spawn()$0"), ("spawn()".into(), 7));
-        assert_eq!(expand("print($1)$0"), ("print()".into(), 6));
-        assert_eq!(expand("a\\$b"), ("a$b".into(), 3));
-        assert_eq!(expand("plain"), ("plain".into(), 5));
-    }
 
     #[test]
     fn a_palavra_no_cursor_sabe_o_que_vem_antes() {

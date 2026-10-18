@@ -302,6 +302,7 @@ impl CodeDoc {
     }
 
     pub(crate) fn undo_text(&mut self, redo: bool) -> bool {
+        self.snippet = None;
         let edits = if redo {
             self.buffer.redo()
         } else {

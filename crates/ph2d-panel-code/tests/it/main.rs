@@ -117,6 +117,9 @@ pub fn frame<'a>(
         signature: None,
         occurrences: &[],
         rename: None,
+        inlays: &[],
+        stops: &[],
+        strict: false,
     }
 }
 

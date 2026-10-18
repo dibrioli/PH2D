@@ -332,6 +332,7 @@ impl WidgetStore {
         self.command_palette = Some(model);
         self.command_pick = None;
         self.command_palette_query.clear();
+        self.command_palette_scope = Default::default();
         self.reset_command_palette_scroll();
     }
 
@@ -340,6 +341,7 @@ impl WidgetStore {
     pub fn close_command_palette(&mut self) {
         self.command_palette = None;
         self.command_palette_query.clear();
+        self.command_palette_scope.scopes = None;
         self.reset_command_palette_scroll();
     }
 
@@ -434,6 +436,45 @@ impl WidgetStore {
     /// reads it back with [`Self::take_command_pick`] and maps it to a real action.
     pub fn set_command_pick(&mut self, id: ph2d_a11y::NodeId) {
         self.command_pick = Some(id);
+        self.command_palette_scope.pick_query = self.command_palette_query.clone();
+    }
+
+    /// ⭐ **Os prefixos** `>` `@` `:` (CodeEditor I14) da paleta aberta — quem a abre dá-os logo a
+    /// seguir ao [`Self::open_command_palette`] (que os limpa); sem eles a busca é a de sempre.
+    pub fn set_command_palette_scopes(&mut self, s: crate::widget::command_palette::PaletteScopes) {
+        if self.command_palette.is_some() {
+            self.command_palette_scope.scopes = Some(s);
+        }
+    }
+
+    #[must_use]
+    pub fn command_palette_scopes(&self) -> Option<&crate::widget::command_palette::PaletteScopes> {
+        self.command_palette_scope.scopes.as_ref()
+    }
+
+    /// A busca que estava escrita quando o último pick se deu (o `:40` de um «Go to line»).
+    #[must_use]
+    pub fn command_pick_query(&self) -> &str {
+        &self.command_palette_scope.pick_query
+    }
+
+    /// `id` é um item da paleta aberta — do modelo ou de um prefixo.
+    #[must_use]
+    pub fn command_palette_has(&self, id: ph2d_a11y::NodeId) -> bool {
+        self.command_palette.as_ref().is_some_and(|m| m.is_item(id))
+            || self.command_palette_scopes().is_some_and(|s| s.is_item(id))
+    }
+
+    /// O item do `Enter` para a busca escrita (o MESMO filtro que se pinta, prefixos incluídos).
+    #[must_use]
+    pub fn command_palette_top(&self) -> Option<ph2d_a11y::NodeId> {
+        let model = self.command_palette.as_ref()?;
+        crate::widget::command_palette::scoped(
+            model,
+            &self.command_palette_query,
+            self.command_palette_scopes(),
+        )
+        .top
     }
 
     /// Take the pending command-palette pick, clearing it (so a pick is routed exactly once). `None` when

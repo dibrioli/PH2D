@@ -73,10 +73,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         WidgetEvent::Click(id) if id == CMD_PALETTE_CARD => true,
         // A click on an item: record the pick (the shell routes it) and close.
         WidgetEvent::Click(id) => {
-            let is_item = hero
-                .store
-                .command_palette_model()
-                .is_some_and(|m| m.is_item(id));
+            let is_item = hero.store.command_palette_has(id);
             if is_item {
                 hero.store.set_command_pick(id);
                 hero.store.close_command_palette();

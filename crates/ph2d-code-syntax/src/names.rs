@@ -104,7 +104,9 @@ impl Syntax {
         walk(self.tree().root_node(), text, name)
     }
 
-    fn declares_global_function(&self, text: &Text, name: &str) -> bool {
+    /// O script declara a função GLOBAL `name` no topo (um gancho, se `name` é um).
+    #[must_use]
+    pub fn declares_global_function(&self, text: &Text, name: &str) -> bool {
         let root = self.tree().root_node();
         (0..root.child_count()).any(|i| {
             root.field_name_for_child(i) != Some("local_declaration")

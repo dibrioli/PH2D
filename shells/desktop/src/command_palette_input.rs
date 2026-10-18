@@ -43,13 +43,7 @@ impl App {
     pub(crate) fn command_palette_confirm(&mut self) {
         if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             let store = &mut h.store;
-            let picked = store.command_palette_model().and_then(|model| {
-                ph2d_editor_core::widget::command_palette::top_match(
-                    model,
-                    store.command_palette_query(),
-                )
-            });
-            if let Some(id) = picked {
+            if let Some(id) = store.command_palette_top() {
                 store.set_command_pick(id);
                 store.close_command_palette();
             }

@@ -166,6 +166,17 @@ impl History {
         self.saved == Some(self.undo.len())
     }
 
+    /// A seleção saltou de `from` para `to` sem edição: um grupo aberto que acabava em `from` passa a
+    /// acabar em `to` (a escrita a seguir junta-se-lhe).
+    pub(crate) fn carry(&mut self, from: &Selection, to: Selection) {
+        if let Some(g) = self.undo.last_mut()
+            && !g.sealed
+            && g.after == *from
+        {
+            g.after = to;
+        }
+    }
+
     pub fn seal(&mut self) {
         if let Some(g) = self.undo.last_mut() {
             g.sealed = true;

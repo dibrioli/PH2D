@@ -180,6 +180,19 @@ pub struct CodeFrame<'a> {
     /// As ocorrências do nome sob o cursor (I10), realçadas.
     pub occurrences: &'a [Range<usize>],
     pub rename: Option<RenameView<'a>>,
+    /// As dicas de tipo à mostra (I9), por ordem de `at`.
+    pub inlays: &'a [Inlay],
+    /// Os buracos NÃO activos do modelo inserido (I12), marcados.
+    pub stops: &'a [Range<usize>],
+    /// O script tem `--!strict` (I14): a barra di-lo.
+    pub strict: bool,
+}
+
+/// Uma dica de tipo (I9): o rótulo (`: number`) mostrado em `at` sem ocupar bytes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Inlay {
+    pub at: usize,
+    pub label: String,
 }
 
 /// A caixinha do rename (I10), por baixo de `word` (bytes do buffer).

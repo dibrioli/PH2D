@@ -9,6 +9,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // A barra de estado do editor (E4): o cursor, os problemas e o selo do último salvar.
         "code.status.position" => "Ln {line}, Col {col}",
         "code.status.no_problems" => "No problems",
+        // O script tem `--!strict` na 1.ª linha (I14).
+        "code.status.strict" => "Strict types",
         // As contagens têm a forma de UM à parte (`_one`): «1 errors» era o que a barra dizia.
         "code.status.problems" => "{errors} · {warnings}",
         "code.status.errors" => "{count} errors",
@@ -65,6 +67,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // A lista de completação (I4): o detalhe de uma propriedade `ph2d.property` depois de
         // `self.`, e o nome da lista para o leitor de ecrã.
         "code.complete.property" => "property",
+        // Os esqueletos (I12): o detalhe de um gancho do motor e o de um modelo de chamada.
+        "code.complete.hook" => "engine hook",
+        "code.complete.skeleton" => "skeleton",
         "code.a11y.completion" => "Suggestions",
         // As acções de contexto (I7, Alt+Enter): o «você quis dizer», a dica de tipo inserida, e a
         // lista vazia. (O aviso do campo do `self` é `code.explain.unknown_field`, I8.)
@@ -119,6 +124,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.restart_assistant" => "Restart Code Assistant",
         "code.cmd.rename" => "Rename Symbol \u{00b7} F2",
         "code.cmd.references" => "Find References \u{00b7} Shift+F12",
+        // Ligar/desligar (I9, I14): o rótulo diz o que o comando FAZ agora.
+        "code.cmd.type_hints" => "Show Type Hints",
+        "code.cmd.type_hints_off" => "Hide Type Hints",
+        "code.cmd.strict" => "Turn On Strict Types (--!strict)",
+        "code.cmd.strict_off" => "Turn Off Strict Types (--!strict)",
         // E11: a lista de scripts do projeto, à esquerda dentro da aba.
         "code.list.title" => "Scripts",
         "code.list.filter" => "Filter",

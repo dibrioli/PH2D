@@ -416,6 +416,8 @@ pub struct WidgetStore {
     /// abriu a paleta é que sabe, e é ele que reconstrói o modelo. É a mesma lei do `command_pick`:
     /// o editor-core nunca aprende o que um item quer dizer.
     pub(super) command_palette_toggled: bool,
+    /// Os prefixos `>` `@` `:` de quem abriu a paleta e a busca do último pick (CodeEditor I14).
+    pub(super) command_palette_scope: crate::widget::command_palette::ScopeState,
     // ⚠️ A rolagem da lista da paleta NÃO mora aqui desde 2026-09-29: ela passou às tabelas de todo
     // painel com a chave `widget::command_palette::CMD_PALETTE_CARD` (a porta `scroll_area`, W5).
     /// Section-header id → highlighter color index (0..4 for the 5

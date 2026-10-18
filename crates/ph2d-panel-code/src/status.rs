@@ -27,6 +27,8 @@ pub struct StatusLine {
     pub problems: (String, Tone),
     pub assist: Option<(String, Tone)>,
     pub badge: Option<(String, Tone)>,
+    /// O modo de tipos do script (I14): «Strict» com `--!strict`.
+    pub mode: Option<String>,
 }
 
 impl StatusLine {
@@ -82,6 +84,9 @@ impl StatusLine {
             problems,
             assist: frame.assist.map(assist_line),
             badge: badge_line(frame.badge, frame.project_unsaved),
+            mode: frame
+                .strict
+                .then(|| tr("code.status.strict").to_owned()),
         }
     }
 }
@@ -175,10 +180,14 @@ pub(crate) fn paint(
     let gap = Spacing::Xl.px();
     let right = bar.x + bar.w - pad;
     let mut x = bar.x + pad;
+    let mode = s.mode.as_deref().map(|m| (m, Tone::Plain));
     for (text, tone) in [
         (s.position.as_str(), Tone::Plain),
         (s.problems.0.as_str(), s.problems.1),
-    ] {
+    ]
+    .into_iter()
+    .chain(mode)
+    {
         let w = label_column_width(ts, font, [text]);
         paint_text_elided(
             ts,

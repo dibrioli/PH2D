@@ -94,6 +94,34 @@ pub struct DocCommand {
     pub menu: DocMenu,
 }
 
+/// O tipo de um símbolo do documento (o grupo dele no `@` da paleta, I14).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DocSymbolKind {
+    Function,
+    Property,
+    Variable,
+}
+
+/// Um símbolo do documento activo, para o `@` da paleta (CodeEditor I14). Linha e coluna (em
+/// caracteres) 0-based, no INÍCIO do nome (onde o VS Code põe o cursor).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DocSymbol {
+    pub name: String,
+    /// O contentor (`Bob` em `Bob:update`), em cinzento ao lado.
+    pub container: Option<String>,
+    pub kind: DocSymbolKind,
+    pub line: usize,
+    pub col: usize,
+}
+
+/// Os sítios do documento activo a que a paleta leva: `@` símbolos, `:` linhas.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DocPlaces {
+    /// Pela ordem do documento.
+    pub symbols: Vec<DocSymbol>,
+    pub lines: usize,
+}
+
 /// O que um evento do rato traz além da posição.
 pub struct PointerInput<'a> {
     pub text: &'a mut TextSystem,
@@ -159,6 +187,16 @@ pub trait DocumentSurface: Any {
     /// Corre o comando `cmd` (um id de [`Self::commands`]). `true` = era dela.
     fn command(&mut self, id: u64, cmd: ph2d_a11y::NodeId) -> bool {
         let _ = (id, cmd);
+        false
+    }
+    /// Os sítios da aba para o `@` e o `:` da paleta (I14); `None` = ela não tem nenhum.
+    fn places(&mut self, id: u64) -> Option<DocPlaces> {
+        let _ = id;
+        None
+    }
+    /// Leva o cursor da aba à linha e coluna (0-based, em caracteres; a coluna presa à linha).
+    fn go_to(&mut self, id: u64, line: usize, col: usize) -> bool {
+        let _ = (id, line, col);
         false
     }
     fn as_any(&self) -> &dyn Any;

@@ -5,6 +5,22 @@
 use crate::{HighlightKind, Syntax};
 use ph2d_code_buffer::Text;
 
+/// O tipo de um [`Symbol`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SymbolKind {
+    Function,
+    Property,
+    Variable,
+}
+
+/// Um símbolo do script: o nome, o tipo e o byte do início do nome.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Symbol {
+    pub name: String,
+    pub kind: SymbolKind,
+    pub byte: usize,
+}
+
 impl Syntax {
     /// Os nomes das `ph2d.property("<nome>", …)` do topo, pela ordem.
     #[must_use]
@@ -35,6 +51,90 @@ impl Syntax {
             .collect()
     }
 
+    /// Os símbolos do script, pela ordem do texto (o `@` da paleta, I14): as funções (de qualquer
+    /// profundidade, com o nome inteiro — `M.soma`, `M:metodo`), as `ph2d.property` do topo e os locais
+    /// do topo. O byte é o do INÍCIO do nome. Funcionam sem o assistente (o `documentSymbol` do
+    /// `luau-lsp` não dá as propriedades, medição I9_I12_I14 §I14).
+    #[must_use]
+    pub fn symbols(&self, text: &Text) -> Vec<Symbol> {
+        fn functions(n: tree_sitter::Node, text: &Text, out: &mut Vec<Symbol>) {
+            if n.kind() == "function_declaration"
+                && let Some(name) = n.child_by_field_name("name")
+            {
+                out.push(Symbol {
+                    name: text.slice(name.byte_range()),
+                    kind: SymbolKind::Function,
+                    byte: name.start_byte(),
+                });
+            }
+            let mut c = n.walk();
+            for ch in n.named_children(&mut c) {
+                functions(ch, text, out);
+            }
+        }
+        let root = self.tree().root_node();
+        let mut out = Vec::new();
+        functions(root, text, &mut out);
+        let mut c = root.walk();
+        for n in root.named_children(&mut c) {
+            if n.kind() != "variable_declaration" {
+                continue;
+            }
+            let list = n
+                .named_child(0)
+                .filter(|a| a.kind() == "assignment_statement")
+                .and_then(|a| a.named_child(0))
+                .or_else(|| n.named_child(0))
+                .filter(|l| l.kind() == "variable_list");
+            let Some(list) = list else { continue };
+            let mut lc = list.walk();
+            for name in list.children_by_field_name("name", &mut lc) {
+                out.push(Symbol {
+                    name: text.slice(name.byte_range()),
+                    kind: SymbolKind::Variable,
+                    byte: name.start_byte(),
+                });
+            }
+        }
+        out.extend(
+            self.property_declarations(text)
+                .into_iter()
+                .map(|(name, r)| Symbol {
+                    name,
+                    kind: SymbolKind::Property,
+                    byte: r.start,
+                }),
+        );
+        out.sort_by_key(|s| s.byte);
+        out
+    }
+
+    /// `byte` está no TOPO do script: fora do corpo de qualquer função (o nome de uma função a meio de
+    /// escrever, `function up|`, ainda é topo).
+    #[must_use]
+    pub fn at_top_level(&self, text: &Text, byte: usize) -> bool {
+        let byte = byte.min(text.len());
+        let root = self.tree().root_node();
+        let mut n = root.descendant_for_byte_range(byte, byte);
+        while let Some(node) = n {
+            // Entre o fim dos parâmetros e o `end` (o `body` acaba na última instrução: uma linha
+            // vazia antes do `end` ainda é dentro).
+            if matches!(node.kind(), "function_declaration" | "function_definition")
+                && let Some(params) = node.child_by_field_name("parameters")
+            {
+                let close = node
+                    .child(node.child_count().saturating_sub(1))
+                    .filter(|c| c.kind() == "end")
+                    .map_or(node.end_byte(), |c| c.start_byte());
+                if params.end_byte() <= byte && byte <= close {
+                    return false;
+                }
+            }
+            n = node.parent();
+        }
+        true
+    }
+
     /// O carácter antes de `byte` é código (nem string nem comentário).
     #[must_use]
     pub fn in_code(&self, text: &Text, byte: usize) -> bool {
@@ -61,6 +161,46 @@ mod tests {
         );
         let s = Syntax::new(&t);
         assert_eq!(s.declared_properties(&t), ["amplitude", "speed"]);
+    }
+
+    #[test]
+    fn os_simbolos_pela_ordem_do_texto() {
+        let src = "ph2d.property(\"speed\", 2)\nlocal LIMITE, outro: number = 3, 4\nlocal function ajuda(v)\n  local dentro = 1\n  return v\nend\nlocal M = {}\nfunction M.soma(a) end\nfunction M:metodo() end\nX = 1\nlocal f = function() end\n";
+        let t = Text::new(src);
+        let got: Vec<(String, SymbolKind)> = Syntax::new(&t)
+            .symbols(&t)
+            .into_iter()
+            .map(|s| (s.name, s.kind))
+            .collect();
+        let want = [
+            ("speed", SymbolKind::Property),
+            ("LIMITE", SymbolKind::Variable),
+            ("outro", SymbolKind::Variable),
+            ("ajuda", SymbolKind::Function),
+            ("M", SymbolKind::Variable),
+            ("M.soma", SymbolKind::Function),
+            ("M:metodo", SymbolKind::Function),
+            ("f", SymbolKind::Variable),
+        ];
+        assert_eq!(
+            got,
+            want.map(|(n, k)| (n.to_owned(), k)),
+            "o local de dentro e a atribuição a um global não são símbolos"
+        );
+    }
+
+    #[test]
+    fn o_topo_e_fora_do_corpo_das_funcoes() {
+        let src = "ph2d.property(\"a\", 1)\nupd\nfunction init(self)\n  x = 1\n  \nend\nlocal f = function()\n  y = 2\nend\nfunction up\n";
+        let t = Text::new(src);
+        let s = Syntax::new(&t);
+        let at = |p: &str| src.find(p).unwrap() + p.len();
+        assert!(s.at_top_level(&t, at("\nupd")));
+        assert!(!s.at_top_level(&t, at("  x")));
+        assert!(!s.at_top_level(&t, at("x = 1\n  ")), "a linha vazia antes do `end`");
+        assert!(!s.at_top_level(&t, at("  y")));
+        assert!(s.at_top_level(&t, at("function up")));
+        assert!(s.at_top_level(&t, at("end\n")));
     }
 
     #[test]

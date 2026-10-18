@@ -223,7 +223,7 @@ impl Actions {
 
 /// Uma dica de tipo que vale a pena inserir: nem `any` (não diz nada), nem truncada, nem um genérico
 /// solto (`T`: o script não o declara — inserido, é um erro novo; medido no `dt` do `update`).
-fn insertable(ty: &str) -> bool {
+pub(crate) fn insertable(ty: &str) -> bool {
     let generic = ty.chars().next().is_some_and(char::is_uppercase)
         && ty.chars().skip(1).all(|c| c.is_ascii_digit());
     !(ty.is_empty() || ty == "any" || ty.contains("TRUNCATED") || generic)

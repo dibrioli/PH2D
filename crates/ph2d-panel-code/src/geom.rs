@@ -65,12 +65,20 @@ pub(crate) fn x_of_byte(layout: &Layout<Ink>, dl: &DisplayLine, b: usize) -> f32
     x_of_disp(layout, dl.to_disp(b))
 }
 
-/// O byte do buffer (relativo à linha) mais próximo de `x`: o meio de cada coluna decide.
+/// O x de onde uma faixa que começa no byte `b` se pinta: depois de uma dica nessa posição (I9).
+pub(crate) fn x_of_byte_after(layout: &Layout<Ink>, dl: &DisplayLine, b: usize) -> f32 {
+    x_of_disp(layout, dl.to_disp_after(b))
+}
+
+/// O byte do buffer (relativo à linha) mais próximo de `x`: o meio de cada coluna decide; um clique
+/// sobre uma dica (I9) dá a posição dela, de qualquer lado.
 pub(crate) fn byte_at_x(layout: &Layout<Ink>, dl: &DisplayLine, x: f32, line_len: usize) -> usize {
     let mut out = line_len;
-    let mut prev: Option<(usize, f32, f32)> = None;
-    let mut decide = |c: (usize, f32, f32)| -> bool {
-        if x < (c.1 + c.2) * 0.5 {
+    // (byte, x0, x1, é dica)
+    let mut prev: Option<(usize, f32, f32, bool)> = None;
+    let mut decide = |c: (usize, f32, f32, bool)| -> bool {
+        let edge = if c.3 { c.2 } else { (c.1 + c.2) * 0.5 };
+        if x < edge {
             out = c.0;
             return false;
         }
@@ -79,16 +87,17 @@ pub(crate) fn byte_at_x(layout: &Layout<Ink>, dl: &DisplayLine, x: f32, line_len
     let mut done = false;
     walk(layout, |d, x0, x1| {
         let byte = dl.owner(d);
+        let hint = dl.is_inlay(d);
         match prev {
-            Some(p) if p.0 == byte => prev = Some((byte, p.1, x1)),
+            Some(p) if p.0 == byte && p.3 == hint => prev = Some((byte, p.1, x1, hint)),
             Some(p) => {
                 if !decide(p) {
                     done = true;
                     return false;
                 }
-                prev = Some((byte, x0, x1));
+                prev = Some((byte, x0, x1, hint));
             }
-            None => prev = Some((byte, x0, x1)),
+            None => prev = Some((byte, x0, x1, hint)),
         }
         true
     });

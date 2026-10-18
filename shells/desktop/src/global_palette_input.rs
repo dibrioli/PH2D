@@ -31,8 +31,7 @@ use ph2d_editor_core::screens::hero::global_palette;
 /// empréstimo — o que empurraria a abertura para um flag lido no frame seguinte, que é um salto que
 /// nada exige.
 pub(crate) fn open_global_palette(hero: &mut HeroScreen) {
-    let model = global_palette::build_global_model(hero);
-    hero.store.open_command_palette(model);
+    global_palette::open(hero);
 }
 
 impl App {
@@ -46,10 +45,6 @@ impl App {
         let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return;
         };
-        let model = global_palette::build_global_model(h);
-        let Some(id) = h.store.take_command_pick_if(|id| model.is_item(id)) else {
-            return;
-        };
-        global_palette::route_global_pick(h, id);
+        global_palette::drain(h);
     }
 }

@@ -656,17 +656,20 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn commands(&self, id: u64) -> Vec<DocCommand> {
-        if self.docs.iter().any(|d| d.script.0 == id) {
-            crate::commands::commands()
-        } else {
-            Vec::new()
-        }
+        self.tab_commands(id)
+    }
+
+    fn places(&mut self, id: u64) -> Option<ph2d_editor_core::doc_surface::DocPlaces> {
+        self.tab_places(id)
+    }
+
+    fn go_to(&mut self, id: u64, line: usize, col: usize) -> bool {
+        self.tab_go_to(id, line, col)
     }
 
     fn command(&mut self, id: u64, cmd: ph2d_a11y::NodeId) -> bool {
         self.list.focus = None;
-        if cmd == crate::commands::CMD_RESTART_ASSIST {
-            self.intel.retry();
+        if self.family_command(cmd) {
             return true;
         }
         let did = self.touched(id).is_some_and(|d| {

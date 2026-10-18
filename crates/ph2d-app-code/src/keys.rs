@@ -109,6 +109,10 @@ impl CodeDoc {
             self.reveal();
             return out;
         }
+        if self.snippet_key(key, mods) {
+            self.reveal();
+            return out;
+        }
         let cmd = mods.ctrl || mods.meta;
         let shift = mods.shift;
         match key {
@@ -173,6 +177,7 @@ impl CodeDoc {
             }
             _ => self.complete.close(),
         }
+        self.snippet_follow();
         self.reveal();
         out
     }

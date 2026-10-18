@@ -75,6 +75,8 @@ pub struct CodeView {
     pub(crate) render_cap: usize,
     /// A coluna da barra de estado da última (revisão, cursor, tab).
     pub(crate) status_col: Option<((u64, usize, usize), usize)>,
+    /// As dicas do último quadro (byte, caracteres): o x de uma linha que a cache não tem conta-as.
+    pub(crate) inlay_cols: Vec<(usize, usize)>,
 }
 
 /// ⛔ **Os bytes de uma linha que a pintura mostra** — o resto acaba num «…». ⚠️ **De que recurso
@@ -109,6 +111,7 @@ impl Default for CodeView {
             rename_box: None,
             render_cap: LINE_RENDER_BYTES_MAX,
             status_col: None,
+            inlay_cols: Vec::new(),
         }
     }
 }
@@ -298,7 +301,14 @@ impl CodeView {
         {
             return geom::x_of_byte(layout, &r.dl, byte - r.start);
         }
-        t.display_col(byte, self.tab.max(1)) as f32 * self.m.advance
+        let ls = t.byte_of_line(line);
+        let a = self.inlay_cols.partition_point(|c| c.0 < ls);
+        let hints: usize = self.inlay_cols[a..]
+            .iter()
+            .take_while(|c| c.0 < byte)
+            .map(|c| c.1)
+            .sum();
+        (t.display_col(byte, self.tab.max(1)) + hints) as f32 * self.m.advance
     }
 
     /// O cursor nunca fica fora da vista: rola o mínimo para mostrar `byte`.

@@ -73,6 +73,8 @@ pub(crate) struct Intel {
     usage: Option<(u64, BTreeMap<String, u32>)>,
     /// Os arranques do servidor (as cores perguntam-se de novo a cada um).
     boots: u64,
+    /// As dicas de tipo ligadas (I9, o comando «Show Type Hints»; desligadas por omissão).
+    pub(crate) inlays_on: bool,
 }
 
 impl Default for Intel {
@@ -92,6 +94,7 @@ impl Intel {
             diags: BTreeMap::new(),
             usage: None,
             boots: 0,
+            inlays_on: false,
         }
     }
 
@@ -206,7 +209,9 @@ impl Intel {
             for d in docs.iter_mut() {
                 d.lsp.edits.clear();
                 d.assist.clear();
-                d.complete.close();
+                let (t, syn) = (d.buffer.text(), &d.syntax);
+                d.complete
+                    .offline(|s| crate::skeleton::local_items(t, syn, s), now_ns);
                 d.rename_offline();
                 d.occ.want = None;
                 if let Some(a) = d.actions.as_mut() {
@@ -257,8 +262,11 @@ impl Intel {
                     match answer {
                         Answer::Completion(items) => {
                             let props = d.syntax.declared_properties(d.buffer.text());
+                            let local = d.complete.session.as_ref().map_or_else(Vec::new, |s| {
+                                crate::skeleton::local_items(d.buffer.text(), &d.syntax, s)
+                            });
                             let usage = usage_of(&mut self.usage, lib);
-                            d.complete.answer(ticket, items, &props, usage);
+                            d.complete.answer(ticket, items, &props, local, usage);
                         }
                         _ => d.complete.close(),
                     }
@@ -376,6 +384,7 @@ impl Intel {
         self.ask_completions(docs, now_ns);
         self.ask_hints(docs, now_ns);
         self.ask_tokens(docs, now_ns);
+        self.ask_inlays(docs, now_ns);
         self.ask_names(docs);
     }
 
@@ -403,6 +412,32 @@ impl Intel {
             }
             d.sem.asked = Some(at);
             d.sem.ticket = Some(session.ask(&m.uri, Req::Tokens));
+        }
+    }
+
+    /// As dicas de tipo (I9), ligadas: como as cores — uma pergunta por versão, na mesma pausa.
+    fn ask_inlays(&mut self, docs: &mut [CodeDoc], now_ns: u128) {
+        if !self.inlays_on || !matches!(self.state, Some(ServerState::Ready)) {
+            return;
+        }
+        let Some(session) = self.session.as_mut() else {
+            return;
+        };
+        for d in docs.iter_mut() {
+            let current = Src::Doc {
+                serial: d.serial,
+                revision: d.buffer.revision(),
+            };
+            let Some(m) = self.mirrors.get(&d.script).filter(|m| m.src == current) else {
+                continue;
+            };
+            let at = (self.boots, m.version);
+            let idle = crate::semantic::SemHeld::idle_ns(&d.assist);
+            if d.inlay.asked == Some(at) || now_ns < m.changed_ns.saturating_add(idle) {
+                continue;
+            }
+            d.inlay.asked = Some(at);
+            d.inlay.ticket = Some(session.ask(&m.uri, Req::TypeHints));
         }
     }
 
@@ -490,7 +525,9 @@ impl Intel {
             }
             if !ready {
                 if !waiting {
-                    d.complete.close();
+                    let (t, syn) = (d.buffer.text(), &d.syntax);
+                    d.complete
+                        .offline(|s| crate::skeleton::local_items(t, syn, s), now_ns);
                 }
                 continue;
             }

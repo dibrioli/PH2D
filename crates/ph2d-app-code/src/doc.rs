@@ -63,6 +63,8 @@ pub(crate) struct CodeDoc {
     pub(crate) hints: crate::hint::Hints,
     /// As cores do assistente (I11).
     pub(crate) sem: crate::semantic::SemHeld,
+    /// As dicas de tipo (I9; vazias com elas desligadas).
+    pub(crate) inlay: crate::inlay::InlayHeld,
     /// Ctrl+clique / F12 à espera do assistente (I6).
     pub(crate) goto: Option<crate::goto::Goto>,
     /// As acções de contexto do Alt+Enter (I7).
@@ -77,6 +79,8 @@ pub(crate) struct CodeDoc {
     /// As ocorrências do nome sob o cursor (I10), e a lista delas do Shift+F12.
     pub(crate) occ: crate::refs::Occurrences,
     pub(crate) refs: Option<crate::refs::RefsList>,
+    /// O modelo com buracos inserido, enquanto a sessão dele vive (I12).
+    pub(crate) snippet: Option<crate::snippet::Tabstops>,
     /// As cores que o último quadro pintou (a sonda `ink_painted`).
     pub(crate) painted: Vec<(std::ops::Range<usize>, Ink)>,
     /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
@@ -122,6 +126,7 @@ impl CodeDoc {
             complete: crate::complete::Completer::default(),
             hints: crate::hint::Hints::default(),
             sem: crate::semantic::SemHeld::default(),
+            inlay: crate::inlay::InlayHeld::default(),
             goto: None,
             actions: None,
             lint: crate::lint::Lint::default(),
@@ -130,6 +135,7 @@ impl CodeDoc {
             link_ask: None,
             occ: crate::refs::Occurrences::default(),
             refs: None,
+            snippet: None,
             painted: Vec::new(),
             last_input_ns: 0,
             badge: None,
@@ -176,12 +182,16 @@ impl CodeDoc {
         self.lsp.edits.extend_from_slice(edits);
         self.assist.edited(edits);
         self.sem.edited(edits);
+        self.inlay.edited(edits);
         self.goto = None;
         self.actions = None;
         self.lint.edited(edits);
         self.rename = None;
         self.refs = None;
         self.occ.edited();
+        if let Some(s) = &mut self.snippet {
+            s.edited(edits);
+        }
         self.complete.edited(edits);
         self.hints.hover = None;
         if let Some(a) = &mut self.diag_anchor {
@@ -380,8 +390,12 @@ impl CodeDoc {
             painted,
             occ,
             rename,
+            inlay,
+            snippet,
             ..
         } = self;
+        let stops = snippet.as_ref().map(|s| s.marks()).unwrap_or_default();
+        let strict = crate::strict::is_strict(buffer.text());
         painted.clear();
         let mut spans = |r: std::ops::Range<usize>| -> Vec<(std::ops::Range<usize>, Ink)> {
             let s = crate::semantic::spans(syntax, buffer.text(), sem, &held.list, r);
@@ -458,6 +472,9 @@ impl CodeDoc {
                 hint: &rename_note.0,
                 error: rename_note.1.as_deref(),
             }),
+            inlays: &inlay.list,
+            stops: &stops,
+            strict,
         };
         view.paint(frame, code_r, scene, ts, theme);
         if let Some(r) = find_r {

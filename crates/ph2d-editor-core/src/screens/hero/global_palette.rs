@@ -56,6 +56,8 @@
 
 #[path = "global_palette_bars.rs"]
 pub mod global_palette_bars;
+#[path = "global_palette_places.rs"]
+pub mod global_palette_places;
 
 use crate::widget::command_palette::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
 use ph2d_a11y::NodeId;
@@ -226,6 +228,27 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
     }
 }
 
+/// `Ctrl+K` — abre a paleta sobre o que o app oferece AGORA, com os prefixos `@` e `:` da aba
+/// activa (I14). O modelo é construído na abertura, nunca por quadro.
+pub fn open(hero: &mut super::HeroScreen) {
+    let model = build_global_model(hero);
+    hero.store.open_command_palette(model);
+    let scopes = global_palette_places::scopes(hero);
+    hero.store.set_command_palette_scopes(scopes);
+}
+
+/// Drena o pick DESTA paleta e executa-o (uma vez por quadro). ⚠️ O pick chega com a paleta já
+/// fechada: o reconhecimento é «este id está no que EU ofereço agora», e o modelo reconstrói-se para
+/// a pergunta; um item dos prefixos reconhece-se pelo id (sem perguntar à aba).
+pub fn drain(hero: &mut super::HeroScreen) {
+    let model = build_global_model(hero);
+    let mine = |id: NodeId| model.is_item(id) || global_palette_places::owns(id);
+    let Some(id) = hero.store.take_command_pick_if(mine) else {
+        return;
+    };
+    route_global_pick(hero, id);
+}
+
 /// **EXECUTA o comando escolhido — e mora aqui de propósito.**
 ///
 /// Quem EMITE cada item é a [`build_global_model`], e quem o executa é esta função, no mesmo módulo:
@@ -240,6 +263,10 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
 /// Devolve `false` quando o id não é dela (o canal do pick é partilhado com a paleta de nós do
 /// Motion, e um consumidor que toma incondicionalmente é o que torna a ORDEM load-bearing).
 pub fn route_global_pick(hero: &mut super::HeroScreen, id: NodeId) -> bool {
+    let query = hero.store.command_pick_query().to_owned();
+    if global_palette_places::route(hero, id, &query) {
+        return true;
+    }
     let panel_id = {
         let mut found: Option<&'static str> = None;
         crate::panel::with_registry_opt(|reg| {

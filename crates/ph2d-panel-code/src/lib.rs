@@ -30,8 +30,8 @@ pub use console::{
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{
     Assist, Badge, COMPLETION_MAX_CHARS, COMPLETION_ROWS, CodeFrame, CompletionRow, CompletionView,
-    Explanation, FoldMark, HoverSection, HoverView, ListKind, PreviewLine, Problem, RenameView,
-    Severity, SignatureView,
+    Explanation, FoldMark, HoverSection, HoverView, Inlay, ListKind, PreviewLine, Problem,
+    RenameView, Severity, SignatureView,
 };
 pub use geom::Column;
 pub use glyphs::{PaintWork, paint_work};

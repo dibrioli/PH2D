@@ -97,6 +97,10 @@ impl CodeView {
         let pre = frame
             .preedit
             .map(|s| (buffer.selection().primary().head, s));
+        let inlays = frame.inlays;
+        self.inlay_cols.clear();
+        self.inlay_cols
+            .extend(inlays.iter().map(|i| (i.at, i.label.chars().count())));
         let mut rows = std::mem::take(&mut self.rows);
         rows.clear();
         self.folds.clear();
@@ -137,7 +141,13 @@ impl CodeView {
                     let pre_here = pre
                         .filter(|(h, _)| (ls..=shown).contains(h))
                         .map(|(h, s)| (h - ls, s));
-                    let dl = DisplayLine::build(&t.slice(ls..shown), self.tab, pre_here);
+                    let a = inlays.partition_point(|i| i.at < ls);
+                    let b = inlays.partition_point(|i| i.at <= shown);
+                    let here: Vec<(usize, &str)> = inlays[a..b.max(a)]
+                        .iter()
+                        .map(|i| (i.at - ls, i.label.as_str()))
+                        .collect();
+                    let dl = DisplayLine::build(&t.slice(ls..shown), self.tab, pre_here, &here);
                     add_work(dl.text.len(), 0);
                     while k < spans.len() && spans[k].0.end <= ls {
                         k += 1;
@@ -179,7 +189,7 @@ impl CodeView {
         }
         let layout = self.cache.peek(row.key)?;
         let x = self.text_x0();
-        let x0 = x + geom::x_of_byte(layout, &row.dl, s.max(rs) - rs);
+        let x0 = x + geom::x_of_byte_after(layout, &row.dl, s.max(rs) - rs);
         let mut x1 = x + geom::x_of_byte(layout, &row.dl, e.min(re) - rs);
         if eol && e > re {
             x1 += self.m.advance * 0.5;
@@ -250,6 +260,32 @@ impl CodeView {
             if o.end >= vs && o.start <= ve {
                 self.each_seg(buffer, o.start, o.end, false, |_, r| {
                     scene.fill_rect(rect_to_vello(r), pal.occurrence);
+                });
+            }
+        }
+        // As dicas de tipo (I9) assentam numa pastilha própria: o olho separa-as do código.
+        let x = self.text_x0();
+        let radius = frame_radius(pal.theme, Radius::Sm.px());
+        for row in &self.rows {
+            let Some(layout) = self.cache.peek(row.key) else {
+                continue;
+            };
+            for (d, n) in row.dl.inlays() {
+                let (x0, x1) = (geom::x_of_disp(layout, d), geom::x_of_disp(layout, d + n));
+                let r = Rect {
+                    x: x + x0,
+                    y: row.y + Spacing::Xxs.px(),
+                    w: x1 - x0,
+                    h: self.m.line_h - Spacing::Xxs.px() * 2.0,
+                };
+                fill_rounded_rect(scene, r, radius, pal.pill);
+            }
+        }
+        // Os buracos do modelo que esperam o Tab (I12): uma caixa fina, como no VS Code.
+        for s in frame.stops {
+            if s.end >= vs && s.start <= ve {
+                self.each_seg(buffer, s.start, s.end, false, |_, r| {
+                    stroke_rect(scene, r, StrokeToken::Thin.px(), pal.bracket);
                 });
             }
         }
@@ -506,9 +542,12 @@ fn display_spans(
         let s = safe_clamp_ord(rg.start, ls, le) - ls;
         let e = safe_clamp_ord(rg.end, ls, le) - ls;
         if s < e {
-            out.push((dl.to_disp(s)..dl.to_disp(e), *ink));
+            out.push((dl.to_disp_after(s)..dl.to_disp(e), *ink));
         }
     }
+    // A dica pinta-se na tinta dela, nunca na do código à volta.
+    out.extend(dl.inlays().map(|(d, n)| (d..d + n, Ink::Hint)));
+    out.sort_by_key(|s| s.0.start);
     out
 }
 

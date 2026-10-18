@@ -148,6 +148,10 @@ impl PaletteModel {
 mod busca;
 pub use busca::{item_matches, label_matches, top_match};
 
+/// **Os PREFIXOS** `>` `@` `:` (CodeEditor I14) — irmão pelo tecto de 500 LOC dos primitivos.
+mod scope;
+pub use scope::{LineScope, PaletteScopes, ScopeState, Scoped, line_target, scoped};
+
 /// A copy of `model` keeping only items whose label matches `query`, dropping any sub-cluster or category
 /// that ends up empty — so a filtered library never shows a coloured header with nothing under it. An
 /// empty query is handled by the caller (it uses the model unfiltered); here every item still matches.
@@ -232,13 +236,9 @@ pub fn paint(
 ) -> crate::widget::scroll_area::Pending {
     // ── The live search text filters the model (empty = show everything). Filtering keeps only the
     //    matching items and drops emptied sub-clusters / categories; `Enter` adds the same top match. ──
-    let filtered;
-    let model = if query.is_empty() {
-        model
-    } else {
-        filtered = filter_model(model, query);
-        &filtered
-    };
+    // ⭐ Os prefixos de quem a abriu (I14) estreitam o modelo; sem eles, a lei de sempre.
+    let view = scoped(model, query, store.command_palette_scopes());
+    let model: &PaletteModel = &view.model;
     let no_match = model.groups.is_empty();
 
     // ⭐ **A geometria vem da PORTA** — a mesma que a [`max_scroll`] usa. Duas contas para «que
@@ -307,7 +307,9 @@ pub fn paint(
         paint_text(
             ts,
             scene,
-            ph2d_i18n::tr("chrome.no_matches"),
+            view.note
+                .as_deref()
+                .unwrap_or(ph2d_i18n::tr("chrome.no_matches")),
             content_x,
             content_y,
             font,

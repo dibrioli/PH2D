@@ -98,7 +98,7 @@ placa em exclusão): **11 925 / 11 925 verdes** (726 s). Binário do smoke, 2.ª
 ▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
     Finished `smoke` profile [optimized] target(s) in 0.24s
 ```
-Smoke do dono (prefs hoje: `light_quality=low`, `light_auto=0`; vale também o da W5x §7, ainda por fazer):
+**Smoke do dono: OK (17/10).** Os passos (prefs hoje: `light_quality=low`, `light_auto=0`; vale também o da W5x §7, ainda por fazer):
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=5 cargo run -p ph2d-host-desktop --profile smoke`
    no LG (2560×1080), janela maximizada.

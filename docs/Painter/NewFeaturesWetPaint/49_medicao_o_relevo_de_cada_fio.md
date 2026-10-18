@@ -117,3 +117,6 @@ ficou pior que estava, muito pixelado, talvez porque as cerdas tenham ficado mai
   de 1,5 px) e a luz satura (declive ~1) — cada fronteira de fio vira uma linha preta/branca dura, em escada.
   E as faixas têm 1,5 px fixos: a 103 px são ~70 fios (o «cerdas mais finas» do dono).
 - O conserto e a régua: [prompt 50](50_PROMPT_W3b_o_relevo_sem_escada.md).
+- **Medido no prompt 50** ([50_medicao](50_medicao_o_relevo_sem_escada.md)): a escada confirmada (15,24 · 12,33 contra
+  2,48 · 2,30 do Rebelle a 103 px) e uma 2.ª causa — a luz do Impasto MULTIPLICA a cor (3,1× o contraste dele); a
+  largura de 1,5 px NÃO era o defeito. Os números das §3–§4 acima são de uma régua cega à sombra (a cobertura).

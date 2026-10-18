@@ -86,7 +86,9 @@
 | C32 | **A caneta em X11/XWayland e Windows**: lá o receptor não liga e a caneta é rato SEM pressão. A mesma `ph2d_pen::Sessao` aceita fontes novas (XInput2 por `x11rb`; `WM_POINTER` + `GetPointerPenInfoHistory`). | [ADR-0189](../../architecture/decisions/0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md) |
 | C33 | **O Wet Dry Brush sem régua:** o oráculo dele (Watercolor › Flat Dry) sob Wine sai liso — o seco é do papel, que não se desenha lá (`fixtures/rebelle/README.md`); a textura nossa 26,8 % não tem com que comparar. | [48_medicao §1](48_medicao_os_fios.md) | sem foto honesta |
 | C34 | **O resto da textura do Oil Bristle** (3,85 contra 5,86): o relevo de cada fio da W3 dava 5,87, mas o smoke do dono REPROVOU-o (escada no traço inclinado) e saiu da fábrica. | [49_medicao §7](49_medicao_o_relevo_de_cada_fio.md) | prompt 50 |
-| C35 | **O leve do Oil Bristle** 6,32 contra 5,01 (o Rebelle tem leve ≈ forte; a W2 já o deixava em 5,36). Nenhuma lei da W3 o baixa sem tirar o forte. | [49_medicao §6](49_medicao_o_relevo_de_cada_fio.md) | — |
+| C35 | **O leve do Oil Bristle** 5,72 contra 5,01 com o relevo sem escada (W3b; o de 18/10 6,32; a W2 já o deixava em 5,36; o Rebelle tem leve ≈ forte). Nenhuma lei da W3 o baixa sem tirar o forte. | [49_medicao §6](49_medicao_o_relevo_de_cada_fio.md) · [50 §5](50_medicao_o_relevo_sem_escada.md) | — |
+| C36 | **A borda do Oil Bristle a 103 px** 0,73–0,74 contra 0,87 do Rebelle (`oil103`), com e sem relevo — de antes da W3; e a 103 px o contraste 1,25× e a textura 5,36 (6,2): o preset sem relevo já tem o contraste dele. | [50 §5](50_medicao_o_relevo_sem_escada.md) | — |
+| C37 | **As linhas ESCURAS do Rebelle**: o resíduo dele tem assimetria −2,2 (41 px) · −1,1 (103) — sulcos escuros raros num campo liso; o nosso relevo é simétrico (+0,2). | [50 §5](50_medicao_o_relevo_sem_escada.md) | — |
 
 ## D — Processo
 

@@ -493,6 +493,47 @@ fn um_script_partido_pinta_a_linha_do_erro() {
     }
 }
 
+/// (CodeEditor I8) **O erro explicado pinta o PORQUÊ por baixo**, no aviso de «partido» e no de
+/// «parado». Controlo: sem explicação, nada a mais.
+#[test]
+fn o_erro_explicado_pinta_o_porque_por_baixo() {
+    use ph2d_editor_core::script_edits::InspectorScriptError;
+    let erro = |why: Option<&str>| InspectorScriptError {
+        message: "A value is missing before \u{201c}=\u{201d}".into(),
+        line: Some(3),
+        symbol: Some("=".into()),
+        why: why.map(str::to_owned),
+    };
+    let porque = "Luau wanted a value here.";
+    let pinta = |e: InspectorScriptError, parado: bool| {
+        let mut i = info();
+        if parado {
+            i.failure = Some(e);
+        } else {
+            i.status = InspectorScriptStatus::Broken(e);
+        }
+        let (mut h, mut st) = host(Some(i));
+        let (_, avisos) = ph2d_panel_inspector::censo_dos_avisos::medindo(|| {
+            let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        });
+        set_current_inspector_script(None);
+        avisos
+            .iter()
+            .filter(|a| a.seccao() == "script_avisos")
+            .map(|a| a.texto.clone())
+            .collect::<Vec<_>>()
+    };
+    for parado in [false, true] {
+        let com = pinta(erro(Some(porque)), parado);
+        assert!(
+            com.iter().any(|t| t == porque),
+            "o porquê não se pintou: {com:?}"
+        );
+        let sem = pinta(erro(None), parado);
+        assert_eq!(sem.len() + 1, com.len(), "{sem:?} × {com:?}");
+    }
+}
+
 /// ⛔ (CodeEditor T7) **Um script por importar pinta a RECUSA com o caminho** — nunca um cartão
 /// calado.
 #[test]

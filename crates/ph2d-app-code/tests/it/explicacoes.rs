@@ -99,6 +99,14 @@ fn a_calha_explica_e_o_sublinhado_mostra_o_cru() {
         "o cru na calha: {linhas:?}"
     );
     assert_eq!(m.docs().seen_kinds(), ["expected_expression"]);
+    // A calha não tem palavra: o assistente nunca é perguntado (tempo real para um pedido chegar).
+    nunca(
+        &mut m,
+        id,
+        t1 + 4 * PAUSA,
+        "a calha perguntou ao assistente",
+        |_| visto.lock().unwrap().baloes == 0,
+    );
 
     // O culpado sublinhado (o segundo `=`).
     let t2 = t1 + 10 * PAUSA;
@@ -183,4 +191,54 @@ fn sem_assistente_a_calha_explica_o_aviso_nosso() {
         "{linhas:?}"
     );
     assert_eq!(m.docs().seen_kinds(), ["unknown_field_near"]);
+}
+
+/// Com o assistente PARADO (morreu e não volta), o balão da calha continua a abrir: só o que é do
+/// assistente fecha com ele.
+#[test]
+fn com_o_assistente_parado_a_calha_ainda_explica() {
+    use crate::assistente::{Partilhado, falso, letra};
+    use ph2d_code_intel::lsp::Connect;
+    let mut primeiro = Some(falso(
+        Plano {
+            regra: Some(acusa_igual),
+            morre_apos: Some(2),
+            ..Plano::default()
+        },
+        Partilhado::default(),
+        false,
+    ));
+    let liga: Connect = Box::new(move |wake| match primeiro.take() {
+        Some(mut c) => c(wake),
+        None => Err(ph2d_code_lsp::LspError::Spawn(std::io::Error::other(
+            "não volta",
+        ))),
+    });
+    let (m, ids) = Mesa::new(&[("a.luau", QUEBRADO), ("b.luau", "")]);
+    let mut m = m.com_assistente(ph2d_app_code::IntelServer::Custom(liga));
+    let (a, b) = (ids[0], ids[1]);
+    m.pede(a);
+    quadro_em(&mut m, T0);
+    m.pede(b);
+    letra(&mut m, b, 'x');
+    letra(&mut m, b, 'y');
+    ate(&mut m, b, T0, "o assistente não parou", |m| {
+        m.docs().assist_text().is_some()
+    });
+    m.pede(a);
+    let t1 = T0 + 10 * PAUSA;
+    quadro_em(&mut m, t1);
+    m.pinta(a);
+    let (x, y) = m.docs().problem_dot(a, 0).expect("o erro da linha 1");
+    m.rato(a, x, y);
+    ate(
+        &mut m,
+        a,
+        t1 + PAUSA,
+        "o assistente parado fechou a calha",
+        |m| !balao(m, a).is_empty(),
+    );
+    nunca(&mut m, a, t1 + 4 * PAUSA, "o balão da calha fechou", |m| {
+        !balao(m, a).is_empty()
+    });
 }

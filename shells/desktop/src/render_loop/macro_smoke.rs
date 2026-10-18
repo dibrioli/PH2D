@@ -196,11 +196,11 @@ impl crate::App {
             .world()
             .get::<ph2d_ecs::MacroTempo>(e)
             .map(|t| t.segundos);
-        let (gravando, cede) = ph2d_app_macros::com(|m| (m.gravando(), m.sprite_gravada()));
+        let gravando = ph2d_app_macros::com(|m| m.gravando());
         let painter = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools);
         let linha = gfx
             .painter_macros
-            .diagnostico(bits, cede, painter.as_deref(), gfx.sim.world());
+            .diagnostico(bits, painter.as_deref(), gfx.sim.world());
         let (ph, clip) = (self.playhead.time(), self.clip_playhead.time());
         let (keys, playing) = (self.timeline.keys_mode, self.playhead.is_playing());
         let laco = self.timeline.doc.active_loop_for(keys);

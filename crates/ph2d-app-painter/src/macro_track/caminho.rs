@@ -66,6 +66,9 @@ pub enum Variante {
     Topo,
     /// O 2.º smoke de 18/10: em Digital, Parar e a cabeça da Keys arrastada para trás e para a frente.
     Arrasta,
+    /// A base, com uma linha POR QUADRO no segundo e meio depois do Parar e o que a ranhura recebeu
+    /// de facto ([`Espia`]): o piscar das pinceladas logo depois do Parar.
+    Parar,
 }
 
 /// A variante desta corrida.
@@ -78,6 +81,7 @@ pub fn variante() -> Variante {
         Ok("semrewind") => Variante::SemRewind,
         Ok("topo") => Variante::Topo,
         Ok("arrasta") => Variante::Arrasta,
+        Ok("parar") => Variante::Parar,
         _ => Variante::Base,
     }
 }
@@ -159,6 +163,8 @@ fn arrastos(r: &mut Vec<(u64, Gesto)>, t0: u64) {
 #[derive(Default)]
 pub struct Caminho {
     dados: usize,
+    /// Até quando (ms) há uma linha por quadro (a variante `parar`, depois do Parar).
+    por_quadro_ate: Option<u64>,
     ultimo_diag_ms: Option<u64>,
     /// Quadros desde a última linha de diagnóstico.
     quadros: u32,
@@ -175,6 +181,9 @@ impl Caminho {
             .map(|(_, g)| *g)
             .collect();
         self.dados += novos.len();
+        if variante() == Variante::Parar && novos.contains(&Gesto::Para) {
+            self.por_quadro_ate = Some(ms + 1_500);
+        }
         novos
     }
 
@@ -182,7 +191,8 @@ impl Caminho {
     /// anterior (a velocidade do app, de que um defeito pode depender).
     pub fn hora_do_diagnostico(&mut self, ms: u64) -> Option<u32> {
         self.quadros += 1;
-        let devida = self.ultimo_diag_ms.is_none_or(|u| ms >= u + 100);
+        let devida = self.ultimo_diag_ms.is_none_or(|u| ms >= u + 100)
+            || self.por_quadro_ate.is_some_and(|f| ms <= f);
         devida.then(|| {
             self.ultimo_diag_ms = Some(ms);
             std::mem::take(&mut self.quadros)
@@ -247,18 +257,49 @@ fn pintados(rgba: &[u8]) -> usize {
         .count()
 }
 
+/// **O que a cena mostrou** (a variante `parar`): uma cópia de cada ranhura, refeita a cada subida de
+/// [`PalcosDoPainter::sobe`], e as trocas dessa subida — o que o extract do quadro usou, não uma conta à
+/// parte do que a ranhura devia ter.
+#[derive(Default)]
+pub(super) struct Espia {
+    /// Por ranhura: (largura, rgba premultiplicado).
+    ranhuras: std::collections::BTreeMap<u32, (u32, Vec<u8>)>,
+    pub(super) trocas: Vec<super::TrocaDaSprite>,
+}
+
+impl Espia {
+    /// A subida de `rgba` à ranhura `id` (de largura `w`): inteira (`caixa = None`) ou só a caixa.
+    pub(super) fn copia(&mut self, id: u32, w: u32, caixa: Option<super::Caixa>, rgba: &[u8]) {
+        let Some((x, y, cw, _)) = caixa else {
+            self.ranhuras.insert(id, (w, rgba.to_vec()));
+            return;
+        };
+        // Uma ranhura que nasceu antes da espia não se conhece: fica de fora até subir inteira.
+        let Some((lw, t)) = self.ranhuras.get_mut(&id) else {
+            return;
+        };
+        let (lw, x, cw) = (*lw as usize, x as usize, cw as usize);
+        for (j, linha) in rgba.chunks_exact(cw * 4).enumerate() {
+            let a = ((y as usize + j) * lw + x) * 4;
+            t[a..a + cw * 4].copy_from_slice(linha);
+        }
+    }
+}
+
 impl PalcosDoPainter {
-    /// **A linha de diagnóstico da sprite `bits`** (a cena `=6`): o palco toca, a época, se a textura da
-    /// sprite troca neste quadro (como [`Self::sobe`] decide, com `cede`), os texels pintados no palco,
-    /// na marca e no que a ranhura mostra (o palco, e a imagem atual onde há marca), e os do editor.
+    /// **A linha de diagnóstico da sprite `bits`** (as cenas `=5`/`=6`), escrita no INÍCIO do quadro: o
+    /// palco (toca, época, texels pintados nele e na marca dessa época), os do editor e o que a subida
+    /// ANTERIOR mostrou de facto ([`Espia`], ligada na 1.ª linha). ⛔ A troca nunca se recalcula aqui: no
+    /// quadro depois do Parar a cedência já saiu e o palco ainda é o do anterior — a conta dizia
+    /// `troca=true` com a marca antiga num quadro que não trocou (o «piscar» da W9, que o ecrã não teve).
     #[must_use]
     pub fn diagnostico(
-        &self,
+        &mut self,
         bits: u64,
-        cede: Option<u64>,
         painter: Option<&PainterTool>,
         mundo: &ph2d_ecs::World,
     ) -> String {
+        let espia = self.espia.get_or_insert_default();
         let editor = painter
             .filter(|t| t.bound_document() == Some(bits))
             .and_then(|t| {
@@ -274,7 +315,6 @@ impl PalcosDoPainter {
             Ok(None) => return format!("palco=vazio editor={editor}"),
             Ok(Some(p)) => p,
         };
-        let troca = p.toca && p.sprite.is_some() && p.ranhura.is_some() && p.sprite != cede;
         let marca = p.chave.and_then(|chave| {
             painter
                 .filter(|t| p.sprite.is_some() && t.bound_document() == p.sprite)
@@ -282,27 +322,15 @@ impl PalcosDoPainter {
                 .filter(|m| m.epoca() == chave.1)
                 .or_else(|| self.marcas.get(&chave).map(|g| g.vale()))
         });
-        let atual = p.atual.as_ref().and_then(|a| a.img.as_ref());
-        let ranhura = match (marca, atual) {
-            (Some(m), Some(a)) if a.rgba.len() == p.espelho.len() => p
-                .espelho
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .zip(a.rgba.as_chunks::<4>().0)
-                .enumerate()
-                .filter(|(k, (e, a))| pintados(if m.marcado(*k) { &a[..] } else { &e[..] }) > 0)
-                .count(),
-            _ => pintados(&p.espelho),
-        };
-        let confere = if variante() == Variante::Arrasta {
-            let e = ph2d_ecs::Entity::from_bits(bits);
-            confere(p, mundo.get::<ph2d_ecs::Macro>(e).map(|m| &m.doc[..]))
-        } else {
-            String::new()
-        };
+        let doc = mundo
+            .get::<ph2d_ecs::Macro>(ph2d_ecs::Entity::from_bits(bits))
+            .map(|m| &m.doc[..]);
+        let mut extra = mostrado(p, espia, bits, doc, variante() == Variante::Parar);
+        if variante() == Variante::Arrasta {
+            extra.push_str(&confere(p, doc));
+        }
         format!(
-            "toca={} epoca={:04x} troca={troca} palco={} marca={} ranhura={ranhura} editor={editor}{confere}",
+            "toca={} epoca={:04x} palco={} marca={} editor={editor}{extra}",
             p.toca,
             p.epoca & 0xffff,
             pintados(&p.espelho),
@@ -321,6 +349,37 @@ fn diferentes(a: &[u8], b: &[u8]) -> usize {
         .zip(b.as_chunks::<4>().0)
         .filter(|(x, y)| x != y)
         .count()
+}
+
+/// ` | mostrou: troca=B t=S tinta=N [fresca=M]` — o que a SUBIDA anterior pôs no ecrã (a espia): se
+/// trocou a sprite, o instante, os texels com tinta da ranhura e, com `fresca` (a variante `parar`),
+/// quantos diferem de uma reprodução À PARTE do `doc` atual nesse instante.
+fn mostrado(
+    p: &super::PalcoDaPintura,
+    e: &Espia,
+    bits: u64,
+    doc: Option<&[u8]>,
+    fresca: bool,
+) -> String {
+    let troca = e.trocas.iter().find(|t| t.entity_bits == bits);
+    let Some((_, rgba)) = troca.and_then(|t| e.ranhuras.get(&t.texture_id)) else {
+        return format!(" | mostrou: troca={}", troca.is_some());
+    };
+    #[expect(clippy::cast_precision_loss, reason = "µs de um clipe")]
+    let s = p.em_cena.tempo().0 as f64 / 1e6;
+    let mut linha = format!(" | mostrou: troca=true t={s:.3} tinta={}", pintados(rgba));
+    if fresca {
+        let n = doc
+            .and_then(|d| MacroEmCena::de(d).ok().flatten())
+            .and_then(|mut m| m.segue(s).ok().and_then(|()| m.toma_a_tela()))
+            .filter(|(a, _, _)| a.len() == rgba.len())
+            .map_or_else(
+                || "-".to_owned(),
+                |(a, _, _)| diferentes(rgba, &a).to_string(),
+            );
+        let _ = std::fmt::Write::write_fmt(&mut linha, format_args!(" fresca={n}"));
+    }
+    linha
 }
 
 /// ` inteira=N fresca=M` da variante `arrasta`: os texels do palco que diferem da tela inteira do
@@ -377,6 +436,7 @@ mod tests {
             Variante::SemRewind,
             Variante::Topo,
             Variante::Arrasta,
+            Variante::Parar,
         ] {
             let r = roteiro(v);
             assert!(

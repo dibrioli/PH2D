@@ -197,6 +197,8 @@ pub struct PalcosDoPainter {
     transacao: Option<u64>,
     /// As marcas do artista por imagem e gravação (W9; [`marcas`]).
     marcas: BTreeMap<ChaveDaMarca, marcas::Guardada>,
+    /// A cena `=6`: o que cada ranhura recebeu e as trocas da última subida ([`caminho::Espia`]).
+    espia: Option<caminho::Espia>,
     /// Os gates trocam o cálculo do fim (um que falha).
     #[cfg(test)]
     calcula_o_fim: Option<fim::Calculo>,
@@ -612,6 +614,9 @@ impl PalcosDoPainter {
                         p.ranhura = Some(id);
                     }),
                 };
+                if let (Some(e), Ok(()), Some(id)) = (&mut self.espia, &subida, p.ranhura) {
+                    e.copia(id, w, caixa, &self.premul);
+                }
                 (p.tamanho, p.mistura_subida, p.caixa_misturada) = match (&subida, caixa) {
                     (Ok(()), None) => (Some((w, h)), chave, caixa_da_marca),
                     (Ok(()), Some(_)) => (p.tamanho, chave, caixa_da_marca),
@@ -632,6 +637,9 @@ impl PalcosDoPainter {
                     texture_id,
                 });
             }
+        }
+        if let Some(e) = &mut self.espia {
+            e.trocas.clone_from(&trocas);
         }
         trocas
     }

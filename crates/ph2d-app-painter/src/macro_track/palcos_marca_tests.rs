@@ -427,3 +427,82 @@ fn a_agua_sem_marca_nao_le_nem_sobe_e_com_marca_sobe_so_a_caixa() {
         c.placa.caixas
     );
 }
+
+/// A 2.ª tomada sobre uma sprite que já tem macro, na ordem da shell: o clipe toca, o Painter grava uma
+/// pincelada (a sprite cede ao traço vivo; a pincelada marca-se na época ANTIGA), e no quadro do Parar a
+/// subida corre ainda a ceder — a gravação nova entra depois dela (`fase_macros`, no fim do quadro).
+/// Devolve o clipe com a gravação nova já instalada, o Painter e o que a ranhura tinha no Parar.
+fn segunda_tomada_ate_ao_parar() -> (Clipe, PainterTool, Vec<u8>) {
+    let mut world = World::new();
+    let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
+    let (mut t, doc, _) =
+        ph2d_tool_painter::macro_track::roteiro::grava_no_papel_ligado(LADO, e.to_bits(), 2)
+            .expect("grava");
+    while !t.agua_parada() {
+        tique(&mut t);
+    }
+    let mut c = Clipe::com(world, e, &doc);
+    // A cena `=6` abre com uma linha (a espia liga-se antes da 1.ª subida).
+    let _ = c.palcos.diagnostico(e.to_bits(), Some(&t), &c.world);
+    c.quadro_ligado(0.0, Some(&mut t), &mut nunca);
+    t.set_paint_media(ph2d_tool_painter::PaintMedia::Digital);
+    traco(&mut t, [8.0, 54.0], [50.0, 54.0], 4, true);
+    let cede = Some(e.to_bits());
+    let (trocou, no_parar) = c.quadro_cedido(0.0, Some(&mut t), &mut nunca, cede);
+    assert!(!trocou, "a gravar, a sprite mostra o traço vivo do editor");
+    let (nova, _) =
+        ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 3).expect("grava");
+    c.world.entity_mut(e).insert(Macro {
+        doc: nova.clone(),
+        modo: ModoDaMacro::Fiel,
+    });
+    c.verdade = ph2d_tool_painter::macro_track::em_cena::MacroEmCena::de(&nova)
+        .expect("lê-se")
+        .expect("trilha");
+    (c, t, no_parar)
+}
+
+/// ⭐ **O Parar não pisca a tomada antiga** (o «piscar» aberto na W9; medido na `=6 parar` com a espia:
+/// o ecrã nunca o mostrou): depois do Parar, cada quadro troca a sprite pela gravação NOVA ao byte —
+/// nenhum mostra a mistura da antiga com a pincelada da tomada nova. Controlo: no quadro do Parar a
+/// ranhura TEM essa mistura (a pincelada por cima do clipe antigo); só a cedência a esconde.
+#[test]
+fn o_parar_nunca_troca_a_sprite_pela_mistura_da_gravacao_antiga() {
+    let (mut c, mut t, no_parar) = segunda_tomada_ate_ao_parar();
+    for q in 0..6u32 {
+        let instante = f64::from(q) / 60.0;
+        let (trocou, r) = c.quadro_cedido(instante, Some(&mut t), &mut nunca, None);
+        assert!(trocou, "quadro {q} depois do Parar: a sprite não trocou");
+        assert!(
+            r == c.palco,
+            "quadro {q} depois do Parar: {} texels não são a gravação nova",
+            diferem(&r, &c.palco).len()
+        );
+        assert!(
+            q > 0 || !diferem(&no_parar, &r).is_empty(),
+            "controlo: no Parar a ranhura tinha a mistura antiga"
+        );
+    }
+}
+
+/// **A linha da `=6` diz o que o ecrã MOSTROU** — ela corre no início do quadro, antes do `segue`: o
+/// Parar já tirou a cedência e a gravação nova já está no mundo, mas o palco ainda é o do quadro
+/// anterior. ⛔ VERMELHO antes da cura: a linha recalculava a troca com a cedência DESTE quadro contra
+/// o palco do ANTERIOR e dizia `troca=true` com a marca antiga num quadro que não trocou — o «piscar»
+/// registado na W9, que o ecrã nunca teve.
+#[test]
+fn a_linha_do_caminho_diz_o_que_a_subida_anterior_mostrou() {
+    let (mut c, mut t, _) = segunda_tomada_ate_ao_parar();
+    let bits = c.e.to_bits();
+    let linha = c.palcos.diagnostico(bits, Some(&t), &c.world);
+    assert!(
+        !linha.contains("troca=true") && linha.contains("mostrou: troca=false"),
+        "o quadro do Parar não trocou a sprite: {linha}"
+    );
+    c.quadro_cedido(0.0, Some(&mut t), &mut nunca, None);
+    let linha = c.palcos.diagnostico(bits, Some(&t), &c.world);
+    assert!(
+        linha.contains("mostrou: troca=true"),
+        "o quadro seguinte trocou: {linha}"
+    );
+}

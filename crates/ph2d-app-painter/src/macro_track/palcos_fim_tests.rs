@@ -139,9 +139,23 @@ impl Clipe {
     fn quadro_ligado(
         &mut self,
         t: f64,
-        mut painter: Option<&mut PainterTool>,
+        painter: Option<&mut PainterTool>,
         le: &mut LeSprite<'_>,
     ) -> Vec<u8> {
+        let (trocou, r) = self.quadro_cedido(t, painter, le, None);
+        assert!(trocou, "a sprite não trocou");
+        r
+    }
+
+    /// [`Self::quadro_ligado`] com a sprite que o Painter grava (`cede`): se a subida trocou a sprite, e
+    /// o que a ranhura do palco tem (subida mesmo sem troca).
+    fn quadro_cedido(
+        &mut self,
+        t: f64,
+        mut painter: Option<&mut PainterTool>,
+        le: &mut LeSprite<'_>,
+        cede: Option<u64>,
+    ) -> (bool, Vec<u8>) {
         self.world
             .get_mut::<MacroTempo>(self.e)
             .expect("tempo")
@@ -152,7 +166,7 @@ impl Clipe {
         let trocas = self.palcos.sobe(
             &mut self.placa,
             &mut ToastQueue::default(),
-            None,
+            cede,
             Atuais {
                 painter: painter.as_deref(),
                 le_sprite: Some(le),
@@ -162,7 +176,9 @@ impl Clipe {
         if let Some((a, _, _)) = self.verdade.toma_a_tela() {
             self.palco = premul(&a);
         }
-        self.placa.texturas[&trocas[0].texture_id].1.clone()
+        let id = self.palco_mut().ranhura.expect("a ranhura");
+        let trocou = trocas.iter().any(|x| x.entity_bits == self.e.to_bits());
+        (trocou, self.placa.texturas[&id].1.clone())
     }
 
     fn palco_mut(&mut self) -> &mut PalcoDaPintura {

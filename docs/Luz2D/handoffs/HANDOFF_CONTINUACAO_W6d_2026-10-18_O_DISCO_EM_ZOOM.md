@@ -126,3 +126,20 @@ leituras). Régua, variantes e itens (2)–(4) como no §4. **PASSA**: (1a) a fa
 ≥ −0,25 · (1b) ≤ produto + 2 · (5) o custo da C3 ≤ +5 % (intercalado, o mínimo de 7, cenas 5 e 6; com `load` > 5 o
 número vai com o `load` e repete-se se passar de +5 %). **MORRE**: (a) > 50 % · portão vermelho · bits de fora · custo
 > +20 %. Entre: não entra.
+
+## 7. Rodada 3 — o campo + fora: MORRE pelo item 4 (`decide3.log`, `load` 3–20)
+
+(1a) 139 → **0** ✓ · (1b) 40 → 27 ✓ · anéis iguais ou melhores ✓ · o produto com as MESMAS linhas da rodada 2 (o censo
+e os anéis idênticos) · **bits de fora: 254 396 diferentes em 24 configurações** (~0,3 %: a marcha de TODO texel de fora
+pela borda exata desloca as arestas das sombras que passam rente a qualquer corpo) ✗ ⇒ MORRE. Custo C3 cena 5 3,49 →
+3,81 (+9 %), cena 6 2,29 → 2,55 (+11 %) — só a borda (0,47 → 0,81; a fina igual: o `fora` não custa). ⛔ O bloco 12×12 em
+memória partilhada no `c3_borda` é MAIS LENTO: o produto 0,371 → 0,467 ms, o campo 0,712 → 0,805 (recusado; volta a
+leitura direta).
+
+## 8. A candidata 4 e o seu kill-criterion (escrito ANTES de medir)
+
+O campo + **fora só no texel RENTE**: o texel que a borda exata põe fora marcha pela borda exata só se o iso-½ o põe
+DENTRO (a fresta entre os dois predicados — o 2.º mecanismo); todos os outros como hoje ⇒ os bits de fora iguais por
+construção. Na mesma corrida, um estudo do custo do `c3_borda` (instrumento, sai depois): o campo inteiro × só as 8
+leituras dos vizinhos (sem a reta deles) × sem vizinhos (±1). Itens e limiares: os do §6 (o item 4 inteiro: 0
+diferentes). Se só o custo falhar, a próxima volta é o custo, com o estudo na mão.

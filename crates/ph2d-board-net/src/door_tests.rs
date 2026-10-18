@@ -191,3 +191,71 @@ fn a_porta_da_chave_tem_tecto_de_apertos_ao_mesmo_tempo() {
     std::thread::sleep(Duration::from_millis(300));
     by_key(addr, &key).expect("com vaga, entra");
 }
+
+fn lan_host() -> (Host, Receiver<()>) {
+    let (w, rx) = bell();
+    let cfg = HostConfig {
+        port: 0,
+        tries: 1,
+        mdns: false,
+        ..HostConfig::default()
+    };
+    let announce = Announce {
+        board: "Q".into(),
+        host: "Teste".into(),
+    };
+    (Host::open_with(&announce, &cfg, w).unwrap(), rx)
+}
+
+/// Fecha `h` de propósito numa thread; devolve quando a porta ficou livre e quando o fecho acabou.
+fn close_and_watch_port(h: Host) -> (Duration, Duration) {
+    use std::net::TcpListener;
+    let port = h.port();
+    let t = Instant::now();
+    let fecho = std::thread::spawn(move || h.close(vec![1]));
+    let mut livre = None;
+    while t.elapsed() < Duration::from_secs(3) {
+        if TcpListener::bind(("0.0.0.0", port)).is_ok() {
+            livre = Some(t.elapsed());
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    fecho.join().unwrap();
+    (livre.expect("a porta nunca ficou livre"), t.elapsed())
+}
+
+const PRONTO: Duration = Duration::from_millis(500);
+
+/// A9 (W23) — medido: com alguém a meio do aperto de mão, fechar a sala prendia a porta 2,0 s (o
+/// `close` esperava as threads antes de a largar) e a sala reaberta logo a seguir caía na seguinte;
+/// e o fecho da janela, que chama o `close` no próprio ecrã, esperava os mesmos 2 s.
+#[test]
+fn fechar_a_sala_larga_a_porta_ja_mesmo_com_um_aperto_a_meio() {
+    let (h, _hb) = lan_host();
+    let _a_meio =
+        TcpStream::connect_timeout(&SocketAddr::from(([127, 0, 0, 1], h.port())), T).unwrap();
+    std::thread::sleep(Duration::from_millis(100));
+    let (livre, fim) = close_and_watch_port(h);
+    assert!(livre < PRONTO, "a porta ficou presa {livre:?}");
+    assert!(fim < PRONTO, "o fecho esperou o aperto {fim:?}");
+}
+
+/// A9 (W23) — um convidado MUDO (entrou e deixou de ler: Wi-Fi caído) segura o escritor dele no
+/// `write` até ao prazo; o fecho espera-o, mas a porta já não.
+#[test]
+fn fechar_a_sala_larga_a_porta_ja_mesmo_com_um_convidado_mudo() {
+    let (h, hb) = lan_host();
+    let addr = SocketAddr::from(([127, 0, 0, 1], h.port()));
+    let mut mudo = TcpStream::connect_timeout(&addr, T).unwrap();
+    let code = crate::code::Code::parse(&h.code()).unwrap();
+    crate::handshake::guest(&mut mudo, &code).expect("entra");
+    let id = joined(&gather(&h, &hb, |e| !joined(e).is_empty()))[0];
+    // Enche as filas do sistema: o escritor do anfitrião fica preso no `write`.
+    for _ in 0..64 {
+        h.send(id, vec![7; 1 << 20]).unwrap();
+    }
+    std::thread::sleep(Duration::from_millis(300));
+    let (livre, _) = close_and_watch_port(h);
+    assert!(livre < PRONTO, "a porta ficou presa {livre:?}");
+}

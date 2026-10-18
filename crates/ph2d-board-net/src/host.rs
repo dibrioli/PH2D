@@ -263,9 +263,8 @@ impl Host {
 
     /// Fecha a sala DE PROPÓSITO: `last` (o adeus do protocolo) sai para todos ANTES de os fios
     /// fecharem — o `Drop` sozinho corta o que ainda está na fila.
-    pub fn close(self, last: Vec<u8>) {
-        // Ninguém mais entra (um aperto a acabar agora levaria o fio sem o adeus).
-        self.shared.state().stop = true;
+    pub fn close(mut self, last: Vec<u8>) {
+        self.shut_doors(Instant::now() + JOIN_DEADLINE);
         let _ = self.broadcast(last, None);
         let threads = {
             let mut st = self.shared.state();
@@ -274,6 +273,29 @@ impl Host {
         };
         // Sem canal, cada escritor escreve o que tinha na fila e fecha o fio; o leitor dele acaba.
         join_until(threads, Instant::now() + JOIN_DEADLINE);
+    }
+
+    /// Ninguém mais entra e a porta solta-se JÁ, antes de qualquer espera (a sala reaberta logo a
+    /// seguir volta à mesma porta): quem ainda está no aperto de mão não leva o adeus e o fio dele
+    /// fecha; as entradas acordam e largam o `listener`.
+    fn shut_doors(&mut self, deadline: Instant) {
+        {
+            let mut st = self.shared.state();
+            st.stop = true;
+            let st = &*st;
+            for (_, w) in st
+                .wires
+                .iter()
+                .filter(|(id, _)| !st.senders.contains_key(id))
+            {
+                w.shutdown();
+            }
+        }
+        for d in &self.doors {
+            d.wake();
+        }
+        join_until(std::mem::take(&mut self.accepts), deadline);
+        self.doors.clear();
     }
 
     /// Expulsa: o fio fecha e chega o `Left`.
@@ -463,12 +485,13 @@ pub(crate) fn join_until(threads: Vec<JoinHandle<()>>, deadline: Instant) {
 impl Drop for Host {
     fn drop(&mut self) {
         let deadline = Instant::now() + JOIN_DEADLINE;
+        // A porta primeiro: o adeus do mDNS pode levar até ao prazo.
+        self.shut_doors(deadline);
         if let Some(a) = self.announcer.take() {
             a.stop(deadline);
         }
         let threads = {
             let mut st = self.shared.state();
-            st.stop = true;
             for w in st.wires.values() {
                 w.shutdown();
             }
@@ -476,12 +499,6 @@ impl Drop for Host {
             st.senders.clear();
             std::mem::take(&mut st.threads)
         };
-        // Cada `accept` está bloqueado: acordá-lo para ver o `stop`.
-        for d in &self.doors {
-            d.wake();
-        }
-        let mut all = threads;
-        all.append(&mut self.accepts);
-        join_until(all, deadline);
+        join_until(threads, deadline);
     }
 }

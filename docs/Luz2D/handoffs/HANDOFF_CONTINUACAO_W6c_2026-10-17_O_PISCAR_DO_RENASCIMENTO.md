@@ -128,7 +128,7 @@ corrida:
 ▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
     Finished `smoke` profile [optimized] target(s) in 0.36s
 ```
-Smoke do dono (o da W6b §7, agora sem o piscar):
+**Smoke do dono: OK (18/10).** Os passos (o da W6b §7, agora sem o piscar):
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=5 cargo run -p ph2d-host-desktop --profile smoke`
    no LG (2560×1080), janela maximizada.

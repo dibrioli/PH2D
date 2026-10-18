@@ -60,7 +60,8 @@ fios (`verde_no_soltar_tests::sem_os_fios`, como já tiravam o Emboss) e ficaram
 
 ## §6 — Aberto
 
-- **Smoke do dono** (o óleo e o express ao lado do Rebelle; leve × forte) — por fazer.
+**Smoke do dono 18/10: OK.** Próxima janela: o [prompt 49](../NewFeaturesWetPaint/49_PROMPT_W3_o_relevo_de_cada_fio.md) (a W3, o relevo de cada fio).
+
 - B15 (o Acrylic liso?) · C33 (o Dry Brush sem régua) · C34 (o relevo por fio, W3).
 - Os 12 knobs dos fios sem painel: W8. Span, oscilação e onda existem e mordem, mas nenhum pincel de fábrica os usa
   (medido: não fecham os carris do Acrylic). Thin/Thick/Edges: nenhum número pediu.

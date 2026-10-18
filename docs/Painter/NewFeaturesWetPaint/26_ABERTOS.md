@@ -46,6 +46,7 @@
 | ~~B13~~ | ~~**A Shape Color no pincel salvo do Wet Paint?**~~ — **DONO 17/10: SIM; FEITO no prompt 45**: `Parametros::shape_color` por nome (a mesma lei da macro, `EstadoDaShapeColor::para_json`), `SCHEMA` fica 1; um pincel sem ela tira a do anterior; a miniatura pinta-a. | [45 §4](45_medicao_o_esmaecer.md) |
 
 | B14 | ~~**O Glaze do pincel numa caixa ao lado das da obra?**~~ — **DONO 17/10 (smoke do P44): a mistura de pigmentos (K–M) fica da OBRA INTEIRA**; nada a fazer. Hoje «Brush glaze» é uma linha do Tuning › Paint (0..1, gravada com o pincel); as caixas «Pigment mixing»/«Glaze layering» valem para a obra. A mistura (K–M) por pincel NÃO foi feita: não muda nenhum dos 5 pincéis do bloco A (medido, 42 §4). | [42_medicao](42_medicao_a_lei_da_tinta.md) |
+| B15 | **O Acrylic Round liso como o do Rebelle?** Os carris dele (textura 30,5 contra 3,1; 29 px contra 39 a meia altura) são o tapete ESPARSO que o dono afinou em 11/10 (4 000 pontas de 0,5 — faixas sem pelo); o Round Hard do Rebelle não tem fios. Nenhuma lei dos fios o cura (span/oscilação: 30 → 21). Se SIM: o tapete denso ou a ponta lisa (B6), medido contra `oilround`. | [48_medicao §1, §6](48_medicao_os_fios.md) | perguntado no smoke da W2 (18/10) |
 
 ## C — Defeitos e lacunas conhecidos (técnicos)
 
@@ -83,6 +84,8 @@
 | C30 | **O toque com o dedo** na Intuos5 (é também touchpad). Fora do prompt 46. | prompt 46 |
 | C31 | **A curva de pressão do PH2D** — o KDE já aplica a dele à caneta: MEDIR se a aplica antes do tablet-v2 (comparar `libinput debug-events` com o `PH2D_PEN_LOG` da mesma sessão) antes de pôr uma nossa por cima. ✅ 18/10, sessão do dono (`ferramentas/caneta/medicoes_2026-10-18/`): **o KDE NÃO aplica curva** — 341 toques, 32 775 amostras, |PH2D − libinput| máx 0,0051 (o arredondamento a 2 casas), recta 0,9995·x + 0,0002. O PH2D não precisa de curva global; o piso/tecto/curva da W6 são do PINCEL ([47_medicao](47_medicao_a_caneta_no_pincel.md) §2). | prompt 46 |
 | C32 | **A caneta em X11/XWayland e Windows**: lá o receptor não liga e a caneta é rato SEM pressão. A mesma `ph2d_pen::Sessao` aceita fontes novas (XInput2 por `x11rb`; `WM_POINTER` + `GetPointerPenInfoHistory`). | [ADR-0189](../../architecture/decisions/0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md) |
+| C33 | **O Wet Dry Brush sem régua:** o oráculo dele (Watercolor › Flat Dry) sob Wine sai liso — o seco é do papel, que não se desenha lá (`fixtures/rebelle/README.md`); a textura nossa 26,8 % não tem com que comparar. | [48_medicao §1](48_medicao_os_fios.md) | sem foto honesta |
+| C34 | **O resto da textura do Oil Bristle** (3,85 contra 5,86): os fios ESCUROS do Rebelle são a sombra do relevo de cada fio (Add/Remove impasto) — W3. | [48_medicao §6](48_medicao_os_fios.md) | W3 |
 
 ## D — Processo
 

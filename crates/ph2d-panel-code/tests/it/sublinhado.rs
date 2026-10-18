@@ -11,6 +11,7 @@ fn problema(line: usize, culprit: std::ops::Range<usize>, severity: Severity) ->
         severity,
         culprit: Some(culprit),
         message: String::new(),
+        explanation: None,
     }
 }
 

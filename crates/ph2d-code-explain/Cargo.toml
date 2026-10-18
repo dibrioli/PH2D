@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-code-explain"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A explicação escrita à mão de cada mensagem do Luau (CodeEditor Onda 2, I8,
+# `docs/CodeEditor/03_onda2.md`). Folha: só o texto (`ph2d-i18n`), para que o editor e o cartão do
+# Inspector leiam a MESMA explicação.
+[dependencies]
+ph2d-i18n = { path = "../ph2d-i18n" }
+
+[dev-dependencies]
+# O censo lê o corpus gravado do I0c (`docs/CodeEditor/ferramentas/corpus_erros/*.jsonl`).
+serde_json = "1"
+
+[lints]
+workspace = true

@@ -39,10 +39,16 @@ fn passo(default: f64, declarado: Option<f64>) -> f64 {
     declarado.unwrap_or(if default.fract() == 0.0 { 1.0 } else { 0.1 })
 }
 
-/// **O que o cartão diz de um diagnóstico** — a linha DESTE script, quando há, e a 1.ª linha da
-/// mensagem (o modelo guarda-a inteira, com a pilha). A frase compõe-na o pintor.
+/// **O que o cartão diz de um diagnóstico** — a linha DESTE script, quando há, e a explicação
+/// escrita à mão da classe da mensagem (CodeEditor I8), ou a 1.ª linha dela quando a classe não tem
+/// uma (o modelo guarda-a inteira, com a pilha; a crua fica no console). A frase compõe-na o pintor.
 fn no_cartao(d: &ScriptDiagnostic) -> InspectorScriptError {
-    InspectorScriptError::from_luau(&d.message, d.line)
+    let mut e = InspectorScriptError::from_luau(&d.message, d.line);
+    if let Some(x) = ph2d_code_explain::explain(&d.message) {
+        e.message = x.title();
+        e.why = Some(x.why());
+    }
+    e
 }
 
 /// **O instantâneo.** `None` para quem não tem o componente (ADR-0166).

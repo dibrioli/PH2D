@@ -66,14 +66,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // `self.`, e o nome da lista para o leitor de ecrã.
         "code.complete.property" => "property",
         "code.a11y.completion" => "Suggestions",
-        // As acções de contexto (I7, Alt+Enter): o campo do `self` que ninguém dá, o «você quis
-        // dizer», a dica de tipo inserida, e a lista vazia.
-        "code.problem.unknown_field" => {
-            "self.{name} is never set in this script nor declared with ph2d.property"
-        }
-        "code.problem.unknown_field_near" => {
-            "self.{name} is never set in this script nor declared with ph2d.property \u{2014} did you mean {near}? (Alt+Enter)"
-        }
+        // As acções de contexto (I7, Alt+Enter): o «você quis dizer», a dica de tipo inserida, e a
+        // lista vazia. (O aviso do campo do `self` é `code.explain.unknown_field`, I8.)
         "code.action.did_you_mean" => "Did you mean {name}?",
         "code.action.add_type" => "Add type: {type}",
         "code.action.none" => "No quick fixes here",

@@ -68,6 +68,8 @@ pub struct CodeDocs {
     pressed: bool,
     /// `None` = a pasta do sistema ([`crate::recovery::default_dir`]).
     recovery_dir: Option<std::path::PathBuf>,
+    /// As explicações que os balões abriram (I8, `crate::note`).
+    pub(crate) seen: crate::note::Seen,
     /// O reparse fora da tecla (Onda 2, I1); a thread nasce com o 1.º trabalho.
     grammar: Option<GrammarWorker<ScriptId>>,
     /// O assistente de código (Onda 2, I2); arranca no 1.º documento aberto.
@@ -107,6 +109,7 @@ impl Default for CodeDocs {
             recovery_dir: None,
             grammar: None,
             intel: crate::intel::Intel::default(),
+            seen: crate::note::Seen::default(),
         }
     }
 }

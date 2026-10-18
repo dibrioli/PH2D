@@ -75,6 +75,8 @@ mod chrome_rail;
 mod chrome_reach;
 /// O que o EDITOR DE SCRIPTS diz (CodeEditor Onda 1) e as abas de documento de família.
 mod code_editor;
+/// As explicações escritas à mão das mensagens do Luau (CodeEditor Onda 2, I8).
+mod code_explain;
 /// ⭐⭐ **As palavras do MOTOR DA CENA** (`ph2d-ecs`) — a 7.ª fatia da fronteira dos motores, e a
 /// primeira achada por um instrumento.
 mod ecs_scene;
@@ -568,6 +570,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| app_motion::tr(k))
             .or_else(|| app_vec::tr(k))
             .or_else(|| code_editor::tr(k))
+            .or_else(|| code_explain::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

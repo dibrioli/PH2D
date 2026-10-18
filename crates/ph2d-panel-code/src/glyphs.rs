@@ -38,6 +38,17 @@ pub(crate) fn add_work(row_bytes: usize, glyphs: usize) {
 }
 
 impl CodeView {
+    /// ⚠️ SONDA: o centro do ponto da calha da linha `line` (0-based), onde a pintura o põe, se a
+    /// linha está à vista.
+    #[must_use]
+    pub fn problem_dot(&self, line: usize) -> Option<(f32, f32)> {
+        let row = self.rows.iter().find(|r| r.line == line)?;
+        Some((
+            self.area.x + self.m.mark_w * 0.5,
+            row.y + self.m.line_h * 0.5,
+        ))
+    }
+
     /// O texto: a lei do `paint_text` do app — dica ligada, linha de base no píxel do ecrã. Os glifos
     /// juntam-se por (fonte, tamanho, tinta) num `draw_glyphs` por grupo e por QUADRO, e lêem-se
     /// pelos grupos de cada corrida: o `line.items()`/`positioned_glyphs` do parley é quadrático na

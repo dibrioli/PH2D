@@ -27,6 +27,7 @@ mod intel;
 mod keys;
 mod lint;
 pub mod list;
+mod note;
 mod pointer;
 pub mod problems;
 mod recovery;

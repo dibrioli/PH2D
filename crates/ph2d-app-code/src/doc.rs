@@ -326,6 +326,7 @@ impl CodeDoc {
     ) {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
         let problems = self.problems();
+        let note = self.note_sections(&problems);
         let shown = self.actions_shown().or_else(|| self.completion_shown());
         let sig_doc = self
             .hints
@@ -405,10 +406,11 @@ impl CodeDoc {
                 actions: s.actions,
             }),
             hover: hints.hover.as_ref().and_then(|h| {
-                let shown = h.shown.as_ref()?;
-                Some(ph2d_panel_code::HoverView {
+                let assistant = h.shown.as_ref().map(|s| s.text.as_str());
+                let sections = crate::note::sections(&note, assistant);
+                (!sections.is_empty()).then(|| ph2d_panel_code::HoverView {
                     word: h.word.clone(),
-                    text: &shown.text,
+                    sections,
                 })
             }),
             signature: hints.sig.as_ref().and_then(|s| s.shown.as_ref()).map(|s| {

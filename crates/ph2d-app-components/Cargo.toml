@@ -101,6 +101,8 @@ ph2d-hud = { path = "../ph2d-hud" }
 # `ScriptHost` e anexam o `LuauScript`. ⚠️ A VM (`mlua` + Luau) já é compilada pela shell, logo esta
 # aresta não acrescenta uma unidade à build do binário — só à dos testes desta crate.
 ph2d-script = { path = "../ph2d-script" }
+# (CodeEditor I8) O cartão do script diz a explicação escrita à mão do erro, a mesma do editor.
+ph2d-code-explain = { path = "../ph2d-code-explain" }
 ph2d-thumbnail = { path = "../ph2d-thumbnail" }
 # ⭐ **A árvore de tags do projecto** (TOP-20 #9): o formato dela dentro do `ProjectState`
 # (`tags_doc`) vive nesta família, e a shell só o chama. O `serde` é o do par de fio (`SavedTag`):

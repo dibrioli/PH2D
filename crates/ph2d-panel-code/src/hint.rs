@@ -83,9 +83,18 @@ impl CodeView {
         if let Some(h) = &frame.hover
             && let Some(at) = self.caret_rect(frame.buffer, h.word.start)
         {
-            let lines = wrap(&plain(h.text), self.hint_cols());
-            let lines: Vec<(String, Option<Range<usize>>)> =
-                lines.into_iter().map(|l| (l, None)).collect();
+            let cols = self.hint_cols();
+            let mut lines: Vec<(String, Option<Range<usize>>)> = Vec::new();
+            for (i, s) in h.sections.iter().enumerate() {
+                if i > 0 {
+                    lines.push((String::new(), None));
+                }
+                for l in s.title.map(|t| wrap(t, cols)).unwrap_or_default() {
+                    let all = 0..l.len();
+                    lines.push((l, Some(all)));
+                }
+                lines.extend(wrap(&plain(s.text), cols).into_iter().map(|l| (l, None)));
+            }
             self.hints.hover = self.paint_box(&lines, at, false, scene, ts, pal);
         }
     }

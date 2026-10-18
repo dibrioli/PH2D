@@ -61,6 +61,7 @@ pub fn frame(
     }
     docs.pump();
     docs.lint();
+    docs.notes();
     let ask = save(
         docs,
         world,

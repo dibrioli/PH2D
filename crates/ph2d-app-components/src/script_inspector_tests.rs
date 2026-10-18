@@ -251,9 +251,14 @@ fn com_o_script_partido_os_valores_contam_se_como_guardados() {
     assert_eq!(info.kept, 1);
 }
 
-/// O erro do cartão: a 1.ª linha da mensagem e a linha do script.
-fn linha(n: u32, msg: &str) -> InspectorScriptError {
-    InspectorScriptError::from_luau(msg, Some(n))
+/// O erro do cartão: a linha do script, o símbolo com que a mensagem do Luau acaba, e a explicação
+/// escrita à mão (CodeEditor I8) no lugar da frase dela.
+fn linha(n: u32, msg: &str, titulo: &str, porque: &str) -> InspectorScriptError {
+    InspectorScriptError {
+        message: titulo.to_owned(),
+        why: Some(porque.to_owned()),
+        ..InspectorScriptError::from_luau(msg, Some(n))
+    }
 }
 
 /// ⭐⭐ (CodeEditor T1/T7) **O cartão leva a LINHA do erro, estruturada** — sintaxe na 3, corrida na
@@ -270,7 +275,10 @@ fn o_cartao_mostra_a_linha_do_erro() {
             .status,
         S::Broken(linha(
             3,
-            "Expected identifier when parsing expression, got '='"
+            "Expected identifier when parsing expression, got '='",
+            "A value is missing before \u{201c}=\u{201d}",
+            "Luau wanted a value here (a number, a name, a string\u{2026}) and found \u{201c}=\u{201d}. \
+             Look for a doubled sign, like = =, or a gap before it."
         ))
     );
     let (mut sim, bits) = cena_com(
@@ -283,7 +291,12 @@ fn o_cartao_mostra_a_linha_do_erro() {
         build_info(&sim, Some(&h), bits, 1, true)
             .expect("tem")
             .failure,
-        Some(linha(7, "attempt to index nil with 'x'"))
+        Some(linha(
+            7,
+            "attempt to index nil with 'x'",
+            "Tried to read \u{201c}x\u{201d} from nil",
+            "The value before .x has nothing in it: it was never set, or the name is misspelled."
+        ))
     );
 }
 
@@ -483,7 +496,7 @@ fn partido_a_correr_a_anterior_e_partido_parado() {
         (e.line, e.message.as_str(), e.symbol.as_deref()),
         (
             Some(2),
-            "Expected identifier when parsing expression, got",
+            "A value is missing before \u{201c}=\u{201d}",
             Some("=")
         )
     );

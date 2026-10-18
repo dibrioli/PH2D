@@ -14,13 +14,24 @@ pub enum Severity {
 }
 
 /// Um problema numa linha (0-based): a calha marca a linha; `culprit` (bytes do buffer) é o
-/// símbolo culpado, sublinhado no lugar exacto.
+/// símbolo culpado, sublinhado no lugar exacto. `message` é a mensagem crua (a do Luau, ou a nossa);
+/// `explanation`, a escrita à mão para ela (I8), quando a classe tem uma.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Problem {
     pub line: usize,
     pub severity: Severity,
     pub culprit: Option<Range<usize>>,
     pub message: String,
+    pub explanation: Option<Explanation>,
+}
+
+/// A explicação de um problema (I8): o título numa linha e o porquê com o que fazer. `kind` é o nome
+/// estável da classe (o registo local das explicações vistas grava-o).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Explanation {
+    pub kind: &'static str,
+    pub title: String,
+    pub why: String,
 }
 
 /// Uma dobra: as linhas `start+1 ..= end` (0-based) escondidas quando `folded`.
@@ -100,9 +111,16 @@ pub struct PreviewLine {
     pub changed: Vec<Range<usize>>,
 }
 
-/// O balão do rato (I5): o que o assistente diz da palavra `word` (bytes do buffer), em Markdown.
+/// O balão do rato, por baixo de `word` (bytes do buffer): o que o assistente diz da palavra (I5) e
+/// os problemas (I8), uma secção cada.
 pub struct HoverView<'a> {
     pub word: Range<usize>,
+    pub sections: Vec<HoverSection<'a>>,
+}
+
+/// Uma secção do balão: o título (marcado) e o texto, em Markdown.
+pub struct HoverSection<'a> {
+    pub title: Option<&'a str>,
     pub text: &'a str,
 }
 

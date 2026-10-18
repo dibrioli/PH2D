@@ -31,6 +31,22 @@ fn erro(e: &InspectorScriptError) -> String {
     }
 }
 
+/// (CodeEditor I8) **O porquê e o que fazer**, por baixo do erro explicado. Devolve o `y` seguinte.
+fn porque(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    e: &InspectorScriptError,
+) -> f32 {
+    match &e.why {
+        Some(why) => super::rows::aviso(scene, text_system, theme, x, w, y, why, ColorToken::Text2),
+        None => y,
+    }
+}
+
 /// ⭐ (CodeEditor E7) **O símbolo culpado num chip** — nunca cru entre aspas no meio da frase
 /// (retorno do dono: o `'='` confunde). Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -178,6 +194,7 @@ pub(super) fn avisos(
             if let Some(s) = &e.symbol {
                 y = simbolo(scene, text_system, theme, x, w, y, s);
             }
+            y = porque(scene, text_system, theme, x, w, y, e);
         }
         InspectorScriptStatus::Ready => {
             if info.props.is_empty() {
@@ -212,6 +229,7 @@ pub(super) fn avisos(
         if let Some(s) = &e.symbol {
             y = simbolo(scene, text_system, theme, x, w, y, s);
         }
+        y = porque(scene, text_system, theme, x, w, y, e);
     }
     if info.kept > 0 {
         y = super::rows::aviso(

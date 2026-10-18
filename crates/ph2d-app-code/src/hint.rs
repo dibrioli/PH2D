@@ -31,6 +31,26 @@ pub(crate) struct Hovering {
     pub shown: Option<Hover>,
     /// Aberto por um comando (a definição na API, I6): o rato não o leva.
     pub pinned: bool,
+    /// O balão de um problema (I8, `crate::note`), além da palavra.
+    pub note: Option<Note>,
+    /// A pausa passou (o balão de um problema abre sem esperar o assistente).
+    pub ripe: bool,
+}
+
+/// O que o balão mostra de um problema (I8).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Note {
+    /// O rato no ponto da calha da linha: as explicações dos problemas dela. Não pergunta ao assistente.
+    Gutter(usize),
+    /// O rato sobre o culpado sublinhado (a palavra do balão): a mensagem crua.
+    Culprit,
+}
+
+impl Hovering {
+    /// Pergunta ao assistente (a calha não tem palavra).
+    pub fn asks(&self) -> bool {
+        !matches!(self.note, Some(Note::Gutter(_)))
+    }
 }
 
 #[derive(Debug, Default)]
@@ -49,17 +69,18 @@ pub(crate) struct Hints {
 }
 
 impl Hints {
-    /// O rato mexeu-se sobre `word` (`None` = sobre nada que tenha balão) no instante `now_ns`.
-    pub fn pointer(&mut self, word: Option<Range<usize>>, now_ns: u128) {
+    /// O rato mexeu-se sobre `word` (`None` = sobre nada que tenha balão), talvez um problema
+    /// (`note`), no instante `now_ns`.
+    pub fn pointer(&mut self, at: Option<(Range<usize>, Option<Note>)>, now_ns: u128) {
         if self.hover.as_ref().is_some_and(|h| h.pinned) {
             return;
         }
-        let Some(word) = word else {
+        let Some((word, note)) = at else {
             self.hover = None;
             return;
         };
         match &mut self.hover {
-            Some(h) if h.word == word => {
+            Some(h) if h.word == word && h.note == note => {
                 if h.ticket.is_none() {
                     h.due_ns = now_ns + HOVER_PAUSE_NS;
                 }
@@ -71,6 +92,8 @@ impl Hints {
                     ticket: None,
                     shown: None,
                     pinned: false,
+                    note,
+                    ripe: false,
                 });
             }
         }
@@ -84,6 +107,8 @@ impl Hints {
             ticket: None,
             shown: None,
             pinned: true,
+            note: None,
+            ripe: false,
         });
     }
 
@@ -128,34 +153,40 @@ impl Hints {
         }
     }
 
+    /// Sem assistente: fecha o que é dele (o balão de um problema fica, sem a palavra).
     pub fn close(&mut self) {
-        self.hover = None;
+        match self.hover.as_mut() {
+            Some(h) if h.note.is_some() => h.shown = None,
+            _ => self.hover = None,
+        }
         self.sig = None;
     }
 }
 
 impl CodeDoc {
-    /// O rato sem botão em `(x, y)`: sobre o balão fica; sobre uma palavra de código (dentro do
-    /// desenho dela, nunca no vazio depois do fim da linha) conta a pausa; no resto fecha-o.
+    /// O rato sem botão em `(x, y)`: sobre o balão fica; sobre o ponto da calha de uma linha com
+    /// problemas, sobre um culpado sublinhado ou sobre uma palavra de código (dentro do desenho dela,
+    /// nunca no vazio depois do fim da linha) conta a pausa; no resto fecha-o.
     pub(crate) fn hover_at(&mut self, x: f32, y: f32, now_ns: u128) {
         if self.view.hint_hover_contains(x, y) {
             return;
         }
-        let word = match self.view.hit(&self.buffer, x, y) {
-            ph2d_panel_code::Hit::Text(b) => word_at(self.buffer.text(), b).filter(|w| {
-                let (a, z) = (
-                    self.view.caret_rect(&self.buffer, w.start),
-                    self.view.caret_rect(&self.buffer, w.end),
-                );
-                a.zip(z)
-                    .is_some_and(|(a, z)| a.x <= x && x <= z.x && a.y <= y && y < a.y + a.h)
-            }),
+        let at = match self.view.hit(&self.buffer, x, y) {
+            ph2d_panel_code::Hit::Gutter(line) => self
+                .gutter_note(line)
+                .map(|(anchor, note)| (anchor, Some(note))),
+            ph2d_panel_code::Hit::Text(b) => match self.culprit_at(b, x, y) {
+                Some(c) => Some((c, Some(Note::Culprit))),
+                None => word_at(self.buffer.text(), b)
+                    .filter(|w| self.drawn_over(w, x, y))
+                    .filter(|w| {
+                        self.hints.hover.as_ref().is_some_and(|h| &h.word == w)
+                            || self.syntax.in_code(self.buffer.text(), w.start)
+                    })
+                    .map(|w| (w, None)),
+            },
             _ => None,
         };
-        let word = word.filter(|w| {
-            self.hints.hover.as_ref().is_some_and(|h| &h.word == w)
-                || self.syntax.in_code(self.buffer.text(), w.start)
-        });
-        self.hints.pointer(word, now_ns);
+        self.hints.pointer(at, now_ns);
     }
 }

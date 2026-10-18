@@ -5096,6 +5096,7 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-code-buffer",
+ "ph2d-code-explain",
  "ph2d-code-intel",
  "ph2d-code-lsp",
  "ph2d-code-syntax",
@@ -5128,6 +5129,7 @@ dependencies = [
  "ph2d-asset-index",
  "ph2d-audio",
  "ph2d-audio-encode",
+ "ph2d-code-explain",
  "ph2d-component-desc",
  "ph2d-core",
  "ph2d-ecs",
@@ -5955,6 +5957,14 @@ dependencies = [
  "crop",
  "fastrand",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "ph2d-code-explain"
+version = "0.0.0"
+dependencies = [
+ "ph2d-i18n",
+ "serde_json",
 ]
 
 [[package]]

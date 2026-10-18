@@ -15,6 +15,7 @@ mod definicao;
 mod despacho;
 mod dicas;
 mod dobras;
+mod explicacoes;
 mod gramatica;
 mod linha_longa;
 mod lista;
@@ -69,6 +70,8 @@ impl Mesa {
         // assistente ligam o seu ([`Mesa::com_assistente`]).
         let mut docs = CodeDocs::default();
         docs.set_intel_server(ph2d_app_code::IntelServer::Off);
+        // O registo das explicações vistas fica na memória (nunca no ficheiro de quem corre o teste).
+        docs.set_seen_file(None);
         hero.documents.install_surface(Box::new(docs));
         (
             Self {

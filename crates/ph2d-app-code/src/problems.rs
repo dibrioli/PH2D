@@ -182,6 +182,7 @@ pub(crate) fn problems(
                     Some(sym) => tr_with("code.problem.missing", &[("sym", sym)]),
                     None => tr("code.problem.syntax").to_owned(),
                 },
+                explanation: None,
             },
             syntax: true,
             luau: false,
@@ -202,6 +203,7 @@ pub(crate) fn problems(
                     severity: Severity::Error,
                     culprit: culprit_on_line(text, errors, line),
                     message: d.message.clone(),
+                    explanation: None,
                 },
                 syntax: false,
                 luau: true,
@@ -235,6 +237,7 @@ pub(crate) fn problems(
                     severity: Severity::Error,
                     culprit: Some(bytes),
                     message: d.message.clone(),
+                    explanation: None,
                 },
                 syntax: true,
                 luau: true,
@@ -254,12 +257,21 @@ pub(crate) fn problems(
                 severity: severity_of(d.severity),
                 culprit: Some(bytes),
                 message: d.message.clone(),
+                explanation: None,
             },
             syntax: false,
             luau: true,
         });
     }
-    let mut out: Vec<Problem> = rows.into_iter().map(|r| r.p).collect();
+    let mut out: Vec<Problem> = rows
+        .into_iter()
+        .map(|mut r| {
+            if r.luau {
+                r.p.explanation = crate::note::explanation(&r.p.message);
+            }
+            r.p
+        })
+        .collect();
     out.sort_by_key(|p| (p.line, p.culprit.as_ref().map(|c| c.start)));
     out
 }

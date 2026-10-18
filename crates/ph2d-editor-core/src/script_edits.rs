@@ -101,6 +101,9 @@ pub struct InspectorScriptError {
     pub message: String,
     pub line: Option<u32>,
     pub symbol: Option<String>,
+    /// (CodeEditor I8) O porquê e o que fazer, quando `message` é a explicação escrita à mão da
+    /// classe da mensagem (`ph2d-code-explain`) e não a do Luau.
+    pub why: Option<String>,
 }
 
 impl InspectorScriptError {
@@ -121,6 +124,7 @@ impl InspectorScriptError {
                 message: format!("{} ({kind})", head.trim_end()),
                 line,
                 symbol: Some(sym.to_owned()),
+                why: None,
             };
         }
         let split = first
@@ -132,11 +136,13 @@ impl InspectorScriptError {
                 message: head.trim_end().to_owned(),
                 line,
                 symbol: Some(sym.to_owned()),
+                why: None,
             },
             None => Self {
                 message: first.to_owned(),
                 line,
                 symbol: None,
+                why: None,
             },
         }
     }

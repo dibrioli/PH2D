@@ -444,6 +444,7 @@ impl Intel {
             if let Some(h) = d.hints.hover.as_mut()
                 && h.ticket.is_none()
                 && h.due_ns <= now_ns
+                && h.asks()
             {
                 h.ticket = Some(session.ask(&m.uri, Req::Hover(h.word.start)));
             }

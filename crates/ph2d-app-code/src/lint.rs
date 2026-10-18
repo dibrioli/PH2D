@@ -14,8 +14,8 @@ use crate::doc::CodeDoc;
 use crate::docs::CodeDocs;
 use crate::semantic::{IDLE_ERRORS_NS, IDLE_NS};
 use ph2d_code_buffer::{Text, TextEdit};
-use ph2d_i18n::tr_with;
-use ph2d_panel_code::{Problem, Severity};
+use ph2d_code_explain::Explained;
+use ph2d_panel_code::{Explanation, Problem, Severity};
 use ph2d_script::api_table::HOOKS;
 use ph2d_script::props::RESERVED_NAMES;
 use std::ops::Range;
@@ -121,17 +121,23 @@ impl Lint {
         self.list
             .iter()
             .filter(|l| l.bytes.end <= text.len())
-            .map(|l| Problem {
-                line: text.line_of_byte(l.bytes.start),
-                severity: Severity::Warning,
-                culprit: Some(l.bytes.clone()),
-                message: match l.near.as_slice() {
-                    [one] => tr_with(
-                        "code.problem.unknown_field_near",
-                        &[("name", &l.name), ("near", one)],
-                    ),
-                    _ => tr_with("code.problem.unknown_field", &[("name", &l.name)]),
-                },
+            .map(|l| {
+                let near = match l.near.as_slice() {
+                    [one] => Some(one.as_str()),
+                    _ => None,
+                };
+                let e = Explained::unknown_field(&l.name, near);
+                Problem {
+                    line: text.line_of_byte(l.bytes.start),
+                    severity: Severity::Warning,
+                    culprit: Some(l.bytes.clone()),
+                    message: e.title(),
+                    explanation: Some(Explanation {
+                        kind: e.kind.id(),
+                        title: e.title(),
+                        why: e.why(),
+                    }),
+                }
             })
             .collect()
     }

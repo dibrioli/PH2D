@@ -128,6 +128,13 @@ impl CodeDocs {
             .unwrap_or_default()
     }
 
+    /// ⚠️ SONDA: o centro do ponto da calha da linha `line` (0-based) da aba do script `id`.
+    #[must_use]
+    pub fn problem_dot(&self, id: ScriptId, line: usize) -> Option<(f32, f32)> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        d.view.problem_dot(line)
+    }
+
     /// ⚠️ SONDA: o centro do carácter no byte `at` da aba do script `id` (onde o rato o aponta), se
     /// está à vista.
     #[must_use]

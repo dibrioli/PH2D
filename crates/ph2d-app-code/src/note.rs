@@ -168,6 +168,7 @@ impl CodeDocs {
         let now = self.clock.0;
         for i in 0..self.docs.len() {
             let d = &mut self.docs[i];
+            d.hints.settle(now);
             let Some(h) = d.hints.hover.as_mut() else {
                 continue;
             };

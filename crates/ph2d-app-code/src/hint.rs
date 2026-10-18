@@ -18,6 +18,14 @@ use std::ops::Range;
 /// de símbolo do `CodeEdit` mediu 510 ms, I0b §7).
 pub(crate) const HOVER_PAUSE_NS: u128 = 500_000_000;
 
+/// Quanto um balão À VISTA espera o rato que saiu dele antes de fechar: o caminho do ponto da calha
+/// (ou da palavra) até aos botões atravessa o que não é nem um nem o outro (smoke do dono, 18/10). É
+/// o `editor.hover.hidingDelay` do VS Code 1.142 (300 ms, o padrão gravado no produto).
+pub(crate) const HOVER_HIDE_NS: u128 = 300_000_000;
+
+/// Para onde o rato foi depois de sair do balão à vista, e quando isso vale.
+type Target = Option<(Range<usize>, Option<Note>)>;
+
 /// O comando com que o `luau-lsp` marca cada função da lista (sonda do I4, 16/10).
 pub(crate) const PARAMETER_HINTS: &str = "editor.action.triggerParameterHints";
 
@@ -41,6 +49,9 @@ pub(crate) struct Hovering {
     pub hot: Option<usize>,
     /// Quanto do realce de cada botão está presente (o eixo do hover do app, `crate::note`).
     pub live: Vec<f32>,
+    /// O rato saiu do balão à vista: `(quando vale, o alvo novo, quando o rato lá parou)` — o alvo
+    /// vale passado [`HOVER_HIDE_NS`], e a pausa dele conta desde que o rato lá parou.
+    pub leaving: Option<(u128, Target, u128)>,
 }
 
 /// O que o balão mostra de um problema (I8).
@@ -76,10 +87,23 @@ pub(crate) struct Hints {
 
 impl Hints {
     /// O rato mexeu-se sobre `word` (`None` = sobre nada que tenha balão), talvez um problema
-    /// (`note`), no instante `now_ns`.
-    pub fn pointer(&mut self, at: Option<(Range<usize>, Option<Note>)>, now_ns: u128) {
+    /// (`note`), no instante `now_ns`. `open` = o balão está à vista: um alvo novo espera
+    /// [`HOVER_HIDE_NS`] ([`Self::settle`]), e voltar a ele antes disso não muda nada.
+    pub fn pointer(&mut self, at: Target, now_ns: u128, open: bool) {
         if self.hover.as_ref().is_some_and(|h| h.pinned) {
             return;
+        }
+        if let Some(h) = self.hover.as_mut() {
+            let same = at
+                .as_ref()
+                .is_some_and(|(w, n)| *w == h.word && *n == h.note);
+            if same {
+                h.leaving = None;
+            } else if open {
+                let due = h.leaving.as_ref().map_or(now_ns + HOVER_HIDE_NS, |l| l.0);
+                h.leaving = Some((due, at, now_ns));
+                return;
+            }
         }
         let Some((word, note)) = at else {
             self.hover = None;
@@ -103,8 +127,29 @@ impl Hints {
                     fixes: None,
                     hot: None,
                     live: Vec::new(),
+                    leaving: None,
                 });
             }
+        }
+    }
+
+    /// O rato voltou ao balão à vista: fica.
+    pub fn stay(&mut self) {
+        if let Some(h) = self.hover.as_mut() {
+            h.leaving = None;
+        }
+    }
+
+    /// Um quadro no instante `now_ns`: o rato que saiu do balão há [`HOVER_HIDE_NS`] leva-o para o
+    /// alvo novo (cuja pausa conta desde que o rato lá parou) ou fecha-o.
+    pub fn settle(&mut self, now_ns: u128) {
+        let due = self
+            .hover
+            .as_ref()
+            .and_then(|h| h.leaving.as_ref())
+            .is_some_and(|l| l.0 <= now_ns);
+        if due && let Some((_, to, since)) = self.hover.as_mut().and_then(|h| h.leaving.take()) {
+            self.pointer(to, since, false);
         }
     }
 
@@ -121,6 +166,7 @@ impl Hints {
             fixes: None,
             hot: None,
             live: Vec::new(),
+            leaving: None,
         });
     }
 
@@ -186,6 +232,7 @@ impl CodeDoc {
     pub(crate) fn hover_at(&mut self, x: f32, y: f32, now_ns: u128) {
         if self.view.hint_hover_contains(x, y) {
             let hot = self.view.hint_button_at(x, y);
+            self.hints.stay();
             if let Some(h) = self.hints.hover.as_mut() {
                 h.hot = hot;
             }
@@ -207,7 +254,8 @@ impl CodeDoc {
             },
             _ => None,
         };
-        self.hints.pointer(at, now_ns);
+        let open = self.view.hints_painted().0.is_some();
+        self.hints.pointer(at, now_ns, open);
         if let Some(h) = self.hints.hover.as_mut() {
             h.hot = None;
         }

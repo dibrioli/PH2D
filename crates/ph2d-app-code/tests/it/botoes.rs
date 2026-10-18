@@ -275,3 +275,58 @@ fn o_clique_no_texto_do_balao_fica_nele() {
     );
     assert_eq!(texto(&mut m, id), TEXTO);
 }
+
+/// O `editor.hover.hidingDelay` do VS Code 1.142 (300 ms, o padrão gravado no próprio produto).
+const ESCONDE: u128 = 300_000_000;
+
+/// Smoke do dono, 18/10: do ponto amarelo até ao botão o rato atravessa o que não é nem um nem o
+/// outro (a calha da linha de baixo) e o balão sumia. Agora espera [`ESCONDE`] antes de fechar: o
+/// rato chega ao botão e o clique corrige. Controlo: fora do balão mais do que isso, fecha.
+#[test]
+fn do_ponto_ate_ao_botao_o_balao_espera_o_rato() {
+    let errado = TEXTO.find("ampiltude").unwrap();
+    let linha = TEXTO[..errado].matches('\n').count();
+    let abaixo = TEXTO[errado..].find('\n').unwrap() + errado + 2;
+    let abre = |m: &mut Mesa, id| {
+        let t1 = T0 + 10 * PAUSA;
+        quadro_em(m, t1);
+        m.pinta(id);
+        let ponto = m.docs().problem_dot(id, linha).expect("o ponto da linha");
+        m.rato(id, ponto.0, ponto.1);
+        ate(m, id, t1 + PAUSA, "a calha não trouxe o botão", |m| {
+            !botoes(m, id).is_empty()
+        });
+        let baixo = m.docs().glyph_center(id, abaixo).expect("a linha de baixo");
+        let pelo_caminho = (ponto.0, baixo.1);
+        let r = m.docs().hints_painted(id).0.unwrap().rect;
+        assert!(
+            !r.contains(pelo_caminho.0, pelo_caminho.1),
+            "o caminho tem de passar FORA do balão"
+        );
+        (t1 + PAUSA, pelo_caminho)
+    };
+
+    let (mut m, id) = sem_assistente(TEXTO);
+    let (t, (cx, cy)) = abre(&mut m, id);
+    m.rato(id, cx, cy);
+    quadro_em(&mut m, t + ESCONDE - 1_000_000);
+    m.pinta(id);
+    assert!(aberto(&mut m, id), "fechou a meio do caminho");
+    let (bx, by) = botoes(&mut m, id)[0].0;
+    m.rato(id, bx, by);
+    quadro_em(&mut m, t + 3 * ESCONDE);
+    m.pinta(id);
+    assert!(aberto(&mut m, id), "chegou ao balão: fica");
+    m.clica(id, bx, by, Modifiers::default());
+    assert_eq!(texto(&mut m, id), TEXTO.replace("ampiltude", "amplitude"));
+
+    let (mut m, id) = sem_assistente(TEXTO);
+    let (t, (cx, cy)) = abre(&mut m, id);
+    m.rato(id, cx, cy);
+    quadro_em(&mut m, t + ESCONDE);
+    m.pinta(id);
+    assert!(
+        !aberto(&mut m, id),
+        "fora do balão mais do que a espera: fecha"
+    );
+}

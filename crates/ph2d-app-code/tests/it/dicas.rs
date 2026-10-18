@@ -235,9 +235,11 @@ fn o_rato_a_andar_nunca_pergunta_e_parado_abre_o_balao() {
     m.rato(id, r.x + r.w * 0.5, r.y + r.h * 0.5);
     assert!(m.docs().hover_of(id).is_some(), "o balão fugiu do rato");
     // No vazio à direita do fim da linha (a 1.ª, que acaba numa palavra: o `1`): sai, e ali não
-    // pergunta.
+    // pergunta. À vista, espera o rato o `editor.hover.hidingDelay` do VS Code (300 ms, I8b) antes.
     let (_, y) = m.docs().glyph_center(id, 7).unwrap();
     m.rato(id, 900.0, y);
+    assert!(m.docs().hover_of(id).is_some(), "fechou sem esperar o rato");
+    quadro_em(&mut m, t1 + PAUSA_BALAO * 4 + 300_000_000);
     assert_eq!(m.docs().hover_of(id), None, "o balão ficou");
     nunca(
         &mut m,

@@ -82,3 +82,14 @@ Os mesmos gestos (`gera_eventos.py AIRBRUSH "Default/Spray 2" … --size_px N`),
 | `airbrush20.png` | AIRBRUSH | Default/Spray 2 | 20 | 9.3 | 7 | Default/EX00 White Simple | `26ef6c5cddb0be7a` | [240] |
 | `airbrush80.png` | AIRBRUSH | Default/Spray 2 | 80 | 23.6 | 7 | Default/EX00 White Simple | `ecf51447dd38c69c` | [240] |
 | `airbrush40b.png` | AIRBRUSH | Default/Spray 2 | 40 | 14.8 | 7 | Default/EX00 White Simple | `151a0ab747a781ac` | [240] |
+
+## A escada do óleo (sessão de 2026-10-18, prompt 50)
+
+Os mesmos gestos (`gera_eventos.py OIL_AND_ACRYLIC "Bristle/Bristle Flat" … [--size_px 103] [--cena inclinados]`), estado A, recorte 1000×640. `--cena inclinados` = só dois rectos a 8° e 25° (`sonda_gestos::INCLINADOS`). `oil40c.png` é o CONTROLO da sessão: o `oil` de 07/10 refeito (a mesma tinta a 0,04 % e a régua da escada 1,31 · 12,3 contra 1,32 · 11,9). A régua: `ferramentas/escada.py` (doc [50_medicao](../../50_medicao_o_relevo_sem_escada.md)). Comando exacto em `cabecalhos.json`.
+
+| ficheiro | ferramenta | preset | size_px | Size (slider) | cena | semente | sha256 (16) | SIMULATION |
+|---|---|---|---|---|---|---|---|---|
+| `oil103.png` | OIL_AND_ACRYLIC | Bristle/Bristle Flat | 103 | 40.5 | bancada | 7 | `df452abdaf42705e` | [240] |
+| `oil40c.png` | OIL_AND_ACRYLIC | Bristle/Bristle Flat | 40 | 21.5 | bancada | 7 | `6c1ff3123dcf9842` | [240] |
+| `incl103.png` | OIL_AND_ACRYLIC | Bristle/Bristle Flat | 103 | 40.5 | inclinados (8° e 25°) | 7 | `7e0abc84875ea11c` | [240] |
+| `incl40.png` | OIL_AND_ACRYLIC | Bristle/Bristle Flat | 40 | 21.5 | inclinados (8° e 25°) | 7 | `41abf5c30ddc0cd1` | [240] |

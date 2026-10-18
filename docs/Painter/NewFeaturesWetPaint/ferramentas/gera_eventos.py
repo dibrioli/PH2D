@@ -63,8 +63,40 @@ def curva_s(x0, x1, cy, amp):
     return [(x0 + (x1 - x0) * i / 120, cy + amp * math.sin(i / 120 * math.tau * 1.5)) for i in range(121)]
 
 
+# Os rectos INCLINADOS da escada (prompt 50): 8° e 25°, a pressão 1 e passo de rato (`sonda_gestos::INCLINADOS`).
+INCLINADOS = [((80, 150), (920, 268.05)), ((80, 330), (580, 563.15))]
+
+
+def bancada(a, ev, gesto_rep, cheio, cor_actual):
+    """Os cinco gestos da bancada (`sonda_gestos::pinta_cena_ate`)."""
+    # linha 1 — recto a passo de rato · curva em S
+    gesto_rep(ev, [(60, 120), (560, 120)], 3, cheio)
+    gesto_rep(ev, curva_s(600, 960, 120, 25), 3, cheio)
+    # linha 2 — rampa de pressão · traço RÁPIDO
+    gesto_rep(ev, [(60, 300), (560, 300)], 3, lambda t: 0.15 + 0.85 * math.sin(t * math.pi))
+    gesto_rep(ev, [(600, 300), (960, 300)], 25, cheio)
+    # linha 3 — recto, cruzamento vermelho e um recto vermelho
+    rgb = lambda t: dict(zip("rgb", map(int, t.split(","))))
+    if a.cor_base:
+        cor_actual["cor"] = rgb(a.cor_base)
+        ev.append({"event_type": "SET_BRUSH_COLOR", "color": cor_actual["cor"]})
+    gesto_rep(ev, [(60, 480), (560, 480)], 3, cheio)
+    if a.seca_cruz is not None:
+        ev.append({"event_type": "SIMULATION", "repeats": a.seca_cruz})
+        ev.append({"event_type": "DRY"})
+    cor_actual["cor"] = rgb(a.cor_cruz) if a.cor_cruz else VERMELHO
+    ev.append({"event_type": "SET_BRUSH_COLOR", "color": cor_actual["cor"]})
+    gesto_rep(ev, [(300, 400), (300, 560)], 3, cheio)
+    cor_actual["cor"] = VERMELHO
+    gesto_rep(ev, [(700, 480), (960, 480)], 3, cheio)
+    cor_actual["cor"] = AZUL
+    ev.append({"event_type": "SET_BRUSH_COLOR", "color": AZUL})
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--cena", choices=["bancada", "inclinados"], default="bancada",
+                    help="inclinados = só os dois rectos a 8° e 25° (a escada, prompt 50)")
     ap.add_argument("tool"); ap.add_argument("preset"); ap.add_argument("pasta"); ap.add_argument("nome")
     ap.add_argument("--size_px", type=float, default=40.0); ap.add_argument("--sim", type=int, default=240)
     ap.add_argument("--paper", default="Default/EX00 White Simple"); ap.add_argument("--seed", type=int, default=7)
@@ -113,28 +145,12 @@ def main():
         e = dict(sb); e["color"] = cor_actual["cor"]
         ev.append(e)
         gesto(ev, pts, passo, p)
-    # linha 1 — recto a passo de rato · curva em S
-    gesto_rep(ev, [(60, 120), (560, 120)], 3, cheio)
-    gesto_rep(ev, curva_s(600, 960, 120, 25), 3, cheio)
-    # linha 2 — rampa de pressão · traço RÁPIDO
-    gesto_rep(ev, [(60, 300), (560, 300)], 3, lambda t: 0.15 + 0.85 * math.sin(t * math.pi))
-    gesto_rep(ev, [(600, 300), (960, 300)], 25, cheio)
-    # linha 3 — recto, cruzamento vermelho e um recto vermelho
-    rgb = lambda t: dict(zip("rgb", map(int, t.split(","))))
-    if a.cor_base:
-        cor_actual["cor"] = rgb(a.cor_base)
-        ev.append({"event_type": "SET_BRUSH_COLOR", "color": cor_actual["cor"]})
-    gesto_rep(ev, [(60, 480), (560, 480)], 3, cheio)
-    if a.seca_cruz is not None:
-        ev.append({"event_type": "SIMULATION", "repeats": a.seca_cruz})
-        ev.append({"event_type": "DRY"})
-    cor_actual["cor"] = rgb(a.cor_cruz) if a.cor_cruz else VERMELHO
-    ev.append({"event_type": "SET_BRUSH_COLOR", "color": cor_actual["cor"]})
-    gesto_rep(ev, [(300, 400), (300, 560)], 3, cheio)
-    cor_actual["cor"] = VERMELHO
-    gesto_rep(ev, [(700, 480), (960, 480)], 3, cheio)
-    cor_actual["cor"] = AZUL
-    ev.append({"event_type": "SET_BRUSH_COLOR", "color": AZUL})
+    if a.cena == "inclinados":
+        # a escada (prompt 50): dois rectos INCLINADOS a 8° e 25° (`sonda_gestos::INCLINADOS`)
+        for p0, p1 in INCLINADOS:
+            gesto_rep(ev, [p0, p1], 3, cheio)
+    else:
+        bancada(a, ev, gesto_rep, cheio, cor_actual)
     if not a.so_tracos:
         base = a.pasta.rstrip("/\\") + "/" + a.nome
         ev.append({"event_type": "SAVE", "rgba_canvas": {"filename": base + "_t0.png"}, "rgba_dry": {"filename": base + "_t0_dry.png"}})

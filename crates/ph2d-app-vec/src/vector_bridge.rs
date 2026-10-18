@@ -37,7 +37,7 @@ mod style;
 /// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
 pub use style::{StrokeStyle, restyle_selected_strokes, seed_fill_from_paint};
 use style::{
-    apply_fill_colour, rgba, seed_style_from_selection, selected_grad_color,
+    apply_fill_colour, note_style_seen, rgba, seed_style_from_selection, selected_grad_color,
     set_selected_grad_color,
 };
 
@@ -230,8 +230,9 @@ pub fn dispatch(
         }
     }
 
-    // O ESTILO do caminho selecionado vira o corrente quando a seleção muda (antes de qualquer
-    // leitura do Style abaixo, senão o frame da seleção ainda pintaria o antigo).
+    // O ESTILO do caminho selecionado vira o corrente quando a seleção muda OU quando a forma
+    // mudou por mão alheia (antes de qualquer leitura do Style abaixo, senão o frame ainda
+    // pintaria o antigo). A régua fecha-se em `note_style_seen`, depois do passo 4.
     //
     // ⚠️ A largura viaja em px de TELA na tool e em MUNDO no documento; a conversão tem um dono
     // só, e é este (`px_to_world` é o recíproco).
@@ -245,6 +246,7 @@ pub fn dispatch(
         } else {
             0.0
         },
+        grad_handle,
     );
 
     // **Uma cor autorada SOLTA o token** (plano UI/UX W4a) — o one-shot do tool, drenado aqui e
@@ -407,6 +409,7 @@ pub fn dispatch(
             }
         }
     }
+    note_style_seen(pen, scene);
     // ── 5. **Publicar** — o que o painel mostra sobre a cena e a seleção.
     //
     // ⚠️ Esta primeira publicação fica AQUI porque é a única que lê a TOOL (`ui_snapshot`),
@@ -450,6 +453,10 @@ mod opacity_tests;
 #[cfg(test)]
 #[path = "vector_bridge_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "vector_bridge_alheia_tests.rs"]
+mod alheia_tests;
 
 /// A TRADUÇÃO do vocabulário tool ⟷ documento — módulo irmão pelo teto de 600 LOC (HR-18).
 #[path = "vector_bridge_vocab.rs"]

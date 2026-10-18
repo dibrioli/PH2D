@@ -14,7 +14,7 @@
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeAlign, StrokeSpec, VecScene};
-use std::cell::Cell;
+use std::cell::RefCell;
 
 pub fn rgba(c: [u8; 4]) -> Rgba8 {
     Rgba8::new(c[0], c[1], c[2], c[3])
@@ -334,13 +334,51 @@ pub fn sync_opacity_slider(
     }
 }
 
+/// **O que o painel viu da forma selecionada** — o id e as duas tintas do DOCUMENTO (em mundo: o
+/// zoom não a perturba). Gravado depois da escrita do próprio painel ([`note_style_seen`]), então
+/// a diferença no quadro seguinte é sempre de uma mão ALHEIA (Show, sinal, Preview, desfazer…).
+#[derive(Clone, PartialEq)]
+struct StyleSeen {
+    id: ph2d_vec_scene::VecPathId,
+    fill: Option<Paint>,
+    stroke: Option<StrokeSpec>,
+}
+
 thread_local! {
-    /// O caminho cujas PONTAS a tool adotou por último — o "alvo" dos dois seletores de
-    /// marker, no mesmo modelo do alvo dos campos de forma (`vec_shape_params`). Só a
-    /// MUDANÇA de alvo semeia; semear todo frame brigaria com a escolha que o usuário
-    /// acabou de fazer (o `SetValue` do popover chega DEPOIS deste passe, no frame
-    /// seguinte, e seria imediatamente desfeito).
-    static STYLE_TARGET: Cell<Option<ph2d_vec_scene::VecPathId>> = const { Cell::new(None) };
+    /// Re-semear a cada quadro sem esta régua brigaria com o seletor a meio do arrasto (o quadro
+    /// da escolha ainda lê a forma velha).
+    static STYLE_SEEN: RefCell<Option<StyleSeen>> = const { RefCell::new(None) };
+}
+
+fn seen_of(pen: &PenTool, scene: &VecScene) -> Option<StyleSeen> {
+    let id = pen.selected()?;
+    let p = scene.paths().iter().find(|p| p.id == id)?;
+    Some(StyleSeen {
+        id,
+        fill: p.fill.clone(),
+        stroke: p.stroke.clone(),
+    })
+}
+
+/// **A régua da próxima comparação é o que o painel DEIXOU na forma** — chamada uma vez, depois
+/// do passo 4 (a escrita do painel), para que a escrita do próprio painel não volte como alheia.
+pub fn note_style_seen(pen: &PenTool, scene: &VecScene) {
+    STYLE_SEEN.with(|s| *s.borrow_mut() = seen_of(pen, scene));
+}
+
+/// O seletor aberto sobre `swatch` passa a mostrar `c` — senão o read-back do quadro seguinte
+/// reescreveria a cor dele por cima da escrita alheia.
+fn reseed_open_picker(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    swatch: ph2d_editor_core::NodeId,
+    c: [u8; 4],
+) {
+    if store.picker_target() == Some(swatch) {
+        store.set_blender_value(
+            ph2d_editor_core::ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]),
+        );
+    }
 }
 
 /// **Semeia o ESTILO a partir do caminho SELECIONADO** (quando a seleção muda) — cor, largura,
@@ -365,19 +403,25 @@ thread_local! {
 ///
 /// Um caminho SEM traço (só preenchimento) não tem estilo a doar: o alvo passa a ser ele, mas o
 /// Style da tool fica onde estava (o default do próximo traço).
+///
+/// ⭐ **Semeia também quando a MESMA forma mudou por mão alheia** (F19): a régua é o
+/// [`StyleSeen`], e não só o id. Sem isso o painel mentia depois de um Show, de um sinal, do
+/// Preview ou de um desfazer — e tocar um único controlo reescrevia o estilo velho por cima da
+/// forma. A deteção é por CONTEÚDO, num sítio só, e não por aviso de cada escritor.
 pub fn seed_style_from_selection(
     tool: &mut ph2d_tool_vector::VectorTool,
     store: &mut ph2d_editor_core::interaction::WidgetStore,
     pen: &PenTool,
     scene: &VecScene,
     world_to_px: f64,
+    grad_handle: Option<GradHandle>,
 ) {
-    let target = pen.selected();
-    if STYLE_TARGET.with(Cell::get) == target {
+    let now = seen_of(pen, scene);
+    if STYLE_SEEN.with(|s| *s.borrow() == now) {
         return;
     }
-    STYLE_TARGET.with(|c| c.set(target));
-    let Some(path) = target.and_then(|id| scene.paths().iter().find(|p| p.id == id)) else {
+    STYLE_SEEN.with(|s| s.borrow_mut().clone_from(&now));
+    let Some(path) = now.and_then(|n| scene.paths().iter().find(|p| p.id == n.id)) else {
         return;
     };
     // O preenchimento vira a swatch de Fill — SÓLIDO pela cor, PADRÃO pela cor de recurso mais a
@@ -388,10 +432,23 @@ pub fn seed_style_from_selection(
     if let Some(c) = seed_fill_from_paint(path.fill.as_ref()) {
         tool.adopt_fill(c);
     }
+    let slot = grad_handle
+        .and_then(|h| path.fill.as_ref().and_then(|f| selected_grad_color(f, h)))
+        .map(|c| [c.r, c.g, c.b, c.a]);
+    reseed_open_picker(
+        store,
+        ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
+        slot.unwrap_or_else(|| tool.fill_rgba()),
+    );
     let Some(stroke) = path.stroke.as_ref() else {
         return;
     };
     tool.adopt_stroke(stroke, stroke.width * world_to_px);
+    reseed_open_picker(
+        store,
+        ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
+        tool.stroke_rgba(),
+    );
     reseed_style_sliders(store, tool);
 }
 

@@ -64,5 +64,5 @@ não via a escada (49 §7). **Próxima janela: o [prompt 50](../NewFeaturesWetPa
 Os números da fábrica em §2 são os da lei com os knobs, não os da fábrica. Depois da W3: W4 (papel), W5 (mistura), W7 (sem água), W8 (o painel — inclui os 14 knobs
 dos fios e do relevo e o Lighting no Wet Paint).
 
-- C35 (o leve do Oil Bristle) · B15 (o Acrylic liso?) · C33 (o Dry Brush sem régua).
+- C35 (o leve do Oil Bristle) · C33 (o Dry Brush sem régua) · **B15 decidido 18/10: NÃO** (o Acrylic fica com as estrias).
 - Na fila (dono 17/10, NÃO juntados): A13–A15, C29, C30, C32.

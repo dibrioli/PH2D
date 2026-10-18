@@ -29,9 +29,9 @@ saiu da fábrica (a lei fica, desligada). A bancada é horizontal: não via a es
 4. **Fecho:** suíte afetada + clippy (`PH2D_SUITE=fecho`); handoff ≤ 8 KB; smoke ao dono em passos numerados com um
    traço INCLINADO e GRANDE (o dele), ao lado do de ontem — e fotografe-o antes de mandar.
 
-## Por decidir do dono
+## Decidido pelo dono (18/10)
 
-- **B15** — o Acrylic Round liso como o do Rebelle? (perguntado em 18/10, sem resposta).
+- **B15: NÃO** — o Acrylic Round fica com as estrias dele; não o alise (lista 26).
 
 ## Na fila (do dono — NÃO junte)
 

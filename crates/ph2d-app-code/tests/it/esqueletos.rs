@@ -259,3 +259,18 @@ fn com_a_lista_aberta_o_tab_e_da_lista() {
         Some("function update(self: ScriptSelf, pairs: number)\n  \nend")
     );
 }
+
+/// Desfazer pelo menu Edit (sem tecla nenhuma) também acaba a sessão.
+#[test]
+fn desfazer_pelo_menu_acaba_a_sessao() {
+    use ph2d_editor_core::doc_surface::DocumentSurface;
+    let (mut m, ids) = Mesa::new(&[("a.luau", "")]);
+    let id = ids[0];
+    m.pede(id);
+    abre_sem(&mut m, id, "upd");
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    escreve(&mut m, id, "me");
+    assert!(m.docs().snippet_of(id).is_some());
+    assert!(m.docs().undo(id.0, false));
+    assert_eq!(m.docs().snippet_of(id), None);
+}

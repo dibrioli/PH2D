@@ -163,6 +163,8 @@ saída `Finished \`smoke\` profile [optimized] target(s) in 0.27s`.
 8. (Com o assistente instalado) escreva `pirnt(1)` dentro de uma função e espere: no balão, os botões são os mesmos que o Alt+Enter mostra, por exemplo **Did you mean print?**.
 9. **Deu errado se:** o balão some no caminho do ponto amarelo até ao botão; não há botão por baixo da explicação; o botão já nasce azul/destacado; ele salta em vez de esmaecer; o balão fecha quando o rato vai para cima dele; clicar no texto do balão move o cursor; a correção precisa de dois Ctrl+Z; a primeira linha do Alt+Enter continua um bloco azul cheio.
 
+> ✅ **Smoke do dono OK a 18/10**, com a espera de 300 ms (§3.1).
+
 ## 9. ABERTO
 
 - ⚠️ **Efeito colateral do oráculo:** na 1.ª tentativa a corrida abriu o VS Code isolado ~10 s ainda com o

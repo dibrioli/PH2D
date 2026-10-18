@@ -103,7 +103,7 @@ seguinte; o resto entra em lotes.
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-17_ONDA2_I7.md)).
    ~~I8~~ — feito **na linha** (HEAD `e8a77c5bab`;
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-17_ONDA2_I8.md)).
-   ~~I8b~~ — feito **na linha** (HEAD `1b157f2fa8`;
+   ~~I8b~~ — feito **na linha**, smoke do dono OK a 18/10 (HEAD `0e26959946`;
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I8b.md)): as correcções do
    Alt+Enter como botões do design system dentro do balão do problema (porta única `actions_at`), e a 1.ª
    acção da janelinha com o foco neutro em vez do bloco do acento. **Próximo: I10** (rename e referências +

@@ -57,3 +57,52 @@ nem rebase). Leia docs/Macros/handoffs/HANDOFF_CONTINUACAO_W9_ARRASTAR_A_TIMELIN
 passo). Meça com a variante «arrasta» da cena =6, escreva o gate que fica vermelho, cure, fotografe, e me
 devolva o binário de smoke com os passos numerados e as fotos.
 ```
+
+---
+
+## Resultado (18/10, mesma data — o bloco feito)
+
+**Causa MEDIDA, não só lida**: a de cima, com um acréscimo — o defeito só aparece onde a leitura da cena
+sobe POR CAIXA. Wet Paint e Watercolor recompõem a tela inteira a cada tique da água (a cópia sobe
+inteira por acaso); **Digital e Impasto** sobem a caixa suja herdada. A `=5` do dono não arma o pincel
+(`arm_brush_once` só arma na `=4`/`=6`), logo ele pintou em **Digital** — o meio que reprova.
+
+- **Gate** `macro_track::palcos_arrasto_tests::arrastar_a_timeline_deixa_a_ranhura_igual_a_tela_inteira_em_cada_meio`
+  (`ph2d-app-painter`): 4 pinceladas em cada um dos 4 meios, tocar até ao fim, 8 saltos, arrasto contínuo
+  para trás e para a frente; em cada quadro a ranhura = a tela INTEIRA de uma 2.ª reprodução com os mesmos
+  instantes (isola a lógica das caixas da reprodução), e depois de cada salto para trás = uma reprodução
+  FRESCA lida uma vez. ⚠️ A régua «fresca em cada quadro» foi recusada: a tocar para a frente a cena lê a
+  tela um tique da água atrás (diferenças ≤ 16/255 no Wet Paint) — mede a régua, não o defeito.
+  **Vermelho antes**: `Digital [(293, 2.084 s, 98 texels), (294, 1.936 s, 98)]`, `Impasto [(294, 1.936 s, 13)]`.
+- **Gate** `macro_track::composicao_tests::a_copia_de_um_tocador_sobe_inteira_na_primeira_leitura`
+  (`ph2d-tool-painter`): `instantaneo()` E `recomeca()` (a cópia da etapa editada, `reedita`/`partida`) — a
+  1.ª caixa é a tela inteira, a seguinte volta à caixa; controlo: o original, no mesmo instante, sobe só a
+  caixa.
+- **Cura** (`tocar.rs`): `TocadorDoPainter.por_ler` nasce `true` em `com_tool` e em `instantaneo` (logo em
+  `recomeca`); `caixa_da_tela` drena a caixa do tool e devolve `None` na 1.ª leitura. A lei está no tocador
+  (a cópia nunca foi lida pela cena), não no `MacroEmCena` — cobre o salto, a volta ao início e a etapa
+  editada de uma vez.
+- **Mutação**: `por_ler: false` na cópia ⇒ os dois gates vermelhos (os mesmos números); restaurado.
+- Vizinhos verdes: `ph2d-app-painter --lib macro_track` 25/25, `ph2d-tool-painter --lib macro_track` 49/49,
+  `ph2d-tool-painter --test it macro_` 27/27.
+
+**No app** (`PH2D_MACRO_SMOKE=6 PH2D_MACRO_CAMINHO=arrasta`, tela virtual, o MESMO binário com e sem a cura
+por um interruptor de execução que já saiu do código): o diagnóstico ganhou `inteira=` (texels do espelho ≠ a
+tela inteira do tocador) e `fresca=` (≠ uma reprodução à parte do `Macro.doc` no mesmo instante, uma vez por
+instante parado).
+
+| | linhas com diferença | máx. texels | saltos errados (parado) | quadros/100 ms no arrasto contínuo |
+|---|---|---|---|---|
+| sem a cura | 35 de 192 | 12 578 | 1,416 s (12 184) · 2,0 s (12 578) — ficam no ecrã até outro salto | 7,00 |
+| com a cura | **0 de 196** | 0 | nenhum (9 instantes, `fresca=0`) | 6,93 (mín 6; ruído) |
+
+Custo da cura: uma subida inteira (1024² RGBA, premultiplicar + textura) por salto; no arrasto contínuo cada
+quadro é um salto e o ritmo do app não muda (tabela). Fotos: [antes, 1,25 s — os buracos](smoke_2026-10-18/arrasta_antes_1250ms_buracos.png)
+· [depois, 2,79 s](smoke_2026-10-18/arrasta_depois_2792ms.png) · [depois, 2,0 s](smoke_2026-10-18/arrasta_depois_2000ms.png)
+· [depois, 1,96 s a arrastar](smoke_2026-10-18/arrasta_depois_1958ms_arrasto.png). ⚠️ A rajada «antes»
+congelou 9 fotos (mesmo hash) — usou-se a 10.ª, conferida pelo `Time(s)`.
+
+- Shell: +1 linha (`macro_smoke.rs`: o ⏮ e o arrasto no mesmo braço; o diagnóstico recebe o mundo) —
+  187 971 ≤ `TETO_LOC` 189 041.
+- Aberto (baixo, herdado): o piscar de 1–2 quadros depois do Parar (marca da época antiga com `troca=true`).
+- Próximo: o smoke do dono (o arrasto à mão na `=5`); a linha continua por integrar (W8 + W9).

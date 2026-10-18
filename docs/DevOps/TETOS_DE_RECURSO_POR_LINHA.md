@@ -17,7 +17,7 @@ Todo comando pesado de uma linha passa por **`scripts/ph2d-run.sh`**:
 
 ```bash
 bash scripts/ph2d-run.sh cargo test -p ph2d-timeline
-PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-field-gpu -- --ignored
+PH2D_GPU=1 bash scripts/ph2d-run.sh bash ronda.sh   # a vez da placa já à partida (medir)
 ```
 
 Ela põe o comando numa **fatia (cgroup) que é da LINHA**, derivada da worktree
@@ -29,7 +29,7 @@ Ela põe o comando numa **fatia (cgroup) que é da LINHA**, derivada da worktree
 | prioridade | `CPUWeight=20` | quem CEDE quando a máquina enche | — |
 | memória | `24G`, `MemorySwapMax=0` | RAM (⛔ não swap: o zram vive dentro da RAM) | `PH2D_MEM_MAX=48G` |
 | prazo | `1800 s` | a ATENÇÃO de quem devia colher o resultado | `PH2D_PRAZO=5400` |
-| placa | exclusão | ver §3 | `PH2D_GPU_ESPERA=600` |
+| placa | exclusão, a VEZ pedida sozinha ([A_VEZ_DA_PLACA.md](A_VEZ_DA_PLACA.md)) | ver §3 | `PH2D_GPU_ESPERA=600` |
 
 ⚠️ **§0.0: quem sobe um tecto mede antes e escreve o número.** Os três portões do
 repo já o fazem à vista — `cargo-test-narrow.sh` re-entra com `900 s`,
@@ -118,6 +118,9 @@ o **peso** responde ao problema dele.
 
 ## §3 — A placa: 50 % NÃO é exprimível, e isso mede-se
 
+> ⭐ **Desde 18/10 a vez é de TODO uso da placa e pede-se sozinha** — o porteiro de cada árvore e o
+> `GpuContext`: [A_VEZ_DA_PLACA.md](A_VEZ_DA_PLACA.md). O resto desta secção é o porquê da exclusão.
+
 As quatro portas foram perguntadas a esta máquina (RTX 5060 Ti, driver proprietário):
 
 | porta | resposta medida |
@@ -201,12 +204,15 @@ Ele recusa **quatro** formas e dá a linha corrigida:
   e os logouts (`loginctl terminate-*`, `systemctl --user exit`, `org.kde.Shutdown`).
   Parar o que é seu continua livre: o PID, o grupo (`kill -- -<pgid>`), `%1`, ou a
   fatia (`systemctl --user stop <unidade>.scope`).
+- **R9 — a placa por fora da porta** (2026-10-18): o `kwin_wayland`, o `wine`, o Blender e o Godot
+  sem `PH2D_GPU=1` pela porta (ou o `vez-da-placa.sh` antes), e um binário de `target/`
+  corrido cru — por fora da porta não há porteiro ([A_VEZ_DA_PLACA.md](A_VEZ_DA_PLACA.md)).
 
 ⚠️ **Ele FALHA ABERTO por desenho** — `jq` ausente, JSON ilegível, estado que não
 reconhece: devolve `0` e o comando passa. *Um guarda que se engana a fechar pára
 seis linhas; um que se engana a abrir volta ao que havia antes dele.*
 
-**Prova versionada:** `bash .claude/hooks/tecto-de-recursos.prova.sh` — 50 casos (contados em 05/10),
+**Prova versionada:** `bash .claude/hooks/tecto-de-recursos.prova.sh` — 101 casos (contados em 18/10),
 e os de *«tem de passar»* valem tanto como os de *«recusado»*.
 
 ---

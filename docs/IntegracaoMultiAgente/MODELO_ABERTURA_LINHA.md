@@ -175,8 +175,9 @@ K. A MÁQUINA É PARTILHADA — e há um guarda que o obriga. TODO comando
    mata a ÁRVORE INTEIRA no fim. O laço interno (`cargo check`/`fmt`) NÃO
    passa por aqui, de propósito. Se você digitar o comando cru, o guarda
    `.claude/hooks/tecto-de-recursos.sh` recusa e devolve a linha corrigida.
-   K1. TOCA NA PLACA? `PH2D_GPU=1 bash scripts/ph2d-run.sh <cmd>` — gates
-       de GPU, smoke, sondas de device. A placa é de EXCLUSÃO, não de
+   K1. TOCA NA PLACA? Dentro da porta a VEZ pede-se sozinha (o `GpuContext`, as
+       fotos — docs/DevOps/A_VEZ_DA_PLACA.md); `PH2D_GPU=1 bash scripts/ph2d-run.sh
+       <cmd>` só para MEDIR, com a vez já à partida. A placa é de EXCLUSÃO, não de
        fatia: 50% dela NÃO é exprimível nesta máquina (MIG [N/A], dmem
        não delegado, compute mode só cobre CUDA) e o defeito real é
        SEGURAR, não partilhar — em 14/09 uma sonda pendurada ficou com o

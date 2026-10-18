@@ -24,7 +24,9 @@ com o driver e `2,6 GB`, em `S (sleeping)` com o tempo de CPU **parado**. Uma
 quota de 50 % não teria ajudado em nada. *Antes de implementar a métrica pedida,
 pergunte qual era o defeito: partilhar e segurar pedem curas opostas.*
 
-**How to apply:** `PH2D_GPU=1 bash scripts/ph2d-run.sh <cmd>` — `flock` com espera
+**How to apply (18/10):** a exclusão passou a ser de TODO uso e pede-se sozinha — o porteiro de cada
+arvore do `ph2d-run.sh` e o `GpuContext` antes do adaptador ([A_VEZ_DA_PLACA](../docs/DevOps/A_VEZ_DA_PLACA.md));
+o app aberto à mão pelo dono fica de fora (sem porteiro). Antes: `PH2D_GPU=1 bash scripts/ph2d-run.sh <cmd>` — `flock` com espera
 limitada (a recusa sai em `exit 75`/`EX_TEMPFAIL` e **diz quem segura**: linha,
 pid, desde quando, comando) mais um prazo que mata o detentor pendurado e liberta
 a fechadura sozinha. ⛔ Nunca forçar: duas linhas na placa ao mesmo tempo foi o que

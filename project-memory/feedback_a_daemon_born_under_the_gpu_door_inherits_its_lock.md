@@ -31,3 +31,6 @@ pelo `exec 9>` do `ph2d-run.sh` e segura o `flock` até o scope morrer pelo `Run
 porque nomeia o comando que pegou o cadeado e não o processo que o segura.
 **How to apply:** um gate de GPU parado à espera da placa com a máquina ociosa ⇒ `fuser -v` no
 ficheiro do cadeado antes de esperar mais. Família: [[a-killed-cargo-can-leave-a-zombie-that-holds-the-build-lock]].
+**Desde 18/10** quem tem o descritor do cadeado é SÓ o porteiro da árvore (um subshell do `ph2d-run.sh`
+que não lança nada que fique vivo); o bash da porta e o comando nunca o abrem. A vez pede-se sozinha
+no nascer do adaptador: [[the-gpu-cannot-be-divided-only-excluded]] · `docs/DevOps/A_VEZ_DA_PLACA.md`.

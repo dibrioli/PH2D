@@ -122,7 +122,8 @@ contexto*. As alavancas, por ordem:
   exit `0` verde · `1` vermelho · `2` não compilou). Medido em 02/10: `cargo test` ainda corre **~3×**
   mais que `check` (alvo ≤ 1), e é a maior parte do relógio de ferramentas.
 - ⛔ **Comando pesado vai por `bash scripts/ph2d-run.sh <cmd>`** (fatia da LINHA: CPU ≤ 50 %, RAM ≤ 24G,
-  prazo 30 min; `PH2D_GPU=1` = exclusão na placa). O guarda recusa vigia de fundo sem prazo.
+  prazo 30 min; a placa: a VEZ pede-se sozinha, `PH2D_GPU=1` só para medir —
+  [A_VEZ_DA_PLACA.md](docs/DevOps/A_VEZ_DA_PLACA.md)). O guarda recusa vigia de fundo sem prazo.
   Tectos e porquê: [TETOS_DE_RECURSO_POR_LINHA.md](docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
 - **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria,
   **1× sobre o diff acumulado**. ⛔ **clippy só no fecho** (`PH2D_SUITE=fecho …`; o guarda R7 recusa o

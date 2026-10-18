@@ -113,8 +113,8 @@ COMO ESTA SESSÃO TERMINA:
    Você NÃO integra e NÃO pusha: entrega o handoff e PARA (CLAUDE.md §0.7).
 
 A MÁQUINA É PARTILHADA (regra K da abertura — vale igual para você):
-⛔ Todo comando pesado vai por `bash scripts/ph2d-run.sh <cmd>`, e com
-   `PH2D_GPU=1` se tocar na placa. Um guarda recusa o comando cru e
+⛔ Todo comando pesado vai por `bash scripts/ph2d-run.sh <cmd>` (lá dentro
+   a vez da placa pede-se sozinha; `PH2D_GPU=1` só para medir). Um guarda recusa o comando cru e
    devolve a linha corrigida. NADA de vigia de fundo sem `timeout`. E
    antes de acusar um processo de pendurado, leia utime+stime de
    /proc/<pid>/stat DUAS vezes — o `ps` mostra a média da VIDA, e um

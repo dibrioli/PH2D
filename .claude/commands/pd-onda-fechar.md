@@ -14,7 +14,7 @@ cadência de 5 commits por outra porta (CLAUDE.md §2, DIRETRIZ §6.2).
    - `cargo fmt --all` (corrige; não é só `--check`)
    - `PH2D_SUITE=onda bash scripts/ph2d-run.sh cargo clippy -p <cada crate que a onda tocou> --all-targets -- -D warnings`
 2. **Os testes da ONDA, por nome** — os que ela escreveu ou mudou:
-   `bash scripts/cargo-test-narrow.sh <crate> <nome>` (gates de placa: `PH2D_GPU=1`, `-- --ignored <nome>`).
+   `bash scripts/cargo-test-narrow.sh <crate> <nome>` (gates de placa: `-- --ignored <nome>`; a vez da placa pede-se sozinha).
 3. **A suíte só se a cadência mandar:** `PH2D_SUITE=onda bash scripts/nextest-impacted.sh` — corre com ≥ 10
    commits desde a última verde; antes disso recusa em ~2 s (exit 3), e isso é o esperado, não um ✗.
 4. **O smoke do dono compilado** — o passo 6 do `/pd-linha-fechar`, igual.

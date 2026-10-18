@@ -64,8 +64,9 @@ em `tests/it/ponta_a_ponta.rs`).
 
 - `cargo fmt` limpo; clippy `-D warnings` limpo em board-model/edit/render, editor-core, app-board, i18n; 12
   filtros de teste por nome verdes.
-- ⚠️ A suíte (`nextest-impacted`) foi lançada e AINDA CORRIA quando a janela fechou: **a próxima janela confere-a**
-  (`PH2D_SUITE=fecho`, ou espere as 10 commits da cadência) antes de dar o bloco por verde.
+- Suíte (`nextest-impacted`, 774 s): 18 318 testes, 18 317 verdes; o 1 vermelho era o tecto de LOC
+  (`workspace_src_files_under_loc_cap`: `board_live_tests.rs` com 741 > 700) — curado em `b0fe974a41` (o teste
+  do A3 foi para `board_live_people_tests.rs`), o tecto e o teste do A3 re-corridos por nome, verdes.
 - Superfície de colisão: `paint.rs` (ordem `settle` → desenho), `documents_nav.rs` (`FitHold`), `board_bar_layout.rs`,
   `layout::anchor`, `organize.rs` (`far_frame`), `facilitate.rs`, `image_frame.rs`, `live.rs` do app-board
   (botões do Live). Quem mexer na ordem de `settle` em `paint.rs` parte os testes de vídeo w18/w19/w20.

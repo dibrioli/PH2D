@@ -143,7 +143,7 @@ impl Tilt {
     /// direcção dela é `(tan αx, tan αy, 1)`.
     #[must_use]
     pub fn polar(tilt: [f32; 2]) -> (f32, [f32; 2]) {
-        let tan = |a: f32| (a.clamp(-1.0, 1.0) * 89.9).to_radians().tan();
+        let tan = |a: f32| (a.clamp(-1.0, 1.0) * 90.0).clamp(-89.9, 89.9).to_radians().tan();
         let (x, y) = (tan(tilt[0]), tan(tilt[1]));
         let r = x.hypot(y);
         if r <= f32::EPSILON {

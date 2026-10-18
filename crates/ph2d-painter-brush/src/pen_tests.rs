@@ -148,7 +148,7 @@ fn a_pulled_string_stroke_ends_where_the_brush_is() {
 #[test]
 fn the_tilt_composes_both_axes_like_the_real_pen() {
     let (a, az) = Tilt::polar([55.0 / 90.0, 0.0]);
-    assert!((a - 55.0 * 89.9 / 90.0).abs() < 0.1, "{a}");
+    assert!((a - 55.0).abs() < 1e-3, "{a}");
     assert!((az[0] - 1.0).abs() < 1e-6 && az[1].abs() < 1e-6);
     let (a, az) = Tilt::polar([0.0, -0.5]);
     assert!((a - 45.0).abs() < 0.1 && (az[1] + 1.0).abs() < 1e-6);
@@ -329,4 +329,45 @@ fn the_brush_of_a_smoothing_dab_has_a_shallower_grain() {
     assert_eq!(spec.at_dab(&d), BrushSpec { radius_px: d.radius_px, ..spec });
     d.tilt = Some(DabTilt { azimuth: [1.0, 0.0], length: 1.0, width: 1.0, smooth: 0.5 });
     assert!((spec.at_dab(&d).grain_depth - 0.4).abs() < 1e-6);
+}
+
+/// O PenTilt roda o carimbo para o azimute da caneta (sem esticar nada); `None` não roda.
+#[test]
+fn pen_tilt_rotation_turns_the_dab_to_the_azimuth() {
+    let roda = |rotation| BrushSpec {
+        pen_tilt: Tilt { rotation, start_deg: 0.0, full_deg: 45.0, ..Tilt::default() },
+        ..BrushSpec::default()
+    };
+    let d = *traco(roda(DabRotation::PenTilt), Dynamics::default(), Some([0.0, 0.5]), |_| 1.0).last().unwrap();
+    assert!(d.rotation[0].abs() < 1e-5 && (d.rotation[1] - 1.0).abs() < 1e-5, "{:?}", d.rotation);
+    let d = *traco(roda(DabRotation::None), Dynamics::default(), Some([0.0, 0.5]), |_| 1.0).last().unwrap();
+    assert_eq!(d.rotation, [1.0, 0.0]);
+}
+
+/// O ATRASO da inclinação (o Rebelle: ~170 px): de pé e depois deitado a meio do traço, a ponta cresce aos poucos
+/// pelo caminho; sem atraso, de uma vez.
+#[test]
+fn the_tilt_lag_grows_the_lying_tip_along_the_path() {
+    let deitado = |lag_px| {
+        let spec = BrushSpec {
+            pen_tilt: Tilt { start_deg: 0.0, full_deg: 45.0, length: 3.0, lag_px, ..Tilt::default() },
+            ..BrushSpec::default()
+        };
+        let mut s = Stroke::new(spec, Dynamics::default(), 7);
+        let mut out = Vec::new();
+        s.begin(StrokePoint { pos: [10.0, 50.0], pressure: 1.0 }, &mut out);
+        let mut raios = Vec::new();
+        for i in 1..=60 {
+            s.set_tilt(if i <= 10 { [0.0, 0.0] } else { [0.5, 0.0] });
+            s.extend(StrokePoint { pos: [10.0 + 3.0 * i as f32, 50.0], pressure: 1.0 }, &mut out);
+            raios.extend(out.iter().map(|d| d.radius_px));
+        }
+        (spec.clamped_radius(), raios)
+    };
+    let (r, sem) = deitado(0.0);
+    let (_, com) = deitado(170.0);
+    assert!((sem.last().unwrap() - 3.0 * r).abs() < 1e-3);
+    let meio = com[com.len() / 2];
+    assert!(meio > 1.05 * r && meio < 2.5 * r, "a meio do atraso: {meio} (r {r})");
+    assert!(com.windows(2).all(|w| w[1] >= w[0] - 1e-4), "cresce sem voltar atrás");
 }

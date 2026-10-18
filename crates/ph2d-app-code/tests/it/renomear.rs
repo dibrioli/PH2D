@@ -707,3 +707,25 @@ fn shift_f12_lista_os_sitios_e_enter_leva_la() {
     m.clica(id, x, y, Modifiers::default());
     assert_eq!(cursor(&mut m, id), TEXTO.find("amplitude").unwrap());
 }
+
+/// Sem assistente, renomear um local diz porquê na caixinha (e o texto fica); o de uma propriedade,
+/// que é nosso, continua a funcionar.
+#[test]
+fn sem_assistente_o_local_diz_porque_e_a_propriedade_renomeia() {
+    let (mut m, id, mut f) = mesa();
+    clica_em(
+        &mut m,
+        id,
+        TEXTO.find("local brilho").unwrap() + 8,
+        Modifiers::default(),
+    );
+    f2(&mut m, id);
+    m.escreve(id, "luz");
+    enter(&mut m, id);
+    passo(&mut m, &mut f);
+    let (_, _, r) = m.docs().rename_of(id).expect("a caixinha fica");
+    assert!(r.is_some_and(|r| r.contains("not running")));
+    assert_eq!(m.docs().text_of(id).unwrap(), TEXTO);
+    tecla(&mut m, id, Key::Escape, Modifiers::default(), None, "");
+    renomeado(&mut m, id, &mut f);
+}

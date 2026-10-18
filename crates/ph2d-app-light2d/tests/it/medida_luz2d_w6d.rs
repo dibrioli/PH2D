@@ -22,9 +22,9 @@ use crate::as_formas_redondas::{
     vista_em,
 };
 use crate::comum::{Fluencia, fluencia_lida, gpu};
-use crate::o_campo_da_borda::ao_poligono;
 use crate::medida_luz2d_w4b::loadavg;
 use crate::medida_luz2d_w5d::solver;
+use crate::o_campo_da_borda::ao_poligono;
 
 /// Contínuos (geométricos) de 0,6 a 4: várias amostras dentro de cada oitava.
 const N_ZOOMS: usize = 17;
@@ -506,6 +506,13 @@ fn angulo(centro: [f64; 2], p: [f64; 2], lampada: [f64; 2]) -> f64 {
         .to_degrees()
 }
 
+/// Uma variante da sonda do canto: o nome e a troca na configuração.
+type Variante = (
+    String,
+    Box<dyn Fn(ph2d_light2d_gpu::Config) -> ph2d_light2d_gpu::Config>,
+);
+/// O gabarito dos cantos e o máximo do interior, por lei (antiga, difusão).
+type GabaritosDosCantos = [(Vec<([f64; 2], f64)>, f64); 2];
 
 /// ⭐ W6e — as variantes do canto: antes da W6d, a lei da W6d e a cunha com `(pre, area)`.
 const CANTO_CUNHAS: [(f32, f32); 9] = [
@@ -541,7 +548,7 @@ fn medida_luz2d_w6d_canto() {
     let fabrica = ph2d_render::Camera2d::default()
         .world_to_screen_affine(ph2d_host::WindowSize::new(fhd.0, fhd.1));
     let dg = DEGRAU_PADRAO;
-    let mut variantes: Vec<(String, Box<dyn Fn(Config) -> Config>)> = vec![
+    let mut variantes: Vec<Variante> = vec![
         (
             "antes da W6d".into(),
             Box::new(|c| Config {
@@ -583,17 +590,23 @@ fn medida_luz2d_w6d_canto() {
         };
         let tx = grade.texel_m / f64::from(base.fina);
         for k in [0u32, 3, 4, 6] {
-            let d = [(f64::from(k) * tx / 8.0) as f32, (f64::from(k) * tx * 3.0 / 8.0) as f32];
+            let d = [
+                (f64::from(k) * tx / 8.0) as f32,
+                (f64::from(k) * tx * 3.0 / 8.0) as f32,
+            ];
             let c = cena(d);
             let antiga = ph2d_light2d_ref::Gabarito::com_miolo(&c, EXTERIOR);
-            let mut gabs: Option<[(Vec<([f64; 2], f64)>, f64); 2]> = None;
+            let mut gabs: Option<GabaritosDosCantos> = None;
             for (vi, (nome, f)) in variantes.iter().enumerate() {
                 for lei in 0..2 {
                     if lei == 1 && ![0, 1, 6].contains(&vi) {
                         continue;
                     }
                     let cfg = f(if lei == 0 {
-                        Config { miolo: None, ..base }
+                        Config {
+                            miolo: None,
+                            ..base
+                        }
                     } else {
                         base
                     });
@@ -605,7 +618,11 @@ fn medida_luz2d_w6d_canto() {
                     let g = fl.grade;
                     let gabs = gabs.get_or_insert_with(|| {
                         let por = |l: &dyn Fn([f64; 2]) -> f64| {
-                            let max = gabarito_por(g, d, l).0.iter().map(|x| x.1).fold(0.0, f64::max);
+                            let max = gabarito_por(g, d, l)
+                                .0
+                                .iter()
+                                .map(|x| x.1)
+                                .fold(0.0, f64::max);
                             (gabarito_dos_cantos(g, d, l), max)
                         };
                         [

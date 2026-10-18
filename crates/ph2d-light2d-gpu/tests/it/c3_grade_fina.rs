@@ -684,7 +684,11 @@ fn medida_luz2d_w6e_f3() {
         ..Config::padrao(grade(lado, texel))
     };
     let lei = ph2d_light2d_ref::Gabarito::com_miolo(&cena, EXTERIOR);
-    let poli: Vec<[f64; 2]> = cena.oclusores[0].vertices.iter().map(|v| v.map(f64::from)).collect();
+    let poli: Vec<[f64; 2]> = cena.oclusores[0]
+        .vertices
+        .iter()
+        .map(|v| v.map(f64::from))
+        .collect();
     // A distância com sinal (positiva dentro) ao quadrado (convexo, anti-horário ou não: pelo módulo).
     let exata = |p: [f64; 2]| {
         let n = poli.len();
@@ -701,14 +705,22 @@ fn medida_luz2d_w6e_f3() {
             let ab = [b[0] - a[0], b[1] - a[1]];
             let c = (ab[0] * (p[1] - a[1]) - ab[1] * (p[0] - a[0])) * area.signum();
             dentro &= c >= 0.0;
-            let t = (((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / (ab[0] * ab[0] + ab[1] * ab[1])).clamp(0.0, 1.0);
+            let t = (((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1])
+                / (ab[0] * ab[0] + ab[1] * ab[1]))
+                .clamp(0.0, 1.0);
             d = d.min((p[0] - a[0] - t * ab[0]).hypot(p[1] - a[1] - t * ab[1]));
         }
         if dentro { d } else { -d }
     };
     let mut lidas = Vec::new();
-    for (nome, v) in [("sem a cunha", None), ("cunha", Some(ph2d_light2d_gpu::VERTICE_PADRAO))] {
-        let cfg = Config { borda_vertice: v, ..base };
+    for (nome, v) in [
+        ("sem a cunha", None),
+        ("cunha", Some(ph2d_light2d_gpu::VERTICE_PADRAO)),
+    ] {
+        let cfg = Config {
+            borda_vertice: v,
+            ..base
+        };
         let mut s = Solver::novo(&gpu, cfg).expect("solver");
         s.quadro(&gpu, &cena);
         let fl = ler_fluencia(&gpu, &s);
@@ -721,7 +733,10 @@ fn medida_luz2d_w6e_f3() {
             r[k] = media_no_texel(&cena, &lei, &g, k, r[k]);
         }
         let dentro = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
-        eprintln!("F3 · {nome}: RMSE relativo {:.4}", rmse_rel(&fl, &r, &dentro));
+        eprintln!(
+            "F3 · {nome}: RMSE relativo {:.4}",
+            rmse_rel(&fl, &r, &dentro)
+        );
         // O campo em volta de cada vértice: 6×6 texels da captura.
         for q in &poli {
             let (ci, cj) = (
@@ -737,7 +752,9 @@ fn medida_luz2d_w6e_f3() {
                 let mut l = String::new();
                 for i in ci - 3..=ci + 2 {
                     let k = (j as u32 * gc.largura + i as u32) as usize * 8;
-                    let h = |o: usize| half::f16::from_le_bytes([campo[k + o], campo[k + o + 1]]).to_f32();
+                    let h = |o: usize| {
+                        half::f16::from_le_bytes([campo[k + o], campo[k + o + 1]]).to_f32()
+                    };
                     let e = exata(gc.centro(i as u32, j as u32)) / gc.texel_m;
                     l += &format!(" {:.2} {:+.2}/{:+.2}", h(0), h(6), e);
                 }
@@ -751,7 +768,12 @@ fn medida_luz2d_w6e_f3() {
     let w = g.largura as usize;
     let mut dif: Vec<(f64, usize)> = (0..r.len())
         .filter(|&k| dentro(k))
-        .map(|k| ((f64::from(f1[k][1]) - r[k][1]).abs() - (f64::from(f0[k][1]) - r[k][1]).abs(), k))
+        .map(|k| {
+            (
+                (f64::from(f1[k][1]) - r[k][1]).abs() - (f64::from(f0[k][1]) - r[k][1]).abs(),
+                k,
+            )
+        })
         .collect();
     dif.sort_by(|a, b| b.0.total_cmp(&a.0));
     for &(d, k) in dif.iter().take(12) {

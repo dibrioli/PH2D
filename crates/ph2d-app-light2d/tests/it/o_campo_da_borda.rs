@@ -104,9 +104,9 @@ pub(crate) fn campo_lido(
                 r.sinal[1] += usize::from((lido >= 0.0) != (exata >= 0.0));
                 continue;
             }
-            let canto = v
-                .iter()
-                .any(|q| (f64::from(q[0]) - p[0]).hypot(f64::from(q[1]) - p[1]) < ZONA_DO_CANTO * g.texel_m);
+            let canto = v.iter().any(|q| {
+                (f64::from(q[0]) - p[0]).hypot(f64::from(q[1]) - p[1]) < ZONA_DO_CANTO * g.texel_m
+            });
             let z = usize::from(!canto);
             let e = lido - exata;
             if canto && std::env::var_os("PH2D_W6E_LISTA").is_some() {
@@ -128,7 +128,9 @@ pub(crate) fn campo_lido(
 }
 
 /// Os casos do portão B: `(zoom, fase k, a vista, a configuração do produto, o deslocamento)`.
-pub(crate) fn casos(gpu: &ph2d_gpu::GpuContext) -> Vec<(f64, u32, vello::kurbo::Affine, Config, [f32; 2])> {
+pub(crate) fn casos(
+    gpu: &ph2d_gpu::GpuContext,
+) -> Vec<(f64, u32, vello::kurbo::Affine, Config, [f32; 2])> {
     let fabrica =
         Camera2d::default().world_to_screen_affine(ph2d_host::WindowSize::new(FHD.0, FHD.1));
     let centro = Point::new(f64::from(FHD.0) * 0.5, f64::from(FHD.1) * 0.5);
@@ -173,6 +175,9 @@ pub(crate) fn ler_campo(
     campo_lido(gpu, &s, &caixa(&c, d), tol)
 }
 
+/// Uma variante da régua: o nome e a troca na configuração.
+type Variante = (&'static str, fn(Config) -> Config);
+
 /// ⭐ W6e — a régua do campo nas variantes a lei da W6d · a cunha (padrão e larga).
 /// À mão (cabeçalho do handoff W6e, nome `medida_luz2d_w6e_campo`).
 #[test]
@@ -180,7 +185,7 @@ pub(crate) fn ler_campo(
 fn medida_luz2d_w6e_campo() {
     let Some(gpu) = gpu() else { return };
     // (Antes da W6d o 4.º canal é o recuo da reta, não a distância: só a W6d em diante.)
-    let variantes: [(&str, fn(Config) -> Config); 3] = [
+    let variantes: [Variante; 3] = [
         ("lei W6d", |c| Config {
             borda_vertice: None,
             ..c
@@ -203,7 +208,14 @@ fn medida_luz2d_w6e_campo() {
                 let r = ler_campo(&gpu, a, f(cfg), d, rot, 0.2);
                 eprintln!(
                     "CAMPO · zoom {zoom} · {k}/8 · giro {rot} · {nome} · canto {} texels pior {:+.3} sinal {} >0,2 {} · face {} pior {:+.3} sinal {} >0,2 {}",
-                    r.n[0], r.pior[0], r.sinal[0], r.errados[0], r.n[1], r.pior[1], r.sinal[1], r.errados[1]
+                    r.n[0],
+                    r.pior[0],
+                    r.sinal[0],
+                    r.errados[0],
+                    r.n[1],
+                    r.pior[1],
+                    r.sinal[1],
+                    r.errados[1]
                 );
             }
         }

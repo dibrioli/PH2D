@@ -5,8 +5,8 @@ pressão que o libinput lê da mesa (`sudo libinput debug-events`, 2 casas) com 
 
 uso: c31_compara.py <libinput.txt[.zst]> <ph2d_pen.log>
 
-Os traços alinham-se pela ORDEM (o n-ésimo toque de um é o n-ésimo do outro); dentro de um traço, cada amostra
-do PH2D casa com a do libinput de tempo mais perto (relógios diferentes: o desvio é o do 1.º toque de cada traço).
+Os toques casam pelo TEMPO do pen-down (o desvio dos dois relógios é o que casa mais toques); dentro de um toque,
+cada amostra do PH2D casa com a do libinput a < 3 ms.
 Sem curva, |PH2D − libinput| ≤ 0,005 (o arredondamento a 2 casas do libinput). Com curva, a tabela por faixa de
 pressão mostra-a — e a recta de ajuste diz se ela é linear (tecto/piso) ou não.
 """
@@ -58,21 +58,41 @@ def tracos_ph2d(caminho):
     return [t for t in tracos if t]
 
 
+def desvio(li, ph):
+    """O desvio entre os dois relógios: o que casa mais toques (pen-down a ≤ 15 ms) entre os candidatos dos
+    primeiros 30 de cada lado. ⚠️ NUNCA pela ordem: um toque a mais de um lado (18/10: 341 × 342) desalinha todos."""
+    da, db = [t[0][0] for t in li], [t[0][0] for t in ph]
+    melhor = (0, 0.0)
+    for x in da[:30]:
+        for y in db[:30]:
+            d = y - x
+            n = sum(1 for a in da if any(abs(a + d - b) < 0.015 for b in db))
+            melhor = max(melhor, (n, d))
+    return melhor
+
+
 def main():
     li, ph = tracos_libinput(sys.argv[1]), tracos_ph2d(sys.argv[2])
-    print(f"toques: libinput {len(li)} · PH2D {len(ph)}")
-    pares = []
-    for a, b in zip(li, ph):
-        d = b[0][0] - a[0][0]
+    casados, d = desvio(li, ph)
+    print(f"toques: libinput {len(li)} · PH2D {len(ph)} · casados pelo TEMPO {casados} (desvio dos relógios {d:.3f} s)")
+    pares, gaps = [], []
+    for b in ph:
+        a = min(li, key=lambda t: abs(t[0][0] + d - b[0][0]))
+        if abs(a[0][0] + d - b[0][0]) >= 0.015:
+            continue
         for tb, pb in b:
             ta, pa = min(a, key=lambda s: abs(s[0] + d - tb))
-            pares.append((pa, pb))
+            gap = abs(ta + d - tb)
+            gaps.append(gap)
+            if gap < 0.003:
+                pares.append((pa, pb))
     if not pares:
         print("nenhum par: grave os dois ficheiros na mesma sessão")
         return
-    erro = [abs(pb - pa) for pa, pb in pares]
-    erro.sort()
-    n = len(erro)
+    gaps.sort()
+    print(f"distância no tempo entre as amostras casadas: p50 {1000 * gaps[len(gaps) // 2]:.1f} ms · p95 {1000 * gaps[int(0.95 * len(gaps))]:.1f} ms")
+    n = len(pares)
+    erro = sorted(abs(pb - pa) for pa, pb in pares)
     print(f"amostras {n}: |PH2D − libinput| p50 {erro[n // 2]:.4f} · p95 {erro[int(0.95 * n)]:.4f} · máx {erro[-1]:.4f}")
     print("faixa libinput → PH2D (média)")
     for k in range(10):

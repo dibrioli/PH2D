@@ -36,9 +36,11 @@ vermelho em 9 antes da receita, verde depois. ⚠️ A barra do 05 («≥ 60 % e
 aos de ponta fina — a barra certa é a foto de cada um.
 
 **Piso/tecto/curva da mão (C31)**: são do PINCEL (o `pressure_max` 0,6 dos lápis do Rebelle é do preset), não da mesa —
-não duplicam a curva global do KDE. A curva do KDE mede-se em `ferramentas/caneta/c31_sessao.sh` (precisa do dono e da
-senha: grava o `libinput` e o `PH2D_PEN_LOG` na mesma pincelada e o `c31_compara.py` dá o veredicto). Sinal indirecto:
-`~/.config/kcminputrc` não tem secção da mesa (a curva de fábrica do KDE).
+não duplicam a curva global do KDE. ✅ **C31 medida** (sessão do dono, 18/10, `ferramentas/caneta/medicoes_2026-10-18/`,
+`c31_sessao.sh` + `c31_compara.py`): o KDE entrega a pressão do libinput SEM curva — 341 toques casados pelo tempo, 32 775
+amostras, |PH2D − libinput| p50 0,0025 · máx 0,0051 (o arredondamento a 2 casas do libinput), recta 0,9995·x + 0,0002.
+⚠️ A 1.ª leitura dizia «o KDE MUDA a pressão»: o comparador casava os toques pela ORDEM e um toque a mais de um lado
+(341 × 342) desalinhou todos — casa-se pelo tempo do pen-down.
 
 ## §3 — O lápis deitado (Rebelle 8B, sessão de 18/10, `fixtures/rebelle_tilt/`)
 
@@ -86,7 +88,6 @@ cenas (9 repinadas pela barra, o resto ao byte; o 8B com o rato ao byte entre as
 
 ## §6 — Aberto
 
-- **C31**: a sessão com o dono (`c31_sessao.sh`).
 - Os knobs da caneta vivem no pincel do Wet Paint (o mapa `engine` do preset, painel Tuning); os outros 4 meios têm a lei
   (o gate dos 5 meios) mas não têm onde a ligar até os presets chegarem a todos os modos (A15) / o painel da W8.
 - Na Aquarela com o «Automatic» a ponta é o carimbo redondo dela (o Flatten também não vale lá): a elipse só com ele off.

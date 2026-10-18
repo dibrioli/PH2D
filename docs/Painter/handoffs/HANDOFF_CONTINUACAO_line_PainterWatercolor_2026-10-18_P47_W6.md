@@ -23,7 +23,7 @@ Anterior: [P46](HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-17_P46_CANETA
 - **Rotação** `None` (os slots decidem, como antes) · `FollowTrajectory` (entra no `follows_stroke` e no aquecimento) ·
   `PenTilt` (o azimute composto no `Dab::rotation`). Sem barril (dono 08/10).
 - **C31**: o piso/tecto/curva são do PINCEL (como o `pressure_max` dos presets do Rebelle), não duplicam a curva do KDE.
-  A medição event-a-event precisa do dono (`docs/Painter/ferramentas/caneta/c31_sessao.sh`, pede a senha uma vez).
+  Medido event-a-event com o dono: o KDE entrega a pressão crua (`medicoes_2026-10-18/`).
 
 ## §3 — O que existe
 
@@ -62,7 +62,7 @@ target(s) in 0.53s`.
 
 ## §6 — Aberto
 
-- C31 com o dono (a ferramenta está pronta).
+- ✅ C31 medida com o dono (18/10): o KDE não aplica curva (máx 0,0051 = o arredondamento do libinput; 47_medicao §2).
 - Os knobs da caneta só se ligam no Wet Paint (o mapa `engine` do preset, painel Tuning): os outros 4 meios têm a lei (o
   gate dos 5) e nenhum sítio onde a armar — chega com A15 (presets em todos os modos) / W8 (o painel).
 - Aquarela com «Automatic»: carimbo redondo dela, a elipse só com ele off (a regra do Flatten).

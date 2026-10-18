@@ -1,0 +1,14 @@
+toques: libinput 341 · PH2D 342 · casados pelo TEMPO 341 (desvio dos relógios 70012.541 s)
+distância no tempo entre as amostras casadas: p50 0.0 ms · p95 0.0 ms
+amostras 32775: |PH2D − libinput| p50 0.0025 · p95 0.0048 · máx 0.0051
+faixa libinput → PH2D (média)
+  0.0–0.1: 0.054 (356)
+  0.1–0.2: 0.157 (1356)
+  0.2–0.3: 0.252 (5168)
+  0.3–0.4: 0.345 (10430)
+  0.4–0.5: 0.440 (11618)
+  0.5–0.6: 0.528 (3084)
+  0.6–0.7: 0.642 (320)
+  0.7–0.8: 0.750 (443)
+recta: PH2D = 0.9995·libinput + 0.0002
+VEREDICTO: sem curva do KDE (a do libinput chega igual)

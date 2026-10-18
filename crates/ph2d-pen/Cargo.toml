@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-pen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A caneta de verdade no Wayland, ao lado do winit 0.30 (ADR-0189): o winit não liga o
+# `zwp_tablet_manager_v2` e o KWin não emula ponteiro para quem não o liga.
+[target.'cfg(target_os = "linux")'.dependencies]
+raw-window-handle = "0.6"
+# ⛔ TETO — as versões que o `winit 0.30.13` já traz ao lock (zero crates novas, ADR-0189).
+wayland-client = "0.31"
+wayland-backend = { version = "0.3", features = ["client_system"] }
+# `staging` + `unstable`: o `wp::cursor_shape` exige os dois; o `smithay-client-toolkit` 0.19 do winit
+# já pede `client`+`staging`+`unstable`, logo nada recompila.
+wayland-protocols = { version = "0.32.13", features = ["client", "staging", "unstable"] }
+rustix = { version = "1", features = ["event", "fs", "pipe"] }
+cursor-icon = "1.2"
+
+[dev-dependencies]
+# O oráculo (`tests/oraculo_libinput.rs`) lê o `.zst` gravado tal como está; já no lock (`ctt`).
+zstd = { version = "0.13", default-features = false }
+
+[lints.rust]
+# ⚠️ NÃO herda `[lints] workspace = true`: excepção nomeada do gate
+# `architecture_every_member_inherits_the_workspace_lints` — o receptor recebe a `wl_display` e a
+# `wl_surface` do winit por ponteiro. `deny`: só o `src/wayland.rs` o autoriza por escrito.
+unsafe_code = "deny"

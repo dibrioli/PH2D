@@ -8986,6 +8986,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pen"
+version = "0.0.0"
+dependencies = [
+ "cursor-icon",
+ "raw-window-handle",
+ "rustix 1.1.4",
+ "wayland-backend",
+ "wayland-client",
+ "wayland-protocols",
+ "zstd",
+]
+
+[[package]]
 name = "ph2d-physics"
 version = "0.0.0"
 dependencies = [

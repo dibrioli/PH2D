@@ -51,6 +51,12 @@ const EXCECOES: &[(&str, &[&str], &str)] = &[
         "FFI da `libavif` (`libavif-sys`): decode e encode por ponteiro",
     ),
     (
+        "ph2d-pen",
+        &["src/wayland.rs"],
+        "a `wl_display`/`wl_surface` do winit por ponteiro (`raw-window-handle`): o winit 0.30 não liga \
+         o `zwp_tablet_v2`, a caneta é um receptor na MESMA ligação — ADR-0189",
+    ),
+    (
         "ph2d-wayland-dnd",
         &["src/receiver.rs", "tests/kwin_drop.rs"],
         "a `wl_display`/`wl_surface` do winit por ponteiro (`raw-window-handle`): sem DnD no winit \

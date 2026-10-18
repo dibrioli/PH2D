@@ -128,7 +128,6 @@ mod the_colorize_scribble_crosses_the_selected_frames;
 mod the_contour_slider_reaches_exactly_the_component_cap;
 mod the_curve_selector_reaches_the_document;
 mod the_descent_to_eight_bits_is_dithered;
-mod the_desktop_shell_has_no_pen_pressure;
 mod the_device_marches_the_island_rate;
 mod the_dispatch_line_carries_its_divisor;
 mod the_distribute_hotkey_routes_to_distribute_keys;

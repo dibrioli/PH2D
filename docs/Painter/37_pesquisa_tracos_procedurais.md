@@ -112,7 +112,7 @@ porque lá a espessura é geometria (o contorno da fita de largura variável **�
 `crates/ph2d-painter-brush/src/dynamics.rs` mapeia pressão → raio e pressão → cobertura, com mínimo
 por canal (o default é `size_pressure: true`, `size_min: 0.1`). E
 `shells/desktop/tests/it/the_desktop_shell_has_no_pen_pressure.rs` demonstra, varrendo a grade inteira
-de sliders, que **nenhuma combinação move um pixel**, porque a shell entrega `1.0` literal.
+de sliders, que **nenhuma combinação move um pixel**, porque a shell entrega `1.0` literal. ✅ **Desde 17/10 (P46, [ADR-0189](../architecture/decisions/0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md)) o dispositivo chega**: a caneta entra pelo `zwp_tablet_v2` (crate `ph2d-pen`) e a pressão chega ao Painter; o gate foi apagado depois de o Flip ser re-calibrado.
 
 O levantamento daquele gate (2026-07-31) é categórico, e a nota que circulava — *"custa uma
 função"* — **é falsa** no winit 0.30: `Touch{force}` é touchscreen, `TouchpadPressure` é trackpad da

@@ -118,7 +118,8 @@ impl Default for FlipTool {
             self_overlap: false,
             airbrush: false,
             pressure_min_width: 0.05,
-            pressure_response: 0.5,
+            // γ ≈ 1,52: calibrado na pressão real do dono (P46, 17/10 — mediana 0,59 → 0,48 do Size).
+            pressure_response: 0.65,
             opacity: DEFAULT_OPACITY,
             smoothing: DEFAULT_SMOOTHING,
             // A ferramenta Flip só está na mão num modo do desenho; o Draw é o primeiro.

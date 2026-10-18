@@ -299,7 +299,7 @@ porque *os três são o mesmo assunto*.
 - **Pressure Shapes.** Temos a feature (`dynamics.rs`) e **não temos o dispositivo**:
   `shells/desktop/tests/it/the_desktop_shell_has_no_pen_pressure.rs` demonstra, varrendo a grade inteira
   de sliders, que nenhuma combinação move um pixel. A cura é **subir o winit** (fundação de janela do
-  app inteiro ⇒ cross-line, classe ADR) ou um caminho de tablet por plataforma. Não é wave de pincel.
+  app inteiro ⇒ cross-line, classe ADR) ou um caminho de tablet por plataforma. Não é wave de pincel. ✅ **Desde 17/10 (P46, [ADR-0189](../architecture/decisions/0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md)) o dispositivo chega**: a caneta entra pelo `zwp_tablet_v2` (crate `ph2d-pen`) e a pressão chega ao Painter; o gate foi apagado depois de o Flip ser re-calibrado.
 - **A matriz de dinâmica completa** (doc 37 §2). Depois da W2 e da W3 haverá duas entradas e três
   alvos; antes disso é infra sem consumidor.
 - **Assistentes de perspectiva.** O motor de snap já é do Vector; um segundo no Painter é a segunda

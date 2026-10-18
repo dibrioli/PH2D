@@ -482,7 +482,7 @@ impl Default for FlipStyleSnapshot {
             self_overlap: false,
             airbrush: false,
             pressure_min_width: 0.05,
-            pressure_response: 0.5,
+            pressure_response: 0.65,
             opacity: 1.0,
             smoothing: 0.5,
             mode: FlipMode::Draw,

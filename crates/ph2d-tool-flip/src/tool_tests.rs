@@ -56,6 +56,23 @@ fn the_self_overlap_toggle_reaches_the_tool_and_toggles() {
     assert!(!t.self_overlap(), "o segundo clique desliga (e um toggle)");
 }
 
+/// A calibração do P46 (17/10, 180 s da pressão real do dono: p5 0,24 · p50 0,59 · p95 0,86): o
+/// Response de fábrica põe o traço TÍPICO a ~metade do Size (o linear dava 0,61, e a pressão leve
+/// quase não afinava); o rato (`1.0`) continua o Size inteiro.
+#[test]
+fn the_factory_response_puts_the_owners_median_pressure_at_half_the_size() {
+    let t = FlipTool::new();
+    let f = |p| crate::pressure_width_factor(p, t.pressure_min_width(), t.pressure_response());
+    assert!((f(0.59) - 0.477).abs() < 0.005, "mediana: {}", f(0.59));
+    assert!(
+        f(0.24) < 0.17 && f(0.86) > 0.80,
+        "p5 {} · p95 {}",
+        f(0.24),
+        f(0.86)
+    );
+    assert_eq!(f(1.0), 1.0, "o rato");
+}
+
 /// 🔴 **Os sliders de pressão chegam à tool** (T2.6): o `SetValue` de `FLIP_PRESSURE_MIN` /
 /// `FLIP_PRESSURE_RESPONSE` grava a fração no campo, que o snapshot leva ao `flip_draw`
 /// (`pressure_width_factor`). Mutação que sangra: o arm de SetValue não alcançar o campo (o slider
@@ -63,10 +80,10 @@ fn the_self_overlap_toggle_reaches_the_tool_and_toggles() {
 #[test]
 fn the_pressure_sliders_reach_the_tool() {
     let mut t = FlipTool::new();
-    // Defaults: piso 0.05, resposta 0.5 (linear).
+    // Defaults: piso 0.05, resposta 0.65 (γ ≈ 1,52, a calibração do P46).
     assert!((t.pressure_min_width() - 0.05).abs() < 1e-6, "min default");
     assert!(
-        (t.pressure_response() - 0.5).abs() < 1e-6,
+        (t.pressure_response() - 0.65).abs() < 1e-6,
         "response default"
     );
     assert!(

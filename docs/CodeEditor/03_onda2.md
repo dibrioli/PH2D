@@ -113,6 +113,13 @@ seguinte; o resto entra em lotes.
      lê). Referência a CORRER antes: o «Quick Fix…» do hover do VS Code e o balão de erro do Godot
      (o que mostram, onde, e se o clique fecha o balão). Prova: o botão aplica a mesma edição que o
      Alt+Enter (mesmo texto final, um Ctrl+Z), sem servidor só as nossas, nada a corrigir ⇒ sem botão.
+     **O aspecto** (dono, 18/10, sobre a foto da janelinha do Alt+Enter: *«os botões devem ter melhor
+     aspecto… ele já nasce destacado»*): hoje a 1.ª acção nasce com o fundo de SELECÇÃO da lista (o
+     azul cheio do `paint_popup`), e lê-se como já carregada. No balão, cada correcção é um BOTÃO do
+     design system (`ph2d-editor-core` widget + tokens, `docs/design/component-library.html`), neutro ao
+     nascer, realce só com o rato por cima ou com o foco do teclado. Na janelinha do Alt+Enter a linha
+     escolhida continua a existir (o Enter precisa dela), mas com o realce de foco e não o bloco cheio
+     — medir antes como o VS Code e o Godot desenham a 1.ª acção pré-escolhida.
 4. **Acabamento (fim da fila, pedido do dono no smoke do I6/I11, 17/10):** com **Ctrl** carregado, o rato
    sobre qualquer palavra que o Ctrl+clique leva a algum sítio vira o ponteiro em **mão** (e o nome
    sublinha, como no Godot/VS Code). Só sobre o que é clicável: a validade tem de vir da mesma regra

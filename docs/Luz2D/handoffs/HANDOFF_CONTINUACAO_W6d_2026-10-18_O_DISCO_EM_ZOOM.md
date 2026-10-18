@@ -143,3 +143,16 @@ DENTRO (a fresta entre os dois predicados — o 2.º mecanismo); todos os outros
 construção. Na mesma corrida, um estudo do custo do `c3_borda` (instrumento, sai depois): o campo inteiro × só as 8
 leituras dos vizinhos (sem a reta deles) × sem vizinhos (±1). Itens e limiares: os do §6 (o item 4 inteiro: 0
 diferentes). Se só o custo falhar, a próxima volta é o custo, com o estudo na mão.
+
+## 9. Rodada 4 — campo + fora só no rente: a QUALIDADE passa, o custo não (`decide4.log`, `load` 2)
+
+(1a) 139 → **1** (o pior −0,176) ✓ · (1b) 40 → 37 ✓ · anéis sem regressão ✓ · bits de fora **0** em 24 ✓ · o produto
+idêntico à rodada 2 · custo C3 cena 5 3,394 → 3,711 (+9,3 %), cena 6 2,211 → 2,457 (+11 %) ✗ — a fina até desce
+(2,42 → 2,39 · 1,36 → 1,26). Estudo do `c3_borda` (cena 5): produto 0,374 · só as 8 leituras dos vizinhos 0,512 · sem
+vizinhos 0,403 · o campo inteiro 0,715 ⇒ as leituras +0,14 ms, a RETA de cada vizinho (o Sobel dele, 5×5) +0,20 ms.
+
+## 10. A candidata 5 (só custo) e o seu kill-criterion (escrito ANTES de medir)
+
+A reta emprestada sem o Sobel do vizinho: o texel da faixa tira a NORMAL do seu próprio 3×3 (as leituras que a busca do
+vizinho já faz) e, de cada parcial vizinho, só a cobertura (o recuo pela área com essa normal, transladado). Itens e
+limiares: os do §6 (0 bits de fora; (1a) ≤ 10 % e o pior ≥ −0,25; o custo ≤ +5 %).

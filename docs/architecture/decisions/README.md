@@ -202,6 +202,7 @@
 | [0186](0186-a-macro-grava-comandos-resolvidos-no-relogio-da-macro.md) | Accepted — o PRODUTO é decisão do DONO (13/10: *«tocará em tudo e em qualquer lug… | A macro grava COMANDOS RESOLVIDOS no relógio da macro, e cada família garante a sua exatidão |
 | [0187](0187-o-quadro-pela-internet-e-quic-sobre-udp-com-encontro-na-dht.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O quadro ao vivo PELA INTERNET é QUIC sobre UDP, com encontro na DHT e furo no NAT |
 | [0188](0188-o-editor-de-scripts-mora-no-ph2d-e-o-script-mora-no-projeto.md) | Accepted — o PRODUTO é decisão do DONO (15/10: script *«dentro»* do projeto | O editor de scripts mora no PH2D, e o script mora no projeto |
+| [0189](0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md) | Accepted — o produto é ordem do DONO (prompt 46, 17/10) | A caneta chega pelo `zwp_tablet_v2` ao lado do winit, numa crate nossa |
 
 ---
 

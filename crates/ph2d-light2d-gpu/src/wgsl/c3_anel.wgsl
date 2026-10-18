@@ -102,7 +102,7 @@ fn c3_fina_exata_anel(@builtin(global_invocation_id) gid: vec3<u32>) {
     if a.calcular {
         // A sequência da `c3_fina_exata` (o translúcido lê as duas faces sem a borda exata).
         borda_aqui = true;
-        let tau = meio(ponto_fino(gid.xy)).tau;
+        let tau = meio_geo(ponto_fino(gid.xy)).tau;
         let onde = onde_calcular(gid.xy);
         k = vec4<f32>(luz_do_texel(gid.xy, onde, tau, true, false).l, 1.0);
     }

@@ -107,6 +107,8 @@ pub fn config_da_vista(
         // pretos rentes à borda, comparar).
         borda_continua: ligado("PH2D_LIGHT2D_BORDA"),
         borda_fora: ligado("PH2D_LIGHT2D_BORDA"),
+        // `PH2D_LIGHT2D_BORDA_UNIAO=0`: só o campo (o canto convexo chanfrado, comparar).
+        borda_uniao: ligado("PH2D_LIGHT2D_BORDA") && ligado("PH2D_LIGHT2D_BORDA_UNIAO"),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),
         hrc_em_texturas: hrc_texturas(),

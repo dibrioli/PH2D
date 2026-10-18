@@ -45,7 +45,7 @@ const FAIXA: f64 = 4.0;
 /// Um texel do interior está ERRADO a mais disto do gabarito, relativo ao máximo dele ali.
 const ERRADO: f64 = 0.10;
 /// A lei do interior até a W5g (`suavidade = 0`): o exterior mais próximo — a do `miolo: None`.
-const EXTERIOR: ph2d_light2d_ref::OpcoesDoMiolo = ph2d_light2d_ref::OpcoesDoMiolo {
+pub(crate) const EXTERIOR: ph2d_light2d_ref::OpcoesDoMiolo = ph2d_light2d_ref::OpcoesDoMiolo {
     suavidade: 0.0,
     penetracao_m: f64::INFINITY,
 };
@@ -114,7 +114,7 @@ pub(crate) fn gabarito(
 }
 
 /// ⭐ W5n — o [`gabarito`] com a lei `lei` (o verde num ponto).
-fn gabarito_por(
+pub(crate) fn gabarito_por(
     g: ph2d_light2d_gpu::Grade,
     d: [f32; 2],
     lei: impl Fn([f64; 2]) -> f64,

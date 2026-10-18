@@ -170,6 +170,10 @@ pub struct Config {
     /// `BORDA_FORA`); `false` = pelo iso-½, e a marcha nasce dentro do corpo (o texel rente sai só com o
     /// ambiente; handoff W6d §5). Os outros texels de fora marcham sempre pelo iso-½.
     pub borda_fora: bool,
+    /// ⭐ W6d — com [`Self::borda_continua`], «dentro» ⟺ o campo ≥ 0 OU a reta por texel (o `BORDA_UNIAO`):
+    /// o campo chanfra o canto CONVEXO ~1,3 texel da captura (o texel do eixo medial remapeava para o
+    /// chanfro e saía preto; handoff W6d §14) e a reta por texel devolve-o; as frestas dela, o campo cobre.
+    pub borda_uniao: bool,
     /// ⭐ W5g (F5) — o texel do INTERIOR lê a luz no PÉ dele na borda exata (o `PE_NA_BORDA` do
     /// `c3_pe.wgsl`; só com [`Self::borda_exata`]); `false` = o ponto de fronteira da busca, que salta
     /// ao longo da face com a fase da grade (os degraus nos pontos tangentes dos discos, cena 7).
@@ -448,6 +452,7 @@ impl Config {
             borda_exata: true,
             borda_continua: true,
             borda_fora: true,
+            borda_uniao: true,
             pe_na_borda: true,
             vis_na_face: true,
             face_pelo_ponto: true,

@@ -208,3 +208,119 @@ fecho da onda (`/pd-onda-fechar`).
 
 Fotos sem janela (a luz recebida píxel a píxel, `medida_luz2d_w6d_fotos`): [`fotos_W6d/`](fotos_W6d/) — antes ×
 depois na borda acesa (zoom 4, o polígono) e no disco de imagem (zoom 2,5), e o disco de imagem em 4 zooms.
+
+## 14. O canto da caixa — o mecanismo medido (`medida_luz2d_w6d_canto`, `target/w6d/canto_s0..5.log`)
+
+A sonda temporária do `c3_fina` (`PH2D_LUZ2D_SONDA`: o ponto remapeado, a outra face e a fração, a normal secante, a
+distância do campo, a luz de cada face; retirada antes do commit) numa janela 9×9 em volta dos pretos (zoom 1, fase
+3/8, lei antiga; face direita x = 1,8559, topo y = 0,9176; o topo aceso 1,2, a direita no ambiente 0,012):
+
+| texel (fino) | produto: o ponto remapeado (texels finos), fração | sem o campo | luz produto / sem o campo / gabarito |
+|---|---|---|---|
+| (1,8203; 0,8828) — no eixo, 2,2 da borda | (+1,76; +1,76) na DIAGONAL, f2 = 0, normal 0 | topo (+0,45; +2,27) + direita, f2 = ½ | 0,012 / 0,606 / 0,656 |
+| (1,8359; 0,8984) — no eixo, 1,2 | (+0,75; +0,75) diagonal, f2 = 0 | topo + direita, f2 = ½ | 0,012 / 0,604 / 0,650 |
+| (1,8516; 0,9141) — o texel do canto (fora do portão) | — | — | 0,012 / 0,575 / — |
+
+⇒ **o campo CHANFRA o canto convexo**: a distância lida no centro do texel do canto (dentro por ~0,4 texel da captura)
+é −0,05 (fora). O parcial do canto tem a reta DIAGONAL (o Sobel de duas faces) e os cheios em volta emprestam retas com
+a normal diagonal do próprio Sobel ⇒ o iso-0 corta o canto ~1,3 texel da captura ao longo da diagonal (a reta por texel
+cortava-o só dentro do texel do canto). O texel do eixo medial acha o ponto de fronteira mais perto NO CHANFRO (a 45°
+das duas faces: o `outra_face`, limiar de 60°, não vê outra face ⇒ f2 = 0), o ponto sem normal marcha a partir de
+dentro do corpo verdadeiro ⇒ tapado ⇒ o ambiente. A hipótese do §13 CONFIRMADA (o canto arredondado), com a peça
+que ela não dizia: perde-se também a média das duas faces.
+
+## 15. A candidata 6 — a UNIÃO com a reta por texel — e o seu kill-criterion (escrito ANTES de medir)
+
+`Config::borda_uniao` (override `BORDA_UNIAO`): no `meio`, «dentro» ⟺ o campo ≥ 0 **OU** a reta por texel (o
+`dentro_exato` da W5d, com o recuo lido como −distância no canal do campo) — esta só onde algum dos 4 vizinhos do campo
+está na faixa (> −1). As frestas «fora» eram da reta por texel e o campo cobre-as (a cura do §1 mantém-se); o chanfro
+é do campo e a reta por texel cobre-o (o canto volta ao da W5d: cortado só dentro do texel do canto). Um único
+predicado ⇒ a busca e a marcha continuam a concordar (o 2.º mecanismo do §5).
+
+**Régua** (um processo, intercalada): o censo da borda + os anéis (§2: 3 zooms × 8 fases + o disco de imagem) e os
+bits de fora, variantes **antes da W6d** (a reta por texel, sem o fora) × **produto** (`739fb6cfb1`) × **produto +
+união**; o custo da C3 (cenas 5 e 6, mínimo de 7) das três; a sonda do canto; e o portão `o_interior_do_opaco*`.
+
+**PASSA** (a união): (1) o `o_interior_do_opaco_nao_depende_da_posicao_na_grade` verde (a lei antiga ≤ 1 errado em todo
+caso) e o texel do canto (1,8516; 0,9141) a ±0,1 do «sem o campo»; (2) família (a) ≤ 14 (10 % dos 139 de antes) e o pior
+dela ≥ −0,25; (1b) ≤ antes + 2; (3) anéis sem regressão contra o produto (0 errados a mais, ×0, TV ≤ +0,05); (4) bits
+fora dos corpos IGUAIS aos de antes (0 diferentes); (5) o custo da C3 ≤ +5 % sobre o de antes (cenas 5 e 6); (6) os
+portões do item 3 do §2 verdes. **MORRE**: um preto (< −0,25) novo na família (a), bits de fora diferentes, o portão do
+interior ainda vermelho. Entre os dois (custo de 5 a 20 %, (a) de 15 a 70): não entra.
+
+## 16. Rodada 9 — a união: a QUALIDADE passa toda, o custo não (`decide9.log`, `custo9.log`, `canto9_s1.log`)
+
+(1) `o_interior_do_opaco` VERDE (zoom 1 · 3/8: lei antiga 0 errados) e o canto = o «sem o campo» (o texel do canto
+0,575; os dois do eixo 0,604 · 0,606, o remapeado de volta ao topo + direita com f2 = ½) · (2) família (a) 139 → **0**
+(sem a união: 1, −0,176) · (b) 40 → 30 (sem a união 36) · (3) anéis sem regressão · (4) bits de fora 0 em 24 ·
+(5) ✗ custo C3, `load` 1,3, o mínimo de 7 repetido 3× NO MESMO processo (estável a ±0,02 ms):
+
+| C3 (ms) | antes da W6d | sem a união (`739fb6cfb1`) | produto + união |
+|---|---|---|---|
+| cena 5 | 3,37 (fina 2,40) | 3,05 (fina 1,95) | 3,55 (fina 2,45) — **+5,3 %** |
+| cena 6 | 2,18 (fina 1,32) | 2,10 (fina 1,12) | 2,33 (fina 1,35) — **+7,1 %** |
+
+⇒ o campo por UM `textureGather` é MAIS BARATO na fina que a reta por texel (−0,45 ms na cena 5; a rodada 8, com
+outro `load`, lia +2,4 % — o número desta tabela é o estável); a união devolve esse custo porque chama o
+`dentro_exato` em todo ponto de fora da faixa.
+
+**Candidata 6b (só custo) e o seu kill-criterion (escrito ANTES de medir):** o `dentro_exato` só onde o campo DOBRA —
+a torção da bilinear `|s.x + s.z − s.y − s.w|` > τ (numa borda reta as distâncias são uma função linear e a torção é
+0; no canto não). τ ∈ {0,05 · 0,15 · 0,30} (`Config::torcao_da_uniao`, override `TORCAO_DA_UNIAO`; 0 = a união em
+toda a faixa), as variantes intercaladas no mesmo processo. **PASSA** o menor custo cujas leituras dos itens (1)–(4)
+sejam as da rodada 9 (o portão do interior verde, o canto a ±0,1, (a) 0, (b) ≤ 32, anéis iguais, bits 0) E o custo
+C3 ≤ +5 % sobre antes nas duas cenas. Nenhuma passa ⇒ não entra; a próxima é marcar o canto no `c3_borda`.
+
+## 17. Rodada 10 — a torção: ⛔ recusada (`decide10.log`, `custo10.log`)
+
+| (3 zooms × 8 fases + imagem; custo `load` 0,7–1,3, mínimo de 7, 2–3 repetições) | (a) | pior | (b) | canto | C3 cena 5 / 6 |
+|---|---|---|---|---|---|
+| antes da W6d | 139 | −0,964 | 40 | — | 3,36 / 2,18 |
+| sem a união | 1 | −0,176 | 36 | preto | 3,04 / 2,10 |
+| união τ 0 | **0** | — | **30** | 0,575 | 3,51–3,54 / 2,30–2,31 |
+| união τ 0,05 · 0,15 | 1 | −0,176 | 38 · 36 | 0,575 | 3,50–3,51 / 2,30 |
+| união τ 0,30 | 1 | −0,176 | 36 | **preto** | 3,52 / 2,31 |
+| união τ ∞ (o código lá, nunca corre) | — | — | — | — | **3,50–3,51 / 2,28–2,29** |
+
+⇒ o custo da união NÃO é chamá-la: é o código dela embutido no `meio`, que o compilador põe em cada passo da marcha
+(a variante que nunca corre custa o mesmo; o «antes», que tem o `dentro_exato` no mesmo sítio, também). A torção
+só tira qualidade (o pior volta a −0,176 e, a τ 0,30, o canto preto) — o knob saiu do código.
+
+## 18. A candidata 6c — a união só na GEOMETRIA — e o seu kill-criterion (escrito com a rodada a correr, antes de a ler)
+
+`meio` = a marcha (o campo, sem a união: `meio_de(pc, false)`, o ramo morre na compilação); `meio_geo` = o
+`num_corpo` e o τ do PRÓPRIO texel (`c3_direta` ×5, `c3_anel`) com a `BORDA_UNIAO`. A busca do ponto de fronteira, o
+pé e a classificação do texel veem o canto da W5d; a marcha vê o campo. Concordam no que importa: o que a união põe
+FORA o campo também (o campo ⊂ a união) ⇒ o ponto de fronteira e o texel de fora estão fora para a marcha (a marcha
+nunca nasce dentro — o 2.º mecanismo do §5). Diferença admitida: a luz da marcha passa pelo chanfro do campo (≤ 1,3
+texel da captura no canto).
+
+Itens, régua e limiares: os do §15 (o interior verde, o canto a ±0,1, (a) ≤ 14 e o pior ≥ −0,25, (b) ≤ antes + 2,
+anéis sem regressão, bits fora 0, custo C3 ≤ +5 % sobre antes nas cenas 5 e 6) e os portões do item 3 do §2 na mesma
+leva. **MORRE**: um preto (< −0,25) novo, bits de fora, o portão do interior vermelho.
+
+## 19. Rodada 11 — a 6c ENTRA (`decide11.log`, `portoes11.log`, `pos_sonda.log`, `load` 1,4–2,7)
+
+Contra o §18, na mesma corrida: (1) o interior VERDE (zoom 1 · 3/8: 0 errados; o pior da lei antiga 0,066) e o canto
+= o «sem o campo» (0,575 · 0,604 · 0,606) · (2) família (a) 139 → **0**, (b) 40 → **30** · (3) anéis iguais ao
+«sem a união» em todo zoom (polígono 0,8: 10 errados → 0) · (4) bits de fora **0** em 24 · (5) C3 cena 5 3,367 →
+**3,510 (+4,2 %)**, cena 6 2,181 → **2,282 (+4,6 %)** (o «sem a união» 3,04 / 2,08: a margem que a união come é
+pequena; a fina continua 2,41 — o custo está nas perguntas de geometria, não na marcha) · (6) os portões do item 3:
+9/10 verdes; `a_borda_nao_tem_pontos_pretos` agora `polígono +0.000 (0) · imagem +0.000 (0)` (era −0,176 na imagem).
+
+### ⚠️ Correção do §13 item 1: o G7 dos outros É da W6d
+
+`o_rebote_do_desenho::os_outros_devolvem_a_luz_como_a_imagem` usa o `LuzDoQuadro`, que liga a borda pelos
+interruptores do app (`quadro_ambiente.rs`: `ligado("PH2D_LIGHT2D_BORDA")`) — desligar a cura no `Config::padrao`
+(como o §13 fez) NÃO a desligava neste portão. Medido pelos interruptores (determinístico, 40 quadros):
+
+| o pior canal (`TOL_REBOTE_OUTROS` 0,003 = o −0,27 % da W5e + 10 %) | Disco grande | Disco pequeno |
+|---|---|---|
+| antes da W6d (`PH2D_LIGHT2D_BORDA=0`) | 0,27 % | 0,27 % ✓ |
+| o campo sem a união (`PH2D_LIGHT2D_BORDA_UNIAO=0`) | 0,25 % | **0,31 %** ✗ |
+| o produto (+ a união) | **0,33 %** ✗ | 0,29 % |
+
+Os dois discos (a mesma forma pela camada dos outros e pela imagem) diferem só no antisserrilhado da borda; a lei
+da borda redistribui ±0,06 % entre eles. A tolerância é um máximo AMOSTRADO sob a lei antiga — por remedir com o
+seu controlo: a M12 da W5e (a camada lida como não premultiplicada, −0,39 % sob a lei antiga) sob a lei nova, no lote
+da prova de mutação; a tolerância nova só entra se a M12 ficar claramente acima dela.

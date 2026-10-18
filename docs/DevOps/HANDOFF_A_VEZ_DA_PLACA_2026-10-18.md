@@ -55,6 +55,11 @@ limpo**: a espera de placa livre passa logo e o `alheios.txt` nunca acusa ningu�
 corrido com um `alheios.sh` local que não entrou no commit — confirme. A cópia desta prova trocou as três
 chamadas por `python3 "$AQUI/alheios.py"`.
 
+**Resolvido em 18/10 (ordem do dono):** confirmado que a W6c correu com um `alheios.sh` de rascunho
+(`exec python3 -I alheios.py`) — o veredito dela vale. Cura na `line/Luz2D`, `fd4d1896a3`: o `um_processo.sh` chama o
+`alheios.py` e RECUSA (exit 4) se o detector falhar — provado com um detector partido e com o são. A pausa de 60 s foi
+medida contra ~6 s e FICA ([A_VEZ_DA_PLACA.md §3.1](A_VEZ_DA_PLACA.md)).
+
 ## 6. Para o integrador
 
 Sem contrato congelado, sem schema. Um `pub mod vez` novo na `ph2d-gpu` (crate de que muitas dependem: o

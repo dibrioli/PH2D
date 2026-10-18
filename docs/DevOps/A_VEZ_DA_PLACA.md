@@ -79,10 +79,21 @@ por teste) e uma foto de cena (`kwin --virtual` + o app). Controlo: o mesmo, com
   saíram sujos por OUTRAS linhas, que ainda não têm a vez — o app da `line/Macros`, um `godot` de um agente (o
   guarda passou a cobri-lo), testes de placa de `ph2d-light2d-gpu` (11 amostras no 08), `ph2d-app-light2d`,
   `ph2d-app-flip`, `ph2d-app-components`, `ph2d-render`. É o §5 em números: a vez só protege quem tem o `main`.
-- **Bónus (a pausa de 60 s de placa livre da régua, W6c §5 item 4): NÃO encurtar ainda.** Nesta rodada a espera
-  foi 61–62 s em todos (ninguém entrou durante ela), mas os intrusos chegaram A MEIO das medições, vindos de linhas
-  sem a vez: a pausa não os apanharia de qualquer maneira, e encurtá-la só se mede quando todas as linhas tiverem
-  este `main` — a pergunta passa a ser só o assentamento do relógio da placa (`placa.csv` de cada processo).
+- **Bónus — a pausa de 60 s de placa livre da régua (W6c §5 item 4): MEDIDA, e os 60 s FICAM.** Rodada própria
+  (18/10 10:31–11:42; o app no padrão do produto; 60 s × ~6 s intercalados; 5 limpos de cada; ⚠️ desvio: o
+  Spectacle do dono, parado na placa durante toda a rodada, ignorado pelo PID no detector da cópia — igual nas
+  duas). Critério escrito ANTES: encurta se o c2 difere ≤ 0,03 ms, o arranque (mediana das leituras 5–60) ≤ 0,10 ms
+  e nenhum de 6 s sai da faixa dos de 60 s por > 0,05.
+
+  | | 60 s | ~6 s | diferença | limite |
+  |---|---|---|---|---|
+  | c2 (mediana de 5) | 11,551 (11,511–11,559) | 11,522 (11,510–11,540) | 0,029 | ≤ 0,03 ✓ |
+  | arranque (mediana de 5) | 11,768 (11,595–12,457) | 11,543 (11,444–12,823) | **0,225** | ≤ 0,10 ✗ |
+
+  O arranque falha pela letra — a favor da pausa curta, mas o critério não tinha sentido e a dispersão dele é de
+  1,4 ms dentro de cada grupo. Não se muda a régua depois de ver o número: para a encurtar, uma rodada nova com um
+  critério UNILATERAL (a pausa curta não pode ser PIOR) escrito antes. Os intrusos desta rodada (2 de 12 processos,
+  linhas sem a vez) chegaram a meio da medição — nenhuma pausa os apanharia.
 
 ⛔ Kill-criterion de uma fila própria (bilhetes): se uma medição futura mostrar o `flock` fora de ordem, a vez
 passa a fila. Até lá a fila é código sem defeito para curar.

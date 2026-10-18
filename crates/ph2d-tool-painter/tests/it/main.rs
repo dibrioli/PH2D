@@ -30,6 +30,7 @@ mod os_fios;
 mod os_outros_meios_nao_mudam;
 mod presets_de_fabrica;
 mod receitas_de_fabrica;
+mod regua_escada;
 mod regua_midia;
 mod sonda_etapas;
 mod sonda_gestos;

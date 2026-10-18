@@ -434,6 +434,13 @@ pub fn render_pigment_row_visual(
                     let m_u = lg.sett[i - s] as f64 + lg.susp[i - s] as f64;
                     let m_d = lg.sett[i + s] as f64 + lg.susp[i + s] as f64;
                     let mut emb = ((m_r - m_l) * 0.5 + (m_d - m_u) * 1.0) * 0.008 * emboss_k;
+                    // O relevo dos FIOS (W3b) acende-se pelo MESMO emboss: o cinza que o Rebelle soma.
+                    if !lg.altura.is_empty() {
+                        let h = |j: usize| f64::from(lg.altura[j]);
+                        emb += ((h(i + 1) - h(i - 1)) * 0.5 + (h(i + s) - h(i - s)) * 1.0)
+                            * crate::bristles_relevo::LUZ
+                            * emboss_k;
+                    }
                     emb = emb.clamp(-40.0, 40.0);
                     v += emb;
                     cr += v;

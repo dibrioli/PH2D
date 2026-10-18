@@ -265,3 +265,45 @@ fn a_mao_leve_levanta_os_fios_fracos() {
             .is_some()
     );
 }
+
+/// ⭐ **Entre que dois fios** (W3b): o ponto cai entre os CENTROS de dois fios vizinhos, e a posição anda
+/// contínua de 0 a 1 entre eles — também com a onda a mexer as fronteiras (a onda MÁXIMA, rumo vertical).
+#[test]
+fn entre_fios_anda_continuo_de_centro_a_centro() {
+    for onda in [0.0, ONDA_MAX] {
+        let f = com(|f| {
+            f.pressao = 1.0;
+            f.onda = onda;
+            f.largura_px = 2.0;
+        });
+        let fd = f.no_dab(321.0, [1.0, 0.0], 1.0).unwrap();
+        let mut antes = fd.entre_fios([0.0, -6.0]);
+        for i in 1..=1200 {
+            let d = [0.0, -6.0 + f64::from(i) * 0.01];
+            let agora = fd.entre_fios(d);
+            let ([a, b], t) = agora;
+            assert_eq!(b, a + 1, "{onda} {d:?}");
+            assert!((0.0..=1.0).contains(&t));
+            if agora.0 == antes.0 {
+                assert!(
+                    t >= antes.1 && t - antes.1 < 0.05,
+                    "{onda} {d:?}: {antes:?} → {agora:?}"
+                );
+            } else {
+                assert_eq!(a, antes.0[1], "{onda} {d:?}: salta um par");
+                assert!(
+                    antes.1 > 0.95 && t < 0.05,
+                    "{onda} {d:?}: {antes:?} → {agora:?}"
+                );
+            }
+            antes = agora;
+        }
+    }
+    // CONTROLO: sem onda, o centro do fio 0 é meia largura acima do eixo (a 1 px na normal [0, 1]).
+    let fd = com(|f| f.pressao = 1.0)
+        .no_dab(0.0, [1.0, 0.0], 1.0)
+        .unwrap();
+    let largura = Fios::NEUTRO.largura_px;
+    assert_eq!(fd.entre_fios([0.0, 0.5 * largura]), ([0, 1], 0.0));
+    assert_eq!(fd.entre_fios([0.0, 0.0]), ([-1, 0], 0.5));
+}

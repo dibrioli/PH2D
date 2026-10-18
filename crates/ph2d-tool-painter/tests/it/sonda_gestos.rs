@@ -106,6 +106,25 @@ pub fn pinta_cena_ate(t: &mut PainterTool, quadros: u32) -> (Vec<u8>, u32, u32) 
     t.run_full()
 }
 
+/// Os rectos INCLINADOS da escada (prompt 50): 8° e 25°, a pressão 1 e passo de rato — os mesmos de
+/// `ferramentas/gera_eventos.py --cena inclinados`.
+pub const INCLINADOS: [[[f32; 2]; 2]; 2] = [
+    [[80.0, 150.0], [920.0, 268.05]],
+    [[80.0, 330.0], [580.0, 563.15]],
+];
+
+/// A cena dos [`INCLINADOS`] com o pincel que `t` já tem, e `quadros` de 60 Hz depois: devolve `run_full()`.
+pub fn pinta_inclinados_ate(t: &mut PainterTool, quadros: u32) -> (Vec<u8>, u32, u32) {
+    t.set_brush_color_srgb8(AZUL);
+    for [a, b] in INCLINADOS {
+        gesto(t, &[a, b], 3.0, |_| 1.0);
+    }
+    for _ in 0..quadros {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.run_full()
+}
+
 /// Um só traço recto, horizontal, a pressão 1 e passo de rato (3 px), numa tela branca com altura para
 /// o pincel: o gesto da largura, seguido de `ticks` quadros de 60 Hz (a água corre e seca). Devolve
 /// `run_full()` e a altura da tela (a largura é `W`).

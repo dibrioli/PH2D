@@ -147,12 +147,24 @@ impl FiosNoDab {
         Ponto { q, ganho, fio }
     }
 
-    /// O fio do ponto a `d` px do centro do dab (o de [`Self::no_ponto`], sem o resto).
+    /// ⭐ **Entre que dois fios** está o ponto a `d` px do centro do dab: os dois fios vizinhos cujos CENTROS o
+    /// cercam na normal, e onde ele cai entre eles (`0` = no centro do 1.º, `1` = no do 2.º). É o que deixa o
+    /// relevo CONTÍNUO através dos fios (W3b, [`crate::bristles_relevo::entre`]): o fio de [`Self::no_ponto`]
+    /// é um degrau, e um degrau de altura num traço inclinado é uma escada (doc 50_medicao).
     #[must_use]
-    pub fn fio_no_ponto(&self, d: [f64; 2]) -> i32 {
+    pub fn entre_fios(&self, d: [f64; 2]) -> ([i32; 2], f64) {
         let n = self.normal;
         let q = [d[0] - n[0] * self.desvio_px, d[1] - n[1] * self.desvio_px];
-        self.fio((q[0] * n[0] + q[1] * n[1]) / self.fios.largura_px.max(0.25))
+        let u = (q[0] * n[0] + q[1] * n[1]) / self.fios.largura_px.max(0.25);
+        let k = self.fio(u);
+        let centro = |k: i32| 0.5 * (self.fronteira(k) + self.fronteira(k + 1));
+        let [a, b] = if u >= centro(k) {
+            [k, k + 1]
+        } else {
+            [k - 1, k]
+        };
+        let (ca, cb) = (centro(a), centro(b));
+        ([a, b], ((u - ca) / (cb - ca)).clamp(0.0, 1.0))
     }
 
     /// O ganho da pressão do fio `fio` neste dab — o mesmo para todos os pontos dele.
@@ -192,21 +204,27 @@ impl FiosNoDab {
     /// O fio em `u` (larguras de fio na normal): o `k` com `fronteira(k) ≤ u < fronteira(k + 1)`. Cada fronteira
     /// anda no máximo meia largura (`onda ≤ ONDA_MAX < 1`), então ela é crescente e o fio é um dos três vizinhos.
     fn fio(&self, u: f64) -> i32 {
-        let f = &self.fios;
-        let onda = f.onda.clamp(0.0, ONDA_MAX);
-        if onda == 0.0 {
-            return u.floor() as i32;
-        }
-        let t = self.arco / f.onda_px.max(1.0);
-        let fronteira = |k: i32| f64::from(k) + 0.5 * onda * perlin(t, k, SEMENTE_ONDA);
         let k0 = u.floor() as i32;
-        if u < fronteira(k0) {
+        if self.fios.onda.clamp(0.0, ONDA_MAX) == 0.0 {
+            return k0;
+        }
+        if u < self.fronteira(k0) {
             k0 - 1
-        } else if u >= fronteira(k0 + 1) {
+        } else if u >= self.fronteira(k0 + 1) {
             k0 + 1
         } else {
             k0
         }
+    }
+
+    /// A fronteira de baixo do fio `k` (larguras de fio na normal): `k`, mais a onda dela.
+    fn fronteira(&self, k: i32) -> f64 {
+        let f = &self.fios;
+        let onda = f.onda.clamp(0.0, ONDA_MAX);
+        if onda == 0.0 {
+            return f64::from(k);
+        }
+        f64::from(k) + 0.5 * onda * perlin(self.arco / f.onda_px.max(1.0), k, SEMENTE_ONDA)
     }
 }
 

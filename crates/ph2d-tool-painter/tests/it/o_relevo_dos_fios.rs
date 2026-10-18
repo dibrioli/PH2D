@@ -1,7 +1,8 @@
-//! **O RELEVO de cada fio** (W3, prompt 49; 05 §3): o óleo do Rebelle tem fios que CONSTROEM e fios que
-//! ESCAVAM (o Bristle Flat: `particle_thin_remove_impasto_strength` 0,65), e os fios escuros da foto são a
-//! sombra deles. A régua lê a imagem (a textura através × ao longo, a borda) e o CAMPO do motor (a massa e o
-//! relevo da grelha, não o píxel), na cena seca da bancada.
+//! **O RELEVO de cada fio** (W3, prompt 49; W3b, prompt 50; 05 §3): o óleo do Rebelle tem fios que CONSTROEM e
+//! fios que ESCAVAM (o Bristle Flat: `particle_thin_remove_impasto_strength` 0,65), e os fios escuros da foto são
+//! a sombra deles. A régua lê a imagem (a textura através × ao longo, a borda; a ESCADA e o contraste na
+//! luminância, `regua_escada`) e o CAMPO do motor (a massa e o relevo da grelha, não o píxel), na cena seca da
+//! bancada e nos rectos INCLINADOS (`sonda_gestos::INCLINADOS`) — a bancada é horizontal e não via a escada.
 
 use super::midias_de_fabrica::{QUADROS_SECOS, de_fabrica};
 use super::regua_midia::{Medida, RECTO, mede};
@@ -252,10 +253,100 @@ fn sonda_a_barra_da_w3() {
     }
 }
 
-/// O Oil Bristle com o relevo de cada fio da W3 (`bristleHeight` 1,25, emboss 1) — a LEI; a fábrica tirou-o no
-/// smoke do dono de 18/10 (a escada no traço inclinado, doc 49_medicao §7) até ao prompt 50.
+/// A cena `inclinada` (os [`super::sonda_gestos::INCLINADOS`]) ou a bancada, seca, com o preset `p` ao raio
+/// `raio`: `run_full()` e o DECLIVE do campo da altura (o percentil 99 de `|∇h|`, px de altura por px, nas
+/// células com relevo; `0` sem campo).
+pub(super) fn cena_seca_de(
+    p: &ph2d_brush_presets::Preset,
+    raio: f32,
+    inclinada: bool,
+) -> ((Vec<u8>, u32, u32), f64) {
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_brush_size_px(raio);
+    let img = if inclinada {
+        super::sonda_gestos::pinta_inclinados_ate(&mut t, QUADROS_SECOS)
+    } else {
+        pinta_cena_ate(&mut t, QUADROS_SECOS)
+    };
+    let mut declive = 0.0;
+    t.wet_sonda_motor(|e| {
+        let g = &e.layers[e.active_layer].grid;
+        if g.altura.is_empty() {
+            return;
+        }
+        let h = |x: usize, y: usize| f64::from(ph2d_wet_paint::grid::altura::em(g, y * g.s + x));
+        let mut d: Vec<f64> = (2..g.h)
+            .flat_map(|y| (2..g.w).map(move |x| (x, y)))
+            .filter(|&(x, y)| h(x, y) != 0.0)
+            .map(|(x, y)| {
+                (0.5 * (h(x + 1, y) - h(x - 1, y))).hypot(0.5 * (h(x, y + 1) - h(x, y - 1)))
+            })
+            .collect();
+        d.sort_by(f64::total_cmp);
+        declive = d.get(d.len() * 99 / 100).copied().unwrap_or(0.0);
+    });
+    (img, declive)
+}
+
+/// **SONDA (W3b, prompt 50): a ESCADA** — a bancada e os rectos inclinados, secos, do Oil Bristle de fábrica
+/// e das variantes (`PH2D_SONDA_KNOBS`, a vazia = a fábrica) aos raios `PH2D_SONDA_RAIOS` (51,5 = os 103 px
+/// do preset · 20): grava `escada_<cena>_<variante>_<raio>.ppm` em `PH2D_SONDA_OUT` para a régua
+/// (`ferramentas/escada.py`), ao lado das fotos do Rebelle da mesma cena.
+#[test]
+#[ignore = "sonda: as cenas da escada; corre-se à mão"]
+fn sonda_a_escada() {
+    let dir = std::env::var("PH2D_SONDA_OUT").expect("PH2D_SONDA_OUT");
+    let variantes: Vec<(String, String)> = std::env::var("PH2D_SONDA_KNOBS").map_or_else(
+        |_| vec![("ontem".to_owned(), String::new())],
+        |v| {
+            v.split('|')
+                .map(|s| {
+                    let (n, kv) = s.split_once(':').unwrap_or((s, ""));
+                    (n.to_owned(), kv.to_owned())
+                })
+                .collect()
+        },
+    );
+    let raios: Vec<f32> = std::env::var("PH2D_SONDA_RAIOS").map_or_else(
+        |_| vec![51.5, 20.0],
+        |v| v.split(',').map(|x| x.parse().unwrap()).collect(),
+    );
+    let casos: Vec<(f32, bool, &(String, String))> = raios
+        .iter()
+        .flat_map(|&r| [(r, false), (r, true)])
+        .flat_map(|(r, i)| variantes.iter().map(move |v| (r, i, v)))
+        .collect();
+    std::thread::scope(|s| {
+        for &(raio, inclinada, (vn, kv)) in &casos {
+            let dir = dir.clone();
+            s.spawn(move || {
+                let ((px, w, h), declive) =
+                    cena_seca_de(&com_knobs(de_fabrica("Oil Bristle"), kv), raio, inclinada);
+                if !inclinada {
+                    let m = mede(&px, w, RECTO);
+                    println!(
+                        "[escada] {vn:<24} r {raio:4.1} tex {:5.2} atr {:5.2} long {:5.2} borda {:.3} carril {:4.2} declive p99 {declive:.2}",
+                        m.textura, m.atraves, m.ao_longo, m.borda, m.carril
+                    );
+                }
+                let mut f = format!("P6\n{w} {h}\n255\n").into_bytes();
+                px.as_chunks::<4>()
+                    .0
+                    .iter()
+                    .for_each(|q| f.extend_from_slice(&q[..3]));
+                std::fs::create_dir_all(&dir).unwrap();
+                let cena = if inclinada { "incl" } else { "banc" };
+                std::fs::write(format!("{dir}/escada_{cena}_{vn}_{raio}.ppm"), &f).unwrap();
+            });
+        }
+    });
+}
+
+/// O Oil Bristle de fábrica: o relevo de cada fio sem escada (W3b, `bristleHeight` 0,75, doc 50_medicao).
 fn com_relevo() -> ph2d_brush_presets::Preset {
-    com_knobs(de_fabrica("Oil Bristle"), "bristleHeight=1.25,emboss=1")
+    de_fabrica("Oil Bristle")
 }
 
 /// O controlo da W3: o preset sem o relevo de cada fio e com o emboss de antes (0,7).
@@ -379,40 +470,146 @@ fn traco(t: &mut ph2d_tool_painter::PainterTool) {
     }
 }
 
-/// ⭐ **O relevo é só da LUZ** (W3): com as lâmpadas do Impasto apagadas o relevo não aparece — o traço do Oil
-/// Bristle é o do mesmo pincel sem relevo, ao byte (a luz é a única porta do campo para a tela). O campo, esse,
-/// nasce com o 1.º traço e não antes. (O undo do campo é do motor: `grid/altura_tests.rs`.)
-#[test]
-fn o_relevo_e_so_da_luz() {
+/// O traço recto do Oil Bristle `p` numa tela 520×200, a raio 20, com as lâmpadas do Impasto acesas ou não e a
+/// grade a `ratio` px por célula: o hash da tela e o campo da altura (vazio = não nasceu).
+fn pinta_recto(p: &ph2d_brush_presets::Preset, luz: bool, ratio: f64) -> (u64, Vec<f32>) {
     use super::sonda_gestos::{AZUL, fnv1a};
     use ph2d_editor_core::tool::RasterEditTool;
-    let pinta = |p: &ph2d_brush_presets::Preset, luz: bool| {
-        let mut t = ph2d_tool_painter::PainterTool::default();
-        t.set_source(vec![255u8; 520 * 200 * 4], 520, 200);
-        t.set_wet_relogio_fixo(true);
-        assert!(t.wet_preset_aplicar(p).is_empty());
-        t.set_brush_size_px(20.0);
-        t.set_brush_color_srgb8(AZUL);
-        if !luz {
-            t.set_impasto_light_intensity(0.0);
-        }
-        let mut campo = Vec::new();
-        t.wet_sonda_motor(|e| campo.clone_from(&e.layers[e.active_layer].grid.altura));
-        assert!(campo.is_empty(), "o campo nasceu antes do traço");
-        traco(&mut t);
-        t.wet_sonda_motor(|e| campo.clone_from(&e.layers[e.active_layer].grid.altura));
-        (fnv1a(&t.run_full().0), campo.iter().any(|&h| h != 0.0))
-    };
+    let mut t = ph2d_tool_painter::PainterTool::default();
+    t.set_source(vec![255u8; 520 * 200 * 4], 520, 200);
+    t.set_wet_relogio_fixo(true);
+    t.set_wet_grid_ratio(ratio);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_brush_size_px(20.0);
+    t.set_brush_color_srgb8(AZUL);
+    if !luz {
+        t.set_impasto_light_intensity(0.0);
+    }
+    let mut campo = Vec::new();
+    t.wet_sonda_motor(|e| campo.clone_from(&e.layers[e.active_layer].grid.altura));
+    assert!(campo.is_empty(), "o campo nasceu antes do traço");
+    traco(&mut t);
+    t.wet_sonda_motor(|e| campo.clone_from(&e.layers[e.active_layer].grid.altura));
+    (fnv1a(&t.run_full().0), campo)
+}
+
+/// ⭐ **O relevo é do EMBOSS da tinta** (W3b, doc 50_medicao §2): o cinza que o Rebelle soma, pelo knob `Emboss`
+/// do pincel — com o Emboss a 0 o traço é o do mesmo pincel sem relevo, ao byte; com ele, não. E a luz do
+/// Impasto já NÃO lhe toca (ela multiplicava a cor: 3× o contraste do Rebelle): as lâmpadas apagadas dão o
+/// mesmo traço, ao byte. O campo nasce com o 1.º traço e não antes (o undo dele é do motor:
+/// `grid/altura_tests.rs`).
+#[test]
+fn o_relevo_e_do_emboss() {
     let p = com_relevo();
     let sem = com_knobs(p.clone(), "-bristleHeight");
-    let ((apagada, campo), (sem_apagada, sem_campo)) = (pinta(&p, false), pinta(&sem, false));
-    assert!(campo && !sem_campo, "o campo nasce só com o relevo");
-    assert_eq!(apagada, sem_apagada, "o relevo apareceu sem luz");
-    assert_ne!(
-        pinta(&p, true).0,
-        pinta(&sem, true).0,
-        "a luz não acendeu o relevo"
+    let (com_luz, campo) = pinta_recto(&p, true, 1.0);
+    let (sem_luz, _) = pinta_recto(&p, false, 1.0);
+    let (sem_relevo, sem_campo) = pinta_recto(&sem, true, 1.0);
+    assert!(
+        campo.iter().any(|&h| h != 0.0) && sem_campo.is_empty(),
+        "o campo nasce só com o relevo"
     );
+    assert_ne!(com_luz, sem_relevo, "o relevo não aparece");
+    assert_eq!(com_luz, sem_luz, "a luz do Impasto tocou no relevo molhado");
+    let mudo = |q: &ph2d_brush_presets::Preset| {
+        pinta_recto(&com_knobs(q.clone(), "emboss=0"), true, 1.0).0
+    };
+    assert_eq!(mudo(&p), mudo(&sem), "o relevo apareceu com o Emboss a 0");
+}
+
+/// ⭐ **A altura é por px de TELA** (W3b): o campo guarda a altura de uma célula em px ÷ px por célula, para que o
+/// declive de célula a célula seja o de px a px — o mesmo traço com a grade a 2 px por célula guarda metade
+/// (0,45–0,55 do de 1 px, no máximo e no desvio). A mutação «sem o ÷ px por célula» dá 1.
+#[test]
+fn a_altura_e_por_px_de_tela() {
+    let p = com_relevo();
+    let (_, a1) = pinta_recto(&p, true, 1.0);
+    let (_, a2) = pinta_recto(&p, true, 2.0);
+    let max = |a: &[f32]| a.iter().fold(0.0f32, |m, &h| m.max(h.abs()));
+    let desvio = |a: &[f32]| {
+        let v: Vec<f64> = a
+            .iter()
+            .filter(|&&h| h != 0.0)
+            .map(|&h| f64::from(h))
+            .collect();
+        let m = v.iter().sum::<f64>() / v.len().max(1) as f64;
+        (v.iter().map(|x| (x - m).powi(2)).sum::<f64>() / v.len().max(1) as f64).sqrt()
+    };
+    let (rm, rd) = (max(&a2) / max(&a1), desvio(&a2) / desvio(&a1));
+    assert!(max(&a1) > 0.2, "o campo a 1 px por célula: {}", max(&a1));
+    assert!(
+        (0.45..=0.55).contains(&rm) || (0.45..=0.55).contains(&rd),
+        "max {rm:.3} · desvio {rd:.3}"
+    );
+}
+
+/// A escada (`regua_escada`) do Oil Bristle `p` ao raio `raio`: as regiões 8° e 25° dos inclinados e a curva e
+/// o recto da bancada.
+fn escada_de(p: &ph2d_brush_presets::Preset, raio: f32) -> [super::regua_escada::Escada; 4] {
+    use super::regua_escada::{CURVA, OITO, RECTO, VINTE_E_CINCO, mede};
+    let ((i, w, h), _) = cena_seca_de(p, raio, true);
+    let ((b, _, _), _) = cena_seca_de(p, raio, false);
+    let (w, h) = (w as usize, h as usize);
+    [
+        mede(&i, w, h, OITO),
+        mede(&i, w, h, VINTE_E_CINCO),
+        mede(&b, w, h, CURVA),
+        mede(&b, w, h, RECTO),
+    ]
+}
+
+/// ⭐⭐ **O relevo SEM ESCADA** (W3b, prompt 50; doc 50_medicao): o Oil Bristle de fábrica nos rectos INCLINADOS
+/// (8° e 25°) e na curva em S, ao tamanho do preset (103 px) e à largura da foto (41), contra as fotos do Rebelle
+/// da MESMA cena (`fixtures/rebelle/{incl103,incl40,oil103,oil40c}.png`, `ferramentas/escada.py`; o ruído da sessão
+/// 0,3 — `oil` × `oil40c`):
+/// - a **escada** (o salto da luminância ao longo dos fios) do lado do Rebelle: ≤ o dele + 0,3. O relevo de 18/10
+///   (o degrau por fio, a luz do Impasto) lia 15,2 · 12,3 a 103 px; o preset sem relevo 1,7 · 1,3;
+/// - o **contraste** do recto: à largura da foto no vale do Rebelle (12,1; o controlo sem relevo 8,7); a 103 px
+///   não passa de 1,3× o dele (11,5; o controlo já está a 12,3 — e o de 18/10 lia 35,7).
+#[test]
+fn o_relevo_nao_tem_escada() {
+    // O Rebelle: [8°, 25°, curva] e o contraste do recto, a 103 e a 41 px.
+    const REBELLE: [(f32, [f64; 3], f64); 2] = [
+        (51.5, [2.48, 2.30, 2.20], 11.54),
+        (20.5, [2.50, 2.62, 2.25], 12.11),
+    ];
+    let medidas: Vec<_> = std::thread::scope(|s| {
+        let hs: Vec<_> = REBELLE
+            .iter()
+            .map(|&(r, _, _)| {
+                s.spawn(move || {
+                    (
+                        escada_de(&com_relevo(), r),
+                        escada_de(&sem_relevo("Oil Bristle"), r),
+                    )
+                })
+            })
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    let mut falhas = Vec::new();
+    for (&(r, reb, con), (m, c)) in REBELLE.iter().zip(&medidas) {
+        println!("[escada] r {r}: {m:?} · SEM {c:?}");
+        for (k, nome) in ["8°", "25°", "curva"].iter().enumerate() {
+            if m[k].escada > reb[k] + 0.3 {
+                falhas.push(format!(
+                    "r {r} {nome}: escada {:.2} (Rebelle {})",
+                    m[k].escada, reb[k]
+                ));
+            }
+        }
+        let ok = if r > 40.0 {
+            (m[3].contraste <= 1.3 * con)
+                .then_some(())
+                .ok_or(format!("{:.2} > 1,3 × {con}", m[3].contraste))
+        } else {
+            no_vale(m[3].contraste, con, c[3].contraste, 0.3)
+        };
+        if let Err(e) = ok {
+            falhas.push(format!("r {r}: contraste do recto {e}"));
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
 /// **A borracha tira o relevo** (W3): o Oil Bristle de fábrica e, por cima de metade do traço, a borracha do
@@ -464,7 +661,6 @@ fn sonda_o_custo_do_relevo() {
     let p = com_relevo();
     let variantes = [
         ("sem", com_knobs(p.clone(), "-bristleHeight"), true),
-        ("com, luz apagada", p.clone(), false),
         ("com", p, true),
     ];
     let mede = |p: &ph2d_brush_presets::Preset, luz: bool| -> (f64, f64, f64) {
@@ -503,10 +699,10 @@ fn sonda_o_custo_do_relevo() {
             ticks[ticks.len() - 1],
         )
     };
-    let mut melhor = [(f64::MAX, f64::MAX, f64::MAX); 3];
+    let mut melhor = [(f64::MAX, f64::MAX, f64::MAX); 2];
     for rodada in 0..7 {
-        for j in 0..3 {
-            let i = (rodada + j) % 3;
+        for j in 0..2 {
+            let i = (rodada + j) % 2;
             let (a, b, c) = mede(&variantes[i].1, variantes[i].2);
             let m = &mut melhor[i];
             *m = (m.0.min(a), m.1.min(b), m.2.min(c));

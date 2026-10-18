@@ -69,8 +69,6 @@ impl PainterTool {
             && camada.is_none_or(|c| !self.vidros.contains_key(&c))
             && self.preview_layer_stack_is_trivial()
             && !self.papel_atravessa_vidro();
-        // A luz do Impasto sobre o RELEVO dos fios (W3), pelo rig do artista e pela porta livre.
-        let luz = crate::tool::paint::impasto_light::porta::LuzLivre::nova(&self.paint.impasto_rig);
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -151,19 +149,11 @@ impl PainterTool {
         // por isso que uma razão maior corta o render de pigmento por `ratio²`
         // — é o mesmo trabalho por célula, e há `ratio²` vezes menos delas.
         let g_stride = gw * 4;
-        let luz = luz.filter(|_| {
-            layers
-                .iter()
-                .any(|l| l.visible && !l.grid.altura.is_empty())
-        });
         sess.pigment[(cy0 - 1) * g_stride..cy1 * g_stride]
             .par_chunks_mut(g_stride)
             .enumerate()
             .for_each(|(k, row)| {
                 render_pigment_row_visual(Some(&params), &layers, visual, cy0 + k, cx0, cx1, row);
-                if let Some(luz) = luz.as_ref() {
-                    super::relevo_luz::acende_linha(luz, &layers, ratio, cy0 + k, cx0, cx1, row);
-                }
             });
         drop(layers);
         // ⚠️ **A FRONTEIRA DO MOTOR.** Tudo acima lê `sess.engine` (as camadas, o

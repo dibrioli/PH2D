@@ -55,7 +55,8 @@ pub struct Grid {
     /// O RELEVO da tinta da célula: o `Emboss` do pincel que a pousou, pesado pela massa (Bug #48 — o
     /// relevo viaja com a tinta; trocar de pincel não o muda). Escrito só em [`crate::trail::Trail::transfer_paint`].
     pub relevo: Vec<f32>,
-    /// **A ALTURA da tinta** que os fios deixaram (W3, [`crate::bristles_relevo`]), em px: cristas e sulcos.
+    /// **A ALTURA da tinta** que os fios deixaram (W3, [`crate::bristles_relevo`]): cristas e sulcos, em px de
+    /// altura por px de tela de uma CÉLULA (px ÷ px por célula) — o declive de célula a célula é o de px a px.
     /// VAZIO até o primeiro pincel com relevo pintar na grade ([`altura::garante`]) — quem não o usa não paga.
     pub altura: Vec<f32>,
     /// **O GLAZE da tinta em suspensão** (prompt 42): a fracção que filtra a de baixo — o Glaze do pincel que a

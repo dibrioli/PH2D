@@ -27,7 +27,8 @@ const CENAS: [(&str, bool, u64); 22] = [
     ("Wet Drip", false, 0x8159963aa484f688),
     ("Wet Liner", false, 0x27defb305741fea9),
     // Os dois com os FIOS da W2 (prompt 48, doc 48_medicao): repinados pela lei nova; os outros 20 ao bit.
-    ("Oil Bristle", false, 0x7041ff018be89498),
+    // O Oil Bristle repintado pelo relevo sem escada (W3b, prompt 50, doc 50_medicao): os outros 21 ao bit.
+    ("Oil Bristle", false, 0x363fa46c11df0df7),
     ("Acrylic Round", false, 0xfea6bfd5e31bf152),
     ("Express Oil", false, 0x3ea45be91259a403),
     ("Graphite 8B", false, 0x55368fbf0685ad46),

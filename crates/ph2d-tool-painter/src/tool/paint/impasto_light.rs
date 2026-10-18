@@ -394,9 +394,6 @@ impl PainterTool {
     }
 }
 
-#[path = "impasto_light_porta.rs"]
-pub(super) mod porta; // a PORTA LIVRE da mesma luz para o relevo do Wet Paint (W3)
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -11,7 +11,7 @@ pub fn garante(g: &mut Grid) -> &mut [f32] {
     &mut g.altura
 }
 
-/// A altura (px) da célula `i`; `0` sem o campo.
+/// A altura da célula `i` (a unidade de [`Grid::altura`]); `0` sem o campo.
 #[must_use]
 pub fn em(g: &Grid, i: usize) -> f32 {
     g.altura.get(i).copied().unwrap_or(0.0)

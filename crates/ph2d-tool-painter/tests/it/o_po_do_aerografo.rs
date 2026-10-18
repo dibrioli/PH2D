@@ -113,6 +113,9 @@ fn sem_po_o_fluxo_do_pincel_nao_anda() {
     let mut p = de_fabrica("Soft Pastel");
     let tex = p.parametros.brush.get_mut("texture").unwrap();
     tex["mapping"] = serde_json::json!("Random");
+    // A rampa da cena com o piso de pressão de quando a cena foi pinada (a W6 mudou o do Soft Pastel): o que
+    // este portão mede é o pó.
+    p.parametros.engine.insert("pressureSize".into(), 0.9);
     let mut t = tela();
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(&p).is_empty());

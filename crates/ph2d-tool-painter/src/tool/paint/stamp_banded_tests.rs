@@ -25,10 +25,10 @@ pub(super) fn brush() -> BrushSpec {
 
 /// Um arco de `n` dabs — a forma que um editor de figura re-carimba, com sobreposição de verdade
 /// (espaçamento bem menor que o diâmetro) para que a ORDEM entre dabs seja observável.
+#[allow(clippy::cast_precision_loss)]
 pub(super) fn arc(n: usize, radius: f32) -> Vec<Dab> {
     (0..n)
         .map(|i| {
-            #[allow(clippy::cast_precision_loss)]
             let t = (i as f32) / (n as f32) * std::f32::consts::TAU;
             let (s, c) = (t.sin(), t.cos());
             Dab {
@@ -36,7 +36,6 @@ pub(super) fn arc(n: usize, radius: f32) -> Vec<Dab> {
                 radius_px: 12.0,
                 coverage: 0.6,
                 // A cor varia por dab: trocar a ordem de composição muda a cor da sobreposição.
-                #[allow(clippy::cast_precision_loss)]
                 color: [(i % 7) as f32 / 7.0, 0.3, 0.9],
                 color_shift: [0.0; 3],
                 rotation: [1.0, 0.0],

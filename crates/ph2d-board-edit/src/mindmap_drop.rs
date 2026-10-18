@@ -68,8 +68,20 @@ impl Editor {
                     self.selection = BTreeSet::from([id]);
                     return true;
                 }
+                // W23 B3 — o «−» recolhe o ramo; o «+» de um nó só pairado selecciona-o primeiro (é
+                // o pai do filho novo).
+                if let Some(id) = self.mind_minus_at(doc, p) {
+                    self.mind_collapse(doc, history, Some(id));
+                    self.selection = BTreeSet::from([id]);
+                    return true;
+                }
                 match self.mind_plus_at(doc, p) {
-                    Some(side) => self.mind_child(doc, history, ts, Some(side)),
+                    Some(side) => {
+                        if let Some(id) = self.mind_target(doc) {
+                            self.selection = BTreeSet::from([id]);
+                        }
+                        self.mind_child(doc, history, ts, Some(side))
+                    }
                     None => false,
                 }
             }

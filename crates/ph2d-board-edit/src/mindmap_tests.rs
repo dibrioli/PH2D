@@ -479,3 +479,6 @@ fn a_new_node_lives_in_its_parents_frame() {
 
 #[path = "mindmap_audit_tests.rs"]
 mod audit;
+
+#[path = "mind_font_tests.rs"]
+mod font;

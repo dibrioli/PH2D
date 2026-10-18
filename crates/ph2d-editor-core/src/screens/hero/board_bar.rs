@@ -587,7 +587,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         Item::Dash(d) => ed.set_style(doc, history, |s| s.dash = d),
         Item::Round(r) => ed.set_style(doc, history, |s| s.round = r),
         Item::Opacity(i) => ed.set_style(doc, history, |s| s.opacity = OPACITIES[i]),
-        Item::Font(i) => ed.set_style(doc, history, |s| s.font_size = FONT_SIZES[i]),
+        Item::Font(i) => ed.set_font_size(doc, history, FONT_SIZES[i]),
         Item::Route(r) => ed.set_route(doc, history, r),
         Item::Gray => {
             ed.toggle_gray(doc, history);

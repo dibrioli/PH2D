@@ -19,6 +19,8 @@ mod guides;
 mod images;
 mod ink;
 mod links_tags;
+mod mind_font;
+mod mind_hover;
 mod mindmap;
 mod mindmap_drop;
 mod notes;

@@ -39,6 +39,9 @@ pub struct Overlay {
     pub eraser: Option<[f64; 2]>,
     /// Os «+» do nó de mapa seleccionado (W6): o meio do lado de fora e a direcção, como os `dots`.
     pub mind_plus: Vec<([f64; 2], [f64; 2])>,
+    /// W23 — o «−» de recolher do nó de mapa seleccionado ou pairado (o meio da borda de onde saem os
+    /// ramos, mundo); o raio é o da pega, como o «+».
+    pub mind_minus: Option<[f64; 2]>,
     /// A caixa `[x, y, w, h]` do nó onde o arrasto largaria o nó de mapa como filho (o realce).
     pub mind_drop: Option<[f64; 4]>,
     /// W16 — o recorte aberto: a imagem e os quatro cantos da janela no mundo (as pegas em «L»).
@@ -142,6 +145,11 @@ impl Editor {
                     .map(|(a, d, _)| (a, d))
                     .collect()
             },
+            mind_minus: if self.gesture.is_some() {
+                None
+            } else {
+                self.mind_minus(doc).map(|(_, at)| at)
+            },
             mind_drop: self
                 .gesture
                 .as_ref()
@@ -157,6 +165,7 @@ impl Editor {
             o.dots.clear();
             o.grid = None;
             o.mind_plus.clear();
+            o.mind_minus = None;
             o.crop = Some(c);
         }
         o

@@ -48,13 +48,17 @@ pub(super) fn flyout_items() -> Vec<Item> {
         .collect()
 }
 
-/// O grupo da barra de contexto de um nó de mapa.
+/// Os grupos da barra de contexto de um nó de mapa: recolher, auto layout e direcção; e a letra do
+/// mapa (só na raiz — o Miro: a letra muda-se pela raiz e escala o mapa, W23 B3).
 pub(super) fn groups() -> Vec<Vec<Item>> {
-    vec![vec![
-        Item::Mind(MindItem::Collapse),
-        Item::Mind(MindItem::Auto),
-        Item::Mind(MindItem::Vertical),
-    ]]
+    vec![
+        vec![
+            Item::Mind(MindItem::Collapse),
+            Item::Mind(MindItem::Auto),
+            Item::Mind(MindItem::Vertical),
+        ],
+        (0..super::FONT_SIZES.len()).map(Item::Font).collect(),
+    ]
 }
 
 /// O que está seleccionado é um nó de mapa (só um, e não a escrever).
@@ -64,6 +68,9 @@ pub(super) fn selected_kind(ed: &Editor, doc: &BoardDoc) -> Option<Selected> {
 
 /// O controlo faz alguma coisa ao nó de agora? `None` = não é daqui.
 pub(super) fn shows(it: Item, ed: &Editor, doc: &BoardDoc) -> Option<bool> {
+    if let Item::Font(_) = it {
+        return ed.mind_focus(doc).map(|id| doc.mind_parent(id).is_none());
+    }
     let Item::Mind(m) = it else {
         return None;
     };

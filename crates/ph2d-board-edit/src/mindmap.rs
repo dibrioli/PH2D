@@ -543,14 +543,12 @@ impl Editor {
         true
     }
 
-    /// Os «+» do nó seleccionado (M5): o meio do lado de fora (mundo), a direcção para fora e o lado —
-    /// a raiz tem dois. Quem desenha afasta-os `Metrics::dot` px do lado, como os pontos azuis.
+    /// Os «+» do nó seleccionado ou, sem selecção, do pairado (M5; W23 B3, o Miro ao pairar): o meio
+    /// do lado de fora (mundo), a direcção para fora e o lado — a raiz tem dois. Quem desenha afasta-os
+    /// `Metrics::dot` px do lado, como os pontos azuis.
     #[must_use]
     pub fn mind_plus(&self, doc: &BoardDoc) -> Vec<([f64; 2], [f64; 2], Side)> {
-        if self.editing.is_some() || self.tool != Tool::Select {
-            return Vec::new();
-        }
-        let Some(id) = self.mind_focus(doc) else {
+        let Some(id) = self.mind_target(doc) else {
             return Vec::new();
         };
         let Some(el) = doc.get(id) else {

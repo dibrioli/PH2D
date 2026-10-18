@@ -273,3 +273,27 @@ fn the_templates_button_sits_right_under_the_mind_map_one() {
     let at = |it| TOOLBAR.iter().position(|i| *i == it);
     assert_eq!(at(TEMPLATES), at(MIND_TOOL).map(|p| p + 1));
 }
+
+/// ⭐ W23 B3 (a) — com a RAIZ seleccionada a barra oferece a letra, e escolhê-la escala o mapa todo
+/// (os filhos também); num filho a letra não aparece (o Miro: muda-se só na raiz).
+#[test]
+fn the_font_is_offered_on_the_root_and_scales_the_whole_map() {
+    let mut t = T::new();
+    let root = t.start_map("Plan");
+    t.key(BoardKey::Tab, NONE, None);
+    t.write("Goals");
+    let kid = t.focus();
+    t.key(BoardKey::Escape, NONE, None);
+    t.select(kid);
+    assert!(
+        t.find(node(Item::Font(2))).is_none(),
+        "num filho a letra não se oferece"
+    );
+    t.select(root);
+    let font = |t: &T, id| t.doc().get(id).unwrap().style().font_size;
+    let (r0, k0) = (font(&t, root), font(&t, kid));
+    t.shell_click_bar(Item::Font(2));
+    let k = ph2d_board_edit::FONT_SIZES[2] / r0;
+    assert_eq!(font(&t, root), ph2d_board_edit::FONT_SIZES[2]);
+    assert!((font(&t, kid) - k0 * k).abs() < 1e-9, "o filho não escalou");
+}

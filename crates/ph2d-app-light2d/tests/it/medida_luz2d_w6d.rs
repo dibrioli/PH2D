@@ -196,12 +196,20 @@ fn medida_luz2d_w6d_fotos() {
     let r_pol = redondos[0];
     for &zoom in &ZOOMS_FOTO {
         let a = vista_em(zoom, r_pol.centro);
-        let (fl, r, _) = disco_de_imagem(&gpu, a, config(&gpu, a, false));
-        foto(&format!("imagem_zoom{zoom}"), a, &r, cor, |p| fl.amostra(p));
-        let mut s = solver(&gpu, a, config(&gpu, a, false));
-        s.quadro(&gpu, &c_pol);
-        let fl = fluencia_lida(&gpu, &s);
-        foto(&format!("poligono_zoom{zoom}"), a, &r_pol, cor, |p| fl.amostra(p));
+        // `antes` = a borda de antes da W6d (a reta por texel, a marcha de fora pelo iso-½).
+        for (quando, borda) in [("depois", true), ("antes", false)] {
+            let cfg = ph2d_light2d_gpu::Config {
+                borda_continua: borda,
+                borda_fora: borda,
+                ..config(&gpu, a, false)
+            };
+            let (fl, r, _) = disco_de_imagem(&gpu, a, cfg);
+            foto(&format!("imagem_zoom{zoom}_{quando}"), a, &r, cor, |p| fl.amostra(p));
+            let mut s = solver(&gpu, a, cfg);
+            s.quadro(&gpu, &c_pol);
+            let fl = fluencia_lida(&gpu, &s);
+            foto(&format!("poligono_zoom{zoom}_{quando}"), a, &r_pol, cor, |p| fl.amostra(p));
+        }
     }
     // O gabarito não depende da vista: uma foto, na escala do zoom 1.
     let a = vista_em(1.0, r_pol.centro);

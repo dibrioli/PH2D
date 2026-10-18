@@ -177,3 +177,34 @@ o bloco sem parcial grava ±1 sem conta; o produto continua no `c3_borda` (uma f
 ⇒ o custo não era a leitura: era a `array<f32, 9>` indexada em laço (memória local) para TODO texel. O caminho rápido
 vetorial deixa as listas só para a faixa. **A candidata 5 (o campo + o fora só no rente + a reta emprestada barata + o
 caminho rápido) PASSA os itens 1, 2, 4 e 5 do §6**; o item 3 (os portões) com ela ligada por omissão.
+
+## 13. Item 3 do critério — os portões com a cura ligada (`739fb6cfb1`), e o ESTADO desta janela
+
+Agente `verificador`, por nome, na placa, `load` 1,6–2,5: 37 de 40 filtros verdes (app 24/25 filtros · gpu `it` 10/10 ·
+gpu `--lib` 6/6). O portão NOVO `a_borda_nao_tem_pontos_pretos` (`a_borda_sem_pontos_pretos.rs`) verde com o controlo a
+reprovar: `pretos rentes · polígono +0.000 (0) · imagem -0.176 (0) — antes -0.949 (12) · -0.958 (8)`. Os três vermelhos:
+
+1. `o_rebote_do_desenho::os_outros_devolvem_a_luz_como_a_imagem` (Disco pequeno 0,0031 > `TOL_REBOTE_OUTROS` 0,003) —
+   **vermelho TAMBÉM sem a cura** (a cura desligada no padrão, o mesmo 0,0031): anterior à W6d, não causado por ela.
+   Por medir quando entrou (a W6c só correu os portões do renascimento).
+2. `o_miolo_das_formas` — o controlo (a W5f) herdava a cura e deixava de ver os degraus. ✅ Curado: o controlo desliga
+   também `borda_continua`/`borda_fora` (a W5f inteira); verde.
+3. ⚠️ **`o_interior_do_opaco_nao_depende_da_posicao_na_grade` — CAUSADO PELO CAMPO** (sozinho: 2 errados; o `fora`
+   sozinho: 0; a cura desligada: 0): na LEI ANTIGA (`miolo: None`; a difusão do produto continua 0 errados), zoom 1,
+   fase 3/8, 2 texels PRETOS (placa 0,012 · gabarito 0,65) em (1,820; 0,883) e (1,836; 0,898) — a ~3 cm do canto de cima
+   à direita da caixa (x ∈ [0,75; 1,85], y ∈ [−1,3; 0,9], a cena 3). Hipótese (NÃO medida): a bilinear da distância
+   arredonda o canto CONVEXO (no canto os 4 vizinhos dão +, −, −, − ⇒ a mistura < 0) e o texel do eixo medial junto ao
+   canto mapeia num ponto de fronteira cuja luz sai tapada. ⛔ Não subir o teto (1): um preto novo é a família que
+   esta onda cura.
+
+**O próximo passo (W6d continua numa janela nova):** medir o mecanismo do item 3 — o ponto de fronteira e a
+visibilidade do texel (1,820; 0,883) com e sem o campo (uma sonda de cor no `c3_fina`, fotografada e retirada, como na
+W5g §1), e curar no campo (candidatos a medir: preservar o canto — na faixa, o cheio/vazio cuja 3×3 tem parciais de
+DUAS faces leva a combinação de conjunto das retas (convexo: o mínimo das distâncias; côncavo: o máximo) em vez da
+reta mais perto; ou o canto pela reta do PRÓPRIO parcial do canto). Depois: o item 3 inteiro de novo (o lote do
+verificador acima), a prova de mutação (agente `mutacao`: o ramo do campo no `meio`, o «rente» no `c3_direta`, o
+sinal da reta emprestada, o caminho rápido do `c3_borda`), as fotos no app (`fotografa_cena.sh`, cenas 5 e 6) e o
+fecho da onda (`/pd-onda-fechar`).
+
+Fotos sem janela (a luz recebida píxel a píxel, `medida_luz2d_w6d_fotos`): [`fotos_W6d/`](fotos_W6d/) — antes ×
+depois na borda acesa (zoom 4, o polígono) e no disco de imagem (zoom 2,5), e o disco de imagem em 4 zooms.

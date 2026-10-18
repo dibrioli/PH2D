@@ -45,6 +45,10 @@ fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, controlo: bool) -> Config {
     Config {
         pe_na_borda: !controlo,
         vis_na_face: !controlo,
+        // ⭐ W6d: o controlo é a W5f inteira — sem a borda contínua nem a marcha do rente (que já tiram
+        // parte dos degraus e cegavam o controlo).
+        borda_continua: !controlo,
+        borda_fora: !controlo,
         miolo: if controlo { None } else { cfg.miolo },
         ..cfg
     }

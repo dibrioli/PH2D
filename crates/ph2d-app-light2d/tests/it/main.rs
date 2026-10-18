@@ -10,6 +10,7 @@ mod a_nitidez_da_luz;
 mod a_opacidade_do_oclusor;
 mod a_vista_renasce_com_os_mesmos_bits;
 mod as_formas_do_motion;
+mod a_borda_sem_pontos_pretos;
 mod as_formas_redondas;
 mod captura_do_vetor;
 mod captura_dos_outros;

@@ -67,7 +67,12 @@ mod tests {
             let mut row = [120u8, 80, 200, 255].repeat(8);
             acende_linha(&luz, &layers, ratio, 2, 1, 8, &mut row);
             let mut esperado = [120u8, 80, 200, 255];
-            luz.acende(0.3 / (DEPTH_UNIT_PX * f32::from(ratio)), 0.0, 1.0, &mut esperado);
+            luz.acende(
+                0.3 / (DEPTH_UNIT_PX * f32::from(ratio)),
+                0.0,
+                1.0,
+                &mut esperado,
+            );
             assert_ne!(esperado, [120, 80, 200, 255], "a rampa não acendeu");
             assert_eq!(row[16..20], esperado, "ratio {ratio}");
         }

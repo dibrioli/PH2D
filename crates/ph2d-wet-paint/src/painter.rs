@@ -680,6 +680,6 @@ impl Engine {
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
 mod instantaneo; // `Clone`: a cópia do motor para os instantâneos de uma macro
 mod knobs; // como o motor REAGE a um knob (o `onChange` do JS) — filho por LOC
-mod relevo; // a porta do RELEVO dos fios (W3): o dab penteia a altura
 mod mascara; // a porta da MÁSCARA: uma região pousada de uma vez (o Solid e os fios do Painter)
+mod relevo; // a porta do RELEVO dos fios (W3): o dab penteia a altura
 mod stage; // as portas do passo RETOMAVEL (drain/step_stage) — LOC-cap split

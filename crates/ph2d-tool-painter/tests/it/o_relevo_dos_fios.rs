@@ -265,7 +265,9 @@ fn no_vale(n: f64, r: f64, c: f64, ruido: f64) -> Result<(), String> {
     if (n - r).abs() < 0.5 * (c - r).abs() {
         Ok(())
     } else {
-        Err(format!("{n:.3} fora do vale do Rebelle {r} (controlo {c:.3})"))
+        Err(format!(
+            "{n:.3} fora do vale do Rebelle {r} (controlo {c:.3})"
+        ))
     }
 }
 
@@ -301,7 +303,9 @@ fn o_oleo_tem_o_relevo_de_cada_fio() {
     });
     let mut falhas = Vec::new();
     for (&r, ((m, campo), lf, (c, ccampo), clf)) in casos.iter().zip(&medidas) {
-        println!("[relevo] r {r}: {m:?} {campo:?} leve/forte {lf:?} · SEM {c:?} {ccampo:?} {clf:?}");
+        println!(
+            "[relevo] r {r}: {m:?} {campo:?} leve/forte {lf:?} · SEM {c:?} {ccampo:?} {clf:?}"
+        );
         let mut f = |ok: Result<(), String>, o: &str| {
             if let Err(e) = ok {
                 falhas.push(format!("r {r}: {o} {e}"));
@@ -398,7 +402,11 @@ fn o_relevo_e_so_da_luz() {
     let ((apagada, campo), (sem_apagada, sem_campo)) = (pinta(&p, false), pinta(&sem, false));
     assert!(campo && !sem_campo, "o campo nasce só com o relevo");
     assert_eq!(apagada, sem_apagada, "o relevo apareceu sem luz");
-    assert_ne!(pinta(&p, true).0, pinta(&sem, true).0, "a luz não acendeu o relevo");
+    assert_ne!(
+        pinta(&p, true).0,
+        pinta(&sem, true).0,
+        "a luz não acendeu o relevo"
+    );
 }
 
 /// **A borracha tira o relevo** (W3): o Oil Bristle de fábrica e, por cima de metade do traço, a borracha do
@@ -432,7 +440,10 @@ fn a_borracha_tira_o_relevo() {
     };
     let (apagada, intacta) = (alt(80, 200), alt(300, 440));
     assert!(apagada < 1e-3, "a borracha deixou relevo ({apagada} px)");
-    assert!(intacta > 0.1, "o resto do traço perdeu o relevo ({intacta})");
+    assert!(
+        intacta > 0.1,
+        "o resto do traço perdeu o relevo ({intacta})"
+    );
 }
 
 /// **SONDA (W3): o que o relevo CUSTA** — o move (o carimbo + o compositor, onde a luz corre) e o tick do Oil
@@ -480,7 +491,11 @@ fn sonda_o_custo_do_relevo() {
         t.on_canvas_pointer(cp(1000.0, PointerPhase::Up));
         moves.sort_by(f64::total_cmp);
         ticks.sort_by(f64::total_cmp);
-        (moves[moves.len() / 2], moves[moves.len() - 1], ticks[ticks.len() - 1])
+        (
+            moves[moves.len() / 2],
+            moves[moves.len() - 1],
+            ticks[ticks.len() - 1],
+        )
     };
     let mut melhor = [(f64::MAX, f64::MAX, f64::MAX); 3];
     for rodada in 0..7 {
@@ -493,6 +508,8 @@ fn sonda_o_custo_do_relevo() {
     }
     for (i, (n, _, _)) in variantes.iter().enumerate() {
         let (a, b, c) = melhor[i];
-        println!("[custo] {lado}² {n}: move mediana {a:.3} ms · move pior {b:.3} ms · tick pior {c:.3} ms");
+        println!(
+            "[custo] {lado}² {n}: move mediana {a:.3} ms · move pior {b:.3} ms · tick pior {c:.3} ms"
+        );
     }
 }

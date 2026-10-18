@@ -33,7 +33,11 @@ fn o_alvo_e_o_ganho_com_o_sinal_do_fio() {
     assert_eq!(r.alvo(&ponto(cava, 1.5), 1.0), -3.0);
     assert_eq!(r.alvo(&ponto(constroi, 1.5), 1.0), 3.0);
     assert_eq!(r.alvo(&ponto(constroi, 0.0), 1.0), 0.0);
-    assert_eq!(r.alvo(&ponto(constroi, 1.5), 0.5), 0.75, "a mão leve: metade × metade");
+    assert_eq!(
+        r.alvo(&ponto(constroi, 1.5), 0.5),
+        0.75,
+        "a mão leve: metade × metade"
+    );
 }
 
 #[test]

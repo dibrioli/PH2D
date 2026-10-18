@@ -23,10 +23,10 @@ use crate::paper::PaperPreset;
 mod scratch;
 pub use scratch::{AdvCell, SolverScratch};
 
-#[path = "grid/patch.rs"]
-mod patch;
 #[path = "grid/altura.rs"]
-pub mod altura; // o campo PREGUIÇOSO da altura dos fios (W3) — filho por LOC
+pub mod altura;
+#[path = "grid/patch.rs"]
+mod patch; // o campo PREGUIÇOSO da altura dos fios (W3) — filho por LOC
 pub use patch::{GridPatch, restore_grid_region, snapshot_grid_region};
 
 pub const DEFAULT_WIDTH: usize = 900;

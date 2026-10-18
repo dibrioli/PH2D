@@ -183,7 +183,10 @@ pub(super) const KNOBS_DOS_FIOS: [&str; 12] = [
 fn sem_fios(nome: &str) -> ph2d_brush_presets::Preset {
     let mut p = de_fabrica(nome);
     // … e sem o RELEVO deles (W3): a altura de cada fio também é dos fios.
-    for k in KNOBS_DOS_FIOS.into_iter().chain(["bristleHeight", "bristleRemove"]) {
+    for k in KNOBS_DOS_FIOS
+        .into_iter()
+        .chain(["bristleHeight", "bristleRemove"])
+    {
         p.parametros.engine.remove(k);
     }
     p

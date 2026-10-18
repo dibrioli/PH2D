@@ -17,7 +17,10 @@ fn o_instantaneo_leva_o_campo_e_a_ausencia_dele() {
     garante(&mut g)[3 * s + 4] = 1.5;
     let cheio = snapshot_grid(&g);
     restore_grid(&mut g, &vazio);
-    assert!(g.altura.is_empty(), "o campo que não existia volta a não existir");
+    assert!(
+        g.altura.is_empty(),
+        "o campo que não existia volta a não existir"
+    );
     restore_grid(&mut g, &cheio);
     assert_eq!(em(&g, 3 * s + 4), 1.5);
 }

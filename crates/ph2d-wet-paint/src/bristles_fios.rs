@@ -143,14 +143,37 @@ impl FiosNoDab {
                 );
             q = [q[0] - n[0] * s, q[1] - n[1] * s];
         }
-        let ganho = if f.pressao == 0.0 && self.baixa == 0.0 {
+        let ganho = self.ganho_do_fio(fio);
+        Ponto { q, ganho, fio }
+    }
+
+    /// O fio do ponto a `d` px do centro do dab (o de [`Self::no_ponto`], sem o resto).
+    #[must_use]
+    pub fn fio_no_ponto(&self, d: [f64; 2]) -> i32 {
+        let n = self.normal;
+        let q = [d[0] - n[0] * self.desvio_px, d[1] - n[1] * self.desvio_px];
+        self.fio((q[0] * n[0] + q[1] * n[1]) / self.fios.largura_px.max(0.25))
+    }
+
+    /// O ganho da pressão do fio `fio` neste dab — o mesmo para todos os pontos dele.
+    #[must_use]
+    pub fn ganho_do_fio(&self, fio: i32) -> f64 {
+        let f = &self.fios;
+        if f.pressao == 0.0 && self.baixa == 0.0 {
             1.0
         } else {
             (1.0 + f.pressao * ruido(self.arco / f.ruido_px.max(1.0), fio, SEMENTE_PRESSAO)
                 - self.baixa)
                 .max(0.0)
-        };
-        Ponto { q, ganho, fio }
+        }
+    }
+
+    /// Os fios que um ponto a até `raio_px` do centro pode ler: `(primeiro, último)` (a oscilação e a onda incluídas).
+    #[must_use]
+    pub fn faixa(&self, raio_px: f64) -> (i32, i32) {
+        let w = self.fios.largura_px.max(0.25);
+        let l = raio_px + self.desvio_px.abs();
+        ((-l / w).floor() as i32 - 1, (l / w).floor() as i32 + 1)
     }
 
     /// A cor sRGB `0..255` do fio `fio` a partir de `rgb`: o ruído HSLuv do fio, que anda ao longo do caminho

@@ -588,6 +588,11 @@ impl PainterTool {
             let cell_x = grid_map::px_to_cell(f64::from(x), ratio);
             let cell_y = grid_map::px_to_cell(f64::from(y), ratio);
             let cell_r = grid_map::px_len_to_cell(f64::from(d.radius_px), ratio);
+            // A caixa do relevo (W3): a da PEGADA da silhueta (a extensão de `fp_raio` × o alcance do Shape).
+            let meia = {
+                let (e, alc) = (fp_raio.extent(), sess.engine.silhouette_reach[0].max(1.0));
+                [0, 1].map(|i| cell_r * alc * f64::from(e[i]))
+            };
             if erasing {
                 // W2.6: the same §9 mapping, routed to the engine's ERASER —
                 // silhouette and grain shape the erase exactly as they shape
@@ -603,7 +608,7 @@ impl PainterTool {
                 // A borracha tira também o relevo que houver (sem o campo, nada a tirar).
                 if !sess.engine.active_grid().altura.is_empty() {
                     sess.engine
-                        .pentear_relevo(cell_x, cell_y, cell_r, &sil, &|_, _| 0.0);
+                        .pentear_relevo(cell_x, cell_y, meia, &sil, &|_, _| 0.0);
                 }
                 continue;
             }
@@ -623,12 +628,24 @@ impl PainterTool {
                     );
                     if let Some(f) = relevo_dab {
                         let contacto = f64::from(d.radius_px / d.stroke_radius_px.max(1e-3));
+                        // O alvo depende só do FIO: tabelado uma vez por dab (o ruído de cada fio custava dois
+                        // Perlin por célula — doc 49_medicao §5, o custo).
+                        let (k0, k1) = f.faixa((meia[0].hypot(meia[1]) + 2.0) * px_cel);
+                        let tabela: Vec<f64> = (k0..=k1)
+                            .map(|k| relevo.alvo_do_fio(k, f.ganho_do_fio(k), contacto))
+                            .collect();
                         let alvo = |cx: i32, cy: i32| -> f64 {
                             let dc = [f64::from(cx) - centro_x, f64::from(cy) - centro_y];
-                            relevo.alvo(&f.no_ponto(dc.map(|v| v * px_cel)), contacto)
+                            let k = f.fio_no_ponto(dc.map(|v| v * px_cel));
+                            usize::try_from(k - k0)
+                                .ok()
+                                .and_then(|i| tabela.get(i).copied())
+                                .unwrap_or_else(|| {
+                                    relevo.alvo_do_fio(k, f.ganho_do_fio(k), contacto)
+                                })
                         };
                         sess.engine
-                            .pentear_relevo(cell_x, cell_y, cell_r, &sil, &alvo);
+                            .pentear_relevo(cell_x, cell_y, meia, &sil, &alvo);
                     }
                 }
                 // Blend keeps the engine's own fixed-hardness stamp (the

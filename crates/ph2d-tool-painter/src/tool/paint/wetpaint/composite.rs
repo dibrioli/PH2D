@@ -70,8 +70,7 @@ impl PainterTool {
             && self.preview_layer_stack_is_trivial()
             && !self.papel_atravessa_vidro();
         // A luz do Impasto sobre o RELEVO dos fios (W3), pelo rig do artista e pela porta livre.
-        let luz =
-            crate::tool::paint::impasto_light::porta::LuzLivre::nova(&self.paint.impasto_rig);
+        let luz = crate::tool::paint::impasto_light::porta::LuzLivre::nova(&self.paint.impasto_rig);
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };

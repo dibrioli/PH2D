@@ -46,9 +46,15 @@ impl Relevo {
     /// 49_medicao: o leve da rampa 6,61 → 6,32 sem mexer no forte), para cima se constrói e para baixo se escava.
     #[must_use]
     pub fn alvo(&self, p: &Ponto, contacto: f64) -> f64 {
+        self.alvo_do_fio(p.fio, p.ganho, contacto)
+    }
+
+    /// [`Self::alvo`] do fio `fio` de ganho `ganho` (o hospedeiro tabela-o por fio, uma vez por dab).
+    #[must_use]
+    pub fn alvo_do_fio(&self, fio: i32, ganho: f64, contacto: f64) -> f64 {
         let c = contacto.clamp(0.0, 1.0);
-        let h = self.altura_px * p.ganho * c * c;
-        if self.escava(p.fio) { -h } else { h }
+        let h = self.altura_px * ganho * c * c;
+        if self.escava(fio) { -h } else { h }
     }
 }
 

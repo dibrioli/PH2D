@@ -129,7 +129,7 @@ fn refresh(hero: &mut HeroScreen) {
 /// Vai ao resultado seguinte (`forward`) ou ao anterior ao que está à vista. `current` é o
 /// PRÓXIMO a visitar; o que está à vista é o de antes dele.
 fn go(hero: &mut HeroScreen, forward: bool) {
-    let area = super::super::board_view::area_of(hero.last_canvas);
+    let view = super::fit::view(hero);
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -146,7 +146,7 @@ fn go(hero: &mut HeroScreen, forward: bool) {
     };
     n.current = (target + 1) % len;
     let id = n.results[target];
-    super::go_to(board, area, id, GO_CONTEXT);
+    super::go_to(board, view, id, GO_CONTEXT);
 }
 
 /// Os três botões à direita do campo: o anterior, o seguinte e limpar.
@@ -269,6 +269,11 @@ pub(super) fn paint_fields(
             })
             .collect();
         super::panel(scene, &rects, theme);
+        if let Some(p) =
+            super::super::float_bar::panel_of(std::iter::once(r).chain(rects.iter().copied()))
+        {
+            crate::screens::hero::board_nav::fit::cover(hero, p);
+        }
         for ((id, icon), b) in FIELD_BUTTONS.iter().zip(&rects) {
             let (hit, store) = (&mut hero.hit_index, &hero.store);
             super::button(scene, hit, store, *id, *icon, *b, false, theme);

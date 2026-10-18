@@ -28,8 +28,6 @@ pub(crate) struct Lessons {
 }
 
 const GAP: f64 = 40.0;
-const MARGIN_X: f64 = 450.0;
-const MARGIN_Y: f64 = 90.0;
 
 /// O logótipo vectorial de demonstração (120 × 120): um quadrado redondo, um anel e uma estrela.
 // LITERAL-COLOR-OK: cores de um SVG de demonstração (dado do documento, não da UI).
@@ -134,12 +132,7 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
     );
     put(b, el);
     let right = fw.max(6.0 * (side + GAP));
-    let view = [
-        -MARGIN_X,
-        -80.0 - MARGIN_Y,
-        right + MARGIN_X,
-        y + side + MARGIN_Y,
-    ];
+    let view = [0.0, -80.0, right, y + side];
     let l = Lessons {
         board: b.id,
         framed,

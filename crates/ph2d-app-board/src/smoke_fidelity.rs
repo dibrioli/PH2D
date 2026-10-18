@@ -28,9 +28,6 @@ const SHORT_WIDTH: f64 = 2.0;
 /// A fila das setas curtas: onde começa, e o passo entre elas.
 const ROW: [f64; 2] = [20.0, 600.0];
 const STEP: f64 = 110.0;
-/// A margem do que os painéis e a barra de estado tapam (a da cena 10, medida lá).
-const MARGIN_X: f64 = 450.0;
-const MARGIN_Y: f64 = 90.0;
 const GAP: f64 = 40.0;
 const INK: Rgba = Rgba([30, 30, 30, 255]);
 
@@ -190,12 +187,7 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
         to,
         lessons,
         letter,
-        view: [
-            -MARGIN_X,
-            -80.0 - MARGIN_Y,
-            right + MARGIN_X,
-            y + h + MARGIN_Y,
-        ],
+        view: [0.0, -80.0, right, y + h],
     }
 }
 

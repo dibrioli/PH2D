@@ -28,12 +28,6 @@ pub(crate) struct Lessons {
     pub view: [f64; 4],
 }
 
-/// A margem do que os painéis e a barra de estado tapam. ⛔ A da cena 9 (330) não chega: ela é em
-/// unidades do MUNDO e os painéis em px — a 1.ª foto desta cena (largura 2 490, zoom 0,73) tinha os dois
-/// painéis a tapar ~440 de cada lado. Com a cena a 1 640 de largo e esta margem, o zoom de nascença é
-/// ~0,76 e os painéis tapam ~408 < 450.
-const MARGIN_X: f64 = 450.0;
-const MARGIN_Y: f64 = 90.0;
 /// Os frames: lado a lado, com o vão de uma nota pequena entre as notas.
 const FRAME: [f64; 2] = [520.0, 320.0];
 const GAP: f64 = 40.0;
@@ -238,12 +232,7 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
         rui,
         ana,
         lessons,
-        view: [
-            -MARGIN_X,
-            -80.0 - MARGIN_Y,
-            right + MARGIN_X,
-            y + side + MARGIN_Y,
-        ],
+        view: [0.0, -80.0, right, y + side],
     }
 }
 

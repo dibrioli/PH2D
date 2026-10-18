@@ -20,6 +20,8 @@ use ph2d_vector::VectorScene;
 /// A facilitação (W7): o cartão do cronómetro e o painel da votação.
 #[path = "board_facilitate.rs"]
 pub mod facilitate;
+#[path = "board_nav_fit.rs"]
+pub(crate) mod fit;
 #[path = "board_nav_frames.rs"]
 mod frames;
 #[path = "board_nav_minimap.rs"]
@@ -196,6 +198,9 @@ pub(crate) fn clear_of(hero: &mut HeroScreen, area: Rect, hud: Option<Rect>) {
     hero.documents.live.nav.floor = hud
         .filter(hits)
         .map(|h| h.y - ph2d_tokens::control_gap_px());
+    if let Some(h) = hud {
+        fit::cover(hero, h);
+    }
 }
 
 /// A área do canto: a do quadro sem a faixa do HUD que tapava a fila ([`clear_of`]). A fila, o
@@ -216,21 +221,21 @@ fn fit_margin() -> f64 {
 /// W20 — enquadra a caixa `world` JÁ, no evento (como a roda), sem tocar nos painéis: o desenho deste
 /// quadro já a vê ([`show_box`] espera pelo fim do próximo desenho e fecha o minimapa e os Frames).
 pub(crate) fn fit_now(hero: &mut HeroScreen, world: [f64; 4]) {
-    let a = super::board_view::area_of(hero.last_canvas);
+    let view = fit::view(hero);
     if let Some(board) = hero.documents.active_board_mut() {
-        board.camera.fit(a, world, fit_margin());
+        view.fit(&mut board.camera, world);
     }
 }
 
 /// `Alt+1`: o quadro inteiro à vista.
-pub fn fit_all(board: &mut Board, area: [f64; 4]) {
+pub(crate) fn fit_all(board: &mut Board, view: fit::View) {
     if let Some(e) = board.doc.extent() {
-        board.camera.fit(area, e, fit_margin());
+        view.fit(&mut board.camera, e);
     }
 }
 
 /// Enquadra o elemento `id` com o que está à volta dele (três vezes a caixa dele).
-pub(crate) fn go_to(board: &mut Board, area: [f64; 4], id: ElementId, context: f64) {
+pub(crate) fn go_to(board: &mut Board, view: fit::View, id: ElementId, context: f64) {
     let Some(el) = board.doc.get(id) else {
         return;
     };
@@ -247,7 +252,7 @@ pub(crate) fn go_to(board: &mut Board, area: [f64; 4], id: ElementId, context: f
         cx + hw * context,
         cy + hh * context,
     ];
-    board.camera.fit(area, bx, fit_margin());
+    view.fit(&mut board.camera, bx);
 }
 
 /// O resto do caminho até um elemento: a caixa dele e mais duas à volta (o contexto).
@@ -274,7 +279,7 @@ fn key_inner(
 ) -> Option<super::board_keys::KeyOutcome> {
     use super::board_keys::BoardKey;
     let ctrl = mods.ctrl || mods.meta;
-    let area = super::board_view::area_of(hero.last_canvas);
+    let view = fit::view(hero);
     let theme = hero.theme;
     let editing = hero
         .documents
@@ -312,7 +317,7 @@ fn key_inner(
             taken
         }
         (BoardKey::Char('1'), false, true) => {
-            fit_all(hero.documents.active_board_mut()?, area);
+            fit_all(hero.documents.active_board_mut()?, view);
             taken
         }
         (BoardKey::Char('2'), false, true) => {
@@ -325,7 +330,7 @@ fn key_inner(
                 f.center[0] + f.w / 2.0,
                 f.center[1] + f.h / 2.0,
             ];
-            board.camera.fit(area, bx, fit_margin());
+            view.fit(&mut board.camera, bx);
             taken
         }
         (BoardKey::Char('k'), true, true) => {
@@ -360,7 +365,7 @@ fn apply_inner(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let (WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id)) = event else {
         return false;
     };
-    let area = super::board_view::area_of(hero.last_canvas);
+    let view = fit::view(hero);
     if let Some(b) = button_of(id) {
         let n = &mut hero.documents.live.nav;
         match b {
@@ -378,7 +383,7 @@ fn apply_inner(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             }
             NavButton::Fit => {
                 if let Some(board) = hero.documents.active_board_mut() {
-                    fit_all(board, area);
+                    fit_all(board, view);
                 }
             }
         }
@@ -389,7 +394,7 @@ fn apply_inner(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         if let Some((board, live)) = hero.documents.active_parts() {
             let ed = super::board_view::editor(&mut live.editor, theme);
             if let Some(to) = ed.follow_link(&board.doc, src) {
-                go_to(board, area, to, GO_CONTEXT);
+                go_to(board, view, to, GO_CONTEXT);
             }
         }
         return true;
@@ -401,15 +406,6 @@ fn apply_inner(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
 pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
     let theme = hero.theme;
     let a = super::board_view::area_of(area);
-    let fit_box = hero.documents.live.nav.fit_box.take();
-    if std::mem::take(&mut hero.documents.live.nav.fit_pending)
-        && let Some(board) = hero.documents.active_board_mut()
-    {
-        match fit_box {
-            Some(world) => board.camera.fit(a, world, fit_margin()),
-            None => fit_all(board, a),
-        }
-    }
     search::paint_highlight(hero, area, scene, theme);
     paint_links(hero, a, scene, theme);
     team::live_board::paint_others(hero, area, scene, ts);
@@ -420,6 +416,19 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     team::live_board::paint(hero, area, scene, ts);
     search::paint_fields(hero, area, scene, ts, theme);
     let rects = button_rects(corner(hero, area));
+    let tools = super::board_bar::toolbar_rects(area)
+        .into_iter()
+        .map(|(_, r)| r);
+    for r in [super::float_bar::panel_of(tools)]
+        .into_iter()
+        .chain(
+            [&rects[..TEAM.len()], &rects[TEAM.len()..]]
+                .map(|part| super::float_bar::panel_of(part.iter().map(|(_, r)| *r))),
+        )
+        .flatten()
+    {
+        fit::cover(hero, r);
+    }
     for part in [&rects[..TEAM.len()], &rects[TEAM.len()..]] {
         panel(
             scene,

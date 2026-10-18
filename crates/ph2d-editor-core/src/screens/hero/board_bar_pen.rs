@@ -100,11 +100,7 @@ pub fn flyout_open(tool: Tool) -> bool {
 /// O painel à direita do botão da caneta.
 #[must_use]
 pub fn flyout_rects(area: Rect) -> Vec<(Item, Rect)> {
-    let pen = toolbar_rects(area)
-        .into_iter()
-        .find(|(it, _)| *it == PEN_TOOL)
-        .map(|(_, r)| r)
-        .expect("a barra tem a caneta");
+    let pen = super::layout::anchor(area, PEN_TOOL).expect("a barra tem a caneta");
     let (s, g) = (btn_px(), gap());
     let x0 = pen.x + pen.w + Spacing::Sm.px();
     let mut out = Vec::new();

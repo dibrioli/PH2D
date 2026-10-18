@@ -252,6 +252,12 @@ pub fn paint_hero_screen(
         super::board_nav::facilitate::follow(hero);
         let r = super::board_view::area(&layout);
         let area = super::board_view::area_of(r);
+        // O enquadramento que espera pela área corre ANTES de o quadro se desenhar: o desenho, o
+        // tocador do vídeo e o clique seguinte leem a MESMA câmara.
+        let fullscreen = super::board_video::fullscreen(hero);
+        if !fullscreen {
+            super::board_nav::fit::settle(hero, r);
+        }
         let theme = hero.theme;
         if let Some((board, live)) = hero.documents.active_parts() {
             // As rotas das setas vêm do editor: uma cache, a mesma que o clique lê.
@@ -273,7 +279,7 @@ pub fn paint_hero_screen(
             ph2d_board_render::paint_votes(board, area, scene, text_system, cache, &marks);
         }
         // W19 — no NOSSO ecrã inteiro o vídeo tapa a área: as barras do quadro nem se pintam (nem se agarram).
-        if !super::board_video::fullscreen(hero) {
+        if !fullscreen {
             // O canto do quadro sobe por cima do HUD de baixo quando ele o tapa (foto da cena 22 a
             // 1366×768: o «Live» meio tapado, a fila da navegação inteira por baixo).
             let hud = (hero.view.stats_visible

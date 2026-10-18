@@ -26,8 +26,6 @@ pub(crate) struct Lessons {
 }
 
 const GAP: f64 = 40.0;
-const MARGIN_X: f64 = 450.0;
-const MARGIN_Y: f64 = 90.0;
 /// Os quadros do GIF de demonstração e a duração de cada um.
 const GIF_FRAMES: u32 = 8;
 const GIF_MS: u32 = 120;
@@ -134,12 +132,7 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
         [0.0, -80.0, right, 40.0],
     );
     put(b, el);
-    let view = [
-        -MARGIN_X,
-        -80.0 - MARGIN_Y,
-        right + MARGIN_X,
-        y + side + MARGIN_Y,
-    ];
+    let view = [0.0, -80.0, right, y + side];
     let l = Lessons {
         board: b.id,
         whole,

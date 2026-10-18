@@ -108,6 +108,7 @@ pub(super) fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, 
         return;
     }
     let r = minimap_rect(area);
+    live.nav.covers.push(r);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
     let key = (board.doc.rev(), rect_bits(r));

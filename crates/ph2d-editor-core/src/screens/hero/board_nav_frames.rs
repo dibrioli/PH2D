@@ -91,6 +91,7 @@ pub(super) fn paint(
         })
         .collect();
     let p = panel_rect(area, frames.len());
+    crate::screens::hero::board_nav::fit::cover(hero, p);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, p, radius, resolve(ColorToken::BgElev, theme));
     let (font, pad) = (TypeToken::Sm.px(), Spacing::Md.px());
@@ -229,7 +230,7 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let Some((frame, part)) = of(id) else {
         return false;
     };
-    let area = super::super::board_view::area_of(hero.last_canvas);
+    let view = super::fit::view(hero);
     let theme = hero.theme;
     let Some((board, live)) = hero.documents.active_parts() else {
         return true;
@@ -256,7 +257,7 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             board.team.set_slide_hidden(frame, !hidden);
         }
         Part::Row => {
-            super::go_to(board, area, frame, 1.0);
+            super::go_to(board, view, frame, 1.0);
             super::super::board_view::editor(&mut live.editor, theme).select(&board.doc, [frame]);
         }
         Part::Up | Part::Down => {

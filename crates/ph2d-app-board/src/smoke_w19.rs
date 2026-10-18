@@ -23,9 +23,6 @@ pub(crate) struct Lessons {
 const GAP: f64 = 40.0;
 /// O espaço por baixo do vídeo onde a barra cabe (no zoom com que a cena abre).
 const BAR_ROOM: f64 = 90.0;
-/// A margem da vista: à esquerda passa a coluna de ferramentas (foto de 12/10: a lição 1 cortava).
-const MARGIN_X: f64 = 200.0;
-const MARGIN_Y: f64 = 90.0;
 const LESSONS: usize = 5;
 /// As lições em duas linhas (3 + 2): a cena cabe na área do quadro com os dois painéis abertos.
 const PER_ROW: usize = 3;
@@ -76,12 +73,7 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
         [0.0, -80.0, right, 40.0],
     );
     put(b, el);
-    let view = [
-        -MARGIN_X,
-        -80.0 - MARGIN_Y,
-        right + MARGIN_X,
-        bottom + MARGIN_Y,
-    ];
+    let view = [0.0, -80.0, right, bottom];
     let l = Lessons {
         board: b.id,
         video: video_id,

@@ -61,3 +61,33 @@ fn panning_moves_the_world_with_the_cursor() {
     let s1 = cam.to_screen(AREA, p);
     assert!(close([s1[0] - s0[0], s1[1] - s0[1]], [30.0, -8.0]));
 }
+
+#[test]
+fn fit_in_frames_the_box_inside_the_free_part_of_the_area() {
+    // A área inteira à esquerda de um cartão de 240 px à direita e por cima de uma faixa de 90 px.
+    let free: Area = [140.0, 60.0, 520.0, 500.0];
+    let bbox = [-300.0, -50.0, 900.0, 650.0];
+    let mut cam = Camera::default();
+    cam.fit_in(AREA, free, bbox, 16.0);
+    let a = cam.to_screen(AREA, [bbox[0], bbox[1]]);
+    let b = cam.to_screen(AREA, [bbox[2], bbox[3]]);
+    let eps = 1e-9;
+    assert!(
+        a[0] >= free[0] + 16.0 - eps && a[1] >= free[1] + 16.0 - eps,
+        "{a:?}"
+    );
+    assert!(
+        b[0] <= free[0] + free[2] - 16.0 + eps && b[1] <= free[1] + free[3] - 16.0 + eps,
+        "{b:?}"
+    );
+    let mid = cam.to_screen(AREA, [300.0, 300.0]);
+    assert!(
+        close(mid, [free[0] + free[2] / 2.0, free[1] + free[3] / 2.0]),
+        "{mid:?}"
+    );
+    // Um `free` sem lugar enquadra na área inteira, como o `fit`.
+    let (mut x, mut y) = (Camera::default(), Camera::default());
+    x.fit_in(AREA, [0.0, 0.0, 10.0, f64::NAN], bbox, 16.0);
+    y.fit(AREA, bbox, 16.0);
+    assert_eq!(x, y);
+}

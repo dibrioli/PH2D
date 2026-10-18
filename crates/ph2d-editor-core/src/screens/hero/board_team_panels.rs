@@ -48,6 +48,10 @@ pub(super) fn paint(
     let (x, y, w) = column(hero, area);
     let room = Rect::new(x, y, w, (bottom(area) - y).max(0.0));
     let t = &hero.documents.live.team;
+    if t.export.is_some() || t.versions_open || t.list_open {
+        crate::screens::hero::board_nav::fit::cover(hero, room);
+    }
+    let t = &hero.documents.live.team;
     if t.export.is_some() {
         paint_export(hero, room, scene, ts);
     } else if t.versions_open {

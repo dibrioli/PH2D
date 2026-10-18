@@ -394,3 +394,124 @@ fn the_search_field_arrows_walk_the_results_and_the_x_clears_it() {
         "limpar apaga os achados"
     );
 }
+
+impl T {
+    /// A caixa de `id` no ecrã, `[x0, y0, x1, y1]`.
+    fn screen_box(&self, id: ElementId) -> [f64; 4] {
+        let a = board_view::area_of(self.hero.last_canvas);
+        let [x0, y0, x1, y1] = self.el(id).aabb();
+        let p = self.camera().to_screen(a, [x0, y0]);
+        let q = self.camera().to_screen(a, [x1, y1]);
+        [p[0], p[1], q[0], q[1]]
+    }
+
+    /// Um controlo pintado por cima da caixa `b` (ecrã), pelo índice dos cliques: o que a mão
+    /// apanharia em vez do quadro.
+    fn chrome_over(&self, b: [f64; 4]) -> Option<NodeId> {
+        let c = self.hero.last_canvas;
+        let mut y = b[1].max(f64::from(c.y));
+        while y <= b[3] {
+            let mut x = b[0];
+            while x <= b[2] {
+                if !(c.contains(x as f32, y as f32)) {
+                    return Some(NodeId(0));
+                }
+                if let Some(id) = self.hero.hit_index.hit(x as f32, y as f32) {
+                    return Some(id);
+                }
+                x += 3.0;
+            }
+            y += 3.0;
+        }
+        None
+    }
+
+    /// Uma grelha de 4×3 notas (o quadro de uma cena que abre, a encher a área), e o cartão «Live»
+    /// aberto no canto de cima à direita.
+    fn grid_with_live_open(&mut self) -> Vec<ElementId> {
+        let notes = (0..12)
+            .map(|i| self.note("n", [f64::from(i % 4) * 400.0, f64::from(i / 4) * 400.0]))
+            .collect();
+        board_nav::team::live_board::toggle(&mut self.hero);
+        notes
+    }
+}
+
+/// ⭐ W23 A1 — a cena enquadra-se na 1.ª pintura, com a janela ainda a 1024×768 (as fotos de 18/10:
+/// ela cresce DEPOIS): o enquadramento refaz-se quando a janela cresce, e nenhuma nota fica debaixo
+/// de um painel (o cartão «Live», a barra, a fila do canto).
+#[test]
+fn a_scene_framed_before_the_window_grows_is_reframed_clear_of_the_panels() {
+    let mut t = T::new();
+    t.vp_w = 1024.0;
+    t.vp_h = 768.0;
+    t.paint();
+    let notes = t.grid_with_live_open();
+    board_nav::show(&mut t.hero, false, false);
+    t.paint();
+    t.vp_w = 1366.0;
+    t.vp_h = 740.0;
+    t.paint();
+    t.paint();
+    let scene = t.camera();
+    assert!(t.key(BoardKey::Char('1'), ALT, None));
+    assert_eq!(
+        scene,
+        t.camera(),
+        "a janela cresceu e o enquadramento ficou o da pequena"
+    );
+    for n in &notes {
+        assert_eq!(
+            t.chrome_over(t.screen_box(*n)),
+            None,
+            "{:?}",
+            t.screen_box(*n)
+        );
+    }
+}
+
+/// A pessoa mexeu na vista: o enquadramento da cena acaba (a janela que cresce depois não a tira
+/// do sítio).
+#[test]
+fn moving_the_view_ends_the_scene_reframe() {
+    let mut t = T::new();
+    t.vp_w = 1024.0;
+    t.vp_h = 768.0;
+    t.paint();
+    t.grid_with_live_open();
+    board_nav::show(&mut t.hero, false, false);
+    t.paint();
+    t.hero
+        .documents
+        .active_board_mut()
+        .unwrap()
+        .camera
+        .pan_by_screen(40.0, 0.0);
+    let moved = t.camera();
+    t.vp_w = 1366.0;
+    t.paint();
+    t.paint();
+    assert_eq!(t.camera(), moved);
+}
+
+/// `Alt+1` com o cartão «Live» aberto: o quadro inteiro à vista, nenhuma nota debaixo dele.
+#[test]
+fn fit_all_keeps_the_board_clear_of_the_live_card() {
+    let mut t = T::new();
+    t.vp_w = 1366.0;
+    t.vp_h = 740.0;
+    t.paint();
+    let notes = t.grid_with_live_open();
+    t.paint();
+    t.paint();
+    assert!(t.key(BoardKey::Char('1'), ALT, None));
+    t.paint();
+    for n in &notes {
+        assert_eq!(
+            t.chrome_over(t.screen_box(*n)),
+            None,
+            "{:?}",
+            t.screen_box(*n)
+        );
+    }
+}

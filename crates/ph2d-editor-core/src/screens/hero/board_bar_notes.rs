@@ -51,10 +51,7 @@ pub fn flyout_open(tool: Tool) -> bool {
 /// pilha e o modo em massa — cada grupo numa linha nova.
 #[must_use]
 pub fn flyout_rects(area: Rect) -> Vec<(Item, Rect)> {
-    let note = toolbar_rects(area)
-        .into_iter()
-        .find(|(it, _)| *it == Item::Tool(Tool::Shape(ShapeType::Sticky)))
-        .map(|(_, r)| r)
+    let note = super::layout::anchor(area, Item::Tool(Tool::Shape(ShapeType::Sticky)))
         .expect("a barra tem a Nota");
     let (s, g) = (btn_px(), gap());
     let x0 = note.x + note.w + Spacing::Sm.px();

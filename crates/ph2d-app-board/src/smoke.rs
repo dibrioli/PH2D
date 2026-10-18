@@ -21,6 +21,7 @@ use ph2d_board_model::{
     RichText, Route, STICKY_COLORS, STICKY_SIDE, STICKY_WIDE, Shape, ShapeType, Style,
 };
 use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::screens::hero::board_nav;
 use ph2d_editor_core::screens::hero::board_view::{self, default_style};
 use ph2d_editor_core::screens::hero::{board_bar, document_tabs};
 use ph2d_editor_core::widget::panel_chrome::HIGHLIGHTER_RGBA;
@@ -167,6 +168,7 @@ fn scene_two_boards(hero: &mut HeroScreen) {
     }
     document_tabs::load(hero, set);
     hero.documents.activate(Some(first));
+    board_nav::show(hero, false, false);
 }
 
 fn default_name(n: usize) -> String {
@@ -250,11 +252,9 @@ fn scene_shapes(hero: &mut HeroScreen) {
         let el = Element::new_shape(board.doc.mint_id(), board.doc.z_on_top(), shape, bx);
         BoardOp::Put(el).apply(&mut board.doc);
     }
-    board.camera.center_x = 540.0;
-    board.camera.center_y = 300.0;
-    board.camera.zoom = 0.9;
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
+    board_nav::show(hero, false, false);
     // O losango abre seleccionado: as pegas e a barra de estilo estão à vista desde o início.
     board_view::select(hero, decision);
 }
@@ -403,11 +403,9 @@ fn scene_arrows(hero: &mut HeroScreen) {
         [900.0, 300.0, 160.0, 80.0],
     );
     let bent = put_arrow(doc, center(n), center(l), &base, "", &[[730.0, 450.0]]);
-    board.camera.center_x = 630.0;
-    board.camera.center_y = 90.0;
-    board.camera.zoom = 0.85;
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
+    board_nav::show(hero, false, false);
     // A seta com o ponto de ajuste abre seleccionada: o ponto oco e as bolinhas do meio à vista.
     board_view::select(hero, [bent]);
 }
@@ -585,11 +583,9 @@ fn scene_notes(hero: &mut HeroScreen) {
         })
         .collect();
     fit.extend(pile.iter().copied());
-    board.camera.center_x = 980.0;
-    board.camera.center_y = 430.0;
-    board.camera.zoom = 0.62;
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
+    board_nav::show(hero, false, false);
     board_view::fit_later(hero, fit);
     board_view::select(hero, pile);
 }

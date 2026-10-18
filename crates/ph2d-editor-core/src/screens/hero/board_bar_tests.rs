@@ -530,3 +530,41 @@ mod images_w16;
 
 #[path = "board_images_w17_tests.rs"]
 mod images_w17;
+
+/// W23 A6 — numa janela baixa a barra curta parte-se em colunas: cada botão pintado dentro da área
+/// do quadro e clicável, nenhum por cima de outro; o painel das formas abre à direita da barra INTEIRA.
+#[test]
+fn the_short_bar_wraps_in_a_low_window_and_every_button_stays_clickable() {
+    let mut t = T::new();
+    t.vp_h = 420.0;
+    t.paint();
+    let c = t.hero.last_canvas;
+    let tools = toolbar_rects(c);
+    for (it, r) in &tools {
+        assert!(
+            r.y + r.h <= c.y + c.h,
+            "{it:?} sai por baixo: {r:?} em {c:?}"
+        );
+        assert!(t.find(node(*it)).is_some(), "{it:?} não se agarra");
+    }
+    for (i, (a, ra)) in tools.iter().enumerate() {
+        for (b, rb) in &tools[i + 1..] {
+            let apart = ra.x + ra.w <= rb.x
+                || rb.x + rb.w <= ra.x
+                || ra.y + ra.h <= rb.y
+                || rb.y + rb.h <= ra.y;
+            assert!(apart, "{a:?} {ra:?} por cima de {b:?} {rb:?}");
+        }
+    }
+    let right = tools.iter().map(|(_, r)| r.x + r.w).fold(0.0, f32::max);
+    assert!(
+        tools.iter().any(|(_, r)| r.x > tools[0].1.x),
+        "a janela baixa não partiu a barra"
+    );
+    for (it, r) in shapes_rects(c) {
+        assert!(
+            r.x >= right,
+            "{it:?} {r:?} abre por cima da barra (borda {right})"
+        );
+    }
+}

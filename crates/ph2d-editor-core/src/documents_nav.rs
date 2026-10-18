@@ -3,8 +3,20 @@
 //! pinta é `screens::hero::board_nav`.
 
 use crate::zones::Rect;
-use ph2d_board_model::ElementId;
+use ph2d_board_model::{BoardId, Camera, ElementId};
 use ph2d_vector::VectorScene;
+
+/// Um enquadramento à espera de que a área assente (ver `Nav::fit_hold`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct FitHold {
+    pub(crate) board: BoardId,
+    /// `None` = o quadro inteiro.
+    pub(crate) target: Option<[f64; 4]>,
+    /// A área e a parte livre (ecrã, `[x, y, w, h]`) do último enquadramento.
+    pub(crate) at: Option<([f64; 4], [f64; 4])>,
+    /// A câmara que ele deixou: outra quer dizer que alguém mexeu na vista, e ele acaba.
+    pub(crate) camera: Camera,
+}
 
 /// O estado de SESSÃO da navegação de um quadro.
 #[derive(Default)]
@@ -28,8 +40,15 @@ pub(crate) struct Nav {
     pub(crate) links: Option<(u64, Vec<ElementId>)>,
     /// Enquadrar tudo na próxima pintura (quando a área já tem o tamanho dela).
     pub(crate) fit_pending: bool,
-    /// O que enquadrar em vez do quadro inteiro (uma cena que reserva a margem dos painéis).
+    /// O que enquadrar em vez do quadro inteiro.
     pub(crate) fit_box: Option<[f64; 4]>,
+    /// O enquadramento que se REFAZ enquanto ninguém mexe na vista (W23 A1): a janela que cresce
+    /// depois da 1.ª pintura e os painéis que só se conhecem depois dela.
+    pub(crate) fit_hold: Option<FitHold>,
+    /// O que os painéis fixos do quadro pintaram por cima dele (ecrã), recolhido entre duas pinturas.
+    pub(crate) covers: Vec<Rect>,
+    /// A parte da área que eles deixaram livre na última pintura.
+    pub(crate) free: Option<Rect>,
     /// O chão da fila do canto quando o HUD de baixo a tapa (janela estreita com os painéis laterais
     /// abertos), escrito a cada pintura: a fila e o que se apoia nela sobem por cima dele.
     pub(crate) floor: Option<f32>,

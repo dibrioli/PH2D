@@ -146,11 +146,7 @@ pub(super) fn is_on(it: Item, ed: &Editor, doc: &BoardDoc, open: bool) -> Option
 
 /// Os rectângulos da galeria: uma coluna de nomes à direita do botão dos Modelos.
 pub(super) fn gallery_rects(area: Rect) -> Vec<(Item, Rect)> {
-    let Some(btn) = super::toolbar_rects(area)
-        .into_iter()
-        .find(|(it, _)| *it == TEMPLATES)
-        .map(|(_, r)| r)
-    else {
+    let Some(btn) = super::layout::anchor(area, TEMPLATES) else {
         return Vec::new();
     };
     let (s, g) = (super::btn_px(), super::gap());

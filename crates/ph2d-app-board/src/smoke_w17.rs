@@ -26,8 +26,6 @@ pub(crate) struct Lessons {
 }
 
 const GAP: f64 = 40.0;
-const MARGIN_X: f64 = 450.0;
-const MARGIN_Y: f64 = 90.0;
 const LESSONS: usize = 4;
 
 /// Os bytes de uma PNG com o ficheiro cortado a 60 %: o cabeçalho inteiro (o tamanho lê-se, a porta de
@@ -106,12 +104,7 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
         [0.0, -80.0, right, 40.0],
     );
     put(b, el);
-    let view = [
-        -MARGIN_X,
-        -80.0 - MARGIN_Y,
-        right + MARGIN_X,
-        y + side + MARGIN_Y,
-    ];
+    let view = [0.0, -80.0, right, y + side];
     let l = Lessons {
         board: b.id,
         good,

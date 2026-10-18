@@ -32,10 +32,8 @@ pub(crate) struct Lessons {
     pub notes: [ElementId; 6],
 }
 
-/// A margem do frame da cena, de lado e em cima/baixo: o que os painéis laterais (~310 px de cada
-/// lado numa janela de 1930) e a barra de estado tapam quando o enquadrar ajusta o frame à janela.
-const MARGIN_X: f64 = 330.0;
-const MARGIN_Y: f64 = 90.0;
+/// O respiro do frame à volta das notas da cena (o enquadrar já desconta os painéis).
+const PAD: f64 = 90.0;
 
 /// O vão entre o mapa e as notas, e entre as notas.
 const GAP: f64 = 40.0;
@@ -181,7 +179,7 @@ pub(crate) fn build(doc: &mut BoardDoc) -> Lessons {
                 ]
             },
         );
-    let (mx, my) = (MARGIN_X, MARGIN_Y);
+    let (mx, my) = (PAD, PAD);
     let bx = [
         all[0] - mx,
         all[1] - my,

@@ -486,6 +486,7 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
     let h = pad * 2.0 + s + g + all.iter().map(|r| row_h(r, ts, inner) + g).sum::<f32>();
     let card = Rect::new(x, y0, w, h);
     super::super::panels::card(scene, card, theme);
+    crate::screens::hero::board_nav::fit::cover(hero, card);
     hero.hit_index
         .register(node(Hit::Button(LiveButton::Surface)), card);
     // O título e o ×.

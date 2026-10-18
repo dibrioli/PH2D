@@ -26,9 +26,8 @@ pub(crate) struct Lessons {
     pub before: std::collections::BTreeMap<ElementId, u32>,
 }
 
-/// A margem do frame da cena (a da cena 8: os painéis laterais e a barra de estado tapam as bordas).
-const MARGIN_X: f64 = 330.0;
-const MARGIN_Y: f64 = 90.0;
+/// O respiro do frame à volta das notas da cena (o enquadrar já desconta os painéis).
+const OUTER_PAD: f64 = 90.0;
 /// A margem do frame das ideias, o vão entre as notas e entre as ideias e as lições. O vão das ideias é
 /// o do modelo do Miro medido (`vote_05`: 78–80 numa nota de 236 = 0,33 do lado): com a metade, o selo
 /// de 3 votos tapava o canto da nota de baixo (1.ª foto da cena 9).
@@ -171,10 +170,10 @@ pub(crate) fn build(doc: &mut BoardDoc) -> Lessons {
             },
         );
     let bx = [
-        all[0] - MARGIN_X,
-        all[1] - MARGIN_Y,
-        all[2] - all[0] + 2.0 * MARGIN_X,
-        all[3] - all[1] + 2.0 * MARGIN_Y,
+        all[0] - OUTER_PAD,
+        all[1] - OUTER_PAD,
+        all[2] - all[0] + 2.0 * OUTER_PAD,
+        all[3] - all[1] + 2.0 * OUTER_PAD,
     ];
     let f = super::organize::frame(doc, &tr("board.smoke.fac.frame"), bx, None);
     for id in inside {

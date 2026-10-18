@@ -63,6 +63,23 @@ impl Camera {
         self.center_y = (y0 + y1) / 2.0;
     }
 
+    /// [`Camera::fit`] dentro de `free` (`[x, y, w, h]`, ecrã), a parte de `area` que os painéis
+    /// flutuantes não tapam: o zoom mede-se por `free` e o centro de `bbox` cai no meio de `free`.
+    /// Um `free` vazio ou não finito enquadra na `area` inteira.
+    pub fn fit_in(&mut self, area: Area, free: Area, bbox: [f64; 4], margin: f64) {
+        let usable =
+            free.iter().all(|v| v.is_finite()) && free[2] > 2.0 * margin && free[3] > 2.0 * margin;
+        if !usable || !bbox.iter().all(|v| v.is_finite()) {
+            self.fit(area, bbox, margin);
+            return;
+        }
+        self.fit(free, bbox, margin);
+        let dx = (free[0] + free[2] / 2.0) - (area[0] + area[2] / 2.0);
+        let dy = (free[1] + free[3] / 2.0) - (area[1] + area[3] / 2.0);
+        self.center_x -= dx / self.zoom;
+        self.center_y -= dy / self.zoom;
+    }
+
     /// Arrasta a vista: o mundo segue o cursor por `(dx, dy)` px de ecrã.
     pub fn pan_by_screen(&mut self, dx: f64, dy: f64) {
         self.center_x -= dx / self.zoom;

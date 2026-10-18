@@ -183,10 +183,8 @@ pub(super) fn scene_pen(hero: &mut HeroScreen) {
         "",
         [col(2.3), y0 + 128.0, 100.0, 128.0],
     );
-    board.camera.center_x = col(1.5) + w / 2.0;
-    board.camera.center_y = 380.0;
-    board.camera.zoom = 0.7;
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
+    ph2d_editor_core::screens::hero::board_nav::show(hero, false, false);
     board_view::set_tool(hero, Tool::Pen(Pen::Pen));
 }

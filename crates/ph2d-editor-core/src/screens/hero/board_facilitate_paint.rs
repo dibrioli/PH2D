@@ -167,6 +167,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     let x = x - bar;
     let band = Rect::new(x, y, w + bar, visible);
     hero.documents.live.fac.column = Some((id, band));
+    crate::screens::hero::board_nav::fit::cover(hero, band);
     let (hit, store) = (&mut hero.hit_index, &hero.store);
     let key = super::scroll_key();
     let bar_id = crate::widget::BOARD_FACILITATE_SCROLLBAR_ID;

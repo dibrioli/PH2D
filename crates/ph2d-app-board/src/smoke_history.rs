@@ -29,9 +29,6 @@ pub(crate) struct Lessons {
     pub lessons: [ElementId; 7],
 }
 
-/// A margem do que os painéis tapam (a da cena 13, em unidades do mundo).
-const MARGIN_X: f64 = 450.0;
-const MARGIN_Y: f64 = 90.0;
 const GAP: f64 = 40.0;
 const SMALL: f64 = 150.0;
 
@@ -92,12 +89,7 @@ pub(crate) fn build(b: &mut Board, now: i64) -> (Lessons, [f64; 4]) {
     );
     put(b, el);
     let lessons_w = 7.0 * side + 6.0 * GAP;
-    let view = [
-        -MARGIN_X,
-        -80.0 - MARGIN_Y,
-        ideas_w.max(lessons_w) + MARGIN_X,
-        y + side + MARGIN_Y,
-    ];
+    let view = [0.0, -80.0, ideas_w.max(lessons_w), y + side];
     let l = Lessons {
         board: b.id,
         ideas,

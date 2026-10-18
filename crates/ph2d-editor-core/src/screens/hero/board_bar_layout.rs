@@ -4,6 +4,7 @@
 use super::{Item, Selected, TOOLBAR, TOOLBAR_TAIL, style_groups};
 use crate::zones::Rect;
 use ph2d_board_model::ShapeType;
+use ph2d_tokens::Spacing;
 
 // ⭐ A GEOMETRIA e o BOTÃO são do widget genérico ([`super::super::float_bar`]) — o Vetor pinta a
 // coluna e a barra da seleção dele pela MESMA conta. Aqui fica só a tabela do Quadro.
@@ -11,26 +12,44 @@ pub(super) use super::super::float_bar::{button_px as btn_px, gap};
 
 /// O rectângulo de cada atalho da barra curta, de cima para baixo, encostado à esquerda de `area`.
 #[must_use]
+///
+/// Numa janela baixa a coluna parte-se em colunas lado a lado, de alturas iguais (W23 A6): nenhum
+/// botão sai da área. Com lugar, é a coluna do [`super::super::float_bar::column_rects`].
 pub fn toolbar_rects(area: Rect) -> Vec<(Item, Rect)> {
+    let n = TOOLBAR.len() + TOOLBAR_TAIL.len();
+    let (s, g, m) = (btn_px(), gap(), Spacing::Md.px());
+    let fits = (((area.h - 2.0 * m + g) / (s + g)).floor().max(1.0)) as usize;
+    let rows = n.div_ceil(n.div_ceil(fits));
     TOOLBAR
         .iter()
         .chain(&TOOLBAR_TAIL)
         .copied()
-        .zip(super::super::float_bar::column_rects(
-            area,
-            &[TOOLBAR.len() + TOOLBAR_TAIL.len()],
-        ))
+        .enumerate()
+        .map(|(i, it)| {
+            let (c, r) = ((i / rows) as f32, (i % rows) as f32);
+            (
+                it,
+                Rect::new(area.x + m + c * (s + g), area.y + m + r * (s + g), s, s),
+            )
+        })
         .collect()
+}
+
+/// O botão `item` da barra visto pelos painéis que abrem À DIREITA dele: na última coluna da barra
+/// (um painel aberto de um botão da 1.ª coluna não tapa a 2.ª).
+pub(super) fn anchor(area: Rect, item: Item) -> Option<Rect> {
+    let rects = toolbar_rects(area);
+    let right = rects.iter().map(|(_, r)| r.x).fold(f32::MIN, f32::max);
+    rects
+        .into_iter()
+        .find(|(it, _)| *it == item)
+        .map(|(_, r)| Rect::new(right, r.y, r.w, r.h))
 }
 
 /// A grelha de todas as formas, à direita do botão «mais formas» (três colunas).
 #[must_use]
 pub fn shapes_rects(area: Rect) -> Vec<(Item, Rect)> {
-    let more = toolbar_rects(area)
-        .into_iter()
-        .find(|(it, _)| *it == Item::MoreShapes)
-        .map(|(_, r)| r)
-        .expect("a barra tem o «mais formas»");
+    let more = anchor(area, Item::MoreShapes).expect("a barra tem o «mais formas»");
     let grid = super::super::float_bar::grid_rects(area, more, ShapeType::ALL.len(), 3);
     ShapeType::ALL
         .iter()

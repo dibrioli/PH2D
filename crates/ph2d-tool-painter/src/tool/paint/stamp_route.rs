@@ -516,6 +516,7 @@ impl PainterTool {
             // texture offset and the knob did nothing (sweep 2026-07-12). `is_cacheable()` covers Rake,
             // Random-Angle, Random-Offset, Tiled and Stencil in one place, so the hole cannot re-open.
             let per_dab_dynamic = brush.shape_has_per_dab_rotation(has_shape_image)
+                || ph2d_painter_brush::pen::any_tilted(dabs)
                 || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()
                 || (brush.texture.is_active() && !brush.texture.is_cacheable());
@@ -533,8 +534,9 @@ impl PainterTool {
         }
         // Grain Jitter-Rotate OR a per-dab Shape rotation (Rake / Random) → each dab needs its own
         // basis, so the constant-orientation caches are skipped (the per-pixel path resolves per dab).
-        let per_dab_rotation =
-            brush.has_per_dab_rotation() || brush.shape_has_per_dab_rotation(has_shape_image);
+        let per_dab_rotation = brush.has_per_dab_rotation()
+            || brush.shape_has_per_dab_rotation(has_shape_image)
+            || ph2d_painter_brush::pen::any_tilted(dabs);
         // A stroke that TRACKS its own coverage ([`Self::stroke_cover_wanted`] — the Accumulate-OFF cap)
         // cannot be served by the constant-orientation caches: they scale-blit a baked stamp and have no
         // per-stroke buffer to thread, so they would silently ignore the cap. Same door the threading

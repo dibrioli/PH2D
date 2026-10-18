@@ -222,6 +222,7 @@ mod impasto_body;
 mod line_editor;
 mod parked_shapes;
 mod ponta_cortada; // a ponta da Shape cortada sob Jitter Rotate (smoke 12/10)
+mod caneta_deitada; // a ponta deitada da caneta nos cinco meios (W6)
 mod protection_and_layer_mask;
 mod rampa_do_shape; // prompt 38: a rampa do Shape indexa a TEXTURA do Shape, como a do Grain (15/10)
 mod rampa_randomize; // dono 17/10: o Randomize Color desloca a cor da rampa (Shape Color / Grain), em toda rota

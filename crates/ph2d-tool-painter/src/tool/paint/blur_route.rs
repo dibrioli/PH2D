@@ -40,8 +40,9 @@ impl PainterTool {
         // Per-dab-rotating Shape/Grain (Rake / Random) or Jitter Rotate isn't scale-invariant → route it
         // (with any canvas-fixed Grain Mapping) through the per-pixel Grain path. View-static → the fast
         // cached mask; untextured → the plain round falloff.
-        let per_dab_rotation =
-            base.has_per_dab_rotation() || base.shape_has_per_dab_rotation(has_shape_image);
+        let per_dab_rotation = base.has_per_dab_rotation()
+            || base.shape_has_per_dab_rotation(has_shape_image)
+            || ph2d_painter_brush::pen::any_tilted(dabs);
         // Shape / Grain Colour Ramps act as B&W coverage TONES here (no colour painted); the cached mask
         // can't carry them, so an active ramp tone forces the per-pixel Grain path.
         self.ensure_shape_ramp_lut();

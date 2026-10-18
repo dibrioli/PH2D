@@ -680,7 +680,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
         KnobGroup::Paint,
         "pressureSmoothing",
         0.0,
-        0.95,
+        0.9,
         0.01,
         0.0,
         None,

@@ -106,11 +106,14 @@ impl PainterTool {
         };
         let base = self.paint.brush;
         let has_shape_image = self.paint.shape_image.is_some();
+        let deitados = ph2d_painter_brush::pen::any_tilted(dabs);
         let textured = base.shape_silhouette_active(has_shape_image)
             || base.texture.is_active()
-            || base.pegada_anisotropica();
-        let per_dab_rotation =
-            base.has_per_dab_rotation() || base.shape_has_per_dab_rotation(has_shape_image);
+            || base.pegada_anisotropica()
+            || deitados;
+        let per_dab_rotation = base.has_per_dab_rotation()
+            || base.shape_has_per_dab_rotation(has_shape_image)
+            || deitados;
         // Shape / Grain Colour Ramps act as B&W coverage TONES here (no colour painted); the cached mask
         // can't carry them, so an active ramp tone forces the per-pixel Grain path.
         self.ensure_shape_ramp_lut();

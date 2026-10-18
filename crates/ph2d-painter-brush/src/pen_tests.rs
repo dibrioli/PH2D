@@ -268,3 +268,65 @@ fn a_lying_pen_stretches_the_dab() {
     let fp = spec.dab_footprint_of(d);
     assert!((fp.minor_fraction() - 1.2 / 3.3).abs() < 1e-4);
 }
+
+/// Os 105 toques dos 180 s do dono (17/10, `docs/Painter/ferramentas/caneta/medicoes_2026-10-17/`): a pressão de
+/// cada amostra, de 5 em 5 ms.
+fn toques_do_dono() -> Vec<Vec<f32>> {
+    include_str!("../../../docs/Painter/ferramentas/caneta/medicoes_2026-10-17/pressao_por_toque.txt")
+        .lines()
+        .filter(|l| !l.starts_with('#') && !l.is_empty())
+        .map(|l| {
+            l.split(' ')
+                .map(|s| s.split_once(':').unwrap().1.parse().unwrap())
+                .collect()
+        })
+        .collect()
+}
+
+/// ⭐ **A suavização no ORÁCULO dos 180 s** (W6): a sequência REAL de pressão entra, e a lida sai sem degraus
+/// (nenhum salto maior que os da mão, menos saltos de um nível do libinput) e com o atraso da LEI — o centróide
+/// de cada toque atrasa no máximo `s/(1 − s)` amostras (truncado no pen-up, nunca mais). No tecto
+/// [`crate::pen::MAX_SMOOTHING`] o atraso é ≤ 45 ms, o tempo mediano do dono até ao pico.
+#[test]
+fn the_smoothing_on_the_owners_strokes_adds_no_step_and_no_lag_beyond_the_law() {
+    let toques = toques_do_dono();
+    assert_eq!(toques.len(), 105, "os toques do oráculo");
+    for s in [0.3f32, 0.6, crate::pen::MAX_SMOOTHING] {
+        let pen = Pen { smoothing: s, ..Pen::default() };
+        let (mut saltos_mao, mut saltos_lida, mut n) = (0usize, 0usize, 0usize);
+        let mut atraso_max = 0.0f32;
+        for t in &toques {
+            let mut lida = Vec::with_capacity(t.len());
+            for (k, &p) in t.iter().enumerate() {
+                let p = pen.read(p);
+                lida.push(if k == 0 { p } else { pen.smooth(lida[k - 1], p) });
+            }
+            let maior = |v: &[f32]| v.windows(2).map(|w| (w[1] - w[0]).abs()).fold(0.0f32, f32::max);
+            assert!(maior(&lida) <= maior(t) + 1e-6, "um degrau que a mão não deu (s {s})");
+            saltos_mao += t.windows(2).filter(|w| (w[1] - w[0]).abs() >= 0.0099).count();
+            saltos_lida += lida.windows(2).filter(|w| (w[1] - w[0]).abs() >= 0.0099).count();
+            n += t.len();
+            let centro = |v: &[f32]| {
+                let m: f32 = v.iter().sum();
+                v.iter().enumerate().map(|(i, p)| i as f32 * p).sum::<f32>() / m.max(1e-6)
+            };
+            atraso_max = atraso_max.max(centro(&lida) - centro(t));
+        }
+        assert!(saltos_lida < saltos_mao, "s {s}: {saltos_lida} saltos contra {saltos_mao} da mão ({n} amostras)");
+        let lei = s / (1.0 - s);
+        assert!(atraso_max <= lei + 1e-3, "s {s}: atraso {atraso_max:.2} amostras > a lei {lei:.2}");
+    }
+    let lei = crate::pen::MAX_SMOOTHING / (1.0 - crate::pen::MAX_SMOOTHING);
+    assert!(lei * 5.0 <= 45.0 + 1e-3, "no tecto a lida atrasa {} ms", lei * 5.0);
+}
+
+/// O pincel de um dab deitado a alisar tem o grão mais raso (`grain_depth × (1 − smooth)`); sem caneta é o de
+/// sempre, ao bit.
+#[test]
+fn the_brush_of_a_smoothing_dab_has_a_shallower_grain() {
+    let spec = BrushSpec { grain_depth: 0.8, ..BrushSpec::default() };
+    let mut d = traco(spec, Dynamics::default(), None, |_| 1.0)[3];
+    assert_eq!(spec.at_dab(&d), BrushSpec { radius_px: d.radius_px, ..spec });
+    d.tilt = Some(DabTilt { azimuth: [1.0, 0.0], length: 1.0, width: 1.0, smooth: 0.5 });
+    assert!((spec.at_dab(&d).grain_depth - 0.4).abs() < 1e-6);
+}

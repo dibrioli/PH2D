@@ -74,12 +74,10 @@ impl BrushSpec {
         // guard and Smear/Blur/Clone served it the cached (constant-orientation) mask: every dab came out
         // with the SAME ellipse angle and the knob did nothing (sweep 2026-07-12). The paint path never had
         // the bug — with both slots off it has no cache to serve and resolves `d.rotation` per pixel.
-        // A caneta deitada (W6) muda a pegada, a rotação e o grão de cada dab.
-        self.pen_varies_dabs()
-            || self.jitter_rotate > 0.0
-                && self.stroke_method.allows_jitter()
-                && (self.pegada_anisotropica()
-                    || (self.texture.is_active() && self.texture.mapping.uses_dab_rotation()))
+        self.jitter_rotate > 0.0
+            && self.stroke_method.allows_jitter()
+            && (self.pegada_anisotropica()
+                || (self.texture.is_active() && self.texture.mapping.uses_dab_rotation()))
     }
 
     /// Whether the **Grain** slot samples a texture — the twin of [`Self::shape_silhouette_active`]: an
@@ -321,7 +319,6 @@ impl BrushSpec {
             && self.shape.mapping.uses_dab_rotation()
             && (self.shape.rake
                 || self.shape.flow
-                || self.pen_varies_dabs()
                 || (self.jitter_rotate > 0.0 && self.stroke_method.allows_jitter()))
     }
 

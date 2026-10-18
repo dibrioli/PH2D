@@ -371,7 +371,10 @@ impl PainterTool {
             }
             let quina_roda =
                 spec.dab_quina > 0.0 && (spec.follows_stroke() || spec.has_per_dab_rotation());
-            let janela = if spec.shape_has_per_dab_rotation(shape_image.is_some()) || quina_roda {
+            let janela = if spec.shape_has_per_dab_rotation(shape_image.is_some())
+                || quina_roda
+                || d.tilt.is_some()
+            {
                 spec.tip_reach().max(reach)
             } else {
                 reach

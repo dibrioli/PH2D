@@ -208,8 +208,10 @@ pub struct Pen {
     pub tilt: Tilt,
 }
 
-/// O tecto da suavização: `0,95` = a pressão lida anda 5 % do caminho por amostra (medido no doc da W6).
-pub const MAX_SMOOTHING: f32 = 0.95;
+/// O tecto da suavização — o recurso é a MÃO (doc 47_medicao §4, os 180 s do dono): a lida atrasa
+/// `s/(1 − s)` amostras de 5 ms, e a `0,9` são 9 = 45 ms, o tempo mediano do toque até ao pico (40 ms; o
+/// toque dura 111 ms, o p5 50 ms). Acima disso um toque típico acaba antes de o pincel chegar à pressão dele.
+pub const MAX_SMOOTHING: f32 = 0.9;
 
 impl Default for Pen {
     fn default() -> Self {
@@ -247,6 +249,14 @@ impl Pen {
             prev + (p - prev) * (1.0 - s)
         }
     }
+}
+
+/// ⭐ Algum dab do lote vem com a caneta DEITADA ([`crate::Dab::tilt`]): a pegada, a rotação e o grão variam
+/// por dab, e as rotas de carimbo constante (as caches) não o servem. Pergunta-se ao LOTE e não ao pincel: com
+/// o rato (nenhum dab deitado) as rotas são as de sempre, ao bit, mesmo com a lei ligada.
+#[must_use]
+pub fn any_tilted(dabs: &[crate::Dab]) -> bool {
+    dabs.iter().any(|d| d.tilt.is_some())
 }
 
 /// Um passo da corda: o pincel em `anchor` só anda quando a mão (`sample`) está a mais de `len` px, e

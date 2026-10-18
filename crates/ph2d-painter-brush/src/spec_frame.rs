@@ -89,13 +89,6 @@ impl BrushSpec {
         s
     }
 
-    /// A caneta muda a pegada ou o grão POR DAB (a rotação do PenTilt, a ponta deitada, o grão alisado):
-    /// as rotas de carimbo constante (as caches) não a servem.
-    #[must_use]
-    pub fn pen_varies_dabs(&self) -> bool {
-        self.pen_tilt.active()
-    }
-
     /// The dab footprint for a composed per-dab `rotor` ([`Self::dab_rotor`]).
     #[must_use]
     pub fn dab_footprint(&self, rotor: [f32; 2]) -> crate::footprint::FootprintDeform {

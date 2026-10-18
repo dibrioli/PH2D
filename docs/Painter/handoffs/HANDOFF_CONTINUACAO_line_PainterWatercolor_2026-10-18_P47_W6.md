@@ -62,6 +62,9 @@ target(s) in 0.53s`.
 
 ## §6 — Aberto
 
+**Smoke do dono 18/10: OK** (depois do recuo da pressão). Próxima janela: o [prompt 48](../NewFeaturesWetPaint/48_PROMPT_W2_os_fios_e_a_textura_do_traco.md) (o resto da W2).
+
+
 - ✅ C31 medida com o dono (18/10): o KDE não aplica curva (máx 0,0051 = o arredondamento do libinput; 47_medicao §2).
 - Os knobs da caneta só se ligam no Wet Paint (o mapa `engine` do preset, painel Tuning): os outros 4 meios têm a lei (o
   gate dos 5) e nenhum sítio onde a armar — chega com A15 (presets em todos os modos) / W8 (o painel).

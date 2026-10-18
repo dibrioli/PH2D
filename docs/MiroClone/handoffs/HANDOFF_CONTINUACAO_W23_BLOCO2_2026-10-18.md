@@ -92,7 +92,7 @@ M6 vermelha depois da asserção nova.
   `ph2d-board-sync`, `ph2d-app-board`.
 - Testes por nome verdes; filtro `live` no app-board 24/24 (5 ignorados); sync `replica` 20/20, `fac` 22/22; internet
   `session` 10/10.
-- Suíte: (por preencher)
+- Suíte (`PH2D_SUITE=onda nextest-impacted`, a cadência deixou correr): 19 308/19 334 corridos, **0 falhas**; 2 TIMEOUT em `ph2d-tool-painter` (`macro_track::tutorial::tests::pular_a_pincelada_e_esperar_nao_cumpre_nenhuma`, `it presets_de_fabrica::a_largura_e_a_prometida`) com `loadavg` 138–143 (outras linhas); sozinhos por nome, 2/2 verdes (`loadavg` 33 → 22). A crate não tem diff nesta linha ⇒ família de [FLAKES_DE_CARGA.md](../../DevOps/FLAKES_DE_CARGA.md). O resto (26) não chegou a correr: a corrida parou no 1.º `error: test run failed`.
 - Superfície de colisão: `ph2d-board-net/src/host.rs` (`shut_doors`, ordem em `close`/`Drop`) ·
   `ph2d-board-internet/src/session.rs` (`LinkGuest`) + `lib.rs` (export) · `ph2d-app-board/src/live.rs` (+1 linha) ·
   `live_internet.rs` (forma de `Route::Link`, ritmo) · `ph2d-board-sync` `session.rs` / `session_chair.rs` / `vault.rs`

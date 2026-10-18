@@ -78,13 +78,28 @@ fn a_ponta_deitada_chega_ao_carimbo_nos_cinco_meios() {
         None,
     ] {
         let rato = traco(meio, false, [0.0, 0.0]);
-        assert!(rato != vec![255u8; rato.len()], "{meio:?}: o traço não pintou");
-        assert!(rato == traco(meio, true, [0.0, 0.0]), "{meio:?}: o rato mudou com a lei ligada");
+        assert!(
+            rato != vec![255u8; rato.len()],
+            "{meio:?}: o traço não pintou"
+        );
+        assert!(
+            rato == traco(meio, true, [0.0, 0.0]),
+            "{meio:?}: o rato mudou com a lei ligada"
+        );
         let ao_longo = traco(meio, true, [0.5, 0.0]);
         let atraves = traco(meio, true, [0.0, 0.5]);
         let diagonal = traco(meio, true, [0.35, 0.35]);
-        assert!(ao_longo != rato, "{meio:?}: a caneta deitada ao longo não chegou ao carimbo");
-        assert!(ao_longo != atraves, "{meio:?}: o azimute não roda nem estica a ponta");
-        assert!(diagonal != ao_longo && diagonal != atraves, "{meio:?}: a diagonal é uma das outras");
+        assert!(
+            ao_longo != rato,
+            "{meio:?}: a caneta deitada ao longo não chegou ao carimbo"
+        );
+        assert!(
+            ao_longo != atraves,
+            "{meio:?}: o azimute não roda nem estica a ponta"
+        );
+        assert!(
+            diagonal != ao_longo && diagonal != atraves,
+            "{meio:?}: a diagonal é uma das outras"
+        );
     }
 }

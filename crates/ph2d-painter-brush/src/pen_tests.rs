@@ -272,15 +272,17 @@ fn a_lying_pen_stretches_the_dab() {
 /// Os 105 toques dos 180 s do dono (17/10, `docs/Painter/ferramentas/caneta/medicoes_2026-10-17/`): a pressão de
 /// cada amostra, de 5 em 5 ms.
 fn toques_do_dono() -> Vec<Vec<f32>> {
-    include_str!("../../../docs/Painter/ferramentas/caneta/medicoes_2026-10-17/pressao_por_toque.txt")
-        .lines()
-        .filter(|l| !l.starts_with('#') && !l.is_empty())
-        .map(|l| {
-            l.split(' ')
-                .map(|s| s.split_once(':').unwrap().1.parse().unwrap())
-                .collect()
-        })
-        .collect()
+    include_str!(
+        "../../../docs/Painter/ferramentas/caneta/medicoes_2026-10-17/pressao_por_toque.txt"
+    )
+    .lines()
+    .filter(|l| !l.starts_with('#') && !l.is_empty())
+    .map(|l| {
+        l.split(' ')
+            .map(|s| s.split_once(':').unwrap().1.parse().unwrap())
+            .collect()
+    })
+    .collect()
 }
 
 /// ⭐ **A suavização no ORÁCULO dos 180 s** (W6): a sequência REAL de pressão entra, e a lida sai sem degraus
@@ -292,19 +294,39 @@ fn the_smoothing_on_the_owners_strokes_adds_no_step_and_no_lag_beyond_the_law() 
     let toques = toques_do_dono();
     assert_eq!(toques.len(), 105, "os toques do oráculo");
     for s in [0.3f32, 0.6, crate::pen::MAX_SMOOTHING] {
-        let pen = Pen { smoothing: s, ..Pen::default() };
+        let pen = Pen {
+            smoothing: s,
+            ..Pen::default()
+        };
         let (mut saltos_mao, mut saltos_lida, mut n) = (0usize, 0usize, 0usize);
         let mut atraso_max = 0.0f32;
         for t in &toques {
             let mut lida = Vec::with_capacity(t.len());
             for (k, &p) in t.iter().enumerate() {
                 let p = pen.read(p);
-                lida.push(if k == 0 { p } else { pen.smooth(lida[k - 1], p) });
+                lida.push(if k == 0 {
+                    p
+                } else {
+                    pen.smooth(lida[k - 1], p)
+                });
             }
-            let maior = |v: &[f32]| v.windows(2).map(|w| (w[1] - w[0]).abs()).fold(0.0f32, f32::max);
-            assert!(maior(&lida) <= maior(t) + 1e-6, "um degrau que a mão não deu (s {s})");
-            saltos_mao += t.windows(2).filter(|w| (w[1] - w[0]).abs() >= 0.0099).count();
-            saltos_lida += lida.windows(2).filter(|w| (w[1] - w[0]).abs() >= 0.0099).count();
+            let maior = |v: &[f32]| {
+                v.windows(2)
+                    .map(|w| (w[1] - w[0]).abs())
+                    .fold(0.0f32, f32::max)
+            };
+            assert!(
+                maior(&lida) <= maior(t) + 1e-6,
+                "um degrau que a mão não deu (s {s})"
+            );
+            saltos_mao += t
+                .windows(2)
+                .filter(|w| (w[1] - w[0]).abs() >= 0.0099)
+                .count();
+            saltos_lida += lida
+                .windows(2)
+                .filter(|w| (w[1] - w[0]).abs() >= 0.0099)
+                .count();
             n += t.len();
             let centro = |v: &[f32]| {
                 let m: f32 = v.iter().sum();
@@ -312,22 +334,46 @@ fn the_smoothing_on_the_owners_strokes_adds_no_step_and_no_lag_beyond_the_law() 
             };
             atraso_max = atraso_max.max(centro(&lida) - centro(t));
         }
-        assert!(saltos_lida < saltos_mao, "s {s}: {saltos_lida} saltos contra {saltos_mao} da mão ({n} amostras)");
+        assert!(
+            saltos_lida < saltos_mao,
+            "s {s}: {saltos_lida} saltos contra {saltos_mao} da mão ({n} amostras)"
+        );
         let lei = s / (1.0 - s);
-        assert!(atraso_max <= lei + 1e-3, "s {s}: atraso {atraso_max:.2} amostras > a lei {lei:.2}");
+        assert!(
+            atraso_max <= lei + 1e-3,
+            "s {s}: atraso {atraso_max:.2} amostras > a lei {lei:.2}"
+        );
     }
     let lei = crate::pen::MAX_SMOOTHING / (1.0 - crate::pen::MAX_SMOOTHING);
-    assert!(lei * 5.0 <= 45.0 + 1e-3, "no tecto a lida atrasa {} ms", lei * 5.0);
+    assert!(
+        lei * 5.0 <= 45.0 + 1e-3,
+        "no tecto a lida atrasa {} ms",
+        lei * 5.0
+    );
 }
 
 /// O pincel de um dab deitado a alisar tem o grão mais raso (`grain_depth × (1 − smooth)`); sem caneta é o de
 /// sempre, ao bit.
 #[test]
 fn the_brush_of_a_smoothing_dab_has_a_shallower_grain() {
-    let spec = BrushSpec { grain_depth: 0.8, ..BrushSpec::default() };
+    let spec = BrushSpec {
+        grain_depth: 0.8,
+        ..BrushSpec::default()
+    };
     let mut d = traco(spec, Dynamics::default(), None, |_| 1.0)[3];
-    assert_eq!(spec.at_dab(&d), BrushSpec { radius_px: d.radius_px, ..spec });
-    d.tilt = Some(DabTilt { azimuth: [1.0, 0.0], length: 1.0, width: 1.0, smooth: 0.5 });
+    assert_eq!(
+        spec.at_dab(&d),
+        BrushSpec {
+            radius_px: d.radius_px,
+            ..spec
+        }
+    );
+    d.tilt = Some(DabTilt {
+        azimuth: [1.0, 0.0],
+        length: 1.0,
+        width: 1.0,
+        smooth: 0.5,
+    });
     assert!((spec.at_dab(&d).grain_depth - 0.4).abs() < 1e-6);
 }
 
@@ -335,12 +381,35 @@ fn the_brush_of_a_smoothing_dab_has_a_shallower_grain() {
 #[test]
 fn pen_tilt_rotation_turns_the_dab_to_the_azimuth() {
     let roda = |rotation| BrushSpec {
-        pen_tilt: Tilt { rotation, start_deg: 0.0, full_deg: 45.0, ..Tilt::default() },
+        pen_tilt: Tilt {
+            rotation,
+            start_deg: 0.0,
+            full_deg: 45.0,
+            ..Tilt::default()
+        },
         ..BrushSpec::default()
     };
-    let d = *traco(roda(DabRotation::PenTilt), Dynamics::default(), Some([0.0, 0.5]), |_| 1.0).last().unwrap();
-    assert!(d.rotation[0].abs() < 1e-5 && (d.rotation[1] - 1.0).abs() < 1e-5, "{:?}", d.rotation);
-    let d = *traco(roda(DabRotation::None), Dynamics::default(), Some([0.0, 0.5]), |_| 1.0).last().unwrap();
+    let d = *traco(
+        roda(DabRotation::PenTilt),
+        Dynamics::default(),
+        Some([0.0, 0.5]),
+        |_| 1.0,
+    )
+    .last()
+    .unwrap();
+    assert!(
+        d.rotation[0].abs() < 1e-5 && (d.rotation[1] - 1.0).abs() < 1e-5,
+        "{:?}",
+        d.rotation
+    );
+    let d = *traco(
+        roda(DabRotation::None),
+        Dynamics::default(),
+        Some([0.0, 0.5]),
+        |_| 1.0,
+    )
+    .last()
+    .unwrap();
     assert_eq!(d.rotation, [1.0, 0.0]);
 }
 
@@ -350,16 +419,34 @@ fn pen_tilt_rotation_turns_the_dab_to_the_azimuth() {
 fn the_tilt_lag_grows_the_lying_tip_along_the_path() {
     let deitado = |lag_px| {
         let spec = BrushSpec {
-            pen_tilt: Tilt { start_deg: 0.0, full_deg: 45.0, length: 3.0, lag_px, ..Tilt::default() },
+            pen_tilt: Tilt {
+                start_deg: 0.0,
+                full_deg: 45.0,
+                length: 3.0,
+                lag_px,
+                ..Tilt::default()
+            },
             ..BrushSpec::default()
         };
         let mut s = Stroke::new(spec, Dynamics::default(), 7);
         let mut out = Vec::new();
-        s.begin(StrokePoint { pos: [10.0, 50.0], pressure: 1.0 }, &mut out);
+        s.begin(
+            StrokePoint {
+                pos: [10.0, 50.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         let mut raios = Vec::new();
         for i in 1..=60 {
             s.set_tilt(if i <= 10 { [0.0, 0.0] } else { [0.5, 0.0] });
-            s.extend(StrokePoint { pos: [10.0 + 3.0 * i as f32, 50.0], pressure: 1.0 }, &mut out);
+            s.extend(
+                StrokePoint {
+                    pos: [10.0 + 3.0 * i as f32, 50.0],
+                    pressure: 1.0,
+                },
+                &mut out,
+            );
             raios.extend(out.iter().map(|d| d.radius_px));
         }
         (spec.clamped_radius(), raios)
@@ -368,6 +455,12 @@ fn the_tilt_lag_grows_the_lying_tip_along_the_path() {
     let (_, com) = deitado(170.0);
     assert!((sem.last().unwrap() - 3.0 * r).abs() < 1e-3);
     let meio = com[com.len() / 2];
-    assert!(meio > 1.05 * r && meio < 2.5 * r, "a meio do atraso: {meio} (r {r})");
-    assert!(com.windows(2).all(|w| w[1] >= w[0] - 1e-4), "cresce sem voltar atrás");
+    assert!(
+        meio > 1.05 * r && meio < 2.5 * r,
+        "a meio do atraso: {meio} (r {r})"
+    );
+    assert!(
+        com.windows(2).all(|w| w[1] >= w[0] - 1e-4),
+        "cresce sem voltar atrás"
+    );
 }

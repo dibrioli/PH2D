@@ -209,6 +209,7 @@ mod acumulacao_por_meio; // Accumulate e Space Attenuation só onde o meio os of
 mod auditoria_l1_impasto; // auditoria lente 1 (15/10): o Continuous do Impasto fora da fixtura do portão
 mod auditoria_l2_seam; // AUDITORIA lente 2 (15/10): Continuous pela porta do painel — sonda, não portão
 mod brush_panel;
+mod caneta_deitada; // a ponta deitada da caneta nos cinco meios (W6)
 mod capsula; // o Continuous que iguala o Spacing pequeno: a régua contra o alvo (prompt 34)
 mod capsula_estado; // prompt 40: o sub-dab da cápsula é o dab INTERPOLADO (raio, rotação, pressão, arco)
 mod cor_do_shape; // prompt 36: a rampa de cor da Shape não muda o Mapping nem desliga o Grain (14/10)
@@ -222,7 +223,6 @@ mod impasto_body;
 mod line_editor;
 mod parked_shapes;
 mod ponta_cortada; // a ponta da Shape cortada sob Jitter Rotate (smoke 12/10)
-mod caneta_deitada; // a ponta deitada da caneta nos cinco meios (W6)
 mod protection_and_layer_mask;
 mod rampa_do_shape; // prompt 38: a rampa do Shape indexa a TEXTURA do Shape, como a do Grain (15/10)
 mod rampa_randomize; // dono 17/10: o Randomize Color desloca a cor da rampa (Shape Color / Grain), em toda rota

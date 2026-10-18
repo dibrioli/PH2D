@@ -3,8 +3,11 @@
 //! fez — Gravar, duas pinceladas de Wet Paint pelo Painter do editor, Parar, ⏮ e ▷ na aba Keys — pelas
 //! MESMAS portas da shell (o painel MACROS, o ponteiro da tela, o transporte da Timeline). O roteiro é
 //! no relógio da cena (o do dono é o de parede); a ordem dos gestos é fixa. A cada décimo de segundo a
-//! consola diz o instante do clipe, se o palco troca a textura da sprite e quantos texels pintados têm a
-//! ranhura e o editor ([`PalcosDoPainter::diagnostico`]).
+//! consola diz o instante do clipe, o palco, a marca, o editor e o que a subida anterior MOSTROU
+//! ([`PalcosDoPainter::diagnostico`]). A `=5` escreve o mesmo registo, sem gestos.
+//!
+//! Texto de consola e do ficheiro de registo, lido pela LLM: isento do HR-15 por nome
+//! (`tests/it/every_word_this_family_shows_comes_from_the_string_table.rs`).
 //!
 //! A variante `arrasta` é o smoke de 18/10 (buracos retangulares ao arrastar a cabeça da Keys): em
 //! Digital, como a `=5` do dono, saltos para trás e para a frente e um arrasto contínuo; o diagnóstico
@@ -50,9 +53,10 @@ impl Gesto {
 }
 
 /// Como o dono pode ter feito o caminho (`PH2D_MACRO_CAMINHO`): as variantes correm na mesma rodada.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Variante {
     /// Gravar, 2 pinceladas, Parar, ⏮, ▷ — depressa.
+    #[default]
     Base,
     /// O mesmo ao ritmo de uma mão: pausas de segundos, a água a secar entre os gestos.
     Humano,
@@ -66,8 +70,8 @@ pub enum Variante {
     Topo,
     /// O 2.º smoke de 18/10: em Digital, Parar e a cabeça da Keys arrastada para trás e para a frente.
     Arrasta,
-    /// A base, com uma linha POR QUADRO no segundo e meio depois do Parar e o que a ranhura recebeu
-    /// de facto ([`Espia`]): o piscar das pinceladas logo depois do Parar.
+    /// A base, com uma linha POR QUADRO no segundo e meio depois do Parar e, em cada uma, a diferença
+    /// entre o que a ranhura mostrou e uma reprodução à parte (`fresca=`).
     Parar,
 }
 
@@ -162,6 +166,7 @@ fn arrastos(r: &mut Vec<(u64, Gesto)>, t0: u64) {
 /// O condutor: os gestos já dados e a última linha da consola.
 #[derive(Default)]
 pub struct Caminho {
+    variante: Variante,
     dados: usize,
     /// Até quando (ms) há uma linha por quadro (a variante `parar`, depois do Parar).
     por_quadro_ate: Option<u64>,
@@ -170,10 +175,44 @@ pub struct Caminho {
     quadros: u32,
 }
 
+thread_local! {
+    /// O relógio da cena e o condutor do roteiro (nasce no 1.º quadro da cena).
+    static CAMINHO: std::cell::RefCell<Option<(std::time::Instant, Caminho)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// **O passo deste quadro** da cena `=5`/`=6`: o relógio da cena (ms), os gestos que vencem (só com
+/// `conduz`, a `=6`) e, quando devida, a hora de uma linha de diagnóstico (os quadros desde a anterior).
+/// O 1.º passo anuncia a cena.
+pub fn passo(conduz: bool) -> (u64, Vec<Gesto>, Option<u32>) {
+    CAMINHO.with_borrow_mut(|c| {
+        let (t0, cam) = c.get_or_insert_with(|| {
+            regista(&anuncio(conduz));
+            (std::time::Instant::now(), Caminho::de(variante()))
+        });
+        let ms = u64::try_from(t0.elapsed().as_millis()).unwrap_or(u64::MAX);
+        let gestos = if conduz {
+            cam.gestos_ate(ms)
+        } else {
+            Vec::new()
+        };
+        (ms, gestos, cam.hora_do_diagnostico(ms))
+    })
+}
+
 impl Caminho {
+    /// O condutor do roteiro da variante `v`.
+    #[must_use]
+    pub fn de(v: Variante) -> Self {
+        Self {
+            variante: v,
+            ..Self::default()
+        }
+    }
+
     /// Os gestos que vencem até `ms` (por ordem, cada um uma vez).
     pub fn gestos_ate(&mut self, ms: u64) -> Vec<Gesto> {
-        let r = roteiro(variante());
+        let r = roteiro(self.variante);
         let novos: Vec<Gesto> = r
             .iter()
             .skip(self.dados)
@@ -181,7 +220,7 @@ impl Caminho {
             .map(|(_, g)| *g)
             .collect();
         self.dados += novos.len();
-        if variante() == Variante::Parar && novos.contains(&Gesto::Para) {
+        if self.variante == Variante::Parar && novos.contains(&Gesto::Para) {
             self.por_quadro_ate = Some(ms + 1_500);
         }
         novos
@@ -257,7 +296,7 @@ fn pintados(rgba: &[u8]) -> usize {
         .count()
 }
 
-/// **O que a cena mostrou** (a variante `parar`): uma cópia de cada ranhura, refeita a cada subida de
+/// **O que a cena mostrou** (ligada na 1.ª linha de diagnóstico): uma cópia de cada ranhura, refeita a cada subida de
 /// [`PalcosDoPainter::sobe`], e as trocas dessa subida — o que o extract do quadro usou, não uma conta à
 /// parte do que a ranhura devia ter.
 #[derive(Default)]
@@ -290,8 +329,8 @@ impl PalcosDoPainter {
     /// **A linha de diagnóstico da sprite `bits`** (as cenas `=5`/`=6`), escrita no INÍCIO do quadro: o
     /// palco (toca, época, texels pintados nele e na marca dessa época), os do editor e o que a subida
     /// ANTERIOR mostrou de facto ([`Espia`], ligada na 1.ª linha). ⛔ A troca nunca se recalcula aqui: no
-    /// quadro depois do Parar a cedência já saiu e o palco ainda é o do anterior — a conta dizia
-    /// `troca=true` com a marca antiga num quadro que não trocou (o «piscar» da W9, que o ecrã não teve).
+    /// quadro depois do Parar a cedência já saiu e o palco ainda é o do anterior (handoff de integração
+    /// da W9, «o piscar»).
     #[must_use]
     pub fn diagnostico(
         &mut self,
@@ -484,7 +523,7 @@ mod tests {
     /// O condutor dá cada gesto uma vez, os vencidos de uma vez.
     #[test]
     fn o_condutor_da_cada_gesto_uma_vez() {
-        let mut c = Caminho::default();
+        let mut c = Caminho::de(Variante::Base);
         let todos = roteiro(Variante::Base).len();
         let mut n = c.gestos_ate(0).len();
         for ms in (0..20_000).step_by(37) {

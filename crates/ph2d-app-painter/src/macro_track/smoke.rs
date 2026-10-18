@@ -161,8 +161,8 @@ pub fn monta_fazer(
     Some(bits)
 }
 
-/// As cenas `=4` (o tutorial) e `=6` (o caminho do dono, [`super::caminho`]) pintam em Wet Paint: o meio
-/// no 1.º bind, uma vez (como as cenas do pincel).
+/// As cenas `=4` (o tutorial) e `=6` (o caminho do dono, [`super::caminho`]; a variante `arrasta` fica em
+/// Digital) pintam em Wet Paint: o meio no 1.º bind, uma vez (como as cenas do pincel).
 pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static ARMADO: AtomicBool = AtomicBool::new(false);

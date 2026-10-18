@@ -197,7 +197,7 @@ pub struct PalcosDoPainter {
     transacao: Option<u64>,
     /// As marcas do artista por imagem e gravação (W9; [`marcas`]).
     marcas: BTreeMap<ChaveDaMarca, marcas::Guardada>,
-    /// A cena `=6`: o que cada ranhura recebeu e as trocas da última subida ([`caminho::Espia`]).
+    /// As cenas `=5`/`=6`: o que cada ranhura recebeu e as trocas da última subida ([`caminho::Espia`]).
     espia: Option<caminho::Espia>,
     /// Os gates trocam o cálculo do fim (um que falha).
     #[cfg(test)]

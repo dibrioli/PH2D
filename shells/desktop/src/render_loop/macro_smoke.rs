@@ -9,12 +9,6 @@ static FEITO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new
 /// A tela da cena (`=6` conduz-se sobre ela).
 static TELA: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
 
-thread_local! {
-    /// `=6`: o relógio da cena e o condutor do roteiro.
-    static CAMINHO: std::cell::RefCell<Option<(std::time::Instant, ph2d_app_painter::macro_track::caminho::Caminho)>> =
-        const { std::cell::RefCell::new(None) };
-}
-
 /// A montagem de uma cena do Painter: a tela nasce na próxima célula de importação.
 type MontaTela<T> = fn(
     &mut ph2d_ecs::SimWorld,
@@ -117,23 +111,11 @@ impl crate::App {
     /// linha de diagnóstico a cada décimo de segundo. Na `=5` (`conduz = false`) só o registo: o dono
     /// faz o caminho à mão.
     fn caminho_do_dono(&mut self, conduz: bool) {
-        use ph2d_app_painter::macro_track::caminho::{Caminho, Gesto, regista};
+        use ph2d_app_painter::macro_track::caminho::{Gesto, passo, regista};
         let Some(&bits) = TELA.get() else {
             return;
         };
-        let (ms, gestos, diag) = CAMINHO.with_borrow_mut(|c| {
-            let (t0, cam) = c.get_or_insert_with(|| {
-                regista(&ph2d_app_painter::macro_track::caminho::anuncio(conduz));
-                (std::time::Instant::now(), Caminho::default())
-            });
-            let ms = u64::try_from(t0.elapsed().as_millis()).unwrap_or(u64::MAX);
-            let gestos = if conduz {
-                cam.gestos_ate(ms)
-            } else {
-                Vec::new()
-            };
-            (ms, gestos, cam.hora_do_diagnostico(ms))
-        });
+        let (ms, gestos, diag) = passo(conduz);
         // Os pedidos à Timeline deste quadro (os do painel chegam aqui antes do dreno).
         if !self.timeline_intents.is_empty() {
             let mut i = format!("{:?}", self.timeline_intents);

@@ -695,3 +695,5 @@ fn the_host_invites_over_the_internet_and_copies_again() {
 /// W23 A3 — a lista das pessoas (o «+n» dos avatares e o da lista).
 #[path = "board_live_people_tests.rs"]
 mod people;
+#[path = "board_live_sections_tests.rs"]
+mod sections;

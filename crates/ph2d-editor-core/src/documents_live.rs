@@ -93,6 +93,9 @@ pub struct LiveLink {
     pub strict_nat: bool,
     /// A frase da última entrada por link que falhou (o que fazer), até a próxima tentativa.
     pub failed: Option<String>,
+    /// Esta sessão de convidado entrou por LINK (a família escreve-o ao escolher a rota): o painel
+    /// mostra-a no cartão da internet e não no da rede local.
+    pub by_link: bool,
 }
 
 impl LiveLink {
@@ -100,6 +103,7 @@ impl LiveLink {
     pub fn ended(&mut self) {
         self.searching = None;
         self.strict_nat = false;
+        self.by_link = false;
     }
 }
 
@@ -233,6 +237,8 @@ pub(crate) struct LivePanel {
     /// mostra as seguintes.
     pub people_from: usize,
     pub people_shown: usize,
+    /// Os cartões pintados (rede local, internet, pessoas), pela ordem das secções do painel.
+    pub sections: Vec<crate::zones::Rect>,
 }
 
 impl LiveView {

@@ -17,6 +17,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.live.found_tip" => "Pick this board (then type its code)",
         "board.live.code" => "Code",
         "board.live.address" => "Address (optional)",
+        "board.live.link" => "Link",
+        // W23 — os cartões do painel, por caminho de ligação.
+        "board.live.sec_network" => "Local network",
+        "board.live.sec_internet" => "Internet",
         "board.live.join" => "Join",
         "board.live.join_tip" => "Join the board with this code",
         // ADR-0187 — pela internet.
@@ -29,9 +33,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.live.invite_net_again" => "Copy the link again",
         "board.live.invite_net_copied" => "Internet link copied",
         "board.live.invite_net_failed" => "Couldn't open to the internet: {error}",
-        "board.live.link_hint" => "Got a link? Paste it in the code field",
+        "board.live.link_hint" => "Got a link? Paste it here",
         "board.live.join_link" => "Join by link",
-        "board.live.join_link_tip" => "Join with the link you pasted in the code field",
+        "board.live.join_link_tip" => "Join with the link you pasted in the Link field",
         "board.live.link_bad" => "That isn't a PH2D board link",
         "board.live.link_unreachable" => {
             "Couldn't find the board of that link. Ask the host to keep the board open in Live, \
@@ -161,7 +165,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "2. Send that link (chat or e-mail). It is the key of this room: whoever has it can join."
         }
         "board.smoke.net.l3" => {
-            "3. In the other PH2D: press Live, paste the link in the code field, click Join by link."
+            "3. In the other PH2D: press Live, paste the link in the Link field, click Join by link."
         }
         "board.smoke.net.l4" => {
             "4. It can take up to 30 seconds: the two houses find each other, then the board arrives."

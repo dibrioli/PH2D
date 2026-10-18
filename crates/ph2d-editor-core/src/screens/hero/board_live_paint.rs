@@ -2,8 +2,9 @@
 //! avatares à esquerda dele, o selo «Following …» no topo, e o painel na coluna da equipa.
 
 use super::super::super::super::HeroScreen;
-use super::{Hit, LiveButton, ensure_fields, node, register, show_code};
-use crate::documents::live::{LiveInternet, LiveRole};
+use super::rows::{FIELDS, Row, rows};
+use super::{Hit, LiveButton, ensure_fields, node, register};
+use crate::documents::live::LiveRole;
 use crate::icons::IconId;
 use crate::paint::{
     fill_circle, fill_rounded_rect, paint_text_centered, paint_text_elided, resolve,
@@ -224,229 +225,60 @@ fn paint_badge(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
     );
 }
 
-/// Os campos do `Off`, pela ordem: o rótulo e o campo (a coluna dos rótulos mede-se por eles).
-const FIELDS: [(&str, NodeId); 2] = [
-    ("board.live.code", crate::ids::BOARD_LIVE_CODE_INPUT),
-    ("board.live.address", crate::ids::BOARD_LIVE_ADDR_INPUT),
-];
-
-/// Uma fila do painel.
-enum Row {
-    /// Texto que quebra em linhas.
-    Text(String, TypeToken, ColorToken),
-    /// O código grande da sala.
-    Code(String),
-    Button(LiveButton, String, bool),
-    /// Um campo com o rótulo à esquerda.
-    Field(&'static str, NodeId),
-    /// Um quadro achado na rede (clicável).
-    Found(usize, String),
-    /// Uma pessoa na sala (a bolinha na cor dela e o nome).
-    Person(String, u8),
-}
-
-impl Row {
-    fn is_list(&self) -> bool {
-        matches!(self, Row::Found(..) | Row::Person(..))
-    }
-}
-
-/// O que o painel mostra, por papel.
-fn rows(hero: &HeroScreen) -> Vec<Row> {
-    let lv = &hero.documents.live_view;
-    let text = |k: &str, t, c| Row::Text(tr(k).to_owned(), t, c);
-    let people = || {
-        let mut v = vec![text("board.live.people", TypeToken::Sm, ColorToken::Text2)];
-        let from = lv.panel.people_from % lv.peers.len().max(1);
-        for p in lv.peers[from..].iter().chain(&lv.peers[..from]) {
-            let name = if p.me {
-                tr_with("board.live.you", &[("name", &p.name)])
-            } else {
-                p.name.clone()
-            };
-            v.push(Row::Person(name, p.color));
-        }
-        v
-    };
-    let button = |b, k: &str, main| Row::Button(b, tr(k).to_owned(), main);
-    // A firewall (ADR-0181 §8): antes de abrir e enquanto se é anfitrião — quem entra precisa dela
-    // aberta deste lado, e a descoberta também.
-    let firewall = || {
-        let f = lv.firewall;
-        let mut v = Vec::new();
-        if f.busy {
-            v.push(text("board.live.fw_busy", TypeToken::Xs, ColorToken::Text2));
-            return v;
-        }
-        if f.can_allow {
-            v.push(text(
-                "board.live.fw_blocked",
-                TypeToken::Xs,
-                ColorToken::Text2,
-            ));
-            v.push(button(
-                LiveButton::FirewallAllow,
-                "board.live.fw_allow",
-                false,
-            ));
-        }
-        if f.can_remove {
-            v.push(button(
-                LiveButton::FirewallRemove,
-                "board.live.fw_remove",
-                false,
-            ));
-        }
-        v
-    };
-    // ADR-0187 — a entrada pela internet do anfitrião.
-    let internet = || -> Vec<Row> {
-        match &lv.internet {
-            LiveInternet::Off => vec![button(
-                LiveButton::InviteInternet,
-                "board.live.invite_net",
-                false,
-            )],
-            LiveInternet::Preparing => vec![text(
-                "board.live.invite_net_busy",
-                TypeToken::Xs,
-                ColorToken::Text2,
-            )],
-            LiveInternet::Ready { .. } => {
-                let mut v = vec![text(
-                    "board.live.invite_net_ready",
-                    TypeToken::Xs,
-                    ColorToken::Text2,
-                )];
-                // A rede desta casa muda o endereço por destino: quem está fora pode não entrar.
-                if lv.link.strict_nat {
-                    v.push(text(
-                        "board.live.nat_strict_host",
-                        TypeToken::Xs,
-                        ColorToken::Text1,
-                    ));
-                }
-                v.push(button(
-                    LiveButton::InviteInternet,
-                    "board.live.invite_net_again",
-                    false,
-                ));
-                v
-            }
-            LiveInternet::Failed(why) => vec![
-                Row::Text(why.clone(), TypeToken::Xs, ColorToken::Text2),
-                button(LiveButton::InviteInternet, "board.live.invite_net", false),
-            ],
-        }
-    };
-    let mut out = Vec::new();
-    match &lv.role {
-        LiveRole::Off => {
-            out.push(button(LiveButton::Open, "board.live.open", true));
-            out.extend(firewall());
-            out.push(text(
-                "board.live.join_title",
-                TypeToken::Sm,
-                ColorToken::Text2,
-            ));
-            for (i, f) in lv.found.iter().enumerate() {
-                let line = tr_with(
-                    "board.live.found_row",
-                    &[("board", &f.board), ("host", &f.host)],
-                );
-                out.push(Row::Found(i, line));
-            }
-            if lv.found.is_empty() {
-                out.push(text(
-                    "board.live.none_found",
-                    TypeToken::Xs,
-                    ColorToken::Text3,
-                ));
-            }
-            out.extend(FIELDS.iter().map(|(k, id)| Row::Field(k, *id)));
-            out.push(button(LiveButton::Join, "board.live.join", true));
-            out.push(text(
-                "board.live.link_hint",
-                TypeToken::Xs,
-                ColorToken::Text3,
-            ));
-            out.push(button(LiveButton::JoinLink, "board.live.join_link", false));
-            // ADR-0187 — porque a última entrada por link falhou, e o que fazer (debaixo do botão dela).
-            if let Some(why) = &lv.link.failed {
-                out.push(Row::Text(why.clone(), TypeToken::Xs, ColorToken::Text1));
-            }
-        }
-        // ADR-0187 — por link, a espera é a da internet (até `s` segundos), não a da rede local.
-        LiveRole::Joining => match lv.link.searching {
-            Some(s) => {
-                out.push(text(
-                    "board.live.link_searching",
-                    TypeToken::Sm,
-                    ColorToken::Text1,
-                ));
-                let hint = tr_with("board.live.link_searching_hint", &[("s", &s.to_string())]);
-                out.push(Row::Text(hint, TypeToken::Xs, ColorToken::Text2));
-                if lv.link.strict_nat {
-                    out.push(text(
-                        "board.live.nat_strict_guest",
-                        TypeToken::Xs,
-                        ColorToken::Text1,
-                    ));
-                }
-                out.push(button(LiveButton::Cancel, "board.live.cancel", false));
-            }
-            None => {
-                out.push(text(
-                    "board.live.connecting",
-                    TypeToken::Sm,
-                    ColorToken::Text1,
-                ));
-                out.push(button(LiveButton::Cancel, "board.live.cancel", false));
-            }
-        },
-        LiveRole::Hosting { code, addrs } => {
-            out.push(Row::Code(show_code(code)));
-            out.push(text("board.live.share", TypeToken::Xs, ColorToken::Text2));
-            for a in addrs {
-                out.push(Row::Text(a.clone(), TypeToken::Xs, ColorToken::Text3));
-            }
-            out.extend(internet());
-            out.extend(firewall());
-            out.extend(people());
-            out.push(button(LiveButton::Summon, "board.live.summon", false));
-            out.push(button(LiveButton::End, "board.live.end", false));
-        }
-        LiveRole::Guest { host } => {
-            let line = tr_with("board.live.in_board", &[("host", host)]);
-            out.push(Row::Text(line, TypeToken::Sm, ColorToken::Text1));
-            out.extend(people());
-            out.push(button(LiveButton::Summon, "board.live.summon", false));
-            out.push(button(LiveButton::Leave, "board.live.leave", false));
-        }
-    }
-    out
-}
-
-/// Os textos das filas do painel como o `rows` os monta (os testes: a frase certa no papel certo).
-#[cfg(test)]
-pub(crate) fn row_texts(hero: &HeroScreen) -> Vec<String> {
-    rows(hero)
-        .into_iter()
-        .filter_map(|r| match r {
-            Row::Text(t, ..) => Some(t),
-            _ => None,
-        })
-        .collect()
-}
-
 /// A altura de uma fila (sem o vão).
 fn row_h(row: &Row, ts: &mut TextSystem, w: f32) -> f32 {
     let s = btn();
     match row {
         Row::Text(t, font, _) => ts.layout(t, font.px(), w).height().max(s),
         Row::Code(_) => 2.0 * s,
+        Row::End => 0.0,
         _ => s,
     }
+}
+
+/// Onde cada fila cai a partir de `(x, y)` com a largura `w`: o rect de cada fila, os cartões, e a
+/// altura toda (com o vão da última). Dentro de um cartão as filas recuam a folga dele de cada lado;
+/// o título fica por cima do cartão, no do painel (o modelo de `widget::section_cards`).
+fn place<'a>(
+    rows: impl IntoIterator<Item = &'a Row>,
+    ts: &mut TextSystem,
+    x: f32,
+    y: f32,
+    w: f32,
+) -> (Vec<Rect>, Vec<Rect>, f32) {
+    let (s, g, cp) = (
+        btn(),
+        ph2d_tokens::control_gap_px(),
+        ph2d_tokens::card_pad_px(),
+    );
+    let mut at = Vec::new();
+    let mut cards = Vec::new();
+    let mut top: Option<f32> = None;
+    let mut cy = y;
+    for row in rows {
+        match row {
+            Row::Section(_) => {
+                at.push(Rect::new(x, cy, w, s));
+                top = Some(cy + s);
+                cy += s + cp;
+            }
+            Row::End => {
+                let t = top.take().unwrap_or(cy);
+                let bottom = cy - g + cp;
+                cards.push(Rect::new(x, t, w, bottom - t));
+                at.push(Rect::new(x, bottom, w, 0.0));
+                cy = bottom + g;
+            }
+            _ => {
+                let inset = if top.is_some() { cp } else { 0.0 };
+                let rw = w - 2.0 * inset;
+                let rh = row_h(row, ts, rw);
+                at.push(Rect::new(x + inset, cy, rw, rh));
+                cy += rh + g;
+            }
+        }
+    }
+    (at, cards, cy - y)
 }
 
 /// ⭐ O painel na coluna da equipa: as filas fixas inteiras, e as listas (achados, pessoas) cortadas
@@ -460,14 +292,8 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
     let (s, pad, g) = (btn(), Spacing::Sm.px(), ph2d_tokens::control_gap_px());
     let inner = w - 2.0 * pad;
     let all = rows(hero);
-    let fixed: f32 = pad * 2.0
-        + s
-        + g
-        + all
-            .iter()
-            .filter(|r| !r.is_list())
-            .map(|r| row_h(r, ts, inner) + g)
-            .sum::<f32>();
+    let (_, _, fixed_h) = place(all.iter().filter(|r| !r.is_list()), ts, x + pad, 0.0, inner);
+    let fixed = pad * 2.0 + s + g + fixed_h;
     let lists = all.iter().filter(|r| r.is_list()).count();
     let mut fit = ((room - fixed) / (s + g)).floor().max(0.0) as usize;
     // A lista que não cabe acaba em «+n» (antes cortava-se calada); a fila dele sai do que cabe.
@@ -496,14 +322,23 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
     let all = kept;
     hero.documents.live_view.panel.people_shown =
         all.iter().filter(|r| matches!(r, Row::Person(..))).count();
-    let h = pad * 2.0 + s + g + all.iter().map(|r| row_h(r, ts, inner) + g).sum::<f32>();
+    let top = y0 + pad + s + g;
+    let (at, cards, body) = place(&all, ts, x + pad, top, inner);
+    let h = pad * 2.0 + s + g + body;
     let card = Rect::new(x, y0, w, h);
     super::super::panels::card(scene, card, theme);
     crate::screens::hero::board_nav::fit::cover(hero, card);
     hero.hit_index
         .register(node(Hit::Button(LiveButton::Surface)), card);
+    // Os cartões de cada caminho de ligação (e o das pessoas), por baixo das filas deles.
+    let tone = crate::widget::section_cards::CardDepth::Section.fill(theme);
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
+    for c in &cards {
+        fill_rounded_rect(scene, *c, radius, tone);
+    }
+    hero.documents.live_view.panel.sections = cards;
     // O título e o ×.
-    let mut y = y0 + pad;
+    let y = y0 + pad;
     super::super::super::button(
         scene,
         &mut hero.hit_index,
@@ -525,13 +360,9 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
         inner - s - g,
         resolve(ColorToken::Text1, theme),
     );
-    y += s + g;
     let mut found = Vec::new();
-    for row in &all {
-        let rh = row_h(row, ts, inner);
-        let r = Rect::new(x + pad, y, inner, rh);
+    for (row, r) in all.iter().zip(at) {
         paint_row(hero, row, r, scene, ts, &mut found);
-        y += rh + g;
     }
     hero.documents.live_view.panel.found = found;
 }
@@ -565,6 +396,20 @@ fn paint_row(
         );
     };
     match row {
+        Row::Section(sec) => {
+            let font = TypeToken::Sm.px();
+            paint_text_elided(
+                ts,
+                scene,
+                tr(sec.title_key()),
+                r.x,
+                super::super::text_y(r.y, s, font),
+                font,
+                r.w,
+                resolve(ColorToken::Text1, theme),
+            );
+        }
+        Row::End => {}
         Row::Text(t, font, ink) => {
             crate::paint::paint_text_block(
                 ts,
@@ -590,7 +435,7 @@ fn paint_row(
         Row::Button(b, label, main) => button(hero, scene, ts, node(Hit::Button(*b)), label, *main),
         Row::Field(key, id) => {
             let font = TypeToken::Xs.px();
-            // A coluna dos rótulos é a do MAIS LARGO dos campos do painel (os dois alinham): a 40 %
+            // A coluna dos rótulos é a do MAIS LARGO dos campos do painel (todos alinham): a 40 %
             // fixa cortava «Address (optional)» (foto b0 da cena 12). Nunca mais de 60 % da fila.
             let widest =
                 crate::paint::label_column_width(ts, font, FIELDS.iter().map(|(k, _)| tr(k)));

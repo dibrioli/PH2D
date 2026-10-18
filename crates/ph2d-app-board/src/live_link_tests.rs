@@ -199,3 +199,25 @@ fn only_the_internet_paces_the_writes() {
     ana.documents.ask_live(LiveRequest::Leave);
     service(&mut ana);
 }
+
+/// W23 — o painel sabe por onde este convidado entrou: só a rota do link o marca, e sair apaga-o.
+#[test]
+fn only_the_link_route_marks_the_session_as_internet() {
+    reset_for_tests();
+    internet_local_for_tests();
+    let (_h, ih) = internet_room();
+    let mut bia = hero("Bia");
+    bia.documents
+        .ask_live(LiveRequest::JoinLink { link: ih.link() });
+    service(&mut bia);
+    assert!(bia.documents.live_view().link.by_link, "pelo link");
+    bia.documents.ask_live(LiveRequest::Leave);
+    service(&mut bia);
+    assert!(!bia.documents.live_view().link.by_link, "saiu");
+    bia.documents.ask_live(LiveRequest::Join {
+        addr: Some("127.0.0.1:9".into()),
+        code: "ABCDEF".into(),
+    });
+    service(&mut bia);
+    assert!(!bia.documents.live_view().link.by_link, "pelo código");
+}

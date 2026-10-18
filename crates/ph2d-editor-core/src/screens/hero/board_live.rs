@@ -17,11 +17,14 @@ use ph2d_board_model::Camera;
 mod others;
 #[path = "board_live_paint.rs"]
 mod paint;
+#[path = "board_live_rows.rs"]
+mod rows;
 
 pub use others::paint as paint_others;
-#[cfg(test)]
-pub(crate) use paint::row_texts;
 pub use paint::{paint, paint_button};
+pub use rows::LiveSection;
+#[cfg(test)]
+pub(crate) use rows::{row_texts, sections};
 
 /// De quanto em quanto tempo o painel aberto (e sem sessão) volta a procurar quadros na rede. É o
 /// ritmo do aviso da família na rede local, não um tecto: uma procura é um pacote.
@@ -168,11 +171,12 @@ pub fn populate(store: &mut WidgetStore) {
     }
 }
 
-/// Os dois campos do `Off` existem (vazios, sem teclado) para o pintor os desenhar.
+/// Os três campos do `Off` existem (vazios, sem teclado) para o pintor os desenhar.
 fn ensure_fields(store: &mut WidgetStore) {
     for id in [
         crate::ids::BOARD_LIVE_CODE_INPUT,
         crate::ids::BOARD_LIVE_ADDR_INPUT,
+        crate::ids::BOARD_LIVE_LINK_INPUT,
     ] {
         if store.get(id).is_none() {
             store.register(
@@ -313,10 +317,15 @@ pub fn is_link(s: &str) -> bool {
 /// ecrã não depende da rede).
 pub const LINK_SCHEME: &str = "ph2d-board://";
 
-/// «Join by link»: o link colado no campo do código vai inteiro à família (a chave distingue
-/// maiúsculas: nunca se normaliza).
+/// «Join by link»: o link do campo Link (ou, se lá não há nenhum, o colado no campo do código) vai
+/// inteiro à família (a chave distingue maiúsculas: nunca se normaliza).
 fn join_link(hero: &mut HeroScreen) {
-    let link = field(hero, crate::ids::BOARD_LIVE_CODE_INPUT);
+    let typed = field(hero, crate::ids::BOARD_LIVE_LINK_INPUT);
+    let link = if typed.trim().is_empty() {
+        field(hero, crate::ids::BOARD_LIVE_CODE_INPUT)
+    } else {
+        typed.trim().to_owned()
+    };
     if !is_link(&link) {
         super::notice(hero, "board.live.link_bad");
         return;
@@ -360,10 +369,16 @@ fn upper_code(store: &mut WidgetStore) {
 
 /// ⭐ Os cliques e os campos do quadro ao vivo. Corre no pré-despacho (ids derivados).
 pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
-    use crate::ids::{BOARD_LIVE_ADDR_INPUT as ADDR, BOARD_LIVE_CODE_INPUT as CODE};
+    use crate::ids::{
+        BOARD_LIVE_ADDR_INPUT as ADDR, BOARD_LIVE_CODE_INPUT as CODE, BOARD_LIVE_LINK_INPUT as LINK,
+    };
     match event {
         WidgetEvent::Submit(id) if id == CODE || id == ADDR => {
             join(hero);
+            return true;
+        }
+        WidgetEvent::Submit(id) if id == LINK => {
+            join_link(hero);
             return true;
         }
         WidgetEvent::TextChanged(id) if id == CODE => {
@@ -371,7 +386,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             return true;
         }
         WidgetEvent::Cancel(id) | WidgetEvent::Blur(id) | WidgetEvent::TextChanged(id)
-            if id == CODE || id == ADDR =>
+            if id == CODE || id == ADDR || id == LINK =>
         {
             return true;
         }
@@ -424,7 +439,13 @@ fn button(hero: &mut HeroScreen, b: LiveButton) {
         LiveButton::Unfollow => unfollow(hero),
         LiveButton::FirewallAllow => ask(hero, LiveRequest::FirewallAllow),
         LiveButton::FirewallRemove => ask(hero, LiveRequest::FirewallRemove),
-        LiveButton::InviteInternet => ask(hero, LiveRequest::InviteInternet),
+        // Sem sessão, convidar pela internet abre a sala e faz o link (a família serve-os por ordem).
+        LiveButton::InviteInternet => {
+            if hero.documents.live_view.role == LiveRole::Off {
+                ask(hero, LiveRequest::Host);
+            }
+            ask(hero, LiveRequest::InviteInternet);
+        }
         LiveButton::JoinLink => join_link(hero),
         LiveButton::Everyone => {
             if !hero.documents.live_view.panel.open {

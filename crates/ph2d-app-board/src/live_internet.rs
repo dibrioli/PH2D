@@ -139,6 +139,7 @@ pub(super) fn join_by(st: &mut State, hero: &mut HeroScreen, route: Route) {
         .then(|| u32::try_from(LINK_TIMEOUT.as_secs()).unwrap_or(u32::MAX));
     hero.documents.live_view_mut().link = LiveLink {
         searching,
+        by_link: matches!(route, Route::Link { .. }),
         ..LiveLink::default()
     };
     st.live = Some(Live::Guest {

@@ -26,9 +26,11 @@ pub const BOARD_AUTHOR_INPUT: NodeId = hash_node_id("board_author_input");
 pub const BOARD_VERSION_INPUT: NodeId = hash_node_id("board_version_input");
 /// W13 — o campo que ocupa o título de uma sessão de votação enquanto ela se renomeia.
 pub const BOARD_POLL_NAME_INPUT: NodeId = hash_node_id("board_poll_name_input");
-/// W11 — o painel «Live»: o código de 6 caracteres e o endereço (opcional) do quadro a que se entra.
+/// W11 — o painel «Live»: o código de 6 caracteres e o endereço (opcional) do quadro a que se entra;
+/// W23 — o link de convite (o cartão da internet).
 pub const BOARD_LIVE_CODE_INPUT: NodeId = hash_node_id("board_live_code_input");
 pub const BOARD_LIVE_ADDR_INPUT: NodeId = hash_node_id("board_live_addr_input");
+pub const BOARD_LIVE_LINK_INPUT: NodeId = hash_node_id("board_live_link_input");
 /// Menu do botão direito numa aba de quadro.
 pub const CTX_MENU_BOARD_RENAME: NodeId = hash_node_id("ctx_menu_board_rename");
 pub const CTX_MENU_BOARD_DUPLICATE: NodeId = hash_node_id("ctx_menu_board_duplicate");

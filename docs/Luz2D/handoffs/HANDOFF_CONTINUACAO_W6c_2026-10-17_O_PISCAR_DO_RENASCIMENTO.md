@@ -80,9 +80,10 @@ correram até 6: o veredito já estava dado (abaixo); a (b) foi até 6.
 - **Prova da lei «nenhum quadro sem luz»** (mutações, restauradas): **M1** o renascimento de volta ao FIM do quadro
   (a C1b) ⇒ `um quadro saiu sem luz` e o portão dos receptores reprovam; **M2** `soltar_se_renasce` sem soltar ⇒
   `o pedido não soltou o receptor`. A asserção antiga (`acesa()`) era cega ao quadro sem luz (não olha a vista).
-- Instrumentos novos da onda (fora do repo, scratchpad da sessão): `alheios.py` (o detector do §2), `um_processo.sh`
-  (60 s livres, amostragem 0,5 s, o roteiro do repo), `ronda2.sh` (as 6 permutações; sujo volta à fila; esperar não
-  conta) e `analisa.py` (c2 = mediana do último terço; blocos antes = a última leitura antes do renascimento).
+- Instrumentos da onda, versionados em [`ferramentas/regua_renasce/`](../ferramentas/regua_renasce/) (os da W6b
+  perderam-se fora do repo): `alheios.py` (o detector do §2), `um_processo.sh` (60 s livres, amostragem 0,5 s, o
+  roteiro do repo), `ronda.sh <saida> <N> <VAR=…|-> …` (blocos rodados; sujo volta à fila; esperar não conta) e
+  `analisa.py` (c2 = mediana do último terço; blocos antes = a última leitura antes do renascimento).
 
 ## 4. O que ficou no código
 

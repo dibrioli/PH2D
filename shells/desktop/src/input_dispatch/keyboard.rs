@@ -198,6 +198,12 @@ impl App {
             return;
         }
 
+        // F19: no Preview nenhum campo guarda o foco — a tecla não pode editar o que o `leave` desfaz.
+        if self.ui_preview.is_on()
+            && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+        {
+            h.store.set_focus(None);
+        }
         // Hero pipeline (ADR-0024): translate winit's physical KeyCode
         // into the editor's KEY_* constants and route to the focused
         // widget.

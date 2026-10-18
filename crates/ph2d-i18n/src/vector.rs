@@ -145,6 +145,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.states.damping" => "Damping",
         "panel.vector.states.preview" => "Preview",
         "panel.vector.states.preview.on" => "Preview on — Esc to exit",
+        "panel.vector.states.preview.locked" => "Preview is on: press Esc to edit again",
         "panel.vector.states.move_all" => "Move All States",
         "panel.vector.states.curve" => "Curve",
         "panel.vector.states.curve.mode" => "Direction",

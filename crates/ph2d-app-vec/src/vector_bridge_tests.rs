@@ -371,14 +371,7 @@ fn selecting_a_path_reseeds_the_store_not_only_the_tool() {
     let mut tool = VectorTool::default();
     let mut pen = PenTool::default();
     pen.select(Some(id));
-    super::style::seed_style_from_selection(
-        &mut tool,
-        &mut store,
-        &pen,
-        &scene,
-        world_to_px,
-        None,
-    );
+    super::style::seed_style_from_selection(&mut tool, &mut store, &pen, &scene, world_to_px, None);
 
     assert!(
         (tool.stroke_width_px() - width_world * world_to_px).abs() < 1e-9,

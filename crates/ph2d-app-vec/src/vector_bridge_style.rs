@@ -474,6 +474,12 @@ fn reseed_style_sliders(
         ph2d_tool_vector::ids::VECTOR_WIDTH,
         params::px_to_slider(tool.stroke_width_px()),
     );
+    // O NÚMERO da Width (o chip da row e o «W» da barra) pinta da caixa, não da barra; o
+    // `set_number_value` respeita o foco e o arrasto do próprio campo.
+    store.set_number_value(
+        ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
+        tool.stroke_width_px(),
+    );
     sync_opacity_slider(
         store,
         ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY,

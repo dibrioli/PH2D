@@ -149,6 +149,7 @@ pub mod text_edit;
 pub mod texture_pattern_edit;
 pub mod trim;
 pub mod ui_panel_spec;
+pub mod ui_preview_lock;
 pub mod ui_state_bridge;
 pub mod ui_state_edit;
 pub mod vec_clip_edit;
@@ -224,6 +225,8 @@ mod vector_mode_estrela;
 mod vector_mode_handles;
 /// As cenas 25 e 26 (F17): o botão feito interface, nas abas Drawing e Interface.
 mod vector_mode_interface;
+/// As cenas 29 e 30 (F19): o painel lê a forma depois do Show do Hover.
+mod vector_mode_le_a_forma;
 /// A cena 21 (F14): as quinas arredondadas em toda forma que as tem.
 mod vector_mode_quinas;
 /// A cena 20 (F13): o modo Forma selecciona — o clique desarma e traz as alças.

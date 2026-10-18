@@ -9,7 +9,7 @@ use ph2d_editor_core::panel::Panel;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::{PanelEvent, ToolId, ToolRegistry};
 use ph2d_tool_vector::{VectorTool, ids};
-use ph2d_vec_edit::{Pencil, PenTool, ShapeTool};
+use ph2d_vec_edit::{PenTool, Pencil, ShapeTool};
 use ph2d_vec_scene::{
     DashPattern, LineCap, LineJoin, Marker, Paint, Rgba8, StrokeSpec, VecPathId, VecScene,
 };
@@ -71,7 +71,11 @@ impl Quadro {
             px: PX,
         };
         q.quadro();
-        assert_eq!(q.tool().fill_rgba(), AZUL, "a semente da seleção não correu");
+        assert_eq!(
+            q.tool().fill_rgba(),
+            AZUL,
+            "a semente da seleção não correu"
+        );
         q
     }
 
@@ -127,7 +131,11 @@ impl Quadro {
     }
 
     fn slider(&self, id: ph2d_editor_core::NodeId) -> f32 {
-        self.hero.store.slider(id).map(|(_, v)| v).expect("slider registado")
+        self.hero
+            .store
+            .slider(id)
+            .map(|(_, v)| v)
+            .expect("slider registado")
     }
 
     /// O seletor de cor flutuante, registado como o `pre_populate` o regista, e aberto sobre `swatch`.
@@ -173,20 +181,54 @@ fn o_painel_reve_a_forma_depois_de_uma_escrita_alheia() {
     let fill_swatch = q.hero.store.widget_color(ids::VECTOR_FILL_SWATCH);
     let stroke_swatch = q.hero.store.widget_color(ids::VECTOR_STROKE_SWATCH);
     let width_track = q.slider(ids::VECTOR_WIDTH);
+    let width_num = q.hero.store.number_value(ids::VECTOR_WIDTH_NUM);
+    assert_eq!(
+        width_num,
+        Some(6.0),
+        "o NÚMERO da Width (painel e «W» da barra) ficou o de antes — ele pinta da caixa, não da barra"
+    );
     let t = q.tool();
-    assert_eq!(t.fill_rgba(), LARANJA, "o Fill do painel ficou com a cor de antes do Show");
-    assert_eq!(t.stroke_rgba(), AMARELO, "o Stroke do painel ficou com a cor de antes");
+    assert_eq!(
+        t.fill_rgba(),
+        LARANJA,
+        "o Fill do painel ficou com a cor de antes do Show"
+    );
+    assert_eq!(
+        t.stroke_rgba(),
+        AMARELO,
+        "o Stroke do painel ficou com a cor de antes"
+    );
     assert!(
         (t.stroke_width_px() - 6.0).abs() < 1e-9,
         "a Width ficou em {} px",
         t.stroke_width_px()
     );
-    assert_eq!(super::line_cap(t.cap()), LineCap::Round, "o Cap ficou o de antes");
-    assert_eq!(super::line_join(t.join()), LineJoin::Round, "o Join ficou o de antes");
-    assert_eq!(t.dash_pattern(), Some(DashPattern::single(2.0, 1.0)), "o tracejado ficou o de antes");
+    assert_eq!(
+        super::line_cap(t.cap()),
+        LineCap::Round,
+        "o Cap ficou o de antes"
+    );
+    assert_eq!(
+        super::line_join(t.join()),
+        LineJoin::Round,
+        "o Join ficou o de antes"
+    );
+    assert_eq!(
+        t.dash_pattern(),
+        Some(DashPattern::single(2.0, 1.0)),
+        "o tracejado ficou o de antes"
+    );
     assert_eq!(t.marker_end(), Marker::Triangle, "a ponta ficou a de antes");
-    assert_eq!(fill_swatch, Some(LARANJA), "a amostra Fill (painel e barra) mente");
-    assert_eq!(stroke_swatch, Some(AMARELO), "a amostra Stroke (painel e barra) mente");
+    assert_eq!(
+        fill_swatch,
+        Some(LARANJA),
+        "a amostra Fill (painel e barra) mente"
+    );
+    assert_eq!(
+        stroke_swatch,
+        Some(AMARELO),
+        "a amostra Stroke (painel e barra) mente"
+    );
     assert!(
         (f64::from(width_track) - f64::from(ph2d_tool_vector::params::px_to_slider(6.0))).abs()
             < 1e-6,
@@ -208,11 +250,27 @@ fn tocar_um_controlo_depois_do_show_nao_apaga_o_hover() {
         .handle_panel_event(PanelEvent::SetValue(ids::VECTOR_WIDTH, v));
     q.quadro();
     let f = q.forma();
-    assert_eq!(f.fill, Some(Paint::Solid(rgba(LARANJA))), "a Width apagou o laranja do Hover");
+    assert_eq!(
+        f.fill,
+        Some(Paint::Solid(rgba(LARANJA))),
+        "a Width apagou o laranja do Hover"
+    );
     let s = f.stroke.as_ref().expect("o traço existe");
-    assert_eq!(s.color(), rgba(AMARELO), "a Width apagou o amarelo do Hover");
-    assert_eq!(s.dash, Some(DashPattern::single(2.0, 1.0)), "a Width apagou o tracejado do Hover");
-    assert!((s.width - 9.0 * PX).abs() < 1e-6, "a Width não chegou à forma ({})", s.width);
+    assert_eq!(
+        s.color(),
+        rgba(AMARELO),
+        "a Width apagou o amarelo do Hover"
+    );
+    assert_eq!(
+        s.dash,
+        Some(DashPattern::single(2.0, 1.0)),
+        "a Width apagou o tracejado do Hover"
+    );
+    assert!(
+        (s.width - 9.0 * PX).abs() < 1e-6,
+        "a Width não chegou à forma ({})",
+        s.width
+    );
 }
 
 /// ⛔ **O seletor aberto não desfaz uma escrita alheia** — e passa a mostrar a cor nova.
@@ -231,7 +289,11 @@ fn o_seletor_aberto_nao_desfaz_uma_escrita_alheia() {
         Some(Paint::Solid(rgba(LARANJA))),
         "o seletor aberto reescreveu a cor de antes por cima do Show"
     );
-    assert_eq!(q.seletor(), LARANJA, "o seletor aberto continua a mostrar a cor de antes");
+    assert_eq!(
+        q.seletor(),
+        LARANJA,
+        "o seletor aberto continua a mostrar a cor de antes"
+    );
 }
 
 /// **O desfazer vê-se no painel** — a `VecScene` inteira trocada por uma anterior, o MESMO id
@@ -246,9 +308,20 @@ fn o_desfazer_se_ve_no_painel() {
     q.scene = antes;
     q.quadro();
     let t = q.tool();
-    assert_eq!(t.fill_rgba(), AZUL, "depois do desfazer o Fill do painel ficou laranja");
-    assert_eq!(t.stroke_rgba(), BRANCO, "depois do desfazer o Stroke ficou amarelo");
-    assert!((t.stroke_width_px() - 3.0).abs() < 1e-9, "a Width não voltou");
+    assert_eq!(
+        t.fill_rgba(),
+        AZUL,
+        "depois do desfazer o Fill do painel ficou laranja"
+    );
+    assert_eq!(
+        t.stroke_rgba(),
+        BRANCO,
+        "depois do desfazer o Stroke ficou amarelo"
+    );
+    assert!(
+        (t.stroke_width_px() - 3.0).abs() < 1e-9,
+        "a Width não voltou"
+    );
     assert_eq!(t.dash_pattern(), None, "o tracejado não voltou");
 }
 
@@ -263,7 +336,11 @@ fn o_painel_nao_briga_com_a_propria_escrita() {
     for c in [LARANJA, AMARELO, [10, 200, 90, 255], AZUL] {
         q.escolhe(c);
         q.quadro();
-        assert_eq!(q.forma().fill, Some(Paint::Solid(rgba(c))), "a escolha {c:?} não chegou");
+        assert_eq!(
+            q.forma().fill,
+            Some(Paint::Solid(rgba(c))),
+            "a escolha {c:?} não chegou"
+        );
         assert_eq!(q.seletor(), c, "o seletor foi puxado para outra cor");
         assert_eq!(q.tool().fill_rgba(), c);
     }

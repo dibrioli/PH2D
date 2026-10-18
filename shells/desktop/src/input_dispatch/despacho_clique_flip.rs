@@ -210,6 +210,22 @@ impl crate::App {
             self.ui_preview_point(evt.x, evt.y, kind == PointerKind::Down);
             return true;
         }
+        // F19: no Preview o painel MOSTRA e não edita — a lei e a lista de vista são da família.
+        if self.ui_preview.is_on()
+            && kind == PointerKind::Down
+            && let Some(g) = self.gfx.as_mut()
+            && let Some(h) = g.hero_screen.as_ref()
+            && ph2d_app_vec::ui_preview_lock::recusa(
+                &h.store,
+                h.chrome_panel_at(evt.x, evt.y),
+                h.chrome_hit(evt.x, evt.y),
+            )
+        {
+            g.toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+                "panel.vector.states.preview.locked",
+            )));
+            return true;
+        }
         // ADR-0114 W2: desenho do Flip. O pen-UP sempre encerra um traço em curso
         // (consome), mesmo que o modo tenha mudado no meio. O pen-DOWN começa um
         // traço só no modo Draw, em canvas vazio — em Select cai no gizmo/pick.

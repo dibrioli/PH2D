@@ -369,6 +369,7 @@ impl ModeFamily for Family<'_> {
 /// `=24` (F16c): o tracejado em pares e a seta por ponta, no painel do traço (`vector_mode_tracejado`).
 /// `=25`/`=26` (F17): o botão feito interface, nas abas Drawing e Interface (`vector_mode_interface`).
 /// `=27`/`=28` (F18): o desenho é o corpo — a 25 e uma fila vestida; a 28 mostra o Hover (`vector_mode_vestidos`).
+/// `=29`/`=30` (F19): o painel lê a forma depois do Show; a 30 muda a Width (`vector_mode_le_a_forma`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -560,14 +561,21 @@ pub fn smoke_step(
         }
         s @ crate::vector_mode_interface::FIRST..=crate::vector_mode_interface::LAST => {
             let h = HANDLES.load(Ordering::Relaxed);
-            // As 27/28 continuam pela fila vestida (`vector_mode_vestidos`).
-            let end = if h >= 13 {
-                crate::vector_mode_vestidos::FIRST
-            } else {
-                9
+            // As 27/28 continuam pela fila vestida; as 29/30 pelo Hover regravado.
+            let end = match h {
+                15.. => crate::vector_mode_le_a_forma::FIRST,
+                13.. => crate::vector_mode_vestidos::FIRST,
+                _ => 9,
             };
             if let Some(next) =
                 crate::vector_mode_interface::step(s, vec, scene, sim, hero, h == 12, end)
+            {
+                go(next);
+            }
+        }
+        s @ crate::vector_mode_le_a_forma::FIRST..=crate::vector_mode_le_a_forma::LAST => {
+            let espessura = HANDLES.load(Ordering::Relaxed) == 16;
+            if let Some(next) = crate::vector_mode_le_a_forma::step(s, vec, scene, hero, espessura)
             {
                 go(next);
             }

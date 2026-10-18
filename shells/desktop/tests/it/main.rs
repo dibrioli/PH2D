@@ -249,6 +249,7 @@ mod the_vector_tool_keys_are_wired;
 mod the_warp_effect_and_envelope_share_one_catalogue;
 mod the_warp_gizmo_is_wired_to_the_pointer;
 mod the_width_chips_are_wired;
+mod the_preview_refuses_panel_edits_at_the_pointer_door;
 mod the_width_reaches_the_selection_when_it_is_authored;
 mod the_width_sliders_author_the_live_profile;
 mod the_width_tool_owns_its_gesture;

@@ -73,6 +73,15 @@ fn the_surface_is_the_folded_word_with_accents() {
     );
 }
 
+/// W23 A7 — uma sigla e uma palavra com maiúscula a meio guardam a forma escrita; a chave é a mesma.
+#[test]
+fn a_word_whose_capitals_say_something_keeps_them() {
+    let k = keywords("API iPhone Review", Lang::English);
+    let s: Vec<&str> = k.iter().map(|k| k.surface.as_str()).collect();
+    assert_eq!(s, ["API", "iPhone", "review"]);
+    assert_eq!(k[0].key, keywords("api", Lang::English)[0].key);
+}
+
 /// ⭐ A língua é a que tem mais palavras vazias; empate = inglês.
 #[test]
 fn the_language_is_the_one_with_more_function_words() {

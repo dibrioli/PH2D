@@ -346,3 +346,15 @@ fn a_rotated_home_passes_the_groups_out_and_notes_straighten() {
     assert!(w.el(a).angle == 0.0 && w.el(b).angle == 0.0);
     assert!(close(w.el(f).angle, 0.3), "o frame rodado não mexe");
 }
+
+/// W23 A7 — a palavra cujas maiúsculas DIZEM algo (uma sigla, «iPhone») chega ao título como foi
+/// escrita; a maiúscula de começo de frase não («Slow» → «#slow», em `a_keyword_title_has_three_words`).
+#[test]
+fn an_acronym_keeps_its_capitals_in_the_title() {
+    let mut w = world();
+    let a = w.sticky([0.0, 0.0], "API docs late", 1, &[]);
+    let b = w.sticky([250.0, 0.0], "the API is slow", 1, &[]);
+    let c = w.sticky([500.0, 0.0], "API review", 1, &[]);
+    assert!(w.cluster(&[a, b, c], ClusterBy::Keyword));
+    assert_eq!(w.clusters()[0].0, "#API #docs #late");
+}

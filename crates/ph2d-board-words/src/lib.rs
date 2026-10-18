@@ -75,8 +75,9 @@ pub fn stem(lang: Lang, word: &str) -> String {
     snowball::stem(lang.algorithm(), word).into_owned()
 }
 
-/// Uma palavra que conta: a chave de comparação (a raiz sem acentos) e a forma escrita (em *case
-/// folding*, com acentos — o que um título mostra).
+/// Uma palavra que conta: a chave de comparação (a raiz sem acentos) e a forma escrita (o que um
+/// título mostra): em *case folding* com acentos, salvo quando as maiúsculas dizem algo — uma além
+/// da 1.ª letra («API», «iPhone») —, e então como foi escrita (W23 A7).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Keyword {
     pub key: String,
@@ -90,13 +91,20 @@ pub fn keywords(text: &str, lang: Lang) -> Vec<Keyword> {
     segment(text)
         .into_iter()
         .filter_map(|w| {
-            let w = ph2d_label_fold::case_fold(&w.replace('\u{2019}', "'"));
+            let written = w.replace('\u{2019}', "'");
+            let w = ph2d_label_fold::case_fold(&written);
             let letters = w.chars().filter(|c| c.is_alphabetic()).count();
             if letters < 2 || stop.contains(&w) {
                 return None;
             }
             let key = ph2d_label_fold::fold(&stem(lang, &w));
-            Some(Keyword { key, surface: w })
+            // A maiúscula de começo de frase não diz nada; uma a meio da palavra, sim.
+            let surface = if written.chars().skip(1).any(char::is_uppercase) {
+                written
+            } else {
+                w
+            };
+            Some(Keyword { key, surface })
         })
         .collect()
 }

@@ -501,6 +501,8 @@ pub(crate) fn paint_branch(
 ) {
     let mut st = el.style().clone();
     st.stroke_width = width;
+    // O ramo tem SEMPRE traço — o do nó pode não ter (os nós do mapa são só texto).
+    st.stroke = Some(st.text_color);
     let key = hash(|h| {
         el.seed().hash(h);
         width.to_bits().hash(h);

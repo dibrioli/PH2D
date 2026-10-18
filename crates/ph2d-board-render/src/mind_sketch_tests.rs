@@ -18,7 +18,8 @@ fn map(sketch: bool) -> Board {
     let b = set.get_mut(id).unwrap();
     let ink = Rgba([20, 20, 20, 255]);
     let node = |b: &mut Board, kind, bx, parent| {
-        let mut st = Style::new(None, Some(ink), ink);
+        // Como os nós do mapa: só texto, sem contorno (o ramo continua a ter traço).
+        let mut st = Style::new(None, None, ink);
         st.sketch = sketch;
         let mut el = Element::new_shape(
             b.doc.mint_id(),

@@ -35,8 +35,8 @@ impl Modal {
         Self {
             id,
             title: title.into(),
-            cancel,
-            confirm,
+            cancel: cancel.on_elevated(),
+            confirm: confirm.on_elevated(),
             close_state: ButtonState::Normal,
         }
     }

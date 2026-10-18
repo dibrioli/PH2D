@@ -200,3 +200,30 @@ fn paint_smoke_icon_only() {
 fn paint_smoke_loading_renders_spinner() {
     smoke(fixture().accent().state(ButtonState::Loading), Theme::Forge);
 }
+
+/// Sobre um balão ou um diálogo (`BgElev`), o hover e o foco de um botão secundário nunca pintam a
+/// cor do fundo onde ele assenta — e no painel pintam o que sempre pintaram.
+#[test]
+fn on_an_elevated_surface_the_hover_never_paints_the_surface_colour() {
+    for theme in Theme::ALL {
+        let surface = ColorToken::BgElev.resolve(theme);
+        for kind in [ButtonKind::Default, ButtonKind::IconOnly { icon: IconId::Close }] {
+            let b = fixture().kind(kind).on_elevated();
+            for state in [ButtonState::Hovered, ButtonState::Focused] {
+                let bg = b.clone().state(state).bg_color(theme);
+                assert_ne!(bg, Some(surface), "{theme:?} {kind:?} {state:?}");
+                assert_ne!(
+                    bg,
+                    b.clone().state(ButtonState::Normal).bg_color(theme),
+                    "{theme:?} {kind:?} {state:?}: o hover tem de mudar alguma coisa"
+                );
+            }
+            let panel = fixture().kind(kind).state(ButtonState::Hovered);
+            assert_eq!(
+                panel.bg_color(theme),
+                Some(ColorToken::BgElev.resolve(theme)),
+                "{theme:?}: no painel nada muda"
+            );
+        }
+    }
+}

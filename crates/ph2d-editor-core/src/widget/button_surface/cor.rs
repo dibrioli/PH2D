@@ -9,7 +9,7 @@
 //! `bg_token` continua **privado ao módulo** — a privacidade dele é a lei que o irmão
 //! [`super`] declara por escrito.
 
-use crate::widget::{Button, ButtonKind, ButtonState};
+use crate::widget::{Button, ButtonKind, ButtonState, ButtonSurface};
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
 
 impl Button {
@@ -54,14 +54,16 @@ impl Button {
     /// membro entre um doc e a função dele é o mesmo deslize que o `tick_motion` sofreu no corte do
     /// `live.rs`. Reposto no membro que de facto codifica a regra.
     fn bg_token(&self, state: ButtonState) -> Option<ColorToken> {
+        let raised = match self.surface {
+            ButtonSurface::Panel => ColorToken::BgElev,
+            ButtonSurface::Elevated => ColorToken::Bg3,
+        };
         let token = match (self.kind, state) {
             (_, ButtonState::Disabled) => match self.kind {
                 ButtonKind::Default | ButtonKind::IconOnly { .. } => return None,
                 _ => ColorToken::Border,
             },
-            (ButtonKind::Default, ButtonState::Hovered | ButtonState::Focused) => {
-                ColorToken::BgElev
-            }
+            (ButtonKind::Default, ButtonState::Hovered | ButtonState::Focused) => raised,
             (ButtonKind::Default, ButtonState::Pressed) => ColorToken::AccentSoft,
             // ⭐⭐⭐ **UM BOTÃO PARADO PINTA `Bg2`** (report do dono, 2026-09-20: *«não se pode
             //    saber que é um botão pois só aparece o nome … todo o app tem essa aparência»*).
@@ -92,9 +94,7 @@ impl Button {
             //    que o tema moderno desligava a coisa que a nota prometia. *Uma promessa escrita
             //    num sítio e desligada noutro.*
             (ButtonKind::Default, _) => ColorToken::Bg2,
-            (ButtonKind::IconOnly { .. }, ButtonState::Hovered | ButtonState::Focused) => {
-                ColorToken::BgElev
-            }
+            (ButtonKind::IconOnly { .. }, ButtonState::Hovered | ButtonState::Focused) => raised,
             (ButtonKind::IconOnly { .. }, ButtonState::Pressed) => ColorToken::AccentSoft,
             (ButtonKind::IconOnly { .. }, _) => return None,
             (ButtonKind::Accent, ButtonState::Pressed) => ColorToken::AccentPress,

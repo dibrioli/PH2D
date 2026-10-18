@@ -230,6 +230,8 @@ pub(crate) fn paint_voronoi_cfg(
             col: ph2d_editor_core::widget::GroupPos::Only,
             row: ph2d_editor_core::widget::GroupPos::Only,
         },
+        // Neutro: assenta no painel.
+        surface: ph2d_editor_core::widget::ButtonSurface::Panel,
     };
     paint_button(&btn, reseed_rect, scene, text_system, theme);
     hit_index.register(

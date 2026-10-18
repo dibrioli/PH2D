@@ -70,6 +70,18 @@ pub struct Button {
     /// widget que sabia a lei e o outro o que não sabia. *Uma lei que só metade dos widgets
     /// conhece produz dois dialectos no mesmo aplicativo.*
     pub cell: crate::widget::GroupCell,
+    /// A superfície por baixo dele. Neutro = [`ButtonSurface::Panel`].
+    pub surface: ButtonSurface,
+}
+
+/// Onde um botão assenta. Num balão ou num diálogo (`BgElev`) o realce de repouso → hover do painel
+/// (`Bg2` → `BgElev`) acabaria na cor do próprio fundo: o botão SUMIRIA debaixo do rato.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum ButtonSurface {
+    #[default]
+    Panel,
+    /// Sobre `BgElev` (popover, balão, diálogo): o hover e o foco sobem a `Bg3`.
+    Elevated,
 }
 
 impl Button {
@@ -84,7 +96,15 @@ impl Button {
                 col: crate::widget::GroupPos::Only,
                 row: crate::widget::GroupPos::Only,
             },
+            surface: ButtonSurface::Panel,
         }
+    }
+
+    /// Este botão assenta numa superfície elevada (balão, diálogo).
+    #[must_use]
+    pub fn on_elevated(mut self) -> Self {
+        self.surface = ButtonSurface::Elevated;
+        self
     }
 
     /// ⭐ **Este botão é uma PEÇA de um grupo** — só as bordas de fora do grupo arredondam.

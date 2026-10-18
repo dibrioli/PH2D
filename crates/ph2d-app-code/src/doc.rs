@@ -408,9 +408,17 @@ impl CodeDoc {
             hover: hints.hover.as_ref().and_then(|h| {
                 let assistant = h.shown.as_ref().map(|s| s.text.as_str());
                 let sections = crate::note::sections(&note, assistant);
+                let fixes = h
+                    .fixes
+                    .as_ref()
+                    .filter(|f| f.ready())
+                    .map(|f| f.list().map(|a| a.title.as_str()).collect())
+                    .unwrap_or_default();
                 (!sections.is_empty()).then(|| ph2d_panel_code::HoverView {
                     word: h.word.clone(),
                     sections,
+                    fixes,
+                    hot: h.hot,
                 })
             }),
             signature: hints.sig.as_ref().and_then(|s| s.shown.as_ref()).map(|s| {

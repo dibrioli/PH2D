@@ -35,6 +35,10 @@ pub(crate) struct Hovering {
     pub note: Option<Note>,
     /// A pausa passou (o balão de um problema abre sem esperar o assistente).
     pub ripe: bool,
+    /// As correcções do problema (I8b): as do Alt+Enter naquele sítio, um botão cada.
+    pub fixes: Option<crate::actions::Actions>,
+    /// O botão sob o rato.
+    pub hot: Option<usize>,
 }
 
 /// O que o balão mostra de um problema (I8).
@@ -94,6 +98,8 @@ impl Hints {
                     pinned: false,
                     note,
                     ripe: false,
+                    fixes: None,
+                    hot: None,
                 });
             }
         }
@@ -109,6 +115,8 @@ impl Hints {
             pinned: true,
             note: None,
             ripe: false,
+            fixes: None,
+            hot: None,
         });
     }
 
@@ -126,10 +134,9 @@ impl Hints {
 
     /// O pedido `ticket` é desta aba.
     pub fn owns(&self, ticket: Ticket) -> bool {
-        self.hover
-            .as_ref()
-            .is_some_and(|h| h.ticket == Some(ticket))
-            || self.sig.as_ref().is_some_and(|s| s.ticket == Some(ticket))
+        self.hover.as_ref().is_some_and(|h| {
+            h.ticket == Some(ticket) || h.fixes.as_ref().is_some_and(|f| f.owns(ticket))
+        }) || self.sig.as_ref().is_some_and(|s| s.ticket == Some(ticket))
     }
 
     /// A resposta `ticket` do assistente. Um balão vazio fica sem pintar (e não pergunta outra vez
@@ -156,7 +163,12 @@ impl Hints {
     /// Sem assistente: fecha o que é dele (o balão de um problema fica, sem a palavra).
     pub fn close(&mut self) {
         match self.hover.as_mut() {
-            Some(h) if h.note.is_some() => h.shown = None,
+            Some(h) if h.note.is_some() => {
+                h.shown = None;
+                if let Some(f) = h.fixes.as_mut() {
+                    f.offline();
+                }
+            }
             _ => self.hover = None,
         }
         self.sig = None;
@@ -169,6 +181,10 @@ impl CodeDoc {
     /// nunca no vazio depois do fim da linha) conta a pausa; no resto fecha-o.
     pub(crate) fn hover_at(&mut self, x: f32, y: f32, now_ns: u128) {
         if self.view.hint_hover_contains(x, y) {
+            let hot = self.view.hint_button_at(x, y);
+            if let Some(h) = self.hints.hover.as_mut() {
+                h.hot = hot;
+            }
             return;
         }
         let at = match self.view.hit(&self.buffer, x, y) {
@@ -188,5 +204,16 @@ impl CodeDoc {
             _ => None,
         };
         self.hints.pointer(at, now_ns);
+        if let Some(h) = self.hints.hover.as_mut() {
+            h.hot = None;
+        }
+    }
+
+    /// O clique no botão `index` do balão: aplica a correcção (como o Enter na janelinha do
+    /// Alt+Enter) e o balão fecha.
+    pub(crate) fn apply_fix(&mut self, index: usize) {
+        if let Some(a) = self.hints.hover.take().and_then(|h| h.fixes) {
+            self.apply(&a, index);
+        }
     }
 }

@@ -12,11 +12,11 @@ use serde_json::{Value, json};
 const PAUSA: u128 = 500_000_000;
 
 /// O `=` do smoke 2 (`ferramentas/smoke/script_quebrado.luau`).
-const QUEBRADO: &str = "local x = = 1\nprint(x)\n";
+pub(crate) const QUEBRADO: &str = "local x = = 1\nprint(x)\n";
 const CRU: &str = "SyntaxError: Expected identifier when parsing expression, got '='";
 
 /// O servidor acusa o segundo `=` como o `luau-lsp` 1.70.1 (I0c).
-fn acusa_igual(s: &str) -> Vec<Value> {
+pub(crate) fn acusa_igual(s: &str) -> Vec<Value> {
     s.find("= =")
         .map(|b| b + 2)
         .map(|b| {

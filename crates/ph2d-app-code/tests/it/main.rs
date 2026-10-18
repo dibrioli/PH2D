@@ -7,6 +7,7 @@ mod abrir;
 mod acoes;
 mod assistente;
 mod bancada;
+mod botoes;
 mod busca;
 mod completar;
 mod console;

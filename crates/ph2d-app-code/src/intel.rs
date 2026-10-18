@@ -207,6 +207,9 @@ impl Intel {
                 if let Some(a) = d.actions.as_mut() {
                     a.offline();
                 }
+                if let Some(f) = d.hints.hover.as_mut().and_then(|h| h.fixes.as_mut()) {
+                    f.offline();
+                }
             }
             return;
         };
@@ -435,6 +438,9 @@ impl Intel {
             };
             if let Some(a) = d.actions.as_mut() {
                 a.send(|req| session.ask(&m.uri, req));
+            }
+            if let Some(f) = d.hints.hover.as_mut().and_then(|h| h.fixes.as_mut()) {
+                f.send(|req| session.ask(&m.uri, req));
             }
             if let Some(g) = d.goto.as_mut()
                 && g.ticket.is_none()

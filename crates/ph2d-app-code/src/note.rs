@@ -169,7 +169,22 @@ impl CodeDocs {
                 continue;
             }
             h.ripe = true;
-            let Some(Note::Gutter(line)) = h.note else {
+            let note = h.note;
+            let word = h.word.clone();
+            let heads: Vec<usize> = match note {
+                Some(Note::Gutter(line)) => d
+                    .problems()
+                    .iter()
+                    .filter(|p| p.line == line)
+                    .filter_map(|p| p.culprit.as_ref().map(|c| c.start))
+                    .collect(),
+                _ => vec![word.start],
+            };
+            let fixes = d.actions_at(&heads);
+            if let Some(h) = d.hints.hover.as_mut() {
+                h.fixes = Some(fixes);
+            }
+            let Some(Note::Gutter(line)) = note else {
                 continue;
             };
             let kinds: Vec<&'static str> = d

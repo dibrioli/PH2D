@@ -116,6 +116,10 @@ pub struct PreviewLine {
 pub struct HoverView<'a> {
     pub word: Range<usize>,
     pub sections: Vec<HoverSection<'a>>,
+    /// As correcções do problema (I8b), um botão cada por baixo do texto.
+    pub fixes: Vec<&'a str>,
+    /// O botão sob o rato.
+    pub hot: Option<usize>,
 }
 
 /// Uma secção do balão: o título (marcado) e o texto, em Markdown.

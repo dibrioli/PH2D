@@ -469,9 +469,9 @@ impl CodeView {
                 doc.set_active_descendant((*a).into());
             }
         }
-        let hints = self.hints_a11y(base);
-        for (id, _) in &hints {
-            doc.push_child((*id).into());
+        let (roots, hints) = self.hints_a11y(base);
+        for id in roots {
+            doc.push_child(id.into());
         }
         out.push((base, doc));
         out.extend(runs);

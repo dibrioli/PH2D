@@ -18,7 +18,7 @@ use ph2d_script::ScriptId;
 use serde_json::{Value, json};
 use std::time::Duration;
 
-const TEXTO: &str = "ph2d.property(\"amplitude\", 1.0)\n\
+pub(crate) const TEXTO: &str = "ph2d.property(\"amplitude\", 1.0)\n\
 function init(self)\n  \
 self.base_x = ph2d.get(self.id, \"x\")\n\
 end\n\
@@ -37,11 +37,11 @@ fn alt() -> Modifiers {
     }
 }
 
-fn alt_enter(m: &mut Mesa, id: ScriptId) {
+pub(crate) fn alt_enter(m: &mut Mesa, id: ScriptId) {
     tecla(m, id, Key::Enter, alt(), None, "");
 }
 
-fn texto(m: &mut Mesa, id: ScriptId) -> String {
+pub(crate) fn texto(m: &mut Mesa, id: ScriptId) -> String {
     m.docs().text_of(id).expect("aberto")
 }
 
@@ -55,7 +55,7 @@ fn campos(m: &mut Mesa, id: ScriptId) -> Vec<String> {
         .collect()
 }
 
-fn sem_assistente(texto: &str) -> (Mesa, ScriptId) {
+pub(crate) fn sem_assistente(texto: &str) -> (Mesa, ScriptId) {
     let (mut m, ids) = Mesa::new(&[("a.luau", texto)]);
     let id = ids[0];
     m.pede(id);
@@ -235,7 +235,7 @@ fn agir(uri: &str, texto: &str, b: usize, ctx: &[Value]) -> Value {
     ])
 }
 
-fn com_servidor(atraso: Duration) -> (Mesa, ScriptId, Partilhado) {
+pub(crate) fn com_servidor(atraso: Duration) -> (Mesa, ScriptId, Partilhado) {
     let (mut m, ids, visto) = com_falso(
         &[("a.luau", TEXTO)],
         Plano {

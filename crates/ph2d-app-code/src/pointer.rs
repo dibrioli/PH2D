@@ -27,6 +27,14 @@ impl CodeDoc {
         if !area.contains(x, y) {
             return false;
         }
+        if let Some(i) = self.view.hint_button_at(x, y) {
+            self.apply_fix(i);
+            return true;
+        }
+        if self.view.hint_hover_contains(x, y) {
+            // O balão lê-se e clica-se; o texto por baixo dele não recebe o clique.
+            return true;
+        }
         self.hints.hover = None;
         self.goto = None;
         let acting = self.actions.is_some();

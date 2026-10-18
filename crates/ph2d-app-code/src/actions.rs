@@ -131,17 +131,21 @@ impl Actions {
         self.asked.clear();
     }
 
-    fn answer(&mut self, ticket: Ticket, answer: Answer, text: &Text) {
+    pub fn answer(&mut self, ticket: Ticket, answer: Answer, text: &Text) {
         let Some(i) = self.asked.iter().position(|(t, _)| *t == ticket) else {
             return;
         };
         let (_, why) = self.asked.remove(i);
         match (why, answer) {
             (Purpose::Fixes, Answer::Fixes(fixes)) => {
-                self.groups[2].extend(fixes.into_iter().map(|f| Action {
-                    title: f.title,
-                    edits: f.edits,
-                }));
+                for f in fixes {
+                    if !self.groups[2].iter().any(|a| a.title == f.title) {
+                        self.groups[2].push(Action {
+                            title: f.title,
+                            edits: f.edits,
+                        });
+                    }
+                }
             }
             (Purpose::Candidates(typo), Answer::Completion(items)) => {
                 let near = did_you_mean(&text.slice(typo.clone()), candidate_names(&items));
@@ -230,41 +234,50 @@ impl CodeDoc {
     pub(crate) fn open_actions(&mut self) {
         self.complete.close();
         self.hints.hover = None;
-        let t = self.buffer.text();
         let head = self.buffer.selection().primary().head;
-        let word = word_at(t, head).filter(|w| self.syntax.in_code(t, w.start));
-        let touches = |r: &Range<usize>| r.start <= head && head <= r.end;
-        let shown: Vec<Diag> = self
-            .assist
-            .list
-            .iter()
-            .filter(|d| touches(&d.bytes) && !crate::problems::engine_hook(t, d, &d.bytes))
-            .cloned()
-            .collect();
+        self.actions = Some(self.actions_at(&[head]));
+    }
+
+    /// As acções que o Alt+Enter daria em cada um dos `heads` (a janelinha alinha-se no 1.º), sem
+    /// repetir títulos. A porta única: o Alt+Enter e os botões do balão (I8b) vêm daqui.
+    pub(crate) fn actions_at(&self, heads: &[usize]) -> Actions {
+        let t = self.buffer.text();
+        let word_of = |h: usize| word_at(t, h).filter(|w| self.syntax.in_code(t, w.start));
+        let first = heads.first().copied().unwrap_or(0);
         let mut a = Actions {
             revision: self.buffer.revision(),
-            anchor: word.as_ref().map_or(head, |w| w.start),
+            anchor: word_of(first).map_or(first, |w| w.start),
             wants: Vec::new(),
             asked: Vec::new(),
             groups: Default::default(),
             selected: 0,
             top: 0,
         };
-        for l in self.lint.list.iter().filter(|l| touches(&l.bytes)) {
-            a.did_you_mean(&l.bytes, l.near.clone());
+        for &head in heads {
+            let touches = |r: &Range<usize>| r.start <= head && head <= r.end;
+            let shown: Vec<Diag> = self
+                .assist
+                .list
+                .iter()
+                .filter(|d| touches(&d.bytes) && !crate::problems::engine_hook(t, d, &d.bytes))
+                .cloned()
+                .collect();
+            for l in self.lint.list.iter().filter(|l| touches(&l.bytes)) {
+                a.did_you_mean(&l.bytes, l.near.clone());
+            }
+            if let Some(typo) = shown.iter().find_map(|d| typo_of(t, d)) {
+                a.wants
+                    .push((Req::Candidates(typo.start), Purpose::Candidates(typo)));
+            }
+            if !shown.is_empty() {
+                a.wants
+                    .push((Req::Fixes(head..head, shown), Purpose::Fixes));
+            }
+            if let Some(w) = word_of(head) {
+                a.wants.push((Req::TypeHints, Purpose::TypeHints(w)));
+            }
         }
-        if let Some(typo) = shown.iter().find_map(|d| typo_of(t, d)) {
-            a.wants
-                .push((Req::Candidates(typo.start), Purpose::Candidates(typo)));
-        }
-        if !shown.is_empty() {
-            a.wants
-                .push((Req::Fixes(head..head, shown), Purpose::Fixes));
-        }
-        if let Some(w) = word {
-            a.wants.push((Req::TypeHints, Purpose::TypeHints(w)));
-        }
-        self.actions = Some(a);
+        a
     }
 
     /// A resposta `ticket` às acções abertas.
@@ -347,11 +360,16 @@ impl CodeDoc {
         true
     }
 
-    /// Aplica a acção `index`, num passo de undo, com o cursor no fim da 1.ª troca.
+    /// Aplica a acção `index` da janelinha (Enter ou clique).
     pub(crate) fn apply_action(&mut self, index: usize) {
-        let Some(a) = self.actions.take() else {
-            return;
-        };
+        if let Some(a) = self.actions.take() {
+            self.apply(&a, index);
+        }
+    }
+
+    /// Aplica a acção `index` de `a`, num passo de undo, com o cursor no fim da 1.ª troca. Sobre um
+    /// texto que já não é o delas, nada.
+    pub(crate) fn apply(&mut self, a: &Actions, index: usize) {
         let Some(act) = a
             .list()
             .nth(index)

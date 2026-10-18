@@ -44,6 +44,14 @@ impl CodeDoc {
             self.sem.answer(ticket, answer);
         } else if self.actions.as_ref().is_some_and(|a| a.owns(ticket)) {
             self.actions_answer(ticket, answer);
+        } else if let Some(f) = self
+            .hints
+            .hover
+            .as_mut()
+            .and_then(|h| h.fixes.as_mut())
+            .filter(|f| f.owns(ticket))
+        {
+            f.answer(ticket, answer, self.buffer.text());
         } else if let Some(g) = self.goto.take_if(|g| g.ticket == Some(ticket)) {
             // Outra resposta = o servidor recusou ou foi-se: nada a mostrar.
             if let Answer::Definition(targets) = answer {

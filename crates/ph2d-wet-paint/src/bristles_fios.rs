@@ -112,6 +112,36 @@ pub struct Ponto {
     pub fio: i32,
 }
 
+/// O que é de UM fio num dab ([`FiosNoDab::tabela`]).
+#[derive(Clone, Copy, Debug)]
+struct DoFio {
+    span: f64,
+    ganho: f64,
+    cor: [f64; 3],
+}
+
+/// A tabela de um dab: o que é de cada fio da faixa `k0..`, calculado uma vez ([`FiosNoDab::tabela`]).
+#[derive(Clone, Debug)]
+pub struct TabelaDosFios {
+    k0: i32,
+    v: Vec<DoFio>,
+}
+
+impl TabelaDosFios {
+    /// Os fios da tabela: `(primeiro, último)`.
+    #[must_use]
+    pub fn faixa(&self) -> (i32, i32) {
+        (self.k0, self.k0 + self.v.len() as i32 - 1)
+    }
+
+    fn do_fio(&self, f: &FiosNoDab, k: i32) -> DoFio {
+        usize::try_from(k - self.k0)
+            .ok()
+            .and_then(|i| self.v.get(i).copied())
+            .unwrap_or_else(|| f.do_fio(k))
+    }
+}
+
 /// [`Fios`] resolvidos num dab.
 #[derive(Clone, Copy, Debug)]
 pub struct FiosNoDab {
@@ -129,22 +159,65 @@ impl FiosNoDab {
     /// pressão do fio desse pelo e o fio.
     #[must_use]
     pub fn no_ponto(&self, d: [f64; 2]) -> Ponto {
+        self.no_ponto_por(d, |k| (self.span_do_fio(k), self.ganho_do_fio(k)))
+    }
+
+    /// [`Self::no_ponto`] com o que é do FIO lido da tabela `t` do dab ([`Self::tabela`]) — a mesma conta, ao bit.
+    #[must_use]
+    pub fn no_ponto_em(&self, d: [f64; 2], t: &TabelaDosFios) -> Ponto {
+        self.no_ponto_por(d, |k| {
+            let x = t.do_fio(self, k);
+            (x.span, x.ganho)
+        })
+    }
+
+    fn no_ponto_por(&self, d: [f64; 2], do_fio: impl Fn(i32) -> (f64, f64)) -> Ponto {
         let f = &self.fios;
         let n = self.normal;
         let mut q = [d[0] - n[0] * self.desvio_px, d[1] - n[1] * self.desvio_px];
         let l = q[0] * n[0] + q[1] * n[1];
         let fio = self.fio(l / f.largura_px.max(0.25));
+        let (span, ganho) = do_fio(fio);
         if f.span_px != 0.0 {
-            let s = f.span_px
-                * ruido(
-                    self.arco / f.span_comprimento_px.max(1.0),
-                    fio,
-                    SEMENTE_SPAN,
-                );
-            q = [q[0] - n[0] * s, q[1] - n[1] * s];
+            q = [q[0] - n[0] * span, q[1] - n[1] * span];
         }
-        let ganho = self.ganho_do_fio(fio);
         Ponto { q, ganho, fio }
+    }
+
+    /// O que só depende do fio `fio` neste dab: o desvio do Random Span, o ganho, o ruído de cor.
+    fn do_fio(&self, fio: i32) -> DoFio {
+        DoFio {
+            span: self.span_do_fio(fio),
+            ganho: self.ganho_do_fio(fio),
+            cor: self.ruido_de_cor(fio),
+        }
+    }
+
+    /// O desvio (px) do Random Span do fio `fio` neste dab (`0` sem span).
+    fn span_do_fio(&self, fio: i32) -> f64 {
+        let f = &self.fios;
+        if f.span_px == 0.0 {
+            return 0.0;
+        }
+        f.span_px
+            * ruido(
+                self.arco / f.span_comprimento_px.max(1.0),
+                fio,
+                SEMENTE_SPAN,
+            )
+    }
+
+    /// ⭐ **A tabela do dab** (auditoria do traço rápido, 18/10): o que é de cada FIO que um ponto a até `raio_px`
+    /// do centro pode ler, calculado UMA vez por dab — por célula eram 4 Perlin (o span e o ganho) e, com cor,
+    /// mais 6 e o HSLuv; o traço rápido do Oil Bristle a 103 px pagava 13,6 ms por quadro contra 8,7 sem os fios
+    /// (doc 50_medicao §4). Fora da faixa, a conta directa.
+    #[must_use]
+    pub fn tabela(&self, raio_px: f64) -> TabelaDosFios {
+        let (k0, k1) = self.faixa(raio_px);
+        TabelaDosFios {
+            k0,
+            v: (k0..=k1).map(|k| self.do_fio(k)).collect(),
+        }
     }
 
     /// ⭐ **Entre que dois fios** está o ponto a `d` px do centro do dab: os dois fios vizinhos cujos CENTROS o
@@ -192,13 +265,30 @@ impl FiosNoDab {
     /// como a pressão (cada componente com o seu ruído); sem ruído de cor, `rgb` intacto.
     #[must_use]
     pub fn cor_do_fio(&self, rgb: [f32; 3], fio: i32) -> [f32; 3] {
+        if self.fios.cor == [0.0; 3] {
+            return rgb;
+        }
+        crate::bristles_cor::com_ruido(rgb, self.ruido_de_cor(fio))
+    }
+
+    /// [`Self::cor_do_fio`] com o ruído do fio lido da tabela `t` do dab — a mesma conta, ao bit.
+    #[must_use]
+    pub fn cor_do_fio_em(&self, rgb: [f32; 3], fio: i32, t: &TabelaDosFios) -> [f32; 3] {
+        if self.fios.cor == [0.0; 3] {
+            return rgb;
+        }
+        crate::bristles_cor::com_ruido(rgb, t.do_fio(self, fio).cor)
+    }
+
+    /// O ruído HSLuv do fio `fio` (matiz, saturação, luminosidade), que anda ao longo do caminho.
+    fn ruido_de_cor(&self, fio: i32) -> [f64; 3] {
         let c = self.fios.cor;
         if c == [0.0; 3] {
-            return rgb;
+            return [0.0; 3];
         }
         let t = self.arco / self.fios.ruido_px.max(1.0);
         let r = |i: u32| ruido(t, fio, SEMENTE_COR.wrapping_add(i));
-        crate::bristles_cor::com_ruido(rgb, [c[0] * r(0), c[1] * r(1), c[2] * r(2)])
+        [c[0] * r(0), c[1] * r(1), c[2] * r(2)]
     }
 
     /// O fio em `u` (larguras de fio na normal): o `k` com `fronteira(k) ≤ u < fronteira(k + 1)`. Cada fronteira

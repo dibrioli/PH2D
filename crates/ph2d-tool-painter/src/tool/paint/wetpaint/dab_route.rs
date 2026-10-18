@@ -513,15 +513,29 @@ impl PainterTool {
                     [c[0] * 255.0, c[1] * 255.0, c[2] * 255.0, c[3]]
                 }
             });
-            // A cor de cada FIO (W2, o ruído HSLuv) sobre a da Shape Color ou a do dab.
+            // O que é de cada FIO, uma vez por dab (o traço rápido pagava os Perlin e o HSLuv por célula).
             let px_cel = f64::from(ratio);
+            let tabela = fios_dab.map(|f| f.tabela(f64::from(d.radius_px) * 2.0 + 4.0 * px_cel));
+            let tabela = tabela.as_ref();
+            // A cor de cada FIO (W2, o ruído HSLuv) sobre a da Shape Color ou a do dab.
             let cor_fios = fios_dab.filter(|_| fios.tem_cor()).map(|f| {
                 let (cor, base) = (cor.as_ref(), d.color.map(|c| c * 255.0));
+                let t = tabela.expect("a tabela dos fios do dab");
+                // Sem Shape Color a cor de base é a do dab: a de cada fio sai UMA vez (o HSLuv era por célula).
+                let (k0, k1) = t.faixa();
+                let do_fio: Vec<[f32; 3]> = if cor.is_none() {
+                    (k0..=k1).map(|k| f.cor_do_fio_em(base, k, t)).collect()
+                } else {
+                    Vec::new()
+                };
                 move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
                     let c = cor.map_or([base[0], base[1], base[2], 1.0], |c| c(cx, cy, queda));
                     let dc = [f64::from(cx) - centro_x, f64::from(cy) - centro_y];
-                    let rgb =
-                        f.cor_do_fio([c[0], c[1], c[2]], f.no_ponto(dc.map(|v| v * px_cel)).fio);
+                    let fio = f.no_ponto_em(dc.map(|v| v * px_cel), t).fio;
+                    let rgb = usize::try_from(fio - k0)
+                        .ok()
+                        .and_then(|i| do_fio.get(i).copied())
+                        .unwrap_or_else(|| f.cor_do_fio_em([c[0], c[1], c[2]], fio, t));
                     [rgb[0], rgb[1], rgb[2], c[3]]
                 }
             });
@@ -570,7 +584,10 @@ impl PainterTool {
                     let Some(f) = fios_dab else {
                         return tapete(dc);
                     };
-                    let p = f.no_ponto(dc.map(|v| v * px_por_celula));
+                    let p = match tabela {
+                        Some(t) => f.no_ponto_em(dc.map(|v| v * px_por_celula), t),
+                        None => f.no_ponto(dc.map(|v| v * px_por_celula)),
+                    };
                     p.ganho * tapete(p.q.map(|v| v / px_por_celula))
                 }
             });

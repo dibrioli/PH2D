@@ -69,6 +69,9 @@ fn linha(nome: &str, raio: f32, m: &Medida, lf: (f64, f64), f: Option<&Foto>) ->
     )
 }
 
+/// Uma variante da sonda: o nome e os knobs trocados.
+type Variante = (String, Vec<(String, f64)>);
+
 /// **SONDA (W2, passo 1): a barra da W2 HOJE** — cada pincel de [`FIOS`] a 40 px (raio 20) e à largura da foto
 /// dele, seco; `PH2D_SONDA_OUT=<dir>` grava os PPM (`midia_fios_<preset>[@variante]_<raio>.ppm`) para conferir a
 /// régua com o Python. `PH2D_SONDA_PRESETS="a,b"` restringe; `PH2D_SONDA_KNOBS="nome:k=v,b.k=v|…"` são as
@@ -80,30 +83,29 @@ fn sonda_a_barra_da_w2() {
     let so: Option<Vec<String>> = std::env::var("PH2D_SONDA_PRESETS")
         .ok()
         .map(|v| v.split(',').map(str::to_owned).collect());
-    let variantes: Vec<(String, Vec<(String, f64)>)> = std::env::var("PH2D_SONDA_KNOBS")
-        .map_or_else(
-            |_| vec![(String::new(), Vec::new())],
-            |v| {
-                v.split('|')
-                    .map(|s| {
-                        let (n, kv) = s.split_once(':').unwrap_or((s, ""));
-                        let kv = kv
-                            .split(',')
-                            .filter(|x| !x.is_empty())
-                            .map(|x| {
-                                let (k, v) = x.split_once('=').unwrap();
-                                (k.to_owned(), v.parse().unwrap())
-                            })
-                            .collect();
-                        (n.to_owned(), kv)
-                    })
-                    .collect()
-            },
-        );
+    let variantes: Vec<Variante> = std::env::var("PH2D_SONDA_KNOBS").map_or_else(
+        |_| vec![(String::new(), Vec::new())],
+        |v| {
+            v.split('|')
+                .map(|s| {
+                    let (n, kv) = s.split_once(':').unwrap_or((s, ""));
+                    let kv = kv
+                        .split(',')
+                        .filter(|x| !x.is_empty())
+                        .map(|x| {
+                            let (k, v) = x.split_once('=').unwrap();
+                            (k.to_owned(), v.parse().unwrap())
+                        })
+                        .collect();
+                    (n.to_owned(), kv)
+                })
+                .collect()
+        },
+    );
     let raios: Option<Vec<f32>> = std::env::var("PH2D_SONDA_RAIOS")
         .ok()
         .map(|v| v.split(',').map(|x| x.parse().unwrap()).collect());
-    let casos: Vec<(&str, f32, Option<&Foto>, &(String, Vec<(String, f64)>))> = FIOS
+    let casos: Vec<(&str, f32, Option<&Foto>, &Variante)> = FIOS
         .iter()
         .filter(|(n, _)| so.as_ref().is_none_or(|s| s.iter().any(|x| x == n)))
         .flat_map(|(n, f)| {

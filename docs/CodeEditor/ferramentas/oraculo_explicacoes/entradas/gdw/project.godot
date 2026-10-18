@@ -1,0 +1,7 @@
+config_version=5
+[debug]
+gdscript/warnings/unused_variable=2
+gdscript/warnings/unused_local_constant=2
+gdscript/warnings/unsafe_property_access=2
+gdscript/warnings/unsafe_method_access=2
+gdscript/warnings/untyped_declaration=0

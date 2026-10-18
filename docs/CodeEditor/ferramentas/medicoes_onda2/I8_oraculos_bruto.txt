@@ -1,0 +1,521 @@
+# I8 — saída CRUA dos oráculos de explicação de erro. data: 2026-10-18T00:57:16Z
+# godot: 4.7.2.stable.arch_linux.ed1daf0bf | Licenses        : MIT
+# luau-lsp: 1.70.1 (MIT, binário fixado em ~/.cache/ph2d/luau-lsp/1.70.1)
+# rustc: rustc 1.95.0 (59807616e 2026-04-14) (rustup; MIT OR Apache-2.0) | python: Python 3.14.8 PSF-2.0 | lua: Lua 5.5.1 MIT | luajit MIT
+
+############ 1. GODOT --check-only (entradas em /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4cbd3154-7499-411d-b01f-83fb2db1ff31/scratchpad/i8/gd)
+=== a_global.gd
+     1	extends Node
+     2	func _ready():
+     3		pirnt("x")
+--- saída
+
+SCRIPT ERROR: Parse Error: Function "pirnt()" not found in base self.
+          at: GDScript::reload (res://a_global.gd:3)
+ERROR: Failed to load script "res://a_global.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+=== b_membro.gd
+     1	extends Node
+     2	var amplitude := 1.0
+     3	func _ready():
+     4		var y = self.ampiltude * 2
+     5		print(y)
+--- saída
+
+=== c_prop_tipo.gd
+     1	extends Node
+     2	func _ready():
+     3		var v := Vector2(1, 2)
+     4		print(v.z)
+--- saída
+
+SCRIPT ERROR: Parse Error: Cannot find member "z" in base "Vector2".
+          at: GDScript::reload (res://c_prop_tipo.gd:4)
+SCRIPT ERROR: Parse Error: Cannot find member "z" in base "Vector2".
+          at: GDScript::reload (res://c_prop_tipo.gd:4)
+ERROR: Failed to load script "res://c_prop_tipo.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+=== d_nargs.gd
+     1	extends Node
+     2	func soma(a: int, b: int) -> int:
+     3		return a + b
+     4	func _ready():
+     5		print(soma(1))
+--- saída
+
+SCRIPT ERROR: Parse Error: Too few arguments for "soma()" call. Expected at least 2 but received 1.
+          at: GDScript::reload (res://d_nargs.gd:5)
+ERROR: Failed to load script "res://d_nargs.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+=== e_tipo_arg.gd
+     1	extends Node
+     2	func dobro(a: int) -> int:
+     3		return a * 2
+     4	func _ready():
+     5		print(dobro("texto"))
+--- saída
+
+SCRIPT ERROR: Parse Error: Cannot pass a value of type "String" as "int".
+          at: GDScript::reload (res://e_tipo_arg.gd:5)
+SCRIPT ERROR: Parse Error: Invalid argument for "dobro()" function: argument 1 should be "int" but is "String".
+          at: GDScript::reload (res://e_tipo_arg.gd:5)
+ERROR: Failed to load script "res://e_tipo_arg.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+=== f_sintaxe.gd
+     1	extends Node
+     2	func _ready():
+     3		if true
+     4			print("x")
+     5		var a = (1 + 2
+--- saída
+
+SCRIPT ERROR: Parse Error: Expected ":" after "if" condition.
+          at: GDScript::reload (res://f_sintaxe.gd:3)
+ERROR: Failed to load script "res://f_sintaxe.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+=== g_local_nao_usada.gd
+     1	extends Node
+     2	func _ready():
+     3		var nao_usada = 3
+     4		print("ok")
+--- saída
+
+=== h_nil.gd (CORRIDO, erro de execução)
+     1	extends SceneTree
+     2	func _init():
+     3		var n = null
+     4		n.mover()
+     5		quit()
+
+SCRIPT ERROR: Invalid call. Nonexistent function 'mover' in base 'Nil'.
+          at: _init (res://h_nil.gd:4)
+          GDScript backtrace (most recent call first):
+              [0] _init (res://h_nil.gd:4)
+=== b2_membro_run.gd (CORRIDO)
+
+SCRIPT ERROR: Invalid access to property or key 'ampiltude' on a base object of type 'SceneTree (b2_membro_run.gd)'.
+          at: _init (res://b2_membro_run.gd:4)
+          GDScript backtrace (most recent call first):
+              [0] _init (res://b2_membro_run.gd:4)
+
+############ 1b. GODOT com avisos promovidos a erro (projeto /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4cbd3154-7499-411d-b01f-83fb2db1ff31/scratchpad/i8/gdw)
+config_version=5
+[debug]
+gdscript/warnings/unused_variable=2
+gdscript/warnings/unused_local_constant=2
+gdscript/warnings/unsafe_property_access=2
+gdscript/warnings/unsafe_method_access=2
+gdscript/warnings/untyped_declaration=0
+=== g_local_nao_usada.gd
+
+SCRIPT ERROR: Parse Error: The local variable "nao_usada" is declared but never used in the block. If this is intended, prefix it with an underscore: "_nao_usada". (Warning treated as error.)
+          at: GDScript::reload (res://g_local_nao_usada.gd:3)
+ERROR: Failed to load script "res://g_local_nao_usada.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+=== b_membro.gd
+
+SCRIPT ERROR: Parse Error: The property "ampiltude" is not present on the inferred type "res://b_membro.gd" (but may be present on a subtype). (Warning treated as error.)
+          at: GDScript::reload (res://b_membro.gd:4)
+ERROR: Failed to load script "res://b_membro.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+
+############ 1c. GODOT LSP (editor headless --lsp-port; cliente declara codeDescriptionSupport) — cru em /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4cbd3154-7499-411d-b01f-83fb2db1ff31/scratchpad/i8/godot_lsp_bruto.json
+a_global.gd {"code": 0, "message": "Function \"pirnt()\" not found in base self.", "range": {"end": {"character": 6, "line": 2}, "start": {"character": 1, "line": 2}}, "severity": 1, "source": "gdscript"}
+c_prop_tipo.gd {"code": 0, "message": "Cannot find member \"z\" in base \"Vector2\".", "range": {"end": {"character": 10, "line": 3}, "start": {"character": 9, "line": 3}}, "severity": 1, "source": "gdscript"}
+c_prop_tipo.gd {"code": 0, "message": "Cannot find member \"z\" in base \"Vector2\".", "range": {"end": {"character": 10, "line": 3}, "start": {"character": 9, "line": 3}}, "severity": 1, "source": "gdscript"}
+d_nargs.gd {"code": 0, "message": "Too few arguments for \"soma()\" call. Expected at least 2 but received 1.", "range": {"end": {"character": 14, "line": 4}, "start": {"character": 7, "line": 4}}, "severity": 1, "source": "gdscript"}
+e_tipo_arg.gd {"code": 0, "message": "Cannot pass a value of type \"String\" as \"int\".", "range": {"end": {"character": 20, "line": 4}, "start": {"character": 13, "line": 4}}, "severity": 1, "source": "gdscript"}
+e_tipo_arg.gd {"code": 0, "message": "Invalid argument for \"dobro()\" function: argument 1 should be \"int\" but is \"String\".", "range": {"end": {"character": 20, "line": 4}, "start": {"character": 13, "line": 4}}, "severity": 1, "source": "gdscript"}
+f_sintaxe.gd {"code": 0, "message": "Expected \":\" after \"if\" condition.", "range": {"end": {"character": 8, "line": 2}, "start": {"character": 4, "line": 2}}, "severity": 1, "source": "gdscript"}
+f_sintaxe.gd {"code": 0, "message": "Expected closing \")\" after grouping expression.", "range": {"end": {"character": 15, "line": 4}, "start": {"character": 14, "line": 4}}, "severity": 1, "source": "gdscript"}
+f_sintaxe.gd {"code": 0, "message": "Expected end of statement after variable declaration, found \"Dedent\" instead.", "range": {"end": {"character": 15, "line": 4}, "start": {"character": 14, "line": 4}}, "severity": 1, "source": "gdscript"}
+f_sintaxe.gd {"code": 0, "message": "Missing unindent at the end of function declaration.", "range": {"end": {"character": 1, "line": 6}, "start": {"character": 0, "line": 6}}, "severity": 1, "source": "gdscript"}
+g_local_nao_usada.gd {"code": 0, "message": "(UNUSED_VARIABLE): The local variable \"nao_usada\" is declared but never used in the block. If this is intended, prefix it with an underscore: \"_nao_usada\".", "range": {"end": {"character": 18, "line": 2}, "start": {"character": 1, "line": 2}}, "severity": 2, "source": "gdscript"}
+# --doctool: as descrições dos 49 avisos debug/gdscript/warnings/* saem VAZIAS (o texto de ajuda não sai do binário por script).
+
+############ 2. luau-lsp analyze (entradas em /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4cbd3154-7499-411d-b01f-83fb2db1ff31/scratchpad/i8/lua)
+     1	--!strict
+     2	local M = {}
+     3	M.amplitude = 1
+     4	local function soma(a: number, b: number): number
+     5		return a + b
+     6	end
+     7	local function dobro(a: number): number
+     8		return a * 2
+     9	end
+    10	function M.update(self: typeof(M), dt: number)
+    11		pirnt("x")
+    12		local y = self.ampiltude * 2
+    13		local v = vector.create(1, 2, 3)
+    14		local z = v.w
+    15		local s = soma(1)
+    16		local d = dobro("texto")
+    17		local nao_usada = 3
+    18		local n: any = nil
+    19		local q = nil
+    20		q()
+    21		print(y, z, s, d)
+    22	end
+    23	return M
+     1	local function f()
+     2		if true then
+     3			print("x")
+     4	end
+=== --formatter=default
+[WARN] No definitions file provided by client
+casos.luau(11,2): TypeError: Unknown global 'pirnt'; consider assigning to it first
+casos.luau(12,12): TypeError: Key 'ampiltude' not found in table 'M'
+casos.luau(14,12): TypeError: Key 'w' not found in external type 'vector'
+casos.luau(15,12): TypeError: Argument count mismatch. Function 'soma' expects 2 arguments, but only 1 is specified
+casos.luau(16,18): TypeError: Expected this to be 'number', but got 'string'
+casos.luau(17,8): LocalUnused: Variable 'nao_usada' is never used; prefix with '_' to silence
+casos.luau(18,8): LocalUnused: Variable 'n' is never used; prefix with '_' to silence
+sintaxe.luau(5,1): SyntaxError: Expected 'end' (to close 'function' at line 1), got <eof>; did you forget to close 'then' at line 2?
+sintaxe.luau(1,16): FunctionUnused: Function 'f' is never used; prefix with '_' to silence
+=== --formatter=plain
+[WARN] No definitions file provided by client
+casos.luau:11:2-6: (W0) TypeError: Unknown global 'pirnt'; consider assigning to it first
+casos.luau:12:12-25: (W0) TypeError: Key 'ampiltude' not found in table 'M'
+casos.luau:14:12-14: (W0) TypeError: Key 'w' not found in external type 'vector'
+casos.luau:15:12-15: (W0) TypeError: Argument count mismatch. Function 'soma' expects 2 arguments, but only 1 is specified
+casos.luau:16:18-24: (W0) TypeError: Expected this to be 'number', but got 'string'
+casos.luau:17:8-16: (W0) LocalUnused: Variable 'nao_usada' is never used; prefix with '_' to silence
+casos.luau:18:8-8: (W0) LocalUnused: Variable 'n' is never used; prefix with '_' to silence
+sintaxe.luau:5:1-0: (W0) SyntaxError: Expected 'end' (to close 'function' at line 1), got <eof>; did you forget to close 'then' at line 2?
+sintaxe.luau:1:16-16: (W0) FunctionUnused: Function 'f' is never used; prefix with '_' to silence
+=== --formatter=gnu
+[WARN] No definitions file provided by client
+casos.luau:11.2-11.6: TypeError: Unknown global 'pirnt'; consider assigning to it first
+casos.luau:12.12-12.25: TypeError: Key 'ampiltude' not found in table 'M'
+casos.luau:14.12-14.14: TypeError: Key 'w' not found in external type 'vector'
+casos.luau:15.12-15.15: TypeError: Argument count mismatch. Function 'soma' expects 2 arguments, but only 1 is specified
+casos.luau:16.18-16.24: TypeError: Expected this to be 'number', but got 'string'
+casos.luau:17.8-17.16: LocalUnused: Variable 'nao_usada' is never used; prefix with '_' to silence
+casos.luau:18.8-18.8: LocalUnused: Variable 'n' is never used; prefix with '_' to silence
+sintaxe.luau:5.1-5.0: SyntaxError: Expected 'end' (to close 'function' at line 1), got <eof>; did you forget to close 'then' at line 2?
+sintaxe.luau:1.16-1.16: FunctionUnused: Function 'f' is never used; prefix with '_' to silence
+=== 2b. publishDiagnostics do luau-lsp (sondas I0b/I6/I7 já gravadas): campos por código
+(1000, '{"href": "https://luau.org/types"}', 'Luau') | TypeError: Expected this to be 'number', but got 'string'
+(1001, 'null', None) | TypeError: Unknown global 'pirnt'; consider assigning to it first
+(1001, '{"href": "https://luau.org/types"}', 'Luau') | TypeError: Unknown global 'pirnt'; consider assigning to it first
+(1002, 'null', None) | TypeError: Key 'proprety' not found in table '{ attach_script: (number, string) -> (), color: (number, number, number, number?) -> Color, despawn: (nu
+(1002, '{"href": "https://luau.org/types"}', 'Luau') | TypeError: Key 'proprety' not found in table '{ attach_script: (number, string) -> (), color: (number, number, number, number?) -> Color, despawn: (nu
+(1014, '{"href": "https://luau.org/types"}', 'Luau') | SyntaxError: Expected 'then' when parsing if statement, got '='
+(1021, '{"href": "https://luau.org/types"}', 'Luau') | TypeError: Cannot call a value of type number
+(1030, 'null', None) | TypeError: Unknown type used in + operation; consider adding a type annotation to 'self'
+(1030, '{"href": "https://luau.org/types"}', 'Luau') | TypeError: Unknown type used in + operation; consider adding a type annotation to 'self'
+(5, '{"href": "https://luau.org/lint#samelinestatement-5"}', 'Luau') | SameLineStatement: A new statement is on the same line; add semi-colon on previous statement to silence
+(8, 'null', None) | FunctionUnused: Function 'init' is never used; prefix with '_' to silence
+(8, '{"href": "https://luau.org/lint#functionunused-8"}', 'Luau') | FunctionUnused: Function 'init' is never used; prefix with '_' to silence
+=== 2c. o que o href aponta (luau.org/lint, doc pública — não é fonte): secções LocalUnused / FunctionUnused / UnknownGlobal
+LocalUnused (7)
+Section titled “LocalUnused (7)”
+This warning is one of the few warnings that highlight unused variables. Local variable declarations that aren’t used may indicate a bug in the code (for example, there could be a typo in the code that uses the wrong variable) or redundant code that is no longer necessary (for example, calling a function to get its result and never using this result). This warning warns about locals that aren’t used; if the locals are not used intentionally they can be prefixed with 
+_
+ to silence the warning:
+FunctionUnused (8)
+Section titled “FunctionUnused (8)”
+While unused local variables could be useful for debugging, unused functions usually contain dead code that was meant to be removed. Unused functions clutter code, can be a result of typos similar to local variables, and can mislead the reader into thinking that some functionality is supported.
+...
+FunctionUnused (8)
+Section titled “FunctionUnused (8)”
+While unused local variables could be useful for debugging, unused functions usually contain dead code that was meant to be removed. Unused functions clutter code, can be a result of typos similar to local variables, and can mislead the reader into thinking that some functionality is supported.
+ImportUnused (9)
+Section titled “ImportUnused (9)”
+In Luau, there’s no first-class module system that’s part of the syntax, but 
+require
+ function acts as an import statement. When a local is initialized with a 
+...
+UnknownGlobal (1)
+Section titled “UnknownGlobal (1)”
+By default, variables in Luau are global (this is inherited from Lua 5.x and can’t be changed because of backwards compatibility). This means that typos in identifiers are invisible to the parser, and often break at runtime. For this reason, the linter considers all globals that aren’t part of the builtin global table and aren’t explicitly defined in the script “unknown”:
+Note that injecting globals via 
+setfenv
+ can produce this warning in correct code; global injection is incompatible with type checking and has performance implications so we recommend against it and in favor of using 
+require
+ with correctly scoped identifiers.
+...
+# luau.org/types (href de TODOS os TypeError/SyntaxError 1000..1030): página genérica 'An introduction to Luau types', sem âncora por código.
+
+############ 3. rustc (entradas em /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4cbd3154-7499-411d-b01f-83fb2db1ff31/scratchpad/i8/rs)
+=== rustc casos.rs
+error: cannot find macro `pirnt` in this scope
+  --> casos.rs:6:5
+   |
+ 6 |     pirnt!("x");
+   |     ^^^^^
+   |
+  ::: /home/enio/.rustup/toolchains/1.95-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/macros.rs:82:1
+   |
+82 | macro_rules! print {
+   | ------------------ similarly named macro `print` defined here
+   |
+help: a macro with a similar name exists
+   |
+ 6 -     pirnt!("x");
+ 6 +     print!("x");
+   |
+
+error[E0609]: no field `ampiltude` on type `Onda`
+ --> casos.rs:7:15
+  |
+7 |     let y = o.ampiltude * 2.0;
+  |               ^^^^^^^^^ unknown field
+  |
+help: a field with a similar name exists
+  |
+7 -     let y = o.ampiltude * 2.0;
+7 +     let y = o.amplitude * 2.0;
+  |
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+ --> casos.rs:8:13
+  |
+8 |     let s = soma(1);
+  |             ^^^^--- argument #2 of type `i32` is missing
+  |
+note: function defined here
+ --> casos.rs:2:4
+  |
+2 | fn soma(a: i32, b: i32) -> i32 { a + b }
+  |    ^^^^         ------
+help: provide the argument
+  |
+8 |     let s = soma(1, /* i32 */);
+  |                   +++++++++++
+
+error[E0308]: mismatched types
+ --> casos.rs:9:19
+  |
+9 |     let d = dobro("texto");
+  |             ----- ^^^^^^^ expected `i32`, found `&str`
+  |             |
+  |             arguments to this function are incorrect
+  |
+note: function defined here
+ --> casos.rs:3:4
+  |
+3 | fn dobro(a: i32) -> i32 { a * 2 }
+  |    ^^^^^ ------
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0061, E0308, E0609.
+For more information about an error, try `rustc --explain E0061`.
+=== rustc nome.rs
+error[E0425]: cannot find function `printn` in this scope
+ --> nome.rs:1:24
+  |
+1 | fn main() { let x = 1; printn(x); }
+  |                        ^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.
+=== rustc sintaxe.rs
+error: this file contains an unclosed delimiter
+ --> sintaxe.rs:4:3
+  |
+1 | fn main() {
+  |           - unclosed delimiter
+2 |     if true {
+  |             - this delimiter might not be properly closed...
+3 |         println!("x");
+4 | }
+  | -^
+  | |
+  | ...as it matches this but it has different indentation
+
+error: aborting due to 1 previous error
+
+=== rustc aviso.rs
+warning: unused variable: `nao_usada`
+ --> aviso.rs:1:17
+  |
+1 | fn main() { let nao_usada = 3; }
+  |                 ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_nao_usada`
+  |
+  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+
+=== rustc --explain E0425  (57 linhas, 1004 chars)
+An unresolved name was used.
+
+Erroneous code examples:
+
+```
+something_that_doesnt_exist::foo;
+// error: unresolved name `something_that_doesnt_exist::foo`
+
+// or:
+
+trait Foo {
+    fn bar() {
+        Self; // error: unresolved name `Self`
+    }
+}
+
+// or:
+
+let x = unknown_variable;  // error: unresolved name `unknown_variable`
+```
+
+Please verify that the name wasn't misspelled and ensure that the
+identifier being referred to is valid for the given situation. Example:
+
+```
+enum something_that_does_exist {
+    Foo,
+}
+```
+
+Or:
+
+```
+mod something_that_does_exist {
+    pub static foo : i32 = 0i32;
+}
+
+something_that_does_exist::foo; // ok!
+```
+
+Or:
+
+```
+let unknown_variable = 12u32;
+let x = unknown_variable; // ok!
+```
+
+If the item is not defined in the current module, it must be imported using a
+`use` statement, like so:
+
+```
+use foo::bar;
+bar();
+```
+
+If the item you are importing is not defined in some super-module of the
+current module, then it must also be declared as public (e.g., `pub fn`).
+=== rustc --explain E0609  (24 linhas, 463 chars)
+Attempted to access a nonexistent field in a struct.
+
+Erroneous code example:
+
+```
+struct StructWithFields {
+    x: u32,
+}
+
+let s = StructWithFields { x: 0 };
+println!("{}", s.foo); // error: no field `foo` on type `StructWithFields`
+```
+
+To fix this error, check that you didn't misspell the field's name or that the
+field actually exists. Example:
+
+```
+struct StructWithFields {
+    x: u32,
+}
+
+let s = StructWithFields { x: 0 };
+println!("{}", s.x); // ok!
+```
+=== rustc --explain E0061  (23 linhas, 505 chars)
+An invalid number of arguments was passed when calling a function.
+
+Erroneous code example:
+
+```
+fn f(u: i32) {}
+
+f(); // error!
+```
+
+The number of arguments passed to a function must match the number of arguments
+specified in the function signature.
+
+For example, a function like:
+
+```
+fn f(a: u16, b: &str) {}
+```
+
+Must always be called with exactly two arguments, e.g., `f(2, "test")`.
+
+Note that Rust does not have a notion of optional function arguments or
+variadic functions (except for its C-FFI).
+=== rustc --explain E0308  (26 linhas, 693 chars)
+Expected type did not match the received type.
+
+Erroneous code examples:
+
+```
+fn plus_one(x: i32) -> i32 {
+    x + 1
+}
+
+plus_one("Not a number");
+//       ^^^^^^^^^^^^^^ expected `i32`, found `&str`
+
+if "Not a bool" {
+// ^^^^^^^^^^^^ expected `bool`, found `&str`
+}
+
+let x: f32 = "Not a float";
+//     ---   ^^^^^^^^^^^^^ expected `f32`, found `&str`
+//     |
+//     expected due to this
+```
+
+This error occurs when an expression was used in a place where the compiler
+expected an expression of a different type. It can occur in several cases, the
+most common being when calling a function and passing an argument which has a
+different type than the matching type in the function declaration.
+
+############ 3b. Python 3.14 (entradas em /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4cbd3154-7499-411d-b01f-83fb2db1ff31/scratchpad/i8/py)
+/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4cbd3154-7499-411d-b01f-83fb2db1ff31/scratchpad/i8/py/casos.py:12: SyntaxWarning: 'NoneType' object is not callable; perhaps you missed a comma?
+  "chamada_nil": lambda: (None)(),
+=== nome_global
+NameError: name 'pirnt' is not defined
+=== membro
+AttributeError: 'Onda' object has no attribute 'ampiltude'. Did you mean: 'amplitude'?
+=== prop_tipo
+AttributeError: 'float' object has no attribute 'z'
+=== nargs
+TypeError: soma() missing 1 required positional argument: 'b'
+=== tipo_arg
+TypeError: can only concatenate str (not "int") to str
+=== chamada_nil
+TypeError: 'NoneType' object is not callable
+=== metodo_nil
+AttributeError: 'NoneType' object has no attribute 'mover'
+=== sintaxe1.py
+  File "/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4cbd3154-7499-411d-b01f-83fb2db1ff31/scratchpad/i8/py/sintaxe1.py", line 2
+    if True
+           ^
+SyntaxError: expected ':'
+=== sintaxe2.py
+  File "/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4cbd3154-7499-411d-b01f-83fb2db1ff31/scratchpad/i8/py/sintaxe2.py", line 1
+    x = (1 + 2
+        ^
+SyntaxError: '(' was never closed
+
+############ 3c. Lua 5.5 / LuaJIT — erros de execução (o equivalente do nosso runtime)
+=== lua global.lua
+lua: global.lua:1: attempt to call a nil value (global 'pirnt')
+=== luajit global.lua
+luajit: global.lua:1: attempt to call global 'pirnt' (a nil value)
+=== lua membro.lua
+lua: membro.lua:2: attempt to perform arithmetic on a nil value (field 'ampiltude')
+=== luajit membro.lua
+luajit: membro.lua:2: attempt to perform arithmetic on field 'ampiltude' (a nil value)
+=== lua nil.lua
+lua: nil.lua:2: attempt to index a nil value (local 'n')
+=== luajit nil.lua
+luajit: nil.lua:2: attempt to index local 'n' (a nil value)
+=== lua sintaxe.lua
+lua: sintaxe.lua:3: 'end' expected (to close 'if' at line 1) near <eof>
+=== luajit sintaxe.lua
+luajit: sintaxe.lua:3: 'end' expected (to close 'if' at line 1) near '<eof>'

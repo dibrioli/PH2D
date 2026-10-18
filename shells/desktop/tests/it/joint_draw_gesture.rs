@@ -60,7 +60,7 @@ fn the_gesture_is_modal_and_precedes_the_generic_picking() {
     let src = crate::input_text::dispatch();
     // O corpo do dispatch de ponteiro, onde a ORDEM entre os candidatos importa.
     let dispatch = &src[src
-        .find("pub(crate) fn on_mouse_input")
+        .find(crate::input_text::PORTA_DO_CLIQUE)
         .expect("o handler de botão do mouse sumiu — este gate tem de ser re-apontado")..];
     let gesture = dispatch
         .find("if self.physics.joint_draw_armed")

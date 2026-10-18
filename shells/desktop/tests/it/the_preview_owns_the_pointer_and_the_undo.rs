@@ -54,7 +54,7 @@ fn the_preview_consumes_the_click_before_any_tool() {
     let src = crate::input_text::dispatch();
     let handler = body_of(
         &src,
-        "pub(crate) fn on_mouse_input",
+        crate::input_text::PORTA_DO_CLIQUE,
         "o handler de botao do ponteiro",
     );
     let guard = at(
@@ -145,7 +145,7 @@ fn the_pointer_move_feeds_the_preview_without_consuming_it() {
     let src = crate::input_text::dispatch();
     let moved = at(
         &src,
-        "pub(crate) fn on_cursor_moved",
+        crate::input_text::PORTA_DO_MOVIMENTO,
         "o handler de movimento do cursor",
     );
     let tail = &src[moved..];

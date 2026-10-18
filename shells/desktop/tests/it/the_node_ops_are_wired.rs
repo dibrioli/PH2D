@@ -428,25 +428,25 @@ fn each_phase_of_the_guide_drag_is_wired_to_the_door_that_delivers_it() {
     let src = crate::input_text::dispatch();
     let moved = fn_body(
         &src,
-        "pub(crate) fn on_cursor_moved(",
+        crate::input_text::PORTA_DO_MOVIMENTO,
         &["pub(crate) fn on_mouse_wheel("],
     );
     let button = fn_body(
         &src,
-        "pub(crate) fn on_mouse_input(",
+        crate::input_text::PORTA_DO_CLIQUE,
         &["\n    pub(crate) fn ", "\n#[cfg(test)]"],
     );
 
     // O MOVIMENTO mora onde o movimento chega.
     let mv = moved.find("self.guide_pointer_move(").unwrap_or_else(|| {
         panic!(
-            "o `guide_pointer_move` tem de ser chamado do `on_cursor_moved` — sem isto a guia \
+            "o `guide_pointer_move` tem de ser chamado do `pointer_moved` (a porta do rato e da caneta) — sem isto a guia \
              nasce sob o cursor e fica onde nasceu"
         )
     });
     assert!(
         !button.contains("self.guide_pointer_move("),
-        "o `on_mouse_input` só produz Down e Up: um braço de Move ali é inalcançável, e \
+        "o `pointer_button` só produz Down e Up: um braço de Move ali é inalcançável, e \
          acreditar nele é o que deixou o gesto meio-ligado"
     );
 
@@ -454,7 +454,7 @@ fn each_phase_of_the_guide_drag_is_wired_to_the_door_that_delivers_it() {
     for needle in ["self.guide_pointer_down(", "self.guide_pointer_up("] {
         assert!(
             button.contains(needle),
-            "`{needle}` tem de ser chamado do `on_mouse_input`"
+            "`{needle}` tem de ser chamado do `pointer_button` (a porta do rato e da caneta)"
         );
         assert!(
             !moved.contains(needle),

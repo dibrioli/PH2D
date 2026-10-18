@@ -25,11 +25,12 @@
 //! gate reprova a dizer que perdeu a âncora — nunca passa por não a ter encontrado. *Um censo que
 //! aprova quando não acha nada é a forma mais cara de gate verde.*
 
-/// O corpo do `on_mouse_input`, do cabeçalho dele até ao `fn` seguinte no mesmo nível.
+/// O corpo do `pointer_button` (a porta do clique do rato e da caneta, ADR-0189), do cabeçalho dele até ao `fn`
+/// seguinte no mesmo nível.
 fn corpo_do_on_mouse_input(fonte: &str) -> &str {
     let inicio = fonte
-        .find("pub(crate) fn on_mouse_input(")
-        .expect("o `on_mouse_input` mudou de nome — este gate perdeu o sujeito");
+        .find(crate::input_text::PORTA_DO_CLIQUE)
+        .expect("o `pointer_button` mudou de nome — este gate perdeu o sujeito");
     let resto = &fonte[inicio..];
     // O `fn` seguinte ao mesmo nível de indentação fecha o corpo. Sem fim explícito o gate mediria
     // o ficheiro inteiro, e uma soltura escrita 2 000 linhas abaixo passaria.
@@ -55,7 +56,7 @@ fn a_soltura_do_foco_corre_antes_de_quem_toma_o_aperto_e_devolve_cedo() {
 
     let soltura = corpo.find("forward_blur_to_hero(").unwrap_or_else(|| {
         panic!(
-            "o `on_mouse_input` deixou de largar o foco do painel: sem isso, tocar num chip \
+            "o `pointer_button` deixou de largar o foco do painel: sem isso, tocar num chip \
              numerico e voltar ao canvas mata os atalhos de quem toma o aperto para o resto da sessao"
         )
     });
@@ -64,7 +65,7 @@ fn a_soltura_do_foco_corre_antes_de_quem_toma_o_aperto_e_devolve_cedo() {
         let encontrado = corpo.find(consumidor).unwrap_or_else(|| {
             panic!(
                 "este gate perdeu a ancora `{consumidor}` — ele foi renomeado ou saiu do \
-                 `on_mouse_input`, e sem ela o gate aprovaria sem medir nada"
+                 `pointer_button`, e sem ela o gate aprovaria sem medir nada"
             )
         });
         assert!(

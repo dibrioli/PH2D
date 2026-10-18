@@ -39,7 +39,7 @@ fn dispatch_src() -> String {
 /// prosa é um gate que qualquer frase pode disparar — nos dois sentidos.
 fn on_mouse_input_body(src: &str) -> String {
     let i = src
-        .find("pub(crate) fn on_mouse_input(")
+        .find(crate::input_text::PORTA_DO_CLIQUE)
         .expect("on_mouse_input existe");
     src[i..]
         .lines()
@@ -125,7 +125,7 @@ fn the_release_runs_before_any_early_return() {
 fn the_move_advances_the_hand() {
     let src = dispatch_src();
     let i = src
-        .find("pub(crate) fn on_cursor_moved(")
+        .find(crate::input_text::PORTA_DO_MOVIMENTO)
         .expect("on_cursor_moved existe");
     let body = &src[i..];
     let end = body

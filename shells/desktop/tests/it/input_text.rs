@@ -189,14 +189,20 @@ fn blank_ramos(text: &str) -> String {
     out
 }
 
-/// O clique (`on_mouse_input`), pela ordem em que corre.
+/// ⭐ **As portas do PONTEIRO** (ADR-0189): o rato do winit (`on_mouse_input`/`on_cursor_moved`, só a ponte) e a
+/// caneta (`input_drop/caneta.rs`) acabam nestas duas — é nelas que mora o despacho, e é a elas que os gates de
+/// ORDEM apontam ([`the_mouse_and_the_pen_end_in_the_same_pointer_doors`] prova as duas pontes).
+pub const PORTA_DO_CLIQUE: &str = "pub(crate) fn pointer_button(";
+pub const PORTA_DO_MOVIMENTO: &str = "pub(crate) fn pointer_moved(";
+
+/// O clique (`pointer_button`), pela ordem em que corre.
 pub fn mouse_input() -> String {
-    door("on_mouse_input")
+    door("pointer_button")
 }
 
-/// O movimento (`on_cursor_moved`), pela ordem em que corre.
+/// O movimento (`pointer_moved`), pela ordem em que corre.
 pub fn cursor_moved() -> String {
-    door("on_cursor_moved")
+    door("pointer_moved")
 }
 
 /// A roda (`on_mouse_wheel`), pela ordem em que corre.
@@ -282,9 +288,9 @@ fn splice(text: &str, ramos: &BTreeMap<String, String>, depth: usize) -> String 
 #[test]
 fn every_door_is_whole_and_every_ramo_is_called() {
     let portas: [(&str, String, &str); 6] = [
-        ("on_mouse_input", mouse_input(), "self.dragging = None;"),
+        ("pointer_button", mouse_input(), "self.dragging = None;"),
         (
-            "on_cursor_moved",
+            "pointer_moved",
             cursor_moved(),
             "self.dispatch_panel_pointer(",
         ),
@@ -318,9 +324,36 @@ fn every_door_is_whole_and_every_ramo_is_called() {
         "ramos ÓRFÃOS — definidos e nunca chamados por porta nenhuma: {orfaos:?}"
     );
     assert!(
-        territory().contains("fn on_mouse_input(") && territory().contains("fn handle_editor_key("),
+        territory().contains("fn pointer_button(") && territory().contains("fn handle_editor_key("),
         "o território perdeu uma das portas"
     );
+}
+
+/// **O rato e a caneta acabam nas MESMAS portas** (ADR-0189) — é o que torna verdade para os dois cada gate de
+/// ordem apontado a [`PORTA_DO_CLIQUE`]/[`PORTA_DO_MOVIMENTO`]. A ponte do winit é só a ponte: nem ramo nem `return`.
+#[test]
+fn the_mouse_and_the_pen_end_in_the_same_pointer_doors() {
+    let caneta = read(&src().join("input_drop/caneta.rs"));
+    for (ponte, porta) in [
+        ("on_mouse_input", "self.pointer_button("),
+        ("on_cursor_moved", "self.pointer_moved("),
+    ] {
+        let b = body(ponte);
+        assert_eq!(
+            b.matches(porta).count(),
+            1,
+            "`{ponte}` tem de acabar em `{porta}`"
+        );
+        assert!(
+            !b.contains("return") && !b.contains(&format!(".{RAMO}")),
+            "`{ponte}` é só a ponte do winit — o despacho mora na porta"
+        );
+        assert_eq!(
+            caneta.matches(porta).count(),
+            1,
+            "a caneta tem de entrar por `{porta}`"
+        );
+    }
 }
 
 fn ramos_de_brinquedo() -> BTreeMap<String, String> {
@@ -420,6 +453,8 @@ fn the_reconstructed_dispatch_still_has_every_region() {
     let d = dispatch();
     for ancora in [
         "fn on_cursor_moved(",
+        "fn pointer_moved(",
+        "fn pointer_button(",
         "fn on_mouse_wheel(",
         "fn on_mouse_input(",
         "pub(crate) fn apply_vec_boolean(",

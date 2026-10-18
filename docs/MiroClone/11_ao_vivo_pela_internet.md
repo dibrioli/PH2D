@@ -67,3 +67,19 @@ uma candidata que peça versões novas destes dá DUAS cópias.
   sem precisar de outra casa.
 - Telemóvel em partilha de rede: o Wi-Fi desta máquina no telemóvel, e a sonda outra vez.
 - Outra casa: a sonda corrida lá (é um ficheiro Python, sem instalar nada).
+
+### §5.1 — Duas máquinas no MESMO router (PC no Wi-Fi + notebook no cabo, pedido do dono 18/10)
+
+- **Medido 18/10: o router da casa NÃO faz hairpin** (um datagrama mandado ao endereço de FORA da casa, por outro
+  socket desta máquina, não volta para dentro: STUN `stun.l.google.com` deu `191.249.235.248:45146`, porta
+  preservada; 5 envios, 0 chegaram em 2 s). ⇒ com as duas máquinas no mesmo router, o caminho pela internet NÃO
+  se pode forçar: um convite só com o endereço de fora falharia por causa do router, não do PH2D. Não se faz esse
+  interruptor.
+- **O que esse teste PROVA mesmo assim**: duas máquinas reais (e o Windows do notebook, se for), o link e a chave,
+  a DHT pública nos dois lados, e o FURO contra uma firewall real — a `ufw` do PC (ligada) recusa UDP que ninguém
+  pediu, e a porta QUIC é aleatória (não está na regra «Allow on home network», que é a do TCP da rede local): o
+  notebook só entra depois de o PC o achar no ponto de encontro e furar para ele. O link leva os endereços da rede
+  de casa, e é por eles que o fio se faz. Sinal de que funcionou ASSIM: a entrada leva segundos (a DHT), não é
+  instantânea. Com `PH2D_BOARD_INTERNET=local` (sem DHT) nas duas, com a `ufw` ligada, o notebook NÃO entra — é o
+  controlo.
+- **O que NÃO prova**: atravessar dois NATs diferentes. Esse continua a ser o telemóvel ou outra casa (acima).

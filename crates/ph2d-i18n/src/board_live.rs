@@ -176,6 +176,26 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.net.l6" => {
             "6. End session closes it for all. The next invitation makes a new link; this one stops."
         }
+        // ── a cena 24 (PH2D_BOARD_SMOKE=24, W23 bloco 3): o quadro ──
+        "board.smoke.w23.board" => "Board tweaks",
+        "board.smoke.w23.l1" => {
+            "1. Hover a node (nothing selected): + adds a child, − on its edge folds the branch."
+        }
+        "board.smoke.w23.l2" => {
+            "2. Select the ROOT: the letter sizes in its bar grow or shrink the whole map."
+        }
+        "board.smoke.w23.l3" => {
+            "3. This board is in Draft: the branches are hand drawn, like the nodes."
+        }
+        "board.smoke.w23.l4" => {
+            "4. Select an arrow: the … next to its tips opens every tip (UML, ER)."
+        }
+        "board.smoke.w23.l5" => {
+            "5. Right-click a shape: Copy, Paste, Duplicate, Front/Back, Lock, Delete."
+        }
+        "board.smoke.w23.l6" => {
+            "6. Trackpad: two fingers move the board, pinch zooms. Many boards: ‹ › in the tabs."
+        }
         // ── a cena 23 (PH2D_BOARD_SMOKE=23, W23): as duas maneiras de entrar ──
         "board.smoke.join.title" => {
             "Live: two ways in — the same Wi-Fi, or a link over the internet"

@@ -182,7 +182,8 @@ pub(super) const KNOBS_DOS_FIOS: [&str; 12] = [
 
 fn sem_fios(nome: &str) -> ph2d_brush_presets::Preset {
     let mut p = de_fabrica(nome);
-    for k in KNOBS_DOS_FIOS {
+    // … e sem o RELEVO deles (W3): a altura de cada fio também é dos fios.
+    for k in KNOBS_DOS_FIOS.into_iter().chain(["bristleHeight", "bristleRemove"]) {
         p.parametros.engine.remove(k);
     }
     p
@@ -274,7 +275,7 @@ fn os_oleos_tem_fios_e_nao_carris() {
 
 /// Um traço recto de 400 px com a pressão a subir de 0,3 a 1 (a mão leve pesa no `bristleLift`), o preset
 /// `p` ao raio 20, 30 quadros depois: o FNV dos píxeis.
-fn traco_com_rampa(p: &ph2d_brush_presets::Preset) -> u64 {
+pub(super) fn traco_com_rampa(p: &ph2d_brush_presets::Preset) -> u64 {
     use super::sonda_gestos::{AZUL, fnv1a, gesto};
     use ph2d_editor_core::tool::RasterEditTool;
     let (w, h) = (520u32, 120u32);

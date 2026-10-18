@@ -154,7 +154,8 @@ pub(super) const KNOBS_DOS_FIOS: [Knob; 12] = [
 
 /// [`KNOBS_DOS_FIOS`] de volta ao neutro.
 pub(super) fn sem_os_fios(t: &mut PainterTool) {
-    for k in KNOBS_DOS_FIOS {
+    // … e sem o RELEVO deles (W3): a luz que o acende também não é destas réguas.
+    for k in KNOBS_DOS_FIOS.into_iter().chain([Knob::BristleHeight]) {
         t.paint
             .wetpaint
             .knobs

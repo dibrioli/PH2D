@@ -140,9 +140,13 @@ pub enum Knob {
     BristleNoiseLight,
     /// Quanto a mão leve levanta os fios fracos (`0` = nada).
     BristleLift,
+    /// O RELEVO de cada fio (W3): a altura (px) que um fio de ganho 1 deixa na tinta (`0` = nenhum).
+    BristleHeight,
+    /// … a fracção dos fios que ESCAVAM em vez de construir (o Remove impasto do Rebelle).
+    BristleRemove,
 }
 
-pub const KNOB_COUNT: usize = 83;
+pub const KNOB_COUNT: usize = 85;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

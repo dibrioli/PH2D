@@ -25,6 +25,8 @@ pub use scratch::{AdvCell, SolverScratch};
 
 #[path = "grid/patch.rs"]
 mod patch;
+#[path = "grid/altura.rs"]
+pub mod altura; // o campo PREGUIÇOSO da altura dos fios (W3) — filho por LOC
 pub use patch::{GridPatch, restore_grid_region, snapshot_grid_region};
 
 pub const DEFAULT_WIDTH: usize = 900;
@@ -53,6 +55,9 @@ pub struct Grid {
     /// O RELEVO da tinta da célula: o `Emboss` do pincel que a pousou, pesado pela massa (Bug #48 — o
     /// relevo viaja com a tinta; trocar de pincel não o muda). Escrito só em [`crate::trail::Trail::transfer_paint`].
     pub relevo: Vec<f32>,
+    /// **A ALTURA da tinta** que os fios deixaram (W3, [`crate::bristles_relevo`]), em px: cristas e sulcos.
+    /// VAZIO até o primeiro pincel com relevo pintar na grade ([`altura::garante`]) — quem não o usa não paga.
+    pub altura: Vec<f32>,
     /// **O GLAZE da tinta em suspensão** (prompt 42): a fracção que filtra a de baixo — o Glaze do pincel que a
     /// pousou, pesado pela massa SUSPENSA (como o [`Self::relevo`]: trocar de pincel não muda a tinta da tela).
     /// Lido pela lei do ecrã de cada célula ([`crate::assenta::Ecra::com_vela`]); `0` = a lei da obra.
@@ -212,6 +217,7 @@ impl Grid {
             sett: vec![0.0; n],
             sett_rgb: vec![[0.0; 3]; n],
             relevo: vec![0.0; n],
+            altura: Vec::new(),
             vela: vec![0.0; n],
             flow,
             vel_x: vec![0.0; fn_],
@@ -537,6 +543,7 @@ pub struct GridSnapshot {
     pub sett: Vec<f32>,
     pub sett_rgb: Vec<[f32; 3]>,
     pub relevo: Vec<f32>,
+    pub altura: Vec<f32>,
     pub vela: Vec<f32>,
     pub vel_x: Vec<f32>,
     pub vel_y: Vec<f32>,
@@ -570,6 +577,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         sett: g.sett.clone(),
         sett_rgb: g.sett_rgb.clone(),
         relevo: g.relevo.clone(),
+        altura: g.altura.clone(),
         vela: g.vela.clone(),
         vel_x: g.vel_x.clone(),
         vel_y: g.vel_y.clone(),
@@ -597,6 +605,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.sett.copy_from_slice(&s.sett);
     g.sett_rgb.copy_from_slice(&s.sett_rgb);
     g.relevo.copy_from_slice(&s.relevo);
+    g.altura.clone_from(&s.altura);
     g.vela.copy_from_slice(&s.vela);
     g.vel_x.copy_from_slice(&s.vel_x);
     g.vel_y.copy_from_slice(&s.vel_y);

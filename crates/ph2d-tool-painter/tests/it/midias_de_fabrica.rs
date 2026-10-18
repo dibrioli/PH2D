@@ -176,7 +176,7 @@ impl FamiliaC {
 }
 
 /// Os 8 s da cena + 22 s: seca, como a foto do Rebelle.
-const QUADROS_SECOS: u32 = 1800;
+pub(super) const QUADROS_SECOS: u32 = 1800;
 
 /// Uma mídia: o preset, a foto do Rebelle (`docs/Painter/NewFeaturesWetPaint/fixtures/rebelle/`), o
 /// raio que dá a largura dela (W2: o número é a largura) e os números da foto (`mede_traco.py`, recto) nas

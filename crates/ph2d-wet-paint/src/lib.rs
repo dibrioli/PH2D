@@ -31,6 +31,7 @@
 pub mod assenta;
 pub mod bristles_cor;
 pub mod bristles_fios;
+pub mod bristles_relevo;
 pub mod brush;
 pub mod colorops;
 pub mod drying;

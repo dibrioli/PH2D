@@ -214,15 +214,19 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         // Os FIOS (W2, doc 48_medicao §3): cada fio claro ou escuro pela cor (o óleo satura: a pressão só abriria
         // falhas), a pressão própria e a mão leve que os levanta. Textura 2,75 → 3,85 (Rebelle 5,86: o resto são
         // as sombras do relevo de cada fio, W3), carris 0,00 → 3,03 (3,32), CV 0,017, período 2 %.
+        // O RELEVO de cada fio (W3, doc 49_medicao): metade dos fios constrói e metade escava, 1,25 px por ganho,
+        // aceso pela luz do Impasto, e o emboss da massa 0,7 → 1. Textura 3,85 → 5,87 (5,86), carris 3,26, forte
+        // 3,31 → 5,29 (5,04), borda 0,895 (0,872).
         extras: &[
             ("felt", 0.05),
             ("bristleStrength", 2.0),
-            ("emboss", 0.7),
+            ("emboss", 1.0),
             ("bristlePressure", 1.2),
             ("bristleLaneWidth", 1.5),
             ("bristleLift", 0.4),
             ("bristleNoiseSat", 0.3),
             ("bristleNoiseLight", 0.25),
+            ("bristleHeight", 1.25),
         ],
         grao: None,
         spacing: Some(0.01),
@@ -275,6 +279,8 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         // 0,85) e a textura dele é o contraste entre elas ⇒ a pressão de cada fio quase constante (ruído 2000 px)
         // e forte, e a mão leve que levanta os fracos. Textura 3,2 → 7,9 (9,0), CV 0,009 (0,008), carris 0,88,
         // leve 11,5 (10,2), forte 7,1 (7,3); o período 47 % a 6 px do carimbo dele não se copia (03 §3.1).
+        // ⛔ Sem o relevo de cada fio (W3, doc 49_medicao): o controlo 7,94 não se distingue do Rebelle 9,0 (o ruído
+        // da foto, recto × rápido, é 0,9) — 1 px por ganho dava 8,79, dentro do ruído.
         extras: &[
             ("felt", 0.0),
             ("bristleStrength", 2.0),

@@ -558,6 +558,8 @@ mod offthread_ritmo; // o worker RITMADO dos gates (W7) — filho por LOC
 #[cfg(test)]
 #[path = "wetpaint/grid_ratio_tests.rs"]
 mod grid_ratio_tests; // os gates de PRODUTO da razão da grade
+#[path = "wetpaint/relevo_luz.rs"]
+mod relevo_luz; // a luz do Impasto sobre o relevo dos fios (W3)
 #[cfg(test)]
 #[path = "wetpaint/relevo_tests.rs"]
 mod relevo_tests; // o Emboss do Tuning morde sem papel (dono 11/10)

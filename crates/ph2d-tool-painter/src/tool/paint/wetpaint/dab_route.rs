@@ -202,6 +202,7 @@ impl PainterTool {
         // que não é Bristles não tem cerdas: a ponta é LISA (`texv = 1`, D4).
         let cerdas = brush.shape.kind == ph2d_painter_brush::TextureKind::Bristles;
         let fios = self.fios_do_pincel();
+        let relevo = self.relevo_do_pincel();
         let shape_active = brush.shape_silhouette_active(shape_image.is_some()) && !cerdas;
         // The artist's GRAIN replaces the engine's bristle texture (W2.4).
         // The bristle IS the fluid's default grain, so an armed Grain slot
@@ -495,6 +496,16 @@ impl PainterTool {
                 [f64::from(d.dir[0]), f64::from(d.dir[1])],
                 f64::from(d.radius_px / d.stroke_radius_px.max(1e-3)),
             );
+            // O RELEVO de cada fio (W3): as faixas dos fios, mesmo sem pressão nem cor, e a altura de cada uma.
+            let relevo_dab = (!relevo.neutro()).then(|| {
+                fios_dab.unwrap_or_else(|| {
+                    fios.resolvido(
+                        f64::from(d.arc_len),
+                        [f64::from(d.dir[0]), f64::from(d.dir[1])],
+                        f64::from(d.radius_px / d.stroke_radius_px.max(1e-3)),
+                    )
+                })
+            });
             let cor = rampa.as_ref().map(|r| {
                 move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
                     let v = forma_da_cor.map(|si| valor_da_forma(si, cx, cy));
@@ -589,21 +600,37 @@ impl PainterTool {
                     Some(&sil),
                     grain_arg,
                 );
+                // A borracha tira também o relevo que houver (sem o campo, nada a tirar).
+                if !sess.engine.active_grid().altura.is_empty() {
+                    sess.engine
+                        .pentear_relevo(cell_x, cell_y, cell_r, &sil, &|_, _| 0.0);
+                }
                 continue;
             }
             match wet_tool {
-                WetTool::Paint => sess.engine.dispatch_pressure_dab_lane_cor(
-                    li,
-                    cell_x,
-                    cell_y,
-                    b,
-                    cell_r,
-                    opacidade,
-                    Some(&sil),
-                    grain_arg,
-                    padrao_arg,
-                    cor_arg,
-                ),
+                WetTool::Paint => {
+                    sess.engine.dispatch_pressure_dab_lane_cor(
+                        li,
+                        cell_x,
+                        cell_y,
+                        b,
+                        cell_r,
+                        opacidade,
+                        Some(&sil),
+                        grain_arg,
+                        padrao_arg,
+                        cor_arg,
+                    );
+                    if let Some(f) = relevo_dab {
+                        let contacto = f64::from(d.radius_px / d.stroke_radius_px.max(1e-3));
+                        let alvo = |cx: i32, cy: i32| -> f64 {
+                            let dc = [f64::from(cx) - centro_x, f64::from(cy) - centro_y];
+                            relevo.alvo(&f.no_ponto(dc.map(|v| v * px_cel)), contacto)
+                        };
+                        sess.engine
+                            .pentear_relevo(cell_x, cell_y, cell_r, &sil, &alvo);
+                    }
+                }
                 // Blend keeps the engine's own fixed-hardness stamp (the
                 // model's tools ignore the brush silhouette on purpose).
                 WetTool::Blend => sess

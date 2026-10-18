@@ -82,15 +82,22 @@ impl Fios {
         if self.neutro() {
             return None;
         }
+        Some(self.resolvido(arco, rumo, contacto))
+    }
+
+    /// [`Self::no_dab`] mesmo no neutro: as faixas dos fios existem sem pressão nem cor (o RELEVO de cada fio,
+    /// W3, lê-as).
+    #[must_use]
+    pub fn resolvido(&self, arco: f64, rumo: [f64; 2], contacto: f64) -> FiosNoDab {
         let t = if rumo == [0.0, 0.0] { [1.0, 0.0] } else { rumo };
         let osc = self.oscilacao_px * ruido(arco / self.ruido_px.max(1.0), 0, SEMENTE_OSCILACAO);
-        Some(FiosNoDab {
+        FiosNoDab {
             fios: *self,
             arco,
             normal: [-t[1], t[0]],
             desvio_px: osc,
             baixa: self.levanta * (1.0 - contacto.clamp(0.0, 1.0)),
-        })
+        }
     }
 }
 

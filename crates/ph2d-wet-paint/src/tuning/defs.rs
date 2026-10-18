@@ -671,4 +671,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::BristleNoiseSat, KnobGroup::Hidden, "bristleNoiseSat", 0.0, 0.5, 0.005, 0.0, None),
     k(Knob::BristleNoiseLight, KnobGroup::Hidden, "bristleNoiseLight", 0.0, 0.7, 0.005, 0.0, None),
     k(Knob::BristleLift, KnobGroup::Hidden, "bristleLift", 0.0, 2.0, 0.01, 0.0, None),
+    k(Knob::BristleHeight, KnobGroup::Hidden, "bristleHeight", 0.0, 8.0, 0.01, 0.0, None),
+    k(Knob::BristleRemove, KnobGroup::Hidden, "bristleRemove", 0.0, 1.0, 0.01, 0.5, None),
 ];

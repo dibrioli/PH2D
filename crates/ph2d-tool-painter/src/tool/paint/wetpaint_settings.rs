@@ -123,6 +123,15 @@ impl crate::PainterTool {
             ],
         }
     }
+
+    /// O RELEVO de cada fio do pincel (W3): os knobs `bristleHeight`/`bristleRemove`.
+    pub(crate) fn relevo_do_pincel(&self) -> ph2d_wet_paint::bristles_relevo::Relevo {
+        let k = &self.paint.wetpaint.knobs;
+        ph2d_wet_paint::bristles_relevo::Relevo {
+            altura_px: k.get(Knob::BristleHeight),
+            escava: k.get(Knob::BristleRemove),
+        }
+    }
 }
 
 impl WetKnobs {

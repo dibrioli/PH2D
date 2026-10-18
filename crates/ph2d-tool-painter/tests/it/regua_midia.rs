@@ -28,6 +28,11 @@ pub struct Medida {
     /// do traço (fora dos 10 % de cada ponta), do desvio da cobertura AO LONGO da linha, em % da cobertura do
     /// miolo — `0` = cada linha constante pelo traço inteiro (o tapete arrastado pela lane).
     pub carril: f64,
+    /// ⭐ **A textura ATRAVÉS e AO LONGO** (W3): a textura com o resíduo a 1 eixo — `c` menos a média de 5 px
+    /// na vertical (o que muda de linha para linha: os fios) e na horizontal (o que muda pelo caminho).
+    /// Rebelle óleo 5,84 · 1,09; express 8,85 · 1,80; oilround 3,09 · 1,31.
+    pub atraves: f64,
+    pub ao_longo: f64,
 }
 
 /// `mede_traco.mede(png, crop)`: `c = max|px − papel| / 255` (papel = mediana das 2 linhas de cima e
@@ -79,6 +84,7 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
     }
     let (mut soma, mut n) = (0.0f64, 0.0f64);
     let mut residuos = Vec::new();
+    let (mut atraves, mut ao_longo) = (Vec::new(), Vec::new());
     for y in 0..ch as isize {
         for x in 0..cw as isize {
             if !miolo[y as usize * cw + x as usize] {
@@ -95,6 +101,19 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
             }
             let v = at(x, y);
             residuos.push(v - m / 25.0);
+            let eixo = |dx: isize, dy: isize| {
+                (-2..=2)
+                    .map(|k| {
+                        at(
+                            (x + k * dx).clamp(0, cw as isize - 1),
+                            (y + k * dy).clamp(0, ch as isize - 1),
+                        )
+                    })
+                    .sum::<f64>()
+                    / 5.0
+            };
+            atraves.push(v - eixo(0, 1));
+            ao_longo.push(v - eixo(1, 0));
             soma += v;
             n += 1.0;
         }
@@ -162,8 +181,11 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
     let mc = corpo.iter().sum::<f64>() / corpo.len().max(1) as f64;
     let dc =
         (corpo.iter().map(|v| (v - mc).powi(2)).sum::<f64>() / corpo.len().max(1) as f64).sqrt();
-    let media = residuos.iter().sum::<f64>() / n.max(1.0);
-    let var = residuos.iter().map(|r| (r - media).powi(2)).sum::<f64>() / n.max(1.0);
+    let desvio = |r: &[f64]| {
+        let m = r.iter().sum::<f64>() / n.max(1.0);
+        (r.iter().map(|v| (v - m).powi(2)).sum::<f64>() / n.max(1.0)).sqrt()
+    };
+    let var = desvio(&residuos).powi(2);
     let (periodo, periodo_fracao) = periodo(corpo);
     let carril = {
         let (x0, n) = (xa.unwrap_or(0), np);
@@ -195,6 +217,8 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
         periodo,
         periodo_fracao,
         carril,
+        atraves: 100.0 * desvio(&atraves) / cobertura.max(1e-6),
+        ao_longo: 100.0 * desvio(&ao_longo) / cobertura.max(1e-6),
     }
 }
 

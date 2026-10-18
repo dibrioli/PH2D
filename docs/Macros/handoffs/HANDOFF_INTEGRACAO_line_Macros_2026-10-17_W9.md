@@ -159,7 +159,8 @@ Fotos (`fotografa_cena.sh`, 1930×1040) em
 `/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/7f8c5460-5e36-4494-b9b8-c03fa948dd5d/scratchpad/`:
 `w9_cena5.png` (abre parada em Time 0, Canvas branco, aba Keys, Loop ligado, Record visível, 4 passos) e `w9_cena1.png`
 (`=1` toca por Autoplay). Smoke do dono de 18/10: reprovado no passo 2 («os dois traços aparecem de uma vez») → curado
-(item 7) e aprovado; depois o arrasto → curado (item 8) e aprovado.
+(item 7) e aprovado; depois o arrasto → curado (item 8) e aprovado. **Smoke do fecho (18/10, o Parar sem piscar,
+binário de `9a295ee8a7`): APROVADO.**
 
 ## §8 — ABERTO
 
@@ -175,6 +176,10 @@ Fotos (`fotografa_cena.sh`, 1930×1040) em
    `set_autoplay(…, true)` da Timeline tira o Autoplay dos OUTROS clipes do mesmo objeto (`ph2d-timeline/src/doc_entry.rs`)
    — quem marcou «Idle» como entrada perde-o ao regravar. Desfaz-se com o undo da Timeline; vale também para o Motion
    (`sessao.rs` passa as duas famílias por `instala`). É o que a 1.ª tomada já fazia.
+   **Decidido (18/10, o dono delegou: «escolha o que fica melhor»):** a escolha do artista manda — gravar (1.ª ou 2.ª
+   tomada) dá o Autoplay ao clipe da macro **só se nenhum OUTRO clipe do objeto já é a entrada**; se é, ele fica e o
+   clipe da macro não o rouba. O caso do smoke de 18/10 (objeto só com o clipe da macro, Autoplay desligado) continua a
+   ganhar o Autoplay — o Play de cima toca a gravação nova. Por fazer numa janela nova, com gate vermelho antes.
 5. Baixo: com a espia ligada (só nas `=5`/`=6`) cada subida inteira copia a tela na CPU — o registo à mão da `=5` paga-o.
 6. Baixo: a shell `render_loop/macro_smoke.rs` cresceu ~110 linhas de composição da `=5`/`=6` (despacho pelas portas
    privadas da `App`, `ponto_da_tela`, a montagem da linha); a catraca passa. O relógio e o condutor já saíram para a crate.

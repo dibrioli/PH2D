@@ -579,3 +579,99 @@ fn measure_the_bytes_of_dragging_1_10_and_50_shapes() {
         );
     }
 }
+
+/// Um anfitrião com um retângulo e a Bia já dentro (o quadro dela é o 2.º).
+fn bia_inside() -> (Host, Board, Guest, Board) {
+    let mut hb = board();
+    rect(&mut hb, 0.0);
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let mut g = Guest::new(2, "Bia".into(), 3, 4);
+    let (out, _) = host.frame(&mut hb, 7, &g.hello().encode(), 0);
+    let mut slot = None;
+    for (_, m) in out {
+        deliver(&mut g, &mut slot, &m.encode(), 0);
+    }
+    (host, hb, g, slot.expect("a Bia recebeu o quadro"))
+}
+
+fn slide(b: &mut Board, x: f64) {
+    let mut el = b.doc.live().next().unwrap().clone();
+    el.x = x;
+    let _ = BoardOp::Put(el).apply(&mut b.doc);
+}
+
+fn writes(out: &[Msg]) -> usize {
+    out.iter().filter(|m| matches!(m, Msg::Writes(_))).count()
+}
+
+/// ⭐ B8 (W23) — com ritmo, as escritas saem no máximo uma vez por período: a primeira depois de uma
+/// pausa sai JÁ, um arrasto a 60 Hz sai a ~30 Hz, e a última posição chega sempre. Sem ritmo, cada
+/// imagem leva a sua (o controlo).
+#[test]
+fn paced_writes_leave_once_per_period_and_the_last_position_always_arrives() {
+    for (every, lo, hi) in [(0u64, 60usize, 60usize), (33, 28, 31)] {
+        let (mut host, mut hb, mut g, mut b) = bia_inside();
+        g.write_every(every);
+        // Imagens sem nada a mandar não gastam a vez.
+        assert_eq!(writes(&g.tick(&mut b, 990)), 0);
+        slide(&mut b, 1.0);
+        assert_eq!(writes(&g.tick(&mut b, 1_000)), 1, "a 1.ª esperou ({every})");
+        let mut out = Vec::new();
+        let mut sent = 0;
+        for k in 2..=61u64 {
+            slide(&mut b, k as f64);
+            let o = g.tick(&mut b, 1_000 + (k - 1) * 16);
+            sent += writes(&o);
+            out.extend(o);
+        }
+        assert!(
+            (lo..=hi).contains(&sent),
+            "{every} ms: {sent} escritas em 60 imagens"
+        );
+        // Parado o arrasto, a próxima vez leva o que faltava.
+        out.extend(g.tick(&mut b, 1_000 + 60 * 16 + every));
+        for m in out {
+            let _ = host.frame(&mut hb, 7, &m.encode(), 2_000);
+        }
+        assert_eq!(
+            hb.doc.live().next().unwrap().x,
+            61.0,
+            "{every} ms: a última posição"
+        );
+    }
+}
+
+/// B8 — fechar a sala leva o que o ritmo ainda guardava (o adeus nunca deixa uma posição para trás).
+#[test]
+fn closing_the_room_sends_what_the_pace_was_holding() {
+    let (mut host, mut hb, mut g, mut b) = bia_inside();
+    host.write_every(33);
+    slide(&mut hb, 5.0);
+    let first = host.tick(&mut hb, 1_000);
+    slide(&mut hb, 9.0);
+    let held = host.tick(&mut hb, 1_010);
+    assert!(
+        held.iter().all(|(_, m)| !matches!(m, Msg::Writes(_))),
+        "saiu antes da vez"
+    );
+    let last = host.close(&mut hb, 1_011);
+    for (_, m) in first.into_iter().chain(last) {
+        let _ = g.frame(Some(&mut b), &m.encode(), 1_011);
+    }
+    assert_eq!(b.doc.live().next().unwrap().x, 9.0);
+}
+
+/// B8 (W23) — o tecto da presença é EM MÉDIA: com imagens de 16 ms, um cursor que mexe sai a ~30 Hz
+/// (contado «desde o último envio», só saía a cada três imagens: 20 Hz).
+#[test]
+fn a_moving_cursor_goes_out_at_thirty_hertz_with_sixty_hertz_frames() {
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let mut sent = 0;
+    for k in 0..60u64 {
+        let now = 1_000 + k * 16;
+        sent += host.presence(now, presence(k as f64, vec![])).len();
+        sent += host.tick(&mut hb, now).len();
+    }
+    assert!((28..=31).contains(&sent), "{sent} presenças em 60 imagens");
+}

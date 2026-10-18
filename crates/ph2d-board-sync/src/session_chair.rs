@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_board_model::{Board, ElementId, Field, VOTES_MAX};
 
-use super::{ConnId, Event, Host, Msg, To};
+use super::{ConnId, Event, Host, Msg, Pace, To};
 use crate::fac::{Ask, Ballot, Fac, Private, REVEAL_COUNTDOWN_MS, Refusal, VoteRoom};
 use crate::replica::sealed_field;
 use crate::vault::Vault;
@@ -282,6 +282,7 @@ impl Host {
         if self.chair.fac.vote.as_ref().is_some_and(|v| !v.ended) {
             self.end_vote(board);
         }
+        self.room.writes = Pace::default();
         self.tick(board, now_ms)
     }
 
@@ -314,8 +315,7 @@ impl Host {
                     self.chair.dirty = true;
                     continue;
                 }
-                self.chair.vault.overtaken(id, f, at);
-                self.chair.dirty = true;
+                self.chair.dirty |= self.chair.vault.overtaken(id, f, at);
             }
             public.push(w);
         }
@@ -380,7 +380,9 @@ impl Host {
         self.replica
             .set_unread(self.chair.vault.hidden_to(self.me.peer));
         let mut ws = std::mem::take(&mut self.chair.loose);
-        ws.extend(self.replica.local(board));
+        let r = &mut self.replica;
+        let every = self.room.writes_every;
+        ws.extend(self.room.writes.drain(now_ms, every, || r.local(board)));
         let mut gone = Vec::new();
         for w in self.replica.take_sealed() {
             if self.chair.fac.private.is_some() {

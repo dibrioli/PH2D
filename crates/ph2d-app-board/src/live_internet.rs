@@ -19,6 +19,18 @@ use super::{CONNECT_TIMEOUT, Live, State, random, waker};
 /// endereços, e o anfitrião fura a cada volta dele (2 s).
 const LINK_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// B8 — pela internet as MINHAS escritas agrupam-se ao ritmo da presença; na rede local saem a cada
+/// imagem. Medição e porquê: handoff W23 bloco 2.
+const INTERNET_WRITE_EVERY_MS: u64 = sync::SEND_EVERY_MS;
+
+fn internet_write_every() -> u64 {
+    #[cfg(test)]
+    if let Some(ms) = PACE.get() {
+        return ms;
+    }
+    INTERNET_WRITE_EVERY_MS
+}
+
 /// Por onde o convidado entra (e volta a entrar se cair).
 #[derive(Clone)]
 pub(super) enum Route {
@@ -82,7 +94,7 @@ pub(super) fn invite_internet(st: &mut State, hero: &mut HeroScreen) {
 /// ADR-0187 — a preparação acabou: a entrada abre no anfitrião e o link vai para a área de
 /// transferência. Sem sala de anfitrião, a entrada fecha.
 pub(super) fn internet_tick(st: &mut State, hero: &mut HeroScreen) {
-    let Some(Live::Host { net, .. }) = &mut st.live else {
+    let Some(Live::Host { net, s, .. }) = &mut st.live else {
         st.internet = Internet::Off;
         return;
     };
@@ -97,6 +109,7 @@ pub(super) fn internet_tick(st: &mut State, hero: &mut HeroScreen) {
     match got {
         Ok(ih) => {
             ih.attach(net);
+            s.write_every(internet_write_every());
             let link = ih.link();
             hero.store.set_clipboard_copy(link.clone());
             let v = hero.documents.live_view_mut();
@@ -117,6 +130,10 @@ pub(super) fn internet_tick(st: &mut State, hero: &mut HeroScreen) {
 
 pub(super) fn join_by(st: &mut State, hero: &mut HeroScreen, route: Route) {
     let me = hero.documents.author().to_owned();
+    let mut s = sync::Guest::new(random(), me, random(), random());
+    if matches!(route, Route::Link { .. }) {
+        s.write_every(internet_write_every());
+    }
     // Por link, o painel diz que procura na internet e por quanto tempo no máximo.
     let searching = matches!(route, Route::Link { .. })
         .then(|| u32::try_from(LINK_TIMEOUT.as_secs()).unwrap_or(u32::MAX));
@@ -126,7 +143,7 @@ pub(super) fn join_by(st: &mut State, hero: &mut HeroScreen, route: Route) {
     };
     st.live = Some(Live::Guest {
         net: None,
-        s: sync::Guest::new(random(), me, random(), random()),
+        s,
         board: None,
         dialing: Some(dial(&route)),
         route,
@@ -221,6 +238,17 @@ fn strict(m: Mapping) -> bool {
 
 #[cfg(test)]
 thread_local! {
+    static PACE: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+}
+
+/// B8 — para as medições: nesta thread, as escritas pela internet saem a cada `ms`.
+#[cfg(test)]
+pub(crate) fn internet_pace_for_tests(ms: u64) {
+    PACE.set(Some(ms));
+}
+
+#[cfg(test)]
+thread_local! {
     static FAKE_NAT: std::cell::Cell<Option<Mapping>> = const { std::cell::Cell::new(None) };
 }
 
@@ -234,3 +262,7 @@ pub(crate) fn fake_nat_for_tests(m: Mapping) {
 #[cfg(test)]
 #[path = "live_link_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "live_pace_tests.rs"]
+mod pace_tests;

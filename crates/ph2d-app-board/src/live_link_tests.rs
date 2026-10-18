@@ -141,3 +141,61 @@ fn coming_back_by_the_link_comes_from_the_same_port() {
     let (_, again) = arrived(&h);
     assert_eq!(again, first, "a volta abriu outro nó");
 }
+
+/// B8 (W23) — o ritmo das escritas é da INTERNET: quem entra por link agrupa-as a 30 Hz, quem entra
+/// pela rede local manda cada imagem; o anfitrião passa ao ritmo quando a entrada pela internet abre.
+#[test]
+fn only_the_internet_paces_the_writes() {
+    let pace = || {
+        crate::live::STATE.with_borrow(|st| match &st.live {
+            Some(Live::Guest { s, .. }) => s.writes_every_ms(),
+            Some(Live::Host { s, .. }) => s.writes_every_ms(),
+            None => u64::MAX,
+        })
+    };
+    for (route, want) in [
+        (
+            Route::Lan {
+                addr: SocketAddr::from(([127, 0, 0, 1], 1)),
+                code: "ABC-DEF".into(),
+            },
+            0,
+        ),
+        (
+            Route::Link {
+                guest: LinkGuest::new(net::Invite {
+                    key: net::InviteKey::random(),
+                    addrs: vec![],
+                }),
+                local: true,
+            },
+            INTERNET_WRITE_EVERY_MS,
+        ),
+    ] {
+        reset_for_tests();
+        let mut g = hero("Bia");
+        crate::live::STATE.with_borrow_mut(|st| join_by(st, &mut g, route));
+        assert_eq!(pace(), want);
+    }
+    reset_for_tests();
+    internet_local_for_tests();
+    let mut ana = hero("Ana");
+    let id = ana.documents.create("Q".into());
+    ana.documents.activate(Some(id));
+    ana.documents.ask_live(LiveRequest::Host);
+    service(&mut ana);
+    assert_eq!(pace(), 0, "a sala só na rede local");
+    ana.documents.ask_live(LiveRequest::InviteInternet);
+    let end = Instant::now() + Duration::from_secs(10);
+    while pace() == 0 && Instant::now() < end {
+        service(&mut ana);
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert_eq!(
+        pace(),
+        INTERNET_WRITE_EVERY_MS,
+        "a sala abriu-se à internet"
+    );
+    ana.documents.ask_live(LiveRequest::Leave);
+    service(&mut ana);
+}

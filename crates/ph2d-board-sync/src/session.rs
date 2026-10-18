@@ -136,9 +136,47 @@ pub enum Event {
 struct Room {
     peers: BTreeMap<PeerId, PeerInfo>,
     seen: BTreeMap<PeerId, Seen>,
-    sent_at: Option<u64>,
+    shown: Pace,
     sent: Option<Presence>,
     queued: Option<Presence>,
+    /// B8 — as MINHAS escritas: no máximo uma volta a cada `writes_every` ms (`0` = a cada imagem).
+    /// O que mudou entretanto junta-se sozinho (a réplica tira a diferença do ESTADO): um arrasto
+    /// manda só a última posição.
+    writes: Pace,
+    writes_every: u64,
+}
+
+/// Um tecto de envio: no máximo uma vez a cada `every` ms EM MÉDIA, e a primeira depois de uma pausa
+/// sai já. A vaga seguinte conta-se a partir da que acabou, não do instante em que saiu: com imagens
+/// de 16,7 ms e um tecto de 33, «desde o último envio» só deixava sair a cada TRÊS (20 Hz).
+#[derive(Clone, Copy, Debug, Default)]
+struct Pace {
+    slot: Option<u64>,
+}
+
+impl Pace {
+    fn due(self, now_ms: u64, every: u64) -> bool {
+        self.slot.is_none_or(|s| now_ms.saturating_sub(s) >= every)
+    }
+
+    fn sent(&mut self, now_ms: u64, every: u64) {
+        self.slot = Some(match self.slot {
+            Some(s) if now_ms.saturating_sub(s) < 2 * every => s + every,
+            _ => now_ms,
+        });
+    }
+
+    /// Drena `take` se for a vez; a volta só conta se levou alguma coisa.
+    fn drain<T>(&mut self, now_ms: u64, every: u64, take: impl FnOnce() -> Vec<T>) -> Vec<T> {
+        if !self.due(now_ms, every) {
+            return Vec::new();
+        }
+        let ws = take();
+        if !ws.is_empty() {
+            self.sent(now_ms, every);
+        }
+        ws
+    }
 }
 
 impl Room {
@@ -150,11 +188,12 @@ impl Room {
             return None;
         }
         let selection = self.sent.as_ref().map(|s| &s.selection) != Some(&p.selection);
-        let due = self
-            .sent_at
-            .is_none_or(|t| now_ms.saturating_sub(t) >= SEND_EVERY_MS);
-        if selection || due {
-            self.sent_at = Some(now_ms);
+        if selection || self.shown.due(now_ms, SEND_EVERY_MS) {
+            // A selecção fora de vez recomeça a contagem (não gasta a vaga seguinte).
+            if selection {
+                self.shown = Pace::default();
+            }
+            self.shown.sent(now_ms, SEND_EVERY_MS);
             self.sent = Some(p.clone());
             self.queued = None;
             Some(p)
@@ -373,6 +412,17 @@ impl Host {
             .collect()
     }
 
+    /// B8 — as minhas escritas saem no máximo a cada `ms` (`0` = a cada imagem); o fecho leva-as
+    /// todas.
+    pub fn write_every(&mut self, ms: u64) {
+        self.room.writes_every = ms;
+    }
+
+    #[must_use]
+    pub fn writes_every_ms(&self) -> u64 {
+        self.room.writes_every
+    }
+
     fn is_here(&self, peer: PeerId) -> bool {
         peer == self.me.peer || self.guests.values().any(|p| *p == peer)
     }
@@ -415,6 +465,16 @@ impl Guest {
             fac: (Fac::default(), 0),
             ballot: None,
         }
+    }
+
+    /// B8 — como [`Host::write_every`].
+    pub fn write_every(&mut self, ms: u64) {
+        self.room.writes_every = ms;
+    }
+
+    #[must_use]
+    pub fn writes_every_ms(&self) -> u64 {
+        self.room.writes_every
     }
 
     /// O estado da facilitação agora (os relógios descontados do que passou desde que chegou).
@@ -565,7 +625,9 @@ impl Guest {
     pub fn tick(&mut self, board: &mut Board, now_ms: u64) -> Vec<Msg> {
         let mut out = Vec::new();
         if let Some(r) = &mut self.replica {
-            out.extend(crate::replica::by_file(r.local(board)));
+            let every = self.room.writes_every;
+            let ws = self.room.writes.drain(now_ms, every, || r.local(board));
+            out.extend(crate::replica::by_file(ws));
             let sealed = r.take_sealed();
             if !sealed.is_empty() {
                 out.push(Msg::Sealed(sealed));

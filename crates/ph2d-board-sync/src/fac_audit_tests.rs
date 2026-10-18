@@ -261,3 +261,29 @@ fn a_vote_ended_under_anonymous_names_keeps_no_name() {
         assert_eq!(by.is_empty(), anonymous, "anonymous={anonymous}: «{by}»");
     }
 }
+
+/// B8 (W23) — medido ao contar o fio: cada escrita de POSIÇÃO de um convidado fazia o anfitrião
+/// mandar a facilitação a todos, sem nada mudado no cofre — num arrasto pela internet, metade dos
+/// pacotes que desciam (um por escrita e por pessoa).
+#[test]
+fn moving_a_note_does_not_send_the_facilitation_again() {
+    let mut hb = board();
+    let id = note(&mut hb, "a", 0.0);
+    let mut r = Room::new(hb, &["Bia", "Caio"]);
+    let before: Vec<usize> = r.peers.iter().map(|p| p.heard.len()).collect();
+    for k in 1..=5u64 {
+        let b = r.b(0);
+        let mut el = b.doc.get(id).unwrap().clone();
+        el.translate([1.0, 0.0]);
+        let _ = BoardOp::Put(el).apply(&mut b.doc);
+        r.at(k * 16);
+    }
+    assert!(r.b(1).doc.get(id).unwrap().x >= 5.0, "o Caio não viu mexer");
+    for (i, (p, from)) in r.peers.iter().zip(before).enumerate() {
+        let facs = p.heard[from..]
+            .iter()
+            .filter(|m| matches!(Msg::decode(m), Some(Msg::Fac(_))))
+            .count();
+        assert_eq!(facs, 0, "a pessoa {i} ouviu a facilitação {facs}×");
+    }
+}

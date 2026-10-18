@@ -48,11 +48,10 @@ impl Vault {
     }
 
     /// Uma escrita às claras mais nova passou à frente do selado deste registo: ele já não sai.
-    pub(crate) fn overtaken(&mut self, id: ElementId, f: Field, at: Lamport) {
+    /// `true` = saiu do cofre (o que todos vêem escondido mudou).
+    pub(crate) fn overtaken(&mut self, id: ElementId, f: Field, at: Lamport) -> bool {
         let old = self.notes.get(&(id, f)).and_then(|(_, w)| sealed_field(w));
-        if old.is_some_and(|(_, _, old)| at > old) {
-            self.notes.remove(&(id, f));
-        }
+        old.is_some_and(|(_, _, old)| at > old) && self.notes.remove(&(id, f)).is_some()
     }
 
     /// As notas escondidas (sem autor — é o que vai a todos).

@@ -8,11 +8,11 @@ Anterior: [P46](HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-17_P46_CANETA
 
 ## §2 — Decidido e medido (o detalhe e as tabelas no 47_medicao)
 
-- **A rampa**: a barra «pontas ≥ 60 %» do 05 era a do óleo; o Rebelle dá 0,16–0,35 aos finos. A barra é a FOTO de cada
-  pincel (`Metrica::Pontas`, vale + ≥ 0,6 onde o Rebelle ≥ 0,6). O `pressureSize` de 9 pincéis de fábrica saiu de uma
-  varredura (0,1–0,8, um lote): Oil Bristle 0,2 · Express 0,4 · 8B 0,6 · Soft Pastel 0,55 · Oil Pastel 0,65 · Ink Bullet 0,4
-  · Marker Bullet 0,4 · Marker Liner 0,35 · Wet Wash 0,1. Airbrush e Flats ficam (dono). As 9 cenas da `a_lei_da_tinta`
-  repinadas pela barra (o resto ao byte).
+- **A rampa** ⛔ REVOGADA pelo dono no smoke de 18/10 («apertar muito e pouco variam pouco a espessura; antes funcionava
+  melhor»): o piso que punha as pontas nas do Rebelle (9 pincéis) comia a resposta da mão dele (0,24–0,86 ⇒ ~1,3× contra
+  ~2,7×). Os 9 voltaram aos ficheiros de `8ff6591c79` (as 22 cenas ao byte); `Metrica::Pontas` fica só no aerógrafo e nos
+  Flats. ⚠️ Não reabrir as pontas do Rebelle pelo piso: se voltarem, é por outra via (a curva do tamanho, `pressureSizeCurve`,
+  ou o tecto), e medida contra a faixa da mão do dono.
 - **O lápis deitado** — o Rebelle CORRIDO a 0–63° ao longo/através/diagonal (`fixtures/rebelle_tilt/`, sessão nova): a ponta
   é uma ELIPSE ao longo do azimute; nada abaixo de ~39°, inteira a 45°; atraso ~170 px de caminho. Lei `pen::Tilt` +
   `DabTilt::compose` (SVD 2×2, exacta com pincel achatado); o 8B: 39–45°, 3,3 × 1,05, lag 170, `tiltSmooth` 0 (o grão

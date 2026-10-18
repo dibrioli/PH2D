@@ -18,27 +18,26 @@ const RAIO_DA_CENA: f32 = 18.0;
 /// (prompt 42) em `ddc782e9f0`, antes do pó (prompt 43); o Airbrush em `4fa48c25df`, antes das formas (prompt 44), e
 /// refeito por ORDEM DO DONO no smoke do 44 (a pressão do Spray 2: esmaece, não estreita); o Wet Flat e a Gouache
 /// Flat pinados com a lei de antes do prompt 45 (a dos 20 de cima, ao bit, `a5134220e5`); os três com a pressão →
-/// opacidade refeitos pela lei do 45 por ORDEM DO DONO (o Airbrush «como no Rebelle», a rampa dos Flats); os nove
-/// com as PONTAS da rampa do Rebelle refeitos pela barra da W6 (05 §3, doc 47_medicao §2 — o `pressureSize` deles).
+/// opacidade refeitos pela lei do 45 por ORDEM DO DONO (o Airbrush «como no Rebelle», a rampa dos Flats).
 #[rustfmt::skip]
 const CENAS: [(&str, bool, u64); 22] = [
     ("Wet Round", false, 0xfce64c9627dc5bc3),
-    ("Wet Wash", false, 0xc32b9ce7ac5cec74),
+    ("Wet Wash", false, 0x782a0a8a8ed9c439),
     ("Wet Dry Brush", false, 0x1a361614679dde9a),
     ("Wet Drip", false, 0x8159963aa484f688),
     ("Wet Liner", false, 0x27defb305741fea9),
-    ("Oil Bristle", false, 0x5f9cb98958bacd56),
+    ("Oil Bristle", false, 0x53cf6eb66d3857e1),
     ("Acrylic Round", false, 0xfea6bfd5e31bf152),
-    ("Express Oil", false, 0xd1a99ace331f31b0),
-    ("Graphite 8B", false, 0xf99fa30aa46464f0),
+    ("Express Oil", false, 0x6e348caa0df4a42e),
+    ("Graphite 8B", false, 0x55368fbf0685ad46),
     ("Charcoal", false, 0x3b6500d86d772fd6),
-    ("Soft Pastel", false, 0x1b25237c6d587c52),
-    ("Oil Pastel", false, 0xcb7200c80d779fe1),
-    ("Ink Bullet", false, 0x3f6c8e5d0c4385d7),
+    ("Soft Pastel", false, 0xf99dd413f5f0218e),
+    ("Oil Pastel", false, 0x235fe3c132334588),
+    ("Ink Bullet", false, 0x7d8b4981994b64c6),
     ("Dip Pen", false, 0xff9830389709ba89),
     ("Ink Brush", false, 0x7a0e448f92965f65),
-    ("Marker Bullet", false, 0x105482bac5a86001),
-    ("Marker Liner", false, 0xde38dcca90c731e3),
+    ("Marker Bullet", false, 0xe8d6f9b5bef7d373),
+    ("Marker Liner", false, 0x1bdda019316e5682),
     ("Airbrush", false, 0xabb7061c5ea4a58d),
     ("Wet Flat", false, 0x036ebd6ea49c35f9),
     ("Gouache Flat", false, 0x2c9e4acf585fcb33),

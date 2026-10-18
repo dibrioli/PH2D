@@ -14,6 +14,12 @@
 
 ## §2 — A rampa de pressão (um lote, um processo por variante)
 
+> ⛔⛔ **Revogado pelo DONO no smoke de 18/10** («a pressão tem pouca influência no traço, apertar muito e pouco variam
+> pouco a espessura; antes desta rodada funcionava melhor»). A mão dele vai de 0,24 a 0,86 (p5–p95, os 180 s): com o piso
+> que dava as pontas do Rebelle (`pressureSize` 0,2–0,65 ⇒ raio mínimo 0,35–0,8) essa faixa só variava a espessura
+> ~1,3×, contra ~2,7× com o de sempre (0,9). Os 9 pincéis voltaram ao de antes (os ficheiros de `8ff6591c79`, as 22
+> cenas ao byte); `Metrica::Pontas` fica só onde já estava certa (aerógrafo, Flats). A tabela abaixo é o registo.
+
 Régua: `ferramentas/pontas_rampa.py` (o `largura_5_50_95` do `mede_traco.py`, a média das duas pontas ÷ o miolo),
 portada para Rust em `regua_midia::pontas` (gate `a_regua_das_pontas_e_a_do_python`, sintética 15/41/15 = 0,3659 nos dois).
 
@@ -100,5 +106,6 @@ cenas (9 repinadas pela barra, o resto ao byte; o 8B com o rato ao byte entre as
 |---|---|---|
 | `tiltSmooth` 0,43 no 8B (o grão pela inclinação) | 1,58× de largura ao longo (Rebelle 1,24) | a sobreposição já alisa; o alisamento extra alarga |
 | a barra «pontas ≥ 60 % em todos» | o Rebelle dá 0,16–0,35 aos de ponta fina | a barra é a foto de cada um |
+| as pontas do Rebelle pelo piso da pressão (9 pincéis) | a faixa da mão do dono (0,24–0,86) passa a variar ~1,3× | o dono, smoke 18/10: «antes funcionava melhor» |
 | `MAX_SMOOTHING` 0,95 | 95 ms de atraso | o toque mediano dura 111 ms |
 | cache decidida pelo pincel (`pen_varies_dabs`) | o rato com a lei ligada mudava bits no Digital | decide-se pelo lote deitado |

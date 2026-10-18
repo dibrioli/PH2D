@@ -194,24 +194,25 @@ use Metrica::{
 // O Chato e a Tinta (prompt 23, aceites 12/10) são os dois pontos que o dono VIU: a mutação «preset de antes»
 // sangra cada um sozinho (Oil 0,950 · Express 0,906).
 #[rustfmt::skip]
-const MIDIAS: [Midia; 17] = [
-    // A aguada lavada (W6): a pressão quase não estreita no Rebelle (`wcwash`, 38/41/38).
-    Midia { preset: "Wet Wash", foto: "wcwash", raio: 20.5, metricas: &[(Pontas, 0.93), (Largura, 41.0)] },
+const MIDIAS: [Midia; 16] = [
+    // ⛔ As PONTAS da rampa do Rebelle saíram dos pincéis da tinta, do óleo, dos lápis e dos pastéis por ordem do DONO
+    // (smoke 18/10: «apertar muito e pouco variam pouco a espessura; antes funcionava melhor»): o piso que as dava comia
+    // a resposta da mão dele (0,24–0,86). Ficam no aerógrafo e nos Flats, que já as tinham (doc 47_medicao §2).
     Midia { preset: "Wet Liner", foto: "wcliner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
-    Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317), (Pontas, 0.81)] },
+    Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
     Midia { preset: "Acrylic Round", foto: "oilround", raio: 19.5, metricas: &[(Cobertura, 0.880), (Borda, 0.595)] },
-    Midia { preset: "Express Oil", foto: "express", raio: 21.0, metricas: &[(Cobertura, 0.700), (Tinta, 0.772), (Pontas, 0.68)] },
-    Midia { preset: "Graphite 8B", foto: "pencil", raio: 15.0, metricas: &[(Cobertura, 0.798), (Textura, 9.093), (Borda, 0.320), (Orla, 7.0), (Pontas, 0.56)] },
+    Midia { preset: "Express Oil", foto: "express", raio: 21.0, metricas: &[(Cobertura, 0.700), (Tinta, 0.772)] },
+    Midia { preset: "Graphite 8B", foto: "pencil", raio: 15.0, metricas: &[(Cobertura, 0.798), (Textura, 9.093), (Borda, 0.320), (Orla, 7.0)] },
     Midia { preset: "Charcoal", foto: "charcoal", raio: 10.5, metricas: &[(Cobertura, 0.384), (Borda, 0.378), (Orla, 15.0)] },
-    Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0), (Pontas, 0.53)] },
-    Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0), (Pontas, 0.45)] },
+    Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0)] },
+    Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0)] },
     // A tinta e o marcador (prompt 42): o Cruzamento é o da foto MOLHADA; a Borda e a Orla só onde o Round
     // não as tem (Ink Bullet: borda 1,00 nos dois; Orla 1 nos marcadores e nas canetas).
-    Midia { preset: "Ink Bullet", foto: "ink", raio: 21.0, metricas: &[(Cobertura, 0.862), (Textura, 0.395), (Cruzamento, 0.117), (Pontas, 0.68)] },
+    Midia { preset: "Ink Bullet", foto: "ink", raio: 21.0, metricas: &[(Cobertura, 0.862), (Textura, 0.395), (Cruzamento, 0.117)] },
     Midia { preset: "Dip Pen", foto: "dippen", raio: 19.0, metricas: &[(Cobertura, 0.856), (Textura, 1.433), (Borda, 0.910), (Cruzamento, 0.223)] },
     Midia { preset: "Ink Brush", foto: "inkbrush", raio: 20.0, metricas: &[(Cobertura, 0.722), (Textura, 1.266), (Borda, 0.793), (Orla, 5.0), (Cruzamento, 0.239)] },
-    Midia { preset: "Marker Bullet", foto: "markerbullet", raio: 20.0, metricas: &[(Cobertura, 0.909), (Textura, 0.658), (Borda, 0.768), (Cruzamento, 0.016), (Pontas, 0.65)] },
-    Midia { preset: "Marker Liner", foto: "marker", raio: 9.0, metricas: &[(Cobertura, 0.910), (Textura, 2.116), (Borda, 0.716), (Cruzamento, 0.016), (Pontas, 0.71)] },
+    Midia { preset: "Marker Bullet", foto: "markerbullet", raio: 20.0, metricas: &[(Cobertura, 0.909), (Textura, 0.658), (Borda, 0.768), (Cruzamento, 0.016)] },
+    Midia { preset: "Marker Liner", foto: "marker", raio: 9.0, metricas: &[(Cobertura, 0.910), (Textura, 2.116), (Borda, 0.716), (Cruzamento, 0.016)] },
     // O aerógrafo (prompt 43): o PÓ — a textura, a uniformidade e a orla larga são dele; o «período» não conta
     // (a repetição do Rebelle varia 0,005, o controlo fica a 0,013 — doc 43 §2).
     Midia { preset: "Airbrush", foto: "airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (RampaLargura, 0.63), (RampaCobertura, 0.34), (Largura, 26.0), (Pontas, 0.8)] },

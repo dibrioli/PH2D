@@ -64,8 +64,10 @@ pub const DIREITA: Tilt = Tilt {
     spoke: 3,
 };
 
-// ⭐ A caneta (W6, doc 47_medicao): o `pressureSize` de cada um é o que põe as PONTAS da rampa nas da foto do
-// Rebelle (`sonda_as_metricas_das_variantes`, 0,1 a 0,8, 18/10) — óleo 0,81 · tinta 0,68 · lápis 0,56; o 8B leva a
+// ⭐ A caneta (W6, doc 47_medicao): ⛔ o `pressureSize` que punha as PONTAS da rampa nas da foto do Rebelle SAIU por
+// ordem do DONO no smoke de 18/10 («apertar muito e pouco variam pouco a espessura; antes funcionava melhor») — a mão
+// dele vai de 0,24 a 0,86 e o piso alto comia a resposta (§2). O 8B fica com o de sempre (0,9, explícito: o gerador
+// mantém uma chave antiga) e leva a
 // ponta DEITADA medida no Rebelle a 0–63° (`fixtures/rebelle_tilt/`): de 39° a 45° a elipse 3,3 × 1,05 ao longo do
 // azimute (a sonda `sonda_o_lapis_deitado_por_variante`: o grão alisa-se SÓ pela sobreposição da elipse — o
 // `tiltSmooth` alargava o traço e ficava fora do vale), a inclinação lida com 170 px de atraso.
@@ -108,7 +110,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 3000.0,
         hardness: 0.0,
         size_px: None,
-        extras: &[("pressureSize", 0.1)],
+        extras: &[],
         grao: None,
         spacing: None,
         achatado: None,
@@ -209,12 +211,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: Some(103.0),
         // O chato (prompt 23, aceite do dono 12/10): lâmina de pé, 0,68 = 1 − 13/41 (o traço de pé e o
         // deitado da foto); o feltro fecha as falhas que a lâmina fina abria. Régua: `mede_familia_c.py`.
-        extras: &[
-            ("felt", 0.05),
-            ("bristleStrength", 2.0),
-            ("emboss", 0.7),
-            ("pressureSize", 0.2),
-        ],
+        extras: &[("felt", 0.05), ("bristleStrength", 2.0), ("emboss", 0.7)],
         grao: None,
         spacing: Some(0.01),
         achatado: Some((0.68, 90)),
@@ -262,12 +259,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 900.0,
         hardness: 0.9,
         size_px: Some(64.0),
-        extras: &[
-            ("felt", 0.0),
-            ("bristleStrength", 2.0),
-            ("emboss", 0.2),
-            ("pressureSize", 0.4),
-        ],
+        extras: &[("felt", 0.0), ("bristleStrength", 2.0), ("emboss", 0.2)],
         grao: None,
         spacing: Some(0.01),
         achatado: None,
@@ -298,7 +290,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[
             ("felt", 0.0),
             ("drag", 0.05),
-            ("pressureSize", 0.6),
+            ("pressureSize", 0.9),
             ("tiltStart", 39.0),
             ("tiltFull", 45.0),
             ("tiltWidth", 1.05),
@@ -359,7 +351,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.2,
         size_px: Some(29.0),
-        extras: &[("felt", 0.0), ("drag", 0.0), ("pressureSize", 0.55)],
+        extras: &[("felt", 0.0), ("drag", 0.0)],
         grao: Some(("Noise", 100.0)),
         spacing: None,
         achatado: None,
@@ -388,7 +380,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.0,
         size_px: Some(77.0),
-        extras: &[("felt", 0.0), ("drag", 0.05), ("pressureSize", 0.65)],
+        extras: &[("felt", 0.0), ("drag", 0.05)],
         grao: Some(("Noise", 100.0)),
         spacing: None,
         achatado: None,
@@ -464,7 +456,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: None,
-        extras: &[("glaze", 0.9), ("pressureSize", 0.4)],
+        extras: &[("glaze", 0.9)],
         grao: None,
         spacing: None,
         achatado: None,
@@ -487,7 +479,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.75,
         size_px: None,
-        extras: &[("glaze", 1.0), ("pressureSize", 0.4)],
+        extras: &[("glaze", 1.0)],
         grao: None,
         spacing: None,
         achatado: None,
@@ -511,7 +503,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.55,
         size_px: None,
-        extras: &[("glaze", 1.0), ("pressureSize", 0.35)],
+        extras: &[("glaze", 1.0)],
         grao: None,
         spacing: None,
         achatado: None,

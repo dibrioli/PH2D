@@ -108,3 +108,6 @@ congelou 9 fotos (mesmo hash) — usou-se a 10.ª, conferida pelo `Time(s)`.
 - Próximo: o smoke do dono (o arrasto à mão na `=5`); a linha continua por integrar (W8 + W9).
 
 **Smoke do dono (18/10): APROVADO** — o arrasto à mão na `=5`, sem buracos. HEAD de código `688e6d2426`.
+
+**O piscar depois do Parar (18/10, fecho da linha): não existia no ecrã** — era a linha de diagnóstico. Medido, gates e
+cura no [handoff de integração da W9](HANDOFF_INTEGRACAO_line_Macros_2026-10-17_W9.md) §2 item 9.

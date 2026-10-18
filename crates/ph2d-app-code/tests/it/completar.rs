@@ -175,8 +175,8 @@ fn a_lista_abre_na_pausa_e_filtra_enquanto_se_escreve() {
     assert_eq!(m.docs().completion_of(id), None, "nada casa: fecha");
 }
 
-/// Tab aceita: o nome e os parênteses com o cursor dentro (o snippet sem paragens), num passo de
-/// undo; Enter também.
+/// Tab aceita: a chamada com os buracos do esqueleto da tabela (I12), o 1.º seleccionado, num passo
+/// de undo; Enter também.
 #[test]
 fn tab_e_enter_aceitam_num_passo_de_undo() {
     let (mut m, ids, _) = mesa(&[("a.luau", ""), ("b.luau", "")]);
@@ -184,13 +184,17 @@ fn tab_e_enter_aceitam_num_passo_de_undo() {
         m.pede(id);
         let _ = abre(&mut m, id, "ph2d.se");
         tecla(&mut m, id, k, Modifiers::default(), None, "");
-        assert_eq!(m.docs().text_of(id).as_deref(), Some("ph2d.set()"), "{k:?}");
+        assert_eq!(
+            m.docs().text_of(id).as_deref(),
+            Some("ph2d.set(entity, \"x\", value)"),
+            "{k:?}"
+        );
         assert_eq!(m.docs().completion_of(id), None, "{k:?}: fechou");
-        // O cursor entre os parênteses: o que se escreve a seguir entra lá.
+        // O 1.º buraco seleccionado: o que se escreve a seguir entra lá.
         escreve(&mut m, id, "1");
         assert_eq!(
             m.docs().text_of(id).as_deref(),
-            Some("ph2d.set(1)"),
+            Some("ph2d.set(1, \"x\", value)"),
             "{k:?}"
         );
         tecla(&mut m, id, Key::Char('z'), ctrl(), Some("z"), "");

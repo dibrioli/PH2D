@@ -16,6 +16,7 @@ mod definicao;
 mod despacho;
 mod dicas;
 mod dobras;
+mod esqueletos;
 mod explicacoes;
 mod gramatica;
 mod linha_longa;

@@ -220,6 +220,14 @@ impl CodeView {
         }
     }
 
+    /// ⚠️ SONDA: os retângulos da faixa `s..e` nas filas do último quadro (os da selecção).
+    #[must_use]
+    pub fn probe_segments(&self, buffer: &Buffer, s: usize, e: usize) -> Vec<Rect> {
+        let mut out = Vec::new();
+        self.each_seg(buffer, s, e, false, |_, r| out.push(r));
+        out
+    }
+
     fn paint_under(&self, frame: &CodeFrame<'_>, scene: &mut VectorScene, pal: &Palette) {
         let buffer = frame.buffer;
         let t = buffer.text();

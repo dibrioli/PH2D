@@ -85,6 +85,9 @@ pub(crate) struct Plano {
     /// `textDocument/rename` e `textDocument/references`: os sítios, NESTE documento, do nome no
     /// byte do pedido (`None` = `null`). O rename troca-os todos pelo nome novo, como o 1.70.1.
     pub(crate) referir: Option<fn(&str, usize) -> Sitios>,
+    /// `textDocument/inlayHint` (I9): `(byte, rótulo, com textEdits)` de cada dica de tipo, como o
+    /// 1.70.1 (`kind: 1`, sem `padding`, o ficheiro inteiro); `None` = `null`.
+    pub(crate) tipar: Option<fn(&str) -> Vec<(usize, String, bool)>>,
 }
 
 /// As capacidades que o `luau-lsp` 1.70.1 anunciou (a legenda dos tokens vem daqui).
@@ -317,10 +320,27 @@ fn servir(
                 let texto = texto.unwrap_or_default();
                 let (l, c) = pos(&p["position"]);
                 f(&texto, byte_de(&texto, l, c))
-            } else {
-                if method == "textDocument/inlayHint" {
-                    visto.lock().unwrap().tipos += 1;
+            } else if method == "textDocument/inlayHint" {
+                let texto = texto_de(|v| v.tipos += 1);
+                match plano.tipar {
+                    Some(f) => Value::Array(
+                        f(&texto)
+                            .into_iter()
+                            .map(|(b, label, edits)| {
+                                let p = posicao(&texto, b);
+                                let e: Vec<Value> = if edits {
+                                    vec![json!({ "range": { "start": p, "end": p }, "newText": label })]
+                                } else {
+                                    Vec::new()
+                                };
+                                json!({ "position": p, "label": label, "kind": 1,
+                                        "paddingLeft": false, "paddingRight": false, "textEdits": e })
+                            })
+                            .collect(),
+                    ),
+                    None => Value::Null,
                 }
+            } else {
                 Value::Null
             };
             if write_message(

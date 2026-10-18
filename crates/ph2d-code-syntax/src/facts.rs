@@ -117,8 +117,10 @@ impl Syntax {
         let root = self.tree().root_node();
         let mut n = root.descendant_for_byte_range(byte, byte);
         while let Some(node) = n {
-            // Entre o fim dos parâmetros e o `end` (o `body` acaba na última instrução: uma linha
-            // vazia antes do `end` ainda é dentro).
+            // Depois do INÍCIO dos parâmetros e até ao `end` (o `body` acaba na última instrução: uma
+            // linha vazia antes do `end` ainda é dentro). ⚠️ O início, não o fim: numa árvore só
+            // deslocada (o reparse ainda no worker) o tree-sitter estica o `)` por cima do que se
+            // escreveu logo a seguir a ele — medido: `parameters 13..25` sobre `(self)\n  on_`.
             if matches!(node.kind(), "function_declaration" | "function_definition")
                 && let Some(params) = node.child_by_field_name("parameters")
             {
@@ -126,7 +128,7 @@ impl Syntax {
                     .child(node.child_count().saturating_sub(1))
                     .filter(|c| c.kind() == "end")
                     .map_or(node.end_byte(), |c| c.start_byte());
-                if params.end_byte() <= byte && byte <= close {
+                if params.start_byte() < byte && byte <= close {
                     return false;
                 }
             }
@@ -201,6 +203,19 @@ mod tests {
         assert!(!s.at_top_level(&t, at("  y")));
         assert!(s.at_top_level(&t, at("function up")));
         assert!(s.at_top_level(&t, at("end\n")));
+    }
+
+    #[test]
+    fn numa_arvore_so_deslocada_o_corpo_continua_dentro() {
+        let mut b = ph2d_code_buffer::Buffer::new("function init(self)\nend\n");
+        let mut s = Syntax::new(b.text());
+        b.set_selection(ph2d_code_buffer::Selection::single(
+            ph2d_code_buffer::Range::cursor(19),
+        ));
+        let edits = b.insert("\n  on_");
+        s.edit_deferred(&edits);
+        assert!(s.is_stale());
+        assert!(!s.at_top_level(b.text(), 22), "o `on_` está no corpo do `init`");
     }
 
     #[test]

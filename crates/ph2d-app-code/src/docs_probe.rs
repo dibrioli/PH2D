@@ -250,6 +250,48 @@ impl CodeDocs {
             .rename_rect()
     }
 
+    /// ⚠️ SONDA: as faixas da selecção do script `id` (`início..fim`, a primária primeiro).
+    #[must_use]
+    pub fn selection_of(&self, id: ScriptId) -> Vec<std::ops::Range<usize>> {
+        let Some(d) = self.docs.iter().find(|d| d.script == id) else {
+            return Vec::new();
+        };
+        let sel = d.buffer.selection();
+        let p = sel.primary();
+        std::iter::once(p)
+            .chain(sel.ranges().iter().copied().filter(|r| *r != p))
+            .map(|r| r.from()..r.to())
+            .collect()
+    }
+
+    /// ⚠️ SONDA: o modelo com buracos (I12): `None` = sem sessão; senão os buracos NÃO activos.
+    #[must_use]
+    pub fn snippet_of(&self, id: ScriptId) -> Option<Vec<std::ops::Range<usize>>> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        d.snippet.as_ref().map(crate::snippet::Tabstops::marks)
+    }
+
+    /// ⚠️ SONDA: as dicas de tipo que a aba segura (I9): `(byte, rótulo)`.
+    #[must_use]
+    pub fn inlays_of(&self, id: ScriptId) -> Vec<(usize, String)> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map(|d| d.inlay.list.iter().map(|h| (h.at, h.label.clone())).collect())
+            .unwrap_or_default()
+    }
+
+    /// ⚠️ SONDA: os retângulos que o último quadro pinta para os bytes `s..e` do script `id` (a
+    /// selecção e as marcas pintam-se por eles).
+    #[must_use]
+    pub fn segments_of(&self, id: ScriptId, s: usize, e: usize) -> Vec<ph2d_editor_core::zones::Rect> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map(|d| d.view.probe_segments(&d.buffer, s, e))
+            .unwrap_or_default()
+    }
+
     /// ⚠️ SONDA: o elo do grupo que o próximo desfazer (`redo = false`) ou refazer da aba tiraria.
     #[must_use]
     pub fn top_link_of(&self, id: ScriptId, redo: bool) -> Option<u64> {

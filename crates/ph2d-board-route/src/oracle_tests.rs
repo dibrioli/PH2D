@@ -184,3 +184,47 @@ fn a_box_in_the_middle_does_not_bend_the_elbow_like_the_oracle() {
         );
     }
 }
+
+/// ⭐ W23 A10 — a ponta largada na faixa POR FORA guarda o CURSOR como foco, como o Excalidraw de hoje
+/// (o produto do dono). Oráculo `saidas/w10_R_ponta_banda_diag.next.json` (0.18.0-143b5b6): R em
+/// 500,100 200×120, a seta de (330,380) largada em (497,130) — 3 px fora da aresta esquerda —
+/// ⇒ `orbit`, `fixedPoint [-0.015, 0.25]`, a ponta em (494,0; 134,49). Projectar o foco no contorno
+/// punha-a em ~138,8.
+#[test]
+fn a_tip_dropped_in_the_outer_band_keeps_the_cursor_as_its_focus() {
+    let mut doc = BoardDoc::default();
+    let ink = Rgba([0, 0, 0, 255]);
+    let mut style = Style::new(None, Some(ink), ink);
+    style.stroke_width = 2.0;
+    let shape = Shape {
+        kind: ShapeType::Rectangle,
+        style,
+        text: Default::default(),
+    };
+    let el = Element::new_shape(
+        doc.mint_id(),
+        doc.z_on_top(),
+        shape,
+        [500.0, 100.0, 200.0, 120.0],
+    );
+    let r = el.id;
+    BoardOp::Put(el).apply(&mut doc);
+    let el = doc.get(r).unwrap();
+    assert_eq!(gap(el), 6.0, "o vão do oráculo (sw 2)");
+    let anchor = anchor_for(el, [497.0, 130.0], 8.0).expect("na faixa");
+    assert_eq!(anchor, Anchor::Orbit([-0.015, 0.25]));
+    let c = Connector::new(
+        End::Free([330.0, 380.0]),
+        End::Bound { target: r, anchor },
+        Route::Straight,
+        Style::new(None, Some(ink), ink),
+    );
+    let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
+    let a = el.id;
+    BoardOp::Put(el).apply(&mut doc);
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    let pts = cache.get(a).unwrap().polyline();
+    let tip = *pts.last().unwrap();
+    assert!(close(tip, [494.0, 134.49], 0.01), "{tip:?}");
+}

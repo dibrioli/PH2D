@@ -373,9 +373,9 @@ pub fn normalized(el: &Element, q: [f64; 2]) -> [f64; 2] {
 
 /// ⭐ **A regra da ligação** (a semântica do Miro, pesquisa 01 §4.1, no gesto do tldraw): uma ponta
 /// largada sobre `el` em `p` prende-se ao CENTRO quando cai no miolo, e em ÓRBITA de um ponto do
-/// contorno quando cai na faixa de largura `band` (mundo) junto a ele, por dentro ou por fora — o
-/// ponto do contorno mais perto, colado ao meio de um lado quando passa a menos de `band` dele (o
-/// encaixe do Excalidraw, XB5). As duas param a [`gap`] da forma (W9, decisão do dono 10/10: o quadro
+/// contorno quando cai na faixa de largura `band` (mundo) junto a ele: por dentro o ponto do contorno
+/// mais perto, por fora o próprio CURSOR (o `fixedPoint` do Excalidraw de hoje, W23 A10) — colado ao
+/// meio de um lado quando passa a menos de `band` dele (o encaixe do Excalidraw, XB5). As duas param a [`gap`] da forma (W9, decisão do dono 10/10: o quadro
 /// inteiro adopta o vão). `None` = `p` está fora da forma e da faixa.
 #[must_use]
 pub fn anchor_for(el: &Element, p: [f64; 2], band: f64) -> Option<Anchor> {
@@ -395,8 +395,9 @@ pub fn anchor_for(el: &Element, p: [f64; 2], band: f64) -> Option<Anchor> {
         .filter(|(_, m)| dist(*m, q) <= band)
         .filter(|(_, m)| nearest_on_outline(el, *m).is_some_and(|(_, e)| e < ON_OUTLINE))
         .min_by(|a, b| dist(a.1, q).total_cmp(&dist(b.1, q)));
+    let focus = if within { q } else { p };
     Some(Anchor::Orbit(
-        mid.map_or_else(|| normalized(el, q), |m| m.0),
+        mid.map_or_else(|| normalized(el, focus), |m| m.0),
     ))
 }
 

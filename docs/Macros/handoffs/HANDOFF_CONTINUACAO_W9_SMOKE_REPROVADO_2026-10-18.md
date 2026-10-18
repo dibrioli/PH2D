@@ -45,3 +45,26 @@ Faça o passo 1 (a cena =6 que faz o meu caminho sozinha, fotografada), ache a c
 gate que percorre o caminho do app, e me devolva o binário de smoke compilado com os passos
 numerados e as fotos.
 ```
+
+## Passo 1 feito (18/10, 2.ª janela) — a cena `=6` NÃO reproduz o defeito aqui
+
+- `PH2D_MACRO_SMOKE=6` (`CENAS_DO_SMOKE` 5 → 6): a `=5` montada e o caminho do dono conduzido no relógio da cena
+  pelas portas da shell — `MacroRequest::Grava/Para` (o que o painel MACROS empurra), `painter_canvas_down/move/up`
+  no ecrã (pose de MUNDO da sprite), ⏮ = `Scrub(0.0)` + `timeline_reveal_after_apply`, ▷ = `TogglePlay`
+  (exactamente o `intent_for_transport` da shell). Roteiro e diagnóstico em
+  `crates/ph2d-app-painter/src/macro_track/caminho.rs` (`PalcosDoPainter::diagnostico`: toca, época, troca como
+  o `sobe` decide, texels pintados no palco / marca / o que a ranhura mostra / editor); a shell só executa
+  (`render_loop/macro_smoke.rs::caminho_do_dono`). O registo vai à consola E a `$TMPDIR/ph2d-cena6.log`
+  (com os quadros por 100 ms). Variantes por `PH2D_MACRO_CAMINHO=humano|meio|splash|semrewind`.
+- **Medido (uma rodada, 5 variantes, fotografadas em rajada; `load` 256 em 32 núcleos ⇒ o app a 9–25 fps):** em
+  TODAS a ranhura = palco, `troca=true` depois do Parar, marca da época nova = 0, e a 1.ª pincelada aparece no
+  instante dela (base: clipe 1,0–1,6 s) e a 2.ª no dela (2,6–3,2 s) — fotos: Time 0,63 branco · 2,68 só a de cima ·
+  3,62 as duas. Base, ritmo humano (pausas de 2–4 s, água a secar), Wet Paint escolhido DEPOIS de Gravar,
+  Splash tocado e pausado antes de Gravar, Parar+▷ sem ⏮: as cinco certas.
+- Única anomalia vista: no 1.º–2.º quadro depois do Parar a `troca` já é `true` com a marca da época ANTIGA
+  (48 939 texels) ⇒ a ranhura mostra as duas pinceladas por 1–2 quadros (`p.chave` muda no `segue` do quadro
+  seguinte). Um piscar, não «aparecem de uma vez» no Play — fica registado, não curado.
+- ⇒ O que resta de diferente entre esta máquina e o ecrã do dono é a VELOCIDADE (o dono corre a centenas de fps)
+  e o que o dono fez à mão que nenhuma variante tem. **Próximo passo:** o dono corre a `=6` no próprio ecrã sem tocar
+  no rato e diz se as pinceladas vêm uma de cada vez; o `$TMPDIR/ph2d-cena6.log` dessa corrida diz o resto (fps, `troca`,
+  ranhura × editor por 100 ms). Se ali sair certo, a diferença está num gesto feito à mão — pedir ao dono a sequência exacta.

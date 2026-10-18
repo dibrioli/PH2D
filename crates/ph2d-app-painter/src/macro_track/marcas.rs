@@ -34,7 +34,7 @@ impl Guardada {
     }
 
     /// A marca que vale agora (a efetiva, se a sprite já se leu).
-    fn vale(&self) -> &MarcaDoArtista {
+    pub(super) fn vale(&self) -> &MarcaDoArtista {
         self.efetiva.as_ref().unwrap_or(&self.marca)
     }
 

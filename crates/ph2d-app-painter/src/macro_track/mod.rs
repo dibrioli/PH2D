@@ -22,6 +22,8 @@ use ph2d_tool_painter::macro_track::tocar::ErroDaMacro;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+/// `PH2D_MACRO_SMOKE=6` — o caminho do dono, sozinho, e a linha de diagnóstico do palco.
+pub mod caminho;
 mod fim;
 mod marcas;
 mod reescrita;

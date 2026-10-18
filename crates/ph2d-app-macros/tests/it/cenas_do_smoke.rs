@@ -33,7 +33,7 @@ fn so_a_cena_da_imagem_do_artista_abre_parada() {
         .collect();
     assert_eq!(
         paradas,
-        [5],
+        [5, 6],
         "a cena que abre parada (clipe sem Autoplay, imagem em Paint)"
     );
 }

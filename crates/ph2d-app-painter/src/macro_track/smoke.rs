@@ -161,16 +161,25 @@ pub fn monta_fazer(
     Some(bits)
 }
 
-/// A cena `=4` abre no meio da gravação: o Wet Paint no 1.º bind, uma vez (como as cenas do pincel).
+/// As cenas `=4` (o tutorial) e `=6` (o caminho do dono, [`super::caminho`]) pintam em Wet Paint: o meio
+/// no 1.º bind, uma vez (como as cenas do pincel).
 pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static ARMADO: AtomicBool = AtomicBool::new(false);
-    if std::env::var("PH2D_MACRO_SMOKE").as_deref() != Ok("4")
+    let cena = std::env::var("PH2D_MACRO_SMOKE");
+    let meio_depois =
+        cena.as_deref() == Ok("6") && super::caminho::variante() == super::caminho::Variante::Meio;
+    if !matches!(cena.as_deref(), Ok("4" | "6"))
+        || meio_depois
         || ARMADO.swap(true, Ordering::Relaxed)
     {
         return;
     }
-    // Pelo seletor do painel (a porta gravada), não pelo `set_paint_media` interno.
+    arm_wet(painter);
+}
+
+/// O Wet Paint pelo seletor do painel (a porta gravada), não pelo `set_paint_media` interno.
+pub fn arm_wet(painter: &mut ph2d_tool_painter::PainterTool) {
     ph2d_editor_core::tool::Tool::handle_panel_event(
         painter,
         ph2d_editor_core::tool::PanelEvent::SelectOption(

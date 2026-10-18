@@ -312,6 +312,13 @@ impl crate::App {
         {
             self.empurra(atual);
         }
+        // Um degrau com elo só anda se a metade da família estiver no topo dela (`undo_link`).
+        let link = self.undo.top_link(redo);
+        if let Some(l) = self.undo_links()
+            && !l.begin_undo(link, redo)
+        {
+            return;
+        }
         let Some(current) = self.capture_project() else {
             return;
         };
@@ -350,6 +357,9 @@ impl crate::App {
                     p.undo_last()
                 };
             }
+            if let Some(links) = self.undo_links() {
+                links.end_undo(link, redo);
+            }
             if Self::undo_log_on() {
                 eprintln!("[undo] {} aplicado", if redo { "redo" } else { "undo" });
             }
@@ -376,6 +386,21 @@ impl crate::App {
     ///    que torna "tudo que o usuário fizer" desfazível, por diff — sem instrumentar
     ///    cada ação.
     pub(crate) fn post_frame_undo(&mut self) {
+        self.post_frame_undo_steps();
+        // A família lê no quadro seguinte o que a fila guarda AGORA (todo caminho acima acaba aqui).
+        let top = [self.undo.top_link(false), self.undo.top_link(true)];
+        let alive: Vec<_> = self.undo.links().collect();
+        if let Some(l) = self.undo_links() {
+            l.publish(top, alive);
+        }
+    }
+
+    pub(super) fn undo_links(&mut self) -> Option<&mut ph2d_editor_core::undo_link::UndoLinks> {
+        let hero = self.gfx.as_mut()?.hero_screen.as_mut()?;
+        Some(&mut hero.undo_links)
+    }
+
+    fn post_frame_undo_steps(&mut self) {
         // ⚠️ **PRIMEIRO, e antes de qualquer captura:** o ledger da condução esquece quem os
         // motores não declararam neste quadro. Quem parou volta a ser documento **já nesta
         // fotografia** — é isso que faz uma corrida inteira colapsar em UM passo, em vez de zero.
@@ -406,6 +431,10 @@ impl crate::App {
         // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.
         if let Some(redo) = self.undo_button.take() {
             self.undo_or_redo(redo);
+        }
+        // O Ctrl+Z de um passo ligado que veio da aba: anda pela fila global, que é a dona.
+        if let Some(Ok(redo)) = self.undo_links().and_then(|l| l.take_ask()) {
+            self.undo_request = Some(redo);
         }
         if let Some(redo) = self.undo_request.take() {
             self.apply_undo(redo);
@@ -509,7 +538,9 @@ impl crate::App {
             return;
         };
         let current = self.undo.espera.a_comparar(current);
-        if self.undo_baseline.as_ref() == Some(&current) {
+        // Um elo pendente faz nascer o passo mesmo sem diff: a metade dele está fora do documento.
+        let pending = self.undo_links().is_some_and(|l| l.pending.is_some());
+        if self.undo_baseline.as_ref() == Some(&current) && !pending {
             return; // nada mudou desde o último passo (salvo a edição que espera)
         }
         if Self::undo_log_on() {

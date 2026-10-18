@@ -19,6 +19,7 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot, snapshot_to_world};
 use ph2d_ecs::{Entity, SimWorld, Transform, With};
+use ph2d_editor_core::undo_link::UndoLink;
 use ph2d_flip::FlipDoc;
 use ph2d_vec_scene::VecScene;
 
@@ -331,19 +332,31 @@ pub(crate) struct SelectionMark {
     pub(crate) field: Vec<ph2d_ecs::StableId>,
 }
 
+/// Um degrau: o estado-pré, a selecção, a hora (`undo_tick`), a transação do Painter e o elo.
+type Degrau = (
+    ProjectState,
+    SelectionMark,
+    u64,
+    Option<u64>,
+    Option<UndoLink>,
+);
+
 /// A pilha de undo/redo global. O registro de passos é dirigido por **diff de
 /// estado** no [`crate::App::post_frame_undo`] (não por begin/commit de gesto), então
 /// a API é só `push_undo` + `undo`/`redo`.
 ///
 /// ⚠️ **Cada degrau é um PAR** — o estado e a [`SelectionMark`] que lhe pertence. Ver o doc dela
 /// para o report que isso fecha.
+///
+/// ⚠️ E o **elo** ([`UndoLink`]): o passo que mora também na história de uma família (o texto de
+/// uma aba de script) leva-o, e ele viaja com o degrau de um lado para o outro.
 #[derive(Default)]
 pub(crate) struct ProjectUndo {
-    /// Cada degrau leva a hora do `undo_tick` (MiroClone B5(4)): o `Ctrl+Z` da cena compara-a com a da
+    /// Cada degrau leva a hora do `undo_tick` (MiroClone B5(4)): o `Ctrl+Z` da cena compara-a com a
     /// última operação de abas.
-    /// O 4.º campo é a transação do Painter que se desfaz com o degrau (W8).
-    undo: Vec<(ProjectState, SelectionMark, u64, Option<u64>)>,
-    redo: Vec<(ProjectState, SelectionMark, u64, Option<u64>)>,
+    /// O 4.º campo é a transação do Painter que se desfaz com o degrau (W8); o 5.º, o elo (I10).
+    undo: Vec<Degrau>,
+    redo: Vec<Degrau>,
     /// A edição de etapa de uma macro que espera a conta dela (W14): fora do baseline e dos passos.
     pub(crate) espera: ph2d_app_macros::espera::EdicaoQueEspera,
 }
@@ -358,11 +371,23 @@ impl ProjectUndo {
 
     /// [`Self::push_undo`] de um passo da `transacao` — o passo de outra fila (o do Painter) que se
     /// desfaz com este (W8, `undo_route.rs`).
+    #[cfg(test)]
     pub(crate) fn push_undo_em(
         &mut self,
         pre: ProjectState,
         mark: SelectionMark,
         transacao: Option<u64>,
+    ) {
+        self.push_linked(pre, mark, transacao, None);
+    }
+
+    /// O passo inteiro: a `transacao` de outra fila (o Painter, W8) e o `link` da família (I10).
+    pub(crate) fn push_linked(
+        &mut self,
+        pre: ProjectState,
+        mark: SelectionMark,
+        transacao: Option<u64>,
+        link: Option<UndoLink>,
     ) {
         if self.undo.len() >= UNDO_CAP {
             self.undo.remove(0);
@@ -372,6 +397,7 @@ impl ProjectUndo {
             mark,
             ph2d_editor_core::documents::undo_tick(),
             transacao,
+            link,
         ));
         self.redo.clear();
     }
@@ -387,6 +413,17 @@ impl ProjectUndo {
         if redo { &self.redo } else { &self.undo }
             .last()
             .map(|s| s.2)
+    }
+
+    /// O elo do degrau que o próximo desfazer (`redo = false`) ou refazer tiraria.
+    pub(crate) fn top_link(&self, redo: bool) -> Option<UndoLink> {
+        let side = if redo { &self.redo } else { &self.undo };
+        side.last().and_then(|s| s.4)
+    }
+
+    /// Os elos que a fila ainda guarda, dos dois lados.
+    pub(crate) fn links(&self) -> impl Iterator<Item = UndoLink> + '_ {
+        self.undo.iter().chain(&self.redo).filter_map(|s| s.4)
     }
 
     pub(crate) fn can_undo(&self) -> bool {
@@ -416,9 +453,14 @@ impl ProjectUndo {
         current: ProjectState,
         agora: SelectionMark,
     ) -> Option<(ProjectState, SelectionMark)> {
-        let (state, mark, _, t) = self.undo.pop()?;
-        self.redo
-            .push((current, agora, ph2d_editor_core::documents::undo_tick(), t));
+        let (state, mark, _, t, link) = self.undo.pop()?;
+        self.redo.push((
+            current,
+            agora,
+            ph2d_editor_core::documents::undo_tick(),
+            t,
+            link,
+        ));
         Some((state, mark))
     }
 
@@ -429,9 +471,14 @@ impl ProjectUndo {
         current: ProjectState,
         agora: SelectionMark,
     ) -> Option<(ProjectState, SelectionMark)> {
-        let (state, mark, _, t) = self.redo.pop()?;
-        self.undo
-            .push((current, agora, ph2d_editor_core::documents::undo_tick(), t));
+        let (state, mark, _, t, link) = self.redo.pop()?;
+        self.undo.push((
+            current,
+            agora,
+            ph2d_editor_core::documents::undo_tick(),
+            t,
+            link,
+        ));
         Some((state, mark))
     }
 }

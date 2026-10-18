@@ -284,6 +284,8 @@ pub struct HeroScreen {
     pub documents: crate::documents::Documents,
     /// O que o menu Ficheiro pediu — ver [`file_menu::FileMenuRequests`].
     pub file_menu: file_menu::FileMenuRequests,
+    /// O elo entre a fila global do undo e a história de uma família — [`crate::undo_link`].
+    pub undo_links: crate::undo_link::UndoLinks,
     /// Project-level configuration (px/meter, future global toggles).
     /// Edited via the TopBar Settings cluster; read by the shell
     /// during image import to convert source-pixel dimensions to
@@ -455,6 +457,7 @@ impl HeroScreen {
             import_requested: false,
             documents: crate::documents::Documents::default(),
             file_menu: file_menu::FileMenuRequests::default(),
+            undo_links: crate::undo_link::UndoLinks::default(),
             project: crate::project::ProjectSettings::default(),
             input_map: ph2d_input::InputMap::with_player_defaults(),
             dragging_files: None,

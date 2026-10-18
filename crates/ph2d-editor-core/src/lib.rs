@@ -102,6 +102,7 @@ pub mod test_support;
 
 pub mod tool;
 pub mod tool_activation;
+pub mod undo_link;
 pub mod widget;
 pub mod zen;
 pub mod zones;

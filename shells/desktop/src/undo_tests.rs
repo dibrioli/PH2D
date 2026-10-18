@@ -165,6 +165,32 @@ fn push_undo_then_undo_redo_alternate() {
     let _ = stack.redo(s1.clone(), m0);
     assert_eq!(topos(&stack), (Some(42), None));
 }
+
+/// ⭐ **O elo do marcador viaja com o degrau** (CodeEditor I10, `ph2d_editor_core::undo_link`): o
+/// degrau desfeito leva-o para o refazer e volta com ele; um degrau novo que limpa o refazer deixa-o
+/// de guardar (a família fica a saber pelos `links`).
+#[test]
+fn the_undo_link_travels_with_its_step_and_dies_with_the_redo() {
+    use ph2d_editor_core::undo_link::UndoLink;
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let s0 = capture(&mut sim, &vec, &reg);
+    let mark = crate::undo::SelectionMark::default;
+    let l = UndoLink::fresh();
+    let mut stack = ProjectUndo::default();
+    stack.push_undo(s0.clone(), mark());
+    stack.push_linked(s0.clone(), mark(), None, Some(l));
+    assert_eq!(stack.top_link(false), Some(l));
+    assert_eq!(stack.top_link(true), None);
+    let _ = stack.undo(s0.clone(), mark()).unwrap();
+    assert_eq!((stack.top_link(false), stack.top_link(true)), (None, Some(l)));
+    let _ = stack.redo(s0.clone(), mark()).unwrap();
+    assert_eq!((stack.top_link(false), stack.top_link(true)), (Some(l), None));
+    let _ = stack.undo(s0.clone(), mark()).unwrap();
+    assert_eq!(stack.links().collect::<Vec<_>>(), [l]);
+    stack.push_undo(s0, mark());
+    assert_eq!(stack.links().count(), 0, "o refazer limpo leva o elo");
+}
 /// O diff de undo depende disto: capturar o MESMO estado duas vezes tem de dar
 /// snapshots IGUAIS. Se não, o `post_frame_undo` registraria um passo espúrio a
 /// cada frame com input (Enio 2026-07-09: "precisa de mais de 1 Ctrl+Z").

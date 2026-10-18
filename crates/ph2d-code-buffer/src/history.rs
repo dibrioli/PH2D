@@ -35,6 +35,9 @@ pub(crate) struct Group {
     sealed: bool,
     /// Os bytes deste grupo (a conta do tecto).
     bytes: usize,
+    /// O elo com um passo de OUTRA história (a fila global do projecto): este grupo e esse passo
+    /// desfazem-se juntos ou não se desfazem.
+    link: Option<u64>,
 }
 
 fn change_set_bytes(cs: &ChangeSet) -> usize {
@@ -132,6 +135,7 @@ impl History {
                     last_char_space: space,
                     sealed: false,
                     bytes,
+                    link: None,
                 });
             }
         }
@@ -165,6 +169,35 @@ impl History {
     pub fn seal(&mut self) {
         if let Some(g) = self.undo.last_mut() {
             g.sealed = true;
+        }
+    }
+
+    /// Liga o último grupo a um passo de outra história, e fecha-o (nada se lhe junta depois).
+    pub(crate) fn link_last(&mut self, link: u64) {
+        if let Some(g) = self.undo.last_mut() {
+            g.sealed = true;
+            g.link = Some(link);
+        }
+    }
+
+    /// O elo do grupo que o próximo desfazer (`redo = false`) ou refazer tiraria.
+    pub fn top_link(&self, redo: bool) -> Option<u64> {
+        let side = if redo { &self.redo } else { &self.undo };
+        side.last().and_then(|g| g.link)
+    }
+
+    /// Algum grupo deste lado leva o elo?
+    pub fn holds_link(&self, link: u64, redo: bool) -> bool {
+        let side = if redo { &self.redo } else { &self.undo };
+        side.iter().any(|g| g.link == Some(link))
+    }
+
+    /// O passo do outro lado deixou de existir: o grupo fica um grupo de texto como os outros.
+    pub(crate) fn unlink(&mut self, link: u64) {
+        for g in self.undo.iter_mut().chain(self.redo.iter_mut()) {
+            if g.link == Some(link) {
+                g.link = None;
+            }
         }
     }
 

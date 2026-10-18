@@ -43,7 +43,8 @@ impl crate::App {
                 .gfx
                 .as_mut()
                 .and_then(|g| g.painter_macros.toma_a_transacao());
-            self.undo.push_undo_em(base, mark, t);
+            let link = self.undo_links().and_then(|l| l.pending.take());
+            self.undo.push_linked(base, mark, t, link);
             if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                 h.documents.scene_stepped();
             }

@@ -60,6 +60,15 @@ impl Buffer {
         self.history.seal();
     }
 
+    /// Liga o último grupo do histórico a um passo de outra história (ver [`History::top_link`]).
+    pub fn link_last(&mut self, link: u64) {
+        self.history.link_last(link);
+    }
+
+    pub fn unlink(&mut self, link: u64) {
+        self.history.unlink(link);
+    }
+
     pub fn set_selection(&mut self, sel: Selection) {
         let n = self.text.len();
         let clamped = sel

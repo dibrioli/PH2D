@@ -258,10 +258,15 @@ pub fn anuncio(conduz: bool) -> String {
             f.display()
         );
     }
+    let fim = match variante() {
+        Variante::Topo => "Stop, then the Play at the top of the window (no Rewind)",
+        Variante::SemRewind => "Stop, then Play in the Timeline's Keys tab (no Rewind)",
+        _ => "Stop, Rewind and Play in the Timeline's Keys tab",
+    };
     format!(
-        "the app does the path by itself — Record, two Wet Paint strokes, Stop, Rewind and Play in the \
-         Timeline's Keys tab ({:?}). Do not touch the mouse for 15 s. Watch the canvas after Play: the \
-         top stroke must appear first and the lower one about 1.5 s later. This log is also written to {}",
+        "the app does the path by itself — Record, two Wet Paint strokes, {fim} ({:?}). Do not touch \
+         the mouse for 15 s. Watch the canvas after Play: the top stroke must appear first and the lower \
+         one about 1.5 s later. This log is also written to {}",
         variante(),
         f.display()
     )

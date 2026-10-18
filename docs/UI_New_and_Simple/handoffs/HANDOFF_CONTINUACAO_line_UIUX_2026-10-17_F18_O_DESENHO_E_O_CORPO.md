@@ -99,3 +99,5 @@ Tempo de quadro: **não medido** (os logs não o trazem).
 5. Herdados do F16–F17: tracejado na placa só percorre 1 par; achado do profiler das sondas do Motion; grupos visuais além do Advanced.
 6. Os sinais ainda chamam `request` (só correm dentro do Preview, onde a cena é a da própria máquina).
 7. `CLAUDE.md` §5.1 UI/UX: **não** alterado nesta janela; ao fechar a linha, trocar o link do último handoff e o intervalo do smoke (`…26` → `…28`).
+
+> ✅ **Smoke do dono: OK (18/10)** — cenas 25, 27 e 28 (e as pendentes 23 e 26) aprovadas.

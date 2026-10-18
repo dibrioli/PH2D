@@ -5,8 +5,9 @@
 //! (o vigia tem os seus testes por leitura).
 //!
 //! A régua: o High (a holográfica, os níveis em textura) na cena 5, `K` quadros depois de nascer — a nova
-//! contra a renascida, ao bit; os controlos: a mesma vista ANTES de renascer, com o rebote mais assente, difere; e
-//! a C1b (no fim do quadro do pedido) deixa o quadro do pedido sem luz.
+//! contra a renascida, ao bit; o controlo: a mesma vista ANTES de renascer, com o rebote mais assente, difere. A
+//! asserção «sem luz» reprova o renascimento no FIM do quadro do pedido (a C1b da W6b; prova em W6c §3). E os
+//! receptores: o pedido solta-os antes do `gravar` ([`LuzDoQuadro::soltar_se_renasce`]) e o `ligar` acende-os.
 
 use bevy_ecs::world::World;
 use ph2d_app_light2d::qualidade::degrau_do;
@@ -58,61 +59,70 @@ fn a_vista_renascida_da_os_mesmos_bits_que_a_nova() {
         "a régua tem de ser o caminho do produto no High (holográfica em textura)"
     );
 
-    // Controlo: a C1b larga a vista no FIM do quadro do pedido — o `ligar` dele não vê luz nenhuma.
-    let mut c1b = LuzDoQuadro::com_degrau(degrau).renasce_ao("fim");
-    quadros(&gpu, &mut c1b, &w, &r, K);
-    c1b.renascer_a_vista();
+    let mut l = LuzDoQuadro::com_degrau(degrau);
+    let antes = quadros(&gpu, &mut l, &w, &r, K + 1);
+    // O pedido vale no quadro SEGUINTE: larga, espera a placa e monta nele — e `quadros` exige a luz em cada um.
+    l.renascer_a_vista();
+    let depois = quadros(&gpu, &mut l, &w, &r, K);
+    assert_eq!(l.montagens(), 2, "a vista não renasceu");
+    assert_ne!(
+        antes, bits_nova,
+        "controlo: K+1 quadros sem renascer têm de diferir de K (senão a régua é cega)"
+    );
+    let diferentes = depois
+        .iter()
+        .zip(&bits_nova)
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(
+        (depois.len(), diferentes),
+        (bits_nova.len(), 0),
+        "a vista renascida difere da nova em {diferentes} bytes"
+    );
+}
+
+/// O pedido de renascimento solta os receptores ANTES do `gravar` (presos, seguravam a fluência velha e a nova ia a
+/// um bloco a mais do alocador, W6c §2); o `ligar` do mesmo quadro acende-os com a nova. Sem pedido, nada se solta.
+#[test]
+fn o_pedido_solta_os_receptores_e_o_ligar_do_mesmo_quadro_acende_os() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    let mut c = crate::comum::Cadeia::nova(&gpu);
     let afim = Camera2d::default().world_to_screen_affine(WindowSize::new(TAM.0, TAM.1));
-    c1b.preparar(&w, afim, TAM);
-    c1b.gravar(&gpu, &mut PresentWorld::new(), &r);
-    assert!(
-        c1b.recebida().is_none(),
-        "controlo: a C1b tem de deixar o quadro do pedido sem luz (senão a asserção é cega)"
+    let mut l = LuzDoQuadro::com_degrau(degrau_do(NivelDaLuz::Alta));
+    let quadro = |l: &mut LuzDoQuadro, c: &mut crate::comum::Cadeia| {
+        let solta = l.soltar_se_renasce(&gpu, &mut c.renderer, &mut c.colagem);
+        let solta_e_apagou = !c.renderer.luz_acesa();
+        assert!(l.preparar(&w, afim, TAM), "a cena 5 tem luz");
+        l.gravar(&gpu, &mut PresentWorld::new(), &c.renderer);
+        l.ligar(&gpu, &mut c.renderer, &mut c.colagem, &c.tonemap);
+        assert!(c.renderer.luz_acesa(), "o ligar não acendeu o receptor");
+        (solta, solta_e_apagou)
+    };
+    assert_eq!(
+        quadro(&mut l, &mut c),
+        (false, true),
+        "o 1.º quadro: nada aceso, nada a soltar"
     );
-
-    for momento in ["adota", "solta"] {
-        let mut l = LuzDoQuadro::com_degrau(degrau).renasce_ao(momento);
-        let antes = quadros(&gpu, &mut l, &w, &r, K + 1);
-        let velha = l.solver().expect("solver").fluencia().clone();
-        // O pedido vale no quadro SEGUINTE: larga, espera a placa e monta nele — e `quadros` exige a luz em cada um.
-        l.renascer_a_vista();
-        let depois = quadros(&gpu, &mut l, &w, &r, K);
-        assert_eq!(l.montagens(), 2, "{momento}: a vista não renasceu");
-        assert_eq!(
-            *l.solver().expect("solver").fluencia() == velha,
-            momento == "adota",
-            "{momento}: só a (a) adota a textura da fluência"
-        );
-        assert_ne!(
-            antes, bits_nova,
-            "controlo: K+1 quadros sem renascer têm de diferir de K (senão a régua é cega)"
-        );
-        let diferentes = depois
-            .iter()
-            .zip(&bits_nova)
-            .filter(|(a, b)| a != b)
-            .count();
-        assert_eq!(
-            (depois.len(), diferentes),
-            (bits_nova.len(), 0),
-            "{momento}: a vista renascida difere da nova em {diferentes} bytes"
-        );
-    }
-
-    // A adotada NASCE com os bits de uma nova (zerada). A cena 5 reescreve a fluência inteira antes de a ler, e só
-    // uma leitura ANTES do 1.º quadro vê a diferença (sem o zerar, isto reprova e o resto passa).
-    let suja = nova.solver().expect("solver").fluencia().clone();
-    assert!(
-        ler(&gpu, &suja, 8).iter().any(|&b| b != 0),
-        "controlo: a fluência da nova tem luz"
+    assert_eq!(
+        quadro(&mut l, &mut c),
+        (false, false),
+        "sem pedido o receptor fica aceso"
     );
-    let fabrica = ph2d_light2d_gpu::Fabrica::default();
-    let adotada =
-        ph2d_light2d_gpu::Solver::novo_adotando(&gpu, *cfg, &fabrica, suja.clone()).expect("adota");
-    assert!(*adotada.fluencia() == suja, "a fluência não foi adotada");
-    let limpa = ph2d_light2d_gpu::Solver::novo_com(&gpu, *cfg, &fabrica).expect("nova");
-    assert!(
-        ler(&gpu, adotada.fluencia(), 8) == ler(&gpu, limpa.fluencia(), 8),
-        "a fluência adotada não nasce com os bits de uma nova"
+    l.renascer_a_vista();
+    assert_eq!(
+        quadro(&mut l, &mut c),
+        (true, true),
+        "o pedido não soltou o receptor"
+    );
+    assert_eq!(l.montagens(), 2, "a vista não renasceu");
+    assert_eq!(
+        quadro(&mut l, &mut c),
+        (false, false),
+        "o pedido soltou mais de uma vez"
     );
 }

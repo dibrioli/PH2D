@@ -20,8 +20,6 @@ pub(crate) struct Occurrences {
     /// Um nome do código à espera de ser perguntado (o byte dele).
     pub want: Option<usize>,
     pub ticket: Option<Ticket>,
-    /// A revisão do texto em que se perguntou.
-    revision: u64,
     /// O Shift+F12 espera que as ocorrências assentem ([`CodeDoc::refs_try_open`]).
     pub list_wanted: bool,
 }
@@ -72,18 +70,19 @@ impl CodeDoc {
                 }
                 o.want = Some(r.start);
                 o.ticket = None;
-                o.revision = key.0;
             }
             Some(NameAt::Member(_)) | None => o.clear(),
         }
         self.refs_try_open();
     }
 
+    /// A resposta às referências. Uma edição largou o bilhete ([`Occurrences::edited`]): a resposta
+    /// que chega é sempre da revisão de agora.
     pub(crate) fn occurrences_answer(&mut self, answer: Answer) {
         let o = &mut self.occ;
         o.ticket = None;
         match answer {
-            Answer::References(r) if o.revision == self.buffer.revision() => o.ranges = r,
+            Answer::References(r) => o.ranges = r,
             _ => o.ranges.clear(),
         }
         self.refs_try_open();

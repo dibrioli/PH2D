@@ -729,3 +729,76 @@ fn sem_assistente_o_local_diz_porque_e_a_propriedade_renomeia() {
     tecla(&mut m, id, Key::Escape, Modifiers::default(), None, "");
     renomeado(&mut m, id, &mut f);
 }
+
+/// Um servidor que renomeia OUTRA coisa (sítios cujo texto não é o nome) não se aplica: a caixinha
+/// diz que não deu.
+#[test]
+fn um_rename_do_servidor_sobre_outro_texto_nao_se_aplica() {
+    fn torto(texto: &str, b: usize) -> Vec<Range<usize>> {
+        sitios(texto, b)
+            .into_iter()
+            .map(|r| r.start + 1..r.end + 1)
+            .collect()
+    }
+    let (mut m, ids, visto) = com_falso(
+        &[("bob.luau", TEXTO)],
+        Plano {
+            referir: Some(torto),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    converge(&mut m, &visto, "abrir");
+    quadro_em(&mut m, T0);
+    m.pinta(id);
+    clica_em(
+        &mut m,
+        id,
+        TEXTO.find("local brilho").unwrap() + 8,
+        Modifiers::default(),
+    );
+    f2(&mut m, id);
+    m.escreve(id, "luz");
+    enter(&mut m, id);
+    ate(&mut m, id, T0, "a caixinha não disse que não deu", |m| {
+        m.docs()
+            .rename_of(id)
+            .is_some_and(|r| r.2.is_some_and(|w| w.contains("could not rename")))
+    });
+    assert_eq!(m.docs().text_of(id).unwrap(), TEXTO);
+}
+
+/// Enter antes de a família ler os objectos (F2, nome e Enter no mesmo quadro): a propriedade não se
+/// aplica às cegas (um valor órfão com o nome novo seria apagado); no quadro seguinte, Enter aplica.
+#[test]
+fn a_propriedade_espera_pelos_objectos_antes_de_aplicar() {
+    let (mut m, id, mut f) = mesa();
+    let mut o = owns(&mut m);
+    o[1].1.insert("altura".into(), ScriptValue::Number(7.0));
+    set_owns(&mut m, &o);
+    clica_em(
+        &mut m,
+        id,
+        TEXTO.find("self.amplitude").unwrap() + 7,
+        Modifiers::default(),
+    );
+    f2(&mut m, id);
+    m.escreve(id, "altura");
+    enter(&mut m, id);
+    assert_eq!(
+        m.docs().text_of(id).unwrap(),
+        TEXTO,
+        "sem os objectos, não aplica"
+    );
+    passo(&mut m, &mut f);
+    let (_, _, r) = m.docs().rename_of(id).expect("a caixinha fica");
+    assert!(
+        r.is_some_and(|r| r.contains("already exists")),
+        "lidos os objectos, recusa"
+    );
+    assert_eq!(
+        owns(&mut m)[1].1.get("altura"),
+        Some(&ScriptValue::Number(7.0))
+    );
+}

@@ -2,6 +2,7 @@
 
 > **Estado em 18/10 (bloco 1 fechado): ver [HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md](HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md)**
 > **Estado em 18/10 (bloco 2, rede ao vivo, fechado; o próximo é o bloco 3): ver [HANDOFF_CONTINUACAO_W23_BLOCO2_2026-10-18.md](HANDOFF_CONTINUACAO_W23_BLOCO2_2026-10-18.md)**
+> **Estado em 18/10 (o cartão «Live» separado por ligação, pedido do dono, fechado; o próximo é o bloco 3): ver [HANDOFF_CONTINUACAO_W23_CARTAO_LIVE_2026-10-18.md](HANDOFF_CONTINUACAO_W23_CARTAO_LIVE_2026-10-18.md)**
 
 > Leitor: a LLM da próxima janela. Ordem do dono (18/10): *«vamos corrigir até ficar tudo bom»*. Os TESTES que
 > precisam do dono (o furo real pela internet, Windows/Mac reais, sondas noutras casas, smokes por fazer) ficam

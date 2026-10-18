@@ -35,6 +35,7 @@ fn p(cor: [u8; 3], de: [f32; 2], ate: [f32; 2]) -> Pincelada {
         de,
         ate,
         curva: 0.0,
+        pressao: [1.0, 1.0],
     }
 }
 

@@ -20,6 +20,7 @@ fn sobreposta(meio: PaintMedia) -> Track {
         de: [0.15, y],
         ate: [0.85, y],
         curva: 0.0,
+        pressao: [1.0, 1.0],
     };
     let (b, _) = grava_nos_meios(
         LADO,

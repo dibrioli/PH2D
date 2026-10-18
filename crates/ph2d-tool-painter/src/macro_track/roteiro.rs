@@ -26,6 +26,8 @@ pub(crate) struct Pincelada {
     pub(crate) de: [f32; 2],
     pub(crate) ate: [f32; 2],
     pub(crate) curva: f32,
+    /// A pressão no início e no fim (rampa linear); a do rato é `[1, 1]`.
+    pub(crate) pressao: [f32; 2],
 }
 
 // LITERAL-COLOR-OK: as cores de uma pincelada GRAVADA (o artista escolheu-as), não da UI.
@@ -36,6 +38,7 @@ pub(crate) const SPLASH: [Pincelada; 4] = [
         de: [0.18, 0.30],
         ate: [0.80, 0.42],
         curva: 0.06,
+        pressao: [1.0, 1.0],
     },
     Pincelada {
         cor: [200, 40, 60],
@@ -43,6 +46,7 @@ pub(crate) const SPLASH: [Pincelada; 4] = [
         de: [0.22, 0.62],
         ate: [0.78, 0.52],
         curva: -0.08,
+        pressao: [1.0, 1.0],
     },
     Pincelada {
         cor: [220, 160, 30],
@@ -50,6 +54,7 @@ pub(crate) const SPLASH: [Pincelada; 4] = [
         de: [0.50, 0.15],
         ate: [0.55, 0.85],
         curva: 0.05,
+        pressao: [1.0, 1.0],
     },
     Pincelada {
         cor: [30, 90, 200],
@@ -57,6 +62,7 @@ pub(crate) const SPLASH: [Pincelada; 4] = [
         de: [0.30, 0.82],
         ate: [0.74, 0.70],
         curva: 0.04,
+        pressao: [1.0, 1.0],
     },
 ];
 
@@ -148,6 +154,7 @@ const CRUZADAS: [Pincelada; 2] = [
         de: [0.08, 0.35],
         ate: [0.92, 0.35],
         curva: 0.0,
+        pressao: [1.0, 1.0],
     },
     Pincelada {
         cor: [0, 0, 0],
@@ -155,6 +162,7 @@ const CRUZADAS: [Pincelada; 2] = [
         de: [0.08, 0.65],
         ate: [0.92, 0.65],
         curva: 0.0,
+        pressao: [1.0, 1.0],
     },
 ];
 
@@ -208,6 +216,7 @@ const CAIXA: [Pincelada; 5] = {
             de,
             ate,
             curva: 0.0,
+            pressao: [1.0, 1.0],
         }
     }
     [
@@ -221,6 +230,7 @@ const CAIXA: [Pincelada; 5] = {
             de: [0.35, 0.62],
             ate: [0.65, 0.38],
             curva: 0.05,
+            pressao: [1.0, 1.0],
         },
     ]
 };
@@ -384,6 +394,19 @@ fn solta(
     quadro(t)
 }
 
+/// [`grava`], e o tool que pintou AO VIVO (a tela dele é a régua de quem toca a gravação).
+pub(crate) fn grava_vivo(
+    lado: u32,
+    alvo: u64,
+    ps: &[Pincelada],
+    antes: &[u32],
+    papel: bool,
+    meios: &[PaintMedia],
+) -> Option<(Vec<u8>, f64, PainterTool)> {
+    let tela = if papel { Tela::Papel } else { Tela::Fonte };
+    grava_com(lado, alvo, ps, antes, tela, meios, Relogio::Fixo).map(|(t, b, s)| (b, s, t))
+}
+
 fn grava(
     lado: u32,
     alvo: u64,
@@ -392,8 +415,7 @@ fn grava(
     papel: bool,
     meios: &[PaintMedia],
 ) -> Option<(Vec<u8>, f64)> {
-    let tela = if papel { Tela::Papel } else { Tela::Fonte };
-    grava_com(lado, alvo, ps, antes, tela, meios, Relogio::Fixo).map(|(_, b, s)| (b, s))
+    grava_vivo(lado, alvo, ps, antes, papel, meios).map(|(doc, s, _)| (doc, s))
 }
 
 /// A tela em que se grava: a fonte do tool, a sprite aberta no papel, ou o Painter LIGADO à sprite
@@ -517,7 +539,7 @@ fn grava_com_gotas(
             };
             t.on_canvas_pointer(CanvasPointer {
                 pos: ponto(p, f, l),
-                pressure: 1.0,
+                pressure: p.pressao[0] + (p.pressao[1] - p.pressao[0]) * f,
                 tilt: [0.0, 0.0],
                 phase,
             });

@@ -37,6 +37,8 @@ mod marca_cobertura_tests;
 #[cfg(test)]
 mod marca_painter_tests;
 #[cfg(test)]
+mod pressao_tests;
+#[cfg(test)]
 mod sobrepor_fecho_tests;
 #[cfg(test)]
 mod sobrepor_tests;

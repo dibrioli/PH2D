@@ -5,7 +5,7 @@
 use crate::Mesa;
 use crate::assistente::{Plano, com_falso, converge, posicao};
 use crate::completar::{T0, quadro_em};
-use crate::dicas::{aponta, ate, nunca};
+use crate::dicas::{aponta, ate, balao as pairar, nunca};
 use ph2d_script::ScriptId;
 use serde_json::{Value, json};
 
@@ -52,6 +52,8 @@ fn a_calha_explica_e_o_sublinhado_mostra_o_cru() {
         &[("a.luau", QUEBRADO)],
         Plano {
             regra: Some(acusa_igual),
+            // O falso só conta os pedidos de balão que sabe responder.
+            pairar: Some(pairar),
             ..Plano::default()
         },
     );
@@ -220,10 +222,14 @@ fn com_o_assistente_parado_a_calha_ainda_explica() {
     m.pede(a);
     quadro_em(&mut m, T0);
     m.pede(b);
-    letra(&mut m, b, 'x');
-    letra(&mut m, b, 'y');
+    // O falso morre na 2.ª mudança que recebe; as letras juntam-se numa mudança só se chegarem
+    // juntas, por isso escreve-se até ele parar de vez — a razão é a da 2.ª ligação, que falha (o
+    // «a arrancar» também tem texto na barra).
     ate(&mut m, b, T0, "o assistente não parou", |m| {
-        m.docs().assist_text().is_some()
+        letra(m, b, 'x');
+        m.docs()
+            .assist_reason()
+            .is_some_and(|r| r.contains("não volta"))
     });
     m.pede(a);
     let t1 = T0 + 10 * PAUSA;

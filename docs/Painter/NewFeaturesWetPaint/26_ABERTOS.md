@@ -76,6 +76,10 @@
 | C26 | **Watercolor com ponta de IMAGEM e só a Falloff Color:** a borda escurecida passou a sair na cor da rampa (mesma lei do `deposito_dono`, 15/10); para rampa opaca a densidade fica ao byte, só a cor da borda muda. Por confirmar no smoke se é o esperado. | handoff P39 §9 |
 | ~~C27~~ | ~~**A cobertura da rampa de pressão**~~ — **FECHADO no prompt 45**: a pressão entrava antes do tecto do carimbo; agora a opacidade multiplica o que POUSA + a curva `pressureOpacityCurve` por pincel. Wet Flat 0,41 (Rebelle 0,42), Gouache Flat 0,42 (0,43); `RampaCobertura` no `midias_de_fabrica`. | [45 §2–§3](45_medicao_o_esmaecer.md) |
 | C28 | ~~**O Airbrush e a pressão**~~ — **a pressão FECHADA no prompt 45**: a opacidade que pousa + curva 1,5, tamanho 0,5 → rampa 0,60/0,35 (Spray 2 0,63/0,34; os números literais dele esmaecem mas não afinam, largura 1,00). **Fica aberto**: a 20 px a textura lê 28,0 contra 22,5 (a janela 5×5 num traço de 10–13 px?). | [45 §2](45_medicao_o_esmaecer.md) |
+| C29 | **Os botões e o anel da MESA** (`zwp_tablet_pad_v2`: a Intuos5 tem 7 botões + 1 anel; o KWin já os anuncia). Fora do prompt 46 por ordem dele. | [ADR-0189](../../architecture/decisions/0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md) |
+| C30 | **O toque com o dedo** na Intuos5 (é também touchpad). Fora do prompt 46. | prompt 46 |
+| C31 | **A curva de pressão do PH2D** — o KDE já aplica a dele à caneta: MEDIR se a aplica antes do tablet-v2 (comparar `libinput debug-events` com o `PH2D_PEN_LOG` da mesma sessão) antes de pôr uma nossa por cima. | prompt 46 |
+| C32 | **A caneta em X11/XWayland e Windows**: lá o receptor não liga e a caneta é rato SEM pressão. A mesma `ph2d_pen::Sessao` aceita fontes novas (XInput2 por `x11rb`; `WM_POINTER` + `GetPointerPenInfoHistory`). | [ADR-0189](../../architecture/decisions/0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md) |
 
 ## D — Processo
 

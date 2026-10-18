@@ -98,7 +98,7 @@ profile [optimized] target(s) in 0.23s».
 Fotos (`fotografa_cena.sh`, 1930×1040) em
 `/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/7f8c5460-5e36-4494-b9b8-c03fa948dd5d/scratchpad/`:
 `w9_cena5.png` (abre parada em Time 0, Canvas branco, aba Keys, Loop ligado, Record visível, 4 passos) e `w9_cena1.png`
-(`=1` toca por Autoplay). **Smoke do dono da W9: PENDENTE** (o da W8 também).
+(`=1` toca por Autoplay). **Smoke do dono da W9: REPROVADO no passo 2 (18/10: «os dois traços aparecem de uma vez»)** — ⛔ não integrar antes da [continuação](HANDOFF_CONTINUACAO_W9_SMOKE_REPROVADO_2026-10-18.md).
 
 ## §8 — ABERTO
 

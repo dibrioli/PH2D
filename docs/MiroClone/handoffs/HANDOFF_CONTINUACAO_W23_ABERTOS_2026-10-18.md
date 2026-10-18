@@ -1,5 +1,7 @@
 # CONTINUAÇÃO — `line/MiroClone` W23: fechar TUDO o que ficou aberto (2026-10-18)
 
+> **Estado em 18/10 (bloco 1 fechado): ver [HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md](HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md)**
+
 > Leitor: a LLM da próxima janela. Ordem do dono (18/10): *«vamos corrigir até ficar tudo bom»*. Os TESTES que
 > precisam do dono (o furo real pela internet, Windows/Mac reais, sondas noutras casas, smokes por fazer) ficam
 > para o futuro — **não** são desta onda. A linha foi reaberta sobre o `main` de 18/10 (W22b+W22c integradas:

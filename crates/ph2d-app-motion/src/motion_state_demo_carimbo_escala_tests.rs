@@ -68,6 +68,28 @@ pub(super) fn amplia(m: &mut MotionState, k: f32) {
             m.doc.graph.set_param(g, p, (v * k).min(teto));
         }
     }
+    // `PH2D_SONDA_RAIO_POR_ESCALA`: o raio escrito por um `Drive` no canal `Custom` (a `=137`: `0,8·|P|`)
+    // divide-se por `k` — a galáxia cresce `k` vezes e o maior disco fica o de `×1`. Sem isto o
+    // `amplia` mede contacto denso (os toques crescem com `N²`, doc 120 §8.3.4).
+    if std::env::var("PH2D_SONDA_RAIO_POR_ESCALA").is_ok() {
+        let drives: Vec<_> = m
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "motion.drive")
+            .map(|n| n.id)
+            .collect();
+        for d in drives {
+            let o = m.doc.graph.node_param_overrides(d);
+            let p = |q: &str| o.and_then(|o| o.get(q).copied());
+            if p("channel") == Some(9.0)
+                && let Some(s) = p("scale")
+            {
+                m.doc.graph.set_param(d, "scale", s / k);
+            }
+        }
+    }
 }
 
 /// Porque é que cada carimbo que continua fronteira o é: os três params das recusas e o cartão
@@ -407,6 +429,69 @@ fn censo_do_passe(n: &str, k: f32, dt: f64) {
         let ocupados = baldes.iter().filter(|&&b| b > 0).count();
         let maior = baldes.iter().max().copied().unwrap_or(0);
         let soma_k2: u64 = baldes.iter().map(|b| b * b).sum();
+        // As grelhas da C2 (doc 120 §8.3.5), por CÉLULA verdadeira (sem o hash): os cursores que cada
+        // peça visitaria e os candidatos — a de hoje (3×3 de lado `2R`), a fixa 5×5 de lado `R` e a
+        // ADAPTATIVA (lado `R`, o quadrado `r_i + R` à volta de cada peça).
+        let grelha = |lado: f32| {
+            let mut c: std::collections::HashMap<(i32, i32), u64> = Default::default();
+            for &(i, _) in &pecas {
+                #[expect(clippy::cast_possible_truncation, reason = "sonda")]
+                let k = (
+                    (p[i][0] / lado).floor() as i32,
+                    (p[i][1] / lado).floor() as i32,
+                );
+                *c.entry(k).or_default() += 1;
+            }
+            c
+        };
+        let conta = |g: &std::collections::HashMap<(i32, i32), u64>,
+                     lado: f32,
+                     alcance: &dyn Fn(f32) -> f32| {
+            let (mut cursores, mut cand) = (0u64, 0u64);
+            for &(i, a) in &pecas {
+                let r = alcance(a);
+                #[expect(clippy::cast_possible_truncation, reason = "sonda")]
+                let (x0, x1, y0, y1) = (
+                    ((p[i][0] - r) / lado).floor() as i32,
+                    ((p[i][0] + r) / lado).floor() as i32,
+                    ((p[i][1] - r) / lado).floor() as i32,
+                    ((p[i][1] + r) / lado).floor() as i32,
+                );
+                for x in x0..=x1 {
+                    for y in y0..=y1 {
+                        cursores += 1;
+                        cand += g.get(&(x, y)).copied().unwrap_or(0);
+                    }
+                }
+                cand -= 1;
+            }
+            (cursores, cand)
+        };
+        let g2 = grelha(2.0 * alc_max);
+        let g1 = grelha(alc_max);
+        let n_p = pecas.len().max(1) as f64;
+        // Hoje: a célula da peça ± 1 (o quadrado `[c−1, c+1]` de lado `2R`).
+        let hoje = conta(&g2, 2.0 * alc_max, &|_| 2.0 * alc_max * 0.999_999);
+        let fixa = conta(&g1, alc_max, &|_| 2.0 * alc_max);
+        let adapt = conta(&g1, alc_max, &|a| a + alc_max);
+        // A de hoje com os cursores MASCARADOS: só as células que o quadrado `r_i + R` alcança.
+        let mascara = conta(&g2, 2.0 * alc_max, &|a| a + alc_max);
+        #[expect(clippy::cast_precision_loss, reason = "sonda")]
+        let f = |(c, k): (u64, u64)| {
+            format!(
+                "{:.1} cursores · {:.1} candidatos",
+                c as f64 / n_p,
+                k as f64 / n_p
+            )
+        };
+        eprintln!(
+            "GRELHAS ={n} ×{k} por peça · hoje 3×3@2R: {} · fixa 5×5@R: {} · adaptativa r+R @R: {} · máscara r+R @2R: {} · toques {:.1}",
+            f(hoje),
+            f(fixa),
+            f(adapt),
+            f(mascara),
+            toques as f64 / n_p
+        );
         let t = Instant::now();
         let (_, r) = ph2d_contact::passe::separa_com_relatorio(&s, 16);
         let cpu_ms = t.elapsed().as_secs_f64() * 1e3;

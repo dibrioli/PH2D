@@ -589,6 +589,60 @@ contacto denso, não o tecto da grelha.
 | censo pela tomada antes do `o_quadro` | tomada vazia (o `o_quadro` rearma as tomadas dele) | um tique a mais pela bomba, com as tomadas da sonda e sem o passe |
 | portão de ordem com o grande na célula VIZINHA e a chegada natural | M1 (decrescente), M3 e M6 (sem ordenar) sobreviveram: entre minúsculos iguais a ordem é exacta, e o atómico desta placa entrega por ordem | o grande no MESMO balde e a chegada invertida por interruptor de gate |
 
+#### §8.3.5 — ⛔ A C2 (17/10): uma grelha que respeite o alcance de cada peça — recusada pelo número
+
+**A régua.** `PH2D_SONDA_RAIO_POR_ESCALA` divide pelo `k` do `amplia` o `scale` do `Drive` no canal `Custom`
+(o raio `0,8·|P|` da `=137`): a galáxia cresce `k` vezes e o maior disco fica o de ×1. Mesmo processo,
+load 0,9 → 2,7, ms por quadro:
+
+| escala | peças | toques/peça | candidatos/peça | B | C (sem colisor) | passe |
+|---|---:|---:|---:|---:|---:|---:|
+| ×1 | 256 | 9,4 | 71 | 1,46 | 0,35 | 1,12 |
+| ×4 | 4 096 | 11,8 | 104 | 4,15 | 0,40 | 3,75 |
+| ×11 | 30 976 | 12,4 | 112 | 7,47 | 0,51 | 6,96 (93 %) |
+
+Critério declarado antes: a C2 avança se, a ×11, candidatos/toques ≥ 3 e o passe ≥ 50 % do quadro.
+Passou (9,0 e 93 %).
+
+**O que cada candidato custa.** Para discos, `discos` rejeita cedo (`d² ≥ (ra+rb)²`, igual na CPU), logo
+o custo de um candidato que não toca é ler o vizinho e avançar a fusão dos 9 cursores. A única alavanca
+é visitar MENOS candidatos.
+
+**Os desenhos, contados na CPU** (censo `GRELHAS`, por célula verdadeira, por peça a ×11; raio encolhido |
+denso):
+
+| grelha | cursores | candidatos |
+|---|---:|---:|
+| hoje, 3×3 de lado `2R` | 9 | 111 \| 9 576 |
+| fixa, 5×5 de lado `R` | 25 | 78 \| 7 183 |
+| adaptativa, lado `R`, quadrado `r_i + R` | 16,9 (até 25, variável) | 52 \| 4 852 |
+| hoje com os cursores MASCARADOS pelo quadrado `r_i + R` | 6,5 | 80 \| 7 021 |
+
+- **Fixa:** 1,4× menos candidatos com 2,8× mais cursores. Perde.
+- **Adaptativa:** 2,1× menos candidatos, mas com um número VARIÁVEL de cursores. Isso tira a fusão dos 9
+  desenrolados, e o doc 132 §7 mediu a fusão por matrizes indexadas a 1,9× dela ⇒ ~1,1× líquido. Recusada
+  sem construir.
+- **Máscara:** mantém os 9 desenrolados (um cursor fora do quadrado nasce `NINGUEM`). Construída, com
+  paridade 7/7. Critério declarado antes: ≥ 1,15× no quadro a ×11 nas DUAS réguas. Mesmo processo, load
+  3,5–7, ms:
+
+| régua, ×11 | com máscara | sem | ganho |
+|---|---:|---:|---:|
+| raio encolhido | 8,19 | 7,86 | **0,96×** |
+| denso | 235 | 270 | 1,15× |
+
+Reprovou: na cena realista fica mais LENTA. Cada fio de um grupo abre um conjunto diferente de cursores, e
+o grupo espera pelo mais lento. O código saiu; a régua e o censo ficam na sonda.
+
+**⛔ Recusas MEDIDAS**
+
+| recusa | medido | veredito |
+|---|---|---|
+| grelha fixa 5×5 de lado `R` | 1,4× menos candidatos, 25 cursores | nunca: os cursores custam mais do que poupam |
+| grelha adaptativa (lado `R`, quadrado `r_i + R`) | 2,1× menos candidatos, 17–25 cursores variáveis; a fusão variável mediu 1,9× (doc 132 §7) | ~1,1× líquido: não compensa a fusão desenrolada |
+| máscara dos 9 cursores pelo alcance | 0,96× a ×11 realista, 1,15× denso (candidatos −28 %) | nunca: a divergência no grupo come o ganho |
+| `amplia` da `=137` como régua do TECTO da grelha | os toques crescem com `N²` (o raio cresce com a galáxia) | o tecto mede-se com `PH2D_SONDA_RAIO_POR_ESCALA`; o `amplia` puro mede contacto denso |
+
 ### §8.4 — ✅ W1(b).1 e W1(b).2 FECHADAS (2026-09-24)
 
 **O kernel** ([`ph2d-node-motion-duplicator/src/kernel.rs`](../../crates/ph2d-node-motion-duplicator/src/kernel.rs)):

@@ -106,6 +106,8 @@ nenhum novo** (sem token de cor, sem linha de painel, sem cena de smoke; as stri
 
 ## 8. Smoke para o DONO
 
+> ✅ **Smoke do dono OK (17/10).**
+
 > ⚠️ Não fotografado (a foto e a cena `PH2D_CODE_SMOKE=3` são do I15). Precisa do assistente instalado
 > (`bash scripts/luau-lsp-fetch.sh`) nos passos 6 e 7.
 

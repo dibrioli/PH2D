@@ -3,6 +3,9 @@
 > **Fecho de 18/10:** depois do smoke reprovado de 18/10 a linha curou três coisas (o Play de cima · o arrasto da
 > Timeline · o «piscar» do Parar, que era do instrumento) — §2 itens 7–9, §6 refeita sobre o HEAD novo, §7 e §8
 > actualizados. Smoke do dono: **APROVADO** nas duas curas de produto.
+>
+> **2.º fecho de 18/10 (a decisão do Autoplay):** §2 item 10, §6 refeita sobre `515c93b0d2`, §7 fotos da `=6 topo`,
+> §8 item 4 FEITO.
 
 > A linha fecha e PARA: integrar e shipar só por ordem do Enio, pelo agente integrador (DIRETRIZ §1.5.3).
 > Mecanismo de cada item, com as tabelas MEDIDAS (não copiadas aqui): [plano W9](../07_plano_W9.md) — §9 mutação ·
@@ -15,12 +18,13 @@
 - Branch `line/Macros-Automação`, worktree `Worktrees/line-Macros-Automação/`. Merge-base com o `main`: `ad5f8fe39c`.
   O `main` andou **2** commits de processo (`451c3ad14a`, `bdc7a38639`: a vez da placa); o único ficheiro em comum é
   o `CLAUDE.md` (§2 lá, §5.1 cá — secções diferentes).
-- HEAD de código `9a295ee8a7`. W9 até ao 1.º fecho (17/10): `9ede4a4fac`, `8361acd912`, `8ed7bf6246`, `7472075157`,
+- HEAD de código `515c93b0d2`. W9 até ao 1.º fecho (17/10): `9ede4a4fac`, `8361acd912`, `8ed7bf6246`, `7472075157`,
   `bd15cf01e2`, `5d49341c68`, `7e386f8682`, `a406771e8a`, `bbc0d00a95`. Pós-smoke (18/10, código): `897b7acdd5`,
-  `bc67bfa67e`, `3efd4bb9a7`, `688e6d2426`, `6d73bad9b7`, `dad214f1d5`, `9a295ee8a7`; o resto são docs.
+  `bc67bfa67e`, `3efd4bb9a7`, `688e6d2426`, `6d73bad9b7`, `dad214f1d5`, `9a295ee8a7`; a decisão do Autoplay:
+  `a4e39b8418`, `73eb277e10`, `515c93b0d2`; o resto são docs.
 - Os 12 commits da W8 (`a63825ac6f`..`45caa469c4`) estão na mesma branch e também por integrar.
-- `git diff --shortstat main...HEAD` (W8+W9): 103 ficheiros, +7 156 / −1 478. Só a W9 (`45caa469c4..HEAD`): 77
-  ficheiros, +4 254 / −733.
+- `git diff --shortstat main...HEAD` (W8+W9): 103 ficheiros, +7 397 / −1 480. Só a W9 (`45caa469c4..HEAD`): 77
+  ficheiros, +4 495 / −735. Só o 2.º fecho (`07cb913762..HEAD`): 6 ficheiros, +197 / −29.
 - Linha única de Macros ⇒ ordem trivial; os conflitos possíveis estão no §4.
 
 ## §2 — O que a W9 entrega (por pedido do dono)
@@ -57,6 +61,18 @@
    `o_parar_nunca_troca_a_sprite_pela_mistura_da_gravacao_antiga` (guarda do produto, verde antes e depois; controlo: no
    Parar a ranhura TEM a mistura antiga). Mutação 3/3: época que não muda ao gravar de novo · `sobe` que ignora a
    cedência · espia sem trocas.
+10. **A entrada que o artista marcou fica** (decisão de 18/10, §8 item 4; `a4e39b8418` + `515c93b0d2`). O
+    `set_autoplay(clip, true)` do Parar desligava o Autoplay dos irmãos: quem marcara «Idle» como entrada perdia-o
+    ao gravar. Cura `instala::entra_se_ninguem_entra`: o clipe da macro ganha o Autoplay só se a entrada do objecto
+    é nenhuma, ele próprio, ou um clipe que toca a macro (`toca_a_macro`: tem a faixa `MacroTime` do objecto — uma
+    tomada antiga RENOMEADA, que o Parar e não o artista pôs em Autoplay; achado da auditoria do fecho: sem isto o
+    Play de cima tocava a gravação nova com o tempo da antiga). Vale na 1.ª tomada e nas seguintes, Painter e Motion
+    (o mesmo `instala`). Gates `tests/it/gravar_de_novo.rs` (6): vermelhos antes — Idle sobre a 2.ª tomada do
+    Painter, Idle sobre a 1.ª, Idle no Motion (1.ª e 2.ª), a tomada renomeada; verdes antes e depois — o do smoke de
+    18/10 (só o clipe da macro, sem Autoplay ⇒ ganha-o) e o Motion sem outra entrada. Mutação 6/6: predicado
+    `true` (3) · `false` (2) · `e != clip` (3) · sem a chamada no ramo re-cronometrado (2) · sem a chamada no ramo
+    novo (1) · `toca_a_macro` sempre verdadeiro (3). A frase da consola da `=6` passa a dizer o que cada variante
+    faz (`topo`: o Play de cima, sem Rewind).
 
 ## §3 — Foundational / partilhado tocado (tudo ADITIVO)
 
@@ -68,6 +84,8 @@
 | shell | `fase_extract_inputs.rs` chama `liga_a_marca` a cada quadro antes de `reescreve`; `project.rs` campo `marcas_do_artista` **ÚLTIMO**; `project_save` / `project_load` / `project_load_read` (braço 191; 190 e 189 acrescentam um 0) / `migrate` / `test_writer` + 4 inicializadores de teste; `project_schema.rs` degrau 191 → 192; `project_schema_tests` tripla `(192, 13, 23)`; `project_marcas_tests.rs` NOVO; `project_scripts_tests.rs` nome temporário `scripts_vivo` (colisão de ficheiro temporário PRÉ-EXISTENTE do gate do CodeEditor no mesmo processo sob `cargo test`) |
 | `ph2d-i18n` | +2 chaves: `shell.project_load.project_refused_format_191`, `shell.project_load.macro_marks_unreadable` |
 | pós-smoke (18/10) | `ph2d-tool-painter` `tocar.rs` (`por_ler`, campo privado) + `composicao_tests.rs`; `ph2d-app-macros` `instala.rs`/`lib.rs` (Autoplay na 2.ª tomada) + `tests/it/gravar_de_novo.rs`, `CENAS_DO_SMOKE` 5 → 6; `ph2d-app-painter` `macro_track/caminho.rs` NOVO (a `=6`, o registo da `=5`, `passo`, `Espia`), `mod.rs` (campo `espia: Option<_>`, só ligado pelo diagnóstico), `palcos_arrasto_tests.rs` NOVO, `smoke.rs`, isenção nomeada `macro_track/caminho.rs` no gate de texto (consola/registo, nunca ecrã); shell `render_loop/macro_smoke.rs` (a `=5`/`=6` despachadas pelas portas da shell, +~110 linhas de composição) |
+
+| 2.º fecho (18/10) | `ph2d-app-macros` `instala.rs` (`entra_se_ninguem_entra`, `toca_a_macro`; lê `binding_for` / `clips()` / `entry_clip_of` da Timeline, sem API nova) + `tests/it/gravar_de_novo.rs` (+5 testes) + `gate7.rs` (`Banca::objecto_motion`, `grava_um_passo_do_motion`); `ph2d-app-painter` `macro_track/caminho.rs` (`anuncio` por variante). Nada fora destas duas crates. |
 
 **Formato `Macro.doc`: sem diff.** O que muda no gravado é só o campo novo do projeto (schema 192).
 
@@ -99,7 +117,23 @@ sai vazio).
 
 ## §6 — Prova de fecho
 
-**Fecho de 18/10, em `9a295ee8a7` (o que vale):**
+**2.º fecho de 18/10, em `515c93b0d2` (o que vale):**
+
+- `scripts/censos-da-arvore-combinada.sh` (`PH2D_SUITE=fecho`): **121/121 verdes**, 24 s.
+- `BASE=$(git merge-base main HEAD) PH2D_SUITE=fecho nextest-impacted`: **17 770 corridos, 17 770 verdes, 0 falhas**,
+  12 140 saltados, 945 s (`load` 16,8 no início → 79,9 no fim, outras sessões). Na varredura e verdes:
+  `file_loc_caps` (4), `the_shell_only_shrinks`, `arch_safe_clamp_only` (2), `gravar_de_novo` (6). 31 lentos-mas-verdes
+  (o maior 89,6 s, `n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto`).
+- clippy `--all-targets -D warnings` limpo em `ph2d-app-macros`, `ph2d-app-painter`, `ph2d-host-desktop` (sem a
+  feature `ph2d-spike/bevy_ecs` do `ship.sh`, que o cargo recusa com `-p` nestes três — ela só toca o `ph2d-spike`)
+  · `cargo fmt --all --check` exit 0 · `typos` limpo nos 6 ficheiros do 2.º fecho.
+- **Auditoria (2 lentes, `07cb913762..HEAD`)**: correção — 1 defeito alto (a tomada renomeada segurava a entrada),
+  curado com gate vermelho antes (§2 item 10); dono, ordem `set_active` → laço → Autoplay, undo (o mesmo passo da
+  Timeline) e o `anuncio` conferidos sem defeito; 2 baixos no §8. Costuras — frases que diziam «o Parar dá sempre o
+  Autoplay» acertadas (cabeçalho do gate, mensagem do `gate7`, a continuação de 18/10); `doc_owner.rs:134` («laço e
+  Autoplay são do artista», da Timeline) fica: é verdade para `add_macro_clip`, quem decide é o `instala`.
+
+**1.º fecho de 18/10, em `9a295ee8a7` (histórico):**
 
 - `scripts/censos-da-arvore-combinada.sh` (`PH2D_SUITE=fecho`): **121/121 verdes**, 32 s. A 1.ª corrida apanhou 1 falha
   real — `every_word_this_family_shows_comes_from_the_string_table` (os literais de `caminho.rs`) — curada em `9a295ee8a7`.
@@ -137,6 +171,14 @@ sai vazio).
 Binário: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` — em `9a295ee8a7`: «Finished `smoke`
 profile [optimized] target(s) in 10.77s».
 
+**18/10, 2.º fecho (a decisão do Autoplay)** — binário de `515c93b0d2` («Finished `smoke` … 7.84s» em `73eb277e10`; a
+foto reconstrói-o). `=6 topo` no app: Parar aos 5,21 s, Play de cima aos 6,21 s; a tinta nasce de 0 (`tinta=0` até
+0,77 s do clipe, 5 268 aos 1,42, 8 750 aos 2,07, 18 762 aos 3,40) e o laço volta ao branco. Fotos (1930×1040,
+`fotografa_cena.sh`, rajada; 3 distintas de 6): [parada em 0, Autoplay ✓](smoke_2026-10-18/topo_1_depois_do_parar_0s_autoplay.png)
+· [1,62 s, só a de cima](smoke_2026-10-18/topo_2_play_de_cima_1617ms.png) · [o laço volta, 0,34 s](smoke_2026-10-18/topo_3_o_laco_volta_338ms.png).
+O caso do «Idle» não tem cena: conduz-se à mão na `=5` (Timeline ▸ «+» cria «Clip 2» ▸ Autoplay ▸ volta a «Macro» ▸
+Record/Stop ▸ «Clip 2» continua com Autoplay).
+
 **18/10 (pós-smoke):** o dono APROVOU o Play de cima e o arrasto da Timeline à mão na `=5`. O caminho sozinho:
 `PH2D_MACRO_SMOKE=6 PH2D_MACRO_CAMINHO=<base|humano|meio|splash|semrewind|topo|arrasta|parar>`; registo na consola e em
 `$TMPDIR/ph2d-macro-smoke.log`. Fotos da `=6 parar` (1930×1040, `fotografa_cena.sh`, rajada; a captura congelou 3+3
@@ -172,7 +214,8 @@ binário de `9a295ee8a7`): APROVADO.**
    `line/motion-value`).
 3. Baixo: a cena `=5` não arma por si o laço do relógio da Keys (`macro_smoke.rs` escreve o laço do doc; a troca de aba
    arma).
-4. **Decisão de PRODUTO (do dono)**: gravar de novo põe o clipe da macro em Autoplay sem perguntar (item 7), e o
+4. ✅ **FEITO no 2.º fecho de 18/10 (§2 item 10)** — o texto abaixo é o problema e a decisão, como estavam.
+   **Decisão de PRODUTO (do dono)**: gravar de novo põe o clipe da macro em Autoplay sem perguntar (item 7), e o
    `set_autoplay(…, true)` da Timeline tira o Autoplay dos OUTROS clipes do mesmo objeto (`ph2d-timeline/src/doc_entry.rs`)
    — quem marcou «Idle» como entrada perde-o ao regravar. Desfaz-se com o undo da Timeline; vale também para o Motion
    (`sessao.rs` passa as duas famílias por `instala`). É o que a 1.ª tomada já fazia.
@@ -183,6 +226,13 @@ binário de `9a295ee8a7`): APROVADO.**
 5. Baixo: com a espia ligada (só nas `=5`/`=6`) cada subida inteira copia a tela na CPU — o registo à mão da `=5` paga-o.
 6. Baixo: a shell `render_loop/macro_smoke.rs` cresceu ~110 linhas de composição da `=5`/`=6` (despacho pelas portas
    privadas da `App`, `ponto_da_tela`, a montagem da linha); a catraca passa. O relógio e o condutor já saíram para a crate.
+7. Baixo (auditoria do 2.º fecho): as cenas de smoke montam o Autoplay por `set_autoplay(clip, !parada)` directo
+   (`shells/desktop/src/render_loop/macro_smoke.rs:93`), sem a regra do `instala` — inócuo hoje (os objectos das cenas
+   não têm outro clipe); se uma cena futura der um «Idle» ao objecto, ela tira-lho.
+8. Baixo (pré-existente): o clipe da macro acha-se pelo NOME (`instala::clipe_de`); renomeado, cada Parar cria outro
+   clipe «Macro» e os dois tocam a mesma `Macro` do objecto (o renomeado com o tempo antigo). A entrada já é a certa
+   (§2 item 10); achar o clipe pela faixa `MacroTime` em vez do nome é decisão de desenho por tomar (o nome foi
+   escolhido para o artista poder «guardar» uma tomada renomeando-a).
 
 ## Retomar
 

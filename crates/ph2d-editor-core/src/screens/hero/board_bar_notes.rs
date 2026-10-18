@@ -3,7 +3,7 @@
 //! grupos da barra de estilo de uma selecção de notas, e os do texto — negrito, itálico, sublinhado,
 //! riscado e, numa FORMA, a cor da letra (as notas do Miro não a mudam: help «Fonts»).
 
-use super::{Item, Selected, VIVIDS, btn_px, doc_color, gap, toolbar_rects};
+use super::{Item, Selected, VIVIDS, btn_px, doc_color, gap};
 use crate::paint::{fill_rounded_rect, paint_text_centered};
 use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 use crate::zones::Rect;

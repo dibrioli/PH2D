@@ -3,7 +3,7 @@
 //! e a cor e a espessura da predefinição activa (o Miro edita-as com duplo-clique; aqui estão à
 //! vista) —, a barra de estilo de uma selecção de traços, e o botão «Rascunho ↔ Final».
 
-use super::{Item, btn_px, gap, toolbar_rects};
+use super::{Item, btn_px, gap};
 use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon as icon};
 use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;

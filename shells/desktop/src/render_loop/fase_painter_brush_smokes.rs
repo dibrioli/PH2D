@@ -67,7 +67,7 @@ impl crate::App {
             }
         }
 
-        // Wet Paint smoke (`PH2D_WETPAINT_SMOKE=1`): the impasto smoke's exact dance for the fluid
+        // Wet Paint smoke (`PH2D_WETPAINT_SMOKE=1|2`): the impasto smoke's exact dance for the fluid
         // mode (ADR-0134 W1) — spawn, seat the selection, arm in `painter_bridge`.
         if let Some(hero) = hero_screen.as_mut()
             && ph2d_app_painter::wetpaint_smoke::enabled()
@@ -84,11 +84,7 @@ impl crate::App {
                 atlas_asset_map,
             ) {
                 *next_import_cell = next_import_cell.saturating_add(1);
-                hero.gizmo.replace_selection(Some(bits));
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor_core::ViewFocusKind::Selected,
-                    });
+                ph2d_app_painter::wetpaint_smoke::arm_hero(hero, bits);
                 toasts.push(Toast::success(
                     "Wet Paint smoke: pick the Painter tool and drag".to_string(),
                 ));

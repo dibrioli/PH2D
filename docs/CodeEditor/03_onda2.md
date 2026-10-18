@@ -108,7 +108,7 @@ seguinte; o resto entra em lotes.
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I8b.md)): as correcções do
    Alt+Enter como botões do design system dentro do balão do problema (porta única `actions_at`), e a 1.ª
    acção da janelinha com o foco neutro em vez do bloco do acento.
-   ~~I10~~ — feito **na linha** (HEAD `e83bddae3d`;
+   ~~I10~~ — feito **na linha**, smoke do dono OK a 18/10 (HEAD `e83bddae3d`;
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I10.md)): rename (F2) e
    referências (Shift+F12), locais pelo `luau-lsp` e a propriedade por nós, e o **marcador do undo global**
    (um Ctrl+Z desfaz texto e objectos juntos); falta o smoke do dono. **Próximo: I9/I12/I14** → I13 → I15. No I15, a bancada repete-se numa rodada só com a lista E os balões abertos.

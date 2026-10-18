@@ -154,6 +154,8 @@ Shift+F12»).
 9. F2 em `ph2d.set` ou em `function update`: a caixinha só diz porque não se renomeia.
 10. **Deu errado se:** o valor 3 se perde (o cartão volta a 1 ou mostra um valor órfão); o Ctrl+Z precisa de dois toques; desfazer na cena deixa o script com `altura` (ou ao contrário); `end`/`1x` são aceites; o app trava ou o assistente reinicia ao usar F2 num `ph2d.set`.
 
+> ✅ **Smoke do dono OK a 18/10** (inclui o Ctrl+Z na CENA — o caminho da shell que os testes não alcançam).
+
 ## 9. ABERTO
 
 - O realce das ocorrências usa `Bg3`: contraste não medido em todos os temas.

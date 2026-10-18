@@ -161,6 +161,15 @@ pub struct Config {
     /// `false` = o iso-½ da bilinear, que se desvia até ~0,08 texel (a passagem luz/sombra serrilhada
     /// das formas curvas, cena 5).
     pub borda_exata: bool,
+    /// ⭐ W6d (F5) — a borda exata CONTÍNUA (o `BORDA_CONTINUA`): «dentro» pela mistura bilinear das
+    /// distâncias com sinal às retas dos 4 texels vizinhos (o campo de distância do AAEDT), não pela
+    /// reta do texel onde o ponto cai — essa é descontínua entre texels e a busca do ponto de fronteira
+    /// caía numa fresta «fora» entalada no corpo (o texel preto rente à borda; handoff W6d §1).
+    pub borda_continua: bool,
+    /// ⭐ W6d — o texel que a borda exata põe FORA e o iso-½ DENTRO marcha pela borda exata (o
+    /// `BORDA_FORA`); `false` = pelo iso-½, e a marcha nasce dentro do corpo (o texel rente sai só com o
+    /// ambiente; handoff W6d §5). Os outros texels de fora marcham sempre pelo iso-½.
+    pub borda_fora: bool,
     /// ⭐ W5g (F5) — o texel do INTERIOR lê a luz no PÉ dele na borda exata (o `PE_NA_BORDA` do
     /// `c3_pe.wgsl`; só com [`Self::borda_exata`]); `false` = o ponto de fronteira da busca, que salta
     /// ao longo da face com a fase da grade (os degraus nos pontos tangentes dos discos, cena 7).
@@ -437,6 +446,8 @@ impl Config {
             c0_ao_longo_da_face: C0_AO_LONGO_DA_FACE_PADRAO,
             c0_ao_longo_mediana: true,
             borda_exata: true,
+            borda_continua: true,
+            borda_fora: true,
             pe_na_borda: true,
             vis_na_face: true,
             face_pelo_ponto: true,

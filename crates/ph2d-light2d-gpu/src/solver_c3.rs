@@ -467,12 +467,26 @@ impl C3 {
                     &[
                         entrada_textura(12, FLOAT),
                         entrada_escrita(13, wgpu::TextureFormat::Rgba16Float),
+                        // ⭐ W6d: a contínua lê a 3×3 por quatro `textureGather`.
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 14,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                            count: None,
+                        },
                     ],
                 );
                 let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some("luz2d c3 borda"),
                     layout: &g3,
-                    entries: &[vista(12, &e.vistas[cob]), vista(13, &e.vistas[b])],
+                    entries: &[
+                        vista(12, &e.vistas[cob]),
+                        vista(13, &e.vistas[b]),
+                        wgpu::BindGroupEntry {
+                            binding: 14,
+                            resource: wgpu::BindingResource::Sampler(e.vizinhos),
+                        },
+                    ],
                 });
                 let t = &e.lista.texturas[b].tamanho;
                 (

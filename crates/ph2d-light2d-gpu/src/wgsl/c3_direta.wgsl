@@ -1118,7 +1118,14 @@ fn luz_do_texel(alvo: vec2<u32>, onde: Onde, tau: f32, exata: bool, transmitida:
         var longo = false;
         c0_tau = 1.0;
         if passo == 0u {
-            borda_aqui = onde.remapeado;
+            // ⭐ W6d: `BORDA_FORA` — o texel que a borda exata põe FORA e o iso-½ DENTRO (a fresta entre
+            // os dois) marcha pela borda exata; os outros de fora, pelo iso-½ de sempre.
+            var rente = false;
+            if BORDA_FORA && !onde.remapeado {
+                borda_aqui = false;
+                rente = num_corpo(pf);
+            }
+            borda_aqui = onde.remapeado || rente;
             if onde.remapeado {
                 modo = REMAPEADA;
                 longo = true;

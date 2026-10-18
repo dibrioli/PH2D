@@ -103,6 +103,10 @@ pub fn config_da_vista(
         vis_na_face: ligado("PH2D_LIGHT2D_FACE"),
         // ⭐ W5o: `=0` volta à marcha a partir do ponto afastado (a penumbra deslocada, comparar).
         face_pelo_ponto: ligado("PH2D_LIGHT2D_FACE_PONTO"),
+        // ⭐ W6d: `PH2D_LIGHT2D_BORDA=0` volta à reta por texel e à marcha de fora pelo iso-½ (os pontos
+        // pretos rentes à borda, comparar).
+        borda_continua: ligado("PH2D_LIGHT2D_BORDA"),
+        borda_fora: ligado("PH2D_LIGHT2D_BORDA"),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),
         hrc_em_texturas: hrc_texturas(),

@@ -229,15 +229,17 @@ fn censo_da_borda(fl: &Fluencia, r: &Redondo, gab: &CenaDeLuz, tx: f64) -> Strin
             let t = [-dy / rho * tx, dx / rho * tx];
             let v = f64::from(fl.v[(j * g.largura + i) as usize][1]);
             let (g0, ga, gb) = (lei(p), lei([p[0] + t[0], p[1] + t[1]]), lei([p[0] - t[0], p[1] - t[1]]));
-            casos.push((d, v, g0, (ga - gb).abs()));
+            casos.push((d, v, g0, (ga - gb).abs(), p));
         }
     }
     let max = casos.iter().map(|c| c.2).fold(0.0, f64::max);
+    let lampada = ph2d_app_light2d::smoke::LAMPADA_DO_VOLUME.map(f64::from);
     let mut s = String::new();
     let mut pior = (0.0_f64, 0.0_f64);
+    let (mut fam_a, mut fam_b, mut pior_a) = (0, 0, 0.0_f64);
     for f in 0..4 {
         let (mut escuros, mut claros, mut n, mut passagem) = (0, 0, 0, 0);
-        for &(d, v, g0, dg) in &casos {
+        for &(d, v, g0, dg, p) in &casos {
             if d < FAIXAS[f] || d >= FAIXAS[f + 1] {
                 continue;
             }
@@ -247,6 +249,22 @@ fn censo_da_borda(fl: &Fluencia, r: &Redondo, gab: &CenaDeLuz, tx: f64) -> Strin
             }
             n += 1;
             let e = (v - g0) / max;
+            if e < -ERRADO_BORDA && std::env::var_os("PH2D_W6D_LISTA").is_some() {
+                eprintln!(
+                    "    PRETO d {d:+.3} · ângulo à lâmpada {:.1}° · placa {v:.5} · gabarito {g0:.5} · texel ({:.3}, {:.3})",
+                    angulo(r.centro, p, lampada),
+                    (p[0] - g.origem_m[0]) / g.texel_m,
+                    (p[1] - g.origem_m[1]) / g.texel_m
+                );
+            }
+            if e < -ERRADO_BORDA && f < 3 && FAIXAS[f] >= -0.5 {
+                if angulo(r.centro, p, lampada) < 86.0 {
+                    fam_a += 1;
+                    pior_a = pior_a.min(e);
+                } else {
+                    fam_b += 1;
+                }
+            }
             escuros += usize::from(e < -ERRADO_BORDA);
             claros += usize::from(e > ERRADO_BORDA);
             if e < pior.0 {
@@ -259,23 +277,76 @@ fn censo_da_borda(fl: &Fluencia, r: &Redondo, gab: &CenaDeLuz, tx: f64) -> Strin
             FAIXAS[f + 1]
         );
     }
-    s + &format!(" · pior escuro {:+.3} em d {:+.2}", pior.0, pior.1)
+    s + &format!(
+        " · pior escuro {:+.3} em d {:+.2} · FAMÍLIAS (a) {fam_a} (pior {pior_a:+.3}) · (b) {fam_b}",
+        pior.0, pior.1
+    )
 }
 
 const ERRADO_BORDA: f64 = 0.10;
 
-/// Diagnóstico (não cura): o produto e as peças da borda desligadas, uma a uma.
-const DIAG: [&str; 5] = ["produto", "sem borda exata", "sem pé", "sem face", "sem miolo"];
+/// As variantes da decisão (handoff W6d §6): o produto, o campo + a marcha de fora pela mesma borda, o
+/// iso-½; o campo sozinho (§4) só na lista.
+const DIAG: [&str; 4] = [
+    "produto",
+    "campo + fora",
+    "sem borda exata",
+    "campo",
+];
+/// As da decisão; as outras só na lista (`PH2D_W6D_LISTA`).
+const N_DECIDE: usize = 3;
 
 fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_gpu::Config {
     let c = config(gpu, a, false);
     match v {
-        1 => ph2d_light2d_gpu::Config { borda_exata: false, ..c },
-        2 => ph2d_light2d_gpu::Config { pe_na_borda: false, ..c },
-        3 => ph2d_light2d_gpu::Config { vis_na_face: false, ..c },
-        4 => ph2d_light2d_gpu::Config { miolo: None, ..c },
+        1 => ph2d_light2d_gpu::Config { borda_continua: true, borda_fora: true, ..c },
+        2 => ph2d_light2d_gpu::Config { borda_exata: false, ..c },
+        3 => ph2d_light2d_gpu::Config { borda_continua: true, ..c },
         _ => c,
     }
+}
+
+/// A distância de `p` à borda do polígono `v` (metros) e se está dentro.
+fn ao_poligono(v: &[[f32; 2]], p: [f64; 2]) -> (f64, bool) {
+    let mut d = f64::INFINITY;
+    let mut dentro = false;
+    let mut j = v.len() - 1;
+    for i in 0..v.len() {
+        let (a, b) = (v[j].map(f64::from), v[i].map(f64::from));
+        if (a[1] > p[1]) != (b[1] > p[1])
+            && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]
+        {
+            dentro = !dentro;
+        }
+        let ab = [b[0] - a[0], b[1] - a[1]];
+        let t = (((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / (ab[0] * ab[0] + ab[1] * ab[1]).max(1e-18))
+            .clamp(0.0, 1.0);
+        d = d.min((p[0] - a[0] - t * ab[0]).hypot(p[1] - a[1] - t * ab[1]));
+        j = i;
+    }
+    (d, dentro)
+}
+
+/// Os texels FORA de todo corpo, a ≥ 1 texel fino de toda borda, em que `x` e `y` diferem nos bits.
+fn diferentes_fora(x: &Fluencia, y: &Fluencia, c: &CenaDeLuz, tx: f64) -> (usize, usize) {
+    let g = x.grade;
+    let (mut dif, mut n) = (0, 0);
+    for j in 0..g.altura {
+        for i in 0..g.largura {
+            let k = (j * g.largura + i) as usize;
+            let p = g.centro(i, j);
+            let fora = c.oclusores.iter().all(|o| {
+                let (d, dentro) = ao_poligono(&o.vertices, p);
+                !dentro && d >= tx
+            });
+            if !fora {
+                continue;
+            }
+            n += 1;
+            dif += usize::from(x.v[k].map(f32::to_bits) != y.v[k].map(f32::to_bits));
+        }
+    }
+    (dif, n)
 }
 
 #[test]
@@ -283,7 +354,11 @@ fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_
 fn medida_luz2d_w6d_borda() {
     let Some(gpu) = gpu() else { return };
     eprintln!("# censo da borda · loadavg antes {}", loadavg());
-    for zoom in [0.8, 1.6, 3.2] {
+    // `PH2D_W6D_LISTA=1`: só o zoom 1,6, a lista dos pretos, sem o custo.
+    let lista = std::env::var_os("PH2D_W6D_LISTA").is_some();
+    let zooms: &[f64] = if lista { &[3.2] } else { &[0.8, 1.6, 3.2] };
+    let nv = if lista { DIAG.len() } else { N_DECIDE };
+    for &zoom in zooms {
         for k in 0..8u32 {
             let a = vista_em(zoom, cena_redonda([0.0; 2]).1[0].centro);
             let cfg0 = config(&gpu, a, false);
@@ -291,29 +366,102 @@ fn medida_luz2d_w6d_borda() {
             let d = [f64::from(k) * tx / 8.0, f64::from(k) * tx * 3.0 / 8.0];
             let (c, redondos) = cena_redonda(d);
             let r = redondos[0];
-            for j0 in 0..DIAG.len() {
-                let v = (j0 + k as usize) % DIAG.len();
+            let mut lidas: Vec<Option<Fluencia>> = (0..nv).map(|_| None).collect();
+            for j0 in 0..nv {
+                let v = (j0 + k as usize) % nv;
                 let mut s = solver(&gpu, a, config_diag(&gpu, a, v));
                 s.quadro(&gpu, &c);
                 let fl = fluencia_lida(&gpu, &s);
+                let mut pior = Leitura::default();
+                let aneis = linha(&fl, &r, &c, tx, &mut pior);
                 eprintln!(
                     "BORDA · polígono · zoom {zoom} · {k}/8 · {}{}",
                     DIAG[v],
                     censo_da_borda(&fl, &r, &c, tx)
                 );
+                eprintln!(
+                    "ANEIS · polígono · zoom {zoom} · {k}/8 · {} · PIOR {}e({:.3}) ×{} ↔{:.1} TV {:+.2}{aneis}",
+                    DIAG[v], pior.errados, pior.pior, pior.cruzes, pior.desvio, pior.tv
+                );
+                lidas[v] = Some(fl);
             }
+            let (p0, p1) = (lidas[0].as_ref().unwrap(), lidas[1].as_ref().unwrap());
+            let (dif, n) = diferentes_fora(p0, p1, &c, tx);
+            eprintln!("BITS · zoom {zoom} · {k}/8 · contínua × produto fora dos corpos: {dif} / {n} diferentes");
         }
         let a = vista_em(zoom, cena_redonda([0.0; 2]).1[0].centro);
-        for v in 0..DIAG.len() {
+        for v in 0..nv {
             let cfg = config_diag(&gpu, a, v);
             let tx = cfg.grade.texel_m / f64::from(cfg.fina);
             let (fl, r, gab) = disco_de_imagem(&gpu, a, cfg);
+            let mut pior = Leitura::default();
+            let aneis = linha(&fl, &r, &gab, tx, &mut pior);
             eprintln!(
                 "BORDA · imagem · zoom {zoom} · {}{}",
                 DIAG[v],
                 censo_da_borda(&fl, &r, &gab, tx)
             );
+            eprintln!(
+                "ANEIS · imagem · zoom {zoom} · {} · PIOR {}e({:.3}) ×{} ↔{:.1} TV {:+.2}{aneis}",
+                DIAG[v], pior.errados, pior.pior, pior.cruzes, pior.desvio, pior.tv
+            );
         }
     }
+    if !lista {
+        custo(&gpu);
+    }
     eprintln!("# loadavg depois {}", loadavg());
+}
+
+/// O custo da C3 (preenche — com a borda — + visibilidade + fina, ms, o MÍNIMO de 7 intercaladas),
+/// cenas 5 e 6, vista de fábrica: o produto × a contínua.
+fn custo(gpu: &ph2d_gpu::GpuContext) {
+    use crate::medida_luz2d_w5d::{RODADAS, vista};
+    let a = vista(1.0);
+    let mut solvers = Vec::new();
+    for n in [5u32, 6] {
+        let mut w = bevy_ecs::world::World::new();
+        assert!(ph2d_app_light2d::smoke::encenar(&mut w, n));
+        let cena = ph2d_light2d_ecs::coleta::cena_de_luz(&w);
+        for v in 0..2 {
+            solvers.push((n, v, cena.clone(), solver(gpu, a, config_diag(gpu, a, v))));
+        }
+
+    }
+    let mut minimo = vec![f64::INFINITY; solvers.len()];
+    let mut partes_min = vec![[0.0; 3]; solvers.len()];
+    for rodada in 0..RODADAS {
+        for j in 0..solvers.len() {
+            let i = (j + rodada) % solvers.len();
+            let (_, _, cena, s) = &mut solvers[i];
+            for _ in 0..3 {
+                s.quadro(gpu, cena);
+            }
+            let t = s.tempos(gpu).expect("TIMESTAMP_QUERY");
+            let partes = [t.c3_preenche, t.c3_visibilidade, t.c3_fina];
+            if partes.iter().sum::<f64>() < minimo[i] {
+                minimo[i] = partes.iter().sum();
+                partes_min[i] = partes;
+            }
+        }
+    }
+    for (i, (n, v, ..)) in solvers.iter().enumerate() {
+        let [a, b, c] = partes_min[i];
+        let nome = DIAG[*v];
+        eprintln!(
+            "CUSTO · cena {n} · {nome} · C3 {:.3} ms (preenche+borda {a:.3} · visibilidade {b:.3} · fina {c:.3}) · loadavg {}",
+            minimo[i],
+            loadavg()
+        );
+    }
+}
+
+/// O ângulo (graus) entre a normal de fora do disco em `p` e a direção à lâmpada (0 = de frente).
+fn angulo(centro: [f64; 2], p: [f64; 2], lampada: [f64; 2]) -> f64 {
+    let n = [p[0] - centro[0], p[1] - centro[1]];
+    let l = [lampada[0] - p[0], lampada[1] - p[1]];
+    ((n[0] * l[0] + n[1] * l[1]) / (n[0].hypot(n[1]) * l[0].hypot(l[1])))
+        .clamp(-1.0, 1.0)
+        .acos()
+        .to_degrees()
 }

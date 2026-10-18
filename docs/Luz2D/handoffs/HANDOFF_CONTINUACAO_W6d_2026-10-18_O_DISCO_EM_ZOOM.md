@@ -163,3 +163,17 @@ limiares: os do §6 (0 bits de fora; (1a) ≤ 10 % e o pior ≥ −0,25; o custo
 C3 cena 5 3,391 → 3,605 (+6,3 %), cena 6 2,189 → 2,382 (+8,8 %) ✗; a borda 0,376 → 0,637. **Candidata 5b** (só custo, o
 mesmo critério do §10, escrito antes de medir): o `c3_borda_quad` — 2×2 texels por invocação, o bloco 4×4 lido uma vez,
 o bloco sem parcial grava ±1 sem conta; o produto continua no `c3_borda` (uma função por texel partilhada, `linha_de`).
+
+## 12. Rodadas 6–8 — o custo da borda (só custo: as linhas do censo e dos anéis IDÊNTICAS à rodada 5 em todas)
+
+| `c3_borda` da contínua (cena 5, 1080p, o mínimo de 7, `load` 1,5–2) | borda | C3 |
+|---|---|---|
+| produto (a reta só nos parciais) | 0,374 | 3,389 |
+| rodada 5: 9 leituras soltas por texel | 0,637 | 3,605 (+6,3 %) |
+| ⛔ rodada 6: 2×2 texels por invocação (o bloco 4×4) | 0,748 | 3,706 |
+| ⛔ rodada 7: a 3×3 por 4 `textureGather` | 0,888 | 3,869 |
+| ✅ **rodada 8: 4 `textureGather` e, sem parcial na 3×3, ±1 SEM listas** | **0,498** | **3,471 (+2,4 %)** — cena 6 2,193 → 2,248 (+2,5 %) |
+
+⇒ o custo não era a leitura: era a `array<f32, 9>` indexada em laço (memória local) para TODO texel. O caminho rápido
+vetorial deixa as listas só para a faixa. **A candidata 5 (o campo + o fora só no rente + a reta emprestada barata + o
+caminho rápido) PASSA os itens 1, 2, 4 e 5 do §6**; o item 3 (os portões) com ela ligada por omissão.

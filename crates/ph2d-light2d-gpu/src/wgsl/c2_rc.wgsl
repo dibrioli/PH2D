@@ -51,6 +51,12 @@ override PASSO_NA_BORDA: f32 = 1.0;
 // [`dentro_exato`]. A C3 desliga-a na luz direta dos texels de FORA (a marcha deles fica no iso-½:
 // a mesma foto, ~0,4 ms a menos na cena 4).
 override BORDA_EXATA: bool = false;
+// ⭐ W6d — a borda exata CONTÍNUA: o «dentro» pela bilinear da DISTÂNCIA com sinal que o `c3_borda`
+// grava no centro de cada texel (o 4.º canal) — a reta por texel é descontínua entre texels e a busca
+// do ponto de fronteira caía numa fresta «fora» entalada no corpo (handoff W6d §1).
+override BORDA_CONTINUA: bool = false;
+// ⭐ W6d — a luz direta dos texels de FORA também pela borda exata (o `Config::borda_fora`).
+override BORDA_FORA: bool = false;
 var<private> borda_aqui: bool = true;
 
 struct Cascata {
@@ -112,7 +118,13 @@ fn meio(pc: vec2<f32>) -> Meio {
     let g = textureGather(0, cobertura, vizinhos, (base + 1.0) / n);
     let c = mix(mix(g.w, g.z, fr.x), mix(g.x, g.y, fr.x), fr.y);
     m.c = c;
-    if BORDA_EXATA && borda_aqui {
+    if BORDA_EXATA && BORDA_CONTINUA && borda_aqui {
+        // ⭐ W6d — a distância com sinal no centro de cada texel (`c3_borda`), bilinear: contínua.
+        let s = textureGather(3, cobertura, vizinhos, (base + 1.0) / n);
+        if mix(mix(s.w, s.z, fr.x), mix(s.x, s.y, fr.x), fr.y) < 0.0 {
+            return m;
+        }
+    } else if BORDA_EXATA && borda_aqui {
         if !dentro_exato(p, n, c) {
             return m;
         }

@@ -131,10 +131,17 @@ fn o_desenho_devolve_a_luz_como_a_imagem() {
     assert!(falhas.is_empty(), "{}", falhas.join(" · "));
 }
 
-/// O anel da camada dos OUTROS contra o da imagem — MEDIDO + 10 % (RTX 5060 Ti, 40 quadros): o pior
-/// canal −0,27 % nos dois discos; a camada lida como NÃO premultiplicada (a mutação M12 da W5e) −0,39 %
-/// (a cor das bordas antisserrilhadas); sem reflexo −8,6 % e −14,2 %.
-const TOL_REBOTE_OUTROS: f64 = 0.003;
+/// O anel da camada dos OUTROS contra o da imagem — MEDIDO + 10 % (RTX 5060 Ti, 40 quadros), remedido
+/// com a borda da W6d (o campo pelas retas próprias; handoff W6d §24):
+///
+/// | o pior canal | Disco grande | Disco pequeno |
+/// |---|---|---|
+/// | o produto | −0,26 % | −0,30 % |
+/// | a camada lida NÃO premultiplicada (a mutação M12 da W5e) | −0,37 % | −0,31 % |
+/// | sem reflexo (o controlo) | −8,6 % | −14,3 % |
+///
+/// (Na W5e, com a reta por texel: −0,27 % · M12 −0,39 %. A M12 separa-se agora por 0,04 no disco grande.)
+const TOL_REBOTE_OUTROS: f64 = 0.0033;
 
 /// ⭐ **G7 do rebote para os OUTROS** (W5e): o traço do Flip e as formas do Motion devolvem a luz pela
 /// cor que a família desenha na camada (premultiplicada). Na cena 7, com a família de discos de ÁREA

@@ -389,3 +389,20 @@ medir): o parcial cuja normal discorda de todos os vizinhos parciais (o vértice
 (convexo: o mínimo; côncavo: o máximo — o teste `d₂(c_q₁) + d₁(c_q₂) > 0`) das retas dos parciais a DOIS texels
 (as adjacentes saem inclinadas ~16° pelo próprio vértice) — 7×7 só nesses texels. Régua: a sonda
 `medida_luz2d_w6d_canto` (o texel do canto contra o «sem o campo») + um gabarito de canto no portão B.
+
+## 24. A bateria e a prova de mutação da lei final (`773e50ec5b`; agente `mutacao`; `load` até 45 — só tempos)
+
+**Base:** app A B C D G H I J K L verdes (10/11; E — o G7 dos outros — 0,0030 contra 0,003) · `ph2d-light2d-gpu`
+`--lib` 6/6 · `it` 42/42 (32 ignoradas: sondas). ⇒ **`TOL_REBOTE_OUTROS` 0,003 → 0,0033** (o −0,30 % do disco
+pequeno + 10 %), com a M12 da W5e remedida: −0,37 % no disco grande (separa-se por 0,04; na W5e por 0,09). E verde
+(`e_final.log`). ⚠️ As §19–§20 (a tolerância 0,0036 e a prova M1–M6) eram da UNIÃO, que saiu — valem só como história.
+
+| mutação (lei final) | A borda | B caixa | C formas | D imagem | F F3 | |
+|---|---|---|---|---|---|---|
+| M1 o ramo do campo → `if false` | ✗ | ✗ | ✗ | ✗ | ✗ | sangra |
+| M2 o rente → `false` | ✗ (−0,944) | | | | | sangra |
+| M3 o sinal do cheio (`d >= 0` → `d < 0`) | | | | | ✗ (0,00028 > 0,0002) | sangra — ⚠️ SÓ o F3 a vê |
+| M4 o caminho rápido (±1 trocados) | ✗ | ✗ | ✗ | ✗ | ✗ | sangra |
+| M7 a normal do PRÓPRIO texel (o chanfro de volta) | | ✗ (lei antiga 2, 0,238) | | | | sangra — o portão da cura |
+
+5/5. Falta de cobertura registada: a M3 só tem o F3 como observador (o app não a vê).

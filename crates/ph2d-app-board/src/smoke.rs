@@ -93,7 +93,7 @@ pub(crate) mod shots;
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 22,
+    max_level: 23,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -127,7 +127,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         20 => _ = w19::scene_w19(hero),
         21 => _ = w20::scene_w20(hero),
         22 => _ = live::scene_internet(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=22)"),
+        23 => _ = live::scene_join(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=23)"),
     }
 }
 

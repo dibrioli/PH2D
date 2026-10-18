@@ -43,8 +43,9 @@ pub(crate) fn view(hero: &HeroScreen) -> View {
 }
 
 /// ⭐ O rectângulo de `area` que fica livre para enquadrar `bbox` (mundo) com `margin` px: cada
-/// coberta (a maior primeiro) corta-o pelo lado em que `bbox` cabe MAIOR — numa janela estreita uma
-/// cena larga vai para baixo do cartão «Live», uma alta para o lado dele.
+/// coberta corta-o por um dos lados, e escolhe-se a combinação de lados em que `bbox` cabe MAIOR
+/// depois de TODAS — numa janela estreita uma cena larga vai para baixo do cartão «Live», uma alta
+/// para o lado dele, e um lado que os botões do canto comem perde para o outro.
 #[must_use]
 pub(crate) fn free_of(area: Rect, covers: &[Rect], bbox: [f64; 4], margin: f64) -> Rect {
     let size = |r: &Rect| r.w.max(0.0) * r.h.max(0.0);
@@ -56,27 +57,43 @@ pub(crate) fn free_of(area: Rect, covers: &[Rect], bbox: [f64; 4], margin: f64) 
     };
     let mut covers = covers.to_vec();
     covers.sort_by(|a, b| size(b).total_cmp(&size(a)));
-    let mut r = area;
-    for c in covers {
-        let (x1, y1) = (r.x + r.w, r.y + r.h);
-        if c.x + c.w <= r.x || c.x >= x1 || c.y + c.h <= r.y || c.y >= y1 {
-            continue;
-        }
-        let cuts = [
-            Rect::new(c.x + c.w, r.y, x1 - c.x - c.w, r.h),
-            Rect::new(r.x, r.y, c.x - r.x, r.h),
-            Rect::new(r.x, c.y + c.h, r.w, y1 - c.y - c.h),
-            Rect::new(r.x, r.y, r.w, c.y - r.y),
-        ];
-        if let Some(best) = cuts
-            .into_iter()
-            .filter(|k| k.w > 0.0 && k.h > 0.0)
-            .max_by(|a, b| zoom(a).total_cmp(&zoom(b)))
-        {
-            r = best;
-        }
+    let mut best = (f64::NEG_INFINITY, area);
+    search(area, &covers, &zoom, &mut best);
+    best.1
+}
+
+/// Desce pelas cobertas, um lado de cada vez; um ramo cujo rectângulo já não bate o melhor sai cedo
+/// (cortar nunca o deixa maior).
+fn search(r: Rect, covers: &[Rect], zoom: &impl Fn(&Rect) -> f64, best: &mut (f64, Rect)) {
+    if zoom(&r) <= best.0 {
+        return;
     }
-    r
+    let Some((c, rest)) = covers.split_first() else {
+        *best = (zoom(&r), r);
+        return;
+    };
+    let (x1, y1) = (r.x + r.w, r.y + r.h);
+    if c.x + c.w <= r.x || c.x >= x1 || c.y + c.h <= r.y || c.y >= y1 {
+        search(r, rest, zoom, best);
+        return;
+    }
+    let mut cuts: Vec<Rect> = [
+        Rect::new(c.x + c.w, r.y, x1 - c.x - c.w, r.h),
+        Rect::new(r.x, r.y, c.x - r.x, r.h),
+        Rect::new(r.x, c.y + c.h, r.w, y1 - c.y - c.h),
+        Rect::new(r.x, r.y, r.w, c.y - r.y),
+    ]
+    .into_iter()
+    .filter(|k| k.w > 0.0 && k.h > 0.0)
+    .collect();
+    if cuts.is_empty() {
+        search(r, rest, zoom, best);
+        return;
+    }
+    cuts.sort_by(|a, b| zoom(b).total_cmp(&zoom(a)));
+    for k in cuts {
+        search(k, rest, zoom, best);
+    }
 }
 
 /// ⭐ Antes de desenhar o quadro: as cobertas da pintura anterior viram a vista desta, e o

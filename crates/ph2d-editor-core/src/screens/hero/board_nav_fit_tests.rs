@@ -51,3 +51,17 @@ fn every_cover_cuts_and_none_outside_does() {
         assert!(apart, "{free:?} toca {c:?}");
     }
 }
+
+/// ⭐ O lado de cada coberta escolhe-se pelo que FICA depois de todas, não pelo que parece melhor
+/// com ela sozinha: debaixo do cartão parece maior (3,5), mas a faixa de baixo come-o (1,8); ao
+/// lado dele a cena fica a 2,5. Antes, a escolha uma a uma ficava com o 1,8 (foto de 18/10 do
+/// cartão «Live» separado, cena 22 a 1366×768).
+#[test]
+fn each_side_is_chosen_by_what_is_left_after_every_cover() {
+    let area = Rect::new(0.0, 0.0, 1000.0, 600.0);
+    let card = Rect::new(500.0, 0.0, 500.0, 250.0);
+    let strip = Rect::new(0.0, 300.0, 1000.0, 120.0);
+    let bx = [0.0, 0.0, 200.0, 100.0];
+    let free = free_of(area, &[card, strip], bx, 0.0);
+    assert_eq!(free, Rect::new(0.0, 0.0, 500.0, 300.0), "{free:?}");
+}

@@ -132,6 +132,23 @@ pub(super) fn scene_internet(hero: &mut HeroScreen) -> Lessons {
     l
 }
 
+/// A cena 23 (W23, o cartão por caminho de ligação): o lado de quem ENTRA — a «Retro» sem sessão e o
+/// painel Live aberto com os dois cartões (rede local: código; internet: o campo Link), e as lições
+/// das duas maneiras de entrar e de convidar.
+pub(super) fn scene_join(hero: &mut HeroScreen) -> Lessons {
+    let mut set = BoardSet::default();
+    let id = set.create(tr("board.smoke.join.board"));
+    let l = build_with(
+        set.get_mut(id).expect("acabou de nascer"),
+        "board.smoke.join",
+    );
+    document_tabs::load(hero, set);
+    hero.documents.activate(Some(id));
+    board_nav::show_box(hero, false, false, l.view);
+    live_board::toggle(hero);
+    l
+}
+
 #[cfg(test)]
 #[path = "smoke_live_tests.rs"]
 mod tests;

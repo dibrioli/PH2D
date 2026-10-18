@@ -608,3 +608,17 @@ fn a_link_that_is_not_ours_is_refused_with_its_sentence() {
     assert_eq!(g.documents.live_view().role, LiveRole::Off);
     assert_eq!(g.documents.told(), Some(tr("board.live.link_bad").as_str()));
 }
+
+/// W23 — a cena 23 arma o lado de quem ENTRA: a «Retro» sem sessão, o painel aberto (procura quadros
+/// na rede) e nada aberto à rede nem à internet.
+#[test]
+fn the_join_scene_opens_the_panel_without_a_session() {
+    reset_for_tests();
+    let mut h = hero("Bia");
+    let l = super::scene_join(&mut h);
+    assert!(live_board::is_open(&h));
+    assert_eq!(h.documents.active(), Some(l.board));
+    assert_eq!(h.documents.take_live(), vec![LiveRequest::Discover]);
+    assert_eq!(h.documents.live_view().role, LiveRole::Off);
+    assert!(room(&mut h).is_none(), "a cena abriu uma sala");
+}

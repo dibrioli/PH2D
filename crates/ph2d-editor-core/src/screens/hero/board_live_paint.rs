@@ -236,6 +236,12 @@ fn row_h(row: &Row, ts: &mut TextSystem, w: f32) -> f32 {
     }
 }
 
+/// A altura do título de um cartão: a da letra e um vão curto (mais baixo que uma fila de botão — o
+/// título cola-se ao cartão dele).
+fn title_h() -> f32 {
+    TypeToken::Sm.px() + Spacing::Sm.px()
+}
+
 /// Onde cada fila cai a partir de `(x, y)` com a largura `w`: o rect de cada fila, os cartões, e a
 /// altura toda (com o vão da última). Dentro de um cartão as filas recuam a folga dele de cada lado;
 /// o título fica por cima do cartão, no do painel (o modelo de `widget::section_cards`).
@@ -246,11 +252,7 @@ fn place<'a>(
     y: f32,
     w: f32,
 ) -> (Vec<Rect>, Vec<Rect>, f32) {
-    let (s, g, cp) = (
-        btn(),
-        ph2d_tokens::control_gap_px(),
-        ph2d_tokens::card_pad_px(),
-    );
+    let (g, cp) = (ph2d_tokens::control_gap_px(), ph2d_tokens::card_pad_px());
     let mut at = Vec::new();
     let mut cards = Vec::new();
     let mut top: Option<f32> = None;
@@ -258,9 +260,10 @@ fn place<'a>(
     for row in rows {
         match row {
             Row::Section(_) => {
-                at.push(Rect::new(x, cy, w, s));
-                top = Some(cy + s);
-                cy += s + cp;
+                let th = title_h();
+                at.push(Rect::new(x, cy, w, th));
+                top = Some(cy + th);
+                cy += th + cp;
             }
             Row::End => {
                 let t = top.take().unwrap_or(cy);
@@ -403,7 +406,7 @@ fn paint_row(
                 scene,
                 tr(sec.title_key()),
                 r.x,
-                super::super::text_y(r.y, s, font),
+                super::super::text_y(r.y, r.h, font),
                 font,
                 r.w,
                 resolve(ColorToken::Text1, theme),

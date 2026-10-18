@@ -176,6 +176,29 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.net.l6" => {
             "6. End session closes it for all. The next invitation makes a new link; this one stops."
         }
+        // ── a cena 23 (PH2D_BOARD_SMOKE=23, W23): as duas maneiras de entrar ──
+        "board.smoke.join.title" => {
+            "Live: two ways in — the same Wi-Fi, or a link over the internet"
+        }
+        "board.smoke.join.board" => "Join a board",
+        "board.smoke.join.l1" => {
+            "1. The Live panel has one card per way of connecting: Local network and Internet."
+        }
+        "board.smoke.join.l2" => {
+            "2. Same Wi-Fi: click the board in the Local network list, type its code, then Join."
+        }
+        "board.smoke.join.l3" => {
+            "3. Got a link from another house: paste it in Link (Internet card), then Join by link."
+        }
+        "board.smoke.join.l4" => {
+            "4. To invite: Open to the network (same Wi-Fi) or Invite over the internet (link copied)."
+        }
+        "board.smoke.join.l5" => {
+            "5. Inside a session the card says the way you came in, then the People card."
+        }
+        "board.smoke.join.l6" => {
+            "6. Bring everyone here and Leave or End session sit at the bottom, outside the cards."
+        }
         _ => return None,
     })
 }

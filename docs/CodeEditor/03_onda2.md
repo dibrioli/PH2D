@@ -116,7 +116,7 @@ seguinte; o resto entra em lotes.
    (um Ctrl+Z desfaz texto e objectos juntos).
    ~~I9/I12/I14~~ — feito **na linha** (HEAD `f4a5305ae8`;
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I9_I12_I14.md)): dicas de tipo,
-   esqueletos com buracos, paleta `@ : >` e `--!strict`; falta o smoke do dono. **Próximo: I13** → I15. No I15, a bancada repete-se numa rodada só com a lista E os balões abertos.
+   esqueletos com buracos, paleta `@ : >` e `--!strict`; smoke do dono OK a 18/10. **Próximo: I13** → I15. No I15, a bancada repete-se numa rodada só com a lista E os balões abertos.
 4. **Acabamento (fim da fila, pedido do dono no smoke do I6/I11, 17/10):** com **Ctrl** carregado, o rato
    sobre qualquer palavra que o Ctrl+clique leva a algum sítio vira o ponteiro em **mão** (e o nome
    sublinha, como no Godot/VS Code). Só sobre o que é clicável: a validade tem de vir da mesma regra

@@ -157,6 +157,8 @@ no `ph2d-editor-core`; `undo_tests.rs` só `cargo fmt`.
 6. **Strict:** **Ctrl+K**, escreva `strict` e clique em **Turn On Strict Types (--!strict)**: a 1.ª linha passa a `--!strict` e a barra de baixo diz **Strict types** (podem aparecer avisos novos — é o modo estrito a falar). **Ctrl+Z** tira a linha.
 7. **Deu errado se:** clicar numa dica põe o cursor no meio do nome ou depois do espaço; o Tab do passo 4 escreve espaços em vez de saltar; o `Ctrl+Z` depois de preencher precisa de vários toques para tirar o que escreveu nos buracos; `@upd` não sai do sítio; o `--!strict` não aparece ou a barra não muda.
 
+> ✅ **Smoke do dono OK a 18/10.**
+
 ## 9. ABERTO
 
 - O interruptor das dicas de tipo vale **por sessão** (o app não tem armazém de preferências).

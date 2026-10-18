@@ -333,6 +333,8 @@ fn a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica() {
             let mut t = cena_da_regua(PaintMedia::WetPaint, c, 14.0);
             assert!(t.wet_preset_aplicar(&e.preset).is_empty());
             t.wet_preset_aplicar_volumes(&e.preset.parametros.volumes);
+            // A cor de cada FIO (W2) é outra fonte de G−R: o controlo sem rampa deixava de ser liso.
+            super::verde_no_soltar_tests::sem_os_fios(&mut t);
             t.paint.wetpaint.tilt_on = false;
             t.set_brush_size_px(14.0);
             t.set_brush_color_srgb8([30, 60, 220]);

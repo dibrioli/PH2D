@@ -109,7 +109,7 @@ verde. **Mutação 11/11** (a fase do ruído, a mão leve, a cor do fio, a onda,
   no smoke: quer a acrílica lisa como a do Rebelle (o tapete mais denso ou a ponta lisa)?
 - **O Wet Dry Brush** não tem foto honesta (o Flat Dry do Rebelle sob Wine sai liso).
 - Thin/Thick/Edges (as três populações do Rebelle) não entraram: nenhum número as pediu.
-- O painel dos fios (os 13 knobs estão `Hidden`, por nome no preset): W8.
+- O painel dos fios (os 12 knobs estão `Hidden`, por nome no preset): W8.
 
 ## ⛔ Recusas MEDIDAS
 

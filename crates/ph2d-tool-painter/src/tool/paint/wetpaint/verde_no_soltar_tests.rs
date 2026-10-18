@@ -135,8 +135,35 @@ fn sonda_verde() {
     }
 }
 
-/// A tela do Oil Bristle SEM relevo (o realce do Emboss não é desta régua) com o claro seco e, se `escuro`, o
-/// escuro a `forca` × o pigmento por cima (soltado).
+/// Os knobs dos FIOS (W2, `ph2d_wet_paint::bristles_fios`): a cor e a pressão de cada fio são do pincel, não das
+/// leis que estas réguas medem — quem usa um pincel de fábrica como VEÍCULO tira-os (o tapete de antes).
+pub(super) const KNOBS_DOS_FIOS: [Knob; 12] = [
+    Knob::BristlePressure,
+    Knob::BristleNoiseLength,
+    Knob::BristleLaneWidth,
+    Knob::BristleWave,
+    Knob::BristleWaveLength,
+    Knob::BristleOscillation,
+    Knob::BristleSpan,
+    Knob::BristleSpanLength,
+    Knob::BristleNoiseHue,
+    Knob::BristleNoiseSat,
+    Knob::BristleNoiseLight,
+    Knob::BristleLift,
+];
+
+/// [`KNOBS_DOS_FIOS`] de volta ao neutro.
+pub(super) fn sem_os_fios(t: &mut PainterTool) {
+    for k in KNOBS_DOS_FIOS {
+        t.paint
+            .wetpaint
+            .knobs
+            .set(k, ph2d_wet_paint::tuning::KNOB_DEFS[k as usize].default);
+    }
+}
+
+/// A tela do Oil Bristle SEM relevo nem fios (o realce do Emboss e a cor de cada fio não são desta régua) com o
+/// claro seco e, se `escuro`, o escuro a `forca` × o pigmento por cima (soltado).
 fn tela(claro: [u8; 3], escuro: Option<([u8; 3], f64)>) -> PainterTool {
     let b = super::mistura_wet_drip_tests::biblioteca();
     let e = &b
@@ -151,6 +178,7 @@ fn tela(claro: [u8; 3], escuro: Option<([u8; 3], f64)>) -> PainterTool {
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(e).is_empty());
     t.paint.wetpaint.knobs.set(Knob::Emboss, 0.0);
+    sem_os_fios(&mut t);
     t.set_brush_size_px(40.0);
     t.set_brush_color_srgb8(claro);
     t.on_canvas_pointer(p(30.0, 80.0, PointerPhase::Down));

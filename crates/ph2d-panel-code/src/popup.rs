@@ -91,7 +91,10 @@ impl CodeView {
             let i = c.top + k;
             let r = Rect::new(x, y + pad + k as f32 * lh, w, lh);
             let selected = i == c.selected;
-            if selected {
+            // A 1.ª acção do Alt+Enter nasce escolhida mas não carregada: o foco, não o bloco cheio.
+            if selected && c.actions {
+                ph2d_editor_core::widget::paint_popover_row_focus(scene, r, pal.theme);
+            } else if selected {
                 ph2d_editor_core::widget::paint_popover_row_highlight(scene, r, pal.theme);
             }
             let x0 = x + pad;

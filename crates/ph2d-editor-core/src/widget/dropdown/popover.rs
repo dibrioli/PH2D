@@ -142,6 +142,32 @@ pub fn paint_popover_row_highlight(scene: &mut VectorScene, rect: Rect, theme: T
     );
 }
 
+/// **A linha com o FOCO do teclado, sem estar carregada** — uma tinta neutra um degrau acima do
+/// popover (`Bg3` sobre `BgElev`) e o anel de foco fino por dentro dela. É a 1.ª acção do Alt+Enter
+/// do editor de código: o bloco cheio do [`paint_popover_row_highlight`] lia-se como já carregada
+/// (dono, 18/10). O VS Code 1.142 pinta a escolhida pelo teclado assim (`#313233` sobre `#202122`,
+/// anel `#3994BC` de 1 px por dentro); medição em
+/// `docs/CodeEditor/ferramentas/medicoes_onda2/I8b_botoes_no_balao.md`.
+pub fn paint_popover_row_focus(scene: &mut VectorScene, rect: Rect, theme: Theme) {
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(scene, rect, radius, opaque(ColorToken::Bg3, theme));
+    let w = StrokeToken::Thin.px();
+    let ring = Rect::new(
+        rect.x + w * 0.5,
+        rect.y + w * 0.5,
+        (rect.w - w).max(0.0),
+        (rect.h - w).max(0.0),
+    );
+    // FRAME-RAW-OK: o ANEL DE FOCO — vê-se em qualquer pele, como o do `paint_button`.
+    crate::paint::stroke_rounded_rect(
+        scene,
+        ring,
+        (radius - w * 0.5).max(0.0),
+        w,
+        opaque(ColorToken::BorderEmph, theme),
+    );
+}
+
 /// **A linha padrão**: o realce, o glifo de TIPO da opção (se tem) e o rótulo centrado.
 fn paint_popover_row_default<T>(
     scene: &mut VectorScene,
@@ -239,6 +265,30 @@ pub struct PaintedPopover {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A linha com o foco do teclado é uma tinta que se vê sobre o popover e nunca o bloco do acento;
+    /// o anel é o do foco.
+    #[test]
+    fn the_focused_row_is_a_neutral_tint_a_step_above_the_popover() {
+        for theme in ph2d_tokens::Theme::ALL {
+            let tint = ColorToken::Bg3.resolve(theme);
+            assert_ne!(
+                tint,
+                ColorToken::BgElev.resolve(theme),
+                "{theme:?}: some no popover"
+            );
+            assert_ne!(
+                tint,
+                ColorToken::Accent.resolve(theme),
+                "{theme:?}: o bloco cheio"
+            );
+            assert_ne!(
+                ColorToken::BorderEmph.resolve(theme),
+                tint,
+                "{theme:?}: o anel some na tinta"
+            );
+        }
+    }
 
     fn fixture() -> Dropdown<&'static str> {
         Dropdown::new(

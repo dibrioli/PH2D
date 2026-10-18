@@ -110,7 +110,7 @@ pub use dropdown::{
     DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, DropdownState, PaintedPopover, PopoverRow,
     PopoverRowPainter, chip_border_color, dropdown_chevron_size, dropdown_chip_width_for,
     dropdown_feel, dropdown_label_budget, opaque as resolve_opaque, paint_dropdown,
-    paint_dropdown_chip, paint_popover_row_highlight, popover_width_for,
+    paint_dropdown_chip, paint_popover_row_focus, paint_popover_row_highlight, popover_width_for,
 };
 pub(crate) use dropdown::{
     paint_dropdown_popover, paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,

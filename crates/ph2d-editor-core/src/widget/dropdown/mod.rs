@@ -484,7 +484,7 @@ mod popover;
 pub use geometria::{dropdown_chevron_size, dropdown_chip_width_for, dropdown_label_budget};
 pub use popover::{
     DROPDOWN_SCROLLBAR_ID, PaintedPopover, PopoverRow, PopoverRowPainter, opaque,
-    paint_popover_row_highlight,
+    paint_popover_row_focus, paint_popover_row_highlight,
 };
 pub(crate) use popover::{
     paint_dropdown_popover, paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,

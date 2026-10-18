@@ -6,7 +6,7 @@ Sobre o `main` `ad5f8fe39c` (merge-base, sem rebase). Sem push. [Prompt 50](../N
 · a medição, a lei e as recusas: [50_medicao](../NewFeaturesWetPaint/50_medicao_o_relevo_sem_escada.md) ·
 [prancha](../NewFeaturesWetPaint/50_prancha_escada.png) · [foto do smoke](../NewFeaturesWetPaint/50_smoke_cena.png) ·
 05 §3 (W3 ◐ com a W3b) · lista 26 C35 actualizado, C36, C37 novos. Anterior: [P49](HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-18_P49_W3_RELEVO.md).
-Commits `cdaedcaae9` → `04fda78c26` (+ os docs).
+Commits `cdaedcaae9` → `1cf41ba2f3` (+ os docs).
 
 ## §2 — Decidido e medido (o detalhe no 50_medicao)
 
@@ -64,6 +64,15 @@ era 1,07 → 2,37 ms — o pente recalculava a silhueta do depósito, em série;
 ao byte. Medido em release e em smoke (1,53 · 1,35); o smoke do dono continua por refazer.
 
 ## §6 — Aberto
+
+⛔⛔ **PRIMEIRO, na próxima janela — o traço rápido** (2.º relato do dono, 18/10: «um traço rápido o FPS cai para
+30; antes não era»; auditoria no 50 §4): a bissecção dá main 17/10 8,7 ms/quadro → fios W2 13,6 → relevo 31,9 → agora
+**13,7** (`1cf41ba2f3`, ao byte). Sonda: `PH2D_RELEASE="mede velocidade" bash scripts/ph2d-run.sh cargo test -p
+ph2d-tool-painter --release --test it -- --ignored --exact sonda_traco_rapido::sonda_o_traco_rapido --nocapture`
+(variantes `PH2D_SONDA_KNOBS`). Por fazer, com régua (mudam o traço): (1) a cor POR CÉLULA do depósito — a mistura
+K–M de `trail/deposit.rs::pousa_a_tinta` a cada dab que se sobrepõe, ~3,8 ms (sem a cor dos fios 9,9); (2) o pente do
+relevo, ~2,3 ms (sem relevo 11,4); (3) o carimbo corre no handler do ponteiro, sem orçamento por quadro
+(`input_dispatch/painter_canvas_input.rs:191`). Alvo: o main de 17/10 (8,7) com os fios e o relevo.
 
 **Smoke do dono por fazer** (`PH2D_WETPAINT_SMOKE=2`, os passos estão na resposta ao dono e no roteiro que o app
 imprime). Depois: C35 (o leve 5,72 contra 5,01) · C36 (a borda a 103 px 0,73 contra 0,87, de antes; o contraste a

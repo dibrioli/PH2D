@@ -105,6 +105,21 @@ recalculava a silhueta do dab — as sub-amostras do AA — em cada célula que 
 4 173 4,63×). Move a 103 px: **1,28 ms** (sem relevo 1,12); no perfil smoke 1,53 (1,35); a 80 px 0,91 (0,83).
 ⛔ O meio-cosseno não é o custo (o smoothstep mediu 1,72 contra 1,69).
 
+⛔⛔ **Auditoria do traço RÁPIDO** (2.º relato do dono: «um traço rápido o FPS cai para 30; antes não era»). Sonda
+`tests/it/sonda_traco_rapido.rs` (Oil Bristle de fábrica a 103 px, 1024², 25 px por evento, 3 eventos por quadro,
+o mínimo de 7). A MESMA sonda em 8 versões (bissecção, worktree própria, load < 3,2), ms por quadro:
+
+| `ad5f8fe39c` main 17/10 | `de54c0b9a7` fios W2 | `bc7050ce4c` | `1ced4b253b` relevo | `13a54a7618` | `49f72700e0` sem relevo | `8d316f0954` W3b | `04fda78c26` | `1cf41ba2f3` |
+|---|---|---|---|---|---|---|---|---|
+| **8,7** | **13,6** | 15,7 | **35,9** | 22,5 | 13,3 | **31,9** | 15,5 | **13,7** |
+
+⇒ o 1.º degrau é a W2 (+56 %, ninguém mediu o traço rápido), o pico é o relevo. O HUD não o vê no «raw»: o carimbo
+do Wet Paint corre no handler do ponteiro, FORA da janela de CPU do quadro (o «stall»), um evento de cada vez, sem
+coalescer nem orçamento. Curado ao byte: a tabela de cada fio por dab (o span, o ganho, o ruído de cor; a cor final
+sem Shape Color) — 15,8 → 13,7. No mesmo processo: sem relevo 11,4 · sem a cor dos fios 9,9 · sem fios 8,0. **Aberto
+(muda o traço, pede régua):** a cor POR CÉLULA no depósito — a mistura K–M de `pousa_a_tinta` em cada célula a cada
+dab que se sobrepõe (~3,8 ms) — e o pente do relevo (~2,3 ms); e o carimbo fora do orçamento do quadro.
+
 ## §5 — Aberto
 
 - **A borda a 103 px**: 0,73–0,74 em TODAS as variantes (com e sem relevo) contra 0,87 do Rebelle — de antes da W3.

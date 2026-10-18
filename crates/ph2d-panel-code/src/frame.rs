@@ -120,6 +120,8 @@ pub struct HoverView<'a> {
     pub fixes: Vec<&'a str>,
     /// O botão sob o rato.
     pub hot: Option<usize>,
+    /// Quanto do realce de cada botão está presente (o eixo do hover; vazio = assente).
+    pub live: &'a [f32],
 }
 
 /// Uma secção do balão: o título (marcado) e o texto, em Markdown.

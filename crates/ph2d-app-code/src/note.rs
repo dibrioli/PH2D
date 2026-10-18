@@ -142,6 +142,12 @@ impl CodeDoc {
     }
 }
 
+/// A pista do botão `i` do balão da aba `serial` no relógio de animação (um espaço de ids só dela).
+fn fix_track(serial: u64, i: usize) -> ph2d_a11y::NodeId {
+    const FIX_TRACKS: u64 = 0xC0DE_F1C5 << 32;
+    ph2d_a11y::NodeId(FIX_TRACKS | (serial << 8) | i as u64)
+}
+
 /// As secções do balão: as dos problemas primeiro, depois o que o assistente diz da palavra.
 pub(crate) fn sections<'a>(
     note: &'a [(Option<String>, String)],
@@ -194,6 +200,31 @@ impl CodeDocs {
                 .filter_map(|p| p.explanation.as_ref().map(|e| e.kind))
                 .collect();
             self.seen.record(&kinds);
+        }
+    }
+
+    /// Um quadro: o realce de cada botão de correcção anda no relógio de animação do app (`motion`,
+    /// o mesmo dos botões dos painéis e com as mesmas preferências), aceso sob o rato.
+    pub fn fix_hover(&mut self, motion: &mut ph2d_editor_core::motion::UiMotion) {
+        for d in &mut self.docs {
+            let Some(h) = d.hints.hover.as_mut() else {
+                continue;
+            };
+            let n = h
+                .fixes
+                .as_ref()
+                .filter(|f| f.ready())
+                .map_or(0, |f| f.list().count());
+            h.live = (0..n)
+                .map(|i| {
+                    let on = if h.hot == Some(i) { 1.0 } else { 0.0 };
+                    motion.animate(
+                        fix_track(d.serial, i),
+                        on,
+                        ph2d_editor_core::motion::Role::Fade,
+                    )
+                })
+                .collect();
         }
     }
 

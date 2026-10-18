@@ -13,6 +13,7 @@ use crate::popup::{plain, wrap};
 use crate::style::Ink;
 use crate::view::CodeView;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_editor_core::motion::SETTLED;
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::widget::{
     Button, ButtonState, Popover, paint_button, paint_popover, pop_popover_clip, push_popover_clip,
@@ -28,6 +29,7 @@ use std::ops::Range;
 struct Fixes<'a> {
     labels: &'a [&'a str],
     hot: Option<usize>,
+    live: &'a [f32],
 }
 
 /// O que um balão pintou no último quadro.
@@ -42,6 +44,8 @@ pub struct HintProbe {
     pub buttons: Vec<(Rect, String)>,
     /// O botão pintado com o realce do rato.
     pub hot: Option<usize>,
+    /// Quanto do realce cada botão pintou (`0` em repouso, `1` aceso).
+    pub live: Vec<f32>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -113,6 +117,7 @@ impl CodeView {
             let fixes = Fixes {
                 labels: &h.fixes,
                 hot: h.hot,
+                live: h.live,
             };
             self.hints.hover = self.paint_box(&lines, &fixes, at, false, scene, ts, pal);
         }
@@ -229,6 +234,7 @@ impl CodeView {
             marked: Vec::new(),
             buttons: Vec::new(),
             hot: fixes.hot.filter(|&i| i < n),
+            live: Vec::new(),
         };
         let mut by = y + pad + rows as f32 * lh + gap;
         for (i, (label, bw)) in fixes.labels.iter().zip(widths).enumerate() {
@@ -238,9 +244,13 @@ impl CodeView {
             } else {
                 ButtonState::Normal
             };
-            let b = Button::new(NodeId(0), *label).on_elevated().state(state);
+            let t = fixes.live.get(i).copied().unwrap_or(SETTLED);
+            let b = Button::new(NodeId(0), *label)
+                .on_elevated()
+                .visual((state, t));
             paint_button(&b, r, scene, ts, pal.theme);
             probe.buttons.push((r, (*label).to_owned()));
+            probe.live.push(t);
             by += ROW_H_PX + gap;
         }
         for (k, (l, mark)) in lines.iter().take(rows).enumerate() {

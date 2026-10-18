@@ -62,6 +62,7 @@ pub fn frame(
     docs.pump();
     docs.lint();
     docs.notes();
+    docs.fix_hover(&mut hero.motion);
     let ask = save(
         docs,
         world,

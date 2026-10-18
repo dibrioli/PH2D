@@ -419,6 +419,7 @@ impl CodeDoc {
                     sections,
                     fixes,
                     hot: h.hot,
+                    live: &h.live,
                 })
             }),
             signature: hints.sig.as_ref().and_then(|s| s.shown.as_ref()).map(|s| {

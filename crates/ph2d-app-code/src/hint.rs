@@ -39,6 +39,8 @@ pub(crate) struct Hovering {
     pub fixes: Option<crate::actions::Actions>,
     /// O botão sob o rato.
     pub hot: Option<usize>,
+    /// Quanto do realce de cada botão está presente (o eixo do hover do app, `crate::note`).
+    pub live: Vec<f32>,
 }
 
 /// O que o balão mostra de um problema (I8).
@@ -100,6 +102,7 @@ impl Hints {
                     ripe: false,
                     fixes: None,
                     hot: None,
+                    live: Vec::new(),
                 });
             }
         }
@@ -117,6 +120,7 @@ impl Hints {
             ripe: false,
             fixes: None,
             hot: None,
+            live: Vec::new(),
         });
     }
 

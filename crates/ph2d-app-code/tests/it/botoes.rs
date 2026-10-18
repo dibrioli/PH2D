@@ -89,12 +89,31 @@ fn o_botao_do_balao_corrige_como_o_alt_enter_num_passo() {
     assert_eq!(rotulos(&mut m, id), ["Did you mean amplitude?"]);
     assert_eq!(quente(&mut m, id), None, "nasce neutro");
 
+    // O realce anda no relógio de animação do app (o do hero), como o dos botões dos painéis: o
+    // quadro da família anima-o, o tique do hero avança-o.
+    let t2 = t1 + 2 * PAUSA;
+    let vivo = |m: &mut Mesa| {
+        quadro_em(m, t2);
+        m.pinta(id);
+        m.docs()
+            .hints_painted(id)
+            .0
+            .map(|p| p.live)
+            .unwrap_or_default()
+    };
+    assert_eq!(vivo(&mut m), [0.0], "em repouso");
     let (x, y) = botoes(&mut m, id)[0].0;
     m.rato(id, x, y);
-    quadro_em(&mut m, t1 + 2 * PAUSA);
+    quadro_em(&mut m, t2);
     m.pinta(id);
     assert_eq!(quente(&mut m, id), Some(0), "o rato por cima acende-o");
     assert!(aberto(&mut m, id), "o rato no balão não o fecha");
+    let _ = vivo(&mut m);
+    m.hero.motion.advance(0.016);
+    let meio = vivo(&mut m)[0];
+    assert!(0.0 < meio && meio < 1.0, "acende aos poucos: {meio}");
+    m.hero.motion.advance(2.0);
+    assert_eq!(vivo(&mut m), [1.0], "e assenta aceso");
 
     // O leitor de ecrã: o botão é filho do balão.
     let nodes = m.docs().a11y(id.0);

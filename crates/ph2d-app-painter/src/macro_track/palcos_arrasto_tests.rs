@@ -12,8 +12,10 @@ use ph2d_tool_painter::macro_track::em_cena::MacroEmCena;
 
 /// Texels (RGBA) em que `a` e `b` diferem.
 fn diferentes(a: &[u8], b: &[u8]) -> usize {
-    a.chunks_exact(4)
-        .zip(b.chunks_exact(4))
+    a.as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
         .filter(|(x, y)| x != y)
         .count()
 }

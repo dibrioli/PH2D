@@ -63,6 +63,10 @@ kernel; `c7262d87af`: seis gates da shell liam o corpo de `on_mouse_input`, que 
 
 ## §6 — Aberto (só a caneta na mão prova)
 
+**Smoke do dono 17/10: OK** — a Wacom (P46), salvar com a Shape Color e o Airbrush (P45), o Randomize Color com a
+Shape Color (§4b do P45). Pedidos novos na fila: lista 26 A13–A15 (apagar, repor, a prévia em todos os modos).
+
+
 - O smoke do dono: clique em menu/cartão/aba com a ponta; a pressão em cada meio, no lápis e no Flip; a borracha; os
   botões laterais; o cursor; os tempos reais do compositor (`PH2D_PEN_LOG` × `libinput debug-events` da mesma
   sessão — também responde à C31).

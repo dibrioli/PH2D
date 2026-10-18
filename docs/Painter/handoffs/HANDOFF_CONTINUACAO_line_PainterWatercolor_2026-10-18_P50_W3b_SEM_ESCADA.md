@@ -65,7 +65,7 @@ ao byte. Medido em release e em smoke (1,53 · 1,35); o smoke do dono continua p
 
 ## §6 — Aberto
 
-⛔⛔ **PRIMEIRO, na próxima janela — o traço rápido** (2.º relato do dono, 18/10: «um traço rápido o FPS cai para
+**Próxima janela: o [prompt 51](../NewFeaturesWetPaint/51_PROMPT_spacing_continuous_em_todos_os_pinceis.md)** (o dono, 18/10, depois do smoke «ainda lento»: Spacing 0,1 + Continuous por regra em todos os pincéis, reajustados). ⛔⛔ **O traço rápido** (2.º relato do dono, 18/10: «um traço rápido o FPS cai para
 30; antes não era»; auditoria no 50 §4): a bissecção dá main 17/10 8,7 ms/quadro → fios W2 13,6 → relevo 31,9 → agora
 **13,7** (`1cf41ba2f3`, ao byte). Sonda: `PH2D_RELEASE="mede velocidade" bash scripts/ph2d-run.sh cargo test -p
 ph2d-tool-painter --release --test it -- --ignored --exact sonda_traco_rapido::sonda_o_traco_rapido --nocapture`

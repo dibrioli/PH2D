@@ -3,6 +3,13 @@
 > Regras R1–R9: as do [handoff W5f](HANDOFF_CONTINUACAO_W5f_2026-10-11.md). Linha `line/Luz2D` sobre o `main`
 > `ad5f8fe39c`, por cima da [W6d](HANDOFF_CONTINUACAO_W6d_FECHO_2026-10-18_A_BORDA_E_O_CANTO.md); sem rebase (é do
 > integrador). A suíte do fecho da W6d (`target/w6d/suite.log`): 13 969/13 969 verdes — sem item 0.
+> SUÍTE: recusada pela cadência no fecho da onda (4 commits desde a verde da W6d; o passo é 10) · BUILD: o smoke compilado
+> depois do último commit (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida
+> `Finished \`smoke\` profile [optimized] target(s) in 0.23s`).
+>
+> **Em uma linha:** a cunha no vértice acerta o campo e o texel do aberto (0,016 → 0,601) a +1 % de custo, mas reprova o F3
+> — a luz do canto é decidida pela mistura das faces no `c3_direta`; a cunha fica DESLIGADA e a onda para (two-strikes).
+> Entregue: o portão do campo da borda, que dá ao app o observador da M3.
 
 ## 0. O ponto de partida (a lei da W6d, `f0a98caf19`; números do handoff W6d §23)
 
@@ -137,3 +144,18 @@ processo. O canto saiu do portão B. Ficam:
 
   ⇒ a M3 da W6d tem agora um observador no app (o aberto 2 da W6d, fechado).
 - Fotos no app: não refeitas. Com a cunha fora do padrão, o produto é o da W6d (`fotos_W6d/`).
+
+## 6. Superfície de colisão e commits
+
+`ac2d6fc26b` (a cunha + os portões) · `552dad18e8` (a cunha sai do padrão; a sonda do F3) · `5453237f7a` (o sinal «longe»;
+este handoff) · o `style` do fmt/clippy. Tocam `ph2d-light2d-gpu` (`config.rs` — `Vertice`, `VERTICE_PADRAO`,
+`Config::borda_vertice` —, `lib.rs`, `solver_c3_constantes.rs` — `comuns` passa a `[_; 18]` —, `solver_fina.rs` —
+`Solver::borda_da_captura` —, `wgsl/c2_rc.wgsl`, `wgsl/c3_borda.wgsl`, `tests/it/c3_grade_fina.rs`) e
+`ph2d-app-light2d` (`tests/it/`: `o_campo_da_borda.rs` novo, `o_interior_do_opaco.rs`, `medida_luz2d_w6d.rs`, `main.rs`).
+Sem contrato congelado, sem schema, sem shell. Quem constrói `Config` sem `..` parte com o campo novo (nenhum no repo).
+
+## 7. Smoke do Enio
+
+Nada mudou na tela desde a W6d: a cura do canto ficou desligada. O smoke da W6d continua valendo (o handoff dela, §6):
+`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=6 cargo run -p ph2d-host-desktop --profile smoke`
+— a borda acesa do disco lisa em qualquer zoom. O ponto escuro no canto de uma caixa continua lá: é o aberto 1.

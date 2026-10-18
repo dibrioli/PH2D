@@ -5,14 +5,17 @@ set -u
 VAR="$1"; SAIDA="$2"; AQUI="$(dirname "$0")"
 RAIZ="$(cd "$AQUI/../../../.." && pwd)"
 mkdir -p "$SAIDA"
+# ⛔ Um detector que FALHA lê-se «limpo» (o stdout sai vazio): até 18/10 este roteiro chamava um
+# `alheios.sh` que nunca entrou no repo, e a régua versionada aprovava tudo. Ele corre uma vez aqui e pára ALTO.
+python3 -I "$AQUI/alheios.py" > /dev/null || { echo "RECUSA: o detector alheios.py falhou" > "$SAIDA/espera.txt"; exit 4; }
 livre=0; t0=$SECONDS
 while [ $livre -lt 60 ]; do
-  [ $((SECONDS - t0)) -gt 1200 ] && { echo "sem placa livre em 1200 s: $(bash "$AQUI/alheios.sh" | tr '\n' ' ')" > "$SAIDA/espera.txt"; exit 3; }
-  if [ -z "$(bash "$AQUI/alheios.sh")" ]; then livre=$((livre + 2)); else livre=0; fi
+  [ $((SECONDS - t0)) -gt 1200 ] && { echo "sem placa livre em 1200 s: $(python3 -I "$AQUI/alheios.py" | tr '\n' ' ')" > "$SAIDA/espera.txt"; exit 3; }
+  if [ -z "$(python3 -I "$AQUI/alheios.py")" ]; then livre=$((livre + 2)); else livre=0; fi
   sleep 2
 done
 echo "esperou $((SECONDS - t0)) s" > "$SAIDA/espera.txt"
-( for _ in $(seq 1 1600); do [ -e "$SAIDA/.fim" ] && break; bash "$AQUI/alheios.sh" | sed "s/^/$(date +%s) /" >> "$SAIDA/alheios.txt"; sleep 0.5; done ) &
+( for _ in $(seq 1 1600); do [ -e "$SAIDA/.fim" ] && break; python3 -I "$AQUI/alheios.py" | sed "s/^/$(date +%s) /" >> "$SAIDA/alheios.txt"; sleep 0.5; done ) &
 AMOSTRA=$!
 EXTRA=""
 [ "$VAR" != "-" ] && EXTRA="$VAR"

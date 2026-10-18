@@ -33,7 +33,7 @@ impl ToolKind {
     }
 }
 
-/// Os botões do corpo da caneta (códigos `linux/input-event-codes.h`).
+/// Os botões do corpo da caneta (os códigos de botão do evdev, que o `zwp_tablet_tool_v2` repassa).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PenButton {
     /// `BTN_STYLUS` (`0x14b`) — o de baixo, mais perto da ponta.

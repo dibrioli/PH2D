@@ -145,6 +145,8 @@ fn a_newcomer_converges_when_a_clear_text_overtakes_the_hosts_sealed_one() {
     p.up.extend(up.into_iter().map(|m| m.encode()));
     r.route(out);
     r.pump();
+    // B8 (W23): o selado saiu do cofre ⇒ a facilitação volta a sair (a nota já não está escondida).
+    assert!(r.fac(0).hidden.is_empty(), "a Bia ainda a vê escondida");
     let c = r.join("Caio");
     r.all_same();
     assert!(!r.heard(c, "da Ana"));

@@ -153,5 +153,7 @@ de componente, sem cena de smoke; a `PH2D_CODE_SMOKE=3` é do I15).
 
 ## 10. Próximo
 
-**I10** (rename e referências + marcador do undo global) → I9/I12/I14 → I13 → I15 (ordem do
-[03_onda2.md](../03_onda2.md)).
+**I8b** (as correcções do Alt+Enter como botões dentro do balão do problema — pedido do dono no smoke,
+18/10; desenho e prova em [03_onda2.md](../03_onda2.md) «Próximo passo» item 3) → **I10** (rename e
+referências + marcador do undo global) → I9/I12/I14 → I13 → I15. No acabamento, com o Ctrl+rato em
+mão, entra a **lista de problemas** (pedido do dono, 18/10).

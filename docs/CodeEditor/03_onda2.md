@@ -101,10 +101,22 @@ seguinte; o resto entra em lotes.
 3. ~~I7~~ — feito **na linha** (HEAD `b0883eb2f1`;
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-17_ONDA2_I7.md)).
    ~~I8~~ — feito **na linha** (HEAD `e8a77c5bab`;
-   [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-17_ONDA2_I8.md)). **Próximo: I10**
-   (rename e referências + marcador do undo global); depois I9/I12/I14 → I13 → I15, como na Ordem. No I15, a bancada repete-se numa
-   rodada só com a lista E os balões abertos.
+   [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-17_ONDA2_I8.md)). **Próximo: I8b**,
+   depois I10 (rename e referências + marcador do undo global); depois I9/I12/I14 → I13 → I15, como na
+   Ordem. No I15, a bancada repete-se numa rodada só com a lista E os balões abertos.
+   - **I8b — as correcções DENTRO do balão** (pedido do dono, 18/10: *«não seria melhor colocar os botões
+     de ação (como o de correção) já dentro do card da mensagem do mouse hover?»*). O balão de um
+     problema (o da calha e o do sublinhado) leva, por baixo do texto, um botão por correcção que o
+     Alt+Enter daria naquele sítio («Did you mean amplitude?», «Add type: boolean», as `quickfix` do
+     servidor); clicar aplica num passo de undo, como o Enter da janelinha. A LISTA é a mesma porta do
+     `actions.rs` (nunca uma segunda); o Alt+Enter continua. O balão passa a aceitar clique (hoje só se
+     lê). Referência a CORRER antes: o «Quick Fix…» do hover do VS Code e o balão de erro do Godot
+     (o que mostram, onde, e se o clique fecha o balão). Prova: o botão aplica a mesma edição que o
+     Alt+Enter (mesmo texto final, um Ctrl+Z), sem servidor só as nossas, nada a corrigir ⇒ sem botão.
 4. **Acabamento (fim da fila, pedido do dono no smoke do I6/I11, 17/10):** com **Ctrl** carregado, o rato
    sobre qualquer palavra que o Ctrl+clique leva a algum sítio vira o ponteiro em **mão** (e o nome
    sublinha, como no Godot/VS Code). Só sobre o que é clicável: a validade tem de vir da mesma regra
    do `goto.rs` (sítio no script · `self.<propriedade>` · documentação da API).
+   **E a LISTA DE PROBLEMAS** (pedido do dono no smoke do I8, 18/10): um painel com todos os problemas
+   do script (hoje só se vêem pelos pontos da calha), cada linha com a explicação do I8 e a linha do
+   script; clicar leva o cursor lá; leitor de ecrã incluído. Lê o MESMO `Vec<Problem>` da calha.

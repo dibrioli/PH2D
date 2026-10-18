@@ -33,8 +33,7 @@ impl crate::App {
             &mut gfx.toasts,
             &w2l,
             invert,
-            x,
-            y,
+            [x, y, ph2d_pen::porta::tinta().pressure],
         );
         if warned {
             self.title_dirty = true;
@@ -61,7 +60,8 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        ph2d_app_flip::reshape::canvas_move(&mut self.flip_state, &mut f, &w2l, invert, x, y)
+        let p = [x, y, ph2d_pen::porta::tinta().pressure];
+        ph2d_app_flip::reshape::canvas_move(&mut self.flip_state, &mut f, &w2l, invert, p)
     }
 
     /// Pen-up do Sculpt.

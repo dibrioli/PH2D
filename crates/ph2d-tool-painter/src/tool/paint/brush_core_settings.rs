@@ -113,6 +113,12 @@ impl PainterTool {
         self.paint.eraser = !self.paint.eraser;
     }
 
+    /// The eraser is on (the pen's ERASER end turns it on for its stroke, ADR-0189).
+    #[must_use]
+    pub fn brush_eraser(&self) -> bool {
+        self.paint.eraser
+    }
+
     // The paint-mode setters (`set_paint_tool_mode` / `is_smear_mode`) live in `stencil.rs` (LOC cap).
 
     /// The brush radius in pixels.

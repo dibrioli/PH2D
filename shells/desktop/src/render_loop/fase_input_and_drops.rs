@@ -13,6 +13,7 @@ impl crate::App {
         // the per-raw-CursorMoved whole-shape re-stamp storm that ran between frames (the FPS-drop /
         // "Raw rises" path — `HANDOFF_per_layer_color_perf_artifacts` §1.R). Done before `cpu_start` so
         // the re-stamp stays OUT of the encode window and "Raw" keeps its encode-only meaning.
+        self.pump_pen(); // a caneta (ADR-0189): os eventos dela ANTES do carimbo, como os do winit
         self.flush_pending_painter_move();
         // Snapshot + reset the per-frame input/stamp diagnostics for the HUD (input rate vs delivered
         // re-stamps — coalescing collapses a burst of events to one stamp here). `paint_stamp_us`

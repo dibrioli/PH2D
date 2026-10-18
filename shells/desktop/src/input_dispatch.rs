@@ -27,8 +27,7 @@ use winit::event_loop::ActiveEventLoop;
 
 use ph2d_editor_core::Toast;
 use ph2d_host::{
-    CloseAction, HostHandler, Lifecycle, PlatformHost, PointerEvent, PointerKind, PointerSource,
-    WindowSize,
+    CloseAction, HostHandler, Lifecycle, PlatformHost, PointerEvent, PointerKind, WindowSize,
 };
 
 use crate::App;
@@ -141,11 +140,21 @@ const HANDLE_HIT_PX: f64 = 12.0;
 
 impl App {
     pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
+        let b = self
+            .held_button
+            .unwrap_or(ph2d_host::PointerButton::Primary);
+        let (x, y, t) = (position.x as f32, position.y as f32, Self::timestamp_ns());
+        self.pointer_moved(ph2d_pen::ponteiro::do_rato(x, y, PointerKind::Move, b, t));
+    }
+
+    /// ⭐ A porta ÚNICA do movimento: o rato do winit e a caneta (`input_drop/caneta.rs`) acabam aqui.
+    pub(crate) fn pointer_moved(&mut self, evt: PointerEvent) {
+        ph2d_pen::porta::poe_tinta(&evt);
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
         // in the HUD so the coalescing is visible (high events → 1 stamp).
         self.input_events_this_frame = self.input_events_this_frame.saturating_add(1);
         let prev = self.last_pointer;
-        self.last_pointer = (position.x as f32, position.y as f32);
+        self.last_pointer = (evt.x, evt.y);
         // (Graph keyboard focus is set every frame by `motion_bridge` from the
         // cursor — reliable even when the cursor stops before the panel rect is
         // published; see its `over_graph` gate.)
@@ -207,20 +216,8 @@ impl App {
         if let Some(rb) = self.rubber_band.as_mut() {
             rb.current_screen = self.last_pointer;
         }
-        let evt = PointerEvent {
-            x: self.last_pointer.0,
-            y: self.last_pointer.1,
-            pressure: 1.0,
-            kind: PointerKind::Move,
-            source: PointerSource::Mouse,
-            // Motion Nodes M0.T1: carry the REAL held button (winit's Move has
-            // none). A middle/right drag now reaches editor-core with its
-            // identity intact — the graph channel needs it (pan/box-select).
-            button: self
-                .held_button
-                .unwrap_or(ph2d_host::PointerButton::Primary),
-            timestamp_ns: Self::timestamp_ns(),
-        };
+        // Motion Nodes M0.T1: `evt.button` is the REAL held button (winit's Move has none) — a
+        // middle/right drag reaches editor-core with its identity (graph pan/box-select).
         self.handler.on_pointer(evt);
         // A reparent only fires on pointer-Up (handled in on_mouse_input);
         // Move never emits one.
@@ -376,13 +373,34 @@ impl App {
     }
 
     pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
-        self.any_input_this_frame = true;
+        let kind = match state {
+            ElementState::Pressed => PointerKind::Down,
+            ElementState::Released => PointerKind::Up,
+        };
         let mapped_button = match button {
             MouseButton::Left => ph2d_host::PointerButton::Primary,
             MouseButton::Right => ph2d_host::PointerButton::Secondary,
             MouseButton::Middle => ph2d_host::PointerButton::Middle,
             _ => ph2d_host::PointerButton::Primary,
         };
+        let (x, y, t) = (
+            self.last_pointer.0,
+            self.last_pointer.1,
+            Self::timestamp_ns(),
+        );
+        let evt = ph2d_pen::ponteiro::do_rato(x, y, kind, mapped_button, t);
+        self.pointer_button(evt, button);
+    }
+
+    /// ⭐ A porta ÚNICA do clique (ver [`Self::pointer_moved`]); `button` = o do winit.
+    pub(crate) fn pointer_button(&mut self, evt: PointerEvent, button: MouseButton) {
+        ph2d_pen::porta::poe_tinta(&evt);
+        let (kind, mapped_button) = (evt.kind, evt.button);
+        let state = match kind {
+            PointerKind::Down => ElementState::Pressed,
+            _ => ElementState::Released,
+        };
+        self.any_input_this_frame = true;
         // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
         // early-returns e uma mão que sobrevive ao release fica colada no cursor
         // para sempre; e vale para qualquer botão, porque uma mão não é um
@@ -408,25 +426,12 @@ impl App {
         if self.ramo_alca_da_ancora(state, button) {
             return;
         }
-        let kind = match state {
-            ElementState::Pressed => PointerKind::Down,
-            ElementState::Released => PointerKind::Up,
-        };
         // Motion Nodes M0.T1: track the held button so `CursorMoved` can carry
         // its identity (winit Move events don't). Held between Down and Up.
         self.held_button = match kind {
             PointerKind::Down => Some(mapped_button),
             PointerKind::Up => None,
             PointerKind::Move => self.held_button,
-        };
-        let evt = PointerEvent {
-            x: self.last_pointer.0,
-            y: self.last_pointer.1,
-            pressure: 1.0,
-            kind,
-            source: PointerSource::Mouse,
-            button: mapped_button,
-            timestamp_ns: Self::timestamp_ns(),
         };
         self.handler.on_pointer(evt);
         #[cfg(feature = "panel-audio-editor")]

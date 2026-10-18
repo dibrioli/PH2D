@@ -114,13 +114,14 @@ impl crate::App {
         // Painter brush stroke (SHELL-only): while a canvas stroke is open, every
         // motion feeds another `CanvasPointer` to the active PainterTool. Early-
         // return so it doesn't also drive a gizmo drag / pan / slider.
-        if self.painter_canvas_move(self.last_pointer.0, self.last_pointer.1) {
+        let p = ph2d_pen::porta::tinta().pressure; // a da caneta; o rato é `1.0`
+        if self.painter_canvas_move(self.last_pointer.0, self.last_pointer.1, p) {
             return true;
         }
         // Flip stroke (ADR-0114 W2, SHELL-only): while a Flip canvas stroke is open,
         // every motion adds a world sample. Early-return so it doesn't also drive a
         // gizmo drag / pan. No-op unless a Flip stroke is in progress.
-        if self.flip_canvas_move(self.last_pointer.0, self.last_pointer.1) {
+        if self.flip_canvas_move(self.last_pointer.0, self.last_pointer.1, p) {
             return true;
         }
         // Flip eraser (ADR-0114 W2 T2.9): while an erase gesture is open, every

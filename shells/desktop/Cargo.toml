@@ -23,6 +23,8 @@ libm = { version = "=0.2.16", default-features = false }
 ph2d-host = { path = "../../crates/ph2d-host" }
 # Soltar ficheiros na janela no Wayland (o winit 0.30 não tem DnD lá) — MiroClone W14.
 ph2d-wayland-dnd = { path = "../../crates/ph2d-wayland-dnd" }
+# A caneta de verdade pelo `zwp_tablet_v2` (o winit 0.30 não a entrega no Wayland) — ADR-0189.
+ph2d-pen = { path = "../../crates/ph2d-pen" }
 # ⭐ **A porta por onde uma família de módulo fala com a shell** (W2, ADR-0075). A shell é o lado
 # que a IMPLEMENTA (`src/app_host.rs`); as crates `ph2d-app-*` são as que a consomem.
 ph2d-app-host = { path = "../../crates/ph2d-app-host" }

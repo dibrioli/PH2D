@@ -6532,6 +6532,7 @@ dependencies = [
  "ph2d-panel-upscale",
  "ph2d-panel-vector",
  "ph2d-panel-wet-tuning",
+ "ph2d-pen",
  "ph2d-physics-ecs",
  "ph2d-poly2d",
  "ph2d-preview-drive",
@@ -8990,6 +8991,7 @@ name = "ph2d-pen"
 version = "0.0.0"
 dependencies = [
  "cursor-icon",
+ "ph2d-host",
  "raw-window-handle",
  "rustix 1.1.4",
  "wayland-backend",

@@ -100,7 +100,7 @@ impl crate::App {
     /// Pen-down do desenho Flip: começa um traço na coord de mundo. Devolve
     /// `true` se consumiu (a tool está desenhando) — o caller não deixa cair no
     /// gizmo/pick.
-    pub(crate) fn flip_canvas_down(&mut self, x: f32, y: f32) -> bool {
+    pub(crate) fn flip_canvas_down(&mut self, x: f32, y: f32, pressure: f32) -> bool {
         if !self.flip_wants_canvas() {
             return false;
         }
@@ -109,13 +109,13 @@ impl crate::App {
         };
         let win = gfx.scene_window();
         let w = gfx.camera.screen_to_world((x, y), win);
-        self.flip_state.draw.begin(Vec2::new(w[0], w[1]), 1.0);
+        self.flip_state.draw.begin(Vec2::new(w[0], w[1]), pressure);
         true
     }
 
     /// Move enquanto desenha: adiciona uma amostra (override a <2px). Devolve
     /// `true` se um traço está em curso (consome o move).
-    pub(crate) fn flip_canvas_move(&mut self, x: f32, y: f32) -> bool {
+    pub(crate) fn flip_canvas_move(&mut self, x: f32, y: f32, pressure: f32) -> bool {
         if !self.flip_state.draw.is_active() {
             return false;
         }
@@ -127,7 +127,7 @@ impl crate::App {
         let px_per_world = win.height.max(1) as f32 / gfx.camera.height_world.max(f32::EPSILON);
         self.flip_state
             .draw
-            .extend(Vec2::new(w[0], w[1]), 1.0, px_per_world);
+            .extend(Vec2::new(w[0], w[1]), pressure, px_per_world);
         true
     }
 

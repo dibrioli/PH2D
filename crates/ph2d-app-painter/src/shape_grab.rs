@@ -31,8 +31,8 @@ pub fn shape_grab_tol_from_affine(affine: &ph2d_vector::Affine) -> f32 {
 #[cfg(test)]
 mod tests {
     //! ⚠️ Este teste veio do `input_dispatch/painter_canvas_input.rs` **com a lei** (W2 Fase D,
-    //! `HOWTO` §2.6: *o gate que mede a lei da família vive com a família*). O irmão dele
-    //! ficou lá, e com razão: aquele mede o `canvas_down_accepts`, que é o GESTO.
+    //! `HOWTO` §2.6: *o gate que mede a lei da família vive com a família*). O irmão dele, o do
+    //! `canvas_down_accepts`, veio depois (P46) para [`crate::canvas_down`].
     use super::{SHAPE_GRAB_TOL_SCREEN_PX, shape_grab_tol_from_affine};
     use ph2d_vector::Affine;
 

@@ -224,8 +224,7 @@ pub fn canvas_down(
     toasts: &mut ph2d_editor_core::ToastQueue,
     w2l: &Xform,
     invert: bool,
-    x: f32,
-    y: f32,
+    [x, y, pressure]: [f32; 3],
 ) -> (bool, bool) {
     if !wants(state) {
         return (false, false);
@@ -241,7 +240,7 @@ pub fn canvas_down(
     let s = InputSample {
         pos: local,
         delta: Vec2::ZERO, // no pen-down o cursor ainda não andou
-        pressure: 1.0,     // sem caneta real: pressão cheia (igual ao desenho)
+        pressure,          // a da caneta (ADR-0189); o rato é `1.0`
     };
     let Some((oid, targets)) = reshape_begin(
         f.flip,
@@ -274,8 +273,7 @@ pub fn canvas_move(
     f: &mut FlipFrame<'_>,
     w2l: &Xform,
     invert: bool,
-    x: f32,
-    y: f32,
+    [x, y, pressure]: [f32; 3],
 ) -> bool {
     if state.reshape.is_none() {
         return false;
@@ -292,7 +290,7 @@ pub fn canvas_move(
     let s = InputSample {
         pos: local,
         delta: local - g.last_local,
-        pressure: 1.0,
+        pressure,
     };
     g.last_local = local;
     let oid = g.oid;

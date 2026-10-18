@@ -171,7 +171,7 @@ impl crate::App {
                     let ok = if matches!(g, Gesto::Desce(_)) {
                         self.painter_canvas_down(px, py, 1.0)
                     } else {
-                        self.painter_canvas_move(px, py)
+                        self.painter_canvas_move(px, py, 1.0)
                     };
                     if !ok {
                         regista(&format!("the canvas refused {g:?} at ({px:.0}, {py:.0})"));

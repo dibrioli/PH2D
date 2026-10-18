@@ -11,18 +11,9 @@
 //! ADR-0040 §3 exception (same shape as protect_brush / eyedropper), here used to
 //! read `canvas_size` + deliver the pointer.
 //!
-//! ⚠️ Limitation: desktop `CursorMoved` has no pen pressure, so Down/Move/Up deliver a literal
-//! `1.0` — and this is NOT a follow-up waiting on another shell. `shells/` has exactly one entry
-//! (`desktop`); the "iPad shell" this note used to promise never existed, and a note that promises
-//! a future wave rots worse than a wrong one, because read in passing it REASSURES.
-//!
-//! What the survey found (2026-07-31, measured against the winit 0.30 source): there is no stylus
-//! event in this winit at all — `Touch.force` is touchscreen, `TouchpadPressure` is Apple
-//! force-touch, and `AxisMotion` is a raw XInput2 valuator behind an opaque `AxisId` (no way to ask
-//! which axis is pressure, nor its range). The Wayland backend has no `zwp_tablet_v2` whatsoever.
-//! The cure is a winit bump (cross-line, ADR class) or a per-platform tablet path — never "one
-//! function". The full write-up, with the price of each consumer, lives in the executable gate
-//! `shells/desktop/tests/it/the_desktop_shell_has_no_pen_pressure.rs`.
+//! Pressão e tilt são os do evento (`ph2d_pen::porta::tinta`, ADR-0189): a caneta dá os dela, o
+//! rato `1.0` e `[0, 0]`. A ponta de BORRACHA apaga o traço dela; o `Up` fecha o traço com a pressão
+//! do último contacto (o `Up` da caneta traz `0`, e as figuras re-carimbam no `Up`).
 
 use std::cell::Cell;
 
@@ -31,6 +22,7 @@ use ph2d_tool_painter::PainterTool;
 
 use crate::App;
 
+use ph2d_app_painter::canvas_down::canvas_down_accepts;
 /// ⭐ **A LEI mudou-se para [`ph2d_app_painter::shape_grab`]** (W2 Fase D) e é re-exportada daqui.
 ///
 /// Ela é pura (entra um afim, sai um `f32`) e este ficheiro é de **gesto** — enquanto a lei morava
@@ -89,6 +81,17 @@ thread_local! {
     /// `true` between a consumed painter Down and the matching Up — so CursorMoved
     /// keeps feeding the open stroke and the Up arm knows to close it.
     static STROKE_ACTIVE: Cell<bool> = const { Cell::new(false) };
+    /// A pressão do último contacto do traço aberto — a do `Up`.
+    static STROKE_PRESSURE: Cell<f32> = const { Cell::new(1.0) };
+    /// A ponta de borracha ligou a borracha do Painter neste traço: o `Up` desliga-a.
+    static PEN_ERASER: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Para os gates da porta da caneta (`input_drop::caneta`): abre um traço e lê a pressão dele.
+#[cfg(test)]
+pub(crate) fn traco_de_teste(abre: bool) -> f32 {
+    STROKE_ACTIVE.with(|s| s.set(abre));
+    STROKE_PRESSURE.with(Cell::get)
 }
 
 impl App {
@@ -125,11 +128,33 @@ impl App {
         if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), px, py) {
             return false;
         }
+        // A ponta de BORRACHA liga a borracha pelo botão (a macro grava-o), só neste traço.
+        let mut borracha = false;
+        if ph2d_pen::porta::tinta().borracha()
+            && let Some(p) = self.painter_tool_mut()
+            && !p.brush_eraser()
+        {
+            p.toggle_brush_eraser();
+            borracha = true;
+        }
         let started = self.deliver_canvas_pointer(px, py, pressure, PointerPhase::Down);
         if started {
             STROKE_ACTIVE.with(|s| s.set(true));
+            STROKE_PRESSURE.with(|s| s.set(pressure));
+        }
+        PEN_ERASER.with(|e| e.set(borracha));
+        if !started {
+            self.pen_eraser_end();
         }
         started
+    }
+
+    fn pen_eraser_end(&mut self) {
+        if PEN_ERASER.with(|e| e.replace(false))
+            && let Some(p) = self.painter_tool_mut()
+        {
+            p.toggle_brush_eraser();
+        }
     }
 
     /// CursorMoved while a painter stroke is open: deliver as [`PointerPhase::Move`].
@@ -142,7 +167,7 @@ impl App {
     /// restore, so wasted. Here those Moves are BUFFERED (latest wins) and flushed once per frame by
     /// [`Self::flush_pending_painter_move`]; incremental / Free Hand methods (which deposit dabs / capture
     /// path samples per event) deliver immediately as before. See `HANDOFF_per_layer_color_perf` §1.R.
-    pub(crate) fn painter_canvas_move(&mut self, px: f32, py: f32) -> bool {
+    pub(crate) fn painter_canvas_move(&mut self, px: f32, py: f32, pressure: f32) -> bool {
         if !STROKE_ACTIVE.with(Cell::get) {
             // No stroke: this is a HOVER. Feed it to the painter so the brush-cursor ring can already wear
             // the orientation the next dab will use (Rake / Flow) before the pen goes down. It consumes
@@ -152,7 +177,7 @@ impl App {
         }
         if self.painter_coalesces_motion() {
             // Coalesce: keep only the latest position; the frame loop delivers ONE Move per frame.
-            self.pending_painter_move = Some((px, py));
+            self.pending_painter_move = Some((px, py, pressure));
             return true; // consume the move (don't pan / drive a gizmo) — delivered at the frame flush
         }
         // Non-coalescing delivery is authoritative for the latest position: drop any move buffered while
@@ -162,7 +187,8 @@ impl App {
         // Incremental methods stamp per raw event (between frames). Time each so the HUD's "paint ms"
         // reflects the REAL per-frame painter cost, not just the once-per-frame coalesced flush.
         let t0 = std::time::Instant::now();
-        let delivered = self.deliver_canvas_pointer(px, py, 1.0, PointerPhase::Move);
+        STROKE_PRESSURE.with(|s| s.set(pressure));
+        let delivered = self.deliver_canvas_pointer(px, py, pressure, PointerPhase::Move);
         self.paint_stamp_us_this_frame = self
             .paint_stamp_us_this_frame
             .saturating_add(t0.elapsed().as_micros() as u64);
@@ -272,11 +298,12 @@ impl App {
     /// per frame at the top of `run_render_frame` (before the encode window) and before a pen-up, so the
     /// final position is stamped before the stroke commits.
     pub(crate) fn flush_pending_painter_move(&mut self) {
-        let Some((px, py)) = self.pending_painter_move.take() else {
+        let Some((px, py, pressure)) = self.pending_painter_move.take() else {
             return; // nothing buffered — incremental stamps (if any) are timed in `painter_canvas_move`
         };
         let t0 = std::time::Instant::now();
-        let delivered = self.deliver_canvas_pointer(px, py, 1.0, PointerPhase::Move);
+        STROKE_PRESSURE.with(|s| s.set(pressure));
+        let delivered = self.deliver_canvas_pointer(px, py, pressure, PointerPhase::Move);
         self.paint_stamp_us_this_frame = self
             .paint_stamp_us_this_frame
             .saturating_add(t0.elapsed().as_micros() as u64);
@@ -289,15 +316,16 @@ impl App {
 
     /// Primary Up: close any open painter stroke. No-op when not painting.
     pub(crate) fn painter_canvas_up(&mut self) {
-        if !STROKE_ACTIVE.with(Cell::get) {
-            return;
+        if STROKE_ACTIVE.with(Cell::get) {
+            // Stamp any buffered (coalesced) final position BEFORE the commit, so the released shape
+            // matches the last cursor position rather than the previous frame's flush.
+            self.flush_pending_painter_move();
+            STROKE_ACTIVE.with(|s| s.set(false));
+            let (px, py) = self.last_pointer;
+            let pressure = STROKE_PRESSURE.with(Cell::get);
+            self.deliver_canvas_pointer(px, py, pressure, PointerPhase::Up);
         }
-        // Stamp any buffered (coalesced) final position BEFORE the commit, so the released shape matches
-        // the last cursor position rather than the previous frame's flush.
-        self.flush_pending_painter_move();
-        STROKE_ACTIVE.with(|s| s.set(false));
-        let (px, py) = self.last_pointer;
-        self.deliver_canvas_pointer(px, py, 1.0, PointerPhase::Up);
+        self.pen_eraser_end();
     }
 
     /// Gate on painter-active + a selected sprite, convert screen→image pixels via
@@ -452,7 +480,7 @@ impl App {
         let ev = CanvasPointer {
             pos: [u * iw as f32, v * ih as f32],
             pressure,
-            tilt: [0.0, 0.0],
+            tilt: ph2d_pen::porta::tinta().tilt(),
             phase,
         };
         // The shape-editor grab radius (`tol`) was already pushed above (before the footprint gate, so the
@@ -549,40 +577,5 @@ impl App {
             return true;
         }
         painter.cancel_open_shape()
-    }
-}
-
-/// Whether a canvas Down at image fraction `t` (u or v) is inside the acceptance region on that axis:
-/// the footprint `[0,1]`, extended to the 3×3 neighbour tiles when Repeat-Image tiling is on for the
-/// axis, and by `margin` (uv units) on both sides while a Deform Transform gizmo is live — its corner
-/// handles sit exactly ON the footprint edge, so half their clickable disc lies outside `[0,1]`.
-fn canvas_down_accepts(t: f32, repeat_tiled: bool, margin: f32) -> bool {
-    if repeat_tiled {
-        (-1.0..2.0).contains(&t)
-    } else {
-        (-margin..=1.0 + margin).contains(&t)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::canvas_down_accepts;
-
-    #[test]
-    fn transform_corner_margin_extends_the_down_gate() {
-        // P2 (Enio 2026-07-04): a whole-image Transform puts the gizmo's corner squares exactly on the
-        // footprint edge — a Down 4 image-px OUTSIDE (u slightly < 0 or > 1) must still reach the painter
-        // (the deform gizmo) instead of falling through to the sprite gizmo on the same screen corner.
-        let margin = 12.0 / 2048.0; // a 12 image-px grab tol on a 2048 canvas
-        assert!(canvas_down_accepts(-4.0 / 2048.0, false, margin));
-        assert!(canvas_down_accepts(1.0 + 4.0 / 2048.0, false, margin));
-        // Beyond the margin still falls through (pan / sprite selection keep working).
-        assert!(!canvas_down_accepts(-2.0 * margin, false, margin));
-        assert!(!canvas_down_accepts(1.0 + 2.0 * margin, false, margin));
-        // No live transform (margin 0) → the plain footprint gate, boundary inclusive.
-        assert!(canvas_down_accepts(0.0, false, 0.0) && canvas_down_accepts(1.0, false, 0.0));
-        assert!(!canvas_down_accepts(-0.001, false, 0.0));
-        // Repeat-Image tiling keeps its 3×3 region regardless of the margin.
-        assert!(canvas_down_accepts(-0.9, true, 0.0) && !canvas_down_accepts(-1.1, true, 0.0));
     }
 }

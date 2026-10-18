@@ -12,6 +12,9 @@ use crate::image_import::ImportItemResult;
 use ph2d_editor_core::Toast;
 use ph2d_i18n::tr_with;
 
+/// A caneta (ADR-0189): o receptor irmão deste.
+mod caneta;
+
 impl App {
     /// Imports each dropped path that resolves to an image, anchoring
     /// the spawn at the cursor's world position (CoreGraphics
@@ -216,8 +219,9 @@ thread_local! {
         const { std::cell::RefCell::new(None) };
 }
 
-/// Larga o receptor do Wayland (antes de a ligação do winit fechar).
-pub(crate) fn release_wayland_drops() {
+/// Larga os receptores do Wayland — «soltar» e a caneta — antes de a ligação do winit fechar.
+pub(crate) fn release_wayland_receivers() {
+    ph2d_pen::porta::larga();
     #[cfg(target_os = "linux")]
     WAYLAND_DROPS.with(|r| drop(r.borrow_mut().take()));
 }

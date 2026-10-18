@@ -3,6 +3,7 @@
 //! os press do Flip e dos gizmos de pose, selecção, warp e field. `true` onde o handler fazia `return;`.
 
 use super::*;
+use ph2d_pen::porta::tinta;
 
 impl crate::App {
     /// Os press do Flip no canvas (Draw, Pairs, Fill, Colorize, Trace, Erase, Reshape, Edit) e dos gizmos de pose,
@@ -19,7 +20,7 @@ impl crate::App {
             && mapped_button == ph2d_host::PointerButton::Primary
             && on_canvas
             && !menu_open_before
-            && self.flip_canvas_down(self.last_pointer.0, self.last_pointer.1)
+            && self.flip_canvas_down(self.last_pointer.0, self.last_pointer.1, tinta().pressure)
         {
             return true;
         }

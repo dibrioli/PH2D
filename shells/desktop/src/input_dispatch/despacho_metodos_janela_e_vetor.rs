@@ -283,6 +283,7 @@ impl crate::App {
         if novo {
             win.set_cursor(cursor);
         }
+        ph2d_pen::porta::cursor(cursor);
     }
 
     /// The double-arrow cursor for the timeline grab band under the pointer, if

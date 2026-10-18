@@ -499,12 +499,12 @@ pub(crate) struct App {
     /// as `last_bgremoval_pushed_entity` — Wave 10 driver helpers
     /// (`ph2d_tool_runtime::drive_source_push`) consume it directly.
     pub(crate) last_painter_pushed_entity: Option<u64>,
-    /// Coalescing (perf): latest canvas pointer position buffered while a restore-based painter stroke
+    /// Coalescing (perf): the latest `(x, y, pressure)` buffered while a restore-based painter stroke
     /// is open (Curve/Circle/Polygon/Line/Anchored/DragDot — `PainterTool::coalesces_canvas_motion`).
     /// The frame loop flushes ONE Move per frame from this instead of re-stamping the whole shape on
     /// every raw winit `CursorMoved` between frames — the FPS-drop / "Raw rises" fix
     /// (`HANDOFF_per_layer_color_perf_artifacts` §1.R). `None` = nothing pending.
-    pub(crate) pending_painter_move: Option<(f32, f32)>,
+    pub(crate) pending_painter_move: Option<(f32, f32, f32)>,
     /// Diagnostics (HUD): raw winit `CursorMoved` events since the last frame (input rate).
     pub(crate) input_events_this_frame: u32,
     /// Diagnostics (HUD): canvas pointer Moves delivered to the painter this frame (= whole-shape

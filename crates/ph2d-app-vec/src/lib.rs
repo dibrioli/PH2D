@@ -130,6 +130,7 @@ pub mod expand;
 pub mod frame_boxes;
 pub mod frame_labels;
 pub mod frame_spans;
+pub mod gradiente_semente;
 /// ⭐⭐ O losango de cada campo do painel do vetor (plano 35 §5).
 pub mod maos;
 pub mod marcas;

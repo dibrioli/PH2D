@@ -27,6 +27,7 @@
 // (`enabled()`), o que é a condição do «fim da linha» desta wave — a shell
 // só os chama.
 // ─────────────────────────────────────────────────────────────────────────
+pub mod canvas_down;
 pub mod composite_smoke;
 pub mod impasto_smoke;
 pub mod line_smoke;

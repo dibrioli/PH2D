@@ -1003,7 +1003,7 @@ impl ApplicationHandler for App {
     }
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
-        crate::input_drop::release_wayland_drops();
+        crate::input_drop::release_wayland_receivers();
     }
 }
 

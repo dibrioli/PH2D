@@ -1,6 +1,7 @@
 //! Os gates da família da luz 2D (plano `docs/Luz2D/01_plano.md` §5). Um binário por crate; os de
 //! placa precisam de `PH2D_GPU=1` (exclusão na placa) e saltam sem adaptador.
 
+mod a_borda_sem_pontos_pretos;
 mod a_escada_da_sombra;
 mod a_face_acesa_da_parede;
 mod a_grade_fina;
@@ -10,7 +11,6 @@ mod a_nitidez_da_luz;
 mod a_opacidade_do_oclusor;
 mod a_vista_renasce_com_os_mesmos_bits;
 mod as_formas_do_motion;
-mod a_borda_sem_pontos_pretos;
 mod as_formas_redondas;
 mod captura_do_vetor;
 mod captura_dos_outros;

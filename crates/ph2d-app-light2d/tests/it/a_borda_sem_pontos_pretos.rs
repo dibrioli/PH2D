@@ -46,7 +46,9 @@ fn pior_rente(fl: &Fluencia, r: &Redondo, gab: &CenaDeLuz, tx: f64) -> (f64, usi
         .iter()
         .filter(|c| c.2 <= 0.2 * max)
         .map(|c| (c.0 - c.1) / max)
-        .fold((0.0_f64, 0), |(p, n), e| (p.min(e), n + usize::from(e < PRETO)))
+        .fold((0.0_f64, 0), |(p, n), e| {
+            (p.min(e), n + usize::from(e < PRETO))
+        })
 }
 
 /// ⭐⭐ **GATE — sem pontos pretos rentes à borda**: o disco polígono (zoom 3,2, a fase que o produto de

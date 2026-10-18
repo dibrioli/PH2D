@@ -80,7 +80,11 @@ fn medida_luz2d_w6d() {
     eprintln!(
         "# Rodada W6d · {} · perfil {} · loadavg antes {}",
         gpu.adapter.get_info().name,
-        if cfg!(debug_assertions) { "DEBUG" } else { "otimizado (smoke)" },
+        if cfg!(debug_assertions) {
+            "DEBUG"
+        } else {
+            "otimizado (smoke)"
+        },
         loadavg()
     );
     let t0 = std::time::Instant::now();
@@ -175,12 +179,12 @@ fn foto(nome: &str, a: Affine, r: &Redondo, cor: [f64; 3], luz: impl Fn([f64; 2]
                 c.y - f64::from(lado) * 0.5 + f64::from(j) + 0.5,
             );
             let p = inv * q;
-            let (x, y) = ((p.x - r.centro[0]) / r.semi[0], (p.y - r.centro[1]) / r.semi[1]);
+            let (x, y) = (
+                (p.x - r.centro[0]) / r.semi[0],
+                (p.y - r.centro[1]) / r.semi[1],
+            );
             let dentro = x * x + y * y <= 1.0;
-            px.extend(pinta(
-                luz([p.x, p.y]),
-                if dentro { cor } else { [0.85; 3] },
-            ));
+            px.extend(pinta(luz([p.x, p.y]), if dentro { cor } else { [0.85; 3] }));
         }
     }
     grava(nome, lado, &px);
@@ -204,16 +208,26 @@ fn medida_luz2d_w6d_fotos() {
                 ..config(&gpu, a, false)
             };
             let (fl, r, _) = disco_de_imagem(&gpu, a, cfg);
-            foto(&format!("imagem_zoom{zoom}_{quando}"), a, &r, cor, |p| fl.amostra(p));
+            foto(&format!("imagem_zoom{zoom}_{quando}"), a, &r, cor, |p| {
+                fl.amostra(p)
+            });
             let mut s = solver(&gpu, a, cfg);
             s.quadro(&gpu, &c_pol);
             let fl = fluencia_lida(&gpu, &s);
-            foto(&format!("poligono_zoom{zoom}_{quando}"), a, &r_pol, cor, |p| fl.amostra(p));
+            foto(
+                &format!("poligono_zoom{zoom}_{quando}"),
+                a,
+                &r_pol,
+                cor,
+                |p| fl.amostra(p),
+            );
         }
     }
     // O gabarito não depende da vista: uma foto, na escala do zoom 1.
     let a = vista_em(1.0, r_pol.centro);
-    foto("gabarito", a, &r_pol, cor, |p| ph2d_light2d_ref::fluencia(&c_pol, p)[1]);
+    foto("gabarito", a, &r_pol, cor, |p| {
+        ph2d_light2d_ref::fluencia(&c_pol, p)[1]
+    });
 }
 
 /// O censo dos texels junto à borda do disco `r` (a fluência no CENTRO do texel, sem bilinear) contra
@@ -236,7 +250,11 @@ fn censo_da_borda(fl: &Fluencia, r: &Redondo, gab: &CenaDeLuz, tx: f64) -> Strin
             }
             let t = [-dy / rho * tx, dx / rho * tx];
             let v = f64::from(fl.v[(j * g.largura + i) as usize][1]);
-            let (g0, ga, gb) = (lei(p), lei([p[0] + t[0], p[1] + t[1]]), lei([p[0] - t[0], p[1] - t[1]]));
+            let (g0, ga, gb) = (
+                lei(p),
+                lei([p[0] + t[0], p[1] + t[1]]),
+                lei([p[0] - t[0], p[1] - t[1]]),
+            );
             casos.push((d, v, g0, (ga - gb).abs(), p));
         }
     }
@@ -307,7 +325,10 @@ fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_
             borda_fora: false,
             ..c
         },
-        2 => ph2d_light2d_gpu::Config { borda_exata: false, ..c },
+        2 => ph2d_light2d_gpu::Config {
+            borda_exata: false,
+            ..c
+        },
         _ => c,
     }
 }
@@ -325,8 +346,9 @@ fn ao_poligono(v: &[[f32; 2]], p: [f64; 2]) -> (f64, bool) {
             dentro = !dentro;
         }
         let ab = [b[0] - a[0], b[1] - a[1]];
-        let t = (((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / (ab[0] * ab[0] + ab[1] * ab[1]).max(1e-18))
-            .clamp(0.0, 1.0);
+        let t = (((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1])
+            / (ab[0] * ab[0] + ab[1] * ab[1]).max(1e-18))
+        .clamp(0.0, 1.0);
         d = d.min((p[0] - a[0] - t * ab[0]).hypot(p[1] - a[1] - t * ab[1]));
         j = i;
     }
@@ -363,7 +385,10 @@ fn medida_luz2d_w6d_borda() {
     // `PH2D_W6D_LISTA=1`: só o zoom 1,6, a lista dos pretos, sem o custo.
     let lista = std::env::var_os("PH2D_W6D_LISTA").is_some();
     // `PH2D_W6D_CUSTO=<n>`: só o custo, `n` vezes no mesmo processo.
-    if let Some(n) = std::env::var("PH2D_W6D_CUSTO").ok().and_then(|n| n.parse::<u32>().ok()) {
+    if let Some(n) = std::env::var("PH2D_W6D_CUSTO")
+        .ok()
+        .and_then(|n| n.parse::<u32>().ok())
+    {
         for _ in 0..n {
             custo(&gpu);
         }
@@ -407,20 +432,19 @@ fn medida_luz2d_w6d_borda() {
             eprintln!("BITS · zoom {zoom} · {k}/8 · fora dos corpos, diferentes de antes{linha}");
         }
         let a = vista_em(zoom, cena_redonda([0.0; 2]).1[0].centro);
-        for v in 0..nv {
+        for (v, nome) in DIAG.iter().enumerate().take(nv) {
             let cfg = config_diag(&gpu, a, v);
             let tx = cfg.grade.texel_m / f64::from(cfg.fina);
             let (fl, r, gab) = disco_de_imagem(&gpu, a, cfg);
             let mut pior = Leitura::default();
             let aneis = linha(&fl, &r, &gab, tx, &mut pior);
             eprintln!(
-                "BORDA · imagem · zoom {zoom} · {}{}",
-                DIAG[v],
+                "BORDA · imagem · zoom {zoom} · {nome}{}",
                 censo_da_borda(&fl, &r, &gab, tx)
             );
             eprintln!(
-                "ANEIS · imagem · zoom {zoom} · {} · PIOR {}e({:.3}) ×{} ↔{:.1} TV {:+.2}{aneis}",
-                DIAG[v], pior.errados, pior.pior, pior.cruzes, pior.desvio, pior.tv
+                "ANEIS · imagem · zoom {zoom} · {nome} · PIOR {}e({:.3}) ×{} ↔{:.1} TV {:+.2}{aneis}",
+                pior.errados, pior.pior, pior.cruzes, pior.desvio, pior.tv
             );
         }
     }
@@ -443,7 +467,6 @@ fn custo(gpu: &ph2d_gpu::GpuContext) {
         for v in 0..N_DECIDE {
             solvers.push((n, v, cena.clone(), solver(gpu, a, config_diag(gpu, a, v))));
         }
-
     }
     let mut minimo = vec![f64::INFINITY; solvers.len()];
     let mut partes_min = vec![[0.0; 3]; solvers.len()];
@@ -506,7 +529,9 @@ fn medida_luz2d_w6d_canto() {
     let base = ph2d_light2d_gpu::Config {
         fina: fina_do_quadro(a, dg),
         captura: captura_do_quadro(a, dg),
-        holografica: dg.holografica.then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO),
+        holografica: dg
+            .holografica
+            .then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO),
         rebote: false,
         miolo: None,
         ..ph2d_light2d_gpu::Config::padrao_para(&gpu.device, grade)
@@ -515,10 +540,19 @@ fn medida_luz2d_w6d_canto() {
     let d = [(3.0 * tx / 8.0) as f32, (9.0 * tx / 8.0) as f32];
     let c = cena(d);
     let (dir, topo) = (1.85 + f64::from(d[0]), 0.9 + f64::from(d[1]));
-    eprintln!("texel {tx:.5} · face direita x = {dir:.4} · topo y = {topo:.4} · loadavg {}", loadavg());
+    eprintln!(
+        "texel {tx:.5} · face direita x = {dir:.4} · topo y = {topo:.4} · loadavg {}",
+        loadavg()
+    );
     let variantes = [
         ("produto", base),
-        ("sem o campo", ph2d_light2d_gpu::Config { borda_continua: false, ..base }),
+        (
+            "sem o campo",
+            ph2d_light2d_gpu::Config {
+                borda_continua: false,
+                ..base
+            },
+        ),
     ];
     let mut gab = None;
     for (nome, cfg) in variantes {
@@ -533,7 +567,9 @@ fn medida_luz2d_w6d_canto() {
             let gab = gab.get_or_insert_with(|| gabarito_por(g, d, |p| lei.fluencia(p)[1]).0);
             let ic = ((1.828 - g.origem_m[0]) / g.texel_m) as i64;
             let jc = ((0.890 - g.origem_m[1]) / g.texel_m) as i64;
-            eprintln!("== {nome} · luz / gabarito (linhas de cima para baixo; colunas da esquerda para a direita)");
+            eprintln!(
+                "== {nome} · luz / gabarito (linhas de cima para baixo; colunas da esquerda para a direita)"
+            );
             for j in (jc - 4..=jc + 4).rev() {
                 let mut linha = String::new();
                 for i in ic - 4..=ic + 4 {

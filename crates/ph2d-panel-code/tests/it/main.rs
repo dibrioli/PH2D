@@ -74,6 +74,8 @@ pub struct Deco {
     pub preedit: Option<String>,
     pub badge: Option<Badge>,
     pub assist: Option<ph2d_panel_code::Assist>,
+    /// O script tem `--!strict` (I14).
+    pub strict: bool,
 }
 
 pub fn ts() -> TextSystem {
@@ -119,7 +121,7 @@ pub fn frame<'a>(
         rename: None,
         inlays: &[],
         stops: &[],
-        strict: false,
+        strict: d.strict,
     }
 }
 

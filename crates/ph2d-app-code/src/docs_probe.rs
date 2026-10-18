@@ -281,6 +281,13 @@ impl CodeDocs {
             .unwrap_or_default()
     }
 
+    /// ⚠️ SONDA: onde o cursor se pintaria no byte `at` do script `id` (`None` = fora da vista).
+    #[must_use]
+    pub fn caret_rect_at(&self, id: ScriptId, at: usize) -> Option<ph2d_editor_core::zones::Rect> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        d.view.caret_rect(&d.buffer, at)
+    }
+
     /// ⚠️ SONDA: os retângulos que o último quadro pinta para os bytes `s..e` do script `id` (a
     /// selecção e as marcas pintam-se por eles).
     #[must_use]

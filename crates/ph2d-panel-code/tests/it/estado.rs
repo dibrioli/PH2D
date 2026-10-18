@@ -132,3 +132,15 @@ fn uma_contagem_de_um_fala_no_singular() {
         Some("1 result")
     );
 }
+
+/// I14: com `--!strict` a barra di-lo; sem ele, nada.
+#[test]
+fn o_modo_estrito_aparece_na_barra() {
+    let buf = Buffer::new("--!strict\nlocal x = 1\n");
+    assert_eq!(status(&buf, &Deco::default()).mode, None);
+    let d = Deco {
+        strict: true,
+        ..Deco::default()
+    };
+    assert_eq!(status(&buf, &d).mode.as_deref(), Some("Strict types"));
+}

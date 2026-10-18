@@ -109,7 +109,7 @@ pub fn scoped<'a>(
         } else {
             filter_model(&mine, rest)
         };
-        // `@` sozinho: o Enter leva ao 1.º símbolo (o do topo do ficheiro).
+        // `@` sozinho: o Enter leva ao 1.º símbolo MOSTRADO (o 1.º do 1.º cartão).
         let top = top_match(&m, rest).or_else(|| {
             m.groups
                 .first()

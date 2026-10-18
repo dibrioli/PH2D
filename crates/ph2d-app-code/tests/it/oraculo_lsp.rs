@@ -620,3 +620,73 @@ fn o_assistente_fixado_renomeia_um_local_e_sobrevive_aos_membros() {
         "um Ctrl+Z repõe tudo"
     );
 }
+
+/// ⭐ I12 com o `luau-lsp` FIXADO, pelo caminho do produto: cada esqueleto escolhido na lista (os três
+/// ganchos da tabela e a `ph2d.property`), preenchido pelo Tab de buraco em buraco, deixa o script
+/// LIMPO — em modo normal e em `--!strict` (medição I9_I12_I14 §I12: os ganchos ANOTADOS não dão o
+/// `1030` do estrito).
+#[test]
+fn os_esqueletos_preenchidos_passam_limpos_normal_e_estrito() {
+    use crate::assistente::tecla;
+    use crate::completar::{T0, abre, escreve, quadro_em};
+    use ph2d_editor_core::doc_surface::Key;
+    use ph2d_host::Modifiers;
+    use ph2d_script::api_table::HOOKS;
+    let _ = fixado();
+    let nada = Modifiers::default();
+    for pre in ["", "--!strict\n"] {
+        let (m, ids) = Mesa::new(&[("a.luau", pre)]);
+        let mut m = m.com_assistente(ph2d_app_code::IntelServer::Pinned);
+        let id = ids[0];
+        m.pede(id);
+        let escolhe = |m: &mut Mesa, escrito: &str, nome: &str| {
+            let l = abre(m, id, escrito);
+            let i = l
+                .iter()
+                .position(|x| x == nome)
+                .unwrap_or_else(|| panic!("«{escrito}»: {nome} fora da lista {l:?}"));
+            for _ in 0..i {
+                tecla(m, id, Key::Down, Modifiers::default(), None, "");
+            }
+            tecla(m, id, Key::Tab, Modifiers::default(), None, "");
+        };
+        tecla(&mut m, id, Key::End, crate::ctrl(), None, "");
+        escolhe(&mut m, "prop", "ph2d.property");
+        escreve(&mut m, id, "altura");
+        tecla(&mut m, id, Key::Tab, nada, None, "");
+        escreve(&mut m, id, "1");
+        tecla(&mut m, id, Key::Tab, nada, None, "");
+        for h in HOOKS {
+            tecla(&mut m, id, Key::End, crate::ctrl(), None, "");
+            tecla(&mut m, id, Key::Enter, nada, None, "");
+            escolhe(&mut m, &h.ident[..3], h.ident);
+            // Os buracos dos parâmetros ficam com o nome do esqueleto; o Tab vai ao corpo.
+            let n = h.luau_type.matches(':').count();
+            for _ in 0..n {
+                tecla(&mut m, id, Key::Tab, nada, None, "");
+            }
+            escreve(&mut m, id, "print(self.id)");
+        }
+        let texto = m.docs().text_of(id).expect("aberta");
+        assert!(texto.contains("ph2d.property(\"altura\", 1)"), "{texto}");
+        assert!(texto.contains("function on_signal(self: ScriptSelf, signal: string)\n  print(self.id)"), "{texto}");
+        let fim = Instant::now() + Duration::from_secs(30);
+        loop {
+            quadro_em(&mut m, T0 + 60_000_000_000);
+            let d = m.docs();
+            let (v, diags) = d.assist_diagnostics(id);
+            if v.is_some() && diags.is_some() && d.grammar_of(id).is_some_and(|g| !g.stale) {
+                break;
+            }
+            assert!(Instant::now() < fim, "sem resposta do luau-lsp");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let problemas: Vec<(usize, String)> = m
+            .docs()
+            .problems_of(id)
+            .into_iter()
+            .map(|p| (p.line, p.message))
+            .collect();
+        assert_eq!(problemas, [], "«{pre}»\n{texto}");
+    }
+}

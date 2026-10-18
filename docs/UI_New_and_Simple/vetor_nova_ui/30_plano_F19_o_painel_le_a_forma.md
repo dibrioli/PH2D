@@ -85,7 +85,7 @@ morre é a SEQUÊNCIA:
 | seletor aberto → Ctrl+Z / Show | o seletor reverte no quadro seguinte (L6) | o seletor passa a mostrar a cor nova |
 | Preview, rato sobre o botão | painel azul | painel laranja enquanto está em cima, azul ao sair |
 
-### §5.1 — Editar durante o Preview: **decisão do dono**
+### §5.1 — Editar durante o Preview: **o dono escolheu (A), 18/10**
 
 Hoje o Preview barra os gestos do canvas mas deixa o painel clicável, e ao sair **restaura o mundo** (`ui_preview.rs:14-22`):
 uma cor mudada no painel durante o Preview perde-se em silêncio (o «laranja» do Blender, sem o aviso).

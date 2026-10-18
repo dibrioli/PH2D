@@ -23,6 +23,7 @@ mod lista;
 mod onda1;
 mod oraculo_lsp;
 mod projecto;
+mod renomear;
 mod salvar;
 mod teclado;
 

@@ -44,6 +44,11 @@ pub(crate) struct Visto {
     pub(crate) acoes: usize,
     /// Os pedidos `textDocument/inlayHint` recebidos (respondidos com `null`).
     pub(crate) tipos: usize,
+    /// Os pedidos `textDocument/rename` e `textDocument/references` recebidos (I10).
+    pub(crate) renomes: usize,
+    pub(crate) referencias: usize,
+    /// O nome no byte de cada um desses pedidos.
+    pub(crate) palavras: Vec<String>,
 }
 
 pub(crate) type Partilhado = Arc<Mutex<Visto>>;
@@ -77,6 +82,9 @@ pub(crate) struct Plano {
     pub(crate) colorir: Option<fn(&str) -> Tokens>,
     /// `textDocument/codeAction` (`None` = `null`).
     pub(crate) agir: Option<Agir>,
+    /// `textDocument/rename` e `textDocument/references`: os sítios, NESTE documento, do nome no
+    /// byte do pedido (`None` = `null`). O rename troca-os todos pelo nome novo, como o 1.70.1.
+    pub(crate) referir: Option<fn(&str, usize) -> Sitios>,
 }
 
 /// As capacidades que o `luau-lsp` 1.70.1 anunciou (a legenda dos tokens vem daqui).
@@ -241,6 +249,41 @@ fn servir(
                         })
                         .collect(),
                 )
+            } else if let Some(f) = plano
+                .referir
+                .filter(|_| method == "textDocument/rename" || method == "textDocument/references")
+            {
+                let rename = method == "textDocument/rename";
+                let texto = texto_de(if rename {
+                    |v: &mut Visto| v.renomes += 1
+                } else {
+                    |v: &mut Visto| v.referencias += 1
+                });
+                let (l, c) = pos(&p["position"]);
+                {
+                    let b = byte_de(&texto, l, c);
+                    let w = |ch: char| ch.is_ascii_alphanumeric() || ch == '_';
+                    let i = texto[..b].rfind(|ch| !w(ch)).map_or(0, |i| i + 1);
+                    let j = texto[b..].find(|ch| !w(ch)).map_or(texto.len(), |k| b + k);
+                    visto.lock().unwrap().palavras.push(texto[i..j].to_owned());
+                }
+                let sitio = |r: &std::ops::Range<usize>| json!({ "start": posicao(&texto, r.start), "end": posicao(&texto, r.end) });
+                let sitios = f(&texto, byte_de(&texto, l, c));
+                if rename {
+                    let novo = p["newName"].as_str().unwrap_or_default();
+                    let edits: Vec<Value> = sitios
+                        .iter()
+                        .map(|r| json!({ "range": sitio(r), "newText": novo }))
+                        .collect();
+                    json!({ "changes": { uri.clone(): edits } })
+                } else {
+                    Value::Array(
+                        sitios
+                            .iter()
+                            .map(|r| json!({ "uri": uri, "range": sitio(r) }))
+                            .collect(),
+                    )
+                }
             } else if let Some(f) = plano.agir.filter(|_| method == "textDocument/codeAction") {
                 let texto = texto_de(|v| v.acoes += 1);
                 let (l, c) = pos(&p["range"]["start"]);

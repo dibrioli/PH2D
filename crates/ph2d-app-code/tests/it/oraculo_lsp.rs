@@ -541,3 +541,82 @@ fn o_assistente_fixado_vai_a_definicao_e_pinta_as_cores() {
         "o F12 na API não mexe no cursor"
     );
 }
+
+/// ⭐ I10 com o `luau-lsp` FIXADO, pelo caminho do produto: F2 num local renomeia-o pelo servidor
+/// (os dois sítios, num passo de undo); o cursor num local realça os sítios que o servidor dá; e o
+/// cursor e o F2 sobre MEMBROS (`ph2d.set`, `math.sin`) nunca lhe chegam — o 1.70.1 MORRE com eles
+/// (medição I10 §1): o servidor continua no mesmo arranque.
+#[test]
+fn o_assistente_fixado_renomeia_um_local_e_sobrevive_aos_membros() {
+    use crate::assistente::tecla;
+    use crate::completar::{T0, quadro_em};
+    use ph2d_editor_core::doc_surface::Key;
+    use ph2d_host::Modifiers;
+    let _ = fixado();
+    let texto = "local brilho = 1\nfunction update(self, dt)\n  ph2d.set(self.id, \"x\", math.sin(brilho))\nend\n";
+    let (m, ids) = Mesa::new(&[("a.luau", texto)]);
+    let mut m = m.com_assistente(ph2d_app_code::IntelServer::Pinned);
+    let id = ids[0];
+    m.pede(id);
+    let espera = |m: &mut Mesa, onde: &str, feito: &dyn Fn(&mut Mesa) -> bool| {
+        let fim = Instant::now() + Duration::from_secs(30);
+        loop {
+            quadro_em(m, T0);
+            m.pinta(id);
+            if feito(m) {
+                return;
+            }
+            assert!(Instant::now() < fim, "{onde}");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    };
+    espera(&mut m, "o assistente não ficou pronto", &|m| {
+        m.docs().assist_text().is_none() && m.docs().assist_boots() > 0
+    });
+    let boots = m.docs().assist_boots();
+    let clica = |m: &mut Mesa, b: usize| {
+        let (x, y) = m.docs().glyph_center(id, b).expect("à vista");
+        m.clica(id, x, y, Modifiers::default());
+    };
+    // O realce de um local.
+    let uso = texto.find("brilho))").unwrap();
+    clica(&mut m, uso + 2);
+    let sitios = vec![6..12, uso..uso + 6];
+    espera(&mut m, "o realce do local não chegou", &|m| {
+        m.docs().occurrences_of(id) == sitios
+    });
+    // Os membros: o cursor e o F2.
+    for membro in ["set(", "sin("] {
+        clica(&mut m, texto.find(membro).unwrap() + 1);
+        quadro_em(&mut m, T0);
+        tecla(&mut m, id, Key::F(2), Modifiers::default(), None, "");
+        assert!(
+            m.docs().rename_of(id).is_some_and(|r| r.0.is_none()),
+            "{membro}: só a razão"
+        );
+        tecla(&mut m, id, Key::Escape, Modifiers::default(), None, "");
+    }
+    // F2 no local.
+    clica(&mut m, 8);
+    tecla(&mut m, id, Key::F(2), Modifiers::default(), None, "");
+    m.escreve(id, "luz");
+    tecla(&mut m, id, Key::Enter, Modifiers::default(), Some("\r"), "");
+    let esperado = texto.replace("brilho", "luz");
+    espera(&mut m, "o rename do local não chegou", &|m| {
+        m.docs().text_of(id).as_deref() == Some(esperado.as_str())
+    });
+    // Dá tempo a um servidor morto de se notar, e confere que é o mesmo arranque.
+    let fim = Instant::now() + Duration::from_millis(500);
+    while Instant::now() < fim {
+        quadro_em(&mut m, T0);
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert_eq!(m.docs().assist_boots(), boots, "o servidor morreu e voltou");
+    assert_eq!(m.docs().assist_text(), None);
+    tecla(&mut m, id, Key::Char('z'), crate::ctrl(), None, "");
+    assert_eq!(
+        m.docs().text_of(id).as_deref(),
+        Some(texto),
+        "um Ctrl+Z repõe tudo"
+    );
+}

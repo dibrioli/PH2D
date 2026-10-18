@@ -1,0 +1,21 @@
+READY
+3 CursorEntered { device_id: DeviceId(Wayland(DeviceId)) }
+3 MOVE (n=1)
+16508 CursorLeft { device_id: DeviceId(Wayland(DeviceId)) }
+18143 CursorEntered { device_id: DeviceId(Wayland(DeviceId)) }
+33490 CursorLeft { device_id: DeviceId(Wayland(DeviceId)) }
+33632 CursorEntered { device_id: DeviceId(Wayland(DeviceId)) }
+33827 MOVE (n=51)
+34082 MouseInput { device_id: DeviceId(Wayland(DeviceId)), state: Pressed, button: Left }
+34442 MOVE (n=101)
+34653 MouseInput { device_id: DeviceId(Wayland(DeviceId)), state: Released, button: Left }
+34817 MOVE (n=151)
+35059 MouseInput { device_id: DeviceId(Wayland(DeviceId)), state: Pressed, button: Left }
+35252 MOVE (n=201)
+35522 MouseInput { device_id: DeviceId(Wayland(DeviceId)), state: Released, button: Left }
+35643 MOVE (n=251)
+36009 MouseInput { device_id: DeviceId(Wayland(DeviceId)), state: Pressed, button: Left }
+36242 MOVE (n=301)
+36444 MouseInput { device_id: DeviceId(Wayland(DeviceId)), state: Released, button: Left }
+37187 MOVE (n=351)
+37539 CursorLeft { device_id: DeviceId(Wayland(DeviceId)) }

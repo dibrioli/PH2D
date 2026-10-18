@@ -1,0 +1,47 @@
+READY
+22 MOVE (n=1)
+22 CursorEntered { device_id: DeviceId(X(DeviceId(2))) }
+11965 CursorLeft { device_id: DeviceId(X(DeviceId(2))) }
+12443 CursorEntered { device_id: DeviceId(X(DeviceId(2))) }
+12679 MOVE (n=51)
+12956 MOVE (n=101)
+13207 MOVE (n=151)
+13529 MOVE (n=201)
+13941 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Pressed, button: Left }
+13996 MOVE (n=251)
+14248 MOVE (n=301)
+14499 MOVE (n=351)
+14539 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Released, button: Left }
+14756 MOVE (n=401)
+14856 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Pressed, button: Left }
+15057 MOVE (n=451)
+15309 MOVE (n=501)
+15464 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Released, button: Left }
+15565 MOVE (n=551)
+15816 MOVE (n=601)
+15962 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Pressed, button: Left }
+16103 MOVE (n=651)
+16354 MOVE (n=701)
+16500 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Released, button: Left }
+16616 MOVE (n=751)
+16827 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Pressed, button: Left }
+16872 MOVE (n=801)
+17124 MOVE (n=851)
+17355 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Released, button: Left }
+17385 MOVE (n=901)
+17646 MOVE (n=951)
+17898 MOVE (n=1001)
+17903 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Pressed, button: Left }
+18149 MOVE (n=1051)
+18270 MouseInput { device_id: DeviceId(X(DeviceId(2))), state: Released, button: Left }
+19973 MOVE (n=1101)
+20086 CursorLeft { device_id: DeviceId(X(DeviceId(2))) }
+20334 CursorEntered { device_id: DeviceId(X(DeviceId(2))) }
+20439 CursorLeft { device_id: DeviceId(X(DeviceId(2))) }
+21496 CursorEntered { device_id: DeviceId(X(DeviceId(2))) }
+21623 CursorLeft { device_id: DeviceId(X(DeviceId(2))) }
+94892 CursorEntered { device_id: DeviceId(X(DeviceId(2))) }
+94892 MOVE (n=1151)
+95266 MOVE (n=1201)
+95723 MOVE (n=1251)
+95844 CursorLeft { device_id: DeviceId(X(DeviceId(2))) }

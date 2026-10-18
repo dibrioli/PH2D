@@ -271,7 +271,7 @@ pub(crate) fn vista_em(zoom: f64, centro_m: [f64; 2]) -> Affine {
 
 /// A configuração do produto sem rebote na vista `a`; `controlo` = a W5c (o iso-½, sem a tenda) na
 /// lei antiga (`miolo: None`).
-fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, controlo: bool) -> Config {
+pub(crate) fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, controlo: bool) -> Config {
     let dg = DEGRAU_PADRAO;
     let cfg = Config {
         fina: fina_do_quadro(a, dg),

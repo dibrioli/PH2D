@@ -162,7 +162,7 @@ pub fn tab_rects(
     } else {
         // Abas a mais: ‹ › escolhem a anterior/seguinte e a janela mostra a activa no meio.
         let room = (free - 2.0 * new_w).max(0.0);
-        let k = ((room / floor).floor() as usize).clamp(1, n);
+        let k = ((room / floor).floor() as usize).max(1).min(n);
         let w = room / k as f32;
         let at = items.iter().position(|(t, _)| *t == active).unwrap_or(0);
         let start = at.saturating_sub(k / 2).min(n - k);

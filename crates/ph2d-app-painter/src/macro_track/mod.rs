@@ -29,6 +29,9 @@ mod marcas;
 mod reescrita;
 pub use reescrita::{EscreveSprite, LeSprite};
 #[cfg(test)]
+#[path = "palcos_arrasto_tests.rs"]
+mod palcos_arrasto_tests;
+#[cfg(test)]
 #[path = "palcos_custo_tests.rs"]
 mod palcos_custo_tests;
 #[cfg(test)]

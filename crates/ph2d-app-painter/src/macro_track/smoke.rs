@@ -167,8 +167,12 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static ARMADO: AtomicBool = AtomicBool::new(false);
     let cena = std::env::var("PH2D_MACRO_SMOKE");
-    let meio_depois =
-        cena.as_deref() == Ok("6") && super::caminho::variante() == super::caminho::Variante::Meio;
+    // O `meio` escolhe o Wet Paint depois de Gravar; o `arrasta` pinta em Digital, como a `=5` do dono.
+    let meio_depois = cena.as_deref() == Ok("6")
+        && matches!(
+            super::caminho::variante(),
+            super::caminho::Variante::Meio | super::caminho::Variante::Arrasta
+        );
     if !matches!(cena.as_deref(), Ok("4" | "6"))
         || meio_depois
         || ARMADO.swap(true, Ordering::Relaxed)

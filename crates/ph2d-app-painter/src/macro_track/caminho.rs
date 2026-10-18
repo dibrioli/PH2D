@@ -5,9 +5,15 @@
 //! no relógio da cena (o do dono é o de parede); a ordem dos gestos é fixa. A cada décimo de segundo a
 //! consola diz o instante do clipe, se o palco troca a textura da sprite e quantos texels pintados têm a
 //! ranhura e o editor ([`PalcosDoPainter::diagnostico`]).
+//!
+//! A variante `arrasta` é o smoke de 18/10 (buracos retangulares ao arrastar a cabeça da Keys): em
+//! Digital, como a `=5` do dono, saltos para trás e para a frente e um arrasto contínuo; o diagnóstico
+//! conta os texels do palco que diferem da tela inteira dele (`inteira=`) e, com a cabeça parada, de
+//! uma reprodução À PARTE da mesma macro no mesmo instante (`fresca=`).
 
 use super::PalcosDoPainter;
 use ph2d_tool_painter::PainterTool;
+use ph2d_tool_painter::macro_track::em_cena::MacroEmCena;
 
 /// Um gesto do dono, como a shell o recebe.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -28,6 +34,19 @@ pub enum Gesto {
     MeioWet,
     /// O Play da barra de cima (corre a cena: só os clipes em Autoplay tocam).
     PlayDeCima,
+    /// A cabeça da Keys arrastada até este instante do clipe (segundos).
+    Arrasta(f32),
+}
+
+impl Gesto {
+    /// O instante para onde o gesto leva a cabeça da Keys (o ⏮ é o arrasto até `0`).
+    #[must_use]
+    pub fn segundos(self) -> f64 {
+        match self {
+            Self::Arrasta(s) => f64::from(s),
+            _ => 0.0,
+        }
+    }
 }
 
 /// Como o dono pode ter feito o caminho (`PH2D_MACRO_CAMINHO`): as variantes correm na mesma rodada.
@@ -45,6 +64,8 @@ pub enum Variante {
     SemRewind,
     /// O caminho do smoke do dono de 18/10: Parar e o Play da barra de cima.
     Topo,
+    /// O 2.º smoke de 18/10: em Digital, Parar e a cabeça da Keys arrastada para trás e para a frente.
+    Arrasta,
 }
 
 /// A variante desta corrida.
@@ -56,6 +77,7 @@ pub fn variante() -> Variante {
         Ok("splash") => Variante::Splash,
         Ok("semrewind") => Variante::SemRewind,
         Ok("topo") => Variante::Topo,
+        Ok("arrasta") => Variante::Arrasta,
         _ => Variante::Base,
     }
 }
@@ -101,6 +123,10 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
     pincelada(&mut r, d + t1, 0.30, dura);
     pincelada(&mut r, d + t2, 0.50, dura);
     r.push((d + para, Gesto::Para));
+    if v == Variante::Arrasta {
+        arrastos(&mut r, para + 800);
+        return r;
+    }
     if !matches!(v, Variante::SemRewind | Variante::Topo) {
         r.push((d + rewind, Gesto::Rewind));
     }
@@ -111,6 +137,22 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
     };
     r.push((d + play, play_g));
     r
+}
+
+/// Os saltos do dono a cada 1,5 s (para trás e para a frente, dois a meio de uma pincelada), depois um
+/// arrasto contínuo da mão para trás e outra vez para a frente, a partir de `t0` (ms).
+fn arrastos(r: &mut Vec<(u64, Gesto)>, t0: u64) {
+    let saltos = [3.0, 1.4, 2.8, 0.9, 3.4, 2.0];
+    let mut t = t0;
+    for s in saltos {
+        r.push((t, Gesto::Arrasta(s)));
+        t += 1_500;
+    }
+    #[expect(clippy::cast_precision_loss, reason = "poucos passos")]
+    let mao = |k: u64| 3.8 - 3.2 * (k as f32 / 50.0);
+    r.extend((0..=50).map(|k| (t + k * 32, Gesto::Arrasta(mao(k)))));
+    t += 50 * 32 + 1_500;
+    r.extend((0..=50).map(|k| (t + k * 32, Gesto::Arrasta(mao(50 - k)))));
 }
 
 /// O condutor: os gestos já dados e a última linha da consola.
@@ -155,6 +197,15 @@ pub fn anuncio(conduz: bool) -> String {
     if !conduz {
         return format!(
             "this session is logged every 0.1 s (Record, Stop, the Timeline clock, the canvas) to {}",
+            f.display()
+        );
+    }
+    if variante() == Variante::Arrasta {
+        return format!(
+            "the app does the path by itself — Record, two Digital strokes, Stop, then it drags the \
+             Timeline's playhead back and forth (six jumps, 1.5 s apart, then a slow drag back and \
+             forward). Do not touch the mouse for 25 s. The strokes must never show rectangular holes. \
+             This log is also written to {}",
             f.display()
         );
     }
@@ -206,6 +257,7 @@ impl PalcosDoPainter {
         bits: u64,
         cede: Option<u64>,
         painter: Option<&PainterTool>,
+        mundo: &ph2d_ecs::World,
     ) -> String {
         let editor = painter
             .filter(|t| t.bound_document() == Some(bits))
@@ -243,14 +295,71 @@ impl PalcosDoPainter {
                 .count(),
             _ => pintados(&p.espelho),
         };
+        let confere = if variante() == Variante::Arrasta {
+            let e = ph2d_ecs::Entity::from_bits(bits);
+            confere(p, mundo.get::<ph2d_ecs::Macro>(e).map(|m| &m.doc[..]))
+        } else {
+            String::new()
+        };
         format!(
-            "toca={} epoca={:04x} troca={troca} palco={} marca={} ranhura={ranhura} editor={editor}",
+            "toca={} epoca={:04x} troca={troca} palco={} marca={} ranhura={ranhura} editor={editor}{confere}",
             p.toca,
             p.epoca & 0xffff,
             pintados(&p.espelho),
             marca.map_or_else(|| "-".to_owned(), |m| m.quantos().to_string()),
         )
     }
+}
+
+/// Texels de `a` (premultiplicada) que diferem de `b` (straight, premultiplicada aqui).
+fn diferentes(a: &[u8], b: &[u8]) -> usize {
+    let mut b = b.to_vec();
+    ph2d_render::premul::premultiply_rgba8(&mut b);
+    a.as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
+        .filter(|(x, y)| x != y)
+        .count()
+}
+
+/// ` inteira=N fresca=M` da variante `arrasta`: os texels do palco que diferem da tela inteira do
+/// tocador dele (uma cópia, lida inteira) e — com a cabeça parada desde a linha anterior, uma vez por
+/// instante — de uma reprodução À PARTE de `doc` no mesmo instante.
+fn confere(p: &super::PalcoDaPintura, doc: Option<&[u8]>) -> String {
+    static PARADO: std::sync::Mutex<(u64, bool)> = std::sync::Mutex::new((u64::MAX, false));
+    let inteira = p
+        .em_cena
+        .tocador()
+        .instantaneo()
+        .ok()
+        .and_then(|mut c| c.toma_a_tela())
+        .filter(|(a, _, _)| a.len() == p.espelho.len())
+        .map_or_else(
+            || "-".to_owned(),
+            |(a, _, _)| diferentes(&p.espelho, &a).to_string(),
+        );
+    let t = p.em_cena.tempo().0;
+    let mut parado = PARADO
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let fresca = if parado.0 != t {
+        *parado = (t, false);
+        None
+    } else if std::mem::replace(&mut parado.1, true) {
+        None
+    } else {
+        #[expect(clippy::cast_precision_loss, reason = "µs de um clipe")]
+        let s = t as f64 / 1e6;
+        doc.and_then(|d| MacroEmCena::de(d).ok().flatten())
+            .and_then(|mut m| m.segue(s).ok().and_then(|()| m.toma_a_tela()))
+            .filter(|(a, _, _)| a.len() == p.espelho.len())
+            .map(|(a, _, _)| diferentes(&p.espelho, &a))
+    };
+    format!(
+        " inteira={inteira} fresca={}",
+        fresca.map_or_else(|| "-".to_owned(), |n| n.to_string())
+    )
 }
 
 #[cfg(test)]
@@ -267,6 +376,7 @@ mod tests {
             Variante::Splash,
             Variante::SemRewind,
             Variante::Topo,
+            Variante::Arrasta,
         ] {
             let r = roteiro(v);
             assert!(
@@ -282,11 +392,26 @@ mod tests {
             assert_eq!((desce.len(), sobe.len()), (2, 2), "{v:?}: duas pinceladas");
             assert!(grava < desce[0] && desce[0] < sobe[0] && sobe[0] < desce[1]);
             assert!(sobe[1] < para, "{v:?}: Parar depois da 2.ª pincelada");
-            assert!(
-                matches!(r.last().unwrap().1, Gesto::Play | Gesto::PlayDeCima),
-                "{v:?}: o Play fecha o caminho"
-            );
-            let sem = matches!(v, Variante::SemRewind | Variante::Topo);
+            let arrasta = r.iter().filter(|(_, g)| matches!(g, Gesto::Arrasta(_)));
+            let fim = if v == Variante::Arrasta {
+                // Saltos para trás depois do Parar, todos dentro do clipe.
+                assert!(
+                    arrasta
+                        .clone()
+                        .all(|(t, g)| *t > r[para].0 && (0.0..=4.2).contains(&g.segundos()))
+                );
+                let s: Vec<f64> = arrasta.map(|(_, g)| g.segundos()).collect();
+                assert!(
+                    s.windows(2).filter(|w| w[1] < w[0]).count() > 10,
+                    "{v:?}: arrasta para trás"
+                );
+                matches!(r.last().unwrap().1, Gesto::Arrasta(_))
+            } else {
+                assert_eq!(arrasta.count(), 0);
+                matches!(r.last().unwrap().1, Gesto::Play | Gesto::PlayDeCima)
+            };
+            assert!(fim, "{v:?}: o Play (ou o arrasto) fecha o caminho");
+            let sem = matches!(v, Variante::SemRewind | Variante::Topo | Variante::Arrasta);
             assert_eq!(pos(Gesto::Rewind).is_some(), !sem);
             assert!(r.iter().all(|(_, g)| match g {
                 Gesto::Desce([u, v]) | Gesto::Move([u, v]) =>

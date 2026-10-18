@@ -43,6 +43,10 @@ pub struct TocadorDoPainter {
     respostas: Arc<[RespostaDoWorker]>,
     /// A água ainda responde pela fita (`false` depois de [`Self::passa_ao_relogio_fixo`]).
     fita_viva: bool,
+    /// A cena ainda não leu ESTE tocador (nasce `true`, e numa cópia também): a caixa suja dele é a do
+    /// tocador de que veio, não o que difere do que a cena tem — a 1.ª [`Self::caixa_da_tela`] é a tela
+    /// inteira (o arrasto da Timeline, gate `palcos_arrasto_tests`).
+    por_ler: bool,
 }
 
 /// As respostas do worker de uma trilha, pela ordem das cargas.
@@ -108,6 +112,7 @@ impl TocadorDoPainter {
             mudou: true,
             respostas,
             fita_viva: true,
+            por_ler: true,
         })
     }
 
@@ -127,6 +132,7 @@ impl TocadorDoPainter {
             mudou: true,
             respostas: Arc::clone(&self.respostas),
             fita_viva: self.fita_viva,
+            por_ler: true,
         })
     }
 
@@ -173,7 +179,11 @@ impl TocadorDoPainter {
 
     /// O retângulo `(x, y, w, h)` que mudou na última [`Self::toma_a_tela`] — `None` = a tela inteira.
     pub fn caixa_da_tela(&mut self) -> Option<(u32, u32, u32, u32)> {
-        self.tool.take_preview_upload_bbox()
+        let caixa = self.tool.take_preview_upload_bbox();
+        if std::mem::take(&mut self.por_ler) {
+            return None;
+        }
+        caixa
     }
 
     #[must_use]

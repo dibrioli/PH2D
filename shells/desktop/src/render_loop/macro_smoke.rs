@@ -145,8 +145,9 @@ impl crate::App {
             match g {
                 Gesto::Grava => ph2d_app_macros::com(|m| m.pede(MacroRequest::Grava)),
                 Gesto::Para => ph2d_app_macros::com(|m| m.pede(MacroRequest::Para)),
-                Gesto::Rewind => {
-                    self.timeline_intents.push(TimelineIntent::Scrub(0.0));
+                Gesto::Rewind | Gesto::Arrasta(_) => {
+                    self.timeline_intents
+                        .push(TimelineIntent::Scrub(g.segundos()));
                     self.timeline_reveal_after_apply = true;
                 }
                 Gesto::Play => self.timeline_intents.push(TimelineIntent::TogglePlay),
@@ -199,7 +200,7 @@ impl crate::App {
         let painter = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools);
         let linha = gfx
             .painter_macros
-            .diagnostico(bits, cede, painter.as_deref());
+            .diagnostico(bits, cede, painter.as_deref(), gfx.sim.world());
         let (ph, clip) = (self.playhead.time(), self.clip_playhead.time());
         let (keys, playing) = (self.timeline.keys_mode, self.playhead.is_playing());
         let laco = self.timeline.doc.active_loop_for(keys);

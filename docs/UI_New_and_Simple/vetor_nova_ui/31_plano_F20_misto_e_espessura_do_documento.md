@@ -120,3 +120,15 @@ pontas), as duas selecionadas, primário a vermelha. O despacho é o `dispatch` 
 - `=32`: a 31 e a Width mudada pelo painel ⇒ as duas mais grossas, cada uma com a SUA cor.
 - Medido ANTES: Width «2,952» a 98 % (foto F19 28). A medir na sonda: pixel das amostras «misto» e das duas
   formas depois da Width.
+
+## §8 — Feito (18/10)
+
+Commits `d2d8c2d7d7` (feature) e `2027a500b6` (censos). Handoff:
+[F20](../handoffs/HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F20_MISTO_E_ESPESSURA.md). Desvios do plano:
+
+- **Estágios das cenas 31/32 = `225..=229`** (o commit diz `225..=228`, errado); a 32 usa o 229.
+- **Defeito extra curado:** `blank_number_input` nunca pintou em branco (todo pintor mostra `format_number(value)` sem foco) — `WidgetStore.mixed_numbers` + parâmetro `mixed` nos pintores de NumberInput/chip; vale também para o BulkSelect do Inspector. Mexeu ~30 ficheiros de painéis e partiu `widget/skin.rs` em `skin/number.rs`.
+- **Teste 4 do §6** (`o_numero_misto_nao_pisa_ao_perder_o_foco`) saiu como `o_misto_entra_vazio_e_digitar_o_numero_do_primario_escreve` em `dispatch/tests/blur.rs`; digitar o número do primário num campo misto passou a escrever em todas.
+- **`PenStyle.stroke_w` em MUNDO** (não `doc_px` na ferramenta só): 8 produtores perderam a conta `px_to_world`; Px de tela ficou nos raios de clique, fidelidade do lápis, imã e realces.
+- **Vermelho primeiro não observado** (testes escritos após a cura); trocado por mutação 10/10 (lista no handoff §4).
+- Fora de escopo, aberto: pilha de camadas sem «misto»; alfa de Fill por campo; cor igual à do primário no seletor misto é no-op.

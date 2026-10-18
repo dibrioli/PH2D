@@ -51,6 +51,11 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "accumulate" => json!(b.accumulate),
         "airbrush_rate_s" => num(b.airbrush_rate_s),
         "space_attenuation" => json!(b.space_attenuation),
+        "pen_tilt" => {
+            let t = b.pen_tilt;
+            json!({"rotation": t.rotation as u8, "start_deg": num(t.start_deg), "full_deg": num(t.full_deg),
+                   "width": num(t.width), "length": num(t.length), "smooth": num(t.smooth), "lag_px": num(t.lag_px)})
+        }
         outro => unreachable!("campo do pincel sem conversão: {outro}"),
     }
 }
@@ -116,6 +121,19 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "accumulate" => b.accumulate = booleano(v, b.accumulate),
         "airbrush_rate_s" => b.airbrush_rate_s = f(v, b.airbrush_rate_s),
         "space_attenuation" => b.space_attenuation = booleano(v, b.space_attenuation),
+        "pen_tilt" => {
+            let t = &mut b.pen_tilt;
+            let c = |k: &str| v.and_then(|v| v.get(k));
+            if let Some(r) = c("rotation").and_then(Value::as_f64) {
+                t.rotation = ph2d_painter_brush::DabRotation::from_index(r);
+            }
+            t.start_deg = f(c("start_deg"), t.start_deg);
+            t.full_deg = f(c("full_deg"), t.full_deg);
+            t.width = f(c("width"), t.width);
+            t.length = f(c("length"), t.length);
+            t.smooth = f(c("smooth"), t.smooth);
+            t.lag_px = f(c("lag_px"), t.lag_px);
+        }
         outro => unreachable!("campo do pincel sem conversão: {outro}"),
     }
 }

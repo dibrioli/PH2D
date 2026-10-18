@@ -343,8 +343,7 @@ impl TrabalhoDoCampo {
                     radius_px: d.radius_px,
                     ..spec_base
                 };
-                let rotor = spec.dab_rotor(d);
-                let fp = spec.dab_footprint(rotor);
+                let fp = spec.dab_footprint_of(d);
                 let shape_basis = shape_active.then(|| {
                     ph2d_painter_brush::texture::shape_basis(
                         &spec.shape,

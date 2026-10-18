@@ -198,6 +198,7 @@ impl PainterTool {
         self.paint.tex_rng = self.paint.seed ^ 0x7465_7874_7572_6573;
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
+        stroke.set_tilt(ev.tilt);
         stroke.begin(
             StrokePoint {
                 pos: ev.pos,
@@ -295,6 +296,7 @@ impl PainterTool {
             );
         }
         let mut dabs = std::mem::take(&mut self.paint.dabs);
+        stroke.set_tilt(ev.tilt);
         stroke.extend(
             StrokePoint {
                 pos,

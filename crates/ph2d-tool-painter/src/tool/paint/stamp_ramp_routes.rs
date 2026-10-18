@@ -55,9 +55,8 @@ impl PainterTool {
         let mut touched: Option<Region> = None;
         for d in dabs {
             let spec = BrushSpec {
-                radius_px: d.radius_px,
                 color: d.color,
-                ..*brush
+                ..brush.at_dab(d)
             };
             let ramp = if d.color_shift == [0.0; 3] {
                 ramp
@@ -168,9 +167,8 @@ impl PainterTool {
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
             let spec = BrushSpec {
-                radius_px: d.radius_px,
                 color: d.color,
-                ..*brush
+                ..brush.at_dab(d)
             };
             // The Rake heading is the dab's own smoothed path direction `d.dir` (computed once in the
             // engine, where the path geometry is known). Both slots read the same heading; `dab_basis`
@@ -178,7 +176,7 @@ impl PainterTool {
             // Jitter Rotate spins the whole footprint (falloff + Shape + View-Grain); per-slot Random Angle
             // stays the basis `extra_rot = [1, 0]` so the pattern-within isn't double-rotated.
             let rotor = spec.dab_rotor(d);
-            let fp = spec.dab_footprint(rotor);
+            let fp = spec.dab_footprint_of(d);
             // O Randomize Color deste carimbo desloca a cor da rampa ([`ph2d_painter_brush::RampPaint::shift`]).
             let rampa = ph2d_painter_brush::RampPaint {
                 shift: d.color_shift,

@@ -96,7 +96,12 @@ impl Stroke {
             stroke_radius_px: self.spec.clamped_radius(),
             step: self.dab_step,
             ante: self.dab_ante,
+            tilt: None,
         };
+        // A caneta DEITADA (W6) antes da ponta afilada: o taper escala a ponta que a caneta fez.
+        if let Some(t) = self.tilt_do_dab() {
+            self.deita(&mut dab, t);
+        }
         // The TAPER, applied here and ONLY here, to every dab this engine emits — the instant it is
         // emitted, at the position the pointer put it. ⚠️ Nothing is ever held back: a taper is a
         // property of a MARK, and an engine that withholds dabs to learn their distance-to-the-end has
@@ -150,6 +155,7 @@ impl Stroke {
             stroke_radius_px: self.spec.clamped_radius(),
             step: [0.0, 0.0],
             ante: None,
+            tilt: None,
         }
     }
 }

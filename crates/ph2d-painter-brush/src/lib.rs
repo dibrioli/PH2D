@@ -72,6 +72,9 @@ mod line_speed_probe; // sonda do arremesso (plano 38 W2)
 mod line_speed_tests; // os gates do Speed Shapes (plano 38 W2)
 pub mod mask_ops;
 pub mod material;
+pub mod pen;
+#[cfg(test)]
+mod pen_tests;
 /// The **local plane** fitted to a dab's footprint — the engine behind Flatten / Scrape / Fill. Tilted,
 /// which is the whole point: a horizontal fit cuts a crater into a hillside.
 pub mod plane;
@@ -167,6 +170,7 @@ pub use footprint::{DAB_FLATTEN_MAX, FootprintCurve, FootprintDeform};
 pub use height::{DepthSource, DrawTo};
 pub use jitter::{ColorJitterScope, apply_color_shift};
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
+pub use pen::{DabRotation, DabTilt, Pen, Tilt as PenTilt};
 pub use ramp_alpha::{
     RampAlphaMode, RampIndex, RampPaint, ShapeRampLayers, compose_shape_ramp_layers, shift_ramp_lut,
 };

@@ -98,10 +98,11 @@ const DO_MEIO: &str = "a porta do meio (`set_paint_media`) é a dona";
 const DO_SCULPT: &str = "canal derivado do Sculpt (`sculpt_panel.rs`)";
 const AQUARELA: &str = "lido só pela Watercolor";
 const IMPASTO: &str = "lido só pelo Impasto";
+const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs do pincel (`dabRotation`…`tiltLag`, W6), no mapa `engine`";
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 66] = [
+pub const CAMPOS_FORA: [(&str, &str); 67] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
@@ -131,6 +132,7 @@ pub const CAMPOS_FORA: [(&str, &str); 66] = [
     ("dash_ratio", DO_GESTO),
     ("dash_samples", DO_GESTO),
     ("needs_heading", DO_SCULPT),
+    ("pen_tilt", DOS_KNOBS),
     ("watercolor", DO_MEIO),
     ("impasto", DO_MEIO),
     ("edge_gain", AQUARELA),

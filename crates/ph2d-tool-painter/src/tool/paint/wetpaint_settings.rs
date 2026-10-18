@@ -69,8 +69,36 @@ impl crate::PainterTool {
                 d.strength_min = (1.0 - po) as f32;
                 d.strength_curve = k.get(Knob::PressureOpacityCurve) as f32;
             }
+            // A caneta (W6): a curva do tamanho, o piso/tecto da mão, a suavização e a corda.
+            d.size_curve = k.get(Knob::PressureSizeCurve) as f32;
+            d.pen = ph2d_painter_brush::Pen {
+                floor: k.get(Knob::PressureFloor) as f32,
+                ceiling: k.get(Knob::PressureCeiling) as f32,
+                smoothing: k.get(Knob::PressureSmoothing) as f32,
+                pulled_string_px: k.get(Knob::PulledString) as f32,
+                tilt: d.pen.tilt,
+            };
         }
         d
+    }
+
+    /// ⭐ **A inclinação do PINCEL** (W6): no Wet Paint a dos knobs do pincel ([`Knob::DabRotation`] …
+    /// [`Knob::TiltLag`]); nos outros meios a do pincel do tool (o neutro, a lei de antes).
+    #[must_use]
+    pub(crate) fn inclinacao_do_pincel(&self) -> ph2d_painter_brush::PenTilt {
+        if !self.paint.wetpaint.armed {
+            return self.paint.brush.pen_tilt;
+        }
+        let k = &self.paint.wetpaint.knobs;
+        ph2d_painter_brush::PenTilt {
+            rotation: ph2d_painter_brush::DabRotation::from_index(k.get(Knob::DabRotation)),
+            start_deg: k.get(Knob::TiltStart) as f32,
+            full_deg: k.get(Knob::TiltFull) as f32,
+            width: k.get(Knob::TiltWidth) as f32,
+            length: k.get(Knob::TiltLength) as f32,
+            smooth: k.get(Knob::TiltSmooth) as f32,
+            lag_px: k.get(Knob::TiltLag) as f32,
+        }
     }
 }
 

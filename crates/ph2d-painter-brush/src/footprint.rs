@@ -261,6 +261,24 @@ impl FootprintDeform {
         [ru * self.cos - rv * self.sin, ru * self.sin + rv * self.cos]
     }
 
+    /// O referencial do eixo maior (`[cos, sin]`).
+    #[must_use]
+    pub fn frame(self) -> [f32; 2] {
+        [self.cos, self.sin]
+    }
+
+    /// Esta pegada com o referencial do eixo maior `frame` (unitário) e a fracção do menor `minor` — a
+    /// curvatura, a quina e o rotor das cerdas ficam (a ponta deitada da caneta, W6).
+    #[must_use]
+    pub fn with_frame(self, frame: [f32; 2], minor: f32) -> Self {
+        Self {
+            cos: frame[0],
+            sin: frame[1],
+            inv_minor: 1.0 / minor.clamp(1.0 - DAB_FLATTEN_MAX, 1.0),
+            ..self
+        }
+    }
+
     /// A fração do eixo MAIOR que o eixo MENOR mede (`1` = redondo, `1 − Flatten` achatado).
     ///
     /// É o número de que a admissibilidade da LUT do filme é feita ([`crate::height_film::FilmLut`]):

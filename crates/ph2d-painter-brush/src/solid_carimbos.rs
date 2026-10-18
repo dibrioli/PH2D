@@ -118,6 +118,7 @@ fn carimbo(
         stroke_radius_px: r,
         step: [0.0, 0.0],
         ante: None,
+        tilt: None,
     }
 }
 

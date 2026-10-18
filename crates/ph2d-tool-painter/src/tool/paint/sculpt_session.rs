@@ -231,12 +231,8 @@ impl PainterTool {
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
-            let spec = ph2d_painter_brush::BrushSpec {
-                radius_px: d.radius_px,
-                ..*brush
-            };
-            let rotor = spec.dab_rotor(d);
-            let fp = spec.dab_footprint(rotor);
+            let spec = brush.at_dab(d);
+            let fp = spec.dab_footprint_of(d);
             let shape_basis = shape_active.then(|| {
                 ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,

@@ -33,9 +33,11 @@ impl Stroke {
     /// mesma mola.
     pub fn settle(&mut self, out: &mut Vec<Dab>) {
         out.clear();
+        // A CORDA não puxa com a mão parada: ela só anda quando a mão se afasta (W6).
         if !self.started
             || self.spec.stroke_method != StrokeMethod::Space
             || self.spec.ribbon_active()
+            || self.dynamics.pen.pulled_string_px > 0.0
         {
             return;
         }
@@ -89,8 +91,15 @@ impl Stroke {
     /// incoming sample by `1 − intensity` (clamped to a floor), so a higher intensity lags more and
     /// filters out hand tremor. At intensity `0` the filtered point is the sample itself (raw,
     /// real-time). Position only — pressure passes through.
+    /// ⭐ Com a CORDA ligada ([`crate::Pen::pulled_string_px`], W6) ela toma o lugar do lazy-mouse: o
+    /// pincel fica parado até a mão se afastar mais do que ela e então segue-a a essa distância.
     pub(super) fn stabilize(&mut self, sample: StrokePoint) -> StrokePoint {
-        self.stab_pos = lazy_mouse_step(self.stab_pos, sample.pos, self.spec.stabilizer);
+        let corda = self.dynamics.pen.pulled_string_px;
+        self.stab_pos = if corda > 0.0 {
+            crate::pen::pulled_string_step(self.stab_pos, sample.pos, corda)
+        } else {
+            lazy_mouse_step(self.stab_pos, sample.pos, self.spec.stabilizer)
+        };
         StrokePoint {
             pos: self.stab_pos,
             pressure: sample.pressure,

@@ -72,6 +72,8 @@ pub struct Dab {
     /// and the deliberate single marks: Drag Dot, Anchored, Grid Stamp) and with Continuous Spacing off.
     /// With it on, the dab is a CAPSULE back to the previous centre ([`Dab::capsula`], doc 31 §5).
     pub step: [f32; 2],
+    /// A caneta DEITADA neste dab (W6; `None` = de pé, o rato): lida por [`BrushSpec::dab_footprint_of`].
+    pub tilt: Option<crate::DabTilt>,
     /// The STATE of the dab the [`Self::step`] comes from: each sub-dab carries `lerp(front, ante, k/n)`
     /// of it (prompt 40). `None` = the front's own, so the capsule only shifts the centre.
     pub ante: Option<Ante>,
@@ -163,6 +165,8 @@ pub struct Stroke {
     /// The stabilizer's lazy-mouse filtered position (lags the cursor by the stabilizer intensity).
     /// The path is built from this, not the raw cursor — that is what regularises a shaky hand.
     stab_pos: [f32; 2],
+    /// A caneta que chega e a que o pincel LÊ (W6, [`mod@self::pen_input`]).
+    pen: pen_input::PenState,
     /// The most recent *raw* (un-stabilized) sample, so [`Stroke::finish`] can catch the lagged
     /// stroke up to the real release point on pointer-up.
     last_raw_pos: [f32; 2],
@@ -309,6 +313,7 @@ impl Stroke {
             ribbon_rung_accum: 0.0,
             ribbon_rung_far: None,
             stab_pos: [0.0, 0.0],
+            pen: pen_input::PenState::default(),
             last_raw_pos: [0.0, 0.0],
             last_raw_pressure: 1.0,
             heading: [0.0, 0.0],
@@ -335,6 +340,7 @@ impl Stroke {
     /// finalise via [`Stroke::fill_segment`]).
     pub fn begin(&mut self, p: StrokePoint, out: &mut Vec<Dab>) {
         out.clear();
+        let p = self.le_a_mao(p, true);
         self.last_pos = p.pos;
         self.last_pressure = p.pressure;
         self.accum = 0.0;
@@ -376,9 +382,7 @@ impl Stroke {
         // The fourth is the deposit's PUSH (the bow-wave bank aims by the heading): derived from the
         // spec itself rather than enumerated by a caller, so it cannot rot the way this list once did.
         self.warming = self.spec.stroke_method.rake_warmup_eligible()
-            && (self.spec.texture.rake
-                || self.spec.shape.rake
-                || self.spec.shape.flow
+            && (self.spec.follows_stroke()
                 || self.spec.needs_heading
                 || self.spec.effective_impasto_push() > 0.0);
         self.sampler.reset(p);
@@ -402,6 +406,7 @@ impl Stroke {
         if !self.started {
             return;
         }
+        let raw = self.le_a_mao(raw, false);
         let avg = self.sampler.push_average(raw);
         self.last_raw_pos = avg.pos;
         self.last_raw_pressure = avg.pressure;
@@ -521,20 +526,12 @@ impl Stroke {
         out.clear();
         if self.started && self.spec.stroke_method == StrokeMethod::Space {
             if self.spec.ribbon_active() {
-                // ⚠️ **O PEN-UP NÃO ACRESCENTA NADA, e é uma decisão de PRODUTO do Enio**
-                // (2026-08-15: *"no mouse up o fim do traço cresce um segmento indesejado; iniba o
-                // traço residual no mouse up"*). A fita termina exactamente onde o último tique a
-                // deixou.
-                //
-                // ⚠️ **Isto REVOGA uma cerca de Chesterton, e ela fica escrita em vez de apagada:**
-                // havia aqui uma CAUDA que soltava a coleira (o termo de mola saía e ficavam a
-                // inércia, o atrito e a gravidade) e percorria até a ponta assentar — o
-                // *follow-through* da animação clássica, e o que o Alchemy e o Dyna do Krita fazem.
-                // Ela custava **71 dabs / 84 px** no peso que shipa (30/34,8 no 0,20 · 77/91,2 no
-                // 1,00), e o artista lê esse crescimento pós-soltura como um segmento a mais, não
-                // como peso. O argumento contra o *salto até o cursor* continua de pé — a tinta
-                // **deve** ficar atrás; o que morreu foi a ideia de que ela continua a chegar
-                // depois de a mão soltar.
+                // ⚠️ **O PEN-UP NÃO ACRESCENTA NADA** (decisão de PRODUTO do Enio, 2026-08-15: «iniba o
+                // traço residual no mouse up»): a fita termina onde o último tique a deixou. ⚠️ Revoga a
+                // CAUDA do *follow-through* (Alchemy, Dyna do Krita): custava 71 dabs / 84 px no peso que
+                // shipa e lia-se como um segmento a mais. A tinta fica atrás; não continua a chegar.
+            } else if self.dynamics.pen.pulled_string_px > 0.0 {
+                // A CORDA solta no pen-up: o traço acaba onde o pincel está (W6).
             } else {
                 self.walk_smoothed(
                     StrokePoint {
@@ -686,6 +683,8 @@ mod grid;
 /// The lazy-mouse stabilizer (`stabilize`/`settle`/`lazy_mouse_step`) — split out for the LOC-cap reason.
 pub mod stabilize;
 use geom::{dist, hermite, lerp};
+/// A caneta no traço (W6): a pressão lida e a inclinação que chega.
+mod pen_input;
 /// **OS CAMINHADORES** — como uma corda do caminho vira uma corrida de dabs (`walk_space` e o
 /// achatador `walk_smoothed`). Corte por ASSUNTO: *como um caminho vira dabs* é pergunta diferente
 /// de *o que é um traço*, e é onde vive todo o dash / jitter / taper / atenuação / heading.

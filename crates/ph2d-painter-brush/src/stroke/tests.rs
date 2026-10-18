@@ -1070,6 +1070,7 @@ fn circle_degenerate_axis_fills_nothing() {
         stroke_radius_px: 1.0,
         step: [0.0, 0.0],
         ante: None,
+        tilt: None,
     }];
     s.fill_ellipse_preview([10.0, 10.0], [1.0, 0.0], 30.0, 0.2, &mut out);
     assert!(
@@ -1192,6 +1193,7 @@ fn curve_fill_needs_two_points() {
         stroke_radius_px: 1.0,
         step: [0.0, 0.0],
         ante: None,
+        tilt: None,
     }];
     s.fill_curve_preview(&[[5.0, 5.0]], &mut out);
     assert!(

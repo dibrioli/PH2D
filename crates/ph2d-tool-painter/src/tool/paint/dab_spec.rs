@@ -38,6 +38,7 @@ impl PainterTool {
     #[must_use]
     pub(crate) fn authored_spec(&self) -> ph2d_painter_brush::BrushSpec {
         let mut brush = self.paint.brush;
+        brush.pen_tilt = self.inclinacao_do_pincel();
         // Onde o meio não oferece o Accumulate, os dois interruptores saem na FÁBRICA (desligados): o
         // *Sync with other tools* leva-os de um slot para outro, e o painel já não os mostra ali.
         if !self.brush_settings().accumulate_offered() {

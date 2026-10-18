@@ -336,12 +336,8 @@ impl PainterTool {
             // Per-dab silhouette closure — the impasto walk's exact recipe
             // (spec at the dab's radius → rotor → footprint → Shape basis in
             // the stroke frame), evaluated per engine cell (cell − 1 = px).
-            let spec = BrushSpec {
-                radius_px: d.radius_px,
-                ..*brush
-            };
-            let rotor = spec.dab_rotor(d);
-            let fp = spec.dab_footprint(rotor);
+            let spec = brush.at_dab(d);
+            let fp = spec.dab_footprint_of(d);
             let dab_index = didx;
             let tex_rng = dab_rng.enter(&groups, dab_index);
             let shape_basis = (shape_active || cerdas).then(|| {
@@ -413,7 +409,8 @@ impl PainterTool {
             // último bit do raio, e com a água a correr no traço esse bit vira píxeis (o censo mediu o
             // Jitter Rotate e o ângulo a «mudar a tinta» de um carimbo sem ângulo). O Shape e o Grain
             // seguem a pegada rodada (`fp`): neles o ângulo é real.
-            let fp_raio = if !spec.pegada_anisotropica() && spec.dab_curve.is_flat() {
+            let deitada = d.tilt.is_some_and(|t| t.stretches());
+            let fp_raio = if !spec.pegada_anisotropica() && spec.dab_curve.is_flat() && !deitada {
                 ph2d_painter_brush::FootprintDeform::new(0.0, 0)
             } else {
                 fp

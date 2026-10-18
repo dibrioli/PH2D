@@ -119,9 +119,8 @@ impl PainterTool {
         let mut touched: Option<Region> = None;
         for d in dabs {
             let spec = BrushSpec {
-                radius_px: d.radius_px,
                 color: d.color,
-                ..*brush
+                ..brush.at_dab(d)
             };
             if let Some(r) = blit_stamp(
                 buf,
@@ -195,9 +194,8 @@ impl PainterTool {
         let mut touched: Option<Region> = None;
         for d in dabs {
             let spec = BrushSpec {
-                radius_px: d.radius_px,
                 color: d.color,
-                ..*brush
+                ..brush.at_dab(d)
             };
             if let Some(r) = blit_canvas_cached(
                 buf,
@@ -398,9 +396,8 @@ impl PainterTool {
             let tex_rng = dab_rng.enter(&groups, di);
             // Per-dab Randomize Color rides on `d.color`; the radius is already jittered in `d`.
             let spec = BrushSpec {
-                radius_px: d.radius_px,
                 color: d.color,
-                ..*brush
+                ..brush.at_dab(d)
             };
             // The Rake heading is the dab's own smoothed path direction `d.dir` (computed once in the
             // engine). Shape draws its Random from `tex_rng` here, *before* the Grain, so a brush with
@@ -409,7 +406,7 @@ impl PainterTool {
             // Jitter Rotate spins the whole footprint (falloff + Shape + View-Grain); the per-slot Random
             // Angle stays the basis `extra_rot = [1, 0]` so the pattern-within isn't double-rotated.
             let rotor = spec.dab_rotor(d);
-            let fp = spec.dab_footprint(rotor);
+            let fp = spec.dab_footprint_of(d);
             let shape_basis = shape_active.then(|| {
                 ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,

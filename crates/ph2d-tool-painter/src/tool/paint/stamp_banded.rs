@@ -315,9 +315,8 @@ fn stamp_plain_serial(
     let mut touched: Option<DirtyRect> = None;
     for d in dabs {
         let spec = BrushSpec {
-            radius_px: d.radius_px,
             color: d.color,
-            ..*brush
+            ..brush.at_dab(d)
         };
         if let Some(r) = stamp_dab_textured_masked(
             buf,
@@ -410,9 +409,8 @@ fn stamp_plain_dabs_banded_run(
                 continue;
             }
             let spec = BrushSpec {
-                radius_px: d.radius_px,
                 color: d.color,
-                ..*brush
+                ..brush.at_dab(d)
             };
             // A banda é a TELA: altura da banda, centro deslocado. O `v` do kernel sai idêntico e o
             // recorte é o `clamp` que ele já faz — e a máscara da banda é indexada nas MESMAS

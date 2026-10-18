@@ -75,6 +75,7 @@ fn os_sub_dabs_vao_do_centro_anterior_ao_dab() {
         stroke_radius_px: 20.0,
         step: [4.0, 0.0],
         ante: None,
+        tilt: None,
     };
     let s: Vec<_> = sub_dabs(&d, 1.0)
         .map(|s| (s.center, s.arc_len, s.step))
@@ -343,6 +344,7 @@ fn o_sub_dab_leva_o_estado_interpolado() {
             rotation: [1.0, 0.0],
             arc_len: 90.0,
         }),
+        tilt: None,
     };
     let ec = d.capsula(&spec).expect("cápsula").estado();
     assert_eq!(

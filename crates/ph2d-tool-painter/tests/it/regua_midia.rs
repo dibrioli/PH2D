@@ -319,3 +319,73 @@ pub fn rampa(rgba: &[u8], w: u32, h: u32) -> (f64, f64) {
     let ((l0, c0), (l1, c1)) = (coluna(120), coluna(310));
     (l0 / l1.max(1e-6), c0 / c1.max(1e-6))
 }
+
+/// O recorte da RAMPA da bancada (linha 2 esquerda, `mede_todos.sh`): x, y, largura, altura.
+pub const RAMPA: [u32; 4] = [20, 240, 560, 120];
+
+/// ⭐ **As PONTAS da rampa** (W6, `ferramentas/pontas_rampa.py`): a largura a 5 % e a 95 % do comprimento ÷ a
+/// largura a 50 %, na média das duas — o `largura_5_50_95` de `mede_traco.py` (papel = mediana das 2 linhas
+/// de cima e de baixo do recorte, colunas da 1.ª à última com cobertura > 0,08, largura de cada uma a meio do
+/// máximo dela, e `0` onde o máximo é < 0,08). Rebelle: óleo 0,81, tinta 0,68, lápis 0,56.
+pub fn pontas(rgba: &[u8], w: u32) -> f64 {
+    let [x0, y0, cw, ch] = RAMPA;
+    let (cw, ch) = (cw as usize, ch as usize);
+    let px = |x: usize, y: usize| {
+        let i = ((y0 as usize + y) * w as usize + x0 as usize + x) * 4;
+        [rgba[i], rgba[i + 1], rgba[i + 2]].map(f64::from)
+    };
+    let mut papel = [0.0; 3];
+    for (k, p) in papel.iter_mut().enumerate() {
+        let mut v: Vec<f64> = [0, 1, ch - 2, ch - 1]
+            .iter()
+            .flat_map(|&y| (0..cw).map(move |x| (x, y)))
+            .map(|(x, y)| px(x, y)[k])
+            .collect();
+        v.sort_by(f64::total_cmp);
+        let n = v.len();
+        *p = 0.5 * (v[(n - 1) / 2] + v[n / 2]);
+    }
+    let c = |x: usize, y: usize| {
+        let a = px(x, y);
+        (0..3).map(|k| (a[k] - papel[k]).abs()).fold(0.0, f64::max) / 255.0
+    };
+    let tem = |x: usize| (0..ch).any(|y| c(x, y) > 0.08);
+    let (Some(xa), Some(xb)) = ((0..cw).find(|&x| tem(x)), (0..cw).rfind(|&x| tem(x))) else {
+        return 0.0;
+    };
+    let larg: Vec<f64> = (xa..=xb)
+        .map(|x| {
+            let col: Vec<f64> = (0..ch).map(|y| c(x, y)).collect();
+            let m = col.iter().copied().fold(0.0, f64::max);
+            if m < 0.08 {
+                return 0.0;
+            }
+            let a = col.iter().position(|&v| v >= 0.5 * m).unwrap();
+            let b = col.iter().rposition(|&v| v >= 0.5 * m).unwrap();
+            (b - a + 1) as f64
+        })
+        .collect();
+    let n = larg.len();
+    let at = |f: f64| larg[(f * n as f64) as usize];
+    (at(0.05) + at(0.95)) / (2.0 * at(0.5)).max(1e-6)
+}
+
+/// A régua das pontas é a do Python: uma rampa sintética (largura `8 + 32·sen(πt)`, x 60 → 560, sem AA) mede
+/// o mesmo que `pontas_rampa.py` sobre a MESMA imagem (18/10): `15/41/15` ⇒ `0,365853…`.
+#[test]
+fn a_regua_das_pontas_e_a_do_python() {
+    let (w, h) = (1000usize, 640usize);
+    let mut px = vec![255u8; w * h * 4];
+    for x in 60..=560usize {
+        let t = (x - 60) as f64 / 500.0;
+        let meia = ((8.0 + 32.0 * (t * std::f64::consts::PI).sin()) / 2.0).round() as usize;
+        for y in 300 - meia..=300 + meia {
+            px[(y * w + x) * 4..(y * w + x) * 4 + 3].copy_from_slice(&[40, 60, 200]);
+        }
+    }
+    let p = pontas(&px, w as u32);
+    assert!((p - PONTAS_DA_SINTETICA).abs() < 1e-9, "{p}");
+}
+
+/// O número do `pontas_rampa.py` sobre a rampa sintética de [`a_regua_das_pontas_e_a_do_python`].
+const PONTAS_DA_SINTETICA: f64 = 0.365_853_658_536_585_36;

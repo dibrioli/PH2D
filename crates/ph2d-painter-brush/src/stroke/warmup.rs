@@ -29,8 +29,14 @@ impl Stroke {
     /// Flush the held start-up dabs into `out`, stamping the settled `heading` on each so the stroke opens
     /// already at the correct Rake angle, and end the warm-up (later dabs flow with the live heading).
     pub(super) fn release_warmup(&mut self, out: &mut Vec<Dab>) {
+        let spec = self.spec;
         for mut d in self.warm_buf.drain(..) {
+            // A ponta deitada roda com a direcção: o eixo maior refaz-se com a nova (W6).
+            let antes = d.tilt.map(|_| spec.tilt_scale(&d));
             d.dir = self.heading;
+            if let Some(a) = antes {
+                d.radius_px *= spec.tilt_scale(&d) / a.max(1e-6);
+            }
             out.push(d);
         }
         self.warming = false;

@@ -357,6 +357,7 @@ mod tests {
             stroke_radius_px: 10.0,
             step: [0.0, 0.0],
             ante: None,
+            tilt: None,
         }
     }
 

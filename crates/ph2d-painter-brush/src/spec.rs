@@ -277,6 +277,9 @@ pub struct BrushSpec {
     /// they diverged: the artist unticks a checkbox about a *silhouette image* and the *groove* loses its
     /// start. So the enumeration gained its missing member instead of the Chisel borrowing someone else's.
     pub needs_heading: bool,
+    /// ⭐ **A caneta DEITADA** (W6, [`crate::pen::Tilt`]): a ponta que a inclinação estica e alisa, e a
+    /// rotação do carimbo. O neutro ([`crate::PenTilt::default`]) é a lei de antes ao bit.
+    pub pen_tilt: crate::PenTilt,
 
     // ── Dab flatten + rotate (Procreate "Shape" panel gizmo; Enio 2026-06-26) ───────────────────
     /// **Flatten** the dab footprint, `0..1`: `0` = round, → `1` = a thin ellipse (squished on the

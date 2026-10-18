@@ -165,6 +165,7 @@ fn the_one_shot_deposit_matches_the_live_feed() {
             stroke_radius_px: 10.0,
             step: [0.0, 0.0],
             ante: None,
+            tilt: None,
         })
         .collect();
     // One shot, through the commit door.
@@ -585,6 +586,7 @@ fn the_route_belt_refuses_a_non_incremental_live_batch() {
         stroke_radius_px: 10.0,
         step: [0.0, 0.0],
         ante: None,
+        tilt: None,
     }];
     t.stamp_dabs_wetpaint(&dabs, &brush);
     assert_eq!(

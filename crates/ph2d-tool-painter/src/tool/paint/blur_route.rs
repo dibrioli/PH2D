@@ -93,8 +93,7 @@ impl PainterTool {
             let amount = d.coverage;
             // Per-dab frame for the Grain path: the Jitter-Rotate footprint + the Rake heading (`d.dir`)
             // + the Random draw (`tex_rng`), computed ONCE per dab so the wrapped Tiling copies share it.
-            let rotor = base.dab_rotor(d);
-            let fp = base.dab_footprint(rotor);
+            let fp = base.dab_footprint_of(d);
             let sbasis = (want_grain && shape_active).then(|| {
                 ph2d_painter_brush::texture::shape_basis(
                     &base.shape,

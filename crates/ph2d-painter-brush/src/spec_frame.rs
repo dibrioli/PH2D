@@ -10,7 +10,10 @@ impl BrushSpec {
     /// [`Self::dab_rotor`]).
     #[must_use]
     pub fn follows_stroke(&self) -> bool {
-        self.shape.rake || self.shape.flow || self.texture.rake
+        self.shape.rake
+            || self.shape.flow
+            || self.texture.rake
+            || self.pen_tilt.rotation == crate::DabRotation::FollowTrajectory
     }
 
     /// The rotor that turns the dab frame onto the stroke tangent `dab_dir`, or the identity `[1, 0]`
@@ -39,6 +42,58 @@ impl BrushSpec {
     #[must_use]
     pub fn dab_rotor(&self, dab: &crate::Dab) -> [f32; 2] {
         crate::heading::rotate(dab.rotation, self.follow_rotor(dab.dir))
+    }
+
+    /// ⭐ **A pegada DESTE dab** — a porta de todas as rotas: a do pincel rodada pelo rotor do dab
+    /// ([`Self::dab_footprint`]) e, com a caneta deitada ([`crate::Dab::tilt`]), esticada por ela. Sem
+    /// caneta deitada é `dab_footprint(dab_rotor(d))` ao bit. O raio do dab já é o eixo maior
+    /// ([`Self::tilt_scale`]), então a fracção do menor e o referencial bastam.
+    #[must_use]
+    pub fn dab_footprint_of(&self, d: &crate::Dab) -> crate::footprint::FootprintDeform {
+        let fp = self.dab_footprint(self.dab_rotor(d));
+        match d.tilt {
+            Some(t) if t.stretches() => {
+                let (_, frame, minor) = t.compose(fp.frame(), fp.minor_fraction());
+                fp.with_frame(frame, minor)
+            }
+            _ => fp,
+        }
+    }
+
+    /// O eixo maior da pegada deitada de `d`, em raios do pincel (`1` sem caneta deitada).
+    #[must_use]
+    pub fn tilt_scale(&self, d: &crate::Dab) -> f32 {
+        match d.tilt {
+            Some(t) if t.stretches() => {
+                let fp = self.dab_footprint(self.dab_rotor(d));
+                t.compose(fp.frame(), fp.minor_fraction()).0
+            }
+            _ => 1.0,
+        }
+    }
+
+    /// ⭐ **O pincel DESTE dab** — o raio dele e, com a caneta deitada a alisar, o grão mais raso (W6:
+    /// `grain_depth × (1 − smooth)`). Sem caneta é o `BrushSpec { radius_px: d.radius_px, ..*self }` de
+    /// sempre, ao bit.
+    #[must_use]
+    pub fn at_dab(&self, d: &crate::Dab) -> Self {
+        let mut s = Self {
+            radius_px: d.radius_px,
+            ..*self
+        };
+        if let Some(t) = d.tilt
+            && t.smooth > 0.0
+        {
+            s.grain_depth = self.grain_depth.clamp(0.0, 1.0) * (1.0 - t.smooth);
+        }
+        s
+    }
+
+    /// A caneta muda a pegada ou o grão POR DAB (a rotação do PenTilt, a ponta deitada, o grão alisado):
+    /// as rotas de carimbo constante (as caches) não a servem.
+    #[must_use]
+    pub fn pen_varies_dabs(&self) -> bool {
+        self.pen_tilt.active()
     }
 
     /// The dab footprint for a composed per-dab `rotor` ([`Self::dab_rotor`]).

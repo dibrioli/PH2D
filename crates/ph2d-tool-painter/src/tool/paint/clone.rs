@@ -157,8 +157,7 @@ impl PainterTool {
         for d in dabs {
             // The dab's coverage already carries the Strength, once (BUGS #41).
             let amount = d.coverage;
-            let rotor = base.dab_rotor(d);
-            let fp = base.dab_footprint(rotor);
+            let fp = base.dab_footprint_of(d);
             let sbasis = (want_grain && shape_active).then(|| {
                 ph2d_painter_brush::texture::shape_basis(
                     &base.shape,

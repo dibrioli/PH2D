@@ -626,10 +626,7 @@ impl PainterTool {
         );
         let mut touched: Option<Region> = None;
         for d in dabs {
-            let spec = BrushSpec {
-                radius_px: d.radius_px,
-                ..*brush
-            };
+            let spec = brush.at_dab(d);
             if let Some(r) = blit_color_stamp(
                 buf,
                 w,

@@ -468,6 +468,7 @@ fn the_level_planes_do_not_depend_on_how_the_dabs_are_batched() {
             stroke_radius_px: u.r,
             step: [0.0, 0.0],
             ante: None,
+            tilt: None,
         })
         .collect();
     let planes = |cuts: &[usize]| {

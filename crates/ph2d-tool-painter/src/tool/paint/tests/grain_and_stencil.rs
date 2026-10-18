@@ -205,6 +205,7 @@ fn per_layer_color_grain_stencil_masks_to_the_rect_not_the_whole_dab() {
         stroke_radius_px: 30.0,
         step: [0.0, 0.0],
         ante: None,
+        tilt: None,
     };
     t.stamp_dabs(&[dab]);
     // (32,10): inside the dab radius (dy = 22 < 30) but ABOVE the rect (y < 22.4) → masked = white.

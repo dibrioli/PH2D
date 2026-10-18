@@ -214,6 +214,7 @@ fn o_tamanho_da_camada_chega_ao_barro_e_a_lista_dela_encolhe() {
             stroke_radius_px: 8.0,
             step: [0.0, 0.0],
             ante: None,
+            tilt: None,
         })
         .collect();
     t.paint.composite[0].size = 4.0;

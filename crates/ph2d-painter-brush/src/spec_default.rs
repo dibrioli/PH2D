@@ -116,6 +116,7 @@ impl Default for BrushSpec {
             shape: TextureSettings::default(),
             // Nothing reads `Dab::dir` by default (no rake, no chisel), so the stroke need not warm up.
             needs_heading: false,
+            pen_tilt: crate::PenTilt::default(),
             dab_flatten: 0.0,
             dab_curve: crate::FootprintCurve::flat(),
             dab_angle_deg: 0,

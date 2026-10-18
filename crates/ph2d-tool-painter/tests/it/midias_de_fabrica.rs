@@ -37,6 +37,9 @@ enum Metrica {
     RampaLargura,
     /// A rampa da pressão: a COBERTURA mediana na pressão ~0,46 ÷ na 1 — o esmaecer (prompt 45).
     RampaCobertura,
+    /// ⭐ As PONTAS da rampa da pressão (W6, `regua_midia::pontas`): a largura a 5 % e a 95 % ÷ a de 50 %. Além
+    /// do vale, a BARRA da W6 (05 §3): onde o Rebelle as tem a ≥ 60 % do miolo, as nossas também.
+    Pontas,
     /// A largura a meio do máximo (px): ± 2 px da foto — o controlo é pintado à MESMA largura, então não
     /// distingue nada; é a condição de toda a comparação (05 §4.1).
     Largura,
@@ -56,6 +59,7 @@ impl Metrica {
             Metrica::Ponta => c.ponta,
             Metrica::RampaLargura => c.rampa,
             Metrica::RampaCobertura => c.rampa_cob,
+            Metrica::Pontas => c.pontas,
             Metrica::Largura => m.largura,
         }
     }
@@ -78,6 +82,9 @@ impl Metrica {
             Metrica::RampaLargura => 0.05,
             // Um traço só por foto e nenhuma repetição: não medido. 0,04 deixa o controlo a > 5× dele.
             Metrica::RampaCobertura => 0.04,
+            // A tinta × o marcador do mesmo dia (68 % nos dois) e o óleo × o óleo sujo (81 %): um traço por
+            // foto; 1 px de 40 nas três larguras ≈ 0,03.
+            Metrica::Pontas => 0.04,
             Metrica::Largura => 1.0,
         }
     }
@@ -95,6 +102,8 @@ struct FamiliaC {
     /// A rampa da pressão: a largura e a cobertura (`regua_midia::rampa`).
     rampa: f64,
     rampa_cob: f64,
+    /// As pontas da rampa (`regua_midia::pontas`).
+    pontas: f64,
 }
 
 impl FamiliaC {
@@ -156,6 +165,7 @@ impl FamiliaC {
             ponta: super::regua_midia::ponta(px, w as u32),
             rampa,
             rampa_cob,
+            pontas: super::regua_midia::pontas(px, w as u32),
         }
     }
 }
@@ -174,8 +184,8 @@ struct Midia {
 }
 
 use Metrica::{
-    Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Ponta, RampaCobertura, RampaLargura,
-    Textura, Tinta,
+    Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Ponta, Pontas, RampaCobertura,
+    RampaLargura, Textura, Tinta,
 };
 
 // ⚠️ Os três do óleo levam os valores que o DONO afinou a olho contra o Rebelle (11/10, «vamos deixar esses
@@ -184,28 +194,30 @@ use Metrica::{
 // O Chato e a Tinta (prompt 23, aceites 12/10) são os dois pontos que o dono VIU: a mutação «preset de antes»
 // sangra cada um sozinho (Oil 0,950 · Express 0,906).
 #[rustfmt::skip]
-const MIDIAS: [Midia; 16] = [
+const MIDIAS: [Midia; 17] = [
+    // A aguada lavada (W6): a pressão quase não estreita no Rebelle (`wcwash`, 38/41/38).
+    Midia { preset: "Wet Wash", foto: "wcwash", raio: 20.5, metricas: &[(Pontas, 0.93), (Largura, 41.0)] },
     Midia { preset: "Wet Liner", foto: "wcliner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
-    Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
+    Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317), (Pontas, 0.81)] },
     Midia { preset: "Acrylic Round", foto: "oilround", raio: 19.5, metricas: &[(Cobertura, 0.880), (Borda, 0.595)] },
-    Midia { preset: "Express Oil", foto: "express", raio: 21.0, metricas: &[(Cobertura, 0.700), (Tinta, 0.772)] },
-    Midia { preset: "Graphite 8B", foto: "pencil", raio: 15.0, metricas: &[(Cobertura, 0.798), (Textura, 9.093), (Borda, 0.320), (Orla, 7.0)] },
+    Midia { preset: "Express Oil", foto: "express", raio: 21.0, metricas: &[(Cobertura, 0.700), (Tinta, 0.772), (Pontas, 0.68)] },
+    Midia { preset: "Graphite 8B", foto: "pencil", raio: 15.0, metricas: &[(Cobertura, 0.798), (Textura, 9.093), (Borda, 0.320), (Orla, 7.0), (Pontas, 0.56)] },
     Midia { preset: "Charcoal", foto: "charcoal", raio: 10.5, metricas: &[(Cobertura, 0.384), (Borda, 0.378), (Orla, 15.0)] },
-    Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0)] },
-    Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0)] },
+    Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0), (Pontas, 0.53)] },
+    Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0), (Pontas, 0.45)] },
     // A tinta e o marcador (prompt 42): o Cruzamento é o da foto MOLHADA; a Borda e a Orla só onde o Round
     // não as tem (Ink Bullet: borda 1,00 nos dois; Orla 1 nos marcadores e nas canetas).
-    Midia { preset: "Ink Bullet", foto: "ink", raio: 21.0, metricas: &[(Cobertura, 0.862), (Textura, 0.395), (Cruzamento, 0.117)] },
+    Midia { preset: "Ink Bullet", foto: "ink", raio: 21.0, metricas: &[(Cobertura, 0.862), (Textura, 0.395), (Cruzamento, 0.117), (Pontas, 0.68)] },
     Midia { preset: "Dip Pen", foto: "dippen", raio: 19.0, metricas: &[(Cobertura, 0.856), (Textura, 1.433), (Borda, 0.910), (Cruzamento, 0.223)] },
     Midia { preset: "Ink Brush", foto: "inkbrush", raio: 20.0, metricas: &[(Cobertura, 0.722), (Textura, 1.266), (Borda, 0.793), (Orla, 5.0), (Cruzamento, 0.239)] },
-    Midia { preset: "Marker Bullet", foto: "markerbullet", raio: 20.0, metricas: &[(Cobertura, 0.909), (Textura, 0.658), (Borda, 0.768), (Cruzamento, 0.016)] },
-    Midia { preset: "Marker Liner", foto: "marker", raio: 9.0, metricas: &[(Cobertura, 0.910), (Textura, 2.116), (Borda, 0.716), (Cruzamento, 0.016)] },
+    Midia { preset: "Marker Bullet", foto: "markerbullet", raio: 20.0, metricas: &[(Cobertura, 0.909), (Textura, 0.658), (Borda, 0.768), (Cruzamento, 0.016), (Pontas, 0.65)] },
+    Midia { preset: "Marker Liner", foto: "marker", raio: 9.0, metricas: &[(Cobertura, 0.910), (Textura, 2.116), (Borda, 0.716), (Cruzamento, 0.016), (Pontas, 0.71)] },
     // O aerógrafo (prompt 43): o PÓ — a textura, a uniformidade e a orla larga são dele; o «período» não conta
     // (a repetição do Rebelle varia 0,005, o controlo fica a 0,013 — doc 43 §2).
-    Midia { preset: "Airbrush", foto: "airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (RampaLargura, 0.63), (RampaCobertura, 0.34), (Largura, 26.0)] },
+    Midia { preset: "Airbrush", foto: "airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (RampaLargura, 0.63), (RampaCobertura, 0.34), (Largura, 26.0), (Pontas, 0.8)] },
     // As formas (prompt 44, doc 44 §3): a ponta reta e a pressão que não estreita e ESMAECE (prompt 45, doc 45).
-    Midia { preset: "Wet Flat", foto: "wcflat", raio: 17.0, metricas: &[(Cobertura, 0.315), (Ponta, 0.096), (RampaLargura, 0.829), (RampaCobertura, 0.42), (Largura, 34.0)] },
-    Midia { preset: "Gouache Flat", foto: "gouacheflat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (RampaCobertura, 0.43), (Largura, 39.0)] },
+    Midia { preset: "Wet Flat", foto: "wcflat", raio: 17.0, metricas: &[(Cobertura, 0.315), (Ponta, 0.096), (RampaLargura, 0.829), (RampaCobertura, 0.42), (Largura, 34.0), (Pontas, 0.9)] },
+    Midia { preset: "Gouache Flat", foto: "gouacheflat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (RampaCobertura, 0.43), (Largura, 39.0), (Pontas, 0.87)] },
 ];
 
 pub(super) fn de_fabrica(nome: &str) -> Preset {
@@ -289,6 +301,8 @@ fn cada_preset_parece_a_sua_midia() {
                 Tinta => (nv - r).abs() < 4.0 * met.ruido(),
                 Cruzamento => (nv - r).abs() < 3.0 * met.ruido(),
                 Largura => (nv - r).abs() <= 2.0 * met.ruido(),
+                // A barra da W6: o Rebelle a ≥ 60 % ⇒ nós também.
+                Pontas => no_vale(nv, r, cv) && (r < 0.6 || nv >= 0.6),
                 _ => no_vale(nv, r, cv),
             };
             if !dentro {

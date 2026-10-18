@@ -89,9 +89,35 @@ pub enum Knob {
     /// **A CURVA da pressão → opacidade, do pincel** (prompt 45): a pressão sobe a ela antes da rampa (`1` =
     /// linear; `> 1` esmaece mais depressa no toque leve — o Flat do Rebelle ~1,75). Lido pelo hospedeiro.
     PressureOpacityCurve,
+    /// **A caneta no pincel** (W6, `ph2d_painter_brush::pen`; doc 47_medicao) — todas lidas pelo hospedeiro,
+    /// cada uma com o neutro = a lei de antes ao bit. A CURVA da pressão → tamanho: a MESMA lei da
+    /// [`Knob::PressureOpacityCurve`], no raio (`1` = linear).
+    PressureSizeCurve,
+    /// O PISO da mão: a pressão que o pincel lê como `0` (`0` = nenhum).
+    PressureFloor,
+    /// O TECTO da mão: a pressão que o pincel já lê como `1` (`1` = nenhum; os lápis do Rebelle: 0,6).
+    PressureCeiling,
+    /// A SUAVIZAÇÃO da pressão ao longo do traço (`0` = nenhuma; a fracção que fica da anterior por amostra).
+    PressureSmoothing,
+    /// O «Pulled String»: o comprimento da corda em px (`0` = sem corda; toma o lugar do estabilizador).
+    PulledString,
+    /// A ROTAÇÃO do carimbo: `0` nenhuma · `1` segue o traço · `2` a inclinação da caneta.
+    DabRotation,
+    /// O ângulo à vertical (graus) onde a inclinação começa a contar.
+    TiltStart,
+    /// O ângulo à vertical (graus) onde a inclinação conta inteira.
+    TiltFull,
+    /// O raio ATRAVÉS do azimute com a caneta deitada, em raios (`1` = nenhum; o 8B do Rebelle: 1,2).
+    TiltWidth,
+    /// O raio AO LONGO do azimute com a caneta deitada, em raios (`1` = nenhum; o 8B do Rebelle: 3,3).
+    TiltLength,
+    /// O grão que o lado da ponta alisa, deitada e arrastada ao comprido (`0` = nada).
+    TiltSmooth,
+    /// O atraso da inclinação lida, em px de caminho (`0` = nenhum; o Rebelle: ~170).
+    TiltLag,
 }
 
-pub const KNOB_COUNT: usize = 59;
+pub const KNOB_COUNT: usize = 71;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

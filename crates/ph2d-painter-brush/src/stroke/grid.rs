@@ -77,6 +77,7 @@ impl Stroke {
             stroke_radius_px: radius,
             step: [0.0, 0.0],
             ante: None,
+            tilt: None,
         }
     }
 }

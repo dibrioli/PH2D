@@ -76,16 +76,12 @@ impl PainterTool {
                 .enumerate()
                 .map(|(di, d)| {
                     let tex_rng = dab_rng.enter(&groups, di);
-                    let spec = BrushSpec {
-                        radius_px: d.radius_px,
-                        ..*brush
-                    };
+                    let spec = brush.at_dab(d);
                     // Jitter Rotate spins the whole footprint (and the Shape / View-Grain it drives); the
                     // per-slot Random Angle stays the basis `extra_rot = [1, 0]` so the pattern isn't
                     // double-rotated. Shape draws its Random from `tex_rng` before the Grain
                     // (byte-identical when off); Rake follows `d.dir`.
-                    let rotor = spec.dab_rotor(d);
-                    let fp = spec.dab_footprint(rotor);
+                    let fp = spec.dab_footprint_of(d);
                     let dims = [w as f32, h as f32];
                     let shape_basis = ph2d_painter_brush::texture::shape_basis(
                         &spec.shape,

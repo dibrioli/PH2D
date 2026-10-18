@@ -256,6 +256,7 @@ impl PainterTool {
             stroke_radius_px: r,
             step: [0.0, 0.0],
             ante: None,
+            tilt: None,
         };
         for k in 0..=n {
             #[allow(clippy::cast_precision_loss)]

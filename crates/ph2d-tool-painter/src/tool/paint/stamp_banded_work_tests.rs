@@ -194,6 +194,7 @@ fn spreading_the_same_batch_does_not_make_it_cost_more() {
                     stroke_radius_px: 40.0,
                     step: [0.0, 0.0],
                     ante: None,
+                    tilt: None,
                 }
             })
             .collect()

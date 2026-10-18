@@ -167,6 +167,7 @@ fn pincel_mexido() -> BrushSpec {
         dash_ratio: d.dash_ratio,
         dash_samples: d.dash_samples,
         needs_heading: d.needs_heading,
+        pen_tilt: d.pen_tilt,
         watercolor: d.watercolor,
         impasto: d.impasto,
         // ── os de fora que o Wet Paint não deve ler: mexidos ──
@@ -450,6 +451,15 @@ fn o_pincel_inteiro_vai_e_volta_pelo_json_da_macro() {
     b.dash_ratio = d.dash_ratio + 0.25;
     b.dash_samples = d.dash_samples + 1;
     b.needs_heading = !d.needs_heading;
+    b.pen_tilt = ph2d_painter_brush::PenTilt {
+        rotation: ph2d_painter_brush::DabRotation::PenTilt,
+        start_deg: 30.0,
+        full_deg: 50.0,
+        width: 1.25,
+        length: 3.25,
+        smooth: 0.5,
+        lag_px: 170.0,
+    };
     b.watercolor = !d.watercolor;
     b.impasto = !d.impasto;
 

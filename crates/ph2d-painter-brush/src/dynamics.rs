@@ -20,6 +20,11 @@ pub struct Dynamics {
     /// The coverage CURVE: the pressure is raised to it before the ramp (`1` = linear, the law of
     /// always, bit for bit; `> 1` fades faster at a light touch — prompt 45).
     pub strength_curve: f32,
+    /// The radius CURVE — the SAME law as [`Self::strength_curve`] ([`curve`]), on the radius ramp (W6).
+    pub size_curve: f32,
+    /// The pen before the curves: the floor/ceiling of the hand, the smoothing, the pulled string
+    /// ([`crate::pen`]). [`crate::Pen::default`] = the hand's pressure as it comes, bit for bit.
+    pub pen: crate::Pen,
 }
 
 impl Default for Dynamics {
@@ -32,7 +37,21 @@ impl Default for Dynamics {
             size_min: 0.1,
             strength_min: 0.0,
             strength_curve: 1.0,
+            size_curve: 1.0,
+            pen: crate::Pen::default(),
         }
+    }
+}
+
+/// The pressure CURVE of a channel: `p` raised to `g` (`1` — or a non-positive/NaN `g` — is `p` itself, bit
+/// for bit, without a `powf`). ONE law for the radius and the coverage.
+#[inline]
+#[must_use]
+pub fn curve(pressure: f32, g: f32) -> f32 {
+    if g == 1.0 || g.is_nan() || g <= 0.0 {
+        pressure
+    } else {
+        pressure.clamp(0.0, 1.0).powf(g)
     }
 }
 
@@ -51,19 +70,21 @@ impl Dynamics {
     /// Radius multiplier for a given pressure in `[0, 1]`.
     #[must_use]
     pub fn radius_scale(&self, pressure: f32) -> f32 {
-        ramp(self.size_pressure, self.size_min, pressure)
+        ramp(
+            self.size_pressure,
+            self.size_min,
+            curve(pressure, self.size_curve),
+        )
     }
 
     /// Coverage multiplier for a given pressure in `[0, 1]`.
     #[must_use]
     pub fn coverage_scale(&self, pressure: f32) -> f32 {
-        let g = self.strength_curve;
-        let p = if g == 1.0 || g.is_nan() || g <= 0.0 {
-            pressure
-        } else {
-            pressure.clamp(0.0, 1.0).powf(g)
-        };
-        ramp(self.strength_pressure, self.strength_min, p)
+        ramp(
+            self.strength_pressure,
+            self.strength_min,
+            curve(pressure, self.strength_curve),
+        )
     }
 }
 
@@ -89,7 +110,7 @@ mod tests {
             strength_pressure: false,
             size_min: 0.1,
             strength_min: 0.1,
-            strength_curve: 1.0,
+            ..Default::default()
         };
         assert!((d.radius_scale(0.0) - 1.0).abs() < 1e-6);
         assert!((d.coverage_scale(0.0) - 1.0).abs() < 1e-6);

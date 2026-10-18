@@ -40,8 +40,20 @@ fn abre_sem(m: &mut Mesa, id: ScriptId, s: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn sel(m: &mut Mesa, id: ScriptId) -> Vec<std::ops::Range<usize>> {
-    m.docs().selection_of(id)
+/// A selecção como `(início, fim)` de cada faixa.
+fn sel(m: &mut Mesa, id: ScriptId) -> Vec<(usize, usize)> {
+    m.docs()
+        .selection_of(id)
+        .into_iter()
+        .map(|r| (r.start, r.end))
+        .collect()
+}
+
+/// Os buracos marcados como `(início, fim)` (`None` = sem sessão).
+fn marcas(m: &mut Mesa, id: ScriptId) -> Option<Vec<(usize, usize)>> {
+    m.docs()
+        .snippet_of(id)
+        .map(|v| v.into_iter().map(|r| (r.start, r.end)).collect())
 }
 
 #[test]
@@ -52,21 +64,17 @@ fn o_gancho_entra_com_o_1o_buraco_seleccionado_e_o_tab_anda() {
     assert_eq!(abre_sem(&mut m, id, "upd"), ["update"]);
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     assert_eq!(m.docs().text_of(id).as_deref(), Some(UPDATE));
-    assert_eq!(sel(&mut m, id), [16..20], "`self` seleccionado");
-    assert_eq!(
-        m.docs().snippet_of(id),
-        Some(vec![34..36]),
-        "o `dt` marcado"
-    );
+    assert_eq!(sel(&mut m, id), [(16, 20)], "`self` seleccionado");
+    assert_eq!(marcas(&mut m, id), Some(vec![(34, 36)]), "o `dt` marcado");
     escreve(&mut m, id, "me");
     tecla(&mut m, id, Key::Tab, Modifiers::default());
-    assert_eq!(sel(&mut m, id), [32..34], "Tab: o `dt`");
+    assert_eq!(sel(&mut m, id), [(32, 34)], "Tab: o `dt`");
     tecla(&mut m, id, Key::Tab, shift());
-    assert_eq!(sel(&mut m, id), [16..18], "Shift+Tab: `me` inteiro");
+    assert_eq!(sel(&mut m, id), [(16, 18)], "Shift+Tab: `me` inteiro");
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     escreve(&mut m, id, "t");
     tecla(&mut m, id, Key::Tab, Modifiers::default());
-    assert_eq!(sel(&mut m, id), [45..45], "o `$0`: o corpo, indentado");
+    assert_eq!(sel(&mut m, id), [(45, 45)], "o `$0`: o corpo, indentado");
     assert_eq!(m.docs().snippet_of(id), None, "a sessão acabou");
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     assert_eq!(
@@ -78,7 +86,7 @@ fn o_gancho_entra_com_o_1o_buraco_seleccionado_e_o_tab_anda() {
     tecla(&mut m, id, Key::Char('z'), ctrl());
     tecla(&mut m, id, Key::Char('z'), ctrl());
     assert_eq!(m.docs().text_of(id).as_deref(), Some(UPDATE));
-    assert_eq!(sel(&mut m, id), [16..20]);
+    assert_eq!(sel(&mut m, id), [(16, 20)]);
     tecla(&mut m, id, Key::Char('z'), ctrl());
     assert_eq!(m.docs().text_of(id).as_deref(), Some("upd"));
     // Desfazer acaba a sessão: refeito o modelo, o Tab é o de sempre.
@@ -109,12 +117,12 @@ fn escrever_na_ponta_do_buraco_fica_dentro_dele() {
     escreve(&mut m, id, "Q");
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     tecla(&mut m, id, Key::Tab, shift());
-    assert_eq!(sel(&mut m, id), [16..21], "`selfQ` inteiro");
+    assert_eq!(sel(&mut m, id), [(16, 21)], "`selfQ` inteiro");
     // Apagado, o buraco continua paragem.
     tecla(&mut m, id, Key::Backspace, Modifiers::default());
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     tecla(&mut m, id, Key::Tab, shift());
-    assert_eq!(sel(&mut m, id), [16..16]);
+    assert_eq!(sel(&mut m, id), [(16, 16)]);
 }
 
 #[test]
@@ -191,8 +199,13 @@ fn cada_gancho_da_tabela_tem_esqueleto() {
             h.ident
         );
         let primeiro = sig.trim_start_matches('(').split(':').next().unwrap();
-        let s = sel(&mut m, id)[0].clone();
-        assert_eq!(&t[s], primeiro, "{}: o 1.º parâmetro seleccionado", h.ident);
+        let (a, b) = sel(&mut m, id)[0];
+        assert_eq!(
+            &t[a..b],
+            primeiro,
+            "{}: o 1.º parâmetro seleccionado",
+            h.ident
+        );
     }
 }
 
@@ -207,7 +220,7 @@ fn a_propriedade_do_topo_e_a_chamada_da_api_poem_o_texto_entre_aspas() {
         m.docs().text_of(id).as_deref(),
         Some("ph2d.property(\"name\", default)")
     );
-    assert_eq!(sel(&mut m, id), [15..19], "o nome, dentro das aspas");
+    assert_eq!(sel(&mut m, id), [(15, 19)], "o nome, dentro das aspas");
     escreve(&mut m, id, "altura");
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     escreve(&mut m, id, "1");
@@ -232,7 +245,7 @@ fn a_propriedade_do_topo_e_a_chamada_da_api_poem_o_texto_entre_aspas() {
         m.docs().text_of(id).as_deref(),
         Some("ph2d.set(entity, \"x\", value)")
     );
-    assert_eq!(sel(&mut m, id), [9..15]);
+    assert_eq!(sel(&mut m, id), [(9, 15)]);
 }
 
 #[test]
@@ -249,7 +262,7 @@ fn com_a_lista_aberta_o_tab_e_da_lista() {
     abre(&mut m, id, "upd");
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     tecla(&mut m, id, Key::Tab, Modifiers::default());
-    assert_eq!(sel(&mut m, id), [34..36], "no `dt`");
+    assert_eq!(sel(&mut m, id), [(34, 36)], "no `dt`");
     // Escrito no buraco, a lista abre na pausa: o Tab aceita a sugestão em vez de saltar.
     let l = abre(&mut m, id, "pai");
     assert_eq!(l[0], "pairs");

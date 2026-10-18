@@ -313,13 +313,10 @@ fn map(pos: usize, e: &TextEdit, after: bool) -> usize {
         pos
     } else if pos > o {
         pos - o + n
-    } else if pos == s && s == o {
-        if after { n } else { s }
-    } else if pos == s {
+    } else if pos == s && (s != o || !after) {
+        // No início de uma troca fica antes dela (uma inserção pura, só sem `after`).
         s
-    } else if pos == o {
-        n
-    } else if after {
+    } else if pos == o || after {
         n
     } else {
         s

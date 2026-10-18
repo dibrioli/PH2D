@@ -172,8 +172,9 @@ impl CodeDoc {
                     .replace("{line}", &(line + 1).to_string())
                     .replace("{code}", code);
                 let at = label.len() - code.len() + (s.start - ls).saturating_sub(lead);
+                let name = at..(at + s.len()).min(label.len());
                 ph2d_panel_code::CompletionRow {
-                    matched: vec![at..(at + s.len()).min(label.len())],
+                    matched: vec![name],
                     ink: ph2d_panel_code::Ink::Plain,
                     detail: None,
                     label,

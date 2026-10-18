@@ -55,6 +55,8 @@ pub(crate) type Partilhado = Arc<Mutex<Visto>>;
 
 /// Os sítios de uma definição (bytes no documento do pedido).
 pub(crate) type Sitios = Vec<std::ops::Range<usize>>;
+/// As dicas de tipo de um texto: `(byte, rótulo, com textEdits)`.
+pub(crate) type Tipos = Vec<(usize, String, bool)>;
 /// Os tokens de um texto: `(bytes, tipo, modificadores)`.
 pub(crate) type Tokens = Vec<(std::ops::Range<usize>, u64, u64)>;
 /// `textDocument/codeAction`: o uri e o texto do documento, o byte do início da faixa e os
@@ -87,7 +89,7 @@ pub(crate) struct Plano {
     pub(crate) referir: Option<fn(&str, usize) -> Sitios>,
     /// `textDocument/inlayHint` (I9): `(byte, rótulo, com textEdits)` de cada dica de tipo, como o
     /// 1.70.1 (`kind: 1`, sem `padding`, o ficheiro inteiro); `None` = `null`.
-    pub(crate) tipar: Option<fn(&str) -> Vec<(usize, String, bool)>>,
+    pub(crate) tipar: Option<fn(&str) -> Tipos>,
 }
 
 /// As capacidades que o `luau-lsp` 1.70.1 anunciou (a legenda dos tokens vem daqui).

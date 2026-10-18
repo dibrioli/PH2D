@@ -333,7 +333,8 @@ pub fn paint(
             }
             continue;
         }
-        mind::paint_branch(scene, board, el, v, clip);
+        let frame = cache.frame;
+        mind::paint_branch(scene, board, el, v, clip, (&mut cache.sketch, frame));
         let [ax0, ay0, ax1, ay1] = el.aabb();
         let a = board.camera.to_screen(area, [ax0, ay0]);
         let b = board.camera.to_screen(area, [ax1, ay1]);

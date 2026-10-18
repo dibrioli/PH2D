@@ -19,6 +19,8 @@ const BADGE_TEXT: f64 = 0.7;
 const BADGE_ROUND: f64 = 0.25;
 /// O sal da chave do texto do selo na cache (o do nó usa o id cru).
 const BADGE_SALT: u64 = 1 << 62;
+/// O sal da chave do traço à mão do RAMO na cache do rascunho (o da forma do nó usa o id cru).
+const BRANCH_SALT: u64 = 1 << 61;
 
 /// A letra do mapa de `id` (a da raiz: o Miro escala o mapa todo por ela).
 fn map_font(board: &Board, id: ph2d_board_model::ElementId) -> f64 {
@@ -37,6 +39,7 @@ pub(crate) fn paint_branch(
     el: &Element,
     v: Affine,
     clip: Rect,
+    sketch: (&mut crate::sketch::SketchCache, u64),
 ) {
     let Some([p0, p1, p2, p3]) = ph2d_board_model::mind_branch(&board.doc, el.id) else {
         return;
@@ -44,18 +47,25 @@ pub(crate) fn paint_branch(
     let Some(m) = el.mind() else {
         return;
     };
-    let mut path = BezPath::new();
-    path.move_to(point(p0));
-    path.curve_to(point(p1), point(p2), point(p3));
-    let path = v * path;
-    let width = MIND_BRANCH_WIDTH * map_font(board, el.id) / MIND_FONT * board.camera.zoom;
+    let mut world = BezPath::new();
+    world.move_to(point(p0));
+    world.curve_to(point(p1), point(p2), point(p3));
+    let path = v * world.clone();
+    let world_w = MIND_BRANCH_WIDTH * map_font(board, el.id) / MIND_FONT;
+    let width = world_w * board.camera.zoom;
     let on_screen = path
         .bounding_box()
         .inflate(width, width)
         .intersect(clip)
         .area()
         > 0.0;
-    if on_screen {
+    // W23 B3 — no rascunho o ramo sai à mão como a pílula do nó (antes saía liso).
+    if on_screen && el.style().sketch {
+        let (cache, frame) = sketch;
+        let owner = (board.id.0, el.id.0 | BRANCH_SALT);
+        let color = doc_color(m.color);
+        crate::sketch::paint_branch(scene, cache, frame, owner, el, &world, world_w, color, v);
+    } else if on_screen {
         scene.stroke_path(
             &Stroke::new(width),
             Affine::IDENTITY,
@@ -157,3 +167,7 @@ pub(crate) fn paint_overlay(
         stroke(scene, &minus, thin);
     }
 }
+
+#[cfg(test)]
+#[path = "mind_sketch_tests.rs"]
+mod sketch_tests;

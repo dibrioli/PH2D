@@ -485,6 +485,44 @@ pub(crate) fn paint_connector(
     scene.stroke_path(&line, v, &brush, &r.line);
 }
 
+/// W23 B3 — o RAMO de um nó de mapa em rascunho: a curva dele (`path`, mundo) pelo traço à mão das
+/// setas, na largura `width` (mundo) e na cor do ramo.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_branch(
+    scene: &mut VectorScene,
+    cache: &mut SketchCache,
+    frame: u64,
+    owner: (u64, u64),
+    el: &Element,
+    path: &BezPath,
+    width: f64,
+    color: ph2d_vector::Color,
+    v: Affine,
+) {
+    let mut st = el.style().clone();
+    st.stroke_width = width;
+    let key = hash(|h| {
+        el.seed().hash(h);
+        width.to_bits().hash(h);
+        st.look.cartoonist.hash(h);
+        path_hash(h, path);
+    });
+    let r = cached(&mut cache.rough, owner, key, frame, || {
+        let mut r = Rough::default();
+        let b = ph2d_vector::Shape::bounding_box(path);
+        let rough = hand_roughness(&st, b.width(), b.height(), false, true);
+        collect(
+            hand_line(path, &hand_options(el.seed(), rough, &st, false)),
+            &mut r,
+        );
+        r
+    });
+    let line = Stroke::new(width)
+        .with_caps(Cap::Round)
+        .with_join(Join::Round);
+    scene.stroke_path(&line, v, &Brush::Solid(color), &r.line);
+}
+
 /// As opções do perfect-freehand de um traço: a espessura do estilo, sem afinar quando a pressão não
 /// foi medida (a caneta do Miro não varia a largura), alisado a meio, terminado.
 fn freehand_options(ink: &Ink) -> freehand::Options {

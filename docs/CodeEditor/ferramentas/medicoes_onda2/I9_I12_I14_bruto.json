@@ -1,0 +1,648 @@
+{
+ "defs": "ph2d-5f3b24ab50658691.d.luau",
+ "settings": {
+  "platform": {
+   "type": "standard"
+  },
+  "fflags": {
+   "sync": false
+  },
+  "inlayHints": {
+   "parameterNames": "none",
+   "variableTypes": true,
+   "parameterTypes": true,
+   "functionReturnTypes": true
+  }
+ },
+ "I9_dicas": [
+  {
+   "line": 21,
+   "character": 19,
+   "antes": "function init(self)",
+   "label": ": ()",
+   "kind": 1,
+   "paddingLeft": false,
+   "paddingRight": false,
+   "textEdits": 1,
+   "tooltip": false
+  },
+  {
+   "line": 21,
+   "character": 18,
+   "antes": "function init(self",
+   "label": ": {+ base_x: number?, base_y: number?, ... 3 more ...... *TRUNCATED*",
+   "kind": 1,
+   "paddingLeft": false,
+   "paddingRight": false,
+   "textEdits": 0,
+   "tooltip": false
+  },
+  {
+   "line": 28,
+   "character": 25,
+   "antes": "unction update(self, dt)",
+   "label": ": ()",
+   "kind": 1,
+   "paddingLeft": false,
+   "paddingRight": false,
+   "textEdits": 1,
+   "tooltip": false
+  },
+  {
+   "line": 28,
+   "character": 20,
+   "antes": "function update(self",
+   "label": ": {+ active: T, amplitude: number, base_x: U, ... 9 more ...... *TRUNCATED*",
+   "kind": 1,
+   "paddingLeft": false,
+   "paddingRight": false,
+   "textEdits": 0,
+   "tooltip": false
+  },
+  {
+   "line": 28,
+   "character": 24,
+   "antes": "function update(self, dt",
+   "label": ": V",
+   "kind": 1,
+   "paddingLeft": false,
+   "paddingRight": false,
+   "textEdits": 1,
+   "tooltip": false
+  },
+  {
+   "line": 32,
+   "character": 9,
+   "antes": "  local s",
+   "label": ": number",
+   "kind": 1,
+   "paddingLeft": false,
+   "paddingRight": false,
+   "textEdits": 1,
+   "tooltip": false
+  },
+  {
+   "line": 41,
+   "character": 14,
+   "antes": "  local brilho",
+   "label": ": any",
+   "kind": 1,
+   "paddingLeft": false,
+   "paddingRight": false,
+   "textEdits": 1,
+   "tooltip": false
+  },
+  {
+   "line": 42,
+   "character": 9,
+   "antes": "  local d",
+   "label": ": any",
+   "kind": 1,
+   "paddingLeft": false,
+   "paddingRight": false,
+   "textEdits": 1,
+   "tooltip": false
+  },
+  {
+   "line": 45,
+   "character": 10,
+   "antes": "  local up",
+   "label": ": boolean",
+   "kind": 1,
+   "paddingLeft": false,
+   "paddingRight": false,
+   "textEdits": 1,
+   "tooltip": false
+  }
+ ],
+ "I14_simbolos": [
+  {
+   "nivel": 0,
+   "name": "init",
+   "kind": 12,
+   "detail": "function (self)",
+   "line": 21
+  },
+  {
+   "nivel": 1,
+   "name": "self",
+   "kind": 13,
+   "detail": null,
+   "line": 21
+  },
+  {
+   "nivel": 0,
+   "name": "update",
+   "kind": 12,
+   "detail": "function (self, dt)",
+   "line": 28
+  },
+  {
+   "nivel": 1,
+   "name": "self",
+   "kind": 13,
+   "detail": null,
+   "line": 28
+  },
+  {
+   "nivel": 1,
+   "name": "dt",
+   "kind": 13,
+   "detail": null,
+   "line": 28
+  },
+  {
+   "nivel": 1,
+   "name": "s",
+   "kind": 13,
+   "detail": null,
+   "line": 32
+  },
+  {
+   "nivel": 1,
+   "name": "brilho",
+   "kind": 13,
+   "detail": null,
+   "line": 41
+  },
+  {
+   "nivel": 1,
+   "name": "d",
+   "kind": 13,
+   "detail": null,
+   "line": 42
+  },
+  {
+   "nivel": 1,
+   "name": "up",
+   "kind": 13,
+   "detail": null,
+   "line": 45
+  },
+  {
+   "nivel": 0,
+   "name": "LIMITE",
+   "kind": 13,
+   "detail": null,
+   "line": 52
+  },
+  {
+   "nivel": 0,
+   "name": "ajuda",
+   "kind": 12,
+   "detail": "function (v)",
+   "line": 53
+  },
+  {
+   "nivel": 1,
+   "name": "v",
+   "kind": 13,
+   "detail": null,
+   "line": 53
+  },
+  {
+   "nivel": 0,
+   "name": "M",
+   "kind": 13,
+   "detail": null,
+   "line": 56
+  },
+  {
+   "nivel": 0,
+   "name": "M.soma",
+   "kind": 12,
+   "detail": "function (a, b)",
+   "line": 57
+  },
+  {
+   "nivel": 1,
+   "name": "a",
+   "kind": 13,
+   "detail": null,
+   "line": 57
+  },
+  {
+   "nivel": 1,
+   "name": "b",
+   "kind": 13,
+   "detail": null,
+   "line": 57
+  },
+  {
+   "nivel": 0,
+   "name": "M:metodo",
+   "kind": 12,
+   "detail": "function ()",
+   "line": 60
+  },
+  {
+   "nivel": 1,
+   "name": "dentro",
+   "kind": 13,
+   "detail": null,
+   "line": 61
+  }
+ ],
+ "I12_esqueletos": {
+  "init_anotado/normal": [
+   {
+    "code": 8,
+    "line": 0,
+    "message": "FunctionUnused: Function 'init' is never used; prefix with '_' to silence"
+   }
+  ],
+  "init_anotado/estrito": [
+   {
+    "code": 8,
+    "line": 1,
+    "message": "FunctionUnused: Function 'init' is never used; prefix with '_' to silence"
+   }
+  ],
+  "update_anotado/normal": [
+   {
+    "code": 8,
+    "line": 0,
+    "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence"
+   }
+  ],
+  "update_anotado/estrito": [
+   {
+    "code": 8,
+    "line": 1,
+    "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence"
+   }
+  ],
+  "on_signal_anotado/normal": [
+   {
+    "code": 8,
+    "line": 0,
+    "message": "FunctionUnused: Function 'on_signal' is never used; prefix with '_' to silence"
+   }
+  ],
+  "on_signal_anotado/estrito": [
+   {
+    "code": 8,
+    "line": 1,
+    "message": "FunctionUnused: Function 'on_signal' is never used; prefix with '_' to silence"
+   }
+  ],
+  "update_anotado_retorno/normal": [
+   {
+    "code": 8,
+    "line": 0,
+    "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence"
+   }
+  ],
+  "update_anotado_retorno/estrito": [
+   {
+    "code": 8,
+    "line": 1,
+    "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence"
+   }
+  ],
+  "update_sem_anotar/normal": [
+   {
+    "code": 8,
+    "line": 0,
+    "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence"
+   }
+  ],
+  "update_sem_anotar/estrito": [
+   {
+    "code": 8,
+    "line": 1,
+    "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence"
+   }
+  ],
+  "update_corpo_vazio/normal": [
+   {
+    "code": 8,
+    "line": 0,
+    "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence"
+   }
+  ],
+  "update_corpo_vazio/estrito": [
+   {
+    "code": 8,
+    "line": 1,
+    "message": "FunctionUnused: Function 'update' is never used; prefix with '_' to silence"
+   }
+  ],
+  "property_numero/normal": [],
+  "property_numero/estrito": [],
+  "property_texto/normal": [],
+  "property_texto/estrito": [],
+  "property_opcoes/normal": [],
+  "property_opcoes/estrito": []
+ },
+ "I12_completion_linha_vazia_topo": [
+  [
+   "_G",
+   6,
+   1,
+   ""
+  ],
+  [
+   "_VERSION",
+   6,
+   1,
+   ""
+  ],
+  [
+   "assert",
+   3,
+   2,
+   "assert(${1:value})$0"
+  ],
+  [
+   "bit32",
+   6,
+   1,
+   ""
+  ],
+  [
+   "buffer",
+   6,
+   1,
+   ""
+  ],
+  [
+   "const",
+   14,
+   1,
+   ""
+  ],
+  [
+   "coroutine",
+   6,
+   1,
+   ""
+  ],
+  [
+   "debug",
+   6,
+   1,
+   ""
+  ],
+  [
+   "do",
+   14,
+   1,
+   ""
+  ],
+  [
+   "error",
+   3,
+   2,
+   "error(${1:message})$0"
+  ],
+  [
+   "export",
+   14,
+   1,
+   ""
+  ],
+  [
+   "for",
+   14,
+   1,
+   ""
+  ],
+  [
+   "function",
+   14,
+   1,
+   ""
+  ],
+  [
+   "gcinfo",
+   3,
+   2,
+   "gcinfo()$0"
+  ],
+  [
+   "getfenv",
+   3,
+   2,
+   "getfenv($1)$0"
+  ],
+  [
+   "getmetatable",
+   3,
+   2,
+   "getmetatable(${1:_})$0"
+  ],
+  [
+   "if",
+   14,
+   1,
+   ""
+  ],
+  [
+   "integer",
+   6,
+   1,
+   ""
+  ],
+  [
+   "ipairs",
+   3,
+   2,
+   "ipairs(${1:tab})$0"
+  ],
+  [
+   "loadstring",
+   3,
+   2,
+   "loadstring(${1:src})$0"
+  ],
+  [
+   "local",
+   14,
+   1,
+   ""
+  ],
+  [
+   "math",
+   6,
+   1,
+   ""
+  ],
+  [
+   "motion",
+   6,
+   1,
+   ""
+  ],
+  [
+   "newproxy",
+   3,
+   2,
+   "newproxy($1)$0"
+  ],
+  [
+   "next",
+   3,
+   2,
+   "next(${1:_})$0"
+  ],
+  [
+   "os",
+   6,
+   1,
+   ""
+  ],
+  [
+   "pairs",
+   3,
+   2,
+   "pairs(${1:_})$0"
+  ],
+  [
+   "pcall",
+   3,
+   2,
+   "pcall(${1:f})$0"
+  ],
+  [
+   "ph2d",
+   6,
+   1,
+   ""
+  ],
+  [
+   "print",
+   3,
+   2,
+   "print($1)$0"
+  ],
+  [
+   "rawequal",
+   3,
+   2,
+   "rawequal(${1:a}, ${2:b})$0"
+  ],
+  [
+   "rawget",
+   3,
+   2,
+   "rawget(${1:tab}, ${2:k})$0"
+  ],
+  [
+   "rawlen",
+   3,
+   2,
+   "rawlen(${1:obj})$0"
+  ],
+  [
+   "rawset",
+   3,
+   2,
+   "rawset(${1:tab}, ${2:k}, ${3:v})$0"
+  ],
+  [
+   "repeat",
+   14,
+   1,
+   ""
+  ],
+  [
+   "require",
+   3,
+   2,
+   "require($1)$0"
+  ],
+  [
+   "return",
+   14,
+   1,
+   ""
+  ],
+  [
+   "select",
+   3,
+   2,
+   "select(${1:i})$0"
+  ],
+  [
+   "setfenv",
+   3,
+   2,
+   "setfenv(${1:target}, ${2:env})$0"
+  ],
+  [
+   "setmetatable",
+   3,
+   2,
+   "setmetatable(${1:_}, ${2:_})$0"
+  ],
+  [
+   "string",
+   6,
+   1,
+   ""
+  ],
+  [
+   "table",
+   6,
+   1,
+   ""
+  ],
+  [
+   "tonumber",
+   3,
+   2,
+   "tonumber(${1:value})$0"
+  ],
+  [
+   "tostring",
+   3,
+   2,
+   "tostring(${1:value})$0"
+  ],
+  [
+   "type",
+   3,
+   2,
+   "type(${1:value})$0"
+  ],
+  [
+   "typeof",
+   3,
+   2,
+   "typeof(${1:value})$0"
+  ],
+  [
+   "unpack",
+   3,
+   2,
+   "unpack(${1:tab})$0"
+  ],
+  [
+   "utf8",
+   6,
+   1,
+   ""
+  ],
+  [
+   "vector",
+   6,
+   1,
+   ""
+  ],
+  [
+   "while",
+   14,
+   1,
+   ""
+  ],
+  [
+   "xpcall",
+   3,
+   2,
+   "xpcall(${1:f}, ${2:err})$0"
+  ]
+ ],
+ "I12_completion_depois_de_function": [],
+ "I12_completion_depois_de_function_up": []
+}

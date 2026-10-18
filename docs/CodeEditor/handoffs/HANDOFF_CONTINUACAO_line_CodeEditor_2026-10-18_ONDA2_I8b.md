@@ -81,6 +81,22 @@ de componente, sem cena de smoke). Delta do `Cargo.lock` desta onda: zero.
   botão (`fix_track(serial, i)`, espaço de ids `0xC0DE_F1C5 << 32`), `Role::Fade`; o pintor usa
   `.visual((state, t))`.
 
+### 3.1 Depois do 1.º smoke do dono (18/10) — `0e26959946`
+
+*«Ao tentar deslocar o mouse do ponto amarelo até a caixa onde temos o botão de correção, a caixa
+some»*: o caminho do ponto até aos botões atravessa a calha da linha de baixo, que não é nem o ponto
+nem o balão, e o `Hints::pointer` fechava-o no 1.º movimento. **Lei:** um balão À VISTA espera
+`HOVER_HIDE_NS` = **300 ms** (o `editor.hover.hidingDelay` padrão do VS Code 1.142, lido no
+`workbench.desktop.main.js` instalado: `hidingDelay:300`) antes de seguir o rato; o alvo novo fica em
+`Hovering.leaving = (quando vale, alvo, quando o rato lá parou)` e o `Hints::settle` (no
+`CodeDocs::notes`, a cada quadro) aplica-o; voltar ao balão (`stay`) ou à palavra larga a saída; a pausa
+do alvo novo conta desde que o rato lá PAROU (trocar de palavra não soma os dois atrasos — o
+`explicacoes::` reprovou na 1.ª redacção por isso). Teste
+`botoes::do_ponto_ate_ao_botao_o_balao_espera_o_rato` (vermelho antes, «fechou a meio do caminho»; o
+caminho conferido FORA do balão; controlo: fora mais que a espera, fecha). `dicas::o_rato_a_andar…`
+actualizado à lei nova. Mutações 2/2 (espera 0; nunca aplica a saída) sangram. Binário refeito, 2.ª
+saída `Finished \`smoke\` profile [optimized] target(s) in 0.27s`.
+
 ## 4. O que um MERGE pode partir
 
 - **`Button`** (ph2d-editor-core): campo `surface` novo ⇒ struct literal noutra linha não compila (o único
@@ -145,7 +161,7 @@ de componente, sem cena de smoke). Delta do `Cargo.lock` desta onda: zero.
 6. Repita com o rato parado no próprio `ampiltude` sublinhado (não no ponto): aparece o mesmo botão.
 7. **Alt+Enter:** clique dentro de `ampiltude` e carregue Alt+Enter. Abre a listinha, com a primeira linha marcada por um fundo um pouco mais claro e um **contorno fino azul** — já não um bloco azul cheio. O Enter continua a aplicar.
 8. (Com o assistente instalado) escreva `pirnt(1)` dentro de uma função e espere: no balão, os botões são os mesmos que o Alt+Enter mostra, por exemplo **Did you mean print?**.
-9. **Deu errado se:** não há botão por baixo da explicação; o botão já nasce azul/destacado; ele salta em vez de esmaecer; o balão fecha quando o rato vai para cima dele; clicar no texto do balão move o cursor; a correção precisa de dois Ctrl+Z; a primeira linha do Alt+Enter continua um bloco azul cheio.
+9. **Deu errado se:** o balão some no caminho do ponto amarelo até ao botão; não há botão por baixo da explicação; o botão já nasce azul/destacado; ele salta em vez de esmaecer; o balão fecha quando o rato vai para cima dele; clicar no texto do balão move o cursor; a correção precisa de dois Ctrl+Z; a primeira linha do Alt+Enter continua um bloco azul cheio.
 
 ## 9. ABERTO
 

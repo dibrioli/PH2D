@@ -35,6 +35,8 @@ impl crate::App {
             && let Some(h) = g.hero_screen.as_mut()
         {
             ph2d_app_board::io::service(h, Some(g.surface.gpu()), &mut g.text_system);
+            // W23 — o que um BOTÃO copiou (o link do quadro) sai a cada imagem, não só depois de uma tecla.
+            ph2d_app_host::clipboard::hand_over(&mut h.store, g.clipboard.as_mut());
         }
         // ⭐ **O dedo do jogador, resolvido do mapa** (plano 30 W5) — no TOPO do quadro, e num
         // local, porque ele lê o `HeroScreen` (onde o mapa mora) e escreve no estado resolvido da

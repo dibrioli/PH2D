@@ -216,13 +216,8 @@ pub fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
             eprintln!("[hero] unhandled key event: {e:?}");
         }
     }
-    // Drain clipboard requests set by Cmd+C / Cmd+X / Cmd+V.
-    if let Some(text) = hero.store.take_clipboard_copy()
-        && let Some(cb) = gfx.clipboard.as_mut()
-        && let Err(err) = cb.set_text(text)
-    {
-        eprintln!("[ph2d] clipboard set_text failed: {err}");
-    }
+    // Cmd+C / Cmd+X saem já (um Cmd+V na mesma imagem lê-os); o resto, a cada imagem.
+    ph2d_app_host::clipboard::hand_over(&mut hero.store, gfx.clipboard.as_mut());
     if let Some(target) = hero.store.take_clipboard_paste_request() {
         // W16 — com prazo: um app dono da área de transferência que trave não congela o PH2D.
         let text = match ph2d_app_host::clipboard::read(|cb| cb.get_text().ok()) {

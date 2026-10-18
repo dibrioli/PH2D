@@ -25,6 +25,28 @@ pub fn read<T: Send + 'static>(
     })
 }
 
+/// ⭐ Entrega ao sistema o que o ecrã pediu para copiar. A shell chama-o a CADA imagem e depois de
+/// cada tecla (W23): só depois de uma tecla, os botões que copiam sem tecla — «Invite over the
+/// internet», «Copy the link again» do quadro — deixavam o link à espera da próxima.
+pub fn hand_over(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    cb: Option<&mut arboard::Clipboard>,
+) {
+    hand_over_to(store, |text| {
+        if let Some(cb) = cb
+            && let Err(err) = cb.set_text(text)
+        {
+            eprintln!("[ph2d] clipboard set_text failed: {err}");
+        }
+    });
+}
+
+fn hand_over_to(store: &mut ph2d_editor_core::interaction::WidgetStore, put: impl FnOnce(String)) {
+    if let Some(text) = store.take_clipboard_copy() {
+        put(text);
+    }
+}
+
 /// `job` num fio, à espera dele no máximo `deadline`.
 fn within<T: Send + 'static>(
     deadline: Duration,
@@ -45,6 +67,17 @@ fn within<T: Send + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// W23 — o pedido de cópia sai UMA vez e esvazia-se (a imagem seguinte não o repete).
+    #[test]
+    fn a_copy_request_is_handed_over_once() {
+        let mut store = ph2d_editor_core::interaction::WidgetStore::default();
+        store.set_clipboard_copy("ph2d-board://link".into());
+        let mut got = Vec::new();
+        hand_over_to(&mut store, |t| got.push(t));
+        hand_over_to(&mut store, |t| got.push(t));
+        assert_eq!(got, vec!["ph2d-board://link".to_owned()]);
+    }
 
     /// ⭐ Um dono que não responde não prende quem lê: passado o prazo, `NoAnswer`; a tempo, o valor.
     #[test]

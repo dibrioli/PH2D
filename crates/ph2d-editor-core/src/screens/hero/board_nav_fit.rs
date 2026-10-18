@@ -69,7 +69,9 @@ fn search(r: Rect, covers: &[Rect], zoom: &impl Fn(&Rect) -> f64, best: &mut (f6
         return;
     }
     let Some((c, rest)) = covers.split_first() else {
-        *best = (zoom(&r), r);
+        if zoom(&r) > best.0 {
+            *best = (zoom(&r), r);
+        }
         return;
     };
     let (x1, y1) = (r.x + r.w, r.y + r.h);

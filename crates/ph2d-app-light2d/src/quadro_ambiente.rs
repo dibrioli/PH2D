@@ -107,6 +107,9 @@ pub fn config_da_vista(
         // pretos rentes à borda, comparar).
         borda_continua: ligado("PH2D_LIGHT2D_BORDA"),
         borda_fora: ligado("PH2D_LIGHT2D_BORDA"),
+        // ⭐ W6e: `PH2D_LIGHT2D_CANTO=0` volta à reta própria no parcial do vértice (o texel do canto
+        // convexo no ambiente, comparar).
+        borda_vertice: ligado("PH2D_LIGHT2D_CANTO").then_some(ph2d_light2d_gpu::VERTICE_PADRAO),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),
         hrc_em_texturas: hrc_texturas(),

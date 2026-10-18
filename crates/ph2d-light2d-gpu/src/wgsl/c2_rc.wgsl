@@ -57,6 +57,10 @@ override BORDA_EXATA: bool = false;
 override BORDA_CONTINUA: bool = false;
 // ⭐ W6d — a luz direta dos texels de FORA também pela borda exata (o `Config::borda_fora`).
 override BORDA_FORA: bool = false;
+// ⭐ W6e — a cunha no parcial do vértice (o `Config::borda_vertice`; `c3_borda`): a reta própria não
+// explica a 3×3 a mais de `PRE` · a cunha explica a cobertura a menos de `AREA`. `AREA = 0` desliga.
+override BORDA_VERTICE_PRE: f32 = 0.0;
+override BORDA_VERTICE_AREA: f32 = 0.0;
 var<private> borda_aqui: bool = true;
 
 struct Cascata {

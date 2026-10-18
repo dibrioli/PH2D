@@ -23,6 +23,17 @@ pub(super) struct CapturaFina {
     cobertura_pelo_meio: bool,
 }
 
+impl Solver {
+    /// ⭐ W6e: a borda exata que a C3 lê — por texel da captura que ela marcha, `(cobertura, normal,
+    /// distância com sinal no centro)` na contínua (`Config::borda_continua`) — para quem a mede.
+    #[must_use]
+    pub fn borda_da_captura(&self) -> Option<&wgpu::Texture> {
+        crate::passlist::Opcionais::de(&self.cfg)
+            .borda
+            .map(|b| &self.texturas[b])
+    }
+}
+
 impl CapturaFina {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn novo(

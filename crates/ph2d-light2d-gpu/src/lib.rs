@@ -34,7 +34,7 @@ pub use captura_sprite::{Amostragem, CapturaDeSprites, SpriteNaC0};
 pub use config::{
     Bordas, CAPTURA_MAX, Config, Fusao, Grade, HOLOGRAFICA_PADRAO, Holografica, MASCARA_PX_PADRAO,
     MIOLO_PADRAO, MascaraDaFusao, Miolo, PASSO_DIRETO_PADRAO, PASSO_NA_BORDA_PADRAO,
-    PREENCHIMENTO_PADRAO, Precisao, REFINO_PADRAO, Refino,
+    PREENCHIMENTO_PADRAO, Precisao, REFINO_PADRAO, Refino, VERTICE_PADRAO, Vertice,
 };
 pub use direta::{LAMPADAS_DIRETAS_MAX, lampadas_diretas};
 pub use distantes::tapa_fora_da_grade;

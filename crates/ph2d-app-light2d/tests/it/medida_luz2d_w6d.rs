@@ -22,6 +22,7 @@ use crate::as_formas_redondas::{
     vista_em,
 };
 use crate::comum::{Fluencia, fluencia_lida, gpu};
+use crate::o_campo_da_borda::ao_poligono;
 use crate::medida_luz2d_w4b::loadavg;
 use crate::medida_luz2d_w5d::solver;
 
@@ -313,9 +314,15 @@ const ERRADO_BORDA: f64 = 0.10;
 
 /// As variantes da decisão: antes da W6d (a reta por texel, sem o fora) e o produto; o iso-½ só na
 /// lista. (As rodadas 9–12 mediram também a união e o empréstimo pela normal própria: handoff W6d §16–§23.)
-const DIAG: [&str; 3] = ["antes da W6d", "produto", "sem borda exata"];
+const DIAG: [&str; 5] = [
+    "antes da W6d",
+    "lei W6d",
+    "cunha",
+    "cunha larga",
+    "sem borda exata",
+];
 /// As da decisão; as outras só na lista (`PH2D_W6D_LISTA`).
-const N_DECIDE: usize = 2;
+const N_DECIDE: usize = 4;
 
 fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_gpu::Config {
     let c = config(gpu, a, false);
@@ -325,34 +332,27 @@ fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_
             borda_fora: false,
             ..c
         },
+        1 => ph2d_light2d_gpu::Config {
+            borda_vertice: None,
+            ..c
+        },
         2 => ph2d_light2d_gpu::Config {
+            borda_vertice: Some(ph2d_light2d_gpu::VERTICE_PADRAO),
+            ..c
+        },
+        3 => ph2d_light2d_gpu::Config {
+            borda_vertice: Some(ph2d_light2d_gpu::Vertice {
+                pre: 0.02,
+                area: 0.05,
+            }),
+            ..c
+        },
+        4 => ph2d_light2d_gpu::Config {
             borda_exata: false,
             ..c
         },
         _ => c,
     }
-}
-
-/// A distância de `p` à borda do polígono `v` (metros) e se está dentro.
-fn ao_poligono(v: &[[f32; 2]], p: [f64; 2]) -> (f64, bool) {
-    let mut d = f64::INFINITY;
-    let mut dentro = false;
-    let mut j = v.len() - 1;
-    for i in 0..v.len() {
-        let (a, b) = (v[j].map(f64::from), v[i].map(f64::from));
-        if (a[1] > p[1]) != (b[1] > p[1])
-            && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]
-        {
-            dentro = !dentro;
-        }
-        let ab = [b[0] - a[0], b[1] - a[1]];
-        let t = (((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1])
-            / (ab[0] * ab[0] + ab[1] * ab[1]).max(1e-18))
-        .clamp(0.0, 1.0);
-        d = d.min((p[0] - a[0] - t * ab[0]).hypot(p[1] - a[1] - t * ab[1]));
-        j = i;
-    }
-    (d, dentro)
 }
 
 /// Os texels FORA de todo corpo, a ≥ 1 texel fino de toda borda, em que `x` e `y` diferem nos bits.
@@ -506,89 +506,141 @@ fn angulo(centro: [f64; 2], p: [f64; 2], lampada: [f64; 2]) -> f64 {
         .to_degrees()
 }
 
-/// ⭐ W6d §14 — o canto da caixa (o `o_interior_do_opaco`, zoom 1, fase 3/8, a lei antiga): a luz
-/// contra o gabarito numa janela 9×9 em volta dos dois texels que saíam pretos, nas variantes produto ×
-/// sem o campo. À mão (cabeçalho, nome `medida_luz2d_w6d_canto`). (A sonda de cor do
-/// `c3_fina` que mediu o ponto remapeado e a normal foi retirada: handoff W6d §14.)
+
+/// ⭐ W6e — as variantes do canto: antes da W6d, a lei da W6d e a cunha com `(pre, area)`.
+const CANTO_CUNHAS: [(f32, f32); 9] = [
+    (0.02, 0.01),
+    (0.02, 0.02),
+    (0.02, 0.05),
+    (0.05, 0.01),
+    (0.05, 0.02),
+    (0.05, 0.05),
+    (0.10, 0.01),
+    (0.10, 0.02),
+    (0.10, 0.05),
+];
+
+/// ⭐ W6e (o mecanismo: handoff W6d §14) — os QUATRO cantos da caixa do `o_interior_do_opaco` (os casos do
+/// portão B: zoom 1 e 2,5 × fase 0, 3, 4, 6/8) contra o gabarito dos cantos, nas variantes antes da W6d ·
+/// a lei da W6d · a cunha × [`CANTO_CUNHAS`]; a lei antiga do miolo (`miolo: None`) e o produto (a
+/// difusão) nas três primeiras. O texel do aberto (zoom 1, 3/8, cima-direita) sai à parte. À mão
+/// (cabeçalho, nome `medida_luz2d_w6d_canto`).
 #[test]
-#[ignore = "a sonda do canto da W6d: corre-se à mão"]
+#[ignore = "a sonda do canto: corre-se à mão"]
 fn medida_luz2d_w6d_canto() {
-    use crate::o_interior_do_opaco::{EXTERIOR, cena, gabarito_por};
+    use crate::o_interior_do_opaco::{EXTERIOR, cena, gabarito_dos_cantos, gabarito_por};
     use ph2d_app_light2d::{
         DEGRAU_PADRAO, captura_do_quadro, fina_do_quadro, grade_do_quadro, regiao_da_janela,
     };
+    use ph2d_light2d_gpu::{Config, Vertice};
     let Some(gpu) = gpu() else {
         return;
     };
+    eprintln!("# canto · loadavg antes {}", loadavg());
     let fhd = (1920u32, 1080u32);
     let fabrica = ph2d_render::Camera2d::default()
         .world_to_screen_affine(ph2d_host::WindowSize::new(fhd.0, fhd.1));
-    let a = fabrica.then_scale_about(1.0, Point::new(960.0, 540.0));
     let dg = DEGRAU_PADRAO;
-    let grade = grade_do_quadro(a, fhd, dg).expect("grade");
-    let base = ph2d_light2d_gpu::Config {
-        fina: fina_do_quadro(a, dg),
-        captura: captura_do_quadro(a, dg),
-        holografica: dg
-            .holografica
-            .then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO),
-        rebote: false,
-        miolo: None,
-        ..ph2d_light2d_gpu::Config::padrao_para(&gpu.device, grade)
-    };
-    let tx = grade.texel_m / f64::from(base.fina);
-    let d = [(3.0 * tx / 8.0) as f32, (9.0 * tx / 8.0) as f32];
-    let c = cena(d);
-    let (dir, topo) = (1.85 + f64::from(d[0]), 0.9 + f64::from(d[1]));
-    eprintln!(
-        "texel {tx:.5} · face direita x = {dir:.4} · topo y = {topo:.4} · loadavg {}",
-        loadavg()
-    );
-    let variantes = [
-        ("produto", base),
+    let mut variantes: Vec<(String, Box<dyn Fn(Config) -> Config>)> = vec![
         (
-            "sem o campo",
-            ph2d_light2d_gpu::Config {
+            "antes da W6d".into(),
+            Box::new(|c| Config {
                 borda_continua: false,
-                ..base
-            },
+                borda_fora: false,
+                ..c
+            }),
+        ),
+        (
+            "lei W6d".into(),
+            Box::new(|c| Config {
+                borda_vertice: None,
+                ..c
+            }),
         ),
     ];
-    let mut gab = None;
-    for (nome, cfg) in variantes {
-        {
-            let mut s = ph2d_light2d_gpu::Solver::novo(&gpu, cfg).expect("solver");
-            let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, fhd);
-            s.regiao_fina(i, f);
-            s.quadro(&gpu, &c);
-            let fl = fluencia_lida(&gpu, &s);
-            let g = fl.grade;
-            let lei = ph2d_light2d_ref::Gabarito::com_miolo(&c, EXTERIOR);
-            let gab = gab.get_or_insert_with(|| gabarito_por(g, d, |p| lei.fluencia(p)[1]).0);
-            let ic = ((1.828 - g.origem_m[0]) / g.texel_m) as i64;
-            let jc = ((0.890 - g.origem_m[1]) / g.texel_m) as i64;
-            eprintln!(
-                "== {nome} · luz / gabarito (linhas de cima para baixo; colunas da esquerda para a direita)"
-            );
-            for j in (jc - 4..=jc + 4).rev() {
-                let mut linha = String::new();
-                for i in ic - 4..=ic + 4 {
-                    let v = fl.v[(j as u32 * g.largura + i as u32) as usize];
-                    let p = [
-                        g.origem_m[0] + (i as f64 + 0.5) * g.texel_m,
-                        g.origem_m[1] + (j as f64 + 0.5) * g.texel_m,
-                    ];
-                    let gv = gab
-                        .iter()
-                        .find(|x| (x.0[0] - p[0]).abs() < 1e-6 && (x.0[1] - p[1]).abs() < 1e-6)
-                        .map_or(f64::NAN, |x| x.1);
-                    linha += &format!(" {:6.3}/{:5.3}", v[1], gv);
+    for (pre, area) in CANTO_CUNHAS {
+        variantes.push((
+            format!("cunha {pre}/{area}"),
+            Box::new(move |c| Config {
+                borda_vertice: Some(Vertice { pre, area }),
+                ..c
+            }),
+        ));
+    }
+    // [variante][lei] — (errados, pior) somados nos casos.
+    let mut resumo = vec![[(0usize, 0.0_f64); 2]; variantes.len()];
+    for zoom in [1.0, 2.5] {
+        let a = fabrica.then_scale_about(zoom, Point::new(960.0, 540.0));
+        let grade = grade_do_quadro(a, fhd, dg).expect("grade");
+        let base = Config {
+            fina: fina_do_quadro(a, dg),
+            captura: captura_do_quadro(a, dg),
+            holografica: dg
+                .holografica
+                .then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO),
+            rebote: false,
+            ..Config::padrao_para(&gpu.device, grade)
+        };
+        let tx = grade.texel_m / f64::from(base.fina);
+        for k in [0u32, 3, 4, 6] {
+            let d = [(f64::from(k) * tx / 8.0) as f32, (f64::from(k) * tx * 3.0 / 8.0) as f32];
+            let c = cena(d);
+            let antiga = ph2d_light2d_ref::Gabarito::com_miolo(&c, EXTERIOR);
+            let mut gabs: Option<[(Vec<([f64; 2], f64)>, f64); 2]> = None;
+            for (vi, (nome, f)) in variantes.iter().enumerate() {
+                for lei in 0..2 {
+                    if lei == 1 && ![0, 1, 6].contains(&vi) {
+                        continue;
+                    }
+                    let cfg = f(if lei == 0 {
+                        Config { miolo: None, ..base }
+                    } else {
+                        base
+                    });
+                    let mut s = ph2d_light2d_gpu::Solver::novo(&gpu, cfg).expect("solver");
+                    let (i, fi) = regiao_da_janela(s.grade_da_fluencia(), a, fhd);
+                    s.regiao_fina(i, fi);
+                    s.quadro(&gpu, &c);
+                    let fl = fluencia_lida(&gpu, &s);
+                    let g = fl.grade;
+                    let gabs = gabs.get_or_insert_with(|| {
+                        let por = |l: &dyn Fn([f64; 2]) -> f64| {
+                            let max = gabarito_por(g, d, l).0.iter().map(|x| x.1).fold(0.0, f64::max);
+                            (gabarito_dos_cantos(g, d, l), max)
+                        };
+                        [
+                            por(&|p| antiga.fluencia(p)[1]),
+                            por(&|p| ph2d_light2d_ref::fluencia(&c, p)[1]),
+                        ]
+                    });
+                    let (gab, max) = &gabs[lei];
+                    let mut linha = String::new();
+                    for &(p, gv) in gab {
+                        let v = fl.amostra(p);
+                        let e = (v - gv) / max;
+                        resumo[vi][lei].0 += usize::from(e.abs() > 0.10);
+                        if e.abs() > resumo[vi][lei].1.abs() {
+                            resumo[vi][lei].1 = e;
+                        }
+                        linha += &format!(" ({:.4}; {:.4}) {v:.3}/{gv:.3}", p[0], p[1]);
+                    }
+                    eprintln!(
+                        "CANTO · zoom {zoom} · {k}/8 · {} · {nome} ·{linha}",
+                        ["lei antiga", "difusão"][lei]
+                    );
+                    if zoom == 1.0 && k == 3 && lei == 0 {
+                        let v = fl.amostra([1.8516, 0.9141]);
+                        eprintln!("ABERTO · o texel (1,8516; 0,9141) · {nome}: {v:.3}");
+                    }
                 }
-                let y = g.origem_m[1] + (j as f64 + 0.5) * g.texel_m;
-                eprintln!("y {y:.4}:{linha}");
             }
-            let x0 = g.origem_m[0] + ((ic - 4) as f64 + 0.5) * g.texel_m;
-            eprintln!("(a 1.ª coluna em x = {x0:.4}, passo {:.4})", g.texel_m);
         }
     }
+    for (vi, (nome, _)) in variantes.iter().enumerate() {
+        let [(na, pa), (nd, pd)] = resumo[vi];
+        eprintln!(
+            "RESUMO CANTO · {nome} · lei antiga {na} errados (pior {pa:+.3}) · difusão {nd} (pior {pd:+.3})"
+        );
+    }
+    eprintln!("# loadavg depois {}", loadavg());
 }

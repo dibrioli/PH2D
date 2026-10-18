@@ -170,6 +170,10 @@ pub struct Config {
     /// `BORDA_FORA`); `false` = pelo iso-½, e a marcha nasce dentro do corpo (o texel rente sai só com o
     /// ambiente; handoff W6d §5). Os outros texels de fora marcham sempre pelo iso-½.
     pub borda_fora: bool,
+    /// ⭐ W6e — o parcial do VÉRTICE (só com [`Self::borda_continua`]) grava a distância da cunha das
+    /// retas dos parciais a dois texels no lugar da da própria reta, que no canto sai diagonal e o
+    /// arredonda (o texel do canto convexo no ambiente; handoff W6e §1). `None` = a própria reta.
+    pub borda_vertice: Option<Vertice>,
     /// ⭐ W5g (F5) — o texel do INTERIOR lê a luz no PÉ dele na borda exata (o `PE_NA_BORDA` do
     /// `c3_pe.wgsl`; só com [`Self::borda_exata`]); `false` = o ponto de fronteira da busca, que salta
     /// ao longo da face com a fase da grade (os degraus nos pontos tangentes dos discos, cena 7).
@@ -287,6 +291,25 @@ pub const MIOLO_PADRAO: Miolo = Miolo {
     suaviza: 2,
     base_no_grupo: true,
     bloco: 4,
+};
+
+/// ⭐ W6e — os dois limiares da cunha no parcial do vértice ([`Config::borda_vertice`], frações da
+/// área de um texel da captura).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Vertice {
+    /// A reta própria do parcial não explica a 3×3 dele: a cobertura que ela prevê para um vizinho
+    /// difere da lida em mais disto (o filtro barato: só esses procuram a cunha).
+    pub pre: f32,
+    /// A cunha explica o parcial: a área que ela deixa dentro dele difere da cobertura em menos disto.
+    pub area: f32,
+}
+
+/// ⭐ W6e — os limiares da cunha, MEDIDOS (`medida_luz2d_w6d_canto`/`_borda`, handoff W6e §2): o texel do
+/// canto sai igual (0,601) com `pre` 0,02–0,10 e `area` 0,01–0,05; `(0,02, 0,05)` erra 5 anéis do disco
+/// no zoom 0,8 (o arco passa por canto), `(0,05, 0,02)` nenhum.
+pub const VERTICE_PADRAO: Vertice = Vertice {
+    pre: 0.05,
+    area: 0.02,
 };
 
 /// ⭐ W5c — as escolhas da cascata holográfica.
@@ -448,6 +471,7 @@ impl Config {
             borda_exata: true,
             borda_continua: true,
             borda_fora: true,
+            borda_vertice: Some(VERTICE_PADRAO),
             pe_na_borda: true,
             vis_na_face: true,
             face_pelo_ponto: true,

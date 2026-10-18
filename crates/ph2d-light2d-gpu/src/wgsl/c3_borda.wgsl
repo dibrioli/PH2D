@@ -57,6 +57,9 @@ fn linha_de(t: vec2<i32>, n: vec2<i32>, k: array<f32, 9>) -> vec3<f32> {
             return vec3<f32>(0.0, 0.0, select(0.0, a - 0.5, BORDA_CONTINUA));
         }
         let r = recuo_de(u, a);
+        if BORDA_CONTINUA && BORDA_VERTICE_AREA > 0.0 && !explica_a_3x3(u, r, k) {
+            return vec3<f32>(u, pela_cunha(t, n, a, u, -r));
+        }
         return vec3<f32>(u, select(r, -r, BORDA_CONTINUA));
     }
     if !BORDA_CONTINUA {
@@ -105,6 +108,119 @@ fn pelas_retas_proprias(t: vec2<i32>, n: vec2<i32>, cheio: bool) -> f32 {
         }
     }
     return melhor;
+}
+
+// A fração do texel unitário (centrado) DENTRO de `y·u ≥ t` (`u` unitária, `t` de qualquer sinal).
+fn area_dentro(u: vec2<f32>, t: f32) -> f32 {
+    return select(1.0 - area_alem(u, -t, 1.0), area_alem(u, t, 1.0), t >= 0.0);
+}
+
+// ⭐ W6e — a reta `(u, r)` de um parcial explica a sua 3×3 `k`: a cobertura que ela prevê em cada
+// vizinho difere da lida em no máximo `BORDA_VERTICE_PRE`. No vértice a reta sai diagonal e não explica.
+fn explica_a_3x3(u: vec2<f32>, r: f32, k: array<f32, 9>) -> bool {
+    for (var j = 0; j < 3; j++) {
+        for (var i = 0; i < 3; i++) {
+            if i == 1 && j == 1 {
+                continue;
+            }
+            // no vizinho de deslocamento `o`: dentro ⟺ (y + o)·u ≥ r.
+            let o = vec2<f32>(f32(i - 1), f32(j - 1));
+            if abs(area_dentro(u, r - dot(o, u)) - min(k[j * 3 + i], 1.0)) > BORDA_VERTICE_PRE {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// A fração do texel unitário (centrado) dentro de `y·u1 ≥ t1` E `y·u2 ≥ t2`, pela integral em
+// [`COLUNAS`] colunas (o comprimento do intervalo de `y` no meio de cada uma).
+const COLUNAS: i32 = 32;
+fn area_da_intersecao(u1: vec2<f32>, t1: f32, u2: vec2<f32>, t2: f32) -> f32 {
+    var s = 0.0;
+    for (var k = 0; k < COLUNAS; k++) {
+        let x = (f32(k) + 0.5) / f32(COLUNAS) - 0.5;
+        var lo = -0.5;
+        var hi = 0.5;
+        for (var l = 0; l < 2; l++) {
+            let u = select(u2, u1, l == 0);
+            let r = select(t2, t1, l == 0) - x * u.x;
+            if abs(u.y) < 1e-6 {
+                hi = select(hi, -1.0, r > 0.0);
+            } else if u.y > 0.0 {
+                lo = max(lo, r / u.y);
+            } else {
+                hi = min(hi, r / u.y);
+            }
+        }
+        s += max(hi - lo, 0.0);
+    }
+    return s / f32(COLUNAS);
+}
+
+// ⭐ W6e — a distância com sinal no centro do parcial `t` (cobertura `a`, normal própria `ut`) do VÉRTICE
+// pela CUNHA das retas dos parciais a dois texels (o anel de Chebyshev 2: as 3×3 deles já não contêm o
+// vértice; as adjacentes saem inclinadas por ele): a normal mais girada para cada lado de `ut`; convexo
+// ⟺ cada um dentro da reta do outro (`d₂(c_q₁) + d₁(c_q₂) > 0`) — a interseção (o mínimo) —, côncavo a
+// união (o máximo). Se a cunha não deixa dentro do texel a área `a` (a menos de `BORDA_VERTICE_AREA`: um
+// arco, não um canto), `propria`.
+fn pela_cunha(t: vec2<i32>, n: vec2<i32>, a: f32, ut: vec2<f32>, propria: f32) -> f32 {
+    // As retas no referencial de `t`: dentro ⟺ y·u ≥ s, com o centro do parcial em `o`.
+    var u1 = vec2<f32>(0.0);
+    var s1 = 0.0;
+    var o1 = vec2<f32>(0.0);
+    var c1 = 0.0;
+    var u2 = vec2<f32>(0.0);
+    var s2 = 0.0;
+    var o2 = vec2<f32>(0.0);
+    var c2 = 0.0;
+    for (var j = -2; j <= 2; j++) {
+        for (var i = -2; i <= 2; i++) {
+            let o = vec2<i32>(i, j);
+            let q = t + o;
+            if max(abs(i), abs(j)) != 2 || any(q < vec2<i32>(0)) || any(q >= n) {
+                continue;
+            }
+            let aq = textureLoad(borda_cobertura, q, 0).r;
+            if aq <= 0.0 || aq >= 1.0 {
+                continue;
+            }
+            var k: array<f32, 9>;
+            for (var y = 0; y < 3; y++) {
+                for (var x = 0; x < 3; x++) {
+                    k[y * 3 + x] = textureLoad(borda_cobertura, clamp(q + vec2<i32>(x - 1, y - 1), vec2<i32>(0), n - 1), 0).r;
+                }
+            }
+            let u = normal_sobel(k);
+            if all(u == vec2<f32>(0.0)) {
+                continue;
+            }
+            let c = ut.x * u.y - ut.y * u.x;
+            let ov = vec2<f32>(o);
+            if c > c1 {
+                c1 = c;
+                u1 = u;
+                o1 = ov;
+                s1 = recuo_de(u, aq) + dot(ov, u);
+            }
+            if c < c2 {
+                c2 = c;
+                u2 = u;
+                o2 = ov;
+                s2 = recuo_de(u, aq) + dot(ov, u);
+            }
+        }
+    }
+    if abs(u1.x * u2.y - u1.y * u2.x) < 1e-3 {
+        return propria;
+    }
+    let convexo = (dot(o1, u2) - s2) + (dot(o2, u1) - s1) > 0.0;
+    let i12 = area_da_intersecao(u1, s1, u2, s2);
+    let modelo = select(area_dentro(u1, s1) + area_dentro(u2, s2) - i12, i12, convexo);
+    if abs(modelo - a) > BORDA_VERTICE_AREA {
+        return propria;
+    }
+    return select(max(-s1, -s2), min(-s1, -s2), convexo);
 }
 
 @compute @workgroup_size(8, 8)

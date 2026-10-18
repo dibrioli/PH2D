@@ -293,6 +293,12 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // ⚠️ Ela responde ONDE a opção `i` caiu, e não desenha uma linha — quem pinta a família de
     // LISTA é o `skin.rs` ao lado, e é ele quem responde pela árvore de a11y das rows.
     ("skin/geometry.rs", "pure layout; paints nothing"),
+    // O campo numérico do catálogo, separado do `skin.rs` pelo tecto de 500 LOC: ele delega ao
+    // pintor canónico (`paint_number_input_with_buffer`), e o pai responde pela árvore das rows.
+    (
+        "skin/number.rs",
+        "delegates to the canonical number painter — parent owns a11y",
+    ),
     // Unit tests for `tool_rail` (split out for the widget LOC cap) — no user-facing widget; the
     // parent `tool_rail.rs` owns the a11y wiring (build_a11y / build_entry_a11y).
     // ⚠️ O QUINTO irmão com a MESMA justificação — `<slug>/tests.rs` é o padrão, e uma lista

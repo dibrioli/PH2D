@@ -29,11 +29,7 @@ fn authoring_a_width_arms_the_one_shot_and_a_colour_does_not() {
     assert!(t.take_authored().is_empty(), "nasce desarmado");
 
     Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_WIDTH, 0.7));
-    assert_eq!(
-        t.take_authored(),
-        StyleFields::WIDTH,
-        "a largura, e só ela, foi autorada"
-    );
+    assert_eq!(t.take_authored(), StyleFields::WIDTH, "só a largura");
     assert!(
         t.take_authored().is_empty(),
         "e é ONE-SHOT: dois frames depois a largura não pode voltar a ser escrita sozinha"
@@ -41,10 +37,7 @@ fn authoring_a_width_arms_the_one_shot_and_a_colour_does_not() {
 
     t.set_stroke_rgba([220, 60, 60, 255]);
     let f = t.take_authored();
-    assert!(
-        f.has(StyleFields::STROKE_RGB),
-        "a cor ainda pede o restyle (o controlo)"
-    );
+    assert!(f.has(StyleFields::STROKE_RGB), "a cor pede o restyle");
     assert!(
         !f.any(StyleFields::WIDTH),
         "mas uma escolha de COR nunca autora largura — se autorasse, um pick reengrossaria a linha"
@@ -98,10 +91,10 @@ fn opacity_sliders_set_fill_and_stroke_alpha_and_flag_apply() {
         PanelEvent::SetValue(ids::VECTOR_STROKE_OPACITY, 0.5),
     );
     assert_eq!(t.stroke_rgba()[3], 128);
+    // As duas alfas, e nada mais.
     assert_eq!(
         t.take_authored(),
-        StyleFields::FILL_A | StyleFields::STROKE_A,
-        "as duas alfas, e nada mais"
+        StyleFields::FILL_A | StyleFields::STROKE_A
     );
 }
 

@@ -667,3 +667,101 @@ fn medida_w6d_vertice_girado() {
         }
     }
 }
+
+/// ⭐ W6e — o F3 da penumbra com e sem a cunha (`Config::borda_vertice`) no mesmo processo: o RMSE, os
+/// texels finos que a cunha mais piora e o campo da captura (o 4.º canal do `c3_borda`) contra a
+/// distância exata em volta de cada vértice do quadrado. À mão (handoff W6e, nome `medida_luz2d_w6e_f3`).
+#[test]
+#[ignore = "a sonda do F3 da W6e: corre-se à mão"]
+fn medida_luz2d_w6e_f3() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[2];
+    let cena = penumbra();
+    let base = Config {
+        fina: FINA,
+        captura: 2 * FINA,
+        miolo: None,
+        ..Config::padrao(grade(lado, texel))
+    };
+    let lei = ph2d_light2d_ref::Gabarito::com_miolo(&cena, EXTERIOR);
+    let poli: Vec<[f64; 2]> = cena.oclusores[0].vertices.iter().map(|v| v.map(f64::from)).collect();
+    // A distância com sinal (positiva dentro) ao quadrado (convexo, anti-horário ou não: pelo módulo).
+    let exata = |p: [f64; 2]| {
+        let n = poli.len();
+        let mut d = f64::INFINITY;
+        let mut dentro = true;
+        let area: f64 = (0..n)
+            .map(|i| {
+                let (a, b) = (poli[i], poli[(i + 1) % n]);
+                a[0] * b[1] - b[0] * a[1]
+            })
+            .sum();
+        for i in 0..n {
+            let (a, b) = (poli[i], poli[(i + 1) % n]);
+            let ab = [b[0] - a[0], b[1] - a[1]];
+            let c = (ab[0] * (p[1] - a[1]) - ab[1] * (p[0] - a[0])) * area.signum();
+            dentro &= c >= 0.0;
+            let t = (((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / (ab[0] * ab[0] + ab[1] * ab[1])).clamp(0.0, 1.0);
+            d = d.min((p[0] - a[0] - t * ab[0]).hypot(p[1] - a[1] - t * ab[1]));
+        }
+        if dentro { d } else { -d }
+    };
+    let mut lidas = Vec::new();
+    for (nome, v) in [("sem a cunha", None), ("cunha", Some(ph2d_light2d_gpu::VERTICE_PADRAO))] {
+        let cfg = Config { borda_vertice: v, ..base };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        s.quadro(&gpu, &cena);
+        let fl = ler_fluencia(&gpu, &s);
+        let g = s.grade_da_fluencia();
+        let gc = cfg.grade_da_captura();
+        let campo = ler_bytes(&gpu, s.borda_da_captura().expect("borda"));
+        let mut r = gabarito_por(&g, |p| lei.fluencia(p));
+        let fundo = crate::comum::dentro_de_opaco(&cena, &g);
+        for k in (0..r.len()).filter(|&k| fundo(k)) {
+            r[k] = media_no_texel(&cena, &lei, &g, k, r[k]);
+        }
+        let dentro = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
+        eprintln!("F3 · {nome}: RMSE relativo {:.4}", rmse_rel(&fl, &r, &dentro));
+        // O campo em volta de cada vértice: 6×6 texels da captura.
+        for q in &poli {
+            let (ci, cj) = (
+                ((q[0] - gc.origem_m[0]) / gc.texel_m) as i64,
+                ((q[1] - gc.origem_m[1]) / gc.texel_m) as i64,
+            );
+            eprintln!(
+                "  vértice ({:.2}; {:.2}) fino · (cobertura campo/exata), linhas de cima para baixo",
+                (q[0] - g.origem_m[0]) / g.texel_m,
+                (q[1] - g.origem_m[1]) / g.texel_m
+            );
+            for j in (cj - 3..=cj + 2).rev() {
+                let mut l = String::new();
+                for i in ci - 3..=ci + 2 {
+                    let k = (j as u32 * gc.largura + i as u32) as usize * 8;
+                    let h = |o: usize| half::f16::from_le_bytes([campo[k + o], campo[k + o + 1]]).to_f32();
+                    let e = exata(gc.centro(i as u32, j as u32)) / gc.texel_m;
+                    l += &format!(" {:.2} {:+.2}/{:+.2}", h(0), h(6), e);
+                }
+                eprintln!("   {l}");
+            }
+        }
+        lidas.push((fl, r, dentro, g));
+    }
+    let (f0, r, dentro, g) = &lidas[0];
+    let f1 = &lidas[1].0;
+    let w = g.largura as usize;
+    let mut dif: Vec<(f64, usize)> = (0..r.len())
+        .filter(|&k| dentro(k))
+        .map(|k| ((f64::from(f1[k][1]) - r[k][1]).abs() - (f64::from(f0[k][1]) - r[k][1]).abs(), k))
+        .collect();
+    dif.sort_by(|a, b| b.0.total_cmp(&a.0));
+    for &(d, k) in dif.iter().take(12) {
+        eprintln!(
+            "  piora ({}, {}): +{d:.4} · sem {:.4} · cunha {:.4} · gabarito {:.4}",
+            k % w,
+            k / w,
+            f0[k][1],
+            f1[k][1],
+            r[k][1]
+        );
+    }
+}

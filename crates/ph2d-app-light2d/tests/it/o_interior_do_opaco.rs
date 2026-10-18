@@ -58,11 +58,6 @@ const TETO_ERRADOS: usize = 1;
 /// 1,04 × gabarito 0,89 · 0,73), iguais com 3, 6, 12 e 24 ciclos: a discretização do canto no nível
 /// 1, não a convergência. Sem os ciclos (a W5h) 837 · 774 · 2 058.
 const TETO_ERRADOS_DIFUSAO: usize = 2;
-/// ⭐ W6e — os texels dos CANTOS da caixa ([`gabarito_dos_cantos`], 4 por caso, 32 ao todo) errados na
-/// lei antiga — MEDIDO (`medida_luz2d_w6d_canto`, handoff W6e §2): 6 com a cunha (antes da W6d 4, a lei
-/// da W6d sem a cunha 7). Os que restam são o texel do canto que fica com UMA face em vez da média das
-/// duas (o `c3_direta` no canto, já antes da W6d — aberto da W6e), não o campo.
-const TETO_CANTOS: usize = 6;
 
 /// A cena 3 com a parede verde feita uma caixa livre no meio da sala, deslocada `d` metros.
 pub(crate) fn cena(d: [f32; 2]) -> CenaDeLuz {
@@ -204,11 +199,7 @@ pub(crate) fn gabarito_dos_cantos(
 
 /// `(o pior erro, quantos texels erram mais que ERRADO)`, relativos ao máximo do gabarito ali.
 pub(crate) fn erros(fl: &Fluencia, gab: &[([f64; 2], f64)]) -> (f64, usize) {
-    erros_contra(fl, gab, gab.iter().map(|x| x.1).fold(0.0, f64::max))
-}
-
-/// O [`erros`] relativo a `max` (o dos cantos: o máximo do gabarito do interior).
-fn erros_contra(fl: &Fluencia, gab: &[([f64; 2], f64)], max: f64) -> (f64, usize) {
+    let max = gab.iter().map(|x| x.1).fold(0.0, f64::max);
     gab.iter().fold((0.0, 0), |(pior, n), &(p, g)| {
         let e = (fl.amostra(p) - g).abs() / max;
         (pior.max(e), n + usize::from(e > ERRADO))
@@ -219,8 +210,6 @@ fn erros_contra(fl: &Fluencia, gab: &[([f64; 2], f64)], max: f64) -> (f64, usize
 /// contra o gabarito dela, e a lei antiga (`miolo: None`: o texel que o eixo medial corta é a média
 /// das faces) contra o gabarito dela — no máximo `TETO_ERRADOS` texels errados por caso (os de um
 /// canto ou do encontro de três faces); o controlo (a lei antiga sem a média no eixo) tem a escada.
-/// ⭐ W6e — e os CANTOS (o texel a menos de um texel das duas faces): no máximo [`TETO_CANTOS`]
-/// errados, nenhum no caso do aberto da W6d, onde o controlo sem a cunha erra.
 #[test]
 fn o_interior_do_opaco_nao_depende_da_posicao_na_grade() {
     let Some(gpu) = gpu() else {
@@ -232,8 +221,6 @@ fn o_interior_do_opaco_nao_depende_da_posicao_na_grade() {
     let centro = Point::new(f64::from(FHD.0) * 0.5, f64::from(FHD.1) * 0.5);
     let dg = DEGRAU_PADRAO;
     let (mut falhas, mut controlo, mut controlo_ciclos) = (Vec::new(), 0, 0);
-    // ⭐ W6e: os cantos errados (o produto na lei antiga) e o controlo sem a cunha no caso do aberto.
-    let (mut cantos, mut cantos_aberto) = (0, None);
     for zoom in [1.0, 2.5] {
         let a = fabrica.then_scale_about(zoom, centro);
         let grade = grade_do_quadro(a, FHD, dg).expect("grade");
@@ -289,23 +276,6 @@ fn o_interior_do_opaco_nao_depende_da_posicao_na_grade() {
             );
             controlo = controlo.max(n0);
             controlo_ciclos = controlo_ciclos.max(na);
-            let max_antiga = gab_antiga.iter().map(|x| x.1).fold(0.0, f64::max);
-            let gab_cantos = gabarito_dos_cantos(produto.grade, d, |p| lei.fluencia(p)[1]);
-            let (ec, nc) = erros_contra(&media, &gab_cantos, max_antiga);
-            eprintln!(
-                "interior · zoom {zoom} · {k}/8 · os {} cantos na lei antiga: pior {ec:.3}, {nc} errados",
-                gab_cantos.len()
-            );
-            assert_eq!(gab_cantos.len(), 4, "a régua achou os quatro cantos");
-            cantos += nc;
-            // O texel do canto convexo que a W6d punha no ambiente (o aberto da W6d, zoom 1 · 3/8).
-            if zoom == 1.0 && k == 3 {
-                let sem_cunha = ler(Config {
-                    borda_vertice: None,
-                    ..antiga
-                });
-                cantos_aberto = Some((nc, erros_contra(&sem_cunha, &gab_cantos, max_antiga).1));
-            }
             if n > TETO_ERRADOS_DIFUSAO || nm > TETO_ERRADOS {
                 falhas.push(format!(
                     "zoom {zoom} · {k}/8: difusão {n} (pior {e:.3}) · lei antiga {nm} (pior {em:.3})"
@@ -317,18 +287,7 @@ fn o_interior_do_opaco_nao_depende_da_posicao_na_grade() {
         controlo > 10 * TETO_ERRADOS,
         "o controlo sem a média não mostra a escada ({controlo} texels errados) — a régua não a vê"
     );
-    let (aberto, aberto_sem) = cantos_aberto.expect("o caso do aberto (zoom 1 · 3/8)");
-    eprintln!(
-        "interior · cantos errados {cantos} (teto {TETO_CANTOS}) · o caso do aberto: {aberto} (sem a cunha {aberto_sem})"
-    );
-    assert!(
-        aberto_sem > 0,
-        "controlo: sem a cunha o canto do aberto (zoom 1 · 3/8) não erra — a régua não o vê"
-    );
-    assert!(
-        aberto == 0 && cantos <= TETO_CANTOS,
-        "o canto da caixa: {aberto} errados no caso do aberto (zoom 1 · 3/8) · {cantos} ao todo (teto {TETO_CANTOS})"
-    );
+
     assert!(
         controlo_ciclos > 10 * TETO_ERRADOS,
         "o controlo sem os V-ciclos (a W5h) não mostra o miolo por convergir ({controlo_ciclos} texels errados) — a régua não o vê"

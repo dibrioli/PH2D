@@ -57,7 +57,11 @@ tabelado por fio tiraram 2,1 → 1,55, ao byte); o tick não muda (0,002 ms).
 
 ## §6 — Aberto
 
-**Smoke do dono:** por fazer. Depois da W3: W4 (papel), W5 (mistura), W7 (sem água), W8 (o painel — inclui os 14 knobs
+**⛔ Smoke do dono 18/10: REPROVADO** — «ficou pior, muito pixelado, talvez porque as cerdas tenham ficado mais finas»
+([foto](../NewFeaturesWetPaint/49_smoke_dono_pixelado.png)). O relevo SAIU da fábrica (o Oil Bristle de ontem ao byte,
+a cena `0x7041…` de volta); a lei fica no motor, desligada; os portões leem-na por `com_relevo()`. A bancada horizontal
+não via a escada (49 §7). **Próxima janela: o [prompt 50](../NewFeaturesWetPaint/50_PROMPT_W3b_o_relevo_sem_escada.md).**
+Os números da fábrica em §2 são os da lei com os knobs, não os da fábrica. Depois da W3: W4 (papel), W5 (mistura), W7 (sem água), W8 (o painel — inclui os 14 knobs
 dos fios e do relevo e o Lighting no Wet Paint).
 
 - C35 (o leve do Oil Bristle) · B15 (o Acrylic liso?) · C33 (o Dry Brush sem régua).

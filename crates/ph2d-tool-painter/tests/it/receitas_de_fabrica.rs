@@ -214,19 +214,18 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         // Os FIOS (W2, doc 48_medicao §3): cada fio claro ou escuro pela cor (o óleo satura: a pressão só abriria
         // falhas), a pressão própria e a mão leve que os levanta. Textura 2,75 → 3,85 (Rebelle 5,86: o resto são
         // as sombras do relevo de cada fio, W3), carris 0,00 → 3,03 (3,32), CV 0,017, período 2 %.
-        // O RELEVO de cada fio (W3, doc 49_medicao): metade dos fios constrói e metade escava, 1,25 px por ganho,
-        // aceso pela luz do Impasto, e o emboss da massa 0,7 → 1. Textura 3,85 → 5,87 (5,86), carris 3,26, forte
-        // 3,31 → 5,29 (5,04), borda 0,895 (0,872).
+        // ⛔ O RELEVO de cada fio (W3, `bristleHeight` 1,25 + emboss 1: textura 5,87 na bancada) SAIU da fábrica
+        // pelo smoke do dono 18/10 («ficou pior, muito pixelado»): a altura salta de fio para fio e, num traço
+        // INCLINADO, vira escada — a bancada é horizontal e não o via (doc 49_medicao §7; o conserto: prompt 50).
         extras: &[
             ("felt", 0.05),
             ("bristleStrength", 2.0),
-            ("emboss", 1.0),
+            ("emboss", 0.7),
             ("bristlePressure", 1.2),
             ("bristleLaneWidth", 1.5),
             ("bristleLift", 0.4),
             ("bristleNoiseSat", 0.3),
             ("bristleNoiseLight", 0.25),
-            ("bristleHeight", 1.25),
         ],
         grao: None,
         spacing: Some(0.01),

@@ -252,6 +252,12 @@ fn sonda_a_barra_da_w3() {
     }
 }
 
+/// O Oil Bristle com o relevo de cada fio da W3 (`bristleHeight` 1,25, emboss 1) — a LEI; a fábrica tirou-o no
+/// smoke do dono de 18/10 (a escada no traço inclinado, doc 49_medicao §7) até ao prompt 50.
+fn com_relevo() -> ph2d_brush_presets::Preset {
+    com_knobs(de_fabrica("Oil Bristle"), "bristleHeight=1.25,emboss=1")
+}
+
 /// O controlo da W3: o preset sem o relevo de cada fio e com o emboss de antes (0,7).
 fn sem_relevo(nome: &str) -> ph2d_brush_presets::Preset {
     com_knobs(de_fabrica(nome), "-bristleHeight,-bristleRemove,emboss=0.7")
@@ -286,7 +292,7 @@ fn o_oleo_tem_o_relevo_de_cada_fio() {
             .iter()
             .map(|&r| {
                 s.spawn(move || {
-                    let (p, c) = (de_fabrica("Oil Bristle"), sem_relevo("Oil Bristle"));
+                    let (p, c) = (com_relevo(), sem_relevo("Oil Bristle"));
                     let lf = |p: &ph2d_brush_presets::Preset, f: &str| {
                         super::os_fios::cena_seca_com_rampa(p, r, f).1
                     };
@@ -397,7 +403,7 @@ fn o_relevo_e_so_da_luz() {
         t.wet_sonda_motor(|e| campo.clone_from(&e.layers[e.active_layer].grid.altura));
         (fnv1a(&t.run_full().0), campo.iter().any(|&h| h != 0.0))
     };
-    let p = de_fabrica("Oil Bristle");
+    let p = com_relevo();
     let sem = com_knobs(p.clone(), "-bristleHeight");
     let ((apagada, campo), (sem_apagada, sem_campo)) = (pinta(&p, false), pinta(&sem, false));
     assert!(campo && !sem_campo, "o campo nasce só com o relevo");
@@ -418,7 +424,7 @@ fn a_borracha_tira_o_relevo() {
     let mut t = ph2d_tool_painter::PainterTool::default();
     t.set_source(vec![255u8; 520 * 200 * 4], 520, 200);
     t.set_wet_relogio_fixo(true);
-    assert!(t.wet_preset_aplicar(&de_fabrica("Oil Bristle")).is_empty());
+    assert!(t.wet_preset_aplicar(&com_relevo()).is_empty());
     t.set_brush_size_px(20.0);
     t.set_brush_color_srgb8(super::sonda_gestos::AZUL);
     traco(&mut t);
@@ -455,7 +461,7 @@ fn sonda_o_custo_do_relevo() {
     use ph2d_editor_core::Tool;
     use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
     let lado: u32 = std::env::var("PH2D_SONDA_LADO").map_or(2048, |v| v.parse().unwrap());
-    let p = de_fabrica("Oil Bristle");
+    let p = com_relevo();
     let variantes = [
         ("sem", com_knobs(p.clone(), "-bristleHeight"), true),
         ("com, luz apagada", p.clone(), false),

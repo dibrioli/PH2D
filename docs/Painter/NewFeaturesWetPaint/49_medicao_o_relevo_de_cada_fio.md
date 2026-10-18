@@ -102,3 +102,18 @@ do quadrado) e o ganho tabelado por fio, ao byte. O tick não muda (0,002 ms).
 | escavar 0,65 (o `thin_remove` do Bristle Flat) | 4,82 contra 5,22 a 0,5: o Rebelle tem também fios grossos que constroem |
 | o relevo no Express Oil | o controlo 7,94 não se distingue do Rebelle 9,0 (ruído 0,9) |
 | o relevo pelo contacto¹ | o leve sobe tanto como o forte (6,61); contacto² 6,32 |
+
+## §7 — O smoke do dono (18/10): ⛔ «ficou pior, muito pixelado»
+
+[Foto do dono](49_smoke_dono_pixelado.png) (o Oil Bristle de fábrica, ~103 px, traço INCLINADO): «em minha opinião
+ficou pior que estava, muito pixelado, talvez porque as cerdas tenham ficado mais finas». ⇒ **o relevo SAIU da fábrica**
+(o preset de ontem ao byte; a cena de `a_lei_da_tinta` de volta a `0x7041…`); a lei fica no motor, desligada
+(`bristleHeight` 0), e os portões dela leem-na com os knobs no teste (`o_relevo_dos_fios::com_relevo`).
+
+- **A régua não o via:** no recto da bancada (horizontal, 41 px) os saltos de 1 px através são 3,97 % contra 3,49 %
+  do Rebelle e a textura fina/total 0,73 contra 0,74 — iguais. A bancada é ALINHADA AOS EIXOS: os fios caem nas
+  linhas de píxeis. Num traço inclinado cada fio corta os píxeis em diagonal.
+- **O mecanismo provável (por medir no inclinado):** a altura é um DEGRAU por fio (`Relevo::alvo` é constante na faixa
+  de 1,5 px) e a luz satura (declive ~1) — cada fronteira de fio vira uma linha preta/branca dura, em escada.
+  E as faixas têm 1,5 px fixos: a 103 px são ~70 fios (o «cerdas mais finas» do dono).
+- O conserto e a régua: [prompt 50](50_PROMPT_W3b_o_relevo_sem_escada.md).

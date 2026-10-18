@@ -57,8 +57,14 @@ fn the_w16_items_come_last_and_move_no_id() {
         .position(|i| *i == Item::Gray)
         .expect("o preto e branco");
     assert_eq!(v[g + 1..g + 4], [Item::Flip(0), Item::Flip(1), Item::Crop]);
-    // W18 — o vídeo depois deles, no fim de tudo.
-    assert_eq!(v.last(), Some(&Item::Video));
+    // W18 — o vídeo logo depois deles; W23 — a grelha das pontas depois dele, no fim de tudo.
+    assert_eq!(v[g + 4], Item::Video);
+    assert_eq!(v[g + 5], Item::MoreHeads(0));
+    assert!(
+        v[g + 5..]
+            .iter()
+            .all(|i| matches!(i, Item::MoreHeads(_) | Item::Head(..)))
+    );
 }
 
 /// ⭐ O recorte entra pelo botão da barra e por `Enter` (com a imagem seleccionada), e sai por `Enter`

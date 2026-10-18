@@ -50,6 +50,8 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Tool(Tool::Shape(ShapeType::Diamond)) => "board.tool.diamond",
         Item::Tool(Tool::Shape(_)) | Item::Pick(_) => return shape_key(it),
         Item::MoreShapes => "board.tool.more",
+        Item::MoreHeads(0) => "board.head.start.more",
+        Item::MoreHeads(_) => "board.head.end.more",
         Item::Reshape => "board.style.shape",
         Item::Gray => "board.style.gray",
         Item::Flip(0) => "board.style.flip_h",
@@ -84,24 +86,34 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
 }
 
 pub(super) fn head_key(which: usize, h: Head) -> Option<&'static str> {
-    let keys = if which == 0 {
-        [
-            "board.head.start.none",
-            "board.head.start.arrow",
-            "board.head.start.triangle",
-            "board.head.start.circle",
-            "board.head.start.bar",
-        ]
-    } else {
-        [
-            "board.head.end.none",
-            "board.head.end.arrow",
-            "board.head.end.triangle",
-            "board.head.end.circle",
-            "board.head.end.bar",
-        ]
+    // Uma linha por ponta do catálogo: `[início, fim]` (W23: a grelha oferece-as todas).
+    let [start, end] = match h {
+        Head::None => ["board.head.start.none", "board.head.end.none"],
+        Head::Arrow => ["board.head.start.arrow", "board.head.end.arrow"],
+        Head::Triangle => ["board.head.start.triangle", "board.head.end.triangle"],
+        Head::Circle => ["board.head.start.circle", "board.head.end.circle"],
+        Head::Bar => ["board.head.start.bar", "board.head.end.bar"],
+        Head::TriangleOpen => [
+            "board.head.start.triangle_open",
+            "board.head.end.triangle_open",
+        ],
+        Head::Diamond => ["board.head.start.diamond", "board.head.end.diamond"],
+        Head::DiamondOpen => [
+            "board.head.start.diamond_open",
+            "board.head.end.diamond_open",
+        ],
+        Head::CircleOpen => ["board.head.start.circle_open", "board.head.end.circle_open"],
+        Head::One => ["board.head.start.one", "board.head.end.one"],
+        Head::Many => ["board.head.start.many", "board.head.end.many"],
+        Head::OneOrMany => ["board.head.start.one_or_many", "board.head.end.one_or_many"],
+        Head::ExactlyOne => ["board.head.start.exactly_one", "board.head.end.exactly_one"],
+        Head::ZeroOrOne => ["board.head.start.zero_or_one", "board.head.end.zero_or_one"],
+        Head::ZeroOrMany => [
+            "board.head.start.zero_or_many",
+            "board.head.end.zero_or_many",
+        ],
     };
-    HEADS.iter().position(|x| *x == h).map(|i| keys[i])
+    Some(if which == 0 { start } else { end })
 }
 
 pub(super) fn shape_key(it: Item) -> Option<&'static str> {
@@ -412,7 +424,7 @@ pub(super) fn paint_item(
         Item::Tool(Tool::Hand) => {
             paint_icon(scene, IconId::Pan, inner, fg, StrokeToken::Default.px())
         }
-        Item::MoreShapes => paint_icon(
+        Item::MoreShapes | Item::MoreHeads(_) => paint_icon(
             scene,
             IconId::MoreHorizontal,
             inner,

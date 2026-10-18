@@ -62,6 +62,11 @@ pub(crate) struct BoardLive {
     pub(crate) shapes_open: bool,
     /// A grelha «Forma» da barra de contexto (trocar o tipo das formas), aberta para ESTA selecção
     /// e ferramenta.
+    /// W23 — a grelha de todas as pontas, aberta para ESTA selecção e para a ponta `0`/`1`.
+    pub(crate) heads: Option<(
+        std::collections::BTreeSet<ph2d_board_model::ElementId>,
+        usize,
+    )>,
     pub(crate) reshape: Option<(
         std::collections::BTreeSet<ph2d_board_model::ElementId>,
         ph2d_board_edit::Tool,

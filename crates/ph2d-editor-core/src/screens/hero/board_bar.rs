@@ -49,6 +49,8 @@ pub use layout::{shapes_rects, style_rects, toolbar_rects};
 #[path = "board_bar_organize.rs"]
 mod organize;
 pub use organize::OrgItem;
+#[path = "board_bar_heads.rs"]
+mod heads;
 #[path = "board_bar_mind.rs"]
 mod mind;
 pub use mind::MindItem;
@@ -89,6 +91,8 @@ fn palette(i: usize) -> Rgba {
 pub enum Item {
     Tool(Tool),
     MoreShapes,
+    /// W23 — o «…» do grupo de pontas `i` (`0` início, `1` fim): abre a grelha de todas.
+    MoreHeads(usize),
     Pick(ShapeType),
     /// `None` = sem preenchimento; `Some(i)` = o pastel `i` do marcador.
     Fill(Option<usize>),
@@ -219,7 +223,10 @@ pub fn items() -> Vec<Item> {
     .flatten()
     {
         if !v.contains(&it)
-            && !matches!(it, Item::Reshape | Item::Gray | Item::Flip(_) | Item::Crop)
+            && !matches!(
+                it,
+                Item::Reshape | Item::Gray | Item::Flip(_) | Item::Crop | Item::MoreHeads(_)
+            )
         {
             v.push(it);
         }
@@ -234,6 +241,8 @@ pub fn items() -> Vec<Item> {
     ]);
     // W18 — no FIM também.
     v.push(Item::Video);
+    // W23 — a grelha das pontas, no FIM.
+    v.extend(heads::extra_items());
     v
 }
 
@@ -283,8 +292,16 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             width,
             dash,
             ROUTES.iter().map(|r| Item::Route(*r)).collect(),
-            HEADS.iter().map(|h| Item::Head(0, *h)).collect(),
-            HEADS.iter().map(|h| Item::Head(1, *h)).collect(),
+            HEADS
+                .iter()
+                .map(|h| Item::Head(0, *h))
+                .chain([heads::more(0)])
+                .collect(),
+            HEADS
+                .iter()
+                .map(|h| Item::Head(1, *h))
+                .chain([heads::more(1)])
+                .collect(),
             opacity,
             font,
         ],
@@ -453,6 +470,8 @@ pub fn paint(
         && shapes::shows(shapes::RESHAPE, ed, &board.doc) == Some(true);
     shapes::sync(live, sel_box.is_some() && bar_has_reshape);
     let reshape_open = live.reshape.is_some();
+    heads::sync(live, sel_box.is_some() && what == Some(Selected::Arrows));
+    let heads_open = live.heads.as_ref().map(|(_, i)| *i);
     let ed = super::board_view::editor(&mut live.editor, theme);
     let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;
@@ -511,6 +530,10 @@ pub fn paint(
         let now = reshape_now;
         shapes::paint_reshape_grid(scene, text_system, theme, hit, store, area, &bar, now);
     }
+    if let Some(i) = heads_open {
+        let now = arrow.as_ref().map(|c| c.heads[i]);
+        heads::paint_grid(scene, text_system, theme, hit, store, area, &bar, (i, now));
+    }
 }
 
 /// ⭐ Os cliques nas barras. Corre no pré-despacho (ids derivados não chegam a um handler de chrome).
@@ -523,6 +546,10 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     };
     let theme = hero.theme;
     let reshaping = shapes::toggle(&mut hero.documents.live, it);
+    heads::toggle(&mut hero.documents.live, it);
+    if let Item::MoreHeads(_) = it {
+        return true;
+    }
     mind::toggle_gallery(&mut hero.documents.live, it);
     fac::toggle_flyouts(&mut hero.documents.live, it);
     if fac::apply(hero, it) {
@@ -600,6 +627,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         Item::Head(i, h) => ed.set_head(doc, history, i, h),
         Item::MoreShapes
+        | Item::MoreHeads(_)
         | Item::Pick(_)
         | Item::Reshape
         | Item::NoteColor(_)

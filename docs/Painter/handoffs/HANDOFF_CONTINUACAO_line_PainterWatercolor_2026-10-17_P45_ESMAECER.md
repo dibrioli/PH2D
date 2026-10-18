@@ -44,6 +44,17 @@ por ordem do dono; só esses três ficheiros regerados. `ph2d-wet-paint` `a_opac
 antes) · `the_coverage_curve_shapes_the_pressure_only` · `midias_de_fabrica` `RampaCobertura` (3) +
 `RampaLargura` no Airbrush · `wetpaint_preset/shape_color_tests.rs` (4) · `a_miniatura_pinta_a_shape_color`.
 
+## §4b — Pedido do dono antes do smoke: o Randomize Color com a Shape Color
+
+Com uma rampa dona da cor (Shape Color, e a rampa de cor do Grain) o desvio `Dab::color_shift` nunca chegava à cor:
+a rampa dava a cor e o Randomize só mexia na tinta do pincel, que ela substitui. Lei única (a do Bug #51):
+`apply_color_shift(cor_da_rampa, d.color_shift)`, o alfa fica, zero = ao bit. Rotas: `RampPaint::shift` lido em
+`ramp_texel` (o por-pixel, por dab) · o carimbo assado desloca no BLIT (`blit_color_stamp`; a cache é do traço,
+não se assa o desvio de um dab) · a rota da LUT com uma cópia deslocada por dab (`shift_ramp_lut`) · Wet Paint e
+Watercolor por `RampaDaAguada::cor_do_dab`. Impasto e Composite passam pelas mesmas rotas. Commits `4bd26b6d4b`
+(lei) · `adfd93d709` (portões `tests/rampa_randomize.rs`, 6, cada um vermelho sem a cura e com a ROTA verificada
+pela cache que encheu) + o lint de clippy do fecho. Identidade (`a_lei_da_tinta`, miniaturas de fábrica) intacta.
+
 ## §5 — Mutação
 
 **13/14 sangram** + 1 que não é buraco (agente `mutacao`, controlos verdes antes, âncoras 1×). Sangraram: o depósito

@@ -157,11 +157,11 @@ fn rota(t: &PainterTool) -> Rota {
     }
 }
 
+/// As amostras de um traço e a rota que ele tomou.
+type Traco = (Vec<[u8; 4]>, Rota);
+
 /// O par de traços (sem e com Randomize) de um `arma`; devolve as amostras e a rota de cada um.
-fn par(
-    meio: PaintMedia,
-    arma: impl Fn(&mut PainterTool),
-) -> ((Vec<[u8; 4]>, Rota), (Vec<[u8; 4]>, Rota)) {
+fn par(meio: PaintMedia, arma: impl Fn(&mut PainterTool)) -> (Traco, Traco) {
     let corre = |randomize| {
         let mut t = tela(meio);
         arma(&mut t);

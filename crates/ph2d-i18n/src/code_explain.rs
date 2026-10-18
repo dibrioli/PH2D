@@ -88,16 +88,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.explain.unknown_key_here.why" => {
             "This table has no “{key}”. Check the spelling — Alt+Enter suggests the closest name, and after the dot the list shows every name that exists."
         }
-        "code.explain.too_few_args" => "“{name}” takes {expects} value(s), and gets {given}",
+        "code.explain.too_few_args" => "Too few values for “{name}”: it takes {expects}, and gets {given}",
         "code.explain.too_few_args.why" => {
             "Add the missing values between the parentheses. Typing ( shows what each one is."
         }
-        "code.explain.too_many_args" => "“{name}” takes {expects} value(s), and gets {given}",
+        "code.explain.too_many_args" => "Too many values for “{name}”: it takes {expects}, and gets {given}",
         "code.explain.too_many_args.why" => {
             "Remove the extra values. Typing ( shows what each one is."
         }
         "code.explain.too_few_args_anon" => {
-            "This function takes {expects} value(s), and gets {given}"
+            "Too few values: this function takes {expects}, and gets {given}"
         }
         "code.explain.too_few_args_anon.why" => "Add the missing values between the parentheses.",
         "code.explain.compare_types" => "{a} can’t be compared with {b}",
@@ -153,13 +153,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.explain.unreachable.why" => {
             "A return, break or error above it always ends the block first. Move it up, or remove it."
         }
-        "code.explain.too_many_values" => "{values} values for {vars} name(s)",
+        "code.explain.too_many_values" => "More values than names",
         "code.explain.too_many_values.why" => {
-            "The two sides of = have different counts, and the extra values are dropped."
+            "Left of = there are {vars}, right of it {values}: the extra values are dropped."
         }
-        "code.explain.too_many_vars" => "{values} value(s) for {vars} names",
+        "code.explain.too_many_vars" => "More names than values",
         "code.explain.too_many_vars.why" => {
-            "The two sides of = have different counts, and the extra names stay nil."
+            "Left of = there are {vars}, right of it {values}: the extra names stay nil."
         }
         "code.explain.multiline" => "This statement goes on to the next line",
         "code.explain.multiline.why" => {

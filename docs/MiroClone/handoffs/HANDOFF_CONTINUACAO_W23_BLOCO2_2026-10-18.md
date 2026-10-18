@@ -117,3 +117,14 @@ Nada visível na tela mudou neste bloco ⇒ **sem fotos**.
 - **Bloco 3 «quadro» (próximo):** A7, A10, A13, B1, B3, B4, B5 (B2 já feito). Depois: 4 = B6, B7, B10, B11 · 5 = B9, A11 ·
   6 = B12, B13, B14 (com `/pd-feature`). Testes que precisam do dono (furo real pela internet, Windows/Mac reais) ficam
   fora desta onda.
+
+## Depois do smoke do dono (18/10)
+
+O dono: «Invite e Copy link não copiam nenhum código ou endereço». Mecanismo: a shell só entregava o pedido de
+cópia (`WidgetStore::set_clipboard_copy`) ao `arboard` dentro de `forward_key_to_hero` — depois de uma TECLA; os
+botões «Invite over the internet» / «Copy the link again» (`live_internet.rs`) copiam fora de tecla e o link ficava
+à espera. Os gates da família liam o store, não o sistema. Cura (commit «fix(MiroClone W23): «Invite over the
+internet»…»): `ph2d_app_host::clipboard::hand_over`, a cada imagem (após `io::service` em
+`render_loop/fase_pointer_subjects.rs`) e depois de cada tecla. Gate da regra `a_copy_request_is_handed_over_once`;
+a chamada por imagem não tem gate de comportamento (precisa da placa; o `xclip` não está instalado para ler a
+área de transferência da sessão virtual) — o smoke do dono prova-o. Shell: −6 linhas +3.

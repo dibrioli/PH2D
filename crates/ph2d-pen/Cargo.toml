@@ -9,6 +9,10 @@ authors.workspace = true
 
 [lib]
 
+[dependencies]
+# O vocabulário dos eventos da shell (`PointerEvent`): o conversor `ponteiro` fala-o.
+ph2d-host = { path = "../ph2d-host" }
+
 # A caneta de verdade no Wayland, ao lado do winit 0.30 (ADR-0189): o winit não liga o
 # `zwp_tablet_manager_v2` e o KWin não emula ponteiro para quem não o liga.
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -15,6 +15,8 @@
 
 use std::path::Path;
 
+use ph2d_host::{PointerButton, PointerKind};
+use ph2d_pen::ponteiro::{Conversor, Saida};
 use ph2d_pen::{PenButton, PenEvent, PenPhase, ProtocolEvent as P, Sessao, ToolKind};
 
 const GRAVACAO: &str = "../../docs/Painter/ferramentas/caneta/medicoes_2026-10-17/libinput_debug_events_event14.txt.zst";
@@ -196,6 +198,8 @@ fn the_owners_recording_replays_step_by_step() {
     let texto = String::from_utf8(zstd::stream::decode_all(zst).unwrap()).unwrap();
 
     let mut sessao = Sessao::default();
+    let mut conv = Conversor::default();
+    let mut cliques = 0;
     let mut comp = Compositor::default();
     let mut c = Contas::default();
     let mut na_mesa = false;
@@ -307,6 +311,27 @@ fn the_owners_recording_replays_step_by_step() {
             }
             _ => panic!("evento trocado: {}", ctx()),
         }
+        // …e pelo conversor (ADR-0189 §3): a MESMA pressão sai no `PointerEvent`, evento a evento.
+        let mut ponteiro = Vec::new();
+        conv.converte(&out, 1.0, u128::from(l.time_ms) * 1_000_000, &mut ponteiro);
+        if let (PenEvent::Sample(s), Some(Saida::Ponteiro(e))) = (out[0], ponteiro.last()) {
+            let esperada = if s.phase == PenPhase::Hover {
+                0.0
+            } else {
+                s.pressure
+            };
+            assert_eq!(e.pressure, esperada, "{}", ctx());
+            assert_eq!(
+                e.kind == PointerKind::Down,
+                s.phase == PenPhase::Down,
+                "{}",
+                ctx()
+            );
+            if e.kind == PointerKind::Down {
+                assert_eq!(e.button, PointerButton::Primary, "{}", ctx());
+                cliques += 1;
+            }
+        }
     }
     println!("{c:#?}");
     // A gravação é fixa: estas contas são as do README da pasta.
@@ -321,6 +346,10 @@ fn the_owners_recording_replays_step_by_step() {
     );
     assert_eq!(c.samples, c.axis + c.tip_down + c.tip_up + c.prox_in);
     assert_eq!((c.downs, c.ups), (c.tip_down, c.tip_up));
+    assert_eq!(
+        cliques, c.tip_down,
+        "cada toque da ponta é um clique primário"
+    );
     assert_eq!((c.buttons, c.leaves), (c.button, c.prox_out));
     // O máximo gravado é `0.97` (15 linhas); o `65535 → 1.0` exacto prova-o `sessao_tests`.
     assert!(

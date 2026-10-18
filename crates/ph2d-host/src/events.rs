@@ -35,14 +35,14 @@ pub enum Lifecycle {
     WillTerminate,
 }
 
-/// User pointer event — mouse, touch, or Apple Pencil.
+/// User pointer event — mouse, touch, or a tablet pen.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PointerEvent {
     /// Position in **physical pixels** relative to the surface.
     pub x: f32,
     pub y: f32,
     /// Pressure in [0.0, 1.0]. Mouse always reports 1.0; touch may
-    /// report 1.0 if device doesn't support pressure.
+    /// report 1.0 if device doesn't support pressure; a pen hovering reports 0.0.
     pub pressure: f32,
     pub kind: PointerKind,
     pub source: PointerSource,
@@ -87,7 +87,18 @@ pub struct WheelEvent {
 pub enum PointerSource {
     Mouse,
     Touch,
-    Pencil,
+    /// Uma caneta de mesa digitalizadora (ADR-0189); a pressão viaja no `PointerEvent::pressure`.
+    Pen(PenInfo),
+}
+
+/// O que só a caneta sabe além da pressão.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub struct PenInfo {
+    /// Inclinação `[x, y]` em CENTÉSIMOS de grau (`-9000..=9000`), positiva para a direita e
+    /// para o utilizador (`zwp_tablet_tool_v2.tilt`).
+    pub tilt_cdeg: [i16; 2],
+    /// A ponta de BORRACHA (a outra ponta da caneta) está na mesa.
+    pub eraser: bool,
 }
 
 /// Keyboard event — physical key down / up / repeat.

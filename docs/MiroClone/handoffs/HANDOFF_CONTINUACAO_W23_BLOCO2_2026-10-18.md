@@ -128,3 +128,19 @@ internet»…»): `ph2d_app_host::clipboard::hand_over`, a cada imagem (após `i
 `render_loop/fase_pointer_subjects.rs`) e depois de cada tecla. Gate da regra `a_copy_request_is_handed_over_once`;
 a chamada por imagem não tem gate de comportamento (precisa da placa; o `xclip` não está instalado para ler a
 área de transferência da sessão virtual) — o smoke do dono prova-o. Shell: −6 linhas +3.
+
+## ⭐ PEDIDO DO DONO (18/10, depois do smoke OK) — fazer ANTES do bloco 3
+
+Smoke da cópia do link: OK («Funciona»). Pedido: *«Os quadros precisam separar o conteúdo por tipo de conexão
+para que fique claro e intuitivo.»* A foto dele do cartão «Live» (cena 22, anfitrião):
+[`w23_fotos/dono_cartao_live_antes_da_separacao.png`](../ferramentas/w23_fotos/dono_cartao_live_antes_da_separacao.png).
+Hoje o cartão é UMA coluna misturada: o código `S27-AGF` + «People on the same Wi-Fi…» + o endereço LAN
+`192.168.15.10:47320` + «Link copied…» (da INTERNET) + «Copy the link again» (internet) + «Remove the permission»
+(firewall da rede LOCAL) + People + «Bring everyone here» + «End session».
+Leitura proposta (confirmar no plano, `/pd-feature`: plano primeiro, produto final, foto 1366×768 e 1930×1040,
+cena de teste): secções com título — **Rede local** (código, frase, endereço, a permissão da firewall) ·
+**Internet** (convidar/copiar o link, «a procurar», a rede estrita) · **Pessoas** · as ações da sessão no fim. O
+lado do CONVIDADO (código vs link) segue a mesma separação. Pintura: `crates/ph2d-editor-core/src/screens/hero/board_live_paint.rs`
+(e os botões em `ph2d-app-board/src/live.rs`/o painel do `LiveView`); textos novos por `ph2d-i18n` (`board_live.rs`).
+Gates a manter: os da cena 12/22 (`smoke_live_tests.rs`), `the_corner_rises_above_the_stats_hud_in_a_narrow_window`,
+e o `fit::cover` do cartão (bloco 1, A1) — o cartão vai mudar de altura.

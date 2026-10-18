@@ -1,0 +1,39 @@
+# oráculo I8b — 2026-10-18T12:05Z — loadavg: 7.34 6.57 8.26 1/1625 194008
+# code --version: 1.142.0 6d62b1d5dace93a33b3a6d3eca1317bd5e15bcb1 x64
+# godot --version: 4.7.2.stable.arch_linux.ed1daf0bf
+# pacman: Name: godot;Version: 4.7.2-2.1;Licenses: MIT;Name: visual-studio-code-bin;Version: 1.142.0-1;Licenses: custom: commercial
+# display: Xvfb :117 1600x1000x24
+v1_balao (1000,140) #202122 — fundo do balão
+v1_balao (1000,218) #262829 — faixa de baixo (View Problem / Quick Fix...)
+v1_balao (1000,180) #252627 — separador
+v1_balao (524,190) #272829 — borda
+v1_balao (800,400) #121314 — fundo do editor
+v5_menu_do_balao (1000,218) #262829 — o balão continua aberto?
+v5_menu_do_balao (900,272) #313233 — 1.ª acção (menu aberto pelo RATO)
+v5_menu_do_balao (683,262) #313233 — borda interna da 1.ª acção (anel?)
+v5_menu_do_balao (680,262) #202122 — fundo do menu
+v6_esc1 (1000,218) #262829 — balão após 1.º Esc
+v6_esc2 (1000,218) #121314 — balão após 2.º Esc
+v7_aplicado (1000,218) #121314 — balão depois de aplicar
+v9_ctrl_ponto (650,160) #202122 — fundo do menu
+v9_ctrl_ponto (650,187) #313233 — 1.ª acção pré-seleccionada (enchimento)
+v9_ctrl_ponto (650,176) #3994BC — 1.ª acção, 1 px abaixo do topo (anel)
+v9_ctrl_ponto (446,187) #3994BC — 1.ª acção, borda esquerda (anel)
+v9_ctrl_ponto (705,211) #202122 — 2.ª acção (não seleccionada)
+v10_rato_na_2a (650,187) #202122 — 1.ª acção com o rato na 2.ª
+v10_rato_na_2a (650,220) #313233 — 2.ª acção sob o rato
+v10_rato_na_2a (446,211) #313233 — 2.ª acção, borda esquerda (anel?)
+v11_seta_abaixo (650,260) #313233 — 3.ª acção após ↓ (enchimento)
+v11_seta_abaixo (446,260) #3994BC — 3.ª acção após ↓, borda (anel)
+g2_palavra_pirnt (1000,400) #1A1A1A — fundo do editor
+g2_palavra_pirnt (1000,209) #5F3632 — linha com erro (4)
+g2_palavra_pirnt (1000,234) #36342E — linha 5 (aviso)
+g9_completar (880,307) #353535 — 1.ª linha seleccionada
+g9_completar (880,332) #252525 — 2.ª linha
+g9_completar (880,300) #353535 — topo da 1.ª (anel?)
+g9_completar (636,312) #353535 — borda esquerda do popup
+g10_rato_na_3a (880,307) #353535 — 1.ª com o rato na 3.ª
+g10_rato_na_3a (880,357) #252525 — 3.ª sob o rato
+rato sobre o popup muda pixels da lista? AE=0 (0)
+g11_seta_abaixo (880,307) #252525 — 1.ª após ↓
+g11_seta_abaixo (880,332) #353535 — 2.ª após ↓

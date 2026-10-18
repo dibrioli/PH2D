@@ -6,7 +6,7 @@ Sobre o `main` `ad5f8fe39c` (merge-base, sem rebase). Sem push. [Prompt 50](../N
 · a medição, a lei e as recusas: [50_medicao](../NewFeaturesWetPaint/50_medicao_o_relevo_sem_escada.md) ·
 [prancha](../NewFeaturesWetPaint/50_prancha_escada.png) · [foto do smoke](../NewFeaturesWetPaint/50_smoke_cena.png) ·
 05 §3 (W3 ◐ com a W3b) · lista 26 C35 actualizado, C36, C37 novos. Anterior: [P49](HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-18_P49_W3_RELEVO.md).
-Commits `cdaedcaae9` → `4d2b12e9c6` (+ este).
+Commits `cdaedcaae9` → `04fda78c26` (+ os docs).
 
 ## §2 — Decidido e medido (o detalhe no 50_medicao)
 
@@ -58,7 +58,10 @@ declive vertical). ⚠️ `LUZ`/Emboss/vertical só os veem os portões de produ
 fmt ✓ · clippy `-D warnings --all-targets` (`ph2d-wet-paint`, `ph2d-tool-painter`, `ph2d-app-painter`, `ph2d-host-desktop`) ✓ ·
 `nextest-impacted` (`BASE=e3a8858603`) **18 479/18 479** (962 s) · binário do smoke: `Finished \`smoke\` profile [optimized]
 target(s) in 40.78s`. **Custo** (`sonda_o_custo_do_relevo`, 2048², raio 40, mínimo de 7 intercaladas, load 2–5):
-move 0,68 → 1,44 ms com o relevo; tick 0,001 → 0,002 ms.
+move 0,68 → 1,44 ms com o relevo; tick 0,001 → 0,002 ms. **Depois do smoke do dono («o traço ficou lento», `04fda78c26`):** a 103 px o move
+era 1,07 → 2,37 ms — o pente recalculava a silhueta do depósito, em série; agora a silhueta é guardada por dab
+(`wetpaint/sil_memo.rs`) e o pente anda por linhas (`MIN_CELLS_PENTE` 768, medido): **1,28 ms** (sem relevo 1,12),
+ao byte. Medido em release e em smoke (1,53 · 1,35); o smoke do dono continua por refazer.
 
 ## §6 — Aberto
 

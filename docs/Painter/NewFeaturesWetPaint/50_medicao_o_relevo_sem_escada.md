@@ -96,6 +96,15 @@ não tem unitário do termo.
 **Custo** (`sonda_o_custo_do_relevo`, 2048², raio 40, o mínimo de 7 rodadas intercaladas, load 2–5): o move 0,68 →
 1,44 ms com o relevo (a W3 lia 0,99 → 1,55 a load ~22); o tick 0,001 → 0,002 ms.
 
+⛔ **Smoke do dono 18/10: «o traço ficou lento».** A 103 px (1024², release, o mesmo processo) o move ia de 1,07 a
+**2,37 ms** com o relevo, e o custo inteiro era o PENTE (com o Emboss a 0, que tira o termo do render, o mesmo): ele
+recalculava a silhueta do dab — as sub-amostras do AA — em cada célula que o depósito acabara de calcular, em série
+(instrumentado: depósito 217 µs/dab, pente 129 µs/dab). O conserto, ao byte: a silhueta guardada por dab
+(`wetpaint/sil_memo.rs`, atómica; o pente passou a calcular 148 silhuetas novas contra 3 885) e o pente por linhas
+(`par::walk_rows`, piso `MIN_CELLS_PENTE` 768, `tests/it/measure_pente_rows.rs`: 525 células 0,95× · 969 4,56× ·
+4 173 4,63×). Move a 103 px: **1,28 ms** (sem relevo 1,12); no perfil smoke 1,53 (1,35); a 80 px 0,91 (0,83).
+⛔ O meio-cosseno não é o custo (o smoothstep mediu 1,72 contra 1,69).
+
 ## §5 — Aberto
 
 - **A borda a 103 px**: 0,73–0,74 em TODAS as variantes (com e sem relevo) contra 0,87 do Rebelle — de antes da W3.

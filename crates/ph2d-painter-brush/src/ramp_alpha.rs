@@ -192,6 +192,19 @@ pub struct RampPaint<'a> {
     pub alpha_mode: RampAlphaMode,
     pub index: RampIndex,
     pub shape: ShapeRampLayers<'a>,
+    /// O desvio do Randomize Color DESTE carimbo ([`crate::Dab::color_shift`]): a cor que a rampa dá
+    /// desloca-se por ele ([`crate::apply_color_shift`]). Zero ⇒ a cor da rampa ao bit.
+    pub shift: [f32; 3],
+}
+
+/// A LUT de uma rampa com o desvio `shift` do carimbo em cada entrada (o alfa fica) — ponto a ponto a
+/// mesma lei de [`ramp_texel`], para quem lê a LUT direto ([`crate::blit_stamp_ramped`]). Reusa `out`.
+pub fn shift_ramp_lut(lut: &[[f32; 4]], shift: [f32; 3], out: &mut Vec<[f32; 4]>) {
+    out.clear();
+    out.extend(lut.iter().map(|c| {
+        let s = crate::jitter::apply_color_shift([c[0], c[1], c[2]], shift);
+        [s[0], s[1], s[2], c[3]]
+    }));
 }
 
 impl RampPaint<'_> {
@@ -239,7 +252,10 @@ pub(crate) fn ramp_texel(
             RampIndex::Grain => crate::dab::ramp_sample(r.lut, grain.unwrap_or(w)),
             RampIndex::Shape => r.shape.color(r.lut, shape.unwrap_or(w), w),
         };
-        t.color = Some([c[0], c[1], c[2]]);
+        t.color = Some(crate::jitter::apply_color_shift(
+            [c[0], c[1], c[2]],
+            r.shift,
+        ));
         match r.alpha_mode {
             RampAlphaMode::None => {}
             RampAlphaMode::Strength => t.g *= c[3],

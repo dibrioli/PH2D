@@ -640,6 +640,7 @@ impl PainterTool {
                 &spec,
                 d.coverage,
                 alpha_locked,
+                d.color_shift,
             ) {
                 let rect = Region {
                     x: r.x,

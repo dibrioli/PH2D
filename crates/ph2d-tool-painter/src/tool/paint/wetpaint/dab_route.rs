@@ -487,7 +487,7 @@ impl PainterTool {
             let cor = rampa.as_ref().map(|r| {
                 move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
                     let v = forma_da_cor.map(|si| valor_da_forma(si, cx, cy));
-                    let c = r.cor(v, queda as f32);
+                    let c = r.cor_do_dab(v, queda as f32, d.color_shift);
                     [c[0] * 255.0, c[1] * 255.0, c[2] * 255.0, c[3]]
                 }
             });

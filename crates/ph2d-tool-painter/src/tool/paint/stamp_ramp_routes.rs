@@ -6,7 +6,7 @@
 use super::stamp_cache::{mask_size_for, prepare_stroke_mask};
 use super::{Region, union_region};
 use crate::tool::PainterTool;
-use ph2d_painter_brush::{BrushSpec, Dab, blit_stamp_ramped};
+use ph2d_painter_brush::{BrushSpec, Dab, blit_stamp_ramped, shift_ramp_lut};
 
 impl PainterTool {
     /// Like [`Self::stamp_dabs_cached`] but the per-texel colour comes from the **Shape Colour Ramp**
@@ -42,6 +42,10 @@ impl PainterTool {
             self.paint.texture_ramp_lut.as_slice()
         };
         let alpha_mode = super::ramp_lut::BRUSH_RAMP_ALPHA;
+        // O Randomize Color: a LUT deslocada pelo desvio de cada carimbo (a lei de `ramp_texel`, entrada
+        // a entrada), re-assada só quando o desvio muda.
+        let mut deslocada: Vec<[f32; 4]> = Vec::new();
+        let mut desvio_assado: Option<[f32; 3]> = None;
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -54,6 +58,15 @@ impl PainterTool {
                 radius_px: d.radius_px,
                 color: d.color,
                 ..*brush
+            };
+            let ramp = if d.color_shift == [0.0; 3] {
+                ramp
+            } else {
+                if desvio_assado != Some(d.color_shift) {
+                    shift_ramp_lut(ramp, d.color_shift, &mut deslocada);
+                    desvio_assado = Some(d.color_shift);
+                }
+                deslocada.as_slice()
             };
             if let Some(r) = blit_stamp_ramped(
                 buf,
@@ -127,6 +140,7 @@ impl PainterTool {
             } else {
                 ph2d_painter_brush::ShapeRampLayers::default()
             },
+            shift: [0.0; 3],
         };
         // A dab's wrapped Tiling copies must share ONE random frame (see `tiling::DabRng`).
         let groups = self.paint.dab_groups.clone();
@@ -165,6 +179,11 @@ impl PainterTool {
             // stays the basis `extra_rot = [1, 0]` so the pattern-within isn't double-rotated.
             let rotor = spec.dab_rotor(d);
             let fp = spec.dab_footprint(rotor);
+            // O Randomize Color deste carimbo desloca a cor da rampa ([`ph2d_painter_brush::RampPaint::shift`]).
+            let rampa = ph2d_painter_brush::RampPaint {
+                shift: d.color_shift,
+                ..rampa
+            };
             let shape_basis = shape_active.then(|| {
                 ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,

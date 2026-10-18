@@ -168,7 +168,7 @@ pub use height::{DepthSource, DrawTo};
 pub use jitter::{ColorJitterScope, apply_color_shift};
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use ramp_alpha::{
-    RampAlphaMode, RampIndex, RampPaint, ShapeRampLayers, compose_shape_ramp_layers,
+    RampAlphaMode, RampIndex, RampPaint, ShapeRampLayers, compose_shape_ramp_layers, shift_ramp_lut,
 };
 pub use sampler::MAX_INPUT_SAMPLES;
 pub use smear::{smear_dab, smear_dab_premultiplicado};

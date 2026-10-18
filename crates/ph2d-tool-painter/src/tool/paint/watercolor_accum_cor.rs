@@ -195,7 +195,7 @@ impl PainterTool {
                         // como a do pincel no mixer: uma lei ([`super::watercolor_mixer::Apanha`]).
                         let (col, wgt) = match &rampa {
                             Some(r) if wgt > 0.0 => {
-                                let c = r.cor(forma, wgt);
+                                let c = r.cor_do_dab(forma, wgt, d.color_shift);
                                 let rgb = [c[0], c[1], c[2]];
                                 let rgb = apanha.map_or(rgb, |a| a.mistura(rgb));
                                 let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
@@ -278,6 +278,15 @@ impl RampaDaAguada {
         self.camadas
             .motor(forma.is_some())
             .color(&self.lut, forma.unwrap_or(wgt), wgt)
+    }
+
+    /// [`Self::cor`] com o Randomize Color do carimbo (`shift` = [`ph2d_painter_brush::Dab::color_shift`])
+    /// — a lei do digital ([`ph2d_painter_brush::RampPaint::shift`]): o RGB desloca-se, o alfa fica.
+    #[inline]
+    pub(super) fn cor_do_dab(&self, forma: Option<f32>, wgt: f32, shift: [f32; 3]) -> [f32; 4] {
+        let c = self.cor(forma, wgt);
+        let s = ph2d_painter_brush::apply_color_shift([c[0], c[1], c[2]], shift);
+        [s[0], s[1], s[2], c[3]]
     }
 }
 

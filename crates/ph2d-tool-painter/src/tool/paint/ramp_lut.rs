@@ -88,6 +88,8 @@ impl PainterTool {
             } else {
                 ph2d_painter_brush::ShapeRampLayers::default()
             },
+            // O carimbo assado é do traço inteiro: o desvio de cada carimbo entra no blit.
+            shift: [0.0; 3],
         }
     }
 

@@ -136,7 +136,18 @@ fn no_kernel_writes_outside_the_tip() {
 
     // (2) O carimbo COLORIDO — a rota do report (Use Texture Colors).
     let mut canvas = vec![0u8; (W * H * 4) as usize];
-    let _ = blit_color_stamp(&mut canvas, W, H, [CX, CY], R, &stamp, &spec, 1.0, false);
+    let _ = blit_color_stamp(
+        &mut canvas,
+        W,
+        H,
+        [CX, CY],
+        R,
+        &stamp,
+        &spec,
+        1.0,
+        false,
+        [0.0; 3],
+    );
     check("blit_color_stamp", written_box(&canvas, 4));
 
     // (3) O acumulador de cobertura de UMA camada.
@@ -393,7 +404,18 @@ fn every_kernel(spec: &BrushSpec, dab_deg: f32) -> Vec<Escrita> {
         STAMP_FINO,
     );
     let mut canvas = vec![0u8; n * 4];
-    let _ = blit_color_stamp(&mut canvas, W, H, [CX, CY], R, &stamp, spec, 1.0, false);
+    let _ = blit_color_stamp(
+        &mut canvas,
+        W,
+        H,
+        [CX, CY],
+        R,
+        &stamp,
+        spec,
+        1.0,
+        false,
+        [0.0; 3],
+    );
     out.push(("blit_color_stamp", false, written_box(&canvas, 4)));
     let mut cov = vec![0u8; n];
     let _ = accumulate_color_stamp_coverage(&mut cov, W, H, [CX, CY], R, &stamp, 1.0);

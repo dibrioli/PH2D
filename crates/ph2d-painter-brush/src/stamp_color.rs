@@ -288,6 +288,7 @@ struct ColorBlitCtx<'a> {
     inv_radius: f32,
     coverage: f32,
     preserve_alpha: bool,
+    shift: [f32; 3],
     x0: i64,
     x1: i64,
     stride: usize,
@@ -296,7 +297,9 @@ struct ColorBlitCtx<'a> {
 /// Composite a cached [`ColorStampMask`] onto `buf` at `center` with `radius` (bilinear scale-blit). The
 /// per-texel colour comes from the stamp itself; `spec` supplies the blend + Flow × Strength (its
 /// `color` is unused — the layers already carry colour). Mirrors [`crate::blit_stamp`]. Returns the
-/// touched [`DirtyRect`], or `None` if fully off-canvas / zero-coverage.
+/// touched [`DirtyRect`], or `None` if fully off-canvas / zero-coverage. `shift` = o Randomize Color
+/// deste carimbo ([`crate::Dab::color_shift`]) sobre a cor de cada texel, fora do carimbo assado (que é
+/// partilhado pelo traço); zero ⇒ a cor assada ao bit.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn blit_color_stamp(
@@ -309,6 +312,7 @@ pub fn blit_color_stamp(
     spec: &BrushSpec,
     coverage: f32,
     preserve_alpha: bool,
+    shift: [f32; 3],
 ) -> Option<DirtyRect> {
     debug_assert!(
         buf.len() >= (width as usize) * (height as usize) * 4,
@@ -337,6 +341,7 @@ pub fn blit_color_stamp(
         inv_radius: 1.0 / radius,
         coverage,
         preserve_alpha,
+        shift,
         x0,
         x1,
         stride,
@@ -383,6 +388,7 @@ fn blit_color_band(ctx: &ColorBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
             if a <= 0.0 {
                 continue;
             }
+            let rgb = crate::jitter::apply_color_shift(rgb, ctx.shift);
             let out = crate::blend::blend_over(ctx.blend, prev, rgb, a);
             dst[i] = encode(out[0]);
             dst[i + 1] = encode(out[1]);

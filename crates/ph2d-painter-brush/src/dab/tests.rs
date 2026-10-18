@@ -52,6 +52,7 @@ fn ramped_stamp_paints_the_ramp_colours_not_the_brush_colour() {
             alpha_mode: crate::ramp_alpha::RampAlphaMode::None,
             index: crate::RampIndex::Grain,
             shape: crate::ShapeRampLayers::default(),
+            shift: [0.0; 3],
         },
         None,
         [1.0, 0.0],
@@ -116,12 +117,84 @@ fn ramp_alpha_dab(buf: &mut [u8], w: u32, h: u32, a1: f32, mode: crate::ramp_alp
             alpha_mode: mode,
             index: crate::RampIndex::Grain,
             shape: crate::ShapeRampLayers::default(),
+            shift: [0.0; 3],
         },
         None,
         [1.0, 0.0],
         None,
     )
     .expect("ramped dab painted");
+}
+
+/// O Randomize Color com a rampa dona da cor: a porta única desloca a cor da rampa pelo desvio do
+/// carimbo — ao bit com desvio zero, `apply_color_shift` da cor de sempre com um desvio; e a LUT
+/// deslocada ([`crate::shift_ramp_lut`]) é a mesma lei entrada a entrada.
+#[test]
+fn ramp_texel_desloca_a_cor_da_rampa_pelo_desvio_do_carimbo() {
+    let lut: Vec<[f32; 4]> = (0..256)
+        .map(|k| {
+            let s = k as f32 / 255.0;
+            [s, 1.0 - s, 0.25, 0.5 + 0.5 * s]
+        })
+        .collect();
+    let queda = lut.clone();
+    let rampa = |index, shift| crate::RampPaint {
+        lut: &lut,
+        alpha_mode: crate::ramp_alpha::RampAlphaMode::Strength,
+        index,
+        shape: crate::ShapeRampLayers {
+            falloff: Some(&queda),
+            ..crate::ShapeRampLayers::default()
+        },
+        shift,
+    };
+    let desvio = [0.3, -0.2, 0.1];
+    let mut deslocada = Vec::new();
+    crate::shift_ramp_lut(&lut, desvio, &mut deslocada);
+    for index in [crate::RampIndex::Grain, crate::RampIndex::Shape] {
+        for k in 0..=20 {
+            let v = k as f32 / 20.0;
+            let cor = |shift| {
+                let t = crate::ramp_alpha::ramp_texel(
+                    Some(&rampa(index, shift)),
+                    v,
+                    None,
+                    Some(v),
+                    0.0,
+                    0.0,
+                );
+                (t.color.expect("a rampa é a dona da cor"), t.g.to_bits())
+            };
+            let (sem, g0) = cor([0.0; 3]);
+            // A cor de sempre: a da LUT (Grain) ou a da pilha das camadas (Shape).
+            let c = match index {
+                crate::RampIndex::Grain => crate::dab::ramp_sample(&lut, v),
+                crate::RampIndex::Shape => rampa(index, [0.0; 3]).shape.color(&lut, v, v),
+            };
+            assert_eq!(
+                sem.map(f32::to_bits),
+                [c[0], c[1], c[2]].map(f32::to_bits),
+                "desvio zero: a cor da rampa ao bit ({index:?}, {v})"
+            );
+            let (com, g1) = cor(desvio);
+            assert_eq!(
+                com.map(f32::to_bits),
+                crate::apply_color_shift(sem, desvio).map(f32::to_bits),
+                "com desvio: apply_color_shift da cor de sempre ({index:?}, {v})"
+            );
+            assert_eq!(g0, g1, "o desvio não toca a cobertura");
+            assert_ne!(com, sem, "o desvio muda a cor ({index:?}, {v})");
+            let e = crate::dab::ramp_sample(&deslocada, v);
+            if index == crate::RampIndex::Grain {
+                assert_eq!(
+                    [e[0], e[1], e[2]].map(f32::to_bits),
+                    com.map(f32::to_bits),
+                    "a LUT deslocada é a mesma lei ({v})"
+                );
+                assert_eq!(e[3].to_bits(), c[3].to_bits(), "o alfa da LUT fica");
+            }
+        }
+    }
 }
 
 #[test]

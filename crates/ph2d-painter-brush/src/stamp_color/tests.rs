@@ -123,7 +123,18 @@ fn blit_composites_the_stamp_colour_onto_the_canvas() {
     );
     let (w, h) = (16u32, 16u32);
     let mut buf = vec![0u8; (w * h * 4) as usize];
-    let rect = blit_color_stamp(&mut buf, w, h, [8.0, 8.0], 6.0, &stamp, &spec, 1.0, false);
+    let rect = blit_color_stamp(
+        &mut buf,
+        w,
+        h,
+        [8.0, 8.0],
+        6.0,
+        &stamp,
+        &spec,
+        1.0,
+        false,
+        [0.0; 3],
+    );
     assert!(rect.is_some(), "the blit touched the canvas");
     let i = ((8 * w + 8) * 4) as usize;
     assert!(

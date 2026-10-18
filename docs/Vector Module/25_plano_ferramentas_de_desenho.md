@@ -74,6 +74,11 @@ solução — ver §5.
 
 ### ⚠️ W1b.2 — A PRESSÃO: bloqueada por um fato do SHELL, e é decisão de produto
 
+> ✅ **Desbloqueada em 17/10 (P46, [ADR-0189](../architecture/decisions/0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md)):**
+> a caneta chega pelo `zwp_tablet_v2` ao lado do winit (crate `ph2d-pen`), entra pelas portas do rato
+> e a pressão dela chega ao `pointer_dynamics`; a fonte `Pen` passou a ABSOLUTA (`pencil_width.rs`).
+> O que segue abaixo é o porquê histórico de ela ter esperado.
+
 O item 2 acima diz *"o `CanvasPointer` já a traz … mouse reporta `1.0`, então nada muda sem tablet"*.
 **Metade disso está errada, e foi MEDIDO:** esta shell **constrói o `PointerEvent` com `pressure: 1.0`
 literal** nos seus dois únicos sítios (`input_dispatch.rs`, `source: PointerSource::Mouse`), e o laço

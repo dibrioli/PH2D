@@ -260,8 +260,7 @@ fn tr_ingles(key: &str) -> &'static str {
         // ⚠️ Os rótulos de direção incluem o "Off" porque *"esta moldura flui?"* e *"em que
         // direção?"* são a MESMA pergunta (o `display` do CSS) — ver `VECTOR_LAYOUT_DIR_OFF`.
         // A FONTE da largura de um traço de lápis (W1d). "Pen" e não "Pressure": o rótulo diz o
-        // DISPOSITIVO, e é ele que hoje não existe nesta shell — o artista escolhe e não vê
-        // diferença nenhuma, o que é a resposta honesta enquanto o caminho do tablet não chega.
+        // DISPOSITIVO — a caneta de mesa (ADR-0189); com o rato o traço sai uniforme.
         // **O catálogo de perfis de largura** (W2b) — os rótulos da tabela
         // `ph2d_stroke_width::PRESETS`, na ordem em que ela os lista. São VERBOS sobre a curva
         // ("afina", "engrossa"), não números: um nome só serve se descrever a forma, e a tabela

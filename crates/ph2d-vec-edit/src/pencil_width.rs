@@ -12,13 +12,11 @@
 //! - **`Speed`** — a velocidade do gesto. Rápido AFINA, devagar ENGROSSA.
 //! - **`Pressure`** — a pressão da caneta.
 //!
-//! ⚠️ **A `Pressure` está construída e gateada, e hoje é um fio que NÃO CHEGA** — e isto é um
-//! fato MEDIDO da shell, não uma limitação do tablet: os dois únicos sítios que constroem um
-//! `PointerEvent` cravam `pressure: 1.0` literal, e o laço de eventos não casa
-//! `WindowEvent::Touch` (o único evento do winit que carrega `force`); o `CursorMoved`, que é o
-//! que a shell escuta, não tem pressão no protocolo. Escolher `Pressure` hoje dá um traço
-//! uniforme, e o painel **diz isso** em vez de deixar o artista descobrir. Quando o caminho do
-//! tablet existir, esta rota já está pronta e provada.
+//! ⭐ **A `Pressure` é ABSOLUTA** (P46, a caneta de verdade, ADR-0189): `MIN_MULT + (MAX_MULT −
+//! MIN_MULT)·p`, e a mediana da mão do dono (`0,59`, 180 s gravados) dá `≈ 1,0` = a Width do slider.
+//! Normalizá-la por traço (como a Speed) deitava fora a FORÇA: um traço firme e constante saía tão
+//! modulado como um leve→forte (a faixa interna mediana, `0,27`, esticada `~3,7×`). O rato (`1.0`
+//! em toda amostra) não pendura perfil.
 //!
 //! # Por que rápido = FINO
 //!
@@ -185,17 +183,20 @@ pub fn width_stops_with_budget(
     };
     let raw = match source {
         WidthSource::Pressure => dyns.iter().map(|d| f64::from(d.pressure)).collect(),
-        // Rápido AFINA: a grandeza é invertida DEPOIS da normalização, não aqui — assim o
-        // caminho é o mesmo para as duas fontes e só a leitura difere.
+        // Rápido AFINA: a grandeza é invertida na normalização (`normalised`), não aqui.
         WidthSource::Speed => speeds(samples, dyns),
         WidthSource::Uniform => return WidthStops::default(),
     };
     // Filtra e reamostra numa passada só (ver o cabeçalho — a versão de dois passos aliasava).
     let binned = bin_by_count(&arc, total, &raw, budget.max(2));
     let values: Vec<f64> = binned.iter().map(|(_, m)| *m).collect();
-    let Some(mult) = normalised(&values, source) else {
-        // Sem variação: o gesto foi de velocidade (ou pressão) constante, e um perfil de
-        // multiplicadores iguais é exatamente o traço uniforme — que não se guarda.
+    let mult = match source {
+        WidthSource::Pressure => absolute(&raw, &values),
+        _ => normalised(&values),
+    };
+    let Some(mult) = mult else {
+        // Velocidade constante (multiplicadores iguais = o traço uniforme, que não se guarda) ou
+        // um dispositivo sem pressão.
         return WidthStops::default();
     };
     // ⚠️ As pontas são FIXADAS em 0 e 1: a 1ª e a última fatia sentam no MEIO delas, e sem isto
@@ -288,9 +289,22 @@ fn bin_by_count(arc: &[f64], total: f64, v: &[f64], budget: usize) -> Vec<(f64, 
         .collect()
 }
 
-/// Normaliza para multiplicadores em `[MIN_MULT, MAX_MULT]`. `None` quando não há variação a
-/// exprimir (o traço sai uniforme).
-fn normalised(v: &[f64], source: WidthSource) -> Option<Vec<f64>> {
+/// A pressão, ABSOLUTA, em `[MIN_MULT, MAX_MULT]`. `None` sem pressão (o rato: `1.0` em toda amostra;
+/// uma caneta a fundo o traço inteiro lê-se igual, e sai com a Width do slider).
+fn absolute(raw: &[f64], v: &[f64]) -> Option<Vec<f64>> {
+    if raw.iter().all(|&p| p >= 1.0) {
+        return None;
+    }
+    Some(
+        v.iter()
+            .map(|&p| MIN_MULT + p.clamp(0.0, 1.0) * (MAX_MULT - MIN_MULT))
+            .collect(),
+    )
+}
+
+/// A velocidade, normalizada no traço para `[MIN_MULT, MAX_MULT]`: o mais RÁPIDO é o mais fino.
+/// `None` quando não há variação a exprimir (o traço sai uniforme).
+fn normalised(v: &[f64]) -> Option<Vec<f64>> {
     let (lo, hi) = v
         .iter()
         .fold((f64::MAX, f64::MIN), |(a, b), &x| (a.min(x), b.max(x)));
@@ -299,16 +313,7 @@ fn normalised(v: &[f64], source: WidthSource) -> Option<Vec<f64>> {
     }
     Some(
         v.iter()
-            .map(|&x| {
-                let t = (x - lo) / (hi - lo);
-                // Velocidade: o mais RÁPIDO é o mais fino. Pressão: o mais forte é o mais grosso.
-                let t = if source == WidthSource::Speed {
-                    1.0 - t
-                } else {
-                    t
-                };
-                MIN_MULT + t * (MAX_MULT - MIN_MULT)
-            })
+            .map(|&x| MIN_MULT + (1.0 - (x - lo) / (hi - lo)) * (MAX_MULT - MIN_MULT))
             .collect(),
     )
 }

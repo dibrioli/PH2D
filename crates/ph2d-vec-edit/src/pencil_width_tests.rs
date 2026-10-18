@@ -79,14 +79,57 @@ fn pressing_harder_makes_it_thicker() {
     );
 }
 
-/// **A pressão de um RATO não inventa perfil.** Hoje a shell entrega `1.0` em toda amostra (o
-/// fato medido no cabeçalho do módulo), e o resultado tem de ser um traço uniforme — não um
-/// perfil de multiplicadores iguais pendurado em toda forma que o artista desenhar.
+/// **A pressão de um RATO não inventa perfil.** O rato entrega `1.0` em toda amostra, e o
+/// resultado tem de ser um traço uniforme — não um perfil de multiplicadores iguais pendurado em
+/// toda forma que o artista desenhar.
 #[test]
 fn a_mouse_reporting_full_pressure_produces_no_profile() {
     let (pts, dyns) = gesture(120, |_| 4_000_000);
     assert!(dyns.iter().all(|d| (d.pressure - 1.0).abs() < f32::EPSILON));
     assert!(width_stops(WidthSource::Pressure, &pts, &dyns).is_empty());
+}
+
+/// **A pressão é ABSOLUTA** (P46): a mediana da mão do dono (`0,59`) dá a Width do slider; um traço
+/// firme e constante sai firme e constante (não esticado a `0,35..1,45` como a Speed); um leve e
+/// constante sai fino e constante — a FORÇA não se deita fora.
+#[test]
+fn pressure_is_absolute_so_a_firm_steady_stroke_stays_firm() {
+    let (pts, mut dyns) = gesture(120, |_| 4_000_000);
+    let com = |dyns: &mut Vec<PenDynamics>, f: &dyn Fn(usize) -> f32| {
+        for (i, d) in dyns.iter_mut().enumerate() {
+            d.pressure = f(i);
+        }
+        width_stops(WidthSource::Pressure, &pts, dyns)
+    };
+    let mediana = com(&mut dyns, &|_| 0.59);
+    assert!(
+        mediana
+            .as_slice()
+            .iter()
+            .all(|s| (s.mult - 0.999).abs() < 1e-6),
+        "{mediana:?}"
+    );
+    let leve = com(&mut dyns, &|_| 0.3);
+    assert!(
+        leve.as_slice().iter().all(|s| (s.mult - 0.68).abs() < 1e-6),
+        "{leve:?}"
+    );
+    // Firme, a oscilar 0,55..0,65 (a faixa interna típica): a largura oscila 0,11, não 1,10.
+    #[allow(clippy::cast_precision_loss)]
+    let firme = com(&mut dyns, &|i| 0.6 + 0.05 * ((i as f32) * 0.3).sin());
+    let (lo, hi) = firme
+        .as_slice()
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(a, b), s| {
+            (a.min(s.mult), b.max(s.mult))
+        });
+    assert!(
+        hi - lo <= 0.111 && lo > 0.9 && hi < 1.12,
+        "{lo:.3}..{hi:.3}"
+    );
+    // E os extremos do eixo são os extremos da faixa.
+    let a_fundo = com(&mut dyns, &|i| if i < 60 { 0.0 } else { 0.999_999 });
+    assert!((a_fundo.at(0.0) - MIN_MULT).abs() < 1e-6 && (a_fundo.at(1.0) - MAX_MULT).abs() < 1e-5);
 }
 
 /// **O perfil é função do CAMINHO, não da contagem de amostras.** Amostrar o MESMO gesto duas

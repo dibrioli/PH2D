@@ -44,6 +44,8 @@ fn sem_o_campo_o_recorte_nao_o_aloca() {
     let p = snapshot_grid_region(&g, 1, 1, 5, 5).unwrap();
     restore_grid_region(&mut g, &p);
     assert!(g.altura.is_empty());
+    let s = g.s;
+    garante(&mut g)[2 * s + 2] = 1.0;
     clear_canvas(&mut g);
-    assert!(g.altura.is_empty());
+    assert!(g.altura.is_empty(), "limpar a folha devolve o campo");
 }

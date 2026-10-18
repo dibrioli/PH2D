@@ -63,3 +63,43 @@ fn the_screen_asks_for_the_resize_cursor_over_a_handle() {
     );
     assert_eq!(board_view::cursor(&t.hero, cx as f32, cy as f32), None);
 }
+
+/// ⭐ W23 B5 — o trackpad no idioma do Miro: dois dedos MOVEM a vista (o zoom fica), a pinça dá zoom
+/// com o ponto sob o ponteiro parado; a roda do rato continua a dar zoom.
+#[test]
+fn two_fingers_pan_the_board_and_a_pinch_zooms_it() {
+    use board_view::BoardScroll;
+    let mut t = T::new();
+    let (x, y) = t.at(0.5, 0.5);
+    let cam = |t: &T| t.hero.documents.active_board().unwrap().camera;
+    let c0 = cam(&t);
+    assert!(board_view::scroll(
+        &mut t.hero,
+        x,
+        y,
+        BoardScroll::Pan([30.0, -20.0])
+    ));
+    let c1 = cam(&t);
+    assert_eq!(c1.zoom, c0.zoom, "dois dedos não dão zoom");
+    assert!((c1.center_x - (c0.center_x - 30.0 / c0.zoom)).abs() < 1e-9);
+    assert!((c1.center_y - (c0.center_y + 20.0 / c0.zoom)).abs() < 1e-9);
+    let area = board_view::area_of(t.hero.last_canvas);
+    let under = c1.to_world(area, [f64::from(x), f64::from(y)]);
+    assert!(board_view::scroll(
+        &mut t.hero,
+        x,
+        y,
+        BoardScroll::Pinch(1.5)
+    ));
+    let c2 = cam(&t);
+    assert!(
+        (c2.zoom - c1.zoom * 1.5).abs() < 1e-9,
+        "a pinça: {} -> {}",
+        c1.zoom,
+        c2.zoom
+    );
+    let still = c2.to_world(area, [f64::from(x), f64::from(y)]);
+    assert!((still[0] - under[0]).abs() < 1e-6 && (still[1] - under[1]).abs() < 1e-6);
+    assert!(board_view::wheel(&mut t.hero, x, y, -16.0));
+    assert!(cam(&t).zoom != c2.zoom, "a roda continua a dar zoom");
+}

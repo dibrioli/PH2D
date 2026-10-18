@@ -157,8 +157,28 @@ fn view_rect(board: &Board, area: Area) -> [f64; 4] {
     [a[0], a[1], b[0], b[1]]
 }
 
+/// W23 B5 — o que a roda e o trackpad pedem ao quadro (o idioma do Miro).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BoardScroll {
+    /// A roda do rato (px, 16 por linha): zoom no ponteiro.
+    Wheel(f32),
+    /// Dois dedos no trackpad (px): a vista anda com eles.
+    Pan([f32; 2]),
+    /// A pinça (o factor de escala): zoom no ponteiro.
+    Pinch(f64),
+}
+
 /// A roda sobre a área de um quadro activo. `true` = consumida (a cena não a vê).
 pub fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
+    scroll(hero, x, y, BoardScroll::Wheel(dy))
+}
+
+/// ⭐ A roda, os dois dedos e a pinça sobre a área de um quadro activo. `true` = consumida.
+pub fn scroll(hero: &mut HeroScreen, x: f32, y: f32, s: BoardScroll) -> bool {
+    let dy = match s {
+        BoardScroll::Wheel(dy) | BoardScroll::Pan([_, dy]) => dy,
+        BoardScroll::Pinch(_) => 0.0,
+    };
     if let Some(taken) = super::surface_input::wheel(hero, x, y, dy) {
         return taken;
     }
@@ -174,7 +194,7 @@ pub fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
     if hero.documents.active().is_none() {
         return false;
     }
-    if super::board_nav::facilitate::wheel(hero, x, y, dy) {
+    if !matches!(s, BoardScroll::Pinch(_)) && super::board_nav::facilitate::wheel(hero, x, y, dy) {
         return true;
     }
     // c21 — o MEU zoom pára de seguir.
@@ -182,10 +202,19 @@ pub fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
     let Some(board) = hero.documents.active_board_mut() else {
         return false;
     };
-    let factor = WHEEL_ZOOM_PER_LINE.powf(-f64::from(dy) / WHEEL_LINE_PX);
-    board
-        .camera
-        .zoom_about(area_of(area), [f64::from(x), f64::from(y)], factor);
+    let about = [f64::from(x), f64::from(y)];
+    match s {
+        BoardScroll::Wheel(dy) => {
+            let factor = WHEEL_ZOOM_PER_LINE.powf(-f64::from(dy) / WHEEL_LINE_PX);
+            board.camera.zoom_about(area_of(area), about, factor);
+        }
+        BoardScroll::Pinch(factor) => board.camera.zoom_about(area_of(area), about, factor),
+        BoardScroll::Pan([dx, dy]) => {
+            let z = board.camera.zoom;
+            board.camera.center_x -= f64::from(dx) / z;
+            board.camera.center_y -= f64::from(dy) / z;
+        }
+    }
     true
 }
 

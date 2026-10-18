@@ -62,7 +62,8 @@ fim (um binário de teste reparenta-se e sobrevive a um \`timeout\` — medido).
 
   bash scripts/ph2d-run.sh ${cmd}
 
-Se o comando toca na PLACA (gates de GPU, smoke, sondas de device):
+A placa: dentro da porta a VEZ pede-se sozinha (docs/DevOps/A_VEZ_DA_PLACA.md). Só para MEDIR,
+com a vez já à partida:
 
   PH2D_GPU=1 bash scripts/ph2d-run.sh ${cmd}
 
@@ -70,6 +71,39 @@ Precisa de mais tecto? MEÇA e diga o número (§0.0):
   PH2D_PRAZO=5400  ·  PH2D_CPU_PCT=75  ·  PH2D_MEM_MAX=48G
 Runbook: docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md"
   fi
+fi
+
+# ── R9 · a placa por fora da porta ────────────────────────────────────────────
+# Medido 17–18/10 (Luz 2D, handoff W6c §2): binários de teste de outras linhas e o smoke de outra
+# linha (`kwin_wayland --virtual` + `target/smoke/ph2d-host-desktop`) entraram na placa a meio de uma
+# rodada de medição — 1 h sem valor. E em 18/10, na rodada desta regra: o app de outra linha e um
+# `godot` (oráculo de um agente) sujaram 2 de 6 processos. Dentro da porta a vez pede-se sozinha: o `GpuContext` pede-a
+# antes do adaptador e o `vez-da-placa.sh` antes do que não é Rust. Por fora não há porteiro.
+# Só em POSIÇÃO de comando (ou como o programa do `ph2d-run.sh`): `pgrep kwin_wayland` passa.
+pos='(^|[;&|(`]|ph2d-run\.sh)[[:space:]]*(([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|nohup|setsid|exec|timeout([[:space:]]+-[^[:space:]]+)*[[:space:]]+[0-9.]+[smhd]?)[[:space:]]+)*'
+if printf '%s' "$exe" | grep -qE "${pos}(kwin_wayland|wine|wine64|blender|godot|godot4)([[:space:]]|\$)" \
+   && ! printf '%s' "$exe" | grep -q 'vez-da-placa\.sh' \
+   && ! { printf '%s' "$exe" | grep -q 'PH2D_GPU=1' && printf '%s' "$exe" | grep -q 'ph2d-run\.sh'; }; then
+  recusa "⛔ Programa que entra na PLACA sem pedir a vez.
+
+O kwin (a tela virtual das fotos), o wine, o Blender e o Godot usam a placa e não são código nosso: não pedem
+a vez sozinhos. Em 17/10 o smoke de outra linha entrou assim a meio de uma medição da Luz 2D e
+deitou fora 1 h de rodada." \
+"Peça a vez à partida:
+
+  PH2D_GPU=1 bash scripts/ph2d-run.sh ${cmd}
+
+(foto de cena: \`bash docs/Components/ferramentas/fotografa_cena.sh …\` já pede a vez sozinha.)"
+fi
+if printf '%s' "$exe" | grep -qE "${pos}[^[:space:];&|]*target/[^/[:space:]]+/(deps/[^/[:space:]]+|ph2d-[a-z0-9-]+)([[:space:]]|\$)" \
+   && ! printf '%s' "$exe" | grep -q 'ph2d-run\.sh'; then
+  recusa "⛔ Binário do repo corrido por fora da porta.
+
+Por fora da porta não há porteiro: um binário de teste ou o app entram na placa sem pedir a vez, a
+meio da medição de outra linha (17/10, Luz 2D) — e sem tecto de CPU, memória nem prazo." \
+"Pela porta (a vez da placa pede-se sozinha, no nascer do dispositivo):
+
+  bash scripts/ph2d-run.sh ${cmd}"
 fi
 
 # ── R5 · no meio do trabalho, teste POR NOME ──────────────────────────────────

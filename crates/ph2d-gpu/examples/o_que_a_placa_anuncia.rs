@@ -13,6 +13,7 @@
 //! saber.*
 
 fn main() {
+    ph2d_gpu::vez_da_placa();
     let inst = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
     let adapters = pollster::block_on(inst.enumerate_adapters(wgpu::Backends::all()));
     for a in adapters {

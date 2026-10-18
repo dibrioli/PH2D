@@ -187,7 +187,8 @@ _arvore="$(cp "$(git rev-parse --git-dir)/index" "$_indice" 2>/dev/null; GIT_IND
 rm -f "$_indice"
 # ⚠️ Fora da chave só o que não muda o veredito de uma corrida VERDE: o `NO_FAIL_FAST` (o
 # `fail-fast = false` já é o default) e os botões de RECURSO da porta (placa, prazo, CPU, memória).
-_chave="$(printf '%s\n%s\n%s\n%s\n' "$_arvore" "$EXPR" "$*" "$(env | grep '^PH2D_' | grep -vE '^PH2D_(PORTAO_FORCAR|NA_PORTA|PRAZO|GPU|GPU_ESPERA|CPU_PCT|MEM_MAX|SUITE|SUITE_CADA)=' | sort)" | sha256sum | cut -c1-32)"
+# ⛔ O `PH2D_GPU_VEZ` é uma pasta NOVA a cada corrida: dentro da chave, nenhum selo voltava a casar.
+_chave="$(printf '%s\n%s\n%s\n%s\n' "$_arvore" "$EXPR" "$*" "$(env | grep '^PH2D_' | grep -vE '^PH2D_(PORTAO_FORCAR|NA_PORTA|PRAZO|GPU|GPU_ESPERA|GPU_VEZ|GPU_FECHADURA|CPU_PCT|MEM_MAX|SUITE|SUITE_CADA)=' | sort)" | sha256sum | cut -c1-32)"
 _selos="${CARGO_TARGET_DIR:-$_raiz/target}/portao-verde"
 if [ -n "$_arvore" ] && [ -f "$_selos/$_chave" ] && [ "${PH2D_PORTAO_FORCAR:-0}" != "1" ]; then
     echo "[nextest-impacted] ✓ esta árvore ($_arvore) com este filtro JÁ PASSOU em $(cat "$_selos/$_chave") — não corre de novo."

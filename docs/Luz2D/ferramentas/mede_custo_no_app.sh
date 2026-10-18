@@ -13,6 +13,12 @@
 # HOME isolado): nunca o ecrã do dono. Este roteiro NÃO constrói: recusa um binário mais velho que o código.
 set -euo pipefail
 
+# ⭐ Uma medição é dona da placa do princípio ao fim: entra na porta com a VEZ já à partida
+# (docs/DevOps/A_VEZ_DA_PLACA.md); dentro de uma árvore que já a tem, segue.
+if [ "${PH2D_NA_PORTA:-0}" != "1" ]; then
+  exec env PH2D_GPU=1 bash "$(cd "$(dirname "$0")/../../.." && pwd)/scripts/ph2d-run.sh" bash "$0" "$@"
+fi
+
 LARG="${1:?largura}"
 ALT="${2:?altura}"
 NIVEL="${3:?nivel}"
@@ -62,6 +68,7 @@ chmod +x "$TMP/sessao.sh"
 nvidia-smi --query-gpu=timestamp,pstate,clocks.sm,clocks.mem,power.draw,utilization.gpu,temperature.gpu \
   --format=csv,noheader -l 2 > "$SAIDA/placa.csv" 2>/dev/null &
 SMI=$!
+bash "$RAIZ/scripts/vez-da-placa.sh" || exit $?   # a vez ANTES do kwin (é ele o 1.º na placa)
 XDG_CONFIG_HOME="$TMP/cfg" timeout 600 kwin_wayland --virtual --width "$LARG" --height "$ALT" \
   --xwayland --exit-with-session "$TMP/sessao.sh" > "$TMP/kwin.log" 2>&1 || true
 kill "$SMI" 2>/dev/null || true

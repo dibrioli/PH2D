@@ -18,6 +18,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn profiler_round_trip_zero_validation_errors() {
+    ph2d_gpu::vez_da_placa();
     let instance = wgpu::Instance::default();
     let Ok(adapter) = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::HighPerformance,

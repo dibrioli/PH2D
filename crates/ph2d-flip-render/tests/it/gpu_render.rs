@@ -15,6 +15,7 @@ const H: u32 = 64;
 /// Device headless, ou `None` se a máquina não tem adapter (CI).
 fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let instance = wgpu::Instance::default();
+    ph2d_gpu::vez_da_placa();
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::HighPerformance,
         compatible_surface: None,

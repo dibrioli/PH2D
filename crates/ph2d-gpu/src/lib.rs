@@ -24,11 +24,13 @@ pub mod frame;
 pub mod pass_profiler;
 pub mod surface;
 pub mod transient;
+pub mod vez;
 
 pub use context::{GpuContext, GpuError};
 pub use frame::FrameTarget;
 pub use surface::{AcquireError, SurfaceContext};
 pub use transient::TransientPool;
+pub use vez::vez_da_placa;
 
 /// Re-export the wgpu types that callers will need to interact with
 /// the API surface here. **Don't** re-export wgpu wholesale — that

@@ -48,18 +48,19 @@
 #
 # ## USO
 #   bash scripts/ph2d-run.sh cargo test -p ph2d-timeline
-#   PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-render -- --ignored
+#   PH2D_GPU=1 bash scripts/ph2d-run.sh bash ronda.sh   # a vez da placa JÁ à partida (medir)
 #   PH2D_PRAZO=5400 bash scripts/ph2d-run.sh cargo nextest run --workspace
 #
 # ## SUBIR UM TECTO (§0.0: quem sobe, MEDE e escreve o número)
 #   PH2D_CPU_PCT=75   — percentagem dos núcleos desta linha (default 50)
 #   PH2D_MEM_MAX=48G  — memória da linha inteira (default 24G)
 #   PH2D_PRAZO=5400   — prazo de parede em segundos (default 1800); `0` desliga
-#   PH2D_GPU_ESPERA=600 — quanto esperar pela placa antes de desistir (default 300)
+#   PH2D_GPU_ESPERA=600 — quanto esperar pela placa antes de desistir (300 com PH2D_GPU=1; sem
+#                         ele, a vez pedida a meio espera até o prazo)
 set -uo pipefail
 
 if [ $# -eq 0 ]; then
-  sed -n '2,4p;44,52p' "$0" | sed 's/^# \?//'
+  sed -n '2,4p;49,59p' "$0" | sed 's/^# \?//'
   exit 64
 fi
 
@@ -121,40 +122,89 @@ else
   temos_systemd=0
 fi
 
-# ── a placa, quando o comando lhe toca ────────────────────────────────────────
-fechadura="${XDG_RUNTIME_DIR:-/tmp}/ph2d-gpu.lock"
+# ── a placa: a VEZ (docs/DevOps/A_VEZ_DA_PLACA.md) ────────────────────────────
+# ⭐ Toda árvore que passa por esta porta tem um PORTEIRO, e ninguém precisa de se lembrar de nada:
+# ele pede a placa ao cadeado partilhado (`ph2d-gpu.lock`, exclusivo entre árvores) na PRIMEIRA vez
+# que alguém da árvore a pede, e segura-a até o comando acabar. Pedem-na: o `GpuContext` do
+# `ph2d-gpu` (antes do adaptador — é ele que põe o processo na placa), o `vez-da-placa.sh` (o que não
+# é Rust: o `kwin --virtual` das fotos e das medições) e o `PH2D_GPU=1` (já à partida, para medir).
+# ⛔ Exclusiva de propósito: duas linhas na placa ao mesmo tempo penduraram o driver em 14/09.
+# Medido 18/10 (20/20, também a load 58): o `flock` do Linux dá a vez por ORDEM DE CHEGADA, e quem já
+# espera ganha de quem a larga e volta a pedir no mesmo instante — uma rodada de medição e um fluxo
+# de testes alternam, nenhum mata o outro de fome.
+#   · uma árvore DENTRO de outra (um portão que re-entra pela porta) usa o porteiro de fora: pedir
+#     a vez de novo seria esperar pelo próprio pai;
+#   · fora da porta não há porteiro e nada espera: o produto, o app aberto à mão pelo dono, a CI.
+# ⛔⛔ **NENHUM FILHO SEGURA A PLACA** (29/09 e 01/10): um `flock` é do DESCRITOR, e um daemon que o
+# herde (o servidor do `sccache`) segura a placa depois de o comando acabar — 21 min presas em 29/09.
+# ⇒ quem tem o descritor é SÓ o porteiro, e ele não lança nada que fique vivo.
+fechadura="${PH2D_GPU_FECHADURA:-${XDG_RUNTIME_DIR:-/tmp}/ph2d-gpu.lock}"
+vez_viva() { # a árvore de fora tem porteiro vivo?
+  [ -n "${PH2D_GPU_VEZ:-}" ] && [ -p "$PH2D_GPU_VEZ/porta" ] \
+    && kill -0 "$(cat "$PH2D_GPU_VEZ/porteiro" 2>/dev/null || echo x)" 2>/dev/null
+}
+porteiro() { # $1 = o pid desta porta (o dono da árvore) · $2 = o tempo de desistir (vazio = nunca)
+  local dono="$1" espera="$2" pedido="" fpid="" tenho=""
+  trap 'exit 0' TERM INT HUP
+  trap '[ -n "$fpid" ] && kill "$fpid" 2>/dev/null; [ -n "$tenho" ] && rm -f "${fechadura}.dono"' EXIT
+  # 1. o 1.º pedido, sem gastar nada (um `read` no FIFO), de olho no dono (um `kill -9` não corre traps)
+  until read -r -t 5 -u 3 pedido; do kill -0 "$dono" 2>/dev/null || exit 0; done
+  local t0=$SECONDS
+  exec 9>"$fechadura"
+  if ! flock -n 9; then
+    { echo "⏳ a placa está com outra árvore — à espera da vez (por ordem de chegada):"
+      sed 's/^/    /' "${fechadura}.dono" 2>/dev/null; } >&2
+    # Em fundo + `wait`: o `wait` interrompe-se pelo TERM do dono; um `flock` em primeiro plano não.
+    flock ${espera:+-w "$espera"} 9 &
+    fpid=$!
+    if ! wait "$fpid"; then
+      fpid=""
+      { echo "a placa está com outra árvore há mais de ${espera}s — quem a segura:"
+        sed 's/^/    /' "${fechadura}.dono" 2>/dev/null
+        # Sem `.dono` a fechadura está com quem a HERDOU e não a pediu (um daemon de uma worktree velha).
+        [ -s "${fechadura}.dono" ] || fuser -v "$fechadura" 2>&1 | sed 's/^/    /'
+      } > "$vez/recusa.tmp"
+      mv "$vez/recusa.tmp" "$vez/recusa"
+      exit 0
+    fi
+    fpid=""
+    echo "▸ a vez da placa chegou ao fim de $((SECONDS - t0)) s (pedida por ${pedido})" >&2
+  fi
+  tenho=1
+  printf 'linha %s · pid %s · desde %s · %s · pedida por %s\n' \
+    "$linha" "$dono" "$(date +%T)" "$cmd_txt" "$pedido" > "${fechadura}.dono"
+  : > "$vez/pronto"
+  # 2. segura até o dono acabar (o `trap` dele mata-me; se ele morrer sem `trap`, saio em ≤ 5 s)
+  while kill -0 "$dono" 2>/dev/null; do read -r -t 5 -u 3 _; done
+  exit 0
+}
+cmd_txt="$*"
+porteiro_pid=""
+if ! vez_viva && command -v flock >/dev/null 2>&1; then
+  espera_vez="${PH2D_GPU_ESPERA:-}"
+  [ "${PH2D_GPU:-0}" = "1" ] && espera_vez="${PH2D_GPU_ESPERA:-300}"
+  vez="$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/ph2d-vez.XXXXXX")"
+  mkfifo "$vez/porta"
+  # A porta abre-se ANTES do porteiro nascer (O_RDWR num FIFO não bloqueia): um pedido que chegue
+  # antes de ele ler nunca se perde. O comando não a herda (`3>&-` logo a seguir).
+  exec 3<>"$vez/porta"
+  porteiro "$$" "$espera_vez" >/dev/null &
+  porteiro_pid=$!
+  exec 3>&-
+  echo "$porteiro_pid" > "$vez/porteiro"
+  export PH2D_GPU_VEZ="$vez"
+  trap 'kill "$porteiro_pid" 2>/dev/null; wait "$porteiro_pid" 2>/dev/null; rm -rf "$vez"' EXIT
+fi
+
 usa_fd=""
 if [ "${PH2D_GPU:-0}" = "1" ]; then
-  espera="${PH2D_GPU_ESPERA:-300}"
-  # ⛔⛔ **NENHUM FILHO SEGURA A PLACA — DUAS curas, uma por caminho de fuga** (29/09 e 01/10).
-  # Um `flock` é do DESCRITOR, não de quem o pediu: todo filho que herda o fd 9 e fica vivo é um
-  # segurador, e um DAEMON é exactamente o filho que fica vivo. O que mordeu foi o servidor do
-  # `sccache` (o `rustc-wrapper` global arranca-o na 1.ª compilação que não o encontra): o comando
-  # acabava, o `trap` apagava o `.dono`, e as outras linhas esperavam por um dono que ninguém
-  # nomeava (21 min presas em 29/09; 14 min em 01/10, numa fatia de outra linha).
-  #   1. **`9>&-` no lançamento do comando** (abaixo, nos dois ramos) — a cura GERAL: nenhum
-  #      descendente do comando recebe o fd, seja qual for o daemon. Só ela bastaria ao cadeado.
-  #   2. **O servidor nasce AQUI, antes do `exec 9>` e FORA da fatia** — a cura do `sccache` em
-  #      particular: nascido dentro do `systemd-run --scope` ele seria dessa fatia e morreria com
-  #      ela (o `RuntimeMaxSec`/o fim do comando), levando o servidor partilhado por todas as linhas.
-  #      Se já corre, o `--start-server` recusa e nada muda.
-  #   3. Com o `.dono` vazio, a mensagem de espera lista quem segura (`fuser`) — uma worktree velha,
-  #      sem as duas curas, ainda pode prender a placa até o integrador fundir.
+  # O servidor do `sccache` nasce FORA da fatia: nascido dentro do `systemd-run --scope` ele morreria
+  # com ela (o prazo, o fim do comando), levando o servidor partilhado por todas as linhas.
   if command -v sccache >/dev/null 2>&1; then
     sccache --start-server >/dev/null 2>&1 || true
   fi
-  exec 9>"$fechadura"
-  if ! flock -w "$espera" 9; then
-    echo "✗ a placa está com outra linha há mais de ${espera}s — quem a segura:" >&2
-    cat "${fechadura}.dono" 2>/dev/null | sed 's/^/    /' >&2
-    # ⚠️ Sem `.dono` a fechadura está com um processo que a HERDOU e não a pediu (um daemon) —
-    # nomeá-lo é o que separa «espere» de «há um órfão a segurar a placa».
-    [ -s "${fechadura}.dono" ] || fuser -v "$fechadura" 2>&1 | sed 's/^/    /' >&2
-    echo "  (⛔ NÃO force: duas linhas na placa ao mesmo tempo foi o que pendurou o driver em 14/09)" >&2
-    exit 75   # EX_TEMPFAIL — tente outra vez, não é erro do seu código
-  fi
-  printf 'linha %s · pid %s · desde %s · %s\n' "$linha" "$$" "$(date +%T)" "$*" > "${fechadura}.dono"
-  trap 'rm -f "${fechadura}.dono"' EXIT
+  bash "$(dirname "$0")/vez-da-placa.sh" || exit $?   # 75 = EX_TEMPFAIL, tente outra vez
+  [ -n "$porteiro_pid" ] || vez_viva || echo "⚠️  ph2d-run: sem \`flock\` — SEM exclusão da placa." >&2
   usa_fd=1
 fi
 
@@ -168,8 +218,8 @@ printf '▸ linha %s · CPU ≤ %s de %s núcleos · mem ≤ %s · prazo %ss%s\n
 # sempre. Ela é EXPORTADA, logo vale para tudo o que nascer dentro do comando.
 export PH2D_NA_PORTA=1
 
-# ⛔⛔ `9>&-` nos dois ramos: o comando NÃO herda o cadeado da placa — a razão e a cura irmã estão
-# no bloco da placa, acima (quem segura a placa é ESTE bash, que vive o tempo do comando).
+# ⛔⛔ `9>&-` nos dois ramos: o comando NÃO herda o cadeado da placa (o bloco da placa, acima: quem o
+# segura é SÓ o porteiro). Este bash já não o abre; a cerca fica para um `9>` que alguém lhe junte.
 if [ "$temos_systemd" = "1" ]; then
   props=( -p MemoryMax="$mem" -p MemorySwapMax=0 )
   [ "$prazo" != "0" ] && props+=( -p RuntimeMaxSec="${prazo}s" )

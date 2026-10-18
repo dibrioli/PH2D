@@ -47,6 +47,14 @@ t "clippy de uma crate"   'bash scripts/ph2d-run.sh cargo clippy -p ph2d-ecs --a
 t "sonda em --release"    'bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --lib --release -- --ignored toda_cena' false deny
 t "--release --no-run"    'bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --lib --release --no-run' false deny
 t "clippy do workspace"   'bash scripts/ph2d-run.sh cargo clippy --workspace --all-targets -- -D warnings' false deny
+# ⭐ R9 — a placa por fora da porta (17/10: o smoke de outra linha na medição da Luz 2D).
+t "kwin virtual cru"      'kwin_wayland --virtual --width 800 --height 600 --xwayland --exit-with-session x.sh' false deny
+t "kwin pela porta SEM a vez" 'bash scripts/ph2d-run.sh kwin_wayland --virtual --exit-with-session x.sh' false deny
+t "Godot oráculo cru"    'cd proj && godot --headless --path . -s mede.gd' false deny
+t "Blender cru"           'blender -b --factory-startup -P /var/tmp/arnes/render_ref.py' false deny
+t "wine com prefixo"      'WINEPREFIX=/x/p wine "C:/Rebelle 8.exe"'         false deny
+t "o app em target cru"   'cd /x && PH2D_LIGHT2D_SMOKE=5 ./target/smoke/ph2d-host-desktop' false deny
+t "binário de teste cru"  'target/debug/deps/it-0f3a9c --ignored luz'       false deny
 t "sed -i"                "sed -i 's/velho/novo/' crates/x/src/lib.rs"     false deny
 t "sed -E -i.bak"         "cd crates && sed -E -i.bak 's/a/b/' x.rs"         false deny
 t "perl -pi"              "perl -pi -e 's/a/b/' x.rs"                        false deny
@@ -115,7 +123,13 @@ t "laço em 1.º plano"     'until test -f /tmp/x; do sleep 5; done'          fa
 t "grep que MENCIONA"     'grep -rn "cargo test" docs/'                     false passa
 # ⭐ A metade que torna a R3 honesta: CORRER o alvo é o método, e tem de passar.
 t "CORRER a Unreal"       '/home/enio/Documentos/Projetos/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd P.uproject -run=pythonscript' false passa
-t "CORRER o Blender"      'blender -b --factory-startup -P /var/tmp/arnes/render_ref.py' false passa
+t "CORRER o Blender"      'PH2D_GPU=1 bash scripts/ph2d-run.sh blender -b --factory-startup -P /var/tmp/arnes/render_ref.py' false passa
+t "kwin com a vez"       'PH2D_GPU=1 bash scripts/ph2d-run.sh kwin_wayland --virtual --exit-with-session x.sh' false passa
+t "kwin depois do cliente" 'bash scripts/vez-da-placa.sh && kwin_wayland --virtual --exit-with-session x.sh' false passa
+t "o app pela porta"      'bash scripts/ph2d-run.sh target/smoke/ph2d-host-desktop' false passa
+t "procurar o kwin"       'pgrep -a kwin_wayland; nvidia-smi | grep -E "kwin|wine"' false passa
+t "listar os binários"    'ls -la target/smoke/ph2d-host-desktop target/debug/deps/it-0f3a9c' false passa
+t "a foto de cena"        'bash docs/Components/ferramentas/fotografa_cena.sh PH2D_X=1 800 600 /tmp/x.png' false passa
 t "config do Blender"     'cat /usr/share/blender/5.2/datafiles/colormanagement/config.ocio' false passa
 t "o nosso oráculo"       'python3 docs/Painter/ferramentas/oraculo_de_cor.py' false passa
 # R4 — parar o que é SEU continua a passar.

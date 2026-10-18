@@ -49,6 +49,12 @@ ESPERA="${5:-9}"
 RAJADA="${FOTO_RAJADA:-1}"
 INTERVALO="${FOTO_INTERVALO:-1}"
 RAIZ="$(cd "$(dirname "$0")/../../.." && pwd)"
+# ⭐ A foto toca na PLACA (o kwin --virtual e o app): ela entra na porta sozinha e pede a VEZ antes do
+# kwin (docs/DevOps/A_VEZ_DA_PLACA.md). Sem isto, em 17/10, uma foto de outra linha entrou a meio de
+# uma medição da Luz 2D e deitou fora a rodada inteira.
+if [ "${PH2D_NA_PORTA:-0}" != "1" ]; then
+  exec bash "$RAIZ/scripts/ph2d-run.sh" bash "$0" "$@"
+fi
 # ⚠️ O PERFIL, e ele é `smoke` por omissão — a lei do `CLAUDE.md` §5 (o `release` optimiza a shell
 # num só thread e cada correcção pós-smoke custava 161 s contra 3).
 #
@@ -230,6 +236,8 @@ if grep -q '`' "$TMP/sessao.sh"; then
   exit 4
 fi
 
+# A vez ANTES do kwin: é ele o 1.º a entrar na placa (o app pedi-la-ia sozinho, mas já tarde).
+bash "$RAIZ/scripts/vez-da-placa.sh" || exit $?
 XDG_CONFIG_HOME="$TMP/cfg" timeout "$PRAZO_KWIN" kwin_wayland --virtual --width "$LARG" --height "$ALT" \
   --xwayland --exit-with-session "$TMP/sessao.sh" > "$TMP/kwin.log" 2>&1 || true
 cat "$TMP/log" 2>/dev/null || true

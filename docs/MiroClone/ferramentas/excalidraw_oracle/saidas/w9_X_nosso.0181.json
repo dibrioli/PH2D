@@ -5,10 +5,10 @@
   "licenca": "MIT",
   "chromium": "153.0.8010.12",
   "casos": "w9_nosso_casos.json",
-  "casos_sha256": "33a90023249fd43339e48858b5144cf2850acaa7bd6f9b35697b5eb41d4e87bd",
+  "casos_sha256": "341acb8ea9537bf05a73fcde19fe123142da67470d00035b44eabef4015906c3",
   "caso": "X_nosso",
   "descricao": "o NOSSO .excalidraw (W9): ponto fixo (inside), órbita e centro (orbit), a curva dele, as pontas novas e o aspecto — escrito por ph2d-board-excalidraw::write",
-  "semente": 3917337887,
+  "semente": 790225349,
   "relogio_fixo_utc": "2026-01-01T00:00:00.000Z",
   "consola": []
  },
@@ -463,6 +463,7 @@
            "ZeroOrMany"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Bound": {
@@ -617,6 +618,7 @@
            "ExactlyOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -764,6 +766,7 @@
            "ZeroOrOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Free": [
@@ -1351,6 +1354,7 @@
            "ZeroOrMany"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Bound": {
@@ -1505,6 +1509,7 @@
            "ExactlyOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -1652,6 +1657,7 @@
            "ZeroOrOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Free": [
@@ -2239,6 +2245,7 @@
            "ZeroOrMany"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Bound": {
@@ -2393,6 +2400,7 @@
            "ExactlyOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -2540,6 +2548,7 @@
            "ZeroOrOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Free": [
@@ -3132,6 +3141,7 @@
            "ZeroOrMany"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Bound": {
@@ -3286,6 +3296,7 @@
            "ExactlyOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -3433,6 +3444,7 @@
            "ZeroOrOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Free": [
@@ -4020,6 +4032,7 @@
            "ZeroOrMany"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Bound": {
@@ -4174,6 +4187,7 @@
            "ExactlyOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -4321,6 +4335,7 @@
            "ZeroOrOne"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Free": [

@@ -460,6 +460,7 @@
                       "ZeroOrMany"
                     ],
                     "label": "",
+                    "mids": [],
                     "route": "Spline",
                     "start": {
                       "Bound": {
@@ -616,6 +617,7 @@
                       "ExactlyOne"
                     ],
                     "label": "",
+                    "mids": [],
                     "route": "Straight",
                     "start": {
                       "Bound": {
@@ -765,6 +767,7 @@
                       "ZeroOrOne"
                     ],
                     "label": "",
+                    "mids": [],
                     "route": "Spline",
                     "start": {
                       "Free": [

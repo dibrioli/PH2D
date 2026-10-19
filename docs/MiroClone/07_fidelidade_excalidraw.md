@@ -127,7 +127,7 @@ Legenda do «nós»: **L** = o leitor (`read.rs`), **E** = o escritor (`write.rs
 | seta `roundness` + 2 pontos | RECTA (XA1) | L ⇒ `Curved` (S de 41–83 px) ❌ | o sintoma 1 do dono | L: 2 pontos ⇒ `Straight` |
 | seta `roundness` + 3+ pontos | Catmull-Rom 1/6 pelos pontos (XA1) | L ⇒ `Curved` com `waypoints` (a curva do Miro, braço 0,45/0,4) ⚠️ | outra curva pelos mesmos pontos | `Route::Spline` (variante NOVA no fim do enum: a curva dele pelos pontos dele) |
 | seta sem `roundness` | segmentos | L ⇒ `Straight` + `waypoints` ✅ | — | — |
-| `elbowed` + `fixedSegments` | cotovelo do editor; os troços fixados guardados | L ⇒ `Elbow` (rota NOSSA, `fixedSegments` perdido) ⚠️ | recusa 06 §3 | — (fica) |
+| `elbowed` + `fixedSegments` | cotovelo do editor; os troços fixados guardados | L ⇒ `Elbow` (rota NOSSA); o fixo que é o NOSSO segmento do meio vira `Connector::mids` e volta a escrever-se (W23 B5(1), [doc 13](13_trecho_do_cotovelo.md)); um fixo noutro troço perde-se ⚠️ | recusa 06 §3 | `elbow.rs` (gate com a seta que o 0.18.1 gravou) |
 | ligação `orbit` (next) | XB1: recta entre focos, vão 5 + sw/2 | L ⇒ `Anchor::Fixed` = a ponta NO foco ❌ (entra até 45 px) | sintomas 3 e 4 | `Anchor::Orbit([u,v])` (variante nova no fim) + XB1 no roteador |
 | ligação `inside` (next) | a ponta no foco (XB2) | L ⇒ `Fixed` ✅ (por acaso: é a mesma lei) | — | manter, explícito |
 | ligação `skip` | geometria de orbit (XB3) | ⇒ `Fixed` ❌ | — | ⇒ `Orbit` |

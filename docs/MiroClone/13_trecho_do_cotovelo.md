@@ -38,7 +38,10 @@ rota muda e volta. A do Excalidraw atravessa caixas (C3) e perde o trecho na rec
   `WireHandle::Segment(i)`: arrastar move o segmento só na perpendicular (a fracção), UM passo de
   desfazer; duplo clique larga-a (`None`). Trecho que não é Z mantém o `Mid(i)` de hoje (insere ponto).
   Cursor: `BoardCursor` ↔/↕ pelo eixo do segmento (a porta `cursor_at` do B5(5)).
-- **Fio ao vivo**: `Field::Mids` (no FIM do enum e do `Field::ALL`), `PROTOCOL` 7 → 8.
+- **Fio ao vivo**: `Field::Waypoints` passa a levar `(waypoints, mids)` — os dois andam alinhados por
+  índice, e dois registos deixariam dois colegas desalinhá-los (o `Field::Image` já leva ficheiro +
+  recorte + filtro pelo mesmo motivo). `PROTOCOL` 7 → 8. ⚠️ Os leitores dos formatos 9–12 liam a seta
+  com a struct de HOJE: passam pela `ConnectorV13` (postcard é posicional).
 - **Formato**: `FORMAT_VERSION` 13 → 14, `legacy_v13.rs` (a fixture gravada ANTES da mudança).
 - **Excalidraw**: ler `fixedSegments` (o segmento do meio de um Z) → fracção por `frac_at`; escrever o
   `fixedSegments` do nosso trecho fixo (coordenada absoluta + `index`). Doc 07 deixa de o dar como perdido.
@@ -62,7 +65,7 @@ grava UM passo, o fio leva `Field::Mids`, gravar/reabrir mantém.
 Fixture = os números do tldraw acima (R1/R2, +60, R2→700,300; R2→400,500 e volta).
 1. route: `a_dragged_middle_follows_its_fraction_when_a_box_moves` · `a_fraction_unused_by_an_l_comes_back_with_the_z` · `the_middle_never_enters_a_box`.
 2. edit: `dragging_the_middle_of_an_elbow_moves_it_across_in_one_step` (sem ponto novo) · `a_double_click_lets_the_middle_go` · `a_waypoint_split_keeps_each_leg_its_own_middle`.
-3. formato: ida-e-volta 14 + os bytes do 13 lidos com `mids` vazio. 4. fio: `Field::Mids` (o teste exaustivo de `fields_tests`).
+3. formato: ida-e-volta 14 + os bytes do 13 lidos com `mids` vazio. 4. fio: `the_waypoints_field_carries_the_middles`.
 5. Excalidraw: o caso `w9` com `fixedSegments` (`entradas/gera_w9_casos.py:296`) → fracção → ida-e-volta.
 6. ecrã: o arrasto pela porta da shell (`board_bar_tests` `T`), não pelo editor só.
 

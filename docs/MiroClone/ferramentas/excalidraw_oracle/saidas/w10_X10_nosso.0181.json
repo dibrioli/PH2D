@@ -5,10 +5,10 @@
   "licenca": "MIT",
   "chromium": "153.0.8010.12",
   "casos": "w10_nosso_casos.json",
-  "casos_sha256": "13183230861ee0555a43e00c2ea9bc9ee9c8ebb946254ef88d8a13c32ab66724",
+  "casos_sha256": "dfb404050170dbaf8d3254de60f55e7e79cb0454e3e66a52653fa50ecfd15303",
   "caso": "X10_nosso",
   "descricao": "o NOSSO .excalidraw (W10): rectângulo, elipse e losango (direitos, rodados, de cantos redondos), órbita fora do centro, centro e ponto fixo, recta, a curva dele e a do Miro — escrito por ph2d-board-excalidraw::write",
-  "semente": 601736876,
+  "semente": 1567090972,
   "relogio_fixo_utc": "2026-01-01T00:00:00.000Z",
   "consola": []
  },
@@ -760,6 +760,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -912,6 +913,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -1064,6 +1066,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -1202,6 +1205,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -1349,6 +1353,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -1487,6 +1492,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -1625,6 +1631,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -1763,6 +1770,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -1901,6 +1909,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -2039,6 +2048,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -2177,6 +2187,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -2315,6 +2326,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -2453,6 +2465,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -2591,6 +2604,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -2729,6 +2743,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -2881,6 +2896,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -3028,6 +3044,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -3161,6 +3178,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Bound": {
@@ -3328,6 +3346,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -3466,6 +3485,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Curved",
           "start": {
            "Bound": {
@@ -4443,6 +4463,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -4595,6 +4616,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -4747,6 +4769,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -4885,6 +4908,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -5032,6 +5056,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -5170,6 +5195,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -5308,6 +5334,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -5446,6 +5473,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -5584,6 +5612,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -5722,6 +5751,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -5860,6 +5890,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -5998,6 +6029,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -6136,6 +6168,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -6274,6 +6307,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -6412,6 +6446,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -6564,6 +6599,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -6711,6 +6747,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -6844,6 +6881,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Bound": {
@@ -7011,6 +7049,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -7149,6 +7188,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Curved",
           "start": {
            "Bound": {
@@ -8135,6 +8175,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -8287,6 +8328,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -8439,6 +8481,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -8577,6 +8620,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -8724,6 +8768,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -8862,6 +8907,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -9000,6 +9046,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -9138,6 +9185,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -9276,6 +9324,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -9414,6 +9463,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -9552,6 +9602,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -9690,6 +9741,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -9828,6 +9880,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -9966,6 +10019,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -10104,6 +10158,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -10256,6 +10311,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -10403,6 +10459,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -10536,6 +10593,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Bound": {
@@ -10703,6 +10761,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -10841,6 +10900,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Curved",
           "start": {
            "Bound": {
@@ -11818,6 +11878,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -11970,6 +12031,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -12122,6 +12184,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -12260,6 +12323,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -12407,6 +12471,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -12545,6 +12610,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -12683,6 +12749,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -12821,6 +12888,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -12959,6 +13027,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -13097,6 +13166,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -13235,6 +13305,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -13373,6 +13444,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -13511,6 +13583,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -13649,6 +13722,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -13787,6 +13861,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -13939,6 +14014,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Bound": {
@@ -14086,6 +14162,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -14219,6 +14296,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Spline",
           "start": {
            "Bound": {
@@ -14386,6 +14464,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Straight",
           "start": {
            "Free": [
@@ -14524,6 +14603,7 @@
            "Arrow"
           ],
           "label": "",
+          "mids": [],
           "route": "Curved",
           "start": {
            "Bound": {

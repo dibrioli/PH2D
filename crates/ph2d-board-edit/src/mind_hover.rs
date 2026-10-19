@@ -23,10 +23,11 @@ impl Editor {
         })
     }
 
-    /// O «−» de recolher: o nó e o meio da borda de fora (mundo). Só num nó que não é a raiz (o mapa
-    /// recolhe-se ramo a ramo) e com filhos à vista.
+    /// O «−» de recolher: o nó, o meio da borda de fora (mundo) e a direcção para fora. Só num nó que
+    /// não é a raiz (o mapa recolhe-se ramo a ramo) e com filhos à vista. Quem desenha afasta-o
+    /// [`mind_minus_offset`] px do lado: no meio da borda está a pega de redimensionar da moldura.
     #[must_use]
-    pub fn mind_minus(&self, doc: &BoardDoc) -> Option<(ElementId, [f64; 2])> {
+    pub fn mind_minus(&self, doc: &BoardDoc) -> Option<(ElementId, [f64; 2], [f64; 2])> {
         let id = self.mind_target(doc)?;
         let el = doc.get(id)?;
         let m = el.mind()?;
@@ -36,21 +37,29 @@ impl Editor {
         let (vertical, sign) = ph2d_board_model::outward(doc, id);
         let [cx, cy] = el.center();
         let k = if sign > 0.0 { 1.0 } else { -1.0 };
-        Some((
-            id,
-            if vertical {
-                [cx, cy + k * el.h / 2.0]
-            } else {
-                [cx + k * el.w / 2.0, cy]
-            },
-        ))
+        Some(if vertical {
+            (id, [cx, cy + k * el.h / 2.0], [0.0, k])
+        } else {
+            (id, [cx + k * el.w / 2.0, cy], [k, 0.0])
+        })
     }
 
     /// O nó do «−» sob `p`, se há (o alcance é o da pega, como o «+»).
     pub(crate) fn mind_minus_at(&self, doc: &BoardDoc, p: Pointer) -> Option<ElementId> {
         let reach = self.metrics.handle * p.px;
+        let off = mind_minus_offset(&self.metrics) * p.px;
         self.mind_minus(doc)
-            .filter(|(_, at)| (at[0] - p.world[0]).hypot(at[1] - p.world[1]) <= reach)
-            .map(|(id, _)| id)
+            .filter(|(_, at, d)| {
+                let c = [at[0] + d[0] * off, at[1] + d[1] * off];
+                (c[0] - p.world[0]).hypot(c[1] - p.world[1]) <= reach
+            })
+            .map(|(id, _, _)| id)
     }
+}
+
+/// Quanto o «−» se afasta (px de ecrã) da borda: a meio caminho do «+» (`Metrics::dot`), fora da
+/// pega de redimensionar que a moldura pinta no meio da borda.
+#[must_use]
+pub fn mind_minus_offset(m: &crate::Metrics) -> f64 {
+    m.dot / 2.0
 }

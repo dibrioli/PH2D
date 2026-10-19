@@ -1,6 +1,7 @@
 //! W23 B3 (a) — a letra do mapa muda-se pela RAIZ e escala o mapa todo (o Miro, doc 04 §1.1).
 
 use super::*;
+use crate::{Dir, Handle};
 
 /// ⭐ Na raiz, a letra nova escala TODOS os nós (letra e tamanho — o que o moldador real mede para
 /// eles), o layout abre na mesma proporção, e é UM passo de desfazer; num nó que não é raiz não
@@ -78,8 +79,9 @@ fn hovering_a_node_shows_its_plus_and_a_minus_that_collapses() {
     let o = w.ed.overlay(&mut w.doc, &mut w.ts);
     assert_eq!(o.mind_plus.len(), 1, "o «+» do nó pairado");
     let edge = [w.el(a).x + w.el(a).w, w.el(a).center()[1]];
-    assert_eq!(o.mind_minus, Some(edge), "o «−» na borda de fora");
-    w.click(edge, NONE);
+    assert_eq!(o.mind_minus, Some((edge, [1.0, 0.0])), "o «−» na borda de fora");
+    let off = crate::mind_minus_offset(w.ed.metrics());
+    w.click([edge[0] + off, edge[1]], NONE);
     assert!(w.el(a).mind().unwrap().collapsed, "o «−» recolheu");
     assert!(w.el(a1).is_hidden());
     assert_eq!(w.sel(), BTreeSet::from([a]));
@@ -91,4 +93,40 @@ fn hovering_a_node_shows_its_plus_and_a_minus_that_collapses() {
         let o = w.ed.overlay(&mut w.doc, &mut w.ts);
         assert_eq!(o.mind_minus, None, "{id:?}");
     }
+}
+
+/// ⭐ Smoke do dono (19/10): com o nó SELECCIONADO a moldura pinta a pega de redimensionar no meio da
+/// borda — o «−» ficava em cima dela. O «−» (onde se pinta e onde se agarra) fica a duas pegas de
+/// toda pega da moldura e do «+»; clicar nele recolhe, clicar na pega ainda redimensiona.
+#[test]
+fn the_minus_of_a_selected_node_stays_clear_of_the_frame_handles() {
+    let (mut w, _) = W::new();
+    let a = w.child("Ideas");
+    let _ = w.child("Sketch");
+    w.ed.commit_text(&mut w.doc, &mut w.h);
+    w.select(a);
+    let m = *w.ed.metrics();
+    let o = w.ed.overlay(&mut w.doc, &mut w.ts);
+    let frame = o.frame.expect("a moldura do nó seleccionado");
+    let (edge, d) = o.mind_minus.expect("o «−» do nó seleccionado");
+    let off = crate::mind_minus_offset(&m);
+    let minus = [edge[0] + d[0] * off, edge[1] + d[1] * off];
+    let far = |p: [f64; 2], what: &str| {
+        let gap = (p[0] - minus[0]).hypot(p[1] - minus[1]);
+        assert!(gap >= 2.0 * m.handle, "{what}: {gap} px do «−»");
+    };
+    for h in std::iter::once(Handle::Rotate).chain(Dir::ALL.into_iter().map(Handle::Resize)) {
+        far(frame.handle(h, 1.0, &m), &format!("{h:?}"));
+    }
+    for (p, d) in &o.mind_plus {
+        far([p[0] + d[0] * m.dot, p[1] + d[1] * m.dot], "o «+»");
+    }
+    let e = frame.handle(Handle::Resize(Dir::E), 1.0, &m);
+    assert_eq!(
+        w.ed.handle_at(&w.doc, at(e, NONE)),
+        Some(Handle::Resize(Dir::E)),
+        "a pega continua a ser da moldura"
+    );
+    w.click(minus, NONE);
+    assert!(w.el(a).mind().unwrap().collapsed, "o «−» recolheu");
 }

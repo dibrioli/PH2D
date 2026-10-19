@@ -3,7 +3,7 @@
 //! do nó seleccionado e o realce do nó onde o arrasto largaria o que leva.
 
 use ph2d_board_edit::digits;
-use ph2d_board_edit::{Metrics, Overlay};
+use ph2d_board_edit::{Metrics, Overlay, mind_minus_offset};
 use ph2d_board_model::{Board, Element, MIND_BRANCH_WIDTH, MIND_FONT, RichText};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
@@ -154,9 +154,11 @@ pub(crate) fn paint_overlay(
         plus.line_to(Point::new(c.x, c.y + arm));
         stroke(scene, &plus, thin);
     }
-    // W23 B3 — o «−» de recolher, na borda de onde saem os ramos (a mesma pega do «+»).
-    if let Some(at) = overlay.mind_minus {
+    // W23 B3 — o «−» de recolher, fora da borda de onde saem os ramos (a mesma pega do «+»).
+    if let Some((at, dir)) = overlay.mind_minus {
         let c = v * point(at);
+        let off = mind_minus_offset(metrics);
+        let c = Point::new(c.x + dir[0] * off, c.y + dir[1] * off);
         let knob = ph2d_vector::Circle::new(c, metrics.handle).to_path(0.1);
         scene.fill_path(&knob, &paper, Affine::IDENTITY);
         stroke(scene, &knob, thin);

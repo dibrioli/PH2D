@@ -12,4 +12,5 @@ mod ganchos;
 mod latencia;
 mod position_utf16;
 mod script_canonico;
+mod solver_scripts_reais;
 mod supervisao;

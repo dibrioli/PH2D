@@ -445,6 +445,57 @@ impl Tabstops {
         }
     }
 
+    /// `inner` (já no documento, depois de [`Self::edited`]) foi inserido DENTRO do buraco activo: as
+    /// faixas de todas as inserções dele cabem numa cópia desse buraco.
+    pub fn nests(&self, inner: &Self) -> bool {
+        inner.spans.iter().all(|r| {
+            self.stops[self.active]
+                .iter()
+                .any(|s| s.bytes.start <= r.start && r.end <= s.bytes.end)
+        })
+    }
+
+    /// Funde `inner` (inserido dentro do buraco activo, [`Self::nests`]) nesta sessão, como o VS Code
+    /// 1.142: o buraco activo deixa de ser paragem; no lugar dele, os buracos de dentro e o `$0` de
+    /// dentro (uma paragem como as outras); depois seguem os de fora, e a sessão acaba no `$0` de
+    /// fora. Oráculo: `docs/CodeEditor/ferramentas/oraculo_snippet_aninhado/saida/amostras.txt`.
+    pub fn merge(&mut self, inner: Self) {
+        let outer = &self.stops[self.active];
+        // Cada inserção de dentro pertence à cópia de fora que a contém (o cursor primário é o dela).
+        let owner = |r: &Range<usize>| {
+            outer
+                .iter()
+                .find(|s| s.bytes.start <= r.start && r.end <= s.bytes.end)
+                .map_or(self.primary, |s| s.at)
+        };
+        let at_of: Vec<usize> = inner.spans.iter().map(owner).collect();
+        let mut merged: Vec<Vec<Spot>> = inner
+            .stops
+            .into_iter()
+            .map(|v| {
+                v.into_iter()
+                    .map(|s| Spot {
+                        at: at_of[s.at],
+                        ..s
+                    })
+                    .collect()
+            })
+            .collect();
+        merged.push(
+            inner
+                .ends
+                .iter()
+                .enumerate()
+                .map(|(j, &e)| Spot {
+                    at: at_of[j],
+                    bytes: e..e,
+                })
+                .collect(),
+        );
+        self.stops.splice(self.active..=self.active, merged);
+        self.spans.extend(inner.spans);
+    }
+
     /// `head` ainda está dentro de alguma inserção (sair de todas acaba a sessão).
     pub fn holds(&self, head: usize) -> bool {
         self.spans.iter().any(|r| r.start <= head && head <= r.end)

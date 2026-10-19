@@ -64,8 +64,12 @@ impl crate::doc::CodeDoc {
         self.edited(&edits, true);
         // Uma inserção SEM buracos dentro de um buraco (o campo escolhido da lista) deixa a sessão de
         // fora viva — o `edited` já a deslocou; acabá-la tornava o Tab seguinte em recuo (smoke I15).
-        if session.is_some() {
-            self.snippet = session;
+        // COM buracos dentro de um buraco, as duas fundem-se ([`Tabstops::merge`]); fora, a nova manda.
+        if let Some(inner) = session {
+            match self.snippet.as_mut() {
+                Some(outer) if outer.nests(&inner) => outer.merge(inner),
+                _ => self.snippet = Some(inner),
+            }
         }
     }
 

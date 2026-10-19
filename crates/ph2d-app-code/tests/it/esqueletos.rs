@@ -309,6 +309,68 @@ fn escolher_da_lista_dentro_de_um_buraco_mantem_os_buracos() {
     );
 }
 
+/// ⭐ Escolher da lista um item COM buracos dentro de um buraco FUNDE as duas sessões, como o VS Code
+/// 1.142 (`ferramentas/oraculo_snippet_aninhado/saida/amostras.txt`, cenário A): os buracos de dentro,
+/// o `$0` de dentro (uma paragem), os de fora que faltavam, e a sessão acaba no `$0` de fora. O Esc
+/// numa sessão fundida acaba as duas.
+#[test]
+fn um_item_com_buracos_dentro_de_um_buraco_funde_as_sessoes() {
+    let (mut m, ids, _) = com_falso(
+        &[("a.luau", "")],
+        Plano {
+            completar: Some(responde),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    abre(&mut m, id, "ph2d.se");
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    assert_eq!(sel(&mut m, id), [(9, 15)], "o `entity` de fora");
+    abre(&mut m, id, "ph2d.se");
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    let t = m.docs().text_of(id).expect("aberto");
+    assert_eq!(t, "ph2d.set(ph2d.set(entity, \"x\", value), \"x\", value)");
+    let fim_de_dentro = t.find(')').unwrap() + 1;
+    let x_fora = t.rfind("\"x\"").unwrap() + 1;
+    let v_fora = t.rfind("value").unwrap();
+    let passos = [
+        (18, 24, "o `entity` de dentro"),
+        (27, 28, "o `x` de dentro"),
+        (31, 36, "o `value` de dentro"),
+        (fim_de_dentro, fim_de_dentro, "o `$0` de dentro é uma paragem"),
+        (x_fora, x_fora + 1, "o `x` de fora"),
+        (v_fora, v_fora + 5, "o `value` de fora"),
+    ];
+    assert_eq!(sel(&mut m, id), [(passos[0].0, passos[0].1)], "{}", passos[0].2);
+    for &(a, b, o_que) in &passos[1..] {
+        tecla(&mut m, id, Key::Tab, Modifiers::default());
+        assert_eq!(sel(&mut m, id), [(a, b)], "{o_que}");
+        assert!(marcas(&mut m, id).is_some(), "{o_que}: a sessão acabou cedo");
+    }
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    assert_eq!(sel(&mut m, id), [(t.len(), t.len())], "o `$0` de fora");
+    assert_eq!(marcas(&mut m, id), None, "a sessão acaba no `$0` de fora");
+    assert_eq!(m.docs().text_of(id).as_deref(), Some(t.as_str()), "nenhum espaço entrou");
+
+    // O Esc numa sessão fundida acaba as duas.
+    let (mut m, ids, _) = com_falso(
+        &[("a.luau", "")],
+        Plano {
+            completar: Some(responde),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    abre(&mut m, id, "ph2d.se");
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    abre(&mut m, id, "ph2d.se");
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    tecla(&mut m, id, Key::Escape, Modifiers::default());
+    assert_eq!(marcas(&mut m, id), None, "o Esc acaba as duas");
+}
+
 /// Desfazer pelo menu Edit (sem tecla nenhuma) também acaba a sessão.
 #[test]
 fn desfazer_pelo_menu_acaba_a_sessao() {

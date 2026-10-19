@@ -68,7 +68,7 @@
    Foto: [`51_smoke_cena.png`](../NewFeaturesWetPaint/51_smoke_cena.png) (+ [`.log`](../NewFeaturesWetPaint/51_smoke_cena.log));
    prancha `../NewFeaturesWetPaint/51_prancha_antes_agora.png`.
 
-## §5b — O Brush dust no cartão Wet Paint (ordem do dono 19/10, depois do smoke OK)
+## §5b — O Brush dust no cartão Wet Paint (dono 19/10, após o smoke OK)
 
 O knob `Dust` saiu do Tuning (`KnobGroup::Hidden`) para o cartão Wet Paint do Inspector, abaixo do Brake, pelo
 caminho do Brake: id `PAINTER_WETPAINT_DUST` em `PAINTER_WETPAINT_FIELDS` (18), `KNOBS_NO_CARTAO` (ex-

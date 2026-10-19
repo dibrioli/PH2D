@@ -1,0 +1,1963 @@
+[
+{
+"nome": "k_lapisb",
+"base": "Wet Round",
+"alvo": 24,
+"knobs": {},
+"brush": {}
+},
+{
+"nome": "lapisb_011",
+"base": "Graphite 8B",
+"alvo": 30.3,
+"knobs": {
+"pigmentPerDab": 10,
+"paperGate": 0.3
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+64,
+64
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_018",
+"base": "Graphite 8B",
+"alvo": 30.3,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 0.3
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_021",
+"base": "Graphite 8B",
+"alvo": 30.3,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 0.65
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_024",
+"base": "Graphite 8B",
+"alvo": 32.0,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 1.0
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_025",
+"base": "Graphite 8B",
+"alvo": 32.0,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 1.0
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_026",
+"base": "Graphite 8B",
+"alvo": 32.0,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 1.0
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+64,
+64
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_027",
+"base": "Graphite 8B",
+"alvo": 28.8,
+"knobs": {
+"pigmentPerDab": 40,
+"paperGate": 0.3
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_028",
+"base": "Graphite 8B",
+"alvo": 30.3,
+"knobs": {
+"pigmentPerDab": 40,
+"paperGate": 0.3
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_030",
+"base": "Graphite 8B",
+"alvo": 31.6,
+"knobs": {
+"pigmentPerDab": 40,
+"paperGate": 0.65
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_031",
+"base": "Graphite 8B",
+"alvo": 31.6,
+"knobs": {
+"pigmentPerDab": 40,
+"paperGate": 0.65
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_032",
+"base": "Graphite 8B",
+"alvo": 28.8,
+"knobs": {
+"pigmentPerDab": 40,
+"paperGate": 0.65
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+64,
+64
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_036",
+"base": "Graphite 8B",
+"alvo": 27.4,
+"knobs": {
+"pigmentPerDab": 80,
+"paperGate": 0.3
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_037",
+"base": "Graphite 8B",
+"alvo": 27.4,
+"knobs": {
+"pigmentPerDab": 80,
+"paperGate": 0.3
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_038",
+"base": "Graphite 8B",
+"alvo": 27.4,
+"knobs": {
+"pigmentPerDab": 80,
+"paperGate": 0.3
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+64,
+64
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_039",
+"base": "Graphite 8B",
+"alvo": 30.0,
+"knobs": {
+"pigmentPerDab": 80,
+"paperGate": 0.65
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_040",
+"base": "Graphite 8B",
+"alvo": 30.0,
+"knobs": {
+"pigmentPerDab": 80,
+"paperGate": 0.65
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_041",
+"base": "Graphite 8B",
+"alvo": 30.0,
+"knobs": {
+"pigmentPerDab": 80,
+"paperGate": 0.65
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+64,
+64
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "lapisb_058",
+"base": "Charcoal",
+"alvo": 36.0,
+"knobs": {
+"pigmentPerDab": 16,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisb_060",
+"base": "Charcoal",
+"alvo": 33.9,
+"knobs": {
+"pigmentPerDab": 32,
+"paperGate": 0.0
+},
+"brush": {}
+},
+{
+"nome": "k_laminab",
+"base": "Wet Round",
+"alvo": 10,
+"knobs": {},
+"brush": {}
+},
+{
+"nome": "laminab_021",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_022",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_023",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_024",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_025",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_026",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_027",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_028",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_029",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_030",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_031",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_032",
+"base": "Dip Pen",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_033",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_034",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_035",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_036",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_037",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_038",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_039",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_040",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_041",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_042",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_043",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.3
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_044",
+"base": "Marker Bullet",
+"alvo": 10,
+"knobs": {
+"glaze": 0.6
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_045",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_046",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0
+},
+"brush": {
+"dab_flatten": 0.7,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_047",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_048",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_049",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminab_050",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0
+},
+"brush": {
+"dab_flatten": 0.85,
+"dab_angle_deg": 90,
+"hardness": 0.9
+}
+},
+{
+"nome": "k_fountainb",
+"base": "Wet Round",
+"alvo": 25,
+"knobs": {},
+"brush": {}
+},
+{
+"nome": "fountainb_052",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.4,
+"pigmentPerDab": 750,
+"paperGate": 0.2
+},
+"brush": {}
+},
+{
+"nome": "fountainb_053",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.6,
+"pigmentPerDab": 750,
+"paperGate": 0.2
+},
+"brush": {}
+},
+{
+"nome": "fountainb_054",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.4,
+"pigmentPerDab": 750,
+"paperGate": 0.2
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_055",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.6,
+"pigmentPerDab": 750,
+"paperGate": 0.2
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_056",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.4,
+"pigmentPerDab": 750,
+"paperGate": 0.2
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+48,
+48
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_057",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.6,
+"pigmentPerDab": 750,
+"paperGate": 0.2
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+48,
+48
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_058",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.4,
+"pigmentPerDab": 750,
+"paperGate": 0.4
+},
+"brush": {}
+},
+{
+"nome": "fountainb_059",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.6,
+"pigmentPerDab": 750,
+"paperGate": 0.4
+},
+"brush": {}
+},
+{
+"nome": "fountainb_060",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.4,
+"pigmentPerDab": 750,
+"paperGate": 0.4
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_061",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.6,
+"pigmentPerDab": 750,
+"paperGate": 0.4
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_062",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.4,
+"pigmentPerDab": 750,
+"paperGate": 0.4
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+48,
+48
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_063",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.6,
+"pigmentPerDab": 750,
+"paperGate": 0.4
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+48,
+48
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_064",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.4,
+"pigmentPerDab": 750,
+"paperGate": 0.7
+},
+"brush": {}
+},
+{
+"nome": "fountainb_065",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.6,
+"pigmentPerDab": 750,
+"paperGate": 0.7
+},
+"brush": {}
+},
+{
+"nome": "fountainb_066",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.4,
+"pigmentPerDab": 750,
+"paperGate": 0.7
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_067",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.6,
+"pigmentPerDab": 750,
+"paperGate": 0.7
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+16,
+16
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_068",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.4,
+"pigmentPerDab": 750,
+"paperGate": 0.7
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+48,
+48
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "fountainb_069",
+"base": "Dip Pen",
+"alvo": 25,
+"knobs": {
+"glaze": 0.6,
+"pigmentPerDab": 750,
+"paperGate": 0.7
+},
+"brush": {
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+48,
+48
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "k_dabberb",
+"base": "Wet Round",
+"alvo": 36,
+"knobs": {},
+"brush": {}
+},
+{
+"nome": "dabberb_071",
+"base": "Acrylic Round",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0
+},
+"brush": {
+"jitter": 0.1,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberb_072",
+"base": "Acrylic Round",
+"alvo": 36,
+"knobs": {
+"bristleSize": 8.0
+},
+"brush": {
+"jitter": 0.1,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberb_073",
+"base": "Acrylic Round",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0
+},
+"brush": {
+"jitter": 0.1,
+"hardness": 0.9
+}
+},
+{
+"nome": "dabberb_074",
+"base": "Acrylic Round",
+"alvo": 36,
+"knobs": {
+"bristleSize": 8.0
+},
+"brush": {
+"jitter": 0.1,
+"hardness": 0.9
+}
+},
+{
+"nome": "dabberb_075",
+"base": "Acrylic Round",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberb_076",
+"base": "Acrylic Round",
+"alvo": 36,
+"knobs": {
+"bristleSize": 8.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberb_077",
+"base": "Acrylic Round",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.9
+}
+},
+{
+"nome": "dabberb_078",
+"base": "Acrylic Round",
+"alvo": 36,
+"knobs": {
+"bristleSize": 8.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.9
+}
+},
+{
+"nome": "dabberb_079",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0
+},
+"brush": {
+"jitter": 0.1,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberb_080",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 8.0
+},
+"brush": {
+"jitter": 0.1,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberb_081",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0
+},
+"brush": {
+"jitter": 0.1,
+"hardness": 0.9
+}
+},
+{
+"nome": "dabberb_082",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 8.0
+},
+"brush": {
+"jitter": 0.1,
+"hardness": 0.9
+}
+},
+{
+"nome": "dabberb_083",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberb_084",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 8.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberb_085",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.9
+}
+},
+{
+"nome": "dabberb_086",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 8.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.9
+}
+}
+]

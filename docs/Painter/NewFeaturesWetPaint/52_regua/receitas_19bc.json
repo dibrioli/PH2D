@@ -1,0 +1,953 @@
+[
+{
+"nome": "k_laminac",
+"base": "Wet Round",
+"alvo": 10,
+"knobs": {},
+"brush": {}
+},
+{
+"nome": "laminac_001",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 0.5,
+"pigmentPerDab": 250
+},
+"brush": {
+"dab_flatten": 0.74,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_002",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0,
+"pigmentPerDab": 250
+},
+"brush": {
+"dab_flatten": 0.74,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_003",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 0.5,
+"pigmentPerDab": 250
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_004",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0,
+"pigmentPerDab": 250
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_005",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 0.5,
+"pigmentPerDab": 250
+},
+"brush": {
+"dab_flatten": 0.82,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_006",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0,
+"pigmentPerDab": 250
+},
+"brush": {
+"dab_flatten": 0.82,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_007",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 0.5,
+"pigmentPerDab": 500
+},
+"brush": {
+"dab_flatten": 0.74,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_008",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0,
+"pigmentPerDab": 500
+},
+"brush": {
+"dab_flatten": 0.74,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_009",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 0.5,
+"pigmentPerDab": 500
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_010",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0,
+"pigmentPerDab": 500
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_011",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 0.5,
+"pigmentPerDab": 500
+},
+"brush": {
+"dab_flatten": 0.82,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_012",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0,
+"pigmentPerDab": 500
+},
+"brush": {
+"dab_flatten": 0.82,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_013",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 0.5,
+"pigmentPerDab": 1000
+},
+"brush": {
+"dab_flatten": 0.74,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_014",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0,
+"pigmentPerDab": 1000
+},
+"brush": {
+"dab_flatten": 0.74,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_015",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 0.5,
+"pigmentPerDab": 1000
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_016",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0,
+"pigmentPerDab": 1000
+},
+"brush": {
+"dab_flatten": 0.78,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_017",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 0.5,
+"pigmentPerDab": 1000
+},
+"brush": {
+"dab_flatten": 0.82,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "laminac_018",
+"base": "Acrylic Round",
+"alvo": 10,
+"knobs": {
+"bristleStrength": 0.0,
+"felt": 1.0,
+"pigmentPerDab": 1000
+},
+"brush": {
+"dab_flatten": 0.82,
+"dab_angle_deg": 0,
+"hardness": 0.9
+}
+},
+{
+"nome": "k_dabberc",
+"base": "Wet Round",
+"alvo": 36,
+"knobs": {},
+"brush": {}
+},
+{
+"nome": "dabberc_020",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 0.7,
+"bristleStrength": 2.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberc_021",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 0.7,
+"bristleStrength": 2.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6,
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "dabberc_022",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 0.7,
+"bristleStrength": 3.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberc_023",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 0.7,
+"bristleStrength": 3.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6,
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "dabberc_024",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 1.2,
+"bristleStrength": 2.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberc_025",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 1.2,
+"bristleStrength": 2.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6,
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "dabberc_026",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 1.2,
+"bristleStrength": 3.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberc_027",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 1.2,
+"bristleStrength": 3.0
+},
+"brush": {
+"jitter": 0.3,
+"hardness": 0.6,
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "dabberc_028",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 0.7,
+"bristleStrength": 2.0
+},
+"brush": {
+"jitter": 0.5,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberc_029",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 0.7,
+"bristleStrength": 2.0
+},
+"brush": {
+"jitter": 0.5,
+"hardness": 0.6,
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "dabberc_030",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 0.7,
+"bristleStrength": 3.0
+},
+"brush": {
+"jitter": 0.5,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberc_031",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 0.7,
+"bristleStrength": 3.0
+},
+"brush": {
+"jitter": 0.5,
+"hardness": 0.6,
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "dabberc_032",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 1.2,
+"bristleStrength": 2.0
+},
+"brush": {
+"jitter": 0.5,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberc_033",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 1.2,
+"bristleStrength": 2.0
+},
+"brush": {
+"jitter": 0.5,
+"hardness": 0.6,
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "dabberc_034",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 1.2,
+"bristleStrength": 3.0
+},
+"brush": {
+"jitter": 0.5,
+"hardness": 0.6
+}
+},
+{
+"nome": "dabberc_035",
+"base": "Oil Bristle",
+"alvo": 36,
+"knobs": {
+"bristleSize": 2.0,
+"emboss": 1.2,
+"bristleStrength": 3.0
+},
+"brush": {
+"jitter": 0.5,
+"hardness": 0.6,
+"texture": {
+"angle_deg": 0,
+"flow": false,
+"kind": "Noise",
+"mapping": "Tiled",
+"offset": [
+0.0,
+0.0
+],
+"params": [
+0.5,
+0.5,
+0.5,
+0.5,
+0.5,
+0.5
+],
+"rake": false,
+"size": [
+32,
+32
+],
+"stencil_angle_deg": 0,
+"stencil_offset": [
+0.0,
+0.0
+],
+"stencil_size": [
+0.5,
+0.5
+]
+}
+}
+},
+{
+"nome": "k_lapisc",
+"base": "Wet Round",
+"alvo": 24,
+"knobs": {},
+"brush": {}
+},
+{
+"nome": "lapisc_037",
+"base": "Charcoal",
+"alvo": 28,
+"knobs": {
+"pigmentPerDab": 12,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisc_038",
+"base": "Charcoal",
+"alvo": 28,
+"knobs": {
+"pigmentPerDab": 12,
+"paperGate": 0.8
+},
+"brush": {}
+},
+{
+"nome": "lapisc_039",
+"base": "Charcoal",
+"alvo": 28,
+"knobs": {
+"pigmentPerDab": 16,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisc_040",
+"base": "Charcoal",
+"alvo": 28,
+"knobs": {
+"pigmentPerDab": 16,
+"paperGate": 0.8
+},
+"brush": {}
+},
+{
+"nome": "lapisc_041",
+"base": "Charcoal",
+"alvo": 28,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisc_042",
+"base": "Charcoal",
+"alvo": 28,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 0.8
+},
+"brush": {}
+},
+{
+"nome": "lapisc_043",
+"base": "Charcoal",
+"alvo": 30,
+"knobs": {
+"pigmentPerDab": 12,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisc_044",
+"base": "Charcoal",
+"alvo": 30,
+"knobs": {
+"pigmentPerDab": 12,
+"paperGate": 0.8
+},
+"brush": {}
+},
+{
+"nome": "lapisc_045",
+"base": "Charcoal",
+"alvo": 30,
+"knobs": {
+"pigmentPerDab": 16,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisc_046",
+"base": "Charcoal",
+"alvo": 30,
+"knobs": {
+"pigmentPerDab": 16,
+"paperGate": 0.8
+},
+"brush": {}
+},
+{
+"nome": "lapisc_047",
+"base": "Charcoal",
+"alvo": 30,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisc_048",
+"base": "Charcoal",
+"alvo": 30,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 0.8
+},
+"brush": {}
+},
+{
+"nome": "lapisc_049",
+"base": "Charcoal",
+"alvo": 32,
+"knobs": {
+"pigmentPerDab": 12,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisc_050",
+"base": "Charcoal",
+"alvo": 32,
+"knobs": {
+"pigmentPerDab": 12,
+"paperGate": 0.8
+},
+"brush": {}
+},
+{
+"nome": "lapisc_051",
+"base": "Charcoal",
+"alvo": 32,
+"knobs": {
+"pigmentPerDab": 16,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisc_052",
+"base": "Charcoal",
+"alvo": 32,
+"knobs": {
+"pigmentPerDab": 16,
+"paperGate": 0.8
+},
+"brush": {}
+},
+{
+"nome": "lapisc_053",
+"base": "Charcoal",
+"alvo": 32,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 0.5
+},
+"brush": {}
+},
+{
+"nome": "lapisc_054",
+"base": "Charcoal",
+"alvo": 32,
+"knobs": {
+"pigmentPerDab": 20,
+"paperGate": 0.8
+},
+"brush": {}
+}
+]

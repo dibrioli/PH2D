@@ -12,6 +12,8 @@
 > lugar das cerdas — 428 receitas em 4 rodadas, secas, contra as fotos: **óleo, acrílica, Express Oil, lápis,
 > carvão, pastel seco e pastel de óleo ENTRAM**. Ficam de fora a tinta/caneta/marcador (o cruzamento) e o
 > aerógrafo (o pó fino). A lição: §4.5.
+>
+> ⭐ **52 (19/10):** os 19 pincéis por fazer do 02 §6 medidos contra 16 fotos novas — 11 saem só de valores, 4 já são um vizinho na régua, o Marker/Effect pede motor, Granulation/Spatter sem oráculo: [52](52_medicao_os_pinceis_por_fazer.md).
 
 ## §1 — Os dados
 

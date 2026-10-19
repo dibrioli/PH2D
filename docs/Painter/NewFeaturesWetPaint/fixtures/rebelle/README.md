@@ -93,3 +93,24 @@ Os mesmos gestos (`gera_eventos.py OIL_AND_ACRYLIC "Bristle/Bristle Flat" … [-
 | `oil40c.png` | OIL_AND_ACRYLIC | Bristle/Bristle Flat | 40 | 21.5 | bancada | 7 | `6c1ff3123dcf9842` | [240] |
 | `incl103.png` | OIL_AND_ACRYLIC | Bristle/Bristle Flat | 103 | 40.5 | inclinados (8° e 25°) | 7 | `7e0abc84875ea11c` | [240] |
 | `incl40.png` | OIL_AND_ACRYLIC | Bristle/Bristle Flat | 40 | 21.5 | inclinados (8° e 25°) | 7 | `41abf5c30ddc0cd1` | [240] |
+
+**Sessão de 2026-10-19** (os pincéis por fazer, `ferramentas/fotos_lote.sh lote_19.txt`): presets de fábrica, sem `water`/`opacity` no `SET_BRUSH`. O «Spatter» saiu quase transparente sob o Wine a 40 e a 80 px (o papel não se desenha) — sem foto; os 7 «Marker/Effect» não pintaram por cima do traço seco — sem foto.
+
+| ficheiro | ferramenta | preset | size_px | pressão | extras | semente | papel | sha256 (16) |
+|---|---|---|---|---|---|---|---|---|
+| `granulation.png` | WATERCOLOR | Granulation/Granulation | 40 | 100 | — | 7 | Default/EX00 White Simple | `84e21da42b5c7dea` |
+| `flatoily.png` | OIL_AND_ACRYLIC | Flat/Flat Oily | 40 | 100 | — | 7 | Default/EX00 White Simple | `46a69660e2c6d15d` |
+| `filbert.png` | OIL_AND_ACRYLIC | Flat/Filbert | 40 | 100 | — | 7 | Default/EX00 White Simple | `873836ef24a2649c` |
+| `knife.png` | OIL_AND_ACRYLIC | Knife/Knife Smooth | 40 | 100 | — | 7 | Default/EX00 White Simple | `12c9d5ef24ce248f` |
+| `rake.png` | OIL_AND_ACRYLIC | Rake/Rake Sharp | 40 | 100 | — | 7 | Default/EX00 White Simple | `c7382112c2ae5ae4` |
+| `dabber.png` | OIL_AND_ACRYLIC | Dabber/Dabber | 40 | 100 | — | 7 | Default/EX00 White Simple | `f1186cc571669128` |
+| `pencil2h.png` | PENCIL | Graphite Pencil/2H | 40 | 100 | — | 7 | Default/EX00 White Simple | `d4d8fb9c8f8b111f` |
+| `pencilhb.png` | PENCIL | Graphite Pencil/HB | 40 | 100 | — | 7 | Default/EX00 White Simple | `e5159439e44b9e4d` |
+| `pencil2b.png` | PENCIL | Graphite Pencil/2B | 40 | 100 | — | 7 | Default/EX00 White Simple | `f5a8aeaa8e9ecfb5` |
+| `pencil4bcolor.png` | PENCIL | Colored Pencil/4B Color | 40 | 100 | — | 7 | Default/EX00 White Simple | `f70acad69f0de08f` |
+| `scratch.png` | PENCIL | Scratches/Scratch | 40 | 100 | — | 7 | Default/EX00 White Simple | `79b37059a4c6f6e7` |
+| `squarehard.png` | PASTEL | Pastel Dry/Square Hard | 40 | 100 | — | 7 | Default/EX00 White Simple | `54f6ed55c79673a1` |
+| `waxscrape.png` | PASTEL | Scrape/Wax Scrape | 40 | 100 | — | 7 | Default/EX00 White Simple | `3f721e44d07c6836` |
+| `fountainsquare.png` | INK_PEN | Pen/Fountain Square | 40 | 100 | — | 7 | Default/EX00 White Simple | `069433745a21144b` |
+| `reedpen.png` | INK_PEN | Pen/Reed Pen | 40 | 100 | — | 7 | Default/EX00 White Simple | `f6db84643ae0e6b6` |
+| `markerchisel.png` | MARKER | Marker/Chisel | 40 | 100 | — | 7 | Default/EX00 White Simple | `1913200bb7f07814` |

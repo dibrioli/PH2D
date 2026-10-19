@@ -1,0 +1,25 @@
+# Os pincéis por fazer (19/10): nome|TOOL|Grupo/Nome no Brushes panel[|base TOOL:Grupo/Nome]
+granulation|WATERCOLOR|Granulation/Granulation
+spatter|WATERCOLOR|Spatter/Spatter
+flatoily|OIL_AND_ACRYLIC|Flat/Flat Oily
+filbert|OIL_AND_ACRYLIC|Flat/Filbert
+knife|OIL_AND_ACRYLIC|Knife/Knife Smooth
+rake|OIL_AND_ACRYLIC|Rake/Rake Sharp
+dabber|OIL_AND_ACRYLIC|Dabber/Dabber
+pencil2h|PENCIL|Graphite Pencil/2H
+pencilhb|PENCIL|Graphite Pencil/HB
+pencil2b|PENCIL|Graphite Pencil/2B
+pencil4bcolor|PENCIL|Colored Pencil/4B Color
+scratch|PENCIL|Scratches/Scratch
+squarehard|PASTEL|Pastel Dry/Square Hard
+waxscrape|PASTEL|Scrape/Wax Scrape
+fountainsquare|INK_PEN|Pen/Fountain Square
+reedpen|INK_PEN|Pen/Reed Pen
+markerchisel|MARKER|Marker/Chisel
+fxburn|MARKER|Effect/Burn|MARKER:Marker/Bullet|240,200,20
+fxcolor|MARKER|Effect/Color|MARKER:Marker/Bullet|240,200,20
+fxdodge|MARKER|Effect/Dodge|MARKER:Marker/Bullet|240,200,20
+fxhue|MARKER|Effect/Hue|MARKER:Marker/Bullet|240,200,20
+fxluminosity|MARKER|Effect/Luminosity|MARKER:Marker/Bullet|240,200,20
+fxoverlay|MARKER|Effect/Overlay|MARKER:Marker/Bullet|240,200,20
+fxsaturation|MARKER|Effect/Saturation|MARKER:Marker/Bullet|240,200,20

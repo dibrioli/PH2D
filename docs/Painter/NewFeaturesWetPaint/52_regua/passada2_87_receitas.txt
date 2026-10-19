@@ -1,0 +1,63 @@
+
+## pencil2h (lapisb) — contam cob,tex,borda,orla,cruz + larg · passam tudo: 3/19
+   R cob 0.595 tex 4.983 borda 0.321 orla 10.000 cv 0.042 cruz 0.599 larg 24
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisb_027    6/6 dist 0.23 cob 0.566✓ tex 5.058✓ borda 0.318✓ orla 11.000✓ cruz 0.606✓ larg 24✓
+   lapisb_028    6/6 dist 0.51 cob 0.579✓ tex 6.010✓ borda 0.324✓ orla 11.000✓ cruz 0.613✓ larg 25✓
+   lapisb_037    6/6 dist 0.97 cob 0.723✓ tex 5.076✓ borda 0.336✓ orla 8.000✓ cruz 0.732✓ larg 24✓
+
+## pencilhb (lapisb) — contam cob,tex,borda,orla,cruz + larg · passam tudo: 3/19
+   R cob 0.561 tex 6.153 borda 0.325 orla 11.000 cv 0.040 cruz 0.583 larg 24
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisb_028    6/6 dist 0.20 cob 0.579✓ tex 6.010✓ borda 0.324✓ orla 11.000✓ cruz 0.613✓ larg 25✓
+   lapisb_018    6/6 dist 1.03 cob 0.398✓ tex 5.669✓ borda 0.359✓ orla 13.000✓ cruz 0.551✓ larg 24✓
+   lapisb_038    6/6 dist 1.55 cob 0.719✓ tex 6.949✓ borda 0.337✓ orla 8.000✓ cruz 0.738✓ larg 23✓
+
+## pencil2b (lapisb) — contam cob,tex,borda,orla,cruz + larg · passam tudo: 4/19
+   R cob 0.544 tex 13.901 borda 0.350 orla 11.000 cv 0.060 cruz 0.589 larg 24
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisb_032    6/6 dist 0.71 cob 0.520✓ tex 14.580✓ borda 0.459✓ orla 12.000✓ cruz 0.495✓ larg 23✓
+   lapisb_031    6/6 dist 0.74 cob 0.520✓ tex 12.293✓ borda 0.404✓ orla 13.000✓ cruz 0.627✓ larg 26✓
+   lapisb_030    6/6 dist 0.82 cob 0.507✓ tex 11.598✓ borda 0.390✓ orla 13.000✓ cruz 0.572✓ larg 25✓
+
+## pencil4bcolor (lapisb) — contam cob,tex,borda,orla,cruz + larg · passam tudo: 3/19
+   R cob 0.665 tex 11.826 borda 0.327 orla 10.000 cv 0.048 cruz 0.730 larg 25
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisb_041    6/6 dist 0.57 cob 0.700✓ tex 11.793✓ borda 0.447✓ orla 10.000✓ cruz 0.659✓ larg 25✓
+   lapisb_040    6/6 dist 0.83 cob 0.700✓ tex 10.224✓ borda 0.401✓ orla 10.000✓ cruz 0.683✓ larg 26✓
+   lapisb_031    6/6 dist 1.33 cob 0.520✓ tex 12.293✓ borda 0.404✓ orla 13.000✓ cruz 0.627✓ larg 26✓
+
+## scratch (lapisb) — contam cob,tex,borda,orla,cv,cruz + larg · passam tudo: 0/19
+   R cob 0.255 tex 19.780 borda 0.591 orla 13.000 cv 0.126 cruz 0.652 larg 24
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisb_032    6/7 dist 7.31 cob 0.520✗ tex 14.580✓ borda 0.459✓ orla 12.000✓ cv 0.077✓ cruz 0.495✓ larg 23✓
+   lapisb_058    5/7 dist 1.69 cob 0.230✗ tex 17.291✓ borda 0.616✓ orla 20.000✗ cv 0.111✓ cruz 0.603✓ larg 26✓
+   lapisb_011    5/7 dist 1.85 cob 0.252✓ tex 10.053✗ borda 0.514✓ orla 14.000✓ cv 0.065✗ cruz 0.670✓ larg 23✓
+
+## dabber (dabberb) — contam cob,tex,borda,orla + larg · passam tudo: 0/16
+   R cob 0.840 tex 10.715 borda 0.588 orla 5.000 cv 0.031 cruz 0.948 larg 36
+   C cob 0.193 tex 8.372 borda 1.028 orla 1.000 cv 0.025 cruz 0.948 larg 35
+   dabberb_083   4/5 dist 1.75 cob 0.887✓ tex 6.779✗ borda 0.589✓ orla 5.000✓ larg 35✓
+   dabberb_085   4/5 dist 2.61 cob 0.898✓ tex 6.322✗ borda 0.764✓ orla 4.000✓ larg 35✓
+   dabberb_084   4/5 dist 2.86 cob 0.904✓ tex 5.429✗ borda 0.701✓ orla 4.000✓ larg 35✓
+
+## flatoily (laminab) — contam cob,tex,borda,cv,cruz + larg · passam tudo: 0/30
+   R cob 0.884 tex 0.773 borda 0.938 orla 1.000 cv 0.005 cruz 0.723 larg 10
+   C cob 0.110 tex 10.144 borda 1.151 orla 1.000 cv 0.049 cruz 0.930 larg 9
+   laminab_047   5/6 dist 1.09 cob 0.906✓ tex 1.085✓ borda 0.942✓ cv 0.027✓ cruz 0.616✗ larg 10✓
+   laminab_045   5/6 dist 1.47 cob 0.907✓ tex 1.530✓ borda 0.914✓ cv 0.041✗ cruz 0.636✓ larg 10✓
+   laminab_049   5/6 dist 1.48 cob 0.908✓ tex 1.007✓ borda 0.909✓ cv 0.043✗ cruz 0.638✓ larg 10✓
+
+## knife (laminab) — contam cob,tex,borda,cv,cruz + larg · passam tudo: 1/30
+   R cob 0.893 tex 1.048 borda 0.930 orla 1.000 cv 0.010 cruz 0.513 larg 9
+   C cob 0.110 tex 10.144 borda 1.151 orla 1.000 cv 0.049 cruz 0.930 larg 9
+   laminab_047   6/6 dist 0.76 cob 0.906✓ tex 1.085✓ borda 0.942✓ cv 0.027✓ cruz 0.616✓ larg 10✓
+   laminab_029   5/6 dist 0.89 cob 0.910✓ tex 0.667✓ borda 0.921✓ cv 0.038✗ cruz 0.485✓ larg 10✓
+   laminab_037   5/6 dist 0.98 cob 0.909✓ tex 1.442✓ borda 0.885✓ cv 0.035✗ cruz 0.544✓ larg 10✓
+
+## fountainsquare (fountainb) — contam cob,tex,cruz + larg · passam tudo: 2/18
+   R cob 0.803 tex 4.919 borda 0.915 orla 1.000 cv 0.040 cruz 0.460 larg 25
+   C cob 0.203 tex 8.215 borda 0.995 orla 1.000 cv 0.026 cruz 0.968 larg 24
+   fountainb_065 4/4 dist 0.52 cob 0.870✓ tex 3.664✓ cruz 0.474✓ larg 24✓
+   fountainb_064 4/4 dist 0.78 cob 0.870✓ tex 3.664✓ cruz 0.605✓ larg 24✓
+   fountainb_059 3/4 dist 1.16 cob 0.895✓ tex 1.606✗ cruz 0.459✓ larg 25✓

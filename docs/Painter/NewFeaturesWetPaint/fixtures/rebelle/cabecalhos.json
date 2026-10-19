@@ -1772,5 +1772,469 @@
   },
   "sha256": "41abf5c30ddc0cd1ee4a172f49db96fa0a5aed716c9913f90d4eb0a037e3a2d1",
   "comando": "python3 -I ferramentas/gera_eventos.py OIL_AND_ACRYLIC \"Bristle/Bristle Flat\" Z:/home/enio/Apps/rebelle/oraculo/saida r50_incl40 --cena inclinados > ev.json; corte em ev_A.json (sem SAVE, até ao 1.º SIMULATION); node ferramentas/ws_eventos.mjs ev_A.json 8000 2; inj.sh \"click 1853 273; key ctrl+a; type 100; key enter\" (zoom 100 %); foto.sh; magick -crop 1000x640+480+220 — sessão 2026-10-18 (gotas_inicia.sh, Registration Try→Pro, New Artwork cancelado), ordem oil40c · oil103 · incl103 · incl40, Rebelle 8.3.4 Trial"
+ },
+ "granulation": {
+  "tool": "WATERCOLOR",
+  "preset": "Granulation/Granulation",
+  "size_px": 40.0,
+  "size_slider": 14.8,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "84e21da42b5c7dea6a7b061d4a495b879ca3400232d1df150413128a0ba51a39",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «granulation»"
+ },
+ "flatoily": {
+  "tool": "OIL_AND_ACRYLIC",
+  "preset": "Flat/Flat Oily",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "46a69660e2c6d15d806257bd770264aaa6ee22c895e20a392448425286d103e0",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «flatoily»"
+ },
+ "filbert": {
+  "tool": "OIL_AND_ACRYLIC",
+  "preset": "Flat/Filbert",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "873836ef24a2649cbe2ae2a9da3303a50194927e11adf5ca7d54fead8be3c2ef",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «filbert»"
+ },
+ "knife": {
+  "tool": "OIL_AND_ACRYLIC",
+  "preset": "Knife/Knife Smooth",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "12c9d5ef24ce248f7693e91d7815aec09d535ff3e36e1de82b8d3fc5858c650b",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «knife»"
+ },
+ "rake": {
+  "tool": "OIL_AND_ACRYLIC",
+  "preset": "Rake/Rake Sharp",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "c7382112c2ae5ae45c8131ea0faec8912c5982be83c5ff64b210c8966cdb85f5",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «rake»"
+ },
+ "dabber": {
+  "tool": "OIL_AND_ACRYLIC",
+  "preset": "Dabber/Dabber",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "f1186cc5716691288704c7dc855283dc2ead0c91d9dd3551d2019c65e54a045d",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «dabber»"
+ },
+ "pencil2h": {
+  "tool": "PENCIL",
+  "preset": "Graphite Pencil/2H",
+  "size_px": 40.0,
+  "size_slider": 63.0,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "d4d8fb9c8f8b111f694efbe11855fcb295759ae662cb1d92c67b39e16fb4863e",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «pencil2h»"
+ },
+ "pencilhb": {
+  "tool": "PENCIL",
+  "preset": "Graphite Pencil/HB",
+  "size_px": 40.0,
+  "size_slider": 63.0,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "e5159439e44b9e4d933be9dc00cd964296e6fc2703ccaecad005002929dcf529",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «pencilhb»"
+ },
+ "pencil2b": {
+  "tool": "PENCIL",
+  "preset": "Graphite Pencil/2B",
+  "size_px": 40.0,
+  "size_slider": 63.0,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "f5a8aeaa8e9ecfb5793726a4ce238f434579a101e27ebe6b1e373b85df5f1d80",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «pencil2b»"
+ },
+ "pencil4bcolor": {
+  "tool": "PENCIL",
+  "preset": "Colored Pencil/4B Color",
+  "size_px": 40.0,
+  "size_slider": 63.0,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "f70acad69f0de08f64942e2809a4d8d3ae27570bcac044789fa0c9e1496d326b",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «pencil4bcolor»"
+ },
+ "scratch": {
+  "tool": "PENCIL",
+  "preset": "Scratches/Scratch",
+  "size_px": 40.0,
+  "size_slider": 14.8,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "79b37059a4c6f6e7880c072bf105aaf9c0e620a6ac6aee5d5a2fb831a1377f8e",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «scratch»"
+ },
+ "squarehard": {
+  "tool": "PASTEL",
+  "preset": "Pastel Dry/Square Hard",
+  "size_px": 40.0,
+  "size_slider": 34.2,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "54f6ed55c79673a17774d8a8c13271c651041d7b7ae7d779a488b29f11bb1910",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «squarehard»"
+ },
+ "waxscrape": {
+  "tool": "PASTEL",
+  "preset": "Scrape/Wax Scrape",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "3f721e44d07c683646479859cddfbfedbd9013222ba04ddbb6a6ff72c16a73c9",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «waxscrape»"
+ },
+ "fountainsquare": {
+  "tool": "INK_PEN",
+  "preset": "Pen/Fountain Square",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "069433745a21144b542633ce5bf8319763a401c4fa8d6acd277ab2cee00c14ad",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «fountainsquare»"
+ },
+ "reedpen": {
+  "tool": "INK_PEN",
+  "preset": "Pen/Reed Pen",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "f6db84643ae0e6b670b6cfe9a319aec4aeff0d7533b6e4eac85270a0968f86c5",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «reedpen»"
+ },
+ "markerchisel": {
+  "tool": "MARKER",
+  "preset": "Marker/Chisel",
+  "size_px": 40.0,
+  "size_slider": 34.2,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "1913200bb7f0781467a793c259e8af69e9074b578fd09b6a6b373278cfdf41b6",
+  "comando": "cd docs/Painter/NewFeaturesWetPaint/ferramentas && bash fotos_lote.sh lote_19.txt <saída>  # linha «markerchisel»"
  }
 }

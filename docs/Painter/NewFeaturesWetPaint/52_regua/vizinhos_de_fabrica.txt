@@ -1,0 +1,101 @@
+
+## pencil2h (lapisv) — contam cob,tex,borda,orla,cruz + larg · passam tudo: 0/3
+   R cob 0.595 tex 4.983 borda 0.321 orla 10.000 cv 0.042 cruz 0.599 larg 24
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisv_Graphite8B 4/6 dist 2.59 cob 0.763✓ tex 9.080✗ borda 0.444✓ orla 7.000✓ cruz 0.735✓ larg 21✗
+   lapisv_Charcoal 3/6 dist 1.97 cob 0.343✗ tex 7.524✗ borda 0.386✓ orla 11.000✓ cruz 0.477✓ larg 17✗
+   lapisv_SoftPastel 1/6 dist 2.85 cob 0.821✗ tex 7.172✗ borda 0.505✓ orla 4.000✗ cruz 0.837✗ larg 21✗
+
+## pencilhb (lapisv) — contam cob,tex,borda,orla,cruz + larg · passam tudo: 0/3
+   R cob 0.561 tex 6.153 borda 0.325 orla 11.000 cv 0.040 cruz 0.583 larg 24
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisv_Charcoal 3/6 dist 1.64 cob 0.343✗ tex 7.524✗ borda 0.386✓ orla 11.000✓ cruz 0.477✓ larg 17✗
+   lapisv_Graphite8B 3/6 dist 2.96 cob 0.763✗ tex 9.080✗ borda 0.444✓ orla 7.000✓ cruz 0.735✓ larg 21✗
+   lapisv_SoftPastel 2/6 dist 2.86 cob 0.821✗ tex 7.172✓ borda 0.505✓ orla 4.000✗ cruz 0.837✗ larg 21✗
+
+## pencil2b (lapisv) — contam cob,tex,borda,orla,cruz + larg · passam tudo: 0/3
+   R cob 0.544 tex 13.901 borda 0.350 orla 11.000 cv 0.060 cruz 0.589 larg 24
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisv_Charcoal 3/6 dist 2.07 cob 0.343✗ tex 7.524✗ borda 0.386✓ orla 11.000✓ cruz 0.477✓ larg 17✗
+   lapisv_Graphite8B 3/6 dist 2.43 cob 0.763✗ tex 9.080✗ borda 0.444✓ orla 7.000✓ cruz 0.735✓ larg 21✗
+   lapisv_SoftPastel 1/6 dist 3.61 cob 0.821✗ tex 7.172✗ borda 0.505✓ orla 4.000✗ cruz 0.837✗ larg 21✗
+
+## pencil4bcolor (lapisv) — contam cob,tex,borda,orla,cruz + larg · passam tudo: 0/3
+   R cob 0.665 tex 11.826 borda 0.327 orla 10.000 cv 0.048 cruz 0.730 larg 25
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisv_Graphite8B 4/6 dist 1.50 cob 0.763✓ tex 9.080✗ borda 0.444✓ orla 7.000✓ cruz 0.735✓ larg 21✗
+   lapisv_SoftPastel 3/6 dist 3.02 cob 0.821✓ tex 7.172✗ borda 0.505✓ orla 4.000✗ cruz 0.837✓ larg 21✗
+   lapisv_Charcoal 2/6 dist 3.17 cob 0.343✗ tex 7.524✗ borda 0.386✓ orla 11.000✓ cruz 0.477✗ larg 17✗
+
+## scratch (lapisv) — contam cob,tex,borda,orla,cv,cruz + larg · passam tudo: 0/3
+   R cob 0.255 tex 19.780 borda 0.591 orla 13.000 cv 0.126 cruz 0.652 larg 24
+   C cob 0.207 tex 8.221 borda 0.996 orla 1.000 cv 0.027 cruz 0.966 larg 23
+   lapisv_Graphite8B 3/7 dist 13.02 cob 0.763✗ tex 9.080✗ borda 0.444✓ orla 7.000✗ cv 0.078✓ cruz 0.735✓ larg 21✗
+   lapisv_Charcoal 2/7 dist 4.42 cob 0.343✗ tex 7.524✗ borda 0.386✗ orla 11.000✓ cv 0.095✓ cruz 0.477✗ larg 17✗
+   lapisv_SoftPastel 1/7 dist 15.21 cob 0.821✗ tex 7.172✗ borda 0.505✓ orla 4.000✗ cv 0.038✗ cruz 0.837✗ larg 21✗
+
+## squarehard (sqv) — contam cob,tex,borda,cv,cruz + larg · passam tudo: 0/2
+   R cob 0.705 tex 20.884 borda 0.856 orla 3.000 cv 0.077 cruz 0.579 larg 31
+   C cob 0.202 tex 7.932 borda 0.999 orla 1.000 cv 0.025 cruz 0.967 larg 30
+   sqv_OilPastel 3/6 dist 3.75 cob 0.721✓ tex 12.844✗ borda 0.499✗ cv 0.058✓ cruz 0.675✓ larg 26✗
+   sqv_SoftPastel 1/6 dist 5.50 cob 0.833✓ tex 7.186✗ borda 0.496✗ cv 0.035✗ cruz 0.916✗ larg 28✗
+
+## waxscrape (wxv) — contam cob,tex,borda,cruz + larg · passam tudo: 0/2
+   R cob 0.763 tex 16.691 borda 0.586 orla 4.000 cv 0.038 cruz 0.782 larg 36
+   C cob 0.193 tex 8.372 borda 1.028 orla 1.000 cv 0.025 cruz 0.948 larg 35
+   wxv_OilPastel 3/5 dist 1.30 cob 0.713✓ tex 14.838✓ borda 0.494✓ cruz 0.652✗ larg 31✗
+   wxv_SoftPastel 2/5 dist 2.32 cob 0.826✓ tex 7.554✗ borda 0.463✓ cruz 0.921✗ larg 33✗
+
+## filbert (filbertv) — contam cob,tex,borda + larg · passam tudo: 0/3
+   R cob 0.845 tex 4.458 borda 0.571 orla 3.000 cv 0.001 cruz 0.887 larg 40
+   C cob 0.183 tex 8.503 borda 1.025 orla 1.000 cv 0.026 cruz 0.940 larg 39
+   filbertv_OilBristle 3/4 dist 0.94 cob 0.912✓ tex 5.680✓ borda 0.817✗ larg 39✓
+   filbertv_ExpressOil 2/4 dist 1.28 cob 0.699✓ tex 7.979✗ borda 0.484✓ larg 34✗
+   filbertv_AcrylicRound 2/4 dist 7.13 cob 0.556✓ tex 31.180✗ borda 0.530✓ larg 29✗
+
+## rake (rakev) — contam cob,tex,borda,cruz + larg · passam tudo: 1/3
+   R cob 0.902 tex 3.733 borda 0.904 orla 1.000 cv 0.006 cruz 1.088 larg 38
+   C cob 0.188 tex 8.468 borda 1.038 orla 1.000 cv 0.026 cruz 0.943 larg 37
+   rakev_OilBristle 5/5 dist 0.77 cob 0.911✓ tex 5.618✓ borda 0.883✓ cruz 1.117✓ larg 38✓
+   rakev_ExpressOil 1/5 dist 7.62 cob 0.698✓ tex 8.164✗ borda 0.520✗ cruz 0.579✗ larg 34✗
+   rakev_AcrylicRound 1/5 dist 12.70 cob 0.551✓ tex 30.332✗ borda 0.580✗ cruz 0.486✗ larg 29✗
+
+## dabber (dabberv) — contam cob,tex,borda,orla + larg · passam tudo: 0/3
+   R cob 0.840 tex 10.715 borda 0.588 orla 5.000 cv 0.031 cruz 0.948 larg 36
+   C cob 0.193 tex 8.372 borda 1.028 orla 1.000 cv 0.025 cruz 0.948 larg 35
+   dabberv_OilBristle 3/5 dist 3.22 cob 0.910✓ tex 5.616✗ borda 0.780✓ orla 3.000✗ larg 36✓
+   dabberv_ExpressOil 2/5 dist 2.37 cob 0.701✓ tex 8.147✗ borda 0.453✓ orla 8.000✗ larg 33✗
+   dabberv_AcrylicRound 2/5 dist 11.12 cob 0.543✓ tex 30.184✗ borda 0.634✓ orla 14.000✗ larg 29✗
+
+## flatoily (laminav) — contam cob,tex,borda,cv,cruz + larg · passam tudo: 0/3
+   R cob 0.884 tex 0.773 borda 0.938 orla 1.000 cv 0.005 cruz 0.723 larg 10
+   C cob 0.110 tex 10.144 borda 1.151 orla 1.000 cv 0.049 cruz 0.930 larg 9
+   laminav_DipPen 4/6 dist 3.38 cob 0.906✓ tex 0.933✓ borda 0.853✓ cv 0.047✗ cruz 0.318✗ larg 9✓
+   laminav_InkBullet 4/6 dist 3.50 cob 0.908✓ tex 0.766✓ borda 0.885✓ cv 0.035✗ cruz 0.203✗ larg 10✓
+   laminav_AcrylicRound 3/6 dist 4.26 cob 0.649✓ tex 11.895✗ borda 0.506✗ cv 0.018✓ cruz 0.636✓ larg 7✗
+
+## knife (laminav) — contam cob,tex,borda,cv,cruz + larg · passam tudo: 0/3
+   R cob 0.893 tex 1.048 borda 0.930 orla 1.000 cv 0.010 cruz 0.513 larg 9
+   C cob 0.110 tex 10.144 borda 1.151 orla 1.000 cv 0.049 cruz 0.930 larg 9
+   laminav_DipPen 5/6 dist 1.80 cob 0.906✓ tex 0.933✓ borda 0.853✓ cv 0.047✗ cruz 0.318✓ larg 9✓
+   laminav_InkBullet 4/6 dist 1.66 cob 0.908✓ tex 0.766✓ borda 0.885✓ cv 0.035✗ cruz 0.203✗ larg 10✓
+   laminav_AcrylicRound 4/6 dist 3.94 cob 0.649✓ tex 11.895✗ borda 0.506✗ cv 0.018✓ cruz 0.636✓ larg 7✓
+
+## fountainsquare (fountainv) — contam cob,tex,cruz + larg · passam tudo: 1/3
+   R cob 0.803 tex 4.919 borda 0.915 orla 1.000 cv 0.040 cruz 0.460 larg 25
+   C cob 0.203 tex 8.215 borda 0.995 orla 1.000 cv 0.026 cruz 0.968 larg 24
+   fountainv_InkBrush 4/4 dist 0.75 cob 0.579✓ tex 4.086✓ cruz 0.399✓ larg 24✓
+   fountainv_DipPen 3/4 dist 2.00 cob 0.910✓ tex 0.473✗ cruz 0.220✓ larg 24✓
+   fountainv_InkBullet 2/4 dist 2.16 cob 0.909✓ tex 0.731✗ cruz 0.099✗ larg 24✓
+
+## reedpen (reedv) — contam cob,tex,borda,cruz + larg · passam tudo: 2/2
+   R cob 0.898 tex 0.564 borda 0.906 orla 1.000 cv 0.005 cruz 0.124 larg 34
+   C cob 0.198 tex 8.031 borda 1.007 orla 1.000 cv 0.024 cruz 0.954 larg 33
+   reedv_InkBullet 5/5 dist 0.10 cob 0.909✓ tex 0.942✓ borda 0.909✓ cruz 0.118✓ larg 34✓
+   reedv_DipPen  5/5 dist 0.20 cob 0.910✓ tex 0.456✓ borda 0.897✓ cruz 0.186✓ larg 33✓
+
+## markerchisel (chiselv) — contam cob,tex,borda,cv,cruz + larg · passam tudo: 2/2
+   R cob 0.899 tex 1.888 borda 0.704 orla 2.000 cv 0.000 cruz 0.031 larg 16
+   C cob 0.168 tex 9.865 borda 1.016 orla 2.000 cv 0.039 cruz 0.976 larg 15
+   chiselv_MarkerLiner 6/6 dist 0.50 cob 0.892✓ tex 3.078✓ borda 0.723✓ cv 0.010✓ cruz 0.056✓ larg 14✓
+   chiselv_MarkerBullet 6/6 dist 0.70 cob 0.898✓ tex 2.397✓ borda 0.815✓ cv 0.011✓ cruz 0.039✓ larg 16✓

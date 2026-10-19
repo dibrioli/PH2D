@@ -186,8 +186,13 @@ fn preset_de(c: &Receita) -> Preset {
         if let Some(o) = c.opacity {
             q.volumes.opacity = Some(o);
         }
+        // Qualquer chave do REGISTO (o preset só grava as que usa: a varredura dos pincéis novos parte do vizinho).
         for (k, v) in &c.knobs {
-            assert!(q.engine.insert(k.clone(), *v).is_some(), "knob {k}");
+            assert!(
+                ph2d_wet_paint::tuning::KNOB_DEFS.iter().any(|d| d.key == k),
+                "knob {k}"
+            );
+            q.engine.insert(k.clone(), *v);
         }
         // Um campo que o ficheiro de fábrica ainda não grava (a ponta reta, prompt 44) entra também — desde
         // que seja do pincel.

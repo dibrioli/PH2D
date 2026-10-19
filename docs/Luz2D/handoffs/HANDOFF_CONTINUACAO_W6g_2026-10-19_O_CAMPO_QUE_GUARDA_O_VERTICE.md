@@ -505,9 +505,18 @@ A 2.ª reconstrução desta rodada sem passar (r6, r7) ⇒ PARE: a r7 comitada; 
 
 ## 20. ABERTO (por ordem — substitui o §17)
 
-1. **A 10 + 9 na cena 5: faltam 0,025 ms** (+5,8 % contra ≤ +5 %). Decisão do DONO antes de outra rodada: o alvo
-   relativo ficou mais duro porque o padrão desceu 13 %; ou se mantém (e a próxima rodada ataca a borda, +0,07 sobre a
-   cunha, ou o binário da fina), ou passa a ser absoluto. Os quatro itens de qualidade já passam (r3/r4).
+1. **A 10 + 9 na cena 5: faltam 0,025 ms** (+5,8 % contra ≤ +5 %). **DECIDIDO pelo dono (19/10): o alvo MANTÉM-SE —
+   C3 ≤ +5 % sobre a lei W6d de HOJE (a r7), nas cenas 5 e 6, no mesmo processo.** Uma rodada nova, com a regra do
+   §1 tal e qual (os quatro itens de qualidade já passam, r3/r4; two-strikes de novo). Ponto de partida:
+   - a borda primeiro (o maior resto: `c3_borda_cantos` +0,07 sobre a cunha, que já é +0,03 sobre a lei W6d; a
+     bisseção do §8 tem as peças, e a r4 deixou a borda a +0,066–0,071) — os dois passes da borda têm `C3_BORDA` na
+     régua do custo; depois a fina (+0,06; os dois a 128 registos, o binário 32 % maior);
+   - a régua de registos corre em segundos SEM compilar Rust: `bash scripts/ph2d-run.sh
+     target/w6g/regua_registos/target/release/regua_registos <rc.wgsl> <entrada> <constantes.txt>...` (recolha do rc
+     e das constantes: `python3 -I target/w6g/diag_t.py` + `W6G_REGUA=<pasta>` na régua do custo, e repor) — serve
+     para qualquer entrada (`c3_borda_cantos`, `c3_cantos`), não só a fina; as formas testam-se sobre o texto do rc
+     (molde `target/w6g/regua_x.py`) antes de tocar no produto;
+   - a prova de exatidão: `diag_r.py` + `W6G_DUMP` (32 casos), base em `target/w6g/dump_head/` (= r6 = r7).
 2. A lei W6d com `DISTANTES` no relógio (uma cena com objetos fora da grade na régua do custo).
 3. A anomalia da r5b (§12).
 4. A família (b) (37–38): da W5g, fora.

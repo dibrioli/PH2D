@@ -336,7 +336,9 @@ impl Editor {
             return false;
         }
         // Num ponto de ajuste de uma seta seleccionada, o duplo-clique apaga-o.
-        if self.editing.is_none() && self.remove_point_at(doc, history, p) {
+        if self.editing.is_none()
+            && (self.remove_point_at(doc, history, p) || self.let_go_segment_at(doc, history, p))
+        {
             return true;
         }
         if let Some(id) = self.editing.as_ref().map(|e| e.id)

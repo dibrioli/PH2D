@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use ph2d_board_model::{Anchor, BoardDoc, BoardOp, Element, ElementId, End, History, ShapeType};
 use ph2d_text::TextSystem;
 
-use crate::gesture_end::undo_ops;
+use crate::gesture_end::{is_note, undo_ops};
 use crate::guides::Snapper;
 use crate::resize::{axis_angle, drag_box, resize_frame, resized};
 use crate::snap::Guide;
@@ -83,6 +83,15 @@ pub(crate) enum Gesture {
     Bend {
         id: ElementId,
         index: usize,
+        start: [f64; 2],
+        moved: bool,
+        original: Element,
+    },
+    /// W23 B5(1) — arrastar o segmento do meio do trecho `leg` de uma seta cotovelo (`elbow_drag.rs`).
+    Slide {
+        id: ElementId,
+        leg: usize,
+        mid: ph2d_board_route::ElbowMid,
         start: [f64; 2],
         moved: bool,
         original: Element,
@@ -248,6 +257,7 @@ impl Editor {
                         target: None,
                     })
                 }
+                crate::wire::WireHandle::Segment(leg) => self.begin_slide(doc, id, leg, p),
                 _ => self.begin_bend(doc, id, h, p),
             };
             return Down::Taken;
@@ -407,6 +417,7 @@ impl Editor {
             Gesture::Connect { .. } => self.connect_move(doc, &mut g, p),
             Gesture::EndDrag { .. } => self.end_drag_move(doc, &mut g, p),
             Gesture::Bend { .. } => self.bend_move(doc, &mut g, p),
+            Gesture::Slide { .. } => self.slide_move(doc, &mut g, p),
             Gesture::Marquee {
                 start,
                 cur,
@@ -597,6 +608,7 @@ impl Editor {
             Gesture::Grid { originals, .. } => history.record(undo_ops(doc, &originals), doc),
             g @ Gesture::Connect { .. } => self.connect_up(doc, history, g),
             g @ Gesture::Bend { .. } => self.bend_up(doc, history, g, p),
+            g @ Gesture::Slide { .. } => self.slide_up(doc, history, g),
             Gesture::EndDrag { original, .. } => {
                 history.record(undo_ops(doc, std::slice::from_ref(&original)), doc);
             }
@@ -681,19 +693,4 @@ impl Editor {
             }
         }
     }
-}
-
-pub(crate) fn is_note(el: &Element) -> bool {
-    el.shape().is_some_and(|s| s.kind.is_note())
-}
-
-pub(crate) fn same_pose(a: &Element, b: &Element) -> bool {
-    // A casa (W5) conta: largar no mesmo sítio mas noutro frame é um passo de desfazer.
-    a.x == b.x
-        && a.y == b.y
-        && a.w == b.w
-        && a.h == b.h
-        && a.angle == b.angle
-        && a.kind == b.kind
-        && a.frame == b.frame
 }

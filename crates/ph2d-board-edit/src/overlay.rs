@@ -62,8 +62,12 @@ pub struct Wire {
     pub ends: [[f64; 2]; 2],
     /// Os pontos de ajuste (círculos ocos: arrastam-se; duplo-clique apaga).
     pub points: Vec<[f64; 2]>,
-    /// O meio de cada trecho (bolinhas cheias: arrastadas, criam um ponto ali).
+    /// O meio de cada trecho (bolinhas cheias: arrastadas, criam um ponto ali) — menos os trechos em
+    /// Z de um cotovelo, que mostram o segmento do meio.
     pub mids: Vec<[f64; 2]>,
+    /// W23 B5(1) — o segmento do meio de cada trecho em Z: o meio dele e se é vertical (a pega
+    /// arrasta-o na perpendicular).
+    pub segments: Vec<([f64; 2], bool)>,
 }
 
 /// A forma alvo de uma ligação em curso: realça-se o contorno dela, e a seta ao vivo mostra onde a
@@ -109,7 +113,11 @@ impl Editor {
                     path: r.path.clone(),
                     ends: r.ends(),
                     points: r.waypoints().to_vec(),
-                    mids: r.leg_mids.clone(),
+                    mids: (0..r.leg_mids.len())
+                        .filter(|i| r.elbows.get(*i).copied().flatten().is_none())
+                        .map(|i| r.leg_mids[i])
+                        .collect(),
+                    segments: r.elbows.iter().flatten().map(|e| (e.at, e.vertical)).collect(),
                 })
                 .collect(),
             target: self.gesture.as_ref().and_then(|g| g.target(doc)),

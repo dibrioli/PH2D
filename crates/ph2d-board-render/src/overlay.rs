@@ -97,6 +97,17 @@ pub fn paint_overlay(
             let c = ph2d_vector::Circle::new(v * point(*m), metrics.handle / 2.0).to_path(0.1);
             scene.fill_path(&c, &Brush::Solid(accent), Affine::IDENTITY);
         }
+        // W23 B5(1) — o segmento do meio de um cotovelo: uma pílula deitada AO LONGO dele (arrasta-se
+        // na perpendicular), do comprimento do alcance do clique (`Editor::wire_handle_at`).
+        for (m, vertical) in &w.segments {
+            let c = v * point(*m);
+            let (long, short) = (metrics.handle, metrics.handle / 2.0);
+            let (hw, hh) = if *vertical { (short, long) } else { (long, short) };
+            let r = ph2d_vector::Rect::new(c.x - hw, c.y - hh, c.x + hw, c.y + hh);
+            let pill = ph2d_vector::RoundedRect::from_rect(r, short).to_path(0.1);
+            scene.fill_path(&pill, &paper, Affine::IDENTITY);
+            line(scene, &pill, accent, thin);
+        }
     }
     for (at, dir) in &overlay.dots {
         let c = v * point(*at);

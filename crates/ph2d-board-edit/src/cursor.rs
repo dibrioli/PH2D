@@ -21,9 +21,17 @@ pub enum BoardCursor {
 }
 
 impl Editor {
-    /// O cursor da pega da moldura sob `p`, se há.
+    /// O cursor da pega da moldura sob `p`, se há — ou, sobre o segmento do meio de um cotovelo, a seta
+    /// dupla do eixo em que ele anda (W23 B5(1)).
     #[must_use]
     pub fn cursor_at(&self, doc: &BoardDoc, p: Pointer) -> Option<BoardCursor> {
+        if let Some((_, _, e)) = self.segment_at(doc, p) {
+            return Some(if e.vertical {
+                BoardCursor::ResizeEw
+            } else {
+                BoardCursor::ResizeNs
+            });
+        }
         let angle = self.frame(doc)?.angle;
         Some(match self.handle_at(doc, p)? {
             Handle::Rotate => BoardCursor::Rotate,

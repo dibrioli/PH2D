@@ -3,7 +3,8 @@
 
 use ph2d_board_model::Element;
 
-use crate::gesture::{MIN_SIDE, is_note, rect};
+use crate::gesture::{MIN_SIDE, rect};
+use crate::gesture_end::is_note;
 use crate::{Dir, Frame, Mods};
 
 /// O ângulo é múltiplo de 90°?

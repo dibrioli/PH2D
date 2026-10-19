@@ -3,7 +3,7 @@
 
 use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History};
 
-use crate::gesture::{Gesture, same_pose};
+use crate::gesture::Gesture;
 use crate::{Editor, live};
 
 impl Editor {
@@ -45,7 +45,9 @@ impl Editor {
                     let _ = op.apply(doc);
                 }
             }
-            Gesture::EndDrag { original, .. } | Gesture::Bend { original, .. } => {
+            Gesture::EndDrag { original, .. }
+            | Gesture::Bend { original, .. }
+            | Gesture::Slide { original, .. } => {
                 let _ = BoardOp::Put(original).apply(doc);
             }
             Gesture::Create { id: Some(id), .. } | Gesture::Connect { id: Some(id), .. } => {
@@ -99,4 +101,19 @@ pub(crate) fn undo_ops(doc: &BoardDoc, originals: &[Element]) -> Vec<BoardOp> {
         .filter(|o| doc.get(o.id).is_some_and(|now| !same_pose(now, o)))
         .map(|o| BoardOp::Put(o.clone()))
         .collect()
+}
+
+pub(crate) fn is_note(el: &Element) -> bool {
+    el.shape().is_some_and(|s| s.kind.is_note())
+}
+
+pub(crate) fn same_pose(a: &Element, b: &Element) -> bool {
+    // A casa (W5) conta: largar no mesmo sítio mas noutro frame é um passo de desfazer.
+    a.x == b.x
+        && a.y == b.y
+        && a.w == b.w
+        && a.h == b.h
+        && a.angle == b.angle
+        && a.kind == b.kind
+        && a.frame == b.frame
 }

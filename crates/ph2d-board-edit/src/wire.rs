@@ -21,6 +21,9 @@ pub(crate) enum WireHandle {
     Point(usize),
     /// O meio do trecho `i` (a bolinha cheia): arrastada, cria um ponto de ajuste ali.
     Mid(usize),
+    /// W23 B5(1) — o segmento do meio do trecho `i` de um cotovelo em Z: arrasta-se na perpendicular
+    /// (`elbow_drag.rs`). Toma o lugar da bolinha desse trecho.
+    Segment(usize),
 }
 
 impl Gesture {
@@ -157,7 +160,7 @@ impl Editor {
     }
 
     /// A pega de uma seta seleccionada sob `p`: as pontas primeiro, depois os pontos de ajuste,
-    /// depois os meios dos trechos.
+    /// depois o segmento do meio de um trecho em Z, depois os meios dos outros trechos.
     pub(crate) fn wire_handle_at(
         &mut self,
         doc: &BoardDoc,
@@ -177,7 +180,16 @@ impl Editor {
                     .position(near)
                     .map(WireHandle::End)
                     .or_else(|| r.waypoints().iter().position(near).map(WireHandle::Point))
-                    .or_else(|| r.leg_mids.iter().position(near).map(WireHandle::Mid))?;
+                    .or_else(|| {
+                        let on = |e: &Option<ph2d_board_route::ElbowMid>| e.is_some_and(|e| near(&e.at));
+                        r.elbows.iter().position(on).map(WireHandle::Segment)
+                    })
+                    .or_else(|| {
+                        let plain = |i: usize| r.elbows.get(i).copied().flatten().is_none();
+                        (0..r.leg_mids.len())
+                            .find(|i| plain(*i) && near(&r.leg_mids[*i]))
+                            .map(WireHandle::Mid)
+                    })?;
                 Some((*id, h))
             })
     }
@@ -197,11 +209,11 @@ impl Editor {
             WireHandle::Mid(i) => {
                 let at = self.routes.get(id)?.leg_mids.get(i).copied()?;
                 let mut el = original.clone();
-                el.connector_mut()?.waypoints.insert(i, at);
+                el.connector_mut()?.insert_waypoint(i, at);
                 live(doc, el);
                 i
             }
-            WireHandle::End(_) => return None,
+            WireHandle::End(_) | WireHandle::Segment(_) => return None,
         };
         Some(Gesture::Bend {
             id,
@@ -273,7 +285,7 @@ impl Editor {
         });
         if merges && let Some(mut el) = doc.get(id).cloned() {
             if let Some(c) = el.connector_mut() {
-                c.waypoints.remove(index);
+                c.remove_waypoint(index);
             }
             live(doc, el);
         }
@@ -298,7 +310,7 @@ impl Editor {
             return false;
         };
         if let Some(c) = el.connector_mut() {
-            c.waypoints.remove(i);
+            c.remove_waypoint(i);
         }
         history.apply(doc, vec![BoardOp::Put(el)]);
         true

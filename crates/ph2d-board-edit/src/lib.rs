@@ -12,6 +12,7 @@ mod cluster;
 mod command;
 mod crop;
 mod cursor;
+mod elbow_drag;
 mod facilitate;
 mod frame_box;
 mod gesture;

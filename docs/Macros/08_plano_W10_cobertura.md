@@ -78,3 +78,19 @@ próprio carimbo (ver §5), o relevo do Impasto.
 
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && pwd && git branch --show-current` —
 a W9 está fechada (bateria verde em `9464cea7cb`); a W10 abre a partir daqui, na mesma linha, por integrar junto.
+
+## W10 — resultado (19/10)
+
+Feita. Mecanismo, tabelas medidas, mutação 14/14 e o que fica aberto: [handoff W10](handoffs/HANDOFF_INTEGRACAO_line_Macros_2026-10-19_W10.md).
+
+Decisões do §5:
+
+- **Força das pontas com forma/grão/achatada**: lida do PRÓPRIO carimbo (um plano `u16` nas 3 rotas do Digital, cada dab
+  compõe a sua alfa em `stroke_cover::compoe_forca`) — o recorte `forma/grão/achatada` do 3.º fecho caiu. O carimbo da
+  placa não o devolve ⇒ com o plano armado o lote vai pela rota CPU em bandas.
+- **Watercolor** (não é «por cima»): fica com `c` cheia, como Impasto e os outros modos de mistura; só o Digital em
+  Mix/borracha, camada única, sem máscara nem Solid, arma a medição (`a_forca_mede_se`).
+- **Wet Paint**: fica `c` cheia (a tinta aparece pela água, fora do passo) — os cruzamentos nele ainda mostram o nó.
+
+Desvios do §2/§3: `c` é `u16` (CHEIA = 65 535), não `u8` (em `u8` somava até ½ nível); sem degrau de `PROJECT_SCHEMA`
+(FORMATO 2 no blob opaco, o 1 abre com `c` cheia). A `=6 cruza` pintava em Wet Paint — passou a Digital.

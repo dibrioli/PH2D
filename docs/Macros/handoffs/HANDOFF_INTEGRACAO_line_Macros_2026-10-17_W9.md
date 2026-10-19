@@ -296,6 +296,7 @@ binário de `9a295ee8a7`): APROVADO.**
    `B`, e o Play mostra `atual + (1 − c)·(palco − B)`. Ponta com forma, grão ou achatada continua só com «o que
    mudou» (as faixas podem voltar com essas pontas); o Watercolor marca pelo perfil do pincel, não pelo
    pigmento que ficou (a velatura é mais clara que a força).
+   → FEITO na W10 (Digital), [handoff W10](HANDOFF_INTEGRACAO_line_Macros_2026-10-19_W10.md); Wet Paint fica cheio (plano §5).
 
 ## Retomar
 

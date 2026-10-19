@@ -1228,23 +1228,6 @@ const REMAPEADA: u32 = 2u;
 // do driver EMBUTE cada chamada (handoff W5p §1): este é o ÚNICO laço de lâmpadas da luz de um texel,
 // com UM sítio da `visibilidade` e um da `visibilidade_na_face`.
 fn luz_das_lampadas(P: vec2<f32>, P0: vec2<f32>, modo: u32, inicial: vec3<f32>) -> vec3<f32> {
-    let u = P - 0.5;
-    let base = vec2<i32>(floor(u));
-    let fr = u - vec2<f32>(base);
-    let ultimo = vec2<i32>(cas.tamanho) - 1;
-    let q = clamp(base, vec2<i32>(0), ultimo);
-    let r = clamp(base + 1, vec2<i32>(0), ultimo);
-    // (q.x, q.y) · (r.x, q.y) · (q.x, r.y) · (r.x, r.y)
-    var w0 = vec2<u32>(0u);
-    var w1 = vec2<u32>(0u);
-    var w2 = vec2<u32>(0u);
-    var w3 = vec2<u32>(0u);
-    if modo == PELA_GRADE {
-        w0 = textureLoad(visibilidades, q, 0).xy;
-        w1 = textureLoad(visibilidades, vec2<i32>(r.x, q.y), 0).xy;
-        w2 = textureLoad(visibilidades, vec2<i32>(q.x, r.y), 0).xy;
-        w3 = textureLoad(visibilidades, r, 0).xy;
-    }
     var soma = inicial;
     for (var k = 0u; k < lampadas.n; k++) {
         let L = lampadas.itens[k];
@@ -1283,6 +1266,19 @@ fn luz_das_lampadas(P: vec2<f32>, P0: vec2<f32>, modo: u32, inicial: vec3<f32>) 
                 }
             }
         } else if modo == PELA_GRADE {
+            // ⭐ W6g r7: as sondas da célula lidas AQUI, por lâmpada — lidas antes do laço ficavam vivas durante
+            // a marcha da `visibilidade` e levavam a fina de 128 a 168 registos (handoff W6g §18).
+            let u = P - 0.5;
+            let base = vec2<i32>(floor(u));
+            let fr = u - vec2<f32>(base);
+            let ultimo = vec2<i32>(cas.tamanho) - 1;
+            let q = clamp(base, vec2<i32>(0), ultimo);
+            let r = clamp(base + 1, vec2<i32>(0), ultimo);
+            // (q.x, q.y) · (r.x, q.y) · (q.x, r.y) · (r.x, r.y)
+            let w0 = textureLoad(visibilidades, q, 0).xy;
+            let w1 = textureLoad(visibilidades, vec2<i32>(r.x, q.y), 0).xy;
+            let w2 = textureLoad(visibilidades, vec2<i32>(q.x, r.y), 0).xy;
+            let w3 = textureLoad(visibilidades, r, 0).xy;
             let desl = 8u * (k % 4u);
             let lado = k < 4u;
             let c = (vec4<u32>(

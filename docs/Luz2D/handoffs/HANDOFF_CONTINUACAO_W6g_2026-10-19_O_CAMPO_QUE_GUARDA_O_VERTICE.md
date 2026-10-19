@@ -452,3 +452,62 @@ r6 fica comitada (exata, no padrão); a 10 + 9 continua desligada.
    `luz_do_texel` (`face_do_ponto`, `face_da_outra`, `face_corrente`).
 2. A anomalia da r5b (§12).
 3. A família (b) (37–38): da W5g, fora.
+
+## 18. A RÉGUA DE REGISTOS e a r7 (por ordem do dono «siga»; escrita ANTES de mexer no produto)
+
+**A régua** (`target/w6g/regua_registos/`, crate fora do workspace com o `Cargo.lock` dele, `--offline`): o módulo rc e as
+constantes de cada pipeline da C3 recolhidos por um gancho temporário no `pipeline_em` (`W6G_REGUA=<pasta>`,
+`diag_t.py`), compilados pelo caminho do wgpu-hal 29 (naga `process_overrides` + `spv::write_vec` com as opções dele:
+SPIR-V 1.6, `index: Restrict`, `force_loop_bounding`, as robustezes da placa) num `VkDevice` próprio com
+`VK_KHR_pipeline_executable_properties` e `CAPTURE_STATISTICS` — o driver devolve `Register Count`, o tamanho do
+binário e a memória partilhada (as representações internas: zero, a NVIDIA não as dá). Segundos por variante, sem
+compilar Rust. **Validada contra o degrau medido** (§14/§16): a lei W6d tinha 168 registos antes da r6 e tem **128**
+com ela (a cunha e o «antes da W6d» também). Na RTX 5060 Ti: 168 → 6 grupos de 64 por SM, 128 → 8 (+33 % de ocupação).
+
+**O mapa** (`regua_mapa.log`: V2 × as 16 combinações do `Canto`, sobre as constantes da 10 + 9): só **`BORDA_CANTOS`
+(a V2 no `meio`) e `CANTO_LUZ`** levam a 168; `normais`, `fracao` e `um_lado` cabem nos 128. E toda variante com
+`DISTANTES` (objetos fora da grade num quadro) fica em 168 — **mesmo a lei W6d**.
+
+**A forma (r7), medida na régua** (`regua_x.py`, `rc_x.wgsl`): em `luz_das_lampadas`, as quatro leituras da grade
+(`w0..w3`, 8 registos) e `u`/`base`/`fr`/`q`/`r` eram calculadas ANTES do laço das lâmpadas — vivas durante a marcha da
+`visibilidade`, o ponto mais fundo. Dentro do ramo `PELA_GRADE`, por lâmpada: as MESMAS leituras nas mesmas
+coordenadas (exata), mortas antes da marcha. Régua: lei W6d 128 · **lei W6d dist 168 → 128** · **10 + 9 168 → 128** ·
+**10 + 9 dist 168 → 128** · só a V2 168 → 128 · só a `luz` 168 → 128.
+
+**PASSA a r7**: (i) 0 bytes diferentes, r6 × r7, nos 32 casos do §16; (ii) a fina da lei W6d ≤ a da r6 (1,95 / 1,11).
+Depois a 10 + 9 contra o kill-criterion do §1 tal e qual; passando, a rodada completa e o padrão
+(`borda_vertice: Some(VERTICE_PADRAO)` + `borda_cantos: true` + `Canto::LIGADO`). **MORRE**: um byte diferente, ou a
+10 + 9 acima de +5 % numa das cenas (a régua de registos mente sobre o tempo ⇒ medir o que mais pesa).
+
+## 19. A r7 medida — exata; a 10 + 9 a 0,025 ms do alvo na cena 5
+
+(`exato_r7.log`, `custo_r7_{1,2}.log`, `portoes_r7_*.log`; `load` 20–32 das outras linhas, a placa pela vez.)
+
+- **(i) 0 ficheiros diferentes** em 32 (r7 × a base do §16, que é a r6 byte a byte). **(ii)** fina da lei W6d 1,943–1,947 /
+  1,107–1,110 (= r6). Portões gpu 9/9 · app 15/15. A r7 PASSA: fica no produto, para todas as variantes.
+- **A 10 + 9 desce:** fina c5 2,44 → **2,003–2,010**, c6 1,23 → **1,091–1,093** (agora abaixo da lei W6d na cena 6).
+  C3 **3,218–3,220 / 2,179** contra a lei W6d 3,041–3,042 / 2,090–2,092 ⇒ **+5,8 %** ✗ / **+4,2 %** ✓. É mais barata
+  que a lei W6d era ANTES da r6 (3,49 / 2,24), mas o §1 mede contra a lei W6d do mesmo processo.
+- **Onde estão os 0,177 ms da cena 5** (o alvo deixa 0,152): `preenche + borda` +0,113 (a borda 0,372 contra 0,272 — a
+  cunha já +0,03, o `c3_borda_cantos` +0,07; o §10) e a fina +0,06 (os dois kernels a 128 registos; o binário da 10 + 9
+  é 32 % maior, 278 912 × 211 584 bytes).
+- **Por medir no relógio:** a lei W6d com `DISTANTES` (objetos fora da grade num quadro) passou de 168 a 128 registos
+  na régua — nenhuma cena da régua do custo a exercita (as cenas 5 e 6 correm sem distantes).
+
+A 2.ª reconstrução desta rodada sem passar (r6, r7) ⇒ PARE: a r7 comitada; a 10 + 9 continua desligada.
+
+## ⛔ Recusas MEDIDAS (§18–§19)
+
+| Recusa | Porquê |
+|---|---|
+| Ler as sondas da grade antes do laço das lâmpadas | Vivas durante a marcha: 128 → 168 registos em toda variante com V2, `CANTO_LUZ` ou `DISTANTES`. |
+| Pedir à NVIDIA o código de máquina pela extensão | `CAPTURE_INTERNAL_REPRESENTATIONS`: zero representações. |
+
+## 20. ABERTO (por ordem — substitui o §17)
+
+1. **A 10 + 9 na cena 5: faltam 0,025 ms** (+5,8 % contra ≤ +5 %). Decisão do DONO antes de outra rodada: o alvo
+   relativo ficou mais duro porque o padrão desceu 13 %; ou se mantém (e a próxima rodada ataca a borda, +0,07 sobre a
+   cunha, ou o binário da fina), ou passa a ser absoluto. Os quatro itens de qualidade já passam (r3/r4).
+2. A lei W6d com `DISTANTES` no relógio (uma cena com objetos fora da grade na régua do custo).
+3. A anomalia da r5b (§12).
+4. A família (b) (37–38): da W5g, fora.

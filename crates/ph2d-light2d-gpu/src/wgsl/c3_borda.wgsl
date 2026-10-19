@@ -259,12 +259,13 @@ fn pela_cunha(t: vec2<i32>, n: vec2<i32>, a: f32, ut: vec2<f32>, propria: f32) -
     return select(max(-s1, -s2), min(-s1, -s2), convexo);
 }
 
-// ⭐ W6g — a marca do BLOCO 8×8 (o grupo) sem vértice, no texel de origem dele da `V` e da `V2`: o resto do
-// bloco não se escreve (a textura guarda o de quadros antigos) e quem o lê consulta a origem primeiro.
+// ⭐ W6g — a marca do BLOCO 8×8 (o grupo) sem vértice, no texel de origem dele da `V`: o resto do bloco não
+// se escreve (a textura guarda o de quadros antigos) e o [`c3_cantos`] consulta a origem primeiro. A `V2`
+// não tem marca: é válida em toda a captura ([`c3_cantos_limpa`]; a marca nela custava 0,11 ms, handoff W6g §8).
 const SEM_BLOCO: f32 = 200.0;
 var<workgroup> bloco_com_vertice: atomic<u32>;
 
-// O bloco de `t` tem a sua parte da textura de cantos `v` escrita neste quadro.
+// O bloco de `t` tem a sua parte da `V` escrita neste quadro.
 fn bloco_valido(v: texture_2d<f32>, t: vec2<i32>) -> bool {
     return textureLoad(v, t - t % 8, 0).x < 0.5 * (SEM_BLOCO + SEM_CUNHA);
 }
@@ -292,12 +293,10 @@ struct ListaLida {
     z: u32,
     blocos: array<u32>,
 }
-@group(3) @binding(18) var borda_espalhadas: texture_storage_2d<rgba16float, write>;
 @group(3) @binding(19) var<storage, read_write> borda_lista: ListaDosCantos;
 
 // A borda com os cantos (`BORDA_CANTOS`): o bloco com um parcial de vértice escreve a `V` inteira e
-// entra na lista; todo bloco leva a marca `SEM_BLOCO` na origem da `V` (o sem vértice) e da `V2` (o
-// [`c3_cantos`] repõe-na nos que cobre).
+// entra na lista deste quadro; o sem vértice leva a marca `SEM_BLOCO` na origem da `V`.
 @compute @workgroup_size(8, 8)
 fn c3_borda_cantos(
     @builtin(global_invocation_id) gid: vec3<u32>,
@@ -320,11 +319,8 @@ fn c3_borda_cantos(
     if dentro && (marcado || origem) {
         textureStore(borda_vertices, t, select(sem_bloco, cunha_achada, marcado));
     }
-    if origem {
-        textureStore(borda_espalhadas, t, sem_bloco);
-        if marcado {
-            borda_lista.blocos[atomicAdd(&borda_lista.n, 1u)] = wid.x | (wid.y << 16u);
-        }
+    if origem && marcado {
+        borda_lista.blocos[atomicAdd(&borda_lista.n, 1u)] = wid.x | (wid.y << 16u);
     }
 }
 
@@ -333,14 +329,6 @@ fn c3_cantos_zera() {
     atomicStore(&borda_lista.n, 0u);
 }
 
-// A `V2` inteira com a sentinela, uma vez (a textura nova é zero, e θ₁ = 0 é uma cunha).
-@compute @workgroup_size(8, 8)
-fn c3_cantos_inicia(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let t = vec2<i32>(gid.xy);
-    if all(t < vec2<i32>(textureDimensions(borda_espalhadas))) {
-        textureStore(borda_espalhadas, t, vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0));
-    }
-}
 
 fn borda_do_texel(t: vec2<i32>, n: vec2<i32>) {
     let a = textureLoad(borda_cobertura, t, 0).r;
@@ -449,4 +437,27 @@ fn c3_cantos(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id
         }
     }
     textureStore(cantos_saida, t, melhor);
+}
+
+// A `V2` inteira com a sentinela, uma vez (a textura nova é zero, e θ₁ = 0 é uma cunha).
+@compute @workgroup_size(8, 8)
+fn c3_cantos_inicia(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let t = vec2<i32>(gid.xy);
+    if all(t < vec2<i32>(textureDimensions(cantos_saida))) {
+        textureStore(cantos_saida, t, vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0));
+    }
+}
+
+// ⭐ W6g r4 — em despacho indireto sobre a lista do quadro ANTERIOR, como o [`c3_cantos`]: os 3×3 blocos à
+// volta de cada listado voltam à sentinela, e o [`c3_cantos`] deste quadro reescreve os seus por cima. A
+// `V2` fica válida em toda a captura sem marca por bloco.
+@compute @workgroup_size(8, 8)
+fn c3_cantos_limpa(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id) wid: vec3<u32>) {
+    let e = cantos_lista.blocos[wid.x];
+    let k9 = i32(wid.y);
+    let b0 = (vec2<i32>(i32(e & 0xffffu), i32(e >> 16u)) + vec2<i32>(k9 % 3 - 1, k9 / 3 - 1)) * 8;
+    let t = b0 + vec2<i32>(lid.xy);
+    if all(t >= vec2<i32>(0)) && all(t < vec2<i32>(textureDimensions(cantos_saida))) {
+        textureStore(cantos_saida, t, vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0));
+    }
 }

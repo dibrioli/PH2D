@@ -102,11 +102,7 @@ fn dentro_pelo_campo((campo, cantos, gc): &Campo, p: [f64; 2]) -> bool {
     {
         let k = texel(px.floor(), py.floor());
         let v = [h(w, k), h(w, k + 2), h(w, k + 4), h(w, k + 6)];
-        // ⭐ W6g: o bloco 8×8 sem vértice à volta só tem a marca na origem (`bloco_valido`).
-        let ci = px.floor().clamp(0.0, f64::from(gc.largura - 1));
-        let cj = py.floor().clamp(0.0, f64::from(gc.altura - 1));
-        let valido = h(w, texel(ci - ci % 8.0, cj - cj % 8.0)) < 150.0;
-        if v[0] < 50.0 && valido {
+        if v[0] < 50.0 {
             let o = [px - px.floor() - 0.5, py - py.floor() - 0.5];
             let concavo = v[2] > 5.0;
             let t2 = if concavo { v[2] - 10.0 } else { v[2] };

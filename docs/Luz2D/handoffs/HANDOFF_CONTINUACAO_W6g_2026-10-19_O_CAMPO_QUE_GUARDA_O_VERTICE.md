@@ -244,3 +244,33 @@ O que (ii) + f5 medem juntos: a `V2` deixa de ter a marca por bloco. Duas listas
 anterior; o `c3_cantos` sobre `L[p]` escreve os de agora. A `V2` fica válida em toda a captura e o `meio` larga o
 `bloco_valido` (uma leitura a menos no laço). Previsão pelas medições: borda +0,066, fina −0,03 ⇒ C3 c5 ≈ +5,3–5,8 %,
 c6 ≈ +3,5–3,9 % — **ainda acima na cena 5**; o que falta é a parcela da fina (§8), por isso a r4 cura a borda e mede.
+
+## 10. A r4 medida (`custo_r4_{1,2}.log`, `{f3,caixa,borda}_r4.log`, `portoes_r4_*.log`)
+
+| | borda (Δ cunha) | preenche + borda (Δ lei W6d) | fina (Δ lei W6d) | C3 c5 / c6 (≤ +5 %) |
+|---|---|---|---|---|
+| r3 | +0,18 / +0,19 | +0,22 | +0,10 / +0,02 | +9,5 % / +11,5 % |
+| **r4** (2 corridas + o censo) | **+0,071 / +0,070** | **+0,116 / +0,102** ✓ | +0,080 · +0,105 / −0,026 · +0,001 | **+5,8 · +6,3 · +6,0 %** ✗ / **+3,4 · +4,7 · +3,8 %** ✓ |
+
+- **A qualidade é a da r3, byte a byte:** os logs do F3 e da caixa saem iguais (só muda a posição do aviso «60 s»);
+  o resumo da borda dá os mesmos (a)/(b)/anéis/bits (1 −0,176 / 38 / 0 / 0). Era a previsão por construção: o bloco
+  que não está entre os 3×3 de um listado tem `SEM_CUNHA` na `V2`, que o `meio` lê como antes lia o bloco inválido.
+- Censo novo (`BLOCOS … com cunha`): 152 e 20 blocos com cunha espalhada na `V2` (de 245 760).
+- Portões com o padrão: gpu 9/9 · app 14/15 — o `a_luz_recua_quando_a_placa_recusa_a_memoria` reprovou a `load` 40 e
+  passou SOZINHO a `load` 40 (`portao_recua_r4.log`): o flake de carga conhecido.
+
+**MORRE pelo custo da cena 5** (+5,8–6,3 %), e é a 2.ª reconstrução desta rodada sem passar (r3, r4) ⇒ PARE
+(two-strikes): a r4 fica comitada e **desligada** (`borda_cantos: false` no padrão) — ela só barateia e não muda a luz.
+O modelo do que falta já está medido (§8): a borda está a +0,07 e a fina é a parcela que sobra.
+
+## 11. ABERTO (por ordem — substitui o §7)
+
+1. **A fina da 10 + 9 na cena 5** (o kill-criterion do §1 tal e qual; o resto passa). O §8 separa ~0,035 ms de código
+   gerado (o código do canto/`V2` presente no kernel, f12 × f4) e ~0,08 ms de execução só na cena 5, sem marchas a
+   mais. Cura candidata, a medir ANTES: **o canto num passe próprio** — a fina comum compila SEM o código do canto e da
+   `V2` (o f4, que fica à lei W6d), e um `c3_fina_cantos` indireto sobre os blocos listados recalcula com ele os texels
+   à volta dos vértices. Pré-condição (uma sonda, sem custo): contar os texels da fina FORA dos 3×3 blocos de um
+   listado em que algum ramo `CANTO_*` ou a cunha da `V2` muda a decisão — se forem zero, a partição é exata por
+   construção; se não, o raio da vizinhança cresce até serem. Atenção: a fina é da grade FINA e a lista é da captura
+   (`ESCALA_DA_CAPTURA`).
+2. A família (b) (37–38): da W5g, fora.

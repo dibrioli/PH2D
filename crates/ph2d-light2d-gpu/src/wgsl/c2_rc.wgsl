@@ -135,8 +135,8 @@ fn meio(pc: vec2<f32>) -> Meio {
         if BORDA_CANTOS && abs(d) < 1.0 {
             let t = clamp(vec2<i32>(floor(p)), vec2<i32>(0), vec2<i32>(n) - 1);
             let w = textureLoad(cantos, t, 0);
-            // ⭐ W6g: o bloco sem vértice à volta não escreveu a `V2` neste quadro (`c3_cantos`).
-            if w.x < 50.0 && bloco_valido(cantos, t) {
+            // ⭐ W6g: a `V2` é válida em toda a captura (`c3_cantos_limpa`).
+            if w.x < 50.0 {
                 if !na_cunha(p - vec2<f32>(t) - 0.5, w) {
                     return m;
                 }

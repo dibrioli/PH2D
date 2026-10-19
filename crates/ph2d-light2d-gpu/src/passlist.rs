@@ -11,13 +11,15 @@ pub(crate) const TAU_DENTRO: usize = 2;
 pub(crate) const SEMENTES: [usize; 2] = [3, 4];
 /// ⭐ W5q: o buffer dos ladrilhos do anel ([`crate::ladrilhos`]).
 pub(crate) const NOME_LADRILHOS: &str = "luz2d/buf/ladrilhos";
-/// ⭐ W6g: os blocos 8×8 da captura com parcial de vértice (`c3_borda_cantos`) — o cabeçalho é o
-/// despacho INDIRETO do `c3_cantos` (`[n, 9, 1]`), depois um `u32` por bloco.
+/// ⭐ W6g: os blocos 8×8 da captura com parcial de vértice (`c3_borda_cantos`), em DUAS listas que
+/// alternam por quadro (a deste e a do anterior, que o `c3_cantos_limpa` repõe) — cada uma com o
+/// cabeçalho do despacho INDIRETO (`[n, 9, 1]`) e depois um `u32` por bloco.
 pub(crate) const NOME_LISTA_DOS_CANTOS: &str = "luz2d/buf/lista_dos_cantos";
 
-/// Os bytes da [`NOME_LISTA_DOS_CANTOS`] para a captura `[w, h]`: cabem todos os blocos.
-pub(crate) fn bytes_da_lista_dos_cantos([w, h]: [u32; 2]) -> u64 {
-    4 * (3 + u64::from(w.div_ceil(8)) * u64::from(h.div_ceil(8)))
+/// Os bytes de UMA das duas listas para a captura `[w, h]` (cabem todos os blocos), alinhados a 256: o
+/// deslocamento do binding da 2.ª (o teto do `min_storage_buffer_offset_alignment` no WebGPU).
+pub(crate) fn metade_da_lista_dos_cantos([w, h]: [u32; 2]) -> u64 {
+    (4 * (3 + u64::from(w.div_ceil(8)) * u64::from(h.div_ceil(8)))).next_multiple_of(256)
 }
 pub(crate) const CASCATAS: [usize; 2] = [5, 6];
 /// ⭐ C3 (W4b): a fluência FINAL, na grade fina — a que os receptores leem.
@@ -464,7 +466,7 @@ impl PassList {
         if let Some([v, _]) = op.cantos {
             buffers.push(Buffer {
                 nome: NOME_LISTA_DOS_CANTOS,
-                bytes: bytes_da_lista_dos_cantos(texturas[v].tamanho),
+                bytes: 2 * metade_da_lista_dos_cantos(texturas[v].tamanho),
                 usos: B::STORAGE | B::INDIRECT,
             });
         }
@@ -568,8 +570,8 @@ impl PassList {
             passes.push(Passe {
                 nome: "C3 borda".into(),
                 le: vec![cob],
-                // W6g: com os cantos, também a marca de cada bloco na `V2` (a origem).
-                escreve: [b].into_iter().chain(op.cantos.into_iter().flatten()).collect(),
+                // W6g: com os cantos, também as cunhas dos vértices (`V`).
+                escreve: [b].into_iter().chain(op.cantos.map(|c| c[0])).collect(),
             });
         }
         if let Some([v, v2]) = op.cantos {

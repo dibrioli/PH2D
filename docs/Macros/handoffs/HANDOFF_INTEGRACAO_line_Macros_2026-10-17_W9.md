@@ -290,7 +290,10 @@ binário de `9a295ee8a7`): APROVADO.**
    as faixas sumiram, mas onde a vertical cruza uma gravada ainda por nascer vê-se um «nó» do tamanho da borda
    macia dela (o fim aparece ali antes do tempo) — [foto](smoke_2026-10-19/cruza_play_0.4s_a_vertical_inteira.png).
    O exacto é guardar a tinta do artista à parte e compô-la sobre a reprodução (outra camada por sprite, outro
-   formato): decisão de desenho por tomar, não de bug. Ponta com forma, grão ou achatada continua só com «o que
+   formato): decisão de desenho por tomar, não de bug. **Smoke do dono 19/10, depois do 3.º fecho: REPROVADO por
+   isto** («resquícios aparecem onde os traços cruzaram», três fotos, pincel macio com grão e Digital duro) ⇒ a
+   cura é a W10, [plano](../08_plano_W10_cobertura.md): a marca passa de bit a cobertura `c` + o píxel por baixo
+   `B`, e o Play mostra `atual + (1 − c)·(palco − B)`. Ponta com forma, grão ou achatada continua só com «o que
    mudou» (as faixas podem voltar com essas pontas); o Watercolor marca pelo perfil do pincel, não pelo
    pigmento que ficou (a velatura é mais clara que a força).
 

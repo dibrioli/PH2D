@@ -69,6 +69,11 @@ pub fn key(
     if hero.documents.active().is_none() {
         return KeyOutcome::default();
     }
+    // Com um menu aberto sobre o quadro, `Esc` só o fecha (a selecção fica) — pedido do dono, 19/10.
+    if pressed && k == BoardKey::Escape && hero.store.context_menu().is_some() {
+        hero.store.close_context_menu();
+        return taken();
+    }
     // W8 — a apresentação toma TODAS as teclas (e as soltas também não chegam ao quadro).
     if super::board_nav::team::show::showing(hero) {
         return if pressed {

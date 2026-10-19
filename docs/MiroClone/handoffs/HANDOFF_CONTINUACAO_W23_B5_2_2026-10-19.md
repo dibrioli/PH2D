@@ -24,8 +24,8 @@ texto continua rígido. Gate `along_a_curve_the_text_bends_letter_by_letter`. (2
 não some ao clicar fora»: o Down no quadro é tomado por `board_view::canvas_down` ANTES do fecho do
 despacho (`pointer_down.rs:210`); agora, com menu aberto, o clique não-direito só o fecha (o padrão de
 `pointer_down.rs:100`). Gate `right_click_on_a_shape_opens_its_menu` (mutação «sem o fecho»: vermelho). O
-texto da cena 26 passou a «along the curve» (o longo quebrava em duas linhas na largura 160). Esc ainda não
-fecha os menus do quadro (nenhum braço de Esc o faz — por medir com o dono).
+texto da cena 26 passou a «along the curve» (o longo quebrava em duas linhas na largura 160). `Esc` fecha os
+menus do quadro (pedido do dono 19/10; a selecção fica) — `board_keys::key`, o mesmo gate (mutação: vermelho).
 
 ## 2. O que um merge pode partir (para o integrador)
 

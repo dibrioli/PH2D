@@ -155,6 +155,20 @@ fn right_click_on_a_shape_opens_its_menu() {
     t.paint();
     assert!(t.hero.store.context_menu().is_none(), "o menu ficou aberto");
     assert_eq!(t.elements().len(), 1);
+    // E `Esc` também o fecha — só ele: a forma continua seleccionada (pedido do dono, 19/10).
+    right(&mut t, shape);
+    assert!(t.hero.store.context_menu().is_some());
+    t.key(BoardKey::Escape, Modifiers::default(), None);
+    assert!(
+        t.hero.store.context_menu().is_none(),
+        "o Esc não fechou o menu"
+    );
+    let ed = t.hero.documents.live.editor.as_ref().unwrap();
+    assert_eq!(
+        ed.selection().len(),
+        1,
+        "o Esc de fechar o menu largou a selecção"
+    );
 }
 
 /// ⭐ Smoke do dono (19/10): o «…» das pontas estava na barra e não se via — o `more-horizontal` de

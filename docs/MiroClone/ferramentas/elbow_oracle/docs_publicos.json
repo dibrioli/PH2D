@@ -1,0 +1,17 @@
+{
+  "cabecalho": { "tipo": "DOCUMENTACAO PUBLICA (nao medicao)", "data": "2026-10-19", "metodo": "WebSearch/WebFetch das descricoes de PR/issue e paginas de referencia; nenhum codigo-fonte lido" },
+  "excalidraw": {
+    "PR_8952": { "url": "https://github.com/excalidraw/excalidraw/pull/8952", "titulo": "feat: Elbow arrow segment fixing & positioning", "merge": "2025-01-17",
+      "formato": "fixedSegments: [{index, start, end}] — index = indice do ULTIMO ponto do troco fixo em points (1..len-1); start/end = LocalPoint (relativo a x,y da seta). + startIsSpecial/endIsSpecial (bool)",
+      "soltar": "duplo clique no botao oco no meio do troco",
+      "limites_declarados": "o router cria pontos duplicados e 'hooks' que sao simplificados depois; a simplificacao perde informacao e o codigo usa 'subtle heuristics to guess the lost information'; commit 'Broken but refactor is needed going forward'" },
+    "PR_8615": { "url": "https://github.com/excalidraw/excalidraw/pull/8615", "titulo": "feat: Elbow arrow movable segments", "estado": "Closed (out-dez 2024); commits 'Fake mid-element for elbow segments', 'Removal attempts to restore an optimal route'; motivo do fecho nao visivel; substituido de facto por #8952" },
+    "PR_8440": { "url": "https://github.com/excalidraw/excalidraw/pull/8440", "estado": "merged 2024-09-17", "o_que": "comprimento comum do 1.o/ultimo troco com ou sem ponta" },
+    "issue_8736": { "url": "https://github.com/excalidraw/excalidraw/issues/8736", "o_que": "'tiny elbow (knot)' quando se quer recta; fechado por #8952" },
+    "PR_9197": { "url": "https://github.com/excalidraw/excalidraw/pull/9197", "o_que": "fixedPoint perto de 0.5 oscilava entre posicoes a cada quadro; offset no restore" }
+  },
+  "tldraw": { "DOCS.md_do_pacote_5.5.2": "props.elbowMidPoint: number — 'Position of the midpoint handle for elbow arrows' (default 0.5); opcoes expandElbowLegLength {s:28,m:36,l:44,xl:66}, elbowMidpointSnapDistance 10, elbowMinSegmentLengthToShowMidpointHandle 20",
+    "ElbowArrowMidpointHandle": "https://tldraw.dev/reference/tldraw/ElbowArrowMidpointHandle — 'a line roughly halfway between the two shapes'; campos axis 'x'|'y', point, segmentStart, segmentEnd" },
+  "miro": { "rest_create_connector": "https://developers.miro.com/reference/create-connector-1 — shape enum 'straight','elbowed','curved' (default curved); startItem/endItem {id, position|snapTo}; NENHUM campo de waypoint/ponto de controlo/troco",
+    "websdk_connector": "https://developers.miro.com/docs/websdk-reference-connector — elbowed 'bends at 90 degree angles'; nenhum campo de rota manual" }
+}

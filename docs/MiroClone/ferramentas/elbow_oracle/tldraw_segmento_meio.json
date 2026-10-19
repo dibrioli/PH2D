@@ -1,0 +1,4571 @@
+{
+  "cabecalho": {
+    "oraculo": "tldraw 5.5.2 (tldraw license — uso de desenvolvimento/teste, local), <Tldraw hideUi> em Chromium 153.0.8010.12 headless, rato real do Playwright",
+    "data": "2026-10-19T20:33:37.679Z",
+    "host": "desktop-linux",
+    "loadavg": [
+      11.75,
+      17.51,
+      23.6
+    ],
+    "comando": "node /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/31c8ec0c-de4d-4857-a4f3-56b83a897710/scratchpad/oracle_elbow/sonda_tldraw_segmento.mjs /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/31c8ec0c-de4d-4857-a4f3-56b83a897710/scratchpad/oracle_elbow",
+    "script_sha256": "cd16249e61704605a40a1c633f086d9111cc7b22d95b19a74ff4b383baf06459",
+    "entrada": "R1 geo rectangle (0,0,100,100); R2 (400,300,100,100); seta kind:'elbow' com bindings start→R1, end→R2 (normalizedAnchor 0.5,0.5, imprecisas)",
+    "camera": {
+      "x": 1000,
+      "y": 700,
+      "z": 0.5,
+      "nota": "ecrã = (página + camera) * z"
+    },
+    "rota_pagina": "editor.getShapeGeometry(seta).vertices transformados por getShapePageTransform (pode repetir pontos)",
+    "pedidos_externos": [
+      "blob:http://127.0.0.1:39195/0006bb2e-610e-44b2-8a62-31b69044b616",
+      "blob:http://127.0.0.1:39195/002ff7d9-c520-45d3-966e-0e15a1231eef",
+      "blob:http://127.0.0.1:39195/00e38524-6933-4bdc-8966-1a9a88e7c1b3",
+      "blob:http://127.0.0.1:39195/014e2853-92dd-4102-a8b4-c3c6b4139ba0",
+      "blob:http://127.0.0.1:39195/01513282-c793-4837-92ce-bb5d11c7c1f1",
+      "blob:http://127.0.0.1:39195/030f38d6-a168-46a0-85f8-4c775b887c4e",
+      "blob:http://127.0.0.1:39195/03b40f50-4bf7-470e-a57c-ee2123f3f121",
+      "blob:http://127.0.0.1:39195/0455b67e-97be-4c76-82b6-1b01bd345c29",
+      "blob:http://127.0.0.1:39195/0473ffc6-b3a1-4f9e-844d-55e222ecb025",
+      "blob:http://127.0.0.1:39195/08e09c19-555a-48d7-b389-1e20b21d1c4d",
+      "blob:http://127.0.0.1:39195/08fe9a2d-d60b-43f2-9d27-6c6ca4145892",
+      "blob:http://127.0.0.1:39195/0a6b891f-3e39-4d49-ab28-52adcca164b8",
+      "blob:http://127.0.0.1:39195/0ccb6ec9-02da-481f-9d9a-e31f94b5878e",
+      "blob:http://127.0.0.1:39195/0d52e2b2-bfb9-41fd-bfb7-53c605ae8a12",
+      "blob:http://127.0.0.1:39195/0f88a1d0-0d29-4132-abd9-0fa37811e6b4",
+      "blob:http://127.0.0.1:39195/108aa424-bb7c-47ef-aa0c-350e5993e503",
+      "blob:http://127.0.0.1:39195/11e83a1e-d1f1-4b9d-9f31-80b89f65b1ec",
+      "blob:http://127.0.0.1:39195/120558a4-f855-4d1a-8ed5-cdd0ddc030c7",
+      "blob:http://127.0.0.1:39195/1210ace4-5bdf-46b1-aa91-95d64695a231",
+      "blob:http://127.0.0.1:39195/124a2c03-b454-409d-9267-8d70c674f88d",
+      "blob:http://127.0.0.1:39195/12c6e483-47c7-41a5-8c00-28e1c01a09f3",
+      "blob:http://127.0.0.1:39195/135a4553-ccf4-4d27-a927-6df6742e9018",
+      "blob:http://127.0.0.1:39195/141e2e73-5a45-4163-9406-6f3b6ae8a1ac",
+      "blob:http://127.0.0.1:39195/151acb51-d569-483d-8efd-9f045de720e1",
+      "blob:http://127.0.0.1:39195/1585b694-b4c8-470b-82d8-95f996184f3c",
+      "blob:http://127.0.0.1:39195/16986f45-b49d-4bbd-8c39-a4ba671a37d0",
+      "blob:http://127.0.0.1:39195/177e6b23-669b-4a06-bc23-1ee756f545db",
+      "blob:http://127.0.0.1:39195/178f070f-409b-4481-bfb7-47b6ca7bdcb5",
+      "blob:http://127.0.0.1:39195/187e566e-1c6f-4f32-9f8d-51619a6094f9",
+      "blob:http://127.0.0.1:39195/1ad95900-62d5-482d-8013-ce3b2f82e85c",
+      "blob:http://127.0.0.1:39195/1cb7c1e8-b963-4085-a142-a142bdec4af0",
+      "blob:http://127.0.0.1:39195/1e5cff88-054f-4afd-b6ad-9551ffb91250",
+      "blob:http://127.0.0.1:39195/1e9c61a5-1530-4540-904b-7dcbc3798267",
+      "blob:http://127.0.0.1:39195/215b111d-1f09-4221-a386-d87fa357d386",
+      "blob:http://127.0.0.1:39195/21b28402-4565-4e12-9030-d2af3baccf45",
+      "blob:http://127.0.0.1:39195/24b4886b-6996-4ede-a642-e390d6aa03c2",
+      "blob:http://127.0.0.1:39195/27248b20-02e0-49ef-b416-5c42cae313b5",
+      "blob:http://127.0.0.1:39195/2759c6b1-34a7-49f6-a0c8-c540d3a4dc0a",
+      "blob:http://127.0.0.1:39195/2850e5af-5e6f-4c88-8c2d-a24a2e2801f1",
+      "blob:http://127.0.0.1:39195/2991c87d-e195-454b-b033-75ad39c033ee",
+      "blob:http://127.0.0.1:39195/2a92bb92-c791-4f19-b1ba-3be1ceeb5211",
+      "blob:http://127.0.0.1:39195/2b4580e2-22c7-4991-8767-de9ac25aed41",
+      "blob:http://127.0.0.1:39195/2b72abc7-37df-41de-a62e-296cacc0942f",
+      "blob:http://127.0.0.1:39195/2bb5ceee-7d66-44ec-a0f4-7e27734b80d3",
+      "blob:http://127.0.0.1:39195/2c3d726b-7943-4677-9de9-892eecaf190e",
+      "blob:http://127.0.0.1:39195/2ce3539d-2cd4-4f7d-96f1-c6dd1b21eda5",
+      "blob:http://127.0.0.1:39195/2e37ae3c-7f63-49b2-86c6-2c273f8bf419",
+      "blob:http://127.0.0.1:39195/2f3b0186-2a0e-498c-a4ca-831e3506ce45",
+      "blob:http://127.0.0.1:39195/2fc32954-2274-4656-8d66-0c9759d0a061",
+      "blob:http://127.0.0.1:39195/3175c64d-c4ed-4c90-9a08-7eacfb563bf4",
+      "blob:http://127.0.0.1:39195/339fb1e0-4d93-494b-97bf-667bf84fc666",
+      "blob:http://127.0.0.1:39195/3491a0f5-f056-4178-bd0b-cbf5a77d6db0",
+      "blob:http://127.0.0.1:39195/34f83266-7833-4ba2-b07b-d65efb4d3961",
+      "blob:http://127.0.0.1:39195/35c29dca-41b4-40c0-a65e-834a4bc3ac75",
+      "blob:http://127.0.0.1:39195/3718912e-8f65-4aea-a6d8-9c8123a88538",
+      "blob:http://127.0.0.1:39195/37b57f79-6d4b-435c-9d4f-100ac3b68bce",
+      "blob:http://127.0.0.1:39195/37b697aa-640e-4ffc-88c7-8043caaba9ee",
+      "blob:http://127.0.0.1:39195/38554dc7-a1df-4ebc-97ec-33ee36e82646",
+      "blob:http://127.0.0.1:39195/39c72a12-5b4e-4cf7-bf14-573b4def9315",
+      "blob:http://127.0.0.1:39195/3a3b9e9f-76cd-4c69-81d8-943a22183b63",
+      "blob:http://127.0.0.1:39195/3b32a125-22f3-481c-b71f-260dc987da51",
+      "blob:http://127.0.0.1:39195/3c76865c-95e1-4b5a-9802-677a449d0989",
+      "blob:http://127.0.0.1:39195/3fed8e0b-7d88-4dd2-b003-ccb2d6ec8ae4",
+      "blob:http://127.0.0.1:39195/402dc45a-c09b-4da2-a948-d7286330daed",
+      "blob:http://127.0.0.1:39195/404a71cd-8c70-42d4-b2a0-bf1d7cfa8afc",
+      "blob:http://127.0.0.1:39195/40faf1b9-d7f0-459f-87e2-40635747c935",
+      "blob:http://127.0.0.1:39195/43ecb679-374e-4f8e-9d8a-bf215eb95f51",
+      "blob:http://127.0.0.1:39195/44fcfdf5-90ef-4767-bdb3-605d56c34822",
+      "blob:http://127.0.0.1:39195/45655baa-3457-4a23-b821-a88fd9700703",
+      "blob:http://127.0.0.1:39195/47189534-953f-410c-ac3e-1ef6e143a36b",
+      "blob:http://127.0.0.1:39195/47ffad69-3f1d-4773-af06-f8f575142703",
+      "blob:http://127.0.0.1:39195/4941356e-cf23-4571-b761-4deb322e0858",
+      "blob:http://127.0.0.1:39195/4a17624a-062a-4cf6-b6f4-6447c14bf9d8",
+      "blob:http://127.0.0.1:39195/4c07044e-1aa2-47b4-9783-dc158e2598a8",
+      "blob:http://127.0.0.1:39195/4d303ea1-ab90-406d-be9b-aae89eec83d1",
+      "blob:http://127.0.0.1:39195/4e02686c-f880-463c-a644-1ab5c0507a65",
+      "blob:http://127.0.0.1:39195/4e539eae-5632-4ac2-a7f9-22ba209ec5b2",
+      "blob:http://127.0.0.1:39195/4ebe3974-8ab0-4548-a2ff-429d25c20aaa",
+      "blob:http://127.0.0.1:39195/5145c91b-e289-46d5-b8c0-b81b0e889ecd",
+      "blob:http://127.0.0.1:39195/538ff391-9065-4327-ae85-3b37e902eed8",
+      "blob:http://127.0.0.1:39195/55d556db-00a3-4658-baf2-26711758c394",
+      "blob:http://127.0.0.1:39195/56a3ec71-5642-4821-97a6-147fb3549a20",
+      "blob:http://127.0.0.1:39195/57769a7d-c171-488b-8895-1faaeec35923",
+      "blob:http://127.0.0.1:39195/58619d8c-e6bd-45a5-805f-dbeb1c539f4e",
+      "blob:http://127.0.0.1:39195/5ae54a3b-defc-4fc7-8ad5-58491e5d5a4b",
+      "blob:http://127.0.0.1:39195/5af3292e-ea71-4254-b0d8-49c9b7237c63",
+      "blob:http://127.0.0.1:39195/5c299e08-4254-45a1-9e76-00cb41c923f1",
+      "blob:http://127.0.0.1:39195/5e6044fd-68dc-409d-b5fb-9c93a93dc9a9",
+      "blob:http://127.0.0.1:39195/5ea3f675-54c3-4e1d-9ab2-253ee4edb3f9",
+      "blob:http://127.0.0.1:39195/5ec7d537-dc88-48b4-b582-3f7fef5bfbea",
+      "blob:http://127.0.0.1:39195/6060b877-8bb3-444f-b163-6588a9147ea6",
+      "blob:http://127.0.0.1:39195/62f7fcea-abd3-4af1-8e34-b54ab8a63930",
+      "blob:http://127.0.0.1:39195/64032cb3-eb67-48b9-a952-27b607f5a853",
+      "blob:http://127.0.0.1:39195/68151eae-2c64-43b1-a2b8-972ef5a712e1",
+      "blob:http://127.0.0.1:39195/688013e7-0f50-4f9d-91d9-4c31be4f250d",
+      "blob:http://127.0.0.1:39195/6a05688b-d3c4-4eb1-98c1-2245449f3a19",
+      "blob:http://127.0.0.1:39195/6aed64b5-c250-4e99-9ff5-4dad4f535bce",
+      "blob:http://127.0.0.1:39195/6b10c1af-ec3c-4ab9-bace-ea62d2416eb1",
+      "blob:http://127.0.0.1:39195/6c082413-bb1a-4a4f-9d80-7d5390e46c24",
+      "blob:http://127.0.0.1:39195/6eb99dd5-0c97-46bd-9f39-9b8e505317b7",
+      "blob:http://127.0.0.1:39195/6f160147-2077-4ef6-a6d6-0e97a593127a",
+      "blob:http://127.0.0.1:39195/726a4fdb-88a1-41a8-91c1-f3393f753e53",
+      "blob:http://127.0.0.1:39195/72c1e42c-7016-4e2e-aee5-03a543aa7dfd",
+      "blob:http://127.0.0.1:39195/739e4449-959a-45d8-ac69-28d1ae9364d1",
+      "blob:http://127.0.0.1:39195/746a1093-b45c-4bfe-a417-c2e44ff1d414",
+      "blob:http://127.0.0.1:39195/747f99f3-9ee0-4f9b-a445-ec3f00157b48",
+      "blob:http://127.0.0.1:39195/76db51eb-195b-43ff-ac0e-c830b13a7404",
+      "blob:http://127.0.0.1:39195/770a21ad-44e1-45ec-90bf-525cfc59c28e",
+      "blob:http://127.0.0.1:39195/784b7d41-4f85-4db5-b869-1472357a46ec",
+      "blob:http://127.0.0.1:39195/7875f7cc-e7c5-4fc1-baae-7d441e844e81",
+      "blob:http://127.0.0.1:39195/7a58c3d3-5a15-4e46-9456-12d73c0bbb1b",
+      "blob:http://127.0.0.1:39195/7b2a24e9-2707-443a-8195-677f918cab88",
+      "blob:http://127.0.0.1:39195/7b3abe35-85eb-4577-aab0-36265aff4419",
+      "blob:http://127.0.0.1:39195/7ba356f7-d40c-450f-8fb8-a2d8d580ff04",
+      "blob:http://127.0.0.1:39195/7e859bcf-e5fa-4dc7-a963-3921333b2f28",
+      "blob:http://127.0.0.1:39195/819962cc-9e5b-4786-838f-0333d0fbff80",
+      "blob:http://127.0.0.1:39195/84c84cb9-6494-435e-845d-271493a0aab6",
+      "blob:http://127.0.0.1:39195/887e8b76-88e3-4ba9-a679-b6d9443cc519",
+      "blob:http://127.0.0.1:39195/88d2023a-5c8d-4b21-a524-221601f3a345",
+      "blob:http://127.0.0.1:39195/8a0bb19e-8f13-431f-8163-49db948bbbe2",
+      "blob:http://127.0.0.1:39195/8b8cbc1a-f7bf-4b9d-bd94-4f5524878383",
+      "blob:http://127.0.0.1:39195/8d6ef846-566f-4f48-98d7-4a4411f4e516",
+      "blob:http://127.0.0.1:39195/8f0e96d7-c964-429a-a8c3-c79ca56a139e",
+      "blob:http://127.0.0.1:39195/8f201bc3-4ddc-4604-86b9-ec0ffbf076ca",
+      "blob:http://127.0.0.1:39195/8f59f332-eecd-470e-b5b8-9cb39cf95d4a",
+      "blob:http://127.0.0.1:39195/8ffcfd0c-9455-4c3d-b51d-e11e4ce01ec7",
+      "blob:http://127.0.0.1:39195/923b3895-6273-4025-843e-fcf8dc25561a",
+      "blob:http://127.0.0.1:39195/92b4db9f-5b46-4455-9160-33c393597f80",
+      "blob:http://127.0.0.1:39195/949ae8a7-86b4-4405-8144-36767ffceef1",
+      "blob:http://127.0.0.1:39195/957a9e12-d99a-42b9-af3a-43396b397481",
+      "blob:http://127.0.0.1:39195/96532616-e912-4bb6-beb1-884626fcf6c1",
+      "blob:http://127.0.0.1:39195/968d5027-7779-44b1-8574-c31535a24b4c",
+      "blob:http://127.0.0.1:39195/97b4507b-d88d-45c9-82f1-1141bf2df811",
+      "blob:http://127.0.0.1:39195/983b3ae7-ea94-45f9-aad0-01fe1c5442df",
+      "blob:http://127.0.0.1:39195/98f85b92-427c-465a-a787-aa2d857b287a",
+      "blob:http://127.0.0.1:39195/9f3ff7a1-1d18-4fdc-9a3f-9d919ab70252",
+      "blob:http://127.0.0.1:39195/9fc74a6e-c7c1-4ae7-88cb-0ad2601ad1f4",
+      "blob:http://127.0.0.1:39195/9fecba88-94f0-4b07-8e6b-da825048a27b",
+      "blob:http://127.0.0.1:39195/a03f8909-fc2a-40f1-913b-60011941830b",
+      "blob:http://127.0.0.1:39195/a08ea306-95de-4289-acee-d7145183fa67",
+      "blob:http://127.0.0.1:39195/a17fdddc-fd66-404e-946e-29e9ddcf3d1b",
+      "blob:http://127.0.0.1:39195/a37b4530-820e-4f7e-b58e-3854c10ce2b3",
+      "blob:http://127.0.0.1:39195/a3f9f45c-198f-4efa-b810-52aa83712d4c",
+      "blob:http://127.0.0.1:39195/a5a32dc4-a12e-483c-b132-f90aba587071",
+      "blob:http://127.0.0.1:39195/a6f9b666-7298-4509-94bd-ecd2ceefb536",
+      "blob:http://127.0.0.1:39195/a70d116d-fd1b-4d0b-9726-aceddae67649",
+      "blob:http://127.0.0.1:39195/a7bd70ad-b0fe-446e-a49c-a36a537e05a4",
+      "blob:http://127.0.0.1:39195/a8559eca-e464-4d77-982d-5c19d8d9a9cf",
+      "blob:http://127.0.0.1:39195/a9b659a1-43de-41c2-95d9-93b74867afe0",
+      "blob:http://127.0.0.1:39195/aa20aef9-f960-4b1b-aa27-2fc65b733e51",
+      "blob:http://127.0.0.1:39195/ab0b6f66-72ce-4f36-9f71-ec25d8248fa0",
+      "blob:http://127.0.0.1:39195/ab135e59-419f-41a0-8248-f8f85b91fc82",
+      "blob:http://127.0.0.1:39195/ab4eb75a-918f-4149-95f1-5950bfe55e54",
+      "blob:http://127.0.0.1:39195/ad4aedde-089b-4d6e-8852-b015b4446b80",
+      "blob:http://127.0.0.1:39195/af8323f1-a743-4b5e-bb7a-d19dc9e6d8b0",
+      "blob:http://127.0.0.1:39195/af994102-44a8-42e5-87c2-59b22963b27a",
+      "blob:http://127.0.0.1:39195/b0c0ef48-c596-4d6c-b2f5-5aacbedc73ad",
+      "blob:http://127.0.0.1:39195/b55c1cee-bd72-4146-8fc7-d36a660e3eb4",
+      "blob:http://127.0.0.1:39195/b5faf8da-9a79-4237-93a4-c332b59ca122",
+      "blob:http://127.0.0.1:39195/b64bc132-53b4-43d1-b1b1-0a7218e0493d",
+      "blob:http://127.0.0.1:39195/b6526980-4f20-40d6-bc08-951e1cc1ca0a",
+      "blob:http://127.0.0.1:39195/b68f51f8-912a-47ad-bb68-985a6f8646ce",
+      "blob:http://127.0.0.1:39195/b9ac8503-d7a5-4bc3-a4d9-14bede16bac9",
+      "blob:http://127.0.0.1:39195/bb91a6cf-5332-42f1-9ac3-ac0d584dede5",
+      "blob:http://127.0.0.1:39195/bc0fb4e8-7df0-4ba4-837c-1af2973345a7",
+      "blob:http://127.0.0.1:39195/be593b82-dda3-4b93-86db-92edb5c1078c",
+      "blob:http://127.0.0.1:39195/bfa2008f-c117-4956-98e7-695c22ac3158",
+      "blob:http://127.0.0.1:39195/c114cf2c-9dd5-43ce-aa97-add5be1cdad3",
+      "blob:http://127.0.0.1:39195/c194cfc2-86ee-42e8-b57f-45537b306238",
+      "blob:http://127.0.0.1:39195/c2794543-ba10-4392-a3cd-0b03a18fac7a",
+      "blob:http://127.0.0.1:39195/c341c6e0-b2e5-4594-8e59-2d5207df70de",
+      "blob:http://127.0.0.1:39195/c7b5e7b7-2ec3-4a6c-84d7-d6510cbdac51",
+      "blob:http://127.0.0.1:39195/c8e4f60e-4803-4f88-ab93-a2a8e3741bb2",
+      "blob:http://127.0.0.1:39195/c97b436c-68b0-4a04-b375-fc5c481a50e3",
+      "blob:http://127.0.0.1:39195/c984a601-da94-4b25-b9ac-f2ca43d69fb2",
+      "blob:http://127.0.0.1:39195/cb157334-ecd9-4cf1-87c2-7fe362e42c3b",
+      "blob:http://127.0.0.1:39195/cb3cddf8-3c01-4733-ab3e-2a00ebc9552d",
+      "blob:http://127.0.0.1:39195/cc94a8f1-08cb-4164-9027-9d2e490d1894",
+      "blob:http://127.0.0.1:39195/d18c2b9e-9815-428b-b5f0-6ab47a154bde",
+      "blob:http://127.0.0.1:39195/d30c1477-48cf-4e80-a6ba-fca4dd490cd9",
+      "blob:http://127.0.0.1:39195/d523da15-b544-4062-b63c-742d8f99e62a",
+      "blob:http://127.0.0.1:39195/d5f9cc82-5ac3-4c33-8a98-21b1fb2759f6",
+      "blob:http://127.0.0.1:39195/d60b4fe8-0d4a-4448-9666-1afc0769b0fe",
+      "blob:http://127.0.0.1:39195/d65a7374-f9ee-42a7-a415-7d2309451e20",
+      "blob:http://127.0.0.1:39195/d9ba0369-6300-4d83-8699-d7a6f4079448",
+      "blob:http://127.0.0.1:39195/db06e440-7750-4c2e-bde5-0419d3d9e42d",
+      "blob:http://127.0.0.1:39195/dbbe825f-2e85-4fb1-a73e-5f3663ebe5f1",
+      "blob:http://127.0.0.1:39195/dbf3aa82-2271-4158-9a98-f62617e30e1a",
+      "blob:http://127.0.0.1:39195/dcadd8df-3cb5-42ae-9047-2e337d3d4eb5",
+      "blob:http://127.0.0.1:39195/e2bfe783-2015-46f9-af13-22ca85f683af",
+      "blob:http://127.0.0.1:39195/e2f79f88-b49f-4dfb-af8a-e23de2c9781e",
+      "blob:http://127.0.0.1:39195/e47b9b0a-65ac-46ba-9662-2d22ef29b8c5",
+      "blob:http://127.0.0.1:39195/e5d610ec-7475-4b84-9f94-7a22af52199a",
+      "blob:http://127.0.0.1:39195/e6adcb8f-dd1d-44f5-8851-bc5c6012798c",
+      "blob:http://127.0.0.1:39195/e7f17e29-fa74-4777-b74f-734ee2038512",
+      "blob:http://127.0.0.1:39195/e8d937ed-531b-4f94-841d-8bb1b735b974",
+      "blob:http://127.0.0.1:39195/ea0770b3-c4e3-4b1e-a0e9-a66cb43612da",
+      "blob:http://127.0.0.1:39195/ea0fdf5a-dfa4-4dd8-ad05-6787590737d9",
+      "blob:http://127.0.0.1:39195/eb9c88ad-2df1-4263-ad17-4fe7cb9d1bc4",
+      "blob:http://127.0.0.1:39195/ebac8492-7d2b-4200-bed4-5bba6e0896f4",
+      "blob:http://127.0.0.1:39195/ebaea591-ad85-49bf-b9fc-c2579196fc93",
+      "blob:http://127.0.0.1:39195/ecb24fc5-410a-4a47-8210-184345c051b3",
+      "blob:http://127.0.0.1:39195/ee980cf1-b6ce-4404-a38d-f73d7965f6a8",
+      "blob:http://127.0.0.1:39195/f127a9f1-839c-4dee-a00e-e0da6307e1d3",
+      "blob:http://127.0.0.1:39195/f146d822-c259-4bf9-a721-ed77620e6898",
+      "blob:http://127.0.0.1:39195/f1dda20f-3c27-4b90-beb4-9bfd0c101288",
+      "blob:http://127.0.0.1:39195/f27e1c31-a051-4fec-bc1b-8c8a9aa2e555",
+      "blob:http://127.0.0.1:39195/f3e4575d-6dd6-4aec-84e0-afbe1eb43ac4",
+      "blob:http://127.0.0.1:39195/f453c28b-0125-400d-8931-44e15a4c91a8",
+      "blob:http://127.0.0.1:39195/f63ebd66-5fa8-4234-b9d8-9d969e805443",
+      "blob:http://127.0.0.1:39195/f6a79752-e5e4-4a8a-8614-e3dc47855b24",
+      "blob:http://127.0.0.1:39195/f6db09a6-986e-4c40-82fd-58d6b5d7a898",
+      "blob:http://127.0.0.1:39195/f912ba53-f569-4c42-94d9-0e9a4dbd7e80",
+      "blob:http://127.0.0.1:39195/fbcbd4fd-e520-4066-93f8-c702e0d2357a",
+      "blob:http://127.0.0.1:39195/fee9de17-829a-4d6a-97f9-bdb268c71663",
+      "blob:http://127.0.0.1:39195/ff9a42d5-6429-4ef1-a6ad-e8361d71a79c",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/canva.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/codepen.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/codesandbox.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/desmos.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/felt.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/figma.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/github_gist.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/google_calendar.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/google_maps.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/google_slides.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/observable.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/replit.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/scratch.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/spotify.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/tldraw.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/val_town.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/vimeo.png",
+      "https://cdn.tldraw.com/5.5.2/embed-icons/youtube.png",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexMono-Bold.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexMono-BoldItalic.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexMono-Medium.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexMono-MediumItalic.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexSans-Bold.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexSans-BoldItalic.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexSans-Medium.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexSans-MediumItalic.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexSerif-Bold.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexSerif-BoldItalic.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexSerif-Medium.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/IBMPlexSerif-MediumItalic.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/Shantell_Sans-Informal_Bold.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/Shantell_Sans-Informal_Bold_Italic.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/Shantell_Sans-Informal_Regular.woff2",
+      "https://cdn.tldraw.com/5.5.2/fonts/Shantell_Sans-Informal_Regular_Italic.woff2",
+      "https://cdn.tldraw.com/5.5.2/icons/icon/0_merged.svg",
+      "https://cdn.tldraw.com/5.5.2/translations/en.json"
+    ],
+    "nota_fonte": "Caixa preta: nenhum código-fonte do tldraw lido; só DOCS.md do pacote (= tldraw.dev)."
+  },
+  "casos": [
+    {
+      "caso": "T0_so_arrasto",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T1_R2_desce_200",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_0_200",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              450,
+              50
+            ],
+            [
+              450,
+              486.5
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 550
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 500
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T1b_R2_desce_200_e_volta",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_0_200",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              450,
+              50
+            ],
+            [
+              450,
+              486.5
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 550
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 500
+          }
+        },
+        {
+          "passo": "move_R2_0_-200",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T2_R2_direita_300",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_300_0",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              538.95,
+              50
+            ],
+            [
+              538.95,
+              350
+            ],
+            [
+              686.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 750,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 538.95,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 700,
+            "y": 300
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T3_R2_esquerda_x150",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_-250_0",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              200,
+              50
+            ],
+            [
+              200,
+              286.5
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 200,
+              "y": 350
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 150,
+            "y": 300
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T4_R2_outro_lado_x-400",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_-800_0",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              0,
+              50
+            ],
+            [
+              -210,
+              50
+            ],
+            [
+              -210,
+              350
+            ],
+            [
+              -286.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": -350,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": -210,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": -400,
+            "y": 300
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T5_R2_acima_y-300",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_0_-600",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              -250
+            ],
+            [
+              386.5,
+              -250
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": -250
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": -100
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": -300
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T6_R1_direita_150",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R1_150_0",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              250,
+              50
+            ],
+            [
+              450,
+              50
+            ],
+            [
+              450,
+              286.5
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 200,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 150,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T7_R1_passa_x300",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R1_300_0",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              400,
+              50
+            ],
+            [
+              450,
+              50
+            ],
+            [
+              450,
+              286.5
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 350,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 300,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T8_sem_arrasto_R2_desce_200",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_0_200",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              450,
+              50
+            ],
+            [
+              450,
+              486.5
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 550
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 500
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T10_R2_sobe_300_alinhado_e_volta",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_0_-300",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              386.5,
+              50
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 50
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 0
+          }
+        },
+        {
+          "passo": "move_R2_0_300",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "T13_T3_e_volta",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.5,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              250,
+              50
+            ],
+            [
+              250,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_pega_middle_dx+60",
+          "handles_antes": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 250,
+              "y": 200
+            }
+          ],
+          "de_pagina": [
+            250,
+            200
+          ],
+          "para_pagina": [
+            310,
+            200
+          ],
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_-250_0",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              200,
+              50
+            ],
+            [
+              200,
+              286.5
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 200,
+              "y": 350
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 150,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_250_0",
+          "arrow": {
+            "x": 50,
+            "y": 50,
+            "props": {
+              "kind": "elbow",
+              "elbowMidPoint": 0.7631578947368421,
+              "dash": "draw",
+              "size": "m",
+              "fill": "none",
+              "color": "black",
+              "labelColor": "black",
+              "bend": 0,
+              "start": {
+                "x": 0,
+                "y": 0
+              },
+              "end": {
+                "x": 400,
+                "y": 300
+              },
+              "arrowheadStart": "none",
+              "arrowheadEnd": "arrow",
+              "richText": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ]
+              },
+              "labelPosition": 0.5,
+              "font": "draw",
+              "scale": 1
+            }
+          },
+          "rota_pagina": [
+            [
+              100,
+              50
+            ],
+            [
+              310,
+              50
+            ],
+            [
+              310,
+              350
+            ],
+            [
+              386.5,
+              350
+            ]
+          ],
+          "handles": [
+            {
+              "id": "start",
+              "type": "vertex",
+              "x": 50,
+              "y": 50
+            },
+            {
+              "id": "end",
+              "type": "vertex",
+              "x": 450,
+              "y": 350
+            },
+            {
+              "id": "middle",
+              "type": "vertex",
+              "x": 310,
+              "y": 200
+            }
+          ],
+          "bindings": [
+            {
+              "toId": "shape:R1",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "start"
+            },
+            {
+              "toId": "shape:R2",
+              "isPrecise": false,
+              "isExact": false,
+              "normalizedAnchor": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "snap": "none",
+              "terminal": "end"
+            }
+          ],
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        }
+      ],
+      "pageerrors": []
+    }
+  ]
+}

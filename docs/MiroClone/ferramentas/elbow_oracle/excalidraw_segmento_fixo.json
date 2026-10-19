@@ -1,0 +1,4270 @@
+{
+  "cabecalho": {
+    "oraculo": "@excalidraw/excalidraw 0.18.1 (MIT), <Excalidraw> montado em Chromium 153.0.8010.12 headless, rato real do Playwright",
+    "data": "2026-10-19T20:31:10.018Z",
+    "host": "desktop-linux",
+    "loadavg": [
+      14.35,
+      19.67,
+      25.2
+    ],
+    "comando": "node /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/31c8ec0c-de4d-4857-a4f3-56b83a897710/scratchpad/oracle_elbow/sonda_excalidraw_segmento.mjs /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/31c8ec0c-de4d-4857-a4f3-56b83a897710/scratchpad/oracle_elbow",
+    "script_sha256": "972f227bcc798e264f8ff8d555a9da28d66da34a2fa272f0a369cb55af3ed730",
+    "entrada": {
+      "elements": [
+        {
+          "type": "rectangle",
+          "id": "R1",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 100,
+          "backgroundColor": "#a5d8ff",
+          "fillStyle": "solid"
+        },
+        {
+          "type": "rectangle",
+          "id": "R2",
+          "x": 400,
+          "y": 300,
+          "width": 100,
+          "height": 100,
+          "backgroundColor": "#ffc9c9",
+          "fillStyle": "solid"
+        },
+        {
+          "type": "arrow",
+          "id": "A",
+          "x": 100,
+          "y": 50,
+          "width": 300,
+          "height": 300,
+          "elbowed": true,
+          "start": {
+            "id": "R1"
+          },
+          "end": {
+            "id": "R2"
+          }
+        }
+      ]
+    },
+    "camera": {
+      "zoom": 0.5,
+      "scrollX": 1000,
+      "scrollY": 700,
+      "nota": "ecrã = (cena + scroll) * zoom"
+    },
+    "metodo": "rota forçada empurrando R1+R2 → ← (como corre.mjs); seta seleccionada; arrasto do ponto médio do trecho do meio 60 px de cena na perpendicular; depois selecciona a forma e arrasta-a pelo rato (30 passos). Cada caso parte de página nova.",
+    "nota_fonte": "Caixa preta: nenhum código-fonte do Excalidraw lido."
+  },
+  "casos": [
+    {
+      "caso": "C0_so_arrasto",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C1_R2_desce_200",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_0_200",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              550.01
+            ],
+            [
+              400,
+              550.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                500
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 500
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 500,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                500
+              ],
+              [
+                300,
+                500
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  500
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C1b_R2_desce_200_e_volta",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_0_200",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              550.01
+            ],
+            [
+              400,
+              550.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                500
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 500
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 500,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                500
+              ],
+              [
+                300,
+                500
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  500
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        },
+        {
+          "passo": "move_R2_0_-200",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 91
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C2_R2_direita_300",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_300_0",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              700,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 700,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 600,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                600,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C3_R2_esquerda_do_fixo_x150",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_-250_0",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              150,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 150,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 210,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                50,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C4_R2_outro_lado_x-400",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_-800_0",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              -400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": -400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 710,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                -500,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C5_R2_acima_y-300",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_0_-600",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              -249.99
+            ],
+            [
+              400,
+              -249.99
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": -300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                150,
+                0
+              ],
+              [
+                150,
+                -300
+              ],
+              [
+                300,
+                -300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": null,
+            "startIsSpecial": null,
+            "endIsSpecial": null,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C6_R1_move_direita_150",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R1_150_0",
+          "abs": [
+            [
+              250,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                60,
+                0
+              ],
+              "end": [
+                60,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 150,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 250,
+            "y": 50.01,
+            "width": 150,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                60,
+                0
+              ],
+              [
+                60,
+                300
+              ],
+              [
+                150,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  60,
+                  0
+                ],
+                "end": [
+                  60,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C7_R1_passa_o_fixo_x300",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R1_300_0",
+          "abs": [
+            [
+              400,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                -90,
+                0
+              ],
+              "end": [
+                -90,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 300,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 400,
+            "y": 50.01,
+            "width": 90,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                -90,
+                0
+              ],
+              [
+                -90,
+                300
+              ],
+              [
+                0,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  -90,
+                  0
+                ],
+                "end": [
+                  -90,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C8_sem_arrasto_R2_desce_200",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "move_R2_0_200",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              550.01
+            ],
+            [
+              400,
+              550.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 500
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 500,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                150,
+                0
+              ],
+              [
+                150,
+                500
+              ],
+              [
+                300,
+                500
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": null,
+            "startIsSpecial": null,
+            "endIsSpecial": null,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 38
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C5b_R2_acima_y-300_num_salto",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_0_-600",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              -249.99
+            ],
+            [
+              400,
+              -249.99
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                -300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": -300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                -300
+              ],
+              [
+                300,
+                -300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  -300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 31
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C9_R2_sobe_250_y50_sobrepoe_R1",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_0_-250",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              100.01
+            ],
+            [
+              400,
+              100.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                49.99999999999999
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 50
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 49.99999999999999,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                49.99999999999999
+              ],
+              [
+                300,
+                49.99999999999999
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  49.99999999999999
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C10_R2_sobe_300_y0_alinhado",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_0_-300",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              400,
+              50.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 0
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                300,
+                0
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": null,
+            "startIsSpecial": null,
+            "endIsSpecial": null,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C10b_R2_sobe_300_e_volta",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_0_-300",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              400,
+              50.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 0
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                300,
+                0
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": null,
+            "startIsSpecial": null,
+            "endIsSpecial": null,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        },
+        {
+          "passo": "move_R2_0_300",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                150,
+                0
+              ],
+              [
+                150,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": null,
+            "startIsSpecial": null,
+            "endIsSpecial": null,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 90
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C11_arrasta_1o_trecho_dy+60",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_0-1_horizontal_dy+60",
+          "mid_cena": [
+            175,
+            50.01
+          ],
+          "alvo_cena": [
+            175,
+            110.00999999999999
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              140,
+              50.01
+            ],
+            [
+              140,
+              110.01
+            ],
+            [
+              250,
+              110.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 3,
+              "start": [
+                40,
+                60.000009765625
+              ],
+              "end": [
+                150,
+                60.000009765625
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                40,
+                0
+              ],
+              [
+                40,
+                60.000009765625
+              ],
+              [
+                150,
+                60.000009765625
+              ],
+              [
+                150,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 3,
+                "start": [
+                  40,
+                  60.000009765625
+                ],
+                "end": [
+                  150,
+                  60.000009765625
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_0_200",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              140,
+              50.01
+            ],
+            [
+              140,
+              110.01
+            ],
+            [
+              250,
+              110.01
+            ],
+            [
+              250,
+              550.01
+            ],
+            [
+              400,
+              550.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 3,
+              "start": [
+                40,
+                60.000009765625
+              ],
+              "end": [
+                150,
+                60.000009765625
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 500
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 500,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                40,
+                0
+              ],
+              [
+                40,
+                60.000009765625
+              ],
+              [
+                150,
+                60.000009765625
+              ],
+              [
+                150,
+                500
+              ],
+              [
+                300,
+                500
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 3,
+                "start": [
+                  40,
+                  60.000009765625
+                ],
+                "end": [
+                  150,
+                  60.000009765625
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C12_duplo_clique_no_meio_do_fixo",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "duplo_clique_ponto_medio_do_trecho_fixo",
+          "ponto_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                150,
+                0
+              ],
+              [
+                150,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": null,
+            "startIsSpecial": null,
+            "endIsSpecial": null,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 32
+          },
+          "selectedLinearElement_editing": false
+        }
+      ],
+      "pageerrors": []
+    },
+    {
+      "caso": "C13_C3_e_volta",
+      "passos": [
+        {
+          "passo": "rota_inicial",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              250,
+              50.01
+            ],
+            [
+              250,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": null,
+          "startIsSpecial": null,
+          "endIsSpecial": null,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "passo": "arrasto_trecho_1-2_vertical_dx+60",
+          "mid_cena": [
+            250,
+            200.01
+          ],
+          "alvo_cena": [
+            310,
+            200.01
+          ],
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 29
+          }
+        },
+        {
+          "passo": "move_R2_-250_0",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              150,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 150,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 210,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                50,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 60
+          }
+        },
+        {
+          "passo": "move_R2_250_0",
+          "abs": [
+            [
+              100,
+              50.01
+            ],
+            [
+              310,
+              50.01
+            ],
+            [
+              310,
+              350.01
+            ],
+            [
+              400,
+              350.01
+            ]
+          ],
+          "fixedSegments": [
+            {
+              "index": 2,
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                300
+              ]
+            }
+          ],
+          "startIsSpecial": false,
+          "endIsSpecial": false,
+          "R1": {
+            "x": 0,
+            "y": 0
+          },
+          "R2": {
+            "x": 400,
+            "y": 300
+          },
+          "arrow_raw": {
+            "id": "A",
+            "x": 100,
+            "y": 50.01,
+            "width": 300,
+            "height": 300,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                210,
+                0
+              ],
+              [
+                210,
+                300
+              ],
+              [
+                300,
+                300
+              ]
+            ],
+            "elbowed": true,
+            "fixedSegments": [
+              {
+                "index": 2,
+                "start": [
+                  210,
+                  0
+                ],
+                "end": [
+                  210,
+                  300
+                ]
+              }
+            ],
+            "startIsSpecial": false,
+            "endIsSpecial": false,
+            "startBinding": {
+              "elementId": "R1",
+              "fixedPoint": [
+                1,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "endBinding": {
+              "elementId": "R2",
+              "fixedPoint": [
+                0,
+                0.5001
+              ],
+              "focus": 0,
+              "gap": 0
+            },
+            "version": 91
+          }
+        }
+      ],
+      "pageerrors": []
+    }
+  ]
+}

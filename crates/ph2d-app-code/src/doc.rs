@@ -437,7 +437,10 @@ impl CodeDoc {
         painted.clear();
         let unresolved = crate::semantic::unresolved(&held.list);
         let mut spans = |r: std::ops::Range<usize>| -> Vec<(std::ops::Range<usize>, Ink)> {
-            let s = crate::semantic::spans(syntax, buffer.text(), sem, &unresolved, r);
+            let mut s = crate::semantic::spans(syntax, buffer.text(), sem, &unresolved, r.clone());
+            if let Some(l) = link.as_ref().filter(|l| l.start < r.end && r.start < l.end) {
+                s = crate::reach::tint(s, l);
+            }
             painted.extend(s.iter().cloned());
             s
         };
@@ -514,7 +517,7 @@ impl CodeDoc {
             inlays: &inlay.list,
             stops: &stops,
             strict,
-            link,
+            link: link.clone(),
         };
         view.paint(frame, code_r, scene, ts, theme);
         if let Some(r) = find_r {

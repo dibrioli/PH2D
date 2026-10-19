@@ -24,10 +24,13 @@ pub enum Ink {
     Unresolved,
     /// Uma dica de tipo (I9): texto que não é do script.
     Hint,
+    /// O nome que o Ctrl+clique alcança, com o Ctrl carregado (o texto toma a cor do traço, como no
+    /// VS Code 1.142: `docs/CodeEditor/ferramentas/oraculo_acabamento/`).
+    Link,
 }
 
 impl Ink {
-    pub const ALL: [Ink; 16] = [
+    pub const ALL: [Ink; 17] = [
         Ink::Plain,
         Ink::Keyword,
         Ink::Function,
@@ -44,6 +47,7 @@ impl Ink {
         Ink::Builtin,
         Ink::Unresolved,
         Ink::Hint,
+        Ink::Link,
     ];
 
     /// O token da cor deste tipo.
@@ -63,6 +67,7 @@ impl Ink {
             Ink::Operator => ColorToken::CodeOperator,
             Ink::Comment => ColorToken::CodeComment,
             Ink::Punctuation | Ink::Hint => ColorToken::Text2,
+            Ink::Link => ColorToken::Accent,
         }
     }
 }

@@ -337,7 +337,7 @@ impl CodeView {
                     w: rect.w,
                     h: StrokeToken::Thin.px(),
                 }),
-                pal.caret,
+                pal.ink(Ink::Link),
             );
             painted = true;
         });

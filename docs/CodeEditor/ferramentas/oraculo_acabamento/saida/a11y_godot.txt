@@ -1,0 +1,11 @@
+# AT-SPI do Godot 4.7.2 (--accessibility always), com a lista de AVISOS aberta
+# árvore inteira em /tmp/oraculo_acab_raw.ObN8/a11y_godot_inteiro.txt
+desktop: 0 apps
+# nós com «Line » ou o texto dos problemas:
+(nenhum)
+# a biblioteca do AccessKit (LD_DEBUG=libs do processo do editor):
+#   linhas LD_DEBUG no registo: 168 «find library»
+(nenhuma linha com accesskit)
+# ficheiros libaccesskit* no sistema: 
+# linhas do registo do Godot que falam de acessibilidade:
+(nenhuma)

@@ -13,6 +13,30 @@ use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_panel_code::Hit;
 use std::ops::Range;
 
+/// As cores `spans` (ordenadas, sem sobreposição) com o nome `link` na cor do link: os trechos que o
+/// tocam partem-se à volta dele.
+pub(crate) fn tint(
+    spans: Vec<(Range<usize>, ph2d_panel_code::Ink)>,
+    link: &Range<usize>,
+) -> Vec<(Range<usize>, ph2d_panel_code::Ink)> {
+    let mut out = Vec::with_capacity(spans.len() + 2);
+    for (r, ink) in spans {
+        if r.end <= link.start || r.start >= link.end {
+            out.push((r, ink));
+            continue;
+        }
+        if r.start < link.start {
+            out.push((r.start..link.start, ink));
+        }
+        if r.end > link.end {
+            out.push((link.end..r.end, ink));
+        }
+    }
+    out.push((link.clone(), ph2d_panel_code::Ink::Link));
+    out.sort_by_key(|(r, _)| r.start);
+    out
+}
+
 /// Onde está a pergunta sobre um nome.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Verdict {

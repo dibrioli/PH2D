@@ -1,0 +1,219 @@
+# oráculo acabamento (Ctrl+rato · lista de problemas · AT-SPI) — 2026-10-19T22:40Z — loadavg: 43.13 23.79 13.24 31/1870 63728
+# code --version: 1.142.0 6d62b1d5dace93a33b3a6d3eca1317bd5e15bcb1 x64
+# godot: godot 4.7.2-2.1
+# pacman: Name: godot;Version: 4.7.2-2.1;Licenses: MIT;Name: visual-studio-code-bin;Version: 1.142.0-1;Licenses: custom: commercial
+# licenças: VS Code = binário Microsoft, só CORRIDO; Godot = MIT
+# display: Xvfb :118 1600x1000x24 ; dbus privado sem serviços; fotos de ecrã inteiro em /tmp/oraculo_acab_raw.ObN8
+# estados do (A): 0sem = rato parado 1,5 s sem Ctrl · 1k01 = 0,1 s depois de keydown ctrl (rato parado)
+#   · 2k15 = 1,5 s depois · 3mexeu = Ctrl carregado e +2 px · 4solto = 0,6 s depois de keyup · depois = +1 px sem Ctrl
+# at-spi: IsEnabled=(<true>,) ; bus ('unix:path=/tmp/acb.9qA6/at-spi/bus_118',)
+cursor de referência ibeam (sobre texto em 507,154): nome=(vazio) 24x24 hot=11,12 hash=a72079972fe9bcdd
+cursor de referência mao (sobre item-da-arvore em 94,107): nome=(vazio) 24x24 hot=7,5 hash=a99bd5a5a33b7e02
+cursor de referência seta (sobre menu-File em 53,18): nome=(vazio) 24x24 hot=3,1 hash=f1791298280e6053
+prova da tabela: cursor_ref_c.png (I-beam · mão · seta, 4×)
+vs A amplitude_l4 0sem: cursor=ibeam · sem sublinhado
+vs A amplitude_l4 1k01: cursor=ibeam · SUBLINHA y=160 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A amplitude_l4 2k15: cursor=mao · SUBLINHA y=160 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A amplitude_l4 3mexeu: cursor=mao · SUBLINHA y=160 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A amplitude_l4 4solto: cursor=ibeam · sem sublinhado
+vs A amplitude_l4 depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_amplitude_l4_c.png
+vs A amplitude_decl 0sem: cursor=ibeam · sem sublinhado
+vs A amplitude_decl 1k01: cursor=ibeam · SUBLINHA y=122 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A amplitude_decl 2k15: cursor=mao · SUBLINHA y=122 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A amplitude_decl 3mexeu: cursor=mao · SUBLINHA y=122 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A amplitude_decl 4solto: cursor=ibeam · sem sublinhado
+vs A amplitude_decl depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_amplitude_decl_c.png
+vs A x_prop 0sem: cursor=ibeam · sem sublinhado
+vs A x_prop 1k01: cursor=ibeam · SUBLINHA y=160 x=[440,447] col≈[2.0,3.0) → «x» · 1 px · cor #3a94bc · texto #c5ccd4 → #3890b7 · fundo #121314
+vs A x_prop 2k15: cursor=mao · SUBLINHA y=160 x=[440,447] col≈[2.0,3.0) → «x» · 1 px · cor #3a94bc · texto #c5ccd4 → #3890b7 · fundo #121314
+vs A x_prop 3mexeu: cursor=mao · SUBLINHA y=160 x=[440,447] col≈[2.0,3.0) → «x» · 1 px · cor #3a94bc · texto #c5ccd4 → #3890b7 · fundo #121314
+vs A x_prop 4solto: cursor=ibeam · sem sublinhado
+vs A x_prop depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_x_prop_c.png
+vs A y_inexistente 0sem: cursor=ibeam · sem sublinhado
+vs A y_inexistente 1k01: cursor=ibeam · sem sublinhado
+vs A y_inexistente 2k15: cursor=ibeam · sem sublinhado
+vs A y_inexistente 3mexeu: cursor=ibeam · sem sublinhado
+vs A y_inexistente 4solto: cursor=ibeam · sem sublinhado
+vs A y_inexistente depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_y_inexistente_c.png
+vs A p_local 0sem: cursor=ibeam · sem sublinhado
+vs A p_local 1k01: cursor=ibeam · SUBLINHA y=160 x=[424,430] col≈[0.1,1.0) → «p» · 1 px · cor #3a94bc · texto #6dade6 → #3687aa · fundo #121314
+vs A p_local 2k15: cursor=mao · SUBLINHA y=160 x=[424,430] col≈[0.1,1.0) → «p» · 1 px · cor #3a94bc · texto #6dade6 → #3687aa · fundo #121314
+vs A p_local 3mexeu: cursor=mao · SUBLINHA y=160 x=[424,430] col≈[0.1,1.0) → «p» · 1 px · cor #3a94bc · texto #6dade6 → #3687aa · fundo #121314
+vs A p_local 4solto: cursor=ibeam · sem sublinhado
+vs A p_local depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_p_local_c.png
+vs A log_api 0sem: cursor=ibeam · sem sublinhado
+vs A log_api 1k01: cursor=ibeam · SUBLINHA y=179 x=[490,513] col≈[8.0,10.8) → «log» · 1 px · cor #3a94bc · texto #d2a8ff → #3a94bc · fundo #121314
+vs A log_api 2k15: cursor=mao · SUBLINHA y=179 x=[490,513] col≈[8.0,10.8) → «log» · 1 px · cor #3a94bc · texto #d2a8ff → #3a94bc · fundo #121314
+vs A log_api 3mexeu: cursor=mao · SUBLINHA y=179 x=[490,513] col≈[8.0,10.8) → «log» · 1 px · cor #3a94bc · texto #d2a8ff → #3a94bc · fundo #121314
+vs A log_api 4solto: cursor=ibeam · sem sublinhado
+vs A log_api depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_log_api_c.png
+vs A console_api 0sem: cursor=ibeam · sem sublinhado
+vs A console_api 1k01: cursor=ibeam · SUBLINHA y=179 x=[423,481] col≈[0.0,7.0) → «console» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A console_api 2k15: cursor=mao · SUBLINHA y=179 x=[423,481] col≈[0.0,7.0) → «console» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A console_api 3mexeu: cursor=mao · SUBLINHA y=179 x=[423,481] col≈[0.0,7.0) → «console» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A console_api 4solto: cursor=ibeam · sem sublinhado
+vs A console_api depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_console_api_c.png
+vs A Ponto_classe 0sem: cursor=ibeam · sem sublinhado
+vs A Ponto_classe 1k01: cursor=ibeam · SUBLINHA y=141 x=[541,582] col≈[14.0,19.0) → «Ponto» · 1 px · cor #3a94bc · texto #49bea7 → #378db2 · fundo #121314
+vs A Ponto_classe 2k15: cursor=mao · SUBLINHA y=141 x=[541,582] col≈[14.0,19.0) → «Ponto» · 1 px · cor #3a94bc · texto #49bea7 → #378db2 · fundo #121314
+vs A Ponto_classe 3mexeu: cursor=mao · SUBLINHA y=141 x=[541,582] col≈[14.0,19.0) → «Ponto» · 1 px · cor #3a94bc · texto #49bea7 → #378db2 · fundo #121314
+vs A Ponto_classe 4solto: cursor=ibeam · sem sublinhado
+vs A Ponto_classe depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_Ponto_classe_c.png
+vs A amplitud_erro 0sem: cursor=ibeam · sem sublinhado
+vs A amplitud_erro 1k01: cursor=ibeam · sem sublinhado
+vs A amplitud_erro 2k15: cursor=ibeam · sem sublinhado
+vs A amplitud_erro 3mexeu: cursor=ibeam · sem sublinhado
+vs A amplitud_erro 4solto: cursor=ibeam · sem sublinhado
+vs A amplitud_erro depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_amplitud_erro_c.png
+vs A const_chave 0sem: cursor=ibeam · sem sublinhado
+vs A const_chave 1k01: cursor=ibeam · sem sublinhado
+vs A const_chave 2k15: cursor=ibeam · sem sublinhado
+vs A const_chave 3mexeu: cursor=ibeam · sem sublinhado
+vs A const_chave 4solto: cursor=ibeam · sem sublinhado
+vs A const_chave depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_const_chave_c.png
+vs A comentario 0sem: cursor=ibeam · sem sublinhado
+vs A comentario 1k01: cursor=ibeam · sem sublinhado
+vs A comentario 2k15: cursor=ibeam · sem sublinhado
+vs A comentario 3mexeu: cursor=ibeam · sem sublinhado
+vs A comentario 4solto: cursor=ibeam · sem sublinhado
+vs A comentario depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_comentario_c.png
+vs A string 0sem: cursor=ibeam · sem sublinhado
+vs A string 1k01: cursor=ibeam · sem sublinhado
+vs A string 2k15: cursor=ibeam · sem sublinhado
+vs A string 3mexeu: cursor=ibeam · sem sublinhado
+vs A string 4solto: cursor=ibeam · sem sublinhado
+vs A string depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_string_c.png
+vs A espaco_entre 0sem: cursor=ibeam · sem sublinhado
+vs A espaco_entre 1k01: cursor=ibeam · SUBLINHA y=160 x=[440,447] col≈[2.0,3.0) → «x» · 1 px · cor #3a94bc · texto #c5ccd4 → #3890b7 · fundo #121314
+vs A espaco_entre 2k15: cursor=ibeam · SUBLINHA y=160 x=[440,447] col≈[2.0,3.0) → «x» · 1 px · cor #3a94bc · texto #c5ccd4 → #3890b7 · fundo #121314
+vs A espaco_entre 3mexeu: cursor=ibeam · sem sublinhado
+vs A espaco_entre 4solto: cursor=ibeam · sem sublinhado
+vs A espaco_entre depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_espaco_entre_c.png
+vs A depois_do_fim 0sem: cursor=ibeam · sem sublinhado
+vs A depois_do_fim 1k01: cursor=ibeam · sem sublinhado
+vs A depois_do_fim 2k15: cursor=ibeam · sem sublinhado
+vs A depois_do_fim 3mexeu: cursor=ibeam · sem sublinhado
+vs A depois_do_fim 4solto: cursor=ibeam · sem sublinhado
+vs A depois_do_fim depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_depois_do_fim_c.png
+vs A amplitude_l4 relógio do cursor depois do keydown ctrl (rato parado): 1ms=ibeam 45ms=ibeam 90ms=ibeam 138ms=ibeam 183ms=ibeam 228ms=ibeam 271ms=ibeam 317ms=ibeam 361ms=ibeam 406ms=ibeam 448ms=ibeam 493ms=mao 538ms=mao 582ms=mao 627ms=mao 671ms=mao 715ms=mao 758ms=mao 802ms=mao 846ms=mao 891ms=mao 934ms=mao 978ms=mao 1025ms=mao 1070ms=mao 1114ms=mao 1157ms=mao 1203ms=mao 1247ms=mao 1291ms=mao 1334ms=mao 1378ms=mao 1422ms=mao 1465ms=mao 1509ms=mao 1553ms=mao 1598ms=mao 1644ms=mao 1688ms=mao 1734ms=mao
+vs A amplitude_l4 relógio do cursor depois do keyup (rato parado): 2ms=mao 47ms=mao 91ms=mao 135ms=mao 178ms=ibeam 223ms=ibeam 267ms=ibeam 311ms=ibeam 355ms=ibeam 399ms=ibeam 444ms=ibeam 489ms=ibeam 534ms=ibeam 577ms=ibeam 622ms=ibeam 665ms=ibeam 709ms=ibeam 752ms=ibeam 796ms=ibeam 841ms=ibeam 884ms=ibeam 929ms=ibeam 973ms=ibeam 1017ms=ibeam 1061ms=ibeam
+vs A amplitude_l4 depois de mexer 1 px sem Ctrl: ibeam
+vs B contador: cursor sobre ele = mao
+vs A amplitude_l4_foco_na_lista 0sem: cursor=ibeam · sem sublinhado
+vs A amplitude_l4_foco_na_lista 1k01: cursor=ibeam · sem sublinhado
+vs A amplitude_l4_foco_na_lista 2k15: cursor=ibeam · sem sublinhado
+vs A amplitude_l4_foco_na_lista 3mexeu: cursor=ibeam · SUBLINHA y=160 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A amplitude_l4_foco_na_lista 4solto: cursor=ibeam · SUBLINHA y=160 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs A amplitude_l4_foco_na_lista depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs_A_amplitude_l4_foco_na_lista_c.png
+vs B: a linha «Property 'y'…» está em y=755 (OCR de vb7_painel); a 1.ª linha de problema, 2 linhas acima, em y=711
+vs B correcção («e» em amplitud): fotos a 92 ms (vb17a), 356 ms (vb17b), 686 ms (vb17), 2270 ms (vb18) depois da tecla
+vs11y A amplitude_l4 0sem: cursor=ibeam · sem sublinhado
+vs11y A amplitude_l4 1k01: cursor=mao · SUBLINHA y=160 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs11y A amplitude_l4 2k15: cursor=mao · SUBLINHA y=160 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs11y A amplitude_l4 3mexeu: cursor=mao · SUBLINHA y=160 x=[473,548] col≈[6.0,15.0) → «amplitude» · 1 px · cor #3a94bc · texto #79c0ff → #3a94bc · fundo #121314
+vs11y A amplitude_l4 4solto: cursor=ibeam · sem sublinhado
+vs11y A amplitude_l4 depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs11y_A_amplitude_l4_c.png
+vs11y A comentario 0sem: cursor=ibeam · sem sublinhado
+vs11y A comentario 1k01: cursor=ibeam · sem sublinhado
+vs11y A comentario 2k15: cursor=ibeam · sem sublinhado
+vs11y A comentario 3mexeu: cursor=ibeam · sem sublinhado
+vs11y A comentario 4solto: cursor=ibeam · sem sublinhado
+vs11y A comentario depois (sem Ctrl, +1 px): cursor=ibeam — prova: vs11y_A_comentario_c.png
+vs11y B depois do clique na linha «Property 'y'»: nós focados = 1: tree item «Error: Property 'y' does not exist on type 'Ponto'. at line 8 and character 3. generated by ts» [357,741 938x23] {focusable,focused,selectable,selected,showing}
+godot: cursor de referência sobre texto (720,234): ibeam — nome=(vazio) 24x24 hot=11,12 hash=a72079972fe9bcdd
+godot: cursor de referência sobre contador (1000,926): mao — nome=(vazio) 24x24 hot=7,5 hash=a99bd5a5a33b7e02
+godot: cursor de referência sobre botao-play (1410,22): seta — nome=(vazio) 24x24 hot=3,1 hash=f1791298280e6053
+gd A amplitude_l5 0sem: cursor=ibeam · sem sublinhado
+gd A amplitude_l5 1k01: cursor=ibeam · SUBLINHA y=243 x=[684,755] col≈[10.0,19.0) → «amplitude» · 1 px · cor #c6c6c6 · texto #c6c6c6 → #c6c6c6 · fundo #1a1a1a
+gd A amplitude_l5 2k15: cursor=ibeam · SUBLINHA y=243 x=[684,755] col≈[10.0,19.0) → «amplitude» · 1 px · cor #c6c6c6 · texto #c6c6c6 → #c6c6c6 · fundo #1a1a1a
+gd A amplitude_l5 3mexeu: cursor=mao · SUBLINHA y=243 x=[684,755] col≈[10.0,19.0) → «amplitude» · 1 px · cor #c6c6c6 · texto #c6c6c6 → #c6c6c6 · fundo #1a1a1a
+gd A amplitude_l5 4solto: cursor=mao · sem sublinhado
+gd A amplitude_l5 depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_amplitude_l5_c.png
+gd A amplitude_decl 0sem: cursor=ibeam · sem sublinhado
+gd A amplitude_decl 1k01: cursor=ibeam · SUBLINHA y=168 x=[636,707] col≈[4.0,13.0) → «amplitude» · 1 px · cor #c6c6c6 · texto #c6c6c6 → #c6c6c6 · fundo #1a1a1a
+gd A amplitude_decl 2k15: cursor=ibeam · SUBLINHA y=168 x=[636,707] col≈[4.0,13.0) → «amplitude» · 1 px · cor #c6c6c6 · texto #c6c6c6 → #c6c6c6 · fundo #1a1a1a
+gd A amplitude_decl 3mexeu: cursor=mao · SUBLINHA y=168 x=[636,707] col≈[4.0,13.0) → «amplitude» · 1 px · cor #c6c6c6 · texto #c6c6c6 → #c6c6c6 · fundo #1a1a1a
+gd A amplitude_decl 4solto: cursor=mao · sem sublinhado
+gd A amplitude_decl depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_amplitude_decl_c.png
+gd A x_prop 0sem: cursor=ibeam · sem sublinhado
+gd A x_prop 1k01: cursor=ibeam · SUBLINHA y=243 x=[652,659] col≈[6.0,7.0) → «x» · 1 px · cor #c6c6c6 · texto #9ab6cf → #9ab6cf · fundo #1a1a1a
+gd A x_prop 2k15: cursor=ibeam · SUBLINHA y=243 x=[652,659] col≈[6.0,7.0) → «x» · 1 px · cor #c6c6c6 · texto #9ab6cf → #9ab6cf · fundo #1a1a1a
+gd A x_prop 3mexeu: cursor=mao · SUBLINHA y=243 x=[652,659] col≈[6.0,7.0) → «x» · 1 px · cor #c6c6c6 · texto #9ab6cf → #9ab6cf · fundo #1a1a1a
+gd A x_prop 4solto: cursor=mao · sem sublinhado
+gd A x_prop depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_x_prop_c.png
+gd A p_local 0sem: cursor=ibeam · sem sublinhado
+gd A p_local 1k01: cursor=ibeam · SUBLINHA y=243 x=[636,643] col≈[4.0,5.0) → «p» · 1 px · cor #c6c6c6 · texto #969696 → #969696 · fundo #1a1a1a
+gd A p_local 2k15: cursor=ibeam · SUBLINHA y=243 x=[636,643] col≈[4.0,5.0) → «p» · 1 px · cor #c6c6c6 · texto #969696 → #969696 · fundo #1a1a1a
+gd A p_local 3mexeu: cursor=mao · SUBLINHA y=243 x=[636,643] col≈[4.0,5.0) → «p» · 1 px · cor #c6c6c6 · texto #969696 → #969696 · fundo #1a1a1a
+gd A p_local 4solto: cursor=mao · sem sublinhado
+gd A p_local depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_p_local_c.png
+gd A print_api 0sem: cursor=ibeam · sem sublinhado
+gd A print_api 1k01: cursor=ibeam · SUBLINHA y=268 x=[636,675] col≈[4.0,9.0) → «print» · 1 px · cor #d7cdcc · texto #a3a3f5 → #a3a3f5 · fundo #5f3632
+gd A print_api 2k15: cursor=ibeam · SUBLINHA y=268 x=[636,675] col≈[4.0,9.0) → «print» · 1 px · cor #d7cdcc · texto #a3a3f5 → #a3a3f5 · fundo #5f3632
+gd A print_api 3mexeu: cursor=mao · SUBLINHA y=268 x=[636,675] col≈[4.0,9.0) → «print» · 1 px · cor #d7cdcc · texto #a3a3f5 → #a3a3f5 · fundo #5f3632
+gd A print_api 4solto: cursor=mao · sem sublinhado
+gd A print_api depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_print_api_c.png
+gd A Vector2_api 0sem: cursor=ibeam · sem sublinhado
+gd A Vector2_api 1k01: cursor=ibeam · SUBLINHA y=218 x=[700,755] col≈[12.0,19.0) → «Vector2» · 1 px · cor #c6c6c6 · texto #42ffc2 → #42ffc2 · fundo #1a1a1a
+gd A Vector2_api 2k15: cursor=ibeam · SUBLINHA y=218 x=[700,755] col≈[12.0,19.0) → «Vector2» · 1 px · cor #c6c6c6 · texto #42ffc2 → #42ffc2 · fundo #1a1a1a
+gd A Vector2_api 3mexeu: cursor=mao · SUBLINHA y=218 x=[700,755] col≈[12.0,19.0) → «Vector2» · 1 px · cor #c6c6c6 · texto #42ffc2 → #42ffc2 · fundo #1a1a1a
+gd A Vector2_api 4solto: cursor=mao · sem sublinhado
+gd A Vector2_api depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_Vector2_api_c.png
+gd A Node_classe 0sem: cursor=ibeam · sem sublinhado
+gd A Node_classe 1k01: cursor=ibeam · SUBLINHA y=143 x=[668,699] col≈[8.0,12.0) → «Node» · 1 px · cor #c6c6c6 · texto #8fffdb → #8fffdb · fundo #1a1a1a
+gd A Node_classe 2k15: cursor=ibeam · SUBLINHA y=143 x=[668,699] col≈[8.0,12.0) → «Node» · 1 px · cor #c6c6c6 · texto #8fffdb → #8fffdb · fundo #1a1a1a
+gd A Node_classe 3mexeu: cursor=mao · SUBLINHA y=143 x=[668,699] col≈[8.0,12.0) → «Node» · 1 px · cor #c6c6c6 · texto #8fffdb → #8fffdb · fundo #1a1a1a
+gd A Node_classe 4solto: cursor=mao · sem sublinhado
+gd A Node_classe depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_Node_classe_c.png
+gd A amplitud_erro 0sem: cursor=ibeam · sem sublinhado
+gd A amplitud_erro 1k01: cursor=ibeam · sem sublinhado
+gd A amplitud_erro 2k15: cursor=ibeam · sem sublinhado
+gd A amplitud_erro 3mexeu: cursor=ibeam · sem sublinhado
+gd A amplitud_erro 4solto: cursor=ibeam · sem sublinhado
+gd A amplitud_erro depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_amplitud_erro_c.png
+gd A var_chave 0sem: cursor=ibeam · sem sublinhado
+gd A var_chave 1k01: cursor=ibeam · sem sublinhado
+gd A var_chave 2k15: cursor=ibeam · sem sublinhado
+gd A var_chave 3mexeu: cursor=ibeam · sem sublinhado
+gd A var_chave 4solto: cursor=ibeam · sem sublinhado
+gd A var_chave depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_var_chave_c.png
+gd A func_chave 0sem: cursor=ibeam · sem sublinhado
+gd A func_chave 1k01: cursor=ibeam · sem sublinhado
+gd A func_chave 2k15: cursor=ibeam · sem sublinhado
+gd A func_chave 3mexeu: cursor=ibeam · sem sublinhado
+gd A func_chave 4solto: cursor=ibeam · sem sublinhado
+gd A func_chave depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_func_chave_c.png
+gd A comentario 0sem: cursor=ibeam · sem sublinhado
+gd A comentario 1k01: cursor=ibeam · sem sublinhado
+gd A comentario 2k15: cursor=ibeam · sem sublinhado
+gd A comentario 3mexeu: cursor=ibeam · sem sublinhado
+gd A comentario 4solto: cursor=ibeam · sem sublinhado
+gd A comentario depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_comentario_c.png
+gd A string 0sem: cursor=ibeam · sem sublinhado
+gd A string 1k01: cursor=ibeam · sem sublinhado
+gd A string 2k15: cursor=ibeam · sem sublinhado
+gd A string 3mexeu: cursor=ibeam · sem sublinhado
+gd A string 4solto: cursor=ibeam · sem sublinhado
+gd A string depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_string_c.png
+gd A espaco_entre 0sem: cursor=ibeam · sem sublinhado
+gd A espaco_entre 1k01: cursor=ibeam · sem sublinhado
+gd A espaco_entre 2k15: cursor=ibeam · sem sublinhado
+gd A espaco_entre 3mexeu: cursor=ibeam · sem sublinhado
+gd A espaco_entre 4solto: cursor=ibeam · sem sublinhado
+gd A espaco_entre depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_espaco_entre_c.png
+gd A depois_do_fim 0sem: cursor=ibeam · sem sublinhado
+gd A depois_do_fim 1k01: cursor=ibeam · sem sublinhado
+gd A depois_do_fim 2k15: cursor=ibeam · sem sublinhado
+gd A depois_do_fim 3mexeu: cursor=ibeam · sem sublinhado
+gd A depois_do_fim 4solto: cursor=ibeam · sem sublinhado
+gd A depois_do_fim depois (sem Ctrl, +1 px): cursor=ibeam — prova: gd_A_depois_do_fim_c.png
+gd A amplitude_l5 relógio do cursor depois do keydown ctrl (rato parado): 1ms=ibeam 48ms=ibeam 93ms=ibeam 138ms=ibeam 182ms=ibeam 225ms=ibeam 268ms=ibeam 312ms=ibeam 357ms=ibeam 401ms=ibeam 445ms=ibeam 489ms=ibeam 533ms=ibeam 577ms=ibeam 620ms=ibeam 665ms=ibeam 708ms=ibeam 752ms=ibeam 795ms=ibeam 839ms=ibeam 884ms=ibeam 928ms=ibeam 972ms=ibeam 1015ms=ibeam 1059ms=ibeam 1103ms=ibeam 1148ms=ibeam 1192ms=ibeam 1237ms=ibeam 1279ms=ibeam 1323ms=ibeam 1368ms=ibeam 1412ms=ibeam 1456ms=ibeam 1502ms=ibeam 1546ms=ibeam 1590ms=ibeam 1634ms=ibeam 1679ms=ibeam 1723ms=ibeam
+gd A amplitude_l5 relógio do cursor depois do keyup (rato parado): 1ms=ibeam 44ms=ibeam 90ms=ibeam 134ms=ibeam 178ms=ibeam 221ms=ibeam 266ms=ibeam 310ms=ibeam 355ms=ibeam 399ms=ibeam 444ms=ibeam 489ms=ibeam 534ms=ibeam 578ms=ibeam 621ms=ibeam 666ms=ibeam 710ms=ibeam 754ms=ibeam 799ms=ibeam 843ms=ibeam 886ms=ibeam 931ms=ibeam 976ms=ibeam 1019ms=ibeam 1064ms=ibeam
+gd A amplitude_l5 depois de mexer 1 px sem Ctrl: ibeam
+gd B contador de erros: cursor sobre ele = mao
+gd B letra «K» depois de clicar no contador: pixels mudados no ecrã inteiro = 0 (0) (gb2b_letra_c.png)
+gd B «Line 6:» cursor sobre o link = mao
+gd B resto do texto da linha: cursor = seta
+gd B letra «Q» depois do clique em «Line 6:»: pixels mudados no ecrã inteiro = 0 (0) (gb7_letra_depois_do_link_c.png)
+gd B correcção («e» em amplitud): fotos a 80 ms (gb8a), 394 ms (gb8b), 711 ms (gb8), 2333 ms (gb9), 4449 ms (gb10) depois da tecla
+fim — 22:47Z loadavg 28.92 22.71 15.93 29/1637 103141

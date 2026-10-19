@@ -13,6 +13,7 @@ use crate::ctrl;
 use crate::definicao::{clica_em, cursor};
 use crate::dicas::{aponta, ate, nunca};
 use ph2d_editor_core::doc_surface::{DocumentSurface, PointerLook};
+use ph2d_panel_code::Ink;
 use ph2d_script::ScriptId;
 use serde_json::{Value, json};
 use std::ops::Range;
@@ -188,16 +189,23 @@ fn o_ctrl_com_o_rato_parado_sublinha_e_largar_desfaz() {
         olhar(m, id, b) == Some(PointerLook::Text) && sublinhado(m, id).is_none()
     });
     assert_eq!(definicoes(&visto), 0);
+    let antes = m.docs().ink_painted(id, b);
+    assert_ne!(antes, Ink::Link);
     ctrl_carregado(&mut m, true);
     ate(&mut m, id, T0, "o Ctrl com o rato parado não sublinhou", |m| {
         olhar(m, id, b) == Some(PointerLook::Hand)
     });
+    // O nome inteiro na cor do link (o VS Code pinta o texto da cor do traço), os vizinhos não.
+    let w = sublinhado(&mut m, id).expect("sublinhado");
+    assert!(w.clone().all(|k| m.docs().ink_painted(id, k) == Ink::Link));
+    assert_ne!(m.docs().ink_painted(id, w.end), Ink::Link);
     ctrl_carregado(&mut m, false);
     quadro_em(&mut m, T0);
     m.pinta(id);
     assert_eq!(olhar(&mut m, id, b), Some(PointerLook::Text));
     assert_eq!(sublinhado(&mut m, id), None);
     assert!(!m.docs().link_of(id).1, "largar o Ctrl deixou o sublinhado pintado");
+    assert_eq!(m.docs().ink_painted(id, b), antes, "largar o Ctrl não devolveu a cor");
     ctrl_carregado(&mut m, true);
     ate(&mut m, id, T0, "voltar ao Ctrl não sublinhou", |m| {
         sublinhado(m, id).is_some()

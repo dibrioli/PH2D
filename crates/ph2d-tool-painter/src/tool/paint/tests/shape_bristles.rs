@@ -453,15 +453,17 @@ fn o_spacing_continuo_risca_no_digital_e_no_wet_paint() {
             }
             t.set_brush_size_px(40.0);
             t.set_brush_spacing(0.25);
-            assert!(
-                !t.paint.brush.continuous_spacing,
-                "{media:?}: ligado por omissão"
+            // O Wet Paint nasce com ela ligada (a regra dos pincéis, prompt 51); o Digital, desligada.
+            let por_omissao = media == PaintMedia::WetPaint;
+            assert_eq!(
+                t.paint.brush.continuous_spacing, por_omissao,
+                "{media:?}: o Continuous por omissão"
             );
-            if continuo {
+            if continuo != por_omissao {
                 t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
                     crate::ids::PAINTER_BRUSH_CONTINUOUS_SPACING,
                 ));
-                assert!(t.paint.brush.continuous_spacing, "a caixa não liga");
+                assert_eq!(t.paint.brush.continuous_spacing, continuo, "a caixa não troca");
             }
             recta(&mut t)
         };

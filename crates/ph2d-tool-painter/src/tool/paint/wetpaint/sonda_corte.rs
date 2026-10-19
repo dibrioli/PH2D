@@ -69,9 +69,7 @@ pub(super) fn monta(c: Combo) -> PainterTool {
     }
     if let Some((s, continuo)) = c.espaco {
         t.set_brush_spacing(s);
-        if continuo {
-            t.toggle_brush_continuous_spacing();
-        }
+        t.set_brush_continuous_spacing(continuo);
     }
     let seed = t.paint.brush;
     t.paint.brush_by_mode.fill(seed);
@@ -427,9 +425,7 @@ fn sonda_corte_pincel_do_dono() {
             for passo in [24.0f32, 6.0, 60.0] {
                 let mut t = tela(1400, 720, 169.0, (true, true));
                 t.set_brush_spacing(0.364);
-                if continuo {
-                    t.toggle_brush_continuous_spacing();
-                }
+                t.set_brush_continuous_spacing(continuo);
                 t.set_brush_jitter_norm(jitter);
                 t.paint.wetpaint.knobs.water = 1.0;
                 semeia(&mut t);
@@ -475,7 +471,7 @@ fn sonda_corte_pincel_do_dono_com_pressao() {
             for crescida in [false, true] {
                 let mut t = tela(1400, 720, 169.0, (true, true));
                 t.set_brush_spacing(0.364);
-                t.toggle_brush_continuous_spacing();
+                t.set_brush_continuous_spacing(true);
                 t.set_brush_jitter_norm(0.1);
                 t.paint.wetpaint.knobs.water = 1.0;
                 semeia(&mut t);

@@ -365,7 +365,26 @@ impl BrushSpec {
     /// At least one pixel so a stroke always advances.
     #[must_use]
     pub fn dab_spacing_px(&self) -> f32 {
-        (self.spacing.max(0.01) * 2.0 * self.clamped_radius()).max(1.0)
+        self.passo_de(self.spacing)
+    }
+
+    /// [`Self::dab_spacing_px`] a outra fracção `spacing` do diâmetro.
+    #[must_use]
+    pub fn passo_de(&self, spacing: f32) -> f32 {
+        (spacing.max(0.01) * 2.0 * self.clamped_radius()).max(1.0)
+    }
+
+    /// O passo do traço a `spacing` pela direcção `dir` (unitária): a extensão da pegada AO LONGO do caminho
+    /// (`stroke/walk.rs`, o pincel achatado anda pelo lado fino), nunca abaixo de 1 px.
+    #[must_use]
+    pub fn passo_ao_longo_px(&self, spacing: f32, dir: [f32; 2]) -> f32 {
+        let v = self.footprint_deform().apply(dir);
+        let ao_longo = v[0].hypot(v[1]);
+        if ao_longo.is_finite() && ao_longo > 1e-4 {
+            (self.passo_de(spacing) / ao_longo).max(1.0)
+        } else {
+            self.passo_de(spacing)
+        }
     }
 
     /// **Continuous Spacing** is armed: the option is on, the method spaces dabs along a path, and the

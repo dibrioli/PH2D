@@ -203,6 +203,22 @@ impl PainterTool {
         let cerdas = brush.shape.kind == ph2d_painter_brush::TextureKind::Bristles;
         let fios = self.fios_do_pincel();
         let relevo = self.relevo_do_pincel();
+        // ⭐ O pigmento por COMPRIMENTO (prompt 51, doc 51 §2): cada dab pousa o do caminho que representa — o
+        // caminho desde o dab anterior da lane ÷ o passo do Spacing a que o pigmento foi afinado. Sem cápsula,
+        // nunca mais que um dab inteiro: o Spacing largo de propósito pontilha.
+        let passo_do_pigmento = sess
+            .engine
+            .tuning
+            .get(ph2d_wet_paint::tuning::Knob::PigmentSpacing) as f32;
+        let capsulas = brush.lays_capsules();
+        let sub_da_capsula = sess
+            .engine
+            .tuning
+            .get(ph2d_wet_paint::tuning::Knob::CapsuleSpacing) as f32;
+        let tecto_da_capsula = sess
+            .engine
+            .tuning
+            .get(ph2d_wet_paint::tuning::Knob::CapsuleMaxPx) as f32;
         let shape_active = brush.shape_silhouette_active(shape_image.is_some()) && !cerdas;
         // The artist's GRAIN replaces the engine's bristle texture (W2.4).
         // The bristle IS the fluid's default grain, so an armed Grain slot
@@ -249,16 +265,25 @@ impl PainterTool {
         // sub-dabs, oldest first, at least one engine cell apart: the deposit gates each against the
         // paper (`trail/deposit.rs::cell`), so only the sub-dabs themselves lay the dense stroke —
         // a capsule composed host-side either dilutes under the gate or widens past it (measured).
-        let sub_dabs: Vec<(usize, Dab)> = dabs
+        // `k` conta os sub-dabs de trás para a frente: o `0` é o próprio dab.
+        let sub_dabs: Vec<(usize, u64, Dab)> = dabs
             .iter()
             .enumerate()
             .flat_map(|(i, d)| {
-                let sub =
-                    ph2d_painter_brush::capsula::sub_passo_px(d.radius_px).max(f32::from(ratio));
-                ph2d_painter_brush::capsula::sub_dabs(d, sub).map(move |s| (i, s))
+                let natural =
+                    ph2d_painter_brush::capsula::sub_passo_px_a(d.radius_px, sub_da_capsula);
+                let sub = ph2d_painter_brush::capsula::sub_passo_sem_batimento(
+                    if tecto_da_capsula > 0.0 { natural.min(tecto_da_capsula) } else { natural },
+                    f32::from(ratio).max(1.0),
+                );
+                let s = ph2d_painter_brush::capsula::sub_dabs(d, sub);
+                let n = s.len() as u64;
+                s.into_iter()
+                    .enumerate()
+                    .map(move |(j, s)| (i, n - 1 - j as u64, s))
             })
             .collect();
-        for (didx, d) in sub_dabs.iter().map(|(i, d)| (*i, d)) {
+        for (didx, sub_k, d) in sub_dabs.iter().map(|(i, k, d)| (*i, *k, d)) {
             let [x, y] = d.center;
             // LANE matching, geometric: the dab belongs to the lane whose
             // last position is within its own radius (consecutive dabs of one
@@ -312,6 +337,7 @@ impl PainterTool {
                         sess.lanes.push(Lane {
                             pos: d.center,
                             ink: d.color,
+                            arco: d.arc_len,
                         });
                         i
                     }
@@ -339,9 +365,29 @@ impl PainterTool {
             // (spec at the dab's radius → rotor → footprint → Shape basis in
             // the stroke frame), evaluated per engine cell (cell − 1 = px).
             let spec = brush.at_dab(d);
+            let peso = lane_prev
+                .filter(|_| passo_do_pigmento > 0.0)
+                .map_or(1.0, |_| {
+                    let c = (d.arc_len - sess.lanes[li].arco).max(0.0);
+                    let w = c / spec.passo_ao_longo_px(passo_do_pigmento, d.dir);
+                    // O passo do PRÓPRIO Spacing de afinação é o dab inteiro, ao byte (a corda sai dos centros em f32).
+                    if (w - 1.0).abs() < 1e-3 {
+                        1.0
+                    } else if capsulas {
+                        w
+                    } else {
+                        w.min(1.0)
+                    }
+                });
             let fp = spec.dab_footprint_of(d);
             let dab_index = didx;
             let tex_rng = dab_rng.enter(&groups, dab_index);
+            // Cada sub-dab da cápsula tira o SEU sorteio (a posição da textura, o pó) do do dab: repetido, os `n`
+            // sub-dabs pousavam a mesma textura e o traço ganhava o período do Spacing (doc 51 §3, `os_fios`). O
+            // `k = 0` é o próprio dab, o último: o fluxo segue para o próximo dab como sem a cápsula.
+            if sub_k > 0 {
+                *tex_rng = sorteio_do_sub_dab(*tex_rng, sub_k);
+            }
             let shape_basis = (shape_active || cerdas).then(|| {
                 ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,
@@ -643,7 +689,7 @@ impl PainterTool {
                         cell_y,
                         b,
                         cell_r,
-                        opacidade,
+                        opacidade * f64::from(peso),
                         Some(&sil),
                         grain_arg,
                         padrao_arg,
@@ -700,6 +746,7 @@ impl PainterTool {
                 }
             }
             sess.lanes[li].pos = d.center;
+            sess.lanes[li].arco = d.arc_len;
         }
         let deposit_ms = t_dep.elapsed().as_secs_f32() * 1e3;
         self.paint.wetpaint.session = Some(taken);
@@ -707,4 +754,12 @@ impl PainterTool {
         self.wetpaint_composite();
         crate::wet_diag::note_stamp(dabs.len(), deposit_ms, t_comp.elapsed().as_secs_f32() * 1e3);
     }
+}
+
+/// O estado do fluxo do sub-dab `k` da cápsula, tirado do do dab (o splitmix64).
+fn sorteio_do_sub_dab(rng: u64, k: u64) -> u64 {
+    let mut z = (rng ^ k.wrapping_mul(0xD1B5_4A32_D192_ED03)).wrapping_add(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
 }

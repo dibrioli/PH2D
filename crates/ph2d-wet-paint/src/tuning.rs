@@ -144,9 +144,19 @@ pub enum Knob {
     BristleHeight,
     /// … a fracção dos fios que ESCAVAM em vez de construir (o Remove impasto do Rebelle).
     BristleRemove,
+    /// **O pigmento é por COMPRIMENTO de traço** (prompt 51): o Spacing (fracção do diâmetro ao longo do caminho) a
+    /// que o [`Knob::PigmentPerDab`] foi afinado — cada dab pousa `passo ÷ o passo deste Spacing` do seu pigmento, e o
+    /// traço não muda com o Spacing do pincel. `0` = a lei de antes (cada dab o pigmento inteiro).
+    PigmentSpacing,
+    /// O sub-passo da cápsula do Continuous (fracção do diâmetro; `capsula::SUB_SPACING` por omissão): o pincel cuja
+    /// textura de cerdas anda com o dab pede-o à densidade a que foi afinado (a Acrylic Round, doc 51 §3).
+    CapsuleSpacing,
+    /// O tecto do sub-passo da cápsula em px (`0` = nenhum): os fios do Oil Bristle têm largura em px, e a 103 px a
+    /// escada lê 2,24 a 2 px contra 4,71 a 3 (doc 51 §3).
+    CapsuleMaxPx,
 }
 
-pub const KNOB_COUNT: usize = 85;
+pub const KNOB_COUNT: usize = 88;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

@@ -281,6 +281,11 @@ impl PainterTool {
         self.paint.brush.continuous_spacing = !self.paint.brush.continuous_spacing;
     }
 
+    /// Set **Continuous Spacing** (the Wet Paint brush opens with it on — the factory rule, prompt 51).
+    pub fn set_brush_continuous_spacing(&mut self, on: bool) {
+        self.paint.brush.continuous_spacing = on;
+    }
+
     /// Toggle **Accumulate** (off caps a stroke at Strength; on lets overlapping dabs build up).
     pub fn toggle_brush_accumulate(&mut self) {
         self.paint.brush.accumulate = !self.paint.brush.accumulate;

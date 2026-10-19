@@ -47,8 +47,6 @@ pub struct Receita {
     pub extras: &'static [(&'static str, f64)],
     /// O grão do pincel (`BrushSpec::texture`, que toma o lugar das cerdas — W2.4): o tipo e o lado.
     pub grao: Option<(&'static str, f64)>,
-    /// O Spacing do Stroke (`BrushSpec::spacing`, fracção do diâmetro) que o preset FIXA; `None` = o padrão.
-    pub spacing: Option<f64>,
     /// O pincel CHATO (`BrushSpec::dab_flatten`, `dab_angle_deg`): a pegada achatada e o ângulo dela, FIXO
     /// na tela (não segue o traço) — o Bristle Flat do Rebelle é largo deitado e fino de pé.
     pub achatado: Option<(f64, u16)>,
@@ -56,6 +54,15 @@ pub struct Receita {
     /// (`falloff`) e o espalhamento (`jitter`) da família seca (prompt 35).
     pub pincel: &'static [(&'static str, &'static str)],
 }
+
+/// ⭐ **A REGRA da fábrica** (dono, 18/10, prompt 51): todo pincel com o Spacing 0,1 e o Continuous — a cápsula põe
+/// os sub-dabs a 0,025 do diâmetro e o pigmento é por comprimento (`Knob::PigmentSpacing`), então o traço é o do
+/// Spacing denso a uma fracção dos dabs do óleo. Censo: `presets_de_fabrica::a_regra_do_spacing_da_fabrica`.
+pub const SPACING_DA_FABRICA: f64 = 0.1;
+
+/// Os três óleos foram afinados a Spacing 0,01 (o pigmento por dab deles é o de 0,01): o pigmento por comprimento
+/// mantém a tinta do Express Oil e da Acrylic Round com os dabs mais esparsos.
+const PASSO_DOS_OLEOS: f64 = 0.01;
 
 /// A tela direita, com o dial guardado no meio e para baixo (para quando o artista a ligar).
 pub const DIREITA: Tilt = Tilt {
@@ -90,7 +97,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: None,
         extras: &[],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -112,7 +118,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: None,
         extras: &[],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -134,7 +139,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: None,
         extras: &[],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -160,7 +164,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: None,
         extras: &[],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -185,7 +188,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: Some(29.0),
         extras: &[],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -228,9 +230,14 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("bristleNoiseSat", 0.3),
             ("bristleNoiseLight", 0.25),
             ("bristleHeight", 0.75),
+            // O pigmento por DAB (doc 51 §3): ele satura (a tinta a 103 px 0,985 da de antes sem o peso) e o peso só lhe
+            // dava degraus — a escada da curva 2,57 · 2,70 (tecto 2,50 · 2,55) contra 2,15 · 2,40 sem ele.
+            ("pigmentSpacing", 0.0),
+            // Os fios dele têm largura em px: a 103 px a escada lê 2,24 · 2,45 · 2,15 com a cápsula a 2 px, 3,06 a 2,06
+            // e 4,71 a 3 (tecto 2,78 · 2,60 · 2,50; doc 51 §3).
+            ("capsuleMaxPx", 2.0),
         ],
         grao: None,
-        spacing: Some(0.01),
         achatado: Some((0.68, 90)),
         pincel: &[],
     },
@@ -251,9 +258,15 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 4000.0,
         hardness: 0.5,
         size_px: Some(78.0),
-        extras: &[("felt", 0.0), ("bristleStrength", 2.0)],
+        extras: &[
+            ("felt", 0.0),
+            ("bristleStrength", 2.0),
+            ("pigmentSpacing", PASSO_DOS_OLEOS),
+            // A textura das cerdas dela anda com o dab: a 0,025 a escada a 103 px dobrava (6,2 → 12,5); à densidade
+            // dela 6,1, a diferença de imagem 0,04 (doc 51 §3).
+            ("capsuleSpacing", PASSO_DOS_OLEOS),
+        ],
         grao: None,
-        spacing: Some(0.01),
         achatado: None,
         pincel: &[],
     },
@@ -290,9 +303,9 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("bristleLaneWidth", 2.0),
             ("bristleLift", 0.2),
             ("bristleNoiseLength", 2000.0),
+            ("pigmentSpacing", PASSO_DOS_OLEOS),
         ],
         grao: None,
-        spacing: Some(0.01),
         achatado: None,
         pincel: &[],
     },
@@ -330,7 +343,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("tiltLag", 170.0),
         ],
         grao: Some(("Noise", 32.0)),
-        spacing: None,
         achatado: None,
         pincel: &[("falloff", "\"Linear\""), ("jitter", "0.1")],
     },
@@ -358,7 +370,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: Some(37.0),
         extras: &[("felt", 0.0), ("drag", 0.02)],
         grao: Some(("Noise", 48.0)),
-        spacing: None,
         achatado: None,
         pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2")],
     },
@@ -384,7 +395,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: Some(29.0),
         extras: &[("felt", 0.0), ("drag", 0.0)],
         grao: Some(("Noise", 100.0)),
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -413,7 +423,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: Some(77.0),
         extras: &[("felt", 0.0), ("drag", 0.05)],
         grao: Some(("Noise", 100.0)),
-        spacing: None,
         achatado: None,
         pincel: &[("jitter", "0.1")],
     },
@@ -443,7 +452,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         // compensava o halo e o azul arrastado para baixo (doc 42 §6).
         extras: &[("extDiffusion", 0.01), ("glaze", 0.8)],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -466,7 +474,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: None,
         extras: &[("glaze", 0.8)],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -489,7 +496,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: None,
         extras: &[("glaze", 0.9)],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -512,7 +518,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: None,
         extras: &[("glaze", 1.0)],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -536,7 +541,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: None,
         extras: &[("glaze", 1.0)],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[],
     },
@@ -569,7 +573,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("pressureOpacityCurve", 1.5),
         ],
         grao: None,
-        spacing: None,
         achatado: None,
         pincel: &[("falloff", "\"Smooth\""), ("shape", SEM_FORMA)],
     },
@@ -598,7 +601,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("pressureOpacityCurve", CURVA_DO_FLAT),
         ],
         grao: None,
-        spacing: None,
         achatado: Some((0.12, 90)),
         pincel: &[("dab_quina", "1.0")],
     },
@@ -626,7 +628,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("pressureOpacityCurve", CURVA_DA_GUACHE),
         ],
         grao: None,
-        spacing: None,
         achatado: Some((0.2, 90)),
         pincel: &[("dab_quina", "1.0")],
     },

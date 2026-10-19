@@ -86,7 +86,7 @@ pub(super) fn cena(n: usize) -> PainterTool {
         2 => {
             t.set_brush_shape_kind(TextureKind::Voronoi.to_u8());
             t.set_brush_spacing(1.5);
-            t.toggle_brush_continuous_spacing();
+            t.set_brush_continuous_spacing(true);
         }
         3 => t.set_brush_shape_kind(TextureKind::Bristles.to_u8()),
         4 => {
@@ -256,9 +256,7 @@ pub(super) fn carimbo(t: &mut PainterTool) {
 pub(super) fn capsula(spacing: f32, continuo: bool, rampa: bool) -> PainterTool {
     let mut t = cena_da_regua(PaintMedia::WetPaint, rampa.then_some((true, false)), 14.0);
     t.set_brush_spacing(spacing);
-    if continuo {
-        t.toggle_brush_continuous_spacing();
-    }
+    t.set_brush_continuous_spacing(continuo);
     let seed = t.paint.brush;
     t.paint.brush_by_mode.fill(seed);
     traco(&mut t, 64.0, 16.0, 112.0, 0);

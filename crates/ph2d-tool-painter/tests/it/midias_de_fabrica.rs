@@ -226,6 +226,11 @@ const MIDIAS: [Midia; 16] = [
     Midia { preset: "Gouache Flat", foto: "gouacheflat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (RampaCobertura, 0.43), (Largura, 39.0), (Pontas, 0.87)] },
 ];
 
+/// O raio da cena da mídia `nome` (a largura da foto do Rebelle), se ela tem foto.
+pub(super) fn raio_da_midia(nome: &str) -> Option<f32> {
+    MIDIAS.iter().find(|m| m.preset == nome).map(|m| m.raio)
+}
+
 pub(super) fn de_fabrica(nome: &str) -> Preset {
     let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     Biblioteca::carregar(&raiz, None)

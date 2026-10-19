@@ -26,7 +26,7 @@ fn preset(nome: &str, kv: &str) -> ph2d_brush_presets::Preset {
 }
 
 /// `(evento mediana, evento pior, quadro mediana, quadro pior)` em ms.
-fn mede(p: &ph2d_brush_presets::Preset, raio: f32, passo: f32, por_quadro: usize) -> [f64; 4] {
+pub(super) fn mede(p: &ph2d_brush_presets::Preset, raio: f32, passo: f32, por_quadro: usize) -> [f64; 4] {
     let mut t = ph2d_tool_painter::PainterTool::default();
     t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);
     t.set_wet_relogio_fixo(true);

@@ -11,7 +11,9 @@
 //!
 //! `PH2D_REGERA_SO="Ink Brush,Dip Pen"` regera só esses.
 
-use super::receitas_de_fabrica::{DIREITA, PRESETS_DE_FABRICA, RECEITAS, Receita, grao};
+use super::receitas_de_fabrica::{
+    DIREITA, PRESETS_DE_FABRICA, RECEITAS, Receita, SPACING_DA_FABRICA, grao,
+};
 use super::sonda_gestos::{fnv1a, largura_que_se_ve, traco_recto_alto};
 use ph2d_brush_presets::{
     Biblioteca, Origem, Parametros, Preset, caminho_relativo, escrever, gravar, ler,
@@ -78,14 +80,15 @@ fn parametros(r: &Receita) -> Parametros {
             .is_some(),
         "campo hardness existe"
     );
-    if let Some(s) = r.spacing {
-        assert!(
-            p.brush
-                .insert("spacing".to_owned(), serde_json::json!(s))
-                .is_some(),
-            "campo spacing existe"
-        );
-    }
+    assert!(
+        p.brush
+            .insert("spacing".to_owned(), serde_json::json!(SPACING_DA_FABRICA))
+            .is_some(),
+        "campo spacing existe"
+    );
+    // Um ficheiro de antes do Continuous não o grava; o campo é do `CAMPOS_DO_PINCEL`.
+    p.brush
+        .insert("continuous_spacing".to_owned(), serde_json::json!(true));
     if let Some((flatten, angulo)) = r.achatado {
         for (campo, v) in [
             ("dab_flatten", serde_json::json!(flatten)),
@@ -161,7 +164,7 @@ fn direito(p: &Preset) -> Preset {
 }
 
 /// A largura que o pincel `p` deixa a `raio`: `crua` = o raio chega ao MOTOR sem a promessa.
-fn largura_de(p: &Preset, raio: f32, crua: bool) -> f32 {
+pub(super) fn largura_de(p: &Preset, raio: f32, crua: bool) -> f32 {
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
     let (px, w, h) = traco_recto_alto(raio / escala, raio, QUADROS_DA_LEI, |t| {
         t.set_wet_relogio_fixo(true);
@@ -275,6 +278,36 @@ fn the_factory_presets_are_counted() {
             "o nome do ficheiro é o do preset"
         );
     }
+}
+
+/// ⭐ **A REGRA do Spacing** (dono 18/10, prompt 51): cada pincel de fábrica — e o que nasce SEM preset — leva o
+/// Spacing [`SPACING_DA_FABRICA`] com o Continuous ligado.
+#[test]
+fn a_regra_do_spacing_da_fabrica() {
+    let cumpre = |b: &std::collections::BTreeMap<String, serde_json::Value>| {
+        b.get("spacing")
+            .and_then(serde_json::Value::as_f64)
+            .is_some_and(|s| (s - SPACING_DA_FABRICA).abs() < 1e-6)
+            && b.get("continuous_spacing") == Some(&serde_json::json!(true))
+    };
+    let fora: Vec<String> = Biblioteca::carregar(&raiz(), None)
+        .entradas
+        .into_iter()
+        .filter(|e| !cumpre(&e.preset.parametros.brush))
+        .map(|e| e.relativo)
+        .collect();
+    assert!(fora.is_empty(), "fora da regra do Spacing: {fora:?}");
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::WetPaint);
+    let sem_preset = t
+        .wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, "g", "sem preset"))
+        .0;
+    assert!(
+        cumpre(&sem_preset.brush),
+        "o pincel sem preset: spacing {:?} · continuous {:?}",
+        sem_preset.brush.get("spacing"),
+        sem_preset.brush.get("continuous_spacing")
+    );
 }
 
 #[test]

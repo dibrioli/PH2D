@@ -173,16 +173,15 @@ fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
     }
 }
 
-/// Wet Paint opens at Enio's dense default Spacing (2026-07-22), on ITS OWN slot — the other modes keep
-/// theirs. Mutation that bleeds it: the wet-slot spacing line dropped from `PaintState::default`.
+/// Wet Paint opens at the factory rule (Enio 18/10, prompt 51): Spacing 0.1 with Continuous — the capsule lays
+/// the dense 0.025 stroke —, on ITS OWN slot; the other modes keep theirs. Mutation that bleeds it: the wet-slot
+/// spacing line dropped from `PaintState::default`.
 #[test]
 fn wet_paint_opens_at_the_dense_default_spacing() {
     let t = PainterTool::default();
-    assert_eq!(
-        t.paint.brush_by_mode[PaintMode::WetPaint.slot()].spacing,
-        0.025,
-        "wet paint did not open at the dense default spacing"
-    );
+    let wet = &t.paint.brush_by_mode[PaintMode::WetPaint.slot()];
+    assert_eq!(wet.spacing, 0.1, "wet paint did not open at the factory Spacing");
+    assert!(wet.continuous_spacing, "wet paint did not open with Continuous");
     assert_eq!(
         t.paint.brush_by_mode[PaintMode::Paint.slot()].spacing,
         BrushSpec::default().spacing,

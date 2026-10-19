@@ -53,11 +53,7 @@ impl Stroke {
             let v = self.spec.footprint_deform().apply(dir);
             v[0].hypot(v[1])
         };
-        let base_step = if ao_longo.is_finite() && ao_longo > 1e-4 {
-            (self.spec.dab_spacing_px() / ao_longo).max(1.0)
-        } else {
-            self.spec.dab_spacing_px()
-        };
+        let base_step = self.spec.passo_ao_longo_px(self.spec.spacing, dir);
         // Smoothing length for the heading EMA, from the brush diameter (Krita's Fade is brush-relative).
         //
         // ⭐ **Pela MESMA razão do passo acima, o diâmetro é o AO LONGO DO CAMINHO.** Esta janela é

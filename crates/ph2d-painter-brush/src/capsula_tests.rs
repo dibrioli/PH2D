@@ -26,6 +26,38 @@ fn a_capsula_reparte_o_passo_para_tras() {
 
 /// A **União** é a composição de `n` passagens da mesma cor: `1 − Π(1 − c·x_k)`, sobre `c`; com `c → 0`
 /// a soma (o regime linear). A Média divide por `n`; as leis do prompt 32 lêem a queda do CENTRO.
+/// ⭐ Os sub-dabs SOLTOS ([`sub_dabs`]) caem nos pontos do traço DENSO: os múltiplos do sub-passo no arco, seja qual
+/// for o passo de fora — dois dabs de passos 4,1 e 3,7 px a sub-passo 1 dão os arcos 7, 8, 9, 10 e 11, 12, 13, 14;
+/// um passo sem múltiplo dentro não pousa nada. E o sub-passo é um número inteiro de células (não bate).
+#[test]
+fn os_sub_dabs_caem_nos_pontos_do_traco_denso() {
+    let dab = |x: f32, passo: f32, arco: f32| crate::Dab {
+        center: [x, 0.0],
+        radius_px: 20.0,
+        coverage: 1.0,
+        color: [0.0; 3],
+        color_shift: [0.0; 3],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+        arc_len: arco,
+        stroke_radius_px: 20.0,
+        step: [passo, 0.0],
+        ante: None,
+        tilt: None,
+    };
+    let arcos = |d: crate::Dab| -> Vec<f32> { sub_dabs(&d, 1.0).iter().map(|s| s.arc_len).collect() };
+    assert_eq!(arcos(dab(10.3, 4.1, 10.3)), vec![7.0, 8.0, 9.0, 10.0]);
+    assert_eq!(arcos(dab(14.0, 3.7, 14.0)), vec![11.0, 12.0, 13.0, 14.0]);
+    assert!(arcos(dab(14.5, 0.4, 14.5)).is_empty());
+    let s = sub_dabs(&dab(10.3, 4.1, 10.3), 1.0);
+    assert!((s[0].center[0] - 7.0).abs() < 1e-4, "o centro anda com o arco: {}", s[0].center[0]);
+    assert_eq!(sub_passo_sem_batimento(1.2, 1.0), 1.0);
+    assert_eq!(sub_passo_sem_batimento(1.3, 1.0), 2.0);
+    assert_eq!(sub_passo_sem_batimento(2.06, 1.0), 2.0);
+    assert_eq!(sub_passo_sem_batimento(2.575, 1.0), 3.0);
+    assert_eq!(sub_passo_sem_batimento(2.4, 2.0), 2.0);
+}
+
 #[test]
 fn as_leis_da_junta() {
     let xs = [(0.5f32, 1.0f32, 0.5f32), (0.2, 0.4, 0.5), (0.0, 0.0, 0.9)];
@@ -78,6 +110,7 @@ fn os_sub_dabs_vao_do_centro_anterior_ao_dab() {
         tilt: None,
     };
     let s: Vec<_> = sub_dabs(&d, 1.0)
+        .into_iter()
         .map(|s| (s.center, s.arc_len, s.step))
         .collect();
     assert_eq!(
@@ -94,7 +127,7 @@ fn os_sub_dabs_vao_do_centro_anterior_ao_dab() {
         ante: None,
         ..d
     };
-    assert_eq!(sub_dabs(&liso, 1.0).count(), 1);
+    assert_eq!(sub_dabs(&liso, 1.0).len(), 1);
 }
 
 fn cerdas() -> crate::TextureSettings {

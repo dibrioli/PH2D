@@ -50,11 +50,14 @@ impl PaintState {
         brush_by_mode[PaintMode::Clone.slot()] = dense;
         brush_by_mode[PaintMode::Sculpt.slot()] = sculpt;
         // Wet Paint wants dabs DENSER still (Enio, 2026-07-22): the fluid reads best with tightly
-        // packed deposits, so Spacing 0.025 — half the Smear/Blur/Clone 0.05. Its own slot, so the
+        // packed deposits — and since 18/10 (prompt 51) the rule of every factory brush, this one
+        // included: Spacing 0.1 with Continuous, whose capsule lays the sub-dabs at 0.025 of the
+        // diameter (`capsula::SUB_SPACING`) with the pigment per stroke LENGTH. Its own slot, so the
         // other modes are untouched.
         // O Wet Paint nasce com a ponta de CERDAS no Shape — as do pincel de fábrica (plano 27 W2).
         let wet = BrushSpec {
-            spacing: 0.025, // LITERAL-OK: wet-paint default dab spacing (Enio)
+            spacing: 0.1, // LITERAL-OK: wet-paint default dab spacing (Enio, 18/10)
+            continuous_spacing: true,
             shape: WetKnobs::DEFAULT.cerdas_no_shape(base.shape),
             ..base
         };

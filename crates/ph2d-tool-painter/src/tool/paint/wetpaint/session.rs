@@ -362,4 +362,7 @@ impl PainterTool {
 pub(super) struct Lane {
     pub(super) pos: [f32; 2],
     pub(super) ink: [f32; 3],
+    /// O comprimento de caminho do último dab da lane (`Dab::arc_len`): o pigmento por comprimento anda por ele
+    /// — o Jitter afasta os centros sem andar o pincel.
+    pub(super) arco: f32,
 }

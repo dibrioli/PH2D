@@ -165,9 +165,31 @@ pub const SUB_SPACING: f32 = 0.025;
 /// um texel (o mesmo piso do caminhador, [`crate::BrushSpec::dab_spacing_px`]).
 #[must_use]
 pub fn sub_passo_px(raio: f32) -> f32 {
+    sub_passo_px_a(raio, SUB_SPACING)
+}
+
+/// [`sub_passo_px`] a outra fracção `fracao` do diâmetro (o sub-passo do pincel do Wet Paint); a de uma sonda
+/// ([`com_lei`]) manda sobre as duas.
+#[must_use]
+pub fn sub_passo_px_a(raio: f32, fracao: f32) -> f32 {
     let o = SUB_PX.with(Cell::get);
-    let f = if o > 0.0 { o } else { SUB_SPACING };
+    let f = if o > 0.0 { o } else { fracao };
     (f * 2.0 * raio).max(1.0)
+}
+
+/// ⭐ **O sub-passo que não BATE com a grelha** (doc 51 §3): o sub-passo dos sub-dabs SOLTOS ([`sub_dabs`]) é um
+/// número INTEIRO de células `celula_px`. Um passo fraccionário bate com elas: abaixo de 2 células num período
+/// `1 ÷ (1 − 1/passo)` (o Oil Bristle a 41 px, 1,3 px pelo lado fino: 4,2 px; o Express Oil, ~1,1 px: 8,1 px — os
+/// medidos), e a escada do Oil Bristle a 103 px lê 3,06 a 2,06 px contra 2,24 a 2,0. Até 1,25 células é uma (nunca
+/// mais de 25 % de dabs: a 1,5 os pincéis com grão a 40 px passavam dos 16,7 ms por quadro); daí, a mais perto.
+#[must_use]
+pub fn sub_passo_sem_batimento(sub_px: f32, celula_px: f32) -> f32 {
+    let n = sub_px / celula_px;
+    if n < 1.25 {
+        celula_px
+    } else {
+        n.round().max(2.0) * celula_px
+    }
 }
 
 /// Como os sub-dabs se compõem no píxel — chave de MEDIÇÃO; o produto corre sempre a [`Lei::Uniao`]
@@ -288,40 +310,55 @@ impl Junta {
     }
 }
 
-/// The capsule of `d` as plain dabs, oldest first: each sub-dab the dab INTERPOLATED back to its
-/// [`crate::Dab::ante`] (centre, radius, coverage, heading/rotation, arc length; `step` zero), or `d`
-/// itself with no capsule. For a medium whose deposit is not a composition the stamp can fold — the Wet
-/// Paint gates each dab against the paper.
-pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> impl Iterator<Item = crate::Dab> + '_ {
-    let cap = Capsula::new(d.step, sub_px);
-    (0..cap.map_or(1, Capsula::n)).rev().map(move |k| {
-        let o = cap.map_or([0.0, 0.0], |c| c.off(k));
-        let mut s = crate::Dab {
-            center: [d.center[0] + o[0], d.center[1] + o[1]],
-            arc_len: d.arc_len - o[0].hypot(o[1]),
-            step: [0.0, 0.0],
-            ante: None,
-            ..*d
-        };
-        if let (Some(c), Some(a)) = (cap, d.ante) {
-            let t = k as f32 / c.n() as f32;
-            let lerp = |f: f32, b: f32| f + (b - f) * t;
-            let nlerp = |f: [f32; 2], b: [f32; 2]| {
-                let v = [lerp(f[0], b[0]), lerp(f[1], b[1])];
-                let l = v[0].hypot(v[1]);
-                if l > 1e-6 { [v[0] / l, v[1] / l] } else { f }
+/// ⭐ **The capsule of `d` as plain dabs ON THE DENSE STROKE'S POINTS** (doc 51 §3), oldest first: the sub-dabs
+/// sit at the multiples of `sub_px` of the stroke's arc length that fall in `(arc of the previous dab, arc of d]` —
+/// the very points a Spacing of `sub_px` would stamp, whatever the outer Spacing — each the dab INTERPOLATED back
+/// to its [`crate::Dab::ante`] (centre, radius, coverage, heading/rotation; `step` zero). A segment with no
+/// multiple in it lays nothing; `d` itself with no capsule. Splitting each step into `⌈|D|/sub⌉` instead laid them
+/// a non-integer number of pixels apart, which BEATS with the grid (the oils at 41 px: a 4,2 and 8,1 px period).
+/// For a medium whose deposit is not a composition the stamp can fold — the Wet Paint gates each dab against the
+/// paper.
+#[must_use]
+pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
+    let l = d.step[0].hypot(d.step[1]);
+    let a1 = d.arc_len;
+    let a0 = d.ante.map_or(a1 - l, |a| a.arc_len);
+    let comp = a1 - a0;
+    if !(l > 1e-6) || !(comp > 1e-6) || !sub_px.is_finite() || sub_px <= 0.0 {
+        return vec![*d];
+    }
+    // Um dab exactamente sobre um múltiplo conta (o `1e-4` do arredondamento do arco em f32).
+    let m0 = (a0 / sub_px + 1e-4).floor() as i64 + 1;
+    let m1 = (a1 / sub_px + 1e-4).floor() as i64;
+    (m0..=m1.min(m0 + i64::from(MAX_SUB) - 1))
+        .map(|m| {
+            let a = m as f32 * sub_px;
+            let t = ((a1 - a) / comp).clamp(0.0, 1.0);
+            let mut s = crate::Dab {
+                center: [d.center[0] - d.step[0] * t, d.center[1] - d.step[1] * t],
+                arc_len: a,
+                step: [0.0, 0.0],
+                ante: None,
+                ..*d
             };
-            s.radius_px = lerp(d.radius_px, a.radius_px);
-            s.coverage = lerp(d.coverage, a.coverage);
-            s.arc_len = lerp(d.arc_len, a.arc_len);
-            s.rotation = nlerp(d.rotation, a.rotation);
-            // An unset heading stays unset (the rotor reads it as the identity).
-            if d.dir != [0.0, 0.0] && a.dir != [0.0, 0.0] {
-                s.dir = nlerp(d.dir, a.dir);
+            if let Some(b) = d.ante {
+                let lerp = |f: f32, b: f32| f + (b - f) * t;
+                let nlerp = |f: [f32; 2], b: [f32; 2]| {
+                    let v = [lerp(f[0], b[0]), lerp(f[1], b[1])];
+                    let l = v[0].hypot(v[1]);
+                    if l > 1e-6 { [v[0] / l, v[1] / l] } else { f }
+                };
+                s.radius_px = lerp(d.radius_px, b.radius_px);
+                s.coverage = lerp(d.coverage, b.coverage);
+                s.rotation = nlerp(d.rotation, b.rotation);
+                // An unset heading stays unset (the rotor reads it as the identity).
+                if d.dir != [0.0, 0.0] && b.dir != [0.0, 0.0] {
+                    s.dir = nlerp(d.dir, b.dir);
+                }
             }
-        }
-        s
-    })
+            s
+        })
+        .collect()
 }
 
 /// The per-dab state a capsule interpolates back to ([`Dab::ante`]): what the previous dab of the path

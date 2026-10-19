@@ -575,14 +575,21 @@ impl C3 {
         let grossa = grupos(self.u.inicio_grosso, self.u.fim_grosso);
         let fina = grupos(self.u.inicio, self.u.fim);
         {
+            // ⭐ W5d: a borda exata antes de tudo o que a lê — W6g: num passe com carimbo próprio (o
+            // `TemposMs::c3_borda`, parcela do preenche).
+            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("luz2d C3 borda"),
+                timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_BORDA)),
+            });
+            if let Some(b) = &self.borda {
+                b.gravar(&mut p);
+            }
+        }
+        {
             let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("luz2d C3 preenche"),
                 timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_PREENCHE)),
             });
-            // ⭐ W5d: a borda exata antes de tudo o que a lê (o carimbo dela conta no preenche).
-            if let Some(b) = &self.borda {
-                b.gravar(&mut p);
-            }
             if let Some(pr) = &self.preenchimento {
                 // Os uniformes de cada passo: a região deste quadro e o salto.
                 let mut uni = vec![0u8; PASSO_UNIFORME as usize * pr.grupos.len()];

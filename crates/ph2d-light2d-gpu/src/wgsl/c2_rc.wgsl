@@ -135,7 +135,8 @@ fn meio(pc: vec2<f32>) -> Meio {
         if BORDA_CANTOS && abs(d) < 1.0 {
             let t = clamp(vec2<i32>(floor(p)), vec2<i32>(0), vec2<i32>(n) - 1);
             let w = textureLoad(cantos, t, 0);
-            if w.x < 50.0 {
+            // ⭐ W6g: o bloco sem vértice à volta não escreveu a `V2` neste quadro (`c3_cantos`).
+            if w.x > 1.0 && w.x < 50.0 && bloco_valido(cantos, t) {
                 if !na_cunha(p - vec2<f32>(t) - 0.5, w) {
                     return m;
                 }
@@ -179,7 +180,8 @@ fn meio(pc: vec2<f32>) -> Meio {
 fn na_cunha(y: vec2<f32>, w: vec4<f32>) -> bool {
     let concavo = w.z > 5.0;
     let t2 = select(w.z, w.z - 10.0, concavo);
-    let a1 = dot(y, vec2<f32>(cos(w.x), sin(w.x))) - w.y;
+    let t1 = w.x - V2_THETA;
+    let a1 = dot(y, vec2<f32>(cos(t1), sin(t1))) - w.y;
     let a2 = dot(y, vec2<f32>(cos(t2), sin(t2))) - w.w;
     return select(min(a1, a2), max(a1, a2), concavo) >= 0.0;
 }

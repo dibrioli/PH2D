@@ -92,6 +92,7 @@ override MEDIA_NO_EIXO: bool = true;
 override CANTO_NORMAIS: bool = false;
 override CANTO_LUZ: bool = false;
 override CANTO_FRACAO: bool = false;
+override CANTO_UM_LADO: bool = false;
 // ⭐ W5d — o ponto de fronteira que um texel do INTERIOR lê toma a c0 pela média AO LONGO da face,
 // nesta meia-largura (texels das cascatas; 0 = no ponto): ver [`c0_ao_longo_da_face`].
 override C0_AO_LONGO_DA_FACE: f32 = 0.0;
@@ -769,10 +770,16 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
     var e1 = pe_na_face(P0, cand[i1], h);
     var e2 = pe_na_face(P0, cand[i2], h);
     // ⭐ W6f — junto ao vértice a paralela centrada cruza a OUTRA face: as normais saem «iguais» (handoff
-    // W6f §1). Medidas de novo do lado oposto à outra face; continuam iguais ⇒ a mesma face.
-    if CANTO_NORMAIS && (e1.z < 0.0 || e2.z < 0.0 || dot(e1.xy, e2.xy) >= COS_OUTRA_FACE) {
+    // W6f §1). Medidas de novo do lado oposto à outra face; continuam iguais ⇒ a mesma face. W6g
+    // (`CANTO_UM_LADO`): SEMPRE que há duas faces — junto ao vértice a centrada sai torta sem as dar
+    // iguais, e o (152, 245) do F3 não é cortado por nenhuma (o eixo medial é que o corta; handoff W6g §2).
+    let iguais = e1.z < 0.0 || e2.z < 0.0 || dot(e1.xy, e2.xy) >= COS_OUTRA_FACE;
+    if CANTO_NORMAIS && (iguais || CANTO_UM_LADO) {
         let f1 = pe_de_um_lado(P0, cand[i1], longe_de(P0, cand[i2], e2, h), h);
         let f2 = pe_de_um_lado(P0, cand[i2], longe_de(P0, cand[i1], e1, h), h);
+        // A sonda 2: +100 entrou · +200/+400 a face 1/2 não se mediu · +800 continuam iguais.
+        sonda_saida += 100.0 + select(0.0, 200.0, f1.z < 0.0) + select(0.0, 400.0, f2.z < 0.0)
+            + select(0.0, 800.0, dot(f1.xy, f2.xy) >= COS_OUTRA_FACE);
         if f1.z >= 0.0 && f2.z >= 0.0 && dot(f1.xy, f2.xy) < COS_OUTRA_FACE {
             e1 = f1;
             e2 = f2;

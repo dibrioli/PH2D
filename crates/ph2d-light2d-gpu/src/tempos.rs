@@ -3,9 +3,9 @@
 //! cascata.
 
 /// Dois carimbos (início, fim) por passe: C0, C1, C3 visibilidade, C3 fina, C0 fina, C3 preenche,
-/// C3 máscaras, os dois do rebote (W5c), o miolo (W5h) e as `n` cascatas.
+/// C3 máscaras, os dois do rebote (W5c), o miolo (W5h), a borda (W6g) e as `n` cascatas.
 pub(crate) fn n_carimbos(n_cascatas: u32) -> u32 {
-    2 * (10 + n_cascatas)
+    2 * (11 + n_cascatas)
 }
 
 pub(crate) const C0: u32 = 0;
@@ -18,10 +18,11 @@ pub(crate) const C3_MASCARAS: u32 = 12;
 pub(crate) const C0_REBOTE: u32 = 14;
 pub(crate) const C3_REBOTE: u32 = 16;
 pub(crate) const C3_MIOLO: u32 = 18;
+pub(crate) const C3_BORDA: u32 = 20;
 
 /// O par de carimbos da cascata `nivel`.
 pub(crate) fn da_cascata(nivel: u32) -> u32 {
-    20 + 2 * nivel
+    22 + 2 * nivel
 }
 
 /// Milissegundos de placa do último quadro, por passe.
@@ -46,6 +47,9 @@ pub struct TemposMs {
     pub c3_rebote: f64,
     /// ⭐ W5h: o miolo dos opacos pela difusão (0 sem ele).
     pub c3_miolo: f64,
+    /// ⭐ W6g: a borda exata da captura e os cantos (0 sem ela) — uma PARCELA do [`Self::c3_preenche`],
+    /// que a conta como sempre contou (fora do total).
+    pub c3_borda: f64,
 }
 
 impl TemposMs {
@@ -174,11 +178,12 @@ impl Tempos {
             c3_visibilidade: ms(C3_VISIBILIDADE),
             c3_fina: ms(C3_FINA),
             c0_fina: ms(C0_FINA),
-            c3_preenche: ms(C3_PREENCHE),
+            c3_preenche: ms(C3_PREENCHE) + ms(C3_BORDA),
             c3_mascaras: ms(C3_MASCARAS),
             c0_rebote: ms(C0_REBOTE),
             c3_rebote: ms(C3_REBOTE),
             c3_miolo: ms(C3_MIOLO),
+            c3_borda: ms(C3_BORDA),
         }
     }
 

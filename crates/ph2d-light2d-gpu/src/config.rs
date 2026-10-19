@@ -314,6 +314,9 @@ pub struct Canto {
     pub luz: bool,
     /// No texel que uma face corta, a fração da outra face conta só a parte dentro das duas.
     pub fracao: bool,
+    /// ⭐ W6g — com duas faces, as normais SEMPRE pelo lado oposto (com [`Self::normais`]): a centrada sai
+    /// 2,4° torta no (152, 245) do F3 sem as dar «iguais» (handoff W6f §9, W6g §2).
+    pub um_lado: bool,
 }
 
 impl Canto {
@@ -321,11 +324,13 @@ impl Canto {
         normais: false,
         luz: false,
         fracao: false,
+        um_lado: false,
     };
     pub const LIGADO: Self = Self {
         normais: true,
         luz: true,
         fracao: true,
+        um_lado: true,
     };
 }
 

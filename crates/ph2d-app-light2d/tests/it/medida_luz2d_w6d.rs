@@ -477,7 +477,7 @@ fn custo(gpu: &ph2d_gpu::GpuContext) {
         }
     }
     let mut minimo = vec![f64::INFINITY; solvers.len()];
-    let mut partes_min = vec![[0.0; 3]; solvers.len()];
+    let mut partes_min = vec![[0.0; 4]; solvers.len()];
     for rodada in 0..RODADAS {
         for j in 0..solvers.len() {
             let i = (j + rodada) % solvers.len();
@@ -489,15 +489,32 @@ fn custo(gpu: &ph2d_gpu::GpuContext) {
             let partes = [t.c3_preenche, t.c3_visibilidade, t.c3_fina];
             if partes.iter().sum::<f64>() < minimo[i] {
                 minimo[i] = partes.iter().sum();
-                partes_min[i] = partes;
+                partes_min[i] = [partes[0], partes[1], partes[2], t.c3_borda];
             }
         }
     }
+    // ⭐ W6g: os blocos 8×8 da captura que o `c3_cantos` cobriu (a origem da `V2` sem a marca `SEM_BLOCO`).
+    for (n, _, _, s) in &solvers {
+        let Some(w) = s.cantos_da_captura() else {
+            continue;
+        };
+        let (lx, ly) = (w.width(), w.height());
+        let b = crate::comum::ler(gpu, w, 8);
+        let (mut cobertos, mut todos) = (0, 0);
+        for j in (0..ly).step_by(8) {
+            for i in (0..lx).step_by(8) {
+                let k = (j * lx + i) as usize * 8;
+                todos += 1;
+                cobertos += usize::from(half::f16::from_le_bytes([b[k], b[k + 1]]).to_f32() < 150.0);
+            }
+        }
+        eprintln!("BLOCOS · cena {n} · captura {lx}×{ly} · cobertos {cobertos}/{todos}");
+    }
     for (i, (n, v, ..)) in solvers.iter().enumerate() {
-        let [a, b, c] = partes_min[i];
+        let [a, b, c, d] = partes_min[i];
         let nome = DIAG[*v];
         eprintln!(
-            "CUSTO · cena {n} · {nome} · C3 {:.3} ms (preenche+borda {a:.3} · visibilidade {b:.3} · fina {c:.3}) · loadavg {}",
+            "CUSTO · cena {n} · {nome} · C3 {:.3} ms (preenche+borda {a:.3} [borda {d:.3}] · visibilidade {b:.3} · fina {c:.3}) · loadavg {}",
             minimo[i],
             loadavg()
         );

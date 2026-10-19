@@ -102,7 +102,13 @@ fn dentro_pelo_campo((campo, cantos, gc): &Campo, p: [f64; 2]) -> bool {
     {
         let k = texel(px.floor(), py.floor());
         let v = [h(w, k), h(w, k + 2), h(w, k + 4), h(w, k + 6)];
-        if v[0] < 50.0 {
+        // ⭐ W6g: o bloco 8×8 sem vértice à volta só tem a marca na origem (`bloco_valido`).
+        let ci = px.floor().clamp(0.0, f64::from(gc.largura - 1));
+        let cj = py.floor().clamp(0.0, f64::from(gc.altura - 1));
+        let valido = h(w, texel(ci - ci % 8.0, cj - cj % 8.0)) < 150.0;
+        if v[0] > 1.0 && v[0] < 50.0 && valido {
+            // O θ₁ da `V2` vem deslocado de 8 (`V2_THETA`).
+            let v = [v[0] - 8.0, v[1], v[2], v[3]];
             let o = [px - px.floor() - 0.5, py - py.floor() - 0.5];
             let concavo = v[2] > 5.0;
             let t2 = if concavo { v[2] - 10.0 } else { v[2] };
@@ -128,7 +134,8 @@ fn arredondado(
 ) {
     let (cx, cy) = (f64::from(CENTRO[0] + d[0]), f64::from(CENTRO[1] + d[1]));
     let (hx, hy) = (0.5 * f64::from(LADO[0]), 0.5 * f64::from(LADO[1]));
-    for vi in [2usize, 5] {
+    // A cunha e a 10 (o campo não depende da `Canto`).
+    for vi in [2usize, 4] {
         let campo = &campos[vi];
         for (sx, sy) in [(1.0, 1.0), (-1.0, 1.0), (-1.0, -1.0), (1.0, -1.0)] {
             let v = [cx + sx * hx, cy + sy * hy];
@@ -183,7 +190,9 @@ fn medida_luz2d_w6f() {
     let fabrica = ph2d_render::Camera2d::default()
         .world_to_screen_affine(ph2d_host::WindowSize::new(fhd.0, fhd.1));
     let dg = DEGRAU_PADRAO;
-    let variantes: [(&str, fn(Config) -> Config); 7] = [
+    // A 9, a 9′ e a 10 sem a 9 foram medidas e recusadas (handoff W6f §3, §9); W6g: a 10 + 9 leve, sem e
+    // com a normal de um lado.
+    let variantes: [(&str, fn(Config) -> Config); 5] = [
         ("antes da W6d", |c| Config {
             borda_continua: false,
             borda_fora: false,
@@ -198,29 +207,23 @@ fn medida_luz2d_w6f() {
             borda_vertice: Some(VERTICE_PADRAO),
             ..c
         }),
-        ("W6d + 9", |c| Config {
-            borda_vertice: None,
-            canto: Canto::LIGADO,
-            ..c
-        }),
-        ("cunha + 9", |c| Config {
-            borda_vertice: Some(VERTICE_PADRAO),
-            canto: Canto::LIGADO,
-            ..c
-        }),
-        ("cunha + 10", |c| Config {
+        ("cunha + 10 + 9", |c| Config {
             borda_vertice: Some(VERTICE_PADRAO),
             borda_cantos: true,
+            canto: Canto {
+                um_lado: false,
+                ..Canto::LIGADO
+            },
             ..c
         }),
-        ("cunha + 10 + 9", |c| Config {
+        ("10 + 9 um lado", |c| Config {
             borda_vertice: Some(VERTICE_PADRAO),
             borda_cantos: true,
             canto: Canto::LIGADO,
             ..c
         }),
     ];
-    let mut errados = [0usize; 7];
+    let mut errados = [0usize; 5];
     for zoom in [1.0, 2.5] {
         let a = fabrica.then_scale_about(zoom, Point::new(960.0, 540.0));
         let grade = grade_do_quadro(a, fhd, dg).expect("grade");

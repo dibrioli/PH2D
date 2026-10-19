@@ -16,7 +16,7 @@ pub(super) fn passo(cfg: &Config, passo_fino: bool) -> f64 {
 
 /// As constantes de TODO passe da C3: a captura ligada e o preenchimento.
 #[must_use]
-pub fn comuns(cfg: &Config) -> [(&'static str, f64); 23] {
+pub fn comuns(cfg: &Config) -> [(&'static str, f64); 24] {
     let vertice = cfg.borda_vertice.map_or((0.0, 0.0), |v| (v.pre, v.area));
     [
         ("SONDA", f64::from(cfg.sonda)),
@@ -24,6 +24,7 @@ pub fn comuns(cfg: &Config) -> [(&'static str, f64); 23] {
         ("CANTO_NORMAIS", f64::from(u8::from(cfg.canto.normais))),
         ("CANTO_LUZ", f64::from(u8::from(cfg.canto.luz))),
         ("CANTO_FRACAO", f64::from(u8::from(cfg.canto.fracao))),
+        ("CANTO_UM_LADO", f64::from(u8::from(cfg.canto.um_lado))),
         ("ESCALA_DA_CAPTURA", f64::from(cfg.escala_da_captura())),
         ("COM_LUZ", 0.0),
         ("PASSO_NA_BORDA", f64::from(cfg.passo_na_borda)),

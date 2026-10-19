@@ -825,23 +825,20 @@ fn medida_luz2d_w6f_f3() {
             .1
     };
     use ph2d_light2d_gpu::{Canto, VERTICE_PADRAO};
-    let so = |normais, luz, fracao| Canto {
-        normais,
-        luz,
-        fracao,
-    };
+    // A 9, a 9b e a 10 sem a 9 foram medidas (handoff W6f §3, §9); W6g: a 10 + 9 sem e com a normal de um lado.
     let variantes = [
         ("sem a cunha", None, Canto::DESLIGADO, false),
         ("cunha", Some(VERTICE_PADRAO), Canto::DESLIGADO, false),
-        ("cunha + 9", Some(VERTICE_PADRAO), Canto::LIGADO, false),
         (
-            "cunha + 9b",
+            "cunha + 10 + 9",
             Some(VERTICE_PADRAO),
-            so(false, true, false),
-            false,
+            Canto {
+                um_lado: false,
+                ..Canto::LIGADO
+            },
+            true,
         ),
-        ("cunha + 10", Some(VERTICE_PADRAO), Canto::DESLIGADO, true),
-        ("cunha + 10 + 9", Some(VERTICE_PADRAO), Canto::LIGADO, true),
+        ("10 + 9 um lado", Some(VERTICE_PADRAO), Canto::LIGADO, true),
     ];
     let g = Solver::novo(&gpu, base)
         .expect("solver")

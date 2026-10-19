@@ -254,6 +254,7 @@ pub const INTERNAS: &[&str] = &[
     "set_selection_offset",
     "set_selection_overlay_opacity",
     "set_selection_stabilizer",
+    "set_semente_dos_tracos",
     "set_selection_threshold",
     "set_selective_color_value",
     "set_shape_color_blend",

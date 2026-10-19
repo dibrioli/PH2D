@@ -71,13 +71,6 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     v.push((Watercolor, PAINTER_BRUSH_JITTER_ROTATE, rodar));
     v.push((Watercolor, PAINTER_BRUSH_JITTER_ROTATE_CHIP, rodar));
     v.push((
-        WetPaint,
-        painter_brush_dab_handle_id(1),
-        "a pega do ÂNGULO do carimbo: o mesmo do Rotate (o carimbo redondo não tem ângulo para mostrar). O \
-         Wet Paint lia-a «viva» por ACIDENTE: o arredondamento da pegada rodada saía pela inversa do \
-         re-molhar; com a caixa das tintas (prompt 16, Fase E) a tinta é a mesma, byte a byte",
-    ));
-    v.push((
         Impasto,
         painter_line_type_option_id(2),
         "age, mas não na FÁBRICA: o Reach de fábrica (1 diâmetro) costura dentro do próprio rastro, e o \

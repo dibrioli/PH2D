@@ -13,12 +13,14 @@
 
 mod cache;
 mod curves;
+mod elbow_mid;
 pub mod heads;
 mod index;
 
 use curves::{bbox_of, chords, curve, facing_jetty, midpoint, spline};
 
 pub use cache::RouteCache;
+pub use elbow_mid::ElbowMid;
 pub use heads::marker;
 pub use ph2d_vec_connect::Dir;
 pub use ph2d_vec_scene::VecPath;
@@ -99,6 +101,9 @@ pub struct Routed {
     /// O comprimento do trecho junto de cada ponta `[início, fim]` — a corda entre as duas estações
     /// da ponta; no cotovelo, o último segmento. É o «último trecho» da ponta que encolhe (XA2).
     pub legs: [f64; 2],
+    /// W23 B5(1) — no cotovelo, o segmento do meio de cada trecho que saiu em Z (`None` noutro
+    /// trecho e noutras rotas): a pega que o arrasta na perpendicular.
+    pub elbows: Vec<Option<ElbowMid>>,
 }
 
 impl Routed {
@@ -193,6 +198,7 @@ impl Routed {
             sides,
             leg_mids,
             legs,
+            elbows: Vec::new(),
         }
     }
 
@@ -514,6 +520,7 @@ pub(crate) fn compute(
     ends: [&Resolved<'_>; 2],
     kind: Route,
     waypoints: &[[f64; 2]],
+    mids: &[Option<f64>],
     prev: [Option<Dir>; 2],
     spread: f64,
     heads: [Head; 2],
@@ -572,6 +579,7 @@ pub(crate) fn compute(
     let last = stations.len() - 1;
     let mut pts: Vec<[f64; 2]> = vec![p0];
     let mut breaks = vec![0];
+    let mut elbows = Vec::with_capacity(last);
     for i in 0..last {
         let (a, b) = (stations[i], stations[i + 1]);
         let da = if i == 0 { d0 } else { toward(a, b) };
@@ -584,21 +592,26 @@ pub(crate) fn compute(
         .flatten()
         .filter_map(wall)
         .collect();
-        let leg = route(&RouteInput {
+        let jetty = facing_jetty(a, da, b, db);
+        let mut leg = route(&RouteInput {
             start: EndSpec { at: a, dir: da },
             end: EndSpec { at: b, dir: db },
             kind: RouteKind::Orthogonal,
-            jetty: facing_jetty(a, da, b, db),
+            jetty,
             obstacles: &walls,
             spread,
             self_loop,
         });
+        let frac = mids.get(i).copied().flatten();
+        elbows.push(elbow_mid::place(&mut leg, da, db, jetty, frac));
         pts.extend(leg.into_iter().skip(1));
         breaks.push(pts.len() - 1);
     }
     let verts = pts.iter().map(|p| VecVertex::corner(*p)).collect();
     let legs = chords(&pts);
-    Routed::assemble(stations, verts, &breaks, [d0, d1], legs)
+    let mut routed = Routed::assemble(stations, verts, &breaks, [d0, d1], legs);
+    routed.elbows = elbows;
+    routed
 }
 
 /// O lado da ponta `which` de uma seta presa a um ponto fixo, para o oráculo (o `fixedPoint` do

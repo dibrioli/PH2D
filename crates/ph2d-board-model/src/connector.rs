@@ -115,6 +115,13 @@ pub struct Connector {
     /// Os pontos (mundo) por onde o artista fez a seta passar, do início para o fim — os «pontos de
     /// ajuste» do Miro. Vazio = a rota de nascença entre as pontas.
     pub waypoints: Vec<[f64; 2]>,
+    /// W23 B5(1) — onde fica o segmento do MEIO de cada trecho do cotovelo (um por trecho entre
+    /// estações), em fracção do vão entre os recuos das pontas; `None` = o de nascença. Só o cotovelo
+    /// a lê; num trecho que não sai em Z fica guardada sem uso (a lei do tldraw, doc 13). Alinhada
+    /// com `waypoints`: mexe-se só por [`Connector::insert_waypoint`], [`Connector::remove_waypoint`]
+    /// e [`Connector::set_mid`].
+    #[serde(default)]
+    pub mids: Vec<Option<f64>>,
 }
 
 impl Connector {
@@ -133,6 +140,54 @@ impl Connector {
             style,
             label: String::new(),
             waypoints: Vec::new(),
+            mids: Vec::new(),
+        }
+    }
+
+    /// A fracção do segmento do meio do trecho `leg`, se o artista o arrastou.
+    #[must_use]
+    pub fn mid(&self, leg: usize) -> Option<f64> {
+        self.mids.get(leg).copied().flatten()
+    }
+
+    /// Fixa (ou larga, com `None`) o segmento do meio do trecho `leg`.
+    pub fn set_mid(&mut self, leg: usize, frac: Option<f64>) {
+        if frac.is_some() && self.mids.len() <= leg {
+            self.mids.resize(leg + 1, None);
+        }
+        if let Some(m) = self.mids.get_mut(leg) {
+            *m = frac;
+        }
+        self.trim_mids();
+    }
+
+    /// Um ponto de ajuste novo em `i`: o trecho `i` parte-se em dois, cada um com o meio de nascença.
+    pub fn insert_waypoint(&mut self, i: usize, at: [f64; 2]) {
+        self.waypoints.insert(i, at);
+        if i < self.mids.len() {
+            self.mids[i] = None;
+            self.mids.insert(i + 1, None);
+        }
+        self.trim_mids();
+    }
+
+    /// Tira o ponto de ajuste `i`: os dois trechos dele fundem-se num, com o meio de nascença.
+    pub fn remove_waypoint(&mut self, i: usize) {
+        self.waypoints.remove(i);
+        if i < self.mids.len() {
+            self.mids[i] = None;
+            if i + 1 < self.mids.len() {
+                self.mids.remove(i + 1);
+            }
+        }
+        self.trim_mids();
+    }
+
+    fn trim_mids(&mut self) {
+        let legs = self.waypoints.len() + 1;
+        self.mids.truncate(legs);
+        while self.mids.last() == Some(&None) {
+            self.mids.pop();
         }
     }
 
@@ -158,3 +213,7 @@ impl Connector {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "connector_tests.rs"]
+mod tests;

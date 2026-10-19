@@ -94,6 +94,7 @@ fn pairs() -> Vec<(Element, Element)> {
             String::new()
         },
         waypoints: if rich { vec![[4.0, 5.0]] } else { vec![] },
+        mids: if rich { vec![None, Some(0.3)] } else { vec![] },
     };
     let ink = |st: Style, rich: bool| Ink {
         style: st,
@@ -247,6 +248,7 @@ fn every_field_of_the_model_is_named_here() {
                     style,
                     label: _,
                     waypoints: _,
+                    mids: _,
                 } = &**c;
                 style
             }

@@ -20,7 +20,7 @@ struct ImageV12 {
 #[derive(Deserialize)]
 enum KindV12 {
     Shape(Shape),
-    Connector(Box<Connector>),
+    Connector(Box<super::v13::ConnectorV13>),
     Ink(Box<Ink>),
     Frame(Frame),
     Image(Box<ImageV12>),
@@ -30,7 +30,7 @@ impl From<KindV12> for ElementKind {
     fn from(k: KindV12) -> Self {
         match k {
             KindV12::Shape(s) => ElementKind::Shape(s),
-            KindV12::Connector(c) => ElementKind::Connector(c),
+            KindV12::Connector(c) => ElementKind::Connector(Box::new(Connector::from(*c))),
             KindV12::Ink(i) => ElementKind::Ink(i),
             KindV12::Frame(f) => ElementKind::Frame(f),
             KindV12::Image(i) => ElementKind::Image(Box::new(Image {

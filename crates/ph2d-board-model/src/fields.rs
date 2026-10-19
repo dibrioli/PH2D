@@ -155,7 +155,10 @@ impl Element {
             Field::HeadStart => enc(&self.connector()?.heads[0]),
             Field::HeadEnd => enc(&self.connector()?.heads[1]),
             Field::Label => enc(&self.connector()?.label),
-            Field::Waypoints => enc(&self.connector()?.waypoints),
+            Field::Waypoints => {
+                let c = self.connector()?;
+                enc(&(&c.waypoints, &c.mids))
+            }
             Field::InkBody => {
                 let i = self.ink()?;
                 enc(&(i.pen, &i.points, i.base, i.pressure))
@@ -227,7 +230,11 @@ impl Element {
             Field::HeadStart => put(&mut self.connector_mut()?.heads[0], b),
             Field::HeadEnd => put(&mut self.connector_mut()?.heads[1], b),
             Field::Label => put(&mut self.connector_mut()?.label, b),
-            Field::Waypoints => put(&mut self.connector_mut()?.waypoints, b),
+            Field::Waypoints => {
+                let c = self.connector_mut()?;
+                (c.waypoints, c.mids) = dec(b)?;
+                Some(())
+            }
             Field::InkBody => {
                 let ElementKind::Ink(i) = &mut self.kind else {
                     return None;

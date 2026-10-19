@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use super::{DocOld, VersionV11, doc_old, version_v11};
 use crate::{
-    Board, BoardId, BoardSet, Camera, Element, ElementId, ElementKind, FracKey, Team, Thread,
+    Board, BoardId, BoardSet, Camera, Element, ElementId, FracKey, Team, Thread,
 };
 
 /// O `Org` dos formatos 9–10: com os votos.
@@ -24,11 +24,11 @@ struct OrgV10 {
     seed: Option<u32>,
 }
 
-/// O elemento dos formatos 9–10: o de hoje com o `Org` antigo.
+/// O elemento dos formatos 9–10: o do 13 com o `Org` antigo.
 #[derive(Deserialize)]
 pub(super) struct ElementV10 {
     id: ElementId,
-    kind: ElementKind,
+    kind: super::v13::KindV13,
     x: f64,
     y: f64,
     w: f64,
@@ -43,7 +43,7 @@ pub(super) struct ElementV10 {
 }
 
 pub(super) fn element_v10(e: ElementV10) -> Element {
-    let mut el = Element::bare(e.id, e.z, e.kind, [e.x, e.y, e.w, e.h]);
+    let mut el = Element::bare(e.id, e.z, e.kind.into(), [e.x, e.y, e.w, e.h]);
     el.angle = e.angle;
     el.frame = e.frame;
     el.org = e.org.map(|o| {
@@ -131,20 +131,14 @@ mod tests {
     /// viram a sessão — um voto numa nota apagada não tinha selo e não entra.
     #[test]
     fn only_the_living_bring_their_old_votes() {
-        let kind = Element::new_shape(
-            ElementId(1),
-            FracKey::between(None, None),
-            Shape {
-                kind: ShapeType::Sticky,
-                style: Style::new(None, None, Rgba([0, 0, 0, 255])),
-                text: RichText::plain("x"),
-            },
-            [0.0; 4],
-        )
-        .kind;
+        let sticky = Shape {
+            kind: ShapeType::Sticky,
+            style: Style::new(None, None, Rgba([0, 0, 0, 255])),
+            text: RichText::plain("x"),
+        };
         let el = |id: u64, votes: u32, deleted: bool| ElementV10 {
             id: ElementId(id),
-            kind: kind.clone(),
+            kind: super::super::v13::KindV13::Shape(sticky.clone()),
             x: 0.0,
             y: 0.0,
             w: 1.0,

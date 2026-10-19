@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use super::{DocOld, doc_old};
 use crate::{
-    Board, BoardId, BoardSet, Camera, Element, ElementId, Files, Poll, PollId, Team, Thread,
+    Board, BoardId, BoardSet, Camera, ElementId, Files, Poll, PollId, Team, Thread,
     Version, VersionId,
 };
 
@@ -45,7 +45,7 @@ struct BoardV11 {
     id: BoardId,
     name: String,
     camera: Camera,
-    doc: DocOld<Element>,
+    doc: DocOld<super::v13::ElementV13>,
     sketch: bool,
     team: TeamV11,
 }
@@ -64,7 +64,7 @@ pub(crate) fn read_v11(bytes: &[u8]) -> Result<BoardSet, String> {
         .boards
         .into_iter()
         .map(|b| {
-            let mut doc = doc_old(b.doc, &|e| e);
+            let mut doc = doc_old(b.doc, &super::v13::element_v13);
             doc.reindex();
             let t = b.team;
             let mut team = Team::from_v10(

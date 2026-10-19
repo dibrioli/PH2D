@@ -40,6 +40,7 @@ struct Key {
     route: Route,
     ends: [EndKey; 2],
     waypoints: Vec<[f64; 2]>,
+    mids: Vec<Option<f64>>,
     spread: f64,
     /// As pontas de seta (as hastes da curva dependem delas).
     heads: [Head; 2],
@@ -168,6 +169,7 @@ impl RouteCache {
             route: c.route,
             ends: [end_key(&ends[0]), end_key(&ends[1])],
             waypoints: c.waypoints.clone(),
+            mids: c.mids.clone(),
             spread,
             heads: c.heads,
         };
@@ -177,7 +179,15 @@ impl RouteCache {
                 self.rerouted += 1;
                 let sides = prev.map_or([None; 2], |e| e.routed.sides.map(Some));
                 let ends = [&ends[0], &ends[1]];
-                let routed = compute(ends, c.route, &c.waypoints, sides, spread, key.heads);
+                let routed = compute(
+                    ends,
+                    c.route,
+                    &c.waypoints,
+                    &c.mids,
+                    sides,
+                    spread,
+                    key.heads,
+                );
                 Entry { key, routed }
             }
         };

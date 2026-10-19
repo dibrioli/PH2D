@@ -101,6 +101,7 @@ impl From<KindV8> for ElementKind {
                     style: c.style.into(),
                     label: c.label,
                     waypoints: c.waypoints,
+                    mids: Vec::new(),
                 }))
             }
             KindV8::Ink(i) => {

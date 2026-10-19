@@ -15,7 +15,8 @@
 //!   também usa).
 //! - 10 (W11–W12): os votos da última votação em cada elemento (`Org::votes`) e a equipa sem histórico
 //!   (W13, ADR-0183): do 7 ao 10 os votos viram UMA sessão, mostrada ([`old_votes`]).
-//! - 11 (W13): sem imagens (`legacy_v11.rs`); 12 (W14): a imagem sem filtro (`legacy_v12.rs`).
+//! - 11 (W13): sem imagens (`legacy_v11.rs`); 12 (W14): a imagem sem filtro (`legacy_v12.rs`); 13
+//!   (W15–W23): a seta sem o segmento do meio do cotovelo (`legacy_v13.rs`).
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
 //! [`Old`] é genérico nisso.
@@ -47,6 +48,9 @@ pub(crate) use v11::read_v11;
 mod v12;
 use v11::{VersionV11, version_v11};
 pub(crate) use v12::read_v12;
+#[path = "legacy_v13.rs"]
+mod v13;
+pub(crate) use v13::read_v13;
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
 #[derive(Deserialize)]
@@ -100,6 +104,7 @@ impl From<ConnectorV3> for Connector {
             style: c.style.into(),
             label: c.label,
             waypoints: c.waypoints,
+            mids: Vec::new(),
         }
     }
 }

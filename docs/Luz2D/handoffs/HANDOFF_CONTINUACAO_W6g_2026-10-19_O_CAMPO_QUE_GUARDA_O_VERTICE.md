@@ -182,3 +182,65 @@ Portões com o padrão (`target/w6g/portoes_r3_*.log`): gpu 9/9 · app 15/15 —
    próprio `c3_cantos` dos blocos listados no quadro ANTERIOR (lista dupla), sem a `V2` no `c3_borda`.
 2. A fina da 10 + 9 (+0,11 ms na cena 5): depois do item 1.
 3. A família (b) (37–38): da W5g, fora.
+
+## 8. A bisseção dos +0,17 e da fina (o §7.1, num build por diagnóstico, tudo FORA do git e reposto)
+
+Só a régua do custo (`PH2D_W6D_CUSTO=1`), cada variante um processo, duas voltas em ordem invertida; diferença à
+`cunha`/lei W6d do MESMO processo. Moldes: `target/w6g/diag_{f,g,h,i,j}.py`, lotes `bissecao_{f,g,i}.sh`, logs
+`custo_{f,g,h,i,j}_*.log`.
+
+**A borda** (`W6G_DIAG`, `load` 14–16):
+
+| variante | borda c5 / c6 (Δ à cunha) | C3 c5 / c6 |
+|---|---|---|
+| r3 (controle) | +0,179 / +0,193 · +0,195 / +0,202 | +9,6 % / +10,6 % |
+| (i) sem o `zera` (e sem o espalha) | +0,177 / +0,196 | = r3 |
+| (iii) sem o `atomicAdd` | +0,184 / +0,192 | = r3 |
+| (v) sem a `workgroupBarrier` | +0,170 / +0,202 | = r3 |
+| **(ii) sem a escrita da origem da `V2`** | **+0,066 / +0,062** (as duas voltas) | **+5,9 % / +5,1 %** |
+| (vi) sem origem nenhuma (`V` e `V2`) | +0,068 / +0,063 | = (ii) |
+| (iv) a entrada `c3_borda` com o resto igual | +0,023 / +0,022 | +4,8 % / +6,0 % |
+
+⇒ **os 0,11 são a sentinela `SEM_BLOCO` na `V2` em TODOS os 245 760 blocos** (uma escrita espalhada por bloco numa
+textura de 126 MB que o `meio` amostra). A mesma escrita na `V` sai de graça (vi = ii); o `zera`, o `atomicAdd` e a
+barreira não custam nada. Com (ii) o `preenche + borda` fica a +0,098 / +0,091 da lei W6d (passa o ≤ +0,17), mas o C3
+da cena 5 não: o resto é a fina.
+
+**A fina** (`W6G_FINA` sobre a (ii); Δ à lei W6d):
+
+| variante | fina c5 | fina c6 |
+|---|---|---|
+| f0 (só a ii) | +0,112 · +0,117 · +0,134 · +0,120 | +0,013 · +0,012 · +0,022 · +0,028 |
+| f1 sem `CANTO_UM_LADO` | +0,131 / +0,151 | +0,018 / +0,016 |
+| f5 o `meio` sem o `bloco_valido` | +0,082 / +0,094 | −0,011 / +0,000 |
+| f6 sem `CANTO_NORMAIS` · f7 sem `CANTO_LUZ` · f8 sem `CANTO_FRACAO` | +0,094 · +0,043 · +0,129 | −0,004 · **+0,062** · +0,013 |
+| f2 `Canto` todo desligado | +0,020 / +0,039 / +0,011 | +0,052 / +0,043 / +0,010 |
+| f3 o `meio` sem a `V2` | +0,059 / +0,031 | +0,034 / +0,049 |
+| **f4 (f2 + f3: o código FORA do shader)** | **−0,004 / +0,006 / +0,014 / +0,003** | **+0,008 / −0,007 / +0,014** |
+| **f12 o mesmo código COMPILADO, morto em execução** (`cas.tamanho.x == 12345u`) | **+0,040 / +0,038** | **+0,049 / +0,029** |
+
+- **Contadas** (sonda 9 temporária: chamadas à `visibilidade` cheia, à marcha pela face e passos da outra face, somadas
+  na fina): a 10 + 9 muda as marchas em < 0,3 % (cena 5: −323 cheias, +436 pela face, +118 outra face sobre 232 879
+  texels com marcha — os mesmos texels em toda variante). **A hipótese «a 10 + 9 marcha mais» está REFUTADA**; o f7
+  que encarece a cena 6 também não muda as contagens.
+- ⇒ duas parcelas: **~0,035 ms por o código do canto/`V2` EXISTIR no kernel** (f12 × f4, nas duas cenas: código
+  gerado — registos/ocupação, por provar com um contador de registos que o wgpu não expõe) e **~0,08 ms de execução
+  só na cena 5** (f0 × f12) que não são marchas a mais. Na cena 6 a execução chega a poupar (f0 < f12).
+
+## ⛔ Recusas MEDIDAS (§8)
+
+| Recusa | Porquê |
+|---|---|
+| Curar a borda pelo `zera`, pelo `atomicAdd` ou pela barreira | (i), (iii), (v): zero. |
+| Marcar a `V2` com sentinela em todo bloco a cada quadro | (ii): 0,11 ms — a escrita espalhada nos 245 mil blocos. |
+| Atribuir a fina a marchas a mais | Contadas: < 0,3 % de diferença. |
+| Curar a fina tirando um `CANTO_*` | f1/f6/f7/f8: nenhum sozinho chega, e o f7 encarece a cena 6. |
+
+## 9. A cura (r4) — a lista DUPLA, a `V2` sempre válida
+
+O que (ii) + f5 medem juntos: a `V2` deixa de ter a marca por bloco. Duas listas em alternância (`L[p]` deste quadro,
+`L[1 − p]` do anterior): o `c3_borda_cantos` escreve a `V` e acrescenta a `L[p]` (sem a `V2`, binding 18 fora); um
+`c3_cantos_limpa` indireto sobre `L[1 − p]` repõe a sentinela `SEM_CUNHA` nos 3×3 blocos de cada listado do quadro
+anterior; o `c3_cantos` sobre `L[p]` escreve os de agora. A `V2` fica válida em toda a captura e o `meio` larga o
+`bloco_valido` (uma leitura a menos no laço). Previsão pelas medições: borda +0,066, fina −0,03 ⇒ C3 c5 ≈ +5,3–5,8 %,
+c6 ≈ +3,5–3,9 % — **ainda acima na cena 5**; o que falta é a parcela da fina (§8), por isso a r4 cura a borda e mede.

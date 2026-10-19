@@ -122,7 +122,7 @@ seguinte; o resto entra em lotes.
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I9_I12_I14.md)): dicas de tipo,
    esqueletos com buracos, paleta `@ : >` e `--!strict`; smoke do dono OK a 18/10.
    ~~I13~~ — feito **na linha**, smoke do dono OK a 19/10 (formatar ao salvar com o StyLua fixado; [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I13.md); §Estado, [I13.md](ferramentas/medicoes_onda2/I13.md)). 
-   ~~I15~~ — feito **na linha** (HEAD `aca1bc0ed1`; [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-19_ONDA2_I15.md)): cena 3 conduzida e fotografada, bancada completa dentro de um quadro, solver novo recusado (fica o antigo). **Próximo: o item 4 (Acabamento)** e depois o smoke do dono e `/pd-linha-fechar`. Aberto da bancada: a pintura `+0,17` ms a 7 500 linhas (`CodeDoc::problems()` por quadro, por medir).
+   ~~I15~~ — feito **na linha**, smoke do dono OK a 19/10 (HEAD `9017a40688`, com a cura do Tab nos buracos; [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-19_ONDA2_I15.md)): cena 3 conduzida e fotografada, bancada completa dentro de um quadro, solver novo recusado (fica o antigo). **Próximo: o item 4 (Acabamento)** e depois o smoke do dono e `/pd-linha-fechar`. Aberto da bancada: a pintura `+0,17` ms a 7 500 linhas (`CodeDoc::problems()` por quadro, por medir).
 4. **Acabamento (fim da fila, pedido do dono no smoke do I6/I11, 17/10):** com **Ctrl** carregado, o rato
    sobre qualquer palavra que o Ctrl+clique leva a algum sítio vira o ponteiro em **mão** (e o nome
    sublinha, como no Godot/VS Code). Só sobre o que é clicável: a validade tem de vir da mesma regra

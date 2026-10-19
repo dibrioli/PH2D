@@ -109,6 +109,8 @@ linha.
 4. Clique dentro de `"amplitude"` na linha 9 e carregue **F2**: aparece uma caixinha «Enter to rename · keeps the value of 1 object». Escreva `height` e **Enter**: a linha 9 e a linha 21 mudam juntas. No **Inspector**, abra a secção **Script**: a estrela mostra `height` = 2 como valor próprio dela.
 5. **Deu errado se:** a lista não abre depois de `ph2d.`; o Alt+Enter não oferece nada; depois de renomear o valor da estrela volta a 1 ou o Inspector ainda diz `amplitude`; as formas não mexem depois do Ctrl+S.
 
+> ✅ **Smoke do dono OK a 19/10** (com a cura do Tab nos buracos, `9017a40688`).
+
 ## 9. ABERTO
 
 - A secção **Script** do Inspector expandida **não foi fotografada** (o ecrã virtual ignora cliques sintéticos); o

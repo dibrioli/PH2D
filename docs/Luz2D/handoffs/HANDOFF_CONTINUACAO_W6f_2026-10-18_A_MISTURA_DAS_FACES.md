@@ -161,3 +161,49 @@ entrar no padrão, os 5 itens do §1 da W6e e os portões.
 **PASSA** (todos): o perfil — |iso-0| ≤ 0,06 a ≥ ¼ texel fino do vértice em todo canto da caixa; e os cinco do §2
 (cantos ≤ 1 · F3 verde com o texel (152, 245) a ≤ 0,01 · (a) ≤ 14 / (b) ≤ 42 / anéis sem regressão · bits de fora iguais
 · C3 ≤ +5 %). **MORRE**: qualquer um; two-strikes como sempre.
+
+## 9. A candidata 10 — medida (`target/w6f/caixa_10*.log`, `f3_10*.log`, `rodada10.log`)
+
+Reconstrução 1 = (A)(B)(C) do §8. Reconstrução 2 = + (i) a cunha aceita como reta a aresta cheio|vazio do anel (a face
+alinhada à grade, sem parciais) · (ii) a luz da OUTRA face também pela face no texel que uma face corta
+(`face_da_outra`; a marcha saltava a lasca junto ao vértice: 0,72 contra 0,001) · (iii) o lado da paralela de um lado
+pela normal da outra face quando o ponto dela está rente (`longe_de`).
+
+| variante | cantos (≤ 1) | perfil (≤ 0,06 a ≥ ¼) | F3 (≤ 0,062) | (152, 245) (0,142 ± 0,01) | (a) / (b) / anéis / bits | C3 cena 5 / 6 (≤ +5 %) |
+|---|---|---|---|---|---|---|
+| lei W6d (o padrão) | 7 | ✗ (−0,2…−0,6, bossa +0,35) | 0,0531 | 0,140 | 1 (−0,176) / 37 / 0 / 0 | 3,491 / 2,229 |
+| 10, rec. 1 | 3 ✗ | ✗ nos vértices sem cunha | 0,0417 | — | — | — |
+| 10 + 9, rec. 1 | 2 ✗ | ✗ | 0,0371 | — | — | — |
+| **10 + 9, rec. 2** | **1** ✓ | **✓** (só −0,23 no próprio vértice) | **0,0371** ✓ | **0,124** ✗ | **1 (−0,176) / 38 / 0 / 0** ✓ | **4,296 / 2,933 (+23 % / +32 %)** ✗ |
+
+**MORRE na 2.ª reconstrução** (two-strikes) por dois itens, e os dois têm o mecanismo medido:
+- **o texel (152, 245):** a luz da face do ponto, pela face, sai 0,04 contra 0,079 (a média da lei na parte dele);
+  a normal medida pelo `pe_na_face` CENTRADO é (−0,22; −0,97) contra (−0,262; −0,965), 2,4° de erro (sem a cunha 0,7°):
+  a paralela centrada cruza a outra face, o mesmo mecanismo da 9a, mas pouco o bastante para o teste do cosseno não o
+  apanhar. Na penumbra a fração da lâmpada acima da face é sensível a isso;
+- **o custo:** é todo do `preenche + borda` (0,53 → 1,22 ms; a fina +0,08 / 0): a varredura da captura INTEIRA no
+  `c3_cantos` e as duas escritas de textura inteira (`V`, `V2`). O `meio` com o `textureLoad` a mais não pesa.
+
+Estado: `Config::borda_cantos = false` e `Config::canto = Canto::DESLIGADO` no padrão; o código das duas fica (overrides
+eliminam os ramos), `V`/`V2` só se alocam com os cantos, e a lista de passes declara a textura vazia do binding 15 sem
+eles (o G5 apanhou-a fora da lista). Portões com o padrão (`target/w6f/portoes3_*.log`, `load` 16–43 das outras
+linhas): gpu 9/9 (`c3_grade_fina`, G5, G10) · app 15/15 (`o_interior_do_opaco`, `o_campo_da_borda`,
+`a_borda_sem_pontos_pretos`, `g6_ponto_neutro`, `a_vista_renasce`, `os_tetos_da_placa`). O custo do padrão não muda
+(lei W6d 3,491 / 2,229 contra 3,499 / 2,245 na W6e).
+
+## ⛔ Recusas MEDIDAS (a 10)
+
+| Recusa | Porquê |
+|---|---|
+| A 10 + 9 (rec. 2) no padrão como está | +23 % / +32 % na C3, todo nos passes da borda; e o (152, 245) a 0,018 do gabarito (a normal centrada a 2,4°). |
+| A 10 sem a 9 | 3 cantos: sem a mistura pelas faces o texel do canto fica com uma face, mesmo com o campo certo. |
+
+## 10. ABERTO (por ordem — substitui o §5)
+
+1. **A 10 + 9 com o código leve e a normal de um lado** (é a candidata a entrar; o kill-criterion do §8 vale tal e
+   qual): (a) o `c3_cantos` só onde há vértice (o grupo 8×8 sem parcial de vértice no bloco salta; a `V` escrita só nos
+   parciais, a `V2` lida pelo `meio` só onde |d| < 1, que o passe cobre) — o alvo é a borda ≤ +0,17 ms; (b) no texel que
+   uma face corta, as normais SEMPRE pelo `pe_de_um_lado` (não só quando a centrada as dá «iguais»). A régua: a
+   `medida_luz2d_w6f`, a `_f3`, o `arredondado` e a `medida_luz2d_w6d_borda` (variante 3 = «cunha + 10 + 9»);
+   `python3 -I docs/Luz2D/ferramentas/resumo_borda.py <log>` resume-a por variante (reproduz a tabela da W6e).
+2. A família (b) (37–38): da W5g, fora.

@@ -75,22 +75,43 @@ fn por_face(
     r
 }
 
-/// O campo da borda (o 4.º canal, a distância com sinal em texels da captura) em `p` pela bilinear dos
-/// centros — a do `meio` do `c2_rc.wgsl`; `< 0` = fora.
-fn campo_em(campo: &[u8], gc: ph2d_light2d_gpu::Grade, p: [f64; 2]) -> f64 {
-    let x = (p[0] - gc.origem_m[0]) / gc.texel_m - 0.5;
-    let y = (p[1] - gc.origem_m[1]) / gc.texel_m - 0.5;
+/// O campo lido: a borda (o 4.º canal, a distância com sinal em texels da captura), as cunhas espalhadas
+/// (com `borda_cantos`) e a grade da captura.
+type Campo = (Vec<u8>, Option<Vec<u8>>, ph2d_light2d_gpu::Grade);
+
+/// `p` dentro pelo campo — a réplica do `meio` do `c2_rc.wgsl`: a bilinear dos centros e, com as cunhas,
+/// junto ao vértice (|d| < 1, cunha no texel) as duas retas sem interpolar.
+fn dentro_pelo_campo((campo, cantos, gc): &Campo, p: [f64; 2]) -> bool {
+    let h = |b: &[u8], k: usize| f64::from(half::f16::from_le_bytes([b[k], b[k + 1]]).to_f32());
+    let px = (p[0] - gc.origem_m[0]) / gc.texel_m;
+    let py = (p[1] - gc.origem_m[1]) / gc.texel_m;
+    let (x, y) = (px - 0.5, py - 0.5);
     let (i0, j0) = (x.floor(), y.floor());
     let (fx, fy) = (x - i0, y - j0);
-    let em = |i: f64, j: f64| {
+    let texel = |i: f64, j: f64| {
         let i = (i.max(0.0) as u32).min(gc.largura - 1);
         let j = (j.max(0.0) as u32).min(gc.altura - 1);
-        let k = (j * gc.largura + i) as usize * 8 + 6;
-        f64::from(half::f16::from_le_bytes([campo[k], campo[k + 1]]).to_f32())
+        (j * gc.largura + i) as usize * 8
     };
+    let em = |i: f64, j: f64| h(campo, texel(i, j) + 6);
     let a0 = em(i0, j0) * (1.0 - fx) + em(i0 + 1.0, j0) * fx;
     let a1 = em(i0, j0 + 1.0) * (1.0 - fx) + em(i0 + 1.0, j0 + 1.0) * fx;
-    a0 * (1.0 - fy) + a1 * fy
+    let d = a0 * (1.0 - fy) + a1 * fy;
+    if let Some(w) = cantos
+        && d.abs() < 1.0
+    {
+        let k = texel(px.floor(), py.floor());
+        let v = [h(w, k), h(w, k + 2), h(w, k + 4), h(w, k + 6)];
+        if v[0] < 50.0 {
+            let o = [px - px.floor() - 0.5, py - py.floor() - 0.5];
+            let concavo = v[2] > 5.0;
+            let t2 = if concavo { v[2] - 10.0 } else { v[2] };
+            let a = o[0] * v[0].cos() + o[1] * v[0].sin() - v[1];
+            let b = o[0] * t2.cos() + o[1] * t2.sin() - v[3];
+            return if concavo { a.max(b) } else { a.min(b) } >= 0.0;
+        }
+    }
+    d >= 0.0
 }
 
 /// ⭐ W6f — o modelo (handoff W6f §3): o ARREDONDADO que o campo bilinear tem em cada vértice convexo. Por
@@ -103,46 +124,48 @@ fn arredondado(
     d: [f32; 2],
     h: f64,
     variantes: &[(&str, fn(Config) -> Config)],
-    campos: &[(Vec<u8>, ph2d_light2d_gpu::Grade)],
+    campos: &[Campo],
 ) {
     let (cx, cy) = (f64::from(CENTRO[0] + d[0]), f64::from(CENTRO[1] + d[1]));
     let (hx, hy) = (0.5 * f64::from(LADO[0]), 0.5 * f64::from(LADO[1]));
-    let vi = 2;
-    let (campo, gc) = &campos[vi];
-    for (sx, sy) in [(1.0, 1.0), (-1.0, 1.0), (-1.0, -1.0), (1.0, -1.0)] {
-        let v = [cx + sx * hx, cy + sy * hy];
-        // O iso-0 ao longo da normal `n` pelo ponto `q` da face: bissecção em [−1, +1] texel.
-        let iso = |q: [f64; 2], n: [f64; 2]| {
-            let em = |t: f64| campo_em(campo, *gc, [q[0] + n[0] * t * h, q[1] + n[1] * t * h]);
-            let (mut a, mut b) = (-1.0, 1.0);
-            if em(a) < 0.0 || em(b) >= 0.0 {
-                return f64::NAN;
-            }
-            for _ in 0..30 {
-                let m = 0.5 * (a + b);
-                if em(m) >= 0.0 {
-                    a = m;
-                } else {
-                    b = m;
+    for vi in [2usize, 5] {
+        let campo = &campos[vi];
+        for (sx, sy) in [(1.0, 1.0), (-1.0, 1.0), (-1.0, -1.0), (1.0, -1.0)] {
+            let v = [cx + sx * hx, cy + sy * hy];
+            // O iso-0 ao longo da normal `n` pelo ponto `q` da face: bissecção em [−1, +1] texel.
+            let iso = |q: [f64; 2], n: [f64; 2]| {
+                let em =
+                    |t: f64| dentro_pelo_campo(campo, [q[0] + n[0] * t * h, q[1] + n[1] * t * h]);
+                let (mut a, mut b) = (-1.0, 1.0);
+                if !em(a) || em(b) {
+                    return f64::NAN;
                 }
-            }
-            0.5 * (a + b)
-        };
-        let perfil = |ponto: &dyn Fn(f64) -> [f64; 2], n: [f64; 2]| {
-            [0.0, 0.25, 0.5, 1.0, 2.0]
-                .iter()
-                .map(|&s| format!("{:+.2}", iso(ponto(s * h), n)))
-                .collect::<Vec<_>>()
-                .join(" ")
-        };
-        eprintln!(
-            "ARREDONDADO · zoom {zoom} · {k}/8 · {} · {}-{} · vertical [{}] · horizontal [{}]",
-            variantes[vi].0,
-            if sy > 0.0 { "cima" } else { "baixo" },
-            if sx > 0.0 { "direita" } else { "esquerda" },
-            perfil(&|s| [v[0], v[1] - sy * s], [sx, 0.0]),
-            perfil(&|s| [v[0] - sx * s, v[1]], [0.0, sy]),
-        );
+                for _ in 0..30 {
+                    let m = 0.5 * (a + b);
+                    if em(m) {
+                        a = m;
+                    } else {
+                        b = m;
+                    }
+                }
+                0.5 * (a + b)
+            };
+            let perfil = |ponto: &dyn Fn(f64) -> [f64; 2], n: [f64; 2]| {
+                [0.0, 0.25, 0.5, 1.0, 2.0]
+                    .iter()
+                    .map(|&s| format!("{:+.2}", iso(ponto(s * h), n)))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            };
+            eprintln!(
+                "ARREDONDADO · zoom {zoom} · {k}/8 · {} · {}-{} · vertical [{}] · horizontal [{}]",
+                variantes[vi].0,
+                if sy > 0.0 { "cima" } else { "baixo" },
+                if sx > 0.0 { "direita" } else { "esquerda" },
+                perfil(&|s| [v[0], v[1] - sy * s], [sx, 0.0]),
+                perfil(&|s| [v[0] - sx * s, v[1]], [0.0, sy]),
+            );
+        }
     }
 }
 
@@ -185,22 +208,15 @@ fn medida_luz2d_w6f() {
             canto: Canto::LIGADO,
             ..c
         }),
-        ("cunha + 9a", |c| Config {
+        ("cunha + 10", |c| Config {
             borda_vertice: Some(VERTICE_PADRAO),
-            canto: Canto {
-                normais: true,
-                luz: false,
-                fracao: false,
-            },
+            borda_cantos: true,
             ..c
         }),
-        ("cunha + 9ac", |c| Config {
+        ("cunha + 10 + 9", |c| Config {
             borda_vertice: Some(VERTICE_PADRAO),
-            canto: Canto {
-                normais: true,
-                luz: false,
-                fracao: true,
-            },
+            borda_cantos: true,
+            canto: Canto::LIGADO,
             ..c
         }),
     ];
@@ -241,7 +257,8 @@ fn medida_luz2d_w6f() {
                     por_sonda.push(fluencia_lida(&gpu, &s));
                     if sonda == 0 {
                         let t = s.borda_da_captura().expect("o campo da borda");
-                        campos.push((ler(&gpu, t, 8), cfg.grade_da_captura()));
+                        let w = s.cantos_da_captura().map(|w| ler(&gpu, w, 8));
+                        campos.push((ler(&gpu, t, 8), w, cfg.grade_da_captura()));
                     }
                 }
                 lidas.push(por_sonda);

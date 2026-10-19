@@ -177,6 +177,10 @@ pub struct Config {
     pub borda_vertice: Option<Vertice>,
     /// ⭐ W6f — o texel do CANTO pelas faces (handoff W6f §2): as três peças da candidata 9.
     pub canto: Canto,
+    /// ⭐ W6f — junto a um vértice o `meio` decide pela CUNHA das duas retas, sem interpolar (a bilinear
+    /// de retas diferentes arredonda o vértice ~½ texel; handoff W6f §4, §8). Só com
+    /// [`Self::borda_continua`] e [`Self::borda_vertice`] (os limiares da deteção).
+    pub borda_cantos: bool,
     /// ⭐ W6f — a SONDA de cor do `c3_fina` (o `sonda_cor` do `c3_direta.wgsl`): `0` = a luz; `1..=6`
     /// gravam no lugar dela o que a escolha das faces decidiu (só a lei antiga, `miolo: None`, o lê).
     pub sonda: u32,
@@ -505,6 +509,7 @@ impl Config {
             borda_fora: true,
             borda_vertice: None,
             canto: Canto::DESLIGADO,
+            borda_cantos: false,
             sonda: 0,
             pe_na_borda: true,
             vis_na_face: true,
@@ -534,6 +539,12 @@ impl Config {
     #[must_use]
     pub fn escala_da_captura(&self) -> u32 {
         self.captura
+    }
+
+    /// ⭐ W6f: os cantos da borda ([`Self::borda_cantos`]) correm — `V` e `V2` alocam-se.
+    #[must_use]
+    pub fn usa_cantos(&self) -> bool {
+        self.borda_cantos && self.borda_exata && self.borda_continua && self.borda_vertice.is_some()
     }
 
     /// A luz direta marcha numa captura PRÓPRIA (mais fina que a das cascatas)?

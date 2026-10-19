@@ -37,6 +37,7 @@ pub(super) fn cascatas(e: &Entradas<'_>) -> (wgpu::ComputePipeline, Vec<wgpu::Bi
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                     count: None,
                 },
+                entrada_textura(8, FLOAT),
             ],
         });
     let rc_pl = e
@@ -116,6 +117,11 @@ pub(super) fn cascatas(e: &Entradas<'_>) -> (wgpu::ComputePipeline, Vec<wgpu::Bi
                     wgpu::BindGroupEntry {
                         binding: 7,
                         resource: wgpu::BindingResource::Sampler(e.vizinhos),
+                    },
+                    // O `cantos` do `meio` (W6f): só a C3 o lê.
+                    wgpu::BindGroupEntry {
+                        binding: 8,
+                        resource: wgpu::BindingResource::TextureView(&e.vistas[COBERTURA]),
                     },
                 ],
             })

@@ -48,6 +48,9 @@ struct Preenchimento {
 #[path = "solver_c3_par.rs"]
 mod par;
 use par::Par;
+/// ⭐ W5d: a borda exata da captura e os cantos (ficheiro irmão pelo tecto de 700 LOC).
+#[path = "solver_c3_borda.rs"]
+mod borda;
 /// ⭐ W5p: as constantes `override` da C3 (a montagem e a régua do compilador).
 #[path = "solver_c3_constantes.rs"]
 pub(crate) mod constantes;
@@ -84,7 +87,7 @@ pub(super) struct C3 {
     /// grupos 2 (a c0) e 3 (a saída).
     rebote: Option<(Par, [wgpu::BindGroup; 2])>,
     /// ⭐ W5d: a borda exata da captura (a pipeline, o grupo 3 e o tamanho dela).
-    borda: Option<(wgpu::ComputePipeline, wgpu::BindGroup, [u32; 2])>,
+    borda: Option<borda::Borda>,
     /// A grade das cascatas (a fonte do rebote cobre-a inteira).
     tamanho_grosso: [u32; 2],
     uniforme: wgpu::Buffer,
@@ -160,6 +163,7 @@ impl C3 {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                     count: None,
                 },
+                entrada_textura(8, FLOAT),
             ],
         );
         let cena = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -182,6 +186,8 @@ impl C3 {
                     binding: 7,
                     resource: wgpu::BindingResource::Sampler(e.vizinhos),
                 },
+                // ⭐ W6f: as cunhas espalhadas (sem elas, a cobertura: o `meio` não as lê).
+                vista(8, &e.vistas[op.cantos.map_or(cob_c3, |c| c[1])]),
             ],
         });
         let fino = |passo_fino: bool| constantes::passo(cfg, passo_fino);
@@ -459,46 +465,9 @@ impl C3 {
                 (Par::em_paralelo(cfg.distantes, em), grupos)
             });
 
-            // ⭐ W5d: a borda exata — lê a cobertura crua, escreve a da C3 (grupo 3, bindings 12–13).
+            // ⭐ W5d: a borda exata (e, W6f, os cantos) — `solver_c3_borda.rs`.
             let borda = op.borda.map(|b| {
-                let g3 = layout(
-                    device,
-                    "luz2d c3 borda",
-                    &[
-                        entrada_textura(12, FLOAT),
-                        entrada_escrita(13, wgpu::TextureFormat::Rgba16Float),
-                        // ⭐ W6d: a contínua lê a 3×3 por quatro `textureGather`.
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 14,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
-                            count: None,
-                        },
-                    ],
-                );
-                let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("luz2d c3 borda"),
-                    layout: &g3,
-                    entries: &[
-                        vista(12, &e.vistas[cob]),
-                        vista(13, &e.vistas[b]),
-                        wgpu::BindGroupEntry {
-                            binding: 14,
-                            resource: wgpu::BindingResource::Sampler(e.vizinhos),
-                        },
-                    ],
-                });
-                let t = &e.lista.texturas[b].tamanho;
-                (
-                    pipeline_em(
-                        "luz2d c3 borda",
-                        &[None, None, None, Some(&g3)],
-                        "c3_borda",
-                        &[],
-                    ),
-                    grupo,
-                    *t,
-                )
+                borda::Borda::nova(e, b, cob, (op.cantos, op.vertices_vazia), &pipeline_em)
             });
             (
                 fina.map(|h| h.join().expect("a compilação da fina")),
@@ -580,10 +549,8 @@ impl C3 {
             label: Some("luz2d C3 rebote (1.º)"),
             timestamp_writes: None,
         });
-        if let Some((bp, bg3, [w, h])) = &self.borda {
-            p.set_pipeline(bp);
-            p.set_bind_group(3, bg3, &[]);
-            p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+        if let Some(b) = &self.borda {
+            b.gravar(&mut p);
         }
         p.set_pipeline(pipe.de(distantes));
         p.set_bind_group(0, &self.cena, &[]);
@@ -613,10 +580,8 @@ impl C3 {
                 timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_PREENCHE)),
             });
             // ⭐ W5d: a borda exata antes de tudo o que a lê (o carimbo dela conta no preenche).
-            if let Some((pipe, g3, [w, h])) = &self.borda {
-                p.set_pipeline(pipe);
-                p.set_bind_group(3, g3, &[]);
-                p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+            if let Some(b) = &self.borda {
+                b.gravar(&mut p);
             }
             if let Some(pr) = &self.preenchimento {
                 // Os uniformes de cada passo: a região deste quadro e o salto.

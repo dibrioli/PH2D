@@ -34,6 +34,17 @@ impl Solver {
     }
 }
 
+impl Solver {
+    /// ⭐ W6f: as cunhas espalhadas que o `meio` lê junto aos vértices (`Config::borda_cantos`): por texel
+    /// da captura, `(θ₁, s₁, θ₂, s₂)` no referencial dele (`θ₁ ≥ 50` = nenhuma; `θ₂ > 5` = côncavo).
+    #[must_use]
+    pub fn cantos_da_captura(&self) -> Option<&wgpu::Texture> {
+        crate::passlist::Opcionais::de(&self.cfg)
+            .cantos
+            .map(|c| &self.texturas[c[1]])
+    }
+}
+
 impl CapturaFina {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn novo(

@@ -831,13 +831,17 @@ fn medida_luz2d_w6f_f3() {
         fracao,
     };
     let variantes = [
-        ("sem a cunha", None, Canto::DESLIGADO),
-        ("cunha", Some(VERTICE_PADRAO), Canto::DESLIGADO),
-        ("sem + 9", None, Canto::LIGADO),
-        ("cunha + 9", Some(VERTICE_PADRAO), Canto::LIGADO),
-        ("cunha + 9a", Some(VERTICE_PADRAO), so(true, false, false)),
-        ("cunha + 9b", Some(VERTICE_PADRAO), so(false, true, false)),
-        ("cunha + 9ac", Some(VERTICE_PADRAO), so(true, false, true)),
+        ("sem a cunha", None, Canto::DESLIGADO, false),
+        ("cunha", Some(VERTICE_PADRAO), Canto::DESLIGADO, false),
+        ("cunha + 9", Some(VERTICE_PADRAO), Canto::LIGADO, false),
+        (
+            "cunha + 9b",
+            Some(VERTICE_PADRAO),
+            so(false, true, false),
+            false,
+        ),
+        ("cunha + 10", Some(VERTICE_PADRAO), Canto::DESLIGADO, true),
+        ("cunha + 10 + 9", Some(VERTICE_PADRAO), Canto::LIGADO, true),
     ];
     let g = Solver::novo(&gpu, base)
         .expect("solver")
@@ -849,12 +853,13 @@ fn medida_luz2d_w6f_f3() {
     }
     let perto = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
     let mut lidas = Vec::new();
-    for &(nome, v, canto) in &variantes {
+    for &(nome, v, canto, borda_cantos) in &variantes {
         let mut por_sonda = Vec::new();
         for sonda in 0..=6 {
             let cfg = Config {
                 borda_vertice: v,
                 canto,
+                borda_cantos,
                 sonda,
                 ..base
             };
@@ -914,7 +919,7 @@ fn medida_luz2d_w6f_f3() {
                 })
                 .collect();
             eprintln!("TEXEL ({i}, {j}) · gabarito {gv:.4} = {faces}");
-            for (vi, (nome, _, _)) in variantes.iter().enumerate() {
+            for (vi, (nome, _, _, _)) in variantes.iter().enumerate() {
                 // A lei exata no ponto remapeado (s1) e no da outra face (s6).
                 let em = |x: [f32; 3]| {
                     let q = [

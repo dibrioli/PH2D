@@ -314,10 +314,11 @@ const ERRADO_BORDA: f64 = 0.10;
 
 /// As variantes da decisão: antes da W6d (a reta por texel, sem o fora) e o produto; o iso-½ só na
 /// lista. (As rodadas 9–12 mediram também a união e o empréstimo pela normal própria: handoff W6d §16–§23.)
-const DIAG: [&str; 5] = [
+const DIAG: [&str; 6] = [
     "antes da W6d",
     "lei W6d",
     "cunha",
+    "cunha + 10 + 9",
     "cunha larga",
     "sem borda exata",
 ];
@@ -340,14 +341,21 @@ fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_
             borda_vertice: Some(ph2d_light2d_gpu::VERTICE_PADRAO),
             ..c
         },
+        // ⭐ W6f: o campo que guarda o vértice e a face no canto (handoff W6f §8).
         3 => ph2d_light2d_gpu::Config {
+            borda_vertice: Some(ph2d_light2d_gpu::VERTICE_PADRAO),
+            borda_cantos: true,
+            canto: ph2d_light2d_gpu::Canto::LIGADO,
+            ..c
+        },
+        4 => ph2d_light2d_gpu::Config {
             borda_vertice: Some(ph2d_light2d_gpu::Vertice {
                 pre: 0.02,
                 area: 0.05,
             }),
             ..c
         },
-        4 => ph2d_light2d_gpu::Config {
+        5 => ph2d_light2d_gpu::Config {
             borda_exata: false,
             ..c
         },

@@ -174,6 +174,7 @@ impl Holografica {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                     count: None,
                 },
+                entrada_textura(8, FLOAT),
             ],
         });
         let cena = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -195,6 +196,8 @@ impl Holografica {
                     binding: 7,
                     resource: wgpu::BindingResource::Sampler(e.vizinhos),
                 },
+                // O `cantos` do `meio` (W6f): só a C3 o lê.
+                vista(8, &e.vistas[COBERTURA]),
             ],
         });
         let c0 = PassList::indice_da_c0(e.cfg);

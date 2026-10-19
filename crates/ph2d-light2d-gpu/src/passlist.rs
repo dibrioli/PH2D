@@ -33,6 +33,11 @@ pub(crate) struct Opcionais {
     /// ⭐ W5d: a borda exata da captura que a C3 lê (`(cobertura, normal, recuo)` por texel), com
     /// [`Config::borda_exata`].
     pub borda: Option<usize>,
+    /// ⭐ W6f: os cantos da borda — `[as cunhas dos parciais de vértice, as espalhadas]` (`V`, `V2`), com
+    /// [`Config::usa_cantos`].
+    pub cantos: Option<[usize; 2]>,
+    /// ⭐ W6f: sem os cantos, a textura de 1 × 1 que o `c3_borda` cita (binding 15) e não escreve.
+    pub vertices_vazia: Option<usize>,
     /// ⭐ W5d: a EMISSÃO de base (antes da soma do rebote) — o 2.º rebote do quadro repõe-na, com
     /// `rebotes_por_quadro > 1`.
     pub emissao_base: Option<usize>,
@@ -65,6 +70,11 @@ impl Opcionais {
                 [k, k + 1]
             }),
             borda: cfg.borda_exata.then(|| proxima(1)),
+            cantos: cfg.usa_cantos().then(|| {
+                let k = proxima(2);
+                [k, k + 1]
+            }),
+            vertices_vazia: (cfg.borda_exata && !cfg.usa_cantos()).then(|| proxima(1)),
             emissao_base: (cfg.rebote && cfg.rebotes_por_quadro > 1 && cfg.holografica.is_some())
                 .then(|| proxima(1)),
             miolo: cfg.niveis_do_miolo().map(|_| {
@@ -290,6 +300,26 @@ impl PassList {
                 usos: T::STORAGE_BINDING | amostrada,
                 mips: 1,
             });
+            if op.vertices_vazia.is_some() {
+                texturas.push(Textura {
+                    nome: "luz2d/tex/vertices_vazia",
+                    formato: wgpu::TextureFormat::Rgba16Float,
+                    tamanho: [1, 1],
+                    usos: T::STORAGE_BINDING,
+                    mips: 1,
+                });
+            }
+            if op.cantos.is_some() {
+                for nome in ["luz2d/tex/vertices", "luz2d/tex/cantos"] {
+                    texturas.push(Textura {
+                        nome,
+                        formato: wgpu::TextureFormat::Rgba16Float,
+                        tamanho: [gc.largura, gc.altura],
+                        usos: T::STORAGE_BINDING | amostrada,
+                        mips: 1,
+                    });
+                }
+            }
         }
 
         if op.emissao_base.is_some() {
@@ -523,11 +553,21 @@ impl PassList {
             passes.push(Passe {
                 nome: "C3 borda".into(),
                 le: vec![cob],
-                escreve: vec![b],
+                escreve: [b].into_iter().chain(op.cantos.map(|c| c[0])).collect(),
+            });
+        }
+        if let Some([v, v2]) = op.cantos {
+            passes.push(Passe {
+                nome: "C3 cantos".into(),
+                le: vec![v],
+                escreve: vec![v2],
             });
         }
         let cob = op.borda.unwrap_or(cob);
-        let cena = [cob, tau, sementes_finais];
+        let cena: Vec<usize> = [cob, tau, sementes_finais]
+            .into_iter()
+            .chain(op.cantos.map(|c| c[1]))
+            .collect();
         let c0 = Self::indice_da_c0(cfg);
         let mut le_fina = vec![c0];
         if let Some(v) = op.visibilidade {

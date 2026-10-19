@@ -63,6 +63,9 @@ override BORDA_VERTICE_PRE: f32 = 0.0;
 override BORDA_VERTICE_AREA: f32 = 0.0;
 // A sonda de cor do `c3_fina` (`Config::sonda`; `c3_direta`, [`sonda_cor`]): 0 = a luz.
 override SONDA: u32 = 0u;
+// ⭐ W6f — junto a um vértice o `meio` decide pela cunha (`Config::borda_cantos`; o `c3_cantos` do
+// `c3_borda.wgsl`). Fora da C3 o binding é a própria cobertura e o ramo não corre.
+override BORDA_CANTOS: bool = false;
 var<private> borda_aqui: bool = true;
 
 struct Cascata {
@@ -87,6 +90,7 @@ struct Cascata {
 @group(0) @binding(5) var cobertura: texture_2d<f32>;
 @group(0) @binding(6) var tau_dentro: texture_2d<f32>;
 @group(0) @binding(7) var vizinhos: sampler;
+@group(0) @binding(8) var cantos: texture_2d<f32>;
 
 const TAU: f32 = 6.283185307179586;
 const VAZIO: u32 = 0xffffffffu;
@@ -127,7 +131,18 @@ fn meio(pc: vec2<f32>) -> Meio {
     if BORDA_EXATA && BORDA_CONTINUA && borda_aqui {
         // ⭐ W6d — a distância com sinal no centro de cada texel (`c3_borda`), bilinear: contínua.
         let s = textureGather(3, cobertura, vizinhos, (base + 1.0) / n);
-        if mix(mix(s.w, s.z, fr.x), mix(s.x, s.y, fr.x), fr.y) < 0.0 {
+        let d = mix(mix(s.w, s.z, fr.x), mix(s.x, s.y, fr.x), fr.y);
+        if BORDA_CANTOS && abs(d) < 1.0 {
+            let t = clamp(vec2<i32>(floor(p)), vec2<i32>(0), vec2<i32>(n) - 1);
+            let w = textureLoad(cantos, t, 0);
+            if w.x < 50.0 {
+                if !na_cunha(p - vec2<f32>(t) - 0.5, w) {
+                    return m;
+                }
+            } else if d < 0.0 {
+                return m;
+            }
+        } else if d < 0.0 {
             return m;
         }
     } else if BORDA_EXATA && borda_aqui {
@@ -157,6 +172,16 @@ fn meio(pc: vec2<f32>) -> Meio {
         m.luz = any(m.e.rgb > vec3<f32>(0.0));
     }
     return m;
+}
+
+// ⭐ W6f — `y` (o desvio do centro do texel da captura) dentro da cunha `w` do [`c3_cantos`]: as duas retas
+// (convexo) ou uma delas (côncavo, `θ₂ > 5`).
+fn na_cunha(y: vec2<f32>, w: vec4<f32>) -> bool {
+    let concavo = w.z > 5.0;
+    let t2 = select(w.z, w.z - 10.0, concavo);
+    let a1 = dot(y, vec2<f32>(cos(w.x), sin(w.x))) - w.y;
+    let a2 = dot(y, vec2<f32>(cos(t2), sin(t2))) - w.w;
+    return select(min(a1, a2), max(a1, a2), concavo) >= 0.0;
 }
 
 // ⭐ W5k — `pc` está DENTRO de um CORPO (τ < 1: todo emissor e todo oclusor de opacidade > 0): o

@@ -10,6 +10,14 @@
 @group(3) @binding(12) var borda_cobertura: texture_2d<f32>;
 @group(3) @binding(13) var borda_saida: texture_storage_2d<rgba16float, write>;
 @group(3) @binding(14) var borda_vizinhos: sampler;
+// ⭐ W6f — as cunhas dos parciais de vértice (`BORDA_CANTOS`; o [`c3_cantos`] espalha-as).
+@group(3) @binding(15) var borda_vertices: texture_storage_2d<rgba16float, write>;
+
+// A cunha aceite pelo [`pela_cunha`] no referencial do texel: `(θ₁, s₁, θ₂, s₂)` — dentro ⟺ `y·u(θ) ≥ s`
+// das duas (convexo) ou de uma (côncavo: `θ₂ + CONCAVO`); `SEM_CUNHA` no `x` = nenhuma.
+const SEM_CUNHA: f32 = 100.0;
+const CONCAVO: f32 = 10.0;
+var<private> cunha_achada: vec4<f32> = vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0);
 
 // O `t ≥ 0` tal que a área do texel unitário (centrado) além da reta `u·x = t` vale `area ≤ ½` — a
 // inversa da conta do trapézio (o `area_alem` da C3).
@@ -182,6 +190,33 @@ fn pela_cunha(t: vec2<i32>, n: vec2<i32>, a: f32, ut: vec2<f32>, propria: f32) -
                 continue;
             }
             let aq = textureLoad(borda_cobertura, q, 0).r;
+            // ⭐ W6f (`BORDA_CANTOS`): um CHEIO do anel com um vazio ao lado dá a reta da face alinhada à
+            // grade (a aresta entre os dois; ela não tem parciais).
+            if BORDA_CANTOS && aq >= 1.0 {
+                for (var e = 0; e < 4; e++) {
+                    let d = select(select(vec2<i32>(0, -1), vec2<i32>(0, 1), e == 3), select(vec2<i32>(-1, 0), vec2<i32>(1, 0), e == 1), e < 2);
+                    let r = q + d;
+                    if any(r < vec2<i32>(0)) || any(r >= n) || textureLoad(borda_cobertura, r, 0).r > 0.0 {
+                        continue;
+                    }
+                    let u = -vec2<f32>(d);
+                    let c = ut.x * u.y - ut.y * u.x;
+                    let ov = vec2<f32>(o);
+                    if c > c1 {
+                        c1 = c;
+                        u1 = u;
+                        o1 = ov;
+                        s1 = -0.5 + dot(ov, u);
+                    }
+                    if c < c2 {
+                        c2 = c;
+                        u2 = u;
+                        o2 = ov;
+                        s2 = -0.5 + dot(ov, u);
+                    }
+                }
+                continue;
+            }
             if aq <= 0.0 || aq >= 1.0 {
                 continue;
             }
@@ -220,6 +255,7 @@ fn pela_cunha(t: vec2<i32>, n: vec2<i32>, a: f32, ut: vec2<f32>, propria: f32) -
     if abs(modelo - a) > BORDA_VERTICE_AREA {
         return propria;
     }
+    cunha_achada = vec4<f32>(atan2(u1.y, u1.x), s1, atan2(u2.y, u2.x) + select(CONCAVO, 0.0, convexo), s2);
     return select(max(-s1, -s2), min(-s1, -s2), convexo);
 }
 
@@ -260,4 +296,60 @@ fn c3_borda(@builtin(global_invocation_id) gid: vec3<u32>) {
         linha = linha_de(t, n, k);
     }
     textureStore(borda_saida, t, vec4<f32>(a, linha));
+    if BORDA_CANTOS {
+        textureStore(borda_vertices, t, cunha_achada);
+    }
+}
+
+// ⭐ W6f — a cada texel da captura, a cunha do parcial de VÉRTICE mais perto a Chebyshev ≤ 2 (o primeiro da
+// varredura no empate: determinístico) no referencial dele: o `meio` decide ali pelas duas retas, sem
+// interpolar (a bilinear de retas diferentes arredonda o vértice; handoff W6f §4).
+@group(3) @binding(16) var cantos_vertices: texture_2d<f32>;
+@group(3) @binding(17) var cantos_saida: texture_storage_2d<rgba16float, write>;
+var<workgroup> cantos_bloco: array<vec4<f32>, 144>;
+
+@compute @workgroup_size(8, 8)
+fn c3_cantos(
+    @builtin(global_invocation_id) gid: vec3<u32>,
+    @builtin(local_invocation_id) lid: vec3<u32>,
+    @builtin(workgroup_id) wid: vec3<u32>,
+) {
+    let n = vec2<i32>(textureDimensions(cantos_vertices));
+    let canto = vec2<i32>(wid.xy) * 8 - 2;
+    for (var k = lid.y * 8u + lid.x; k < 144u; k += 64u) {
+        let q = canto + vec2<i32>(i32(k % 12u), i32(k / 12u));
+        var v = vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0);
+        if all(q >= vec2<i32>(0)) && all(q < n) {
+            v = textureLoad(cantos_vertices, q, 0);
+        }
+        cantos_bloco[k] = v;
+    }
+    workgroupBarrier();
+    let t = vec2<i32>(gid.xy);
+    if any(t >= n) {
+        return;
+    }
+    var melhor = vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0);
+    var d_melhor = 99;
+    for (var j = -2; j <= 2; j++) {
+        for (var i = -2; i <= 2; i++) {
+            let v = cantos_bloco[u32(i32(lid.y) + 2 + j) * 12u + u32(i32(lid.x) + 2 + i)];
+            let d = i * i + j * j;
+            if v.x >= SEM_CUNHA || d >= d_melhor {
+                continue;
+            }
+            d_melhor = d;
+            // dentro ⟺ (y + t − q)·u ≥ s, com t − q = −(i, j).
+            let o = vec2<f32>(f32(i), f32(j));
+            let concavo = v.z > 0.5 * CONCAVO;
+            let t2 = select(v.z, v.z - CONCAVO, concavo);
+            melhor = vec4<f32>(
+                v.x,
+                v.y + dot(o, vec2<f32>(cos(v.x), sin(v.x))),
+                v.z,
+                v.w + dot(o, vec2<f32>(cos(t2), sin(t2))),
+            );
+        }
+    }
+    textureStore(cantos_saida, t, melhor);
 }

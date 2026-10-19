@@ -1,5 +1,7 @@
 # CONTINUAÇÃO — `line/MiroClone` W23: smoke do dono (19/10) curado e B5(1) feito; o próximo é o B5(2) — 2026-10-19
 
+> ✅ **Smoke do dono 19/10: OK** (cenas 24 e 25). O próximo é o §5 ABERTO: B5(2), depois B5(4).
+
 > Leitor: a LLM da próxima janela. Anterior: [HANDOFF_CONTINUACAO_W23_BLOCO3](HANDOFF_CONTINUACAO_W23_BLOCO3_2026-10-18.md) ·
 > lista-mãe: [HANDOFF_CONTINUACAO_W23_ABERTOS](HANDOFF_CONTINUACAO_W23_ABERTOS_2026-10-18.md). HEAD `a83d27b7e4`, base = main `100d34c8e0`.
 > Sem integração nem push: só por ordem do Enio. Plano e oráculos do B5(1): [13_trecho_do_cotovelo.md](../13_trecho_do_cotovelo.md).

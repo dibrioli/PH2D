@@ -81,7 +81,11 @@ mod tests {
         let b = h.documents.active_board().expect("o quadro aberto");
         assert!(b.sketch);
         assert!(b.doc.live().all(|el| el.style().sketch));
-        let c = b.doc.get(arrow).and_then(|el| el.connector()).expect("a seta");
+        let c = b
+            .doc
+            .get(arrow)
+            .and_then(|el| el.connector())
+            .expect("a seta");
         assert!(
             c.ends().iter().all(|e| matches!(e, End::Bound { .. })),
             "presa às duas caixas, como o dono a desenha"

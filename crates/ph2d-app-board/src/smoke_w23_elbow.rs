@@ -31,7 +31,13 @@ pub(super) fn scene_elbow(hero: &mut HeroScreen) -> ElementId {
     let keys = ["board.smoke.elbow.start", "board.smoke.elbow.finish"];
     let mut bound = Vec::new();
     for ([x, y], key) in BOXES.into_iter().zip(keys) {
-        let b = super::put_shape(doc, ShapeType::Rectangle, style.clone(), key, [x, y, SIDE, SIDE]);
+        let b = super::put_shape(
+            doc,
+            ShapeType::Rectangle,
+            style.clone(),
+            key,
+            [x, y, SIDE, SIDE],
+        );
         bound.push(End::Bound {
             target: b,
             anchor: Anchor::Center,
@@ -43,7 +49,13 @@ pub(super) fn scene_elbow(hero: &mut HeroScreen) -> ElementId {
     BoardOp::Put(el).apply(doc);
     for (i, key) in LESSONS.into_iter().enumerate() {
         let x = i as f64 * (NOTE_W + NOTE_GAP);
-        super::put_note(doc, ShapeType::Sticky, 1, super::note_text(key), [x, NOTES_Y, NOTE_W]);
+        super::put_note(
+            doc,
+            ShapeType::Sticky,
+            1,
+            super::note_text(key),
+            [x, NOTES_Y, NOTE_W],
+        );
     }
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));

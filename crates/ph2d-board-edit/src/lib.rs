@@ -56,6 +56,7 @@ pub use frame_box::Frame;
 pub use gesture::Down;
 pub use images::{Pose, birth_size};
 pub use ink::{LASER_LIFE, PEN_WIDTHS, PenBox, PenPreset, point_segment, world_points};
+pub use mind_hover::mind_minus_offset;
 pub use mindmap::{digits, node_size};
 pub use notes::{
     NOTE_DEFAULT_SIZE, NOTE_GAP_K, NOTE_SCALES, NoteStyle, grid_layout, note_scale, note_size,
@@ -63,7 +64,6 @@ pub use notes::{
 };
 pub use organize::{Align, Axis, Notice, Order};
 pub use overlay::{Overlay, Target, TextOverlay, Wire, grid_handle_offset};
-pub use mind_hover::mind_minus_offset;
 pub use ph2d_board_layout::Move;
 pub use present::{
     SLIDE_MARGIN, TRAVEL_POWER, TRAVEL_SECS, camera_at, first_slide, slide_camera, slides, travel,

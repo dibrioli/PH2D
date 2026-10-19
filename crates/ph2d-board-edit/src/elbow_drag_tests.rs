@@ -19,7 +19,10 @@ fn elbow(w: &mut World) -> ElementId {
 
 fn segment(w: &mut World) -> ([f64; 2], bool) {
     let o = w.ed.overlay(&mut w.doc, &mut w.ts);
-    assert!(o.wires[0].mids.is_empty(), "o trecho em Z não tem a bolinha que cria ponto");
+    assert!(
+        o.wires[0].mids.is_empty(),
+        "o trecho em Z não tem a bolinha que cria ponto"
+    );
     o.wires[0].segments[0]
 }
 
@@ -31,16 +34,26 @@ fn dragging_the_middle_of_an_elbow_moves_it_across_in_one_step() {
     let id = elbow(&mut w);
     let (seg, vertical) = segment(&mut w);
     assert!(vertical && close(seg[0], 250.0), "nasce a meio: {seg:?}");
-    assert_eq!(w.ed.cursor_at(&w.doc, at(seg[0], seg[1], NONE)), Some(BoardCursor::ResizeEw));
+    assert_eq!(
+        w.ed.cursor_at(&w.doc, at(seg[0], seg[1], NONE)),
+        Some(BoardCursor::ResizeEw)
+    );
     w.click(seg, NONE);
-    assert_eq!(w.el(id).connector().unwrap().mid(0), None, "um toque não fixa nada");
+    assert_eq!(
+        w.el(id).connector().unwrap().mid(0),
+        None,
+        "um toque não fixa nada"
+    );
     w.drag(seg, [seg[0] + 60.0, seg[1] + 45.0], NONE);
     let c = w.el(id).connector().unwrap().clone();
     assert!(c.waypoints.is_empty(), "nenhum ponto de ajuste");
     assert!(c.mid(0).is_some());
     let (moved, _) = segment(&mut w);
     assert!(close(moved[0], 310.0), "x = {}", moved[0]);
-    assert!(close(moved[1], seg[1]), "o segmento não anda no seu próprio eixo");
+    assert!(
+        close(moved[1], seg[1]),
+        "o segmento não anda no seu próprio eixo"
+    );
     assert!(w.cmd(Command::Undo));
     assert_eq!(w.el(id).connector().unwrap().mid(0), None, "um passo");
     assert!(close(segment(&mut w).0[0], 250.0));
@@ -55,9 +68,17 @@ fn a_double_click_lets_the_middle_go() {
     let (seg, _) = segment(&mut w);
     w.drag(seg, [seg[0] + 60.0, seg[1]], NONE);
     let (fixed, _) = segment(&mut w);
-    assert!(w.ed.double_click(&mut w.doc, &mut w.h, &mut w.ts, at(fixed[0], fixed[1], NONE)));
+    assert!(w.ed.double_click(
+        &mut w.doc,
+        &mut w.h,
+        &mut w.ts,
+        at(fixed[0], fixed[1], NONE)
+    ));
     assert_eq!(w.el(id).connector().unwrap().mid(0), None);
     assert!(close(segment(&mut w).0[0], 250.0));
     assert!(w.cmd(Command::Undo));
-    assert!(w.el(id).connector().unwrap().mid(0).is_some(), "desfazer devolve-o");
+    assert!(
+        w.el(id).connector().unwrap().mid(0).is_some(),
+        "desfazer devolve-o"
+    );
 }

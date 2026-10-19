@@ -60,7 +60,10 @@ fn the_excalidraw_fixed_middle_comes_in_as_our_fraction_and_goes_back() {
         .unwrap();
     let seg = &arrow["fixedSegments"][0];
     let x = arrow["x"].as_f64().unwrap();
-    let (s, t) = (seg["start"].as_array().unwrap(), seg["end"].as_array().unwrap());
+    let (s, t) = (
+        seg["start"].as_array().unwrap(),
+        seg["end"].as_array().unwrap(),
+    );
     assert_eq!(s[0], t[0], "vertical: {seg}");
     assert!((x + s[0].as_f64().unwrap() - 310.0).abs() < 0.5, "{arrow}");
 }
@@ -73,11 +76,20 @@ fn an_unpinned_elbow_writes_no_fixed_segments() {
     let file = json!({ "type": "excalidraw", "version": 2,
         "elements": [rect("R1", 0.0, 0.0), rect("R2", 400.0, 300.0), a] });
     let imp = crate::read(&file.to_string()).unwrap();
-    assert!(imp.doc.live().all(|e| e.connector().is_none_or(|c| c.mids.is_empty())));
+    assert!(
+        imp.doc
+            .live()
+            .all(|e| e.connector().is_none_or(|c| c.mids.is_empty()))
+    );
     let mut set = BoardSet::default();
     let b = set.create("C".into());
     set.get_mut(b).unwrap().doc = imp.doc;
     let out: Value = serde_json::from_str(&crate::write(set.get(b).unwrap())).unwrap();
-    let arrow = out["elements"].as_array().unwrap().iter().find(|v| v["type"] == "arrow").unwrap();
+    let arrow = out["elements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["type"] == "arrow")
+        .unwrap();
     assert!(arrow["fixedSegments"].is_null());
 }

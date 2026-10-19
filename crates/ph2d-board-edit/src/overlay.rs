@@ -117,7 +117,12 @@ impl Editor {
                         .filter(|i| r.elbows.get(*i).copied().flatten().is_none())
                         .map(|i| r.leg_mids[i])
                         .collect(),
-                    segments: r.elbows.iter().flatten().map(|e| (e.at, e.vertical)).collect(),
+                    segments: r
+                        .elbows
+                        .iter()
+                        .flatten()
+                        .map(|e| (e.at, e.vertical))
+                        .collect(),
                 })
                 .collect(),
             target: self.gesture.as_ref().and_then(|g| g.target(doc)),

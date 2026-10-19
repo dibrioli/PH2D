@@ -204,7 +204,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "2. Drag the Finish box further right: the middle line keeps its place between the \
              two boxes and moves with them."
         }
-        "board.smoke.elbow.l3" => "3. Double-click the small bar: the line goes back to the middle.",
+        "board.smoke.elbow.l3" => {
+            "3. Double-click the small bar: the line goes back to the middle."
+        }
         "board.smoke.elbow.l4" => "4. Ctrl+Z undoes each drag in one step.",
         "board.smoke.w23.to" => "To",
         "board.smoke.w23.l5" => {

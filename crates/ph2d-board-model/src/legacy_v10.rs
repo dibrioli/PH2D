@@ -7,9 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::Deserialize;
 
 use super::{DocOld, VersionV11, doc_old, version_v11};
-use crate::{
-    Board, BoardId, BoardSet, Camera, Element, ElementId, FracKey, Team, Thread,
-};
+use crate::{Board, BoardId, BoardSet, Camera, Element, ElementId, FracKey, Team, Thread};
 
 /// O `Org` dos formatos 9–10: com os votos.
 #[derive(Deserialize)]

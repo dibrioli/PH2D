@@ -102,7 +102,11 @@ pub fn paint_overlay(
         for (m, vertical) in &w.segments {
             let c = v * point(*m);
             let (long, short) = (metrics.handle, metrics.handle / 2.0);
-            let (hw, hh) = if *vertical { (short, long) } else { (long, short) };
+            let (hw, hh) = if *vertical {
+                (short, long)
+            } else {
+                (long, short)
+            };
             let r = ph2d_vector::Rect::new(c.x - hw, c.y - hh, c.x + hw, c.y + hh);
             let pill = ph2d_vector::RoundedRect::from_rect(r, short).to_path(0.1);
             scene.fill_path(&pill, &paper, Affine::IDENTITY);

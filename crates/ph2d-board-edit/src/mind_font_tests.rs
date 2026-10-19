@@ -79,7 +79,11 @@ fn hovering_a_node_shows_its_plus_and_a_minus_that_collapses() {
     let o = w.ed.overlay(&mut w.doc, &mut w.ts);
     assert_eq!(o.mind_plus.len(), 1, "o «+» do nó pairado");
     let edge = [w.el(a).x + w.el(a).w, w.el(a).center()[1]];
-    assert_eq!(o.mind_minus, Some((edge, [1.0, 0.0])), "o «−» na borda de fora");
+    assert_eq!(
+        o.mind_minus,
+        Some((edge, [1.0, 0.0])),
+        "o «−» na borda de fora"
+    );
     let off = crate::mind_minus_offset(w.ed.metrics());
     w.click([edge[0] + off, edge[1]], NONE);
     assert!(w.el(a).mind().unwrap().collapsed, "o «−» recolheu");

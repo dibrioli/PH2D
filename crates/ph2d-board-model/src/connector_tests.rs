@@ -24,15 +24,26 @@ fn a_waypoint_split_keeps_each_other_leg_its_own_middle() {
     c.set_mid(0, Some(0.25));
     c.set_mid(1, Some(0.75));
     c.insert_waypoint(1, [300.0, 100.0]);
-    assert_eq!(c.mids, vec![Some(0.25)], "o trecho 1 partiu-se: os dois de nascença");
+    assert_eq!(
+        c.mids,
+        vec![Some(0.25)],
+        "o trecho 1 partiu-se: os dois de nascença"
+    );
     assert_eq!(c.mid(2), None);
     c.set_mid(2, Some(0.6));
     c.remove_waypoint(0);
-    assert_eq!(c.mids, vec![None, Some(0.6)], "os trechos 0 e 1 fundiram-se");
+    assert_eq!(
+        c.mids,
+        vec![None, Some(0.6)],
+        "os trechos 0 e 1 fundiram-se"
+    );
     c.set_mid(1, None);
     assert!(c.mids.is_empty(), "sem `None` à cauda");
     c.set_mid(5, Some(0.1));
-    assert!(c.mids.is_empty(), "nenhum trecho 5 numa seta de dois trechos");
+    assert!(
+        c.mids.is_empty(),
+        "nenhum trecho 5 numa seta de dois trechos"
+    );
 }
 
 /// ⭐ Um ficheiro do formato 13 continua a abrir — gravado pelo build de `10c11f8be2` (teste
@@ -60,7 +71,11 @@ fn a_format_13_file_still_opens_with_its_elbow_unpinned() {
     let mut set = set;
     let id = set.boards()[0].id;
     let doc = &mut set.get_mut(id).unwrap().doc;
-    let mut el = doc.live().find(|e| e.connector().is_some()).unwrap().clone();
+    let mut el = doc
+        .live()
+        .find(|e| e.connector().is_some())
+        .unwrap()
+        .clone();
     el.connector_mut().unwrap().set_mid(1, Some(0.3));
     crate::BoardOp::Put(el).apply(doc);
     let bytes = set.to_bytes().unwrap();
@@ -68,7 +83,11 @@ fn a_format_13_file_still_opens_with_its_elbow_unpinned() {
         postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
         FORMAT_VERSION
     );
-    assert_eq!(BoardSet::from_bytes(&bytes).unwrap(), set, "o 14 vai e volta");
+    assert_eq!(
+        BoardSet::from_bytes(&bytes).unwrap(),
+        set,
+        "o 14 vai e volta"
+    );
 }
 
 /// Gravados pelo build do formato 13 (`10c11f8be2`).

@@ -181,7 +181,8 @@ impl Editor {
                     .map(WireHandle::End)
                     .or_else(|| r.waypoints().iter().position(near).map(WireHandle::Point))
                     .or_else(|| {
-                        let on = |e: &Option<ph2d_board_route::ElbowMid>| e.is_some_and(|e| near(&e.at));
+                        let on =
+                            |e: &Option<ph2d_board_route::ElbowMid>| e.is_some_and(|e| near(&e.at));
                         r.elbows.iter().position(on).map(WireHandle::Segment)
                     })
                     .or_else(|| {

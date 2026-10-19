@@ -33,18 +33,25 @@ pub(crate) fn pin(doc: &mut BoardDoc, kept: &[&Value], map: &BTreeMap<String, El
         let Some(id) = map.get(v["id"].as_str().unwrap_or("")) else {
             continue;
         };
-        let Some(e) = routes.get(*id).and_then(|r| r.elbows.first().copied().flatten()) else {
+        let Some(e) = routes
+            .get(*id)
+            .and_then(|r| r.elbows.first().copied().flatten())
+        else {
             continue;
         };
         let (x, y) = (num(v, "x").unwrap_or(0.0), num(v, "y").unwrap_or(0.0));
         let ax = usize::from(!e.vertical);
-        let ours = v["fixedSegments"].as_array().into_iter().flatten().find_map(|s| {
-            let (a, b) = (pt(&s["start"])?, pt(&s["end"])?);
-            let c = [x + (a[0] + b[0]) / 2.0, y + (a[1] + b[1]) / 2.0];
-            let lo = e.span[0].min(e.span[1]);
-            let hi = e.span[0].max(e.span[1]);
-            ((a[ax] - b[ax]).abs() < EPS && c[ax] > lo && c[ax] < hi).then(|| e.frac(c))
-        });
+        let ours = v["fixedSegments"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find_map(|s| {
+                let (a, b) = (pt(&s["start"])?, pt(&s["end"])?);
+                let c = [x + (a[0] + b[0]) / 2.0, y + (a[1] + b[1]) / 2.0];
+                let lo = e.span[0].min(e.span[1]);
+                let hi = e.span[0].max(e.span[1]);
+                ((a[ax] - b[ax]).abs() < EPS && c[ax] > lo && c[ax] < hi).then(|| e.frac(c))
+            });
         let Some(frac) = ours else { continue };
         let Some(mut el) = doc.get(*id).cloned() else {
             continue;
@@ -61,7 +68,13 @@ pub(crate) fn pin(doc: &mut BoardDoc, kept: &[&Value], map: &BTreeMap<String, El
 
 /// O `fixedSegments` que escrevemos: o segmento do meio de cada trecho que o artista fixou, pelos
 /// pontos escritos `pts` (mundo) relativos a `(x0, y0)`; `null` quando nenhum.
-pub(crate) fn fixed_segments(c: &Connector, r: &Routed, pts: &[[f64; 2]], x0: f64, y0: f64) -> Value {
+pub(crate) fn fixed_segments(
+    c: &Connector,
+    r: &Routed,
+    pts: &[[f64; 2]],
+    x0: f64,
+    y0: f64,
+) -> Value {
     let segs: Vec<Value> = (0..r.elbows.len())
         .filter(|leg| c.mid(*leg).is_some())
         .filter_map(|leg| r.elbows[leg])

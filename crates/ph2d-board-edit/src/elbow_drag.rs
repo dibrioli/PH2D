@@ -14,7 +14,11 @@ use crate::{Editor, Pointer, live};
 impl Editor {
     /// O segmento do meio de uma seta seleccionada sob `p`: a seta, o trecho e o segmento.
     #[must_use]
-    pub(crate) fn segment_at(&self, doc: &BoardDoc, p: Pointer) -> Option<(ElementId, usize, ElbowMid)> {
+    pub(crate) fn segment_at(
+        &self,
+        doc: &BoardDoc,
+        p: Pointer,
+    ) -> Option<(ElementId, usize, ElbowMid)> {
         let reach = self.metrics.handle * p.px;
         self.selection
             .iter()

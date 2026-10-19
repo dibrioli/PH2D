@@ -145,9 +145,9 @@ fn right_click_on_a_shape_opens_its_menu() {
 /// metade do botão.
 #[test]
 fn the_more_dots_read_as_three_dots_on_both_bar_buttons() {
+    use super::super::super::float_bar::{button_px, strip_button_px};
     use ph2d_tokens::StrokeToken;
     use ph2d_vector::Shape as _;
-    use super::super::super::float_bar::{button_px, strip_button_px};
     let line = f64::from(StrokeToken::Default.px());
     for side in [strip_button_px(), button_px()] {
         let r = crate::zones::Rect::new(0.0, 0.0, side, side);
@@ -172,7 +172,10 @@ fn the_more_dots_read_as_three_dots_on_both_bar_buttons() {
         }
         for w in boxes.windows(2) {
             let gap = w[1].x0 - w[0].x1;
-            assert!(gap >= w[0].width() * 0.99, "{side} px: vão de {gap} px — colam");
+            assert!(
+                gap >= w[0].width() * 0.99,
+                "{side} px: vão de {gap} px — colam"
+            );
         }
         let span = dots.bounding_box().width();
         assert!(span >= f64::from(side) / 2.0, "{side} px: abrem {span} px");

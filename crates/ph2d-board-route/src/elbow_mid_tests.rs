@@ -18,7 +18,7 @@ impl Scene {
     fn new() -> Self {
         let mut doc = BoardDoc::default();
         let ink = Rgba([0, 0, 0, 255]);
-        let mut boxed = |doc: &mut BoardDoc, bx: [f64; 4]| {
+        let boxed = |doc: &mut BoardDoc, bx: [f64; 4]| {
             let s = Shape {
                 kind: ShapeType::Rectangle,
                 style: Style::new(None, Some(ink), ink),
@@ -35,7 +35,12 @@ impl Scene {
             target,
             anchor: Anchor::Center,
         };
-        let c = Connector::new(at(r1), at(r2), Route::Elbow, Style::new(None, Some(ink), ink));
+        let c = Connector::new(
+            at(r1),
+            at(r2),
+            Route::Elbow,
+            Style::new(None, Some(ink), ink),
+        );
         let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
         let arrow = el.id;
         BoardOp::Put(el).apply(&mut doc);
@@ -72,7 +77,10 @@ fn a_dragged_middle_follows_its_fraction_when_a_box_moves() {
     let born = born.expect("de nascença sai em Z");
     assert!(born.vertical);
     assert!((born.at[0] - 250.0).abs() < 1e-6, "nasce a meio: {line:?}");
-    assert!((born.frac(born.at) - 0.5).abs() < 1e-9, "o meio é a fracção 0,5");
+    assert!(
+        (born.frac(born.at) - 0.5).abs() < 1e-9,
+        "o meio é a fracção 0,5"
+    );
     let f = born.frac([310.0, 0.0]);
     s.pin(Some(f));
     let (m, line) = s.elbow();
@@ -115,6 +123,9 @@ fn the_middle_never_enters_a_box() {
         let (m, line) = s.elbow();
         let x = m.unwrap().at[0];
         assert!(x > 100.0 && x < 400.0, "f = {f}: x = {x} ({line:?})");
-        assert!(line.windows(2).all(|w| w[0] != w[1]), "nenhum segmento nulo: {line:?}");
+        assert!(
+            line.windows(2).all(|w| w[0] != w[1]),
+            "nenhum segmento nulo: {line:?}"
+        );
     }
 }

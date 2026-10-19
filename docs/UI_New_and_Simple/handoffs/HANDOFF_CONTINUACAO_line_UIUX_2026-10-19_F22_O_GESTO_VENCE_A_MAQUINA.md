@@ -77,3 +77,33 @@ Fotos (`docs/UI_New_and_Simple/vetor_nova_ui/fotos/`): `F22_cena35.png`, `F22_ce
 Binário do smoke: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` → 2.ª saída: «Finished smoke profile [optimized] target(s) in 0.42s» (zero `Compiling`)
 
 > ✅ **Smoke do dono: OK (19/10)** — cenas 35 e 36 e os passos manuais. Pedido seguinte do dono (19/10): *«passe a animar a opacidade. faça aqui e agora»* → F22b.
+
+## 6 — F22b: a opacidade do objeto é canal de estado (dono 19/10: *«passe a animar a opacidade»*)
+
+Plano: §10 do [plano 33](../vetor_nova_ui/33_plano_F22_o_gesto_vence_a_maquina.md). Commits `79c716becb` (feat) e
+`3f4dd08e5b` (fix: `LITERAL-PX-OK` no `100.0` da semente; o teste do apagar no Preview saiu para
+`render_loop/ui_preview_apagar_tests.rs` — `ui_preview_tests.rs` tinha 618 > 600).
+
+**Superfície de colisão**
+- `ui_state_edit::capture` grava `VecPath.opacity` em `ObjectPose.opacity`; `install` escreve-a. Novo `opacity_from_scene(states, scene) -> usize`.
+- `Machine::departed()` (campo privado `departed`): quem SAI, a opacidade `0`, só no quadro da chegada; `advance` limpa-o. A ponte instala `pose().iter().chain(departed())`.
+- ⚠️ **`PROJECT_SCHEMA` `191 → 192`** (sem forma nova): `PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS = 191`; o braço `191` lê com o tipo vivo; todo `ver <= 191` passa por `opacity_from_scene` em `project_load_read.rs`. Tripla `(192, 13, 23)`. **Número que soma entre linhas: o integrador reconta** (`python3 scripts/schema-recount.py`).
+- `panel-vector` `seed_number_fields`: `VECTOR_OBJ_OPACITY_NUM` semeado de `Appearance.opacity` (inteiro; em branco no misto). A barra de controlo mostrava o 100 de fábrica.
+- Cena 37 (`vector_mode_opaco`, estágios `25..=27`, começa pela 25 com `h == 23`); `route::FAIXAS` = 12; cenas `9..=37`.
+- ⚠️ Comportamento que acorda: um objeto gravado num estado e não noutro DESAPARECE ao mostrar o outro (a lei da transição desde a faca; nunca tinha chegado à tela).
+
+**Smoke (por fazer pelo dono)**
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && PH2D_OBJECT_MODE_SMOKE=37 ./target/smoke/ph2d-host-desktop` — o botão laranja translúcido; Appearance Opacity 30 e a barra de cima OPACITY 30. Errado = botão opaco, ou um dos números a dizer 100.
+2. Manual: aba Interface, Show Default (azul, opaco) e Show Hover — a opacidade desce aos poucos até 30.
+3. Manual: abrir um projeto gravado ANTES desta versão com uma forma a 40 % e estados — o Show não lhe muda a opacidade.
+Foto `fotos/F22b_cena37.png`.
+
+**Verificação**
+- Vermelhos primeiro: `ui_state_opacidade_tests` (4), `a_opacidade_da_barra_le_a_forma`; os outros (`quem_sai_e_entregue_a_zero_na_chegada`, `um_v191_abre…`) provados pela mutação.
+- Mutação **9/9 sangrou**: capture · install · migração · `if false` · `if true` (o 192 não migra) · `departed` sem `0` · `departed` sem limpeza · ponte sem `departed` · semente da barra.
+- `nextest-impacted` (`PH2D_SUITE="motivo: formato gravado (PROJECT_SCHEMA 192)"`, base `100d34c8e0`): 19 741 corridos, 19 739 verdes, 2 vermelhos reais (os do fix acima, 3/3 sozinhos a `load` 15–19); depois do fix os dois verdes por nome. clippy `fecho` `-D warnings --all-targets` (5 crates) e `fmt`: verdes.
+- Fotos de controlo com `PH2D_UI_STATE_LOG`: 25 e 29 → 0 pousos; 35 → 1 pouso; nenhum motor.
+
+**ABERTO (acrescenta ao §5):** o item 3 do §5 está FECHADO por este §6. `CLAUDE.md` §5.1: intervalo do smoke `…26` → `…37`.
+
+Binário do smoke: 2.ª saída «Finished smoke profile [optimized] target(s) in 0.52s» (zero `Compiling`).

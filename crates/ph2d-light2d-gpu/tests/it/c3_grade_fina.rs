@@ -787,3 +787,123 @@ fn medida_luz2d_w6e_f3() {
         );
     }
 }
+
+/// ⭐ W6f — a sonda de cor do `c3_fina` (`Config::sonda`, o `sonda_cor` do `c3_direta.wgsl`) no F3 da
+/// penumbra, nos texels 3×3 em volta do (152, 245) — o que a cunha piora (handoff W6e §3) —, sem e com a
+/// cunha: a luz, o gabarito, o gabarito DECOMPOSTO por aresta do quadrado (a fração da parte de dentro
+/// mais perto de cada aresta e a média da lei nela) e as seis sondas. À mão (nome `medida_luz2d_w6f_f3`).
+#[test]
+#[ignore = "a sonda de cor do F3: corre-se à mão"]
+fn medida_luz2d_w6f_f3() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[2];
+    let cena = penumbra();
+    let base = Config {
+        fina: FINA,
+        captura: 2 * FINA,
+        miolo: None,
+        ..Config::padrao(grade(lado, texel))
+    };
+    let lei = ph2d_light2d_ref::Gabarito::com_miolo(&cena, EXTERIOR);
+    let poli: Vec<[f64; 2]> = cena.oclusores[0]
+        .vertices
+        .iter()
+        .map(|v| v.map(f64::from))
+        .collect();
+    let aresta = |q: [f64; 2]| {
+        (0..poli.len())
+            .map(|i| {
+                let (a, b) = (poli[i], poli[(i + 1) % poli.len()]);
+                let ab = [b[0] - a[0], b[1] - a[1]];
+                let t = (((q[0] - a[0]) * ab[0] + (q[1] - a[1]) * ab[1])
+                    / (ab[0] * ab[0] + ab[1] * ab[1]))
+                    .clamp(0.0, 1.0);
+                ((q[0] - a[0] - t * ab[0]).hypot(q[1] - a[1] - t * ab[1]), i)
+            })
+            .min_by(|x, y| x.0.total_cmp(&y.0))
+            .expect("arestas")
+            .1
+    };
+    let mut lidas = Vec::new();
+    for v in [None, Some(ph2d_light2d_gpu::VERTICE_PADRAO)] {
+        let mut por_sonda = Vec::new();
+        for sonda in 0..=6 {
+            let cfg = Config {
+                borda_vertice: v,
+                sonda,
+                ..base
+            };
+            let mut s = Solver::novo(&gpu, cfg).expect("solver");
+            s.quadro(&gpu, &cena);
+            por_sonda.push(ler_fluencia(&gpu, &s));
+        }
+        lidas.push(por_sonda);
+    }
+    let g = Solver::novo(&gpu, base).expect("solver").grade_da_fluencia();
+    let r = gabarito_por(&g, |p| lei.fluencia(p));
+    eprintln!(
+        "F3 W6f · vértices {:?} (fino)",
+        poli.iter()
+            .map(|q| [
+                (q[0] - g.origem_m[0]) / g.texel_m,
+                (q[1] - g.origem_m[1]) / g.texel_m
+            ])
+            .collect::<Vec<_>>()
+    );
+    for j in (244..=246u32).rev() {
+        for i in 151..=153u32 {
+            let k = (j * g.largura + i) as usize;
+            let c = g.centro(i, j);
+            if !dentro_de_algum(&cena, c) {
+                eprintln!("TEXEL ({i}, {j}) fora");
+                continue;
+            }
+            let gv = media_no_texel(&cena, &lei, &g, k, r[k])[1];
+            const S: u32 = 24;
+            let mut soma = vec![(0u32, 0.0_f64); poli.len()];
+            let mut n = 0u32;
+            for b in 0..S {
+                for a in 0..S {
+                    let o = |x: u32| (f64::from(x) + 0.5) / f64::from(S) - 0.5;
+                    let q = [c[0] + o(a) * g.texel_m, c[1] + o(b) * g.texel_m];
+                    if dentro_de_algum(&cena, q) {
+                        let e = aresta(q);
+                        soma[e].0 += 1;
+                        soma[e].1 += lei.fluencia(q)[1];
+                        n += 1;
+                    }
+                }
+            }
+            let faces: String = soma
+                .iter()
+                .enumerate()
+                .filter(|x| x.1.0 > 0)
+                .map(|(e, &(m, s))| {
+                    format!(" aresta {e} {:.4}×{:.2}", s / f64::from(m), f64::from(m) / f64::from(n))
+                })
+                .collect();
+            eprintln!("TEXEL ({i}, {j}) · gabarito {gv:.4} = {faces}");
+            for (vi, nome) in ["sem a cunha", "cunha"].iter().enumerate() {
+                // A lei exata no ponto remapeado (s1) e no da outra face (s6).
+                let em = |x: [f32; 3]| {
+                    let q = [
+                        c[0] + f64::from(x[0]) * g.texel_m,
+                        c[1] + f64::from(x[1]) * g.texel_m,
+                    ];
+                    lei.fluencia(q)[1]
+                };
+                let mut l = format!(
+                    "    {nome:<11} luz {:.4} · lei no ponto {:.4} · na outra face {:.4}",
+                    lidas[vi][0][k][1],
+                    em(lidas[vi][1][k]),
+                    em(lidas[vi][6][k])
+                );
+                for s in 1..=6 {
+                    let x = lidas[vi][s][k];
+                    l += &format!(" · s{s} ({:+.2},{:+.2},{:+.2})", x[0], x[1], x[2]);
+                }
+                eprintln!("{l}");
+            }
+        }
+    }
+}

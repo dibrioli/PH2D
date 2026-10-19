@@ -635,6 +635,13 @@ struct Onde {
 const COS_OUTRA_FACE: f32 = 0.5;
 const SEM_FACE: u32 = 0xffffffffu;
 
+// A sonda (`SONDA` ≠ 0, [`sonda_cor`]): por onde o [`onde_calcular`] saiu (+10 se foi às sementes), as
+// faces medidas (`(normal, distância)`, `z < -8` = não medida) e a luz de cada face com a fração.
+var<private> sonda_saida: f32 = 0.0;
+var<private> sonda_e1: vec3<f32> = vec3<f32>(0.0, 0.0, -9.0);
+var<private> sonda_e2: vec3<f32> = vec3<f32>(0.0, 0.0, -9.0);
+var<private> sonda_luz: vec3<f32> = vec3<f32>(0.0);
+
 // ⭐ A fração da área de um quadrado de lado `h` (centrado) além da reta `g·x = t` (`g` unitária,
 // `t ≥ 0`): a projeção do quadrado em `g` é um trapézio.
 fn area_alem(g: vec2<f32>, t: f32, h: f32) -> f32 {
@@ -693,6 +700,7 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
     var i1 = mais_perto(P0, &cand, n_cand);
     let na_janela = n_cand;
     if n_cand == 0u || (MEDIA_NO_EIXO && outra_face(P0, &cand, n_cand, i1, h) == SEM_FACE) {
+        sonda_saida = 10.0;
         var u1 = vec2<f32>(0.0);
         var d1 = 0.0;
         if na_janela > 0u {
@@ -731,10 +739,12 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
         i1 = mais_perto(P0, &cand, n_cand);
     }
     if n_cand == 0u {
+        sonda_saida += 1.0;
         return Onde(P0, false, P0, 0.0);
     }
     cand[i1] = pe_na_borda(P0, cand[i1]);
     if !MEDIA_NO_EIXO {
+        sonda_saida += 2.0;
         return Onde(cand[i1], true, cand[i1], 0.0);
     }
     // Longe do eixo (nenhuma outra face a dois texels) o texel é o de sempre. Junto a ele a fração vem
@@ -742,18 +752,24 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
     // texel): as distâncias pela PERPENDICULAR.
     let i2 = outra_face(P0, &cand, n_cand, i1, h);
     if i2 == SEM_FACE {
+        sonda_saida += 3.0;
         return Onde(cand[i1], true, cand[i1], 0.0);
     }
     cand[i2] = pe_na_borda(P0, cand[i2]);
     let e1 = pe_na_face(P0, cand[i1], h);
     let e2 = pe_na_face(P0, cand[i2], h);
+    sonda_e1 = e1;
+    sonda_e2 = e2;
     // Um ponto da MESMA face visto de lado também se afasta em direção: conta a normal.
     if e1.z < 0.0 || e2.z < 0.0 || dot(e1.xy, e2.xy) >= COS_OUTRA_FACE {
+        sonda_saida += select(select(6.0, 5.0, e2.z < 0.0), 4.0, e1.z < 0.0);
         return Onde(cand[i1], true, cand[i1], 0.0);
     }
     if e2.z < e1.z {
+        sonda_saida += 7.0;
         return Onde(cand[i2], true, cand[i1], alem_do_eixo(e2, e1, h));
     }
+    sonda_saida += 8.0;
     return Onde(cand[i1], true, cand[i2], alem_do_eixo(e1, e2, h));
 }
 
@@ -930,7 +946,11 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocat
     let tau = meio(ponto_fino(alvo)).tau;
     let onde = onde_calcular(alvo);
     let lt = luz_do_texel(alvo, onde, tau, false, true);
-    guardar_fina(alvo, onde, lt.l, lt.t, tau);
+    var l = lt.l;
+    if SONDA != 0u {
+        l = sonda_cor(alvo, onde, l);
+    }
+    guardar_fina(alvo, onde, l, lt.t, tau);
 }
 
 const VIZINHAS_DO_FUNDO: array<vec2<i32>, 4> = array<vec2<i32>, 4>(
@@ -1161,10 +1181,35 @@ fn luz_do_texel(alvo: vec2<u32>, onde: Onde, tau: f32, exata: bool, transmitida:
         }
     }
     c0_tau = 1.0;
+    sonda_luz = vec3<f32>(l.g, face.g, onde.f2);
     if onde.f2 > 0.0 {
         l = mix(l, face, onde.f2);
     }
     return LuzDoTexel(l, t);
+}
+
+// ⭐ W6f — a cor que a sonda grava no lugar da luz `l` (texels finos `h`; só a lei antiga, `miolo:
+// None`, a lê de volta): 1 = o ponto remapeado − o centro e a fração `f2` · 2 = a saída do
+// [`onde_calcular`] e as distâncias das duas faces · 3 = a normal da face 1 e o cosseno entre as faces
+// · 4 = a luz (verde) do ponto, a da outra face e `f2` · 5 = a normal secante no ponto (0 = canto) ·
+// 6 = o ponto da outra face − o centro e `f2`.
+fn sonda_cor(alvo: vec2<u32>, onde: Onde, l: vec3<f32>) -> vec3<f32> {
+    let P0 = ponto_fino(alvo);
+    let h = 1.0 / f32(fina.fina);
+    switch SONDA {
+        case 1u: { return vec3<f32>((onde.p - P0) / h, onde.f2); }
+        case 2u: { return vec3<f32>(sonda_saida, sonda_e1.z / h, sonda_e2.z / h); }
+        case 3u: { return vec3<f32>(sonda_e1.xy, dot(sonda_e1.xy, sonda_e2.xy)); }
+        case 4u: { return sonda_luz; }
+        case 5u: {
+            if !onde.remapeado {
+                return vec3<f32>(0.0, 0.0, -1.0);
+            }
+            return vec3<f32>(normal_secante(onde.p, P0, h), 1.0);
+        }
+        case 6u: { return vec3<f32>((onde.p2 - P0) / h, onde.f2); }
+        default: { return l; }
+    }
 }
 
 @compute @workgroup_size(8, 8)
@@ -1178,5 +1223,9 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_i
     let tau = meio(ponto_fino(id)).tau;
     let onde = onde_calcular(id);
     let lt = luz_do_texel(id, onde, tau, true, true);
-    guardar_fina(id, onde, lt.l, lt.t, tau);
+    var l = lt.l;
+    if SONDA != 0u {
+        l = sonda_cor(id, onde, l);
+    }
+    guardar_fina(id, onde, l, lt.t, tau);
 }

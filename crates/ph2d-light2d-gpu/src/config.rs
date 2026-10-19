@@ -175,6 +175,9 @@ pub struct Config {
     /// arredonda (o texel do canto convexo no ambiente; handoff W6e §1). `None` = a própria reta — o
     /// padrão: a cunha acerta o campo mas reprova o F3 (a média das faces no canto, handoff W6e §3).
     pub borda_vertice: Option<Vertice>,
+    /// ⭐ W6f — a SONDA de cor do `c3_fina` (o `sonda_cor` do `c3_direta.wgsl`): `0` = a luz; `1..=6`
+    /// gravam no lugar dela o que a escolha das faces decidiu (só a lei antiga, `miolo: None`, o lê).
+    pub sonda: u32,
     /// ⭐ W5g (F5) — o texel do INTERIOR lê a luz no PÉ dele na borda exata (o `PE_NA_BORDA` do
     /// `c3_pe.wgsl`; só com [`Self::borda_exata`]); `false` = o ponto de fronteira da busca, que salta
     /// ao longo da face com a fase da grade (os degraus nos pontos tangentes dos discos, cena 7).
@@ -473,6 +476,7 @@ impl Config {
             borda_continua: true,
             borda_fora: true,
             borda_vertice: None,
+            sonda: 0,
             pe_na_borda: true,
             vis_na_face: true,
             face_pelo_ponto: true,

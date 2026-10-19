@@ -61,6 +61,8 @@ override BORDA_FORA: bool = false;
 // explica a 3×3 a mais de `PRE` · a cunha explica a cobertura a menos de `AREA`. `AREA = 0` desliga.
 override BORDA_VERTICE_PRE: f32 = 0.0;
 override BORDA_VERTICE_AREA: f32 = 0.0;
+// A sonda de cor do `c3_fina` (`Config::sonda`; `c3_direta`, [`sonda_cor`]): 0 = a luz.
+override SONDA: u32 = 0u;
 var<private> borda_aqui: bool = true;
 
 struct Cascata {

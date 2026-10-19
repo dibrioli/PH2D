@@ -36,7 +36,7 @@ use crate::comum::{Fluencia, fluencia_lida, gpu};
 const FHD: (u32, u32) = (1920, 1080);
 /// A caixa: o centro e o lado (metros).
 pub(crate) const CENTRO: [f32; 2] = [1.3, -0.2];
-const LADO: [f32; 2] = [1.1, 2.2];
+pub(crate) const LADO: [f32; 2] = [1.1, 2.2];
 /// Subamostras por eixo na média do gabarito sobre um texel a menos de um texel do eixo medial (a
 /// fração da área sai em degraus de `1/SUB`; com 6 o degrau já valia 5 % da diferença das faces).
 const SUB: u32 = 12;

@@ -1,0 +1,69 @@
+# oráculo I13 — 2026-10-19T00:19Z — loadavg: 18.04 16.47 12.52 3/2656 237150
+# code --version: 1.142.0 6d62b1d5dace93a33b3a6d3eca1317bd5e15bcb1 x64
+# stylua: stylua 2.5.2 (/home/enio/.cache/ph2d/stylua/2.5.2/stylua) · config: /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor/crates/ph2d-code-format/ph2d-format.toml
+# display: Xvfb :123 1600x1000x24
+# vsix: JohnnyMorganz.stylua-1.7.2 sha256 1eda514bf96a521be5f04deaa319c86ba3aa7a481f64e34e5b5f7650ac274d8e
+# vsix license (package.json): MPL-2.0
+# vsix ficheiros de licença: 0
+# extensões: johnnymorganz.luau-lsp@1.70.1 johnnymorganz.stylua@1.7.2
+01a_meio_palavra_recuo4_antes | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Coll5 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 05be4fe6660d
+01a_meio_palavra_recuo4_depois | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Col1l3 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 760130ccd70e
+01a_meio_palavra_recuo4_marca | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Col14 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 7ebad6940291
+01b_meio_palavra_recuo0_antes | título: recuo.luau - ws - Visual Studio Code | barra: Ln3,Col10 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 05be4fe6660d
+01b_meio_palavra_recuo0_depois | título: recuo.luau - ws - Visual Studio Code | barra: Ln3,Col12 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 760130ccd70e
+01b_meio_palavra_recuo0_marca | título: recuo.luau - ws - Visual Studio Code | barra: Ln3,Col13 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: cca4306e0236
+01c_dentro_do_recuo_apagado_antes | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Col4 Spaces:4 UTF-8 LF {} Luau [  | disco sha: 05be4fe6660d
+01c_dentro_do_recuo_apagado_depois | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Col3 Spaces:4 UTF-8 LF {} Luau [  | disco sha: 760130ccd70e
+01c_dentro_do_recuo_apagado_marca | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Col4 Spaces:4 UTF-8 LF {} Luau [  | disco sha: 3d78dc53ee08
+01d_coluna1_recuo_inserido_antes | título: recuo.luau - ws - Visual Studio Code | barra: Ln3,Coll Spaces:4 UTF-8 LF {} Luau [  | disco sha: 05be4fe6660d
+01d_coluna1_recuo_inserido_depois | título: recuo.luau - ws - Visual Studio Code | barra: Ln3,Col3 Spaces:4 UTF-8 LF {} Luau [  | disco sha: 760130ccd70e
+01d_coluna1_recuo_inserido_marca | título: recuo.luau - ws - Visual Studio Code | barra: Ln3,Col4 Spaces:4 UTF-8 LF {} Luau [  | disco sha: 5f2371887caa
+02a_meio_do_vao_grande_antes | título: bob.luau - ws - Visual Studio Code | barra: Ln1l,Col42 Spaces:2 UTF-8 LF {} Luau [  | disco sha: d99f985c415c
+02a_meio_do_vao_grande_depois | título: bob.luau - ws - Visual Studio Code | barra: Ln1l1,Col30 Spaces:2 UTF-8 LF {} Luau [  | disco sha: 1886ee39c095
+02a_meio_do_vao_grande_marca | título: bob.luau - ws - Visual Studio Code | barra: Ln1l,Col31 Spaces:2 UTF-8 LF {} Luau [  | disco sha: 2b652d65510d
+02b_meio_do_vao_pequeno_antes | título: bob.luau - ws - Visual Studio Code | barra: Ln10,Col53 Spaces:2 UTF-8 LF {} Luau [  | disco sha: d99f985c415c
+02b_meio_do_vao_pequeno_depois | título: bob.luau - ws - Visual Studio Code | barra: Ln10,Col52 Spaces:2 UTF-8 LF {} Luau [  | disco sha: 1886ee39c095
+02b_meio_do_vao_pequeno_marca | título: bob.luau - ws - Visual Studio Code | barra: Ln10,Col53 Spaces:2 UTF-8 LF {} Luau [  | disco sha: 3f5de322145c
+03a_antes_do_return_antes | título: bob.luau - ws - Visual Studio Code | barra: Ln32,Col27 Spaces:2 UTF-8 LF {} Luau [  | disco sha: d99f985c415c
+03a_antes_do_return_depois | título: bob.luau - ws - Visual Studio Code | barra: Ln33,ColS Spaces:2 UTF-8 LF {} Luau [}  | disco sha: 1886ee39c095
+03a_antes_do_return_marca | título: bob.luau - ws - Visual Studio Code | barra: Ln33,Col6 Spaces:2 UTF-8 LF {} Luau [}  | disco sha: 8d5a11456611
+03b_no_espaco_que_parte_antes | título: bob.luau - ws - Visual Studio Code | barra: Ln32,Col26 Spaces:2 UTF-8 LF {} Luau [  | disco sha: d99f985c415c
+03b_no_espaco_que_parte_depois | título: bob.luau - ws - Visual Studio Code | barra: Ln33,Col4 Spaces:2 UTF-8 LF {} Luau [}  | disco sha: 1886ee39c095
+03b_no_espaco_que_parte_marca | título: bob.luau - ws - Visual Studio Code | barra: Ln33,ColS Spaces:2 UTF-8 LF {} Luau [}  | disco sha: 9c68828f97ca
+04a_dentro_da_string_antes | título: aspas.luau - ws - Visual Studio Code | barra: Ln1,Coll3 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 288b0eb7c68b
+04a_dentro_da_string_depois | título: aspas.luau - ws - Visual Studio Code | barra: Ln1,Coll3 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 356116ca3058
+04a_dentro_da_string_marca | título: aspas.luau - ws - Visual Studio Code | barra: Ln1,Col1l4 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: a5795d4160f7
+04b_depois_da_aspa_antes | título: aspas.luau - ws - Visual Studio Code | barra: Ln2,Coll1l2 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 288b0eb7c68b
+04b_depois_da_aspa_depois | título: aspas.luau - ws - Visual Studio Code | barra: Ln2,Coll1l2 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 356116ca3058
+04b_depois_da_aspa_marca | título: aspas.luau - ws - Visual Studio Code | barra: Ln2,Col1l3 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 363e831d1add
+05a_selec_frente_antes | título: recuo.luau - ws - Visual Studio Code | barra: Ln 3, Col 15 (24 selected) Spaces:4 UTF-8 LF {} Luau [  | disco sha: 05be4fe6660d
+05a_selec_frente_depois | título: recuo.luau - ws - Visual Studio Code | barra: Ln3,Col17 (26 selected) Spaces:4 UTF-8 LF {} Luau [  | disco sha: 760130ccd70e
+05a_selec_frente_inicio | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Col1l3 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 760130ccd70e
+05b_selec_tras_antes | título: recuo.luau - ws - Visual Studio Code | barra: Ln 2,Col 15 (24 selected) Spaces:4 UTF-8 LF {} Luau [  | disco sha: 05be4fe6660d
+05b_selec_tras_depois | título: recuo.luau - ws - Visual Studio Code | barra: Ln 2,Col 13 (26 selected) Spaces:4 UTF-8 LF {} Luau [  | disco sha: 760130ccd70e
+05b_selec_tras_fim | título: recuo.luau - ws - Visual Studio Code | barra: Ln3,Coll7 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 760130ccd70e
+06a_dois_cursores_antes | título: recuo.luau - ws - Visual Studio Code | barra: 2 selections Spaces:4 UTF-8 LF {} Luau [  | disco sha: 05be4fe6660d
+06a_dois_cursores_depois | título: recuo.luau - ws - Visual Studio Code | barra: 2 selections Spaces:4 UTF-8 LF {} Luau [  | disco sha: 760130ccd70e
+06a_dois_cursores_marca | título: recuo.luau - ws - Visual Studio Code | barra: 2 selections Spaces:4 UTF-8 LF {} Luau [  | disco sha: 78acd6ee7c7e
+06b_ctrl_d_antes | título: recuo.luau - ws - Visual Studio Code | barra: 2 selections (18 characters selected) Spaces:4 UTF-8 LF {} Luau [  | disco sha: 05be4fe6660d
+06b_ctrl_d_depois | título: recuo.luau - ws - Visual Studio Code | barra: 2 selections (18 characters selected) Spaces:4 UTF-8 LF {} Luau [  | disco sha: 760130ccd70e
+06b_ctrl_d_esc | título: recuo.luau - ws - Visual Studio Code | barra: Ln 2,Col 18 (9 selected) Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 760130ccd70e
+07_escrito_antes | título: ● recuo.luau - ws - Visual Studio Code | barra: Ln2,Coll5 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 05be4fe6660d
+07_salvo | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Col1l3 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: a9d848de8cb1
+07_z1 | título: ● recuo.luau - ws - Visual Studio Code | barra: Ln2,Coll5 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: a9d848de8cb1
+07_z2 | título: ● recuo.luau - ws - Visual Studio Code | barra: Ln1,Coll6 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: a9d848de8cb1
+07_refaz1 | título: ● recuo.luau - ws - Visual Studio Code | barra: Ln1,Coll9 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: a9d848de8cb1
+07_refaz2 | título: recuo.luau - ws - Visual Studio Code | barra: Ln1,Coll9 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: a9d848de8cb1
+08_erro_antes | título: ● erro.luau - ws - Visual Studio Code | barra: Ln2,Coll7 Spaces:2 UTF-8 LF {} Luau [}  | disco sha: fa0bc212e4f1
+08_erro_salvo_05s | título: erro.luau - ws - Visual Studio Code | barra: Ln2,Coll7 Spaces:2 UTF-8 LF -Luau L1  | disco sha: f7dc494d284c
+08_erro_salvo_4s | título: erro.luau - ws - Visual Studio Code | barra: Ln2,Coll7 Spacesi2 UTF-8 LF (g Luau []  | disco sha: f7dc494d284c
+08_erro_output | título: erro.luau - ws - Visual Studio Code | barra: Ln2,Coll7 Spaces:2 UTF-8 LF {} Luau [}  | disco sha: f7dc494d284c
+09a_limpo_salvo | título: ok.luau - ws - Visual Studio Code | barra: Ln2,Coll5 Spaces:2 UTF-8 LF {} Luau [}  | disco sha: 760130ccd70e
+09a_limpo_z1 | título: ok.luau - ws - Visual Studio Code | barra: Ln2,Coll5 Spaces:2 UTF-8 LF {} Luau [}  | disco sha: 760130ccd70e
+09b_escrito | título: ● ok.luau - ws - Visual Studio Code | barra: Ln2,Col23 Spaces:2 UTF-8 LF {} Luau [}  | disco sha: 760130ccd70e
+09b_salvo | título: ok.luau - ws - Visual Studio Code | barra: Ln2,Col23 Spaces:2 UTF-8 LF {} Luau [}  | disco sha: ed9f0879f0e7
+09b_z1 | título: ● ok.luau - ws - Visual Studio Code | barra: Ln2,Col22 Spaces:2 UTF-8 LF {} Luau [}  | disco sha: ed9f0879f0e7
+10_antes | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Coll5 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 05be4fe6660d
+10_logo | título: ● recuo.luau - ws - Visual Studio Code | barra: Ln2,Coll6 Spaces:4 UTF-8 LF (} Luau [}  | disco sha: 760130ccd70e
+10_depois | título: ● recuo.luau - ws - Visual Studio Code | barra: Ln2,Col1l6 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 760130ccd70e
+10_buffer_gravado | título: recuo.luau - ws - Visual Studio Code | barra: Ln2,Col1l6 Spaces:4 UTF-8 LF {} Luau [}  | disco sha: 24cddffabc1d

@@ -926,6 +926,7 @@
                   "Arrow"
                 ],
                 "label": "next",
+                "mids": [],
                 "route": "Curved",
                 "start": {
                   "Bound": {
@@ -1168,6 +1169,7 @@
                   "Arrow"
                 ],
                 "label": "",
+                "mids": [],
                 "route": "Elbow",
                 "start": {
                   "Bound": {
@@ -1251,6 +1253,7 @@
         "gap": 1
       },
       "fillStyle": "solid",
+      "fixedSegments": null,
       "frameId": null,
       "groupIds": [],
       "height": 233.1264457612076,
@@ -1324,6 +1327,7 @@
                   "Triangle"
                 ],
                 "label": "",
+                "mids": [],
                 "route": "Straight",
                 "start": {
                   "Free": [

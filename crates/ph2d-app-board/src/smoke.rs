@@ -44,6 +44,9 @@ mod guides;
 mod mind;
 #[path = "smoke_w23.rs"]
 mod w23;
+/// A cena 25 (W23 B5(1)), num ficheiro filho.
+#[path = "smoke_w23_elbow.rs"]
+mod w23_elbow;
 
 /// A cena 9 (W7), num ficheiro filho.
 #[path = "smoke_facilitate.rs"]
@@ -95,7 +98,7 @@ pub(crate) mod shots;
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 24,
+    max_level: 25,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -131,7 +134,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         22 => _ = live::scene_internet(hero),
         23 => _ = live::scene_join(hero),
         24 => _ = w23::scene_w23(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=24)"),
+        25 => _ = w23_elbow::scene_elbow(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=25)"),
     }
 }
 

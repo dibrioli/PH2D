@@ -279,6 +279,7 @@ pub fn read_with(json: &str, ingest: Ingest<'_>) -> Result<Import, String> {
         }
         BoardOp::Put(el).apply(&mut imp.doc);
     }
+    crate::elbow::pin(&mut imp.doc, &kept, &map);
     Ok(imp)
 }
 

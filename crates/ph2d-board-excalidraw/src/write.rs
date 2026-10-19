@@ -267,6 +267,10 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
     }
     let elbow = c.route == Route::Elbow;
     m.insert("elbowed".into(), json!(elbow));
+    if elbow {
+        let fixed = crate::elbow::fixed_segments(c, r, &pts, x0, y0);
+        m.insert("fixedSegments".into(), fixed);
+    }
     let ends = [&pts[0], &pts[pts.len() - 1]];
     let near = [pts[1], pts[pts.len() - 2]];
     for (k, key) in ["startBinding", "endBinding"].into_iter().enumerate() {

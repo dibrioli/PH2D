@@ -86,15 +86,15 @@
       "foreignObjects": 0
     },
     "embed": {
-      "sha256": "ac27017792ea898dd5e088dd328237269ff826fd798567df04d412728e1ebee1",
+      "sha256": "1571307267c7152a4fce31476d2d421bb682a564fd9398072a303ec445c65863",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
-      "bytes": 29167,
+      "bytes": 29311,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"640.5\" fill=\"#ffffff\"/>",
       "metadata_inicio": "<!-- payload-type:application/vnd.excalidraw+json --><!-- payload-version:2 --><!-- payload-start -->eyJ2ZXJzaW9uIjoiMSIsImVuY29kaW5nIjoiYnN0cmluZyIsImNvbXByZXNzZWQiOnRydWUsImVuY29kZWQiOiJ4nO1dW2/jNlx1MDAxNn7Pr1xi3Nexyvulb3NFXHUwMDA32C5cdTAwMDZNgX3YXHUwMDFkXGaUWJNcYnGswFaaSYv573soX0RSpCxbduxMrVx1MDA",
-      "metadata_bytes": 8669,
+      "metadata_bytes": 8813,
       "clipPaths": 2,
       "images": 0,
       "foreignObjects": 0
@@ -560,8 +560,8 @@
     },
     "embed": {
       "type": "image/png",
-      "bytes": 63874,
-      "sha256": "403a859b2da410dd1bac347a21de05a071588cf11bacfe493963695ae31089b5",
+      "bytes": 63894,
+      "sha256": "e9c689d0dbfd38d9fa719214f6bc9255d69d24fc632c29ae329692c29268968f",
       "width": 1020,
       "height": 640,
       "chunks": [
@@ -637,9 +637,9 @@
         },
         {
           "type": "tEXt",
-          "len": 6230,
+          "len": 6250,
           "keyword": "application/vnd.excalidraw+json",
-          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xí][oÛ8\\u0016~Ï¯(<¯µwÎ[¯\\u0002»b:À>ì\\u0016¨\\u0011Ç\\u000el¥iwÐÿ¾òE$EÊ²e'NÇÊ`\\u0014ÅË¹"
+          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xí][oÛ8\\u0016~ï¯\\b<¯µwÎ[¯\\u0002»b2À>ì\\u0016¨QÇ\\u000el¥iwÐÿ¾òE$EÊ²e'NÇÊ`\\u0014uDË÷\\u"
         },
         {
           "type": "IEND",

@@ -192,6 +192,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              each tip opens all 15 tips (UML, ER)."
         }
         "board.smoke.w23.from" => "From",
+        // ── a cena 25 (PH2D_BOARD_SMOKE=25, W23 B5(1)): o segmento do meio do cotovelo ──
+        "board.smoke.elbow.board" => "Elbow arrow",
+        "board.smoke.elbow.start" => "Start",
+        "board.smoke.elbow.finish" => "Finish",
+        "board.smoke.elbow.l1" => {
+            "1. The arrow is selected. Drag the small bar in the middle of its upright line \
+             sideways: that line moves, the ends stay put."
+        }
+        "board.smoke.elbow.l2" => {
+            "2. Drag the Finish box further right: the middle line keeps its place between the \
+             two boxes and moves with them."
+        }
+        "board.smoke.elbow.l3" => "3. Double-click the small bar: the line goes back to the middle.",
+        "board.smoke.elbow.l4" => "4. Ctrl+Z undoes each drag in one step.",
         "board.smoke.w23.to" => "To",
         "board.smoke.w23.l5" => {
             "5. Right-click a shape: Copy, Paste, Duplicate, Front/Back, Lock, Delete."

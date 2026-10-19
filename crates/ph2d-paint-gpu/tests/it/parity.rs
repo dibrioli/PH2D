@@ -58,6 +58,7 @@ fn cpu(spec: &BrushSpec, list: &[([f32; 2], f32)], alpha_lock: bool) -> Vec<u8> 
             None,
             None,
             None,
+            None,
             [1.0, 0.0],
             None,
         );

@@ -313,22 +313,48 @@ fn premultiplica_na_caixa(espelho: &mut [u8], rgba: &[u8], largura: u32, c: Caix
     }
 }
 
-/// **A lei da mistura** (W9): em `out` (o retângulo `c` do palco), cada texel que o artista marcou passa
-/// a ser o da imagem `atual` (premultiplicada, de largura `largura`); os outros ficam o palco.
+/// **A lei da mistura** (W10, `docs/Macros/08_plano_W10_cobertura.md`): em `out` (o retângulo `c` do
+/// palco, premultiplicado), cada texel que o artista tocou com a cobertura `k` sobre o que estava por
+/// baixo `B` passa a `atual + (1 − k)·(palco − B)` — a tinta dele por cima do clipe naquele instante
+/// (`k` cheia é a imagem `atual`, premultiplicada, de largura `largura`).
 fn mistura_na_caixa(out: &mut [u8], marca: &MarcaDoArtista, atual: &[u8], largura: u32, c: Caixa) {
-    let (lw, x, w) = (largura as usize, c.0 as usize, c.2 as usize);
-    for (j, o) in out.chunks_exact_mut(w * 4).enumerate().take(c.3 as usize) {
-        let linha = (c.1 as usize + j) * lw + x;
-        let at = &atual[linha * 4..(linha + w) * 4];
-        for (k, (o, a)) in o
-            .as_chunks_mut::<4>()
-            .0
-            .iter_mut()
-            .zip(at.as_chunks::<4>().0)
-            .enumerate()
-        {
-            if marca.marcado(linha + k) {
-                *o = *a;
+    use marca_do_artista::LADO;
+    let (cx, cy, cw, ch) = c;
+    let (lw, w) = (largura as usize, cw as usize);
+    for ly in cy / LADO..(cy + ch).div_ceil(LADO) {
+        for lx in cx / LADO..(cx + cw).div_ceil(LADO) {
+            let Some(l) = marca.ladrilho(lx, ly) else {
+                continue;
+            };
+            let (x0, x1) = ((lx * LADO).max(cx), ((lx + 1) * LADO).min(cx + cw));
+            for y in (ly * LADO).max(cy)..((ly + 1) * LADO).min(cy + ch) {
+                for x in x0..x1 {
+                    let k = l.c(((y % LADO) * LADO + x % LADO) as usize);
+                    if k == 0 {
+                        continue;
+                    }
+                    let o = (((y - cy) as usize) * w + (x - cx) as usize) * 4;
+                    let a = ((y as usize) * lw + x as usize) * 4;
+                    let (o, a) = (&mut out[o..o + 4], &atual[a..a + 4]);
+                    if k == marca_do_artista::CHEIA {
+                        o.copy_from_slice(a);
+                        continue;
+                    }
+                    let b = l.b(((y % LADO) * LADO + x % LADO) as usize);
+                    // O `B` premultiplicado (o arredondamento de `premultiply_rgba8`) e `(1 − k)` em 16
+                    // bits: `· resta >> 16` em vez de `/ CHEIA` erra menos de 0,004 nível.
+                    let alfa = u32::from(b[3]);
+                    let resta = i32::from(marca_do_artista::CHEIA - k);
+                    for (n, (o, &a)) in o.iter_mut().zip(a).enumerate() {
+                        let bp = if n == 3 || alfa == 255 {
+                            u32::from(b[n])
+                        } else {
+                            (u32::from(b[n]) * alfa + 127) / 255
+                        };
+                        let d = (resta * (i32::from(*o) - bp as i32) + 32_768) >> 16;
+                        *o = (i32::from(a) + d).clamp(0, 255) as u8;
+                    }
+                }
             }
         }
     }

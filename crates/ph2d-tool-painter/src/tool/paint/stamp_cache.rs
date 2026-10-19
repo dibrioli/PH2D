@@ -99,11 +99,13 @@ impl PainterTool {
         h: u32,
     ) {
         let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
+        let mut plano = self.undo.marca.toma_o_plano((w, h));
         self.ensure_stamp_cache(
             brush,
             mask_size_for(max_r * brush.stamp_domain(self.paint.shape_image.is_some())),
         );
         let Some((mask, _)) = self.paint.stamp_cache.as_ref() else {
+            self.undo.marca.devolve_o_plano(plano, None);
             return;
         };
         let buf = super::plane_fork::fork_canvas(
@@ -129,6 +131,7 @@ impl PainterTool {
                 &spec,
                 d.coverage,
                 alpha_locked,
+                plano.as_deref_mut(),
             ) {
                 let rect = Region {
                     x: r.x,
@@ -139,6 +142,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
+        self.undo.marca.devolve_o_plano(plano, touched);
         self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);
@@ -158,6 +162,7 @@ impl PainterTool {
     ) {
         self.ensure_canvas_cache(brush, w, h);
         self.ensure_shape_ramp_lut();
+        let mut plano = self.undo.marca.toma_o_plano((w, h));
         // Disjoint borrows: the canvas (Arc), the cache (tex+ready), the imported images + the Shape
         // ramp LUT are all separate fields, so they can be held at once.
         let papel = self.papel_como_grain(); // a imagem do slot que faz de Grain (`dab_spec`)
@@ -175,6 +180,7 @@ impl PainterTool {
             && self.paint.shape_color_ramp_bw)
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let Some(cache) = self.paint.canvas_tex_cache.as_mut() else {
+            self.undo.marca.devolve_o_plano(plano, None);
             return;
         };
         let (tex, ready) = (&mut cache.tex, &mut cache.ready);
@@ -205,6 +211,7 @@ impl PainterTool {
                 shape_ramp_lut,
                 d.coverage,
                 alpha_locked,
+                plano.as_deref_mut(),
             ) {
                 let rect = Region {
                     x: r.x,
@@ -215,6 +222,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
+        self.undo.marca.devolve_o_plano(plano, touched);
         self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);
@@ -299,7 +307,10 @@ impl PainterTool {
         // lote da CPU paralela junto com o device, e um re-stamp de forma rodava num núcleo.
         // A cápsula (Continuous) é por dab e a banda e o dispositivo não a transcrevem.
         let banded_ok = !textured && !shape_active && image.is_none() && !brush.lays_capsules();
+        // A força medida (W10 das macros): o dispositivo não a devolve, a rota da CPU escreve-a.
+        let mut plano = self.undo.marca.toma_o_plano((w, h));
         let device = (banded_ok
+            && plano.is_none()
             && !accumulate_cap
             && self.device_stamp.is_some()
             && super::stamp_device::eligible(brush)
@@ -359,6 +370,7 @@ impl PainterTool {
                     brush,
                     alpha_locked,
                     mask.as_deref_mut(),
+                    plano.as_deref_mut(),
                 );
             }
             // O stream de RNG é consumido pelas BASES de textura, que este pincel não tem — mas o
@@ -373,6 +385,7 @@ impl PainterTool {
                 w: r.w,
                 h: r.h,
             });
+            self.undo.marca.devolve_o_plano(plano, touched);
             self.declare_wrote(touched);
             if let Some(rect) = touched {
                 self.mark_dirty(rect);
@@ -435,6 +448,7 @@ impl PainterTool {
                 image.as_ref(),
                 shape_in,
                 mask.as_deref_mut(),
+                plano.as_deref_mut(),
                 rotor,
                 d.capsula(&spec),
             ) {
@@ -448,6 +462,7 @@ impl PainterTool {
             }
         }
         self.paint.tex_rng = dab_rng.finish();
+        self.undo.marca.devolve_o_plano(plano, touched);
         self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);

@@ -199,6 +199,7 @@ fn o_carimbo_da_capsula_chega_ao_centro_anterior() {
             None,
             None,
             None,
+            None,
             [1.0, 0.0],
             cap,
         );
@@ -417,6 +418,7 @@ fn a_caixa_cresce_para_o_raio_de_tras() {
         &spec,
         1.0,
         false,
+        None,
         None,
         None,
         None,

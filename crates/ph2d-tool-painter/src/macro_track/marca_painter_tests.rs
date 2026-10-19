@@ -203,7 +203,7 @@ fn a_pincelada_do_artista_marca_onde_o_pincel_passou_e_o_desfazer_a_desliga() {
         "controlo: a água da gravação não mudou nada longe do traço"
     );
 
-    let marcada = m.palavras().as_ref().clone();
+    let marcada = m.ladrilhos().as_ref().clone();
     assert!(t.undo_last(), "o desfazer");
     let m = marca(&t);
     assert!(
@@ -213,31 +213,36 @@ fn a_pincelada_do_artista_marca_onde_o_pincel_passou_e_o_desfazer_a_desliga() {
     );
     assert!(t.redo_last(), "o refazer");
     assert_eq!(
-        *marca(&t).palavras().as_ref(),
+        *marca(&t).ladrilhos().as_ref(),
         marcada,
         "o refazer não devolveu a marca do traço"
     );
 }
 
-/// **Um traço Digital (sem água) sobre o BRANCO marca exactamente os texels que mudaram** — a régua é o
-/// diff das duas imagens, à parte. (Sobre o branco o miolo do pincel está dentro do que mudou; por cima
-/// do que já era o resultado, `marca_cobertura_tests`.)
+/// **Um traço Digital (sem água) sobre o BRANCO marca todos os texels que mudaram, e só onde o pincel
+/// pôs tinta** — a régua é o diff das duas imagens, à parte; a força de cada um é
+/// `marca_cobertura_tests`. Longe do traço nada.
 #[test]
-fn um_traco_digital_marca_exactamente_o_que_mudou() {
+fn um_traco_digital_marca_o_que_mudou_e_nada_longe_dele() {
     let mut t = PainterTool::default();
     t.set_source(vec![255; (LADO * LADO * 4) as usize], LADO, LADO);
     t.set_paint_media(PaintMedia::Digital);
     t.poe_a_marca(Some(MarcaDoArtista::nova(LADO, LADO, 1)));
     t.set_brush_size_px(8.0);
     let antes = imagem(&t);
-    traco(&mut t, [20.0, 30.0], [90.0, 70.0]);
+    let (de, ate) = ([20.0, 30.0], [90.0, 70.0]);
+    traco(&mut t, de, ate);
     let mudou = diferem(&antes, &imagem(&t));
     assert!(mudou.len() > 100, "controlo: o traço pintou");
     let m = marca(&t);
-    let marcados: Vec<usize> = (0..(LADO * LADO) as usize)
-        .filter(|&i| m.marcado(i))
-        .collect();
-    assert_eq!(marcados, mudou, "a marca não é o que o traço mudou");
+    assert!(
+        mudou.iter().all(|&i| m.marcado(i)),
+        "um texel pintado sem marca"
+    );
+    let longe = (0..(LADO * LADO) as usize)
+        .filter(|&i| m.marcado(i) && distancia(i, de, ate) > 8.0 * 2.0 + 2.0)
+        .count();
+    assert_eq!(longe, 0, "texels marcados longe do traço");
 }
 
 /// **A reescrita de uma etapa e o «Recomeçar» são da macro**: não marcam; e a reescrita deixa os texels
@@ -302,8 +307,8 @@ fn a_reescrita_e_o_recomecar_nao_marcam_e_a_reescrita_salta_o_marcado() {
         "controlo: a reescrita mudou a tela"
     );
     assert_eq!(
-        marca(&t).palavras(),
-        m.palavras(),
+        marca(&t).ladrilhos(),
+        m.ladrilhos(),
         "a reescrita marcou ou desmarcou"
     );
     let mut t0 = PainterTool::default();
@@ -313,7 +318,90 @@ fn a_reescrita_e_o_recomecar_nao_marcam_e_a_reescrita_salta_o_marcado() {
         diferem(&depois, &tela(&t)).len() > 20,
         "controlo: recomeçar mudou a imagem"
     );
-    assert_eq!(marca(&t).palavras(), m.palavras(), "recomeçar marcou");
+    assert_eq!(marca(&t).ladrilhos(), m.ladrilhos(), "recomeçar marcou");
+}
+
+/// ⭐ W10 — **a reescrita passa o fim novo por baixo da tinta parcial do artista, e o desfazer devolve o
+/// antigo**: gravado em Digital; uma pincelada preta macia por cima do fim; a etapa editada (a 2.ª
+/// pincelada mais fina). Nos texels onde a pincelada cobre em parte e o fim muda, a imagem passa a ser a
+/// mesma pincelada pintada sobre o fim NOVO (a régua: um tool à parte, até ao piso do carimbo) e o que
+/// está por baixo na marca passa ao fim novo; o desfazer da reescrita devolve a imagem e a marca.
+#[test]
+fn a_reescrita_passa_o_fim_novo_por_baixo_da_tinta_parcial() {
+    use super::etapas::edita_tamanho;
+    use super::roteiro::{SPLASH, grava_nos_meios_e_o_tool};
+    let (mut t, bytes) =
+        grava_nos_meios_e_o_tool(LADO, &SPLASH, &[PaintMedia::Digital]).expect("grava");
+    let crua = ph2d_macro::codec::read(&bytes)
+        .expect("lê")
+        .tracks
+        .remove(0);
+    let mut editada = crua.clone();
+    edita_tamanho(&mut editada, 1, 30.0).expect("edita");
+    let nao = AtomicBool::new(false);
+    let de = imagens_da_gravacao(&crua, &nao)
+        .expect("toca")
+        .expect("fim");
+    let para = imagens_da_gravacao(&editada, &nao)
+        .expect("toca")
+        .expect("fim");
+    assert_eq!(
+        imagem(&t),
+        de.fim,
+        "controlo: o Painter parou no fim gravado"
+    );
+    t.poe_a_marca(Some(MarcaDoArtista::nova(
+        LADO,
+        LADO,
+        epoca_da_gravacao(&crua),
+    )));
+    let pinta = |t: &mut PainterTool| {
+        t.set_paint_media(PaintMedia::Digital);
+        t.set_brush_size_px(14.0);
+        t.set_brush_color_srgb8([0, 0, 0]);
+        traco(t, [64.0, 4.0], [64.0, 124.0]);
+    };
+    pinta(&mut t);
+    let (antes, m) = (imagem(&t), t.marca_do_artista().expect("a marca").clone());
+    let cheia = super::marca::CHEIA;
+    let alvo: Vec<usize> = (0..(LADO * LADO) as usize)
+        .filter(|&i| (1..cheia).contains(&m.cobertura(i)))
+        .filter(|&i| de.fim[i * 4..i * 4 + 4] != para.fim[i * 4..i * 4 + 4])
+        .collect();
+    assert!(
+        alvo.len() > 10,
+        "controlo: a borda da pincelada cruza o que a edição muda ({})",
+        alvo.len()
+    );
+    assert!(t.reescreve_a_gravacao(&de.modelo, &para.modelo, 3) > 0);
+    let depois = imagem(&t);
+    let mut r = PainterTool::default();
+    r.set_source(para.fim.clone(), LADO, LADO);
+    pinta(&mut r);
+    let regua = imagem(&r);
+    let m2 = t.marca_do_artista().expect("a marca").clone();
+    for &i in &alvo {
+        let d = (0..3)
+            .map(|k| depois[i * 4 + k].abs_diff(regua[i * 4 + k]))
+            .max()
+            .unwrap_or(0);
+        assert!(
+            d <= 4,
+            "texel {i}: {d} níveis da pincelada sobre o fim novo"
+        );
+        assert_eq!(
+            m2.por_baixo(i)[..],
+            para.fim[i * 4..i * 4 + 4],
+            "o que está por baixo de {i}"
+        );
+    }
+    assert!(t.undo_last(), "o desfazer da reescrita");
+    assert_eq!(imagem(&t), antes, "o desfazer não devolveu a imagem");
+    assert_eq!(
+        t.marca_do_artista().expect("a marca").ladrilhos(),
+        m.ladrilhos(),
+        "o desfazer não devolveu o que estava por baixo"
+    );
 }
 
 /// W9 A3 — **a imagem na caixa é o recorte da inteira, ao byte**: no papel (Wet Paint, a composição

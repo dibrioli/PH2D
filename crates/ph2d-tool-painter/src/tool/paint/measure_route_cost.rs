@@ -580,6 +580,7 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
                     one[0].coverage,
                     false,
                     Some(&mut mask[..]),
+                    None,
                     one[0].rotation,
                     min_area,
                 );

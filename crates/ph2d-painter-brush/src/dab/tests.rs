@@ -362,6 +362,7 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
             None,
             None,
             Some(&mut mask),
+            None,
             [1.0, 0.0],
             None,
         );
@@ -382,6 +383,7 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
             &spec,
             spec.strength,
             false,
+            None,
             None,
             None,
             None,
@@ -444,6 +446,7 @@ fn accumulate_off_grain_caps_each_texel_at_its_weighted_coverage() {
             Some(&img),
             None,
             Some(&mut mask),
+            None,
             [1.0, 0.0],
             None,
         );

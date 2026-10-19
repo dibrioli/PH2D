@@ -114,7 +114,7 @@ fn a_pincelada_do_artista_fica_por_cima_do_clipe_e_o_desfazer_devolve_o_clipe() 
     let depois = t.imagem_aplicada().expect("documento").0;
     let m = t.marca_do_artista().expect("a marca").clone();
     confere_a_marca(&m, &diferem(&antes, &depois), longe);
-    let lei = |c: &Clipe, r: &[u8]| r == esperado(&c.palco, &premul(&depois), |i| m.marcado(i));
+    let lei = |c: &Clipe, r: &[u8]| perto(r, &esperado_pela_marca(&c.palco, &premul(&depois), &m));
     for q in 0..20u32 {
         let r = c.quadro_ligado(f64::from(q) / 60.0, Some(&mut t), &mut nunca);
         assert!(lei(&c, &r), "quadro {q}: a ranhura não segue a lei");
@@ -132,8 +132,9 @@ fn a_pincelada_do_artista_fica_por_cima_do_clipe_e_o_desfazer_devolve_o_clipe() 
 }
 
 /// W8 item 2a com a marca — **apagar até ao papel depois do Parar fica apagado no Play**: a borracha
-/// passa sobre o que a macro pintou; em todo quadro, os texels que ela mudou mostram o editor. Controlo:
-/// no fim do clipe o palco tem tinta nesses texels (o clipe reapareceria).
+/// passa sobre o que a macro pintou; em todo quadro, o miolo dela (apagado de todo) mostra o editor e a
+/// borda segue a lei da cobertura (W10: o papel por cima do clipe na força da borracha). Controlo: no fim
+/// do clipe o palco tem tinta nesses texels (o clipe reapareceria).
 #[test]
 fn apagar_ate_ao_papel_depois_do_parar_fica_apagado_no_play() {
     let mut world = World::new();
@@ -156,16 +157,33 @@ fn apagar_ate_ao_papel_depois_do_parar_fica_apagado_no_play() {
     let depois = t.imagem_aplicada().expect("documento").0;
     let apagados = diferem(&antes, &depois);
     assert!(apagados.len() > 40, "controlo: a borracha apagou");
+    let m = t.marca_do_artista().expect("a marca").clone();
+    let cheios = apagados
+        .iter()
+        .filter(|&&k| m.cobertura(k) == ph2d_tool_painter::macro_track::marca::CHEIA)
+        .count();
+    assert!(
+        cheios > 40,
+        "controlo: o miolo da borracha apagou de todo ({cheios})"
+    );
     let mut q = 0u32;
     loop {
         let instante = f64::from(q) / 60.0;
         let r = c.quadro_ligado(instante, Some(&mut t), &mut nunca);
         let dp = premul(&depois);
+        let m = t.marca_do_artista().expect("a marca").clone();
+        let lei = esperado_pela_marca(&c.palco, &dp, &m);
         for &k in &apagados {
             assert!(
-                r[k * 4..k * 4 + 4] == dp[k * 4..k * 4 + 4],
-                "quadro {q}: o texel {k} apagado mostra o clipe"
+                perto(&r[k * 4..k * 4 + 4], &lei[k * 4..k * 4 + 4]),
+                "quadro {q}: o texel {k} apagado não segue a lei"
             );
+            if m.cobertura(k) == ph2d_tool_painter::macro_track::marca::CHEIA {
+                assert!(
+                    r[k * 4..k * 4 + 4] == dp[k * 4..k * 4 + 4],
+                    "quadro {q}: o texel {k} apagado até ao papel mostra o clipe"
+                );
+            }
         }
         if instante > d + 0.05 {
             let pintados = apagados
@@ -303,7 +321,7 @@ fn gravar_de_novo_comeca_outra_marca_e_desfazer_a_gravacao_devolve_a_antiga() {
         .expect("trilha");
     let r = c.quadro_ligado(0.1, Some(&mut t), &mut nunca);
     assert!(
-        r == esperado(&c.palco, &premul(&depois), |i| m.marcado(i)),
+        perto(&r, &esperado_pela_marca(&c.palco, &premul(&depois), &m)),
         "a gravação antiga de volta não devolveu a marca dela"
     );
 }
@@ -346,7 +364,10 @@ fn a_marca_gravada_no_projeto_volta_igual() {
     let mut le = |_: u64, _: &mut Placa| Some((depois.clone(), LADO, LADO));
     let r = aberto.quadro_ligado(0.1, None, &mut le);
     assert!(
-        r == esperado(&aberto.palco, &premul(&depois), |i| m.marcado(i)),
+        perto(
+            &r,
+            &esperado_pela_marca(&aberto.palco, &premul(&depois), &m)
+        ),
         "a marca aberta não é a gravada"
     );
     assert!(!aberto.palcos.restaura_marcas(&bytes[..bytes.len() - 1]));

@@ -33,6 +33,33 @@ fn esperado(palco: &[u8], atual: &[u8], marcado: impl Fn(usize) -> bool) -> Vec<
         .collect()
 }
 
+/// A lei da W10, escrita à parte em vírgula flutuante: cada texel tocado com a cobertura `c` sobre o que
+/// estava por baixo `B` mostra `atual + (1 − c)·(palco − B)` (premultiplicadas).
+fn esperado_pela_marca(palco: &[u8], atual: &[u8], m: &MarcaDoArtista) -> Vec<u8> {
+    let cheia = f32::from(ph2d_tool_painter::macro_track::marca::CHEIA);
+    let mut out = palco.to_vec();
+    for i in 0..palco.len() / 4 {
+        let c = m.cobertura(i);
+        if c == 0 {
+            continue;
+        }
+        let mut b = m.por_baixo(i);
+        ph2d_render::premul::premultiply_rgba8(&mut b);
+        let resta = 1.0 - f32::from(c) / cheia;
+        for k in 0..4 {
+            let v = f32::from(atual[i * 4 + k])
+                + resta * (f32::from(palco[i * 4 + k]) - f32::from(b[k]));
+            out[i * 4 + k] = v.round().clamp(0.0, 255.0) as u8;
+        }
+    }
+    out
+}
+
+/// `a` e `b` a ± 1 nível (a conta inteira da mistura contra a de vírgula flutuante).
+fn perto(a: &[u8], b: &[u8]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.abs_diff(*y) <= 1)
+}
+
 /// Os texels onde duas telas RGBA diferem.
 fn diferem(a: &[u8], b: &[u8]) -> Vec<usize> {
     (0..a.len() / 4)

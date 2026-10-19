@@ -11,7 +11,7 @@
 //! [`crate::TextureSettings::is_cacheable`].
 
 use crate::blend::BrushBlend;
-use crate::dab::{DirtyRect, encode, parallel_band_stamp};
+use crate::dab::{DirtyRect, encode};
 use crate::spec::BrushSpec;
 use crate::texture::ImageMask;
 
@@ -147,6 +147,7 @@ pub fn blit_stamp(
     spec: &BrushSpec,
     coverage: f32,
     preserve_alpha: bool,
+    forca: Option<&mut [u16]>,
 ) -> Option<DirtyRect> {
     // Contract guard (sweep 2026-07-12): was `debug_assert!`, i.e. absent from the build the artist runs.
     if buf.len() < (width as usize) * (height as usize) * 4 {
@@ -181,9 +182,18 @@ pub fn blit_stamp(
         x1,
         stride,
     };
-    let touched = parallel_band_stamp(buf, y0, y1, x0, x1, stride, |dst, band_y0| {
-        blit_band(&ctx, dst, band_y0)
-    });
+    let touched = crate::dab::parallel_band_stamp_masked(
+        buf,
+        None,
+        forca,
+        y0,
+        y1,
+        x0,
+        x1,
+        stride,
+        crate::dab::PARALLEL_MIN_AREA,
+        |dst, _, fband, band_y0| blit_band(&ctx, dst, fband, band_y0),
+    );
     if !touched {
         return None;
     }
@@ -248,7 +258,7 @@ pub fn dab_write_bounds(
 }
 
 /// Blit the cached mask into the full-width row band `dst` (first row `band_y0`).
-fn blit_band(ctx: &BlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
+fn blit_band(ctx: &BlitCtx, dst: &mut [u8], mut forca: Option<&mut [u16]>, band_y0: i64) -> bool {
     let mut touched = false;
     for r in 0..dst.len() / ctx.stride {
         let py = band_y0 + r as i64;
@@ -274,6 +284,9 @@ fn blit_band(ctx: &BlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
             };
             if a <= 0.0 {
                 continue;
+            }
+            if let Some(f) = forca.as_deref_mut() {
+                crate::stroke_cover::compoe_forca(&mut f[r * (ctx.stride / 4) + px as usize], a);
             }
             let out =
                 crate::blend::blend_over_pigment(ctx.blend, prev, ctx.color, a, ctx.pigment_mix);
@@ -375,6 +388,7 @@ pub fn blit_canvas_cached(
     shape_ramp_lut: Option<&[f32]>,
     coverage: f32,
     preserve_alpha: bool,
+    forca: Option<&mut [u16]>,
 ) -> Option<DirtyRect> {
     let coverage = coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
@@ -436,12 +450,13 @@ pub fn blit_canvas_cached(
         canvas,
         tex,
         ready,
+        forca,
         width,
         y0,
         y1,
         x0,
         x1,
-        |cb, tb, rb, band_y0| canvas_blit_band(&ctx, cb, tb, rb, band_y0),
+        |cb, tb, rb, fb, band_y0| canvas_blit_band(&ctx, cb, tb, rb, fb, band_y0),
     );
     if !touched {
         return None;
@@ -461,6 +476,7 @@ fn canvas_blit_band(
     canvas: &mut [u8],
     tex: &mut [u8],
     ready: &mut [u8],
+    mut forca: Option<&mut [u16]>,
     band_y0: i64,
 ) -> bool {
     let (cstride, mstride) = (ctx.width * 4, ctx.width);
@@ -539,6 +555,9 @@ fn canvas_blit_band(
             };
             if a <= 0.0 {
                 continue;
+            }
+            if let Some(f) = forca.as_deref_mut() {
+                crate::stroke_cover::compoe_forca(&mut f[mi], a);
             }
             let out = crate::blend::blend_over_pigment(
                 ctx.spec.blend,

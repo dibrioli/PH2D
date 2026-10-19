@@ -66,7 +66,7 @@ fn shape_image_cached_mask_matches_per_pixel_silhouette() {
     // Cached: the Shape is baked into the mask; blit it.
     let mask = render_stamp_mask(&spec, None, Some(&img), None, 96);
     let mut b = solid(w, h, [255, 255, 255, 255]);
-    let _ = blit_stamp(&mut b, w, h, center, 36.0, &mask, &spec, 1.0, false);
+    let _ = blit_stamp(&mut b, w, h, center, 36.0, &mask, &spec, 1.0, false, None);
     let idx = |x: u32, y: u32| ((y * w + x) * 4) as usize;
     // Both paint a SQUARE: centre + a footprint corner are black; the count of painted pixels matches.
     assert_eq!(a[idx(48, 48)], 0, "per-pixel centre black");
@@ -165,6 +165,7 @@ fn shape_with_tiled_grain_canvas_cached_matches_per_pixel() {
         None,
         1.0,
         false,
+        None,
     );
     let maxdiff = (0..(w * h * 4) as usize)
         .map(|i| i32::from(a[i]).abs_diff(i32::from(b[i])))
@@ -207,7 +208,18 @@ fn blit_matches_the_per_pixel_stamp_closely() {
     let mut b = solid(w, h, [255, 255, 255, 255]);
     let _ = stamp_dab(&mut a, w, h, [64.0, 64.0], &spec, 1.0, false);
     let mask = render_stamp_mask(&spec, None, None, None, 96);
-    let _ = blit_stamp(&mut b, w, h, [64.0, 64.0], 40.0, &mask, &spec, 1.0, false);
+    let _ = blit_stamp(
+        &mut b,
+        w,
+        h,
+        [64.0, 64.0],
+        40.0,
+        &mask,
+        &spec,
+        1.0,
+        false,
+        None,
+    );
     let idx = |x: u32, y: u32| ((y * w + x) * 4) as usize;
     assert_eq!(a[idx(64, 64)], 0, "stamp centre black");
     assert_eq!(b[idx(64, 64)], 0, "blit centre black");
@@ -241,7 +253,19 @@ fn textured_mask_blit_shows_the_pattern() {
     };
     let mask = render_stamp_mask(&spec, None, None, None, 96);
     let mut buf = solid(w, h, [255, 255, 255, 255]);
-    blit_stamp(&mut buf, w, h, [48.0, 48.0], 36.0, &mask, &spec, 1.0, false).expect("painted");
+    blit_stamp(
+        &mut buf,
+        w,
+        h,
+        [48.0, 48.0],
+        36.0,
+        &mask,
+        &spec,
+        1.0,
+        false,
+        None,
+    )
+    .expect("painted");
     let (mut black, mut white) = (0, 0);
     for y in 16..80 {
         for x in 16..80 {
@@ -314,6 +338,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         None,
         1.0,
         false,
+        None,
     );
     // Bit-close: the only difference is the texture's u8 quantisation in the cache.
     let maxdiff = (0..(w * h * 4) as usize)
@@ -344,6 +369,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         None,
         1.0,
         false,
+        None,
     );
     assert_eq!(
         b, c,
@@ -482,7 +508,8 @@ fn the_write_bounds_door_contains_what_both_blit_routes_touch() {
 
                 let mask = render_stamp_mask(&spec, None, None, None, 64);
                 let mut a = solid(w, h, [255, 255, 255, 255]);
-                let cached = blit_stamp(&mut a, w, h, center, radius, &mask, &spec, 1.0, false);
+                let cached =
+                    blit_stamp(&mut a, w, h, center, radius, &mask, &spec, 1.0, false, None);
 
                 let mut b = solid(w, h, [255, 255, 255, 255]);
                 let per_pixel = stamp_dab(&mut b, w, h, center, &spec, 1.0, false);

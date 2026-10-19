@@ -230,8 +230,18 @@ pub(super) fn stamp_plain_dabs_banded(
     brush: &BrushSpec,
     alpha_locked: bool,
     mask: Option<&mut [u8]>,
+    forca: Option<&mut [u16]>,
 ) -> Option<DirtyRect> {
-    stamp_plain_dabs_banded_with(buf, w, h, dabs, brush, alpha_locked, mask, BATCH_MIN_AREA)
+    banded_com_forca(
+        buf,
+        w,
+        h,
+        dabs,
+        brush,
+        alpha_locked,
+        (mask, forca),
+        BATCH_MIN_AREA,
+    )
 }
 
 /// [`stamp_plain_dabs_banded`] com o piso **explícito** — a rota de ablação.
@@ -241,6 +251,7 @@ pub(super) fn stamp_plain_dabs_banded(
 /// argumentos. É isso que torna o gate de identidade uma comparação contra **o produto**, e não contra
 /// uma segunda implementação escrita para o teste.
 #[allow(clippy::too_many_arguments)]
+#[cfg(test)]
 pub(super) fn stamp_plain_dabs_banded_with(
     buf: &mut [u8],
     w: u32,
@@ -249,6 +260,24 @@ pub(super) fn stamp_plain_dabs_banded_with(
     brush: &BrushSpec,
     alpha_locked: bool,
     mask: Option<&mut [u8]>,
+    min_area: usize,
+) -> Option<DirtyRect> {
+    banded_com_forca(buf, w, h, dabs, brush, alpha_locked, (mask, None), min_area)
+}
+
+/// Os planos que o carimbo escreve ao lado da tela: a cobertura do traço (o cap) e a força do lote (W10
+/// das macros, [`ph2d_painter_brush`]`::stroke_cover::compoe_forca`).
+type Planos<'a> = (Option<&'a mut [u8]>, Option<&'a mut [u16]>);
+
+#[allow(clippy::too_many_arguments)]
+fn banded_com_forca(
+    buf: &mut [u8],
+    w: u32,
+    h: u32,
+    dabs: &[Dab],
+    brush: &BrushSpec,
+    alpha_locked: bool,
+    (mask, forca): Planos<'_>,
     min_area: usize,
 ) -> Option<DirtyRect> {
     // ⚠️ **O balde é fechado DEPOIS do trabalho, não antes.** Ele era carimbado aqui em cima com os
@@ -262,7 +291,17 @@ pub(super) fn stamp_plain_dabs_banded_with(
     let work = batch_work(dabs, w, h);
     let bands = wants_bands(work, dabs, w, h, min_area);
     let t0 = std::time::Instant::now();
-    let out = stamp_plain_dabs_banded_run(buf, w, h, dabs, brush, alpha_locked, mask, bands, work);
+    let out = stamp_plain_dabs_banded_run(
+        buf,
+        w,
+        h,
+        dabs,
+        brush,
+        alpha_locked,
+        (mask, forca),
+        bands,
+        work,
+    );
     #[allow(clippy::cast_possible_truncation)]
     diag::note(bands, dabs.len(), work, t0.elapsed().as_micros() as u64);
     out
@@ -281,7 +320,7 @@ fn stamp_plain_serial(
     dabs: &[Dab],
     brush: &BrushSpec,
     alpha_locked: bool,
-    mut mask: Option<&mut [u8]>,
+    (mut mask, mut forca): Planos<'_>,
 ) -> Option<DirtyRect> {
     let mut touched: Option<DirtyRect> = None;
     for d in dabs {
@@ -302,6 +341,7 @@ fn stamp_plain_serial(
             None,
             None,
             mask.as_deref_mut(),
+            forca.as_deref_mut(),
             spec.dab_rotor(d),
             d.capsula(&spec),
         ) {
@@ -320,24 +360,24 @@ fn stamp_plain_dabs_banded_run(
     dabs: &[Dab],
     brush: &BrushSpec,
     alpha_locked: bool,
-    mask: Option<&mut [u8]>,
+    (mask, forca): Planos<'_>,
     bands: bool,
     work: usize,
 ) -> Option<DirtyRect> {
     if dabs.len() < 2 {
-        return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, mask);
+        return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, (mask, forca));
     }
     let bounds = batch_bounds(dabs, w, h)?;
     let rows = bounds.h as usize;
     if !bands {
-        return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, mask);
+        return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, (mask, forca));
     }
     // A MESMA porta do kernel (`ph2d_painter_brush::band_count`) — o lote e o dab fazem a mesma
     // pergunta, e a medição de 2026-08-04 provou que ela tem a mesma resposta: os dois break-even
     // caem em ~25 k visitas. O `wants_bands` acima já aplicou o piso; aqui só falta *em quantas*.
     let threads = ph2d_painter_brush::band_count(work, rows, 0);
     if threads < 2 {
-        return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, mask);
+        return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, (mask, forca));
     }
     let stride = (w as usize) * 4;
     // ⚠️ **Uma régua, DOIS buffers.** A tinta anda `stride`, a máscara `stride / 4` — e as duas fatias
@@ -361,59 +401,63 @@ fn stamp_plain_dabs_banded_run(
     let y_top = bounds.y as usize;
     let region = &mut buf[y_top * stride..(y_top + rows) * stride];
     let mask_region = mask.map(|m| &mut m[y_top * mrow..(y_top + rows) * mrow]);
+    let forca_region = forca.map(|f| &mut f[y_top * mrow..(y_top + rows) * mrow]);
 
     // Uma banda percorre TODOS os dabs, recortando cada um às suas próprias linhas. O dab que não
     // alcança a banda é rejeitado por duas comparações — `dabs × bandas` testes, ruído contra o blit.
-    let band_work =
-        |chunk: &mut [u8], mut mchunk: Option<&mut [u8]>, band_y0: u32| -> Option<DirtyRect> {
-            let band_h = (chunk.len() / stride) as u32;
-            let band_y1 = band_y0 + band_h;
-            let mut touched: Option<DirtyRect> = None;
-            for d in dabs {
-                let Some(b) = dab_write_bounds(d.center, d.radius_px, w, h) else {
-                    continue;
-                };
-                if b.y + b.h <= band_y0 || b.y >= band_y1 {
-                    continue;
-                }
-                let spec = BrushSpec {
-                    radius_px: d.radius_px,
-                    color: d.color,
-                    ..*brush
-                };
-                // A banda é a TELA: altura da banda, centro deslocado. O `v` do kernel sai idêntico e o
-                // recorte é o `clamp` que ele já faz — e a máscara da banda é indexada nas MESMAS
-                // coordenadas locais, então ela cai no texel certo sem tradução nenhuma.
-                //
-                // ⚠️ **`usize::MAX`: o paralelismo é do LOTE, não do dab.** O kernel dividiria de novo
-                // dentro de cada banda (alcançável a 4096² com o pincel máximo — a nota da porta traz o
-                // número), e trinta e duas bandas abrindo trinta e duas threads cada é contenção, não
-                // capacidade. No braço serial acima ele SEGUE livre para dividir: lá não há quem o faça.
-                let r = stamp_dab_textured_masked_with(
-                    chunk,
-                    w,
-                    band_h,
-                    [d.center[0], d.center[1] - band_y0 as f32],
-                    &spec,
-                    d.coverage,
-                    alpha_locked,
-                    mchunk.as_deref_mut(),
-                    spec.dab_rotor(d),
-                    usize::MAX,
-                );
-                if let Some(r) = r {
-                    // De volta às coordenadas do canvas.
-                    let r = DirtyRect {
-                        x: r.x,
-                        y: r.y + band_y0,
-                        w: r.w,
-                        h: r.h,
-                    };
-                    touched = Some(touched.map_or(r, |a| union(a, r)));
-                }
+    let band_work = |chunk: &mut [u8],
+                     (mut mchunk, mut fchunk): Planos<'_>,
+                     band_y0: u32|
+     -> Option<DirtyRect> {
+        let band_h = (chunk.len() / stride) as u32;
+        let band_y1 = band_y0 + band_h;
+        let mut touched: Option<DirtyRect> = None;
+        for d in dabs {
+            let Some(b) = dab_write_bounds(d.center, d.radius_px, w, h) else {
+                continue;
+            };
+            if b.y + b.h <= band_y0 || b.y >= band_y1 {
+                continue;
             }
-            touched
-        };
+            let spec = BrushSpec {
+                radius_px: d.radius_px,
+                color: d.color,
+                ..*brush
+            };
+            // A banda é a TELA: altura da banda, centro deslocado. O `v` do kernel sai idêntico e o
+            // recorte é o `clamp` que ele já faz — e a máscara da banda é indexada nas MESMAS
+            // coordenadas locais, então ela cai no texel certo sem tradução nenhuma.
+            //
+            // ⚠️ **`usize::MAX`: o paralelismo é do LOTE, não do dab.** O kernel dividiria de novo
+            // dentro de cada banda (alcançável a 4096² com o pincel máximo — a nota da porta traz o
+            // número), e trinta e duas bandas abrindo trinta e duas threads cada é contenção, não
+            // capacidade. No braço serial acima ele SEGUE livre para dividir: lá não há quem o faça.
+            let r = stamp_dab_textured_masked_with(
+                chunk,
+                w,
+                band_h,
+                [d.center[0], d.center[1] - band_y0 as f32],
+                &spec,
+                d.coverage,
+                alpha_locked,
+                mchunk.as_deref_mut(),
+                fchunk.as_deref_mut(),
+                spec.dab_rotor(d),
+                usize::MAX,
+            );
+            if let Some(r) = r {
+                // De volta às coordenadas do canvas.
+                let r = DirtyRect {
+                    x: r.x,
+                    y: r.y + band_y0,
+                    w: r.w,
+                    h: r.h,
+                };
+                touched = Some(touched.map_or(r, |a| union(a, r)));
+            }
+        }
+        touched
+    };
     let band_work = &band_work;
     // ⚠️ As fatias são cortadas **na mesma passada** para a tinta e para a cobertura, com a MESMA
     // altura de banda — é isso que mantém a n-ésima fatia de tinta emparelhada com a n-ésima de
@@ -421,9 +465,10 @@ fn stamp_plain_dabs_banded_run(
     // serve mais: as bandas têm alturas diferentes.
     let mut rest = region;
     let mut mrest = mask_region;
+    let mut frest = forca_region;
     let mut y = y_top;
-    /// A fatia de uma banda: tinta, cobertura opcional e a linha em que ela começa.
-    type Band<'a> = (&'a mut [u8], Option<&'a mut [u8]>, u32);
+    /// A fatia de uma banda: tinta, os planos opcionais e a linha em que ela começa.
+    type Band<'a> = (&'a mut [u8], Planos<'a>, u32);
     let mut parts: Vec<Band<'_>> = Vec::with_capacity(band_rows.len());
     for &bh in &band_rows {
         let (chunk, tail) = rest.split_at_mut(bh * stride);
@@ -433,15 +478,20 @@ fn stamp_plain_dabs_banded_run(
             mrest = Some(mtail);
             mc
         });
+        let fchunk = frest.take().map(|f| {
+            let (fc, ftail) = f.split_at_mut(bh * mrow);
+            frest = Some(ftail);
+            fc
+        });
         #[allow(clippy::cast_possible_truncation)]
-        parts.push((chunk, mchunk, y as u32));
+        parts.push((chunk, (mchunk, fchunk), y as u32));
         y += bh;
     }
     #[allow(clippy::cast_possible_truncation)]
     std::thread::scope(|s| {
         parts
             .into_iter()
-            .map(|(chunk, mchunk, band_y0)| s.spawn(move || band_work(chunk, mchunk, band_y0)))
+            .map(|(chunk, planos, band_y0)| s.spawn(move || band_work(chunk, planos, band_y0)))
             // Colhe primeiro para que TODA banda seja juntada (sem short-circuit deixando thread solta).
             .collect::<Vec<_>>()
             .into_iter()

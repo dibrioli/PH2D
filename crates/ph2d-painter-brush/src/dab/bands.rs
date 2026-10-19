@@ -126,13 +126,14 @@ where
     band_split(
         buf,
         None,
+        None,
         y0,
         y1,
         x0,
         x1,
         stride,
         PARALLEL_MIN_AREA,
-        |dst, _m, by0| stamp(dst, by0),
+        |dst, _m, _f, by0| stamp(dst, by0),
     )
 }
 
@@ -163,6 +164,7 @@ where
 pub(crate) fn parallel_band_stamp_masked<F>(
     buf: &mut [u8],
     mask: Option<&mut [u8]>,
+    forca: Option<&mut [u16]>,
     y0: i64,
     y1: i64,
     x0: i64,
@@ -172,9 +174,9 @@ pub(crate) fn parallel_band_stamp_masked<F>(
     stamp: F,
 ) -> bool
 where
-    F: Fn(&mut [u8], Option<&mut [u8]>, i64) -> bool + Sync,
+    F: Fn(&mut [u8], Option<&mut [u8]>, Option<&mut [u16]>, i64) -> bool + Sync,
 {
-    band_split(buf, mask, y0, y1, x0, x1, stride, min_area, stamp)
+    band_split(buf, mask, forca, y0, y1, x0, x1, stride, min_area, stamp)
 }
 
 /// A divisão por linhas — **uma** resposta a *"vale dividir, e onde cada banda começa?"*.
@@ -182,6 +184,7 @@ where
 fn band_split<F>(
     buf: &mut [u8],
     mask: Option<&mut [u8]>,
+    forca: Option<&mut [u16]>,
     y0: i64,
     y1: i64,
     x0: i64,
@@ -191,34 +194,39 @@ fn band_split<F>(
     stamp: F,
 ) -> bool
 where
-    F: Fn(&mut [u8], Option<&mut [u8]>, i64) -> bool + Sync,
+    F: Fn(&mut [u8], Option<&mut [u8]>, Option<&mut [u16]>, i64) -> bool + Sync,
 {
     let mrow = stride / 4;
     let region = &mut buf[(y0 as usize) * stride..(y1 as usize) * stride];
     let mask_region = mask.map(|m| &mut m[(y0 as usize) * mrow..(y1 as usize) * mrow]);
+    let forca_region = forca.map(|f| &mut f[(y0 as usize) * mrow..(y1 as usize) * mrow]);
     let rows = (y1 - y0) as usize;
     let area = rows * ((x1 - x0).max(0) as usize);
     let threads = band_count(area, rows, min_area);
     if threads <= 1 {
-        return stamp(region, mask_region, y0);
+        return stamp(region, mask_region, forca_region, y0);
     }
     let rows_per_band = rows.div_ceil(threads);
     // As duas fatias saem da MESMA contagem de linhas; um `zip` as manteria alinhadas só enquanto os
     // dois iteradores tivessem o mesmo comprimento, e é justamente isso que um erro de stride quebra.
     let mut mask_bands = mask_region.map(|m| m.chunks_mut(rows_per_band * mrow));
+    let mut forca_bands = forca_region.map(|f| f.chunks_mut(rows_per_band * mrow));
     let bands: Vec<_> = region
         .chunks_mut(rows_per_band * stride)
         .enumerate()
         .map(|(bi, chunk)| {
             let mchunk = mask_bands.as_mut().and_then(Iterator::next);
-            (chunk, mchunk, y0 + (bi * rows_per_band) as i64)
+            let fchunk = forca_bands.as_mut().and_then(Iterator::next);
+            (chunk, mchunk, fchunk, y0 + (bi * rows_per_band) as i64)
         })
         .collect();
     let stamp = &stamp;
     std::thread::scope(|s| {
         bands
             .into_iter()
-            .map(|(chunk, mchunk, band_y0)| s.spawn(move || stamp(chunk, mchunk, band_y0)))
+            .map(|(chunk, mchunk, fchunk, band_y0)| {
+                s.spawn(move || stamp(chunk, mchunk, fchunk, band_y0))
+            })
             // Collect first so EVERY band is joined (no short-circuit leaving a thread unjoined).
             .collect::<Vec<_>>()
             .into_iter()
@@ -235,6 +243,7 @@ pub(crate) fn parallel_band_cached<F>(
     canvas: &mut [u8],
     tex: &mut [u8],
     ready: &mut [u8],
+    forca: Option<&mut [u16]>,
     width: u32,
     y0: i64,
     y1: i64,
@@ -243,22 +252,24 @@ pub(crate) fn parallel_band_cached<F>(
     stamp: F,
 ) -> bool
 where
-    F: Fn(&mut [u8], &mut [u8], &mut [u8], i64) -> bool + Sync,
+    F: Fn(&mut [u8], &mut [u8], &mut [u8], Option<&mut [u16]>, i64) -> bool + Sync,
 {
     let (cstride, mstride) = ((width as usize) * 4, width as usize);
     let canvas = &mut canvas[(y0 as usize) * cstride..(y1 as usize) * cstride];
     let tex = &mut tex[(y0 as usize) * mstride..(y1 as usize) * mstride];
     let ready = &mut ready[(y0 as usize) * mstride..(y1 as usize) * mstride];
+    let forca = forca.map(|f| &mut f[(y0 as usize) * mstride..(y1 as usize) * mstride]);
     let rows = (y1 - y0) as usize;
     let area = rows * ((x1 - x0).max(0) as usize);
     // A MESMA porta do [`band_split`]: *"vale dividir, e em quantas?"* é uma pergunta só, e uma
     // segunda cópia da regra é como este arquivo passou a ter dois pisos escritos à mão.
     let threads = band_count(area, rows, PARALLEL_MIN_AREA);
     if threads <= 1 {
-        return stamp(canvas, tex, ready, y0);
+        return stamp(canvas, tex, ready, forca, y0);
     }
     let rpb = rows.div_ceil(threads);
     let stamp = &stamp;
+    let mut forca_bands = forca.map(|f| f.chunks_mut(rpb * mstride));
     std::thread::scope(|s| {
         canvas
             .chunks_mut(rpb * cstride)
@@ -267,7 +278,8 @@ where
             .enumerate()
             .map(|(bi, ((cb, tb), rb))| {
                 let band_y0 = y0 + (bi * rpb) as i64;
-                s.spawn(move || stamp(cb, tb, rb, band_y0))
+                let fb = forca_bands.as_mut().and_then(Iterator::next);
+                s.spawn(move || stamp(cb, tb, rb, fb, band_y0))
             })
             .collect::<Vec<_>>()
             .into_iter()
@@ -318,6 +330,7 @@ pub(super) fn stamp_band(
     ctx: &DabCtx,
     dst: &mut [u8],
     mut mask: Option<&mut [u8]>,
+    mut forca: Option<&mut [u16]>,
     band_y0: i64,
 ) -> bool {
     let blend = ctx.spec.blend;
@@ -498,6 +511,12 @@ pub(super) fn stamp_band(
                 };
                 if a <= 0.0 {
                     continue;
+                }
+                if let Some(f) = forca.as_deref_mut() {
+                    crate::stroke_cover::compoe_forca(
+                        &mut f[r * (ctx.stride / 4) + px as usize],
+                        a,
+                    );
                 }
                 crate::blend::blend_over_pigment(
                     blend,

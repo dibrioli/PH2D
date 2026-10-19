@@ -120,7 +120,18 @@ fn no_kernel_writes_outside_the_tip() {
     // (1) O carimbo em tons de cinza.
     let mask = crate::stamp::render_stamp_mask(&spec, None, Some(&layer), None, STAMP);
     let mut canvas = vec![0u8; (W * H * 4) as usize];
-    let _ = crate::stamp::blit_stamp(&mut canvas, W, H, [CX, CY], R, &mask, &spec, 1.0, false);
+    let _ = crate::stamp::blit_stamp(
+        &mut canvas,
+        W,
+        H,
+        [CX, CY],
+        R,
+        &mask,
+        &spec,
+        1.0,
+        false,
+        None,
+    );
     check("blit_stamp", written_box(&canvas, 4));
 
     // (2) O carimbo COLORIDO — a rota do report (Use Texture Colors).
@@ -286,6 +297,7 @@ fn every_kernel(spec: &BrushSpec, dab_deg: f32) -> Vec<Escrita> {
             ramp_lut: None,
         }),
         None,
+        None,
         rotor,
         None,
     );
@@ -334,13 +346,25 @@ fn every_kernel(spec: &BrushSpec, dab_deg: f32) -> Vec<Escrita> {
         None,
         1.0,
         false,
+        None,
     );
     out.push(("blit_canvas_cached", true, written_box(&canvas, 4)));
 
     // Os assados: o domínio cresce com a ponta e quem amostra percorre `r · reach`.
     let mask = crate::stamp::render_stamp_mask(spec, None, Some(&layer), None, STAMP_FINO);
     let mut canvas = vec![0u8; n * 4];
-    let _ = crate::stamp::blit_stamp(&mut canvas, W, H, [CX, CY], R, &mask, spec, 1.0, false);
+    let _ = crate::stamp::blit_stamp(
+        &mut canvas,
+        W,
+        H,
+        [CX, CY],
+        R,
+        &mask,
+        spec,
+        1.0,
+        false,
+        None,
+    );
     out.push(("blit_stamp", false, written_box(&canvas, 4)));
     let ramp = vec![[0.0, 0.0, 0.0, 1.0]; 256];
     let mut canvas = vec![0u8; n * 4];
@@ -539,6 +563,7 @@ fn measure_o_custo_do_alcance() {
                         image: Some(&layer),
                         ramp_lut: None,
                     }),
+                    None,
                     None,
                     [c, s],
                     None,

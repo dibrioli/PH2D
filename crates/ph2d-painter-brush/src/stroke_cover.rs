@@ -56,6 +56,17 @@ pub(crate) fn cover_add(m: f32, w: f32, g: f32, coverage: f32, film_aa: bool) ->
     }
 }
 
+/// **A força com que um lote pintou o texel** (W10 das macros, `docs/Macros/08_plano_W10_cobertura.md`):
+/// quem chama o carimbo pode dar-lhe um plano `u16` do tamanho da tela, e cada dab que compõe o texel com
+/// o alfa `a` leva-o a `1 − (1 − f)(1 − a)`. Sob a lei «por cima» (Mix, Erase Alpha, sem pigmento) é a
+/// cobertura exacta da tinta: a tela fica `tinta + (1 − f)·antes` — e com o cap acima, `a = add/(1 − m)`
+/// telescopa para `f = m`.
+#[inline]
+pub fn compoe_forca(f: &mut u16, a: f32) {
+    let t = (1.0 - f32::from(*f) / 65535.0) * (1.0 - a.clamp(0.0, 1.0));
+    *f = ((1.0 - t) * 65535.0 + 0.5) as u16;
+}
+
 #[cfg(test)]
 #[path = "stroke_cover_tests.rs"]
 mod tests;

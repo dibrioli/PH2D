@@ -269,8 +269,9 @@ fn sonda_subir_a_tela() {
 /// só CPU). A 1024², gravado no Painter ligado com a água no worker real, o `liga_a_marca` + `sobe` (o
 /// duplo de CPU das ranhuras, como na auditoria) em duas variantes do MESMO processo, blocos
 /// intercalados por ordem rodada, quadros ao ritmo do editor (60 Hz: o worker devolve a água entre
-/// eles), a média e o máximo como na auditoria: sem marca, e com uma pincelada marcada (a imagem
-/// relê-se a cada passo da água e só a caixa dela sobe).
+/// eles), a média e o máximo como na auditoria: sem marca, com uma pincelada marcada (a imagem relê-se
+/// a cada passo da água e só a caixa dela sobe) e, W10, com a pincelada em Digital (a cobertura parcial:
+/// a mistura lê o que estava por baixo em cada texel da borda).
 ///
 /// `bash scripts/ph2d-run.sh cargo test -p ph2d-app-painter --profile smoke --lib -- --ignored
 /// --nocapture sonda_o_custo_da_marca`
@@ -284,13 +285,16 @@ fn sonda_o_custo_da_marca() {
     let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     struct V {
         nome: &'static str,
+        /// O clipe toca (o palco muda a cada quadro e a mistura corre sempre) ou fica em 0.
+        toca: Option<ph2d_ecs::Entity>,
+        q: u32,
         world: ph2d_ecs::World,
         palcos: PalcosDoPainter,
         placa: Placa,
         t: PainterTool,
         ms: Vec<f64>,
     }
-    let nova = |nome, marcada: bool| {
+    let nova = |nome, marcada: Option<ph2d_tool_painter::PaintMedia>, toca: bool| {
         let mut world = ph2d_ecs::World::new();
         let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
         let (mut t, doc, _) =
@@ -309,6 +313,8 @@ fn sonda_o_custo_da_marca() {
         ));
         let mut v = V {
             nome,
+            toca: toca.then_some(e),
+            q: 0,
             world,
             palcos: PalcosDoPainter::default(),
             placa: Placa::default(),
@@ -319,7 +325,8 @@ fn sonda_o_custo_da_marca() {
         v.palcos.segue(&mut v.world);
         v.palcos
             .liga_a_marca(Some(&mut t), &mut nunca, &mut v.placa);
-        if marcada {
+        if let Some(meio) = marcada {
+            t.set_paint_media(meio);
             t.set_brush_size_px(24.0);
             for i in 0..=8u16 {
                 let phase = match i {
@@ -340,9 +347,12 @@ fn sonda_o_custo_da_marca() {
         v.t = t;
         v
     };
+    use ph2d_tool_painter::PaintMedia::{Digital, WetPaint};
     let mut vs = [
-        nova("água, sem marca", false),
-        nova("água, pincelada marcada", true),
+        nova("água, sem marca", None, false),
+        nova("água, pincelada marcada", Some(WetPaint), false),
+        nova("Play, pincelada cheia (Wet)", Some(WetPaint), true),
+        nova("Play, pincelada parcial (Digital)", Some(Digital), true),
     ];
     let quadro = |v: &mut V| -> f64 {
         // O ritmo do editor: o worker devolve a água entre quadros.
@@ -350,6 +360,10 @@ fn sonda_o_custo_da_marca() {
         drop(v.t.take_preview_arc());
         v.t.on_tick(16.667);
         let mut nunca = |_: u64, _: &mut Placa| None;
+        if let Some(e) = v.toca {
+            v.q += 1;
+            v.world.get_mut::<MacroTempo>(e).expect("tempo").segundos = f64::from(v.q % 240) / 60.0;
+        }
         let t0 = std::time::Instant::now();
         v.palcos.segue(&mut v.world);
         v.palcos
@@ -397,6 +411,51 @@ fn sonda_o_custo_da_marca() {
             v.ms.len(),
             v.placa.substituidas,
             v.placa.regioes
+        );
+    }
+}
+
+/// **W10: o que a cobertura parcial custa à mistura** (`docs/Macros/08_plano_W10_cobertura.md` §3, a
+/// linha do custo): a mesma caixa de 512² numa imagem de 1024², coberta por inteiro (a cópia da W9) e em
+/// parte (`atual + (1 − c)·(palco − B)` com o `B` premultiplicado por texel), blocos intercalados por
+/// ordem rodada no MESMO processo; o mínimo de cada.
+///
+/// `bash scripts/ph2d-run.sh cargo test -p ph2d-app-painter --profile smoke --lib -- --ignored
+/// --nocapture sonda_o_custo_da_mistura_parcial`
+#[test]
+#[ignore = "sonda de custo (W10)"]
+fn sonda_o_custo_da_mistura_parcial() {
+    use ph2d_tool_painter::macro_track::marca::MarcaDoArtista;
+    const LADO: u32 = 1024;
+    const CAIXA: (u32, u32, u32, u32) = (256, 256, 512, 512);
+    let marca = |a: f32| {
+        let mut m = MarcaDoArtista::nova(LADO, LADO, 1);
+        let (x0, y0, w, h) = CAIXA;
+        m.compoe_muitos((y0..y0 + h).flat_map(|y| {
+            (x0..x0 + w).map(move |x| ((y * LADO + x) as usize, a, [90, 120, 200, 255]))
+        }));
+        m
+    };
+    let variantes = [("cheia (W9)", marca(1.0)), ("parcial (W10)", marca(0.5))];
+    let atual = vec![200u8; (LADO * LADO * 4) as usize];
+    let palco = vec![40u8; (CAIXA.2 * CAIXA.3 * 4) as usize];
+    let mut melhor = [f64::MAX; 2];
+    let mut out = palco.clone();
+    for rodada in 0..RODADAS * 4 {
+        for i in 0..2 {
+            let k = (rodada + i) % 2;
+            for _ in 0..BLOCO {
+                out.copy_from_slice(&palco);
+                let t0 = std::time::Instant::now();
+                super::mistura_na_caixa(&mut out, &variantes[k].1, &atual, LADO, CAIXA);
+                melhor[k] = melhor[k].min(t0.elapsed().as_secs_f64() * 1e3);
+            }
+        }
+    }
+    for (k, (nome, _)) in variantes.iter().enumerate() {
+        eprintln!(
+            "[w10] mistura de 512² {nome:<14}: {:.3} ms (mínimo)",
+            melhor[k]
         );
     }
 }

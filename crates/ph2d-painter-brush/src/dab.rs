@@ -276,6 +276,7 @@ pub fn stamp_dab_textured(
         shape,
         None,
         None,
+        None,
         [1.0, 0.0],
         PARALLEL_MIN_AREA,
         None,
@@ -300,6 +301,7 @@ pub fn stamp_dab_textured_masked(
     image: Option<&ImageMask>,
     shape: Option<ShapeInput>,
     mask: Option<&mut [u8]>,
+    forca: Option<&mut [u16]>,
     dab_rotation: [f32; 2],
     capsula: Option<crate::capsula::Capsula>,
 ) -> Option<DirtyRect> {
@@ -316,6 +318,7 @@ pub fn stamp_dab_textured_masked(
         shape,
         None,
         mask,
+        forca,
         dab_rotation,
         PARALLEL_MIN_AREA,
         capsula,
@@ -346,6 +349,7 @@ pub fn stamp_dab_textured_masked_with(
     coverage: f32,
     preserve_alpha: bool,
     mask: Option<&mut [u8]>,
+    forca: Option<&mut [u16]>,
     dab_rotation: [f32; 2],
     min_area: usize,
 ) -> Option<DirtyRect> {
@@ -362,6 +366,7 @@ pub fn stamp_dab_textured_masked_with(
         None,
         None,
         mask,
+        forca,
         dab_rotation,
         min_area,
         None,
@@ -406,6 +411,7 @@ pub fn stamp_dab_ramped(
         shape,
         Some(ramp),
         mask,
+        None,
         dab_rotation,
         PARALLEL_MIN_AREA,
         capsula,
@@ -430,6 +436,8 @@ fn stamp_dab_inner(
     // pixel's stroke coverage at the dab target (the tool passes it when Accumulate is off and the cap
     // is observable); `None` ⇒ the plain per-dab build-up.
     mask: Option<&mut [u8]>,
+    // A força com que o lote pinta cada texel (canvas-sized, `u16`; [`crate::stroke_cover::compoe_forca`]).
+    forca: Option<&mut [u16]>,
     // The dab's composed footprint rotor ([`crate::BrushSpec::dab_rotor`], `[1, 0]` = none): the
     // per-dab **Jitter Rotate** spin composed with the **stroke-follow** rotation. It spins the whole
     // footprint — falloff + Shape + View-Grain — together, which is what keeps a following tip and the
@@ -558,13 +566,14 @@ fn stamp_dab_inner(
     let touched = parallel_band_stamp_masked(
         buf,
         mask,
+        forca,
         y0,
         y1,
         x0,
         x1,
         stride,
         min_area,
-        |dst, mband, band_y0| stamp_band(&ctx, dst, mband, band_y0),
+        |dst, mband, fband, band_y0| stamp_band(&ctx, dst, mband, fband, band_y0),
     );
 
     if !touched {

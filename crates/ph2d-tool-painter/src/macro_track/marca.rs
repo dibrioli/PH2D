@@ -1,8 +1,11 @@
-//! **A marca do artista** (W9, `docs/Macros/07_plano_W9.md`; decisão do dono em
-//! `docs/Macros/06_auditoria_W8_record.md`): por texel, «o artista escreveu aqui depois da gravação».
-//! Um bit por texel; a gravação a que pertence é a [`MarcaDoArtista::epoca`]. No Play de uma macro, um
-//! texel marcado mostra a imagem atual e os outros o clipe.
+//! **A marca do artista** (W9 `docs/Macros/07_plano_W9.md`; W10 `docs/Macros/08_plano_W10_cobertura.md`):
+//! por texel, quanto da imagem é tinta que o artista pôs depois da gravação — a cobertura `c` (`0..=CHEIA`) —
+//! e o píxel que estava POR BAIXO no 1.º toque (`B`, RGBA8 straight). A gravação a que pertence é a
+//! [`MarcaDoArtista::epoca`]. No Play de uma macro o texel mostra `atual + (1 − c)·(palco − B)`
+//! (premultiplicado; a tinta é composta «por cima»): `c = 0` é o clipe, `c = CHEIA` a imagem atual. Só os
+//! ladrilhos tocados vivem.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -16,43 +19,113 @@ fn versao_nova() -> u64 {
 /// Uma caixa `(x, y, w, h)` em texels.
 pub type Caixa = (u32, u32, u32, u32);
 
+/// A cobertura inteira: o texel é só a imagem atual. `u16`: com `u8` o arredondamento da cobertura
+/// sozinho chegava a meio nível sobre o palco (W10, a régua dos cruzamentos).
+pub const CHEIA: u16 = u16::MAX;
+
+/// O lado de um ladrilho, em texels.
+pub const LADO: u32 = 64;
+const AREA: usize = (LADO * LADO) as usize;
+
+/// Um ladrilho `LADO`² da marca: a cobertura e o que estava por baixo de cada texel (linha a linha).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Ladrilho {
+    c: Box<[u16]>,
+    b: Box<[[u8; 4]]>,
+}
+
+impl Ladrilho {
+    fn novo() -> Self {
+        Self {
+            c: vec![0; AREA].into_boxed_slice(),
+            b: vec![[0; 4]; AREA].into_boxed_slice(),
+        }
+    }
+
+    /// A cobertura do texel `k` do ladrilho.
+    #[must_use]
+    pub fn c(&self, k: usize) -> u16 {
+        self.c[k]
+    }
+
+    /// O que estava por baixo do texel `k` (straight; vale com `0 < c < CHEIA`).
+    #[must_use]
+    pub fn b(&self, k: usize) -> [u8; 4] {
+        self.b[k]
+    }
+}
+
+type Ladrilhos = BTreeMap<(u32, u32), Arc<Ladrilho>>;
+
 /// A marca de uma imagem `w`×`h`.
 #[derive(Clone, Debug)]
 pub struct MarcaDoArtista {
     w: u32,
     h: u32,
     epoca: u64,
-    palavras: Arc<Vec<u64>>,
+    ladrilhos: Arc<Ladrilhos>,
     versao: u64,
-    /// Contém todo texel marcado (pode ser maior); `None` = nenhum.
+    /// Contém todo texel com `c > 0`; `None` = nenhum.
     caixa: Option<Caixa>,
 }
 
-/// Os bits que um passo LIGOU numa marca (o desfazer desliga-os; o refazer liga-os de novo).
+/// O que um passo mudou na marca, por ladrilho: como estava e como ficou (`None` = sem ladrilho). O
+/// desfazer põe o «antes», o refazer o «depois».
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DeltaDaMarca {
     pub epoca: u64,
-    /// `(índice da palavra, bits ligados)`.
-    pub palavras: Vec<(u32, u64)>,
+    pub ladrilhos: Vec<DeltaDoLadrilho>,
 }
 
+/// `(ladrilho, antes, depois)`.
+pub type DeltaDoLadrilho = ((u32, u32), Option<Arc<Ladrilho>>, Option<Arc<Ladrilho>>);
+
 impl DeltaDaMarca {
-    /// Junta `outro` (da mesma época) a este: o passo coalescido liga os dois.
+    /// O que mudou de `antes` para `depois` (da mesma marca, época `epoca`).
+    #[must_use]
+    pub fn entre(epoca: u64, antes: &Ladrilhos, depois: &Ladrilhos) -> Self {
+        let mut ladrilhos = Vec::new();
+        let chaves: std::collections::BTreeSet<&(u32, u32)> =
+            antes.keys().chain(depois.keys()).collect();
+        for k in chaves {
+            let (a, d) = (antes.get(k), depois.get(k));
+            let igual = match (a, d) {
+                (Some(a), Some(d)) => Arc::ptr_eq(a, d) || a == d,
+                (None, None) => true,
+                _ => false,
+            };
+            if !igual {
+                ladrilhos.push((*k, a.cloned(), d.cloned()));
+            }
+        }
+        Self { epoca, ladrilhos }
+    }
+
+    #[must_use]
+    pub fn vazio(&self) -> bool {
+        self.ladrilhos.is_empty()
+    }
+
+    /// Junta `outro` (da mesma época, posterior) a este: o passo coalescido vai do 1.º antes ao último
+    /// depois.
     pub fn junta(&mut self, outro: &Self) {
         if outro.epoca != self.epoca {
             return;
         }
-        for &(i, b) in &outro.palavras {
-            match self.palavras.binary_search_by_key(&i, |p| p.0) {
-                Ok(k) => self.palavras[k].1 |= b,
-                Err(k) => self.palavras.insert(k, (i, b)),
+        for (k, a, d) in &outro.ladrilhos {
+            match self.ladrilhos.binary_search_by_key(k, |l| l.0) {
+                Ok(i) => self.ladrilhos[i].2.clone_from(d),
+                Err(i) => self.ladrilhos.insert(i, (*k, a.clone(), d.clone())),
             }
         }
     }
 
+    /// O que este passo segura sozinho: os ladrilhos «depois» (os «antes» são do passo anterior).
     #[must_use]
     pub fn heap_bytes(&self) -> usize {
-        self.palavras.capacity() * std::mem::size_of::<(u32, u64)>()
+        let um = AREA * (2 + 4) + std::mem::size_of::<Ladrilho>();
+        self.ladrilhos.iter().filter(|l| l.2.is_some()).count() * um
+            + self.ladrilhos.capacity() * std::mem::size_of::<DeltaDoLadrilho>()
     }
 }
 
@@ -114,22 +187,28 @@ pub fn une(a: Option<Caixa>, b: Caixa) -> Caixa {
     (x0, y0, x1 - x0, y1 - y0)
 }
 
-/// A caixa dos bits ligados de `p` (uma tela de largura `w`).
-fn caixa_de(p: &[u64], w: u32, h: u32) -> Option<Caixa> {
-    let n = w as usize * h as usize;
+/// A caixa dos texels com `c > 0` em `l` (uma imagem `w`×`h`).
+fn caixa_de(l: &Ladrilhos, w: u32, h: u32) -> Option<Caixa> {
     let mut caixa = None;
-    for (k, &b) in p.iter().enumerate() {
-        let mut b = b;
-        while b != 0 {
-            let i = k * 64 + b.trailing_zeros() as usize;
-            b &= b - 1;
-            if i < n {
-                let (x, y) = ((i % w as usize) as u32, (i / w as usize) as u32);
+    for (&(lx, ly), t) in l {
+        for (k, &c) in t.c.iter().enumerate() {
+            if c == 0 {
+                continue;
+            }
+            let (x, y) = (lx * LADO + k as u32 % LADO, ly * LADO + k as u32 / LADO);
+            if x < w && y < h {
                 caixa = Some(une(caixa, (x, y, 1, 1)));
             }
         }
     }
     caixa
+}
+
+/// `c` composta com a força `a` (`0..=1`): `1 − (1 − c)(1 − a)`, em `0..=CHEIA`.
+#[must_use]
+pub fn compoe(c: u16, a: f32) -> u16 {
+    let resta = f32::from(CHEIA - c) * (1.0 - a.clamp(0.0, 1.0));
+    CHEIA - (resta + 0.5) as u16
 }
 
 impl MarcaDoArtista {
@@ -140,7 +219,7 @@ impl MarcaDoArtista {
             w,
             h,
             epoca,
-            palavras: Arc::new(vec![0; palavras_para(w, h)]),
+            ladrilhos: Arc::new(BTreeMap::new()),
             versao: versao_nova(),
             caixa: None,
         }
@@ -167,118 +246,218 @@ impl MarcaDoArtista {
         self.caixa.is_none()
     }
 
-    /// Contém todo texel marcado (pode ser maior).
+    /// Contém todo texel com `c > 0` (pode ser maior).
     #[must_use]
     pub fn caixa(&self) -> Option<Caixa> {
         self.caixa
     }
 
+    /// Os ladrilhos (o retrato que um passo guarda para o desfazer).
     #[must_use]
-    pub fn palavras(&self) -> &Arc<Vec<u64>> {
-        &self.palavras
+    pub fn ladrilhos(&self) -> &Arc<Ladrilhos> {
+        &self.ladrilhos
     }
 
-    /// O texel `i` (linha a linha) está marcado.
+    /// O ladrilho `(lx, ly)`, se foi tocado.
+    #[must_use]
+    pub fn ladrilho(&self, lx: u32, ly: u32) -> Option<&Ladrilho> {
+        self.ladrilhos.get(&(lx, ly)).map(AsRef::as_ref)
+    }
+
+    fn onde(&self, i: usize) -> ((u32, u32), usize) {
+        let w = self.w as usize;
+        let (x, y) = ((i % w) as u32, (i / w) as u32);
+        (
+            (x / LADO, y / LADO),
+            ((y % LADO) * LADO + x % LADO) as usize,
+        )
+    }
+
+    /// A cobertura do texel `i` (linha a linha).
+    #[must_use]
+    pub fn cobertura(&self, i: usize) -> u16 {
+        let (l, k) = self.onde(i);
+        self.ladrilhos.get(&l).map_or(0, |t| t.c[k])
+    }
+
+    /// O que estava por baixo do texel `i` no 1.º toque (vale com `0 < c < CHEIA`).
+    #[must_use]
+    pub fn por_baixo(&self, i: usize) -> [u8; 4] {
+        let (l, k) = self.onde(i);
+        self.ladrilhos.get(&l).map_or([0; 4], |t| t.b[k])
+    }
+
+    /// O artista tocou o texel `i` (`c > 0`).
     #[must_use]
     pub fn marcado(&self, i: usize) -> bool {
-        ligado(&self.palavras, i)
+        self.cobertura(i) > 0
     }
 
-    /// Quantos texels estão marcados.
+    /// Quantos texels o artista tocou.
     #[must_use]
     pub fn quantos(&self) -> usize {
-        self.palavras.iter().map(|b| b.count_ones() as usize).sum()
+        self.ladrilhos
+            .values()
+            .map(|t| t.c.iter().filter(|&&c| c > 0).count())
+            .sum()
     }
 
-    /// Troca as palavras (do mesmo tamanho) e recalcula a caixa.
-    ///
-    /// # Panics
-    /// Com outro número de palavras (um erro de quem chama).
-    pub fn poe_palavras(&mut self, palavras: Arc<Vec<u64>>) {
-        assert_eq!(palavras.len(), self.palavras.len(), "outro tamanho");
-        self.caixa = caixa_de(&palavras, self.w, self.h);
-        self.palavras = palavras;
+    /// Troca os ladrilhos (de uma marca do mesmo tamanho) e recalcula a caixa.
+    pub fn poe_ladrilhos(&mut self, l: Arc<Ladrilhos>) {
+        self.caixa = caixa_de(&l, self.w, self.h);
+        self.ladrilhos = l;
         self.versao = versao_nova();
     }
 
-    /// Liga o disco `(cx, cy, r)` (em texels).
-    pub fn marca_disco(&mut self, cx: f32, cy: f32, r: f32) {
-        let (w, h) = (self.w, self.h);
-        let p: &mut Vec<u64> = Arc::make_mut(&mut self.palavras);
-        if let Some(c) = liga_disco(p, w, h, cx, cy, r) {
-            self.caixa = Some(une(self.caixa, c));
+    /// **Compõe** cada `(i, a, b)`: o texel `i` recebe tinta com a força `a` (`c ← 1 − (1 − c)(1 − a)`),
+    /// e `b` fica como o que estava por baixo se é o 1.º toque. Muda a versão uma vez.
+    pub fn compoe_muitos(&mut self, itens: impl IntoIterator<Item = (usize, f32, [u8; 4])>) {
+        let n = self.w as usize * self.h as usize;
+        let mut caixa = self.caixa;
+        let mut mexeu = false;
+        let l = Arc::make_mut(&mut self.ladrilhos);
+        // O ladrilho em mão sai do mapa e volta quando o seguinte o troca (os itens vêm linha a linha).
+        // `bool` = o ladrilho guarda-se (já existia, ou recebeu tinta).
+        let mut mao: Option<((u32, u32), Arc<Ladrilho>, bool)> = None;
+        let w = self.w as usize;
+        for (i, a, b) in itens {
+            if i >= n || !(a > 0.0) {
+                continue;
+            }
+            let (x, y) = ((i % w) as u32, (i / w) as u32);
+            let chave = (x / LADO, y / LADO);
+            if mao.as_ref().is_none_or(|m| m.0 != chave) {
+                if let Some((k, t, true)) = mao.take() {
+                    l.insert(k, t);
+                }
+                mao = Some(match l.remove(&chave) {
+                    Some(t) => (chave, t, true),
+                    None => (chave, Arc::new(Ladrilho::novo()), false),
+                });
+            }
+            let m = mao.as_mut().expect("posto acima");
+            let t = Arc::make_mut(&mut m.1);
+            let k = ((y % LADO) * LADO + x % LADO) as usize;
+            let c = t.c[k];
+            let novo = compoe(c, a);
+            if novo == c {
+                continue;
+            }
+            if c == 0 {
+                t.b[k] = b;
+            }
+            t.c[k] = novo;
+            m.2 = true;
+            caixa = Some(une(caixa, (x, y, 1, 1)));
+            mexeu = true;
+        }
+        if let Some((k, t, true)) = mao {
+            l.insert(k, t);
+        }
+        if mexeu {
+            self.caixa = caixa;
             self.versao = versao_nova();
         }
     }
 
-    /// Liga (`liga == true`) ou desliga os bits de `d`, se ele é desta época.
-    pub fn aplica(&mut self, d: &DeltaDaMarca, liga: bool) {
-        if d.epoca != self.epoca || d.palavras.is_empty() {
+    /// O que está por baixo de texels já tocados (`(i, B)`, straight) muda — a reescrita da gravação passa
+    /// o fim novo por baixo da tinta do artista. Texels intocados ficam.
+    pub fn poe_por_baixo(&mut self, itens: impl IntoIterator<Item = (usize, [u8; 4])>) {
+        let n = self.w as usize * self.h as usize;
+        let mut mexeu = false;
+        for (i, b) in itens {
+            if i >= n {
+                continue;
+            }
+            let (chave, k) = self.onde(i);
+            let l = Arc::make_mut(&mut self.ladrilhos);
+            if let Some(t) = l.get_mut(&chave)
+                && t.c[k] > 0
+                && t.b[k] != b
+            {
+                Arc::make_mut(t).b[k] = b;
+                mexeu = true;
+            }
+        }
+        if mexeu {
+            self.versao = versao_nova();
+        }
+    }
+
+    /// Os texels de `bits` passam a `c = CHEIA` (a força não se sabe: a imagem atual vale).
+    pub fn satura_bits(&mut self, bits: &[u64]) {
+        let itens = bits.iter().enumerate().flat_map(|(k, &p)| {
+            let mut p = p;
+            std::iter::from_fn(move || {
+                (p != 0).then(|| {
+                    let i = k * 64 + p.trailing_zeros() as usize;
+                    p &= p - 1;
+                    (i, 1.0, [0; 4])
+                })
+            })
+        });
+        self.compoe_muitos(itens);
+    }
+
+    /// O disco `(cx, cy, r)` (em texels) passa a `c = CHEIA` — o traço em voo, até o passo se registar.
+    pub fn marca_disco(&mut self, cx: f32, cy: f32, r: f32) {
+        let mut bits = vec![0u64; palavras_para(self.w, self.h)];
+        if liga_disco(&mut bits, self.w, self.h, cx, cy, r).is_some() {
+            self.satura_bits(&bits);
+        }
+    }
+
+    /// Põe os ladrilhos de `d` como ficaram (`refaz`) ou como estavam, se ele é desta época.
+    pub fn aplica(&mut self, d: &DeltaDaMarca, refaz: bool) {
+        if d.epoca != self.epoca || d.vazio() {
             return;
         }
-        let p = Arc::make_mut(&mut self.palavras);
-        for &(i, b) in &d.palavras {
-            if let Some(w) = p.get_mut(i as usize) {
-                if liga {
-                    *w |= b;
-                } else {
-                    *w &= !b;
+        let l = Arc::make_mut(&mut self.ladrilhos);
+        for (k, antes, depois) in &d.ladrilhos {
+            match if refaz { depois } else { antes } {
+                Some(t) => {
+                    l.insert(*k, Arc::clone(t));
+                }
+                None => {
+                    l.remove(k);
                 }
             }
         }
-        self.caixa = caixa_de(&self.palavras, self.w, self.h);
+        self.caixa = caixa_de(&self.ladrilhos, self.w, self.h);
         self.versao = versao_nova();
     }
 
-    /// A marca une `bits` (do mesmo tamanho): devolve o que ficou ligado de novo.
-    pub fn une_bits(&mut self, bits: &[u64]) -> DeltaDaMarca {
-        let mut d = DeltaDaMarca {
-            epoca: self.epoca,
-            palavras: Vec::new(),
-        };
-        for (i, (&a, &b)) in self.palavras.iter().zip(bits).enumerate() {
-            let novos = b & !a;
-            if novos != 0 {
-                d.palavras.push((i as u32, novos));
-            }
-        }
-        if !d.palavras.is_empty() {
-            self.aplica(&d, true);
-        }
-        d
-    }
-
-    /// **O formato gravado**: versão, tamanho, época e as palavras por corridas (zeros contados).
+    /// **O formato gravado** (`FORMATO` 2): versão, tamanho, época, e cada ladrilho — as coberturas e,
+    /// só onde `0 < c < CHEIA`, o que estava por baixo.
     #[must_use]
-    pub fn codifica(&self) -> Vec<u8> /* COLOR-RAW-OK: os bits da marca, não cor */ {
+    pub fn codifica(&self) -> Vec<u8> /* COLOR-RAW-OK: a cobertura e o píxel guardado, bytes do formato */
+    {
         let mut out = Vec::new();
         out.push(FORMATO);
         out.extend_from_slice(&self.w.to_le_bytes());
         out.extend_from_slice(&self.h.to_le_bytes());
         out.extend_from_slice(&self.epoca.to_le_bytes());
-        let p = &self.palavras;
-        let mut k = 0;
-        while k < p.len() {
-            let zeros = p[k..].iter().take_while(|&&b| b == 0).count();
-            k += zeros;
-            let cheias = p[k..].iter().take_while(|&&b| b != 0).count();
-            out.extend_from_slice(&(zeros as u32).to_le_bytes());
-            out.extend_from_slice(&(cheias as u32).to_le_bytes());
-            for &b in &p[k..k + cheias] {
-                out.extend_from_slice(&b.to_le_bytes());
+        out.extend_from_slice(&(self.ladrilhos.len() as u32).to_le_bytes());
+        for (&(lx, ly), t) in self.ladrilhos.iter() {
+            out.extend_from_slice(&lx.to_le_bytes());
+            out.extend_from_slice(&ly.to_le_bytes());
+            for c in t.c.iter() {
+                out.extend_from_slice(&c.to_le_bytes());
             }
-            k += cheias;
+            for (c, b) in t.c.iter().zip(t.b.iter()) {
+                if (1..CHEIA).contains(c) {
+                    out.extend_from_slice(b);
+                }
+            }
         }
         out
     }
 
-    /// O inverso de [`Self::codifica`]; `None` = bytes que não são uma marca deste formato.
+    /// O inverso de [`Self::codifica`] (e a marca de bits do `FORMATO` 1: cada bit ligado é `c = CHEIA`);
+    /// `None` = bytes que não são uma marca.
     #[must_use]
     pub fn descodifica(b: &[u8]) -> Option<Self> {
         let (&versao, b) = b.split_first()?;
-        if versao != FORMATO {
-            return None;
-        }
         let mut r = Leitor(b);
         let (w, h, epoca) = (r.u32()?, r.u32()?, r.u64()?);
         // Um ficheiro não aloca o que quer: o tecto é o do raster que um ficheiro abre.
@@ -286,33 +465,63 @@ impl MarcaDoArtista {
         if w > lado || h > lado {
             return None;
         }
-        let n = palavras_para(w, h);
-        let mut p = Vec::new();
-        while !r.0.is_empty() {
-            let (zeros, cheias) = (r.u32()? as usize, r.u32()? as usize);
-            if p.len() + zeros + cheias > n {
-                return None;
+        let mut m = Self::nova(w, h, epoca);
+        match versao {
+            FORMATO_DOS_BITS => m.satura_bits(&le_os_bits(&mut r, palavras_para(w, h))?),
+            FORMATO => {
+                let n = r.u32()? as usize;
+                if n > (w.div_ceil(LADO) * h.div_ceil(LADO)) as usize {
+                    return None;
+                }
+                let mut l = BTreeMap::new();
+                for _ in 0..n {
+                    let (lx, ly) = (r.u32()?, r.u32()?);
+                    if lx >= w.div_ceil(LADO) || ly >= h.div_ceil(LADO) {
+                        return None;
+                    }
+                    let mut t = Ladrilho::novo();
+                    for (c, b) in t.c.iter_mut().zip(r.bytes(AREA * 2)?.as_chunks::<2>().0) {
+                        *c = u16::from_le_bytes(*b);
+                    }
+                    for k in 0..AREA {
+                        if (1..CHEIA).contains(&t.c[k]) {
+                            t.b[k].copy_from_slice(r.bytes(4)?);
+                        }
+                    }
+                    l.insert((lx, ly), Arc::new(t));
+                }
+                if !r.0.is_empty() {
+                    return None;
+                }
+                m.poe_ladrilhos(Arc::new(l));
             }
-            p.resize(p.len() + zeros, 0);
-            for _ in 0..cheias {
-                p.push(r.u64()?);
-            }
+            _ => return None,
         }
-        p.resize(n, 0);
-        let caixa = caixa_de(&p, w, h);
-        Some(Self {
-            w,
-            h,
-            epoca,
-            palavras: Arc::new(p),
-            versao: versao_nova(),
-            caixa,
-        })
+        Some(m)
     }
 }
 
-/// A versão do formato de [`MarcaDoArtista::codifica`].
-const FORMATO: u8 = 1;
+/// As palavras do `FORMATO` 1 (corridas de zeros contadas).
+fn le_os_bits(r: &mut Leitor<'_>, n: usize) -> Option<Vec<u64>> {
+    let mut p = Vec::new();
+    while !r.0.is_empty() {
+        let (zeros, cheias) = (r.u32()? as usize, r.u32()? as usize);
+        if p.len() + zeros + cheias > n {
+            return None;
+        }
+        p.resize(p.len() + zeros, 0);
+        for _ in 0..cheias {
+            p.push(r.u64()?);
+        }
+    }
+    p.resize(n, 0);
+    Some(p)
+}
+
+/// A versão do formato de [`MarcaDoArtista::codifica`] (W10: a cobertura).
+const FORMATO: u8 = 2;
+/// A da W9 (um bit por texel), que ainda se lê.
+const FORMATO_DOS_BITS: u8 = 1;
 
 /// FNV-1a de 64 bits (Fowler–Noll–Vo, os parâmetros publicados), continuando de `h`.
 fn fnv1a(mut h: u64, bytes: &[u8]) -> u64 {
@@ -352,6 +561,12 @@ impl Leitor<'_> {
         let (a, b) = self.0.split_first_chunk::<8>()?;
         self.0 = b;
         Some(u64::from_le_bytes(*a))
+    }
+
+    fn bytes(&mut self, n: usize) -> Option<&[u8]> {
+        let (a, b) = self.0.split_at_checked(n)?;
+        self.0 = b;
+        Some(a)
     }
 }
 

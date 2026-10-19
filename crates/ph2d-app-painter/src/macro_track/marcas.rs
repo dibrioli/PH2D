@@ -105,7 +105,7 @@ pub(super) fn le_a_sprite<R: ?Sized>(
     let mut efetiva = g.marca.clone();
     match &g.base {
         Some(base) if base.len() == rgba.len() => {
-            efetiva.une_bits(&diferem(base, &rgba, (w * h) as usize));
+            efetiva.satura_bits(&diferem(base, &rgba, (w * h) as usize));
         }
         _ => g.base = Some(rgba),
     }

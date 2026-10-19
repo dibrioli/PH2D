@@ -1,10 +1,15 @@
-//! **A marca do artista na história do Painter** (W9, `docs/Macros/07_plano_W9.md`) — filho de
-//! [`super`]. Cada passo REGISTADO marca o que o artista escreveu: os texels que o passo mudou, salvo os
-//! que só a água mudou; os que o pincel cobriu e mudaram (mesmo que a água também os tenha mudado); e os
-//! que o pincel cobriu DENTRO da água (o Wet Paint), mudados ou não; e o MIOLO do pincel (força ≥ ½,
-//! [`crate::macro_track::forca`]), mudado ou não — tinta sobre o que já era o resultado. A água que corre
-//! sozinha não é passo; a reescrita da macro e o «Recomeçar» suspendem a marca. O desfazer desliga o que
-//! o passo ligou.
+//! **A marca do artista na história do Painter** (W9 `docs/Macros/07_plano_W9.md`, W10
+//! `docs/Macros/08_plano_W10_cobertura.md`) — filho de [`super`]. Cada passo REGISTADO compõe na marca a
+//! tinta que o artista pôs nele:
+//!
+//! - **com a força medida** (o carimbo escreveu-a no plano — Digital, lei «por cima», pilha trivial): cada
+//!   texel recebe a força com que foi pintado, e o que estava por baixo no 1.º toque;
+//! - **sem ela** (a água, o relevo, os outros modos e meios): a lei da W9 — os texels que o passo mudou,
+//!   salvo os que só a água mudou; os que o pincel cobriu e mudaram; os que cobriu DENTRO da água; e o
+//!   miolo do pincel (força ≥ ½, [`crate::macro_track::forca`]) — ficam com `c = 255`.
+//!
+//! A água que corre sozinha não é passo; a reescrita da macro e o «Recomeçar» suspendem a marca. O desfazer
+//! devolve os ladrilhos de antes do passo.
 
 use super::{ModelSnapshot, UndoController, UndoEntry};
 use crate::compositor::Region;
@@ -14,12 +19,15 @@ use crate::macro_track::marca::{self, DeltaDaMarca, MarcaDoArtista};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+/// Os ladrilhos de uma marca (o retrato do desfazer).
+type Retrato = Arc<BTreeMap<(u32, u32), Arc<marca::Ladrilho>>>;
+
 /// A marca da imagem que o Painter tem, e o passo em curso.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct MarcaViva {
     pub(crate) marca: Option<MarcaDoArtista>,
-    /// As palavras antes do 1.º disco do passo (`None` = o passo ainda não marcou).
-    antes_do_passo: Option<Arc<Vec<u64>>>,
+    /// A marca antes da 1.ª escrita provisória do passo (`None` = o passo ainda não marcou).
+    antes_do_passo: Option<Retrato>,
     /// Os texels que o pincel cobriu neste passo.
     discos: Vec<u64>,
     /// Os que ele cobriu DENTRO da água (o Wet Paint): a tinta aparece pela água, às vezes depois de o
@@ -27,10 +35,23 @@ pub(crate) struct MarcaViva {
     na_agua: Vec<u64>,
     /// Os texels que a água mudou desde o último registo.
     agua: Vec<u64>,
-    /// A força com que o pincel cobriu cada texel neste passo: o miolo marca mesmo sem mudar o byte.
+    /// A força com que o pincel cobriu cada texel neste passo, pelo perfil (a lei da W9: o miolo).
     pub(crate) forca: ForcaDoPincel,
+    /// **A força MEDIDA**: o plano (do tamanho da tela) que o carimbo escreve, e a caixa do que escreveu.
+    plano: Vec<u16>,
+    plano_caixa: Option<marca::Caixa>,
+    /// O lote em curso pode pintar pelo plano (`stamp_dabs` arma-o pela lei).
+    armada: bool,
+    /// Uma rota do carimbo tomou o plano neste lote.
+    tomada: bool,
+    /// `Some(true)` = toda a tinta do passo veio com a força medida; `Some(false)` = alguma não.
+    exata: Option<bool>,
+    /// O papel sob a camada (a imagem é a camada sobre ele): o que estava por baixo é a imagem.
+    papel: Option<[u8; 3]>,
     /// O passo que se regista agora é da macro (a reescrita de uma etapa, o «Recomeçar»).
     pub(crate) suspensa: bool,
+    /// A marca antes de a reescrita a mudar por conta própria (o que estava por baixo, W10).
+    antes_da_reescrita: Option<Retrato>,
 }
 
 /// Zera `v` com `n` palavras.
@@ -43,10 +64,14 @@ impl MarcaViva {
     pub(crate) fn poe(&mut self, m: Option<MarcaDoArtista>) {
         self.marca = m;
         self.antes_do_passo = None;
+        self.antes_da_reescrita = None;
         self.discos.clear();
         self.na_agua.clear();
         self.agua.clear();
         self.forca.limpa();
+        self.plano = Vec::new();
+        self.plano_caixa = None;
+        self.exata = None;
     }
 
     /// Há uma marca a escrever (a imagem tem uma macro).
@@ -60,13 +85,22 @@ impl MarcaViva {
             .map_or(0, |m| marca::palavras_para(m.tamanho().0, m.tamanho().1))
     }
 
-    /// O pincel cobre o disco `(cx, cy, r)` (`na_agua` = o dab entrou na água): mostra-se já; o registo
-    /// do passo decide.
+    fn guarda_o_antes(&mut self) {
+        if self.antes_do_passo.is_none()
+            && let Some(m) = &self.marca
+        {
+            self.antes_do_passo = Some(Arc::clone(m.ladrilhos()));
+        }
+    }
+
+    /// O pincel cobre o disco `(cx, cy, r)` (`na_agua` = o dab entrou na água): mostra-se já (`c = 255`
+    /// até o registo do passo decidir).
     pub(crate) fn disco(&mut self, cx: f32, cy: f32, r: f32, na_agua: bool) {
         let n = self.palavras();
-        let Some(m) = self.marca.as_mut() else {
+        if n == 0 {
             return;
-        };
+        }
+        self.guarda_o_antes();
         let bits = if na_agua {
             &mut self.na_agua
         } else {
@@ -75,12 +109,57 @@ impl MarcaViva {
         if bits.len() != n {
             zera(bits, n);
         }
-        if self.antes_do_passo.is_none() {
-            self.antes_do_passo = Some(Arc::clone(m.palavras()));
-        }
+        let Some(m) = self.marca.as_mut() else {
+            return;
+        };
         let (w, h) = m.tamanho();
         marca::liga_disco(bits, w, h, cx, cy, r);
         m.marca_disco(cx, cy, r);
+    }
+
+    /// **O lote seguinte** pinta pela lei «por cima» (`armar`): uma rota do carimbo pode tomar o plano.
+    pub(crate) fn arma_o_lote(&mut self, armar: bool, papel: Option<[u8; 3]>) {
+        self.armada = armar && self.ativa();
+        self.tomada = false;
+        if self.armada {
+            self.papel = papel;
+        }
+    }
+
+    /// O plano da força para uma rota do carimbo numa tela `w`×`h` (`None` = o lote não está armado).
+    pub(crate) fn toma_o_plano(&mut self, (w, h): (u32, u32)) -> Option<Vec<u16>> {
+        if !self.armada || self.marca.as_ref().map(MarcaDoArtista::tamanho) != Some((w, h)) {
+            return None;
+        }
+        self.tomada = true;
+        let n = w as usize * h as usize;
+        let mut p = std::mem::take(&mut self.plano);
+        if p.len() != n {
+            p.clear();
+            p.resize(n, 0);
+        }
+        Some(p)
+    }
+
+    /// A rota devolve o plano e o que escreveu nele.
+    pub(crate) fn devolve_o_plano(&mut self, p: Option<Vec<u16>>, tocou: Option<Region>) {
+        if let Some(p) = p {
+            self.plano = p;
+            if let Some(r) = tocou {
+                self.plano_caixa = Some(marca::une(self.plano_caixa, (r.x, r.y, r.w, r.h)));
+            }
+        }
+    }
+
+    /// O lote acabou: `depositou` = havia tinta a pôr. Sem uma rota que medisse a força, o passo deixa
+    /// de ser exacto.
+    pub(crate) fn fecha_o_lote(&mut self, depositou: bool) {
+        if depositou && self.ativa() {
+            let medido = self.armada && self.tomada;
+            self.exata = Some(self.exata.unwrap_or(true) && medido);
+        }
+        self.armada = false;
+        self.tomada = false;
     }
 
     /// A água escreveu a caixa `c` = `(x0, y0, x1, y1)` de `canvas` (largura `w`); `antes` é a caixa
@@ -125,15 +204,16 @@ impl MarcaViva {
     /// — os texels cobertos marcam como os dabs que entram na água.
     pub(crate) fn cobertura_na_agua(&mut self, (x, y, w, h): (u32, u32, u32, u32), cov: &[u8]) {
         let n = self.palavras();
-        let Some(m) = self.marca.as_mut() else {
+        if n == 0 {
             return;
-        };
+        }
+        self.guarda_o_antes();
         if self.na_agua.len() != n {
             zera(&mut self.na_agua, n);
         }
-        if self.antes_do_passo.is_none() {
-            self.antes_do_passo = Some(Arc::clone(m.palavras()));
-        }
+        let Some(m) = self.marca.as_mut() else {
+            return;
+        };
         let (mw, mh) = m.tamanho();
         let mut bits = vec![0u64; n];
         for j in 0..h.min(mh.saturating_sub(y)) {
@@ -145,20 +225,36 @@ impl MarcaViva {
                 }
             }
         }
-        m.une_bits(&bits);
+        m.satura_bits(&bits);
     }
 
-    /// A pré-visualização carimba-se de novo inteira (Line, Drag Dot, as formas): os discos da anterior
-    /// deixam de valer.
+    /// A pré-visualização carimba-se de novo inteira (Line, Drag Dot, as formas): os discos e a força
+    /// da anterior deixam de valer.
     pub(crate) fn recomeca_os_discos(&mut self) {
         self.tira_o_provisorio();
         self.discos.fill(0);
         self.forca.limpa();
+        self.limpa_o_plano();
     }
 
     /// Um passo começa: a água de antes dele já não conta.
     pub(crate) fn comeca_o_passo(&mut self) {
         self.agua.fill(0);
+    }
+
+    fn limpa_o_plano(&mut self) {
+        let w = self.marca.as_ref().map_or(0, |m| m.tamanho().0) as usize;
+        if let (Some((x, y, cw, ch)), true) = (self.plano_caixa.take(), w > 0) {
+            for j in y as usize..(y + ch) as usize {
+                if let Some(linha) = self
+                    .plano
+                    .get_mut(j * w + x as usize..j * w + (x + cw) as usize)
+                {
+                    linha.fill(0);
+                }
+            }
+        }
+        self.exata = None;
     }
 
     fn limpa_o_passo(&mut self) {
@@ -167,16 +263,22 @@ impl MarcaViva {
         self.na_agua.fill(0);
         self.agua.fill(0);
         self.forca.limpa();
+        self.limpa_o_plano();
     }
 
-    /// Devolve a marca ao que era antes dos discos do passo em curso.
+    /// Devolve a marca ao que era antes das escritas provisórias do passo em curso.
     fn tira_o_provisorio(&mut self) {
         if let (Some(m), Some(pre)) = (self.marca.as_mut(), self.antes_do_passo.take()) {
-            m.poe_palavras(pre);
+            m.poe_ladrilhos(pre);
         }
     }
 
-    /// **O passo regista-se**: marca o que o artista escreveu nele e devolve o que ligou.
+    /// A reescrita da macro vai mudar o que está por baixo de texels do artista: o desfazer dela devolve-o.
+    pub(crate) fn comeca_a_reescrita(&mut self) {
+        self.antes_da_reescrita = self.marca.as_ref().map(|m| Arc::clone(m.ladrilhos()));
+    }
+
+    /// **O passo regista-se**: compõe na marca a tinta do artista e devolve o que mudou.
     fn fecha_o_passo(
         &mut self,
         before: &ModelSnapshot,
@@ -184,8 +286,13 @@ impl MarcaViva {
         hint: Option<Region>,
     ) -> Option<DeltaDaMarca> {
         self.tira_o_provisorio();
-        let n = self.palavras();
         let tamanho = self.marca.as_ref().map(MarcaDoArtista::tamanho);
+        if let Some(antes) = self.antes_da_reescrita.take() {
+            self.limpa_o_passo();
+            let m = self.marca.as_ref()?;
+            let d = DeltaDaMarca::entre(m.epoca(), &antes, m.ladrilhos());
+            return (!d.vazio()).then_some(d);
+        }
         if self.suspensa
             || tamanho.is_none()
             || before.canvas_size != after.canvas_size
@@ -194,6 +301,7 @@ impl MarcaViva {
             self.limpa_o_passo();
             return None;
         }
+        let n = self.palavras();
         let mut s = vec![0u64; n];
         texels_mudados(before, after, hint, &mut s);
         let mut miolo = vec![0u64; n];
@@ -207,9 +315,50 @@ impl MarcaViva {
             let na_agua = self.na_agua.get(k).copied().unwrap_or(0);
             *b = (*b & (!agua | disco)) | na_agua;
         }
+        let (w, h) = (after.canvas_size.0 as usize, after.canvas_size.1 as usize);
+        let exata = self.exata == Some(true) && self.plano.len() == w * h;
+        let papel = self.papel;
+        let por_baixo = |i: usize| -> [u8; 4] {
+            let mut px = before
+                .canvas_rgba
+                .get(i * 4..i * 4 + 4)
+                .map_or([0; 4], |p| [p[0], p[1], p[2], p[3]]);
+            if let Some(p) = papel {
+                crate::tool::papel::sobre_o_papel(&mut px, p);
+            }
+            px
+        };
+        let forca = |i: usize| -> Option<f32> {
+            self.plano
+                .get(i)
+                .filter(|&&p| exata && p > 0)
+                .map(|&p| f32::from(p) / 65535.0)
+        };
+        // Os texels da lei sem força (`c = 255` onde o plano não diz) e os que só o plano tem.
+        let mut itens: Vec<(usize, f32, [u8; 4])> = Vec::new();
+        for (k, &p) in s.iter().enumerate() {
+            let mut p = p;
+            while p != 0 {
+                let i = k * 64 + p.trailing_zeros() as usize;
+                p &= p - 1;
+                itens.push((i, forca(i).unwrap_or(1.0), por_baixo(i)));
+            }
+        }
+        if let (true, Some((x, y, cw, ch))) = (exata, self.plano_caixa) {
+            for j in y as usize..((y + ch) as usize).min(h) {
+                for i in j * w + x as usize..j * w + ((x + cw) as usize).min(w) {
+                    if let (Some(a), false) = (forca(i), marca::ligado(&s, i)) {
+                        itens.push((i, a, por_baixo(i)));
+                    }
+                }
+            }
+        }
+        let antes = Arc::clone(self.marca.as_ref()?.ladrilhos());
+        let m = self.marca.as_mut()?;
+        m.compoe_muitos(itens);
+        let d = DeltaDaMarca::entre(m.epoca(), &antes, m.ladrilhos());
         self.limpa_o_passo();
-        let d = self.marca.as_mut()?.une_bits(&s);
-        (!d.palavras.is_empty()).then_some(d)
+        (!d.vazio()).then_some(d)
     }
 }
 

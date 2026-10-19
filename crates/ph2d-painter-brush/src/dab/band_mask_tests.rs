@@ -66,6 +66,7 @@ fn two_dabs(w: u32, h: u32, radius: f32, min_area: usize) -> (Vec<u8>, Vec<u8>) 
             1.0,
             false,
             Some(&mut mask),
+            None,
             [1.0, 0.0],
             min_area,
         );
@@ -170,6 +171,7 @@ fn the_cap_is_written_where_the_paint_landed_not_displaced() {
         None,
         None,
         Some(&mut mask),
+        None,
         [1.0, 0.0],
         None,
     )

@@ -9,7 +9,7 @@ fn o_fnv1a_e_o_publicado() {
 }
 
 #[test]
-fn o_disco_liga_os_centros_dentro_do_raio_e_a_caixa_contem_os() {
+fn o_disco_cobre_os_centros_dentro_do_raio_e_a_caixa_contem_os() {
     let mut m = MarcaDoArtista::nova(16, 10, 7);
     assert!(m.vazia());
     let v0 = m.versao();
@@ -23,6 +23,10 @@ fn o_disco_liga_os_centros_dentro_do_raio_e_a_caixa_contem_os() {
         })
         .collect();
     assert_eq!(dentro, esperado);
+    assert!(
+        dentro.iter().all(|&i| m.cobertura(i) == CHEIA),
+        "o disco é a imagem atual"
+    );
     assert_eq!(m.caixa(), Some((2, 2, 4, 4)));
     assert_ne!(m.versao(), v0, "marcar muda a versão");
     // Fora da tela: nada.
@@ -31,53 +35,77 @@ fn o_disco_liga_os_centros_dentro_do_raio_e_a_caixa_contem_os() {
     assert_eq!(m.versao(), v1);
 }
 
+/// ⭐ **A cobertura compõe-se como a tinta e o que estava por baixo é o do 1.º toque** (W10): dois passos
+/// de força ½ dão ¾; o 2.º não troca o `B`; um texel noutro ladrilho nasce com o seu.
 #[test]
-fn o_delta_liga_so_o_que_era_novo_e_o_desfazer_devolve_a_marca_de_antes() {
-    let mut m = MarcaDoArtista::nova(8, 8, 3);
-    m.marca_disco(2.0, 2.0, 1.5);
-    let antes = m.palavras().as_ref().clone();
-    let mut bits = vec![0u64; 1];
-    for i in [0usize, 9, 40, 63] {
-        liga(&mut bits, i);
-    }
-    let d = m.une_bits(&bits);
-    for (i, b) in d.palavras.iter().map(|p| p.1).enumerate() {
-        assert_eq!(
-            b & antes[i],
-            0,
-            "o delta só leva bits que estavam desligados"
-        );
-    }
-    m.aplica(&d, false);
+fn a_cobertura_compoe_por_cima_e_o_por_baixo_e_o_do_primeiro_toque() {
+    let mut m = MarcaDoArtista::nova(200, 100, 1);
+    let (i, j) = (5 * 200 + 7, 70 * 200 + 130);
+    m.compoe_muitos([(i, 0.5, [10, 20, 30, 255]), (j, 0.25, [1, 2, 3, 255])]);
+    assert_eq!(m.cobertura(i), compoe(0, 0.5));
+    m.compoe_muitos([(i, 0.5, [99, 99, 99, 255])]);
+    let tres_quartos = f32::from(m.cobertura(i)) / f32::from(CHEIA);
+    assert!((tres_quartos - 0.75).abs() < 1e-4, "{tres_quartos}");
     assert_eq!(
-        *m.palavras().as_ref(),
-        antes,
-        "desfazer devolve a marca de antes"
+        m.por_baixo(i),
+        [10, 20, 30, 255],
+        "o 2.º toque trocou o que estava por baixo"
     );
+    assert_eq!(m.por_baixo(j), [1, 2, 3, 255]);
+    assert_eq!(m.quantos(), 2);
+    assert_eq!(m.caixa(), Some((7, 5, 124, 66)));
+    assert_eq!(m.ladrilhos().len(), 2, "só os ladrilhos tocados vivem");
+    // Força nula não toca; saturar fica cheio.
+    m.compoe_muitos([(0, 0.0, [0; 4])]);
+    assert!(!m.marcado(0));
+    let mut bits = vec![0u64; palavras_para(200, 100)];
+    liga(&mut bits, i);
+    m.satura_bits(&bits);
+    assert_eq!(m.cobertura(i), CHEIA);
+}
+
+#[test]
+fn o_delta_devolve_os_ladrilhos_de_antes_e_o_refazer_os_de_depois() {
+    let mut m = MarcaDoArtista::nova(130, 8, 3);
+    m.marca_disco(2.0, 2.0, 1.5);
+    let antes = Arc::clone(m.ladrilhos());
+    m.compoe_muitos([(9, 0.5, [7; 4]), (2 * 130 + 100, 0.3, [8; 4])]);
+    let d = DeltaDaMarca::entre(3, &antes, m.ladrilhos());
+    assert_eq!(d.ladrilhos.len(), 2, "os dois ladrilhos tocados, e só eles");
+    let depois = m.ladrilhos().as_ref().clone();
+    m.aplica(&d, false);
+    assert_eq!(*m.ladrilhos(), antes, "desfazer devolve a marca de antes");
     m.aplica(&d, true);
-    assert!(m.marcado(63) && m.marcado(40));
+    assert_eq!(*m.ladrilhos().as_ref(), depois);
+    // O passo coalescido vai do 1.º antes ao último depois.
+    let meio = Arc::clone(m.ladrilhos());
+    m.compoe_muitos([(9, 0.5, [0; 4])]);
+    let mut junto = d.clone();
+    junto.junta(&DeltaDaMarca::entre(3, &meio, m.ladrilhos()));
+    let fim = m.ladrilhos().as_ref().clone();
+    m.aplica(&junto, false);
+    assert_eq!(*m.ladrilhos(), antes, "o run desfaz-se de uma vez");
+    m.aplica(&junto, true);
+    assert_eq!(*m.ladrilhos().as_ref(), fim);
     // Outra época não se aplica.
-    let mut outra = MarcaDoArtista::nova(8, 8, 4);
+    let mut outra = MarcaDoArtista::nova(130, 8, 4);
     outra.aplica(&d, true);
     assert!(outra.vazia());
 }
 
 #[test]
-fn o_formato_gravado_volta_igual() {
+fn o_formato_gravado_volta_igual_e_o_da_w9_abre_cheio() {
     let mut m = MarcaDoArtista::nova(300, 200, 0xdead_beef);
     m.marca_disco(10.0, 10.0, 6.0);
-    m.marca_disco(250.0, 180.0, 9.0);
+    m.compoe_muitos([
+        (180 * 300 + 250, 0.4, [1, 2, 3, 200]),
+        (181 * 300 + 250, 0.9, [4; 4]),
+    ]);
     let b = m.codifica();
     let l = MarcaDoArtista::descodifica(&b).expect("lê-se");
-    assert_eq!(l.palavras(), m.palavras());
+    assert_eq!(l.ladrilhos(), m.ladrilhos());
     assert_eq!((l.tamanho(), l.epoca()), (m.tamanho(), m.epoca()));
     assert_eq!(l.caixa(), m.caixa());
-    let cru = m.palavras().len() * 8;
-    assert!(
-        b.len() * 8 < cru,
-        "{} de {cru} bytes: as corridas de zeros não se gravam",
-        b.len()
-    );
     assert!(MarcaDoArtista::descodifica(&b[..b.len() - 3]).is_none());
     // Um cabeçalho forjado não aloca: acima do tecto do raster é recusado.
     let mut forjado = vec![FORMATO];
@@ -90,4 +118,17 @@ fn o_formato_gravado_volta_igual() {
         MarcaDoArtista::descodifica(&vazia).map(|m| m.vazia()),
         Some(true)
     );
+    // O FORMATO 1 (W9): um bit por texel, as corridas de zeros contadas — cada bit é `c` cheia.
+    let mut w9 = vec![FORMATO_DOS_BITS];
+    w9.extend_from_slice(&100u32.to_le_bytes());
+    w9.extend_from_slice(&2u32.to_le_bytes());
+    w9.extend_from_slice(&9u64.to_le_bytes());
+    w9.extend_from_slice(&1u32.to_le_bytes()); // uma palavra de zeros
+    w9.extend_from_slice(&1u32.to_le_bytes()); // uma cheia
+    w9.extend_from_slice(&0b101u64.to_le_bytes());
+    let l = MarcaDoArtista::descodifica(&w9).expect("o da W9 abre");
+    let marcados: Vec<usize> = (0..200).filter(|&i| l.marcado(i)).collect();
+    assert_eq!(marcados, [64, 66]);
+    assert!(marcados.iter().all(|&i| l.cobertura(i) == CHEIA));
+    assert_eq!(l.epoca(), 9);
 }

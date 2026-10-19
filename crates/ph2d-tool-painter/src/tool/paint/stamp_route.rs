@@ -34,6 +34,43 @@ impl PainterTool {
     /// shows is `lerp(base, free, keep)` ([`Self::stamp_dabs_gated`]). Nothing is made invisible — only the
     /// paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
+        // A marca do artista (W10): sob a lei «por cima» o carimbo mede a força de cada texel.
+        let depositou = !dabs.is_empty()
+            && matches!(
+                self.paint.paint_mode,
+                PaintMode::Paint | PaintMode::WetPaint
+            )
+            && self.paint.brush.deposits_color();
+        self.undo
+            .marca
+            .arma_o_lote(self.a_forca_mede_se(), self.papel);
+        self.stamp_dabs_marcados(dabs);
+        self.undo.marca.fecha_o_lote(depositou);
+    }
+
+    /// **A força do carimbo vale como a cobertura da tinta** (W10 das macros): Digital, a tinta composta
+    /// «por cima» (Mix ou a borracha, sem mistura de pigmento) na camada única, que a imagem põe sobre o
+    /// papel (opaco, sem o vidro da aguada) e sem a luz do relevo; sem proteção nem seleção, sem o
+    /// preenchimento do Solid. A composição «por cima» é associativa: a imagem fica `tinta + (1 − f)·antes`.
+    /// Fora disto o passo marca pela lei da W9.
+    fn a_forca_mede_se(&self) -> bool {
+        let b = &self.paint.brush;
+        self.undo.marca.ativa()
+            && matches!(self.paint.paint_mode, PaintMode::Paint)
+            && self.paint_media() == crate::PaintMedia::Digital
+            && b.deposits_color()
+            && !b.deposits_height()
+            && (self.stroke_erases() || b.blend == ph2d_painter_brush::BrushBlend::Mix)
+            && b.effective_pigment_mix() <= 0.0
+            && self.preview_layer_stack_is_trivial()
+            && !self.papel_atravessa_vidro()
+            && !self.impasto_visible()
+            && !self.mask_protection_active()
+            && !self.selection_restricts_paint()
+            && !self.freehand_solid_fill_live()
+    }
+
+    fn stamp_dabs_marcados(&mut self, dabs: &[Dab]) {
         // A marca do artista (W9): o pincel cobre estes dabs; o registo do passo confere-os.
         self.marca_os_dabs(dabs, self.paint.brush.tip_reach(), false);
         // O miolo só é do artista onde o carimbo DEPÕE tinta: a máscara não escreve na imagem, e o

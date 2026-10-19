@@ -1,9 +1,9 @@
 //! **O artista escreveu aqui mesmo sem mudar o byte** (smoke do dono, 19/10: faixas brancas no Play onde a
 //! pincelada nova cruza o miolo de uma gravada). Preto sobre o preto que a gravação deixou no fim não muda o
 //! píxel; a régua «o que mudou» deixava esse texel sem marca e o Play mostrava ali a gravação daquele
-//! instante. Um texel é do artista onde o pincel o cobre com força ≥ ½ (os dabs compostos como o carimbo os
-//! compõe): aí o resultado é o do pincel, seja o que for que estava por baixo; na borda fraca mostrar a
-//! gravação erra menos que mostrar o fim.
+//! instante. W10 (`docs/Macros/08_plano_W10_cobertura.md`): no Digital a marca é a FORÇA que o carimbo
+//! mediu em cada texel — a régua é o byte da mesma pincelada sobre o branco (preto por cima:
+//! `byte = 255·(1 − força)`); nos meios sem força medida (a aquarela) fica a lei da W9, o miolo ≥ ½.
 
 use super::marca::MarcaDoArtista;
 use crate::PaintMedia;
@@ -84,7 +84,7 @@ fn px(v: &[u8], k: usize) -> Vec<u8> {
 /// A régua: a pincelada Digital de `pincel` sobre o branco (linha 40) — a força dela em cada coluna lê-se
 /// no byte (preto sobre branco, composto no espaço do píxel: força ≥ ½ ⇔ byte ≤ 127). `true` = miolo
 /// (≤ 120), `false` = borda fraca (135..255), `None` = perto do limiar ou fora do pincel.
-fn regua(pincel: fn(&mut PainterTool)) -> Vec<Option<bool>> {
+fn regua(pincel: fn(&mut PainterTool)) -> (Vec<Option<bool>>, Vec<u8>) {
     let mut t = tela(PaintMedia::Digital, true, pincel);
     vertical(&mut t, 64.0, DE_CIMA_A_BAIXO);
     let depois = imagem(&t);
@@ -101,13 +101,23 @@ fn regua(pincel: fn(&mut PainterTool)) -> Vec<Option<bool>> {
         miolo > 4 && borda > 4,
         "controlo: a régua tem miolo ({miolo}) e borda ({borda})"
     );
-    r
+    (r, (0..L).map(|x| depois[i(x, 40) * 4]).collect())
 }
 
-/// A pincelada de `pincel` em `meio` por cima da faixa: o miolo da régua marcado em TODAS as linhas da
-/// faixa, a borda fraca não.
+/// O piso do arredondamento de cada dab ao byte numa pincelada macia (medido 19/10 na régua dos
+/// cruzamentos, `palcos_cobertura_tests`: 2 a 3 níveis), em níveis.
+const PISO: f32 = 3.0;
+
+/// A cobertura do texel `k` em níveis de 255.
+fn niveis(m: &MarcaDoArtista, k: usize) -> f32 {
+    255.0 * f32::from(m.cobertura(k)) / f32::from(super::marca::CHEIA)
+}
+
+/// A pincelada de `pincel` em `meio` por cima da faixa. Digital: em TODAS as linhas da faixa a cobertura
+/// é a força que a régua mostra na coluna (± o piso). Aquarela (a lei da W9): o miolo marcado, a borda
+/// fraca não.
 fn confere(meio: PaintMedia, pincel: fn(&mut PainterTool)) {
-    let r = regua(pincel);
+    let (r, r_bytes) = regua(pincel);
     let mut t = tela(meio, true, pincel);
     let antes = imagem(&t);
     vertical(&mut t, 64.0, DE_CIMA_A_BAIXO);
@@ -126,6 +136,15 @@ fn confere(meio: PaintMedia, pincel: fn(&mut PainterTool)) {
                 px(&depois, k),
                 "controlo {meio:?}: preto sobre o preto ({x}, {y})"
             );
+            if meio == PaintMedia::Digital {
+                let forca = 255.0 - f32::from(r_bytes[x]);
+                assert!(
+                    (niveis(&m, k) - forca).abs() <= PISO,
+                    "{meio:?}: a cobertura de ({x}, {y}) é {:.1} níveis e a força que o pincel pôs ali {forca}",
+                    niveis(&m, k)
+                );
+                continue;
+            }
             match c {
                 Some(true) => assert!(
                     m.marcado(k),
@@ -156,24 +175,54 @@ fn o_miolo_entre_dabs_afastados_e_o_da_capsula() {
     confere(PaintMedia::Digital, esparso_continuo);
 }
 
-/// Uma ponta ACHATADA (elipse) fica com «o que mudou»: o perfil redondo marcaria, no branco, texels que a
-/// elipse não pintou.
+/// ⭐ **A cobertura de cada texel é a força que o pincel pôs ali** (W10): no branco, preto por cima, a
+/// régua é o byte (`255·(1 − força)`) — pincel de fábrica, ponta ACHATADA (a elipse: o perfil redondo da
+/// W9 mentia aqui) e com grão (o carimbo mede-o; a W9 recortava-o). Tudo o que mudou está marcado, e longe
+/// do traço nada. ⛔ VERMELHO com a marca binária: cada texel mudado ficava com a imagem atual inteira.
 #[test]
-fn uma_ponta_achatada_no_branco_marca_so_o_que_mudou() {
-    let mut t = tela(PaintMedia::Digital, false, |t| t.set_brush_dab_flatten(0.7));
-    let antes = imagem(&t);
-    vertical(&mut t, 64.0, DE_CIMA_A_BAIXO);
-    let depois = imagem(&t);
-    let m = t.marca_do_artista().expect("a marca").clone();
-    let mudou: Vec<usize> = (0..L * L)
-        .filter(|&k| px(&antes, k) != px(&depois, k))
-        .collect();
-    assert!(mudou.len() > 100, "controlo: a pincelada pintou");
-    let marcados: Vec<usize> = (0..L * L).filter(|&k| m.marcado(k)).collect();
-    assert_eq!(
-        marcados, mudou,
-        "a marca da ponta achatada não é o que ela mudou"
-    );
+fn a_cobertura_e_a_forca_que_o_pincel_pos_no_texel() {
+    let casos: [(&str, fn(&mut PainterTool)); 3] = [
+        ("de fábrica", de_fabrica),
+        ("achatada", |t| t.set_brush_dab_flatten(0.7)),
+        ("com grão", |t| t.new_brush_texture()),
+    ];
+    for (nome, pincel) in casos {
+        let mut t = tela(PaintMedia::Digital, false, pincel);
+        let antes = imagem(&t);
+        vertical(&mut t, 64.0, DE_CIMA_A_BAIXO);
+        let depois = imagem(&t);
+        let m = t.marca_do_artista().expect("a marca").clone();
+        let mudou: Vec<usize> = (0..L * L)
+            .filter(|&k| px(&antes, k) != px(&depois, k))
+            .collect();
+        assert!(mudou.len() > 100, "controlo {nome}: a pincelada pintou");
+        assert!(
+            mudou.iter().all(|&k| m.marcado(k)),
+            "{nome}: um texel pintado sem marca"
+        );
+        let parciais = mudou
+            .iter()
+            .filter(|&&k| (1..254).contains(&depois[k * 4]))
+            .count();
+        assert!(
+            parciais > 20,
+            "controlo {nome}: a borda tem forças parciais ({parciais})"
+        );
+        let (mut pior, mut onde) = (0.0f32, 0);
+        for k in 0..L * L {
+            let d = (niveis(&m, k) - (255.0 - f32::from(depois[k * 4]))).abs();
+            if d > pior {
+                (pior, onde) = (d, k);
+            }
+        }
+        assert!(
+            pior <= PISO,
+            "{nome}: a cobertura de ({}, {}) difere {pior:.1} níveis da força que o pincel pôs",
+            onde % L,
+            onde / L
+        );
+        assert!(!m.marcado(i(5, 5)), "{nome}: longe do traço marcou");
+    }
 }
 
 /// A força é do PASSO: desfeita a pincelada por cima da faixa, a seguinte (noutro sítio) não a herda.
@@ -227,4 +276,68 @@ fn quem_nao_depoe_tinta_nao_marca_o_miolo() {
         let m = t.marca_do_artista().expect("a marca").clone();
         assert_eq!(m.quantos(), 0, "{modo}: não depõe tinta e marcou");
     }
+}
+
+/// ⭐ **A cobertura e o que estava por baixo vão e voltam com o desfazer** (W10): duas pinceladas macias
+/// que se sobrepõem — a 2.ª compõe a cobertura por cima da 1.ª e não troca o que estava por baixo (o
+/// 1.º toque); desfazer devolve a marca da 1.ª e depois nenhuma; refazer devolve as duas.
+#[test]
+fn a_cobertura_e_o_por_baixo_vao_e_voltam_com_o_desfazer() {
+    let mut t = tela(PaintMedia::Digital, true, de_fabrica);
+    let fundo = imagem(&t);
+    vertical(&mut t, 60.0, DE_CIMA_A_BAIXO);
+    let m1 = t.marca_do_artista().expect("a marca").clone();
+    let parciais: Vec<usize> = (0..L * L)
+        .filter(|&k| (1..super::marca::CHEIA).contains(&m1.cobertura(k)))
+        .collect();
+    assert!(
+        parciais.len() > 100,
+        "controlo: a borda macia tem cobertura parcial"
+    );
+    assert!(
+        parciais
+            .iter()
+            .all(|&k| m1.por_baixo(k)[..] == fundo[k * 4..k * 4 + 4]),
+        "o que estava por baixo não é a imagem antes da pincelada"
+    );
+    vertical(&mut t, 66.0, DE_CIMA_A_BAIXO);
+    let m2 = t.marca_do_artista().expect("a marca").clone();
+    let juntos: Vec<usize> = parciais
+        .iter()
+        .copied()
+        .filter(|&k| m2.cobertura(k) > m1.cobertura(k))
+        .collect();
+    assert!(
+        juntos.len() > 50,
+        "controlo: a 2.ª compôs por cima da 1.ª ({})",
+        juntos.len()
+    );
+    assert!(
+        juntos.iter().all(|&k| m2.por_baixo(k) == m1.por_baixo(k)),
+        "o 2.º toque trocou o que estava por baixo"
+    );
+    // Fora da faixa (o branco), preto por cima: a cobertura das duas é a que o byte mostra — a força da
+    // 1.ª não entra outra vez no passo da 2.ª.
+    let depois = imagem(&t);
+    let pior = juntos
+        .iter()
+        .filter(|&&k| !FAIXA.contains(&(k / L)))
+        .map(|&k| (niveis(&m2, k) - (255.0 - f32::from(depois[k * 4]))).abs())
+        .fold(0.0f32, f32::max);
+    assert!(
+        pior <= PISO,
+        "a cobertura das duas pinceladas difere {pior:.1} níveis do que elas pintaram"
+    );
+    assert!(t.undo_last(), "o desfazer");
+    assert_eq!(
+        t.marca_do_artista().expect("a marca").ladrilhos(),
+        m1.ladrilhos()
+    );
+    assert!(t.undo_last(), "o 2.º desfazer");
+    assert!(t.marca_do_artista().expect("a marca").vazia());
+    assert!(t.redo_last() && t.redo_last(), "os refazeres");
+    assert_eq!(
+        t.marca_do_artista().expect("a marca").ladrilhos(),
+        m2.ladrilhos()
+    );
 }

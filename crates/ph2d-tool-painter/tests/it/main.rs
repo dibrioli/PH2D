@@ -38,7 +38,7 @@ mod sonda_gestos;
 mod sonda_largura;
 mod sonda_macro_custo;
 mod sonda_midias;
-mod sonda_tilt_do_preset;
 mod sonda_spacing_continuo;
+mod sonda_tilt_do_preset;
 mod sonda_traco_rapido;
 mod sonda_tracos_por_meio;

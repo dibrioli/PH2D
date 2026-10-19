@@ -1,0 +1,537 @@
+# Rodadas da bissecção de 19/10 (sonda_a_regua_do_spacing + sonda_a_terceira_camada_por_variante, --profile smoke, variantes no MESMO processo). Bits da chave temporária capsula::rodada_51 (retirada): 1 pente por comprimento na tinta OFF · 2 referência do pigmento pelo raio do dab · 4 janela pelo sub-passo natural (r1: 'corda' = sem ela) · 8 sub-passo pelo raio do dab · 16 sorteio repetido nos sub-dabs · 32 janela corda×natural/sub · 64 sub-passo para baixo · 128 Jitter rígido.
+
+## r1
+[regua] Oil Bristle@fabrica escada r 51.5: [Escada { escada: 3.0476578350065306, contraste: 13.786298727269891, }, Escada { escada: 2.9401967067144237, contraste: 12.055013983749095, }, Escada { escada: 2.87218986122728, contraste: 15.486875848384955, }, Escad
+[regua] Oil Bristle@fabrica escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Esca
+[regua] Oil Bristle@pente1 escada r 51.5: [Escada { escada: 3.047302994511899, contraste: 13.768118295648817, }, Escada { escada: 2.940020677533808, contraste: 12.051774774658645, }, Escada { escada: 2.838690462734834, contraste: 15.17535755939217, }, Escada {
+[regua] Oil Bristle@pente1 escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escad
+[regua] Oil Bristle@refdab escada r 51.5: [Escada { escada: 3.0476578350065306, contraste: 13.786298727269891, }, Escada { escada: 2.9401967067144237, contraste: 12.055013983749095, }, Escada { escada: 2.87218986122728, contraste: 15.486875848384955, }, Escada
+[regua] Oil Bristle@refdab escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escad
+[regua] Oil Bristle@corda escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada
+[regua] Oil Bristle@corda escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada
+[regua] Oil Bristle@subdab escada r 51.5: [Escada { escada: 3.0476578350065306, contraste: 13.786298727269891, }, Escada { escada: 2.9401967067144237, contraste: 12.055013983749095, }, Escada { escada: 2.87218986122728, contraste: 15.486875848384955, }, Escada
+[regua] Oil Bristle@subdab escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escad
+[regua] Oil Bristle@sorteio escada r 51.5: [Escada { escada: 3.0476578350065306, contraste: 13.786298727269891, }, Escada { escada: 2.9401967067144237, contraste: 12.055013983749095, }, Escada { escada: 2.87218986122728, contraste: 15.486875848384955, }, Escad
+[regua] Oil Bristle@sorteio escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Esca
+[regua] Oil Bristle@todos escada r 51.5: [Escada { escada: 2.233745574587998, contraste: 13.15202360621065, }, Escada { escada: 2.3924109203244472, contraste: 11.563503668345193, }, Escada { escada: 2.1697959830206863, contraste: 14.544321440098178, }, Escada 
+[regua] Oil Bristle@todos escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada
+[regua] Oil Bristle@cap05 escada r 51.5: [Escada { escada: 3.0476578350065306, contraste: 13.786298727269891, }, Escada { escada: 2.9401967067144237, contraste: 12.055013983749095, }, Escada { escada: 2.87218986122728, contraste: 15.486875848384955, }, Escada 
+[regua] Oil Bristle@cap05 escada r 20.5: [Escada { escada: 3.1562394047186775, contraste: 14.191668683017834, }, Escada { escada: 2.8473175262729873, contraste: 13.070881457532948, }, Escada { escada: 2.9835798340880384, contraste: 16.320613933370772, }, Escad
+[regua] Oil Bristle@antes escada r 51.5: [Escada { escada: 1.898508928072919, contraste: 12.773792450108317, }, Escada { escada: 1.4206418488597905, contraste: 10.459351503713185, }, Escada { escada: 2.0259265702869245, contraste: 15.005456668380493, }, Escada
+[regua] Oil Bristle@antes escada r 20.5: [Escada { escada: 2.1839357615582413, contraste: 11.86387515423527, }, Escada { escada: 1.9049260637275054, contraste: 10.159233389557167, }, Escada { escada: 2.229447713888482, contraste: 14.77970200167276, }, Escada {
+[regua] Oil Bristle@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 259864)
+[regua] Oil Bristle@pente1 grande r 51.5: dif 0.0024 · tinta 1.0001 · fora 0.0003 (n 259864)
+[regua] Oil Bristle@refdab grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 259864)
+[regua] Oil Bristle@corda grande r 51.5: dif 0.0145 · tinta 1.0011 · fora 0.0362 (n 260365)
+[regua] Oil Bristle@subdab grande r 51.5: dif 0.0023 · tinta 1.0013 · fora 0.0083 (n 259946)
+[regua] Oil Bristle@sorteio grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 259864)
+[regua] Oil Bristle@todos grande r 51.5: dif 0.0169 · tinta 1.0025 · fora 0.0468 (n 260401)
+[regua] Oil Bristle@cap05 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 259864)
+[regua] Oil Bristle@antes grande r 51.5: dif 0.0617 · tinta 1.0264 · fora 0.3657 (n 262227)
+[regua] Graphite 8B@fabrica cena r 15: Medida { cobertura: 0.7935970679145589, textura: 7.601813810853306, } FamiliaC { tinta: 0.781198879551819, rampa: 0.5, rampa_cob: 0.875, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@pente1 cena r 15: Medida { cobertura: 0.7935970679145589, textura: 7.601813810853306, } FamiliaC { tinta: 0.781198879551819, rampa: 0.5, rampa_cob: 0.875, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@refdab cena r 15: Medida { cobertura: 0.7935970679145589, textura: 7.601813810853306, } FamiliaC { tinta: 0.781198879551819, rampa: 0.5, rampa_cob: 0.875, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@corda cena r 15: Medida { cobertura: 0.7935201233350615, textura: 7.7409257087152, } FamiliaC { tinta: 0.7813893557422956, rampa: 0.48, rampa_cob: 0.8677884615384615, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@subdab cena r 15: Medida { cobertura: 0.7935970679145589, textura: 7.601813810853306, } FamiliaC { tinta: 0.781198879551819, rampa: 0.5, rampa_cob: 0.875, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@sorteio cena r 15: Medida { cobertura: 0.7935970679145589, textura: 7.601813810853306, } FamiliaC { tinta: 0.781198879551819, rampa: 0.5, rampa_cob: 0.875, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@todos cena r 15: Medida { cobertura: 0.7935201233350615, textura: 7.7409257087152, } FamiliaC { tinta: 0.7813893557422956, rampa: 0.48, rampa_cob: 0.8677884615384615, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@cap05 cena r 15: Medida { cobertura: 0.7915491286472474, textura: 8.524251865224121, } FamiliaC { tinta: 0.7793165266106431, rampa: 0.46153846153846156, rampa_cob: 0.860576923076923, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@antes cena r 15: Medida { cobertura: 0.7862731175310665, textura: 8.77126257605676, } FamiliaC { tinta: 0.7878767507002793, rampa: 0.5, rampa_cob: 0.9002557544757034, pontas: 0.3181818181818182, }
+[regua] Graphite 8B@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 301685)
+[regua] Graphite 8B@pente1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 301685)
+[regua] Graphite 8B@refdab grande r 51.5: dif 0.0116 · tinta 1.0116 · fora 0.0483 (n 301843)
+[regua] Graphite 8B@corda grande r 51.5: dif 0.0104 · tinta 0.9973 · fora 0.0242 (n 302273)
+[regua] Graphite 8B@subdab grande r 51.5: dif 0.0021 · tinta 1.0000 · fora 0.0083 (n 301769)
+[regua] Graphite 8B@sorteio grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 301685)
+[regua] Graphite 8B@todos grande r 51.5: dif 0.0210 · tinta 1.0091 · fora 0.0709 (n 302430)
+[regua] Graphite 8B@cap05 grande r 51.5: dif 0.0595 · tinta 0.9630 · fora 0.2807 (n 303039)
+[regua] Graphite 8B@antes grande r 51.5: dif 0.0869 · tinta 1.0158 · fora 0.3944 (n 320478)
+[camadas] Marker Bullet@fabrica: medianas [0.1396, 0.0937, 0.0794, 0.0721] · p95 0.1441
+[camadas] Marker Bullet@pente1: medianas [0.1396, 0.0937, 0.0794, 0.0721] · p95 0.1441
+[camadas] Marker Bullet@refdab: medianas [0.1396, 0.0937, 0.0794, 0.0721] · p95 0.1441
+[camadas] Marker Bullet@corda: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@subdab: medianas [0.1396, 0.0937, 0.0794, 0.0721] · p95 0.1441
+[camadas] Marker Bullet@sorteio: medianas [0.1396, 0.0937, 0.0794, 0.0721] · p95 0.1441
+[camadas] Marker Bullet@todos: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@cap05: medianas [0.1396, 0.0930, 0.0799, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@antes: medianas [0.1396, 0.0930, 0.0794, 0.0721] · p95 0.1430
+[camadas] Dip Pen@fabrica: medianas [0.1396, 0.0989, 0.0971, 0.0950] · p95 0.1396
+[camadas] Dip Pen@pente1: medianas [0.1396, 0.0989, 0.0971, 0.0950] · p95 0.1396
+[camadas] Dip Pen@refdab: medianas [0.1396, 0.0989, 0.0971, 0.0950] · p95 0.1396
+[camadas] Dip Pen@corda: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@subdab: medianas [0.1396, 0.0989, 0.0971, 0.0950] · p95 0.1396
+[camadas] Dip Pen@sorteio: medianas [0.1396, 0.0989, 0.0971, 0.0950] · p95 0.1396
+[camadas] Dip Pen@todos: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@cap05: medianas [0.1396, 0.1000, 0.0978, 0.0960] · p95 0.1396
+[camadas] Dip Pen@antes: medianas [0.1396, 0.0989, 0.0960, 0.0950] · p95 0.1406
+[regua] Oil Pastel@fabrica cena r 15: Medida { cobertura: 0.7351852757359646, textura: 10.80395866327972, } FamiliaC { tinta: 0.696336134453781, rampa: 0.48148148148148145, rampa_cob: 0.7906976744186046, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@pente1 cena r 15: Medida { cobertura: 0.7351852757359646, textura: 10.80395866327972, } FamiliaC { tinta: 0.696336134453781, rampa: 0.48148148148148145, rampa_cob: 0.7906976744186046, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@refdab cena r 15: Medida { cobertura: 0.7351852757359646, textura: 10.80395866327972, } FamiliaC { tinta: 0.696336134453781, rampa: 0.48148148148148145, rampa_cob: 0.872093023255814, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@corda cena r 15: Medida { cobertura: 0.7350531730426328, textura: 11.02363129980692, } FamiliaC { tinta: 0.6956526610644256, rampa: 0.48148148148148145, rampa_cob: 0.7687861271676301, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@subdab cena r 15: Medida { cobertura: 0.7351852757359646, textura: 10.80395866327972, } FamiliaC { tinta: 0.696336134453781, rampa: 0.48148148148148145, rampa_cob: 0.7906976744186046, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@sorteio cena r 15: Medida { cobertura: 0.7351852757359646, textura: 10.80395866327972, } FamiliaC { tinta: 0.696336134453781, rampa: 0.48148148148148145, rampa_cob: 0.7906976744186046, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@todos cena r 15: Medida { cobertura: 0.7350531730426328, textura: 11.02363129980692, } FamiliaC { tinta: 0.6956526610644256, rampa: 0.48148148148148145, rampa_cob: 0.8439306358381502, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@cap05 cena r 15: Medida { cobertura: 0.7314449363308991, textura: 13.614032823809952, } FamiliaC { tinta: 0.6845714285714282, rampa: 0.48148148148148145, rampa_cob: 0.7455621301775148, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@antes cena r 15: Medida { cobertura: 0.7241200480193083, textura: 13.121519279934232, } FamiliaC { tinta: 0.6826106442577028, rampa: 0.48148148148148145, rampa_cob: 0.7388888888888889, pontas: 0.25, }
+[regua] Oil Pastel@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 300326)
+[regua] Oil Pastel@pente1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 300326)
+[regua] Oil Pastel@refdab grande r 51.5: dif 0.0141 · tinta 1.0141 · fora 0.0511 (n 300554)
+[regua] Oil Pastel@corda grande r 51.5: dif 0.0289 · tinta 0.9967 · fora 0.0783 (n 302119)
+[regua] Oil Pastel@subdab grande r 51.5: dif 0.0035 · tinta 1.0005 · fora 0.0116 (n 300539)
+[regua] Oil Pastel@sorteio grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 300326)
+[regua] Oil Pastel@todos grande r 51.5: dif 0.0410 · tinta 1.0119 · fora 0.1269 (n 302312)
+[regua] Oil Pastel@cap05 grande r 51.5: dif 0.0541 · tinta 0.9727 · fora 0.2176 (n 302193)
+[regua] Oil Pastel@antes grande r 51.5: dif 0.1221 · tinta 1.0204 · fora 0.4777 (n 324036)
+[regua] Airbrush@fabrica cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@pente1 cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@refdab cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@corda cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@subdab cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@sorteio cena r 15: Medida { cobertura: 0.35935659401444586, textura: 22.199436673235482, } FamiliaC { tinta: 0.3568291316526611, rampa: 0.6153846153846154, rampa_cob: 0.32608695652173914, pontas: 0.8809523809523809, }
+[regua] Airbrush@todos cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@cap05 cena r 15: Medida { cobertura: 0.3690632376597529, textura: 28.81978915534293, } FamiliaC { tinta: 0.3523025210084031, rampa: 0.7083333333333334, rampa_cob: 0.4054054054054054, pontas: 0.4772727272727273, }
+[regua] Airbrush@antes cena r 15: Medida { cobertura: 0.3585677599993483, textura: 21.935897213749456, } FamiliaC { tinta: 0.3573109243697481, rampa: 0.6, rampa_cob: 0.35294117647058826, pontas: 0.6346153846153846, }
+[regua] Airbrush@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@pente1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@refdab grande r 51.5: dif 0.0085 · tinta 1.0085 · fora 0.0040 (n 331647)
+[regua] Airbrush@corda grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@subdab grande r 51.5: dif 0.0032 · tinta 1.0000 · fora 0.0035 (n 331393)
+[regua] Airbrush@sorteio grande r 51.5: dif 0.2709 · tinta 1.0001 · fora 0.5828 (n 339832)
+[regua] Airbrush@todos grande r 51.5: dif 0.0095 · tinta 1.0086 · fora 0.0126 (n 332071)
+[regua] Airbrush@cap05 grande r 51.5: dif 0.3852 · tinta 0.9408 · fora 0.6885 (n 337981)
+[regua] Airbrush@antes grande r 51.5: dif 0.3168 · tinta 1.0059 · fora 0.6279 (n 341852)
+
+## r3
+[camadas] Marker Bullet@fabrica: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@leiA: medianas [0.1396, 0.0937, 0.0794, 0.0721] · p95 0.1441
+[camadas] Marker Bullet@nat: medianas [0.1396, 0.0937, 0.0794, 0.0721] · p95 0.1441
+[camadas] Marker Bullet@cap0375: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@jit0: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@jit0antes: medianas [0.1396, 0.0930, 0.0794, 0.0721] · p95 0.1430
+[camadas] Marker Bullet@po0: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@po0antes: medianas [0.1396, 0.0930, 0.0794, 0.0721] · p95 0.1430
+[camadas] Marker Bullet@antes: medianas [0.1396, 0.0930, 0.0794, 0.0721] · p95 0.1430
+[camadas] Dip Pen@fabrica: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@leiA: medianas [0.1396, 0.0989, 0.0971, 0.0950] · p95 0.1396
+[camadas] Dip Pen@nat: medianas [0.1396, 0.0989, 0.0971, 0.0950] · p95 0.1396
+[camadas] Dip Pen@cap0375: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@jit0: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@jit0antes: medianas [0.1396, 0.0989, 0.0960, 0.0950] · p95 0.1406
+[camadas] Dip Pen@po0: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@po0antes: medianas [0.1396, 0.0989, 0.0960, 0.0950] · p95 0.1406
+[camadas] Dip Pen@antes: medianas [0.1396, 0.0989, 0.0960, 0.0950] · p95 0.1406
+[regua] Oil Bristle@fabrica escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Esca
+[regua] Oil Bristle@fabrica escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Esca
+[regua] Oil Bristle@leiA escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada 
+[regua] Oil Bristle@leiA escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada 
+[regua] Oil Bristle@nat escada r 51.5: [Escada { escada: 3.0476578350065306, contraste: 13.786298727269891, }, Escada { escada: 2.9401967067144237, contraste: 12.055013983749095, }, Escada { escada: 2.87218986122728, contraste: 15.486875848384955, }, Escada { 
+[regua] Oil Bristle@nat escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada {
+[regua] Oil Bristle@cap0375 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Esca
+[regua] Oil Bristle@cap0375 escada r 20.5: [Escada { escada: 2.8971958421200283, contraste: 13.907072923540353, }, Escada { escada: 2.612560678596528, contraste: 12.664003463543228, }, Escada { escada: 2.690444353805321, contraste: 15.882865266931107, }, Escad
+[regua] Oil Bristle@jit0 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada 
+[regua] Oil Bristle@jit0 escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada 
+[regua] Oil Bristle@jit0antes escada r 51.5: [Escada { escada: 1.898508928072919, contraste: 12.773792450108317, }, Escada { escada: 1.4206418488597905, contraste: 10.459351503713185, }, Escada { escada: 2.0259265702869245, contraste: 15.005456668380493, }, Es
+[regua] Oil Bristle@jit0antes escada r 20.5: [Escada { escada: 2.1839357615582413, contraste: 11.86387515423527, }, Escada { escada: 1.9049260637275054, contraste: 10.159233389557167, }, Escada { escada: 2.229447713888482, contraste: 14.77970200167276, }, Esca
+[regua] Oil Bristle@po0 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada {
+[regua] Oil Bristle@po0 escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada {
+[regua] Oil Bristle@po0antes escada r 51.5: [Escada { escada: 1.898508928072919, contraste: 12.773792450108317, }, Escada { escada: 1.4206418488597905, contraste: 10.459351503713185, }, Escada { escada: 2.0259265702869245, contraste: 15.005456668380493, }, Esc
+[regua] Oil Bristle@po0antes escada r 20.5: [Escada { escada: 2.1839357615582413, contraste: 11.86387515423527, }, Escada { escada: 1.9049260637275054, contraste: 10.159233389557167, }, Escada { escada: 2.229447713888482, contraste: 14.77970200167276, }, Escad
+[regua] Oil Bristle@antes escada r 51.5: [Escada { escada: 1.898508928072919, contraste: 12.773792450108317, }, Escada { escada: 1.4206418488597905, contraste: 10.459351503713185, }, Escada { escada: 2.0259265702869245, contraste: 15.005456668380493, }, Escada
+[regua] Oil Bristle@antes escada r 20.5: [Escada { escada: 2.1839357615582413, contraste: 11.86387515423527, }, Escada { escada: 1.9049260637275054, contraste: 10.159233389557167, }, Escada { escada: 2.229447713888482, contraste: 14.77970200167276, }, Escada {
+[regua] Oil Bristle@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@leiA grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@nat grande r 51.5: dif 0.0145 · tinta 0.9989 · fora 0.0362 (n 260365)
+[regua] Oil Bristle@cap0375 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@jit0 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@jit0antes grande r 51.5: dif 0.0597 · tinta 1.0252 · fora 0.3551 (n 262229)
+[regua] Oil Bristle@po0 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@po0antes grande r 51.5: dif 0.0597 · tinta 1.0252 · fora 0.3551 (n 262229)
+[regua] Oil Bristle@antes grande r 51.5: dif 0.0597 · tinta 1.0252 · fora 0.3551 (n 262229)
+[regua] Graphite 8B@fabrica cena r 15: Medida { cobertura: 0.7935201233350615, textura: 7.7409257087152, } FamiliaC { tinta: 0.7813893557422956, rampa: 0.48, rampa_cob: 0.8677884615384615, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@leiA cena r 15: Medida { cobertura: 0.7935201233350615, textura: 7.7409257087152, } FamiliaC { tinta: 0.7813893557422956, rampa: 0.48, rampa_cob: 0.8677884615384615, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@nat cena r 15: Medida { cobertura: 0.7935970679145589, textura: 7.601813810853306, } FamiliaC { tinta: 0.781198879551819, rampa: 0.5, rampa_cob: 0.875, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@cap0375 cena r 15: Medida { cobertura: 0.7892351941599279, textura: 9.291854438320799, } FamiliaC { tinta: 0.7767058823529399, rampa: 0.46153846153846156, rampa_cob: 0.8557457212713936, pontas: 0.28846153846153844, }
+[regua] Graphite 8B@jit0 cena r 15: Medida { cobertura: 0.8212873994219707, textura: 7.06307160956304, } FamiliaC { tinta: 0.8156974789915948, rampa: 0.5217391304347826, rampa_cob: 0.9130434782608696, pontas: 0.30434782608695654, }
+[regua] Graphite 8B@jit0antes cena r 15: Medida { cobertura: 0.8217352208024885, textura: 7.051693131433792, } FamiliaC { tinta: 0.8156974789915948, rampa: 0.5217391304347826, rampa_cob: 0.9130434782608696, pontas: 0.3333333333333333, }
+[regua] Graphite 8B@po0 cena r 15: Medida { cobertura: 0.7935201233350615, textura: 7.7409257087152, } FamiliaC { tinta: 0.7813893557422956, rampa: 0.48, rampa_cob: 0.8677884615384615, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@po0antes cena r 15: Medida { cobertura: 0.7862731175310665, textura: 8.77126257605676, } FamiliaC { tinta: 0.7878767507002793, rampa: 0.5, rampa_cob: 0.9002557544757034, pontas: 0.3181818181818182, }
+[regua] Graphite 8B@antes cena r 15: Medida { cobertura: 0.7862731175310665, textura: 8.77126257605676, } FamiliaC { tinta: 0.7878767507002793, rampa: 0.5, rampa_cob: 0.9002557544757034, pontas: 0.3181818181818182, }
+[regua] Graphite 8B@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 300889)
+[regua] Graphite 8B@leiA grande r 51.5: dif 0.0008 · tinta 1.0001 · fora 0.0015 (n 300948)
+[regua] Graphite 8B@nat grande r 51.5: dif 0.0105 · tinta 1.0027 · fora 0.0242 (n 302273)
+[regua] Graphite 8B@cap0375 grande r 51.5: dif 0.0399 · tinta 0.9865 · fora 0.1838 (n 303190)
+[regua] Graphite 8B@jit0 grande r 51.5: dif 0.0937 · tinta 0.9697 · fora 0.4127 (n 304506)
+[regua] Graphite 8B@jit0antes grande r 51.5: dif 0.0960 · tinta 0.9793 · fora 0.4190 (n 305707)
+[regua] Graphite 8B@po0 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 300889)
+[regua] Graphite 8B@po0antes grande r 51.5: dif 0.0876 · tinta 1.0186 · fora 0.3935 (n 320287)
+[regua] Graphite 8B@antes grande r 51.5: dif 0.0876 · tinta 1.0186 · fora 0.3935 (n 320287)
+[regua] Charcoal@fabrica cena r 10.5: Medida { cobertura: 0.3417540081526699, textura: 7.321949306312457, } FamiliaC { tinta: 0.2892100840336137, rampa: 0.47058823529411764, rampa_cob: 0.8333333333333333, pontas: 0.2647058823529412, }
+[regua] Charcoal@leiA cena r 10.5: Medida { cobertura: 0.3417540081526699, textura: 7.321949306312457, } FamiliaC { tinta: 0.2892100840336137, rampa: 0.47058823529411764, rampa_cob: 0.8333333333333333, pontas: 0.2647058823529412, }
+[regua] Charcoal@nat cena r 10.5: Medida { cobertura: 0.3426791015907405, textura: 7.350399848324588, } FamiliaC { tinta: 0.2904425770308127, rampa: 0.47058823529411764, rampa_cob: 0.8333333333333333, pontas: 0.2647058823529412, }
+[regua] Charcoal@cap0375 cena r 10.5: Medida { cobertura: 0.3417540081526699, textura: 7.321949306312457, } FamiliaC { tinta: 0.2892100840336137, rampa: 0.47058823529411764, rampa_cob: 0.8333333333333333, pontas: 0.2647058823529412, }
+[regua] Charcoal@jit0 cena r 10.5: Medida { cobertura: 0.38411198317018536, textura: 7.3408099617881275, } FamiliaC { tinta: 0.3340392156862749, rampa: 0.5333333333333333, rampa_cob: 0.7195121951219512, pontas: 0.25, }
+[regua] Charcoal@jit0antes cena r 10.5: Medida { cobertura: 0.38441323038613173, textura: 7.341467058993559, } FamiliaC { tinta: 0.3340392156862749, rampa: 0.5333333333333333, rampa_cob: 0.7195121951219512, pontas: 0.3, }
+[regua] Charcoal@po0 cena r 10.5: Medida { cobertura: 0.3417540081526699, textura: 7.321949306312457, } FamiliaC { tinta: 0.2892100840336137, rampa: 0.47058823529411764, rampa_cob: 0.8333333333333333, pontas: 0.2647058823529412, }
+[regua] Charcoal@po0antes cena r 10.5: Medida { cobertura: 0.33351650349525286, textura: 7.613130054892225, } FamiliaC { tinta: 0.27838655462184914, rampa: 0.5, rampa_cob: 0.6805555555555556, pontas: 0.36666666666666664, }
+[regua] Charcoal@antes cena r 10.5: Medida { cobertura: 0.33351650349525286, textura: 7.613130054892225, } FamiliaC { tinta: 0.27838655462184914, rampa: 0.5, rampa_cob: 0.6805555555555556, pontas: 0.36666666666666664, }
+[regua] Charcoal@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 385274)
+[regua] Charcoal@leiA grande r 51.5: dif 0.0125 · tinta 1.0044 · fora 0.0003 (n 386698)
+[regua] Charcoal@nat grande r 51.5: dif 0.0190 · tinta 1.0060 · fora 0.0068 (n 387422)
+[regua] Charcoal@cap0375 grande r 51.5: dif 0.0350 · tinta 0.9952 · fora 0.0050 (n 388344)
+[regua] Charcoal@jit0 grande r 51.5: dif 0.2173 · tinta 0.9714 · fora 0.5208 (n 389645)
+[regua] Charcoal@jit0antes grande r 51.5: dif 0.2299 · tinta 1.0031 · fora 0.5425 (n 392613)
+[regua] Charcoal@po0 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 385274)
+[regua] Charcoal@po0antes grande r 51.5: dif 0.1916 · tinta 1.0322 · fora 0.4295 (n 418789)
+[regua] Charcoal@antes grande r 51.5: dif 0.1916 · tinta 1.0322 · fora 0.4295 (n 418789)
+[regua] Oil Pastel@fabrica cena r 15: Medida { cobertura: 0.7350531730426328, textura: 11.02363129980692, } FamiliaC { tinta: 0.6956526610644256, rampa: 0.48148148148148145, rampa_cob: 0.7687861271676301, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@leiA cena r 15: Medida { cobertura: 0.7350132274412792, textura: 11.046012589775183, } FamiliaC { tinta: 0.6958207282913162, rampa: 0.48148148148148145, rampa_cob: 0.7687861271676301, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@nat cena r 15: Medida { cobertura: 0.7351852757359646, textura: 10.80395866327972, } FamiliaC { tinta: 0.696336134453781, rampa: 0.48148148148148145, rampa_cob: 0.7906976744186046, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@cap0375 cena r 15: Medida { cobertura: 0.7328918098711663, textura: 13.498489038162342, } FamiliaC { tinta: 0.7135910364145646, rampa: 0.48148148148148145, rampa_cob: 0.7522123893805309, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@jit0 cena r 15: Medida { cobertura: 0.7709718489765804, textura: 9.719588975141836, } FamiliaC { tinta: 0.750196078431372, rampa: 0.5, rampa_cob: 0.7849740932642487, pontas: 0.2916666666666667, }
+[regua] Oil Pastel@jit0antes cena r 15: Medida { cobertura: 0.770808985846096, textura: 9.800579113740659, } FamiliaC { tinta: 0.7504985994397751, rampa: 0.5, rampa_cob: 0.7925531914893617, pontas: 0.2708333333333333, }
+[regua] Oil Pastel@po0 cena r 15: Medida { cobertura: 0.7350531730426328, textura: 11.02363129980692, } FamiliaC { tinta: 0.6956526610644256, rampa: 0.48148148148148145, rampa_cob: 0.7687861271676301, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@po0antes cena r 15: Medida { cobertura: 0.7241200480193083, textura: 13.121519279934232, } FamiliaC { tinta: 0.6826106442577028, rampa: 0.48148148148148145, rampa_cob: 0.7388888888888889, pontas: 0.25, }
+[regua] Oil Pastel@antes cena r 15: Medida { cobertura: 0.7241200480193083, textura: 13.121519279934232, } FamiliaC { tinta: 0.6826106442577028, rampa: 0.48148148148148145, rampa_cob: 0.7388888888888889, pontas: 0.25, }
+[regua] Oil Pastel@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 300498)
+[regua] Oil Pastel@leiA grande r 51.5: dif 0.0261 · tinta 1.0078 · fora 0.0747 (n 302460)
+[regua] Oil Pastel@nat grande r 51.5: dif 0.0290 · tinta 1.0033 · fora 0.0783 (n 302119)
+[regua] Oil Pastel@cap0375 grande r 51.5: dif 0.0441 · tinta 0.9800 · fora 0.1425 (n 302474)
+[regua] Oil Pastel@jit0 grande r 51.5: dif 0.1257 · tinta 0.9685 · fora 0.4893 (n 303928)
+[regua] Oil Pastel@jit0antes grande r 51.5: dif 0.1381 · tinta 0.9949 · fora 0.5292 (n 306535)
+[regua] Oil Pastel@po0 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 300498)
+[regua] Oil Pastel@po0antes grande r 51.5: dif 0.1217 · tinta 1.0237 · fora 0.4720 (n 324216)
+[regua] Oil Pastel@antes grande r 51.5: dif 0.1217 · tinta 1.0237 · fora 0.4720 (n 324216)
+[regua] Airbrush@fabrica cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@leiA cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@nat cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@cap0375 cena r 15: Medida { cobertura: 0.3692523163111491, textura: 28.802324005814288, } FamiliaC { tinta: 0.3523025210084031, rampa: 0.7083333333333334, rampa_cob: 0.4054054054054054, pontas: 0.4772727272727273, }
+[regua] Airbrush@jit0 cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@jit0antes cena r 15: Medida { cobertura: 0.3585677599993483, textura: 21.935897213749456, } FamiliaC { tinta: 0.3573109243697481, rampa: 0.6, rampa_cob: 0.35294117647058826, pontas: 0.6346153846153846, }
+[regua] Airbrush@po0 cena r 15: Medida { cobertura: 0.34621513301078916, textura: 0.9198702444363348, e-13, } FamiliaC { tinta: 0.36078431372548914, rampa: 0.7142857142857143, rampa_cob: 0.3128491620111732, pontas: 0.7142857142857143, }
+[regua] Airbrush@po0antes cena r 15: Medida { cobertura: 0.3462328832332426, textura: 0.9198164291246893, e-5, e-13, } FamiliaC { tinta: 0.36078431372548914, rampa: 0.7142857142857143, rampa_cob: 0.3128491620111732, pontas: 0.7142857142857143, }
+[regua] Airbrush@antes cena r 15: Medida { cobertura: 0.3585677599993483, textura: 21.935897213749456, } FamiliaC { tinta: 0.3573109243697481, rampa: 0.6, rampa_cob: 0.35294117647058826, pontas: 0.6346153846153846, }
+[regua] Airbrush@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@leiA grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@nat grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@cap0375 grande r 51.5: dif 0.3398 · tinta 0.9762 · fora 0.6520 (n 339439)
+[regua] Airbrush@jit0 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@jit0antes grande r 51.5: dif 0.3168 · tinta 1.0059 · fora 0.6279 (n 341852)
+[regua] Airbrush@po0 grande r 51.5: dif 0.2205 · tinta 1.0174 · fora 0.5121 (n 342346)
+[regua] Airbrush@po0antes grande r 51.5: dif 0.2225 · tinta 1.0257 · fora 0.5144 (n 343479)
+[regua] Airbrush@antes grande r 51.5: dif 0.3168 · tinta 1.0059 · fora 0.6279 (n 341852)
+
+## r4
+[camadas] Marker Bullet@fabrica: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@rigido: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@floor: medianas [0.1396, 0.0930, 0.0794, 0.0721] · p95 0.1441
+[camadas] Marker Bullet@antes: medianas [0.1396, 0.0930, 0.0794, 0.0721] · p95 0.1430
+[camadas] Marker Bullet@f_s1: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@f_s2: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@f_s3: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@f_s4: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Dip Pen@fabrica: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@rigido: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@floor: medianas [0.1396, 0.0989, 0.0960, 0.0960] · p95 0.1406
+[camadas] Dip Pen@antes: medianas [0.1396, 0.0989, 0.0960, 0.0950] · p95 0.1406
+[camadas] Dip Pen@f_s1: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@f_s2: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@f_s3: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@f_s4: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[regua] Oil Bristle@fabrica escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Esca
+[regua] Oil Bristle@fabrica escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Esca
+[regua] Oil Bristle@rigido escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escad
+[regua] Oil Bristle@rigido escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escad
+[regua] Oil Bristle@floor escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada
+[regua] Oil Bristle@floor escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada
+[regua] Oil Bristle@antes escada r 51.5: [Escada { escada: 1.898508928072919, contraste: 12.773792450108317, }, Escada { escada: 1.4206418488597905, contraste: 10.459351503713185, }, Escada { escada: 2.0259265702869245, contraste: 15.005456668380493, }, Escada
+[regua] Oil Bristle@antes escada r 20.5: [Escada { escada: 2.1839357615582413, contraste: 11.86387515423527, }, Escada { escada: 1.9049260637275054, contraste: 10.159233389557167, }, Escada { escada: 2.229447713888482, contraste: 14.77970200167276, }, Escada {
+[regua] Oil Bristle@f_s1 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada 
+[regua] Oil Bristle@f_s1 escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada 
+[regua] Oil Bristle@f_s2 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada 
+[regua] Oil Bristle@f_s2 escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada 
+[regua] Oil Bristle@f_s3 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada 
+[regua] Oil Bristle@f_s3 escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada 
+[regua] Oil Bristle@f_s4 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada 
+[regua] Oil Bristle@f_s4 escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada 
+[regua] Oil Bristle@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@rigido grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@antes grande r 51.5: dif 0.0597 · tinta 1.0252 · fora 0.3551 (n 262229)
+[regua] Oil Bristle@f_s1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@f_s2 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@f_s3 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@f_s4 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Graphite 8B@fabrica cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@rigido cena r 15: Medida { cobertura: 0.7935201233350615, textura: 7.7409257087152, } FamiliaC { tinta: 0.7813893557422956, rampa: 0.48, rampa_cob: 0.8677884615384615, pontas: 0.32608695652173914, }
+[regua] Graphite 8B@floor cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@antes cena r 15: Medida { cobertura: 0.7862731175310665, textura: 8.77126257605676, } FamiliaC { tinta: 0.7878767507002793, rampa: 0.5, rampa_cob: 0.9002557544757034, pontas: 0.3181818181818182, }
+[regua] Graphite 8B@f_s1 cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@f_s2 cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@f_s3 cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@f_s4 cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 312154)
+[regua] Graphite 8B@rigido grande r 51.5: dif 0.0929 · tinta 1.0000 · fora 0.4082 (n 319347)
+[regua] Graphite 8B@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 312154)
+[regua] Graphite 8B@antes grande r 51.5: dif 0.0715 · tinta 1.0186 · fora 0.3203 (n 322818)
+[regua] Graphite 8B@f_s1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 312154)
+[regua] Graphite 8B@f_s2 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 312154)
+[regua] Graphite 8B@f_s3 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 312154)
+[regua] Graphite 8B@f_s4 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 312154)
+[regua] Charcoal@fabrica cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@rigido cena r 10.5: Medida { cobertura: 0.3417540081526699, textura: 7.321949306312457, } FamiliaC { tinta: 0.2892100840336137, rampa: 0.47058823529411764, rampa_cob: 0.8333333333333333, pontas: 0.2647058823529412, }
+[regua] Charcoal@floor cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@antes cena r 10.5: Medida { cobertura: 0.33351650349525286, textura: 7.613130054892225, } FamiliaC { tinta: 0.27838655462184914, rampa: 0.5, rampa_cob: 0.6805555555555556, pontas: 0.36666666666666664, }
+[regua] Charcoal@f_s1 cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@f_s2 cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@f_s3 cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@f_s4 cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 397128)
+[regua] Charcoal@rigido grande r 51.5: dif 0.2035 · tinta 0.9961 · fora 0.4587 (n 413754)
+[regua] Charcoal@floor grande r 51.5: dif 0.1118 · tinta 1.0106 · fora 0.2300 (n 409654)
+[regua] Charcoal@antes grande r 51.5: dif 0.1192 · tinta 1.0281 · fora 0.2286 (n 417736)
+[regua] Charcoal@f_s1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 397128)
+[regua] Charcoal@f_s2 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 397128)
+[regua] Charcoal@f_s3 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 397128)
+[regua] Charcoal@f_s4 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 397128)
+[regua] Oil Pastel@fabrica cena r 15: Medida { cobertura: 0.7214841078625278, textura: 12.843742861850666, } FamiliaC { tinta: 0.6857030812324928, rampa: 0.5, rampa_cob: 0.7882352941176471, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@rigido cena r 15: Medida { cobertura: 0.7350531730426328, textura: 11.02363129980692, } FamiliaC { tinta: 0.6956526610644256, rampa: 0.48148148148148145, rampa_cob: 0.7687861271676301, pontas: 0.28846153846153844, }
+[regua] Oil Pastel@floor cena r 15: Medida { cobertura: 0.7214841078625278, textura: 12.843742861850666, } FamiliaC { tinta: 0.6857030812324928, rampa: 0.5, rampa_cob: 0.7882352941176471, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@antes cena r 15: Medida { cobertura: 0.7241200480193083, textura: 13.121519279934232, } FamiliaC { tinta: 0.6826106442577028, rampa: 0.48148148148148145, rampa_cob: 0.7388888888888889, pontas: 0.25, }
+[regua] Oil Pastel@f_s1 cena r 15: Medida { cobertura: 0.7214841078625278, textura: 12.843742861850666, } FamiliaC { tinta: 0.6857030812324928, rampa: 0.5, rampa_cob: 0.7882352941176471, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@f_s2 cena r 15: Medida { cobertura: 0.7214841078625278, textura: 12.843742861850666, } FamiliaC { tinta: 0.6857030812324928, rampa: 0.5, rampa_cob: 0.7882352941176471, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@f_s3 cena r 15: Medida { cobertura: 0.7214841078625278, textura: 12.843742861850666, } FamiliaC { tinta: 0.6857030812324928, rampa: 0.5, rampa_cob: 0.7882352941176471, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@f_s4 cena r 15: Medida { cobertura: 0.7214841078625278, textura: 12.843742861850666, } FamiliaC { tinta: 0.6857030812324928, rampa: 0.5, rampa_cob: 0.7882352941176471, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311603)
+[regua] Oil Pastel@rigido grande r 51.5: dif 0.1224 · tinta 0.9970 · fora 0.4809 (n 322083)
+[regua] Oil Pastel@floor grande r 51.5: dif 0.0817 · tinta 1.0067 · fora 0.3309 (n 324336)
+[regua] Oil Pastel@antes grande r 51.5: dif 0.0917 · tinta 1.0207 · fora 0.3632 (n 327340)
+[regua] Oil Pastel@f_s1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311603)
+[regua] Oil Pastel@f_s2 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311603)
+[regua] Oil Pastel@f_s3 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311603)
+[regua] Oil Pastel@f_s4 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311603)
+[regua] Dip Pen@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 293341)
+[regua] Dip Pen@rigido grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 293341)
+[regua] Dip Pen@floor grande r 51.5: dif 0.0066 · tinta 1.0023 · fora 0.0286 (n 294488)
+[regua] Dip Pen@antes grande r 51.5: dif 0.0101 · tinta 1.0072 · fora 0.0312 (n 295467)
+[regua] Dip Pen@f_s1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 293341)
+[regua] Dip Pen@f_s2 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 293341)
+[regua] Dip Pen@f_s3 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 293341)
+[regua] Dip Pen@f_s4 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 293341)
+[regua] Marker Bullet@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 297220)
+[regua] Marker Bullet@rigido grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 297220)
+[regua] Marker Bullet@floor grande r 51.5: dif 0.0100 · tinta 1.0052 · fora 0.0502 (n 298510)
+[regua] Marker Bullet@antes grande r 51.5: dif 0.0200 · tinta 1.0160 · fora 0.0716 (n 300903)
+[regua] Marker Bullet@f_s1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 297220)
+[regua] Marker Bullet@f_s2 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 297220)
+[regua] Marker Bullet@f_s3 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 297220)
+[regua] Marker Bullet@f_s4 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 297220)
+[regua] Airbrush@fabrica cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@rigido cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@floor cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@antes cena r 15: Medida { cobertura: 0.3585677599993483, textura: 21.935897213749456, } FamiliaC { tinta: 0.3573109243697481, rampa: 0.6, rampa_cob: 0.35294117647058826, pontas: 0.6346153846153846, }
+[regua] Airbrush@f_s1 cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@f_s2 cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@f_s3 cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@f_s4 cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5961538461538461, }
+[regua] Airbrush@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@rigido grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@antes grande r 51.5: dif 0.3168 · tinta 1.0059 · fora 0.6279 (n 341852)
+[regua] Airbrush@f_s1 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@f_s2 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@f_s3 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@f_s4 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+
+## r6
+[camadas] Marker Bullet@fabrica: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@floor: medianas [0.1396, 0.0930, 0.0794, 0.0721] · p95 0.1441
+[camadas] Marker Bullet@floor0375: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@floor05: medianas [0.1396, 0.0930, 0.0799, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@cap0375: medianas [0.1396, 0.0937, 0.0794, 0.0730] · p95 0.1452
+[camadas] Marker Bullet@antes: medianas [0.1396, 0.0930, 0.0794, 0.0721] · p95 0.1430
+[camadas] Dip Pen@fabrica: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@floor: medianas [0.1396, 0.0989, 0.0960, 0.0960] · p95 0.1406
+[camadas] Dip Pen@floor0375: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@floor05: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@cap0375: medianas [0.1396, 0.0996, 0.0971, 0.0960] · p95 0.1396
+[camadas] Dip Pen@antes: medianas [0.1396, 0.0989, 0.0960, 0.0950] · p95 0.1406
+[regua] Wet Round@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 282677)
+[regua] Wet Round@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 282677)
+[regua] Wet Round@floor0375 grande r 51.5: dif 0.0940 · tinta 0.9943 · fora 0.0631 (n 287589)
+[regua] Wet Round@floor05 grande r 51.5: dif 0.1212 · tinta 0.9718 · fora 0.0876 (n 287467)
+[regua] Wet Round@cap0375 grande r 51.5: dif 0.1203 · tinta 0.9836 · fora 0.0901 (n 287670)
+[regua] Wet Round@antes grande r 51.5: dif 0.0875 · tinta 1.0293 · fora 0.0671 (n 291315)
+[regua] Wet Wash@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 283291)
+[regua] Wet Wash@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 283291)
+[regua] Wet Wash@floor0375 grande r 51.5: dif 0.0682 · tinta 0.9915 · fora 0.0189 (n 287384)
+[regua] Wet Wash@floor05 grande r 51.5: dif 0.0766 · tinta 0.9773 · fora 0.0223 (n 288418)
+[regua] Wet Wash@cap0375 grande r 51.5: dif 0.0682 · tinta 0.9915 · fora 0.0189 (n 287384)
+[regua] Wet Wash@antes grande r 51.5: dif 0.0706 · tinta 1.0224 · fora 0.0214 (n 289793)
+[regua] Wet Dry Brush@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311831)
+[regua] Wet Dry Brush@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311831)
+[regua] Wet Dry Brush@floor0375 grande r 51.5: dif 0.3906 · tinta 1.0021 · fora 0.6598 (n 336657)
+[regua] Wet Dry Brush@floor05 grande r 51.5: dif 0.4049 · tinta 0.9360 · fora 0.6960 (n 317596)
+[regua] Wet Dry Brush@cap0375 grande r 51.5: dif 0.4169 · tinta 0.9755 · fora 0.6898 (n 333097)
+[regua] Wet Dry Brush@antes grande r 51.5: dif 0.3429 · tinta 1.0373 · fora 0.6065 (n 343823)
+[regua] Wet Drip@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 427829)
+[regua] Wet Drip@floor grande r 51.5: dif 0.1904 · tinta 0.9961 · fora 0.1483 (n 439119)
+[regua] Wet Drip@floor0375 grande r 51.5: dif 0.2150 · tinta 0.9759 · fora 0.1688 (n 441232)
+[regua] Wet Drip@floor05 grande r 51.5: dif 0.2751 · tinta 0.9657 · fora 0.2183 (n 446077)
+[regua] Wet Drip@cap0375 grande r 51.5: dif 0.2150 · tinta 0.9759 · fora 0.1688 (n 441232)
+[regua] Wet Drip@antes grande r 51.5: dif 0.2043 · tinta 1.0122 · fora 0.1543 (n 443644)
+[regua] Wet Liner@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 293689)
+[regua] Wet Liner@floor grande r 51.5: dif 0.0247 · tinta 1.0123 · fora 0.0721 (n 295378)
+[regua] Wet Liner@floor0375 grande r 51.5: dif 0.0251 · tinta 0.9892 · fora 0.0734 (n 294182)
+[regua] Wet Liner@floor05 grande r 51.5: dif 0.0341 · tinta 0.9824 · fora 0.1026 (n 294265)
+[regua] Wet Liner@cap0375 grande r 51.5: dif 0.0251 · tinta 0.9892 · fora 0.0734 (n 294182)
+[regua] Wet Liner@antes grande r 51.5: dif 0.0331 · tinta 1.0203 · fora 0.1116 (n 297515)
+[regua] Oil Bristle@fabrica escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Esca
+[regua] Oil Bristle@fabrica escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Esca
+[regua] Oil Bristle@floor escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Escada
+[regua] Oil Bristle@floor escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Escada
+[regua] Oil Bristle@floor0375 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Es
+[regua] Oil Bristle@floor0375 escada r 20.5: [Escada { escada: 2.1842194548549414, contraste: 11.862906509617458, }, Escada { escada: 1.9056418252788783, contraste: 10.159981599841895, }, Escada { escada: 2.2293388725621135, contraste: 14.78341590944678, }, Es
+[regua] Oil Bristle@floor05 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Esca
+[regua] Oil Bristle@floor05 escada r 20.5: [Escada { escada: 2.8971958421200283, contraste: 13.907072923540353, }, Escada { escada: 2.612560678596528, contraste: 12.664003463543228, }, Escada { escada: 2.690444353805321, contraste: 15.882865266931107, }, Escad
+[regua] Oil Bristle@cap0375 escada r 51.5: [Escada { escada: 2.234176332314768, contraste: 13.169855692383337, }, Escada { escada: 2.3905524223429646, contraste: 11.563223068193734, }, Escada { escada: 2.2170446937214674, contraste: 14.868609766383843, }, Esca
+[regua] Oil Bristle@cap0375 escada r 20.5: [Escada { escada: 2.8971958421200283, contraste: 13.907072923540353, }, Escada { escada: 2.612560678596528, contraste: 12.664003463543228, }, Escada { escada: 2.690444353805321, contraste: 15.882865266931107, }, Escad
+[regua] Oil Bristle@antes escada r 51.5: [Escada { escada: 1.898508928072919, contraste: 12.773792450108317, }, Escada { escada: 1.4206418488597905, contraste: 10.459351503713185, }, Escada { escada: 2.0259265702869245, contraste: 15.005456668380493, }, Escada
+[regua] Oil Bristle@antes escada r 20.5: [Escada { escada: 2.1839357615582413, contraste: 11.86387515423527, }, Escada { escada: 1.9049260637275054, contraste: 10.159233389557167, }, Escada { escada: 2.229447713888482, contraste: 14.77970200167276, }, Escada {
+[regua] Oil Bristle@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@floor0375 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@floor05 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@cap0375 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 260168)
+[regua] Oil Bristle@antes grande r 51.5: dif 0.0597 · tinta 1.0252 · fora 0.3551 (n 262229)
+[regua] Acrylic Round@fabrica escada r 51.5: [Escada { escada: 5.6619339270316935, contraste: 16.830384430386516, }, Escada { escada: 3.971841607195678, contraste: 13.65034860153336, }, Escada { escada: 5.571942224145922, contraste: 14.37745477381441, }, Escad
+[regua] Acrylic Round@fabrica escada r 20.5: [Escada { escada: 9.309254241778529, contraste: 29.770324657177095, }, Escada { escada: 8.425365151066863, contraste: 21.776513872169712, }, Escada { escada: 8.613864923047181, contraste: 25.872122663963484, }, Esca
+[regua] Acrylic Round@floor escada r 51.5: [Escada { escada: 5.6619339270316935, contraste: 16.830384430386516, }, Escada { escada: 3.971841607195678, contraste: 13.65034860153336, }, Escada { escada: 5.571942224145922, contraste: 14.37745477381441, }, Escada 
+[regua] Acrylic Round@floor escada r 20.5: [Escada { escada: 9.309254241778529, contraste: 29.770324657177095, }, Escada { escada: 8.425365151066863, contraste: 21.776513872169712, }, Escada { escada: 8.613864923047181, contraste: 25.872122663963484, }, Escada
+[regua] Acrylic Round@floor0375 escada r 51.5: [Escada { escada: 17.552233029943075, contraste: 28.210360927301796, }, Escada { escada: 15.705091380894336, contraste: 28.15029653647286, }, Escada { escada: 14.878868146566877, contraste: 25.068575545525576, }, 
+[regua] Acrylic Round@floor0375 escada r 20.5: [Escada { escada: 9.309254241778529, contraste: 29.770324657177095, }, Escada { escada: 8.425365151066863, contraste: 21.776513872169712, }, Escada { escada: 8.613864923047181, contraste: 25.872122663963484, }, Es
+[regua] Acrylic Round@floor05 escada r 51.5: [Escada { escada: 18.891473055891186, contraste: 29.61262710891518, }, Escada { escada: 17.06592272958616, contraste: 30.421610428092094, }, Escada { escada: 16.90352929397549, contraste: 28.19925268248142, }, Escad
+[regua] Acrylic Round@floor05 escada r 20.5: [Escada { escada: 13.448312504214712, contraste: 35.622586631655786, }, Escada { escada: 14.746377442319599, contraste: 31.80938892037858, }, Escada { escada: 12.900979802528674, contraste: 30.763768271747075, }, Es
+[regua] Acrylic Round@cap0375 escada r 51.5: [Escada { escada: 17.552233029943075, contraste: 28.210360927301796, }, Escada { escada: 15.705091380894336, contraste: 28.15029653647286, }, Escada { escada: 14.878868146566877, contraste: 25.068575545525576, }, Es
+[regua] Acrylic Round@cap0375 escada r 20.5: [Escada { escada: 13.448312504214712, contraste: 35.622586631655786, }, Escada { escada: 14.746377442319599, contraste: 31.80938892037858, }, Escada { escada: 12.900979802528674, contraste: 30.763768271747075, }, Es
+[regua] Acrylic Round@antes escada r 51.5: [Escada { escada: 6.230577063625729, contraste: 16.781245687918613, }, Escada { escada: 4.084055702806518, contraste: 14.517161977649774, }, Escada { escada: 5.79872801750918, contraste: 14.90607533356776, }, Escada {
+[regua] Acrylic Round@antes escada r 20.5: [Escada { escada: 9.309448144877827, contraste: 29.770382045086738, }, Escada { escada: 8.425365661380798, contraste: 21.77653800923931, }, Escada { escada: 8.713689112426442, contraste: 26.534198837981986, }, Escada 
+[regua] Acrylic Round@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 302166)
+[regua] Acrylic Round@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 302166)
+[regua] Acrylic Round@floor0375 grande r 51.5: dif 0.2110 · tinta 0.9054 · fora 0.6384 (n 304401)
+[regua] Acrylic Round@floor05 grande r 51.5: dif 0.2463 · tinta 0.8795 · fora 0.6805 (n 304342)
+[regua] Acrylic Round@cap0375 grande r 51.5: dif 0.2110 · tinta 0.9054 · fora 0.6384 (n 304401)
+[regua] Acrylic Round@antes grande r 51.5: dif 0.0393 · tinta 1.0053 · fora 0.1310 (n 304797)
+[regua] Express Oil@fabrica escada r 51.5: [Escada { escada: 0.9569367448293051, contraste: 6.405281844977417, }, Escada { escada: 0.82951459765803, contraste: 10.11386311514129, }, Escada { escada: 1.0049666793034309, contraste: 6.341203158858397, }, Escada {
+[regua] Express Oil@fabrica escada r 20.5: [Escada { escada: 0.9624335912121791, contraste: 11.786788895503394, }, Escada { escada: 0.5483744360916724, contraste: 8.714325045554174, }, Escada { escada: 0.7274053103011229, contraste: 10.747880366557006, }, Esca
+[regua] Express Oil@floor escada r 51.5: [Escada { escada: 0.34567785167091303, contraste: 5.574744265012278, }, Escada { escada: 0.6418312330914488, contraste: 9.945076617840963, }, Escada { escada: 0.6889889162433936, contraste: 6.386924079131077, }, Escada 
+[regua] Express Oil@floor escada r 20.5: [Escada { escada: 0.9624335912121791, contraste: 11.786788895503394, }, Escada { escada: 0.5483744360916724, contraste: 8.714325045554174, }, Escada { escada: 0.7274053103011229, contraste: 10.747880366557006, }, Escada
+[regua] Express Oil@floor0375 escada r 51.5: [Escada { escada: 1.3658256240114521, contraste: 6.773905904697671, }, Escada { escada: 1.0712282685203256, contraste: 10.523448464273871, }, Escada { escada: 1.308358764688619, contraste: 6.191803799581253, }, Esca
+[regua] Express Oil@floor0375 escada r 20.5: [Escada { escada: 0.9624335912121791, contraste: 11.786788895503394, }, Escada { escada: 0.5483744360916724, contraste: 8.714325045554174, }, Escada { escada: 0.7274053103011229, contraste: 10.747880366557006, }, Es
+[regua] Express Oil@floor05 escada r 51.5: [Escada { escada: 2.1104360339823707, contraste: 7.306143611277932, }, Escada { escada: 1.8922944700800497, contraste: 10.866132231671008, }, Escada { escada: 1.8222768163090077, contraste: 6.317612465566243, }, Escad
+[regua] Express Oil@floor05 escada r 20.5: [Escada { escada: 1.1149712230472062, contraste: 12.318302514196061, }, Escada { escada: 1.1142496703096008, contraste: 11.016194970581976, }, Escada { escada: 0.9499271713666103, contraste: 11.437188088524023, }, Esc
+[regua] Express Oil@cap0375 escada r 51.5: [Escada { escada: 1.3658256240114521, contraste: 6.773905904697671, }, Escada { escada: 1.0712282685203256, contraste: 10.523448464273871, }, Escada { escada: 1.308358764688619, contraste: 6.191803799581253, }, Escada
+[regua] Express Oil@cap0375 escada r 20.5: [Escada { escada: 1.1149712230472062, contraste: 12.318302514196061, }, Escada { escada: 1.1142496703096008, contraste: 11.016194970581976, }, Escada { escada: 0.9499271713666103, contraste: 11.437188088524023, }, Esc
+[regua] Express Oil@antes escada r 51.5: [Escada { escada: 0.29918564002826725, contraste: 5.494083049499733, }, Escada { escada: 0.3011535755611934, contraste: 8.214166933982135, }, Escada { escada: 0.6006648636041486, contraste: 6.041267878850301, }, Escada 
+[regua] Express Oil@antes escada r 20.5: [Escada { escada: 0.962089808663381, contraste: 11.785984772909478, }, Escada { escada: 0.5485091048014792, contraste: 8.71409866593007, }, Escada { escada: 0.7253396764123812, contraste: 10.764082059322746, }, Escada {
+[regua] Express Oil@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 297214)
+[regua] Express Oil@floor grande r 51.5: dif 0.0135 · tinta 1.0068 · fora 0.0435 (n 298215)
+[regua] Express Oil@floor0375 grande r 51.5: dif 0.0194 · tinta 0.9937 · fora 0.0886 (n 297504)
+[regua] Express Oil@floor05 grande r 51.5: dif 0.0332 · tinta 0.9811 · fora 0.1629 (n 297711)
+[regua] Express Oil@cap0375 grande r 51.5: dif 0.0194 · tinta 0.9937 · fora 0.0886 (n 297504)
+[regua] Express Oil@antes grande r 51.5: dif 0.0312 · tinta 1.0278 · fora 0.1268 (n 301219)
+[regua] Graphite 8B@fabrica cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@floor cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@floor0375 cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@floor05 cena r 15: Medida { cobertura: 0.7867811595822928, textura: 8.688078050935816, } FamiliaC { tinta: 0.790868347338934, rampa: 0.5, rampa_cob: 0.8955223880597015, pontas: 0.28, }
+[regua] Graphite 8B@cap0375 cena r 15: Medida { cobertura: 0.7850102571442588, textura: 9.753727356776936, } FamiliaC { tinta: 0.7980616246498579, rampa: 0.5, rampa_cob: 0.9015151515151515, pontas: 0.35714285714285715, }
+[regua] Graphite 8B@antes cena r 15: Medida { cobertura: 0.7862731175310665, textura: 8.77126257605676, } FamiliaC { tinta: 0.7878767507002793, rampa: 0.5, rampa_cob: 0.9002557544757034, pontas: 0.3181818181818182, }
+[regua] Graphite 8B@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 312154)
+[regua] Graphite 8B@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 312154)
+[regua] Graphite 8B@floor0375 grande r 51.5: dif 0.0621 · tinta 0.9989 · fora 0.2956 (n 319147)
+[regua] Graphite 8B@floor05 grande r 51.5: dif 0.0828 · tinta 0.9729 · fora 0.3882 (n 316681)
+[regua] Graphite 8B@cap0375 grande r 51.5: dif 0.0724 · tinta 0.9852 · fora 0.3399 (n 317833)
+[regua] Graphite 8B@antes grande r 51.5: dif 0.0715 · tinta 1.0186 · fora 0.3203 (n 322818)
+[regua] Charcoal@fabrica cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@floor cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@floor0375 cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@floor05 cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@cap0375 cena r 10.5: Medida { cobertura: 0.33622812046037004, textura: 7.594340012892067, } FamiliaC { tinta: 0.27827450980392165, rampa: 0.47058823529411764, rampa_cob: 0.5806451612903225, pontas: 0.35294117647058826, }
+[regua] Charcoal@antes cena r 10.5: Medida { cobertura: 0.33351650349525286, textura: 7.613130054892225, } FamiliaC { tinta: 0.27838655462184914, rampa: 0.5, rampa_cob: 0.6805555555555556, pontas: 0.36666666666666664, }
+[regua] Charcoal@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 397128)
+[regua] Charcoal@floor grande r 51.5: dif 0.1118 · tinta 1.0106 · fora 0.2300 (n 409654)
+[regua] Charcoal@floor0375 grande r 51.5: dif 0.1224 · tinta 1.0018 · fora 0.2559 (n 409337)
+[regua] Charcoal@floor05 grande r 51.5: dif 0.1505 · tinta 0.9795 · fora 0.3429 (n 408924)
+[regua] Charcoal@cap0375 grande r 51.5: dif 0.1224 · tinta 1.0018 · fora 0.2559 (n 409337)
+[regua] Charcoal@antes grande r 51.5: dif 0.1192 · tinta 1.0281 · fora 0.2286 (n 417736)
+[regua] Soft Pastel@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 304073)
+[regua] Soft Pastel@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 304073)
+[regua] Soft Pastel@floor0375 grande r 51.5: dif 0.0110 · tinta 0.9900 · fora 0.0466 (n 304156)
+[regua] Soft Pastel@floor05 grande r 51.5: dif 0.0121 · tinta 0.9912 · fora 0.0429 (n 304464)
+[regua] Soft Pastel@cap0375 grande r 51.5: dif 0.0110 · tinta 0.9900 · fora 0.0466 (n 304156)
+[regua] Soft Pastel@antes grande r 51.5: dif 0.0184 · tinta 1.0173 · fora 0.0829 (n 307789)
+[regua] Oil Pastel@fabrica cena r 15: Medida { cobertura: 0.7214841078625278, textura: 12.843742861850666, } FamiliaC { tinta: 0.6857030812324928, rampa: 0.5, rampa_cob: 0.7882352941176471, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@floor cena r 15: Medida { cobertura: 0.7214841078625278, textura: 12.843742861850666, } FamiliaC { tinta: 0.6857030812324928, rampa: 0.5, rampa_cob: 0.7882352941176471, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@floor0375 cena r 15: Medida { cobertura: 0.7214841078625278, textura: 12.843742861850666, } FamiliaC { tinta: 0.6857030812324928, rampa: 0.5, rampa_cob: 0.7882352941176471, pontas: 0.3333333333333333, }
+[regua] Oil Pastel@floor05 cena r 15: Medida { cobertura: 0.7285239798994468, textura: 14.234738672178517, } FamiliaC { tinta: 0.6836638655462179, rampa: 0.4642857142857143, rampa_cob: 0.7645429362880886, pontas: 0.25925925925925924, }
+[regua] Oil Pastel@cap0375 cena r 15: Medida { cobertura: 0.7285239798994468, textura: 14.234738672178517, } FamiliaC { tinta: 0.6836638655462179, rampa: 0.4642857142857143, rampa_cob: 0.7645429362880886, pontas: 0.25925925925925924, }
+[regua] Oil Pastel@antes cena r 15: Medida { cobertura: 0.7241200480193083, textura: 13.121519279934232, } FamiliaC { tinta: 0.6826106442577028, rampa: 0.48148148148148145, rampa_cob: 0.7388888888888889, pontas: 0.25, }
+[regua] Oil Pastel@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311603)
+[regua] Oil Pastel@floor grande r 51.5: dif 0.0817 · tinta 1.0067 · fora 0.3309 (n 324336)
+[regua] Oil Pastel@floor0375 grande r 51.5: dif 0.0800 · tinta 0.9971 · fora 0.3182 (n 321319)
+[regua] Oil Pastel@floor05 grande r 51.5: dif 0.0982 · tinta 0.9676 · fora 0.4076 (n 318541)
+[regua] Oil Pastel@cap0375 grande r 51.5: dif 0.0891 · tinta 0.9789 · fora 0.3673 (n 318742)
+[regua] Oil Pastel@antes grande r 51.5: dif 0.0917 · tinta 1.0207 · fora 0.3632 (n 327340)
+[regua] Ink Brush@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 321085)
+[regua] Ink Brush@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 321085)
+[regua] Ink Brush@floor0375 grande r 51.5: dif 0.0244 · tinta 0.9872 · fora 0.0561 (n 322641)
+[regua] Ink Brush@floor05 grande r 51.5: dif 0.0411 · tinta 0.9781 · fora 0.1278 (n 324517)
+[regua] Ink Brush@cap0375 grande r 51.5: dif 0.0309 · tinta 0.9910 · fora 0.0789 (n 325148)
+[regua] Ink Brush@antes grande r 51.5: dif 0.0230 · tinta 1.0125 · fora 0.0613 (n 324782)
+[regua] Dip Pen@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 293341)
+[regua] Dip Pen@floor grande r 51.5: dif 0.0066 · tinta 1.0023 · fora 0.0286 (n 294488)
+[regua] Dip Pen@floor0375 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 293341)
+[regua] Dip Pen@floor05 grande r 51.5: dif 0.0097 · tinta 1.0010 · fora 0.0434 (n 294276)
+[regua] Dip Pen@cap0375 grande r 51.5: dif 0.0084 · tinta 0.9983 · fora 0.0350 (n 293866)
+[regua] Dip Pen@antes grande r 51.5: dif 0.0101 · tinta 1.0072 · fora 0.0312 (n 295467)
+[regua] Ink Bullet@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 294273)
+[regua] Ink Bullet@floor grande r 51.5: dif 0.0076 · tinta 1.0012 · fora 0.0380 (n 295125)
+[regua] Ink Bullet@floor0375 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 294273)
+[regua] Ink Bullet@floor05 grande r 51.5: dif 0.0175 · tinta 0.9871 · fora 0.0692 (n 294392)
+[regua] Ink Bullet@cap0375 grande r 51.5: dif 0.0111 · tinta 0.9939 · fora 0.0513 (n 294392)
+[regua] Ink Bullet@antes grande r 51.5: dif 0.0135 · tinta 1.0108 · fora 0.0443 (n 297001)
+[regua] Marker Bullet@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 297220)
+[regua] Marker Bullet@floor grande r 51.5: dif 0.0100 · tinta 1.0052 · fora 0.0502 (n 298510)
+[regua] Marker Bullet@floor0375 grande r 51.5: dif 0.0133 · tinta 0.9996 · fora 0.0789 (n 297657)
+[regua] Marker Bullet@floor05 grande r 51.5: dif 0.0196 · tinta 0.9954 · fora 0.1169 (n 297842)
+[regua] Marker Bullet@cap0375 grande r 51.5: dif 0.0133 · tinta 0.9996 · fora 0.0789 (n 297657)
+[regua] Marker Bullet@antes grande r 51.5: dif 0.0200 · tinta 1.0160 · fora 0.0716 (n 300903)
+[regua] Marker Liner@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 305275)
+[regua] Marker Liner@floor grande r 51.5: dif 0.0099 · tinta 1.0038 · fora 0.0462 (n 306056)
+[regua] Marker Liner@floor0375 grande r 51.5: dif 0.0166 · tinta 1.0013 · fora 0.0951 (n 306416)
+[regua] Marker Liner@floor05 grande r 51.5: dif 0.0250 · tinta 0.9959 · fora 0.1470 (n 306345)
+[regua] Marker Liner@cap0375 grande r 51.5: dif 0.0166 · tinta 1.0013 · fora 0.0951 (n 306416)
+[regua] Marker Liner@antes grande r 51.5: dif 0.0180 · tinta 1.0135 · fora 0.0707 (n 308243)
+[regua] Airbrush@fabrica cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5666666666666667, }
+[regua] Airbrush@floor cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.5666666666666667, }
+[regua] Airbrush@floor0375 cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.75, }
+[regua] Airbrush@floor05 cena r 15: Medida { cobertura: 0.3551708436134176, textura: 22.27991265288824, } FamiliaC { tinta: 0.3598095238095241, rampa: 0.5925925925925926, rampa_cob: 0.36904761904761907, pontas: 0.75, }
+[regua] Airbrush@cap0375 cena r 15: Medida { cobertura: 0.3692523163111491, textura: 28.802324005814288, } FamiliaC { tinta: 0.3523025210084031, rampa: 0.7083333333333334, rampa_cob: 0.4054054054054054, pontas: 0.75, }
+[regua] Airbrush@antes cena r 15: Medida { cobertura: 0.3585677599993483, textura: 21.935897213749456, } FamiliaC { tinta: 0.3573109243697481, rampa: 0.6, rampa_cob: 0.35294117647058826, pontas: 0.6296296296296297, }
+[regua] Airbrush@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@floor grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@floor0375 grande r 51.5: dif 0.3098 · tinta 0.9847 · fora 0.6239 (n 339539)
+[regua] Airbrush@floor05 grande r 51.5: dif 0.3475 · tinta 0.9531 · fora 0.6614 (n 337509)
+[regua] Airbrush@cap0375 grande r 51.5: dif 0.3398 · tinta 0.9762 · fora 0.6520 (n 339439)
+[regua] Airbrush@antes grande r 51.5: dif 0.3168 · tinta 1.0059 · fora 0.6279 (n 341852)
+[regua] Wet Flat@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 314414)
+[regua] Wet Flat@floor grande r 51.5: dif 0.0358 · tinta 1.0074 · fora 0.0235 (n 315381)
+[regua] Wet Flat@floor0375 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 314414)
+[regua] Wet Flat@floor05 grande r 51.5: dif 0.0498 · tinta 1.0030 · fora 0.0494 (n 315832)
+[regua] Wet Flat@cap0375 grande r 51.5: dif 0.0393 · tinta 1.0087 · fora 0.0268 (n 315553)
+[regua] Wet Flat@antes grande r 51.5: dif 0.0373 · tinta 1.0071 · fora 0.0263 (n 316128)
+[regua] Gouache Flat@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311090)
+[regua] Gouache Flat@floor grande r 51.5: dif 0.0234 · tinta 1.0033 · fora 0.0329 (n 311928)
+[regua] Gouache Flat@floor0375 grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 311090)
+[regua] Gouache Flat@floor05 grande r 51.5: dif 0.0410 · tinta 0.9853 · fora 0.0982 (n 311880)
+[regua] Gouache Flat@cap0375 grande r 51.5: dif 0.0282 · tinta 1.0029 · fora 0.0481 (n 311915)
+[regua] Gouache Flat@antes grande r 51.5: dif 0.0290 · tinta 1.0106 · fora 0.0416 (n 313982)

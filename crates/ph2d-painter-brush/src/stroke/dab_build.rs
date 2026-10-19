@@ -141,7 +141,10 @@ impl Stroke {
             return (pos, 0.0);
         }
         let (dx, dy) = crate::jitter::disc_sample(&mut self.rng);
-        ([pos[0] + dx * max_offset, pos[1] + dy * max_offset], max_offset)
+        (
+            [pos[0] + dx * max_offset, pos[1] + dy * max_offset],
+            max_offset,
+        )
     }
 
     /// Build the Anchored stamp's single dab at `center` with the drag-defined `radius_px`. No

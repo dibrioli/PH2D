@@ -545,7 +545,10 @@ fn a_altura_e_por_px_de_tela() {
 
 /// A escada (`regua_escada`) do Oil Bristle `p` ao raio `raio`: as regiões 8° e 25° dos inclinados e a curva e
 /// o recto da bancada.
-pub(super) fn escada_de(p: &ph2d_brush_presets::Preset, raio: f32) -> [super::regua_escada::Escada; 4] {
+pub(super) fn escada_de(
+    p: &ph2d_brush_presets::Preset,
+    raio: f32,
+) -> [super::regua_escada::Escada; 4] {
     use super::regua_escada::{CURVA, OITO, RECTO, VINTE_E_CINCO, mede};
     let ((i, w, h), _) = cena_seca_de(p, raio, true);
     let ((b, _, _), _) = cena_seca_de(p, raio, false);

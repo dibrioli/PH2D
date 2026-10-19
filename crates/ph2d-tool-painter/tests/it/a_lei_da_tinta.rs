@@ -865,7 +865,10 @@ fn sonda_a_terceira_camada_por_variante() {
                                 pinta_camadas(&p, raio, &tracos, &[1800, 0, 0], 1800, |_, _| {});
                             let por = luzes_por_camadas(&px, w, h, &tracos, hw);
                             let med: Vec<f64> = por[1..].iter().map(|v| quantil(v, 0.5)).collect();
-                            format!("[camadas] {nome}@{vn}: medianas {med:.4?} · p95 {:.4}", quantil(&por[1], 0.95))
+                            format!(
+                                "[camadas] {nome}@{vn}: medianas {med:.4?} · p95 {:.4}",
+                                quantil(&por[1], 0.95)
+                            )
                         })
                     })
                 })

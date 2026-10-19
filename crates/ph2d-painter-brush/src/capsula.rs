@@ -334,7 +334,14 @@ pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
     let a1 = d.arc_len;
     let a0 = d.ante.map_or(a1 - l, |a| a.arc_len);
     let comp = a1 - a0;
-    if !(l > 1e-6) || !(comp > 1e-6) || !sub_px.is_finite() || sub_px <= 0.0 {
+    // NaN também fica de fora (um comprimento sem número não tem sub-dabs).
+    if l.is_nan()
+        || l <= 1e-6
+        || comp.is_nan()
+        || comp <= 1e-6
+        || !sub_px.is_finite()
+        || sub_px <= 0.0
+    {
         return vec![*d];
     }
     // Um dab exactamente sobre um múltiplo conta (o `1e-4` do arredondamento do arco em f32).
@@ -360,7 +367,8 @@ pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
                 };
                 s.radius_px = lerp(d.radius_px, b.radius_px);
                 if let Some(j) = b.salto {
-                    s.center = salto_do_sub_dab(s.center, &j, m, s.radius_px / d.radius_px.max(1e-6));
+                    s.center =
+                        salto_do_sub_dab(s.center, &j, m, s.radius_px / d.radius_px.max(1e-6));
                 }
                 s.coverage = lerp(d.coverage, b.coverage);
                 s.rotation = nlerp(d.rotation, b.rotation);
@@ -377,7 +385,11 @@ pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
 /// O centro de um sub-dab com o SEU Jitter ([`Salto`]): tira o desvio do dab da frente e sorteia outro no disco,
 /// pelo fluxo splitmix do Jitter semeado pelo desvio da frente e pelo múltiplo `m` do sub-passo — determinístico.
 fn salto_do_sub_dab(c: [f32; 2], j: &Salto, m: i64, razao_do_raio: f32) -> [f32; 2] {
-    let alcance = if j.por_raio { j.alcance * razao_do_raio } else { j.alcance };
+    let alcance = if j.por_raio {
+        j.alcance * razao_do_raio
+    } else {
+        j.alcance
+    };
     let mut rng = (u64::from(j.desvio[0].to_bits()) << 32 | u64::from(j.desvio[1].to_bits()))
         ^ (m as u64).wrapping_mul(0xD1B5_4A32_D192_ED03);
     let (dx, dy) = crate::jitter::disc_sample(&mut rng);

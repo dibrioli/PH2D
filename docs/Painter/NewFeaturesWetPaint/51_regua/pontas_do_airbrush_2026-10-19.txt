@@ -1,0 +1,122 @@
+# As pontas do Airbrush por tiragem do pó (sonda_as_pontas_por_tiragem): r7 = 21 sementes fábrica × antes; r8 = os knobs da pressão e do pó; r10 = a varredura pressureSize × pressureSizeCurve (21 sementes) — escolhido 0,5 × 0,7.
+
+## r5
+[regua] Airbrush@fabrica cena r 15: cob 0.3551708436134176 tex 22.27991265288824 pontas 0.5961538461538461
+[regua] Airbrush@fabrica largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 240.0]
+[regua] Airbrush@antes cena r 15: cob 0.3585677599993483 tex 21.935897213749456 pontas 0.6346153846153846
+[regua] Airbrush@antes largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 240.0]
+[regua] Airbrush@f1 cena r 15: cob 0.3546277095453926 tex 22.107199676074238 pontas 0.6296296296296297
+[regua] Airbrush@f1 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 240.0]
+[regua] Airbrush@a1 cena r 15: cob 0.35445323521663763 tex 22.473580288634228 pontas 0.6363636363636364
+[regua] Airbrush@a1 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 240.0]
+[regua] Airbrush@f2 cena r 15: cob 0.3546922760682838 tex 22.621530763654633 pontas 1.0277777777777777
+[regua] Airbrush@f2 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 240.0]
+[regua] Airbrush@a2 cena r 15: cob 0.35730387688351467 tex 21.9890253726648 pontas 0.5925925925925926
+[regua] Airbrush@a2 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 241.0]
+[regua] Airbrush@f3 cena r 15: cob 0.35297006210414744 tex 22.515667103997487 pontas 0.6388888888888888
+[regua] Airbrush@f3 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 240.0]
+[regua] Airbrush@a3 cena r 15: cob 0.35195453977772784 tex 22.39192548610807 pontas 0.54
+[regua] Airbrush@a3 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 241.0]
+[regua] Airbrush@f4 cena r 15: cob 0.35480472163759114 tex 22.763831034319466 pontas 0.6923076923076923
+[regua] Airbrush@f4 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 240.0]
+[regua] Airbrush@a4 cena r 15: cob 0.3512336510398405 tex 22.660609537584648 pontas 0.6818181818181818
+[regua] Airbrush@a4 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 241.0]
+[regua] Airbrush@f5 cena r 15: cob 0.3523375122808833 tex 22.1674891280583 pontas 0.5961538461538461
+[regua] Airbrush@f5 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 241.0]
+[regua] Airbrush@a5 cena r 15: cob 0.3532924292664603 tex 22.566095649200616 pontas 0.6730769230769231
+[regua] Airbrush@a5 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 241.0]
+[regua] Airbrush@f6 cena r 15: cob 0.35194660810607664 tex 22.593925954012818 pontas 0.6296296296296297
+[regua] Airbrush@f6 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 240.0]
+[regua] Airbrush@a6 cena r 15: cob 0.35530685270935164 tex 22.61877750704376 pontas 0.782608695652174
+[regua] Airbrush@a6 largura [7.0, 26.0, 55.0, 120.0]: [14.0, 52.0, 110.0, 241.0]
+[regua] Airbrush@fabrica grande r 51.5: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 330511)
+[regua] Airbrush@antes grande r 51.5: dif 0.3168 · tinta 1.0059 · fora 0.6279 (n 341852)
+[regua] Airbrush@f1 grande r 51.5: dif 0.3100 · tinta 0.9990 · fora 0.6231 (n 341514)
+[regua] Airbrush@a1 grande r 51.5: dif 0.3194 · tinta 1.0059 · fora 0.6319 (n 342425)
+[regua] Airbrush@f2 grande r 51.5: dif 0.3099 · tinta 0.9996 · fora 0.6227 (n 341638)
+[regua] Airbrush@a2 grande r 51.5: dif 0.3187 · tinta 1.0062 · fora 0.6302 (n 342615)
+[regua] Airbrush@f3 grande r 51.5: dif 0.3105 · tinta 0.9999 · fora 0.6236 (n 341567)
+[regua] Airbrush@a3 grande r 51.5: dif 0.3204 · tinta 1.0055 · fora 0.6322 (n 342378)
+[regua] Airbrush@f4 grande r 51.5: dif 0.3097 · tinta 0.9992 · fora 0.6230 (n 341649)
+[regua] Airbrush@a4 grande r 51.5: dif 0.3181 · tinta 1.0085 · fora 0.6285 (n 342494)
+[regua] Airbrush@f5 grande r 51.5: dif 0.3100 · tinta 1.0011 · fora 0.6232 (n 341631)
+[regua] Airbrush@a5 grande r 51.5: dif 0.3194 · tinta 1.0053 · fora 0.6307 (n 342407)
+[regua] Airbrush@f6 grande r 51.5: dif 0.3101 · tinta 1.0006 · fora 0.6228 (n 341584)
+[regua] Airbrush@a6 grande r 51.5: dif 0.3187 · tinta 1.0078 · fora 0.6315 (n 342391)
+
+## r7
+[pontas] Airbrush@fabrica: mediana 0.580 · [0.339, 0.375, 0.379, 0.386, 0.480, 0.481, 0.518, 0.534, 0.540, 0.567, 0.580, 0.580, 0.596, 0.630, 0.654, 0.708, 0.714, 0.720, 0.727, 0.775, 0.850]
+[pontas] Airbrush@antes: mediana 0.558 · [0.385, 0.414, 0.417, 0.435, 0.462, 0.462, 0.500, 0.556, 0.558, 0.558, 0.558, 0.574, 0.577, 0.615, 0.630, 0.635, 0.643, 0.652, 0.661, 0.680, 0.717]
+[pontas] Airbrush@s0025C: mediana 0.558 · [0.385, 0.414, 0.417, 0.435, 0.462, 0.462, 0.500, 0.556, 0.558, 0.558, 0.558, 0.574, 0.577, 0.615, 0.630, 0.635, 0.643, 0.652, 0.661, 0.680, 0.717]
+[pontas] Airbrush@s005C: mediana 0.593 · [0.460, 0.479, 0.500, 0.534, 0.537, 0.554, 0.556, 0.565, 0.571, 0.587, 0.593, 0.593, 0.596, 0.604, 0.604, 0.667, 0.673, 0.688, 0.731, 0.739, 0.857]
+
+## r8
+[pontas] Airbrush@fabrica: pontas 0.580 · rampa 0.640 · rampa_cob 0.354 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@ps04: pontas 0.661 · rampa 0.720 · rampa_cob 0.373 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@ps03: pontas 0.667 · rampa 0.778 · rampa_cob 0.395 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@ps0: pontas 0.846 · rampa 0.923 · rampa_cob 0.432 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@dust06: pontas 0.646 · rampa 0.667 · rampa_cob 0.333 · textura 15.07 · cobertura 0.349 (medianas de 21)
+[pontas] Airbrush@dust04: pontas 0.685 · rampa 0.704 · rampa_cob 0.321 · textura 10.26 · cobertura 0.348 (medianas de 21)
+[pontas] Airbrush@dust0: pontas 0.714 · rampa 0.714 · rampa_cob 0.313 · textura 0.92 · cobertura 0.346 (medianas de 21)
+[pontas] Airbrush@curva1: pontas 0.558 · rampa 0.654 · rampa_cob 0.463 · textura 22.32 · cobertura 0.355 (medianas de 21)
+
+## r9
+[pontas] Airbrush@fabrica: pontas 0.540 · rampa 0.593 · rampa_cob 0.347 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.4_g0.5: pontas 0.729 · rampa 0.792 · rampa_cob 0.405 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.4_g0.7: pontas 0.680 · rampa 0.769 · rampa_cob 0.393 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.4_g1: pontas 0.615 · rampa 0.667 · rampa_cob 0.382 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.4_g1.5: pontas 0.482 · rampa 0.593 · rampa_cob 0.354 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.4_g2: pontas 0.483 · rampa 0.577 · rampa_cob 0.345 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.5_g0.5: pontas 0.680 · rampa 0.769 · rampa_cob 0.395 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.5_g0.7: pontas 0.615 · rampa 0.704 · rampa_cob 0.382 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.5_g1: pontas 0.540 · rampa 0.593 · rampa_cob 0.347 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.5_g1.5: pontas 0.500 · rampa 0.556 · rampa_cob 0.338 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.5_g2: pontas 0.500 · rampa 0.520 · rampa_cob 0.325 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.6_g0.5: pontas 0.667 · rampa 0.720 · rampa_cob 0.382 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.6_g0.7: pontas 0.540 · rampa 0.630 · rampa_cob 0.358 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.6_g1: pontas 0.500 · rampa 0.577 · rampa_cob 0.344 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.6_g1.5: pontas 0.458 · rampa 0.519 · rampa_cob 0.321 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.6_g2: pontas 0.400 · rampa 0.440 · rampa_cob 0.315 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.7_g0.5: pontas 0.554 · rampa 0.667 · rampa_cob 0.370 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.7_g0.7: pontas 0.540 · rampa 0.593 · rampa_cob 0.348 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.7_g1: pontas 0.480 · rampa 0.556 · rampa_cob 0.327 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.7_g1.5: pontas 0.383 · rampa 0.423 · rampa_cob 0.318 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.7_g2: pontas 0.339 · rampa 0.333 · rampa_cob 0.293 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.8_g0.5: pontas 0.596 · rampa 0.630 · rampa_cob 0.358 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.8_g0.7: pontas 0.500 · rampa 0.593 · rampa_cob 0.342 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.8_g1: pontas 0.481 · rampa 0.519 · rampa_cob 0.314 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.8_g1.5: pontas 0.333 · rampa 0.333 · rampa_cob 0.293 · textura 22.29 · cobertura 0.356 (medianas de 11)
+[pontas] Airbrush@k0.8_g2: pontas 0.293 · rampa 0.259 · rampa_cob 0.284 · textura 22.29 · cobertura 0.356 (medianas de 11)
+
+## r10
+[pontas] Airbrush@fabrica: pontas 0.580 · rampa 0.640 · rampa_cob 0.354 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.4_g0.5: pontas 0.741 · rampa 0.792 · rampa_cob 0.402 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.4_g0.6: pontas 0.667 · rampa 0.778 · rampa_cob 0.404 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.4_g0.7: pontas 0.685 · rampa 0.769 · rampa_cob 0.393 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.4_g0.85: pontas 0.690 · rampa 0.731 · rampa_cob 0.382 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.4_g1: pontas 0.661 · rampa 0.720 · rampa_cob 0.373 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.45_g0.5: pontas 0.685 · rampa 0.778 · rampa_cob 0.405 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.45_g0.6: pontas 0.690 · rampa 0.769 · rampa_cob 0.393 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.45_g0.7: pontas 0.690 · rampa 0.731 · rampa_cob 0.383 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.45_g0.85: pontas 0.648 · rampa 0.692 · rampa_cob 0.373 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.45_g1: pontas 0.593 · rampa 0.667 · rampa_cob 0.360 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.5_g0.5: pontas 0.685 · rampa 0.778 · rampa_cob 0.393 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.5_g0.6: pontas 0.690 · rampa 0.741 · rampa_cob 0.383 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.5_g0.7: pontas 0.680 · rampa 0.704 · rampa_cob 0.378 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.5_g0.85: pontas 0.580 · rampa 0.667 · rampa_cob 0.364 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.5_g1: pontas 0.580 · rampa 0.640 · rampa_cob 0.354 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.55_g0.5: pontas 0.700 · rampa 0.741 · rampa_cob 0.393 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.55_g0.6: pontas 0.680 · rampa 0.720 · rampa_cob 0.381 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.55_g0.7: pontas 0.593 · rampa 0.692 · rampa_cob 0.366 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.55_g0.85: pontas 0.580 · rampa 0.654 · rampa_cob 0.358 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.55_g1: pontas 0.540 · rampa 0.615 · rampa_cob 0.350 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.6_g0.5: pontas 0.692 · rampa 0.731 · rampa_cob 0.382 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.6_g0.6: pontas 0.620 · rampa 0.692 · rampa_cob 0.369 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.6_g0.7: pontas 0.554 · rampa 0.654 · rampa_cob 0.360 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.6_g0.85: pontas 0.593 · rampa 0.615 · rampa_cob 0.350 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.6_g1: pontas 0.556 · rampa 0.615 · rampa_cob 0.338 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.65_g0.5: pontas 0.615 · rampa 0.704 · rampa_cob 0.378 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.65_g0.6: pontas 0.560 · rampa 0.667 · rampa_cob 0.366 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.65_g0.7: pontas 0.596 · rampa 0.640 · rampa_cob 0.354 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.65_g0.85: pontas 0.556 · rampa 0.615 · rampa_cob 0.344 · textura 22.32 · cobertura 0.355 (medianas de 21)
+[pontas] Airbrush@k0.65_g1: pontas 0.500 · rampa 0.577 · rampa_cob 0.329 · textura 22.32 · cobertura 0.355 (medianas de 21)

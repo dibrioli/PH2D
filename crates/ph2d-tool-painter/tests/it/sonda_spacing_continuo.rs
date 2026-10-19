@@ -38,7 +38,10 @@ fn spacing_de_antes(nome: &str) -> &'static str {
 pub(super) fn com(mut p: Preset, kv: &str) -> Preset {
     let antes = format!("spacing={}", spacing_de_antes(&p.parametros.name));
     let kv = kv.replace("spacing=antes", &antes);
-    for x in kv.split(',').filter(|x| !x.is_empty() && !x.starts_with("sub=")) {
+    for x in kv
+        .split(',')
+        .filter(|x| !x.is_empty() && !x.starts_with("sub="))
+    {
         if let Some(k) = x.strip_prefix("-e.") {
             p.parametros.engine.remove(k);
         } else if let Some((k, v)) = x.split_once('=') {
@@ -95,7 +98,8 @@ fn sonda_a_regua_do_spacing() {
                     let mut v: Vec<std::thread::ScopedJoinHandle<'_, String>> = Vec::new();
                     let (p1, t1) = (p.clone(), tag.clone());
                     v.push(s.spawn(move || {
-                        let (m, c) = com_sub(kv, || cena_seca(&p1, raio, &[t1.clone()]));
+                        let (m, c) =
+                            com_sub(kv, || cena_seca(&p1, raio, std::slice::from_ref(&t1)));
                         format!("[regua] {t1} cena r {raio}: {m:?} {c:?}")
                     }));
                     if e_oleo(nome) {
@@ -174,7 +178,7 @@ fn diferenca(a: &[u8], b: &[u8], _w: usize) -> String {
 pub(super) fn diferenca_de(a: &[u8], b: &[u8]) -> [f64; 4] {
     let y = |q: &[u8]| 0.299 * f64::from(q[0]) + 0.587 * f64::from(q[1]) + 0.114 * f64::from(q[2]);
     let (mut dif, mut ta, mut tb, mut n, mut fora) = (0.0, 0.0, 0.0, 0usize, 0usize);
-    for (p, q) in a.chunks_exact(4).zip(b.chunks_exact(4)) {
+    for (p, q) in a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0) {
         let (ya, yb) = (255.0 - y(p), 255.0 - y(q));
         if ya > 4.0 || yb > 4.0 {
             n += 1;
@@ -206,10 +210,14 @@ fn sonda_o_custo_do_spacing() {
         .flat_map(|nome| {
             let vs = &vs;
             raios.iter().flat_map(move |&r| {
-                vs.iter()
-                    .map(move |(vn, kv)| {
-                        (format!("{nome}@{vn}"), r, com(de_fabrica(nome), kv), kv.clone())
-                    })
+                vs.iter().map(move |(vn, kv)| {
+                    (
+                        format!("{nome}@{vn}"),
+                        r,
+                        com(de_fabrica(nome), kv),
+                        kv.clone(),
+                    )
+                })
             })
         })
         .collect();

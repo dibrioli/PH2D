@@ -32,14 +32,49 @@ fn tinta(nome: &str, referencia: &str, variante: &str) -> f64 {
 #[test]
 fn a_tinta_nao_muda_com_o_spacing() {
     let casos: [(&str, &str, &str, bool); 7] = [
-        ("Wet Round", "spacing=0.025,continuous_spacing=false", "", true),
-        ("Wet Round", "spacing=0.025,continuous_spacing=false", "spacing=0.01,continuous_spacing=false", true),
-        ("Wet Round", "spacing=0.025,continuous_spacing=false", "spacing=0.05", true),
-        ("Charcoal", "spacing=0.025,continuous_spacing=false", "", true),
-        ("Express Oil", "spacing=0.01,continuous_spacing=false", "", true),
+        (
+            "Wet Round",
+            "spacing=0.025,continuous_spacing=false",
+            "",
+            true,
+        ),
+        (
+            "Wet Round",
+            "spacing=0.025,continuous_spacing=false",
+            "spacing=0.01,continuous_spacing=false",
+            true,
+        ),
+        (
+            "Wet Round",
+            "spacing=0.025,continuous_spacing=false",
+            "spacing=0.05",
+            true,
+        ),
+        (
+            "Charcoal",
+            "spacing=0.025,continuous_spacing=false",
+            "",
+            true,
+        ),
+        (
+            "Express Oil",
+            "spacing=0.01,continuous_spacing=false",
+            "",
+            true,
+        ),
         // Os CONTROLOS: a lei de antes (o pigmento por dab) reprova.
-        ("Wet Round", "spacing=0.025,continuous_spacing=false", "spacing=0.01,continuous_spacing=false,e.pigmentSpacing=0", false),
-        ("Express Oil", "spacing=0.01,continuous_spacing=false", "e.pigmentSpacing=0", false),
+        (
+            "Wet Round",
+            "spacing=0.025,continuous_spacing=false",
+            "spacing=0.01,continuous_spacing=false,e.pigmentSpacing=0",
+            false,
+        ),
+        (
+            "Express Oil",
+            "spacing=0.01,continuous_spacing=false",
+            "e.pigmentSpacing=0",
+            false,
+        ),
     ];
     let medidas: Vec<f64> = std::thread::scope(|s| {
         let h: Vec<_> = casos
@@ -54,7 +89,11 @@ fn a_tinta_nao_muda_com_o_spacing() {
         if lei != ((t - 1.0).abs() <= TOLERANCIA) {
             falhas.push(format!(
                 "{n} {v:?}: tinta {t:.4} ({})",
-                if lei { "a lei não a guarda" } else { "o controlo não reprova" }
+                if lei {
+                    "a lei não a guarda"
+                } else {
+                    "o controlo não reprova"
+                }
             ));
         }
     }

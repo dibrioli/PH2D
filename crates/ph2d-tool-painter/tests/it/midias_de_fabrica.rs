@@ -289,7 +289,8 @@ fn sonda_as_pontas_por_tiragem() {
                         let kv = &kv;
                         s.spawn(move || {
                             com_sub(kv, || {
-                                let (m, c) = cena_seca_semente(&com(de_fabrica(nome), kv), raio, &[], k);
+                                let (m, c) =
+                                    cena_seca_semente(&com(de_fabrica(nome), kv), raio, &[], k);
                                 [c.pontas, c.rampa, c.rampa_cob, m.textura, m.cobertura]
                             })
                         })
@@ -315,7 +316,12 @@ fn sonda_as_pontas_por_tiragem() {
 }
 
 /// [`cena_seca`] numa tiragem só: os traços a partir da semente `semente` (`0` = a do produto).
-fn cena_seca_semente(p: &Preset, raio: f32, ficheiros: &[String], semente: u64) -> (Medida, FamiliaC) {
+fn cena_seca_semente(
+    p: &Preset,
+    raio: f32,
+    ficheiros: &[String],
+    semente: u64,
+) -> (Medida, FamiliaC) {
     let mut t = tela();
     t.set_semente_dos_tracos(semente);
     t.set_wet_relogio_fixo(true);

@@ -206,10 +206,10 @@ impl PainterTool {
         // ⭐ O pigmento por COMPRIMENTO (prompt 51, doc 51 §2): cada dab pousa o do caminho que representa — o
         // caminho desde o dab anterior da lane ÷ o passo do Spacing a que o pigmento foi afinado. Sem cápsula,
         // nunca mais que um dab inteiro: o Spacing largo de propósito pontilha.
-        let passo_do_pigmento = sess
-            .engine
-            .tuning
-            .get(ph2d_wet_paint::tuning::Knob::PigmentSpacing) as f32;
+        let passo_do_pigmento =
+            sess.engine
+                .tuning
+                .get(ph2d_wet_paint::tuning::Knob::PigmentSpacing) as f32;
         let capsulas = brush.lays_capsules();
         let sub_da_capsula = sess
             .engine
@@ -274,8 +274,13 @@ impl PainterTool {
         // sub-dab representa), com cápsula. O sub-passo é o do raio do PINCEL — o do dab traz a pressão e a caneta
         // deitada (×3,3), e o traçador sempre espaçou pelo do pincel.
         let sub = {
-            let n = ph2d_painter_brush::capsula::sub_passo_px_a(brush.clamped_radius(), sub_da_capsula);
-            let n = if tecto_da_capsula > 0.0 { n.min(tecto_da_capsula) } else { n };
+            let n =
+                ph2d_painter_brush::capsula::sub_passo_px_a(brush.clamped_radius(), sub_da_capsula);
+            let n = if tecto_da_capsula > 0.0 {
+                n.min(tecto_da_capsula)
+            } else {
+                n
+            };
             let cel = f32::from(ratio).max(1.0);
             if mais_perto {
                 ph2d_painter_brush::capsula::sub_passo_mais_perto(n, cel)
@@ -739,8 +744,14 @@ impl PainterTool {
                             let ([a, b], t) = f.entre_fios(dc.map(|v| v * px_cel));
                             ph2d_wet_paint::bristles_relevo::entre(do_fio(a), do_fio(b), t) / px_cel
                         };
-                        sess.engine
-                            .pentear_relevo(cell_x, cell_y, meia, &sil, &alvo, passos_do_pente);
+                        sess.engine.pentear_relevo(
+                            cell_x,
+                            cell_y,
+                            meia,
+                            &sil,
+                            &alvo,
+                            passos_do_pente,
+                        );
                     }
                 }
                 // Blend keeps the engine's own fixed-hardness stamp (the

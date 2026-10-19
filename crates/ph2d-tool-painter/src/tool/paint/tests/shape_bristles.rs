@@ -463,7 +463,10 @@ fn o_spacing_continuo_risca_no_digital_e_no_wet_paint() {
                 t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
                     crate::ids::PAINTER_BRUSH_CONTINUOUS_SPACING,
                 ));
-                assert_eq!(t.paint.brush.continuous_spacing, continuo, "a caixa não troca");
+                assert_eq!(
+                    t.paint.brush.continuous_spacing, continuo,
+                    "a caixa não troca"
+                );
             }
             recta(&mut t)
         };

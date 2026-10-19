@@ -45,12 +45,17 @@ fn os_sub_dabs_caem_nos_pontos_do_traco_denso() {
         ante: None,
         tilt: None,
     };
-    let arcos = |d: crate::Dab| -> Vec<f32> { sub_dabs(&d, 1.0).iter().map(|s| s.arc_len).collect() };
+    let arcos =
+        |d: crate::Dab| -> Vec<f32> { sub_dabs(&d, 1.0).iter().map(|s| s.arc_len).collect() };
     assert_eq!(arcos(dab(10.3, 4.1, 10.3)), vec![7.0, 8.0, 9.0, 10.0]);
     assert_eq!(arcos(dab(14.0, 3.7, 14.0)), vec![11.0, 12.0, 13.0, 14.0]);
     assert!(arcos(dab(14.5, 0.4, 14.5)).is_empty());
     let s = sub_dabs(&dab(10.3, 4.1, 10.3), 1.0);
-    assert!((s[0].center[0] - 7.0).abs() < 1e-4, "o centro anda com o arco: {}", s[0].center[0]);
+    assert!(
+        (s[0].center[0] - 7.0).abs() < 1e-4,
+        "o centro anda com o arco: {}",
+        s[0].center[0]
+    );
     assert_eq!(sub_passo_sem_batimento(0.6, 1.0), 1.0);
     assert_eq!(sub_passo_sem_batimento(1.5, 1.0), 1.0);
     assert_eq!(sub_passo_sem_batimento(2.06, 1.0), 2.0);

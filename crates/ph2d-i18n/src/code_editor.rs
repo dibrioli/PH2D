@@ -129,6 +129,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.type_hints_off" => "Hide Type Hints",
         "code.cmd.strict" => "Turn On Strict Types (--!strict)",
         "code.cmd.strict_off" => "Turn Off Strict Types (--!strict)",
+        "code.cmd.format_on_save" => "Turn On Format on Save",
+        "code.cmd.format_on_save_off" => "Turn Off Format on Save",
+        // I13: o formatador (StyLua) ao salvar.
+        "code.format.missing" => {
+            "The formatter (StyLua) is missing, so scripts are saved without formatting. {err}"
+        }
+        "code.format.would_change" => {
+            "Not formatted: the formatter would change what the code does. Saved as written."
+        }
+        "code.format.failed" => "Not formatted: {err}",
         // E11: a lista de scripts do projeto, à esquerda dentro da aba.
         "code.list.title" => "Scripts",
         "code.list.filter" => "Filter",

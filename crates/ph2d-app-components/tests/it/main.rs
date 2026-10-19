@@ -13,4 +13,5 @@ mod mede_o_que_a_composicao_ja_da_ao_fim_de_jogo;
 mod mede_o_que_a_composicao_ja_da_ao_sobreaquecer;
 mod mede_o_que_falta_as_ancoras_do_hud;
 mod mede_os_tectos_por_quadro;
+mod os_scripts_da_cena_saem_limpos_do_formatador;
 mod texto_na_placa;

@@ -92,6 +92,9 @@ pub(crate) struct CodeDoc {
     pub preedit: Option<(String, bool)>,
     /// Um salvar pedido pelo teclado, à espera do quadro da família.
     pub save: Option<SaveKind>,
+    /// O texto salvo foi ao formatador (I13); e a resposta entrou: salvar outra vez.
+    pub(crate) formatting: Option<crate::format::Pending>,
+    pub(crate) resave: bool,
     /// O byte onde o arrasto da seleção começou.
     pub drag: Option<usize>,
     pub last_click: Option<(u128, usize)>,
@@ -142,6 +145,8 @@ impl CodeDoc {
             project_unsaved: false,
             preedit: None,
             save: None,
+            formatting: None,
+            resave: false,
             drag: None,
             last_click: None,
             derived: Derived::default(),

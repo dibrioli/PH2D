@@ -49,6 +49,19 @@ impl Store {
                 (text, Tone::Error, d.line, false)
             }
         };
+        self.put(text, tone, line);
+        if runtime {
+            self.open = true;
+        }
+        runtime
+    }
+
+    /// Uma linha do PRÓPRIO editor (não da cena): o formatador que recusou (I13).
+    pub fn note(&mut self, text: String, tone: Tone) {
+        self.put(text, tone, None);
+    }
+
+    fn put(&mut self, text: String, tone: Tone, line: Option<u32>) {
         while !self.entries.is_empty()
             && (self.entries.len() >= CONSOLE_LINES_MAX
                 || self.bytes + text.len() > CONSOLE_BYTES_MAX)
@@ -58,10 +71,6 @@ impl Store {
         self.bytes += text.len();
         self.errors += usize::from(tone == Tone::Error);
         self.entries.push_back(Entry { text, tone, line });
-        if runtime {
-            self.open = true;
-        }
-        runtime
     }
 
     fn pop_front(&mut self) {

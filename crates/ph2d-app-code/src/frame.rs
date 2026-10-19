@@ -73,12 +73,14 @@ pub fn frame(
     for d in &mut docs.docs {
         d.occurrences_tick();
     }
+    docs.format_arrivals();
     let ask = save(
         docs,
         world,
         host.as_deref_mut(),
         (menu_save, project_file),
         our_active,
+        toasts,
     );
     if let Some(h) = host {
         hear(docs, h);
@@ -118,12 +120,16 @@ fn follow_library(docs: &mut CodeDocs, lib: &ProjectScripts) {
 ///
 /// ⛔ O Ctrl+S da ABA nunca abre diálogo (smoke do dono 16/10): sem ficheiro de projecto aplica e o
 /// selo di-lo; com ficheiro grava em silêncio. Só o Ctrl+Shift+S («Save As…») pergunta.
+///
+/// I13: cada salvar pedido manda o texto ao formatador ([`crate::format`]); a resposta que entra
+/// salva a aba outra vez por aqui (`resave`), sem voltar a formatar.
 fn save(
     docs: &mut CodeDocs,
     world: &mut ph2d_ecs::World,
     mut host: Option<&mut ScriptHost>,
     (menu, project_file): (bool, bool),
     active: Option<u64>,
+    toasts: &mut ToastQueue,
 ) -> Option<SaveKind> {
     let mut ask = None;
     let mut saving = Vec::new();
@@ -132,6 +138,7 @@ fn save(
             d.project_unsaved = false;
         }
         let kind = d.save.take();
+        let resave = std::mem::take(&mut d.resave);
         match kind {
             Some(SaveKind::SaveAs) => ask = Some(SaveKind::SaveAs),
             Some(SaveKind::Save) if project_file => {
@@ -141,7 +148,12 @@ fn save(
         }
         let by_menu = menu && (d.buffer.is_dirty() || active == Some(d.script.0));
         if kind.is_some() || by_menu {
-            saving.push((i, kind == Some(SaveKind::Save) && !project_file));
+            saving.push((i, kind == Some(SaveKind::Save) && !project_file, true));
+        } else if resave {
+            if project_file {
+                ask = ask.or(Some(SaveKind::Save));
+            }
+            saving.push((i, d.project_unsaved, false));
         }
     }
     // As abas FECHADAS com ● também (a lista pinta-as com ●): gravadas, deixam de estar estacionadas.
@@ -159,7 +171,7 @@ fn save(
             lib.set_text(id, &p.buffer.text().to_string());
         }
     }
-    for (i, unsaved) in saving {
+    for (i, unsaved, fresh) in saving {
         let d = &mut docs.docs[i];
         d.project_unsaved = unsaved;
         let text = d.buffer.text().to_string();
@@ -170,6 +182,9 @@ fn save(
         d.badge = (users == 0).then_some(Badge::Saved);
         if !changed && let Some(h) = host.as_deref_mut() {
             h.request_reload(d.script);
+        }
+        if fresh && let Some(t) = docs.format.ask(&mut docs.docs[i]) {
+            toasts.push(t);
         }
     }
     ask

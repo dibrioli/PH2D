@@ -1,9 +1,9 @@
-# DRAFT — the pinned StyLua (owner decision 6, 16/10; CodeEditor Onda 2 I0d → I13). Same shape as
-# `crates/ph2d-code-lsp/luau-lsp.toml`: ONE source for the version; a fetch script downloads from here and
-# the formatter crate reads `version` to find the cache at ${XDG_CACHE_HOME:-$HOME/.cache}/ph2d/stylua/<version>/.
+# The pinned StyLua (owner decision 6, 16/10; CodeEditor Onda 2 I0d → I13). Same shape as
+# `crates/ph2d-code-lsp/luau-lsp.toml`: ONE source for the version; `scripts/stylua-fetch.sh` downloads from
+# here and `ph2d-code-format` reads `version` to find the cache at ${XDG_CACHE_HOME:-$HOME/.cache}/ph2d/stylua/<version>/.
 #
-# ⚠ When this moves into its crate, RENAME it (e.g. `stylua-pin.toml`): `stylua.toml` is the file name StyLua
-# itself looks for as a formatting config in the cwd — measured, see medicoes_onda2/I0d_stylua.md §Achados.
+# ⛔ Never name this file `stylua.toml`: that is the file name StyLua itself looks for as a formatting config
+# in the cwd — measured, see docs/CodeEditor/ferramentas/medicoes_onda2/I0d_stylua.md §Achados 1.
 #
 # The sha256 of each asset was computed locally over the downloaded zip on 2026-10-16 and matches the
 # `digest` GitHub publishes for the asset. Each zip holds ONLY the binary (no LICENSE inside) — the MPL-2.0

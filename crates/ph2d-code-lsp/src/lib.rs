@@ -15,4 +15,4 @@ pub use client::{
     ph2d_settings,
 };
 pub use position::{Position, Range, byte_to_position, end_position, position_to_byte};
-pub use resolve::{BinarySource, ResolveError, pinned_version, resolve_binary};
+pub use resolve::{BinarySource, LUAU_LSP, Pin, ResolveError, pinned_version, resolve_binary};

@@ -577,7 +577,10 @@ pub(crate) fn support_files() -> std::io::Result<(PathBuf, PathBuf)> {
     let put = |stem: &str, ext: &str, body: &str| -> std::io::Result<PathBuf> {
         let p = dir.join(format!("{stem}-{:016x}.{ext}", fnv64(body.as_bytes())));
         if std::fs::read(&p).ok().as_deref() != Some(body.as_bytes()) {
-            let tmp = dir.join(format!("{stem}-{}.tmp", std::process::id()));
+            // Unique per write: two sessions of one process must not rename each other's file away.
+            static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let tmp = dir.join(format!("{stem}-{}-{n}.tmp", std::process::id()));
             std::fs::write(&tmp, body)?;
             std::fs::rename(&tmp, &p)?;
         }

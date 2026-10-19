@@ -20,6 +20,7 @@ mod docs_probe;
 mod edit;
 mod find;
 mod folds;
+mod format;
 mod frame;
 mod goto;
 mod hint;
@@ -44,6 +45,7 @@ mod snippet_doc;
 mod strict;
 
 pub use docs::{CodeDocs, GrammarProbe, ParkedFootprint, SaveKind};
+pub use format::FormatServer;
 pub use frame::frame;
 pub use intel::IntelServer;
 

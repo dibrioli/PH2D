@@ -248,6 +248,24 @@ The full licence text is in
 
 ---
 
+## Helper programs (unmodified, run as separate processes)
+
+The script editor runs two pinned programs as child processes. PH2D never modifies, vendors or links
+their code; the pin (version + sha256 per OS) lives in a manifest next to the crate that runs them, and
+the fetch script downloads the official release.
+
+| Program | Used for | Licence | Source | Pin |
+|---|---|---|---|---|
+| luau-lsp 1.70.1 | code assistant (errors, completion, hover…) | MIT | <https://github.com/JohnnyMorganz/luau-lsp> | [`crates/ph2d-code-lsp/luau-lsp.toml`](crates/ph2d-code-lsp/luau-lsp.toml) |
+| StyLua 2.5.2 | format on save | MPL-2.0 | <https://github.com/JohnnyMorganz/StyLua/tree/v2.5.2> | [`crates/ph2d-code-format/stylua-pin.toml`](crates/ph2d-code-format/stylua-pin.toml) |
+
+StyLua is covered by the Mozilla Public License 2.0 (<https://mozilla.org/MPL/2.0/>); its source code is
+available at the link above. The StyLua release binary also embeds MIT, Apache-2.0, Unlicense and
+BSL-1.0 Rust crates ([triage](docs/CodeEditor/ferramentas/medicoes_onda2/I0d_stylua.md#triagem-de-licença-por-artefacto)):
+when PH2D ships the binary next to its executable, their notices travel with it.
+
+---
+
 ## Adding new derived code
 
 If you (Coordenador or peripheral agent) port code from another

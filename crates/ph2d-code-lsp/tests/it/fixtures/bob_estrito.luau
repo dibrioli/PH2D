@@ -9,10 +9,10 @@
 -- Mude um default aqui e grave: o boneco que NÃO tem número próprio muda na hora;
 -- os outros ficam com os números deles.
 
-ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)
-ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa
-ph2d.property("active", true)                          -- desligado = fica parado
-ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)
+ph2d.property("amplitude", 1.0, { min = 0, max = 4 }) -- quanto sobe (metros)
+ph2d.property("speed", 2.0, { min = 0, max = 10 }) -- quão depressa
+ph2d.property("active", true) -- desligado = fica parado
+ph2d.property("top_signal", "") -- o grito, a cada topo (vazio = calado)
 -- ⭐ A LISTA: o painel pinta um CHIP em vez de um campo livre, e um valor que não esteja aqui
 --    não chega a este script — ele é NOMEADO no painel em vez de cair no ramo errado calado.
 ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })
@@ -32,7 +32,9 @@ function init(self: ScriptSelf)
 end
 
 function update(self: ScriptSelf, dt: number)
-  if not self.active then return end
+  if not self.active then
+    return
+  end
   self.t = self.t + dt
   -- ⭐ A FORMA da onda sai da lista: o chip do painel escolhe qual destas corre.
   local s: number

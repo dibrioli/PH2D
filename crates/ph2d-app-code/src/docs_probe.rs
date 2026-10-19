@@ -316,4 +316,15 @@ impl CodeDocs {
         let d = self.docs.iter().find(|d| d.script == id)?;
         d.buffer.history().top_link(redo)
     }
+
+    /// ⚠️ SONDA: espera as respostas do formatador em voo (o quadro seguinte aplica-as).
+    pub fn wait_format(&mut self) {
+        self.format.wait(std::time::Duration::from_secs(30));
+    }
+
+    /// ⚠️ SONDA: quantos pedidos ao formatador ainda não responderam.
+    #[must_use]
+    pub fn format_in_flight(&self) -> usize {
+        self.format.in_flight()
+    }
 }

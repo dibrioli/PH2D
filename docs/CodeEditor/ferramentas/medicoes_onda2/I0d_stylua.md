@@ -3,7 +3,7 @@
 > Item I0(d) de [`03_onda2.md`](../../03_onda2.md); alimenta o **I13** (formatar ao salvar, decisão 6 de
 > [`00_decisoes_do_dono.md`](../../00_decisoes_do_dono.md)). Medido em 2026-10-16, workstation (32 lógicos),
 > perfil = os binários OFICIAIS de release do StyLua (não há build nosso). Rascunho do manifesto:
-> [`../stylua/stylua.toml`](../stylua/stylua.toml); config de formatação: [`../stylua/ph2d-format.toml`](../stylua/ph2d-format.toml).
+> [`stylua-pin.toml`](../../../../crates/ph2d-code-format/stylua-pin.toml) (era `ferramentas/stylua/stylua.toml`); config de formatação: [`ph2d-format.toml`](../../../../crates/ph2d-code-format/ph2d-format.toml).
 
 ## Como re-correr (bash)
 
@@ -17,10 +17,10 @@ for a in linux-x86_64 linux-x86_64-musl; do
 unzip -o -q "$C/stylua-linux-x86_64.zip" -d "$C"; mkdir -p "$C/musl"; unzip -o -q "$C/stylua-linux-x86_64-musl.zip" -d "$C/musl"
 # 2. entradas (o mesmo texto da bancada.rs) e as duas rodadas intercaladas
 E=$(mktemp -d); python3 -I $T/gera.py crates/ph2d-code-syntax/tests/it/fixtures/bob.luau "$E"
-cat /proc/loadavg; python3 -I $T/cronometra.py "$C/stylua" "$C/musl/stylua" "$PWD/$T/ph2d-format.toml" "$E" 60; cat /proc/loadavg
-python3 -I $T/varre.py "$C/stylua" "$PWD/$T/ph2d-format.toml" "$E/bob51.luau" 40
+cat /proc/loadavg; python3 -I $T/cronometra.py "$C/stylua" "$C/musl/stylua" "$PWD/crates/ph2d-code-format/ph2d-format.toml" "$E" 60; cat /proc/loadavg
+python3 -I $T/varre.py "$C/stylua" "$PWD/crates/ph2d-code-format/ph2d-format.toml" "$E/bob51.luau" 40
 # 3. comportamento: sempre com --config-path (ver §Achados 1)
-"$C/stylua" --config-path "$PWD/$T/ph2d-format.toml" - < crates/ph2d-code-syntax/tests/it/fixtures/bob.luau
+"$C/stylua" --config-path "$PWD/crates/ph2d-code-format/ph2d-format.toml" - < crates/ph2d-code-syntax/tests/it/fixtures/bob.luau
 ```
 
 `cronometra.py`: cada volta corre TODAS as variantes uma vez, em ordem rodada; 3 voltas de aquecimento
@@ -89,7 +89,7 @@ Sempre `stylua --config-path <ph2d-format.toml> -` (stdin → stdout). Saídas g
    rascunho e sem `--config-path`, o StyLua leu o NOSSO manifesto como config e recusou: `rc 2`,
    `unknown field 'version'`. Ao mover para a crate, renomear (p. ex. `stylua-pin.toml`) e passar SEMPRE
    `--config-path` — que também impede que a config da casa do utilizador vaze.
-2. A config padrão do StyLua é **Tabs** de 4; a nossa ([`ph2d-format.toml`](../stylua/ph2d-format.toml)) fixa
+2. A config padrão do StyLua é **Tabs** de 4; a nossa ([`ph2d-format.toml`](../../../../crates/ph2d-code-format/ph2d-format.toml)) fixa
    **2 espaços** (o `INDENT` do editor) e escreve os outros padrões por extenso, para uma subida de versão
    que mude um padrão não mudar a nossa saída calada.
 3. Os comentários alinhados de `bob.luau` são estilo do PRÓPRIO script canónico do projeto; o StyLua não

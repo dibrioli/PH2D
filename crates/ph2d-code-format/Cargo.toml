@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-code-format"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# The pin law (`Pin`: env var → next to the exe → the cache of the fetch script), shared with `luau-lsp`.
+ph2d-code-lsp = { path = "../ph2d-code-lsp" }
+# The minimal edits between the text and StyLua's answer (lines, then characters inside each hunk), so
+# cursors, folds and markers follow the formatting like any other edit.
+similar = "2.7"
+
+[lints]
+workspace = true

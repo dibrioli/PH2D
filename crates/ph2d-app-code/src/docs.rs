@@ -76,6 +76,8 @@ pub struct CodeDocs {
     pub(crate) intel: crate::intel::Intel,
     /// Os passos ligados à fila global do undo (I10, [`crate::link`]).
     pub(crate) links: crate::link::Links,
+    /// O formatador ao salvar (I13, [`crate::format`]).
+    pub(crate) format: crate::format::Format,
 }
 
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
@@ -112,6 +114,7 @@ impl Default for CodeDocs {
             grammar: None,
             intel: crate::intel::Intel::default(),
             links: crate::link::Links::default(),
+            format: crate::format::Format::default(),
             seen: crate::note::Seen::default(),
         }
     }

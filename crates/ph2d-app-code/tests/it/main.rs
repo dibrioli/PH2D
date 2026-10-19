@@ -19,6 +19,7 @@ mod dicas_de_tipo;
 mod dobras;
 mod esqueletos;
 mod explicacoes;
+mod formatar;
 mod gramatica;
 mod linha_longa;
 mod lista;
@@ -75,6 +76,9 @@ impl Mesa {
         // assistente ligam o seu ([`Mesa::com_assistente`]).
         let mut docs = CodeDocs::default();
         docs.set_intel_server(ph2d_app_code::IntelServer::Off);
+        // Sem formatador por omissão: o StyLua real mudaria o texto salvo de todos os testes. Os do I13
+        // ligam o seu ([`Mesa::com_formatador`]).
+        docs.set_format_server(ph2d_app_code::FormatServer::Off);
         // O registo das explicações vistas fica na memória (nunca no ficheiro de quem corre o teste).
         docs.set_seen_file(None);
         hero.documents.install_surface(Box::new(docs));
@@ -111,6 +115,12 @@ impl Mesa {
     /// Com este assistente de código (antes de abrir a 1.ª aba).
     pub fn com_assistente(mut self, server: ph2d_app_code::IntelServer) -> Self {
         self.docs().set_intel_server(server);
+        self
+    }
+
+    /// Com este formatador ao salvar (I13).
+    pub fn com_formatador(mut self, server: ph2d_app_code::FormatServer) -> Self {
+        self.docs().set_format_server(server);
         self
     }
 

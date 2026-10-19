@@ -5097,6 +5097,7 @@ dependencies = [
  "ph2d-app-host",
  "ph2d-code-buffer",
  "ph2d-code-explain",
+ "ph2d-code-format",
  "ph2d-code-intel",
  "ph2d-code-lsp",
  "ph2d-code-syntax",
@@ -5130,6 +5131,7 @@ dependencies = [
  "ph2d-audio",
  "ph2d-audio-encode",
  "ph2d-code-explain",
+ "ph2d-code-format",
  "ph2d-component-desc",
  "ph2d-core",
  "ph2d-ecs",
@@ -5965,6 +5967,14 @@ version = "0.0.0"
 dependencies = [
  "ph2d-i18n",
  "serde_json",
+]
+
+[[package]]
+name = "ph2d-code-format"
+version = "0.0.0"
+dependencies = [
+ "ph2d-code-lsp",
+ "similar",
 ]
 
 [[package]]

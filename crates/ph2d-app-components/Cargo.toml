@@ -148,6 +148,8 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
+# O StyLua fixado: os scripts das cenas já saem limpos do formatar-ao-salvar (CodeEditor I13).
+ph2d-code-format = { path = "../ph2d-code-format" }
 # ⭐ O ESTADO de um agente de navegação (plano 30, W3) — o gate da cena lê `Status::Arrived`. Só nos
 # testes: o produto lê a navegação pela ponte da física, que já a reexporta onde precisa.
 ph2d-nav = { path = "../ph2d-nav" }

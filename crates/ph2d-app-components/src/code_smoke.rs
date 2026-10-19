@@ -29,8 +29,8 @@ pub const BOB_LUAU: &str = r#"-- bob.luau — sobe e desce. As TRÊS formas da e
 -- As três passam a subir mais, na hora — a cena continua a tocar.
 -- O quadrado da direita NÃO usa script: ele fica parado.
 
-ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)
-ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa
+ph2d.property("amplitude", 1.0, { min = 0, max = 4 }) -- quanto sobe (metros)
+ph2d.property("speed", 2.0, { min = 0, max = 10 }) -- quão depressa
 
 function init(self)
   self.base_x = ph2d.get(self.id, "x")

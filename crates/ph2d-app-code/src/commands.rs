@@ -24,17 +24,20 @@ pub const CMD_REFERENCES: NodeId = hash_node_id("code_cmd_references");
 pub const CMD_TYPE_HINTS: NodeId = hash_node_id("code_cmd_type_hints");
 /// Pôr/tirar o `--!strict` deste script (I14).
 pub const CMD_STRICT: NodeId = hash_node_id("code_cmd_strict");
+/// Formatar ao salvar ligado/desligado em todas as abas (I13).
+pub const CMD_FORMAT_ON_SAVE: NodeId = hash_node_id("code_cmd_format_on_save");
 
 /// O estado que os comandos de ligar/desligar mostram no rótulo.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CommandState {
     pub type_hints: bool,
     pub strict: bool,
+    pub format_on_save: bool,
 }
 
 /// `(id, chave do rótulo, menu)` — a tabela única, lida pelos menus, pela paleta e pelo despacho. Um
 /// comando de ligar/desligar tem aqui a chave do estado DESLIGADO (a do ligado, em [`commands`]).
-const TABLE: [(NodeId, &str, DocMenu); 11] = [
+const TABLE: [(NodeId, &str, DocMenu); 12] = [
     (CMD_SAVE, "code.cmd.save", DocMenu::File),
     (CMD_FIND, "code.cmd.find", DocMenu::Edit),
     (CMD_REPLACE, "code.cmd.replace", DocMenu::Edit),
@@ -43,6 +46,7 @@ const TABLE: [(NodeId, &str, DocMenu); 11] = [
     (CMD_REFERENCES, "code.cmd.references", DocMenu::Edit),
     (CMD_TYPE_HINTS, "code.cmd.type_hints", DocMenu::Edit),
     (CMD_STRICT, "code.cmd.strict", DocMenu::Edit),
+    (CMD_FORMAT_ON_SAVE, "code.cmd.format_on_save", DocMenu::Edit),
     (CMD_FOLD_ALL, "code.cmd.fold_all", DocMenu::Edit),
     (CMD_UNFOLD_ALL, "code.cmd.unfold_all", DocMenu::Edit),
     (
@@ -61,6 +65,7 @@ pub fn commands(state: CommandState) -> Vec<DocCommand> {
             let on = match id {
                 CMD_TYPE_HINTS if state.type_hints => Some("code.cmd.type_hints_off"),
                 CMD_STRICT if state.strict => Some("code.cmd.strict_off"),
+                CMD_FORMAT_ON_SAVE if state.format_on_save => Some("code.cmd.format_on_save_off"),
                 _ => None,
             };
             DocCommand {
@@ -81,6 +86,7 @@ impl crate::docs::CodeDocs {
         commands(CommandState {
             type_hints: self.intel.inlays_on,
             strict: crate::strict::is_strict(d.buffer.text()),
+            format_on_save: self.format.on,
         })
     }
 
@@ -88,6 +94,7 @@ impl crate::docs::CodeDocs {
     pub(crate) fn family_command(&mut self, cmd: NodeId) -> bool {
         match cmd {
             CMD_RESTART_ASSIST => self.intel.retry(),
+            CMD_FORMAT_ON_SAVE => self.format.on = !self.format.on,
             CMD_TYPE_HINTS => {
                 self.intel.inlays_on = !self.intel.inlays_on;
                 for d in &mut self.docs {

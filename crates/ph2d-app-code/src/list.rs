@@ -12,8 +12,9 @@ use ph2d_i18n::tr_with;
 use ph2d_panel_code::{ListField, ListHit, ListRow, ScriptList, ScriptListView};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptId, ScriptSource};
 
-/// O texto de um script novo: os dois ganchos que todo script do projeto tem.
-pub const NEW_SCRIPT_TEXT: &str = "function init(self)\nend\n\nfunction update(self, dt)\nend\n";
+/// O texto de um script novo: os dois ganchos que todo script do projeto tem. Cada corpo leva uma
+/// linha: o StyLua fixado dobra uma função VAZIA numa linha só ao salvar (I13, `formatar.rs`).
+pub const NEW_SCRIPT_TEXT: &str = "function init(self)\n  -- runs once, when the object starts\nend\n\nfunction update(self, dt)\n  -- runs every frame; dt = seconds since the last one\nend\n";
 /// O nome pedido para um script novo (a biblioteca torna-o único: «script 2.luau»…).
 pub const NEW_SCRIPT_NAME: &str = "script.luau";
 

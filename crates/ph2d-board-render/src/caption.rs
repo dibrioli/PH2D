@@ -4,7 +4,7 @@
 use ph2d_board_model::{Connector, Element};
 use ph2d_board_route::{CAPTION_PAD, CaptionFrame, LABEL_WRAP, Routed};
 use ph2d_text::TextSystem;
-use ph2d_vector::{Affine, Brush, Rect, Shape as _, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Point, Rect, Shape as _, VectorScene};
 
 use crate::{GREEK_ALPHA, GREEK_MIN_PX, READ_PX, RenderCache, TextSel};
 
@@ -21,9 +21,12 @@ pub(crate) fn reach(c: &Connector) -> f64 {
     }
 }
 
-/// Mundo → ecrã do bloco de texto de altura `block_h` em `f` (`v` = mundo → ecrã).
+/// O passo (mundo) com que um rectângulo do bloco se dobra pela linha.
+const WARP_STEP: f64 = 2.0;
+
+/// Mundo → ecrã do bloco de texto RÍGIDO de altura `block_h` em `f` (`v` = mundo → ecrã).
 #[must_use]
-pub(crate) fn block_to_screen(v: Affine, f: CaptionFrame, block_h: f64) -> Affine {
+pub(crate) fn block_to_screen(v: Affine, f: &CaptionFrame, block_h: f64) -> Affine {
     let [ox, oy] = CaptionFrame::block_origin(block_h);
     v * Affine::translate((f.center[0], f.center[1]))
         * Affine::rotate(f.angle)
@@ -66,11 +69,34 @@ pub(crate) fn paint(
             face,
         );
         let f = r.caption_frame(cap.at, c.turn);
-        let at = block_to_screen(v, f, f64::from(layout.height()));
+        let h = f64::from(layout.height());
+        let knock = ph2d_board_layout::knock_box(layout, st.font_size * CAPTION_PAD);
+        let sel = sel.filter(|s| s.caption == Some(i));
+        if f.bends() {
+            let o = CaptionFrame::block_origin(h);
+            scene.fill_path(&warped(&f, o, knock), paper, v);
+            for r in sel.map_or(&[][..], |s| s.rects) {
+                scene.fill_path(&warped(&f, o, *r), &sel.expect("há rects").brush, v);
+            }
+            if font_px >= read_px {
+                let place = |x: f64, y: f64| {
+                    let (p, a) = f.to_world([x + o[0], y + o[1]]);
+                    v * Affine::translate((p[0], p[1])) * Affine::rotate(a)
+                };
+                ph2d_board_layout::paint_along(scene, layout, &cap.text, place, ink);
+            } else {
+                let greek = Brush::Solid(ink.with_alpha(GREEK_ALPHA));
+                for b in ph2d_board_layout::line_bar_rects(layout) {
+                    scene.fill_path(&warped(&f, o, b), &greek, v);
+                }
+            }
+            continue;
+        }
+        let at = block_to_screen(v, &f, h);
         let bars = ph2d_board_layout::line_bars(layout);
-        let [x0, y0, x1, y1] = ph2d_board_layout::knock_box(layout, st.font_size * CAPTION_PAD);
+        let [x0, y0, x1, y1] = knock;
         scene.fill_path(&Rect::new(x0, y0, x1, y1).to_path(0.1), paper, at);
-        if let Some(sel) = sel.filter(|s| s.caption == Some(i)) {
+        if let Some(sel) = sel {
             sel.paint(scene, at);
         }
         if font_px >= read_px {
@@ -81,22 +107,39 @@ pub(crate) fn paint(
     }
 }
 
+/// O rectângulo `[x0, y0, x1, y1]` do bloco (origem do bloco em `o`, no espaço do texto) DOBRADO pela
+/// linha de `f`, em mundo: a aresta de cima e a de baixo amostradas a cada [`WARP_STEP`].
+fn warped(f: &CaptionFrame, o: [f64; 2], [x0, y0, x1, y1]: [f64; 4]) -> BezPath {
+    let n = ((x1 - x0) / WARP_STEP).ceil().max(1.0) as usize;
+    let at = |i: usize, y: f64| {
+        let x = x0 + (x1 - x0) * i as f64 / n as f64;
+        let (p, _) = f.to_world([x + o[0], y + o[1]]);
+        Point::new(p[0], p[1])
+    };
+    let mut path = BezPath::new();
+    path.move_to(at(0, y0));
+    for i in 1..=n {
+        path.line_to(at(i, y0));
+    }
+    for i in (0..=n).rev() {
+        path.line_to(at(i, y1));
+    }
+    path.close_path();
+    path
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_vector::Point;
 
     /// ⭐ O bloco de um texto ao longo da linha centra-se no ponto dela e as letras correm na direcção
     /// dela: numa vertical, o meio do bloco cai no ponto e o fim da 1.ª linha fica ACIMA dele (lê-se de
     /// baixo para cima), nunca ao lado.
     #[test]
     fn an_along_caption_block_is_centred_on_the_line_and_turned_with_it() {
-        let f = CaptionFrame {
-            center: [50.0, 200.0],
-            angle: -std::f64::consts::FRAC_PI_2,
-        };
+        let f = CaptionFrame::rigid([50.0, 200.0], -std::f64::consts::FRAC_PI_2);
         let h = 24.0;
-        let t = block_to_screen(Affine::IDENTITY, f, h);
+        let t = block_to_screen(Affine::IDENTITY, &f, h);
         let mid = t * Point::new(LABEL_WRAP / 2.0, h / 2.0);
         assert!(
             (mid.x - 50.0).abs() < 1e-9 && (mid.y - 200.0).abs() < 1e-9,

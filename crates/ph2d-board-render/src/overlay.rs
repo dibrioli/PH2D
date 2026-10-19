@@ -38,18 +38,26 @@ pub fn paint_overlay(
     if let Some(t) = &overlay.text
         && let Some(el) = board.doc.get(t.element)
     {
-        let block = match t.frame {
+        let block = match &t.frame {
             Some(f) => Affine::translate((f.center[0], f.center[1])) * Affine::rotate(f.angle),
             None => to_world(el),
         };
         let to_screen = v * block * Affine::translate((t.origin[0], t.origin[1]));
+        // Um texto de seta que dobra com a curva: o ponto do bloco vai pela linha (W23 B5(2)).
+        let place = |x: f64, y: f64| match t.frame.as_ref().filter(|f| f.bends()) {
+            Some(f) => {
+                let (p, _) = f.to_world([x + t.origin[0], y + t.origin[1]]);
+                v * Point::new(p[0], p[1])
+            }
+            None => to_screen * Point::new(x, y),
+        };
         // A selecção do texto pinta-se no quadro, DEBAIXO das letras (`paint`); aqui só o cursor.
         if let Some(c) = t.caret {
             // O cursor tem a espessura de UM px de ecrã a qualquer zoom.
             let mid = (c[0] + c[2]) / 2.0;
             let mut p = BezPath::new();
-            p.move_to(to_screen * Point::new(mid, c[1]));
-            p.line_to(to_screen * Point::new(mid, c[3]));
+            p.move_to(place(mid, c[1]));
+            p.line_to(place(mid, c[3]));
             line(scene, &p, token(ColorToken::Text1, theme), thin);
         }
     }

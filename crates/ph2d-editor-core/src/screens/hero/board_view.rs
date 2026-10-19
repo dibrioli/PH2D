@@ -227,6 +227,12 @@ fn canvas_down(
     x: f32,
     y: f32,
 ) -> bool {
+    // Com um menu aberto, o clique no quadro só o FECHA (o fecho do despacho, que este Down salta —
+    // smoke do dono 19/10: o menu da seta ficava aberto); o botão direito muda-o de sítio.
+    if hero.store.context_menu().is_some() && button != PointerButton::Secondary {
+        hero.store.close_context_menu();
+        return true;
+    }
     let area = area_of(hero.last_canvas);
     let theme = hero.theme;
     // Um clique no quadro fecha a galeria dos modelos (W6).

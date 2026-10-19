@@ -21,7 +21,7 @@ mod index;
 use curves::{bbox_of, chords, curve, facing_jetty, midpoint, spline};
 
 pub use cache::RouteCache;
-pub use caption::{CAPTION_PAD, CaptionFrame, upright};
+pub use caption::{CAPTION_PAD, CaptionFrame, Ruler, upright};
 pub use elbow_mid::ElbowMid;
 pub use heads::marker;
 pub use ph2d_vec_connect::Dir;

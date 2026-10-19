@@ -95,3 +95,43 @@ fn a_dropped_caption_lands_on_the_nearest_point_of_the_line() {
     let level = v.caption_frame(0.5, TextTurn::Level);
     assert!(level.contains([LABEL_WRAP / 2.0 - 1.0, 200.0], h));
 }
+
+/// ⭐ Smoke do dono (19/10, «as palavras estão retas mas deveriam seguir as curvas»): ao longo de uma
+/// CURVA o texto DOBRA com ela — cada ponto da linha de base do texto assenta na linha, a direcção das
+/// letras é a da linha ali (as do princípio e as do fim do texto viram de forma diferente), e o espaço
+/// do texto vai e volta; numa linha de rectas e na horizontal o texto é rígido.
+#[test]
+fn along_a_curve_the_text_bends_letter_by_letter() {
+    let pts = vec![[0.0, 0.0], [300.0, 300.0]];
+    let r = Routed::from_points(pts, Route::Curved, [Dir::East, Dir::South]);
+    let f = r.caption_frame(0.5, TextTurn::Along);
+    assert!(f.bends());
+    let mut angles = Vec::new();
+    for u in [-60.0, -30.0, 0.0, 30.0, 60.0] {
+        let (p, a) = f.to_world([u, 0.0]);
+        assert!(r.distance(p) < 0.05, "{u}: a {} da linha", r.distance(p));
+        let (_, t) = r.point_at(r.frac_of(p));
+        assert!(
+            (upright(t) - a).abs() < 0.02,
+            "{u}: {a} contra {}",
+            upright(t)
+        );
+        let back = f.to_local(f.to_world([u, 7.0]).0);
+        // Abaixo de um píxel: a curva aplanada a 0,02 e a direcção alisada em ±0,5.
+        assert!(
+            (back[0] - u).abs() < 0.15 && (back[1] - 7.0).abs() < 0.15,
+            "{u}: {back:?}"
+        );
+        angles.push(a);
+    }
+    assert!((angles[4] - angles[0]).abs() > 0.2, "rígido: {angles:?}");
+    for w in angles.windows(2) {
+        assert!((-FRAC_PI_2..FRAC_PI_2).contains(&w[0]));
+    }
+    assert!(
+        !line([0.0, 0.0], [300.0, 0.0])
+            .caption_frame(0.5, TextTurn::Along)
+            .bends()
+    );
+    assert!(!r.caption_frame(0.5, TextTurn::Level).bends());
+}

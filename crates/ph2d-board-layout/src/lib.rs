@@ -202,6 +202,65 @@ pub fn paint(
     }
 }
 
+/// ⭐ W23 B5(2) — [`paint`] LETRA A LETRA, cada uma com o seu sítio: `place(x, y)` dá a transformação
+/// do espaço de uma letra (origem no ponto `(x, y)` do bloco — o meio dela na linha de base) para o
+/// ecrã. É o texto que dobra com uma linha curva. Só o texto simples (sem sublinhado nem riscado:
+/// os textos das setas não têm marcas).
+pub fn paint_along(
+    scene: &mut VectorScene,
+    layout: &Layout<Ink>,
+    text: &str,
+    place: impl Fn(f64, f64) -> Affine,
+    ink: Color,
+) {
+    for line in layout.lines() {
+        for item in line.items() {
+            let PositionedLayoutItem::GlyphRun(run) = item else {
+                continue;
+            };
+            let color = run.style().brush.map_or(ink, doc_color);
+            let r = run.run();
+            let skew = r
+                .synthesis()
+                .skew()
+                .map(|deg| Affine::skew(f64::from(deg).to_radians().tan(), 0.0));
+            for g in run.positioned_glyphs() {
+                let half = g.advance / 2.0;
+                let gs = GlyphStyle {
+                    font: r.font(),
+                    size: r.font_size(),
+                    coords: r.normalized_coords(),
+                    skew,
+                    brush: color,
+                    transform: place(f64::from(g.x + half), f64::from(g.y)),
+                    text: text.get(r.text_range()).unwrap_or_default(),
+                };
+                let one = Glyph {
+                    id: g.id,
+                    x: -half,
+                    y: 0.0,
+                };
+                scene.glyph_run(&gs, std::iter::once(one));
+            }
+        }
+    }
+}
+
+/// As barras de [`line_bars`], uma `[x0, y0, x1, y1]` por linha.
+#[must_use]
+pub fn line_bar_rects(layout: &Layout<Ink>) -> Vec<[f64; 4]> {
+    layout
+        .lines()
+        .filter_map(|line| {
+            let m = line.metrics();
+            let x0 = f64::from(m.offset);
+            let w = f64::from(m.advance - m.trailing_whitespace);
+            let y1 = f64::from(m.baseline);
+            (w > 0.0).then(|| [x0, y1 - f64::from(m.ascent) * 0.6, x0 + w, y1])
+        })
+        .collect()
+}
+
 /// Uma barra por linha (a largura e a altura do x da linha), num só caminho — o que se desenha no
 /// lugar do texto quando a letra é pequena demais para ler.
 #[must_use]

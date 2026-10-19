@@ -213,10 +213,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.text.idea" => "Idea",
         "board.smoke.text.plan" => "Plan",
         "board.smoke.text.done" => "Done",
-        "board.smoke.text.next" => "next step",
+        "board.smoke.text.next" => "along the curve",
         "board.smoke.text.then" => "then",
         "board.smoke.text.l1" => {
-            "1. The curved arrow is selected. Drag the words «next step» along it: they slide on \
+            "1. The curved arrow is selected. Drag the words «along the curve» along it: they slide on \
              the line and turn with it."
         }
         "board.smoke.text.l2" => {

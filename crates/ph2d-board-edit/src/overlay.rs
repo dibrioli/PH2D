@@ -104,7 +104,7 @@ impl Editor {
         let text = self
             .editing
             .as_mut()
-            .and_then(|e| e.overlay(doc, ts, frame));
+            .and_then(|e| e.overlay(doc, ts, frame.as_ref()));
         let editing = text.is_some();
         let sel = self.selected(doc);
         let shapes: Vec<&&Element> = sel.iter().filter(|el| el.connector().is_none()).collect();

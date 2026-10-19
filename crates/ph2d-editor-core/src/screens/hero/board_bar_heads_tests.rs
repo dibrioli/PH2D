@@ -136,6 +136,25 @@ fn right_click_on_a_shape_opens_its_menu() {
     right(&mut t, shape);
     t.shell_click_id(crate::ids::CTX_MENU_BOARD_EL_DELETE, "Delete");
     assert_eq!(t.elements().len(), 1, "apagou a seleccionada");
+    // Smoke do dono (19/10): um clique de botão esquerdo no quadro, fora do menu, FECHA-o — e só isso
+    // (o clique de fechar não começa um gesto: nada se desselecciona).
+    right(&mut t, shape);
+    assert!(t.hero.store.context_menu().is_some());
+    for kind in [PointerKind::Down, PointerKind::Up] {
+        let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
+        board_view::pointer(
+            h,
+            inp(ts, c),
+            kind,
+            PointerButton::Primary,
+            empty.0,
+            empty.1,
+            true,
+        );
+    }
+    t.paint();
+    assert!(t.hero.store.context_menu().is_none(), "o menu ficou aberto");
+    assert_eq!(t.elements().len(), 1);
 }
 
 /// ⭐ Smoke do dono (19/10): o «…» das pontas estava na barra e não se via — o `more-horizontal` de

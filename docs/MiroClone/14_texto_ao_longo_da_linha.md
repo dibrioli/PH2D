@@ -78,3 +78,12 @@ Oráculos W8/W9/W10 regravados em `527761e134` (diff só `label` → `captions`/
 | um rótulo por seta (tldraw/Excalidraw) | o produto de referência do dono é o Miro (até 20) |
 | gravar `labelPosition` só quando ≠ 0,5 | o next, ausente, usa o meio dos PONTOS (lei 12) — errado numa seta de vários pontos; grava-se sempre |
 | área de clique = bloco da largura de quebra (160) | um duplo clique na linha a 60 px de uma palavra curta caía dentro dele (medido no gate); vale o papel (`knock_box`) |
+
+## 6. Smoke do dono 19/10 — o texto DOBRA com a curva
+
+«As palavras estão retas mas deveriam seguir as curvas» (o `aligned` do Miro: «aligned with the curvature»).
+Numa linha com curvas o espaço do texto mede-se PELA linha: `x` = distância ao longo dela (a `Ruler`, a
+linha aplanada a 0,02, recta para lá das pontas), `y` = a normal; cada letra desenha-se no seu ponto e
+com a direcção dali (`paint_along`); o recorte e a selecção dobram-se a cada 2 unidades (`warped`). O
+sentido da leitura escolhe-se no centro (`upright`) e vale para o texto todo. Numa linha só de rectas o
+texto fica rígido (rodado no centro). Gate `along_a_curve_the_text_bends_letter_by_letter`.

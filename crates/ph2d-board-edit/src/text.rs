@@ -65,7 +65,7 @@ impl Editing {
         el: &Element,
         ts: &mut TextSystem,
         world: [f64; 2],
-        frame: Option<CaptionFrame>,
+        frame: Option<&CaptionFrame>,
     ) -> (f32, f32) {
         let [ux, uy] = match frame {
             Some(f) => f.to_local(world),
@@ -85,7 +85,7 @@ impl Editing {
         el: &Element,
         ts: &mut TextSystem,
         world: [f64; 2],
-        frame: Option<CaptionFrame>,
+        frame: Option<&CaptionFrame>,
     ) -> bool {
         if el.shape().is_some() {
             return ph2d_board_geom::hit(el, world, 0.0);
@@ -98,7 +98,7 @@ impl Editing {
         &mut self,
         doc: &BoardDoc,
         ts: &mut TextSystem,
-        frame: Option<CaptionFrame>,
+        frame: Option<&CaptionFrame>,
     ) -> Option<TextOverlay> {
         let el = doc.get(self.id)?;
         if el.connector().is_some() && frame.is_none() {
@@ -109,7 +109,7 @@ impl Editing {
         Some(TextOverlay {
             element: self.id,
             caption: self.caption,
-            frame,
+            frame: frame.cloned(),
             origin: origin(el, block_h),
             selection,
             caret,
@@ -143,7 +143,7 @@ impl Editor {
         {
             let frame = self.editing_frame(doc);
             let e = self.editing.as_mut().expect("acabou de abrir");
-            let (x, y) = e.text_point(&el, ts, world, frame);
+            let (x, y) = e.text_point(&el, ts, world, frame.as_ref());
             e.edit.click(ts, x, y, false);
         }
         true
@@ -385,8 +385,8 @@ impl Editor {
         self.routes.sync(doc);
         let frame = self.editing_frame(doc);
         let e = self.editing.as_mut().expect("visto acima");
-        if e.contains(&el, ts, p.world, frame) {
-            let (x, y) = e.text_point(&el, ts, p.world, frame);
+        if e.contains(&el, ts, p.world, frame.as_ref()) {
+            let (x, y) = e.text_point(&el, ts, p.world, frame.as_ref());
             e.edit.click(ts, x, y, p.mods.shift);
             return true;
         }
@@ -404,7 +404,7 @@ impl Editor {
         self.routes.sync(doc);
         let frame = self.editing_frame(doc);
         let e = self.editing.as_mut().expect("visto acima");
-        let (x, y) = e.text_point(&el, ts, p.world, frame);
+        let (x, y) = e.text_point(&el, ts, p.world, frame.as_ref());
         e.edit.drag_to(ts, x, y);
     }
 
@@ -434,8 +434,8 @@ impl Editor {
             self.routes.sync(doc);
             let frame = self.editing_frame(doc);
             let e = self.editing.as_mut().expect("visto acima");
-            if e.contains(&el, ts, p.world, frame) {
-                let (x, y) = e.text_point(&el, ts, p.world, frame);
+            if e.contains(&el, ts, p.world, frame.as_ref()) {
+                let (x, y) = e.text_point(&el, ts, p.world, frame.as_ref());
                 e.edit.select_word_at(ts, x, y);
                 return true;
             }

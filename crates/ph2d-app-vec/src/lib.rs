@@ -233,6 +233,7 @@ mod vector_mode_le_a_forma;
 /// As cenas 31 e 32 (F20): a seleção de duas diz «misto»; a Width na unidade do documento.
 mod vector_mode_misto;
 mod vector_mode_olho;
+mod vector_mode_opaco;
 /// A cena 21 (F14): as quinas arredondadas em toda forma que as tem.
 mod vector_mode_quinas;
 /// A cena 20 (F13): o modo Forma selecciona — o clique desarma e traz as alças.

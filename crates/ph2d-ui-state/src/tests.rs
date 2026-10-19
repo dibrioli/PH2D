@@ -304,9 +304,9 @@ fn the_clamp_is_per_channel_position_overshoots_scale_does_not() {
 /// então `Back Out` (pico 1,100) dava alfa **negativo** a quem sai, e uma MOLA revertida
 /// (`t < 0`, que é o momento a carregar) dava alfa negativo a quem entra.
 ///
-/// ⚠️ **Ele era LATENTE, e a honestidade importa mais que o susto:** o `install` da shell não
-/// escreve `pose.opacity` hoje, então nada disto chegava à tela. É por isso que o gate afirma a
-/// LEI e não um sintoma — quem ligar a opacidade um dia não tem de redescobrir a regra.
+/// ⚠️ **Ele era LATENTE até ao F22b:** o `install` não escrevia `pose.opacity`, então nada disto
+/// chegava à tela. Desde o F22b (o dono: *«passe a animar a opacidade»*) escreve — e esta lei é a
+/// que impede o alfa negativo de chegar ao `Opacity::new`.
 ///
 /// ⚠️ E o gate anterior não podia pegá-lo: um objeto presente nos dois lados nunca vira
 /// `Leaving`/`Entering`. Uma fixture com o mesmo id dos dois lados é verde por construção aqui

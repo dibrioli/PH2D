@@ -195,6 +195,8 @@ pub fn capture(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, id: VecPath
     if let Some(p) = scene.paths().iter().find(|p| p.id == id) {
         pose.fill.clone_from(&p.fill);
         pose.stroke.clone_from(&p.stroke);
+        // ⭐ **A OPACIDADE do objeto** (F22b) — o canal que carrega também o fade de quem entra e sai.
+        pose.opacity = p.opacity.get();
         // **A FORMA, sempre.** Um estado que não a gravasse não teria como animar uma edição de
         // nó, um Fillet ou um Chamfer — e o campo existia, com o motor pronto do outro lado,
         // esperando um produtor que nunca chegou.
@@ -330,6 +332,7 @@ pub fn install(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMap, pos
     if let Some(p) = scene.paths_mut().iter_mut().find(|p| p.id == pose.id) {
         p.fill.clone_from(&pose.fill);
         p.stroke.clone_from(&pose.stroke);
+        p.opacity = ph2d_vec_scene::Opacity::new(pose.opacity);
         if let Some(g) = &pose.geometry {
             p.verts.clone_from(&g.verts);
             p.closed = g.closed;
@@ -455,6 +458,27 @@ pub fn apply_signal_edit(
 pub fn signal_name_row(id: ph2d_editor_core::NodeId) -> Option<usize> {
     (0..ph2d_panel_vector::ids::MAX_SIGNAL_BINDINGS)
         .find(|&i| ph2d_panel_vector::ids::vector_state_signal_name_id(i) == id)
+}
+
+/// ⭐ **A migração dos ficheiros anteriores ao degrau `192`** (F22b): até lá o `capture` não gravava
+/// a opacidade (toda pose dizia `1`) e o `install` não a escrevia — o Show nunca a mexia. Cada pose
+/// passa a ter a opacidade que a forma tem no documento, o que reproduz esse comportamento exato.
+/// Devolve quantas poses foram escritas.
+pub fn opacity_from_scene(states: &mut StateSets, scene: &VecScene) -> usize {
+    let mut n = 0;
+    let hosts: Vec<VecPathId> = states.hosts().collect();
+    for host in hosts {
+        for mut st in states.get(host).to_vec() {
+            for p in &mut st.objects {
+                if let Some(path) = scene.path(p.id) {
+                    p.opacity = path.opacity.get();
+                    n += 1;
+                }
+            }
+            states.set(host, st);
+        }
+    }
+    n
 }
 
 /// **O HOSPEDEIRO e a PROJEÇÃO** — irmão por LOC (HR-18), cortado por responsabilidade.

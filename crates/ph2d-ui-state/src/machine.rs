@@ -70,6 +70,9 @@ pub struct Machine {
     /// A máquina pousou FORA de um estado (um gesto interrompeu o voo): `current` é de onde saiu,
     /// e a cena não mostra papel nenhum.
     adrift: bool,
+    /// ⭐ **Quem SAIU no quadro da chegada, a opacidade `0`** (F22b) — o recado de um quadro que leva
+    /// o fim EXATO do fade a quem a pose viva já não tem (sem ele ficava o resto do penúltimo `t`).
+    departed: Vec<ObjectPose>,
 }
 
 impl Machine {
@@ -89,7 +92,14 @@ impl Machine {
             morph_steps: Vec::new(),
             written: None,
             adrift: false,
+            departed: Vec::new(),
         })
+    }
+
+    /// Quem saiu no quadro da chegada, a opacidade `0` — vazio em qualquer outro quadro.
+    #[must_use]
+    pub fn departed(&self) -> &[ObjectPose] {
+        &self.departed
     }
 
     /// **Guarda o que a cena mostra depois da escrita deste quadro** — `read` é a captura da cena.
@@ -406,6 +416,7 @@ impl Machine {
 
     /// Anda `dt` segundos. Sem transição no ar é um no-op barato.
     pub fn advance(&mut self, dt: f64) {
+        self.departed.clear();
         let Some(f) = self.flight.as_mut() else {
             return;
         };
@@ -451,6 +462,16 @@ impl Machine {
     /// também isto que **remove** quem estava a sair — no fim, quem saiu não está lá.
     fn arrive(&mut self, target: usize) {
         self.current = target;
+        let fica = &self.states[target].objects;
+        self.departed = self
+            .live
+            .iter()
+            .filter(|p| fica.iter().all(|q| q.id != p.id))
+            .map(|p| ObjectPose {
+                opacity: 0.0,
+                ..p.clone()
+            })
+            .collect();
         self.live = self.states[target].objects.clone();
         self.flight = None;
         self.written = None;

@@ -36,6 +36,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "34"
             | "35"
             | "36"
+            | "37"
     ) {
         1
     } else {
@@ -70,6 +71,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "34"
             | "35"
             | "36"
+            | "37"
     );
     let handles = match s {
         "15" => 1,
@@ -94,6 +96,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
         "34" => 20,
         "35" => 21,
         "36" => 22,
+        "37" => 23,
         _ => 0,
     };
     let quick = match s {
@@ -196,4 +199,6 @@ fn as_cenas_35_e_36_comecam_pelas_suas_familias() {
     assert_eq!((of(Some("35")).handles, of(Some("36")).handles), (21, 22));
     assert_eq!(handles_first(21), Some(crate::vector_mode_interface::FIRST));
     assert_eq!(handles_first(22), Some(crate::vector_mode_olho::FIRST));
+    assert_eq!(of(Some("37")).handles, 23);
+    assert_eq!(handles_first(23), Some(crate::vector_mode_interface::FIRST));
 }

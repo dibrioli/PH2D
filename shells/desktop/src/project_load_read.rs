@@ -56,13 +56,16 @@ impl crate::App {
         let antigo = ver <= crate::project_schema::PROJECT_SCHEMA_TRACO_V22;
         let _traco_v22 = antigo.then(ph2d_vec_scene::StrokeLayoutV22::enter);
         let (mut file, migrated_counter) = match ver {
-            PROJECT_SCHEMA => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
-                Ok((_, f)) => (f, None),
-                Err(e) => {
-                    eprintln!("[proj] erro ao ler {path}: {e}");
-                    return None;
+            // O `191` tem a forma do vivo: só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
+            PROJECT_SCHEMA | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => {
+                match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
+                    Ok((_, f)) => (f, None),
+                    Err(e) => {
+                        eprintln!("[proj] erro ao ler {path}: {e}");
+                        return None;
+                    }
                 }
-            },
+            }
             // ⭐ **98 → 99: o corte da `Sprite`** (ADR-0164 F1 passo 6). A forma do ficheiro é a
             // mesma, então ele lê-se com o tipo VIVO — o que muda são os bytes DENTRO do blob da
             // `Sprite`, que o parse atravessa sem olhar. Ver `crate::project_migrate_sprite`.
@@ -199,6 +202,15 @@ impl crate::App {
                 return None;
             }
         };
+        // ⭐ **Até ao `191` a opacidade não era canal de estado** (F22b): cada pose gravada recebe a
+        // da forma, e o Show desses projetos continua a não a mexer.
+        if ver <= crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS {
+            let n = ph2d_app_vec::ui_state_edit::opacity_from_scene(
+                &mut file.state.ui_states,
+                &file.state.vec,
+            );
+            eprintln!("[proj] v{ver}: {n} pose(s) de estado com a opacidade da forma");
+        }
         if antigo {
             // As formas guardadas DENTRO de componentes (Envelope, pele) são lidas mais tarde, fora
             // deste âmbito ⇒ regravam-se agora na forma nova.

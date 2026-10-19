@@ -177,7 +177,7 @@ pub fn dispatch(
         // chegada deixaria a cena no penúltimo `t`, e a promessa de chegada EXATA morreria a um
         // frame do fim.
         if was {
-            for p in m.pose() {
+            for p in m.pose().iter().chain(m.departed()) {
                 crate::ui_state_edit::install(sim, scene, map, p);
             }
             m.note_written(|id| crate::ui_state_edit::capture(sim, scene, map, id));
@@ -408,3 +408,7 @@ mod tests {
 #[cfg(test)]
 #[path = "ui_state_bridge_gesto_tests.rs"]
 mod gesto_tests;
+
+#[cfg(test)]
+#[path = "ui_state_opacidade_tests.rs"]
+mod opacidade_tests;

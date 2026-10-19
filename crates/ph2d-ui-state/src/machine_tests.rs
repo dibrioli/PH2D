@@ -649,3 +649,22 @@ fn yield_to_ignora_o_motor() {
     assert!(!m.yield_to(cena(-3.0), |_| true));
     assert!(m.is_animating());
 }
+
+/// ⭐ F22b — quem SAI é entregue a opacidade `0` no quadro da chegada, e só nele.
+#[test]
+fn quem_sai_e_entregue_a_zero_na_chegada() {
+    let mut a = at(StateRole::Default, 0.0);
+    a.objects.push(ObjectPose::new(2));
+    let mut m = Machine::new(vec![a, at(StateRole::Hover, 10.0)]).expect("maquina");
+    m.go_to(1, 1.0, linear());
+    m.advance(0.5);
+    assert!(m.departed().is_empty(), "o recado saiu antes da chegada");
+    m.advance(1.0);
+    assert_eq!(m.departed().len(), 1);
+    assert_eq!((m.departed()[0].id, m.departed()[0].opacity), (2, 0.0));
+    m.advance(0.1);
+    assert!(
+        m.departed().is_empty(),
+        "o recado sobreviveu ao quadro da chegada"
+    );
+}

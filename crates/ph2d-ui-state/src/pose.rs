@@ -40,7 +40,8 @@ pub struct ObjectPose {
     /// Radianos. Interpolada pelo **arco mais curto** — ver [`super::Transition::at`].
     pub rotation: f64,
     pub scale: [f64; 2],
-    /// `0` = invisível, `1` = opaco. É o canal que carrega o fade de quem entra e de quem sai.
+    /// A opacidade do OBJETO (`VecPath.opacity`, F22b): `0` = invisível, `1` = opaco. É também o
+    /// canal que carrega o fade de quem entra e de quem sai.
     pub opacity: f32,
     /// O preenchimento neste estado. `None` = sem preenchimento (não *"herda"*: um estado que
     /// autora um objeto autora a tinta dele).

@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod a_opacidade_da_barra_le_a_forma;
 mod architecture_sections_read_the_document;
 mod as_abas_do_titulo; // F17: Drawing / Interface, o interruptor da ① e o grupo Advanced
 mod as_notas_vivem_nas_seccoes; // notas em qualquer painel (2026-10-01)

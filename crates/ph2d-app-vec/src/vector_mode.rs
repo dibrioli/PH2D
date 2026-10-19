@@ -377,6 +377,7 @@ impl ModeFamily for Family<'_> {
 /// (`vector_mode_cor`).
 /// `=35` (F22): a 25, o Show do Hover a 2 s e o verde escolhido a meio (`vector_mode_gesto`).
 /// `=36` (F22): duas formas com o olho da camada diferente — o olho diz «—» (`vector_mode_olho`).
+/// `=37` (F22b): a 25 com o Hover regravado laranja a 30 % — a opacidade anima (`vector_mode_opaco`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,

@@ -469,7 +469,21 @@
 /// cartão recusa-o. Registos de componentes: `0`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 191;
+///
+/// # `191 → 192` — **a opacidade do objeto é canal de ESTADO** (`line/UIUX`, F22b, 2026-10-19)
+///
+/// O `ObjectPose.opacity` já viajava no ficheiro, mas o `capture` gravava sempre `1` e o `install`
+/// não a escrevia: o Show nunca mexia na opacidade. Desde aqui grava e escreve (dono: *«passe a
+/// animar a opacidade»*). ⭐ **COM migração, sem forma nova:** os bytes lêem-se com o tipo vivo, e
+/// todo ficheiro `<= 191` passa cada pose gravada à opacidade que a forma tem no documento
+/// (`ph2d_app_vec::ui_state_edit::opacity_from_scene`) — o Show desses projetos continua a não a
+/// mexer. Registos de componentes: `0`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 192;
+
+/// O último degrau em que a opacidade não era canal de estado (as poses diziam sempre `1`).
+pub(crate) const PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS: u32 = 191;
 
 /// O degrau anterior ao tracejado em pares — o último cuja forma do `StrokeSpec` é a v22.
 pub(crate) const PROJECT_SCHEMA_TRACO_V22: u32 = 189;

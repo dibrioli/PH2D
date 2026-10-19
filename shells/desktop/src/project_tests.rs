@@ -39,6 +39,8 @@ pub(super) fn empty_state() -> ProjectState {
     }
 }
 
+#[path = "project_opacidade_tests.rs"]
+mod opacidade;
 /// **O ESCRITOR de arquivo das suítes** — filho (`#[path]`) pelo teto de LOC do HR-18, cortado por
 /// responsabilidade. `pub(super)` + `use` para que os outros filhos o alcancem por `super::*`.
 #[path = "project_test_writer.rs"]

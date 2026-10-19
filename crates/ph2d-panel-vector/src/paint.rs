@@ -203,6 +203,18 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
             }
         }
     }
+    // ⭐ **A OPACIDADE DO OBJETO** (F22b) — o número da barra de controlo e do Appearance, em %.
+    // Sem esta semente o campo mostrava o 100 de fábrica ao lado de uma forma a 30 %.
+    if let Some(a) = state::current_appearance() {
+        let id = crate::ids::VECTOR_OBJ_OPACITY_NUM;
+        if store.focus_id() != Some(id) {
+            // Inteiro, como o chip do Appearance o pinta (`0.3_f32 × 100` daria `30.000001`).
+            store.set_number_value(id, (f64::from(a.opacity) * 100.0).round());
+            if a.mixed_opacity {
+                store.blank_number_input(id);
+            }
+        }
+    }
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {
         let focus = store.focus_id();

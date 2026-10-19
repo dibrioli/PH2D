@@ -5,6 +5,7 @@ use crate::docs::SaveKind;
 use crate::find::FindState;
 use crate::folds::ClosedFolds;
 use crate::problems::problems;
+use ph2d_a11y::{Node, NodeId};
 use ph2d_code_buffer::{Buffer, TextEdit};
 use ph2d_code_syntax::{AutoEdit, IndentStyle, Syntax, SyntaxError};
 use ph2d_editor_core::zones::Rect;
@@ -550,6 +551,20 @@ impl CodeDoc {
             current,
         };
         self.console_view.paint(band, console_r, scene, ts, theme);
+    }
+
+    /// Os nós da aba ao leitor de ecrã: o `Document` (`base`) e as linhas, e a faixa de baixo (os
+    /// separadores e a lista de problemas) filha do `Document`.
+    pub(crate) fn a11y(&self, base: NodeId) -> Vec<(NodeId, Node)> {
+        let mut nodes = self.view.a11y_nodes(&self.buffer, base);
+        let (roots, band) = self.console_view.a11y(base);
+        if let Some((_, doc)) = nodes.first_mut() {
+            for r in roots {
+                doc.push_child(r.into());
+            }
+        }
+        nodes.extend(band);
+        nodes
     }
 }
 

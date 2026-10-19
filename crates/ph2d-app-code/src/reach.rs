@@ -170,9 +170,10 @@ impl CodeDoc {
         }
     }
 
-    /// O rato mexeu-se para `(x, y)`: por cima de algo que tapa o texto, ele não aponta nenhum nome.
-    pub(crate) fn reach_mouse(&mut self, x: f32, y: f32) {
-        self.reach.mouse = self.overlay_look(x, y).is_none().then_some((x, y));
+    /// O rato mexeu-se para `(x, y)` (`inside` = dentro da aba): fora dela, ou por cima de algo que
+    /// tapa o texto, ele não aponta nenhum nome.
+    pub(crate) fn reach_mouse(&mut self, inside: bool, x: f32, y: f32) {
+        self.reach.mouse = (inside && self.overlay_look(x, y).is_none()).then_some((x, y));
     }
 
     /// O ponteiro sobre o que tapa o texto, a mesma ordem do clique (`press`): a caixinha do F2, o
@@ -220,5 +221,16 @@ impl CodeDoc {
             Hit::Text(_) => PointerLook::Text,
             _ => PointerLook::Arrow,
         }
+    }
+}
+
+impl crate::docs::CodeDocs {
+    /// O ponteiro em `(x, y)` sobre a aba `id` ([`CodeDoc::pointer_look`]); `None` fora da aba.
+    pub(crate) fn tab_pointer_look(&self, id: u64, x: f32, y: f32) -> Option<PointerLook> {
+        if !self.area.contains(x, y) {
+            return None;
+        }
+        let d = self.docs.iter().find(|d| d.script.0 == id)?;
+        Some(d.pointer_look(x, y))
     }
 }

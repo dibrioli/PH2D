@@ -5,6 +5,7 @@
 use crate::frame::{Assist, Badge, CodeFrame, Severity};
 use crate::palette::Palette;
 use crate::view::CodeView;
+use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{label_column_width, paint_icon, paint_text_elided, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
@@ -32,7 +33,28 @@ pub struct Counter {
 }
 
 /// Os ids do leitor de ecrã somados ao do `Document` (ao lado dos da faixa de baixo).
-pub(crate) const A11Y_COUNTER: u64 = (1 << 31) | (1 << 28) | (1 << 27);
+const A11Y_COUNTER: u64 = (1 << 31) | (1 << 28) | (1 << 27);
+
+impl CodeView {
+    /// O contador pintado no último quadro ao leitor de ecrã: um `Button` (um clique abre a lista),
+    /// filho do `Document` `base`.
+    pub(crate) fn counter_a11y(&self, base: NodeId) -> Option<(NodeId, Node)> {
+        (self.counter.w > 0.0).then(|| {
+            let r = self.counter;
+            let n = NodeBuilder::new(Role::Button)
+                .label(self.counter_label.clone())
+                .bounds(
+                    f64::from(r.x),
+                    f64::from(r.y),
+                    f64::from(r.w),
+                    f64::from(r.h),
+                )
+                .action(Action::Click)
+                .build();
+            (NodeId(base.0 + A11Y_COUNTER), n)
+        })
+    }
+}
 
 /// Os textos da barra, já traduzidos (a pintura e os testes lêem os MESMOS).
 #[derive(Clone, Debug, PartialEq, Eq)]

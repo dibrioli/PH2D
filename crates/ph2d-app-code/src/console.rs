@@ -2,9 +2,10 @@
 //! recarga), guardado por `ScriptId` mesmo com a aba fechada, e a faixa de baixo da aba desse script:
 //! aberta ou fechada, e em que separador (Console ou Problems).
 
+use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr_with;
 use ph2d_panel_code::{BandTab, ConsoleRow, ConsoleSource, Tone};
-use ph2d_script::{CONSOLE_BYTES_MAX, CONSOLE_LINES_MAX, ConsoleKind, ConsoleLine};
+use ph2d_script::{CONSOLE_BYTES_MAX, CONSOLE_LINES_MAX, ConsoleKind, ConsoleLine, ScriptId};
 use std::collections::VecDeque;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -129,5 +130,27 @@ impl ConsoleSource for Store {
             tone: e.tone,
             line: e.line,
         }
+    }
+}
+
+impl crate::docs::CodeDocs {
+    /// As linhas do console do script `id`, como a aba as mostra.
+    #[must_use]
+    pub fn console_texts(&self, id: ScriptId) -> Vec<String> {
+        self.consoles.get(&id).map(Store::texts).unwrap_or_default()
+    }
+
+    #[must_use]
+    pub fn console_open(&self, id: ScriptId) -> bool {
+        self.consoles.get(&id).is_some_and(|s| s.open)
+    }
+
+    /// Onde o console pintou a linha `i` no último quadro.
+    #[must_use]
+    pub fn console_row_rect(&self, id: ScriptId, i: usize) -> Option<Rect> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .and_then(|d| d.console_view.row_rect(i))
     }
 }

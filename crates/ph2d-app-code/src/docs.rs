@@ -20,7 +20,7 @@ use ph2d_editor_core::doc_surface::{
 use ph2d_editor_core::ime::ComposeKey;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerKind};
-use ph2d_panel_code::{Badge, FindHit, Problem, ScriptListView, count_text};
+use ph2d_panel_code::{Badge, FindHit, ScriptListView, count_text};
 use ph2d_script::{LibraryEpoch, ScriptId};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -265,17 +265,6 @@ impl CodeDocs {
             .map(|d| d.buffer.text().to_string())
     }
 
-    /// As linhas do console do script `id`, como a aba as mostra.
-    #[must_use]
-    pub fn console_texts(&self, id: ScriptId) -> Vec<String> {
-        self.consoles.get(&id).map(Store::texts).unwrap_or_default()
-    }
-
-    #[must_use]
-    pub fn console_open(&self, id: ScriptId) -> bool {
-        self.consoles.get(&id).is_some_and(|s| s.open)
-    }
-
     /// O cursor primário do script `id` (aberto): `(linha, byte)`, 0-based.
     #[must_use]
     pub fn cursor_of(&self, id: ScriptId) -> Option<(usize, usize)> {
@@ -354,14 +343,6 @@ impl CodeDocs {
         ph2d_panel_code::badge_line(d.badge.as_ref(), d.project_unsaved).map(|(t, _)| t)
     }
 
-    /// Os problemas que a aba do script `id` mostra (E7).
-    #[must_use]
-    pub fn problems_of(&mut self, id: ScriptId) -> Vec<Problem> {
-        self.doc(id.0)
-            .map(|d| d.problems().to_vec())
-            .unwrap_or_default()
-    }
-
     /// Há alterações por salvar na aba (aberta ou estacionada) do script `id`?
     #[must_use]
     pub fn is_dirty(&self, id: ScriptId) -> bool {
@@ -383,15 +364,6 @@ impl CodeDocs {
         let d = self.doc(id.0).filter(|d| d.find.open)?;
         d.find.refresh(&d.buffer);
         count_text(d.find.count())
-    }
-
-    /// Onde o console pintou a linha `i` no último quadro.
-    #[must_use]
-    pub fn console_row_rect(&self, id: ScriptId, i: usize) -> Option<Rect> {
-        self.docs
-            .iter()
-            .find(|d| d.script == id)
-            .and_then(|d| d.console_view.row_rect(i))
     }
 
     /// Envia ao worker o reparse de cada aba cuja árvore velha ainda não está toda num trabalho (o
@@ -432,7 +404,7 @@ impl CodeDocs {
         }
     }
 
-    fn split(&mut self, id: u64) -> Option<(&mut CodeDoc, &mut Store)> {
+    pub(crate) fn split(&mut self, id: u64) -> Option<(&mut CodeDoc, &mut Store)> {
         let doc = self.docs.iter_mut().find(|d| d.script.0 == id)?;
         let store = self.consoles.entry(doc.script).or_default();
         Some((doc, store))
@@ -519,13 +491,9 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn pointer_move(&mut self, id: u64, _input: PointerInput<'_>, x: f32, y: f32) -> bool {
-        let (now, area) = (self.clock.0, self.area);
+        let (now, inside) = (self.clock.0, self.area.contains(x, y));
         let Some(d) = self.doc(id) else { return false };
-        if area.contains(x, y) {
-            d.reach_mouse(x, y);
-        } else {
-            d.reach.mouse = None;
-        }
+        d.reach_mouse(inside, x, y);
         if d.drag_to(x, y) {
             return true;
         }
@@ -560,18 +528,8 @@ impl DocumentSurface for CodeDocs {
                 .iter()
                 .find(|d| d.script.0 == id)
                 .is_some_and(|d| d.find.open && d.find.focus.is_some());
-        // Ctrl+Shift+M: a lista de problemas, com o teclado em qualquer sítio da aba (o soltar
-        // também é tomado: nenhum atalho da cena o vê).
-        if crate::keys::problems_chord(key, mods)
-            && let Some((_, store)) = self.split(id)
-        {
-            if pressed {
-                store.toggle_problems();
-            }
-            return KeyOutcome {
-                consumed: true,
-                copy: None,
-            };
+        if let Some(out) = self.problems_key(id, key, mods, pressed) {
+            return out;
         }
         if crate::keys::foreign_chord(key, mods)
             || (crate::keys::suggest_chord(key, mods) && in_field)
@@ -661,20 +619,11 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn a11y(&self, id: u64) -> Vec<(NodeId, Node)> {
-        let Some(d) = self.docs.iter().find(|d| d.script.0 == id) else {
-            return Vec::new();
-        };
-        let base = NodeId(A11Y_SALT ^ (id << 32));
-        let mut nodes = d.view.a11y_nodes(&d.buffer, base);
-        // A faixa de baixo (os separadores e a lista de problemas), filha do `Document`.
-        let (roots, band) = d.console_view.a11y(base);
-        if let Some((_, doc)) = nodes.first_mut() {
-            for r in roots {
-                doc.push_child(r.into());
-            }
-        }
-        nodes.extend(band);
-        nodes
+        self.docs
+            .iter()
+            .find(|d| d.script.0 == id)
+            .map(|d| d.a11y(NodeId(A11Y_SALT ^ (id << 32))))
+            .unwrap_or_default()
     }
 
     fn caret_area(&self, id: u64) -> Option<Rect> {
@@ -700,11 +649,7 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn pointer_look(&self, id: u64, x: f32, y: f32) -> Option<PointerLook> {
-        if !self.area.contains(x, y) {
-            return None;
-        }
-        let d = self.docs.iter().find(|d| d.script.0 == id)?;
-        Some(d.pointer_look(x, y))
+        self.tab_pointer_look(id, x, y)
     }
 
     fn command(&mut self, id: u64, cmd: ph2d_a11y::NodeId) -> bool {

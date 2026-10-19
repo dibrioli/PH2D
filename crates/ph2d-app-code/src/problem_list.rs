@@ -9,7 +9,10 @@
 
 use crate::doc::CodeDoc;
 use ph2d_code_buffer::{Range, Selection};
+use ph2d_editor_core::doc_surface::{self, KeyOutcome};
+use ph2d_host::Modifiers;
 use ph2d_panel_code::{Problem, ProblemRow, Severity};
+use ph2d_script::ScriptId;
 use std::cmp::Reverse;
 
 /// Um problema na ordem da lista (o F8 segue-o entre quadros, mesmo que a lista mude).
@@ -110,5 +113,37 @@ impl CodeDoc {
         self.find.focus = None;
         self.problem_at = Some(key(p));
         self.reveal();
+    }
+}
+
+impl crate::docs::CodeDocs {
+    /// Os problemas que a aba do script `id` mostra (E7).
+    #[must_use]
+    pub fn problems_of(&mut self, id: ScriptId) -> Vec<Problem> {
+        self.doc(id.0)
+            .map(|d| d.problems().to_vec())
+            .unwrap_or_default()
+    }
+
+    /// Ctrl+Shift+M: a lista de problemas, com o teclado em qualquer sítio da aba `id` (o soltar
+    /// também é tomado: nenhum atalho da cena o vê). `None` = outra tecla (ou nenhuma aba `id`).
+    pub(crate) fn problems_key(
+        &mut self,
+        id: u64,
+        key: doc_surface::Key,
+        mods: Modifiers,
+        pressed: bool,
+    ) -> Option<KeyOutcome> {
+        if !crate::keys::problems_chord(key, mods) {
+            return None;
+        }
+        let (_, store) = self.split(id)?;
+        if pressed {
+            store.toggle_problems();
+        }
+        Some(KeyOutcome {
+            consumed: true,
+            copy: None,
+        })
     }
 }

@@ -1,10 +1,10 @@
 //! ⭐ **A pintura de um quadro** (E4): só as linhas VISÍVEIS, moldadas pela [`LineCache`]; por baixo
 //! do texto a linha corrente, as ocorrências, a seleção e o par; por cima o sublinhado do culpado,
-//! a pré-edição e os cursores; a calha e a barra de estado à parte.
+//! a pré-edição e os cursores; a calha e a barra de estado à parte. Os nós do leitor de ecrã das
+//! filas pintadas moram em [`crate::a11y`].
 //!
 //! [`LineCache`]: crate::line_cache::LineCache
 
-use crate::a11y::{clipped, selection};
 use crate::display::DisplayLine;
 use crate::frame::{CodeFrame, Severity};
 use crate::geom;
@@ -13,7 +13,6 @@ use crate::metrics::Metrics;
 use crate::palette::Palette;
 use crate::style::Ink;
 use crate::view::{CodeView, Row, Underline};
-use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_code_buffer::Buffer;
 use ph2d_editor_core::math::safe_clamp_ord;
 use ph2d_editor_core::paint::{
@@ -484,96 +483,6 @@ impl CodeView {
                 );
             }
         }
-    }
-}
-
-impl CodeView {
-    /// O id do `TextRun` da linha `line`, com `base` o id do `Document`.
-    #[must_use]
-    pub fn a11y_run_id(base: NodeId, line: usize) -> NodeId {
-        NodeId(base.0 + 1 + line as u64)
-    }
-
-    /// Os nós do último quadro: o `Document` primeiro (filhos = as linhas visíveis), depois um
-    /// `TextRun` por linha. A família reserva os ids `base ..= base + nº de linhas`.
-    #[must_use]
-    pub fn a11y_nodes(&self, buffer: &Buffer, base: NodeId) -> Vec<(NodeId, Node)> {
-        let t = buffer.text();
-        let tr = self.text_rect();
-        let lines: Vec<usize> = self
-            .rows
-            .iter()
-            .map(|r| r.line)
-            .filter(|&l| l < t.line_count())
-            .collect();
-        let mut out = Vec::with_capacity(lines.len() + 1);
-        let mut runs = Vec::with_capacity(lines.len());
-        for r in self.rows.iter().filter(|r| r.line < t.line_count()) {
-            let (value, lens) = clipped(&crate::a11y::run_text(t, r.line));
-            let id = Self::a11y_run_id(base, r.line);
-            let mut node = NodeBuilder::new(Role::TextRun)
-                .bounds(
-                    f64::from(tr.x),
-                    f64::from(r.y),
-                    f64::from(tr.w),
-                    f64::from(self.m.line_h),
-                )
-                .build();
-            node.set_value(value);
-            node.set_character_lengths(lens);
-            runs.push((id, node));
-        }
-        let mut doc = NodeBuilder::new(Role::Document)
-            .label(ph2d_i18n::tr("code.a11y.document"))
-            .bounds(
-                f64::from(tr.x),
-                f64::from(tr.y),
-                f64::from(tr.w),
-                f64::from(tr.h),
-            )
-            .children(lines.iter().map(|&l| Self::a11y_run_id(base, l)))
-            .build();
-        if let Some(sel) = selection(buffer, &lines, base) {
-            doc.set_text_selection(sel);
-        }
-        let list = self.completion_a11y(base);
-        if let Some((id, active, _)) = &list {
-            doc.push_child((*id).into());
-            if let Some(a) = active {
-                doc.set_active_descendant((*a).into());
-            }
-        }
-        let (roots, hints) = self.hints_a11y(base);
-        for id in roots {
-            doc.push_child(id.into());
-        }
-        let rename = self.rename_a11y(base);
-        if let Some((id, _)) = &rename {
-            doc.push_child((*id).into());
-        }
-        let counter = (self.counter.w > 0.0).then(|| {
-            let id = NodeId(base.0 + crate::status::A11Y_COUNTER);
-            let r = self.counter;
-            let n = NodeBuilder::new(Role::Button)
-                .label(self.counter_label.clone())
-                .bounds(
-                    f64::from(r.x),
-                    f64::from(r.y),
-                    f64::from(r.w),
-                    f64::from(r.h),
-                )
-                .action(ph2d_a11y::Action::Click)
-                .build();
-            doc.push_child(id.into());
-            (id, n)
-        });
-        out.push((base, doc));
-        out.extend(runs);
-        out.extend(list.into_iter().flat_map(|l| l.2));
-        out.extend(hints);
-        out.extend(rename);
-        out.extend(counter);
-        out
     }
 }
 

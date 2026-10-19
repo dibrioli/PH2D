@@ -68,3 +68,5 @@ Fotos (`docs/UI_New_and_Simple/vetor_nova_ui/fotos/`): `F20_cena29_show_width_in
 8. Suíte inteira não reexecutada depois de `2027a500b6` (§4).
 9. Herdados do F19 §5: 2 (isenção das abas de slot sem gate), 5 (edição durante *Show* sobrescrita pelo tween), 6 (bloqueio do Preview não cobre Hierarquia/Timeline), 7 (opacidade dirigida/cor por token são valores de vista), 8 (herdados do F18).
 10. `CLAUDE.md` §5.1 UI/UX: **não** alterado nesta janela; ao fechar a linha, trocar o link do último handoff e o intervalo do smoke (`…26` → `…32`).
+
+> ✅ **Smoke do dono: OK (19/10)** — cenas 31 e 32 e os passos manuais (Width e Fill nas duas, caixa vazia sem digitar, zoom com W fixo).

@@ -273,6 +273,42 @@ fn com_a_lista_aberta_o_tab_e_da_lista() {
     );
 }
 
+/// ⭐ O smoke do dono do I15 (19/10): no 1.º buraco do `ph2d.set`, `self.` abre a lista; o Tab escolhe
+/// o campo e o Tab SEGUINTE salta para o buraco seguinte — escolher um item sem buracos nunca acaba
+/// a sessão de fora (acabava: o Tab passava a recuo e punha espaços).
+#[test]
+fn escolher_da_lista_dentro_de_um_buraco_mantem_os_buracos() {
+    let (mut m, ids, _) = com_falso(
+        &[("a.luau", "")],
+        Plano {
+            completar: Some(responde),
+            ..Plano::default()
+        },
+    );
+    let id = ids[0];
+    m.pede(id);
+    abre(&mut m, id, "ph2d.se");
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    assert_eq!(sel(&mut m, id), [(9, 15)], "o `entity`");
+    assert_eq!(abre(&mut m, id, "self."), ["t"]);
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    assert_eq!(
+        m.docs().text_of(id).as_deref(),
+        Some("ph2d.set(self.t, \"x\", value)")
+    );
+    assert!(marcas(&mut m, id).is_some(), "os buracos continuam");
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    assert_eq!(sel(&mut m, id), [(18, 19)], "o Tab salta para o `x`");
+    escreve(&mut m, id, "rotation");
+    tecla(&mut m, id, Key::Tab, Modifiers::default());
+    assert_eq!(sel(&mut m, id), [(29, 34)], "e para o `value`");
+    assert_eq!(
+        m.docs().text_of(id).as_deref(),
+        Some("ph2d.set(self.t, \"rotation\", value)"),
+        "nenhum espaço entrou"
+    );
+}
+
 /// Desfazer pelo menu Edit (sem tecla nenhuma) também acaba a sessão.
 #[test]
 fn desfazer_pelo_menu_acaba_a_sessao() {

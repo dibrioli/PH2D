@@ -125,6 +125,13 @@ linha.
   fetch dos dois binários).
 - Integração: falta `clippy --workspace` e a suíte do fecho; CLAUDE.md §5.1 `1|2` → `1..3`.
 
+- **Corrigido no smoke do dono (19/10):** no `ph2d.set`, escolher da lista um item SEM buracos dentro de
+  um buraco (`self.` → `t`) acabava a sessão de fora e o Tab seguinte punha espaços (`insert_snippet`
+  trocava a sessão por `None`). Agora só uma inserção COM buracos a substitui; gate
+  `esqueletos::escolher_da_lista_dentro_de_um_buraco_mantem_os_buracos` (vermelho antes da cura). O
+  roteiro das fotos não passava por aí (escrevia sem a pausa da lista). Continua aberto: um item COM
+  buracos dentro de um buraco ainda substitui a sessão de fora (o VS Code empilha as duas).
+
 ## 10. Próximo
 
 **Acabamento** (item 4 do plano): o ponteiro em **mão** com Ctrl carregado + sublinhado sobre o que o Ctrl+clique

@@ -62,7 +62,11 @@ impl crate::doc::CodeDoc {
         };
         let edits = self.buffer.apply(cs, Some(after), EditKind::Other);
         self.edited(&edits, true);
-        self.snippet = session;
+        // Uma inserção SEM buracos dentro de um buraco (o campo escolhido da lista) deixa a sessão de
+        // fora viva — o `edited` já a deslocou; acabá-la tornava o Tab seguinte em recuo (smoke I15).
+        if session.is_some() {
+            self.snippet = session;
+        }
     }
 
     /// Uma tecla com a sessão viva: `true` = era dela (Tab, Shift+Tab). O Esc acaba-a e segue para o

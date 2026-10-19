@@ -140,6 +140,43 @@ pub fn grava_no_papel_ligado_com_o_worker(
     )
 }
 
+// LITERAL-COLOR-OK: as pinceladas GRAVADAS da fixtura (o preto do artista), não da UI.
+const CRUZADAS: [Pincelada; 2] = [
+    Pincelada {
+        cor: [0, 0, 0],
+        tamanho_px: 10.0,
+        de: [0.08, 0.35],
+        ate: [0.92, 0.35],
+        curva: 0.0,
+    },
+    Pincelada {
+        cor: [0, 0, 0],
+        tamanho_px: 10.0,
+        de: [0.08, 0.65],
+        ate: [0.92, 0.65],
+        curva: 0.0,
+    },
+];
+
+/// **Duas horizontais pretas de Digital** (`v = 0,35` e `0,65`) no Painter LIGADO à sprite `entidade`,
+/// com 12 quadros parados antes da 1.ª (a tela branca até `0,2 s`; a 2.ª nasce em `≈ 0,82 s`) — a
+/// fixtura dos cruzamentos (W10, smoke do dono 19/10) — e o tool, parado no Parar.
+#[must_use]
+pub fn grava_duas_horizontais_ligado(
+    lado: u32,
+    entidade: u64,
+) -> Option<(PainterTool, Vec<u8>, f64)> {
+    grava_com(
+        lado,
+        0,
+        &CRUZADAS,
+        &[12],
+        Tela::Ligada(entidade),
+        &[PaintMedia::Digital],
+        Relogio::Fixo,
+    )
+}
+
 /// As pinceladas `ps` gravadas como o Splash, com `antes[k]` quadros parados a mais antes da `k`.
 pub(crate) fn grava_pinceladas(
     lado: u32,

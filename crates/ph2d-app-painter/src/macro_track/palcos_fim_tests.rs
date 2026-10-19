@@ -456,3 +456,6 @@ mod reescrita_tests;
 
 #[path = "palcos_marca_tests.rs"]
 mod marca_tests;
+
+#[path = "palcos_cobertura_tests.rs"]
+mod cobertura_tests;

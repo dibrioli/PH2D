@@ -175,6 +175,8 @@ pub struct Config {
     /// arredonda (o texel do canto convexo no ambiente; handoff W6e §1). `None` = a própria reta — o
     /// padrão: a cunha acerta o campo mas reprova o F3 (a média das faces no canto, handoff W6e §3).
     pub borda_vertice: Option<Vertice>,
+    /// ⭐ W6f — o texel do CANTO pelas faces (handoff W6f §2): as três peças da candidata 9.
+    pub canto: Canto,
     /// ⭐ W6f — a SONDA de cor do `c3_fina` (o `sonda_cor` do `c3_direta.wgsl`): `0` = a luz; `1..=6`
     /// gravam no lugar dela o que a escolha das faces decidiu (só a lei antiga, `miolo: None`, o lê).
     pub sonda: u32,
@@ -296,6 +298,32 @@ pub const MIOLO_PADRAO: Miolo = Miolo {
     base_no_grupo: true,
     bloco: 4,
 };
+
+/// ⭐ W6f — o texel do canto pelas faces ([`Config::canto`]; o `onde_calcular` do `c3_direta.wgsl`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Canto {
+    /// As normais «iguais» (ou não medidas) de duas faces achadas pela direção medem-se de novo pelo lado
+    /// OPOSTO à outra face (a paralela centrada cruza a outra face junto ao vértice).
+    pub normais: bool,
+    /// O ponto remapeado em que a normal secante desiste (o canto) lê a visibilidade pela normal da face
+    /// medida no `onde_calcular`, não a marcha cheia (o campo bilinear arredonda o vértice convexo).
+    pub luz: bool,
+    /// No texel que uma face corta, a fração da outra face conta só a parte dentro das duas.
+    pub fracao: bool,
+}
+
+impl Canto {
+    pub const DESLIGADO: Self = Self {
+        normais: false,
+        luz: false,
+        fracao: false,
+    };
+    pub const LIGADO: Self = Self {
+        normais: true,
+        luz: true,
+        fracao: true,
+    };
+}
 
 /// ⭐ W6e — os dois limiares da cunha no parcial do vértice ([`Config::borda_vertice`], frações da
 /// área de um texel da captura).
@@ -476,6 +504,7 @@ impl Config {
             borda_continua: true,
             borda_fora: true,
             borda_vertice: None,
+            canto: Canto::DESLIGADO,
             sonda: 0,
             pe_na_borda: true,
             vis_na_face: true,

@@ -60,3 +60,80 @@ W6d + 9 · cunha + 9 (e as peças sozinhas na lista); depois, com a candidata no
 5. C3 ≤ **+5 % sobre a lei atual** nas cenas 5 e 6 (o mínimo de 7 intercaladas, no mesmo processo).
 
 **MORRE**: qualquer um dos cinco. Bater na 2.ª reconstrução sem passar ⇒ PARE e prove o modelo (two-strikes).
+
+## 3. Rodadas (`target/w6f/caixa_9.log`, `f3_9.log`; 9′: `caixa_9b.log`, `f3_9b.log`)
+
+| variante | cantos da caixa errados | F3 penumbra (teto 0,062) | texel (152, 245) (gab. 0,142) |
+|---|---|---|---|
+| antes da W6d | 4 | — | — |
+| lei W6d (o padrão) | 7 | 0,0531 | 0,140 |
+| cunha | 6 | 0,0689 ✗ | 0,173 |
+| W6d + 9 | 6 | 0,0523 | 0,128 |
+| **cunha + 9** | **3** ✗ (≤ 1) | **0,0539** | **0,1423** |
+| cunha + 9a / + 9ac | 3 | 0,0689 | 0,173 |
+| cunha + 9b | — | 0,0536 | 0,1423 |
+| **9′** (cunha + 9 + os pés das perpendiculares + a direção pela normal do campo com o centro rente) | **7** ✗ | 0,0528 | 0,1423 |
+
+- **A 9 morre no item 1** (3 > 1). A 9a sozinha separa as normais (o aberto, zoom 1 · 3/8, passa a misturar), a 9c não
+  muda nenhum canto da caixa, a 9b cura o F3 (a luz do ponto pela face: 0,12 → 0,08 = a lei no ponto).
+- Os 3 que ficam: zoom 1 · 4/8 cima-direita (mistura, f2 0,43 contra 0,36, mas a luz da OUTRA face sai 0,01 contra
+  1,18, no ponto (+0,25; +0,51) colado ao vértice) · zoom 2,5 · 3/8 baixo-esquerda (o centro a 0,01 texel da fronteira
+  do campo, as normais diagonais: o chanfro) e cima-direita (o centro EM CIMA da fronteira, saída 5).
+- **A 9′ morre no item 1** (7): com os pontos nos pés das perpendiculares, a luz da outra face sai **0,00** nos cantos
+  em que as duas faces estão acesas (2,71 / 2,73 → 1,65 · 1,79 · 2,09): o pé fica a ~0,06–0,4 texel do vértice, DENTRO
+  do corpo que o campo dá ali. Two-strikes ⇒ a onda para e prova o modelo (§4). A 9′ está em
+  `target/w6f/c3_direta_9linha.wgsl` (fora do git); o código fica com a 9 (desligada).
+
+## 4. O modelo PROVADO — o campo bilinear não tem vértice (`target/w6f/caixa_modelo2.log`)
+
+O iso-0 do campo da borda (a bilinear do 4.º canal, a mesma do `meio`), medido ao longo da normal de cada face
+(texels finos; `+` = para fora da face verdadeira) a 0 · ¼ · ½ · 1 · 2 texels do vértice, com a cunha, os 4 vértices × os
+8 casos (`arredondado` da `medida_luz2d_w6f`):
+
+| distância ao vértice | 0 | ¼ | ½ | 1 | 2 |
+|---|---|---|---|---|---|
+| o iso-0 (o típico; os extremos) | −0,2 a −0,6 (ou além de −1) | −0,05 a −0,12 | ±0,06 | ±0,06 | ±0,03 |
+| a BOSSA para fora de algumas faces | — | +0,21 | +0,18 · +0,35 | +0,12 · +0,14 | +0,03 |
+
+⇒ junto a um vértice convexo o campo é ~½ texel mais redondo que a geometria, e algumas faces fazem bossa para fora a
+½–1 texel dele. Todo ponto de face de um texel de canto fica a < ½ texel do vértice, logo a luz que se marcha dali
+(o ponto remapeado sem normal secante; a outra face, sempre pela marcha) lê OUTRO corpo: vaza no F3 (+0,04) e tapa na
+caixa (0,00–0,01). A cunha não o cura porque corrige UMA distância por texel da captura, e a bilinear entre centros
+continua a arredondar. Os sintomas das W6d–W6f (o chanfro, o «canto do campo», a luz da face) são esta peça.
+
+## ⛔ Recusas MEDIDAS (W6f — não reconstruir sem ler a §3/§4)
+
+| Recusa | Porquê |
+|---|---|
+| A candidata 9 (normais de um lado + a luz pela face + a fração de dentro) no padrão | 3 cantos errados (o critério é ≤ 1). Passa o F3 com a cunha (0,0539), mas os que ficam são do campo (§4). |
+| A 9′ — os pontos das faces nos pés das perpendiculares | 7 cantos: o pé cai no arredondado do vértice, a luz da outra face sai 0,00. |
+| A fração na parte de dentro (9c) sozinha | Não muda nenhum canto: a fração da área inteira erra < 0,1 ali. |
+
+## 5. ABERTO (por ordem)
+
+1. **O campo que guarda o vértice** (candidata 10, com o kill-criterion do §2 reaproveitado): o `meio` decide
+   «dentro» por uma representação que não arredonda o canto, não pela bilinear de UMA distância. Candidatas a medir no
+   mesmo processo: (a) a distância MULTICANAL (o `msdf`: três distâncias e a mediana, a lei clássica para o canto de uma
+   fonte); (b) no texel da captura que tem vértice, a cunha das duas retas lida exata no `meio` (o predicado, não a
+   distância). A régua é o perfil da §4 (alvo: |iso-0| ≤ 0,06 a ≥ ¼ texel do vértice) e depois a `medida_luz2d_w6f`.
+   Só então a 9 (desligada no código) volta a medir-se como variante: com o campo certo, a 9b talvez deixe de ser
+   precisa.
+2. A família (b) (37, a penumbra dos tangentes): é da W5g, fica fora.
+
+## 6. Prova, superfície de colisão e commits
+
+- Portões por nome com o padrão (`target/w6f/portoes_*.log`, `load` 16 das outras linhas): gpu `c3_grade_fina` 6/6 (o
+  F3, o bit-idêntico da grade fina, a região) · app 6/6 (`o_interior_do_opaco` ×2, `o_campo_da_borda`,
+  `a_borda_sem_pontos_pretos`, `g6_ponto_neutro` ×2, byte a byte). O padrão não muda: `Canto::DESLIGADO` e `sonda: 0`;
+  os overrides apagam os ramos na criação da pipeline.
+- Tocam `ph2d-light2d-gpu` (`config.rs` — `Config::sonda`, `Config::canto`, `Canto` —, `lib.rs`,
+  `solver_c3_constantes.rs` — `comuns` passa a `[_; 22]` —, `wgsl/c2_rc.wgsl` (`SONDA`), `wgsl/c3_direta.wgsl`,
+  `tests/it/c3_grade_fina.rs`) e `ph2d-app-light2d` (`tests/it/medida_luz2d_w6f.rs` novo, `main.rs`,
+  `o_interior_do_opaco.rs` — `LADO` passa a `pub(crate)`). Sem contrato congelado, sem schema, sem shell. Quem constrói
+  `Config` sem `..` parte com os dois campos novos (nenhum no repo).
+
+## 7. Smoke do Enio
+
+Nada mudou na tela: a cura ficou desligada. O smoke da W6d continua valendo
+(`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=6 cargo run -p ph2d-host-desktop --profile smoke`).
+O ponto escuro no canto de uma caixa continua lá: é o aberto 1, agora com a causa medida.

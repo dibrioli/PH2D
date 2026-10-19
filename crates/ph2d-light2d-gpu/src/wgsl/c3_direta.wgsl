@@ -88,6 +88,10 @@ override CELULA_PREENCHE: u32 = 1u;
 override PREENCHE_A_GRADE_INTEIRA: bool = true;
 // ⭐ O texel que o eixo medial corta guarda a média das faces (senão o ponto de fronteira mais perto).
 override MEDIA_NO_EIXO: bool = true;
+// ⭐ W6f — o texel do canto pelas faces (`Config::canto`, [`onde_calcular`]).
+override CANTO_NORMAIS: bool = false;
+override CANTO_LUZ: bool = false;
+override CANTO_FRACAO: bool = false;
 // ⭐ W5d — o ponto de fronteira que um texel do INTERIOR lê toma a c0 pela média AO LONGO da face,
 // nesta meia-largura (texels das cascatas; 0 = no ponto): ver [`c0_ao_longo_da_face`].
 override C0_AO_LONGO_DA_FACE: f32 = 0.0;
@@ -641,6 +645,8 @@ var<private> sonda_saida: f32 = 0.0;
 var<private> sonda_e1: vec3<f32> = vec3<f32>(0.0, 0.0, -9.0);
 var<private> sonda_e2: vec3<f32> = vec3<f32>(0.0, 0.0, -9.0);
 var<private> sonda_luz: vec3<f32> = vec3<f32>(0.0);
+// ⭐ W6f — a normal de fora da face do ponto remapeado, medida no [`onde_calcular`] (0 = não medida).
+var<private> face_do_ponto: vec2<f32> = vec2<f32>(0.0);
 
 // ⭐ A fração da área de um quadrado de lado `h` (centrado) além da reta `g·x = t` (`g` unitária,
 // `t ≥ 0`): a projeção do quadrado em `g` é um trapézio.
@@ -756,21 +762,87 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
         return Onde(cand[i1], true, cand[i1], 0.0);
     }
     cand[i2] = pe_na_borda(P0, cand[i2]);
-    let e1 = pe_na_face(P0, cand[i1], h);
-    let e2 = pe_na_face(P0, cand[i2], h);
+    var e1 = pe_na_face(P0, cand[i1], h);
+    var e2 = pe_na_face(P0, cand[i2], h);
+    // ⭐ W6f — junto ao vértice a paralela centrada cruza a OUTRA face: as normais saem «iguais» (handoff
+    // W6f §1). Medidas de novo do lado oposto à outra face; continuam iguais ⇒ a mesma face.
+    if CANTO_NORMAIS && (e1.z < 0.0 || e2.z < 0.0 || dot(e1.xy, e2.xy) >= COS_OUTRA_FACE) {
+        let f1 = pe_de_um_lado(P0, cand[i1], cand[i2], h);
+        let f2 = pe_de_um_lado(P0, cand[i2], cand[i1], h);
+        if f1.z >= 0.0 && f2.z >= 0.0 && dot(f1.xy, f2.xy) < COS_OUTRA_FACE {
+            e1 = f1;
+            e2 = f2;
+        }
+    }
     sonda_e1 = e1;
     sonda_e2 = e2;
     // Um ponto da MESMA face visto de lado também se afasta em direção: conta a normal.
     if e1.z < 0.0 || e2.z < 0.0 || dot(e1.xy, e2.xy) >= COS_OUTRA_FACE {
         sonda_saida += select(select(6.0, 5.0, e2.z < 0.0), 4.0, e1.z < 0.0);
+        face_do_ponto = select(vec2<f32>(0.0), e1.xy, e1.z >= 0.0);
         return Onde(cand[i1], true, cand[i1], 0.0);
     }
     if e2.z < e1.z {
         sonda_saida += 7.0;
-        return Onde(cand[i2], true, cand[i1], alem_do_eixo(e2, e1, h));
+        face_do_ponto = e2.xy;
+        return Onde(cand[i2], true, cand[i1], fracao_da_outra(e2, e1, h));
     }
     sonda_saida += 8.0;
-    return Onde(cand[i1], true, cand[i2], alem_do_eixo(e1, e2, h));
+    face_do_ponto = e1.xy;
+    return Onde(cand[i1], true, cand[i2], fracao_da_outra(e1, e2, h));
+}
+
+// ⭐ W6f — a fração do texel `h` (centro na origem das faces `(normal, distância)`) mais perto da face `b` que
+// da `a` ([`alem_do_eixo`]); com `CANTO_FRACAO`, no texel que uma face corta, só a parte dentro das duas
+// (8×8 subamostras), como a lei: a parte de fora não é do interior.
+fn fracao_da_outra(a: vec3<f32>, b: vec3<f32>, h: f32) -> f32 {
+    let q = 0.5 * h;
+    let cantos = abs(a.xy) * q;
+    let corta = a.z < cantos.x + cantos.y || b.z < (abs(b.x) + abs(b.y)) * q;
+    if !CANTO_FRACAO || !corta {
+        return alem_do_eixo(a, b, h);
+    }
+    var dentro = 0.0;
+    var alem = 0.0;
+    for (var j = 0u; j < 8u; j++) {
+        for (var i = 0u; i < 8u; i++) {
+            let o = (vec2<f32>(f32(i), f32(j)) + 0.5) * (h / 8.0) - q;
+            let da = a.z - dot(o, a.xy);
+            let db = b.z - dot(o, b.xy);
+            if da > 0.0 && db > 0.0 {
+                dentro += 1.0;
+                alem += select(0.0, 1.0, db < da);
+            }
+        }
+    }
+    if dentro < 1.0 {
+        return alem_do_eixo(a, b, h);
+    }
+    return alem / dentro;
+}
+
+// ⭐ W6f — [`pe_na_face`] pelas paralelas do lado OPOSTO a `outro` (o ponto da outra face): `P0 → b` e a
+// mesma reta a um texel `h` para longe dela, que no canto continua na face de `b`.
+fn pe_de_um_lado(P0: vec2<f32>, b: vec2<f32>, outro: vec2<f32>, h: f32) -> vec3<f32> {
+    let d = max(distance(b, P0), 1e-6);
+    let u = (b - P0) / d;
+    var w = vec2<f32>(-u.y, u.x) * h;
+    if dot(w, outro - P0) > 0.0 {
+        w = -w;
+    }
+    let fim = b + u * h;
+    let a1 = P0 + w;
+    if !num_corpo(a1) || num_corpo(fim) || num_corpo(fim + w) {
+        return vec3<f32>(u, -1.0);
+    }
+    let c0 = na_fronteira_fina(P0, fim, h);
+    let c1 = na_fronteira_fina(a1, fim + w, h);
+    let t = c1 - c0;
+    var n = normalize(vec2<f32>(t.y, -t.x));
+    if dot(n, u) < 0.0 {
+        n = -n;
+    }
+    return vec3<f32>(n, dot(c0 - P0, n));
 }
 
 // O candidato mais perto de `P0` (`SEM_FACE` se não há nenhum).
@@ -1052,7 +1124,11 @@ fn luz_das_lampadas(P: vec2<f32>, P0: vec2<f32>, modo: u32, inicial: vec3<f32>) 
             // exterior mais próximo podem estar fora da região.
             medir = true;
             if VIS_NA_FACE {
-                let nf = normal_secante(P, P0, 1.0 / f32(fina.fina));
+                var nf = normal_secante(P, P0, 1.0 / f32(fina.fina));
+                // ⭐ W6f — no canto a secante desiste; a face do ponto foi medida no `onde_calcular`.
+                if CANTO_LUZ && all(nf == vec2<f32>(0.0)) {
+                    nf = face_do_ponto;
+                }
                 // No canto a face não corta a abertura numa reta: a marcha do ponto rente.
                 if any(nf != vec2<f32>(0.0)) {
                     medir = false;

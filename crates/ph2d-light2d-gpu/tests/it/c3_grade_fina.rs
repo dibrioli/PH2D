@@ -824,12 +824,37 @@ fn medida_luz2d_w6f_f3() {
             .expect("arestas")
             .1
     };
+    use ph2d_light2d_gpu::{Canto, VERTICE_PADRAO};
+    let so = |normais, luz, fracao| Canto {
+        normais,
+        luz,
+        fracao,
+    };
+    let variantes = [
+        ("sem a cunha", None, Canto::DESLIGADO),
+        ("cunha", Some(VERTICE_PADRAO), Canto::DESLIGADO),
+        ("sem + 9", None, Canto::LIGADO),
+        ("cunha + 9", Some(VERTICE_PADRAO), Canto::LIGADO),
+        ("cunha + 9a", Some(VERTICE_PADRAO), so(true, false, false)),
+        ("cunha + 9b", Some(VERTICE_PADRAO), so(false, true, false)),
+        ("cunha + 9ac", Some(VERTICE_PADRAO), so(true, false, true)),
+    ];
+    let g = Solver::novo(&gpu, base)
+        .expect("solver")
+        .grade_da_fluencia();
+    let mut r = gabarito_por(&g, |p| lei.fluencia(p));
+    let fundo = crate::comum::dentro_de_opaco(&cena, &g);
+    for k in (0..r.len()).filter(|&k| fundo(k)) {
+        r[k] = media_no_texel(&cena, &lei, &g, k, r[k]);
+    }
+    let perto = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
     let mut lidas = Vec::new();
-    for v in [None, Some(ph2d_light2d_gpu::VERTICE_PADRAO)] {
+    for &(nome, v, canto) in &variantes {
         let mut por_sonda = Vec::new();
         for sonda in 0..=6 {
             let cfg = Config {
                 borda_vertice: v,
+                canto,
                 sonda,
                 ..base
             };
@@ -837,10 +862,12 @@ fn medida_luz2d_w6f_f3() {
             s.quadro(&gpu, &cena);
             por_sonda.push(ler_fluencia(&gpu, &s));
         }
+        eprintln!(
+            "F3 W6f · {nome}: RMSE relativo {:.4}",
+            rmse_rel(&por_sonda[0], &r, &perto)
+        );
         lidas.push(por_sonda);
     }
-    let g = Solver::novo(&gpu, base).expect("solver").grade_da_fluencia();
-    let r = gabarito_por(&g, |p| lei.fluencia(p));
     eprintln!(
         "F3 W6f · vértices {:?} (fino)",
         poli.iter()
@@ -858,7 +885,7 @@ fn medida_luz2d_w6f_f3() {
                 eprintln!("TEXEL ({i}, {j}) fora");
                 continue;
             }
-            let gv = media_no_texel(&cena, &lei, &g, k, r[k])[1];
+            let gv = r[k][1];
             const S: u32 = 24;
             let mut soma = vec![(0u32, 0.0_f64); poli.len()];
             let mut n = 0u32;
@@ -879,11 +906,15 @@ fn medida_luz2d_w6f_f3() {
                 .enumerate()
                 .filter(|x| x.1.0 > 0)
                 .map(|(e, &(m, s))| {
-                    format!(" aresta {e} {:.4}×{:.2}", s / f64::from(m), f64::from(m) / f64::from(n))
+                    format!(
+                        " aresta {e} {:.4}×{:.2}",
+                        s / f64::from(m),
+                        f64::from(m) / f64::from(n)
+                    )
                 })
                 .collect();
             eprintln!("TEXEL ({i}, {j}) · gabarito {gv:.4} = {faces}");
-            for (vi, nome) in ["sem a cunha", "cunha"].iter().enumerate() {
+            for (vi, (nome, _, _)) in variantes.iter().enumerate() {
                 // A lei exata no ponto remapeado (s1) e no da outra face (s6).
                 let em = |x: [f32; 3]| {
                     let q = [

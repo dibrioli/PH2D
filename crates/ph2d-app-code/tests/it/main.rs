@@ -27,6 +27,7 @@ mod lista;
 mod onda1;
 mod oraculo_lsp;
 mod paleta;
+mod problemas_lista;
 mod projecto;
 mod renomear;
 mod salvar;

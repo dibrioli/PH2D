@@ -79,6 +79,10 @@ pub struct CodeView {
     pub(crate) status_col: Option<((u64, usize, usize), usize)>,
     /// As dicas do último quadro (byte, caracteres): o x de uma linha que a cache não tem conta-as.
     pub(crate) inlay_cols: Vec<(usize, usize)>,
+    /// O contador de problemas da barra no último quadro (o clique abre a lista) e o que o leitor
+    /// de ecrã diz dele.
+    pub(crate) counter: Rect,
+    pub(crate) counter_label: String,
 }
 
 /// ⛔ **Os bytes de uma linha que a pintura mostra** — o resto acaba num «…». ⚠️ **De que recurso
@@ -115,6 +119,13 @@ impl Default for CodeView {
             render_cap: LINE_RENDER_BYTES_MAX,
             status_col: None,
             inlay_cols: Vec::new(),
+            counter: Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 0.0,
+                h: 0.0,
+            },
+            counter_label: String::new(),
         }
     }
 }
@@ -160,6 +171,18 @@ impl CodeView {
     #[must_use]
     pub fn link_painted(&self) -> bool {
         self.link_painted
+    }
+
+    /// O contador de problemas da barra de estado no último quadro.
+    #[must_use]
+    pub fn counter_rect(&self) -> Rect {
+        self.counter
+    }
+
+    /// `(x, y)` cai no contador de problemas da barra (o clique abre a lista).
+    #[must_use]
+    pub fn counter_contains(&self, x: f32, y: f32) -> bool {
+        self.counter.w > 0.0 && self.counter.contains(x, y)
     }
 
     /// A zona do texto (sem calha nem barra de estado).

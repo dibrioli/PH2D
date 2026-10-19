@@ -560,6 +560,19 @@ impl DocumentSurface for CodeDocs {
                 .iter()
                 .find(|d| d.script.0 == id)
                 .is_some_and(|d| d.find.open && d.find.focus.is_some());
+        // Ctrl+Shift+M: a lista de problemas, com o teclado em qualquer sítio da aba (o soltar
+        // também é tomado: nenhum atalho da cena o vê).
+        if crate::keys::problems_chord(key, mods)
+            && let Some((_, store)) = self.split(id)
+        {
+            if pressed {
+                store.toggle_problems();
+            }
+            return KeyOutcome {
+                consumed: true,
+                copy: None,
+            };
+        }
         if crate::keys::foreign_chord(key, mods)
             || (crate::keys::suggest_chord(key, mods) && in_field)
         {
@@ -648,11 +661,20 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn a11y(&self, id: u64) -> Vec<(NodeId, Node)> {
-        self.docs
-            .iter()
-            .find(|d| d.script.0 == id)
-            .map(|d| d.view.a11y_nodes(&d.buffer, NodeId(A11Y_SALT ^ (id << 32))))
-            .unwrap_or_default()
+        let Some(d) = self.docs.iter().find(|d| d.script.0 == id) else {
+            return Vec::new();
+        };
+        let base = NodeId(A11Y_SALT ^ (id << 32));
+        let mut nodes = d.view.a11y_nodes(&d.buffer, base);
+        // A faixa de baixo (os separadores e a lista de problemas), filha do `Document`.
+        let (roots, band) = d.console_view.a11y(base);
+        if let Some((_, doc)) = nodes.first_mut() {
+            for r in roots {
+                doc.push_child(r.into());
+            }
+        }
+        nodes.extend(band);
+        nodes
     }
 
     fn caret_area(&self, id: u64) -> Option<Rect> {

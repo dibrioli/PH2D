@@ -1,6 +1,6 @@
 //! O rato na aba: clicar põe o cursor, arrastar selecciona, duplo-clique selecciona a palavra,
 //! Alt+clique junta um cursor, Shift+clique estende, Ctrl+clique vai para a definição (I6); a calha dobra/selecciona a linha; a barra de
-//! busca e o console respondem aos seus alvos.
+//! busca e a faixa de baixo respondem aos seus alvos; o contador da barra abre a lista de problemas.
 
 use crate::console::Store;
 use crate::doc::CodeDoc;
@@ -54,6 +54,11 @@ impl CodeDoc {
         if let Some(h) = self.console_view.hit(x, y) {
             match h {
                 ConsoleHit::Toggle => console.open = !console.open,
+                ConsoleHit::Tab(t) => {
+                    console.open = true;
+                    console.tab = t;
+                }
+                ConsoleHit::Problem(k) => self.problem_pick(k),
                 ConsoleHit::Clear => console.clear(),
                 ConsoleHit::Row(i) => {
                     if let Some(line) = console.line_of(i) {
@@ -102,6 +107,7 @@ impl CodeDoc {
                     .set_selection(Selection::single(Range::new(s, e)));
                 self.buffer.seal_history();
             }
+            Hit::Status if self.view.counter_contains(x, y) => console.toggle_problems(),
             Hit::Status | Hit::Outside => {}
         }
         true

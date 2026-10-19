@@ -327,6 +327,47 @@ impl CodeDocs {
         d.buffer.history().top_link(redo)
     }
 
+    /// ⚠️ SONDA: a lista de problemas do script `id` pela ordem que a faixa a mostra — `(gravidade,
+    /// texto, linha 1-based)`, as MESMAS portas da pintura ([`crate::problem_list`]).
+    #[must_use]
+    pub fn problem_list_of(
+        &mut self,
+        id: ScriptId,
+    ) -> Vec<(ph2d_panel_code::Severity, String, usize)> {
+        let Some(d) = self.doc(id.0) else {
+            return Vec::new();
+        };
+        let ps = d.problems();
+        crate::problem_list::order(&ps)
+            .into_iter()
+            .map(|i| {
+                let r = crate::problem_list::row(&ps[i]);
+                (r.severity, r.text.to_owned(), r.line)
+            })
+            .collect()
+    }
+
+    /// ⚠️ SONDA: o que a faixa de baixo da aba `id` pintou no último quadro (os separadores, as
+    /// linhas da lista, a frase da lista vazia).
+    #[must_use]
+    pub fn band_of(&self, id: ScriptId) -> Option<ph2d_panel_code::BandProbe> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        Some(d.console_view.probe())
+    }
+
+    /// O separador da faixa de baixo do script `id` (o estado, não a pintura).
+    #[must_use]
+    pub fn band_tab_of(&self, id: ScriptId) -> ph2d_panel_code::BandTab {
+        self.consoles.get(&id).map(|s| s.tab).unwrap_or_default()
+    }
+
+    /// ⚠️ SONDA: o contador de problemas que a barra de estado da aba `id` pintou no último quadro.
+    #[must_use]
+    pub fn problems_counter_of(&self, id: ScriptId) -> Option<ph2d_editor_core::zones::Rect> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        Some(d.view.counter_rect()).filter(|r| r.w > 0.0)
+    }
+
     /// ⚠️ SONDA: espera as respostas do formatador em voo (o quadro seguinte aplica-as).
     pub fn wait_format(&mut self) {
         self.format.wait(std::time::Duration::from_secs(30));

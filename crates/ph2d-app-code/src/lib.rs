@@ -34,6 +34,7 @@ mod note;
 mod places;
 mod pointer;
 pub mod problems;
+mod problem_list;
 mod reach;
 mod recovery;
 mod refs;

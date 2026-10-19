@@ -17,11 +17,19 @@ fn um_no_por_linha_visivel_e_rolar_troca_os_nos() {
     buf.set_selection(Selection::single(Range::cursor(cursor)));
     pinta(&mut v, &buf, &mut ts, area, &Deco::default());
     let nos = v.a11y_nodes(&buf, BASE);
-    assert_eq!(nos.len(), VISTA + 1);
+    assert_eq!(
+        nos.len(),
+        VISTA + 2,
+        "o Document, as linhas e o contador da barra"
+    );
     let (id, doc) = &nos[0];
     assert_eq!((*id, doc.role()), (BASE, Role::Document));
+    let (contador, botao) = nos.last().unwrap();
+    assert_eq!(botao.role(), Role::Button);
+    assert_eq!(botao.label(), Some("Errors: 0, Warnings: 0"));
     let filhos: Vec<AkNodeId> = (0..VISTA)
         .map(|l| CodeView::a11y_run_id(BASE, l).into())
+        .chain([AkNodeId::from(*contador)])
         .collect();
     assert_eq!(doc.children(), filhos.as_slice());
     let sel = doc.text_selection().expect("seleção");
@@ -30,7 +38,7 @@ fn um_no_por_linha_visivel_e_rolar_troca_os_nos() {
         AkNodeId::from(CodeView::a11y_run_id(BASE, 5))
     );
     assert_eq!(sel.focus.character_index, 2);
-    for (k, (id, run)) in nos[1..].iter().enumerate() {
+    for (k, (id, run)) in nos[1..=VISTA].iter().enumerate() {
         assert_eq!(*id, CodeView::a11y_run_id(BASE, k));
         assert_eq!(run.role(), Role::TextRun);
         assert_eq!(
@@ -47,7 +55,7 @@ fn um_no_por_linha_visivel_e_rolar_troca_os_nos() {
     v.scroll_by(10.0 * v.metrics().line_h);
     pinta(&mut v, &buf, &mut ts, area, &Deco::default());
     let nos = v.a11y_nodes(&buf, BASE);
-    assert_eq!(nos.len(), VISTA + 1);
+    assert_eq!(nos.len(), VISTA + 2);
     assert_eq!(nos[1].0, CodeView::a11y_run_id(BASE, 10));
     assert_eq!(nos[1].1.value(), Some(buf.text().line_string(10).as_str()));
     assert_eq!(

@@ -107,7 +107,16 @@ fn medicoes_do_fecho() {
             for _ in 0..BLOCO {
                 scene.reset();
                 let t = Instant::now();
-                views[i].paint(&consoles[i], true, 0, area, &mut scene, &mut ts, &theme);
+                let band = ph2d_panel_code::Band {
+                    open: true,
+                    tab: ph2d_panel_code::BandTab::Console,
+                    console: &consoles[i],
+                    console_errors: 0,
+                    problem_count: 0,
+                    problems: &[],
+                    current: None,
+                };
+                views[i].paint(band, area, &mut scene, &mut ts, &theme);
                 a[i].push(t.elapsed().as_secs_f64() * 1e6);
             }
         }

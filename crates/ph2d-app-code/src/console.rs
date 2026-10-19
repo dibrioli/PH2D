@@ -1,8 +1,9 @@
 //! ⭐ **E10 — o console de UM script**: o que a cena disse (`print`, erros de runtime, recusas de
-//! recarga), guardado por `ScriptId` mesmo com a aba fechada, e se ele está aberto.
+//! recarga), guardado por `ScriptId` mesmo com a aba fechada, e a faixa de baixo da aba desse script:
+//! aberta ou fechada, e em que separador (Console ou Problems).
 
 use ph2d_i18n::tr_with;
-use ph2d_panel_code::{ConsoleRow, ConsoleSource, Tone};
+use ph2d_panel_code::{BandTab, ConsoleRow, ConsoleSource, Tone};
 use ph2d_script::{CONSOLE_BYTES_MAX, CONSOLE_LINES_MAX, ConsoleKind, ConsoleLine};
 use std::collections::VecDeque;
 
@@ -23,6 +24,8 @@ pub(crate) struct Store {
     bytes: usize,
     errors: usize,
     pub open: bool,
+    /// O separador da faixa (por script, como o `open`).
+    pub tab: BandTab,
 }
 
 impl Store {
@@ -52,6 +55,7 @@ impl Store {
         self.put(text, tone, line);
         if runtime {
             self.open = true;
+            self.tab = BandTab::Console;
         }
         runtime
     }
@@ -77,6 +81,16 @@ impl Store {
         if let Some(e) = self.entries.pop_front() {
             self.bytes -= e.text.len();
             self.errors -= usize::from(e.tone == Tone::Error);
+        }
+    }
+
+    /// O contador da barra e o Ctrl+Shift+M: abre a faixa nos Problems; aberta nos Problems, fecha-a.
+    pub fn toggle_problems(&mut self) {
+        if self.open && self.tab == BandTab::Problems {
+            self.open = false;
+        } else {
+            self.open = true;
+            self.tab = BandTab::Problems;
         }
     }
 

@@ -8,15 +8,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "doc.tab.dirty_title" => "{name} ●",
         // A barra de estado do editor (E4): o cursor, os problemas e o selo do último salvar.
         "code.status.position" => "Ln {line}, Col {col}",
-        "code.status.no_problems" => "No problems",
         // O script tem `--!strict` na 1.ª linha (I14).
         "code.status.strict" => "Strict types",
-        // As contagens têm a forma de UM à parte (`_one`): «1 errors» era o que a barra dizia.
-        "code.status.problems" => "{errors} · {warnings}",
-        "code.status.errors" => "{count} errors",
-        "code.status.errors_one" => "1 error",
-        "code.status.warnings" => "{count} warnings",
-        "code.status.warnings_one" => "1 warning",
+        // O contador de problemas (ícones e números) ao leitor de ecrã: o molde do VS Code 1.142.
+        "code.status.counter" => "Errors: {errors}, Warnings: {warnings}",
         "code.status.reloaded" => "Reloaded · {count} objects",
         "code.status.reloaded_one" => "Reloaded · 1 object",
         "code.status.refused_line" => {
@@ -61,6 +56,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.console.runtime_error_noline" => "Error: {msg}",
         "code.console.refused" => "Not applied — line {line}: {msg}",
         "code.console.refused_noline" => "Not applied: {msg}",
+        // A lista de problemas, o 2.º separador da faixa de baixo (acabamento, Onda 2 item 4).
+        "code.band.problems" => "Problems",
+        "code.band.problems_count" => "Problems ({count})",
+        "code.problems.empty" => "No problems in this script.",
+        "code.problems.line" => "Line {line}",
+        // O leitor de ecrã: a lista e cada linha (o molde do VS Code 1.142, `oraculo_acabamento`).
+        "code.problems.a11y_list" => "Problems: {count}",
+        "code.problems.a11y_error" => "Error: {text}, line {line}",
+        "code.problems.a11y_warning" => "Warning: {text}, line {line}",
+        "code.problems.a11y_info" => "Info: {text}, line {line}",
         // Os problemas vivos do texto (E7), enquanto se escreve.
         "code.problem.syntax" => "Syntax error",
         "code.problem.missing" => "Missing {sym}",

@@ -1,14 +1,16 @@
-//! A barra de estado do editor: `linha:coluna` do cursor primário, a contagem de problemas e o selo
-//! do último salvar. Todo texto vem do `ph2d-i18n` (chaves `code.status.*`).
+//! A barra de estado do editor: `linha:coluna` do cursor primário, o contador de problemas (ícone e
+//! número de erros e de avisos; um clique abre a lista) e o selo do último salvar. Todo texto vem do
+//! `ph2d-i18n` (chaves `code.status.*`).
 
 use crate::frame::{Assist, Badge, CodeFrame, Severity};
 use crate::palette::Palette;
 use crate::view::CodeView;
-use ph2d_editor_core::paint::{label_column_width, paint_text_elided, rect_to_vello};
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::paint::{label_column_width, paint_icon, paint_text_elided, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{INLINE_ICON_PX, Spacing, StrokeToken, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// O tom do texto de uma peça da barra.
@@ -20,11 +22,23 @@ pub enum Tone {
     Error,
 }
 
+/// O contador de problemas da barra: erros e avisos (informação e dica não contam) e o que o leitor
+/// de ecrã diz dele (o molde do VS Code, «Errors: 3, Warnings: 2»).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Counter {
+    pub errors: usize,
+    pub warnings: usize,
+    pub label: String,
+}
+
+/// Os ids do leitor de ecrã somados ao do `Document` (ao lado dos da faixa de baixo).
+pub(crate) const A11Y_COUNTER: u64 = (1 << 31) | (1 << 28) | (1 << 27);
+
 /// Os textos da barra, já traduzidos (a pintura e os testes lêem os MESMOS).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StatusLine {
     pub position: String,
-    pub problems: (String, Tone),
+    pub counter: Counter,
     pub assist: Option<(String, Tone)>,
     pub badge: Option<(String, Tone)>,
     /// O modo de tipos do script (I14): «Strict» com `--!strict`.
@@ -58,30 +72,17 @@ impl StatusLine {
             .iter()
             .filter(|p| p.severity == Severity::Warning)
             .count();
-        let problems = match (errors, warnings) {
-            (0, 0) => (tr("code.status.no_problems").to_owned(), Tone::Plain),
-            (e, w) => {
-                let tone = if e > 0 { Tone::Error } else { Tone::Warning };
-                let errors = match e {
-                    1 => tr("code.status.errors_one").to_owned(),
-                    n => tr_with("code.status.errors", &[("count", &n)]),
-                };
-                let warnings = match w {
-                    1 => tr("code.status.warnings_one").to_owned(),
-                    n => tr_with("code.status.warnings", &[("count", &n)]),
-                };
-                (
-                    tr_with(
-                        "code.status.problems",
-                        &[("errors", &errors), ("warnings", &warnings)],
-                    ),
-                    tone,
-                )
-            }
+        let counter = Counter {
+            errors,
+            warnings,
+            label: tr_with(
+                "code.status.counter",
+                &[("errors", &errors), ("warnings", &warnings)],
+            ),
         };
         Self {
             position,
-            problems,
+            counter,
             assist: frame.assist.map(assist_line),
             badge: badge_line(frame.badge, frame.project_unsaved),
             mode: frame.strict.then(|| tr("code.status.strict").to_owned()),
@@ -146,7 +147,7 @@ fn color(pal: &Palette, tone: Tone) -> ph2d_vector::Color {
 }
 
 pub(crate) fn paint(
-    view: &CodeView,
+    view: &mut CodeView,
     frame: &CodeFrame<'_>,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
@@ -178,14 +179,48 @@ pub(crate) fn paint(
     let gap = Spacing::Xl.px();
     let right = bar.x + bar.w - pad;
     let mut x = bar.x + pad;
-    let mode = s.mode.as_deref().map(|m| (m, Tone::Plain));
-    for (text, tone) in [
-        (s.position.as_str(), Tone::Plain),
-        (s.problems.0.as_str(), s.problems.1),
-    ]
-    .into_iter()
-    .chain(mode)
-    {
+    let w = label_column_width(ts, font, [s.position.as_str()]);
+    paint_text_elided(
+        ts,
+        scene,
+        &s.position,
+        x,
+        y,
+        font,
+        (right - x).max(0.0),
+        pal.status_text,
+    );
+    x += w + gap;
+    // O contador: ⊗ N ⚠ M, cada ícone no tom da gravidade quando há algum.
+    let c0 = x;
+    let icon = INLINE_ICON_PX.min(h);
+    for (id, n, tone) in [
+        (IconId::Error, s.counter.errors, Tone::Error),
+        (IconId::Warning, s.counter.warnings, Tone::Warning),
+    ] {
+        let ir = Rect {
+            x,
+            y: bar.y + (h - icon) * 0.5,
+            w: icon,
+            h: icon,
+        };
+        let c = color(pal, if n > 0 { tone } else { Tone::Plain });
+        paint_icon(scene, id, ir, c, StrokeToken::Default.px());
+        x += icon + Spacing::Xs.px();
+        let t = n.to_string();
+        let w = label_column_width(ts, font, [t.as_str()]);
+        paint_text_elided(ts, scene, &t, x, y, font, (right - x).max(0.0), c);
+        x += w + Spacing::Sm.px();
+    }
+    view.counter = Rect {
+        x: c0,
+        y: bar.y,
+        w: (x - c0).max(0.0),
+        h,
+    };
+    view.counter_label.clone_from(&s.counter.label);
+    x += gap;
+    if let Some(text) = s.mode.as_deref() {
         let w = label_column_width(ts, font, [text]);
         paint_text_elided(
             ts,
@@ -195,7 +230,7 @@ pub(crate) fn paint(
             y,
             font,
             (right - x).max(0.0),
-            color(pal, tone),
+            pal.status_text,
         );
         x += w + gap;
     }

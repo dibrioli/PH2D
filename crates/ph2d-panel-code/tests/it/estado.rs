@@ -28,7 +28,8 @@ fn posicao_problemas_e_selo() {
     )));
     let s = status(&buf, &Deco::default());
     assert_eq!(s.position, "Ln 2, Col 5");
-    assert_eq!(s.problems, ("No problems".to_owned(), Tone::Plain));
+    assert_eq!((s.counter.errors, s.counter.warnings), (0, 0));
+    assert_eq!(s.counter.label, "Errors: 0, Warnings: 0");
     assert_eq!(s.badge, None);
     let d = Deco {
         problems: vec![
@@ -40,7 +41,8 @@ fn posicao_problemas_e_selo() {
         ..Deco::default()
     };
     let s = status(&buf, &d);
-    assert_eq!(s.problems, ("1 error · 2 warnings".to_owned(), Tone::Error));
+    assert_eq!((s.counter.errors, s.counter.warnings), (1, 2));
+    assert_eq!(s.counter.label, "Errors: 1, Warnings: 2");
     assert_eq!(
         s.badge,
         Some(("Reloaded · 3 objects".to_owned(), Tone::Success))
@@ -51,7 +53,7 @@ fn posicao_problemas_e_selo() {
         ..Deco::default()
     };
     let s = status(&buf, &d);
-    assert_eq!(s.problems.1, Tone::Warning);
+    assert_eq!((s.counter.errors, s.counter.warnings), (0, 1));
     let (texto, tom) = s.badge.expect("selo");
     assert!(texto.contains("line 7"), "{texto}");
     assert_eq!(tom, Tone::Error);
@@ -85,7 +87,8 @@ fn o_assistente_so_aparece_quando_nao_esta_pronto() {
     assert_eq!(textos.len(), 4, "{textos:?}");
 }
 
-/// ⛔ «1 errors · 0 warnings» e «Console · 1 errors» (foto `code_smoke_2.png`): a forma de UM.
+/// ⛔ «Console · 1 errors» (foto `code_smoke_2.png`): a forma de UM. O contador da barra conta só
+/// erros e avisos (o molde do leitor de ecrã do VS Code não tem plural).
 #[test]
 fn uma_contagem_de_um_fala_no_singular() {
     let buf = Buffer::new("a\n");
@@ -97,29 +100,18 @@ fn uma_contagem_de_um_fala_no_singular() {
                 ..Deco::default()
             },
         )
-        .problems
-        .0
+        .counter
+        .label
     };
-    assert_eq!(com(vec![p(Severity::Error)]), "1 error · 0 warnings");
-    assert_eq!(
-        com(vec![p(Severity::Error), p(Severity::Error)]),
-        "2 errors · 0 warnings"
-    );
-    assert_eq!(com(vec![p(Severity::Warning)]), "0 errors · 1 warning");
-    assert_eq!(
-        com(vec![
-            p(Severity::Error),
-            p(Severity::Warning),
-            p(Severity::Warning)
-        ]),
-        "1 error · 2 warnings"
-    );
+    assert_eq!(com(vec![p(Severity::Error)]), "Errors: 1, Warnings: 0");
     // Informação e dica pintam-se, mas não são problemas que a barra conte.
-    assert_eq!(com(vec![p(Severity::Info)]), "No problems");
+    assert_eq!(com(vec![p(Severity::Info)]), "Errors: 0, Warnings: 0");
     assert_eq!(
         com(vec![p(Severity::Info), p(Severity::Warning)]),
-        "0 errors · 1 warning"
+        "Errors: 0, Warnings: 1"
     );
+    assert_eq!(ph2d_panel_code::problems_title(0), "Problems");
+    assert_eq!(ph2d_panel_code::problems_title(5), "Problems (5)");
     assert_eq!(ph2d_panel_code::console_title_text(0), "Console");
     assert_eq!(ph2d_panel_code::console_title_text(1), "Console · 1 error");
     assert_eq!(ph2d_panel_code::console_title_text(2), "Console · 2 errors");

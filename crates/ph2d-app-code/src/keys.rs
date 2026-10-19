@@ -15,11 +15,18 @@ const CHORDS: [char; 11] = ['a', 'c', 'd', 'f', 'g', 'h', 's', 'v', 'x', 'y', 'z
 /// para o atalho dela.
 pub(crate) fn foreign_chord(key: Key, mods: Modifiers) -> bool {
     (mods.ctrl || mods.meta)
+        && !problems_chord(key, mods)
         && match key {
             Key::Char(c) => !CHORDS.contains(&c),
             Key::Other => true,
             _ => false,
         }
+}
+
+/// Ctrl+Shift+M: a lista de problemas abre/fecha (o atalho do VS Code; o mesmo que o clique no
+/// contador da barra). Só com o Shift: o Ctrl+M segue para a shell.
+pub(crate) fn problems_chord(key: Key, mods: Modifiers) -> bool {
+    (mods.ctrl || mods.meta) && mods.shift && matches!(key, Key::Char('m' | 'M'))
 }
 
 /// Ctrl+Espaço: a lista de completação na hora — só com o TEXTO do script em foco (decisão do dono,
@@ -123,6 +130,8 @@ impl CodeDoc {
             // F2: renomear o nome no cursor; Shift+F12: a lista dos sítios dele (I10).
             Key::F(2) if !cmd && !shift => self.start_rename(),
             Key::F(12) if !cmd && shift => self.open_refs(),
+            // F8 / Shift+F8: o problema seguinte/anterior pela ordem da lista (acabamento).
+            Key::F(8) if !cmd => self.problem_step(!shift),
             Key::Space if cmd => self.complete.open_now(
                 self.buffer.text(),
                 self.buffer.selection().primary().head,

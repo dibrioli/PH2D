@@ -25,7 +25,8 @@ mod view;
 
 pub use a11y::RUN_CHARS;
 pub use console::{
-    ConsoleHit, ConsoleRow, ConsoleSource, ConsoleView, title_text as console_title_text,
+    Band, BandProbe, BandTab, ConsoleHit, ConsoleRow, ConsoleSource, ConsoleView, PaintedProblem,
+    ProblemRow, problem_label, problems_title, title_text as console_title_text,
 };
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{
@@ -40,6 +41,6 @@ pub use line_cache::LineCache;
 pub use metrics::Metrics;
 pub use popup::{CompletionHit, CompletionPaintedRow};
 pub use script_list::{ListField, ListHit, ListRow, ScriptList, ScriptListView};
-pub use status::{StatusLine, Tone, assist_line, badge_line};
+pub use status::{Counter, StatusLine, Tone, assist_line, badge_line};
 pub use style::Ink;
 pub use view::{CodeView, Hit, Underline};

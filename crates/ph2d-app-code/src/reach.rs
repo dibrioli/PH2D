@@ -59,7 +59,8 @@ pub(crate) struct Asked {
 impl Asked {
     /// Falta mandar o pedido do passo em que está.
     pub fn unsent(&self) -> bool {
-        self.ticket.is_none() && matches!(self.verdict, Verdict::Definition | Verdict::Documentation)
+        self.ticket.is_none()
+            && matches!(self.verdict, Verdict::Definition | Verdict::Documentation)
     }
 }
 
@@ -109,9 +110,10 @@ impl CodeDoc {
     /// Ctrl+clique o leva a algum sítio (nesta revisão).
     pub(crate) fn reach_link(&self) -> Option<Range<usize>> {
         let (x, y) = self.reach.mouse.filter(|_| self.reach.held)?;
-        let a = self.reach.asked.as_ref().filter(|a| {
-            a.verdict == Verdict::Reaches && a.revision == self.buffer.revision()
-        })?;
+        let a =
+            self.reach.asked.as_ref().filter(|a| {
+                a.verdict == Verdict::Reaches && a.revision == self.buffer.revision()
+            })?;
         (self.word_under(x, y)? == a.word).then(|| a.word.clone())
     }
 
@@ -161,14 +163,24 @@ impl CodeDoc {
     }
 
     /// O ponteiro sobre o que tapa o texto, a mesma ordem do clique (`press`): a caixinha do F2, o
-    /// balão, a lista, a consola e a barra de busca são seta, menos os campos de texto; `None` = nada.
+    /// balão, a lista e a barra de busca são seta, menos os campos de texto; na faixa de baixo e no
+    /// contador da barra, o que um clique leva a algum sítio é a mão; `None` = nada.
     fn overlay_look(&self, x: f32, y: f32) -> Option<PointerLook> {
         if (self.rename.is_some() && self.view.rename_contains(x, y))
             || self.view.hint_hover_contains(x, y)
             || self.view.completion_hit(x, y).is_some()
-            || self.console_view.hit(x, y).is_some()
         {
             return Some(PointerLook::Arrow);
+        }
+        if let Some(h) = self.console_view.hit(x, y) {
+            return Some(if self.console_view.clickable(h) {
+                PointerLook::Hand
+            } else {
+                PointerLook::Arrow
+            });
+        }
+        if self.view.counter_contains(x, y) {
+            return Some(PointerLook::Hand);
         }
         let field = self.find_view.over(x, y).filter(|_| self.find.open)?;
         Some(if field {
@@ -185,7 +197,11 @@ impl CodeDoc {
             return look;
         }
         match self.view.hit(&self.buffer, x, y) {
-            Hit::Text(_) if self.reach_link().is_some_and(|w| self.word_under(x, y) == Some(w)) => {
+            Hit::Text(_)
+                if self
+                    .reach_link()
+                    .is_some_and(|w| self.word_under(x, y) == Some(w)) =>
+            {
                 PointerLook::Hand
             }
             Hit::Text(_) => PointerLook::Text,

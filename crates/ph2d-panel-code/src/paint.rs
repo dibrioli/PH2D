@@ -551,11 +551,28 @@ impl CodeView {
         if let Some((id, _)) = &rename {
             doc.push_child((*id).into());
         }
+        let counter = (self.counter.w > 0.0).then(|| {
+            let id = NodeId(base.0 + crate::status::A11Y_COUNTER);
+            let r = self.counter;
+            let n = NodeBuilder::new(Role::Button)
+                .label(self.counter_label.clone())
+                .bounds(
+                    f64::from(r.x),
+                    f64::from(r.y),
+                    f64::from(r.w),
+                    f64::from(r.h),
+                )
+                .action(ph2d_a11y::Action::Click)
+                .build();
+            doc.push_child(id.into());
+            (id, n)
+        });
         out.push((base, doc));
         out.extend(runs);
         out.extend(list.into_iter().flat_map(|l| l.2));
         out.extend(hints);
         out.extend(rename);
+        out.extend(counter);
         out
     }
 }

@@ -91,6 +91,8 @@ pub(crate) struct CodeDoc {
     pub(crate) refs: Option<crate::refs::RefsList>,
     /// O modelo com buracos inserido, enquanto a sessão dele vive (I12).
     pub(crate) snippet: Option<crate::snippet::Tabstops>,
+    /// O problema onde o F8 (ou o clique na lista) está ([`crate::problem_list`]).
+    pub(crate) problem_at: Option<crate::problem_list::Key>,
     /// As cores que o último quadro pintou (a sonda `ink_painted`).
     pub(crate) painted: Vec<(std::ops::Range<usize>, Ink)>,
     /// O relógio da última tecla/clique nesta aba (o cursor não pisca enquanto se escreve).
@@ -150,6 +152,7 @@ impl CodeDoc {
             occ: crate::refs::Occurrences::default(),
             refs: None,
             snippet: None,
+            problem_at: None,
             painted: Vec::new(),
             last_input_ns: 0,
             badge: None,
@@ -362,7 +365,8 @@ impl CodeDoc {
             .find_map(|b| self.syntax.matching_bracket(t, b).map(|m| (b, m)))
     }
 
-    /// As três faixas da aba: a barra de busca em cima, o código, o console em baixo.
+    /// As três faixas da aba: a barra de busca em cima, o código, a faixa de baixo (Console e
+    /// Problems).
     pub fn layout(&self, area: Rect, console_open: bool) -> (Option<Rect>, Rect, Rect) {
         let find_h = self.find.bar_height();
         let console_h = ConsoleView::height(console_open, area.h).min((area.h - find_h).max(0.0));
@@ -524,15 +528,28 @@ impl CodeDoc {
             let bar = self.find.bar();
             self.find_view.paint(&bar, r, scene, ts, theme);
         }
-        self.console_view.paint(
+        // A lista lê o MESMO `Arc` da calha; só se ordena e compõe com ela à mostra.
+        let listing = console.open && console.tab == ph2d_panel_code::BandTab::Problems;
+        let order = if listing {
+            crate::problem_list::order(&problems)
+        } else {
+            Vec::new()
+        };
+        let rows: Vec<ph2d_panel_code::ProblemRow<'_>> = order
+            .iter()
+            .map(|&i| crate::problem_list::row(&problems[i]))
+            .collect();
+        let current = self.problem_current(&problems, &order);
+        let band = ph2d_panel_code::Band {
+            open: console.open,
+            tab: console.tab,
             console,
-            console.open,
-            console.errors(),
-            console_r,
-            scene,
-            ts,
-            theme,
-        );
+            console_errors: console.errors(),
+            problem_count: problems.len(),
+            problems: &rows,
+            current,
+        };
+        self.console_view.paint(band, console_r, scene, ts, theme);
     }
 }
 

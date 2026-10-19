@@ -113,3 +113,25 @@ lições do bloco 3. Gate `the_w23_scene_draws_the_map_by_hand_with_its_lessons`
    pinça dá zoom · com muitos quadros (carregar no + das abas várias vezes) aparecem ‹ › nas abas.
 3. Deu errado se: o «−» não aparece ao pairar num nó com filhos; mudar a letra da raiz não mexe nos filhos; os ramos somem ou saem lisos;
    o menu do botão direito não abre; dois dedos dão zoom em vez de mover.
+
+## Depois do smoke do dono (19/10) — FAZER PRIMEIRO na próxima janela
+
+Foto do dono: o nó «Ideas» seleccionado, o «−» em cima da pega de redimensionar da direita.
+
+1. **O «−» tapa a pega E/W (ou N/S) da moldura.** Mecanismo: `mind_minus` (`ph2d-board-edit/src/mind_hover.rs`) põe-no
+   no MEIO da borda de fora — exactamente onde a moldura da selecção pinta a pega `Resize(E)` (o gate só testou sem
+   selecção). Cura proposta: afastá-lo para fora em px de ECRÃ como o «+» (o «+» está a `Metrics::dot` = 40 px; o «−» a
+   `dot/2` = 20 px fica entre a pega (raio 8) e o «+» (raio 8) sem tocar): `Overlay::mind_minus` passa a `(ponto, dir)`,
+   o render (`ph2d-board-render/src/mind.rs`) e o alcance (`mind_minus_at`) afastam `dot/2 * px`. Gate red-first: com o
+   nó SELECCIONADO, o centro do «−» fica a ≥ 2×`handle` de toda pega da moldura (`Frame::handle`) e do «+»; foto.
+2. **«Não há «…» ao lado das pontas das setas».** O gate `the_more_tips_grid_offers_every_head_of_the_catalog` passa
+   pelo `click_bar` do arnês, mas o dono não o vê na janela real — mecanismo POR MEDIR. Suspeitas a conferir no código
+   antes de mexer: (a) a barra de uma seta presa a formas cai noutro `Selected` (`Both`?) que não tem os grupos de
+   pontas; (b) `layout::style_rects_of` corta/colapsa grupos que não cabem; (c) o `filter` de `shows` de outra família.
+   Prova pelo que se VÊ: uma cena que arme uma seta seleccionada (as duas pontas presas a caixas, como o dono a faz) e a
+   foto da barra em 1366×768 e 1930×1040; o gate tem de seleccionar a seta como o dono (desenhar entre duas caixas).
+3. **A lição 6 da cena 24 não se entendeu** («carregue no + das abas — que abas?»). As abas são a fila no TOPO da
+   janela («Scene», «Board tweaks», «+»). Reescrever a lição (`board.smoke.w23.l6`) a dizer onde: «na fila de cima
+   (Scene, Board tweaks, +), carregue no + muitas vezes: aparecem ‹ › para andar entre os quadros».
+
+Depois disto, segue o ABERTO acima (B5 1, 2, 4; blocos 4–6).

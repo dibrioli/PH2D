@@ -67,10 +67,17 @@ pub fn entre(a: f64, b: f64, t: f64) -> f64 {
     a + (b - a) * 0.5 * (1.0 - (std::f64::consts::PI * t.clamp(0.0, 1.0)).cos())
 }
 
-/// O passo de uma célula: a altura `h` puxada para o `alvo` pela cobertura `w` (`0..1`) da silhueta do dab.
+/// O passo de uma célula: a altura `h` puxada para o `alvo` pela cobertura `w` (`0..1`) da silhueta do dab, por
+/// `passos` passagens de uma célula de caminho — o pente é por COMPRIMENTO (prompt 51): um dab que representa 2
+/// células de traço puxa como as duas passagens do traço denso (`1 − (1 − TAXA·w)^passos`); `1` = a lei de sempre.
 #[must_use]
-pub fn penteia(h: f32, alvo: f64, w: f64) -> f32 {
-    let k = (TAXA * w).clamp(0.0, 1.0);
+pub fn penteia(h: f32, alvo: f64, w: f64, passos: f64) -> f32 {
+    let k1 = (TAXA * w).clamp(0.0, 1.0);
+    let k = if passos == 1.0 {
+        k1
+    } else {
+        1.0 - (1.0 - k1).powf(passos.max(0.0))
+    };
     (f64::from(h) + k * (alvo - f64::from(h))) as f32
 }
 

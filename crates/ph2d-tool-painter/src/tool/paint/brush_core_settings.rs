@@ -281,8 +281,10 @@ impl PainterTool {
         self.paint.brush.continuous_spacing = !self.paint.brush.continuous_spacing;
     }
 
-    /// Set **Continuous Spacing** (the Wet Paint brush opens with it on — the factory rule, prompt 51).
-    pub fn set_brush_continuous_spacing(&mut self, on: bool) {
+    /// Set **Continuous Spacing** (the Wet Paint brush opens with it on — the factory rule, prompt 51): the tests'
+    /// door; the panel toggles.
+    #[cfg(test)]
+    pub(crate) fn set_brush_continuous_spacing(&mut self, on: bool) {
         self.paint.brush.continuous_spacing = on;
     }
 

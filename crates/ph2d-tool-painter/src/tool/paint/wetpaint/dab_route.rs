@@ -265,25 +265,34 @@ impl PainterTool {
         // sub-dabs, oldest first, at least one engine cell apart: the deposit gates each against the
         // paper (`trail/deposit.rs::cell`), so only the sub-dabs themselves lay the dense stroke —
         // a capsule composed host-side either dilutes under the gate or widens past it (measured).
-        // `k` conta os sub-dabs de trás para a frente: o `0` é o próprio dab.
-        let sub_dabs: Vec<(usize, u64, Dab)> = dabs
+        // `k` conta os sub-dabs de trás para a frente (o `0` é o próprio dab); `passo` é o sub-passo NATURAL (o da
+        // janela do rasto, que conta dabs: o arredondado a 2 células virava-a, doc 51 §4) e o arredondado (o arco que
+        // cada sub-dab representa), com cápsula. O sub-passo é o do raio do PINCEL — o do dab traz a pressão e a
+        // caneta deitada (×3,3), e o traçador sempre espaçou pelo do pincel.
+        let natural = {
+            let n = ph2d_painter_brush::capsula::sub_passo_px_a(
+                brush.clamped_radius(),
+                sub_da_capsula,
+            );
+            if tecto_da_capsula > 0.0 { n.min(tecto_da_capsula) } else { n }
+        };
+        let sub = ph2d_painter_brush::capsula::sub_passo_sem_batimento(
+            natural,
+            f32::from(ratio).max(1.0),
+        );
+        let sub_dabs: Vec<(usize, u64, Option<[f32; 2]>, Dab)> = dabs
             .iter()
             .enumerate()
             .flat_map(|(i, d)| {
-                let natural =
-                    ph2d_painter_brush::capsula::sub_passo_px_a(d.radius_px, sub_da_capsula);
-                let sub = ph2d_painter_brush::capsula::sub_passo_sem_batimento(
-                    if tecto_da_capsula > 0.0 { natural.min(tecto_da_capsula) } else { natural },
-                    f32::from(ratio).max(1.0),
-                );
                 let s = ph2d_painter_brush::capsula::sub_dabs(d, sub);
                 let n = s.len() as u64;
+                let passo = (d.step != [0.0, 0.0]).then_some([natural, sub]);
                 s.into_iter()
                     .enumerate()
-                    .map(move |(j, s)| (i, n - 1 - j as u64, s))
+                    .map(move |(j, s)| (i, n - 1 - j as u64, passo, s))
             })
             .collect();
-        for (didx, sub_k, d) in sub_dabs.iter().map(|(i, k, d)| (*i, *k, d)) {
+        for (didx, sub_k, passo, d) in sub_dabs.iter().map(|(i, k, p, d)| (*i, *k, *p, d)) {
             let [x, y] = d.center;
             // LANE matching, geometric: the dab belongs to the lane whose
             // last position is within its own radius (consecutive dabs of one
@@ -315,7 +324,8 @@ impl PainterTool {
                 match lane {
                     Some(i) => {
                         if wet_tool.uses_lanes() {
-                            let chord = grid_map::px_len_to_cell(f64::from(best.sqrt()), ratio);
+                            let corda = passo.map_or(best.sqrt(), |[natural, _]| natural);
+                            let chord = grid_map::px_len_to_cell(f64::from(corda), ratio);
                             sess.engine.direct_segment(i, chord);
                         }
                         i
@@ -369,7 +379,7 @@ impl PainterTool {
                 .filter(|_| passo_do_pigmento > 0.0)
                 .map_or(1.0, |_| {
                     let c = (d.arc_len - sess.lanes[li].arco).max(0.0);
-                    let w = c / spec.passo_ao_longo_px(passo_do_pigmento, d.dir);
+                    let w = c / brush.passo_ao_longo_px(passo_do_pigmento, d.dir);
                     // O passo do PRÓPRIO Spacing de afinação é o dab inteiro, ao byte (a corda sai dos centros em f32).
                     if (w - 1.0).abs() < 1e-3 {
                         1.0
@@ -379,6 +389,12 @@ impl PainterTool {
                         w.min(1.0)
                     }
                 });
+            // O pente do relevo também é por comprimento: as células de caminho desde o dab anterior da lane (a
+            // borracha, sem lanes, pelo sub-passo da cápsula).
+            let passos_do_pente = lane_prev.map_or(1.0, |_| {
+                let n = f64::from((d.arc_len - sess.lanes[li].arco).max(0.0)) / f64::from(ratio);
+                if (n - 1.0).abs() < 1e-3 { 1.0 } else { n }
+            });
             let fp = spec.dab_footprint_of(d);
             let dab_index = didx;
             let tex_rng = dab_rng.enter(&groups, dab_index);
@@ -676,8 +692,9 @@ impl PainterTool {
                 );
                 // A borracha tira também o relevo que houver (sem o campo, nada a tirar).
                 if !sess.engine.active_grid().altura.is_empty() {
+                    let passos = passo.map_or(1.0, |[_, s]| f64::from(s) / px_cel);
                     sess.engine
-                        .pentear_relevo(cell_x, cell_y, meia, &sil, &|_, _| 0.0);
+                        .pentear_relevo(cell_x, cell_y, meia, &sil, &|_, _| 0.0, passos);
                 }
                 continue;
             }
@@ -719,7 +736,7 @@ impl PainterTool {
                             ph2d_wet_paint::bristles_relevo::entre(do_fio(a), do_fio(b), t) / px_cel
                         };
                         sess.engine
-                            .pentear_relevo(cell_x, cell_y, meia, &sil, &alvo);
+                            .pentear_relevo(cell_x, cell_y, meia, &sil, &alvo, passos_do_pente);
                     }
                 }
                 // Blend keeps the engine's own fixed-hardness stamp (the

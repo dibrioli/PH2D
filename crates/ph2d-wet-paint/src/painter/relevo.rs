@@ -8,7 +8,9 @@ impl Engine {
     /// meia-extensão `meia` (células — a da PEGADA: a lâmina chata do óleo é ⅓ do quadrado do raio): cada
     /// célula vai para `alvo(cx, cy)` (a unidade do campo) pela cobertura `sil(cx, cy)`
     /// ([`crate::bristles_relevo::penteia`]). Por linhas, em série ou em paralelo pelo piso medido
-    /// [`crate::par::MIN_CELLS_PENTE`] — a mesma resposta (cada célula só lê e escreve a si própria).
+    /// [`crate::par::MIN_CELLS_PENTE`] — a mesma resposta (cada célula só lê e escreve a si própria). `passos` = as
+    /// células de caminho que o dab representa ([`crate::bristles_relevo::penteia`]).
+    #[allow(clippy::too_many_arguments)]
     pub fn pentear_relevo(
         &mut self,
         x: f64,
@@ -16,12 +18,14 @@ impl Engine {
         meia: [f64; 2],
         sil: crate::brush::CellFn<'_>,
         alvo: crate::brush::CellFn<'_>,
+        passos: f64,
     ) {
-        self.pentear_relevo_rows(x, y, meia, sil, alvo, None);
+        self.pentear_relevo_rows(x, y, meia, sil, alvo, passos, None);
     }
 
     /// [`Self::pentear_relevo`] com a rota forçada (`None` = o produto: [`Rows::pick`]) — a sonda do piso
     /// (`tests/it/measure_pente_rows.rs`) e o portão da identidade das duas rotas.
+    #[allow(clippy::too_many_arguments)]
     pub fn pentear_relevo_rows(
         &mut self,
         x: f64,
@@ -29,6 +33,7 @@ impl Engine {
         meia: [f64; 2],
         sil: crate::brush::CellFn<'_>,
         alvo: crate::brush::CellFn<'_>,
+        passos: f64,
         mode: Option<Rows>,
     ) {
         let (ax, ay) = (meia[0].ceil() as i32 + 1, meia[1].ceil() as i32 + 1);
@@ -52,7 +57,7 @@ impl Engine {
                     continue;
                 }
                 let c = &mut linha[px as usize];
-                *c = crate::bristles_relevo::penteia(*c, alvo(px, py), w);
+                *c = crate::bristles_relevo::penteia(*c, alvo(px, py), w, passos);
             }
         });
         self.merge_dirty(x0, y0, x1, y1);

@@ -1,0 +1,81 @@
+[custo] load 3.47 11.86 28.03 1/1554 626306
+[custo] Wet Round@antes r 20: evento 2.368 · quadro 6.986 · pior 7.135 ms · 474 dabs no motor
+[custo] Wet Round@fabrica r 20: evento 1.916 · quadro 5.542 · pior 5.817 ms · 401 dabs no motor
+[custo] Wet Round@antes r 51.5: evento 1.085 · quadro 3.198 · pior 3.489 ms · 185 dabs no motor
+[custo] Wet Round@fabrica r 51.5: evento 1.021 · quadro 3.198 · pior 4.006 ms · 184 dabs no motor
+[custo] Wet Wash@antes r 20: evento 2.415 · quadro 7.374 · pior 7.517 ms · 526 dabs no motor
+[custo] Wet Wash@fabrica r 20: evento 1.637 · quadro 5.004 · pior 5.352 ms · 401 dabs no motor
+[custo] Wet Wash@antes r 51.5: evento 1.307 · quadro 3.942 · pior 4.064 ms · 192 dabs no motor
+[custo] Wet Wash@fabrica r 51.5: evento 0.810 · quadro 3.370 · pior 4.474 ms · 192 dabs no motor
+[custo] Wet Dry Brush@antes r 20: evento 0.691 · quadro 2.039 · pior 2.256 ms · 366 dabs no motor
+[custo] Wet Dry Brush@fabrica r 20: evento 0.650 · quadro 1.901 · pior 2.103 ms · 363 dabs no motor
+[custo] Wet Dry Brush@antes r 51.5: evento 1.139 · quadro 3.111 · pior 3.342 ms · 150 dabs no motor
+[custo] Wet Dry Brush@fabrica r 51.5: evento 0.840 · quadro 3.341 · pior 3.813 ms · 148 dabs no motor
+[custo] Wet Drip@antes r 20: evento 2.249 · quadro 6.751 · pior 6.824 ms · 572 dabs no motor
+[custo] Wet Drip@fabrica r 20: evento 2.857 · quadro 9.127 · pior 9.757 ms · 806 dabs no motor
+[custo] Wet Drip@antes r 51.5: evento 1.159 · quadro 3.359 · pior 3.435 ms · 229 dabs no motor
+[custo] Wet Drip@fabrica r 51.5: evento 1.262 · quadro 3.428 · pior 4.289 ms · 228 dabs no motor
+[custo] Wet Liner@antes r 20: evento 2.105 · quadro 6.397 · pior 6.433 ms · 784 dabs no motor
+[custo] Wet Liner@fabrica r 20: evento 2.148 · quadro 6.394 · pior 6.794 ms · 807 dabs no motor
+[custo] Wet Liner@antes r 51.5: evento 1.502 · quadro 4.488 · pior 4.664 ms · 302 dabs no motor
+[custo] Wet Liner@fabrica r 51.5: evento 1.257 · quadro 4.440 · pior 4.829 ms · 299 dabs no motor
+[custo] Oil Bristle@antes r 20: evento 2.537 · quadro 7.686 · pior 7.757 ms · 807 dabs no motor
+[custo] Oil Bristle@fabrica r 20: evento 2.506 · quadro 7.603 · pior 7.675 ms · 806 dabs no motor
+[custo] Oil Bristle@antes r 51.5: evento 4.985 · quadro 15.098 · pior 15.336 ms · 807 dabs no motor
+[custo] Oil Bristle@fabrica r 51.5: evento 1.392 · quadro 4.198 · pior 4.313 ms · 308 dabs no motor
+[custo] Acrylic Round@antes r 20: evento 2.612 · quadro 7.878 · pior 7.959 ms · 807 dabs no motor
+[custo] Acrylic Round@fabrica r 20: evento 2.585 · quadro 7.687 · pior 8.241 ms · 807 dabs no motor
+[custo] Acrylic Round@antes r 51.5: evento 2.777 · quadro 8.462 · pior 8.684 ms · 697 dabs no motor
+[custo] Acrylic Round@fabrica r 51.5: evento 3.018 · quadro 10.129 · pior 12.051 ms · 798 dabs no motor
+[custo] Express Oil@antes r 20: evento 2.908 · quadro 8.781 · pior 8.847 ms · 807 dabs no motor
+[custo] Express Oil@fabrica r 20: evento 2.998 · quadro 8.560 · pior 9.015 ms · 807 dabs no motor
+[custo] Express Oil@antes r 51.5: evento 6.039 · quadro 17.996 · pior 20.085 ms · 754 dabs no motor
+[custo] Express Oil@fabrica r 51.5: evento 1.429 · quadro 4.947 · pior 5.272 ms · 299 dabs no motor
+[custo] Graphite 8B@antes r 20: evento 3.788 · quadro 11.427 · pior 11.606 ms · 652 dabs no motor
+[custo] Graphite 8B@fabrica r 20: evento 4.937 · quadro 14.719 · pior 15.851 ms · 806 dabs no motor
+[custo] Graphite 8B@antes r 51.5: evento 1.696 · quadro 5.147 · pior 5.241 ms · 258 dabs no motor
+[custo] Graphite 8B@fabrica r 51.5: evento 1.855 · quadro 5.605 · pior 5.773 ms · 256 dabs no motor
+[custo] Charcoal@antes r 20: evento 3.824 · quadro 11.498 · pior 11.910 ms · 649 dabs no motor
+[custo] Charcoal@fabrica r 20: evento 5.279 · quadro 15.734 · pior 16.757 ms · 806 dabs no motor
+[custo] Charcoal@antes r 51.5: evento 2.018 · quadro 5.813 · pior 6.304 ms · 250 dabs no motor
+[custo] Charcoal@fabrica r 51.5: evento 2.404 · quadro 7.382 · pior 7.993 ms · 248 dabs no motor
+[custo] Soft Pastel@antes r 20: evento 4.327 · quadro 12.783 · pior 13.011 ms · 602 dabs no motor
+[custo] Soft Pastel@fabrica r 20: evento 6.078 · quadro 16.936 · pior 18.255 ms · 803 dabs no motor
+[custo] Soft Pastel@antes r 51.5: evento 2.025 · quadro 5.884 · pior 6.378 ms · 237 dabs no motor
+[custo] Soft Pastel@fabrica r 51.5: evento 2.166 · quadro 6.441 · pior 6.716 ms · 236 dabs no motor
+[custo] Oil Pastel@antes r 20: evento 4.179 · quadro 12.665 · pior 12.941 ms · 560 dabs no motor
+[custo] Oil Pastel@fabrica r 20: evento 6.081 · quadro 19.420 · pior 20.596 ms · 806 dabs no motor
+[custo] Oil Pastel@antes r 51.5: evento 1.614 · quadro 4.904 · pior 5.212 ms · 223 dabs no motor
+[custo] Oil Pastel@fabrica r 51.5: evento 2.024 · quadro 5.391 · pior 6.466 ms · 220 dabs no motor
+[custo] Ink Brush@antes r 20: evento 2.439 · quadro 7.224 · pior 7.392 ms · 726 dabs no motor
+[custo] Ink Brush@fabrica r 20: evento 2.773 · quadro 8.051 · pior 8.112 ms · 805 dabs no motor
+[custo] Ink Brush@antes r 51.5: evento 2.103 · quadro 6.312 · pior 6.583 ms · 252 dabs no motor
+[custo] Ink Brush@fabrica r 51.5: evento 2.185 · quadro 6.564 · pior 6.668 ms · 252 dabs no motor
+[custo] Dip Pen@antes r 20: evento 2.184 · quadro 6.618 · pior 6.648 ms · 807 dabs no motor
+[custo] Dip Pen@fabrica r 20: evento 2.085 · quadro 6.504 · pior 6.868 ms · 806 dabs no motor
+[custo] Dip Pen@antes r 51.5: evento 1.935 · quadro 5.750 · pior 5.945 ms · 311 dabs no motor
+[custo] Dip Pen@fabrica r 51.5: evento 1.567 · quadro 5.457 · pior 6.231 ms · 307 dabs no motor
+[custo] Ink Bullet@antes r 20: evento 2.243 · quadro 6.775 · pior 6.862 ms · 804 dabs no motor
+[custo] Ink Bullet@fabrica r 20: evento 2.152 · quadro 6.788 · pior 6.951 ms · 807 dabs no motor
+[custo] Ink Bullet@antes r 51.5: evento 1.948 · quadro 5.683 · pior 5.999 ms · 308 dabs no motor
+[custo] Ink Bullet@fabrica r 51.5: evento 1.603 · quadro 5.529 · pior 6.279 ms · 307 dabs no motor
+[custo] Marker Bullet@antes r 20: evento 2.310 · quadro 6.938 · pior 6.995 ms · 767 dabs no motor
+[custo] Marker Bullet@fabrica r 20: evento 2.407 · quadro 7.306 · pior 7.326 ms · 803 dabs no motor
+[custo] Marker Bullet@antes r 51.5: evento 1.948 · quadro 5.624 · pior 5.921 ms · 302 dabs no motor
+[custo] Marker Bullet@fabrica r 51.5: evento 1.607 · quadro 5.589 · pior 5.749 ms · 299 dabs no motor
+[custo] Marker Liner@antes r 20: evento 2.355 · quadro 6.976 · pior 7.068 ms · 757 dabs no motor
+[custo] Marker Liner@fabrica r 20: evento 2.530 · quadro 7.488 · pior 7.595 ms · 806 dabs no motor
+[custo] Marker Liner@antes r 51.5: evento 1.777 · quadro 5.926 · pior 5.998 ms · 290 dabs no motor
+[custo] Marker Liner@fabrica r 51.5: evento 1.724 · quadro 5.963 · pior 6.076 ms · 287 dabs no motor
+[custo] Airbrush@antes r 20: evento 1.560 · quadro 4.671 · pior 4.751 ms · 636 dabs no motor
+[custo] Airbrush@fabrica r 20: evento 1.945 · quadro 5.875 · pior 5.974 ms · 807 dabs no motor
+[custo] Airbrush@antes r 51.5: evento 1.387 · quadro 3.935 · pior 4.275 ms · 245 dabs no motor
+[custo] Airbrush@fabrica r 51.5: evento 1.390 · quadro 4.170 · pior 4.238 ms · 244 dabs no motor
+[custo] Wet Flat@antes r 20: evento 2.094 · quadro 6.334 · pior 6.404 ms · 807 dabs no motor
+[custo] Wet Flat@fabrica r 20: evento 2.000 · quadro 6.298 · pior 6.329 ms · 806 dabs no motor
+[custo] Wet Flat@antes r 51.5: evento 1.606 · quadro 5.006 · pior 5.274 ms · 350 dabs no motor
+[custo] Wet Flat@fabrica r 51.5: evento 1.287 · quadro 3.750 · pior 4.005 ms · 306 dabs no motor
+[custo] Gouache Flat@antes r 20: evento 1.961 · quadro 5.937 · pior 6.006 ms · 807 dabs no motor
+[custo] Gouache Flat@fabrica r 20: evento 1.948 · quadro 5.893 · pior 6.057 ms · 806 dabs no motor
+[custo] Gouache Flat@antes r 51.5: evento 1.595 · quadro 4.819 · pior 5.006 ms · 385 dabs no motor
+[custo] Gouache Flat@fabrica r 51.5: evento 1.190 · quadro 3.595 · pior 4.287 ms · 308 dabs no motor

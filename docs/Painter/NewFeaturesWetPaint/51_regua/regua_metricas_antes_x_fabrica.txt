@@ -1,0 +1,378 @@
+## Wet Round
+  (leve         )            antes 9.573 · fabrica 8.000 · s001 8.165 · s005C 8.120
+  (forte        )            antes 8.482 · fabrica 8.223 · s001 8.275 · s005C 8.082
+  (carril       )            antes 8.517 · fabrica 8.446 · s001 8.545 · s005C 8.452
+  (periodo_fracao)            antes 0.037 · fabrica 0.120 · s001 0.023 · s005C 0.118
+  (cv           )            antes 0.026 · fabrica 0.024 · s001 0.024 · s005C 0.025
+  (textura      )            antes 8.466 · fabrica 8.308 · s001 8.492 · s005C 8.327
+  largura antes: [15.0, 52.0, 110.0, 237.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 289100)
+  largura fabrica: [15.0, 52.0, 109.0, 238.0]
+  grande fabrica: dif 0.1047 · tinta 0.9982 · fora 0.1023 (n 292301)
+  largura s001: [15.0, 52.0, 111.0, 241.0]
+  grande s001: dif 0.1026 · tinta 1.0196 · fora 0.0802 (n 294383)
+  largura s005C: [15.0, 52.0, 109.0, 237.0]
+  grande s005C: dif 0.0929 · tinta 1.0168 · fora 0.0744 (n 292705)
+## Wet Wash
+  (leve         )            antes 15.295 · fabrica 15.034 · s001 14.902 · s005C 14.944
+  (forte        )            antes 14.688 · fabrica 14.536 · s001 14.973 · s005C 14.542
+  (carril       )            antes 14.463 · fabrica 14.247 · s001 14.335 · s005C 14.240
+  (periodo_fracao)            antes 0.035 · fabrica 0.038 · s001 0.038 · s005C 0.036
+  (cv           )            antes 0.037 · fabrica 0.037 · s001 0.037 · s005C 0.036
+  (textura      )            antes 14.274 · fabrica 14.077 · s001 14.332 · s005C 14.042
+  largura antes: [14.0, 52.0, 110.0, 239.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 288732)
+  largura fabrica: [14.0, 52.0, 110.0, 239.0]
+  grande fabrica: dif 0.0917 · tinta 1.0062 · fora 0.0548 (n 291212)
+  largura s001: [14.0, 52.0, 108.0, 239.0]
+  grande s001: dif 0.0960 · tinta 1.0376 · fora 0.0563 (n 292771)
+  largura s005C: [14.0, 52.0, 110.0, 239.0]
+  grande s005C: dif 0.0852 · tinta 1.0254 · fora 0.0509 (n 292117)
+## Wet Dry Brush
+  (leve         )            antes 25.780 · fabrica 25.104 · s001 24.768 · s005C 24.996
+  (forte        )            antes 26.834 · fabrica 26.509 · s001 26.592 · s005C 26.430
+  (carril       )            antes 25.308 · fabrica 22.972 · s001 22.710 · s005C 23.050
+  (periodo_fracao)            antes 0.028 · fabrica 0.036 · s001 0.028 · s005C 0.029
+  (cv           )            antes 0.047 · fabrica 0.043 · s001 0.039 · s005C 0.043
+  (textura      )            antes 26.813 · fabrica 26.864 · s001 26.625 · s005C 26.816
+  largura antes: [13.0, 52.0, 111.0, 233.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 320142)
+  largura fabrica: [13.0, 52.0, 112.0, 237.0]
+  grande fabrica: dif 0.3373 · tinta 0.9880 · fora 0.6104 (n 344668)
+  largura s001: [13.0, 52.0, 105.0, 224.0]
+  grande s001: dif 0.2573 · tinta 1.0348 · fora 0.5109 (n 354044)
+  largura s005C: [13.0, 52.0, 112.0, 237.0]
+  grande s005C: dif 0.3304 · tinta 1.0198 · fora 0.6033 (n 346803)
+## Wet Drip
+  (leve         )            antes 9.217 · fabrica 9.504 · s001 9.813 · s005C 9.707
+  (forte        )            antes 11.249 · fabrica 11.387 · s001 12.015 · s005C 10.956
+  (carril       )            antes 11.029 · fabrica 11.128 · s001 10.901 · s005C 11.299
+  (periodo_fracao)            antes 0.123 · fabrica 0.069 · s001 0.116 · s005C 0.067
+  (cv           )            antes 0.170 · fabrica 0.161 · s001 0.171 · s005C 0.157
+  (textura      )            antes 11.842 · fabrica 11.431 · s001 11.921 · s005C 11.433
+  largura antes: [13.0, 52.0, 109.0, 238.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 428939)
+  largura fabrica: [13.0, 52.0, 109.0, 239.0]
+  grande fabrica: dif 0.2255 · tinta 1.0180 · fora 0.1732 (n 450350)
+  largura s001: [13.0, 52.0, 110.0, 241.0]
+  grande s001: dif 0.2327 · tinta 1.0342 · fora 0.1751 (n 450122)
+  largura s005C: [13.0, 52.0, 109.0, 240.0]
+  grande s005C: dif 0.2298 · tinta 1.0203 · fora 0.1770 (n 451229)
+## Wet Liner
+  Cobertura       R 0.653    antes 0.716 · fabrica 0.715 · s001 0.716 · s005C 0.716
+  Textura         R 1.708    antes 3.933 · fabrica 3.967 · s001 3.933 · s005C 3.958
+  (leve         )            antes 9.031 · fabrica 9.023 · s001 9.031 · s005C 9.030
+  (forte        )            antes 3.272 · fabrica 3.281 · s001 3.272 · s005C 3.264
+  (carril       )            antes 3.645 · fabrica 3.733 · s001 3.645 · s005C 3.658
+  (periodo_fracao)            antes 0.028 · fabrica 0.027 · s001 0.028 · s005C 0.028
+  (cv           )            antes 0.020 · fabrica 0.021 · s001 0.020 · s005C 0.021
+  (textura      )            antes 3.933 · fabrica 3.967 · s001 3.933 · s005C 3.958
+  largura antes: [14.0, 52.0, 111.0, 241.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 297319)
+  largura fabrica: [14.0, 52.0, 111.0, 241.0]
+  grande fabrica: dif 0.0466 · tinta 0.9966 · fora 0.1720 (n 297801)
+  largura s001: [14.0, 52.0, 111.0, 242.0]
+  grande s001: dif 0.0404 · tinta 1.0285 · fora 0.1330 (n 298800)
+  largura s005C: [14.0, 52.0, 111.0, 241.0]
+  grande s005C: dif 0.0383 · tinta 1.0060 · fora 0.1334 (n 297833)
+## Oil Bristle
+  Cobertura       R 0.909    antes 0.912 · fabrica 0.912 · s001 0.912 · s005C 0.912
+  Borda           R 0.872    antes 0.887 · fabrica 0.887 · s001 0.887 · s005C 0.887
+  Chato           R 0.317    antes 0.300 · fabrica 0.300 · s001 0.300 · s005C 0.300
+  (leve         )            antes 5.715 · fabrica 5.715 · s001 5.715 · s005C 5.715
+  (forte        )            antes 4.829 · fabrica 4.830 · s001 4.829 · s005C 4.829
+  (carril       )            antes 3.066 · fabrica 3.066 · s001 3.066 · s005C 3.066
+  (periodo_fracao)            antes 0.022 · fabrica 0.022 · s001 0.022 · s005C 0.022
+  (cv           )            antes 0.016 · fabrica 0.016 · s001 0.016 · s005C 0.016
+  (textura      )            antes 5.647 · fabrica 5.649 · s001 5.647 · s005C 5.647
+  escada antes: r r 51.5: 1.90 1.42 2.03 0.51 14.41 | r r 20.5: 2.18 1.90 2.23 0.84 13.37
+  largura antes: [14.0, 53.0, 111.0, 242.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 262207)
+  escada fabrica: r r 51.5: 2.23 2.39 2.17 2.28 14.73 | r r 20.5: 2.18 1.91 2.23 0.84 13.37
+  largura fabrica: [14.0, 53.0, 110.0, 240.0]
+  grande fabrica: dif 0.0574 · tinta 0.9767 · fora 0.3528 (n 262226)
+  escada s001: r r 51.5: 1.90 1.42 2.03 0.51 14.41 | r r 20.5: 2.18 1.90 2.23 0.84 13.37
+  largura s001: [14.0, 53.0, 111.0, 242.0]
+  grande s001: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 262207)
+  escada s005C: r r 51.5: 2.30 2.41 2.23 2.30 14.75 | r r 20.5: 2.18 1.91 2.23 0.84 13.37
+  largura s005C: [14.0, 53.0, 110.0, 240.0]
+  grande s005C: dif 0.0583 · tinta 0.9758 · fora 0.3522 (n 262228)
+## Acrylic Round
+  Cobertura       R 0.88     antes 0.538 · fabrica 0.538 · s001 0.538 · s005C 0.538
+  Borda           R 0.595    antes 0.657 · fabrica 0.657 · s001 0.657 · s005C 0.657
+  (leve         )            antes 30.371 · fabrica 30.373 · s001 30.371 · s005C 30.371
+  (forte        )            antes 30.367 · fabrica 30.365 · s001 30.367 · s005C 30.364
+  (carril       )            antes 6.171 · fabrica 6.178 · s001 6.171 · s005C 6.181
+  (periodo_fracao)            antes 0.038 · fabrica 0.038 · s001 0.038 · s005C 0.038
+  (cv           )            antes 0.024 · fabrica 0.024 · s001 0.024 · s005C 0.024
+  (textura      )            antes 30.357 · fabrica 30.378 · s001 30.357 · s005C 30.359
+  escada antes: r r 51.5: 6.23 4.08 5.80 5.14 14.00 | r r 20.5: 9.31 8.43 8.71 5.51 31.81
+  largura antes: [14.0, 51.0, 110.0, 238.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 303076)
+  escada fabrica: r r 51.5: 5.66 3.97 5.57 4.17 13.37 | r r 20.5: 9.31 8.43 8.61 5.51 31.81
+  largura fabrica: [14.0, 51.0, 109.0, 240.0]
+  grande fabrica: dif 0.0407 · tinta 0.9991 · fora 0.1427 (n 304843)
+  escada s001: r r 51.5: 6.23 4.08 5.80 5.14 14.00 | r r 20.5: 9.31 8.43 8.71 5.51 31.81
+  largura s001: [14.0, 51.0, 110.0, 238.0]
+  grande s001: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 303076)
+  escada s005C: r r 51.5: 5.66 3.97 5.54 4.17 13.37 | r r 20.5: 9.31 8.43 8.63 5.51 31.81
+  largura s005C: [14.0, 51.0, 109.0, 240.0]
+  grande s005C: dif 0.0383 · tinta 1.0017 · fora 0.1355 (n 304889)
+## Express Oil
+  Cobertura       R 0.7      antes 0.704 · fabrica 0.705 · s001 0.704 · s005C 0.704
+  Tinta           R 0.772    antes 0.786 · fabrica 0.786 · s001 0.786 · s005C 0.786
+  (leve         )            antes 11.373 · fabrica 11.375 · s001 11.373 · s005C 11.375
+  (forte        )            antes 7.021 · fabrica 7.022 · s001 7.021 · s005C 7.021
+  (carril       )            antes 0.863 · fabrica 0.930 · s001 0.863 · s005C 0.889
+  (periodo_fracao)            antes 0.051 · fabrica 0.052 · s001 0.051 · s005C 0.052
+  (cv           )            antes 0.006 · fabrica 0.006 · s001 0.006 · s005C 0.006
+  (textura      )            antes 7.824 · fabrica 7.816 · s001 7.824 · s005C 7.822
+  escada antes: r r 51.5: 0.30 0.30 0.60 0.17 7.76 | r r 20.5: 0.96 0.55 0.73 0.10 13.44
+  largura antes: [14.0, 52.0, 111.0, 238.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 301040)
+  escada fabrica: r r 51.5: 0.96 0.83 1.00 0.72 8.05 | r r 20.5: 0.96 0.55 0.73 0.10 13.44
+  largura fabrica: [14.0, 52.0, 111.0, 238.0]
+  grande fabrica: dif 0.0301 · tinta 0.9746 · fora 0.1233 (n 301194)
+  escada s001: r r 51.5: 0.30 0.30 0.60 0.17 7.76 | r r 20.5: 0.96 0.55 0.73 0.10 13.44
+  largura s001: [14.0, 52.0, 111.0, 238.0]
+  grande s001: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 301040)
+  escada s005C: r r 51.5: 0.96 0.83 1.00 0.72 8.05 | r r 20.5: 0.96 0.55 0.72 0.10 13.44
+  largura s005C: [14.0, 52.0, 111.0, 238.0]
+  grande s005C: dif 0.0236 · tinta 0.9814 · fora 0.1061 (n 301195)
+## Graphite 8B
+  Cobertura       R 0.798    antes 0.786 · fabrica 0.794 · s001 0.786 · s005C 0.788
+  Textura         R 9.093    antes 8.771 · fabrica 7.741 · s001 8.771 · s005C 8.444
+  Borda           R 0.32     antes 0.427 · fabrica 0.451 · s001 0.427 · s005C 0.443
+  Orla            R 7.0      antes 8.000 · fabrica 7.000 · s001 8.000 · s005C 7.000
+  (leve         )            antes 9.401 · fabrica 8.640 · s001 9.401 · s005C 8.954
+  (forte        )            antes 8.262 · fabrica 7.723 · s001 8.262 · s005C 7.918
+  (carril       )            antes 9.567 · fabrica 9.399 · s001 9.567 · s005C 9.411
+  (periodo_fracao)            antes 0.106 · fabrica 0.137 · s001 0.106 · s005C 0.114
+  (cv           )            antes 0.062 · fabrica 0.070 · s001 0.062 · s005C 0.062
+  (textura      )            antes 8.771 · fabrica 7.741 · s001 8.771 · s005C 8.444
+  largura antes: [14.0, 53.0, 111.0, 247.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 316107)
+  largura fabrica: [14.0, 52.0, 110.0, 242.0]
+  grande fabrica: dif 0.0937 · tinta 0.9934 · fora 0.4153 (n 320384)
+  largura s001: [14.0, 53.0, 112.0, 245.0]
+  grande s001: dif 0.0685 · tinta 1.0330 · fora 0.3087 (n 327857)
+  largura s005C: [14.0, 52.0, 112.0, 244.0]
+  grande s005C: dif 0.0692 · tinta 1.0057 · fora 0.3081 (n 322678)
+## Charcoal
+  Cobertura       R 0.384    antes 0.334 · fabrica 0.342 · s001 0.334 · s005C 0.337
+  Borda           R 0.378    antes 0.404 · fabrica 0.404 · s001 0.404 · s005C 0.400
+  Orla            R 15.0     antes 10.000 · fabrica 10.000 · s001 10.000 · s005C 10.000
+  (leve         )            antes 8.534 · fabrica 8.452 · s001 8.534 · s005C 7.905
+  (forte        )            antes 7.051 · fabrica 6.880 · s001 7.051 · s005C 7.020
+  (carril       )            antes 18.037 · fabrica 18.859 · s001 18.037 · s005C 19.153
+  (periodo_fracao)            antes 0.102 · fabrica 0.152 · s001 0.102 · s005C 0.087
+  (cv           )            antes 0.104 · fabrica 0.105 · s001 0.104 · s005C 0.107
+  (textura      )            antes 7.613 · fabrica 7.322 · s001 7.613 · s005C 7.475
+  largura antes: [14.0, 52.0, 112.0, 251.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 407403)
+  largura fabrica: [14.0, 52.0, 109.0, 245.0]
+  grande fabrica: dif 0.1990 · tinta 0.9924 · fora 0.4493 (n 419419)
+  largura s001: [14.0, 54.0, 117.0, 254.0]
+  grande s001: dif 0.1139 · tinta 1.0317 · fora 0.2038 (n 425309)
+  largura s005C: [14.0, 52.0, 114.0, 251.0]
+  grande s005C: dif 0.1425 · tinta 1.0056 · fora 0.3182 (n 415875)
+## Soft Pastel
+  Cobertura       R 0.752    antes 0.784 · fabrica 0.784 · s001 0.784 · s005C 0.784
+  Borda           R 0.443    antes 0.543 · fabrica 0.543 · s001 0.543 · s005C 0.543
+  Orla            R 6.0      antes 4.000 · fabrica 4.000 · s001 4.000 · s005C 4.000
+  (leve         )            antes 10.620 · fabrica 10.620 · s001 10.620 · s005C 10.620
+  (forte        )            antes 7.307 · fabrica 7.308 · s001 7.307 · s005C 7.307
+  (carril       )            antes 7.832 · fabrica 7.837 · s001 7.832 · s005C 7.834
+  (periodo_fracao)            antes 0.063 · fabrica 0.063 · s001 0.063 · s005C 0.063
+  (cv           )            antes 0.052 · fabrica 0.052 · s001 0.052 · s005C 0.052
+  (textura      )            antes 7.714 · fabrica 7.740 · s001 7.714 · s005C 7.730
+  largura antes: [14.0, 52.0, 110.0, 240.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 307700)
+  largura fabrica: [14.0, 52.0, 110.0, 240.0]
+  grande fabrica: dif 0.0268 · tinta 0.9924 · fora 0.1235 (n 307918)
+  largura s001: [14.0, 52.0, 110.0, 240.0]
+  grande s001: dif 0.0143 · tinta 1.0135 · fora 0.0540 (n 308734)
+  largura s005C: [14.0, 52.0, 110.0, 240.0]
+  grande s005C: dif 0.0159 · tinta 1.0038 · fora 0.0779 (n 307926)
+## Oil Pastel
+  Cobertura       R 0.654    antes 0.724 · fabrica 0.735 · s001 0.720 · s005C 0.728
+  Textura         R 17.354   antes 13.122 · fabrica 11.024 · s001 13.058 · s005C 12.030
+  Borda           R 0.417    antes 0.498 · fabrica 0.518 · s001 0.487 · s005C 0.506
+  Orla            R 11.0     antes 9.000 · fabrica 9.000 · s001 10.000 · s005C 9.000
+  (leve         )            antes 16.122 · fabrica 13.839 · s001 16.052 · s005C 14.240
+  (forte        )            antes 12.444 · fabrica 10.654 · s001 11.986 · s005C 10.444
+  (carril       )            antes 12.663 · fabrica 11.218 · s001 12.207 · s005C 12.168
+  (periodo_fracao)            antes 0.056 · fabrica 0.058 · s001 0.046 · s005C 0.063
+  (cv           )            antes 0.058 · fabrica 0.064 · s001 0.058 · s005C 0.060
+  (textura      )            antes 13.122 · fabrica 11.024 · s001 13.058 · s005C 12.030
+  largura antes: [14.0, 53.0, 111.0, 247.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 318479)
+  largura fabrica: [14.0, 52.0, 110.0, 241.0]
+  grande fabrica: dif 0.1283 · tinta 0.9917 · fora 0.4975 (n 324297)
+  largura s001: [14.0, 53.0, 113.0, 246.0]
+  grande s001: dif 0.0881 · tinta 1.0365 · fora 0.3606 (n 332165)
+  largura s005C: [14.0, 53.0, 112.0, 245.0]
+  grande s005C: dif 0.0904 · tinta 0.9991 · fora 0.3785 (n 324948)
+## Ink Brush
+  Cobertura       R 0.722    antes 0.644 · fabrica 0.644 · s001 0.644 · s005C 0.644
+  Textura         R 1.266    antes 3.116 · fabrica 3.145 · s001 3.123 · s005C 3.147
+  Borda           R 0.793    antes 0.736 · fabrica 0.731 · s001 0.730 · s005C 0.731
+  Orla            R 5.0      antes 4.000 · fabrica 4.000 · s001 4.000 · s005C 4.000
+  Cruzamento      R 0.239    antes 0.257 · fabrica 0.257 · s001 0.257 · s005C 0.257
+  (leve         )            antes 5.690 · fabrica 4.903 · s001 4.840 · s005C 4.836
+  (forte        )            antes 2.982 · fabrica 2.921 · s001 2.925 · s005C 2.929
+  (carril       )            antes 3.546 · fabrica 3.601 · s001 3.562 · s005C 3.601
+  (periodo_fracao)            antes 0.034 · fabrica 0.038 · s001 0.038 · s005C 0.038
+  (cv           )            antes 0.017 · fabrica 0.017 · s001 0.016 · s005C 0.017
+  (textura      )            antes 3.116 · fabrica 3.145 · s001 3.123 · s005C 3.147
+  largura antes: [14.0, 52.0, 110.0, 241.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 323934)
+  largura fabrica: [14.0, 52.0, 110.0, 241.0]
+  grande fabrica: dif 0.0426 · tinta 1.0091 · fora 0.1260 (n 325291)
+  largura s001: [14.0, 52.0, 110.0, 241.0]
+  grande s001: dif 0.0424 · tinta 1.0310 · fora 0.1096 (n 325667)
+  largura s005C: [14.0, 52.0, 110.0, 241.0]
+  grande s005C: dif 0.0378 · tinta 1.0142 · fora 0.1054 (n 325331)
+## Dip Pen
+  Cobertura       R 0.856    antes 0.910 · fabrica 0.910 · s001 0.910 · s005C 0.910
+  Textura         R 1.433    antes 0.461 · fabrica 0.495 · s001 0.461 · s005C 0.492
+  Borda           R 0.91     antes 0.893 · fabrica 0.892 · s001 0.893 · s005C 0.892
+  Cruzamento      R 0.223    antes 0.208 · fabrica 0.208 · s001 0.208 · s005C 0.208
+  (leve         )            antes 0.189 · fabrica 0.189 · s001 0.189 · s005C 0.189
+  (forte        )            antes 0.213 · fabrica 0.191 · s001 0.213 · s005C 0.191
+  (carril       )            antes 0.000 · fabrica 0.000 · s001 0.000 · s005C 0.000
+  (periodo_fracao)            antes 0.021 · fabrica 0.021 · s001 0.021 · s005C 0.021
+  (cv           )            antes 0.012 · fabrica 0.012 · s001 0.012 · s005C 0.012
+  (textura      )            antes 0.461 · fabrica 0.495 · s001 0.461 · s005C 0.492
+  largura antes: [15.0, 52.0, 110.0, 240.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 295296)
+  largura fabrica: [15.0, 52.0, 110.0, 240.0]
+  grande fabrica: dif 0.0110 · tinta 0.9941 · fora 0.0331 (n 295689)
+  largura s001: [15.0, 52.0, 110.0, 240.0]
+  grande s001: dif 0.0085 · tinta 1.0032 · fora 0.0403 (n 296326)
+  largura s005C: [15.0, 52.0, 110.0, 240.0]
+  grande s005C: dif 0.0095 · tinta 0.9957 · fora 0.0315 (n 295696)
+## Ink Bullet
+  Cobertura       R 0.862    antes 0.908 · fabrica 0.908 · s001 0.908 · s005C 0.908
+  Textura         R 0.395    antes 1.283 · fabrica 1.270 · s001 1.201 · s005C 1.270
+  Cruzamento      R 0.117    antes 0.104 · fabrica 0.107 · s001 0.107 · s005C 0.107
+  (leve         )            antes 0.083 · fabrica 0.071 · s001 0.070 · s005C 0.070
+  (forte        )            antes 0.004 · fabrica 0.004 · s001 0.012 · s005C 0.012
+  (carril       )            antes 0.000 · fabrica 0.000 · s001 0.000 · s005C 0.000
+  (periodo_fracao)            antes 0.039 · fabrica 0.041 · s001 0.041 · s005C 0.041
+  (cv           )            antes 0.006 · fabrica 0.006 · s001 0.006 · s005C 0.006
+  (textura      )            antes 1.283 · fabrica 1.270 · s001 1.201 · s005C 1.270
+  largura antes: [14.0, 52.0, 110.0, 240.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 296968)
+  largura fabrica: [14.0, 52.0, 110.0, 240.0]
+  grande fabrica: dif 0.0135 · tinta 0.9899 · fora 0.0449 (n 297028)
+  largura s001: [14.0, 52.0, 110.0, 240.0]
+  grande s001: dif 0.0070 · tinta 1.0024 · fora 0.0420 (n 297764)
+  largura s005C: [14.0, 52.0, 110.0, 240.0]
+  grande s005C: dif 0.0073 · tinta 0.9962 · fora 0.0328 (n 297036)
+## Marker Bullet
+  Cobertura       R 0.909    antes 0.902 · fabrica 0.902 · s001 0.902 · s005C 0.902
+  Textura         R 0.658    antes 2.015 · fabrica 2.014 · s001 2.010 · s005C 2.028
+  Borda           R 0.768    antes 0.769 · fabrica 0.778 · s001 0.778 · s005C 0.778
+  Cruzamento      R 0.016    antes 0.015 · fabrica 0.015 · s001 0.015 · s005C 0.015
+  (leve         )            antes 1.278 · fabrica 1.150 · s001 1.149 · s005C 1.149
+  (forte        )            antes 0.821 · fabrica 0.781 · s001 0.782 · s005C 0.782
+  (carril       )            antes 0.000 · fabrica 0.000 · s001 0.000 · s005C 0.000
+  (periodo_fracao)            antes 0.141 · fabrica 0.039 · s001 0.039 · s005C 0.039
+  (cv           )            antes 0.010 · fabrica 0.009 · s001 0.009 · s005C 0.009
+  (textura      )            antes 2.015 · fabrica 2.014 · s001 2.010 · s005C 2.028
+  largura antes: [14.0, 52.0, 109.0, 239.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 300799)
+  largura fabrica: [14.0, 52.0, 109.0, 239.0]
+  grande fabrica: dif 0.0204 · tinta 0.9860 · fora 0.0765 (n 300914)
+  largura s001: [14.0, 52.0, 109.0, 240.0]
+  grande s001: dif 0.0094 · tinta 1.0028 · fora 0.0526 (n 301319)
+  largura s005C: [14.0, 52.0, 109.0, 239.0]
+  grande s005C: dif 0.0132 · tinta 0.9936 · fora 0.0615 (n 300924)
+## Marker Liner
+  Cobertura       R 0.91     antes 0.895 · fabrica 0.895 · s001 0.895 · s005C 0.895
+  Textura         R 2.116    antes 2.781 · fabrica 2.778 · s001 2.781 · s005C 2.781
+  Borda           R 0.716    antes 0.721 · fabrica 0.721 · s001 0.721 · s005C 0.721
+  Cruzamento      R 0.016    antes 0.037 · fabrica 0.037 · s001 0.037 · s005C 0.037
+  (leve         )            antes 3.384 · fabrica 3.385 · s001 3.384 · s005C 3.384
+  (forte        )            antes 2.360 · fabrica 2.360 · s001 2.360 · s005C 2.360
+  (carril       )            antes 0.193 · fabrica 0.193 · s001 0.193 · s005C 0.193
+  (periodo_fracao)            antes 0.028 · fabrica 0.028 · s001 0.028 · s005C 0.028
+  (cv           )            antes 0.009 · fabrica 0.009 · s001 0.009 · s005C 0.009
+  (textura      )            antes 2.781 · fabrica 2.778 · s001 2.781 · s005C 2.781
+  largura antes: [14.0, 52.0, 109.0, 239.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 307833)
+  largura fabrica: [14.0, 52.0, 109.0, 239.0]
+  grande fabrica: dif 0.0192 · tinta 0.9894 · fora 0.0801 (n 308282)
+  largura s001: [14.0, 52.0, 109.0, 239.0]
+  grande s001: dif 0.0110 · tinta 1.0042 · fora 0.0589 (n 308354)
+  largura s005C: [14.0, 52.0, 109.0, 239.0]
+  grande s005C: dif 0.0144 · tinta 0.9947 · fora 0.0665 (n 308298)
+## Airbrush
+  Cobertura       R 0.381    antes 0.359 · fabrica 0.355 · s001 0.359 · s005C 0.358
+  Textura         R 22.705   antes 21.936 · fabrica 22.280 · s001 21.936 · s005C 22.157
+  Borda           R 0.537    antes 0.596 · fabrica 0.604 · s001 0.596 · s005C 0.611
+  Orla            R 12.0     antes 12.000 · fabrica 12.000 · s001 12.000 · s005C 12.000
+  Cv              R 0.088    antes 0.068 · fabrica 0.062 · s001 0.068 · s005C 0.070
+  Cruzamento      R 0.583    antes 0.520 · fabrica 0.537 · s001 0.520 · s005C 0.548
+  RampaLargura    R 0.63     antes 0.600 · fabrica 0.593 · s001 0.600 · s005C 0.640
+  RampaCobertura  R 0.34     antes 0.353 · fabrica 0.369 · s001 0.353 · s005C 0.347
+  Largura         R 26.0     antes 26.000 · fabrica 26.000 · s001 26.000 · s005C 26.000
+  Pontas          R 0.8      antes 0.635 · fabrica 0.596 · s001 0.635 · s005C 0.857
+  (leve         )            antes 24.306 · fabrica 24.544 · s001 24.306 · s005C 23.956
+  (forte        )            antes 22.397 · fabrica 22.216 · s001 22.397 · s005C 22.695
+  (carril       )            antes 24.406 · fabrica 24.631 · s001 24.406 · s005C 24.477
+  (periodo_fracao)            antes 0.079 · fabrica 0.038 · s001 0.079 · s005C 0.032
+  (cv           )            antes 0.068 · fabrica 0.062 · s001 0.068 · s005C 0.070
+  (textura      )            antes 21.936 · fabrica 22.280 · s001 21.936 · s005C 22.157
+  largura antes: [14.0, 52.0, 110.0, 240.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 331234)
+  largura fabrica: [14.0, 52.0, 110.0, 240.0]
+  grande fabrica: dif 0.3172 · tinta 1.0027 · fora 0.6317 (n 342473)
+  largura s001: [14.0, 52.0, 111.0, 242.0]
+  grande s001: dif 0.2589 · tinta 1.0237 · fora 0.5680 (n 343313)
+  largura s005C: [14.0, 52.0, 110.0, 241.0]
+  grande s005C: dif 0.3164 · tinta 1.0052 · fora 0.6311 (n 342583)
+## Wet Flat
+  Cobertura       R 0.315    antes 0.318 · fabrica 0.318 · s001 0.318 · s005C 0.318
+  Ponta           R 0.096    antes 0.220 · fabrica 0.220 · s001 0.220 · s005C 0.220
+  RampaLargura    R 0.829    antes 0.765 · fabrica 0.765 · s001 0.765 · s005C 0.765
+  RampaCobertura  R 0.42     antes 0.411 · fabrica 0.419 · s001 0.411 · s005C 0.392
+  Largura         R 34.0     antes 34.000 · fabrica 34.000 · s001 34.000 · s005C 34.000
+  Pontas          R 0.9      antes 0.765 · fabrica 0.750 · s001 0.765 · s005C 0.750
+  (leve         )            antes 7.486 · fabrica 7.417 · s001 7.486 · s005C 7.506
+  (forte        )            antes 5.346 · fabrica 5.411 · s001 5.346 · s005C 5.237
+  (carril       )            antes 5.652 · fabrica 5.673 · s001 5.652 · s005C 5.675
+  (periodo_fracao)            antes 0.035 · fabrica 0.032 · s001 0.035 · s005C 0.035
+  (cv           )            antes 0.025 · fabrica 0.025 · s001 0.025 · s005C 0.025
+  (textura      )            antes 5.446 · fabrica 5.429 · s001 5.446 · s005C 5.454
+  largura antes: [13.0, 52.0, 110.0, 240.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 315429)
+  largura fabrica: [13.0, 52.0, 110.0, 240.0]
+  grande fabrica: dif 0.0401 · tinta 0.9980 · fora 0.0348 (n 316574)
+  largura s001: [13.0, 52.0, 110.0, 240.0]
+  grande s001: dif 0.0517 · tinta 1.0422 · fora 0.0443 (n 317118)
+  largura s005C: [13.0, 52.0, 110.0, 240.0]
+  grande s005C: dif 0.0400 · tinta 0.9981 · fora 0.0349 (n 316609)
+## Gouache Flat
+  Cobertura       R 0.504    antes 0.525 · fabrica 0.525 · s001 0.525 · s005C 0.525
+  Ponta           R 0.083    antes 0.179 · fabrica 0.179 · s001 0.179 · s005C 0.186
+  Chato           R 0.782    antes 0.800 · fabrica 0.800 · s001 0.800 · s005C 0.800
+  RampaLargura    R 0.872    antes 0.769 · fabrica 0.769 · s001 0.769 · s005C 0.769
+  RampaCobertura  R 0.43     antes 0.419 · fabrica 0.408 · s001 0.419 · s005C 0.411
+  Largura         R 39.0     antes 39.000 · fabrica 39.000 · s001 39.000 · s005C 39.000
+  Pontas          R 0.87     antes 0.718 · fabrica 0.718 · s001 0.718 · s005C 0.718
+  (leve         )            antes 7.537 · fabrica 7.332 · s001 7.537 · s005C 7.437
+  (forte        )            antes 4.043 · fabrica 4.045 · s001 4.043 · s005C 4.074
+  (carril       )            antes 4.252 · fabrica 4.238 · s001 4.252 · s005C 4.208
+  (periodo_fracao)            antes 0.028 · fabrica 0.030 · s001 0.028 · s005C 0.027
+  (cv           )            antes 0.021 · fabrica 0.021 · s001 0.021 · s005C 0.021
+  (textura      )            antes 4.022 · fabrica 3.991 · s001 4.022 · s005C 3.978
+  largura antes: [13.0, 52.0, 110.0, 240.0]
+  grande antes: dif 0.0000 · tinta 1.0000 · fora 0.0000 (n 313443)
+  largura fabrica: [13.0, 52.0, 110.0, 240.0]
+  grande fabrica: dif 0.0310 · tinta 0.9937 · fora 0.0550 (n 314331)
+  largura s001: [13.0, 52.0, 110.0, 240.0]
+  grande s001: dif 0.0367 · tinta 1.0302 · fora 0.0728 (n 314633)
+  largura s005C: [13.0, 52.0, 110.0, 240.0]
+  grande s005C: dif 0.0291 · tinta 0.9964 · fora 0.0528 (n 314358)

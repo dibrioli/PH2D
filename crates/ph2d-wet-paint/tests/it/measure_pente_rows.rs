@@ -46,7 +46,7 @@ fn mede(r: f64) -> (f64, f64, usize) {
     for _ in 0..AMOSTRAS {
         for (k, mode) in [Rows::Serial, Rows::Parallel].into_iter().enumerate() {
             let t0 = Instant::now();
-            e.pentear_relevo_rows(c, c, meia, &sil, &alvo, Some(mode));
+            e.pentear_relevo_rows(c, c, meia, &sil, &alvo, 1.0, Some(mode));
             melhor[k] = melhor[k].min(t0.elapsed().as_secs_f64() * 1e3);
         }
     }
@@ -84,7 +84,7 @@ fn o_pente_por_linhas_e_o_mesmo_em_serie_e_em_paralelo() {
         };
         let alvo = |x: i32, y: i32| -> f64 { (f64::from(x) * 0.37).sin() + f64::from(y) * 0.01 };
         for _ in 0..3 {
-            e.pentear_relevo_rows(150.0, 150.0, [80.0, 30.0], &sil, &alvo, Some(mode));
+            e.pentear_relevo_rows(150.0, 150.0, [80.0, 30.0], &sil, &alvo, 1.0, Some(mode));
         }
         e.layers[e.active_layer].grid.altura.clone()
     };

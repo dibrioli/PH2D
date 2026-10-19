@@ -5,17 +5,28 @@
 //! 1,82× no Charcoal, que espalha os dabs.
 
 use super::midias_de_fabrica::de_fabrica;
-use super::o_relevo_dos_fios::cena_seca_de;
+use super::sonda_gestos::{pinta_cena_ate, tela};
 use super::sonda_spacing_continuo::{com, diferenca_de};
 
 const RAIO: f32 = 51.5;
+/// Os 8 s da cena, molhada: a razão de tinta é a da cena seca (medido 18/10: as mesmas três casas) a um quarto dos
+/// quadros — a suíte inteira corre com a máquina carregada.
+const QUADROS: u32 = 480;
+
+fn cena(p: &ph2d_brush_presets::Preset) -> Vec<u8> {
+    let mut t = tela();
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_brush_size_px(RAIO);
+    pinta_cena_ate(&mut t, QUADROS).0
+}
 /// A tinta de cada variante no máximo a 4 % da referência (o pior medido com a lei: 3,4 %).
 const TOLERANCIA: f64 = 0.04;
 
 fn tinta(nome: &str, referencia: &str, variante: &str) -> f64 {
-    let a = cena_seca_de(&com(de_fabrica(nome), referencia), RAIO, false).0;
-    let b = cena_seca_de(&com(de_fabrica(nome), variante), RAIO, false).0;
-    diferenca_de(&a.0, &b.0)[1]
+    let a = cena(&com(de_fabrica(nome), referencia));
+    let b = cena(&com(de_fabrica(nome), variante));
+    diferenca_de(&a, &b)[1]
 }
 
 #[test]

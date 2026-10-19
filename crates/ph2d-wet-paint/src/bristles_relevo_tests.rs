@@ -36,10 +36,10 @@ fn o_alvo_e_o_ganho_com_o_sinal_do_fio() {
 fn pentear_chega_ao_alvo_e_fora_da_silhueta_nao_mexe() {
     let mut h = 0.0f32;
     for _ in 0..30 {
-        h = penteia(h, 2.0, 1.0);
+        h = penteia(h, 2.0, 1.0, 1.0);
     }
     assert!((h - 2.0).abs() < 1e-4, "{h}");
-    assert_eq!(penteia(0.7, -2.0, 0.0), 0.7);
+    assert_eq!(penteia(0.7, -2.0, 0.0, 1.0), 0.7);
     assert!(Relevo::NEUTRO.neutro());
 }
 

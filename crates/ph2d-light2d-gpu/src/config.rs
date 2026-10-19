@@ -318,8 +318,9 @@ pub struct Canto {
     /// 2,4° torta no (152, 245) do F3 sem as dar «iguais» (handoff W6f §9, W6g §2).
     pub um_lado: bool,
     /// ⭐ W6g r5 — o canto num passe PRÓPRIO sobre os texels de duas faces: a fina comum compila sem o
-    /// código dele. A mesma luz, bit a bit; a fina comum fica 0,32–0,44 ms abaixo da lei W6d, mas o passe
-    /// custa ~0,5 ms de latência (a cadeia de um texel) — desligado no [`Self::LIGADO`] (handoff W6g §12).
+    /// código dele. A mesma luz, bit a bit; o passe custa ~0,5 ms de latência (a cadeia de ~1 600 leituras do
+    /// pior texel) e o que a fina comum poupava era um degrau de registos que a r6 já tira da lei W6d —
+    /// desligado no [`Self::LIGADO`] (handoff W6g §12, §14, §16).
     pub passe_proprio: bool,
 }
 

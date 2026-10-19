@@ -341,3 +341,114 @@ e sem miolo: **0 texels diferentes de 3 932 160 nas 16**, em r5, r5b e r5c):
    prova de exatidão pronta em `target/w6g/diag_l.py`). Se a cadeia encurtar, a alavanca vale também para o padrão.
 2. A anomalia da r5b (o passe dos cantos barato depois da pré-lista; pré-lista ‖ fina mais cara que a soma).
 3. A família (b) (37–38): da W5g, fora.
+
+## 14. A latência dos texels de duas faces, PROVADA (o §13.1; tudo FORA do git e reposto)
+
+**Contada por texel** (`target/w6g/diag_m.py`, `latencia.log`: sondas 9–16 = 24 contadores; sem miolo, com o
+`FUNDO_SEM_LUZ` do produto ligado à força; custo = chamadas a `meio` + `livre`, as leituras dependentes da cadeia):
+
+| cena 5, lei W6d (10 + 9 ≈ igual) | n | média | p99 | máx | onde a média vai |
+|---|---|---|---|---|---|
+| fora (não remapeado) | 684 904 | 100 | 986 | 2 069 | a marcha do ponto |
+| uma face | 8 351 | 327 | 865 | 1 539 | `onde_calcular` 170 · ponto 156 |
+| **duas faces** | **3 041** | **424** | 1 246 | 1 639 | `onde_calcular` 258 · ponto 152 · outra face 14 |
+
+Cena 6: 1 114 texels de duas faces (média 503, máx 1 180). Com o fundo do produto saltado são 3 041 / 1 114, não os
+6 367 / 2 548 do §12 (contados sem o fundo). O passo da outra face corre em ~10 % deles (`passos` 1,1). O pior texel
+de duas faces da cena 5 (1248, 618): `onde_calcular` 307 + uma visibilidade pela face de 10 raios × ~67 passos = 668
+`meio` + 668 `livre`. ⇒ **a latência do passe próprio (r5, ~0,5 ms) é a cadeia de ~1 600 leituras dependentes do pior
+texel** (~0,3 µs cada com a placa quase vazia), não o número de texels — por isso dava o mesmo com 6 367 ou 2 548.
+
+**O modelo do §12 está REFUTADO pela contagem:** o tempo de um warp é o do fio mais lento, e tirar os texels de duas
+faces dos warps (Σ do máximo por warp 8×4) poupa só 1,9 % (c5) / 1,2 % (c6) — ~0,05 / ~0,015 ms, não 0,32–0,44.
+
+**TRABALHO × CÓDIGO** (`diag_{n,o,p,q}.py`, `bissecao_{n,o,p,q}.sh`, `custo_{n,o,p,q}_k*_{1,2,3}.log`; um `override
+W6G_K` só na fina da lei W6d, a `cunha` do MESMO processo como controle (2,37–2,40 / 1,24–1,27 em todas as corridas);
+três voltas em ordem alternada; `loadavg` 2–8):
+
+| variante (fina da lei W6d) | c5 | c6 | lê-se |
+|---|---|---|---|
+| K0 como está | 2,37–2,40 | 1,25–1,27 | |
+| K1 duas faces como uma, o código FORA | **1,87–1,89** | **0,92–0,93** | o efeito todo |
+| K2 o mesmo, o código compilado e MORTO | 2,33–2,35 | 1,10–1,12 | trabalho: 0,05 / 0,15 |
+| K3 duas faces saem sem luz | 2,36–2,37 | 1,09–1,10 | |
+| K4 / K8 o `pe_na_face` fora / morto | = K0 | ≈ K0 | nada |
+| K9 / K10 o 2.º `pe_na_borda` fora / morto | 2,29–2,33 | 1,20–1,22 | trabalho, ~0,07 |
+| **K5 o passo da OUTRA FACE fora** | **1,93–1,95** | **0,97–0,98** | **o código: 0,45 / 0,18** |
+| K7 o passo da outra face compilado e morto | = K0 | 1,15–1,16 | trabalho dele: 0 / 0,11 |
+| K11 a outra face pelo modo da GRADE · K16 a conta exata dentro do ramo da grade | = K0 | = K0 | não é o modo `EXATA` |
+| **K18 um acumulador só (`l += x · peso`, sem o `face`)** | **1,95–1,96** | **1,11–1,12** | o código volta todo; o trabalho fica |
+| K19 a outra face marcha do `p` (o `p2` morto) | 1,96–1,98 | 1,11–1,12 | idem |
+
+⇒ **os 0,32–0,44 ms do §12 são um DEGRAU DE REGISTOS do `c3_fina`, não trabalho dos texels de duas faces**: o passo da
+outra face no laço do `luz_do_texel` mantém vivos, por todo o laço (e pela árvore embutida do `luz_das_lampadas`), o
+acumulador `face` e o ponto `p2`; tirar QUALQUER um dos dois devolve 0,43 ms na cena 5 e ~0,15 na 6 (K18, K19), com o
+mesmo trabalho. A r5 «ganhava» por o kernel da fina compilar sem esse passo (K5 ≈ a fina da r5, 1,95 / 0,93), e pagava
+de volta a cadeia inteira no passe à parte. Vale para a LEI W6D (o padrão), não só para a 10 + 9. É um degrau: um
+registo a mais no laço volta a pagá-lo — a prova da cura tem de medir os dois lados dele.
+
+## ⛔ Recusas MEDIDAS (§14)
+
+| Recusa | Porquê |
+|---|---|
+| «Os texels de duas faces são a cauda cara da fina» (o §12) | Contados: ~2 % do Σ dos warps; K2 × K1: o código, não o trabalho. |
+| Encurtar o `onde_calcular`/o `pe_na_face` pelo custo da fina | K4 = K8 = K0. |
+| Tirar o modo `EXATA` da outra face | K11 = K16 = K0. |
+| Partir o texel de duas faces em duas threads (a r5c) | O passo da outra face corre em ~10 % deles e pesa 0 na cena 5; a cadeia é o `onde` + a marcha do ponto. |
+
+## 15. A cura (r6) — a mistura das faces no próprio passo (escrita ANTES de mexer)
+
+A forma EXATA do K18: no passo da outra face, `l = mix(l, x, f2)` ali mesmo (a MESMA operação sobre os mesmos
+valores que o `mix(l, face, f2)` do fim — o passo 1 só corre com `f2 > 0` e sempre depois do 0), sem o acumulador
+`face`; a sonda 4 guarda as suas componentes no passo de cada uma. Vale para toda a fina (lei W6d, 10 + 9, a exata, o
+passe dos cantos da r5c), sem interruptor: não muda um bit.
+
+**PASSA a r6** (dois itens): (i) 0 bytes diferentes na fluência lida, HEAD × r6, cenas 1–8 × com/sem miolo × lei W6d /
+10 + 9 (`W6G_DUMP`, dois builds); (ii) a fina da lei W6d ≤ 1,98 / 1,13 ms (o K18). **MORRE:** um byte diferente, ou a
+fina no K0 (o degrau não caiu na forma exata).
+
+Depois, a 10 + 9 com a r6 contra o kill-criterion do §1 tal e qual (o C3 relativo à lei W6d, que também desce:
+o alvo fica MAIS difícil se as duas descerem o mesmo). Se passar: a rodada completa (`fecho_r5.sh`) e o padrão.
+
+## 16. A r6 medida — o PADRÃO passa; a 10 + 9 não desce
+
+**A r6 passa** (`exato_r6.log`, `custo_r6_{1,2}.log`, `{f3,caixa,borda}_r6.log`, `portoes_r6_*.log`, `fecho_r6.sh`):
+(i) **0 bytes diferentes** na fluência inteira (rgba), HEAD × r6, nos 32 casos (cenas 1–8 × miolo × lei W6d / 10 + 9;
+`dump_head/` × `dump_r6/`, sonda `diag_r.py`); (ii) a fina da lei W6d **1,949–1,953 / 1,113–1,118** (≤ 1,98 / 1,13).
+F3 e caixa saem linha a linha os da r5; a borda com os mesmos (a)/(b)/anéis/bits; portões gpu 9/9 · app 15/15 (`load`
+6–9). **O padrão (lei W6d) fica 0,44 ms mais barato na cena 5 — C3 3,49 → 3,05 ms (−12,6 %) — e 0,14 na 6 (2,24 →
+2,10, −6,3 %), sem mudar um bit.**
+
+**A 10 + 9 não desce:** fina 2,43–2,44 / 1,23 (r4: 2,46–2,48 / 1,26) ⇒ C3 3,65 / 2,31 = **+19,7 % / +10,5 %** sobre a
+lei W6d nova ✗ (era +5,8–6,3 % / +3,4–4,7 % sobre a velha). Continua acima do degrau. A bisseção por config, no MESMO
+processo, duas voltas (`diag_s.py`, `custo_s_{1,2}.log`, `load` 2,6):
+
+| fina c5 / c6 | c5 | c6 |
+|---|---|---|
+| lei W6d (r6) · cunha | 1,95–1,96 | 1,11–1,12 |
+| 10 + 9 | 2,44–2,45 | 1,23 |
+| J1 sem `luz` · J2 sem `normais` · J3 sem `fracao` · J4 sem `um_lado` | 2,42–2,46 | 1,22–1,34 |
+| J5 o `Canto` todo desligado (só a `V2` no `meio`) | 2,42–2,43 | 1,33 |
+| J6 o `Canto` ligado sem a `V2` | 2,39 | 1,26 |
+
+⇒ **a `V2` no `meio` e o código do `Canto` põem-na acima do degrau CADA UM POR SI**; só sem os dois (a cunha) a fina
+volta a 1,95. A r6 era a tentativa nova sobre o modelo do §14 e, para a 10 + 9, não passou ⇒ PARE (two-strikes): a
+r6 fica comitada (exata, no padrão); a 10 + 9 continua desligada.
+
+## ⛔ Recusas MEDIDAS (§16)
+
+| Recusa | Porquê |
+|---|---|
+| Tirar UMA peça do `Canto` para a 10 + 9 caber | J1–J4: nenhuma desce; J1 e J5 encarecem a cena 6 (o trabalho do canto poupa marchas). |
+| A `V2` no `meio` OU o `Canto` sozinhos como «o» culpado | J5 e J6: cada um sozinho mantém o degrau. |
+
+## 17. ABERTO (por ordem — substitui o §13)
+
+1. **A 10 + 9 abaixo do degrau de registos do `c3_fina`** (o kill-criterion do §1 tal e qual, agora contra a lei
+   W6d da r6: o alvo é a fina da 10 + 9 ≤ ~2,05 / 1,17). Primeiro uma RÉGUA DE REGISTOS (o wgpu não a expõe: o
+   `VK_KHR_pipeline_executable_properties` por uma ferramenta à parte sobre o SPIR-V do naga, ou o tamanho da entrada
+   no cache de shaders do driver) — sem ela cada forma é um palpite sobre um degrau. Depois, as duas peças juntas: a
+   `V2` no `meio` (a leitura e o `na_cunha` embutidos em CADA sítio do `meio`) e o estado do canto vivo pelo laço do
+   `luz_do_texel` (`face_do_ponto`, `face_da_outra`, `face_corrente`).
+2. A anomalia da r5b (§12).
+3. A família (b) (37–38): da W5g, fora.

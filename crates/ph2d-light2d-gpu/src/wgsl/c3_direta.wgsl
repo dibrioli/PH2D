@@ -1342,8 +1342,8 @@ fn luz_do_texel(alvo: vec2<u32>, onde: Onde, tau: f32, exata: bool, transmitida:
         n++;
     }
     var l = vec3<f32>(0.0);
-    var face = vec3<f32>(0.0);
     var t = vec3<f32>(0.0);
+    sonda_luz = vec3<f32>(0.0, 0.0, onde.f2);
     for (var i = 0u; i < n; i++) {
         let passo = passos[i];
         var P = onde.p;
@@ -1394,17 +1394,17 @@ fn luz_do_texel(alvo: vec2<u32>, onde: Onde, tau: f32, exata: bool, transmitida:
         }
         if passo == 0u {
             l = x;
+            sonda_luz.x = x.g;
         } else if passo == 1u {
-            face = x;
+            // ⭐ W6g r6: a mistura das faces AQUI (o passo 1 só corre com `f2 > 0`, depois do 0). Um acumulador
+            // da outra face vivo pelo laço custava um degrau de registos: 0,43 ms na fina (handoff W6g §14).
+            sonda_luz.y = x.g;
+            l = mix(l, x, onde.f2);
         } else {
             t = x;
         }
     }
     c0_tau = 1.0;
-    sonda_luz = vec3<f32>(l.g, face.g, onde.f2);
-    if onde.f2 > 0.0 {
-        l = mix(l, face, onde.f2);
-    }
     return LuzDoTexel(l, t);
 }
 

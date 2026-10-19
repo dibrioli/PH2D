@@ -77,7 +77,7 @@ caminho do Brake: id `PAINTER_WETPAINT_DUST` em `PAINTER_WETPAINT_FIELDS` (18), 
 o_po_do_pincel_edita_se_pelo_cartao` (literal; mutação «o id fora de FIELDS» SANGRA: «morreu no painel»),
 `a_fisica_da_agua_do_cartao_chega_ao_motor_e_muda_a_tinta` (+ Dust 0,8), censos, colunas, colisões, i18n verdes.
 Os presets gravam-no como antes (`engine["dust"]`). Binário release refeito
-(2.ª saída: `Finished \`release\` profile [optimized] target(s) in 0.25s`). Smoke: Inspector › Painter › Wet Paint.
+(a 2.ª compilação em 0,25 s). Smoke: Inspector › Painter › Wet Paint.
 
 ## §6 — ABERTO (próxima janela)
 

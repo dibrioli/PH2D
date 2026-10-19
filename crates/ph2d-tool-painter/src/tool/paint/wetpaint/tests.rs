@@ -1221,8 +1221,8 @@ fn the_wet_section_reset_restores_the_knob_defaults() {
 }
 
 /// **A física da água no cartão** (dono 13/10: *«Leveling, Capillary, Brake e Level Clamp devem sair de Tuning e
-/// ir para o painel painter»*): cada linha do cartão chega ao knob do motor EXACTA, o Tuning já não as mostra,
-/// e cada uma muda a tinta depois de a água correr (um segundo de quadros parados).
+/// ir para o painel painter»*; 19/10: o Brush dust abaixo do Brake): cada linha do cartão chega ao knob do motor
+/// EXACTA, o Tuning já não as mostra, e cada uma muda a tinta depois de a água correr (um segundo de quadros parados).
 #[test]
 fn a_fisica_da_agua_do_cartao_chega_ao_motor_e_muda_a_tinta() {
     use ph2d_editor_core::tool::PanelEvent;
@@ -1249,6 +1249,7 @@ fn a_fisica_da_agua_do_cartao_chega_ao_motor_e_muda_a_tinta() {
         ),
         (crate::ids::PAINTER_WETPAINT_CAPILLARY, Knob::Capillary, 0.9),
         (crate::ids::PAINTER_WETPAINT_BRAKE, Knob::Brake, 0.2),
+        (crate::ids::PAINTER_WETPAINT_DUST, Knob::Dust, 0.8),
     ] {
         assert_eq!(
             KNOB_DEFS[knob as usize].group,

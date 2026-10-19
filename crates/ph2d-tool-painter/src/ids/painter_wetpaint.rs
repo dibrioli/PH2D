@@ -167,12 +167,15 @@ pub const PAINTER_WETPAINT_CAPILLARY: NodeId = hash_node_id("painter_brush.wetpa
 /// **Brake** — the absorbency brake that stops water on dry paper (knob `brake`; saiu do Tuning a 13/10).
 pub const PAINTER_WETPAINT_BRAKE: NodeId = hash_node_id("painter_brush.wetpaint_brake");
 
+/// **Brush dust** — o PÓ do pincel, o grão do aerógrafo (knob `dust`; saiu do Tuning a 19/10).
+pub const PAINTER_WETPAINT_DUST: NodeId = hash_node_id("painter_brush.wetpaint_dust");
+
 /// **Erase Strength** — the wet eraser's lift per pass (engine `sliders.erase`, boot `0.4`).
 pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_erase");
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 17] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 18] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -185,6 +188,7 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 17] = [
     PAINTER_WETPAINT_LEVEL_CLAMP,
     PAINTER_WETPAINT_CAPILLARY,
     PAINTER_WETPAINT_BRAKE,
+    PAINTER_WETPAINT_DUST,
     PAINTER_WETPAINT_ERASE,
     super::PAINTER_WETPAINT_VOL_SIZE,
     super::PAINTER_WETPAINT_VOL_OPACITY,

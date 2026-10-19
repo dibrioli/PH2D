@@ -609,7 +609,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::Dust,
-        KnobGroup::Paint,
+        KnobGroup::Hidden, // no cartão Wet Paint do painel do Painter, abaixo do Brake (dono 19/10)
         "dust",
         0.0,
         1.0,

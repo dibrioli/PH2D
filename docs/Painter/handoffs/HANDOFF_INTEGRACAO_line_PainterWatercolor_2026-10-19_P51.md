@@ -68,6 +68,17 @@
    Foto: [`51_smoke_cena.png`](../NewFeaturesWetPaint/51_smoke_cena.png) (+ [`.log`](../NewFeaturesWetPaint/51_smoke_cena.log));
    prancha `../NewFeaturesWetPaint/51_prancha_antes_agora.png`.
 
+## §5b — O Brush dust no cartão Wet Paint (ordem do dono 19/10, depois do smoke OK)
+
+O knob `Dust` saiu do Tuning (`KnobGroup::Hidden`) para o cartão Wet Paint do Inspector, abaixo do Brake, pelo
+caminho do Brake: id `PAINTER_WETPAINT_DUST` em `PAINTER_WETPAINT_FIELDS` (18), `KNOBS_NO_CARTAO` (ex-
+`FISICA_NO_CARTAO`, 5) e `knobs_no_cartao()`, a linha em `paint_wetpaint.rs`/`seccoes.rs`, i18n
+`panel.painter_layers.wetpaint.dust` = «Brush dust». Tuning: 44 linhas (Paint 25). Gates: `seam_wetpaint::
+o_po_do_pincel_edita_se_pelo_cartao` (literal; mutação «o id fora de FIELDS» SANGRA: «morreu no painel»),
+`a_fisica_da_agua_do_cartao_chega_ao_motor_e_muda_a_tinta` (+ Dust 0,8), censos, colunas, colisões, i18n verdes.
+Os presets já gravam `engine["dust"]` (persistem `KNOB_DEFS` sem filtrar o grupo). Binário release refeito
+(2.ª saída: `Finished \`release\` profile [optimized] target(s) in 0.25s`). Smoke: Inspector › Painter › Wet Paint.
+
 ## §6 — ABERTO (próxima janela)
 
 - Relógio por PARTE do traço rápido em calma: só há razões a `load` 22 (sem relevo −19 %, sem cor das cerdas −16 %) —

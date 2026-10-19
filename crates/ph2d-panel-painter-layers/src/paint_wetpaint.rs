@@ -167,15 +167,16 @@ pub(crate) fn paint_wetpaint_section(
                 ctx, theme, x, content_w, y, label, id, value, min, max, step, decimals,
             );
         }
-        // A física da água que regula a «grossura» dela (saiu do Tuning, dono 13/10): a faixa e o passo
-        // vêm da tabela do motor, a mesma do Tuning.
+        // A física da água que regula a «grossura» dela (saiu do Tuning, dono 13/10) e o pó do pincel (19/10): a
+        // faixa e o passo vêm da tabela do motor, a mesma do Tuning.
         let nomes = [
             "panel.painter_layers.wetpaint.leveling",
             "panel.painter_layers.wetpaint.level_clamp",
             "panel.painter_layers.wetpaint.capillary",
             "panel.painter_layers.wetpaint.brake",
+            "panel.painter_layers.wetpaint.dust",
         ];
-        for (label, (id, v, min, max, step)) in nomes.into_iter().zip(k.fisica_no_cartao()) {
+        for (label, (id, v, min, max, step)) in nomes.into_iter().zip(k.knobs_no_cartao()) {
             let decimais = ph2d_tool_painter::Escala {
                 min: min as f32,
                 max: max as f32,

@@ -557,3 +557,34 @@ fn the_flow_grid_edit_forwards_through_the_panel() {
         "a edicao do Flow Grid nunca virou SetValue — pintada, viva e MUDA. drained = {actions:?}"
     );
 }
+
+/// **O Brush dust no cartão** (dono 19/10: abaixo do Brake, fora do Tuning): a edição do campo, nomeado por LITERAL
+/// (o porquê no gate de cima), chega ao bus como o `SetValue` do id — a outra metade, o `SetValue` no knob do
+/// motor e a tinta a mudar, é `wetpaint::tests::a_fisica_da_agua_do_cartao_chega_ao_motor_e_muda_a_tinta`.
+#[test]
+fn o_po_do_pincel_edita_se_pelo_cartao() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::panel::EventOutcome;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut wet = PainterTool::default();
+    wet.set_wetpaint_armed(true);
+    set_current_brush(Some(wet.brush_settings()));
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let id = ph2d_tool_painter::ids::PAINTER_WETPAINT_DUST;
+    assert_eq!(
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id)),
+        EventOutcome::Consumed,
+        "a edição do Brush dust morreu no painel"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _)) if *i == id
+        )),
+        "a edição do Brush dust nunca virou SetValue — pintada, viva e MUDA. drained = {actions:?}"
+    );
+}

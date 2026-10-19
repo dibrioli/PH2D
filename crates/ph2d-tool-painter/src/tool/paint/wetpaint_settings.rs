@@ -244,20 +244,22 @@ impl WetKnobs {
     /// Os knobs da FÍSICA da água que moram no cartão Wet Paint (saíram do Tuning a 13/10): `(id do
     /// cartão, valor, mín, máx, passo)` — a faixa e o passo da `KNOB_DEFS` do motor, a mesma fonte do Tuning.
     #[must_use]
-    pub fn fisica_no_cartao(&self) -> [(ph2d_a11y::NodeId, f64, f64, f64, f64); 4] {
-        FISICA_NO_CARTAO.map(|(id, knob)| {
+    pub fn knobs_no_cartao(&self) -> [(ph2d_a11y::NodeId, f64, f64, f64, f64); 5] {
+        KNOBS_NO_CARTAO.map(|(id, knob)| {
             let d = &KNOB_DEFS[knob as usize];
             (id, self.get(knob), d.min, d.max, d.step)
         })
     }
 }
 
-/// Leveling · Level Clamp · Capillary · Brake: o id do cartão e o knob do motor (dono 13/10).
-const FISICA_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 4] = [
+/// Os knobs do motor que saíram do Tuning para o cartão: Leveling · Level Clamp · Capillary · Brake (dono 13/10) e
+/// o Brush dust (dono 19/10) — o id do cartão e o knob.
+const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 5] = [
     (crate::ids::PAINTER_WETPAINT_LEVELING, Knob::Leveling),
     (crate::ids::PAINTER_WETPAINT_LEVEL_CLAMP, Knob::LevelClamp),
     (crate::ids::PAINTER_WETPAINT_CAPILLARY, Knob::Capillary),
     (crate::ids::PAINTER_WETPAINT_BRAKE, Knob::Brake),
+    (crate::ids::PAINTER_WETPAINT_DUST, Knob::Dust),
 ];
 
 impl Default for WetKnobs {
@@ -493,7 +495,7 @@ impl PainterTool {
             x if x == crate::ids::PAINTER_WETPAINT_DRY_SPEED => k.set(Knob::Evaporation, v),
             x if x == crate::ids::PAINTER_WETPAINT_EDGE => k.set(Knob::EdgeDarkening, v),
             x if x == crate::ids::PAINTER_WETPAINT_GRAVITY => k.set(Knob::Gravity, v),
-            x if let Some(&(_, knob)) = FISICA_NO_CARTAO.iter().find(|(i, _)| *i == x) => {
+            x if let Some(&(_, knob)) = KNOBS_NO_CARTAO.iter().find(|(i, _)| *i == x) => {
                 k.set(knob, v);
             }
             x if x == crate::ids::PAINTER_WETPAINT_ERASE => k.erase = v.clamp(0.0, 1.0),

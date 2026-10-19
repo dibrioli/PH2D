@@ -406,6 +406,7 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.level_clamp",
     "panel.painter_layers.wetpaint.capillary",
     "panel.painter_layers.wetpaint.brake",
+    "panel.painter_layers.wetpaint.dust",
     "panel.painter_layers.wetpaint.erase_strength",
     "panel.painter_layers.wetpaint.heavy_edge",
     "panel.painter_layers.wetpaint.smooth_edges",

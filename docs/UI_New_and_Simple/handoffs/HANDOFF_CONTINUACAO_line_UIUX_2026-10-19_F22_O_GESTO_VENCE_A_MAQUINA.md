@@ -75,3 +75,5 @@ Fotos (`docs/UI_New_and_Simple/vetor_nova_ui/fotos/`): `F22_cena35.png`, `F22_ce
 10. Suíte inteira (`nextest-impacted`) não corrida nesta onda.
 
 Binário do smoke: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` → 2.ª saída: «Finished smoke profile [optimized] target(s) in 0.42s» (zero `Compiling`)
+
+> ✅ **Smoke do dono: OK (19/10)** — cenas 35 e 36 e os passos manuais. Pedido seguinte do dono (19/10): *«passe a animar a opacidade. faça aqui e agora»* → F22b.

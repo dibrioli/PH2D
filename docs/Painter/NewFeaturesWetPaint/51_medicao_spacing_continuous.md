@@ -134,6 +134,10 @@ regenerados · `LARGURA_DO_WET_ROUND` (8 linhas). Censo da regra: `presets_de_fa
 
 ## §8 — Aberto
 
+> ⏸ **ADIADO pelo dono (19/10)**, depois do smoke OK do P51: os quatro abertos do handoff P51 §6 (o relógio por
+> parte em calma · o carimbo fora do orçamento do quadro · o pó por comprimento · o `Salto` em `Dab::capsula`). Não
+> os abra sem ordem dele; o plano de medição num lote está pronto (sonda `sonda_traco_rapido` + cronómetros por fase).
+
 - Os três da 50 §4 (a cor K–M por célula, o pente, o carimbo fora do orçamento do quadro) com o custo novo: o traço
   rápido do Oil Bristle a 103 px 13,7 → **7,3 ms/quadro** (load ~4, `custo_final`) — com 2,3× de folga, nenhum dos
   três está no caminho crítico. A divisão por partes ([`traco_rapido_por_partes_load22`](51_regua/traco_rapido_por_partes_load22_2026-10-19.txt))

@@ -136,6 +136,8 @@ linha.
 6. Apague um `end` e **Ctrl+S**: grava sem arrumar (o selo diz a linha do erro, como antes).
 7. **Deu errado se:** o texto muda ANTES do Ctrl+S; é preciso mais de um Ctrl+Z para tirar a arrumação; o cursor salta para outro sítio; fica o ● depois do Ctrl+S; os comentários do script mudam sem ter mexido neles.
 
+> ✅ **Smoke do dono OK a 19/10.**
+
 ## 9. ABERTO
 
 - As abas **FECHADAS** com ● gravadas pelo File ▸ Save não se formatam.

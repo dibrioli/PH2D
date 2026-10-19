@@ -119,7 +119,7 @@ seguinte; o resto entra em lotes.
    ~~I9/I12/I14~~ — feito **na linha** (HEAD `f4a5305ae8`;
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I9_I12_I14.md)): dicas de tipo,
    esqueletos com buracos, paleta `@ : >` e `--!strict`; smoke do dono OK a 18/10.
-   ~~I13~~ — feito **na linha** (formatar ao salvar com o StyLua fixado; §Estado, [I13.md](ferramentas/medicoes_onda2/I13.md)). **Próximo: I15.** No I15, a bancada repete-se numa rodada só com a lista E os balões abertos.
+   ~~I13~~ — feito **na linha**, smoke do dono OK a 19/10 (formatar ao salvar com o StyLua fixado; [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I13.md); §Estado, [I13.md](ferramentas/medicoes_onda2/I13.md)). **Próximo: I15.** No I15, a bancada repete-se numa rodada só com a lista E os balões abertos.
 4. **Acabamento (fim da fila, pedido do dono no smoke do I6/I11, 17/10):** com **Ctrl** carregado, o rato
    sobre qualquer palavra que o Ctrl+clique leva a algum sítio vira o ponteiro em **mão** (e o nome
    sublinha, como no Godot/VS Code). Só sobre o que é clicável: a validade tem de vir da mesma regra

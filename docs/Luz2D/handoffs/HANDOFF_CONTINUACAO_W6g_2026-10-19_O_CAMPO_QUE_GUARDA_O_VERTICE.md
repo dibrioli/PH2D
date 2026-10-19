@@ -274,3 +274,70 @@ O modelo do que falta já está medido (§8): a borda está a +0,07 e a fina é 
    construção; se não, o raio da vizinhança cresce até serem. Atenção: a fina é da grade FINA e a lista é da captura
    (`ESCALA_DA_CAPTURA`).
 2. A família (b) (37–38): da W5g, fora.
+
+## 12. A r5 — o canto num passe próprio (por ordem do dono «siga»; logs `target/w6g/{particao,gatilho,exato_r5*,custo_r5*,pecas_*,duas_*}.log`)
+
+**A pré-condição do §11.1, medida** (sem miolo, fina da 10 + 9 × outra configuração, Chebyshev em blocos 8×8 da
+captura até ao vértice listado mais perto; razão captura/fina = 2):
+
+| diferença | perto (0–2 blocos) | longe (≥ 5 blocos) |
+|---|---|---|
+| o canto (10 + 9 × 10 + 9 com `Canto::DESLIGADO`) | c5 182 · c2 2 551 | **c5 350 (até 1,05) · c2 268 · c4 830 · c3 364** |
+| a `V2` (10 + 9 sem canto × cunha) | quase toda | c5 28 (até 2,0) · c4 151 |
+
+⇒ **a partição pela lista dos vértices da borda está REFUTADA**: os ramos `CANTO_*` disparam onde a própria fina acha
+duas faces (`onde_calcular`, `i2 != SEM_FACE`, o eixo medial), e isso acontece longe dos vértices listados. Mas todo o
+código do canto está a jusante desse gatilho, logo **a partição pelo gatilho é exata por construção**. Texels de duas
+faces (sonda 2 ≥ 100): c1 517 · c2 28 722 · c3 4 875 · c4 3 889 · **c5 6 367 · c6 2 548** · c7 1 870 · c8 0.
+
+**As formas e o custo** (`Canto::passe_proprio`; prova de exatidão = 10 + 9 em passe próprio × em linha, cenas 1–8, com
+e sem miolo: **0 texels diferentes de 3 932 160 nas 16**, em r5, r5b e r5c):
+
+| forma | fina c5 / c6 (lei W6d 2,39 / 1,26) | C3 c5 / c6 |
+|---|---|---|
+| r4 (em linha) | 2,48 / 1,26 | +5,8–6,3 % / +3,4–4,7 % |
+| r5 — a fina sem o canto lista os texels (atómico) e o `c3_fina_cantos` grava nas texturas | 2,46 / 1,41 | +5,2 % / **+11,6 %** |
+| ↳ só a fina sem o canto (o passe dos cantos por diagnóstico desligado) | **1,95 / 0,93** | — |
+| r5b — pré-lista + cantos num buffer + fina + junta (para sobrepor cantos e fina) | 3,60–3,95 / 1,41 | +38–48 % / +11 % |
+| ↳ peças sozinhas: a pré-lista 0,67 / 0,58 · pré-lista + cantos 0,77 / 0,59 · pré-lista + fina 2,6–3,95 / **4,38** | | |
+| r5c — a fina sem o canto lista, cantos num buffer, junta | 2,46–2,53 / 1,41 | +4,8–6,5 % / +11 % |
+| ↳ o passe dos cantos DUAS vezes seguidas | 2,96 / 1,85–1,89 | — |
+
+- **Os texels de duas faces são a cauda cara da fina da própria lei W6d**: tirados da fina comum, ela cai 0,32–0,44 ms
+  (−18 % / −26 %). É a maior alavanca de custo medida na C3 — vale também para o padrão, não só para a 10 + 9.
+- **O passe próprio custa a latência deles, ~0,45–0,5 ms**, quase igual com 6 367 ou 2 548 texels, e outra vez numa 2.ª
+  corrida seguida (não é cache fria): poucos grupos, cada thread a percorrer a cadeia inteira de marchas de um texel com
+  a placa quase vazia. Uma lâmpada nas cenas 5 e 6 ⇒ partir o texel por lâmpada não dá nada.
+- **Anomalia por explicar:** depois da pré-lista (r5b, sem a fina) o mesmo passe custava só +0,10 / +0,005 ms; e
+  pré-lista ‖ fina sem barreira entre elas saiu MAIS cara que a soma (4,38 na c6). Não está entendido; não construir em
+  cima disto sem o medir.
+- O código da r5c fica, exato e DESLIGADO (`Canto::LIGADO.passe_proprio = false`): `solver_c3_fina_cantos.rs`, as
+  entradas `c3_fina_adia` / `c3_fina_cantos` / `c3_fina_junta` e o `CANTO_ADIA` no `c3_direta.wgsl`, os buffers
+  `luz2d/buf/fina_adiados` e `luz2d/buf/fina_cantos_luz` na `PassList` (só com `Config::adia_o_canto`). O `pipeline_em`
+  passa a deixar as constantes PRÓPRIAS vencerem as comuns da mesma chave; os espelhos dos uniformes foram para
+  `solver_c3_uniformes.rs` (o tecto de 700 LOC).
+- Com ele desligado (`{f3,caixa,borda}_r5.log`, `portoes_r5_*.log`): F3 e caixa **byte a byte os da r4**, a borda com os
+  mesmos (a)/(b)/anéis/bits; nessa corrida a 10 + 9 deu C3 +4,9 % / +3,5 % (`load` ~5–8) — dentro do ruído da r4
+  (+5,8–6,3 % na cena 5), não é aprovação. Portões: gpu 9/9 · app 14/15, com o
+  `a_luz_recua_quando_a_placa_recusa_a_memoria` a reprovar no lote e a passar sozinho 2/2 (`portao_recua_r5_*.log`):
+  o flake conhecido (discrimina pelo fan-out, não pela carga).
+
+## ⛔ Recusas MEDIDAS (§12)
+
+| Recusa | Porquê |
+|---|---|
+| Um passe só nos vértices listados pela borda (a lista da captura) | O canto e a `V2` mudam a luz a ≥ 5 blocos de qualquer vértice listado (tabela da partição). |
+| A pré-lista dos texels de duas faces | Custa 0,58–0,67 ms sozinha (repete o prefixo do `onde_calcular` na região). |
+| O passe dos cantos depois da fina, como está (r5/r5c) | Custa ~0,5 ms de latência; poupa 0,32–0,44. |
+| Partir o texel de canto por lâmpada | Uma lâmpada nas cenas da régua. |
+
+## 13. ABERTO (por ordem — substitui o §11)
+
+1. **A latência dos texels de duas faces** (o mesmo kill-criterion do §1; a r4 continua a melhor forma: falta a cena 5,
+   +5,8–6,3 %). Os texels de duas faces custam 0,32–0,44 ms dentro da fina e ~0,5 ms à parte. Medir ANTES de mexer, por
+   uma sonda que conte por texel de duas faces os passos de marcha (`cone_livre`, `soma_da_abertura`, as bisseções, o
+   laço do `c0_ao_longo_da_face`) e qual dos passos de luz (o ponto, a outra face) pesa mais. Com o passo dominante na
+   mão: encurtá-lo, ou correr os dois passos de luz do texel em duas threads (a `r5c` já dá o sítio para isso, com a
+   prova de exatidão pronta em `target/w6g/diag_l.py`). Se a cadeia encurtar, a alavanca vale também para o padrão.
+2. A anomalia da r5b (o passe dos cantos barato depois da pré-lista; pré-lista ‖ fina mais cara que a soma).
+3. A família (b) (37–38): da W5g, fora.

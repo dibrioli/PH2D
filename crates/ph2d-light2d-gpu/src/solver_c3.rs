@@ -7,32 +7,6 @@ use super::*;
 use crate::config::Refino;
 use crate::passlist::{FLUENCIA, Opcionais};
 
-/// O espelho de `Fina` do `c3_direta.wgsl` (48 B).
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-struct UniformeFina {
-    tamanho: [u32; 2],
-    inicio: [u32; 2],
-    fim: [u32; 2],
-    inicio_grosso: [u32; 2],
-    fim_grosso: [u32; 2],
-    fina: u32,
-    limiar: f32,
-}
-
-/// O espelho de `Preenche` do `c3_preenche.wgsl` (48 B).
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-struct UniformePreenche {
-    celulas: [u32; 2],
-    inicio: [u32; 2],
-    fim: [u32; 2],
-    celula: u32,
-    salto: u32,
-    fina: u32,
-    _p: [u32; 3],
-}
-
 /// ⭐ W5a (F3): o JFA do complemento — a semente e os saltos, um grupo por passo (o uniforme de cada
 /// um numa fatia do buffer).
 struct Preenchimento {
@@ -44,6 +18,10 @@ struct Preenchimento {
     u: UniformePreenche,
 }
 
+/// Os espelhos dos uniformes da fina e do preenchimento (ficheiro irmão pelo tecto de 700 LOC).
+#[path = "solver_c3_uniformes.rs"]
+mod uniformes;
+use uniformes::{UniformeFina, UniformePreenche};
 /// A entrada sem e com os distantes (ficheiro irmão pelo tecto de 700 LOC).
 #[path = "solver_c3_par.rs"]
 mod par;
@@ -54,6 +32,9 @@ mod borda;
 /// ⭐ W5p: as constantes `override` da C3 (a montagem e a régua do compilador).
 #[path = "solver_c3_constantes.rs"]
 pub(crate) mod constantes;
+/// ⭐ W6g r5: o canto num passe próprio (ficheiro irmão pelo tecto de 700 LOC).
+#[path = "solver_c3_fina_cantos.rs"]
+mod fina_cantos;
 
 /// O que os passes C3 pegam do solver ao nascer.
 pub(super) struct Entradas<'a> {
@@ -88,6 +69,8 @@ pub(super) struct C3 {
     rebote: Option<(Par, [wgpu::BindGroup; 2])>,
     /// ⭐ W5d: a borda exata da captura (a pipeline, o grupo 3 e o tamanho dela).
     borda: Option<borda::Borda>,
+    /// ⭐ W6g r5: o passe dos cantos depois da fina (`Config::adia_o_canto`).
+    fina_cantos: Option<fina_cantos::FinaCantos>,
     /// A grade das cascatas (a fonte do rebote cobre-a inteira).
     tamanho_grosso: [u32; 2],
     uniforme: wgpu::Buffer,
@@ -200,7 +183,12 @@ impl C3 {
                            grupos: &[Option<&wgpu::BindGroupLayout>],
                            entrada: &str,
                            constantes: &[(&str, f64)]| {
-            let constantes: Vec<(&str, f64)> = constantes.iter().chain(&comuns).copied().collect();
+            // As próprias vencem as comuns da mesma chave (a `c3_fina_adia` desliga o canto).
+            let sem_as_proprias = comuns
+                .iter()
+                .filter(|(k, _)| constantes.iter().all(|(o, _)| o != k));
+            let constantes: Vec<(&str, f64)> =
+                constantes.iter().chain(sem_as_proprias).copied().collect();
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(rotulo),
                 bind_group_layouts: grupos,
@@ -349,14 +337,22 @@ impl C3 {
                 super::miolo::grupo_do_anel(device, &entradas, &grupo, e.vistas, m[0], l)
             });
         let entrada_anel = format!("{entrada_fina}_anel");
+        let adia = cfg.adia_o_canto();
         // ⭐ W5p: a fina e o anel (os únicos que levam segundos a frio no compilador do driver) compilam
         // nos seus fios enquanto este monta o resto da C3 (a abertura em série: +0,3 s).
-        let (fina, anel, preenchimento, rebote, borda) = std::thread::scope(|s| {
+        let (fina, anel, preenchimento, rebote, borda, fina_cantos) = std::thread::scope(|s| {
             let anel = grupos_anel.as_ref().map(|(l, _)| {
                 s.spawn(|| pipeline("luz2d c3 anel", l, &entrada_anel, &constantes_fina))
             });
-            let fina = (!cfg.so_a_c0).then(|| {
+            let fina = (!cfg.so_a_c0 && !adia).then(|| {
                 s.spawn(|| pipeline("luz2d c3 fina", &g2, entrada_fina, &constantes_fina))
+            });
+            let fina_cantos = (adia && !cfg.so_a_c0).then(|| {
+                s.spawn(|| {
+                    let g = (entradas.as_slice(), grupo.as_slice(), &g2);
+                    let l = [&cena_layout, e.lampadas_layout];
+                    fina_cantos::FinaCantos::nova(e, &pipeline_em, l, g, &constantes_fina)
+                })
             });
             // ⭐ W5a (F3): o JFA do complemento — grupo 3 (o 1 e o 2 ficam vazios).
             let preenchimento = cfg
@@ -475,9 +471,15 @@ impl C3 {
                 preenchimento,
                 rebote,
                 borda,
+                fina_cantos.map(|h| h.join().expect("a compilação dos cantos")),
             )
         });
         let anel = anel.zip(grupos_anel.map(|(_, g)| g));
+        // ⭐ W6g r5: com o canto num passe próprio a fina é a `c3_fina_adia` dele.
+        let (fina, fina_cantos) = match fina_cantos {
+            Some((f, c)) => (Some(f), Some(c)),
+            None => (fina, None),
+        };
 
         let gf = cfg.grade_da_fluencia();
         let mut c3 = Self {
@@ -489,6 +491,7 @@ impl C3 {
             anel,
             rebote,
             borda,
+            fina_cantos,
             tamanho_grosso: [cfg.grade.largura, cfg.grade.altura],
             uniforme: e.uni_c3.clone(),
             u: UniformeFina {
@@ -570,6 +573,9 @@ impl C3 {
     ) {
         gpu.queue
             .write_buffer(&self.uniforme, 0, bytemuck::bytes_of(&self.u));
+        if let Some(fc) = &self.fina_cantos {
+            fc.zera(gpu);
+        }
         let grupos =
             |a: [u32; 2], b: [u32; 2]| [(b[0] - a[0]).div_ceil(8), (b[1] - a[1]).div_ceil(8)];
         let grossa = grupos(self.u.inicio_grosso, self.u.fim_grosso);
@@ -650,7 +656,13 @@ impl C3 {
         p.set_bind_group(0, &self.cena, &[]);
         p.set_bind_group(1, lampadas, &[]);
         p.set_bind_group(2, &self.grupo_fina, &[]);
+        if let Some(fc) = &self.fina_cantos {
+            p.set_bind_group(3, fc.grupo(), &[]);
+        }
         p.dispatch_workgroups(fina[0], fina[1], 1);
+        if let Some(fc) = &self.fina_cantos {
+            fc.depois(&mut p, distantes, &self.grupo_fina);
+        }
         // ⭐ W5n: com a região menor que a grade, o anel e o conhecido de fora dela (na grade inteira).
         if let Some((pipe, g2)) = self.anel.as_ref().filter(|_| self.regiao_parcial()) {
             let [w, h] = self.u.tamanho;

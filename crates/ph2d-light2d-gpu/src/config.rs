@@ -317,6 +317,10 @@ pub struct Canto {
     /// ⭐ W6g — com duas faces, as normais SEMPRE pelo lado oposto (com [`Self::normais`]): a centrada sai
     /// 2,4° torta no (152, 245) do F3 sem as dar «iguais» (handoff W6f §9, W6g §2).
     pub um_lado: bool,
+    /// ⭐ W6g r5 — o canto num passe PRÓPRIO sobre os texels de duas faces: a fina comum compila sem o
+    /// código dele. A mesma luz, bit a bit; a fina comum fica 0,32–0,44 ms abaixo da lei W6d, mas o passe
+    /// custa ~0,5 ms de latência (a cadeia de um texel) — desligado no [`Self::LIGADO`] (handoff W6g §12).
+    pub passe_proprio: bool,
 }
 
 impl Canto {
@@ -325,12 +329,14 @@ impl Canto {
         luz: false,
         fracao: false,
         um_lado: false,
+        passe_proprio: false,
     };
     pub const LIGADO: Self = Self {
         normais: true,
         luz: true,
         fracao: true,
         um_lado: true,
+        passe_proprio: false,
     };
 }
 
@@ -550,6 +556,18 @@ impl Config {
     #[must_use]
     pub fn usa_cantos(&self) -> bool {
         self.borda_cantos && self.borda_exata && self.borda_continua && self.borda_vertice.is_some()
+    }
+
+    /// ⭐ W6g r5: o canto ([`Self::canto`]) corre no passe próprio (`c3_fina_cantos`) — só na `c3_fina`
+    /// (o refino pelas sondas); a exata e o anel levam-no em linha.
+    #[must_use]
+    pub fn adia_o_canto(&self) -> bool {
+        let c = self.canto;
+        c.passe_proprio
+            && (c.normais || c.luz || c.fracao)
+            && matches!(self.refino, Refino::Bordas(_))
+            && self.usa_visibilidade()
+            && !self.so_a_c0
     }
 
     /// A luz direta marcha numa captura PRÓPRIA (mais fina que a das cascatas)?

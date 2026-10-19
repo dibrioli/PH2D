@@ -15,6 +15,11 @@ pub(crate) const NOME_LADRILHOS: &str = "luz2d/buf/ladrilhos";
 /// alternam por quadro (a deste e a do anterior, que o `c3_cantos_limpa` repõe) — cada uma com o
 /// cabeçalho do despacho INDIRETO (`[n, 9, 1]`) e depois um `u32` por bloco.
 pub(crate) const NOME_LISTA_DOS_CANTOS: &str = "luz2d/buf/lista_dos_cantos";
+/// ⭐ W6g r5: os texels de duas faces que a `c3_fina_adia` deixa ao `c3_fina_cantos` — o cabeçalho é o
+/// despacho INDIRETO dele (`[grupos de 64, 1, 1]`) e o número de texels, depois um `u32` por texel.
+pub(crate) const NOME_FINA_ADIADOS: &str = "luz2d/buf/fina_adiados";
+/// ⭐ W6g r5: a luz de cada texel da [`NOME_FINA_ADIADOS`] (a fluência e a transmitida, `f32`).
+pub(crate) const NOME_FINA_CANTOS_LUZ: &str = "luz2d/buf/fina_cantos_luz";
 
 /// Os bytes de UMA das duas listas para a captura `[w, h]` (cabem todos os blocos), alinhados a 256: o
 /// deslocamento do binding da 2.ª (o teto do `min_storage_buffer_offset_alignment` no WebGPU).
@@ -461,6 +466,19 @@ impl PassList {
                 nome: NOME_LADRILHOS,
                 bytes: crate::ladrilhos::bytes([gf.largura, gf.altura]),
                 usos: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
+        }
+        if cfg.adia_o_canto() {
+            let gf = cfg.grade_da_fluencia();
+            buffers.push(Buffer {
+                nome: NOME_FINA_ADIADOS,
+                bytes: 4 * (4 + u64::from(gf.largura) * u64::from(gf.altura)),
+                usos: B::STORAGE | B::INDIRECT | B::COPY_DST,
+            });
+            buffers.push(Buffer {
+                nome: NOME_FINA_CANTOS_LUZ,
+                bytes: 32 * u64::from(gf.largura) * u64::from(gf.altura),
+                usos: B::STORAGE,
             });
         }
         if let Some([v, _]) = op.cantos {

@@ -93,6 +93,8 @@ override CANTO_NORMAIS: bool = false;
 override CANTO_LUZ: bool = false;
 override CANTO_FRACAO: bool = false;
 override CANTO_UM_LADO: bool = false;
+// ⭐ W6g r5 — o texel de duas faces fica para o [`c3_fina_cantos`] (a [`c3_fina_adia`] compila sem o canto).
+override CANTO_ADIA: bool = false;
 // ⭐ W5d — o ponto de fronteira que um texel do INTERIOR lê toma a c0 pela média AO LONGO da face,
 // nesta meia-largura (texels das cascatas; 0 = no ponto): ver [`c0_ao_longo_da_face`].
 override C0_AO_LONGO_DA_FACE: f32 = 0.0;
@@ -652,6 +654,8 @@ var<private> face_do_ponto: vec2<f32> = vec2<f32>(0.0);
 var<private> face_da_outra: vec2<f32> = vec2<f32>(0.0);
 // A face do passo de luz que corre (a do ponto ou a da outra).
 var<private> face_corrente: vec2<f32> = vec2<f32>(0.0);
+// ⭐ W6g r5 — o [`onde_calcular`] achou duas faces com `CANTO_ADIA`: o texel é do passe dos cantos.
+var<private> canto_adiado: bool = false;
 
 // ⭐ A fração da área de um quadrado de lado `h` (centrado) além da reta `g·x = t` (`g` unitária,
 // `t ≥ 0`): a projeção do quadrado em `g` é um trapézio.
@@ -765,6 +769,11 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
     if i2 == SEM_FACE {
         sonda_saida += 3.0;
         return Onde(cand[i1], true, cand[i1], 0.0);
+    }
+    // Todo o código do canto (`CANTO_*`) está daqui para baixo, só com duas faces.
+    if CANTO_ADIA {
+        canto_adiado = true;
+        return Onde(P0, false, P0, 0.0);
     }
     cand[i2] = pe_na_borda(P0, cand[i2]);
     var e1 = pe_na_face(P0, cand[i1], h);
@@ -1041,13 +1050,102 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocat
     }
     borda_aqui = true;
     let tau = meio(ponto_fino(alvo)).tau;
-    let onde = onde_calcular(alvo);
+    luz_da_fina(alvo, onde_calcular(alvo), tau);
+}
+
+// A luz do texel da fina, a sonda e a gravação (a [`c3_fina`], a [`c3_fina_adia`] e a [`c3_fina_cantos`]).
+fn luz_da_fina(alvo: vec2<u32>, onde: Onde, tau: f32) {
     let lt = luz_do_texel(alvo, onde, tau, false, true);
     var l = lt.l;
     if SONDA != 0u {
         l = sonda_cor(alvo, onde, l);
     }
     guardar_fina(alvo, onde, l, lt.t, tau);
+}
+
+// ⭐ W6g r5 — o canto num passe PRÓPRIO: a [`c3_fina_adia`] (sem o código do canto) lista os texels de
+// duas faces, o [`c3_fina_cantos`] calcula-os com ele num buffer seu e a [`c3_fina_junta`] grava-os (o
+// passe dos cantos a gravar nas texturas da fina custava +0,5 ms; handoff W6g §12). O cabeçalho da lista é
+// o despacho INDIRETO (`x` = grupos de 64) e `n` os texels, depois o texel `x | y << 16`.
+struct Adiados {
+    x: atomic<u32>,
+    y: u32,
+    z: u32,
+    n: atomic<u32>,
+    texels: array<u32>,
+}
+struct AdiadosLidos {
+    x: u32,
+    y: u32,
+    z: u32,
+    n: u32,
+    texels: array<u32>,
+}
+@group(3) @binding(21) var<storage, read_write> fina_adiados: Adiados;
+@group(3) @binding(22) var<storage, read> fina_adiados_lidos: AdiadosLidos;
+// Por texel listado: a fluência e a transmitida (`w < 0`: não se grava) que o [`guardar_fina`] gravaria.
+@group(3) @binding(23) var<storage, read_write> fina_cantos_luz: array<vec4<f32>>;
+@group(3) @binding(24) var<storage, read> fina_cantos_luz_lida: array<vec4<f32>>;
+
+// A [`c3_fina`] com `CANTO_ADIA` (o canto desligado): o texel de duas faces entra na lista e sai.
+@compute @workgroup_size(8, 8)
+fn c3_fina_adia(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocation_index) lid: u32) {
+    let alvo = gid.xy + fina.inicio;
+    let na_regiao = all(alvo < fina.fim);
+    if fundo_do_grupo(alvo, na_regiao, lid) || !na_regiao {
+        return;
+    }
+    borda_aqui = true;
+    let tau = meio(ponto_fino(alvo)).tau;
+    let onde = onde_calcular(alvo);
+    if canto_adiado {
+        let i = atomicAdd(&fina_adiados.n, 1u);
+        if i % 64u == 0u {
+            atomicAdd(&fina_adiados.x, 1u);
+        }
+        fina_adiados.texels[i] = alvo.x | (alvo.y << 16u);
+        return;
+    }
+    luz_da_fina(alvo, onde, tau);
+}
+
+fn adiado(i: u32) -> vec2<u32> {
+    let e = fina_adiados_lidos.texels[i];
+    return vec2<u32>(e & 0xffffu, e >> 16u);
+}
+
+// Em despacho indireto sobre a lista, com o canto: a sequência da [`c3_fina`], para o buffer.
+@compute @workgroup_size(64)
+fn c3_fina_cantos(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if gid.x >= fina_adiados_lidos.n {
+        return;
+    }
+    let alvo = adiado(gid.x);
+    borda_aqui = true;
+    let tau = meio(ponto_fino(alvo)).tau;
+    let onde = onde_calcular(alvo);
+    let lt = luz_do_texel(alvo, onde, tau, false, true);
+    var l = lt.l;
+    if SONDA != 0u {
+        l = sonda_cor(alvo, onde, l);
+    }
+    let g = a_guardar(onde, l, lt.t, tau);
+    fina_cantos_luz[2u * gid.x] = g.fina;
+    fina_cantos_luz[2u * gid.x + 1u] = select(vec4<f32>(-1.0), g.transmitida, g.com_transmitida);
+}
+
+// Depois da [`c3_fina_adia`]: a luz dos texels do [`c3_fina_cantos`] nas texturas da fina.
+@compute @workgroup_size(64)
+fn c3_fina_junta(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if gid.x >= fina_adiados_lidos.n {
+        return;
+    }
+    let alvo = adiado(gid.x);
+    let t = fina_cantos_luz_lida[2u * gid.x + 1u];
+    if t.w >= 0.0 {
+        textureStore(transmitida_saida, alvo, t);
+    }
+    textureStore(fina_saida, alvo, fina_cantos_luz_lida[2u * gid.x]);
 }
 
 const VIZINHAS_DO_FUNDO: array<vec2<i32>, 4> = array<vec2<i32>, 4>(
@@ -1087,16 +1185,31 @@ fn guardar_fundo(alvo: vec2<u32>, tau: f32) {
 // (a luz que o atravessa até ele): `mix(t, l, α)` aqui, ou — com o miolo, que troca o `l` do interior
 // pela difusão — na textura que o `miolo_final` mistura (`α = 1` no opaco: o bit de antes).
 fn guardar_fina(alvo: vec2<u32>, onde: Onde, l: vec3<f32>, t: vec3<f32>, tau: f32) {
+    let g = a_guardar(onde, l, t, tau);
+    if g.com_transmitida {
+        textureStore(transmitida_saida, alvo, g.transmitida);
+    }
+    textureStore(fina_saida, alvo, g.fina);
+}
+
+// O que o [`guardar_fina`] grava (a [`c3_fina_cantos`] guarda-o no buffer).
+struct Guardada {
+    fina: vec4<f32>,
+    transmitida: vec4<f32>,
+    com_transmitida: bool,
+}
+
+fn a_guardar(onde: Onde, l: vec3<f32>, t: vec3<f32>, tau: f32) -> Guardada {
     let translucido = onde.remapeado && tau > 0.0;
     var saida = l;
-    if MIOLO {
-        if onde.remapeado {
-            textureStore(transmitida_saida, alvo, vec4<f32>(t, select(1.0, 1.0 - tau, translucido)));
-        }
-    } else if translucido {
+    if !MIOLO && translucido {
         saida = mix(t, l, 1.0 - tau);
     }
-    textureStore(fina_saida, alvo, vec4<f32>(saida, alfa_do_miolo(onde)));
+    return Guardada(
+        vec4<f32>(saida, alfa_do_miolo(onde)),
+        vec4<f32>(t, select(1.0, 1.0 - tau, translucido)),
+        MIOLO && onde.remapeado,
+    );
 }
 
 fn alfa_do_miolo(onde: Onde) -> f32 {

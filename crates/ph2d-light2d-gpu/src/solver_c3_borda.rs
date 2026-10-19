@@ -162,7 +162,12 @@ impl Borda {
             "c3_borda"
         };
         Self {
-            pipeline: pipeline_em("luz2d c3 borda", &[None, None, None, Some(&g3)], entrada, &[]),
+            pipeline: pipeline_em(
+                "luz2d c3 borda",
+                &[None, None, None, Some(&g3)],
+                entrada,
+                &[],
+            ),
             grupos,
             tamanho: e.lista.texturas[b].tamanho,
             cantos,
@@ -173,10 +178,9 @@ impl Borda {
     pub(super) fn gravar(&self, p: &mut wgpu::ComputePass<'_>) {
         let [w, h] = self.tamanho;
         let grupos = [w.div_ceil(8), h.div_ceil(8)];
-        let lado = self
-            .cantos
-            .as_ref()
-            .map_or(0, |c| usize::from(c.lado.fetch_xor(true, Ordering::Relaxed)));
+        let lado = self.cantos.as_ref().map_or(0, |c| {
+            usize::from(c.lado.fetch_xor(true, Ordering::Relaxed))
+        });
         p.set_bind_group(3, &self.grupos[lado], &[]);
         if let Some(c) = &self.cantos {
             p.set_pipeline(&c.zera);

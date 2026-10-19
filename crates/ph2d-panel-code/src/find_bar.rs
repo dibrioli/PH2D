@@ -235,6 +235,14 @@ impl FindBarView {
         }
     }
 
+    /// `(x, y)` sobre a barra: `Some(true)` = sobre um campo de texto; `None` = fora dela.
+    #[must_use]
+    pub fn over(&self, x: f32, y: f32) -> Option<bool> {
+        self.area
+            .contains(x, y)
+            .then(|| self.fields.iter().any(|p| p.rect.contains(x, y)))
+    }
+
     /// Onde caiu `(x, y)`; `None` fora da barra.
     #[must_use]
     pub fn hit(&self, ts: &mut TextSystem, x: f32, y: f32) -> Option<FindHit> {

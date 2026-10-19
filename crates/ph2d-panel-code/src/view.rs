@@ -65,6 +65,8 @@ pub struct CodeView {
     pub(crate) folds: Vec<FoldMark>,
     pub(crate) rows: Vec<Row>,
     pub(crate) underlines: Vec<Underline>,
+    /// O último quadro sublinhou o nome do Ctrl+clique.
+    pub(crate) link_painted: bool,
     /// A lista de completação do último quadro.
     pub(crate) popup: Option<crate::popup::Painted>,
     /// O balão do rato e a assinatura do último quadro.
@@ -106,6 +108,7 @@ impl Default for CodeView {
             folds: Vec::new(),
             rows: Vec::new(),
             underlines: Vec::new(),
+            link_painted: false,
             popup: None,
             hints: crate::hint::Painted::default(),
             rename_box: None,
@@ -151,6 +154,12 @@ impl CodeView {
     #[must_use]
     pub fn last_underlines(&self) -> &[Underline] {
         &self.underlines
+    }
+
+    /// O último quadro sublinhou o nome do Ctrl+clique (`CodeFrame::link`).
+    #[must_use]
+    pub fn link_painted(&self) -> bool {
+        self.link_painted
     }
 
     /// A zona do texto (sem calha nem barra de estado).

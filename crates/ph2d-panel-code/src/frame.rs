@@ -186,6 +186,8 @@ pub struct CodeFrame<'a> {
     pub stops: &'a [Range<usize>],
     /// O script tem `--!strict` (I14): a barra di-lo.
     pub strict: bool,
+    /// O nome que o Ctrl+clique alcança, com o Ctrl carregado e o rato sobre ele: sublinhado.
+    pub link: Option<Range<usize>>,
 }
 
 /// Uma dica de tipo (I9): o rótulo (`: number`) mostrado em `at` sem ocupar bytes.

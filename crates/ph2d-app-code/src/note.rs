@@ -103,8 +103,8 @@ impl CodeDoc {
     /// O culpado sublinhado sob o rato em `(x, y)` (byte `b`): o desenho dele, nunca o vazio à volta.
     pub(crate) fn culprit_at(&mut self, b: usize, x: f32, y: f32) -> Option<Range<usize>> {
         self.problems()
-            .into_iter()
-            .filter_map(|p| p.culprit)
+            .iter()
+            .filter_map(|p| p.culprit.clone())
             .find(|c| c.start <= b && b <= c.end && c.start < c.end && self.drawn_over(c, x, y))
     }
 

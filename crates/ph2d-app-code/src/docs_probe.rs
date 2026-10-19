@@ -101,6 +101,16 @@ impl CodeDocs {
             .map(|h| h.text.clone())
     }
 
+    /// ⚠️ SONDA: o nome que a aba do script `id` sublinha com o Ctrl carregado (o que o Ctrl+clique
+    /// alcança), e o que a pintura do último quadro sublinhou.
+    #[must_use]
+    pub fn link_of(&self, id: ScriptId) -> (Option<std::ops::Range<usize>>, bool) {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map_or((None, false), |d| (d.reach_link(), d.view.link_painted()))
+    }
+
     /// ⚠️ SONDA: a assinatura que a aba do script `id` mostra: o rótulo e o parâmetro marcado.
     #[must_use]
     pub fn signature_of(&self, id: ScriptId) -> Option<(String, Option<String>)> {

@@ -1096,3 +1096,214 @@ fn tecla_pixel() {
         );
     }
 }
+
+/// ⏱ SONDA (I15 §9, medir não curar): o custo por quadro de `CodeDoc::problems()` na célula `Real`
+/// (o `luau-lsp` fixado, 51 × 7 500 linhas), partido em fases, e o `paint` inteiro ao lado. Sem placa.
+/// As fases que o teste não alcança (`pub(crate)`) replicam-se pela mesma API pública que elas usam
+/// (`ph2d_code_explain`, o `sort_by_key` da mesma chave, o filtro de `semantic::unresolved`); a fusão é
+/// o RESTO (total − explicações − lint − sort). Resumo = mínimo e mediana (`MEDIR_VELOCIDADE.md`).
+/// `bash scripts/ph2d-run.sh cargo test -p ph2d-app-code --profile smoke --test it problemas_por_quadro -- --ignored --nocapture`
+#[test]
+#[ignore = "medição: corre-se à mão (comando no doc-comment)"]
+fn problemas_por_quadro() {
+    use ph2d_panel_code::{Explanation, Problem};
+    const RONDAS: usize = 20;
+    const POR_BLOCO: usize = 20;
+    let load0 = loadavg();
+    let mut ts = TextSystem::new();
+    let theme = Theme::default();
+    let altura = altura_para(JANELA, &mut ts, &theme);
+    let us = |t: Instant| t.elapsed().as_secs_f64() * 1e6;
+    let explica = |m: &str| {
+        ph2d_code_explain::explain(m).map(|e| Explanation {
+            kind: e.kind.id(),
+            title: e.title(),
+            why: e.why(),
+        })
+    };
+    struct Sonda {
+        nome: &'static str,
+        m: Mesa,
+        id: ScriptId,
+        area: Rect,
+        texto: String,
+        fundidos: Vec<String>,
+        lint: Vec<std::ops::Range<usize>>,
+        ordem: Vec<Problem>,
+        diags: Vec<ph2d_code_intel::Diag>,
+        linha: usize,
+        f: [Vec<f64>; 8],
+    }
+    let mut sondas = Vec::new();
+    for linhas in [51, GRANDE] {
+        let (mut m, id, alvo) = mesa(linhas, Lista::Real);
+        tecla(&mut m, &mut ts, id, Key::Home, crate::ctrl(), None);
+        for _ in 0..alvo {
+            tecla(&mut m, &mut ts, id, Key::Down, Modifiers::default(), None);
+        }
+        tecla(&mut m, &mut ts, id, Key::End, Modifiers::default(), None);
+        abre_tudo(&mut m, &mut ts, id);
+        m.quadro();
+        let area = Rect::new(0.0, 0.0, LARGURA, altura);
+        let mut scene = VectorScene::new();
+        pinta(&mut m, id, area, &mut ts, &mut scene, &theme);
+        let texto = m.docs().text_of(id).expect("aberto");
+        let ps = m.docs().problems_of(id);
+        // O lint: explicação própria cujo título É a mensagem (`lint::Lint::problems`).
+        let e_lint = |p: &Problem| {
+            p.explanation
+                .as_ref()
+                .is_some_and(|e| e.title == p.message && e.kind.starts_with("unknown_field"))
+        };
+        let fundidos: Vec<String> = ps.iter().filter(|p| !e_lint(p)).map(|p| p.message.clone()).collect();
+        let lint: Vec<_> = ps.iter().filter(|p| e_lint(p)).filter_map(|p| p.culprit.clone()).collect();
+        // A entrada do `sort` de `CodeDoc::problems`: os fundidos (já ordenados) e o lint no fim.
+        let ordem: Vec<Problem> = ps
+            .iter()
+            .filter(|p| !e_lint(p))
+            .chain(ps.iter().filter(|p| e_lint(p)))
+            .cloned()
+            .collect();
+        let diags = m.docs().assist_diagnostics(id).1.unwrap_or_default();
+        let com_expl = fundidos.iter().filter(|s| explica(s).is_some()).count();
+        let n1001 = diags.iter().filter(|d| d.code.as_deref() == Some("1001")).count();
+        println!(
+            "sonda {linhas}: {} linhas · {} diagnósticos do assistente ({n1001} de código 1001) · {} problemas = {} fundidos ({com_expl} com explicação) + {} do lint · {} dicas",
+            texto.lines().count(),
+            diags.len(),
+            ps.len(),
+            fundidos.len(),
+            lint.len(),
+            m.docs().inlays_of(id).len()
+        );
+        let mut classes = std::collections::BTreeMap::<String, usize>::new();
+        for msg in &fundidos {
+            *classes.entry(msg.chars().take(48).collect()).or_default() += 1;
+        }
+        let mut classes: Vec<_> = classes.into_iter().collect();
+        classes.sort_by_key(|c| std::cmp::Reverse(c.1));
+        println!("  mensagens mais comuns: {:?}", &classes[..classes.len().min(3)]);
+        let linha = ps.first().map_or(0, |p| p.line);
+        sondas.push(Sonda {
+            nome: if linhas == 51 { "51" } else { "7 500" },
+            m,
+            id,
+            area,
+            texto,
+            fundidos,
+            lint,
+            ordem,
+            diags,
+            linha,
+            f: Default::default(),
+        });
+    }
+    let mut scene = VectorScene::new();
+    for r in 0..RONDAS {
+        for k in 0..sondas.len() {
+            let s = &mut sondas[(r + k) % 2];
+            for _ in 0..POR_BLOCO {
+                // 0: `problems()` inteiro (o que o `paint` chama).
+                let t = Instant::now();
+                let ps = black_box(s.m.docs().problems_of(s.id));
+                s.f[0].push(us(t));
+                // 1: as explicações, uma por linha fundida (`note::explanation`).
+                let t = Instant::now();
+                for msg in &s.fundidos {
+                    black_box(explica(msg));
+                }
+                s.f[1].push(us(t));
+                // 2: o lint (`Lint::problems`): a explicação do campo e o `Problem` por aviso.
+                let t = Instant::now();
+                for b in &s.lint {
+                    let e = ph2d_code_explain::Explained::unknown_field(&s.texto[b.clone()], None);
+                    black_box(Problem {
+                        line: s.texto[..b.start].matches('\n').count(),
+                        severity: ph2d_panel_code::Severity::Warning,
+                        culprit: Some(b.clone()),
+                        message: e.title(),
+                        explanation: Some(Explanation {
+                            kind: e.kind.id(),
+                            title: e.title(),
+                            why: e.why(),
+                        }),
+                    });
+                }
+                s.f[2].push(us(t));
+                // 3: o `sort` final, sobre a mesma entrada.
+                let mut v = s.ordem.clone();
+                let t = Instant::now();
+                v.sort_by_key(|p| (p.line, p.culprit.as_ref().map(|c| c.start)));
+                s.f[3].push(us(t));
+                black_box(v);
+                // 4: `note_sections` com o balão aberto na calha da 1.ª linha com problema.
+                let t = Instant::now();
+                let sec: Vec<(Option<String>, String)> = ps
+                    .iter()
+                    .filter(|p| p.line == s.linha)
+                    .map(|p| match &p.explanation {
+                        Some(e) => (Some(e.title.clone()), e.why.clone()),
+                        None => (Some(p.message.clone()), String::new()),
+                    })
+                    .collect();
+                s.f[4].push(us(t));
+                black_box(sec);
+                // 5: `semantic::unresolved` (o filtro do código 1001 e a ordem).
+                let t = Instant::now();
+                let mut u: Vec<std::ops::Range<usize>> = s
+                    .diags
+                    .iter()
+                    .filter(|d| d.code.as_deref() == Some("1001"))
+                    .map(|d| d.bytes.clone())
+                    .collect();
+                u.sort_by_key(|r| r.start);
+                s.f[5].push(us(t));
+                black_box(u);
+                drop(ps);
+                // 6: o `paint` inteiro da aba (balão fechado), depois de um quadro.
+                s.m.quadro();
+                let t = Instant::now();
+                pinta(&mut s.m, s.id, s.area, &mut ts, &mut scene, &theme);
+                s.f[6].push(us(t));
+                // 7: o relógio vazio (o custo de ler `Instant`).
+                let t = Instant::now();
+                s.f[7].push(us(t));
+            }
+        }
+    }
+    let mm = |v: &[f64]| {
+        let mut s = v.to_vec();
+        s.sort_by(f64::total_cmp);
+        (s[0], s[s.len() / 2])
+    };
+    println!("\nloadavg: início {load0} · fim {} · N = {} por fase e célula", loadavg(), RONDAS * POR_BLOCO);
+    println!("| fase (µs) | 51 mín | 51 mediana | 7 500 mín | 7 500 mediana |");
+    println!("|---|---|---|---|---|");
+    let nomes = [
+        "problems() inteiro",
+        "explicações (uma por fundido)",
+        "lint::problems (replicado)",
+        "sort final",
+        "note_sections (balão aberto)",
+        "semantic::unresolved",
+        "paint da aba inteiro",
+        "relógio vazio",
+    ];
+    for (i, n) in nomes.iter().enumerate() {
+        let (a, b) = mm(&sondas[0].f[i]);
+        let (c, d) = mm(&sondas[1].f[i]);
+        println!("| {n} | {a:.1} | {b:.1} | {c:.1} | {d:.1} |");
+    }
+    let resto = |s: &Sonda| mm(&s.f[0]).0 - mm(&s.f[1]).0 - mm(&s.f[2]).0 - mm(&s.f[3]).0;
+    let resto_p50 = |s: &Sonda| mm(&s.f[0]).1 - mm(&s.f[1]).1 - mm(&s.f[2]).1 - mm(&s.f[3]).1;
+    println!(
+        "| fusão + derive (resto) | {:.1} | {:.1} | {:.1} | {:.1} |",
+        resto(&sondas[0]),
+        resto_p50(&sondas[0]),
+        resto(&sondas[1]),
+        resto_p50(&sondas[1])
+    );
+    for s in &sondas {
+        println!("célula {}: linha do balão {}", s.nome, s.linha);
+    }
+}

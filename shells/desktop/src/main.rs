@@ -721,6 +721,7 @@ impl App {
             resize_settle_frames: 0,
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
+            cursor_shown: Default::default(),
             hovered_object: None,
             prefab_stage_pending: None,
             prefab_stage: None,
@@ -894,6 +895,8 @@ impl App {
         // desenha, em vez de aparecer um quadro depois.
         self.global_palette_drain();
         self.run_render_frame();
+        // O ponteiro de uma aba muda sem o rato mexer (o Ctrl, uma resposta do assistente).
+        self.update_eyedropper_cursor();
         // **A SELEÇÃO** (`flip_select`, W6): no modo Edit ela é o alvo dos ajustes do
         // painel. Só a MUDANÇA de estilo age.
         // ⭐ W2/L5 2.ª volta: as duas pedem o DOCUMENTO e o relógio, nunca a `App`.

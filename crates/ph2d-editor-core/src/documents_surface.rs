@@ -1,7 +1,7 @@
 //! As abas de FAMÍLIA dentro de `Documents` — ver [`crate::doc_surface`].
 
 use super::Documents;
-use crate::doc_surface::{DocumentSurface, SurfaceTab, Surfaces};
+use crate::doc_surface::{DocumentSurface, PointerLook, SurfaceTab, Surfaces};
 
 impl Documents {
     /// A shell instala cada família com documentos em aba, uma vez, no arranque.
@@ -46,6 +46,14 @@ impl Documents {
         let tab = self.surface_active?;
         let f = self.surfaces.get(tab.family)?;
         Some((f, tab.id))
+    }
+
+    /// O ponteiro que a aba de família activa quer em `(x, y)`; `None` = nenhuma, ou fora dela.
+    #[must_use]
+    pub fn surface_pointer_look(&self, x: f32, y: f32) -> Option<PointerLook> {
+        let tab = self.surface_active?;
+        let f = self.surfaces.families.get(usize::from(tab.family))?;
+        f.pointer_look(tab.id, x, y)
     }
 
     /// ⭐ Corre em todo quadro antes de pintar: uma família que abriu um documento pede a aba; uma

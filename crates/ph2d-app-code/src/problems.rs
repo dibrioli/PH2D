@@ -27,6 +27,8 @@ pub(crate) struct Held {
     /// Nenhuma edição desde a resposta: o texto é o que o servidor analisou.
     pub exact: bool,
     pub list: Vec<Diag>,
+    /// Avança a cada mudança (a chave dos problemas guardados, `CodeDoc::problems`).
+    pub generation: u64,
 }
 
 impl Held {
@@ -35,6 +37,7 @@ impl Held {
         self.version = Some(version);
         list.clone_into(&mut self.list);
         self.exact = true;
+        self.generation += 1;
         self.edited(since);
     }
 
@@ -43,6 +46,7 @@ impl Held {
             return;
         }
         self.exact = false;
+        self.generation += 1;
         for e in edits {
             self.list.retain_mut(|d| match shift(&d.bytes, e) {
                 Some(r) => {
@@ -55,7 +59,10 @@ impl Held {
     }
 
     pub fn clear(&mut self) {
-        *self = Self::default();
+        *self = Self {
+            generation: self.generation + 1,
+            ..Self::default()
+        };
     }
 }
 

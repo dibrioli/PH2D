@@ -28,7 +28,15 @@ pub(crate) const INDENT: IndentStyle = IndentStyle::Spaces(2);
 struct Derived {
     key: Option<(u64, u64)>,
     errors: Vec<SyntaxError>,
+    /// Os problemas e a chave de tudo o que os faz: (revisão, geração da árvore, por salvar, assistente,
+    /// avisos de campo, diagnóstico salvo). Refazê-los custava 160 µs por quadro a 7 500 linhas com
+    /// 293 diagnósticos (2/3 nas explicações): `ferramentas/medicoes_onda2/acabamento_problemas.md`.
+    problems: Option<(ProblemsKey, std::sync::Arc<[Problem]>)>,
+    /// Avança quando o diagnóstico salvo muda.
+    saved_generation: u64,
 }
+
+type ProblemsKey = (u64, u64, bool, u64, u64, u64);
 
 pub(crate) struct CodeDoc {
     pub script: ScriptId,
@@ -67,6 +75,8 @@ pub(crate) struct CodeDoc {
     pub(crate) inlay: crate::inlay::InlayHeld,
     /// Ctrl+clique / F12 à espera do assistente (I6).
     pub(crate) goto: Option<crate::goto::Goto>,
+    /// O que o Ctrl+clique alcança sob o rato, com o Ctrl carregado (acabamento).
+    pub(crate) reach: crate::reach::Reach,
     /// As acções de contexto do Alt+Enter (I7).
     pub(crate) actions: Option<crate::actions::Actions>,
     /// Os campos do `self` que ninguém dá (I7).
@@ -131,6 +141,7 @@ impl CodeDoc {
             sem: crate::semantic::SemHeld::default(),
             inlay: crate::inlay::InlayHeld::default(),
             goto: None,
+            reach: crate::reach::Reach::default(),
             actions: None,
             lint: crate::lint::Lint::default(),
             rename: None,
@@ -221,8 +232,28 @@ impl CodeDoc {
     /// Os problemas desta revisão (E7, I3). O diagnóstico do texto salvo mostra-se na linha onde o seu
     /// texto foi parar; um erro de sintaxe sai com o ● (o tree-sitter mostra-o vivo); os do
     /// assistente, onde as edições os levaram.
-    pub fn problems(&mut self) -> Vec<Problem> {
+    pub fn problems(&mut self) -> std::sync::Arc<[Problem]> {
         self.derive();
+        let key = (
+            self.buffer.revision(),
+            self.syntax.generation(),
+            self.buffer.is_dirty(),
+            self.assist.generation,
+            self.lint.generation,
+            self.derived.saved_generation,
+        );
+        if let Some((k, p)) = &self.derived.problems
+            && *k == key
+        {
+            debug_assert_eq!(**p, *self.fresh_problems(), "problemas guardados velhos");
+            return p.clone();
+        }
+        let p: std::sync::Arc<[Problem]> = self.fresh_problems().into();
+        self.derived.problems = Some((key, p.clone()));
+        p
+    }
+
+    fn fresh_problems(&self) -> Vec<Problem> {
         let dirty = self.buffer.is_dirty();
         let t = self.buffer.text();
         let saved = match (&self.saved_diag, self.diag_anchor) {
@@ -246,6 +277,7 @@ impl CodeDoc {
         self.syntax.fresh(self.buffer.text());
         self.derive();
         let t = self.buffer.text();
+        self.derived.saved_generation += 1;
         self.diag_anchor = diag.as_ref().and_then(|d| d.line).map(|n| {
             let line = (n as usize)
                 .saturating_sub(1)
@@ -380,6 +412,7 @@ impl CodeDoc {
         if self.find.open {
             self.find.refresh(&self.buffer);
         }
+        let link = self.reach_link();
         let preedit = self.preedit.as_ref().map(|(s, _)| s.as_str());
         let Self {
             buffer,
@@ -481,6 +514,7 @@ impl CodeDoc {
             inlays: &inlay.list,
             stops: &stops,
             strict,
+            link,
         };
         view.paint(frame, code_r, scene, ts, theme);
         if let Some(r) = find_r {

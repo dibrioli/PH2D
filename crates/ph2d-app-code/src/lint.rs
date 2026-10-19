@@ -97,12 +97,15 @@ pub(crate) struct Lint {
     counted: Option<(u64, u64)>,
     /// A revisão vista no último quadro, e o relógio em que ela apareceu (a pausa conta daí).
     seen: Option<(u64, u128)>,
+    /// Avança a cada mudança da lista (a chave dos problemas guardados, `CodeDoc::problems`).
+    pub generation: u64,
 }
 
 impl Lint {
     /// Os avisos seguem as edições; um cujo nome uma edição TOCA larga-se (o nome mudou) — também
     /// a que escreve encostada a ele, antes ou depois.
     pub fn edited(&mut self, edits: &[TextEdit]) {
+        self.generation += u64::from(!edits.is_empty());
         for e in edits {
             self.list.retain_mut(|l| {
                 if e.old_end_byte < l.bytes.start {
@@ -170,6 +173,7 @@ impl CodeDoc {
         }
         self.lint.counted = Some(key);
         self.lint.list = self.field_lints();
+        self.lint.generation += 1;
     }
 
     fn field_lints(&self) -> Vec<FieldLint> {

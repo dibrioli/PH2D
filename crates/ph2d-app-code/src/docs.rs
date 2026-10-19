@@ -15,7 +15,7 @@ use ph2d_a11y::{Node, NodeId};
 use ph2d_code_intel::GrammarWorker;
 use ph2d_editor_core::ToastQueue;
 use ph2d_editor_core::doc_surface::{
-    Compose, DocCommand, DocTab, DocumentSurface, KeyInput, KeyOutcome, PointerInput,
+    Compose, DocCommand, DocTab, DocumentSurface, KeyInput, KeyOutcome, PointerInput, PointerLook,
 };
 use ph2d_editor_core::ime::ComposeKey;
 use ph2d_editor_core::zones::Rect;
@@ -357,7 +357,9 @@ impl CodeDocs {
     /// Os problemas que a aba do script `id` mostra (E7).
     #[must_use]
     pub fn problems_of(&mut self, id: ScriptId) -> Vec<Problem> {
-        self.doc(id.0).map(CodeDoc::problems).unwrap_or_default()
+        self.doc(id.0)
+            .map(|d| d.problems().to_vec())
+            .unwrap_or_default()
     }
 
     /// Há alterações por salvar na aba (aberta ou estacionada) do script `id`?
@@ -517,8 +519,13 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn pointer_move(&mut self, id: u64, _input: PointerInput<'_>, x: f32, y: f32) -> bool {
-        let now = self.clock.0;
+        let (now, area) = (self.clock.0, self.area);
         let Some(d) = self.doc(id) else { return false };
+        if area.contains(x, y) {
+            d.reach_mouse(x, y);
+        } else {
+            d.reach.mouse = None;
+        }
         if d.drag_to(x, y) {
             return true;
         }
@@ -668,6 +675,14 @@ impl DocumentSurface for CodeDocs {
 
     fn go_to(&mut self, id: u64, line: usize, col: usize) -> bool {
         self.tab_go_to(id, line, col)
+    }
+
+    fn pointer_look(&self, id: u64, x: f32, y: f32) -> Option<PointerLook> {
+        if !self.area.contains(x, y) {
+            return None;
+        }
+        let d = self.docs.iter().find(|d| d.script.0 == id)?;
+        Some(d.pointer_look(x, y))
     }
 
     fn command(&mut self, id: u64, cmd: ph2d_a11y::NodeId) -> bool {

@@ -1,0 +1,479 @@
+{
+ "loadavg": [
+  "2.09",
+  "2.56",
+  "4.85"
+ ],
+ "texto": "ph2d.property(\"amplitude\", 1.0)\nlocal brilho = 1\nfunction update(self, dt)\n  self.t = (self.t or 0) + dt\n  local d = brilho * self.amplitude * math.sin(self.t)\n  if d > 0 and self.ampiltude then\n    pirnt(d, nil, true)\n  end\n  ph2d.set(self.id, \"x\", d)\nend\n",
+ "casos": {
+  "palavra-chave local": {
+   "pos": {
+    "line": 1,
+    "character": 0
+   },
+   "definition": [],
+   "hover": null
+  },
+  "palavra-chave function": {
+   "pos": {
+    "line": 2,
+    "character": 0
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction<T>(self: { ampiltude: T, amplitude: number, id: number, t: number }, dt: number): ()\n```"
+    }
+   }
+  },
+  "palavra-chave if": {
+   "pos": {
+    "line": 5,
+    "character": 2
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction<T>(self: { ampiltude: T, amplitude: number, id: number, t: number }, dt: number): ()\n```"
+    }
+   }
+  },
+  "palavra-chave then": {
+   "pos": {
+    "line": 5,
+    "character": 30
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction<T>(self: { ampiltude: T, amplitude: number, id: number, t: number }, dt: number): ()\n```"
+    }
+   }
+  },
+  "palavra-chave end": {
+   "pos": {
+    "line": 7,
+    "character": 2
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction<T>(self: { ampiltude: T, amplitude: number, id: number, t: number }, dt: number): ()\n```"
+    }
+   }
+  },
+  "palavra-chave and": {
+   "pos": {
+    "line": 5,
+    "character": 11
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nT | false\n```"
+    }
+   }
+  },
+  "palavra-chave or": {
+   "pos": {
+    "line": 3,
+    "character": 19
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnumber\n```"
+    }
+   }
+  },
+  "nil": {
+   "pos": {
+    "line": 6,
+    "character": 13
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnil\n```"
+    }
+   }
+  },
+  "true": {
+   "pos": {
+    "line": 6,
+    "character": 18
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nboolean\n```"
+    }
+   }
+  },
+  "número 1.0": {
+   "pos": {
+    "line": 0,
+    "character": 27
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnumber\n```"
+    }
+   }
+  },
+  "número 0": {
+   "pos": {
+    "line": 5,
+    "character": 9
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnumber\n```"
+    }
+   }
+  },
+  "local: declaração": {
+   "pos": {
+    "line": 1,
+    "character": 6
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nlocal brilho: number\n```"
+    }
+   }
+  },
+  "local: uso": {
+   "pos": {
+    "line": 4,
+    "character": 12
+   },
+   "definition": [
+    {
+     "range": {
+      "end": {
+       "character": 12,
+       "line": 1
+      },
+      "start": {
+       "character": 6,
+       "line": 1
+      }
+     },
+     "uri": "file:///ph2d-project/acabamento.luau"
+    }
+   ],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nlocal brilho: number\n```"
+    }
+   }
+  },
+  "parâmetro: declaração": {
+   "pos": {
+    "line": 2,
+    "character": 22
+   },
+   "definition": [
+    {
+     "range": {
+      "end": {
+       "character": 24,
+       "line": 2
+      },
+      "start": {
+       "character": 22,
+       "line": 2
+      }
+     },
+     "uri": "file:///ph2d-project/acabamento.luau"
+    }
+   ],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nlocal dt: number\n```"
+    }
+   }
+  },
+  "parâmetro: uso": {
+   "pos": {
+    "line": 3,
+    "character": 27
+   },
+   "definition": [
+    {
+     "range": {
+      "end": {
+       "character": 24,
+       "line": 2
+      },
+      "start": {
+       "character": 22,
+       "line": 2
+      }
+     },
+     "uri": "file:///ph2d-project/acabamento.luau"
+    }
+   ],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nlocal dt: number\n```"
+    }
+   }
+  },
+  "self (parâmetro)": {
+   "pos": {
+    "line": 2,
+    "character": 16
+   },
+   "definition": [
+    {
+     "range": {
+      "end": {
+       "character": 20,
+       "line": 2
+      },
+      "start": {
+       "character": 16,
+       "line": 2
+      }
+     },
+     "uri": "file:///ph2d-project/acabamento.luau"
+    }
+   ],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nlocal self: {\n    ampiltude: T,\n    amplitude: number,\n    id: number,\n    t: number\n}\n```"
+    }
+   }
+  },
+  "self (uso)": {
+   "pos": {
+    "line": 4,
+    "character": 21
+   },
+   "definition": [
+    {
+     "range": {
+      "end": {
+       "character": 20,
+       "line": 2
+      },
+      "start": {
+       "character": 16,
+       "line": 2
+      }
+     },
+     "uri": "file:///ph2d-project/acabamento.luau"
+    }
+   ],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nlocal self: {\n    ampiltude: T,\n    amplitude: number,\n    id: number,\n    t: number\n}\n```"
+    }
+   }
+  },
+  "self.amplitude (propriedade)": {
+   "pos": {
+    "line": 4,
+    "character": 26
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnumber\n```"
+    }
+   }
+  },
+  "self.ampiltude (erro)": {
+   "pos": {
+    "line": 5,
+    "character": 20
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nT\n```"
+    }
+   }
+  },
+  "self.t (escrito no script)": {
+   "pos": {
+    "line": 4,
+    "character": 52
+   },
+   "definition": [
+    {
+     "range": {
+      "end": {
+       "character": 8,
+       "line": 3
+      },
+      "start": {
+       "character": 7,
+       "line": 3
+      }
+     },
+     "uri": "file:///ph2d-project/acabamento.luau"
+    }
+   ],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnumber\n```"
+    }
+   }
+  },
+  "self.id (campo do motor)": {
+   "pos": {
+    "line": 8,
+    "character": 16
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnumber\n```"
+    }
+   }
+  },
+  "math (tabela global)": {
+   "pos": {
+    "line": 4,
+    "character": 38
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\ntype math = {\n    abs: (n: number) -> number,\n    acos: (n: number) -> number,\n    asin: (n: number) -> number,\n    atan: (n: number) -> number,\n    atan2: (y: number, x: number) -> number,\n    ceil: (n: number) -> number,\n    clamp: (n: number, min: number, max: number) -> number,\n    cos: (n: number) -> number,\n    cosh: (n: number) -> number,\n    deg: (n: number) -> number,\n    e: number,\n    exp: (n: number) -> number,\n    floor: (n: number) -> number,\n    fmod: (x: number, y: number) -> number,\n    frexp... *TRUNCATED*\n```"
+    }
+   }
+  },
+  "math.sin": {
+   "pos": {
+    "line": 4,
+    "character": 43
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction math.sin(n: number): number\n```"
+    }
+   }
+  },
+  "ph2d (tabela)": {
+   "pos": {
+    "line": 8,
+    "character": 2
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\ntype ph2d = {\n    attach_script: (entity: number, script: string) -> (),\n    color: (r: number, g: number, b: number, a: number?) -> {\n        __kind: \"color\",\n        a: number,\n        b: number,\n        g: number,\n        r: number\n    },\n    despawn: (entity: number) -> (),\n    emit: (signal: string) -> (),\n    find_by_name: (name: string) -> number?,\n    get: (entity: number, field: \"rotation\" | \"scale_x\" | \"scale_y\" | \"x\" | \"y\") -> number?,\n    input: (key: string) -> number?,\n    property: (name: string... *TRUNCATED*\n```\n----------\nThe PH2D scene API: move objects, read input, signals, properties, values."
+    }
+   }
+  },
+  "ph2d.set": {
+   "pos": {
+    "line": 8,
+    "character": 7
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction ph2d.set(entity: number, field: \"rotation\" | \"scale_x\" | \"scale_y\" | \"x\" | \"y\", value: number): ()\n```\n----------\nWrites a pose field; applied at the end of the tick (everyone reads the same photo)."
+    }
+   }
+  },
+  "ph2d.property": {
+   "pos": {
+    "line": 0,
+    "character": 5
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction ph2d.property(name: string, default: Color | Vec2 | boolean | number | string, options: PropertyOptions?): ()\n```\n----------\nDeclares an Inspector property; only at the top of the script."
+    }
+   }
+  },
+  "update (função do script)": {
+   "pos": {
+    "line": 2,
+    "character": 9
+   },
+   "definition": [
+    {
+     "range": {
+      "end": {
+       "character": 15,
+       "line": 2
+      },
+      "start": {
+       "character": 9,
+       "line": 2
+      }
+     },
+     "uri": "file:///ph2d-project/acabamento.luau"
+    }
+   ],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction update<T>(self: { ampiltude: T, amplitude: number, id: number, t: number }, dt: number): ()\n```"
+    }
+   }
+  },
+  "pirnt (global desconhecido)": {
+   "pos": {
+    "line": 6,
+    "character": 4
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\ntype pirnt = *error-type*\n```"
+    }
+   }
+  }
+ },
+ "args": [
+  "/home/enio/.cache/ph2d/luau-lsp/1.70.1/luau-lsp",
+  "lsp",
+  "--stdio",
+  "--definitions:@ph2d=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-5f3b24ab50658691.d.luau",
+  "--docs=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-docs-2649bfff572254a5.json"
+ ],
+ "loadavg_fim": [
+  "2.09",
+  "2.56",
+  "4.85"
+ ]
+}

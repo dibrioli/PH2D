@@ -220,12 +220,14 @@ impl crate::App {
     }
 
     /// Reflect the current hover context in the OS cursor. Called each
-    /// CursorMoved (winit dedups the icon). Priority: an armed colour-picker
+    /// CursorMoved and each frame (deduped here: winit's Wayland backend resends
+    /// every call), the only `set_cursor` of the shell. Priority: an armed colour-picker
     /// eyedropper wins (a crosshair "target"), else the Motion graph's split
     /// divider shows a double-arrow resize cursor (`NsResize` ↕ for a horizontal
     /// divider, `EwResize` ↔ for a vertical one), else a timeline grab band
-    /// (panel edge, label splitter, graph-height grip), else the default arrow.
-    pub(super) fn update_eyedropper_cursor(&self) {
+    /// (panel edge, label splitter, graph-height grip), else what the active
+    /// family tab asks for (`DocumentSurface::pointer_look`), else the arrow.
+    pub(crate) fn update_eyedropper_cursor(&self) {
         let Some(win) = self.window.as_ref() else {
             return;
         };
@@ -264,11 +266,19 @@ impl crate::App {
                         B::Rotate => CursorIcon::Grab,
                     }
                 } else {
-                    CursorIcon::Default
+                    use ph2d_editor_core::doc_surface::PointerLook;
+                    let (x, y) = self.last_pointer;
+                    match h.documents.surface_pointer_look(x, y) {
+                        Some(PointerLook::Text) => CursorIcon::Text,
+                        Some(PointerLook::Hand) => CursorIcon::Pointer,
+                        Some(PointerLook::Arrow) | None => CursorIcon::Default,
+                    }
                 }
             })
             .unwrap_or(CursorIcon::Default);
-        win.set_cursor(cursor);
+        if self.cursor_shown.replace(Some(cursor)) != Some(cursor) {
+            win.set_cursor(cursor);
+        }
     }
 
     /// The double-arrow cursor for the timeline grab band under the pointer, if

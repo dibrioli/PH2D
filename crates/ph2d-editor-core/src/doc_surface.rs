@@ -122,6 +122,18 @@ pub struct DocPlaces {
     pub lines: usize,
 }
 
+/// O ponteiro que uma aba quer sob o rato (a shell traduz para o do sistema).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PointerLook {
+    /// A seta.
+    #[default]
+    Arrow,
+    /// Sobre texto editável: o I.
+    Text,
+    /// Sobre o que um clique leva a algum sítio: a mão.
+    Hand,
+}
+
 /// O que um evento do rato traz além da posição.
 pub struct PointerInput<'a> {
     pub text: &'a mut TextSystem,
@@ -198,6 +210,12 @@ pub trait DocumentSurface: Any {
     fn go_to(&mut self, id: u64, line: usize, col: usize) -> bool {
         let _ = (id, line, col);
         false
+    }
+    /// O ponteiro que a aba quer em `(x, y)`; `None` = fora dela (decide a shell). Perguntado a
+    /// cada quadro: muda sem o rato mexer (uma tecla, uma resposta que chegou).
+    fn pointer_look(&self, id: u64, x: f32, y: f32) -> Option<PointerLook> {
+        let _ = (id, x, y);
+        None
     }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

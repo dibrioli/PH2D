@@ -195,7 +195,9 @@ impl Hints {
         use ph2d_code_intel::Answer;
         if let Some(h) = self.hover.as_mut().filter(|h| h.ticket == Some(ticket)) {
             if let Answer::Hover(a) = answer {
-                h.shown = a;
+                // O preso pelo Ctrl+clique/F12 é a documentação, ou nada (a regra do `goto`).
+                let pinned = h.pinned;
+                h.shown = a.filter(|a| !pinned || crate::doc::CodeDoc::documents(&a.text));
             }
             return;
         }

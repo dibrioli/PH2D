@@ -4,6 +4,7 @@
 
 mod a11y;
 mod abrir;
+mod alcance;
 mod acoes;
 mod assistente;
 mod bancada;

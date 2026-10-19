@@ -34,11 +34,15 @@ pub fn frame(
         ours.then_some(t.id)
     });
     let clock = (hero.store.clock_ns(), hero.motion.reduced_motion());
+    let held = hero.store.cmd_held();
     let Some(docs) = hero.documents.surfaces_mut().find_mut::<CodeDocs>() else {
         return;
     };
     docs.set_clock(clock.0, clock.1);
     docs.follow_active(our_active);
+    for d in &mut docs.docs {
+        d.reach_tick(held && Some(d.script.0) == our_active);
+    }
     let world = sim.world_mut();
     let mut wanted = world
         .get_resource_mut::<ScriptEditRequests>()

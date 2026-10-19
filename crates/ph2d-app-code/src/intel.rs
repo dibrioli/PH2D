@@ -453,10 +453,12 @@ impl Intel {
             return;
         };
         for d in docs.iter_mut() {
+            let reach = d.reach.asked.as_ref().is_some_and(|a| a.unsent());
             if d.hints.hover.is_none()
                 && d.hints.sig.is_none()
                 && d.goto.is_none()
                 && d.actions.is_none()
+                && !reach
             {
                 continue;
             }
@@ -464,6 +466,7 @@ impl Intel {
                 if !waiting {
                     d.hints.close();
                     d.goto = None;
+                    d.reach_offline();
                     if let Some(a) = d.actions.as_mut() {
                         a.offline();
                     }
@@ -487,6 +490,14 @@ impl Intel {
                 && g.ticket.is_none()
             {
                 g.ticket = Some(session.ask(&m.uri, Req::Definition(g.word.start)));
+            }
+            // O Ctrl+rato pergunta pelo mesmo caminho: a definição, e o balão se ela não fica aqui.
+            if let Some(a) = d.reach.asked.as_mut().filter(|a| a.unsent()) {
+                let req = match a.verdict {
+                    crate::reach::Verdict::Definition => Req::Definition(a.word.start),
+                    _ => Req::Hover(a.word.start),
+                };
+                a.ticket = Some(session.ask(&m.uri, req));
             }
             if let Some(h) = d.hints.hover.as_mut()
                 && h.ticket.is_none()

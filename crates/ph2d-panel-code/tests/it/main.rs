@@ -122,6 +122,7 @@ pub fn frame<'a>(
         inlays: &[],
         stops: &[],
         strict: d.strict,
+        link: None,
     }
 }
 

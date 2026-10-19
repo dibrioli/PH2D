@@ -56,6 +56,7 @@ impl CodeView {
         self.paint_under(&frame, scene, &pal);
         self.paint_glyphs(scene, &pal);
         self.paint_problems(&frame, scene, &pal);
+        self.paint_link(&frame, scene, &pal);
         self.paint_fold_pills(scene, ts, &pal);
         self.paint_carets(&frame, scene, &pal);
         scene.pop_layer();
@@ -320,6 +321,27 @@ impl CodeView {
             (Some(a), Some(b)) => (a.start, b.start + b.len),
             _ => (0, buffer.text().len()),
         }
+    }
+
+    /// O nome que o Ctrl+clique alcança, sublinhado a direito por baixo da linha de base.
+    fn paint_link(&mut self, frame: &CodeFrame<'_>, scene: &mut VectorScene, pal: &Palette) {
+        self.link_painted = false;
+        let Some(r) = frame.link.clone() else { return };
+        let mut painted = false;
+        self.each_seg(frame.buffer, r.start, r.end, false, |row, rect| {
+            let y = ao_pixel(row.y + self.m.text_dy + self.m.baseline + Spacing::Xxs.px());
+            scene.fill_rect(
+                rect_to_vello(Rect {
+                    x: rect.x,
+                    y,
+                    w: rect.w,
+                    h: StrokeToken::Thin.px(),
+                }),
+                pal.caret,
+            );
+            painted = true;
+        });
+        self.link_painted = painted;
     }
 
     /// O símbolo culpado sublinhado (ondulado) no lugar EXACTO de cada problema.

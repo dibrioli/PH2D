@@ -162,3 +162,44 @@ Commit `d3b578cfdb`. Desvios do plano:
 - `PH2D_UI_STATE_LOG=1`: o terminal diz cada pouso por gesto e cada objeto que um motor conduz. Medido
   na cena 35: 1 pouso, 0 motores; na 29 (o controlo, Show sem toque): 0 pousos, 0 motores.
 - Fotos: `fotos/F22_cena35.png` (o botão verde #28C85A, parado) e `fotos/F22_cena36.png` (o olho «—»).
+
+## §10 — F22b: a opacidade do objeto é canal de estado (dono 19/10: *«passe a animar a opacidade. faça aqui e agora»*)
+
+**O mecanismo (medido):** a transição (`ph2d-ui-state/src/transition.rs:292,412,417`) já interpolava
+`ObjectPose.opacity` — entre duas poses, e o fade de quem ENTRA (`0 → a sua`) e de quem SAI (`a sua →
+0`) —, mas o `capture` nunca a gravava (toda pose dizia `1`) e o `install` nunca a escrevia: nada
+chegava à tela. O `ObjectPose.opacity` já viajava no ficheiro.
+
+**Lei (Figma Smart Animate: as camadas sem par dissolvem; After Effects/Rive: a opacidade é uma
+propriedade animável como as outras):** a opacidade do objeto é um canal de estado; quem não existe no
+estado de destino desvanece e acaba em `0` EXATO.
+
+| pergunta | porta única |
+|---|---|
+| o que um estado grava / escreve | `ui_state_edit::capture` / `install` (`VecPath.opacity` ↔ `ObjectPose.opacity`) |
+| o fim exato de quem sai | `Machine::departed()` — recado de um quadro, preenchido no `arrive` (quem a pose viva tinha e o destino não), a opacidade `0`; a ponte instala-o com a pose |
+| os ficheiros antigos | degrau `192`; todo `<= 191` passa cada pose à opacidade da forma (`ui_state_edit::opacity_from_scene`), o que reproduz o Show antigo (não mexia na opacidade) |
+
+Recusas: ⛔ sem migração (um Show de projeto antigo poria a 100 % uma forma deixada a 40 %); ⛔ deixar
+quem sai no resto do penúltimo `t` (3 % em vez de 0); ⛔ um campo novo no `ObjectPose` (o que já
+viajava descreve exatamente isto, e um campo no meio do fluxo posicional obrigaria a um tipo congelado).
+
+**Achado pela foto da cena 37 (mesma família «o painel lê a forma»):** o OPACITY da barra de controlo
+(`VECTOR_OBJ_OPACITY_NUM`, o mesmo campo do Appearance) nunca era semeado do documento — mostrava o 100
+de fábrica ao lado do Appearance a 30. Curado em `panel-vector` `seed_number_fields` (inteiro, como o
+chip do Appearance; em branco no misto).
+
+**Gates (vermelhos primeiro):** `ui_state_opacidade_tests` (4: `a_opacidade_viaja_na_pose`,
+`o_show_anima_a_opacidade_e_chega_exato`, `quem_sai_acaba_em_zero_exato`,
+`a_migracao_poe_em_cada_pose_a_opacidade_da_forma`) · `machine_tests::quem_sai_e_entregue_a_zero_na_chegada`
+· shell `um_v191_abre_com_a_opacidade_da_forma_nas_poses` (com o controlo: o `192` não migra) ·
+panel `a_opacidade_da_barra_le_a_forma`.
+
+**Cena 37** (`vector_mode_opaco`, estágios `25..=27`): a 25, o Hover regravado laranja a 30 %, o Show
+do Default e depois o do Hover ⇒ o botão translúcido, Appearance e barra a dizer 30. Foto
+`fotos/F22b_cena37.png`. Controlo: as cenas 25, 29 e 35 refotografadas — 25 e 29 sem pouso nem
+motor, 35 com 1 pouso (o gesto).
+
+⚠️ **Muda o comportamento de um caso que existia em silêncio:** um objeto gravado num estado e não noutro
+agora DESAPARECE ao mostrar o outro (antes ficava como estava). É a lei da transição desde que foi
+escrita (o membro que a faca consome, a peça que nasce), que nunca tinha chegado à tela.

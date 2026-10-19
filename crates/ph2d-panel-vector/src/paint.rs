@@ -209,7 +209,7 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
         let id = crate::ids::VECTOR_OBJ_OPACITY_NUM;
         if store.focus_id() != Some(id) {
             // Inteiro, como o chip do Appearance o pinta (`0.3_f32 × 100` daria `30.000001`).
-            store.set_number_value(id, (f64::from(a.opacity) * 100.0).round());
+            store.set_number_value(id, (f64::from(a.opacity) * 100.0).round()); // LITERAL-PX-OK: fraction→percent for the opacity field
             if a.mixed_opacity {
                 store.blank_number_input(id);
             }

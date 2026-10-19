@@ -45,6 +45,7 @@ fn hero_with_picker_on(row: usize, rgba: [u8; 4]) -> HeroScreen {
             hsv_h: 0.0,
             hsv_s: 0.0,
             harmony: Harmony::None,
+            picks: 0,
         },
     );
     hero.store

@@ -115,3 +115,24 @@ Estágios livres medidos: `235..=239` (230..=234 é do `controle`, 240 do `trace
 - `=34`: a 33 e o toque no seletor do Fill com o vermelho exato do primário ⇒ as duas vermelhas (a vazia ganhou
   preenchimento opaco), o Fill deixa de ser «—».
 - Medido ANTES pelos testes 1, 2, 5 e 6 (vermelhos sobre o código de hoje).
+
+## §8 — Feito (19/10)
+
+Commit `e9d2a1ddaf`. Handoff:
+[F21](../handoffs/HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F21_O_MISTO_COMPLETO.md). Desvios do plano:
+
+- **O sinal de toque é um contador no `BlenderPicker`** (`picks`), incrementado onde o despacho
+  ESCOLHE uma cor (`apply_blender_hit`: roda, valor, `ChannelSlider(0..=2)`, amostra, harmonia;
+  `apply_blender_channel_value` idx < 3; `commit_hex_buffer`) — e não no fim do `dispatch` por
+  `ValueChanged`: o `ValueChanged` do seletor também sai da alfa, e o toque na alfa armaria o RGB
+  (a recusa §3). `state/mod.rs` estava em 699/700, a variante tinha espaço.
+- **Dois vazamentos da mesma família achados e curados:** o olho da camada invertia cada forma por
+  si (`toggle` → todas ficam o oposto do primário); o seletor aberto na amostra de uma camada
+  gravava a cor dele em todas A CADA QUADRO (`set_color` sem sinal de toque, na shell) →
+  `paint_stack::apply_picker` campo a campo, fora da shell. E o deslocamento X/Y escrevia o eixo
+  não comitado do primário em todas → `set_offset_axes`.
+- **A porta «de quem é a pilha» é `paint_stack::ordered(pen)`** (primário à frente), usada pelo
+  `published` e pela shell; `published` continua a ler `sel[0]`.
+- O olho NÃO tem estado «misto» pintado (não há ícone de olho misto); o clique iguala todas.
+- A cena 33 tem a vermelha com UMA camada extra (contorno amarelo) e a vazia com nenhuma — a
+  primeira versão (sombra + véu) deixava as duas de vermelhos diferentes na 34 e ensinava o contrário.

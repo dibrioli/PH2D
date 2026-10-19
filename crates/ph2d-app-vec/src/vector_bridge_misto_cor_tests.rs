@@ -73,6 +73,21 @@ fn o_seletor_aberto_sem_toque_nao_escreve() {
     assert_eq!(q.path(q.azul).fill, Some(Paint::Solid(rgba(AZUL))));
 }
 
+/// O controlo: uma escolha feita com o seletor noutra amostra (ou fechado) não conta como toque
+/// no Fill no quadro em que ele abre — o cursor anda a cada quadro.
+#[test]
+fn uma_escolha_noutra_amostra_nao_conta_no_fill() {
+    let mut q = Quadro::novo();
+    q.hero.store.note_colour_pick(INSP_BLENDER_PICKER);
+    q.quadro();
+    escolhe_fill(&mut q, VERMELHO, false);
+    assert_eq!(
+        q.path(q.azul).fill,
+        Some(Paint::Solid(rgba(AZUL))),
+        "a escolha antiga pintou a azul ao abrir o Fill"
+    );
+}
+
 /// O controlo: arrastar SÓ a alfa no seletor muda a alfa de todas e não pisa as cores.
 #[test]
 fn arrastar_so_a_alfa_nao_escreve_o_rgb() {

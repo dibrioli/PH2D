@@ -13,6 +13,11 @@
 //!   escolhida, com o seu valor próprio da `amplitude` (2) no Inspector. O dono corrige com Alt+Enter,
 //!   escreve `ph2d.` e escolhe `set` (as formas giram) e renomeia a propriedade com F2 (o 2 da estrela
 //!   vai com o nome). Cada passo tem a sua foto (`ph2d_app_code::smoke_drive`).
+//! - **4** — o acabamento (Onda 2): as mesmas três formas correm o `problemas.luau`, com um erro
+//!   (`math.sinn`) e dois avisos (um `local` que ninguém lê, antes dele; `self.ampiltude`). Com o Ctrl
+//!   carregado o nome que o Ctrl+clique alcança sublinha (o `set`, não o `ampiltude`); Ctrl+Shift+M
+//!   abre a lista de problemas (o erro primeiro); o clique e o F8 seleccionam o culpado; um `ph2d.set`
+//!   escolhido dentro do `entity` de outro funde os buracos.
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};
@@ -20,7 +25,7 @@ use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 3;
+pub const CENAS: u32 = 4;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -85,6 +90,40 @@ function update(self, dt)
 end
 "#;
 
+/// O nome do script do nível 4.
+pub const PROBLEMAS_NAME: &str = "problemas.luau";
+
+/// ⭐ **O script do nível 4** — um erro (`math.sinn`) entre dois avisos (o `local` que ninguém lê,
+/// ANTES dele, e o `self.ampiltude`, depois): a lista ordena por gravidade, o erro sobe e o F8 a
+/// seguir a ele vai para cima. As agulhas do condutor das fotos
+/// (`ph2d_app_code::smoke_drive::STEPS_4`) vivem neste texto (conferido no teste da cena).
+pub const PROBLEMAS_LUAU: &str = r#"-- problemas.luau — as TRÊS formas da esquerda correm ESTE script. Ele tem um erro e dois
+-- avisos de propósito (por isso as formas estão paradas).
+--
+-- 1) Carregue Ctrl e passe o rato por cima de «set», lá em baixo: o nome sublinha e o
+--    ponteiro vira uma mão (o Ctrl+clique leva à ajuda). Por cima de «ampiltude», não.
+-- 2) Ctrl+Shift+M abre a lista de problemas: o erro primeiro, depois os avisos.
+--    Clique numa linha da lista; F8 salta para o problema seguinte.
+-- 3) Na linha marcada com 3), escreva ph2d. e escolha set; com «entity» escolhido,
+--    outra vez ph2d. e set. O Tab passa pelos buracos de dentro e depois pelos de fora.
+
+ph2d.property("amplitude", 1.0, { min = 0, max = 4 }) -- quanto sobe (metros)
+ph2d.property("speed", 2.0, { min = 0, max = 10 }) -- quão depressa
+
+function init(self)
+  self.base_y = ph2d.get(self.id, "y")
+  self.t = 0
+end
+
+function update(self, dt)
+  local sobra = 3 -- aviso: ninguém a lê
+  self.t = self.t + dt
+  local s = math.sinn(self.t * self.speed) -- erro: é «sin»
+  ph2d.set(self.id, "y", self.base_y + s * self.ampiltude) -- aviso: é «amplitude»
+  -- 3) escreva aqui, numa linha nova
+end
+"#;
+
 /// O script partido do smoke da Onda 0 — o mesmo ficheiro que o dono já viu no cartão.
 pub const BROKEN_LUAU: &str =
     include_str!("../../../docs/CodeEditor/ferramentas/smoke/script_quebrado.luau");
@@ -140,10 +179,10 @@ pub fn monta_em(
     let nivel = nivel.clamp(1, CENAS);
     let (bob, broken) = {
         let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
-        let bob = if nivel == 3 {
-            lib.insert(ONDA_NAME, ONDA_LUAU)
-        } else {
-            lib.insert(BOB_NAME, BOB_LUAU)
+        let bob = match nivel {
+            3 => lib.insert(ONDA_NAME, ONDA_LUAU),
+            4 => lib.insert(PROBLEMAS_NAME, PROBLEMAS_LUAU),
+            _ => lib.insert(BOB_NAME, BOB_LUAU),
         };
         let broken = (nivel == 2).then(|| lib.insert(BROKEN_NAME, BROKEN_LUAU));
         (bob, broken)
@@ -183,7 +222,7 @@ pub fn monta_em(
         }
         out.push(e);
     }
-    if let Some(aberto) = broken.or((nivel == 3).then_some(bob)) {
+    if let Some(aberto) = broken.or((nivel >= 3).then_some(bob)) {
         sim.world_mut()
             .get_resource_or_init::<ScriptEditRequests>()
             .0
@@ -205,6 +244,15 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
             formas.len()
         );
         return formas.get(1).map(|e| e.to_bits());
+    }
+    if nivel == 4 {
+        println!(
+            "[code-smoke] =4 {} formas: o círculo, a estrela e o hexágono correm o problemas.luau, já \
+             aberto numa aba — PARADAS: o script tem um erro («math.sinn») e dois avisos. Ctrl + rato \
+             sobre «set» sublinha; Ctrl+Shift+M abre a lista de problemas; F8 salta entre eles.",
+            formas.len()
+        );
+        return None;
     }
     println!(
         "[code-smoke] ={nivel} {} formas: o círculo, a estrela e o hexágono correm o MESMO \

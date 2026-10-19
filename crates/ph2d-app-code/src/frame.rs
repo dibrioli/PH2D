@@ -67,7 +67,10 @@ pub fn frame(
     docs.lint();
     docs.notes();
     docs.fix_hover(&mut hero.motion);
-    let show_scene = crate::smoke_drive::frame(docs);
+    let (show_scene, smoke_ctrl) = crate::smoke_drive::frame(docs);
+    if let Some(held) = smoke_ctrl {
+        hero.store.set_cmd_held(held);
+    }
     crate::link::frame(
         docs,
         world,

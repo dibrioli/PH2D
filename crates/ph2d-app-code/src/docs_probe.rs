@@ -111,6 +111,16 @@ impl CodeDocs {
             .map_or((None, false), |d| (d.reach_link(), d.view.link_painted()))
     }
 
+    /// ⚠️ SONDA: a resposta do Ctrl+rato sobre o nome que o rato aponta na aba `id`: `Some(true)` =
+    /// o Ctrl+clique leva-o a algum sítio, `Some(false)` = a nenhum, `None` = à espera ou sem Ctrl.
+    #[must_use]
+    pub fn reach_settled_of(&self, id: ScriptId) -> Option<bool> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .and_then(crate::doc::CodeDoc::reach_settled)
+    }
+
     /// ⚠️ SONDA: a assinatura que a aba do script `id` mostra: o rótulo e o parâmetro marcado.
     #[must_use]
     pub fn signature_of(&self, id: ScriptId) -> Option<(String, Option<String>)> {

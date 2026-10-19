@@ -5151,6 +5151,7 @@ dependencies = [
  "ph2d-nav",
  "ph2d-node-registry",
  "ph2d-panel-asset-browser",
+ "ph2d-panel-code",
  "ph2d-panel-inspector",
  "ph2d-particles",
  "ph2d-physics-ecs",

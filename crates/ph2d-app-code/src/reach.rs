@@ -117,6 +117,19 @@ impl CodeDoc {
         (self.word_under(x, y)? == a.word).then(|| a.word.clone())
     }
 
+    /// A pergunta sobre o nome sob o rato já tem resposta (nesta revisão): `Some(true)` = o
+    /// Ctrl+clique leva-o a algum sítio; `None` = sem pergunta, ou à espera.
+    pub(crate) fn reach_settled(&self) -> Option<bool> {
+        let (x, y) = self.reach.mouse.filter(|_| self.reach.held)?;
+        let a = self.reach.asked.as_ref()?;
+        let current = a.revision == self.buffer.revision() && self.word_under(x, y)? == a.word;
+        match a.verdict {
+            Verdict::Reaches if current => Some(true),
+            Verdict::Nowhere if current => Some(false),
+            _ => None,
+        }
+    }
+
     pub(crate) fn reach_owns(&self, ticket: Ticket) -> bool {
         self.reach
             .asked

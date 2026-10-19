@@ -389,6 +389,7 @@ mod tests {
             version: Some(1),
             exact,
             list,
+            generation: 0,
         }
     }
 

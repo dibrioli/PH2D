@@ -7,11 +7,12 @@ use super::HeroScreen;
 use crate::ids;
 use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use ph2d_board_edit::{Command, Order};
+use ph2d_board_model::TextTurn;
 use ph2d_host::Modifiers;
 use ph2d_text::TextSystem;
 
 /// As linhas do menu e o comando de cada uma.
-const ROWS: [(ph2d_a11y::NodeId, Command); 7] = [
+const ROWS: [(ph2d_a11y::NodeId, Command); 9] = [
     (ids::CTX_MENU_BOARD_EL_COPY, Command::Copy),
     (ids::CTX_MENU_BOARD_EL_PASTE, Command::Paste),
     (ids::CTX_MENU_BOARD_EL_DUPLICATE, Command::Duplicate),
@@ -19,6 +20,14 @@ const ROWS: [(ph2d_a11y::NodeId, Command); 7] = [
     (ids::CTX_MENU_BOARD_EL_BACK, Command::Order(Order::Back)),
     (ids::CTX_MENU_BOARD_EL_LOCK, Command::Lock),
     (ids::CTX_MENU_BOARD_EL_DELETE, Command::Delete),
+    (
+        ids::CTX_MENU_BOARD_EL_TEXT_ALONG,
+        Command::TextTurn(TextTurn::Along),
+    ),
+    (
+        ids::CTX_MENU_BOARD_EL_TEXT_LEVEL,
+        Command::TextTurn(TextTurn::Level),
+    ),
 ];
 
 /// ⭐ O botão direito no quadro activo (a porta do quadro, `board_view::canvas_down`, chama-o): sobre
@@ -38,11 +47,15 @@ pub(super) fn open(hero: &mut HeroScreen, x: f32, y: f32) {
     if !ed.selection().contains(&id) {
         ed.select(&board.doc, [id]);
     }
-    hero.store.open_context_menu(ContextMenuRequest {
-        x,
-        y,
-        kind: ContextMenuKind::BoardElement,
-    });
+    // Numa seta, a linha que deita os textos dela do outro modo.
+    let kind = match board.doc.get(id).and_then(|el| el.connector()) {
+        Some(c) => ContextMenuKind::BoardArrow {
+            along: c.turn == TextTurn::Along,
+        },
+        None => ContextMenuKind::BoardElement,
+    };
+    hero.store
+        .open_context_menu(ContextMenuRequest { x, y, kind });
 }
 
 /// As linhas do menu (o `document_tabs_menu::populate` regista-as com as do menu das abas).

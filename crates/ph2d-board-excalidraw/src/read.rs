@@ -29,7 +29,9 @@ pub struct Import {
 
 /// O elemento nosso que viajou no `customData`, se há.
 fn carried(v: &Value) -> Option<Element> {
-    serde_json::from_value(v["customData"][PH2D]["element"].clone()).ok()
+    let mut el = v["customData"][PH2D]["element"].clone();
+    crate::caption::old_label(&mut el);
+    serde_json::from_value(el).ok()
 }
 
 /// ⭐ Um ficheiro `.excalidraw` (o texto JSON) → o documento de um quadro novo e o que saltou. Sem
@@ -63,6 +65,8 @@ pub fn read_with(json: &str, ingest: Ingest<'_>) -> Result<Import, String> {
     // Os textos presos (a um contentor que exista) e os das nossas formas que ele não tem.
     let ids: BTreeSet<&str> = live.iter().filter_map(|v| v["id"].as_str()).collect();
     let mut texts: BTreeMap<String, Text> = BTreeMap::new();
+    // W23 B5(2) — os textos SOLTOS das nossas setas (o 2.º em diante), por dono.
+    let mut loose: BTreeMap<String, Vec<(usize, Text)>> = BTreeMap::new();
     let mut consumed: BTreeSet<&str> = BTreeSet::new();
     // As nossas formas que ele não tem (`line` com o nosso elemento), pelo grupo do par forma+texto:
     // uma cópia feita LÁ ganha grupos novos, e o texto dela fica com ela (a auditoria W8 viu o texto
@@ -92,6 +96,14 @@ pub fn read_with(json: &str, ingest: Ingest<'_>) -> Result<Import, String> {
                 .as_u64()
                 .map(|n| format!("{ID}{n}"))
         });
+        if let (Some((n, i)), Some(t), Some(me)) =
+            (crate::caption::owner_of(v), text_of(v), v["id"].as_str())
+            && ids.contains(format!("{ID}{n}").as_str())
+        {
+            loose.entry(format!("{ID}{n}")).or_default().push((i, t));
+            consumed.insert(me);
+            continue;
+        }
         let host = v["containerId"].as_str().map(str::to_owned).or(own);
         if let (Some(h), Some(t), Some(me)) = (host, text_of(v), v["id"].as_str())
             && ids.contains(h.as_str())
@@ -188,6 +200,10 @@ pub fn read_with(json: &str, ingest: Ingest<'_>) -> Result<Import, String> {
                 ours.z = key;
                 ours.deleted = false;
                 edits(&mut ours, v, texts.get(me), (&map, &by_id), fresh);
+                if let Some(c) = ours.connector_mut() {
+                    let l = loose.get(me).map_or(&[][..], Vec::as_slice);
+                    crate::caption::edits(c, texts.get(me), l);
+                }
                 if ours.image().is_some() && !crate::image::edits(&mut ours, v, &files) {
                     *imp.skipped.entry("image".into()).or_default() += 1;
                     continue;
@@ -498,11 +514,6 @@ fn edits(el: &mut Element, v: &Value, text: Option<&Text>, links: Links<'_, '_>,
     {
         shape.text = RichText::plain(&t.text);
     }
-    if let (Some(t), Some(c)) = (text, el.connector_mut())
-        && t.text != c.label
-    {
-        c.label.clone_from(&t.text);
-    }
 }
 
 /// A largura e a altura da caixa de `pts`.
@@ -652,9 +663,7 @@ fn foreign(
             if route != Route::Elbow {
                 c.waypoints = pts[1..pts.len() - 1].to_vec();
             }
-            if let Some(t) = text {
-                c.label.clone_from(&t.text);
-            }
+            crate::caption::foreign(&mut c, text, &pts);
             Element::new_connector(id, z, c)
         }
         _ => return None,

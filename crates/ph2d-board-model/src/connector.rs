@@ -100,6 +100,39 @@ impl Head {
     ];
 }
 
+/// W23 B5(2) — um texto da seta (o *caption* do Miro): fica num ponto da LINHA e anda com ela.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Caption {
+    pub text: String,
+    /// Onde, em fracção do comprimento da linha desenhada (`0` = início, `1` = fim; o `position` do
+    /// Miro e o `labelPosition` do tldraw e do Excalidraw).
+    pub at: f64,
+}
+
+impl Caption {
+    /// Onde nasce o texto de uma seta: a meio.
+    pub const MIDDLE: f64 = 0.5;
+
+    #[must_use]
+    pub fn new(text: impl Into<String>, at: f64) -> Self {
+        Self {
+            text: text.into(),
+            at: at.clamp(0.0, 1.0),
+        }
+    }
+}
+
+/// Como os textos de uma seta se deitam (o `textOrientation` do Miro, um por seta).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TextTurn {
+    /// Ao longo da linha, rodados pela direcção dela no ponto do texto (nunca de pernas para o ar) —
+    /// o de nascença do Miro.
+    #[default]
+    Along,
+    /// Sempre na horizontal — o do Excalidraw e o dos quadros gravados antes do formato 15.
+    Level,
+}
+
 /// Uma seta.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Connector {
@@ -110,8 +143,14 @@ pub struct Connector {
     pub heads: [Head; 2],
     /// O traço (`stroke`, espessura, tracejado, opacidade) e a letra do rótulo; `fill` não se usa.
     pub style: Style,
-    /// O rótulo, a meio da rota. Vazio = sem rótulo.
-    pub label: String,
+    /// Os textos ao longo da linha, pela ordem em que nasceram. Ao fim de uma edição nenhum tem o texto
+    /// vazio. (`default`: o JSON de antes do formato 15, no `customData` de um `.excalidraw`, não os
+    /// tem — `ph2d-board-excalidraw` traz-lhe o rótulo.)
+    #[serde(default)]
+    pub captions: Vec<Caption>,
+    /// Como os textos se deitam.
+    #[serde(default)]
+    pub turn: TextTurn,
     /// Os pontos (mundo) por onde o artista fez a seta passar, do início para o fim — os «pontos de
     /// ajuste» do Miro. Vazio = a rota de nascença entre as pontas.
     pub waypoints: Vec<[f64; 2]>,
@@ -138,10 +177,26 @@ impl Connector {
             route,
             heads: Self::DEFAULT_HEADS,
             style,
-            label: String::new(),
+            captions: Vec::new(),
+            turn: TextTurn::Along,
             waypoints: Vec::new(),
             mids: Vec::new(),
         }
+    }
+
+    /// Os textos de um rótulo dos formatos antigos (um só, a meio).
+    #[must_use]
+    pub fn captions_of(label: String) -> Vec<Caption> {
+        if label.is_empty() {
+            Vec::new()
+        } else {
+            vec![Caption::new(label, Caption::MIDDLE)]
+        }
+    }
+
+    /// Tira os textos que ficaram vazios (apagar as letras todas apaga o texto, o Miro).
+    pub fn drop_empty_captions(&mut self) {
+        self.captions.retain(|c| !c.text.is_empty());
     }
 
     /// A fracção do segmento do meio do trecho `leg`, se o artista o arrastou.

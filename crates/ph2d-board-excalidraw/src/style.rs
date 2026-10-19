@@ -16,6 +16,8 @@ pub(crate) struct Text {
     pub(crate) align: TextAlign,
     pub(crate) valign: VAlign,
     pub(crate) letter: Letter,
+    /// W23 B5(2) — num texto preso a uma seta, a fracção da linha onde ele fica (o `labelPosition`).
+    pub(crate) at: Option<f64>,
 }
 
 pub(crate) fn num(v: &Value, k: &str) -> Option<f64> {
@@ -44,6 +46,7 @@ pub(crate) fn text_of(v: &Value) -> Option<Text> {
             _ => VAlign::Middle,
         },
         letter: letter_of(v["fontFamily"].as_u64()),
+        at: crate::caption::label_position(v),
     })
 }
 

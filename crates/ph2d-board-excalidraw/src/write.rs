@@ -80,7 +80,7 @@ fn base(board: &Board, el: &Element, kind: &str, groups: &[String]) -> Map<Strin
 
 /// O texto de uma forma ou de uma seta, num `text` preso a `container` (ou solto num grupo, quando o
 /// contentor não o aceita).
-fn text(
+pub(crate) fn text(
     board: &Board,
     owner: &Element,
     content: &str,
@@ -298,25 +298,14 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
         "customData".into(),
         json!({ PH2D: { "element": custom, "wrote": wrote } }),
     );
-    if !c.label.is_empty() {
+    if !c.captions.is_empty() {
         m.insert(
             "boundElements".into(),
             json!([{ "id": format!("{}-text", id(el.id)), "type": "text" }]),
         );
     }
     out.push(Value::Object(m));
-    if !c.label.is_empty() {
-        let st = &c.style;
-        let w = ph2d_board_route::LABEL_WRAP;
-        let rect = [
-            r.mid[0] - w / 2.0,
-            r.mid[1] - st.font_size,
-            w,
-            2.0 * st.font_size,
-        ];
-        let me = id(el.id);
-        out.push(text(board, el, &c.label, st, rect, Some(&me), &[]));
-    }
+    out.extend(crate::caption::write(board, el, c, r, &id(el.id)));
 }
 
 /// ⭐ **Uma ligação nas DUAS gramáticas** (W9, XV3: cada versão lê a sua e preserva a outra): a do next

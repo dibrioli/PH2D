@@ -146,7 +146,8 @@ impl Editor {
             | Command::MindNav(_)
             | Command::MindCollapse
             | Command::MindAuto
-            | Command::MindVertical => self.organize(doc, history, c),
+            | Command::MindVertical
+            | Command::TextTurn(_) => self.organize(doc, history, c),
             Command::MindChild => self.mind_child(doc, history, ts, None),
             Command::MindSibling => self.mind_sibling(doc, history, ts),
             Command::Paste => {
@@ -164,10 +165,10 @@ impl Editor {
         // `Ctrl+V` destes elementos de um de fora.
         let text: Vec<&str> = els
             .iter()
-            .filter_map(|el| match (el.shape(), el.connector()) {
-                (Some(s), _) => Some(s.text.as_str()),
-                (_, Some(c)) => Some(c.label.as_str()),
-                _ => None,
+            .flat_map(|el| match (el.shape(), el.connector()) {
+                (Some(s), _) => vec![s.text.as_str()],
+                (_, Some(c)) => c.captions.iter().map(|cap| cap.text.as_str()).collect(),
+                _ => Vec::new(),
             })
             .filter(|t| !t.is_empty())
             .collect();
@@ -263,6 +264,7 @@ impl Editor {
             Command::MindAuto => self.mind_toggle(doc, history, false),
             Command::MindVertical => self.mind_toggle(doc, history, true),
             Command::Link => self.link_command(doc, history),
+            Command::TextTurn(t) => self.set_text_turn(doc, history, t),
             _ => false,
         }
     }

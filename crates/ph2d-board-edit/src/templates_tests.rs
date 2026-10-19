@@ -180,7 +180,7 @@ fn the_flowchart_is_bound_arrows_between_shapes() {
     assert_eq!(
         arrows
             .iter()
-            .filter(|a| !a.connector().unwrap().label.is_empty())
+            .filter(|a| !a.connector().unwrap().captions.is_empty())
             .count(),
         2
     );

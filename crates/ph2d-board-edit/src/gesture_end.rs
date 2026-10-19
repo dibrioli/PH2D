@@ -47,7 +47,8 @@ impl Editor {
             }
             Gesture::EndDrag { original, .. }
             | Gesture::Bend { original, .. }
-            | Gesture::Slide { original, .. } => {
+            | Gesture::Slide { original, .. }
+            | Gesture::Caption { original, .. } => {
                 let _ = BoardOp::Put(original).apply(doc);
             }
             Gesture::Create { id: Some(id), .. } | Gesture::Connect { id: Some(id), .. } => {

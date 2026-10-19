@@ -7,6 +7,7 @@
 //! As réguas (`tests/it/measure_*`) dizem quando isso deixa de chegar.
 
 mod anim;
+mod caption;
 mod facilitate;
 mod frames;
 mod gray;
@@ -45,7 +46,7 @@ use ph2d_board_layout::TextCache;
 use ph2d_board_model::{
     Area, Board, Camera, Connector, Dash, Element, ElementId, Rgba, Shape, ShapeType,
 };
-use ph2d_board_route::{LABEL_WRAP, RouteCache, Routed, label_origin};
+use ph2d_board_route::{RouteCache, Routed};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{
@@ -216,6 +217,8 @@ pub fn view(camera: &Camera, area: Area) -> Affine {
 struct TextSel<'a> {
     rects: &'a [[f64; 4]],
     brush: Brush,
+    /// Numa seta, o texto em edição.
+    caption: Option<usize>,
 }
 
 impl TextSel<'_> {
@@ -250,6 +253,7 @@ pub fn paint(
             TextSel {
                 rects: &t.selection,
                 brush: Brush::Solid(token(ColorToken::GraphMarquee, theme)),
+                caption: t.caption,
             },
         )
     });
@@ -315,13 +319,9 @@ pub fn paint(
                     cache.sketch.ink = cache.ink;
                 }
                 let [bx0, by0, bx1, by1] = r.bbox;
-                // A ponta de seta sai até à maior base da rota; o rótulo, meia quebra.
+                // A ponta de seta sai até à maior base da rota; um texto, meia quebra rodada.
                 let head = ph2d_board_route::head_reach(c.style.stroke_width);
-                let pad = if c.label.is_empty() {
-                    head
-                } else {
-                    head.max(LABEL_WRAP / 2.0)
-                };
+                let pad = head.max(caption::reach(c));
                 let a = board.camera.to_screen(area, [bx0 - pad, by0 - pad]);
                 let b = board.camera.to_screen(area, [bx1 + pad, by1 + pad]);
                 if Rect::new(a[0], a[1], b[0], b[1]).intersect(clip).area() > 0.0 {
@@ -518,7 +518,7 @@ fn paint_shape(
 
 /// ⭐ **Uma seta**: a linha (no traço do estilo, com pontas e dobras redondas — as do Excalidraw,
 /// `stroke-linecap="round"`), as pontas de seta (cheias pintam, vazadas traçam a linha contínua) e
-/// o rótulo a meio da rota, sobre um recorte do fundo (a linha não lhe passa por baixo).
+/// os textos ao longo da linha ([`caption`]).
 #[allow(clippy::too_many_arguments)]
 fn paint_connector(
     scene: &mut VectorScene,
@@ -586,44 +586,11 @@ fn paint_connector(
             }
         }
     }
-    let font_px = st.font_size * zoom;
-    let read_px = cache.lod(READ_PX);
-    // O rótulo assenta num recorte do FUNDO do quadro: segue a tinta do tema.
-    let label_ink = cache.ink.color(st.text_color);
-    if !c.label.is_empty() && font_px >= cache.lod(GREEK_MIN_PX) {
-        let layout = cache.text.get(
-            ts,
-            owner,
-            &c.label,
-            &[],
-            st.font_size as f32,
-            LABEL_WRAP as f32,
-            ph2d_board_edit::face(el),
-        );
-        let [ox, oy] = label_origin(r.mid, f64::from(layout.height()));
-        let at = v * Affine::translate((ox, oy));
-        let bars = ph2d_board_layout::line_bars(layout);
-        let knock = bars
-            .bounding_box()
-            .inflate(st.font_size * LABEL_PAD, st.font_size * LABEL_PAD);
-        scene.fill_path(&knock.to_path(0.1), paper, at);
-        if let Some(sel) = sel {
-            sel.paint(scene, at);
-        }
-        if font_px >= read_px {
-            ph2d_board_layout::paint(scene, layout, &c.label, at, label_ink);
-        } else {
-            let c = label_ink.with_alpha(GREEK_ALPHA);
-            scene.fill_path(&bars, &Brush::Solid(c), at);
-        }
-    }
+    caption::paint(scene, el, c, r, v, zoom, ts, cache, owner, paper, sel);
     if faded {
         scene.pop_layer();
     }
 }
-
-/// A folga do recorte do rótulo à volta do texto, em fracção da letra.
-const LABEL_PAD: f64 = 0.25;
 
 /// O traço de uma forma: contínuo, tracejado ou pontilhado (com pontas redondas, para o ponto ser
 /// um ponto). Comprimentos em unidades do mundo, proporcionais à espessura.

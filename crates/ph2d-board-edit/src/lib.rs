@@ -8,6 +8,7 @@
 //! ⚠️ **Um arrasto mexe no documento AO VIVO** (o desenho é o do documento, sem segunda fonte de
 //! verdade) e guarda o passo de desfazer só ao largar, com o estado do início do gesto.
 
+mod caption;
 mod cluster;
 mod command;
 mod crop;
@@ -18,6 +19,7 @@ mod frame_box;
 mod gesture;
 mod gesture_end;
 mod guides;
+mod hit;
 mod images;
 mod ink;
 mod links_tags;
@@ -232,7 +234,7 @@ pub enum Command {
     Copy,
     Cut,
     Paste,
-    /// Começa a escrever na forma seleccionada (se é uma só) — ou no rótulo da seta.
+    /// Começa a escrever na forma seleccionada (se é uma só) — ou no 1.º texto da seta.
     EditText,
     /// Liga ou desliga uma marca do texto (`Ctrl+B`/`I`/`U`, `Ctrl+Shift+X`): no texto seleccionado
     /// a escrever, ou no texto inteiro das formas seleccionadas.
@@ -261,6 +263,8 @@ pub enum Command {
     MindCollapse,
     MindAuto,
     MindVertical,
+    /// W23 B5(2) — os textos das setas seleccionadas ao longo da linha ou na horizontal.
+    TextTurn(ph2d_board_model::TextTurn),
 }
 
 /// Uma tecla dentro do texto em edição.
@@ -341,6 +345,8 @@ pub struct Editor {
     natural: std::collections::BTreeMap<ph2d_board_model::FileId, [u32; 2]>,
     /// W23 A8 — o zoom e o limiar do «frame visto de longe» da última vista ([`Editor::know_detail`]).
     far: Option<(f64, f64)>,
+    /// W23 B5(2) — a altura moldada de cada texto das setas (o acerto do clique).
+    caption_boxes: caption::CaptionBoxes,
 }
 
 impl Editor {
@@ -379,6 +385,7 @@ impl Editor {
             cropping: None,
             natural: std::collections::BTreeMap::new(),
             far: None,
+            caption_boxes: caption::CaptionBoxes::default(),
         }
     }
 

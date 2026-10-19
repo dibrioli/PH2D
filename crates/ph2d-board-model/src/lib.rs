@@ -29,7 +29,7 @@ mod team;
 
 pub use board::{Board, BoardId, BoardSet, Camera, FORMAT_VERSION};
 pub use camera::{Area, ZOOM_RANGE};
-pub use connector::{Anchor, Connector, End, Head, ORBIT_GAP, Route};
+pub use connector::{Anchor, Caption, Connector, End, Head, ORBIT_GAP, Route, TextTurn};
 pub use element::{
     BoardDoc, Dash, Element, ElementId, ElementKind, FillStyle, Letter, Look, Rgba, Shape,
     ShapeType, Style, TextAlign, VAlign, rotate_about,

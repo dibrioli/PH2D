@@ -42,6 +42,8 @@ pub const CTX_MENU_BOARD_EL_FRONT: NodeId = hash_node_id("ctx_menu_board_el_fron
 pub const CTX_MENU_BOARD_EL_BACK: NodeId = hash_node_id("ctx_menu_board_el_back");
 pub const CTX_MENU_BOARD_EL_LOCK: NodeId = hash_node_id("ctx_menu_board_el_lock");
 pub const CTX_MENU_BOARD_EL_DELETE: NodeId = hash_node_id("ctx_menu_board_el_delete");
+pub const CTX_MENU_BOARD_EL_TEXT_ALONG: NodeId = hash_node_id("ctx_menu_board_el_text_along");
+pub const CTX_MENU_BOARD_EL_TEXT_LEVEL: NodeId = hash_node_id("ctx_menu_board_el_text_level");
 /// Menu do botão direito numa aba de quadro.
 pub const CTX_MENU_BOARD_RENAME: NodeId = hash_node_id("ctx_menu_board_rename");
 pub const CTX_MENU_BOARD_DUPLICATE: NodeId = hash_node_id("ctx_menu_board_duplicate");

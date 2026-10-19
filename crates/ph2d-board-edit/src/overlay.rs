@@ -80,7 +80,11 @@ pub struct Target {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextOverlay {
     pub element: ElementId,
-    /// Onde começa o bloco de texto, em coordenadas locais da caixa do elemento.
+    /// W23 B5(2) — numa seta, o texto em edição e onde ele está.
+    pub caption: Option<usize>,
+    pub frame: Option<ph2d_board_route::CaptionFrame>,
+    /// Onde começa o bloco de texto, em coordenadas locais da caixa do elemento (numa seta, no espaço
+    /// do texto: origem no centro dele, `x` ao longo das letras).
     pub origin: [f64; 2],
     pub selection: Vec<[f64; 4]>,
     pub caret: Option<[f64; 4]>,
@@ -95,8 +99,12 @@ impl Editor {
         }
         self.fit_pending(doc, ts);
         self.routes.sync(doc);
-        let mid = self.label_mid(doc);
-        let text = self.editing.as_mut().and_then(|e| e.overlay(doc, ts, mid));
+        self.measure_captions(doc, ts);
+        let frame = self.editing_frame(doc);
+        let text = self
+            .editing
+            .as_mut()
+            .and_then(|e| e.overlay(doc, ts, frame));
         let editing = text.is_some();
         let sel = self.selected(doc);
         let shapes: Vec<&&Element> = sel.iter().filter(|el| el.connector().is_none()).collect();
@@ -182,12 +190,5 @@ impl Editor {
             o.crop = Some(c);
         }
         o
-    }
-
-    /// Onde vive o rótulo da seta em edição (o meio da rota), se se edita uma.
-    fn label_mid(&self, doc: &BoardDoc) -> Option<[f64; 2]> {
-        let id = self.editing.as_ref()?.id;
-        doc.get(id)?.connector()?;
-        self.routes.get(id).map(|r| r.mid)
     }
 }

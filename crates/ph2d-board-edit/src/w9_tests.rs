@@ -147,7 +147,7 @@ fn the_sketch_button_closes_the_open_text_first() {
     el.style_mut().look.letter = ph2d_board_model::Letter::Sans;
     BoardOp::Put(el).apply(&mut w.doc);
     w.ed.select(&w.doc, []);
-    assert!(w.ed.open_text(&w.doc, id));
+    assert!(w.ed.open_text(&mut w.doc, id));
     assert!(w.ed.text_input(&mut w.doc, &mut w.ts, "x"));
     w.ed.toggle_sketch(&mut w.doc, &mut w.h, false);
     assert!(

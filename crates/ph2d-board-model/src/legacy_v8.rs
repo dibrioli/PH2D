@@ -99,7 +99,8 @@ impl From<KindV8> for ElementKind {
                     route: c.route,
                     heads: c.heads,
                     style: c.style.into(),
-                    label: c.label,
+                    captions: Connector::captions_of(c.label),
+                    turn: crate::TextTurn::Level,
                     waypoints: c.waypoints,
                     mids: Vec::new(),
                 }))

@@ -208,6 +208,28 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "3. Double-click the small bar: the line goes back to the middle."
         }
         "board.smoke.elbow.l4" => "4. Ctrl+Z undoes each drag in one step.",
+        // ── a cena 26 (PH2D_BOARD_SMOKE=26, W23 B5(2)): os textos ao longo da linha ──
+        "board.smoke.text.board" => "Text on arrows",
+        "board.smoke.text.idea" => "Idea",
+        "board.smoke.text.plan" => "Plan",
+        "board.smoke.text.done" => "Done",
+        "board.smoke.text.next" => "next step",
+        "board.smoke.text.then" => "then",
+        "board.smoke.text.l1" => {
+            "1. The curved arrow is selected. Drag the words «next step» along it: they slide on \
+             the line and turn with it."
+        }
+        "board.smoke.text.l2" => {
+            "2. Double-click the arrow somewhere else and type: a second text sits there."
+        }
+        "board.smoke.text.l3" => {
+            "3. Right-click an arrow: «Horizontal text» lays its words flat, «Text along the \
+             line» turns them back («then» is flat now)."
+        }
+        "board.smoke.text.l4" => {
+            "4. Erase every letter of a text and it goes away. Ctrl+Z undoes each change in one \
+             step."
+        }
         "board.smoke.w23.to" => "To",
         "board.smoke.w23.l5" => {
             "5. Right-click a shape: Copy, Paste, Duplicate, Front/Back, Lock, Delete."

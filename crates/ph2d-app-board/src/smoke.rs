@@ -47,6 +47,9 @@ mod w23;
 /// A cena 25 (W23 B5(1)), num ficheiro filho.
 #[path = "smoke_w23_elbow.rs"]
 mod w23_elbow;
+/// A cena 26 (W23 B5(2)), num ficheiro filho.
+#[path = "smoke_w23_text.rs"]
+mod w23_text;
 
 /// A cena 9 (W7), num ficheiro filho.
 #[path = "smoke_facilitate.rs"]
@@ -98,7 +101,7 @@ pub(crate) mod shots;
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 25,
+    max_level: 26,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -135,7 +138,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         23 => _ = live::scene_join(hero),
         24 => _ = w23::scene_w23(hero),
         25 => _ = w23_elbow::scene_elbow(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=25)"),
+        26 => _ = w23_text::scene_text(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=26)"),
     }
 }
 
@@ -300,7 +304,7 @@ fn put_arrow(
     c.style.fill = None;
     c.waypoints = points.to_vec();
     if !label.is_empty() {
-        c.label = ph2d_i18n::tr(label).to_owned();
+        c.captions = Connector::captions_of(ph2d_i18n::tr(label).to_owned());
     }
     let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
     let id = el.id;

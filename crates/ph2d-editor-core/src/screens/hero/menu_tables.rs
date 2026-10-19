@@ -682,3 +682,28 @@ pub(super) const BOARD_ELEMENT_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_BOARD_EL_LOCK, "board.el.lock"),
     menu_row(ids::CTX_MENU_BOARD_EL_DELETE, "board.el.delete"),
 ];
+
+/// W23 B5(2) — numa SETA, as mesmas e, antes de travar, a que deita os textos do outro modo (os
+/// textos estão ao longo da linha: a linha oferece a horizontal).
+pub(super) const BOARD_ARROW_ALONG_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_BOARD_EL_COPY, "board.el.copy"),
+    menu_row(ids::CTX_MENU_BOARD_EL_PASTE, "board.el.paste"),
+    menu_row(ids::CTX_MENU_BOARD_EL_DUPLICATE, "board.el.duplicate"),
+    menu_row(ids::CTX_MENU_BOARD_EL_FRONT, "board.el.front"),
+    menu_row(ids::CTX_MENU_BOARD_EL_BACK, "board.el.back"),
+    menu_row(ids::CTX_MENU_BOARD_EL_TEXT_LEVEL, "board.el.text_level"),
+    menu_row(ids::CTX_MENU_BOARD_EL_LOCK, "board.el.lock"),
+    menu_row(ids::CTX_MENU_BOARD_EL_DELETE, "board.el.delete"),
+];
+
+/// W23 B5(2) — os textos estão na horizontal: a linha oferece deitá-los ao longo da linha.
+pub(super) const BOARD_ARROW_LEVEL_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_BOARD_EL_COPY, "board.el.copy"),
+    menu_row(ids::CTX_MENU_BOARD_EL_PASTE, "board.el.paste"),
+    menu_row(ids::CTX_MENU_BOARD_EL_DUPLICATE, "board.el.duplicate"),
+    menu_row(ids::CTX_MENU_BOARD_EL_FRONT, "board.el.front"),
+    menu_row(ids::CTX_MENU_BOARD_EL_BACK, "board.el.back"),
+    menu_row(ids::CTX_MENU_BOARD_EL_TEXT_ALONG, "board.el.text_along"),
+    menu_row(ids::CTX_MENU_BOARD_EL_LOCK, "board.el.lock"),
+    menu_row(ids::CTX_MENU_BOARD_EL_DELETE, "board.el.delete"),
+];

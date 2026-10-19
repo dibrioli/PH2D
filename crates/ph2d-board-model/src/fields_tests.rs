@@ -1,8 +1,8 @@
 use super::*;
 use crate::{
-    Anchor, Connector, Dash, ElementId, End, FillStyle, FracKey, Frame, GroupId, Head, Ink, Letter,
-    Look, Mind, Pen, Rgba, RichText, Route, Shape, ShapeType, Side, Stamp, StampCount, Style, Tag,
-    TextAlign, VAlign,
+    Anchor, Caption, Connector, Dash, ElementId, End, FillStyle, FracKey, Frame, GroupId, Head,
+    Ink, Letter, Look, Mind, Pen, Rgba, RichText, Route, Shape, ShapeType, Side, Stamp, StampCount,
+    Style, Tag, TextAlign, TextTurn, VAlign,
 };
 
 const ID: ElementId = ElementId(42);
@@ -88,10 +88,15 @@ fn pairs() -> Vec<(Element, Element)> {
             [Head::None, Head::Arrow]
         },
         style: st,
-        label: if rich {
-            "rótulo".into()
+        captions: if rich {
+            vec![Caption::new("rótulo", 0.25), Caption::new("dois", 0.8)]
         } else {
-            String::new()
+            vec![]
+        },
+        turn: if rich {
+            TextTurn::Level
+        } else {
+            TextTurn::Along
         },
         waypoints: if rich { vec![[4.0, 5.0]] } else { vec![] },
         mids: if rich { vec![None, Some(0.3)] } else { vec![] },
@@ -246,7 +251,8 @@ fn every_field_of_the_model_is_named_here() {
                     route: _,
                     heads: [_, _],
                     style,
-                    label: _,
+                    captions: _,
+                    turn: _,
                     waypoints: _,
                     mids: _,
                 } = &**c;

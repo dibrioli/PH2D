@@ -12,6 +12,7 @@
 //! baixo, e a geometria não se importa — `North` aqui é «para baixo no ecrã». Nada vira: só o nome.
 
 mod cache;
+mod caption;
 mod curves;
 mod elbow_mid;
 pub mod heads;
@@ -20,6 +21,7 @@ mod index;
 use curves::{bbox_of, chords, curve, facing_jetty, midpoint, spline};
 
 pub use cache::RouteCache;
+pub use caption::{CAPTION_PAD, CaptionFrame, upright};
 pub use elbow_mid::ElbowMid;
 pub use heads::marker;
 pub use ph2d_vec_connect::Dir;
@@ -639,6 +641,8 @@ pub(crate) fn resolve<'a>(
     }
 }
 
+#[cfg(test)]
+mod caption_tests;
 #[cfg(test)]
 mod jitter_probe;
 #[cfg(test)]

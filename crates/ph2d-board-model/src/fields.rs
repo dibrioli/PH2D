@@ -41,7 +41,8 @@ pub enum Field {
     Route,
     HeadStart,
     HeadEnd,
-    Label,
+    /// W23 B5(2) — os textos ao longo da linha (o registo do antigo rótulo único).
+    Captions,
     Waypoints,
     InkBody,
     FrameName,
@@ -57,11 +58,13 @@ pub enum Field {
     Image,
     /// W18 — o link de um vídeo e o que ele é (mudam juntos).
     Embed,
+    /// W23 B5(2) — como os textos de uma seta se deitam.
+    TextTurn,
 }
 
 impl Field {
     /// Todos, pela ordem do enum.
-    pub const ALL: [Field; 39] = [
+    pub const ALL: [Field; 40] = [
         Field::Box,
         Field::Angle,
         Field::Z,
@@ -88,7 +91,7 @@ impl Field {
         Field::Route,
         Field::HeadStart,
         Field::HeadEnd,
-        Field::Label,
+        Field::Captions,
         Field::Waypoints,
         Field::InkBody,
         Field::FrameName,
@@ -101,6 +104,7 @@ impl Field {
         Field::Seed,
         Field::Image,
         Field::Embed,
+        Field::TextTurn,
     ];
 
     /// Uma contagem que SOMA entre pessoas (dois carimbos ao mesmo tempo são dois): a sessão ao vivo
@@ -154,7 +158,7 @@ impl Element {
             Field::Route => enc(&self.connector()?.route),
             Field::HeadStart => enc(&self.connector()?.heads[0]),
             Field::HeadEnd => enc(&self.connector()?.heads[1]),
-            Field::Label => enc(&self.connector()?.label),
+            Field::Captions => enc(&self.connector()?.captions),
             Field::Waypoints => {
                 let c = self.connector()?;
                 enc(&(&c.waypoints, &c.mids))
@@ -179,6 +183,7 @@ impl Element {
                 let e = self.embed()?;
                 enc(&(&e.link, &e.video))
             }
+            Field::TextTurn => enc(&self.connector()?.turn),
         })
     }
 
@@ -229,7 +234,7 @@ impl Element {
             Field::Route => put(&mut self.connector_mut()?.route, b),
             Field::HeadStart => put(&mut self.connector_mut()?.heads[0], b),
             Field::HeadEnd => put(&mut self.connector_mut()?.heads[1], b),
-            Field::Label => put(&mut self.connector_mut()?.label, b),
+            Field::Captions => put(&mut self.connector_mut()?.captions, b),
             Field::Waypoints => {
                 let c = self.connector_mut()?;
                 (c.waypoints, c.mids) = dec(b)?;
@@ -260,6 +265,7 @@ impl Element {
                 (e.link, e.video) = dec(b)?;
                 Some(())
             }
+            Field::TextTurn => put(&mut self.connector_mut()?.turn, b),
         }
     }
 

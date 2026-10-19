@@ -220,6 +220,15 @@ pub fn line_bars(layout: &Layout<Ink>) -> BezPath {
     p
 }
 
+/// W23 B5(2) — o recorte de um texto de seta: as barras das linhas com `pad` de folga (no espaço do
+/// bloco). É o que se vê por baixo das letras e o que o clique agarra.
+#[must_use]
+pub fn knock_box(layout: &Layout<Ink>, pad: f64) -> [f64; 4] {
+    use ph2d_vector::Shape as _;
+    let b = line_bars(layout).bounding_box().inflate(pad, pad);
+    [b.x0, b.y0, b.x1, b.y1]
+}
+
 /// Quantos quadros um moldado fica guardado sem ser usado.
 const KEEP_FRAMES: u64 = 120;
 

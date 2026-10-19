@@ -10,6 +10,7 @@
 //! IGUAL, a menos da ordem das chaves de z.
 
 mod bind;
+mod caption;
 mod elbow;
 mod embed;
 mod image;
@@ -130,6 +131,9 @@ pub(crate) fn letter_of(family: Option<u64>) -> ph2d_board_model::Letter {
     }
 }
 
+#[cfg(test)]
+#[path = "caption_tests.rs"]
+mod caption_tests;
 #[cfg(test)]
 #[path = "fidelity_tests.rs"]
 mod fidelity_tests;

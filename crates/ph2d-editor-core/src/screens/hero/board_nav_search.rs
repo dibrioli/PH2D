@@ -43,7 +43,7 @@ pub fn find(
                     texts.push(s.text.as_str());
                 }
                 if let Some(c) = el.connector() {
-                    texts.push(c.label.as_str());
+                    texts.extend(c.captions.iter().map(|cap| cap.text.as_str()));
                 }
                 if let Some(f) = el.as_frame() {
                     texts.push(&f.name);

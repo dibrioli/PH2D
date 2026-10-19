@@ -1,17 +1,20 @@
 //! **Escrever dentro de uma forma** — o texto é o da forma (o documento muda letra a letra, e a
 //! forma cresce para baixo quando ele não cabe); o desfazer guarda a edição inteira como UM passo.
-//! Numa seta, o mesmo no RÓTULO, centrado no meio da rota (W2).
+//! Numa seta, o mesmo num dos TEXTOS ao longo da linha (W23 B5(2), `caption.rs`): o bloco roda com
+//! ele, e o texto que ficou vazio sai ao terminar.
 
 use ph2d_board_geom::{height_for_text, text_origin, text_rect};
 use ph2d_board_layout::TextEdit;
-use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History, RichText};
-use ph2d_board_route::{LABEL_WRAP, label_origin};
+use ph2d_board_model::{BoardDoc, BoardOp, Caption, Element, ElementId, History, RichText};
+use ph2d_board_route::{CaptionFrame, LABEL_WRAP};
 use ph2d_text::TextSystem;
 
 use crate::{Editor, Pointer, TextKey, TextOverlay, live};
 
 pub(crate) struct Editing {
     pub(crate) id: ElementId,
+    /// Numa seta, o texto em que se escreve.
+    pub(crate) caption: Option<usize>,
     /// O elemento como estava ao começar — o passo de desfazer, e a altura abaixo da qual a forma
     /// não encolhe.
     original: Element,
@@ -27,76 +30,87 @@ fn metrics(el: &Element) -> Option<(f32, f32)> {
     Some((el.style().font_size as f32, w as f32))
 }
 
-/// O texto de `el` (o da forma, com os trechos, ou o rótulo da seta).
-fn text_of(el: &Element) -> RichText {
+/// Em que texto de uma seta se vai escrever.
+#[derive(Clone, Copy)]
+pub(crate) enum CaptionPick {
+    Existing(usize),
+    /// Um texto novo, vazio, a esta fracção da linha.
+    New(f64),
+}
+
+/// O texto de `el` (o da forma, com os trechos, ou o texto `caption` da seta).
+fn text_of(el: &Element, caption: Option<usize>) -> RichText {
     match (el.shape(), el.connector()) {
         (Some(s), _) => s.text.clone(),
-        (_, Some(c)) => RichText::plain(&c.label),
+        (_, Some(c)) => caption
+            .and_then(|i| c.captions.get(i))
+            .map_or_else(RichText::default, |cap| RichText::plain(&cap.text)),
         _ => RichText::default(),
     }
 }
 
-/// Onde começa o bloco de texto, nas coordenadas da caixa de `el`. Numa seta a caixa é o próprio
-/// mundo (`x = y = 0`, sem rotação) e o bloco centra-se no meio `mid` da rota.
-fn origin(el: &Element, block_h: f64, mid: Option<[f64; 2]>) -> Option<[f64; 2]> {
+/// Onde começa o bloco de texto: numa forma, nas coordenadas da caixa dela; numa seta, no espaço do
+/// texto (origem no centro dele, [`CaptionFrame`]).
+fn origin(el: &Element, block_h: f64) -> [f64; 2] {
     match el.shape() {
-        Some(s) => Some(text_origin(
-            s.kind,
-            el.w,
-            el.h,
-            block_h,
-            s.style.look.valign,
-        )),
-        None => mid.map(|m| label_origin(m, block_h)),
+        Some(s) => text_origin(s.kind, el.w, el.h, block_h, s.style.look.valign),
+        None => CaptionFrame::block_origin(block_h),
     }
 }
 
 impl Editing {
-    /// Mundo → espaço do texto (origem no início do bloco).
+    /// Mundo → espaço do texto (origem no início do bloco). `frame` = onde está o texto da seta.
     fn text_point(
         &mut self,
         el: &Element,
         ts: &mut TextSystem,
         world: [f64; 2],
-        mid: Option<[f64; 2]>,
+        frame: Option<CaptionFrame>,
     ) -> (f32, f32) {
-        let [ux, uy] = el.unrotate(world);
+        let [ux, uy] = match frame {
+            Some(f) => f.to_local(world),
+            None => {
+                let [ux, uy] = el.unrotate(world);
+                [ux - el.x, uy - el.y]
+            }
+        };
         let block_h = f64::from(self.edit.layout(ts).height());
-        let [ox, oy] = origin(el, block_h, mid).unwrap_or([0.0, 0.0]);
-        ((ux - el.x - ox) as f32, (uy - el.y - oy) as f32)
+        let [ox, oy] = origin(el, block_h);
+        ((ux - ox) as f32, (uy - oy) as f32)
     }
 
-    /// `world` cai na zona de escrever de `el` (o contorno da forma, ou o bloco do rótulo)?
+    /// `world` cai na zona de escrever de `el` (o contorno da forma, ou o bloco do texto da seta)?
     fn contains(
         &mut self,
         el: &Element,
         ts: &mut TextSystem,
         world: [f64; 2],
-        mid: Option<[f64; 2]>,
+        frame: Option<CaptionFrame>,
     ) -> bool {
         if el.shape().is_some() {
             return ph2d_board_geom::hit(el, world, 0.0);
         }
-        let layout = self.edit.layout(ts);
-        let block_h = f64::from(layout.height()).max(el.style().font_size);
-        let Some([x, y]) = mid.map(|m| label_origin(m, block_h)) else {
-            return false;
-        };
-        world[0] >= x && world[0] <= x + LABEL_WRAP && world[1] >= y && world[1] <= y + block_h
+        let block_h = f64::from(self.edit.layout(ts).height()).max(el.style().font_size);
+        frame.is_some_and(|f| f.contains(world, block_h))
     }
 
     pub(crate) fn overlay(
         &mut self,
         doc: &BoardDoc,
         ts: &mut TextSystem,
-        mid: Option<[f64; 2]>,
+        frame: Option<CaptionFrame>,
     ) -> Option<TextOverlay> {
         let el = doc.get(self.id)?;
+        if el.connector().is_some() && frame.is_none() {
+            return None;
+        }
         let block_h = f64::from(self.edit.layout(ts).height());
         let (selection, caret) = self.edit.decorations(1.0);
         Some(TextOverlay {
             element: self.id,
-            origin: origin(el, block_h, mid)?,
+            caption: self.caption,
+            frame,
+            origin: origin(el, block_h),
             selection,
             caret,
         })
@@ -120,23 +134,68 @@ impl Editor {
             self.notice = Some(crate::Notice::Private);
             return false;
         }
-        if !self.open_text(doc, id) {
+        let pick = self.caption_pick(doc, ts, id, at);
+        if !self.open_text_in(doc, id, pick) {
             return false;
         }
         if let Some(world) = at
             && let Some(el) = doc.get(id).cloned()
         {
-            let mid = self.routes(doc).get(id).map(|r| r.mid);
+            let frame = self.editing_frame(doc);
             let e = self.editing.as_mut().expect("acabou de abrir");
-            let (x, y) = e.text_point(&el, ts, world, mid);
+            let (x, y) = e.text_point(&el, ts, world, frame);
             e.edit.click(ts, x, y, false);
         }
         true
     }
 
+    /// Numa seta, em que texto se escreve: o que está sob `at`; senão um novo no ponto da linha mais
+    /// perto de `at` (o duplo clique do Miro); sem `at`, o 1.º (ou um novo a meio).
+    fn caption_pick(
+        &mut self,
+        doc: &BoardDoc,
+        ts: &mut TextSystem,
+        id: ElementId,
+        at: Option<[f64; 2]>,
+    ) -> Option<CaptionPick> {
+        let el = doc.get(id)?;
+        let c = el.connector()?;
+        self.measure_captions(doc, ts);
+        self.routes.sync(doc);
+        let Some(world) = at else {
+            return Some(first_caption(c));
+        };
+        if let Some(i) = self.caption_of(el, world) {
+            return Some(CaptionPick::Existing(i));
+        }
+        let frac = self
+            .routes
+            .get(id)
+            .map_or(Caption::MIDDLE, |r| r.frac_of(world));
+        Some(CaptionPick::New(frac))
+    }
+
+    /// Onde está o texto da seta em edição, se se escreve numa.
+    pub(crate) fn editing_frame(&self, doc: &BoardDoc) -> Option<CaptionFrame> {
+        let e = self.editing.as_ref()?;
+        let c = doc.get(e.id)?.connector()?;
+        let cap = c.captions.get(e.caption?)?;
+        Some(self.routes.get(e.id)?.caption_frame(cap.at, c.turn))
+    }
+
     /// Começa a escrever em `id` com o texto todo seleccionado — sem o moldador (molda no primeiro
-    /// uso): o que um botão da barra pode pedir.
-    pub(crate) fn open_text(&mut self, doc: &BoardDoc, id: ElementId) -> bool {
+    /// uso): o que um botão da barra pode pedir. Numa seta, no 1.º texto (ou num novo a meio).
+    pub(crate) fn open_text(&mut self, doc: &mut BoardDoc, id: ElementId) -> bool {
+        let pick = doc.get(id).and_then(|el| el.connector()).map(first_caption);
+        self.open_text_in(doc, id, pick)
+    }
+
+    fn open_text_in(
+        &mut self,
+        doc: &mut BoardDoc,
+        id: ElementId,
+        pick: Option<CaptionPick>,
+    ) -> bool {
         let Some(el) = doc.get(id).cloned() else {
             return false;
         };
@@ -150,12 +209,25 @@ impl Editor {
         let Some((size, width)) = metrics(&el) else {
             return false;
         };
-        let text = text_of(&el);
+        let caption = match pick {
+            Some(CaptionPick::Existing(i)) => Some(i),
+            Some(CaptionPick::New(at)) => {
+                let mut grown = el.clone();
+                let c = grown.connector_mut().expect("só uma seta tem textos");
+                c.captions.push(Caption::new("", at));
+                let i = c.captions.len() - 1;
+                live(doc, grown);
+                Some(i)
+            }
+            None => None,
+        };
+        let text = text_of(doc.get(id).unwrap_or(&el), caption);
         let hand = hand_lettered(&el);
         let align = el.style().look.align;
         self.selection = std::iter::once(id).collect();
         self.editing = Some(Editing {
             id,
+            caption,
             original: el,
             edit: TextEdit::new(&text, size, width).hand(hand).align(align),
         });
@@ -214,7 +286,18 @@ impl Editor {
             self.finish_bulk(doc, history, e.id);
             return;
         }
-        if doc.get(e.id).is_some_and(|now| *now != e.original) {
+        if let Some(mut el) = doc.get(e.id).cloned()
+            && let Some(c) = el.connector_mut()
+            && c.captions.iter().any(|cap| cap.text.is_empty())
+        {
+            c.drop_empty_captions();
+            live(doc, el);
+        }
+        // Pelos registos (um texto nascido e largado vazio mexeu na versão, não no elemento).
+        if doc
+            .get(e.id)
+            .is_some_and(|now| !now.changed_fields(&e.original).is_empty())
+        {
             history.record(vec![BoardOp::Put(e.original)], doc);
         }
         let _ = doc;
@@ -255,8 +338,10 @@ impl Editor {
             return;
         };
         if let Some(c) = el.connector_mut() {
-            c.label = e.edit.text();
-            live(doc, el);
+            if let Some(cap) = e.caption.and_then(|i| c.captions.get_mut(i)) {
+                cap.text = e.edit.text();
+                live(doc, el);
+            }
             return;
         }
         let Some(kind) = el.shape().map(|s| s.kind) else {
@@ -297,10 +382,11 @@ impl Editor {
             self.editing = None;
             return false;
         };
-        let mid = self.routes(doc).get(id).map(|r| r.mid);
+        self.routes.sync(doc);
+        let frame = self.editing_frame(doc);
         let e = self.editing.as_mut().expect("visto acima");
-        if e.contains(&el, ts, p.world, mid) {
-            let (x, y) = e.text_point(&el, ts, p.world, mid);
+        if e.contains(&el, ts, p.world, frame) {
+            let (x, y) = e.text_point(&el, ts, p.world, frame);
             e.edit.click(ts, x, y, p.mods.shift);
             return true;
         }
@@ -315,9 +401,10 @@ impl Editor {
         let Some(el) = doc.get(id).cloned() else {
             return;
         };
-        let mid = self.routes(doc).get(id).map(|r| r.mid);
+        self.routes.sync(doc);
+        let frame = self.editing_frame(doc);
         let e = self.editing.as_mut().expect("visto acima");
-        let (x, y) = e.text_point(&el, ts, p.world, mid);
+        let (x, y) = e.text_point(&el, ts, p.world, frame);
         e.edit.drag_to(ts, x, y);
     }
 
@@ -344,10 +431,11 @@ impl Editor {
         if let Some(id) = self.editing.as_ref().map(|e| e.id)
             && let Some(el) = doc.get(id).cloned()
         {
-            let mid = self.routes(doc).get(id).map(|r| r.mid);
+            self.routes.sync(doc);
+            let frame = self.editing_frame(doc);
             let e = self.editing.as_mut().expect("visto acima");
-            if e.contains(&el, ts, p.world, mid) {
-                let (x, y) = e.text_point(&el, ts, p.world, mid);
+            if e.contains(&el, ts, p.world, frame) {
+                let (x, y) = e.text_point(&el, ts, p.world, frame);
                 e.edit.select_word_at(ts, x, y);
                 return true;
             }
@@ -372,6 +460,15 @@ impl Editor {
             return false;
         }
         self.begin_text(doc, ts, id, Some(p.world))
+    }
+}
+
+/// O texto em que se escreve numa seta sem `at`: o 1.º, ou um novo a meio.
+fn first_caption(c: &ph2d_board_model::Connector) -> CaptionPick {
+    if c.captions.is_empty() {
+        CaptionPick::New(Caption::MIDDLE)
+    } else {
+        CaptionPick::Existing(0)
     }
 }
 

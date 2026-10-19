@@ -109,7 +109,7 @@ pub(crate) fn sample() -> (BoardSet, [ElementId; 2]) {
         Route::Curved,
         Style::new(None, Some(INK), INK),
     );
-    c.label = "next".into();
+    c.captions = Connector::captions_of("next".into());
     let el = Element::new_connector(b.doc.mint_id(), b.doc.z_on_top(), c);
     put(b, el);
     let el = Element::new_frame(

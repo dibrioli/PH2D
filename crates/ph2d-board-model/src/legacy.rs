@@ -50,7 +50,7 @@ use v11::{VersionV11, version_v11};
 pub(crate) use v12::read_v12;
 #[path = "legacy_v13.rs"]
 mod v13;
-pub(crate) use v13::read_v13;
+pub(crate) use v13::{read_v13, read_v14};
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
 #[derive(Deserialize)]
@@ -102,7 +102,8 @@ impl From<ConnectorV3> for Connector {
             route: c.route,
             heads: c.heads,
             style: c.style.into(),
-            label: c.label,
+            captions: Connector::captions_of(c.label),
+            turn: crate::TextTurn::Level,
             waypoints: c.waypoints,
             mids: Vec::new(),
         }

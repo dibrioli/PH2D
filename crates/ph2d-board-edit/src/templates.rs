@@ -162,7 +162,7 @@ impl Build<'_> {
             anchor: Anchor::Center,
         };
         let mut c = Connector::new(bound(a), bound(b), route, style.clone());
-        c.label = label;
+        c.captions = Connector::captions_of(label);
         let (id, z) = (self.doc.mint_id(), self.next_z());
         self.els.push(Element::new_connector(id, z, c));
     }

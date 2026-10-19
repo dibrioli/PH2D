@@ -122,7 +122,7 @@ fn sample() -> Board {
         Route::Curved,
         Style::new(None, Some(INK), INK),
     );
-    cv.label = "next".into();
+    cv.captions = Connector::captions_of("next".into());
     let el = Element::new_connector(b.doc.mint_id(), b.doc.z_on_top(), cv);
     put(b, el);
     let elbow = Connector::new(

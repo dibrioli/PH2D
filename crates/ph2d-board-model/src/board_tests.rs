@@ -1,6 +1,18 @@
 use super::{BoardSet, Camera, FORMAT_VERSION};
 use crate::{BoardOp, Element, Rgba, RichText, Shape, ShapeType, Style};
 
+/// O rótulo único de um formato ≤ 14: um texto a meio, deitado na horizontal (W23 B5(2)).
+fn legacy_label(c: &crate::Connector) -> &str {
+    assert_eq!(
+        c.turn,
+        crate::TextTurn::Level,
+        "deitado como o artista o via"
+    );
+    assert_eq!(c.captions.len(), 1);
+    assert_eq!(c.captions[0].at, crate::Caption::MIDDLE);
+    &c.captions[0].text
+}
+
 /// ⭐ Um ficheiro do formato 2 (W1–W2: o texto era uma `String`) continua a abrir — os bytes abaixo
 /// foram gravados por esse build (`d8a331ec3`): um quadro «Ideias» com uma pílula rodada, cantos
 /// redondos, com «olá» dentro, e uma seta em cotovelo presa a ela, com rótulo e um ponto de ajuste.
@@ -18,7 +30,7 @@ fn a_format_2_file_still_opens_with_its_text_and_arrow() {
     assert!(s.style.round);
     assert_eq!(els[0].angle, 0.5);
     let c = els[1].connector().expect("a 2.ª é a seta");
-    assert_eq!(c.label, "sim");
+    assert_eq!(legacy_label(c), "sim");
     assert_eq!(c.waypoints, vec![[5.0, 6.0]]);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(
@@ -196,12 +208,12 @@ fn an_arrow_round_trips_through_the_bytes() {
         Style::new(None, Some(ink), ink),
     );
     c.heads = [Head::Circle, Head::Triangle];
-    c.label = "sim".into();
+    c.captions = Connector::captions_of("sim".into());
     let arrow = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
     BoardOp::Put(arrow).apply(doc);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
-    assert_eq!(FORMAT_VERSION, 14);
+    assert_eq!(FORMAT_VERSION, 15);
 }
 
 /// A revisão da sessão muda a cada operação aplicada e nunca se repete entre documentos (a cache de
@@ -254,7 +266,7 @@ fn a_format_3_file_still_opens_and_everything_in_it_is_final() {
     assert_eq!(els[0].angle, 0.25);
     assert_eq!(els[1].shape().expect("nota").kind, ShapeType::Sticky);
     let c = els[2].connector().expect("seta");
-    assert_eq!(c.label, "sim");
+    assert_eq!(legacy_label(c), "sim");
     assert_eq!(c.waypoints, vec![[300.0, 250.0]]);
     assert!(els.iter().all(|e| !e.style().sketch));
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
@@ -322,7 +334,7 @@ fn a_format_4_file_still_opens_and_everything_in_it_is_loose() {
     assert!(r.style.sketch && r.style.round);
     assert_eq!(els[0].angle, 0.125);
     assert_eq!(els[1].shape().expect("nota").kind, ShapeType::Sticky);
-    assert_eq!(els[2].connector().expect("seta").label, "depois");
+    assert_eq!(legacy_label(els[2].connector().expect("seta")), "depois");
     assert!(els[3].ink().is_some(), "o traço da caneta continua traço");
     for e in &els {
         assert!(e.frame.is_none() && e.groups().is_empty() && !e.locked());
@@ -414,7 +426,7 @@ fn a_format_8_file_still_opens_with_the_default_look() {
     let c = els[3].connector().unwrap();
     assert_eq!(c.route, Route::Curved);
     assert_eq!(c.heads, [Head::Bar, Head::Triangle]);
-    assert_eq!(c.label, "sim");
+    assert_eq!(legacy_label(c), "sim");
     assert_eq!(c.waypoints, vec![[260.0, 30.0]]);
     assert!(matches!(
         c.start,

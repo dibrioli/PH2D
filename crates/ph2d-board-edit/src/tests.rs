@@ -2,7 +2,7 @@
 //! gesto como UM passo.
 
 use super::*;
-use ph2d_board_model::{ElementId, Rgba};
+use ph2d_board_model::{Caption, ElementId, Rgba};
 use ph2d_text::TextSystem;
 
 const PX: f64 = 1.0;
@@ -793,11 +793,11 @@ fn route_heads_and_label_change_the_selected_arrow() {
     assert!(w.cmd(Command::EditText), "Enter escreve no rótulo");
     w.ed.text_input(&mut w.doc, &mut w.ts, "sim");
     w.ed.text_key(&mut w.doc, &mut w.h, &mut w.ts, TextKey::Commit);
-    assert_eq!(w.el(id).connector().unwrap().label, "sim");
+    let c = w.el(id).connector().unwrap();
+    assert_eq!(c.captions, vec![Caption::new("sim", Caption::MIDDLE)]);
     assert!(w.cmd(Command::Undo));
-    assert_eq!(
-        w.el(id).connector().unwrap().label,
-        "",
+    assert!(
+        w.el(id).connector().unwrap().captions.is_empty(),
         "a escrita é UM passo"
     );
 }
@@ -973,3 +973,6 @@ mod w11;
 
 #[path = "elbow_drag_tests.rs"]
 mod elbow_drag;
+
+#[path = "caption_tests.rs"]
+mod caption;

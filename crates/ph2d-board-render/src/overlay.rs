@@ -38,7 +38,11 @@ pub fn paint_overlay(
     if let Some(t) = &overlay.text
         && let Some(el) = board.doc.get(t.element)
     {
-        let to_screen = v * to_world(el) * Affine::translate((t.origin[0], t.origin[1]));
+        let block = match t.frame {
+            Some(f) => Affine::translate((f.center[0], f.center[1])) * Affine::rotate(f.angle),
+            None => to_world(el),
+        };
+        let to_screen = v * block * Affine::translate((t.origin[0], t.origin[1]));
         // A selecção do texto pinta-se no quadro, DEBAIXO das letras (`paint`); aqui só o cursor.
         if let Some(c) = t.caret {
             // O cursor tem a espessura de UM px de ecrã a qualquer zoom.

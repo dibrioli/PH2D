@@ -87,6 +87,15 @@ pub(crate) enum Gesture {
         moved: bool,
         original: Element,
     },
+    /// W23 B5(2) — arrastar o texto `index` de uma seta ao longo da linha (`caption.rs`).
+    Caption {
+        id: ElementId,
+        index: usize,
+        grab: [f64; 2],
+        start: [f64; 2],
+        moved: bool,
+        original: Element,
+    },
     /// W23 B5(1) — arrastar o segmento do meio do trecho `leg` de uma seta cotovelo (`elbow_drag.rs`).
     Slide {
         id: ElementId,
@@ -157,28 +166,6 @@ fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
 }
 
 impl Editor {
-    /// O elemento de cima em `p` (o que um clique apanha), na ordem do que se VÊ (os vídeos por cima, W21):
-    /// uma forma pelo contorno, uma seta pela linha (a menos de meia pega, mais meia espessura).
-    pub fn hit(&mut self, doc: &BoardDoc, p: Pointer) -> Option<ElementId> {
-        let tol = self.metrics.handle / 2.0 * p.px;
-        self.routes.sync(doc);
-        let routes = &self.routes;
-        let found = doc
-            .live_in_paint_order()
-            .into_iter()
-            .rev()
-            .filter(|el| el.as_frame().is_none() && !doc.connector_hidden(el))
-            .find(|el| match el.connector() {
-                Some(c) => routes
-                    .get(el.id)
-                    .is_some_and(|r| r.distance(p.world) <= tol + c.style.stroke_width / 2.0),
-                None if el.ink().is_some() => crate::ink::ink_hit(el, p.world, tol),
-                None => ph2d_board_geom::hit(el, p.world, tol),
-            })
-            .map(|el| el.id);
-        found.or_else(|| self.frame_hit(doc, p))
-    }
-
     /// A pega da moldura em `p`, se há selecção.
     #[must_use]
     pub fn handle_at(&self, doc: &BoardDoc, p: Pointer) -> Option<Handle> {
@@ -260,6 +247,9 @@ impl Editor {
                 crate::wire::WireHandle::Segment(leg) => self.begin_slide(doc, id, leg, p),
                 _ => self.begin_bend(doc, id, h, p),
             };
+            return Down::Taken;
+        }
+        if self.caption_down(doc, ts, p) {
             return Down::Taken;
         }
         if let Some(g) = self.grid_handle(doc, p.px)
@@ -418,6 +408,7 @@ impl Editor {
             Gesture::EndDrag { .. } => self.end_drag_move(doc, &mut g, p),
             Gesture::Bend { .. } => self.bend_move(doc, &mut g, p),
             Gesture::Slide { .. } => self.slide_move(doc, &mut g, p),
+            Gesture::Caption { .. } => self.caption_move(doc, &mut g, p),
             Gesture::Marquee {
                 start,
                 cur,
@@ -609,6 +600,7 @@ impl Editor {
             g @ Gesture::Connect { .. } => self.connect_up(doc, history, g),
             g @ Gesture::Bend { .. } => self.bend_up(doc, history, g, p),
             g @ Gesture::Slide { .. } => self.slide_up(doc, history, g),
+            g @ Gesture::Caption { .. } => self.caption_up(doc, history, g),
             Gesture::EndDrag { original, .. } => {
                 history.record(undo_ops(doc, std::slice::from_ref(&original)), doc);
             }

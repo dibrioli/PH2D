@@ -61,6 +61,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.el.back" => "Send to back",
         "board.el.lock" => "Lock / unlock",
         "board.el.delete" => "Delete",
+        // W23 B5(2) — como se deitam os textos de uma seta (o Miro).
+        "board.el.text_along" => "Text along the line",
+        "board.el.text_level" => "Horizontal text",
         "board.note.bulk_hint" => "One idea per line. Press Esc or Ctrl+Enter to make the notes",
         // W23 — a grelha de todas as pontas.
         "board.head.start.more" => "Start: more tips",

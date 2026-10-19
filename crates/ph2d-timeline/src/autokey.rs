@@ -163,11 +163,7 @@ fn autokey_props_in(
         // curve; under a stack it is the blend, and comparing against the active
         // clip's curve instead would see a difference every single frame and mint
         // a key every single frame. The diff must read what the eye reads.
-        let shown = if solo {
-            curve_value(doc, entity, prop, t_secs)
-        } else {
-            shown_value(doc, entity, prop, t_secs)
-        };
+        let shown = curve_seen(doc, entity, prop, t_secs, solo);
 
         let moved = match shown {
             // Bound: key when the pose left the curve it is drawn on.
@@ -329,6 +325,22 @@ fn persisted_shown(doc: &TimelineDoc, entity: u64, prop: PropKind) -> Option<f32
 
 /// The value the scene is showing for `prop` right now — the same number the
 /// apply pass wrote. `None` when nothing drives it (the unbound path).
+/// **O que a curva desenha agora** — a pergunta do diff do auto-key e do losango do painel
+/// ([`crate::channel_mark`]): a mesma porta, ou os dois discordariam de «saiu da curva».
+pub(crate) fn curve_seen(
+    doc: &TimelineDoc,
+    entity: u64,
+    prop: PropKind,
+    t_secs: f64,
+    solo: bool,
+) -> Option<f32> {
+    if solo {
+        curve_value(doc, entity, prop, t_secs)
+    } else {
+        shown_value(doc, entity, prop, t_secs)
+    }
+}
+
 fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> Option<f32> {
     // C2 (W6): read what the apply WROTE, so a prop-linked / driven channel is `shown == world`.
     if let Some(v) = persisted_shown(doc, entity, prop) {

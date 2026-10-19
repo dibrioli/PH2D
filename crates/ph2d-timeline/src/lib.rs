@@ -34,6 +34,7 @@ mod apply_prop;
 mod apply_views;
 pub mod autokey;
 pub mod binding;
+mod channel_mark;
 pub mod clipboard;
 mod clock;
 pub mod doc;
@@ -92,6 +93,7 @@ pub use autokey::{
     AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, key_value_in_active_clip,
 };
 pub use binding::{TargetBinding, WireId};
+pub use channel_mark::{ChannelMark, channel_mark};
 pub use clipboard::{ClipboardKey, TimelineClipboard};
 pub use doc::{
     ClipOwner, DEFAULT_DURATION_SECONDS, DEFAULT_FPS, DOC_VERSION, MAX_CLIPS, Marker, NamedClip,

@@ -28,6 +28,8 @@ pub use paint::paint_property_box;
 /// ⭐⭐⭐ A coluna do PAINEL — a união dos pedidos das secções dele (ver o topo dele).
 mod coluna_do_painel;
 /// ⭐ A geometria de uma LINHA de formulário — irmã por responsabilidade (ver o topo dela).
+/// ⭐⭐ O LOSANGO DE ANIMAÇÃO na coluna do decorator — ver [`key_mark`] (plano 34).
+pub mod key_mark;
 mod label;
 mod row;
 /// ⭐ O que a SECÇÃO declara — irmão por responsabilidade (ver o topo dele).

@@ -4,6 +4,9 @@
 > Timeline · o «piscar» do Parar, que era do instrumento) — §2 itens 7–9, §6 refeita sobre o HEAD novo, §7 e §8
 > actualizados. Smoke do dono: **APROVADO** nas duas curas de produto.
 >
+> **3.º fecho, 19/10 (smoke do dono: faixas brancas na pincelada nova; o resto do smoke OK):** §2 item 11, §3,
+> §6 refeita, §7 fotos da `=6 cruza`, §8 item 9.
+>
 > **2.º fecho de 18/10 (a decisão do Autoplay):** §2 item 10, §6 refeita sobre `515c93b0d2`, §7 fotos da `=6 topo`,
 > §8 item 4 FEITO.
 
@@ -18,7 +21,8 @@
 - Branch `line/Macros-Automação`, worktree `Worktrees/line-Macros-Automação/`. Merge-base com o `main`: `ad5f8fe39c`.
   O `main` andou **2** commits de processo (`451c3ad14a`, `bdc7a38639`: a vez da placa); o único ficheiro em comum é
   o `CLAUDE.md` (§2 lá, §5.1 cá — secções diferentes).
-- HEAD de código `515c93b0d2`. W9 até ao 1.º fecho (17/10): `9ede4a4fac`, `8361acd912`, `8ed7bf6246`, `7472075157`,
+- HEAD de código `9464cea7cb` (3.º fecho: o miolo do pincel, `538e7022f6` · `0e20bfdf3c` · `9464cea7cb`). Antes:
+  `515c93b0d2`. W9 até ao 1.º fecho (17/10): `9ede4a4fac`, `8361acd912`, `8ed7bf6246`, `7472075157`,
   `bd15cf01e2`, `5d49341c68`, `7e386f8682`, `a406771e8a`, `bbc0d00a95`. Pós-smoke (18/10, código): `897b7acdd5`,
   `bc67bfa67e`, `3efd4bb9a7`, `688e6d2426`, `6d73bad9b7`, `dad214f1d5`, `9a295ee8a7`; a decisão do Autoplay:
   `a4e39b8418`, `73eb277e10`, `515c93b0d2`; o resto são docs.
@@ -73,6 +77,31 @@
     `true` (3) · `false` (2) · `e != clip` (3) · sem a chamada no ramo re-cronometrado (2) · sem a chamada no ramo
     novo (1) · `toca_a_macro` sempre verdadeiro (3). A frase da consola da `=6` passa a dizer o que cada variante
     faz (`topo`: o Play de cima, sem Rewind).
+11. **O miolo do pincel é do artista mesmo sem mudar o byte** (smoke do dono 19/10, `538e7022f6`). A pincelada
+    pintada depois de gravar abria, no Play, faixas brancas serrilhadas onde cruzava o miolo de uma gravada: a
+    marca de um passo era só «o que mudou», e preto sobre o preto que a gravação deixou no fim não muda o
+    byte — o texel ficava sem marca e o Play mostrava ali a gravação daquele instante (ainda branca). Medido
+    sem a cura (faixa preta opaca, pincelada de raio 16 por cima): **136/136** texels do miolo sem marca no
+    Digital e no Watercolor; Impasto (o relevo muda) e Wet Paint (marca o disco inteiro) já marcavam. Cura
+    `ph2d-tool-painter::macro_track::forca` (`ForcaDoPincel`, ladrilhos 64² só onde o pincel passou): a
+    força por texel = perfil da ponta (`falloff_weight`) × cobertura × Flow, cada sub-dab da cápsula,
+    compostos `1 − Π(1 − aᵢ)` (ou o máximo sem Accumulate, `stroke_cover_wanted`); `fecha_o_passo` junta à
+    marca o miolo `força ≥ ½` — onde os dois erros de uma marca binária se cruzam (plano §3). Ponta com
+    forma, grão ou achatada: só o que mudou. Custo (perfil `smoke`, `load` ~20): **0,25 ms/disco a r=200**
+    (1,75 ms com a busca no mapa por texel — curada para uma por ladrilho), 27 µs a r=64, 2 µs a r=16; só
+    com marca ativa. Gate `marca_cobertura_tests` (a régua é a mesma pincelada Digital no branco: byte ≤ 120
+    ⇒ miolo marcado, 135..254 ⇒ borda sem marca; Digital e Watercolor): vermelho antes. A `=6` ganha a
+    variante `cruza` (Parar, uma vertical por cima das duas, ⏮ ▷) e a frase da consola deixa de chamar Wet
+    Paint à base, que é Digital. **Só onde o carimbo depõe tinta** (`9464cea7cb`): a 1.ª bateria apanhou
+    `o_filme_da_mascara_do_painter_ligado_fica_por_cima_do_clipe` vermelho (3/3 sozinho, não é carga) — o pincel
+    da Máscara passa por `stamp_dabs` e o miolo marcava a imagem que ele não escreve; guarda `PaintMode::Paint |
+    WetPaint` com `deposits_color` (Blur/Smear/Clone/Inpaint dão o que estava por baixo). Gates
+    `marca_cobertura_tests` (5): o miolo (Digital, Watercolor) · a cápsula de dabs afastados · a ponta achatada
+    no branco = o que mudou · a força de um passo desfeito não passa ao seguinte · Blur/Smear numa tela preta
+    não marcam. **Mutação 9/9 sangra**: sem `marca_a_forca` · sem juntar o miolo · `MIOLO` 0 · `MIOLO` 0,95 ·
+    união → máximo · sem a cápsula · sem limpar a força no fim do passo · sem a guarda da ponta achatada · sem a
+    guarda do modo (sangram o Blur e o filme da máscara). As três do meio sobreviveram à 1.ª prova e ganharam
+    gate.
 
 ## §3 — Foundational / partilhado tocado (tudo ADITIVO)
 
@@ -86,6 +115,7 @@
 | pós-smoke (18/10) | `ph2d-tool-painter` `tocar.rs` (`por_ler`, campo privado) + `composicao_tests.rs`; `ph2d-app-macros` `instala.rs`/`lib.rs` (Autoplay na 2.ª tomada) + `tests/it/gravar_de_novo.rs`, `CENAS_DO_SMOKE` 5 → 6; `ph2d-app-painter` `macro_track/caminho.rs` NOVO (a `=6`, o registo da `=5`, `passo`, `Espia`), `mod.rs` (campo `espia: Option<_>`, só ligado pelo diagnóstico), `palcos_arrasto_tests.rs` NOVO, `smoke.rs`, isenção nomeada `macro_track/caminho.rs` no gate de texto (consola/registo, nunca ecrã); shell `render_loop/macro_smoke.rs` (a `=5`/`=6` despachadas pelas portas da shell, +~110 linhas de composição) |
 
 | 2.º fecho (18/10) | `ph2d-app-macros` `instala.rs` (`entra_se_ninguem_entra`, `toca_a_macro`; lê `binding_for` / `clips()` / `entry_clip_of` da Timeline, sem API nova) + `tests/it/gravar_de_novo.rs` (+5 testes) + `gate7.rs` (`Banca::objecto_motion`, `grava_um_passo_do_motion`); `ph2d-app-painter` `macro_track/caminho.rs` (`anuncio` por variante). Nada fora destas duas crates. |
+| 3.º fecho (19/10) | `ph2d-tool-painter`: `macro_track/forca.rs` NOVO (`pub(crate)`), `macro_track/marca_cobertura_tests.rs` NOVO, `undo_marca.rs` (campo `MarcaViva.forca` + 3 limpezas + o miolo em `fecha_o_passo`), `tool/marca_do_artista.rs` (`marca_a_forca`, fn livre), `tool/paint/stamp_route.rs` (uma chamada em `stamp_dabs`); `ph2d-app-painter` `macro_track/caminho.rs` (variante `Cruza`). Sem API pública nova, sem formato, sem i18n, sem `Cargo.toml`. |
 
 **Formato `Macro.doc`: sem diff.** O que muda no gravado é só o campo novo do projeto (schema 192).
 
@@ -117,7 +147,20 @@ sai vazio).
 
 ## §6 — Prova de fecho
 
-**2.º fecho de 18/10, em `515c93b0d2` (o que vale):**
+**3.º fecho, 19/10, em `9464cea7cb` (o que vale; o commit seguinte só troca `chunks_exact_mut` por `as_chunks_mut`
+num teste, pelo clippy):**
+
+- `censos-da-arvore-combinada.sh` (`PH2D_SUITE=fecho`): **121/121 verdes**, 49 s.
+- `BASE=$(git merge-base main HEAD) PH2D_SUITE=fecho nextest-impacted`: **17 775 corridos, 17 775 verdes, 0 falhas**,
+  12 140 saltados, 806 s (`load` 11 → 12,6). Na varredura e verdes: `file_loc_caps` (4), `the_shell_only_shrinks`,
+  `arch_safe_clamp_only` (2), `marca_cobertura_tests` (5), `gravar_de_novo`, `o_roteiro_de_cada_variante`,
+  `o_filme_da_mascara_do_painter_ligado_fica_por_cima_do_clipe`. A corrida anterior (em `0e20bfdf3c`) teve 1 falha
+  REAL, esse filme da máscara — curada em `9464cea7cb` (§2 item 11).
+- clippy `--all-targets -D warnings` limpo em `ph2d-tool-painter`, `ph2d-app-painter`, `ph2d-app-macros`,
+  `ph2d-host-desktop` depois de 1 `chunks_exact_to_as_chunks` no teste novo · `cargo fmt --all --check` exit 0 ·
+  `typos` limpo nos ficheiros de texto do 3.º fecho.
+
+**2.º fecho de 18/10, em `515c93b0d2` (histórico):**
 
 - `scripts/censos-da-arvore-combinada.sh` (`PH2D_SUITE=fecho`): **121/121 verdes**, 24 s.
 - `BASE=$(git merge-base main HEAD) PH2D_SUITE=fecho nextest-impacted`: **17 770 corridos, 17 770 verdes, 0 falhas**,
@@ -170,6 +213,15 @@ sai vazio).
 
 Binário: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` — em `9a295ee8a7`: «Finished `smoke`
 profile [optimized] target(s) in 10.77s».
+
+**19/10, 3.º fecho (o miolo do pincel)** — o dono: «traços posteriores à gravação da macro ficam com artefactos no
+local dos traços gravados» (foto: faixas brancas serrilhadas a atravessar as pinceladas novas, Time 1,892, Digital);
+«restante Smoke OK». No app: `PH2D_MACRO_SMOKE=6 PH2D_MACRO_CAMINHO=cruza` (binário de `538e7022f6`): Parar 5,22 s, a
+vertical por cima até 6,32 s, ⏮ 6,92 s, ▷ 7,40 s. Fotos (1930×1040, rajada; a tela recortada):
+[tira — antes do ▷ · 0,4 s · 1,3 s · 3,2 s](smoke_2026-10-19/cruza_tira_antes_do_play_e_0.4_1.3_3.2s.png) ·
+[0,4 s: a vertical inteira, as gravadas ainda por nascer](smoke_2026-10-19/cruza_play_0.4s_a_vertical_inteira.png) ·
+[3,2 s](smoke_2026-10-19/cruza_play_3.2s.png). Sem faixas; nos cruzamentos ficam «nós» do tamanho da borda macia
+da vertical (§8 item 9).
 
 **18/10, 2.º fecho (a decisão do Autoplay)** — binário de `515c93b0d2` («Finished `smoke` … 7.84s» em `73eb277e10`; a
 foto reconstrói-o). `=6 topo` no app: Parar aos 5,21 s, Play de cima aos 6,21 s; a tinta nasce de 0 (`tinta=0` até
@@ -233,6 +285,14 @@ binário de `9a295ee8a7`): APROVADO.**
    clipe «Macro» e os dois tocam a mesma `Macro` do objecto (o renomeado com o tempo antigo). A entrada já é a certa
    (§2 item 10); achar o clipe pela faixa `MacroTime` em vez do nome é decisão de desenho por tomar (o nome foi
    escolhido para o artista poder «guardar» uma tomada renomeando-a).
+9. Médio (3.º fecho, conhecido e fotografado): a marca é BINÁRIA. Num texel que a pincelada nova não mudou, o certo
+   seria «a gravação daquele instante + a tinta nova», e a marca só sabe mostrar uma das duas. Com o miolo `≥ ½`
+   as faixas sumiram, mas onde a vertical cruza uma gravada ainda por nascer vê-se um «nó» do tamanho da borda
+   macia dela (o fim aparece ali antes do tempo) — [foto](smoke_2026-10-19/cruza_play_0.4s_a_vertical_inteira.png).
+   O exacto é guardar a tinta do artista à parte e compô-la sobre a reprodução (outra camada por sprite, outro
+   formato): decisão de desenho por tomar, não de bug. Ponta com forma, grão ou achatada continua só com «o que
+   mudou» (as faixas podem voltar com essas pontas); o Watercolor marca pelo perfil do pincel, não pelo
+   pigmento que ficou (a velatura é mais clara que a força).
 
 ## Retomar
 

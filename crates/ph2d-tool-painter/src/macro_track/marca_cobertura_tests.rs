@@ -205,7 +205,11 @@ fn quem_nao_depoe_tinta_nao_marca_o_miolo() {
     for modo in ["blur", "smear"] {
         let mut t = PainterTool::default();
         let mut preta = vec![0u8; L * L * 4];
-        preta.chunks_exact_mut(4).for_each(|p| p[3] = 255);
+        preta
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .for_each(|p| p[3] = 255);
         t.set_source(preta, LADO, LADO);
         t.poe_a_marca(Some(MarcaDoArtista::nova(LADO, LADO, 1)));
         t.set_brush_size_px(16.0);

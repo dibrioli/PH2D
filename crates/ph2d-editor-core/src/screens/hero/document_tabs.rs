@@ -550,3 +550,7 @@ mod tests;
 #[cfg(test)]
 #[path = "document_tabs_menu_tests.rs"]
 mod menu_tests;
+
+#[cfg(test)]
+#[path = "document_tabs_undo_tests.rs"]
+mod undo_tests;

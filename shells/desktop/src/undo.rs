@@ -323,8 +323,10 @@ pub(crate) struct SelectionMark {
 /// para o report que isso fecha.
 #[derive(Default)]
 pub(crate) struct ProjectUndo {
-    undo: Vec<(ProjectState, SelectionMark)>,
-    redo: Vec<(ProjectState, SelectionMark)>,
+    /// Cada degrau leva a hora do `undo_tick` (MiroClone B5(4)): o `Ctrl+Z` da cena compara-a com a da
+    /// última operação de abas.
+    undo: Vec<(ProjectState, SelectionMark, u64)>,
+    redo: Vec<(ProjectState, SelectionMark, u64)>,
 }
 
 impl ProjectUndo {
@@ -334,8 +336,16 @@ impl ProjectUndo {
         if self.undo.len() >= UNDO_CAP {
             self.undo.remove(0);
         }
-        self.undo.push((pre, mark));
+        self.undo
+            .push((pre, mark, ph2d_editor_core::documents::undo_tick()));
         self.redo.clear();
+    }
+
+    /// A hora do degrau que o próximo desfazer leva (o que o próximo refazer leva, com `redo`).
+    pub(crate) fn top_at(&self, redo: bool) -> Option<u64> {
+        if redo { &self.redo } else { &self.undo }
+            .last()
+            .map(|s| s.2)
     }
 
     pub(crate) fn can_undo(&self) -> bool {
@@ -365,9 +375,10 @@ impl ProjectUndo {
         current: ProjectState,
         agora: SelectionMark,
     ) -> Option<(ProjectState, SelectionMark)> {
-        let prev = self.undo.pop()?;
-        self.redo.push((current, agora));
-        Some(prev)
+        let (state, mark, _) = self.undo.pop()?;
+        self.redo
+            .push((current, agora, ph2d_editor_core::documents::undo_tick()));
+        Some((state, mark))
     }
 
     /// Refaz: devolve o próximo estado **e a selecção dele**; empurra o `current` de volta pro undo.
@@ -377,9 +388,10 @@ impl ProjectUndo {
         current: ProjectState,
         agora: SelectionMark,
     ) -> Option<(ProjectState, SelectionMark)> {
-        let next = self.redo.pop()?;
-        self.undo.push((current, agora));
-        Some(next)
+        let (state, mark, _) = self.redo.pop()?;
+        self.undo
+            .push((current, agora, ph2d_editor_core::documents::undo_tick()));
+        Some((state, mark))
     }
 }
 

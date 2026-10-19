@@ -197,6 +197,17 @@ impl BoardSet {
         Some(self.boards.remove(at))
     }
 
+    /// B5(4) — põe de volta, na posição `at` (limitada ao fim), um quadro que [`Self::remove`] tirou, com
+    /// o MESMO id (os ids nunca se reusam, então ele não pode estar cá). `false` se o id já existe ou
+    /// nunca foi dado por este conjunto.
+    pub fn restore(&mut self, at: usize, board: Board) -> bool {
+        if board.id.0 == 0 || board.id.0 > self.next_id || self.get(board.id).is_some() {
+            return false;
+        }
+        self.boards.insert(at.min(self.boards.len()), board);
+        true
+    }
+
     /// O quadro `id` em bytes, para quem entra numa sessão ao vivo (o protocolo tem a versão dele).
     #[must_use]
     pub fn board_bytes(board: &Board) -> Vec<u8> {

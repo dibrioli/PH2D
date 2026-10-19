@@ -42,7 +42,7 @@ pub use facilitate::{
 };
 pub use fields::Field;
 pub use frac::FracKey;
-pub use history::{History, MAX_STEPS};
+pub use history::{History, MAX_STEPS, undo_tick};
 pub use image::{Blob, Crop, FileId, Files, Image, ImageFile, ImageFilter, Ingest, mime_of};
 pub use ink::{Ink, Pen};
 pub use mind::{

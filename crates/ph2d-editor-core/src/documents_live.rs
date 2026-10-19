@@ -281,8 +281,9 @@ impl Documents {
 
     /// Um quadro inteiro que chegou de outra pessoa entra numa ABA nova (com um id desta máquina) e
     /// fica activo.
+    /// Não é passo de desfazer (B5(4)): tirar o quadro de uma sala a que se entrou é sair dela.
     pub fn adopt_board(&mut self, mut board: Board) -> BoardId {
-        let id = self.create(board.name.clone());
+        let id = self.boards.create(board.name.clone());
         board.id = id;
         if let Some(b) = self.boards.get_mut(id) {
             *b = board;

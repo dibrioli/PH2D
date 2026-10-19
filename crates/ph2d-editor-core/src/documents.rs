@@ -9,8 +9,8 @@
 //! ao gravar ([`Documents::boards`]) e escreve-o ao carregar
 //! ([`crate::screens::hero::document_tabs::load`]).
 
-pub use ph2d_board_model::BoardSet;
 use ph2d_board_model::{Board, BoardId, History};
+pub use ph2d_board_model::{BoardSet, undo_tick};
 use std::collections::BTreeMap;
 
 #[path = "documents_fac.rs"]
@@ -21,6 +21,9 @@ pub mod live;
 pub(crate) mod nav;
 #[path = "documents_surface.rs"]
 mod surface;
+#[path = "documents_tabs.rs"]
+mod tabs;
+pub use tabs::TabChange;
 #[path = "documents_team.rs"]
 pub mod team;
 
@@ -44,6 +47,8 @@ pub struct Documents {
     pub(crate) surfaces: crate::doc_surface::Surfaces,
     /// A aba de família activa; exclusiva com `active` (as duas `None` = a `Cena`).
     pub(crate) surface_active: Option<crate::doc_surface::SurfaceTab>,
+    /// B5(4) — o desfazer das operações de aba (sessão, não ficheiro).
+    tabs: tabs::TabHistory,
 }
 
 /// ⭐ **O estado de SESSÃO dos quadros** — nada disto vai para o ficheiro.
@@ -264,8 +269,10 @@ impl Documents {
 
     /// Cria um quadro vazio no fim das abas e torna-o activo.
     pub fn create(&mut self, name: String) -> BoardId {
+        let back = self.active;
         let id = self.boards.create(name);
         self.activate(Some(id));
+        self.record_tab(tabs::TabStep::Remove { board: id, back });
         id
     }
 
@@ -280,6 +287,7 @@ impl Documents {
         self.renaming = None;
         self.tab_drag = None;
         self.live.histories.clear();
+        self.forget_tabs();
         self.active = None;
         self.surface_active = None;
         self.pan_from = None;
@@ -294,25 +302,57 @@ impl Documents {
 
     /// Muda o nome. `false` se `id` não existe.
     pub fn rename(&mut self, id: BoardId, name: String) -> bool {
-        self.boards.rename(id, name)
+        let Some(old) = self.boards.get(id).map(|b| b.name.clone()) else {
+            return false;
+        };
+        if old != name {
+            self.boards.rename(id, name);
+            self.record_tab(tabs::TabStep::Rename(id, old));
+        }
+        true
     }
 
     /// Cópia de `id` logo à direita dele, e a cópia fica activa.
     pub fn duplicate(&mut self, id: BoardId, name: String) -> Option<BoardId> {
+        let back = self.active;
         let copy = self.boards.duplicate(id, name)?;
         self.activate(Some(copy));
+        self.record_tab(tabs::TabStep::Remove { board: copy, back });
         Some(copy)
     }
 
     /// Leva a aba de `id` para a posição `to`. `false` se `id` não existe.
     pub fn move_tab(&mut self, id: BoardId, to: usize) -> bool {
-        self.boards.move_tab(id, to)
+        let Some(from) = self.position(id) else {
+            return false;
+        };
+        self.boards.move_tab(id, to);
+        if self.position(id) != Some(from) {
+            self.record_tab(tabs::TabStep::Move(id, from));
+        }
+        true
     }
 
     /// Apaga o quadro. Se era o activo, a aba que fica no lugar dele abre (a da direita, senão a
-    /// da esquerda, senão a `Cena`) — o idioma das abas de um navegador.
-    pub fn remove(&mut self, id: BoardId) -> Option<Board> {
-        let at = self.boards.boards().iter().position(|b| b.id == id)?;
+    /// da esquerda, senão a `Cena`) — o idioma das abas de um navegador. B5(4): o `Ctrl+Z` devolve-o
+    /// inteiro, com o desfazer dele. `false` se `id` não existe.
+    pub fn remove(&mut self, id: BoardId) -> bool {
+        let focus = self.active == Some(id);
+        let Some((board, at, history)) = self.take_board(id) else {
+            return false;
+        };
+        self.record_tab(tabs::TabStep::Restore {
+            board: Box::new(board),
+            at,
+            history,
+            focus,
+        });
+        true
+    }
+
+    /// Tira o quadro com o desfazer dele e a posição em que estava (o corpo de [`Self::remove`]).
+    fn take_board(&mut self, id: BoardId) -> Option<(Board, usize, History)> {
+        let at = self.position(id)?;
         if self.active == Some(id) {
             self.leave_board();
         }
@@ -322,7 +362,7 @@ impl Documents {
         if self.live_view.board == Some(id) {
             self.live_view.part(gone.clone());
         }
-        self.live.histories.remove(&id);
+        let history = self.live.histories.remove(&id).unwrap_or_default();
         // W7 — o relógio, o painel e a sessão do quadro apagado vão com ele (a campainha não toca
         // por um quadro que já não existe — auditoria W7).
         if self.live.fac.forget(id)
@@ -339,6 +379,6 @@ impl Documents {
             let next = list.get(at).or_else(|| list.last()).map(|b| b.id);
             self.activate(next);
         }
-        Some(gone)
+        Some((gone, at, history))
     }
 }

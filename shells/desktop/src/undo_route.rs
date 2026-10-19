@@ -38,6 +38,9 @@ pub(crate) enum UndoOwner {
     /// O undo de image-edit (single-level: Trim / Make Square / Bg Removal). É o
     /// **fallback**, e é o que emite o toast "Nothing to undo" quando não há nada.
     ImageEdit,
+    /// MiroClone B5(4) — a barra de ABAS: na cena, a última operação de abas (apagar, criar, renomear,
+    /// arrastar um quadro) quando é mais recente que o último passo da cena.
+    Tabs,
 }
 
 /// A política, sem `App`: quem responde, dado quem está aberto e quem tem passo.
@@ -50,6 +53,7 @@ pub(crate) fn undo_owner(
     audio_owns: bool,
     painter_active: bool,
     colorize_owns: bool,
+    tabs_newer: bool,
     global_has: bool,
 ) -> UndoOwner {
     // Um QUADRO activo (MiroClone) desfaz-se a si mesmo — nunca a cena escondida por baixo
@@ -62,6 +66,8 @@ pub(crate) fn undo_owner(
         UndoOwner::Painter
     } else if colorize_owns {
         UndoOwner::Colorize
+    } else if tabs_newer {
+        UndoOwner::Tabs
     } else if global_has {
         UndoOwner::Global
     } else {
@@ -155,11 +161,21 @@ impl crate::App {
             .hero_screen
             .as_ref()
             .is_some_and(|h| h.documents.active().is_some());
+        // B5(4) — a operação de abas mais recente que o último passo da cena é a que a cena desfaz.
+        let tabs_newer = gfx.hero_screen.as_ref().is_some_and(|h| {
+            let tab = if redo {
+                h.documents.tab_redo_at()
+            } else {
+                h.documents.tab_undo_at()
+            };
+            tab > self.undo.top_at(redo)
+        });
         let dono = undo_owner(
             board_active,
             audio_owns,
             painter_active,
             colorize_owns,
+            tabs_newer,
             global_has,
         );
         // ⭐ **O log diz QUEM respondeu** (2026-09-04) — sem esta linha um Ctrl+Z que vai parar ao
@@ -226,6 +242,11 @@ impl crate::App {
             // O passo é APLICADO no `post_frame_undo` (fim do frame, `self` livre e o
             // estado já reconciliado pelo `sync`) — aqui só se arma o pedido.
             UndoOwner::Global => self.undo_request = Some(redo),
+            UndoOwner::Tabs => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    ph2d_editor_core::screens::hero::document_tabs_menu::undo_tab(hero, redo);
+                }
+            }
             UndoOwner::ImageEdit => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.bus
@@ -251,24 +272,27 @@ mod tests {
     fn a_focused_modal_editor_owns_the_undo_chord_and_the_button_agrees() {
         // O caso comum: o global, quando há passo.
         assert_eq!(
-            undo_owner(false, false, false, false, true),
+            undo_owner(false, false, false, false, false, true),
             UndoOwner::Global
         );
         // Sem passo global, cai no image-edit (que é quem emite "Nothing to undo").
         assert_eq!(
-            undo_owner(false, false, false, false, false),
+            undo_owner(false, false, false, false, false, false),
             UndoOwner::ImageEdit
         );
         // O Painter é dono da fila dele.
         assert_eq!(
-            undo_owner(false, false, true, false, true),
+            undo_owner(false, false, true, false, false, true),
             UndoOwner::Painter
         );
         // E o Audio ganha do Painter E do global: um editor modal FOCADO não pode ceder o
         // atalho — um passo a mais saltaria a cena inteira (auditoria 2026-07-11, A1).
-        assert_eq!(undo_owner(false, true, true, false, true), UndoOwner::Audio);
         assert_eq!(
-            undo_owner(false, true, false, false, false),
+            undo_owner(false, true, true, false, false, true),
+            UndoOwner::Audio
+        );
+        assert_eq!(
+            undo_owner(false, true, false, false, false, false),
             UndoOwner::Audio
         );
     }
@@ -281,23 +305,57 @@ mod tests {
     #[test]
     fn pending_scribbles_own_the_undo_chord_and_yield_when_empty() {
         assert_eq!(
-            undo_owner(false, false, false, true, true),
+            undo_owner(false, false, false, true, false, true),
             UndoOwner::Colorize
         );
         assert_eq!(
-            undo_owner(false, false, false, true, false),
+            undo_owner(false, false, false, true, false, false),
             UndoOwner::Colorize
         );
         // Vazio na direção pedida: cede ao Global (o Apply é dele).
         assert_eq!(
-            undo_owner(false, false, false, false, true),
+            undo_owner(false, false, false, false, false, true),
             UndoOwner::Global
         );
         // Um editor modal focado ainda ganha (o Colorize é modo de tool, não painel modal).
-        assert_eq!(undo_owner(false, true, false, true, true), UndoOwner::Audio);
         assert_eq!(
-            undo_owner(false, false, true, true, true),
+            undo_owner(false, true, false, true, false, true),
+            UndoOwner::Audio
+        );
+        assert_eq!(
+            undo_owner(false, false, true, true, false, true),
             UndoOwner::Painter
+        );
+    }
+
+    /// B5(4) — na cena, a operação de abas mais recente que o último passo dela responde (apagar o único
+    /// quadro deixa a cena aberta, e o `Ctrl+Z` tem de o devolver); um editor modal focado continua dono.
+    #[test]
+    fn on_the_scene_a_newer_tab_step_answers_before_the_global_queue() {
+        assert_eq!(
+            undo_owner(false, false, false, false, true, true),
+            UndoOwner::Tabs
+        );
+        assert_eq!(
+            undo_owner(false, false, false, false, true, false),
+            UndoOwner::Tabs
+        );
+        assert_eq!(
+            undo_owner(false, false, false, false, false, true),
+            UndoOwner::Global
+        );
+        assert_eq!(
+            undo_owner(false, true, false, false, true, true),
+            UndoOwner::Audio
+        );
+        assert_eq!(
+            undo_owner(false, false, true, false, true, true),
+            UndoOwner::Painter
+        );
+        // Com um quadro aberto quem compara as horas é o quadro (`board_keys::tabs_first`).
+        assert_eq!(
+            undo_owner(true, false, false, false, true, true),
+            UndoOwner::Board
         );
     }
 
@@ -305,9 +363,12 @@ mod tests {
     /// Painter activo ou o áudio aberto: a cena está escondida por baixo (plano MiroClone §1.4).
     #[test]
     fn an_active_board_owns_the_undo_before_everyone() {
-        assert_eq!(undo_owner(true, true, true, true, true), UndoOwner::Board);
         assert_eq!(
-            undo_owner(true, false, false, false, false),
+            undo_owner(true, true, true, true, false, true),
+            UndoOwner::Board
+        );
+        assert_eq!(
+            undo_owner(true, false, false, false, false, false),
             UndoOwner::Board
         );
     }

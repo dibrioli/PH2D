@@ -250,6 +250,7 @@ impl Documents {
     /// `None` = não há essa versão, ou ela não se lê (bytes corrompidos, ou de um formato que este
     /// build não lê) — quem chama avisa.
     pub fn restore_version(&mut self, id: BoardId, ver: VersionId) -> Option<BoardId> {
+        let back = self.active;
         let b = self.boards.get(id)?;
         let v = b.team.versions.iter().find(|v| v.id == ver)?;
         let saved = v.read().ok()?;
@@ -261,6 +262,7 @@ impl Documents {
             r.team.hidden_slides = saved.team.hidden_slides;
         }
         self.activate(Some(new));
+        self.record_tab(super::tabs::TabStep::Remove { board: new, back });
         self.live.nav.fit_pending = true;
         Some(new)
     }

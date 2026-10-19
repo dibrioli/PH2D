@@ -516,6 +516,9 @@ impl crate::App {
             let agora = self.field_selection_mark();
             let mark = std::mem::replace(&mut self.undo_baseline_selection, agora);
             self.undo.push_undo(base, mark);
+            if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                h.documents.scene_stepped();
+            }
         }
     }
 }

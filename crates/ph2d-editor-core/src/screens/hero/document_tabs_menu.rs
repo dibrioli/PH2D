@@ -16,7 +16,7 @@
 use super::HeroScreen;
 use super::context_menu_overlay::{ROW_H, pad_y};
 use super::document_tabs::{Target, register_board, tab_node_id};
-use crate::documents::{Documents, TabDrag};
+use crate::documents::{Documents, TabChange, TabDrag};
 use crate::ids;
 use crate::interaction::{
     ContextMenuKind, ContextMenuRequest, HitIndex, InteractiveState, TAB_DRAG_THRESHOLD_PX,
@@ -193,6 +193,20 @@ fn commit_rename(hero: &mut HeroScreen) {
     }
 }
 
+/// ⭐ B5(4) — desfaz (ou refaz) a última operação de abas e acerta a aba na barra (a que volta nasce
+/// clicável, a que sai deixa de o ser). `false` = nada a fazer nessa direcção.
+pub fn undo_tab(hero: &mut HeroScreen, redo: bool) -> bool {
+    let Some(change) = hero.documents.undo_tab(redo) else {
+        return false;
+    };
+    match change {
+        TabChange::Back(id) => register_board(&mut hero.store, id),
+        TabChange::Gone(id) => hero.store.unregister(tab_node_id(id)),
+        TabChange::Same => {}
+    }
+    true
+}
+
 /// O quadro a que o menu aberto (ou o que o Down acabou de fechar) se refere.
 fn menu_board(store: &WidgetStore) -> Option<BoardId> {
     match store
@@ -258,7 +272,7 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             y: 0.0,
             kind: ContextMenuKind::ConfirmDeleteBoard { board: board.0 },
         });
-    } else if id == ids::CTX_MENU_BOARD_DELETE_CONFIRM && hero.documents.remove(board).is_some() {
+    } else if id == ids::CTX_MENU_BOARD_DELETE_CONFIRM && hero.documents.remove(board) {
         hero.store.unregister(tab_node_id(board));
     }
     true

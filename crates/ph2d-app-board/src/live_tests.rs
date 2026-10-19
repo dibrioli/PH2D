@@ -183,7 +183,7 @@ fn the_room_closes_like_end_session_when_its_board_leaves_the_host() {
     type Leave = fn(&mut HeroScreen, ph2d_board_model::BoardId);
     let ways: [(&str, Leave); 3] = [
         ("apagar a aba", |h, id| {
-            assert!(h.documents.remove(id).is_some());
+            assert!(h.documents.remove(id));
         }),
         ("carregar outro projecto", |h, _| {
             let mut other = ph2d_board_model::BoardSet::default();

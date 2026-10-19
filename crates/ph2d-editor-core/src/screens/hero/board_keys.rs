@@ -106,6 +106,16 @@ pub fn key(
     if pressed && let Some(out) = super::board_nav::key(hero, k, mods) {
         return out;
     }
+    // B5(4) — o `Ctrl+Z` que cabe à barra de abas (a operação dela é a mais recente).
+    if pressed
+        && (mods.ctrl || mods.meta)
+        && matches!(k, BoardKey::Char('z' | 'y'))
+        && let redo = chord_undo(k, mods) == Command::Redo
+        && tabs_first(hero, redo)
+    {
+        super::document_tabs_menu::undo_tab(hero, redo);
+        return taken();
+    }
     let theme = hero.theme;
     let Some((board, live)) = hero.documents.active_parts() else {
         return KeyOutcome::default();
@@ -395,12 +405,33 @@ fn chord_undo(k: BoardKey, mods: Modifiers) -> Command {
 /// Um comando do quadro activo (o menu Editar e as teclas de desfazer chegam aqui).
 pub fn board_command(hero: &mut HeroScreen, ts: &mut TextSystem, c: Command) -> bool {
     let theme = hero.theme;
+    if matches!(c, Command::Undo | Command::Redo) && tabs_first(hero, c == Command::Redo) {
+        return super::document_tabs_menu::undo_tab(hero, c == Command::Redo);
+    }
     let Some((board, live)) = hero.documents.active_parts() else {
         return false;
     };
     let history = live.histories.entry(board.id).or_default();
     let ed = super::board_view::editor(&mut live.editor, theme);
     step(ed, &mut board.doc, &mut board.team, history, ts, c)
+}
+
+/// B5(4) — a última operação de abas é mais recente que o último passo deste quadro (no refazer: foi
+/// desfeita depois). O texto a meio de se escrever é sempre do quadro.
+fn tabs_first(hero: &HeroScreen, redo: bool) -> bool {
+    let d = &hero.documents;
+    let Some(id) = d.active() else {
+        return false;
+    };
+    if d.live.editor.as_ref().is_some_and(|e| e.is_editing_text()) {
+        return false;
+    }
+    let h = d.live.histories.get(&id);
+    if redo {
+        d.tab_redo_at() > h.and_then(|h| h.redo_at())
+    } else {
+        d.tab_undo_at() > h.and_then(|h| h.undo_at())
+    }
 }
 
 /// ⭐ Um comando do editor; o desfazer/refazer que pára diante de um passo da EQUIPA (resolver, mover

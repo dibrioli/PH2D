@@ -230,6 +230,29 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "4. Erase every letter of a text and it goes away. Ctrl+Z takes back each change in \
              one step."
         }
+        // ── a cena 27 (PH2D_BOARD_SMOKE=27, W23 B5(4)): o Ctrl+Z das abas ──
+        "board.smoke.tabs.ideas" => "Ideas",
+        "board.smoke.tabs.plan" => "Plan",
+        "board.smoke.tabs.archive" => "Archive",
+        "board.smoke.tabs.ideas_box" => "Ideas board",
+        "board.smoke.tabs.plan_box" => "Plan board",
+        "board.smoke.tabs.archive_box" => "Archive board",
+        "board.smoke.tabs.l1" => {
+            "1. Right-click the «Archive» tab at the top → «Delete…» → «Delete board». Press \
+             Ctrl+Z: it comes back in the same place, with its box."
+        }
+        "board.smoke.tabs.l2" => {
+            "2. Double-click a tab, type a new name and press Enter. Ctrl+Z gives the old name \
+             back; Ctrl+Shift+Z the new one."
+        }
+        "board.smoke.tabs.l3" => {
+            "3. Drag a tab to another place in the row, or press + for a new board. Ctrl+Z takes \
+             each one back."
+        }
+        "board.smoke.tabs.l4" => {
+            "4. Draw a box here, then rename a tab. Ctrl+Z takes back the newest first: the name, \
+             then the box."
+        }
         "board.smoke.w23.to" => "To",
         "board.smoke.w23.l5" => {
             "5. Right-click a shape: Copy, Paste, Duplicate, Front/Back, Lock, Delete."

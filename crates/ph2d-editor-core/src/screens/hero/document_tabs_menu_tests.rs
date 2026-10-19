@@ -58,7 +58,7 @@ fn locate(hero: &HeroScreen, id: NodeId) -> Option<(f32, f32)> {
 }
 
 /// Down + Up do botão principal sobre `id`, onde quer que ele esteja pintado.
-fn click_anywhere(hero: &mut HeroScreen, id: NodeId) {
+pub(super) fn click_anywhere(hero: &mut HeroScreen, id: NodeId) {
     let (x, y) = locate(hero, id).unwrap_or_else(|| panic!("{id:?} não está pintado"));
     let arena = Bump::new();
     let mut events = hero
@@ -68,7 +68,7 @@ fn click_anywhere(hero: &mut HeroScreen, id: NodeId) {
     apply(hero, events);
 }
 
-fn right_click(hero: &mut HeroScreen, id: NodeId) {
+pub(super) fn right_click(hero: &mut HeroScreen, id: NodeId) {
     let (x, y) = find(hero, id).expect("a aba não está na barra");
     let arena = Bump::new();
     let mut events = Vec::new();
@@ -80,7 +80,7 @@ fn right_click(hero: &mut HeroScreen, id: NodeId) {
     apply(hero, events);
 }
 
-fn name_of(hero: &HeroScreen, b: BoardId) -> String {
+pub(super) fn name_of(hero: &HeroScreen, b: BoardId) -> String {
     hero.documents
         .boards()
         .get(b)
@@ -90,7 +90,7 @@ fn name_of(hero: &HeroScreen, b: BoardId) -> String {
 }
 
 /// `n` quadros novos, a cena repintada.
-fn with_boards(n: usize) -> (HeroScreen, TextSystem, Vec<BoardId>) {
+pub(super) fn with_boards(n: usize) -> (HeroScreen, TextSystem, Vec<BoardId>) {
     let (mut hero, mut text) = painted();
     for _ in 0..n {
         click(&mut hero, ids::DOC_TAB_NEW);
@@ -268,7 +268,7 @@ fn deleting_the_open_board_opens_its_neighbour() {
 }
 
 /// Down na aba `from`, Move até `to`, Up — o gesto inteiro pelo hero.
-fn drag(hero: &mut HeroScreen, from: (f32, f32), to: (f32, f32)) {
+pub(super) fn drag(hero: &mut HeroScreen, from: (f32, f32), to: (f32, f32)) {
     let arena = Bump::new();
     let mut events = hero
         .handle_pointer(ptr(PointerKind::Down, from.0, from.1), &arena)
@@ -278,7 +278,7 @@ fn drag(hero: &mut HeroScreen, from: (f32, f32), to: (f32, f32)) {
     apply(hero, events);
 }
 
-fn order(hero: &HeroScreen) -> Vec<BoardId> {
+pub(super) fn order(hero: &HeroScreen) -> Vec<BoardId> {
     hero.documents
         .boards()
         .boards()

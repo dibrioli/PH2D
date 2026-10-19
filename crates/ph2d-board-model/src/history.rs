@@ -8,8 +8,22 @@
 //! (devolve `false`) diante de um da equipa, que [`History::undo_team`] desfaz.
 //!
 //! Vive fora do [`crate::BoardSet`] de propósito: o histórico é da sessão, não do ficheiro.
+//!
+//! B5(4) — cada passo leva a HORA do [`undo_tick`]: o `Ctrl+Z` de um documento compara-a com a da
+//! última operação de abas e desfaz a mais recente (doc 15).
+
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{BoardDoc, BoardOp, Element, Field, Team, TeamOp, apply_batch};
+
+static CLOCK: AtomicU64 = AtomicU64::new(0);
+
+/// ⭐ B5(4) — o relógio ÚNICO das pilhas de desfazer (de cada quadro, das abas, da cena): só cresce, e
+/// quem o lê compara horas — a mais alta é o passo mais recente (feito, desfeito ou refeito).
+#[must_use]
+pub fn undo_tick() -> u64 {
+    CLOCK.fetch_add(1, Ordering::Relaxed) + 1
+}
 
 /// Passos guardados por quadro. ⚠️ É memória, não desempenho: um passo é um lote de elementos
 /// INTEIROS (o `Put` leva o estado anterior), e um quadro grande com gestos sobre selecções grandes
@@ -58,10 +72,13 @@ fn rebase(doc: &BoardDoc, ops: Vec<BoardOp>, was: Vec<Option<Element>>) -> Vec<B
         .collect()
 }
 
+/// Cada pilha guarda `(hora, passo)`: a hora é a do [`undo_tick`] quando o passo lá entrou.
 #[derive(Clone, Debug, Default)]
 pub struct History {
-    undo: Vec<Step>,
-    redo: Vec<Step>,
+    undo: Vec<(u64, Step)>,
+    redo: Vec<(u64, Step)>,
+    /// A hora do último passo NOVO (não um desfazer nem um refazer); `0` = nenhum.
+    last_push: u64,
 }
 
 impl History {
@@ -90,7 +107,8 @@ impl History {
     }
 
     fn push(&mut self, step: Step) {
-        self.undo.push(step);
+        self.last_push = undo_tick();
+        self.undo.push((self.last_push, step));
         if self.undo.len() > MAX_STEPS {
             self.undo.remove(0);
         }
@@ -100,29 +118,28 @@ impl History {
     /// Desfaz o último gesto do DOCUMENTO. `false` = nada a desfazer, ou o último passo é da equipa
     /// (fica na pilha para [`Self::undo_team`]).
     pub fn undo(&mut self, doc: &mut BoardDoc) -> bool {
-        let Some(Step::Doc(..)) = self.undo.last() else {
-            return false;
-        };
-        let Some(Step::Doc(step, was)) = self.undo.pop() else {
-            unreachable!("visto acima");
-        };
-        let inverse = apply_batch(doc, rebase(doc, step, was));
-        let after = after(doc, &inverse);
-        self.redo.push(Step::Doc(inverse, after));
-        true
+        Self::swap_doc(&mut self.undo, &mut self.redo, doc)
     }
 
     /// Refaz o último desfeito do DOCUMENTO (o par de [`Self::undo`]).
     pub fn redo(&mut self, doc: &mut BoardDoc) -> bool {
-        let Some(Step::Doc(..)) = self.redo.last() else {
+        Self::swap_doc(&mut self.redo, &mut self.undo, doc)
+    }
+
+    fn swap_doc(
+        from: &mut Vec<(u64, Step)>,
+        to: &mut Vec<(u64, Step)>,
+        doc: &mut BoardDoc,
+    ) -> bool {
+        let Some((_, Step::Doc(..))) = from.last() else {
             return false;
         };
-        let Some(Step::Doc(step, was)) = self.redo.pop() else {
+        let Some((_, Step::Doc(step, was))) = from.pop() else {
             unreachable!("visto acima");
         };
         let inverse = apply_batch(doc, rebase(doc, step, was));
         let after = after(doc, &inverse);
-        self.undo.push(Step::Doc(inverse, after));
+        to.push((undo_tick(), Step::Doc(inverse, after)));
         true
     }
 
@@ -136,14 +153,14 @@ impl History {
         Self::swap_team(&mut self.redo, &mut self.undo, team)
     }
 
-    fn swap_team(from: &mut Vec<Step>, to: &mut Vec<Step>, team: &mut Team) -> bool {
-        let Some(Step::Team(op)) = from.last().cloned() else {
+    fn swap_team(from: &mut Vec<(u64, Step)>, to: &mut Vec<(u64, Step)>, team: &mut Team) -> bool {
+        let Some((_, Step::Team(op))) = from.last().cloned() else {
             return false;
         };
         from.pop();
         // O fio pode ter saído entretanto (apagar a 1.ª mensagem não se desfaz): o passo gasta-se.
         if let Some(inverse) = team.apply(op) {
-            to.push(Step::Team(inverse));
+            to.push((undo_tick(), Step::Team(inverse)));
         }
         true
     }
@@ -156,6 +173,25 @@ impl History {
     #[must_use]
     pub fn can_redo(&self) -> bool {
         !self.redo.is_empty()
+    }
+
+    /// B5(4) — a hora do passo que o próximo desfazer leva (`None` = nada a desfazer).
+    #[must_use]
+    pub fn undo_at(&self) -> Option<u64> {
+        self.undo.last().map(|s| s.0)
+    }
+
+    /// B5(4) — a hora do passo que o próximo refazer leva: a de quando foi DESFEITO.
+    #[must_use]
+    pub fn redo_at(&self) -> Option<u64> {
+        self.redo.last().map(|s| s.0)
+    }
+
+    /// B5(4) — a hora do último passo novo (`0` = nenhum): um refazer de abas mais velho que ela já não
+    /// vale (o artista fez outra coisa depois de desfazer).
+    #[must_use]
+    pub fn last_push(&self) -> u64 {
+        self.last_push
     }
 }
 

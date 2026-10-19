@@ -134,3 +134,31 @@ grava o Hover, como as 27–30) e acrescenta 2 estágios; a 36 continua a `misto
   resto como «só conforme». Família render/placa.
 - **`token_world`** (F20 ABERTO 6): fica, outra lei (régua ≤ 0).
 - **A cor por token** não mente: a rachura + o chip «Token» já dizem que a amostra é o autorado coberto.
+
+## §9 — Feito (19/10)
+
+Commit `d3b578cfdb`. Desvios do plano:
+
+- **A Opacity não serve à cena nem ao teste: a opacidade do objeto NÃO é canal de estado.** O
+  `capture`/`install` (`ui_state_edit.rs`) não a escrevem (o `ObjectPose.opacity` é o canal do fade de
+  quem entra e sai). Uma edição de Opacity nunca foi apagada por um Show; a cor do Fill, a translação,
+  o traço e a forma, sim. Os testes e a cena 35 usam a cor. Se a opacidade deve ser canal de estado é
+  pergunta de produto (fica no ABERTO).
+- **A cena 35 achou a SEGUNDA porta do defeito, mais funda que a da máquina:** a cor escolhida no
+  seletor a meio do Show nem chegava à forma. Durante a transição a forma muda a cada quadro, a ponte
+  re-adota o estilo «por mão alheia» (`seed_style_from_selection` → `adopt_fill`) DEPOIS de o seletor
+  armar o verde, e a escrita do passo 4 levava a cor adotada. Com o rato real a ordem no quadro é a
+  mesma. Cura na porta da leitura (`tool_adopt.rs`): **nenhum campo ARMADO é pisado pela adoção**
+  (cor RGB e alfa, Width, Cap, Join, Align, cada número do tracejado, as pontas). Vale também para a
+  Width e o tracejado mexidos a meio de um Show.
+- **O undo:** sem janela não há fotografia do documento (`capture_project` exige `gfx`), então o passo
+  único prova-se em duas metades: `Cooked.pousou` (teste da ponte) e o gate de fonte
+  `the_gesture_that_stops_a_show_counts_as_input` (o quadro soma-o ao `any_input_this_frame` depois do
+  `dispatch`).
+- **Estágios:** a 35 em `22..=24` e a 36 em `33..=36` (faixas livres medidas no
+  `as_faixas_de_estagios_nao_se_cruzam`), e não em `248..`/`254..`, que só tinham 4 lugares.
+- **Medido e fechado sem código:** os sinais × `request` (§1) e o Preview × Hierarquia (apagar e sair
+  não ressuscita; gate `a_host_deleted_during_the_preview_stays_deleted_after_leaving`).
+- `PH2D_UI_STATE_LOG=1`: o terminal diz cada pouso por gesto e cada objeto que um motor conduz. Medido
+  na cena 35: 1 pouso, 0 motores; na 29 (o controlo, Show sem toque): 0 pousos, 0 motores.
+- Fotos: `fotos/F22_cena35.png` (o botão verde #28C85A, parado) e `fotos/F22_cena36.png` (o olho «—»).

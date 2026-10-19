@@ -88,6 +88,7 @@
 | 2026-10-18 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F19_O_PAINEL_LE_A_FORMA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F19_O_PAINEL_LE_A_FORMA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 18/10 — F19 (o painel do vetor lê a forma) feita |
 | 2026-10-18 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F20_MISTO_E_ESPESSURA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F20_MISTO_E_ESPESSURA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 18/10 — F20 (seleção múltipla «misto» e espessura na unidade do document… |
 | 2026-10-19 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F21_O_MISTO_COMPLETO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F21_O_MISTO_COMPLETO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 19/10 — F21 (o «misto» completo: seletor, forma vazia, pilha de camadas)… |
+| 2026-10-19 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F22_O_GESTO_VENCE_A_MAQUINA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F22_O_GESTO_VENCE_A_MAQUINA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 19/10 — F22 (o gesto do artista vence a máquina dos estados; o olho diz «misto»)… |
 
 ---
 

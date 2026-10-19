@@ -162,6 +162,65 @@ fn o_que_se_escreve_antes_da_resposta_ganha_a_formatacao() {
     );
 }
 
+/// Ctrl+S, escrever, Ctrl+S: a 1.ª resposta foi feita sobre o texto VELHO — aplicá-la ao novo
+/// partia-o. Só a do último pedido entra.
+#[test]
+fn a_resposta_de_um_pedido_velho_nunca_entra_no_texto_novo() {
+    // Cada pedido espera a SUA chave (o texto diz qual): a ordem das respostas é a do teste.
+    let (velho_tx, velho_rx) = mpsc::channel::<()>();
+    let (novo_tx, novo_rx) = mpsc::channel::<()>();
+    let (velho_rx, novo_rx) = (Mutex::new(velho_rx), Mutex::new(novo_rx));
+    let f = FormatServer::Custom(Arc::new(move |t: &str| {
+        let rx = if t.starts_with("-- c") { &novo_rx } else { &velho_rx };
+        let _ = rx.lock().unwrap().recv();
+        Ok(t.replace("x=1", "x = 1"))
+    }));
+    let (m, ids) = Mesa::new(&[("bob.luau", TORTO)]);
+    let mut m = m.com_formatador(f);
+    let id = ids[0];
+    m.pede(id);
+    m.quadro();
+    salva(&mut m, id);
+    // No INÍCIO: desloca tudo, e as edições da 1.ª resposta (bytes do texto velho) cairiam ao lado.
+    m.tecla(id, Key::Home, ctrl(), None);
+    m.escreve(id, "-- c\n");
+    salva(&mut m, id);
+    assert_eq!(m.docs().format_in_flight(), 2);
+    // A resposta VELHA chega primeiro, com o pedido novo ainda à espera.
+    velho_tx.send(()).unwrap();
+    let ate = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    while m.docs().format_in_flight() == 2 && std::time::Instant::now() < ate {
+        m.quadro();
+        std::thread::yield_now();
+    }
+    assert_eq!(m.docs().format_in_flight(), 1, "a velha chegou");
+    assert_eq!(texto(&mut m, id), format!("-- c\n{TORTO}"), "e não entrou");
+    novo_tx.send(()).unwrap();
+    chega(&mut m);
+    assert_eq!(texto(&mut m, id), format!("-- c\n{DIREITO}"));
+    assert!(!m.docs().is_dirty(id));
+}
+
+/// A formatação nunca se cola à escrita de antes: uma letra escrita mesmo antes do Ctrl+S, com o
+/// cursor no mesmo sítio, continua no seu próprio passo de desfazer.
+#[test]
+fn a_formatacao_nunca_se_junta_a_escrita_de_antes() {
+    let (m, ids) = Mesa::new(&[("bob.luau", TORTO)]);
+    let mut m = m.com_formatador(espacos());
+    let id = ids[0];
+    m.pede(id);
+    m.quadro();
+    m.tecla(id, Key::End, ctrl(), None);
+    m.escreve(id, "z");
+    salva(&mut m, id);
+    chega(&mut m);
+    assert_eq!(texto(&mut m, id), format!("{DIREITO}z"));
+    desfaz(&mut m, id);
+    assert_eq!(texto(&mut m, id), format!("{TORTO}z"), "só a formatação sai");
+    desfaz(&mut m, id);
+    assert_eq!(texto(&mut m, id), TORTO);
+}
+
 #[test]
 fn o_comando_liga_e_desliga_em_todas_as_abas() {
     let (m, ids) = Mesa::new(&[("bob.luau", TORTO)]);

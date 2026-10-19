@@ -242,4 +242,7 @@ fn medicao_do_atraso_da_formatacao() {
         e.len()
     );
     assert_eq!(apply(&torto, &e), t);
+    // Sem relógio: linha re-recuada = UMA edição (o caminho por pares; sem ele, 10 193 edições e
+    // 1 849 ms — medido 18/10, medicoes_onda2/I13.md).
+    assert_eq!(e.len(), 7500, "uma edição por linha re-recuada");
 }

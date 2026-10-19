@@ -1,0 +1,24 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   190ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   195ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   195ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   203ms] M11: VelloPass initialized (1024×768 intermediate)
+[   206ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   222ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   243ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   247ms] lifecycle: Foreground
+[   247ms] resize: 1024x768 @ 1.00x scale
+PH2D_WETPAINT_SMOKE: canvas 'Canvas' ready — pick the Painter tool. It opens in DIGITAL; choose Wet Paint from the Paint Mode dropdown, then drag and watch the water move.
+[ph2d-gpu] surface present mode → Immediate
+[   261ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.100s of sim time (max_substeps cap)
+PH2D_WETPAINT_SMOKE=2: O ROTEIRO
+1) A tela abre com dois tracos azuis inclinados, do pincel Oil Bristle a 103 px: o de CIMA e o de HOJE (os fios com relevo, sem escada); o de BAIXO e o de ONTEM (sem relevo).
+2) Aproxime o zoom no de cima: os fios claros e escuros correm lisos ao longo do traco. Deu errado se: aparecem degraus ou blocos pretos e brancos (o 'pixelado' de 18/10).
+3) Risque o SEU traco grande e inclinado no espaco livre, com o pincel que ja esta na mao (o Oil Bristle de hoje). Deu errado se: ele sai diferente do traco de cima, ou serrilhado.
+4) Ctrl+Z tira o seu traco de uma vez.
+[ph2d-gpu] surface present mode → Fifo

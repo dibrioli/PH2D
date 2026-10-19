@@ -1,0 +1,6 @@
+# O traço rápido por partes (sonda_traco_rapido, --release, o mínimo de 7, intercalado) — 19/10 a load ~22 (outras linhas): o RELÓGIO não vale (a fábrica lê 14,6 contra 7,3 ms/quadro a load ~4, custo_final_2026-10-19.txt); só as razões do mesmo processo.
+[rapido] load 22.44 22.44 28.60 3/1698 1202229
+[rapido] Oil Bristle r 51.5 passo 25 ×3/quadro · fabrica          evento 4.433 · pior 8.857 ms | quadro 14.572 · pior 18.836 ms
+[rapido] Oil Bristle r 51.5 passo 25 ×3/quadro · sem_relevo       evento 3.855 · pior 8.610 ms | quadro 11.738 · pior 18.102 ms
+[rapido] Oil Bristle r 51.5 passo 25 ×3/quadro · sem_cor_dos_fios evento 3.386 · pior 6.394 ms | quadro 12.213 · pior 14.684 ms
+[rapido] Oil Bristle r 51.5 passo 25 ×3/quadro · sem_fios         evento 4.566 · pior 12.681 ms | quadro 14.527 · pior 26.473 ms

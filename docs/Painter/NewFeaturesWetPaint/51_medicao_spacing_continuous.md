@@ -134,7 +134,11 @@ regenerados · `LARGURA_DO_WET_ROUND` (8 linhas). Censo da regra: `presets_de_fa
 
 ## §8 — Aberto
 
-- Os três da 50 §4 (a cor K–M por célula, o pente, o carimbo fora do orçamento do quadro) com o custo novo: por
-  re-medir. Wet Round / Wet Wash a 40 px subiram (7,1 → 11,8; 7,4 → 11,1), dentro do orçamento.
+- Os três da 50 §4 (a cor K–M por célula, o pente, o carimbo fora do orçamento do quadro) com o custo novo: o traço
+  rápido do Oil Bristle a 103 px 13,7 → **7,3 ms/quadro** (load ~4, `custo_final`) — com 2,3× de folga, nenhum dos
+  três está no caminho crítico. A divisão por partes ([`traco_rapido_por_partes_load22`](51_regua/traco_rapido_por_partes_load22_2026-10-19.txt))
+  saiu a load ~22: só as razões valem (sem relevo −19 %, sem a cor dos fios −16 %); o relógio por parte, em calma,
+  fica por medir. O carimbo continua no handler do ponteiro, sem orçamento de quadro (aberto, não mexido).
+  Wet Round / Wet Wash a 40 px subiram (7,1 → 11,8; 7,4 → 11,1), dentro do orçamento.
 - Flakes de carga vistos na bateria (passam sozinhos): `offthread_tests::the_water_runs_at_a_usable_rate…`,
   `parallel_rows::the_parallel_walk_is_actually_faster`.

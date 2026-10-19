@@ -74,6 +74,15 @@ impl crate::App {
             if let Some(track) = pending_vec_opacity {
                 #[allow(clippy::cast_possible_truncation)]
                 crate::vec_appearance::set_opacity(vec_scene, &sel, track as f32);
+                // ⭐ E, numa forma que a timeline conduz, o valor que a TELA mostra (plano 34 D3):
+                // o auto-key vê a mão — armado grava, desarmado segura até o tempo mudar.
+                #[allow(clippy::cast_possible_truncation)]
+                crate::vec_driven_style::follow_the_hand(
+                    sim,
+                    &self.vec.entities,
+                    &sel,
+                    track as f32,
+                );
             }
             if let Some(code) = pending_vec_blend {
                 crate::vec_appearance::set_blend(vec_scene, &sel, code);

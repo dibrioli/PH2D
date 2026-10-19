@@ -20,7 +20,12 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let FrameGfx { sim, toasts, .. } = FrameGfx::of(gfx);
+        let FrameGfx {
+            sim,
+            toasts,
+            vec_scene,
+            ..
+        } = FrameGfx::of(gfx);
 
         // General timeline (W1): drain the panel/K intents into the document, then apply it to
         // the scene, on the clock of the view (`ViewClock`, ADR-0115 R8 emenda 3: Keys rules the
@@ -152,7 +157,10 @@ impl crate::App {
         // ...e QUANTO cada propriedade animada vale AGORA, para a row o mostrar (Enio, 2026-09-04).
         // ⚠️ **Depois do `timeline_bridge::run`**, que é quem escreve a pose deste quadro: lido
         // antes, o número atrasaria um quadro — e este é o sítio onde o mundo já está escrito.
-        timeline_bridge::publish_track_values(&mut self.timeline_view, sim.world());
+        timeline_bridge::publish_track_values(
+            &mut self.timeline_view,
+            timeline_bridge::Mundo::com_vetor(sim.world(), vec_scene),
+        );
         // A linha «Macro steps» (ADR-0186, W5d): as etapas da macro do clipe activo.
         self.timeline_view.macro_etapas = ph2d_app_macros::com(|m| {
             m.etapas_na_linha(sim, &self.timeline.doc, super::fase_macros::ETAPAS)

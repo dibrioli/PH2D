@@ -102,17 +102,27 @@ pub fn apply(driven: &[(VecPathId, f32)], view: &mut VecViewState) {
 /// `bound_style(id)` é uma varredura linear — `O(N²)` por quadro numa cena de dez mil formas.
 /// *Uma cura que custa um quadrado não é uma cura.*
 ///
-/// ⏳ **O que fica em aberto, com o mecanismo nomeado:** uma forma **nunca conduzida** não tem o
-/// componente, então as três leitoras de *«quanto vale esta propriedade?»* continuam a responder
-/// `1,0` para ela — a tecla **K** sobre uma forma autorada a 40 % grava a 1.ª chave em `1,0`. As
-/// duas leitoras da crate (`read_prop_kind`, que semeia o `rest`) **não alcançam o documento
-/// vectorial**, e fechá-lo é passar a cena por três assinaturas.
+/// ⭐ Uma forma **nunca conduzida** não tem o componente; quem pergunta *«quanto vale esta
+/// propriedade?»* na shell (`sample_prop_value`, a K e o auto-key) lê então o gravado do documento
+/// (plano 34 D4). O `rest` da `ph2d-timeline` (`read_prop_kind`) ainda responde `1,0` ali.
+///
+/// # ⛔⛔ Só quem a linha do tempo NÃO conduz (plano 34 D2)
+///
+/// `conduzida(bits)` = o canal `Opacity` desta entidade tem binding. Esses guardam o que a curva —
+/// ou a MÃO, num quadro em que o apply os salta — escreveu, como o `Transform`. Repô-los no gravado
+/// a cada quadro punha o gravado diante do auto-key, que corre depois desta fase: parada fora de
+/// uma chave, a forma seleccionada era PRESA no gravado (a curva sumia da tela) e, armado, o
+/// gravado era keyado por cima da curva em cada quadro onde o artista parava.
 pub fn settle_to_authored(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     scene: &ph2d_vec_scene::VecScene,
+    conduzida: impl Fn(u64) -> bool,
 ) {
     for (&id, &bits) in map {
+        if conduzida(bits) {
+            continue;
+        }
         let e = Entity::from_bits(bits);
         let Some(autorada) = scene
             .paths()
@@ -130,6 +140,43 @@ pub fn settle_to_authored(
             if d.alpha != alvo {
                 d.alpha = alvo;
             }
+        }
+    }
+}
+
+/// ⭐⭐ **A CAMADA VIVA de cada forma** — o que a tela desenha por cima do gravado: a linha do tempo
+/// e, depois, o controlo que o artista segura (`widget_drive`). Porta única: a tela funde-a na
+/// projecção do quadro e o painel pergunta-lhe o número que mostra (plano 34 D1) — duas
+/// composições divergiriam na primeira fonte nova.
+pub fn live_layers(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    store: &ph2d_editor_core::interaction::WidgetStore,
+    view: &mut VecViewState,
+) {
+    apply(&resolve(sim, map), view);
+    crate::widget_drive::apply(&crate::widget_drive::resolve(sim, map, store), view);
+}
+
+/// ⭐ **A MÃO escreve a camada conduzida** — uma edição da Opacity numa forma que a linha do tempo
+/// conduz (plano 34 D3). Escrever só o gravado deixava a curva cobri-lo no quadro seguinte e o
+/// auto-key, que amostra esta camada, nunca via a edição. É a lei do `Transform`: o gesto escreve o
+/// valor que se vê e a curva só o retoma quando o tempo muda.
+///
+/// ⚠️ Só quem JÁ tem o componente (`get_mut`): sem ele a forma não é conduzida e o gravado é o que
+/// se vê — criá-lo aqui publicaria uma entrada de estilo por forma editada.
+pub fn follow_the_hand(sim: &mut SimWorld, map: &VecEntityMap, sel: &[VecPathId], v: f32) {
+    let alpha = Some(v.clamp(0.0, 1.0));
+    for id in sel {
+        let Some(&bits) = map.get(id) else {
+            continue;
+        };
+        if let Some(mut d) = sim
+            .world_mut()
+            .get_mut::<VecDrivenStyle>(Entity::from_bits(bits))
+            && d.alpha != alpha
+        {
+            d.alpha = alpha;
         }
     }
 }

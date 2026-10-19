@@ -604,7 +604,6 @@ pub(crate) use ph2d_app_vec::ui_state_edit as vec_ui_state_edit;
 /// entrou por baixo dele e **herdou-o**, deixando este ficheiro — o que a F4.6c vai apagar — sem a
 /// única linha que dizia o que ele é. *Um comentário separado do seu item muda de dono.*
 pub(crate) use ph2d_app_vec::weld as vec_weld;
-pub(crate) use ph2d_app_vec::widget_drive as vec_widget_drive;
 pub(crate) use ph2d_app_vec::widget_edit as vec_widget_edit;
 pub(crate) use ph2d_app_vec::widget_value as vec_widget_value;
 /// A costura do gizmo dos deformadores de quadrilátero com o ponteiro.

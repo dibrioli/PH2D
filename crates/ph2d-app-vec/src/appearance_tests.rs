@@ -32,7 +32,7 @@ fn the_panel_reads_the_primary_and_the_gesture_writes_them_all() {
     let (mut scene, ids) = cena();
     scene.path_mut(ids[0]).expect("a").opacity = Opacity::new(0.25);
     scene.path_mut(ids[1]).expect("b").opacity = Opacity::new(0.75);
-    let a = published(&scene, &ids).expect("ha' seleccao");
+    let a = published(&scene, &ids, &Default::default()).expect("ha' seleccao");
     assert!(
         (a.opacity - 0.25).abs() < 1e-6,
         "o readout e' do PRIMARIO, nao de outro da lista"
@@ -61,9 +61,9 @@ fn the_panel_reads_the_primary_and_the_gesture_writes_them_all() {
 #[test]
 fn an_empty_selection_publishes_nothing() {
     let (scene, _) = cena();
-    assert!(published(&scene, &[]).is_none());
+    assert!(published(&scene, &[], &Default::default()).is_none());
     assert!(
-        published(&scene, &[999]).is_none(),
+        published(&scene, &[999], &Default::default()).is_none(),
         "um id que a cena nao tem tambem nao publica — a forma pode ter sido apagada neste quadro"
     );
 }
@@ -98,4 +98,24 @@ fn an_out_of_range_code_falls_back_to_normal() {
         BlendMode::Normal,
         "um codigo desconhecido nao pode virar um modo qualquer"
     );
+}
+
+/// ⭐⭐ **O painel mostra a opacidade que a TELA desenha** (plano 34 D1): uma forma gravada a 100 %
+/// que a linha do tempo conduz a 60 % diz `0,6`; sem curva, o gravado. E o misto compara os
+/// valores VIVOS — duas formas gravadas iguais, uma conduzida, são mistas.
+#[test]
+fn o_painel_mostra_a_opacidade_que_a_tela_desenha() {
+    let mut scene = VecScene::default();
+    let a = scene.push_path(VecPath::default());
+    let b = scene.push_path(VecPath::default());
+    let mut vivo = ph2d_vec_scene::VecViewState::default();
+    assert_eq!(published(&scene, &[a], &vivo).unwrap().opacity, 1.0);
+    crate::driven_style::apply(&[(a, 0.6)], &mut vivo);
+    let p = published(&scene, &[a, b], &vivo).unwrap();
+    assert!(
+        (p.opacity - 0.6).abs() < 1e-2,
+        "o painel leu o gravado: {}",
+        p.opacity
+    );
+    assert!(p.mixed_opacity, "uma conduzida e outra nao: misto");
 }

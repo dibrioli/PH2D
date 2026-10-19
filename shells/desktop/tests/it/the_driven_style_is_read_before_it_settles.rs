@@ -44,20 +44,18 @@ fn code_only(src: &str) -> String {
 #[test]
 fn the_driven_style_settles_after_the_frame_has_read_it() {
     let src = code_only(&frame());
-    let resolve = src
-        .find("vec_driven_style::resolve(")
-        .expect("a projecção da aparência conduzida vive no quadro");
+    // `live_layers` = `resolve` + `apply` (plano 34 D1: a porta que o painel também lê).
     let apply = src
-        .find("vec_driven_style::apply(")
-        .expect("ela é aplicada à vista do quadro");
+        .find("vec_driven_style::live_layers(")
+        .expect("a projecção da aparência conduzida vive no quadro");
     let settle = src.find("vec_driven_style::settle_to_authored(").expect(
         "o componente NUNCA volta ao autorado — apagar uma track de opacidade deixa a forma \
              congelada no último valor da curva, para sempre e sem gesto de volta",
     );
     assert!(
-        resolve < apply && apply < settle,
-        "a ordem do quadro partiu-se (resolve {resolve}, apply {apply}, settle {settle}) — repor o \
-         autorado ANTES de a projecção ser lida apaga a curva DESTE quadro, e a forma deixa de \
-         desvanecer com a suite inteira verde"
+        apply < settle,
+        "a ordem do quadro partiu-se (aplica {apply}, settle {settle}) — repor o autorado ANTES \
+         de a projecção ser lida apaga a curva DESTE quadro, e a forma deixa de desvanecer com a \
+         suite inteira verde"
     );
 }

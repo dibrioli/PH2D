@@ -148,17 +148,25 @@ const LARGURA_NOVA: f64 = 1.0;
 
 /// **O que o painel mostra** — `None` sem forma na selecção. `sel` vem de [`ordered`]: o primeiro
 /// é o primário.
+///
+/// ⭐ `vivo` = a camada viva do quadro ([`crate::driven_style::live_layers`]): a Opacity é a que a
+/// TELA desenha (`object_alpha`), não a gravada — numa forma que a linha do tempo conduz as duas
+/// diferem (plano 34 D1).
 pub fn published(
     scene: &VecScene,
     sel: &[VecPathId],
+    vivo: &ph2d_vec_scene::VecViewState,
 ) -> Option<ph2d_panel_vector::state::Appearance> {
     let p = scene.path(*sel.first()?)?;
     let layers_differ = layers_differ(scene, sel);
     let outras = || sel.iter().filter_map(|id| scene.path(*id));
+    let alfa =
+        |q: &ph2d_vec_scene::VecPath| ph2d_vec_scene::object_alpha(q, vivo.bound_style(q.id));
+    let opacity = alfa(p);
     Some(ph2d_panel_vector::state::Appearance {
-        opacity: p.opacity.get(),
+        opacity,
         blend: p.blend,
-        mixed_opacity: outras().any(|o| o.opacity != p.opacity),
+        mixed_opacity: outras().any(|o| alfa(o) != opacity),
         mixed_blend: outras().any(|o| o.blend != p.blend),
         layers_differ,
         layers: p

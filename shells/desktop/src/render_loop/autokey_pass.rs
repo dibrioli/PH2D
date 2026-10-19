@@ -36,7 +36,6 @@ use std::collections::BTreeMap;
 
 use ph2d_anim::{AnimValue, RationalTime};
 use ph2d_core::Playhead;
-use ph2d_ecs::World;
 use ph2d_editor_core::HeroScreen;
 use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 
@@ -50,10 +49,11 @@ use ph2d_timeline::record_fit::{REC_SIMPLIFY_REL, REC_SMOOTH_PASSES, RecSpan, si
 /// Sample a sprite's six animatable values into a [`PoseSample`], in
 /// `PropKind::ALL` order. `None` for a property whose backing component is absent
 /// (e.g. opacity on an entity with no `Sprite`).
-fn sample_pose(world: &World, entity: u64) -> PoseSample {
+fn sample_pose<'a>(src: impl Into<super::timeline_bridge::Mundo<'a>>, entity: u64) -> PoseSample {
+    let src = src.into();
     let mut pose: PoseSample = [None; PropKind::AUTOKEYED.len()];
     for (i, &prop) in PropKind::AUTOKEYED.iter().enumerate() {
-        pose[i] = sample_prop_value(world, entity, prop).and_then(|v| match v {
+        pose[i] = sample_prop_value(src, entity, prop).and_then(|v| match v {
             AnimValue::Float(f) => Some(f),
             _ => None,
         });
@@ -80,6 +80,8 @@ pub(crate) fn run(
     // de ser só a selecção: quem a MÃO segura sai da [`super::timeline_bridge::maos_do_quadro`], e
     // ela precisa de perguntar pela cadeia de ossos.
     sim: &ph2d_ecs::SimWorld,
+    // A opacidade GRAVADA de um vetor que nenhuma curva conduz (plano 34 D4).
+    vec: &ph2d_vec_scene::VecScene,
     preview: &ph2d_preview_drive::PreviewDrive,
     skeleton: &ph2d_app_skeleton::state::SkeletonState,
 ) {
@@ -106,7 +108,10 @@ pub(crate) fn run(
     // este salta quem um motor escreve, e as duas populações não se intersectam.
     let samples: Vec<(u64, PoseSample)> = populacao(hero, skeleton, sim, preview)
         .into_iter()
-        .map(|e| (e, sample_pose(sim.world(), e)))
+        .map(|e| {
+            let src = super::timeline_bridge::Mundo::com_vetor(sim.world(), vec);
+            (e, sample_pose(src, e))
+        })
         .collect();
     apply_samples(
         timeline, playhead, &samples, drag_now, armed, performing, ak, toasts,
@@ -540,6 +545,9 @@ mod bone_tests;
 #[cfg(test)]
 #[path = "autokey_cut_clock_tests.rs"]
 mod cut_clock_tests;
+#[cfg(test)]
+#[path = "autokey_opacidade_vetor_tests.rs"]
+mod opacidade_vetor_tests;
 #[cfg(test)]
 #[path = "autokey_performing_tests.rs"]
 mod performing_tests;

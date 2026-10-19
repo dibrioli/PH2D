@@ -13,15 +13,42 @@
 use ph2d_ecs::World;
 use ph2d_timeline::{PropKind, TimelineState};
 
+/// **Onde mora o valor de um canal** — o mundo ECS e, para a opacidade de um caminho vetorial, o
+/// documento vetorial (o valor GRAVADO de uma forma que nenhuma curva conduz: plano 34 D4).
+///
+/// ⚠️ `From<&World>` existe para os gates que não têm vetor; a app passa sempre o documento.
+#[derive(Clone, Copy)]
+pub(crate) struct Mundo<'a> {
+    pub world: &'a World,
+    pub vec: Option<&'a ph2d_vec_scene::VecScene>,
+}
+
+impl<'a> From<&'a World> for Mundo<'a> {
+    fn from(world: &'a World) -> Self {
+        Self { world, vec: None }
+    }
+}
+
+impl<'a> Mundo<'a> {
+    #[must_use]
+    pub(crate) fn com_vetor(world: &'a World, vec: &'a ph2d_vec_scene::VecScene) -> Self {
+        Self {
+            world,
+            vec: Some(vec),
+        }
+    }
+}
+
 /// Sample a bound property's CURRENT value from the scene, for a K-insert
 /// keyframe (capture-the-pose). Transform properties read the entity's
 /// `Transform`; opacity reads `Sprite.tint[3]`.
-pub(crate) fn sample_prop_value(
-    world: &World,
+pub(crate) fn sample_prop_value<'a>(
+    src: impl Into<Mundo<'a>>,
     entity_bits: u64,
     prop: PropKind,
 ) -> Option<ph2d_anim::AnimValue> {
     use ph2d_anim::AnimValue::Float;
+    let Mundo { world, vec } = src.into();
     use ph2d_ecs::{Entity, Transform};
     let e = Entity::from_bits(entity_bits);
     let xf = || world.get::<Transform>(e);
@@ -35,13 +62,17 @@ pub(crate) fn sample_prop_value(
         // sprite guarda-a no `tint[3]`; um caminho vetorial não tem campo nenhum para ela e a
         // recebe pela projecção do quadro (`ph2d_ecs::VecDrivenStyle` → `BoundStyle::alpha`).
         //
-        // ⚠️ **Num vetor ainda não conduzido a resposta é `1.0`, não `None`.** Esta função semeia
-        // o valor que a tecla K grava: recusar aqui faria a 1.ª chave de um fade nascer sem valor,
-        // e devolver `0.0` faria toda track nova começar invisível.
+        // ⚠️ **Num vetor ainda não conduzido a resposta é a opacidade GRAVADA**, nunca `None` nem
+        // `1.0`: esta função semeia o valor que a tecla K grava e a pose que o auto-key compara —
+        // com `1.0` a K gravava 100 % numa forma a 40 % e o auto-key nunca via a Opacity mudar.
         PropKind::Opacity if world.get::<ph2d_ecs::VecPathRef>(e).is_some() => Float(
             world
                 .get::<ph2d_ecs::VecDrivenStyle>(e)
                 .and_then(|d| d.alpha)
+                .or_else(|| {
+                    let r = world.get::<ph2d_ecs::VecPathRef>(e)?;
+                    vec?.path(r.0).map(|p| p.opacity.get())
+                })
                 .unwrap_or(1.0),
         ),
         PropKind::Opacity => Float(world.get::<ph2d_render::Sprite>(e)?.tint[3]),
@@ -128,13 +159,15 @@ pub(crate) fn sample_prop_value(
 /// the apply samples with re-creates the freeze: `tr.sample` flat-clamps past
 /// the last key, so K@0 then K@2 laid down a FLAT map = every track of the
 /// entity frozen at source 0 (the 2026-07-11 "Time nullifies the animation").
-pub(crate) fn key_value_for(
-    world: &World,
+pub(crate) fn key_value_for<'a>(
+    src: impl Into<Mundo<'a>>,
     timeline: &TimelineState,
     entity: u64,
     prop: PropKind,
     t_secs: f64,
 ) -> Option<ph2d_anim::AnimValue> {
+    let src = src.into();
+    let world = src.world;
     if prop == PropKind::TimeRemap {
         let source = ph2d_timeline::remapped_time(&timeline.doc, entity, t_secs);
         return Some(ph2d_anim::AnimValue::Float(source as f32));
@@ -152,7 +185,7 @@ pub(crate) fn key_value_for(
     // never the pose itself, which would land the object somewhere else the moment
     // the stack re-evaluated. `None` = the active clip cannot express this pose,
     // and K refuses (ADR-0115 R9).
-    let ph2d_anim::AnimValue::Float(pose) = sample_prop_value(world, entity, prop)? else {
+    let ph2d_anim::AnimValue::Float(pose) = sample_prop_value(src, entity, prop)? else {
         return None;
     };
     // `Err` = the active clip cannot express this pose (a lane above overrides it, or a
@@ -203,8 +236,8 @@ pub(crate) fn key_insert_time(
 ///
 /// A Time Remap track keys ON its own curve (the retime value at `clip_t`), exactly
 /// as the Arrange-side K does — that half is clock-agnostic.
-pub(crate) fn key_authoring_solo(
-    world: &World,
+pub(crate) fn key_authoring_solo<'a>(
+    src: impl Into<Mundo<'a>>,
     timeline: &TimelineState,
     entity: u64,
     prop: PropKind,
@@ -218,7 +251,7 @@ pub(crate) fn key_authoring_solo(
             ph2d_anim::RationalTime::from_seconds(clip_t),
         ));
     }
-    let value = sample_prop_value(world, entity, prop)?; // the raw pose = what you see
+    let value = sample_prop_value(src, entity, prop)?; // the raw pose = what you see
     Some((value, solo_key_time(timeline, entity, clip_t)))
 }
 
@@ -289,10 +322,14 @@ pub(crate) fn default_interp() -> ph2d_anim::Interp {
 /// ⚠️ **É o MUNDO e não a curva**, e a diferença é o defeito irmão deste report: no mesmo dia uma
 /// forma filtrada ficou opaca com a curva a dizer `0`. Um readout amostrado da curva teria escrito
 /// `0,00` e concordado com o defeito.
-pub(crate) fn publish_track_values(view: &mut ph2d_timeline::TimelineViewSnapshot, world: &World) {
+pub(crate) fn publish_track_values<'a>(
+    view: &mut ph2d_timeline::TimelineViewSnapshot,
+    src: impl Into<Mundo<'a>>,
+) {
+    let src = src.into();
     let ph2d_timeline::TimelineViewSnapshot { tracks, values, .. } = view;
     values.publish(tracks, |entity, prop| {
-        match sample_prop_value(world, entity, prop) {
+        match sample_prop_value(src, entity, prop) {
             Some(ph2d_anim::AnimValue::Float(v)) => Some(v),
             // Um canal sem escalar de mundo (`TimeRemap`, `Position`) ou um objecto que morreu:
             // a row fica SEM número, nunca com um zero (ver `TrackValues::get`).

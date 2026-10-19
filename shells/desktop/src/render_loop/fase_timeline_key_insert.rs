@@ -42,8 +42,10 @@ impl crate::App {
             sim,
             toasts,
             hero_screen,
+            vec_scene,
             ..
         } = FrameGfx::of(gfx);
+        let mundo = timeline_bridge::Mundo::com_vetor(sim.world(), vec_scene);
         // The K clock is the clock the animator is watching — the view's (`ViewClock`): the
         // container's inside one, the clip's on Keys under a stack, else the editor's. The
         // value/time helpers below read the same clock.
@@ -163,32 +165,16 @@ impl crate::App {
                 // blend, so `key_value_for` inverts it and `key_insert_time` can
                 // REFUSE (the clip has no influence, or plays zero/two times).
                 let authored = if keys_mode {
-                    timeline_bridge::key_authoring_solo(
-                        sim.world(),
-                        &self.timeline,
-                        entity,
-                        prop,
-                        k_time,
-                    )
+                    timeline_bridge::key_authoring_solo(mundo, &self.timeline, entity, prop, k_time)
                 } else {
                     // Arrange OR inside a container — both read the stack (rooted at
                     // the scene or the container respectively, primed above) at
                     // `k_time`. The value/time helpers are root-aware, so a container
                     // key lands on the container's clock and refuses on the
                     // container's terms, never the scene's.
-                    timeline_bridge::key_value_for(
-                        sim.world(),
-                        &self.timeline,
-                        entity,
-                        prop,
-                        k_time,
+                    timeline_bridge::key_value_for(mundo, &self.timeline, entity, prop, k_time).zip(
+                        timeline_bridge::key_insert_time(&self.timeline, entity, prop, k_time),
                     )
-                    .zip(timeline_bridge::key_insert_time(
-                        &self.timeline,
-                        entity,
-                        prop,
-                        k_time,
-                    ))
                 };
                 if let Some((value, t)) = authored {
                     self.timeline_intents

@@ -29,16 +29,35 @@ fn body() -> String {
     frame
 }
 
-/// **O passe de desenho RESOLVE e APLICA os drives.**
+/// A porta da camada viva (`ph2d_app_vec::driven_style::live_layers`, plano 34 D1) — o quadro e o
+/// painel chamam-na; os drives moram dentro dela.
+fn live_layers() -> String {
+    let src = include_str!("../../../../crates/ph2d-app-vec/src/driven_style.rs");
+    let i = src
+        .find("pub fn live_layers(")
+        .expect("a porta da camada viva sumiu");
+    src[i..]
+        .split("\n}\n")
+        .next()
+        .unwrap_or_default()
+        .to_owned()
+}
+
+/// **O passe de desenho RESOLVE e APLICA os drives** — pela camada viva.
 #[test]
 fn the_draw_pass_resolves_and_applies_the_drives() {
     let s = body();
     assert!(
-        s.contains("vec_widget_drive::resolve("),
-        "o passe de desenho nao resolve os drives — o painel responde e a arte nao muda"
+        s.contains("vec_driven_style::live_layers("),
+        "o passe de desenho nao aplica a camada viva — o painel responde e a arte nao muda"
+    );
+    let l = live_layers();
+    assert!(
+        l.contains("widget_drive::resolve("),
+        "a camada viva nao resolve os drives — o painel responde e a arte nao muda"
     );
     assert!(
-        s.contains("vec_widget_drive::apply("),
+        l.contains("widget_drive::apply("),
         "os drives sao resolvidos e nunca aplicados — trabalho que ninguem consome"
     );
 }
@@ -51,7 +70,7 @@ fn the_opacity_lands_after_the_tokens() {
         .find("vec_view.bound = crate::vec_bindings::resolve(")
         .expect("a publicacao dos tokens sumiu do render_loop");
     let drives = s
-        .find("crate::vec_widget_drive::apply(")
+        .find("crate::vec_driven_style::live_layers(")
         .expect("a aplicacao dos drives sumiu do render_loop");
     assert!(
         tokens < drives,

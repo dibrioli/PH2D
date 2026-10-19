@@ -14,6 +14,7 @@ impl crate::App {
             sim,
             toasts,
             hero_screen,
+            vec_scene,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -41,6 +42,7 @@ impl crate::App {
             toasts,
             hero,
             sim,
+            vec_scene,
             &self.preview_drive,
             // ⭐ A SEGUNDA mão: a ferramenta Bone a posar um osso é um arrasto como o do gizmo, e é
             // isso que faz o gesto inteiro ser UM passo de undo (ver `autokey_pass::run`).

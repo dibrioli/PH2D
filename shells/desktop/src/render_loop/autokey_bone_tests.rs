@@ -34,6 +34,7 @@ fn posing_a_bone_opens_one_drag_bracket_like_the_gizmo() {
             &mut ph2d_editor_core::ToastQueue::new(),
             &hero,
             &world,
+            &ph2d_vec_scene::VecScene::default(),
             &drive,
             skeleton,
         );
@@ -136,6 +137,7 @@ fn autokey_records_every_bone_the_hand_moved_not_only_the_selected_one() {
             &mut ph2d_editor_core::ToastQueue::new(),
             &hero,
             &sim,
+            &ph2d_vec_scene::VecScene::default(),
             &ph2d_preview_drive::PreviewDrive::default(),
             &skeleton,
         );
@@ -203,6 +205,7 @@ fn a_bone_the_hand_holds_but_did_not_move_keys_nothing() {
         &mut ph2d_editor_core::ToastQueue::new(),
         &hero,
         &sim,
+        &ph2d_vec_scene::VecScene::default(),
         &ph2d_preview_drive::PreviewDrive::default(),
         &ph2d_app_skeleton::state::SkeletonState {
             bone_pose: Some((c.to_bits(), ph2d_skeleton_render::BonePart::Body)),
@@ -355,6 +358,7 @@ fn the_first_pose_of_a_fresh_rig_is_recorded_for_every_bone_it_bent() {
             &mut ph2d_editor_core::ToastQueue::new(),
             hero,
             sim,
+            &ph2d_vec_scene::VecScene::default(),
             &ph2d_preview_drive::PreviewDrive::default(),
             posando,
         );
@@ -434,6 +438,7 @@ fn dragging_the_ik_anchor_records_the_anchor() {
             &mut ph2d_editor_core::ToastQueue::new(),
             hero,
             sim,
+            &ph2d_vec_scene::VecScene::default(),
             &ph2d_preview_drive::PreviewDrive::default(),
             posando,
         );

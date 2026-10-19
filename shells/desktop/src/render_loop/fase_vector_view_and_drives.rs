@@ -42,23 +42,18 @@ impl crate::App {
                 pixels_per_meter: hero.project.pixels_per_meter,
             },
         );
-        // ⭐⭐⭐ **A APARÊNCIA QUE UM MOTOR CONDUZ** — hoje a opacidade que a linha do tempo
-        // escreve num caminho vetorial (`ph2d_ecs::VecDrivenStyle`). Depois dos tokens (ela
-        // desvanece a tinta que eles resolveram) e **antes** das rows autoradas: se as duas
-        // falarem da mesma forma, quem manda é o controlo que o artista está a segurar, e o
-        // motor é o estado de fundo — o precedente é o passe de estados de UI, mais abaixo.
-        let driven = crate::vec_driven_style::resolve(sim, &self.vec.entities);
-        crate::vec_driven_style::apply(&driven, &mut vec_view);
-        // ⭐ E o componente volta ao AUTORADO — depois de ser lido, nunca antes. Sem isto,
-        // apagar uma track de opacidade deixava a forma congelada no último valor da curva
-        // para sempre (ver o doc da função).
-        crate::vec_driven_style::settle_to_authored(sim, &self.vec.entities, vec_scene);
-        // **AS ROWS AUTORADAS** (plano UI/UX W8b.3): o valor VIVO de cada controle que dirige
-        // uma forma. Depois dos tokens, porque a opacidade desvanece o que de fato vai ser
-        // desenhado; e aqui, no passe de desenho, pela MESMA razão que os tokens — nenhum
-        // hit-test pergunta em que ponto um slider está.
-        let drives = crate::vec_widget_drive::resolve(sim, &self.vec.entities, &hero.store);
-        crate::vec_widget_drive::apply(&drives, &mut vec_view);
+        // ⭐⭐⭐ **A CAMADA VIVA** — a opacidade que a linha do tempo conduz (`VecDrivenStyle`) e
+        // depois o valor de cada controlo que dirige uma forma (rows autoradas, W8b.3): quem
+        // manda é o controlo que o artista segura, o motor é o fundo. Depois dos tokens (desvanece
+        // a tinta que eles resolveram). ⚠️ A MESMA porta que o painel lê (plano 34 D1).
+        crate::vec_driven_style::live_layers(sim, &self.vec.entities, &hero.store, &mut vec_view);
+        // ⭐ E o componente volta ao AUTORADO — depois de ser lido, nunca antes — mas só onde a
+        // linha do tempo não conduz (plano 34 D2; ver o doc da função).
+        let doc = &self.timeline.doc;
+        crate::vec_driven_style::settle_to_authored(sim, &self.vec.entities, vec_scene, |b| {
+            doc.binding_for(b, ph2d_timeline::PropKind::Opacity)
+                .is_some()
+        });
         // ADR-0111 — cada path tem `Transform`. A geometria dele é LOCAL; este é
         // o afim que a leva ao mundo (a cadeia de pais inclusa).
         let mut vec_xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);

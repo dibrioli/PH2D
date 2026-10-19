@@ -163,7 +163,7 @@ fn the_view_reads_the_primary_and_the_write_reaches_them_all() {
         .paints
         .push(PaintEntry::fill(Paint::Solid(Rgba8::new(1, 2, 3, 255))));
 
-    let v = published(&scene, &ids).expect("ha' seleccao");
+    let v = published(&scene, &ids, &Default::default()).expect("ha' seleccao");
     assert_eq!(
         v.layers.len(),
         2,

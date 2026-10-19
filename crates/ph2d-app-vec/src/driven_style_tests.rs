@@ -139,7 +139,7 @@ fn settling_returns_the_component_to_the_authored_value() {
         .id();
     map.insert(id, e.to_bits());
 
-    super::settle_to_authored(&mut sim, &map, &scene);
+    super::settle_to_authored(&mut sim, &map, &scene, |_| false);
     let a = sim
         .world()
         .get::<VecDrivenStyle>(ph2d_ecs::Entity::from_bits(e.to_bits()))
@@ -175,7 +175,7 @@ fn settling_never_creates_the_component() {
         .spawn((ph2d_ecs::Transform::default(), ph2d_ecs::VecPathRef(id)))
         .id();
     map.insert(id, e.to_bits());
-    super::settle_to_authored(&mut sim, &map, &scene);
+    super::settle_to_authored(&mut sim, &map, &scene, |_| false);
     assert!(
         sim.world()
             .get::<VecDrivenStyle>(ph2d_ecs::Entity::from_bits(e.to_bits()))

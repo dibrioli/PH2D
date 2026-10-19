@@ -59,7 +59,9 @@ impl SemHeld {
             return;
         }
         self.ticket = None;
-        if let Answer::Tokens(list) = answer {
+        if let Answer::Tokens(mut list) = answer {
+            // O `spans` corta-a por busca: a ordem é garantida aqui, não pela do servidor.
+            list.sort_by_key(|t| t.bytes.start);
             self.list = list;
         }
     }
@@ -85,6 +87,18 @@ fn ink_of(s: Sem) -> Ink {
     }
 }
 
+/// Os globais que não existem (o `1001` seguro), por ordem: tirados UMA vez por quadro, e cada bloco
+/// de linhas pintado corta-os por busca (I15).
+pub(crate) fn unresolved(assist: &[Diag]) -> Vec<Range<usize>> {
+    let mut v: Vec<Range<usize>> = assist
+        .iter()
+        .filter(|d| d.code.as_deref() == Some(UNKNOWN_GLOBAL))
+        .map(|d| d.bytes.clone())
+        .collect();
+    v.sort_by_key(|r| r.start);
+    v
+}
+
 /// O realce de `range`: o do tree-sitter, os tokens do assistente por cima, e por cima de tudo o
 /// global que não existe. O assistente só recolore NOMES: onde o tree-sitter vê outra coisa (uma
 /// palavra reservada, uma string, um comentário — um token velho que a pausa ainda não refez), fica
@@ -93,7 +107,7 @@ pub(crate) fn spans(
     syntax: &Syntax,
     text: &Text,
     sem: &SemHeld,
-    assist: &[Diag],
+    unresolved: &[Range<usize>],
     range: Range<usize>,
 ) -> Vec<(Range<usize>, Ink)> {
     let mut out: Vec<(Range<usize>, Ink)> = syntax
@@ -106,11 +120,11 @@ pub(crate) fn spans(
         .iter()
         .take_while(|t| t.bytes.start < range.end)
         .map(|t| (t.bytes.clone(), ink_of(t.sem)));
-    let unresolved = assist
+    let from = unresolved.partition_point(|r| r.end <= range.start);
+    let unresolved = unresolved[from..]
         .iter()
-        .filter(|d| d.code.as_deref() == Some(UNKNOWN_GLOBAL))
-        .filter(|d| d.bytes.start < range.end && range.start < d.bytes.end)
-        .map(|d| (d.bytes.clone(), Ink::Unresolved));
+        .take_while(|r| r.start < range.end)
+        .map(|r| (r.clone(), Ink::Unresolved));
     for (r, ink) in tokens.chain(unresolved) {
         let r = r.start.max(range.start)..r.end.min(range.end);
         if r.start < r.end && names_only(&out, &r) {

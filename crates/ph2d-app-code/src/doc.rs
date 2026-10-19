@@ -402,8 +402,9 @@ impl CodeDoc {
         let stops = snippet.as_ref().map(|s| s.marks()).unwrap_or_default();
         let strict = crate::strict::is_strict(buffer.text());
         painted.clear();
+        let unresolved = crate::semantic::unresolved(&held.list);
         let mut spans = |r: std::ops::Range<usize>| -> Vec<(std::ops::Range<usize>, Ink)> {
-            let s = crate::semantic::spans(syntax, buffer.text(), sem, &held.list, r);
+            let s = crate::semantic::spans(syntax, buffer.text(), sem, &unresolved, r);
             painted.extend(s.iter().cloned());
             s
         };

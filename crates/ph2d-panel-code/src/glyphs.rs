@@ -192,6 +192,9 @@ impl CodeView {
         let right = a.x + self.m.mark_w + self.m.number_w;
         let dot = Spacing::Sm.px();
         let (mut plain, mut current) = (Vec::new(), Vec::new());
+        // `problems` vem por linha (`problems::problems`): o ponto de cada linha é uma busca, nunca a
+        // lista inteira por linha pintada (I15: 293 avisos × 43 linhas a cada quadro).
+        debug_assert!(frame.problems.is_sorted_by_key(|p| p.line));
         for row in &self.rows {
             let out = if row.line == head_line {
                 &mut current
@@ -199,10 +202,10 @@ impl CodeView {
                 &mut plain
             };
             self.number_glyphs(out, row.line + 1, right, row.y);
-            let worst = frame
-                .problems
+            let from = frame.problems.partition_point(|p| p.line < row.line);
+            let worst = frame.problems[from..]
                 .iter()
-                .filter(|p| p.line == row.line)
+                .take_while(|p| p.line == row.line)
                 .map(|p| p.severity)
                 .max();
             if let Some(sev) = worst {

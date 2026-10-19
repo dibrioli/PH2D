@@ -12,7 +12,11 @@
 //! (a janela do dono) × 100 linhas (o critério de morte). À parte, na mesma rodada: Ctrl+S → selo
 //! (N = 3), e o que a gramática faz por tecla (reparse, dobras, erros, realce). E (I4 da Onda 2) a
 //! lista de completação ABERTA por toda a tecla: o servidor falso propõe `dt…` e os 17 membros, e
-//! cada letra refiltra e repinta a janelinha.
+//! cada letra refiltra e repinta a janelinha. E (I15) a célula COMPLETA com o `luau-lsp` FIXADO: a tecla
+//! dentro de `math.max(0, dt…)` com a lista aberta (o servidor propõe o local `dtxwmzk`), a ajuda dos
+//! argumentos aberta, as cores e as dicas de tipo ligadas, e o servidor a re-checar a cada tecla. Os
+//! balões do rato e do problema fecham na tecla por desenho (I5/I8b): o que vive a escrever é o da
+//! assinatura.
 //!
 //! Corre (compila no `smoke` e corre na placa, com a exclusão dela):
 //! `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --profile smoke -p ph2d-app-code --test it bancada -- --ignored --nocapture`
@@ -246,6 +250,32 @@ fn tecla(
     let _ = m.docs().key(id.0, ts, input);
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Lista {
+    Fechada,
+    /// O servidor falso propõe `dt…` e os membros (I4).
+    Falsa,
+    /// O `luau-lsp` fixado, com a assinatura, as cores e as dicas de tipo (I15).
+    Real,
+}
+
+/// A célula `Real`: um local que as letras da régua continuam, e a linha-alvo passa a uma chamada
+/// (`math.max(0 )`, onde a tecla vai ESCREVER o 2.º argumento; o espaço antes do `)` deixa vazio o
+/// sítio do glifo novo, que a régua lê). Devolve o texto e a linha-alvo nova.
+fn com_chamada(texto: &str, alvo: usize) -> (String, usize) {
+    let mut out = String::new();
+    for (i, l) in texto.lines().enumerate() {
+        if i == alvo {
+            assert_eq!(l, "  self.t = self.t + dt", "a linha-alvo da régua");
+            out.push_str("  local dtxwmzk = 1\n  self.t = self.t + math.max(0 )\n");
+        } else {
+            out.push_str(l);
+            out.push('\n');
+        }
+    }
+    (out, alvo + 1)
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Cena {
     Parada,
@@ -270,8 +300,8 @@ struct Celula {
     /// A 2.ª cópia de uma célula, intercalada com as outras: a distância entre as duas é o RUÍDO
     /// da rodada (a régua da regra de Fatin, I1 da Onda 2).
     replica: bool,
-    /// A lista de completação aberta em toda a tecla (I4 da Onda 2).
-    lista: bool,
+    /// A lista de completação aberta em toda a tecla (I4 da Onda 2) — e com que servidor.
+    lista: Lista,
     m: Mesa,
     id: ScriptId,
     area: Rect,
@@ -303,12 +333,21 @@ fn propostas(_: &str, _: usize) -> serde_json::Value {
 }
 
 /// Um projeto com o documento de `linhas` aberto, os três objectos a correr ESSE script, e a VM
-/// (com `lista`, e o assistente falso que responde à completação).
-fn mesa(linhas: usize, lista: bool) -> (Mesa, ScriptId) {
+/// (com a lista falsa, o assistente falso que responde à completação; com a real, o `luau-lsp` fixado
+/// sobre o texto com a chamada). Devolve também a linha-alvo.
+fn mesa(linhas: usize, lista: Lista) -> (Mesa, ScriptId, usize) {
     let texto = if linhas == 51 { bob() } else { juntado(GRANDE) };
+    let alvo = if linhas == 51 { ALVO_BOB } else { ALVO_GRANDE };
+    let (texto, alvo) = if lista == Lista::Real {
+        com_chamada(&texto, alvo)
+    } else {
+        (texto, alvo)
+    };
     let (m, ids) = Mesa::new(&[("bob.luau", &texto)]);
     let id = ids[0];
-    let m = if lista {
+    let m = if lista == Lista::Real {
+        m.com_assistente(ph2d_app_code::IntelServer::Pinned)
+    } else if lista == Lista::Falsa {
         let plano = crate::assistente::Plano {
             regra: Some(|_| Vec::new()),
             completar: Some(propostas),
@@ -325,9 +364,52 @@ fn mesa(linhas: usize, lista: bool) -> (Mesa, ScriptId) {
     m.pede(id);
     assert_eq!(
         m.docs().text_of(id).map(|t| t.lines().count()),
-        Some(linhas)
+        Some(linhas + usize::from(lista == Lista::Real))
     );
-    (m, id)
+    (m, id, alvo)
+}
+
+/// A célula `Real` antes da régua: as dicas de tipo ligadas e chegadas (com as cores, que chegam ao
+/// abrir); depois, na chamada da linha-alvo, `, dt` — a vírgula abre a assinatura, a pausa abre a
+/// lista sobre `dt` com a resposta do servidor. O cursor fica no fim de `dt`, dentro da chamada.
+fn abre_tudo(m: &mut Mesa, ts: &mut TextSystem, id: ScriptId) {
+    let ate = |m: &mut Mesa, o_que: &str, f: &dyn Fn(&mut Mesa) -> bool| {
+        let fim = Instant::now() + std::time::Duration::from_secs(30);
+        while !f(m) {
+            assert!(Instant::now() < fim, "a bancada: {o_que} não chegou");
+            m.quadro();
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+    };
+    let t0: u128 = 1_000_000_000_000;
+    m.hero.store.note_clock(t0);
+    assert!(m.docs().command(id.0, ph2d_app_code::commands::CMD_TYPE_HINTS));
+    m.hero.store.note_clock(t0 + 5_000_000_000);
+    ate(m, "as dicas de tipo", &|m| !m.docs().inlays_of(id).is_empty());
+    for _ in 0..2 {
+        tecla(m, ts, id, Key::Left, Modifiers::default(), None);
+    }
+    let t1 = t0 + 10_000_000_000;
+    m.hero.store.note_clock(t1);
+    m.quadro();
+    for ch in [',', ' ', 'd', 't'] {
+        let s = ch.to_string();
+        tecla(m, ts, id, Key::Other, Modifiers::default(), Some(&s));
+        m.quadro();
+    }
+    m.hero.store.note_clock(t1 + 300_000_000);
+    ate(m, "a lista e a assinatura", &|m| {
+        m.docs().completion_of(id).is_some() && m.docs().signature_of(id).is_some()
+    });
+    let (l, _) = m.docs().completion_of(id).expect("aberta");
+    assert!(l.iter().any(|x| x == "dtxwmzk"), "o local que a régua continua: {l:?}");
+    let diags = m.docs().assist_diagnostics(id).1.map_or(0, |d| d.len());
+    println!(
+        "célula real ({} linhas): {diags} diagnósticos do assistente · {} dicas de tipo · lista de {}",
+        m.docs().text_of(id).map_or(0, |t| t.lines().count()),
+        m.docs().inlays_of(id).len(),
+        l.len()
+    );
 }
 
 fn pinta(
@@ -344,7 +426,7 @@ fn pinta(
 
 /// A maior altura de área em que a vista do documento grande mostra `rows` linhas.
 fn altura_para(rows: usize, ts: &mut TextSystem, theme: &Theme) -> f32 {
-    let (mut m, id) = mesa(GRANDE, false);
+    let (mut m, id, _) = mesa(GRANDE, Lista::Fechada);
     let mut scene = VectorScene::new();
     let (mut lo, mut hi) = (40.0_f32, 4000.0_f32);
     while hi - lo > 0.5 {
@@ -390,7 +472,11 @@ impl Celula {
                 "~43 linhas"
             }
         ) + if self.replica { " (réplica)" } else { "" }
-            + if self.lista { " · lista aberta" } else { "" }
+            + match self.lista {
+                Lista::Fechada => "",
+                Lista::Falsa => " · lista aberta",
+                Lista::Real => " · luau-lsp: lista + assinatura + cores + dicas",
+            }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -399,12 +485,12 @@ impl Celula {
         linhas: usize,
         vista: usize,
         altura: f32,
-        lista: bool,
+        lista: Lista,
         ts: &mut TextSystem,
         placa: &mut Placa,
         theme: &Theme,
     ) -> Self {
-        let (mut m, id) = mesa(linhas, lista);
+        let (mut m, id, alvo) = mesa(linhas, lista);
         let area = Rect::new(0.0, 0.0, LARGURA, altura);
         let pass = placa.pass((LARGURA as u32, altura as u32));
         let mut scene = VectorScene::new();
@@ -416,14 +502,16 @@ impl Celula {
         let primeiro = ms(t);
         let visiveis = m.docs().visible_lines(id).map_or(0, |r| r.len());
         // O cursor no fim da linha-alvo, pelo teclado.
-        let alvo = if linhas == 51 { ALVO_BOB } else { ALVO_GRANDE };
         tecla(&mut m, ts, id, Key::Home, crate::ctrl(), None);
         for _ in 0..alvo {
             tecla(&mut m, ts, id, Key::Down, Modifiers::default(), None);
         }
         tecla(&mut m, ts, id, Key::End, Modifiers::default(), None);
         assert_eq!(m.docs().cursor_of(id).map(|c| c.0), Some(alvo));
-        if lista {
+        if lista == Lista::Real {
+            abre_tudo(&mut m, ts, id);
+        }
+        if lista == Lista::Falsa {
             // Abre a lista na palavra `dt` do fim da linha: uma letra, a pausa, a resposta, e a letra
             // apagada (a sessão fica, com a resposta).
             let t0 = 1_000_000_000_000;
@@ -569,10 +657,17 @@ impl Celula {
         );
         assert_eq!(
             self.m.docs().completion_painted(self.id).is_some(),
-            self.lista,
+            self.lista != Lista::Fechada,
             "{}: a lista pintada é a da célula",
             self.nome()
         );
+        if self.lista == Lista::Real {
+            assert!(
+                self.m.docs().signature_of(self.id).is_some(),
+                "{}: a assinatura continua aberta",
+                self.nome()
+            );
+        }
         self.s.total.push(total);
         self.s.key.push(t_key);
         self.s.quadro.push(t_quadro);
@@ -615,7 +710,7 @@ struct Salvar {
 
 impl Salvar {
     fn nova(linhas: usize, ts: &mut TextSystem, theme: &Theme) -> Self {
-        let (mut m, id) = mesa(linhas, false);
+        let (mut m, id, _) = mesa(linhas, Lista::Fechada);
         let mut scene = VectorScene::new();
         pinta(
             &mut m,
@@ -800,7 +895,14 @@ fn tecla_pixel() {
         for linhas in [51, GRANDE] {
             for cena in [Cena::Parada, Cena::Tocando] {
                 celulas.push(Celula::nova(
-                    cena, linhas, vista, h, false, &mut ts, &mut placa, &theme,
+                    cena,
+                    linhas,
+                    vista,
+                    h,
+                    Lista::Fechada,
+                    &mut ts,
+                    &mut placa,
+                    &theme,
                 ));
             }
         }
@@ -811,7 +913,7 @@ fn tecla_pixel() {
             51,
             JANELA,
             alturas[0].1,
-            false,
+            Lista::Fechada,
             &mut ts,
             &mut placa,
             &theme,
@@ -820,16 +922,18 @@ fn tecla_pixel() {
         celulas.push(r);
     }
     for linhas in [51, GRANDE] {
-        celulas.push(Celula::nova(
-            Cena::Parada,
-            linhas,
-            JANELA,
-            alturas[0].1,
-            true,
-            &mut ts,
-            &mut placa,
-            &theme,
-        ));
+        for lista in [Lista::Falsa, Lista::Real] {
+            celulas.push(Celula::nova(
+                Cena::Parada,
+                linhas,
+                JANELA,
+                alturas[0].1,
+                lista,
+                &mut ts,
+                &mut placa,
+                &theme,
+            ));
+        }
     }
     let mut salvar = [
         Salvar::nova(51, &mut ts, &theme),
@@ -922,7 +1026,7 @@ fn tecla_pixel() {
                         && c.vista == JANELA
                         && c.linhas == linhas
                         && c.replica == replica
-                        && !c.lista
+                        && c.lista == Lista::Fechada
                 })
                 .expect("célula da regra de Fatin")
         };

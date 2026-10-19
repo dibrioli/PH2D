@@ -262,9 +262,6 @@ fn pela_cunha(t: vec2<i32>, n: vec2<i32>, a: f32, ut: vec2<f32>, propria: f32) -
 // ⭐ W6g — a marca do BLOCO 8×8 (o grupo) sem vértice, no texel de origem dele da `V` e da `V2`: o resto do
 // bloco não se escreve (a textura guarda o de quadros antigos) e quem o lê consulta a origem primeiro.
 const SEM_BLOCO: f32 = 200.0;
-// Na `V2` o θ₁ vem deslocado (∈ [4,8; 11,2]): o zero da textura nova (o bloco nunca escrito) não é cunha e
-// o `meio` sai na primeira leitura, sem consultar a origem.
-const V2_THETA: f32 = 8.0;
 var<workgroup> bloco_com_vertice: atomic<u32>;
 
 // O bloco de `t` tem a sua parte da textura de cantos `v` escrita neste quadro.
@@ -273,23 +270,75 @@ fn bloco_valido(v: texture_2d<f32>, t: vec2<i32>) -> bool {
 }
 
 @compute @workgroup_size(8, 8)
-fn c3_borda(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>) {
+fn c3_borda(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let n = vec2<i32>(textureDimensions(borda_cobertura));
+    let t = vec2<i32>(gid.xy);
+    if all(t < n) {
+        borda_do_texel(t, n);
+    }
+}
+
+// ⭐ W6g — a lista dos blocos com parcial de vértice: o cabeçalho é o despacho INDIRETO do [`c3_cantos`]
+// (`x` = quantos, `y` = 9: cada um espalha nos 3×3 blocos à volta), depois o bloco `x | y << 16`.
+struct ListaDosCantos {
+    n: atomic<u32>,
+    y: u32,
+    z: u32,
+    blocos: array<u32>,
+}
+struct ListaLida {
+    n: u32,
+    y: u32,
+    z: u32,
+    blocos: array<u32>,
+}
+@group(3) @binding(18) var borda_espalhadas: texture_storage_2d<rgba16float, write>;
+@group(3) @binding(19) var<storage, read_write> borda_lista: ListaDosCantos;
+
+// A borda com os cantos (`BORDA_CANTOS`): o bloco com um parcial de vértice escreve a `V` inteira e
+// entra na lista; todo bloco leva a marca `SEM_BLOCO` na origem da `V` (o sem vértice) e da `V2` (o
+// [`c3_cantos`] repõe-na nos que cobre).
+@compute @workgroup_size(8, 8)
+fn c3_borda_cantos(
+    @builtin(global_invocation_id) gid: vec3<u32>,
+    @builtin(local_invocation_id) lid: vec3<u32>,
+    @builtin(workgroup_id) wid: vec3<u32>,
+) {
     let n = vec2<i32>(textureDimensions(borda_cobertura));
     let t = vec2<i32>(gid.xy);
     let dentro = all(t < n);
     if dentro {
         borda_do_texel(t, n);
-    }
-    // ⭐ W6g: só o bloco com um parcial de vértice escreve a `V` inteira; os outros, a marca na origem.
-    if BORDA_CANTOS {
-        if dentro && cunha_achada.x < SEM_CUNHA {
+        if cunha_achada.x < SEM_CUNHA {
             atomicStore(&bloco_com_vertice, 1u);
         }
-        workgroupBarrier();
-        let marcado = atomicLoad(&bloco_com_vertice) != 0u;
-        if dentro && (marcado || all(lid.xy == vec2<u32>(0u))) {
-            textureStore(borda_vertices, t, select(vec4<f32>(SEM_BLOCO, 0.0, 0.0, 0.0), cunha_achada, marcado));
+    }
+    workgroupBarrier();
+    let marcado = atomicLoad(&bloco_com_vertice) != 0u;
+    let origem = all(lid.xy == vec2<u32>(0u));
+    let sem_bloco = vec4<f32>(SEM_BLOCO, 0.0, 0.0, 0.0);
+    if dentro && (marcado || origem) {
+        textureStore(borda_vertices, t, select(sem_bloco, cunha_achada, marcado));
+    }
+    if origem {
+        textureStore(borda_espalhadas, t, sem_bloco);
+        if marcado {
+            borda_lista.blocos[atomicAdd(&borda_lista.n, 1u)] = wid.x | (wid.y << 16u);
         }
+    }
+}
+
+@compute @workgroup_size(1)
+fn c3_cantos_zera() {
+    atomicStore(&borda_lista.n, 0u);
+}
+
+// A `V2` inteira com a sentinela, uma vez (a textura nova é zero, e θ₁ = 0 é uma cunha).
+@compute @workgroup_size(8, 8)
+fn c3_cantos_inicia(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let t = vec2<i32>(gid.xy);
+    if all(t < vec2<i32>(textureDimensions(borda_espalhadas))) {
+        textureStore(borda_espalhadas, t, vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0));
     }
 }
 
@@ -331,25 +380,22 @@ fn borda_do_texel(t: vec2<i32>, n: vec2<i32>) {
 // interpolar (a bilinear de retas diferentes arredonda o vértice; handoff W6f §4).
 @group(3) @binding(16) var cantos_vertices: texture_2d<f32>;
 @group(3) @binding(17) var cantos_saida: texture_storage_2d<rgba16float, write>;
+@group(3) @binding(20) var<storage, read> cantos_lista: ListaLida;
 var<workgroup> cantos_bloco: array<vec4<f32>, 144>;
 // ⭐ W6g: os blocos marcados (a `V` escrita) dos 3×3 à volta deste, um bit cada (`(dy + 1) * 3 + dx + 1`).
 var<workgroup> cantos_marcas: u32;
 var<workgroup> cantos_marcas_lidas: atomic<u32>;
 
+// ⭐ W6g: em despacho INDIRETO — o grupo `(i, k)` cobre o bloco `k` dos 3×3 à volta do `i`-ésimo listado
+// pelo [`c3_borda_cantos`] (dois listados vizinhos escrevem o mesmo bloco com os mesmos bits).
 @compute @workgroup_size(8, 8)
-fn c3_cantos(
-    @builtin(global_invocation_id) gid: vec3<u32>,
-    @builtin(local_invocation_id) lid: vec3<u32>,
-    @builtin(workgroup_id) wid: vec3<u32>,
-) {
+fn c3_cantos(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id) wid: vec3<u32>) {
     let n = vec2<i32>(textureDimensions(cantos_vertices));
-    let b0 = vec2<i32>(wid.xy) * 8;
-    // ⭐ W6g: a cunha alcança Chebyshev 2 < 8 — só os blocos vizinhos marcados têm o que espalhar; sem
-    // nenhum, este bloco só leva a marca na origem.
-    // Uma leitura por thread (nove em série numa só eram o custo inteiro do passe: 245 mil grupos na
-    // captura de 5120 × 3072, ~0,3 % deles com vértice; handoff W6g §2).
+    let e = cantos_lista.blocos[wid.x];
+    let k9 = i32(wid.y);
+    let b0 = (vec2<i32>(i32(e & 0xffffu), i32(e >> 16u)) + vec2<i32>(k9 % 3 - 1, k9 / 3 - 1)) * 8;
     let li = lid.y * 8u + lid.x;
-    if li < 9u {
+    if li < 9u && all(b0 >= vec2<i32>(0)) && all(b0 < n) {
         let k = i32(li);
         let q = b0 + 8 * vec2<i32>(k % 3 - 1, k / 3 - 1);
         if all(q >= vec2<i32>(0)) && all(q < n) && bloco_valido(cantos_vertices, q) {
@@ -360,12 +406,9 @@ fn c3_cantos(
     if li == 0u {
         cantos_marcas = atomicLoad(&cantos_marcas_lidas);
     }
+    // Zero só fora da captura: o bloco central do listado está entre os 3×3.
     let marcas = workgroupUniformLoad(&cantos_marcas);
-    let t = vec2<i32>(gid.xy);
     if marcas == 0u {
-        if all(lid.xy == vec2<u32>(0u)) {
-            textureStore(cantos_saida, t, vec4<f32>(SEM_BLOCO, 0.0, 0.0, 0.0));
-        }
         return;
     }
     let canto = b0 - 2;
@@ -379,6 +422,7 @@ fn c3_cantos(
         cantos_bloco[k] = v;
     }
     workgroupBarrier();
+    let t = b0 + vec2<i32>(lid.xy);
     if any(t >= n) {
         return;
     }
@@ -397,7 +441,7 @@ fn c3_cantos(
             let concavo = v.z > 0.5 * CONCAVO;
             let t2 = select(v.z, v.z - CONCAVO, concavo);
             melhor = vec4<f32>(
-                v.x + V2_THETA,
+                v.x,
                 v.y + dot(o, vec2<f32>(cos(v.x), sin(v.x))),
                 v.z,
                 v.w + dot(o, vec2<f32>(cos(t2), sin(t2))),

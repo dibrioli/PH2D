@@ -106,9 +106,7 @@ fn dentro_pelo_campo((campo, cantos, gc): &Campo, p: [f64; 2]) -> bool {
         let ci = px.floor().clamp(0.0, f64::from(gc.largura - 1));
         let cj = py.floor().clamp(0.0, f64::from(gc.altura - 1));
         let valido = h(w, texel(ci - ci % 8.0, cj - cj % 8.0)) < 150.0;
-        if v[0] > 1.0 && v[0] < 50.0 && valido {
-            // O θ₁ da `V2` vem deslocado de 8 (`V2_THETA`).
-            let v = [v[0] - 8.0, v[1], v[2], v[3]];
+        if v[0] < 50.0 && valido {
             let o = [px - px.floor() - 0.5, py - py.floor() - 0.5];
             let concavo = v[2] > 5.0;
             let t2 = if concavo { v[2] - 10.0 } else { v[2] };

@@ -128,3 +128,57 @@ constrói `Canto` sem `..` parte com o campo novo (nenhum fora das réguas).
 
 Nada mudou na tela: a cura está desligada. O smoke da W6d continua valendo
 (`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=6 cargo run -p ph2d-host-desktop --profile smoke`).
+
+## 6. Rodada 3 — o despacho INDIRETO (o item 1 do §4, por ordem do dono «vamos seguir»)
+
+**O despacho vazio, medido** (`custo_e1.log`, `custo_e2.log`; diagnóstico fora do git):
+
+| diagnóstico | borda cena 5 / 6 (cunha 0,328 / 0,318) |
+|---|---|
+| rec. 2 | 0,608 / 0,592 |
+| E1 — um kernel VAZIO sem bindings, na captura inteira | 0,563 / 0,547 |
+| E2 — o `c3_cantos` com as texturas grandes, UM grupo | 0,363 / 0,348 |
+
+⇒ o custo era LANÇAR 245 mil grupos (a taxa de lançamento de grupos, não a transição das texturas de 126 MB).
+
+**A forma (r3):** o `c3_borda_cantos` (entrada própria; o `c3_borda` sem cantos fica como era) marca o bloco, escreve a
+`V` do bloco marcado, põe `SEM_BLOCO` na origem da `V` E da `V2` de todo bloco, e o thread 0 do bloco marcado entra na
+lista `luz2d/buf/lista_dos_cantos` (declarada na `PassList`; o cabeçalho é o despacho indireto `[n, 9, 1]`, zerado por
+`c3_cantos_zera` a cada corrida). O `c3_cantos` corre em `dispatch_workgroups_indirect`: o grupo `(i, k)` cobre o bloco
+`k` dos 3×3 à volta do `i`-ésimo listado (dois listados vizinhos escrevem os mesmos bits). A `V2` recebe a sentinela UMA
+vez (`c3_cantos_inicia`, na 1.ª gravação) e o θ₁ volta CRU (some a perda de precisão do §3).
+
+| variante (`*_r3.log`, `loadavg` 35–55 das outras linhas) | cantos | perfil | F3 | (152, 245) | (a) / (b) / anéis / bits | C3 cena 5 / 6 | borda |
+|---|---|---|---|---|---|---|---|
+| lei W6d | 7 | ✗ | 0,0531 | 0,140 | 1 / 37 / 0 / 0 | 3,491 / 2,235 | 0,272 / 0,269 |
+| cunha | 6 | — | 0,0689 | 0,173 | 1 / 37 / 0 / 0 | 3,522 / 2,268 | 0,301 / 0,290 |
+| **10 + 9 (r3)** | **1** ✓ | **0,03** ✓ | **0,0309** ✓ | **0,1476** ✓ | **1 / 38 / 0 / 0** ✓ | **3,823 / 2,491 (+9,5 % / +11,5 %)** ✗ | **0,490 / 0,481** |
+
+**Ainda morre pelo custo.** Bisseção (`custo_r3_e3.log`, `_e5.log`): SEM o despacho indireto (E3) a borda fica em
+0,473 / 0,474; com um direto de 1 × 9 (E5), 0,482 / 0,476. ⇒ o despacho indireto custa ~0,01; os **+0,17 que sobram
+estão no `c3_borda_cantos` ou no `c3_cantos_zera` antes dele**, e são iguais com 515 e 63 blocos (não é trabalho). Na
+rec. 2 a borda COM as marcas e sem o despacho do `c3_cantos` (D3) custava só +0,02: o que a r3 juntou ao `c3_borda`
+foram a 2.ª textura de escrita (`V2`, binding 18), o buffer da lista (binding 19) com o `atomicAdd`, e o despacho do
+`zera` (uma barreira antes da borda).
+
+Portões com o padrão (`target/w6g/portoes_r3_*.log`): gpu 9/9 · app 15/15 — o
+`os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria` reprovou a `load` 39 e passou SOZINHO a `load` 15
+(`portao_recua.log`): é o membro da família de [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md) (§93), não o código.
+
+## ⛔ Recusas MEDIDAS (r3)
+
+| Recusa | Porquê |
+|---|---|
+| O `c3_cantos` na captura INTEIRA (com ou sem saída antecipada) | O lançamento de 245 mil grupos custa ~0,2 ms com o kernel vazio (E1). |
+| Atribuir o custo à transição das texturas grandes | E2: um grupo com elas custa +0,035. |
+
+## 7. ABERTO (por ordem — substitui o §4)
+
+1. **Os +0,17 do `c3_borda_cantos`/`zera`** (o kill-criterion do §1 tal e qual; a qualidade já passa): bisseção num
+   build, por `W6G_DIAG` temporário no `Borda::gravar` (o molde está em `target/w6g/`): (i) sem o `zera` (a lista não
+   reposta: só para o custo), (ii) sem a escrita da origem da `V2` (binding 18), (iii) sem o `atomicAdd` da lista, (iv)
+   a entrada `c3_borda` sem cantos no lugar da `c3_borda_cantos` com o resto igual. Suspeito por medir: a 2.ª textura de
+   escrita de 126 MB no MESMO kernel de 245 mil grupos. Cura candidata se for ela: a origem da `V2` reposta pelo
+   próprio `c3_cantos` dos blocos listados no quadro ANTERIOR (lista dupla), sem a `V2` no `c3_borda`.
+2. A fina da 10 + 9 (+0,11 ms na cena 5): depois do item 1.
+3. A família (b) (37–38): da W5g, fora.

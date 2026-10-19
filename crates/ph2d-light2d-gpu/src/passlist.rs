@@ -11,6 +11,14 @@ pub(crate) const TAU_DENTRO: usize = 2;
 pub(crate) const SEMENTES: [usize; 2] = [3, 4];
 /// ⭐ W5q: o buffer dos ladrilhos do anel ([`crate::ladrilhos`]).
 pub(crate) const NOME_LADRILHOS: &str = "luz2d/buf/ladrilhos";
+/// ⭐ W6g: os blocos 8×8 da captura com parcial de vértice (`c3_borda_cantos`) — o cabeçalho é o
+/// despacho INDIRETO do `c3_cantos` (`[n, 9, 1]`), depois um `u32` por bloco.
+pub(crate) const NOME_LISTA_DOS_CANTOS: &str = "luz2d/buf/lista_dos_cantos";
+
+/// Os bytes da [`NOME_LISTA_DOS_CANTOS`] para a captura `[w, h]`: cabem todos os blocos.
+pub(crate) fn bytes_da_lista_dos_cantos([w, h]: [u32; 2]) -> u64 {
+    4 * (3 + u64::from(w.div_ceil(8)) * u64::from(h.div_ceil(8)))
+}
 pub(crate) const CASCATAS: [usize; 2] = [5, 6];
 /// ⭐ C3 (W4b): a fluência FINAL, na grade fina — a que os receptores leem.
 pub(crate) const FLUENCIA: usize = 7;
@@ -453,6 +461,13 @@ impl PassList {
                 usos: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             });
         }
+        if let Some([v, _]) = op.cantos {
+            buffers.push(Buffer {
+                nome: NOME_LISTA_DOS_CANTOS,
+                bytes: bytes_da_lista_dos_cantos(texturas[v].tamanho),
+                usos: B::STORAGE | B::INDIRECT,
+            });
+        }
         // ⭐ W5c: a cascata holográfica (os T, o par R, o acumulado, o uniforme e os vazios).
         if cfg.holografica.is_some() {
             buffers.extend(crate::hrc::buffers(
@@ -553,7 +568,8 @@ impl PassList {
             passes.push(Passe {
                 nome: "C3 borda".into(),
                 le: vec![cob],
-                escreve: [b].into_iter().chain(op.cantos.map(|c| c[0])).collect(),
+                // W6g: com os cantos, também a marca de cada bloco na `V2` (a origem).
+                escreve: [b].into_iter().chain(op.cantos.into_iter().flatten()).collect(),
             });
         }
         if let Some([v, v2]) = op.cantos {

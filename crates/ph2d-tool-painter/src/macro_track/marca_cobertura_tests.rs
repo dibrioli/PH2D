@@ -181,7 +181,8 @@ fn o_miolo_entre_dabs_afastados_e_o_da_capsula() {
 /// do traço nada. ⛔ VERMELHO com a marca binária: cada texel mudado ficava com a imagem atual inteira.
 #[test]
 fn a_cobertura_e_a_forca_que_o_pincel_pos_no_texel() {
-    let casos: [(&str, fn(&mut PainterTool)); 3] = [
+    type Caso = (&'static str, fn(&mut PainterTool));
+    let casos: [Caso; 3] = [
         ("de fábrica", de_fabrica),
         ("achatada", |t| t.set_brush_dab_flatten(0.7)),
         ("com grão", |t| t.new_brush_texture()),

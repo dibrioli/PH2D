@@ -229,19 +229,9 @@ pub(super) fn stamp_plain_dabs_banded(
     dabs: &[Dab],
     brush: &BrushSpec,
     alpha_locked: bool,
-    mask: Option<&mut [u8]>,
-    forca: Option<&mut [u16]>,
+    planos: Planos<'_>,
 ) -> Option<DirtyRect> {
-    banded_com_forca(
-        buf,
-        w,
-        h,
-        dabs,
-        brush,
-        alpha_locked,
-        (mask, forca),
-        BATCH_MIN_AREA,
-    )
+    banded_com_forca(buf, w, h, dabs, brush, alpha_locked, planos, BATCH_MIN_AREA)
 }
 
 /// [`stamp_plain_dabs_banded`] com o piso **explícito** — a rota de ablação.
@@ -267,7 +257,7 @@ pub(super) fn stamp_plain_dabs_banded_with(
 
 /// Os planos que o carimbo escreve ao lado da tela: a cobertura do traço (o cap) e a força do lote (W10
 /// das macros, [`ph2d_painter_brush`]`::stroke_cover::compoe_forca`).
-type Planos<'a> = (Option<&'a mut [u8]>, Option<&'a mut [u16]>);
+pub(super) type Planos<'a> = (Option<&'a mut [u8]>, Option<&'a mut [u16]>);
 
 #[allow(clippy::too_many_arguments)]
 fn banded_com_forca(

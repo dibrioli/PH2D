@@ -623,7 +623,7 @@ mod lut_ab_tests {
             capsula: None,
             lei: crate::capsula::Lei::Uniao,
         };
-        stamp_band(&ctx, &mut dst, None, 0);
+        stamp_band(&ctx, &mut dst, None, None, 0);
         dst
     }
 

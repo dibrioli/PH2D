@@ -369,8 +369,7 @@ impl PainterTool {
                     dabs,
                     brush,
                     alpha_locked,
-                    mask.as_deref_mut(),
-                    plano.as_deref_mut(),
+                    (mask.as_deref_mut(), plano.as_deref_mut()),
                 );
             }
             // O stream de RNG é consumido pelas BASES de textura, que este pincel não tem — mas o

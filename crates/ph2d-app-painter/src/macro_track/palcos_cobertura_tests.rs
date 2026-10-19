@@ -13,7 +13,10 @@ const N: usize = (L * L) as usize;
 /// O pincel de cada foto do dono e os vizinhos que passam pelas três rotas que medem a força (por
 /// píxel, o carimbo em cache, o grão fixo à tela). Sem o grão ALEATÓRIO: o sorteio depende do que o
 /// pincel já carimbou, e a régua (um tool novo) sorteia outro grão — medido, 52 níveis entre as duas.
-const CASOS: [(&str, fn(&mut PainterTool)); 7] = [
+/// Um pincel com nome: o acerto por cima do pincel preto da fixtura.
+type Caso = (&'static str, fn(&mut PainterTool));
+
+const CASOS: [Caso; 7] = [
     ("macio", |_| {}),
     ("duro (esfera)", |t| t.set_brush_falloff(2)),
     ("duro (disco)", |t| t.set_brush_falloff(8)),
@@ -56,7 +59,7 @@ fn vertical(t: &mut PainterTool, x: f32) {
 /// A régua: a pincelada sozinha sobre `fundo` (opaco, straight = premultiplicado).
 fn sobre(fundo: &[u8], pincel: fn(&mut PainterTool), x: f32) -> Vec<u8> {
     assert!(
-        fundo.len() == N * 4 && fundo.chunks_exact(4).all(|p| p[3] == 255),
+        fundo.len() == N * 4 && fundo.as_chunks::<4>().0.iter().all(|p| p[3] == 255),
         "fundo opaco"
     );
     let mut r = PainterTool::default();

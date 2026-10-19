@@ -321,7 +321,8 @@ impl MarcaDoArtista {
         let mut mao: Option<((u32, u32), Arc<Ladrilho>, bool)> = None;
         let w = self.w as usize;
         for (i, a, b) in itens {
-            if i >= n || !(a > 0.0) {
+            // `a` NaN cai aqui também.
+            if i >= n || a.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
                 continue;
             }
             let (x, y) = ((i % w) as u32, (i / w) as u32);

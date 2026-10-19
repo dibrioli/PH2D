@@ -40,6 +40,7 @@ mod rename;
 mod semantic;
 mod skeleton;
 pub mod smoke;
+pub mod smoke_drive;
 mod snippet;
 mod snippet_doc;
 mod strict;

@@ -11,6 +11,7 @@ fn os_scripts_da_cena_saem_limpos_do_formatador() {
     let boot = include_str!("../../src/script_boot.luau");
     for (nome, t) in [
         ("code_smoke::BOB_LUAU", code_smoke::BOB_LUAU),
+        ("code_smoke::ONDA_LUAU", code_smoke::ONDA_LUAU),
         ("script_smoke::BOB_LUAU", script_smoke::BOB_LUAU),
         ("script_boot.luau", boot),
     ] {

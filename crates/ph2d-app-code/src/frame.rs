@@ -63,6 +63,7 @@ pub fn frame(
     docs.lint();
     docs.notes();
     docs.fix_hover(&mut hero.motion);
+    let show_scene = crate::smoke_drive::frame(docs);
     crate::link::frame(
         docs,
         world,
@@ -92,6 +93,9 @@ pub fn frame(
         Some(SaveKind::Save) => hero.file_menu.save = true,
         Some(SaveKind::SaveAs) => hero.file_menu.save_as = true,
         None => {}
+    }
+    if show_scene {
+        hero.documents.activate(None);
     }
 }
 

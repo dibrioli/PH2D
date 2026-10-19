@@ -8,14 +8,19 @@
 //!   muda a `amplitude` no texto; Ctrl+S e as três mudam na hora.
 //! - **2** — o mesmo, mais um triângulo com o `script_quebrado.luau` do smoke da Onda 0 (o erro com o
 //!   símbolo culpado), já aberto numa aba pelo MESMO pedido do «Edit script» (`ScriptEditRequests`).
+//! - **3** — a inteligência (Onda 2, I15): as três formas correm o `onda.luau`, que tem um erro de
+//!   digitação de propósito (`self.ampiltude`) — por isso estão PARADAS; a aba abre e a ESTRELA fica
+//!   escolhida, com o seu valor próprio da `amplitude` (2) no Inspector. O dono corrige com Alt+Enter,
+//!   escreve `ph2d.` e escolhe `set` (as formas giram) e renomeia a propriedade com F2 (o 2 da estrela
+//!   vai com o nome). Cada passo tem a sua foto (`ph2d_app_code::smoke_drive`).
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
-use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId};
+use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};
 use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 2;
+pub const CENAS: u32 = 3;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -43,6 +48,40 @@ function update(self, dt)
   -- a posição em x desencontra as três: uma onda, não um coro
   local s = math.sin(self.t * self.speed + self.base_x)
   ph2d.set(self.id, "y", self.base_y + s * self.amplitude)
+end
+"#;
+
+/// O nome do script do nível 3.
+pub const ONDA_NAME: &str = "onda.luau";
+
+/// O valor PRÓPRIO da `amplitude` da estrela no nível 3 — o que o Inspector mostra e o rename leva.
+pub const STAR_AMPLITUDE: f64 = 2.0;
+
+/// ⭐ **O script do nível 3** — o erro `ampiltude` é de propósito, e os comentários são o roteiro do
+/// dono. As agulhas do condutor das fotos (`ph2d_app_code::smoke_drive::STEPS`) vivem neste texto
+/// (conferido no teste da cena).
+pub const ONDA_LUAU: &str = r#"-- onda.luau — as TRÊS formas da esquerda correm ESTE script, e ele tem um erro:
+-- por isso estão paradas. O quadrado da direita não tem script.
+--
+-- 1) «ampiltude», lá em baixo, está sublinhada: o certo é «amplitude».
+--    Cursor nela, Alt+Enter, Enter, Ctrl+S: as três sobem e descem.
+-- 2) Na linha marcada com 2), escreva ph2d. e escolha set na lista.
+-- 3) F2 sobre «amplitude» muda o nome; a estrela leva o valor dela (2).
+
+ph2d.property("amplitude", 1.0, { min = 0, max = 4 }) -- quanto sobe (metros)
+ph2d.property("speed", 2.0, { min = 0, max = 10 }) -- quão depressa
+
+function init(self)
+  self.base_x = ph2d.get(self.id, "x")
+  self.base_y = ph2d.get(self.id, "y")
+  self.t = 0
+end
+
+function update(self, dt)
+  self.t = self.t + dt
+  local s = math.sin(self.t * self.speed + self.base_x)
+  ph2d.set(self.id, "y", self.base_y + s * self.ampiltude)
+  -- 2) escreva aqui, numa linha nova
 end
 "#;
 
@@ -81,7 +120,7 @@ fn formas(nivel: u32) -> Vec<(&'static str, VecPath)> {
             tinta(rectangle([-r, -r], [r, r]), [130, 134, 146]),
         ),
     ];
-    if nivel >= 2 {
+    if nivel == 2 {
         v.push((
             "Triangle (broken script)",
             tinta(regular_polygon([0.0, 0.0], r, r, 3), [232, 96, 80]),
@@ -101,8 +140,12 @@ pub fn monta_em(
     let nivel = nivel.clamp(1, CENAS);
     let (bob, broken) = {
         let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
-        let bob = lib.insert(BOB_NAME, BOB_LUAU);
-        let broken = (nivel >= 2).then(|| lib.insert(BROKEN_NAME, BROKEN_LUAU));
+        let bob = if nivel == 3 {
+            lib.insert(ONDA_NAME, ONDA_LUAU)
+        } else {
+            lib.insert(BOB_NAME, BOB_LUAU)
+        };
+        let broken = (nivel == 2).then(|| lib.insert(BROKEN_NAME, BROKEN_LUAU));
         (bob, broken)
     };
     let ids: Vec<_> = formas(nivel)
@@ -130,22 +173,39 @@ pub fn monta_em(
         let mut em = sim.world_mut().entity_mut(e);
         em.insert((Name::new(nome), t));
         if let Some(s) = script_of(i) {
-            em.insert(LuauScript::library(s));
+            let mut script = LuauScript::library(s);
+            if nivel == 3 && i == 1 {
+                script
+                    .own
+                    .insert("amplitude".into(), ScriptValue::Number(STAR_AMPLITUDE));
+            }
+            em.insert(script);
         }
         out.push(e);
     }
-    if let Some(b) = broken {
+    if let Some(aberto) = broken.or((nivel == 3).then_some(bob)) {
         sim.world_mut()
             .get_resource_or_init::<ScriptEditRequests>()
             .0
-            .push(b);
+            .push(aberto);
     }
     out
 }
 
-/// A porta da shell: monta e anuncia. `None` = nada fica escolhido (o dono aprende a escolher).
+/// A porta da shell: monta e anuncia. Devolve o objecto escolhido: nenhum nos níveis 1–2 (o dono
+/// aprende a escolher), a ESTRELA no 3 (o Inspector mostra o valor próprio dela).
 pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
+    let nivel = nivel.clamp(1, CENAS);
     let formas = monta_em(cx.sim, cx.vec_scene, cx.vec_entities, nivel);
+    if nivel == 3 {
+        println!(
+            "[code-smoke] =3 {} formas: o círculo, a estrela e o hexágono correm o onda.luau, já aberto \
+             numa aba — e PARADAS: o script tem «ampiltude» em vez de «amplitude». A estrela fica \
+             escolhida: o Inspector mostra a amplitude dela (2). O quadrado cinzento não tem script.",
+            formas.len()
+        );
+        return formas.get(1).map(|e| e.to_bits());
+    }
     println!(
         "[code-smoke] ={nivel} {} formas: o círculo, a estrela e o hexágono correm o MESMO \
          bob.luau (sobem e descem em onda); o quadrado cinzento não tem script e fica parado.{}",

@@ -5125,6 +5125,7 @@ dependencies = [
  "image",
  "parley",
  "ph2d-anim",
+ "ph2d-app-code",
  "ph2d-app-host",
  "ph2d-asset",
  "ph2d-asset-index",

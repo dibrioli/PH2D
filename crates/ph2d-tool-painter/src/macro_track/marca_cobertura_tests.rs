@@ -197,3 +197,30 @@ fn a_forca_de_um_passo_desfeito_nao_passa_ao_seguinte() {
         );
     }
 }
+
+/// Os modos que dão o que estava por baixo (Blur, Smear) não depõem tinta: numa tela toda preta não
+/// mudam nada e não marcam nada. (A máscara: `palcos_fim_tests::o_filme_da_mascara_…`, no app.)
+#[test]
+fn quem_nao_depoe_tinta_nao_marca_o_miolo() {
+    for modo in ["blur", "smear"] {
+        let mut t = PainterTool::default();
+        let mut preta = vec![0u8; L * L * 4];
+        preta.chunks_exact_mut(4).for_each(|p| p[3] = 255);
+        t.set_source(preta, LADO, LADO);
+        t.poe_a_marca(Some(MarcaDoArtista::nova(LADO, LADO, 1)));
+        t.set_brush_size_px(16.0);
+        t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::SelectOption(
+            ph2d_editor_core::ids::PAINTER_PAINT_MODE,
+            modo.into(),
+        ));
+        let antes = imagem(&t);
+        vertical(&mut t, 64.0, DE_CIMA_A_BAIXO);
+        assert_eq!(
+            antes,
+            imagem(&t),
+            "controlo {modo}: preto sobre preto não muda"
+        );
+        let m = t.marca_do_artista().expect("a marca").clone();
+        assert_eq!(m.quantos(), 0, "{modo}: não depõe tinta e marcou");
+    }
+}

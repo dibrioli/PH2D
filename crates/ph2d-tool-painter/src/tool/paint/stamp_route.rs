@@ -36,13 +36,21 @@ impl PainterTool {
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
         // A marca do artista (W9): o pincel cobre estes dabs; o registo do passo confere-os.
         self.marca_os_dabs(dabs, self.paint.brush.tip_reach(), false);
-        let uniao = !self.stroke_cover_wanted(&self.paint.brush);
-        crate::tool::marca_do_artista::marca_a_forca(
-            &mut self.undo.marca,
-            &self.paint.brush,
-            dabs,
-            uniao,
+        // O miolo só é do artista onde o carimbo DEPÕE tinta: a máscara não escreve na imagem, e o
+        // Blur/Smear/Clone/Inpaint dão o que estava por baixo.
+        let depoe = matches!(
+            self.paint.paint_mode,
+            PaintMode::Paint | PaintMode::WetPaint
         );
+        if depoe && self.paint.brush.deposits_color() {
+            let uniao = !self.stroke_cover_wanted(&self.paint.brush);
+            crate::tool::marca_do_artista::marca_a_forca(
+                &mut self.undo.marca,
+                &self.paint.brush,
+                dabs,
+                uniao,
+            );
+        }
         // **Style: Solid** (W7) — o preenchimento de um gesto CUMULATIVO é uma transação própria, e
         // o snapshot dela tem de conter todo dab e nenhum fill. Descascar antes do lote e
         // re-escrever depois mora NESTA porta, e não nos seis sítios do ciclo de traço, pelo motivo

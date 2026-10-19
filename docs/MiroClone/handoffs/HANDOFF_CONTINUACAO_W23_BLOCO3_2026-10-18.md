@@ -1,5 +1,7 @@
 # CONTINUAÇÃO — `line/MiroClone` W23: bloco 3 «quadro» fechado menos três itens do B5; o próximo é o resto do B5 e depois o bloco 4 — 2026-10-18
 
+> Seguinte: [HANDOFF_CONTINUACAO_W23_SMOKE19_B5_1_2026-10-19.md](HANDOFF_CONTINUACAO_W23_SMOKE19_B5_1_2026-10-19.md)
+>
 > Leitor: a LLM da próxima janela. Lista-mãe: [HANDOFF_CONTINUACAO_W23_ABERTOS](HANDOFF_CONTINUACAO_W23_ABERTOS_2026-10-18.md) ·
 > anterior: [HANDOFF_CONTINUACAO_W23_CARTAO_LIVE](HANDOFF_CONTINUACAO_W23_CARTAO_LIVE_2026-10-18.md). Fidelidade:
 > [07_fidelidade_excalidraw.md](../07_fidelidade_excalidraw.md) (já actualizado: A10 em §3, B4). Sem integração nem push: só por ordem do Enio.

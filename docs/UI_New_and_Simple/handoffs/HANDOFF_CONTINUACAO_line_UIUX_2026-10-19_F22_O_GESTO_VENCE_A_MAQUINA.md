@@ -107,3 +107,5 @@ Foto `fotos/F22b_cena37.png`.
 **ABERTO (acrescenta ao §5):** o item 3 do §5 está FECHADO por este §6. `CLAUDE.md` §5.1: intervalo do smoke `…26` → `…37`.
 
 Binário do smoke: 2.ª saída «Finished smoke profile [optimized] target(s) in 0.52s» (zero `Compiling`).
+
+> ✅ **Smoke do dono: OK (19/10)** — cena 37 (a opacidade anima; a barra e o Appearance dizem 30).

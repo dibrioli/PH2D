@@ -66,3 +66,5 @@ Fotos (`docs/UI_New_and_Simple/vetor_nova_ui/fotos/`): `F21_cena33.png`, `F21_ce
 5. Herdados do F19 §5: 2, 5, 6, 7, 8.
 6. `CLAUDE.md` §5.1 UI/UX: **não** alterado; ao fechar a linha, trocar o link do último handoff e o intervalo do smoke (`…26` → `…34`).
 7. O flake de `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` é candidato a membro da família: conferir [FLAKES_DE_CARGA.md](../../DevOps/FLAKES_DE_CARGA.md) (não promovido aqui).
+
+> ✅ **Smoke do dono: OK (19/10)** — cenas 33 e 34 e os passos manuais (cor nas duas e na vazia, só a alfa, matiz numa forma vazia, olho e amostra das camadas).

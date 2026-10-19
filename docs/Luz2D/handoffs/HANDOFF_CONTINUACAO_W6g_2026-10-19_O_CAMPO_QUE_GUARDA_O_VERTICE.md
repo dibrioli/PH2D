@@ -520,3 +520,64 @@ A 2.ª reconstrução desta rodada sem passar (r6, r7) ⇒ PARE: a r7 comitada; 
 2. A lei W6d com `DISTANTES` no relógio (uma cena com objetos fora da grade na régua do custo).
 3. A anomalia da r5b (§12).
 4. A família (b) (37–38): da W5g, fora.
+
+## 21. A rodada nova (§20.1, ordem do dono 19/10): a borda pela régua de registos (escrita ANTES de mexer no produto)
+
+**A régua de registos sobre a borda** (`rb_x.py`, `rb_corre.py`, `target/w6g/rb/`; o rc da r6, que tem a borda da r7):
+
+| `c3_borda*` | lei W6d | cunha | 10 + 9 (`c3_borda_cantos`) |
+|---|---|---|---|
+| como está | 32 reg · 7 KB | **55** · 45 KB | **61** · 50 KB |
+| a `pela_cunha` fora (`A`) | 32 | **32** | **37** |
+| o `area_da_intersecao` fora (`C`) | 32 | 55 | 61 |
+| as `pelas_retas_proprias` fora (`D`) | 24 | 55 | 60 |
+
+⇒ **o degrau é a `pela_cunha` embutida no kernel da captura inteira** (corre em ~centenas de texels; o registo paga-se
+nos 15,7 milhões). 55–61 registos = 36–32 warps por SM contra 48 com ≤ 40.
+
+**No relógio** (`diag_u.py` + `diag_u2.py`, `custo_u_*`, `custo_u2_*`: um override `W6G_STUB` que mata a `pela_cunha` e
+dois cortes de despacho, duas voltas alternadas, `load` 10–25; tudo FORA do git e reposto):
+
+| borda c5 (ms) | lei W6d | cunha | 10 + 9 |
+|---|---|---|---|
+| como está | 0,271–0,273 | 0,302 | 0,373–0,374 |
+| s1 a `pela_cunha` morta | 0,272 | **0,272–0,273** | **0,323** |
+| s2 + sem `limpa`/`cantos` (vazios) | | | 0,316 |
+| s3 + a entrada `c3_borda` e sem o `zera` | | | **0,272–0,273** |
+
+⇒ a cunha inteira (+0,03) é o degrau; na 10 + 9, −0,05 da `pela_cunha`, 0,007 dos dois indiretos vazios e **0,044 da
+forma do `c3_borda_cantos`** (a barreira do grupo, a marca em todo bloco na origem da `V`, o `zera` — juntos).
+
+**A cura (r8)** — o vértice ADIADO, a borda da captura volta à forma da lei W6d:
+- `c3_borda_adia` (captura inteira, só com os cantos): o `borda_do_texel` com a `pela_cunha` fora — o texel cuja reta
+  não explica a 3×3 grava a própria reta e reclama o seu bloco (`atomicExchange` numa marca por bloco, buffer novo; o
+  primeiro acrescenta-o à lista deste quadro). Sem barreira, sem atómica de grupo, sem escrita na `V`.
+- `c3_borda_vertices` (indireto sobre a lista deste quadro): o `borda_do_texel` com a `pela_cunha` nos 64 texels do
+  bloco — regrava a borda (a mesma conta: os mesmos bits) e escreve a `V` do bloco inteiro.
+- a `V` passa a valer a sentinela fora dos blocos listados (o `c3_cantos_inicia` uma vez; o `c3_cantos_limpa` repõe a
+  `V` do bloco e a marca dele, além da `V2` dos 3×3) ⇒ o `c3_cantos` lê a apara 12×12 sem a fase das marcas.
+- A lista passa a ser a dos blocos com CANDIDATO (⊇ os de cunha aceite): o bloco listado sem cunha tem a `V` toda
+  sentinela, e o `c3_cantos` escreve nele o que a `V2` já tinha. Exata por construção. A cunha sem os cantos (que
+  não é o padrão) fica como está.
+
+**PASSA a r8** (todos): (i) 0 bytes diferentes na fluência, r7 × r8, nos 32 casos (`diag_r.py` + `W6G_DUMP`, base
+`dump_head/`); (ii) a régua de registos: `c3_borda_adia` ≤ 40; (iii) o §1 tal e qual — os itens 1–4 pela rodada
+completa (F3, caixa, borda) e o **5: C3 da 10 + 9 ≤ +5 % sobre a lei W6d nas cenas 5 e 6** (o mínimo de 7
+intercaladas, no mesmo processo), `preenche + borda` ≤ +0,17. **MORRE**: um byte diferente, ou o C3 acima de +5 % numa
+das cenas. É a 1.ª reconstrução desta rodada (two-strikes conta daqui).
+
+## 22. A r8 medida — exata; a 10 + 9 passa o custo nas duas cenas
+
+(`exato_r8.log`, `custo_r8_{1,2,3}.log`, `regua_r8/`; `load` 3.)
+
+- **(i) 0 ficheiros diferentes** em 32 (r8 × `dump_head/` = r7). **(ii)** régua: `c3_borda_adia` **32** registos (o
+  `c3_borda_cantos` tinha 61); o `c3_borda_vertices` 59, só nos blocos listados; `c3_cantos` 31 (sem a fase das marcas).
+- **(iii) o custo**, três processos:
+
+| ms | lei W6d | cunha + 10 + 9 | C3 | borda | preenche + borda |
+|---|---|---|---|---|---|
+| cena 5 | 3,041 · 3,059 · 3,045 | 3,168 · 3,168 · 3,170 | **+4,2 · +3,6 · +4,1 %** ✓ | 0,318–0,319 (r7: 0,372) | +0,054–0,057 ✓ |
+| cena 6 | 2,092 · 2,087 · 2,089 | 2,115 · 2,124 · 2,124 | **+1,1 · +1,8 · +1,7 %** ✓ | 0,306–0,307 (r7: 0,358) | +0,043–0,044 ✓ |
+
+A borda da 10 + 9 desce 0,054 ms; a cunha sem os cantos (que não é o padrão) fica nos seus +0,03 (o degrau dela,
+§21). O resto da borda sobre a lei W6d (+0,046) são os cinco despachos pequenos e as barreiras; a fina +0,07 / −0,01.

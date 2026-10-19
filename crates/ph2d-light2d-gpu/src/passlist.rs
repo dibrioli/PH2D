@@ -11,10 +11,12 @@ pub(crate) const TAU_DENTRO: usize = 2;
 pub(crate) const SEMENTES: [usize; 2] = [3, 4];
 /// ⭐ W5q: o buffer dos ladrilhos do anel ([`crate::ladrilhos`]).
 pub(crate) const NOME_LADRILHOS: &str = "luz2d/buf/ladrilhos";
-/// ⭐ W6g: os blocos 8×8 da captura com parcial de vértice (`c3_borda_cantos`), em DUAS listas que
+/// ⭐ W6g: os blocos 8×8 da captura com candidato a vértice (`c3_borda_adia`), em DUAS listas que
 /// alternam por quadro (a deste e a do anterior, que o `c3_cantos_limpa` repõe) — cada uma com o
 /// cabeçalho do despacho INDIRETO (`[n, 9, 1]`) e depois um `u32` por bloco.
 pub(crate) const NOME_LISTA_DOS_CANTOS: &str = "luz2d/buf/lista_dos_cantos";
+/// ⭐ W6g r8: a marca de cada bloco da captura já listado neste quadro (um `u32` por bloco).
+pub(crate) const NOME_MARCAS_DOS_BLOCOS: &str = "luz2d/buf/marcas_dos_blocos";
 /// ⭐ W6g r5: os texels de duas faces que a `c3_fina_adia` deixa ao `c3_fina_cantos` — o cabeçalho é o
 /// despacho INDIRETO dele (`[grupos de 64, 1, 1]`) e o número de texels, depois um `u32` por texel.
 pub(crate) const NOME_FINA_ADIADOS: &str = "luz2d/buf/fina_adiados";
@@ -486,6 +488,12 @@ impl PassList {
                 nome: NOME_LISTA_DOS_CANTOS,
                 bytes: 2 * metade_da_lista_dos_cantos(texturas[v].tamanho),
                 usos: B::STORAGE | B::INDIRECT,
+            });
+            let [w, h] = texturas[v].tamanho;
+            buffers.push(Buffer {
+                nome: NOME_MARCAS_DOS_BLOCOS,
+                bytes: 4 * u64::from(w.div_ceil(8)) * u64::from(h.div_ceil(8)),
+                usos: B::STORAGE,
             });
         }
         // ⭐ W5c: a cascata holográfica (os T, o par R, o acumulado, o uniforme e os vazios).

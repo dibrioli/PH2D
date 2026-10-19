@@ -63,6 +63,13 @@ pub struct Machine {
     /// irmão exacto do [`Self::bool_morphs`], e pela mesma razão: uma pose descreve *um objecto*, e
     /// *que forma um conjunto mostra a meio caminho* é uma pergunta que o `at` não responde.
     morph_steps: Vec<MorphStep>,
+    /// ⭐ **O que a cena mostrava logo depois da última escrita em voo** (F22), relido pela porta de
+    /// quem captura — não a [`Self::pose`]: a escrita passa por `f32`, e comparar com a pose
+    /// leria o próprio arredondamento como um gesto. `None` fora de um voo.
+    written: Option<Vec<ObjectPose>>,
+    /// A máquina pousou FORA de um estado (um gesto interrompeu o voo): `current` é de onde saiu,
+    /// e a cena não mostra papel nenhum.
+    adrift: bool,
 }
 
 impl Machine {
@@ -80,7 +87,52 @@ impl Machine {
             flight: None,
             bool_morphs: Vec::new(),
             morph_steps: Vec::new(),
+            written: None,
+            adrift: false,
         })
+    }
+
+    /// **Guarda o que a cena mostra depois da escrita deste quadro** — `read` é a captura da cena.
+    /// Só em voo: parada, a máquina não escreve, e não há gesto a detectar.
+    pub fn note_written(&mut self, read: impl Fn(ph2d_vec_scene::VecPathId) -> ObjectPose) {
+        self.written = self
+            .flight
+            .is_some()
+            .then(|| self.live.iter().map(|p| read(p.id)).collect());
+    }
+
+    /// ⭐ **O gesto vence o voo** (F22, plano 33 §2). Em voo, se a cena mudou desde a última escrita
+    /// num objeto que nenhum `motor` conduz, alguém que não é a máquina mexeu: ela POUSA onde a cena
+    /// está (sem saltar), larga os recados do voo e não escreve mais. Devolve se pousou.
+    ///
+    /// ⚠️ O motor (a timeline) é fundo, não gesto: um objeto animado e com estados nunca chegaria ao
+    /// fim de um Show.
+    pub fn yield_to(
+        &mut self,
+        read: impl Fn(ph2d_vec_scene::VecPathId) -> ObjectPose,
+        motor: impl Fn(ph2d_vec_scene::VecPathId) -> bool,
+    ) -> bool {
+        let (Some(_), Some(written)) = (&self.flight, &self.written) else {
+            return false;
+        };
+        let moved = written.iter().any(|w| !motor(w.id) && read(w.id) != *w);
+        if !moved {
+            return false;
+        }
+        self.live = self.live.iter().map(|p| read(p.id)).collect();
+        self.flight = None;
+        self.written = None;
+        self.adrift = true;
+        self.bool_morphs.clear();
+        self.morph_steps.clear();
+        true
+    }
+
+    /// A cena mostra um estado? `false` depois de um gesto ter interrompido o voo, até à próxima
+    /// chegada.
+    #[must_use]
+    pub fn is_adrift(&self) -> bool {
+        self.adrift
     }
 
     /// **Parada, ela parte do que a CENA mostra** (F18). O artista mexe na forma depois de gravar
@@ -190,6 +242,7 @@ impl Machine {
         self.states = states;
         self.current = self.current.min(self.states.len() - 1);
         self.flight = None;
+        self.written = None;
         // O voo abortado leva o recado dele: um morph publicado sobre uma transição que já não
         // existe faria a booleana continuar a cozinhar duas pontas para sempre.
         self.bool_morphs.clear();
@@ -400,6 +453,8 @@ impl Machine {
         self.current = target;
         self.live = self.states[target].objects.clone();
         self.flight = None;
+        self.written = None;
+        self.adrift = false;
         // ⚠️ **A chegada apaga o recado**, e é o que faz o quadro de chegada custar UM cozimento:
         // a pose instalada já traz o verbo de destino, então não há duas pontas a morfar.
         self.bool_morphs.clear();

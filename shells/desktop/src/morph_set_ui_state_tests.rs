@@ -225,11 +225,10 @@ fn play_records_and_the_ui_transition_morphs_the_set() {
     ph2d_app_vec::ui_state_bridge::dispatch(
         &mut ui,
         &mut states,
-        &mut sim,
-        &mut scene,
-        &map,
+        (&mut sim, &mut scene, &map),
         0.05,
         &mut cooked,
+        &|_| false,
     );
     assert_eq!(
         cooked.morph_steps.len(),

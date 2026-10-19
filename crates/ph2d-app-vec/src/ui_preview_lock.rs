@@ -66,7 +66,7 @@ mod tests {
     #[test]
     fn a_saida_e_a_vista_passam() {
         // ⚠️ A aba do encaixe (`panel_for_tab`) resolve-se pelo registo de painéis, que este binário
-        // não instala (é do processo): o caso dela fica de fora deste gate.
+        // não instala (é do processo): o gate dela é o da shell, `a_aba_do_encaixe_passa_no_preview`.
         let mut s = WidgetStore::default();
         s.mark_collapsible_section(ph2d_tool_vector::ids::VECTOR_SECTION_FILL);
         for a in [

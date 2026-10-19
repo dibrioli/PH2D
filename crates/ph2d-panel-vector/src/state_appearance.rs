@@ -61,6 +61,8 @@ pub struct RowMixed {
     pub offset: bool,
     pub dilate: bool,
     pub dilate_join: bool,
+    /// O olho: a camada visível numas e escondida noutras (F22).
+    pub enabled: bool,
 }
 
 /// O que a forma selecionada tem, hoje.

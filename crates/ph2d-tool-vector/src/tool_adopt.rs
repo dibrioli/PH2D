@@ -7,6 +7,10 @@
 //!
 //! ⚠️ **Nenhum método aqui marca `apply_to_selected`**, e essa é a lei da família: armar ao adotar
 //! faria a seleção ser reescrita com o que ela já é, todo frame, e um passo de undo com ela.
+//!
+//! ⭐ **E nenhum pisa um campo ARMADO** (F22): o armado é o gesto deste quadro, ainda por escrever.
+//! Durante um Show a forma muda a cada quadro e a ponte re-adota «por mão alheia»; sem esta lei a
+//! cor escolhida no seletor e a Width do painel eram apagadas antes da escrita.
 
 //! ⚠️ **Módulo FILHO de `tool.rs`, não irmão** (`#[path]` + `use super::*`): os campos que estas
 //! quatro escrevem são privados do módulo da tool, e alargá-los para `pub(crate)` só para acomodar
@@ -30,7 +34,25 @@ impl VectorTool {
     ///
     /// ⚠️ **NÃO marca `apply_to_selected`** — adotar é LER o documento.
     pub fn adopt_fill(&mut self, rgba: [u8; 4]) {
-        self.fill = rgba;
+        self.fill = self.unarmed_rgba(self.fill, rgba, StyleFields::FILL_RGB, StyleFields::FILL_A);
+    }
+
+    /// `new`, menos os canais que o gesto deste quadro armou (esses ficam com `cur`).
+    fn unarmed_rgba(
+        &self,
+        cur: [u8; 4],
+        new: [u8; 4],
+        rgb: StyleFields,
+        a: StyleFields,
+    ) -> [u8; 4] {
+        let mut out = if self.authored.any(rgb) { cur } else { new };
+        out[3] = if self.authored.any(a) { cur[3] } else { new[3] };
+        out
+    }
+
+    /// `new`, a menos que o gesto deste quadro tenha armado `f`.
+    fn unarmed<T>(&self, f: StyleFields, cur: T, new: T) -> T {
+        if self.authored.any(f) { cur } else { new }
     }
 
     /// **ADOTA o traço de um caminho** (a shell chama ao SELECIONAR): tudo o que a tool possui
@@ -49,19 +71,33 @@ impl VectorTool {
     /// o `StrokeSpec` a traz em MUNDO, e a conversão tem um dono só.
     pub fn adopt_stroke(&mut self, s: &ph2d_vec_scene::StrokeSpec, width_px: f64) {
         let c = s.color();
-        self.stroke = [c.r, c.g, c.b, c.a];
+        self.stroke = self.unarmed_rgba(
+            self.stroke,
+            [c.r, c.g, c.b, c.a],
+            StyleFields::STROKE_RGB,
+            StyleFields::STROKE_A,
+        );
         // ⚠️ Clampa contra as CONSTANTES, e NÃO pela porta do slider. Rotear um `f64` por
         // `px_to_slider`/`slider_to_px` parecia reuso elegante e **quantiza**: a trilha é `f32`,
         // e 20,0 volta como 20,000000298 (medido pelo gate da lei). Adotar tem de devolver o
         // número do DOCUMENTO, não uma aproximação dele.
-        self.stroke_width_px =
-            width_px.clamp(crate::params::WIDTH_MIN_PX, crate::params::WIDTH_MAX_PX);
-        self.cap = s.cap.into();
-        self.join = s.join.into();
-        self.align = s.align;
+        self.stroke_width_px = self.unarmed(
+            StyleFields::WIDTH,
+            self.stroke_width_px,
+            width_px.clamp(crate::params::WIDTH_MIN_PX, crate::params::WIDTH_MAX_PX),
+        );
+        self.cap = self.unarmed(StyleFields::CAP, self.cap, s.cap.into());
+        self.join = self.unarmed(StyleFields::JOIN, self.join, s.join.into());
+        self.align = self.unarmed(StyleFields::ALIGN, self.align, s.align);
         // `dash` é `Option<DashPattern>` em múltiplos da largura; a tool guarda os pares, e o 1.º
         // traço `0` é o contínuo — a mesma convenção que o `dash_lengths` do documento usa.
-        self.dash = s.dash.map_or(crate::params::DASH_DEFAULT, |p| p.pairs);
+        let dash = s.dash.map_or(crate::params::DASH_DEFAULT, |p| p.pairs);
+        for (k, par) in dash.iter().enumerate() {
+            for gap in [false, true] {
+                let i = usize::from(gap);
+                self.dash[k][i] = self.unarmed(StyleFields::dash(k, gap), self.dash[k][i], par[i]);
+            }
+        }
         self.adopt_markers(
             s.marker_start,
             s.marker_end,
@@ -77,9 +113,14 @@ impl VectorTool {
     /// que está na tela. **Não** marca `apply_to_selected` — adotar é LER o documento; se
     /// marcasse, o próprio ato de selecionar reescreveria o caminho.
     pub fn adopt_markers(&mut self, start: Marker, end: Marker, scale: [f64; 2], round: f64) {
-        self.marker_start = start;
-        self.marker_end = end;
-        self.marker_scale = scale.map(|v| crate::shapes::clamp_to(&crate::params::MARKER_SCALE, v));
-        self.marker_round = crate::shapes::clamp_to(&crate::params::MARKER_ROUND, round);
+        self.marker_start = self.unarmed(StyleFields::MARKER_START, self.marker_start, start);
+        self.marker_end = self.unarmed(StyleFields::MARKER_END, self.marker_end, end);
+        for (slot, v) in scale.into_iter().enumerate() {
+            let v = crate::shapes::clamp_to(&crate::params::MARKER_SCALE, v);
+            let f = StyleFields::marker_scale(slot);
+            self.marker_scale[slot] = self.unarmed(f, self.marker_scale[slot], v);
+        }
+        let round = crate::shapes::clamp_to(&crate::params::MARKER_ROUND, round);
+        self.marker_round = self.unarmed(StyleFields::MARKER_ROUND, self.marker_round, round);
     }
 }

@@ -37,6 +37,18 @@ use crate::state::PaintRow;
 /// Um botão de ícone quadrado na altura da row — o mesmo da fileira do morph.
 const ICON_W: f32 = 28.0; // LITERAL-PX-OK: um botão de ícone quadrado na altura da row
 
+/// O glifo do olho: o travessão do misto da casa (o da amostra «—») quando a camada está visível
+/// numas formas e escondida noutras (F22).
+pub(crate) fn eye_icon(row: &PaintRow) -> IconId {
+    if row.mixed.enabled {
+        IconId::Minus
+    } else if row.enabled {
+        IconId::Eye
+    } else {
+        IconId::EyeClosed
+    }
+}
+
 impl BodyCtx<'_> {
     /// **A pilha inteira**, do topo para o chão, mais os dois botões que a fazem crescer.
     ///
@@ -121,11 +133,7 @@ impl BodyCtx<'_> {
         self.hit_index.register(eid, er);
         paint_icon_button(
             er,
-            IconGlyph::Builtin(if row.enabled {
-                IconId::Eye
-            } else {
-                IconId::EyeClosed
-            }),
+            IconGlyph::Builtin(eye_icon(row)),
             IconButtonStyle::Plain,
             self.store.button_visual(eid),
             self.scene,
@@ -323,4 +331,31 @@ pub(crate) fn paint_layer_blend_popover(
 
     let region = ctx.layout.popover_region();
     ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, region, theme, None);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{IconId, PaintRow, eye_icon};
+
+    /// ⭐ F22 — o olho de uma camada visível numas e escondida noutras pinta o travessão do misto.
+    #[test]
+    fn o_olho_misto_pinta_o_travessao() {
+        let mut row = PaintRow {
+            is_fill: true,
+            color: [0, 0, 0, 255],
+            width: 0.0,
+            enabled: true,
+            opacity: 1.0,
+            blend: ph2d_vec_scene::BlendMode::Normal,
+            offset: [0.0, 0.0],
+            dilate: 0.0,
+            dilate_join: 1,
+            mixed: Default::default(),
+        };
+        assert_eq!(eye_icon(&row), IconId::Eye);
+        row.enabled = false;
+        assert_eq!(eye_icon(&row), IconId::EyeClosed);
+        row.mixed.enabled = true;
+        assert_eq!(eye_icon(&row), IconId::Minus);
+    }
 }

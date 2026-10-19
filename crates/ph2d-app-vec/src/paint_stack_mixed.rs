@@ -58,6 +58,7 @@ pub fn row_mixed(
         m.offset |= a.offset != b.offset;
         m.dilate |= a.dilate != b.dilate;
         m.dilate_join |= a.dilate_join != b.dilate_join;
+        m.enabled |= a.enabled != b.enabled;
     }
     m
 }

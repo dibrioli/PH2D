@@ -34,6 +34,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "32"
             | "33"
             | "34"
+            | "35"
+            | "36"
     ) {
         1
     } else {
@@ -66,6 +68,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "32"
             | "33"
             | "34"
+            | "35"
+            | "36"
     );
     let handles = match s {
         "15" => 1,
@@ -88,6 +92,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
         "32" => 18,
         "33" => 19,
         "34" => 20,
+        "35" => 21,
+        "36" => 22,
         _ => 0,
     };
     let quick = match s {
@@ -136,7 +142,7 @@ fn a_cena_24_comeca_no_tracejado_e_a_15_nas_alcas() {
 #[test]
 fn as_cenas_25_e_26_comecam_nas_abas() {
     assert_eq!((of(Some("25")).handles, of(Some("26")).handles), (11, 12));
-    for h in [11, 12, 15, 16] {
+    for h in [11, 12, 15, 16, 21] {
         assert_eq!(
             handles_first(h),
             Some(crate::vector_mode_interface::FIRST),
@@ -167,7 +173,7 @@ fn as_faixas_de_estagios_nao_se_cruzam() {
         (110, 120, "19"),
         (130, 136, "20"),
     ];
-    // As famílias de faixa própria (21..=34) pela MESMA lista que o roteador despacha: uma família
+    // As famílias de faixa própria (21..=36) pela MESMA lista que o roteador despacha: uma família
     // nova não escapa a este teste.
     faixas.extend(
         crate::vector_mode::route::FAIXAS
@@ -182,4 +188,12 @@ fn as_faixas_de_estagios_nao_se_cruzam() {
             "a faixa da cena {b} cruza a da cena {a}: {faixas:?}"
         );
     }
+}
+
+/// ⭐ F22 — a 35 começa pela 25 (o botão com estados) e a 36 no olho.
+#[test]
+fn as_cenas_35_e_36_comecam_pelas_suas_familias() {
+    assert_eq!((of(Some("35")).handles, of(Some("36")).handles), (21, 22));
+    assert_eq!(handles_first(21), Some(crate::vector_mode_interface::FIRST));
+    assert_eq!(handles_first(22), Some(crate::vector_mode_olho::FIRST));
 }

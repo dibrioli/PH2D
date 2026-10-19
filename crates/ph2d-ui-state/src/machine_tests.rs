@@ -593,3 +593,59 @@ fn the_spring_falls_back_to_default_like_the_curve_does() {
          ela nao fica"
     );
 }
+
+/// A cena lida pela máquina: um objeto em `x`.
+fn cena(x: f64) -> impl Fn(ph2d_vec_scene::VecPathId) -> ObjectPose {
+    move |id| ObjectPose {
+        translation: [x, 0.0],
+        ..ObjectPose::new(id)
+    }
+}
+
+/// ⭐ F22 — parada, a máquina não tem gesto a detectar.
+#[test]
+fn yield_to_parado_nao_faz_nada() {
+    let mut m = machine();
+    assert!(!m.yield_to(cena(7.0), |_| false));
+    assert!(!m.is_adrift());
+}
+
+/// ⭐ F22 — a cena igual ao que ela escreveu não é gesto.
+#[test]
+fn yield_to_igual_nao_aborta() {
+    let mut m = machine();
+    m.go_to(1, 1.0, linear());
+    m.advance(0.5);
+    m.note_written(cena(x(&m)));
+    assert!(!m.yield_to(cena(5.0), |_| false));
+    assert!(m.is_animating());
+}
+
+/// ⭐ F22 — a cena diferente: pousa onde a cena está, sem saltar, e não volta a andar.
+#[test]
+fn yield_to_diferente_pousa_onde_a_cena_esta() {
+    let mut m = machine();
+    m.go_to(1, 1.0, linear());
+    m.advance(0.5);
+    m.note_written(cena(x(&m)));
+    assert!(m.yield_to(cena(-3.0), |_| false));
+    assert!(!m.is_animating() && m.is_adrift());
+    assert!((x(&m) + 3.0).abs() < 1e-12, "não pousou na cena: {}", x(&m));
+    m.advance(1.0);
+    assert!((x(&m) + 3.0).abs() < 1e-12, "voltou a andar");
+    // O Show seguinte parte de onde a cena está e chega, deixando de estar à deriva.
+    m.go_to(1, 1.0, linear());
+    m.advance(2.0);
+    assert!((x(&m) - 10.0).abs() < 1e-12 && !m.is_adrift());
+}
+
+/// ⭐ F22 — um objeto que um motor conduz não é gesto.
+#[test]
+fn yield_to_ignora_o_motor() {
+    let mut m = machine();
+    m.go_to(1, 1.0, linear());
+    m.advance(0.5);
+    m.note_written(cena(x(&m)));
+    assert!(!m.yield_to(cena(-3.0), |_| true));
+    assert!(m.is_animating());
+}

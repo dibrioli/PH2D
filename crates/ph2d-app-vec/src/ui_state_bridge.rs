@@ -75,6 +75,10 @@ pub fn request_seen(
 /// ⚠️ Supõe que a cena é a pose viva da máquina (a Preview acabou de a instalar). Quem pede
 /// sobre uma cena que o artista pode ter mexido usa o [`request_seen`].
 ///
+/// ⚠️ **Os SINAIS pedem por aqui, e não pelo `request_seen`** (medido no F22): eles só agem dentro
+/// do Preview, onde o hover (`UiPreview::point`) também pede por esta porta. Trocar só os sinais
+/// daria duas respostas a «de onde parte o pedido?» dentro do mesmo modo.
+///
 /// ⚠️ A máquina nasce parada no primeiro estado gravado, e é por isso que a construção lê a
 /// tabela inteira: partir de um estado inventado faria a primeira transição vir de uma pose que
 /// ninguém autorou.
@@ -121,17 +125,23 @@ fn empty_machine() -> Machine {
 /// viva lê-o mais tarde no mesmo quadro. Ele é **limpo em toda entrada**, e é isso que garante que
 /// um recado não sobrevive à transição que o produziu: sem a limpeza, um grupo continuaria a
 /// cozinhar duas pontas para sempre depois de a cena chegar.
+///
+/// ⭐ **O gesto vence o voo** (F22): antes de andar, cada máquina em voo pergunta se alguém mexeu
+/// nos objetos dela desde a última escrita ([`Machine::yield_to`]) — uma pergunta numa porta, em
+/// vez de um aviso em cada escritor (painel, gizmo, Hierarquia, teclado). `motor` diz que objeto um
+/// motor conduz (`PreviewDrive::drives`): esse não conta como gesto.
 pub fn dispatch(
     machines: &mut UiMachines,
     states: &mut StateSets,
-    sim: &mut SimWorld,
-    scene: &mut VecScene,
-    map: &VecEntityMap,
+    world: (&mut SimWorld, &mut VecScene, &VecEntityMap),
     dt: f64,
     out: &mut Cooked,
+    motor: &dyn Fn(VecPathId) -> bool,
 ) -> bool {
+    let (sim, scene, map) = world;
     out.bool_morphs.clear();
     out.morph_steps.clear();
+    out.pousou = false;
     // **Uma forma apagada leva os estados dela.** Sem isto o documento acumularia poses de
     // objetos que ninguém vê, e elas viajariam no arquivo para sempre.
     //
@@ -147,6 +157,20 @@ pub fn dispatch(
 
     let mut animating = false;
     for m in machines.values_mut() {
+        let read = |id| crate::ui_state_edit::capture(sim, scene, map, id);
+        let motor = |id| {
+            let conduz = motor(id);
+            if conduz && log_on() {
+                eprintln!("[ui-state] um motor conduz {id}: a máquina não o lê como gesto");
+            }
+            conduz
+        };
+        if m.yield_to(read, motor) {
+            out.pousou = true;
+            if log_on() {
+                eprintln!("[ui-state] um gesto pousou a máquina a meio do Show");
+            }
+        }
         let was = m.is_animating();
         m.advance(dt);
         // ⚠️ Escreve enquanto ANDA e no frame em que CHEGA. Parar de escrever no instante da
@@ -156,6 +180,7 @@ pub fn dispatch(
             for p in m.pose() {
                 crate::ui_state_edit::install(sim, scene, map, p);
             }
+            m.note_written(|id| crate::ui_state_edit::capture(sim, scene, map, id));
             // ⚠️ **Colhido dentro do mesmo `if was` que instala a pose**, e não ao lado: o recado
             // descreve o quadro que ACABOU de ser escrito. Colhê-lo de uma máquina que não andou
             // publicaria o `t` do quadro anterior sobre uma cena que já não está lá.
@@ -167,6 +192,22 @@ pub fn dispatch(
         animating |= m.is_animating();
     }
     animating
+}
+
+/// `PH2D_UI_STATE_LOG`: o terminal diz quando um gesto pousa uma máquina — a sonda que separa um
+/// gesto real de um recozimento que reescreve a cena e a máquina leria como gesto.
+fn log_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PH2D_UI_STATE_LOG").is_some())
+}
+
+/// **Quem é MOTOR** para o [`dispatch`]: o objeto cuja entidade um motor declarou no ledger
+/// (`PreviewDrive::drives` — a timeline). É fundo, não gesto (F22).
+pub fn motor<'a>(
+    map: &'a VecEntityMap,
+    drive: &'a ph2d_preview_drive::PreviewDrive,
+) -> impl Fn(VecPathId) -> bool + 'a {
+    move |id| map.get(&id).is_some_and(|&bits| drive.drives(bits))
 }
 
 /// ⭐⭐ **OS RECADOS que uma transição de UI manda a quem coze** — os dois canais que a pose não
@@ -184,6 +225,9 @@ pub struct Cooked {
     pub bool_morphs: Vec<ph2d_ui_state::BoolMorph>,
     /// ⭐⭐⭐ Os conjuntos de Morph States a meio de uma troca de FORMA (plano 32 W11c).
     pub morph_steps: Vec<ph2d_ui_state::MorphStep>,
+    /// ⭐ Um gesto interrompeu um voo neste quadro (F22): a edição dele é ENTRADA. Ela pode ter caído
+    /// num quadro em que o voo suprimia o undo, e sem isto fundir-se-ia no passo seguinte do artista.
+    pub pousou: bool,
 }
 
 /// Que papel a cena mostra para `host` — o índice, para o painel.
@@ -191,6 +235,10 @@ pub struct Cooked {
 pub fn live_role(machines: &UiMachines, host: Option<VecPathId>) -> Option<usize> {
     let h = host?;
     let m = machines.get(&h)?;
+    // Um gesto interrompeu o voo: a cena não mostra papel nenhum, e acender um mentiria.
+    if m.is_adrift() && !m.is_animating() {
+        return None;
+    }
     // ⚠️ Em voo o que interessa é PARA ONDE ela vai, não de onde saiu: o artista pediu aquele
     // papel, e o readout que dissesse o de partida piscaria o nome errado durante a transição.
     let i = m.target().unwrap_or_else(|| m.current());
@@ -356,3 +404,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "ui_state_bridge_gesto_tests.rs"]
+mod gesto_tests;

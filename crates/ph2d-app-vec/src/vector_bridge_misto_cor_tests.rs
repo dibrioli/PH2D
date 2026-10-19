@@ -63,6 +63,24 @@ fn escolher_a_cor_do_primario_escreve_em_todas() {
     );
 }
 
+/// ⭐ F22 — **a cor escolhida a meio de um Show chega à forma.** A transição muda a forma a cada
+/// quadro; a ponte re-adota «por mão alheia» e apagava a escolha armada antes de a escrever.
+#[test]
+fn uma_cor_escolhida_enquanto_a_forma_muda_por_mao_alheia_chega() {
+    let mut q = Quadro::novo();
+    escolhe_fill(&mut q, VERMELHO, false);
+    // A mão alheia (o Show) muda a forma, e o artista escolhe no MESMO quadro.
+    let (vermelha, azul) = (q.vermelha, q.azul);
+    q.scene.path_mut(vermelha).expect("forma").fill = Some(Paint::Solid(rgba([240, 140, 40, 255])));
+    escolhe_fill(&mut q, VERDE, true);
+    assert_eq!(
+        q.path(vermelha).fill,
+        Some(Paint::Solid(rgba(VERDE))),
+        "a re-adoção apagou a cor escolhida"
+    );
+    assert_eq!(q.path(azul).fill, Some(Paint::Solid(rgba(VERDE))));
+}
+
 /// O controlo: o seletor ABERTO, sondado a cada quadro, sem toque, não escreve nada — senão abrir
 /// o seletor sobre um Fill misto pintaria todas com a cor do primário.
 #[test]
@@ -219,6 +237,15 @@ mod pilha {
 
     fn camada(scene: &VecScene, id: ph2d_vec_scene::VecPathId) -> &PaintEntry {
         &scene.path(id).expect("forma").paints[0]
+    }
+
+    /// ⭐ F22 — a camada visível numa e escondida na outra: o olho diz «misto»; igual, não diz.
+    #[test]
+    fn o_olho_diz_misto() {
+        let (mut scene, sel) = duas();
+        assert!(paint_stack::row_mixed(&scene, &sel, 0).enabled);
+        assert!(paint_stack::toggle(&mut scene, &sel, 0));
+        assert!(!paint_stack::row_mixed(&scene, &sel, 0).enabled);
     }
 
     /// ⛔ O olho invertia cada uma por si: a acesa apagava e a apagada acendia.

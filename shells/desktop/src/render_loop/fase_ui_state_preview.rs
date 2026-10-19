@@ -85,12 +85,15 @@ impl crate::App {
             | crate::render_loop::ui_state_bridge::dispatch(
                 ui_machines,
                 ui_states,
-                sim,
-                vec_scene,
-                &self.vec.entities,
+                (sim, vec_scene, &self.vec.entities),
                 ui_state_dt,
                 &mut self.ui_cooked,
+                &crate::render_loop::ui_state_bridge::motor(
+                    &self.vec.entities,
+                    &self.preview_drive,
+                ),
             );
+        self.any_input_this_frame |= self.ui_cooked.pousou;
         if pending_ui_move_all_toggle {
             self.ui_states_move_all = !self.ui_states_move_all;
         }

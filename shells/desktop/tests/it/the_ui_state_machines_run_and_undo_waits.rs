@@ -103,3 +103,23 @@ fn the_undo_waits_for_a_live_transition() {
          de undo, e o artista aperta Ctrl+Z nove vezes para desfazer um clique"
     );
 }
+
+/// ⭐ **F22 — o gesto que interrompe um Show é ENTRADA** (plano 33 §6.5). A edição pode cair num
+/// quadro em que o voo suprime o undo (o painel escreve depois da ponte); a máquina pousa no quadro
+/// seguinte, que não tem input, e sem esta linha a edição fundia-se no próximo passo do artista —
+/// dois gestos num Ctrl+Z. ⚠️ DEPOIS do `dispatch`: antes, leria o aviso do quadro anterior.
+#[test]
+fn the_gesture_that_stops_a_show_counts_as_input() {
+    let s = crate::frame_text::render_frame();
+    let flat: String = s.chars().filter(|c| !c.is_whitespace()).collect();
+    let dispatch = flat
+        .find("ui_state_bridge::dispatch(")
+        .expect("o `dispatch` saiu do quadro");
+    let ouve = flat
+        .find("self.any_input_this_frame|=self.ui_cooked.pousou;")
+        .expect("o pouso por gesto não chega ao `any_input_this_frame`: a edição funde-se no passo seguinte");
+    assert!(
+        ouve > dispatch,
+        "o aviso é lido ANTES do `dispatch` que o escreve"
+    );
+}

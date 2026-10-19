@@ -93,3 +93,40 @@ fn the_second_dash_pair_and_the_end_head_size_reach_the_tool() {
     assert_eq!(t.take_authored(), F::MARKER_SCALE_END);
     assert_eq!(t.ui_snapshot().marker_scale, [antes[0], 2.5]);
 }
+
+/// ⭐ **F22 — a leitura do documento não pisa o gesto deste quadro.** Durante um Show a forma muda
+/// a cada quadro (a ponte re-adota «por mão alheia»); a cor escolhida no seletor e a Width do painel
+/// estão ARMADAS e por escrever, e a adoção apagava-as antes da escrita.
+#[test]
+fn adopting_never_overwrites_a_field_armed_this_frame() {
+    let laranja =
+        ph2d_vec_scene::StrokeSpec::new(ph2d_vec_scene::Rgba8::new(240, 140, 40, 255), 1.0);
+    let mut t = VectorTool::new();
+    t.pick_fill_rgba([40, 200, 90, 255]);
+    t.adopt_fill([240, 140, 40, 255]);
+    assert_eq!(
+        t.fill_rgba(),
+        [40, 200, 90, 255],
+        "a adoção apagou a cor escolhida"
+    );
+
+    let mut t = VectorTool::new();
+    t.pick_stroke_rgba([40, 200, 90, 255]);
+    set(&mut t, ids::VECTOR_WIDTH, 1.0);
+    let w = t.stroke_width_px();
+    t.adopt_stroke(&laranja, 3.0);
+    assert_eq!(
+        t.stroke_rgba(),
+        [40, 200, 90, 255],
+        "a adoção apagou a cor do traço"
+    );
+    assert_eq!(t.stroke_width_px(), w, "a adoção apagou a Width do painel");
+
+    // O controlo: sem gesto armado, a adoção lê o documento.
+    let mut t = VectorTool::new();
+    t.adopt_fill([240, 140, 40, 255]);
+    t.adopt_stroke(&laranja, 3.0);
+    assert_eq!(t.fill_rgba(), [240, 140, 40, 255]);
+    assert_eq!(t.stroke_rgba(), [240, 140, 40, 255]);
+    assert!((t.stroke_width_px() - 3.0).abs() < 1e-9);
+}

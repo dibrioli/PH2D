@@ -274,11 +274,10 @@ fn after_removing_thin_the_hover_still_morphs_to_tall() {
     ph2d_app_vec::ui_state_bridge::dispatch(
         &mut ui,
         &mut states,
-        &mut sim,
-        &mut scene,
-        &map,
+        (&mut sim, &mut scene, &map),
         0.05,
         &mut cooked,
+        &|_| false,
     );
     assert_eq!(
         cooked.morph_steps.len(),

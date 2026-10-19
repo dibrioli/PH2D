@@ -375,6 +375,8 @@ impl ModeFamily for Family<'_> {
 /// `=31`/`=32` (F20): duas formas dizem «misto»; a 32 muda a Width das duas (`vector_mode_misto`).
 /// `=33`/`=34` (F21): uma cheia e uma vazia, pilhas diferentes; a 34 escolhe a cor do primário
 /// (`vector_mode_cor`).
+/// `=35` (F22): a 25, o Show do Hover a 2 s e o verde escolhido a meio (`vector_mode_gesto`).
+/// `=36` (F22): duas formas com o olho da camada diferente — o olho diz «—» (`vector_mode_olho`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,

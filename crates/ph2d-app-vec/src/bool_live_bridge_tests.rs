@@ -74,11 +74,10 @@ fn the_frame_composes_the_bridge_and_the_cook() {
     let animating = crate::ui_state_bridge::dispatch(
         &mut machines,
         &mut states,
-        &mut sim,
-        &mut scene,
-        &map,
+        (&mut sim, &mut scene, &map),
         duration * 0.5,
         &mut cooked,
+        &|_| false,
     );
     assert!(animating, "a ponte não pôs a máquina no ar");
     assert!(

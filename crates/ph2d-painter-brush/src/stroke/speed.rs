@@ -234,10 +234,18 @@ impl Stroke {
             let t = k as f32 / (n + 1) as f32;
             let p = [from[0] + d[0] * t, from[1] + d[1] * t];
             let mut fill = *dab;
-            fill.center = self.apply_jitter(p, dab.radius_px);
+            let (c, alcance) = self.apply_jitter(p, dab.radius_px);
+            fill.center = c;
             fill.arc_len = from_arc + (to_arc - from_arc) * t;
             fill.step = step;
-            fill.ante = ante;
+            fill.ante = ante.map(|mut a| {
+                a.salto = (alcance > 0.0).then_some(crate::capsula::Salto {
+                    desvio: [c[0] - p[0], c[1] - p[1]],
+                    alcance,
+                    por_raio: self.spec.jitter_unit == crate::JitterUnit::Brush,
+                });
+                a
+            });
             ante = capsulas.then(|| Ante::de(&fill));
             crate::symmetry::push_symmetric(out, fill, &self.spec.symmetry);
         }

@@ -81,7 +81,15 @@ impl Stroke {
         //
         // O ARREMESSO entra antes do jitter — e a ordem NÃO é load-bearing; o porquê (medido) está
         // no doc do [`Stroke::throw`], que o chamador já rodou.
-        let center = self.apply_jitter(thrown, radius);
+        let (center, alcance) = self.apply_jitter(thrown, radius);
+        let ante = self.dab_ante.map(|mut a| {
+            a.salto = (alcance > 0.0).then_some(crate::capsula::Salto {
+                desvio: [center[0] - thrown[0], center[1] - thrown[1]],
+                alcance,
+                por_raio: self.spec.jitter_unit == JitterUnit::Brush,
+            });
+            a
+        });
         let mut dab = Dab {
             center,
             radius_px: radius,
@@ -95,7 +103,7 @@ impl Stroke {
             arc_len: arc,
             stroke_radius_px: self.spec.clamped_radius(),
             step: self.dab_step,
-            ante: self.dab_ante,
+            ante,
             tilt: None,
         };
         // A caneta DEITADA (W6) antes da ponta afilada: o taper escala a ponta que a caneta fez.
@@ -120,19 +128,20 @@ impl Stroke {
     /// Offset the dab centre by a random vector sampled uniformly inside a disc, sized by the
     /// jitter unit: `Brush` → radius `jitter × diameter`; `View` → radius `2 × jitter_absolute_px`
     /// (Blender `BKE_brush_jitter_pos`). No-op for methods that disable jitter (DragDot/Anchored).
-    pub(super) fn apply_jitter(&mut self, pos: [f32; 2], radius: f32) -> [f32; 2] {
+    /// Devolve também o raio do disco (`0` = sem Jitter) — o [`crate::capsula::Salto`] do dab.
+    pub(super) fn apply_jitter(&mut self, pos: [f32; 2], radius: f32) -> ([f32; 2], f32) {
         if !self.spec.stroke_method.allows_jitter() {
-            return pos;
+            return (pos, 0.0);
         }
         let max_offset = match self.spec.jitter_unit {
             JitterUnit::Brush => self.spec.jitter.clamp(0.0, 1.0) * (2.0 * radius),
             JitterUnit::View => 2.0 * self.spec.jitter_absolute_px.max(0.0),
         };
         if max_offset <= 0.0 {
-            return pos;
+            return (pos, 0.0);
         }
         let (dx, dy) = crate::jitter::disc_sample(&mut self.rng);
-        [pos[0] + dx * max_offset, pos[1] + dy * max_offset]
+        ([pos[0] + dx * max_offset, pos[1] + dy * max_offset], max_offset)
     }
 
     /// Build the Anchored stamp's single dab at `center` with the drag-defined `radius_px`. No

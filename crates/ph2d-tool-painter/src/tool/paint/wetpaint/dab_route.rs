@@ -219,6 +219,11 @@ impl PainterTool {
             .engine
             .tuning
             .get(ph2d_wet_paint::tuning::Knob::CapsuleMaxPx) as f32;
+        let mais_perto = sess
+            .engine
+            .tuning
+            .get(ph2d_wet_paint::tuning::Knob::CapsuleRoundNearest)
+            > 0.5;
         let shape_active = brush.shape_silhouette_active(shape_image.is_some()) && !cerdas;
         // The artist's GRAIN replaces the engine's bristle texture (W2.4).
         // The bristle IS the fluid's default grain, so an armed Grain slot
@@ -265,28 +270,26 @@ impl PainterTool {
         // sub-dabs, oldest first, at least one engine cell apart: the deposit gates each against the
         // paper (`trail/deposit.rs::cell`), so only the sub-dabs themselves lay the dense stroke —
         // a capsule composed host-side either dilutes under the gate or widens past it (measured).
-        // `k` conta os sub-dabs de trás para a frente (o `0` é o próprio dab); `passo` é o sub-passo NATURAL (o da
-        // janela do rasto, que conta dabs: o arredondado a 2 células virava-a, doc 51 §4) e o arredondado (o arco que
-        // cada sub-dab representa), com cápsula. O sub-passo é o do raio do PINCEL — o do dab traz a pressão e a
-        // caneta deitada (×3,3), e o traçador sempre espaçou pelo do pincel.
-        let natural = {
-            let n = ph2d_painter_brush::capsula::sub_passo_px_a(
-                brush.clamped_radius(),
-                sub_da_capsula,
-            );
-            if tecto_da_capsula > 0.0 { n.min(tecto_da_capsula) } else { n }
+        // `k` conta os sub-dabs de trás para a frente (o `0` é o próprio dab); `passo` é o sub-passo (o arco que cada
+        // sub-dab representa), com cápsula. O sub-passo é o do raio do PINCEL — o do dab traz a pressão e a caneta
+        // deitada (×3,3), e o traçador sempre espaçou pelo do pincel.
+        let sub = {
+            let n = ph2d_painter_brush::capsula::sub_passo_px_a(brush.clamped_radius(), sub_da_capsula);
+            let n = if tecto_da_capsula > 0.0 { n.min(tecto_da_capsula) } else { n };
+            let cel = f32::from(ratio).max(1.0);
+            if mais_perto {
+                ph2d_painter_brush::capsula::sub_passo_mais_perto(n, cel)
+            } else {
+                ph2d_painter_brush::capsula::sub_passo_sem_batimento(n, cel)
+            }
         };
-        let sub = ph2d_painter_brush::capsula::sub_passo_sem_batimento(
-            natural,
-            f32::from(ratio).max(1.0),
-        );
-        let sub_dabs: Vec<(usize, u64, Option<[f32; 2]>, Dab)> = dabs
+        let sub_dabs: Vec<(usize, u64, Option<f32>, Dab)> = dabs
             .iter()
             .enumerate()
             .flat_map(|(i, d)| {
                 let s = ph2d_painter_brush::capsula::sub_dabs(d, sub);
                 let n = s.len() as u64;
-                let passo = (d.step != [0.0, 0.0]).then_some([natural, sub]);
+                let passo = (d.step != [0.0, 0.0]).then_some(sub);
                 s.into_iter()
                     .enumerate()
                     .map(move |(j, s)| (i, n - 1 - j as u64, passo, s))
@@ -324,8 +327,9 @@ impl PainterTool {
                 match lane {
                     Some(i) => {
                         if wet_tool.uses_lanes() {
-                            let corda = passo.map_or(best.sqrt(), |[natural, _]| natural);
-                            let chord = grid_map::px_len_to_cell(f64::from(corda), ratio);
+                            // A janela do rasto anda pela CORDA entre centros: pelo sub-passo antes de arredondar, o
+                            // dab do resto pesava um sub-passo inteiro — a escada do Oil Bristle a 103 px (doc 51 §4).
+                            let chord = grid_map::px_len_to_cell(f64::from(best.sqrt()), ratio);
                             sess.engine.direct_segment(i, chord);
                         }
                         i
@@ -692,7 +696,7 @@ impl PainterTool {
                 );
                 // A borracha tira também o relevo que houver (sem o campo, nada a tirar).
                 if !sess.engine.active_grid().altura.is_empty() {
-                    let passos = passo.map_or(1.0, |[_, s]| f64::from(s) / px_cel);
+                    let passos = passo.map_or(1.0, |s| f64::from(s) / px_cel);
                     sess.engine
                         .pentear_relevo(cell_x, cell_y, meia, &sil, &|_, _| 0.0, passos);
                 }

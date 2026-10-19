@@ -64,6 +64,12 @@ pub const SPACING_DA_FABRICA: f64 = 0.1;
 /// mantém a tinta do Express Oil e da Acrylic Round com os dabs mais esparsos.
 const PASSO_DOS_OLEOS: f64 = 0.01;
 
+/// Os secos de GRÃO (Graphite, Charcoal, Soft Pastel, Oil Pastel) e o Airbrush arredondam o sub-passo da cápsula ao
+/// inteiro mais perto (`capsula::sub_passo_mais_perto`): para baixo, a 40 px os de grão passavam dos 16,7 ms por
+/// quadro (o Oil Pastel 10,3 → 20,2 ms) e o grão não o pede (Graphite 8,69 nos dois); o PÓ do Airbrush sorteia-se por
+/// dab, e o dobro de dabs dilui-o (a 31 px a textura 22,3 → 16,4, Rebelle 23,5) — doc 51 §4.
+const MAIS_PERTO: (&str, f64) = ("capsuleRoundNearest", 1.0);
+
 /// A tela direita, com o dial guardado no meio e para baixo (para quando o artista a ligar).
 pub const DIREITA: Tilt = Tilt {
     on: false,
@@ -341,6 +347,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("tiltSmooth", 0.0),
             ("tiltLength", 3.3),
             ("tiltLag", 170.0),
+            MAIS_PERTO,
         ],
         grao: Some(("Noise", 32.0)),
         achatado: None,
@@ -368,7 +375,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.1,
         size_px: Some(37.0),
-        extras: &[("felt", 0.0), ("drag", 0.02)],
+        extras: &[("felt", 0.0), ("drag", 0.02), MAIS_PERTO],
         grao: Some(("Noise", 48.0)),
         achatado: None,
         pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2")],
@@ -393,7 +400,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.2,
         size_px: Some(29.0),
-        extras: &[("felt", 0.0), ("drag", 0.0)],
+        extras: &[("felt", 0.0), ("drag", 0.0), MAIS_PERTO],
         grao: Some(("Noise", 100.0)),
         achatado: None,
         pincel: &[],
@@ -421,7 +428,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.0,
         size_px: Some(77.0),
-        extras: &[("felt", 0.0), ("drag", 0.05)],
+        extras: &[("felt", 0.0), ("drag", 0.05), MAIS_PERTO],
         grao: Some(("Noise", 100.0)),
         achatado: None,
         pincel: &[("jitter", "0.1")],
@@ -568,6 +575,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[
             ("drag", 0.0),
             ("dust", 0.8),
+            MAIS_PERTO,
             ("pressureSize", 0.5),
             ("pressureOpacity", 1.0),
             ("pressureOpacityCurve", 1.5),

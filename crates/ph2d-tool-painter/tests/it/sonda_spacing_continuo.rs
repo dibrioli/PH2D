@@ -58,7 +58,7 @@ pub(super) fn com(mut p: Preset, kv: &str) -> Preset {
 }
 
 /// `sub=F` numa variante: a fracção do sub-passo da cápsula (`capsula::SUB_SPACING` por omissão), nesta thread.
-fn com_sub<R>(kv: &str, f: impl FnOnce() -> R) -> R {
+pub(super) fn com_sub<R>(kv: &str, f: impl FnOnce() -> R) -> R {
     let sub = kv
         .split(',')
         .find_map(|x| x.strip_prefix("sub="))
@@ -66,7 +66,7 @@ fn com_sub<R>(kv: &str, f: impl FnOnce() -> R) -> R {
     ph2d_painter_brush::capsula::com_lei(ph2d_painter_brush::capsula::Lei::Uniao, sub, f)
 }
 
-fn variantes() -> Vec<(String, String)> {
+pub(super) fn variantes() -> Vec<(String, String)> {
     env("PH2D_SONDA_VARIANTES", VARIANTES)
         .split('|')
         .map(|s| {

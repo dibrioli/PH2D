@@ -180,10 +180,20 @@ pub fn sub_passo_px_a(raio: f32, fracao: f32) -> f32 {
 /// ⭐ **O sub-passo que não BATE com a grelha** (doc 51 §3): o sub-passo dos sub-dabs SOLTOS ([`sub_dabs`]) é um
 /// número INTEIRO de células `celula_px`. Um passo fraccionário bate com elas: abaixo de 2 células num período
 /// `1 ÷ (1 − 1/passo)` (o Oil Bristle a 41 px, 1,3 px pelo lado fino: 4,2 px; o Express Oil, ~1,1 px: 8,1 px — os
-/// medidos), e a escada do Oil Bristle a 103 px lê 3,06 a 2,06 px contra 2,24 a 2,0. Até 1,25 células é uma (nunca
-/// mais de 25 % de dabs: a 1,5 os pincéis com grão a 40 px passavam dos 16,7 ms por quadro); daí, a mais perto.
+/// medidos), e a escada do Oil Bristle a 103 px lê 3,06 a 2,06 px contra 2,24 a 2,0. ⭐ Arredondado para BAIXO: o
+/// traço contínuo nunca fica mais ralo que o natural — a 1,5 → 2 células o Marker a 30 px clareava o miolo 4,01 % e o
+/// Dip Pen não escurecia a 3.ª camada (doc 51 §4). O custo dobra onde o natural cai em `[1,25, 2)`: quem não o paga
+/// (os secos de grão a 40 px, 20 ms por quadro) pede [`sub_passo_mais_perto`].
 #[must_use]
 pub fn sub_passo_sem_batimento(sub_px: f32, celula_px: f32) -> f32 {
+    (sub_px / celula_px).floor().max(1.0) * celula_px
+}
+
+/// [`sub_passo_sem_batimento`] pelo inteiro mais PERTO (até 1,25 células é uma: nunca mais de 25 % de dabs) — a lei
+/// de antes do doc 51 §4, a dos pincéis secos de grão (`capsuleRoundNearest`): arredondado para baixo, o Oil Pastel
+/// a 40 px ia de 10,3 a 20,2 ms por quadro, o Charcoal a 18,0, o Soft Pastel a 17,4.
+#[must_use]
+pub fn sub_passo_mais_perto(sub_px: f32, celula_px: f32) -> f32 {
     let n = sub_px / celula_px;
     if n < 1.25 {
         celula_px
@@ -349,6 +359,9 @@ pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
                     if l > 1e-6 { [v[0] / l, v[1] / l] } else { f }
                 };
                 s.radius_px = lerp(d.radius_px, b.radius_px);
+                if let Some(j) = b.salto {
+                    s.center = salto_do_sub_dab(s.center, &j, m, s.radius_px / d.radius_px.max(1e-6));
+                }
                 s.coverage = lerp(d.coverage, b.coverage);
                 s.rotation = nlerp(d.rotation, b.rotation);
                 // An unset heading stays unset (the rotor reads it as the identity).
@@ -361,6 +374,19 @@ pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
         .collect()
 }
 
+/// O centro de um sub-dab com o SEU Jitter ([`Salto`]): tira o desvio do dab da frente e sorteia outro no disco,
+/// pelo fluxo splitmix do Jitter semeado pelo desvio da frente e pelo múltiplo `m` do sub-passo — determinístico.
+fn salto_do_sub_dab(c: [f32; 2], j: &Salto, m: i64, razao_do_raio: f32) -> [f32; 2] {
+    let alcance = if j.por_raio { j.alcance * razao_do_raio } else { j.alcance };
+    let mut rng = (u64::from(j.desvio[0].to_bits()) << 32 | u64::from(j.desvio[1].to_bits()))
+        ^ (m as u64).wrapping_mul(0xD1B5_4A32_D192_ED03);
+    let (dx, dy) = crate::jitter::disc_sample(&mut rng);
+    [
+        c[0] - j.desvio[0] + dx * alcance,
+        c[1] - j.desvio[1] + dy * alcance,
+    ]
+}
+
 /// The per-dab state a capsule interpolates back to ([`Dab::ante`]): what the previous dab of the path
 /// was, beside its centre. Orientation vectors transform with the dab under Symmetry.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -370,6 +396,21 @@ pub struct Ante {
     pub dir: [f32; 2],
     pub rotation: [f32; 2],
     pub arc_len: f32,
+    /// O Jitter de posição do dab da FRENTE ([`Salto`]); `None` = sem Jitter.
+    pub salto: Option<Salto>,
+}
+
+/// ⭐ **O Jitter de posição de um dab** — o que [`sub_dabs`] precisa para que cada sub-dab tire o SEU, como o
+/// traçador faria se pousasse um dab ali (doc 51 §4): sem isto os sub-dabs eram o dab da frente transladado pelo
+/// caminho, todos com o MESMO desvio (o traço liso entre saltos a cada Spacing — a textura do Graphite 8,77 → 7,74).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Salto {
+    /// O desvio que o dab da frente levou (`center − ponto do caminho`).
+    pub desvio: [f32; 2],
+    /// O raio do disco do desvio no dab da frente, px.
+    pub alcance: f32,
+    /// O alcance escala com o raio do dab (`JitterUnit::Brush`); `false` = px de ecrã (`View`).
+    pub por_raio: bool,
 }
 
 impl Ante {
@@ -382,6 +423,7 @@ impl Ante {
             dir: d.dir,
             rotation: d.rotation,
             arc_len: d.arc_len,
+            salto: None,
         }
     }
 
@@ -391,6 +433,10 @@ impl Ante {
         Self {
             dir: f(self.dir),
             rotation: f(self.rotation),
+            salto: self.salto.map(|j| Salto {
+                desvio: f(j.desvio),
+                ..j
+            }),
             ..self
         }
     }

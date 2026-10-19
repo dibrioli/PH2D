@@ -241,8 +241,73 @@ pub(super) fn de_fabrica(nome: &str) -> Preset {
         .preset
 }
 
+/// As tiragens do PÓ em que se medem as [`FamiliaC::pontas`] de um meio com pó (a mediana): numa só a régua mede a
+/// sorte — o Airbrush de fábrica lia 0,596 a 1,028 por semente, e o de antes da regra 0,540 a 0,783 (doc 51 §4).
+const TIRAGENS_DO_PO: u64 = 7;
+
 pub(super) fn cena_seca(p: &Preset, raio: f32, ficheiros: &[String]) -> (Medida, FamiliaC) {
+    let com_po = p.parametros.engine.get("dust").is_some_and(|&d| d > 0.0);
+    let (m, mut c) = cena_seca_semente(p, raio, ficheiros, 0);
+    if com_po {
+        let mut v: Vec<f64> = std::thread::scope(|s| {
+            let hs: Vec<_> = (1..TIRAGENS_DO_PO)
+                .map(|k| s.spawn(move || cena_seca_semente(p, raio, &[], k).1.pontas))
+                .collect();
+            hs.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        v.push(c.pontas);
+        v.sort_by(f64::total_cmp);
+        c.pontas = v[v.len() / 2];
+    }
+    (m, c)
+}
+
+/// SONDA (doc 51 §4): as pontas de cada tiragem de `PH2D_SONDA_PRESETS` (por omissão o Airbrush) e das variantes
+/// (`PH2D_SONDA_VARIANTES`, a régua de `sonda_spacing_continuo`) — `PH2D_SONDA_TIRAGENS` sementes (21).
+#[test]
+#[ignore = "sonda: as pontas por tiragem do pó; corre-se à mão"]
+fn sonda_as_pontas_por_tiragem() {
+    use super::sonda_spacing_continuo::{com, com_sub, variantes};
+    let n: u64 = std::env::var("PH2D_SONDA_TIRAGENS").map_or(21, |v| v.parse().unwrap());
+    let nomes = std::env::var("PH2D_SONDA_PRESETS").unwrap_or_else(|_| "Airbrush".to_owned());
+    for nome in nomes.split(',') {
+        let raio = raio_da_midia(nome).unwrap();
+        for (vn, kv) in variantes() {
+            let t: Vec<[f64; 5]> = std::thread::scope(|s| {
+                let hs: Vec<_> = (0..n)
+                    .map(|k| {
+                        let kv = &kv;
+                        s.spawn(move || {
+                            com_sub(kv, || {
+                                let (m, c) = cena_seca_semente(&com(de_fabrica(nome), kv), raio, &[], k);
+                                [c.pontas, c.rampa, c.rampa_cob, m.textura, m.cobertura]
+                            })
+                        })
+                    })
+                    .collect();
+                hs.into_iter().map(|h| h.join().unwrap()).collect()
+            });
+            let med = |i: usize| {
+                let mut v: Vec<f64> = t.iter().map(|x| x[i]).collect();
+                v.sort_by(f64::total_cmp);
+                v[v.len() / 2]
+            };
+            println!(
+                "[pontas] {nome}@{vn}: pontas {:.3} · rampa {:.3} · rampa_cob {:.3} · textura {:.2} · cobertura {:.3} (medianas de {n})",
+                med(0),
+                med(1),
+                med(2),
+                med(3),
+                med(4)
+            );
+        }
+    }
+}
+
+/// [`cena_seca`] numa tiragem só: os traços a partir da semente `semente` (`0` = a do produto).
+fn cena_seca_semente(p: &Preset, raio: f32, ficheiros: &[String], semente: u64) -> (Medida, FamiliaC) {
     let mut t = tela();
+    t.set_semente_dos_tracos(semente);
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
     t.set_brush_size_px(raio);

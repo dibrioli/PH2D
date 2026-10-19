@@ -220,6 +220,12 @@ impl PainterTool {
         self.paint.wetpaint.relogio_fixo = ligado.then_some(0.0);
     }
 
+    /// **A semente do PRÓXIMO traço** (cada traço tira a sua e avança-a): os gates que medem um meio SORTEADO (o
+    /// pó do Airbrush) pela mediana de várias tiragens — uma só mede a sorte (doc 51 §4: as pontas 0,54 a 1,03).
+    pub fn set_semente_dos_tracos(&mut self, semente: u64) {
+        self.paint.seed = semente;
+    }
+
     /// **O worker da água num ritmo escrito** ([`fita::RitmoDaAgua`]) — para os gates que gravam a água
     /// NO worker e precisam da mesma gravação duas vezes. Vale para as sessões que nascerem.
     pub fn set_wet_ritmo_de_teste(&mut self, ritmo: Option<fita::RitmoDaAgua>) {

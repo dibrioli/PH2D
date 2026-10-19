@@ -51,11 +51,15 @@ fn os_sub_dabs_caem_nos_pontos_do_traco_denso() {
     assert!(arcos(dab(14.5, 0.4, 14.5)).is_empty());
     let s = sub_dabs(&dab(10.3, 4.1, 10.3), 1.0);
     assert!((s[0].center[0] - 7.0).abs() < 1e-4, "o centro anda com o arco: {}", s[0].center[0]);
-    assert_eq!(sub_passo_sem_batimento(1.2, 1.0), 1.0);
-    assert_eq!(sub_passo_sem_batimento(1.3, 1.0), 2.0);
+    assert_eq!(sub_passo_sem_batimento(0.6, 1.0), 1.0);
+    assert_eq!(sub_passo_sem_batimento(1.5, 1.0), 1.0);
     assert_eq!(sub_passo_sem_batimento(2.06, 1.0), 2.0);
-    assert_eq!(sub_passo_sem_batimento(2.575, 1.0), 3.0);
-    assert_eq!(sub_passo_sem_batimento(2.4, 2.0), 2.0);
+    assert_eq!(sub_passo_sem_batimento(2.575, 1.0), 2.0);
+    assert_eq!(sub_passo_sem_batimento(4.4, 2.0), 4.0);
+    assert_eq!(sub_passo_mais_perto(1.2, 1.0), 1.0);
+    assert_eq!(sub_passo_mais_perto(1.3, 1.0), 2.0);
+    assert_eq!(sub_passo_mais_perto(2.575, 1.0), 3.0);
+    assert_eq!(sub_passo_mais_perto(2.4, 2.0), 2.0);
 }
 
 #[test]
@@ -376,6 +380,7 @@ fn o_sub_dab_leva_o_estado_interpolado() {
             dir: [1.0, 0.0],
             rotation: [1.0, 0.0],
             arc_len: 90.0,
+            salto: None,
         }),
         tilt: None,
     };

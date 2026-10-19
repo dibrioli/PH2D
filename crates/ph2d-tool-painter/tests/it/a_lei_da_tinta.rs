@@ -21,30 +21,31 @@ const RAIO_DA_CENA: f32 = 18.0;
 /// opacidade refeitos pela lei do 45 por ORDEM DO DONO (o Airbrush «como no Rebelle», a rampa dos Flats).
 #[rustfmt::skip]
 const CENAS: [(&str, bool, u64); 22] = [
-    ("Wet Round", false, 0xfce64c9627dc5bc3),
-    ("Wet Wash", false, 0x782a0a8a8ed9c439),
-    ("Wet Dry Brush", false, 0x1a361614679dde9a),
-    ("Wet Drip", false, 0x8159963aa484f688),
-    ("Wet Liner", false, 0x27defb305741fea9),
+    ("Wet Round", false, 0x8e37a39e8ee2ba79),
+    ("Wet Wash", false, 0x5ed11e4a3f39a42a),
+    ("Wet Dry Brush", false, 0xf45f7dcaa32eb88e),
+    ("Wet Drip", false, 0x6ad975ec85398727),
+    ("Wet Liner", false, 0x859efc54fe6e2c43),
     // Os dois com os FIOS da W2 (prompt 48, doc 48_medicao): repinados pela lei nova; os outros 20 ao bit.
     // O Oil Bristle repintado pelo relevo sem escada (W3b, prompt 50, doc 50_medicao): os outros 21 ao bit.
-    ("Oil Bristle", false, 0x363fa46c11df0df7),
-    ("Acrylic Round", false, 0xfea6bfd5e31bf152),
-    ("Express Oil", false, 0x3ea45be91259a403),
-    ("Graphite 8B", false, 0x55368fbf0685ad46),
-    ("Charcoal", false, 0x3b6500d86d772fd6),
-    ("Soft Pastel", false, 0xf99dd413f5f0218e),
-    ("Oil Pastel", false, 0x235fe3c132334588),
-    ("Ink Bullet", false, 0x7d8b4981994b64c6),
-    ("Dip Pen", false, 0xff9830389709ba89),
-    ("Ink Brush", false, 0x7a0e448f92965f65),
-    ("Marker Bullet", false, 0xe8d6f9b5bef7d373),
-    ("Marker Liner", false, 0x1bdda019316e5682),
-    ("Airbrush", false, 0xabb7061c5ea4a58d),
-    ("Wet Flat", false, 0x036ebd6ea49c35f9),
-    ("Gouache Flat", false, 0x2c9e4acf585fcb33),
-    ("Wet Round", true, 0x44016d14e50f2119),
-    ("Wet Liner", true, 0x7a276b4a53ec4531),
+    // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao).
+    ("Oil Bristle", false, 0x592c76da31d74d9a),
+    ("Acrylic Round", false, 0x8fe9c191fd86da3e),
+    ("Express Oil", false, 0x1a4242fb3b647301),
+    ("Graphite 8B", false, 0xd4b17df14c029182),
+    ("Charcoal", false, 0xd747450876d66163),
+    ("Soft Pastel", false, 0x26c1e0eaa688cca3),
+    ("Oil Pastel", false, 0xb6c9a7d0531a11da),
+    ("Ink Bullet", false, 0x14d775b3c1e596c5),
+    ("Dip Pen", false, 0xc5173ca575b542c7),
+    ("Ink Brush", false, 0xaa050aac7669ab08),
+    ("Marker Bullet", false, 0xc611a541909b7ef8),
+    ("Marker Liner", false, 0xfc33512d965f3020),
+    ("Airbrush", false, 0xd9409347de15522b),
+    ("Wet Flat", false, 0x270ceb734f4d9aea),
+    ("Gouache Flat", false, 0x6111ea627d99cff5),
+    ("Wet Round", true, 0xab51e31b5a6e8cb0),
+    ("Wet Liner", true, 0xc2fd88e64e7098c4),
 ];
 
 fn cena(preset: &str, obra: bool) -> u64 {
@@ -839,6 +840,40 @@ fn a_terceira_camada_da_mesma_tinta_nao_clareia() {
             claro < pura * 1.04,
             "{nome}: uma camada só mais clara que a tinta — p95 {claro:.4} contra {pura:.4}"
         );
+    }
+}
+
+/// SONDA (handoff P51 §4.2): as medianas de [`a_terceira_camada_da_mesma_tinta_nao_clareia`] por variante
+/// (`PH2D_SONDA_VARIANTES`, a régua de `sonda_spacing_continuo`), todas no MESMO processo.
+#[test]
+#[ignore = "sonda: a 3.ª camada por variante (prompt 51); corre-se à mão"]
+fn sonda_a_terceira_camada_por_variante() {
+    use super::sonda_spacing_continuo::{com, com_sub, variantes};
+    let vs = variantes();
+    let linhas: Vec<String> = std::thread::scope(|s| {
+        let hs: Vec<_> = [("Marker Bullet", 30.0), ("Dip Pen", 28.5)]
+            .into_iter()
+            .flat_map(|(nome, raio)| {
+                vs.iter().map(move |(vn, kv)| {
+                    s.spawn(move || {
+                        com_sub(kv, || {
+                            let p = com(de_fabrica(nome), kv);
+                            let hw = meia_largura(&p, raio);
+                            let [(_, tracos), _] = cenas_das_camadas_(hw);
+                            let (px, w, h) =
+                                pinta_camadas(&p, raio, &tracos, &[1800, 0, 0], 1800, |_, _| {});
+                            let por = luzes_por_camadas(&px, w, h, &tracos, hw);
+                            let med: Vec<f64> = por[1..].iter().map(|v| quantil(v, 0.5)).collect();
+                            format!("[camadas] {nome}@{vn}: medianas {med:.4?} · p95 {:.4}", quantil(&por[1], 0.95))
+                        })
+                    })
+                })
+            })
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    for l in linhas {
+        println!("{l}");
     }
 }
 

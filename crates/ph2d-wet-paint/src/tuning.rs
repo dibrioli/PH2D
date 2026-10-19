@@ -154,9 +154,12 @@ pub enum Knob {
     /// O tecto do sub-passo da cápsula em px (`0` = nenhum): os fios do Oil Bristle têm largura em px, e a 103 px a
     /// escada lê 2,24 a 2 px contra 4,71 a 3 (doc 51 §3).
     CapsuleMaxPx,
+    /// O sub-passo da cápsula pelo inteiro de células mais PERTO em vez de para BAIXO (`1`;
+    /// `capsula::sub_passo_mais_perto`): os pincéis secos de grão, onde o de baixo dobra o custo (doc 51 §4).
+    CapsuleRoundNearest,
 }
 
-pub const KNOB_COUNT: usize = 88;
+pub const KNOB_COUNT: usize = 89;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

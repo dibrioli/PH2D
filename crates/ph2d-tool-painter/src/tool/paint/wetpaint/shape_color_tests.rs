@@ -113,14 +113,16 @@ pub(super) fn cena(n: usize) -> PainterTool {
 
 /// As cenas com a secção DESLIGADA e as impressões delas, tiradas no `f6d501defb` (antes da Shape
 /// Color no Wet Paint). A cena 5 (o modo TOM, secção ligada) saiu: o tom não agia no Wet Paint (a LUT
-/// nunca era assada nesta rota) e agora age — [`o_tom_da_shape_age_no_wet_paint`].
+/// nunca era assada nesta rota) e agora age — [`o_tom_da_shape_age_no_wet_paint`]. Repintadas pela regra do prompt 51
+/// (Spacing 0,1 + Continuous no pincel de omissão): a 1 e a 2 (Spacing 1,5 com Continuous) coincidem — com a cápsula o
+/// Spacing já não muda o traço, que é a lei (doc 51).
 const HOJE: [(usize, u64); 6] = [
-    (0, 0x73f7_9de2_f437_ef58),
-    (1, 0x0138_746a_c4e6_86d1),
-    (2, 0x6e8a_9c8f_6636_7281),
-    (3, 0x0157_c28e_024d_a8de),
-    (4, 0x0138_746a_c4e6_86d1),
-    (6, 0xb3e4_1616_d447_4895),
+    (0, 0x1d86_41c5_28a4_cbcf),
+    (1, 0x29b7_ef6b_8902_4e43),
+    (2, 0x29b7_ef6b_8902_4e43),
+    (3, 0xfa55_efd8_688f_c815),
+    (4, 0x29b7_ef6b_8902_4e43),
+    (6, 0x1d29_1d25_2021_b078),
 ];
 
 /// ⭐ **A SECÇÃO DESLIGADA É O TRAÇO DE HOJE AO BYTE** (o portão de identidade do prompt 41, nascido

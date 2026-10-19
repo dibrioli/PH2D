@@ -109,7 +109,7 @@ fn o_po_e_do_pixel() {
 /// lê esse fluxo) pinta a cena de antes ao byte — o ramo do pó não é tomado com `dust` a 0.
 #[test]
 fn sem_po_o_fluxo_do_pincel_nao_anda() {
-    const ANTES: u64 = 0xe46b5298b22b5e69;
+    const ANTES: u64 = 0x7c3d28847e073ded;
     let mut p = de_fabrica("Soft Pastel");
     let tex = p.parametros.brush.get_mut("texture").unwrap();
     tex["mapping"] = serde_json::json!("Random");

@@ -26,12 +26,12 @@ const AGUAS: [f64; 4] = [1.0, 0.7, 0.4, 0.2];
 /// outra vez a 11/10 pela ordem do dono «a tinta já em sua cor real» (a célula molhada desenha-se com a lei
 /// SECA — as três cenas com tinta ainda molhada na foto mudaram; as opções continuam a não mexer um byte).
 const ESPERADO: [(&str, Option<u8>, u64); 6] = [
-    ("S", None, 0x1697_0655_9499_dc8f),
-    ("S", Some(4), 0xb369_af97_a7d8_ecb2),
-    ("S", Some(8), 0x5a03_1b86_0d9d_8174),
-    ("bancada", None, 0xf0c0_ab2b_07d8_7962),
-    ("bancada", Some(4), 0xd1a8_1816_36de_4245),
-    ("bancada", Some(8), 0xf851_1cce_9111_13c5),
+    ("S", None, 0x0c40_166e_7ff6_349e),
+    ("S", Some(4), 0x22c0_2335_8ed1_8846),
+    ("S", Some(8), 0xcc1f_3e85_9945_2d2f),
+    ("bancada", None, 0xd2b1_6237_cdc7_cf56),
+    ("bancada", Some(4), 0x35ba_eaf8_e89b_b371),
+    ("bancada", Some(8), 0xca21_be05_b952_3af7),
 ];
 
 #[test]

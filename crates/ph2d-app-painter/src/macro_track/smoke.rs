@@ -161,17 +161,20 @@ pub fn monta_fazer(
     Some(bits)
 }
 
-/// As cenas `=4` (o tutorial) e `=6` (o caminho do dono, [`super::caminho`]; a variante `arrasta` fica em
-/// Digital) pintam em Wet Paint: o meio no 1.º bind, uma vez (como as cenas do pincel).
+/// As cenas `=4` (o tutorial) e `=6` (o caminho do dono, [`super::caminho`]; as variantes `arrasta` e
+/// `cruza` ficam em Digital) pintam em Wet Paint: o meio no 1.º bind, uma vez (como as cenas do pincel).
 pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static ARMADO: AtomicBool = AtomicBool::new(false);
     let cena = std::env::var("PH2D_MACRO_SMOKE");
-    // O `meio` escolhe o Wet Paint depois de Gravar; o `arrasta` pinta em Digital, como a `=5` do dono.
+    // O `meio` escolhe o Wet Paint depois de Gravar; o `arrasta` pinta em Digital, como a `=5` do dono,
+    // e o `cruza` também (W10: a marca mede a força do Digital; o Wet Paint fica com a marca cheia).
     let meio_depois = cena.as_deref() == Ok("6")
         && matches!(
             super::caminho::variante(),
-            super::caminho::Variante::Meio | super::caminho::Variante::Arrasta
+            super::caminho::Variante::Meio
+                | super::caminho::Variante::Arrasta
+                | super::caminho::Variante::Cruza
         );
     if !matches!(cena.as_deref(), Ok("4" | "6"))
         || meio_depois

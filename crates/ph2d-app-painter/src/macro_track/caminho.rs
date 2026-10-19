@@ -291,14 +291,16 @@ pub fn anuncio(conduz: bool) -> String {
         Variante::SemRewind => "Stop, then Play in the Timeline's Keys tab (no Rewind)",
         _ => "Stop, Rewind and Play in the Timeline's Keys tab",
     };
-    let meio = if variante() == Variante::Meio {
-        "Wet Paint"
-    } else {
+    // O meio em que a cena pinta (`smoke::arm_brush_once`): Digital só no `arrasta` e no `cruza`.
+    let meio = if matches!(variante(), Variante::Arrasta | Variante::Cruza) {
         "Digital"
+    } else {
+        "Wet Paint"
     };
     let fim = if variante() == Variante::Cruza {
         "Stop, one vertical stroke over both, then Rewind and Play in the Timeline's Keys tab. While it \
-         plays the vertical stroke must stay whole — no white gaps where the recorded strokes cross it"
+         plays the vertical stroke must stay whole and clean — no white gaps and no dark knots where it \
+         crosses a recorded stroke that has not appeared yet"
     } else {
         fim
     };

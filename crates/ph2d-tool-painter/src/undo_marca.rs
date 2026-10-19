@@ -1,12 +1,15 @@
 //! **A marca do artista na história do Painter** (W9, `docs/Macros/07_plano_W9.md`) — filho de
 //! [`super`]. Cada passo REGISTADO marca o que o artista escreveu: os texels que o passo mudou, salvo os
 //! que só a água mudou; os que o pincel cobriu e mudaram (mesmo que a água também os tenha mudado); e os
-//! que o pincel cobriu DENTRO da água (o Wet Paint), mudados ou não. A água que corre sozinha não é
-//! passo; a reescrita da macro e o «Recomeçar» suspendem a marca. O desfazer desliga o que o passo ligou.
+//! que o pincel cobriu DENTRO da água (o Wet Paint), mudados ou não; e o MIOLO do pincel (força ≥ ½,
+//! [`crate::macro_track::forca`]), mudado ou não — tinta sobre o que já era o resultado. A água que corre
+//! sozinha não é passo; a reescrita da macro e o «Recomeçar» suspendem a marca. O desfazer desliga o que
+//! o passo ligou.
 
 use super::{ModelSnapshot, UndoController, UndoEntry};
 use crate::compositor::Region;
 use crate::layers::LayerId as RtLayerId;
+use crate::macro_track::forca::ForcaDoPincel;
 use crate::macro_track::marca::{self, DeltaDaMarca, MarcaDoArtista};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -24,6 +27,8 @@ pub(crate) struct MarcaViva {
     na_agua: Vec<u64>,
     /// Os texels que a água mudou desde o último registo.
     agua: Vec<u64>,
+    /// A força com que o pincel cobriu cada texel neste passo: o miolo marca mesmo sem mudar o byte.
+    pub(crate) forca: ForcaDoPincel,
     /// O passo que se regista agora é da macro (a reescrita de uma etapa, o «Recomeçar»).
     pub(crate) suspensa: bool,
 }
@@ -41,6 +46,7 @@ impl MarcaViva {
         self.discos.clear();
         self.na_agua.clear();
         self.agua.clear();
+        self.forca.limpa();
     }
 
     /// Há uma marca a escrever (a imagem tem uma macro).
@@ -147,6 +153,7 @@ impl MarcaViva {
     pub(crate) fn recomeca_os_discos(&mut self) {
         self.tira_o_provisorio();
         self.discos.fill(0);
+        self.forca.limpa();
     }
 
     /// Um passo começa: a água de antes dele já não conta.
@@ -159,6 +166,7 @@ impl MarcaViva {
         self.discos.fill(0);
         self.na_agua.fill(0);
         self.agua.fill(0);
+        self.forca.limpa();
     }
 
     /// Devolve a marca ao que era antes dos discos do passo em curso.
@@ -188,6 +196,11 @@ impl MarcaViva {
         }
         let mut s = vec![0u64; n];
         texels_mudados(before, after, hint, &mut s);
+        let mut miolo = vec![0u64; n];
+        self.forca.liga_o_miolo(&mut miolo, after.canvas_size);
+        for (b, m) in s.iter_mut().zip(&miolo) {
+            *b |= m;
+        }
         for (k, b) in s.iter_mut().enumerate() {
             let agua = self.agua.get(k).copied().unwrap_or(0);
             let disco = self.discos.get(k).copied().unwrap_or(0);

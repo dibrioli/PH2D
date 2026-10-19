@@ -73,6 +73,9 @@ pub enum Variante {
     /// A base, com uma linha POR QUADRO no segundo e meio depois do Parar e, em cada uma, a diferença
     /// entre o que a ranhura mostrou e uma reprodução à parte (`fresca=`).
     Parar,
+    /// O smoke de 19/10: depois do Parar, uma pincelada vertical POR CIMA das duas gravadas; ⏮ e ▷ — a
+    /// vertical fica inteira enquanto as gravadas nascem (sem faixas no miolo delas).
+    Cruza,
 }
 
 /// A variante desta corrida.
@@ -86,6 +89,7 @@ pub fn variante() -> Variante {
         Ok("topo") => Variante::Topo,
         Ok("arrasta") => Variante::Arrasta,
         Ok("parar") => Variante::Parar,
+        Ok("cruza") => Variante::Cruza,
         _ => Variante::Base,
     }
 }
@@ -135,6 +139,12 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
         arrastos(&mut r, para + 800);
         return r;
     }
+    let (rewind, play) = if v == Variante::Cruza {
+        vertical(&mut r, d + para + 500, 0.5, 600);
+        (rewind + 1_200, play + 1_200)
+    } else {
+        (rewind, play)
+    };
     if !matches!(v, Variante::SemRewind | Variante::Topo) {
         r.push((d + rewind, Gesto::Rewind));
     }
@@ -145,6 +155,24 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
     };
     r.push((d + play, play_g));
     r
+}
+
+/// Uma pincelada vertical na coluna `u`, de `v = 0,2` a `0,6` (cruza as duas gravadas), de `t0` (ms).
+fn vertical(r: &mut Vec<(u64, Gesto)>, t0: u64, u: f32, dura: u64) {
+    let passos = dura / PASSO_MS;
+    for i in 0..=passos {
+        #[expect(clippy::cast_precision_loss, reason = "poucos passos")]
+        let v = 0.2 + 0.4 * (i as f32 / passos as f32);
+        r.push((
+            t0 + i * PASSO_MS,
+            if i == 0 {
+                Gesto::Desce([u, v])
+            } else {
+                Gesto::Move([u, v])
+            },
+        ));
+    }
+    r.push((t0 + dura + PASSO_MS, Gesto::Sobe));
 }
 
 /// Os saltos do dono a cada 1,5 s (para trás e para a frente, dois a meio de uma pincelada), depois um
@@ -263,8 +291,19 @@ pub fn anuncio(conduz: bool) -> String {
         Variante::SemRewind => "Stop, then Play in the Timeline's Keys tab (no Rewind)",
         _ => "Stop, Rewind and Play in the Timeline's Keys tab",
     };
+    let meio = if variante() == Variante::Meio {
+        "Wet Paint"
+    } else {
+        "Digital"
+    };
+    let fim = if variante() == Variante::Cruza {
+        "Stop, one vertical stroke over both, then Rewind and Play in the Timeline's Keys tab. While it \
+         plays the vertical stroke must stay whole — no white gaps where the recorded strokes cross it"
+    } else {
+        fim
+    };
     format!(
-        "the app does the path by itself — Record, two Wet Paint strokes, {fim} ({:?}). Do not touch \
+        "the app does the path by itself — Record, two {meio} strokes, {fim} ({:?}). Do not touch \
          the mouse for 15 s. Watch the canvas after Play: the top stroke must appear first and the lower \
          one about 1.5 s later. This log is also written to {}",
         variante(),
@@ -481,6 +520,7 @@ mod tests {
             Variante::Topo,
             Variante::Arrasta,
             Variante::Parar,
+            Variante::Cruza,
         ] {
             let r = roteiro(v);
             assert!(
@@ -493,9 +533,17 @@ mod tests {
                 .filter(|&i| matches!(r[i].1, Gesto::Desce(_)))
                 .collect();
             let sobe: Vec<usize> = (0..r.len()).filter(|&i| r[i].1 == Gesto::Sobe).collect();
-            assert_eq!((desce.len(), sobe.len()), (2, 2), "{v:?}: duas pinceladas");
+            let n = if v == Variante::Cruza { 3 } else { 2 };
+            assert_eq!((desce.len(), sobe.len()), (n, n), "{v:?}: as pinceladas");
             assert!(grava < desce[0] && desce[0] < sobe[0] && sobe[0] < desce[1]);
             assert!(sobe[1] < para, "{v:?}: Parar depois da 2.ª pincelada");
+            if v == Variante::Cruza {
+                let rw = pos(Gesto::Rewind).unwrap();
+                assert!(
+                    para < desce[2] && sobe[2] < rw,
+                    "{v:?}: a vertical entre o Parar e o ⏮"
+                );
+            }
             let arrasta = r.iter().filter(|(_, g)| matches!(g, Gesto::Arrasta(_)));
             let fim = if v == Variante::Arrasta {
                 // Saltos para trás depois do Parar, todos dentro do clipe.

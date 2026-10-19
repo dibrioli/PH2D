@@ -11,6 +11,7 @@
 
 pub mod em_cena;
 pub mod etapas;
+pub(crate) mod forca;
 pub mod inicial;
 pub mod instantaneos;
 pub mod marca;
@@ -29,6 +30,8 @@ mod custo_w5e_tests;
 mod etapas_tests;
 #[cfg(test)]
 mod fim_tests;
+#[cfg(test)]
+mod marca_cobertura_tests;
 #[cfg(test)]
 mod marca_painter_tests;
 #[cfg(test)]

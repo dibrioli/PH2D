@@ -4,7 +4,8 @@
 
 use super::PainterTool;
 use crate::macro_track::marca::MarcaDoArtista;
-use ph2d_painter_brush::Dab;
+use crate::undo::marca_viva::MarcaViva;
+use ph2d_painter_brush::{BrushSpec, Dab, capsula};
 
 impl PainterTool {
     /// A marca da imagem ligada (`None` = a imagem não tem macro: nada a marcar).
@@ -26,6 +27,31 @@ impl PainterTool {
         for d in dabs {
             let r = d.radius_px * reach + 0.5;
             self.undo.marca.disco(d.center[0], d.center[1], r, na_agua);
+        }
+    }
+}
+
+/// A força com que `dabs` do pincel `spec` cobrem cada texel ([`crate::macro_track::forca`]): o perfil da
+/// ponta × a cobertura × o Flow, cada sub-dab da cápsula; `uniao` = os dabs compõem-se (Accumulate
+/// ligado). Só numa ponta que é o perfil redondo sozinho — uma forma ou um grão recortam-na por píxel e
+/// uma ponta achatada é elipse: o perfil mentiria para cima (aí vale só o que mudou).
+pub(crate) fn marca_a_forca(m: &mut MarcaViva, spec: &BrushSpec, dabs: &[Dab], uniao: bool) {
+    let Some(tamanho) = m.marca.as_ref().map(MarcaDoArtista::tamanho) else {
+        return;
+    };
+    if spec.shape.is_active() || spec.texture.is_active() || !spec.footprint_deform().is_identity()
+    {
+        return;
+    }
+    let flow = spec.flow.clamp(0.0, 1.0);
+    for d in dabs {
+        for s in capsula::sub_dabs(d, capsula::sub_passo_px(d.radius_px)) {
+            let (c, r) = (s.coverage.clamp(0.0, 1.0) * flow, s.radius_px);
+            if c > 0.0 && r > 0.0 {
+                let a = |dist: f32| c * spec.falloff_weight(dist / r);
+                m.forca
+                    .deposita(tamanho, (s.center[0], s.center[1], r), uniao, a);
+            }
         }
     }
 }

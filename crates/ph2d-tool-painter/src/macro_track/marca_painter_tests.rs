@@ -219,8 +219,9 @@ fn a_pincelada_do_artista_marca_onde_o_pincel_passou_e_o_desfazer_a_desliga() {
     );
 }
 
-/// **Um traço Digital (sem água) marca exactamente os texels que mudaram** — a régua é o diff das duas
-/// imagens, à parte.
+/// **Um traço Digital (sem água) sobre o BRANCO marca exactamente os texels que mudaram** — a régua é o
+/// diff das duas imagens, à parte. (Sobre o branco o miolo do pincel está dentro do que mudou; por cima
+/// do que já era o resultado, `marca_cobertura_tests`.)
 #[test]
 fn um_traco_digital_marca_exactamente_o_que_mudou() {
     let mut t = PainterTool::default();

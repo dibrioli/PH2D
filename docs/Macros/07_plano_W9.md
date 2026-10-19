@@ -26,7 +26,7 @@ desfazer (a absorção põe a água da gravação no passo seguinte do artista).
 
 ## 3 — Quem marca (o Painter)
 
-Um passo REGISTADO marca `(mudou ∧ (¬água ∨ disco)) ∨ disco_na_água`:
+Um passo REGISTADO marca `((mudou ∨ miolo) ∧ (¬água ∨ disco)) ∨ disco_na_água`:
 
 - **mudou** — os texels onde algum plano (cor de cada camada, relevo, cobertura, material) difere entre o
   `before` e o `after` do passo; a tela da camada ativa só na janela declarada (`hint`).
@@ -35,6 +35,14 @@ Um passo REGISTADO marca `(mudou ∧ (¬água ∨ disco)) ∨ disco_na_água`:
 - **disco** — o pincel cobriu (`stamp_dabs`, raio × alcance da ponta + ½): o traço sobre a água conta.
 - **disco_na_água** — os dabs que entram no fluido (`stamp_dabs_wetpaint`): a tinta molhada aparece pela
   água, às vezes depois de o passo se registar — marcam sem esperar.
+- **miolo** (smoke do dono 19/10, `macro_track/forca.rs`) — onde o pincel cobriu com força ≥ ½ (perfil da
+  ponta × cobertura × Flow, cada sub-dab da cápsula, compostos `1 − Π(1 − aᵢ)` ou pelo máximo sem
+  Accumulate), mudado ou não. Sem ele, preto sobre o preto que a gravação deixou no fim não mudava o byte,
+  ficava sem marca e o Play abria ali uma faixa da gravação (branca). Medido sem a cura: 136 de 136 texels
+  do miolo sobre a faixa sem marca no Digital e no Watercolor; Impasto (o relevo muda) e Wet Paint (o
+  disco inteiro) já marcavam. ½ é onde os dois erros de uma marca binária se cruzam (mostrar o fim erra
+  pelo que estava por baixo, `1 − a`; mostrar a gravação erra pela tinta, `a`). Ponta com forma, grão ou
+  achatada (elipse): só o que mudou (o perfil redondo mentiria para cima).
 
 Os discos mostram-se já (provisórios: o traço em voo aparece por cima do clipe); o registo decide. A
 reescrita de uma etapa e o «Recomeçar» suspendem a marca (são da macro). O passo leva o delta (bits que

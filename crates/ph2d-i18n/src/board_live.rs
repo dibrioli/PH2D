@@ -207,7 +207,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.elbow.l3" => {
             "3. Double-click the small bar: the line goes back to the middle."
         }
-        "board.smoke.elbow.l4" => "4. Ctrl+Z undoes each drag in one step.",
+        "board.smoke.elbow.l4" => "4. Ctrl+Z takes back each drag in one step.",
         // ── a cena 26 (PH2D_BOARD_SMOKE=26, W23 B5(2)): os textos ao longo da linha ──
         "board.smoke.text.board" => "Text on arrows",
         "board.smoke.text.idea" => "Idea",
@@ -227,8 +227,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              line» turns them back («then» is flat now)."
         }
         "board.smoke.text.l4" => {
-            "4. Erase every letter of a text and it goes away. Ctrl+Z undoes each change in one \
-             step."
+            "4. Erase every letter of a text and it goes away. Ctrl+Z takes back each change in \
+             one step."
         }
         "board.smoke.w23.to" => "To",
         "board.smoke.w23.l5" => {

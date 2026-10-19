@@ -188,13 +188,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "3. This board is in Draft: the branches are hand drawn, like the nodes."
         }
         "board.smoke.w23.l4" => {
-            "4. Select an arrow: the … next to its tips opens every tip (UML, ER)."
+            "4. The arrow between the two boxes below is selected: in its bar, the … next to \
+             each tip opens all 15 tips (UML, ER)."
         }
+        "board.smoke.w23.from" => "From",
+        "board.smoke.w23.to" => "To",
         "board.smoke.w23.l5" => {
             "5. Right-click a shape: Copy, Paste, Duplicate, Front/Back, Lock, Delete."
         }
         "board.smoke.w23.l6" => {
-            "6. Trackpad: two fingers move the board, pinch zooms. Many boards: ‹ › in the tabs."
+            "6. Trackpad: two fingers move the board, pinch zooms. In the row at the very top \
+             (Scene, Board tweaks, +), press + until ‹ › appear: they step between the boards."
         }
         // ── a cena 23 (PH2D_BOARD_SMOKE=23, W23): as duas maneiras de entrar ──
         "board.smoke.join.title" => {

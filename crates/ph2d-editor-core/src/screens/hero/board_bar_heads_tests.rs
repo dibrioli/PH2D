@@ -137,3 +137,44 @@ fn right_click_on_a_shape_opens_its_menu() {
     t.shell_click_id(crate::ids::CTX_MENU_BOARD_EL_DELETE, "Delete");
     assert_eq!(t.elements().len(), 1, "apagou a seleccionada");
 }
+
+/// ⭐ Smoke do dono (19/10): o «…» das pontas estava na barra e não se via — o `more-horizontal` de
+/// linha fina encolhia ao botão de 16 px em pontinhos de ~1 px. Nos dois botões das barras (o da
+/// fila junto da selecção e o da coluna) são três pontos CHEIOS, cada um maior que o traço dos
+/// ícones ao lado, separados (a 1.ª cura, medida pelo miolo, colava-os num traço — foto) e a abrir
+/// metade do botão.
+#[test]
+fn the_more_dots_read_as_three_dots_on_both_bar_buttons() {
+    use ph2d_tokens::StrokeToken;
+    use ph2d_vector::Shape as _;
+    use super::super::super::float_bar::{button_px, strip_button_px};
+    let line = f64::from(StrokeToken::Default.px());
+    for side in [strip_button_px(), button_px()] {
+        let r = crate::zones::Rect::new(0.0, 0.0, side, side);
+        let dots = super::super::look::more_dots(r);
+        let mut boxes: Vec<ph2d_vector::Rect> = Vec::new();
+        for el in dots.elements() {
+            let p = match el {
+                ph2d_vector::PathEl::MoveTo(p) => {
+                    boxes.push(ph2d_vector::Rect::from_points(*p, *p));
+                    continue;
+                }
+                ph2d_vector::PathEl::LineTo(p) | ph2d_vector::PathEl::CurveTo(_, _, p) => *p,
+                ph2d_vector::PathEl::QuadTo(_, p) => *p,
+                ph2d_vector::PathEl::ClosePath => continue,
+            };
+            let last = boxes.last_mut().expect("um ponto começa por MoveTo");
+            *last = last.union_pt(p);
+        }
+        assert_eq!(boxes.len(), 3, "{side} px: três pontos");
+        for b in &boxes {
+            assert!(b.width() >= line, "{side} px: ponto de {} px", b.width());
+        }
+        for w in boxes.windows(2) {
+            let gap = w[1].x0 - w[0].x1;
+            assert!(gap >= w[0].width() * 0.99, "{side} px: vão de {gap} px — colam");
+        }
+        let span = dots.bounding_box().width();
+        assert!(span >= f64::from(side) / 2.0, "{side} px: abrem {span} px");
+    }
+}

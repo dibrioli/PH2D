@@ -263,6 +263,23 @@ pub(super) fn stroke(scene: &mut VectorScene, p: &ph2d_vector::BezPath, c: Color
 
 /// O ícone de uma seta: a MESMA geometria que o quadro desenha (`ph2d_board_route::drawn`), de
 /// canto a canto de `r` — recta na diagonal, cotovelo/curva em Z.
+/// O «…» das barras do quadro: três pontos CHEIOS, um a cada quarto do BOTÃO `r`, cada um do
+/// tamanho do vão entre eles. O `more-horizontal` de linha fina encolhia ao botão de 16 px em
+/// pontinhos de ~1 px, e o dono não o via ao lado das pontas da seta (smoke 19/10); medidos pelo
+/// MIOLO, os pontos colavam-se num traço.
+pub(super) fn more_dots(r: Rect) -> ph2d_vector::BezPath {
+    use ph2d_vector::Shape as _;
+    let step = f64::from(r.w) / 4.0;
+    let radius = step / 4.0;
+    let (cx, cy) = (f64::from(r.x + r.w / 2.0), f64::from(r.y + r.h / 2.0));
+    let mut path = ph2d_vector::BezPath::new();
+    for k in [-step, 0.0, step] {
+        let dot = ph2d_vector::Circle::new(ph2d_vector::Point::new(cx + k, cy), radius);
+        path.extend(dot.to_path(0.1));
+    }
+    path
+}
+
 pub(super) fn arrow_icon(
     scene: &mut VectorScene,
     r: Rect,
@@ -424,13 +441,9 @@ pub(super) fn paint_item(
         Item::Tool(Tool::Hand) => {
             paint_icon(scene, IconId::Pan, inner, fg, StrokeToken::Default.px())
         }
-        Item::MoreShapes | Item::MoreHeads(_) => paint_icon(
-            scene,
-            IconId::MoreHorizontal,
-            inner,
-            fg,
-            StrokeToken::Default.px(),
-        ),
+        Item::MoreShapes | Item::MoreHeads(_) => {
+            scene.fill_path(&more_dots(r), &Brush::Solid(fg), Affine::IDENTITY);
+        }
         Item::Tool(Tool::Shape(t)) | Item::Pick(t) => shape_icon(scene, t, inner, fg, line, false),
         Item::Tool(Tool::Connector) => {
             arrow_icon(

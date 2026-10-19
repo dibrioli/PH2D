@@ -28,7 +28,8 @@ const CENAS: [(&str, bool, u64); 22] = [
     ("Wet Liner", false, 0x859efc54fe6e2c43),
     // Os dois com os FIOS da W2 (prompt 48, doc 48_medicao): repinados pela lei nova; os outros 20 ao bit.
     // O Oil Bristle repintado pelo relevo sem escada (W3b, prompt 50, doc 50_medicao): os outros 21 ao bit.
-    // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao).
+    // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao); o Airbrush também
+    // pela curva da pressão no tamanho que casa as pontas do Rebelle (ordem do dono 19/10).
     ("Oil Bristle", false, 0x592c76da31d74d9a),
     ("Acrylic Round", false, 0x8fe9c191fd86da3e),
     ("Express Oil", false, 0x1a4242fb3b647301),
@@ -41,7 +42,7 @@ const CENAS: [(&str, bool, u64); 22] = [
     ("Ink Brush", false, 0xaa050aac7669ab08),
     ("Marker Bullet", false, 0xc611a541909b7ef8),
     ("Marker Liner", false, 0xfc33512d965f3020),
-    ("Airbrush", false, 0xd9409347de15522b),
+    ("Airbrush", false, 0xc9c61bd3db4a244e),
     ("Wet Flat", false, 0x270ceb734f4d9aea),
     ("Gouache Flat", false, 0x6111ea627d99cff5),
     ("Wet Round", true, 0xab51e31b5a6e8cb0),

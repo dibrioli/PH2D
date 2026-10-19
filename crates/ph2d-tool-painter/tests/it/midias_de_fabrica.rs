@@ -241,23 +241,33 @@ pub(super) fn de_fabrica(nome: &str) -> Preset {
         .preset
 }
 
-/// As tiragens do PÓ em que se medem as [`FamiliaC::pontas`] de um meio com pó (a mediana): numa só a régua mede a
-/// sorte — o Airbrush de fábrica lia 0,596 a 1,028 por semente, e o de antes da regra 0,540 a 0,783 (doc 51 §4).
+/// As tiragens do PÓ em que se medem as pontas e a rampa ([`FamiliaC`]) de um meio com pó (a mediana): numa só a régua
+/// mede a sorte — o Airbrush de fábrica lia 0,596 a 1,028 nas pontas por semente, e o de antes da regra 0,540 a 0,783
+/// (doc 51 §4).
 const TIRAGENS_DO_PO: u64 = 7;
 
 pub(super) fn cena_seca(p: &Preset, raio: f32, ficheiros: &[String]) -> (Medida, FamiliaC) {
     let com_po = p.parametros.engine.get("dust").is_some_and(|&d| d > 0.0);
     let (m, mut c) = cena_seca_semente(p, raio, ficheiros, 0);
     if com_po {
-        let mut v: Vec<f64> = std::thread::scope(|s| {
+        let mut v: Vec<[f64; 3]> = std::thread::scope(|s| {
             let hs: Vec<_> = (1..TIRAGENS_DO_PO)
-                .map(|k| s.spawn(move || cena_seca_semente(p, raio, &[], k).1.pontas))
+                .map(|k| {
+                    s.spawn(move || {
+                        let c = cena_seca_semente(p, raio, &[], k).1;
+                        [c.pontas, c.rampa, c.rampa_cob]
+                    })
+                })
                 .collect();
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
-        v.push(c.pontas);
-        v.sort_by(f64::total_cmp);
-        c.pontas = v[v.len() / 2];
+        v.push([c.pontas, c.rampa, c.rampa_cob]);
+        let mediana = |i: usize| {
+            let mut x: Vec<f64> = v.iter().map(|t| t[i]).collect();
+            x.sort_by(f64::total_cmp);
+            x[x.len() / 2]
+        };
+        [c.pontas, c.rampa, c.rampa_cob] = [mediana(0), mediana(1), mediana(2)];
     }
     (m, c)
 }

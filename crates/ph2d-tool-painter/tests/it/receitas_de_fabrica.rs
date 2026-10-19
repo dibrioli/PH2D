@@ -577,6 +577,10 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("dust", 0.8),
             MAIS_PERTO,
             ("pressureSize", 0.5),
+            // As PONTAS do Rebelle (ordem do dono 19/10, doc 51 §4): a curva côncava alarga o traço leve mais cedo —
+            // pela mediana de 21 tiragens do pó, pontas 0,580 → 0,680 (Rebelle 0,80), a rampa 0,640 → 0,704 (0,63).
+            // Nenhuma intensidade com a curva recta casa as duas: as pontas seguem a rampa a −0,06.
+            ("pressureSizeCurve", 0.7),
             ("pressureOpacity", 1.0),
             ("pressureOpacityCurve", 1.5),
         ],

@@ -137,3 +137,27 @@ continua a arredondar. Os sintomas das W6d–W6f (o chanfro, o «canto do campo�
 Nada mudou na tela: a cura ficou desligada. O smoke da W6d continua valendo
 (`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=6 cargo run -p ph2d-host-desktop --profile smoke`).
 O ponto escuro no canto de uma caixa continua lá: é o aberto 1, agora com a causa medida.
+
+## 8. A candidata 10 — o campo que GUARDA o vértice — e o seu kill-criterion (escrito ANTES de medir)
+
+Mecanismo (§4): o `meio` decide «dentro» pela bilinear da distância de 4 texels que, junto a um vértice, carregam retas
+DIFERENTES; a bilinear de retas diferentes é uma hipérbole (com o vértice no meio da célula, o iso-0 recua 0,29 da
+célula na diagonal). Cura: a decisão pelas duas retas da cunha combinadas DEPOIS (convexo: o mínimo; côncavo: o
+máximo), sem interpolar, nos texels a ≤ 2 de um parcial de vértice; no resto, a bilinear de sempre.
+- **(A)** o `c3_borda` grava em `V` (rgba16f, a resolução da captura) as duas retas da cunha de cada parcial de vértice
+  aceite (a mesma deteção da W6e: `explica_a_3x3` e a área da cunha), sentinela nos outros;
+- **(B)** o passe novo `c3_cantos` dá a cada texel a cunha do parcial de vértice mais perto a Chebyshev ≤ 2 (o
+  desempate pela ordem da varredura: determinístico), no referencial do texel (`V2`);
+- **(C)** no `meio` (só com a borda contínua e `borda_aqui`), quando a bilinear dá |d| < 1, um `textureLoad` de `V2`:
+  com cunha, decide por ela.
+
+`Config::borda_cantos` (override `BORDA_CANTOS`; exige `borda_vertice`, de onde tira os limiares). Desligado, `V` e
+`V2` não se alocam.
+
+**Régua** (um processo, intercalada): o perfil do iso-0 da §4 (a réplica na CPU lê `V2` também) · a `medida_luz2d_w6f`
+e a `medida_luz2d_w6f_f3` com as variantes lei W6d · cunha · cunha + 10 · cunha + 10 + 9 · depois, a candidata que
+entrar no padrão, os 5 itens do §1 da W6e e os portões.
+
+**PASSA** (todos): o perfil — |iso-0| ≤ 0,06 a ≥ ¼ texel fino do vértice em todo canto da caixa; e os cinco do §2
+(cantos ≤ 1 · F3 verde com o texel (152, 245) a ≤ 0,01 · (a) ≤ 14 / (b) ≤ 42 / anéis sem regressão · bits de fora iguais
+· C3 ≤ +5 %). **MORRE**: qualquer um; two-strikes como sempre.

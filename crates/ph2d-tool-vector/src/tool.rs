@@ -90,6 +90,16 @@ fn rgba_fields(from: [u8; 4], to: [u8; 4], rgb: StyleFields, a: StyleFields) -> 
     f
 }
 
+/// **Uma cor ESCOLHIDA é visível**: com alfa 0 (o seletor abriu sobre uma forma sem preenchimento)
+/// ela chega opaca — escolher um matiz e ver nada era o defeito (plano 32). Inkscape e Illustrator
+/// fazem o mesmo.
+fn visible_pick(mut rgba: [u8; 4]) -> [u8; 4] {
+    if rgba[3] == 0 {
+        rgba[3] = u8::MAX;
+    }
+    rgba
+}
+
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
 /// seed source for the tool's defaults (and a stable named-colour reference);
 /// the live colour path is the OKLCH picker driven by the docked panel.
@@ -550,6 +560,24 @@ impl VectorTool {
                 rgba_fields(self.fill, rgba, StyleFields::FILL_RGB, StyleFields::FILL_A);
         }
         self.fill = rgba;
+    }
+
+    /// ⭐ **O artista ESCOLHEU esta cor no seletor** (plano 32) — o toque é o gesto, não a diferença
+    /// de valor: escolher exatamente a cor do primário sobre um Fill misto escreve-a em todas. A
+    /// alfa continua a armar só quando muda (arrastar a alfa não pisa as cores das outras).
+    pub fn pick_fill_rgba(&mut self, rgba: [u8; 4]) {
+        self.set_fill_rgba(visible_pick(rgba));
+        if self.mode != crate::DrawMode::Bucket {
+            self.colour_authored.0 = true;
+            self.authored |= StyleFields::FILL_RGB;
+        }
+    }
+
+    /// O irmão do [`Self::pick_fill_rgba`] para o traço.
+    pub fn pick_stroke_rgba(&mut self, rgba: [u8; 4]) {
+        self.set_stroke_rgba(visible_pick(rgba));
+        self.colour_authored.1 = true;
+        self.authored |= StyleFields::STROKE_RGB;
     }
 
     /// Project the current Style into the snapshot the docked panel paints.

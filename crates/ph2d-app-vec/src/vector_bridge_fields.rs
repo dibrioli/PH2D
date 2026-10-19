@@ -116,10 +116,25 @@ fn dash_bits() -> F {
 /// cor que ela tem, lida pela MESMA porta que a semente usa ([`seed_fill_from_paint`]). O
 /// resultado vai ao `apply_fill_colour`, onde mora a lei da espécie de tinta. Um gradiente (sem cor
 /// a ler) recebe a cor nova crua, e o `apply_fill_colour` deixa-o quieto.
+///
+/// ⭐ **Uma forma SEM preenchimento (alfa 0) que recebe uma cor fica visível**: leva a alfa da cor
+/// nova (plano 32). As que já tinham preenchimento guardam a alfa delas.
 #[must_use]
 pub fn fill_merge(cur: Option<&Paint>, new: Rgba8, campos: F) -> Rgba8 {
     let c = seed_fill_from_paint(cur).map_or(new, |c| Rgba8::new(c[0], c[1], c[2], c[3]));
-    merge_rgba(c, new, F::FILL_RGB, F::FILL_A, campos)
+    pick_merge(c, new, campos)
+}
+
+/// O RGB (`FILL_RGB`) e/ou a alfa (`FILL_A`) de `new` sobre `cur` — e uma cor de alfa 0 que recebe
+/// RGB leva a alfa de `new` (fica visível). A conta do [`fill_merge`] e da cor de uma camada da
+/// pilha (`paint_stack::apply_picker`).
+#[must_use]
+pub fn pick_merge(cur: Rgba8, new: Rgba8, campos: F) -> Rgba8 {
+    let mut m = merge_rgba(cur, new, F::FILL_RGB, F::FILL_A, campos);
+    if campos.has(F::FILL_RGB) && m.a == 0 {
+        m.a = new.a;
+    }
+    m
 }
 
 /// **Reestiliza SÓ os `campos` do traço de cada caminho selecionado.** Um caminho sem traço fica
@@ -247,4 +262,16 @@ pub fn blank_mixed_numbers(
             tool.stroke_width_px(),
         );
     }
+}
+
+thread_local! {
+    /// O cursor desta ponte no contador de escolhas do seletor partilhado.
+    static PICKS_SEEN: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// **O artista escolheu uma cor no seletor desde o quadro anterior?** (plano 32). Avança o cursor:
+/// chamar UMA vez por quadro, aberto o seletor onde estiver.
+pub fn colour_picked(store: &ph2d_editor_core::interaction::WidgetStore) -> bool {
+    let n = store.colour_picks(ph2d_editor_core::ids::INSP_BLENDER_PICKER);
+    PICKS_SEEN.with(|c| c.replace(n)) != n
 }

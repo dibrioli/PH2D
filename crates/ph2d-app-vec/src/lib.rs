@@ -219,6 +219,8 @@ mod tampa_redonda_tests;
 mod vector_mode_alinhar;
 /// A cena 23 (F16): a barra de controle do Illustrator e o painel do traço aberto.
 mod vector_mode_controle;
+/// As cenas 33 e 34 (F21): a cor escolhida chega a todas; a pilha de camadas diz «misto».
+mod vector_mode_cor;
 /// A cena 16 (F10; F12): a estrela pelas alças e a fila de ⇕ da lateral.
 mod vector_mode_estrela;
 /// A cena 15 (F9): as alças das formas arrastadas pelo press e o arrasto da shell.

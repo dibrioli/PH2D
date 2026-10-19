@@ -116,7 +116,7 @@ pub fn publish(
     // ela viaja no `PaintRow` até ao painel, então quem a põe no `widget_color` é o passe de
     // sementes do painel — que é o único sítio onde ela existe uma vez só.
     ph2d_panel_vector::state::set_current_appearance(if vector_active {
-        crate::paint_stack::published(scene, pen.selected_paths())
+        crate::paint_stack::published(scene, &crate::paint_stack::ordered(pen))
     } else {
         None
     });

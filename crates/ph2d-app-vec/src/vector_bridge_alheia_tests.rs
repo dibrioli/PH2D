@@ -151,6 +151,7 @@ impl Quadro {
                 hsv_h: 0.0,
                 hsv_s: 0.0,
                 harmony: ph2d_editor_core::widget::Harmony::None,
+                picks: 0,
             },
         );
         self.hero.store.open_picker_on(swatch);

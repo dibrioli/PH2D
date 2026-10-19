@@ -25,6 +25,7 @@ fn picker_on(node: u32, param: &str, i: usize, rgba: [u8; 4]) -> WidgetStore {
             hsv_h: 0.0,
             hsv_s: 0.0,
             harmony: Harmony::None,
+            picks: 0,
         },
     );
     store.set_picker_target(Some(card_editor_swatch_id(node, param, i)));

@@ -593,6 +593,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // F16c: uma linha por par do tracejado, «Dash / Gap» como o «Position X / Y» do Inspector.
         "panel.vector.stroke.dash_gap" => "Dash / Gap {n}",
         "panel.vector.appearance.layer_color" => "Layer color",
+        "panel.vector.appearance.mixed_layers" => "Mixed layers",
         "panel.vector.appearance.miter" => "Miter",
         "panel.vector.appearance.round" => "Round",
         "panel.vector.appearance.bevel" => "Bevel",

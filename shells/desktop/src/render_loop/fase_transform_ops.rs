@@ -70,7 +70,7 @@ impl crate::App {
         // um arrasto de slider não regista por quadro (um gesto em curso suprime a captura),
         // então a corrida inteira colapsa em UM passo ao soltar.
         {
-            let sel = self.vec.pen.selected_paths().to_vec();
+            let sel = crate::vec_paint_stack::ordered(&self.vec.pen);
             if let Some(track) = pending_vec_opacity {
                 #[allow(clippy::cast_possible_truncation)]
                 crate::vec_appearance::set_opacity(vec_scene, &sel, track as f32);
@@ -87,47 +87,21 @@ impl crate::App {
             }
             // ⚠️ **O índice é o da camada ABERTA no painel** — a única que mostra estes três
             // controlos. Sem camada aberta não há sujeito, e escrever seria adivinhar.
-            // ⭐⭐⭐ **A COR de uma camada** — o picker partilhado escreve nela.
-            //
-            // ⛔ Sem este braço a swatch de uma camada abre o picker, o artista escolhe uma
-            // cor e **nada acontece** — o `clippy` apanhou-o como `set_color` never used, que
-            // é a assinatura do controlo morto que o §5.0 nomeia.
-            if let Some(i) = crate::vec_paint_stack::layer_of_picker_target(&hero.store)
-                && let Some((value, _, _, _)) = hero
-                    .store
-                    .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
-            {
-                // ⚠️ O picker já entrega bytes (`rgba`), como as swatches de base — converter
-                // aqui seria a segunda régua de *"que cor é esta?"*.
-                let c = value.rgba;
-                crate::vec_paint_stack::set_color(
-                    vec_scene,
-                    &sel,
-                    i,
-                    ph2d_vec_scene::Rgba8::new(c[0], c[1], c[2], c[3]),
-                );
-            }
+            // ⭐⭐⭐ **A COR de uma camada** — o seletor partilhado escreve nela (plano 32: a lei
+            // do Fill de base, campo a campo).
+            crate::vec_paint_stack::apply_picker(&mut hero.store, vec_scene, &sel);
             if let Some(i) = ph2d_panel_vector::state::open_layer_index() {
                 if let Some(w) = pending_paint_width {
                     crate::vec_paint_stack::set_width(vec_scene, &sel, i, w);
                 }
-                // ⭐ ONDE ela desenha (v21). ⚠️ O eixo que NAO comitou le-se do documento, e
-                // nao de um default: escrever `0` no gemeo apagaria o valor que o artista
-                // acabou de por na outra caixa.
-                if pending_paint_dx.is_some() || pending_paint_dy.is_some() {
-                    // ⛔ `sel.first()`, nunca `sel[0]`: a camada aberta é estado de VISTA e
-                    // sobrevive a um quadro em que a selecção esvaziou.
-                    let atual = sel
-                        .first()
-                        .and_then(|id| vec_scene.path(*id))
-                        .and_then(|p| p.paints.get(i).map(|e| e.offset))
-                        .unwrap_or([0.0, 0.0]);
-                    let novo = [
-                        pending_paint_dx.unwrap_or(atual[0]),
-                        pending_paint_dy.unwrap_or(atual[1]),
-                    ];
-                    crate::vec_paint_stack::set_offset(vec_scene, &sel, i, novo);
-                }
+                // ⭐ ONDE ela desenha (v21): só o eixo comitado, o outro fica o de cada forma.
+                crate::vec_paint_stack::set_offset_axes(
+                    vec_scene,
+                    &sel,
+                    i,
+                    pending_paint_dx,
+                    pending_paint_dy,
+                );
                 if let Some(t) = pending_paint_opacity {
                     #[allow(clippy::cast_possible_truncation)]
                     crate::vec_paint_stack::set_opacity(vec_scene, &sel, i, t as f32);

@@ -49,6 +49,9 @@ pub(super) fn apply_blender_channel_value(
     let Some((cur, mode, _, _)) = store.blender_picker(parent) else {
         return;
     };
+    if idx < ALPHA {
+        store.note_colour_pick(parent);
+    }
     let n = new_norm.clamp(0.0, 1.0);
     match mode {
         ChannelMode::Rgb => {
@@ -90,6 +93,16 @@ pub(super) fn apply_blender_channel_value(
     }
 }
 
+/// O índice do canal da ALFA nas três famílias (R/G/B/A · H/S/V/A · L/C/H/A): mexer nele não é
+/// escolher uma cor ([`WidgetStore::colour_picks`]).
+const ALPHA: u8 = 3;
+
+/// Conta a escolha de cor em `parent` e devolve-o (o id do `ValueChanged`).
+fn picked(store: &mut WidgetStore, parent: NodeId) -> NodeId {
+    store.note_colour_pick(parent);
+    parent
+}
+
 /// If `id` is a [`super::super::InteractiveState::BlenderHit`]
 /// sub-control, apply the click to its parent
 /// [`super::super::InteractiveState::BlenderPicker`] and return the
@@ -113,10 +126,10 @@ pub(super) fn apply_blender_hit(
     };
     match kind {
         BlenderHitKind::Wheel => {
-            apply_blender_wheel_pick(store, parent, rect, px, py).then_some(parent)
+            apply_blender_wheel_pick(store, parent, rect, px, py).then(|| picked(store, parent))
         }
         BlenderHitKind::ValueSlider => {
-            apply_blender_value_pick(store, parent, rect, px, py).then_some(parent)
+            apply_blender_value_pick(store, parent, rect, px, py).then(|| picked(store, parent))
         }
         BlenderHitKind::InterpolationLinear => {
             store.set_blender_interpolation(parent, InterpolationMode::Linear);
@@ -149,6 +162,9 @@ pub(super) fn apply_blender_hit(
                 0.0
             };
             store.set_blender_channel(parent, idx, norm);
+            if idx < ALPHA {
+                store.note_colour_pick(parent);
+            }
             Some(parent)
         }
         BlenderHitKind::Hex => {
@@ -176,7 +192,7 @@ pub(super) fn apply_blender_hit(
                     .and_then(|p| p.get(swatch_idx as usize).copied());
                 if let Some(color) = color {
                     store.set_blender_value(parent, color);
-                    Some(parent)
+                    Some(picked(store, parent))
                 } else {
                     None
                 }
@@ -203,7 +219,7 @@ pub(super) fn apply_blender_hit(
             let colors = crate::widget::harmony_partners(cur, scheme);
             if let Some(&c) = colors.get(idx as usize) {
                 store.set_blender_value(parent, c);
-                Some(parent)
+                Some(picked(store, parent))
             } else {
                 None
             }

@@ -98,7 +98,7 @@ pub fn apply(scene: &mut VecScene, sel: &[VecPathId], verb: StackVerb) -> bool {
             ph2d_panel_vector::state::close_open_layer();
             add(scene, sel, false)
         }
-        StackVerb::Eye(i) => toggle(scene, sel, i),
+        StackVerb::Eye(i) => mixed::toggle(scene, sel, i),
         StackVerb::Up(i) => {
             ph2d_panel_vector::state::close_open_layer();
             shift(scene, sel, i, true)
@@ -146,22 +146,26 @@ const NOVA: Rgba8 = Rgba8 {
 /// que o de base leria como um defeito de desenho, e um mais gordo esconderia o desenho.
 const LARGURA_NOVA: f64 = 1.0;
 
-/// **O que o painel mostra** — `None` sem forma na selecção.
+/// **O que o painel mostra** — `None` sem forma na selecção. `sel` vem de [`ordered`]: o primeiro
+/// é o primário.
 pub fn published(
     scene: &VecScene,
     sel: &[VecPathId],
 ) -> Option<ph2d_panel_vector::state::Appearance> {
     let p = scene.path(*sel.first()?)?;
+    let layers_differ = layers_differ(scene, sel);
     let outras = || sel.iter().filter_map(|id| scene.path(*id));
     Some(ph2d_panel_vector::state::Appearance {
         opacity: p.opacity.get(),
         blend: p.blend,
         mixed_opacity: outras().any(|o| o.opacity != p.opacity),
         mixed_blend: outras().any(|o| o.blend != p.blend),
+        layers_differ,
         layers: p
             .paints
             .iter()
-            .map(|e| {
+            .enumerate()
+            .map(|(i, e)| {
                 let c = e.swatch_color();
                 ph2d_panel_vector::state::PaintRow {
                     is_fill: matches!(e.kind, PaintKind::Fill(_)),
@@ -173,6 +177,11 @@ pub fn published(
                     offset: e.offset,
                     dilate: e.dilate,
                     dilate_join: e.dilate_join,
+                    mixed: if layers_differ {
+                        ph2d_panel_vector::state::RowMixed::default()
+                    } else {
+                        row_mixed(scene, sel, i)
+                    },
                 }
             })
             .collect(),
@@ -228,17 +237,6 @@ pub fn shift(scene: &mut VecScene, sel: &[VecPathId], i: usize, up: bool) -> boo
             }
             _ => false,
         }
-    })
-}
-
-/// **Liga/desliga o olho** da camada `i`.
-pub fn toggle(scene: &mut VecScene, sel: &[VecPathId], i: usize) -> bool {
-    edit(scene, sel, |p| match p.paints.get_mut(i) {
-        Some(e) => {
-            e.enabled = !e.enabled;
-            true
-        }
-        None => false,
     })
 }
 
@@ -350,6 +348,10 @@ fn edit(
     }
     mudou
 }
+
+#[path = "paint_stack_mixed.rs"]
+mod mixed;
+pub use mixed::{apply_picker, layers_differ, ordered, row_mixed, set_offset_axes, toggle};
 
 #[cfg(test)]
 #[path = "paint_stack_tests.rs"]

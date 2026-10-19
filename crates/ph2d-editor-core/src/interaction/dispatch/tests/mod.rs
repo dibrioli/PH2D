@@ -99,6 +99,7 @@ fn blender_picker_setup() -> (WidgetStore, HitIndex) {
             hsv_h: 0.07,
             hsv_s: 0.75,
             harmony: crate::widget::Harmony::None,
+            picks: 0,
         },
     );
     // Seed the picker's palette so swatch clicks have something
@@ -290,5 +291,6 @@ mod ime;
 mod inputs;
 mod note_body;
 mod number_drag;
+mod picks;
 mod timeline;
 mod widgets;

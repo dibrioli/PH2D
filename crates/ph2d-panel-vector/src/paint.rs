@@ -184,14 +184,22 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     {
         // ⭐ E o par que diz ONDE ela desenha (v21), pela MESMA porta e com o mesmo guarda: um
         // campo semeado por cima do dígito que o artista acabou de escrever apaga-o.
-        for (id, v) in [
-            (crate::ids::VECTOR_PAINT_WIDTH, row.width),
-            (crate::ids::VECTOR_PAINT_DX, row.offset[0]),
-            (crate::ids::VECTOR_PAINT_DY, row.offset[1]),
-            (crate::ids::VECTOR_PAINT_DILATE, row.dilate),
+        // ⭐ Onde as selecionadas diferem, a caixa fica em BRANCO (plano 32, a lei do F20).
+        for (id, v, misto) in [
+            (crate::ids::VECTOR_PAINT_WIDTH, row.width, row.mixed.width),
+            (crate::ids::VECTOR_PAINT_DX, row.offset[0], row.mixed.offset),
+            (crate::ids::VECTOR_PAINT_DY, row.offset[1], row.mixed.offset),
+            (
+                crate::ids::VECTOR_PAINT_DILATE,
+                row.dilate,
+                row.mixed.dilate,
+            ),
         ] {
             if store.focus_id() != Some(id) {
                 store.set_number_value(id, v);
+                if misto {
+                    store.blank_number_input(id);
+                }
             }
         }
     }

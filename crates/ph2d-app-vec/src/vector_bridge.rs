@@ -37,6 +37,7 @@ mod fields;
 #[path = "vector_bridge_style.rs"]
 mod style;
 pub use fields::mixed_of;
+pub use fields::pick_merge;
 use fields::{fill_merge, restyle_selected_fields};
 use ph2d_tool_vector::StyleFields;
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
@@ -216,6 +217,9 @@ pub fn dispatch(
     };
 
     // ── 2. Picker read-back: which swatch is the picker targeting? ────────
+    // O cursor das escolhas anda a CADA quadro, aberto em que amostra for: senão uma escolha numa
+    // camada contaria como toque no Fill no quadro em que ele abre.
+    let tocou = fields::colour_picked(&hero.store);
     let target = hero.store.picker_target();
     let stroke_open = target == Some(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH);
     let fill_open = target == Some(ph2d_tool_vector::ids::VECTOR_FILL_SWATCH);
@@ -229,10 +233,24 @@ pub fn dispatch(
         // slider each frame (below) so the picker's alpha and the panel's
         // Opacity stay in sync (Enio 2026-07-07).
         let picked = value.rgba;
-        if stroke_open {
-            tool.set_stroke_rgba(picked);
+        match (stroke_open, tocou) {
+            (true, true) => tool.pick_stroke_rgba(picked),
+            (true, false) => tool.set_stroke_rgba(picked),
+            (false, true) => tool.pick_fill_rgba(picked),
+            (false, false) => tool.set_fill_rgba(picked),
+        }
+        let ficou = if stroke_open {
+            tool.stroke_rgba()
         } else {
-            tool.set_fill_rgba(picked);
+            tool.fill_rgba()
+        };
+        // A escolha visível (alfa 0 → opaca) volta ao seletor no MESMO quadro: senão a sondagem
+        // seguinte leria a alfa 0 dele como «apagar».
+        if ficou != picked {
+            hero.store.set_blender_value(
+                ph2d_editor_core::ids::INSP_BLENDER_PICKER,
+                ph2d_tokens::ColorValue::from_rgba8(ficou[0], ficou[1], ficou[2], ficou[3]),
+            );
         }
     }
 
@@ -446,6 +464,9 @@ mod tests;
 #[cfg(test)]
 #[path = "vector_bridge_alheia_tests.rs"]
 mod alheia_tests;
+#[cfg(test)]
+#[path = "vector_bridge_misto_cor_tests.rs"]
+mod misto_cor_tests;
 #[cfg(test)]
 #[path = "vector_bridge_misto_tests.rs"]
 mod misto_tests;

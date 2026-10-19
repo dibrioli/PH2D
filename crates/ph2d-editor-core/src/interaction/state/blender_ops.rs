@@ -117,6 +117,26 @@ impl WidgetStore {
         }
     }
 
+    /// ⭐ **Quantas vezes o artista ESCOLHEU uma cor neste seletor** (plano 32). O valor do seletor é
+    /// lido por sondagem a cada quadro, então «o valor mudou?» não distingue um clique na cor que já
+    /// lá está de nenhum clique; este contador sim. Cada leitor guarda o SEU cursor. `0` para quem
+    /// não é seletor.
+    #[must_use]
+    pub fn colour_picks(&self, id: NodeId) -> u64 {
+        match self.states.get(&id) {
+            Some(InteractiveState::BlenderPicker { picks, .. }) => *picks,
+            _ => 0,
+        }
+    }
+
+    /// Conta uma escolha de cor no seletor `id` — chamada pelo despacho (roda, valor, canais de cor,
+    /// amostras, harmonia, hex), nunca por quem só RE-SEMEIA o seletor (`set_blender_value`).
+    pub fn note_colour_pick(&mut self, id: NodeId) {
+        if let Some(InteractiveState::BlenderPicker { picks, .. }) = self.states.get_mut(&id) {
+            *picks += 1;
+        }
+    }
+
     /// Initialize the BlenderPicker's palette set with a single palette named "Palette" holding the
     /// seed `swatches` (typically `default_palette()`). The user adds more via the New-palette button.
     pub fn init_blender_palette(&mut self, parent: NodeId, swatches: Vec<ColorValue>) {

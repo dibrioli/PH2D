@@ -14,13 +14,13 @@ use ph2d_vec_scene::{
     VecPathId, VecScene,
 };
 
-const VERMELHO: [u8; 4] = [220, 40, 40, 255];
-const AZUL: [u8; 4] = [40, 120, 240, 255];
+pub(super) const VERMELHO: [u8; 4] = [220, 40, 40, 255];
+pub(super) const AZUL: [u8; 4] = [40, 120, 240, 255];
 const PRETO: [u8; 4] = [20, 20, 20, 255];
 /// Mundo por px de ecrã a 100 % (a régua do documento por omissão).
 const PX: f64 = 0.01;
 
-fn rgba(c: [u8; 4]) -> Rgba8 {
+pub(super) fn rgba(c: [u8; 4]) -> Rgba8 {
     Rgba8::new(c[0], c[1], c[2], c[3])
 }
 
@@ -53,27 +53,27 @@ fn traco_azul() -> StrokeSpec {
     s
 }
 
-struct Quadro {
-    hero: HeroScreen,
+pub(super) struct Quadro {
+    pub(super) hero: HeroScreen,
     tools: ToolRegistry,
-    scene: VecScene,
+    pub(super) scene: VecScene,
     pen: PenTool,
     shape: ShapeTool,
     pencil: Pencil,
     sim: ph2d_ecs::SimWorld,
     map: ph2d_vec_entities::entities::VecEntityMap,
-    vermelha: VecPathId,
-    azul: VecPathId,
+    pub(super) vermelha: VecPathId,
+    pub(super) azul: VecPathId,
     px: f64,
 }
 
 impl Quadro {
     /// As duas formas, selecionadas com o primário na VERMELHA, e um quadro já corrido.
-    fn novo() -> Self {
+    pub(super) fn novo() -> Self {
         Self::com(true)
     }
 
-    fn com(as_duas: bool) -> Self {
+    pub(super) fn com(as_duas: bool) -> Self {
         ph2d_editor_core::test_support::ensure_panel_registry();
         let mut tools = ToolRegistry::new();
         tools.register(Box::new(VectorTool::default()));
@@ -115,7 +115,7 @@ impl Quadro {
         q
     }
 
-    fn quadro(&mut self) {
+    pub(super) fn quadro(&mut self) {
         super::dispatch(
             &mut self.hero,
             &mut self.tools,
@@ -136,7 +136,7 @@ impl Quadro {
         );
     }
 
-    fn tool(&mut self) -> &mut VectorTool {
+    pub(super) fn tool(&mut self) -> &mut VectorTool {
         self.tools
             .tool_by_id_mut(&ToolId::new("vector"))
             .and_then(|t| t.as_any_mut().downcast_mut::<VectorTool>())
@@ -150,7 +150,7 @@ impl Quadro {
             .handle_panel_event(e);
     }
 
-    fn path(&self, id: VecPathId) -> &VecPath {
+    pub(super) fn path(&self, id: VecPathId) -> &VecPath {
         self.scene.path(id).expect("a forma existe")
     }
 

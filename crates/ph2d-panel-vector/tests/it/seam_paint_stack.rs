@@ -58,6 +58,7 @@ fn traco(w: f64) -> PaintRow {
         offset: [0.0, 0.0],
         dilate: 0.0,
         dilate_join: 1,
+        mixed: Default::default(),
     }
 }
 
@@ -72,6 +73,7 @@ fn tinta() -> PaintRow {
         offset: [0.0, 0.0],
         dilate: 0.0,
         dilate_join: 1,
+        mixed: Default::default(),
     }
 }
 
@@ -83,6 +85,7 @@ fn publica(layers: Vec<PaintRow>) {
         layers,
         mixed_opacity: false,
         mixed_blend: false,
+        layers_differ: false,
     }));
 }
 
@@ -153,6 +156,53 @@ fn every_control_of_a_layer_row_reaches_the_bus() {
              (falta a familia na allowlist do `event_clicks::forwards_plain_click`)"
         );
     }
+    state::set_current_appearance(None);
+}
+
+/// ⭐ **Pilhas de estruturas diferentes na seleção: nenhuma linha por índice, e + Fill / + Stroke
+/// continuam vivos** (plano 32). A linha `1` de uma forma não é a `1` da outra; o clique nela
+/// escrevia noutra espécie de camada.
+#[test]
+fn mixed_layers_paint_no_row_and_keep_the_add_buttons() {
+    state::set_current_appearance(Some(Appearance {
+        opacity: 1.0,
+        blend: BlendMode::Normal,
+        layers: vec![tinta(), traco(2.0)],
+        mixed_opacity: false,
+        mixed_blend: false,
+        layers_differ: true,
+    }));
+    for i in 0..2usize {
+        for (id, what) in [
+            (ids::vector_paint_eye_id(i), "o olho"),
+            (ids::vector_paint_row_id(i), "o nome"),
+            (ids::vector_paint_swatch_id(i), "a amostra"),
+        ] {
+            let mut host = crate::host_aberto();
+            let mut st = VectorPanelState;
+            assert!(
+                host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                    .is_none(),
+                "{what} da camada {i} foi pintado com as camadas MISTAS"
+            );
+        }
+    }
+    let acoes = clica(ids::VECTOR_PAINT_ADD_FILL, "+ Fill");
+    assert!(acoes.iter().any(|a| matches!(
+        a,
+        EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if *c == ids::VECTOR_PAINT_ADD_FILL
+    )));
+    // A mesma estrutura e a cor diferente: a linha volta, e a amostra «—» continua clicável.
+    let mut misto = tinta();
+    misto.mixed.color = true;
+    publica(vec![misto]);
+    let mut host = crate::host_aberto();
+    let mut st = VectorPanelState;
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_paint_swatch_id(0))
+            .is_some(),
+        "a amostra «misto» da camada não foi pintada"
+    );
     state::set_current_appearance(None);
 }
 

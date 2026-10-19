@@ -22,6 +22,7 @@ pub(crate) fn populate_blender_picker(store: &mut WidgetStore) {
             hsv_h: 0.0,
             hsv_s: 0.0,
             harmony: crate::widget::Harmony::None,
+            picks: 0,
         },
     );
     store.init_blender_palette(

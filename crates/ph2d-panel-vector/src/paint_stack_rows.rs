@@ -22,6 +22,7 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::widget::{
     Button, ColorSwatch, Dropdown, DropdownOption, IconButtonStyle, IconGlyph, SwatchSize,
     paint_button, paint_color_swatch, paint_dropdown_chip, paint_icon_button,
+    paint_swatch_or_mixed,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -38,7 +39,15 @@ const ICON_W: f32 = 28.0; // LITERAL-PX-OK: um botão de ícone quadrado na altu
 
 impl BodyCtx<'_> {
     /// **A pilha inteira**, do topo para o chão, mais os dois botões que a fazem crescer.
-    pub(crate) fn paint_stack(&mut self, layers: &[PaintRow], mut y: f32) -> f32 {
+    ///
+    /// ⭐ Com pilhas de ESTRUTURAS diferentes na seleção (plano 32), uma linha «Camadas mistas» no
+    /// lugar das linhas: a linha `2` de uma forma não é a `2` da outra.
+    pub(crate) fn paint_stack(&mut self, layers: &[PaintRow], differ: bool, mut y: f32) -> f32 {
+        if differ {
+            let r = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+            self.label_line_in(tr("panel.vector.appearance.mixed_layers"), r);
+            return self.add_buttons(y + self.row_h + self.row_gap);
+        }
         let n = layers.len();
         for k in 0..n {
             // ⚠️ **A inversão, e ela mora AQUI e em mais lado nenhum**: `i` é o índice do
@@ -85,13 +94,25 @@ impl BodyCtx<'_> {
         x -= sw;
         let sr = Rect::new(x, y + (self.row_h - sw) * 0.5, sw, sw);
         let sid = ids::vector_paint_swatch_id(i);
-        paint_color_swatch(
-            &ColorSwatch::new(sid, tr("panel.vector.appearance.layer_color"), row.color)
-                .size(SwatchSize::Sm),
-            sr,
-            self.scene,
-            self.theme,
-        );
+        if row.mixed.color {
+            paint_swatch_or_mixed(
+                sr,
+                sid,
+                tr("panel.vector.appearance.layer_color"),
+                None,
+                self.store.picker_target() == Some(sid),
+                self.scene,
+                self.theme,
+            );
+        } else {
+            paint_color_swatch(
+                &ColorSwatch::new(sid, tr("panel.vector.appearance.layer_color"), row.color)
+                    .size(SwatchSize::Sm),
+                sr,
+                self.scene,
+                self.theme,
+            );
+        }
         self.hit_index.register(sid, sr);
 
         // O OLHO, à esquerda de tudo.
@@ -167,17 +188,17 @@ impl BodyCtx<'_> {
                     (
                         ids::VECTOR_PAINT_JOIN_MITER,
                         tr("panel.vector.appearance.miter"),
-                        row.dilate_join == 0,
+                        !row.mixed.dilate_join && row.dilate_join == 0,
                     ),
                     (
                         ids::VECTOR_PAINT_JOIN_ROUND,
                         tr("panel.vector.appearance.round"),
-                        row.dilate_join == 1,
+                        !row.mixed.dilate_join && row.dilate_join == 1,
                     ),
                     (
                         ids::VECTOR_PAINT_JOIN_BEVEL,
                         tr("panel.vector.appearance.bevel"),
-                        row.dilate_join == 2,
+                        !row.mixed.dilate_join && row.dilate_join == 2,
                     ),
                 ],
                 y,
@@ -189,7 +210,11 @@ impl BodyCtx<'_> {
             clippy::cast_possible_truncation,
             reason = "o chip mostra a percentagem inteira, como os irmaos dele"
         )]
-        let rotulo = format!("{}", pct.round() as i64);
+        let rotulo = if row.mixed.opacity {
+            String::new()
+        } else {
+            format!("{}", pct.round() as i64)
+        };
         y = self.slider_row(
             tr("panel.vector.paint.opacity"),
             crate::ids::VECTOR_PAINT_OPACITY,
@@ -199,12 +224,12 @@ impl BodyCtx<'_> {
             &rotulo,
             y,
         );
-        self.layer_blend_row(row.blend, y)
+        self.layer_blend_row(row.blend, row.mixed.blend, y)
     }
 
     /// O chip de mistura da camada aberta. O popover abre no passe DIFERIDO — a lei dos outros
     /// seis desta janela.
-    fn layer_blend_row(&mut self, atual: ph2d_vec_scene::BlendMode, y: f32) -> f32 {
+    fn layer_blend_row(&mut self, atual: ph2d_vec_scene::BlendMode, misto: bool, y: f32) -> f32 {
         let chip = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         let open = matches!(
             self.store.get(crate::ids::VECTOR_PAINT_BLEND),
@@ -216,7 +241,11 @@ impl BodyCtx<'_> {
             vec![DropdownOption::new(
                 crate::ids::VECTOR_PAINT_BLEND,
                 (),
-                tr(atual.label_key()),
+                if misto {
+                    tr("panel.vector.mixed")
+                } else {
+                    tr(atual.label_key())
+                },
             )],
         )
         .selected(())

@@ -464,6 +464,7 @@ pub(super) fn commit_hex_buffer<'a>(
     };
     if let Some(color) = crate::widget::parse_hex(&buf_owned) {
         store.set_blender_value(parent, color);
+        store.note_colour_pick(parent);
         events.push(WidgetEvent::ValueChanged(parent));
     }
     write_hex_canonical(store, id);

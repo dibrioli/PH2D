@@ -32,6 +32,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "30"
             | "31"
             | "32"
+            | "33"
+            | "34"
     ) {
         1
     } else {
@@ -62,6 +64,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "30"
             | "31"
             | "32"
+            | "33"
+            | "34"
     );
     let handles = match s {
         "15" => 1,
@@ -82,6 +86,8 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
         "30" => 16,
         "31" => 17,
         "32" => 18,
+        "33" => 19,
+        "34" => 20,
         _ => 0,
     };
     let quick = match s {
@@ -161,43 +167,13 @@ fn as_faixas_de_estagios_nao_se_cruzam() {
         (110, 120, "19"),
         (130, 136, "20"),
     ];
-    faixas.extend([
-        (
-            crate::vector_mode_quinas::FIRST,
-            crate::vector_mode_quinas::LAST,
-            "21",
-        ),
-        (
-            crate::vector_mode_alinhar::FIRST,
-            crate::vector_mode_alinhar::LAST,
-            "22",
-        ),
-        (
-            crate::vector_mode_controle::FIRST,
-            crate::vector_mode_controle::LAST,
-            "23",
-        ),
-        (
-            crate::vector_mode_tracejado::FIRST,
-            crate::vector_mode_tracejado::LAST,
-            "24",
-        ),
-        (
-            crate::vector_mode_interface::FIRST,
-            crate::vector_mode_interface::LAST,
-            "25/26",
-        ),
-        (
-            crate::vector_mode_vestidos::FIRST,
-            crate::vector_mode_vestidos::LAST,
-            "27/28",
-        ),
-        (
-            crate::vector_mode_le_a_forma::FIRST,
-            crate::vector_mode_le_a_forma::LAST,
-            "29/30",
-        ),
-    ]);
+    // As famílias de faixa própria (21..=34) pela MESMA lista que o roteador despacha: uma família
+    // nova não escapa a este teste.
+    faixas.extend(
+        crate::vector_mode::route::FAIXAS
+            .iter()
+            .map(|&(a, b)| (a, b, "uma família do roteador")),
+    );
     faixas.sort_unstable();
     for w in faixas.windows(2) {
         let ((_, fim, a), (inicio, _, b)) = (w[0], w[1]);

@@ -27,6 +27,8 @@ use ph2d_vec_scene::VecPathId;
 
 use crate::state::VecState;
 
+#[path = "vector_mode_route.rs"]
+mod route;
 #[path = "vector_mode_scenes.rs"]
 mod scenes;
 
@@ -371,6 +373,8 @@ impl ModeFamily for Family<'_> {
 /// `=27`/`=28` (F18): o desenho é o corpo — a 25 e uma fila vestida; a 28 mostra o Hover (`vector_mode_vestidos`).
 /// `=29`/`=30` (F19): o painel lê a forma depois do Show; a 30 muda a Width (`vector_mode_le_a_forma`).
 /// `=31`/`=32` (F20): duas formas dizem «misto»; a 32 muda a Width das duas (`vector_mode_misto`).
+/// `=33`/`=34` (F21): uma cheia e uma vazia, pilhas diferentes; a 34 escolhe a cor do primário
+/// (`vector_mode_cor`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -550,56 +554,10 @@ pub fn smoke_step(
                 go(next);
             }
         }
-        s @ crate::vector_mode_alinhar::FIRST..=crate::vector_mode_alinhar::LAST => {
-            if let Some(next) = crate::vector_mode_alinhar::step(s, vec, scene, hero) {
-                go(next);
-            }
-        }
-        s @ crate::vector_mode_tracejado::FIRST..=crate::vector_mode_tracejado::LAST => {
-            if let Some(next) = crate::vector_mode_tracejado::step(s, vec, scene, hero) {
-                go(next);
-            }
-        }
-        s @ crate::vector_mode_interface::FIRST..=crate::vector_mode_interface::LAST => {
+        // As cenas 21..=34 (F14–F21): as famílias de faixa própria — `vector_mode_route`.
+        s if route::owns(s) => {
             let h = HANDLES.load(Ordering::Relaxed);
-            // As 27/28 continuam pela fila vestida; as 29/30 pelo Hover regravado.
-            let end = match h {
-                15.. => crate::vector_mode_le_a_forma::FIRST,
-                13.. => crate::vector_mode_vestidos::FIRST,
-                _ => 9,
-            };
-            if let Some(next) =
-                crate::vector_mode_interface::step(s, vec, scene, sim, hero, h == 12, end)
-            {
-                go(next);
-            }
-        }
-        s @ crate::vector_mode_le_a_forma::FIRST..=crate::vector_mode_le_a_forma::LAST => {
-            let espessura = HANDLES.load(Ordering::Relaxed) == 16;
-            if let Some(next) = crate::vector_mode_le_a_forma::step(s, vec, scene, hero, espessura)
-            {
-                go(next);
-            }
-        }
-        s @ crate::vector_mode_misto::FIRST..=crate::vector_mode_misto::LAST => {
-            let espessura = HANDLES.load(Ordering::Relaxed) == 18;
-            if let Some(next) = crate::vector_mode_misto::step(s, vec, scene, hero, espessura) {
-                go(next);
-            }
-        }
-        s @ crate::vector_mode_vestidos::FIRST..=crate::vector_mode_vestidos::LAST => {
-            let hover = HANDLES.load(Ordering::Relaxed) == 14;
-            if let Some(next) = crate::vector_mode_vestidos::step(s, vec, scene, sim, hero, hover) {
-                go(next);
-            }
-        }
-        s @ crate::vector_mode_controle::FIRST..=crate::vector_mode_controle::LAST => {
-            if let Some(next) = crate::vector_mode_controle::step(s, vec, scene, hero) {
-                go(next);
-            }
-        }
-        s @ crate::vector_mode_quinas::FIRST..=crate::vector_mode_quinas::LAST => {
-            if let Some(next) = crate::vector_mode_quinas::step(s, vec, scene, sim, hero) {
+            if let Some(next) = route::step(s, vec, scene, sim, hero, h) {
                 go(next);
             }
         }

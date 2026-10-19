@@ -120,6 +120,9 @@ pub enum InteractiveState {
         hsv_s: f32,
         /// The selected Color-Harmonies scheme (view-state; partners are DERIVED). Default `None`.
         harmony: crate::widget::Harmony,
+        /// Quantas vezes o artista ESCOLHEU uma cor (roda, valor, R/G/B, amostra, harmonia, hex) —
+        /// a alfa não conta. Cada leitor guarda o seu cursor ([`WidgetStore::colour_picks`]).
+        picks: u64,
     },
     /// Sub-control hit shim: pointing at a sub-rect of a parent
     /// BlenderPicker. The dispatcher uses `kind` to route the click

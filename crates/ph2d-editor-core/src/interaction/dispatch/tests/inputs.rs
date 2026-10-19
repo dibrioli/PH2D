@@ -244,6 +244,7 @@ fn blender_wheel_click_mutates_picker_value() {
             hsv_h: 0.0,
             hsv_s: 1.0,
             harmony: crate::widget::Harmony::None,
+            picks: 0,
         },
     );
     store.register(
@@ -295,6 +296,7 @@ fn set_blender_value_refreshes_sv_anchor_for_external_pick() {
             hsv_h: 0.0,
             hsv_s: 1.0, // saturated anchor
             harmony: crate::widget::Harmony::None,
+            picks: 0,
         },
     );
     // Pick white: S is recoverable (0) so the cursor must move; H stays (white has no hue).

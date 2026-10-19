@@ -46,6 +46,21 @@ pub struct PaintRow {
     /// A quina dele (`0` Miter · `1` Round · `2` Bevel) — o painel pinta a fileira só com o offset
     /// armado.
     pub dilate_join: u8,
+    /// Os campos em que as formas selecionadas DIFEREM nesta camada (plano 32).
+    pub mixed: RowMixed,
+}
+
+/// **Em que campos a camada `i` difere entre as selecionadas** — o painel pinta-os em «misto»
+/// (amostra «—», número em branco, nenhum segmento aceso), a lei do F20 levada à pilha.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct RowMixed {
+    pub color: bool,
+    pub width: bool,
+    pub opacity: bool,
+    pub blend: bool,
+    pub offset: bool,
+    pub dilate: bool,
+    pub dilate_join: bool,
 }
 
 /// O que a forma selecionada tem, hoje.
@@ -70,6 +85,10 @@ pub struct Appearance {
     /// modo diz «misto» (plano 31; revoga o «mostra o primário» do `appearance.rs`).
     pub mixed_opacity: bool,
     pub mixed_blend: bool,
+    /// ⭐ **As pilhas das selecionadas têm ESTRUTURAS diferentes** (outro número de camadas, ou
+    /// outra espécie no mesmo índice): o painel não lista linhas — a linha `2` de uma não é a `2`
+    /// da outra — e diz «Camadas mistas»; *+ Fill / + Stroke* continuam a valer para todas.
+    pub layers_differ: bool,
 }
 
 thread_local! {
@@ -88,7 +107,7 @@ pub fn set_current_appearance(a: Option<Appearance>) {
     CURRENT.with(|c| *c.borrow_mut() = a);
 }
 
-pub(crate) fn current_appearance() -> Option<Appearance> {
+pub fn current_appearance() -> Option<Appearance> {
     CURRENT.with(|c| c.borrow().clone())
 }
 
